@@ -1,0 +1,36 @@
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+
+import App from './App.vue'
+import router from './router'
+
+if (import.meta.env.DEV) {
+  ;(
+    globalThis as typeof globalThis & {
+      __VUE_DEVTOOLS_TOAST__?: (message: string, type?: string) => void
+    }
+  ).__VUE_DEVTOOLS_TOAST__ = (message: string, type?: string) => {
+    if (message.includes('store installed 🆕')) {
+      return
+    }
+
+    if (type === 'error') {
+      console.error(message)
+      return
+    }
+
+    if (type === 'warn') {
+      console.warn(message)
+      return
+    }
+
+    console.log(message)
+  }
+}
+
+const app = createApp(App)
+
+app.use(createPinia())
+app.use(router)
+
+app.mount('#app')
