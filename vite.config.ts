@@ -4,28 +4,17 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
+const proxyTarget = 'http://127.0.0.1:8080'
+const proxyPaths = ['/auth', '/requirements', '/payments', '/settings']
+const proxyConfig = Object.fromEntries(
+  proxyPaths.map((path) => [path, { target: proxyTarget, changeOrigin: true }]),
+)
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue(), vueDevTools()],
   server: {
-    proxy: {
-      '/auth': {
-        target: 'http://127.0.0.1:8080',
-        changeOrigin: true,
-      },
-      '/requirements': {
-        target: 'http://127.0.0.1:8080',
-        changeOrigin: true,
-      },
-      '/payments': {
-        target: 'http://127.0.0.1:8080',
-        changeOrigin: true,
-      },
-      '/settings': {
-        target: 'http://127.0.0.1:8080',
-        changeOrigin: true,
-      },
-    },
+    proxy: proxyConfig,
   },
   resolve: {
     alias: {

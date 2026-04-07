@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 import AppToast from '@/components/AppToast.vue'
@@ -10,6 +10,19 @@ type Metric = {
   label: string
   value: string
   hint: string
+}
+
+type RecentDeal = {
+  payment_id: string
+  requirement_id: string
+  amount_cny: number
+  paid_at: string
+}
+
+type RequirementOverviewResp = {
+  total_orders: number
+  total_turnover_cny: number
+  recent_deals: RecentDeal[]
 }
 
 type RequirementStatus =
@@ -82,13 +95,17 @@ type DepositRatioResp = {
   max_percent: number
 }
 
+type GithubAuthUrlResp = {
+  url: string
+}
+
 type AuthMode = 'login' | 'register'
 
-const metrics: Metric[] = [
+const metrics = ref<Metric[]>([
   {
-    label: '累计接单',
-    value: '128 单',
-    hint: '本月新增 16 单',
+    label: '累计完成',
+    value: '0 单',
+    hint: '已完成需求数',
   },
   {
     label: '综合评价',
@@ -97,16 +114,13 @@ const metrics: Metric[] = [
   },
   {
     label: '累计成交额',
-    value: '¥ 86,430',
-    hint: '较上月 +12.4%',
+    value: '¥ 0.00',
+    hint: '已支付订单累计金额',
   },
-]
+])
+const AUTO_REFRESH_INTERVAL_MS = 60_000
 
-const latestDeals = [
-  { id: 'A240331', amount: '¥1,280', at: '今天 10:40' },
-  { id: 'A240329', amount: '¥980', at: '昨天 17:22' },
-  { id: 'A240327', amount: '¥2,350', at: '3 月 27 日' },
-]
+const latestDeals = ref<{ paymentId: string; requirementId: string; amount: string; at: string }[]>([])
 
 const pendingRequirements = ref<PendingRequirementView[]>([])
 
@@ -115,6 +129,14 @@ const authMode = ref<AuthMode>('login')
 const authVisible = ref(false)
 const authUsername = ref('')
 const authPassword = ref('')
+const authEmail = ref('')
+const authEmailCode = ref('')
+const sendCodeLoading = ref(false)
+const githubLoginLoading = ref(false)
+const sendCodeCountdown = ref(0)
+let sendCodeTimer: ReturnType<typeof setInterval> | null = null
+let autoRefreshTimer: ReturnType<typeof setInterval> | null = null
+let autoRefreshInFlight = false
 const publishVisible = ref(false)
 const publishTitle = ref('')
 const publishDescription = ref('')
@@ -133,6 +155,7 @@ const amountCouponCode = ref('')
 const discountCouponCode = ref('')
 const couponLoading = ref(false)
 const router = useRouter()
+const route = useRoute()
 const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
 
 function goProfile() {
@@ -143,9 +166,61 @@ const authTitle = computed(() => (authMode.value === 'login' ? '登录账号' : 
 
 onMounted(() => {
   auth.hydrate()
+  const oauthToken = typeof route.query.oauth_token === 'string' ? route.query.oauth_token.trim() : ''
+  const oauthError = typeof route.query.oauth_error === 'string' ? route.query.oauth_error.trim() : ''
+
+  if (oauthToken) {
+    auth.setToken(oauthToken)
+    authVisible.value = false
+    showToast('GitHub 登录成功', 'success')
+    void router.replace({ query: {} })
+  } else if (oauthError) {
+    showToast(`GitHub 登录失败: ${oauthError}`, 'error')
+    void router.replace({ query: {} })
+  }
+
   void loadDepositRatio()
   void loadPendingRequirements()
+  void loadRequirementOverview()
+
+  autoRefreshTimer = setInterval(() => {
+    if (document.visibilityState !== 'visible') {
+      return
+    }
+    if (homeRefreshLoading.value || publishLoading.value || depositLoading.value || auth.loading) {
+      return
+    }
+    void runBackgroundAutoRefresh()
+  }, AUTO_REFRESH_INTERVAL_MS)
 })
+
+onBeforeUnmount(() => {
+  if (sendCodeTimer) {
+    clearInterval(sendCodeTimer)
+    sendCodeTimer = null
+  }
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer)
+    autoRefreshTimer = null
+  }
+})
+
+async function runBackgroundAutoRefresh() {
+  if (autoRefreshInFlight) {
+    return
+  }
+
+  autoRefreshInFlight = true
+  try {
+    if (auth.isAuthed) {
+      await Promise.all([loadDepositRatio(), loadPendingRequirements(true), loadRequirementOverview()])
+    } else {
+      await Promise.all([loadPendingRequirements(true), loadRequirementOverview()])
+    }
+  } finally {
+    autoRefreshInFlight = false
+  }
+}
 
 function statusToLabel(status: RequirementStatus): string {
   const mapping: Record<RequirementStatus, string> = {
@@ -195,6 +270,10 @@ function openDepositCard(item: PendingRequirementView) {
   discountCouponCode.value = ''
   depositVisible.value = true
   void loadAvailableCoupons()
+}
+
+function canOpenPayment(item: PendingRequirementView) {
+  return item.status === 'pending_deposit' || item.status === 'pending_final'
 }
 
 function selectCoupon(code: string, type: 'amount' | 'percent') {
@@ -362,7 +441,7 @@ async function loadAvailableCoupons() {
   }
 }
 
-async function loadPendingRequirements() {
+async function loadPendingRequirements(silent = false) {
   if (!auth.isAuthed) {
     pendingRequirements.value = []
     return
@@ -393,7 +472,73 @@ async function loadPendingRequirements() {
         paymentMethod: item.payment_method,
       }))
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载需求失败', 'error')
+    if (!silent) {
+      showToast(err instanceof Error ? err.message : '加载需求失败', 'error')
+    }
+  }
+}
+
+async function loadRequirementOverview() {
+  if (!auth.isAuthed) {
+    metrics.value = [
+      {
+        label: '累计完成',
+        value: '0 单',
+        hint: '已完成需求数',
+      },
+      {
+        label: '综合评价',
+        value: '4.92 分',
+        hint: '好评率 99.1%',
+      },
+      {
+        label: '累计成交额',
+        value: '¥ 0.00',
+        hint: '已支付订单累计金额',
+      },
+    ]
+    latestDeals.value = []
+    return
+  }
+
+  try {
+    const resp = await fetch('/requirements/overview', {
+      headers: {
+        Authorization: `Bearer ${auth.token}`,
+      },
+    })
+
+    if (!resp.ok) {
+      throw new Error(await resp.text())
+    }
+
+    const payload = (await resp.json()) as RequirementOverviewResp
+    metrics.value = [
+      {
+        label: '累计完成',
+        value: `${payload.total_orders ?? 0} 单`,
+        hint: '已完成需求数',
+      },
+      {
+        label: '综合评价',
+        value: '4.92 分',
+        hint: '好评率 99.1%',
+      },
+      {
+        label: '累计成交额',
+        value: `¥ ${(payload.total_turnover_cny ?? 0).toFixed(2)}`,
+        hint: '已支付订单累计金额',
+      },
+    ]
+
+    latestDeals.value = (payload.recent_deals ?? []).map((item) => ({
+      paymentId: item.payment_id,
+      requirementId: item.requirement_id,
+      amount: `¥${item.amount_cny.toFixed(2)}`,
+      at: formatTimeLabel(item.paid_at),
+    }))
+  } catch {
+    // Keep current values if overview API fails.
   }
 }
 
@@ -484,11 +629,87 @@ async function submitDepositPayment() {
 
 function openAuth(mode: AuthMode) {
   authMode.value = mode
+  authEmail.value = ''
+  authEmailCode.value = ''
+  sendCodeLoading.value = false
+  sendCodeCountdown.value = 0
+  if (sendCodeTimer) {
+    clearInterval(sendCodeTimer)
+    sendCodeTimer = null
+  }
   authVisible.value = true
 }
 
 function closeAuth() {
   authVisible.value = false
+}
+
+function loginWithGithub() {
+  if (githubLoginLoading.value) {
+    return
+  }
+
+  githubLoginLoading.value = true
+  const redirectTarget = `${window.location.origin}${window.location.pathname}`
+  const requestUrl = `/auth/github/url?redirect_to=${encodeURIComponent(redirectTarget)}`
+
+  fetch(requestUrl, {
+    method: 'GET',
+    credentials: 'same-origin',
+  })
+    .then(async (resp) => {
+      if (!resp.ok) {
+        throw new Error((await resp.text()) || 'GitHub 登录暂不可用')
+      }
+
+      const payload = (await resp.json()) as GithubAuthUrlResp
+      if (!payload.url) {
+        throw new Error('GitHub 授权地址为空')
+      }
+
+      window.location.href = payload.url
+    })
+    .catch((err) => {
+      showToast(err instanceof Error ? err.message : 'GitHub 登录失败', 'error')
+      githubLoginLoading.value = false
+    })
+}
+
+async function sendRegisterCode() {
+  const email = authEmail.value.trim()
+  if (!email) {
+    showToast('请输入邮箱地址', 'error')
+    return
+  }
+
+  if (sendCodeLoading.value || sendCodeCountdown.value > 0) {
+    return
+  }
+
+  sendCodeLoading.value = true
+  try {
+    await auth.sendRegisterEmailCode(email)
+    showToast('验证码已发送，请查收邮箱', 'success')
+    sendCodeCountdown.value = 60
+    if (sendCodeTimer) {
+      clearInterval(sendCodeTimer)
+    }
+    sendCodeTimer = setInterval(() => {
+      if (sendCodeCountdown.value <= 1) {
+        sendCodeCountdown.value = 0
+        if (sendCodeTimer) {
+          clearInterval(sendCodeTimer)
+          sendCodeTimer = null
+        }
+        return
+      }
+      sendCodeCountdown.value -= 1
+    }, 1000)
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '发送验证码失败', 'error')
+  } finally {
+    sendCodeLoading.value = false
+  }
 }
 
 async function submitAuth() {
@@ -502,18 +723,35 @@ async function submitAuth() {
     return
   }
 
+  if (authMode.value === 'register') {
+    if (!authEmail.value.trim()) {
+      showToast('邮箱不能为空', 'error')
+      return
+    }
+    if (authEmailCode.value.trim().length !== 6) {
+      showToast('请输入 6 位邮箱验证码', 'error')
+      return
+    }
+  }
+
   try {
     if (authMode.value === 'login') {
       await auth.login(authUsername.value.trim(), authPassword.value)
       showToast('登录成功', 'success')
     } else {
-      await auth.register(authUsername.value.trim(), authPassword.value)
+      await auth.registerWithEmail(
+        authUsername.value.trim(),
+        authPassword.value,
+        authEmail.value.trim(),
+        authEmailCode.value.trim(),
+      )
       showToast('注册成功', 'success')
     }
 
     authVisible.value = false
     await loadDepositRatio()
     await loadPendingRequirements()
+    await loadRequirementOverview()
   } catch (err) {
     showToast(err instanceof Error ? err.message : '操作失败', 'error')
   }
@@ -522,6 +760,7 @@ async function submitAuth() {
 function logout() {
   auth.logout()
   pendingRequirements.value = []
+  void loadRequirementOverview()
   showToast('已退出登录', 'info')
 }
 
@@ -543,9 +782,9 @@ async function refreshHomeData() {
   homeRefreshLoading.value = true
   try {
     if (auth.isAuthed) {
-      await Promise.all([loadDepositRatio(), loadPendingRequirements()])
+      await Promise.all([loadDepositRatio(), loadPendingRequirements(), loadRequirementOverview()])
     } else {
-      await loadPendingRequirements()
+      await Promise.all([loadPendingRequirements(), loadRequirementOverview()])
     }
     showToast('已刷新最新数据', 'success')
   } finally {
@@ -664,15 +903,14 @@ async function submitPublishRequirement() {
         <span>{{ pendingRequirements.length }} 条</span>
       </header>
       <ul v-if="pendingRequirements.length > 0" class="req-list">
-        <li v-for="item in pendingRequirements" :key="item.id" class="req-row">
+        <li v-for="item in pendingRequirements" :key="item.id" class="req-row"
+          :class="{ clickable: canOpenPayment(item) }" @click="canOpenPayment(item) && openDepositCard(item)">
           <div class="req-main">
             <strong>{{ item.title }}</strong>
             <span>{{ item.id }}</span>
           </div>
-          <button class="status-chip"
-            :class="{ clickable: item.status === 'pending_deposit' || item.status === 'pending_final' }"
-            :disabled="item.status !== 'pending_deposit' && item.status !== 'pending_final'"
-            @click="openDepositCard(item)">
+          <button class="status-chip" :class="{ clickable: canOpenPayment(item) }" :disabled="!canOpenPayment(item)"
+            @click.stop="openDepositCard(item)">
             {{ item.statusLabel }}
           </button>
           <time>{{ item.updatedAtLabel }}</time>
@@ -686,13 +924,14 @@ async function submitPublishRequirement() {
         <h2>最近成交</h2>
         <span>近 3 笔</span>
       </header>
-      <ul class="deal-list">
-        <li v-for="deal in latestDeals" :key="deal.id" class="deal-row">
-          <span>{{ deal.id }}</span>
+      <ul v-if="latestDeals.length > 0" class="deal-list">
+        <li v-for="deal in latestDeals" :key="deal.paymentId" class="deal-row">
+          <span>{{ deal.requirementId }}</span>
           <strong>{{ deal.amount }}</strong>
           <time>{{ deal.at }}</time>
         </li>
       </ul>
+      <p v-else class="empty-placeholder">暂无最近成交记录。</p>
     </section>
 
     <div v-if="authVisible" class="auth-modal-wrap" @click.self="closeAuth">
@@ -706,8 +945,28 @@ async function submitPublishRequirement() {
           密码
           <input v-model="authPassword" type="password" autocomplete="current-password" placeholder="至少 6 位密码" />
         </label>
+        <template v-if="authMode === 'register'">
+          <label>
+            邮箱
+            <input v-model="authEmail" type="email" autocomplete="email" placeholder="请输入常用邮箱" />
+          </label>
+          <label>
+            邮箱验证码
+            <div class="inline-inputs auth-code-row">
+              <input v-model="authEmailCode" type="text" maxlength="6" placeholder="输入 6 位验证码" />
+              <button class="auth-btn ghost" type="button" :disabled="sendCodeLoading || sendCodeCountdown > 0"
+                @click="sendRegisterCode">
+                {{ sendCodeLoading ? '发送中...' : sendCodeCountdown > 0 ? `${sendCodeCountdown}s` : '发送验证码' }}
+              </button>
+            </div>
+          </label>
+        </template>
         <div class="auth-modal-actions">
           <button class="auth-btn ghost" type="button" @click="closeAuth">取消</button>
+          <button v-if="authMode === 'login'" class="auth-btn ghost" type="button" :disabled="githubLoginLoading"
+            @click="loginWithGithub">
+            {{ githubLoginLoading ? '跳转中...' : 'GitHub 快捷登录' }}
+          </button>
           <button class="auth-btn solid" type="button" :disabled="auth.loading" @click="submitAuth">
             {{ auth.loading ? '提交中...' : authMode === 'login' ? '登录' : '注册并登录' }}
           </button>
@@ -1103,6 +1362,14 @@ h2 {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-sub);
+}
+
+.req-row.clickable {
+  cursor: pointer;
+}
+
+.req-row.clickable:hover {
+  background: rgba(149, 213, 178, 0.14);
 }
 
 .req-main {

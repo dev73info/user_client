@@ -26,13 +26,20 @@ async function authRequest(
   path: '/auth/login' | '/auth/register',
   username: string,
   password: string,
+  email?: string,
+  emailCode?: string,
 ) {
   const resp = await fetch(path, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({
+      username,
+      password,
+      ...(email ? { email } : {}),
+      ...(emailCode ? { email_code: emailCode } : {}),
+    }),
   })
 
   if (!resp.ok) {
@@ -85,10 +92,50 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function sendRegisterEmailCode(email: string) {
+    const resp = await fetch('/auth/send-register-email-code', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    })
+
+    if (!resp.ok) {
+      const text = await resp.text()
+      throw new Error(text || '发送验证码失败')
+    }
+  }
+
+  async function registerWithEmail(
+    usernameInput: string,
+    passwordInput: string,
+    emailInput: string,
+    emailCodeInput: string,
+  ) {
+    loading.value = true
+    try {
+      const payload = await authRequest(
+        '/auth/register',
+        usernameInput,
+        passwordInput,
+        emailInput,
+        emailCodeInput,
+      )
+      persist(payload.token)
+    } finally {
+      loading.value = false
+    }
+  }
+
   function logout() {
     token.value = ''
     username.value = ''
     localStorage.removeItem(TOKEN_KEY)
+  }
+
+  function setToken(newToken: string) {
+    persist(newToken)
   }
 
   return {
@@ -99,6 +146,9 @@ export const useAuthStore = defineStore('auth', () => {
     hydrate,
     login,
     register,
+    sendRegisterEmailCode,
+    registerWithEmail,
+    setToken,
     logout,
   }
 })
