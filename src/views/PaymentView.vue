@@ -182,7 +182,7 @@ onUnmounted(() => {
     <section class="panel">
       <header class="panel-head">
         <div>
-          <p class="eyebrow">73Hub Sandbox</p>
+          <p class="eyebrow">73Info Sandbox</p>
           <h2>扫码支付</h2>
           <p class="lead">请使用{{ paymentChannel === 'wechat' ? '微信' : '支付宝' }}扫码完成支付，支付成功后将自动返回首页。</p>
         </div>
@@ -226,4 +226,3 @@ onUnmounted(() => {
     <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
   </main>
 </template>
-

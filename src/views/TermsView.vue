@@ -4,7 +4,7 @@
             <header class="panel-head">
                 <div>
                     <h2>用户协议</h2>
-                    <p class="lead">欢迎使用柒叁信息 73Hub 平台。请在使用前仔细阅读本协议。</p>
+                    <p class="lead">欢迎使用柒叁信息 73Info 平台。请在使用前仔细阅读本协议。</p>
                 </div>
             </header>
 

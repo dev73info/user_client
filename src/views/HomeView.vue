@@ -740,7 +740,7 @@ async function submitPublishRequirement() {
   <main class="home">
     <section class="hero">
       <div class="hero-top">
-        <div class="brand-mark" aria-label="73Hub">
+        <div class="brand-mark" aria-label="73Info">
           <span class="brand-dot" aria-hidden="true"></span>
           <span class="brand-text">柒叁信息</span>
         </div>
@@ -984,7 +984,7 @@ async function submitPublishRequirement() {
           <h3>网站信息</h3>
           <p>平台名称：柒叁信息（73Hub）</p>
           <p>主体类型：企业服务平台（备案办理中）</p>
-          <p>联系邮箱：support@73hub.cn</p>
+          <p>联系邮箱：support@73Info.cn</p>
           <p>联系地址：上海市浦东新区（示例，待替换）</p>
         </div>
         <div class="site-footer-block">
@@ -1000,7 +1000,7 @@ async function submitPublishRequirement() {
           <p><router-link to="/payment-refund">支付与退款说明</router-link></p>
         </div>
       </div>
-      <p class="site-footer-copy">© {{ currentYear }} 柒叁信息 73Hub. All rights reserved.</p>
+      <p class="site-footer-copy">© {{ currentYear }} 柒叁信息 73Info. All rights reserved.</p>
     </footer>
   </main>
 </template>
