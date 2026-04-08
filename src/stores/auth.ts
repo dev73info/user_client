@@ -1,9 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-
-type AuthPayload = {
-  token: string
-}
+import { authRequest, sendRegisterEmailCode as sendRegisterEmailCodeApi } from '@/api/auth'
 
 const TOKEN_KEY = 'auth_token_73hub'
 
@@ -20,34 +17,6 @@ function parseJwtSubject(token: string): string {
   } catch {
     return ''
   }
-}
-
-async function authRequest(
-  path: '/auth/login' | '/auth/register',
-  username: string,
-  password: string,
-  email?: string,
-  emailCode?: string,
-) {
-  const resp = await fetch(path, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      username,
-      password,
-      ...(email ? { email } : {}),
-      ...(emailCode ? { email_code: emailCode } : {}),
-    }),
-  })
-
-  if (!resp.ok) {
-    const text = await resp.text()
-    throw new Error(text || '请求失败')
-  }
-
-  return (await resp.json()) as AuthPayload
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -93,18 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function sendRegisterEmailCode(email: string) {
-    const resp = await fetch('/auth/send-register-email-code', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email }),
-    })
-
-    if (!resp.ok) {
-      const text = await resp.text()
-      throw new Error(text || '发送验证码失败')
-    }
+    await sendRegisterEmailCodeApi(email)
   }
 
   async function registerWithEmail(

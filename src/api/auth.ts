@@ -1,0 +1,62 @@
+import { requestJson, requestVoid } from '@/api/http'
+
+export type AuthPayload = {
+  token: string
+}
+
+export type GithubAuthUrlResp = {
+  url: string
+}
+
+type AuthPath = '/auth/login' | '/auth/register'
+
+export async function authRequest(
+  path: AuthPath,
+  username: string,
+  password: string,
+  email?: string,
+  emailCode?: string,
+): Promise<AuthPayload> {
+  return requestJson<AuthPayload>(
+    path,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username,
+        password,
+        ...(email ? { email } : {}),
+        ...(emailCode ? { email_code: emailCode } : {}),
+      }),
+    },
+    '请求失败',
+  )
+}
+
+export async function sendRegisterEmailCode(email: string): Promise<void> {
+  await requestVoid(
+    '/auth/send-register-email-code',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    },
+    '发送验证码失败',
+  )
+}
+
+export async function getGithubAuthorizeUrl(redirectTo: string): Promise<GithubAuthUrlResp> {
+  const requestUrl = `/auth/github/url?redirect_to=${encodeURIComponent(redirectTo)}`
+  return requestJson<GithubAuthUrlResp>(
+    requestUrl,
+    {
+      method: 'GET',
+      credentials: 'same-origin',
+    },
+    'GitHub 登录暂不可用',
+  )
+}

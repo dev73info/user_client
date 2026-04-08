@@ -4,28 +4,9 @@ import { useRouter } from 'vue-router'
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
-
-type CouponItem = {
-  code: string
-  name: string
-  discount_type: 'amount' | 'percent'
-  discount_value: number
-  min_amount_cny: number
-  max_discount_cny?: number | null
-  active: boolean
-  status: 'pending_use' | 'used'
-  starts_at?: string | null
-  ends_at?: string | null
-}
-
-type RequirementStatus =
-  | 'pending_review'
-  | 'rejected'
-  | 'pending_deposit'
-  | 'deposit_paid'
-  | 'in_development'
-  | 'pending_final'
-  | 'completed'
+import { confirmPayment, createPayment, listAvailableCoupons, type AlipayCreatePaymentResp, type CouponItem, type WechatCreatePaymentResp } from '@/api/payments'
+import { listRequirements, type RequirementStatus } from '@/api/requirements'
+import { getDepositRatio, updateProfile } from '@/api/settings'
 
 type RequirementItem = {
   requirement_id: string
@@ -33,31 +14,6 @@ type RequirementItem = {
   status: RequirementStatus
   budget?: number | null
   updated_at: string
-}
-
-type AlipayCreatePaymentResp = {
-  payment_id: string
-  requirement_id: string
-  channel: string
-  amount_cny: number
-  status: string
-  alipay_order_string: string
-  expires_at: string
-}
-
-type WechatCreatePaymentResp = {
-  payment_id: string
-  requirement_id: string
-  channel: string
-  amount_cny: number
-  status: string
-  wechat_prepay_id?: string | null
-  code_url: string
-  expires_at: string
-}
-
-type DepositRatioResp = {
-  deposit_ratio_percent: number
 }
 
 const router = useRouter()
@@ -161,20 +117,7 @@ async function updateUsername() {
 
   usernameLoading.value = true
   try {
-    const resp = await fetch('/settings/profile', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${auth.token}`,
-      },
-      body: JSON.stringify({ new_username: trimmed }),
-    })
-
-    if (!resp.ok) {
-      throw new Error((await resp.text()) || '修改用户名失败')
-    }
-
-    const payload = await resp.json() as { username: string; token: string }
+    const payload = await updateProfile(auth.token, trimmed)
     auth.setToken(payload.token)
     newUsername.value = ''
     showToast('用户名已更新', 'success')
@@ -255,17 +198,7 @@ async function loadCoupons() {
 
   loading.value = true
   try {
-    const resp = await fetch('/payments/coupons/available', {
-      headers: {
-        Authorization: `Bearer ${auth.token}`,
-      },
-    })
-
-    if (!resp.ok) {
-      throw new Error((await resp.text()) || '加载券包失败')
-    }
-
-    coupons.value = (await resp.json()) as CouponItem[]
+    coupons.value = await listAvailableCoupons(auth.token)
   } catch (err) {
     showToast(err instanceof Error ? err.message : '加载券包失败', 'error')
   } finally {
@@ -280,17 +213,12 @@ async function loadDepositRatio() {
   }
 
   try {
-    const resp = await fetch('/settings/deposit-ratio', {
-      headers: {
-        Authorization: `Bearer ${auth.token}`,
-      },
-    })
+    const payload = await getDepositRatio(auth.token)
 
-    if (!resp.ok) {
+    if (!payload) {
       return
     }
 
-    const payload = (await resp.json()) as DepositRatioResp
     if (Number.isFinite(payload.deposit_ratio_percent)) {
       depositRatioPercent.value = payload.deposit_ratio_percent
     }
@@ -308,17 +236,7 @@ async function loadMyRequirements() {
 
   requirementLoading.value = true
   try {
-    const resp = await fetch('/requirements/', {
-      headers: {
-        Authorization: `Bearer ${auth.token}`,
-      },
-    })
-
-    if (!resp.ok) {
-      throw new Error((await resp.text()) || '加载需求单失败')
-    }
-
-    const rows = (await resp.json()) as RequirementItem[]
+    const rows = await listRequirements(auth.token)
     myRequirements.value = rows.slice(0, 20)
   } catch (err) {
     showToast(err instanceof Error ? err.message : '加载需求单失败', 'error')
@@ -339,27 +257,16 @@ async function submitRequirementPayment() {
   payLoading.value = true
   try {
     if (!currentPayment.value) {
-      const createResp = await fetch(channel === 'alipay' ? '/payments/alipay/create' : '/payments/wechat/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${auth.token}`,
-        },
-        body: JSON.stringify({
-          requirement_id: requirement.requirement_id,
-          amount_cny: amount,
-          description: `需求 ${requirement.requirement_id} ${payStageLabel.value}`,
-        }),
+      const createPayload = await createPayment(auth.token, channel, {
+        requirement_id: requirement.requirement_id,
+        amount_cny: amount,
+        description: `需求 ${requirement.requirement_id} ${payStageLabel.value}`,
       })
 
-      if (!createResp.ok) {
-        throw new Error((await createResp.text()) || `创建${channel === 'alipay' ? '支付宝' : '微信'}支付订单失败`)
-      }
-
       if (channel === 'alipay') {
-        currentPayment.value = (await createResp.json()) as AlipayCreatePaymentResp
+        currentPayment.value = createPayload as AlipayCreatePaymentResp
       } else {
-        const wechatPayload = (await createResp.json()) as WechatCreatePaymentResp
+        const wechatPayload = createPayload as WechatCreatePaymentResp
         currentPayment.value = {
           payment_id: wechatPayload.payment_id,
           requirement_id: wechatPayload.requirement_id,
@@ -386,19 +293,10 @@ async function submitRequirementPayment() {
       return
     }
 
-    const confirmResp = await fetch(channel === 'alipay' ? '/payments/alipay/confirm' : '/payments/wechat/confirm', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${auth.token}`,
-      },
-      body: JSON.stringify({
-        payment_id: currentPayment.value.payment_id,
-      }),
-    })
+    const confirmResult = await confirmPayment(auth.token, channel, currentPayment.value.payment_id)
 
-    if (!confirmResp.ok) {
-      throw new Error((await confirmResp.text()) || `确认${payStageLabel.value}支付失败`)
+    if (!confirmResult.ok) {
+      throw new Error(confirmResult.message || `确认${payStageLabel.value}支付失败`)
     }
 
     showToast(`${payStageLabel.value}支付确认成功`, 'success')
@@ -427,7 +325,6 @@ onMounted(async () => {
     <section class="panel">
       <header class="panel-head">
         <div>
-          <p class="eyebrow">个人中心</p>
           <h2>{{ auth.username || '我的券包' }}</h2>
           <p class="lead">在这里查看你的优惠券和折扣券背包。</p>
         </div>
@@ -561,373 +458,3 @@ onMounted(async () => {
     <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
   </main>
 </template>
-
-<style scoped>
-.page-shell {
-  width: min(980px, calc(100% - 32px));
-  margin: 28px auto;
-}
-
-.panel {
-  padding: 24px;
-  background: rgba(6, 32, 50, 0.42);
-  border: 1px solid var(--card-border);
-  border-radius: 18px;
-}
-
-.panel-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.eyebrow {
-  margin: 0;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-sub);
-}
-
-h2 {
-  margin: 6px 0 8px;
-  font-size: 30px;
-}
-
-.lead {
-  margin: 0;
-  color: var(--text-sub);
-}
-
-.ghost {
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 999px;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-main);
-  background: rgba(255, 255, 255, 0.06);
-  cursor: pointer;
-  transition:
-    transform 180ms ease,
-    box-shadow 180ms ease,
-    opacity 180ms ease,
-    background-color 180ms ease;
-}
-
-.ghost:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(180, 230, 255, 0.18);
-}
-
-.ghost:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
-  transform: none;
-  box-shadow: none;
-}
-
-.ghost.small {
-  padding: 6px 12px;
-  font-size: 12px;
-}
-
-.wallet-overview {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.wallet-card {
-  padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.summary-card strong {
-  display: block;
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.summary-card span {
-  color: var(--text-sub);
-}
-
-.wallet-section {
-  margin-top: 20px;
-}
-
-.wallet-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 12px;
-}
-
-.wallet-header h3 {
-  margin: 0;
-  font-size: 18px;
-}
-
-.profile-update-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.profile-update-row input {
-  width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 12px;
-  padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-main);
-}
-
-.profile-update-row input:disabled {
-  opacity: 0.7;
-}
-
-.coupon-items {
-  display: grid;
-  gap: 12px;
-}
-
-.requirement-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 10px;
-}
-
-.requirement-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto;
-  gap: 10px;
-  align-items: center;
-  padding: 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-sub);
-}
-
-.requirement-row.clickable {
-  cursor: pointer;
-  border: 1px solid rgba(149, 213, 178, 0.3);
-}
-
-.requirement-row.clickable:hover {
-  background: rgba(149, 213, 178, 0.12);
-}
-
-.requirement-main {
-  display: grid;
-  gap: 2px;
-}
-
-.requirement-main strong {
-  color: var(--text-main);
-  font-size: 14px;
-}
-
-.requirement-main span {
-  font-size: 12px;
-}
-
-.requirement-status {
-  border-radius: 999px;
-  padding: 4px 10px;
-  color: #ffe18b;
-  font-size: 12px;
-  background: rgba(255, 225, 139, 0.18);
-}
-
-.coupon-item {
-  width: 100%;
-  text-align: left;
-  padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-main);
-  cursor: pointer;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
-}
-
-.coupon-item:hover {
-  border-color: rgba(149, 213, 178, 0.45);
-  background: rgba(149, 213, 178, 0.1);
-}
-
-.coupon-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.coupon-status {
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  text-transform: uppercase;
-}
-
-.coupon-status.pending_use {
-  background: rgba(31, 197, 142, 0.14);
-  color: #8ef1bb;
-}
-
-.coupon-status.used {
-  background: rgba(255, 140, 140, 0.14);
-  color: #ffb3b3;
-}
-
-.coupon-item small {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--text-sub);
-}
-
-.coupon-meta {
-  margin: 10px 0 0;
-  color: var(--text-sub);
-  font-size: 13px;
-}
-
-.empty {
-  color: var(--text-sub);
-  padding: 18px;
-  border: 1px dashed rgba(255, 255, 255, 0.16);
-  border-radius: 16px;
-}
-
-.modal-wrap {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-  background: rgba(0, 8, 15, 0.5);
-}
-
-.pay-modal {
-  width: min(540px, 100%);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(5, 24, 38, 0.94);
-  backdrop-filter: blur(8px);
-  padding: 18px;
-}
-
-.pay-modal h3 {
-  margin: 0 0 12px;
-}
-
-.pay-line {
-  margin: 0 0 10px;
-  color: var(--text-sub);
-  font-size: 14px;
-}
-
-.pay-amount {
-  margin: 0 0 12px;
-  font-size: 16px;
-}
-
-.pay-amount strong {
-  color: #ffd166;
-  font-size: 24px;
-}
-
-.pay-channel-row {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 14px;
-  color: var(--text-sub);
-  font-size: 13px;
-}
-
-.payment-options {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.payment-option {
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: rgba(7, 30, 46, 0.45);
-  color: var(--text-main);
-  padding: 10px 6px;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
-}
-
-.payment-option.active {
-  background: linear-gradient(150deg, rgba(149, 213, 178, 0.34), rgba(94, 180, 201, 0.32));
-  border-color: rgba(149, 213, 178, 0.7);
-  color: #f1fff8;
-}
-
-.payment-option-icon {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  object-fit: cover;
-}
-
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-@media (max-width: 780px) {
-  .panel-head {
-    flex-direction: column;
-  }
-
-  .wallet-overview {
-    grid-template-columns: 1fr;
-  }
-
-  .requirement-row {
-    grid-template-columns: 1fr auto;
-  }
-
-  .actions {
-    justify-content: stretch;
-  }
-
-  .actions .ghost {
-    flex: 1;
-  }
-
-  .requirement-row time,
-  .requirement-row span:nth-child(3) {
-    grid-column: 1 / -1;
-  }
-}
-</style>

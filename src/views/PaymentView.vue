@@ -6,6 +6,7 @@ import QRCode from 'qrcode'
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { confirmPayment as confirmPaymentApi, listPaymentOrders as listPaymentOrdersApi, type ConfirmPaymentResp } from '@/api/payments'
 
 const route = useRoute()
 const router = useRouter()
@@ -27,15 +28,6 @@ const confirming = ref(false)
 const paid = ref(false)
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let countdownTimer: ReturnType<typeof setInterval> | null = null
-
-type PaymentOrderItem = {
-  payment_id: string
-  status: string
-}
-
-type ConfirmPaymentResp = {
-  status: string
-}
 
 const hasOrder = computed(() => paymentId.value && qrContent.value)
 
@@ -102,17 +94,7 @@ function goBack() {
 }
 
 async function checkOrderPaidByList() {
-  const resp = await fetch('/payments/orders', {
-    headers: {
-      Authorization: `Bearer ${auth.token}`,
-    },
-  })
-
-  if (!resp.ok) {
-    return false
-  }
-
-  const rows = (await resp.json()) as PaymentOrderItem[]
+  const rows = await listPaymentOrdersApi(auth.token)
   const current = rows.find((item) => item.payment_id === paymentId.value)
   return current?.status === 'paid'
 }
@@ -130,20 +112,11 @@ async function confirmPayment() {
 
   confirming.value = true
   try {
-    const confirmApi = paymentChannel.value === 'wechat' ? '/payments/wechat/confirm' : '/payments/alipay/confirm'
-    const resp = await fetch(confirmApi, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${auth.token}`,
-      },
-      body: JSON.stringify({
-        payment_id: paymentId.value,
-      }),
-    })
+    const channel = paymentChannel.value === 'wechat' ? 'wechat' : 'alipay'
+    const result = await confirmPaymentApi(auth.token, channel, paymentId.value)
 
-    if (!resp.ok) {
-      if (resp.status === 409) {
+    if (!result.ok) {
+      if (result.status === 409) {
         const isPaid = await checkOrderPaidByList()
         if (isPaid) {
           paid.value = true
@@ -161,12 +134,7 @@ async function confirmPayment() {
       return
     }
 
-    let payload: ConfirmPaymentResp | null = null
-    try {
-      payload = (await resp.json()) as ConfirmPaymentResp
-    } catch {
-      payload = null
-    }
+    const payload = result.data as ConfirmPaymentResp | undefined
 
     if (payload?.status !== 'paid') {
       return
@@ -224,7 +192,8 @@ onUnmounted(() => {
       <div v-if="hasOrder" class="pay-layout">
         <article class="qr-card">
           <p class="card-title">支付二维码</p>
-          <img v-if="qrDataUrl" :src="qrDataUrl" :alt="`${paymentChannel === 'wechat' ? '微信' : '支付宝'}扫码支付二维码`" class="qr-code" />
+          <img v-if="qrDataUrl" :src="qrDataUrl" :alt="`${paymentChannel === 'wechat' ? '微信' : '支付宝'}扫码支付二维码`"
+            class="qr-code" />
           <div v-else class="qr-fallback">二维码生成失败，请返回首页重新发起支付。</div>
         </article>
 
@@ -258,166 +227,3 @@ onUnmounted(() => {
   </main>
 </template>
 
-<style scoped>
-.page-shell {
-  width: min(900px, calc(100% - 32px));
-  margin: 28px auto;
-  display: grid;
-  gap: 14px;
-}
-
-.top-back {
-  appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  padding: 10px 15px;
-  cursor: pointer;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-main);
-  transition:
-    border-color 0.2s ease,
-    background 0.2s ease;
-  flex-shrink: 0;
-}
-
-.top-back:hover {
-  border-color: rgba(149, 213, 178, 0.6);
-  background: rgba(149, 213, 178, 0.12);
-}
-
-.panel {
-  padding: 24px;
-  background: rgba(6, 32, 50, 0.42);
-  border: 1px solid var(--card-border);
-  border-radius: 18px;
-  box-shadow: 0 12px 32px rgba(6, 26, 40, 0.28);
-}
-
-.panel-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 18px;
-}
-
-.eyebrow {
-  margin: 0;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-sub);
-}
-
-h2 {
-  margin: 6px 0 8px;
-  font-size: 28px;
-}
-
-.lead {
-  margin: 0;
-  color: var(--text-sub);
-  font-size: 14px;
-}
-
-.pay-layout {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 14px;
-  align-items: stretch;
-}
-
-.qr-card,
-.meta-card {
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  padding: 14px;
-}
-
-.qr-card {
-  display: grid;
-  gap: 10px;
-  justify-items: center;
-}
-
-.qr-code {
-  width: 280px;
-  height: 280px;
-  border-radius: 16px;
-  background: #fff;
-  padding: 16px;
-}
-
-.card-title {
-  margin: 0;
-  width: 100%;
-  font-size: 13px;
-  color: var(--text-sub);
-}
-
-.meta-list {
-  display: grid;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.meta-list p {
-  margin: 0;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
-  padding-bottom: 8px;
-}
-
-.meta-list span {
-  color: var(--text-sub);
-  font-size: 13px;
-}
-
-.meta-list strong {
-  color: var(--text-main);
-  font-size: 13px;
-  text-align: right;
-  word-break: break-all;
-}
-
-.meta-list strong.expired {
-  color: #ffd38a;
-}
-
-.tip {
-  margin: 12px 0 0;
-  color: var(--text-sub);
-  font-size: 13px;
-}
-
-.qr-fallback {
-  margin: 0;
-  color: var(--text-sub);
-  font-size: 13px;
-  text-align: center;
-}
-
-.empty {
-  margin: 0;
-  color: var(--text-sub);
-}
-
-@media (max-width: 900px) {
-  .pay-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .qr-card {
-    justify-items: start;
-  }
-
-  .qr-code {
-    width: min(280px, 100%);
-    height: auto;
-  }
-}
-</style>
