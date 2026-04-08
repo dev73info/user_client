@@ -70,6 +70,7 @@ const authUsername = ref('')
 const authPassword = ref('')
 const authEmail = ref('')
 const authEmailCode = ref('')
+const acceptTerms = ref(false)
 const sendCodeLoading = ref(false)
 const githubLoginLoading = ref(false)
 const sendCodeCountdown = ref(0)
@@ -195,6 +196,16 @@ function formatTimeLabel(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function formatTrend(rate: number) {
+  if (rate > 0) {
+    return `↑ ${rate.toFixed(1)}%`
+  }
+  if (rate < 0) {
+    return `↓ ${Math.abs(rate).toFixed(1)}%`
+  }
+  return '持平'
 }
 
 function openDepositCard(item: PendingRequirementView) {
@@ -419,19 +430,19 @@ async function loadRequirementOverview() {
     const payload = await getRequirementOverview(auth.token)
     metrics.value = [
       {
-        label: '累计完成',
+        label: '已完成需求数',
         value: `${payload.total_orders ?? 0} 单`,
-        hint: '已完成需求数',
+        hint: `较昨日 ${formatTrend(payload.total_orders_change_rate ?? 0)}`,
       },
       {
-        label: '综合评价',
-        value: '4.92 分',
-        hint: '好评率 99.1%',
+        label: '好评率',
+        value: `${payload.positive_rate?.toFixed(1) ?? '0.0'}%`,
+        hint: `较昨日 ${formatTrend(payload.positive_rate_change_rate ?? 0)}`,
       },
       {
-        label: '累计成交额',
+        label: '已支付订单累计金额',
         value: `¥ ${(payload.total_turnover_cny ?? 0).toFixed(2)}`,
-        hint: '已支付订单累计金额',
+        hint: `较昨日 ${formatTrend(payload.total_turnover_change_rate ?? 0)}`,
       },
     ]
 
@@ -515,6 +526,7 @@ function openAuth(mode: AuthMode) {
   authMode.value = mode
   authEmail.value = ''
   authEmailCode.value = ''
+  acceptTerms.value = false
   sendCodeLoading.value = false
   sendCodeCountdown.value = 0
   if (sendCodeTimer) {
@@ -526,6 +538,7 @@ function openAuth(mode: AuthMode) {
 
 function closeAuth() {
   authVisible.value = false
+  acceptTerms.value = false
 }
 
 function loginWithGithub() {
@@ -598,6 +611,10 @@ async function submitAuth() {
   }
 
   if (authMode.value === 'register') {
+    if (!acceptTerms.value) {
+      showToast('请先同意用户协议、隐私政策和支付与退款说明', 'error')
+      return
+    }
     if (!authEmail.value.trim()) {
       showToast('邮箱不能为空', 'error')
       return
@@ -623,6 +640,7 @@ async function submitAuth() {
     }
 
     authVisible.value = false
+    acceptTerms.value = false
     await loadDepositRatio()
     await loadPendingRequirements()
     await loadRequirementOverview()
@@ -823,6 +841,15 @@ async function submitPublishRequirement() {
               </button>
             </div>
           </label>
+          <div class="auth-agreement-row">
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="acceptTerms" />
+              我已阅读并同意
+              <router-link to="/terms">《用户协议》</router-link>、
+              <router-link to="/privacy">《隐私政策》</router-link>和
+              <router-link to="/payment-refund">《支付与退款说明》</router-link>
+            </label>
+          </div>
         </template>
         <div class="auth-modal-actions">
           <button class="auth-btn ghost" type="button" @click="closeAuth">取消</button>
@@ -830,7 +857,8 @@ async function submitPublishRequirement() {
             @click="loginWithGithub">
             {{ githubLoginLoading ? '跳转中...' : 'GitHub 快捷登录' }}
           </button>
-          <button class="auth-btn solid" type="button" :disabled="auth.loading" @click="submitAuth">
+          <button class="auth-btn solid" type="button"
+            :disabled="auth.loading || (authMode === 'register' && !acceptTerms)" @click="submitAuth">
             {{ auth.loading ? '提交中...' : authMode === 'login' ? '登录' : '注册并登录' }}
           </button>
         </div>
@@ -967,9 +995,9 @@ async function submitPublishRequirement() {
         </div>
         <div class="site-footer-block">
           <h3>服务说明</h3>
-          <p><a href="#" aria-disabled="true">用户协议（待发布）</a></p>
-          <p><a href="#" aria-disabled="true">隐私政策（待发布）</a></p>
-          <p><a href="#" aria-disabled="true">支付与退款说明（待发布）</a></p>
+          <p><router-link to="/terms">用户协议</router-link></p>
+          <p><router-link to="/privacy">隐私政策</router-link></p>
+          <p><router-link to="/payment-refund">支付与退款说明</router-link></p>
         </div>
       </div>
       <p class="site-footer-copy">© {{ currentYear }} 柒叁信息 73Hub. All rights reserved.</p>

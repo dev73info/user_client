@@ -9,7 +9,11 @@ export type RecentDeal = {
 
 export type RequirementOverviewResp = {
   total_orders: number
+  total_orders_change_rate: number
+  positive_rate: number
+  positive_rate_change_rate: number
   total_turnover_cny: number
+  total_turnover_change_rate: number
   recent_deals: RecentDeal[]
 }
 

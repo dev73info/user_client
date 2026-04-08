@@ -5,7 +5,7 @@ import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { confirmPayment, createPayment, listAvailableCoupons, type AlipayCreatePaymentResp, type CouponItem, type WechatCreatePaymentResp } from '@/api/payments'
-import { commentRequirement as commentRequirementApi, listRequirements, type CommentRequirementPayload, type RequirementStatus } from '@/api/requirements'
+import { commentRequirement as commentRequirementApi, listRequirements, type RequirementStatus } from '@/api/requirements'
 import { getDepositRatio, updateProfile } from '@/api/settings'
 
 type RequirementItem = {

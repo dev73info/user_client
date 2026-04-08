@@ -3,6 +3,9 @@ import { useAuthStore } from '@/stores/auth'
 import HomeView from '@/views/HomeView.vue'
 import PaymentView from '@/views/PaymentView.vue'
 import ProfileView from '@/views/ProfileView.vue'
+import TermsView from '@/views/TermsView.vue'
+import PrivacyPolicyView from '@/views/PrivacyPolicyView.vue'
+import PaymentRefundView from '@/views/PaymentRefundView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -21,6 +24,21 @@ const router = createRouter({
       path: '/profile',
       name: 'profile',
       component: ProfileView,
+    },
+    {
+      path: '/terms',
+      name: 'terms',
+      component: TermsView,
+    },
+    {
+      path: '/privacy',
+      name: 'privacy',
+      component: PrivacyPolicyView,
+    },
+    {
+      path: '/payment-refund',
+      name: 'payment-refund',
+      component: PaymentRefundView,
     },
   ],
 })

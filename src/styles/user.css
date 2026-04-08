@@ -552,6 +552,42 @@ h2 {
   outline: none;
 }
 
+.auth-modal input[type='checkbox'] {
+  width: auto;
+  max-width: none;
+  margin: 0;
+}
+
+.auth-agreement-row {
+  margin-bottom: 12px;
+}
+
+.auth-code-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.auth-agreement-row .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-sub);
+  font-size: 13px;
+  line-height: 1.6;
+  flex-wrap: wrap;
+}
+
+.auth-agreement-row .checkbox-label input {
+  margin-top: 0;
+}
+
+.auth-agreement-row .checkbox-label a {
+  color: var(--text-main);
+  text-decoration: underline;
+}
+
 .auth-modal textarea {
   resize: vertical;
   font: inherit;
