@@ -4,19 +4,40 @@ import { authRequest, sendRegisterEmailCode as sendRegisterEmailCodeApi } from '
 
 const TOKEN_KEY = 'auth_token_73hub'
 
-function parseJwtSubject(token: string): string {
+function parseJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split('.')
   const payloadPart = parts[1]
   if (!payloadPart) {
-    return ''
+    return null
   }
 
   try {
-    const payload = JSON.parse(atob(payloadPart)) as { sub?: string }
-    return payload.sub ?? ''
+    const raw = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = raw.padEnd(Math.ceil(raw.length / 4) * 4, '=')
+    return JSON.parse(atob(padded)) as Record<string, unknown>
   } catch {
+    return null
+  }
+}
+
+function parseJwtSubject(token: string): string {
+  const payload = parseJwtPayload(token)
+  if (!payload) {
     return ''
   }
+  return typeof payload.sub === 'string' ? payload.sub : ''
+}
+
+function isJwtExpired(token: string): boolean {
+  const payload = parseJwtPayload(token)
+  if (!payload) {
+    return true
+  }
+  const exp = payload.exp
+  if (typeof exp !== 'number') {
+    return true
+  }
+  return Math.floor(Date.now() / 1000) >= exp
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -31,8 +52,24 @@ export const useAuthStore = defineStore('auth', () => {
     if (!saved) {
       return
     }
+
+    if (isJwtExpired(saved)) {
+      localStorage.removeItem(TOKEN_KEY)
+      token.value = ''
+      username.value = ''
+      return
+    }
+
+    const subject = parseJwtSubject(saved)
+    if (!subject) {
+      localStorage.removeItem(TOKEN_KEY)
+      token.value = ''
+      username.value = ''
+      return
+    }
+
     token.value = saved
-    username.value = parseJwtSubject(saved)
+    username.value = subject
   }
 
   function persist(newToken: string) {

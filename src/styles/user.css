@@ -697,6 +697,74 @@ h2 {
   display: block;
 }
 
+.rating-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.rating-star {
+  appearance: none;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.22);
+  font-size: 20px;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.rating-star.full {
+  color: #ffd166;
+}
+
+.rating-star.half {
+  color: transparent;
+  background: linear-gradient(90deg, #ffd166 50%, rgba(255, 255, 255, 0.22) 50%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.rating-star:hover {
+  background: rgba(149, 213, 178, 0.12);
+  border-color: rgba(149, 213, 178, 0.6);
+  transform: translateY(-1px);
+}
+
+.rating-value {
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+.comment-input {
+  width: 100%;
+  min-height: 120px;
+  margin-top: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+  resize: vertical;
+  outline: none;
+}
+
+.comment-input:focus {
+  border-color: rgba(149, 213, 178, 0.72);
+  box-shadow: 0 0 0 3px rgba(149, 213, 178, 0.16);
+}
+
 .auth-modal-actions {
   margin-top: 14px;
   display: flex;

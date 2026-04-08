@@ -39,6 +39,11 @@ export type CreateRequirementPayload = {
   acceptance_criteria?: string
 }
 
+export type CommentRequirementPayload = {
+  rating: number
+  comment?: string
+}
+
 export async function listRequirements(token: string): Promise<RequirementItem[]> {
   return requestJson<RequirementItem[]>(
     '/requirements/',
@@ -78,5 +83,24 @@ export async function createRequirement(
       body: JSON.stringify(payload),
     },
     '发布失败',
+  )
+}
+
+export async function commentRequirement(
+  token: string,
+  requirementId: string,
+  payload: CommentRequirementPayload,
+): Promise<void> {
+  await requestJson<unknown>(
+    `/requirements/${encodeURIComponent(requirementId)}/comment`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify(payload),
+    },
+    '评论失败',
   )
 }

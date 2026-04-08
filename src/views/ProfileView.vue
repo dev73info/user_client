@@ -5,7 +5,7 @@ import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { confirmPayment, createPayment, listAvailableCoupons, type AlipayCreatePaymentResp, type CouponItem, type WechatCreatePaymentResp } from '@/api/payments'
-import { listRequirements, type RequirementStatus } from '@/api/requirements'
+import { commentRequirement as commentRequirementApi, listRequirements, type CommentRequirementPayload, type RequirementStatus } from '@/api/requirements'
 import { getDepositRatio, updateProfile } from '@/api/settings'
 
 type RequirementItem = {
@@ -14,6 +14,8 @@ type RequirementItem = {
   status: RequirementStatus
   budget?: number | null
   updated_at: string
+  comment_rating?: number | null
+  comment_text?: string | null
 }
 
 const router = useRouter()
@@ -27,6 +29,11 @@ const payRequirement = ref<RequirementItem | null>(null)
 const payChannel = ref<'alipay' | 'wechat'>('alipay')
 const payLoading = ref(false)
 const currentPayment = ref<AlipayCreatePaymentResp | null>(null)
+const commentVisible = ref(false)
+const commentRequirement = ref<RequirementItem | null>(null)
+const commentRating = ref(5)
+const commentText = ref('')
+const commentLoading = ref(false)
 const depositRatioPercent = ref(20)
 const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
 
@@ -103,6 +110,51 @@ function openPayModal(item: RequirementItem) {
   payVisible.value = true
 }
 
+function isCompleted(status: RequirementStatus) {
+  return status === 'completed'
+}
+
+function openCommentModal(item: RequirementItem) {
+  if (!isCompleted(item.status)) {
+    return
+  }
+  commentRequirement.value = item
+  commentRating.value = item.comment_rating ?? 5
+  commentText.value = item.comment_text ?? ''
+  commentVisible.value = true
+}
+
+function handleRequirementAction(item: RequirementItem) {
+  if (canPay(item.status)) {
+    openPayModal(item)
+  } else if (isCompleted(item.status)) {
+    openCommentModal(item)
+  }
+}
+
+function starFill(index: number) {
+  const rating = commentRating.value
+  if (rating >= index) {
+    return 100
+  }
+  if (rating >= index - 0.5) {
+    return 50
+  }
+  return 0
+}
+
+function starClass(index: number) {
+  const fill = starFill(index)
+  return fill === 100 ? 'full' : fill === 50 ? 'half' : ''
+}
+
+function setRating(event: MouseEvent, index: number) {
+  const target = event.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+  const clickedInLeftHalf = event.clientX - rect.left < rect.width / 2
+  commentRating.value = clickedInLeftHalf ? index - 0.5 : index
+}
+
 async function updateUsername() {
   if (!auth.isAuthed) {
     showToast('请先登录后修改用户名', 'error')
@@ -130,6 +182,42 @@ async function updateUsername() {
 
 function closePayModal() {
   payVisible.value = false
+}
+
+function closeCommentModal() {
+  commentVisible.value = false
+}
+
+async function submitRequirementComment() {
+  if (!auth.isAuthed || !commentRequirement.value) {
+    showToast('请先登录后再发表评论', 'error')
+    return
+  }
+
+  if (commentRating.value < 1 || commentRating.value > 5) {
+    showToast('请为已完成需求打分，范围 1 到 5 分', 'error')
+    return
+  }
+
+  if (commentText.value.trim().length > 200) {
+    showToast('评论字数不能超过 200 字', 'error')
+    return
+  }
+
+  commentLoading.value = true
+  try {
+    await commentRequirementApi(auth.token, commentRequirement.value.requirement_id, {
+      rating: commentRating.value,
+      comment: commentText.value.trim(),
+    })
+    showToast('评论提交成功', 'success')
+    commentVisible.value = false
+    await loadMyRequirements()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '评论提交失败', 'error')
+  } finally {
+    commentLoading.value = false
+  }
 }
 
 function depositAmount(item: RequirementItem) {
@@ -364,7 +452,8 @@ onMounted(async () => {
         <div v-if="myRequirements.length === 0" class="empty">暂无已提交需求单</div>
         <ul v-else class="requirement-list">
           <li v-for="item in myRequirements" :key="item.requirement_id" class="requirement-row"
-            :class="{ clickable: canPay(item.status) }" @click="openPayModal(item)">
+            :class="{ clickable: canPay(item.status) || isCompleted(item.status) }"
+            @click="handleRequirementAction(item)">
             <div class="requirement-main">
               <strong>{{ item.title }}</strong>
               <span>{{ item.requirement_id }}</span>
@@ -405,6 +494,37 @@ onMounted(async () => {
             <button class="ghost" type="button" @click="closePayModal">取消</button>
             <button class="ghost" type="button" :disabled="payLoading" @click="submitRequirementPayment">
               {{ payLoading ? '处理中...' : currentPayment ? '查询支付结果' : `支付${payStageLabel}` }}
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div v-if="commentVisible && commentRequirement" class="modal-wrap" @click.self="closeCommentModal">
+        <section class="pay-modal" aria-label="需求评论弹窗">
+          <h3>评价已完成需求</h3>
+          <p class="pay-line"><strong>需求标题：</strong>{{ commentRequirement.title }}</p>
+          <p class="pay-line"><strong>需求编号：</strong>{{ commentRequirement.requirement_id }}</p>
+          <div class="pay-line">
+            <strong>评分：</strong>
+            <div class="rating-row">
+              <button v-for="star in 5" :key="star" type="button" class="rating-star" :class="starClass(star)"
+                @click="setRating($event, star)">
+                ★
+              </button>
+              <span class="rating-value">{{ commentRating.toFixed(1) }} 分</span>
+            </div>
+          </div>
+          <div class="pay-line">
+            <strong>评论内容：</strong>
+          </div>
+          <textarea class="comment-input" v-model="commentText" rows="4" maxlength="200"
+            placeholder="请输入评论，最多 200 字"></textarea>
+          <p class="tip">已输入 {{ commentText.length }} / 200 字</p>
+
+          <div class="actions">
+            <button class="ghost" type="button" @click="closeCommentModal">取消</button>
+            <button class="ghost" type="button" :disabled="commentLoading" @click="submitRequirementComment">
+              {{ commentLoading ? '提交中...' : '提交评论' }}
             </button>
           </div>
         </section>
