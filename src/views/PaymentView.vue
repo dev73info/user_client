@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import QRCode from 'qrcode'
 
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
-import { confirmPayment as confirmPaymentApi, listPaymentOrders as listPaymentOrdersApi, type ConfirmPaymentResp } from '@/api/payments'
+import { confirmPayment as confirmPaymentApi, getAlipayPageHtml, listPaymentOrders as listPaymentOrdersApi, type ConfirmPaymentResp } from '@/api/payments'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,13 +23,23 @@ const qrContent = computed(
 )
 const expiresAt = computed(() => String(route.query.expires_at ?? ''))
 const qrDataUrl = ref('')
+const alipayPageHtml = ref('')
+const alipayPageError = ref('')
+const alipayPageLoading = ref(false)
+const alipayIframeLoading = ref(false)
+const alipayIframeRef = ref<HTMLIFrameElement | null>(null)
+const alipayExtractedCanvasRef = ref<HTMLCanvasElement | null>(null)
+const alipayCanvasError = ref('')
 const nowTick = ref(Date.now())
 const confirming = ref(false)
 const paid = ref(false)
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 
-const hasOrder = computed(() => paymentId.value && qrContent.value)
+const isAlipayPage = computed(() => paymentChannel.value === 'alipay')
+const hasOrder = computed(
+  () => paymentId.value && (qrContent.value || isAlipayPage.value),
+)
 
 const expiresAtMs = computed(() => {
   const raw = expiresAt.value.trim()
@@ -88,6 +98,92 @@ watchEffect(async () => {
     qrDataUrl.value = ''
   }
 })
+
+async function loadAlipayPageHtml(paymentIdValue: string) {
+  alipayPageHtml.value = ''
+  alipayPageError.value = ''
+  alipayPageLoading.value = true
+  alipayIframeLoading.value = true
+  alipayCanvasError.value = ''
+
+  if (!auth.token) {
+    alipayPageError.value = '未登录，无法加载支付宝支付页面'
+    alipayPageLoading.value = false
+    alipayIframeLoading.value = false
+    return
+  }
+
+  try {
+    alipayPageHtml.value = await getAlipayPageHtml(auth.token, paymentIdValue)
+  } catch {
+    alipayPageError.value = '支付宝支付页面加载失败，请稍后重试'
+  } finally {
+    alipayPageLoading.value = false
+  }
+}
+
+function copyIframeCanvas(retryCount = 8) {
+  alipayCanvasError.value = ''
+
+  const iframe = alipayIframeRef.value
+  const targetCanvas = alipayExtractedCanvasRef.value
+  if (!iframe || !targetCanvas) {
+    return
+  }
+
+  try {
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+    const innerCanvas = iframeDoc?.querySelector<HTMLCanvasElement>('canvas')
+    if (!innerCanvas) {
+      if (retryCount > 0) {
+        window.setTimeout(() => copyIframeCanvas(retryCount - 1), 200)
+      } else {
+        alipayCanvasError.value = '未找到 iframe 内部 canvas 元素'
+      }
+      return
+    }
+
+    const ctx = targetCanvas.getContext('2d')
+    if (!ctx) {
+      alipayCanvasError.value = '无法获取父页面 canvas 上下文'
+      return
+    }
+
+    targetCanvas.width = innerCanvas.width
+    targetCanvas.height = innerCanvas.height
+    ctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height)
+    ctx.drawImage(innerCanvas, 0, 0, targetCanvas.width, targetCanvas.height)
+  } catch {
+    if (retryCount > 0) {
+      window.setTimeout(() => copyIframeCanvas(retryCount - 1), 200)
+    } else {
+      alipayCanvasError.value = '复制 iframe canvas 失败'
+    }
+  }
+}
+
+function handleIframeLoad() {
+  alipayIframeLoading.value = false
+  copyIframeCanvas()
+}
+
+watch(
+  [
+    () => paymentId.value,
+    () => paymentChannel.value,
+    () => auth.token,
+  ],
+  async ([id, channel]) => {
+    if (channel !== 'alipay' || !id) {
+      return
+    }
+
+    await loadAlipayPageHtml(id)
+  },
+  {
+    immediate: true,
+  },
+)
 
 function goBack() {
   router.push('/')
@@ -155,6 +251,8 @@ async function confirmPayment() {
 }
 
 onMounted(() => {
+  auth.hydrate()
+
   countdownTimer = setInterval(() => {
     nowTick.value = Date.now()
   }, 1000)
@@ -191,10 +289,23 @@ onUnmounted(() => {
 
       <div v-if="hasOrder" class="pay-layout">
         <article class="qr-card">
-          <p class="card-title">支付二维码</p>
-          <img v-if="qrDataUrl" :src="qrDataUrl" :alt="`${paymentChannel === 'wechat' ? '微信' : '支付宝'}扫码支付二维码`"
-            class="qr-code" />
-          <div v-else class="qr-fallback">二维码生成失败，请返回首页重新发起支付。</div>
+          <p class="card-title">支付入口</p>
+
+          <!-- 添加外层容器解决裁剪问题 -->
+          <div v-if="alipayPageHtml" class="alipay-iframe-wrapper">
+            <iframe ref="alipayIframeRef" :srcdoc="alipayPageHtml" class="alipay-frame" frameborder="0"
+              sandbox="allow-scripts allow-forms allow-same-origin" scrolling="no" @load="handleIframeLoad"></iframe>
+            <div v-if="alipayPageLoading || alipayIframeLoading" class="alipay-loading-overlay">
+              <div class="loading-spinner"></div>
+              <p>支付宝二维码加载中，请稍候…</p>
+            </div>
+          </div>
+
+          <div v-else>
+            <img v-if="qrDataUrl" :src="qrDataUrl" :alt="`${paymentChannel === 'wechat' ? '微信' : '支付宝'}扫码支付二维码`"
+              class="qr-code" />
+            <div v-else class="qr-fallback">二维码生成失败，请返回首页重新发起支付。</div>
+          </div>
         </article>
 
         <article class="meta-card">

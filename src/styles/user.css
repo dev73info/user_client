@@ -562,6 +562,25 @@ h2 {
   margin-bottom: 12px;
 }
 
+.auth-forgot-row {
+  text-align: right;
+  margin-bottom: 12px;
+}
+
+.auth-link {
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.auth-link:hover {
+  opacity: 0.85;
+}
+
 .auth-code-row {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -1103,6 +1122,40 @@ h2 {
   border-radius: 16px;
   background: #fff;
   padding: 16px;
+}
+.alipay-frame {
+  display: block;
+  width: 100%;
+  min-height: 280px;
+  border: none;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.alipay-iframe-wrapper {
+  position: relative;
+  height: 280px;
+  width: 280px;
+  display: grid;
+  justify-items: center;
+}
+
+.alipay-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  text-align: center;
+}
+
+.alipay-extracted-canvas {
+  width: 280px;
+  height: 280px;
+  background: transparent;
+  box-shadow: none;
 }
 
 .meta-list {

@@ -49,6 +49,38 @@ export async function sendRegisterEmailCode(email: string): Promise<void> {
   )
 }
 
+export async function sendResetPasswordEmailCode(email: string): Promise<void> {
+  await requestVoid(
+    '/auth/send-reset-password-email-code',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    },
+    '发送验证码失败',
+  )
+}
+
+export async function resetPassword(
+  email: string,
+  password: string,
+  emailCode: string,
+): Promise<AuthPayload> {
+  return requestJson<AuthPayload>(
+    '/auth/reset-password',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password, email_code: emailCode }),
+    },
+    '重置密码失败',
+  )
+}
+
 export async function getGithubAuthorizeUrl(redirectTo: string): Promise<GithubAuthUrlResp> {
   const requestUrl = `/auth/github/url?redirect_to=${encodeURIComponent(redirectTo)}`
   return requestJson<GithubAuthUrlResp>(

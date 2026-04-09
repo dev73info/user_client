@@ -4,7 +4,16 @@ import { useRouter } from 'vue-router'
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
-import { confirmPayment, createPayment, listAvailableCoupons, type AlipayCreatePaymentResp, type CouponItem, type WechatCreatePaymentResp } from '@/api/payments'
+import {
+  confirmPayment,
+  createAlipayPagePayment,
+  createPayment,
+  listAvailableCoupons,
+  type AlipayCreatePaymentResp,
+  type AlipayPageCreatePaymentResp,
+  type CouponItem,
+  type WechatCreatePaymentResp,
+} from '@/api/payments'
 import { commentRequirement as commentRequirementApi, listRequirements, type RequirementStatus } from '@/api/requirements'
 import { getDepositRatio, updateProfile } from '@/api/settings'
 
@@ -345,15 +354,31 @@ async function submitRequirementPayment() {
   payLoading.value = true
   try {
     if (!currentPayment.value) {
-      const createPayload = await createPayment(auth.token, channel, {
-        requirement_id: requirement.requirement_id,
-        amount_cny: amount,
-        description: `需求 ${requirement.requirement_id} ${payStageLabel.value}`,
-      })
+      let createPayload: AlipayCreatePaymentResp | WechatCreatePaymentResp | AlipayPageCreatePaymentResp
 
       if (channel === 'alipay') {
-        currentPayment.value = createPayload as AlipayCreatePaymentResp
+        createPayload = await createAlipayPagePayment(auth.token, {
+          requirement_id: requirement.requirement_id,
+          amount_cny: amount,
+          description: `需求 ${requirement.requirement_id} ${payStageLabel.value}`,
+        })
+
+        currentPayment.value = {
+          payment_id: createPayload.payment_id,
+          requirement_id: createPayload.requirement_id,
+          channel: createPayload.channel,
+          amount_cny: createPayload.amount_cny,
+          status: createPayload.status,
+          alipay_order_string: '',
+          expires_at: createPayload.expires_at,
+        }
       } else {
+        createPayload = await createPayment(auth.token, channel, {
+          requirement_id: requirement.requirement_id,
+          amount_cny: amount,
+          description: `需求 ${requirement.requirement_id} ${payStageLabel.value}`,
+        })
+
         const wechatPayload = createPayload as WechatCreatePaymentResp
         currentPayment.value = {
           payment_id: wechatPayload.payment_id,
@@ -366,7 +391,7 @@ async function submitRequirementPayment() {
         }
       }
 
-      showToast(`${payStageLabel.value}支付订单已生成，正在跳转二维码支付页`, 'success')
+      showToast(`${payStageLabel.value}支付订单已生成，正在跳转支付页`, 'success')
       router.push({
         name: 'payment',
         query: {
@@ -374,8 +399,8 @@ async function submitRequirementPayment() {
           requirement_id: requirement.requirement_id,
           channel,
           amount_cny: currentPayment.value.amount_cny.toString(),
-          qr_content: currentPayment.value.alipay_order_string,
           expires_at: currentPayment.value.expires_at,
+          ...(channel === 'alipay' ? { page: '1' } : { qr_content: currentPayment.value.alipay_order_string }),
         },
       })
       return

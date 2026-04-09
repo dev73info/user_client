@@ -8,9 +8,11 @@ import { useToast } from '@/composables/useToast'
 import { getGithubAuthorizeUrl } from '@/api/auth'
 import {
   confirmPayment,
+  createAlipayPagePayment,
   createPayment,
   listAvailableCoupons,
   type AlipayCreatePaymentResp,
+  type AlipayPageCreatePaymentResp,
   type CouponItem,
   type WechatCreatePaymentResp,
 } from '@/api/payments'
@@ -38,7 +40,7 @@ type PendingRequirementView = {
   paymentMethod?: string | null
 }
 
-type AuthMode = 'login' | 'register'
+type AuthMode = 'login' | 'register' | 'reset'
 
 const metrics = ref<Metric[]>([
   {
@@ -102,7 +104,15 @@ function goProfile() {
   router.push({ name: 'profile' })
 }
 
-const authTitle = computed(() => (authMode.value === 'login' ? '登录账号' : '注册账号'))
+const authTitle = computed(() => {
+  if (authMode.value === 'login') {
+    return '登录账号'
+  }
+  if (authMode.value === 'register') {
+    return '注册账号'
+  }
+  return '找回密码'
+})
 
 onMounted(() => {
   auth.hydrate()
@@ -468,17 +478,33 @@ async function submitDepositPayment() {
   depositLoading.value = true
   try {
     if (!depositPayment.value) {
-      const createPayload = await createPayment(auth.token, channel, {
-        requirement_id: depositRequirement.value.id,
-        amount_cny: couponBaseAmount.value,
-        coupon_code: (amountCouponCode.value.trim() || discountCouponCode.value.trim()) || undefined,
-        description: `需求 ${depositRequirement.value.id} ${currentStage}`,
-      })
+      let createPayload: AlipayCreatePaymentResp | WechatCreatePaymentResp | AlipayPageCreatePaymentResp
 
       if (channel === 'alipay') {
-        const alipayPayload = createPayload as AlipayCreatePaymentResp
-        depositPayment.value = alipayPayload
+        createPayload = await createAlipayPagePayment(auth.token, {
+          requirement_id: depositRequirement.value.id,
+          amount_cny: couponBaseAmount.value,
+          coupon_code: (amountCouponCode.value.trim() || discountCouponCode.value.trim()) || undefined,
+          description: `需求 ${depositRequirement.value.id} ${currentStage}`,
+        })
+
+        depositPayment.value = {
+          payment_id: createPayload.payment_id,
+          requirement_id: createPayload.requirement_id,
+          channel: createPayload.channel,
+          amount_cny: createPayload.amount_cny,
+          status: createPayload.status,
+          alipay_order_string: '',
+          expires_at: createPayload.expires_at,
+        }
       } else {
+        createPayload = await createPayment(auth.token, channel, {
+          requirement_id: depositRequirement.value.id,
+          amount_cny: couponBaseAmount.value,
+          coupon_code: (amountCouponCode.value.trim() || discountCouponCode.value.trim()) || undefined,
+          description: `需求 ${depositRequirement.value.id} ${currentStage}`,
+        })
+
         const wechatPayload = createPayload as WechatCreatePaymentResp
         depositPayment.value = {
           payment_id: wechatPayload.payment_id,
@@ -490,7 +516,8 @@ async function submitDepositPayment() {
           expires_at: wechatPayload.expires_at,
         }
       }
-      showToast(`${currentStage}支付订单已生成，正在跳转二维码支付页`, 'success')
+
+      showToast(`${currentStage}支付订单已生成，正在跳转支付页`, 'success')
       router.push({
         name: 'payment',
         query: {
@@ -498,9 +525,9 @@ async function submitDepositPayment() {
           requirement_id: depositRequirement.value.id,
           channel,
           amount_cny: depositPayment.value.amount_cny.toString(),
-          qr_content: depositPayment.value.alipay_order_string,
           expires_at: depositPayment.value.expires_at,
           coupon_code: (amountCouponCode.value.trim() || discountCouponCode.value.trim()) || undefined,
+          ...(channel === 'alipay' ? { page: '1' } : { qr_content: depositPayment.value.alipay_order_string }),
         },
       })
       return
@@ -524,6 +551,8 @@ async function submitDepositPayment() {
 
 function openAuth(mode: AuthMode) {
   authMode.value = mode
+  authUsername.value = ''
+  authPassword.value = ''
   authEmail.value = ''
   authEmailCode.value = ''
   acceptTerms.value = false
@@ -562,7 +591,7 @@ function loginWithGithub() {
     })
 }
 
-async function sendRegisterCode() {
+async function sendAuthCode() {
   const email = authEmail.value.trim()
   if (!email) {
     showToast('请输入邮箱地址', 'error')
@@ -575,7 +604,11 @@ async function sendRegisterCode() {
 
   sendCodeLoading.value = true
   try {
-    await auth.sendRegisterEmailCode(email)
+    if (authMode.value === 'register') {
+      await auth.sendRegisterEmailCode(email)
+    } else {
+      await auth.sendResetPasswordEmailCode(email)
+    }
     showToast('验证码已发送，请查收邮箱', 'success')
     sendCodeCountdown.value = 60
     if (sendCodeTimer) {
@@ -600,7 +633,7 @@ async function sendRegisterCode() {
 }
 
 async function submitAuth() {
-  if (authUsername.value.trim().length < 2) {
+  if (authMode.value !== 'reset' && authUsername.value.trim().length < 2) {
     showToast('用户名至少 2 个字符', 'error')
     return
   }
@@ -625,11 +658,22 @@ async function submitAuth() {
     }
   }
 
+  if (authMode.value === 'reset') {
+    if (!authEmail.value.trim()) {
+      showToast('邮箱不能为空', 'error')
+      return
+    }
+    if (authEmailCode.value.trim().length !== 6) {
+      showToast('请输入 6 位邮箱验证码', 'error')
+      return
+    }
+  }
+
   try {
     if (authMode.value === 'login') {
       await auth.login(authUsername.value.trim(), authPassword.value)
       showToast('登录成功', 'success')
-    } else {
+    } else if (authMode.value === 'register') {
       await auth.registerWithEmail(
         authUsername.value.trim(),
         authPassword.value,
@@ -637,6 +681,13 @@ async function submitAuth() {
         authEmailCode.value.trim(),
       )
       showToast('注册成功', 'success')
+    } else {
+      await auth.resetPasswordWithEmail(
+        authEmail.value.trim(),
+        authPassword.value,
+        authEmailCode.value.trim(),
+      )
+      showToast('密码已重置，已自动登录', 'success')
     }
 
     authVisible.value = false
@@ -818,29 +869,47 @@ async function submitPublishRequirement() {
     <div v-if="authVisible" class="auth-modal-wrap" @click.self="closeAuth">
       <section class="auth-modal" aria-label="认证弹窗">
         <h3>{{ authTitle }}</h3>
-        <label>
-          用户名
-          <input v-model="authUsername" type="text" autocomplete="username" placeholder="请输入用户名" />
-        </label>
-        <label>
-          密码
-          <input v-model="authPassword" type="password" autocomplete="current-password" placeholder="至少 6 位密码" />
-        </label>
-        <template v-if="authMode === 'register'">
+        <template v-if="authMode !== 'reset'">
+          <label>
+            用户名
+            <input v-model="authUsername" type="text" autocomplete="username" placeholder="请输入用户名" />
+          </label>
+        </template>
+        <template v-else>
           <label>
             邮箱
-            <input v-model="authEmail" type="email" autocomplete="email" placeholder="请输入常用邮箱" />
+            <input v-model="authEmail" type="email" autocomplete="email" placeholder="请输入注册邮箱" />
           </label>
+        </template>
+
+        <template v-if="authMode === 'login'">
+          <label>
+            密码
+            <input v-model="authPassword" type="password" autocomplete="current-password" placeholder="至少 6 位密码" />
+          </label>
+          <div class="auth-forgot-row">
+            <button class="auth-link" type="button" @click="openAuth('reset')">忘记密码？</button>
+          </div>
+        </template>
+
+        <template v-if="authMode !== 'login'">
           <label>
             邮箱验证码
             <div class="inline-inputs auth-code-row">
               <input v-model="authEmailCode" type="text" maxlength="6" placeholder="输入 6 位验证码" />
               <button class="auth-btn ghost" type="button" :disabled="sendCodeLoading || sendCodeCountdown > 0"
-                @click="sendRegisterCode">
+                @click="sendAuthCode">
                 {{ sendCodeLoading ? '发送中...' : sendCodeCountdown > 0 ? `${sendCodeCountdown}s` : '发送验证码' }}
               </button>
             </div>
           </label>
+
+          <label>
+            {{ authMode === 'register' ? '密码' : '新码' }}
+            <input v-model="authPassword" type="password" autocomplete="new-password" placeholder="至少 6 位新密码" />
+          </label>
+        </template>
+        <template v-if="authMode === 'register'">
           <div class="auth-agreement-row">
             <label class="checkbox-label">
               <input type="checkbox" v-model="acceptTerms" />
@@ -859,7 +928,7 @@ async function submitPublishRequirement() {
           </button>
           <button class="auth-btn solid" type="button"
             :disabled="auth.loading || (authMode === 'register' && !acceptTerms)" @click="submitAuth">
-            {{ auth.loading ? '提交中...' : authMode === 'login' ? '登录' : '注册并登录' }}
+            {{ auth.loading ? '提交中...' : authMode === 'login' ? '登录' : authMode === 'register' ? '注册并登录' : '重置密码' }}
           </button>
         </div>
       </section>

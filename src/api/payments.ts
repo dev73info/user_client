@@ -25,6 +25,10 @@ export type AlipayCreatePaymentResp = {
   expires_at: string
 }
 
+export type AlipayPageCreatePaymentResp = AlipayCreatePaymentResp & {
+  page_html: string
+}
+
 export type WechatCreatePaymentResp = {
   payment_id: string
   requirement_id: string
@@ -101,6 +105,46 @@ export async function createPayment(
     },
     `创建${channel === 'alipay' ? '支付宝' : '微信'}支付订单失败`,
   )
+}
+
+export async function createAlipayPagePayment(
+  token: string,
+  payload: {
+    requirement_id: string
+    amount_cny: number
+    coupon_code?: string
+    description: string
+  },
+): Promise<AlipayPageCreatePaymentResp> {
+  return requestJson<AlipayPageCreatePaymentResp>(
+    '/payments/alipay/page',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify(payload),
+    },
+    '创建支付宝页面支付订单失败',
+  )
+}
+
+export async function getAlipayPageHtml(token: string, paymentId: string): Promise<string> {
+  const resp = await fetch(
+    apiUrl(`/payments/alipay/page?payment_id=${encodeURIComponent(paymentId)}`),
+    {
+      headers: {
+        ...authHeader(token),
+      },
+    },
+  )
+
+  if (!resp.ok) {
+    throw new Error(await readErrorMessage(resp, '获取支付宝页面支付数据失败'))
+  }
+
+  return resp.text()
 }
 
 export async function confirmPayment(

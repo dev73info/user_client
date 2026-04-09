@@ -1,6 +1,11 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { authRequest, sendRegisterEmailCode as sendRegisterEmailCodeApi } from '@/api/auth'
+import {
+  authRequest,
+  resetPassword,
+  sendRegisterEmailCode as sendRegisterEmailCodeApi,
+  sendResetPasswordEmailCode as sendResetPasswordEmailCodeApi,
+} from '@/api/auth'
 
 const TOKEN_KEY = 'auth_token_73hub'
 
@@ -102,6 +107,24 @@ export const useAuthStore = defineStore('auth', () => {
     await sendRegisterEmailCodeApi(email)
   }
 
+  async function sendResetPasswordEmailCode(email: string) {
+    await sendResetPasswordEmailCodeApi(email)
+  }
+
+  async function resetPasswordWithEmail(
+    emailInput: string,
+    passwordInput: string,
+    emailCodeInput: string,
+  ) {
+    loading.value = true
+    try {
+      const payload = await resetPassword(emailInput, passwordInput, emailCodeInput)
+      persist(payload.token)
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function registerWithEmail(
     usernameInput: string,
     passwordInput: string,
@@ -142,6 +165,8 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     register,
     sendRegisterEmailCode,
+    sendResetPasswordEmailCode,
+    resetPasswordWithEmail,
     registerWithEmail,
     setToken,
     logout,
