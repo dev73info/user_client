@@ -874,6 +874,12 @@ async function submitPublishRequirement() {
             用户名
             <input v-model="authUsername" type="text" autocomplete="username" placeholder="请输入用户名" />
           </label>
+          <template v-if="authMode === 'register'">
+            <label>
+              邮箱
+              <input v-model="authEmail" type="email" autocomplete="email" placeholder="请输入注册邮箱" />
+            </label>
+          </template>
         </template>
         <template v-else>
           <label>

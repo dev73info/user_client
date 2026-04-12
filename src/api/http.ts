@@ -1,10 +1,5 @@
-const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8080'
-
-const rawBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim()
-const API_BASE_URL = (rawBase && rawBase.length > 0 ? rawBase : DEFAULT_API_BASE_URL).replace(
-  /\/$/,
-  '',
-)
+const rawBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ?? ''
+const API_BASE_URL = rawBase.replace(/\/$/, '')
 
 export function authHeader(token: string): Record<string, string> {
   const headers: Record<string, string> = {}

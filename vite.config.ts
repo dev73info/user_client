@@ -12,7 +12,7 @@ const proxyConfig = Object.fromEntries(
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue(), vueDevTools()],
+  plugins: [vue(), ...(process.env.NODE_ENV !== 'production' ? [vueDevTools()] : [])],
   server: {
     proxy: proxyConfig,
   },
