@@ -19,6 +19,16 @@ export function apiUrl(path: string): string {
   return `${API_BASE_URL}${normalizedPath}`
 }
 
+export class HttpError extends Error {
+  status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'HttpError'
+    this.status = status
+  }
+}
+
 export async function readErrorMessage(resp: Response, fallback: string): Promise<string> {
   try {
     const text = await resp.text()
@@ -41,7 +51,7 @@ export async function requestJson<T>(
   }
 
   if (!resp.ok) {
-    throw new Error(await readErrorMessage(resp, fallbackError))
+    throw new HttpError(resp.status, await readErrorMessage(resp, fallbackError))
   }
   return (await resp.json()) as T
 }
@@ -59,6 +69,6 @@ export async function requestVoid(
   }
 
   if (!resp.ok) {
-    throw new Error(await readErrorMessage(resp, fallbackError))
+    throw new HttpError(resp.status, await readErrorMessage(resp, fallbackError))
   }
 }

@@ -6,6 +6,9 @@ import ProfileView from '@/views/ProfileView.vue'
 import TermsView from '@/views/TermsView.vue'
 import PrivacyPolicyView from '@/views/PrivacyPolicyView.vue'
 import PaymentRefundView from '@/views/PaymentRefundView.vue'
+import McPluginsView from '@/views/McPluginsView.vue'
+import McPluginsJavaView from '@/views/McPluginsJavaView.vue'
+import McPluginsBedrockView from '@/views/McPluginsBedrockView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -39,6 +42,26 @@ const router = createRouter({
       path: '/payment-refund',
       name: 'payment-refund',
       component: PaymentRefundView,
+    },
+    {
+      path: '/mc-plugins',
+      component: McPluginsView,
+      children: [
+        {
+          path: '',
+          redirect: { name: 'mc-plugins-java' },
+        },
+        {
+          path: 'java',
+          name: 'mc-plugins-java',
+          component: McPluginsJavaView,
+        },
+        {
+          path: 'bedrock',
+          name: 'mc-plugins-bedrock',
+          component: McPluginsBedrockView,
+        },
+      ],
     },
   ],
 })

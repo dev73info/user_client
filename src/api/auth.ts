@@ -1,4 +1,4 @@
-import { requestJson, requestVoid } from '@/api/http'
+import { HttpError, requestJson, requestVoid } from '@/api/http'
 
 export type AuthPayload = {
   token: string
@@ -36,17 +36,24 @@ export async function authRequest(
 }
 
 export async function sendRegisterEmailCode(email: string): Promise<void> {
-  await requestVoid(
-    '/auth/send-register-email-code',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+  try {
+    await requestVoid(
+      '/auth/send-register-email-code',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
       },
-      body: JSON.stringify({ email }),
-    },
-    '发送验证码失败',
-  )
+      '发送验证码失败',
+    )
+  } catch (err) {
+    if (err instanceof HttpError && err.status === 409) {
+      throw new Error('该邮箱已被注册，请直接登录或换一个邮箱')
+    }
+    throw err
+  }
 }
 
 export async function sendResetPasswordEmailCode(email: string): Promise<void> {

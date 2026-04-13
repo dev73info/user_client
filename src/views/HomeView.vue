@@ -99,8 +99,30 @@ const couponLoading = ref(false)
 const router = useRouter()
 const route = useRoute()
 const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
+const userMenuWrapper = ref<HTMLElement | null>(null)
+const menuOpen = ref(false)
+
+function toggleUserMenu() {
+  menuOpen.value = !menuOpen.value
+}
+
+function closeUserMenu() {
+  menuOpen.value = false
+}
+
+function handleClickOutside(event: MouseEvent) {
+  if (!menuOpen.value) {
+    return
+  }
+
+  const target = event.target as Node | null
+  if (userMenuWrapper.value && target && !userMenuWrapper.value.contains(target)) {
+    closeUserMenu()
+  }
+}
 
 function goProfile() {
+  closeUserMenu()
   router.push({ name: 'profile' })
 }
 
@@ -142,6 +164,8 @@ onMounted(() => {
     }
     void runBackgroundAutoRefresh()
   }, AUTO_REFRESH_INTERVAL_MS)
+
+  window.addEventListener('click', handleClickOutside)
 })
 
 onBeforeUnmount(() => {
@@ -153,6 +177,7 @@ onBeforeUnmount(() => {
     clearInterval(autoRefreshTimer)
     autoRefreshTimer = null
   }
+  window.removeEventListener('click', handleClickOutside)
 })
 
 async function runBackgroundAutoRefresh() {
@@ -794,6 +819,7 @@ async function submitPublishRequirement() {
         <div class="brand-mark" aria-label="73Info">
           <span class="brand-dot" aria-hidden="true"></span>
           <span class="brand-text">柒叁信息</span>
+          <router-link to="/mc-plugins" class="brand-link">MC插件与模组</router-link>
         </div>
         <div class="auth-actions" aria-label="账号操作">
           <template v-if="!auth.isAuthed">
@@ -801,9 +827,20 @@ async function submitPublishRequirement() {
             <button class="auth-btn solid" type="button" @click="openAuth('register')">注册</button>
           </template>
           <template v-else>
-            <button class="auth-btn user-pill" type="button" @click="goProfile" title="进入个人中心">{{ auth.username ||
-              '已登录用户' }}</button>
-            <button class="auth-btn ghost" type="button" @click="logout">退出</button>
+            <div class="user-menu-wrapper" ref="userMenuWrapper">
+              <button class="auth-btn user-pill" type="button" @click.stop="toggleUserMenu" title="用户菜单">
+                {{ auth.username || '已登录用户' }}
+              </button>
+              <div class="user-menu" :class="{ open: menuOpen }" aria-label="用户菜单">
+                <button class="user-menu-item" type="button" @click="goProfile">
+                  个人中心
+                </button>
+                <div class="menu-divider"></div>
+                <button class="user-menu-item danger" type="button" @click="logout">
+                  退出登录
+                </button>
+              </div>
+            </div>
           </template>
         </div>
       </div>
