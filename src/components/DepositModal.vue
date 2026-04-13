@@ -1,5 +1,18 @@
 <script setup lang="ts">
-import { PropType, computed } from 'vue'
+import { computed } from 'vue'
+import type { PropType } from 'vue'
+
+type DepositCoupon = {
+  code: string
+  name: string
+  discount_type: 'amount' | 'percent'
+  min_amount_cny: number
+  discount_value: number
+  max_discount_cny?: number | null
+  [key: string]: unknown
+}
+
+type DepositPayment = Record<string, unknown> | null
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -12,10 +25,10 @@ const props = defineProps({
   isFinalPayment: { type: Boolean, default: false },
   depositRatioPercent: { type: Number, default: 0 },
   couponSummary: { type: String, default: '' },
-  availableCoupons: { type: Array as PropType<Array<Record<string, any>>>, default: () => [] },
+  availableCoupons: { type: Array as PropType<DepositCoupon[]>, default: () => [] },
   couponLoading: { type: Boolean, default: false },
   depositLoading: { type: Boolean, default: false },
-  depositPayment: { type: Object as PropType<Record<string, any> | null>, default: null },
+  depositPayment: { type: Object as PropType<DepositPayment>, default: null },
   couponFinalAmount: { type: Number, default: 0 },
 })
 
@@ -34,7 +47,7 @@ function updateChannel(channel: 'alipay' | 'wechat') {
   emit('update:depositChannel', channel)
 }
 
-function pickCoupon(code: string, type: string) {
+function pickCoupon(code: string, type: 'amount' | 'percent') {
   emit('selectCoupon', code, type)
 }
 </script>

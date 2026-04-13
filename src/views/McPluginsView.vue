@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -94,6 +94,10 @@ function logout() {
   closeUserMenu()
   showToast('已退出登录', 'info')
 }
+
+onMounted(() => {
+  auth.hydrate()
+})
 </script>
 
 <template>

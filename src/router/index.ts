@@ -75,11 +75,11 @@ router.beforeEach((to, from, next) => {
 
   if (oauthToken) {
     auth.setToken(oauthToken)
-    return next({ path: to.path, query: {} })
+    return next({ path: to.path, query: {}, replace: true })
   }
 
   if (oauthError) {
-    return next({ path: to.path, query: {} })
+    return next({ path: to.path, query: {}, replace: true })
   }
 
   const authRequired = to.name === 'profile' || to.name === 'payment'
