@@ -94,7 +94,7 @@ export async function getGithubAuthorizeUrl(redirectTo: string): Promise<GithubA
     requestUrl,
     {
       method: 'GET',
-      credentials: 'same-origin',
+      credentials: 'include',
     },
     'GitHub 登录暂不可用',
   )
