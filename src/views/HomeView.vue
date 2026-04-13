@@ -4,8 +4,13 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 import AppToast from '@/components/AppToast.vue'
+import AuthModal from '@/components/AuthModal.vue'
+import PublishModal from '@/components/PublishModal.vue'
+import DepositModal from '@/components/DepositModal.vue'
+import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
+import HomeSummarySection from '@/components/home/HomeSummarySection.vue'
 import { useToast } from '@/composables/useToast'
-import { getGithubAuthorizeUrl } from '@/api/auth'
+import { useAuthForm } from '@/composables/useAuthForm'
 import {
   confirmPayment,
   createAlipayPagePayment,
@@ -66,20 +71,33 @@ const latestDeals = ref<{ paymentId: string; requirementId: string; amount: stri
 const pendingRequirements = ref<PendingRequirementView[]>([])
 
 const auth = useAuthStore()
-const authMode = ref<AuthMode>('login')
-const authVisible = ref(false)
-const authUsername = ref('')
-const authPassword = ref('')
-const authEmail = ref('')
-const authEmailCode = ref('')
-const acceptTerms = ref(false)
-const sendCodeLoading = ref(false)
+const router = useRouter()
+const route = useRoute()
+const routeModal = computed(() => String(route.query.modal || ''))
+const routeAuthMode = computed<AuthMode>(() => {
+  const mode = String(route.query.mode || 'login')
+  return mode === 'register' || mode === 'reset' ? mode : 'login'
+})
+const authVisible = computed(() => routeModal.value === 'auth')
+const publishVisible = computed(() => routeModal.value === 'publish')
+const depositVisible = computed(() => routeModal.value === 'deposit')
+const {
+  authUsername,
+  authPassword,
+  authEmail,
+  authEmailCode,
+  acceptTerms,
+  sendCodeLoading,
+  sendCodeCountdown,
+  resetAuthForm,
+  loginWithGithub: loginWithGithubAction,
+  sendAuthCode: sendAuthCodeAction,
+  submitAuth: submitAuthAction,
+} = useAuthForm(routeAuthMode)
 const githubLoginLoading = ref(false)
-const sendCodeCountdown = ref(0)
-let sendCodeTimer: ReturnType<typeof setInterval> | null = null
 let autoRefreshTimer: ReturnType<typeof setInterval> | null = null
 let autoRefreshInFlight = false
-const publishVisible = ref(false)
+let isMounted = true
 const publishTitle = ref('')
 const publishDescription = ref('')
 const publishBudget = ref<string | number>('')
@@ -87,8 +105,10 @@ const depositChannel = ref<'alipay' | 'wechat'>('alipay')
 const publishAcceptance = ref('')
 const publishLoading = ref(false)
 const homeRefreshLoading = ref(false)
-const depositVisible = ref(false)
-const depositRequirement = ref<PendingRequirementView | null>(null)
+const depositRequirement = computed<PendingRequirementView | null>(() => {
+  const id = String(route.query.requirement_id || '')
+  return pendingRequirements.value.find((item) => item.id === id) ?? null
+})
 const depositPayment = ref<AlipayCreatePaymentResp | null>(null)
 const depositLoading = ref(false)
 const depositRatioPercent = ref(20)
@@ -96,10 +116,7 @@ const availableCoupons = ref<CouponItem[]>([])
 const amountCouponCode = ref('')
 const discountCouponCode = ref('')
 const couponLoading = ref(false)
-const router = useRouter()
-const route = useRoute()
 const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
-const userMenuWrapper = ref<HTMLElement | null>(null)
 const menuOpen = ref(false)
 
 function toggleUserMenu() {
@@ -110,27 +127,16 @@ function closeUserMenu() {
   menuOpen.value = false
 }
 
-function handleClickOutside(event: MouseEvent) {
-  if (!menuOpen.value) {
-    return
-  }
-
-  const target = event.target as Node | null
-  if (userMenuWrapper.value && target && !userMenuWrapper.value.contains(target)) {
-    closeUserMenu()
-  }
-}
-
 function goProfile() {
   closeUserMenu()
   router.push({ name: 'profile' })
 }
 
 const authTitle = computed(() => {
-  if (authMode.value === 'login') {
+  if (routeAuthMode.value === 'login') {
     return '登录账号'
   }
-  if (authMode.value === 'register') {
+  if (routeAuthMode.value === 'register') {
     return '注册账号'
   }
   return '找回密码'
@@ -143,7 +149,6 @@ onMounted(() => {
 
   if (oauthToken) {
     auth.setToken(oauthToken)
-    authVisible.value = false
     showToast('GitHub 登录成功', 'success')
     void router.replace({ query: {} })
   } else if (oauthError) {
@@ -164,20 +169,15 @@ onMounted(() => {
     }
     void runBackgroundAutoRefresh()
   }, AUTO_REFRESH_INTERVAL_MS)
-
-  window.addEventListener('click', handleClickOutside)
 })
 
 onBeforeUnmount(() => {
-  if (sendCodeTimer) {
-    clearInterval(sendCodeTimer)
-    sendCodeTimer = null
-  }
+  isMounted = false
+  resetAuthForm()
   if (autoRefreshTimer) {
     clearInterval(autoRefreshTimer)
     autoRefreshTimer = null
   }
-  window.removeEventListener('click', handleClickOutside)
 })
 
 async function runBackgroundAutoRefresh() {
@@ -248,12 +248,11 @@ function openDepositCard(item: PendingRequirementView) {
     return
   }
 
-  depositRequirement.value = item
   depositPayment.value = null
   depositChannel.value = 'alipay'
   amountCouponCode.value = ''
   discountCouponCode.value = ''
-  depositVisible.value = true
+  router.push({ name: 'home', query: { modal: 'deposit', requirement_id: item.id } })
   void loadAvailableCoupons()
 }
 
@@ -272,7 +271,7 @@ function selectCoupon(code: string, type: 'amount' | 'percent') {
 }
 
 function closeDepositCard() {
-  depositVisible.value = false
+  router.replace({ name: 'home' })
 }
 
 function depositAmount(item: PendingRequirementView) {
@@ -361,7 +360,7 @@ async function loadDepositRatio() {
 
   try {
     const payload = await getDepositRatio(auth.token)
-    if (!payload) {
+    if (!payload || !isMounted) {
       return
     }
 
@@ -403,11 +402,19 @@ async function loadAvailableCoupons() {
 
   couponLoading.value = true
   try {
-    availableCoupons.value = await listAvailableCoupons(auth.token)
+    const coupons = await listAvailableCoupons(auth.token)
+    if (!isMounted) {
+      return
+    }
+    availableCoupons.value = coupons
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载优惠券失败', 'error')
+    if (isMounted) {
+      showToast(err instanceof Error ? err.message : '加载优惠券失败', 'error')
+    }
   } finally {
-    couponLoading.value = false
+    if (isMounted) {
+      couponLoading.value = false
+    }
   }
 }
 
@@ -419,6 +426,9 @@ async function loadPendingRequirements(silent = false) {
 
   try {
     const rows = await listRequirements(auth.token)
+    if (!isMounted) {
+      return
+    }
     pendingRequirements.value = rows
       .filter((item) => item.status !== 'completed' && item.status !== 'rejected')
       .slice(0, 8)
@@ -432,7 +442,7 @@ async function loadPendingRequirements(silent = false) {
         paymentMethod: item.payment_method,
       }))
   } catch (err) {
-    if (!silent) {
+    if (isMounted && !silent) {
       showToast(err instanceof Error ? err.message : '加载需求失败', 'error')
     }
   }
@@ -463,6 +473,9 @@ async function loadRequirementOverview() {
 
   try {
     const payload = await getRequirementOverview(auth.token)
+    if (!isMounted) {
+      return
+    }
     metrics.value = [
       {
         label: '已完成需求数',
@@ -565,7 +578,7 @@ async function submitDepositPayment() {
     }
 
     showToast(`${currentStage}支付确认成功`, 'success')
-    depositVisible.value = false
+    void router.replace({ name: 'home' })
     await loadPendingRequirements()
   } catch (err) {
     showToast(err instanceof Error ? err.message : '支付失败', 'error')
@@ -575,153 +588,40 @@ async function submitDepositPayment() {
 }
 
 function openAuth(mode: AuthMode) {
-  authMode.value = mode
-  authUsername.value = ''
-  authPassword.value = ''
-  authEmail.value = ''
-  authEmailCode.value = ''
-  acceptTerms.value = false
-  sendCodeLoading.value = false
-  sendCodeCountdown.value = 0
-  if (sendCodeTimer) {
-    clearInterval(sendCodeTimer)
-    sendCodeTimer = null
-  }
-  authVisible.value = true
+  resetAuthForm()
+  router.push({ name: 'home', query: { modal: 'auth', mode } })
 }
 
 function closeAuth() {
-  authVisible.value = false
   acceptTerms.value = false
+  router.replace({ name: 'home' })
 }
 
-function loginWithGithub() {
+async function loginWithGithub() {
   if (githubLoginLoading.value) {
     return
   }
 
   githubLoginLoading.value = true
-  const redirectTarget = `${window.location.origin}${window.location.pathname}`
-  getGithubAuthorizeUrl(redirectTarget)
-    .then(async (resp) => {
-      if (!resp.url) {
-        throw new Error('GitHub 授权地址为空')
-      }
-
-      window.location.href = resp.url
-    })
-    .catch((err) => {
-      showToast(err instanceof Error ? err.message : 'GitHub 登录失败', 'error')
-      githubLoginLoading.value = false
-    })
+  try {
+    await loginWithGithubAction()
+  } finally {
+    githubLoginLoading.value = false
+  }
 }
 
 async function sendAuthCode() {
-  const email = authEmail.value.trim()
-  if (!email) {
-    showToast('请输入邮箱地址', 'error')
-    return
-  }
-
-  if (sendCodeLoading.value || sendCodeCountdown.value > 0) {
-    return
-  }
-
-  sendCodeLoading.value = true
-  try {
-    if (authMode.value === 'register') {
-      await auth.sendRegisterEmailCode(email)
-    } else {
-      await auth.sendResetPasswordEmailCode(email)
-    }
-    showToast('验证码已发送，请查收邮箱', 'success')
-    sendCodeCountdown.value = 60
-    if (sendCodeTimer) {
-      clearInterval(sendCodeTimer)
-    }
-    sendCodeTimer = setInterval(() => {
-      if (sendCodeCountdown.value <= 1) {
-        sendCodeCountdown.value = 0
-        if (sendCodeTimer) {
-          clearInterval(sendCodeTimer)
-          sendCodeTimer = null
-        }
-        return
-      }
-      sendCodeCountdown.value -= 1
-    }, 1000)
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '发送验证码失败', 'error')
-  } finally {
-    sendCodeLoading.value = false
-  }
+  await sendAuthCodeAction()
 }
 
 async function submitAuth() {
-  if (authMode.value !== 'reset' && authUsername.value.trim().length < 2) {
-    showToast('用户名至少 2 个字符', 'error')
-    return
-  }
-
-  if (authPassword.value.length < 6) {
-    showToast('密码至少 6 位', 'error')
-    return
-  }
-
-  if (authMode.value === 'register') {
-    if (!acceptTerms.value) {
-      showToast('请先同意用户协议、隐私政策和支付与退款说明', 'error')
-      return
-    }
-    if (!authEmail.value.trim()) {
-      showToast('邮箱不能为空', 'error')
-      return
-    }
-    if (authEmailCode.value.trim().length !== 6) {
-      showToast('请输入 6 位邮箱验证码', 'error')
-      return
-    }
-  }
-
-  if (authMode.value === 'reset') {
-    if (!authEmail.value.trim()) {
-      showToast('邮箱不能为空', 'error')
-      return
-    }
-    if (authEmailCode.value.trim().length !== 6) {
-      showToast('请输入 6 位邮箱验证码', 'error')
-      return
-    }
-  }
-
-  try {
-    if (authMode.value === 'login') {
-      await auth.login(authUsername.value.trim(), authPassword.value)
-      showToast('登录成功', 'success')
-    } else if (authMode.value === 'register') {
-      await auth.registerWithEmail(
-        authUsername.value.trim(),
-        authPassword.value,
-        authEmail.value.trim(),
-        authEmailCode.value.trim(),
-      )
-      showToast('注册成功', 'success')
-    } else {
-      await auth.resetPasswordWithEmail(
-        authEmail.value.trim(),
-        authPassword.value,
-        authEmailCode.value.trim(),
-      )
-      showToast('密码已重置，已自动登录', 'success')
-    }
-
-    authVisible.value = false
+  const result = await submitAuthAction()
+  if (result) {
+    void router.replace({ name: 'home' })
     acceptTerms.value = false
     await loadDepositRatio()
     await loadPendingRequirements()
     await loadRequirementOverview()
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '操作失败', 'error')
   }
 }
 
@@ -739,7 +639,7 @@ function openPublishModal() {
     return
   }
 
-  publishVisible.value = true
+  router.push({ name: 'home', query: { modal: 'publish' } })
 }
 
 async function refreshHomeData() {
@@ -754,14 +654,18 @@ async function refreshHomeData() {
     } else {
       await Promise.all([loadPendingRequirements(), loadRequirementOverview()])
     }
-    showToast('已刷新最新数据', 'success')
+    if (isMounted) {
+      showToast('已刷新最新数据', 'success')
+    }
   } finally {
-    homeRefreshLoading.value = false
+    if (isMounted) {
+      homeRefreshLoading.value = false
+    }
   }
 }
 
 function closePublishModal() {
-  publishVisible.value = false
+  router.replace({ name: 'home' })
 }
 
 async function submitPublishRequirement() {
@@ -797,296 +701,79 @@ async function submitPublishRequirement() {
       acceptance_criteria: normalizedAcceptance || undefined,
     })
 
+    if (!isMounted) {
+      return
+    }
+
     publishTitle.value = ''
     publishDescription.value = ''
     publishBudget.value = ''
     publishAcceptance.value = ''
-    publishVisible.value = false
     showToast('需求已发布', 'success')
+    void router.replace({ name: 'home' })
     await loadPendingRequirements()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发布失败', 'error')
+    if (isMounted) {
+      showToast(err instanceof Error ? err.message : '发布失败', 'error')
+    }
   } finally {
-    publishLoading.value = false
+    if (isMounted) {
+      publishLoading.value = false
+    }
   }
 }
+
+const emit = defineEmits<{
+  (e: 'open-deposit', item: PendingRequirementView): void
+  (e: 'publish'): void
+  (e: 'refresh'): void
+}>()
 </script>
 
 <template>
-  <main class="home">
-    <section class="hero">
-      <div class="hero-top">
-        <div class="brand-mark" aria-label="73Info">
-          <span class="brand-dot" aria-hidden="true"></span>
-          <span class="brand-text">柒叁信息</span>
-          <router-link to="/mc-plugins" class="brand-link">MC插件与模组</router-link>
+  <main class="page-shell">
+    <HomeHeroSection :isAuthed="auth.isAuthed" :username="auth.username" :menuOpen="menuOpen" :navLinks="[
+      { label: 'MC插件与模组', to: { name: 'mc-plugins-java' } },
+    ]" @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" @logout="logout">
+      <div class="hero-meta">
+        <div class="hero">
+          <h1>接单表现总览</h1>
+          <p class="desc">有项目想法但还没找到合适的人？点右侧“发布需求”，快速描述你的目标，这里会帮你高效完成需求。</p>
         </div>
-        <div class="auth-actions" aria-label="账号操作">
-          <template v-if="!auth.isAuthed">
-            <button class="auth-btn ghost" type="button" @click="openAuth('login')">登录</button>
-            <button class="auth-btn solid" type="button" @click="openAuth('register')">注册</button>
-          </template>
-          <template v-else>
-            <div class="user-menu-wrapper" ref="userMenuWrapper">
-              <button class="auth-btn user-pill" type="button" @click.stop="toggleUserMenu" title="用户菜单">
-                {{ auth.username || '已登录用户' }}
-              </button>
-              <div class="user-menu" :class="{ open: menuOpen }" aria-label="用户菜单">
-                <button class="user-menu-item" type="button" @click="goProfile">
-                  个人中心
-                </button>
-                <div class="menu-divider"></div>
-                <button class="user-menu-item danger" type="button" @click="logout">
-                  退出登录
-                </button>
-              </div>
-            </div>
-          </template>
-        </div>
-      </div>
-      <h1>接单表现总览</h1>
-      <div class="hero-row">
-        <p class="desc">
-          有项目想法但还没找到合适的人？点右侧“发布需求”，快速描述你的目标，这里会帮你高效完成需求。
-        </p>
         <div class="hero-actions">
-          <button class="publish-btn" type="button" @click="openPublishModal">发布需求</button>
-          <button class="refresh-btn" type="button" :disabled="homeRefreshLoading" @click="refreshHomeData">
+          <button class="publish-btn" type="button" @click="emit('publish')">发布需求</button>
+          <button class="refresh-btn" type="button" :disabled="homeRefreshLoading" @click="emit('refresh')">
             {{ homeRefreshLoading ? '刷新中...' : '刷新' }}
           </button>
         </div>
       </div>
-    </section>
+    </HomeHeroSection>
 
-    <section class="metrics" aria-label="核心指标">
-      <article v-for="item in metrics" :key="item.label" class="metric-card">
-        <p class="metric-label">{{ item.label }}</p>
-        <p class="metric-value">{{ item.value }}</p>
-        <p class="metric-hint">{{ item.hint }}</p>
-      </article>
-    </section>
+    <HomeSummarySection :metrics="metrics" :pendingRequirements="pendingRequirements" :latestDeals="latestDeals"
+      :homeRefreshLoading="homeRefreshLoading" :canOpenPayment="(item: any) => canOpenPayment(item)"
+      @open-deposit="(item: any) => openDepositCard(item)" @publish="openPublishModal" @refresh="refreshHomeData" />
 
-    <section class="panel" aria-label="待处理需求">
-      <header class="panel-header">
-        <h2>待处理需求</h2>
-        <span>{{ pendingRequirements.length }} 条</span>
-      </header>
-      <ul v-if="pendingRequirements.length > 0" class="req-list">
-        <li v-for="item in pendingRequirements" :key="item.id" class="req-row"
-          :class="{ clickable: canOpenPayment(item) }" @click="canOpenPayment(item) && openDepositCard(item)">
-          <div class="req-main">
-            <strong>{{ item.title }}</strong>
-            <span>{{ item.id }}</span>
-          </div>
-          <button class="status-chip" :class="{ clickable: canOpenPayment(item) }" :disabled="!canOpenPayment(item)"
-            @click.stop="openDepositCard(item)">
-            {{ item.statusLabel }}
-          </button>
-          <time>{{ item.updatedAtLabel }}</time>
-        </li>
-      </ul>
-      <p v-else class="empty-placeholder">暂无待处理需求，点击“发布需求”开始创建。</p>
-    </section>
+    <AuthModal :visible="authVisible" :authMode="routeAuthMode" :authTitle="authTitle"
+      v-model:authUsername="authUsername" v-model:authPassword="authPassword" v-model:authEmail="authEmail"
+      v-model:authEmailCode="authEmailCode" v-model:acceptTerms="acceptTerms" :authLoading="auth.loading"
+      :githubLoginLoading="githubLoginLoading" :sendCodeLoading="sendCodeLoading" :sendCodeCountdown="sendCodeCountdown"
+      @close="closeAuth" @submit="submitAuth" @loginWithGithub="loginWithGithub" @sendAuthCode="sendAuthCode"
+      @change-mode="openAuth" />
 
-    <section class="panel" aria-label="最近成交">
-      <header class="panel-header">
-        <h2>最近成交</h2>
-        <span>近 3 笔</span>
-      </header>
-      <ul v-if="latestDeals.length > 0" class="deal-list">
-        <li v-for="deal in latestDeals" :key="deal.paymentId" class="deal-row">
-          <span>{{ deal.requirementId }}</span>
-          <strong>{{ deal.amount }}</strong>
-          <time>{{ deal.at }}</time>
-        </li>
-      </ul>
-      <p v-else class="empty-placeholder">暂无最近成交记录。</p>
-    </section>
+    <PublishModal :visible="publishVisible" v-model:publishTitle="publishTitle"
+      v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
+      v-model:publishAcceptance="publishAcceptance" :publishLoading="publishLoading" @close="closePublishModal"
+      @submit="submitPublishRequirement" />
 
-    <div v-if="authVisible" class="auth-modal-wrap" @click.self="closeAuth">
-      <section class="auth-modal" aria-label="认证弹窗">
-        <h3>{{ authTitle }}</h3>
-        <template v-if="authMode !== 'reset'">
-          <label>
-            用户名
-            <input v-model="authUsername" type="text" autocomplete="username" placeholder="请输入用户名" />
-          </label>
-          <template v-if="authMode === 'register'">
-            <label>
-              邮箱
-              <input v-model="authEmail" type="email" autocomplete="email" placeholder="请输入注册邮箱" />
-            </label>
-          </template>
-        </template>
-        <template v-else>
-          <label>
-            邮箱
-            <input v-model="authEmail" type="email" autocomplete="email" placeholder="请输入注册邮箱" />
-          </label>
-        </template>
-
-        <template v-if="authMode === 'login'">
-          <label>
-            密码
-            <input v-model="authPassword" type="password" autocomplete="current-password" placeholder="至少 6 位密码" />
-          </label>
-          <div class="auth-forgot-row">
-            <button class="auth-link" type="button" @click="openAuth('reset')">忘记密码？</button>
-          </div>
-        </template>
-
-        <template v-if="authMode !== 'login'">
-          <label>
-            邮箱验证码
-            <div class="inline-inputs auth-code-row">
-              <input v-model="authEmailCode" type="text" maxlength="6" placeholder="输入 6 位验证码" />
-              <button class="auth-btn ghost" type="button" :disabled="sendCodeLoading || sendCodeCountdown > 0"
-                @click="sendAuthCode">
-                {{ sendCodeLoading ? '发送中...' : sendCodeCountdown > 0 ? `${sendCodeCountdown}s` : '发送验证码' }}
-              </button>
-            </div>
-          </label>
-
-          <label>
-            {{ authMode === 'register' ? '密码' : '新码' }}
-            <input v-model="authPassword" type="password" autocomplete="new-password" placeholder="至少 6 位新密码" />
-          </label>
-        </template>
-        <template v-if="authMode === 'register'">
-          <div class="auth-agreement-row">
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="acceptTerms" />
-              我已阅读并同意
-              <router-link to="/terms">《用户协议》</router-link>、
-              <router-link to="/privacy">《隐私政策》</router-link>和
-              <router-link to="/payment-refund">《支付与退款说明》</router-link>
-            </label>
-          </div>
-        </template>
-        <div class="auth-modal-actions">
-          <button class="auth-btn ghost" type="button" @click="closeAuth">取消</button>
-          <button v-if="authMode === 'login'" class="auth-btn ghost" type="button" :disabled="githubLoginLoading"
-            @click="loginWithGithub">
-            {{ githubLoginLoading ? '跳转中...' : 'GitHub 快捷登录' }}
-          </button>
-          <button class="auth-btn solid" type="button"
-            :disabled="auth.loading || (authMode === 'register' && !acceptTerms)" @click="submitAuth">
-            {{ auth.loading ? '提交中...' : authMode === 'login' ? '登录' : authMode === 'register' ? '注册并登录' : '重置密码' }}
-          </button>
-        </div>
-      </section>
-    </div>
-
-    <div v-if="publishVisible" class="auth-modal-wrap" @click.self="closePublishModal">
-      <section class="auth-modal" aria-label="发布需求弹窗">
-        <h3>发布需求</h3>
-        <label>
-          需求标题
-          <input v-model="publishTitle" type="text" maxlength="60" placeholder="例如：企业官网改版、小程序开发" />
-        </label>
-        <label>
-          需求描述
-          <textarea v-model="publishDescription" rows="5" maxlength="300"
-            placeholder="请描述你的目标、功能和期望交付时间，便于快速匹配。"></textarea>
-        </label>
-        <label>
-          预算
-          <input v-model="publishBudget" type="number" min="0" step="0.01" placeholder="如 2000" />
-        </label>
-        <label>
-          验收标准
-          <textarea v-model="publishAcceptance" rows="3" maxlength="240" placeholder="可填写交付标准、验收节点等（选填）。"></textarea>
-        </label>
-        <div class="auth-modal-actions">
-          <button class="auth-btn ghost" type="button" @click="closePublishModal">取消</button>
-          <button class="auth-btn solid" type="button" :disabled="publishLoading" @click="submitPublishRequirement">
-            {{ publishLoading ? '发布中...' : '确认发布' }}
-          </button>
-        </div>
-      </section>
-    </div>
-
-    <div v-if="depositVisible && depositRequirement" class="auth-modal-wrap" @click.self="closeDepositCard">
-      <section class="auth-modal deposit-card" aria-label="定金支付卡片">
-        <h3>支付{{ paymentStageLabel }}</h3>
-        <p class="deposit-line"><strong>需求标题：</strong>{{ depositRequirement.title }}</p>
-        <p class="deposit-line"><strong>需求编号：</strong>{{ depositRequirement.id }}</p>
-        <p class="deposit-line">
-          <strong>预算：</strong>{{ formatMoney(depositRequirement.budget) }}
-        </p>
-        <div class="deposit-channel-row">
-          <strong>支付方式：</strong>
-          <div class="payment-options" role="radiogroup" aria-label="支付方式选择">
-            <button type="button" class="payment-option" :class="{ active: depositChannel === 'alipay' }"
-              @click="depositChannel = 'alipay'">
-              <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
-              支付宝
-            </button>
-            <button type="button" class="payment-option" :class="{ active: depositChannel === 'wechat' }"
-              @click="depositChannel = 'wechat'">
-              <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="微信支付" />
-              微信支付
-            </button>
-          </div>
-        </div>
-        <p v-if="!isFinalPayment" class="deposit-line"><strong>定金占比：</strong>{{ depositRatioPercent.toFixed(2) }}%</p>
-        <p v-else class="deposit-line"><strong>尾款金额：</strong>¥{{ couponBaseAmount.toFixed(2) }}</p>
-
-        <p class="coupon-note">请从下方列表选择优惠券，优惠卷和折扣券只能选其一。</p>
-
-        <p v-if="couponSummary" class="coupon-summary">{{ couponSummary }}</p>
-
-        <div class="coupon-list">
-          <div class="coupon-list-header">
-            <span>可用优惠券</span>
-            <button class="auth-btn ghost" type="button" :disabled="couponLoading" @click="loadAvailableCoupons">
-              {{ couponLoading ? '刷新中...' : '刷新' }}
-            </button>
-          </div>
-          <div v-if="availableCoupons.length === 0" class="empty">暂无可用优惠券</div>
-          <div v-else class="coupon-sections">
-            <div class="coupon-section">
-              <div class="coupon-section-header">优惠卷</div>
-              <div v-if="availableCoupons.filter((item) => item.discount_type === 'amount').length === 0" class="empty">
-                暂无可用优惠卷</div>
-              <div v-else class="coupon-items">
-                <button v-for="item in availableCoupons.filter((item) => item.discount_type === 'amount')"
-                  :key="item.code" type="button" class="coupon-item"
-                  :class="{ active: item.code === amountCouponCode.trim() }"
-                  @click="selectCoupon(item.code, item.discount_type)">
-                  <strong>{{ item.name }}</strong>
-                </button>
-              </div>
-            </div>
-            <div class="coupon-section">
-              <div class="coupon-section-header">折扣券</div>
-              <div v-if="availableCoupons.filter((item) => item.discount_type === 'percent').length === 0"
-                class="empty">
-                暂无可用折扣券</div>
-              <div v-else class="coupon-items">
-                <button v-for="item in availableCoupons.filter((item) => item.discount_type === 'percent')"
-                  :key="item.code" type="button" class="coupon-item"
-                  :class="{ active: item.code === discountCouponCode.trim() }"
-                  @click="selectCoupon(item.code, item.discount_type)">
-                  <strong>{{ item.name }}</strong>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <p class="deposit-amount">
-          实付款：<strong>¥{{ couponFinalAmount.toFixed(2) }}</strong>
-        </p>
-
-        <div class="auth-modal-actions">
-          <button class="auth-btn ghost" type="button" @click="closeDepositCard">取消</button>
-          <button class="auth-btn solid" type="button" :disabled="depositLoading" @click="submitDepositPayment">
-            {{ depositLoading ? '处理中...' : depositPayment ? '查询支付结果' : `支付${paymentStageLabel}` }}
-          </button>
-        </div>
-      </section>
-    </div>
+    <DepositModal v-if="depositVisible && depositRequirement" :visible="depositVisible"
+      :depositRequirement="depositRequirement" :formattedBudget="formatMoney(depositRequirement.budget)"
+      :paymentStageLabel="paymentStageLabel" :depositChannel="depositChannel" :amountCouponCode="amountCouponCode"
+      :discountCouponCode="discountCouponCode" :isFinalPayment="isFinalPayment"
+      :depositRatioPercent="depositRatioPercent" :couponSummary="couponSummary" :availableCoupons="availableCoupons"
+      :couponLoading="couponLoading" :depositLoading="depositLoading" :depositPayment="depositPayment"
+      :couponFinalAmount="couponFinalAmount" @close="closeDepositCard" @submit="submitDepositPayment"
+      @update:depositChannel="depositChannel = $event" @selectCoupon="selectCoupon"
+      @loadAvailableCoupons="loadAvailableCoupons" />
 
     <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
 

@@ -70,6 +70,18 @@ router.beforeEach((to, from, next) => {
   const auth = useAuthStore()
   auth.hydrate()
 
+  const oauthToken = typeof to.query.oauth_token === 'string' ? to.query.oauth_token.trim() : ''
+  const oauthError = typeof to.query.oauth_error === 'string' ? to.query.oauth_error.trim() : ''
+
+  if (oauthToken) {
+    auth.setToken(oauthToken)
+    return next({ path: to.path, query: {} })
+  }
+
+  if (oauthError) {
+    return next({ path: to.path, query: {} })
+  }
+
   const authRequired = to.name === 'profile' || to.name === 'payment'
   if (authRequired && !auth.isAuthed) {
     return next({ name: 'home' })

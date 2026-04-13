@@ -124,11 +124,6 @@ function resetFilters() {
 
 <template>
     <section>
-        <div class="mc-page-title-row">
-            <h2 class="mc-page-heading">Java 版资源</h2>
-            <p class="mc-page-subtitle">显示 Java 版专用模组与插件</p>
-        </div>
-
         <section class="mc-filter-panel">
             <div class="filter-row flex-between">
                 <div class="filter-group">

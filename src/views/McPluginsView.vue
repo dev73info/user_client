@@ -1,26 +1,70 @@
 <script setup lang="ts">
-import { computed, ref, onBeforeUnmount, onMounted } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
-import '../styles/McPluginsView.css'
+import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
+import AuthModal from '@/components/AuthModal.vue'
+import { useAuthForm } from '@/composables/useAuthForm'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const { showToast } = useToast()
-const userMenuWrapper = ref<HTMLElement | null>(null)
 const menuOpen = ref(false)
 
-const isJavaPage = computed(() => route.name === 'mc-plugins-java')
-const currentPlatformLabel = computed(() => (isJavaPage.value ? 'Java 版' : '基岩版'))
-const currentPlatformIcon = computed(() => (isJavaPage.value ? '☕' : '🧱'))
+const currentPlatformLabel = computed(() => (route.name === 'mc-plugins-java' ? 'Java 版' : '基岩版'))
+const authVisible = ref(false)
+const authMode = ref<'login' | 'register' | 'reset'>('login')
+const githubLoginLoading = ref(false)
+const {
+  authUsername,
+  authPassword,
+  authEmail,
+  authEmailCode,
+  acceptTerms,
+  sendCodeLoading,
+  sendCodeCountdown,
+  resetAuthForm,
+  loginWithGithub: loginWithGithubAction,
+  sendAuthCode,
+  submitAuth: submitAuthAction,
+  changeAuthMode,
+} = useAuthForm(authMode)
 
-function togglePlatform() {
-  if (isJavaPage.value) {
-    router.push({ name: 'mc-plugins-bedrock' })
-  } else {
-    router.push({ name: 'mc-plugins-java' })
+const authTitle = computed(() => {
+  if (authMode.value === 'login') return '登录账号'
+  if (authMode.value === 'register') return '注册账号'
+  return '找回密码'
+})
+
+function openAuth(mode: 'login' | 'register' | 'reset') {
+  authMode.value = mode
+  resetAuthForm()
+  authVisible.value = true
+}
+
+function closeAuth() {
+  authVisible.value = false
+}
+
+async function handleLoginWithGithub() {
+  if (githubLoginLoading.value || auth.loading) {
+    return
+  }
+
+  githubLoginLoading.value = true
+  try {
+    await loginWithGithubAction()
+  } finally {
+    githubLoginLoading.value = false
+  }
+}
+
+async function handleSubmitAuth() {
+  const result = await submitAuthAction()
+  if (result) {
+    closeAuth()
   }
 }
 
@@ -30,6 +74,14 @@ function toggleUserMenu() {
 
 function closeUserMenu() {
   menuOpen.value = false
+}
+
+function togglePlatform() {
+  if (route.name === 'mc-plugins-java') {
+    router.push({ name: 'mc-plugins-bedrock' })
+  } else {
+    router.push({ name: 'mc-plugins-java' })
+  }
 }
 
 function goProfile() {
@@ -42,61 +94,36 @@ function logout() {
   closeUserMenu()
   showToast('已退出登录', 'info')
 }
-
-function handleClickOutside(event: MouseEvent) {
-  if (!menuOpen.value) {
-    return
-  }
-  const target = event.target as Node | null
-  if (userMenuWrapper.value && target && !userMenuWrapper.value.contains(target)) {
-    closeUserMenu()
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('click', handleClickOutside)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('click', handleClickOutside)
-})
 </script>
 
 <template>
-  <main class="mc-layout">
-    <header class="mc-header">
-      <div class="mc-header-left">
-        <button class="mc-logo-btn" @click="router.push('/')">返回首页</button>
-        <button class="platform-button" :class="isJavaPage ? 'is-java' : 'is-bedrock'" type="button"
-          @click="togglePlatform()">
-          <span class="platform-icon">{{ currentPlatformIcon }}</span>
-          <span class="platform-text">{{ currentPlatformLabel }}</span>
-        </button>
+  <main class="page-shell">
+    <HomeHeroSection :isAuthed="auth.isAuthed" :username="auth.username" :menuOpen="menuOpen" :navLinks="[
+      { label: '返回首页', to: '/' },
+      { label: '探索', href: '#' },
+      { label: '免费资源', href: '#' },
+      { label: '社区', href: '#' },
+    ]" @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" @logout="logout">
+      <div class="hero-meta">
+        <div class="hero">
+          <h1>MC 插件与模组</h1>
+          <p class="desc">浏览最新的 {{ currentPlatformLabel }} 插件与模组，支持多维筛选与快速下载。</p>
+        </div>
+        <div class="hero-actions">
+          <button class="platform-button" :class="currentPlatformLabel === 'Java 版' ? 'is-java' : 'is-bedrock'"
+            type="button" @click="togglePlatform()">
+            <span class="platform-icon">{{ currentPlatformLabel === 'Java 版' ? '☕' : '🧱' }}</span>
+            切换到 {{ currentPlatformLabel === 'Java 版' ? '基岩版' : 'Java 版' }}
+          </button>
+        </div>
       </div>
-      <nav class="mc-nav-links">
-        <a href="#">探索</a>
-        <a href="#">免费资源</a>
-        <a href="#">社区</a>
-      </nav>
-      <div class="mc-user-area">
-        <template v-if="!auth.isAuthed">
-          <button class="auth-btn ghost" type="button" @click="router.push('/profile')">登录</button>
-        </template>
-        <template v-else>
-          <div class="user-menu-wrapper" ref="userMenuWrapper">
-            <button class="auth-btn user-pill" type="button" @click.stop="toggleUserMenu" title="用户菜单">
-              {{ auth.username || '已登录用户' }}
-            </button>
-            <div class="user-menu" :class="{ open: menuOpen }" aria-label="用户菜单">
-              <button class="user-menu-item" type="button" @click="goProfile">个人中心</button>
-              <div class="menu-divider"></div>
-              <button class="user-menu-item danger" type="button" @click="logout">退出登录</button>
-            </div>
-          </div>
-        </template>
-      </div>
-    </header>
-
+    </HomeHeroSection>
+    <AuthModal :visible="authVisible" :authMode="authMode" :authTitle="authTitle" v-model:authUsername="authUsername"
+      v-model:authPassword="authPassword" v-model:authEmail="authEmail" v-model:authEmailCode="authEmailCode"
+      v-model:acceptTerms="acceptTerms" :authLoading="auth.loading" :githubLoginLoading="githubLoginLoading"
+      :sendCodeLoading="sendCodeLoading" :sendCodeCountdown="sendCodeCountdown" @close="closeAuth"
+      @submit="handleSubmitAuth" @loginWithGithub="handleLoginWithGithub" @sendAuthCode="sendAuthCode"
+      @change-mode="changeAuthMode" />
     <router-view />
   </main>
 </template>

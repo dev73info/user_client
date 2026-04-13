@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -29,6 +30,7 @@ type RequirementItem = {
 
 const router = useRouter()
 const auth = useAuthStore()
+const menuOpen = ref(false)
 const loading = ref(false)
 const coupons = ref<CouponItem[]>([])
 const requirementLoading = ref(false)
@@ -131,6 +133,23 @@ function openCommentModal(item: RequirementItem) {
   commentRating.value = item.comment_rating ?? 5
   commentText.value = item.comment_text ?? ''
   commentVisible.value = true
+}
+
+function openAuth(mode: 'login' | 'register') {
+  router.push({ name: 'home', query: { modal: 'auth', mode } })
+}
+
+function toggleUserMenu() {
+  menuOpen.value = !menuOpen.value
+}
+
+function closeUserMenu() {
+  menuOpen.value = false
+}
+
+function goProfile() {
+  closeUserMenu()
+  router.push({ name: 'profile' })
 }
 
 function handleRequirementAction(item: RequirementItem) {
@@ -422,9 +441,6 @@ async function submitRequirementPayment() {
   }
 }
 
-function goBack() {
-  router.push({ name: 'home' })
-}
 
 onMounted(async () => {
   auth.hydrate()
@@ -435,13 +451,22 @@ onMounted(async () => {
 
 <template>
   <main class="page-shell">
-    <section class="panel">
+    <HomeHeroSection :isAuthed="auth.isAuthed" :username="auth.username" :menuOpen="menuOpen" :navLinks="[
+      { label: '返回首页', to: '/' },
+    ]" @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" />
+
+    <section class="hero">
+      <div class="hero-intro">
+        <h1>{{ auth.username ? `${auth.username} 的个人中心` : '个人中心' }}</h1>
+        <p class="desc">管理你的账户、优惠券与需求单，统一使用页面布局标准。</p>
+      </div>
+    </section>
+    <section class="glass-panel">
       <header class="panel-head">
         <div>
-          <h2>{{ auth.username || '我的券包' }}</h2>
+          <h2>账户概览</h2>
           <p class="lead">在这里查看你的优惠券和折扣券背包。</p>
         </div>
-        <button class="ghost" type="button" :disabled="loading" @click="goBack">返回首页</button>
       </header>
 
       <div class="wallet-overview">

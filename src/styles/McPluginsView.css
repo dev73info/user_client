@@ -1,78 +1,16 @@
-/* --- 核心变量与基础重置 --- */
-:root {
-  --bg-deep: #07223a;
-  --bg-mid: #0e3b5d;
-  --bg-soft: #1f6d7f;
-  --card-bg: rgba(255, 255, 255, 0.08);
-  --card-border: rgba(255, 255, 255, 0.16);
-  --text-main: #f3fcff;
-  --text-sub: #cbe7ee;
-  --accent: #ffd166; /* 橙黄色-强调/下载 */
-  --success: #95d5b2; /* 翠绿色-选中/成功 */
-  --blue-glow: rgba(14, 165, 233, 0.18);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: 'Space Grotesk', 'Noto Sans SC', sans-serif;
-  color: var(--text-main);
-  background:
-    radial-gradient(circle at 12% 15%, rgba(255, 209, 102, 0.1), transparent 32%),
-    radial-gradient(circle at 88% 72%, rgba(149, 213, 178, 0.15), transparent 38%),
-    linear-gradient(145deg, var(--bg-deep), var(--bg-mid) 44%, var(--bg-soft));
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-
-/* --- 代码雨背景动画 --- */
-.code-rain-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.4;
-}
-
-.matrix-stream {
-  position: absolute;
-  top: -130%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-family: 'JetBrains Mono', monospace;
-  color: #8bffc0;
-  animation: rain-fall 10s linear infinite;
-  text-shadow: 0 0 8px rgba(101, 255, 182, 0.3);
-}
-
-@keyframes rain-fall {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(260vh);
-  }
-}
-
-/* --- 布局容器 --- */
-.mc-layout {
-  position: relative;
-  z-index: 2;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 24px 60px;
-}
+/* --- 页面专用样式，仅针对 MC 资源页 --- */
 
 /* --- 顶部导航栏 --- */
-.mc-header {
+.header-left {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 32px 0;
+  gap: 12px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .mc-logo-btn {
@@ -98,6 +36,13 @@ body {
   gap: 24px;
 }
 
+.nav-links {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.nav-links a,
 .mc-nav-links a {
   color: var(--text-sub);
   text-decoration: none;
@@ -106,12 +51,15 @@ body {
   transition: color 0.2s;
 }
 
+.nav-links a:hover,
+.nav-links a.active,
 .mc-nav-links a:hover,
 .mc-nav-links a.active {
   color: var(--text-main);
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
 
+.nav-links a.active,
 .mc-nav-links a.active {
   border-bottom: 2px solid var(--success);
   padding-bottom: 4px;
@@ -197,7 +145,6 @@ body {
 
 /* --- 筛选面板 (Panel 风格) --- */
 .mc-filter-panel {
-  margin-top: 18px;
   border-radius: 20px;
   border: 1px solid var(--card-border);
   background: rgba(6, 32, 50, 0.42);
@@ -325,6 +272,41 @@ body {
 }
 
 /* --- 资源卡片列表 --- */
+.hero-content,
+.hero-meta {
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.hero-copy {
+  flex: 1 1 60%;
+  min-width: 280px;
+  max-width: 720px;
+}
+
+.hero-copy h1 {
+  margin-bottom: 12px;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 160px;
+}
+
+.mc-toolbar {
+  display: none;
+}
+
+.mc-toolbar .header-actions {
+  justify-content: flex-end;
+}
+
 .mc-content-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));

@@ -1,29 +1,4 @@
-:root {
-  --bg-deep: #07223a;
-  --bg-mid: #0e3b5d;
-  --bg-soft: #1f6d7f;
-  --card-bg: rgba(255, 255, 255, 0.12);
-  --card-border: rgba(255, 255, 255, 0.24);
-  --text-main: #f3fcff;
-  --text-sub: #cbe7ee;
-  --accent: #ffd166;
-  --success: #95d5b2;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: 'Space Grotesk', 'Noto Sans SC', 'PingFang SC', sans-serif;
-  color: var(--text-main);
-  background:
-    radial-gradient(circle at 12% 15%, rgba(255, 209, 102, 0.16), transparent 32%),
-    radial-gradient(circle at 88% 72%, rgba(149, 213, 178, 0.2), transparent 38%),
-    linear-gradient(145deg, var(--bg-deep), var(--bg-mid) 44%, var(--bg-soft));
-  min-height: 100vh;
-}
+@import './mc-core.css';
 
 #app,
 .app-shell {
@@ -103,7 +78,6 @@ body {
 }
 
 .hero {
-  margin-bottom: 28px;
   animation: reveal 520ms ease-out;
 }
 
@@ -151,19 +125,6 @@ body {
   font-weight: 700;
   letter-spacing: 0.05em;
   color: rgba(243, 252, 255, 0.9);
-}
-
-.hero-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.auth-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 
 .user-pill {
@@ -987,11 +948,6 @@ h2 {
   opacity: 0.7;
 }
 
-.page-shell {
-  width: min(980px, calc(100% - 32px));
-  margin: 28px auto;
-}
-
 .eyebrow {
   margin: 0;
   font-size: 12px;
@@ -1152,10 +1108,11 @@ h2 {
 }
 
 .page-shell {
-  width: min(900px, calc(100% - 32px));
-  margin: 28px auto;
+  width: min(1100px, calc(100% - 48px));
+  margin: 16px auto 32px;
+  padding: 1.2rem 1.5rem 2.5rem;
   display: grid;
-  gap: 14px;
+  gap: 24px;
 }
 
 .top-back {
