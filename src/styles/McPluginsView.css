@@ -124,27 +124,75 @@ body {
   margin-left: 16px;
 }
 
+/* 平台按钮基础样式 - 融入磨砂玻璃与响应式动效 */
 .platform-button {
   margin-left: 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 13px;
   font-weight: 700;
-  padding: 8px 14px;
+  padding: 7px 16px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-main);
   cursor: pointer;
-  transition: all 0.2s;
+
+  /* 基础玻璃质感 */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--text-main);
+  border: 1px solid var(--card-border);
+  background: rgba(255, 255, 255, 0.05);
+
+  /* 引用参考代码中的过渡时间 */
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease;
 }
 
+/* 悬停时的通用提升效果 */
 .platform-button:hover {
+  transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
-.platform-button.active {
-  background: rgba(149, 213, 178, 0.2);
-  color: var(--success);
+/* 点击时的缩放反馈 */
+.platform-button:active {
+  transform: scale(0.97);
+}
+
+/* 图标微调 */
+.platform-icon {
+  font-size: 15px;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
+}
+
+/* Java 版状态：使用 --accent (黄色系) */
+.platform-button.is-java {
+  border-color: rgba(255, 209, 102, 0.3);
+  background: rgba(255, 209, 102, 0.08);
+  box-shadow: 0 4px 15px rgba(255, 209, 102, 0.1);
+}
+
+.platform-button.is-java:hover {
+  border-color: var(--accent);
+  box-shadow: 0 6px 20px rgba(255, 209, 102, 0.25);
+  color: #fff;
+}
+
+/* 基岩版状态：使用 --success (绿色系) */
+.platform-button.is-bedrock {
+  border-color: rgba(149, 213, 178, 0.3);
+  background: rgba(149, 213, 178, 0.08);
+  box-shadow: 0 4px 15px rgba(149, 213, 178, 0.1);
+}
+
+.platform-button.is-bedrock:hover {
   border-color: var(--success);
+  box-shadow: 0 6px 20px rgba(149, 213, 178, 0.25);
+  color: #fff;
 }
 
 /* --- 筛选面板 (Panel 风格) --- */
