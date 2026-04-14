@@ -88,6 +88,19 @@ export async function resetPassword(
   )
 }
 
+export async function refreshToken(currentToken: string): Promise<AuthPayload> {
+  return requestJson<AuthPayload>(
+    '/auth/refresh',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${currentToken}`,
+      },
+    },
+    '刷新令牌失败',
+  )
+}
+
 export async function getGithubAuthorizeUrl(redirectTo: string): Promise<GithubAuthUrlResp> {
   const requestUrl = `/auth/github/url?redirect_to=${encodeURIComponent(redirectTo)}`
   return requestJson<GithubAuthUrlResp>(

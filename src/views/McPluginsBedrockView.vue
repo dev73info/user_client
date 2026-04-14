@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useMultiSelectTags } from '@/composables/useMultiSelectTags'
 import '../styles/McPluginsView.css'
 
 type McCardItem = {
@@ -31,6 +32,14 @@ const selectedVersions = ref<string[]>(['1.20.1'])
 const selectedLoaders = ref<string[]>([])
 const selectedCategories = ref<string[]>([])
 const selectedSort = ref('下载量')
+
+const {
+  onTagPointerDown,
+  onTagPointerEnter,
+  onTagPointerUp,
+  onTagPointerCancel,
+  onTagClick,
+} = useMultiSelectTags()
 
 const cards = ref<McCardItem[]>([
   {
@@ -114,7 +123,9 @@ function resetFilters() {
       <div class="filter-group">
         <span class="label">端：</span>
         <button v-for="side in sides" :key="side" class="tag" :class="{ active: selectedSides.includes(side) }"
-          @click="toggleFilter(selectedSides, side)">
+          @pointerdown="onTagPointerDown(selectedSides, side, $event)"
+          @pointerenter="onTagPointerEnter(selectedSides, side)" @pointerup="onTagPointerUp"
+          @pointercancel="onTagPointerCancel" @click="onTagClick(selectedSides, side, toggleFilter)">
           {{ side }}
         </button>
       </div>
@@ -129,7 +140,9 @@ function resetFilters() {
         <span class="label">版本：</span>
         <div class="tag-cloud">
           <button v-for="v in versions" :key="v" class="tag" :class="{ active: selectedVersions.includes(v) }"
-            @click="toggleFilter(selectedVersions, v)">
+            @pointerdown="onTagPointerDown(selectedVersions, v, $event)"
+            @pointerenter="onTagPointerEnter(selectedVersions, v)" @pointerup="onTagPointerUp"
+            @pointercancel="onTagPointerCancel" @click="onTagClick(selectedVersions, v, toggleFilter)">
             {{ v }}
           </button>
         </div>
@@ -141,7 +154,9 @@ function resetFilters() {
         <span class="label">加载器：</span>
         <div class="tag-cloud">
           <button v-for="l in loaders" :key="l" class="tag" :class="{ active: selectedLoaders.includes(l) }"
-            @click="toggleFilter(selectedLoaders, l)">
+            @pointerdown="onTagPointerDown(selectedLoaders, l, $event)"
+            @pointerenter="onTagPointerEnter(selectedLoaders, l)" @pointerup="onTagPointerUp"
+            @pointercancel="onTagPointerCancel" @click="onTagClick(selectedLoaders, l, toggleFilter)">
             {{ l }}
           </button>
         </div>
@@ -153,7 +168,9 @@ function resetFilters() {
         <span class="label mt-1">类别：</span>
         <div class="tag-cloud">
           <button v-for="c in categories" :key="c" class="tag" :class="{ active: selectedCategories.includes(c) }"
-            @click="toggleFilter(selectedCategories, c)">
+            @pointerdown="onTagPointerDown(selectedCategories, c, $event)"
+            @pointerenter="onTagPointerEnter(selectedCategories, c)" @pointerup="onTagPointerUp"
+            @pointercancel="onTagPointerCancel" @click="onTagClick(selectedCategories, c, toggleFilter)">
             {{ c }}
           </button>
         </div>

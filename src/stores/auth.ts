@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import {
   authRequest,
+  refreshToken as refreshTokenApi,
   resetPassword,
   sendRegisterEmailCode as sendRegisterEmailCodeApi,
   sendResetPasswordEmailCode as sendResetPasswordEmailCodeApi,
@@ -49,8 +50,37 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref('')
   const username = ref('')
   const loading = ref(false)
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null
 
   const isAuthed = computed(() => token.value.length > 0)
+
+  function clearRefreshTimer() {
+    if (refreshTimer !== null) {
+      clearTimeout(refreshTimer)
+      refreshTimer = null
+    }
+  }
+
+  function scheduleRefresh(jwt: string) {
+    clearRefreshTimer()
+    const payload = parseJwtPayload(jwt)
+    if (!payload || typeof payload.exp !== 'number') return
+
+    const nowSec = Math.floor(Date.now() / 1000)
+    const expiresIn = payload.exp - nowSec
+    // 在过期前 5 分钟刷新，若剩余不足 5 分钟则立即刷新
+    const delayMs = Math.max((expiresIn - 300) * 1000, 0)
+
+    refreshTimer = setTimeout(async () => {
+      if (!token.value) return
+      try {
+        const resp = await refreshTokenApi(token.value)
+        persist(resp.token)
+      } catch {
+        logout()
+      }
+    }, delayMs)
+  }
 
   function hydrate() {
     const saved = localStorage.getItem(TOKEN_KEY)
@@ -75,12 +105,14 @@ export const useAuthStore = defineStore('auth', () => {
 
     token.value = saved
     username.value = subject
+    scheduleRefresh(saved)
   }
 
   function persist(newToken: string) {
     token.value = newToken
     username.value = parseJwtSubject(newToken)
     localStorage.setItem(TOKEN_KEY, newToken)
+    scheduleRefresh(newToken)
   }
 
   async function login(usernameInput: string, passwordInput: string) {
@@ -147,6 +179,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
+    clearRefreshTimer()
     token.value = ''
     username.value = ''
     localStorage.removeItem(TOKEN_KEY)
