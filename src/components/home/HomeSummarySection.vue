@@ -17,8 +17,12 @@ type PendingRequirementView = {
 type Deal = {
   paymentId: string
   requirementId: string
+  title: string
   amount: string
   at: string
+  rating?: number | null
+  comment?: string | null
+  commentedAt?: string | null
 }
 
 defineProps({
@@ -33,6 +37,7 @@ const emit = defineEmits<{
   (e: 'open-deposit', item: PendingRequirementView): void
   (e: 'publish'): void
   (e: 'refresh'): void
+  (e: 'view-deal', deal: Deal): void
 }>()
 </script>
 
@@ -73,7 +78,7 @@ const emit = defineEmits<{
       <span>近 3 笔</span>
     </header>
     <ul v-if="latestDeals.length > 0" class="deal-list">
-      <li v-for="deal in latestDeals" :key="deal.paymentId" class="deal-row">
+      <li v-for="deal in latestDeals" :key="deal.paymentId" class="deal-row clickable" @click="emit('view-deal', deal)">
         <span>{{ deal.requirementId }}</span>
         <strong>{{ deal.amount }}</strong>
         <time>{{ deal.at }}</time>

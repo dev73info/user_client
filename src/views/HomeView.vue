@@ -66,7 +66,20 @@ const metrics = ref<Metric[]>([
 ])
 const AUTO_REFRESH_INTERVAL_MS = 60_000
 
-const latestDeals = ref<{ paymentId: string; requirementId: string; amount: string; at: string }[]>([])
+type LatestDealView = {
+  paymentId: string
+  requirementId: string
+  title: string
+  amount: string
+  at: string
+  rating?: number | null
+  comment?: string | null
+  commentedAt?: string | null
+}
+
+const latestDeals = ref<LatestDealView[]>([])
+const selectedDeal = ref<LatestDealView | null>(null)
+const dealDetailVisible = ref(false)
 
 const pendingRequirements = ref<PendingRequirementView[]>([])
 
@@ -272,6 +285,16 @@ function selectCoupon(code: string, type: 'amount' | 'percent') {
 
 function closeDepositCard() {
   router.replace({ name: 'home' })
+}
+
+function openDealDetail(deal: LatestDealView) {
+  selectedDeal.value = deal
+  dealDetailVisible.value = true
+}
+
+function closeDealDetail() {
+  dealDetailVisible.value = false
+  selectedDeal.value = null
 }
 
 function depositAmount(item: PendingRequirementView) {
@@ -497,8 +520,12 @@ async function loadRequirementOverview() {
     latestDeals.value = (payload.recent_deals ?? []).map((item) => ({
       paymentId: item.payment_id,
       requirementId: item.requirement_id,
+      title: item.title,
       amount: `¥${item.amount_cny.toFixed(2)}`,
       at: formatTimeLabel(item.paid_at),
+      rating: item.comment_rating ?? null,
+      comment: item.comment_text ?? null,
+      commentedAt: item.commented_at ? formatTimeLabel(item.commented_at) : null,
     }))
   } catch {
     // Keep current values if overview API fails.
@@ -723,11 +750,6 @@ async function submitPublishRequirement() {
   }
 }
 
-const emit = defineEmits<{
-  (e: 'open-deposit', item: PendingRequirementView): void
-  (e: 'publish'): void
-  (e: 'refresh'): void
-}>()
 </script>
 
 <template>
@@ -741,8 +763,8 @@ const emit = defineEmits<{
           <p class="desc">有项目想法但还没找到合适的人？点右侧“发布需求”，快速描述你的目标，这里会帮你高效完成需求。</p>
         </div>
         <div class="hero-actions">
-          <button class="publish-btn" type="button" @click="emit('publish')">发布需求</button>
-          <button class="refresh-btn" type="button" :disabled="homeRefreshLoading" @click="emit('refresh')">
+          <button class="publish-btn" type="button" @click="openPublishModal">发布需求</button>
+          <button class="refresh-btn" type="button" :disabled="homeRefreshLoading" @click="refreshHomeData">
             {{ homeRefreshLoading ? '刷新中...' : '刷新' }}
           </button>
         </div>
@@ -751,7 +773,27 @@ const emit = defineEmits<{
 
     <HomeSummarySection :metrics="metrics" :pendingRequirements="pendingRequirements" :latestDeals="latestDeals"
       :homeRefreshLoading="homeRefreshLoading" :canOpenPayment="(item: any) => canOpenPayment(item)"
-      @open-deposit="(item: any) => openDepositCard(item)" @publish="openPublishModal" @refresh="refreshHomeData" />
+      @open-deposit="(item: any) => openDepositCard(item)" @publish="openPublishModal" @refresh="refreshHomeData"
+      @view-deal="openDealDetail" />
+
+    <div v-if="dealDetailVisible && selectedDeal" class="auth-modal-wrap" @click.self="closeDealDetail">
+      <section class="auth-modal" aria-label="最近成交详情">
+        <h3>{{ selectedDeal.title }}</h3>
+        <p class="auth-switch">需求号：{{ selectedDeal.requirementId }}</p>
+        <p class="auth-switch">成交金额：{{ selectedDeal.amount }}</p>
+        <p class="auth-switch">成交时间：{{ selectedDeal.at }}</p>
+        <p class="auth-switch">评分：{{ selectedDeal.rating != null ? `${selectedDeal.rating.toFixed(1)} / 5` : '暂无评分' }}
+        </p>
+        <p class="auth-switch">评论时间：{{ selectedDeal.commentedAt || '暂无评论时间' }}</p>
+        <label class="auth-label">
+          <span>评论内容</span>
+          <textarea :value="selectedDeal.comment || '暂无评论内容'" rows="4" readonly />
+        </label>
+        <div class="auth-modal-actions">
+          <button class="auth-btn solid" type="button" @click="closeDealDetail">关闭</button>
+        </div>
+      </section>
+    </div>
 
     <AuthModal :visible="authVisible" :authMode="routeAuthMode" :authTitle="authTitle"
       v-model:authUsername="authUsername" v-model:authPassword="authPassword" v-model:authEmail="authEmail"

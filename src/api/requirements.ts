@@ -3,8 +3,12 @@ import { authHeader, requestJson } from '@/api/http'
 export type RecentDeal = {
   payment_id: string
   requirement_id: string
+  title: string
   amount_cny: number
   paid_at: string
+  comment_rating?: number | null
+  comment_text?: string | null
+  commented_at?: string | null
 }
 
 export type RequirementOverviewResp = {
