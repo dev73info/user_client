@@ -823,9 +823,9 @@ async function submitPublishRequirement() {
       <div class="site-footer-grid">
         <div class="site-footer-block">
           <h3>网站信息</h3>
-          <p>平台名称：柒叁信息（73Hub）</p>
+          <p>平台名称：柒叁信息（73info）</p>
           <p>主体类型：企业服务平台（备案办理中）</p>
-          <p>联系邮箱：support@73Info.cn</p>
+          <p>联系邮箱：fanbo@73info.cn</p>
           <p>联系地址：上海市浦东新区（示例，待替换）</p>
         </div>
         <div class="site-footer-block">

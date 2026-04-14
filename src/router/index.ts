@@ -1,14 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import HomeView from '@/views/HomeView.vue'
-import PaymentView from '@/views/PaymentView.vue'
-import ProfileView from '@/views/ProfileView.vue'
-import TermsView from '@/views/TermsView.vue'
-import PrivacyPolicyView from '@/views/PrivacyPolicyView.vue'
-import PaymentRefundView from '@/views/PaymentRefundView.vue'
-import McPluginsView from '@/views/McPluginsView.vue'
-import McPluginsJavaView from '@/views/McPluginsJavaView.vue'
-import McPluginsBedrockView from '@/views/McPluginsBedrockView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -16,36 +7,36 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView,
+      component: () => import('@/views/HomeView.vue'),
     },
     {
       path: '/payment',
       name: 'payment',
-      component: PaymentView,
+      component: () => import('@/views/PaymentView.vue'),
     },
     {
       path: '/profile',
       name: 'profile',
-      component: ProfileView,
+      component: () => import('@/views/ProfileView.vue'),
     },
     {
       path: '/terms',
       name: 'terms',
-      component: TermsView,
+      component: () => import('@/views/TermsView.vue'),
     },
     {
       path: '/privacy',
       name: 'privacy',
-      component: PrivacyPolicyView,
+      component: () => import('@/views/PrivacyPolicyView.vue'),
     },
     {
       path: '/payment-refund',
       name: 'payment-refund',
-      component: PaymentRefundView,
+      component: () => import('@/views/PaymentRefundView.vue'),
     },
     {
       path: '/mc-plugins',
-      component: McPluginsView,
+      component: () => import('@/views/McPluginsView.vue'),
       children: [
         {
           path: '',
@@ -54,12 +45,12 @@ const router = createRouter({
         {
           path: 'java',
           name: 'mc-plugins-java',
-          component: McPluginsJavaView,
+          component: () => import('@/views/McPluginsJavaView.vue'),
         },
         {
           path: 'bedrock',
           name: 'mc-plugins-bedrock',
-          component: McPluginsBedrockView,
+          component: () => import('@/views/McPluginsBedrockView.vue'),
         },
       ],
     },
