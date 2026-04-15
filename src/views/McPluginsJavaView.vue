@@ -1,37 +1,43 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { listPublicMcResources, type PublicMcResourceItem } from '@/api/mcResources'
+import { getPlatformTagFilters, getPublicMcTagTree, type McTagGroup } from '@/api/mcTags'
+import { useToast } from '@/composables/useToast'
 import { useMultiSelectTags } from '@/composables/useMultiSelectTags'
 import '../styles/McPluginsView.css'
 
 type McCardItem = {
+  id: number
   title: string
   author: string
   description: string
   platform: string
-  side: string
-  version: string
-  loader: string
-  category: string
-  downloads: string
-  rating: string
-  icon: string
-  iconBg: string
+  side: string[]
+  version: string[]
+  loader: string[]
+  category: string[]
+  tags: string[]
+  updatedAt: string
+  sourceUrl: string
+  coverUrl: string | null
 }
 
 const currentPlatform = 'Java'
+const sortOptions = ['最新', '标题']
+const { showToast } = useToast()
 
-const sides = ['客户端', '服务端']
-const versions = ['1.20.1', '1.19.2', '1.18.2', '1.16.5']
-const loaders = ['Fabric', 'Forge', 'Quilt', 'NeoForge', 'Babric', 'Java Agent', 'Legacy Fabric']
-const categories = ['存储', '模组', '地形', '管理', '机制', '交通', '经济', '科技', '库', '冒险', '魔法', '社交', '生物', '实用', '食物', '小游戏', '邪门', '优化', '装备', '装饰']
-const sortOptions = ['下载量', '最新']
+const tagTree = ref<McTagGroup[]>([])
+const sides = ref<string[]>([])
+const versions = ref<string[]>([])
+const loaders = ref<string[]>([])
+const categories = ref<string[]>([])
 
 const searchQuery = ref('')
-const selectedSides = ref<string[]>(['客户端'])
-const selectedVersions = ref<string[]>(['1.20.1'])
+const selectedSides = ref<string[]>([])
+const selectedVersions = ref<string[]>([])
 const selectedLoaders = ref<string[]>([])
 const selectedCategories = ref<string[]>([])
-const selectedSort = ref('下载量')
+const selectedSort = ref('最新')
 
 const {
   onTagPointerDown,
@@ -41,50 +47,31 @@ const {
   onTagClick,
 } = useMultiSelectTags()
 
-const cards = ref<McCardItem[]>([
-  {
-    title: '更好的战斗',
-    author: 'BetterCombat',
-    description: '为原版战斗系统加入双持、连击和更多武器动画，让战斗更爽快。',
+const cards = ref<McCardItem[]>([])
+
+function extractTagValues(item: PublicMcResourceItem, groupName: string): string[] {
+  return item.tag_selections.find((entry) => entry.group_name === groupName)?.tag_names ?? []
+}
+
+function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
+  const tags = Array.from(new Set(item.tag_selections.flatMap((entry) => entry.tag_names)))
+
+  return {
+    id: item.id,
+    title: item.title,
+    author: item.author,
+    description: item.description,
     platform: 'Java',
-    side: '客户端',
-    version: '1.20.1',
-    loader: 'Forge',
-    category: '模组',
-    downloads: '312.5k',
-    rating: '7.2k',
-    icon: '🏹',
-    iconBg: 'bg-teal',
-  },
-  {
-    title: '钠',
-    author: 'Sodium Team',
-    description: '现代化的渲染引擎，大幅提升帧率并减少卡顿，支持 Fabric。',
-    platform: 'Java',
-    side: '客户端/服务端',
-    version: '1.20.1',
-    loader: 'Fabric',
-    category: '优化',
-    downloads: '1.5M',
-    rating: '35.8k',
-    icon: '🧊',
-    iconBg: 'bg-blue',
-  },
-  {
-    title: '简单存储网络',
-    author: 'Lothrazar',
-    description: '一个简单的物品存储和传输网络模组。',
-    platform: 'Java',
-    side: '服务端',
-    version: '1.18.2',
-    loader: 'Forge',
-    category: '存储',
-    downloads: '850k',
-    rating: '12k',
-    icon: '📦',
-    iconBg: 'bg-teal',
-  },
-])
+    side: extractTagValues(item, '适用端'),
+    version: extractTagValues(item, '版本'),
+    loader: extractTagValues(item, '加载器'),
+    category: extractTagValues(item, '类别'),
+    tags: tags.length > 0 ? tags : ['未标注'],
+    updatedAt: item.updated_at,
+    sourceUrl: item.source_url,
+    coverUrl: item.cover_url,
+  }
+}
 
 function toggleFilter(list: string[], item: string) {
   const index = list.indexOf(item)
@@ -103,32 +90,85 @@ const filteredCards = computed(() => {
     if (searchQuery.value && !card.title.toLowerCase().includes(searchQuery.value.toLowerCase())) {
       return false
     }
-    const sideMatch = selectedSides.value.some((s) => card.side.includes(s))
+    const sideMatch = selectedSides.value.some((side) => card.side.includes(side))
     if (selectedSides.value.length > 0 && !sideMatch) return false
-    if (selectedVersions.value.length > 0 && !selectedVersions.value.includes(card.version)) return false
-    if (selectedLoaders.value.length > 0 && !selectedLoaders.value.includes(card.loader)) return false
-    if (selectedCategories.value.length > 0 && !selectedCategories.value.includes(card.category)) return false
+    const versionMatch = selectedVersions.value.some((version) => card.version.includes(version))
+    if (selectedVersions.value.length > 0 && !versionMatch) return false
+    const loaderMatch = selectedLoaders.value.some((loader) => card.loader.includes(loader))
+    if (selectedLoaders.value.length > 0 && !loaderMatch) return false
+    const categoryMatch = selectedCategories.value.some((category) => card.category.includes(category))
+    if (selectedCategories.value.length > 0 && !categoryMatch) return false
     return true
   })
 
-  if (selectedSort.value === '下载量') {
-    return filtered.slice().sort((a, b) => {
-      const aVal = parseFloat(a.downloads.replace('M', '000000').replace('k', '000'))
-      const bVal = parseFloat(b.downloads.replace('M', '000000').replace('k', '000'))
-      return bVal - aVal
-    })
+  if (selectedSort.value === '标题') {
+    return filtered.slice().sort((a, b) => a.title.localeCompare(b.title, 'zh-CN'))
   }
-  return filtered
+  return filtered.slice().sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
 })
 
 function resetFilters() {
   searchQuery.value = ''
-  selectedSides.value = [...sides]
-  selectedVersions.value = [...versions]
-  selectedLoaders.value = [...loaders]
-  selectedCategories.value = [...categories]
-  selectedSort.value = '下载量'
+  selectedSides.value = [...sides.value]
+  selectedVersions.value = [...versions.value]
+  selectedLoaders.value = [...loaders.value]
+  selectedCategories.value = [...categories.value]
+  selectedSort.value = '最新'
 }
+
+function formatUpdatedAt(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return '最近更新'
+  }
+
+  return date.toLocaleString('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function canDownload(card: McCardItem): boolean {
+  return /^https?:\/\//i.test(card.sourceUrl)
+}
+
+function openResource(card: McCardItem) {
+  if (!canDownload(card)) {
+    showToast('该资源暂未提供下载地址', 'info')
+    return
+  }
+
+  window.open(card.sourceUrl, '_blank', 'noopener,noreferrer')
+}
+
+async function loadTagTree() {
+  try {
+    const [groups, resources] = await Promise.all([
+      getPublicMcTagTree(),
+      listPublicMcResources('java'),
+    ])
+    tagTree.value = groups
+    cards.value = resources.map(mapResourceToCard)
+    const filters = getPlatformTagFilters(tagTree.value, 'Java 版')
+
+    sides.value = filters.sides
+    versions.value = filters.versions
+    loaders.value = filters.loaders
+    categories.value = filters.categories
+    selectedSides.value = [...filters.sides]
+    selectedVersions.value = [...filters.versions]
+    selectedLoaders.value = [...filters.loaders]
+    selectedCategories.value = [...filters.categories]
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '加载标签失败', 'warning')
+  }
+}
+
+onMounted(() => {
+  loadTagTree()
+})
 </script>
 
 <template>
@@ -205,20 +245,24 @@ function resetFilters() {
     </section>
 
     <section class="mc-content-grid">
-      <div v-for="card in filteredCards" :key="card.title" class="res-card">
-        <div :class="['res-icon', card.iconBg]">{{ card.icon }}</div>
+      <div v-for="card in filteredCards" :key="card.id" class="res-card">
+        <div v-if="card.coverUrl" class="res-icon res-icon--image">
+          <img :src="card.coverUrl" :alt="card.title" class="res-icon__image" />
+        </div>
+        <div v-else class="res-icon bg-blue">☕</div>
         <div class="res-info">
           <h3>{{ card.title }}</h3>
           <p class="author">by {{ card.author }}</p>
           <p class="desc">{{ card.description }}</p>
           <div class="res-tags">
-            <span>{{ card.version }}</span>
-            <span>{{ card.loader }}</span>
+            <span v-for="tag in card.tags" :key="`${card.id}-${tag}`">{{ tag }}</span>
           </div>
         </div>
         <div class="res-stats">
-          <span>⬇ {{ card.downloads }}</span>
-          <button class="btn-download" type="button">下载</button>
+          <span>{{ formatUpdatedAt(card.updatedAt) }}</span>
+          <button class="btn-download" type="button" :disabled="!canDownload(card)" @click="openResource(card)">
+            {{ canDownload(card) ? '下载' : '待开放' }}
+          </button>
         </div>
       </div>
       <p v-if="filteredCards.length === 0" class="empty-state">当前没有符合条件的资源。</p>

@@ -54,6 +54,11 @@ const router = createRouter({
         },
       ],
     },
+    {
+      path: '/mc-resources/:id',
+      name: 'mc-resource-detail',
+      component: () => import('@/views/McResourceDetailView.vue'),
+    },
   ],
 })
 

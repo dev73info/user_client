@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import type { PropType } from 'vue'
 
-const props = defineProps({
+defineProps({
     visible: { type: Boolean, default: false },
+    modalTitle: { type: String, default: '发布需求' },
+    submitText: { type: String, default: '确认发布' },
+    loadingText: { type: String, default: '发布中...' },
     publishTitle: { type: [String, Number] as PropType<string | number>, default: '' },
     publishDescription: { type: String, default: '' },
     publishBudget: { type: [String, Number] as PropType<string | number>, default: '' },
@@ -38,8 +41,8 @@ function updateAcceptance(event: Event) {
 
 <template>
     <div v-if="visible" class="auth-modal-wrap" @click.self="emit('close')">
-        <section class="auth-modal" aria-label="发布需求弹窗">
-            <h3>发布需求</h3>
+        <section class="auth-modal" :aria-label="`${modalTitle}弹窗`">
+            <h3>{{ modalTitle }}</h3>
             <label>
                 需求标题
                 <input :value="publishTitle" type="text" maxlength="60" placeholder="例如：企业官网改版、小程序开发"
@@ -63,7 +66,7 @@ function updateAcceptance(event: Event) {
             <div class="auth-modal-actions">
                 <button class="auth-btn ghost" type="button" @click="emit('close')">取消</button>
                 <button class="auth-btn solid" type="button" :disabled="publishLoading" @click="emit('submit')">
-                    {{ publishLoading ? '发布中...' : '确认发布' }}
+                    {{ publishLoading ? loadingText : submitText }}
                 </button>
             </div>
         </section>

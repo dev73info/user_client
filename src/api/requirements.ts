@@ -33,7 +33,16 @@ export type RequirementStatus =
 export type RequirementItem = {
   id: number
   requirement_id: string
+  bound_resource_id?: number | null
+  resource_visibility?: 'public' | 'private' | null
+  created_time?: string
+  creator?: string
   title: string
+  description?: string | null
+  acceptance_criteria?: string | null
+  review_note?: string | null
+  comment_rating?: number | null
+  comment_text?: string | null
   status: RequirementStatus
   budget?: number | null
   payment_method?: string | null
@@ -50,6 +59,12 @@ export type CreateRequirementPayload = {
 export type CommentRequirementPayload = {
   rating: number
   comment?: string
+}
+
+export type RequirementResourceVisibility = 'public' | 'private'
+
+export type UpdateRequirementResourceVisibilityPayload = {
+  visibility: RequirementResourceVisibility
 }
 
 export async function listRequirements(token: string): Promise<RequirementItem[]> {
@@ -110,5 +125,43 @@ export async function commentRequirement(
       body: JSON.stringify(payload),
     },
     '评论失败',
+  )
+}
+
+export async function resubmitRequirement(
+  token: string,
+  requirementId: string,
+  payload: CreateRequirementPayload,
+): Promise<void> {
+  await requestJson<unknown>(
+    `/requirements/${encodeURIComponent(requirementId)}/resubmit`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify(payload),
+    },
+    '重新提交失败',
+  )
+}
+
+export async function updateRequirementResourceVisibility(
+  token: string,
+  requirementId: string,
+  payload: UpdateRequirementResourceVisibilityPayload,
+): Promise<void> {
+  await requestJson<unknown>(
+    `/requirements/${encodeURIComponent(requirementId)}/resource-visibility`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify(payload),
+    },
+    '更新资源可见性失败',
   )
 }

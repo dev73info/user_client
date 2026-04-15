@@ -1009,7 +1009,7 @@ h2 {
 
 .requirement-row {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
   gap: 10px;
   align-items: center;
   padding: 12px;
@@ -1036,12 +1036,34 @@ h2 {
   font-size: 12px;
 }
 
+.requirement-note {
+  display: block;
+  margin-top: 6px;
+  color: #ffb4b4;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.requirement-resource-visibility {
+  display: block;
+  margin-top: 6px;
+  color: #95d5b2;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .requirement-status {
   border-radius: 999px;
   padding: 4px 10px;
   color: #ffe18b;
   font-size: 12px;
   background: rgba(255, 225, 139, 0.18);
+}
+
+.requirement-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .coupon-item {

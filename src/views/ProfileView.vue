@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import AppToast from '@/components/AppToast.vue'
+import PublishModal from '@/components/PublishModal.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -15,18 +16,16 @@ import {
   type CouponItem,
   type WechatCreatePaymentResp,
 } from '@/api/payments'
-import { commentRequirement as commentRequirementApi, listRequirements, type RequirementStatus } from '@/api/requirements'
+import {
+  commentRequirement as commentRequirementApi,
+  listRequirements,
+  resubmitRequirement as resubmitRequirementApi,
+  updateRequirementResourceVisibility as updateRequirementResourceVisibilityApi,
+  type RequirementItem,
+  type RequirementResourceVisibility,
+  type RequirementStatus,
+} from '@/api/requirements'
 import { getDepositRatio, updateProfile } from '@/api/settings'
-
-type RequirementItem = {
-  requirement_id: string
-  title: string
-  status: RequirementStatus
-  budget?: number | null
-  updated_at: string
-  comment_rating?: number | null
-  comment_text?: string | null
-}
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -45,6 +44,14 @@ const commentRequirement = ref<RequirementItem | null>(null)
 const commentRating = ref(5)
 const commentText = ref('')
 const commentLoading = ref(false)
+const editVisible = ref(false)
+const editRequirement = ref<RequirementItem | null>(null)
+const editTitle = ref('')
+const editDescription = ref('')
+const editBudget = ref<string | number>('')
+const editAcceptance = ref('')
+const editLoading = ref(false)
+const resourceVisibilityLoadingId = ref<string | null>(null)
 const depositRatioPercent = ref(20)
 const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
 
@@ -111,6 +118,30 @@ function canPay(status: RequirementStatus) {
   return status === 'pending_deposit' || status === 'pending_final'
 }
 
+function canResubmit(status: RequirementStatus) {
+  return status === 'rejected'
+}
+
+function hasBoundResource(item: RequirementItem) {
+  return item.bound_resource_id != null
+}
+
+function currentResourceVisibility(item: RequirementItem): RequirementResourceVisibility | null {
+  return item.resource_visibility ?? null
+}
+
+function formatResourceVisibility(item: RequirementItem) {
+  return currentResourceVisibility(item) === 'public' ? '资源已公开' : '资源私有中'
+}
+
+function nextResourceVisibility(item: RequirementItem): RequirementResourceVisibility {
+  return currentResourceVisibility(item) === 'public' ? 'private' : 'public'
+}
+
+function toggleResourceVisibilityLabel(item: RequirementItem) {
+  return nextResourceVisibility(item) === 'public' ? '设为公开' : '设为私有'
+}
+
 function openPayModal(item: RequirementItem) {
   if (!canPay(item.status)) {
     return
@@ -135,6 +166,19 @@ function openCommentModal(item: RequirementItem) {
   commentVisible.value = true
 }
 
+function openRequirementEditModal(item: RequirementItem) {
+  if (!canResubmit(item.status)) {
+    return
+  }
+
+  editRequirement.value = item
+  editTitle.value = item.title
+  editDescription.value = item.description ?? ''
+  editBudget.value = item.budget ?? ''
+  editAcceptance.value = item.acceptance_criteria ?? ''
+  editVisible.value = true
+}
+
 function openAuth(mode: 'login' | 'register') {
   router.push({ name: 'home', query: { modal: 'auth', mode } })
 }
@@ -155,6 +199,8 @@ function goProfile() {
 function handleRequirementAction(item: RequirementItem) {
   if (canPay(item.status)) {
     openPayModal(item)
+  } else if (canResubmit(item.status)) {
+    openRequirementEditModal(item)
   } else if (isCompleted(item.status)) {
     openCommentModal(item)
   }
@@ -216,6 +262,36 @@ function closeCommentModal() {
   commentVisible.value = false
 }
 
+function forceCloseEditModal() {
+  editVisible.value = false
+  editRequirement.value = null
+}
+
+function closeEditModal() {
+  if (editLoading.value) {
+    return
+  }
+  forceCloseEditModal()
+}
+
+async function toggleRequirementResourceVisibility(item: RequirementItem) {
+  if (!auth.isAuthed || !hasBoundResource(item)) {
+    return
+  }
+
+  const visibility = nextResourceVisibility(item)
+  resourceVisibilityLoadingId.value = item.requirement_id
+  try {
+    await updateRequirementResourceVisibilityApi(auth.token, item.requirement_id, { visibility })
+    showToast(visibility === 'public' ? '关联资源已设为公开' : '关联资源已设为私有', 'success')
+    await loadMyRequirements()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '更新资源可见性失败', 'error')
+  } finally {
+    resourceVisibilityLoadingId.value = null
+  }
+}
+
 async function submitRequirementComment() {
   if (!auth.isAuthed || !commentRequirement.value) {
     showToast('请先登录后再发表评论', 'error')
@@ -245,6 +321,52 @@ async function submitRequirementComment() {
     showToast(err instanceof Error ? err.message : '评论提交失败', 'error')
   } finally {
     commentLoading.value = false
+  }
+}
+
+async function submitRequirementResubmit() {
+  if (!auth.isAuthed || !editRequirement.value) {
+    showToast('请先登录后再重新提交需求', 'error')
+    return
+  }
+
+  const normalizedTitle = editTitle.value.trim()
+  const normalizedDescription = editDescription.value.trim()
+  const normalizedAcceptance = editAcceptance.value.trim()
+  const budgetRaw = String(editBudget.value ?? '').trim()
+  const budget = budgetRaw ? Number(budgetRaw) : undefined
+
+  if (normalizedTitle.length < 4) {
+    showToast('需求标题至少 4 个字符', 'error')
+    return
+  }
+
+  if (normalizedDescription.length < 10) {
+    showToast('需求描述至少 10 个字符', 'error')
+    return
+  }
+
+  if (budget !== undefined && (Number.isNaN(budget) || budget < 0)) {
+    showToast('预算必须是大于等于0的数字', 'error')
+    return
+  }
+
+  editLoading.value = true
+  try {
+    await resubmitRequirementApi(auth.token, editRequirement.value.requirement_id, {
+      title: normalizedTitle,
+      description: normalizedDescription,
+      budget,
+      acceptance_criteria: normalizedAcceptance || undefined,
+    })
+
+    showToast('需求已重新提交，等待审核', 'success')
+    forceCloseEditModal()
+    await loadMyRequirements()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '重新提交失败', 'error')
+  } finally {
+    editLoading.value = false
   }
 }
 
@@ -502,18 +624,38 @@ onMounted(async () => {
         <div v-if="myRequirements.length === 0" class="empty">暂无已提交需求单</div>
         <ul v-else class="requirement-list">
           <li v-for="item in myRequirements" :key="item.requirement_id" class="requirement-row"
-            :class="{ clickable: canPay(item.status) || isCompleted(item.status) }"
+            :class="{ clickable: canPay(item.status) || isCompleted(item.status) || canResubmit(item.status) }"
             @click="handleRequirementAction(item)">
             <div class="requirement-main">
               <strong>{{ item.title }}</strong>
               <span>{{ item.requirement_id }}</span>
+              <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{ formatResourceVisibility(item) }}</small>
+              <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{ item.review_note }}</small>
             </div>
             <span class="requirement-status">{{ formatRequirementStatus(item.status) }}</span>
             <span>{{ formatBudget(item.budget) }}</span>
             <time>{{ formatRequirementTime(item.updated_at) }}</time>
+            <div class="requirement-actions">
+              <button v-if="hasBoundResource(item)" class="ghost small" type="button"
+                :disabled="resourceVisibilityLoadingId === item.requirement_id"
+                @click.stop="toggleRequirementResourceVisibility(item)">
+                {{ resourceVisibilityLoadingId === item.requirement_id ? '提交中...' : toggleResourceVisibilityLabel(item) }}
+              </button>
+              <button v-if="canResubmit(item.status)" class="ghost small" type="button"
+                @click.stop="openRequirementEditModal(item)">重新编辑</button>
+              <button v-else-if="canPay(item.status)" class="ghost small" type="button"
+                @click.stop="openPayModal(item)">去支付</button>
+              <button v-else-if="isCompleted(item.status)" class="ghost small" type="button"
+                @click.stop="openCommentModal(item)">去评价</button>
+            </div>
           </li>
         </ul>
       </section>
+
+      <PublishModal :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核" loadingText="提交中..."
+        v-model:publishTitle="editTitle" v-model:publishDescription="editDescription" v-model:publishBudget="editBudget"
+        v-model:publishAcceptance="editAcceptance" :publishLoading="editLoading" @close="closeEditModal"
+        @submit="submitRequirementResubmit" />
 
       <div v-if="payVisible && payRequirement" class="modal-wrap" @click.self="closePayModal">
         <section class="pay-modal" aria-label="需求支付弹窗">
