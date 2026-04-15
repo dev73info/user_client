@@ -296,8 +296,10 @@ onMounted(() => {
         <div class="res-stats custom-res-stats">
           <span>{{ formatUpdatedAt(card.updatedAt) }}</span>
           <button class="btn-download" type="button"
-            :disabled="card.visibility !== 'public' && !canOpenUrl(card.sourceUrl) && !canOpenUrl(card.docsUrl)" @click="openPrimaryLink(card)">
-            {{ card.visibility === 'public' ? '查看公开页' : canOpenUrl(card.sourceUrl) ? '查看资源' : canOpenUrl(card.docsUrl) ? '查看文档' : '待补充' }}
+            :disabled="card.visibility !== 'public' && !canOpenUrl(card.sourceUrl) && !canOpenUrl(card.docsUrl)"
+            @click="openPrimaryLink(card)">
+            {{ card.visibility === 'public' ? '查看公开页' : canOpenUrl(card.sourceUrl) ? '查看资源' : canOpenUrl(card.docsUrl) ?
+              '查看文档' : '待补充' }}
           </button>
         </div>
       </div>

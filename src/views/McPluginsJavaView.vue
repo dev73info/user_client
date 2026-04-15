@@ -112,10 +112,10 @@ const filteredCards = computed(() => {
 
 function resetFilters() {
   searchQuery.value = ''
-  selectedSides.value = [...sides.value]
-  selectedVersions.value = [...versions.value]
-  selectedLoaders.value = [...loaders.value]
-  selectedCategories.value = [...categories.value]
+  selectedSides.value = []
+  selectedVersions.value = []
+  selectedLoaders.value = []
+  selectedCategories.value = []
   selectedSort.value = '最新'
 }
 
@@ -151,10 +151,10 @@ async function loadTagTree() {
     versions.value = filters.versions
     loaders.value = filters.loaders
     categories.value = filters.categories
-    selectedSides.value = [...filters.sides]
-    selectedVersions.value = [...filters.versions]
-    selectedLoaders.value = [...filters.loaders]
-    selectedCategories.value = [...filters.categories]
+    selectedSides.value = []
+    selectedVersions.value = []
+    selectedLoaders.value = []
+    selectedCategories.value = []
   } catch (err) {
     showToast(err instanceof Error ? err.message : '加载标签失败', 'warning')
   }

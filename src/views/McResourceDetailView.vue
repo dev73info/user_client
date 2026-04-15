@@ -80,12 +80,6 @@ const infoCards = computed(() => {
       tone: 'platform',
     },
     {
-      label: '可见性',
-      value: visibilityLabel.value,
-      hint: resource.value.visibility === 'published' ? '所有用户可访问' : '已进入公共资源列表',
-      tone: 'visibility',
-    },
-    {
       label: '历史版本',
       value: `${versions.value.length}`,
       hint: latestVersion.value ? `当前最新为 ${latestVersion.value.version}` : '当前还没有版本记录',
@@ -287,12 +281,8 @@ onMounted(() => {
         </section>
 
         <section class="resource-homepage__stats-grid">
-          <article
-            v-for="item in infoCards"
-            :key="item.label"
-            class="resource-homepage__stat-card"
-            :class="`resource-homepage__stat-card--${item.tone}`"
-          >
+          <article v-for="item in infoCards" :key="item.label" class="resource-homepage__stat-card"
+            :class="`resource-homepage__stat-card--${item.tone}`">
             <span class="resource-homepage__stat-label">{{ item.label }}</span>
             <strong class="resource-homepage__stat-value">{{ item.value }}</strong>
             <span class="resource-homepage__stat-hint">{{ item.hint }}</span>
@@ -544,15 +534,6 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   border-radius: 18px;
-}
-
-.resource-homepage__stat-card::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  height: 100%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent 75%);
 }
 
 .resource-homepage__stat-card--platform {

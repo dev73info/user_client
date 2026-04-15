@@ -70,3 +70,90 @@ const emit = defineEmits<{
     </div>
   </section>
 </template>
+
+<style scoped>
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 2px;
+}
+
+.brand-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 12px rgba(149, 213, 178, 0.85);
+}
+
+.brand-text {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: rgba(243, 252, 255, 0.9);
+}
+
+.hero-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 39px;
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 700;
+  color: #f8fafc;
+  text-decoration: none;
+  border: 1px solid rgba(56, 189, 248, 0.75);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.16);
+  box-shadow: 0 10px 30px rgba(14, 165, 233, 0.18);
+  white-space: nowrap;
+  transition:
+    background 120ms ease,
+    color 120ms ease,
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.brand-link:hover,
+.brand-link.active {
+  background: rgba(14, 165, 233, 0.28);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 36px rgba(14, 165, 233, 0.22);
+}
+
+.hero-content {
+  width: 100%;
+}
+
+@media (max-width: 820px) {
+  .hero-row {
+    align-items: flex-start;
+  }
+
+  .nav-links {
+    gap: 12px;
+  }
+
+  .brand-link {
+    font-size: 14px;
+  }
+}
+</style>
