@@ -20,6 +20,11 @@ const router = createRouter({
       component: () => import('@/views/ProfileView.vue'),
     },
     {
+      path: '/my-custom-resources',
+      name: 'my-custom-resources',
+      component: () => import('@/views/MyCustomResourcesView.vue'),
+    },
+    {
       path: '/terms',
       name: 'terms',
       component: () => import('@/views/TermsView.vue'),
@@ -78,7 +83,8 @@ router.beforeEach((to, from, next) => {
     return next({ path: to.path, query: {}, replace: true })
   }
 
-  const authRequired = to.name === 'profile' || to.name === 'payment'
+  const authRequired =
+    to.name === 'profile' || to.name === 'payment' || to.name === 'my-custom-resources'
   if (authRequired && !auth.isAuthed) {
     return next({ name: 'home' })
   }

@@ -86,6 +86,15 @@ const pendingRequirements = ref<PendingRequirementView[]>([])
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
+const heroNavLinks = computed(() => {
+  const links = [{ label: 'MC插件与模组', to: { name: 'mc-plugins-java' } }]
+
+  if (auth.isAuthed) {
+    links.push({ label: '我的定制资源', to: { name: 'my-custom-resources' } })
+  }
+
+  return links
+})
 const routeModal = computed(() => String(route.query.modal || ''))
 const routeAuthMode = computed<AuthMode>(() => {
   const mode = String(route.query.mode || 'login')
@@ -754,9 +763,8 @@ async function submitPublishRequirement() {
 
 <template>
   <main class="page-shell">
-    <HomeHeroSection :isAuthed="auth.isAuthed" :username="auth.username" :menuOpen="menuOpen" :navLinks="[
-      { label: 'MC插件与模组', to: { name: 'mc-plugins-java' } },
-    ]" @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" @logout="logout">
+    <HomeHeroSection :isAuthed="auth.isAuthed" :username="auth.username" :menuOpen="menuOpen" :navLinks="heroNavLinks"
+      @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" @logout="logout">
       <div class="hero-meta">
         <div class="hero">
           <h1>接单表现总览</h1>

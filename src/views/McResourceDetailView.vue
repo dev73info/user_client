@@ -2,220 +2,744 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { getPublicMcResource, type PublicMcResourceItem } from '@/api/mcResources'
+import { apiUrl } from '@/api/http'
+import AppToast from '@/components/AppToast.vue'
+import AuthModal from '@/components/AuthModal.vue'
+import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
+import {
+  getPublicMcResource,
+  listPublicMcResourceVersions,
+  type PublicMcResourceItem,
+  type PublicMcResourceVersionItem,
+} from '@/api/mcResources'
+import { useAuthForm } from '@/composables/useAuthForm'
+import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
-const { showToast } = useToast()
+const auth = useAuthStore()
+const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
 
 const loading = ref(false)
 const resource = ref<PublicMcResourceItem | null>(null)
+const versions = ref<PublicMcResourceVersionItem[]>([])
+const menuOpen = ref(false)
+const authVisible = ref(false)
+const authMode = ref<'login' | 'register' | 'reset'>('login')
+const githubLoginLoading = ref(false)
+
+const {
+  authUsername,
+  authPassword,
+  authEmail,
+  authEmailCode,
+  acceptTerms,
+  sendCodeLoading,
+  sendCodeCountdown,
+  resetAuthForm,
+  loginWithGithub: loginWithGithubAction,
+  sendAuthCode,
+  submitAuth: submitAuthAction,
+  changeAuthMode,
+} = useAuthForm(authMode)
 
 const tagNames = computed(() => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [])
-const detailTitle = computed(() => resource.value?.title || '资源项目主页')
+const platformLabel = computed(() => (resource.value?.platform === 'bedrock' ? '基岩版' : 'Java 版'))
+const visibilityLabel = computed(() => (resource.value?.visibility === 'published' ? '公开展示中' : '待正式发布'))
+const heroNavLinks = computed(() => {
+  const links = [
+    { label: '返回首页', to: { name: 'home' } },
+    { label: 'MC 插件与模组', to: { name: 'mc-plugins-java' }, active: true },
+    { label: '探索', href: '#' },
+    { label: '免费资源', href: '#' },
+    { label: '社区', href: '#' },
+  ]
+
+  if (auth.isAuthed) {
+    links.splice(2, 0, { label: '我的定制资源', to: { name: 'my-custom-resources' } })
+  }
+
+  return links
+})
+const authTitle = computed(() => {
+  if (authMode.value === 'login') return '登录账号'
+  if (authMode.value === 'register') return '注册账号'
+  return '找回密码'
+})
+const infoCards = computed(() => {
+  if (!resource.value) {
+    return []
+  }
+
+  return [
+    {
+      label: '平台',
+      value: platformLabel.value,
+      hint: resource.value.platform === 'bedrock' ? 'Bedrock Edition' : 'Java Edition',
+      tone: 'platform',
+    },
+    {
+      label: '可见性',
+      value: visibilityLabel.value,
+      hint: resource.value.visibility === 'published' ? '所有用户可访问' : '已进入公共资源列表',
+      tone: 'visibility',
+    },
+    {
+      label: '历史版本',
+      value: `${versions.value.length}`,
+      hint: latestVersion.value ? `当前最新为 ${latestVersion.value.version}` : '当前还没有版本记录',
+      tone: 'versions',
+    },
+    {
+      label: '最近更新',
+      value: formatUpdatedDate(resource.value.updated_at),
+      hint: formatUpdatedTime(resource.value.updated_at),
+      tone: 'updated',
+    },
+  ]
+})
+const resourceCoverUrl = computed(() => (resource.value?.cover_url ? apiUrl(resource.value.cover_url) : ''))
+const latestVersion = computed(() => versions.value[0] ?? null)
+const pageContentParagraphs = computed(() => {
+  const content = resource.value?.release_note?.trim()
+  if (!content) {
+    return []
+  }
+
+  return content
+    .split(/\n{2,}|\r\n\r\n/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+})
 
 function backToPlatform() {
-    const platform = resource.value?.platform === 'bedrock' ? 'mc-plugins-bedrock' : 'mc-plugins-java'
-    router.push({ name: platform })
+  const platform = resource.value?.platform === 'bedrock' ? 'mc-plugins-bedrock' : 'mc-plugins-java'
+  router.push({ name: platform })
+}
+
+function openAuth(mode: 'login' | 'register' | 'reset') {
+  authMode.value = mode
+  resetAuthForm()
+  authVisible.value = true
+}
+
+function closeAuth() {
+  authVisible.value = false
+}
+
+async function handleLoginWithGithub() {
+  if (githubLoginLoading.value || auth.loading) {
+    return
+  }
+
+  githubLoginLoading.value = true
+  try {
+    await loginWithGithubAction()
+  } finally {
+    githubLoginLoading.value = false
+  }
+}
+
+async function handleSubmitAuth() {
+  const result = await submitAuthAction()
+  if (result) {
+    closeAuth()
+  }
+}
+
+function toggleUserMenu() {
+  menuOpen.value = !menuOpen.value
+}
+
+function closeUserMenu() {
+  menuOpen.value = false
+}
+
+function goProfile() {
+  closeUserMenu()
+  router.push({ name: 'profile' })
+}
+
+function logout() {
+  auth.logout()
+  closeUserMenu()
+  showToast('已退出登录', 'info')
+}
+
+function formatUpdatedDate(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return '未知日期'
+  }
+
+  return date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+}
+
+function formatUpdatedTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return '时间未知'
+  }
+
+  return date.toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function openResourceFile() {
-    if (!resource.value?.source_url || !/^https?:\/\//i.test(resource.value.source_url)) {
-        showToast('该资源暂未提供可下载地址', 'info')
-        return
-    }
+  if (!latestVersion.value?.resource) {
+    showToast('当前还没有可下载的历史版本', 'info')
+    return
+  }
 
-    window.open(resource.value.source_url, '_blank', 'noopener,noreferrer')
+  window.open(apiUrl(latestVersion.value.resource), '_blank', 'noopener,noreferrer')
+}
+
+function downloadVersion(version: PublicMcResourceVersionItem) {
+  window.open(apiUrl(version.resource), '_blank', 'noopener,noreferrer')
+}
+
+function formatVersionTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 async function loadResource() {
-    const resourceId = Number(route.params.id)
-    if (!Number.isInteger(resourceId) || resourceId <= 0) {
-        showToast('资源编号无效', 'warning')
-        router.replace({ name: 'home' })
-        return
-    }
+  const resourceId = Number(route.params.id)
+  if (!Number.isInteger(resourceId) || resourceId <= 0) {
+    showToast('资源编号无效', 'warning')
+    router.replace({ name: 'home' })
+    return
+  }
 
-    loading.value = true
-    try {
-        resource.value = await getPublicMcResource(resourceId)
-    } catch (error) {
-        const message = error instanceof Error ? error.message : '加载资源主页失败'
-        showToast(message, 'warning')
-        router.replace({ name: 'home' })
-    } finally {
-        loading.value = false
-    }
+  loading.value = true
+  try {
+    const [resourceDetail, resourceVersions] = await Promise.all([
+      getPublicMcResource(resourceId),
+      listPublicMcResourceVersions(resourceId),
+    ])
+    resource.value = resourceDetail
+    versions.value = resourceVersions
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '加载资源主页失败'
+    showToast(message, 'warning')
+    router.replace({ name: 'home' })
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {
-    loadResource()
+  auth.hydrate()
+  loadResource()
 })
 </script>
 
 <template>
-    <main class="resource-detail-page">
-        <section class="resource-detail-card" v-loading="loading">
-            <button class="resource-detail-back" type="button" @click="backToPlatform">返回资源列表</button>
+  <main class="page-shell resource-homepage">
+    <HomeHeroSection :isAuthed="auth.isAuthed" :username="auth.username" :menuOpen="menuOpen" :navLinks="heroNavLinks"
+      @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" @logout="logout">
+    </HomeHeroSection>
 
-            <div v-if="resource" class="resource-detail-layout">
-                <div class="resource-detail-cover">
-                    <img v-if="resource.cover_url" :src="resource.cover_url" :alt="resource.title" />
-                    <div v-else class="resource-detail-cover__placeholder">{{ resource.platform === 'java' ? '☕' : '🧱'
-                        }}</div>
-                </div>
-
-                <div class="resource-detail-content">
-                    <p class="resource-detail-kicker">{{ resource.platform === 'java' ? 'Java 版资源主页' : '基岩版资源主页' }}</p>
-                    <h1>{{ detailTitle }}</h1>
-                    <p class="resource-detail-meta">作者：{{ resource.author }} · 创建者：{{ resource.creator }}</p>
-                    <p class="resource-detail-desc">{{ resource.description }}</p>
-
-                    <div v-if="tagNames.length > 0" class="resource-detail-tags">
-                        <span v-for="item in tagNames" :key="item" class="resource-detail-tag">{{ item }}</span>
-                    </div>
-
-                    <div class="resource-detail-actions">
-                        <button class="resource-detail-primary" type="button" @click="openResourceFile">下载资源</button>
-                        <a v-if="resource.docs_url" class="resource-detail-secondary" :href="resource.docs_url"
-                            target="_blank" rel="noopener noreferrer">查看文档</a>
-                    </div>
-
-                    <section v-if="resource.release_note" class="resource-detail-note">
-                        <h2>主页补充说明</h2>
-                        <p>{{ resource.release_note }}</p>
-                    </section>
-                </div>
+    <section class="resource-homepage__panel" v-loading="loading">
+      <template v-if="resource">
+        <section class="resource-homepage__lead">
+          <div class="resource-homepage__cover-card">
+            <img v-if="resource.cover_url" :src="resourceCoverUrl" :alt="resource.title"
+              class="resource-homepage__cover-image" />
+            <div v-else class="resource-homepage__cover-placeholder">{{ resource.platform === 'java' ? '☕' : '🧱' }}
             </div>
+          </div>
+
+          <div class="resource-homepage__summary-card">
+            <div class="resource-homepage__headline-row">
+              <span class="resource-homepage__status-pill">{{ visibilityLabel }}</span>
+              <span class="resource-homepage__author-pill">by {{ resource.author }}</span>
+            </div>
+            <p class="resource-homepage__meta">创建者：{{ resource.creator }}</p>
+            <p class="resource-homepage__summary">{{ resource.description }}</p>
+
+            <div v-if="tagNames.length > 0" class="resource-homepage__tags">
+              <span v-for="item in tagNames" :key="item" class="resource-homepage__tag">{{ item }}</span>
+            </div>
+
+            <div class="resource-homepage__cta-row">
+              <button class="resource-homepage__primary-btn" type="button" @click="openResourceFile">下载最新版本</button>
+              <button class="resource-homepage__secondary-btn" type="button" @click="backToPlatform">继续浏览</button>
+            </div>
+          </div>
         </section>
-    </main>
+
+        <section class="resource-homepage__stats-grid">
+          <article
+            v-for="item in infoCards"
+            :key="item.label"
+            class="resource-homepage__stat-card"
+            :class="`resource-homepage__stat-card--${item.tone}`"
+          >
+            <span class="resource-homepage__stat-label">{{ item.label }}</span>
+            <strong class="resource-homepage__stat-value">{{ item.value }}</strong>
+            <span class="resource-homepage__stat-hint">{{ item.hint }}</span>
+          </article>
+        </section>
+
+        <section class="resource-homepage__detail-grid">
+          <article class="resource-homepage__content-card">
+            <header class="resource-homepage__section-head">
+              <h2>页面内容</h2>
+              <span>Content</span>
+            </header>
+            <div v-if="pageContentParagraphs.length" class="resource-homepage__content-flow">
+              <p v-for="paragraph in pageContentParagraphs" :key="paragraph" class="resource-homepage__paragraph">
+                {{ paragraph }}
+              </p>
+            </div>
+            <p v-else class="resource-homepage__paragraph">
+              当前还没有额外补充说明。后续更新、兼容性说明或使用建议会展示在这里。
+            </p>
+          </article>
+
+          <article class="resource-homepage__content-card">
+            <header class="resource-homepage__section-head">
+              <h2>历史版本</h2>
+              <span>Versions</span>
+            </header>
+            <div v-if="versions.length" class="resource-homepage__version-list">
+              <article v-for="version in versions" :key="version.id" class="resource-homepage__version-card">
+                <div class="resource-homepage__version-headline">
+                  <div class="resource-homepage__version-meta">
+                    <strong>{{ version.version }}</strong>
+                    <span>{{ formatVersionTime(version.created_at) }}</span>
+                  </div>
+                  <button class="resource-homepage__version-download" type="button" @click="downloadVersion(version)">
+                    下载
+                  </button>
+                </div>
+                <p class="resource-homepage__paragraph">
+                  {{ version.note || '当前版本暂无补充说明。' }}
+                </p>
+              </article>
+            </div>
+            <p v-else class="resource-homepage__paragraph">
+              当前还没有可展示的历史版本。
+            </p>
+          </article>
+        </section>
+      </template>
+    </section>
+
+    <AuthModal :visible="authVisible" :authMode="authMode" :authTitle="authTitle" v-model:authUsername="authUsername"
+      v-model:authPassword="authPassword" v-model:authEmail="authEmail" v-model:authEmailCode="authEmailCode"
+      v-model:acceptTerms="acceptTerms" :authLoading="auth.loading" :githubLoginLoading="githubLoginLoading"
+      :sendCodeLoading="sendCodeLoading" :sendCodeCountdown="sendCodeCountdown" @close="closeAuth"
+      @submit="handleSubmitAuth" @loginWithGithub="handleLoginWithGithub" @sendAuthCode="sendAuthCode"
+      @change-mode="changeAuthMode" />
+
+    <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
+  </main>
 </template>
 
 <style scoped>
-.resource-detail-page {
-    padding: 32px 16px 56px;
+.resource-homepage {
+  gap: 28px;
 }
 
-.resource-detail-card {
-    width: min(1080px, 100%);
-    margin: 0 auto;
-    padding: 24px;
-    border-radius: 28px;
-    background: rgba(255, 255, 255, 0.92);
-    box-shadow: 0 24px 70px rgba(25, 40, 70, 0.12);
+.resource-homepage__hero-meta {
+  align-items: stretch;
 }
 
-.resource-detail-back {
-    border: none;
-    background: transparent;
-    color: #2563eb;
-    cursor: pointer;
-    padding: 0;
-    margin-bottom: 20px;
-    font-size: 14px;
+.resource-homepage__eyebrow {
+  margin: 0 0 10px;
+  color: #95d5b2;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.resource-detail-layout {
+.resource-homepage__hero-actions {
+  min-width: 220px;
+}
+
+.resource-homepage__panel {
+  border-radius: 28px;
+  border: 1px solid var(--card-border);
+  background: rgba(5, 18, 30, 0.5);
+  backdrop-filter: blur(14px);
+  padding: 24px;
+}
+
+.resource-homepage__lead {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1.25fr);
+  gap: 22px;
+}
+
+.resource-homepage__cover-card,
+.resource-homepage__summary-card,
+.resource-homepage__stat-card,
+.resource-homepage__content-card {
+  border-radius: 24px;
+  border: 1px solid var(--card-border);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(10px);
+}
+
+.resource-homepage__cover-card {
+  min-height: 360px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(255, 209, 102, 0.25), transparent 30%),
+    linear-gradient(160deg, rgba(14, 165, 233, 0.24), rgba(5, 18, 30, 0.8));
+}
+
+.resource-homepage__cover-image,
+.resource-homepage__cover-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.resource-homepage__cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(72px, 10vw, 120px);
+}
+
+.resource-homepage__summary-card {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.resource-homepage__headline-row,
+.resource-homepage__cta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.resource-homepage__status-pill,
+.resource-homepage__author-pill,
+.resource-homepage__tag,
+.resource-homepage__group-tags span {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.resource-homepage__status-pill {
+  color: #ddffef;
+  background: rgba(149, 213, 178, 0.18);
+  border: 1px solid rgba(149, 213, 178, 0.34);
+}
+
+.resource-homepage__author-pill {
+  color: #dbeafe;
+  background: rgba(59, 130, 246, 0.16);
+  border: 1px solid rgba(96, 165, 250, 0.32);
+}
+
+.resource-homepage__meta,
+.resource-homepage__summary,
+.resource-homepage__paragraph,
+.resource-homepage__link-card span {
+  margin: 0;
+  color: var(--text-sub);
+  line-height: 1.8;
+}
+
+.resource-homepage__tags,
+.resource-homepage__group-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.resource-homepage__tag,
+.resource-homepage__group-tags span {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.resource-homepage__primary-btn,
+.resource-homepage__secondary-btn,
+.resource-homepage__link-card {
+  border-radius: 18px;
+  min-height: 48px;
+  padding: 0 18px;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+
+.resource-homepage__primary-btn:hover,
+.resource-homepage__secondary-btn:hover,
+.resource-homepage__link-card:hover {
+  transform: translateY(-1px);
+}
+
+.resource-homepage__primary-btn {
+  border: 0;
+  color: #052238;
+  background: #95d5b2;
+  font-weight: 700;
+}
+
+.resource-homepage__primary-btn--full,
+.resource-homepage__secondary-btn--full {
+  width: 100%;
+  justify-content: center;
+}
+
+.resource-homepage__secondary-btn {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+  font-weight: 700;
+}
+
+.resource-homepage__stats-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.resource-homepage__stat-card {
+  position: relative;
+  overflow: hidden;
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-radius: 18px;
+}
+
+.resource-homepage__stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent 75%);
+}
+
+.resource-homepage__stat-card--platform {
+  background:
+    linear-gradient(180deg, rgba(14, 165, 233, 0.13), rgba(255, 255, 255, 0.05)),
+    rgba(255, 255, 255, 0.06);
+}
+
+.resource-homepage__stat-card--visibility {
+  background:
+    linear-gradient(180deg, rgba(149, 213, 178, 0.13), rgba(255, 255, 255, 0.05)),
+    rgba(255, 255, 255, 0.06);
+}
+
+.resource-homepage__stat-card--versions {
+  background:
+    linear-gradient(180deg, rgba(255, 209, 102, 0.14), rgba(255, 255, 255, 0.05)),
+    rgba(255, 255, 255, 0.06);
+}
+
+.resource-homepage__stat-card--updated {
+  background:
+    linear-gradient(180deg, rgba(96, 165, 250, 0.14), rgba(255, 255, 255, 0.05)),
+    rgba(255, 255, 255, 0.06);
+}
+
+.resource-homepage__stat-label,
+.resource-homepage__stat-hint,
+.resource-homepage__section-head span {
+  color: var(--text-sub);
+  font-size: 12px;
+}
+
+.resource-homepage__stat-value {
+  font-size: clamp(15px, 1.35vw, 18px);
+  line-height: 1.2;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resource-homepage__stat-hint {
+  max-width: 14ch;
+  line-height: 1.2;
+  opacity: 0.88;
+  text-align: right;
+}
+
+.resource-homepage__detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.resource-homepage__content-card {
+  padding: 22px;
+}
+
+.resource-homepage__section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.resource-homepage__section-head h2,
+.resource-homepage__group-item h3 {
+  margin: 0;
+  color: var(--text-main);
+}
+
+.resource-homepage__paragraph--muted {
+  margin-top: 12px;
+  opacity: 0.78;
+}
+
+.resource-homepage__content-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.resource-homepage__group-list,
+.resource-homepage__link-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.resource-homepage__version-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resource-homepage__version-card {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 18px;
+}
+
+.resource-homepage__version-headline,
+.resource-homepage__version-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.resource-homepage__version-meta strong {
+  color: var(--text-main);
+}
+
+.resource-homepage__version-meta span {
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+.resource-homepage__version-download {
+  border: 0;
+  border-radius: 14px;
+  min-height: 42px;
+  padding: 0 16px;
+  color: #052238;
+  background: #95d5b2;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.resource-homepage__version-download:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(149, 213, 178, 0.22);
+}
+
+.resource-homepage__group-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (max-width: 980px) {
+
+  .resource-homepage__lead,
+  .resource-homepage__detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .resource-homepage__stats-grid {
     display: grid;
-    grid-template-columns: 280px minmax(0, 1fr);
-    gap: 28px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .resource-homepage__stat-card {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .resource-homepage__stat-hint {
+    max-width: none;
+    text-align: left;
+  }
 }
 
-.resource-detail-cover {
-    border-radius: 24px;
-    overflow: hidden;
-    background: linear-gradient(135deg, #dbeafe, #eff6ff);
+@media (max-width: 640px) {
+  .resource-homepage__panel {
+    padding: 18px;
+  }
+
+  .resource-homepage__cover-card {
     min-height: 280px;
-}
+  }
 
-.resource-detail-cover img,
-.resource-detail-cover__placeholder {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
+  .resource-homepage__stats-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
 
-.resource-detail-cover__placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 84px;
-}
-
-.resource-detail-kicker {
-    margin: 0 0 8px;
-    color: #2563eb;
-    font-weight: 700;
-}
-
-.resource-detail-content h1 {
-    margin: 0;
-    font-size: 2.4rem;
-}
-
-.resource-detail-meta,
-.resource-detail-desc,
-.resource-detail-note p {
-    color: #475569;
-    line-height: 1.8;
-}
-
-.resource-detail-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin: 20px 0;
-}
-
-.resource-detail-tag {
-    padding: 8px 12px;
-    border-radius: 999px;
-    background: #eff6ff;
-    color: #1d4ed8;
-    font-size: 14px;
-}
-
-.resource-detail-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-top: 24px;
-}
-
-.resource-detail-primary,
-.resource-detail-secondary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 44px;
-    padding: 0 18px;
-    border-radius: 999px;
-    text-decoration: none;
-}
-
-.resource-detail-primary {
-    border: none;
-    background: #2563eb;
-    color: #fff;
-    cursor: pointer;
-}
-
-.resource-detail-secondary {
-    border: 1px solid #bfdbfe;
-    color: #1d4ed8;
-    background: #fff;
-}
-
-.resource-detail-note {
-    margin-top: 28px;
-    padding-top: 20px;
-    border-top: 1px solid #e2e8f0;
-}
-
-@media (max-width: 840px) {
-    .resource-detail-layout {
-        grid-template-columns: 1fr;
-    }
+  .resource-homepage__version-headline {
+    align-items: flex-start;
+  }
 }
 </style>

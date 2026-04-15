@@ -29,6 +29,16 @@ export type PublicMcResourceItem = {
   updated_at: string
 }
 
+export type PublicMcResourceVersionItem = {
+  id: number
+  resource_id: number
+  version: string
+  resource: string
+  note: string | null
+  creator: string
+  created_at: string
+}
+
 export async function listPublicMcResources(
   platform: McResourcePlatform,
 ): Promise<PublicMcResourceItem[]> {
@@ -48,5 +58,17 @@ export async function getPublicMcResource(resourceId: number): Promise<PublicMcR
       method: 'GET',
     },
     '加载资源主页失败',
+  )
+}
+
+export async function listPublicMcResourceVersions(
+  resourceId: number,
+): Promise<PublicMcResourceVersionItem[]> {
+  return requestJson<PublicMcResourceVersionItem[]>(
+    `/mc-resources/resources/${resourceId}/versions`,
+    {
+      method: 'GET',
+    },
+    '加载历史版本失败',
   )
 }

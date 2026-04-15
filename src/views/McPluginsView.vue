@@ -12,6 +12,21 @@ const route = useRoute()
 const auth = useAuthStore()
 const { showToast } = useToast()
 const menuOpen = ref(false)
+const heroNavLinks = computed(() => {
+  const links = [
+    { label: '返回首页', to: { name: 'home' } },
+    { label: 'MC 插件与模组', to: { name: 'mc-plugins-java' }, active: true },
+    { label: '探索', href: '#' },
+    { label: '免费资源', href: '#' },
+    { label: '社区', href: '#' },
+  ]
+
+  if (auth.isAuthed) {
+    links.splice(2, 0, { label: '我的定制资源', to: { name: 'my-custom-resources' } })
+  }
+
+  return links
+})
 
 const currentPlatformLabel = computed(() => (route.name === 'mc-plugins-java' ? 'Java 版' : '基岩版'))
 const authVisible = ref(false)
@@ -101,13 +116,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="page-shell">
-    <HomeHeroSection :isAuthed="auth.isAuthed" :username="auth.username" :menuOpen="menuOpen" :navLinks="[
-      { label: '返回首页', to: '/' },
-      { label: '探索', href: '#' },
-      { label: '免费资源', href: '#' },
-      { label: '社区', href: '#' },
-    ]" @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" @logout="logout">
+  <main class="page-shell  custom-page-shell">
+    <HomeHeroSection :isAuthed="auth.isAuthed" :username="auth.username" :menuOpen="menuOpen" :navLinks="heroNavLinks"
+      @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" @logout="logout">
       <div class="hero-meta">
         <div class="hero">
           <h1>MC 插件与模组</h1>

@@ -5,7 +5,15 @@ import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
 const proxyTarget = 'http://127.0.0.1:8080'
-const proxyPaths = ['/auth', '/requirements', '/payments', '/settings', '/mc-resources']
+const proxyPaths = [
+  '/auth',
+  '/requirements',
+  '/payments',
+  '/settings',
+  '/mc-resources/resources',
+  '/mc-resources/tags',
+  '/uploads',
+]
 const proxyConfig = Object.fromEntries(
   proxyPaths.map((path) => [path, { target: proxyTarget, changeOrigin: true }]),
 )

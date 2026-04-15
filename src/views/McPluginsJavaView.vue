@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { apiUrl } from '@/api/http'
 import { listPublicMcResources, type PublicMcResourceItem } from '@/api/mcResources'
 import { getPlatformTagFilters, getPublicMcTagTree, type McTagGroup } from '@/api/mcTags'
 import { useToast } from '@/composables/useToast'
@@ -25,6 +27,7 @@ type McCardItem = {
 const currentPlatform = 'Java'
 const sortOptions = ['最新', '标题']
 const { showToast } = useToast()
+const router = useRouter()
 
 const tagTree = ref<McTagGroup[]>([])
 const sides = ref<string[]>([])
@@ -69,7 +72,7 @@ function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
     tags: tags.length > 0 ? tags : ['未标注'],
     updatedAt: item.updated_at,
     sourceUrl: item.source_url,
-    coverUrl: item.cover_url,
+    coverUrl: item.cover_url ? apiUrl(item.cover_url) : null,
   }
 }
 
@@ -130,17 +133,8 @@ function formatUpdatedAt(value: string): string {
   })
 }
 
-function canDownload(card: McCardItem): boolean {
-  return /^https?:\/\//i.test(card.sourceUrl)
-}
-
 function openResource(card: McCardItem) {
-  if (!canDownload(card)) {
-    showToast('该资源暂未提供下载地址', 'info')
-    return
-  }
-
-  window.open(card.sourceUrl, '_blank', 'noopener,noreferrer')
+  router.push({ name: 'mc-resource-detail', params: { id: card.id } })
 }
 
 async function loadTagTree() {
@@ -260,8 +254,8 @@ onMounted(() => {
         </div>
         <div class="res-stats">
           <span>{{ formatUpdatedAt(card.updatedAt) }}</span>
-          <button class="btn-download" type="button" :disabled="!canDownload(card)" @click="openResource(card)">
-            {{ canDownload(card) ? '下载' : '待开放' }}
+          <button class="btn-download" type="button" @click="openResource(card)">
+            查看详情
           </button>
         </div>
       </div>

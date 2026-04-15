@@ -1,4 +1,5 @@
 import { authHeader, requestJson } from '@/api/http'
+import type { McResourceTagSelectionPayload, McResourcePlatform } from '@/api/mcResources'
 
 export type RecentDeal = {
   payment_id: string
@@ -35,6 +36,15 @@ export type RequirementItem = {
   requirement_id: string
   bound_resource_id?: number | null
   resource_visibility?: 'public' | 'private' | null
+  bound_resource_platform?: McResourcePlatform | null
+  bound_resource_title?: string | null
+  bound_resource_author?: string | null
+  bound_resource_description?: string | null
+  bound_resource_tag_selections?: McResourceTagSelectionPayload[] | null
+  bound_resource_source_url?: string | null
+  bound_resource_cover_url?: string | null
+  bound_resource_docs_url?: string | null
+  bound_resource_updated_at?: string | null
   created_time?: string
   creator?: string
   title: string
