@@ -1,0 +1,4 @@
+declare module 'markdown-it' {
+  import MarkdownIt = require('markdown-it/dist/index.cjs.js')
+  export = MarkdownIt
+}

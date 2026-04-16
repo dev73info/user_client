@@ -227,6 +227,7 @@ function statusToLabel(status: RequirementStatus): string {
     deposit_paid: '已付定金',
     in_development: '开发中',
     pending_final: '待付尾款',
+    final_paid: '已付尾款',
     completed: '已完成',
   }
 
@@ -462,7 +463,7 @@ async function loadPendingRequirements(silent = false) {
       return
     }
     pendingRequirements.value = rows
-      .filter((item) => item.status !== 'completed' && item.status !== 'rejected')
+      .filter((item) => item.status !== 'final_paid' && item.status !== 'completed' && item.status !== 'rejected')
       .slice(0, 8)
       .map((item) => ({
         id: item.requirement_id,
@@ -710,7 +711,6 @@ async function submitPublishRequirement() {
   const normalizedAcceptance = publishAcceptance.value.trim()
 
   const budgetRaw = String(publishBudget.value ?? '').trim()
-  const budget = budgetRaw ? Number(budgetRaw) : undefined
 
   if (normalizedTitle.length < 4) {
     showToast('需求标题至少 4 个字符', 'error')
@@ -722,8 +722,20 @@ async function submitPublishRequirement() {
     return
   }
 
-  if (budget !== undefined && (Number.isNaN(budget) || budget < 0)) {
+  if (!budgetRaw) {
+    showToast('预算不能为空', 'error')
+    return
+  }
+
+  const budget = Number(budgetRaw)
+
+  if (Number.isNaN(budget) || budget < 0) {
     showToast('预算必须是大于等于0的数字', 'error')
+    return
+  }
+
+  if (!normalizedAcceptance) {
+    showToast('验收标准不能为空', 'error')
     return
   }
 
@@ -734,7 +746,7 @@ async function submitPublishRequirement() {
       title: normalizedTitle,
       description: normalizedDescription,
       budget,
-      acceptance_criteria: normalizedAcceptance || undefined,
+      acceptance_criteria: normalizedAcceptance,
     })
 
     if (!isMounted) {

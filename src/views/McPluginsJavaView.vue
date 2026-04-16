@@ -6,7 +6,6 @@ import { listPublicMcResources, type PublicMcResourceItem } from '@/api/mcResour
 import { getPlatformTagFilters, getPublicMcTagTree, type McTagGroup } from '@/api/mcTags'
 import { useToast } from '@/composables/useToast'
 import { useMultiSelectTags } from '@/composables/useMultiSelectTags'
-import '../styles/McPluginsView.css'
 
 type McCardItem = {
   id: number

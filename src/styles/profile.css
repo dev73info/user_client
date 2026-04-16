@@ -1,0 +1,184 @@
+/* === 个人中心：钱包、需求单、优惠券 === */
+
+.profile-update-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.profile-update-row input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+}
+
+.profile-update-row input:disabled {
+  opacity: 0.7;
+}
+
+.wallet-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.wallet-card {
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.summary-card strong {
+  display: block;
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.summary-card span {
+  color: var(--text-sub);
+}
+
+.wallet-section {
+  margin-top: 20px;
+}
+
+.wallet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.wallet-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+/* --- 需求单行 --- */
+.requirement-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-sub);
+}
+
+.requirement-row.clickable {
+  cursor: pointer;
+  border: 1px solid rgba(149, 213, 178, 0.3);
+}
+
+.requirement-row.clickable:hover {
+  background: rgba(149, 213, 178, 0.12);
+}
+
+.requirement-main strong {
+  color: var(--text-main);
+  font-size: 14px;
+}
+
+.requirement-main span {
+  font-size: 12px;
+}
+
+.requirement-note {
+  display: block;
+  margin-top: 6px;
+  color: #ffb4b4;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.requirement-resource-visibility {
+  display: block;
+  margin-top: 6px;
+  color: #95d5b2;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.requirement-status {
+  border-radius: 999px;
+  padding: 4px 10px;
+  color: #ffe18b;
+  font-size: 12px;
+  background: rgba(255, 225, 139, 0.18);
+}
+
+.requirement-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* --- 优惠券列表（个人中心） --- */
+.coupon-items {
+  display: grid;
+  gap: 12px;
+}
+
+.coupon-item {
+  width: 100%;
+  text-align: left;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.coupon-item:hover {
+  border-color: rgba(149, 213, 178, 0.45);
+  background: rgba(149, 213, 178, 0.1);
+}
+
+.coupon-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.coupon-status {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.coupon-status.pending_use {
+  background: rgba(31, 197, 142, 0.14);
+  color: #8ef1bb;
+}
+
+.coupon-status.used {
+  background: rgba(255, 140, 140, 0.14);
+  color: #ffb3b3;
+}
+
+.coupon-item small {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-sub);
+}
+
+.coupon-meta {
+  margin: 10px 0 0;
+  color: var(--text-sub);
+  font-size: 13px;
+}

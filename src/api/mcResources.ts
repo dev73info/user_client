@@ -1,4 +1,4 @@
-import { requestJson } from '@/api/http'
+import { authHeader, requestJson } from '@/api/http'
 
 export type McResourcePlatform = 'java' | 'bedrock'
 
@@ -51,11 +51,15 @@ export async function listPublicMcResources(
   )
 }
 
-export async function getPublicMcResource(resourceId: number): Promise<PublicMcResourceItem> {
+export async function getPublicMcResource(
+  resourceId: number,
+  token?: string | null,
+): Promise<PublicMcResourceItem> {
   return requestJson<PublicMcResourceItem>(
     `/mc-resources/resources/${resourceId}`,
     {
       method: 'GET',
+      headers: token ? authHeader(token) : undefined,
     },
     '加载资源主页失败',
   )
@@ -63,11 +67,13 @@ export async function getPublicMcResource(resourceId: number): Promise<PublicMcR
 
 export async function listPublicMcResourceVersions(
   resourceId: number,
+  token?: string | null,
 ): Promise<PublicMcResourceVersionItem[]> {
   return requestJson<PublicMcResourceVersionItem[]>(
     `/mc-resources/resources/${resourceId}/versions`,
     {
       method: 'GET',
+      headers: token ? authHeader(token) : undefined,
     },
     '加载历史版本失败',
   )

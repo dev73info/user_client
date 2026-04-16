@@ -8,7 +8,6 @@ import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import { listRequirements, type RequirementItem } from '@/api/requirements'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
-import '../styles/McPluginsView.css'
 
 type CustomResourceCard = {
   id: number
@@ -149,23 +148,8 @@ function resetFilters() {
   selectedSort.value = '最新'
 }
 
-function canOpenUrl(value: string | null): value is string {
-  return Boolean(value && /^https?:\/\//i.test(value))
-}
-
 function openPrimaryLink(card: CustomResourceCard) {
-  if (card.visibility === 'public') {
-    router.push({ name: 'mc-resource-detail', params: { id: card.id } })
-    return
-  }
-
-  const url = canOpenUrl(card.sourceUrl) ? card.sourceUrl : card.docsUrl
-  if (!url) {
-    showToast('该资源暂未提供可访问链接', 'info')
-    return
-  }
-
-  window.open(url, '_blank', 'noopener,noreferrer')
+  router.push({ name: 'mc-resource-detail', params: { id: card.id } })
 }
 
 async function loadCustomResources() {
@@ -295,11 +279,8 @@ onMounted(() => {
         </div>
         <div class="res-stats custom-res-stats">
           <span>{{ formatUpdatedAt(card.updatedAt) }}</span>
-          <button class="btn-download" type="button"
-            :disabled="card.visibility !== 'public' && !canOpenUrl(card.sourceUrl) && !canOpenUrl(card.docsUrl)"
-            @click="openPrimaryLink(card)">
-            {{ card.visibility === 'public' ? '查看公开页' : canOpenUrl(card.sourceUrl) ? '查看资源' : canOpenUrl(card.docsUrl) ?
-              '查看文档' : '待补充' }}
+          <button class="btn-download" type="button" :disabled="false" @click="openPrimaryLink(card)">
+            {{ card.visibility === 'public' ? '查看公开页' : '查看并下载' }}
           </button>
         </div>
       </div>

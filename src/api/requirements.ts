@@ -29,6 +29,7 @@ export type RequirementStatus =
   | 'deposit_paid'
   | 'in_development'
   | 'pending_final'
+  | 'final_paid'
   | 'completed'
 
 export type RequirementItem = {
@@ -62,8 +63,8 @@ export type RequirementItem = {
 export type CreateRequirementPayload = {
   title: string
   description: string
-  budget?: number
-  acceptance_criteria?: string
+  budget: number
+  acceptance_criteria: string
 }
 
 export type CommentRequirementPayload = {

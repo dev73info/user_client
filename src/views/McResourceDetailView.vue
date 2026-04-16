@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import MarkdownIt from 'markdown-it'
 import { useRoute, useRouter } from 'vue-router'
 
 import { apiUrl } from '@/api/http'
@@ -95,17 +96,50 @@ const infoCards = computed(() => {
 })
 const resourceCoverUrl = computed(() => (resource.value?.cover_url ? apiUrl(resource.value.cover_url) : ''))
 const latestVersion = computed(() => versions.value[0] ?? null)
-const pageContentParagraphs = computed(() => {
-  const content = resource.value?.release_note?.trim()
-  if (!content) {
-    return []
+const pageContentHtml = computed(() => formatHomepageContent(resource.value?.release_note || ''))
+
+const markdownRenderer = new MarkdownIt({
+  html: false,
+  linkify: true,
+  breaks: true,
+})
+
+function sanitizeRichHtml(value: string): string {
+  const template = document.createElement('template')
+  template.innerHTML = value
+
+  template.content.querySelectorAll('script, style, iframe, object, embed').forEach((node) => node.remove())
+
+  template.content.querySelectorAll('*').forEach((element) => {
+    Array.from(element.attributes).forEach((attribute) => {
+      const name = attribute.name.toLowerCase()
+      const attributeValue = attribute.value.trim()
+      if (name.startsWith('on')) {
+        element.removeAttribute(attribute.name)
+        return
+      }
+
+      if ((name === 'href' || name === 'src') && /^javascript:/i.test(attributeValue)) {
+        element.removeAttribute(attribute.name)
+      }
+    })
+  })
+
+  return template.innerHTML
+}
+
+function formatHomepageContent(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return ''
   }
 
-  return content
-    .split(/\n{2,}|\r\n\r\n/)
-    .map((item) => item.trim())
-    .filter(Boolean)
-})
+  if (/<\/?[a-z][\s\S]*>/i.test(trimmed)) {
+    return sanitizeRichHtml(trimmed)
+  }
+
+  return sanitizeRichHtml(markdownRenderer.render(trimmed))
+}
 
 function backToPlatform() {
   const platform = resource.value?.platform === 'bedrock' ? 'mc-plugins-bedrock' : 'mc-plugins-java'
@@ -224,9 +258,10 @@ async function loadResource() {
 
   loading.value = true
   try {
+    const token = auth.token?.trim() ? auth.token : null
     const [resourceDetail, resourceVersions] = await Promise.all([
-      getPublicMcResource(resourceId),
-      listPublicMcResourceVersions(resourceId),
+      getPublicMcResource(resourceId, token),
+      listPublicMcResourceVersions(resourceId, token),
     ])
     resource.value = resourceDetail
     versions.value = resourceVersions
@@ -241,7 +276,7 @@ async function loadResource() {
 
 onMounted(() => {
   auth.hydrate()
-  loadResource()
+  void loadResource()
 })
 </script>
 
@@ -295,11 +330,8 @@ onMounted(() => {
               <h2>页面内容</h2>
               <span>Content</span>
             </header>
-            <div v-if="pageContentParagraphs.length" class="resource-homepage__content-flow">
-              <p v-for="paragraph in pageContentParagraphs" :key="paragraph" class="resource-homepage__paragraph">
-                {{ paragraph }}
-              </p>
-            </div>
+            <div v-if="pageContentHtml" class="resource-homepage__content-flow resource-homepage__rich-text"
+              v-html="pageContentHtml" />
             <p v-else class="resource-homepage__paragraph">
               当前还没有额外补充说明。后续更新、兼容性说明或使用建议会展示在这里。
             </p>
@@ -617,6 +649,92 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.resource-homepage__rich-text :deep(h2) {
+  margin: 0 0 12px;
+  color: var(--text-main);
+  font-size: 22px;
+  line-height: 1.35;
+}
+
+.resource-homepage__rich-text :deep(h1) {
+  margin: 0 0 14px;
+  color: var(--text-main);
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.resource-homepage__rich-text :deep(h3) {
+  margin: 0 0 12px;
+  color: var(--text-main);
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.resource-homepage__rich-text :deep(p) {
+  margin: 0 0 12px;
+  color: var(--text-sub);
+  line-height: 1.8;
+}
+
+.resource-homepage__rich-text :deep(blockquote) {
+  margin: 0 0 12px;
+  padding-left: 14px;
+  border-left: 3px solid rgba(149, 213, 178, 0.34);
+  color: var(--text-sub);
+}
+
+.resource-homepage__rich-text :deep(ul),
+.resource-homepage__rich-text :deep(ol) {
+  margin: 0 0 12px;
+  padding-left: 22px;
+  color: var(--text-sub);
+}
+
+.resource-homepage__rich-text :deep(a) {
+  color: #95d5b2;
+}
+
+.resource-homepage__rich-text :deep(pre) {
+  margin: 0 0 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(5, 18, 30, 0.86);
+  overflow-x: auto;
+}
+
+.resource-homepage__rich-text :deep(code) {
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+}
+
+.resource-homepage__rich-text :deep(pre code) {
+  color: #e2e8f0;
+}
+
+.resource-homepage__rich-text :deep(hr) {
+  margin: 18px 0;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.resource-homepage__rich-text :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+}
+
+.resource-homepage__rich-text :deep(th),
+.resource-homepage__rich-text :deep(td) {
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: left;
+  color: var(--text-sub);
+}
+
+.resource-homepage__rich-text :deep(th) {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .resource-homepage__group-list,

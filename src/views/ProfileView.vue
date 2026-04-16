@@ -88,6 +88,7 @@ function formatRequirementStatus(status: RequirementStatus) {
     deposit_paid: '已付定金',
     in_development: '开发中',
     pending_final: '待付尾款',
+    final_paid: '已付尾款',
     completed: '已完成',
   }
 
@@ -130,6 +131,10 @@ function currentResourceVisibility(item: RequirementItem): RequirementResourceVi
   return item.resource_visibility ?? null
 }
 
+function canToggleRequirementResourceVisibility(item: RequirementItem) {
+  return hasBoundResource(item) && (item.status === 'final_paid' || item.status === 'completed')
+}
+
 function formatResourceVisibility(item: RequirementItem) {
   return currentResourceVisibility(item) === 'public' ? '资源已公开' : '资源私有中'
 }
@@ -139,6 +144,10 @@ function nextResourceVisibility(item: RequirementItem): RequirementResourceVisib
 }
 
 function toggleResourceVisibilityLabel(item: RequirementItem) {
+  if (!canToggleRequirementResourceVisibility(item)) {
+    return '尾款后可设置'
+  }
+
   return nextResourceVisibility(item) === 'public' ? '设为公开' : '设为私有'
 }
 
@@ -152,12 +161,12 @@ function openPayModal(item: RequirementItem) {
   payVisible.value = true
 }
 
-function isCompleted(status: RequirementStatus) {
-  return status === 'completed'
+function canComment(status: RequirementStatus) {
+  return status === 'final_paid' || status === 'completed'
 }
 
 function openCommentModal(item: RequirementItem) {
-  if (!isCompleted(item.status)) {
+  if (!canComment(item.status)) {
     return
   }
   commentRequirement.value = item
@@ -196,12 +205,23 @@ function goProfile() {
   router.push({ name: 'profile' })
 }
 
+function logout() {
+  auth.logout()
+  closeUserMenu()
+  showToast('已退出登录', 'info')
+  router.push({ name: 'home' })
+}
+
+async function refreshProfileData() {
+  await Promise.all([loadCoupons(), loadMyRequirements(), loadDepositRatio()])
+}
+
 function handleRequirementAction(item: RequirementItem) {
   if (canPay(item.status)) {
     openPayModal(item)
   } else if (canResubmit(item.status)) {
     openRequirementEditModal(item)
-  } else if (isCompleted(item.status)) {
+  } else if (canComment(item.status)) {
     openCommentModal(item)
   }
 }
@@ -279,6 +299,11 @@ async function toggleRequirementResourceVisibility(item: RequirementItem) {
     return
   }
 
+  if (!canToggleRequirementResourceVisibility(item)) {
+    showToast('需求必须在已付尾款后，才能设置资源为公开或私有', 'warning')
+    return
+  }
+
   const visibility = nextResourceVisibility(item)
   resourceVisibilityLoadingId.value = item.requirement_id
   try {
@@ -334,7 +359,6 @@ async function submitRequirementResubmit() {
   const normalizedDescription = editDescription.value.trim()
   const normalizedAcceptance = editAcceptance.value.trim()
   const budgetRaw = String(editBudget.value ?? '').trim()
-  const budget = budgetRaw ? Number(budgetRaw) : undefined
 
   if (normalizedTitle.length < 4) {
     showToast('需求标题至少 4 个字符', 'error')
@@ -346,8 +370,20 @@ async function submitRequirementResubmit() {
     return
   }
 
-  if (budget !== undefined && (Number.isNaN(budget) || budget < 0)) {
+  if (!budgetRaw) {
+    showToast('预算不能为空', 'error')
+    return
+  }
+
+  const budget = Number(budgetRaw)
+
+  if (Number.isNaN(budget) || budget < 0) {
     showToast('预算必须是大于等于0的数字', 'error')
+    return
+  }
+
+  if (!normalizedAcceptance) {
+    showToast('验收标准不能为空', 'error')
     return
   }
 
@@ -357,7 +393,7 @@ async function submitRequirementResubmit() {
       title: normalizedTitle,
       description: normalizedDescription,
       budget,
-      acceptance_criteria: normalizedAcceptance || undefined,
+      acceptance_criteria: normalizedAcceptance,
     })
 
     showToast('需求已重新提交，等待审核', 'success')
@@ -569,20 +605,36 @@ onMounted(async () => {
   newUsername.value = auth.username
   await Promise.all([loadCoupons(), loadMyRequirements(), loadDepositRatio()])
 })
+
+const heroNavLinks = computed(() => {
+  const links = [
+    { label: '返回首页', to: { name: 'home' } },
+    { label: '个人中心', to: { name: 'profile' }, active: true },
+    { label: '我的定制资源', to: { name: 'my-custom-resources' } }
+  ]
+
+  return links
+})
 </script>
 
 <template>
-  <main class="page-shell">
-    <HomeHeroSection :isAuthed="auth.isAuthed" :username="auth.username" :menuOpen="menuOpen" :navLinks="[
-      { label: '返回首页', to: '/' },
-    ]" @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" />
-
-    <section class="hero">
-      <div class="hero-intro">
-        <h1>{{ auth.username ? `${auth.username} 的个人中心` : '个人中心' }}</h1>
-        <p class="desc">管理你的账户、优惠券与需求单，统一使用页面布局标准。</p>
+  <main class="page-shell custom-page-shell">
+    <HomeHeroSection :isAuthed="auth.isAuthed" :username="auth.username" :menuOpen="menuOpen" :navLinks="heroNavLinks"
+      @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" @logout="logout">
+      <div class="hero-meta">
+        <div class="hero">
+          <h1>{{ auth.username ? `${auth.username} 的个人中心` : '个人中心' }}</h1>
+          <p class="desc">管理你的账户、优惠券与需求单，统一使用页面布局标准。</p>
+        </div>
+        <div class="hero-actions">
+          <button class="refresh-btn" type="button" :disabled="loading || requirementLoading"
+            @click="refreshProfileData">
+            {{ loading || requirementLoading ? '刷新中...' : '刷新资料' }}
+          </button>
+        </div>
       </div>
-    </section>
+    </HomeHeroSection>
+
     <section class="glass-panel">
       <header class="panel-head">
         <div>
@@ -624,28 +676,33 @@ onMounted(async () => {
         <div v-if="myRequirements.length === 0" class="empty">暂无已提交需求单</div>
         <ul v-else class="requirement-list">
           <li v-for="item in myRequirements" :key="item.requirement_id" class="requirement-row"
-            :class="{ clickable: canPay(item.status) || isCompleted(item.status) || canResubmit(item.status) }"
+            :class="{ clickable: canPay(item.status) || canComment(item.status) || canResubmit(item.status) }"
             @click="handleRequirementAction(item)">
             <div class="requirement-main">
               <strong>{{ item.title }}</strong>
               <span>{{ item.requirement_id }}</span>
-              <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{ formatResourceVisibility(item) }}</small>
-              <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{ item.review_note }}</small>
+              <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
+                formatResourceVisibility(item) }}</small>
+              <small v-if="hasBoundResource(item) && !canToggleRequirementResourceVisibility(item)"
+                class="requirement-note">资源公开/私有切换需在已付尾款后开放</small>
+              <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{
+                item.review_note }}</small>
             </div>
             <span class="requirement-status">{{ formatRequirementStatus(item.status) }}</span>
             <span>{{ formatBudget(item.budget) }}</span>
             <time>{{ formatRequirementTime(item.updated_at) }}</time>
             <div class="requirement-actions">
               <button v-if="hasBoundResource(item)" class="ghost small" type="button"
-                :disabled="resourceVisibilityLoadingId === item.requirement_id"
+                :disabled="resourceVisibilityLoadingId === item.requirement_id || !canToggleRequirementResourceVisibility(item)"
                 @click.stop="toggleRequirementResourceVisibility(item)">
-                {{ resourceVisibilityLoadingId === item.requirement_id ? '提交中...' : toggleResourceVisibilityLabel(item) }}
+                {{ resourceVisibilityLoadingId === item.requirement_id ? '提交中...' : toggleResourceVisibilityLabel(item)
+                }}
               </button>
               <button v-if="canResubmit(item.status)" class="ghost small" type="button"
                 @click.stop="openRequirementEditModal(item)">重新编辑</button>
               <button v-else-if="canPay(item.status)" class="ghost small" type="button"
                 @click.stop="openPayModal(item)">去支付</button>
-              <button v-else-if="isCompleted(item.status)" class="ghost small" type="button"
+              <button v-else-if="canComment(item.status)" class="ghost small" type="button"
                 @click.stop="openCommentModal(item)">去评价</button>
             </div>
           </li>
@@ -693,7 +750,7 @@ onMounted(async () => {
 
       <div v-if="commentVisible && commentRequirement" class="modal-wrap" @click.self="closeCommentModal">
         <section class="pay-modal" aria-label="需求评论弹窗">
-          <h3>评价已完成需求</h3>
+          <h3>评价需求</h3>
           <p class="pay-line"><strong>需求标题：</strong>{{ commentRequirement.title }}</p>
           <p class="pay-line"><strong>需求编号：</strong>{{ commentRequirement.requirement_id }}</p>
           <div class="pay-line">

@@ -1,0 +1,375 @@
+/* === 弹窗、表单与支付选项 === */
+
+.auth-modal-wrap,
+.modal-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 8, 15, 0.5);
+}
+
+.auth-modal,
+.pay-modal {
+  width: min(540px, 100%);
+  border-radius: 16px;
+  border: 1px solid var(--card-border);
+  background: rgba(5, 24, 38, 0.94);
+  backdrop-filter: blur(8px);
+  padding: 18px;
+}
+
+.auth-modal h3,
+.pay-modal h3 {
+  margin: 0 0 12px;
+}
+
+.auth-modal label,
+.auth-modal input,
+.auth-modal textarea {
+  width: 100%;
+}
+
+.auth-modal label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.auth-modal input,
+.auth-modal textarea,
+.profile-update-row input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-main);
+  padding: 10px 12px;
+  outline: none;
+}
+
+.auth-modal input[type='checkbox'] {
+  width: auto;
+  max-width: none;
+  margin: 0;
+}
+
+.auth-agreement-row {
+  margin-bottom: 12px;
+}
+
+.auth-forgot-row {
+  text-align: right;
+  margin-bottom: 12px;
+}
+
+.auth-link {
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.auth-link:hover {
+  opacity: 0.85;
+}
+
+.auth-code-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.auth-agreement-row .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-sub);
+  font-size: 13px;
+  line-height: 1.6;
+  flex-wrap: wrap;
+}
+
+.auth-agreement-row .checkbox-label input {
+  margin-top: 0;
+}
+
+.auth-agreement-row .checkbox-label a {
+  color: var(--text-main);
+  text-decoration: underline;
+}
+
+.auth-modal textarea {
+  resize: vertical;
+  font: inherit;
+}
+
+.auth-modal input:focus,
+.auth-modal textarea:focus {
+  border-color: rgba(149, 213, 178, 0.72);
+  box-shadow: 0 0 0 3px rgba(149, 213, 178, 0.16);
+}
+
+.auth-modal-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.auth-modal input[type='number']::-webkit-outer-spin-button,
+.auth-modal input[type='number']::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.auth-modal input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.auth-modal textarea:focus,
+.profile-update-row input:focus {
+  border-color: rgba(149, 213, 178, 0.72);
+  box-shadow: 0 0 0 3px rgba(149, 213, 178, 0.16);
+}
+
+/* --- 优惠券选择（弹窗内） --- */
+.coupon-field {
+  margin-top: 10px;
+}
+
+.coupon-summary {
+  margin: 4px 0 10px;
+  color: #a5d8ff;
+  font-size: 13px;
+}
+
+.coupon-note {
+  margin: 0 0 10px;
+  color: var(--text-sub);
+  font-size: 12px;
+}
+
+.coupon-list {
+  margin-bottom: 12px;
+}
+
+.coupon-sections {
+  display: grid;
+  gap: 16px;
+}
+
+.coupon-section {
+  display: grid;
+  gap: 10px;
+}
+
+.coupon-section-header {
+  color: var(--text-sub);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.coupon-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+.coupon-items {
+  display: grid;
+  gap: 8px;
+}
+
+.coupon-item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  text-align: left;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.coupon-item.active,
+.coupon-item:hover {
+  border-color: rgba(149, 213, 178, 0.45);
+  background: rgba(149, 213, 178, 0.12);
+}
+
+.coupon-item strong {
+  font-size: 13px;
+}
+
+.coupon-item small {
+  color: var(--text-sub);
+  font-size: 12px;
+}
+
+/* --- 支付方式选择 --- */
+.payment-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(8, 27, 42, 0.35);
+}
+
+.payment-option {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: rgba(7, 30, 46, 0.45);
+  color: var(--text-main);
+  padding: 10px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.payment-option:hover {
+  border-color: rgba(149, 213, 178, 0.45);
+  background: rgba(9, 40, 62, 0.66);
+}
+
+.payment-option.active {
+  background: linear-gradient(150deg, rgba(149, 213, 178, 0.34), rgba(94, 180, 201, 0.32));
+  border-color: rgba(149, 213, 178, 0.7);
+  color: #f1fff8;
+  box-shadow: 0 6px 14px rgba(94, 180, 201, 0.2);
+}
+
+.payment-option-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: cover;
+  display: block;
+}
+
+.payment-row {
+  margin-bottom: 12px;
+}
+
+/* --- 评分与评论 --- */
+.rating-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.rating-star {
+  appearance: none;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.22);
+  font-size: 20px;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.rating-star.full {
+  color: #ffd166;
+}
+
+.rating-star.half {
+  color: transparent;
+  background: linear-gradient(90deg, #ffd166 50%, rgba(255, 255, 255, 0.22) 50%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.rating-star:hover {
+  background: rgba(149, 213, 178, 0.12);
+  border-color: rgba(149, 213, 178, 0.6);
+  transform: translateY(-1px);
+}
+
+.rating-value {
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+.comment-input {
+  width: 100%;
+  min-height: 120px;
+  margin-top: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+  resize: vertical;
+  outline: none;
+}
+
+.comment-input:focus {
+  border-color: rgba(149, 213, 178, 0.72);
+  box-shadow: 0 0 0 3px rgba(149, 213, 178, 0.16);
+}
+
+/* --- 定金卡片 --- */
+.deposit-card {
+  width: min(540px, 100%);
+}
+
+.deposit-line,
+.order-string,
+.pay-line {
+  margin: 0 0 10px;
+  color: var(--text-sub);
+  font-size: 14px;
+}
+
+.deposit-amount {
+  margin: 14px 0 0;
+  font-size: 16px;
+}
+
+.deposit-amount strong {
+  color: #ffd166;
+  font-size: 28px;
+}

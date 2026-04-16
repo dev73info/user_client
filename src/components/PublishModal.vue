@@ -44,23 +44,23 @@ function updateAcceptance(event: Event) {
         <section class="auth-modal" :aria-label="`${modalTitle}弹窗`">
             <h3>{{ modalTitle }}</h3>
             <label>
-                需求标题
-                <input :value="publishTitle" type="text" maxlength="60" placeholder="例如：企业官网改版、小程序开发"
+                需求标题 *
+                <input :value="publishTitle" type="text" maxlength="60" placeholder="例如：企业官网改版、小程序开发" required
                     @input="updateTitle" />
             </label>
             <label>
-                需求描述
+                需求描述 *
                 <textarea :value="publishDescription" rows="5" maxlength="300" placeholder="请描述你的目标、功能和期望交付时间，便于快速匹配。"
-                    @input="updateDescription"></textarea>
+                    required @input="updateDescription"></textarea>
             </label>
             <label>
-                预算
-                <input :value="publishBudget" type="number" min="0" step="0.01" placeholder="如 2000"
+                预算 *
+                <input :value="publishBudget" type="number" min="0" step="0.01" placeholder="如 2000" required
                     @input="updateBudget" />
             </label>
             <label>
-                验收标准
-                <textarea :value="publishAcceptance" rows="3" maxlength="240" placeholder="可填写交付标准、验收节点等（选填）。"
+                验收标准 *
+                <textarea :value="publishAcceptance" rows="3" maxlength="240" placeholder="请填写交付标准、验收节点等内容。" required
                     @input="updateAcceptance"></textarea>
             </label>
             <div class="auth-modal-actions">

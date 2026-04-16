@@ -1,0 +1,98 @@
+/* === 首页：指标卡、需求/成交列表 === */
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metric-card {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  backdrop-filter: blur(7px);
+  animation: reveal 520ms ease-out;
+}
+
+.metric-label {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+.metric-value {
+  margin: 10px 0 8px;
+  font-size: clamp(24px, 3.5vw, 36px);
+  font-weight: 700;
+}
+
+.metric-hint {
+  margin: 0;
+  color: var(--success);
+  font-size: 14px;
+}
+
+/* --- 需求/成交列表 --- */
+.deal-list,
+.req-list,
+.requirement-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.req-row,
+.deal-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-sub);
+}
+
+.req-row.clickable,
+.deal-row {
+  cursor: pointer;
+}
+
+.req-row.clickable:hover,
+.deal-row:hover {
+  background: rgba(149, 213, 178, 0.14);
+}
+
+.req-main,
+.requirement-main {
+  display: grid;
+  gap: 2px;
+}
+
+.req-main strong,
+.requirement-main strong {
+  color: var(--text-main);
+  font-size: 15px;
+}
+
+.req-main span,
+.requirement-main span {
+  font-size: 12px;
+}
+
+.status-chip {
+  border: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: #ffe18b;
+  font-size: 13px;
+  background: rgba(255, 225, 139, 0.18);
+}
+
+.status-chip.clickable {
+  cursor: pointer;
+  background: rgba(255, 225, 139, 0.28);
+}

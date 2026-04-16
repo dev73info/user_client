@@ -116,7 +116,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="page-shell  custom-page-shell">
+  <main class="page-shell custom-page-shell">
     <HomeHeroSection :isAuthed="auth.isAuthed" :username="auth.username" :menuOpen="menuOpen" :navLinks="heroNavLinks"
       @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" @logout="logout">
       <div class="hero-meta">
