@@ -8,6 +8,11 @@ type NavLink = {
   to?: RouteLocationRaw
   href?: string
   active?: boolean
+  align?: 'left' | 'right'
+}
+
+function isExternalHref(href?: string): boolean {
+  return typeof href === 'string' && /^https?:\/\//.test(href)
 }
 
 defineProps({
@@ -56,10 +61,14 @@ const emit = defineEmits<{
     <div class="hero-row" v-if="navLinks.length">
       <nav class="nav-links">
         <template v-for="link in navLinks" :key="link.label">
-          <RouterLink v-if="link.to" :to="link.to" class="brand-link" :class="{ active: link.active }">
+          <RouterLink v-if="link.to" :to="link.to" class="brand-link"
+            :class="[{ active: link.active }, link.align === 'right' ? 'brand-link--push-right' : '']">
             {{ link.label }}
           </RouterLink>
-          <a v-else :href="link.href || '#'" class="brand-link" :class="{ active: link.active }">
+          <a v-else :href="link.href || '#'" class="brand-link"
+            :class="[{ active: link.active }, link.align === 'right' ? 'brand-link--push-right' : '']"
+            :target="isExternalHref(link.href) ? '_blank' : undefined"
+            :rel="isExternalHref(link.href) ? 'noopener noreferrer' : undefined">
             {{ link.label }}
           </a>
         </template>
@@ -139,6 +148,10 @@ const emit = defineEmits<{
   box-shadow: 0 12px 36px rgba(14, 165, 233, 0.22);
 }
 
+.brand-link--push-right {
+  margin-left: auto;
+}
+
 .hero-content {
   width: 100%;
 }
@@ -150,6 +163,10 @@ const emit = defineEmits<{
 
   .nav-links {
     gap: 12px;
+  }
+
+  .brand-link--push-right {
+    margin-left: 0;
   }
 
   .brand-link {

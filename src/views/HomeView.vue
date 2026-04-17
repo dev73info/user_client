@@ -8,7 +8,15 @@ import AuthModal from '@/components/AuthModal.vue'
 import PublishModal from '@/components/PublishModal.vue'
 import DepositModal from '@/components/DepositModal.vue'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
+import HomeFreeResourceBoard from '@/components/home/HomeFreeResourceBoard.vue'
 import HomeSummarySection from '@/components/home/HomeSummarySection.vue'
+import {
+  getAllPublicMcTagTree,
+  getTagRouteSlug,
+  getPlatformSlug,
+  normalizeTagName,
+  type McTagGroup,
+} from '@/api/resourceTags'
 import { useToast } from '@/composables/useToast'
 import { useAuthForm } from '@/composables/useAuthForm'
 import {
@@ -45,7 +53,17 @@ type PendingRequirementView = {
   paymentMethod?: string | null
 }
 
+type FreeResourceSectionView = {
+  rootId: number
+  rootName: string
+  rootSlug: string
+  entrySlug: string | null
+  summary: string
+  actionLabel: string
+}
+
 type AuthMode = 'login' | 'register' | 'reset'
+const DEV_PORTAL_URL = 'https://dev.73info.cn'
 
 const metrics = ref<Metric[]>([
   {
@@ -80,17 +98,20 @@ type LatestDealView = {
 const latestDeals = ref<LatestDealView[]>([])
 const selectedDeal = ref<LatestDealView | null>(null)
 const dealDetailVisible = ref(false)
+const freeResourceSections = ref<FreeResourceSectionView[]>([])
+const freeResourceLoading = ref(false)
 
 const pendingRequirements = ref<PendingRequirementView[]>([])
-
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 const heroNavLinks = computed(() => {
-  const links = [{ label: 'MC插件与模组', to: { name: 'mc-plugins-java' } }]
+  const links: Array<{ label: string; to?: { name: string }; href?: string }> = [
+    { label: '开发者端', href: DEV_PORTAL_URL },
+  ]
 
   if (auth.isAuthed) {
-    links.push({ label: '我的定制资源', to: { name: 'my-custom-resources' } })
+    links.splice(1, 0, { label: '我的定制资源', to: { name: 'my-custom-resources' } })
   }
 
   return links
@@ -181,6 +202,7 @@ onMounted(() => {
   void loadDepositRatio()
   void loadPendingRequirements()
   void loadRequirementOverview()
+  void loadFreeResourceSections()
 
   autoRefreshTimer = setInterval(() => {
     if (document.visibilityState !== 'visible') {
@@ -552,6 +574,109 @@ async function loadRequirementOverview() {
   }
 }
 
+function countGroupTags(group: McTagGroup): number {
+  return group.items.length + group.child_groups.reduce((count, child) => count + countGroupTags(child), 0)
+}
+
+function findEntrySlug(group: McTagGroup): string | null {
+  const firstChild = group.child_groups
+    .slice()
+    .sort((left, right) => left.sort_order - right.sort_order || left.id - right.id)[0]
+
+  if (firstChild) {
+    return getTagRouteSlug(firstChild.name)
+  }
+
+  if (group.items.length > 0) {
+    return null
+  }
+
+  return null
+}
+
+function hasPlatformChildren(group: McTagGroup): boolean {
+  return group.child_groups.some((child) => getPlatformSlug(child.name) != null)
+}
+
+function selectVisibleRootGroups(groups: McTagGroup[]): McTagGroup[] {
+  const rootGroups = groups
+    .filter((group) => group.parent_group_id == null)
+    .slice()
+    .sort((left, right) => left.sort_order - right.sort_order || left.id - right.id)
+
+  const hasWrappedPlatformRoot = rootGroups.some((group) => hasPlatformChildren(group))
+  if (!hasWrappedPlatformRoot) {
+    return rootGroups
+  }
+
+  return rootGroups.filter((group) => getPlatformSlug(group.name) == null)
+}
+
+function buildFreeResourceSummary(group: McTagGroup) {
+  const directGroupCount = group.child_groups.length
+  const tagCount = countGroupTags(group)
+  const childNames = group.child_groups
+    .slice()
+    .sort((left, right) => left.sort_order - right.sort_order || left.id - right.id)
+    .map((child) => normalizeTagName(child.name))
+    .filter(Boolean)
+
+  if (directGroupCount <= 0 && tagCount <= 0) {
+    return '当前根节点下还没有公开标签内容。'
+  }
+
+  if (childNames.length > 0) {
+    const previewNames = childNames.slice(0, 3).join(' / ')
+    return `下含 ${previewNames}${childNames.length > 3 ? ' 等分区' : ''}。`
+  }
+
+  if (tagCount <= 0) {
+    return `包含 ${directGroupCount} 个下级分组。`
+  }
+
+  return `包含 ${directGroupCount} 个下级分组，覆盖 ${tagCount} 个标签节点。`
+}
+
+async function loadFreeResourceSections() {
+  freeResourceLoading.value = true
+  try {
+    const tagTree = await getAllPublicMcTagTree()
+    if (!isMounted) {
+      return
+    }
+
+    freeResourceSections.value = selectVisibleRootGroups(tagTree)
+      .map((root): FreeResourceSectionView => {
+        const hasContent = root.child_groups.length > 0 || countGroupTags(root) > 0
+        return {
+          rootId: root.id,
+          rootName: normalizeTagName(root.name),
+          rootSlug: getTagRouteSlug(root.name),
+          entrySlug: findEntrySlug(root),
+          summary: buildFreeResourceSummary(root),
+          actionLabel: hasContent ? '进入分区' : '即将开放',
+        }
+      })
+  } catch (err) {
+    if (isMounted) {
+      showToast(err instanceof Error ? err.message : '加载免费资源导航失败', 'warning')
+    }
+  } finally {
+    if (isMounted) {
+      freeResourceLoading.value = false
+    }
+  }
+}
+
+function openFreeResourceRoot(section: FreeResourceSectionView) {
+  router.push({
+    name: 'resource-catalog',
+    params: section.entrySlug
+      ? { rootSlug: section.rootSlug, entrySlug: section.entrySlug }
+      : { rootSlug: section.rootSlug },
+  })
+}
+
 async function submitDepositPayment() {
   if (!depositRequirement.value) {
     return
@@ -805,6 +930,9 @@ async function submitPublishRequirement() {
       :homeRefreshLoading="homeRefreshLoading" :canOpenPayment="(item: any) => canOpenPayment(item)"
       @open-deposit="(item: any) => openDepositCard(item)" @publish="openPublishModal" @refresh="refreshHomeData"
       @view-deal="openDealDetail" />
+
+    <HomeFreeResourceBoard :sections="freeResourceSections" :loading="freeResourceLoading"
+      @open-section="openFreeResourceRoot" />
 
     <div v-if="dealDetailVisible && selectedDeal" class="auth-modal-wrap" @click.self="closeDealDetail">
       <section class="auth-modal" aria-label="最近成交详情">

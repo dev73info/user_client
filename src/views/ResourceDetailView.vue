@@ -12,7 +12,8 @@ import {
   listPublicMcResourceVersions,
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
-} from '@/api/mcResources'
+} from '@/api/resources'
+import { getPlatformLabel, getTagRouteSlug, normalizeTagName } from '@/api/resourceTags'
 import { useAuthForm } from '@/composables/useAuthForm'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -21,6 +22,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
+const DEV_PORTAL_URL = 'https://dev.73info.cn'
 
 const loading = ref(false)
 const resource = ref<PublicMcResourceItem | null>(null)
@@ -48,10 +50,15 @@ const {
 const tagNames = computed(() => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [])
 const platformLabel = computed(() => (resource.value?.platform === 'bedrock' ? '基岩版' : 'Java 版'))
 const visibilityLabel = computed(() => (resource.value?.visibility === 'published' ? '公开展示中' : '待正式发布'))
+const resourceRootName = computed(() => {
+  const rootName = resource.value?.tag_selections.find((item) => item.group_path.length > 0)?.group_path[0]
+  return normalizeTagName(rootName || 'MC 插件与模组')
+})
 const heroNavLinks = computed(() => {
   const links = [
     { label: '返回首页', to: { name: 'home' } },
-    { label: 'MC 插件与模组', to: { name: 'mc-plugins-java' }, active: true },
+    { label: '免费资源', to: { name: 'resource-catalog', params: { rootSlug: getTagRouteSlug(resourceRootName.value) } }, active: true },
+    { label: '开发者端', href: DEV_PORTAL_URL },
     { label: '探索', href: '#' },
     { label: '免费资源', href: '#' },
     { label: '社区', href: '#' },
@@ -142,8 +149,11 @@ function formatHomepageContent(value: string): string {
 }
 
 function backToPlatform() {
-  const platform = resource.value?.platform === 'bedrock' ? 'mc-plugins-bedrock' : 'mc-plugins-java'
-  router.push({ name: platform })
+  const entrySlug = getPlatformLabel(resource.value?.platform === 'bedrock' ? 'bedrock' : 'java')
+  router.push({
+    name: 'resource-catalog',
+    params: { rootSlug: getTagRouteSlug(resourceRootName.value), entrySlug: getTagRouteSlug(entrySlug) },
+  })
 }
 
 function openAuth(mode: 'login' | 'register' | 'reset') {

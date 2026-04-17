@@ -40,29 +40,14 @@ const router = createRouter({
       component: () => import('@/views/PaymentRefundView.vue'),
     },
     {
-      path: '/mc-plugins',
-      component: () => import('@/views/McPluginsView.vue'),
-      children: [
-        {
-          path: '',
-          redirect: { name: 'mc-plugins-java' },
-        },
-        {
-          path: 'java',
-          name: 'mc-plugins-java',
-          component: () => import('@/views/McPluginsJavaView.vue'),
-        },
-        {
-          path: 'bedrock',
-          name: 'mc-plugins-bedrock',
-          component: () => import('@/views/McPluginsBedrockView.vue'),
-        },
-      ],
+      path: '/:rootSlug/:entrySlug?',
+      name: 'resource-catalog',
+      component: () => import('@/views/ResourceCatalogView.vue'),
     },
     {
       path: '/mc-resources/:id',
       name: 'mc-resource-detail',
-      component: () => import('@/views/McResourceDetailView.vue'),
+      component: () => import('@/views/ResourceDetailView.vue'),
     },
   ],
 })

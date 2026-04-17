@@ -33,6 +33,107 @@
   font-size: 14px;
 }
 
+.free-resource-board {
+  display: grid;
+  gap: 18px;
+}
+
+.free-resource-board__header {
+  align-items: flex-start;
+}
+
+.free-resource-board__lead {
+  margin: 6px 0 0;
+  color: var(--text-sub);
+  font-size: 14px;
+}
+
+.free-resource-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.free-resource-card {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--card-border);
+  background: linear-gradient(180deg, rgba(10, 41, 64, 0.52), rgba(5, 21, 34, 0.72));
+  display: grid;
+  gap: 14px;
+}
+
+.free-resource-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.free-resource-card__eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.free-resource-card h3 {
+  margin: 0;
+  font-size: 22px;
+  color: var(--text-main);
+}
+
+.free-resource-card__summary {
+  margin: 0;
+  color: var(--text-sub);
+  line-height: 1.7;
+}
+
+.free-resource-card__cta {
+  appearance: none;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgba(14, 165, 233, 0.14);
+  color: #f8fafc;
+  border-radius: 999px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.free-resource-card__cta:hover {
+  transform: translateY(-1px);
+  background: rgba(14, 165, 233, 0.24);
+  box-shadow: 0 12px 28px rgba(14, 165, 233, 0.18);
+}
+
+.free-resource-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.free-resource-card__stats span,
+.free-resource-pill {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-sub);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 13px;
+}
+
+.free-resource-card__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* --- 需求/成交列表 --- */
 .deal-list,
 .req-list,
@@ -95,4 +196,15 @@
 .status-chip.clickable {
   cursor: pointer;
   background: rgba(255, 225, 139, 0.28);
+}
+
+@media (max-width: 720px) {
+  .free-resource-card__head {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .free-resource-card__cta {
+    width: 100%;
+  }
 }

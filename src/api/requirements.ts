@@ -1,5 +1,5 @@
 import { authHeader, requestJson } from '@/api/http'
-import type { McResourceTagSelectionPayload, McResourcePlatform } from '@/api/mcResources'
+import type { McResourceTagSelectionPayload, McResourcePlatform } from '@/api/resources'
 
 export type RecentDeal = {
   payment_id: string

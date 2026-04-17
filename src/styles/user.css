@@ -1,7 +1,7 @@
-@import './mc-core.css';
+@import './resource-core.css';
 @import './shell.css';
 @import './modal.css';
 @import './home.css';
 @import './profile.css';
 @import './payment.css';
-@import './mc-resources.css';
+@import './resource-catalog.css';

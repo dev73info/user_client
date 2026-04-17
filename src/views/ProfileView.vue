@@ -974,11 +974,13 @@ onMounted(async () => {
   await Promise.all([loadCoupons(), loadMyRequirements(), loadDepositRatio(), loadProfile()])
 })
 
+const DEV_PORTAL_URL = 'https://dev.73info.cn'
 const heroNavLinks = computed(() => {
   const links = [
     { label: '返回首页', to: { name: 'home' } },
     { label: '个人中心', to: { name: 'profile' }, active: true },
-    { label: '我的定制资源', to: { name: 'my-custom-resources' } }
+    { label: '我的定制资源', to: { name: 'my-custom-resources' } },
+    { label: '开发者端', href: DEV_PORTAL_URL },
   ]
 
   return links

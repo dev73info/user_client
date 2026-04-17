@@ -38,8 +38,8 @@ const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast
 
 const heroNavLinks = computed(() => [
   { label: '返回首页', to: { name: 'home' } },
-  { label: 'MC插件与模组', to: { name: 'mc-plugins-java' } },
-  { label: '我的定制资源', to: { name: 'my-custom-resources' }, active: true },
+  { label: '免费资源', to: { name: 'resource-catalog', params: { rootSlug: 'MC 插件与模组' } } },
+  { label: '我的定制资源', to: { name: 'my-custom-resources' }, active: true, align: 'right' as const },
 ])
 
 const cards = computed<CustomResourceCard[]>(() => {
@@ -182,7 +182,7 @@ onMounted(() => {
         <div class="hero-copy">
           <h1>我的定制资源</h1>
           <p class="desc">
-            这里集中展示你需求单已经关联的资源项目。卡片风格与 MC 插件与模组保持一致，但只显示你自己的定制交付内容。
+            这里集中展示你需求单已经关联的资源项目。卡片风格与 免费资源保持一致，但只显示你自己的定制交付内容。
           </p>
         </div>
         <div class="hero-actions custom-hero-stats" aria-label="资源统计">
