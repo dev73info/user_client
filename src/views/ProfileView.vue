@@ -20,9 +20,11 @@ import {
   commentRequirement as commentRequirementApi,
   listRequirements,
   requestRequirementFinalPayment as requestRequirementFinalPaymentApi,
+  reviewRequirementResourceDelete as reviewRequirementResourceDeleteApi,
   resubmitRequirement as resubmitRequirementApi,
   updateRequirementResourceVisibility as updateRequirementResourceVisibilityApi,
   type RequirementItem,
+  type RequirementPendingResourceVersionDeleteRequest,
   type RequirementResourceVisibility,
   type RequirementStatus,
 } from '@/api/requirements'
@@ -62,6 +64,12 @@ const editBudget = ref<string | number>('')
 const editAcceptance = ref('')
 const editLoading = ref(false)
 const resourceVisibilityLoadingId = ref<string | null>(null)
+const resourceVersionDeleteReviewLoadingId = ref<string | null>(null)
+const finalPaymentConfirmVisible = ref(false)
+const finalPaymentConfirmTarget = ref<RequirementItem | null>(null)
+const expandedVersionDeleteReviewRequirementId = ref<string | null>(null)
+const versionDeleteRejectTargetId = ref<number | null>(null)
+const versionDeleteRejectNotes = ref<Record<number, string>>({})
 const depositRatioPercent = ref(20)
 const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
 
@@ -153,6 +161,34 @@ function canToggleRequirementResourceVisibility(item: RequirementItem) {
   return hasBoundResource(item) && (item.status === 'final_paid' || item.status === 'completed')
 }
 
+function hasPendingResourceVersionDeleteReview(item: RequirementItem) {
+  return hasBoundResource(item) && pendingResourceVersionDeleteRequests(item).length > 0
+}
+
+function pendingResourceVersionDeleteRequests(item: RequirementItem) {
+  return item.pending_resource_version_delete_requests ?? []
+}
+
+function pendingResourceVersionLabel(item?: RequirementPendingResourceVersionDeleteRequest | null) {
+  return item?.version?.trim() || '未命名版本'
+}
+
+function pendingResourceVersionTitle(item?: RequirementPendingResourceVersionDeleteRequest | null) {
+  return `版本号 ${pendingResourceVersionLabel(item)}`
+}
+
+function resourceVersionDeleteReviewHint(item: RequirementItem) {
+  if (hasPendingResourceVersionDeleteReview(item)) {
+    return `开发者申请删除 ${pendingResourceVersionDeleteRequests(item).length} 个版本，点击当前需求行后可逐个审核。`
+  }
+
+  if (item.resource_version_delete_request_status === 'rejected' && item.resource_version_delete_review_note) {
+    return `你上次拒绝删除版本：${item.resource_version_delete_review_note}`
+  }
+
+  return ''
+}
+
 function formatResourceVisibility(item: RequirementItem) {
   return currentResourceVisibility(item) === 'public' ? '资源已公开' : '资源私有中'
 }
@@ -167,6 +203,34 @@ function toggleResourceVisibilityLabel(item: RequirementItem) {
   }
 
   return nextResourceVisibility(item) === 'public' ? '设为公开' : '设为私有'
+}
+
+function isRejectingVersion(request: RequirementPendingResourceVersionDeleteRequest) {
+  return versionDeleteRejectTargetId.value === request.version_id
+}
+
+function openRejectVersion(request: RequirementPendingResourceVersionDeleteRequest) {
+  versionDeleteRejectTargetId.value = request.version_id
+  versionDeleteRejectNotes.value = {
+    ...versionDeleteRejectNotes.value,
+    [request.version_id]: versionDeleteRejectNotes.value[request.version_id] ?? '',
+  }
+}
+
+function cancelRejectVersion() {
+  if (resourceVersionDeleteReviewLoadingId.value) {
+    return
+  }
+
+  versionDeleteRejectTargetId.value = null
+}
+
+function pendingVersionRejectNote(request: RequirementPendingResourceVersionDeleteRequest) {
+  return versionDeleteRejectNotes.value[request.version_id] ?? ''
+}
+
+function formatPendingVersionRequestedAt(item: RequirementPendingResourceVersionDeleteRequest) {
+  return item.requested_at?.trim() || '时间未知'
 }
 
 function openPayModal(item: RequirementItem) {
@@ -200,16 +264,28 @@ async function requestFinalPayment(item: RequirementItem) {
     return
   }
 
-  const confirmed = window.confirm('确认进入尾款支付吗？。')
-  if (!confirmed) {
+  finalPaymentConfirmTarget.value = item
+  finalPaymentConfirmVisible.value = true
+}
+
+function closeFinalPaymentConfirm() {
+  finalPaymentConfirmVisible.value = false
+  finalPaymentConfirmTarget.value = null
+}
+
+async function confirmFinalPaymentRequest() {
+  if (!finalPaymentConfirmTarget.value) {
     return
   }
+
+  const item = finalPaymentConfirmTarget.value
 
   try {
     const updated = await requestRequirementFinalPaymentApi(auth.token, item.requirement_id)
     showToast('请支付尾款', 'success')
     await loadMyRequirements()
     openPayModal(updated)
+    closeFinalPaymentConfirm()
   } catch (err) {
     showToast(err instanceof Error ? err.message : '结束开发失败', 'error')
   }
@@ -283,6 +359,11 @@ async function refreshProfileData() {
 }
 
 function handleRequirementAction(item: RequirementItem) {
+  if (hasPendingResourceVersionDeleteReview(item)) {
+    toggleVersionDeleteReviewCard(item)
+    return
+  }
+
   if (canPay(item.status)) {
     openPayModal(item)
   } else if (canResubmit(item.status)) {
@@ -290,6 +371,33 @@ function handleRequirementAction(item: RequirementItem) {
   } else if (canComment(item.status)) {
     openCommentModal(item)
   }
+}
+
+function isVersionDeleteReviewExpanded(item: RequirementItem) {
+  return expandedVersionDeleteReviewRequirementId.value === item.requirement_id
+}
+
+function toggleVersionDeleteReviewCard(item: RequirementItem) {
+  if (!hasPendingResourceVersionDeleteReview(item)) {
+    return
+  }
+
+  if (isVersionDeleteReviewExpanded(item)) {
+    closeVersionDeleteReviewCard()
+    return
+  }
+
+  expandedVersionDeleteReviewRequirementId.value = item.requirement_id
+  versionDeleteRejectTargetId.value = null
+}
+
+function closeVersionDeleteReviewCard() {
+  if (resourceVersionDeleteReviewLoadingId.value) {
+    return
+  }
+
+  expandedVersionDeleteReviewRequirementId.value = null
+  versionDeleteRejectTargetId.value = null
 }
 
 function starFill(index: number) {
@@ -521,6 +629,44 @@ async function toggleRequirementResourceVisibility(item: RequirementItem) {
   }
 }
 
+async function submitVersionDeleteReview(
+  item: RequirementItem,
+  request: RequirementPendingResourceVersionDeleteRequest,
+  action: 'approve' | 'reject',
+) {
+  if (!auth.isAuthed || !item || !hasPendingResourceVersionDeleteReview(item) || !request) {
+    return
+  }
+
+  const note = pendingVersionRejectNote(request).trim()
+
+  if (action === 'reject' && note.length > 500) {
+    showToast('拒绝原因不能超过 500 字', 'error')
+    return
+  }
+
+  resourceVersionDeleteReviewLoadingId.value = item.requirement_id
+  try {
+    await reviewRequirementResourceDeleteApi(auth.token, item.requirement_id, {
+      version_id: request.version_id,
+      action,
+      note: note || undefined,
+    })
+    showToast(action === 'approve' ? '已同意删除版本' : '已拒绝删除版本', 'success')
+    versionDeleteRejectTargetId.value = null
+    if (action === 'reject') {
+      const nextNotes = { ...versionDeleteRejectNotes.value }
+      delete nextNotes[request.version_id]
+      versionDeleteRejectNotes.value = nextNotes
+    }
+    await loadMyRequirements()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '审核版本删除失败', 'error')
+  } finally {
+    resourceVersionDeleteReviewLoadingId.value = null
+  }
+}
+
 async function submitRequirementComment() {
   if (!auth.isAuthed || !commentRequirement.value) {
     showToast('请先登录后再发表评论', 'error')
@@ -726,6 +872,14 @@ async function loadMyRequirements() {
   try {
     const rows = await listRequirements(auth.token)
     myRequirements.value = rows.slice(0, 20)
+    if (
+      expandedVersionDeleteReviewRequirementId.value
+      && !myRequirements.value.some(
+        (item) => item.requirement_id === expandedVersionDeleteReviewRequirementId.value && hasPendingResourceVersionDeleteReview(item),
+      )
+    ) {
+      closeVersionDeleteReviewCard()
+    }
   } catch (err) {
     showToast(err instanceof Error ? err.message : '加载需求单失败', 'error')
   } finally {
@@ -878,9 +1032,10 @@ const heroNavLinks = computed(() => {
         </div>
         <div v-if="myRequirements.length === 0" class="empty">暂无已提交需求单</div>
         <ul v-else class="requirement-list">
-          <li v-for="item in myRequirements" :key="item.requirement_id" class="requirement-row"
-            :class="{ clickable: canPay(item.status) || canComment(item.status) || canResubmit(item.status) }"
-            @click="handleRequirementAction(item)">
+          <template v-for="item in myRequirements" :key="item.requirement_id">
+            <li class="requirement-row"
+              :class="{ clickable: hasPendingResourceVersionDeleteReview(item) || canPay(item.status) || canComment(item.status) || canResubmit(item.status), expanded: isVersionDeleteReviewExpanded(item) }"
+              @click="handleRequirementAction(item)">
             <div class="requirement-main">
               <strong>{{ item.title }}</strong>
               <span>{{ item.requirement_id }}</span>
@@ -890,6 +1045,16 @@ const heroNavLinks = computed(() => {
               }}</small>
               <small v-if="hasBoundResource(item) && !canToggleRequirementResourceVisibility(item)"
                 class="requirement-note">资源公开/私有切换需在已付尾款后开放</small>
+              <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">
+                <strong>待审核删除版本：</strong>
+                <span style="display: inline-flex; align-items: center; margin-left: 6px; padding: 2px 10px; border-radius: 999px; background: rgba(255,255,255,0.14); font-weight: 700; color: #fff;">
+                  {{ pendingResourceVersionDeleteRequests(item).length }} 个待审核
+                </span>
+                <span style="margin-left: 8px; opacity: 0.8;">共 {{ pendingResourceVersionDeleteRequests(item).length }} 个</span>
+              </small>
+              <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">{{ resourceVersionDeleteReviewHint(item) }}</small>
+              <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">点击当前需求行，可在下方展开审核卡片。</small>
+              <small v-else-if="hasBoundResource(item) && item.resource_version_delete_request_status === 'rejected' && item.resource_version_delete_review_note" class="requirement-note">{{ resourceVersionDeleteReviewHint(item) }}</small>
               <small
                 v-if="item.status === 'in_development' && hasBoundResource(item) && publishedVersionCount(item) < 1"
                 class="requirement-note">开发者至少发布 1 个版本后，用户才能结束开发并支付尾款</small>
@@ -915,7 +1080,49 @@ const heroNavLinks = computed(() => {
               <button v-else-if="canComment(item.status)" class="ghost small" type="button"
                 @click.stop="openCommentModal(item)">去评价</button>
             </div>
-          </li>
+            </li>
+            <li v-if="isVersionDeleteReviewExpanded(item)" class="requirement-review-card-row">
+              <section class="requirement-review-card" @click.stop>
+                <div class="requirement-review-card__header">
+                  <div>
+                    <h4>版本删除审核</h4>
+                    <p>每个待删除版本单独一张卡片，直接在对应卡片上审核。</p>
+                  </div>
+                  <button class="ghost small" type="button" @click.stop="closeVersionDeleteReviewCard">收起</button>
+                </div>
+                <div class="requirement-review-card-list">
+                  <article v-for="request in pendingResourceVersionDeleteRequests(item)" :key="request.version_id" class="requirement-review-item">
+                    <div class="requirement-review-item__main">
+                      <div>
+                        <strong>{{ pendingResourceVersionTitle(request) }}</strong>
+                        <p>申请时间：{{ formatPendingVersionRequestedAt(request) }}</p>
+                      </div>
+                      <div class="requirement-review-item__actions">
+                        <button class="ghost small" type="button" :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id" @click.stop="submitVersionDeleteReview(item, request, 'approve')">
+                          {{ resourceVersionDeleteReviewLoadingId === item.requirement_id ? '处理中...' : '同意删除' }}
+                        </button>
+                        <button class="ghost small" type="button" :class="{ active: isRejectingVersion(request) }" :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id" @click.stop="openRejectVersion(request)">拒绝删除</button>
+                      </div>
+                    </div>
+                    <p class="requirement-review-card__hint danger">同意后该版本文件会被永久删除，且无法恢复。</p>
+                    <div v-if="isRejectingVersion(request)" class="requirement-review-item__reject-panel">
+                      <label class="requirement-review-card__field requirement-review-card__field--stacked">
+                        <span>拒绝原因</span>
+                        <textarea v-model="versionDeleteRejectNotes[request.version_id]" class="comment-input" rows="4" maxlength="500" placeholder="可选：说明拒绝删除该版本的原因"></textarea>
+                        <small class="requirement-note">已输入 {{ pendingVersionRejectNote(request).length }} / 500 字</small>
+                      </label>
+                      <div class="requirement-review-card__actions">
+                        <button class="ghost small" type="button" @click.stop="cancelRejectVersion">取消</button>
+                        <button class="ghost small" type="button" :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id" @click.stop="submitVersionDeleteReview(item, request, 'reject')">
+                          {{ resourceVersionDeleteReviewLoadingId === item.requirement_id ? '处理中...' : '确认拒绝删除' }}
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </section>
+            </li>
+          </template>
         </ul>
       </section>
 
@@ -1025,6 +1232,20 @@ const heroNavLinks = computed(() => {
             <button class="ghost" type="button" :disabled="payLoading" @click="submitRequirementPayment">
               {{ payLoading ? '处理中...' : currentPayment ? '查询支付结果' : `支付${payStageLabel}` }}
             </button>
+          </div>
+        </section>
+      </div>
+
+      <div v-if="finalPaymentConfirmVisible && finalPaymentConfirmTarget" class="modal-wrap" @click.self="closeFinalPaymentConfirm">
+        <section class="pay-modal" aria-label="尾款确认弹窗">
+          <h3>确认进入尾款支付</h3>
+          <p class="pay-line"><strong>需求标题：</strong>{{ finalPaymentConfirmTarget.title }}</p>
+          <p class="pay-line"><strong>需求编号：</strong>{{ finalPaymentConfirmTarget.requirement_id }}</p>
+          <p class="tip">确认后会将当前需求推进到待付尾款，并立即进入支付流程。</p>
+
+          <div class="actions">
+            <button class="ghost" type="button" @click="closeFinalPaymentConfirm">取消</button>
+            <button class="ghost" type="button" @click="confirmFinalPaymentRequest">确认进入尾款支付</button>
           </div>
         </section>
       </div>

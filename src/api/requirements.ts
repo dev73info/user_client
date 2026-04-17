@@ -32,12 +32,25 @@ export type RequirementStatus =
   | 'final_paid'
   | 'completed'
 
+export type RequirementPendingResourceVersionDeleteRequest = {
+  version_id: number
+  version: string
+  requested_at?: string | null
+}
+
 export type RequirementItem = {
   id: number
   requirement_id: string
   bound_resource_id?: number | null
   bound_resource_version_count?: number | null
   resource_visibility?: 'public' | 'private' | null
+  resource_version_delete_request_id?: number | null
+  resource_version_delete_request_version?: string | null
+  resource_version_delete_request_status?: 'pending' | 'rejected' | null
+  resource_version_delete_requested_at?: string | null
+  resource_version_delete_reviewed_at?: string | null
+  resource_version_delete_review_note?: string | null
+  pending_resource_version_delete_requests?: RequirementPendingResourceVersionDeleteRequest[] | null
   bound_resource_platform?: McResourcePlatform | null
   bound_resource_title?: string | null
   bound_resource_author?: string | null
@@ -77,6 +90,12 @@ export type RequirementResourceVisibility = 'public' | 'private'
 
 export type UpdateRequirementResourceVisibilityPayload = {
   visibility: RequirementResourceVisibility
+}
+
+export type ReviewRequirementResourceDeletePayload = {
+  version_id: number
+  action: 'approve' | 'reject'
+  note?: string
 }
 
 export async function listRequirements(token: string): Promise<RequirementItem[]> {
@@ -191,5 +210,24 @@ export async function updateRequirementResourceVisibility(
       body: JSON.stringify(payload),
     },
     '更新资源可见性失败',
+  )
+}
+
+export async function reviewRequirementResourceDelete(
+  token: string,
+  requirementId: string,
+  payload: ReviewRequirementResourceDeletePayload,
+): Promise<RequirementItem> {
+  return requestJson<RequirementItem>(
+    `/requirements/${encodeURIComponent(requirementId)}/resource-delete-review`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify(payload),
+    },
+    '审核资源删除失败',
   )
 }

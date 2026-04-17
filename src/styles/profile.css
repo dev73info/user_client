@@ -123,6 +123,11 @@
   background: rgba(149, 213, 178, 0.12);
 }
 
+.requirement-row.expanded {
+  border: 1px solid rgba(149, 213, 178, 0.46);
+  background: rgba(149, 213, 178, 0.14);
+}
+
 .requirement-main strong {
   color: var(--text-main);
   font-size: 14px;
@@ -159,7 +164,142 @@
 .requirement-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.requirement-review-card-row {
+  list-style: none;
+}
+
+.requirement-review-card {
+  margin: -2px 0 10px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+}
+
+.requirement-review-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.requirement-review-card__header h4 {
+  margin: 0 0 6px;
+}
+
+.requirement-review-card__header p {
+  margin: 0;
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+.requirement-review-card-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.requirement-review-item {
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.requirement-review-item__main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.requirement-review-item__main strong {
+  display: block;
+  color: var(--text-main);
+  font-size: 15px;
+}
+
+.requirement-review-item__main p {
+  margin: 8px 0 0;
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+.requirement-review-card__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.requirement-review-card__field--stacked {
+  margin-top: 12px;
+}
+
+.requirement-review-card__field span {
+  color: var(--text-sub);
+  font-size: 12px;
+}
+
+.requirement-review-card__field select {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+}
+
+.requirement-review-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.requirement-review-item__actions .ghost.active {
+  border-color: rgba(149, 213, 178, 0.55);
+  background: rgba(149, 213, 178, 0.16);
+  color: #dffbe8;
+}
+
+.requirement-review-item__reject-panel {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.requirement-review-card__hint {
+  margin: 14px 0 0;
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+.requirement-review-card__hint.danger {
+  color: #ffb4b4;
+}
+
+.requirement-review-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+@media (max-width: 820px) {
+  .requirement-review-card__header,
+  .requirement-review-card__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .requirement-review-item__main {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 /* --- 优惠券列表（个人中心） --- */
