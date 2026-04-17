@@ -19,13 +19,22 @@ import {
 import {
   commentRequirement as commentRequirementApi,
   listRequirements,
+  requestRequirementFinalPayment as requestRequirementFinalPaymentApi,
   resubmitRequirement as resubmitRequirementApi,
   updateRequirementResourceVisibility as updateRequirementResourceVisibilityApi,
   type RequirementItem,
   type RequirementResourceVisibility,
   type RequirementStatus,
 } from '@/api/requirements'
-import { getDepositRatio, updateProfile } from '@/api/settings'
+import {
+  getDepositRatio,
+  getProfile,
+  sendProfileEmailChangeCode,
+  sendProfilePasswordCode,
+  updateProfile,
+  updateProfileEmail,
+  updateProfilePassword,
+} from '@/api/settings'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -45,6 +54,7 @@ const commentRating = ref(5)
 const commentText = ref('')
 const commentLoading = ref(false)
 const editVisible = ref(false)
+const securityVisible = ref(false)
 const editRequirement = ref<RequirementItem | null>(null)
 const editTitle = ref('')
 const editDescription = ref('')
@@ -85,7 +95,7 @@ function formatRequirementStatus(status: RequirementStatus) {
     pending_review: '待审核',
     rejected: '已拒绝',
     pending_deposit: '待付定金',
-    deposit_paid: '已付定金',
+    deposit_paid: '待开发',
     in_development: '开发中',
     pending_final: '待付尾款',
     final_paid: '已付尾款',
@@ -117,6 +127,14 @@ function formatBudget(value?: number | null) {
 
 function canPay(status: RequirementStatus) {
   return status === 'pending_deposit' || status === 'pending_final'
+}
+
+function publishedVersionCount(item: RequirementItem) {
+  return item.bound_resource_version_count ?? 0
+}
+
+function canRequestFinalPayment(item: RequirementItem) {
+  return hasBoundResource(item) && item.status === 'in_development' && publishedVersionCount(item) > 0
 }
 
 function canResubmit(status: RequirementStatus) {
@@ -159,6 +177,42 @@ function openPayModal(item: RequirementItem) {
   payChannel.value = 'alipay'
   currentPayment.value = null
   payVisible.value = true
+}
+
+async function requestFinalPayment(item: RequirementItem) {
+  if (!auth.isAuthed) {
+    showToast('请先登录后再继续操作', 'error')
+    return
+  }
+
+  if (!hasBoundResource(item)) {
+    showToast('当前需求尚未关联资源项目', 'warning')
+    return
+  }
+
+  if (item.status !== 'in_development') {
+    showToast('只有开发中的需求单才能结束开发并支付尾款', 'warning')
+    return
+  }
+
+  if (publishedVersionCount(item) <= 0) {
+    showToast('开发者至少发布一个资源版本后，才能结束开发并支付尾款', 'warning')
+    return
+  }
+
+  const confirmed = window.confirm('确认进入尾款支付吗？。')
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    const updated = await requestRequirementFinalPaymentApi(auth.token, item.requirement_id)
+    showToast('请支付尾款', 'success')
+    await loadMyRequirements()
+    openPayModal(updated)
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '结束开发失败', 'error')
+  }
 }
 
 function canComment(status: RequirementStatus) {
@@ -212,8 +266,20 @@ function logout() {
   router.push({ name: 'home' })
 }
 
+function openSecurityModal() {
+  securityVisible.value = true
+}
+
+function closeSecurityModal() {
+  if (usernameLoading.value || emailLoading.value || passwordLoading.value) {
+    return
+  }
+  securityVisible.value = false
+}
+
 async function refreshProfileData() {
-  await Promise.all([loadCoupons(), loadMyRequirements(), loadDepositRatio()])
+  await Promise.all([loadCoupons(), loadMyRequirements(), loadDepositRatio(), loadProfile()])
+  showToast('资料已刷新', 'success')
 }
 
 function handleRequirementAction(item: RequirementItem) {
@@ -260,17 +326,155 @@ async function updateUsername() {
     showToast('请输入一个新的用户名', 'error')
     return
   }
+  if (trimmed === auth.username) {
+    showToast('用户名未发生变化', 'info')
+    return
+  }
 
   usernameLoading.value = true
   try {
     const payload = await updateProfile(auth.token, trimmed)
     auth.setToken(payload.token)
-    newUsername.value = ''
+    newUsername.value = auth.username
     showToast('用户名已更新', 'success')
   } catch (err) {
     showToast(err instanceof Error ? err.message : '修改用户名失败', 'error')
   } finally {
     usernameLoading.value = false
+  }
+}
+
+async function loadProfile() {
+  auth.hydrate()
+  if (!auth.isAuthed) {
+    return
+  }
+
+  try {
+    const profile = await getProfile(auth.token)
+    newUsername.value = profile.username
+    profileEmail.value = profile.email ?? ''
+    if (!newEmail.value) {
+      newEmail.value = profile.email ?? ''
+    }
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '加载个人资料失败', 'error')
+  }
+}
+
+async function sendEmailVerificationCode() {
+  if (!auth.isAuthed) {
+    showToast('请先登录后修改邮箱', 'error')
+    return
+  }
+
+  const trimmed = newEmail.value.trim()
+  if (!trimmed) {
+    showToast('请输入新的邮箱地址', 'error')
+    return
+  }
+  if (trimmed === profileEmail.value) {
+    showToast('新邮箱不能与当前邮箱相同', 'warning')
+    return
+  }
+
+  emailCodeSending.value = true
+  try {
+    await sendProfileEmailChangeCode(auth.token, trimmed)
+    showToast('验证码已发送到新邮箱，请查收', 'success')
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '发送邮箱验证码失败', 'error')
+  } finally {
+    emailCodeSending.value = false
+  }
+}
+
+async function submitEmailChange() {
+  if (!auth.isAuthed) {
+    showToast('请先登录后修改邮箱', 'error')
+    return
+  }
+
+  const trimmedEmail = newEmail.value.trim()
+  const trimmedCode = emailCode.value.trim()
+  if (!trimmedEmail) {
+    showToast('请输入新的邮箱地址', 'error')
+    return
+  }
+  if (trimmedCode.length !== 6) {
+    showToast('请输入 6 位邮箱验证码', 'error')
+    return
+  }
+
+  emailLoading.value = true
+  try {
+    const profile = await updateProfileEmail(auth.token, trimmedEmail, trimmedCode)
+    profileEmail.value = profile.email ?? ''
+    newEmail.value = profile.email ?? ''
+    emailCode.value = ''
+    showToast('邮箱已更新', 'success')
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '修改邮箱失败', 'error')
+  } finally {
+    emailLoading.value = false
+  }
+}
+
+async function sendPasswordVerificationCode() {
+  if (!auth.isAuthed) {
+    showToast('请先登录后修改密码', 'error')
+    return
+  }
+  if (!profileEmail.value) {
+    showToast('请先绑定邮箱后再修改密码', 'error')
+    return
+  }
+
+  passwordCodeSending.value = true
+  try {
+    await sendProfilePasswordCode(auth.token)
+    showToast('验证码已发送到当前绑定邮箱，请查收', 'success')
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '发送密码验证码失败', 'error')
+  } finally {
+    passwordCodeSending.value = false
+  }
+}
+
+async function submitPasswordChange() {
+  if (!auth.isAuthed) {
+    showToast('请先登录后修改密码', 'error')
+    return
+  }
+
+  const trimmedPassword = newPassword.value.trim()
+  const trimmedConfirm = confirmPassword.value.trim()
+  const trimmedCode = passwordCode.value.trim()
+
+  if (trimmedPassword.length < 6) {
+    showToast('新密码至少 6 位', 'error')
+    return
+  }
+  if (trimmedPassword !== trimmedConfirm) {
+    showToast('两次输入的新密码不一致', 'error')
+    return
+  }
+  if (trimmedCode.length !== 6) {
+    showToast('请输入 6 位邮箱验证码', 'error')
+    return
+  }
+
+  passwordLoading.value = true
+  try {
+    await updateProfilePassword(auth.token, trimmedPassword, trimmedCode)
+    newPassword.value = ''
+    confirmPassword.value = ''
+    passwordCode.value = ''
+    showToast('密码已更新，请使用新密码登录', 'success')
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '修改密码失败', 'error')
+  } finally {
+    passwordLoading.value = false
   }
 }
 
@@ -438,6 +642,16 @@ const payStageLabel = computed(() => (isFinalPayment.value ? '尾款' : '定金'
 
 const newUsername = ref('')
 const usernameLoading = ref(false)
+const profileEmail = ref('')
+const newEmail = ref('')
+const emailCode = ref('')
+const emailCodeSending = ref(false)
+const emailLoading = ref(false)
+const newPassword = ref('')
+const confirmPassword = ref('')
+const passwordCode = ref('')
+const passwordCodeSending = ref(false)
+const passwordLoading = ref(false)
 
 const payAmount = computed(() => {
   if (!payRequirement.value) {
@@ -603,7 +817,7 @@ async function submitRequirementPayment() {
 onMounted(async () => {
   auth.hydrate()
   newUsername.value = auth.username
-  await Promise.all([loadCoupons(), loadMyRequirements(), loadDepositRatio()])
+  await Promise.all([loadCoupons(), loadMyRequirements(), loadDepositRatio(), loadProfile()])
 })
 
 const heroNavLinks = computed(() => {
@@ -627,6 +841,7 @@ const heroNavLinks = computed(() => {
           <p class="desc">管理你的账户、优惠券与需求单，统一使用页面布局标准。</p>
         </div>
         <div class="hero-actions">
+          <button class="publish-btn" type="button" @click="openSecurityModal">账户安全</button>
           <button class="refresh-btn" type="button" :disabled="loading || requirementLoading"
             @click="refreshProfileData">
             {{ loading || requirementLoading ? '刷新中...' : '刷新资料' }}
@@ -656,18 +871,6 @@ const heroNavLinks = computed(() => {
 
       <section class="wallet-section">
         <div class="wallet-header">
-          <h3>修改用户名</h3>
-        </div>
-        <div class="profile-update-row">
-          <input v-model="newUsername" type="text" placeholder="请输入新的用户名" :disabled="usernameLoading" />
-          <button class="ghost small" type="button" :disabled="usernameLoading" @click="updateUsername">
-            {{ usernameLoading ? '保存中...' : '保存用户名' }}
-          </button>
-        </div>
-      </section>
-
-      <section class="wallet-section">
-        <div class="wallet-header">
           <h3>我提交的需求单</h3>
           <button class="ghost small" type="button" :disabled="requirementLoading" @click="loadMyRequirements">
             {{ requirementLoading ? '刷新中...' : '刷新' }}
@@ -683,8 +886,13 @@ const heroNavLinks = computed(() => {
               <span>{{ item.requirement_id }}</span>
               <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
                 formatResourceVisibility(item) }}</small>
+              <small v-if="hasBoundResource(item)" class="requirement-note">已发布版本：{{ publishedVersionCount(item)
+              }}</small>
               <small v-if="hasBoundResource(item) && !canToggleRequirementResourceVisibility(item)"
                 class="requirement-note">资源公开/私有切换需在已付尾款后开放</small>
+              <small
+                v-if="item.status === 'in_development' && hasBoundResource(item) && publishedVersionCount(item) < 1"
+                class="requirement-note">开发者至少发布 1 个版本后，用户才能结束开发并支付尾款</small>
               <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{
                 item.review_note }}</small>
             </div>
@@ -698,6 +906,8 @@ const heroNavLinks = computed(() => {
                 {{ resourceVisibilityLoadingId === item.requirement_id ? '提交中...' : toggleResourceVisibilityLabel(item)
                 }}
               </button>
+              <button v-if="canRequestFinalPayment(item)" class="ghost small" type="button"
+                @click.stop="requestFinalPayment(item)">支付尾款</button>
               <button v-if="canResubmit(item.status)" class="ghost small" type="button"
                 @click.stop="openRequirementEditModal(item)">重新编辑</button>
               <button v-else-if="canPay(item.status)" class="ghost small" type="button"
@@ -713,6 +923,77 @@ const heroNavLinks = computed(() => {
         v-model:publishTitle="editTitle" v-model:publishDescription="editDescription" v-model:publishBudget="editBudget"
         v-model:publishAcceptance="editAcceptance" :publishLoading="editLoading" @close="closeEditModal"
         @submit="submitRequirementResubmit" />
+
+      <div v-if="securityVisible" class="modal-wrap" @click.self="closeSecurityModal">
+        <section class="pay-modal account-security-modal" aria-label="账户安全设置弹窗">
+          <div class="account-security-header">
+            <div>
+              <h3>账户安全</h3>
+              <p>在这里修改用户名、绑定邮箱和登录密码。</p>
+            </div>
+            <button class="ghost small" type="button" @click="closeSecurityModal">关闭</button>
+          </div>
+
+          <section class="wallet-section account-security-section">
+            <div class="wallet-header">
+              <h3>修改用户名</h3>
+            </div>
+            <div class="profile-update-row">
+              <input v-model="newUsername" type="text" placeholder="请输入新的用户名" :disabled="usernameLoading" />
+              <button class="ghost small" type="button" :disabled="usernameLoading" @click="updateUsername">
+                {{ usernameLoading ? '保存中...' : '保存用户名' }}
+              </button>
+            </div>
+          </section>
+
+          <section class="wallet-section account-security-section">
+            <div class="wallet-header">
+              <h3>修改邮箱</h3>
+              <small class="requirement-note">当前邮箱：{{ profileEmail || '未绑定邮箱' }}</small>
+            </div>
+            <div class="profile-update-row">
+              <input v-model="newEmail" type="email" placeholder="请输入新的邮箱地址"
+                :disabled="emailLoading || emailCodeSending" />
+              <button class="ghost small" type="button" :disabled="emailLoading || emailCodeSending"
+                @click="sendEmailVerificationCode">
+                {{ emailCodeSending ? '发送中...' : '发送验证码' }}
+              </button>
+            </div>
+            <div class="profile-update-row">
+              <input v-model="emailCode" type="text" maxlength="6" placeholder="请输入 6 位邮箱验证码"
+                :disabled="emailLoading" />
+              <button class="ghost small" type="button" :disabled="emailLoading" @click="submitEmailChange">
+                {{ emailLoading ? '保存中...' : '保存邮箱' }}
+              </button>
+            </div>
+          </section>
+
+          <section class="wallet-section account-security-section">
+            <div class="wallet-header">
+              <h3>修改密码</h3>
+              <small class="requirement-note">通过当前绑定邮箱验证码完成验证，并进行二次确认。</small>
+            </div>
+            <div class="profile-update-row">
+              <input v-model="newPassword" type="password" placeholder="请输入新的密码，至少 6 位"
+                :disabled="passwordLoading || passwordCodeSending" />
+              <button class="ghost small" type="button"
+                :disabled="passwordLoading || passwordCodeSending || !profileEmail"
+                @click="sendPasswordVerificationCode">
+                {{ passwordCodeSending ? '发送中...' : '发送验证码' }}
+              </button>
+            </div>
+            <div class="profile-update-row profile-update-row--triple">
+              <input v-model="confirmPassword" type="password" placeholder="请再次输入新密码" :disabled="passwordLoading" />
+              <input v-model="passwordCode" type="text" maxlength="6" placeholder="请输入 6 位邮箱验证码"
+                :disabled="passwordLoading" />
+              <button class="ghost small" type="button" :disabled="passwordLoading || !profileEmail"
+                @click="submitPasswordChange">
+                {{ passwordLoading ? '保存中...' : '保存密码' }}
+              </button>
+            </div>
+          </section>
+        </section>
+      </div>
 
       <div v-if="payVisible && payRequirement" class="modal-wrap" @click.self="closePayModal">
         <section class="pay-modal" aria-label="需求支付弹窗">

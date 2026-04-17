@@ -36,6 +36,7 @@ export type RequirementItem = {
   id: number
   requirement_id: string
   bound_resource_id?: number | null
+  bound_resource_version_count?: number | null
   resource_visibility?: 'public' | 'private' | null
   bound_resource_platform?: McResourcePlatform | null
   bound_resource_title?: string | null
@@ -136,6 +137,22 @@ export async function commentRequirement(
       body: JSON.stringify(payload),
     },
     '评论失败',
+  )
+}
+
+export async function requestRequirementFinalPayment(
+  token: string,
+  requirementId: string,
+): Promise<RequirementItem> {
+  return requestJson<RequirementItem>(
+    `/requirements/${encodeURIComponent(requirementId)}/request-final-payment`,
+    {
+      method: 'POST',
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '结束开发失败',
   )
 }
 

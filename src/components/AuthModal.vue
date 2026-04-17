@@ -3,7 +3,7 @@ import type { PropType } from 'vue'
 
 type AuthMode = 'login' | 'register' | 'reset'
 
-defineProps({
+const props = defineProps({
   visible: { type: Boolean, default: false },
   authMode: { type: String as PropType<AuthMode>, default: 'login' },
   authTitle: { type: String, required: true },
@@ -54,6 +54,12 @@ function updateAcceptTerms(event: Event) {
 function changeMode(mode: AuthMode) {
   emit('change-mode', mode)
 }
+
+function submitOnEnter() {
+  if (props.authMode === 'login' && !props.authLoading) {
+    emit('submit')
+  }
+}
 </script>
 
 <template>
@@ -64,8 +70,8 @@ function changeMode(mode: AuthMode) {
       <template v-if="authMode !== 'reset'">
         <label>
           用户名
-          <input :value="authUsername" type="text" autocomplete="username" placeholder="请输入用户名"
-            @input="updateUsername" />
+          <input :value="authUsername" type="text" autocomplete="username" placeholder="请输入用户名" @input="updateUsername"
+            @keydown.enter.prevent="submitOnEnter" />
         </label>
         <template v-if="authMode === 'register'">
           <label>
@@ -85,7 +91,7 @@ function changeMode(mode: AuthMode) {
         <label>
           密码
           <input :value="authPassword" type="password" autocomplete="current-password" placeholder="至少 6 位密码"
-            @input="updatePassword" />
+            @input="updatePassword" @keydown.enter.prevent="submitOnEnter" />
         </label>
         <div class="auth-forgot-row">
           <button class="auth-link" type="button" @click="changeMode('reset')">忘记密码？</button>
@@ -131,7 +137,7 @@ function changeMode(mode: AuthMode) {
         </button>
         <button class="auth-btn solid" type="button"
           :disabled="authLoading || (authMode === 'register' && !acceptTerms)" @click="emit('submit')">
-          {{ authLoading ? '提交中...' : authMode === 'login' ? '登录' : authMode === 'register' ? '注册并登录' : '重置密码' }}
+          {{ authLoading ? '登录中...' : authMode === 'login' ? '登录' : authMode === 'register' ? '注册并登录' : '重置密码' }}
         </button>
       </div>
     </section>

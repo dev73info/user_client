@@ -224,7 +224,7 @@ function statusToLabel(status: RequirementStatus): string {
     pending_review: '待审核',
     rejected: '已拒绝',
     pending_deposit: '待付定金',
-    deposit_paid: '已付定金',
+    deposit_paid: '待开发',
     in_development: '开发中',
     pending_final: '待付尾款',
     final_paid: '已付尾款',
@@ -285,10 +285,20 @@ function canOpenPayment(item: PendingRequirementView) {
 
 function selectCoupon(code: string, type: 'amount' | 'percent') {
   if (type === 'amount') {
+    if (amountCouponCode.value === code) {
+      amountCouponCode.value = ''
+      return
+    }
     amountCouponCode.value = code
     discountCouponCode.value = ''
     return
   }
+
+  if (discountCouponCode.value === code) {
+    discountCouponCode.value = ''
+    return
+  }
+
   discountCouponCode.value = code
   amountCouponCode.value = ''
 }
