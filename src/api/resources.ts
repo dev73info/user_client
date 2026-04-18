@@ -1,6 +1,6 @@
 import { authHeader, requestJson } from '@/api/http'
 
-export type McResourcePlatform = 'java' | 'bedrock'
+export type McResourcePlatform = string
 
 export type McResourceTagSelectionPayload = {
   group_id: number
@@ -39,16 +39,48 @@ export type PublicMcResourceVersionItem = {
   created_at: string
 }
 
+let allResourcesCache: { data: PublicMcResourceItem[]; ts: number } | null = null
+let allResourcesInflight: Promise<PublicMcResourceItem[]> | null = null
+const RESOURCE_CACHE_TTL = 60_000
+
+async function getAllPublicMcResources(): Promise<PublicMcResourceItem[]> {
+  const now = Date.now()
+  if (allResourcesCache && now - allResourcesCache.ts < RESOURCE_CACHE_TTL) {
+    return allResourcesCache.data
+  }
+
+  if (allResourcesInflight) {
+    return allResourcesInflight
+  }
+
+  allResourcesInflight = requestJson<PublicMcResourceItem[]>(
+    '/mc-resources/resources',
+    { method: 'GET' },
+    '加载资源列表失败',
+  )
+    .then((data) => {
+      allResourcesCache = { data, ts: Date.now() }
+      allResourcesInflight = null
+      return data
+    })
+    .catch((err) => {
+      allResourcesInflight = null
+      throw err
+    })
+
+  return allResourcesInflight
+}
+
 export async function listPublicMcResources(
   platform: McResourcePlatform,
 ): Promise<PublicMcResourceItem[]> {
-  return requestJson<PublicMcResourceItem[]>(
-    `/mc-resources/resources?platform=${encodeURIComponent(platform)}`,
-    {
-      method: 'GET',
-    },
-    '加载资源列表失败',
-  )
+  const all = await getAllPublicMcResources()
+  return all.filter((item) => item.platform === platform)
+}
+
+export function invalidateResourceListCache() {
+  allResourcesCache = null
+  allResourcesInflight = null
 }
 
 export async function getPublicMcResource(

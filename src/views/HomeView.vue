@@ -11,11 +11,11 @@ import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import HomeFreeResourceBoard from '@/components/home/HomeFreeResourceBoard.vue'
 import HomeSummarySection from '@/components/home/HomeSummarySection.vue'
 import {
-  getAllPublicMcTagTree,
+  getProcessedTagTree,
   getTagRouteSlug,
-  getPlatformSlug,
   normalizeTagName,
-  type McTagGroup,
+  type McProcessedTagTree,
+  type McTagCatalogRoot,
 } from '@/api/resourceTags'
 import { useToast } from '@/composables/useToast'
 import { useAuthForm } from '@/composables/useAuthForm'
@@ -574,54 +574,15 @@ async function loadRequirementOverview() {
   }
 }
 
-function countGroupTags(group: McTagGroup): number {
-  return group.items.length + group.child_groups.reduce((count, child) => count + countGroupTags(child), 0)
-}
+function buildFreeResourceSummary(root: McTagCatalogRoot) {
+  const entryCount = root.entries.length
+  const tagCount = root.entries.reduce(
+    (sum, entry) => sum + entry.publish_groups.reduce((s, g) => s + g.items.length, 0),
+    0,
+  )
+  const childNames = root.entries.map((e) => e.label)
 
-function findEntrySlug(group: McTagGroup): string | null {
-  const firstChild = group.child_groups
-    .slice()
-    .sort((left, right) => left.sort_order - right.sort_order || left.id - right.id)[0]
-
-  if (firstChild) {
-    return getTagRouteSlug(firstChild.name)
-  }
-
-  if (group.items.length > 0) {
-    return null
-  }
-
-  return null
-}
-
-function hasPlatformChildren(group: McTagGroup): boolean {
-  return group.child_groups.some((child) => getPlatformSlug(child.name) != null)
-}
-
-function selectVisibleRootGroups(groups: McTagGroup[]): McTagGroup[] {
-  const rootGroups = groups
-    .filter((group) => group.parent_group_id == null)
-    .slice()
-    .sort((left, right) => left.sort_order - right.sort_order || left.id - right.id)
-
-  const hasWrappedPlatformRoot = rootGroups.some((group) => hasPlatformChildren(group))
-  if (!hasWrappedPlatformRoot) {
-    return rootGroups
-  }
-
-  return rootGroups.filter((group) => getPlatformSlug(group.name) == null)
-}
-
-function buildFreeResourceSummary(group: McTagGroup) {
-  const directGroupCount = group.child_groups.length
-  const tagCount = countGroupTags(group)
-  const childNames = group.child_groups
-    .slice()
-    .sort((left, right) => left.sort_order - right.sort_order || left.id - right.id)
-    .map((child) => normalizeTagName(child.name))
-    .filter(Boolean)
-
-  if (directGroupCount <= 0 && tagCount <= 0) {
+  if (entryCount <= 0 && tagCount <= 0) {
     return '当前根节点下还没有公开标签内容。'
   }
 
@@ -631,32 +592,31 @@ function buildFreeResourceSummary(group: McTagGroup) {
   }
 
   if (tagCount <= 0) {
-    return `包含 ${directGroupCount} 个下级分组。`
+    return `包含 ${entryCount} 个下级分组。`
   }
 
-  return `包含 ${directGroupCount} 个下级分组，覆盖 ${tagCount} 个标签节点。`
+  return `包含 ${entryCount} 个下级分组，覆盖 ${tagCount} 个标签节点。`
 }
 
 async function loadFreeResourceSections() {
   freeResourceLoading.value = true
   try {
-    const tagTree = await getAllPublicMcTagTree()
+    const tree = await getProcessedTagTree()
     if (!isMounted) {
       return
     }
 
-    freeResourceSections.value = selectVisibleRootGroups(tagTree)
-      .map((root): FreeResourceSectionView => {
-        const hasContent = root.child_groups.length > 0 || countGroupTags(root) > 0
-        return {
-          rootId: root.id,
-          rootName: normalizeTagName(root.name),
-          rootSlug: getTagRouteSlug(root.name),
-          entrySlug: findEntrySlug(root),
-          summary: buildFreeResourceSummary(root),
-          actionLabel: hasContent ? '进入分区' : '即将开放',
-        }
-      })
+    freeResourceSections.value = tree.roots.map((root): FreeResourceSectionView => {
+      const hasContent = root.entries.length > 0
+      return {
+        rootId: 0,
+        rootName: root.label,
+        rootSlug: root.key,
+        entrySlug: root.first_entry_key,
+        summary: buildFreeResourceSummary(root),
+        actionLabel: hasContent ? '进入分区' : '即将开放',
+      }
+    })
   } catch (err) {
     if (isMounted) {
       showToast(err instanceof Error ? err.message : '加载免费资源导航失败', 'warning')

@@ -16,7 +16,7 @@ type CustomResourceCard = {
   title: string
   author: string
   description: string
-  platform: 'java' | 'bedrock'
+  platform: string
   tags: string[]
   updatedAt: string
   sourceUrl: string | null
@@ -30,7 +30,7 @@ const router = useRouter()
 const menuOpen = ref(false)
 const loading = ref(false)
 const searchQuery = ref('')
-const selectedPlatform = ref<'all' | 'java' | 'bedrock'>('all')
+const selectedPlatform = ref('all')
 const selectedVisibility = ref<'all' | 'public' | 'private'>('all')
 const selectedSort = ref<'最新' | '标题'>('最新')
 const requirements = ref<RequirementItem[]>([])
@@ -38,7 +38,7 @@ const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast
 
 const heroNavLinks = computed(() => [
   { label: '返回首页', to: { name: 'home' } },
-  { label: '免费资源', to: { name: 'resource-catalog', params: { rootSlug: 'MC 插件与模组' } } },
+  { label: '免费资源', to: { name: 'home' } },
   { label: '我的定制资源', to: { name: 'my-custom-resources' }, active: true, align: 'right' as const },
 ])
 
@@ -52,7 +52,7 @@ const cards = computed<CustomResourceCard[]>(() => {
       title: item.bound_resource_title as string,
       author: item.bound_resource_author?.trim() || '未知作者',
       description: item.bound_resource_description?.trim() || '暂未填写资源说明。',
-      platform: item.bound_resource_platform === 'bedrock' ? 'bedrock' : 'java',
+      platform: item.bound_resource_platform || '未知平台',
       tags: Array.from(
         new Set(
           (item.bound_resource_tag_selections ?? []).flatMap((entry) => entry.tag_names).filter(Boolean),
@@ -148,6 +148,11 @@ function resetFilters() {
   selectedSort.value = '最新'
 }
 
+const availablePlatforms = computed(() => {
+  const platforms = new Set(cards.value.map((card) => card.platform))
+  return [...platforms].sort()
+})
+
 function openPrimaryLink(card: CustomResourceCard) {
   router.push({ name: 'mc-resource-detail', params: { id: card.id } })
 }
@@ -210,13 +215,9 @@ onMounted(() => {
             @click="selectedPlatform = 'all'">
             全部
           </button>
-          <button class="tag" :class="{ active: selectedPlatform === 'java' }" type="button"
-            @click="selectedPlatform = 'java'">
-            Java
-          </button>
-          <button class="tag" :class="{ active: selectedPlatform === 'bedrock' }" type="button"
-            @click="selectedPlatform = 'bedrock'">
-            Bedrock
+          <button v-for="p in availablePlatforms" :key="p" class="tag" :class="{ active: selectedPlatform === p }"
+            type="button" @click="selectedPlatform = p">
+            {{ p }}
           </button>
         </div>
         <div class="search-bar">
@@ -259,8 +260,8 @@ onMounted(() => {
         <div v-if="card.coverUrl" class="res-icon res-icon--image">
           <img :src="card.coverUrl" :alt="card.title" class="res-icon__image" />
         </div>
-        <div v-else class="res-icon" :class="card.platform === 'bedrock' ? 'bg-green' : 'bg-blue'">
-          {{ card.platform === 'bedrock' ? '⬛' : '☕' }}
+        <div v-else class="res-icon bg-blue">
+          📁
         </div>
         <div class="res-info">
           <div class="custom-card-topline">

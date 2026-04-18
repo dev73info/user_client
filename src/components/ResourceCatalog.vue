@@ -9,11 +9,10 @@ import {
   type PublicMcResourceItem,
 } from '@/api/resources'
 import {
-  getAllPublicMcTagTree,
+  getProcessedTagTree,
   getTagFilterSections,
   normalizeTagName,
   type McTagFilterSection,
-  type McTagGroup,
 } from '@/api/resourceTags'
 import { useMultiSelectTags } from '@/composables/useMultiSelectTags'
 import { useToast } from '@/composables/useToast'
@@ -35,7 +34,8 @@ type FilterSectionView = McTagFilterSection & {
 }
 
 const props = defineProps<{
-  platform: McResourcePlatform | null
+  platform: McResourcePlatform
+  rootSlug: string
   groupName: string
 }>()
 
@@ -44,7 +44,6 @@ const { showToast } = useToast()
 const route = useRoute()
 const router = useRouter()
 
-const tagTree = ref<McTagGroup[]>([])
 const filterSections = ref<FilterSectionView[]>([])
 
 const searchQuery = ref('')
@@ -62,8 +61,8 @@ const cards = ref<McCardItem[]>([])
 
 const groupLabel = computed(() => normalizeTagName(props.groupName || '当前分区'))
 const searchPlaceholder = computed(() => `搜索 ${groupLabel.value} 资源...`)
-const fallbackIconClass = computed(() => (props.platform === 'bedrock' ? 'bg-teal' : props.platform === 'java' ? 'bg-blue' : 'bg-blue'))
-const fallbackIcon = computed(() => (props.platform === 'bedrock' ? '🧱' : props.platform === 'java' ? '☕' : '📁'))
+const fallbackIconClass = computed(() => 'bg-blue')
+const fallbackIcon = computed(() => '📁')
 const primaryFilterSection = computed(() => filterSections.value[0] ?? null)
 const secondaryFilterSections = computed(() => filterSections.value.slice(1))
 
@@ -175,13 +174,12 @@ function openResource(card: McCardItem) {
 
 async function loadTagTree() {
   try {
-    const [groups, resources] = await Promise.all([
-      getAllPublicMcTagTree(),
-      props.platform ? listPublicMcResources(props.platform) : Promise.resolve([]),
+    const [tree, resources] = await Promise.all([
+      getProcessedTagTree(),
+      listPublicMcResources(props.platform),
     ])
-    tagTree.value = groups
     cards.value = resources.map(mapResourceToCard)
-    filterSections.value = getTagFilterSections(tagTree.value, props.groupName).map((section) => ({
+    filterSections.value = getTagFilterSections(tree, props.rootSlug, props.groupName).map((section) => ({
       ...section,
       selected: [],
     }))

@@ -6,12 +6,10 @@ import ResourceCatalog from '@/components/ResourceCatalog.vue'
 import { useAuthStore } from '@/stores/auth'
 import {
   getMcPluginPlatformEntries,
+  getProcessedTagTree,
   getTagRouteSlug,
-  normalizeTagName,
-  findTagGroupByName,
-  getAllPublicMcTagTree,
   type McPluginPlatformEntry,
-  type McTagGroup,
+  type McProcessedTagTree,
 } from '@/api/resourceTags'
 import { useToast } from '@/composables/useToast'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
@@ -65,7 +63,7 @@ const currentEntrySlug = computed(() => {
 const currentTab = computed(() => {
   return platformTabs.value.find((tab) => tab.slug === currentEntrySlug.value) ?? platformTabs.value[0] ?? null
 })
-const currentPlatform = computed(() => currentTab.value?.platform ?? null)
+const currentPlatform = computed(() => currentTab.value?.platform ?? '')
 const currentEntryLabel = computed(() => currentTab.value?.groupName ?? '当前分区')
 const authVisible = ref(false)
 const authMode = ref<'login' | 'register' | 'reset'>('login')
@@ -173,25 +171,15 @@ watch(
 
 async function loadPlatformTabs() {
   try {
-    const groups = await getAllPublicMcTagTree()
-    const rootGroups = groups
-      .filter((group) => group.parent_group_id == null)
-      .slice()
-      .sort((left, right) => left.sort_order - right.sort_order || left.id - right.id)
+    const tree = await getProcessedTagTree()
 
-    rootTabs.value = rootGroups.map((group) => {
-      const firstChild = group.child_groups
-        .slice()
-        .sort((left, right) => left.sort_order - right.sort_order || left.id - right.id)[0]
+    rootTabs.value = tree.roots.map((root) => ({
+      slug: root.key,
+      label: root.label,
+      firstEntrySlug: root.first_entry_key,
+    }))
 
-      return {
-        slug: getTagRouteSlug(group.name),
-        label: normalizeTagName(group.name),
-        firstEntrySlug: firstChild ? getTagRouteSlug(firstChild.name) : null,
-      }
-    })
-
-    const resolvedRoot = resolveCurrentRootGroup(rootGroups, groups)
+    const resolvedRoot = resolveCurrentRoot(tree)
     if (!resolvedRoot) {
       rootTabs.value = []
       platformTabs.value = []
@@ -199,8 +187,8 @@ async function loadPlatformTabs() {
       return
     }
 
-    currentRootName.value = normalizeTagName(resolvedRoot.name)
-    platformTabs.value = getMcPluginPlatformEntries(groups, resolvedRoot.name)
+    currentRootName.value = resolvedRoot.label
+    platformTabs.value = getMcPluginPlatformEntries(tree, resolvedRoot.key)
 
     const firstTab = platformTabs.value[0]
     if (!firstTab) {
@@ -208,12 +196,12 @@ async function loadPlatformTabs() {
     }
 
     if (
-      currentRootSlug.value !== getTagRouteSlug(resolvedRoot.name)
+      currentRootSlug.value !== resolvedRoot.key
       || !platformTabs.value.some((tab) => tab.slug === currentEntrySlug.value)
     ) {
       await router.replace({
         name: 'resource-catalog',
-        params: { rootSlug: getTagRouteSlug(resolvedRoot.name), entrySlug: firstTab.slug },
+        params: { rootSlug: resolvedRoot.key, entrySlug: firstTab.slug },
         query: route.query,
       })
     }
@@ -222,20 +210,13 @@ async function loadPlatformTabs() {
   }
 }
 
-function resolveCurrentRootGroup(rootGroups: McTagGroup[], groups: McTagGroup[]): McTagGroup | null {
+function resolveCurrentRoot(tree: McProcessedTagTree) {
   if (currentRootSlug.value) {
-    const matchedRoot = rootGroups.find((group) => getTagRouteSlug(group.name) === currentRootSlug.value)
-    if (matchedRoot) {
-      return matchedRoot
-    }
-
-    const nestedMatch = findTagGroupByName(groups, currentRootSlug.value)
-    if (nestedMatch) {
-      return nestedMatch
-    }
+    const matched = tree.roots.find((r) => r.key === currentRootSlug.value)
+    if (matched) return matched
   }
 
-  return rootGroups.find((group) => group.child_groups.length > 0) ?? rootGroups[0] ?? null
+  return tree.roots.find((r) => r.entries.length > 0) ?? tree.roots[0] ?? null
 }
 </script>
 
@@ -277,6 +258,7 @@ function resolveCurrentRootGroup(rootGroups: McTagGroup[], groups: McTagGroup[])
       :sendCodeLoading="sendCodeLoading" :sendCodeCountdown="sendCodeCountdown" @close="closeAuth"
       @submit="handleSubmitAuth" @loginWithGithub="handleLoginWithGithub" @sendAuthCode="sendAuthCode"
       @change-mode="changeAuthMode" />
-    <ResourceCatalog :platform="currentPlatform" :groupName="currentTab?.groupName || currentEntryLabel" />
+    <ResourceCatalog :platform="currentPlatform" :rootSlug="currentRootSlug"
+      :groupName="currentTab?.groupName || currentEntryLabel" />
   </main>
 </template>

@@ -13,7 +13,7 @@ import {
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
-import { getPlatformLabel, getTagRouteSlug, normalizeTagName } from '@/api/resourceTags'
+import { getTagRouteSlug, normalizeTagName } from '@/api/resourceTags'
 import { useAuthForm } from '@/composables/useAuthForm'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -48,11 +48,11 @@ const {
 } = useAuthForm(authMode)
 
 const tagNames = computed(() => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [])
-const platformLabel = computed(() => (resource.value?.platform === 'bedrock' ? '基岩版' : 'Java 版'))
+const platformLabel = computed(() => resource.value?.platform ?? '未知平台')
 const visibilityLabel = computed(() => (resource.value?.visibility === 'published' ? '公开展示中' : '待正式发布'))
 const resourceRootName = computed(() => {
   const rootName = resource.value?.tag_selections.find((item) => item.group_path.length > 0)?.group_path[0]
-  return normalizeTagName(rootName || 'MC 插件与模组')
+  return normalizeTagName(rootName || '')
 })
 const heroNavLinks = computed(() => {
   const links = [
@@ -84,7 +84,7 @@ const infoCards = computed(() => {
     {
       label: '平台',
       value: platformLabel.value,
-      hint: resource.value.platform === 'bedrock' ? 'Bedrock Edition' : 'Java Edition',
+      hint: resource.value.platform,
       tone: 'platform',
     },
     {
@@ -149,7 +149,7 @@ function formatHomepageContent(value: string): string {
 }
 
 function backToPlatform() {
-  const entrySlug = getPlatformLabel(resource.value?.platform === 'bedrock' ? 'bedrock' : 'java')
+  const entrySlug = resource.value?.platform ?? ''
   router.push({
     name: 'resource-catalog',
     params: { rootSlug: getTagRouteSlug(resourceRootName.value), entrySlug: getTagRouteSlug(entrySlug) },
@@ -302,7 +302,7 @@ onMounted(() => {
           <div class="resource-homepage__cover-card">
             <img v-if="resource.cover_url" :src="resourceCoverUrl" :alt="resource.title"
               class="resource-homepage__cover-image" />
-            <div v-else class="resource-homepage__cover-placeholder">{{ resource.platform === 'java' ? '☕' : '🧱' }}
+            <div v-else class="resource-homepage__cover-placeholder">📁
             </div>
           </div>
 
