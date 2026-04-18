@@ -1,4 +1,4 @@
-import { authHeader, requestJson } from '@/api/http'
+import { HttpError, authHeader, apiUrl, readErrorMessage, requestJson } from '@/api/http'
 
 export type McResourcePlatform = string
 
@@ -109,4 +109,39 @@ export async function listPublicMcResourceVersions(
     },
     '加载历史版本失败',
   )
+}
+
+function getResponseFileName(response: Response, fallbackFileName: string): string {
+  const disposition = response.headers.get('content-disposition') ?? ''
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1])
+  }
+
+  const plainMatch = disposition.match(/filename="?([^";]+)"?/i)
+  if (plainMatch?.[1]) {
+    return plainMatch[1]
+  }
+
+  return fallbackFileName
+}
+
+export async function downloadPublicMcResourceFile(
+  path: string,
+  fallbackFileName: string,
+  token?: string | null,
+): Promise<{ blob: Blob; fileName: string }> {
+  const response = await fetch(apiUrl(path), {
+    method: 'GET',
+    headers: token ? authHeader(token) : undefined,
+  })
+
+  if (!response.ok) {
+    throw new HttpError(response.status, await readErrorMessage(response, '下载资源失败'))
+  }
+
+  return {
+    blob: await response.blob(),
+    fileName: getResponseFileName(response, fallbackFileName),
+  }
 }

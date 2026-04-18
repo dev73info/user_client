@@ -3,13 +3,14 @@ import { computed, onMounted, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
 import { useRoute, useRouter } from 'vue-router'
 
-import { apiUrl, authHeader, readErrorMessage } from '@/api/http'
+import { HttpError, apiUrl } from '@/api/http'
 import AppToast from '@/components/AppToast.vue'
 import AuthModal from '@/components/AuthModal.vue'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import {
   getPublicMcResource,
   listPublicMcResourceVersions,
+  downloadPublicMcResourceFile,
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
@@ -251,51 +252,30 @@ function formatUpdatedTime(value: string): string {
   })
 }
 
-function getResponseFileName(response: Response, fallbackFileName: string): string {
-  const disposition = response.headers.get('content-disposition') ?? ''
-  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i)
-  if (utf8Match?.[1]) {
-    return decodeURIComponent(utf8Match[1])
-  }
-
-  const plainMatch = disposition.match(/filename="?([^";]+)"?/i)
-  if (plainMatch?.[1]) {
-    return plainMatch[1]
-  }
-
-  return fallbackFileName
-}
-
 async function triggerDownload(url: string, fileName: string) {
   const token = auth.token?.trim() ? auth.token : null
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: token ? authHeader(token) : undefined,
-  })
-
-  if (response.status === 401) {
-    auth.logout()
-    window.location.href = '/'
-    throw new Error('未登录或登录已过期，请重新登录')
-  }
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, '下载资源失败'))
-  }
-
-  const blob = await response.blob()
-  const objectUrl = URL.createObjectURL(blob)
-  const resolvedFileName = getResponseFileName(response, fileName)
-
   try {
-    const link = document.createElement('a')
-    link.href = objectUrl
-    link.download = resolvedFileName
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  } finally {
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+    const { blob, fileName: resolvedFileName } = await downloadPublicMcResourceFile(url, fileName, token)
+
+    const objectUrl = URL.createObjectURL(blob)
+    try {
+      const link = document.createElement('a')
+      link.href = objectUrl
+      link.download = resolvedFileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } finally {
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+    }
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 401) {
+      auth.logout()
+      window.location.href = '/'
+      throw new Error('未登录或登录已过期，请重新登录')
+    }
+
+    throw error
   }
 }
 
@@ -307,7 +287,7 @@ async function openResourceFile() {
 
   const fileName = resource.value?.file_name || latestVersion.value.resource.split('/').pop() || 'download'
   try {
-    await triggerDownload(apiUrl(latestVersion.value.resource), fileName)
+    await triggerDownload(latestVersion.value.resource, fileName)
   } catch (error) {
     showToast(error instanceof Error ? error.message : '下载资源失败', 'warning')
   }
@@ -316,7 +296,7 @@ async function openResourceFile() {
 async function downloadVersion(version: PublicMcResourceVersionItem) {
   const fileName = resource.value?.file_name || version.resource.split('/').pop() || 'download'
   try {
-    await triggerDownload(apiUrl(version.resource), fileName)
+    await triggerDownload(version.resource, fileName)
   } catch (error) {
     showToast(error instanceof Error ? error.message : '下载资源失败', 'warning')
   }
@@ -328,13 +308,7 @@ function formatVersionTime(value: string): string {
     return value
   }
 
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return date.toLocaleString('zh-CN')
 }
 
 async function loadResource() {

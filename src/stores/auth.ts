@@ -7,6 +7,7 @@ import {
   sendRegisterEmailCode as sendRegisterEmailCodeApi,
   sendResetPasswordEmailCode as sendResetPasswordEmailCodeApi,
 } from '@/api/auth'
+import { authHeaders as createAuthHeaders } from '@/api/http'
 
 const TOKEN_KEY = 'auth_token_73hub'
 
@@ -54,6 +55,10 @@ export const useAuthStore = defineStore('auth', () => {
   let profileRequest: Promise<AuthProfile> | null = null
 
   const isAuthed = computed(() => token.value.length > 0)
+
+  function authHeaders(headers: HeadersInit = {}) {
+    return createAuthHeaders(token.value, headers)
+  }
 
   function clearRefreshTimer() {
     if (refreshTimer !== null) {
@@ -143,9 +148,7 @@ export const useAuthStore = defineStore('auth', () => {
     const request = (async () => {
       const resp = await fetch('/auth/me', {
         method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token.value}`,
-        },
+        headers: authHeaders(),
       })
 
       if (!resp.ok) {
@@ -275,6 +278,7 @@ export const useAuthStore = defineStore('auth', () => {
     profileLoaded,
     hydrated,
     isAuthed,
+    authHeaders,
     hydrate,
     fetchProfile,
     initializeSession,

@@ -1,4 +1,4 @@
-import { HttpError, requestJson, requestVoid } from '@/api/http'
+import { HttpError, authHeaders, requestJson, requestVoid } from '@/api/http'
 
 export type AuthPayload = {
   token: string
@@ -93,9 +93,7 @@ export async function refreshToken(currentToken: string): Promise<AuthPayload> {
     '/auth/refresh',
     {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${currentToken}`,
-      },
+      headers: authHeaders(currentToken),
     },
     '刷新令牌失败',
   )

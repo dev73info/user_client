@@ -10,6 +10,15 @@ export function authHeader(token: string): Record<string, string> {
   return headers
 }
 
+export function authHeaders(token: string, headers: HeadersInit = {}): Headers {
+  const merged = new Headers(headers)
+  const bearer = authHeader(token).Authorization
+  if (bearer) {
+    merged.set('Authorization', bearer)
+  }
+  return merged
+}
+
 export function apiUrl(path: string): string {
   if (/^https?:\/\//i.test(path)) {
     return path
