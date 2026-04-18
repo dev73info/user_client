@@ -274,7 +274,7 @@ async function triggerDownload(url: string, fileName: string) {
   })
 
   if (response.status === 401) {
-    localStorage.removeItem('auth_token_73hub')
+    auth.logout()
     window.location.href = '/'
     throw new Error('未登录或登录已过期，请重新登录')
   }

@@ -52,7 +52,7 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
   auth.hydrate()
 
@@ -70,6 +70,17 @@ router.beforeEach((to, from, next) => {
 
   const authRequired =
     to.name === 'profile' || to.name === 'payment' || to.name === 'my-custom-resources'
+
+  if (auth.isAuthed && !auth.profileLoaded) {
+    try {
+      await auth.initializeSession()
+    } catch {
+      if (authRequired) {
+        return next({ name: 'home' })
+      }
+    }
+  }
+
   if (authRequired && !auth.isAuthed) {
     return next({ name: 'home' })
   }

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 
+import { useAuthStore } from '@/stores/auth'
+
 type MatrixColumn = {
   id: number
   left: number
@@ -37,10 +39,16 @@ function createColumn(id: number): MatrixColumn {
 }
 
 const matrixColumns = ref(Array.from({ length: 64 }, (_, index) => createColumn(index)))
+const auth = useAuthStore()
 
 let flickerTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
+  auth.hydrate()
+  void auth.initializeSession().catch(() => {
+    auth.logout()
+  })
+
   flickerTimer = setInterval(() => {
     const columns = matrixColumns.value
     if (columns.length === 0) {
@@ -79,7 +87,7 @@ onUnmounted(() => {
         fontSize: `${column.fontSize}px`,
       }">
         <span v-for="(char, charIndex) in column.chars" :key="`${column.id}-${charIndex}`" class="matrix-char">{{ char
-          }}</span>
+        }}</span>
       </div>
     </div>
     <div class="app-content">
