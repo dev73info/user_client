@@ -175,6 +175,17 @@ export function getPlatformSlug(rootName: string): string {
   return normalizeTagName(rootName)
 }
 
+export function getResourceDetailSlug(id: number, title: string): string {
+  return `${normalizeTagName(title)}--${id}`
+}
+
+export function parseResourceIdFromSlug(slug: string): number | null {
+  const match = slug.match(/--(\d+)$/)
+  if (!match) return null
+  const id = Number(match[1])
+  return Number.isInteger(id) && id > 0 ? id : null
+}
+
 export function getPlatformLabel(platform: string): string {
   return platform
 }

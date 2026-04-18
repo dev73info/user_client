@@ -45,7 +45,7 @@ const router = createRouter({
       component: () => import('@/views/ResourceCatalogView.vue'),
     },
     {
-      path: '/mc-resources/:id',
+      path: '/:rootSlug/:entrySlug/:resourceSlug',
       name: 'mc-resource-detail',
       component: () => import('@/views/ResourceDetailView.vue'),
     },

@@ -10,7 +10,9 @@ import {
 } from '@/api/resources'
 import {
   getProcessedTagTree,
+  getResourceDetailSlug,
   getTagFilterSections,
+  getTagRouteSlug,
   normalizeTagName,
   type McTagFilterSection,
 } from '@/api/resourceTags'
@@ -169,7 +171,14 @@ function formatUpdatedAt(value: string): string {
 }
 
 function openResource(card: McCardItem) {
-  router.push({ name: 'mc-resource-detail', params: { id: card.id } })
+  router.push({
+    name: 'mc-resource-detail',
+    params: {
+      rootSlug: props.rootSlug,
+      entrySlug: getTagRouteSlug(props.groupName),
+      resourceSlug: getResourceDetailSlug(card.id, card.title),
+    },
+  })
 }
 
 async function loadTagTree() {

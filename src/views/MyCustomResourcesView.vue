@@ -6,6 +6,7 @@ import { apiUrl } from '@/api/http'
 import AppToast from '@/components/AppToast.vue'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import { listRequirements, type RequirementItem } from '@/api/requirements'
+import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
@@ -17,6 +18,8 @@ type CustomResourceCard = {
   author: string
   description: string
   platform: string
+  rootSlug: string
+  entrySlug: string
   tags: string[]
   updatedAt: string
   sourceUrl: string | null
@@ -38,32 +41,39 @@ const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast
 
 const heroNavLinks = computed(() => [
   { label: '返回首页', to: { name: 'home' } },
-  { label: '免费资源', to: { name: 'home' } },
   { label: '我的定制资源', to: { name: 'my-custom-resources' }, active: true, align: 'right' as const },
 ])
 
 const cards = computed<CustomResourceCard[]>(() => {
   return requirements.value
     .filter((item) => item.bound_resource_id != null && item.bound_resource_title)
-    .map((item) => ({
-      id: item.bound_resource_id as number,
-      requirementId: item.requirement_id,
-      requirementTitle: item.title,
-      title: item.bound_resource_title as string,
-      author: item.bound_resource_author?.trim() || '未知作者',
-      description: item.bound_resource_description?.trim() || '暂未填写资源说明。',
-      platform: item.bound_resource_platform || '未知平台',
-      tags: Array.from(
-        new Set(
-          (item.bound_resource_tag_selections ?? []).flatMap((entry) => entry.tag_names).filter(Boolean),
+    .map((item) => {
+      const tagSelections = item.bound_resource_tag_selections ?? []
+      const rootName = tagSelections.find((s) => s.group_path.length > 0)?.group_path[0] ?? ''
+      const entryName = tagSelections.find((s) => s.group_path.length > 1)?.group_path[1] ?? (item.bound_resource_platform || '')
+
+      return {
+        id: item.bound_resource_id as number,
+        requirementId: item.requirement_id,
+        requirementTitle: item.title,
+        title: item.bound_resource_title as string,
+        author: item.bound_resource_author?.trim() || '未知作者',
+        description: item.bound_resource_description?.trim() || '暂未填写资源说明。',
+        platform: item.bound_resource_platform || '未知平台',
+        rootSlug: getTagRouteSlug(rootName),
+        entrySlug: getTagRouteSlug(entryName),
+        tags: Array.from(
+          new Set(
+            (item.bound_resource_tag_selections ?? []).flatMap((entry) => entry.tag_names).filter(Boolean),
+          ),
         ),
-      ),
-      updatedAt: item.bound_resource_updated_at || item.updated_at,
-      sourceUrl: item.bound_resource_source_url ?? null,
-      docsUrl: item.bound_resource_docs_url ?? null,
-      coverUrl: item.bound_resource_cover_url ? apiUrl(item.bound_resource_cover_url) : null,
-      visibility: item.resource_visibility === 'public' ? 'public' : 'private',
-    }))
+        updatedAt: item.bound_resource_updated_at || item.updated_at,
+        sourceUrl: item.bound_resource_source_url ?? null,
+        docsUrl: item.bound_resource_docs_url ?? null,
+        coverUrl: item.bound_resource_cover_url ? apiUrl(item.bound_resource_cover_url) : null,
+        visibility: item.resource_visibility === 'public' ? 'public' : 'private',
+      }
+    })
 })
 
 const filteredCards = computed(() => {
@@ -154,7 +164,14 @@ const availablePlatforms = computed(() => {
 })
 
 function openPrimaryLink(card: CustomResourceCard) {
-  router.push({ name: 'mc-resource-detail', params: { id: card.id } })
+  router.push({
+    name: 'mc-resource-detail',
+    params: {
+      rootSlug: card.rootSlug,
+      entrySlug: card.entrySlug,
+      resourceSlug: getResourceDetailSlug(card.id, card.title),
+    },
+  })
 }
 
 async function loadCustomResources() {

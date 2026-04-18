@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
 import { useRoute, useRouter } from 'vue-router'
 
-import { apiUrl } from '@/api/http'
+import { apiUrl, authHeader, readErrorMessage } from '@/api/http'
 import AppToast from '@/components/AppToast.vue'
 import AuthModal from '@/components/AuthModal.vue'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
@@ -13,7 +13,7 @@ import {
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
-import { getTagRouteSlug, normalizeTagName } from '@/api/resourceTags'
+import { getTagRouteSlug, normalizeTagName, parseResourceIdFromSlug } from '@/api/resourceTags'
 import { useAuthForm } from '@/composables/useAuthForm'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -50,14 +50,31 @@ const {
 const tagNames = computed(() => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [])
 const platformLabel = computed(() => resource.value?.platform ?? '未知平台')
 const visibilityLabel = computed(() => (resource.value?.visibility === 'published' ? '公开展示中' : '待正式发布'))
+const currentRootSlug = computed(() => {
+  const raw = route.params.rootSlug
+  return typeof raw === 'string' ? raw.trim() : ''
+})
+const currentEntrySlug = computed(() => {
+  const raw = route.params.entrySlug
+  return typeof raw === 'string' ? raw.trim() : ''
+})
 const resourceRootName = computed(() => {
   const rootName = resource.value?.tag_selections.find((item) => item.group_path.length > 0)?.group_path[0]
   return normalizeTagName(rootName || '')
 })
 const heroNavLinks = computed(() => {
+  const catalogLink = currentRootSlug.value
+    ? {
+      name: 'resource-catalog',
+      params: currentEntrySlug.value
+        ? { rootSlug: currentRootSlug.value, entrySlug: currentEntrySlug.value }
+        : { rootSlug: currentRootSlug.value },
+    }
+    : { name: 'home' as const }
+
   const links = [
     { label: '返回首页', to: { name: 'home' } },
-    { label: '免费资源', to: { name: 'resource-catalog', params: { rootSlug: getTagRouteSlug(resourceRootName.value) } }, active: true },
+    { label: '免费资源', to: catalogLink, active: true },
     { label: '开发者端', href: DEV_PORTAL_URL },
     { label: '探索', href: '#' },
     { label: '免费资源', href: '#' },
@@ -149,10 +166,14 @@ function formatHomepageContent(value: string): string {
 }
 
 function backToPlatform() {
-  const entrySlug = resource.value?.platform ?? ''
+  const fallbackRootSlug = getTagRouteSlug(resourceRootName.value)
+  const fallbackEntrySlug = getTagRouteSlug(resource.value?.platform ?? '')
   router.push({
     name: 'resource-catalog',
-    params: { rootSlug: getTagRouteSlug(resourceRootName.value), entrySlug: getTagRouteSlug(entrySlug) },
+    params: {
+      rootSlug: currentRootSlug.value || fallbackRootSlug,
+      entrySlug: currentEntrySlug.value || fallbackEntrySlug,
+    },
   })
 }
 
@@ -230,17 +251,75 @@ function formatUpdatedTime(value: string): string {
   })
 }
 
-function openResourceFile() {
+function getResponseFileName(response: Response, fallbackFileName: string): string {
+  const disposition = response.headers.get('content-disposition') ?? ''
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1])
+  }
+
+  const plainMatch = disposition.match(/filename="?([^";]+)"?/i)
+  if (plainMatch?.[1]) {
+    return plainMatch[1]
+  }
+
+  return fallbackFileName
+}
+
+async function triggerDownload(url: string, fileName: string) {
+  const token = auth.token?.trim() ? auth.token : null
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: token ? authHeader(token) : undefined,
+  })
+
+  if (response.status === 401) {
+    localStorage.removeItem('auth_token_73hub')
+    window.location.href = '/'
+    throw new Error('未登录或登录已过期，请重新登录')
+  }
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, '下载资源失败'))
+  }
+
+  const blob = await response.blob()
+  const objectUrl = URL.createObjectURL(blob)
+  const resolvedFileName = getResponseFileName(response, fileName)
+
+  try {
+    const link = document.createElement('a')
+    link.href = objectUrl
+    link.download = resolvedFileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } finally {
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+  }
+}
+
+async function openResourceFile() {
   if (!latestVersion.value?.resource) {
     showToast('当前还没有可下载的历史版本', 'info')
     return
   }
 
-  window.open(apiUrl(latestVersion.value.resource), '_blank', 'noopener,noreferrer')
+  const fileName = resource.value?.file_name || latestVersion.value.resource.split('/').pop() || 'download'
+  try {
+    await triggerDownload(apiUrl(latestVersion.value.resource), fileName)
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '下载资源失败', 'warning')
+  }
 }
 
-function downloadVersion(version: PublicMcResourceVersionItem) {
-  window.open(apiUrl(version.resource), '_blank', 'noopener,noreferrer')
+async function downloadVersion(version: PublicMcResourceVersionItem) {
+  const fileName = resource.value?.file_name || version.resource.split('/').pop() || 'download'
+  try {
+    await triggerDownload(apiUrl(version.resource), fileName)
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '下载资源失败', 'warning')
+  }
 }
 
 function formatVersionTime(value: string): string {
@@ -259,8 +338,9 @@ function formatVersionTime(value: string): string {
 }
 
 async function loadResource() {
-  const resourceId = Number(route.params.id)
-  if (!Number.isInteger(resourceId) || resourceId <= 0) {
+  const resourceSlug = String(route.params.resourceSlug ?? '')
+  const resourceId = parseResourceIdFromSlug(resourceSlug)
+  if (!resourceId) {
     showToast('资源编号无效', 'warning')
     router.replace({ name: 'home' })
     return
@@ -288,6 +368,13 @@ onMounted(() => {
   auth.hydrate()
   void loadResource()
 })
+
+watch(
+  () => route.params.resourceSlug,
+  () => {
+    void loadResource()
+  },
+)
 </script>
 
 <template>
