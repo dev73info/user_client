@@ -800,8 +800,8 @@ async function submitPublishRequirement() {
       @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" @logout="logout">
       <div class="hero-meta">
         <div class="hero">
-          <h1>柒叁信息</h1>
-          <p class="desc">浏览免费资源、发布定制需求、跟进支付与交付进度，在一个页面里完成资源发现与项目协作。</p>
+          <h1>免费资源先逛，定制需求再落地</h1>
+          <p class="desc">从公开资源导航快速发现内容，到发布需求、支付协作与交付跟进，整条流程在一个平台完成。</p>
         </div>
         <div class="hero-actions">
           <button class="publish-btn" type="button" @click="openPublishModal">发布需求</button>
