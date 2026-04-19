@@ -36,12 +36,7 @@ const heroNavLinks = computed(() => {
       {
         label: '免费资源导航',
         to: {
-          name: 'resource-catalog',
-          params: currentRootSlug.value
-            ? (currentEntrySlug.value
-              ? { rootSlug: currentRootSlug.value, entrySlug: currentEntrySlug.value }
-              : { rootSlug: currentRootSlug.value })
-            : {},
+          name: 'free-resources'
         },
         active: true,
       },
