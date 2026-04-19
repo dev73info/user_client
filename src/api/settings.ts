@@ -14,6 +14,21 @@ export type UpdateProfileResp = {
 export type UserProfileResp = {
   username: string
   email?: string | null
+  subscribe_official_activity: boolean
+}
+
+export type UserSubscriptionsResp = {
+  subscribe_official_activity: boolean
+}
+
+export type ActivityCampaignClaimResp = {
+  activity_id: number
+  title: string
+  coupon_type: 'amount' | 'percent'
+  coupon_name: string
+  assigned_coupon_code: string
+  claimed_at: string
+  already_claimed: boolean
 }
 
 export async function getDepositRatio(token: string): Promise<DepositRatioResp | null> {
@@ -124,5 +139,41 @@ export async function updateProfilePassword(
       body: JSON.stringify({ new_password: newPassword, email_code: emailCode }),
     },
     '修改密码失败',
+  )
+}
+
+export async function updateProfileSubscriptions(
+  token: string,
+  payload: UserSubscriptionsResp,
+): Promise<UserSubscriptionsResp> {
+  return requestJson<UserSubscriptionsResp>(
+    '/settings/profile/subscriptions',
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify(payload),
+    },
+    '更新订阅设置失败',
+  )
+}
+
+export async function claimActivityCampaign(
+  token: string,
+  claimToken: string,
+): Promise<ActivityCampaignClaimResp> {
+  return requestJson<ActivityCampaignClaimResp>(
+    '/settings/activity-campaigns/claim',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify({ token: claimToken }),
+    },
+    '领取活动福利失败',
   )
 }

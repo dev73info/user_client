@@ -35,6 +35,7 @@ const confirming = ref(false)
 const paid = ref(false)
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let countdownTimer: ReturnType<typeof setInterval> | null = null
+const PAYMENT_POLL_INTERVAL_MS = 8_000
 
 const isAlipayPage = computed(() => paymentChannel.value === 'alipay')
 const hasOrder = computed(
@@ -258,8 +259,11 @@ onMounted(() => {
   }, 1000)
 
   pollTimer = setInterval(() => {
+    if (document.visibilityState !== 'visible') {
+      return
+    }
     void confirmPayment()
-  }, 3000)
+  }, PAYMENT_POLL_INTERVAL_MS)
 })
 
 onUnmounted(() => {

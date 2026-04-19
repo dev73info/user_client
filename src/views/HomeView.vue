@@ -82,7 +82,7 @@ const metrics = ref<Metric[]>([
     hint: '已支付订单累计金额',
   },
 ])
-const AUTO_REFRESH_INTERVAL_MS = 60_000
+const AUTO_REFRESH_INTERVAL_MS = 300_000
 
 type LatestDealView = {
   paymentId: string

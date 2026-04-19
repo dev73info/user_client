@@ -38,7 +38,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
       return
     }
 
-    const redirectTarget = `${window.location.origin}${window.location.pathname}`
+    const redirectTarget = `${window.location.origin}${window.location.pathname}${window.location.search}`
     try {
       const resp = await getGithubAuthorizeUrl(redirectTarget)
       if (!resp.url) {

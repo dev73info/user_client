@@ -22,6 +22,7 @@ import {
   requestRequirementFinalPayment as requestRequirementFinalPaymentApi,
   reviewRequirementResourceDelete as reviewRequirementResourceDeleteApi,
   resubmitRequirement as resubmitRequirementApi,
+  updateRequirementSubscription as updateRequirementSubscriptionApi,
   updateRequirementResourceVisibility as updateRequirementResourceVisibilityApi,
   type RequirementItem,
   type RequirementPendingResourceVersionDeleteRequest,
@@ -36,6 +37,7 @@ import {
   updateProfile,
   updateProfileEmail,
   updateProfilePassword,
+  updateProfileSubscriptions,
 } from '@/api/settings'
 
 const router = useRouter()
@@ -63,6 +65,7 @@ const editDescription = ref('')
 const editBudget = ref<string | number>('')
 const editAcceptance = ref('')
 const editLoading = ref(false)
+const requirementSubscriptionLoadingId = ref<string | null>(null)
 const resourceVisibilityLoadingId = ref<string | null>(null)
 const resourceVersionDeleteReviewLoadingId = ref<string | null>(null)
 const finalPaymentConfirmVisible = ref(false)
@@ -191,6 +194,10 @@ function resourceVersionDeleteReviewHint(item: RequirementItem) {
 
 function formatResourceVisibility(item: RequirementItem) {
   return currentResourceVisibility(item) === 'public' ? '资源已公开' : '资源私有中'
+}
+
+function requirementSubscriptionLabel(item: RequirementItem) {
+  return item.subscribe_status_change ? '取消订阅动态' : '订阅状态变化'
 }
 
 function nextResourceVisibility(item: RequirementItem): RequirementResourceVisibility {
@@ -347,7 +354,7 @@ function openSecurityModal() {
 }
 
 function closeSecurityModal() {
-  if (usernameLoading.value || emailLoading.value || passwordLoading.value) {
+  if (usernameLoading.value || emailLoading.value || passwordLoading.value || subscriptionLoading.value) {
     return
   }
   securityVisible.value = false
@@ -462,11 +469,32 @@ async function loadProfile() {
     const profile = await getProfile(auth.token)
     newUsername.value = profile.username
     profileEmail.value = profile.email ?? ''
+    subscriptionOfficialActivity.value = Boolean(profile.subscribe_official_activity)
     if (!newEmail.value) {
       newEmail.value = profile.email ?? ''
     }
   } catch (err) {
     showToast(err instanceof Error ? err.message : '加载个人资料失败', 'error')
+  }
+}
+
+async function saveSubscriptions() {
+  if (!auth.isAuthed) {
+    showToast('请先登录', 'error')
+    return
+  }
+
+  subscriptionLoading.value = true
+  try {
+    const profile = await updateProfileSubscriptions(auth.token, {
+      subscribe_official_activity: subscriptionOfficialActivity.value,
+    })
+    subscriptionOfficialActivity.value = Boolean(profile.subscribe_official_activity)
+    showToast('订阅设置已更新', 'success')
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '更新订阅设置失败', 'error')
+  } finally {
+    subscriptionLoading.value = false
   }
 }
 
@@ -626,6 +654,28 @@ async function toggleRequirementResourceVisibility(item: RequirementItem) {
     showToast(err instanceof Error ? err.message : '更新资源可见性失败', 'error')
   } finally {
     resourceVisibilityLoadingId.value = null
+  }
+}
+
+async function toggleRequirementSubscription(item: RequirementItem) {
+  if (!auth.isAuthed) {
+    showToast('请先登录后再设置需求订阅', 'error')
+    return
+  }
+
+  requirementSubscriptionLoadingId.value = item.requirement_id
+  const nextValue = !item.subscribe_status_change
+
+  try {
+    await updateRequirementSubscriptionApi(auth.token, item.requirement_id, {
+      subscribe_status_change: nextValue,
+    })
+    item.subscribe_status_change = nextValue
+    showToast(nextValue ? '已订阅该需求的状态变化' : '已取消该需求的状态变化订阅', 'success')
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '更新需求订阅失败', 'error')
+  } finally {
+    requirementSubscriptionLoadingId.value = null
   }
 }
 
@@ -798,6 +848,8 @@ const confirmPassword = ref('')
 const passwordCode = ref('')
 const passwordCodeSending = ref(false)
 const passwordLoading = ref(false)
+const subscriptionOfficialActivity = ref(false)
+const subscriptionLoading = ref(false)
 
 const payAmount = computed(() => {
   if (!payRequirement.value) {
@@ -979,6 +1031,7 @@ const heroNavLinks = computed(() => {
   const links = [
     { label: '返回首页', to: { name: 'home' } },
     { label: '个人中心', to: { name: 'profile' }, active: true },
+    { label: '我的工单', to: { name: 'tickets' } },
     { label: '我的定制资源', to: { name: 'my-custom-resources' } },
     { label: '开发者端', href: DEV_PORTAL_URL },
   ]
@@ -1006,38 +1059,37 @@ const heroNavLinks = computed(() => {
       </div>
     </HomeHeroSection>
 
-    <section class="glass-panel">
-      <header class="panel-head">
-        <div>
-          <h2>账户概览</h2>
-          <p class="lead">在这里查看你的优惠券和折扣券背包。</p>
-        </div>
-      </header>
-
-      <div class="wallet-overview">
-        <div class="wallet-card summary-card">
-          <strong>{{ amountCoupons.length }}</strong>
-          <span>优惠卷</span>
-        </div>
-        <div class="wallet-card summary-card">
-          <strong>{{ discountCoupons.length }}</strong>
-          <span>折扣券</span>
-        </div>
+    <header class="panel-head">
+      <div>
+        <h2>账户概览</h2>
+        <p class="lead">在这里查看你的优惠券和折扣券背包。</p>
       </div>
+    </header>
 
-      <section class="wallet-section">
-        <div class="wallet-header">
-          <h3>我提交的需求单</h3>
-          <button class="ghost small" type="button" :disabled="requirementLoading" @click="loadMyRequirements">
-            {{ requirementLoading ? '刷新中...' : '刷新' }}
-          </button>
-        </div>
-        <div v-if="myRequirements.length === 0" class="empty">暂无已提交需求单</div>
-        <ul v-else class="requirement-list">
-          <template v-for="item in myRequirements" :key="item.requirement_id">
-            <li class="requirement-row"
-              :class="{ clickable: hasPendingResourceVersionDeleteReview(item) || canPay(item.status) || canComment(item.status) || canResubmit(item.status), expanded: isVersionDeleteReviewExpanded(item) }"
-              @click="handleRequirementAction(item)">
+    <div class="wallet-overview">
+      <div class="wallet-card summary-card">
+        <strong>{{ amountCoupons.length }}</strong>
+        <span>优惠卷</span>
+      </div>
+      <div class="wallet-card summary-card">
+        <strong>{{ discountCoupons.length }}</strong>
+        <span>折扣券</span>
+      </div>
+    </div>
+
+    <section class="wallet-section">
+      <div class="wallet-header">
+        <h3>我提交的需求单</h3>
+        <button class="ghost small" type="button" :disabled="requirementLoading" @click="loadMyRequirements">
+          {{ requirementLoading ? '刷新中...' : '刷新' }}
+        </button>
+      </div>
+      <div v-if="myRequirements.length === 0" class="empty">暂无已提交需求单</div>
+      <ul v-else class="requirement-list">
+        <template v-for="item in myRequirements" :key="item.requirement_id">
+          <li class="requirement-row"
+            :class="{ clickable: hasPendingResourceVersionDeleteReview(item) || canPay(item.status) || canComment(item.status) || canResubmit(item.status), expanded: isVersionDeleteReviewExpanded(item) }"
+            @click="handleRequirementAction(item)">
             <div class="requirement-main">
               <strong>{{ item.title }}</strong>
               <span>{{ item.requirement_id }}</span>
@@ -1049,28 +1101,43 @@ const heroNavLinks = computed(() => {
                 class="requirement-note">资源公开/私有切换需在已付尾款后开放</small>
               <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">
                 <strong>待审核删除版本：</strong>
-                <span style="display: inline-flex; align-items: center; margin-left: 6px; padding: 2px 10px; border-radius: 999px; background: rgba(255,255,255,0.14); font-weight: 700; color: #fff;">
+                <span
+                  style="display: inline-flex; align-items: center; margin-left: 6px; padding: 2px 10px; border-radius: 999px; background: rgba(255,255,255,0.14); font-weight: 700; color: #fff;">
                   {{ pendingResourceVersionDeleteRequests(item).length }} 个待审核
                 </span>
-                <span style="margin-left: 8px; opacity: 0.8;">共 {{ pendingResourceVersionDeleteRequests(item).length }} 个</span>
+                <span style="margin-left: 8px; opacity: 0.8;">共 {{ pendingResourceVersionDeleteRequests(item).length
+                }} 个</span>
               </small>
-              <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">{{ resourceVersionDeleteReviewHint(item) }}</small>
-              <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">点击当前需求行，可在下方展开审核卡片。</small>
-              <small v-else-if="hasBoundResource(item) && item.resource_version_delete_request_status === 'rejected' && item.resource_version_delete_review_note" class="requirement-note">{{ resourceVersionDeleteReviewHint(item) }}</small>
+              <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">{{
+                resourceVersionDeleteReviewHint(item) }}</small>
+              <small v-if="hasPendingResourceVersionDeleteReview(item)"
+                class="requirement-note">点击当前需求行，可在下方展开审核卡片。</small>
+              <small
+                v-else-if="hasBoundResource(item) && item.resource_version_delete_request_status === 'rejected' && item.resource_version_delete_review_note"
+                class="requirement-note">{{ resourceVersionDeleteReviewHint(item) }}</small>
               <small
                 v-if="item.status === 'in_development' && hasBoundResource(item) && publishedVersionCount(item) < 1"
                 class="requirement-note">开发者至少发布 1 个版本后，用户才能结束开发并支付尾款</small>
               <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{
                 item.review_note }}</small>
+              <small class="requirement-note">{{ item.subscribe_status_change ? '已订阅该需求的状态变化通知' : '未订阅该需求的状态变化通知'
+                }}</small>
             </div>
             <span class="requirement-status">{{ formatRequirementStatus(item.status) }}</span>
             <span>{{ formatBudget(item.budget) }}</span>
             <time>{{ formatRequirementTime(item.updated_at) }}</time>
             <div class="requirement-actions">
+              <button class="ghost small" type="button"
+                :disabled="requirementSubscriptionLoadingId === item.requirement_id"
+                @click.stop="toggleRequirementSubscription(item)">
+                {{ requirementSubscriptionLoadingId === item.requirement_id ? '提交中...' :
+                requirementSubscriptionLabel(item) }}
+              </button>
               <button v-if="hasBoundResource(item)" class="ghost small" type="button"
                 :disabled="resourceVisibilityLoadingId === item.requirement_id || !canToggleRequirementResourceVisibility(item)"
                 @click.stop="toggleRequirementResourceVisibility(item)">
-                {{ resourceVisibilityLoadingId === item.requirement_id ? '提交中...' : toggleResourceVisibilityLabel(item)
+                {{ resourceVisibilityLoadingId === item.requirement_id ? '提交中...' :
+                  toggleResourceVisibilityLabel(item)
                 }}
               </button>
               <button v-if="canRequestFinalPayment(item)" class="ghost small" type="button"
@@ -1082,252 +1149,387 @@ const heroNavLinks = computed(() => {
               <button v-else-if="canComment(item.status)" class="ghost small" type="button"
                 @click.stop="openCommentModal(item)">去评价</button>
             </div>
-            </li>
-            <li v-if="isVersionDeleteReviewExpanded(item)" class="requirement-review-card-row">
-              <section class="requirement-review-card" @click.stop>
-                <div class="requirement-review-card__header">
-                  <div>
-                    <h4>版本删除审核</h4>
-                    <p>每个待删除版本单独一张卡片，直接在对应卡片上审核。</p>
+          </li>
+          <li v-if="isVersionDeleteReviewExpanded(item)" class="requirement-review-card-row">
+            <section class="requirement-review-card" @click.stop>
+              <div class="requirement-review-card__header">
+                <div>
+                  <h4>版本删除审核</h4>
+                  <p>每个待删除版本单独一张卡片，直接在对应卡片上审核。</p>
+                </div>
+                <button class="ghost small" type="button" @click.stop="closeVersionDeleteReviewCard">收起</button>
+              </div>
+              <div class="requirement-review-card-list">
+                <article v-for="request in pendingResourceVersionDeleteRequests(item)" :key="request.version_id"
+                  class="requirement-review-item">
+                  <div class="requirement-review-item__main">
+                    <div>
+                      <strong>{{ pendingResourceVersionTitle(request) }}</strong>
+                      <p>申请时间：{{ formatPendingVersionRequestedAt(request) }}</p>
+                    </div>
+                    <div class="requirement-review-item__actions">
+                      <button class="ghost small" type="button"
+                        :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id"
+                        @click.stop="submitVersionDeleteReview(item, request, 'approve')">
+                        {{ resourceVersionDeleteReviewLoadingId === item.requirement_id ? '处理中...' : '同意删除' }}
+                      </button>
+                      <button class="ghost small" type="button" :class="{ active: isRejectingVersion(request) }"
+                        :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id"
+                        @click.stop="openRejectVersion(request)">拒绝删除</button>
+                    </div>
                   </div>
-                  <button class="ghost small" type="button" @click.stop="closeVersionDeleteReviewCard">收起</button>
-                </div>
-                <div class="requirement-review-card-list">
-                  <article v-for="request in pendingResourceVersionDeleteRequests(item)" :key="request.version_id" class="requirement-review-item">
-                    <div class="requirement-review-item__main">
-                      <div>
-                        <strong>{{ pendingResourceVersionTitle(request) }}</strong>
-                        <p>申请时间：{{ formatPendingVersionRequestedAt(request) }}</p>
-                      </div>
-                      <div class="requirement-review-item__actions">
-                        <button class="ghost small" type="button" :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id" @click.stop="submitVersionDeleteReview(item, request, 'approve')">
-                          {{ resourceVersionDeleteReviewLoadingId === item.requirement_id ? '处理中...' : '同意删除' }}
-                        </button>
-                        <button class="ghost small" type="button" :class="{ active: isRejectingVersion(request) }" :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id" @click.stop="openRejectVersion(request)">拒绝删除</button>
-                      </div>
+                  <p class="requirement-review-card__hint danger">同意后该版本文件会被永久删除，且无法恢复。</p>
+                  <div v-if="isRejectingVersion(request)" class="requirement-review-item__reject-panel">
+                    <label class="requirement-review-card__field requirement-review-card__field--stacked">
+                      <span>拒绝原因</span>
+                      <textarea v-model="versionDeleteRejectNotes[request.version_id]" class="comment-input" rows="4"
+                        maxlength="500" placeholder="可选：说明拒绝删除该版本的原因"></textarea>
+                      <small class="requirement-note">已输入 {{ pendingVersionRejectNote(request).length }} / 500
+                        字</small>
+                    </label>
+                    <div class="requirement-review-card__actions">
+                      <button class="ghost small" type="button" @click.stop="cancelRejectVersion">取消</button>
+                      <button class="ghost small" type="button"
+                        :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id"
+                        @click.stop="submitVersionDeleteReview(item, request, 'reject')">
+                        {{ resourceVersionDeleteReviewLoadingId === item.requirement_id ? '处理中...' : '确认拒绝删除' }}
+                      </button>
                     </div>
-                    <p class="requirement-review-card__hint danger">同意后该版本文件会被永久删除，且无法恢复。</p>
-                    <div v-if="isRejectingVersion(request)" class="requirement-review-item__reject-panel">
-                      <label class="requirement-review-card__field requirement-review-card__field--stacked">
-                        <span>拒绝原因</span>
-                        <textarea v-model="versionDeleteRejectNotes[request.version_id]" class="comment-input" rows="4" maxlength="500" placeholder="可选：说明拒绝删除该版本的原因"></textarea>
-                        <small class="requirement-note">已输入 {{ pendingVersionRejectNote(request).length }} / 500 字</small>
-                      </label>
-                      <div class="requirement-review-card__actions">
-                        <button class="ghost small" type="button" @click.stop="cancelRejectVersion">取消</button>
-                        <button class="ghost small" type="button" :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id" @click.stop="submitVersionDeleteReview(item, request, 'reject')">
-                          {{ resourceVersionDeleteReviewLoadingId === item.requirement_id ? '处理中...' : '确认拒绝删除' }}
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                </div>
-              </section>
-            </li>
-          </template>
-        </ul>
-      </section>
+                  </div>
+                </article>
+              </div>
+            </section>
+          </li>
+        </template>
+      </ul>
+    </section>
 
-      <PublishModal :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核" loadingText="提交中..."
-        v-model:publishTitle="editTitle" v-model:publishDescription="editDescription" v-model:publishBudget="editBudget"
-        v-model:publishAcceptance="editAcceptance" :publishLoading="editLoading" @close="closeEditModal"
-        @submit="submitRequirementResubmit" />
+    <PublishModal :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核" loadingText="提交中..."
+      v-model:publishTitle="editTitle" v-model:publishDescription="editDescription" v-model:publishBudget="editBudget"
+      v-model:publishAcceptance="editAcceptance" :publishLoading="editLoading" @close="closeEditModal"
+      @submit="submitRequirementResubmit" />
 
-      <div v-if="securityVisible" class="modal-wrap" @click.self="closeSecurityModal">
-        <section class="pay-modal account-security-modal" aria-label="账户安全设置弹窗">
-          <div class="account-security-header">
-            <div>
-              <h3>账户安全</h3>
-              <p>在这里修改用户名、绑定邮箱和登录密码。</p>
-            </div>
-            <button class="ghost small" type="button" @click="closeSecurityModal">关闭</button>
+    <div v-if="securityVisible" class="modal-wrap" @click.self="closeSecurityModal">
+      <section class="pay-modal account-security-modal" aria-label="账户安全设置弹窗">
+        <div class="account-security-header">
+          <div>
+            <h3>账户安全</h3>
+            <p>在这里修改用户名、绑定邮箱和登录密码。</p>
           </div>
+          <button class="ghost small" type="button" @click="closeSecurityModal">关闭</button>
+        </div>
 
-          <section class="wallet-section account-security-section">
-            <div class="wallet-header">
-              <h3>修改用户名</h3>
-            </div>
-            <div class="profile-update-row">
-              <input v-model="newUsername" type="text" placeholder="请输入新的用户名" :disabled="usernameLoading" />
-              <button class="ghost small" type="button" :disabled="usernameLoading" @click="updateUsername">
-                {{ usernameLoading ? '保存中...' : '保存用户名' }}
-              </button>
-            </div>
-          </section>
-
-          <section class="wallet-section account-security-section">
-            <div class="wallet-header">
-              <h3>修改邮箱</h3>
-              <small class="requirement-note">当前邮箱：{{ profileEmail || '未绑定邮箱' }}</small>
-            </div>
-            <div class="profile-update-row">
-              <input v-model="newEmail" type="email" placeholder="请输入新的邮箱地址"
-                :disabled="emailLoading || emailCodeSending" />
-              <button class="ghost small" type="button" :disabled="emailLoading || emailCodeSending"
-                @click="sendEmailVerificationCode">
-                {{ emailCodeSending ? '发送中...' : '发送验证码' }}
-              </button>
-            </div>
-            <div class="profile-update-row">
-              <input v-model="emailCode" type="text" maxlength="6" placeholder="请输入 6 位邮箱验证码"
-                :disabled="emailLoading" />
-              <button class="ghost small" type="button" :disabled="emailLoading" @click="submitEmailChange">
-                {{ emailLoading ? '保存中...' : '保存邮箱' }}
-              </button>
-            </div>
-          </section>
-
-          <section class="wallet-section account-security-section">
-            <div class="wallet-header">
-              <h3>修改密码</h3>
-              <small class="requirement-note">通过当前绑定邮箱验证码完成验证，并进行二次确认。</small>
-            </div>
-            <div class="profile-update-row">
-              <input v-model="newPassword" type="password" placeholder="请输入新的密码，至少 6 位"
-                :disabled="passwordLoading || passwordCodeSending" />
-              <button class="ghost small" type="button"
-                :disabled="passwordLoading || passwordCodeSending || !profileEmail"
-                @click="sendPasswordVerificationCode">
-                {{ passwordCodeSending ? '发送中...' : '发送验证码' }}
-              </button>
-            </div>
-            <div class="profile-update-row profile-update-row--triple">
-              <input v-model="confirmPassword" type="password" placeholder="请再次输入新密码" :disabled="passwordLoading" />
-              <input v-model="passwordCode" type="text" maxlength="6" placeholder="请输入 6 位邮箱验证码"
-                :disabled="passwordLoading" />
-              <button class="ghost small" type="button" :disabled="passwordLoading || !profileEmail"
-                @click="submitPasswordChange">
-                {{ passwordLoading ? '保存中...' : '保存密码' }}
-              </button>
-            </div>
-          </section>
-        </section>
-      </div>
-
-      <div v-if="payVisible && payRequirement" class="modal-wrap" @click.self="closePayModal">
-        <section class="pay-modal" aria-label="需求支付弹窗">
-          <h3>支付{{ payStageLabel }}</h3>
-          <p class="pay-line"><strong>需求标题：</strong>{{ payRequirement.title }}</p>
-          <p class="pay-line"><strong>需求编号：</strong>{{ payRequirement.requirement_id }}</p>
-          <p class="pay-line"><strong>预算：</strong>{{ formatBudget(payRequirement.budget) }}</p>
-          <p v-if="!isFinalPayment" class="pay-line"><strong>定金占比：</strong>{{ depositRatioPercent.toFixed(2) }}%</p>
-          <p class="pay-amount">实付款：<strong>¥{{ payAmount.toFixed(2) }}</strong></p>
-
-          <div class="pay-channel-row">
-            <strong>支付方式：</strong>
-            <div class="payment-options" role="radiogroup" aria-label="支付方式选择">
-              <button type="button" class="payment-option" :class="{ active: payChannel === 'alipay' }"
-                @click="payChannel = 'alipay'">
-                <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
-                支付宝
-              </button>
-              <button type="button" class="payment-option" :class="{ active: payChannel === 'wechat' }"
-                @click="payChannel = 'wechat'">
-                <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="微信支付" />
-                微信支付
-              </button>
-            </div>
+        <section class="wallet-section account-security-section">
+          <div class="wallet-header">
+            <h3>修改用户名</h3>
           </div>
-
-          <div class="actions">
-            <button class="ghost" type="button" @click="closePayModal">取消</button>
-            <button class="ghost" type="button" :disabled="payLoading" @click="submitRequirementPayment">
-              {{ payLoading ? '处理中...' : currentPayment ? '查询支付结果' : `支付${payStageLabel}` }}
+          <div class="profile-update-row">
+            <input v-model="newUsername" type="text" placeholder="请输入新的用户名" :disabled="usernameLoading" />
+            <button class="ghost small" type="button" :disabled="usernameLoading" @click="updateUsername">
+              {{ usernameLoading ? '保存中...' : '保存用户名' }}
             </button>
           </div>
         </section>
-      </div>
 
-      <div v-if="finalPaymentConfirmVisible && finalPaymentConfirmTarget" class="modal-wrap" @click.self="closeFinalPaymentConfirm">
-        <section class="pay-modal" aria-label="尾款确认弹窗">
-          <h3>确认进入尾款支付</h3>
-          <p class="pay-line"><strong>需求标题：</strong>{{ finalPaymentConfirmTarget.title }}</p>
-          <p class="pay-line"><strong>需求编号：</strong>{{ finalPaymentConfirmTarget.requirement_id }}</p>
-          <p class="tip">确认后会将当前需求推进到待付尾款，并立即进入支付流程。</p>
-
-          <div class="actions">
-            <button class="ghost" type="button" @click="closeFinalPaymentConfirm">取消</button>
-            <button class="ghost" type="button" @click="confirmFinalPaymentRequest">确认进入尾款支付</button>
+        <section class="wallet-section account-security-section">
+          <div class="wallet-header">
+            <h3>修改邮箱</h3>
+            <small class="requirement-note">当前邮箱：{{ profileEmail || '未绑定邮箱' }}</small>
           </div>
-        </section>
-      </div>
-
-      <div v-if="commentVisible && commentRequirement" class="modal-wrap" @click.self="closeCommentModal">
-        <section class="pay-modal" aria-label="需求评论弹窗">
-          <h3>评价需求</h3>
-          <p class="pay-line"><strong>需求标题：</strong>{{ commentRequirement.title }}</p>
-          <p class="pay-line"><strong>需求编号：</strong>{{ commentRequirement.requirement_id }}</p>
-          <div class="pay-line">
-            <strong>评分：</strong>
-            <div class="rating-row">
-              <button v-for="star in 5" :key="star" type="button" class="rating-star" :class="starClass(star)"
-                @click="setRating($event, star)">
-                ★
-              </button>
-              <span class="rating-value">{{ commentRating.toFixed(1) }} 分</span>
-            </div>
+          <div class="profile-update-row">
+            <input v-model="newEmail" type="email" placeholder="请输入新的邮箱地址"
+              :disabled="emailLoading || emailCodeSending" />
+            <button class="ghost small" type="button" :disabled="emailLoading || emailCodeSending"
+              @click="sendEmailVerificationCode">
+              {{ emailCodeSending ? '发送中...' : '发送验证码' }}
+            </button>
           </div>
-          <div class="pay-line">
-            <strong>评论内容：</strong>
-          </div>
-          <textarea class="comment-input" v-model="commentText" rows="4" maxlength="200"
-            placeholder="请输入评论，最多 200 字"></textarea>
-          <p class="tip">已输入 {{ commentText.length }} / 200 字</p>
-
-          <div class="actions">
-            <button class="ghost" type="button" @click="closeCommentModal">取消</button>
-            <button class="ghost" type="button" :disabled="commentLoading" @click="submitRequirementComment">
-              {{ commentLoading ? '提交中...' : '提交评论' }}
+          <div class="profile-update-row">
+            <input v-model="emailCode" type="text" maxlength="6" placeholder="请输入 6 位邮箱验证码" :disabled="emailLoading" />
+            <button class="ghost small" type="button" :disabled="emailLoading" @click="submitEmailChange">
+              {{ emailLoading ? '保存中...' : '保存邮箱' }}
             </button>
           </div>
         </section>
+
+        <section class="wallet-section account-security-section">
+          <div class="wallet-header">
+            <h3>修改密码</h3>
+            <small class="requirement-note">通过当前绑定邮箱验证码完成验证，并进行二次确认。</small>
+          </div>
+          <div class="profile-update-row">
+            <input v-model="newPassword" type="password" placeholder="请输入新的密码，至少 6 位"
+              :disabled="passwordLoading || passwordCodeSending" />
+            <button class="ghost small" type="button"
+              :disabled="passwordLoading || passwordCodeSending || !profileEmail" @click="sendPasswordVerificationCode">
+              {{ passwordCodeSending ? '发送中...' : '发送验证码' }}
+            </button>
+          </div>
+          <div class="profile-update-row profile-update-row--triple">
+            <input v-model="confirmPassword" type="password" placeholder="请再次输入新密码" :disabled="passwordLoading" />
+            <input v-model="passwordCode" type="text" maxlength="6" placeholder="请输入 6 位邮箱验证码"
+              :disabled="passwordLoading" />
+            <button class="ghost small" type="button" :disabled="passwordLoading || !profileEmail"
+              @click="submitPasswordChange">
+              {{ passwordLoading ? '保存中...' : '保存密码' }}
+            </button>
+          </div>
+        </section>
+
+        <section class="wallet-section account-security-section">
+          <div class="wallet-header">
+            <h3>消息订阅</h3>
+            <small class="requirement-note">订阅后，将按你的偏好接收相关通知。</small>
+          </div>
+          <div class="subscription-settings">
+            <label class="subscription-card">
+              <div class="subscription-copy">
+                <strong>官方活动</strong>
+                <small class="requirement-note">接收官方公告、活动和运营消息。</small>
+              </div>
+              <span class="subscription-switch-wrap">
+                <input v-model="subscriptionOfficialActivity" class="subscription-switch-input" type="checkbox"
+                  :disabled="subscriptionLoading" />
+                <span class="subscription-switch" aria-hidden="true">
+                  <span class="subscription-switch__thumb"></span>
+                </span>
+              </span>
+            </label>
+
+            <div class="subscription-actions">
+              <button class="ghost small" type="button" :disabled="subscriptionLoading" @click="saveSubscriptions">
+                {{ subscriptionLoading ? '保存中...' : '保存订阅设置' }}
+              </button>
+            </div>
+          </div>
+        </section>
+      </section>
+    </div>
+
+    <div v-if="payVisible && payRequirement" class="modal-wrap" @click.self="closePayModal">
+      <section class="pay-modal" aria-label="需求支付弹窗">
+        <h3>支付{{ payStageLabel }}</h3>
+        <p class="pay-line"><strong>需求标题：</strong>{{ payRequirement.title }}</p>
+        <p class="pay-line"><strong>需求编号：</strong>{{ payRequirement.requirement_id }}</p>
+        <p class="pay-line"><strong>预算：</strong>{{ formatBudget(payRequirement.budget) }}</p>
+        <p v-if="!isFinalPayment" class="pay-line"><strong>定金占比：</strong>{{ depositRatioPercent.toFixed(2) }}%</p>
+        <p class="pay-amount">实付款：<strong>¥{{ payAmount.toFixed(2) }}</strong></p>
+
+        <div class="pay-channel-row">
+          <strong>支付方式：</strong>
+          <div class="payment-options" role="radiogroup" aria-label="支付方式选择">
+            <button type="button" class="payment-option" :class="{ active: payChannel === 'alipay' }"
+              @click="payChannel = 'alipay'">
+              <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
+              支付宝
+            </button>
+            <button type="button" class="payment-option" :class="{ active: payChannel === 'wechat' }"
+              @click="payChannel = 'wechat'">
+              <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="微信支付" />
+              微信支付
+            </button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="ghost" type="button" @click="closePayModal">取消</button>
+          <button class="ghost" type="button" :disabled="payLoading" @click="submitRequirementPayment">
+            {{ payLoading ? '处理中...' : currentPayment ? '查询支付结果' : `支付${payStageLabel}` }}
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="finalPaymentConfirmVisible && finalPaymentConfirmTarget" class="modal-wrap"
+      @click.self="closeFinalPaymentConfirm">
+      <section class="pay-modal" aria-label="尾款确认弹窗">
+        <h3>确认进入尾款支付</h3>
+        <p class="pay-line"><strong>需求标题：</strong>{{ finalPaymentConfirmTarget.title }}</p>
+        <p class="pay-line"><strong>需求编号：</strong>{{ finalPaymentConfirmTarget.requirement_id }}</p>
+        <p class="tip">确认后会将当前需求推进到待付尾款，并立即进入支付流程。</p>
+
+        <div class="actions">
+          <button class="ghost" type="button" @click="closeFinalPaymentConfirm">取消</button>
+          <button class="ghost" type="button" @click="confirmFinalPaymentRequest">确认进入尾款支付</button>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="commentVisible && commentRequirement" class="modal-wrap" @click.self="closeCommentModal">
+      <section class="pay-modal" aria-label="需求评论弹窗">
+        <h3>评价需求</h3>
+        <p class="pay-line"><strong>需求标题：</strong>{{ commentRequirement.title }}</p>
+        <p class="pay-line"><strong>需求编号：</strong>{{ commentRequirement.requirement_id }}</p>
+        <div class="pay-line">
+          <strong>评分：</strong>
+          <div class="rating-row">
+            <button v-for="star in 5" :key="star" type="button" class="rating-star" :class="starClass(star)"
+              @click="setRating($event, star)">
+              ★
+            </button>
+            <span class="rating-value">{{ commentRating.toFixed(1) }} 分</span>
+          </div>
+        </div>
+        <div class="pay-line">
+          <strong>评论内容：</strong>
+        </div>
+        <textarea class="comment-input" v-model="commentText" rows="4" maxlength="200"
+          placeholder="请输入评论，最多 200 字"></textarea>
+        <p class="tip">已输入 {{ commentText.length }} / 200 字</p>
+
+        <div class="actions">
+          <button class="ghost" type="button" @click="closeCommentModal">取消</button>
+          <button class="ghost" type="button" :disabled="commentLoading" @click="submitRequirementComment">
+            {{ commentLoading ? '提交中...' : '提交评论' }}
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <section class="wallet-section">
+      <div class="wallet-header">
+        <h3>优惠卷背包</h3>
+        <button class="ghost small" type="button" :disabled="loading" @click="loadCoupons">
+          {{ loading ? '刷新中...' : '刷新' }}
+        </button>
       </div>
+      <div v-if="amountCoupons.length === 0" class="empty">暂无优惠卷</div>
+      <div v-else class="coupon-items">
+        <button v-for="item in amountCoupons" :key="item.code" type="button" class="coupon-item"
+          @click="copyCouponCode(item.code)">
+          <div class="coupon-head">
+            <strong>{{ item.code }}</strong>
+            <span class="coupon-status" :class="item.status">{{ item.status === 'used' ? '已使用' : '可用' }}</span>
+          </div>
+          <small>{{ item.name }}</small>
+          <p>{{ formatDiscount(item) }}</p>
+          <p class="coupon-meta">门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}</p>
+        </button>
+      </div>
+    </section>
 
-      <section class="wallet-section">
-        <div class="wallet-header">
-          <h3>优惠卷背包</h3>
-          <button class="ghost small" type="button" :disabled="loading" @click="loadCoupons">
-            {{ loading ? '刷新中...' : '刷新' }}
-          </button>
-        </div>
-        <div v-if="amountCoupons.length === 0" class="empty">暂无优惠卷</div>
-        <div v-else class="coupon-items">
-          <button v-for="item in amountCoupons" :key="item.code" type="button" class="coupon-item"
-            @click="copyCouponCode(item.code)">
-            <div class="coupon-head">
-              <strong>{{ item.code }}</strong>
-              <span class="coupon-status" :class="item.status">{{ item.status === 'used' ? '已使用' : '可用' }}</span>
-            </div>
-            <small>{{ item.name }}</small>
-            <p>{{ formatDiscount(item) }}</p>
-            <p class="coupon-meta">门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}</p>
-          </button>
-        </div>
-      </section>
-
-      <section class="wallet-section">
-        <div class="wallet-header">
-          <h3>折扣券背包</h3>
-          <button class="ghost small" type="button" :disabled="loading" @click="loadCoupons">
-            {{ loading ? '刷新中...' : '刷新' }}
-          </button>
-        </div>
-        <div v-if="discountCoupons.length === 0" class="empty">暂无折扣券</div>
-        <div v-else class="coupon-items">
-          <button v-for="item in discountCoupons" :key="item.code" type="button" class="coupon-item"
-            @click="copyCouponCode(item.code)">
-            <div class="coupon-head">
-              <strong>{{ item.code }}</strong>
-              <span class="coupon-status" :class="item.status">{{ item.status === 'used' ? '已使用' : '可用' }}</span>
-            </div>
-            <small>{{ item.name }}</small>
-            <p>{{ formatDiscount(item) }}</p>
-            <p class="coupon-meta">门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}</p>
-          </button>
-        </div>
-      </section>
+    <section class="wallet-section">
+      <div class="wallet-header">
+        <h3>折扣券背包</h3>
+        <button class="ghost small" type="button" :disabled="loading" @click="loadCoupons">
+          {{ loading ? '刷新中...' : '刷新' }}
+        </button>
+      </div>
+      <div v-if="discountCoupons.length === 0" class="empty">暂无折扣券</div>
+      <div v-else class="coupon-items">
+        <button v-for="item in discountCoupons" :key="item.code" type="button" class="coupon-item"
+          @click="copyCouponCode(item.code)">
+          <div class="coupon-head">
+            <strong>{{ item.code }}</strong>
+            <span class="coupon-status" :class="item.status">{{ item.status === 'used' ? '已使用' : '可用' }}</span>
+          </div>
+          <small>{{ item.name }}</small>
+          <p>{{ formatDiscount(item) }}</p>
+          <p class="coupon-meta">门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}</p>
+        </button>
+      </div>
     </section>
 
     <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
   </main>
 </template>
+
+<style scoped>
+.subscription-settings {
+  display: grid;
+  gap: 12px;
+}
+
+.subscription-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+.subscription-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.subscription-switch-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.subscription-switch-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.subscription-switch-input:disabled {
+  cursor: not-allowed;
+}
+
+.subscription-switch {
+  width: 52px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.28);
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+}
+
+.subscription-switch__thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffffff 0%, #f6d6cc 100%);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.subscription-switch-input:checked+.subscription-switch {
+  background: linear-gradient(135deg, rgba(255, 146, 121, 0.9) 0%, rgba(255, 105, 79, 0.95) 100%);
+  border-color: rgba(255, 168, 148, 0.9);
+  box-shadow: 0 0 0 4px rgba(255, 122, 94, 0.14);
+}
+
+.subscription-switch-input:checked+.subscription-switch .subscription-switch__thumb {
+  transform: translateX(22px);
+  background: linear-gradient(180deg, #fff7f3 0%, #ffffff 100%);
+}
+
+.subscription-switch-input:focus-visible+.subscription-switch {
+  outline: 2px solid rgba(255, 181, 164, 0.95);
+  outline-offset: 2px;
+}
+
+.subscription-switch-input:disabled+.subscription-switch {
+  opacity: 0.55;
+}
+
+.subscription-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .subscription-card {
+    align-items: flex-start;
+  }
+}
+</style>

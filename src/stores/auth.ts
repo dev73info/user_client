@@ -10,38 +10,11 @@ import {
 import { authHeaders as createAuthHeaders } from '@/api/http'
 
 const TOKEN_KEY = 'auth_token_73hub'
+const TOKEN_REFRESH_INTERVAL_MS = 1 * 60 * 1000
 
 type AuthProfile = {
   username: string
   role: string
-}
-
-function parseJwtPayload(token: string): Record<string, unknown> | null {
-  const parts = token.split('.')
-  const payloadPart = parts[1]
-  if (!payloadPart) {
-    return null
-  }
-
-  try {
-    const raw = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = raw.padEnd(Math.ceil(raw.length / 4) * 4, '=')
-    return JSON.parse(atob(padded)) as Record<string, unknown>
-  } catch {
-    return null
-  }
-}
-
-function isJwtExpired(token: string): boolean {
-  const payload = parseJwtPayload(token)
-  if (!payload) {
-    return true
-  }
-  const exp = payload.exp
-  if (typeof exp !== 'number') {
-    return true
-  }
-  return Math.floor(Date.now() / 1000) >= exp
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -67,15 +40,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function scheduleRefresh(jwt: string) {
+  function scheduleRefresh() {
     clearRefreshTimer()
-    const payload = parseJwtPayload(jwt)
-    if (!payload || typeof payload.exp !== 'number') return
-
-    const nowSec = Math.floor(Date.now() / 1000)
-    const expiresIn = payload.exp - nowSec
-    // 在过期前 5 分钟刷新，若剩余不足 5 分钟则立即刷新
-    const delayMs = Math.max((expiresIn - 300) * 1000, 0)
 
     refreshTimer = setTimeout(async () => {
       if (!token.value) return
@@ -85,7 +51,7 @@ export const useAuthStore = defineStore('auth', () => {
       } catch {
         logout()
       }
-    }, delayMs)
+    }, TOKEN_REFRESH_INTERVAL_MS)
   }
 
   function resetProfile() {
@@ -108,16 +74,9 @@ export const useAuthStore = defineStore('auth', () => {
       return
     }
 
-    if (isJwtExpired(saved)) {
-      localStorage.removeItem(TOKEN_KEY)
-      token.value = ''
-      resetProfile()
-      return
-    }
-
     token.value = saved
     resetProfile()
-    scheduleRefresh(saved)
+    scheduleRefresh()
   }
 
   function persist(newToken: string, preserveProfile = false) {
@@ -126,7 +85,7 @@ export const useAuthStore = defineStore('auth', () => {
       resetProfile()
     }
     localStorage.setItem(TOKEN_KEY, newToken)
-    scheduleRefresh(newToken)
+    scheduleRefresh()
   }
 
   async function fetchProfile(force = false): Promise<AuthProfile> {

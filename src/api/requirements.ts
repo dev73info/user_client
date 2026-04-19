@@ -41,6 +41,7 @@ export type RequirementPendingResourceVersionDeleteRequest = {
 export type RequirementItem = {
   id: number
   requirement_id: string
+  subscribe_status_change: boolean
   bound_resource_id?: number | null
   bound_resource_version_count?: number | null
   resource_visibility?: 'public' | 'private' | null
@@ -96,6 +97,10 @@ export type ReviewRequirementResourceDeletePayload = {
   version_id: number
   action: 'approve' | 'reject'
   note?: string
+}
+
+export type UpdateRequirementSubscriptionPayload = {
+  subscribe_status_change: boolean
 }
 
 export async function listRequirements(token: string): Promise<RequirementItem[]> {
@@ -229,5 +234,24 @@ export async function reviewRequirementResourceDelete(
       body: JSON.stringify(payload),
     },
     '审核资源删除失败',
+  )
+}
+
+export async function updateRequirementSubscription(
+  token: string,
+  requirementId: string,
+  payload: UpdateRequirementSubscriptionPayload,
+): Promise<void> {
+  await requestJson<unknown>(
+    `/requirements/${encodeURIComponent(requirementId)}/subscription`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify(payload),
+    },
+    '更新需求订阅失败',
   )
 }

@@ -25,6 +25,16 @@ const router = createRouter({
       component: () => import('@/views/MyCustomResourcesView.vue'),
     },
     {
+      path: '/tickets',
+      name: 'tickets',
+      component: () => import('@/views/TicketCenterView.vue'),
+    },
+    {
+      path: '/coupon-claim',
+      name: 'coupon-claim',
+      component: () => import('@/views/CouponClaimView.vue'),
+    },
+    {
       path: '/terms',
       name: 'terms',
       component: () => import('@/views/TermsView.vue'),
@@ -61,15 +71,24 @@ router.beforeEach(async (to, from, next) => {
 
   if (oauthToken) {
     auth.setToken(oauthToken)
-    return next({ path: to.path, query: {}, replace: true })
+    const nextQuery = { ...to.query }
+    delete nextQuery.oauth_token
+    delete nextQuery.oauth_error
+    return next({ path: to.path, query: nextQuery, replace: true })
   }
 
   if (oauthError) {
-    return next({ path: to.path, query: {}, replace: true })
+    const nextQuery = { ...to.query }
+    delete nextQuery.oauth_token
+    delete nextQuery.oauth_error
+    return next({ path: to.path, query: nextQuery, replace: true })
   }
 
   const authRequired =
-    to.name === 'profile' || to.name === 'payment' || to.name === 'my-custom-resources'
+    to.name === 'profile' ||
+    to.name === 'payment' ||
+    to.name === 'my-custom-resources' ||
+    to.name === 'tickets'
 
   if (auth.isAuthed && !auth.profileLoaded) {
     try {
