@@ -162,7 +162,7 @@ export async function updateProfileSubscriptions(
 
 export async function claimActivityCampaign(
   token: string,
-  claimToken: string,
+  claimCode: string,
 ): Promise<ActivityCampaignClaimResp> {
   return requestJson<ActivityCampaignClaimResp>(
     '/settings/activity-campaigns/claim',
@@ -172,7 +172,7 @@ export async function claimActivityCampaign(
         'Content-Type': 'application/json',
         ...authHeader(token),
       },
-      body: JSON.stringify({ token: claimToken }),
+      body: JSON.stringify({ code: claimCode }),
     },
     '领取活动福利失败',
   )

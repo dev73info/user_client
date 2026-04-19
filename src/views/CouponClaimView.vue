@@ -20,7 +20,7 @@ const authVisible = ref(false)
 const claiming = ref(false)
 const claimResult = ref<ActivityCampaignClaimResp | null>(null)
 const claimError = ref('')
-const claimToken = computed(() => String(route.query.token ?? '').trim())
+const claimCode = computed(() => String(route.query.code ?? '').trim())
 const {
   authUsername,
   authPassword,
@@ -47,8 +47,8 @@ const authTitle = computed(() => {
 })
 
 async function runClaim() {
-  if (!claimToken.value) {
-    claimError.value = '领取链接缺少 token，请返回邮件重新点击。'
+  if (!claimCode.value) {
+    claimError.value = '领取链接缺少领取码，请返回邮件重新点击。'
     return
   }
 
@@ -60,7 +60,7 @@ async function runClaim() {
   claiming.value = true
   claimError.value = ''
   try {
-    claimResult.value = await claimActivityCampaign(auth.token, claimToken.value)
+    claimResult.value = await claimActivityCampaign(auth.token, claimCode.value)
   } catch (err) {
     const message = err instanceof Error ? err.message : '领取活动福利失败'
     claimError.value = message
@@ -96,7 +96,7 @@ function goProfile() {
 
 onMounted(() => {
   auth.hydrate()
-  if (!claimToken.value) {
+  if (!claimCode.value) {
     claimError.value = '领取链接无效，请检查邮件中的完整地址。'
     return
   }
@@ -134,31 +134,20 @@ onMounted(() => {
         <strong>尚未领取</strong>
         <p>{{ claimError || '点击下方按钮登录后继续领取。' }}</p>
         <div class="claim-page__actions">
-          <button v-if="!auth.isAuthed" class="claim-page__primary" type="button" @click="openAuth('login')">登录后领取</button>
+          <button v-if="!auth.isAuthed" class="claim-page__primary" type="button"
+            @click="openAuth('login')">登录后领取</button>
           <button v-else class="claim-page__primary" type="button" @click="runClaim">重新尝试领取</button>
-          <button v-if="!auth.isAuthed" class="claim-page__ghost" type="button" @click="openAuth('register')">注册新账号</button>
+          <button v-if="!auth.isAuthed" class="claim-page__ghost" type="button"
+            @click="openAuth('register')">注册新账号</button>
         </div>
       </div>
     </div>
 
-    <AuthModal
-      :visible="authVisible"
-      :authMode="authMode"
-      :authTitle="authTitle"
-      v-model:authUsername="authUsername"
-      v-model:authPassword="authPassword"
-      v-model:authEmail="authEmail"
-      v-model:authEmailCode="authEmailCode"
-      v-model:acceptTerms="acceptTerms"
-      :authLoading="auth.loading"
-      :sendCodeLoading="sendCodeLoading"
-      :sendCodeCountdown="sendCodeCountdown"
-      @close="closeAuth"
-      @submit="handleSubmitAuth"
-      @github-login="loginWithGithub"
-      @send-code="sendAuthCode"
-      @change-mode="changeAuthMode"
-    />
+    <AuthModal :visible="authVisible" :authMode="authMode" :authTitle="authTitle" v-model:authUsername="authUsername"
+      v-model:authPassword="authPassword" v-model:authEmail="authEmail" v-model:authEmailCode="authEmailCode"
+      v-model:acceptTerms="acceptTerms" :authLoading="auth.loading" :sendCodeLoading="sendCodeLoading"
+      :sendCodeCountdown="sendCodeCountdown" @close="closeAuth" @submit="handleSubmitAuth"
+      @github-login="loginWithGithub" @send-code="sendAuthCode" @change-mode="changeAuthMode" />
     <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
   </section>
 </template>

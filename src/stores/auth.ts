@@ -10,7 +10,7 @@ import {
 import { authHeaders as createAuthHeaders } from '@/api/http'
 
 const TOKEN_KEY = 'auth_token_73hub'
-const TOKEN_REFRESH_INTERVAL_MS = 1 * 60 * 1000
+const TOKEN_REFRESH_INTERVAL_MS = 5 * 60 * 1000
 
 type AuthProfile = {
   username: string
