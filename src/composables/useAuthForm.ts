@@ -1,10 +1,73 @@
 import type { Ref } from 'vue'
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { startGlobalLoading } from '@/composables/useGlobalLoadingScreen'
 import { useToast } from '@/composables/useToast'
 import { getGithubAuthorizeUrl } from '@/api/auth'
 
 type AuthMode = 'login' | 'register' | 'reset'
+type GithubOauthMessage = {
+  type: '73hub-github-oauth'
+  oauthToken?: string
+  oauthError?: string
+}
+
+function buildGithubPopupFeatures() {
+  const width = 720
+  const height = 840
+  const left = Math.max(0, Math.round(window.screenX + (window.outerWidth - width) / 2))
+  const top = Math.max(0, Math.round(window.screenY + (window.outerHeight - height) / 2))
+
+  return [
+    'popup=yes',
+    `width=${width}`,
+    `height=${height}`,
+    `left=${left}`,
+    `top=${top}`,
+    'resizable=yes',
+    'scrollbars=yes',
+  ].join(',')
+}
+
+function waitForGithubPopupResult(popup: Window): Promise<GithubOauthMessage> {
+  return new Promise((resolve, reject) => {
+    const expectedOrigin = window.location.origin
+
+    const cleanup = () => {
+      window.removeEventListener('message', handleMessage)
+      window.clearInterval(closeCheckTimer)
+    }
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== expectedOrigin) {
+        return
+      }
+
+      if (event.source !== popup) {
+        return
+      }
+
+      const data = event.data as GithubOauthMessage | undefined
+      if (!data || data.type !== '73hub-github-oauth') {
+        return
+      }
+
+      cleanup()
+      resolve(data)
+    }
+
+    const closeCheckTimer = window.setInterval(() => {
+      if (!popup.closed) {
+        return
+      }
+
+      cleanup()
+      reject(new Error('GitHub 登录已取消'))
+    }, 400)
+
+    window.addEventListener('message', handleMessage)
+  })
+}
 
 export function useAuthForm(mode: Ref<AuthMode>) {
   const auth = useAuthStore()
@@ -35,18 +98,48 @@ export function useAuthForm(mode: Ref<AuthMode>) {
 
   async function loginWithGithub() {
     if (auth.loading) {
-      return
+      return false
     }
 
     const redirectTarget = `${window.location.origin}${window.location.pathname}${window.location.search}`
+    const finishGlobalLoading = startGlobalLoading()
+    const popup = window.open('', '73hub-github-oauth', buildGithubPopupFeatures())
+    let shouldKeepLoading = false
+
     try {
       const resp = await getGithubAuthorizeUrl(redirectTarget)
       if (!resp.url) {
         throw new Error('GitHub 授权地址为空')
       }
+
+      if (popup && !popup.closed) {
+        popup.location.href = resp.url
+        const result = await waitForGithubPopupResult(popup)
+
+        if (!result.oauthToken) {
+          throw new Error(result.oauthError || 'GitHub 登录失败')
+        }
+
+        auth.setToken(result.oauthToken)
+        showToast('GitHub 登录成功', 'success')
+        return true
+      }
+
+      shouldKeepLoading = true
       window.location.href = resp.url
+      return false
     } catch (err) {
+      if (popup && !popup.closed) {
+        popup.close()
+      }
+
+      finishGlobalLoading()
       showToast(err instanceof Error ? err.message : 'GitHub 登录失败', 'error')
+      return false
+    } finally {
+      if (!shouldKeepLoading) {
+        finishGlobalLoading()
+      }
     }
   }
 

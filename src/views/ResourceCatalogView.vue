@@ -11,6 +11,7 @@ import {
   type McPluginPlatformEntry,
   type McProcessedTagTree,
 } from '@/api/resourceTags'
+import { startGlobalLoading } from '@/composables/useGlobalLoadingScreen'
 import { useToast } from '@/composables/useToast'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import AuthModal from '@/components/AuthModal.vue'
@@ -33,7 +34,7 @@ const heroNavLinks = computed(() => {
   }> = [
       { label: '返回首页', to: { name: 'home' } },
       {
-        label: '免费资源',
+        label: '免费资源导航',
         to: {
           name: 'resource-catalog',
           params: currentRootSlug.value
@@ -105,9 +106,11 @@ async function handleLoginWithGithub() {
   }
 
   githubLoginLoading.value = true
+  const finishGlobalLoading = startGlobalLoading()
   try {
     await loginWithGithubAction()
   } finally {
+    finishGlobalLoading()
     githubLoginLoading.value = false
   }
 }

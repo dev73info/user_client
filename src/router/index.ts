@@ -10,6 +10,11 @@ const router = createRouter({
       component: () => import('@/views/HomeView.vue'),
     },
     {
+      path: '/free-resources',
+      name: 'free-resources',
+      component: () => import('@/views/FreeResourcesView.vue'),
+    },
+    {
       path: '/payment',
       name: 'payment',
       component: () => import('@/views/PaymentView.vue'),
@@ -68,6 +73,19 @@ router.beforeEach(async (to, from, next) => {
 
   const oauthToken = typeof to.query.oauth_token === 'string' ? to.query.oauth_token.trim() : ''
   const oauthError = typeof to.query.oauth_error === 'string' ? to.query.oauth_error.trim() : ''
+
+  if ((oauthToken || oauthError) && window.opener && !window.opener.closed) {
+    window.opener.postMessage(
+      {
+        type: '73hub-github-oauth',
+        oauthToken,
+        oauthError,
+      },
+      window.location.origin,
+    )
+    window.close()
+    return next(false)
+  }
 
   if (oauthToken) {
     auth.setToken(oauthToken)

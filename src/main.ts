@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
+import { installGlobalFetchLoadingTracker } from './composables/useGlobalLoadingScreen'
 import './styles/user.css'
 
 if (import.meta.env.DEV) {
@@ -28,6 +29,8 @@ if (import.meta.env.DEV) {
     console.log(message)
   }
 }
+
+installGlobalFetchLoadingTracker()
 
 const app = createApp(App)
 

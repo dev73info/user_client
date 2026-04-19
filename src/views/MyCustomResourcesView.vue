@@ -7,6 +7,7 @@ import AppToast from '@/components/AppToast.vue'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import { listRequirements, type RequirementItem } from '@/api/requirements'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
+import { DEV_PORTAL_URL } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
@@ -41,6 +42,8 @@ const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast
 
 const heroNavLinks = computed(() => [
   { label: '返回首页', to: { name: 'home' } },
+  { label: '开发者端', href: DEV_PORTAL_URL },
+  { label: '免费资源导航', to: { name: 'free-resources' } },
   { label: '我的定制资源', to: { name: 'my-custom-resources' }, active: true, align: 'right' as const },
 ])
 

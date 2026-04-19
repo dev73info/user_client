@@ -7,6 +7,7 @@ import { HttpError, apiUrl } from '@/api/http'
 import AppToast from '@/components/AppToast.vue'
 import AuthModal from '@/components/AuthModal.vue'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
+import { DEV_PORTAL_URL } from '@/config/runtime'
 import {
   getPublicMcResource,
   listPublicMcResourceVersions,
@@ -15,6 +16,7 @@ import {
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
 import { getTagRouteSlug, normalizeTagName, parseResourceIdFromSlug } from '@/api/resourceTags'
+import { startGlobalLoading } from '@/composables/useGlobalLoadingScreen'
 import { useAuthForm } from '@/composables/useAuthForm'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -23,7 +25,6 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
-const DEV_PORTAL_URL = 'https://dev.73info.cn'
 
 const loading = ref(false)
 const resource = ref<PublicMcResourceItem | null>(null)
@@ -75,10 +76,10 @@ const heroNavLinks = computed(() => {
 
   const links = [
     { label: '返回首页', to: { name: 'home' } },
-    { label: '免费资源', to: catalogLink, active: true },
+    { label: '免费资源导航', to: catalogLink, active: true },
     { label: '开发者端', href: DEV_PORTAL_URL },
     { label: '探索', href: '#' },
-    { label: '免费资源', href: '#' },
+    { label: '免费资源导航', href: '#' },
     { label: '社区', href: '#' },
   ]
 
@@ -194,9 +195,11 @@ async function handleLoginWithGithub() {
   }
 
   githubLoginLoading.value = true
+  const finishGlobalLoading = startGlobalLoading()
   try {
     await loginWithGithubAction()
   } finally {
+    finishGlobalLoading()
     githubLoginLoading.value = false
   }
 }

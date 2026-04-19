@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
+import { useGlobalLoadingScreen } from '@/composables/useGlobalLoadingScreen'
 
 type MatrixColumn = {
   id: number
@@ -38,16 +39,27 @@ function createColumn(id: number): MatrixColumn {
   }
 }
 
-const matrixColumns = ref(Array.from({ length: 64 }, (_, index) => createColumn(index)))
+const matrixColumns = ref<MatrixColumn[]>([])
 const auth = useAuthStore()
+const routeLoadingVisible = ref(false)
+const loadingDepth = ref(0)
+const { isGlobalLoadingVisible } = useGlobalLoadingScreen()
+const overlayVisible = computed(() => routeLoadingVisible.value || isGlobalLoadingVisible.value)
 
 let flickerTimer: ReturnType<typeof setInterval> | null = null
 
-onMounted(() => {
-  auth.hydrate()
-  void auth.initializeSession().catch(() => {
-    auth.logout()
-  })
+function ensureColumns() {
+  if (matrixColumns.value.length > 0) {
+    return
+  }
+
+  matrixColumns.value = Array.from({ length: 64 }, (_, index) => createColumn(index))
+}
+
+function startFlicker() {
+  if (flickerTimer) {
+    return
+  }
 
   flickerTimer = setInterval(() => {
     const columns = matrixColumns.value
@@ -67,18 +79,64 @@ onMounted(() => {
       column.chars[charIndex] = pickGlyph()
     }
   }, 24)
+}
+
+function showOverlay() {
+  ensureColumns()
+  startFlicker()
+}
+
+function stopFlicker() {
+  if (!flickerTimer) {
+    return
+  }
+
+  clearInterval(flickerTimer)
+  flickerTimer = null
+}
+
+function beginRouteLoading() {
+  loadingDepth.value += 1
+  routeLoadingVisible.value = true
+}
+
+function endRouteLoading() {
+  loadingDepth.value = Math.max(loadingDepth.value - 1, 0)
+  if (loadingDepth.value > 0) {
+    return
+  }
+
+  routeLoadingVisible.value = false
+}
+
+watch(
+  overlayVisible,
+  (visible) => {
+    if (visible) {
+      showOverlay()
+      return
+    }
+
+    stopFlicker()
+  },
+  { immediate: true },
+)
+
+onMounted(() => {
+  auth.hydrate()
+  void auth.initializeSession().catch(() => {
+    auth.logout()
+  })
 })
 
 onUnmounted(() => {
-  if (flickerTimer) {
-    clearInterval(flickerTimer)
-  }
+  stopFlicker()
 })
 </script>
 
 <template>
   <div class="app-shell">
-    <div class="code-rain-bg" aria-hidden="true">
+    <div v-if="overlayVisible" class="code-rain-bg" aria-hidden="true">
       <div v-for="column in matrixColumns" :key="column.id" class="matrix-stream" :style="{
         left: `${column.left}%`,
         animationDuration: `${column.duration}s`,
@@ -91,7 +149,11 @@ onUnmounted(() => {
       </div>
     </div>
     <div class="app-content">
-      <RouterView />
+      <RouterView v-slot="{ Component }">
+        <Suspense @pending="beginRouteLoading" @resolve="endRouteLoading">
+          <component :is="Component" />
+        </Suspense>
+      </RouterView>
     </div>
   </div>
 </template>

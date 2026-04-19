@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import AppToast from '@/components/AppToast.vue'
 import PublishModal from '@/components/PublishModal.vue'
+import { DEV_PORTAL_URL } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -1026,7 +1027,6 @@ onMounted(async () => {
   await Promise.all([loadCoupons(), loadMyRequirements(), loadDepositRatio(), loadProfile()])
 })
 
-const DEV_PORTAL_URL = 'https://dev.73info.cn'
 const heroNavLinks = computed(() => {
   const links = [
     { label: '返回首页', to: { name: 'home' } },
@@ -1131,7 +1131,7 @@ const heroNavLinks = computed(() => {
                 :disabled="requirementSubscriptionLoadingId === item.requirement_id"
                 @click.stop="toggleRequirementSubscription(item)">
                 {{ requirementSubscriptionLoadingId === item.requirement_id ? '提交中...' :
-                requirementSubscriptionLabel(item) }}
+                  requirementSubscriptionLabel(item) }}
               </button>
               <button v-if="hasBoundResource(item)" class="ghost small" type="button"
                 :disabled="resourceVisibilityLoadingId === item.requirement_id || !canToggleRequirementResourceVisibility(item)"

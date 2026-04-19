@@ -8,17 +8,11 @@ import AuthModal from '@/components/AuthModal.vue'
 import PublishModal from '@/components/PublishModal.vue'
 import DepositModal from '@/components/DepositModal.vue'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
-import HomeFreeResourceBoard from '@/components/home/HomeFreeResourceBoard.vue'
 import HomeSummarySection from '@/components/home/HomeSummarySection.vue'
-import {
-  getProcessedTagTree,
-  getTagRouteSlug,
-  normalizeTagName,
-  type McProcessedTagTree,
-  type McTagCatalogRoot,
-} from '@/api/resourceTags'
+import { DEV_PORTAL_URL } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
 import { useAuthForm } from '@/composables/useAuthForm'
+import { startGlobalLoading } from '@/composables/useGlobalLoadingScreen'
 import {
   confirmPayment,
   createAlipayPagePayment,
@@ -53,17 +47,7 @@ type PendingRequirementView = {
   paymentMethod?: string | null
 }
 
-type FreeResourceSectionView = {
-  rootId: number
-  rootName: string
-  rootSlug: string
-  entrySlug: string | null
-  summary: string
-  actionLabel: string
-}
-
 type AuthMode = 'login' | 'register' | 'reset'
-const DEV_PORTAL_URL = 'https://dev.73info.cn'
 
 const metrics = ref<Metric[]>([
   {
@@ -98,8 +82,6 @@ type LatestDealView = {
 const latestDeals = ref<LatestDealView[]>([])
 const selectedDeal = ref<LatestDealView | null>(null)
 const dealDetailVisible = ref(false)
-const freeResourceSections = ref<FreeResourceSectionView[]>([])
-const freeResourceLoading = ref(false)
 
 const pendingRequirements = ref<PendingRequirementView[]>([])
 const auth = useAuthStore()
@@ -108,10 +90,11 @@ const route = useRoute()
 const heroNavLinks = computed(() => {
   const links: Array<{ label: string; to?: { name: string }; href?: string }> = [
     { label: '开发者端', href: DEV_PORTAL_URL },
+    { label: '免费资源导航', to: { name: 'free-resources' } },
   ]
 
   if (auth.isAuthed) {
-    links.splice(1, 0, { label: '我的定制资源', to: { name: 'my-custom-resources' } })
+    links.push({ label: '我的定制资源', to: { name: 'my-custom-resources' } })
   }
 
   return links
@@ -199,10 +182,11 @@ onMounted(() => {
     void router.replace({ query: {} })
   }
 
-  void loadDepositRatio()
-  void loadPendingRequirements()
-  void loadRequirementOverview()
-  void loadFreeResourceSections()
+  void Promise.all([
+    loadDepositRatio(),
+    loadPendingRequirements(),
+    loadRequirementOverview(),
+  ])
 
   autoRefreshTimer = setInterval(() => {
     if (document.visibilityState !== 'visible') {
@@ -574,69 +558,6 @@ async function loadRequirementOverview() {
   }
 }
 
-function buildFreeResourceSummary(root: McTagCatalogRoot) {
-  const entryCount = root.entries.length
-  const tagCount = root.entries.reduce(
-    (sum, entry) => sum + entry.publish_groups.reduce((s, g) => s + g.items.length, 0),
-    0,
-  )
-  const childNames = root.entries.map((e) => e.label)
-
-  if (entryCount <= 0 && tagCount <= 0) {
-    return '当前根节点下还没有公开标签内容。'
-  }
-
-  if (childNames.length > 0) {
-    const previewNames = childNames.slice(0, 3).join(' / ')
-    return `下含 ${previewNames}${childNames.length > 3 ? ' 等分区' : ''}。`
-  }
-
-  if (tagCount <= 0) {
-    return `包含 ${entryCount} 个下级分组。`
-  }
-
-  return `包含 ${entryCount} 个下级分组，覆盖 ${tagCount} 个标签节点。`
-}
-
-async function loadFreeResourceSections() {
-  freeResourceLoading.value = true
-  try {
-    const tree = await getProcessedTagTree()
-    if (!isMounted) {
-      return
-    }
-
-    freeResourceSections.value = tree.roots.map((root): FreeResourceSectionView => {
-      const hasContent = root.entries.length > 0
-      return {
-        rootId: 0,
-        rootName: root.label,
-        rootSlug: root.key,
-        entrySlug: root.first_entry_key,
-        summary: buildFreeResourceSummary(root),
-        actionLabel: hasContent ? '进入分区' : '即将开放',
-      }
-    })
-  } catch (err) {
-    if (isMounted) {
-      showToast(err instanceof Error ? err.message : '加载免费资源导航失败', 'warning')
-    }
-  } finally {
-    if (isMounted) {
-      freeResourceLoading.value = false
-    }
-  }
-}
-
-function openFreeResourceRoot(section: FreeResourceSectionView) {
-  router.push({
-    name: 'resource-catalog',
-    params: section.entrySlug
-      ? { rootSlug: section.rootSlug, entrySlug: section.entrySlug }
-      : { rootSlug: section.rootSlug },
-  })
-}
-
 async function submitDepositPayment() {
   if (!depositRequirement.value) {
     return
@@ -735,9 +656,15 @@ async function loginWithGithub() {
   }
 
   githubLoginLoading.value = true
+  const finishGlobalLoading = startGlobalLoading()
   try {
-    await loginWithGithubAction()
+    const success = await loginWithGithubAction()
+    if (success) {
+      void router.replace({ name: 'home' })
+      await Promise.all([loadDepositRatio(), loadPendingRequirements(), loadRequirementOverview()])
+    }
   } finally {
+    finishGlobalLoading()
     githubLoginLoading.value = false
   }
 }
@@ -751,9 +678,7 @@ async function submitAuth() {
   if (result) {
     void router.replace({ name: 'home' })
     acceptTerms.value = false
-    await loadDepositRatio()
-    await loadPendingRequirements()
-    await loadRequirementOverview()
+    await Promise.all([loadDepositRatio(), loadPendingRequirements(), loadRequirementOverview()])
   }
 }
 
@@ -786,6 +711,7 @@ async function refreshHomeData() {
     } else {
       await Promise.all([loadPendingRequirements(), loadRequirementOverview()])
     }
+
     if (isMounted) {
       showToast('已刷新最新数据', 'success')
     }
@@ -874,7 +800,7 @@ async function submitPublishRequirement() {
       @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" @logout="logout">
       <div class="hero-meta">
         <div class="hero">
-          <h1>柒叁信息：免费资源与定制需求平台</h1>
+          <h1>柒叁信息</h1>
           <p class="desc">浏览免费资源、发布定制需求、跟进支付与交付进度，在一个页面里完成资源发现与项目协作。</p>
         </div>
         <div class="hero-actions">
@@ -890,10 +816,6 @@ async function submitPublishRequirement() {
       :homeRefreshLoading="homeRefreshLoading" :canOpenPayment="(item: any) => canOpenPayment(item)"
       @open-deposit="(item: any) => openDepositCard(item)" @publish="openPublishModal" @refresh="refreshHomeData"
       @view-deal="openDealDetail" />
-
-    <HomeFreeResourceBoard :sections="freeResourceSections" :loading="freeResourceLoading"
-      @open-section="openFreeResourceRoot" />
-
     <div v-if="dealDetailVisible && selectedDeal" class="auth-modal-wrap" @click.self="closeDealDetail">
       <section class="auth-modal" aria-label="最近成交详情">
         <h3>{{ selectedDeal.title }}</h3>
