@@ -12,8 +12,8 @@ const proxyPaths = [
   '/tickets',
   '/payments',
   '/settings',
-  '/mc-resources/resources',
-  '/mc-resources/tags',
+  '/resources/resources',
+  '/resources/tags',
   '/uploads',
 ]
 const proxyConfig = Object.fromEntries(

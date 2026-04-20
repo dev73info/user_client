@@ -54,7 +54,7 @@ async function getAllPublicMcResources(): Promise<PublicMcResourceItem[]> {
   }
 
   allResourcesInflight = requestJson<PublicMcResourceItem[]>(
-    '/mc-resources/resources',
+    '/resources/resources',
     { method: 'GET' },
     '加载资源列表失败',
   )
@@ -88,7 +88,7 @@ export async function getPublicMcResource(
   token?: string | null,
 ): Promise<PublicMcResourceItem> {
   return requestJson<PublicMcResourceItem>(
-    `/mc-resources/resources/${resourceId}`,
+    `/resources/resources/${resourceId}`,
     {
       method: 'GET',
       headers: token ? authHeader(token) : undefined,
@@ -102,7 +102,7 @@ export async function listPublicMcResourceVersions(
   token?: string | null,
 ): Promise<PublicMcResourceVersionItem[]> {
   return requestJson<PublicMcResourceVersionItem[]>(
-    `/mc-resources/resources/${resourceId}/versions`,
+    `/resources/resources/${resourceId}/versions`,
     {
       method: 'GET',
       headers: token ? authHeader(token) : undefined,

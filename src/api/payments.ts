@@ -1,20 +1,5 @@
 import { apiUrl, authHeader, readErrorMessage, requestJson } from '@/api/http'
 
-export type CouponItem = {
-  code: string
-  name: string
-  discount_type: 'amount' | 'percent'
-  discount_value: number
-  min_amount_cny: number
-  max_discount_cny?: number | null
-  total_quota?: number | null
-  used_count?: number
-  starts_at?: string | null
-  ends_at?: string | null
-  active: boolean
-  status?: 'pending_use' | 'used'
-}
-
 export type AlipayCreatePaymentResp = {
   payment_id: string
   requirement_id: string
@@ -54,18 +39,6 @@ export type ConfirmResult = {
   status: number
   data?: ConfirmPaymentResp
   message?: string
-}
-
-export async function listAvailableCoupons(token: string): Promise<CouponItem[]> {
-  return requestJson<CouponItem[]>(
-    '/payments/coupons/available',
-    {
-      headers: {
-        ...authHeader(token),
-      },
-    },
-    '加载优惠券失败',
-  )
 }
 
 export async function listPaymentOrders(token: string): Promise<PaymentOrderItem[]> {

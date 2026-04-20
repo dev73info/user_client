@@ -11,12 +11,11 @@ import {
   confirmPayment,
   createAlipayPagePayment,
   createPayment,
-  listAvailableCoupons,
   type AlipayCreatePaymentResp,
   type AlipayPageCreatePaymentResp,
-  type CouponItem,
   type WechatCreatePaymentResp,
 } from '@/api/payments'
+import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import {
   commentRequirement as commentRequirementApi,
   listRequirements,

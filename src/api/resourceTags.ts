@@ -129,7 +129,7 @@ export async function getProcessedTagTree(): Promise<McProcessedTagTree> {
   inflight = (async () => {
     await ensureWasm()
     const rawGroups = await requestJson<unknown[]>(
-      '/mc-resources/tags',
+      '/resources/tags',
       { method: 'GET' },
       '加载标签失败',
     )
