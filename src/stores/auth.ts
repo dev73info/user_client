@@ -7,7 +7,7 @@ import {
   sendRegisterEmailCode as sendRegisterEmailCodeApi,
   sendResetPasswordEmailCode as sendResetPasswordEmailCodeApi,
 } from '@/api/auth'
-import { authHeaders as createAuthHeaders } from '@/api/http'
+import { apiUrl, authHeaders as createAuthHeaders, readErrorMessage } from '@/api/http'
 
 const TOKEN_KEY = 'auth_token_73hub'
 const TOKEN_REFRESH_INTERVAL_MS = 5 * 60 * 1000
@@ -105,17 +105,31 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     const request = (async () => {
-      const resp = await fetch('/auth/me', {
+      const resp = await fetch(apiUrl('/auth/me'), {
         method: 'GET',
         headers: authHeaders(),
       })
 
       if (!resp.ok) {
-        const text = await resp.text()
-        throw new Error(text || '加载当前用户信息失败')
+        throw new Error(await readErrorMessage(resp, '加载当前用户信息失败'))
       }
 
-      const payload = (await resp.json()) as AuthProfile
+      const contentType = resp.headers.get('content-type')?.toLowerCase() ?? ''
+      const body = await resp.text()
+      if (!contentType.includes('application/json')) {
+        const trimmed = body.trim().toLowerCase()
+        if (trimmed.startsWith('<!doctype html') || trimmed.startsWith('<html')) {
+          throw new Error('加载当前用户信息失败：接口返回了 HTML 页面，请检查 API 地址或代理配置')
+        }
+      }
+
+      let payload: AuthProfile
+      try {
+        payload = JSON.parse(body) as AuthProfile
+      } catch {
+        throw new Error('加载当前用户信息失败：接口返回了无效的 JSON')
+      }
+
       username.value = payload.username
       role.value = payload.role
       profileLoaded.value = true

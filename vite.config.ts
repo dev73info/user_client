@@ -8,6 +8,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 const proxyTarget = 'http://127.0.0.1:8080'
 const proxyPaths = [
   '/auth',
+  '/coupons',
   '/requirements',
   '/tickets',
   '/payments',
