@@ -145,15 +145,83 @@ onUnmounted(() => {
         fontSize: `${column.fontSize}px`,
       }">
         <span v-for="(char, charIndex) in column.chars" :key="`${column.id}-${charIndex}`" class="matrix-char">{{ char
-        }}</span>
+          }}</span>
       </div>
     </div>
     <div class="app-content">
-      <RouterView v-slot="{ Component }">
-        <Suspense @pending="beginRouteLoading" @resolve="endRouteLoading">
-          <component :is="Component" />
-        </Suspense>
-      </RouterView>
+      <el-scrollbar class="app-scrollbar">
+        <div class="app-scrollbar__view">
+          <RouterView v-slot="{ Component }">
+            <Suspense @pending="beginRouteLoading" @resolve="endRouteLoading">
+              <component :is="Component" />
+            </Suspense>
+          </RouterView>
+        </div>
+      </el-scrollbar>
     </div>
   </div>
 </template>
+
+<style scoped>
+.app-shell {
+  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-content {
+  position: relative;
+  z-index: 2;
+  height: 100vh;
+}
+
+.app-scrollbar {
+  height: 100%;
+}
+
+.app-scrollbar :deep(.el-scrollbar__wrap) {
+  overflow-x: hidden;
+}
+
+.app-scrollbar :deep(.el-scrollbar__view) {
+  min-height: 100%;
+}
+
+.app-scrollbar__view {
+  min-height: 100vh;
+}
+
+.app-scrollbar :deep(.el-scrollbar__bar.is-vertical) {
+  width: 6px;
+  right: 2px;
+}
+
+.app-scrollbar :deep(.el-scrollbar__thumb) {
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.88), rgba(149, 213, 178, 0.92));
+}
+
+.app-scrollbar :deep(.el-scrollbar__thumb:hover) {
+  background: linear-gradient(180deg, rgba(125, 211, 252, 0.96), rgba(149, 213, 178, 1));
+}
+
+@media (max-width: 780px) {
+
+  .app-shell,
+  .app-content {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .app-scrollbar :deep(.el-scrollbar__wrap) {
+    overflow: visible;
+  }
+
+  .app-scrollbar :deep(.el-scrollbar__bar) {
+    display: none;
+  }
+
+  .app-scrollbar__view {
+    min-height: 100vh;
+  }
+}
+</style>
