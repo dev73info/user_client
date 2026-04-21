@@ -145,18 +145,16 @@ onUnmounted(() => {
         fontSize: `${column.fontSize}px`,
       }">
         <span v-for="(char, charIndex) in column.chars" :key="`${column.id}-${charIndex}`" class="matrix-char">{{ char
-          }}</span>
+        }}</span>
       </div>
     </div>
     <div class="app-content">
       <el-scrollbar class="app-scrollbar">
-        <div class="app-scrollbar__view">
-          <RouterView v-slot="{ Component }">
-            <Suspense @pending="beginRouteLoading" @resolve="endRouteLoading">
-              <component :is="Component" />
-            </Suspense>
-          </RouterView>
-        </div>
+        <RouterView v-slot="{ Component }">
+          <Suspense @pending="beginRouteLoading" @resolve="endRouteLoading">
+            <component :is="Component" />
+          </Suspense>
+        </RouterView>
       </el-scrollbar>
     </div>
   </div>
@@ -165,63 +163,78 @@ onUnmounted(() => {
 <style scoped>
 .app-shell {
   min-height: 100vh;
-  height: 100vh;
-  overflow: hidden;
+  height: auto;
+  overflow: visible;
 }
 
 .app-content {
   position: relative;
   z-index: 2;
-  height: 100vh;
-}
-
-.app-scrollbar {
-  height: 100%;
-}
-
-.app-scrollbar :deep(.el-scrollbar__wrap) {
-  overflow-x: hidden;
-}
-
-.app-scrollbar :deep(.el-scrollbar__view) {
-  min-height: 100%;
-}
-
-.app-scrollbar__view {
   min-height: 100vh;
 }
 
-.app-scrollbar :deep(.el-scrollbar__bar.is-vertical) {
-  width: 6px;
-  right: 2px;
-}
-
-.app-scrollbar :deep(.el-scrollbar__thumb) {
-  background: linear-gradient(180deg, rgba(56, 189, 248, 0.88), rgba(149, 213, 178, 0.92));
-}
-
-.app-scrollbar :deep(.el-scrollbar__thumb:hover) {
-  background: linear-gradient(180deg, rgba(125, 211, 252, 0.96), rgba(149, 213, 178, 1));
+.app-scrollbar {
+  height: 100vh;
 }
 
 @media (max-width: 780px) {
 
   .app-shell,
   .app-content {
+    min-height: 100vh;
     height: auto;
-    min-height: 100vh;
   }
+}
+</style>
 
-  .app-scrollbar :deep(.el-scrollbar__wrap) {
-    overflow: visible;
-  }
+<style>
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
 
-  .app-scrollbar :deep(.el-scrollbar__bar) {
-    display: none;
-  }
+html::-webkit-scrollbar {
+  width: 4px;
+}
 
-  .app-scrollbar__view {
-    min-height: 100vh;
+html::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.42);
+}
+
+@media (max-width: 780px) {
+  html::-webkit-scrollbar {
+    width: 0;
+    height: 0;
   }
+}
+
+/* el-scrollbar 滑块样式 */
+.app-scrollbar .el-scrollbar__bar.is-vertical .el-scrollbar__thumb {
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.7), rgba(149, 213, 178, 0.8));
+  border-radius: 999px;
+}
+
+.app-scrollbar .el-scrollbar__bar.is-vertical .el-scrollbar__thumb:hover {
+  background: linear-gradient(180deg, rgba(125, 211, 252, 0.9), rgba(149, 213, 178, 1));
+}
+
+.app-scrollbar .el-scrollbar__bar.is-vertical {
+  width: 8px;
+  right: 0;
 }
 </style>

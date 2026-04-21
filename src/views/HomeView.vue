@@ -56,7 +56,7 @@ const metrics = ref<Metric[]>([
   },
   {
     label: '综合评价',
-    value: '4.92 分',
+    value: '5.00 分',
     hint: '好评率 99.1%',
   },
   {
@@ -506,8 +506,8 @@ async function loadRequirementOverview() {
       },
       {
         label: '综合评价',
-        value: '4.92 分',
-        hint: '好评率 99.1%',
+        value: '5.00 分',
+        hint: '好评率 100%',
       },
       {
         label: '累计成交额',

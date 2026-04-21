@@ -4,6 +4,9 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import wasm from 'vite-plugin-wasm'
 import vueDevTools from 'vite-plugin-vue-devtools'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 const proxyTarget = 'http://127.0.0.1:8080'
 const proxyPaths = [
@@ -23,7 +26,17 @@ const proxyConfig = Object.fromEntries(
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue(), wasm(), ...(process.env.NODE_ENV !== 'production' ? [vueDevTools()] : [])],
+  plugins: [
+    vue(),
+    wasm(),
+    AutoImport({
+      resolvers: [ElementPlusResolver()],
+    }),
+    Components({
+      resolvers: [ElementPlusResolver()],
+    }),
+    ...(process.env.NODE_ENV !== 'production' ? [vueDevTools()] : []),
+  ],
   server: {
     proxy: proxyConfig,
     fs: {
