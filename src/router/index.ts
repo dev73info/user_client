@@ -61,7 +61,7 @@ const router = createRouter({
     },
     {
       path: '/:rootSlug/:entrySlug/:resourceSlug',
-      name: 'mc-resource-detail',
+      name: 'resource-detail',
       component: () => import('@/views/ResourceDetailView.vue'),
     },
   ],

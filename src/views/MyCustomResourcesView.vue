@@ -168,7 +168,7 @@ const availablePlatforms = computed(() => {
 
 function openPrimaryLink(card: CustomResourceCard) {
   router.push({
-    name: 'mc-resource-detail',
+    name: 'resource-detail',
     params: {
       rootSlug: card.rootSlug,
       entrySlug: card.entrySlug,
@@ -227,7 +227,7 @@ onMounted(() => {
       </div>
     </HomeHeroSection>
 
-    <section class="mc-filter-panel">
+    <section class="filter-panel">
       <div class="filter-row flex-between">
         <div class="filter-group">
           <span class="label">平台：</span>
@@ -275,7 +275,7 @@ onMounted(() => {
       </div>
     </section>
 
-    <section class="mc-content-grid">
+    <section class="content-grid">
       <div v-for="card in filteredCards" :key="`${card.requirementId}-${card.id}`" class="res-card">
         <div v-if="card.coverUrl" class="res-icon res-icon--image">
           <img :src="card.coverUrl" :alt="card.title" class="res-icon__image" />
