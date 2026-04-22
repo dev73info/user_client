@@ -1,8 +1,13 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
+const routerHistory =
+  import.meta.env.VITE_ROUTER_MODE === 'history'
+    ? createWebHistory(import.meta.env.BASE_URL)
+    : createWebHashHistory(import.meta.env.BASE_URL)
+
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: routerHistory,
   routes: [
     {
       path: '/',
@@ -71,8 +76,19 @@ router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
   auth.hydrate()
 
-  const oauthToken = typeof to.query.oauth_token === 'string' ? to.query.oauth_token.trim() : ''
-  const oauthError = typeof to.query.oauth_error === 'string' ? to.query.oauth_error.trim() : ''
+  const searchParams = new URLSearchParams(window.location.search)
+  const oauthTokenFromSearch = (searchParams.get('oauth_token') ?? '').trim()
+  const oauthErrorFromSearch = (searchParams.get('oauth_error') ?? '').trim()
+  const oauthTokenFromQuery =
+    typeof to.query.oauth_token === 'string' ? to.query.oauth_token.trim() : ''
+  const oauthErrorFromQuery =
+    typeof to.query.oauth_error === 'string' ? to.query.oauth_error.trim() : ''
+  const oauthToken = oauthTokenFromQuery || oauthTokenFromSearch
+  const oauthError = oauthErrorFromQuery || oauthErrorFromSearch
+
+  if ((oauthTokenFromSearch || oauthErrorFromSearch) && window.location.search) {
+    window.history.replaceState({}, '', `${window.location.pathname}${window.location.hash}`)
+  }
 
   if ((oauthToken || oauthError) && window.opener && !window.opener.closed) {
     window.opener.postMessage(

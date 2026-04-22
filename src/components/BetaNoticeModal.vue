@@ -34,27 +34,39 @@ onMounted(() => {
   }
 })
 
+function persistConsent(agreedAt = new Date().toISOString()) {
+  const record = {
+    version: CONSENT_VERSION,
+    agreed_at: agreedAt,
+    ua: navigator.userAgent.slice(0, 200),
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(record))
+}
+
 async function handleAgree() {
   if (!checkedRead.value || !checkedResponsible.value) return
   agreeBtnLoading.value = true
   submitError.value = ''
 
   try {
-    const response = await recordAgreementAcceptance(
-      auth.token,
-      AGREEMENT_CODE,
-      CONSENT_VERSION,
-      CLIENT_PLATFORM,
-    )
-
-    const record = {
-      version: CONSENT_VERSION,
-      agreed_at: response.agreed_at,
-      ua: navigator.userAgent.slice(0, 200),
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(record))
-
+    persistConsent()
     visible.value = false
+
+    if (!auth.token) {
+      return
+    }
+
+    try {
+      const response = await recordAgreementAcceptance(
+        auth.token,
+        AGREEMENT_CODE,
+        CONSENT_VERSION,
+        CLIENT_PLATFORM,
+      )
+      persistConsent(response.agreed_at)
+    } catch (error) {
+      console.warn('[beta-consent] record agreement acceptance failed', error)
+    }
   } catch (error) {
     submitError.value = error instanceof Error ? error.message : '协议留痕失败，请稍后重试'
   } finally {
