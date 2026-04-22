@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { useGlobalLoadingScreen } from '@/composables/useGlobalLoadingScreen'
+import BetaNoticeModal from '@/components/BetaNoticeModal.vue'
 
 type MatrixColumn = {
   id: number
@@ -41,6 +42,7 @@ function createColumn(id: number): MatrixColumn {
 
 const matrixColumns = ref<MatrixColumn[]>([])
 const auth = useAuthStore()
+const currentYear = new Date().getFullYear()
 const routeLoadingVisible = ref(false)
 const loadingDepth = ref(0)
 const { isGlobalLoadingVisible } = useGlobalLoadingScreen()
@@ -136,6 +138,7 @@ onUnmounted(() => {
 
 <template>
   <div class="app-shell">
+    <BetaNoticeModal />
     <div v-if="overlayVisible" class="code-rain-bg" aria-hidden="true">
       <div v-for="column in matrixColumns" :key="column.id" class="matrix-stream" :style="{
         left: `${column.left}%`,
@@ -145,16 +148,48 @@ onUnmounted(() => {
         fontSize: `${column.fontSize}px`,
       }">
         <span v-for="(char, charIndex) in column.chars" :key="`${column.id}-${charIndex}`" class="matrix-char">{{ char
-        }}</span>
+          }}</span>
       </div>
     </div>
     <div class="app-content">
       <el-scrollbar class="app-scrollbar">
-        <RouterView v-slot="{ Component }">
-          <Suspense @pending="beginRouteLoading" @resolve="endRouteLoading">
-            <component :is="Component" />
-          </Suspense>
-        </RouterView>
+        <div class="app-view-container">
+          <RouterView v-slot="{ Component }">
+            <Suspense @pending="beginRouteLoading" @resolve="endRouteLoading">
+              <component :is="Component" />
+            </Suspense>
+          </RouterView>
+
+          <div class="site-footer-host">
+            <footer class="site-footer" aria-label="网站基础信息">
+              <div class="site-footer-grid">
+                <div class="site-footer-block">
+                  <h3>网站信息</h3>
+                  <p>平台名称：柒叁信息（73info）</p>
+                  <p>主体类型：企业服务平台（备案办理中）</p>
+                  <p>联系邮箱：fanbo@73info.cn</p>
+                  <p>联系地址：上海市浦东新区（示例，待替换）</p>
+                </div>
+                <div class="site-footer-block">
+                  <h3>备案与合规</h3>
+                  <p>
+                    ICP备案号：
+                    <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">滇ICP备2026006119号</a>
+                  </p>
+                  <p>公安备案号：备案申请中</p>
+                  <p>增值电信业务许可：按业务开展后补充</p>
+                </div>
+                <div class="site-footer-block">
+                  <h3>服务说明</h3>
+                  <p><router-link to="/terms">用户协议</router-link></p>
+                  <p><router-link to="/privacy">隐私政策</router-link></p>
+                  <p><router-link to="/payment-refund">支付与退款说明</router-link></p>
+                </div>
+              </div>
+              <p class="site-footer-copy">© {{ currentYear }} 柒叁信息 73Info. All rights reserved.</p>
+            </footer>
+          </div>
+        </div>
       </el-scrollbar>
     </div>
   </div>
@@ -177,12 +212,25 @@ onUnmounted(() => {
   height: 100vh;
 }
 
+.app-view-container {
+  padding: 0 0 22px;
+}
+
+.site-footer-host {
+  width: min(1050px, calc(100% - 48px));
+  margin: 0 auto;
+}
+
 @media (max-width: 780px) {
 
   .app-shell,
   .app-content {
     min-height: 100vh;
     height: auto;
+  }
+
+  .site-footer-host {
+    width: calc(100% - 20px);
   }
 }
 </style>

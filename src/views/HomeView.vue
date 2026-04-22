@@ -9,7 +9,7 @@ import PublishModal from '@/components/PublishModal.vue'
 import DepositModal from '@/components/DepositModal.vue'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import HomeSummarySection from '@/components/home/HomeSummarySection.vue'
-import { DEV_PORTAL_URL } from '@/config/runtime'
+import { buildDevPortalUrl } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
 import { useAuthForm } from '@/composables/useAuthForm'
 import { startGlobalLoading } from '@/composables/useGlobalLoadingScreen'
@@ -88,7 +88,7 @@ const router = useRouter()
 const route = useRoute()
 const heroNavLinks = computed(() => {
   const links: Array<{ label: string; to?: { name: string }; href?: string }> = [
-    { label: '开发者端', href: DEV_PORTAL_URL },
+    { label: '开发者端', href: buildDevPortalUrl(auth.token) },
     { label: '免费资源导航', to: { name: 'free-resources' } },
   ]
 
@@ -356,7 +356,6 @@ function finalPaymentAmount(item: PendingRequirementView) {
 const isFinalPayment = computed(() => depositRequirement.value?.status === 'pending_final')
 
 const paymentStageLabel = computed(() => (isFinalPayment.value ? '尾款' : '定金'))
-const currentYear = new Date().getFullYear()
 
 const selectedCoupon = computed(() => {
   const code = amountCouponCode.value.trim() || discountCouponCode.value.trim()
@@ -858,29 +857,5 @@ async function submitPublishRequirement() {
 
     <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
 
-    <footer class="site-footer" aria-label="网站基础信息">
-      <div class="site-footer-grid">
-        <div class="site-footer-block">
-          <h3>网站信息</h3>
-          <p>平台名称：柒叁信息（73info）</p>
-          <p>主体类型：企业服务平台（备案办理中）</p>
-          <p>联系邮箱：fanbo@73info.cn</p>
-          <p>联系地址：上海市浦东新区（示例，待替换）</p>
-        </div>
-        <div class="site-footer-block">
-          <h3>备案与合规</h3>
-          <p>ICP备案号：备案申请中</p>
-          <p>公安备案号：备案申请中</p>
-          <p>增值电信业务许可：按业务开展后补充</p>
-        </div>
-        <div class="site-footer-block">
-          <h3>服务说明</h3>
-          <p><router-link to="/terms">用户协议</router-link></p>
-          <p><router-link to="/privacy">隐私政策</router-link></p>
-          <p><router-link to="/payment-refund">支付与退款说明</router-link></p>
-        </div>
-      </div>
-      <p class="site-footer-copy">© {{ currentYear }} 柒叁信息 73Info. All rights reserved.</p>
-    </footer>
   </main>
 </template>

@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import AppToast from '@/components/AppToast.vue'
 import PublishModal from '@/components/PublishModal.vue'
-import { DEV_PORTAL_URL } from '@/config/runtime'
+import { buildDevPortalUrl } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -1032,7 +1032,7 @@ const heroNavLinks = computed(() => {
     { label: '个人中心', to: { name: 'profile' }, active: true },
     { label: '我的工单', to: { name: 'tickets' } },
     { label: '我的定制资源', to: { name: 'my-custom-resources' } },
-    { label: '开发者端', href: DEV_PORTAL_URL },
+    { label: '开发者端', href: buildDevPortalUrl(auth.token) },
   ]
 
   return links
@@ -1095,7 +1095,7 @@ const heroNavLinks = computed(() => {
               <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
                 formatResourceVisibility(item) }}</small>
               <small v-if="hasBoundResource(item)" class="requirement-note">已发布版本：{{ publishedVersionCount(item)
-              }}</small>
+                }}</small>
               <small v-if="hasBoundResource(item) && !canToggleRequirementResourceVisibility(item)"
                 class="requirement-note">资源公开/私有切换需在已付尾款后开放</small>
               <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">
@@ -1105,7 +1105,7 @@ const heroNavLinks = computed(() => {
                   {{ pendingResourceVersionDeleteRequests(item).length }} 个待审核
                 </span>
                 <span style="margin-left: 8px; opacity: 0.8;">共 {{ pendingResourceVersionDeleteRequests(item).length
-                }} 个</span>
+                  }} 个</span>
               </small>
               <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">{{
                 resourceVersionDeleteReviewHint(item) }}</small>
@@ -1120,7 +1120,7 @@ const heroNavLinks = computed(() => {
               <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{
                 item.review_note }}</small>
               <small class="requirement-note">{{ item.subscribe_status_change ? '已订阅该需求的状态变化通知' : '未订阅该需求的状态变化通知'
-                }}</small>
+              }}</small>
             </div>
             <span class="requirement-status">{{ formatRequirementStatus(item.status) }}</span>
             <span>{{ formatBudget(item.budget) }}</span>

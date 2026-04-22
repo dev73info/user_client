@@ -13,7 +13,12 @@ declare module 'vue' {
   export interface GlobalComponents {
     AppToast: typeof import('./src/components/AppToast.vue')['default']
     AuthModal: typeof import('./src/components/AuthModal.vue')['default']
+    BetaNoticeModal: typeof import('./src/components/BetaNoticeModal.vue')['default']
     DepositModal: typeof import('./src/components/DepositModal.vue')['default']
+    ElAlert: typeof import('element-plus/es')['ElAlert']
+    ElButton: typeof import('element-plus/es')['ElButton']
+    ElCheckbox: typeof import('element-plus/es')['ElCheckbox']
+    ElDialog: typeof import('element-plus/es')['ElDialog']
     ElScrollbar: typeof import('element-plus/es')['ElScrollbar']
     HomeFreeResourceBoard: typeof import('./src/components/home/HomeFreeResourceBoard.vue')['default']
     HomeHeroSection: typeof import('./src/components/home/HomeHeroSection.vue')['default']

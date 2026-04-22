@@ -6,7 +6,7 @@ import AppToast from '@/components/AppToast.vue'
 import HomeFreeResourceBoard from '@/components/home/HomeFreeResourceBoard.vue'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import { getProcessedTagTree, type McTagCatalogRoot } from '@/api/resourceTags'
-import { DEV_PORTAL_URL } from '@/config/runtime'
+import { buildDevPortalUrl } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
@@ -29,7 +29,7 @@ const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast
 const heroNavLinks = computed(() => {
   const links: Array<{ label: string; to?: { name: string }; href?: string; active?: boolean; align?: 'left' | 'right' }> = [
     { label: '返回首页', to: { name: 'home' } },
-    { label: '开发者端', href: DEV_PORTAL_URL },
+    { label: '开发者端', href: buildDevPortalUrl(auth.token) },
     { label: '免费资源导航', to: { name: 'free-resources' }, active: true },
   ]
 

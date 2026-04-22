@@ -7,7 +7,7 @@ import { HttpError, apiUrl } from '@/api/http'
 import AppToast from '@/components/AppToast.vue'
 import AuthModal from '@/components/AuthModal.vue'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
-import { DEV_PORTAL_URL } from '@/config/runtime'
+import { buildDevPortalUrl } from '@/config/runtime'
 import {
   getPublicMcResource,
   listPublicMcResourceVersions,
@@ -77,7 +77,7 @@ const heroNavLinks = computed(() => {
   const links = [
     { label: '返回首页', to: { name: 'home' } },
     { label: '免费资源导航', to: catalogLink, active: true },
-    { label: '开发者端', href: DEV_PORTAL_URL },
+    { label: '开发者端', href: buildDevPortalUrl(auth.token) },
     { label: '探索', href: '#' },
     { label: '免费资源导航', href: '#' },
     { label: '社区', href: '#' },

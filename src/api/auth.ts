@@ -4,6 +4,15 @@ export type AuthPayload = {
   token: string
 }
 
+export type AgreementAcceptancePayload = {
+  username: string | null
+  role: string | null
+  agreement_code: string
+  agreement_version: string
+  client_platform: string
+  agreed_at: string
+}
+
 export type GithubAuthUrlResp = {
   url: string
 }
@@ -108,5 +117,28 @@ export async function getGithubAuthorizeUrl(redirectTo: string): Promise<GithubA
       credentials: 'include',
     },
     'GitHub 登录暂不可用',
+  )
+}
+
+export async function recordAgreementAcceptance(
+  token: string,
+  agreementCode: string,
+  agreementVersion: string,
+  clientPlatform: string,
+): Promise<AgreementAcceptancePayload> {
+  return requestJson<AgreementAcceptancePayload>(
+    '/auth/agreement-acceptances',
+    {
+      method: 'POST',
+      headers: authHeaders(token, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify({
+        agreement_code: agreementCode,
+        agreement_version: agreementVersion,
+        client_platform: clientPlatform,
+      }),
+    },
+    '协议留痕失败',
   )
 }
