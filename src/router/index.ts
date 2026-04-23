@@ -90,19 +90,6 @@ router.beforeEach(async (to, from, next) => {
     window.history.replaceState({}, '', `${window.location.pathname}${window.location.hash}`)
   }
 
-  if ((oauthToken || oauthError) && window.opener && !window.opener.closed) {
-    window.opener.postMessage(
-      {
-        type: '73hub-github-oauth',
-        oauthToken,
-        oauthError,
-      },
-      window.location.origin,
-    )
-    window.close()
-    return next(false)
-  }
-
   if (oauthToken) {
     auth.setToken(oauthToken)
     const nextQuery = { ...to.query }
@@ -112,10 +99,22 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (oauthError) {
-    const nextQuery = { ...to.query }
-    delete nextQuery.oauth_token
-    delete nextQuery.oauth_error
-    return next({ path: to.path, query: nextQuery, replace: true })
+    if (auth.isAuthed) {
+      const nextQuery = { ...to.query }
+      delete nextQuery.oauth_token
+      delete nextQuery.oauth_error
+      return next({ path: to.path, query: nextQuery, replace: true })
+    }
+    // 已经在 home 且带有 auth modal 参数时，直接放行让 HomeView 处理错误提示并清理 query，
+    // 否则会因 query 中仍带 oauth_error 再次触发本分支，导致无限重定向。
+    if (to.name === 'home' && to.query.modal === 'auth') {
+      return next()
+    }
+    return next({
+      name: 'home',
+      query: { modal: 'auth', mode: 'login', oauth_error: oauthError },
+      replace: true,
+    })
   }
 
   const authRequired =

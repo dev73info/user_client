@@ -1,5 +1,6 @@
 import type { Ref } from 'vue'
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { getGithubAuthorizeUrl } from '@/api/auth'
@@ -8,6 +9,7 @@ type AuthMode = 'login' | 'register' | 'reset'
 
 export function useAuthForm(mode: Ref<AuthMode>) {
   const auth = useAuthStore()
+  const router = useRouter()
   const { showToast } = useToast()
 
   const authUsername = ref('')
@@ -33,12 +35,17 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     }
   }
 
+  const githubLoading = ref(false)
+
   async function loginWithGithub() {
-    if (auth.loading) {
-      return false
+    if (githubLoading.value || auth.loading) {
+      return
     }
 
-    const redirectTarget = `${window.location.origin}${window.location.pathname}${window.location.search}`
+    githubLoading.value = true
+    // 与开发者端保持一致：固定回到首页，减少不同页面路径带来的回调不稳定。
+    const homeHref = router.resolve({ name: 'home' }).href
+    const redirectTarget = `${window.location.origin}${homeHref}`
 
     try {
       const resp = await getGithubAuthorizeUrl(redirectTarget)
@@ -46,10 +53,9 @@ export function useAuthForm(mode: Ref<AuthMode>) {
         throw new Error('GitHub 授权地址为空')
       }
       window.location.href = resp.url
-      return false
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'GitHub 登录失败', 'error')
-      return false
+      githubLoading.value = false
     }
   }
 
@@ -155,6 +161,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     acceptTerms,
     sendCodeLoading,
     sendCodeCountdown,
+    githubLoading,
     resetAuthForm,
     loginWithGithub,
     sendAuthCode,

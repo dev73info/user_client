@@ -12,7 +12,6 @@ import HomeSummarySection from '@/components/home/HomeSummarySection.vue'
 import { buildDevPortalUrl } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
 import { useAuthForm } from '@/composables/useAuthForm'
-import { startGlobalLoading } from '@/composables/useGlobalLoadingScreen'
 import {
   confirmPayment,
   createAlipayPagePayment,
@@ -114,12 +113,12 @@ const {
   acceptTerms,
   sendCodeLoading,
   sendCodeCountdown,
+  githubLoading,
   resetAuthForm,
-  loginWithGithub: loginWithGithubAction,
+  loginWithGithub,
   sendAuthCode: sendAuthCodeAction,
   submitAuth: submitAuthAction,
 } = useAuthForm(routeAuthMode)
-const githubLoginLoading = ref(false)
 let autoRefreshTimer: ReturnType<typeof setInterval> | null = null
 let autoRefreshInFlight = false
 let isMounted = true
@@ -178,7 +177,10 @@ onMounted(() => {
     void router.replace({ query: {} })
   } else if (oauthError) {
     showToast(`GitHub 登录失败: ${oauthError}`, 'error')
-    void router.replace({ query: {} })
+    const nextQuery = { ...route.query }
+    delete nextQuery.oauth_token
+    delete nextQuery.oauth_error
+    void router.replace({ query: nextQuery })
   }
 
   void Promise.all([
@@ -648,25 +650,6 @@ function closeAuth() {
   router.replace({ name: 'home' })
 }
 
-async function loginWithGithub() {
-  if (githubLoginLoading.value) {
-    return
-  }
-
-  githubLoginLoading.value = true
-  const finishGlobalLoading = startGlobalLoading()
-  try {
-    const success = await loginWithGithubAction()
-    if (success) {
-      void router.replace({ name: 'home' })
-      await Promise.all([loadDepositRatio(), loadPendingRequirements(), loadRequirementOverview()])
-    }
-  } finally {
-    finishGlobalLoading()
-    githubLoginLoading.value = false
-  }
-}
-
 async function sendAuthCode() {
   await sendAuthCodeAction()
 }
@@ -836,7 +819,7 @@ async function submitPublishRequirement() {
     <AuthModal :visible="authVisible" :authMode="routeAuthMode" :authTitle="authTitle"
       v-model:authUsername="authUsername" v-model:authPassword="authPassword" v-model:authEmail="authEmail"
       v-model:authEmailCode="authEmailCode" v-model:acceptTerms="acceptTerms" :authLoading="auth.loading"
-      :githubLoginLoading="githubLoginLoading" :sendCodeLoading="sendCodeLoading" :sendCodeCountdown="sendCodeCountdown"
+      :githubLoginLoading="githubLoading" :sendCodeLoading="sendCodeLoading" :sendCodeCountdown="sendCodeCountdown"
       @close="closeAuth" @submit="submitAuth" @loginWithGithub="loginWithGithub" @sendAuthCode="sendAuthCode"
       @change-mode="openAuth" />
 

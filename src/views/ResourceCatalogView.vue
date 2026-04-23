@@ -11,7 +11,6 @@ import {
   type McPluginPlatformEntry,
   type McProcessedTagTree,
 } from '@/api/resourceTags'
-import { startGlobalLoading } from '@/composables/useGlobalLoadingScreen'
 import { useToast } from '@/composables/useToast'
 import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import AuthModal from '@/components/AuthModal.vue'
@@ -63,7 +62,6 @@ const currentPlatform = computed(() => currentTab.value?.platform ?? '')
 const currentEntryLabel = computed(() => currentTab.value?.groupName ?? '当前分区')
 const authVisible = ref(false)
 const authMode = ref<'login' | 'register' | 'reset'>('login')
-const githubLoginLoading = ref(false)
 const {
   authUsername,
   authPassword,
@@ -72,8 +70,9 @@ const {
   acceptTerms,
   sendCodeLoading,
   sendCodeCountdown,
+  githubLoading,
   resetAuthForm,
-  loginWithGithub: loginWithGithubAction,
+  loginWithGithub,
   sendAuthCode,
   submitAuth: submitAuthAction,
   changeAuthMode,
@@ -96,18 +95,7 @@ function closeAuth() {
 }
 
 async function handleLoginWithGithub() {
-  if (githubLoginLoading.value || auth.loading) {
-    return
-  }
-
-  githubLoginLoading.value = true
-  const finishGlobalLoading = startGlobalLoading()
-  try {
-    await loginWithGithubAction()
-  } finally {
-    finishGlobalLoading()
-    githubLoginLoading.value = false
-  }
+  await loginWithGithub()
 }
 
 async function handleSubmitAuth() {
@@ -252,7 +240,7 @@ function resolveCurrentRoot(tree: McProcessedTagTree) {
     </HomeHeroSection>
     <AuthModal :visible="authVisible" :authMode="authMode" :authTitle="authTitle" v-model:authUsername="authUsername"
       v-model:authPassword="authPassword" v-model:authEmail="authEmail" v-model:authEmailCode="authEmailCode"
-      v-model:acceptTerms="acceptTerms" :authLoading="auth.loading" :githubLoginLoading="githubLoginLoading"
+      v-model:acceptTerms="acceptTerms" :authLoading="auth.loading" :githubLoginLoading="githubLoading"
       :sendCodeLoading="sendCodeLoading" :sendCodeCountdown="sendCodeCountdown" @close="closeAuth"
       @submit="handleSubmitAuth" @loginWithGithub="handleLoginWithGithub" @sendAuthCode="sendAuthCode"
       @change-mode="changeAuthMode" />

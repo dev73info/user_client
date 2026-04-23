@@ -46,7 +46,9 @@ const currentYear = new Date().getFullYear()
 const routeLoadingVisible = ref(false)
 const loadingDepth = ref(0)
 const { isGlobalLoadingVisible } = useGlobalLoadingScreen()
-const overlayVisible = computed(() => routeLoadingVisible.value || isGlobalLoadingVisible.value)
+const overlayVisible = computed(
+  () => routeLoadingVisible.value || isGlobalLoadingVisible.value || !auth.isAuthed,
+)
 
 let flickerTimer: ReturnType<typeof setInterval> | null = null
 
@@ -148,7 +150,7 @@ onUnmounted(() => {
         fontSize: `${column.fontSize}px`,
       }">
         <span v-for="(char, charIndex) in column.chars" :key="`${column.id}-${charIndex}`" class="matrix-char">{{ char
-          }}</span>
+        }}</span>
       </div>
     </div>
     <div class="app-content">

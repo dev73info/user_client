@@ -16,7 +16,6 @@ import {
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
 import { getTagRouteSlug, normalizeTagName, parseResourceIdFromSlug } from '@/api/resourceTags'
-import { startGlobalLoading } from '@/composables/useGlobalLoadingScreen'
 import { useAuthForm } from '@/composables/useAuthForm'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -32,7 +31,6 @@ const versions = ref<PublicMcResourceVersionItem[]>([])
 const menuOpen = ref(false)
 const authVisible = ref(false)
 const authMode = ref<'login' | 'register' | 'reset'>('login')
-const githubLoginLoading = ref(false)
 
 const {
   authUsername,
@@ -42,8 +40,9 @@ const {
   acceptTerms,
   sendCodeLoading,
   sendCodeCountdown,
+  githubLoading,
   resetAuthForm,
-  loginWithGithub: loginWithGithubAction,
+  loginWithGithub,
   sendAuthCode,
   submitAuth: submitAuthAction,
   changeAuthMode,
@@ -190,18 +189,7 @@ function closeAuth() {
 }
 
 async function handleLoginWithGithub() {
-  if (githubLoginLoading.value || auth.loading) {
-    return
-  }
-
-  githubLoginLoading.value = true
-  const finishGlobalLoading = startGlobalLoading()
-  try {
-    await loginWithGithubAction()
-  } finally {
-    finishGlobalLoading()
-    githubLoginLoading.value = false
-  }
+  await loginWithGithub()
 }
 
 async function handleSubmitAuth() {
@@ -442,7 +430,7 @@ watch(
 
     <AuthModal :visible="authVisible" :authMode="authMode" :authTitle="authTitle" v-model:authUsername="authUsername"
       v-model:authPassword="authPassword" v-model:authEmail="authEmail" v-model:authEmailCode="authEmailCode"
-      v-model:acceptTerms="acceptTerms" :authLoading="auth.loading" :githubLoginLoading="githubLoginLoading"
+      v-model:acceptTerms="acceptTerms" :authLoading="auth.loading" :githubLoginLoading="githubLoading"
       :sendCodeLoading="sendCodeLoading" :sendCodeCountdown="sendCodeCountdown" @close="closeAuth"
       @submit="handleSubmitAuth" @loginWithGithub="handleLoginWithGithub" @sendAuthCode="sendAuthCode"
       @change-mode="changeAuthMode" />
