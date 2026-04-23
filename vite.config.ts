@@ -37,6 +37,35 @@ export default defineConfig({
     }),
     ...(process.env.NODE_ENV !== 'production' ? [vueDevTools()] : []),
   ],
+  build: {
+    cssCodeSplit: false,
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/[name].js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name].[ext]',
+        manualChunks(id) {
+          if (id.includes('/@vue/') || id.includes('/vue/') || id.includes('vue-router')) {
+            return 'vue-vendor'
+          }
+
+          if (id.includes('pinia')) {
+            return 'pinia'
+          }
+
+          if (id.includes('element-plus')) {
+            return 'element-plus'
+          }
+
+          if (id.includes('node_modules')) {
+            return 'vendor'
+          }
+
+          return 'app'
+        },
+      },
+    },
+  },
   server: {
     proxy: proxyConfig,
     fs: {

@@ -3,7 +3,6 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { useGlobalLoadingScreen } from '@/composables/useGlobalLoadingScreen'
-import BetaNoticeModal from '@/components/BetaNoticeModal.vue'
 
 type MatrixColumn = {
   id: number
@@ -140,7 +139,6 @@ onUnmounted(() => {
 
 <template>
   <div class="app-shell">
-    <BetaNoticeModal />
     <div v-if="overlayVisible" class="code-rain-bg" aria-hidden="true">
       <div v-for="column in matrixColumns" :key="column.id" class="matrix-stream" :style="{
         left: `${column.left}%`,
