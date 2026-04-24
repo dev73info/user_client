@@ -21,12 +21,15 @@ import {
   type WechatCreatePaymentResp,
 } from '@/api/payments'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
+import { HttpError } from '@/api/http'
 import {
   createRequirement,
-  getRequirementOverview,
+  getPublicRequirementOverview,
   listRequirements,
+  resubmitRequirement,
   type RequirementStatus,
 } from '@/api/requirements'
+import { getMyRealnameVerification, type UserRealnameStatus } from '@/api/realname'
 import { getDepositRatio } from '@/api/settings'
 
 type Metric = {
@@ -41,6 +44,8 @@ type PendingRequirementView = {
   status: RequirementStatus
   statusLabel: string
   updatedAtLabel: string
+  description?: string | null
+  acceptanceCriteria?: string | null
   budget?: number | null
   paymentMethod?: string | null
 }
@@ -127,6 +132,7 @@ const publishDescription = ref('')
 const publishBudget = ref<string | number>('')
 const depositChannel = ref<'alipay' | 'wechat'>('alipay')
 const publishAcceptance = ref('')
+const activeResubmitRequirementId = ref<string | null>(null)
 const publishLoading = ref(false)
 const homeRefreshLoading = ref(false)
 const depositRequirement = computed<PendingRequirementView | null>(() => {
@@ -142,6 +148,7 @@ const discountCouponCode = ref('')
 const couponLoading = ref(false)
 const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
 const menuOpen = ref(false)
+const publishRealnameStatus = ref<UserRealnameStatus | 'none' | ''>('')
 
 function toggleUserMenu() {
   menuOpen.value = !menuOpen.value
@@ -274,6 +281,16 @@ function formatTrend(rate: number) {
 }
 
 function openDepositCard(item: PendingRequirementView) {
+  if (item.status === 'rejected') {
+    publishTitle.value = item.title || ''
+    publishDescription.value = item.description || ''
+    publishBudget.value = item.budget ?? ''
+    publishAcceptance.value = item.acceptanceCriteria || ''
+    activeResubmitRequirementId.value = item.id
+    router.push({ name: 'home', query: { modal: 'publish' } })
+    return
+  }
+
   if (item.status !== 'pending_deposit' && item.status !== 'pending_final') {
     return
   }
@@ -287,7 +304,7 @@ function openDepositCard(item: PendingRequirementView) {
 }
 
 function canOpenPayment(item: PendingRequirementView) {
-  return item.status === 'pending_deposit' || item.status === 'pending_final'
+  return item.status === 'pending_deposit' || item.status === 'pending_final' || item.status === 'rejected'
 }
 
 function selectCoupon(code: string, type: 'amount' | 'percent') {
@@ -479,7 +496,7 @@ async function loadPendingRequirements(silent = false) {
       return
     }
     pendingRequirements.value = rows
-      .filter((item) => item.status !== 'final_paid' && item.status !== 'completed' && item.status !== 'rejected')
+      .filter((item) => item.status !== 'completed')
       .slice(0, 8)
       .map((item) => ({
         id: item.requirement_id,
@@ -487,6 +504,8 @@ async function loadPendingRequirements(silent = false) {
         status: item.status,
         statusLabel: statusToLabel(item.status),
         updatedAtLabel: formatTimeLabel(item.updated_at),
+        description: item.description,
+        acceptanceCriteria: item.acceptance_criteria,
         budget: item.budget,
         paymentMethod: item.payment_method,
       }))
@@ -498,30 +517,8 @@ async function loadPendingRequirements(silent = false) {
 }
 
 async function loadRequirementOverview() {
-  if (!auth.isAuthed) {
-    metrics.value = [
-      {
-        label: '累计完成',
-        value: '0 单',
-        hint: '已完成需求数',
-      },
-      {
-        label: '综合评价',
-        value: '5.00 分',
-        hint: '好评率 100%',
-      },
-      {
-        label: '累计成交额',
-        value: '¥ 0.00',
-        hint: '已支付订单累计金额',
-      },
-    ]
-    latestDeals.value = []
-    return
-  }
-
   try {
-    const payload = await getRequirementOverview(auth.token)
+    const payload = await getPublicRequirementOverview()
     if (!isMounted) {
       return
     }
@@ -670,13 +667,61 @@ function logout() {
   showToast('已退出登录', 'info')
 }
 
-function openPublishModal() {
+function realnameStatusText(status: UserRealnameStatus | 'none' | '') {
+  if (status === 'approved') return '已通过'
+  if (status === 'pending') return '审核中'
+  if (status === 'rejected') return '已驳回'
+  return '未提交'
+}
+
+async function ensurePublishRealnameApproved() {
   if (!auth.isAuthed) {
     showToast('发布需求前请先登录', 'info')
     openAuth('login')
+    return false
+  }
+
+  if (publishRealnameStatus.value === 'approved') {
+    return true
+  }
+
+  try {
+    const record = await getMyRealnameVerification(auth.token)
+    publishRealnameStatus.value = record.status
+  } catch (err) {
+    if (err instanceof HttpError && err.status === 404) {
+      publishRealnameStatus.value = 'none'
+    } else {
+      showToast(err instanceof Error ? err.message : '加载实名认证状态失败', 'error')
+      return false
+    }
+  }
+
+  if (publishRealnameStatus.value === 'approved') {
+    return true
+  }
+
+  showToast(`请先完成实名认证后再发布需求（当前：${realnameStatusText(publishRealnameStatus.value)}）`, 'warning')
+  await router.push({
+    name: 'realname',
+    query: {
+      redirect_to: '/?modal=publish',
+    },
+  })
+  return false
+}
+
+async function openPublishModal() {
+  const approved = await ensurePublishRealnameApproved()
+  if (!approved) {
     return
   }
 
+  activeResubmitRequirementId.value = null
+  publishTitle.value = ''
+  publishDescription.value = ''
+  publishBudget.value = ''
+  publishAcceptance.value = ''
   router.push({ name: 'home', query: { modal: 'publish' } })
 }
 
@@ -704,10 +749,28 @@ async function refreshHomeData() {
 }
 
 function closePublishModal() {
+  activeResubmitRequirementId.value = null
   router.replace({ name: 'home' })
 }
 
+const publishModalTitle = computed(() =>
+  activeResubmitRequirementId.value ? '重新编辑需求' : '发布需求',
+)
+
+const publishModalSubmitText = computed(() =>
+  activeResubmitRequirementId.value ? '重新提交审核' : '确认发布',
+)
+
+const publishModalLoadingText = computed(() =>
+  activeResubmitRequirementId.value ? '提交中...' : '发布中...',
+)
+
 async function submitPublishRequirement() {
+  const approved = await ensurePublishRealnameApproved()
+  if (!approved) {
+    return
+  }
+
   const normalizedTitle = publishTitle.value.trim()
   const normalizedDescription = publishDescription.value.trim()
   const normalizedAcceptance = publishAcceptance.value.trim()
@@ -744,22 +807,30 @@ async function submitPublishRequirement() {
   publishLoading.value = true
 
   try {
-    await createRequirement(auth.token, {
+    const payload = {
       title: normalizedTitle,
       description: normalizedDescription,
       budget,
       acceptance_criteria: normalizedAcceptance,
-    })
+    }
+
+    if (activeResubmitRequirementId.value) {
+      await resubmitRequirement(auth.token, activeResubmitRequirementId.value, payload)
+    } else {
+      await createRequirement(auth.token, payload)
+    }
 
     if (!isMounted) {
       return
     }
 
+    const wasResubmit = Boolean(activeResubmitRequirementId.value)
+    activeResubmitRequirementId.value = null
     publishTitle.value = ''
     publishDescription.value = ''
     publishBudget.value = ''
     publishAcceptance.value = ''
-    showToast('需求已发布', 'success')
+    showToast(wasResubmit ? '需求已重新提交，等待审核' : '需求已发布', 'success')
     void router.replace({ name: 'home' })
     await loadPendingRequirements()
   } catch (err) {
@@ -825,7 +896,8 @@ async function submitPublishRequirement() {
 
     <PublishModal :visible="publishVisible" v-model:publishTitle="publishTitle"
       v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
-      v-model:publishAcceptance="publishAcceptance" :publishLoading="publishLoading" @close="closePublishModal"
+      v-model:publishAcceptance="publishAcceptance" :modalTitle="publishModalTitle" :submitText="publishModalSubmitText"
+      :loadingText="publishModalLoadingText" :publishLoading="publishLoading" @close="closePublishModal"
       @submit="submitPublishRequirement" />
 
     <DepositModal v-if="depositVisible && depositRequirement" :visible="depositVisible"

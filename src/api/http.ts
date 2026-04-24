@@ -1,5 +1,6 @@
 const rawBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ?? ''
 const API_BASE_URL = rawBase.replace(/\/$/, '')
+let unauthorizedRedirecting = false
 
 function isHtmlResponse(body: string): boolean {
   const trimmed = body.trim().toLowerCase()
@@ -81,8 +82,16 @@ export async function requestJson<T>(
   const resp = await fetch(apiUrl(path), init)
   if (resp.status === 401) {
     localStorage.removeItem('auth_token_73hub')
-    window.location.href = '/'
-    throw new Error('未登录或登录已过期，请重新登录')
+    if (!unauthorizedRedirecting) {
+      unauthorizedRedirecting = true
+      const isHistoryMode = import.meta.env.VITE_ROUTER_MODE === 'history'
+      const normalizedPath = window.location.pathname.endsWith('/')
+        ? window.location.pathname
+        : `${window.location.pathname}/`
+      const target = isHistoryMode ? normalizedPath : `${normalizedPath}#/`
+      window.location.replace(target)
+    }
+    throw new HttpError(401, '未登录或登录已过期，请重新登录')
   }
 
   if (!resp.ok) {
@@ -99,8 +108,16 @@ export async function requestVoid(
   const resp = await fetch(apiUrl(path), init)
   if (resp.status === 401) {
     localStorage.removeItem('auth_token_73hub')
-    window.location.href = '/'
-    throw new Error('未登录或登录已过期，请重新登录')
+    if (!unauthorizedRedirecting) {
+      unauthorizedRedirecting = true
+      const isHistoryMode = import.meta.env.VITE_ROUTER_MODE === 'history'
+      const normalizedPath = window.location.pathname.endsWith('/')
+        ? window.location.pathname
+        : `${window.location.pathname}/`
+      const target = isHistoryMode ? normalizedPath : `${normalizedPath}#/`
+      window.location.replace(target)
+    }
+    throw new HttpError(401, '未登录或登录已过期，请重新登录')
   }
 
   if (!resp.ok) {

@@ -12,6 +12,8 @@ const proxyTarget = 'http://127.0.0.1:8080'
 const proxyPaths = [
   '/auth',
   '/coupons',
+  '/public/requirements',
+  '/realname',
   '/requirements',
   '/tickets',
   '/payments',

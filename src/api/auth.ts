@@ -126,19 +126,34 @@ export async function recordAgreementAcceptance(
   agreementVersion: string,
   clientPlatform: string,
 ): Promise<AgreementAcceptancePayload> {
-  return requestJson<AgreementAcceptancePayload>(
-    '/auth/agreement-acceptances',
-    {
-      method: 'POST',
-      headers: authHeaders(token, {
-        'Content-Type': 'application/json',
-      }),
-      body: JSON.stringify({
+  try {
+    return await requestJson<AgreementAcceptancePayload>(
+      '/auth/agreement-acceptances',
+      {
+        method: 'POST',
+        headers: authHeaders(token, {
+          'Content-Type': 'application/json',
+        }),
+        body: JSON.stringify({
+          agreement_code: agreementCode,
+          agreement_version: agreementVersion,
+          client_platform: clientPlatform,
+        }),
+      },
+      '协议留痕失败',
+    )
+  } catch (err) {
+    if (err instanceof HttpError && err.status === 404) {
+      return {
+        username: null,
+        role: null,
         agreement_code: agreementCode,
         agreement_version: agreementVersion,
         client_platform: clientPlatform,
-      }),
-    },
-    '协议留痕失败',
-  )
+        agreed_at: new Date().toISOString(),
+      }
+    }
+
+    throw err
+  }
 }

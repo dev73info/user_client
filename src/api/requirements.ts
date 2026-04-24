@@ -127,6 +127,14 @@ export async function getRequirementOverview(token: string): Promise<Requirement
   )
 }
 
+export async function getPublicRequirementOverview(): Promise<RequirementOverviewResp> {
+  return requestJson<RequirementOverviewResp>(
+    '/public/requirements/public-overview',
+    {},
+    '加载概览失败',
+  )
+}
+
 export async function createRequirement(
   token: string,
   payload: CreateRequirementPayload,
@@ -177,6 +185,22 @@ export async function requestRequirementFinalPayment(
       },
     },
     '结束开发失败',
+  )
+}
+
+export async function completeRequirement(
+  token: string,
+  requirementId: string,
+): Promise<RequirementItem> {
+  return requestJson<RequirementItem>(
+    `/requirements/${encodeURIComponent(requirementId)}/complete`,
+    {
+      method: 'POST',
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '确认完成失败',
   )
 }
 

@@ -40,6 +40,11 @@ const router = createRouter({
       component: () => import('@/views/TicketCenterView.vue'),
     },
     {
+      path: '/realname',
+      name: 'realname',
+      component: () => import('@/views/RealnameView.vue'),
+    },
+    {
       path: '/coupon-claim',
       name: 'coupon-claim',
       component: () => import('@/views/CouponClaimView.vue'),
@@ -121,7 +126,8 @@ router.beforeEach(async (to, from, next) => {
     to.name === 'profile' ||
     to.name === 'payment' ||
     to.name === 'my-custom-resources' ||
-    to.name === 'tickets'
+    to.name === 'tickets' ||
+    to.name === 'realname'
 
   if (auth.isAuthed && !auth.profileLoaded) {
     try {

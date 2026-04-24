@@ -262,7 +262,12 @@ async function triggerDownload(url: string, fileName: string) {
   } catch (error) {
     if (error instanceof HttpError && error.status === 401) {
       auth.logout()
-      window.location.href = '/'
+      const isHistoryMode = import.meta.env.VITE_ROUTER_MODE === 'history'
+      const normalizedPath = window.location.pathname.endsWith('/')
+        ? window.location.pathname
+        : `${window.location.pathname}/`
+      const target = isHistoryMode ? normalizedPath : `${normalizedPath}#/`
+      window.location.replace(target)
       throw new Error('未登录或登录已过期，请重新登录')
     }
 

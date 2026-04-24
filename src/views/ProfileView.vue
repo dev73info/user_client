@@ -7,6 +7,7 @@ import PublishModal from '@/components/PublishModal.vue'
 import { buildDevPortalUrl } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { getMyRealnameVerification, type UserRealnameStatus } from '@/api/realname'
 import {
   confirmPayment,
   createAlipayPagePayment,
@@ -17,6 +18,7 @@ import {
 } from '@/api/payments'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import {
+  completeRequirement as completeRequirementApi,
   commentRequirement as commentRequirementApi,
   listRequirements,
   requestRequirementFinalPayment as requestRequirementFinalPaymentApi,
@@ -65,11 +67,16 @@ const editDescription = ref('')
 const editBudget = ref<string | number>('')
 const editAcceptance = ref('')
 const editLoading = ref(false)
+const realnameStatus = ref<UserRealnameStatus | 'none' | ''>('')
+const realnameLoading = ref(false)
 const requirementSubscriptionLoadingId = ref<string | null>(null)
 const resourceVisibilityLoadingId = ref<string | null>(null)
 const resourceVersionDeleteReviewLoadingId = ref<string | null>(null)
 const finalPaymentConfirmVisible = ref(false)
 const finalPaymentConfirmTarget = ref<RequirementItem | null>(null)
+const completionConfirmVisible = ref(false)
+const completionConfirmTarget = ref<RequirementItem | null>(null)
+const completionLoading = ref(false)
 const expandedVersionDeleteReviewRequirementId = ref<string | null>(null)
 const versionDeleteRejectTargetId = ref<number | null>(null)
 const versionDeleteRejectNotes = ref<Record<number, string>>({})
@@ -138,6 +145,10 @@ function formatBudget(value?: number | null) {
 
 function canPay(status: RequirementStatus) {
   return status === 'pending_deposit' || status === 'pending_final'
+}
+
+function canComplete(item: RequirementItem) {
+  return item.status === 'final_paid'
 }
 
 function publishedVersionCount(item: RequirementItem) {
@@ -280,6 +291,48 @@ function closeFinalPaymentConfirm() {
   finalPaymentConfirmTarget.value = null
 }
 
+function openCompletionConfirm(item: RequirementItem) {
+  if (!auth.isAuthed) {
+    showToast('请先登录后再继续操作', 'error')
+    return
+  }
+
+  if (!canComplete(item)) {
+    showToast('当前需求尚不能确认完成', 'warning')
+    return
+  }
+
+  completionConfirmTarget.value = item
+  completionConfirmVisible.value = true
+}
+
+function closeCompletionConfirm() {
+  if (completionLoading.value) {
+    return
+  }
+
+  completionConfirmVisible.value = false
+  completionConfirmTarget.value = null
+}
+
+async function submitRequirementCompletion() {
+  if (!completionConfirmTarget.value) {
+    return
+  }
+
+  completionLoading.value = true
+  try {
+    await completeRequirementApi(auth.token, completionConfirmTarget.value.requirement_id)
+    showToast('需求已确认完成', 'success')
+    closeCompletionConfirm()
+    await loadMyRequirements()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '确认完成失败', 'error')
+  } finally {
+    completionLoading.value = false
+  }
+}
+
 async function confirmFinalPaymentRequest() {
   if (!finalPaymentConfirmTarget.value) {
     return
@@ -349,6 +402,12 @@ function logout() {
   router.push({ name: 'home' })
 }
 
+function openRealnameEditModal() {
+  if (realnameStatus.value === 'rejected') {
+    router.push({ name: 'realname' })
+  }
+}
+
 function openSecurityModal() {
   securityVisible.value = true
 }
@@ -360,8 +419,25 @@ function closeSecurityModal() {
   securityVisible.value = false
 }
 
+async function loadRealnameStatus() {
+  if (!auth.token.trim()) {
+    realnameStatus.value = ''
+    return
+  }
+
+  realnameLoading.value = true
+  try {
+    const record = await getMyRealnameVerification(auth.token)
+    realnameStatus.value = record.status
+  } catch {
+    realnameStatus.value = 'none'
+  } finally {
+    realnameLoading.value = false
+  }
+}
+
 async function refreshProfileData() {
-  await Promise.all([loadCoupons(), loadMyRequirements(), loadDepositRatio(), loadProfile()])
+  await Promise.all([loadCoupons(), loadMyRequirements(), loadDepositRatio(), loadProfile(), loadRealnameStatus()])
   showToast('资料已刷新', 'success')
 }
 
@@ -373,6 +449,8 @@ function handleRequirementAction(item: RequirementItem) {
 
   if (canPay(item.status)) {
     openPayModal(item)
+  } else if (canComplete(item)) {
+    openCompletionConfirm(item)
   } else if (canResubmit(item.status)) {
     openRequirementEditModal(item)
   } else if (canComment(item.status)) {
@@ -1023,7 +1101,7 @@ async function submitRequirementPayment() {
 onMounted(async () => {
   auth.hydrate()
   newUsername.value = auth.username
-  await Promise.all([loadCoupons(), loadMyRequirements(), loadDepositRatio(), loadProfile()])
+  await Promise.all([loadCoupons(), loadMyRequirements(), loadDepositRatio(), loadProfile(), loadRealnameStatus()])
 })
 
 const heroNavLinks = computed(() => {
@@ -1049,6 +1127,14 @@ const heroNavLinks = computed(() => {
           <p class="desc">管理你的账户、优惠券与需求单，统一使用页面布局标准。</p>
         </div>
         <div class="hero-actions">
+          <div v-if="realnameStatus" class="realname-badge"
+            :class="[`realname-badge--${realnameStatus}`, { clickable: realnameStatus === 'rejected' }]"
+            @click="openRealnameEditModal">
+            <span class="badge-icon">实名认证：</span>
+            <span class="badge-text">
+              {{ realnameStatus === 'approved' ? '已认证' : realnameStatus === 'pending' ? '审核中' : '已驳回' }}
+            </span>
+          </div>
           <button class="publish-btn" type="button" @click="openSecurityModal">账户安全</button>
           <button class="refresh-btn" type="button" :disabled="loading || requirementLoading"
             @click="refreshProfileData">
@@ -1057,13 +1143,6 @@ const heroNavLinks = computed(() => {
         </div>
       </div>
     </HomeHeroSection>
-
-    <header class="panel-head">
-      <div>
-        <h2>账户概览</h2>
-        <p class="lead">在这里查看你的优惠券和折扣券背包。</p>
-      </div>
-    </header>
 
     <div class="wallet-overview">
       <div class="wallet-card summary-card">
@@ -1087,7 +1166,7 @@ const heroNavLinks = computed(() => {
       <ul v-else class="requirement-list">
         <template v-for="item in myRequirements" :key="item.requirement_id">
           <li class="requirement-row"
-            :class="{ clickable: hasPendingResourceVersionDeleteReview(item) || canPay(item.status) || canComment(item.status) || canResubmit(item.status), expanded: isVersionDeleteReviewExpanded(item) }"
+            :class="{ clickable: hasPendingResourceVersionDeleteReview(item) || canPay(item.status) || canComplete(item) || canComment(item.status) || canResubmit(item.status), expanded: isVersionDeleteReviewExpanded(item) }"
             @click="handleRequirementAction(item)">
             <div class="requirement-main">
               <strong>{{ item.title }}</strong>
@@ -1141,11 +1220,13 @@ const heroNavLinks = computed(() => {
               </button>
               <button v-if="canRequestFinalPayment(item)" class="ghost small" type="button"
                 @click.stop="requestFinalPayment(item)">支付尾款</button>
+              <button v-if="canComplete(item)" class="ghost small" type="button"
+                @click.stop="openCompletionConfirm(item)">确认完成</button>
               <button v-if="canResubmit(item.status)" class="ghost small" type="button"
                 @click.stop="openRequirementEditModal(item)">重新编辑</button>
               <button v-else-if="canPay(item.status)" class="ghost small" type="button"
                 @click.stop="openPayModal(item)">去支付</button>
-              <button v-else-if="canComment(item.status)" class="ghost small" type="button"
+              <button v-else-if="canComment(item.status) && !canComplete(item)" class="ghost small" type="button"
                 @click.stop="openCommentModal(item)">去评价</button>
             </div>
           </li>
@@ -1354,6 +1435,23 @@ const heroNavLinks = computed(() => {
       </section>
     </div>
 
+    <div v-if="completionConfirmVisible && completionConfirmTarget" class="modal-wrap"
+      @click.self="closeCompletionConfirm">
+      <section class="pay-modal" aria-label="需求完成确认弹窗">
+        <h3>确认需求已完成</h3>
+        <p class="pay-line"><strong>需求标题：</strong>{{ completionConfirmTarget.title }}</p>
+        <p class="pay-line"><strong>需求编号：</strong>{{ completionConfirmTarget.requirement_id }}</p>
+        <p class="tip">确认后，当前需求会从已付尾款进入已完成状态，后续可继续评价。</p>
+
+        <div class="actions">
+          <button class="ghost" type="button" :disabled="completionLoading" @click="closeCompletionConfirm">取消</button>
+          <button class="ghost" type="button" :disabled="completionLoading" @click="submitRequirementCompletion">
+            {{ completionLoading ? '提交中...' : '确认完成' }}
+          </button>
+        </div>
+      </section>
+    </div>
+
     <div v-if="commentVisible && commentRequirement" class="modal-wrap" @click.self="closeCommentModal">
       <section class="pay-modal" aria-label="需求评论弹窗">
         <h3>评价需求</h3>
@@ -1530,5 +1628,52 @@ const heroNavLinks = computed(() => {
   .subscription-card {
     align-items: flex-start;
   }
+}
+
+.realname-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid;
+  transition: all 0.2s ease;
+}
+
+.realname-badge.clickable {
+  cursor: pointer;
+}
+
+.realname-badge--approved {
+  background: rgba(149, 213, 178, 0.18);
+  border-color: rgba(149, 213, 178, 0.6);
+  color: #a8ffe8;
+}
+
+.realname-badge--pending {
+  background: rgba(255, 225, 139, 0.18);
+  border-color: rgba(255, 225, 139, 0.6);
+  color: #fff9d6;
+}
+
+.realname-badge--rejected {
+  background: rgba(255, 145, 145, 0.18);
+  border-color: rgba(255, 145, 145, 0.6);
+  color: #ffcccc;
+}
+
+.realname-badge--rejected:hover {
+  background: rgba(255, 145, 145, 0.28);
+  border-color: rgba(255, 145, 145, 0.8);
+}
+
+.badge-icon {
+  display: inline-block;
+}
+
+.badge-text {
+  display: inline-block;
 }
 </style>
