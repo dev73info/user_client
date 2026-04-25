@@ -159,6 +159,108 @@
   font-size: 12px;
 }
 
+.deposit-policy-box {
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(149, 213, 178, 0.35);
+  background: rgba(149, 213, 178, 0.08);
+}
+
+.deposit-policy-title {
+  margin: 0 0 8px;
+  color: #d8fff0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.deposit-policy-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-sub);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.deposit-policy-checkbox {
+  margin-top: 10px;
+}
+
+.deposit-policy-check {
+  margin-top: 10px;
+  margin-bottom: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.deposit-policy-check__input {
+  position: absolute;
+  opacity: 0;
+  width: 1px !important;
+  height: 1px !important;
+  pointer-events: none;
+}
+
+.deposit-policy-check__box {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin-top: 1px;
+  border-radius: 6px;
+  border: 1px solid rgba(149, 213, 178, 0.52);
+  background: rgba(7, 30, 46, 0.55);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.deposit-policy-check__tick {
+  width: 9px;
+  height: 6px;
+  border-left: 2px solid #f1fff8;
+  border-bottom: 2px solid #f1fff8;
+  transform: rotate(-45deg) translate(1px, -1px) scale(0.2);
+  transform-origin: center;
+  opacity: 0;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.deposit-policy-check__text {
+  color: var(--text-sub);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.deposit-policy-check:hover .deposit-policy-check__box {
+  border-color: rgba(149, 213, 178, 0.75);
+  background: rgba(9, 40, 62, 0.72);
+}
+
+.deposit-policy-check.is-checked .deposit-policy-check__box {
+  border-color: rgba(149, 213, 178, 0.92);
+  background: linear-gradient(150deg, rgba(149, 213, 178, 0.38), rgba(94, 180, 201, 0.34));
+  box-shadow: 0 4px 12px rgba(94, 180, 201, 0.2);
+}
+
+.deposit-policy-check.is-checked .deposit-policy-check__tick {
+  opacity: 1;
+  transform: rotate(-45deg) translate(1px, -1px) scale(1);
+}
+
+.deposit-policy-check__input:focus-visible + .deposit-policy-check__box {
+  box-shadow: 0 0 0 3px rgba(149, 213, 178, 0.26);
+}
+
 .coupon-list {
   margin-bottom: 12px;
 }

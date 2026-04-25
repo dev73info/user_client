@@ -145,6 +145,7 @@ const depositRatioPercent = ref(20)
 const availableCoupons = ref<CouponItem[]>([])
 const amountCouponCode = ref('')
 const discountCouponCode = ref('')
+const depositPolicyAccepted = ref(false)
 const couponLoading = ref(false)
 const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
 const menuOpen = ref(false)
@@ -299,6 +300,7 @@ function openDepositCard(item: PendingRequirementView) {
   depositChannel.value = 'alipay'
   amountCouponCode.value = ''
   discountCouponCode.value = ''
+  depositPolicyAccepted.value = false
   router.push({ name: 'home', query: { modal: 'deposit', requirement_id: item.id } })
   void loadAvailableCoupons()
 }
@@ -328,6 +330,7 @@ function selectCoupon(code: string, type: 'amount' | 'percent') {
 }
 
 function closeDepositCard() {
+  depositPolicyAccepted.value = false
   router.replace({ name: 'home' })
 }
 
@@ -376,8 +379,15 @@ const isFinalPayment = computed(() => depositRequirement.value?.status === 'pend
 
 const paymentStageLabel = computed(() => (isFinalPayment.value ? '尾款' : '定金'))
 
+const activeCouponCode = computed(() => {
+  if (isFinalPayment.value) {
+    return ''
+  }
+  return amountCouponCode.value.trim() || discountCouponCode.value.trim()
+})
+
 const selectedCoupon = computed(() => {
-  const code = amountCouponCode.value.trim() || discountCouponCode.value.trim()
+  const code = activeCouponCode.value
   if (!code) {
     return undefined
   }
@@ -404,7 +414,10 @@ const couponFinalAmount = computed(() => {
 })
 
 const couponSummary = computed(() => {
-  if (!amountCouponCode.value.trim() && !discountCouponCode.value.trim()) {
+  if (isFinalPayment.value) {
+    return '尾款支付不支持使用优惠券或打折券。'
+  }
+  if (!activeCouponCode.value) {
     return ''
   }
   if (!selectedCoupon.value) {
@@ -560,6 +573,11 @@ async function submitDepositPayment() {
     return
   }
 
+  if (depositRequirement.value.status === 'pending_deposit' && !depositPolicyAccepted.value) {
+    showToast('请先确认“定金服务费与退款规则”后再支付定金', 'warning')
+    return
+  }
+
   const currentStage = depositRequirement.value.status === 'pending_final' ? '尾款' : '定金'
   const channel = depositChannel.value
 
@@ -572,7 +590,7 @@ async function submitDepositPayment() {
         createPayload = await createAlipayPagePayment(auth.token, {
           requirement_id: depositRequirement.value.id,
           amount_cny: couponBaseAmount.value,
-          coupon_code: (amountCouponCode.value.trim() || discountCouponCode.value.trim()) || undefined,
+          coupon_code: activeCouponCode.value || undefined,
           description: `需求 ${depositRequirement.value.id} ${currentStage}`,
         })
 
@@ -589,7 +607,7 @@ async function submitDepositPayment() {
         createPayload = await createPayment(auth.token, channel, {
           requirement_id: depositRequirement.value.id,
           amount_cny: couponBaseAmount.value,
-          coupon_code: (amountCouponCode.value.trim() || discountCouponCode.value.trim()) || undefined,
+          coupon_code: activeCouponCode.value || undefined,
           description: `需求 ${depositRequirement.value.id} ${currentStage}`,
         })
 
@@ -614,7 +632,7 @@ async function submitDepositPayment() {
           channel,
           amount_cny: depositPayment.value.amount_cny.toString(),
           expires_at: depositPayment.value.expires_at,
-          coupon_code: (amountCouponCode.value.trim() || discountCouponCode.value.trim()) || undefined,
+          coupon_code: activeCouponCode.value || undefined,
           ...(channel === 'alipay' ? { page: '1' } : { qr_content: depositPayment.value.alipay_order_string }),
         },
       })
@@ -906,7 +924,8 @@ async function submitPublishRequirement() {
       :discountCouponCode="discountCouponCode" :isFinalPayment="isFinalPayment"
       :depositRatioPercent="depositRatioPercent" :couponSummary="couponSummary" :availableCoupons="availableCoupons"
       :couponLoading="couponLoading" :depositLoading="depositLoading" :depositPayment="depositPayment"
-      :couponFinalAmount="couponFinalAmount" @close="closeDepositCard" @submit="submitDepositPayment"
+      :couponFinalAmount="couponFinalAmount" :depositPolicyAccepted="depositPolicyAccepted" @close="closeDepositCard"
+      @submit="submitDepositPayment" @update:depositPolicyAccepted="depositPolicyAccepted = $event"
       @update:depositChannel="depositChannel = $event" @selectCoupon="selectCoupon"
       @loadAvailableCoupons="loadAvailableCoupons" />
 

@@ -30,6 +30,7 @@ const props = defineProps({
   depositLoading: { type: Boolean, default: false },
   depositPayment: { type: Object as PropType<DepositPayment>, default: null },
   couponFinalAmount: { type: Number, default: 0 },
+  depositPolicyAccepted: { type: Boolean, default: false },
 })
 
 const emit = defineEmits<{
@@ -38,6 +39,7 @@ const emit = defineEmits<{
   (e: 'update:depositChannel', value: 'alipay' | 'wechat'): void
   (e: 'selectCoupon', code: string, type: 'amount' | 'percent'): void
   (e: 'loadAvailableCoupons'): void
+  (e: 'update:depositPolicyAccepted', value: boolean): void
 }>()
 
 const amountCoupons = computed(() => props.availableCoupons.filter((item) => item.discount_type === 'amount'))
@@ -49,6 +51,10 @@ function updateChannel(channel: 'alipay' | 'wechat') {
 
 function pickCoupon(code: string, type: 'amount' | 'percent') {
   emit('selectCoupon', code, type)
+}
+
+function updateDepositPolicyAccepted(value: boolean) {
+  emit('update:depositPolicyAccepted', value)
 }
 </script>
 
@@ -80,10 +86,29 @@ function pickCoupon(code: string, type: 'amount' | 'percent') {
       </p>
       <p v-else class="deposit-line"><strong>尾款金额：</strong>¥{{ couponFinalAmount.toFixed(2) }}</p>
 
-      <p class="coupon-note">请从下方列表选择优惠券，优惠卷和折扣券只能选其一。</p>
+      <div v-if="!isFinalPayment" class="deposit-policy-box" role="note" aria-label="定金服务费与退款规则">
+        <p class="deposit-policy-title">定金服务费说明</p>
+        <ul class="deposit-policy-list">
+          <li>定金为支付给平台的服务费，用于撮合与服务保障。</li>
+          <li>若无人接单，可退 100%。</li>
+          <li>若有人接单后放弃，且最终仍无人接单，可退 50%。</li>
+        </ul>
+        <label class="deposit-policy-check" :class="{ 'is-checked': depositPolicyAccepted }">
+          <input class="deposit-policy-check__input" type="checkbox" :checked="depositPolicyAccepted"
+            @change="updateDepositPolicyAccepted(($event.target as HTMLInputElement).checked)" />
+          <span class="deposit-policy-check__box" aria-hidden="true">
+            <span class="deposit-policy-check__tick" />
+          </span>
+          <span class="deposit-policy-check__text">我已阅读并确认上述定金服务费与退款规则</span>
+        </label>
+      </div>
+
+      <p class="coupon-note">
+        {{ isFinalPayment ? '尾款支付不支持使用优惠券或打折券。' : '请从下方列表选择优惠券，优惠券和打折券只能选其一。' }}
+      </p>
       <p v-if="couponSummary" class="coupon-summary">{{ couponSummary }}</p>
 
-      <div class="coupon-list">
+      <div v-if="!isFinalPayment" class="coupon-list">
         <div class="coupon-list-header">
           <span>可用优惠券</span>
           <button class="auth-btn ghost" type="button" :disabled="couponLoading" @click="emit('loadAvailableCoupons')">
@@ -93,8 +118,8 @@ function pickCoupon(code: string, type: 'amount' | 'percent') {
         <div v-if="availableCoupons.length === 0" class="empty">暂无可用优惠券</div>
         <div v-else class="coupon-sections">
           <div class="coupon-section">
-            <div class="coupon-section-header">优惠卷</div>
-            <div v-if="amountCoupons.length === 0" class="empty">暂无可用优惠卷</div>
+            <div class="coupon-section-header">优惠券</div>
+            <div v-if="amountCoupons.length === 0" class="empty">暂无可用优惠券</div>
             <div v-else class="coupon-items">
               <button v-for="item in amountCoupons" :key="item.code" type="button" class="coupon-item"
                 :class="{ active: item.code === amountCouponCode }"
@@ -122,7 +147,9 @@ function pickCoupon(code: string, type: 'amount' | 'percent') {
       </p>
       <div class="auth-modal-actions">
         <button class="auth-btn ghost" type="button" @click="emit('close')">取消</button>
-        <button class="auth-btn solid" type="button" :disabled="depositLoading" @click="emit('submit')">
+        <button class="auth-btn solid" type="button"
+          :disabled="depositLoading || (!isFinalPayment && !depositPolicyAccepted && !depositPayment)"
+          @click="emit('submit')">
           {{ depositLoading ? '处理中...' : depositPayment ? '查询支付结果' : `支付${paymentStageLabel}` }}
         </button>
       </div>
