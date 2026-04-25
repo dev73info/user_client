@@ -86,13 +86,23 @@ function updateDepositPolicyAccepted(value: boolean) {
       </p>
       <p v-else class="deposit-line"><strong>尾款金额：</strong>¥{{ couponFinalAmount.toFixed(2) }}</p>
 
-      <div v-if="!isFinalPayment" class="deposit-policy-box" role="note" aria-label="定金服务费与退款规则">
-        <p class="deposit-policy-title">定金服务费说明</p>
+      <div v-if="!isFinalPayment" class="deposit-policy-box"
+        :class="{ 'is-pending': !depositPolicyAccepted, 'is-confirmed': depositPolicyAccepted }" role="note"
+        aria-label="定金服务费与退款规则">
+        <div class="deposit-policy-head">
+          <p class="deposit-policy-title">定金服务费说明</p>
+          <span class="deposit-policy-badge" :class="depositPolicyAccepted ? 'is-confirmed' : 'is-required'">
+            {{ depositPolicyAccepted ? '已确认' : '必选' }}
+          </span>
+        </div>
         <ul class="deposit-policy-list">
           <li>定金为支付给平台的服务费，用于撮合与服务保障。</li>
           <li>若无人接单，可退 100%。</li>
           <li>若有人接单后放弃，且最终仍无人接单，可退 50%。</li>
         </ul>
+      </div>
+
+      <div v-if="!isFinalPayment" class="deposit-policy-confirm" :class="{ 'is-pending': !depositPolicyAccepted }">
         <label class="deposit-policy-check" :class="{ 'is-checked': depositPolicyAccepted }">
           <input class="deposit-policy-check__input" type="checkbox" :checked="depositPolicyAccepted"
             @change="updateDepositPolicyAccepted(($event.target as HTMLInputElement).checked)" />
@@ -101,11 +111,9 @@ function updateDepositPolicyAccepted(value: boolean) {
           </span>
           <span class="deposit-policy-check__text">我已阅读并确认上述定金服务费与退款规则</span>
         </label>
+        <p v-if="!depositPolicyAccepted" class="deposit-policy-warning">未确认前无法支付定金</p>
       </div>
 
-      <p class="coupon-note">
-        {{ isFinalPayment ? '尾款支付不支持使用优惠券或打折券。' : '请从下方列表选择优惠券，优惠券和打折券只能选其一。' }}
-      </p>
       <p v-if="couponSummary" class="coupon-summary">{{ couponSummary }}</p>
 
       <div v-if="!isFinalPayment" class="coupon-list">
