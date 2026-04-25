@@ -148,7 +148,7 @@ onUnmounted(() => {
         fontSize: `${column.fontSize}px`,
       }">
         <span v-for="(char, charIndex) in column.chars" :key="`${column.id}-${charIndex}`" class="matrix-char">{{ char
-        }}</span>
+          }}</span>
       </div>
     </div>
     <div class="app-content">
@@ -174,7 +174,8 @@ onUnmounted(() => {
                   <h3>备案与合规</h3>
                   <p>
                     ICP备案号：
-                    <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">滇ICP备2026006119号</a>
+                    <a href="https://beian.miit.gov.cn/" target="_blank"
+                      rel="noopener noreferrer">滇ICP备2026006119号-2</a>
                   </p>
                   <p>公安备案号：备案申请中</p>
                   <p>增值电信业务许可：按业务开展后补充</p>
