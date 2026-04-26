@@ -14,6 +14,12 @@ type DepositCoupon = {
 
 type DepositPayment = Record<string, unknown> | null
 
+type ContractSigningStatus = {
+  has_contract: boolean
+  party_b_signed: boolean
+  party_a_signed: boolean
+}
+
 const props = defineProps({
   visible: { type: Boolean, default: false },
   depositRequirement: { type: Object as PropType<{ title: string; id: string; budget?: number | null }>, required: true },
@@ -31,6 +37,7 @@ const props = defineProps({
   depositPayment: { type: Object as PropType<DepositPayment>, default: null },
   couponFinalAmount: { type: Number, default: 0 },
   depositPolicyAccepted: { type: Boolean, default: false },
+  contractSigningStatus: { type: Object as PropType<ContractSigningStatus | null>, default: null },
 })
 
 const emit = defineEmits<{
@@ -85,6 +92,29 @@ function updateDepositPolicyAccepted(value: boolean) {
       <p v-if="!isFinalPayment" class="deposit-line"><strong>定金占比：</strong>{{ depositRatioPercent.toFixed(2) }}%
       </p>
       <p v-else class="deposit-line"><strong>尾款金额：</strong>¥{{ couponFinalAmount.toFixed(2) }}</p>
+
+      <div v-if="!isFinalPayment" class="contract-signing-status">
+        <div class="css-step" :class="contractSigningStatus?.has_contract ? 'done' : 'pending'">
+          <span class="css-step-dot"></span>
+          <span class="css-step-label">协议已创建</span>
+        </div>
+        <span class="css-step-line"></span>
+        <div class="css-step" :class="contractSigningStatus?.party_b_signed ? 'done' : 'pending'">
+          <span class="css-step-dot"></span>
+          <span class="css-step-label">乙方（开发者）已签</span>
+        </div>
+        <span class="css-step-line"></span>
+        <div class="css-step" :class="contractSigningStatus?.party_a_signed ? 'done' : 'pending'">
+          <span class="css-step-dot"></span>
+          <span class="css-step-label">甲方（您）已签</span>
+        </div>
+        <span class="css-step-line"></span>
+        <div class="css-step"
+          :class="contractSigningStatus?.party_a_signed && contractSigningStatus?.party_b_signed ? 'done' : 'pending'">
+          <span class="css-step-dot"></span>
+          <span class="css-step-label">可支付定金</span>
+        </div>
+      </div>
 
       <div v-if="!isFinalPayment" class="deposit-policy-box"
         :class="{ 'is-pending': !depositPolicyAccepted, 'is-confirmed': depositPolicyAccepted }" role="note"

@@ -41,8 +41,7 @@ const emit = defineEmits<{
       </div>
       <div class="header-actions">
         <template v-if="!isAuthed">
-          <button class="auth-btn ghost" type="button" @click="emit('open-auth', 'login')">登录</button>
-          <button class="auth-btn solid" type="button" @click="emit('open-auth', 'register')">注册</button>
+          <button class="auth-btn solid" type="button" @click="emit('open-auth', 'login')">登录 / 注册</button>
         </template>
         <template v-else>
           <div class="user-menu-wrapper">

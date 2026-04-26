@@ -41,6 +41,10 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     if (githubLoading.value || auth.loading) {
       return
     }
+    if (!acceptTerms.value) {
+      showToast('请先同意用户协议、隐私政策和支付与退款说明', 'error')
+      return
+    }
 
     githubLoading.value = true
     // 与开发者端保持一致：固定回到首页，减少不同页面路径带来的回调不稳定。

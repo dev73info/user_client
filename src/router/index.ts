@@ -65,6 +65,11 @@ const router = createRouter({
       component: () => import('@/views/PaymentRefundView.vue'),
     },
     {
+      path: '/contract-sign',
+      name: 'contract-sign',
+      component: () => import('@/views/ContractSignView.vue'),
+    },
+    {
       path: '/:rootSlug/:entrySlug?',
       name: 'resource-catalog',
       component: () => import('@/views/ResourceCatalogView.vue'),

@@ -22,6 +22,7 @@ import {
 } from '@/api/payments'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import { HttpError } from '@/api/http'
+import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import {
   createRequirement,
   getPublicRequirementOverview,
@@ -147,6 +148,7 @@ const amountCouponCode = ref('')
 const discountCouponCode = ref('')
 const depositPolicyAccepted = ref(false)
 const couponLoading = ref(false)
+const contractSigningStatus = ref<ContractSigningStatus | null>(null)
 const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
 const menuOpen = ref(false)
 const publishRealnameStatus = ref<UserRealnameStatus | 'none' | ''>('')
@@ -301,8 +303,12 @@ function openDepositCard(item: PendingRequirementView) {
   amountCouponCode.value = ''
   discountCouponCode.value = ''
   depositPolicyAccepted.value = false
+  contractSigningStatus.value = null
   router.push({ name: 'home', query: { modal: 'deposit', requirement_id: item.id } })
   void loadAvailableCoupons()
+  void fetchContractSigningStatus(item.id).then((s) => {
+    contractSigningStatus.value = s
+  }).catch(() => { /* 忽略，不影响支付流程 */ })
 }
 
 function canOpenPayment(item: PendingRequirementView) {
@@ -649,7 +655,16 @@ async function submitDepositPayment() {
     void router.replace({ name: 'home' })
     await loadPendingRequirements()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '支付失败', 'error')
+    const message = err instanceof Error ? err.message : '支付失败'
+    if (
+      message.includes('developer must sign first and user must sign after that before paying deposit')
+      || message.includes('requirement contract must be signed by developer before paying deposit')
+      || message.includes('contract must be created before paying deposit')
+    ) {
+      showToast('当前需求需先由开发者（乙方）签署，再由您（甲方）签署协议后，才能支付定金', 'warning')
+    } else {
+      showToast(message, 'error')
+    }
   } finally {
     depositLoading.value = false
   }
@@ -924,10 +939,10 @@ async function submitPublishRequirement() {
       :discountCouponCode="discountCouponCode" :isFinalPayment="isFinalPayment"
       :depositRatioPercent="depositRatioPercent" :couponSummary="couponSummary" :availableCoupons="availableCoupons"
       :couponLoading="couponLoading" :depositLoading="depositLoading" :depositPayment="depositPayment"
-      :couponFinalAmount="couponFinalAmount" :depositPolicyAccepted="depositPolicyAccepted" @close="closeDepositCard"
-      @submit="submitDepositPayment" @update:depositPolicyAccepted="depositPolicyAccepted = $event"
-      @update:depositChannel="depositChannel = $event" @selectCoupon="selectCoupon"
-      @loadAvailableCoupons="loadAvailableCoupons" />
+      :couponFinalAmount="couponFinalAmount" :depositPolicyAccepted="depositPolicyAccepted"
+      :contractSigningStatus="contractSigningStatus" @close="closeDepositCard" @submit="submitDepositPayment"
+      @update:depositPolicyAccepted="depositPolicyAccepted = $event" @update:depositChannel="depositChannel = $event"
+      @selectCoupon="selectCoupon" @loadAvailableCoupons="loadAvailableCoupons" />
 
     <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
 

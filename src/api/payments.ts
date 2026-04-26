@@ -27,6 +27,7 @@ export type WechatCreatePaymentResp = {
 
 export type ConfirmPaymentResp = {
   status: string
+  requirement_status?: string
 }
 
 export type PaymentOrderItem = {
