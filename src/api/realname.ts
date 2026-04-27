@@ -1,6 +1,6 @@
 import { authHeaders, requestJson } from '@/api/http'
 
-export type RealnameAuthType = 'personal' | 'enterprise' | 'sole_proprietor'
+export type RealnameAuthType = 'IDENTITY_CARD' | 'RESIDENCE_HK_MC' | 'RESIDENCE_TAIWAN'
 export type UserRealnameStatus = 'pending' | 'approved' | 'rejected'
 
 export type UserRealnameVerification = {

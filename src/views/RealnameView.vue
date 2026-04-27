@@ -26,7 +26,7 @@ const submitting = ref(false)
 const current = ref<UserRealnameVerification | null>(null)
 
 const form = reactive({
-  authType: 'personal' as RealnameAuthType,
+  authType: 'IDENTITY_CARD' as RealnameAuthType,
   realName: '',
   idCardNo: '',
   companyName: '',
@@ -67,9 +67,9 @@ const statusType = computed<'info' | 'warning' | 'success' | 'danger'>(() => {
 
 const authTypeText = computed(() => {
   const map: Record<RealnameAuthType, string> = {
-    personal: '个人',
-    enterprise: '企业',
-    sole_proprietor: '个体工商户',
+    IDENTITY_CARD: '大陆身份证',
+    RESIDENCE_HK_MC: '港澳居民居住证',
+    RESIDENCE_TAIWAN: '台湾居民居住证',
   }
   return map[form.authType]
 })
@@ -167,32 +167,8 @@ async function loadMyRealname() {
 }
 
 function validate() {
-  if (form.authType === 'personal') {
-    if (!form.realName.trim() || !form.idCardNo.trim()) {
-      return '个人认证需填写姓名和身份证号'
-    }
-  }
-
-  if (form.authType === 'enterprise') {
-    if (
-      !form.companyName.trim()
-      || !form.unifiedSocialCreditCode.trim()
-      || !form.operatorName.trim()
-      || !form.operatorIdCardNo.trim()
-    ) {
-      return '企业认证需填写企业名称、统一社会信用代码、法人姓名和法人身份证号'
-    }
-  }
-
-  if (form.authType === 'sole_proprietor') {
-    if (
-      !form.companyName.trim()
-      || !form.businessLicenseNo.trim()
-      || !form.operatorName.trim()
-      || !form.operatorIdCardNo.trim()
-    ) {
-      return '个体工商户认证需填写主体名称、营业执照号、经营者姓名和经营者身份证号'
-    }
+  if (!form.realName.trim() || !form.idCardNo.trim()) {
+    return '请填写姓名和证件号'
   }
 
   return ''
@@ -270,9 +246,8 @@ onMounted(async () => {
 
         <div v-if="current" class="realname-metrics">
           <div class="realname-metrics__item">
-            <span>认证类型</span>
-            <strong>{{ current.auth_type === 'personal' ? '个人' : current.auth_type === 'enterprise' ? '企业' :
-              '个体工商户' }}</strong>
+            <span>证件类型</span>
+            <strong>{{ current.auth_type === 'IDENTITY_CARD' ? '大陆身份证' : current.auth_type === 'RESIDENCE_HK_MC' ? '港澳居民居住证' : '台湾居民居住证' }}</strong>
           </div>
           <div class="realname-metrics__item">
             <span>审核人</span>
@@ -296,52 +271,20 @@ onMounted(async () => {
         </div>
 
         <el-form label-position="top" class="realname-form" @submit.prevent>
-          <el-form-item label="认证类型">
+          <el-form-item label="证件类型">
             <el-radio-group v-model="form.authType">
-              <el-radio value="personal">个人</el-radio>
-              <el-radio value="enterprise">企业</el-radio>
-              <el-radio value="sole_proprietor">个体工商户</el-radio>
+              <el-radio value="IDENTITY_CARD">大陆身份证</el-radio>
+              <el-radio value="RESIDENCE_HK_MC">港澳居民居住证</el-radio>
+              <el-radio value="RESIDENCE_TAIWAN">台湾居民居住证</el-radio>
             </el-radio-group>
           </el-form-item>
 
-          <template v-if="form.authType === 'personal'">
-            <el-form-item label="姓名">
-              <el-input v-model="form.realName" maxlength="120" placeholder="请输入真实姓名" />
-            </el-form-item>
-            <el-form-item label="身份证号">
-              <el-input v-model="form.idCardNo" maxlength="64" placeholder="请输入身份证号" />
-            </el-form-item>
-          </template>
-
-          <template v-if="form.authType === 'enterprise'">
-            <el-form-item label="企业名称">
-              <el-input v-model="form.companyName" maxlength="120" placeholder="请输入企业名称" />
-            </el-form-item>
-            <el-form-item label="统一社会信用代码">
-              <el-input v-model="form.unifiedSocialCreditCode" maxlength="64" placeholder="请输入统一社会信用代码" />
-            </el-form-item>
-            <el-form-item label="法人姓名">
-              <el-input v-model="form.operatorName" maxlength="120" placeholder="请输入法人姓名" />
-            </el-form-item>
-            <el-form-item label="法人身份证号">
-              <el-input v-model="form.operatorIdCardNo" maxlength="64" placeholder="请输入法人身份证号" />
-            </el-form-item>
-          </template>
-
-          <template v-if="form.authType === 'sole_proprietor'">
-            <el-form-item label="个体工商户名称">
-              <el-input v-model="form.companyName" maxlength="120" placeholder="请输入个体工商户名称" />
-            </el-form-item>
-            <el-form-item label="营业执照号">
-              <el-input v-model="form.businessLicenseNo" maxlength="64" placeholder="请输入营业执照号" />
-            </el-form-item>
-            <el-form-item label="经营者姓名">
-              <el-input v-model="form.operatorName" maxlength="120" placeholder="请输入经营者姓名" />
-            </el-form-item>
-            <el-form-item label="经营者身份证号">
-              <el-input v-model="form.operatorIdCardNo" maxlength="64" placeholder="请输入经营者身份证号" />
-            </el-form-item>
-          </template>
+          <el-form-item label="姓名">
+            <el-input v-model="form.realName" maxlength="120" placeholder="请输入真实姓名" />
+          </el-form-item>
+          <el-form-item label="证件号">
+            <el-input v-model="form.idCardNo" maxlength="64" placeholder="请输入证件号" />
+          </el-form-item>
 
           <div class="realname-form__actions">
             <el-button type="primary" class="realname-submit-btn" :loading="submitting" @click="submit">
