@@ -148,7 +148,7 @@ onUnmounted(() => {
         fontSize: `${column.fontSize}px`,
       }">
         <span v-for="(char, charIndex) in column.chars" :key="`${column.id}-${charIndex}`" class="matrix-char">{{ char
-          }}</span>
+        }}</span>
       </div>
     </div>
     <div class="app-content">
