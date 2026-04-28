@@ -40,6 +40,7 @@ export default defineConfig({
     ...(process.env.NODE_ENV !== 'production' ? [vueDevTools()] : []),
   ],
   build: {
+    chunkSizeWarningLimit: 1200,
     cssCodeSplit: false,
     rollupOptions: {
       output: {

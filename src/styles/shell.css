@@ -558,6 +558,20 @@ h2 {
   text-decoration: underline;
 }
 
+.public-security-beian-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.public-security-beian-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  object-fit: contain;
+}
+
 .site-footer-copy {
   margin: 10px 0 0;
   padding-top: 10px;

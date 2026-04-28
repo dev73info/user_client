@@ -20,7 +20,7 @@ async function loadContract() {
     loading.value = true
     error.value = ''
     try {
-        contract.value = await fetchMyRequirementContract(requirementId)
+        contract.value = await fetchMyRequirementContract(auth.token, requirementId)
     } catch {
         error.value = '加载合同失败，请刷新重试'
     } finally {
@@ -33,7 +33,7 @@ async function handleSign() {
     signing.value = true
     error.value = ''
     try {
-        contract.value = await signContract(contract.value.id)
+        contract.value = await signContract(auth.token, contract.value.id)
         successMsg.value = '合同已签署成功！'
     } catch {
         error.value = '签署失败，请稍后重试'

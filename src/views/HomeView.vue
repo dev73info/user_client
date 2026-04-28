@@ -306,7 +306,7 @@ function openDepositCard(item: PendingRequirementView) {
   contractSigningStatus.value = null
   router.push({ name: 'home', query: { modal: 'deposit', requirement_id: item.id } })
   void loadAvailableCoupons()
-  void fetchContractSigningStatus(item.id).then((s) => {
+  void fetchContractSigningStatus(auth.token, item.id).then((s) => {
     contractSigningStatus.value = s
   }).catch(() => { /* 忽略，不影响支付流程 */ })
 }

@@ -22,31 +22,33 @@ export type ContractDetail = {
 }
 
 export async function fetchContractSigningStatus(
+  token: string,
   requirementId: string,
 ): Promise<ContractSigningStatus> {
   return requestJson<ContractSigningStatus>(
     `/contracts/signing-status/${encodeURIComponent(requirementId)}`,
-    { headers: authHeader() },
+    { headers: authHeader(token) },
     '获取合同签署状态失败',
   )
 }
 
 export async function fetchMyRequirementContract(
+  token: string,
   requirementId: string,
 ): Promise<ContractDetail | null> {
   const res = await fetch(
     `/contracts/requirement/${encodeURIComponent(requirementId)}/my-contract`,
-    { headers: authHeader() },
+    { headers: authHeader(token) },
   )
   if (res.status === 404) return null
   if (!res.ok) throw new Error('获取合同失败')
   return res.json() as Promise<ContractDetail>
 }
 
-export async function signContract(contractId: number): Promise<ContractDetail> {
+export async function signContract(token: string, contractId: number): Promise<ContractDetail> {
   return requestJson<ContractDetail>(
     `/contracts/${contractId}/sign`,
-    { method: 'POST', headers: authHeader() },
+    { method: 'POST', headers: authHeader(token) },
     '签署合同失败',
   )
 }

@@ -166,9 +166,8 @@ onUnmounted(() => {
                 <div class="site-footer-block">
                   <h3>网站信息</h3>
                   <p>平台名称：柒叁信息（73info）</p>
-                  <p>主体类型：企业服务平台（备案办理中）</p>
+                  <p>主体类型：企业服务平台</p>
                   <p>联系邮箱：fanbo@73info.cn</p>
-                  <p>联系地址：上海市浦东新区（示例，待替换）</p>
                 </div>
                 <div class="site-footer-block">
                   <h3>备案与合规</h3>
@@ -177,7 +176,15 @@ onUnmounted(() => {
                     <a href="https://beian.miit.gov.cn/" target="_blank"
                       rel="noopener noreferrer">滇ICP备2026006119号-2</a>
                   </p>
-                  <p>公安备案号：备案申请中</p>
+                  <p>
+                    公安备案号：
+                    <a class="public-security-beian-link"
+                      href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000020" target="_blank"
+                      rel="noopener noreferrer">
+                      <img class="public-security-beian-icon" src="/icons/beian.png" alt="公安备案图标" />
+                      <span>滇公网安备53062802000020号</span>
+                    </a>
+                  </p>
                   <p>增值电信业务许可：按业务开展后补充</p>
                 </div>
                 <div class="site-footer-block">
