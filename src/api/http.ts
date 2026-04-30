@@ -21,8 +21,17 @@ function redirectToLogin(): void {
   window.location.replace(target)
 }
 
-function handleUnauthorized(resp: Response): void {
+function shouldRedirectOnUnauthorized(path: string): boolean {
+  const normalizedPath = path.split('?')[0] ?? path
+  return !new Set(['/auth/login', '/auth/register', '/auth/reset-password']).has(normalizedPath)
+}
+
+function handleUnauthorized(resp: Response, path: string): void {
   if (resp.status !== 401) {
+    return
+  }
+
+  if (!shouldRedirectOnUnauthorized(path)) {
     return
   }
 
@@ -104,7 +113,7 @@ export async function requestJson<T>(
   fallbackError = '请求失败',
 ): Promise<T> {
   const resp = await fetch(apiUrl(path), init)
-  handleUnauthorized(resp)
+  handleUnauthorized(resp, path)
 
   if (!resp.ok) {
     throw new HttpError(resp.status, await readErrorMessage(resp, fallbackError))
@@ -123,7 +132,7 @@ export async function requestText(
   fallbackError = '请求失败',
 ): Promise<string> {
   const resp = await fetch(apiUrl(path), init)
-  handleUnauthorized(resp)
+  handleUnauthorized(resp, path)
 
   if (!resp.ok) {
     throw new HttpError(resp.status, await readErrorMessage(resp, fallbackError))
@@ -138,7 +147,7 @@ export async function requestVoid(
   fallbackError = '请求失败',
 ): Promise<void> {
   const resp = await fetch(apiUrl(path), init)
-  handleUnauthorized(resp)
+  handleUnauthorized(resp, path)
 
   if (!resp.ok) {
     throw new HttpError(resp.status, await readErrorMessage(resp, fallbackError))

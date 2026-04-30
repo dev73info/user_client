@@ -103,13 +103,33 @@ export function useAuthForm(mode: Ref<AuthMode>) {
   async function submitAuth() {
     try {
       if (mode.value === 'login') {
-        await auth.login(authUsername.value.trim(), authPassword.value)
+        if (!acceptTerms.value) {
+          showToast('请先同意用户协议、隐私政策和支付与退款说明', 'error')
+          return false
+        }
+        const username = authUsername.value.trim()
+        const password = authPassword.value
+        if (!username) {
+          showToast('请输入用户名', 'error')
+          return false
+        }
+        if (!password) {
+          showToast('请输入密码', 'error')
+          return false
+        }
+        await auth.login(username, password)
         showToast('登录成功', 'success')
         return true
       }
       if (mode.value === 'register') {
         if (!acceptTerms.value) {
           showToast('请先同意用户协议、隐私政策和支付与退款说明', 'error')
+          return false
+        }
+        const username = authUsername.value.trim()
+        const password = authPassword.value
+        if (!username) {
+          showToast('请输入用户名', 'error')
           return false
         }
         if (!authEmail.value.trim()) {
@@ -120,9 +140,13 @@ export function useAuthForm(mode: Ref<AuthMode>) {
           showToast('请输入 6 位邮箱验证码', 'error')
           return false
         }
+        if (!password) {
+          showToast('请输入密码', 'error')
+          return false
+        }
         await auth.registerWithEmail(
-          authUsername.value.trim(),
-          authPassword.value,
+          username,
+          password,
           authEmail.value.trim(),
           authEmailCode.value.trim(),
         )
@@ -136,6 +160,10 @@ export function useAuthForm(mode: Ref<AuthMode>) {
         }
         if (authEmailCode.value.trim().length !== 6) {
           showToast('请输入 6 位邮箱验证码', 'error')
+          return false
+        }
+        if (!authPassword.value) {
+          showToast('请输入新密码', 'error')
           return false
         }
         await auth.resetPasswordWithEmail(

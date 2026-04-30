@@ -55,8 +55,16 @@ function changeMode(mode: AuthMode) {
   emit('change-mode', mode)
 }
 
+function requiresAgreement(): boolean {
+  return props.authMode === 'login' || props.authMode === 'register'
+}
+
+function canSubmitAuth(): boolean {
+  return !props.authLoading && (!requiresAgreement() || props.acceptTerms)
+}
+
 function submitOnEnter() {
-  if (props.authMode === 'login' && !props.authLoading) {
+  if (props.authMode === 'login' && canSubmitAuth()) {
     emit('submit')
   }
 }
@@ -159,8 +167,7 @@ function submitOnEnter() {
           :disabled="githubLoginLoading || !acceptTerms" @click="emit('loginWithGithub')">
           {{ githubLoginLoading ? '跳转中...' : 'GitHub 快捷登录' }}
         </button>
-        <button class="auth-btn solid" type="button"
-          :disabled="authLoading || (authMode === 'register' && !acceptTerms)" @click="emit('submit')">
+        <button class="auth-btn solid" type="button" :disabled="!canSubmitAuth()" @click="emit('submit')">
           {{ authLoading ? '登录中...' : authMode === 'login' ? '登录' : authMode === 'register' ? '注册并登录' : '重置密码' }}
         </button>
       </div>

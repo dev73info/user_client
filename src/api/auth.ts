@@ -26,22 +26,30 @@ export async function authRequest(
   email?: string,
   emailCode?: string,
 ): Promise<AuthPayload> {
-  return requestJson<AuthPayload>(
-    path,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+  try {
+    return await requestJson<AuthPayload>(
+      path,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username,
+          password,
+          ...(email ? { email } : {}),
+          ...(emailCode ? { email_code: emailCode } : {}),
+        }),
       },
-      body: JSON.stringify({
-        username,
-        password,
-        ...(email ? { email } : {}),
-        ...(emailCode ? { email_code: emailCode } : {}),
-      }),
-    },
-    '请求失败',
-  )
+      '请求失败',
+    )
+  } catch (err) {
+    if (path === '/auth/login' && err instanceof HttpError && err.status === 401) {
+      throw new Error('用户名或密码不正确，请检查后重试')
+    }
+
+    throw err
+  }
 }
 
 export async function sendRegisterEmailCode(email: string): Promise<void> {
