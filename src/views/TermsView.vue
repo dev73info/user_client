@@ -1,3 +1,18 @@
+<script setup lang="ts">
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+function goBack() {
+    if (window.history.state?.back) {
+        router.back()
+        return
+    }
+
+    router.push('/')
+}
+</script>
+
 <template>
     <main class="page-shell">
         <section class="panel">
@@ -6,6 +21,7 @@
                     <h2>用户服务协议</h2>
                     <p class="lead">欢迎使用柒叁信息 73Info 平台。请在注册或使用服务前完整阅读并理解本协议。</p>
                 </div>
+                <button class="top-back" type="button" @click="goBack">返回</button>
             </header>
 
             <article class="content-block">

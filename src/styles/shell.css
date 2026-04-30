@@ -447,7 +447,8 @@ button.ghost.small {
   min-width: 0;
 }
 
-.panel-head button.ghost {
+.panel-head button.ghost,
+.panel-head .top-back {
   white-space: nowrap;
 }
 
@@ -457,7 +458,8 @@ button.ghost.small {
     align-items: stretch;
   }
 
-  .panel-head button.ghost {
+  .panel-head button.ghost,
+  .panel-head .top-back {
     width: 100%;
   }
 }
