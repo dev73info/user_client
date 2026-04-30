@@ -3,6 +3,8 @@ import type { PropType } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { RouterLink } from 'vue-router'
 
+import { DEV_PORTAL_URL } from '@/config/runtime'
+
 type NavLink = {
   label: string
   to?: RouteLocationRaw
@@ -13,6 +15,24 @@ type NavLink = {
 
 function isExternalHref(href?: string): boolean {
   return typeof href === 'string' && /^https?:\/\//.test(href)
+}
+
+function isDevPortalHref(href?: string): boolean {
+  if (!href) {
+    return false
+  }
+
+  try {
+    const hrefUrl = new URL(href, window.location.origin)
+    const devPortalUrl = new URL(DEV_PORTAL_URL, window.location.origin)
+    return hrefUrl.origin === devPortalUrl.origin
+  } catch {
+    return false
+  }
+}
+
+function shouldOpenInNewTab(href?: string): boolean {
+  return isExternalHref(href) && !isDevPortalHref(href)
 }
 
 defineProps({
@@ -66,8 +86,8 @@ const emit = defineEmits<{
           </RouterLink>
           <a v-else :href="link.href || '#'" class="brand-link"
             :class="[{ active: link.active }, link.align === 'right' ? 'brand-link--push-right' : '']"
-            :target="isExternalHref(link.href) ? '_blank' : undefined"
-            :rel="isExternalHref(link.href) ? 'noopener noreferrer' : undefined">
+            :target="shouldOpenInNewTab(link.href) ? '_blank' : undefined"
+            :rel="shouldOpenInNewTab(link.href) ? 'noopener noreferrer' : undefined">
             {{ link.label }}
           </a>
         </template>
