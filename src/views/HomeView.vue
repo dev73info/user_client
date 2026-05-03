@@ -109,7 +109,10 @@ const routeAuthMode = computed<AuthMode>(() => {
   return mode === 'register' || mode === 'reset' ? mode : 'login'
 })
 const authVisible = computed(() => routeModal.value === 'auth')
-const publishVisible = computed(() => routeModal.value === 'publish')
+// 发布需求功能已暂时禁用：仅在重新编辑被驳回需求（resubmit）的场景下才允许打开发布弹窗。
+const publishVisible = computed(
+  () => routeModal.value === 'publish' && activeResubmitRequirementId.value !== null,
+)
 const depositVisible = computed(() => routeModal.value === 'deposit')
 const {
   authUsername,
@@ -745,17 +748,8 @@ async function ensurePublishRealnameApproved() {
 }
 
 async function openPublishModal() {
-  const approved = await ensurePublishRealnameApproved()
-  if (!approved) {
-    return
-  }
-
-  activeResubmitRequirementId.value = null
-  publishTitle.value = ''
-  publishDescription.value = ''
-  publishBudget.value = ''
-  publishAcceptance.value = ''
-  router.push({ name: 'home', query: { modal: 'publish' } })
+  // 发布需求功能已暂时禁用
+  showToast('发布需求功能暂未开放，敬请期待', 'info')
 }
 
 async function refreshHomeData() {
@@ -799,6 +793,12 @@ const publishModalLoadingText = computed(() =>
 )
 
 async function submitPublishRequirement() {
+  // 发布需求功能已暂时禁用：仅允许“重新编辑需求”（resubmit）流程提交。
+  if (!activeResubmitRequirementId.value) {
+    showToast('发布需求功能暂未开放，敬请期待', 'info')
+    return
+  }
+
   const approved = await ensurePublishRealnameApproved()
   if (!approved) {
     return
@@ -889,7 +889,8 @@ async function submitPublishRequirement() {
           <p class="desc">从公开资源导航快速发现内容，到发布需求、支付协作与交付跟进，整条流程在一个平台完成。</p>
         </div>
         <div class="hero-actions">
-          <button class="publish-btn" type="button" @click="openPublishModal">发布需求</button>
+          <!-- 发布需求功能已暂时禁用 -->
+          <button class="publish-btn" type="button" disabled title="发布需求功能暂未开放">发布需求（暂未开放）</button>
           <button class="refresh-btn" type="button" :disabled="homeRefreshLoading" @click="refreshHomeData">
             {{ homeRefreshLoading ? '刷新中...' : '刷新' }}
           </button>

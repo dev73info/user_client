@@ -69,7 +69,7 @@ const emit = defineEmits<{
         <time>{{ item.updatedAtLabel }}</time>
       </li>
     </ul>
-    <p v-else class="empty-placeholder">暂无待处理需求，点击“发布需求”开始创建。</p>
+    <p v-else class="empty-placeholder">暂无待处理需求。（发布需求功能暂未开放）</p>
   </section>
 
   <section class="panel" aria-label="最近成交">
