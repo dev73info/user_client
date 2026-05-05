@@ -15,63 +15,6 @@
   z-index: 2;
 }
 
-/* --- 代码雨背景 --- */
-.code-rain-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  padding: 0;
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0.8;
-}
-
-.matrix-stream {
-  position: absolute;
-  top: -130%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  line-height: 1.08;
-  color: #8bffc0;
-  animation-name: rain-fall;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  will-change: transform;
-  text-shadow: 0 0 10px rgba(101, 255, 182, 0.34);
-}
-
-.matrix-char {
-  margin: 0;
-  user-select: none;
-}
-
-.matrix-char:first-child {
-  color: #ecfff4;
-  text-shadow: 0 0 16px rgba(186, 255, 224, 0.8);
-}
-
-@keyframes rain-fall {
-  0% {
-    transform: translateY(0);
-  }
-
-  100% {
-    transform: translateY(260vh);
-  }
-}
-
-@media (max-width: 780px) {
-  .code-rain-bg {
-    opacity: 0.66;
-  }
-
-  .matrix-stream {
-    line-height: 1.04;
-  }
-}
-
 /* --- 页面容器 --- */
 .home {
   max-width: 1024px;
@@ -171,23 +114,23 @@
 }
 
 .auth-btn.ghost {
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  color: var(--text-main);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(226, 232, 240, 0.96);
+  color: #334155;
+  background: rgba(255, 255, 255, 0.94);
 }
 
 .auth-btn.ghost:hover {
-  box-shadow: 0 8px 18px rgba(180, 230, 255, 0.18);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
 }
 
 .auth-btn.solid {
   border: 0;
-  color: #052238;
-  background: #95d5b2;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #4f8cff);
 }
 
 .auth-btn.solid:hover {
-  box-shadow: 0 8px 18px rgba(149, 213, 178, 0.34);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.22);
 }
 
 .user-menu-wrapper {
@@ -526,60 +469,81 @@ h2 {
 /* --- 页脚 --- */
 .site-footer {
   margin-top: 22px;
-  border-radius: 16px;
-  border: 1px solid var(--card-border);
-  background: rgba(4, 20, 32, 0.48);
-  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(228, 234, 246, 0.95);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 28px rgba(90, 120, 180, 0.08);
+  backdrop-filter: blur(10px);
+  padding: 22px 24px 18px;
 }
 
 .site-footer-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 24px;
 }
 
 .site-footer-block h3 {
-  margin: 0 0 8px;
-  font-size: 14px;
-  color: var(--text-main);
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: #0f172a;
 }
 
 .site-footer-block p {
-  margin: 0 0 6px;
-  font-size: 12px;
-  line-height: 1.55;
-  color: var(--text-sub);
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #64748b;
 }
 
 .site-footer-block a {
-  color: #a5d8ff;
+  color: #4f8cff;
   text-decoration: none;
 }
 
 .site-footer-block a:hover {
+  color: #2563eb;
   text-decoration: underline;
 }
 
 .public-security-beian-link {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   white-space: nowrap;
 }
 
 .public-security-beian-icon {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 14px;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
   object-fit: contain;
 }
 
 .site-footer-copy {
-  margin: 10px 0 0;
-  padding-top: 10px;
-  border-top: 1px dashed rgba(255, 255, 255, 0.14);
-  font-size: 12px;
-  color: rgba(224, 243, 255, 0.72);
+  margin: 16px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid rgba(228, 234, 246, 0.95);
+  font-size: 14px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .site-footer {
+    padding: 18px 16px 16px;
+    border-radius: 18px;
+  }
+
+  .site-footer-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .site-footer-block p,
+  .site-footer-copy {
+    font-size: 13px;
+  }
 }
 
 /* --- 响应式：Hero 区域 --- */

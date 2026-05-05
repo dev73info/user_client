@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import AppToast from '@/components/AppToast.vue'
 import PublishModal from '@/components/PublishModal.vue'
 import { buildDevPortalUrl } from '@/config/runtime'
@@ -44,7 +43,6 @@ import {
 
 const router = useRouter()
 const auth = useAuthStore()
-const menuOpen = ref(false)
 const loading = ref(false)
 const coupons = ref<CouponItem[]>([])
 const requirementLoading = ref(false)
@@ -315,6 +313,10 @@ function closeCompletionConfirm() {
   completionConfirmTarget.value = null
 }
 
+function openDevWorkbench() {
+  void router.push(buildDevPortalUrl(auth.token))
+}
+
 async function submitRequirementCompletion() {
   if (!completionConfirmTarget.value) {
     return
@@ -376,30 +378,6 @@ function openRequirementEditModal(item: RequirementItem) {
   editBudget.value = item.budget ?? ''
   editAcceptance.value = item.acceptance_criteria ?? ''
   editVisible.value = true
-}
-
-function openAuth(mode: 'login' | 'register') {
-  router.push({ name: 'home', query: { modal: 'auth', mode } })
-}
-
-function toggleUserMenu() {
-  menuOpen.value = !menuOpen.value
-}
-
-function closeUserMenu() {
-  menuOpen.value = false
-}
-
-function goProfile() {
-  closeUserMenu()
-  router.push({ name: 'profile' })
-}
-
-function logout() {
-  auth.logout()
-  closeUserMenu()
-  showToast('已退出登录', 'info')
-  router.push({ name: 'home' })
 }
 
 function openRealnameEditModal() {
@@ -1104,45 +1082,31 @@ onMounted(async () => {
   await Promise.all([loadCoupons(), loadMyRequirements(), loadDepositRatio(), loadProfile(), loadRealnameStatus()])
 })
 
-const heroNavLinks = computed(() => {
-  const links = [
-    { label: '返回首页', to: { name: 'home' } },
-    { label: '个人中心', to: { name: 'profile' }, active: true },
-    { label: '我的工单', to: { name: 'tickets' } },
-    { label: '我的定制资源', to: { name: 'my-custom-resources' } },
-    { label: '开发者端', href: buildDevPortalUrl(auth.token) },
-  ]
-
-  return links
-})
 </script>
 
 <template>
-  <main class="page-shell custom-page-shell">
-    <HomeHeroSection :isAuthed="auth.isAuthed" :username="auth.username" :menuOpen="menuOpen" :navLinks="heroNavLinks"
-      @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" @logout="logout">
-      <div class="hero-meta">
-        <div class="hero">
-          <h1>{{ auth.username ? `${auth.username} 的个人中心` : '个人中心' }}</h1>
-          <p class="desc">管理你的账户、优惠券与需求单，统一使用页面布局标准。</p>
-        </div>
-        <div class="hero-actions">
-          <div v-if="realnameStatus" class="realname-badge"
-            :class="[`realname-badge--${realnameStatus}`, { clickable: realnameStatus === 'rejected' }]"
-            @click="openRealnameEditModal">
-            <span class="badge-icon">实名认证：</span>
-            <span class="badge-text">
-              {{ realnameStatus === 'approved' ? '已认证' : realnameStatus === 'pending' ? '审核中' : '已驳回' }}
-            </span>
-          </div>
-          <button class="publish-btn" type="button" @click="openSecurityModal">账户安全</button>
-          <button class="refresh-btn" type="button" :disabled="loading || requirementLoading"
-            @click="refreshProfileData">
-            {{ loading || requirementLoading ? '刷新中...' : '刷新资料' }}
-          </button>
-        </div>
+  <main class="page-shell custom-page-shell profile-page">
+    <section class="profile-page-head">
+      <div class="profile-page-head__copy">
+        <h1>{{ auth.username ? `${auth.username} 的个人中心` : '个人中心' }}</h1>
+        <p>管理账户资料、已提交需求单与优惠券，页面顶部不再保留这一层独立入口导航。</p>
       </div>
-    </HomeHeroSection>
+      <div class="profile-page-head__actions">
+        <div v-if="realnameStatus" class="realname-badge"
+          :class="[`realname-badge--${realnameStatus}`, { clickable: realnameStatus === 'rejected' }]"
+          @click="openRealnameEditModal">
+          <span class="badge-icon">实名认证：</span>
+          <span class="badge-text">
+            {{ realnameStatus === 'approved' ? '已认证' : realnameStatus === 'pending' ? '审核中' : '已驳回' }}
+          </span>
+        </div>
+        <button class="ghost small" type="button" @click="openDevWorkbench">进入开发者工作台</button>
+        <button class="ghost small" type="button" @click="openSecurityModal">账户安全</button>
+        <button class="ghost small" type="button" :disabled="loading || requirementLoading" @click="refreshProfileData">
+          {{ loading || requirementLoading ? '刷新中...' : '刷新资料' }}
+        </button>
+      </div>
+    </section>
 
     <div class="wallet-overview">
       <div class="wallet-card summary-card">
@@ -1179,12 +1143,10 @@ const heroNavLinks = computed(() => {
                 class="requirement-note">资源公开/私有切换需在已付尾款后开放</small>
               <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">
                 <strong>待审核删除版本：</strong>
-                <span
-                  style="display: inline-flex; align-items: center; margin-left: 6px; padding: 2px 10px; border-radius: 999px; background: rgba(255,255,255,0.14); font-weight: 700; color: #fff;">
+                <span class="pending-review-pill">
                   {{ pendingResourceVersionDeleteRequests(item).length }} 个待审核
                 </span>
-                <span style="margin-left: 8px; opacity: 0.8;">共 {{ pendingResourceVersionDeleteRequests(item).length
-                  }} 个</span>
+                <span class="pending-review-count">共 {{ pendingResourceVersionDeleteRequests(item).length }} 个</span>
               </small>
               <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">{{
                 resourceVersionDeleteReviewHint(item) }}</small>
@@ -1532,6 +1494,69 @@ const heroNavLinks = computed(() => {
 </template>
 
 <style scoped>
+.profile-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 24px;
+  padding: 24px 26px;
+  border: 1px solid rgba(224, 232, 255, 0.96);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 34px rgba(76, 103, 172, 0.08);
+}
+
+.profile-page-head__copy h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.08;
+}
+
+.profile-page-head__copy p {
+  margin: 10px 0 0;
+  max-width: 720px;
+  color: #5b6475;
+  line-height: 1.7;
+}
+
+.profile-page-head__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.profile-page-head__actions .ghost.small {
+  border-color: rgba(209, 220, 243, 0.95);
+  background: #ffffff;
+  color: #1e293b;
+  box-shadow: 0 8px 20px rgba(76, 103, 172, 0.08);
+}
+
+.profile-page-head__actions .ghost.small:hover:not(:disabled) {
+  border-color: rgba(125, 155, 225, 0.9);
+  background: #f8fbff;
+  box-shadow: 0 12px 24px rgba(76, 103, 172, 0.12);
+}
+
+.pending-review-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(255, 214, 102, 0.22);
+  color: #8a5a00;
+  font-weight: 700;
+}
+
+.pending-review-count {
+  margin-left: 8px;
+  color: #7b8798;
+}
+
 .subscription-settings {
   display: grid;
   gap: 12px;
@@ -1544,15 +1569,27 @@ const heroNavLinks = computed(() => {
   gap: 16px;
   padding: 14px 16px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border: 1px solid rgba(224, 232, 255, 0.96);
+  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
   cursor: pointer;
+}
+
+.subscription-card:hover {
+  border-color: rgba(125, 155, 225, 0.9);
+  background: #f8fbff;
 }
 
 .subscription-copy {
   display: grid;
   gap: 4px;
   min-width: 0;
+}
+
+.subscription-copy strong {
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 800;
 }
 
 .subscription-switch-wrap {
@@ -1581,9 +1618,9 @@ const heroNavLinks = computed(() => {
   width: 52px;
   height: 30px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.28);
+  background: #e8eefb;
+  border: 1px solid rgba(188, 208, 245, 0.95);
+  box-shadow: inset 0 1px 2px rgba(76, 103, 172, 0.14);
   transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   display: inline-flex;
   align-items: center;
@@ -1625,6 +1662,15 @@ const heroNavLinks = computed(() => {
 }
 
 @media (max-width: 640px) {
+  .profile-page-head {
+    flex-direction: column;
+    padding: 20px;
+  }
+
+  .profile-page-head__actions {
+    justify-content: flex-start;
+  }
+
   .subscription-card {
     align-items: flex-start;
   }
@@ -1647,26 +1693,26 @@ const heroNavLinks = computed(() => {
 }
 
 .realname-badge--approved {
-  background: rgba(149, 213, 178, 0.18);
-  border-color: rgba(149, 213, 178, 0.6);
-  color: #a8ffe8;
+  background: rgba(226, 248, 236, 0.96);
+  border-color: rgba(138, 208, 167, 0.95);
+  color: #137a4b;
 }
 
 .realname-badge--pending {
-  background: rgba(255, 225, 139, 0.18);
-  border-color: rgba(255, 225, 139, 0.6);
-  color: #fff9d6;
+  background: rgba(255, 245, 205, 0.96);
+  border-color: rgba(248, 207, 92, 0.92);
+  color: #8a5a00;
 }
 
 .realname-badge--rejected {
-  background: rgba(255, 145, 145, 0.18);
-  border-color: rgba(255, 145, 145, 0.6);
-  color: #ffcccc;
+  background: rgba(255, 234, 234, 0.98);
+  border-color: rgba(239, 154, 154, 0.95);
+  color: #b42318;
 }
 
 .realname-badge--rejected:hover {
-  background: rgba(255, 145, 145, 0.28);
-  border-color: rgba(255, 145, 145, 0.8);
+  background: rgba(255, 226, 226, 1);
+  border-color: rgba(224, 102, 102, 0.95);
 }
 
 .badge-icon {

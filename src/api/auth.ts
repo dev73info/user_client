@@ -1,167 +1,31 @@
 import { HttpError, authHeaders, requestJson, requestVoid } from '@/api/http'
+import {
+  createAuthApiClient,
+  type AgreementAcceptancePayload,
+  type AuthPayload,
+  type GithubAuthUrlResp,
+} from '@/shared/auth/client'
 
-export type AuthPayload = {
-  token: string
-}
+export type { AgreementAcceptancePayload, AuthPayload, GithubAuthUrlResp }
 
-export type AgreementAcceptancePayload = {
-  username: string | null
-  role: string | null
-  agreement_code: string
-  agreement_version: string
-  client_platform: string
-  agreed_at: string
-}
+const authClient = createAuthApiClient(
+  {
+    requestJson,
+    requestVoid,
+    authHeaders,
+    isHttpError: (err): err is HttpError => err instanceof HttpError,
+  },
+  {
+    fallbackAgreementAcceptanceOn404: true,
+  },
+)
 
-export type GithubAuthUrlResp = {
-  url: string
-}
-
-type AuthPath = '/auth/login' | '/auth/register'
-
-export async function authRequest(
-  path: AuthPath,
-  username: string,
-  password: string,
-  email?: string,
-  emailCode?: string,
-): Promise<AuthPayload> {
-  try {
-    return await requestJson<AuthPayload>(
-      path,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username,
-          password,
-          ...(email ? { email } : {}),
-          ...(emailCode ? { email_code: emailCode } : {}),
-        }),
-      },
-      '请求失败',
-    )
-  } catch (err) {
-    if (path === '/auth/login' && err instanceof HttpError && err.status === 401) {
-      throw new Error('用户名或密码不正确，请检查后重试')
-    }
-
-    throw err
-  }
-}
-
-export async function sendRegisterEmailCode(email: string): Promise<void> {
-  try {
-    await requestVoid(
-      '/auth/send-register-email-code',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      },
-      '发送验证码失败',
-    )
-  } catch (err) {
-    if (err instanceof HttpError && err.status === 409) {
-      throw new Error('该邮箱已被注册，请直接登录或换一个邮箱')
-    }
-    throw err
-  }
-}
-
-export async function sendResetPasswordEmailCode(email: string): Promise<void> {
-  await requestVoid(
-    '/auth/send-reset-password-email-code',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email }),
-    },
-    '发送验证码失败',
-  )
-}
-
-export async function resetPassword(
-  email: string,
-  password: string,
-  emailCode: string,
-): Promise<AuthPayload> {
-  return requestJson<AuthPayload>(
-    '/auth/reset-password',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password, email_code: emailCode }),
-    },
-    '重置密码失败',
-  )
-}
-
-export async function refreshToken(currentToken: string): Promise<AuthPayload> {
-  return requestJson<AuthPayload>(
-    '/auth/refresh',
-    {
-      method: 'POST',
-      headers: authHeaders(currentToken),
-    },
-    '刷新令牌失败',
-  )
-}
-
-export async function getGithubAuthorizeUrl(redirectTo: string): Promise<GithubAuthUrlResp> {
-  const requestUrl = `/auth/github/url?redirect_to=${encodeURIComponent(redirectTo)}`
-  return requestJson<GithubAuthUrlResp>(
-    requestUrl,
-    {
-      method: 'GET',
-      credentials: 'include',
-    },
-    'GitHub 登录暂不可用',
-  )
-}
-
-export async function recordAgreementAcceptance(
-  token: string,
-  agreementCode: string,
-  agreementVersion: string,
-  clientPlatform: string,
-): Promise<AgreementAcceptancePayload> {
-  try {
-    return await requestJson<AgreementAcceptancePayload>(
-      '/auth/agreement-acceptances',
-      {
-        method: 'POST',
-        headers: authHeaders(token, {
-          'Content-Type': 'application/json',
-        }),
-        body: JSON.stringify({
-          agreement_code: agreementCode,
-          agreement_version: agreementVersion,
-          client_platform: clientPlatform,
-        }),
-      },
-      '协议留痕失败',
-    )
-  } catch (err) {
-    if (err instanceof HttpError && err.status === 404) {
-      return {
-        username: null,
-        role: null,
-        agreement_code: agreementCode,
-        agreement_version: agreementVersion,
-        client_platform: clientPlatform,
-        agreed_at: new Date().toISOString(),
-      }
-    }
-
-    throw err
-  }
-}
+export const {
+  authRequest,
+  sendRegisterEmailCode,
+  sendResetPasswordEmailCode,
+  resetPassword,
+  refreshToken,
+  getGithubAuthorizeUrl,
+  recordAgreementAcceptance,
+} = authClient

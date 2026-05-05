@@ -1,5 +1,24 @@
 /* === 个人中心：钱包、需求单、优惠券 === */
 
+.profile-page {
+  --profile-card-bg: rgba(255, 255, 255, 0.94);
+  --profile-card-bg-strong: #ffffff;
+  --profile-card-border: rgba(224, 232, 255, 0.96);
+  --profile-card-shadow: 0 14px 34px rgba(76, 103, 172, 0.08);
+  --profile-text-main: #0f172a;
+  --profile-text-sub: #64748b;
+  --profile-text-soft: #8a94a6;
+  --profile-accent: #4f8cff;
+  --profile-accent-soft: rgba(79, 140, 255, 0.12);
+  --profile-success-soft: rgba(34, 197, 94, 0.12);
+  --profile-success-border: rgba(134, 239, 172, 0.9);
+  --profile-success-text: #166534;
+  --profile-warning-soft: rgba(245, 158, 11, 0.14);
+  --profile-warning-text: #92400e;
+  --profile-danger-soft: rgba(239, 68, 68, 0.12);
+  --profile-danger-text: #b42318;
+}
+
 .profile-update-row {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -13,15 +32,20 @@
 
 .profile-update-row input {
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--profile-card-border);
   border-radius: 12px;
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-main);
+  background: var(--profile-card-bg-strong);
+  color: var(--profile-text-main);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 .profile-update-row input:disabled {
   opacity: 0.7;
+}
+
+.profile-update-row input::placeholder {
+  color: var(--profile-text-soft);
 }
 
 .wallet-overview {
@@ -32,24 +56,34 @@
 }
 
 .wallet-card {
-  padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.05);
+  padding: 24px;
+  border: 1px solid var(--profile-card-border);
+  border-radius: 20px;
+  background: var(--profile-card-bg);
+  box-shadow: var(--profile-card-shadow);
+  color: var(--profile-text-main);
 }
 
 .summary-card strong {
   display: block;
-  font-size: 32px;
-  margin-bottom: 8px;
+  font-size: 40px;
+  line-height: 1;
+  margin-bottom: 10px;
+  color: var(--profile-text-main);
 }
 
 .summary-card span {
-  color: var(--text-sub);
+  color: var(--profile-text-sub);
+  font-size: 14px;
 }
 
 .wallet-section {
-  margin-top: 20px;
+  margin-top: 0;
+  padding: 24px;
+  border: 1px solid var(--profile-card-border);
+  border-radius: 22px;
+  background: var(--profile-card-bg);
+  box-shadow: var(--profile-card-shadow);
 }
 
 .account-security-modal {
@@ -70,7 +104,7 @@
 
 .account-security-header p {
   margin: 0;
-  color: var(--text-sub);
+  color: var(--profile-text-sub);
 }
 
 .account-security-section {
@@ -82,12 +116,13 @@
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .wallet-header h3 {
   margin: 0;
   font-size: 18px;
+  color: var(--profile-text-main);
 }
 
 @media (max-width: 820px) {
@@ -108,39 +143,43 @@
   grid-template-columns: minmax(0, 1fr) auto auto auto auto;
   gap: 10px;
   align-items: center;
-  padding: 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-sub);
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--profile-card-border);
+  background: var(--profile-card-bg-strong);
+  color: var(--profile-text-sub);
+  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.06);
 }
 
 .requirement-row.clickable {
   cursor: pointer;
-  border: 1px solid rgba(149, 213, 178, 0.3);
+  border-color: rgba(188, 208, 245, 0.95);
 }
 
 .requirement-row.clickable:hover {
-  background: rgba(149, 213, 178, 0.12);
+  background: #f8fbff;
+  border-color: rgba(125, 155, 225, 0.92);
 }
 
 .requirement-row.expanded {
-  border: 1px solid rgba(149, 213, 178, 0.46);
-  background: rgba(149, 213, 178, 0.14);
+  border-color: rgba(125, 155, 225, 0.95);
+  background: #f6f9ff;
 }
 
 .requirement-main strong {
-  color: var(--text-main);
-  font-size: 14px;
+  color: var(--profile-text-main);
+  font-size: 15px;
 }
 
 .requirement-main span {
   font-size: 12px;
+  color: var(--profile-text-soft);
 }
 
 .requirement-note {
   display: block;
   margin-top: 6px;
-  color: #ffb4b4;
+  color: var(--profile-text-sub);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -148,17 +187,18 @@
 .requirement-resource-visibility {
   display: block;
   margin-top: 6px;
-  color: #95d5b2;
+  color: #166534;
   font-size: 12px;
   line-height: 1.5;
 }
 
 .requirement-status {
   border-radius: 999px;
-  padding: 4px 10px;
-  color: #ffe18b;
+  padding: 6px 11px;
+  color: var(--profile-warning-text);
   font-size: 12px;
-  background: rgba(255, 225, 139, 0.18);
+  font-weight: 700;
+  background: var(--profile-warning-soft);
 }
 
 .requirement-actions {
@@ -174,11 +214,11 @@
 
 .requirement-review-card {
   margin: -2px 0 10px;
-  padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 18px;
+  border: 1px solid var(--profile-card-border);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-main);
+  background: #f8fbff;
+  color: var(--profile-text-main);
 }
 
 .requirement-review-card__header {
@@ -194,7 +234,7 @@
 
 .requirement-review-card__header p {
   margin: 0;
-  color: var(--text-sub);
+  color: var(--profile-text-sub);
   font-size: 13px;
 }
 
@@ -206,9 +246,9 @@
 
 .requirement-review-item {
   padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--profile-card-border);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--profile-card-bg-strong);
 }
 
 .requirement-review-item__main {
@@ -220,13 +260,13 @@
 
 .requirement-review-item__main strong {
   display: block;
-  color: var(--text-main);
+  color: var(--profile-text-main);
   font-size: 15px;
 }
 
 .requirement-review-item__main p {
   margin: 8px 0 0;
-  color: var(--text-sub);
+  color: var(--profile-text-sub);
   font-size: 13px;
 }
 
@@ -241,17 +281,17 @@
 }
 
 .requirement-review-card__field span {
-  color: var(--text-sub);
+  color: var(--profile-text-sub);
   font-size: 12px;
 }
 
 .requirement-review-card__field select {
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--profile-card-border);
   border-radius: 12px;
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-main);
+  background: var(--profile-card-bg-strong);
+  color: var(--profile-text-main);
 }
 
 .requirement-review-item__actions {
@@ -261,25 +301,25 @@
 }
 
 .requirement-review-item__actions .ghost.active {
-  border-color: rgba(149, 213, 178, 0.55);
-  background: rgba(149, 213, 178, 0.16);
-  color: #dffbe8;
+  border-color: rgba(125, 155, 225, 0.92);
+  background: var(--profile-accent-soft);
+  color: #1d4ed8;
 }
 
 .requirement-review-item__reject-panel {
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--profile-card-border);
 }
 
 .requirement-review-card__hint {
   margin: 14px 0 0;
-  color: var(--text-sub);
+  color: var(--profile-text-sub);
   font-size: 13px;
 }
 
 .requirement-review-card__hint.danger {
-  color: #ffb4b4;
+  color: var(--profile-danger-text);
 }
 
 .requirement-review-card__actions {
@@ -311,20 +351,22 @@
 .coupon-item {
   width: 100%;
   text-align: left;
-  padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 18px;
+  border: 1px solid var(--profile-card-border);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-main);
+  background: var(--profile-card-bg-strong);
+  color: var(--profile-text-main);
   cursor: pointer;
   transition:
     border-color 0.2s ease,
-    background-color 0.2s ease;
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .coupon-item:hover {
-  border-color: rgba(149, 213, 178, 0.45);
-  background: rgba(149, 213, 178, 0.1);
+  border-color: rgba(125, 155, 225, 0.92);
+  background: #f8fbff;
+  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
 }
 
 .coupon-head {
@@ -343,23 +385,49 @@
 }
 
 .coupon-status.pending_use {
-  background: rgba(31, 197, 142, 0.14);
-  color: #8ef1bb;
+  background: var(--profile-success-soft);
+  color: var(--profile-success-text);
 }
 
 .coupon-status.used {
-  background: rgba(255, 140, 140, 0.14);
-  color: #ffb3b3;
+  background: var(--profile-danger-soft);
+  color: var(--profile-danger-text);
 }
 
 .coupon-item small {
   display: block;
   margin-bottom: 8px;
-  color: var(--text-sub);
+  color: var(--profile-text-sub);
 }
 
 .coupon-meta {
   margin: 10px 0 0;
-  color: var(--text-sub);
+  color: var(--profile-text-sub);
   font-size: 13px;
+}
+
+.profile-page .empty {
+  color: var(--profile-text-sub);
+  padding: 20px 18px;
+  border: 1px dashed rgba(204, 214, 237, 0.98);
+  border-radius: 16px;
+  background: rgba(248, 251, 255, 0.8);
+}
+
+.profile-page button.ghost,
+.profile-page button.ghost.small {
+  border-color: rgba(209, 220, 243, 0.95);
+  background: #ffffff;
+  color: var(--profile-text-main);
+  box-shadow: 0 8px 20px rgba(76, 103, 172, 0.06);
+}
+
+.profile-page button.ghost:hover:not(:disabled) {
+  background: #f8fbff;
+  border-color: rgba(125, 155, 225, 0.92);
+  box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
+}
+
+.profile-page .account-security-modal .requirement-note {
+  color: var(--profile-text-sub);
 }

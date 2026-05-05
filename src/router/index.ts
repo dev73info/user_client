@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { devRoutes, installDevRouteGuard } from '@dev/router'
 
 const routerHistory =
   import.meta.env.VITE_ROUTER_MODE === 'history'
@@ -9,6 +10,7 @@ const routerHistory =
 const router = createRouter({
   history: routerHistory,
   routes: [
+    ...devRoutes,
     {
       path: '/',
       name: 'home',
@@ -18,6 +20,16 @@ const router = createRouter({
       path: '/free-resources',
       name: 'free-resources',
       component: () => import('@/views/FreeResourcesView.vue'),
+    },
+    {
+      path: '/requirement-hall',
+      name: 'requirement-hall',
+      component: () => import('@/views/RequirementHallView.vue'),
+    },
+    {
+      path: '/community',
+      name: 'community',
+      component: () => import('@/views/CommunityView.vue'),
     },
     {
       path: '/payment',
@@ -83,6 +95,10 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
+  if (to.path.startsWith('/dev')) {
+    return next()
+  }
+
   const auth = useAuthStore()
   auth.hydrate()
 
@@ -150,5 +166,7 @@ router.beforeEach(async (to, from, next) => {
 
   return next()
 })
+
+installDevRouteGuard(router)
 
 export default router

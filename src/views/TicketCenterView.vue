@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppToast from '@/components/AppToast.vue'
-import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import {
   closeTicket,
   createTicket,
@@ -21,7 +20,6 @@ import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
-const menuOpen = ref(false)
 const loading = ref(false)
 const detailLoading = ref(false)
 const creating = ref(false)
@@ -44,42 +42,17 @@ const priorityOptions: Array<{ value: TicketPriority; label: string }> = [
   { value: 'urgent', label: '紧急' },
 ]
 
-const heroNavLinks = computed(() => [
-  { label: '返回首页', to: { name: 'home' } },
-  { label: '个人中心', to: { name: 'profile' } },
-  { label: '我的工单', to: { name: 'tickets' }, active: true },
-  { label: '我的定制资源', to: { name: 'my-custom-resources' } },
-])
-
 const selectedTicket = computed(() => tickets.value.find((item) => item.ticket_id === selectedTicketId.value) ?? null)
 const ticketStats = computed(() => ({
   total: tickets.value.length,
   pending: tickets.value.filter((item) => item.status === 'open' || item.status === 'processing').length,
   resolved: tickets.value.filter((item) => item.status === 'resolved' || item.status === 'closed').length,
 }))
-
-function openAuth(mode: 'login' | 'register') {
-  router.push({ name: 'home', query: { modal: 'auth', mode } })
-}
-
-function toggleUserMenu() {
-  menuOpen.value = !menuOpen.value
-}
-
-function closeUserMenu() {
-  menuOpen.value = false
-}
-
-function goProfile() {
-  closeUserMenu()
-  router.push({ name: 'profile' })
-}
-
-function logout() {
-  closeUserMenu()
-  auth.logout()
-  router.push({ name: 'home' })
-}
+const pageSignals = computed(() => [
+  `全部工单 ${ticketStats.value.total}`,
+  `处理中 ${ticketStats.value.pending}`,
+  `已完成 ${ticketStats.value.resolved}`,
+])
 
 function formatTime(value?: string | null) {
   if (!value) {
@@ -262,32 +235,55 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="page-shell ticket-page-shell">
-    <HomeHeroSection :isAuthed="auth.isAuthed" :username="auth.username" :menuOpen="menuOpen" :navLinks="heroNavLinks"
-      @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" @logout="logout">
-      <div class="hero-meta ticket-hero-meta">
-        <div class="hero-copy">
-          <h1>我的工单</h1>
-          <p class="desc">这里集中处理售后、协助和问题反馈。你可以发起新工单，也可以持续跟进已有会话。</p>
+  <main class="portal-page ticket-page-shell">
+    <section class="portal-page__hero">
+      <div class="portal-page__hero-copy">
+        <p class="portal-page__eyebrow">Ticket Center</p>
+        <h1>我的工单</h1>
+        <p>这里集中处理售后、协助和问题反馈。你可以发起新工单，也可以持续跟进已有会话，当前页已统一到门户子页的视觉体系。</p>
+
+        <div class="portal-page__signal-list">
+          <span v-for="signal in pageSignals" :key="signal" class="portal-page__signal">{{ signal }}</span>
         </div>
-        <div class="hero-actions ticket-hero-stats">
-          <div class="ticket-stat-card">
-            <strong>{{ ticketStats.total }}</strong>
-            <span>全部工单</span>
-          </div>
-          <div class="ticket-stat-card">
-            <strong>{{ ticketStats.pending }}</strong>
-            <span>处理中</span>
-          </div>
-          <div class="ticket-stat-card">
-            <strong>{{ ticketStats.resolved }}</strong>
-            <span>已完成</span>
-          </div>
+
+        <div class="portal-page__hero-actions">
+          <button class="portal-page__primary" type="button" @click="router.push({ name: 'profile' })">个人中心</button>
+          <button class="portal-page__secondary" type="button"
+            @click="router.push({ name: 'my-custom-resources' })">我的资源</button>
         </div>
       </div>
-    </HomeHeroSection>
 
-    <section class="ticket-compose-panel glass-panel">
+      <div class="portal-page__hero-visual" aria-hidden="true">
+        <div class="portal-page__hero-orbit">
+          <div class="portal-page__hero-core">单</div>
+          <div class="portal-page__hero-float portal-page__hero-float--one">问</div>
+          <div class="portal-page__hero-float portal-page__hero-float--two">答</div>
+          <div class="portal-page__hero-float portal-page__hero-float--three">服</div>
+          <div class="portal-page__hero-float portal-page__hero-float--four">务</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="portal-page__stats">
+      <article class="portal-page__stat-card">
+        <strong>{{ ticketStats.total }}</strong>
+        <span>全部工单</span>
+      </article>
+      <article class="portal-page__stat-card">
+        <strong>{{ ticketStats.pending }}</strong>
+        <span>处理中</span>
+      </article>
+      <article class="portal-page__stat-card">
+        <strong>{{ ticketStats.resolved }}</strong>
+        <span>已完成</span>
+      </article>
+      <article class="portal-page__stat-card">
+        <strong>{{ priorityOptions.length }}</strong>
+        <span>优先级档位</span>
+      </article>
+    </section>
+
+    <section class="portal-page__panel ticket-compose-panel">
       <div class="panel-head panel-head--stack">
         <div>
           <h2>提交新工单</h2>
@@ -322,14 +318,14 @@ onMounted(async () => {
       </div>
 
       <div class="compose-actions">
-        <button class="publish-btn" type="button" :disabled="creating" @click="submitCreate">
+        <button class="ticket-primary-btn" type="button" :disabled="creating" @click="submitCreate">
           {{ creating ? '提交中...' : '提交工单' }}
         </button>
       </div>
     </section>
 
     <section class="ticket-main-grid">
-      <aside class="ticket-list-panel glass-panel">
+      <aside class="portal-page__panel ticket-list-panel">
         <div class="panel-head">
           <div>
             <h2>工单列表</h2>
@@ -350,7 +346,7 @@ onMounted(async () => {
             <span class="ticket-status-pill" :class="`is-${ticket.status}`">{{ formatStatus(ticket.status) }}</span>
           </div>
           <p class="ticket-list-item__summary">{{ ticket.category || '未分类' }} · 优先级 {{ formatPriority(ticket.priority)
-            }}</p>
+          }}</p>
           <div class="ticket-list-item__meta">
             <span class="ticket-list-item__ticket-id">{{ ticket.ticket_id }}</span>
             <time class="ticket-list-item__time">{{ formatTime(ticket.updated_at) }}</time>
@@ -358,7 +354,7 @@ onMounted(async () => {
         </button>
       </aside>
 
-      <section class="ticket-detail-panel glass-panel">
+      <section class="portal-page__panel ticket-detail-panel">
         <div v-if="selectedTicket && currentDetail" class="ticket-detail-shell">
           <header class="ticket-detail-header">
             <div class="ticket-detail-header__main">
@@ -374,8 +370,8 @@ onMounted(async () => {
             <div class="ticket-detail-header__actions">
               <span class="ticket-status-pill" :class="`is-${selectedTicket.status}`">{{
                 formatStatus(selectedTicket.status) }}</span>
-              <button v-if="selectedTicket.status !== 'closed'" class="ghost small" type="button" :disabled="closing"
-                @click="submitClose">
+              <button v-if="selectedTicket.status !== 'closed'" class="ticket-secondary-btn" type="button"
+                :disabled="closing" @click="submitClose">
                 {{ closing ? '关闭中...' : '关闭工单' }}
               </button>
             </div>
@@ -412,7 +408,7 @@ onMounted(async () => {
               <textarea v-model="replyContent" rows="4" placeholder="补充新的现象、截图说明或你的确认结果。" />
             </label>
             <div class="compose-actions">
-              <button class="publish-btn" type="button" :disabled="replying" @click="submitReply">
+              <button class="ticket-primary-btn" type="button" :disabled="replying" @click="submitReply">
                 {{ replying ? '发送中...' : '发送回复' }}
               </button>
             </div>
@@ -434,34 +430,6 @@ onMounted(async () => {
 .ticket-page-shell {
   display: grid;
   gap: 22px;
-}
-
-.ticket-hero-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: flex-end;
-  flex-wrap: wrap;
-}
-
-.ticket-hero-stats {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.ticket-stat-card {
-  min-width: 128px;
-  padding: 16px 18px;
-  border-radius: 22px;
-  border: 1px solid rgba(96, 165, 250, 0.22);
-  background: rgba(8, 47, 73, 0.5);
-  display: grid;
-  gap: 6px;
-}
-
-.ticket-stat-card strong {
-  font-size: 28px;
 }
 
 .ticket-compose-panel,
@@ -493,7 +461,7 @@ onMounted(async () => {
 .field span {
   font-size: 14px;
   font-weight: 700;
-  color: rgba(226, 232, 240, 0.82);
+  color: #475569;
 }
 
 .field input,
@@ -501,12 +469,19 @@ onMounted(async () => {
 .field textarea {
   width: 100%;
   border-radius: 16px;
-  border: 1px solid rgba(125, 211, 252, 0.18);
-  background: rgba(15, 23, 42, 0.55);
-  color: #e2e8f0;
+  border: 1px solid rgba(198, 210, 236, 0.82);
+  background: rgba(248, 250, 252, 0.96);
+  color: #0f172a;
   padding: 12px 14px;
   box-sizing: border-box;
   outline: none;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.12);
 }
 
 .field textarea {
@@ -521,6 +496,33 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+.ticket-primary-btn,
+.ticket-secondary-btn,
+.refresh-btn {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ticket-primary-btn {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  color: #fff;
+  font-weight: 700;
+}
+
+.ticket-secondary-btn,
+.refresh-btn {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: rgba(239, 246, 255, 0.9);
+  color: #1d4ed8;
+  font-weight: 700;
 }
 
 .ticket-main-grid {
@@ -539,9 +541,9 @@ onMounted(async () => {
   width: 100%;
   text-align: left;
   border-radius: 18px;
-  border: 1px solid rgba(125, 211, 252, 0.16);
-  background: rgba(12, 20, 36, 0.62);
-  color: #e2e8f0;
+  border: 1px solid rgba(198, 210, 236, 0.72);
+  background: rgba(248, 250, 252, 0.92);
+  color: #0f172a;
   padding: 16px;
   cursor: pointer;
   display: grid;
@@ -550,8 +552,9 @@ onMounted(async () => {
 }
 
 .ticket-list-item.active {
-  border-color: rgba(56, 189, 248, 0.72);
-  background: rgba(8, 47, 73, 0.68);
+  border-color: rgba(96, 165, 250, 0.72);
+  background: rgba(239, 246, 255, 0.98);
+  box-shadow: 0 16px 28px rgba(96, 165, 250, 0.14);
 }
 
 .ticket-list-item__top,
@@ -609,13 +612,13 @@ onMounted(async () => {
 .ticket-empty-state p,
 .ticket-message p {
   margin: 0;
-  color: rgba(226, 232, 240, 0.76);
+  color: #64748b;
 }
 
 .ticket-list-item__meta,
 .ticket-message__meta {
   font-size: 13px;
-  color: rgba(226, 232, 240, 0.62);
+  color: #64748b;
 }
 
 .ticket-detail-header {
@@ -654,23 +657,23 @@ onMounted(async () => {
 }
 
 .ticket-status-pill.is-open {
-  background: rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
+  background: rgba(219, 234, 254, 0.92);
+  color: #1d4ed8;
 }
 
 .ticket-status-pill.is-processing {
-  background: rgba(250, 204, 21, 0.18);
-  color: #fde68a;
+  background: rgba(254, 249, 195, 0.96);
+  color: #a16207;
 }
 
 .ticket-status-pill.is-resolved {
-  background: rgba(52, 211, 153, 0.18);
-  color: #86efac;
+  background: rgba(220, 252, 231, 0.92);
+  color: #15803d;
 }
 
 .ticket-status-pill.is-closed {
-  background: rgba(148, 163, 184, 0.22);
-  color: #cbd5e1;
+  background: rgba(241, 245, 249, 0.96);
+  color: #475569;
 }
 
 .ticket-detail-shell {
@@ -688,8 +691,8 @@ onMounted(async () => {
 .ticket-message {
   padding: 16px;
   border-radius: 18px;
-  background: rgba(15, 23, 42, 0.56);
-  border: 1px solid rgba(125, 211, 252, 0.14);
+  background: rgba(248, 250, 252, 0.96);
+  border: 1px solid rgba(198, 210, 236, 0.72);
   display: grid;
   gap: 10px;
   max-width: min(92%, 760px);
@@ -697,16 +700,16 @@ onMounted(async () => {
 
 .ticket-message.is-self {
   margin-left: auto;
-  border-color: rgba(125, 211, 252, 0.42);
-  background: linear-gradient(135deg, rgba(8, 47, 73, 0.88), rgba(6, 78, 99, 0.82));
-  box-shadow: 0 14px 30px rgba(14, 165, 233, 0.14);
+  border-color: rgba(96, 165, 250, 0.42);
+  background: linear-gradient(135deg, rgba(239, 246, 255, 0.98), rgba(219, 234, 254, 0.94));
+  box-shadow: 0 14px 30px rgba(96, 165, 250, 0.14);
 }
 
 .ticket-message.is-official {
   margin-right: auto;
-  border-color: rgba(250, 204, 21, 0.2);
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.84), rgba(30, 41, 59, 0.78));
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.22);
+  border-color: rgba(226, 232, 240, 0.96);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 28px rgba(148, 163, 184, 0.14);
 }
 
 .ticket-message__meta {
@@ -737,28 +740,29 @@ onMounted(async () => {
 }
 
 .ticket-message__badge.is-self {
-  background: rgba(125, 211, 252, 0.18);
-  border: 1px solid rgba(125, 211, 252, 0.3);
-  color: #bae6fd;
+  background: rgba(219, 234, 254, 0.92);
+  border: 1px solid rgba(147, 197, 253, 0.42);
+  color: #1d4ed8;
 }
 
 .ticket-message__badge.is-official {
-  background: rgba(250, 204, 21, 0.16);
-  border: 1px solid rgba(250, 204, 21, 0.24);
-  color: #fde68a;
+  background: rgba(254, 249, 195, 0.96);
+  border: 1px solid rgba(253, 224, 71, 0.38);
+  color: #a16207;
 }
 
 .ticket-message__content {
   line-height: 1.8;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  color: #334155;
 }
 
 .ticket-message__time {
   display: block;
   font-size: 12px;
   line-height: 1.4;
-  color: rgba(226, 232, 240, 0.52);
+  color: #94a3b8;
 }
 
 .ticket-message.is-self .ticket-message__time {
@@ -772,7 +776,7 @@ onMounted(async () => {
 .ticket-reply-box {
   display: grid;
   gap: 12px;
-  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  border-top: 1px solid rgba(226, 232, 240, 0.92);
   padding-top: 18px;
 }
 
@@ -788,6 +792,11 @@ onMounted(async () => {
 .ticket-detail-header h2,
 .panel-head h2 {
   margin: 0;
+  color: #0f172a;
+}
+
+.lead {
+  color: #64748b;
 }
 
 @media (max-width: 1080px) {

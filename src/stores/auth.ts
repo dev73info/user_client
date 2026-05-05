@@ -2,20 +2,24 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import {
   authRequest,
+  type AuthPayload,
   refreshToken as refreshTokenApi,
   resetPassword,
   sendRegisterEmailCode as sendRegisterEmailCodeApi,
   sendResetPasswordEmailCode as sendResetPasswordEmailCodeApi,
 } from '@/api/auth'
-import { apiUrl, authHeaders as createAuthHeaders, readErrorMessage } from '@/api/http'
+import { authHeaders as createAuthHeaders } from '@/api/http'
+import {
+  applyAuthPayloadToState,
+  clearPersistedAuthProfile,
+  fetchAuthProfile,
+  resetAuthProfileState,
+  restorePersistedAuthProfile,
+  type AuthProfile,
+} from '@/shared/auth/session'
 
 const TOKEN_KEY = 'auth_token_73hub'
 const TOKEN_REFRESH_INTERVAL_MS = 5 * 60 * 1000
-
-type AuthProfile = {
-  username: string
-  role: string
-}
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref('')
@@ -25,9 +29,15 @@ export const useAuthStore = defineStore('auth', () => {
   const profileLoaded = ref(false)
   const hydrated = ref(false)
   let refreshTimer: ReturnType<typeof setTimeout> | null = null
-  let profileRequest: Promise<AuthProfile> | null = null
+  const profileRequest = ref<Promise<AuthProfile> | null>(null)
 
   const isAuthed = computed(() => token.value.length > 0)
+  const profileState = {
+    username,
+    role,
+    profileLoaded,
+    profileRequest,
+  }
 
   function authHeaders(headers: HeadersInit = {}) {
     return createAuthHeaders(token.value, headers)
@@ -55,10 +65,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function resetProfile() {
-    username.value = ''
-    role.value = ''
-    profileLoaded.value = false
-    profileRequest = null
+    resetAuthProfileState(profileState)
   }
 
   function hydrate(force = false) {
@@ -71,11 +78,13 @@ export const useAuthStore = defineStore('auth', () => {
     if (!saved) {
       token.value = ''
       resetProfile()
+      clearPersistedAuthProfile()
       return
     }
 
     token.value = saved
     resetProfile()
+    restorePersistedAuthProfile(profileState)
     scheduleRefresh()
   }
 
@@ -83,68 +92,47 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = newToken
     if (!preserveProfile) {
       resetProfile()
+      clearPersistedAuthProfile()
+    } else if (profileLoaded.value) {
+      applyAuthPayloadToState(
+        profileState,
+        { token: newToken, username: username.value, role: role.value },
+        (nextToken) => {
+          token.value = nextToken
+          localStorage.setItem(TOKEN_KEY, nextToken)
+          scheduleRefresh()
+        },
+        true,
+      )
+      return
     }
     localStorage.setItem(TOKEN_KEY, newToken)
     scheduleRefresh()
   }
 
+  function applyAuthPayload(payload: AuthPayload, preserveProfile = false) {
+    applyAuthPayloadToState(profileState, payload, persist, preserveProfile)
+  }
+
   async function fetchProfile(force = false): Promise<AuthProfile> {
-    if (!token.value) {
-      throw new Error('未登录')
-    }
+    return fetchAuthProfile({
+      token: token.value,
+      force,
+      state: profileState,
+      loadProfile: async () => {
+        const payload = await refreshTokenApi(token.value)
+        persist(payload.token, true)
 
-    if (profileLoaded.value && !force) {
-      return {
-        username: username.value,
-        role: role.value,
-      }
-    }
-
-    if (profileRequest && !force) {
-      return profileRequest
-    }
-
-    const request = (async () => {
-      const resp = await fetch(apiUrl('/auth/me'), {
-        method: 'GET',
-        headers: authHeaders(),
-      })
-
-      if (!resp.ok) {
-        throw new Error(await readErrorMessage(resp, '加载当前用户信息失败'))
-      }
-
-      const contentType = resp.headers.get('content-type')?.toLowerCase() ?? ''
-      const body = await resp.text()
-      if (!contentType.includes('application/json')) {
-        const trimmed = body.trim().toLowerCase()
-        if (trimmed.startsWith('<!doctype html') || trimmed.startsWith('<html')) {
-          throw new Error('加载当前用户信息失败：接口返回了 HTML 页面，请检查 API 地址或代理配置')
+        if (payload.username && payload.role) {
+          return {
+            username: payload.username,
+            role: payload.role,
+          }
         }
-      }
 
-      let payload: AuthProfile
-      try {
-        payload = JSON.parse(body) as AuthProfile
-      } catch {
-        throw new Error('加载当前用户信息失败：接口返回了无效的 JSON')
-      }
-
-      username.value = payload.username
-      role.value = payload.role
-      profileLoaded.value = true
-      return payload
-    })()
-
-    profileRequest = request
-
-    try {
-      return await request
-    } finally {
-      if (profileRequest === request) {
-        profileRequest = null
-      }
-    }
+        throw new Error('加载当前用户信息失败：刷新接口未返回完整会话信息')
+      },
+    })
   }
 
   async function initializeSession(force = false): Promise<AuthProfile | null> {
@@ -165,8 +153,10 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     try {
       const payload = await authRequest('/auth/login', usernameInput, passwordInput)
-      persist(payload.token)
-      await initializeSession(true)
+      applyAuthPayload(payload)
+      if (!payload.username || !payload.role) {
+        await initializeSession(true)
+      }
     } finally {
       loading.value = false
     }
@@ -176,8 +166,10 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     try {
       const payload = await authRequest('/auth/register', usernameInput, passwordInput)
-      persist(payload.token)
-      await initializeSession(true)
+      applyAuthPayload(payload)
+      if (!payload.username || !payload.role) {
+        await initializeSession(true)
+      }
     } finally {
       loading.value = false
     }
@@ -199,8 +191,10 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     try {
       const payload = await resetPassword(emailInput, passwordInput, emailCodeInput)
-      persist(payload.token)
-      await initializeSession(true)
+      applyAuthPayload(payload)
+      if (!payload.username || !payload.role) {
+        await initializeSession(true)
+      }
     } finally {
       loading.value = false
     }
@@ -221,8 +215,10 @@ export const useAuthStore = defineStore('auth', () => {
         emailInput,
         emailCodeInput,
       )
-      persist(payload.token)
-      await initializeSession(true)
+      applyAuthPayload(payload)
+      if (!payload.username || !payload.role) {
+        await initializeSession(true)
+      }
     } finally {
       loading.value = false
     }
@@ -233,6 +229,7 @@ export const useAuthStore = defineStore('auth', () => {
     hydrated.value = true
     token.value = ''
     resetProfile()
+    clearPersistedAuthProfile()
     localStorage.removeItem(TOKEN_KEY)
   }
 

@@ -11,7 +11,6 @@ import {
   type UserRealnameVerification,
 } from '@/api/realname'
 import AppToast from '@/components/AppToast.vue'
-import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
@@ -19,7 +18,6 @@ const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
-const menuOpen = ref(false)
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -73,34 +71,11 @@ const authTypeText = computed(() => {
   }
   return map[form.authType]
 })
-
-const heroNavLinks = computed(() => [
-  { label: '返回首页', to: { name: 'home' } },
-  { label: '个人中心', to: { name: 'profile' } },
-  { label: '实名认证', to: { name: 'realname' }, active: true },
+const pageSignals = computed(() => [
+  `当前状态：${statusText.value}`,
+  `证件类型：${authTypeText.value}`,
+  redirectTarget.value ? '审核通过后会自动返回业务页' : '提交后等待管理员审核',
 ])
-
-function toggleUserMenu() {
-  menuOpen.value = !menuOpen.value
-}
-
-function closeUserMenu() {
-  menuOpen.value = false
-}
-
-function goProfile() {
-  closeUserMenu()
-  router.push({ name: 'profile' })
-}
-
-function logout() {
-  closeUserMenu()
-  auth.logout()
-}
-
-function openAuth(mode: 'login' | 'register') {
-  router.push({ name: 'home', query: { modal: 'auth', mode } })
-}
 
 function patchForm(record: UserRealnameVerification) {
   form.authType = record.auth_type
@@ -225,16 +200,53 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="page-shell realname-page-shell">
-    <HomeHeroSection :isAuthed="auth.isAuthed" :username="auth.username" :menuOpen="menuOpen" :navLinks="heroNavLinks"
-      @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" @logout="logout">
-      <div class="hero-meta realname-hero-meta">
-        <div class="hero-copy">
-          <h1>实名认证</h1>
-          <p class="desc">完成身份认证后可以发布需求单，获得更多商业机会。提交后由管理员审核，通常需要 1-3 个工作日。</p>
+  <main class="portal-page realname-page-shell">
+    <section class="portal-page__hero">
+      <div class="portal-page__hero-copy">
+        <p class="portal-page__eyebrow">Realname Verification</p>
+        <h1>实名认证</h1>
+        <p>完成身份认证后可以发布需求单，获得更多商业机会。提交后由管理员审核，通常需要 1-3 个工作日，当前页已统一到门户子页风格。</p>
+
+        <div class="portal-page__signal-list">
+          <span v-for="signal in pageSignals" :key="signal" class="portal-page__signal">{{ signal }}</span>
+        </div>
+
+        <div class="portal-page__hero-actions">
+          <button class="portal-page__primary" type="button" @click="router.push({ name: 'profile' })">个人中心</button>
+          <button class="portal-page__secondary" type="button" @click="router.push({ name: 'home' })">返回首页</button>
         </div>
       </div>
-    </HomeHeroSection>
+
+      <div class="portal-page__hero-visual" aria-hidden="true">
+        <div class="portal-page__hero-orbit">
+          <div class="portal-page__hero-core">证</div>
+          <div class="portal-page__hero-float portal-page__hero-float--one">审</div>
+          <div class="portal-page__hero-float portal-page__hero-float--two">核</div>
+          <div class="portal-page__hero-float portal-page__hero-float--three">实</div>
+          <div class="portal-page__hero-float portal-page__hero-float--four">名</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="portal-page__stats">
+      <article class="portal-page__stat-card">
+        <strong>{{ statusText }}</strong>
+        <span>当前状态</span>
+      </article>
+      <article class="portal-page__stat-card">
+        <strong>{{ authTypeText }}</strong>
+        <span>证件类型</span>
+      </article>
+      <article class="portal-page__stat-card">
+        <strong>{{ current?.reviewed_by || '—' }}</strong>
+        <span>审核人</span>
+      </article>
+      <article class="portal-page__stat-card">
+        <strong>{{ formatTime(current?.reviewed_at) }}</strong>
+        <span>审核时间</span>
+      </article>
+    </section>
+
     <section class="realname-layout">
       <el-card shadow="never" class="realname-card realname-card--status">
         <div class="realname-card__head">
@@ -247,7 +259,8 @@ onMounted(async () => {
         <div v-if="current" class="realname-metrics">
           <div class="realname-metrics__item">
             <span>证件类型</span>
-            <strong>{{ current.auth_type === 'IDENTITY_CARD' ? '大陆身份证' : current.auth_type === 'RESIDENCE_HK_MC' ? '港澳居民居住证' : '台湾居民居住证' }}</strong>
+            <strong>{{ current.auth_type === 'IDENTITY_CARD' ? '大陆身份证' : current.auth_type === 'RESIDENCE_HK_MC' ?
+              '港澳居民居住证' : '台湾居民居住证' }}</strong>
           </div>
           <div class="realname-metrics__item">
             <span>审核人</span>
@@ -300,27 +313,8 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.realname-hero-meta {
-  margin-top: 8px;
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-  flex-wrap: wrap;
-}
-
-.realname-hero-meta .hero-copy h1 {
-  margin: 0;
-  font-size: 28px;
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.realname-hero-meta .hero-copy p.desc {
-  margin: 10px 0 0;
-  color: var(--text-sub);
-  font-size: 15px;
-  line-height: 1.6;
+.realname-page-shell {
+  gap: 26px;
 }
 
 .realname-layout {
@@ -330,11 +324,11 @@ onMounted(async () => {
 
 :deep(.realname-card.el-card) {
   border-radius: 18px;
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
-  backdrop-filter: blur(8px);
-  color: var(--text-main);
-  box-shadow: 0 18px 34px rgba(2, 15, 26, 0.25);
+  border: 1px solid rgba(198, 210, 236, 0.72);
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(18px);
+  color: #0f172a;
+  box-shadow: 0 18px 42px rgba(76, 103, 172, 0.12);
 }
 
 :deep(.realname-card .el-card__body) {
@@ -352,12 +346,12 @@ onMounted(async () => {
 .realname-card__head h2 {
   margin: 0;
   font-size: 22px;
-  color: var(--accent);
+  color: #0f172a;
 }
 
 .realname-card__head p {
   margin: 8px 0 0;
-  color: var(--text-sub);
+  color: #64748b;
   line-height: 1.75;
 }
 
@@ -380,17 +374,17 @@ onMounted(async () => {
   gap: 4px;
   padding: 11px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  background: rgba(248, 250, 252, 0.92);
 }
 
 .realname-metrics__item span {
-  color: var(--text-sub);
+  color: #64748b;
   font-size: 12px;
 }
 
 .realname-metrics__item strong {
-  color: var(--text-main);
+  color: #0f172a;
   font-size: 14px;
 }
 
@@ -406,7 +400,7 @@ onMounted(async () => {
 .realname-form__head h3 {
   margin: 0;
   font-size: 18px;
-  color: var(--text-main);
+  color: #0f172a;
 }
 
 .realname-form__actions {
@@ -414,57 +408,57 @@ onMounted(async () => {
 }
 
 :deep(.realname-form .el-form-item__label) {
-  color: var(--text-sub);
+  color: #475569;
   font-weight: 600;
 }
 
 :deep(.realname-form .el-radio) {
-  color: var(--text-main);
+  color: #0f172a;
 }
 
 :deep(.realname-form .el-radio__label) {
-  color: var(--text-main);
+  color: #0f172a;
 }
 
 :deep(.realname-form .el-input__wrapper) {
-  background: rgba(6, 24, 39, 0.45);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  background: rgba(248, 250, 252, 0.96);
+  box-shadow: inset 0 0 0 1px rgba(198, 210, 236, 0.72);
 }
 
 :deep(.realname-form .el-input__inner) {
-  color: var(--text-main);
+  color: #0f172a;
 }
 
 :deep(.realname-form .el-input__inner::placeholder) {
-  color: rgba(203, 231, 238, 0.68);
+  color: #94a3b8;
 }
 
 :deep(.realname-form .el-input__wrapper.is-focus) {
-  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.8);
 }
 
 :deep(.realname-plain-btn.el-button) {
-  border-color: rgba(255, 255, 255, 0.28);
-  color: var(--text-main);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(198, 210, 236, 0.82);
+  color: #1d4ed8;
+  background: rgba(239, 246, 255, 0.92);
 }
 
 :deep(.realname-plain-btn.el-button:hover) {
-  border-color: rgba(149, 213, 178, 0.7);
-  background: rgba(149, 213, 178, 0.12);
-  color: #e8fff3;
+  border-color: rgba(96, 165, 250, 0.72);
+  background: rgba(219, 234, 254, 0.96);
+  color: #1d4ed8;
 }
 
 :deep(.realname-submit-btn.el-button--primary) {
-  border-color: rgba(149, 213, 178, 0.8);
-  background: rgba(149, 213, 178, 0.2);
-  color: #e8fff3;
+  border-color: rgba(37, 99, 235, 0.82);
+  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  color: #fff;
   font-weight: 700;
 }
 
 :deep(.realname-submit-btn.el-button--primary:hover) {
-  border-color: rgba(149, 213, 178, 0.95);
-  background: rgba(149, 213, 178, 0.32);
+  border-color: rgba(37, 99, 235, 0.95);
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
 }
 
 @media (max-width: 720px) {

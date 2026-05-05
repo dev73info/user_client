@@ -1,129 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
-import { useGlobalLoadingScreen } from '@/composables/useGlobalLoadingScreen'
-
-type MatrixColumn = {
-  id: number
-  left: number
-  duration: number
-  delay: number
-  opacity: number
-  fontSize: number
-  chars: string[]
-}
-
-const glyphPool = '01ABCDEFGHIJKLMNOPQRSTUVWXYZ$#@%&*+-=<>{}[]()'
-
-function randomInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min
-}
-
-function pickGlyph(): string {
-  return glyphPool[randomInt(0, glyphPool.length - 1)] ?? '0'
-}
-
-function createColumn(id: number): MatrixColumn {
-  const length = randomInt(24, 56)
-  const chars = Array.from({ length }, () => pickGlyph())
-
-  return {
-    id,
-    left: Math.random() * 98,
-    duration: randomInt(8, 17),
-    delay: -Math.random() * 14,
-    opacity: 0.42 + Math.random() * 0.48,
-    fontSize: randomInt(12, 17),
-    chars,
-  }
-}
-
-const matrixColumns = ref<MatrixColumn[]>([])
+import PortalTopNav from '@/components/PortalTopNav.vue'
+import DevApp from '@dev/DevApp.vue'
 const auth = useAuthStore()
+const route = useRoute()
 const currentYear = new Date().getFullYear()
-const routeLoadingVisible = ref(false)
-const loadingDepth = ref(0)
-const { isGlobalLoadingVisible } = useGlobalLoadingScreen()
-const overlayVisible = computed(
-  () => routeLoadingVisible.value || isGlobalLoadingVisible.value || !auth.isAuthed,
-)
-
-let flickerTimer: ReturnType<typeof setInterval> | null = null
-
-function ensureColumns() {
-  if (matrixColumns.value.length > 0) {
-    return
-  }
-
-  matrixColumns.value = Array.from({ length: 64 }, (_, index) => createColumn(index))
-}
-
-function startFlicker() {
-  if (flickerTimer) {
-    return
-  }
-
-  flickerTimer = setInterval(() => {
-    const columns = matrixColumns.value
-    if (columns.length === 0) {
-      return
-    }
-
-    const flashes = randomInt(60, 140)
-    for (let i = 0; i < flashes; i += 1) {
-      const columnIndex = randomInt(0, columns.length - 1)
-      const column = columns[columnIndex]
-      if (!column || column.chars.length === 0) {
-        continue
-      }
-
-      const charIndex = randomInt(0, column.chars.length - 1)
-      column.chars[charIndex] = pickGlyph()
-    }
-  }, 24)
-}
-
-function showOverlay() {
-  ensureColumns()
-  startFlicker()
-}
-
-function stopFlicker() {
-  if (!flickerTimer) {
-    return
-  }
-
-  clearInterval(flickerTimer)
-  flickerTimer = null
-}
-
-function beginRouteLoading() {
-  loadingDepth.value += 1
-  routeLoadingVisible.value = true
-}
-
-function endRouteLoading() {
-  loadingDepth.value = Math.max(loadingDepth.value - 1, 0)
-  if (loadingDepth.value > 0) {
-    return
-  }
-
-  routeLoadingVisible.value = false
-}
-
-watch(
-  overlayVisible,
-  (visible) => {
-    if (visible) {
-      showOverlay()
-      return
-    }
-
-    stopFlicker()
-  },
-  { immediate: true },
-)
+const isDevRoute = computed(() => route.path.startsWith('/dev'))
 
 onMounted(() => {
   auth.hydrate()
@@ -131,75 +16,64 @@ onMounted(() => {
     auth.logout()
   })
 })
-
-onUnmounted(() => {
-  stopFlicker()
-})
 </script>
 
 <template>
   <div class="app-shell">
-    <div v-if="overlayVisible" class="code-rain-bg" aria-hidden="true">
-      <div v-for="column in matrixColumns" :key="column.id" class="matrix-stream" :style="{
-        left: `${column.left}%`,
-        animationDuration: `${column.duration}s`,
-        animationDelay: `${column.delay}s`,
-        opacity: column.opacity,
-        fontSize: `${column.fontSize}px`,
-      }">
-        <span v-for="(char, charIndex) in column.chars" :key="`${column.id}-${charIndex}`" class="matrix-char">{{ char
-        }}</span>
-      </div>
-    </div>
-    <div class="app-content">
-      <el-scrollbar class="app-scrollbar">
-        <div class="app-view-container">
-          <RouterView v-slot="{ Component }">
-            <Suspense @pending="beginRouteLoading" @resolve="endRouteLoading">
-              <component :is="Component" />
-            </Suspense>
-          </RouterView>
+    <DevApp v-if="isDevRoute" />
 
-          <div class="site-footer-host">
-            <footer class="site-footer" aria-label="网站基础信息">
-              <div class="site-footer-grid">
-                <div class="site-footer-block">
-                  <h3>网站信息</h3>
-                  <p>平台名称：柒叁信息（73info）</p>
-                  <p>主体类型：企业服务平台</p>
-                  <p>联系邮箱：fanbo@73info.cn</p>
+    <template v-else>
+      <div class="app-content">
+        <el-scrollbar class="app-scrollbar">
+          <div class="app-view-container">
+            <PortalTopNav />
+            <RouterView v-slot="{ Component }">
+              <Suspense>
+                <component :is="Component" />
+              </Suspense>
+            </RouterView>
+
+            <div class="site-footer-host">
+              <footer class="site-footer" aria-label="网站基础信息">
+                <div class="site-footer-grid">
+                  <div class="site-footer-block">
+                    <h3>网站信息</h3>
+                    <p>平台名称：柒叁信息（73info）</p>
+                    <p>主体类型：企业服务平台</p>
+                    <p>联系邮箱：fanbo@73info.cn</p>
+                  </div>
+                  <div class="site-footer-block">
+                    <h3>备案与合规</h3>
+                    <p>
+                      ICP备案号：
+                      <a href="https://beian.miit.gov.cn/" target="_blank"
+                        rel="noopener noreferrer">滇ICP备2026006119号-2</a>
+                    </p>
+                    <p>
+                      公安备案号：
+                      <a class="public-security-beian-link"
+                        href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000020" target="_blank"
+                        rel="noopener noreferrer">
+                        <img class="public-security-beian-icon" src="/icons/beian.png" alt="公安备案图标" />
+                        <span>滇公网安备53062802000020号</span>
+                      </a>
+                    </p>
+                    <p>增值电信业务许可：按业务开展后补充</p>
+                  </div>
+                  <div class="site-footer-block">
+                    <h3>服务说明</h3>
+                    <p><router-link to="/terms">用户协议</router-link></p>
+                    <p><router-link to="/privacy">隐私政策</router-link></p>
+                    <p><router-link to="/payment-refund">支付与退款说明</router-link></p>
+                  </div>
                 </div>
-                <div class="site-footer-block">
-                  <h3>备案与合规</h3>
-                  <p>
-                    ICP备案号：
-                    <a href="https://beian.miit.gov.cn/" target="_blank"
-                      rel="noopener noreferrer">滇ICP备2026006119号-2</a>
-                  </p>
-                  <p>
-                    公安备案号：
-                    <a class="public-security-beian-link"
-                      href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000020" target="_blank"
-                      rel="noopener noreferrer">
-                      <img class="public-security-beian-icon" src="/icons/beian.png" alt="公安备案图标" />
-                      <span>滇公网安备53062802000020号</span>
-                    </a>
-                  </p>
-                  <p>增值电信业务许可：按业务开展后补充</p>
-                </div>
-                <div class="site-footer-block">
-                  <h3>服务说明</h3>
-                  <p><router-link to="/terms">用户协议</router-link></p>
-                  <p><router-link to="/privacy">隐私政策</router-link></p>
-                  <p><router-link to="/payment-refund">支付与退款说明</router-link></p>
-                </div>
-              </div>
-              <p class="site-footer-copy">© {{ currentYear }} 柒叁信息 73Info. All rights reserved.</p>
-            </footer>
+                <p class="site-footer-copy">© {{ currentYear }} 柒叁信息 73Info. All rights reserved.</p>
+              </footer>
+            </div>
           </div>
-        </div>
-      </el-scrollbar>
-    </div>
+        </el-scrollbar>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -214,6 +88,7 @@ onUnmounted(() => {
   position: relative;
   z-index: 2;
   min-height: 100vh;
+  background: #f2ede3;
 }
 
 .app-scrollbar {
@@ -221,11 +96,11 @@ onUnmounted(() => {
 }
 
 .app-view-container {
-  padding: 0 0 22px;
+  padding: 0 0 28px;
 }
 
 .site-footer-host {
-  width: min(1050px, calc(100% - 48px));
+  width: min(1280px, calc(100% - 24px));
   margin: 0 auto;
 }
 

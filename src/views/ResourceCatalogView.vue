@@ -3,7 +3,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import ResourceCatalog from '@/components/ResourceCatalog.vue'
-import { useAuthStore } from '@/stores/auth'
 import {
   getMcPluginPlatformEntries,
   getProcessedTagTree,
@@ -12,41 +11,13 @@ import {
   type McProcessedTagTree,
 } from '@/api/resourceTags'
 import { useToast } from '@/composables/useToast'
-import HomeHeroSection from '@/components/home/HomeHeroSection.vue'
-import AuthModal from '@/components/AuthModal.vue'
-import { useAuthForm } from '@/composables/useAuthForm'
 
 const router = useRouter()
 const route = useRoute()
-const auth = useAuthStore()
 const { showToast } = useToast()
-const menuOpen = ref(false)
 const rootTabs = ref<Array<{ slug: string; label: string; firstEntrySlug: string | null }>>([])
 const platformTabs = ref<McPluginPlatformEntry[]>([])
 const currentRootName = ref('')
-const heroNavLinks = computed(() => {
-  const links: Array<{
-    label: string
-    to?: { name: string; params?: Record<string, string> }
-    active?: boolean
-    align?: 'left' | 'right'
-  }> = [
-      { label: '返回首页', to: { name: 'home' } },
-      {
-        label: '免费资源导航',
-        to: {
-          name: 'free-resources'
-        },
-        active: true,
-      },
-    ]
-
-  if (auth.isAuthed) {
-    links.push({ label: '我的定制资源', to: { name: 'my-custom-resources' }, align: 'right' })
-  }
-
-  return links
-})
 const currentRootSlug = computed(() => {
   const raw = route.params.rootSlug
   return typeof raw === 'string' ? getTagRouteSlug(raw) : ''
@@ -60,58 +31,17 @@ const currentTab = computed(() => {
 })
 const currentPlatform = computed(() => currentTab.value?.platform ?? '')
 const currentEntryLabel = computed(() => currentTab.value?.groupName ?? '当前分区')
-const authVisible = ref(false)
-const authMode = ref<'login' | 'register' | 'reset'>('login')
-const {
-  authUsername,
-  authPassword,
-  authEmail,
-  authEmailCode,
-  acceptTerms,
-  sendCodeLoading,
-  sendCodeCountdown,
-  githubLoading,
-  resetAuthForm,
-  loginWithGithub,
-  sendAuthCode,
-  submitAuth: submitAuthAction,
-  changeAuthMode,
-} = useAuthForm(authMode)
-
-const authTitle = computed(() => {
-  if (authMode.value === 'login') return '登录账号'
-  if (authMode.value === 'register') return '注册账号'
-  return '找回密码'
-})
-
-function openAuth(mode: 'login' | 'register' | 'reset') {
-  authMode.value = mode
-  resetAuthForm()
-  authVisible.value = true
-}
-
-function closeAuth() {
-  authVisible.value = false
-}
-
-async function handleLoginWithGithub() {
-  await loginWithGithub()
-}
-
-async function handleSubmitAuth() {
-  const result = await submitAuthAction()
-  if (result) {
-    closeAuth()
-  }
-}
-
-function toggleUserMenu() {
-  menuOpen.value = !menuOpen.value
-}
-
-function closeUserMenu() {
-  menuOpen.value = false
-}
+const catalogSignals = computed(() => [
+  currentRootName.value ? `当前根分区：${currentRootName.value}` : '自动定位可用根分区',
+  currentEntryLabel.value ? `当前二级分区：${currentEntryLabel.value}` : '自动定位可用二级分区',
+  '支持按根节点与二级节点连续筛选',
+])
+const catalogStats = computed(() => [
+  { label: '根分区', value: `${rootTabs.value.length}` },
+  { label: '二级分区', value: `${platformTabs.value.length}` },
+  { label: '当前平台', value: currentPlatform.value || '待选择' },
+  { label: '浏览模式', value: '门户目录' },
+])
 
 function openPlatform(entrySlug: string) {
   if (entrySlug === currentEntrySlug.value) {
@@ -132,19 +62,7 @@ function openRoot(rootSlug: string, firstEntrySlug: string | null) {
   })
 }
 
-function goProfile() {
-  closeUserMenu()
-  router.push({ name: 'profile' })
-}
-
-function logout() {
-  auth.logout()
-  closeUserMenu()
-  showToast('已退出登录', 'info')
-}
-
 onMounted(() => {
-  auth.hydrate()
   void loadPlatformTabs()
 })
 
@@ -207,9 +125,50 @@ function resolveCurrentRoot(tree: McProcessedTagTree) {
 </script>
 
 <template>
-  <main class="page-shell custom-page-shell">
-    <HomeHeroSection :isAuthed="auth.isAuthed" :username="auth.username" :menuOpen="menuOpen" :navLinks="heroNavLinks"
-      @open-auth="openAuth" @toggle-user-menu="toggleUserMenu" @go-profile="goProfile" @logout="logout">
+  <main class="portal-page">
+    <section class="portal-page__hero">
+      <div class="portal-page__hero-copy">
+        <p class="portal-page__eyebrow">Resource Catalog</p>
+        <h1>{{ currentRootName || '免费资源目录' }}</h1>
+        <p>按根节点与二级分区逐层浏览公开资源目录，当前页已切换到与门户首页一致的视觉层，目录切换和资源浏览能力保持不变。</p>
+
+        <div class="portal-page__signal-list">
+          <span v-for="signal in catalogSignals" :key="signal" class="portal-page__signal">{{ signal }}</span>
+        </div>
+
+        <div class="portal-page__hero-actions">
+          <button class="portal-page__primary" type="button"
+            @click="router.push({ name: 'free-resources' })">返回导航</button>
+          <button class="portal-page__secondary" type="button" @click="router.push({ name: 'home' })">返回门户</button>
+        </div>
+      </div>
+
+      <div class="portal-page__hero-visual" aria-hidden="true">
+        <div class="portal-page__hero-orbit">
+          <div class="portal-page__hero-core">录</div>
+          <div class="portal-page__hero-float portal-page__hero-float--one">根</div>
+          <div class="portal-page__hero-float portal-page__hero-float--two">类</div>
+          <div class="portal-page__hero-float portal-page__hero-float--three">签</div>
+          <div class="portal-page__hero-float portal-page__hero-float--four">源</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="portal-page__stats">
+      <article v-for="item in catalogStats" :key="item.label" class="portal-page__stat-card">
+        <strong>{{ item.value }}</strong>
+        <span>{{ item.label }}</span>
+      </article>
+    </section>
+
+    <section class="portal-page__panel">
+      <div class="portal-page__section-header">
+        <div>
+          <p class="portal-page__eyebrow">目录切换</p>
+          <h2>继续沿用现有分区导航能力</h2>
+        </div>
+      </div>
+
       <div class="catalog-nav-stack">
         <section class="catalog-nav-row" aria-label="根节点导航">
           <div class="catalog-nav-row__header">
@@ -237,14 +196,11 @@ function resolveCurrentRoot(tree: McProcessedTagTree) {
           </div>
         </section>
       </div>
-    </HomeHeroSection>
-    <AuthModal :visible="authVisible" :authMode="authMode" :authTitle="authTitle" v-model:authUsername="authUsername"
-      v-model:authPassword="authPassword" v-model:authEmail="authEmail" v-model:authEmailCode="authEmailCode"
-      v-model:acceptTerms="acceptTerms" :authLoading="auth.loading" :githubLoginLoading="githubLoading"
-      :sendCodeLoading="sendCodeLoading" :sendCodeCountdown="sendCodeCountdown" @close="closeAuth"
-      @submit="handleSubmitAuth" @loginWithGithub="handleLoginWithGithub" @sendAuthCode="sendAuthCode"
-      @change-mode="changeAuthMode" />
-    <ResourceCatalog :platform="currentPlatform" :rootSlug="currentRootSlug"
-      :groupName="currentTab?.groupName || currentEntryLabel" />
+    </section>
+
+    <section class="portal-page__panel">
+      <ResourceCatalog :platform="currentPlatform" :rootSlug="currentRootSlug"
+        :groupName="currentTab?.groupName || currentEntryLabel" />
+    </section>
   </main>
 </template>

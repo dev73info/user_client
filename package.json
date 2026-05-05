@@ -17,6 +17,11 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "@tiptap/extension-link": "^3.22.3",
+    "@tiptap/extension-underline": "^3.22.3",
+    "@tiptap/starter-kit": "^3.22.3",
+    "@tiptap/vue-3": "^3.22.3",
     "element-plus": "^2.13.7",
     "markdown-it": "^14.1.1",
     "pinia": "^3.0.4",

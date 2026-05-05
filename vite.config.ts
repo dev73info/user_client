@@ -12,6 +12,7 @@ const proxyTarget = 'http://127.0.0.1:8080'
 const proxyPaths = [
   '/auth',
   '/coupons',
+  '/dev',
   '/public/requirements',
   '/realname',
   '/requirements',
@@ -48,23 +49,83 @@ export default defineConfig({
         chunkFileNames: 'assets/[name].js',
         assetFileNames: 'assets/[name].[ext]',
         manualChunks(id) {
-          if (id.includes('/@vue/') || id.includes('/vue/') || id.includes('vue-router')) {
+          const normalizedId = id.replace(/\\/g, '/')
+
+          if (
+            normalizedId.includes('/@vue/') ||
+            normalizedId.includes('/vue/') ||
+            normalizedId.includes('vue-router')
+          ) {
             return 'vue-vendor'
           }
 
-          if (id.includes('pinia')) {
+          if (normalizedId.includes('pinia')) {
             return 'pinia'
           }
 
-          if (id.includes('element-plus')) {
+          if (
+            normalizedId.includes('element-plus') ||
+            normalizedId.includes('@element-plus/icons-vue')
+          ) {
             return 'element-plus'
           }
 
-          if (id.includes('node_modules')) {
-            return 'vendor'
+          if (normalizedId.includes('@tiptap/')) {
+            return 'tiptap'
           }
 
-          return 'app'
+          if (
+            normalizedId.includes('markdown-it') ||
+            normalizedId.includes('qrcode') ||
+            normalizedId.includes('tags-wasm')
+          ) {
+            return 'dev-tools'
+          }
+
+          if (normalizedId.includes('/src/dev/views/')) {
+            if (normalizedId.includes('DevResource')) {
+              return 'dev-resources'
+            }
+
+            if (
+              normalizedId.includes('DevRequirement') ||
+              normalizedId.includes('DevMyRequirements')
+            ) {
+              return 'dev-requirements'
+            }
+
+            if (
+              normalizedId.includes('DevWallet') ||
+              normalizedId.includes('DevWithdrawal') ||
+              normalizedId.includes('DevReleases')
+            ) {
+              return 'dev-wallet'
+            }
+
+            return 'dev-shell'
+          }
+
+          if (normalizedId.includes('/src/views/')) {
+            if (
+              normalizedId.includes('ProfileView') ||
+              normalizedId.includes('MyCustomResourcesView') ||
+              normalizedId.includes('TicketCenterView')
+            ) {
+              return 'user-account'
+            }
+
+            if (
+              normalizedId.includes('ResourceCatalogView') ||
+              normalizedId.includes('ResourceDetailView') ||
+              normalizedId.includes('FreeResourcesView')
+            ) {
+              return 'user-resources'
+            }
+          }
+
+          if (normalizedId.includes('node_modules')) {
+            return 'vendor'
+          }
         },
       },
     },
@@ -78,6 +139,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@dev': fileURLToPath(new URL('./src/dev', import.meta.url)),
     },
   },
   optimizeDeps: {
