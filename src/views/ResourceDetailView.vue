@@ -5,7 +5,6 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { HttpError, apiUrl } from '@/api/http'
 import AppToast from '@/components/AppToast.vue'
-import { buildDevPortalUrl } from '@/config/runtime'
 import {
   getPublicMcResource,
   listPublicMcResourceVersions,
@@ -41,11 +40,6 @@ const resourceRootName = computed(() => {
   const rootName = resource.value?.tag_selections.find((item) => item.group_path.length > 0)?.group_path[0]
   return normalizeTagName(rootName || '')
 })
-const detailSignals = computed(() => [
-  platformLabel.value,
-  visibilityLabel.value,
-  latestVersion.value ? `最新版本 ${latestVersion.value.version}` : '当前暂无版本记录',
-])
 const infoCards = computed(() => {
   if (!resource.value) {
     return []
@@ -129,10 +123,6 @@ function backToPlatform() {
       entrySlug: currentEntrySlug.value || fallbackEntrySlug,
     },
   })
-}
-
-function openDevWorkbench() {
-  void router.push(buildDevPortalUrl(auth.token))
 }
 
 function formatUpdatedDate(value: string): string {
@@ -266,33 +256,6 @@ watch(
 
 <template>
   <main class="portal-page resource-detail-page">
-    <section class="portal-page__hero">
-      <div class="portal-page__hero-copy">
-        <p class="portal-page__eyebrow">Resource Detail</p>
-        <h1>{{ resource?.title || '资源主页' }}</h1>
-        <p>查看资源介绍、版本记录与下载入口；如需发布和管理自己的资源，可进入开发者工作台。当前页已切换到与门户首页一致的子页视觉层。</p>
-
-        <div class="portal-page__signal-list">
-          <span v-for="signal in detailSignals" :key="signal" class="portal-page__signal">{{ signal }}</span>
-        </div>
-
-        <div class="portal-page__hero-actions">
-          <button class="portal-page__primary" type="button" @click="openDevWorkbench">进入开发者工作台</button>
-          <button class="portal-page__secondary" type="button" @click="backToPlatform">返回目录</button>
-        </div>
-      </div>
-
-      <div class="portal-page__hero-visual" aria-hidden="true">
-        <div class="portal-page__hero-orbit">
-          <div class="portal-page__hero-core">详</div>
-          <div class="portal-page__hero-float portal-page__hero-float--one">版</div>
-          <div class="portal-page__hero-float portal-page__hero-float--two">更</div>
-          <div class="portal-page__hero-float portal-page__hero-float--three">下</div>
-          <div class="portal-page__hero-float portal-page__hero-float--four">源</div>
-        </div>
-      </div>
-    </section>
-
     <section v-if="infoCards.length" class="portal-page__stats">
       <article v-for="item in infoCards" :key="item.label"
         class="portal-page__stat-card resource-detail-page__stat-card">

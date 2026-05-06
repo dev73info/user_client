@@ -142,7 +142,7 @@ function goBack() {
 </script>
 
 <template>
-  <main class="page-shell custom-page-shell help-center-page">
+  <main class="page-shell custom-page-shell help-center-page help-center-page--nav">
 
     <section class="help-grid">
       <article class="help-panel help-panel--span-8">
@@ -238,8 +238,9 @@ function goBack() {
 <style scoped>
 .help-center-page {
   width: min(1280px, calc(100% - 24px));
-  margin-top: 0;
-  padding-top: 12px;
+  margin: 0 auto 40px;
+  padding: 0;
+  gap: 14px;
   color: #1f2937;
 }
 
@@ -351,15 +352,15 @@ function goBack() {
 .help-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 20px;
+  gap: 14px;
 }
 
 .help-panel {
-  padding: 24px;
+  padding: 18px;
   border: 1px solid rgba(223, 230, 241, 0.96);
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 16px 40px rgba(148, 163, 184, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 28px rgba(90, 120, 180, 0.08);
 }
 
 .help-panel :deep(.panel-head) {
@@ -410,7 +411,7 @@ function goBack() {
   min-height: 176px;
   padding: 20px;
   border: 1px solid rgba(226, 232, 240, 0.96);
-  border-radius: 22px;
+  border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 248, 253, 0.98));
   color: inherit;
@@ -481,7 +482,7 @@ function goBack() {
 .faq-item,
 .step-item {
   padding: 16px 18px;
-  border-radius: 20px;
+  border-radius: 18px;
   background: #f8fafc;
   border: 1px solid rgba(226, 232, 240, 0.92);
 }
@@ -511,14 +512,13 @@ function goBack() {
 
 @media (max-width: 780px) {
   .help-center-page {
-    width: calc(100% - 20px);
-    padding-top: 8px;
+    width: calc(100% - 16px);
   }
 
   .help-hero,
   .help-panel {
     padding: 18px;
-    border-radius: 22px;
+    border-radius: 18px;
   }
 
   .help-hero__actions {

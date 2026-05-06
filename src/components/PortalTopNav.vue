@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { Bell, Search } from '@element-plus/icons-vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { buildDevPortalUrl } from '@/config/runtime'
+import { getProfileSubscriptions, updateProfileSubscriptions } from '@dev/api/settings'
 
 type AuthMode = 'login' | 'register'
 
@@ -20,7 +22,46 @@ const route = useRoute()
 const router = useRouter()
 const menuOpen = ref(false)
 const searchQuery = ref('')
+const officialActivitySubscriptionEnabled = ref(false)
+const devHallSubscriptionEnabled = ref(false)
+const subscriptionMenuOpen = ref(false)
+const subscriptionLoading = ref(false)
+const subscriptionSaving = ref(false)
+const lastSyncedSubscriptions = ref({
+  subscribe_official_activity: false,
+  subscribe_dev_hall_deposit_paid: false,
+})
 const authModalVisible = computed(() => route.query.modal === 'auth')
+const isDevRoute = computed(() => route.path.startsWith('/dev'))
+const subscriptionBusy = computed(() => subscriptionLoading.value || subscriptionSaving.value)
+const hasActiveSubscription = computed(() =>
+  officialActivitySubscriptionEnabled.value || devHallSubscriptionEnabled.value,
+)
+const allSubscriptionsEnabled = computed(() =>
+  officialActivitySubscriptionEnabled.value && devHallSubscriptionEnabled.value,
+)
+const subscriptionStateLabel = computed(() => {
+  if (officialActivitySubscriptionEnabled.value && devHallSubscriptionEnabled.value) {
+    return '官方活动通知、开发者接单提醒'
+  }
+
+  if (officialActivitySubscriptionEnabled.value) {
+    return '官方活动通知'
+  }
+
+  if (devHallSubscriptionEnabled.value) {
+    return '开发者接单提醒'
+  }
+
+  return '全部关闭'
+})
+const bellTitle = computed(() => {
+  if (subscriptionBusy.value) {
+    return '消息订阅同步中'
+  }
+
+  return allSubscriptionsEnabled.value ? '关闭全部消息订阅' : '开启全部消息订阅'
+})
 
 const headerLinks = computed<HeaderLink[]>(() => {
   const currentName = String(route.name ?? '')
@@ -51,8 +92,177 @@ watch(
   () => route.fullPath,
   () => {
     menuOpen.value = false
+    subscriptionMenuOpen.value = false
   },
 )
+
+watch(
+  () => [auth.isAuthed, auth.token] as const,
+  ([isAuthed, token]) => {
+    if (!isAuthed || !token.trim()) {
+      resetSubscriptionState()
+      return
+    }
+
+    void loadProfileSubscriptions()
+  },
+  { immediate: true },
+)
+
+onMounted(() => {
+  document.addEventListener('click', closeSubscriptionMenu)
+  document.addEventListener('keydown', handleSubscriptionMenuKeydown)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeSubscriptionMenu)
+  document.removeEventListener('keydown', handleSubscriptionMenuKeydown)
+})
+
+function resetSubscriptionState() {
+  officialActivitySubscriptionEnabled.value = false
+  devHallSubscriptionEnabled.value = false
+  subscriptionMenuOpen.value = false
+  lastSyncedSubscriptions.value = {
+    subscribe_official_activity: false,
+    subscribe_dev_hall_deposit_paid: false,
+  }
+}
+
+function syncSubscriptionState(subscriptions: {
+  subscribe_official_activity: boolean
+  subscribe_dev_hall_deposit_paid: boolean
+}) {
+  const officialEnabled = Boolean(subscriptions.subscribe_official_activity)
+  const devHallEnabled = Boolean(subscriptions.subscribe_dev_hall_deposit_paid)
+
+  officialActivitySubscriptionEnabled.value = officialEnabled
+  devHallSubscriptionEnabled.value = devHallEnabled
+  lastSyncedSubscriptions.value = {
+    subscribe_official_activity: officialEnabled,
+    subscribe_dev_hall_deposit_paid: devHallEnabled,
+  }
+}
+
+async function loadProfileSubscriptions() {
+  if (!auth.isAuthed || !auth.token.trim()) {
+    return
+  }
+
+  subscriptionLoading.value = true
+  try {
+    const subscriptions = await getProfileSubscriptions(auth.token)
+    syncSubscriptionState(subscriptions)
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : '加载消息订阅失败')
+  } finally {
+    subscriptionLoading.value = false
+  }
+}
+
+function closeSubscriptionMenu() {
+  subscriptionMenuOpen.value = false
+}
+
+function handleSubscriptionMenuKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    closeSubscriptionMenu()
+  }
+}
+
+function openSubscriptionMenu() {
+  if (!auth.isAuthed || !auth.token.trim()) {
+    openAuth('login')
+    return
+  }
+
+  subscriptionMenuOpen.value = true
+
+  if (!subscriptionLoading.value) {
+    void loadProfileSubscriptions()
+  }
+}
+
+function handleBellClick() {
+  void toggleAllSubscriptions()
+}
+
+async function toggleAllSubscriptions() {
+  if (!auth.isAuthed || !auth.token.trim()) {
+    openAuth('login')
+    return
+  }
+
+  if (subscriptionBusy.value) {
+    return
+  }
+
+  const nextEnabled = !allSubscriptionsEnabled.value
+  const nextState = {
+    subscribe_official_activity: nextEnabled,
+    subscribe_dev_hall_deposit_paid: nextEnabled,
+  }
+
+  officialActivitySubscriptionEnabled.value = nextEnabled
+  devHallSubscriptionEnabled.value = nextEnabled
+  subscriptionSaving.value = true
+  try {
+    const updated = await updateProfileSubscriptions(auth.token, nextState)
+    syncSubscriptionState(updated)
+    ElMessage.success(nextEnabled ? '已开启全部消息订阅' : '已关闭全部消息订阅')
+  } catch (err) {
+    officialActivitySubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_official_activity
+    devHallSubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_dev_hall_deposit_paid
+    ElMessage.error(err instanceof Error ? err.message : '保存消息订阅失败')
+  } finally {
+    subscriptionSaving.value = false
+  }
+}
+
+async function toggleSubscription(type: 'official_activity' | 'dev_hall_deposit_paid') {
+  const isOfficialActivity = type === 'official_activity'
+
+  if (!auth.isAuthed || !auth.token.trim()) {
+    openAuth('login')
+    return
+  }
+
+  if (subscriptionBusy.value) {
+    return
+  }
+
+  const nextEnabled = isOfficialActivity
+    ? !officialActivitySubscriptionEnabled.value
+    : !devHallSubscriptionEnabled.value
+
+  if (isOfficialActivity) {
+    officialActivitySubscriptionEnabled.value = nextEnabled
+  } else {
+    devHallSubscriptionEnabled.value = nextEnabled
+  }
+
+  subscriptionSaving.value = true
+  try {
+    const updated = await updateProfileSubscriptions(
+      auth.token,
+      isOfficialActivity
+        ? { subscribe_official_activity: nextEnabled }
+        : { subscribe_dev_hall_deposit_paid: nextEnabled },
+    )
+    syncSubscriptionState(updated)
+    ElMessage.success(
+      nextEnabled
+        ? `已开启${isOfficialActivity ? '官方活动通知' : '开发者接单提醒'}`
+        : `已关闭${isOfficialActivity ? '官方活动通知' : '开发者接单提醒'}`,
+    )
+  } catch (err) {
+    officialActivitySubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_official_activity
+    devHallSubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_dev_hall_deposit_paid
+    ElMessage.error(err instanceof Error ? err.message : '保存消息订阅失败')
+  } finally {
+    subscriptionSaving.value = false
+  }
+}
 
 function openAuth(mode: AuthMode) {
   const nextQuery: Record<string, string> = { modal: 'auth', mode }
@@ -108,7 +318,7 @@ function submitSearch() {
 </script>
 
 <template>
-  <header class="portal-header">
+  <header class="portal-header" :class="{ 'portal-header--dev': isDevRoute }">
     <RouterLink class="portal-brand" :to="{ name: 'home' }">
       <div class="portal-brand__mark">73</div>
       <div class="portal-brand__copy">
@@ -133,11 +343,43 @@ function submitSearch() {
         </el-icon>
         <input v-model="searchQuery" type="search" placeholder="搜索资源、需求、开发者..." />
       </form>
-      <button class="portal-icon-btn" type="button" aria-label="消息中心">
-        <el-icon>
-          <Bell />
-        </el-icon>
-      </button>
+      <div class="portal-subscription" @click.stop>
+        <button class="portal-icon-btn portal-icon-btn--subscription" :class="{
+          'is-active': hasActiveSubscription,
+          'is-loading': subscriptionBusy,
+          'is-menu-open': subscriptionMenuOpen,
+        }" type="button" :aria-label="bellTitle" :aria-pressed="hasActiveSubscription" :title="bellTitle"
+          @click="handleBellClick" @contextmenu.prevent="openSubscriptionMenu">
+          <el-icon>
+            <Bell />
+          </el-icon>
+        </button>
+
+        <section v-if="subscriptionMenuOpen" class="portal-subscription-menu" role="menu" aria-label="消息订阅设置"
+          @contextmenu.prevent>
+          <header class="portal-subscription-menu__head">
+            <strong>消息订阅</strong>
+          </header>
+          <button class="portal-subscription-item" :class="{ active: officialActivitySubscriptionEnabled }"
+            type="button" role="menuitemcheckbox" :aria-checked="officialActivitySubscriptionEnabled"
+            :disabled="subscriptionBusy" @click="toggleSubscription('official_activity')">
+            <span class="portal-subscription-item__copy">
+              <strong>官方活动通知</strong>
+              <small>平台公告、活动与福利提醒</small>
+            </span>
+            <span class="portal-subscription-item__state">{{ officialActivitySubscriptionEnabled ? '开' : '关' }}</span>
+          </button>
+          <button class="portal-subscription-item" :class="{ active: devHallSubscriptionEnabled }" type="button"
+            role="menuitemcheckbox" :aria-checked="devHallSubscriptionEnabled" :disabled="subscriptionBusy"
+            @click="toggleSubscription('dev_hall_deposit_paid')">
+            <span class="portal-subscription-item__copy">
+              <strong>开发者接单提醒</strong>
+              <small>需求托管付款后提醒开发者</small>
+            </span>
+            <span class="portal-subscription-item__state">{{ devHallSubscriptionEnabled ? '开' : '关' }}</span>
+          </button>
+        </section>
+      </div>
       <template v-if="!auth.isAuthed">
         <button class="portal-text-btn" type="button" @click="openAuth('login')">登录</button>
         <button class="portal-solid-btn" type="button" @click="openAuth('register')">注册</button>
@@ -249,6 +491,12 @@ function submitSearch() {
   gap: 8px;
 }
 
+.portal-subscription {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+
 .portal-search {
   display: inline-flex;
   align-items: center;
@@ -289,6 +537,131 @@ function submitSearch() {
   color: #334155;
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(226, 232, 240, 0.96);
+  transition: 160ms ease;
+}
+
+.portal-icon-btn--subscription:hover:not(:disabled) {
+  color: #1d4ed8;
+  border-color: rgba(37, 99, 235, 0.28);
+  background: rgba(239, 246, 255, 0.96);
+}
+
+.portal-icon-btn--subscription.is-active,
+.portal-icon-btn--subscription.is-active:hover:not(:disabled) {
+  color: #fff;
+  border-color: rgba(37, 99, 235, 0.5);
+  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.26);
+}
+
+.portal-icon-btn--subscription.is-loading {
+  cursor: progress;
+}
+
+.portal-icon-btn:disabled {
+  cursor: not-allowed;
+}
+
+.portal-subscription-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 70;
+  display: grid;
+  gap: 6px;
+  width: 260px;
+  padding: 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(203, 213, 225, 0.92);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+  backdrop-filter: blur(12px);
+}
+
+.portal-subscription-menu__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px 6px;
+  color: #0f172a;
+}
+
+.portal-subscription-menu__head strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.portal-subscription-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 10px 10px 12px;
+  border: 1px solid rgba(226, 232, 240, 0.94);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.86);
+  color: #0f172a;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: 140ms ease;
+}
+
+.portal-subscription-item:hover:not(:disabled) {
+  border-color: rgba(37, 99, 235, 0.22);
+  background: rgba(239, 246, 255, 0.94);
+}
+
+.portal-subscription-item.active {
+  border-color: rgba(37, 99, 235, 0.3);
+  background: rgba(239, 246, 255, 0.96);
+}
+
+.portal-subscription-item:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+.portal-subscription-item__copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.portal-subscription-item__copy strong {
+  font-size: 13px;
+  line-height: 1.2;
+  color: #0f172a;
+}
+
+.portal-subscription-item__copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.25;
+  color: #64748b;
+}
+
+.portal-subscription-item__state {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  min-width: 34px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.portal-subscription-item.active .portal-subscription-item__state {
+  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
 }
 
 .portal-text-btn {
@@ -389,6 +762,67 @@ function submitSearch() {
   .portal-nav {
     width: 100%;
     flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 1180px) {
+  .portal-header--dev {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    width: calc(100% - 16px);
+    margin: 6px auto 8px;
+    padding: 8px 10px;
+    border-radius: 16px;
+  }
+
+  .portal-header--dev .portal-brand {
+    min-width: 0;
+  }
+
+  .portal-header--dev .portal-brand__mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    font-size: 13px;
+  }
+
+  .portal-header--dev .portal-brand__copy {
+    min-width: 0;
+  }
+
+  .portal-header--dev .portal-brand__copy strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+  }
+
+  .portal-header--dev .portal-brand__copy span,
+  .portal-header--dev .portal-nav,
+  .portal-header--dev .portal-search {
+    display: none;
+  }
+
+  .portal-header--dev .portal-header__tools {
+    width: auto;
+    min-width: 0;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+  }
+
+  .portal-header--dev .portal-icon-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .portal-header--dev .portal-user__trigger {
+    min-width: 0;
+    max-width: 112px;
+    padding: 7px 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
   }
 }
 </style>

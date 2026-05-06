@@ -1,4 +1,4 @@
-import { authHeader, requestJson } from '@/api/http'
+import { apiUrl, authHeader, requestJson } from '@/api/http'
 
 export type ContractSigningStatus = {
   has_contract: boolean
@@ -37,7 +37,7 @@ export async function fetchMyRequirementContract(
   requirementId: string,
 ): Promise<ContractDetail | null> {
   const res = await fetch(
-    `/contracts/requirement/${encodeURIComponent(requirementId)}/my-contract`,
+    apiUrl(`/contracts/requirement/${encodeURIComponent(requirementId)}/my-contract`),
     { headers: authHeader(token) },
   )
   if (res.status === 404) return null

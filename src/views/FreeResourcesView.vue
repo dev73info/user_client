@@ -33,23 +33,11 @@ function openDevWorkbench() {
   void router.push(buildDevPortalUrl(auth.token))
 }
 
-const pageSignals = ['真实资源目录', '按标签分区浏览', '支持发布与管理']
 const placeholderHighlights: ResourceHighlight[] = [
   { title: '素材与组件库', summary: '适合需要快速启动项目的团队，集中沉淀 UI 组件、图标与页面模版。', action: '浏览公开资源' },
   { title: '开发工具与脚手架', summary: '收录工程脚手架、自动化脚本和提效工具，支持即拿即用。', action: '进入工具分区' },
   { title: '行业专题资源', summary: '按教育、游戏、SaaS 等业务方向汇总资源，便于横向比较与选型。', action: '查看专题' },
 ]
-
-const resourceStats = computed(() => {
-  const rootCount = freeResourceSections.value.length
-  const entryCount = freeResourceSections.value.reduce((sum, item) => sum + (item.entrySlug ? 1 : 0), 0)
-  return [
-    { label: '根分区', value: `${rootCount}` },
-    { label: '可直达入口', value: `${entryCount}` },
-    { label: '推荐专题', value: '12+' },
-    { label: '本周上新', value: '18' },
-  ]
-})
 
 const resourceGuide = [
   { title: '先选根分区', detail: '从平台当前开放的根节点开始，逐步进入具体资源目录。' },
@@ -125,15 +113,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="portal-page">
+  <main class="portal-page portal-page--nav">
 
-
-    <section class="portal-page__stats">
-      <article v-for="item in resourceStats" :key="item.label" class="portal-page__stat-card">
-        <strong>{{ item.value }}</strong>
-        <span>{{ item.label }}</span>
-      </article>
-    </section>
 
     <section class="portal-page__content">
       <section class="portal-page__panel">

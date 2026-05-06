@@ -1,5 +1,6 @@
-const rawBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ?? ''
-const API_BASE_URL = rawBase.replace(/\/$/, '')
+import { apiUrl, normalizeBackendPath } from '@/shared/api/url'
+
+export { apiUrl, normalizeBackendPath }
 
 function isHtmlResponse(body: string): boolean {
   const trimmed = body.trim().toLowerCase()
@@ -43,15 +44,6 @@ export function authHeaders(token: string, headers: HeadersInit = {}): Headers {
     merged.set('Authorization', bearer)
   }
   return merged
-}
-
-export function apiUrl(path: string): string {
-  if (/^https?:\/\//i.test(path)) {
-    return path
-  }
-
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  return `${API_BASE_URL}${normalizedPath}`
 }
 
 export class HttpError extends Error {

@@ -23,7 +23,7 @@ const communityHighlights = [
 </script>
 
 <template>
-  <main class="portal-page">
+  <main class="portal-page portal-page--nav">
 
     <section class="portal-page__content">
       <section class="portal-page__panel">

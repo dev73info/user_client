@@ -10,9 +10,9 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 const proxyTarget = 'http://127.0.0.1:8080'
 const proxyPaths = [
+  '/api',
   '/auth',
   '/coupons',
-  '/dev',
   '/public/requirements',
   '/realname',
   '/requirements',

@@ -105,7 +105,7 @@ export type UpdateRequirementSubscriptionPayload = {
 
 export async function listRequirements(token: string): Promise<RequirementItem[]> {
   return requestJson<RequirementItem[]>(
-    '/requirements/',
+    '/requirements/mine',
     {
       headers: {
         ...authHeader(token),

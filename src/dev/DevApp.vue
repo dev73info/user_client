@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import {
   DataAnalysis,
   Wallet,
@@ -9,13 +8,10 @@ import {
   MagicStick,
   List,
   Connection,
-  User,
-  SwitchButton,
 } from '@element-plus/icons-vue'
 
 import { useAuthStore } from '@dev/stores/auth'
 import { useBreakpoint } from '@dev/composables/useBreakpoint'
-import { getProfileSubscriptions, updateProfileSubscriptions } from '@dev/api/settings'
 import { DEV_PORTAL_URL, buildUnifiedAuthUrl } from '@/config/runtime'
 
 const route = useRoute()
@@ -26,10 +22,6 @@ const { isMobile } = useBreakpoint()
 auth.hydrate()
 
 const mobileMenuOpen = ref(false)
-const subscribeDevHallDepositPaid = ref(false)
-const subscriptionLoading = ref(false)
-const subscriptionSaving = ref(false)
-const lastSyncedSubscription = ref(false)
 
 function handleShiftWheel(e: WheelEvent) {
   if (!e.shiftKey) return
@@ -44,52 +36,8 @@ function handleShiftWheel(e: WheelEvent) {
   }
 }
 
-async function loadDevHallSubscription() {
-  if (!auth.isAuthed || !auth.token.trim()) {
-    return
-  }
-
-  subscriptionLoading.value = true
-  try {
-    const subscriptions = await getProfileSubscriptions(auth.token)
-    const enabled = Boolean(subscriptions.subscribe_dev_hall_deposit_paid)
-    subscribeDevHallDepositPaid.value = enabled
-    lastSyncedSubscription.value = enabled
-  } catch (err) {
-    ElMessage.error(err instanceof Error ? err.message : '加载接单提醒订阅失败')
-  } finally {
-    subscriptionLoading.value = false
-  }
-}
-
-async function handleDevHallSubscriptionChange(value: string | number | boolean) {
-  if (!auth.isAuthed || !auth.token.trim()) {
-    subscribeDevHallDepositPaid.value = false
-    return
-  }
-
-  const enabled = Boolean(value)
-  subscriptionSaving.value = true
-  try {
-    const updated = await updateProfileSubscriptions(auth.token, {
-      subscribe_dev_hall_deposit_paid: enabled,
-    })
-    const synced = Boolean(updated.subscribe_dev_hall_deposit_paid)
-    subscribeDevHallDepositPaid.value = synced
-    lastSyncedSubscription.value = synced
-    ElMessage.success(synced ? '已开启接单提醒订阅' : '已关闭接单提醒订阅')
-  } catch (err) {
-    subscribeDevHallDepositPaid.value = lastSyncedSubscription.value
-    ElMessage.error(err instanceof Error ? err.message : '保存接单提醒订阅失败')
-  } finally {
-    subscriptionSaving.value = false
-  }
-}
-
 onMounted(() => {
-  void auth.initializeSession().then(() => {
-    void loadDevHallSubscription()
-  }).catch(() => {
+  void auth.initializeSession().catch(() => {
     const redirectTarget = route.path === '/dev/login' ? DEV_PORTAL_URL : route.fullPath
     void router.replace(buildUnifiedAuthUrl('login', redirectTarget))
   })
@@ -152,7 +100,7 @@ function openMobileMenu() {
             <span>开发概览</span>
           </el-menu-item>
           <!-- 钱包：暂时禁用 -->
-          <el-menu-item disabled class="dev-shell__menu-item--disabled">
+          <el-menu-item index="/dev/wallet/disabled" disabled class="dev-shell__menu-item--disabled">
             <el-icon>
               <Wallet />
             </el-icon>
@@ -177,25 +125,13 @@ function openMobileMenu() {
             </el-menu-item>
           </el-sub-menu>
           <!-- 需求大厅：暂时禁用 -->
-          <el-menu-item disabled class="dev-shell__menu-item--disabled">
+          <el-menu-item index="/dev/requirements/disabled" disabled class="dev-shell__menu-item--disabled">
             <el-icon>
               <Connection />
             </el-icon>
             <span>需求大厅<em class="dev-shell__menu-tag">暂未开放</em></span>
           </el-menu-item>
         </el-menu>
-
-        <div class="dev-shell__aside-footer">
-          <el-icon class="dev-shell__aside-footer-icon">
-            <User />
-          </el-icon>
-          <span class="dev-shell__aside-footer-name">{{ auth.username || '开发者' }}</span>
-          <button type="button" class="dev-shell__aside-logout" title="退出登录" @click="logout">
-            <el-icon>
-              <SwitchButton />
-            </el-icon>
-          </button>
-        </div>
 
       </el-scrollbar>
     </el-aside>
@@ -222,13 +158,6 @@ function openMobileMenu() {
           <div class="dev-shell__header-copy">
             <h1 class="dev-shell__title">{{ pageTitle }}</h1>
           </div>
-          <div class="dev-shell__header-actions">
-            <div class="dev-shell__subscription">
-              <span class="dev-shell__subscription-label">接单提醒订阅</span>
-              <el-switch v-model="subscribeDevHallDepositPaid" inline-prompt active-text="开" inactive-text="关"
-                :disabled="subscriptionLoading || subscriptionSaving" @change="handleDevHallSubscriptionChange" />
-            </div>
-          </div>
         </template>
       </el-header>
 
@@ -238,21 +167,6 @@ function openMobileMenu() {
             <router-view />
           </div>
         </el-scrollbar>
-        <footer class="dev-compliance-footer dev-shell__icp-footer" aria-label="网站备案信息">
-          <p>
-            ICP备案号：
-            <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">滇ICP备2026006119号-2</a>
-          </p>
-          <p>
-            公安备案号：
-            <a class="dev-public-security-beian-link"
-              href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000020" target="_blank"
-              rel="noopener noreferrer">
-              <img class="dev-public-security-beian-icon" src="/icons/beian.png" alt="公安备案图标" />
-              <span>滇公网安备53062802000020号</span>
-            </a>
-          </p>
-        </footer>
       </el-main>
     </el-container>
 
@@ -275,7 +189,7 @@ function openMobileMenu() {
             <span>开发概览</span>
           </el-menu-item>
           <!-- 钱包：暂时禁用 -->
-          <el-menu-item disabled class="dev-shell__menu-item--disabled">
+          <el-menu-item index="/dev/wallet/disabled" disabled class="dev-shell__menu-item--disabled">
             <el-icon>
               <Wallet />
             </el-icon>
@@ -300,25 +214,13 @@ function openMobileMenu() {
             </el-menu-item>
           </el-sub-menu>
           <!-- 需求大厅：暂时禁用 -->
-          <el-menu-item disabled class="dev-shell__menu-item--disabled">
+          <el-menu-item index="/dev/requirements/disabled" disabled class="dev-shell__menu-item--disabled">
             <el-icon>
               <Connection />
             </el-icon>
             <span>需求大厅<em class="dev-shell__menu-tag">暂未开放</em></span>
           </el-menu-item>
         </el-menu>
-
-        <div class="dev-shell__aside-footer">
-          <el-icon class="dev-shell__aside-footer-icon">
-            <User />
-          </el-icon>
-          <span class="dev-shell__aside-footer-name">{{ auth.username || '开发者' }}</span>
-          <button type="button" class="dev-shell__aside-logout" title="退出登录" @click="logout">
-            <el-icon>
-              <SwitchButton />
-            </el-icon>
-          </button>
-        </div>
 
       </div>
     </el-drawer>

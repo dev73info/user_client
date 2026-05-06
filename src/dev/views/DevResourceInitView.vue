@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { Close, Folder, MagicStick, Refresh, UploadFilled } from '@element-plus/icons-vue'
 
 import {
     createMcResource,
@@ -344,7 +345,10 @@ async function submitResource() {
                                         accept="image/png,image/jpeg,image/webp,image/svg+xml"
                                         @change="handleIconFileChange" />
                                     <button class="dev-icon-upload__trigger" type="button" @click="openIconPicker">
-                                        {{ form.coverUrl ? '重新选择图标' : '选择图标文件' }}
+                                        <el-icon>
+                                            <UploadFilled />
+                                        </el-icon>
+                                        <span>{{ form.coverUrl ? '重新选择图标' : '选择图标文件' }}</span>
                                     </button>
                                     <div class="dev-icon-upload__meta">
                                         <div class="dev-icon-upload__name">{{ iconFileName || '未选择文件' }}</div>
@@ -353,7 +357,8 @@ async function submitResource() {
                                     <div v-if="form.coverUrl" class="dev-icon-upload__preview">
                                         <img :src="form.coverUrl" alt="图标预览" class="dev-icon-upload__image" />
                                     </div>
-                                    <el-button v-if="form.coverUrl" text @click="clearIconFile">移除</el-button>
+                                    <el-button v-if="form.coverUrl" text :icon="Close"
+                                        @click="clearIconFile">移除</el-button>
                                 </div>
                             </el-form-item>
 
@@ -374,7 +379,7 @@ async function submitResource() {
                                 <span class="dev-chip">{{ selectedTagCount }} 个标签</span>
                             </div>
                         </section>
-                        <el-button text :loading="isLoadingTags" @click="loadTagTree">刷新标签</el-button>
+                        <el-button text :icon="Refresh" :loading="isLoadingTags" @click="loadTagTree">刷新标签</el-button>
                     </header>
 
                     <section v-if="entryTabs.length > 0" class="dev-catalog-nav" aria-label="资源目录导航">
@@ -427,9 +432,14 @@ async function submitResource() {
                     <p v-else class="dev-empty-state">当前二级节点尚未配置完整标签组，请先在管理端补齐标签树。</p>
                 </section>
 
-                <footer class="dev-upload-actions dev-upload-actions--split">
-                    <span v-if="submitBlockReason" class="dev-section-desc">{{ submitBlockReason }}</span>
-                    <el-button type="primary" :disabled="!canSubmit" :loading="submitting" @click="submitResource">
+                <footer class="dev-upload-actions dev-upload-actions--split" :class="{ 'is-ready': canSubmit }">
+                    <section class="dev-submit-summary">
+                        <span class="dev-submit-summary__status">{{ canSubmit ? '准备就绪' : submitBlockReason }}</span>
+                        <span class="dev-submit-summary__meta">{{ currentEntryLabel }} · {{ selectedTagCount }}
+                            个标签</span>
+                    </section>
+                    <el-button type="primary" :icon="MagicStick" :disabled="!canSubmit" :loading="submitting"
+                        @click="submitResource">
                         {{ actionLabel }}
                     </el-button>
                 </footer>
@@ -461,7 +471,9 @@ async function submitResource() {
                             <div class="dev-preview-card__icon">
                                 <img v-if="form.coverUrl" :src="form.coverUrl" alt="资源图标"
                                     class="dev-preview-card__icon-image" />
-                                <template v-else>📁</template>
+                                <el-icon v-else>
+                                    <Folder />
+                                </el-icon>
                             </div>
                             <section class="dev-preview-card__copy">
                                 <div class="dev-resource-card__title">{{ form.title || '资源标题预览' }}</div>

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
@@ -23,13 +22,6 @@ const hallCards: HallCard[] = [
   { title: '在线教育系统', summary: '课程交付、会员付费、数据统计。', budget: '¥ 2000-5000', tag: '全栈开发', status: '审核中' },
   { title: '品牌视觉插画包', summary: '活动 KV、社媒套图与角色延展。', budget: '¥ 800-1500', tag: '插画设计', status: '邀标中' },
 ]
-
-const hallStats = computed(() => [
-  { label: '活跃需求', value: '128+' },
-  { label: '今日新增', value: '16' },
-  { label: '待接单', value: '42' },
-  { label: '已完成', value: '390+' },
-])
 
 const hallSignals = ['预算清晰可见', '按领域快速筛选', '支持后续接入真实需求数据']
 const hallGuide = [
@@ -56,14 +48,7 @@ function openPublish() {
 </script>
 
 <template>
-  <main class="portal-page">
-
-    <section class="portal-page__stats">
-      <article v-for="item in hallStats" :key="item.label" class="portal-page__stat-card">
-        <strong>{{ item.value }}</strong>
-        <span>{{ item.label }}</span>
-      </article>
-    </section>
+  <main class="portal-page portal-page--nav">
 
     <section class="portal-page__content">
       <section class="portal-page__panel">

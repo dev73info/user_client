@@ -31,11 +31,6 @@ const currentTab = computed(() => {
 })
 const currentPlatform = computed(() => currentTab.value?.platform ?? '')
 const currentEntryLabel = computed(() => currentTab.value?.groupName ?? '当前分区')
-const catalogSignals = computed(() => [
-  currentRootName.value ? `当前根分区：${currentRootName.value}` : '自动定位可用根分区',
-  currentEntryLabel.value ? `当前二级分区：${currentEntryLabel.value}` : '自动定位可用二级分区',
-  '支持按根节点与二级节点连续筛选',
-])
 const catalogStats = computed(() => [
   { label: '根分区', value: `${rootTabs.value.length}` },
   { label: '二级分区', value: `${platformTabs.value.length}` },
@@ -126,55 +121,18 @@ function resolveCurrentRoot(tree: McProcessedTagTree) {
 
 <template>
   <main class="portal-page">
-    <section class="portal-page__hero">
-      <div class="portal-page__hero-copy">
-        <p class="portal-page__eyebrow">Resource Catalog</p>
-        <h1>{{ currentRootName || '免费资源目录' }}</h1>
-        <p>按根节点与二级分区逐层浏览公开资源目录，当前页已切换到与门户首页一致的视觉层，目录切换和资源浏览能力保持不变。</p>
-
-        <div class="portal-page__signal-list">
-          <span v-for="signal in catalogSignals" :key="signal" class="portal-page__signal">{{ signal }}</span>
-        </div>
-
-        <div class="portal-page__hero-actions">
-          <button class="portal-page__primary" type="button"
-            @click="router.push({ name: 'free-resources' })">返回导航</button>
-          <button class="portal-page__secondary" type="button" @click="router.push({ name: 'home' })">返回门户</button>
-        </div>
-      </div>
-
-      <div class="portal-page__hero-visual" aria-hidden="true">
-        <div class="portal-page__hero-orbit">
-          <div class="portal-page__hero-core">录</div>
-          <div class="portal-page__hero-float portal-page__hero-float--one">根</div>
-          <div class="portal-page__hero-float portal-page__hero-float--two">类</div>
-          <div class="portal-page__hero-float portal-page__hero-float--three">签</div>
-          <div class="portal-page__hero-float portal-page__hero-float--four">源</div>
-        </div>
-      </div>
-    </section>
-
-    <section class="portal-page__stats">
-      <article v-for="item in catalogStats" :key="item.label" class="portal-page__stat-card">
-        <strong>{{ item.value }}</strong>
-        <span>{{ item.label }}</span>
-      </article>
-    </section>
-
-    <section class="portal-page__panel">
+    <section class="portal-page__panel catalog-switch-panel">
       <div class="portal-page__section-header">
         <div>
           <p class="portal-page__eyebrow">目录切换</p>
-          <h2>继续沿用现有分区导航能力</h2>
+          <h2>{{ currentRootName || '免费资源目录' }}</h2>
         </div>
+        <span class="catalog-switch-panel__current">当前：{{ currentEntryLabel }}</span>
       </div>
 
       <div class="catalog-nav-stack">
         <section class="catalog-nav-row" aria-label="根节点导航">
-          <div class="catalog-nav-row__header">
-            <span class="catalog-nav-row__label">根节点</span>
-            <span class="catalog-nav-row__meta">切换资源大类</span>
-          </div>
+          <span class="catalog-nav-row__label">根节点</span>
           <div class="hero-root-nav">
             <button v-for="root in rootTabs" :key="root.slug" class="root-node-chip"
               :class="{ active: root.slug === currentRootSlug }" type="button"
@@ -184,10 +142,7 @@ function resolveCurrentRoot(tree: McProcessedTagTree) {
           </div>
         </section>
         <section class="catalog-nav-row" aria-label="二级节点导航">
-          <div class="catalog-nav-row__header">
-            <span class="catalog-nav-row__label">二级节点</span>
-            <span class="catalog-nav-row__meta">当前：{{ currentEntryLabel }}</span>
-          </div>
+          <span class="catalog-nav-row__label">二级节点</span>
           <div class="hero-actions hero-actions--catalog">
             <button v-for="tab in platformTabs" :key="tab.slug" class="platform-path-chip"
               :class="{ active: tab.slug === currentEntrySlug }" type="button" @click="openPlatform(tab.slug)">

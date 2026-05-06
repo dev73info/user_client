@@ -42,6 +42,7 @@ export type PublicMcResourceVersionItem = {
 let allResourcesCache: { data: PublicMcResourceItem[]; ts: number } | null = null
 let allResourcesInflight: Promise<PublicMcResourceItem[]> | null = null
 const RESOURCE_CACHE_TTL = 60_000
+const PUBLIC_RESOURCE_API_PREFIX = '/resource/resources'
 
 async function getAllPublicMcResources(): Promise<PublicMcResourceItem[]> {
   const now = Date.now()
@@ -54,7 +55,7 @@ async function getAllPublicMcResources(): Promise<PublicMcResourceItem[]> {
   }
 
   allResourcesInflight = requestJson<PublicMcResourceItem[]>(
-    '/resources/resources',
+    PUBLIC_RESOURCE_API_PREFIX,
     { method: 'GET' },
     '加载资源列表失败',
   )
@@ -88,7 +89,7 @@ export async function getPublicMcResource(
   token?: string | null,
 ): Promise<PublicMcResourceItem> {
   return requestJson<PublicMcResourceItem>(
-    `/resources/resources/${resourceId}`,
+    `${PUBLIC_RESOURCE_API_PREFIX}/${resourceId}`,
     {
       method: 'GET',
       headers: token ? authHeader(token) : undefined,
@@ -102,7 +103,7 @@ export async function listPublicMcResourceVersions(
   token?: string | null,
 ): Promise<PublicMcResourceVersionItem[]> {
   return requestJson<PublicMcResourceVersionItem[]>(
-    `/resources/resources/${resourceId}/versions`,
+    `${PUBLIC_RESOURCE_API_PREFIX}/${resourceId}/versions`,
     {
       method: 'GET',
       headers: token ? authHeader(token) : undefined,

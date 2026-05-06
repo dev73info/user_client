@@ -6,6 +6,12 @@
   gap: 22px;
 }
 
+.portal-page--nav {
+  width: min(1280px, calc(100% - 24px));
+  margin: 0 auto 40px;
+  gap: 14px;
+}
+
 .portal-page__hero,
 .portal-page__stat-card,
 .portal-page__panel,
@@ -219,10 +225,24 @@
   grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.8fr);
 }
 
+.portal-page--nav .portal-page__content {
+  grid-template-columns: minmax(0, 1.58fr) minmax(300px, 0.72fr);
+  gap: 14px;
+  align-items: start;
+}
+
 .portal-page__panel,
 .portal-page__aside-card {
   padding: 22px;
   border-radius: 24px;
+}
+
+.portal-page--nav .portal-page__panel,
+.portal-page--nav .portal-page__aside-card {
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 28px rgba(90, 120, 180, 0.08);
 }
 
 .portal-page__section-header,
@@ -238,6 +258,10 @@
 
 .portal-page__section-header {
   margin-bottom: 18px;
+}
+
+.portal-page--nav .portal-page__section-header {
+  margin-bottom: 14px;
 }
 
 .portal-page__link-btn {
@@ -260,6 +284,14 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.portal-page--nav .portal-page__card,
+.portal-page--nav .portal-page__collection-card,
+.portal-page--nav .portal-page__timeline-item {
+  padding: 18px;
+  border-radius: 18px;
+  box-shadow: 0 10px 28px rgba(90, 120, 180, 0.08);
 }
 
 .portal-page__chip,
@@ -352,6 +384,10 @@
 @media (max-width: 900px) {
   .portal-page {
     width: calc(100% - 24px);
+  }
+
+  .portal-page--nav {
+    width: calc(100% - 16px);
   }
 
   .portal-page__hero,

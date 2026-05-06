@@ -101,19 +101,26 @@ onMounted(() => {
 .app-content--dev {
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .app-dev-layout {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  min-height: 100vh;
-  padding-bottom: 24px;
+  height: 100%;
+  min-height: 0;
+  padding-bottom: 12px;
+  overflow: hidden;
 }
 
 .app-dev-host {
+  flex: 1 1 auto;
   width: min(1280px, calc(100% - 24px));
   margin: 0 auto;
+  height: auto;
   min-height: 0;
 }
 
@@ -136,6 +143,13 @@ onMounted(() => {
   .app-content {
     min-height: 100vh;
     height: auto;
+  }
+
+  .app-content--dev {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .site-footer-host {
@@ -196,8 +210,8 @@ html::-webkit-scrollbar-thumb:hover {
 }
 
 .app-dev-host .dev-shell {
-  min-height: calc(100vh - 92px);
-  height: calc(100vh - 92px);
+  min-height: 0;
+  height: 100%;
   border-radius: 24px;
   border: 1px solid rgba(228, 234, 246, 0.95);
   box-shadow: 0 16px 40px rgba(90, 120, 180, 0.08);
@@ -209,7 +223,7 @@ html::-webkit-scrollbar-thumb:hover {
 
 .app-dev-host .dev-shell__aside,
 .app-dev-host .dev-shell>.el-container:last-child {
-  height: calc(100vh - 92px);
+  height: 100%;
 }
 
 .app-dev-host .dev-shell__aside {
@@ -262,36 +276,25 @@ html::-webkit-scrollbar-thumb:hover {
   padding: 14px 28px 24px;
 }
 
-.app-dev-host .dev-shell__icp-footer {
-  width: calc(100% - 56px);
-  justify-content: center;
-  gap: 6px 18px;
-  margin: 0 28px 18px;
-  padding: 12px 16px;
-  border-radius: 16px;
-  border: 1px solid rgba(228, 234, 246, 0.95);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 12px 30px rgba(90, 120, 180, 0.08);
-  color: #64748b;
-}
-
-.app-dev-host .dev-shell__icp-footer a:hover {
-  color: #2563eb;
-}
-
 @media (max-width: 780px) {
   .app-dev-layout {
-    gap: 12px;
-    padding-bottom: 16px;
+    gap: 8px;
+    height: 100%;
+    min-height: 0;
+    padding-bottom: 6px;
+    overflow: hidden;
   }
 
   .app-dev-host {
+    flex: 1 1 0;
     width: calc(100% - 16px);
+    min-height: 0;
+    overflow: hidden;
   }
 
   .app-dev-host .dev-shell {
-    min-height: calc(100vh - 84px);
-    height: calc(100vh - 84px);
+    min-height: 0;
+    height: 100%;
     border-radius: 20px;
   }
 
@@ -304,16 +307,9 @@ html::-webkit-scrollbar-thumb:hover {
     padding: 16px 14px 24px;
   }
 
-  .app-dev-host .dev-shell__icp-footer {
-    width: calc(100% - 28px);
-    margin: 0 14px 14px;
-    border-radius: 14px;
-    padding: 10px 14px;
-  }
-
   .app-dev-host .dev-shell__aside,
   .app-dev-host .dev-shell>.el-container:last-child {
-    height: calc(100vh - 84px);
+    height: 100%;
   }
 }
 </style>

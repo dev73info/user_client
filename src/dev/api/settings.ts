@@ -18,7 +18,7 @@ export async function getProfileSubscriptions(token: string): Promise<DevProfile
 
 export async function updateProfileSubscriptions(
   token: string,
-  payload: Pick<DevProfileSubscriptionsResp, 'subscribe_dev_hall_deposit_paid'>,
+  payload: Partial<DevProfileSubscriptionsResp>,
 ): Promise<DevProfileSubscriptionsResp> {
   return requestJson<DevProfileSubscriptionsResp>(
     '/settings/profile/subscriptions',
