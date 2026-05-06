@@ -62,6 +62,11 @@ const router = createRouter({
       component: () => import('@/views/CouponClaimView.vue'),
     },
     {
+      path: '/help-center',
+      name: 'help-center',
+      component: () => import('@/views/HelpCenterView.vue'),
+    },
+    {
       path: '/terms',
       name: 'terms',
       component: () => import('@/views/TermsView.vue'),

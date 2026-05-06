@@ -109,8 +109,14 @@
     color 180ms ease;
 }
 
-.auth-btn:hover {
+.auth-btn:hover:not(:disabled) {
   transform: translateY(-1px);
+}
+
+.auth-btn:disabled {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .auth-btn.ghost {
@@ -123,14 +129,25 @@
   box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
 }
 
+.auth-btn.ghost:disabled {
+  color: #94a3b8;
+  background: rgba(248, 250, 252, 0.96);
+  border-color: rgba(226, 232, 240, 0.96);
+}
+
 .auth-btn.solid {
   border: 0;
   color: #fff;
   background: linear-gradient(135deg, #2563eb, #4f8cff);
 }
 
-.auth-btn.solid:hover {
+.auth-btn.solid:hover:not(:disabled) {
   box-shadow: 0 10px 20px rgba(37, 99, 235, 0.22);
+}
+
+.auth-btn.solid:disabled {
+  color: rgba(255, 255, 255, 0.9);
+  background: linear-gradient(135deg, #bfd3ff, #d7e5ff);
 }
 
 .user-menu-wrapper {

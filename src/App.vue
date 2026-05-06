@@ -20,10 +20,17 @@ onMounted(() => {
 
 <template>
   <div class="app-shell">
-    <DevApp v-if="isDevRoute" />
+    <div class="app-content" :class="{ 'app-content--dev': isDevRoute }">
+      <template v-if="isDevRoute">
+        <div class="app-dev-layout">
+          <PortalTopNav />
+          <div class="app-dev-host">
+            <DevApp />
+          </div>
+        </div>
+      </template>
 
-    <template v-else>
-      <div class="app-content">
+      <template v-else>
         <el-scrollbar class="app-scrollbar">
           <div class="app-view-container">
             <PortalTopNav />
@@ -72,8 +79,8 @@ onMounted(() => {
             </div>
           </div>
         </el-scrollbar>
-      </div>
-    </template>
+      </template>
+    </div>
   </div>
 </template>
 
@@ -89,6 +96,25 @@ onMounted(() => {
   z-index: 2;
   min-height: 100vh;
   background: #f2ede3;
+}
+
+.app-content--dev {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-dev-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 100vh;
+  padding-bottom: 24px;
+}
+
+.app-dev-host {
+  width: min(1280px, calc(100% - 24px));
+  margin: 0 auto;
+  min-height: 0;
 }
 
 .app-scrollbar {
@@ -167,5 +193,127 @@ html::-webkit-scrollbar-thumb:hover {
 .app-scrollbar .el-scrollbar__bar.is-vertical {
   width: 8px;
   right: 0;
+}
+
+.app-dev-host .dev-shell {
+  min-height: calc(100vh - 92px);
+  height: calc(100vh - 92px);
+  border-radius: 24px;
+  border: 1px solid rgba(228, 234, 246, 0.95);
+  box-shadow: 0 16px 40px rgba(90, 120, 180, 0.08);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(247, 249, 253, 0.92));
+}
+
+.app-dev-host .dev-shell__aside,
+.app-dev-host .dev-shell>.el-container:last-child {
+  height: calc(100vh - 92px);
+}
+
+.app-dev-host .dev-shell__aside {
+  background:
+    radial-gradient(circle at top left, rgba(96, 165, 250, 0.18), transparent 26%),
+    linear-gradient(180deg, rgba(18, 28, 45, 0.96), rgba(24, 36, 58, 0.96));
+  border-right: 1px solid rgba(191, 219, 254, 0.14);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+.app-dev-host .dev-shell__brand {
+  padding: 8px 8px 0;
+}
+
+.app-dev-host .dev-shell__brand-subtitle {
+  color: rgba(203, 213, 225, 0.6);
+}
+
+.app-dev-host .dev-shell__menu .el-menu-item,
+.app-dev-host .dev-shell__menu .el-sub-menu__title {
+  margin-bottom: 6px;
+  border-radius: 14px;
+}
+
+.app-dev-host .dev-shell__menu .el-menu-item.is-active {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.3), rgba(59, 130, 246, 0.18));
+  border-color: rgba(147, 197, 253, 0.2);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.18);
+}
+
+.app-dev-host .dev-shell__menu .el-menu-item:hover,
+.app-dev-host .dev-shell__menu .el-sub-menu__title:hover {
+  background: rgba(96, 165, 250, 0.12);
+}
+
+.app-dev-host .dev-shell__header {
+  padding: 24px 28px 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0));
+}
+
+.app-dev-host .dev-shell__title {
+  color: #0f172a;
+}
+
+.app-dev-host .dev-shell__main {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
+}
+
+.app-dev-host .dev-route-view--shell {
+  padding: 14px 28px 24px;
+}
+
+.app-dev-host .dev-shell__icp-footer {
+  width: calc(100% - 56px);
+  justify-content: center;
+  gap: 6px 18px;
+  margin: 0 28px 18px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(228, 234, 246, 0.95);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 12px 30px rgba(90, 120, 180, 0.08);
+  color: #64748b;
+}
+
+.app-dev-host .dev-shell__icp-footer a:hover {
+  color: #2563eb;
+}
+
+@media (max-width: 780px) {
+  .app-dev-layout {
+    gap: 12px;
+    padding-bottom: 16px;
+  }
+
+  .app-dev-host {
+    width: calc(100% - 16px);
+  }
+
+  .app-dev-host .dev-shell {
+    min-height: calc(100vh - 84px);
+    height: calc(100vh - 84px);
+    border-radius: 20px;
+  }
+
+  .app-dev-host .dev-shell__header {
+    padding: 0;
+    background: transparent;
+  }
+
+  .app-dev-host .dev-route-view--shell {
+    padding: 16px 14px 24px;
+  }
+
+  .app-dev-host .dev-shell__icp-footer {
+    width: calc(100% - 28px);
+    margin: 0 14px 14px;
+    border-radius: 14px;
+    padding: 10px 14px;
+  }
+
+  .app-dev-host .dev-shell__aside,
+  .app-dev-host .dev-shell>.el-container:last-child {
+    height: calc(100vh - 84px);
+  }
 }
 </style>

@@ -13,8 +13,7 @@
 }
 
 .auth-modal-wrap {
-  align-items: flex-start;
-  padding-top: 120px;
+  align-items: center;
 }
 
 .auth-modal,
@@ -279,7 +278,7 @@
   }
 
   .auth-modal-wrap {
-    padding-top: 20px;
+    align-items: center;
   }
 
   .auth-modal,

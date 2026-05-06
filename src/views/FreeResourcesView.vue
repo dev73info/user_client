@@ -126,32 +126,7 @@ onMounted(() => {
 
 <template>
   <main class="portal-page">
-    <section class="portal-page__hero">
-      <div class="portal-page__hero-copy">
-        <p class="portal-page__eyebrow">Free Resources</p>
-        <h1>免费资源导航</h1>
-        <p>查看平台当前公开的免费资源根分区入口，按标签树和专题方向快速进入对应资源目录。缺失的热点、专题和下载量目前使用占位数据补齐门户层级。</p>
 
-        <div class="portal-page__signal-list">
-          <span v-for="signal in pageSignals" :key="signal" class="portal-page__signal">{{ signal }}</span>
-        </div>
-
-        <div class="portal-page__hero-actions">
-          <button class="portal-page__primary" type="button" @click="openDevWorkbench">进入开发者工作台</button>
-          <button class="portal-page__secondary" type="button" @click="router.push({ name: 'home' })">返回门户首页</button>
-        </div>
-      </div>
-
-      <div class="portal-page__hero-visual" aria-hidden="true">
-        <div class="portal-page__hero-orbit">
-          <div class="portal-page__hero-core">◫</div>
-          <div class="portal-page__hero-float portal-page__hero-float--one">#</div>
-          <div class="portal-page__hero-float portal-page__hero-float--two">⊞</div>
-          <div class="portal-page__hero-float portal-page__hero-float--three">⌘</div>
-          <div class="portal-page__hero-float portal-page__hero-float--four">✦</div>
-        </div>
-      </div>
-    </section>
 
     <section class="portal-page__stats">
       <article v-for="item in resourceStats" :key="item.label" class="portal-page__stat-card">

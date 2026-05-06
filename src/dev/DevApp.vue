@@ -5,15 +5,10 @@ import { ElMessage } from 'element-plus'
 import {
   DataAnalysis,
   Wallet,
-  Money,
-  Document,
-  CreditCard,
   Box,
   MagicStick,
   List,
   Connection,
-  Link,
-  Files,
   User,
   SwitchButton,
 } from '@element-plus/icons-vue'
@@ -201,6 +196,7 @@ function openMobileMenu() {
             </el-icon>
           </button>
         </div>
+
       </el-scrollbar>
     </el-aside>
 
@@ -323,6 +319,7 @@ function openMobileMenu() {
             </el-icon>
           </button>
         </div>
+
       </div>
     </el-drawer>
   </el-container>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import '@/styles/home.css'
+
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight } from '@element-plus/icons-vue'
@@ -64,8 +66,10 @@ type PortalCategory = {
 }
 
 type WorkflowStep = {
+  step: string
   title: string
-  detail: string
+  hint: string
+  icon: string
   accent: string
 }
 
@@ -81,7 +85,8 @@ type SpotlightCard = {
   summary: string
   budget: string
   status: string
-  meta: string
+  badge: string
+  metaSecondary: string
   accent: string
 }
 
@@ -187,8 +192,8 @@ const heroSignals = [
   '安全交易保障',
 ]
 const portalNotices: PortalNotice[] = [
-  { title: '免费资源导航升级完成', date: '05-15' },
-  { title: '新增「招募设计」需求分类', date: '05-14', tag: 'NEW' },
+  { title: '信用点商城全新上线', date: '05-15' },
+  { title: '新增「绘画设计」需求分类', date: '05-14', tag: 'NEW' },
   { title: '平台服务协议更新说明', date: '05-12' },
   { title: '关于打击恶意行为的公告', date: '05-10' },
 ]
@@ -215,17 +220,11 @@ const portalCategories: PortalCategory[] = [
   { label: '文案写作', icon: '✎', summary: '说明文档 / 宣发内容' },
 ]
 const workflowSteps: WorkflowStep[] = [
-  { title: '1. 提交需求单', detail: '明确需求并补充验收标准', accent: 'violet' },
-  { title: '2. 需求审核', detail: '平台审核描述与预算完整性', accent: 'blue' },
-  { title: '3. 开发者接单', detail: '开发者确认接单并开始协作', accent: 'green' },
-  { title: '4. 完成交付', detail: '确认成果后支付尾款', accent: 'orange' },
-  { title: '5. 评价完成', detail: '双方评价沉淀平台信用', accent: 'red' },
-]
-const safeguardItems = [
-  '资金安全：平台托管，支持有保障的支付流程',
-  '聘用保护：验收节点明确，降低履约风险',
-  '信用体系：评价公开，便于筛选可靠开发者',
-  '7x24 小时客服：交易问题快速响应',
+  { step: '1.', title: '提交需求', hint: '填写需求并补充验收标准', icon: '◫', accent: 'violet' },
+  { step: '2.', title: '需求审核', hint: '平台审核描述与预算完整性', icon: '☑', accent: 'blue' },
+  { step: '3.', title: '开发者接单', hint: '平台撮合并进入协作阶段', icon: '⌘', accent: 'green' },
+  { step: '4.', title: '完成验收', hint: '根据验收节点完成交付确认', icon: '✉', accent: 'orange' },
+  { step: '5.', title: '评价完成', hint: '沉淀信用记录与后续复购依据', icon: '♥', accent: 'red' },
 ]
 
 function openDevWorkbench() {
@@ -260,33 +259,16 @@ function openSpotlight(card: SpotlightCard) {
   showToast('该需求展示卡片仅作门户展示，详细能力页正在建设中', 'info')
 }
 
-function openRequirementCenter() {
-  if (!auth.isAuthed) {
-    showToast('登录后可查看与你相关的需求单与支付状态', 'info')
-    openAuth('login')
-    return
-  }
-
-  void router.push({ name: 'tickets' })
-}
-
-function openMobileProfile() {
-  if (!auth.isAuthed) {
-    openAuth('login')
-    return
-  }
-
-  void router.push({ name: 'profile' })
-}
-
 const platformStats = computed(() => {
-  const [completed, rating, turnover] = metrics.value
+  const [completed, , turnover] = metrics.value
+  const developerCount = Math.max(latestDeals.value.length * 2, 12)
+  const registeredCount = Math.max(developerCount * 3, 36)
+
   return [
-    { label: '成交需求', value: completed?.value ?? '0 单', icon: '◌' },
-    { label: '开发者', value: `${Math.max(latestDeals.value.length * 2, 12)}+`, icon: '◎' },
-    { label: '需求活跃度', value: `${Math.max(pendingRequirements.value.length * 3, 8)}+`, icon: '◈' },
-    { label: '累计金额', value: turnover?.value ?? '¥ 0.00', icon: '✦' },
-    { label: '综合评价', value: rating?.value ?? '0%', icon: '★' },
+    { label: '注册用户', value: `${registeredCount}+`, icon: '◌' },
+    { label: '开发者', value: `${developerCount}+`, icon: '◎' },
+    { label: '需求完成', value: completed?.value ?? '0 单', icon: '◈' },
+    { label: '交易金额', value: turnover?.value ?? '¥ 0.00', icon: '✦' },
   ]
 })
 
@@ -317,7 +299,8 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
       summary: item.description?.trim() || '需求描述待补充，当前展示为门户精选需求位。',
       budget: typeof item.budget === 'number' ? `¥ ${item.budget.toFixed(0)}` : '待议价',
       status: item.statusLabel,
-      meta: item.updatedAtLabel,
+      badge: item.paymentMethod?.trim() || '平台担保',
+      metaSecondary: '查看详情',
       accent: ['nebula', 'sunset', 'forest', 'frost'][index % 4] ?? 'nebula',
     }))
   }
@@ -328,7 +311,8 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
       summary: '用于课程交付与付费订阅的企业级平台。',
       budget: '¥ 2000-5000',
       status: '建设中',
-      meta: '3 人参与',
+      badge: '定制',
+      metaSecondary: '1 小时前',
       accent: 'nebula',
     },
     {
@@ -336,7 +320,8 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
       summary: '角色立绘与宣传视觉物料一体交付。',
       budget: '¥ 800-1500',
       status: '邀标中',
-      meta: '5 人参与',
+      badge: '美术',
+      metaSecondary: '3 小时前',
       accent: 'sunset',
     },
     {
@@ -344,7 +329,8 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
       summary: 'Minecraft 服务端玩法插件与版本维护。',
       budget: '¥ 1500-3000',
       status: '招募中',
-      meta: '2 人参与',
+      badge: '插件',
+      metaSecondary: '6 小时前',
       accent: 'forest',
     },
     {
@@ -352,7 +338,8 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
       summary: '现代化官网重构，含首页与品牌样式库。',
       budget: '¥ 3000-8000',
       status: '定制开发',
-      meta: '5 小时前',
+      badge: '官网',
+      metaSecondary: '5 小时前',
       accent: 'frost',
     },
   ]
@@ -538,11 +525,6 @@ function selectCoupon(code: string, type: 'amount' | 'percent') {
 function closeDepositCard() {
   depositPolicyAccepted.value = false
   router.replace({ name: 'home' })
-}
-
-function openDealDetail(deal: LatestDealView) {
-  selectedDeal.value = deal
-  dealDetailVisible.value = true
 }
 
 function closeDealDetail() {
@@ -1086,7 +1068,6 @@ async function submitPublishRequirement() {
           <section class="portal-hero">
             <div class="portal-hero__main">
               <div class="portal-hero__copy">
-                <p class="portal-eyebrow">柒叁信息门户</p>
                 <h1>需求定制开发交易平台</h1>
                 <p class="portal-hero__desc">连接需求与能力，让创意变为现实。免费资源、定制需求、开发协作与支付交付在同一门户闭环完成。</p>
 
@@ -1135,7 +1116,6 @@ async function submitPublishRequirement() {
             <div class="portal-section__header">
               <div>
                 <p class="portal-section__eyebrow">热门分类</p>
-                <h2>覆盖编程开发、设计创作到 Minecraft 定制</h2>
               </div>
               <button class="portal-link-btn" type="button"
                 @click="router.push({ name: 'free-resources' })">全部分类</button>
@@ -1149,11 +1129,33 @@ async function submitPublishRequirement() {
             </div>
           </section>
 
+          <section class="portal-section portal-section--workflow">
+            <div class="portal-section__header">
+              <div>
+                <p class="portal-section__eyebrow">交易流程</p>
+              </div>
+            </div>
+            <div class="portal-workflow-grid" aria-label="需求交易流程">
+              <div v-for="(step, index) in workflowSteps" :key="step.step + step.title" class="portal-workflow-item">
+                <article class="portal-step-card" :class="`portal-step-card--${step.accent}`">
+                  <div class="portal-step-card__copy">
+                    <strong><span>{{ step.step }}</span>{{ step.title }}</strong>
+                    <div class="portal-step-card__meta">
+                      <div class="portal-step-card__icon">{{ step.icon }}</div>
+                      <small>{{ step.hint }}</small>
+                    </div>
+                  </div>
+                </article>
+                <span v-if="index < workflowSteps.length - 1" class="portal-step-card__arrow"
+                  aria-hidden="true">›</span>
+              </div>
+            </div>
+          </section>
+
           <section class="portal-section">
             <div class="portal-section__header">
               <div>
                 <p class="portal-section__eyebrow">精选需求</p>
-                <h2>当前门户重点展示的需求与项目卡片</h2>
               </div>
               <button class="portal-link-btn" type="button"
                 @click="router.push({ name: 'requirement-hall' })">更多需求</button>
@@ -1161,17 +1163,21 @@ async function submitPublishRequirement() {
             <div class="portal-spotlight-grid">
               <article v-for="card in spotlightCards" :key="card.title" class="portal-spotlight-card"
                 :class="`portal-spotlight-card--${card.accent}`" @click="openSpotlight(card)">
-                <div class="portal-spotlight-card__cover"></div>
+                <div class="portal-spotlight-card__cover">
+                  <span class="portal-spotlight-card__badge">{{ card.badge }}</span>
+                  <div class="portal-spotlight-card__screen portal-spotlight-card__screen--primary"></div>
+                  <div class="portal-spotlight-card__screen portal-spotlight-card__screen--secondary"></div>
+                  <div class="portal-spotlight-card__screen portal-spotlight-card__screen--tertiary"></div>
+                </div>
                 <div class="portal-spotlight-card__body">
-                  <div class="portal-spotlight-card__topline">
-                    <span class="portal-chip">{{ card.status }}</span>
-                    <span>{{ card.meta }}</span>
-                  </div>
                   <h3>{{ card.title }}</h3>
                   <p>{{ card.summary }}</p>
-                  <div class="portal-spotlight-card__footer">
+                  <div class="portal-spotlight-card__price-row">
                     <strong>{{ card.budget }}</strong>
-                    <span>查看详情</span>
+                    <span class="portal-spotlight-card__status">{{ card.status }}</span>
+                  </div>
+                  <div class="portal-spotlight-card__footer">
+                    <span>{{ card.metaSecondary }}</span>
                   </div>
                 </div>
               </article>
@@ -1181,13 +1187,20 @@ async function submitPublishRequirement() {
 
         <aside class="portal-sidebar">
           <section class="portal-card portal-card--notice">
-            <div class="portal-card__header">
-              <h2>平台公告</h2>
-              <button class="portal-link-btn" type="button" @click="router.push({ name: 'community' })">更多</button>
+            <div class="portal-card__header portal-card__header--notice">
+              <div class="portal-card__title portal-card__title--notice">
+                <span class="portal-notice-head__icon" aria-hidden="true">◔</span>
+                <h2>平台公告</h2>
+              </div>
+              <button class="portal-link-btn portal-link-btn--notice" type="button"
+                @click="router.push({ name: 'community' })">
+                更多
+                <span aria-hidden="true">›</span>
+              </button>
             </div>
             <ul class="portal-notice-list">
               <li v-for="notice in portalNotices" :key="`${notice.title}-${notice.date}`" class="portal-notice-item">
-                <div>
+                <div class="portal-notice-item__main">
                   <strong>{{ notice.title }}</strong>
                   <span v-if="notice.tag" class="portal-tag">{{ notice.tag }}</span>
                 </div>
@@ -1196,31 +1209,26 @@ async function submitPublishRequirement() {
             </ul>
           </section>
 
-          <section id="portal-developers" class="portal-card">
-            <div class="portal-card__header">
-              <h2>平台数据</h2>
+          <section id="portal-developers" class="portal-card portal-card--stats">
+            <div class="portal-card__header portal-card__header--stats">
+              <div class="portal-card__title portal-card__title--stats">
+                <span class="portal-stats-head__icon" aria-hidden="true">◉</span>
+                <h2>平台数据</h2>
+              </div>
               <button class="portal-link-btn" type="button" :disabled="homeRefreshLoading" @click="refreshHomeData">
                 {{ homeRefreshLoading ? '刷新中' : '刷新' }}
               </button>
             </div>
             <div class="portal-stats-grid">
-              <article v-for="stat in platformStats" :key="stat.label" class="portal-stat-item">
+              <article v-for="(stat, index) in platformStats" :key="stat.label" class="portal-stat-item"
+                :class="`portal-stat-item--tone-${index % 4}`">
                 <span class="portal-stat-item__icon">{{ stat.icon }}</span>
-                <div>
-                  <strong>{{ stat.value }}</strong>
+                <div class="portal-stat-item__copy">
                   <span>{{ stat.label }}</span>
+                  <strong>{{ stat.value }}</strong>
                 </div>
               </article>
             </div>
-          </section>
-
-          <section class="portal-card">
-            <div class="portal-card__header">
-              <h2>平台保障</h2>
-            </div>
-            <ul class="portal-safe-list">
-              <li v-for="item in safeguardItems" :key="item">{{ item }}</li>
-            </ul>
           </section>
 
           <section class="portal-card">
@@ -1317,689 +1325,3 @@ async function submitPublishRequirement() {
 
   </main>
 </template>
-
-<style scoped>
-.portal-home {
-  min-height: 100vh;
-  padding: 0 0 40px;
-  background: #f2ede3;
-  color: #1e293b;
-}
-
-.portal-shell {
-  width: min(1280px, calc(100% - 24px));
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.portal-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.58fr) minmax(300px, 0.72fr);
-  gap: 14px;
-  align-items: start;
-}
-
-.portal-main,
-.portal-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.portal-card,
-.portal-quick-card,
-.portal-category-card,
-.portal-step-card,
-.portal-spotlight-card,
-.portal-hero__main {
-  border: 1px solid rgba(228, 234, 246, 0.95);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 10px 28px rgba(90, 120, 180, 0.08);
-  backdrop-filter: blur(10px);
-}
-
-.portal-link-btn,
-.portal-link-btn,
-.portal-inline-action,
-.portal-primary-action,
-.portal-secondary-action {
-  border: 0;
-  font: inherit;
-  cursor: pointer;
-}
-
-.portal-primary-action {
-  padding: 11px 18px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
-  color: #fff;
-  font-weight: 700;
-  box-shadow: 0 16px 28px rgba(37, 99, 235, 0.28);
-}
-
-
-.portal-hero {
-  display: block;
-}
-
-.portal-hero__main {
-  display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
-  gap: 16px;
-  border-radius: 22px;
-  padding: 24px;
-}
-
-.portal-hero__copy {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  justify-content: center;
-}
-
-.portal-eyebrow,
-.portal-section__eyebrow {
-  margin: 0;
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.portal-hero__copy h1 {
-  margin: 0;
-  max-width: 11ch;
-  font-size: clamp(34px, 4.8vw, 54px);
-  line-height: 1.08;
-  letter-spacing: -0.05em;
-  color: #0f172a;
-}
-
-.portal-hero__desc {
-  margin: 0;
-  max-width: 52ch;
-  font-size: 15px;
-  line-height: 1.72;
-  color: #475569;
-}
-
-.portal-signal-list,
-.portal-hero__actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.portal-signal {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(239, 246, 255, 0.96);
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.portal-signal::before {
-  content: '•';
-}
-
-.portal-secondary-action {
-  padding: 10px 16px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.94);
-  color: #1d4ed8;
-  font-weight: 700;
-  border: 1px solid rgba(96, 165, 250, 0.6);
-}
-
-.portal-hero__visual {
-  position: relative;
-  min-height: 308px;
-  border-radius: 22px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.94);
-}
-
-.portal-stage {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-}
-
-.portal-stage__halo {
-  position: absolute;
-  width: 78%;
-  aspect-ratio: 1 / 0.56;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(82, 126, 255, 0.18), rgba(82, 126, 255, 0.02) 70%, transparent 72%);
-  filter: blur(4px);
-}
-
-.portal-stage__core {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  width: 132px;
-  height: 162px;
-  border-radius: 28px;
-  background: linear-gradient(180deg, #7ba4ff, #285cff);
-  color: #fff;
-  font-size: 54px;
-  font-weight: 900;
-  box-shadow: 0 24px 48px rgba(37, 99, 235, 0.24);
-}
-
-.portal-stage__tile {
-  position: absolute;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.88);
-  color: #3568ff;
-  font-size: 22px;
-  font-weight: 800;
-  box-shadow: 0 16px 28px rgba(84, 109, 175, 0.12);
-}
-
-.portal-stage__tile--top {
-  top: 54px;
-  left: 52%;
-}
-
-.portal-stage__tile--left {
-  left: 82px;
-  top: 132px;
-}
-
-.portal-stage__tile--right {
-  right: 74px;
-  top: 108px;
-}
-
-.portal-stage__tile--bottom {
-  bottom: 56px;
-  right: 148px;
-}
-
-.portal-stage__tile--accent {
-  bottom: 102px;
-  left: 132px;
-}
-
-.portal-card {
-  padding: 16px;
-  border-radius: 18px;
-}
-
-.portal-card__header,
-.portal-section__header,
-.portal-spotlight-card__footer,
-.portal-quick-card,
-.portal-notice-item,
-.portal-rank-item,
-.portal-stat-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.portal-card__header h2,
-.portal-section__header h2 {
-  margin: 0;
-  font-size: 18px;
-}
-
-.portal-link-btn,
-.portal-inline-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0;
-  background: transparent;
-  color: #2563eb;
-  font-weight: 700;
-}
-
-.portal-notice-list,
-.portal-safe-list,
-.portal-rank-list {
-  list-style: none;
-  padding: 0;
-  margin: 10px 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.portal-notice-item strong,
-.portal-rank-item__meta strong {
-  display: inline-block;
-  font-size: 14px;
-}
-
-.portal-notice-item div,
-.portal-rank-item__meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.portal-notice-item time,
-.portal-notice-item span,
-.portal-rank-item__meta span,
-.portal-rank-item__score span,
-.portal-stat-item span,
-.portal-category-card span,
-.portal-spotlight-card__topline span,
-.portal-spotlight-card__body p {
-  color: #64748b;
-  font-size: 12px;
-}
-
-.portal-tag,
-.portal-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.portal-stats-grid,
-.portal-category-grid,
-.portal-workflow-grid,
-.portal-spotlight-grid {
-  display: grid;
-  gap: 12px;
-}
-
-.portal-stats-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 12px;
-}
-
-.portal-stat-item {
-  align-items: flex-start;
-  justify-content: flex-start;
-  padding: 10px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.94);
-}
-
-.portal-stat-item__icon,
-.portal-category-card__icon,
-.portal-rank-item__avatar,
-.portal-quick-card__icon {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-}
-
-.portal-stat-item__icon,
-.portal-rank-item__avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.16), rgba(56, 189, 248, 0.16));
-  color: #2563eb;
-  font-weight: 800;
-}
-
-.portal-stat-item strong,
-.portal-rank-item__score strong,
-.portal-category-card strong,
-.portal-spotlight-card h3,
-.portal-quick-card h3 {
-  color: #0f172a;
-}
-
-.portal-safe-list li {
-  position: relative;
-  padding-left: 18px;
-  color: #334155;
-  line-height: 1.6;
-}
-
-.portal-safe-list li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 10px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #22c55e;
-}
-
-.portal-rank-item {
-  align-items: center;
-}
-
-.portal-rank-item__score {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-
-.portal-quick-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.portal-quick-card {
-  padding: 18px;
-  border-radius: 18px;
-  justify-content: flex-start;
-}
-
-.portal-quick-card--gift {
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(240, 245, 255, 0.96)),
-    linear-gradient(90deg, #ffd7d1, transparent);
-}
-
-.portal-quick-card--briefcase {
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 247, 237, 0.96)),
-    linear-gradient(90deg, #ffd6a5, transparent);
-}
-
-.portal-quick-card__icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.94);
-  font-size: 30px;
-  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.85);
-}
-
-.portal-quick-card__copy {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.portal-quick-card__copy h3,
-.portal-section__header h2,
-.portal-spotlight-card h3 {
-  margin: 0;
-}
-
-.portal-quick-card__copy p,
-.portal-category-card span,
-.portal-step-card p,
-.portal-spotlight-card__body p {
-  margin: 0;
-  line-height: 1.65;
-}
-
-.portal-section {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.portal-category-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-
-.portal-category-card,
-.portal-step-card {
-  padding: 18px 16px;
-  border-radius: 18px;
-}
-
-.portal-category-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 8px;
-  min-height: 116px;
-}
-
-.portal-category-card__icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(59, 130, 246, 0.2));
-  color: #1d4ed8;
-  font-size: 24px;
-  font-weight: 800;
-}
-
-.portal-section--workflow {
-  padding: 20px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(228, 234, 246, 0.95);
-}
-
-.portal-workflow-grid {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-
-.portal-step-card {
-  min-height: 104px;
-}
-
-.portal-step-card--violet {
-  box-shadow: inset 0 0 0 1px rgba(124, 58, 237, 0.12);
-}
-
-.portal-step-card--blue {
-  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.12);
-}
-
-.portal-step-card--green {
-  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.12);
-}
-
-.portal-step-card--orange {
-  box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.12);
-}
-
-.portal-step-card--red {
-  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.12);
-}
-
-.portal-step-card strong {
-  display: block;
-  margin-bottom: 8px;
-}
-
-.portal-spotlight-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.portal-spotlight-card {
-  overflow: hidden;
-  border-radius: 18px;
-  cursor: pointer;
-  transition: transform 140ms ease, box-shadow 140ms ease;
-}
-
-.portal-spotlight-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 28px 56px rgba(60, 94, 168, 0.18);
-}
-
-.portal-spotlight-card__cover {
-  height: 142px;
-}
-
-.portal-spotlight-card--nebula .portal-spotlight-card__cover {
-  background: linear-gradient(135deg, #2f3f9e, #5f7df2);
-}
-
-.portal-spotlight-card--sunset .portal-spotlight-card__cover {
-  background: linear-gradient(135deg, #9a3412, #fb923c);
-}
-
-.portal-spotlight-card--forest .portal-spotlight-card__cover {
-  background: linear-gradient(135deg, #2e7d32, #84cc16);
-}
-
-.portal-spotlight-card--frost .portal-spotlight-card__cover {
-  background: linear-gradient(135deg, #1d4ed8, #7dd3fc);
-}
-
-.portal-spotlight-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-}
-
-.portal-spotlight-card__topline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.portal-spotlight-card__footer strong {
-  font-size: 16px;
-}
-
-.portal-mobile-dock {
-  position: sticky;
-  bottom: 14px;
-  z-index: 8;
-  display: none;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-  padding: 10px;
-  border-radius: 18px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 18px 40px rgba(76, 103, 172, 0.14);
-  backdrop-filter: blur(18px);
-}
-
-.portal-mobile-dock__item {
-  display: grid;
-  place-items: center;
-  gap: 4px;
-  min-height: 58px;
-  border: 0;
-  border-radius: 16px;
-  background: transparent;
-  color: #475569;
-  cursor: pointer;
-}
-
-.portal-mobile-dock__item span {
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.portal-mobile-dock__item small {
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.portal-mobile-dock__item.active,
-.portal-mobile-dock__item--primary {
-  color: #1d4ed8;
-}
-
-.portal-mobile-dock__item--primary {
-  background: rgba(219, 234, 254, 0.88);
-}
-
-@media (max-width: 1200px) {
-
-  .portal-layout,
-  .portal-hero__main,
-  .portal-category-grid,
-  .portal-spotlight-grid,
-  .portal-workflow-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .portal-main,
-  .portal-sidebar {
-    gap: 12px;
-  }
-
-  .portal-hero__copy h1 {
-    max-width: none;
-  }
-}
-
-@media (max-width: 900px) {
-  .portal-home {
-    padding: 0 0 36px;
-  }
-
-  .portal-shell {
-    width: calc(100% - 16px);
-  }
-
-  .portal-layout,
-  .portal-hero__actions,
-  .portal-quick-grid,
-  .portal-hero__main,
-  .portal-category-grid,
-  .portal-spotlight-grid,
-  .portal-workflow-grid,
-  .portal-stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .portal-mobile-dock {
-    display: grid;
-  }
-
-  .portal-quick-grid,
-  .portal-category-grid,
-  .portal-spotlight-grid,
-  .portal-workflow-grid {
-    display: grid;
-  }
-
-  .portal-stage__core {
-    width: 118px;
-    height: 148px;
-    font-size: 48px;
-  }
-
-  .portal-stage__tile {
-    width: 58px;
-    height: 58px;
-    font-size: 18px;
-  }
-
-  .portal-stage__tile--left {
-    left: 26px;
-  }
-
-  .portal-stage__tile--right {
-    right: 24px;
-  }
-
-  .portal-stage__tile--accent {
-    left: 52px;
-  }
-
-  .portal-stage__tile--bottom {
-    right: 72px;
-  }
-}
-</style>
