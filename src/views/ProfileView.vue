@@ -1138,7 +1138,7 @@ onMounted(async () => {
               <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
                 formatResourceVisibility(item) }}</small>
               <small v-if="hasBoundResource(item)" class="requirement-note">已发布版本：{{ publishedVersionCount(item)
-              }}</small>
+                }}</small>
               <small v-if="hasBoundResource(item) && !canToggleRequirementResourceVisibility(item)"
                 class="requirement-note">资源公开/私有切换需在已付尾款后开放</small>
               <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">
@@ -1161,7 +1161,7 @@ onMounted(async () => {
               <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{
                 item.review_note }}</small>
               <small class="requirement-note">{{ item.subscribe_status_change ? '已订阅该需求的状态变化通知' : '未订阅该需求的状态变化通知'
-                }}</small>
+              }}</small>
             </div>
             <span class="requirement-status">{{ formatRequirementStatus(item.status) }}</span>
             <span>{{ formatBudget(item.budget) }}</span>
@@ -1251,106 +1251,108 @@ onMounted(async () => {
       v-model:publishAcceptance="editAcceptance" :publishLoading="editLoading" @close="closeEditModal"
       @submit="submitRequirementResubmit" />
 
-    <div v-if="securityVisible" class="modal-wrap modal-wrap--account-security" @click.self="closeSecurityModal">
-      <section class="pay-modal account-security-modal" aria-label="账户安全设置弹窗">
-        <div class="account-security-header">
-          <div>
-            <h3>账户安全</h3>
-            <p>在这里修改用户名、绑定邮箱和登录密码。</p>
+    <Teleport to="body">
+      <div v-if="securityVisible" class="modal-wrap modal-wrap--account-security" @click.self="closeSecurityModal">
+        <section class="pay-modal account-security-modal" aria-label="账户安全设置弹窗">
+          <div class="account-security-header">
+            <div>
+              <h3>账户安全</h3>
+              <p>在这里修改用户名、绑定邮箱和登录密码。</p>
+            </div>
+            <button class="ghost small" type="button" @click="closeSecurityModal">关闭</button>
           </div>
-          <button class="ghost small" type="button" @click="closeSecurityModal">关闭</button>
-        </div>
 
-        <div class="account-security-body">
-          <section class="wallet-section account-security-section">
-            <div class="wallet-header">
-              <h3>修改用户名</h3>
-            </div>
-            <div class="profile-update-row">
-              <input v-model="newUsername" type="text" placeholder="请输入新的用户名" :disabled="usernameLoading" />
-              <button class="ghost small" type="button" :disabled="usernameLoading" @click="updateUsername">
-                {{ usernameLoading ? '保存中...' : '保存用户名' }}
-              </button>
-            </div>
-          </section>
-
-          <section class="wallet-section account-security-section">
-            <div class="wallet-header">
-              <h3>修改邮箱</h3>
-              <small class="requirement-note">当前邮箱：{{ profileEmail || '未绑定邮箱' }}</small>
-            </div>
-            <div class="profile-update-row">
-              <input v-model="newEmail" type="email" placeholder="请输入新的邮箱地址"
-                :disabled="emailLoading || emailCodeSending" />
-              <button class="ghost small" type="button" :disabled="emailLoading || emailCodeSending"
-                @click="sendEmailVerificationCode">
-                {{ emailCodeSending ? '发送中...' : '发送验证码' }}
-              </button>
-            </div>
-            <div class="profile-update-row">
-              <input v-model="emailCode" type="text" maxlength="6" placeholder="请输入 6 位邮箱验证码"
-                :disabled="emailLoading" />
-              <button class="ghost small" type="button" :disabled="emailLoading" @click="submitEmailChange">
-                {{ emailLoading ? '保存中...' : '保存邮箱' }}
-              </button>
-            </div>
-          </section>
-
-          <section class="wallet-section account-security-section">
-            <div class="wallet-header">
-              <h3>修改密码</h3>
-              <small class="requirement-note">通过当前绑定邮箱验证码完成验证，并进行二次确认。</small>
-            </div>
-            <div class="profile-update-row">
-              <input v-model="newPassword" type="password" placeholder="请输入新的密码，至少 6 位"
-                :disabled="passwordLoading || passwordCodeSending" />
-              <button class="ghost small" type="button"
-                :disabled="passwordLoading || passwordCodeSending || !profileEmail"
-                @click="sendPasswordVerificationCode">
-                {{ passwordCodeSending ? '发送中...' : '发送验证码' }}
-              </button>
-            </div>
-            <div class="profile-update-row profile-update-row--triple">
-              <input v-model="confirmPassword" type="password" placeholder="请再次输入新密码" :disabled="passwordLoading" />
-              <input v-model="passwordCode" type="text" maxlength="6" placeholder="请输入 6 位邮箱验证码"
-                :disabled="passwordLoading" />
-              <button class="ghost small" type="button" :disabled="passwordLoading || !profileEmail"
-                @click="submitPasswordChange">
-                {{ passwordLoading ? '保存中...' : '保存密码' }}
-              </button>
-            </div>
-          </section>
-
-          <section class="wallet-section account-security-section">
-            <div class="wallet-header">
-              <h3>消息订阅</h3>
-              <small class="requirement-note">订阅后，将按你的偏好接收相关通知。</small>
-            </div>
-            <div class="subscription-settings">
-              <label class="subscription-card">
-                <div class="subscription-copy">
-                  <strong>官方活动</strong>
-                  <small class="requirement-note">接收官方公告、活动和运营消息。</small>
-                </div>
-                <span class="subscription-switch-wrap">
-                  <input v-model="subscriptionOfficialActivity" class="subscription-switch-input" type="checkbox"
-                    :disabled="subscriptionLoading" />
-                  <span class="subscription-switch" aria-hidden="true">
-                    <span class="subscription-switch__thumb"></span>
-                  </span>
-                </span>
-              </label>
-
-              <div class="subscription-actions">
-                <button class="ghost small" type="button" :disabled="subscriptionLoading" @click="saveSubscriptions">
-                  {{ subscriptionLoading ? '保存中...' : '保存订阅设置' }}
+          <div class="account-security-body">
+            <section class="wallet-section account-security-section">
+              <div class="wallet-header">
+                <h3>修改用户名</h3>
+              </div>
+              <div class="profile-update-row">
+                <input v-model="newUsername" type="text" placeholder="请输入新的用户名" :disabled="usernameLoading" />
+                <button class="ghost small" type="button" :disabled="usernameLoading" @click="updateUsername">
+                  {{ usernameLoading ? '保存中...' : '保存用户名' }}
                 </button>
               </div>
-            </div>
-          </section>
-        </div>
-      </section>
-    </div>
+            </section>
+
+            <section class="wallet-section account-security-section">
+              <div class="wallet-header">
+                <h3>修改邮箱</h3>
+                <small class="requirement-note">当前邮箱：{{ profileEmail || '未绑定邮箱' }}</small>
+              </div>
+              <div class="profile-update-row">
+                <input v-model="newEmail" type="email" placeholder="请输入新的邮箱地址"
+                  :disabled="emailLoading || emailCodeSending" />
+                <button class="ghost small" type="button" :disabled="emailLoading || emailCodeSending"
+                  @click="sendEmailVerificationCode">
+                  {{ emailCodeSending ? '发送中...' : '发送验证码' }}
+                </button>
+              </div>
+              <div class="profile-update-row">
+                <input v-model="emailCode" type="text" maxlength="6" placeholder="请输入 6 位邮箱验证码"
+                  :disabled="emailLoading" />
+                <button class="ghost small" type="button" :disabled="emailLoading" @click="submitEmailChange">
+                  {{ emailLoading ? '保存中...' : '保存邮箱' }}
+                </button>
+              </div>
+            </section>
+
+            <section class="wallet-section account-security-section">
+              <div class="wallet-header">
+                <h3>修改密码</h3>
+                <small class="requirement-note">通过当前绑定邮箱验证码完成验证，并进行二次确认。</small>
+              </div>
+              <div class="profile-update-row">
+                <input v-model="newPassword" type="password" placeholder="请输入新的密码，至少 6 位"
+                  :disabled="passwordLoading || passwordCodeSending" />
+                <button class="ghost small" type="button"
+                  :disabled="passwordLoading || passwordCodeSending || !profileEmail"
+                  @click="sendPasswordVerificationCode">
+                  {{ passwordCodeSending ? '发送中...' : '发送验证码' }}
+                </button>
+              </div>
+              <div class="profile-update-row profile-update-row--triple">
+                <input v-model="confirmPassword" type="password" placeholder="请再次输入新密码" :disabled="passwordLoading" />
+                <input v-model="passwordCode" type="text" maxlength="6" placeholder="请输入 6 位邮箱验证码"
+                  :disabled="passwordLoading" />
+                <button class="ghost small" type="button" :disabled="passwordLoading || !profileEmail"
+                  @click="submitPasswordChange">
+                  {{ passwordLoading ? '保存中...' : '保存密码' }}
+                </button>
+              </div>
+            </section>
+
+            <section class="wallet-section account-security-section">
+              <div class="wallet-header">
+                <h3>消息订阅</h3>
+                <small class="requirement-note">订阅后，将按你的偏好接收相关通知。</small>
+              </div>
+              <div class="subscription-settings">
+                <label class="subscription-card">
+                  <div class="subscription-copy">
+                    <strong>官方活动</strong>
+                    <small class="requirement-note">接收官方公告、活动和运营消息。</small>
+                  </div>
+                  <span class="subscription-switch-wrap">
+                    <input v-model="subscriptionOfficialActivity" class="subscription-switch-input" type="checkbox"
+                      :disabled="subscriptionLoading" />
+                    <span class="subscription-switch" aria-hidden="true">
+                      <span class="subscription-switch__thumb"></span>
+                    </span>
+                  </span>
+                </label>
+
+                <div class="subscription-actions">
+                  <button class="ghost small" type="button" :disabled="subscriptionLoading" @click="saveSubscriptions">
+                    {{ subscriptionLoading ? '保存中...' : '保存订阅设置' }}
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </Teleport>
 
     <div v-if="payVisible && payRequirement" class="modal-wrap" @click.self="closePayModal">
       <section class="pay-modal" aria-label="需求支付弹窗">

@@ -45,12 +45,6 @@ const resourceGuide = [
   { title: '进入开发者端', detail: '若你需要上传、维护或版本管理，请直接进入开发者工作台。' },
 ]
 
-const platformFeeds = [
-  '免费资源目录会根据标签树自动扩展，无需手工维护导航。',
-  '当前部分专题卡片为占位数据，用于完善门户视觉与交互层级。',
-  '后续可接入资源热度、下载量和最近更新记录。',
-]
-
 function buildFreeResourceSummary(root: McTagCatalogRoot) {
   const entryCount = root.entries.length
   const tagCount = root.entries.reduce(
@@ -159,17 +153,6 @@ onMounted(() => {
                 <strong>{{ item.title }}</strong>
                 <p>{{ item.detail }}</p>
               </div>
-            </li>
-          </ul>
-        </section>
-
-        <section class="portal-page__aside-card">
-          <div class="portal-page__aside-head">
-            <h3>平台提示</h3>
-          </div>
-          <ul class="portal-page__list">
-            <li v-for="item in platformFeeds" :key="item" class="portal-page__list-item">
-              <strong>{{ item }}</strong>
             </li>
           </ul>
         </section>

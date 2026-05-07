@@ -1,6 +1,7 @@
 /* === 个人中心：钱包、需求单、优惠券 === */
 
-.profile-page {
+.profile-page,
+.modal-wrap--account-security {
   --profile-card-bg: rgba(255, 255, 255, 0.94);
   --profile-card-bg-strong: #ffffff;
   --profile-card-border: rgba(224, 232, 255, 0.96);
@@ -17,6 +18,10 @@
   --profile-warning-text: #92400e;
   --profile-danger-soft: rgba(239, 68, 68, 0.12);
   --profile-danger-text: #b42318;
+}
+
+.modal-wrap--account-security {
+  z-index: 120;
 }
 
 .profile-update-row {
@@ -472,19 +477,23 @@
 }
 
 .profile-page button.ghost,
-.profile-page button.ghost.small {
+.profile-page button.ghost.small,
+.modal-wrap--account-security button.ghost,
+.modal-wrap--account-security button.ghost.small {
   border-color: rgba(209, 220, 243, 0.95);
   background: #ffffff;
   color: var(--profile-text-main);
   box-shadow: 0 8px 20px rgba(76, 103, 172, 0.06);
 }
 
-.profile-page button.ghost:hover:not(:disabled) {
+.profile-page button.ghost:hover:not(:disabled),
+.modal-wrap--account-security button.ghost:hover:not(:disabled) {
   background: #f8fbff;
   border-color: rgba(125, 155, 225, 0.92);
   box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
 }
 
-.profile-page .account-security-modal .requirement-note {
+.profile-page .account-security-modal .requirement-note,
+.modal-wrap--account-security .account-security-modal .requirement-note {
   color: var(--profile-text-sub);
 }
