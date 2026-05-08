@@ -70,12 +70,6 @@ const authTypeText = computed(() => {
   }
   return map[form.authType]
 })
-const pageSignals = computed(() => [
-  `当前状态：${statusText.value}`,
-  `证件类型：${authTypeText.value}`,
-  redirectTarget.value ? '审核通过后会自动返回业务页' : '提交后等待管理员审核',
-])
-
 function patchForm(record: UserRealnameVerification) {
   form.authType = record.auth_type
   form.realName = record.real_name ?? ''

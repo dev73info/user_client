@@ -936,12 +936,12 @@ onMounted(async () => {
               <strong>{{ item.title }}</strong>
               <span>{{ item.requirement_id }}</span>
               <small class="requirement-note">{{ paymentModeLabel(item) }} · {{ paymentModeHint(item)
-              }}</small>
+                }}</small>
               <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
                 formatResourceVisibility(item) }}</small>
               <small v-if="hasBoundResource(item)" class="requirement-note">已发布版本：{{
                 publishedVersionCount(item)
-              }}</small>
+                }}</small>
               <small v-if="hasBoundResource(item) && !canToggleRequirementResourceVisibility(item)"
                 class="requirement-note">资源公开/私有切换需在{{ isSelfManagedRequirement(item) ? '需求完成后' :
                   '已付尾款后' }}开放</small>
@@ -969,10 +969,10 @@ onMounted(async () => {
                 item.review_note }}</small>
               <small class="requirement-note">{{ item.subscribe_status_change ? '已订阅该需求的状态变化通知' :
                 '未订阅该需求的状态变化通知'
-              }}</small>
+                }}</small>
               <small v-if="canOpenConversation(item)" class="requirement-note">{{
                 conversationLastMessageText(item)
-              }}</small>
+                }}</small>
             </div>
             <span class="requirement-status">{{ formatRequirementStatus(item.status) }}</span>
             <span>{{ formatBudget(item.budget) }}</span>
@@ -1118,7 +1118,7 @@ onMounted(async () => {
         <div class="actions">
           <button class="ghost" type="button" @click="closeFinalPaymentConfirm">取消</button>
           <button class="ghost" type="button" @click="confirmFinalPaymentRequest">{{ finalPaymentConfirmButton
-          }}</button>
+            }}</button>
         </div>
       </section>
     </div>
@@ -1176,6 +1176,13 @@ onMounted(async () => {
 <style scoped>
 .my-requirements-page {
   gap: 16px;
+}
+
+.my-requirements-summary.wallet-section {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .my-requirements-summary__grid {

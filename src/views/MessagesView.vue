@@ -295,20 +295,7 @@ watch(
 
 <template>
   <main class="page-shell custom-page-shell messages-page">
-    <section class="messages-head">
-      <div class="messages-head__copy">
-        <p>消息</p>
-        <h1>需求沟通</h1>
-        <span>集中查看已接取需求的用户与开发者沟通会话。</span>
-      </div>
-      <div class="messages-head__actions">
-        <button class="ghost small" type="button" :disabled="loading" @click="loadMessages(true)">
-          {{ loading ? '刷新中...' : '刷新消息' }}
-        </button>
-      </div>
-    </section>
-
-    <section class="messages-summary" aria-label="消息概览">
+    <section v-if="!activeRequirementId" class="messages-summary" aria-label="消息概览">
       <article class="messages-summary__item">
         <strong>{{ conversations.length }}</strong>
         <span>已开启会话</span>
@@ -333,16 +320,21 @@ watch(
           <h2>会话列表</h2>
           <p>点击任意会话即可查看历史消息并继续回复。</p>
         </div>
-        <div class="messages-filter" role="tablist" aria-label="消息筛选">
-          <button type="button" :class="{ active: activeFilter === 'all' }" @click="activeFilter = 'all'">
-            全部
+        <div class="messages-panel__tools">
+          <button class="ghost small" type="button" :disabled="loading" @click="loadMessages(true)">
+            {{ loading ? '刷新中...' : '刷新消息' }}
           </button>
-          <button type="button" :class="{ active: activeFilter === 'active' }" @click="activeFilter = 'active'">
-            已开启
-          </button>
-          <button type="button" :class="{ active: activeFilter === 'pending' }" @click="activeFilter = 'pending'">
-            待同步
-          </button>
+          <div class="messages-filter" role="tablist" aria-label="消息筛选">
+            <button type="button" :class="{ active: activeFilter === 'all' }" @click="activeFilter = 'all'">
+              全部
+            </button>
+            <button type="button" :class="{ active: activeFilter === 'active' }" @click="activeFilter = 'active'">
+              已开启
+            </button>
+            <button type="button" :class="{ active: activeFilter === 'pending' }" @click="activeFilter = 'pending'">
+              待同步
+            </button>
+          </div>
         </div>
       </header>
 
@@ -381,55 +373,6 @@ watch(
   align-content: start;
   gap: 12px;
   min-height: 0;
-}
-
-.messages-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 16px 18px;
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 8px 20px rgba(76, 103, 172, 0.06);
-}
-
-.messages-head__copy {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.messages-head__copy p,
-.messages-head__copy h1,
-.messages-head__copy span {
-  margin: 0;
-}
-
-.messages-head__copy p {
-  color: #4f8cff;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.messages-head__copy h1 {
-  color: #0f172a;
-  font-size: 26px;
-  line-height: 1.15;
-}
-
-.messages-head__copy span {
-  color: #5b6475;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.messages-head__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
 }
 
 .messages-summary {
@@ -494,6 +437,14 @@ watch(
   margin-top: 4px;
   color: #64748b;
   font-size: 13px;
+}
+
+.messages-panel__tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .messages-filter {
@@ -661,18 +612,14 @@ watch(
 
 @media (max-width: 820px) {
 
-  .messages-head,
-  .messages-panel__header {
+  .messages-panel__header,
+  .messages-panel__tools {
     flex-direction: column;
   }
 
-  .messages-head__actions,
+  .messages-panel__tools,
   .messages-filter {
     width: 100%;
-  }
-
-  .messages-head__actions .ghost.small {
-    flex: 1;
   }
 
   .messages-summary {
@@ -712,7 +659,6 @@ watch(
 
 @media (max-width: 420px) {
 
-  .messages-head,
   .messages-panel {
     padding: 14px;
   }

@@ -107,12 +107,6 @@ const stats = computed(() => {
   }
 })
 
-const pageSignals = computed(() => [
-  `已关联资源 ${stats.value.total}`,
-  `公开中 ${stats.value.publicCount}`,
-  `私有中 ${stats.value.privateCount}`,
-])
-
 function formatUpdatedAt(value: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
@@ -332,10 +326,9 @@ onMounted(() => {
 .custom-resource-browser__filters,
 .custom-resource-browser__card,
 .custom-resource-browser__empty {
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: 0 18px 42px rgba(76, 103, 172, 0.12);
-  backdrop-filter: blur(18px);
+  border: 1px solid rgba(224, 232, 255, 0.96);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 26px rgba(76, 103, 172, 0.08);
 }
 
 .custom-resource-browser__filters {
@@ -440,20 +433,20 @@ onMounted(() => {
 .custom-resource-browser__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: 14px;
 }
 
 .custom-resource-browser__card {
   display: flex;
   gap: 16px;
-  padding: 18px;
-  border-radius: 22px;
+  padding: 16px;
+  border-radius: 16px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .custom-resource-browser__card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 24px 40px rgba(76, 103, 172, 0.16);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px rgba(76, 103, 172, 0.12);
 }
 
 .custom-resource-browser__cover {
@@ -462,7 +455,7 @@ onMounted(() => {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  border-radius: 18px;
+  border-radius: 14px;
   font-size: 34px;
   color: #fff;
   background: linear-gradient(135deg, #3b82f6, #2563eb);
@@ -567,13 +560,13 @@ onMounted(() => {
 .custom-resource-browser__empty {
   grid-column: 1 / -1;
   display: flex;
-  min-height: 260px;
+  min-height: 200px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 12px;
   padding: 32px;
-  border-radius: 24px;
+  border-radius: 16px;
   text-align: center;
 }
 

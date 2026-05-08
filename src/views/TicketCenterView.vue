@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 
 import {
   closeTicket,
@@ -17,7 +16,6 @@ import {
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
-const router = useRouter()
 const auth = useAuthStore()
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -47,11 +45,6 @@ const ticketStats = computed(() => ({
   pending: tickets.value.filter((item) => item.status === 'open' || item.status === 'processing').length,
   resolved: tickets.value.filter((item) => item.status === 'resolved' || item.status === 'closed').length,
 }))
-const pageSignals = computed(() => [
-  `全部工单 ${ticketStats.value.total}`,
-  `处理中 ${ticketStats.value.pending}`,
-  `已完成 ${ticketStats.value.resolved}`,
-])
 
 function formatTime(value?: string | null) {
   if (!value) {
@@ -235,34 +228,6 @@ onMounted(async () => {
 
 <template>
   <main class="portal-page ticket-page-shell">
-    <section class="portal-page__hero">
-      <div class="portal-page__hero-copy">
-        <p class="portal-page__eyebrow">Ticket Center</p>
-        <h1>我的工单</h1>
-        <p>这里集中处理售后、协助和问题反馈。你可以发起新工单，也可以持续跟进已有会话，当前页已统一到门户子页的视觉体系。</p>
-
-        <div class="portal-page__signal-list">
-          <span v-for="signal in pageSignals" :key="signal" class="portal-page__signal">{{ signal }}</span>
-        </div>
-
-        <div class="portal-page__hero-actions">
-          <button class="portal-page__primary" type="button" @click="router.push({ name: 'workbench' })">工作台总览</button>
-          <button class="portal-page__secondary" type="button"
-            @click="router.push({ name: 'workbench-resources' })">我的资源</button>
-        </div>
-      </div>
-
-      <div class="portal-page__hero-visual" aria-hidden="true">
-        <div class="portal-page__hero-orbit">
-          <div class="portal-page__hero-core">单</div>
-          <div class="portal-page__hero-float portal-page__hero-float--one">问</div>
-          <div class="portal-page__hero-float portal-page__hero-float--two">答</div>
-          <div class="portal-page__hero-float portal-page__hero-float--three">服</div>
-          <div class="portal-page__hero-float portal-page__hero-float--four">务</div>
-        </div>
-      </div>
-    </section>
-
     <section class="portal-page__stats">
       <article class="portal-page__stat-card">
         <strong>{{ ticketStats.total }}</strong>
@@ -345,7 +310,7 @@ onMounted(async () => {
             <span class="ticket-status-pill" :class="`is-${ticket.status}`">{{ formatStatus(ticket.status) }}</span>
           </div>
           <p class="ticket-list-item__summary">{{ ticket.category || '未分类' }} · 优先级 {{ formatPriority(ticket.priority)
-          }}</p>
+            }}</p>
           <div class="ticket-list-item__meta">
             <span class="ticket-list-item__ticket-id">{{ ticket.ticket_id }}</span>
             <time class="ticket-list-item__time">{{ formatTime(ticket.updated_at) }}</time>
@@ -426,13 +391,13 @@ onMounted(async () => {
 <style scoped>
 .ticket-page-shell {
   display: grid;
-  gap: 22px;
+  gap: 16px;
 }
 
 .ticket-compose-panel,
 .ticket-list-panel,
 .ticket-detail-panel {
-  padding: 24px;
+  padding: 18px;
 }
 
 .panel-head--stack {

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 
 import {
   createDevWithdrawalRequest,
@@ -13,7 +12,6 @@ import {
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
 
-const router = useRouter()
 const auth = useAuthStore()
 const { showToast } = useToast()
 
@@ -135,28 +133,24 @@ async function submitWithdrawal() {
 <template>
   <div class="dev-page dev-withdraw-page">
 
-    <div class="dev-grid dev-grid--three">
-      <el-card shadow="never" class="dev-surface-card dev-surface-card--soft">
-        <div class="dev-stat dev-stat--compact">
-          <span class="dev-stat__label">当前可提现</span>
-          <span class="dev-stat__value">{{ money(summary?.withdrawable_balance_cny) }}</span>
-          <span class="dev-stat__hint">只会从已收尾款中扣减已提现和审核中的金额</span>
-        </div>
-      </el-card>
-      <el-card shadow="never" class="dev-surface-card dev-surface-card--soft">
-        <div class="dev-stat dev-stat--compact">
-          <span class="dev-stat__label">审核中金额</span>
-          <span class="dev-stat__value">{{ money(summary?.pending_withdraw_cny) }}</span>
-          <span class="dev-stat__hint">包含待审核和已审核待打款的提现申请</span>
-        </div>
-      </el-card>
-      <el-card shadow="never" class="dev-surface-card dev-surface-card--soft">
-        <div class="dev-stat dev-stat--compact">
-          <span class="dev-stat__label">累计已提现</span>
-          <span class="dev-stat__value">{{ money(summary?.paid_withdraw_cny) }}</span>
-          <span class="dev-stat__hint">管理员标记已打款后会累计到这里</span>
-        </div>
-      </el-card>
+    <div class="dev-withdraw-meta-strip" v-loading="loading">
+      <div class="dev-withdraw-meta-strip__item">
+        <span class="dev-withdraw-meta-strip__label">当前可提现</span>
+        <span class="dev-withdraw-meta-strip__value">{{ money(summary?.withdrawable_balance_cny) }}</span>
+        <span class="dev-withdraw-meta-strip__hint">从已收尾款扣减已提现和审核中金额</span>
+      </div>
+      <div class="dev-withdraw-meta-strip__divider" />
+      <div class="dev-withdraw-meta-strip__item">
+        <span class="dev-withdraw-meta-strip__label">审核中金额</span>
+        <span class="dev-withdraw-meta-strip__value">{{ money(summary?.pending_withdraw_cny) }}</span>
+        <span class="dev-withdraw-meta-strip__hint">待审核和待打款申请会先锁定余额</span>
+      </div>
+      <div class="dev-withdraw-meta-strip__divider" />
+      <div class="dev-withdraw-meta-strip__item">
+        <span class="dev-withdraw-meta-strip__label">累计已提现</span>
+        <span class="dev-withdraw-meta-strip__value">{{ money(summary?.paid_withdraw_cny) }}</span>
+        <span class="dev-withdraw-meta-strip__hint">管理员标记已打款后累计到这里</span>
+      </div>
     </div>
 
     <div class="dev-grid dev-grid--two">
@@ -245,7 +239,54 @@ async function submitWithdrawal() {
 
 <style scoped>
 .dev-withdraw-page {
-  gap: 24px;
+  gap: 16px;
+}
+
+.dev-withdraw-meta-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 18px;
+  padding: 18px 20px;
+  border: 1px solid rgba(223, 210, 168, 0.64);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 250, 237, 0.86));
+  box-shadow: 0 14px 32px rgba(105, 78, 18, 0.08);
+}
+
+.dev-withdraw-meta-strip__item {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  align-content: start;
+}
+
+.dev-withdraw-meta-strip__divider {
+  width: 1px;
+  min-height: 62px;
+  background: linear-gradient(180deg, transparent, rgba(223, 210, 168, 0.82), transparent);
+}
+
+.dev-withdraw-meta-strip__label {
+  color: var(--dev-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dev-withdraw-meta-strip__value {
+  overflow: hidden;
+  color: var(--dev-ink);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dev-withdraw-meta-strip__hint {
+  color: var(--dev-muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .dev-withdraw-form {
@@ -268,5 +309,18 @@ async function submitWithdrawal() {
 .dev-withdraw-table__title {
   font-weight: 700;
   color: var(--dev-ink);
+}
+
+@media (max-width: 900px) {
+  .dev-withdraw-meta-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .dev-withdraw-meta-strip__divider {
+    width: 100%;
+    min-height: 1px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(223, 210, 168, 0.82), transparent);
+  }
 }
 </style>
