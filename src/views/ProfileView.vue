@@ -3,8 +3,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PublishModal from '@/components/PublishModal.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
-import DevOverviewView from '@dev/views/DevOverviewView.vue'
-import { buildDevPortalUrl } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { getMyRealnameVerification, type UserRealnameStatus } from '@/api/realname'
@@ -27,14 +25,9 @@ import {
   commentRequirement as commentRequirementApi,
   listRequirements,
   requestRequirementFinalPayment as requestRequirementFinalPaymentApi,
-  reviewRequirementResourceDelete as reviewRequirementResourceDeleteApi,
   resubmitRequirement as resubmitRequirementApi,
-  updateRequirementSubscription as updateRequirementSubscriptionApi,
-  updateRequirementResourceVisibility as updateRequirementResourceVisibilityApi,
   type RequirementItem,
   type RequirementPaymentMode,
-  type RequirementPendingResourceVersionDeleteRequest,
-  type RequirementResourceVisibility,
   type RequirementStatus,
 } from '@/api/requirements'
 import {
@@ -75,9 +68,6 @@ const editPaymentMode = ref<RequirementPaymentMode>('self_managed')
 const editLoading = ref(false)
 const realnameStatus = ref<UserRealnameStatus | 'none' | ''>('')
 const realnameLoading = ref(false)
-const requirementSubscriptionLoadingId = ref<string | null>(null)
-const resourceVisibilityLoadingId = ref<string | null>(null)
-const resourceVersionDeleteReviewLoadingId = ref<string | null>(null)
 const finalPaymentConfirmVisible = ref(false)
 const finalPaymentConfirmTarget = ref<RequirementItem | null>(null)
 const completionConfirmVisible = ref(false)
@@ -87,9 +77,6 @@ const conversationRequirement = ref<RequirementItem | null>(null)
 const conversationLoading = ref(false)
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
 const completionLoading = ref(false)
-const expandedVersionDeleteReviewRequirementId = ref<string | null>(null)
-const versionDeleteRejectTargetId = ref<number | null>(null)
-const versionDeleteRejectNotes = ref<Record<number, string>>({})
 const depositRatioPercent = ref(20)
 const { showToast } = useToast()
 
@@ -97,28 +84,45 @@ const amountCoupons = computed(() => coupons.value.filter((item) => item.discoun
 const discountCoupons = computed(() => coupons.value.filter((item) => item.discount_type === 'percent'))
 const conversationCards = computed(() => myRequirements.value.filter(canOpenConversation))
 const availableConversationCount = computed(() => conversationCards.value.length)
-
-function formatRange(item: CouponItem) {
-  if (!item.starts_at && !item.ends_at) {
-    return '永久有效'
+const usableCouponCount = computed(() => coupons.value.filter((item) => item.status !== 'used').length)
+const accountEmailLabel = computed(() => profileEmail.value || '未绑定邮箱')
+const subscriptionLabel = computed(() => (subscriptionOfficialActivity.value ? '已订阅' : '未订阅'))
+const realnameLabel = computed(() => {
+  if (realnameLoading.value) {
+    return '同步中'
   }
-
-  const parts: string[] = []
-  if (item.starts_at) {
-    parts.push(`起始：${item.starts_at.replace('T', ' ')}`)
+  if (realnameStatus.value === 'approved') {
+    return '已认证'
   }
-  if (item.ends_at) {
-    parts.push(`截止：${item.ends_at.replace('T', ' ')}`)
+  if (realnameStatus.value === 'pending') {
+    return '审核中'
   }
-  return parts.join('，')
-}
-
-function formatDiscount(item: CouponItem) {
-  if (item.discount_type === 'amount') {
-    return `减免 ¥${item.discount_value.toFixed(2)}`
+  if (realnameStatus.value === 'rejected') {
+    return '已驳回'
   }
-  return `折扣 ${item.discount_value.toFixed(1)}%${item.max_discount_cny != null ? `，上限 ¥${item.max_discount_cny.toFixed(2)}` : ''}`
-}
+  return '未认证'
+})
+const requirementStats = computed(() => ({
+  total: myRequirements.value.length,
+  pending: myRequirements.value.filter((item) => item.status === 'pending_review' || item.status === 'pending_deposit').length,
+  active: myRequirements.value.filter((item) => item.status === 'deposit_paid' || item.status === 'in_development' || item.status === 'pending_final').length,
+  payment: myRequirements.value.filter((item) => canPay(item.status, item)).length,
+  completed: myRequirements.value.filter((item) => item.status === 'final_paid' || item.status === 'completed').length,
+}))
+const sortedRequirements = computed(() =>
+  [...myRequirements.value].sort((left, right) => requirementTimeValue(right.updated_at) - requirementTimeValue(left.updated_at)),
+)
+const actionableRequirements = computed(() =>
+  sortedRequirements.value
+    .filter((item) => hasPendingResourceVersionDeleteReview(item) || canRequestFinalPayment(item) || canPay(item.status, item) || canComplete(item) || canResubmit(item.status) || canComment(item.status))
+    .slice(0, 4),
+)
+const recentRequirements = computed(() => sortedRequirements.value.slice(0, 5))
+const recentConversationCards = computed(() =>
+  [...conversationCards.value]
+    .sort((left, right) => conversationTimeValue(right) - conversationTimeValue(left))
+    .slice(0, 3),
+)
 
 function formatRequirementStatus(status: RequirementStatus) {
   const mapping: Record<RequirementStatus, string> = {
@@ -143,12 +147,6 @@ function paymentModeLabel(item: RequirementItem) {
   return isSelfManagedRequirement(item) ? '无平台担保' : '平台担保'
 }
 
-function paymentModeHint(item: RequirementItem) {
-  return isSelfManagedRequirement(item)
-    ? '平台内沟通协作，付款由双方另行约定'
-    : '按平台定金与尾款流程推进'
-}
-
 function formatRequirementTime(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
@@ -160,6 +158,19 @@ function formatRequirementTime(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function requirementTimeValue(value?: string | null) {
+  if (!value) {
+    return 0
+  }
+  const time = new Date(value).getTime()
+  return Number.isNaN(time) ? 0 : time
+}
+
+function conversationTimeValue(item: RequirementItem) {
+  const conversation = conversationForRequirement(item)
+  return requirementTimeValue(conversation?.last_message_at ?? item.updated_at)
 }
 
 function formatBudget(value?: number | null) {
@@ -187,10 +198,6 @@ function publishedVersionCount(item: RequirementItem) {
 
 function canRequestFinalPayment(item: RequirementItem) {
   return hasBoundResource(item) && item.status === 'in_development' && publishedVersionCount(item) > 0
-}
-
-function requirementFinalActionLabel(item: RequirementItem) {
-  return isSelfManagedRequirement(item) ? '确认完成' : '支付尾款'
 }
 
 function canResubmit(status: RequirementStatus) {
@@ -238,10 +245,6 @@ function conversationLastMessageText(item: RequirementItem) {
   return `最近沟通：${formatRequirementTime(conversation.last_message_at)}`
 }
 
-function conversationButtonLabel(item: RequirementItem) {
-  return conversationForRequirement(item)?.last_message_at ? '查看沟通' : '开始沟通'
-}
-
 async function loadRequirementConversations() {
   if (!auth.token.trim()) {
     requirementConversationMap.value = {}
@@ -262,88 +265,8 @@ async function loadRequirementConversations() {
   }
 }
 
-function currentResourceVisibility(item: RequirementItem): RequirementResourceVisibility | null {
-  return item.resource_visibility ?? null
-}
-
-function canToggleRequirementResourceVisibility(item: RequirementItem) {
-  return hasBoundResource(item) && (item.status === 'final_paid' || item.status === 'completed')
-}
-
 function hasPendingResourceVersionDeleteReview(item: RequirementItem) {
-  return hasBoundResource(item) && pendingResourceVersionDeleteRequests(item).length > 0
-}
-
-function pendingResourceVersionDeleteRequests(item: RequirementItem) {
-  return item.pending_resource_version_delete_requests ?? []
-}
-
-function pendingResourceVersionLabel(item?: RequirementPendingResourceVersionDeleteRequest | null) {
-  return item?.version?.trim() || '未命名版本'
-}
-
-function pendingResourceVersionTitle(item?: RequirementPendingResourceVersionDeleteRequest | null) {
-  return `版本号 ${pendingResourceVersionLabel(item)}`
-}
-
-function resourceVersionDeleteReviewHint(item: RequirementItem) {
-  if (hasPendingResourceVersionDeleteReview(item)) {
-    return `开发者申请删除 ${pendingResourceVersionDeleteRequests(item).length} 个版本，点击当前需求行后可逐个审核。`
-  }
-
-  if (item.resource_version_delete_request_status === 'rejected' && item.resource_version_delete_review_note) {
-    return `你上次拒绝删除版本：${item.resource_version_delete_review_note}`
-  }
-
-  return ''
-}
-
-function formatResourceVisibility(item: RequirementItem) {
-  return currentResourceVisibility(item) === 'public' ? '资源已公开' : '资源私有中'
-}
-
-function requirementSubscriptionLabel(item: RequirementItem) {
-  return item.subscribe_status_change ? '取消订阅动态' : '订阅状态变化'
-}
-
-function nextResourceVisibility(item: RequirementItem): RequirementResourceVisibility {
-  return currentResourceVisibility(item) === 'public' ? 'private' : 'public'
-}
-
-function toggleResourceVisibilityLabel(item: RequirementItem) {
-  if (!canToggleRequirementResourceVisibility(item)) {
-    return isSelfManagedRequirement(item) ? '完成后可设置' : '尾款后可设置'
-  }
-
-  return nextResourceVisibility(item) === 'public' ? '设为公开' : '设为私有'
-}
-
-function isRejectingVersion(request: RequirementPendingResourceVersionDeleteRequest) {
-  return versionDeleteRejectTargetId.value === request.version_id
-}
-
-function openRejectVersion(request: RequirementPendingResourceVersionDeleteRequest) {
-  versionDeleteRejectTargetId.value = request.version_id
-  versionDeleteRejectNotes.value = {
-    ...versionDeleteRejectNotes.value,
-    [request.version_id]: versionDeleteRejectNotes.value[request.version_id] ?? '',
-  }
-}
-
-function cancelRejectVersion() {
-  if (resourceVersionDeleteReviewLoadingId.value) {
-    return
-  }
-
-  versionDeleteRejectTargetId.value = null
-}
-
-function pendingVersionRejectNote(request: RequirementPendingResourceVersionDeleteRequest) {
-  return versionDeleteRejectNotes.value[request.version_id] ?? ''
-}
-
-function formatPendingVersionRequestedAt(item: RequirementPendingResourceVersionDeleteRequest) {
-  return item.requested_at?.trim() || '时间未知'
+  return hasBoundResource(item) && (item.pending_resource_version_delete_requests?.length ?? 0) > 0
 }
 
 function openPayModal(item: RequirementItem) {
@@ -408,10 +331,6 @@ function closeCompletionConfirm() {
 
   completionConfirmVisible.value = false
   completionConfirmTarget.value = null
-}
-
-function openDevWorkbench() {
-  void router.push(buildDevPortalUrl(auth.token))
 }
 
 async function submitRequirementCompletion() {
@@ -482,12 +401,6 @@ function openRequirementEditModal(item: RequirementItem) {
   editVisible.value = true
 }
 
-function openRealnameEditModal() {
-  if (realnameStatus.value === 'rejected') {
-    router.push({ name: 'workbench-realname' })
-  }
-}
-
 function openSecurityModal() {
   securityVisible.value = true
 }
@@ -530,11 +443,13 @@ async function refreshProfileData() {
 
 function handleRequirementAction(item: RequirementItem) {
   if (hasPendingResourceVersionDeleteReview(item)) {
-    toggleVersionDeleteReviewCard(item)
+    void router.push({ name: 'workbench-requirements' })
     return
   }
 
-  if (canPay(item.status, item)) {
+  if (canRequestFinalPayment(item)) {
+    void requestFinalPayment(item)
+  } else if (canPay(item.status, item)) {
     openPayModal(item)
   } else if (canComplete(item)) {
     openCompletionConfirm(item)
@@ -543,33 +458,6 @@ function handleRequirementAction(item: RequirementItem) {
   } else if (canComment(item.status)) {
     openCommentModal(item)
   }
-}
-
-function isVersionDeleteReviewExpanded(item: RequirementItem) {
-  return expandedVersionDeleteReviewRequirementId.value === item.requirement_id
-}
-
-function toggleVersionDeleteReviewCard(item: RequirementItem) {
-  if (!hasPendingResourceVersionDeleteReview(item)) {
-    return
-  }
-
-  if (isVersionDeleteReviewExpanded(item)) {
-    closeVersionDeleteReviewCard()
-    return
-  }
-
-  expandedVersionDeleteReviewRequirementId.value = item.requirement_id
-  versionDeleteRejectTargetId.value = null
-}
-
-function closeVersionDeleteReviewCard() {
-  if (resourceVersionDeleteReviewLoadingId.value) {
-    return
-  }
-
-  expandedVersionDeleteReviewRequirementId.value = null
-  versionDeleteRejectTargetId.value = null
 }
 
 function starFill(index: number) {
@@ -800,89 +688,6 @@ function closeEditModal() {
   forceCloseEditModal()
 }
 
-async function toggleRequirementResourceVisibility(item: RequirementItem) {
-  if (!auth.isAuthed || !hasBoundResource(item)) {
-    return
-  }
-
-  if (!canToggleRequirementResourceVisibility(item)) {
-    showToast(isSelfManagedRequirement(item) ? '需求完成后才能设置资源为公开或私有' : '需求必须在已付尾款后，才能设置资源为公开或私有', 'warning')
-    return
-  }
-
-  const visibility = nextResourceVisibility(item)
-  resourceVisibilityLoadingId.value = item.requirement_id
-  try {
-    await updateRequirementResourceVisibilityApi(auth.token, item.requirement_id, { visibility })
-    showToast(visibility === 'public' ? '关联资源已设为公开' : '关联资源已设为私有', 'success')
-    await loadMyRequirements()
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '更新资源可见性失败', 'error')
-  } finally {
-    resourceVisibilityLoadingId.value = null
-  }
-}
-
-async function toggleRequirementSubscription(item: RequirementItem) {
-  if (!auth.isAuthed) {
-    showToast('请先登录后再设置需求订阅', 'error')
-    return
-  }
-
-  requirementSubscriptionLoadingId.value = item.requirement_id
-  const nextValue = !item.subscribe_status_change
-
-  try {
-    await updateRequirementSubscriptionApi(auth.token, item.requirement_id, {
-      subscribe_status_change: nextValue,
-    })
-    item.subscribe_status_change = nextValue
-    showToast(nextValue ? '已订阅该需求的状态变化' : '已取消该需求的状态变化订阅', 'success')
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '更新需求订阅失败', 'error')
-  } finally {
-    requirementSubscriptionLoadingId.value = null
-  }
-}
-
-async function submitVersionDeleteReview(
-  item: RequirementItem,
-  request: RequirementPendingResourceVersionDeleteRequest,
-  action: 'approve' | 'reject',
-) {
-  if (!auth.isAuthed || !item || !hasPendingResourceVersionDeleteReview(item) || !request) {
-    return
-  }
-
-  const note = pendingVersionRejectNote(request).trim()
-
-  if (action === 'reject' && note.length > 500) {
-    showToast('拒绝原因不能超过 500 字', 'error')
-    return
-  }
-
-  resourceVersionDeleteReviewLoadingId.value = item.requirement_id
-  try {
-    await reviewRequirementResourceDeleteApi(auth.token, item.requirement_id, {
-      version_id: request.version_id,
-      action,
-      note: note || undefined,
-    })
-    showToast(action === 'approve' ? '已同意删除版本' : '已拒绝删除版本', 'success')
-    versionDeleteRejectTargetId.value = null
-    if (action === 'reject') {
-      const nextNotes = { ...versionDeleteRejectNotes.value }
-      delete nextNotes[request.version_id]
-      versionDeleteRejectNotes.value = nextNotes
-    }
-    await loadMyRequirements()
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '审核版本删除失败', 'error')
-  } finally {
-    resourceVersionDeleteReviewLoadingId.value = null
-  }
-}
-
 async function submitRequirementComment() {
   if (!auth.isAuthed || !commentRequirement.value) {
     showToast('请先登录后再发表评论', 'error')
@@ -1044,21 +849,6 @@ const payAmount = computed(() => {
   return finalDepositAmount(payRequirement.value)
 })
 
-async function copyCouponCode(code: string) {
-  const value = code.trim()
-  if (!value) {
-    showToast('券码为空，无法复制', 'error')
-    return
-  }
-
-  try {
-    await navigator.clipboard.writeText(value)
-    showToast('券码已复制', 'success')
-  } catch {
-    showToast('复制失败，请手动复制', 'error')
-  }
-}
-
 async function loadCoupons() {
   auth.hydrate()
   if (!auth.isAuthed) {
@@ -1107,14 +897,6 @@ async function loadMyRequirements() {
   try {
     const rows = await listRequirements(auth.token)
     myRequirements.value = rows.slice(0, 20)
-    if (
-      expandedVersionDeleteReviewRequirementId.value
-      && !myRequirements.value.some(
-        (item) => item.requirement_id === expandedVersionDeleteReviewRequirementId.value && hasPendingResourceVersionDeleteReview(item),
-      )
-    ) {
-      closeVersionDeleteReviewCard()
-    }
   } catch (err) {
     showToast(err instanceof Error ? err.message : '加载需求单失败', 'error')
   } finally {
@@ -1220,207 +1002,136 @@ onMounted(async () => {
 
 <template>
   <main id="overview" class="page-shell custom-page-shell profile-page">
-    <section class="profile-page-head">
-      <div class="profile-page-head__copy">
-        <h1>{{ auth.username ? `${auth.username} 的工作台` : '用户工作台' }}</h1>
-        <p>个人中心已并入工作台，账户、需求、消息与服务入口按菜单分组管理。</p>
-      </div>
-      <div class="profile-page-head__actions">
-        <div v-if="realnameStatus" class="realname-badge"
-          :class="[`realname-badge--${realnameStatus}`, { clickable: realnameStatus === 'rejected' }]"
-          @click="openRealnameEditModal">
-          <span class="badge-icon">实名认证：</span>
-          <span class="badge-text">
-            {{ realnameStatus === 'approved' ? '已认证' : realnameStatus === 'pending' ? '审核中' : '已驳回' }}
-          </span>
-        </div>
-        <button class="ghost small" type="button" @click="openDevWorkbench">进入开发者功能</button>
-        <button class="ghost small" type="button" @click="router.push({ name: 'workbench-messages' })">消息中心</button>
-        <button class="ghost small" type="button" @click="openSecurityModal">账户安全</button>
-        <button class="ghost small" type="button" :disabled="loading || requirementLoading" @click="refreshProfileData">
-          {{ loading || requirementLoading ? '刷新中...' : '刷新资料' }}
-        </button>
-      </div>
-    </section>
-
-    <div class="wallet-overview">
-      <div class="wallet-card summary-card">
-        <strong>{{ amountCoupons.length }}</strong>
-        <span>优惠卷</span>
-      </div>
-      <div class="wallet-card summary-card">
-        <strong>{{ discountCoupons.length }}</strong>
-        <span>折扣券</span>
-      </div>
-      <div class="wallet-card summary-card">
-        <strong>{{ availableConversationCount }}</strong>
-        <span>沟通会话</span>
-      </div>
-    </div>
-
-    <section id="developer-overview" class="wallet-section developer-overview-section">
-      <div class="wallet-header">
+    <section class="overview-hero">
+      <div class="overview-hero__head">
         <div>
-          <h3>开发者功能</h3>
-          <small class="requirement-note">资源上传、需求接单和交付入口已合并到工作台总览。</small>
+          <p class="overview-eyebrow">统一工作台</p>
+          <h1>{{ auth.username ? `你好，${auth.username}` : '你好，欢迎回来' }}</h1>
+          <p>账户、需求与优惠券概览</p>
         </div>
+        <RouterLink class="overview-home-link" :to="{ name: 'home' }">返回首页</RouterLink>
       </div>
-      <DevOverviewView />
-    </section>
 
-    <section v-if="availableConversationCount > 0" id="messages" class="wallet-section conversation-section">
-      <div class="wallet-header">
-        <h3>沟通会话</h3>
-        <div class="conversation-section__actions">
-          <button class="ghost small" type="button" @click="router.push({ name: 'workbench-messages' })">进入消息中心</button>
-          <button class="ghost small" type="button" :disabled="conversationLoading"
-            @click="loadRequirementConversations">
-            {{ conversationLoading ? '刷新中...' : '刷新会话' }}
+      <div class="overview-hero__body">
+        <div class="overview-hero__main">
+          <div class="overview-hero__chips">
+            <span>{{ accountEmailLabel }}</span>
+            <span>实名认证：{{ realnameLabel }}</span>
+            <span>官方活动：{{ subscriptionLabel }}</span>
+          </div>
+        </div>
+        <div class="overview-hero__actions">
+          <button class="ghost small" type="button" @click="router.push({ name: 'requirement-hall' })">发布需求</button>
+          <button class="ghost small" type="button" @click="router.push({ name: 'workbench-messages' })">消息中心</button>
+          <button class="ghost small" type="button" @click="openSecurityModal">账户安全</button>
+          <button class="ghost small" type="button" :disabled="loading || requirementLoading"
+            @click="refreshProfileData">
+            {{ loading || requirementLoading ? '刷新中...' : '刷新资料' }}
           </button>
+
         </div>
-      </div>
-      <div class="conversation-card-list">
-        <button v-for="item in conversationCards" :key="item.requirement_id" type="button" class="conversation-card"
-          @click="openConversation(item)">
-          <span class="conversation-card__title">{{ item.title }}</span>
-          <span class="conversation-card__id">{{ item.requirement_id }}</span>
-          <span class="conversation-card__meta">{{ conversationLastMessageText(item) }}</span>
-        </button>
+
       </div>
     </section>
 
-    <section id="requirements" class="wallet-section">
-      <div class="wallet-header">
-        <h3>我提交的需求单</h3>
-        <button class="ghost small" type="button" :disabled="requirementLoading" @click="loadMyRequirements">
-          {{ requirementLoading ? '刷新中...' : '刷新' }}
-        </button>
+    <section class="overview-stat-grid" aria-label="工作台关键数据">
+      <RouterLink class="overview-stat-card" :to="{ name: 'workbench-requirements' }">
+        <span>需求总数</span>
+        <strong>{{ requirementStats.total }}</strong>
+        <small>{{ requirementStats.active }} 个推进中</small>
+      </RouterLink>
+      <RouterLink class="overview-stat-card" :to="{ name: 'workbench-requirements' }">
+        <span>待处理</span>
+        <strong>{{ actionableRequirements.length }}</strong>
+        <small>{{ requirementStats.payment }} 个待支付</small>
+      </RouterLink>
+      <RouterLink class="overview-stat-card" :to="{ name: 'workbench-messages' }">
+        <span>沟通会话</span>
+        <strong>{{ availableConversationCount }}</strong>
+        <small>{{ conversationLoading ? '同步中' : '可进入消息中心' }}</small>
+      </RouterLink>
+      <RouterLink class="overview-stat-card" :to="{ name: 'workbench-account' }">
+        <span>可用券</span>
+        <strong>{{ usableCouponCount }}</strong>
+        <small>满减 {{ amountCoupons.length }} / 折扣 {{ discountCoupons.length }}</small>
+      </RouterLink>
+    </section>
+
+    <section class="overview-focus-panel">
+      <div class="overview-section-head">
+        <div>
+          <p class="overview-eyebrow">最近需求</p>
+          <h2>需求进度</h2>
+        </div>
+        <RouterLink class="overview-link" :to="{ name: 'workbench-requirements' }">查看需求单</RouterLink>
       </div>
-      <div v-if="myRequirements.length === 0" class="empty">暂无已提交需求单</div>
-      <ul v-else class="requirement-list">
-        <template v-for="item in myRequirements" :key="item.requirement_id">
-          <li class="requirement-row"
-            :class="{ clickable: hasPendingResourceVersionDeleteReview(item) || canPay(item.status, item) || canComplete(item) || canComment(item.status) || canResubmit(item.status), expanded: isVersionDeleteReviewExpanded(item) }"
-            @click="handleRequirementAction(item)">
-            <div class="requirement-main">
-              <strong>{{ item.title }}</strong>
-              <span>{{ item.requirement_id }}</span>
-              <small class="requirement-note">{{ paymentModeLabel(item) }} · {{ paymentModeHint(item) }}</small>
-              <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
-                formatResourceVisibility(item) }}</small>
-              <small v-if="hasBoundResource(item)" class="requirement-note">已发布版本：{{ publishedVersionCount(item)
-              }}</small>
-              <small v-if="hasBoundResource(item) && !canToggleRequirementResourceVisibility(item)"
-                class="requirement-note">资源公开/私有切换需在{{ isSelfManagedRequirement(item) ? '需求完成后' : '已付尾款后' }}开放</small>
-              <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">
-                <strong>待审核删除版本：</strong>
-                <span class="pending-review-pill">
-                  {{ pendingResourceVersionDeleteRequests(item).length }} 个待审核
-                </span>
-                <span class="pending-review-count">共 {{ pendingResourceVersionDeleteRequests(item).length }} 个</span>
-              </small>
-              <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">{{
-                resourceVersionDeleteReviewHint(item) }}</small>
-              <small v-if="hasPendingResourceVersionDeleteReview(item)"
-                class="requirement-note">点击当前需求行，可在下方展开审核卡片。</small>
-              <small
-                v-else-if="hasBoundResource(item) && item.resource_version_delete_request_status === 'rejected' && item.resource_version_delete_review_note"
-                class="requirement-note">{{ resourceVersionDeleteReviewHint(item) }}</small>
-              <small
-                v-if="item.status === 'in_development' && hasBoundResource(item) && publishedVersionCount(item) < 1"
-                class="requirement-note">开发者至少发布 1 个版本后，用户才能{{ isSelfManagedRequirement(item) ? '确认完成' : '结束开发并支付尾款'
-                }}</small>
-              <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{
-                item.review_note }}</small>
-              <small class="requirement-note">{{ item.subscribe_status_change ? '已订阅该需求的状态变化通知' : '未订阅该需求的状态变化通知'
-                }}</small>
-              <small v-if="canOpenConversation(item)" class="requirement-note">{{ conversationLastMessageText(item)
-              }}</small>
-            </div>
-            <span class="requirement-status">{{ formatRequirementStatus(item.status) }}</span>
-            <span>{{ formatBudget(item.budget) }}</span>
-            <time>{{ formatRequirementTime(item.updated_at) }}</time>
-            <div class="requirement-actions">
-              <button class="ghost small" type="button"
-                :disabled="requirementSubscriptionLoadingId === item.requirement_id"
-                @click.stop="toggleRequirementSubscription(item)">
-                {{ requirementSubscriptionLoadingId === item.requirement_id ? '提交中...' :
-                  requirementSubscriptionLabel(item) }}
-              </button>
-              <button v-if="hasBoundResource(item)" class="ghost small" type="button"
-                :disabled="resourceVisibilityLoadingId === item.requirement_id || !canToggleRequirementResourceVisibility(item)"
-                @click.stop="toggleRequirementResourceVisibility(item)">
-                {{ resourceVisibilityLoadingId === item.requirement_id ? '提交中...' :
-                  toggleResourceVisibilityLabel(item)
-                }}
-              </button>
-              <button v-if="canOpenConversation(item)" class="ghost small" type="button"
-                @click.stop="openConversation(item)">{{ conversationButtonLabel(item) }}</button>
-              <button v-if="canRequestFinalPayment(item)" class="ghost small" type="button"
-                @click.stop="requestFinalPayment(item)">{{ requirementFinalActionLabel(item) }}</button>
-              <button v-if="canComplete(item)" class="ghost small" type="button"
-                @click.stop="openCompletionConfirm(item)">确认完成</button>
-              <button v-if="canResubmit(item.status)" class="ghost small" type="button"
-                @click.stop="openRequirementEditModal(item)">重新编辑</button>
-              <button v-else-if="canPay(item.status, item)" class="ghost small" type="button"
-                @click.stop="openPayModal(item)">去支付</button>
-              <button v-else-if="canComment(item.status) && !canComplete(item)" class="ghost small" type="button"
-                @click.stop="openCommentModal(item)">去评价</button>
-            </div>
-          </li>
-          <li v-if="isVersionDeleteReviewExpanded(item)" class="requirement-review-card-row">
-            <section class="requirement-review-card" @click.stop>
-              <div class="requirement-review-card__header">
-                <div>
-                  <h4>版本删除审核</h4>
-                  <p>每个待删除版本单独一张卡片，直接在对应卡片上审核。</p>
-                </div>
-                <button class="ghost small" type="button" @click.stop="closeVersionDeleteReviewCard">收起</button>
-              </div>
-              <div class="requirement-review-card-list">
-                <article v-for="request in pendingResourceVersionDeleteRequests(item)" :key="request.version_id"
-                  class="requirement-review-item">
-                  <div class="requirement-review-item__main">
-                    <div>
-                      <strong>{{ pendingResourceVersionTitle(request) }}</strong>
-                      <p>申请时间：{{ formatPendingVersionRequestedAt(request) }}</p>
-                    </div>
-                    <div class="requirement-review-item__actions">
-                      <button class="ghost small" type="button"
-                        :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id"
-                        @click.stop="submitVersionDeleteReview(item, request, 'approve')">
-                        {{ resourceVersionDeleteReviewLoadingId === item.requirement_id ? '处理中...' : '同意删除' }}
-                      </button>
-                      <button class="ghost small" type="button" :class="{ active: isRejectingVersion(request) }"
-                        :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id"
-                        @click.stop="openRejectVersion(request)">拒绝删除</button>
-                    </div>
-                  </div>
-                  <p class="requirement-review-card__hint danger">同意后该版本文件会被永久删除，且无法恢复。</p>
-                  <div v-if="isRejectingVersion(request)" class="requirement-review-item__reject-panel">
-                    <label class="requirement-review-card__field requirement-review-card__field--stacked">
-                      <span>拒绝原因</span>
-                      <textarea v-model="versionDeleteRejectNotes[request.version_id]" class="comment-input" rows="4"
-                        maxlength="500" placeholder="可选：说明拒绝删除该版本的原因"></textarea>
-                      <small class="requirement-note">已输入 {{ pendingVersionRejectNote(request).length }} / 500
-                        字</small>
-                    </label>
-                    <div class="requirement-review-card__actions">
-                      <button class="ghost small" type="button" @click.stop="cancelRejectVersion">取消</button>
-                      <button class="ghost small" type="button"
-                        :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id"
-                        @click.stop="submitVersionDeleteReview(item, request, 'reject')">
-                        {{ resourceVersionDeleteReviewLoadingId === item.requirement_id ? '处理中...' : '确认拒绝删除' }}
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              </div>
-            </section>
-          </li>
-        </template>
+      <div v-if="recentRequirements.length === 0" class="overview-empty-state">
+        <strong>暂无需求单</strong>
+        <span>发布定制需求后，进度会在这里汇总。</span>
+      </div>
+      <ul v-else class="overview-requirement-list">
+        <li v-for="item in recentRequirements" :key="item.requirement_id"
+          :class="{ clickable: hasPendingResourceVersionDeleteReview(item) || canRequestFinalPayment(item) || canPay(item.status, item) || canComplete(item) || canComment(item.status) || canResubmit(item.status) }"
+          @click="handleRequirementAction(item)">
+          <div>
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.requirement_id }} · {{ paymentModeLabel(item) }}</span>
+          </div>
+          <span class="overview-status" :class="`overview-status--${item.status}`">{{
+            formatRequirementStatus(item.status) }}</span>
+          <small>{{ formatBudget(item.budget) }}</small>
+          <time>{{ formatRequirementTime(item.updated_at) }}</time>
+        </li>
       </ul>
     </section>
+
+    <div class="overview-dashboard-grid">
+      <section class="overview-panel overview-panel--main overview-panel--messages">
+        <div class="overview-section-head">
+          <div>
+            <p class="overview-eyebrow">沟通会话</p>
+            <h2>最近沟通</h2>
+          </div>
+          <div class="overview-inline-actions">
+            <button class="ghost small" type="button" :disabled="conversationLoading"
+              @click="loadRequirementConversations">
+              {{ conversationLoading ? '刷新中...' : '刷新会话' }}
+            </button>
+            <RouterLink class="overview-link" :to="{ name: 'workbench-messages' }">消息中心</RouterLink>
+          </div>
+        </div>
+        <div v-if="recentConversationCards.length === 0" class="overview-empty-state">
+          <strong>暂无可用会话</strong>
+          <span>需求绑定资源后，会话入口会显示在这里。</span>
+        </div>
+        <div v-else class="conversation-card-list">
+          <button v-for="item in recentConversationCards" :key="item.requirement_id" type="button"
+            class="conversation-card" @click="openConversation(item)">
+            <span class="conversation-card__title">{{ item.title }}</span>
+            <span class="conversation-card__id">{{ item.requirement_id }}</span>
+            <span class="conversation-card__meta">{{ conversationLastMessageText(item) }}</span>
+          </button>
+        </div>
+      </section>
+
+      <aside class="overview-side-stack">
+
+        <section class="overview-panel">
+          <div class="overview-section-head overview-section-head--compact">
+            <div>
+              <p class="overview-eyebrow">开发者工作</p>
+              <h2>快捷入口</h2>
+            </div>
+          </div>
+          <div class="overview-dev-links">
+            <RouterLink :to="{ name: 'dev-plugins' }">资源初始化</RouterLink>
+            <RouterLink :to="{ name: 'dev-requirement-hall' }">需求大厅</RouterLink>
+            <RouterLink :to="{ name: 'dev-wallet' }">收益钱包</RouterLink>
+            <RouterLink :to="{ name: 'dev-wallet-releases' }">交付记录</RouterLink>
+          </div>
+        </section>
+      </aside>
+    </div>
 
     <PublishModal :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核" loadingText="提交中..."
       v-model:publishTitle="editTitle" v-model:publishDescription="editDescription" v-model:publishBudget="editBudget"
@@ -1579,7 +1290,7 @@ onMounted(async () => {
         <div class="actions">
           <button class="ghost" type="button" @click="closeFinalPaymentConfirm">取消</button>
           <button class="ghost" type="button" @click="confirmFinalPaymentRequest">{{ finalPaymentConfirmButton
-            }}</button>
+          }}</button>
         </div>
       </section>
     </div>
@@ -1632,98 +1343,355 @@ onMounted(async () => {
       </section>
     </div>
 
-    <section id="coupons" class="wallet-section">
-      <div class="wallet-header">
-        <h3>优惠卷背包</h3>
-        <button class="ghost small" type="button" :disabled="loading" @click="loadCoupons">
-          {{ loading ? '刷新中...' : '刷新' }}
-        </button>
-      </div>
-      <div v-if="amountCoupons.length === 0" class="empty">暂无优惠卷</div>
-      <div v-else class="coupon-items">
-        <button v-for="item in amountCoupons" :key="item.code" type="button" class="coupon-item"
-          @click="copyCouponCode(item.code)">
-          <div class="coupon-head">
-            <strong>{{ item.code }}</strong>
-            <span class="coupon-status" :class="item.status">{{ item.status === 'used' ? '已使用' : '可用' }}</span>
-          </div>
-          <small>{{ item.name }}</small>
-          <p>{{ formatDiscount(item) }}</p>
-          <p class="coupon-meta">门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}</p>
-        </button>
-      </div>
-    </section>
-
-    <section class="wallet-section">
-      <div class="wallet-header">
-        <h3>折扣券背包</h3>
-        <button class="ghost small" type="button" :disabled="loading" @click="loadCoupons">
-          {{ loading ? '刷新中...' : '刷新' }}
-        </button>
-      </div>
-      <div v-if="discountCoupons.length === 0" class="empty">暂无折扣券</div>
-      <div v-else class="coupon-items">
-        <button v-for="item in discountCoupons" :key="item.code" type="button" class="coupon-item"
-          @click="copyCouponCode(item.code)">
-          <div class="coupon-head">
-            <strong>{{ item.code }}</strong>
-            <span class="coupon-status" :class="item.status">{{ item.status === 'used' ? '已使用' : '可用' }}</span>
-          </div>
-          <small>{{ item.name }}</small>
-          <p>{{ formatDiscount(item) }}</p>
-          <p class="coupon-meta">门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}</p>
-        </button>
-      </div>
-    </section>
   </main>
 </template>
 
 <style scoped>
-.profile-page-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 20px;
-  margin-bottom: 24px;
-  padding: 24px 26px;
+.profile-page {
+  display: grid;
+  gap: 16px;
+}
+
+.overview-hero,
+.overview-focus-panel,
+.overview-panel,
+.overview-stat-card {
   border: 1px solid rgba(224, 232, 255, 0.96);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 14px 34px rgba(76, 103, 172, 0.08);
 }
 
-.profile-page-head__copy h1 {
-  margin: 0;
-  color: #0f172a;
-  font-size: clamp(28px, 4vw, 40px);
-  line-height: 1.08;
+.overview-hero {
+  display: grid;
+  gap: 22px;
+  padding: 24px;
+  border-radius: 22px;
 }
 
-.profile-page-head__copy p {
+.overview-hero__head,
+.overview-hero__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+}
+
+.overview-hero__head {
+  align-items: start;
+}
+
+.overview-hero__body {
+  align-items: end;
+}
+
+.overview-hero__head h1,
+.overview-section-head h2 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.overview-hero__head h1 {
+  margin-top: 6px;
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.1;
+}
+
+.overview-hero__head p:not(.overview-eyebrow) {
   margin: 10px 0 0;
-  max-width: 720px;
-  color: #5b6475;
+  color: #64748b;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.overview-hero__main p:not(.overview-eyebrow) {
+  margin: 0;
+  max-width: 680px;
+  color: #64748b;
   line-height: 1.7;
 }
 
-.profile-page-head__actions {
+.overview-eyebrow {
+  margin: 0;
+  color: #4f8cff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.overview-hero__chips,
+.overview-hero__actions,
+.overview-inline-actions {
   display: flex;
-  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 10px;
 }
 
-.profile-page-head__actions .ghost.small {
-  border-color: rgba(209, 220, 243, 0.95);
-  background: #ffffff;
-  color: #1e293b;
-  box-shadow: 0 8px 20px rgba(76, 103, 172, 0.08);
+.overview-hero__chips {
+  margin-top: 16px;
 }
 
-.profile-page-head__actions .ghost.small:hover:not(:disabled) {
+.overview-hero__chips span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid rgba(209, 220, 243, 0.95);
+  border-radius: 999px;
+  background: #f8fbff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.overview-hero__actions {
+  justify-content: flex-end;
+}
+
+.overview-home-link {
+  flex: 0 0 auto;
+  align-self: start;
+  padding: 9px 14px;
+  border: 1px solid rgba(209, 220, 243, 0.95);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.overview-home-link:hover {
   border-color: rgba(125, 155, 225, 0.9);
   background: #f8fbff;
-  box-shadow: 0 12px 24px rgba(76, 103, 172, 0.12);
+  color: #1d4ed8;
+}
+
+.overview-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.overview-stat-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 18px;
+  border-radius: 18px;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.overview-stat-card:hover {
+  border-color: rgba(125, 155, 225, 0.92);
+  box-shadow: 0 16px 34px rgba(76, 103, 172, 0.12);
+  transform: translateY(-1px);
+}
+
+.overview-stat-card span,
+.overview-stat-card small,
+.overview-requirement-list span,
+.overview-requirement-list time,
+.overview-empty-state span,
+.overview-service-card span {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.overview-stat-card strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 34px;
+  line-height: 1;
+  text-overflow: ellipsis;
+}
+
+.overview-focus-panel,
+.overview-panel {
+  padding: 20px;
+  border-radius: 22px;
+}
+
+.overview-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.overview-section-head h2 {
+  margin-top: 5px;
+  font-size: 19px;
+  line-height: 1.25;
+}
+
+.overview-section-head--compact {
+  margin-bottom: 12px;
+}
+
+.overview-link {
+  flex: 0 0 auto;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.overview-link:hover {
+  color: #1d4ed8;
+}
+
+.overview-service-card {
+  width: 100%;
+  border: 1px solid rgba(209, 220, 243, 0.95);
+  background: #ffffff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.overview-service-card:hover {
+  border-color: rgba(125, 155, 225, 0.92);
+  background: #f8fbff;
+  box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
+}
+
+.overview-service-card strong,
+.overview-requirement-list strong,
+.overview-empty-state strong {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.overview-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.48fr) minmax(280px, 0.72fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.overview-side-stack,
+.overview-service-list,
+.overview-dev-links {
+  display: grid;
+  gap: 12px;
+}
+
+.overview-requirement-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.overview-requirement-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 64px;
+  padding: 12px 14px;
+  border: 1px solid rgba(224, 232, 255, 0.96);
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.overview-requirement-list li.clickable {
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.overview-requirement-list li.clickable:hover {
+  border-color: rgba(125, 155, 225, 0.92);
+  background: #f8fbff;
+  box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
+}
+
+.overview-requirement-list div {
+  min-width: 0;
+}
+
+.overview-requirement-list strong,
+.overview-requirement-list span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overview-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.14);
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.overview-status--completed,
+.overview-status--final_paid {
+  background: rgba(34, 197, 94, 0.12);
+  color: #166534;
+}
+
+.overview-status--rejected {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b42318;
+}
+
+.overview-status--deposit_paid,
+.overview-status--in_development {
+  background: rgba(79, 140, 255, 0.12);
+  color: #1d4ed8;
+}
+
+.overview-service-card {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border-radius: 16px;
+}
+
+.overview-dev-links {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.overview-dev-links a {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border: 1px solid rgba(209, 220, 243, 0.95);
+  border-radius: 14px;
+  background: #ffffff;
+  color: #0f172a;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.overview-dev-links a:hover {
+  border-color: rgba(125, 155, 225, 0.92);
+  background: #f8fbff;
+  color: #1d4ed8;
+}
+
+.overview-empty-state {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border: 1px dashed rgba(204, 214, 237, 0.98);
+  border-radius: 16px;
+  background: rgba(248, 251, 255, 0.82);
 }
 
 .pending-review-pill {
@@ -1740,42 +1708,6 @@ onMounted(async () => {
 .pending-review-count {
   margin-left: 8px;
   color: #7b8798;
-}
-
-.conversation-section {
-  display: grid;
-  gap: 14px;
-}
-
-.developer-overview-section {
-  display: grid;
-  gap: 14px;
-}
-
-.developer-overview-section :deep(.dev-page) {
-  width: 100%;
-  margin: 0;
-  gap: 14px;
-}
-
-.developer-overview-section :deep(.ov-header) {
-  display: none;
-}
-
-.developer-overview-section :deep(.dev-surface-card) {
-  border-radius: 16px;
-  box-shadow: 0 10px 22px rgba(76, 103, 172, 0.07);
-}
-
-.developer-overview-section :deep(.dev-surface-card .el-card__body) {
-  padding: 16px;
-}
-
-.conversation-section__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
 }
 
 .conversation-card-list {
@@ -1920,22 +1852,85 @@ onMounted(async () => {
   justify-content: flex-end;
 }
 
-@media (max-width: 640px) {
-  .profile-page-head {
-    flex-direction: column;
+@media (max-width: 1180px) {
+  .overview-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .overview-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-side-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+}
+
+@media (max-width: 760px) {
+  .overview-hero {
     padding: 20px;
   }
 
-  .profile-page-head__actions {
+  .overview-hero__head,
+  .overview-hero__body {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .overview-hero__actions {
     justify-content: flex-start;
   }
 
-  .conversation-section__actions {
+  .overview-home-link {
     width: 100%;
+    text-align: center;
   }
 
-  .conversation-section__actions .ghost.small {
-    flex: 1;
+  .overview-focus-panel,
+  .overview-panel {
+    padding: 16px;
+  }
+
+  .overview-section-head,
+  .overview-inline-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .overview-inline-actions .ghost.small,
+  .overview-link {
+    width: 100%;
+    text-align: center;
+  }
+
+  .overview-side-stack {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-requirement-list li {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .overview-requirement-list .overview-status,
+  .overview-requirement-list small,
+  .overview-requirement-list time {
+    justify-self: start;
+  }
+
+  .overview-dev-links {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .overview-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-hero__actions .ghost.small {
+    flex: 1 1 140px;
   }
 
   .subscription-card {

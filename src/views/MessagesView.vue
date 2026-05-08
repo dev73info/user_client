@@ -380,6 +380,7 @@ watch(
   display: grid;
   align-content: start;
   gap: 12px;
+  min-height: 0;
 }
 
 .messages-head {

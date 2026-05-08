@@ -90,7 +90,7 @@ async function handleSubmitAuth() {
 }
 
 function goWorkbench() {
-  void router.push({ name: 'workbench', hash: '#coupons' })
+  void router.push({ name: 'workbench-account' })
 }
 
 onMounted(() => {

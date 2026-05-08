@@ -200,51 +200,6 @@ onMounted(async () => {
 
 <template>
   <main class="portal-page realname-page-shell">
-    <section class="portal-page__hero">
-      <div class="portal-page__hero-copy">
-        <p class="portal-page__eyebrow">Realname Verification</p>
-        <h1>实名认证</h1>
-        <p>完成身份认证后可以发布需求单，获得更多商业机会。提交后由管理员审核，通常需要 1-3 个工作日，当前页已统一到门户子页风格。</p>
-
-        <div class="portal-page__signal-list">
-          <span v-for="signal in pageSignals" :key="signal" class="portal-page__signal">{{ signal }}</span>
-        </div>
-
-        <div class="portal-page__hero-actions">
-          <button class="portal-page__primary" type="button" @click="router.push({ name: 'workbench' })">工作台总览</button>
-          <button class="portal-page__secondary" type="button" @click="router.push({ name: 'home' })">返回首页</button>
-        </div>
-      </div>
-
-      <div class="portal-page__hero-visual" aria-hidden="true">
-        <div class="portal-page__hero-orbit">
-          <div class="portal-page__hero-core">证</div>
-          <div class="portal-page__hero-float portal-page__hero-float--one">审</div>
-          <div class="portal-page__hero-float portal-page__hero-float--two">核</div>
-          <div class="portal-page__hero-float portal-page__hero-float--three">实</div>
-          <div class="portal-page__hero-float portal-page__hero-float--four">名</div>
-        </div>
-      </div>
-    </section>
-
-    <section class="portal-page__stats">
-      <article class="portal-page__stat-card">
-        <strong>{{ statusText }}</strong>
-        <span>当前状态</span>
-      </article>
-      <article class="portal-page__stat-card">
-        <strong>{{ authTypeText }}</strong>
-        <span>证件类型</span>
-      </article>
-      <article class="portal-page__stat-card">
-        <strong>{{ current?.reviewed_by || '—' }}</strong>
-        <span>审核人</span>
-      </article>
-      <article class="portal-page__stat-card">
-        <strong>{{ formatTime(current?.reviewed_at) }}</strong>
-        <span>审核时间</span>
-      </article>
-    </section>
 
     <section class="realname-layout">
       <el-card shadow="never" class="realname-card realname-card--status">

@@ -182,33 +182,6 @@ onMounted(() => {
 
 <template>
   <main class="portal-page custom-resource-page">
-    <section class="portal-page__hero">
-      <div class="portal-page__hero-copy">
-        <p class="portal-page__eyebrow">My Custom Resources</p>
-        <h1>我的定制资源</h1>
-        <p>这里集中展示你的需求单已经关联的资源项目。当前页已切换到与门户首页一致的子页视觉层，只展示你自己的定制交付内容。</p>
-
-        <div class="portal-page__signal-list">
-          <span v-for="signal in pageSignals" :key="signal" class="portal-page__signal">{{ signal }}</span>
-        </div>
-
-        <div class="portal-page__hero-actions">
-          <button class="portal-page__primary" type="button" @click="openDevWorkbench">进入开发者端</button>
-          <button class="portal-page__secondary" type="button"
-            @click="router.push({ name: 'free-resources' })">返回导航</button>
-        </div>
-      </div>
-
-      <div class="portal-page__hero-visual" aria-hidden="true">
-        <div class="portal-page__hero-orbit">
-          <div class="portal-page__hero-core">定</div>
-          <div class="portal-page__hero-float portal-page__hero-float--one">单</div>
-          <div class="portal-page__hero-float portal-page__hero-float--two">资</div>
-          <div class="portal-page__hero-float portal-page__hero-float--three">私</div>
-          <div class="portal-page__hero-float portal-page__hero-float--four">公</div>
-        </div>
-      </div>
-    </section>
 
     <section class="portal-page__stats">
       <article class="portal-page__stat-card">

@@ -258,26 +258,14 @@ function openVersionsPage(row: ReleaseRecord) {
   router.push({ name: 'dev-resource-versions', params: { resourceId: row.resourceId } })
 }
 
-function openResourceList() {
-  router.push({ name: 'dev-resource-list' })
-}
 </script>
 
 <template>
   <div class="dev-page dev-release-page">
-    <section class="dev-panel-banner dev-panel-banner--light">
-      <div>
-        <h2 class="dev-panel-banner__title">把版本交付、关联需求和回款进度放进同一张台账</h2>
-        <p class="dev-panel-banner__desc">这里不再只是静态表格，而是集中查看版本交付记录、关联需求状态和最近尾款回执，方便开发者做交付复盘。</p>
-      </div>
-      <div class="dev-panel-banner__meta">
-        <el-button text @click="openResourceList">进入资源列表</el-button>
-        <el-button text :loading="loading" @click="loadPage">刷新台账</el-button>
-      </div>
-    </section>
 
     <div class="dev-grid dev-grid--three">
-      <el-card v-for="item in releaseStats" :key="item.label" shadow="never" class="dev-surface-card dev-surface-card--soft">
+      <el-card v-for="item in releaseStats" :key="item.label" shadow="never"
+        class="dev-surface-card dev-surface-card--soft">
         <div class="dev-stat dev-stat--compact">
           <span class="dev-stat__label">{{ item.label }}</span>
           <span class="dev-stat__value">{{ item.value }}</span>
@@ -304,7 +292,8 @@ function openResourceList() {
             <strong class="dev-release-income-card__amount">{{ money(item.amount_cny) }}</strong>
           </div>
           <div class="dev-release-income-card__footer">
-            <el-tag type="success" size="small" effect="plain">{{ requirementStatusText(item.requirement_status as RequirementItem['status']) }}</el-tag>
+            <el-tag type="success" size="small" effect="plain">{{ requirementStatusText(item.requirement_status as
+              RequirementItem['status']) }}</el-tag>
             <span>{{ formatTime(item.paid_at) }}</span>
           </div>
         </article>
@@ -313,13 +302,10 @@ function openResourceList() {
 
     <el-card shadow="never" class="dev-surface-card">
       <div class="dev-release-toolbar">
-        <el-input
-          v-model="filters.keyword"
-          clearable
-          placeholder="搜索资源标题、版本号、需求编号或备注"
-          class="dev-release-toolbar__search"
-        />
-        <el-input v-model="filters.platform" clearable placeholder="平台" class="dev-release-toolbar__field" style="width: 140px" />
+        <el-input v-model="filters.keyword" clearable placeholder="搜索资源标题、版本号、需求编号或备注"
+          class="dev-release-toolbar__search" />
+        <el-input v-model="filters.platform" clearable placeholder="平台" class="dev-release-toolbar__field"
+          style="width: 140px" />
         <el-select v-model="filters.visibility" clearable placeholder="资源状态" class="dev-release-toolbar__field">
           <el-option label="已公开" value="published" />
           <el-option label="审核中" value="review" />
@@ -338,7 +324,8 @@ function openResourceList() {
         </div>
       </div>
 
-      <el-table :data="filteredRows" stripe class="dev-release-table" v-loading="loading" :empty-text="loading ? '交付记录加载中' : '当前没有匹配的交付记录'">
+      <el-table :data="filteredRows" stripe class="dev-release-table" v-loading="loading"
+        :empty-text="loading ? '交付记录加载中' : '当前没有匹配的交付记录'">
         <el-table-column label="版本交付" min-width="280">
           <template #default="scope">
             <div class="dev-release-record__title">{{ scope.row.resourceTitle }}</div>
@@ -353,12 +340,15 @@ function openResourceList() {
         </el-table-column>
         <el-table-column label="资源状态" width="120">
           <template #default="scope">
-            <el-tag :type="visibilityTagType(scope.row.resourceVisibility)" effect="plain">{{ visibilityText(scope.row.resourceVisibility) }}</el-tag>
+            <el-tag :type="visibilityTagType(scope.row.resourceVisibility)" effect="plain">{{
+              visibilityText(scope.row.resourceVisibility) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="回款进度" width="120">
           <template #default="scope">
-            <el-tag :type="scope.row.settlementText === '已回款' ? 'success' : scope.row.settlementText === '待付尾款' ? 'warning' : 'info'" effect="plain">
+            <el-tag
+              :type="scope.row.settlementText === '已回款' ? 'success' : scope.row.settlementText === '待付尾款' ? 'warning' : 'info'"
+              effect="plain">
               {{ scope.row.settlementText }}
             </el-tag>
           </template>

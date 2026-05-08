@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 import AppToast from '@/components/AppToast.vue'
@@ -7,8 +8,10 @@ import PortalTopNav from '@/components/PortalTopNav.vue'
 import PortalMobileDock from '@/components/PortalMobileDock.vue'
 import { useToast } from '@/composables/useToast'
 const auth = useAuthStore()
+const route = useRoute()
 const currentYear = new Date().getFullYear()
 const { toastVisible, toastMessage, toastType, hideToast } = useToast()
+const showSiteFooter = computed(() => !route.matched.some((record) => record.meta.hideSiteFooter === true))
 
 onMounted(() => {
   auth.hydrate()
@@ -22,7 +25,7 @@ onMounted(() => {
   <div class="app-shell">
     <div class="app-content">
       <el-scrollbar class="app-scrollbar">
-        <div class="app-view-container">
+        <div class="app-view-container" :class="{ 'app-view-container--no-footer': !showSiteFooter }">
           <PortalTopNav />
           <RouterView v-slot="{ Component }">
             <Suspense>
@@ -30,7 +33,7 @@ onMounted(() => {
             </Suspense>
           </RouterView>
 
-          <div class="site-footer-host">
+          <div v-if="showSiteFooter" class="site-footer-host">
             <footer class="site-footer" aria-label="网站基础信息">
               <div class="site-footer-grid">
                 <div class="site-footer-block">
@@ -95,6 +98,10 @@ onMounted(() => {
 
 .app-view-container {
   padding: 0 0 28px;
+}
+
+.app-view-container--no-footer {
+  padding-bottom: 0;
 }
 
 .site-footer-host {

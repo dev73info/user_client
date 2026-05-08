@@ -41,21 +41,6 @@ const hasActiveSubscription = computed(() =>
 const allSubscriptionsEnabled = computed(() =>
   officialActivitySubscriptionEnabled.value && devHallSubscriptionEnabled.value,
 )
-const subscriptionStateLabel = computed(() => {
-  if (officialActivitySubscriptionEnabled.value && devHallSubscriptionEnabled.value) {
-    return '官方活动通知、开发者接单提醒'
-  }
-
-  if (officialActivitySubscriptionEnabled.value) {
-    return '官方活动通知'
-  }
-
-  if (devHallSubscriptionEnabled.value) {
-    return '开发者接单提醒'
-  }
-
-  return '全部关闭'
-})
 const bellTitle = computed(() => {
   if (subscriptionBusy.value) {
     return '消息订阅同步中'
@@ -287,13 +272,14 @@ function openAuth(mode: AuthMode) {
   void router.push({ name: 'home', query: nextQuery })
 }
 
-function openDevWorkbench() {
-  void router.push(buildDevPortalUrl(auth.token))
-}
-
 function goWorkbench() {
   menuOpen.value = false
   void router.push({ name: 'workbench' })
+}
+
+function openDevWorkbench() {
+  menuOpen.value = false
+  void router.push(buildDevPortalUrl(auth.token))
 }
 
 function logout() {
@@ -411,8 +397,7 @@ function submitSearch() {
             {{ auth.username || '已登录用户' }}
           </button>
           <div class="portal-user__menu" :class="{ open: menuOpen }">
-            <button type="button" @click="goWorkbench">统一工作台</button>
-            <button type="button" @click="openDevWorkbench">开发者功能</button>
+            <button type="button" @click="goWorkbench">个人工作台</button>
             <button type="button" class="danger" @click="logout">退出登录</button>
           </div>
         </div>

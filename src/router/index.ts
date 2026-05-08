@@ -44,11 +44,32 @@ const router = createRouter({
     {
       path: '/workbench',
       component: () => import('@/views/UserWorkbenchView.vue'),
+      meta: {
+        hideSiteFooter: true,
+      },
       children: [
         {
           path: '',
           name: 'workbench',
           component: () => import('@/views/ProfileView.vue'),
+        },
+        {
+          path: 'requirements',
+          name: 'workbench-requirements',
+          component: () => import('@/views/MyRequirementsView.vue'),
+          meta: {
+            title: '我的需求单',
+            description: '查看支付、交付与验收进度',
+          },
+        },
+        {
+          path: 'account',
+          name: 'workbench-account',
+          component: () => import('@/views/AccountCouponsView.vue'),
+          meta: {
+            title: '账户与优惠券',
+            description: '管理账户资料、安全设置与优惠券',
+          },
         },
         {
           path: 'messages',
