@@ -10,14 +10,13 @@ import {
   type SubmitRealnameVerificationPayload,
   type UserRealnameVerification,
 } from '@/api/realname'
-import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
+const { showToast } = useToast()
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -212,7 +211,7 @@ onMounted(async () => {
         </div>
 
         <div class="portal-page__hero-actions">
-          <button class="portal-page__primary" type="button" @click="router.push({ name: 'profile' })">个人中心</button>
+          <button class="portal-page__primary" type="button" @click="router.push({ name: 'workbench' })">工作台总览</button>
           <button class="portal-page__secondary" type="button" @click="router.push({ name: 'home' })">返回首页</button>
         </div>
       </div>
@@ -307,8 +306,6 @@ onMounted(async () => {
         </el-form>
       </el-card>
     </section>
-
-    <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
   </main>
 </template>
 

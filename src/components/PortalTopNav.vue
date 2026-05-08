@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { Bell, Search } from '@element-plus/icons-vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { buildDevPortalUrl } from '@/config/runtime'
+import { useToast } from '@/composables/useToast'
 import { getProfileSubscriptions, updateProfileSubscriptions } from '@dev/api/settings'
 
 type AuthMode = 'login' | 'register'
@@ -20,6 +20,7 @@ type HeaderLink = {
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+const { showToast } = useToast()
 const menuOpen = ref(false)
 const searchQuery = ref('')
 const officialActivitySubscriptionEnabled = ref(false)
@@ -32,7 +33,7 @@ const lastSyncedSubscriptions = ref({
   subscribe_dev_hall_deposit_paid: false,
 })
 const authModalVisible = computed(() => route.query.modal === 'auth')
-const isDevRoute = computed(() => route.path.startsWith('/dev'))
+const isDeveloperArea = computed(() => route.path.startsWith('/dev') || route.path.startsWith('/workbench/developer'))
 const subscriptionBusy = computed(() => subscriptionLoading.value || subscriptionSaving.value)
 const hasActiveSubscription = computed(() =>
   officialActivitySubscriptionEnabled.value || devHallSubscriptionEnabled.value,
@@ -67,7 +68,7 @@ const headerLinks = computed<HeaderLink[]>(() => {
   const currentName = String(route.name ?? '')
   const allowActive = !authModalVisible.value
 
-  return [
+  const links: HeaderLink[] = [
     { label: '首页', to: { name: 'home' }, active: allowActive && currentName === 'home' },
     {
       label: '免费资源',
@@ -86,6 +87,16 @@ const headerLinks = computed<HeaderLink[]>(() => {
       active: allowActive && (currentName === 'help-center' || currentName === 'terms' || currentName === 'privacy' || currentName === 'payment-refund'),
     },
   ]
+
+  if (auth.isAuthed) {
+    links.splice(3, 0, {
+      label: '工作台',
+      to: { name: 'workbench' },
+      active: allowActive && route.path.startsWith('/workbench'),
+    })
+  }
+
+  return links
 })
 
 watch(
@@ -154,7 +165,7 @@ async function loadProfileSubscriptions() {
     const subscriptions = await getProfileSubscriptions(auth.token)
     syncSubscriptionState(subscriptions)
   } catch (err) {
-    ElMessage.error(err instanceof Error ? err.message : '加载消息订阅失败')
+    showToast(err instanceof Error ? err.message : '加载消息订阅失败', 'error')
   } finally {
     subscriptionLoading.value = false
   }
@@ -209,11 +220,11 @@ async function toggleAllSubscriptions() {
   try {
     const updated = await updateProfileSubscriptions(auth.token, nextState)
     syncSubscriptionState(updated)
-    ElMessage.success(nextEnabled ? '已开启全部消息订阅' : '已关闭全部消息订阅')
+    showToast(nextEnabled ? '已开启全部消息订阅' : '已关闭全部消息订阅', 'success')
   } catch (err) {
     officialActivitySubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_official_activity
     devHallSubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_dev_hall_deposit_paid
-    ElMessage.error(err instanceof Error ? err.message : '保存消息订阅失败')
+    showToast(err instanceof Error ? err.message : '保存消息订阅失败', 'error')
   } finally {
     subscriptionSaving.value = false
   }
@@ -250,15 +261,16 @@ async function toggleSubscription(type: 'official_activity' | 'dev_hall_deposit_
         : { subscribe_dev_hall_deposit_paid: nextEnabled },
     )
     syncSubscriptionState(updated)
-    ElMessage.success(
+    showToast(
       nextEnabled
         ? `已开启${isOfficialActivity ? '官方活动通知' : '开发者接单提醒'}`
         : `已关闭${isOfficialActivity ? '官方活动通知' : '开发者接单提醒'}`,
+      'success',
     )
   } catch (err) {
     officialActivitySubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_official_activity
     devHallSubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_dev_hall_deposit_paid
-    ElMessage.error(err instanceof Error ? err.message : '保存消息订阅失败')
+    showToast(err instanceof Error ? err.message : '保存消息订阅失败', 'error')
   } finally {
     subscriptionSaving.value = false
   }
@@ -279,9 +291,9 @@ function openDevWorkbench() {
   void router.push(buildDevPortalUrl(auth.token))
 }
 
-function goProfile() {
+function goWorkbench() {
   menuOpen.value = false
-  void router.push({ name: 'profile' })
+  void router.push({ name: 'workbench' })
 }
 
 function logout() {
@@ -298,8 +310,17 @@ function submitSearch() {
 
   const keyword = normalized.toLowerCase()
 
-  if (/(开发者|工作台|接单|发布资源|dev)/.test(keyword)) {
+  if (/(开发者|接单|发布资源|dev)/.test(keyword)) {
     openDevWorkbench()
+    return
+  }
+
+  if (/(个人中心|用户工作台|工作台|账户|我的)/.test(keyword)) {
+    if (auth.isAuthed) {
+      void router.push({ name: 'workbench' })
+    } else {
+      openAuth('login')
+    }
     return
   }
 
@@ -318,7 +339,7 @@ function submitSearch() {
 </script>
 
 <template>
-  <header class="portal-header" :class="{ 'portal-header--dev': isDevRoute }">
+  <header class="portal-header" :class="{ 'portal-header--dev': isDeveloperArea }">
     <RouterLink class="portal-brand" :to="{ name: 'home' }">
       <div class="portal-brand__mark">73</div>
       <div class="portal-brand__copy">
@@ -390,8 +411,8 @@ function submitSearch() {
             {{ auth.username || '已登录用户' }}
           </button>
           <div class="portal-user__menu" :class="{ open: menuOpen }">
-            <button type="button" @click="goProfile">个人中心</button>
-            <button type="button" @click="openDevWorkbench">开发者工作台</button>
+            <button type="button" @click="goWorkbench">统一工作台</button>
+            <button type="button" @click="openDevWorkbench">开发者功能</button>
             <button type="button" class="danger" @click="logout">退出登录</button>
           </div>
         </div>

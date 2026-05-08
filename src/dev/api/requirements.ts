@@ -10,6 +10,8 @@ export type RequirementStatus =
   | 'final_paid'
   | 'completed'
 
+export type RequirementPaymentMode = 'platform_guarantee' | 'self_managed'
+
 export type RequirementItem = {
   id: number
   requirement_id: string
@@ -22,6 +24,7 @@ export type RequirementItem = {
   description?: string | null
   acceptance_criteria?: string | null
   payment_method?: string | null
+  payment_mode: RequirementPaymentMode
   status: RequirementStatus
   updated_at: string
 }

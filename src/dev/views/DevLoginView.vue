@@ -3,7 +3,6 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getGithubAuthorizeUrl } from '@dev/api/auth'
-import AppToast from '@dev/components/AppToast.vue'
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
 
@@ -25,7 +24,7 @@ const sendCodeLoading = ref(false)
 const sendCodeCountdown = ref(0)
 let sendCodeTimer: ReturnType<typeof setInterval> | null = null
 
-const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
+const { showToast } = useToast()
 
 function clearSendCodeTimer() {
   if (sendCodeTimer) {
@@ -278,17 +277,14 @@ async function submitAuth() {
             </el-checkbox>
           </div>
 
-          <el-button class="dev-login__submit" type="primary" size="large"
-            :loading="auth.loading"
+          <el-button class="dev-login__submit" type="primary" size="large" :loading="auth.loading"
             :disabled="(authMode === 'register' || authMode === 'login' || authMode === 'reset') && !acceptDevAgreement"
             @click="submitAuth">
             {{ authMode === 'login' ? '登录' : authMode === 'register' ? '注册并登录' : '重置密码并登录' }}
           </el-button>
 
-          <el-button v-if="authMode === 'login'" class="dev-login__submit" plain size="large"
-            :loading="githubLoading"
-            :disabled="!acceptDevAgreement"
-            @click="loginWithGithub">
+          <el-button v-if="authMode === 'login'" class="dev-login__submit" plain size="large" :loading="githubLoading"
+            :disabled="!acceptDevAgreement" @click="loginWithGithub">
             {{ githubLoading ? '跳转中...' : 'GitHub 快捷登录' }}
           </el-button>
           <p class="dev-login__hint">
@@ -307,18 +303,12 @@ async function submitAuth() {
       </p>
       <p>
         公安备案号：
-        <a
-          class="dev-public-security-beian-link"
-          href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000020"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <a class="dev-public-security-beian-link" href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000020"
+          target="_blank" rel="noopener noreferrer">
           <img class="dev-public-security-beian-icon" src="/icons/beian.png" alt="公安备案图标" />
           <span>滇公网安备53062802000020号</span>
         </a>
       </p>
     </footer>
-
-    <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
   </main>
 </template>

@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import AppToast from '@/components/AppToast.vue'
 import { getProcessedTagTree, type McTagCatalogRoot } from '@/api/resourceTags'
 import { buildDevPortalUrl } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
@@ -27,7 +26,7 @@ const auth = useAuthStore()
 const router = useRouter()
 const freeResourceSections = ref<FreeResourceSectionView[]>([])
 const freeResourceLoading = ref(false)
-const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
+const { showToast } = useToast()
 
 function openDevWorkbench() {
   void router.push(buildDevPortalUrl(auth.token))
@@ -42,7 +41,7 @@ const placeholderHighlights: ResourceHighlight[] = [
 const resourceGuide = [
   { title: '先选根分区', detail: '从平台当前开放的根节点开始，逐步进入具体资源目录。' },
   { title: '按标签筛选', detail: '进入目录后可继续按标签、发布分组和资源 slug 精准定位。' },
-  { title: '进入开发者端', detail: '若你需要上传、维护或版本管理，请直接进入开发者工作台。' },
+  { title: '进入开发者功能', detail: '若你需要上传、维护或版本管理，请在统一工作台中处理。' },
 ]
 
 function buildFreeResourceSummary(root: McTagCatalogRoot) {
@@ -176,7 +175,5 @@ onMounted(() => {
         </article>
       </div>
     </section>
-
-    <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
   </main>
 </template>

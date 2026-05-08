@@ -10,8 +10,9 @@ import {
   sendResetPasswordEmailCode,
   type AuthPayload,
 } from '@dev/api/auth'
-import { getMyRealnameVerification } from '@dev/api/realname'
-import { HttpError, authHeaders as createAuthHeaders } from '@dev/api/http'
+import { getMyRealnameVerification } from '@/api/realname'
+import { HttpError } from '@/api/http'
+import { authHeaders as createAuthHeaders } from '@dev/api/http'
 import {
   applyAuthPayloadToState,
   clearPersistedAuthProfile,

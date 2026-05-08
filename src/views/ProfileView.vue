@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import AppToast from '@/components/AppToast.vue'
 import PublishModal from '@/components/PublishModal.vue'
+import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
+import DevOverviewView from '@dev/views/DevOverviewView.vue'
 import { buildDevPortalUrl } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -17,6 +18,11 @@ import {
 } from '@/api/payments'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import {
+  listRequirementConversations,
+  type RequirementConversation,
+  type RequirementConversationDetail,
+} from '@/api/conversations'
+import {
   completeRequirement as completeRequirementApi,
   commentRequirement as commentRequirementApi,
   listRequirements,
@@ -26,6 +32,7 @@ import {
   updateRequirementSubscription as updateRequirementSubscriptionApi,
   updateRequirementResourceVisibility as updateRequirementResourceVisibilityApi,
   type RequirementItem,
+  type RequirementPaymentMode,
   type RequirementPendingResourceVersionDeleteRequest,
   type RequirementResourceVisibility,
   type RequirementStatus,
@@ -64,6 +71,7 @@ const editTitle = ref('')
 const editDescription = ref('')
 const editBudget = ref<string | number>('')
 const editAcceptance = ref('')
+const editPaymentMode = ref<RequirementPaymentMode>('self_managed')
 const editLoading = ref(false)
 const realnameStatus = ref<UserRealnameStatus | 'none' | ''>('')
 const realnameLoading = ref(false)
@@ -74,15 +82,21 @@ const finalPaymentConfirmVisible = ref(false)
 const finalPaymentConfirmTarget = ref<RequirementItem | null>(null)
 const completionConfirmVisible = ref(false)
 const completionConfirmTarget = ref<RequirementItem | null>(null)
+const conversationVisible = ref(false)
+const conversationRequirement = ref<RequirementItem | null>(null)
+const conversationLoading = ref(false)
+const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
 const completionLoading = ref(false)
 const expandedVersionDeleteReviewRequirementId = ref<string | null>(null)
 const versionDeleteRejectTargetId = ref<number | null>(null)
 const versionDeleteRejectNotes = ref<Record<number, string>>({})
 const depositRatioPercent = ref(20)
-const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
+const { showToast } = useToast()
 
 const amountCoupons = computed(() => coupons.value.filter((item) => item.discount_type === 'amount'))
 const discountCoupons = computed(() => coupons.value.filter((item) => item.discount_type === 'percent'))
+const conversationCards = computed(() => myRequirements.value.filter(canOpenConversation))
+const availableConversationCount = computed(() => conversationCards.value.length)
 
 function formatRange(item: CouponItem) {
   if (!item.starts_at && !item.ends_at) {
@@ -121,6 +135,20 @@ function formatRequirementStatus(status: RequirementStatus) {
   return mapping[status]
 }
 
+function isSelfManagedRequirement(item: RequirementItem) {
+  return item.payment_mode === 'self_managed'
+}
+
+function paymentModeLabel(item: RequirementItem) {
+  return isSelfManagedRequirement(item) ? '无平台担保' : '平台担保'
+}
+
+function paymentModeHint(item: RequirementItem) {
+  return isSelfManagedRequirement(item)
+    ? '平台内沟通协作，付款由双方另行约定'
+    : '按平台定金与尾款流程推进'
+}
+
 function formatRequirementTime(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
@@ -141,7 +169,11 @@ function formatBudget(value?: number | null) {
   return `¥${value.toFixed(2)}`
 }
 
-function canPay(status: RequirementStatus) {
+function canPay(status: RequirementStatus, item?: RequirementItem) {
+  if (item && isSelfManagedRequirement(item)) {
+    return false
+  }
+
   return status === 'pending_deposit' || status === 'pending_final'
 }
 
@@ -157,12 +189,77 @@ function canRequestFinalPayment(item: RequirementItem) {
   return hasBoundResource(item) && item.status === 'in_development' && publishedVersionCount(item) > 0
 }
 
+function requirementFinalActionLabel(item: RequirementItem) {
+  return isSelfManagedRequirement(item) ? '确认完成' : '支付尾款'
+}
+
 function canResubmit(status: RequirementStatus) {
   return status === 'rejected'
 }
 
 function hasBoundResource(item: RequirementItem) {
   return item.bound_resource_id != null
+}
+
+function canOpenConversation(item: RequirementItem) {
+  return hasBoundResource(item)
+}
+
+function openConversation(item: RequirementItem) {
+  conversationRequirement.value = item
+  conversationVisible.value = true
+}
+
+function closeConversation() {
+  conversationVisible.value = false
+}
+
+function applyConversationDetail(payload: RequirementConversationDetail) {
+  requirementConversationMap.value = {
+    ...requirementConversationMap.value,
+    [payload.conversation.requirement_id]: payload.conversation,
+  }
+}
+
+function conversationForRequirement(item: RequirementItem) {
+  return requirementConversationMap.value[item.requirement_id] ?? null
+}
+
+function conversationLastMessageText(item: RequirementItem) {
+  const conversation = conversationForRequirement(item)
+  if (!conversation) {
+    return '打开会话后开始沟通'
+  }
+
+  if (!conversation.last_message_at) {
+    return '会话已创建，暂无消息'
+  }
+
+  return `最近沟通：${formatRequirementTime(conversation.last_message_at)}`
+}
+
+function conversationButtonLabel(item: RequirementItem) {
+  return conversationForRequirement(item)?.last_message_at ? '查看沟通' : '开始沟通'
+}
+
+async function loadRequirementConversations() {
+  if (!auth.token.trim()) {
+    requirementConversationMap.value = {}
+    return
+  }
+
+  conversationLoading.value = true
+  try {
+    const conversations = await listRequirementConversations(auth.token)
+    requirementConversationMap.value = Object.fromEntries(
+      conversations.map((item) => [item.requirement_id, item]),
+    )
+  } catch (error) {
+    requirementConversationMap.value = {}
+    showToast(error instanceof Error ? error.message : '加载沟通会话失败', 'error')
+  } finally {
+    conversationLoading.value = false
+  }
 }
 
 function currentResourceVisibility(item: RequirementItem): RequirementResourceVisibility | null {
@@ -215,7 +312,7 @@ function nextResourceVisibility(item: RequirementItem): RequirementResourceVisib
 
 function toggleResourceVisibilityLabel(item: RequirementItem) {
   if (!canToggleRequirementResourceVisibility(item)) {
-    return '尾款后可设置'
+    return isSelfManagedRequirement(item) ? '完成后可设置' : '尾款后可设置'
   }
 
   return nextResourceVisibility(item) === 'public' ? '设为公开' : '设为私有'
@@ -250,7 +347,7 @@ function formatPendingVersionRequestedAt(item: RequirementPendingResourceVersion
 }
 
 function openPayModal(item: RequirementItem) {
-  if (!canPay(item.status)) {
+  if (!canPay(item.status, item)) {
     return
   }
   payRequirement.value = item
@@ -271,12 +368,12 @@ async function requestFinalPayment(item: RequirementItem) {
   }
 
   if (item.status !== 'in_development') {
-    showToast('只有开发中的需求单才能结束开发并支付尾款', 'warning')
+    showToast(isSelfManagedRequirement(item) ? '只有开发中的需求单才能确认完成' : '只有开发中的需求单才能结束开发并支付尾款', 'warning')
     return
   }
 
   if (publishedVersionCount(item) <= 0) {
-    showToast('开发者至少发布一个资源版本后，才能结束开发并支付尾款', 'warning')
+    showToast(isSelfManagedRequirement(item) ? '开发者至少发布一个资源版本后，才能确认完成' : '开发者至少发布一个资源版本后，才能结束开发并支付尾款', 'warning')
     return
   }
 
@@ -344,9 +441,13 @@ async function confirmFinalPaymentRequest() {
 
   try {
     const updated = await requestRequirementFinalPaymentApi(auth.token, item.requirement_id)
-    showToast('请支付尾款', 'success')
     await loadMyRequirements()
-    openPayModal(updated)
+    if (isSelfManagedRequirement(item)) {
+      showToast('需求已确认完成', 'success')
+    } else {
+      showToast('请支付尾款', 'success')
+      openPayModal(updated)
+    }
     closeFinalPaymentConfirm()
   } catch (err) {
     showToast(err instanceof Error ? err.message : '结束开发失败', 'error')
@@ -377,12 +478,13 @@ function openRequirementEditModal(item: RequirementItem) {
   editDescription.value = item.description ?? ''
   editBudget.value = item.budget ?? ''
   editAcceptance.value = item.acceptance_criteria ?? ''
+  editPaymentMode.value = item.payment_mode
   editVisible.value = true
 }
 
 function openRealnameEditModal() {
   if (realnameStatus.value === 'rejected') {
-    router.push({ name: 'realname' })
+    router.push({ name: 'workbench-realname' })
   }
 }
 
@@ -415,7 +517,14 @@ async function loadRealnameStatus() {
 }
 
 async function refreshProfileData() {
-  await Promise.all([loadCoupons(), loadMyRequirements(), loadDepositRatio(), loadProfile(), loadRealnameStatus()])
+  await Promise.all([
+    loadCoupons(),
+    loadMyRequirements(),
+    loadRequirementConversations(),
+    loadDepositRatio(),
+    loadProfile(),
+    loadRealnameStatus(),
+  ])
   showToast('资料已刷新', 'success')
 }
 
@@ -425,7 +534,7 @@ function handleRequirementAction(item: RequirementItem) {
     return
   }
 
-  if (canPay(item.status)) {
+  if (canPay(item.status, item)) {
     openPayModal(item)
   } else if (canComplete(item)) {
     openCompletionConfirm(item)
@@ -681,6 +790,7 @@ function closeCommentModal() {
 function forceCloseEditModal() {
   editVisible.value = false
   editRequirement.value = null
+  editPaymentMode.value = 'self_managed'
 }
 
 function closeEditModal() {
@@ -696,7 +806,7 @@ async function toggleRequirementResourceVisibility(item: RequirementItem) {
   }
 
   if (!canToggleRequirementResourceVisibility(item)) {
-    showToast('需求必须在已付尾款后，才能设置资源为公开或私有', 'warning')
+    showToast(isSelfManagedRequirement(item) ? '需求完成后才能设置资源为公开或私有' : '需求必须在已付尾款后，才能设置资源为公开或私有', 'warning')
     return
   }
 
@@ -850,6 +960,7 @@ async function submitRequirementResubmit() {
       description: normalizedDescription,
       budget,
       acceptance_criteria: normalizedAcceptance,
+      payment_mode: editPaymentMode.value,
     })
 
     showToast('需求已重新提交，等待审核', 'success')
@@ -891,6 +1002,22 @@ function finalPaymentAmount(item: RequirementItem) {
 
 const isFinalPayment = computed(() => payRequirement.value?.status === 'pending_final')
 const payStageLabel = computed(() => (isFinalPayment.value ? '尾款' : '定金'))
+
+const finalPaymentConfirmTitle = computed(() =>
+  finalPaymentConfirmTarget.value && isSelfManagedRequirement(finalPaymentConfirmTarget.value)
+    ? '确认交付完成'
+    : '确认进入尾款支付',
+)
+const finalPaymentConfirmTip = computed(() =>
+  finalPaymentConfirmTarget.value && isSelfManagedRequirement(finalPaymentConfirmTarget.value)
+    ? '确认后，当前需求会直接进入已完成状态，后续可继续评价。'
+    : '确认后会将当前需求推进到待付尾款，并立即进入支付流程。',
+)
+const finalPaymentConfirmButton = computed(() =>
+  finalPaymentConfirmTarget.value && isSelfManagedRequirement(finalPaymentConfirmTarget.value)
+    ? '确认完成'
+    : '确认进入尾款支付',
+)
 
 const newUsername = ref('')
 const usernameLoading = ref(false)
@@ -1079,17 +1206,24 @@ async function submitRequirementPayment() {
 onMounted(async () => {
   auth.hydrate()
   newUsername.value = auth.username
-  await Promise.all([loadCoupons(), loadMyRequirements(), loadDepositRatio(), loadProfile(), loadRealnameStatus()])
+  await Promise.all([
+    loadCoupons(),
+    loadMyRequirements(),
+    loadRequirementConversations(),
+    loadDepositRatio(),
+    loadProfile(),
+    loadRealnameStatus(),
+  ])
 })
 
 </script>
 
 <template>
-  <main class="page-shell custom-page-shell profile-page">
+  <main id="overview" class="page-shell custom-page-shell profile-page">
     <section class="profile-page-head">
       <div class="profile-page-head__copy">
-        <h1>{{ auth.username ? `${auth.username} 的个人中心` : '个人中心' }}</h1>
-        <p>管理账户资料、已提交需求单与优惠券，页面顶部不再保留这一层独立入口导航。</p>
+        <h1>{{ auth.username ? `${auth.username} 的工作台` : '用户工作台' }}</h1>
+        <p>个人中心已并入工作台，账户、需求、消息与服务入口按菜单分组管理。</p>
       </div>
       <div class="profile-page-head__actions">
         <div v-if="realnameStatus" class="realname-badge"
@@ -1100,7 +1234,8 @@ onMounted(async () => {
             {{ realnameStatus === 'approved' ? '已认证' : realnameStatus === 'pending' ? '审核中' : '已驳回' }}
           </span>
         </div>
-        <button class="ghost small" type="button" @click="openDevWorkbench">进入开发者工作台</button>
+        <button class="ghost small" type="button" @click="openDevWorkbench">进入开发者功能</button>
+        <button class="ghost small" type="button" @click="router.push({ name: 'workbench-messages' })">消息中心</button>
         <button class="ghost small" type="button" @click="openSecurityModal">账户安全</button>
         <button class="ghost small" type="button" :disabled="loading || requirementLoading" @click="refreshProfileData">
           {{ loading || requirementLoading ? '刷新中...' : '刷新资料' }}
@@ -1117,9 +1252,44 @@ onMounted(async () => {
         <strong>{{ discountCoupons.length }}</strong>
         <span>折扣券</span>
       </div>
+      <div class="wallet-card summary-card">
+        <strong>{{ availableConversationCount }}</strong>
+        <span>沟通会话</span>
+      </div>
     </div>
 
-    <section class="wallet-section">
+    <section id="developer-overview" class="wallet-section developer-overview-section">
+      <div class="wallet-header">
+        <div>
+          <h3>开发者功能</h3>
+          <small class="requirement-note">资源上传、需求接单和交付入口已合并到工作台总览。</small>
+        </div>
+      </div>
+      <DevOverviewView />
+    </section>
+
+    <section v-if="availableConversationCount > 0" id="messages" class="wallet-section conversation-section">
+      <div class="wallet-header">
+        <h3>沟通会话</h3>
+        <div class="conversation-section__actions">
+          <button class="ghost small" type="button" @click="router.push({ name: 'workbench-messages' })">进入消息中心</button>
+          <button class="ghost small" type="button" :disabled="conversationLoading"
+            @click="loadRequirementConversations">
+            {{ conversationLoading ? '刷新中...' : '刷新会话' }}
+          </button>
+        </div>
+      </div>
+      <div class="conversation-card-list">
+        <button v-for="item in conversationCards" :key="item.requirement_id" type="button" class="conversation-card"
+          @click="openConversation(item)">
+          <span class="conversation-card__title">{{ item.title }}</span>
+          <span class="conversation-card__id">{{ item.requirement_id }}</span>
+          <span class="conversation-card__meta">{{ conversationLastMessageText(item) }}</span>
+        </button>
+      </div>
+    </section>
+
+    <section id="requirements" class="wallet-section">
       <div class="wallet-header">
         <h3>我提交的需求单</h3>
         <button class="ghost small" type="button" :disabled="requirementLoading" @click="loadMyRequirements">
@@ -1130,17 +1300,18 @@ onMounted(async () => {
       <ul v-else class="requirement-list">
         <template v-for="item in myRequirements" :key="item.requirement_id">
           <li class="requirement-row"
-            :class="{ clickable: hasPendingResourceVersionDeleteReview(item) || canPay(item.status) || canComplete(item) || canComment(item.status) || canResubmit(item.status), expanded: isVersionDeleteReviewExpanded(item) }"
+            :class="{ clickable: hasPendingResourceVersionDeleteReview(item) || canPay(item.status, item) || canComplete(item) || canComment(item.status) || canResubmit(item.status), expanded: isVersionDeleteReviewExpanded(item) }"
             @click="handleRequirementAction(item)">
             <div class="requirement-main">
               <strong>{{ item.title }}</strong>
               <span>{{ item.requirement_id }}</span>
+              <small class="requirement-note">{{ paymentModeLabel(item) }} · {{ paymentModeHint(item) }}</small>
               <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
                 formatResourceVisibility(item) }}</small>
               <small v-if="hasBoundResource(item)" class="requirement-note">已发布版本：{{ publishedVersionCount(item)
-                }}</small>
+              }}</small>
               <small v-if="hasBoundResource(item) && !canToggleRequirementResourceVisibility(item)"
-                class="requirement-note">资源公开/私有切换需在已付尾款后开放</small>
+                class="requirement-note">资源公开/私有切换需在{{ isSelfManagedRequirement(item) ? '需求完成后' : '已付尾款后' }}开放</small>
               <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">
                 <strong>待审核删除版本：</strong>
                 <span class="pending-review-pill">
@@ -1157,10 +1328,13 @@ onMounted(async () => {
                 class="requirement-note">{{ resourceVersionDeleteReviewHint(item) }}</small>
               <small
                 v-if="item.status === 'in_development' && hasBoundResource(item) && publishedVersionCount(item) < 1"
-                class="requirement-note">开发者至少发布 1 个版本后，用户才能结束开发并支付尾款</small>
+                class="requirement-note">开发者至少发布 1 个版本后，用户才能{{ isSelfManagedRequirement(item) ? '确认完成' : '结束开发并支付尾款'
+                }}</small>
               <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{
                 item.review_note }}</small>
               <small class="requirement-note">{{ item.subscribe_status_change ? '已订阅该需求的状态变化通知' : '未订阅该需求的状态变化通知'
+                }}</small>
+              <small v-if="canOpenConversation(item)" class="requirement-note">{{ conversationLastMessageText(item)
               }}</small>
             </div>
             <span class="requirement-status">{{ formatRequirementStatus(item.status) }}</span>
@@ -1180,13 +1354,15 @@ onMounted(async () => {
                   toggleResourceVisibilityLabel(item)
                 }}
               </button>
+              <button v-if="canOpenConversation(item)" class="ghost small" type="button"
+                @click.stop="openConversation(item)">{{ conversationButtonLabel(item) }}</button>
               <button v-if="canRequestFinalPayment(item)" class="ghost small" type="button"
-                @click.stop="requestFinalPayment(item)">支付尾款</button>
+                @click.stop="requestFinalPayment(item)">{{ requirementFinalActionLabel(item) }}</button>
               <button v-if="canComplete(item)" class="ghost small" type="button"
                 @click.stop="openCompletionConfirm(item)">确认完成</button>
               <button v-if="canResubmit(item.status)" class="ghost small" type="button"
                 @click.stop="openRequirementEditModal(item)">重新编辑</button>
-              <button v-else-if="canPay(item.status)" class="ghost small" type="button"
+              <button v-else-if="canPay(item.status, item)" class="ghost small" type="button"
                 @click.stop="openPayModal(item)">去支付</button>
               <button v-else-if="canComment(item.status) && !canComplete(item)" class="ghost small" type="button"
                 @click.stop="openCommentModal(item)">去评价</button>
@@ -1248,8 +1424,12 @@ onMounted(async () => {
 
     <PublishModal :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核" loadingText="提交中..."
       v-model:publishTitle="editTitle" v-model:publishDescription="editDescription" v-model:publishBudget="editBudget"
-      v-model:publishAcceptance="editAcceptance" :publishLoading="editLoading" @close="closeEditModal"
-      @submit="submitRequirementResubmit" />
+      v-model:publishAcceptance="editAcceptance" v-model:publishPaymentMode="editPaymentMode"
+      :publishLoading="editLoading" @close="closeEditModal" @submit="submitRequirementResubmit" />
+
+    <RequirementConversationModal :visible="conversationVisible" :token="auth.token" :current-username="auth.username"
+      :requirement-id="conversationRequirement?.requirement_id ?? ''" :title="conversationRequirement?.title"
+      @updated="applyConversationDetail" @close="closeConversation" />
 
     <Teleport to="body">
       <div v-if="securityVisible" class="modal-wrap modal-wrap--account-security" @click.self="closeSecurityModal">
@@ -1391,14 +1571,15 @@ onMounted(async () => {
     <div v-if="finalPaymentConfirmVisible && finalPaymentConfirmTarget" class="modal-wrap"
       @click.self="closeFinalPaymentConfirm">
       <section class="pay-modal" aria-label="尾款确认弹窗">
-        <h3>确认进入尾款支付</h3>
+        <h3>{{ finalPaymentConfirmTitle }}</h3>
         <p class="pay-line"><strong>需求标题：</strong>{{ finalPaymentConfirmTarget.title }}</p>
         <p class="pay-line"><strong>需求编号：</strong>{{ finalPaymentConfirmTarget.requirement_id }}</p>
-        <p class="tip">确认后会将当前需求推进到待付尾款，并立即进入支付流程。</p>
+        <p class="tip">{{ finalPaymentConfirmTip }}</p>
 
         <div class="actions">
           <button class="ghost" type="button" @click="closeFinalPaymentConfirm">取消</button>
-          <button class="ghost" type="button" @click="confirmFinalPaymentRequest">确认进入尾款支付</button>
+          <button class="ghost" type="button" @click="confirmFinalPaymentRequest">{{ finalPaymentConfirmButton
+            }}</button>
         </div>
       </section>
     </div>
@@ -1451,7 +1632,7 @@ onMounted(async () => {
       </section>
     </div>
 
-    <section class="wallet-section">
+    <section id="coupons" class="wallet-section">
       <div class="wallet-header">
         <h3>优惠卷背包</h3>
         <button class="ghost small" type="button" :disabled="loading" @click="loadCoupons">
@@ -1494,8 +1675,6 @@ onMounted(async () => {
         </button>
       </div>
     </section>
-
-    <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
   </main>
 </template>
 
@@ -1561,6 +1740,80 @@ onMounted(async () => {
 .pending-review-count {
   margin-left: 8px;
   color: #7b8798;
+}
+
+.conversation-section {
+  display: grid;
+  gap: 14px;
+}
+
+.developer-overview-section {
+  display: grid;
+  gap: 14px;
+}
+
+.developer-overview-section :deep(.dev-page) {
+  width: 100%;
+  margin: 0;
+  gap: 14px;
+}
+
+.developer-overview-section :deep(.ov-header) {
+  display: none;
+}
+
+.developer-overview-section :deep(.dev-surface-card) {
+  border-radius: 16px;
+  box-shadow: 0 10px 22px rgba(76, 103, 172, 0.07);
+}
+
+.developer-overview-section :deep(.dev-surface-card .el-card__body) {
+  padding: 16px;
+}
+
+.conversation-section__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.conversation-card-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.conversation-card {
+  display: grid;
+  gap: 6px;
+  min-height: 112px;
+  padding: 14px 16px;
+  border: 1px solid rgba(209, 220, 243, 0.95);
+  border-radius: 16px;
+  background: #ffffff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
+}
+
+.conversation-card:hover {
+  border-color: rgba(75, 120, 225, 0.5);
+  box-shadow: 0 14px 28px rgba(76, 103, 172, 0.12);
+}
+
+.conversation-card__title {
+  color: #0f172a;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.conversation-card__id,
+.conversation-card__meta {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .subscription-settings {
@@ -1675,6 +1928,14 @@ onMounted(async () => {
 
   .profile-page-head__actions {
     justify-content: flex-start;
+  }
+
+  .conversation-section__actions {
+    width: 100%;
+  }
+
+  .conversation-section__actions .ghost.small {
+    flex: 1;
   }
 
   .subscription-card {

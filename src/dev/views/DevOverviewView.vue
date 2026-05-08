@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { getMyRealnameVerification, type DevRealnameVerification } from '@dev/api/realname'
-import { HttpError } from '@dev/api/http'
+import { getMyRealnameVerification, type UserRealnameVerification } from '@/api/realname'
+import { HttpError } from '@/api/http'
 import { useAuthStore } from '@dev/stores/auth'
 
 const router = useRouter()
@@ -13,7 +13,7 @@ const displayName = computed(() => auth.username || '开发者')
 
 // ── 实名认证状态 ───────────────────────────────────────────────
 const realnameLoading = ref(false)
-const realnameRecord = ref<DevRealnameVerification | null>(null)
+const realnameRecord = ref<UserRealnameVerification | null>(null)
 const realnameLoadError = ref(false)
 
 const realnameStatus = computed(() => realnameRecord.value?.status ?? null)
@@ -57,7 +57,7 @@ const newcomerGuide = [
     desc: '提交证件信息，经平台核验后开放后续功能权限。',
     hint: '大陆身份证可即时核验',
     cta: '去认证',
-    route: { path: '/dev/realname', query: { redirect_to: '/dev/resources/plugins-init' } },
+    route: { name: 'workbench-realname', query: { redirect_to: '/workbench/developer/resources/plugins-init' } },
   },
   {
     step: '02',
@@ -65,30 +65,32 @@ const newcomerGuide = [
     desc: '在资源初始化页填写插件/工具的基本信息并提交审核。',
     hint: '审核通过后资源上线',
     cta: '上传资源',
-    route: '/dev/resources/plugins-init',
+    route: { name: 'dev-plugins' },
   },
   {
     step: '03',
     title: '对接需求',
-    desc: '浏览需求大厅，找到匹配的项目并提交申请。',
-    hint: '需求大厅功能即将开放',
-    cta: '查看资源',
-    route: '/dev/resources/list',
+    desc: '浏览需求大厅，接取匹配需求后进入沟通会话推进交付。',
+    hint: '接单后自动创建沟通会话',
+    cta: '进入大厅',
+    route: { name: 'dev-requirement-hall' },
   },
   {
     step: '04',
     title: '查看收益',
     desc: '资源被采购后，收益将自动计入开发者钱包，可申请提现。',
-    hint: '钱包功能即将开放',
-    cta: '了解更多',
-    route: '/dev/overview',
+    hint: '余额、交付与提现集中管理',
+    cta: '查看钱包',
+    route: { name: 'dev-wallet' },
   },
 ]
 
 // ── 快捷入口 ───────────────────────────────────────────────────
 const quickLinks = [
-  { label: '上传资源', icon: '📦', route: '/dev/resources/plugins-init' },
-  { label: '我的资源', icon: '📋', route: '/dev/resources/list' },
+  { label: '上传资源', icon: '📦', route: { name: 'dev-plugins' } },
+  { label: '我的资源', icon: '📋', route: { name: 'dev-resource-list' } },
+  { label: '需求大厅', icon: '🧩', route: { name: 'dev-requirement-hall' } },
+  { label: '我的需求单', icon: '💬', route: { name: 'dev-my-requirements' } },
   { label: '工单管理', icon: '🎫', route: null, disabled: true },
 ]
 
@@ -138,24 +140,11 @@ onMounted(async () => {
         </div>
         <p class="dev-section-desc ov-realname-card__desc">{{ realnameDesc }}</p>
         <div class="ov-realname-card__actions">
-          <el-button
-            plain
-            :loading="realnameLoading"
-            size="small"
-            @click="loadRealname"
-          >刷新</el-button>
-          <el-button
-            v-if="realnameStatus !== 'approved'"
-            type="primary"
-            size="small"
-            @click="router.push({ path: '/dev/realname', query: { redirect_to: '/dev/resources/plugins-init' } })"
-          >{{ realnameStatus === 'rejected' ? '重新认证' : realnameStatus === 'pending' ? '查看进度' : '去认证' }}</el-button>
-          <el-button
-            v-else
-            plain
-            size="small"
-            @click="router.push('/dev/realname')"
-          >查看详情</el-button>
+          <el-button plain :loading="realnameLoading" size="small" @click="loadRealname">刷新</el-button>
+          <el-button v-if="realnameStatus !== 'approved'" type="primary" size="small"
+            @click="router.push({ name: 'workbench-realname', query: { redirect_to: '/workbench/developer/resources/plugins-init' } })">{{
+              realnameStatus === 'rejected' ? '重新认证' : realnameStatus === 'pending' ? '查看进度' : '去认证' }}</el-button>
+          <el-button v-else plain size="small" @click="router.push({ name: 'workbench-realname' })">查看详情</el-button>
         </div>
       </el-card>
 
@@ -164,14 +153,9 @@ onMounted(async () => {
         <div class="ov-realname-card__eyebrow">Quick Access</div>
         <h3 class="dev-section-title" style="margin-bottom: 18px;">快捷入口</h3>
         <div class="ov-quick-grid">
-          <button
-            v-for="link in quickLinks"
-            :key="link.label"
-            class="ov-quick-item"
-            :class="{ 'ov-quick-item--disabled': link.disabled }"
-            :disabled="link.disabled"
-            @click="!link.disabled && link.route && router.push(link.route)"
-          >
+          <button v-for="link in quickLinks" :key="link.label" class="ov-quick-item"
+            :class="{ 'ov-quick-item--disabled': link.disabled }" :disabled="link.disabled"
+            @click="!link.disabled && link.route && router.push(link.route)">
             <span class="ov-quick-item__icon">{{ link.icon }}</span>
             <div class="ov-quick-item__body">
               <span class="ov-quick-item__label">{{ link.label }}</span>
@@ -205,7 +189,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-
 .dev-overview {
   gap: 20px;
 }
@@ -258,10 +241,21 @@ onMounted(async () => {
   border-radius: 4px 0 0 4px;
 }
 
-.ov-realname--none::before   { background: #cbd5e1; }
-.ov-realname--pending::before { background: #f59e0b; }
-.ov-realname--approved::before { background: #10b981; }
-.ov-realname--rejected::before { background: #ef4444; }
+.ov-realname--none::before {
+  background: #cbd5e1;
+}
+
+.ov-realname--pending::before {
+  background: #f59e0b;
+}
+
+.ov-realname--approved::before {
+  background: #10b981;
+}
+
+.ov-realname--rejected::before {
+  background: #ef4444;
+}
 
 .ov-realname-card__eyebrow {
   font-size: 11px;
@@ -308,7 +302,7 @@ onMounted(async () => {
   padding: 12px 14px;
   border-radius: 14px;
   border: 1px solid rgba(17, 24, 39, 0.07);
-  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(243,246,255,0.7));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(243, 246, 255, 0.7));
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, transform 0.1s;
   text-align: left;
@@ -361,6 +355,4 @@ onMounted(async () => {
     grid-template-columns: 1fr;
   }
 }
-
 </style>
-

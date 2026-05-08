@@ -32,6 +32,8 @@ export type RequirementStatus =
   | 'final_paid'
   | 'completed'
 
+export type RequirementPaymentMode = 'platform_guarantee' | 'self_managed'
+
 export type RequirementPendingResourceVersionDeleteRequest = {
   version_id: number
   version: string
@@ -72,6 +74,7 @@ export type RequirementItem = {
   status: RequirementStatus
   budget?: number | null
   payment_method?: string | null
+  payment_mode: RequirementPaymentMode
   updated_at: string
 }
 
@@ -80,6 +83,7 @@ export type CreateRequirementPayload = {
   description: string
   budget: number
   acceptance_criteria: string
+  payment_mode: RequirementPaymentMode
 }
 
 export type CommentRequirementPayload = {

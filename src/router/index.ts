@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { devRoutes, installDevRouteGuard } from '@dev/router'
+import { devRoutes, devWorkbenchRoutes, installDevRouteGuard } from '@dev/router'
 
 const routerHistory =
   import.meta.env.VITE_ROUTER_MODE === 'history'
@@ -39,22 +39,59 @@ const router = createRouter({
     {
       path: '/profile',
       name: 'profile',
-      component: () => import('@/views/ProfileView.vue'),
+      redirect: { name: 'workbench' },
+    },
+    {
+      path: '/workbench',
+      component: () => import('@/views/UserWorkbenchView.vue'),
+      children: [
+        {
+          path: '',
+          name: 'workbench',
+          component: () => import('@/views/ProfileView.vue'),
+        },
+        {
+          path: 'messages',
+          name: 'workbench-messages',
+          component: () => import('@/views/MessagesView.vue'),
+        },
+        {
+          path: 'resources',
+          name: 'workbench-resources',
+          component: () => import('@/views/MyCustomResourcesView.vue'),
+        },
+        {
+          path: 'tickets',
+          name: 'workbench-tickets',
+          component: () => import('@/views/TicketCenterView.vue'),
+        },
+        {
+          path: 'realname',
+          name: 'workbench-realname',
+          component: () => import('@/views/RealnameView.vue'),
+        },
+        ...devWorkbenchRoutes,
+      ],
+    },
+    {
+      path: '/messages',
+      name: 'messages',
+      redirect: { name: 'workbench-messages' },
     },
     {
       path: '/my-custom-resources',
       name: 'my-custom-resources',
-      component: () => import('@/views/MyCustomResourcesView.vue'),
+      redirect: { name: 'workbench-resources' },
     },
     {
       path: '/tickets',
       name: 'tickets',
-      component: () => import('@/views/TicketCenterView.vue'),
+      redirect: { name: 'workbench-tickets' },
     },
     {
       path: '/realname',
       name: 'realname',
-      component: () => import('@/views/RealnameView.vue'),
+      redirect: { name: 'workbench-realname' },
     },
     {
       path: '/coupon-claim',
@@ -149,7 +186,9 @@ router.beforeEach(async (to, from, next) => {
   }
 
   const authRequired =
+    to.path.startsWith('/workbench') ||
     to.name === 'profile' ||
+    to.name === 'messages' ||
     to.name === 'payment' ||
     to.name === 'my-custom-resources' ||
     to.name === 'tickets' ||

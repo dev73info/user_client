@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import AppToast from '@/components/AppToast.vue'
 import {
   closeTicket,
   createTicket,
@@ -33,7 +32,7 @@ const newCategory = ref('')
 const newPriority = ref<TicketPriority>('normal')
 const newContent = ref('')
 const replyContent = ref('')
-const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
+const { showToast } = useToast()
 
 const priorityOptions: Array<{ value: TicketPriority; label: string }> = [
   { value: 'low', label: '低优先级' },
@@ -247,9 +246,9 @@ onMounted(async () => {
         </div>
 
         <div class="portal-page__hero-actions">
-          <button class="portal-page__primary" type="button" @click="router.push({ name: 'profile' })">个人中心</button>
+          <button class="portal-page__primary" type="button" @click="router.push({ name: 'workbench' })">工作台总览</button>
           <button class="portal-page__secondary" type="button"
-            @click="router.push({ name: 'my-custom-resources' })">我的资源</button>
+            @click="router.push({ name: 'workbench-resources' })">我的资源</button>
         </div>
       </div>
 
@@ -421,8 +420,6 @@ onMounted(async () => {
         </div>
       </section>
     </section>
-
-    <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
   </main>
 </template>
 

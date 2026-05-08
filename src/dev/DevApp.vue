@@ -92,7 +92,8 @@ function openMobileMenu() {
           </div>
         </div>
 
-        <el-menu :default-active="route.path" :default-openeds="['resources']" router class="dev-shell__menu">
+        <el-menu :default-active="route.path" :default-openeds="['resources', 'requirements']" router
+          class="dev-shell__menu">
           <el-menu-item index="/dev/overview">
             <el-icon>
               <DataAnalysis />
@@ -124,13 +125,16 @@ function openMobileMenu() {
               </el-icon>资源列表
             </el-menu-item>
           </el-sub-menu>
-          <!-- 需求大厅：暂时禁用 -->
-          <el-menu-item index="/dev/requirements/disabled" disabled class="dev-shell__menu-item--disabled">
-            <el-icon>
-              <Connection />
-            </el-icon>
-            <span>需求大厅<em class="dev-shell__menu-tag">暂未开放</em></span>
-          </el-menu-item>
+          <el-sub-menu index="requirements">
+            <template #title>
+              <el-icon>
+                <Connection />
+              </el-icon>
+              <span>需求协作</span>
+            </template>
+            <el-menu-item index="/dev/requirements/hall">需求大厅</el-menu-item>
+            <el-menu-item index="/dev/requirements/my">我的需求单</el-menu-item>
+          </el-sub-menu>
         </el-menu>
 
       </el-scrollbar>
@@ -181,7 +185,8 @@ function openMobileMenu() {
           </div>
         </div>
 
-        <el-menu :default-active="route.path" :default-openeds="['resources']" router class="dev-shell__menu">
+        <el-menu :default-active="route.path" :default-openeds="['resources', 'requirements']" router
+          class="dev-shell__menu">
           <el-menu-item index="/dev/overview">
             <el-icon>
               <DataAnalysis />
@@ -213,13 +218,16 @@ function openMobileMenu() {
               </el-icon>资源列表
             </el-menu-item>
           </el-sub-menu>
-          <!-- 需求大厅：暂时禁用 -->
-          <el-menu-item index="/dev/requirements/disabled" disabled class="dev-shell__menu-item--disabled">
-            <el-icon>
-              <Connection />
-            </el-icon>
-            <span>需求大厅<em class="dev-shell__menu-tag">暂未开放</em></span>
-          </el-menu-item>
+          <el-sub-menu index="requirements">
+            <template #title>
+              <el-icon>
+                <Connection />
+              </el-icon>
+              <span>需求协作</span>
+            </template>
+            <el-menu-item index="/dev/requirements/hall">需求大厅</el-menu-item>
+            <el-menu-item index="/dev/requirements/my">我的需求单</el-menu-item>
+          </el-sub-menu>
         </el-menu>
 
       </div>

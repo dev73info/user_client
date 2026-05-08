@@ -6,7 +6,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight } from '@element-plus/icons-vue'
 
 import { useAuthStore } from '@/stores/auth'
-import AppToast from '@/components/AppToast.vue'
 import AuthModal from '@/components/AuthModal.vue'
 import PublishModal from '@/components/PublishModal.vue'
 import DepositModal from '@/components/DepositModal.vue'
@@ -29,6 +28,7 @@ import {
   getPublicRequirementOverview,
   listRequirements,
   resubmitRequirement,
+  type RequirementPaymentMode,
   type RequirementStatus,
 } from '@/api/requirements'
 import { getMyRealnameVerification, type UserRealnameStatus } from '@/api/realname'
@@ -50,6 +50,7 @@ type PendingRequirementView = {
   acceptanceCriteria?: string | null
   budget?: number | null
   paymentMethod?: string | null
+  paymentMode: RequirementPaymentMode
 }
 
 type AuthMode = 'login' | 'register' | 'reset'
@@ -141,10 +142,7 @@ const routeAuthMode = computed<AuthMode>(() => {
   return mode === 'register' || mode === 'reset' ? mode : 'login'
 })
 const authVisible = computed(() => routeModal.value === 'auth')
-// 发布需求功能已暂时禁用：仅在重新编辑被驳回需求（resubmit）的场景下才允许打开发布弹窗。
-const publishVisible = computed(
-  () => routeModal.value === 'publish' && activeResubmitRequirementId.value !== null,
-)
+const publishVisible = computed(() => routeModal.value === 'publish')
 const depositVisible = computed(() => routeModal.value === 'deposit')
 const {
   authUsername,
@@ -168,6 +166,7 @@ const publishDescription = ref('')
 const publishBudget = ref<string | number>('')
 const depositChannel = ref<'alipay' | 'wechat'>('alipay')
 const publishAcceptance = ref('')
+const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
 const activeResubmitRequirementId = ref<string | null>(null)
 const publishLoading = ref(false)
 const homeRefreshLoading = ref(false)
@@ -184,7 +183,7 @@ const discountCouponCode = ref('')
 const depositPolicyAccepted = ref(false)
 const couponLoading = ref(false)
 const contractSigningStatus = ref<ContractSigningStatus | null>(null)
-const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
+const { showToast } = useToast()
 const publishRealnameStatus = ref<UserRealnameStatus | 'none' | ''>('')
 const heroSignals = [
   '免费资源共享',
@@ -476,6 +475,7 @@ function openDepositCard(item: PendingRequirementView) {
     publishDescription.value = item.description || ''
     publishBudget.value = item.budget ?? ''
     publishAcceptance.value = item.acceptanceCriteria || ''
+    publishPaymentMode.value = item.paymentMode
     activeResubmitRequirementId.value = item.id
     router.push({ name: 'home', query: { modal: 'publish' } })
     return
@@ -709,6 +709,7 @@ async function loadPendingRequirements(silent = false) {
         acceptanceCriteria: item.acceptance_criteria,
         budget: item.budget,
         paymentMethod: item.payment_method,
+        paymentMode: item.payment_mode,
       }))
   } catch (err) {
     if (isMounted && !silent) {
@@ -920,7 +921,7 @@ async function ensurePublishRealnameApproved() {
 
   showToast(`请先完成实名认证后再发布需求（当前：${realnameStatusText(publishRealnameStatus.value)}）`, 'warning')
   await router.push({
-    name: 'realname',
+    name: 'workbench-realname',
     query: {
       redirect_to: '/?modal=publish',
     },
@@ -929,8 +930,18 @@ async function ensurePublishRealnameApproved() {
 }
 
 async function openPublishModal() {
-  // 发布需求功能已暂时禁用
-  showToast('发布需求功能暂未开放，敬请期待', 'info')
+  const approved = await ensurePublishRealnameApproved()
+  if (!approved) {
+    return
+  }
+
+  activeResubmitRequirementId.value = null
+  publishTitle.value = ''
+  publishDescription.value = ''
+  publishBudget.value = ''
+  publishAcceptance.value = ''
+  publishPaymentMode.value = 'self_managed'
+  await router.push({ name: 'home', query: { modal: 'publish' } })
 }
 
 async function refreshHomeData() {
@@ -974,12 +985,6 @@ const publishModalLoadingText = computed(() =>
 )
 
 async function submitPublishRequirement() {
-  // 发布需求功能已暂时禁用：仅允许“重新编辑需求”（resubmit）流程提交。
-  if (!activeResubmitRequirementId.value) {
-    showToast('发布需求功能暂未开放，敬请期待', 'info')
-    return
-  }
-
   const approved = await ensurePublishRealnameApproved()
   if (!approved) {
     return
@@ -1026,6 +1031,7 @@ async function submitPublishRequirement() {
       description: normalizedDescription,
       budget,
       acceptance_criteria: normalizedAcceptance,
+      payment_mode: publishPaymentMode.value,
     }
 
     if (activeResubmitRequirementId.value) {
@@ -1044,6 +1050,7 @@ async function submitPublishRequirement() {
     publishDescription.value = ''
     publishBudget.value = ''
     publishAcceptance.value = ''
+    publishPaymentMode.value = 'self_managed'
     showToast(wasResubmit ? '需求已重新提交，等待审核' : '需求已发布', 'success')
     void router.replace({ name: 'home' })
     await loadPendingRequirements()
@@ -1253,29 +1260,6 @@ async function submitPublishRequirement() {
         </aside>
       </div>
 
-      <nav class="portal-mobile-dock" aria-label="移动端快捷导航">
-        <button type="button" class="portal-mobile-dock__item active" @click="scrollToSection('top')">
-          <span>⌂</span>
-          <small>首页</small>
-        </button>
-        <button type="button" class="portal-mobile-dock__item" @click="router.push({ name: 'requirement-hall' })">
-          <span>◫</span>
-          <small>需求</small>
-        </button>
-        <button type="button" class="portal-mobile-dock__item portal-mobile-dock__item--primary"
-          @click="openPublishModal">
-          <span>＋</span>
-          <small>发布</small>
-        </button>
-        <button type="button" class="portal-mobile-dock__item" @click="openDevWorkbench">
-          <span>⌘</span>
-          <small>开发者</small>
-        </button>
-        <button type="button" class="portal-mobile-dock__item" @click="router.push({ name: 'community' })">
-          <span>◉</span>
-          <small>社区</small>
-        </button>
-      </nav>
     </div>
 
     <div v-if="dealDetailVisible && selectedDeal" class="auth-modal-wrap" @click.self="closeDealDetail">
@@ -1306,9 +1290,9 @@ async function submitPublishRequirement() {
 
     <PublishModal :visible="publishVisible" v-model:publishTitle="publishTitle"
       v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
-      v-model:publishAcceptance="publishAcceptance" :modalTitle="publishModalTitle" :submitText="publishModalSubmitText"
-      :loadingText="publishModalLoadingText" :publishLoading="publishLoading" @close="closePublishModal"
-      @submit="submitPublishRequirement" />
+      v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
+      :modalTitle="publishModalTitle" :submitText="publishModalSubmitText" :loadingText="publishModalLoadingText"
+      :publishLoading="publishLoading" @close="closePublishModal" @submit="submitPublishRequirement" />
 
     <DepositModal v-if="depositVisible && depositRequirement" :visible="depositVisible"
       :depositRequirement="depositRequirement" :formattedBudget="formatMoney(depositRequirement.budget)"
@@ -1320,8 +1304,5 @@ async function submitPublishRequirement() {
       :contractSigningStatus="contractSigningStatus" @close="closeDepositCard" @submit="submitDepositPayment"
       @update:depositPolicyAccepted="depositPolicyAccepted = $event" @update:depositChannel="depositChannel = $event"
       @selectCoupon="selectCoupon" @loadAvailableCoupons="loadAvailableCoupons" />
-
-    <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
-
   </main>
 </template>

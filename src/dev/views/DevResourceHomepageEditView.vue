@@ -16,6 +16,7 @@ import {
 } from '@dev/api/mcResources'
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
+import { buildUnifiedAuthUrl } from '@/config/runtime'
 
 type ToolbarAction = 'bold' | 'italic' | 'underline' | 'h2' | 'h3' | 'bullet' | 'ordered' | 'blockquote' | 'code'
 type EditorMode = 'rich' | 'markdown'
@@ -311,7 +312,7 @@ async function loadResource() {
 
   if (!auth.token) {
     showToast('登录状态已失效，请重新登录', 'error')
-    router.replace({ name: 'dev-login' })
+    router.replace(buildUnifiedAuthUrl('login', route.fullPath))
     return
   }
 
@@ -535,15 +536,15 @@ console.log('hello')
               <div class="dev-resource-homepage-editor__preview-pills">
                 <span class="dev-resource-homepage-editor__preview-pill">{{ resource?.platform || '未知平台' }}</span>
                 <span class="dev-resource-homepage-editor__preview-pill">by {{ form.author || resource?.author || '开发者'
-                  }}</span>
+                }}</span>
               </div>
               <h2 class="dev-resource-homepage-editor__preview-title">{{ form.title || '资源标题预览' }}</h2>
               <p class="dev-resource-homepage-editor__preview-desc">{{ form.description || '资源简介会展示在这里，建议保持短句、明确和可快速理解。'
-                }}</p>
+              }}</p>
 
               <div v-if="previewTagNames.length" class="dev-resource-homepage-editor__preview-tags">
                 <span v-for="tag in previewTagNames" :key="tag" class="dev-resource-homepage-editor__preview-tag">{{ tag
-                  }}</span>
+                }}</span>
               </div>
             </div>
 

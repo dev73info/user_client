@@ -31,7 +31,7 @@ async function retryAccessCheck() {
 
     if (hasAccess) {
       showToast('开发者权限已开通，正在进入工作台', 'success')
-      await router.replace('/dev/overview')
+      await router.replace({ name: 'dev-overview' })
       return
     }
 
@@ -52,7 +52,7 @@ async function retryAccessCheck() {
       <span class="dev-no-access__eyebrow">Access Required</span>
       <h1 class="dev-no-access__title">{{ displayName }} 还没有开发者权限</h1>
       <p class="dev-no-access__desc">
-        开发者缴纳审核费功能已下线。当前账号无法进入开发者工作台，请联系管理员直接开通开发者角色后再登录。
+        开发者缴纳审核费功能已下线。当前账号无法使用开发者功能，请联系管理员直接开通开发者角色后再登录。
       </p>
 
       <div class="dev-no-access__actions">

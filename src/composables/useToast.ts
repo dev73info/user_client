@@ -1,4 +1,4 @@
-import { onUnmounted, ref } from 'vue'
+import { ref } from 'vue'
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning'
 
@@ -30,10 +30,6 @@ export function useToast(defaultDuration = 2600) {
       hideToast()
     }, duration)
   }
-
-  onUnmounted(() => {
-    clearToastTimer()
-  })
 
   return {
     toastVisible,

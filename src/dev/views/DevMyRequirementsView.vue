@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
+import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
+import {
+  listRequirementConversations,
+  type RequirementConversation,
+  type RequirementConversationDetail,
+} from '@dev/api/conversations'
 import { listMyRequirements, type RequirementItem } from '@dev/api/requirements'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@dev/api/contracts'
 import { useToast } from '@dev/composables/useToast'
@@ -12,6 +18,10 @@ const { showToast } = useToast()
 const loading = ref(false)
 const rows = ref<RequirementItem[]>([])
 const signingStatusMap = ref<Record<string, ContractSigningStatus | null>>({})
+const conversationVisible = ref(false)
+const conversationRequirement = ref<RequirementItem | null>(null)
+const conversationLoading = ref(false)
+const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
 
 const emptyText = computed(() => (loading.value ? '我的需求单加载中' : '当前账号还没有已关联需求'))
 const boundCount = computed(() => rows.value.filter((item) => item.bound_resource_id != null).length)
@@ -31,12 +41,14 @@ async function loadMyRequirements() {
   loading.value = true
   try {
     rows.value = await listMyRequirements(auth.token)
-    // 并发获取所有需求的签署状态
-    const statusEntries = await Promise.allSettled(
-      rows.value.map((item) =>
-        fetchContractSigningStatus(auth.token!, item.requirement_id).then((s) => ({ id: item.requirement_id, s })),
+    const [statusEntries] = await Promise.all([
+      Promise.allSettled(
+        rows.value.map((item) =>
+          fetchContractSigningStatus(auth.token!, item.requirement_id).then((s) => ({ id: item.requirement_id, s })),
+        ),
       ),
-    )
+      loadRequirementConversations(),
+    ])
     const map: Record<string, ContractSigningStatus | null> = {}
     for (const entry of statusEntries) {
       if (entry.status === 'fulfilled') {
@@ -84,6 +96,10 @@ function statusLabel(status: RequirementItem['status']): string {
   }
 }
 
+function paymentModeLabel(item: RequirementItem): string {
+  return item.payment_mode === 'self_managed' ? '无平台担保' : '平台担保'
+}
+
 function statusType(status: RequirementItem['status']): 'info' | 'success' | 'warning' | 'danger' {
   switch (status) {
     case 'completed':
@@ -106,6 +122,58 @@ function resourceVisibilityLabel(item: RequirementItem): string {
   }
 
   return item.resource_visibility === 'public' ? '资源已公开' : '资源私有中'
+}
+
+function openConversation(item: RequirementItem) {
+  conversationRequirement.value = item
+  conversationVisible.value = true
+}
+
+function closeConversation() {
+  conversationVisible.value = false
+}
+
+function applyConversationDetail(payload: RequirementConversationDetail) {
+  requirementConversationMap.value = {
+    ...requirementConversationMap.value,
+    [payload.conversation.requirement_id]: payload.conversation,
+  }
+}
+
+function conversationForRequirement(item: RequirementItem) {
+  return requirementConversationMap.value[item.requirement_id] ?? null
+}
+
+function conversationStatusLabel(item: RequirementItem) {
+  const conversation = conversationForRequirement(item)
+  if (!conversation) {
+    return '打开后创建会话'
+  }
+  return conversation.last_message_at ? `最近：${conversation.last_message_at}` : '暂无消息'
+}
+
+function conversationButtonLabel(item: RequirementItem) {
+  return conversationForRequirement(item)?.last_message_at ? '查看' : '开始'
+}
+
+async function loadRequirementConversations() {
+  if (!auth.token) {
+    requirementConversationMap.value = {}
+    return
+  }
+
+  conversationLoading.value = true
+  try {
+    const conversations = await listRequirementConversations(auth.token)
+    requirementConversationMap.value = Object.fromEntries(
+      conversations.map((item) => [item.requirement_id, item]),
+    )
+  } catch (error) {
+    requirementConversationMap.value = {}
+    showToast(error instanceof Error ? error.message : '加载沟通会话失败', 'error')
+  } finally {
+    conversationLoading.value = false
+  }
 }
 </script>
 
@@ -169,6 +237,13 @@ function resourceVisibilityLabel(item: RequirementItem): string {
             <el-tag :type="statusType(scope.row.status)" effect="plain">{{ statusLabel(scope.row.status) }}</el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="发布方式" min-width="130">
+          <template #default="scope">
+            <el-tag :type="scope.row.payment_mode === 'self_managed' ? 'info' : 'warning'" effect="plain">
+              {{ paymentModeLabel(scope.row) }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="资源关联" min-width="160">
           <template #default="scope">
             <span>{{ resourceVisibilityLabel(scope.row) }}</span>
@@ -177,20 +252,17 @@ function resourceVisibilityLabel(item: RequirementItem): string {
         <el-table-column label="签署状态" min-width="200">
           <template #default="scope">
             <div class="signing-status-bar">
-              <span
-                class="signing-step"
+              <span class="signing-step"
                 :class="signingStatusMap[scope.row.requirement_id]?.has_contract ? 'done' : 'pending'">
                 协议已创建
               </span>
               <span class="signing-arrow">›</span>
-              <span
-                class="signing-step"
+              <span class="signing-step"
                 :class="signingStatusMap[scope.row.requirement_id]?.party_b_signed ? 'done' : 'pending'">
                 乙方已签
               </span>
               <span class="signing-arrow">›</span>
-              <span
-                class="signing-step"
+              <span class="signing-step"
                 :class="signingStatusMap[scope.row.requirement_id]?.party_a_signed ? 'done' : 'pending'">
                 甲方已签
               </span>
@@ -198,8 +270,25 @@ function resourceVisibilityLabel(item: RequirementItem): string {
           </template>
         </el-table-column>
         <el-table-column prop="updated_at" label="最近更新" min-width="180" />
+        <el-table-column label="会话状态" min-width="180">
+          <template #default="scope">
+            <span class="conversation-status-text">
+              {{ conversationLoading ? '会话加载中' : conversationStatusLabel(scope.row) }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="沟通" fixed="right" width="96">
+          <template #default="scope">
+            <el-button type="primary" link @click="openConversation(scope.row)">{{ conversationButtonLabel(scope.row)
+            }}</el-button>
+          </template>
+        </el-table-column>
       </el-table>
     </el-card>
+
+    <RequirementConversationModal :visible="conversationVisible" api-mode="dev" :token="auth.token"
+      :current-username="auth.username" :requirement-id="conversationRequirement?.requirement_id ?? ''"
+      :title="conversationRequirement?.title" @updated="applyConversationDetail" @close="closeConversation" />
   </div>
 </template>
 
@@ -232,5 +321,11 @@ function resourceVisibilityLabel(item: RequirementItem): string {
 .signing-arrow {
   color: #c0c4cc;
   font-size: 12px;
+}
+
+.conversation-status-text {
+  color: #606266;
+  font-size: 12px;
+  white-space: nowrap;
 }
 </style>

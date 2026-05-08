@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import AppToast from '@/components/AppToast.vue'
 import AuthModal from '@/components/AuthModal.vue'
 import { claimActivityCampaign, type ActivityCampaignClaimResp } from '@/api/settings'
 import { useAuthForm } from '@/composables/useAuthForm'
@@ -14,7 +13,7 @@ type AuthMode = 'login' | 'register' | 'reset'
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
+const { showToast } = useToast()
 const authMode = ref<AuthMode>('login')
 const authVisible = ref(false)
 const claiming = ref(false)
@@ -90,8 +89,8 @@ async function handleSubmitAuth() {
   await runClaim()
 }
 
-function goProfile() {
-  void router.push({ name: 'profile' })
+function goWorkbench() {
+  void router.push({ name: 'workbench', hash: '#coupons' })
 }
 
 onMounted(() => {
@@ -126,7 +125,7 @@ onMounted(() => {
         <p>券码：{{ claimResult.assigned_coupon_code }}</p>
         <p>领取时间：{{ claimResult.claimed_at }}</p>
         <div class="claim-page__actions">
-          <button class="claim-page__primary" type="button" @click="goProfile">前往个人中心查看</button>
+          <button class="claim-page__primary" type="button" @click="goWorkbench">前往工作台查看</button>
         </div>
       </div>
 
@@ -148,7 +147,6 @@ onMounted(() => {
       v-model:acceptTerms="acceptTerms" :authLoading="auth.loading" :sendCodeLoading="sendCodeLoading"
       :sendCodeCountdown="sendCodeCountdown" @close="closeAuth" @submit="handleSubmitAuth"
       @github-login="loginWithGithub" @send-code="sendAuthCode" @change-mode="changeAuthMode" />
-    <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
   </section>
 </template>
 

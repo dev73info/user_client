@@ -3,7 +3,6 @@ import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import QRCode from 'qrcode'
 
-import AppToast from '@/components/AppToast.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { confirmPayment as confirmPaymentApi, getAlipayPageHtml, listPaymentOrders as listPaymentOrdersApi, type ConfirmPaymentResp } from '@/api/payments'
@@ -11,7 +10,7 @@ import { confirmPayment as confirmPaymentApi, getAlipayPageHtml, listPaymentOrde
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
+const { showToast } = useToast()
 
 const paymentId = computed(() => String(route.query.payment_id ?? ''))
 const requirementId = computed(() => String(route.query.requirement_id ?? ''))
@@ -337,7 +336,5 @@ onUnmounted(() => {
 
       <div v-else class="empty">无有效支付订单信息。</div>
     </section>
-
-    <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
   </main>
 </template>

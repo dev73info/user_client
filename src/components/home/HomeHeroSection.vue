@@ -69,7 +69,7 @@ const emit = defineEmits<{
               {{ username || '已登录用户' }}
             </button>
             <div class="user-menu" :class="{ open: menuOpen }" aria-label="用户菜单">
-              <button class="user-menu-item" type="button" @click="emit('go-profile')">个人中心</button>
+              <button class="user-menu-item" type="button" @click="emit('go-profile')">统一工作台</button>
               <div class="menu-divider"></div>
               <button class="user-menu-item danger" type="button" @click="emit('logout')">退出登录</button>
             </div>

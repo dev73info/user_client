@@ -89,6 +89,34 @@ const orderCreditCap = computed(() => {
 function isBudgetWithinCap(budget?: number | null) {
   return (budget ?? 0) <= orderCreditCap.value + 0.0001
 }
+
+function isSelfManagedRequirement(requirement: RequirementItem) {
+  return requirement.payment_mode === 'self_managed'
+}
+
+function paymentModeLabel(requirement: RequirementItem) {
+  return isSelfManagedRequirement(requirement) ? '无平台担保' : '平台担保'
+}
+
+function requiresDepositGate(requirement: RequirementItem) {
+  return !isSelfManagedRequirement(requirement)
+}
+
+function bindButtonLabel(requirement: RequirementItem) {
+  if (!requiresDepositGate(requirement)) {
+    return '关联需求'
+  }
+
+  if (!canTakeOrders.value || (requirement.budget ?? 0) > (depositStatus.value?.available_cny ?? 0)) {
+    return '保证金不足'
+  }
+
+  if (!isBudgetWithinCap(requirement.budget)) {
+    return '信用不足'
+  }
+
+  return '关联需求'
+}
 const rootTabs = computed<McTagCatalogRoot[]>(() => processedTree.value.roots)
 const currentRoot = computed<McTagCatalogRoot | null>(() =>
   rootTabs.value.find((item) => item.key === currentRootKey.value) ?? rootTabs.value[0] ?? null,
@@ -262,19 +290,19 @@ async function openBindDialog(requirement: RequirementItem) {
     return
   }
 
-  if (!canTakeOrders.value) {
+  if (requiresDepositGate(requirement) && !canTakeOrders.value) {
     showToast('当前可用保证金不足，请先补充保证金后再关联需求', 'warning')
     void router.push('/dev/wallet/order-deposit')
     return
   }
 
-  if ((requirement.budget ?? 0) > (depositStatus.value?.available_cny ?? 0)) {
+  if (requiresDepositGate(requirement) && (requirement.budget ?? 0) > (depositStatus.value?.available_cny ?? 0)) {
     showToast('当前需求预算高于可用保证金，请先补充保证金', 'warning')
     void router.push('/dev/wallet/order-deposit')
     return
   }
 
-  if (!isBudgetWithinCap(requirement.budget)) {
+  if (requiresDepositGate(requirement) && !isBudgetWithinCap(requirement.budget)) {
     showToast(`当前信用最高可接 ¥${orderCreditCap.value.toFixed(2)} 的需求，无法绑定此预算`, 'warning')
     return
   }
@@ -523,12 +551,11 @@ async function handleSizeChange(nextSize: number) {
         <h2 class="dev-panel-banner__title">需求大厅 / 资源关联</h2>
       </div>
       <div class="dev-panel-banner__meta">
-        <el-button text :loading="loading || depositLoading"
-          @click="refreshHall">刷新大厅</el-button>
+        <el-button text :loading="loading || depositLoading" @click="refreshHall">刷新大厅</el-button>
       </div>
     </section>
 
-    <el-alert v-if="!canTakeOrders" title="当前可用保证金不足，暂时无法继续关联新需求" type="warning" show-icon :closable="false"
+    <el-alert v-if="!canTakeOrders" title="平台担保需求需要可用保证金，无平台担保需求仍可继续关联" type="warning" show-icon :closable="false"
       class="dev-requirement-hall__deposit-alert">
       <template #default>
         <div class="dev-requirement-hall__deposit-copy">
@@ -565,7 +592,7 @@ async function handleSizeChange(nextSize: number) {
     </div>
 
     <el-card shadow="never" class="dev-surface-card">
-      <el-alert title="关联后需双方依次签署合同，用户端才能支付定金" type="warning" show-icon :closable="false"
+      <el-alert title="平台担保需求按定金与尾款推进；无平台担保需求仅使用平台协作流程" type="warning" show-icon :closable="false"
         class="dev-requirement-hall__deposit-alert" />
 
       <div class="dev-requirement-hall__filters">
@@ -606,6 +633,13 @@ async function handleSizeChange(nextSize: number) {
             <span>{{ formatMoney(scope.row.budget) }}</span>
           </template>
         </el-table-column>
+        <el-table-column label="发布方式" width="130">
+          <template #default="scope">
+            <el-tag :type="isSelfManagedRequirement(scope.row) ? 'info' : 'warning'" effect="plain">
+              {{ paymentModeLabel(scope.row) }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="140">
           <template #default>
             <el-tag type="success" effect="plain">待开发</el-tag>
@@ -616,16 +650,8 @@ async function handleSizeChange(nextSize: number) {
           <template #default="scope">
             <el-button type="primary" plain class="dev-requirement-hall__bind-button"
               @click="openBindDialog(scope.row)">
-              {{
-                !canTakeOrders
-                  ? '保证金不足'
-                  : (scope.row.budget ?? 0) > (depositStatus?.available_cny ?? 0)
-                    ? '保证金不足'
-                    : !isBudgetWithinCap(scope.row.budget)
-                      ? '信用不足'
-                      : '关联需求'
-              }}
-                </el-button>
+              {{ bindButtonLabel(scope.row) }}
+            </el-button>
           </template>
         </el-table-column>
       </el-table>

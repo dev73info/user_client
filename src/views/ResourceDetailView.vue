@@ -4,7 +4,6 @@ import MarkdownIt from 'markdown-it'
 import { useRoute, useRouter } from 'vue-router'
 
 import { HttpError, apiUrl } from '@/api/http'
-import AppToast from '@/components/AppToast.vue'
 import {
   getPublicMcResource,
   listPublicMcResourceVersions,
@@ -19,7 +18,7 @@ import { useToast } from '@/composables/useToast'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
+const { showToast } = useToast()
 
 const loading = ref(false)
 const resource = ref<PublicMcResourceItem | null>(null)
@@ -336,8 +335,6 @@ watch(
         </section>
       </template>
     </section>
-
-    <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
   </main>
 </template>
 

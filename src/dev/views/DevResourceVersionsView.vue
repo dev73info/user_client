@@ -15,6 +15,7 @@ import {
 } from '@dev/api/mcResources'
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
+import { buildUnifiedAuthUrl } from '@/config/runtime'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -74,7 +75,7 @@ async function loadPage() {
 
   if (!auth.token) {
     showToast('登录状态已失效，请重新登录', 'error')
-    router.replace({ name: 'dev-login' })
+    router.replace(buildUnifiedAuthUrl('login', route.fullPath))
     return
   }
 
@@ -344,7 +345,8 @@ function goBack() {
           </el-form-item>
           <el-form-item label="资源文件" required>
             <div class="dev-version-file-picker">
-              <input ref="versionFileInput" type="file" class="dev-version-file-picker__input" @change="handleVersionFileChange" />
+              <input ref="versionFileInput" type="file" class="dev-version-file-picker__input"
+                @change="handleVersionFileChange" />
               <el-button @click="triggerVersionFileSelect">选择文件</el-button>
               <span class="dev-version-file-picker__name">{{ selectedVersionFileName || '未选择文件' }}</span>
             </div>
@@ -372,7 +374,8 @@ function goBack() {
           <el-table-column prop="version" label="版本号" min-width="140" />
           <el-table-column label="资源文件" min-width="220" show-overflow-tooltip>
             <template #default="scope">
-              <a :href="versionDownloadUrl(scope.row)" target="_blank" rel="noopener noreferrer" class="dev-version-link">
+              <a :href="versionDownloadUrl(scope.row)" target="_blank" rel="noopener noreferrer"
+                class="dev-version-link">
                 {{ versionFileName(scope.row) }}
               </a>
             </template>
@@ -392,7 +395,8 @@ function goBack() {
               <div class="dev-version-actions">
                 <el-button link type="success" @click="downloadVersion(scope.row)">下载</el-button>
                 <el-button link type="primary" @click="openEditVersionDialog(scope.row)">编辑</el-button>
-                <el-button link type="danger" :loading="deletingVersionId === scope.row.id" @click="openDeleteVersionDialog(scope.row)">
+                <el-button link type="danger" :loading="deletingVersionId === scope.row.id"
+                  @click="openDeleteVersionDialog(scope.row)">
                   {{ scope.row.delete_request_status === 'pending' ? '删除审核中' : '删除' }}
                 </el-button>
               </div>
@@ -402,7 +406,8 @@ function goBack() {
       </el-card>
     </section>
 
-    <el-dialog v-model="editVersionDialogVisible" width="520px" :title="editingVersion ? `编辑版本 · ${editingVersion.version}` : '编辑版本'">
+    <el-dialog v-model="editVersionDialogVisible" width="520px"
+      :title="editingVersion ? `编辑版本 · ${editingVersion.version}` : '编辑版本'">
       <el-form label-position="top" class="dev-version-form">
         <el-form-item label="版本号" required>
           <el-input v-model="editVersionForm.version" maxlength="80" placeholder="例如：1.20.1-2.0.1" />
@@ -415,11 +420,13 @@ function goBack() {
 
       <template #footer>
         <el-button @click="editVersionDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="savingVersionId === editingVersion?.id" @click="submitVersionEdit">保存</el-button>
+        <el-button type="primary" :loading="savingVersionId === editingVersion?.id"
+          @click="submitVersionEdit">保存</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="deleteVersionDialogVisible" width="520px" :close-on-click-modal="false" :title="deleteVersionTarget ? `删除版本 · ${deleteVersionTarget.version}` : '删除版本'" @close="closeDeleteVersionDialog">
+    <el-dialog v-model="deleteVersionDialogVisible" width="520px" :close-on-click-modal="false"
+      :title="deleteVersionTarget ? `删除版本 · ${deleteVersionTarget.version}` : '删除版本'" @close="closeDeleteVersionDialog">
       <div class="dev-version-delete-dialog">
         <p>
           {{ resource?.requirement_id ? '提交后需要需求发起人在用户端审核，同意后该版本才会真正删除。' : '删除后该版本文件将被永久移除，且无法恢复。' }}

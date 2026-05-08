@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { apiUrl } from '@/api/http'
-import AppToast from '@/components/AppToast.vue'
 import { listRequirements, type RequirementItem } from '@/api/requirements'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { buildDevPortalUrl } from '@/config/runtime'
@@ -36,7 +35,7 @@ const selectedPlatform = ref('all')
 const selectedVisibility = ref<'all' | 'public' | 'private'>('all')
 const selectedSort = ref<'最新' | '标题'>('最新')
 const requirements = ref<RequirementItem[]>([])
-const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
+const { showToast } = useToast()
 
 const cards = computed<CustomResourceCard[]>(() => {
   return requirements.value
@@ -156,7 +155,7 @@ function openDevWorkbench() {
 }
 
 function openTicketCenter() {
-  void router.push({ name: 'tickets' })
+  void router.push({ name: 'workbench-tickets' })
 }
 
 async function loadCustomResources() {
@@ -353,8 +352,6 @@ onMounted(() => {
         <p>正在同步你的需求关联资源。</p>
       </div>
     </section>
-
-    <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
   </main>
 </template>
 

@@ -14,7 +14,7 @@ const quickActions = computed(() => [
     button: auth.isAuthed ? '进入工单中心' : '登录后提交',
     action: () => {
       if (auth.isAuthed) {
-        void router.push({ name: 'tickets' })
+        void router.push({ name: 'workbench-tickets' })
         return
       }
       void router.push({ name: 'home', query: { modal: 'auth', mode: 'login', redirect_to: '/tickets' } })
@@ -45,12 +45,12 @@ const faqGroups = [
     title: '账号与登录',
     items: [
       {
-        question: '为什么进入开发者工作台时会跳到登录弹窗？',
+        question: '为什么进入开发者功能时会跳到登录弹窗？',
         answer: '当前设备没有有效登录态时，平台会先拉起统一登录弹窗，登录成功后再自动返回原目标页面。',
       },
       {
         question: '注册后还需要完成哪些步骤？',
-        answer: '普通用户注册后即可浏览资源、发布需求；若要进入开发者工作台，还需要补充实名认证和开发者权限审核。',
+        answer: '普通用户注册后即可浏览资源、发布需求；若要进入开发者功能，还需要补充实名认证和开发者权限审核。',
       },
       {
         question: '忘记密码或收不到验证码怎么办？',

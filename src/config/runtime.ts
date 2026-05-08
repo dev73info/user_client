@@ -1,4 +1,4 @@
-export const DEV_PORTAL_URL = '/dev/overview'
+export const DEV_PORTAL_URL = '/workbench#developer-overview'
 
 const USER_AUTH_TOKEN_KEY = 'auth_token_73hub'
 
@@ -45,5 +45,5 @@ export function buildDevPortalUrl(token?: string): string {
     return buildUnifiedAuthUrl('login', DEV_PORTAL_URL)
   }
 
-  return `/dev/overview?sso_token=${encodeURIComponent(activeToken)}`
+  return DEV_PORTAL_URL
 }

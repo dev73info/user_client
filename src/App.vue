@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { onMounted } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
+import AppToast from '@/components/AppToast.vue'
 import PortalTopNav from '@/components/PortalTopNav.vue'
-import DevApp from '@dev/DevApp.vue'
+import PortalMobileDock from '@/components/PortalMobileDock.vue'
+import { useToast } from '@/composables/useToast'
 const auth = useAuthStore()
-const route = useRoute()
 const currentYear = new Date().getFullYear()
-const isDevRoute = computed(() => route.path.startsWith('/dev'))
+const { toastVisible, toastMessage, toastType, hideToast } = useToast()
 
 onMounted(() => {
   auth.hydrate()
@@ -20,67 +20,58 @@ onMounted(() => {
 
 <template>
   <div class="app-shell">
-    <div class="app-content" :class="{ 'app-content--dev': isDevRoute }">
-      <template v-if="isDevRoute">
-        <div class="app-dev-layout">
+    <div class="app-content">
+      <el-scrollbar class="app-scrollbar">
+        <div class="app-view-container">
           <PortalTopNav />
-          <div class="app-dev-host">
-            <DevApp />
+          <RouterView v-slot="{ Component }">
+            <Suspense>
+              <component :is="Component" />
+            </Suspense>
+          </RouterView>
+
+          <div class="site-footer-host">
+            <footer class="site-footer" aria-label="网站基础信息">
+              <div class="site-footer-grid">
+                <div class="site-footer-block">
+                  <h3>网站信息</h3>
+                  <p>平台名称：柒叁信息（73info）</p>
+                  <p>主体类型：企业服务平台</p>
+                  <p>联系邮箱：fanbo@73info.cn</p>
+                </div>
+                <div class="site-footer-block">
+                  <h3>备案与合规</h3>
+                  <p>
+                    ICP备案号：
+                    <a href="https://beian.miit.gov.cn/" target="_blank"
+                      rel="noopener noreferrer">滇ICP备2026006119号-2</a>
+                  </p>
+                  <p>
+                    公安备案号：
+                    <a class="public-security-beian-link"
+                      href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000020" target="_blank"
+                      rel="noopener noreferrer">
+                      <img class="public-security-beian-icon" src="/icons/beian.png" alt="公安备案图标" />
+                      <span>滇公网安备53062802000020号</span>
+                    </a>
+                  </p>
+                  <p>增值电信业务许可：按业务开展后补充</p>
+                </div>
+                <div class="site-footer-block">
+                  <h3>服务说明</h3>
+                  <p><router-link to="/terms">用户协议</router-link></p>
+                  <p><router-link to="/privacy">隐私政策</router-link></p>
+                  <p><router-link to="/payment-refund">支付与退款说明</router-link></p>
+                </div>
+              </div>
+              <p class="site-footer-copy">© {{ currentYear }} 柒叁信息 73Info. All rights reserved.</p>
+            </footer>
           </div>
         </div>
-      </template>
-
-      <template v-else>
-        <el-scrollbar class="app-scrollbar">
-          <div class="app-view-container">
-            <PortalTopNav />
-            <RouterView v-slot="{ Component }">
-              <Suspense>
-                <component :is="Component" />
-              </Suspense>
-            </RouterView>
-
-            <div class="site-footer-host">
-              <footer class="site-footer" aria-label="网站基础信息">
-                <div class="site-footer-grid">
-                  <div class="site-footer-block">
-                    <h3>网站信息</h3>
-                    <p>平台名称：柒叁信息（73info）</p>
-                    <p>主体类型：企业服务平台</p>
-                    <p>联系邮箱：fanbo@73info.cn</p>
-                  </div>
-                  <div class="site-footer-block">
-                    <h3>备案与合规</h3>
-                    <p>
-                      ICP备案号：
-                      <a href="https://beian.miit.gov.cn/" target="_blank"
-                        rel="noopener noreferrer">滇ICP备2026006119号-2</a>
-                    </p>
-                    <p>
-                      公安备案号：
-                      <a class="public-security-beian-link"
-                        href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000020" target="_blank"
-                        rel="noopener noreferrer">
-                        <img class="public-security-beian-icon" src="/icons/beian.png" alt="公安备案图标" />
-                        <span>滇公网安备53062802000020号</span>
-                      </a>
-                    </p>
-                    <p>增值电信业务许可：按业务开展后补充</p>
-                  </div>
-                  <div class="site-footer-block">
-                    <h3>服务说明</h3>
-                    <p><router-link to="/terms">用户协议</router-link></p>
-                    <p><router-link to="/privacy">隐私政策</router-link></p>
-                    <p><router-link to="/payment-refund">支付与退款说明</router-link></p>
-                  </div>
-                </div>
-                <p class="site-footer-copy">© {{ currentYear }} 柒叁信息 73Info. All rights reserved.</p>
-              </footer>
-            </div>
-          </div>
-        </el-scrollbar>
-      </template>
+      </el-scrollbar>
+      <PortalMobileDock />
     </div>
+    <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
   </div>
 </template>
 
@@ -96,32 +87,6 @@ onMounted(() => {
   z-index: 2;
   min-height: 100vh;
   background: #f2ede3;
-}
-
-.app-content--dev {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.app-dev-layout {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  height: 100%;
-  min-height: 0;
-  padding-bottom: 12px;
-  overflow: hidden;
-}
-
-.app-dev-host {
-  flex: 1 1 auto;
-  width: min(1280px, calc(100% - 24px));
-  margin: 0 auto;
-  height: auto;
-  min-height: 0;
 }
 
 .app-scrollbar {
@@ -145,15 +110,12 @@ onMounted(() => {
     height: auto;
   }
 
-  .app-content--dev {
-    height: 100vh;
-    height: 100dvh;
-    min-height: 0;
-    overflow: hidden;
-  }
-
   .site-footer-host {
     width: calc(100% - 20px);
+  }
+
+  .app-view-container {
+    padding-bottom: 108px;
   }
 }
 </style>
