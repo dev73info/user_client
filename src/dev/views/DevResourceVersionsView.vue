@@ -390,7 +390,7 @@ function goBack() {
               {{ formatCreatedAt(scope.row.created_at) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="260" align="right">
+          <el-table-column label="操作" width="260">
             <template #default="scope">
               <div class="dev-version-actions">
                 <el-button link type="success" @click="downloadVersion(scope.row)">下载</el-button>

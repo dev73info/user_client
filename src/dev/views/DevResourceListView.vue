@@ -346,7 +346,7 @@ async function setResourcePrivate(resource: McResourcePayload) {
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" min-width="180" />
-        <el-table-column label="操作" width="180" align="right" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="scope">
             <el-dropdown trigger="click" @command="handleResourceCommand">
               <el-button type="primary" plain class="dev-resource-table__action-button">

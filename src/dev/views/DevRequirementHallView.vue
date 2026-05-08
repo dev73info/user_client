@@ -637,7 +637,7 @@ async function handleSizeChange(nextSize: number) {
           </template>
         </el-table-column>
         <el-table-column prop="updated_at" label="最近更新" min-width="180" />
-        <el-table-column label="操作" width="160" fixed="right" align="right">
+        <el-table-column label="操作" width="160" fixed="right">
           <template #default="scope">
             <el-button type="primary" plain class="dev-requirement-hall__bind-button"
               @click="openBindDialog(scope.row)">
