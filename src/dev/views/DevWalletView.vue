@@ -288,7 +288,7 @@ async function payWithAlipay() {
   try {
     const order = await createDevOrderDepositAlipayPage(auth.token, amount)
     const rawHtml = order.page_html
-    alipayPageHtml.value =rawHtml
+    alipayPageHtml.value = rawHtml
     alipayPaymentId.value = order.payment_id
     pendingRechargeAmount.value = amount
     pendingExpiresAt.value = order.expires_at ?? ''
@@ -468,16 +468,6 @@ async function submitDepositWithdrawal() {
 
 <template>
   <div class="dev-page dev-wallet-page">
-    <section class="dev-panel-banner dev-panel-banner--light">
-      <div>
-        <h2 class="dev-panel-banner__title">我的余额</h2>
-        <p class="dev-panel-banner__desc">集中管理接单收入与接单保证金，快速发起提现申请。</p>
-      </div>
-      <div class="dev-panel-banner__meta">
-        <el-button text @click="router.push('/dev/wallet/withdrawals')">提现记录</el-button>
-        <el-button text :loading="loading || depositLoading" @click="refreshAll">刷新</el-button>
-      </div>
-    </section>
 
     <!-- 次要统计条 -->
     <div class="wallet-meta-strip" v-loading="loading">
@@ -686,12 +676,8 @@ async function submitDepositWithdrawal() {
           </div>
           <el-alert
             v-if="creditInfo && creditInfo.enforce_deposit_limit && rechargeAmount > creditInfo.remaining_deposit_cap_cny"
-            type="warning"
-            :closable="false"
-            show-icon
-            style="margin-top: 8px;"
-            title="充值金额超过当前信用允许的额度，提交将被拒绝。请联系管理员提升信用，或下调充值金额。"
-          />
+            type="warning" :closable="false" show-icon style="margin-top: 8px;"
+            title="充值金额超过当前信用允许的额度，提交将被拒绝。请联系管理员提升信用，或下调充值金额。" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -705,17 +691,13 @@ async function submitDepositWithdrawal() {
     <el-dialog v-model="alipayPayDialogVisible" title="支付宝扫码支付" width="380px" align-center
       :before-close="closeAlipayDialog">
       <div class="alipay-pay-qr">
-        <div class="pay-amount-banner">充值金额 <span class="pay-amount-banner__value">{{ money(pendingRechargeAmount) }}</span></div>
+        <div class="pay-amount-banner">充值金额 <span class="pay-amount-banner__value">{{ money(pendingRechargeAmount)
+            }}</span>
+        </div>
 
-        <iframe
-          v-if="alipayPageHtml"
-          :srcdoc="alipayPageHtml"
-          class="alipay-pay-frame"
-          frameborder="0"
-          scrolling="no"
-          sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
-        ></iframe>
-        
+        <iframe v-if="alipayPageHtml" :srcdoc="alipayPageHtml" class="alipay-pay-frame" frameborder="0" scrolling="no"
+          sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+
         <div v-else class="alipay-pay-loading">加载支付宝页面中…</div>
         <div class="pay-countdown" :class="{ 'pay-countdown--expired': isExpired }">
           <span v-if="countdownText">{{ isExpired ? '订单已过期' : `剩余 ${countdownText}` }}</span>
@@ -724,7 +706,8 @@ async function submitDepositWithdrawal() {
       </div>
       <template #footer>
         <el-button @click="closeAlipayDialog">取消</el-button>
-        <el-button type="primary" :loading="confirmingAlipay" :disabled="isExpired" @click="confirmAlipayPay">我已支付</el-button>
+        <el-button type="primary" :loading="confirmingAlipay" :disabled="isExpired"
+          @click="confirmAlipayPay">我已支付</el-button>
       </template>
     </el-dialog>
 
@@ -733,7 +716,7 @@ async function submitDepositWithdrawal() {
       :before-close="() => { clearPaymentTimers(); wechatPayDialogVisible = false; pendingExpiresAt = '' }">
       <div class="wechat-pay-qr">
         <div class="pay-amount-banner">充值金额 <span class="pay-amount-banner__value">{{ money(pendingRechargeAmount)
-            }}</span>
+        }}</span>
         </div>
         <img v-if="wechatQrDataUrl" :src="wechatQrDataUrl" alt="微信支付二维码" class="wechat-pay-qr__img" />
         <div class="pay-countdown" :class="{ 'pay-countdown--expired': isExpired }">
@@ -743,8 +726,10 @@ async function submitDepositWithdrawal() {
         <p class="wechat-pay-qr__hint">请使用微信扫码完成支付，支付成功后将自动关闭</p>
       </div>
       <template #footer>
-        <el-button @click="() => { clearPaymentTimers(); wechatPayDialogVisible = false; pendingExpiresAt = '' }">取消</el-button>
-        <el-button type="primary" :loading="confirmingWechat" :disabled="isExpired" @click="confirmWechatPay">我已支付</el-button>
+        <el-button
+          @click="() => { clearPaymentTimers(); wechatPayDialogVisible = false; pendingExpiresAt = '' }">取消</el-button>
+        <el-button type="primary" :loading="confirmingWechat" :disabled="isExpired"
+          @click="confirmWechatPay">我已支付</el-button>
       </template>
     </el-dialog>
   </div>
@@ -949,8 +934,15 @@ async function submitDepositWithdrawal() {
 }
 
 @keyframes fade-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
 }
 
 /* 支付宝二维码 */

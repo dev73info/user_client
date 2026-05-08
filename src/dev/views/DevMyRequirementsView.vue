@@ -179,18 +179,6 @@ async function loadRequirementConversations() {
 
 <template>
   <div class="dev-page dev-page--my-requirements">
-    <section class="dev-panel-banner dev-panel-banner--light">
-      <div>
-        <div class="dev-panel-banner__eyebrow">My Requirement Orders</div>
-        <h2 class="dev-panel-banner__title">集中查看当前账号已经关联的需求单</h2>
-        <p class="dev-panel-banner__desc">
-          这里展示当前开发者账号已经接单并完成资源关联的需求，和“需求大厅”里尚未被领取的需求分开展示。
-        </p>
-      </div>
-      <div class="dev-panel-banner__meta">
-        <el-button text :loading="loading" @click="loadMyRequirements">刷新列表</el-button>
-      </div>
-    </section>
 
     <div class="dev-grid dev-grid--three">
       <el-card shadow="never" class="dev-surface-card dev-surface-card--soft">
@@ -280,7 +268,7 @@ async function loadRequirementConversations() {
         <el-table-column label="沟通" fixed="right" width="96">
           <template #default="scope">
             <el-button type="primary" link @click="openConversation(scope.row)">{{ conversationButtonLabel(scope.row)
-            }}</el-button>
+              }}</el-button>
           </template>
         </el-table-column>
       </el-table>

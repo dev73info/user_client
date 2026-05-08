@@ -309,16 +309,6 @@ async function setResourcePrivate(resource: McResourcePayload) {
 
 <template>
   <div class="dev-page dev-page--resource-list">
-    <section class="dev-panel-banner dev-panel-banner--light">
-      <div>
-        <div class="dev-panel-banner__eyebrow">Resource List</div>
-        <h2 class="dev-panel-banner__title">集中查看当前开发者已提交的资源</h2>
-        <p class="dev-panel-banner__desc">资源初始化后默认保持私有，可直接关联需求；如需公开展示，请先在这里提交公开审核。</p>
-      </div>
-      <div class="dev-panel-banner__meta">
-        <el-button text :loading="isLoading" @click="loadResources">刷新列表</el-button>
-      </div>
-    </section>
 
     <el-card shadow="never" class="dev-surface-card">
       <div class="dev-upload-section__head">
@@ -332,10 +322,13 @@ async function setResourcePrivate(resource: McResourcePayload) {
         <el-table-column label="资源" min-width="260">
           <template #default="scope">
             <div class="dev-resource-table__title-cell">
-              <img v-if="scope.row.cover_url" :src="resourceCoverUrl(scope.row)" alt="资源图标" class="dev-resource-table__icon" />
+              <img v-if="scope.row.cover_url" :src="resourceCoverUrl(scope.row)" alt="资源图标"
+                class="dev-resource-table__icon" />
               <div>
-                <button class="dev-resource-table__title-link" type="button" @click="openResourceHomepage(scope.row)">{{ scope.row.title }}</button>
-                <div class="dev-resource-table__meta">{{ platformText(scope.row.platform) }} / {{ scope.row.author }}</div>
+                <button class="dev-resource-table__title-link" type="button" @click="openResourceHomepage(scope.row)">{{
+                  scope.row.title }}</button>
+                <div class="dev-resource-table__meta">{{ platformText(scope.row.platform) }} / {{ scope.row.author }}
+                </div>
               </div>
             </div>
           </template>
@@ -362,26 +355,20 @@ async function setResourcePrivate(resource: McResourcePayload) {
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item :command="{ action: 'publish', resource: scope.row }">发布版本</el-dropdown-item>
-                  <el-dropdown-item
-                    v-if="scope.row.visibility === 'draft'"
+                  <el-dropdown-item v-if="scope.row.visibility === 'draft'"
                     :disabled="Boolean(scope.row.requirement_id) || requestingReviewResourceId === scope.row.id"
-                    :command="{ action: 'request-review', resource: scope.row }"
-                  >
+                    :command="{ action: 'request-review', resource: scope.row }">
                     {{ requestingReviewResourceId === scope.row.id ? '提交中...' : '申请公开' }}
                   </el-dropdown-item>
-                  <el-dropdown-item
-                    v-if="scope.row.visibility === 'published'"
+                  <el-dropdown-item v-if="scope.row.visibility === 'published'"
                     :disabled="settingPrivateResourceId === scope.row.id"
-                    :command="{ action: 'set-private', resource: scope.row }"
-                  >
+                    :command="{ action: 'set-private', resource: scope.row }">
                     {{ settingPrivateResourceId === scope.row.id ? '设置中...' : '设为私有' }}
                   </el-dropdown-item>
                   <el-dropdown-item :command="{ action: 'versions', resource: scope.row }">版本管理</el-dropdown-item>
                   <el-dropdown-item :command="{ action: 'edit', resource: scope.row }">编辑主页</el-dropdown-item>
-                  <el-dropdown-item
-                    :command="{ action: 'delete', resource: scope.row }"
-                    :disabled="!canDeleteResource(scope.row) || deletingResourceId === scope.row.id"
-                  >
+                  <el-dropdown-item :command="{ action: 'delete', resource: scope.row }"
+                    :disabled="!canDeleteResource(scope.row) || deletingResourceId === scope.row.id">
                     {{ deletingResourceId === scope.row.id ? '删除中...' : '删除' }}
                   </el-dropdown-item>
                 </el-dropdown-menu>
@@ -392,14 +379,16 @@ async function setResourcePrivate(resource: McResourcePayload) {
       </el-table>
     </el-card>
 
-    <el-dialog v-model="publishDialogVisible" width="520px" :title="selectedResource ? `发布版本 · ${selectedResource.title}` : '发布版本'">
+    <el-dialog v-model="publishDialogVisible" width="520px"
+      :title="selectedResource ? `发布版本 · ${selectedResource.title}` : '发布版本'">
       <el-form label-position="top" class="dev-version-form">
         <el-form-item label="版本号" required>
           <el-input v-model="versionForm.version" maxlength="80" placeholder="例如：1.20.1-2.0.0" />
         </el-form-item>
         <el-form-item label="资源文件" required>
           <div class="dev-version-file-picker">
-            <input ref="versionFileInput" type="file" class="dev-version-file-picker__input" @change="handleVersionFileChange" />
+            <input ref="versionFileInput" type="file" class="dev-version-file-picker__input"
+              @change="handleVersionFileChange" />
             <el-button @click="triggerVersionFileSelect">选择文件</el-button>
             <span class="dev-version-file-picker__name">{{ selectedVersionFileName || '未选择文件' }}</span>
           </div>
@@ -452,5 +441,4 @@ async function setResourcePrivate(resource: McResourcePayload) {
   color: var(--el-text-color-regular);
   word-break: break-all;
 }
-
 </style>

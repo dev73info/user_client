@@ -545,15 +545,6 @@ async function handleSizeChange(nextSize: number) {
 
 <template>
   <div class="dev-page dev-page--requirement-hall">
-    <section class="dev-panel-banner dev-panel-banner--light">
-      <div>
-        <div class="dev-panel-banner__eyebrow">Requirement Resource Linking</div>
-        <h2 class="dev-panel-banner__title">需求大厅 / 资源关联</h2>
-      </div>
-      <div class="dev-panel-banner__meta">
-        <el-button text :loading="loading || depositLoading" @click="refreshHall">刷新大厅</el-button>
-      </div>
-    </section>
 
     <el-alert v-if="!canTakeOrders" title="平台担保需求需要可用保证金，无平台担保需求仍可继续关联" type="warning" show-icon :closable="false"
       class="dev-requirement-hall__deposit-alert">

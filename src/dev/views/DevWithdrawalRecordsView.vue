@@ -134,17 +134,6 @@ async function submitWithdrawal() {
 
 <template>
   <div class="dev-page dev-withdraw-page">
-    <section class="dev-panel-banner dev-panel-banner--light">
-      <div>
-        <div class="dev-panel-banner__eyebrow">Withdrawal Ledger</div>
-        <h2 class="dev-panel-banner__title">提现记录</h2>
-        <p class="dev-panel-banner__desc">提交尾款提现申请，查看审核状态、打款进度和历史处理结果。</p>
-      </div>
-      <div class="dev-panel-banner__meta">
-        <el-button text @click="router.push('/dev/wallet/overview')">返回钱包概览</el-button>
-        <el-button text :loading="loading" @click="loadWithdrawals">刷新记录</el-button>
-      </div>
-    </section>
 
     <div class="dev-grid dev-grid--three">
       <el-card shadow="never" class="dev-surface-card dev-surface-card--soft">
@@ -183,7 +172,8 @@ async function submitWithdrawal() {
           </el-select>
           <el-input v-model="form.account_name" placeholder="收款人姓名" />
           <el-input v-model="form.account_no" placeholder="收款账号" />
-          <el-input v-model="form.note" type="textarea" :rows="4" maxlength="200" show-word-limit placeholder="申请备注，可选" />
+          <el-input v-model="form.note" type="textarea" :rows="4" maxlength="200" show-word-limit
+            placeholder="申请备注，可选" />
           <div class="dev-withdraw-form__actions">
             <el-button @click="resetForm">清空</el-button>
             <el-button type="primary" :loading="submitting" @click="submitWithdrawal">提交申请</el-button>

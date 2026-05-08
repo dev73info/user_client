@@ -684,8 +684,53 @@ async function scrollToHash() {
 
 .user-workbench__content :deep(.page-shell) {
   width: 100%;
+  min-height: 0;
+  align-content: start;
   margin: 0;
   padding: 0;
+}
+
+.user-workbench__content :deep(.portal-page) {
+  width: 100%;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+}
+
+.user-workbench__content :deep(.wallet-section),
+.user-workbench__content :deep(.messages-panel),
+.user-workbench__content :deep(.messages-summary__item),
+.user-workbench__content :deep(.portal-page__panel),
+.user-workbench__content :deep(.portal-page__stat-card) {
+  border: 1px solid rgba(224, 232, 255, 0.96);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 26px rgba(76, 103, 172, 0.08);
+}
+
+.user-workbench__content :deep(.wallet-section),
+.user-workbench__content :deep(.portal-page__panel) {
+  padding: 18px;
+  border-radius: 18px;
+}
+
+.user-workbench__content :deep(.portal-page__stats),
+.user-workbench__content :deep(.messages-summary) {
+  gap: 12px;
+}
+
+.user-workbench__content :deep(.portal-page__stat-card),
+.user-workbench__content :deep(.messages-summary__item) {
+  padding: 16px;
+  border-radius: 16px;
+}
+
+.user-workbench__content :deep(.portal-page__stat-card strong) {
+  margin-bottom: 6px;
+  font-size: 28px;
+  line-height: 1;
 }
 
 .user-workbench__content :deep(.profile-page-head) {
@@ -709,6 +754,10 @@ async function scrollToHash() {
 
 .user-workbench__content :deep(.dev-surface-card .el-card__body) {
   padding: 18px;
+}
+
+.user-workbench__content :deep(.dev-stat--compact) {
+  min-height: 96px;
 }
 
 @media (max-width: 960px) {
