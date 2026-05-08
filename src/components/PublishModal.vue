@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { watch } from 'vue'
 import type { PropType } from 'vue'
 
-defineProps({
+const props = defineProps({
     visible: { type: Boolean, default: false },
     modalTitle: { type: String, default: '发布需求' },
     submitText: { type: String, default: '确认发布' },
@@ -11,6 +12,7 @@ defineProps({
     publishBudget: { type: [String, Number] as PropType<string | number>, default: '' },
     publishAcceptance: { type: String, default: '' },
     publishPaymentMode: { type: String as PropType<'platform_guarantee' | 'self_managed'>, default: 'self_managed' },
+    allowPlatformGuarantee: { type: Boolean, default: true },
     publishLoading: { type: Boolean, default: false },
 })
 
@@ -41,8 +43,22 @@ function updateAcceptance(event: Event) {
 }
 
 function updatePaymentMode(value: 'platform_guarantee' | 'self_managed') {
+    if (value === 'platform_guarantee' && !props.allowPlatformGuarantee) {
+        return
+    }
+
     emit('update:publishPaymentMode', value)
 }
+
+watch(
+    () => [props.allowPlatformGuarantee, props.publishPaymentMode] as const,
+    ([allowPlatformGuarantee, publishPaymentMode]) => {
+        if (!allowPlatformGuarantee && publishPaymentMode === 'platform_guarantee') {
+            emit('update:publishPaymentMode', 'self_managed')
+        }
+    },
+    { immediate: true },
+)
 </script>
 
 <template>
@@ -79,10 +95,10 @@ function updatePaymentMode(value: 'platform_guarantee' | 'self_managed') {
                         <small>平台内协作，付款双方另行约定</small>
                     </button>
                     <button type="button" class="publish-mode-option"
-                        :class="{ active: publishPaymentMode === 'platform_guarantee' }"
-                        @click="updatePaymentMode('platform_guarantee')">
+                        :class="{ active: publishPaymentMode === 'platform_guarantee', disabled: !allowPlatformGuarantee }"
+                        :disabled="!allowPlatformGuarantee" @click="updatePaymentMode('platform_guarantee')">
                         <strong>平台担保</strong>
-                        <small>按平台定金与尾款流程推进</small>
+                        <small>{{ allowPlatformGuarantee ? '按平台定金与尾款流程推进' : '暂未开放，请先使用无平台担保' }}</small>
                     </button>
                 </div>
             </div>
@@ -131,6 +147,11 @@ function updatePaymentMode(value: 'platform_guarantee' | 'self_managed') {
 .publish-mode-option.active {
     border-color: #2563eb;
     background: #eff6ff;
+}
+
+.publish-mode-option.disabled {
+    cursor: not-allowed;
+    opacity: 0.56;
 }
 
 .publish-mode-option strong,

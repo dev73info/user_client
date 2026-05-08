@@ -1031,7 +1031,7 @@ async function submitPublishRequirement() {
       description: normalizedDescription,
       budget,
       acceptance_criteria: normalizedAcceptance,
-      payment_mode: publishPaymentMode.value,
+      payment_mode: 'self_managed' as RequirementPaymentMode,
     }
 
     if (activeResubmitRequirementId.value) {
@@ -1292,7 +1292,8 @@ async function submitPublishRequirement() {
       v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
       v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
       :modalTitle="publishModalTitle" :submitText="publishModalSubmitText" :loadingText="publishModalLoadingText"
-      :publishLoading="publishLoading" @close="closePublishModal" @submit="submitPublishRequirement" />
+      :allowPlatformGuarantee="false" :publishLoading="publishLoading" @close="closePublishModal"
+      @submit="submitPublishRequirement" />
 
     <DepositModal v-if="depositVisible && depositRequirement" :visible="depositVisible"
       :depositRequirement="depositRequirement" :formattedBudget="formatMoney(depositRequirement.budget)"
