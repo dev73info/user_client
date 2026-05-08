@@ -255,15 +255,6 @@ watch(
 
 <template>
   <main class="portal-page resource-detail-page">
-    <section v-if="infoCards.length" class="portal-page__stats">
-      <article v-for="item in infoCards" :key="item.label"
-        class="portal-page__stat-card resource-detail-page__stat-card">
-        <strong>{{ item.value }}</strong>
-        <span>{{ item.label }}</span>
-        <small class="resource-detail-page__stat-hint">{{ item.hint }}</small>
-      </article>
-    </section>
-
     <section class="resource-detail-page__panel" v-loading="loading">
       <template v-if="resource">
         <section class="resource-detail-page__lead">
@@ -294,6 +285,15 @@ watch(
         </section>
 
         <section class="resource-detail-page__detail-grid">
+          <section v-if="infoCards.length" class="portal-page__stats">
+            <article v-for="item in infoCards" :key="item.label"
+              class="portal-page__stat-card resource-detail-page__stat-card">
+              <strong>{{ item.value }}</strong>
+              <span>{{ item.label }}</span>
+              <small class="resource-detail-page__stat-hint">{{ item.hint }}</small>
+            </article>
+          </section>
+
           <article class="resource-detail-page__content-card">
             <header class="resource-detail-page__section-head">
               <h2>页面内容</h2>
@@ -340,7 +340,12 @@ watch(
 
 <style scoped>
 .resource-detail-page {
+  width: min(1280px, calc(100% - 24px));
   gap: 28px;
+}
+
+.resource-detail-page :deep(.portal-page__stats) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .resource-detail-page__panel {
@@ -623,8 +628,18 @@ watch(
 }
 
 @media (max-width: 980px) {
+  .resource-detail-page :deep(.portal-page__stats) {
+    grid-template-columns: 1fr;
+  }
+
   .resource-detail-page__lead {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .resource-detail-page {
+    width: calc(100% - 16px);
   }
 }
 
