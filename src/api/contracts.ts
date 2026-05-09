@@ -11,6 +11,7 @@ export type ContractDetail = {
   contract_no: string
   title: string
   content: string
+  content_sha256: string
   status: string
   party_a_name: string
   party_a_username: string
@@ -18,6 +19,22 @@ export type ContractDetail = {
   party_b_name: string
   party_b_username: string
   party_b_signed_at: string | null
+  created_by?: string
+  created_at: string
+  updated_at?: string
+  signing_logs?: SigningLogItem[]
+}
+
+export type SigningLogItem = {
+  id: number
+  contract_id: number
+  contract_no: string
+  contract_title: string
+  action: string
+  from_status?: string | null
+  to_status?: string | null
+  operator: string
+  note?: string | null
   created_at: string
 }
 

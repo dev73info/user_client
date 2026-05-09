@@ -1,9 +1,12 @@
-import { authHeader, requestJson } from '@dev/api/http'
+import { apiUrl, authHeader, requestJson } from '@dev/api/http'
+import { subscribeJsonEventStream } from '@/shared/api/sse'
 import type { RequirementConversation, RequirementConversationDetail } from '@/api/conversations'
+import type { RequirementConversationEventCallbacks } from '@/api/conversations'
 
 export type {
   RequirementConversation,
   RequirementConversationDetail,
+  RequirementConversationEventCallbacks,
   RequirementConversationMessage,
 } from '@/api/conversations'
 
@@ -52,5 +55,27 @@ export async function sendRequirementConversationMessage(
       body: JSON.stringify({ content }),
     },
     '发送消息失败',
+  )
+}
+
+export function subscribeRequirementConversationEvents(
+  token: string,
+  callbacks: RequirementConversationEventCallbacks,
+): () => void {
+  return subscribeJsonEventStream<RequirementConversationDetail>(
+    apiUrl('/conversations/events'),
+    {
+      headers: {
+        Accept: 'text/event-stream',
+        ...authHeader(token),
+      },
+    },
+    'conversation.updated',
+    {
+      onEvent: callbacks.onUpdate,
+      onOpen: callbacks.onOpen,
+      onClose: callbacks.onClose,
+      onError: callbacks.onError,
+    },
   )
 }

@@ -12,12 +12,40 @@ const route = useRoute()
 const currentYear = new Date().getFullYear()
 const { toastVisible, toastMessage, toastType, hideToast } = useToast()
 const showSiteFooter = computed(() => !route.matched.some((record) => record.meta.hideSiteFooter === true))
+const DEV_AUTO_LOGIN_USERNAME = 'dev'
+const DEV_AUTO_LOGIN_PASSWORD = '123456'
+
+async function loginWithDevelopmentAccount() {
+  if (!import.meta.env.DEV) {
+    return
+  }
+
+  try {
+    await auth.login(DEV_AUTO_LOGIN_USERNAME, DEV_AUTO_LOGIN_PASSWORD)
+  } catch (error) {
+    console.warn('开发模式自动登录失败', error)
+  }
+}
+
+async function initializeAuthSession() {
+  auth.hydrate()
+
+  if (auth.token) {
+    try {
+      await auth.initializeSession()
+    } catch (error) {
+      console.warn('初始化登录态失败', error)
+    }
+  }
+
+  if (import.meta.env.DEV && (!auth.token || auth.username !== DEV_AUTO_LOGIN_USERNAME)) {
+    auth.logout()
+    await loginWithDevelopmentAccount()
+  }
+}
 
 onMounted(() => {
-  auth.hydrate()
-  void auth.initializeSession().catch(() => {
-    auth.logout()
-  })
+  void initializeAuthSession()
 })
 </script>
 

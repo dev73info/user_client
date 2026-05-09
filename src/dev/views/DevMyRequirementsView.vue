@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import {
@@ -13,6 +14,7 @@ import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
 
 const auth = useAuthStore()
+const router = useRouter()
 const { showToast } = useToast()
 
 const loading = ref(false)
@@ -96,6 +98,19 @@ function statusLabel(status: RequirementItem['status']): string {
   }
 }
 
+function isWaitingContractSign(item: RequirementItem): boolean {
+  const status = signingStatusMap.value[item.requirement_id]
+  return Boolean(
+    item.status === 'deposit_paid' &&
+    status?.has_contract &&
+    (!status.party_a_signed || !status.party_b_signed),
+  )
+}
+
+function displayStatusLabel(item: RequirementItem): string {
+  return isWaitingContractSign(item) ? '待签合同' : statusLabel(item.status)
+}
+
 function paymentModeLabel(item: RequirementItem): string {
   return item.payment_mode === 'self_managed' ? '无平台担保' : '平台担保'
 }
@@ -114,6 +129,10 @@ function statusType(status: RequirementItem['status']): 'info' | 'success' | 'wa
     default:
       return 'info'
   }
+}
+
+function displayStatusType(item: RequirementItem): 'info' | 'success' | 'warning' | 'danger' {
+  return isWaitingContractSign(item) ? 'warning' : statusType(item.status)
 }
 
 function resourceVisibilityLabel(item: RequirementItem): string {
@@ -154,6 +173,34 @@ function conversationStatusLabel(item: RequirementItem) {
 
 function conversationButtonLabel(item: RequirementItem) {
   return conversationForRequirement(item)?.last_message_at ? '查看' : '开始'
+}
+
+function canOpenContractSign(item: RequirementItem) {
+  return Boolean(signingStatusMap.value[item.requirement_id]?.has_contract)
+}
+
+function contractButtonLabel(item: RequirementItem) {
+  const status = signingStatusMap.value[item.requirement_id]
+  return status?.party_b_signed ? '查看合同' : '签署合同'
+}
+
+function contractStartHint(item: RequirementItem): string {
+  if (!isWaitingContractSign(item)) {
+    return ''
+  }
+
+  const status = signingStatusMap.value[item.requirement_id]
+  if (!status?.party_b_signed) {
+    return '请先签署合同，甲方确认后自动开始开发'
+  }
+  return '等待甲方签署，双方签完后自动开始开发'
+}
+
+function openContractSign(item: RequirementItem) {
+  router.push({
+    name: 'contract-sign',
+    query: { requirement_id: item.requirement_id, from: 'dev' },
+  })
 }
 
 async function loadRequirementConversations() {
@@ -204,74 +251,81 @@ async function loadRequirementConversations() {
       </el-card>
     </div>
 
-    <el-card shadow="never" class="dev-surface-card">
-      <el-table :data="rows" stripe v-loading="loading" class="dev-release-table" :empty-text="emptyText">
-        <el-table-column label="需求" min-width="320">
-          <template #default="scope">
-            <div class="dev-requirement-hall__title-cell">
-              <div class="dev-requirement-hall__requirement-id">{{ scope.row.requirement_id }}</div>
-              <div class="dev-requirement-hall__title">{{ scope.row.title }}</div>
-              <div class="dev-requirement-hall__desc">{{ scope.row.description || '暂无补充描述' }}</div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="预算" min-width="120">
-          <template #default="scope">
-            <span>{{ formatMoney(scope.row.budget) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" min-width="140">
-          <template #default="scope">
-            <el-tag :type="statusType(scope.row.status)" effect="plain">{{ statusLabel(scope.row.status) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="发布方式" min-width="130">
-          <template #default="scope">
-            <el-tag :type="scope.row.payment_mode === 'self_managed' ? 'info' : 'warning'" effect="plain">
-              {{ paymentModeLabel(scope.row) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="资源关联" min-width="160">
-          <template #default="scope">
-            <span>{{ resourceVisibilityLabel(scope.row) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="签署状态" min-width="200">
-          <template #default="scope">
-            <div class="signing-status-bar">
-              <span class="signing-step"
-                :class="signingStatusMap[scope.row.requirement_id]?.has_contract ? 'done' : 'pending'">
-                协议已创建
+    <el-card shadow="never" class="dev-surface-card dev-my-requirements-card">
+      <div class="dev-my-requirements-table-wrap">
+        <el-table :data="rows" stripe v-loading="loading" class="dev-release-table dev-my-requirements-table"
+          :empty-text="emptyText" scrollbar-always-on>
+          <el-table-column label="需求" min-width="320">
+            <template #default="scope">
+              <div class="dev-requirement-hall__title-cell">
+                <div class="dev-requirement-hall__requirement-id">{{ scope.row.requirement_id }}</div>
+                <div class="dev-requirement-hall__title">{{ scope.row.title }}</div>
+                <div class="dev-requirement-hall__desc">{{ scope.row.description || '暂无补充描述' }}</div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="预算" min-width="120">
+            <template #default="scope">
+              <span>{{ formatMoney(scope.row.budget) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" min-width="140">
+            <template #default="scope">
+              <el-tag :type="displayStatusType(scope.row)" effect="plain">{{ displayStatusLabel(scope.row) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="发布方式" min-width="130">
+            <template #default="scope">
+              <el-tag :type="scope.row.payment_mode === 'self_managed' ? 'info' : 'warning'" effect="plain">
+                {{ paymentModeLabel(scope.row) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="资源关联" min-width="160">
+            <template #default="scope">
+              <span>{{ resourceVisibilityLabel(scope.row) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="签署状态" min-width="240">
+            <template #default="scope">
+              <div class="signing-status-bar">
+                <span class="signing-step"
+                  :class="signingStatusMap[scope.row.requirement_id]?.has_contract ? 'done' : 'pending'">
+                  协议已创建
+                </span>
+                <span class="signing-arrow">›</span>
+                <span class="signing-step"
+                  :class="signingStatusMap[scope.row.requirement_id]?.party_b_signed ? 'done' : 'pending'">
+                  乙方已签
+                </span>
+                <span class="signing-arrow">›</span>
+                <span class="signing-step"
+                  :class="signingStatusMap[scope.row.requirement_id]?.party_a_signed ? 'done' : 'pending'">
+                  甲方已签
+                </span>
+              </div>
+              <el-button v-if="canOpenContractSign(scope.row)" class="signing-action" type="primary" link
+                @click="openContractSign(scope.row)">{{ contractButtonLabel(scope.row) }}</el-button>
+              <div v-if="contractStartHint(scope.row)" class="signing-start-hint">{{ contractStartHint(scope.row) }}
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="updated_at" label="最近更新" min-width="180" />
+          <el-table-column label="会话状态" min-width="180">
+            <template #default="scope">
+              <span class="conversation-status-text">
+                {{ conversationLoading ? '会话加载中' : conversationStatusLabel(scope.row) }}
               </span>
-              <span class="signing-arrow">›</span>
-              <span class="signing-step"
-                :class="signingStatusMap[scope.row.requirement_id]?.party_b_signed ? 'done' : 'pending'">
-                乙方已签
-              </span>
-              <span class="signing-arrow">›</span>
-              <span class="signing-step"
-                :class="signingStatusMap[scope.row.requirement_id]?.party_a_signed ? 'done' : 'pending'">
-                甲方已签
-              </span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="updated_at" label="最近更新" min-width="180" />
-        <el-table-column label="会话状态" min-width="180">
-          <template #default="scope">
-            <span class="conversation-status-text">
-              {{ conversationLoading ? '会话加载中' : conversationStatusLabel(scope.row) }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="沟通" fixed="right" width="96">
-          <template #default="scope">
-            <el-button type="primary" link @click="openConversation(scope.row)">{{ conversationButtonLabel(scope.row)
+            </template>
+          </el-table-column>
+          <el-table-column label="沟通" width="96">
+            <template #default="scope">
+              <el-button type="primary" link @click="openConversation(scope.row)">{{ conversationButtonLabel(scope.row)
               }}</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
     </el-card>
 
     <RequirementConversationModal :visible="conversationVisible" api-mode="dev" :token="auth.token"
@@ -281,11 +335,51 @@ async function loadRequirementConversations() {
 </template>
 
 <style scoped>
+.dev-my-requirements-card {
+  overflow: hidden;
+}
+
+.dev-my-requirements-table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dev-my-requirements-table {
+  width: 100%;
+}
+
+.dev-my-requirements-table :deep(.el-table__body-wrapper) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dev-my-requirements-table :deep(.el-table__cell) {
+  vertical-align: top;
+}
+
+.dev-my-requirements-table :deep(.cell) {
+  min-width: 0;
+}
+
+.dev-my-requirements-table :deep(.el-table__fixed-right),
+.dev-my-requirements-table :deep(.el-table__fixed-right-patch) {
+  display: none;
+}
+
+.dev-my-requirements-table .dev-requirement-hall__requirement-id,
+.dev-my-requirements-table .dev-requirement-hall__title,
+.dev-my-requirements-table .dev-requirement-hall__desc {
+  overflow-wrap: anywhere;
+}
+
 .signing-status-bar {
   display: flex;
   align-items: center;
   gap: 4px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  max-width: 100%;
+  row-gap: 6px;
 }
 
 .signing-step {
@@ -311,9 +405,23 @@ async function loadRequirementConversations() {
   font-size: 12px;
 }
 
+.signing-action {
+  margin-top: 6px;
+  padding: 0;
+}
+
+.signing-start-hint {
+  margin-top: 4px;
+  color: #b45309;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .conversation-status-text {
+  display: inline-block;
+  max-width: 100%;
   color: #606266;
   font-size: 12px;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 </style>

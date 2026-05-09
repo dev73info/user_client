@@ -2,25 +2,9 @@ import { apiUrl, normalizeBackendPath } from '@/shared/api/url'
 
 export { apiUrl, normalizeBackendPath }
 
-let unauthorizedRedirecting = false
-
 function isHtmlResponse(body: string): boolean {
   const trimmed = body.trim().toLowerCase()
   return trimmed.startsWith('<!doctype html') || trimmed.startsWith('<html')
-}
-
-function redirectToLogin(): void {
-  if (unauthorizedRedirecting) {
-    return
-  }
-
-  unauthorizedRedirecting = true
-  const isHistoryMode = import.meta.env.VITE_ROUTER_MODE === 'history'
-  const normalizedPath = window.location.pathname.endsWith('/')
-    ? window.location.pathname
-    : `${window.location.pathname}/`
-  const target = isHistoryMode ? normalizedPath : `${normalizedPath}#/`
-  window.location.replace(target)
 }
 
 function shouldRedirectOnUnauthorized(path: string): boolean {
@@ -40,8 +24,6 @@ function handleUnauthorized(resp: Response, path: string): void {
     return
   }
 
-  localStorage.removeItem('auth_token_73hub')
-  redirectToLogin()
   throw new HttpError(401, '未登录或登录已过期，请重新登录')
 }
 

@@ -23,6 +23,7 @@ import {
 import {
   completeRequirement as completeRequirementApi,
   commentRequirement as commentRequirementApi,
+  createRequirement as createRequirementApi,
   listRequirements,
   requestRequirementFinalPayment as requestRequirementFinalPaymentApi,
   resubmitRequirement as resubmitRequirementApi,
@@ -58,8 +59,15 @@ const commentRating = ref(5)
 const commentText = ref('')
 const commentLoading = ref(false)
 const editVisible = ref(false)
+const publishVisible = ref(false)
 const securityVisible = ref(false)
 const editRequirement = ref<RequirementItem | null>(null)
+const publishTitle = ref('')
+const publishDescription = ref('')
+const publishBudget = ref<string | number>('')
+const publishAcceptance = ref('')
+const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
+const publishLoading = ref(false)
 const editTitle = ref('')
 const editDescription = ref('')
 const editBudget = ref<string | number>('')
@@ -401,6 +409,30 @@ function openRequirementEditModal(item: RequirementItem) {
   editVisible.value = true
 }
 
+async function openPublishModal() {
+  if (!auth.isAuthed) {
+    showToast('请先登录后再发布需求', 'error')
+    return
+  }
+
+  if (realnameStatus.value !== 'approved') {
+    await loadRealnameStatus()
+  }
+
+  if (realnameStatus.value !== 'approved') {
+    showToast('请先完成实名认证后再发布需求', 'warning')
+    await router.push({ name: 'workbench-realname', query: { redirect_to: '/workbench' } })
+    return
+  }
+
+  publishTitle.value = ''
+  publishDescription.value = ''
+  publishBudget.value = ''
+  publishAcceptance.value = ''
+  publishPaymentMode.value = 'self_managed'
+  publishVisible.value = true
+}
+
 function openSecurityModal() {
   securityVisible.value = true
 }
@@ -681,11 +713,27 @@ function forceCloseEditModal() {
   editPaymentMode.value = 'self_managed'
 }
 
+function forceClosePublishModal() {
+  publishVisible.value = false
+  publishTitle.value = ''
+  publishDescription.value = ''
+  publishBudget.value = ''
+  publishAcceptance.value = ''
+  publishPaymentMode.value = 'self_managed'
+}
+
 function closeEditModal() {
   if (editLoading.value) {
     return
   }
   forceCloseEditModal()
+}
+
+function closePublishModal() {
+  if (publishLoading.value) {
+    return
+  }
+  forceClosePublishModal()
 }
 
 async function submitRequirementComment() {
@@ -775,6 +823,64 @@ async function submitRequirementResubmit() {
     showToast(err instanceof Error ? err.message : '重新提交失败', 'error')
   } finally {
     editLoading.value = false
+  }
+}
+
+async function submitRequirementPublish() {
+  if (!auth.isAuthed) {
+    showToast('请先登录后再发布需求', 'error')
+    return
+  }
+
+  const normalizedTitle = publishTitle.value.trim()
+  const normalizedDescription = publishDescription.value.trim()
+  const normalizedAcceptance = publishAcceptance.value.trim()
+  const budgetRaw = String(publishBudget.value ?? '').trim()
+
+  if (normalizedTitle.length < 4) {
+    showToast('需求标题至少 4 个字符', 'error')
+    return
+  }
+
+  if (normalizedDescription.length < 10) {
+    showToast('需求描述至少 10 个字符', 'error')
+    return
+  }
+
+  if (!budgetRaw) {
+    showToast('预算不能为空', 'error')
+    return
+  }
+
+  const budget = Number(budgetRaw)
+
+  if (Number.isNaN(budget) || budget < 0) {
+    showToast('预算必须是大于等于0的数字', 'error')
+    return
+  }
+
+  if (!normalizedAcceptance) {
+    showToast('验收标准不能为空', 'error')
+    return
+  }
+
+  publishLoading.value = true
+  try {
+    await createRequirementApi(auth.token, {
+      title: normalizedTitle,
+      description: normalizedDescription,
+      budget,
+      acceptance_criteria: normalizedAcceptance,
+      payment_mode: publishPaymentMode.value,
+    })
+
+    showToast('需求已发布', 'success')
+    forceClosePublishModal()
+    await loadMyRequirements()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '发布失败', 'error')
+  } finally {
+    publishLoading.value = false
   }
 }
 
@@ -1021,7 +1127,7 @@ onMounted(async () => {
           </div>
         </div>
         <div class="overview-hero__actions">
-          <button class="ghost small" type="button" @click="router.push({ name: 'requirement-hall' })">发布需求</button>
+          <button class="ghost small" type="button" @click="openPublishModal">发布需求</button>
           <button class="ghost small" type="button" @click="router.push({ name: 'workbench-messages' })">消息中心</button>
           <button class="ghost small" type="button" @click="openSecurityModal">账户安全</button>
           <button class="ghost small" type="button" :disabled="loading || requirementLoading"
@@ -1132,6 +1238,12 @@ onMounted(async () => {
         </section>
       </aside>
     </div>
+
+    <PublishModal :visible="publishVisible" v-model:publishTitle="publishTitle"
+      v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
+      v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
+      :allowPlatformGuarantee="false" :publishLoading="publishLoading" @close="closePublishModal"
+      @submit="submitRequirementPublish" />
 
     <PublishModal :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核" loadingText="提交中..."
       v-model:publishTitle="editTitle" v-model:publishDescription="editDescription" v-model:publishBudget="editBudget"
@@ -1290,7 +1402,7 @@ onMounted(async () => {
         <div class="actions">
           <button class="ghost" type="button" @click="closeFinalPaymentConfirm">取消</button>
           <button class="ghost" type="button" @click="confirmFinalPaymentRequest">{{ finalPaymentConfirmButton
-          }}</button>
+            }}</button>
         </div>
       </section>
     </div>

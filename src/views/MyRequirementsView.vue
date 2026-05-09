@@ -10,6 +10,10 @@ import {
   type RequirementConversationDetail,
 } from '@/api/conversations'
 import {
+  fetchContractSigningStatus,
+  type ContractSigningStatus,
+} from '@/api/contracts'
+import {
   confirmPayment,
   createAlipayPagePayment,
   createPayment,
@@ -76,6 +80,7 @@ const expandedVersionDeleteReviewRequirementId = ref<string | null>(null)
 const versionDeleteRejectTargetId = ref<number | null>(null)
 const versionDeleteRejectNotes = ref<Record<number, string>>({})
 const depositRatioPercent = ref(20)
+const contractSigningStatusMap = ref<Record<string, ContractSigningStatus | null>>({})
 
 const requirementStats = computed(() => ({
   total: myRequirements.value.length,
@@ -97,6 +102,19 @@ function formatRequirementStatus(status: RequirementStatus) {
   }
 
   return mapping[status]
+}
+
+function isWaitingContractSign(item: RequirementItem) {
+  const status = signingStatusForRequirement(item)
+  return Boolean(
+    item.status === 'deposit_paid' &&
+    status?.has_contract &&
+    (!status.party_a_signed || !status.party_b_signed),
+  )
+}
+
+function formatRequirementDisplayStatus(item: RequirementItem) {
+  return isWaitingContractSign(item) ? '待签合同' : formatRequirementStatus(item.status)
 }
 
 function isSelfManagedRequirement(item: RequirementItem) {
@@ -150,7 +168,12 @@ function publishedVersionCount(item: RequirementItem) {
 }
 
 function canRequestFinalPayment(item: RequirementItem) {
-  return hasBoundResource(item) && item.status === 'in_development' && publishedVersionCount(item) > 0
+  return (
+    hasBoundResource(item) &&
+    item.status === 'in_development' &&
+    publishedVersionCount(item) > 0 &&
+    isRequirementContractSigned(item)
+  )
 }
 
 function requirementFinalActionLabel(item: RequirementItem) {
@@ -172,6 +195,35 @@ function canOpenConversation(item: RequirementItem) {
 function openConversation(item: RequirementItem) {
   conversationRequirement.value = item
   conversationVisible.value = true
+}
+
+function signingStatusForRequirement(item: RequirementItem) {
+  return contractSigningStatusMap.value[item.requirement_id] ?? null
+}
+
+function isRequirementContractSigned(item: RequirementItem) {
+  const status = signingStatusForRequirement(item)
+  return Boolean(status?.party_a_signed && status.party_b_signed)
+}
+
+function canOpenContractSign(item: RequirementItem) {
+  const status = signingStatusForRequirement(item)
+  return Boolean(status?.has_contract && !status.party_a_signed && status.party_b_signed)
+}
+
+function contractStatusHint(item: RequirementItem) {
+  const status = signingStatusForRequirement(item)
+  if (!status?.has_contract) return ''
+  if (status.party_a_signed && status.party_b_signed) return '合同已签署'
+  if (status.party_b_signed) return '待您签署合同，签完后进入开发中'
+  return '等待开发者签署合同，双方签完后进入开发中'
+}
+
+function openContractSign(item: RequirementItem) {
+  router.push({
+    name: 'contract-sign',
+    query: { requirement_id: item.requirement_id, from: 'user' },
+  })
 }
 
 function closeConversation() {
@@ -724,6 +776,7 @@ async function loadMyRequirements() {
   try {
     const rows = await listRequirements(auth.token)
     myRequirements.value = rows.slice(0, 20)
+    await loadContractSigningStatuses(myRequirements.value)
     if (
       expandedVersionDeleteReviewRequirementId.value
       && !myRequirements.value.some(
@@ -737,6 +790,29 @@ async function loadMyRequirements() {
   } finally {
     requirementLoading.value = false
   }
+}
+
+async function loadContractSigningStatuses(items: RequirementItem[]) {
+  if (!auth.token || items.length === 0) {
+    contractSigningStatusMap.value = {}
+    return
+  }
+
+  const entries = await Promise.allSettled(
+    items.map((item) =>
+      fetchContractSigningStatus(auth.token, item.requirement_id).then((status) => ({
+        requirementId: item.requirement_id,
+        status,
+      })),
+    ),
+  )
+  const map: Record<string, ContractSigningStatus | null> = {}
+  for (const entry of entries) {
+    if (entry.status === 'fulfilled') {
+      map[entry.value.requirementId] = entry.value.status
+    }
+  }
+  contractSigningStatusMap.value = map
 }
 
 async function submitRequirementPayment() {
@@ -942,6 +1018,7 @@ onMounted(async () => {
               <small v-if="hasBoundResource(item)" class="requirement-note">已发布版本：{{
                 publishedVersionCount(item)
                 }}</small>
+              <small v-if="contractStatusHint(item)" class="requirement-note">{{ contractStatusHint(item) }}</small>
               <small v-if="hasBoundResource(item) && !canToggleRequirementResourceVisibility(item)"
                 class="requirement-note">资源公开/私有切换需在{{ isSelfManagedRequirement(item) ? '需求完成后' :
                   '已付尾款后' }}开放</small>
@@ -974,7 +1051,9 @@ onMounted(async () => {
                 conversationLastMessageText(item)
                 }}</small>
             </div>
-            <span class="requirement-status">{{ formatRequirementStatus(item.status) }}</span>
+            <span class="requirement-status" :class="{ 'requirement-status--contract': isWaitingContractSign(item) }">
+              {{ formatRequirementDisplayStatus(item) }}
+            </span>
             <span>{{ formatBudget(item.budget) }}</span>
             <time>{{ formatRequirementTime(item.updated_at) }}</time>
             <div class="requirement-actions">
@@ -993,6 +1072,8 @@ onMounted(async () => {
               </button>
               <button v-if="canOpenConversation(item)" class="ghost small" type="button"
                 @click.stop="openConversation(item)">{{ conversationButtonLabel(item) }}</button>
+              <button v-if="canOpenContractSign(item)" class="ghost small" type="button"
+                @click.stop="openContractSign(item)">签署合同</button>
               <button v-if="canRequestFinalPayment(item)" class="ghost small" type="button"
                 @click.stop="requestFinalPayment(item)">{{ requirementFinalActionLabel(item) }}</button>
               <button v-if="canComplete(item)" class="ghost small" type="button"

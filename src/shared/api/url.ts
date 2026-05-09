@@ -6,6 +6,7 @@ const backendStaticPathPrefixes = ['/uploads']
 
 const backendPathAliases: ReadonlyArray<readonly [string, string]> = [
   ['/public/requirements', '/requirements'],
+  ['/dev/requirements/mine', '/requirement/dev/mine'],
   ['/dev/requirements', '/requirement'],
   ['/payments', '/payment'],
   ['/coupons', '/coupon'],

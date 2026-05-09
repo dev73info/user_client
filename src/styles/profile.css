@@ -273,6 +273,12 @@
   background: var(--profile-warning-soft);
 }
 
+.requirement-status--contract {
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fbbf24;
+}
+
 .requirement-actions {
   display: flex;
   justify-content: flex-end;

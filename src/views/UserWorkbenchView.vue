@@ -135,7 +135,11 @@ const routeDescription = computed(() => (typeof route.meta.description === 'stri
 const isWorkbenchOverview = computed(() =>
   route.name === overviewItem.name || route.matched.some((record) => record.name === overviewItem.name),
 )
-const showWorkbenchHeader = computed(() => !isWorkbenchOverview.value)
+const isMessageDetailPage = computed(() => {
+  const requirementId = route.query.requirement_id
+  return route.name === 'workbench-messages' && typeof requirementId === 'string' && requirementId.trim().length > 0
+})
+const showWorkbenchHeader = computed(() => !isWorkbenchOverview.value && !isMessageDetailPage.value)
 
 watch(
   () => route.fullPath,

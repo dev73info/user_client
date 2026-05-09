@@ -1,4 +1,5 @@
-import { authHeader, requestJson } from '@/api/http'
+import { apiUrl, authHeader, requestJson } from '@/api/http'
+import { subscribeJsonEventStream } from '@/shared/api/sse'
 
 export type RequirementConversation = {
   id: number
@@ -26,6 +27,13 @@ export type RequirementConversationMessage = {
 export type RequirementConversationDetail = {
   conversation: RequirementConversation
   messages: RequirementConversationMessage[]
+}
+
+export type RequirementConversationEventCallbacks = {
+  onUpdate: (detail: RequirementConversationDetail) => void
+  onOpen?: () => void
+  onClose?: () => void
+  onError?: (error: Error) => void
 }
 
 export async function listRequirementConversations(
@@ -73,5 +81,27 @@ export async function sendRequirementConversationMessage(
       body: JSON.stringify({ content }),
     },
     '发送消息失败',
+  )
+}
+
+export function subscribeRequirementConversationEvents(
+  token: string,
+  callbacks: RequirementConversationEventCallbacks,
+): () => void {
+  return subscribeJsonEventStream<RequirementConversationDetail>(
+    apiUrl('/conversations/events'),
+    {
+      headers: {
+        Accept: 'text/event-stream',
+        ...authHeader(token),
+      },
+    },
+    'conversation.updated',
+    {
+      onEvent: callbacks.onUpdate,
+      onOpen: callbacks.onOpen,
+      onClose: callbacks.onClose,
+      onError: callbacks.onError,
+    },
   )
 }

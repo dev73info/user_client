@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import {
   listRequirementConversations,
+  subscribeRequirementConversationEvents,
   type RequirementConversation,
   type RequirementConversationDetail,
 } from '@/api/conversations'
@@ -32,6 +33,8 @@ type MessageThread = {
   sortTime: number
 }
 
+type RealtimeStatus = 'idle' | 'connecting' | 'connected' | 'error'
+
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
@@ -43,6 +46,9 @@ const requirements = ref<RequirementItem[]>([])
 const activeFilter = ref<MessageFilter>('all')
 const activeRequirementId = ref('')
 const activeTitle = ref('')
+const realtimeStatus = ref<RealtimeStatus>('idle')
+const realtimeError = ref('')
+let stopRealtimeEvents: (() => void) | null = null
 
 const requirementById = computed(() =>
   Object.fromEntries(requirements.value.map((item) => [item.requirement_id, item])),
@@ -73,6 +79,18 @@ const filteredThreads = computed(() => {
 const recentConversationCount = computed(() =>
   conversations.value.filter((item) => isRecent(item.last_message_at ?? item.updated_at)).length,
 )
+const realtimeStatusLabel = computed(() => {
+  if (realtimeStatus.value === 'connected') {
+    return '实时同步中'
+  }
+  if (realtimeStatus.value === 'error') {
+    return '实时重连中'
+  }
+  if (realtimeStatus.value === 'connecting') {
+    return '实时连接中'
+  }
+  return '实时待连接'
+})
 
 function hasBoundResource(item: RequirementItem) {
   return item.bound_resource_id != null
@@ -254,11 +272,56 @@ function applyConversationDetail(payload: RequirementConversationDetail) {
   conversations.value = [nextConversation, ...conversations.value]
 }
 
+function connectRealtime() {
+  if (stopRealtimeEvents) {
+    stopRealtimeEvents()
+    stopRealtimeEvents = null
+  }
+
+  if (!auth.token.trim()) {
+    realtimeStatus.value = 'idle'
+    realtimeError.value = ''
+    return
+  }
+
+  realtimeStatus.value = 'connecting'
+  realtimeError.value = ''
+  stopRealtimeEvents = subscribeRequirementConversationEvents(auth.token, {
+    onUpdate: (payload) => {
+      applyConversationDetail(payload)
+      openThreadFromRoute()
+    },
+    onOpen: () => {
+      realtimeStatus.value = 'connected'
+      realtimeError.value = ''
+    },
+    onClose: () => {
+      if (auth.token.trim()) {
+        realtimeStatus.value = 'connecting'
+      }
+    },
+    onError: (error) => {
+      realtimeStatus.value = 'error'
+      realtimeError.value = error.message
+    },
+  })
+}
+
+function disconnectRealtime() {
+  if (stopRealtimeEvents) {
+    stopRealtimeEvents()
+    stopRealtimeEvents = null
+  }
+  realtimeStatus.value = 'idle'
+  realtimeError.value = ''
+}
+
 async function loadMessages(showSuccess = false) {
   auth.hydrate()
   if (!auth.token.trim()) {
     conversations.value = []
     requirements.value = []
+    disconnectRealtime()
     return
   }
 
@@ -281,14 +344,26 @@ async function loadMessages(showSuccess = false) {
   }
 }
 
-onMounted(() => {
-  void loadMessages()
+onMounted(async () => {
+  await loadMessages()
+  connectRealtime()
+})
+
+onBeforeUnmount(() => {
+  disconnectRealtime()
 })
 
 watch(
   () => route.query.requirement_id,
   () => {
     openThreadFromRoute()
+  },
+)
+
+watch(
+  () => auth.token,
+  () => {
+    connectRealtime()
   },
 )
 </script>
@@ -321,6 +396,10 @@ watch(
           <p>点击任意会话即可查看历史消息并继续回复。</p>
         </div>
         <div class="messages-panel__tools">
+          <span v-if="auth.token" class="messages-live-state" :class="`messages-live-state--${realtimeStatus}`"
+            :title="realtimeError">
+            {{ realtimeStatusLabel }}
+          </span>
           <button class="ghost small" type="button" :disabled="loading" @click="loadMessages(true)">
             {{ loading ? '刷新中...' : '刷新消息' }}
           </button>
@@ -445,6 +524,40 @@ watch(
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.messages-live-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.messages-live-state::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.messages-live-state--connected::before {
+  background: #16a34a;
+}
+
+.messages-live-state--connecting::before {
+  background: #2563eb;
+}
+
+.messages-live-state--error::before {
+  background: #d97706;
 }
 
 .messages-filter {
