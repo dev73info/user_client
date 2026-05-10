@@ -117,7 +117,7 @@ onMounted(() => {
   position: relative;
   z-index: 2;
   min-height: 100vh;
-  background: #f2ede3;
+  background: #f6f8fb;
 }
 
 .app-scrollbar {

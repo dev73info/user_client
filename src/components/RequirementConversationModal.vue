@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { ArrowLeft, ChatDotRound, Position, Refresh } from '@element-plus/icons-vue'
+import {
+  ArrowLeft,
+  ChatDotRound,
+  Close,
+  MagicStick,
+  Paperclip,
+  Picture,
+  Position,
+  Refresh,
+} from '@element-plus/icons-vue'
 
 import * as userConversationApi from '@/api/conversations'
 import * as devConversationApi from '@dev/api/conversations'
@@ -8,6 +17,7 @@ import type {
   RequirementConversationDetail,
   RequirementConversationMessage,
 } from '@/api/conversations'
+import { apiUrl } from '@/api/http'
 
 const props = defineProps<{
   visible: boolean
@@ -29,12 +39,25 @@ const loading = ref(false)
 const sending = ref(false)
 const draft = ref('')
 const errorMessage = ref('')
+const attachmentError = ref('')
+const emojiPanelOpen = ref(false)
+const draftInputRef = ref<HTMLTextAreaElement | null>(null)
+const attachmentInputRef = ref<HTMLInputElement | null>(null)
+const attachmentDraft = ref<ConversationAttachmentDraft | null>(null)
 const messageListRef = ref<HTMLElement | null>(null)
 const realtimeStatus = ref<RealtimeStatus>('idle')
 const realtimeError = ref('')
 let stopRealtimeEvents: (() => void) | null = null
 
 type RealtimeStatus = 'idle' | 'connecting' | 'connected' | 'error'
+
+type ConversationAttachmentDraft = {
+  file: File
+  previewUrl: string
+  name: string
+  mimeType: string
+  sizeLabel: string
+}
 
 type ConversationTimelineItem = {
   key: string
@@ -51,15 +74,42 @@ type ConversationApi = {
   subscribeRequirementConversationEvents: typeof userConversationApi.subscribeRequirementConversationEvents
 }
 
+const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024
+const emojiOptions = [
+  '😀',
+  '😄',
+  '😊',
+  '😉',
+  '👍',
+  '👌',
+  '🙏',
+  '🤝',
+  '🎉',
+  '✨',
+  '🔥',
+  '💡',
+  '📌',
+  '✅',
+  '❗',
+  '👀',
+]
+
 const conversationApi = computed<ConversationApi>(() =>
   props.apiMode === 'dev' ? devConversationApi : userConversationApi,
 )
 const conversation = computed(() => detail.value?.conversation ?? null)
 const messages = computed(() => detail.value?.messages ?? [])
-const canSend = computed(() => draft.value.trim().length > 0 && !sending.value && !loading.value)
+const canSend = computed(
+  () =>
+    (draft.value.trim().length > 0 || Boolean(attachmentDraft.value)) &&
+    !sending.value &&
+    !loading.value,
+)
 const isInline = computed(() => props.displayMode === 'inline')
 const closeActionLabel = computed(() => (isInline.value ? '返回列表' : '关闭'))
-const conversationTitle = computed(() => props.title || conversation.value?.requirement_title || '需求沟通')
+const conversationTitle = computed(
+  () => props.title || conversation.value?.requirement_title || '需求沟通',
+)
 const participantLabel = computed(() => {
   const item = conversation.value
   if (!item) {
@@ -134,7 +184,8 @@ const timelineItems = computed<ConversationTimelineItem[]>(() => {
       kind: 'message',
       message,
       mine,
-      showAvatar: !mine && (!nextMessage || nextMessage.sender !== message.sender || nextDateKey !== dateKey),
+      showAvatar:
+        !mine && (!nextMessage || nextMessage.sender !== message.sender || nextDateKey !== dateKey),
     })
   }
 
@@ -150,14 +201,14 @@ watch(
       startRealtime()
       return
     }
-    draft.value = ''
-    errorMessage.value = ''
+    resetComposer()
   },
   { immediate: true },
 )
 
 onBeforeUnmount(() => {
   stopRealtime()
+  clearAttachmentDraft()
 })
 
 async function scrollToBottom() {
@@ -175,7 +226,10 @@ async function loadConversation() {
   loading.value = true
   errorMessage.value = ''
   try {
-    detail.value = await conversationApi.value.getRequirementConversationByRequirement(props.token, props.requirementId)
+    detail.value = await conversationApi.value.getRequirementConversationByRequirement(
+      props.token,
+      props.requirementId,
+    )
     emit('updated', detail.value)
     await scrollToBottom()
   } catch (error) {
@@ -232,21 +286,35 @@ function stopRealtime() {
 }
 
 async function submitMessage() {
+  if (sending.value || loading.value) {
+    return
+  }
+
   const content = draft.value.trim()
-  if (!content || !conversation.value || !props.token) {
+  const activeAttachment = attachmentDraft.value
+  const activeConversation = conversation.value
+  if ((!content && !activeAttachment) || !activeConversation || !props.token) {
     return
   }
 
   sending.value = true
   errorMessage.value = ''
+  attachmentError.value = ''
   try {
     detail.value = await conversationApi.value.sendRequirementConversationMessage(
       props.token,
-      conversation.value.conversation_id,
+      activeConversation.conversation_id,
       content,
+      activeAttachment?.file,
     )
     emit('updated', detail.value)
-    draft.value = ''
+    if (draft.value.trim() === content) {
+      draft.value = ''
+    }
+    if (activeAttachment && attachmentDraft.value?.previewUrl === activeAttachment.previewUrl) {
+      clearAttachmentDraft()
+    }
+    emojiPanelOpen.value = false
     await scrollToBottom()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '发送消息失败'
@@ -262,6 +330,180 @@ function handleComposerKeydown(event: KeyboardEvent) {
 
   event.preventDefault()
   void submitMessage()
+}
+
+function resetComposer() {
+  draft.value = ''
+  errorMessage.value = ''
+  attachmentError.value = ''
+  emojiPanelOpen.value = false
+  clearAttachmentDraft()
+}
+
+function clearAttachmentDraft() {
+  if (attachmentDraft.value) {
+    URL.revokeObjectURL(attachmentDraft.value.previewUrl)
+  }
+  attachmentDraft.value = null
+}
+
+function toggleEmojiPanel() {
+  if (sending.value || loading.value) {
+    return
+  }
+  emojiPanelOpen.value = !emojiPanelOpen.value
+}
+
+function insertEmoji(emoji: string) {
+  const input = draftInputRef.value
+  if (!input) {
+    draft.value = `${draft.value}${emoji}`
+    return
+  }
+
+  const selectionStart = input.selectionStart ?? draft.value.length
+  const selectionEnd = input.selectionEnd ?? selectionStart
+  draft.value = `${draft.value.slice(0, selectionStart)}${emoji}${draft.value.slice(selectionEnd)}`
+
+  void nextTick(() => {
+    input.focus()
+    const cursorPosition = selectionStart + emoji.length
+    input.setSelectionRange(cursorPosition, cursorPosition)
+  })
+}
+
+function openAttachmentPicker() {
+  if (sending.value || loading.value) {
+    return
+  }
+  attachmentInputRef.value?.click()
+}
+
+function handleAttachmentFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) {
+    applyAttachmentFile(file)
+  }
+  input.value = ''
+}
+
+function handleComposerPaste(event: ClipboardEvent) {
+  const file = findClipboardImage(event.clipboardData)
+  if (!file) {
+    return
+  }
+
+  event.preventDefault()
+  applyAttachmentFile(file)
+}
+
+function findClipboardImage(data: DataTransfer | null) {
+  if (!data) {
+    return null
+  }
+
+  for (const item of Array.from(data.items)) {
+    if (item.kind === 'file' && item.type.startsWith('image/')) {
+      return item.getAsFile()
+    }
+  }
+
+  for (const file of Array.from(data.files)) {
+    if (file.type.startsWith('image/')) {
+      return file
+    }
+  }
+
+  return null
+}
+
+function applyAttachmentFile(file: File) {
+  const mimeType = file.type || mimeTypeFromName(file.name)
+  if (!mimeType.startsWith('image/')) {
+    attachmentError.value = '仅支持图片附件'
+    return
+  }
+
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    attachmentError.value = '图片不能超过 8MB'
+    return
+  }
+
+  clearAttachmentDraft()
+  const name = file.name?.trim() || defaultAttachmentName(mimeType)
+  const uploadFile = file.name?.trim() ? file : new File([file], name, { type: mimeType })
+  attachmentDraft.value = {
+    file: uploadFile,
+    previewUrl: URL.createObjectURL(uploadFile),
+    name,
+    mimeType,
+    sizeLabel: formatBytes(uploadFile.size),
+  }
+  attachmentError.value = ''
+}
+
+function mimeTypeFromName(name: string) {
+  const lowerName = name.toLowerCase()
+  if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
+    return 'image/jpeg'
+  }
+  if (lowerName.endsWith('.webp')) {
+    return 'image/webp'
+  }
+  if (lowerName.endsWith('.gif')) {
+    return 'image/gif'
+  }
+  if (lowerName.endsWith('.png')) {
+    return 'image/png'
+  }
+  return ''
+}
+
+function defaultAttachmentName(mimeType: string) {
+  if (mimeType === 'image/jpeg') {
+    return 'screenshot.jpg'
+  }
+  if (mimeType === 'image/webp') {
+    return 'screenshot.webp'
+  }
+  if (mimeType === 'image/gif') {
+    return 'screenshot.gif'
+  }
+  return 'screenshot.png'
+}
+
+function messageAttachmentUrl(message: RequirementConversationMessage) {
+  return message.attachment_url ? apiUrl(message.attachment_url) : ''
+}
+
+function messageAttachmentLabel(message: RequirementConversationMessage) {
+  return message.attachment_name || '截图附件'
+}
+
+function isImageAttachment(message: RequirementConversationMessage) {
+  const mimeType = message.attachment_mime ?? ''
+  if (mimeType.startsWith('image/')) {
+    return true
+  }
+  return /\.(png|jpe?g|webp|gif)$/i.test(message.attachment_url ?? '')
+}
+
+function formatBytes(value?: number | null) {
+  if (!value || value <= 0) {
+    return '0 B'
+  }
+
+  const units = ['B', 'KB', 'MB', 'GB']
+  let size = value
+  let unitIndex = 0
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024
+    unitIndex += 1
+  }
+
+  const precision = unitIndex === 0 || size >= 10 ? 0 : 1
+  return `${size.toFixed(precision)} ${units[unitIndex]}`
 }
 
 function isMine(message: RequirementConversationMessage) {
@@ -420,8 +662,27 @@ function handleBackdropClick() {
                   </div>
                 </div>
                 <div class="conversation-message__bubble">
-                  <p>{{ row.message.content }}</p>
-                  <time :title="row.message.created_at">{{ formatMessageClock(row.message.created_at)
+                  <div v-if="row.message.attachment_url" class="conversation-message__attachment">
+                    <a class="conversation-message__attachment-link" :href="messageAttachmentUrl(row.message)"
+                      target="_blank" rel="noopener noreferrer" :title="messageAttachmentLabel(row.message)">
+                      <img v-if="isImageAttachment(row.message)" :src="messageAttachmentUrl(row.message)"
+                        :alt="messageAttachmentLabel(row.message)" />
+                      <span v-else class="conversation-message__attachment-file">
+                        <el-icon>
+                          <Picture />
+                        </el-icon>
+                      </span>
+                    </a>
+                    <div class="conversation-message__attachment-meta">
+                      <span>{{ messageAttachmentLabel(row.message) }}</span>
+                      <small v-if="row.message.attachment_size">{{
+                        formatBytes(row.message.attachment_size)
+                        }}</small>
+                    </div>
+                  </div>
+                  <p v-if="row.message.content">{{ row.message.content }}</p>
+                  <time :title="row.message.created_at">{{
+                    formatMessageClock(row.message.created_at)
                     }}</time>
                 </div>
               </article>
@@ -430,13 +691,59 @@ function handleBackdropClick() {
         </div>
 
         <footer class="conversation-modal__composer">
-          <div class="conversation-modal__input-shell">
-            <input v-model="draft" type="text" maxlength="5000" placeholder="输入消息" spellcheck="false"
-              autocomplete="new-password" autocorrect="off" autocapitalize="off" aria-autocomplete="none"
-              data-ms-editor="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
-              data-lt-active="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true"
-              @keydown="handleComposerKeydown" />
-            <span>{{ draft.trim().length }} / 5000</span>
+          <div class="conversation-modal__composer-main">
+            <div class="conversation-modal__tools">
+              <button class="conversation-modal__tool-btn" :class="{ 'is-active': emojiPanelOpen }" type="button"
+                :disabled="sending || loading" aria-label="选择表情" title="选择表情" @click="toggleEmojiPanel">
+                <el-icon>
+                  <MagicStick />
+                </el-icon>
+              </button>
+              <button class="conversation-modal__tool-btn" type="button" :disabled="sending || loading"
+                aria-label="添加截图附件" title="添加截图附件" @click="openAttachmentPicker">
+                <el-icon>
+                  <Paperclip />
+                </el-icon>
+              </button>
+              <input ref="attachmentInputRef" class="conversation-modal__attachment-native" type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif" @change="handleAttachmentFileChange" />
+            </div>
+
+            <Transition name="conversation-emoji">
+              <div v-if="emojiPanelOpen" class="conversation-modal__emoji-panel">
+                <button v-for="emoji in emojiOptions" :key="emoji" class="conversation-modal__emoji-btn" type="button"
+                  :aria-label="`插入表情 ${emoji}`" @click="insertEmoji(emoji)">
+                  {{ emoji }}
+                </button>
+              </div>
+            </Transition>
+
+            <div v-if="attachmentDraft" class="conversation-modal__attachment-preview">
+              <img :src="attachmentDraft.previewUrl" alt="截图预览" />
+              <div>
+                <strong>{{ attachmentDraft.name }}</strong>
+                <span>{{ attachmentDraft.sizeLabel }}</span>
+              </div>
+              <button class="conversation-modal__attachment-remove" type="button" aria-label="移除附件" title="移除附件"
+                @click="clearAttachmentDraft">
+                <el-icon>
+                  <Close />
+                </el-icon>
+              </button>
+            </div>
+
+            <p v-if="attachmentError" class="conversation-modal__attachment-error">
+              {{ attachmentError }}
+            </p>
+
+            <div class="conversation-modal__input-shell">
+              <textarea ref="draftInputRef" v-model="draft" maxlength="5000" placeholder="输入消息" spellcheck="false"
+                autocomplete="new-password" autocorrect="off" autocapitalize="off" aria-autocomplete="none"
+                data-ms-editor="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
+                data-lt-active="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true"
+                @keydown="handleComposerKeydown" @paste="handleComposerPaste"></textarea>
+              <span>{{ draft.trim().length }} / 5000</span>
+            </div>
           </div>
           <button class="conversation-modal__send-btn" type="button" :disabled="!canSend" aria-label="发送消息" title="发送消息"
             @click="submitMessage">
@@ -905,8 +1212,10 @@ function handleBackdropClick() {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 18px 18px 20px;
-  background:
-    linear-gradient(135deg, rgba(225, 241, 255, 0.78), rgba(248, 252, 255, 0.9) 44%, rgba(235, 250, 244, 0.78));
+  background: linear-gradient(135deg,
+      rgba(225, 241, 255, 0.78),
+      rgba(248, 252, 255, 0.9) 44%,
+      rgba(235, 250, 244, 0.78));
   scrollbar-color: rgba(79, 140, 255, 0.58) transparent;
   scrollbar-width: thin;
 }
@@ -1229,7 +1538,10 @@ function handleBackdropClick() {
     radial-gradient(circle at 16px 18px, rgba(73, 132, 85, 0.12) 0 1px, transparent 2px),
     radial-gradient(circle at 78px 42px, rgba(73, 132, 85, 0.1) 0 1px, transparent 2px),
     linear-gradient(135deg, rgba(201, 229, 195, 0.9), rgba(224, 242, 216, 0.88));
-  background-size: 92px 72px, 120px 96px, auto;
+  background-size:
+    92px 72px,
+    120px 96px,
+    auto;
   padding: 12px 14px 16px;
 }
 
@@ -1329,10 +1641,228 @@ function handleBackdropClick() {
 
 .conversation-modal__composer {
   grid-template-columns: minmax(0, 1fr) 48px;
+  align-items: end;
   gap: 10px;
   padding: 8px 12px;
   border-top: 1px solid rgba(167, 190, 166, 0.36);
   background: #f7f8f4;
+}
+
+.conversation-modal__composer-main {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.conversation-modal__tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 2px;
+}
+
+.conversation-modal__composer .conversation-modal__tool-btn,
+.conversation-modal__composer .conversation-modal__emoji-btn,
+.conversation-modal__composer .conversation-modal__attachment-remove {
+  display: inline-grid;
+  place-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid rgba(185, 204, 190, 0.72);
+  background: rgba(255, 255, 255, 0.92);
+  color: #3f5f49;
+  box-shadow: none;
+}
+
+.conversation-modal__composer .conversation-modal__tool-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  font-size: 17px;
+}
+
+.conversation-modal__composer .conversation-modal__tool-btn:hover:not(:disabled),
+.conversation-modal__composer .conversation-modal__tool-btn.is-active {
+  border-color: rgba(45, 118, 236, 0.34);
+  background: #eef6ff;
+  color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.conversation-modal__composer .conversation-modal__tool-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.conversation-modal__attachment-native {
+  display: none;
+}
+
+.conversation-modal__emoji-panel {
+  display: grid;
+  grid-template-columns: repeat(8, 32px);
+  gap: 6px;
+  width: max-content;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px solid rgba(185, 204, 190, 0.72);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 24px rgba(54, 86, 58, 0.12);
+}
+
+.conversation-modal__composer .conversation-modal__emoji-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.conversation-modal__composer .conversation-modal__emoji-btn:hover {
+  border-color: rgba(45, 118, 236, 0.26);
+  background: #f1f7ff;
+  transform: translateY(-1px);
+}
+
+.conversation-emoji-enter-active,
+.conversation-emoji-leave-active {
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.conversation-emoji-enter-from,
+.conversation-emoji-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.conversation-modal__attachment-preview {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: min(420px, 100%);
+  padding: 8px;
+  border: 1px solid rgba(185, 204, 190, 0.72);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 6px 16px rgba(54, 86, 58, 0.08);
+}
+
+.conversation-modal__attachment-preview img {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: #eef3eb;
+}
+
+.conversation-modal__attachment-preview div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.conversation-modal__attachment-preview strong,
+.conversation-modal__attachment-preview span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-modal__attachment-preview strong {
+  color: #172033;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.conversation-modal__attachment-preview span {
+  color: #6b7f6d;
+  font-size: 12px;
+}
+
+.conversation-modal__composer .conversation-modal__attachment-remove {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  color: #64748b;
+}
+
+.conversation-modal__composer .conversation-modal__attachment-remove:hover {
+  border-color: rgba(190, 18, 60, 0.2);
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.conversation-modal__attachment-error {
+  margin: 0;
+  padding-left: 4px;
+  color: #b42318;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.conversation-message__attachment {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 5px;
+  width: min(260px, 64vw);
+  max-width: 100%;
+}
+
+.conversation-message__attachment-link {
+  display: block;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  color: inherit;
+}
+
+.conversation-message__attachment-link img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.conversation-message__attachment-file {
+  display: grid;
+  place-items: center;
+  height: 120px;
+  color: #2d76ec;
+  font-size: 28px;
+}
+
+.conversation-message__attachment-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  color: #536b55;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.conversation-message__attachment-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-message__attachment-meta small {
+  flex: 0 0 auto;
+  color: #78907a;
+  font-size: 10px;
+}
+
+.conversation-message__attachment+p {
+  grid-column: 1 / -1;
+  margin-top: 2px;
 }
 
 .conversation-modal__composer .conversation-modal__input-shell {
@@ -1453,6 +1983,23 @@ function handleBackdropClick() {
     padding: 8px 10px;
   }
 
+  .conversation-modal__tools {
+    gap: 5px;
+  }
+
+  .conversation-modal__composer .conversation-modal__tool-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .conversation-modal__emoji-panel {
+    grid-template-columns: repeat(6, 32px);
+  }
+
+  .conversation-modal__attachment-preview {
+    width: 100%;
+  }
+
   .conversation-modal__composer .conversation-modal__input-shell {
     min-height: 44px;
     height: 44px;
@@ -1482,6 +2029,294 @@ function handleBackdropClick() {
     width: 44px;
     min-width: 44px;
     height: 44px;
+  }
+}
+
+.conversation-modal {
+  border-color: rgba(216, 228, 244, 0.98);
+  background: #f8fbff;
+}
+
+.conversation-modal-wrap--inline .conversation-modal {
+  box-shadow: 0 16px 38px rgba(71, 102, 148, 0.1);
+}
+
+.conversation-modal__header {
+  border-bottom-color: rgba(216, 228, 244, 0.95);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.conversation-modal__avatar,
+.conversation-message__avatar {
+  background: linear-gradient(135deg, #4f8cff, #5ec8a8);
+  box-shadow: 0 8px 18px rgba(79, 140, 255, 0.18);
+}
+
+.conversation-modal__meta span {
+  background: #eef6ff;
+  color: #52657f;
+}
+
+.conversation-modal__messages {
+  background-color: #f3f7fc;
+  background-image:
+    radial-gradient(circle at 18px 18px, rgba(79, 140, 255, 0.08) 0 1px, transparent 2px),
+    radial-gradient(circle at 88px 52px, rgba(94, 200, 168, 0.07) 0 1px, transparent 2px),
+    linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(237, 245, 252, 0.96));
+  background-size:
+    96px 76px,
+    128px 104px,
+    auto;
+  padding: 16px 18px 18px;
+  scrollbar-color: rgba(79, 140, 255, 0.42) transparent;
+}
+
+.conversation-date-pill {
+  margin: 2px auto 12px;
+  padding: 4px 11px;
+  border: 1px solid rgba(209, 222, 239, 0.86);
+  background: rgba(255, 255, 255, 0.9);
+  color: #64748b;
+  box-shadow: 0 8px 18px rgba(71, 102, 148, 0.08);
+}
+
+.conversation-message {
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.conversation-message__avatar-slot {
+  width: 30px;
+  flex-basis: 30px;
+}
+
+.conversation-message__avatar {
+  width: 26px;
+  height: 26px;
+  font-size: 11px;
+}
+
+.conversation-message__bubble {
+  max-width: min(72%, 620px);
+  padding: 8px 10px 6px;
+  border: 1px solid rgba(218, 229, 244, 0.92);
+  border-radius: 15px 15px 15px 6px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 20px rgba(71, 102, 148, 0.08);
+}
+
+.conversation-message--mine .conversation-message__bubble {
+  border-color: rgba(172, 202, 255, 0.84);
+  border-radius: 15px 15px 6px 15px;
+  background: #e8f1ff;
+  box-shadow: 0 8px 20px rgba(45, 118, 236, 0.1);
+}
+
+.conversation-message__bubble p,
+.conversation-message--mine .conversation-message__bubble p {
+  color: #182335;
+  font-size: 14px;
+  line-height: 1.48;
+}
+
+.conversation-message__bubble time {
+  color: #7d8da3;
+}
+
+.conversation-modal__composer {
+  align-items: end;
+  border-top-color: rgba(216, 228, 244, 0.95);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 -10px 24px rgba(71, 102, 148, 0.06);
+}
+
+.conversation-modal__composer-main {
+  gap: 8px;
+}
+
+.conversation-modal__tools {
+  gap: 7px;
+  padding-left: 4px;
+}
+
+.conversation-modal__composer .conversation-modal__tool-btn,
+.conversation-modal__composer .conversation-modal__emoji-btn,
+.conversation-modal__composer .conversation-modal__attachment-remove {
+  border-color: rgba(207, 220, 238, 0.96);
+  background: #ffffff;
+  color: #52657f;
+}
+
+.conversation-modal__composer .conversation-modal__tool-btn {
+  width: 36px;
+  height: 36px;
+  box-shadow: 0 8px 18px rgba(71, 102, 148, 0.08);
+}
+
+.conversation-modal__composer .conversation-modal__tool-btn:hover:not(:disabled),
+.conversation-modal__composer .conversation-modal__tool-btn.is-active {
+  border-color: rgba(79, 140, 255, 0.44);
+  background: #eef6ff;
+  color: #2563eb;
+  box-shadow: 0 10px 20px rgba(79, 140, 255, 0.14);
+}
+
+.conversation-modal__emoji-panel {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  z-index: 4;
+  border-color: rgba(207, 220, 238, 0.96);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 38px rgba(71, 102, 148, 0.18);
+}
+
+.conversation-modal__composer .conversation-modal__emoji-btn:hover {
+  border-color: rgba(79, 140, 255, 0.34);
+  background: #eef6ff;
+}
+
+.conversation-modal__attachment-preview {
+  border-color: rgba(207, 220, 238, 0.96);
+  background: #ffffff;
+  box-shadow: 0 12px 24px rgba(71, 102, 148, 0.1);
+}
+
+.conversation-modal__attachment-preview img {
+  background: #f1f6fb;
+}
+
+.conversation-modal__attachment-preview span,
+.conversation-message__attachment-meta,
+.conversation-message__attachment-meta small {
+  color: #64748b;
+}
+
+.conversation-message__attachment-link {
+  border: 1px solid rgba(216, 228, 244, 0.88);
+  background: #f8fbff;
+}
+
+.conversation-message__attachment-link img {
+  background: #f8fbff;
+}
+
+.conversation-modal__composer .conversation-modal__input-shell {
+  min-height: 50px;
+  height: 50px;
+  border-color: rgba(207, 220, 238, 0.96);
+  background: #ffffff;
+  box-shadow:
+    0 8px 22px rgba(71, 102, 148, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+.conversation-modal__composer .conversation-modal__input-shell:focus-within {
+  border-color: rgba(79, 140, 255, 0.7);
+  box-shadow:
+    0 0 0 3px rgba(79, 140, 255, 0.13),
+    0 10px 24px rgba(71, 102, 148, 0.1);
+}
+
+.conversation-modal__composer .conversation-modal__input-shell textarea {
+  color: #182335;
+}
+
+.conversation-modal__composer .conversation-modal__input-shell span {
+  color: #9aa8ba;
+}
+
+.conversation-modal__composer .conversation-modal__send-btn {
+  background: #2d76ec;
+  box-shadow: 0 12px 24px rgba(45, 118, 236, 0.24);
+}
+
+.conversation-modal__composer .conversation-modal__send-btn:hover:not(:disabled) {
+  background: #2467d8;
+  box-shadow: 0 14px 28px rgba(45, 118, 236, 0.28);
+}
+
+@media (max-width: 820px) {
+  .conversation-message__bubble {
+    max-width: min(78%, 620px);
+  }
+}
+
+@media (max-width: 640px) {
+
+  .conversation-modal__messages,
+  .conversation-modal-wrap--inline .conversation-modal__messages {
+    padding: 12px 10px 14px;
+  }
+
+  .conversation-message__bubble {
+    max-width: calc(100% - 42px);
+  }
+
+  .conversation-modal__composer .conversation-modal__tool-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .conversation-modal__emoji-panel {
+    left: 0;
+    max-width: calc(100vw - 36px);
+  }
+}
+
+.conversation-message {
+  flex: 0 0 auto;
+  margin-bottom: 10px;
+}
+
+.conversation-date-pill {
+  flex: 0 0 auto;
+}
+
+.conversation-message:last-child {
+  margin-bottom: 0;
+}
+
+.conversation-message__bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 104px;
+  padding: 10px 12px 7px;
+}
+
+.conversation-message__bubble p,
+.conversation-message--mine .conversation-message__bubble p {
+  width: 100%;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.conversation-message__bubble time {
+  align-self: flex-end;
+  margin-top: 0;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.conversation-message__attachment {
+  width: min(280px, 64vw);
+}
+
+@media (max-width: 640px) {
+  .conversation-message {
+    margin-bottom: 8px;
+  }
+
+  .conversation-message__bubble {
+    min-width: 98px;
+    padding: 9px 11px 7px;
+  }
+
+  .conversation-message__bubble p,
+  .conversation-message--mine .conversation-message__bubble p {
+    font-size: 14px;
   }
 }
 </style>

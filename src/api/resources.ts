@@ -1,4 +1,11 @@
-import { HttpError, authHeader, apiUrl, readErrorMessage, requestJson } from '@/api/http'
+import {
+  HttpError,
+  authHeader,
+  authHeaders,
+  apiUrl,
+  readErrorMessage,
+  requestJson,
+} from '@/api/http'
 
 export type McResourcePlatform = string
 
@@ -37,6 +44,19 @@ export type PublicMcResourceVersionItem = {
   note: string | null
   creator: string
   created_at: string
+}
+
+export type PublicMcResourceCommentItem = {
+  id: number
+  resource_id: number
+  commenter: string
+  comment_text: string
+  created_at: string
+  updated_at: string
+}
+
+export type CreatePublicMcResourceCommentPayload = {
+  comment: string
 }
 
 let allResourcesCache: { data: PublicMcResourceItem[]; ts: number } | null = null
@@ -79,6 +99,10 @@ export async function listPublicMcResources(
   return all.filter((item) => item.platform === platform)
 }
 
+export async function listAllPublicMcResources(): Promise<PublicMcResourceItem[]> {
+  return getAllPublicMcResources()
+}
+
 export function invalidateResourceListCache() {
   allResourcesCache = null
   allResourcesInflight = null
@@ -109,6 +133,38 @@ export async function listPublicMcResourceVersions(
       headers: token ? authHeader(token) : undefined,
     },
     '加载历史版本失败',
+  )
+}
+
+export async function listPublicMcResourceComments(
+  resourceId: number,
+  token?: string | null,
+): Promise<PublicMcResourceCommentItem[]> {
+  return requestJson<PublicMcResourceCommentItem[]>(
+    `${PUBLIC_RESOURCE_API_PREFIX}/${resourceId}/comments`,
+    {
+      method: 'GET',
+      headers: token ? authHeader(token) : undefined,
+    },
+    '加载资源评论失败',
+  )
+}
+
+export async function createPublicMcResourceComment(
+  token: string,
+  resourceId: number,
+  payload: CreatePublicMcResourceCommentPayload,
+): Promise<PublicMcResourceCommentItem> {
+  return requestJson<PublicMcResourceCommentItem>(
+    `${PUBLIC_RESOURCE_API_PREFIX}/${resourceId}/comments`,
+    {
+      method: 'POST',
+      headers: authHeaders(token, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(payload),
+    },
+    '提交资源评论失败',
   )
 }
 

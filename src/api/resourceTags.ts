@@ -111,6 +111,20 @@ function writeSessionCache(payload: CachedPayload) {
   }
 }
 
+export function getCachedProcessedTagTree(): McProcessedTagTree | null {
+  if (isCacheValid(memoryCache)) {
+    return memoryCache.data
+  }
+
+  const sessionCache = readSessionCache()
+  if (!sessionCache) {
+    return null
+  }
+
+  memoryCache = sessionCache
+  return sessionCache.data
+}
+
 export async function getProcessedTagTree(): Promise<McProcessedTagTree> {
   if (isCacheValid(memoryCache)) {
     return memoryCache.data

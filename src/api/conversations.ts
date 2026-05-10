@@ -21,6 +21,10 @@ export type RequirementConversationMessage = {
   sender: string
   sender_role: 'customer' | 'developer'
   content: string
+  attachment_url?: string | null
+  attachment_name?: string | null
+  attachment_mime?: string | null
+  attachment_size?: number | null
   created_at: string
 }
 
@@ -69,7 +73,26 @@ export async function sendRequirementConversationMessage(
   token: string,
   conversationId: string,
   content: string,
+  attachment?: File,
 ): Promise<RequirementConversationDetail> {
+  if (attachment) {
+    const formData = new FormData()
+    formData.append('content', content)
+    formData.append('file', attachment)
+
+    return requestJson<RequirementConversationDetail>(
+      `/conversations/${encodeURIComponent(conversationId)}/messages/attachment`,
+      {
+        method: 'POST',
+        headers: {
+          ...authHeader(token),
+        },
+        body: formData,
+      },
+      '发送消息失败',
+    )
+  }
+
   return requestJson<RequirementConversationDetail>(
     `/conversations/${encodeURIComponent(conversationId)}/messages`,
     {

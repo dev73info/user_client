@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Box, Connection, DataAnalysis, MagicStick, Wallet } from '@element-plus/icons-vue'
+import { ArrowDown, Box, Connection, DataAnalysis, MagicStick } from '@element-plus/icons-vue'
 
 import { listRequirementConversations, type RequirementConversation } from '@/api/conversations'
 import { useAuthStore } from '@/stores/auth'
@@ -60,7 +60,7 @@ const menuGroups: WorkbenchMenuGroup[] = [
   },
   {
     key: 'developer-resources',
-    label: '开发者资源',
+    label: '开发者功能',
     icon: MagicStick,
     items: [
       { label: '资源初始化', name: 'dev-plugins', description: '创建资源并提交审核' },
@@ -70,22 +70,8 @@ const menuGroups: WorkbenchMenuGroup[] = [
         description: '管理主页、版本与资源状态',
         activeNames: ['dev-resource-homepage-edit', 'dev-resource-versions'],
       },
-    ],
-  },
-  {
-    key: 'developer-requirements',
-    label: '开发者接单',
-    icon: Connection,
-    items: [
       { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求' },
       { label: '我的接单', name: 'dev-my-requirements', description: '查看已关联需求和会话' },
-    ],
-  },
-  {
-    key: 'developer-wallet',
-    label: '开发者收益',
-    icon: Wallet,
-    items: [
       { label: '收益钱包', name: 'dev-wallet', description: '查看余额与保证金信息' },
       { label: '交付记录', name: 'dev-wallet-releases', description: '查看资源交付与收入' },
       { label: '提现记录', name: 'dev-wallet-withdrawals', description: '查看提现申请状态' },
@@ -93,13 +79,15 @@ const menuGroups: WorkbenchMenuGroup[] = [
   },
 ]
 
-const openGroupKeys = ref<string[]>(['messages', 'collaboration', 'account'])
+const openGroupKeys = ref<string[]>(['collaboration'])
 const sortedConversations = computed(() =>
   [...conversations.value].sort((left, right) =>
     parseConversationTime(right.last_message_at ?? right.updated_at ?? right.created_at)
     - parseConversationTime(left.last_message_at ?? left.updated_at ?? left.created_at),
   ),
 )
+const visibleConversations = computed(() => sortedConversations.value.slice(0, 3))
+const hiddenConversationCount = computed(() => Math.max(sortedConversations.value.length - visibleConversations.value.length, 0))
 const activeConversation = computed(() => {
   const requirementId = route.query.requirement_id
   if (typeof requirementId !== 'string') {
@@ -336,11 +324,14 @@ async function scrollToHash() {
       <el-scrollbar class="app-scrollbar user-workbench__aside-scrollbar" max-height="calc(100vh - 120px)">
         <div class="user-workbench__aside-inner">
           <div class="user-workbench__brand">
-            <span>73Info.cn</span>
-            <strong>个人工作台</strong>
+            <div>
+              <strong>个人工作台</strong>
+            </div>
+            <em>{{ isDeveloperArea() ? '开发者功能' : '用户中心' }}</em>
           </div>
 
           <nav class="user-workbench__menu">
+            <p class="user-workbench__menu-section">我的事项</p>
             <RouterLink class="user-workbench__menu-link user-workbench__menu-link--root"
               :class="{ active: isOverviewActive() }" :to="menuItemTo(overviewItem)">
               <span class="user-workbench__menu-icon">
@@ -369,22 +360,30 @@ async function scrollToHash() {
                 </el-icon>
               </button>
 
-              <div v-show="isMessageMenuOpen()" class="user-workbench__submenu user-workbench__submenu--messages">
-                <RouterLink v-for="item in sortedConversations" :key="item.conversation_id"
-                  class="user-workbench__submenu-link user-workbench__conversation-link"
-                  :class="{ active: isConversationActive(item) }" :to="conversationTo(item)">
-                  <span>{{ item.requirement_title || item.requirement_id }}</span>
-                  <small>{{ partnerLabel(item) }} · {{ conversationMeta(item) }}</small>
-                </RouterLink>
+              <Transition name="workbench-submenu">
+                <div v-show="isMessageMenuOpen()" class="user-workbench__submenu user-workbench__submenu--messages">
+                  <RouterLink v-for="item in visibleConversations" :key="item.conversation_id"
+                    class="user-workbench__submenu-link user-workbench__conversation-link"
+                    :class="{ active: isConversationActive(item) }" :to="conversationTo(item)">
+                    <span>{{ item.requirement_title || item.requirement_id }}</span>
+                    <small>{{ partnerLabel(item) }} · {{ conversationMeta(item) }}</small>
+                  </RouterLink>
 
-                <span v-if="!conversationLoading && sortedConversations.length === 0"
-                  class="user-workbench__submenu-empty">暂无会话</span>
-                <span v-else-if="conversationLoading" class="user-workbench__submenu-empty">同步会话中</span>
-              </div>
+                  <button v-if="hiddenConversationCount > 0" class="user-workbench__submenu-more" type="button"
+                    @click="openMessageCenter">
+                    查看全部消息
+                  </button>
+
+                  <span v-if="!conversationLoading && sortedConversations.length === 0"
+                    class="user-workbench__submenu-empty">暂无会话</span>
+                  <span v-else-if="conversationLoading" class="user-workbench__submenu-empty">同步会话中</span>
+                </div>
+              </Transition>
             </section>
 
             <section v-for="group in menuGroups" :key="group.key" class="user-workbench__menu-group"
               :class="{ active: isGroupActive(group), open: isGroupOpen(group) }">
+              <p v-if="group.key !== 'collaboration'" class="user-workbench__menu-section">{{ group.label }}</p>
               <button class="user-workbench__menu-group-head" type="button" :aria-expanded="isGroupOpen(group)"
                 @click="toggleGroup(group)">
                 <span class="user-workbench__menu-icon">
@@ -398,14 +397,16 @@ async function scrollToHash() {
                 </el-icon>
               </button>
 
-              <div v-show="isGroupOpen(group)" class="user-workbench__submenu">
-                <RouterLink v-for="item in group.items" :key="`${item.name}-${item.hash ?? ''}`"
-                  class="user-workbench__submenu-link" :class="{ active: isMenuItemActive(item) }"
-                  :to="menuItemTo(item)">
-                  <span>{{ item.label }}</span>
-                  <small>{{ item.description }}</small>
-                </RouterLink>
-              </div>
+              <Transition name="workbench-submenu">
+                <div v-show="isGroupOpen(group)" class="user-workbench__submenu">
+                  <RouterLink v-for="item in group.items" :key="`${item.name}-${item.hash ?? ''}`"
+                    class="user-workbench__submenu-link" :class="{ active: isMenuItemActive(item) }"
+                    :to="menuItemTo(item)">
+                    <span>{{ item.label }}</span>
+                    <small>{{ item.description }}</small>
+                  </RouterLink>
+                </div>
+              </Transition>
             </section>
           </nav>
         </div>
@@ -434,7 +435,7 @@ async function scrollToHash() {
   width: min(1280px, calc(100% - 24px));
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  grid-template-columns: minmax(232px, 272px) minmax(0, 1fr);
   gap: 18px;
   margin: 16px auto 0;
 }
@@ -458,14 +459,17 @@ async function scrollToHash() {
 
 .user-workbench__aside-inner {
   display: grid;
-  gap: 16px;
+  gap: 14px;
   padding: 16px;
 }
 
 .user-workbench__brand {
-  display: grid;
-  gap: 4px;
-  padding: 4px 4px 8px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 4px 10px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.82);
 }
 
 .user-workbench__brand span {
@@ -476,15 +480,37 @@ async function scrollToHash() {
 
 .user-workbench__brand strong {
   color: #0f172a;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.2;
+}
+
+.user-workbench__brand em {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(239, 246, 255, 0.94);
+  color: #1d4ed8;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
 }
 
 .user-workbench__menu,
 .user-workbench__menu-group,
 .user-workbench__submenu {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+}
+
+.user-workbench__menu-section {
+  margin: 10px 4px 2px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
 .user-workbench__menu-link,
@@ -500,15 +526,40 @@ async function scrollToHash() {
 
 .user-workbench__menu-link,
 .user-workbench__menu-group-head {
+  position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  min-height: 48px;
+  min-height: 46px;
   padding: 10px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: transparent;
   cursor: pointer;
+  overflow: hidden;
+  transition:
+    background 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.user-workbench__menu-link::before,
+.user-workbench__menu-group-head::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 999px;
+  background: #2563eb;
+  opacity: 0;
+  transform: scaleY(0.45);
+  transform-origin: center;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
 }
 
 .user-workbench__menu-link--root {
@@ -521,6 +572,18 @@ async function scrollToHash() {
 .user-workbench__menu-group.active>.user-workbench__menu-group-head {
   background: rgba(239, 246, 255, 0.96);
   color: #1d4ed8;
+  box-shadow: inset 0 0 0 1px rgba(191, 219, 254, 0.52);
+}
+
+.user-workbench__menu-link:hover,
+.user-workbench__menu-group-head:hover {
+  transform: translateX(2px);
+}
+
+.user-workbench__menu-link.active::before,
+.user-workbench__menu-group.active>.user-workbench__menu-group-head::before {
+  opacity: 1;
+  transform: scaleY(1);
 }
 
 .user-workbench__menu-icon {
@@ -528,9 +591,22 @@ async function scrollToHash() {
   place-items: center;
   width: 30px;
   height: 30px;
-  border-radius: 10px;
+  border-radius: 11px;
   background: rgba(219, 234, 254, 0.82);
   color: #2563eb;
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.user-workbench__menu-link:hover .user-workbench__menu-icon,
+.user-workbench__menu-group-head:hover .user-workbench__menu-icon,
+.user-workbench__menu-link.active .user-workbench__menu-icon,
+.user-workbench__menu-group.active>.user-workbench__menu-group-head .user-workbench__menu-icon {
+  background: rgba(37, 99, 235, 0.14);
+  color: #1d4ed8;
+  transform: scale(1.04);
 }
 
 .user-workbench__menu-link strong,
@@ -551,7 +627,14 @@ async function scrollToHash() {
 
 .user-workbench__menu-arrow {
   color: #94a3b8;
-  transition: transform 160ms ease;
+  transition:
+    color 180ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.user-workbench__menu-group-head:hover .user-workbench__menu-arrow,
+.user-workbench__menu-group.active>.user-workbench__menu-group-head .user-workbench__menu-arrow {
+  color: #2563eb;
 }
 
 .user-workbench__menu-group.open .user-workbench__menu-arrow {
@@ -559,16 +642,28 @@ async function scrollToHash() {
 }
 
 .user-workbench__submenu {
-  margin-left: 40px;
+  --workbench-submenu-max: 420px;
+  margin-left: 38px;
   padding-left: 10px;
   border-left: 1px solid rgba(209, 220, 243, 0.95);
 }
 
 .user-workbench__submenu-link {
+  position: relative;
   display: grid;
   gap: 2px;
-  padding: 9px 10px;
+  min-height: 38px;
+  padding: 8px 10px;
   border-radius: 12px;
+  align-content: center;
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.user-workbench__submenu-link:hover {
+  transform: translateX(2px);
 }
 
 .user-workbench__submenu-link:hover,
@@ -585,12 +680,97 @@ async function scrollToHash() {
   font-weight: 800;
 }
 
+.user-workbench__submenu:not(.user-workbench__submenu--messages) .user-workbench__submenu-link small {
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-height 180ms ease,
+    margin-top 180ms ease,
+    opacity 160ms ease;
+}
+
+.user-workbench__submenu:not(.user-workbench__submenu--messages) .user-workbench__submenu-link:hover small,
+.user-workbench__submenu:not(.user-workbench__submenu--messages) .user-workbench__submenu-link.active small {
+  max-height: 34px;
+  margin-top: 3px;
+  opacity: 1;
+}
+
 .user-workbench__submenu--messages {
-  max-height: 320px;
+  --workbench-submenu-max: 230px;
+  max-height: 210px;
   overflow-y: auto;
   padding-right: 4px;
   scrollbar-color: rgba(56, 189, 248, 0.7) transparent;
   scrollbar-width: thin;
+}
+
+.user-workbench__submenu-more {
+  width: 100%;
+  min-height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(239, 246, 255, 0.86);
+  color: #2563eb;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.user-workbench__submenu-more:hover {
+  background: rgba(219, 234, 254, 0.96);
+}
+
+.workbench-submenu-enter-active,
+.workbench-submenu-leave-active {
+  max-height: var(--workbench-submenu-max, 420px);
+  opacity: 1;
+  overflow: hidden;
+  transform-origin: top;
+  transition:
+    max-height 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 160ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.workbench-submenu-enter-from,
+.workbench-submenu-leave-to {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-4px) scaleY(0.98);
+}
+
+.workbench-submenu-enter-to,
+.workbench-submenu-leave-from {
+  max-height: var(--workbench-submenu-max, 420px);
+  opacity: 1;
+  transform: translateY(0) scaleY(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .user-workbench__menu-link,
+  .user-workbench__menu-group-head,
+  .user-workbench__submenu-link,
+  .user-workbench__menu-icon,
+  .user-workbench__menu-arrow,
+  .workbench-submenu-enter-active,
+  .workbench-submenu-leave-active {
+    transition: none;
+  }
+
+  .user-workbench__menu-link:hover,
+  .user-workbench__menu-group-head:hover,
+  .user-workbench__submenu-link:hover,
+  .user-workbench__menu-link:hover .user-workbench__menu-icon,
+  .user-workbench__menu-group-head:hover .user-workbench__menu-icon,
+  .user-workbench__menu-link.active .user-workbench__menu-icon,
+  .user-workbench__menu-group.active>.user-workbench__menu-group-head .user-workbench__menu-icon {
+    transform: none;
+  }
 }
 
 .user-workbench__submenu--messages::-webkit-scrollbar {
@@ -774,8 +954,16 @@ async function scrollToHash() {
     max-height: none;
   }
 
+  .user-workbench__aside-inner {
+    gap: 12px;
+  }
+
   .user-workbench__menu {
     grid-template-columns: 1fr;
+  }
+
+  .user-workbench__submenu--messages {
+    max-height: 160px;
   }
 }
 
@@ -799,6 +987,24 @@ async function scrollToHash() {
   .user-workbench__head {
     flex-direction: column;
     padding: 18px;
+  }
+
+  .user-workbench__brand {
+    align-items: center;
+  }
+
+  .user-workbench__menu-link,
+  .user-workbench__menu-group-head {
+    min-height: 44px;
+  }
+
+  .user-workbench__submenu {
+    margin-left: 16px;
+  }
+
+  .user-workbench__menu-link small,
+  .user-workbench__submenu-link small {
+    display: none;
   }
 
   .user-workbench__dev-link {

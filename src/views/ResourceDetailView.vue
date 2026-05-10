@@ -5,15 +5,28 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { HttpError, apiUrl } from '@/api/http'
 import {
+  createPublicMcResourceComment,
   getPublicMcResource,
+  listPublicMcResourceComments,
   listPublicMcResourceVersions,
   downloadPublicMcResourceFile,
+  type PublicMcResourceCommentItem,
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
+import { getMyRealnameVerification, type UserRealnameStatus } from '@/api/realname'
 import { getTagRouteSlug, normalizeTagName, parseResourceIdFromSlug } from '@/api/resourceTags'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+
+type CommentGate = {
+  title: string
+  description: string
+  actionLabel: string
+  action: 'login' | 'realname' | ''
+}
+
+const COMMENT_MAX_LENGTH = 300
 
 const route = useRoute()
 const router = useRouter()
@@ -23,10 +36,20 @@ const { showToast } = useToast()
 const loading = ref(false)
 const resource = ref<PublicMcResourceItem | null>(null)
 const versions = ref<PublicMcResourceVersionItem[]>([])
+const comments = ref<PublicMcResourceCommentItem[]>([])
+const commentsLoading = ref(false)
+const commentSubmitting = ref(false)
+const commentText = ref('')
+const realnameStatus = ref<UserRealnameStatus | 'none' | ''>('')
+const realnameLoading = ref(false)
 
-const tagNames = computed(() => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [])
+const tagNames = computed(
+  () => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [],
+)
 const platformLabel = computed(() => resource.value?.platform ?? '未知平台')
-const visibilityLabel = computed(() => (resource.value?.visibility === 'published' ? '公开展示中' : '待正式发布'))
+const visibilityLabel = computed(() =>
+  resource.value?.visibility === 'published' ? '公开展示中' : '待正式发布',
+)
 const currentRootSlug = computed(() => {
   const raw = route.params.rootSlug
   return typeof raw === 'string' ? raw.trim() : ''
@@ -36,7 +59,8 @@ const currentEntrySlug = computed(() => {
   return typeof raw === 'string' ? raw.trim() : ''
 })
 const resourceRootName = computed(() => {
-  const rootName = resource.value?.tag_selections.find((item) => item.group_path.length > 0)?.group_path[0]
+  const rootName = resource.value?.tag_selections.find((item) => item.group_path.length > 0)
+    ?.group_path[0]
   return normalizeTagName(rootName || '')
 })
 const infoCards = computed(() => {
@@ -54,7 +78,9 @@ const infoCards = computed(() => {
     {
       label: '历史版本',
       value: `${versions.value.length}`,
-      hint: latestVersion.value ? `当前最新为 ${latestVersion.value.version}` : '当前还没有版本记录',
+      hint: latestVersion.value
+        ? `当前最新为 ${latestVersion.value.version}`
+        : '当前还没有版本记录',
       tone: 'versions',
     },
     {
@@ -65,9 +91,71 @@ const infoCards = computed(() => {
     },
   ]
 })
-const resourceCoverUrl = computed(() => (resource.value?.cover_url ? apiUrl(resource.value.cover_url) : ''))
+const resourceCoverUrl = computed(() =>
+  resource.value?.cover_url ? apiUrl(resource.value.cover_url) : '',
+)
 const latestVersion = computed(() => versions.value[0] ?? null)
 const pageContentHtml = computed(() => formatHomepageContent(resource.value?.release_note || ''))
+const commentTextLength = computed(() => Array.from(commentText.value.trim()).length)
+const commentCountLabel = computed(() =>
+  comments.value.length > 0 ? `${comments.value.length} 条评论` : '暂无评论',
+)
+const canSubmitComment = computed(
+  () =>
+    auth.isAuthed &&
+    realnameStatus.value === 'approved' &&
+    commentText.value.trim().length > 0 &&
+    commentTextLength.value <= COMMENT_MAX_LENGTH &&
+    !commentSubmitting.value,
+)
+const commentGate = computed<CommentGate | null>(() => {
+  if (!auth.isAuthed) {
+    return {
+      title: '登录后可评论',
+      description: '登录并通过实名认证后，可以在这里留下资源使用反馈。',
+      actionLabel: '登录',
+      action: 'login',
+    }
+  }
+
+  if (realnameLoading.value) {
+    return {
+      title: '正在确认实名状态',
+      description: '稍等一下，系统正在同步你的实名认证状态。',
+      actionLabel: '',
+      action: '',
+    }
+  }
+
+  if (realnameStatus.value === 'approved') {
+    return null
+  }
+
+  if (realnameStatus.value === 'pending') {
+    return {
+      title: '实名认证审核中',
+      description: '审核通过后即可参与资源评论。',
+      actionLabel: '查看进度',
+      action: 'realname',
+    }
+  }
+
+  if (realnameStatus.value === 'rejected') {
+    return {
+      title: '实名认证未通过',
+      description: '请补充或修正认证信息，通过后再发表评论。',
+      actionLabel: '重新认证',
+      action: 'realname',
+    }
+  }
+
+  return {
+    title: '完成实名认证后可评论',
+    description: '为了保持资源评论可信，评论前需要先完成实名认证。',
+    actionLabel: '去实名认证',
+    action: 'realname',
+  }
+})
 
 const markdownRenderer = new MarkdownIt({
   html: false,
@@ -79,7 +167,9 @@ function sanitizeRichHtml(value: string): string {
   const template = document.createElement('template')
   template.innerHTML = value
 
-  template.content.querySelectorAll('script, style, iframe, object, embed').forEach((node) => node.remove())
+  template.content
+    .querySelectorAll('script, style, iframe, object, embed')
+    .forEach((node) => node.remove())
 
   template.content.querySelectorAll('*').forEach((element) => {
     Array.from(element.attributes).forEach((attribute) => {
@@ -124,6 +214,11 @@ function backToPlatform() {
   })
 }
 
+function getCurrentResourceId(): number | null {
+  const resourceSlug = String(route.params.resourceSlug ?? '')
+  return parseResourceIdFromSlug(resourceSlug) || null
+}
+
 function formatUpdatedDate(value: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
@@ -152,7 +247,11 @@ function formatUpdatedTime(value: string): string {
 async function triggerDownload(url: string, fileName: string) {
   const token = auth.token?.trim() ? auth.token : null
   try {
-    const { blob, fileName: resolvedFileName } = await downloadPublicMcResourceFile(url, fileName, token)
+    const { blob, fileName: resolvedFileName } = await downloadPublicMcResourceFile(
+      url,
+      fileName,
+      token,
+    )
 
     const objectUrl = URL.createObjectURL(blob)
     try {
@@ -187,7 +286,8 @@ async function openResourceFile() {
     return
   }
 
-  const fileName = resource.value?.file_name || latestVersion.value.resource.split('/').pop() || 'download'
+  const fileName =
+    resource.value?.file_name || latestVersion.value.resource.split('/').pop() || 'download'
   try {
     await triggerDownload(latestVersion.value.resource, fileName)
   } catch (error) {
@@ -213,9 +313,132 @@ function formatVersionTime(value: string): string {
   return date.toLocaleString('zh-CN')
 }
 
+function getCommenterInitial(value: string): string {
+  return Array.from(value.trim())[0]?.toUpperCase() || '用'
+}
+
+async function loadComments(resourceId: number) {
+  commentsLoading.value = true
+  try {
+    const token = auth.token?.trim() ? auth.token : null
+    comments.value = await listPublicMcResourceComments(resourceId, token)
+  } catch (error) {
+    comments.value = []
+    showToast(error instanceof Error ? error.message : '加载资源评论失败', 'warning')
+  } finally {
+    commentsLoading.value = false
+  }
+}
+
+async function loadRealnameStatus() {
+  if (!auth.isAuthed || !auth.token.trim()) {
+    realnameStatus.value = ''
+    return
+  }
+
+  realnameLoading.value = true
+  try {
+    const record = await getMyRealnameVerification(auth.token)
+    realnameStatus.value = record.status
+  } catch {
+    realnameStatus.value = 'none'
+  } finally {
+    realnameLoading.value = false
+  }
+}
+
+function openCommentLogin() {
+  showToast('请先登录后再发表评论', 'info')
+  void router.push({
+    name: 'home',
+    query: {
+      modal: 'auth',
+      mode: 'login',
+      redirect_to: route.fullPath,
+    },
+  })
+}
+
+function openRealnamePage() {
+  void router.push({ name: 'workbench-realname', query: { redirect_to: route.fullPath } })
+}
+
+function handleCommentGateAction() {
+  if (!commentGate.value || !commentGate.value.action) {
+    return
+  }
+
+  if (commentGate.value.action === 'login') {
+    openCommentLogin()
+    return
+  }
+
+  openRealnamePage()
+}
+
+async function submitResourceComment() {
+  if (commentSubmitting.value) {
+    return
+  }
+
+  const resourceId = resource.value?.id ?? getCurrentResourceId()
+  if (!resourceId) {
+    showToast('资源编号无效', 'warning')
+    return
+  }
+
+  if (!auth.isAuthed || !auth.token.trim()) {
+    openCommentLogin()
+    return
+  }
+
+  if (realnameStatus.value !== 'approved') {
+    await loadRealnameStatus()
+  }
+
+  if (realnameStatus.value !== 'approved') {
+    showToast('请先完成实名认证后再发表评论', 'warning')
+    openRealnamePage()
+    return
+  }
+
+  const comment = commentText.value.trim()
+  const commentLength = Array.from(comment).length
+  if (!comment) {
+    showToast('请输入评论内容', 'warning')
+    return
+  }
+  if (commentLength > COMMENT_MAX_LENGTH) {
+    showToast(`评论不能超过 ${COMMENT_MAX_LENGTH} 字`, 'warning')
+    return
+  }
+
+  commentSubmitting.value = true
+  try {
+    const saved = await createPublicMcResourceComment(auth.token, resourceId, { comment })
+    comments.value = [
+      saved,
+      ...comments.value.filter(
+        (item) => item.id !== saved.id && item.commenter !== saved.commenter,
+      ),
+    ]
+    commentText.value = ''
+    showToast('评论已发布', 'success')
+    void loadComments(resourceId)
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 403) {
+      realnameStatus.value = 'none'
+      showToast('请先完成实名认证后再发表评论', 'warning')
+    } else {
+      showToast(error instanceof Error ? error.message : '评论提交失败', 'error')
+    }
+  } finally {
+    commentSubmitting.value = false
+  }
+}
+
 async function loadResource() {
-  const resourceSlug = String(route.params.resourceSlug ?? '')
-  const resourceId = parseResourceIdFromSlug(resourceSlug)
+  const resourceId = getCurrentResourceId()
   if (!resourceId) {
     showToast('资源编号无效', 'warning')
     router.replace({ name: 'home' })
@@ -223,6 +446,8 @@ async function loadResource() {
   }
 
   loading.value = true
+  comments.value = []
+  commentText.value = ''
   try {
     const token = auth.token?.trim() ? auth.token : null
     const [resourceDetail, resourceVersions] = await Promise.all([
@@ -231,6 +456,8 @@ async function loadResource() {
     ])
     resource.value = resourceDetail
     versions.value = resourceVersions
+    void loadComments(resourceId)
+    void loadRealnameStatus()
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载资源主页失败'
     showToast(message, 'warning')
@@ -251,6 +478,16 @@ watch(
     void loadResource()
   },
 )
+
+watch(
+  () => auth.token,
+  () => {
+    void loadRealnameStatus()
+    if (resource.value?.id) {
+      void loadComments(resource.value.id)
+    }
+  },
+)
 </script>
 
 <template>
@@ -261,8 +498,7 @@ watch(
           <div class="resource-detail-page__cover-card">
             <img v-if="resource.cover_url" :src="resourceCoverUrl" :alt="resource.title"
               class="resource-detail-page__cover-image" />
-            <div v-else class="resource-detail-page__cover-placeholder">📁
-            </div>
+            <div v-else class="resource-detail-page__cover-placeholder">📁</div>
           </div>
 
           <div class="resource-detail-page__summary-card">
@@ -274,12 +510,18 @@ watch(
             <p class="resource-detail-page__summary">{{ resource.description }}</p>
 
             <div v-if="tagNames.length > 0" class="resource-detail-page__tags">
-              <span v-for="item in tagNames" :key="item" class="resource-detail-page__tag">{{ item }}</span>
+              <span v-for="item in tagNames" :key="item" class="resource-detail-page__tag">{{
+                item
+                }}</span>
             </div>
 
             <div class="resource-detail-page__cta-row">
-              <button class="resource-detail-page__primary-btn" type="button" @click="openResourceFile">下载最新版本</button>
-              <button class="resource-detail-page__secondary-btn" type="button" @click="backToPlatform">继续浏览</button>
+              <button class="resource-detail-page__primary-btn" type="button" @click="openResourceFile">
+                下载最新版本
+              </button>
+              <button class="resource-detail-page__secondary-btn" type="button" @click="backToPlatform">
+                继续浏览
+              </button>
             </div>
           </div>
         </section>
@@ -328,9 +570,59 @@ watch(
                 </p>
               </article>
             </div>
-            <p v-else class="resource-detail-page__paragraph">
-              当前还没有可展示的历史版本。
-            </p>
+            <p v-else class="resource-detail-page__paragraph">当前还没有可展示的历史版本。</p>
+          </article>
+
+          <article class="resource-detail-page__content-card resource-detail-page__comments-card">
+            <header class="resource-detail-page__section-head">
+              <h2>资源评论</h2>
+              <span>{{ commentCountLabel }}</span>
+            </header>
+
+            <section class="resource-detail-page__comment-composer">
+              <div v-if="commentGate" class="resource-detail-page__comment-gate">
+                <div>
+                  <strong>{{ commentGate.title }}</strong>
+                  <p>{{ commentGate.description }}</p>
+                </div>
+                <button v-if="commentGate.actionLabel" class="resource-detail-page__comment-action" type="button"
+                  @click="handleCommentGateAction">
+                  {{ commentGate.actionLabel }}
+                </button>
+              </div>
+              <form v-else class="resource-detail-page__comment-form" @submit.prevent="submitResourceComment">
+                <textarea v-model="commentText" class="resource-detail-page__comment-input" rows="4" maxlength="300"
+                  placeholder="写下你对这个资源的使用体验、兼容性补充或改进建议"></textarea>
+                <div class="resource-detail-page__comment-toolbar">
+                  <span class="resource-detail-page__comment-count"
+                    :class="{ danger: commentTextLength > COMMENT_MAX_LENGTH }">
+                    {{ commentTextLength }} / {{ COMMENT_MAX_LENGTH }}
+                  </span>
+                  <button class="resource-detail-page__comment-submit" type="submit" :disabled="!canSubmitComment">
+                    {{ commentSubmitting ? '发布中...' : '发布评论' }}
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            <div class="resource-detail-page__comment-list" v-loading="commentsLoading">
+              <article v-for="comment in comments" :key="comment.id" class="resource-detail-page__comment-item"
+                :class="{ mine: auth.username && comment.commenter === auth.username }">
+                <div class="resource-detail-page__comment-avatar">
+                  {{ getCommenterInitial(comment.commenter) }}
+                </div>
+                <div class="resource-detail-page__comment-body">
+                  <div class="resource-detail-page__comment-meta">
+                    <strong>{{ comment.commenter }}</strong>
+                    <span>{{ formatVersionTime(comment.updated_at) }}</span>
+                  </div>
+                  <p>{{ comment.comment_text }}</p>
+                </div>
+              </article>
+              <p v-if="!commentsLoading && comments.length === 0" class="resource-detail-page__paragraph">
+                暂时还没有评论。
+              </p>
+            </div>
           </article>
         </section>
       </template>
@@ -627,6 +919,166 @@ watch(
   color: #0f172a;
 }
 
+.resource-detail-page__comments-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.resource-detail-page__comment-composer,
+.resource-detail-page__comment-item {
+  border-radius: 18px;
+  border: 1px solid rgba(198, 210, 236, 0.72);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.resource-detail-page__comment-composer {
+  padding: 16px;
+}
+
+.resource-detail-page__comment-gate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.resource-detail-page__comment-gate strong,
+.resource-detail-page__comment-meta strong {
+  color: #0f172a;
+}
+
+.resource-detail-page__comment-gate p,
+.resource-detail-page__comment-body p,
+.resource-detail-page__comment-meta span,
+.resource-detail-page__comment-count {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.7;
+}
+
+.resource-detail-page__comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resource-detail-page__comment-input {
+  width: 100%;
+  min-height: 108px;
+  resize: vertical;
+  border: 1px solid rgba(198, 210, 236, 0.86);
+  border-radius: 16px;
+  background: rgba(248, 250, 252, 0.96);
+  color: #0f172a;
+  padding: 12px 14px;
+  font: inherit;
+  line-height: 1.7;
+  outline: none;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.resource-detail-page__comment-input:focus {
+  border-color: rgba(37, 99, 235, 0.58);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.resource-detail-page__comment-toolbar,
+.resource-detail-page__comment-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__comment-count {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.resource-detail-page__comment-count.danger {
+  color: #dc2626;
+}
+
+.resource-detail-page__comment-action,
+.resource-detail-page__comment-submit {
+  border: 0;
+  border-radius: 12px;
+  min-height: 40px;
+  padding: 0 16px;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease;
+}
+
+.resource-detail-page__comment-action:hover,
+.resource-detail-page__comment-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(37, 99, 235, 0.18);
+}
+
+.resource-detail-page__comment-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.resource-detail-page__comment-list {
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resource-detail-page__comment-item {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px;
+}
+
+.resource-detail-page__comment-item.mine {
+  border-color: rgba(37, 99, 235, 0.26);
+  background: rgba(239, 246, 255, 0.82);
+}
+
+.resource-detail-page__comment-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #1d4ed8;
+  background: rgba(219, 234, 254, 0.95);
+  font-weight: 800;
+}
+
+.resource-detail-page__comment-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.resource-detail-page__comment-body p {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.resource-detail-page__comment-meta span {
+  font-size: 12px;
+}
+
 @media (max-width: 980px) {
   .resource-detail-page :deep(.portal-page__stats) {
     grid-template-columns: 1fr;
@@ -654,6 +1106,26 @@ watch(
 
   .resource-detail-page__version-headline {
     align-items: flex-start;
+  }
+
+  .resource-detail-page__comment-gate,
+  .resource-detail-page__comment-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .resource-detail-page__comment-action,
+  .resource-detail-page__comment-submit {
+    width: 100%;
+  }
+
+  .resource-detail-page__comment-item {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .resource-detail-page__comment-avatar {
+    width: 36px;
+    height: 36px;
   }
 }
 </style>

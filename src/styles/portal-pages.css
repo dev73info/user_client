@@ -260,6 +260,13 @@
   margin-bottom: 18px;
 }
 
+.portal-page__header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
 .portal-page--nav .portal-page__section-header {
   margin-bottom: 14px;
 }
@@ -269,6 +276,18 @@
   background: transparent;
   color: #2563eb;
   font-weight: 700;
+}
+
+.portal-page__loading-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(239, 246, 255, 0.92);
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .portal-page__card-grid,
@@ -367,6 +386,86 @@
   border-radius: 18px;
   background: rgba(248, 250, 252, 0.86);
   color: #64748b;
+}
+
+.portal-page__empty--stacked {
+  display: flex;
+  min-height: 128px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+}
+
+.portal-page__empty--stacked strong {
+  color: #0f172a;
+}
+
+.portal-page__resource-grid--loading {
+  align-items: stretch;
+}
+
+.portal-page__resource-skeleton {
+  position: relative;
+  min-height: 190px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.portal-page__resource-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+}
+
+.portal-page__skeleton-chip,
+.portal-page__skeleton-title,
+.portal-page__skeleton-line,
+.portal-page__skeleton-action {
+  display: block;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.92);
+}
+
+.portal-page__skeleton-chip {
+  width: 72px;
+  height: 26px;
+}
+
+.portal-page__skeleton-title {
+  width: 42%;
+  height: 20px;
+}
+
+.portal-page__skeleton-line {
+  width: 68%;
+  height: 12px;
+}
+
+.portal-page__skeleton-line--wide {
+  width: 86%;
+}
+
+.portal-page__skeleton-action {
+  width: 138px;
+  height: 42px;
+  margin-top: auto;
+  border-radius: 12px;
+  background: rgba(219, 234, 254, 0.9);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .portal-page__resource-skeleton::after {
+    animation: portal-page-skeleton-shimmer 1.3s ease-in-out infinite;
+  }
+}
+
+@keyframes portal-page-skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 @media (max-width: 1100px) {

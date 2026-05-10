@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { getProcessedTagTree, type McTagCatalogRoot } from '@/api/resourceTags'
+import { getCachedProcessedTagTree, getProcessedTagTree, type McProcessedTagTree, type McTagCatalogRoot } from '@/api/resourceTags'
 import { buildDevPortalUrl } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -26,7 +26,12 @@ const auth = useAuthStore()
 const router = useRouter()
 const freeResourceSections = ref<FreeResourceSectionView[]>([])
 const freeResourceLoading = ref(false)
+const freeResourceLoaded = ref(false)
+const freeResourceError = ref('')
 const { showToast } = useToast()
+
+const showResourceSkeleton = computed(() => freeResourceLoading.value && !freeResourceLoaded.value)
+const freeResourceRefreshing = computed(() => freeResourceLoading.value && freeResourceLoaded.value)
 
 function openDevWorkbench() {
   void router.push(buildDevPortalUrl(auth.token))
@@ -68,23 +73,43 @@ function buildFreeResourceSummary(root: McTagCatalogRoot) {
   return `包含 ${entryCount} 个下级分组，覆盖 ${tagCount} 个标签节点。`
 }
 
+function mapFreeResourceSections(tree: McProcessedTagTree): FreeResourceSectionView[] {
+  return tree.roots.map((root, index): FreeResourceSectionView => {
+    const hasContent = root.entries.length > 0
+    return {
+      rootId: index,
+      rootName: root.label,
+      rootSlug: root.key,
+      entrySlug: root.first_entry_key,
+      summary: buildFreeResourceSummary(root),
+      actionLabel: hasContent ? '进入分区' : '即将开放',
+    }
+  })
+}
+
+function applyFreeResourceTree(tree: McProcessedTagTree) {
+  freeResourceSections.value = mapFreeResourceSections(tree)
+  freeResourceLoaded.value = true
+  freeResourceError.value = ''
+}
+
+function hydrateFreeResourceSectionsFromCache() {
+  const cachedTree = getCachedProcessedTagTree()
+  if (cachedTree) {
+    applyFreeResourceTree(cachedTree)
+  }
+}
+
 async function loadFreeResourceSections() {
   freeResourceLoading.value = true
   try {
     const tree = await getProcessedTagTree()
-    freeResourceSections.value = tree.roots.map((root, index): FreeResourceSectionView => {
-      const hasContent = root.entries.length > 0
-      return {
-        rootId: index,
-        rootName: root.label,
-        rootSlug: root.key,
-        entrySlug: root.first_entry_key,
-        summary: buildFreeResourceSummary(root),
-        actionLabel: hasContent ? '进入分区' : '即将开放',
-      }
-    })
+    applyFreeResourceTree(tree)
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载免费资源导航失败', 'warning')
+    const message = err instanceof Error ? err.message : '加载免费资源导航失败'
+    freeResourceError.value = message
+    freeResourceLoaded.value = true
+    showToast(message, 'warning')
   } finally {
     freeResourceLoading.value = false
   }
@@ -101,6 +126,7 @@ function openFreeResourceRoot(section: FreeResourceSectionView) {
 
 onMounted(() => {
   auth.hydrate()
+  hydrateFreeResourceSectionsFromCache()
   void loadFreeResourceSections()
 })
 </script>
@@ -116,10 +142,22 @@ onMounted(() => {
             <p class="portal-page__eyebrow">开放分区</p>
             <h2>按标签树根节点进入资源目录</h2>
           </div>
-          <button class="portal-page__link-btn" type="button" @click="router.push({ name: 'home' })">返回首页</button>
+          <div class="portal-page__header-actions">
+            <span v-if="freeResourceRefreshing" class="portal-page__loading-chip">更新中</span>
+            <button class="portal-page__link-btn" type="button" @click="router.push({ name: 'home' })">返回首页</button>
+          </div>
         </div>
 
-        <div v-if="freeResourceLoading" class="portal-page__empty">正在加载免费资源分类...</div>
+        <div v-if="showResourceSkeleton" class="portal-page__resource-grid portal-page__resource-grid--loading"
+          aria-busy="true" aria-label="正在加载免费资源分类">
+          <article v-for="index in 4" :key="index" class="portal-page__card portal-page__resource-skeleton">
+            <span class="portal-page__skeleton-chip"></span>
+            <span class="portal-page__skeleton-title"></span>
+            <span class="portal-page__skeleton-line portal-page__skeleton-line--wide"></span>
+            <span class="portal-page__skeleton-line"></span>
+            <span class="portal-page__skeleton-action"></span>
+          </article>
+        </div>
 
         <div v-else-if="freeResourceSections.length > 0" class="portal-page__resource-grid">
           <article v-for="section in freeResourceSections" :key="section.rootId" class="portal-page__card">
@@ -138,7 +176,13 @@ onMounted(() => {
           </article>
         </div>
 
-        <div v-else class="portal-page__empty">标签树暂无可用分区。</div>
+        <div v-else class="portal-page__empty portal-page__empty--stacked">
+          <strong>{{ freeResourceError ? '加载失败' : '标签树暂无可用分区' }}</strong>
+          <span>{{ freeResourceError || '平台开放资源分区后，这里会自动出现入口。' }}</span>
+          <button v-if="freeResourceError" class="portal-page__action" type="button" @click="loadFreeResourceSections">
+            重新加载
+          </button>
+        </div>
       </section>
 
       <aside class="portal-page__aside">

@@ -2,6 +2,7 @@
 import '@/styles/home.css'
 
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import type { RouteLocationRaw } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight } from '@element-plus/icons-vue'
 
@@ -26,13 +27,17 @@ import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/co
 import {
   createRequirement,
   getPublicRequirementOverview,
+  listPublicRequirementSpotlights,
   listRequirements,
   resubmitRequirement,
+  type PublicRequirementSpotlightItem,
   type RequirementPaymentMode,
   type RequirementStatus,
 } from '@/api/requirements'
 import { getMyRealnameVerification, type UserRealnameStatus } from '@/api/realname'
 import { getDepositRatio } from '@/api/settings'
+import { getProcessedTagTree, getResourceDetailSlug, normalizeTagName, type McProcessedTagTree } from '@/api/resourceTags'
+import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
 
 type Metric = {
   label: string
@@ -58,6 +63,7 @@ type PortalNotice = {
   title: string
   date: string
   tag?: string
+  to?: RouteLocationRaw
 }
 
 type PortalCategory = {
@@ -72,6 +78,8 @@ type WorkflowStep = {
   hint: string
   icon: string
   accent: string
+  actionLabel: string
+  action: 'publish' | 'progress' | 'developer'
 }
 
 type QuickPanel = {
@@ -82,6 +90,7 @@ type QuickPanel = {
 }
 
 type SpotlightCard = {
+  kind: 'requirement' | 'resource'
   title: string
   summary: string
   budget: string
@@ -89,6 +98,8 @@ type SpotlightCard = {
   badge: string
   metaSecondary: string
   accent: string
+  requirementId?: string
+  resourceId?: number
 }
 
 type DeveloperRank = {
@@ -133,6 +144,9 @@ const selectedDeal = ref<LatestDealView | null>(null)
 const dealDetailVisible = ref(false)
 
 const pendingRequirements = ref<PendingRequirementView[]>([])
+const publicRequirementSpotlights = ref<PublicRequirementSpotlightItem[]>([])
+const processedTagTree = ref<McProcessedTagTree>({ roots: [] })
+const publicResources = ref<PublicMcResourceItem[]>([])
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
@@ -185,45 +199,149 @@ const couponLoading = ref(false)
 const contractSigningStatus = ref<ContractSigningStatus | null>(null)
 const { showToast } = useToast()
 const publishRealnameStatus = ref<UserRealnameStatus | 'none' | ''>('')
-const heroSignals = [
-  '免费资源共享',
-  '有偿需求定制',
-  '安全交易保障',
-]
-const portalNotices: PortalNotice[] = [
-  { title: '信用点商城全新上线', date: '05-15' },
-  { title: '新增「绘画设计」需求分类', date: '05-14', tag: 'NEW' },
-  { title: '平台服务协议更新说明', date: '05-12' },
-  { title: '关于打击恶意行为的公告', date: '05-10' },
-]
-const quickPanels: QuickPanel[] = [
+const heroSignals = computed(() => {
+  const rootCount = processedTagTree.value.roots.length
+  const resourceCount = publicResources.value.length
+  const latestDeal = latestDeals.value[0]
+
+  return [
+    rootCount > 0 ? `开放 ${rootCount} 个资源根分区` : '免费资源共享',
+    publicRequirementSpotlights.value.length > 0
+      ? `精选需求 ${publicRequirementSpotlights.value.length} 条`
+      : resourceCount > 0 ? `公开资源 ${resourceCount} 条` : '有偿需求定制',
+    latestDeal ? `最新成交 ${latestDeal.amount}` : '安全交易保障',
+  ]
+})
+
+const portalNotices = computed<PortalNotice[]>(() => {
+  const notices: PortalNotice[] = []
+
+  if (latestDeals.value[0]) {
+    notices.push({
+      title: `最新成交：${latestDeals.value[0].title}`,
+      date: latestDeals.value[0].at,
+      tag: 'HOT',
+    })
+  }
+
+  if (publicResources.value[0]) {
+    const resourceRoute = resolveResourceRoute(publicResources.value[0])
+    notices.push({
+      title: `公开资源：${publicResources.value[0].title}`,
+      date: formatTimeLabel(publicResources.value[0].updated_at),
+      tag: normalizeTagName(publicResources.value[0].platform),
+      to: resourceRoute
+        ? {
+            name: 'resource-detail',
+            params: {
+              rootSlug: resourceRoute.rootSlug,
+              entrySlug: resourceRoute.entrySlug,
+              resourceSlug: getResourceDetailSlug(publicResources.value[0].id, publicResources.value[0].title),
+            },
+          }
+        : { name: 'free-resources' },
+    })
+  }
+
+  if (publicRequirementSpotlights.value[0]) {
+    notices.push({
+      title: `精选需求：${publicRequirementSpotlights.value[0].title}`,
+      date: formatTimeLabel(publicRequirementSpotlights.value[0].updated_at),
+      tag: statusToLabel(publicRequirementSpotlights.value[0].status),
+      to: { name: 'requirement-hall' },
+    })
+  }
+
+  if (pendingRequirements.value[0]) {
+    notices.push({
+      title: `我的需求：${pendingRequirements.value[0].title}`,
+      date: pendingRequirements.value[0].updatedAtLabel,
+      tag: pendingRequirements.value[0].statusLabel,
+      to: { name: 'workbench-requirements' },
+    })
+  }
+
+  const firstRoot = processedTagTree.value.roots[0]
+  if (firstRoot) {
+    notices.push({
+      title: `资源分区：${firstRoot.label}`,
+      date: `${firstRoot.entries.length} 个入口`,
+      tag: '分类',
+      to: {
+        name: 'resource-catalog',
+        params: firstRoot.first_entry_key
+          ? { rootSlug: firstRoot.key, entrySlug: firstRoot.first_entry_key }
+          : { rootSlug: firstRoot.key },
+      },
+    })
+  }
+
+  return notices
+})
+
+const quickPanels = computed<QuickPanel[]>(() => [
   {
     title: '免费资源',
-    summary: '开发者发布优质资源，需求方随取随用。',
+    summary:
+      processedTagTree.value.roots.length > 0
+        ? `已整理 ${processedTagTree.value.roots.length} 个根分区、${publicResources.value.length} 条公开资源。`
+        : `当前已发布 ${publicResources.value.length} 条公开资源。`,
     action: '立即查看',
     tone: 'gift',
   },
   {
     title: '有偿需求',
-    summary: '提交需求单，开发者接单完成定制开发。',
+    summary: publicRequirementSpotlights.value.length > 0
+      ? `正在展示 ${publicRequirementSpotlights.value.length} 条平台精选需求。`
+      : auth.isAuthed
+      ? `你当前有 ${pendingRequirements.value.length} 条个人需求记录。`
+      : `平台累计成交 ${metrics.value[0]?.value ?? '0 单'}。`,
     action: '立即发布',
     tone: 'briefcase',
   },
-]
-const portalCategories: PortalCategory[] = [
-  { label: '编程开发', icon: '</>', summary: '插件 / SDK / 后台' },
-  { label: '网站开发', icon: '◎', summary: '官网 / CMS / 企业站' },
-  { label: '插画设计', icon: '✦', summary: '视觉 / 角色 / 宣传' },
-  { label: 'Minecraft', icon: '▣', summary: '插件 / 模组 / 服务器' },
-  { label: '移动应用', icon: '⌘', summary: 'iOS / Android / 小程序' },
-  { label: '文案写作', icon: '✎', summary: '说明文档 / 宣发内容' },
-]
+])
+
+const portalCategories = computed<PortalCategory[]>(() => {
+  const iconPool = ['</>', '◎', '✦', '▣', '⌘', '✎']
+
+  const dynamicCategories = processedTagTree.value.roots.slice(0, 6).map((root, index) => {
+    const entryCount = root.entries.length
+    const tagCount = root.entries.reduce(
+      (sum, entry) => sum + entry.publish_groups.reduce((innerSum, group) => innerSum + group.items.length, 0),
+      0,
+    )
+
+    const previewEntries = root.entries.slice(0, 2).map((entry) => entry.label).join(' / ')
+    const summary = previewEntries
+      ? `${previewEntries}${entryCount > 2 ? ' 等分区' : ''}`
+      : `包含 ${entryCount} 个分区，覆盖 ${tagCount} 个标签节点`
+
+    return {
+      label: root.label,
+      icon: iconPool[index % iconPool.length] ?? '◌',
+      summary,
+    }
+  })
+
+  if (dynamicCategories.length > 0) {
+    return dynamicCategories
+  }
+
+  return [
+    { label: '编程开发', icon: '</>', summary: '插件 / SDK / 后台' },
+    { label: '网站开发', icon: '◎', summary: '官网 / CMS / 企业站' },
+    { label: '插画设计', icon: '✦', summary: '视觉 / 角色 / 宣传' },
+    { label: 'Minecraft', icon: '▣', summary: '插件 / 模组 / 服务器' },
+    { label: '移动应用', icon: '⌘', summary: 'iOS / Android / 小程序' },
+    { label: '文案写作', icon: '✎', summary: '说明文档 / 宣发内容' },
+  ]
+})
 const workflowSteps: WorkflowStep[] = [
-  { step: '1.', title: '提交需求', hint: '填写需求并补充验收标准', icon: '◫', accent: 'violet' },
-  { step: '2.', title: '需求审核', hint: '平台审核描述与预算完整性', icon: '☑', accent: 'blue' },
-  { step: '3.', title: '开发者接单', hint: '平台撮合并进入协作阶段', icon: '⌘', accent: 'green' },
-  { step: '4.', title: '完成验收', hint: '根据验收节点完成交付确认', icon: '✉', accent: 'orange' },
-  { step: '5.', title: '评价完成', hint: '沉淀信用记录与后续复购依据', icon: '♥', accent: 'red' },
+  { step: '01', title: '提交需求', hint: '补充预算、描述和验收标准', icon: '◫', accent: 'violet', actionLabel: '发布需求', action: 'publish' },
+  { step: '02', title: '平台审核', hint: '查看审核结果和驳回原因', icon: '☑', accent: 'blue', actionLabel: '查看进度', action: 'progress' },
+  { step: '03', title: '开发接单', hint: '开发者关联项目并进入协作', icon: '⌘', accent: 'green', actionLabel: '开发者入口', action: 'developer' },
+  { step: '04', title: '验收交付', hint: '确认版本、尾款和交付状态', icon: '✉', accent: 'orange', actionLabel: '我的需求', action: 'progress' },
+  { step: '05', title: '评价归档', hint: '评价交付质量并沉淀信用', icon: '♥', accent: 'red', actionLabel: '评价订单', action: 'progress' },
 ]
 
 function openDevWorkbench() {
@@ -248,7 +366,59 @@ function openQuickPanel(panel: QuickPanel) {
   void openPublishModal()
 }
 
+function openWorkflowStep(step: WorkflowStep) {
+  if (step.action === 'publish') {
+    void openPublishModal()
+    return
+  }
+
+  if (step.action === 'developer') {
+    openDevWorkbench()
+    return
+  }
+
+  if (!auth.isAuthed) {
+    showToast('登录后可查看需求进度', 'info')
+    openAuth('login')
+    return
+  }
+
+  void router.push({ name: 'workbench-requirements' })
+}
+
+function openPortalNotice(notice: PortalNotice) {
+  if (!notice.to) {
+    return
+  }
+
+  void router.push(notice.to)
+}
+
 function openSpotlight(card: SpotlightCard) {
+  if (card.kind === 'resource' && card.resourceId != null) {
+    const target = publicResources.value.find((item) => item.id === card.resourceId)
+    if (!target) {
+      showToast('资源详情正在加载中', 'info')
+      return
+    }
+
+    const routeParams = resolveResourceRoute(target)
+    if (!routeParams) {
+      showToast('资源目录暂未配置完整标签路由', 'warning')
+      return
+    }
+
+    void router.push({
+      name: 'resource-detail',
+      params: {
+        rootSlug: routeParams.rootSlug,
+        entrySlug: routeParams.entrySlug,
+        resourceSlug: getResourceDetailSlug(target.id, target.title),
+      },
+    })
+    return
+  }
+
   const target = pendingRequirements.value.find((item) => item.title === card.title)
   if (target && canOpenPayment(target)) {
     openDepositCard(target)
@@ -260,88 +430,107 @@ function openSpotlight(card: SpotlightCard) {
 
 const platformStats = computed(() => {
   const [completed, , turnover] = metrics.value
-  const developerCount = Math.max(latestDeals.value.length * 2, 12)
-  const registeredCount = Math.max(developerCount * 3, 36)
+  const creatorCount = new Set(
+    publicResources.value
+      .map((item) => item.creator.trim() || item.author.trim())
+      .filter(Boolean),
+  ).size
+  const resourceCount = publicResources.value.length
 
   return [
-    { label: '注册用户', value: `${registeredCount}+`, icon: '◌' },
-    { label: '开发者', value: `${developerCount}+`, icon: '◎' },
+    { label: '公开作者', value: `${creatorCount} 位`, icon: '◌' },
+    { label: '公开资源', value: `${resourceCount} 条`, icon: '◎' },
     { label: '需求完成', value: completed?.value ?? '0 单', icon: '◈' },
     { label: '交易金额', value: turnover?.value ?? '¥ 0.00', icon: '✦' },
   ]
 })
 
 const developerRanks = computed<DeveloperRank[]>(() => {
-  const fallback = [
-    { name: 'Dev_小明', track: '插件开发', rating: '98', deals: '52 单' },
-    { name: 'MC开发君', track: '游戏模组', rating: '96', deals: '48 单' },
-    { name: '设计与Seven', track: '插画与视觉', rating: '95', deals: '34 单' },
-    { name: '代码工匠', track: '企业站点', rating: '94', deals: '29 单' },
-  ]
+  const groupedResources = new Map<
+    string,
+    { name: string; track: string; deals: number; latestAt: number; platform: string }
+  >()
 
-  if (latestDeals.value.length === 0) {
-    return fallback
+  for (const resource of publicResources.value) {
+    const name = resource.creator.trim() || resource.author.trim() || '匿名开发者'
+    const current = groupedResources.get(name)
+    const latestAt = Date.parse(resource.updated_at)
+    const track = summarizeResourceTags(resource) || normalizeTagName(resource.platform)
+
+    if (current) {
+      current.deals += 1
+      current.latestAt = Math.max(current.latestAt, Number.isNaN(latestAt) ? current.latestAt : latestAt)
+      if (!current.track && track) {
+        current.track = track
+      }
+      continue
+    }
+
+    groupedResources.set(name, {
+      name,
+      track,
+      deals: 1,
+      latestAt: Number.isNaN(latestAt) ? 0 : latestAt,
+      platform: resource.platform,
+    })
   }
 
-  return latestDeals.value.slice(0, 4).map((deal, index) => ({
-    name: fallback[index]?.name ?? `Dev_${index + 1}`,
-    track: deal.title,
-    rating: String(98 - index),
-    deals: `${12 + index * 7} 单`,
-  }))
+  if (groupedResources.size === 0) {
+    return []
+  }
+
+  return [...groupedResources.values()]
+    .sort((left, right) => right.deals - left.deals || right.latestAt - left.latestAt || left.name.localeCompare(right.name, 'zh-CN'))
+    .slice(0, 4)
+    .map((item, index) => ({
+      name: item.name,
+      track: item.track || normalizeTagName(item.platform) || '公开资源',
+      rating: String(Math.min(99, 90 + item.deals * 2 + index)),
+      deals: `${item.deals} 个资源`,
+    }))
 })
 
+function getRequirementCardPaymentMethod(
+  item: PendingRequirementView | PublicRequirementSpotlightItem,
+): string | null | undefined {
+  return 'requirement_id' in item ? item.payment_method : item.paymentMethod
+}
+
 const spotlightCards = computed<SpotlightCard[]>(() => {
-  if (pendingRequirements.value.length > 0) {
-    return pendingRequirements.value.slice(0, 4).map((item, index) => ({
-      title: item.title,
-      summary: item.description?.trim() || '需求描述待补充，当前展示为门户精选需求位。',
-      budget: typeof item.budget === 'number' ? `¥ ${item.budget.toFixed(0)}` : '待议价',
-      status: item.statusLabel,
-      badge: item.paymentMethod?.trim() || '平台担保',
-      metaSecondary: '查看详情',
-      accent: ['nebula', 'sunset', 'forest', 'frost'][index % 4] ?? 'nebula',
-    }))
+  const requirementSource = publicRequirementSpotlights.value.length > 0
+    ? publicRequirementSpotlights.value
+    : pendingRequirements.value
+
+  const requirementCards = requirementSource.slice(0, 2).map((item, index) => ({
+    kind: 'requirement' as const,
+    title: item.title,
+    summary: item.description?.trim() || '需求描述待补充，当前展示为门户精选需求位。',
+    budget: typeof item.budget === 'number' ? `¥ ${item.budget.toFixed(0)}` : '待议价',
+    status: 'statusLabel' in item ? item.statusLabel : statusToLabel(item.status),
+    badge: getRequirementCardPaymentMethod(item)?.trim() || '平台担保',
+    metaSecondary: 'updated_at' in item ? formatTimeLabel(item.updated_at) : item.updatedAtLabel,
+    accent: ['nebula', 'sunset', 'forest', 'frost'][index % 4] ?? 'nebula',
+    requirementId: 'id' in item ? item.id : item.requirement_id,
+  }))
+
+  const resourceCards = publicResources.value.slice(0, 2).map((item, index) => ({
+    kind: 'resource' as const,
+    title: item.title,
+    summary: item.description?.trim() || '公开资源已上架，可进入资源目录查看详情。',
+    budget: summarizeResourceTags(item) || normalizeTagName(item.platform) || '公开资源',
+    status: item.visibility === 'published' ? '已公开' : '待发布',
+    badge: normalizeTagName(item.platform) || '平台资源',
+    metaSecondary: `${item.author || item.creator || '匿名作者'} · ${formatTimeLabel(item.updated_at)}`,
+    accent: ['nebula', 'sunset', 'forest', 'frost'][(index + requirementCards.length) % 4] ?? 'nebula',
+    resourceId: item.id,
+  }))
+
+  const mixedCards = [...requirementCards, ...resourceCards]
+  if (mixedCards.length > 0) {
+    return mixedCards
   }
 
-  return [
-    {
-      title: '在线教育系统开发',
-      summary: '用于课程交付与付费订阅的企业级平台。',
-      budget: '¥ 2000-5000',
-      status: '建设中',
-      badge: '定制',
-      metaSecondary: '1 小时前',
-      accent: 'nebula',
-    },
-    {
-      title: '游戏角色原画设计',
-      summary: '角色立绘与宣传视觉物料一体交付。',
-      budget: '¥ 800-1500',
-      status: '邀标中',
-      badge: '美术',
-      metaSecondary: '3 小时前',
-      accent: 'sunset',
-    },
-    {
-      title: 'RPG 服务器插件开发',
-      summary: 'Minecraft 服务端玩法插件与版本维护。',
-      budget: '¥ 1500-3000',
-      status: '招募中',
-      badge: '插件',
-      metaSecondary: '6 小时前',
-      accent: 'forest',
-    },
-    {
-      title: '企业官网视觉升级',
-      summary: '现代化官网重构，含首页与品牌样式库。',
-      budget: '¥ 3000-8000',
-      status: '定制开发',
-      badge: '官网',
-      metaSecondary: '5 小时前',
-      accent: 'frost',
-    },
-  ]
+  return []
 })
 
 const authTitle = computed(() => {
@@ -383,6 +572,7 @@ onMounted(() => {
     loadDepositRatio(),
     loadPendingRequirements(),
     loadRequirementOverview(),
+    loadPublicPortalData(),
   ])
 
   autoRefreshTimer = setInterval(() => {
@@ -413,9 +603,9 @@ async function runBackgroundAutoRefresh() {
   autoRefreshInFlight = true
   try {
     if (auth.isAuthed) {
-      await Promise.all([loadDepositRatio(), loadPendingRequirements(true), loadRequirementOverview()])
+      await Promise.all([loadDepositRatio(), loadPendingRequirements(true), loadRequirementOverview(), loadPublicPortalData(true)])
     } else {
-      await Promise.all([loadPendingRequirements(true), loadRequirementOverview()])
+      await Promise.all([loadPendingRequirements(true), loadRequirementOverview(), loadPublicPortalData(true)])
     }
   } finally {
     autoRefreshInFlight = false
@@ -757,6 +947,79 @@ async function loadRequirementOverview() {
   }
 }
 
+function summarizeResourceTags(resource: PublicMcResourceItem): string {
+  const tags = Array.from(
+    new Set(
+      resource.tag_selections.flatMap((item) =>
+        item.tag_names.map((tag) => normalizeTagName(tag)).filter(Boolean),
+      ),
+    ),
+  )
+  return tags.slice(0, 2).join(' / ')
+}
+
+function resolveResourceRoute(resource: PublicMcResourceItem): { rootSlug: string; entrySlug: string } | null {
+  for (const root of processedTagTree.value.roots) {
+    const entry = root.entries.find((item) => item.platform === resource.platform)
+    if (entry) {
+      return {
+        rootSlug: root.key,
+        entrySlug: entry.key,
+      }
+    }
+  }
+
+  const fallbackRoot = processedTagTree.value.roots[0]
+  const fallbackEntry = fallbackRoot?.entries[0]
+  if (fallbackRoot && fallbackEntry) {
+    return {
+      rootSlug: fallbackRoot.key,
+      entrySlug: fallbackEntry.key,
+    }
+  }
+
+  return null
+}
+
+async function loadPublicPortalData(silent = false) {
+  const [treeResult, resourcesResult, requirementsResult] = await Promise.allSettled([
+    getProcessedTagTree(),
+    listAllPublicMcResources(),
+    listPublicRequirementSpotlights(),
+  ])
+
+  if (!isMounted) {
+    return
+  }
+
+  if (treeResult.status === 'fulfilled') {
+    processedTagTree.value = treeResult.value
+  } else {
+    processedTagTree.value = { roots: [] }
+  }
+
+  if (resourcesResult.status === 'fulfilled') {
+    publicResources.value = resourcesResult.value
+      .filter((resource, index, array) => array.findIndex((item) => item.id === resource.id) === index)
+      .sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at))
+  } else {
+    publicResources.value = []
+  }
+
+  if (requirementsResult.status === 'fulfilled') {
+    publicRequirementSpotlights.value = requirementsResult.value
+  } else {
+    publicRequirementSpotlights.value = []
+  }
+
+  const failedResults = [treeResult, resourcesResult, requirementsResult].filter((result) => result.status === 'rejected')
+  if (failedResults.length > 0 && failedResults.length < 3 && !silent) {
+    showToast('部分首页公开数据加载失败，已显示可用数据', 'warning')
+  } else if (failedResults.length === 3 && !silent) {
+    showToast('加载首页公开数据失败', 'warning')
+  }
+}
+
 async function submitDepositPayment() {
   if (!depositRequirement.value) {
     return
@@ -881,7 +1144,7 @@ async function submitAuth() {
     }
 
     void router.replace({ name: 'home' })
-    await Promise.all([loadDepositRatio(), loadPendingRequirements(), loadRequirementOverview()])
+    await Promise.all([loadDepositRatio(), loadPendingRequirements(), loadRequirementOverview(), loadPublicPortalData()])
   }
 }
 
@@ -952,9 +1215,9 @@ async function refreshHomeData() {
   homeRefreshLoading.value = true
   try {
     if (auth.isAuthed) {
-      await Promise.all([loadDepositRatio(), loadPendingRequirements(), loadRequirementOverview()])
+      await Promise.all([loadDepositRatio(), loadPendingRequirements(), loadRequirementOverview(), loadPublicPortalData()])
     } else {
-      await Promise.all([loadPendingRequirements(), loadRequirementOverview()])
+      await Promise.all([loadPendingRequirements(), loadRequirementOverview(), loadPublicPortalData()])
     }
 
     if (isMounted) {
@@ -1105,7 +1368,7 @@ async function submitPublishRequirement() {
           <section class="portal-quick-grid">
             <article v-for="panel in quickPanels" :key="panel.title" class="portal-quick-card"
               :class="`portal-quick-card--${panel.tone}`">
-              <div class="portal-quick-card__icon">{{ panel.tone === 'gift' ? '🎁' : '💼' }}</div>
+              <div class="portal-quick-card__icon">{{ panel.tone === 'gift' ? '免' : '需' }}</div>
               <div class="portal-quick-card__copy">
                 <h3>{{ panel.title }}</h3>
                 <p>{{ panel.summary }}</p>
@@ -1144,15 +1407,18 @@ async function submitPublishRequirement() {
             </div>
             <div class="portal-workflow-grid" aria-label="需求交易流程">
               <div v-for="(step, index) in workflowSteps" :key="step.step + step.title" class="portal-workflow-item">
-                <article class="portal-step-card" :class="`portal-step-card--${step.accent}`">
+                <button class="portal-step-card" :class="`portal-step-card--${step.accent}`" type="button"
+                  @click="openWorkflowStep(step)">
+                  <span class="portal-step-card__number">{{ step.step }}</span>
                   <div class="portal-step-card__copy">
-                    <strong><span>{{ step.step }}</span>{{ step.title }}</strong>
-                    <div class="portal-step-card__meta">
-                      <div class="portal-step-card__icon">{{ step.icon }}</div>
-                      <small>{{ step.hint }}</small>
-                    </div>
+                    <strong>{{ step.title }}</strong>
+                    <small>{{ step.hint }}</small>
                   </div>
-                </article>
+                  <div class="portal-step-card__footer">
+                    <span class="portal-step-card__icon" aria-hidden="true">{{ step.icon }}</span>
+                    <span class="portal-step-card__action">{{ step.actionLabel }}</span>
+                  </div>
+                </button>
                 <span v-if="index < workflowSteps.length - 1" class="portal-step-card__arrow"
                   aria-hidden="true">›</span>
               </div>
@@ -1167,9 +1433,10 @@ async function submitPublishRequirement() {
               <button class="portal-link-btn" type="button"
                 @click="router.push({ name: 'requirement-hall' })">更多需求</button>
             </div>
-            <div class="portal-spotlight-grid">
+            <div v-if="spotlightCards.length > 0" class="portal-spotlight-grid">
               <article v-for="card in spotlightCards" :key="card.title" class="portal-spotlight-card"
-                :class="`portal-spotlight-card--${card.accent}`" @click="openSpotlight(card)">
+                :class="`portal-spotlight-card--${card.accent}`" role="button" tabindex="0" @click="openSpotlight(card)"
+                @keydown.enter="openSpotlight(card)" @keydown.space.prevent="openSpotlight(card)">
                 <div class="portal-spotlight-card__cover">
                   <span class="portal-spotlight-card__badge">{{ card.badge }}</span>
                   <div class="portal-spotlight-card__screen portal-spotlight-card__screen--primary"></div>
@@ -1189,6 +1456,10 @@ async function submitPublishRequirement() {
                 </div>
               </article>
             </div>
+            <div v-else class="portal-empty-state">
+              <strong>暂无精选需求</strong>
+              <p>当前没有审核通过的公开需求或公开资源，发布后这里会自动更新。</p>
+            </div>
           </section>
         </div>
 
@@ -1206,7 +1477,10 @@ async function submitPublishRequirement() {
               </button>
             </div>
             <ul class="portal-notice-list">
-              <li v-for="notice in portalNotices" :key="`${notice.title}-${notice.date}`" class="portal-notice-item">
+              <li v-for="notice in portalNotices" :key="`${notice.title}-${notice.date}`" class="portal-notice-item"
+                :class="{ 'portal-notice-item--clickable': notice.to }" :role="notice.to ? 'button' : undefined"
+                :tabindex="notice.to ? 0 : undefined" @click="openPortalNotice(notice)"
+                @keydown.enter="openPortalNotice(notice)" @keydown.space.prevent="openPortalNotice(notice)">
                 <div class="portal-notice-item__main">
                   <strong>{{ notice.title }}</strong>
                   <span v-if="notice.tag" class="portal-tag">{{ notice.tag }}</span>
@@ -1243,7 +1517,7 @@ async function submitPublishRequirement() {
               <h2>优选开发者</h2>
               <button class="portal-link-btn" type="button" @click="router.push({ name: 'community' })">查看动态</button>
             </div>
-            <ul class="portal-rank-list">
+            <ul v-if="developerRanks.length > 0" class="portal-rank-list">
               <li v-for="developer in developerRanks" :key="developer.name" class="portal-rank-item">
                 <div class="portal-rank-item__avatar">{{ developer.name.slice(0, 1) }}</div>
                 <div class="portal-rank-item__meta">
@@ -1256,6 +1530,10 @@ async function submitPublishRequirement() {
                 </div>
               </li>
             </ul>
+            <div v-else class="portal-empty-state portal-empty-state--compact">
+              <strong>暂无公开开发者</strong>
+              <p>公开资源通过审核后，会按作者自动生成这里的排行。</p>
+            </div>
           </section>
         </aside>
       </div>

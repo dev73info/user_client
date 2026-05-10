@@ -22,6 +22,18 @@ export type RequirementOverviewResp = {
   recent_deals: RecentDeal[]
 }
 
+export type PublicRequirementSpotlightItem = {
+  requirement_id: string
+  title: string
+  description?: string | null
+  budget?: number | null
+  payment_method?: string | null
+  payment_mode: RequirementPaymentMode
+  status: RequirementStatus
+  created_at: string
+  updated_at: string
+}
+
 export type RequirementStatus =
   | 'pending_review'
   | 'rejected'
@@ -136,6 +148,14 @@ export async function getPublicRequirementOverview(): Promise<RequirementOvervie
     '/public/requirements/public-overview',
     {},
     '加载概览失败',
+  )
+}
+
+export async function listPublicRequirementSpotlights(): Promise<PublicRequirementSpotlightItem[]> {
+  return requestJson<PublicRequirementSpotlightItem[]>(
+    '/public/requirements/public-spotlight',
+    {},
+    '加载精选需求失败',
   )
 }
 
