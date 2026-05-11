@@ -22,7 +22,7 @@ import {
   type WechatCreatePaymentResp,
 } from '@/api/payments'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
-import { HttpError } from '@/api/http'
+import { HttpError, apiUrl } from '@/api/http'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import {
   createRequirement,
@@ -98,14 +98,15 @@ type SpotlightCard = {
   badge: string
   metaSecondary: string
   accent: string
+  coverUrl?: string
   requirementId?: string
   resourceId?: number
 }
 
 type DeveloperRank = {
   name: string
-  track: string
-  rating: string
+  avatarUrl: string
+  creditScore: number | null
   deals: string
 }
 
@@ -448,30 +449,34 @@ const platformStats = computed(() => {
 const developerRanks = computed<DeveloperRank[]>(() => {
   const groupedResources = new Map<
     string,
-    { name: string; track: string; deals: number; latestAt: number; platform: string }
+    { name: string; avatarUrl: string; creditScore: number | null; deals: number; latestAt: number }
   >()
 
   for (const resource of publicResources.value) {
     const name = resource.creator.trim() || resource.author.trim() || '匿名开发者'
     const current = groupedResources.get(name)
     const latestAt = Date.parse(resource.updated_at)
-    const track = summarizeResourceTags(resource) || normalizeTagName(resource.platform)
+    const avatarUrl = resource.creator_avatar_url ? apiUrl(resource.creator_avatar_url) : ''
+    const creditScore = typeof resource.creator_credit_score === 'number' ? resource.creator_credit_score : null
 
     if (current) {
       current.deals += 1
       current.latestAt = Math.max(current.latestAt, Number.isNaN(latestAt) ? current.latestAt : latestAt)
-      if (!current.track && track) {
-        current.track = track
+      if (!current.avatarUrl && avatarUrl) {
+        current.avatarUrl = avatarUrl
+      }
+      if (current.creditScore == null && creditScore != null) {
+        current.creditScore = creditScore
       }
       continue
     }
 
     groupedResources.set(name, {
       name,
-      track,
+      avatarUrl,
+      creditScore,
       deals: 1,
       latestAt: Number.isNaN(latestAt) ? 0 : latestAt,
-      platform: resource.platform,
     })
   }
 
@@ -482,38 +487,23 @@ const developerRanks = computed<DeveloperRank[]>(() => {
   return [...groupedResources.values()]
     .sort((left, right) => right.deals - left.deals || right.latestAt - left.latestAt || left.name.localeCompare(right.name, 'zh-CN'))
     .slice(0, 4)
-    .map((item, index) => ({
+    .map((item) => ({
       name: item.name,
-      track: item.track || normalizeTagName(item.platform) || '公开资源',
-      rating: String(Math.min(99, 90 + item.deals * 2 + index)),
+      avatarUrl: item.avatarUrl,
+      creditScore: item.creditScore,
       deals: `${item.deals} 个资源`,
     }))
 })
 
-function getRequirementCardPaymentMethod(
-  item: PendingRequirementView | PublicRequirementSpotlightItem,
-): string | null | undefined {
-  return 'requirement_id' in item ? item.payment_method : item.paymentMethod
+function formatCreditScore(value: number | null) {
+  if (value == null || !Number.isFinite(value)) {
+    return '暂无'
+  }
+  return Number.isInteger(value) ? String(value) : value.toFixed(2)
 }
 
 const spotlightCards = computed<SpotlightCard[]>(() => {
-  const requirementSource = publicRequirementSpotlights.value.length > 0
-    ? publicRequirementSpotlights.value
-    : pendingRequirements.value
-
-  const requirementCards = requirementSource.slice(0, 2).map((item, index) => ({
-    kind: 'requirement' as const,
-    title: item.title,
-    summary: item.description?.trim() || '需求描述待补充，当前展示为门户精选需求位。',
-    budget: typeof item.budget === 'number' ? `¥ ${item.budget.toFixed(0)}` : '待议价',
-    status: 'statusLabel' in item ? item.statusLabel : statusToLabel(item.status),
-    badge: getRequirementCardPaymentMethod(item)?.trim() || '平台担保',
-    metaSecondary: 'updated_at' in item ? formatTimeLabel(item.updated_at) : item.updatedAtLabel,
-    accent: ['nebula', 'sunset', 'forest', 'frost'][index % 4] ?? 'nebula',
-    requirementId: 'id' in item ? item.id : item.requirement_id,
-  }))
-
-  const resourceCards = publicResources.value.slice(0, 2).map((item, index) => ({
+  const resourceCards = publicResources.value.slice(0, 4).map((item, index) => ({
     kind: 'resource' as const,
     title: item.title,
     summary: item.description?.trim() || '公开资源已上架，可进入资源目录查看详情。',
@@ -521,16 +511,12 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
     status: item.visibility === 'published' ? '已公开' : '待发布',
     badge: normalizeTagName(item.platform) || '平台资源',
     metaSecondary: `${item.author || item.creator || '匿名作者'} · ${formatTimeLabel(item.updated_at)}`,
-    accent: ['nebula', 'sunset', 'forest', 'frost'][(index + requirementCards.length) % 4] ?? 'nebula',
+    accent: ['nebula', 'sunset', 'forest', 'frost'][index % 4] ?? 'nebula',
+    coverUrl: item.cover_url ? apiUrl(item.cover_url) : '',
     resourceId: item.id,
   }))
 
-  const mixedCards = [...requirementCards, ...resourceCards]
-  if (mixedCards.length > 0) {
-    return mixedCards
-  }
-
-  return []
+  return resourceCards
 })
 
 const authTitle = computed(() => {
@@ -1428,16 +1414,17 @@ async function submitPublishRequirement() {
           <section class="portal-section">
             <div class="portal-section__header">
               <div>
-                <p class="portal-section__eyebrow">精选需求</p>
+                <p class="portal-section__eyebrow">精选免费资源</p>
               </div>
               <button class="portal-link-btn" type="button"
-                @click="router.push({ name: 'requirement-hall' })">更多需求</button>
+                @click="router.push({ name: 'free-resources' })">更多免费资源</button>
             </div>
             <div v-if="spotlightCards.length > 0" class="portal-spotlight-grid">
               <article v-for="card in spotlightCards" :key="card.title" class="portal-spotlight-card"
                 :class="`portal-spotlight-card--${card.accent}`" role="button" tabindex="0" @click="openSpotlight(card)"
                 @keydown.enter="openSpotlight(card)" @keydown.space.prevent="openSpotlight(card)">
                 <div class="portal-spotlight-card__cover">
+                  <img v-if="card.coverUrl" class="portal-spotlight-card__cover-img" :src="card.coverUrl" alt="" />
                   <span class="portal-spotlight-card__badge">{{ card.badge }}</span>
                   <div class="portal-spotlight-card__screen portal-spotlight-card__screen--primary"></div>
                   <div class="portal-spotlight-card__screen portal-spotlight-card__screen--secondary"></div>
@@ -1446,7 +1433,7 @@ async function submitPublishRequirement() {
                 <div class="portal-spotlight-card__body">
                   <h3>{{ card.title }}</h3>
                   <p>{{ card.summary }}</p>
-                  <div class="portal-spotlight-card__price-row">
+                  <div class="portal-spotlight-card__meta-row">
                     <strong>{{ card.budget }}</strong>
                     <span class="portal-spotlight-card__status">{{ card.status }}</span>
                   </div>
@@ -1457,8 +1444,8 @@ async function submitPublishRequirement() {
               </article>
             </div>
             <div v-else class="portal-empty-state">
-              <strong>暂无精选需求</strong>
-              <p>当前没有审核通过的公开需求或公开资源，发布后这里会自动更新。</p>
+              <strong>暂无精选免费资源</strong>
+              <p>当前没有已公开的免费资源，发布后这里会自动更新。</p>
             </div>
           </section>
         </div>
@@ -1519,14 +1506,16 @@ async function submitPublishRequirement() {
             </div>
             <ul v-if="developerRanks.length > 0" class="portal-rank-list">
               <li v-for="developer in developerRanks" :key="developer.name" class="portal-rank-item">
-                <div class="portal-rank-item__avatar">{{ developer.name.slice(0, 1) }}</div>
+                <div class="portal-rank-item__avatar">
+                  <img v-if="developer.avatarUrl" :src="developer.avatarUrl" :alt="`${developer.name} 的头像`" />
+                  <span v-else>{{ developer.name.slice(0, 1) }}</span>
+                </div>
                 <div class="portal-rank-item__meta">
                   <strong>{{ developer.name }}</strong>
-                  <span>{{ developer.track }}</span>
                 </div>
                 <div class="portal-rank-item__score">
                   <strong>{{ developer.deals }}</strong>
-                  <span>信用 {{ developer.rating }}</span>
+                  <span>信用 {{ formatCreditScore(developer.creditScore) }}</span>
                 </div>
               </li>
             </ul>

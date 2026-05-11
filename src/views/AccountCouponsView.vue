@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
+import { apiUrl } from '@/api/http'
 import {
   getProfile,
   sendProfileEmailChangeCode,
@@ -11,6 +12,7 @@ import {
   updateProfileEmail,
   updateProfilePassword,
   updateProfileSubscriptions,
+  uploadProfileAvatar,
 } from '@/api/settings'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -24,6 +26,9 @@ const couponLoading = ref(false)
 const coupons = ref<CouponItem[]>([])
 const newUsername = ref('')
 const usernameLoading = ref(false)
+const avatarUrl = ref('')
+const avatarFileInput = ref<HTMLInputElement | null>(null)
+const avatarUploading = ref(false)
 const profileEmail = ref('')
 const newEmail = ref('')
 const emailCode = ref('')
@@ -40,6 +45,8 @@ const subscriptionLoading = ref(false)
 const amountCoupons = computed(() => coupons.value.filter((item) => item.discount_type === 'amount'))
 const discountCoupons = computed(() => coupons.value.filter((item) => item.discount_type === 'percent'))
 const accountEmailLabel = computed(() => profileEmail.value || '未绑定邮箱')
+const avatarSrc = computed(() => (avatarUrl.value ? apiUrl(avatarUrl.value) : ''))
+const avatarInitial = computed(() => Array.from(auth.username || newUsername.value || '用')[0] ?? '用')
 
 function formatRange(item: CouponItem) {
   if (!item.starts_at && !item.ends_at) {
@@ -105,6 +112,7 @@ async function loadProfile() {
   try {
     const profile = await getProfile(auth.token)
     newUsername.value = profile.username
+    avatarUrl.value = profile.avatar_url ?? ''
     profileEmail.value = profile.email ?? ''
     subscriptionOfficialActivity.value = Boolean(profile.subscribe_official_activity)
     if (!newEmail.value) {
@@ -143,6 +151,47 @@ async function updateUsername() {
     showToast(err instanceof Error ? err.message : '修改用户名失败', 'error')
   } finally {
     usernameLoading.value = false
+  }
+}
+
+function openAvatarPicker() {
+  avatarFileInput.value?.click()
+}
+
+async function handleAvatarChange(event: Event) {
+  if (!auth.isAuthed) {
+    showToast('请先登录后上传头像', 'error')
+    return
+  }
+
+  const input = event.target as HTMLInputElement | null
+  const file = input?.files?.[0]
+  if (!file) {
+    return
+  }
+
+  if (!file.type.startsWith('image/')) {
+    showToast('头像仅支持图片格式', 'warning')
+    if (input) input.value = ''
+    return
+  }
+
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('头像图片请控制在 2MB 以内', 'warning')
+    if (input) input.value = ''
+    return
+  }
+
+  avatarUploading.value = true
+  try {
+    const profile = await uploadProfileAvatar(auth.token, file)
+    avatarUrl.value = profile.avatar_url ?? ''
+    showToast('头像已更新', 'success')
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '上传头像失败', 'error')
+  } finally {
+    avatarUploading.value = false
+    if (input) input.value = ''
   }
 }
 
@@ -302,6 +351,26 @@ onMounted(async () => {
       </div>
 
       <div class="account-settings-grid">
+        <section class="account-settings-card account-avatar-card">
+          <h4>头像</h4>
+          <div class="account-avatar-row">
+            <button class="account-avatar-button" type="button" :disabled="avatarUploading" @click="openAvatarPicker">
+              <img v-if="avatarSrc" :src="avatarSrc" alt="用户头像" />
+              <span v-else>{{ avatarInitial }}</span>
+            </button>
+            <div class="account-avatar-copy">
+              <strong>{{ auth.username || newUsername || '当前用户' }}</strong>
+              <small class="requirement-note">支持 PNG、JPG、WEBP、GIF，最大 2MB。</small>
+              <button class="ghost small" type="button" :disabled="avatarUploading" @click="openAvatarPicker">
+                {{ avatarUploading ? '上传中...' : '更换头像' }}
+              </button>
+            </div>
+          </div>
+          <input ref="avatarFileInput" class="account-avatar-input" type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            @change="handleAvatarChange" />
+        </section>
+
         <section class="account-settings-card">
           <h4>修改用户名</h4>
           <div class="profile-update-row">
@@ -503,6 +572,67 @@ onMounted(async () => {
 .account-settings-card .profile-update-row:last-child,
 .account-settings-card .subscription-settings:last-child {
   margin-bottom: 0;
+}
+
+.account-avatar-card {
+  display: grid;
+  align-content: start;
+}
+
+.account-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.account-avatar-button {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  overflow: hidden;
+  border: 1px solid rgba(183, 201, 238, 0.95);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #eef5ff, #ffffff);
+  color: #1d4ed8;
+  cursor: pointer;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.account-avatar-button:disabled {
+  cursor: wait;
+  opacity: 0.78;
+}
+
+.account-avatar-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.account-avatar-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.account-avatar-copy strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-avatar-copy .ghost.small {
+  justify-self: start;
+}
+
+.account-avatar-input {
+  display: none;
 }
 
 .account-subscription-card {

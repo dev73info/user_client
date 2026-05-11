@@ -99,11 +99,15 @@ const conversationApi = computed<ConversationApi>(() =>
 )
 const conversation = computed(() => detail.value?.conversation ?? null)
 const messages = computed(() => detail.value?.messages ?? [])
+const conversationClosed = computed(
+  () => conversation.value?.status === 'closed' || conversation.value?.requirement_status === 'completed',
+)
 const canSend = computed(
   () =>
     (draft.value.trim().length > 0 || Boolean(attachmentDraft.value)) &&
     !sending.value &&
-    !loading.value,
+    !loading.value &&
+    !conversationClosed.value,
 )
 const isInline = computed(() => props.displayMode === 'inline')
 const closeActionLabel = computed(() => (isInline.value ? '返回列表' : '关闭'))
@@ -286,7 +290,7 @@ function stopRealtime() {
 }
 
 async function submitMessage() {
-  if (sending.value || loading.value) {
+  if (sending.value || loading.value || conversationClosed.value) {
     return
   }
 
@@ -348,7 +352,7 @@ function clearAttachmentDraft() {
 }
 
 function toggleEmojiPanel() {
-  if (sending.value || loading.value) {
+  if (sending.value || loading.value || conversationClosed.value) {
     return
   }
   emojiPanelOpen.value = !emojiPanelOpen.value
@@ -373,7 +377,7 @@ function insertEmoji(emoji: string) {
 }
 
 function openAttachmentPicker() {
-  if (sending.value || loading.value) {
+  if (sending.value || loading.value || conversationClosed.value) {
     return
   }
   attachmentInputRef.value?.click()
@@ -691,15 +695,16 @@ function handleBackdropClick() {
         </div>
 
         <footer class="conversation-modal__composer">
+          <p v-if="conversationClosed" class="conversation-modal__closed-tip">需求已完成，会话已停用</p>
           <div class="conversation-modal__composer-main">
             <div class="conversation-modal__tools">
               <button class="conversation-modal__tool-btn" :class="{ 'is-active': emojiPanelOpen }" type="button"
-                :disabled="sending || loading" aria-label="选择表情" title="选择表情" @click="toggleEmojiPanel">
+                :disabled="sending || loading || conversationClosed" aria-label="选择表情" title="选择表情" @click="toggleEmojiPanel">
                 <el-icon>
                   <MagicStick />
                 </el-icon>
               </button>
-              <button class="conversation-modal__tool-btn" type="button" :disabled="sending || loading"
+              <button class="conversation-modal__tool-btn" type="button" :disabled="sending || loading || conversationClosed"
                 aria-label="添加截图附件" title="添加截图附件" @click="openAttachmentPicker">
                 <el-icon>
                   <Paperclip />
@@ -741,6 +746,7 @@ function handleBackdropClick() {
                 autocomplete="new-password" autocorrect="off" autocapitalize="off" aria-autocomplete="none"
                 data-ms-editor="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
                 data-lt-active="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true"
+                :disabled="conversationClosed"
                 @keydown="handleComposerKeydown" @paste="handleComposerPaste"></textarea>
               <span>{{ draft.trim().length }} / 5000</span>
             </div>
@@ -973,6 +979,13 @@ function handleBackdropClick() {
   padding: 14px 16px;
   border-top: 1px solid rgba(226, 232, 240, 0.9);
   background: #ffffff;
+}
+
+.conversation-modal__closed-tip {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .conversation-modal-wrap--inline .conversation-modal__composer {

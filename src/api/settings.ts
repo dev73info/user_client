@@ -14,6 +14,7 @@ export type UpdateProfileResp = {
 export type UserProfileResp = {
   username: string
   email?: string | null
+  avatar_url?: string | null
   subscribe_official_activity: boolean
 }
 
@@ -73,6 +74,23 @@ export async function getProfile(token: string): Promise<UserProfileResp> {
       },
     },
     '加载个人资料失败',
+  )
+}
+
+export async function uploadProfileAvatar(token: string, file: File): Promise<UserProfileResp> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return requestJson<UserProfileResp>(
+    '/settings/profile/avatar',
+    {
+      method: 'POST',
+      headers: {
+        ...authHeader(token),
+      },
+      body: formData,
+    },
+    '上传头像失败',
   )
 }
 

@@ -2,9 +2,12 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { apiUrl } from '@/api/http'
+import { HttpError, apiUrl } from '@/api/http'
 import {
+  invalidateResourceListCache,
+  likePublicMcResource,
   listPublicMcResources,
+  unlikePublicMcResource,
   type McResourcePlatform,
   type PublicMcResourceItem,
 } from '@/api/resources'
@@ -18,6 +21,7 @@ import {
 } from '@/api/resourceTags'
 import { useMultiSelectTags } from '@/composables/useMultiSelectTags'
 import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 
 type McCardItem = {
   id: number
@@ -29,6 +33,9 @@ type McCardItem = {
   updatedAt: string
   sourceUrl: string
   coverUrl: string | null
+  likeCount: number
+  likedByMe: boolean
+  likeSubmitting: boolean
 }
 
 type FilterSectionView = McTagFilterSection & {
@@ -41,10 +48,11 @@ const props = defineProps<{
   groupName: string
 }>()
 
-const sortOptions = ['最新', '标题']
+const sortOptions = ['最新', '点赞', '标题']
 const { showToast } = useToast()
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
 
 const filterSections = ref<FilterSectionView[]>([])
 
@@ -109,6 +117,9 @@ function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
     updatedAt: item.updated_at,
     sourceUrl: item.source_url,
     coverUrl: item.cover_url ? apiUrl(item.cover_url) : null,
+    likeCount: item.like_count ?? 0,
+    likedByMe: item.liked_by_me ?? false,
+    likeSubmitting: false,
   }
 }
 
@@ -144,6 +155,9 @@ const filteredCards = computed(() => {
 
   if (selectedSort.value === '标题') {
     return filtered.slice().sort((a, b) => a.title.localeCompare(b.title, 'zh-CN'))
+  }
+  if (selectedSort.value === '点赞') {
+    return filtered.slice().sort((a, b) => b.likeCount - a.likeCount || Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
   }
   return filtered.slice().sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
 })
@@ -181,11 +195,55 @@ function openResource(card: McCardItem) {
   })
 }
 
+function openLikeLogin() {
+  showToast('请先登录后再点赞', 'info')
+  void router.push({
+    name: 'home',
+    query: {
+      modal: 'auth',
+      mode: 'login',
+      redirect_to: route.fullPath,
+    },
+  })
+}
+
+async function toggleCardLike(card: McCardItem) {
+  if (card.likeSubmitting) {
+    return
+  }
+
+  if (!auth.isAuthed || !auth.token.trim()) {
+    openLikeLogin()
+    return
+  }
+
+  card.likeSubmitting = true
+  try {
+    const state = card.likedByMe
+      ? await unlikePublicMcResource(auth.token, card.id)
+      : await likePublicMcResource(auth.token, card.id)
+    card.likedByMe = state.liked_by_me
+    card.likeCount = state.like_count
+    invalidateResourceListCache()
+    showToast(state.liked_by_me ? '已点赞' : '已取消点赞', 'success')
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 401) {
+      auth.logout()
+      openLikeLogin()
+    } else {
+      showToast(error instanceof Error ? error.message : '点赞操作失败', 'error')
+    }
+  } finally {
+    card.likeSubmitting = false
+  }
+}
+
 async function loadTagTree() {
   try {
+    const token = auth.token?.trim() ? auth.token : null
     const [tree, resources] = await Promise.all([
       getProcessedTagTree(),
-      listPublicMcResources(props.platform),
+      listPublicMcResources(props.platform, token),
     ])
     cards.value = resources.map(mapResourceToCard)
     filterSections.value = getTagFilterSections(tree, props.rootSlug, props.groupName).map((section) => ({
@@ -199,6 +257,7 @@ async function loadTagTree() {
 }
 
 onMounted(() => {
+  auth.hydrate()
   void loadTagTree()
 })
 
@@ -213,6 +272,13 @@ watch(
   () => route.query,
   () => {
     applyFiltersFromQuery()
+  },
+)
+
+watch(
+  () => auth.token,
+  () => {
+    void loadTagTree()
   },
 )
 </script>
@@ -290,9 +356,17 @@ watch(
 
           <div class="portal-resource-browser__footer">
             <span class="portal-resource-browser__meta">{{ groupLabel }}</span>
-            <button class="portal-resource-browser__action" type="button" @click="openResource(card)">
-              查看详情
-            </button>
+            <div class="portal-resource-browser__actions">
+              <button class="portal-resource-browser__like" type="button"
+                :class="{ 'portal-resource-browser__like--active': card.likedByMe }" :disabled="card.likeSubmitting"
+                :aria-pressed="card.likedByMe" @click="toggleCardLike(card)">
+                <span aria-hidden="true">{{ card.likedByMe ? '♥' : '♡' }}</span>
+                <span>{{ card.likeCount }}</span>
+              </button>
+              <button class="portal-resource-browser__action" type="button" @click="openResource(card)">
+                查看详情
+              </button>
+            </div>
           </div>
         </div>
       </article>
@@ -365,7 +439,8 @@ watch(
 
 .portal-resource-browser__tag,
 .portal-resource-browser__reset,
-.portal-resource-browser__action {
+.portal-resource-browser__action,
+.portal-resource-browser__like {
   border: 0;
   font: inherit;
   cursor: pointer;
@@ -535,6 +610,35 @@ watch(
   font-weight: 700;
 }
 
+.portal-resource-browser__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.portal-resource-browser__like {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 66px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.96);
+  color: #64748b;
+  font-weight: 800;
+}
+
+.portal-resource-browser__like--active {
+  background: rgba(254, 226, 226, 0.94);
+  color: #dc2626;
+}
+
+.portal-resource-browser__like:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .portal-resource-browser__empty {
   grid-column: 1 / -1;
   padding: 28px;
@@ -563,6 +667,10 @@ watch(
 
   .portal-resource-browser__card {
     flex-direction: column;
+  }
+
+  .portal-resource-browser__actions {
+    justify-content: space-between;
   }
 }
 </style>

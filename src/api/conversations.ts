@@ -9,6 +9,7 @@ export type RequirementConversation = {
   customer: string
   developer: string
   status: 'open' | 'closed'
+  requirement_status: string
   last_message_at?: string | null
   last_message_by?: string | null
   created_at: string

@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PublishModal from '@/components/PublishModal.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
+import { apiUrl } from '@/api/http'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { getMyRealnameVerification, type UserRealnameStatus } from '@/api/realname'
@@ -40,6 +41,7 @@ import {
   updateProfileEmail,
   updateProfilePassword,
   updateProfileSubscriptions,
+  uploadProfileAvatar,
 } from '@/api/settings'
 
 const router = useRouter()
@@ -94,6 +96,8 @@ const conversationCards = computed(() => myRequirements.value.filter(canOpenConv
 const availableConversationCount = computed(() => conversationCards.value.length)
 const usableCouponCount = computed(() => coupons.value.filter((item) => item.status !== 'used').length)
 const accountEmailLabel = computed(() => profileEmail.value || '未绑定邮箱')
+const profileAvatarSrc = computed(() => (profileAvatarUrl.value ? apiUrl(profileAvatarUrl.value) : ''))
+const profileInitial = computed(() => Array.from(auth.username || newUsername.value || '用')[0] ?? '用')
 const subscriptionLabel = computed(() => (subscriptionOfficialActivity.value ? '已订阅' : '未订阅'))
 const realnameLabel = computed(() => {
   if (realnameLoading.value) {
@@ -216,8 +220,12 @@ function hasBoundResource(item: RequirementItem) {
   return item.bound_resource_id != null
 }
 
+function isRequirementCompleted(item: RequirementItem) {
+  return item.status === 'completed' || item.status === 'final_paid'
+}
+
 function canOpenConversation(item: RequirementItem) {
-  return hasBoundResource(item)
+  return hasBoundResource(item) && !isRequirementCompleted(item)
 }
 
 function openConversation(item: RequirementItem) {
@@ -544,6 +552,47 @@ async function updateUsername() {
   }
 }
 
+function openProfileAvatarPicker() {
+  profileAvatarInput.value?.click()
+}
+
+async function handleProfileAvatarChange(event: Event) {
+  if (!auth.isAuthed) {
+    showToast('请先登录后上传头像', 'error')
+    return
+  }
+
+  const input = event.target as HTMLInputElement | null
+  const file = input?.files?.[0]
+  if (!file) {
+    return
+  }
+
+  if (!file.type.startsWith('image/')) {
+    showToast('头像仅支持图片格式', 'warning')
+    if (input) input.value = ''
+    return
+  }
+
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('头像图片请控制在 2MB 以内', 'warning')
+    if (input) input.value = ''
+    return
+  }
+
+  profileAvatarUploading.value = true
+  try {
+    const profile = await uploadProfileAvatar(auth.token, file)
+    profileAvatarUrl.value = profile.avatar_url ?? ''
+    showToast('头像已更新', 'success')
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '上传头像失败', 'error')
+  } finally {
+    profileAvatarUploading.value = false
+    if (input) input.value = ''
+  }
+}
+
 async function loadProfile() {
   auth.hydrate()
   if (!auth.isAuthed) {
@@ -553,6 +602,7 @@ async function loadProfile() {
   try {
     const profile = await getProfile(auth.token)
     newUsername.value = profile.username
+    profileAvatarUrl.value = profile.avatar_url ?? ''
     profileEmail.value = profile.email ?? ''
     subscriptionOfficialActivity.value = Boolean(profile.subscribe_official_activity)
     if (!newEmail.value) {
@@ -932,6 +982,9 @@ const finalPaymentConfirmButton = computed(() =>
 
 const newUsername = ref('')
 const usernameLoading = ref(false)
+const profileAvatarUrl = ref('')
+const profileAvatarInput = ref<HTMLInputElement | null>(null)
+const profileAvatarUploading = ref(false)
 const profileEmail = ref('')
 const newEmail = ref('')
 const emailCode = ref('')
@@ -1110,10 +1163,21 @@ onMounted(async () => {
   <main id="overview" class="page-shell custom-page-shell profile-page">
     <section class="overview-hero">
       <div class="overview-hero__head">
-        <div>
-          <p class="overview-eyebrow">统一工作台</p>
-          <h1>{{ auth.username ? `你好，${auth.username}` : '你好，欢迎回来' }}</h1>
-          <p>账户、需求与优惠券概览</p>
+        <div class="overview-hero__identity">
+          <button class="profile-avatar-button" type="button" :disabled="profileAvatarUploading"
+            @click="openProfileAvatarPicker">
+            <img v-if="profileAvatarSrc" :src="profileAvatarSrc" alt="用户头像" />
+            <span v-else>{{ profileInitial }}</span>
+            <small>{{ profileAvatarUploading ? '上传中' : '更换' }}</small>
+          </button>
+          <input ref="profileAvatarInput" class="profile-avatar-input" type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            @change="handleProfileAvatarChange" />
+          <div>
+            <p class="overview-eyebrow">统一工作台</p>
+            <h1>{{ auth.username ? `你好，${auth.username}` : '你好，欢迎回来' }}</h1>
+            <p>账户、需求与优惠券概览</p>
+          </div>
         </div>
         <RouterLink class="overview-home-link" :to="{ name: 'home' }">返回首页</RouterLink>
       </div>
@@ -1425,26 +1489,32 @@ onMounted(async () => {
     </div>
 
     <div v-if="commentVisible && commentRequirement" class="modal-wrap" @click.self="closeCommentModal">
-      <section class="pay-modal" aria-label="需求评论弹窗">
+      <section class="pay-modal comment-modal" aria-label="需求评论弹窗">
         <h3>评价需求</h3>
-        <p class="pay-line"><strong>需求标题：</strong>{{ commentRequirement.title }}</p>
-        <p class="pay-line"><strong>需求编号：</strong>{{ commentRequirement.requirement_id }}</p>
-        <div class="pay-line">
-          <strong>评分：</strong>
+        <div class="comment-modal__meta">
+          <p class="pay-line"><strong>需求标题</strong><span>{{ commentRequirement.title }}</span></p>
+          <p class="pay-line"><strong>需求编号</strong><span>{{ commentRequirement.requirement_id }}</span></p>
+        </div>
+        <div class="comment-modal__section">
+          <div class="comment-modal__section-head">
+            <strong>评分</strong>
+            <span>{{ commentRating.toFixed(1) }} 分</span>
+          </div>
           <div class="rating-row">
             <button v-for="star in 5" :key="star" type="button" class="rating-star" :class="starClass(star)"
               @click="setRating($event, star)">
               ★
             </button>
-            <span class="rating-value">{{ commentRating.toFixed(1) }} 分</span>
           </div>
         </div>
-        <div class="pay-line">
-          <strong>评论内容：</strong>
+        <div class="comment-modal__section comment-modal__field">
+          <div class="comment-modal__section-head">
+            <strong>评论内容</strong>
+            <span>已输入 {{ commentText.length }} / 200 字</span>
+          </div>
+          <textarea class="comment-input" v-model="commentText" rows="4" maxlength="200"
+            placeholder="请输入评论，最多 200 字"></textarea>
         </div>
-        <textarea class="comment-input" v-model="commentText" rows="4" maxlength="200"
-          placeholder="请输入评论，最多 200 字"></textarea>
-        <p class="tip">已输入 {{ commentText.length }} / 200 字</p>
 
         <div class="actions">
           <button class="ghost" type="button" @click="closeCommentModal">取消</button>
@@ -1489,6 +1559,59 @@ onMounted(async () => {
 
 .overview-hero__head {
   align-items: start;
+}
+
+.overview-hero__identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.profile-avatar-button {
+  position: relative;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  overflow: hidden;
+  border: 1px solid rgba(183, 201, 238, 0.95);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #eef5ff, #ffffff);
+  color: #1d4ed8;
+  cursor: pointer;
+  font-size: 28px;
+  font-weight: 900;
+  box-shadow: 0 10px 22px rgba(76, 103, 172, 0.12);
+}
+
+.profile-avatar-button:disabled {
+  cursor: wait;
+  opacity: 0.78;
+}
+
+.profile-avatar-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-avatar-button small {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 5px 0;
+  background: rgba(15, 23, 42, 0.72);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.profile-avatar-input {
+  display: none;
 }
 
 .overview-hero__body {

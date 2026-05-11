@@ -144,8 +144,19 @@ function resourceVisibilityLabel(item: RequirementItem): string {
 }
 
 function openConversation(item: RequirementItem) {
+  if (!canOpenConversation(item)) {
+    return
+  }
   conversationRequirement.value = item
   conversationVisible.value = true
+}
+
+function isRequirementCompleted(item: RequirementItem) {
+  return item.status === 'completed' || item.status === 'final_paid'
+}
+
+function canOpenConversation(item: RequirementItem) {
+  return !isRequirementCompleted(item)
 }
 
 function closeConversation() {
@@ -164,6 +175,9 @@ function conversationForRequirement(item: RequirementItem) {
 }
 
 function conversationStatusLabel(item: RequirementItem) {
+  if (isRequirementCompleted(item)) {
+    return '需求已完成，会话已停用'
+  }
   const conversation = conversationForRequirement(item)
   if (!conversation) {
     return '打开后创建会话'
@@ -172,6 +186,9 @@ function conversationStatusLabel(item: RequirementItem) {
 }
 
 function conversationButtonLabel(item: RequirementItem) {
+  if (isRequirementCompleted(item)) {
+    return '已停用'
+  }
   return conversationForRequirement(item)?.last_message_at ? '查看' : '开始'
 }
 
@@ -320,7 +337,8 @@ async function loadRequirementConversations() {
           </el-table-column>
           <el-table-column label="沟通" width="96">
             <template #default="scope">
-              <el-button type="primary" link @click="openConversation(scope.row)">{{ conversationButtonLabel(scope.row)
+              <el-button type="primary" link :disabled="!canOpenConversation(scope.row)"
+                @click="openConversation(scope.row)">{{ conversationButtonLabel(scope.row)
               }}</el-button>
             </template>
           </el-table-column>

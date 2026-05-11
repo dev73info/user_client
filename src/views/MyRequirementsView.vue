@@ -188,8 +188,12 @@ function hasBoundResource(item: RequirementItem) {
   return item.bound_resource_id != null
 }
 
+function isRequirementCompleted(item: RequirementItem) {
+  return item.status === 'completed' || item.status === 'final_paid'
+}
+
 function canOpenConversation(item: RequirementItem) {
-  return hasBoundResource(item)
+  return hasBoundResource(item) && !isRequirementCompleted(item)
 }
 
 function openConversation(item: RequirementItem) {
@@ -1222,26 +1226,32 @@ onMounted(async () => {
     </div>
 
     <div v-if="commentVisible && commentRequirement" class="modal-wrap" @click.self="closeCommentModal">
-      <section class="pay-modal" aria-label="需求评论弹窗">
+      <section class="pay-modal comment-modal" aria-label="需求评论弹窗">
         <h3>评价需求</h3>
-        <p class="pay-line"><strong>需求标题：</strong>{{ commentRequirement.title }}</p>
-        <p class="pay-line"><strong>需求编号：</strong>{{ commentRequirement.requirement_id }}</p>
-        <div class="pay-line">
-          <strong>评分：</strong>
+        <div class="comment-modal__meta">
+          <p class="pay-line"><strong>需求标题</strong><span>{{ commentRequirement.title }}</span></p>
+          <p class="pay-line"><strong>需求编号</strong><span>{{ commentRequirement.requirement_id }}</span></p>
+        </div>
+        <div class="comment-modal__section">
+          <div class="comment-modal__section-head">
+            <strong>评分</strong>
+            <span>{{ commentRating.toFixed(1) }} 分</span>
+          </div>
           <div class="rating-row">
             <button v-for="star in 5" :key="star" type="button" class="rating-star" :class="starClass(star)"
               @click="setRating($event, star)">
               ★
             </button>
-            <span class="rating-value">{{ commentRating.toFixed(1) }} 分</span>
           </div>
         </div>
-        <div class="pay-line">
-          <strong>评论内容：</strong>
+        <div class="comment-modal__section comment-modal__field">
+          <div class="comment-modal__section-head">
+            <strong>评论内容</strong>
+            <span>已输入 {{ commentText.length }} / 200 字</span>
+          </div>
+          <textarea class="comment-input" v-model="commentText" rows="4" maxlength="200"
+            placeholder="请输入评论，最多 200 字"></textarea>
         </div>
-        <textarea class="comment-input" v-model="commentText" rows="4" maxlength="200"
-          placeholder="请输入评论，最多 200 字"></textarea>
-        <p class="tip">已输入 {{ commentText.length }} / 200 字</p>
 
         <div class="actions">
           <button class="ghost" type="button" @click="closeCommentModal">取消</button>

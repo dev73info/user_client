@@ -5,6 +5,7 @@ import { Close, Folder, MagicStick, Refresh, UploadFilled } from '@element-plus/
 
 import {
   createMcResource,
+  uploadMcResourceCover,
   type McResourcePayload,
   type CreateMcResourceTagSelection,
 } from '@dev/api/mcResources'
@@ -30,6 +31,7 @@ const isLoadingTags = ref(false)
 const submitting = ref(false)
 const iconInput = ref<HTMLInputElement | null>(null)
 const iconFileName = ref('')
+const selectedIconFile = ref<File | null>(null)
 const selectedTagIdsByGroup = reactive<Record<number, number[]>>({})
 
 const form = reactive({
@@ -198,6 +200,7 @@ function openIconPicker() {
 function clearIconFile() {
   form.coverUrl = ''
   iconFileName.value = ''
+  selectedIconFile.value = null
 
   if (iconInput.value) {
     iconInput.value.value = ''
@@ -236,6 +239,7 @@ async function handleIconFileChange(event: Event) {
   try {
     form.coverUrl = await readFileAsDataUrl(file)
     iconFileName.value = file.name
+    selectedIconFile.value = file
   } catch (error) {
     const message = error instanceof Error ? error.message : '读取图标文件失败'
     showToast(message, 'error')
@@ -262,6 +266,7 @@ function resetForm() {
   form.author = auth.username || ''
   form.coverUrl = ''
   iconFileName.value = ''
+  selectedIconFile.value = null
 
   if (iconInput.value) {
     iconInput.value.value = ''
@@ -286,7 +291,7 @@ async function submitResource() {
   submitting.value = true
 
   try {
-    const resource = await createMcResource(auth.token, {
+    let resource = await createMcResource(auth.token, {
       platform: currentPlatform.value,
       title: form.title.trim(),
       author: form.author.trim(),
@@ -294,11 +299,19 @@ async function submitResource() {
       tag_selections: buildTagSelections(),
       file_name: derivedFileName.value,
       source_url: derivedSourceUrl.value,
-      cover_url: form.coverUrl.trim() || null,
+      cover_url: null,
       docs_url: null,
       visibility: 'draft',
       release_note: null,
     })
+
+    if (selectedIconFile.value) {
+      try {
+        resource = await uploadMcResourceCover(auth.token, resource.id, selectedIconFile.value)
+      } catch (error) {
+        showToast(error instanceof Error ? `资源已初始化，但图标上传失败：${error.message}` : '资源已初始化，但图标上传失败', 'warning')
+      }
+    }
 
     showToast(`资源已初始化为私有项目，编号 #${resource.id}`, 'success')
     resetForm()

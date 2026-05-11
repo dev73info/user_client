@@ -20,6 +20,7 @@ export type McResourceTagSelectionPayload = {
 export type PublicMcResourceItem = {
   id: number
   creator: string
+  creator_avatar_url?: string | null
   requirement_id: string | null
   platform: McResourcePlatform
   title: string
@@ -34,6 +35,9 @@ export type PublicMcResourceItem = {
   release_note: string | null
   created_at: string
   updated_at: string
+  like_count: number
+  creator_credit_score?: number | null
+  liked_by_me: boolean
 }
 
 export type PublicMcResourceVersionItem = {
@@ -59,12 +63,30 @@ export type CreatePublicMcResourceCommentPayload = {
   comment: string
 }
 
+export type PublicMcResourceLikeState = {
+  resource_id: number
+  liked_by_me: boolean
+  like_count: number
+}
+
 let allResourcesCache: { data: PublicMcResourceItem[]; ts: number } | null = null
 let allResourcesInflight: Promise<PublicMcResourceItem[]> | null = null
 const RESOURCE_CACHE_TTL = 60_000
 const PUBLIC_RESOURCE_API_PREFIX = '/resource/resources'
 
-async function getAllPublicMcResources(): Promise<PublicMcResourceItem[]> {
+async function getAllPublicMcResources(token?: string | null): Promise<PublicMcResourceItem[]> {
+  const authToken = token?.trim()
+  if (authToken) {
+    return requestJson<PublicMcResourceItem[]>(
+      PUBLIC_RESOURCE_API_PREFIX,
+      {
+        method: 'GET',
+        headers: authHeader(authToken),
+      },
+      '加载资源列表失败',
+    )
+  }
+
   const now = Date.now()
   if (allResourcesCache && now - allResourcesCache.ts < RESOURCE_CACHE_TTL) {
     return allResourcesCache.data
@@ -94,13 +116,14 @@ async function getAllPublicMcResources(): Promise<PublicMcResourceItem[]> {
 
 export async function listPublicMcResources(
   platform: McResourcePlatform,
+  token?: string | null,
 ): Promise<PublicMcResourceItem[]> {
-  const all = await getAllPublicMcResources()
+  const all = await getAllPublicMcResources(token)
   return all.filter((item) => item.platform === platform)
 }
 
-export async function listAllPublicMcResources(): Promise<PublicMcResourceItem[]> {
-  return getAllPublicMcResources()
+export async function listAllPublicMcResources(token?: string | null): Promise<PublicMcResourceItem[]> {
+  return getAllPublicMcResources(token)
 }
 
 export function invalidateResourceListCache() {
@@ -165,6 +188,34 @@ export async function createPublicMcResourceComment(
       body: JSON.stringify(payload),
     },
     '提交资源评论失败',
+  )
+}
+
+export async function likePublicMcResource(
+  token: string,
+  resourceId: number,
+): Promise<PublicMcResourceLikeState> {
+  return requestJson<PublicMcResourceLikeState>(
+    `${PUBLIC_RESOURCE_API_PREFIX}/${resourceId}/likes`,
+    {
+      method: 'POST',
+      headers: authHeader(token),
+    },
+    '点赞资源失败',
+  )
+}
+
+export async function unlikePublicMcResource(
+  token: string,
+  resourceId: number,
+): Promise<PublicMcResourceLikeState> {
+  return requestJson<PublicMcResourceLikeState>(
+    `${PUBLIC_RESOURCE_API_PREFIX}/${resourceId}/likes`,
+    {
+      method: 'DELETE',
+      headers: authHeader(token),
+    },
+    '取消点赞失败',
   )
 }
 

@@ -54,12 +54,20 @@ const requirementById = computed(() =>
   Object.fromEntries(requirements.value.map((item) => [item.requirement_id, item])),
 )
 const conversationRequirementIds = computed(() => new Set(conversations.value.map((item) => item.requirement_id)))
-const readyRequirements = computed(() => requirements.value.filter((item) => hasBoundResource(item)))
+const activeConversations = computed(() =>
+  conversations.value.filter((item) => {
+    const requirement = requirementById.value[item.requirement_id]
+    return item.status === 'open' && item.requirement_status !== 'completed' && requirement?.status !== 'completed'
+  }),
+)
+const readyRequirements = computed(() =>
+  requirements.value.filter((item) => hasBoundResource(item) && item.status !== 'completed' && item.status !== 'final_paid'),
+)
 const pendingRequirements = computed(() =>
   readyRequirements.value.filter((item) => !conversationRequirementIds.value.has(item.requirement_id)),
 )
 const conversationThreads = computed<MessageThread[]>(() =>
-  conversations.value.map((item) => buildConversationThread(item)),
+  activeConversations.value.map((item) => buildConversationThread(item)),
 )
 const pendingThreads = computed<MessageThread[]>(() =>
   pendingRequirements.value.map((item) => buildPendingThread(item)),
@@ -77,7 +85,7 @@ const filteredThreads = computed(() => {
   return allThreads.value
 })
 const recentConversationCount = computed(() =>
-  conversations.value.filter((item) => isRecent(item.last_message_at ?? item.updated_at)).length,
+  activeConversations.value.filter((item) => isRecent(item.last_message_at ?? item.updated_at)).length,
 )
 const realtimeStatusLabel = computed(() => {
   if (realtimeStatus.value === 'connected') {
@@ -372,7 +380,7 @@ watch(
   <main class="page-shell custom-page-shell messages-page">
     <section v-if="!activeRequirementId" class="messages-summary" aria-label="消息概览">
       <article class="messages-summary__item">
-        <strong>{{ conversations.length }}</strong>
+        <strong>{{ activeConversations.length }}</strong>
         <span>已开启会话</span>
       </article>
       <article class="messages-summary__item">

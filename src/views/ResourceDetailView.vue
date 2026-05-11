@@ -7,9 +7,12 @@ import { HttpError, apiUrl } from '@/api/http'
 import {
   createPublicMcResourceComment,
   getPublicMcResource,
+  invalidateResourceListCache,
+  likePublicMcResource,
   listPublicMcResourceComments,
   listPublicMcResourceVersions,
   downloadPublicMcResourceFile,
+  unlikePublicMcResource,
   type PublicMcResourceCommentItem,
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
@@ -40,13 +43,50 @@ const comments = ref<PublicMcResourceCommentItem[]>([])
 const commentsLoading = ref(false)
 const commentSubmitting = ref(false)
 const commentText = ref('')
+const likeSubmitting = ref(false)
 const realnameStatus = ref<UserRealnameStatus | 'none' | ''>('')
 const realnameLoading = ref(false)
 
 const tagNames = computed(
   () => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [],
 )
-const platformLabel = computed(() => resource.value?.platform ?? '未知平台')
+const authorPillLabel = computed(() => {
+  const current = resource.value
+  if (!current) {
+    return ''
+  }
+
+  const author = current.author.trim()
+  const creator = current.creator.trim()
+  if (author && creator && author === creator) {
+    return `作者 / 创建者 ${author}`
+  }
+
+  return author ? `作者 ${author}` : '作者未知'
+})
+const showCreatorMeta = computed(() => {
+  const current = resource.value
+  if (!current) {
+    return false
+  }
+
+  return current.creator.trim().length > 0 && current.creator.trim() !== current.author.trim()
+})
+const resourceSummaryText = computed(() => {
+  const current = resource.value
+  if (!current) {
+    return ''
+  }
+
+  const description = current.description.trim()
+  const platform = current.platform.trim()
+  if (!description || !platform) {
+    return description
+  }
+
+  const prefixPattern = new RegExp(`^${escapeRegExp(platform)}\\s*[·・-]\\s*`, 'i')
+  return description.replace(prefixPattern, '').trim() || description
+})
 const visibilityLabel = computed(() =>
   resource.value?.visibility === 'published' ? '公开展示中' : '待正式发布',
 )
@@ -70,17 +110,15 @@ const infoCards = computed(() => {
 
   return [
     {
-      label: '平台',
-      value: platformLabel.value,
-      hint: resource.value.platform,
-      tone: 'platform',
+      label: '当前版本',
+      value: latestVersion.value?.version ?? '暂无',
+      hint: latestVersion.value ? '可下载版本' : '等待开发者上传',
+      tone: 'current-version',
     },
     {
       label: '历史版本',
       value: `${versions.value.length}`,
-      hint: latestVersion.value
-        ? `当前最新为 ${latestVersion.value.version}`
-        : '当前还没有版本记录',
+      hint: versions.value.length > 0 ? '版本记录数量' : '暂无版本记录',
       tone: 'versions',
     },
     {
@@ -96,6 +134,7 @@ const resourceCoverUrl = computed(() =>
 )
 const latestVersion = computed(() => versions.value[0] ?? null)
 const pageContentHtml = computed(() => formatHomepageContent(resource.value?.release_note || ''))
+const isPublishedResource = computed(() => resource.value?.visibility === 'published')
 const commentTextLength = computed(() => Array.from(commentText.value.trim()).length)
 const commentCountLabel = computed(() =>
   comments.value.length > 0 ? `${comments.value.length} 条评论` : '暂无评论',
@@ -103,12 +142,22 @@ const commentCountLabel = computed(() =>
 const canSubmitComment = computed(
   () =>
     auth.isAuthed &&
+    isPublishedResource.value &&
     realnameStatus.value === 'approved' &&
     commentText.value.trim().length > 0 &&
     commentTextLength.value <= COMMENT_MAX_LENGTH &&
     !commentSubmitting.value,
 )
 const commentGate = computed<CommentGate | null>(() => {
+  if (resource.value && !isPublishedResource.value) {
+    return {
+      title: '资源发布后可评论',
+      description: '当前资源还未公开发布，评论区会在发布后开放。',
+      actionLabel: '',
+      action: '',
+    }
+  }
+
   if (!auth.isAuthed) {
     return {
       title: '登录后可评论',
@@ -162,6 +211,10 @@ const markdownRenderer = new MarkdownIt({
   linkify: true,
   breaks: true,
 })
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
 function sanitizeRichHtml(value: string): string {
   const template = document.createElement('template')
@@ -359,6 +412,74 @@ function openCommentLogin() {
   })
 }
 
+function openLikeLogin() {
+  showToast('请先登录后再点赞', 'info')
+  void router.push({
+    name: 'home',
+    query: {
+      modal: 'auth',
+      mode: 'login',
+      redirect_to: route.fullPath,
+    },
+  })
+}
+
+async function refreshResourceLikeState(resourceId: number) {
+  try {
+    const token = auth.token?.trim() ? auth.token : null
+    resource.value = await getPublicMcResource(resourceId, token)
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 401) {
+      auth.logout()
+    }
+  }
+}
+
+async function toggleResourceLike() {
+  if (likeSubmitting.value) {
+    return
+  }
+
+  const current = resource.value
+  if (!current) {
+    showToast('资源编号无效', 'warning')
+    return
+  }
+
+  if (!isPublishedResource.value) {
+    showToast('资源公开发布后才可点赞', 'warning')
+    return
+  }
+
+  if (!auth.isAuthed || !auth.token.trim()) {
+    openLikeLogin()
+    return
+  }
+
+  likeSubmitting.value = true
+  try {
+    const state = current.liked_by_me
+      ? await unlikePublicMcResource(auth.token, current.id)
+      : await likePublicMcResource(auth.token, current.id)
+    resource.value = {
+      ...current,
+      liked_by_me: state.liked_by_me,
+      like_count: state.like_count,
+    }
+    invalidateResourceListCache()
+    showToast(state.liked_by_me ? '已点赞' : '已取消点赞', 'success')
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 401) {
+      auth.logout()
+      openLikeLogin()
+    } else {
+      showToast(error instanceof Error ? error.message : '点赞操作失败', 'error')
+    }
+  } finally {
+    likeSubmitting.value = false
+  }
+}
+
 function openRealnamePage() {
   void router.push({ name: 'workbench-realname', query: { redirect_to: route.fullPath } })
 }
@@ -384,6 +505,11 @@ async function submitResourceComment() {
   const resourceId = resource.value?.id ?? getCurrentResourceId()
   if (!resourceId) {
     showToast('资源编号无效', 'warning')
+    return
+  }
+
+  if (!isPublishedResource.value) {
+    showToast('资源公开发布后才可评论', 'warning')
     return
   }
 
@@ -485,6 +611,7 @@ watch(
     void loadRealnameStatus()
     if (resource.value?.id) {
       void loadComments(resource.value.id)
+      void refreshResourceLikeState(resource.value.id)
     }
   },
 )
@@ -504,10 +631,13 @@ watch(
           <div class="resource-detail-page__summary-card">
             <div class="resource-detail-page__headline-row">
               <span class="resource-detail-page__status-pill">{{ visibilityLabel }}</span>
-              <span class="resource-detail-page__author-pill">by {{ resource.author }}</span>
+              <span class="resource-detail-page__author-pill">{{ authorPillLabel }}</span>
             </div>
-            <p class="resource-detail-page__meta">创建者：{{ resource.creator }}</p>
-            <p class="resource-detail-page__summary">{{ resource.description }}</p>
+            <div class="resource-detail-page__identity-block">
+              <h1 class="resource-detail-page__title">{{ resource.title }}</h1>
+              <p v-if="showCreatorMeta" class="resource-detail-page__meta">创建者：{{ resource.creator }}</p>
+              <p class="resource-detail-page__summary">{{ resourceSummaryText || '当前资源暂无简介。' }}</p>
+            </div>
 
             <div v-if="tagNames.length > 0" class="resource-detail-page__tags">
               <span v-for="item in tagNames" :key="item" class="resource-detail-page__tag">{{
@@ -515,27 +645,33 @@ watch(
                 }}</span>
             </div>
 
+            <div v-if="infoCards.length" class="resource-detail-page__summary-stats">
+              <article v-for="item in infoCards" :key="item.label" class="resource-detail-page__summary-stat">
+                <strong>{{ item.value }}</strong>
+                <span>{{ item.label }}</span>
+                <small>{{ item.hint }}</small>
+              </article>
+            </div>
+
             <div class="resource-detail-page__cta-row">
-              <button class="resource-detail-page__primary-btn" type="button" @click="openResourceFile">
-                下载最新版本
-              </button>
-              <button class="resource-detail-page__secondary-btn" type="button" @click="backToPlatform">
-                继续浏览
-              </button>
+              <div class="resource-detail-page__primary-actions">
+                <button class="resource-detail-page__primary-btn" type="button" @click="openResourceFile">
+                  下载最新版本
+                </button>
+                <button class="resource-detail-page__like-btn" type="button"
+                  :class="{ 'resource-detail-page__like-btn--active': resource.liked_by_me }" :disabled="likeSubmitting"
+                  :aria-pressed="resource.liked_by_me" @click="toggleResourceLike">
+                  <span aria-hidden="true">{{ resource.liked_by_me ? '♥' : '♡' }}</span>
+                  <span>{{ resource.liked_by_me ? '已点赞' : '点赞' }}</span>
+                  <strong>{{ resource.like_count ?? 0 }}</strong>
+                </button>
+              </div>
+              <button class="resource-detail-page__secondary-btn" type="button" @click="backToPlatform">继续浏览</button>
             </div>
           </div>
         </section>
 
         <section class="resource-detail-page__detail-grid">
-          <section v-if="infoCards.length" class="portal-page__stats">
-            <article v-for="item in infoCards" :key="item.label"
-              class="portal-page__stat-card resource-detail-page__stat-card">
-              <strong>{{ item.value }}</strong>
-              <span>{{ item.label }}</span>
-              <small class="resource-detail-page__stat-hint">{{ item.hint }}</small>
-            </article>
-          </section>
-
           <article class="resource-detail-page__content-card">
             <header class="resource-detail-page__section-head">
               <h2>页面内容</h2>
@@ -636,10 +772,6 @@ watch(
   gap: 28px;
 }
 
-.resource-detail-page :deep(.portal-page__stats) {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 .resource-detail-page__panel {
   border-radius: 28px;
   border: 1px solid rgba(198, 210, 236, 0.72);
@@ -691,7 +823,8 @@ watch(
   padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
+  min-height: 360px;
 }
 
 .resource-detail-page__headline-row,
@@ -728,6 +861,22 @@ watch(
   background: rgba(219, 234, 254, 0.92);
 }
 
+.resource-detail-page__identity-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.resource-detail-page__title {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(28px, 3.2vw, 42px);
+  line-height: 1.12;
+  font-weight: 900;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
 .resource-detail-page__meta,
 .resource-detail-page__summary,
 .resource-detail-page__paragraph,
@@ -743,6 +892,11 @@ watch(
   line-height: 1.8;
 }
 
+.resource-detail-page__summary {
+  max-width: 62ch;
+  font-size: 15px;
+}
+
 .resource-detail-page__tags {
   display: flex;
   flex-wrap: wrap;
@@ -755,7 +909,61 @@ watch(
   background: rgba(219, 234, 254, 0.92);
 }
 
+.resource-detail-page__summary-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.resource-detail-page__summary-stat {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(219, 229, 247, 0.78);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.86));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.resource-detail-page__summary-stat strong {
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.resource-detail-page__summary-stat span {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.resource-detail-page__summary-stat small {
+  min-width: 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.resource-detail-page__primary-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__cta-row {
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid rgba(219, 229, 247, 0.82);
+}
+
 .resource-detail-page__primary-btn,
+.resource-detail-page__like-btn,
 .resource-detail-page__secondary-btn,
 .resource-detail-page__version-download {
   border: 0;
@@ -770,6 +978,7 @@ watch(
 }
 
 .resource-detail-page__primary-btn:hover,
+.resource-detail-page__like-btn:hover,
 .resource-detail-page__secondary-btn:hover,
 .resource-detail-page__version-download:hover {
   transform: translateY(-1px);
@@ -780,6 +989,7 @@ watch(
   color: #fff;
   background: linear-gradient(135deg, #2563eb, #4f8cff);
   font-weight: 700;
+  box-shadow: 0 14px 26px rgba(37, 99, 235, 0.2);
 }
 
 .resource-detail-page__secondary-btn,
@@ -789,13 +999,33 @@ watch(
   font-weight: 700;
 }
 
-.resource-detail-page__stat-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.resource-detail-page__like-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #64748b;
+  background: rgba(248, 250, 252, 0.96);
+  font-weight: 800;
+  border: 1px solid rgba(219, 229, 247, 0.82);
 }
 
-.resource-detail-page__stat-hint,
+.resource-detail-page__like-btn strong {
+  color: inherit;
+  font-size: 13px;
+}
+
+.resource-detail-page__like-btn--active {
+  color: #dc2626;
+  background: rgba(254, 226, 226, 0.94);
+  border-color: rgba(248, 113, 113, 0.38);
+}
+
+.resource-detail-page__like-btn:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .resource-detail-page__section-head span {
   font-size: 12px;
 }
@@ -1080,10 +1310,6 @@ watch(
 }
 
 @media (max-width: 980px) {
-  .resource-detail-page :deep(.portal-page__stats) {
-    grid-template-columns: 1fr;
-  }
-
   .resource-detail-page__lead {
     grid-template-columns: 1fr;
   }
@@ -1100,12 +1326,36 @@ watch(
     padding: 18px;
   }
 
+  .resource-detail-page__summary-card {
+    min-height: auto;
+  }
+
+  .resource-detail-page__title {
+    font-size: 28px;
+  }
+
   .resource-detail-page__cover-card {
     min-height: 280px;
   }
 
   .resource-detail-page__version-headline {
     align-items: flex-start;
+  }
+
+  .resource-detail-page__summary-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .resource-detail-page__cta-row,
+  .resource-detail-page__primary-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .resource-detail-page__primary-btn,
+  .resource-detail-page__like-btn,
+  .resource-detail-page__secondary-btn {
+    width: 100%;
   }
 
   .resource-detail-page__comment-gate,
