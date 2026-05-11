@@ -62,6 +62,8 @@ const statusType = computed<'info' | 'warning' | 'success' | 'danger'>(() => {
   return 'danger'
 })
 
+const realnameLocked = computed(() => current.value?.status === 'approved')
+
 const authTypeText = computed(() => {
   const map: Record<RealnameAuthType, string> = {
     IDENTITY_CARD: '大陆身份证',
@@ -162,6 +164,11 @@ function buildPayload(): SubmitRealnameVerificationPayload {
 
 async function submit() {
   auth.hydrate()
+  if (realnameLocked.value) {
+    showToast('该账号已完成实名认证，不能更换实名信息', 'warning')
+    return
+  }
+
   if (!auth.token.trim()) {
     showToast('登录状态已失效，请重新登录', 'error')
     return
@@ -233,7 +240,7 @@ onMounted(async () => {
 
         <el-form label-position="top" class="realname-form" @submit.prevent>
           <el-form-item label="证件类型">
-            <el-radio-group v-model="form.authType">
+            <el-radio-group v-model="form.authType" :disabled="realnameLocked">
               <el-radio value="IDENTITY_CARD">大陆身份证</el-radio>
               <el-radio value="RESIDENCE_HK_MC">港澳居民居住证</el-radio>
               <el-radio value="RESIDENCE_TAIWAN">台湾居民居住证</el-radio>
@@ -241,15 +248,15 @@ onMounted(async () => {
           </el-form-item>
 
           <el-form-item label="姓名">
-            <el-input v-model="form.realName" maxlength="120" placeholder="请输入真实姓名" />
+            <el-input v-model="form.realName" maxlength="120" placeholder="请输入真实姓名" :disabled="realnameLocked" />
           </el-form-item>
           <el-form-item label="证件号">
-            <el-input v-model="form.idCardNo" maxlength="64" placeholder="请输入证件号" />
+            <el-input v-model="form.idCardNo" maxlength="64" placeholder="请输入证件号" :disabled="realnameLocked" />
           </el-form-item>
 
           <div class="realname-form__actions">
-            <el-button type="primary" class="realname-submit-btn" :loading="submitting" @click="submit">
-              {{ current ? '重新提交认证' : '提交认证' }}
+            <el-button type="primary" class="realname-submit-btn" :loading="submitting" :disabled="realnameLocked" @click="submit">
+              {{ realnameLocked ? '已完成认证' : current ? '重新提交认证' : '提交认证' }}
             </el-button>
           </div>
         </el-form>
