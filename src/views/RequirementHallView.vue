@@ -22,7 +22,6 @@ const overviewLoading = ref(false)
 const requirements = ref<PublicRequirementSpotlightItem[]>([])
 const overview = ref<RequirementOverviewResp | null>(null)
 const keyword = ref('')
-const selectedRequirement = ref<PublicRequirementSpotlightItem | null>(null)
 
 const filteredRequirements = computed(() => {
   const normalized = keyword.value.trim().toLowerCase()
@@ -67,25 +66,6 @@ watch(
   () => route.query.keyword,
   (value) => {
     keyword.value = typeof value === 'string' ? value.trim() : ''
-  },
-  { immediate: true },
-)
-
-watch(
-  filteredRequirements,
-  (items) => {
-    if (items.length === 0) {
-      selectedRequirement.value = null
-      return
-    }
-
-    const currentId = selectedRequirement.value?.requirement_id
-    if (!currentId || !items.some((item) => item.requirement_id === currentId)) {
-      const firstItem = items[0]
-      if (firstItem) {
-        selectedRequirement.value = firstItem
-      }
-    }
   },
   { immediate: true },
 )
@@ -141,10 +121,6 @@ function formatTimeLabel(value: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
-}
-
-function selectRequirement(item: PublicRequirementSpotlightItem) {
-  selectedRequirement.value = item
 }
 
 function resetKeyword() {
@@ -220,8 +196,7 @@ async function loadHallData() {
 
         <div v-else-if="filteredRequirements.length" class="portal-page__card-grid requirement-hall__grid">
           <article v-for="card in filteredRequirements" :key="card.requirement_id"
-            class="portal-page__card requirement-hall__card"
-            :class="{ active: selectedRequirement?.requirement_id === card.requirement_id }">
+            class="portal-page__card requirement-hall__card">
             <div class="portal-page__card-topline">
               <span class="portal-page__chip">{{ paymentTag(card) }}</span>
               <span class="portal-page__meta">{{ statusToLabel(card.status) }}</span>
@@ -234,9 +209,6 @@ async function loadHallData() {
             </div>
             <div class="portal-page__card-footer">
               <strong>{{ formatMoney(card.budget) }}</strong>
-              <button class="portal-page__action" type="button" @click="selectRequirement(card)">
-                查看详情
-              </button>
             </div>
           </article>
         </div>
@@ -265,33 +237,6 @@ async function loadHallData() {
           </ul>
         </section>
 
-        <section v-if="selectedRequirement" class="portal-page__aside-card requirement-hall__detail-card">
-          <div class="portal-page__aside-head">
-            <h3>需求详情</h3>
-            <span class="portal-page__meta">{{ statusToLabel(selectedRequirement.status) }}</span>
-          </div>
-          <strong>{{ selectedRequirement.title }}</strong>
-          <p>{{ selectedRequirement.description || '当前需求暂未补充详细描述。' }}</p>
-          <dl class="requirement-hall__detail-list">
-            <div>
-              <dt>需求编号</dt>
-              <dd>{{ selectedRequirement.requirement_id }}</dd>
-            </div>
-            <div>
-              <dt>预算</dt>
-              <dd>{{ formatMoney(selectedRequirement.budget) }}</dd>
-            </div>
-            <div>
-              <dt>交付方式</dt>
-              <dd>{{ paymentTag(selectedRequirement) }}</dd>
-            </div>
-            <div>
-              <dt>更新时间</dt>
-              <dd>{{ formatTimeLabel(selectedRequirement.updated_at) }}</dd>
-            </div>
-          </dl>
-        </section>
-
         <section class="portal-page__aside-card requirement-hall__recent-card">
           <div class="portal-page__aside-head">
             <h3>最近交付</h3>
@@ -301,7 +246,7 @@ async function loadHallData() {
               class="portal-page__list-item requirement-hall__deal-item">
               <strong>{{ deal.title }}</strong>
               <span class="portal-page__meta">{{ formatMoney(deal.amount_cny) }} · {{ formatTimeLabel(deal.paid_at)
-                }}</span>
+              }}</span>
               <p v-if="deal.comment_text">{{ deal.comment_text }}</p>
             </li>
           </ul>
@@ -353,8 +298,7 @@ async function loadHallData() {
     box-shadow 180ms ease;
 }
 
-.requirement-hall__card:hover,
-.requirement-hall__card.active {
+.requirement-hall__card:hover {
   border-color: rgba(37, 99, 235, 0.32);
   transform: translateY(-1px);
   box-shadow: 0 16px 30px rgba(76, 103, 172, 0.14);
@@ -461,46 +405,6 @@ async function loadHallData() {
   font-size: 14px;
   font-weight: 700;
   line-height: 1.6;
-}
-
-.requirement-hall__detail-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.requirement-hall__detail-card>strong {
-  color: #0f172a;
-  font-size: 16px;
-}
-
-.requirement-hall__detail-list {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-}
-
-.requirement-hall__detail-list div {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 10px;
-  align-items: start;
-}
-
-.requirement-hall__detail-list dt,
-.requirement-hall__detail-list dd {
-  margin: 0;
-  line-height: 1.6;
-}
-
-.requirement-hall__detail-list dt {
-  color: #64748b;
-}
-
-.requirement-hall__detail-list dd {
-  color: #0f172a;
-  font-weight: 700;
-  word-break: break-word;
 }
 
 .portal-page__secondary:disabled {

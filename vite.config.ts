@@ -1,4 +1,6 @@
 import { fileURLToPath, URL } from 'node:url'
+import { copyFileSync, existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
@@ -26,6 +28,8 @@ const proxyPaths = [
 const proxyConfig = Object.fromEntries(
   proxyPaths.map((path) => [path, { target: proxyTarget, changeOrigin: true }]),
 )
+const publicHtaccessPath = resolve(import.meta.dirname, 'public/.htaccess')
+const distHtaccessPath = resolve(import.meta.dirname, 'dist/.htaccess')
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -38,6 +42,14 @@ export default defineConfig({
     Components({
       resolvers: [ElementPlusResolver()],
     }),
+    {
+      name: 'copy-spa-fallback-htaccess',
+      closeBundle() {
+        if (existsSync(publicHtaccessPath)) {
+          copyFileSync(publicHtaccessPath, distHtaccessPath)
+        }
+      },
+    },
     ...(process.env.NODE_ENV !== 'production' ? [vueDevTools()] : []),
   ],
   build: {

@@ -1,0 +1,72 @@
+import DOMPurify from 'dompurify'
+
+const allowedTags = [
+  'a',
+  'b',
+  'blockquote',
+  'br',
+  'code',
+  'del',
+  'em',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'hr',
+  'i',
+  'img',
+  'li',
+  'ol',
+  'p',
+  'pre',
+  's',
+  'span',
+  'strong',
+  'table',
+  'tbody',
+  'td',
+  'th',
+  'thead',
+  'tr',
+  'u',
+  'ul',
+]
+
+const allowedAttrs = [
+  'alt',
+  'aria-label',
+  'class',
+  'colspan',
+  'href',
+  'rel',
+  'rowspan',
+  'src',
+  'target',
+  'title',
+]
+
+export function sanitizeRichHtml(value: string): string {
+  return DOMPurify.sanitize(value, {
+    ALLOWED_ATTR: allowedAttrs,
+    ALLOWED_TAGS: allowedTags,
+    ALLOW_DATA_ATTR: false,
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|\/(?!\/)|#)/i,
+    FORBID_ATTR: ['style'],
+    FORBID_TAGS: [
+      'button',
+      'embed',
+      'form',
+      'iframe',
+      'input',
+      'math',
+      'object',
+      'script',
+      'select',
+      'style',
+      'svg',
+      'textarea',
+    ],
+  })
+}

@@ -13,6 +13,7 @@ export type RecentDeal = {
 }
 
 export type RequirementOverviewResp = {
+  developer_count?: number
   total_orders: number
   total_orders_change_rate: number
   positive_rate: number

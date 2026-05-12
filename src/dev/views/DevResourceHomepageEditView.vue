@@ -17,8 +17,18 @@ import {
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
+import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 
-type ToolbarAction = 'bold' | 'italic' | 'underline' | 'h2' | 'h3' | 'bullet' | 'ordered' | 'blockquote' | 'code'
+type ToolbarAction =
+  | 'bold'
+  | 'italic'
+  | 'underline'
+  | 'h2'
+  | 'h3'
+  | 'bullet'
+  | 'ordered'
+  | 'blockquote'
+  | 'code'
 type EditorMode = 'rich' | 'markdown'
 
 const auth = useAuthStore()
@@ -62,30 +72,6 @@ const markdownRenderer = new MarkdownIt({
   linkify: true,
   breaks: true,
 })
-
-function sanitizeRichHtml(value: string): string {
-  const template = document.createElement('template')
-  template.innerHTML = value
-
-  template.content.querySelectorAll('script, style, iframe, object, embed').forEach((node) => node.remove())
-
-  template.content.querySelectorAll('*').forEach((element) => {
-    Array.from(element.attributes).forEach((attribute) => {
-      const name = attribute.name.toLowerCase()
-      const attributeValue = attribute.value.trim()
-      if (name.startsWith('on')) {
-        element.removeAttribute(attribute.name)
-        return
-      }
-
-      if ((name === 'href' || name === 'src') && /^javascript:/i.test(attributeValue)) {
-        element.removeAttribute(attribute.name)
-      }
-    })
-  })
-
-  return template.innerHTML
-}
 
 function formatHomepageContent(value: string): string {
   const trimmed = value.trim()
@@ -139,7 +125,9 @@ const coverPreviewUrl = computed(() => {
   return ''
 })
 
-const previewTagNames = computed(() => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [])
+const previewTagNames = computed(
+  () => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [],
+)
 const resourceVisibilityLabel = computed(() => {
   if (resource.value?.visibility === 'published') {
     return '公开展示中'
@@ -188,7 +176,9 @@ function switchEditorMode(mode: EditorMode) {
   }
 
   editorMode.value = 'rich'
-  form.release_note = sanitizeRichHtml(formatHomepageContent(markdownDraft.value || form.release_note))
+  form.release_note = sanitizeRichHtml(
+    formatHomepageContent(markdownDraft.value || form.release_note),
+  )
   syncEditorContent(markdownDraft.value || form.release_note)
 }
 
@@ -326,7 +316,9 @@ async function loadResource() {
     form.cover_url = payload.cover_url || ''
     form.docs_url = payload.docs_url || ''
     form.release_note = payload.release_note || ''
-    markdownDraft.value = looksLikeHtml(payload.release_note || '') ? '' : payload.release_note || ''
+    markdownDraft.value = looksLikeHtml(payload.release_note || '')
+      ? ''
+      : payload.release_note || ''
     syncEditorContent(payload.release_note || '')
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载资源详情失败'
@@ -353,7 +345,11 @@ async function saveHomepage() {
     let nextCoverUrl = form.cover_url.trim() || null
 
     if (selectedCoverFile.value) {
-      const coverUpdated = await uploadMcResourceCover(auth.token, resource.value.id, selectedCoverFile.value)
+      const coverUpdated = await uploadMcResourceCover(
+        auth.token,
+        resource.value.id,
+        selectedCoverFile.value,
+      )
       nextCoverUrl = coverUpdated.cover_url
       form.cover_url = coverUpdated.cover_url || ''
     }
@@ -372,7 +368,9 @@ async function saveHomepage() {
     form.cover_url = updated.cover_url || ''
     form.docs_url = updated.docs_url || ''
     form.release_note = updated.release_note || ''
-    markdownDraft.value = looksLikeHtml(updated.release_note || '') ? markdownDraft.value : updated.release_note || ''
+    markdownDraft.value = looksLikeHtml(updated.release_note || '')
+      ? markdownDraft.value
+      : updated.release_note || ''
     selectedCoverFile.value = null
     selectedCoverFileName.value = ''
     if (coverFileInput.value) {
@@ -398,7 +396,9 @@ function openHomepagePreview() {
     return
   }
 
-  const configuredBase = (import.meta.env.VITE_USER_CLIENT_BASE_URL as string | undefined)?.trim().replace(/\/$/, '')
+  const configuredBase = (import.meta.env.VITE_USER_CLIENT_BASE_URL as string | undefined)
+    ?.trim()
+    .replace(/\/$/, '')
   const baseUrl = configuredBase || 'http://73info.cn'
   window.open(`${baseUrl}/resources/${resource.value.id}`, '_blank', 'noopener,noreferrer')
 }
@@ -420,7 +420,9 @@ onBeforeUnmount(() => {
       <div>
         <div class="dev-panel-banner__eyebrow">Homepage Editor</div>
         <h2 class="dev-panel-banner__title">独立编辑资源主页</h2>
-        <p class="dev-panel-banner__desc">左侧维护基础信息与主页补充说明，右侧同步预览最终呈现效果。</p>
+        <p class="dev-panel-banner__desc">
+          左侧维护基础信息与主页补充说明，右侧同步预览最终呈现效果。
+        </p>
       </div>
       <div class="dev-resource-homepage-editor__banner-actions">
         <el-button plain @click="goBack">返回列表</el-button>
@@ -441,18 +443,36 @@ onBeforeUnmount(() => {
 
           <el-form label-position="top" class="dev-resource-homepage-editor__form">
             <el-form-item label="资源标题" required>
-              <el-input v-model="form.title" maxlength="120" show-word-limit placeholder="输入资源标题" />
+              <el-input
+                v-model="form.title"
+                maxlength="120"
+                show-word-limit
+                placeholder="输入资源标题"
+              />
             </el-form-item>
             <el-form-item label="资源简介" required>
-              <el-input v-model="form.description" type="textarea" :rows="5" maxlength="500" show-word-limit
-                placeholder="用一段简洁说明告诉用户这是什么资源、适合谁、解决什么问题" />
+              <el-input
+                v-model="form.description"
+                type="textarea"
+                :rows="5"
+                maxlength="500"
+                show-word-limit
+                placeholder="用一段简洁说明告诉用户这是什么资源、适合谁、解决什么问题"
+              />
             </el-form-item>
             <el-form-item label="图标文件">
               <div class="dev-resource-homepage-editor__file-picker">
-                <input ref="coverFileInput" type="file" accept="image/*"
-                  class="dev-resource-homepage-editor__file-input" @change="handleCoverFileChange" />
+                <input
+                  ref="coverFileInput"
+                  type="file"
+                  accept="image/*"
+                  class="dev-resource-homepage-editor__file-input"
+                  @change="handleCoverFileChange"
+                />
                 <el-button @click="triggerCoverPicker">选择图标文件</el-button>
-                <span class="dev-resource-homepage-editor__file-name">{{ selectedCoverFileName || '未选择文件' }}</span>
+                <span class="dev-resource-homepage-editor__file-name">{{
+                  selectedCoverFileName || '未选择文件'
+                }}</span>
               </div>
             </el-form-item>
           </el-form>
@@ -462,33 +482,64 @@ onBeforeUnmount(() => {
           <div class="dev-resource-homepage-editor__section-head">
             <div>
               <h3 class="dev-section-title">主页补充说明</h3>
-              <p class="dev-section-desc">富文本适合可视化编辑；如果你想直接写 `# dsa`、列表或代码块，请切到 Markdown 模式。</p>
+              <p class="dev-section-desc">
+                富文本适合可视化编辑；如果你想直接写 `# dsa`、列表或代码块，请切到 Markdown 模式。
+              </p>
             </div>
           </div>
 
-          <div class="dev-resource-homepage-editor__mode-switch" role="tablist" aria-label="编辑模式切换">
-            <button class="dev-resource-homepage-editor__mode-button" :class="{ 'is-active': editorMode === 'rich' }"
-              type="button" @click="switchEditorMode('rich')">
+          <div
+            class="dev-resource-homepage-editor__mode-switch"
+            role="tablist"
+            aria-label="编辑模式切换"
+          >
+            <button
+              class="dev-resource-homepage-editor__mode-button"
+              :class="{ 'is-active': editorMode === 'rich' }"
+              type="button"
+              @click="switchEditorMode('rich')"
+            >
               富文本
             </button>
-            <button class="dev-resource-homepage-editor__mode-button"
-              :class="{ 'is-active': editorMode === 'markdown' }" type="button" @click="switchEditorMode('markdown')">
+            <button
+              class="dev-resource-homepage-editor__mode-button"
+              :class="{ 'is-active': editorMode === 'markdown' }"
+              type="button"
+              @click="switchEditorMode('markdown')"
+            >
               Markdown
             </button>
           </div>
 
           <div v-if="editorMode === 'rich'" class="dev-resource-homepage-editor__toolbar">
-            <button v-for="item in toolbarActions" :key="`${item.action}:${item.label}`"
-              class="dev-resource-homepage-editor__tool" :class="{ 'is-active': isToolbarActive(item.action) }"
-              type="button" :title="item.title" @click="runToolbarAction(item.action)">
+            <button
+              v-for="item in toolbarActions"
+              :key="`${item.action}:${item.label}`"
+              class="dev-resource-homepage-editor__tool"
+              :class="{ 'is-active': isToolbarActive(item.action) }"
+              type="button"
+              :title="item.title"
+              @click="runToolbarAction(item.action)"
+            >
               {{ item.label }}
             </button>
-            <button class="dev-resource-homepage-editor__tool" :class="{ 'is-active': editor?.isActive('link') }"
-              type="button" title="插入链接" @click="toggleLink">
+            <button
+              class="dev-resource-homepage-editor__tool"
+              :class="{ 'is-active': editor?.isActive('link') }"
+              type="button"
+              title="插入链接"
+              @click="toggleLink"
+            >
               链接
             </button>
-            <button class="dev-resource-homepage-editor__tool" type="button" title="清除格式"
-              @click="clearFormatting">清除格式</button>
+            <button
+              class="dev-resource-homepage-editor__tool"
+              type="button"
+              title="清除格式"
+              @click="clearFormatting"
+            >
+              清除格式
+            </button>
           </div>
 
           <div v-if="editorMode === 'rich'" class="dev-resource-homepage-editor__editor">
@@ -496,7 +547,10 @@ onBeforeUnmount(() => {
           </div>
 
           <div v-else class="dev-resource-homepage-editor__markdown-panel">
-            <textarea v-model="markdownDraft" class="dev-resource-homepage-editor__markdown-input" spellcheck="false"
+            <textarea
+              v-model="markdownDraft"
+              class="dev-resource-homepage-editor__markdown-input"
+              spellcheck="false"
               placeholder="# dsa
 
 ## 小标题
@@ -507,7 +561,9 @@ onBeforeUnmount(() => {
 ```ts
 console.log('hello')
 ```
-" @input="form.release_note = markdownDraft" />
+"
+              @input="form.release_note = markdownDraft"
+            />
           </div>
         </el-card>
       </div>
@@ -520,31 +576,45 @@ console.log('hello')
               <h3 class="dev-section-title">页面预览</h3>
               <p class="dev-section-desc">右侧预览会尽量贴近用户端资源主页的阅读结构。</p>
             </div>
-            <span class="dev-resource-homepage-editor__status-pill">{{ resourceVisibilityLabel }}</span>
+            <span class="dev-resource-homepage-editor__status-pill">{{
+              resourceVisibilityLabel
+            }}</span>
           </div>
 
           <div class="dev-resource-homepage-editor__preview-shell">
             <div class="dev-resource-homepage-editor__preview-cover">
-              <img v-if="coverPreviewUrl" :src="coverPreviewUrl" :alt="form.title"
-                class="dev-resource-homepage-editor__preview-cover-image" />
-              <div v-else class="dev-resource-homepage-editor__preview-cover-fallback">
-                📁
-              </div>
+              <img
+                v-if="coverPreviewUrl"
+                :src="coverPreviewUrl"
+                :alt="form.title"
+                class="dev-resource-homepage-editor__preview-cover-image"
+              />
+              <div v-else class="dev-resource-homepage-editor__preview-cover-fallback">📁</div>
             </div>
 
             <div class="dev-resource-homepage-editor__preview-summary">
               <div class="dev-resource-homepage-editor__preview-pills">
-                <span class="dev-resource-homepage-editor__preview-pill">{{ resource?.platform || '未知平台' }}</span>
-                <span class="dev-resource-homepage-editor__preview-pill">by {{ form.author || resource?.author || '开发者'
+                <span class="dev-resource-homepage-editor__preview-pill">{{
+                  resource?.platform || '未知平台'
                 }}</span>
+                <span class="dev-resource-homepage-editor__preview-pill"
+                  >by {{ form.author || resource?.author || '开发者' }}</span
+                >
               </div>
-              <h2 class="dev-resource-homepage-editor__preview-title">{{ form.title || '资源标题预览' }}</h2>
-              <p class="dev-resource-homepage-editor__preview-desc">{{ form.description || '资源简介会展示在这里，建议保持短句、明确和可快速理解。'
-              }}</p>
+              <h2 class="dev-resource-homepage-editor__preview-title">
+                {{ form.title || '资源标题预览' }}
+              </h2>
+              <p class="dev-resource-homepage-editor__preview-desc">
+                {{ form.description || '资源简介会展示在这里，建议保持短句、明确和可快速理解。' }}
+              </p>
 
               <div v-if="previewTagNames.length" class="dev-resource-homepage-editor__preview-tags">
-                <span v-for="tag in previewTagNames" :key="tag" class="dev-resource-homepage-editor__preview-tag">{{ tag
-                }}</span>
+                <span
+                  v-for="tag in previewTagNames"
+                  :key="tag"
+                  class="dev-resource-homepage-editor__preview-tag"
+                  >{{ tag }}</span
+                >
               </div>
             </div>
 
@@ -553,8 +623,11 @@ console.log('hello')
                 <h4>页面内容</h4>
                 <span>Content</span>
               </div>
-              <div v-if="previewContentHtml" class="dev-resource-homepage-editor__preview-rich-text"
-                v-html="previewContentHtml" />
+              <div
+                v-if="previewContentHtml"
+                class="dev-resource-homepage-editor__preview-rich-text"
+                v-html="previewContentHtml"
+              />
               <p v-else class="dev-resource-homepage-editor__preview-empty">
                 主页补充说明会显示在这里。可以用标题、列表、引用和链接组织内容结构。
               </p>
@@ -722,7 +795,8 @@ console.log('hello')
   outline: none;
 }
 
-.dev-resource-homepage-editor__editor :deep(.dev-resource-homepage-editor__editor-surface p.is-editor-empty:first-child::before) {
+.dev-resource-homepage-editor__editor
+  :deep(.dev-resource-homepage-editor__editor-surface p.is-editor-empty:first-child::before) {
   content: '在这里输入主页补充说明，可插入标题、列表、引用、代码块与链接';
   color: #94a3b8;
   float: left;

@@ -1,76 +1,607 @@
 <script setup lang="ts">
-type FeedItem = {
-  title: string
-  summary: string
-  meta: string
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { EditorContent, useEditor } from '@tiptap/vue-3'
+import Link from '@tiptap/extension-link'
+import StarterKit from '@tiptap/starter-kit'
+import Underline from '@tiptap/extension-underline'
+
+import {
+  createCommunityComment,
+  createCommunityPost,
+  likeCommunityPost,
+  listCommunityComments,
+  listCommunityPosts,
+  listCommunityTags,
+  unlikeCommunityPost,
+  updateCommunityPost,
+  type CommunityComment,
+  type CommunityPost,
+  type CommunityTag,
+} from '@/api/community'
+import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
+import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
+
+type ToolbarAction =
+  | 'bold'
+  | 'italic'
+  | 'underline'
+  | 'h2'
+  | 'h3'
+  | 'bullet'
+  | 'ordered'
+  | 'blockquote'
+  | 'code'
+
+const router = useRouter()
+const auth = useAuthStore()
+const { showToast } = useToast()
+
+const posts = ref<CommunityPost[]>([])
+const tags = ref<CommunityTag[]>([])
+const selectedPost = ref<CommunityPost | null>(null)
+const comments = ref<CommunityComment[]>([])
+const selectedTag = ref('')
+const loading = ref(false)
+const commentsLoading = ref(false)
+const savingPost = ref(false)
+const sendingComment = ref(false)
+const composerVisible = ref(false)
+const editingPost = ref<CommunityPost | null>(null)
+const commentDraft = ref('')
+
+const postForm = reactive({
+  title: '',
+  tag_names: [] as string[],
+  content_html: '',
+})
+
+const toolbarActions: Array<{ label: string; action: ToolbarAction; title: string }> = [
+  { label: 'B', action: 'bold', title: '加粗' },
+  { label: 'I', action: 'italic', title: '斜体' },
+  { label: 'U', action: 'underline', title: '下划线' },
+  { label: 'H2', action: 'h2', title: '二级标题' },
+  { label: 'H3', action: 'h3', title: '三级标题' },
+  { label: '列表', action: 'bullet', title: '无序列表' },
+  { label: '编号', action: 'ordered', title: '有序列表' },
+  { label: '引用', action: 'blockquote', title: '引用' },
+  { label: '</>', action: 'code', title: '代码块' },
+]
+
+const editor = useEditor({
+  content: '<p></p>',
+  extensions: [
+    StarterKit.configure({
+      heading: {
+        levels: [2, 3],
+      },
+    }),
+    Underline,
+    Link.configure({
+      openOnClick: false,
+      autolink: true,
+      defaultProtocol: 'https',
+    }),
+  ],
+  editorProps: {
+    attributes: {
+      class: 'community-editor__surface',
+    },
+  },
+  onUpdate: (payload: any) => {
+    const currentEditor = payload.editor as { getText: () => string; getHTML: () => string }
+    postForm.content_html = currentEditor.getText().trim()
+      ? sanitizeRichHtml(currentEditor.getHTML())
+      : ''
+  },
+})
+
+const currentPostContent = computed(() =>
+  selectedPost.value?.content_html ? sanitizeRichHtml(selectedPost.value.content_html) : '',
+)
+
+const tagOptions = computed(() => tags.value.map((tag) => tag.name))
+const canEditSelectedPost = computed(() =>
+  Boolean(auth.isAuthed && selectedPost.value && selectedPost.value.author === auth.username),
+)
+
+onMounted(() => {
+  auth.hydrate()
+  void loadCommunityData()
+})
+
+onBeforeUnmount(() => {
+  editor.value?.destroy()
+})
+
+async function loadCommunityData() {
+  loading.value = true
+  try {
+    const [nextTags, nextPosts] = await Promise.all([
+      listCommunityTags(),
+      listCommunityPosts({ token: auth.token, tag: selectedTag.value, limit: 30 }),
+    ])
+    tags.value = nextTags
+    posts.value = nextPosts
+    selectPost(nextPosts[0] ?? null)
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '加载社区内容失败', 'error')
+  } finally {
+    loading.value = false
+  }
 }
 
-const feeds: FeedItem[] = [
-  { title: '平台公告与更新日志', summary: '集中同步新分类、规则更新和服务说明。', meta: '公告' },
-  { title: '开发经验与案例', summary: '分享项目交付经验、定价策略和协作模板。', meta: '经验帖' },
-  { title: '资源发布与维护记录', summary: '沉淀版本更新、资源上架和交付复盘。', meta: '案例库' },
-]
+async function loadPostsForTag(tagName = selectedTag.value) {
+  loading.value = true
+  try {
+    const nextPosts = await listCommunityPosts({ token: auth.token, tag: tagName, limit: 30 })
+    posts.value = nextPosts
+    selectPost(nextPosts[0] ?? null)
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '加载社区帖子失败', 'error')
+  } finally {
+    loading.value = false
+  }
+}
 
-const communitySignals = ['公告与日志承接页', '经验内容占位', '后续可升级为内容流']
-const communityHighlights = [
-  { title: '平台更新专栏', summary: '统一承接门户公告、规则更新与版本日志。', meta: '更新' },
-  { title: '开发者经验帖', summary: '逐步沉淀接单、交付、报价和协作的实战经验。', meta: '经验' },
-  { title: '资源维护记录', summary: '把资源发布、版本维护与问题修复整合为内容时间线。', meta: '维护' },
-]
+function selectTag(tagName: string) {
+  selectedTag.value = selectedTag.value === tagName ? '' : tagName
+  void loadPostsForTag(selectedTag.value)
+}
+
+function selectPost(post: CommunityPost | null) {
+  selectedPost.value = post
+  commentDraft.value = ''
+  if (post) {
+    void loadComments(post.id)
+  } else {
+    comments.value = []
+  }
+}
+
+async function loadComments(postId: number) {
+  commentsLoading.value = true
+  try {
+    comments.value = await listCommunityComments(postId)
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '加载评论失败', 'error')
+  } finally {
+    commentsLoading.value = false
+  }
+}
+
+function ensureAuthed(): boolean {
+  auth.hydrate()
+  if (auth.isAuthed) {
+    return true
+  }
+  showToast('请先登录后再操作社区内容', 'warning')
+  void router.push({ name: 'home', query: { modal: 'auth', redirect_to: '/community' } })
+  return false
+}
+
+function resetComposer() {
+  editingPost.value = null
+  postForm.title = ''
+  postForm.tag_names = selectedTag.value ? [selectedTag.value] : []
+  postForm.content_html = ''
+  editor.value?.commands.setContent('<p></p>', { emitUpdate: false })
+}
+
+function openCreateComposer() {
+  if (!ensureAuthed()) {
+    return
+  }
+  resetComposer()
+  composerVisible.value = true
+}
+
+function openEditComposer(post: CommunityPost) {
+  if (!ensureAuthed()) {
+    return
+  }
+  editingPost.value = post
+  postForm.title = post.title
+  postForm.tag_names = post.tags.map((tag) => tag.name)
+  postForm.content_html = sanitizeRichHtml(post.content_html)
+  editor.value?.commands.setContent(postForm.content_html || '<p></p>', { emitUpdate: false })
+  composerVisible.value = true
+}
+
+function closeComposer() {
+  composerVisible.value = false
+  resetComposer()
+}
+
+function runToolbarAction(action: ToolbarAction) {
+  if (!editor.value) {
+    return
+  }
+
+  const chain = editor.value.chain().focus()
+  switch (action) {
+    case 'bold':
+      chain.toggleBold().run()
+      return
+    case 'italic':
+      chain.toggleItalic().run()
+      return
+    case 'underline':
+      chain.toggleUnderline().run()
+      return
+    case 'h2':
+      chain.toggleHeading({ level: 2 }).run()
+      return
+    case 'h3':
+      chain.toggleHeading({ level: 3 }).run()
+      return
+    case 'bullet':
+      chain.toggleBulletList().run()
+      return
+    case 'ordered':
+      chain.toggleOrderedList().run()
+      return
+    case 'blockquote':
+      chain.toggleBlockquote().run()
+      return
+    case 'code':
+      chain.toggleCodeBlock().run()
+      return
+  }
+}
+
+function isToolbarActive(action: ToolbarAction): boolean {
+  if (!editor.value) {
+    return false
+  }
+
+  switch (action) {
+    case 'bold':
+      return editor.value.isActive('bold')
+    case 'italic':
+      return editor.value.isActive('italic')
+    case 'underline':
+      return editor.value.isActive('underline')
+    case 'h2':
+      return editor.value.isActive('heading', { level: 2 })
+    case 'h3':
+      return editor.value.isActive('heading', { level: 3 })
+    case 'bullet':
+      return editor.value.isActive('bulletList')
+    case 'ordered':
+      return editor.value.isActive('orderedList')
+    case 'blockquote':
+      return editor.value.isActive('blockquote')
+    case 'code':
+      return editor.value.isActive('codeBlock')
+  }
+}
+
+function toggleLink() {
+  if (!editor.value) {
+    return
+  }
+
+  const currentHref = editor.value.getAttributes('link').href ?? ''
+  const value = window.prompt('输入跳转链接，留空将移除链接', currentHref)?.trim()
+  if (value === undefined) {
+    return
+  }
+
+  if (!value) {
+    editor.value.chain().focus().extendMarkRange('link').unsetLink().run()
+    return
+  }
+
+  editor.value.chain().focus().extendMarkRange('link').setLink({ href: value }).run()
+}
+
+function clearFormatting() {
+  editor.value?.chain().focus().unsetAllMarks().clearNodes().run()
+}
+
+async function submitPost() {
+  if (!ensureAuthed() || savingPost.value) {
+    return
+  }
+
+  savingPost.value = true
+  try {
+    const isEditing = Boolean(editingPost.value)
+    const editingId = editingPost.value?.id
+    const payload = {
+      title: postForm.title.trim(),
+      tag_names: postForm.tag_names.map((tag) => tag.trim()).filter(Boolean),
+      content_html: sanitizeRichHtml(postForm.content_html),
+    }
+    const saved =
+      isEditing && editingId
+        ? await updateCommunityPost(auth.token, editingId, payload)
+        : await createCommunityPost(auth.token, payload)
+
+    await Promise.all([loadCommunityData(), loadComments(saved.id)])
+    selectPost(saved)
+    closeComposer()
+    showToast(isEditing ? '帖子已更新' : '帖子已发布', 'success')
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '保存帖子失败', 'error')
+  } finally {
+    savingPost.value = false
+  }
+}
+
+function updateSelectedPost(patch: Partial<CommunityPost>) {
+  if (!selectedPost.value) {
+    return
+  }
+  const postId = selectedPost.value.id
+  posts.value = posts.value.map((post) => (post.id === postId ? { ...post, ...patch } : post))
+  selectedPost.value = { ...selectedPost.value, ...patch }
+}
+
+async function toggleLike(post: CommunityPost) {
+  if (!ensureAuthed()) {
+    return
+  }
+
+  try {
+    const state = post.liked_by_me
+      ? await unlikeCommunityPost(auth.token, post.id)
+      : await likeCommunityPost(auth.token, post.id)
+    posts.value = posts.value.map((item) =>
+      item.id === post.id
+        ? { ...item, liked_by_me: state.liked_by_me, like_count: state.like_count }
+        : item,
+    )
+    if (selectedPost.value?.id === post.id) {
+      updateSelectedPost({ liked_by_me: state.liked_by_me, like_count: state.like_count })
+    }
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '点赞失败', 'error')
+  }
+}
+
+async function submitComment() {
+  if (!selectedPost.value || !ensureAuthed() || sendingComment.value) {
+    return
+  }
+
+  sendingComment.value = true
+  try {
+    const created = await createCommunityComment(
+      auth.token,
+      selectedPost.value.id,
+      commentDraft.value,
+    )
+    comments.value = [...comments.value, created]
+    updateSelectedPost({ comment_count: (selectedPost.value.comment_count ?? 0) + 1 })
+    commentDraft.value = ''
+    showToast('评论已发布', 'success')
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '发表评论失败', 'error')
+  } finally {
+    sendingComment.value = false
+  }
+}
 </script>
 
 <template>
   <main class="portal-page portal-page--nav community-page">
-    <section class="community-layout">
-      <section class="community-panel">
-        <div class="community-header">
-          <div class="community-header__copy">
+    <section class="community-board">
+      <section class="community-stream">
+        <div class="community-hero">
+          <div>
             <p class="portal-page__eyebrow">社区内容</p>
-            <h2>公告、经验与资源复盘</h2>
-            <p class="community-lead">汇总平台公告、开发协作经验和资源维护记录，后续会逐步升级为内容流。</p>
-            <div class="community-signal-list" aria-label="社区内容状态">
-              <span v-for="signal in communitySignals" :key="signal" class="community-signal">
-                {{ signal }}
-              </span>
-            </div>
+            <h2>开发者与用户帖子</h2>
+            <p>发布公告、经验、资源维护记录和需求协作复盘，让平台内容从占位板块变成真实社区。</p>
           </div>
-
-          <div class="community-header__badge" aria-hidden="true">
-            <span>73Info</span>
-            <strong>Community</strong>
+          <div class="community-hero__actions">
+            <el-button :loading="loading" @click="loadCommunityData">刷新</el-button>
+            <el-button type="primary" @click="openCreateComposer">发布帖子</el-button>
           </div>
         </div>
 
-        <div class="community-card-grid">
-          <article v-for="(item, index) in communityHighlights" :key="item.title" class="community-card">
-            <div class="community-card__topline">
-              <span class="portal-page__chip">{{ item.meta }}</span>
-              <span class="community-card__index">{{ String(index + 1).padStart(2, '0') }}</span>
+        <div class="community-tag-row">
+          <button
+            class="community-tag"
+            :class="{ 'is-active': !selectedTag }"
+            type="button"
+            @click="selectTag('')"
+          >
+            全部
+          </button>
+          <button
+            v-for="tag in tags"
+            :key="tag.id"
+            class="community-tag"
+            :class="{ 'is-active': selectedTag === tag.name }"
+            type="button"
+            @click="selectTag(tag.name)"
+          >
+            {{ tag.name }}
+          </button>
+        </div>
+
+        <div v-if="loading" class="community-empty">社区内容加载中</div>
+        <div v-else-if="posts.length === 0" class="community-empty">
+          <strong>暂无帖子</strong>
+          <span>成为第一位发布内容的人。</span>
+        </div>
+        <div v-else class="community-post-list">
+          <article
+            v-for="post in posts"
+            :key="post.id"
+            class="community-post-card"
+            :class="{ 'is-active': selectedPost?.id === post.id }"
+            @click="selectPost(post)"
+          >
+            <div class="community-post-card__head">
+              <div>
+                <h3>{{ post.title }}</h3>
+                <p>{{ post.author }} · {{ post.published_at }}</p>
+              </div>
+              <span>{{ post.like_count }} 赞</span>
             </div>
-            <div>
-              <h3>{{ item.title }}</h3>
-              <p>{{ item.summary }}</p>
+            <div class="community-post-card__tags">
+              <span v-for="tag in post.tags" :key="tag.id">{{ tag.name }}</span>
+            </div>
+            <div class="community-post-card__meta">
+              <span>{{ post.comment_count }} 条评论</span>
+              <span>更新 {{ post.updated_at }}</span>
             </div>
           </article>
         </div>
       </section>
 
-      <aside class="community-aside">
-        <section class="community-feed-card">
-          <div class="community-feed-card__head">
-            <h3>最新动态</h3>
-            <span>同步中</span>
+      <aside class="community-detail">
+        <section v-if="composerVisible" class="community-panel community-composer">
+          <div class="community-panel__head">
+            <div>
+              <p class="portal-page__eyebrow">{{ editingPost ? '编辑帖子' : '发布帖子' }}</p>
+              <h3>{{ editingPost ? '更新社区内容' : '写一篇新帖子' }}</h3>
+            </div>
+            <el-button plain @click="closeComposer">取消</el-button>
           </div>
-          <ul class="community-feed-list">
-            <li v-for="item in feeds" :key="item.title" class="community-feed-item">
-              <span class="community-feed-item__line" aria-hidden="true"></span>
-              <div class="community-feed-item__body">
-                <span class="portal-page__chip">{{ item.meta }}</span>
-                <strong>{{ item.title }}</strong>
-                <p>{{ item.summary }}</p>
+
+          <el-form label-position="top" class="community-form">
+            <el-form-item label="标题">
+              <el-input
+                v-model="postForm.title"
+                maxlength="80"
+                show-word-limit
+                placeholder="写一个清楚的标题"
+              />
+            </el-form-item>
+            <el-form-item label="标签">
+              <el-select
+                v-model="postForm.tag_names"
+                multiple
+                filterable
+                allow-create
+                default-first-option
+                placeholder="选择或输入标签"
+              >
+                <el-option v-for="tag in tagOptions" :key="tag" :label="tag" :value="tag" />
+              </el-select>
+            </el-form-item>
+          </el-form>
+
+          <div class="community-editor">
+            <div class="community-editor__toolbar">
+              <button
+                v-for="item in toolbarActions"
+                :key="item.action"
+                class="community-editor__tool"
+                :class="{ 'is-active': isToolbarActive(item.action) }"
+                type="button"
+                :title="item.title"
+                @click="runToolbarAction(item.action)"
+              >
+                {{ item.label }}
+              </button>
+              <button
+                class="community-editor__tool"
+                type="button"
+                title="插入链接"
+                @click="toggleLink"
+              >
+                链接
+              </button>
+              <button
+                class="community-editor__tool"
+                type="button"
+                title="清除格式"
+                @click="clearFormatting"
+              >
+                清除
+              </button>
+            </div>
+            <EditorContent v-if="editor" :editor="editor" />
+          </div>
+
+          <div class="community-composer__actions">
+            <el-button type="primary" :loading="savingPost" @click="submitPost">
+              {{ editingPost ? '保存修改' : '发布帖子' }}
+            </el-button>
+          </div>
+        </section>
+
+        <section v-else-if="selectedPost" class="community-panel community-post-detail">
+          <div class="community-detail__header">
+            <div>
+              <div class="community-post-card__tags">
+                <span v-for="tag in selectedPost.tags" :key="tag.id">{{ tag.name }}</span>
               </div>
-            </li>
-          </ul>
+              <h2>{{ selectedPost.title }}</h2>
+              <p>
+                {{ selectedPost.author }} 发布于 {{ selectedPost.published_at }} · 更新
+                {{ selectedPost.updated_at }}
+              </p>
+            </div>
+            <el-button v-if="canEditSelectedPost" plain @click="openEditComposer(selectedPost)"
+              >编辑</el-button
+            >
+          </div>
+
+          <article class="community-rich-text" v-html="currentPostContent"></article>
+
+          <div class="community-actions">
+            <el-button
+              :type="selectedPost.liked_by_me ? 'primary' : 'default'"
+              @click="toggleLike(selectedPost)"
+            >
+              {{ selectedPost.liked_by_me ? '已点赞' : '点赞' }} · {{ selectedPost.like_count }}
+            </el-button>
+            <span>{{ selectedPost.comment_count }} 条评论</span>
+          </div>
+
+          <section class="community-comments">
+            <div class="community-comments__head">
+              <h3>评论</h3>
+              <span v-if="commentsLoading">加载中</span>
+            </div>
+
+            <div class="community-comment-box">
+              <el-input
+                v-model="commentDraft"
+                type="textarea"
+                :rows="3"
+                maxlength="800"
+                show-word-limit
+                placeholder="说点具体的想法或补充"
+              />
+              <el-button type="primary" :loading="sendingComment" @click="submitComment"
+                >发表评论</el-button
+              >
+            </div>
+
+            <div v-if="comments.length === 0" class="community-empty community-empty--compact">
+              暂无评论
+            </div>
+            <ul v-else class="community-comment-list">
+              <li v-for="comment in comments" :key="comment.id" class="community-comment-item">
+                <div class="community-comment-item__avatar">
+                  <img
+                    v-if="comment.commenter_avatar_url"
+                    :src="comment.commenter_avatar_url"
+                    :alt="`${comment.commenter} 的头像`"
+                  />
+                  <span v-else>{{ comment.commenter.slice(0, 1) }}</span>
+                </div>
+                <div>
+                  <strong>{{ comment.commenter }}</strong>
+                  <p>{{ comment.comment_text }}</p>
+                  <time>{{ comment.created_at }}</time>
+                </div>
+              </li>
+            </ul>
+          </section>
+        </section>
+
+        <section v-else class="community-panel community-empty">
+          <strong>选择一篇帖子查看详情</strong>
+          <span>也可以直接发布新的社区内容。</span>
         </section>
       </aside>
     </section>
@@ -82,292 +613,395 @@ const communityHighlights = [
   width: min(1360px, calc(100% - 24px));
 }
 
-.community-layout {
+.community-board {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.42fr);
+  grid-template-columns: minmax(0, 0.92fr) minmax(420px, 1.08fr);
   gap: 18px;
   align-items: start;
 }
 
-.community-panel,
-.community-feed-card,
-.community-card {
+.community-stream,
+.community-panel {
   border: 1px solid rgba(198, 210, 236, 0.72);
-  background: rgba(255, 255, 255, 0.94);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 12px 30px rgba(90, 120, 180, 0.08);
 }
 
-.community-panel,
-.community-feed-card {
-  border-radius: 18px;
+.community-stream,
+.community-panel {
   padding: 18px;
 }
 
-.community-header {
+.community-detail {
+  position: sticky;
+  top: 84px;
+}
+
+.community-hero {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 18px;
+  gap: 16px;
   margin-bottom: 16px;
   padding: 20px;
   border-radius: 16px;
-  border: 1px solid rgba(219, 234, 254, 0.86);
+  border: 1px solid rgba(219, 234, 254, 0.88);
   background: linear-gradient(135deg, #ffffff 0%, #f8fbff 58%, #eef6ff 100%);
 }
 
-.community-header__copy {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.community-header h2,
-.community-feed-card h3,
-.community-card h3 {
+.community-hero h2,
+.community-panel h2,
+.community-panel h3,
+.community-post-card h3 {
   margin: 0;
   color: #0f172a;
 }
 
-.community-header h2 {
-  font-size: clamp(24px, 2.4vw, 34px);
-  line-height: 1.16;
+.community-hero h2 {
+  margin-top: 4px;
+  font-size: clamp(24px, 2vw, 32px);
 }
 
-.community-lead,
-.community-card p,
-.community-feed-item p {
-  margin: 0;
+.community-hero p,
+.community-detail__header p,
+.community-post-card p,
+.community-post-card__meta,
+.community-actions,
+.community-empty,
+.community-comment-item time {
   color: #64748b;
   line-height: 1.7;
 }
 
-.community-lead {
-  max-width: 720px;
-  font-size: 15px;
+.community-hero p {
+  max-width: 620px;
+  margin: 8px 0 0;
 }
 
-.community-signal-list {
+.community-hero__actions,
+.community-panel__head,
+.community-detail__header,
+.community-comments__head,
+.community-actions,
+.community-composer__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.community-tag-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 4px;
+  margin-bottom: 14px;
 }
 
-.community-signal {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 5px 10px;
+.community-tag {
+  min-height: 30px;
+  padding: 5px 11px;
+  border: 1px solid rgba(219, 234, 254, 0.92);
   border-radius: 999px;
-  background: rgba(239, 246, 255, 0.92);
+  background: rgba(239, 246, 255, 0.76);
   color: #1d4ed8;
-  font-size: 12px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
   font-weight: 800;
 }
 
-.community-header__badge {
-  display: grid;
-  min-width: 176px;
-  place-content: center;
-  gap: 6px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #2563eb, #14b8a6);
+.community-tag.is-active {
+  background: #2563eb;
   color: #fff;
-  text-align: center;
-  box-shadow: 0 16px 30px rgba(37, 99, 235, 0.18);
 }
 
-.community-header__badge span {
-  font-size: 12px;
-  font-weight: 800;
-  opacity: 0.82;
-}
-
-.community-header__badge strong {
-  font-size: 22px;
-  line-height: 1;
-}
-
-.community-card-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.community-card {
+.community-post-list {
   display: flex;
-  min-height: 180px;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 18px;
+  gap: 12px;
+}
+
+.community-post-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
   border-radius: 16px;
+  background: #fff;
+  cursor: pointer;
   transition:
     border-color 140ms ease,
     box-shadow 140ms ease,
     transform 140ms ease;
 }
 
-.community-card:hover {
-  border-color: rgba(147, 197, 253, 0.92);
-  box-shadow: 0 18px 38px rgba(37, 99, 235, 0.12);
-  transform: translateY(-2px);
+.community-post-card:hover,
+.community-post-card.is-active {
+  border-color: rgba(37, 99, 235, 0.48);
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.09);
+  transform: translateY(-1px);
 }
 
-.community-card__topline {
+.community-post-card__head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.community-card__index {
-  color: rgba(37, 99, 235, 0.22);
-  font-size: 28px;
-  font-weight: 900;
-  line-height: 1;
+.community-post-card__head h3 {
+  margin-bottom: 6px;
+  font-size: 18px;
 }
 
-.community-card h3 {
-  margin-bottom: 12px;
-  font-size: 20px;
+.community-post-card__head span {
+  flex-shrink: 0;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 800;
 }
 
-.community-aside {
-  position: sticky;
-  top: 84px;
-}
-
-.community-feed-card__head {
+.community-post-card__tags {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.community-feed-card__head h3 {
-  font-size: 22px;
-}
-
-.community-feed-card__head span {
+.community-post-card__tags span {
   display: inline-flex;
-  align-items: center;
-  min-height: 28px;
   padding: 5px 10px;
   border-radius: 999px;
-  background: rgba(240, 253, 250, 0.95);
-  color: #0f766e;
+  background: rgba(219, 234, 254, 0.9);
+  color: #1d4ed8;
   font-size: 12px;
   font-weight: 800;
 }
 
-.community-feed-list {
+.community-post-card__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.community-panel__head,
+.community-detail__header {
+  margin-bottom: 18px;
+}
+
+.community-detail__header {
+  align-items: flex-start;
+}
+
+.community-detail__header h2 {
+  margin: 12px 0 8px;
+  font-size: clamp(24px, 2vw, 32px);
+  line-height: 1.2;
+}
+
+.community-form :deep(.el-select) {
+  width: 100%;
+}
+
+.community-editor {
+  overflow: hidden;
+  border: 1px solid rgba(203, 213, 225, 0.86);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.community-editor__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.86);
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.community-editor__tool {
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 1px solid rgba(203, 213, 225, 0.86);
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.community-editor__tool.is-active {
+  border-color: #2563eb;
+  background: rgba(219, 234, 254, 0.92);
+  color: #1d4ed8;
+}
+
+.community-editor :deep(.community-editor__surface) {
+  min-height: 260px;
+  padding: 16px;
+  outline: none;
+}
+
+.community-composer__actions {
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.community-rich-text {
+  padding: 6px 0 18px;
+  color: #1e293b;
+  line-height: 1.75;
+}
+
+.community-rich-text :deep(h2),
+.community-rich-text :deep(h3) {
+  margin: 18px 0 10px;
+  color: #0f172a;
+}
+
+.community-rich-text :deep(p),
+.community-rich-text :deep(ul),
+.community-rich-text :deep(ol),
+.community-rich-text :deep(blockquote) {
+  margin: 0 0 12px;
+}
+
+.community-rich-text :deep(a) {
+  color: #2563eb;
+}
+
+.community-rich-text :deep(pre) {
+  overflow: auto;
+  padding: 14px;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.community-rich-text :deep(blockquote) {
+  padding-left: 14px;
+  border-left: 3px solid #bfdbfe;
+  color: #475569;
+}
+
+.community-actions {
+  justify-content: flex-start;
+  padding: 14px 0;
+  border-top: 1px solid rgba(226, 232, 240, 0.86);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.86);
+}
+
+.community-comments {
+  padding-top: 16px;
+}
+
+.community-comments__head {
+  margin-bottom: 12px;
+}
+
+.community-comment-box {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.community-comment-box .el-button {
+  justify-self: flex-end;
+}
+
+.community-comment-list {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 14px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.community-feed-item {
-  position: relative;
+.community-comment-item {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-columns: 38px minmax(0, 1fr);
   gap: 12px;
-  padding: 0 0 20px;
 }
 
-.community-feed-item:last-child {
-  padding-bottom: 0;
-}
-
-.community-feed-item__line {
-  position: relative;
-  display: block;
-}
-
-.community-feed-item__line::before {
-  content: '';
-  position: absolute;
-  top: 8px;
-  left: 5px;
-  width: 8px;
-  height: 8px;
+.community-comment-item__avatar {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  overflow: hidden;
   border-radius: 999px;
-  background: #2563eb;
-  box-shadow: 0 0 0 5px rgba(219, 234, 254, 0.92);
+  background: rgba(219, 234, 254, 0.92);
+  color: #1d4ed8;
+  font-weight: 900;
 }
 
-.community-feed-item__line::after {
-  content: '';
-  position: absolute;
-  top: 24px;
-  bottom: -4px;
-  left: 8px;
-  width: 1px;
-  background: rgba(203, 213, 225, 0.78);
+.community-comment-item__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.community-feed-item:last-child .community-feed-item__line::after {
-  display: none;
-}
-
-.community-feed-item__body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-bottom: 18px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.76);
-}
-
-.community-feed-item:last-child .community-feed-item__body {
-  padding-bottom: 0;
-  border-bottom: 0;
-}
-
-.community-feed-item strong {
+.community-comment-item strong {
   color: #0f172a;
-  font-size: 17px;
+}
+
+.community-comment-item p {
+  margin: 6px 0;
+  color: #334155;
+  line-height: 1.65;
+}
+
+.community-empty {
+  display: flex;
+  min-height: 160px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.community-empty--compact {
+  min-height: 72px;
+}
+
+.community-empty strong {
+  color: #0f172a;
 }
 
 @media (max-width: 1100px) {
-  .community-layout {
+  .community-board {
     grid-template-columns: 1fr;
   }
 
-  .community-aside {
+  .community-detail {
     position: static;
   }
 }
 
-@media (max-width: 860px) {
-  .community-header {
-    flex-direction: column;
-  }
-
-  .community-header__badge {
-    min-height: 96px;
-    min-width: 0;
-  }
-
-  .community-card-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 560px) {
+@media (max-width: 760px) {
   .community-page {
     width: calc(100% - 16px);
   }
 
-  .community-panel,
-  .community-feed-card,
-  .community-header,
-  .community-card {
-    padding: 16px;
+  .community-hero,
+  .community-post-card__head,
+  .community-detail__header,
+  .community-panel__head,
+  .community-post-card__meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .community-hero__actions {
+    width: 100%;
   }
 }
 </style>

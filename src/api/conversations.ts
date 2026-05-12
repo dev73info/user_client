@@ -7,11 +7,15 @@ export type RequirementConversation = {
   requirement_id: string
   requirement_title: string
   customer: string
+  customer_avatar_url?: string | null
   developer: string
   status: 'open' | 'closed'
   requirement_status: string
   last_message_at?: string | null
   last_message_by?: string | null
+  last_message_content?: string | null
+  last_message_attachment_url?: string | null
+  last_message_attachment_mime?: string | null
   created_at: string
   updated_at: string
 }

@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
+import { apiUrl } from '@/api/http'
 import {
   listRequirementConversations,
   subscribeRequirementConversationEvents,
@@ -30,6 +31,8 @@ type MessageThread = {
   lastLabel: string
   description: string
   actionLabel: string
+  avatarUrl: string
+  avatarText: string
   sortTime: number
 }
 
@@ -44,6 +47,7 @@ const loading = ref(false)
 const conversations = ref<RequirementConversation[]>([])
 const requirements = ref<RequirementItem[]>([])
 const activeFilter = ref<MessageFilter>('all')
+const searchKeyword = ref('')
 const activeRequirementId = ref('')
 const activeTitle = ref('')
 const realtimeStatus = ref<RealtimeStatus>('idle')
@@ -77,13 +81,33 @@ const allThreads = computed<MessageThread[]>(() =>
   [...conversationThreads.value, ...pendingThreads.value].sort((left, right) => right.sortTime - left.sortTime),
 )
 const filteredThreads = computed(() => {
+  const normalizedKeyword = searchKeyword.value.trim().toLowerCase()
+  const matchesKeyword = (item: MessageThread) => {
+    if (!normalizedKeyword) {
+      return true
+    }
+
+    return [
+      item.requirementId,
+      item.title,
+      item.statusLabel,
+      item.modeLabel,
+      item.partnerLabel,
+      item.lastLabel,
+      item.description,
+    ]
+      .join(' ')
+      .toLowerCase()
+      .includes(normalizedKeyword)
+  }
+
   if (activeFilter.value === 'active') {
-    return conversationThreads.value
+    return conversationThreads.value.filter(matchesKeyword)
   }
   if (activeFilter.value === 'pending') {
-    return pendingThreads.value
+    return pendingThreads.value.filter(matchesKeyword)
   }
-  return allThreads.value
+  return allThreads.value.filter(matchesKeyword)
 })
 const recentConversationCount = computed(() =>
   activeConversations.value.filter((item) => isRecent(item.last_message_at ?? item.updated_at)).length,
@@ -178,6 +202,28 @@ function lastMessageLabel(item: RequirementConversation) {
   return `${formatMessageTime(item.last_message_at)} · ${sender}`
 }
 
+function latestMessagePreview(item: RequirementConversation) {
+  if (!item.last_message_at) {
+    return '会话已开启，可以发送第一条消息。'
+  }
+  if (item.last_message_attachment_url?.trim()) {
+    return '[附件]'
+  }
+
+  const content = item.last_message_content?.trim().replace(/\s+/g, ' ')
+  return content || '[附件]'
+}
+
+function avatarText(value?: string | null) {
+  const normalized = value?.trim() || 'U'
+  return normalized.slice(0, 1).toUpperCase()
+}
+
+function customerAvatarUrl(item: RequirementConversation) {
+  const avatarUrl = item.customer_avatar_url?.trim()
+  return avatarUrl ? apiUrl(avatarUrl) : ''
+}
+
 function buildConversationThread(item: RequirementConversation): MessageThread {
   const requirement = requirementById.value[item.requirement_id]
   return {
@@ -189,8 +235,10 @@ function buildConversationThread(item: RequirementConversation): MessageThread {
     modeLabel: formatPaymentMode(requirement),
     partnerLabel: partnerLabel(item),
     lastLabel: lastMessageLabel(item),
-    description: item.last_message_at ? '继续跟进需求细节、交付版本或付款确认。' : '会话已开启，可以发送第一条消息。',
+    description: latestMessagePreview(item),
     actionLabel: item.last_message_at ? '查看沟通' : '开始沟通',
+    avatarUrl: customerAvatarUrl(item),
+    avatarText: avatarText(item.customer || item.requirement_title),
     sortTime: parseTime(item.last_message_at ?? item.updated_at ?? item.created_at),
   }
 }
@@ -207,16 +255,20 @@ function buildPendingThread(item: RequirementItem): MessageThread {
     lastLabel: '打开后创建沟通会话',
     description: '需求已接取但本地尚未拿到会话记录，打开后会自动同步。',
     actionLabel: '开启会话',
+    avatarUrl: '',
+    avatarText: avatarText(item.creator || item.title),
     sortTime: parseTime(item.updated_at),
   }
 }
 
 function threadAvatarText(item: MessageThread) {
-  const source = item.partnerLabel.replace(/^(开发者：|用户：)/, '').trim() || item.title.trim()
-  return source.slice(0, 1).toUpperCase()
+  return item.avatarText
 }
 
 function emptyTitle() {
+  if (searchKeyword.value.trim()) {
+    return '没有匹配的会话'
+  }
   if (activeFilter.value === 'active') {
     return '还没有已开启的会话'
   }
@@ -227,6 +279,9 @@ function emptyTitle() {
 }
 
 function emptyDescription() {
+  if (searchKeyword.value.trim()) {
+    return '换个关键词，或清空搜索后查看全部消息。'
+  }
   if (activeFilter.value === 'active') {
     return '需求被开发者接取后，会自动出现在这里。'
   }
@@ -239,6 +294,10 @@ function emptyDescription() {
 function showThread(item: MessageThread) {
   activeRequirementId.value = item.requirementId
   activeTitle.value = item.title
+}
+
+function clearSearch() {
+  searchKeyword.value = ''
 }
 
 function openThread(item: MessageThread) {
@@ -384,6 +443,16 @@ watch(
 
 <template>
   <main class="page-shell custom-page-shell messages-page">
+    <section v-if="!activeRequirementId" class="messages-search" aria-label="搜索消息">
+      <span class="messages-search__icon" aria-hidden="true"></span>
+      <input v-model="searchKeyword" type="text" inputmode="search" enterkeyhint="search" autocomplete="off"
+        spellcheck="false" placeholder="搜索需求标题、编号、对方或消息..." @keydown.esc="clearSearch" />
+      <button v-if="searchKeyword.trim()" type="button" class="messages-search__clear" aria-label="清空搜索关键词" title="清空搜索"
+        @click="clearSearch">
+        ×
+      </button>
+    </section>
+
     <section v-if="!activeRequirementId" class="messages-summary" aria-label="消息概览">
       <article class="messages-summary__item">
         <strong>{{ activeConversations.length }}</strong>
@@ -435,6 +504,9 @@ watch(
       <div v-else-if="filteredThreads.length === 0" class="messages-empty">
         <strong>{{ emptyTitle() }}</strong>
         <p>{{ emptyDescription() }}</p>
+        <button v-if="searchKeyword.trim()" class="ghost small" type="button" @click="clearSearch">
+          清空搜索
+        </button>
         <button v-if="activeFilter !== 'all'" class="ghost small" type="button" @click="activeFilter = 'all'">
           查看全部
         </button>
@@ -442,7 +514,10 @@ watch(
       <div v-else class="messages-thread-list">
         <button v-for="item in filteredThreads" :key="item.key" type="button" class="messages-thread"
           :class="{ 'messages-thread--pending': item.kind === 'pending' }" @click="openThread(item)">
-          <span class="messages-thread__avatar" aria-hidden="true">{{ threadAvatarText(item) }}</span>
+          <span class="messages-thread__avatar" aria-hidden="true">
+            <img v-if="item.avatarUrl" :src="item.avatarUrl" :alt="`${item.title} 发布者头像`" loading="lazy" />
+            <span v-else>{{ threadAvatarText(item) }}</span>
+          </span>
           <span class="messages-thread__status">{{ item.statusLabel }}</span>
           <span class="messages-thread__main">
             <strong>{{ item.title }}</strong>
@@ -473,6 +548,83 @@ watch(
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+}
+
+.messages-search {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 10px 0 14px;
+  border: 1px solid rgba(209, 220, 243, 0.96);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 20px rgba(76, 103, 172, 0.06);
+}
+
+.messages-search:focus-within {
+  border-color: rgba(37, 99, 235, 0.36);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08), 0 10px 24px rgba(76, 103, 172, 0.1);
+}
+
+.messages-search__icon {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #64748b;
+  border-radius: 999px;
+}
+
+.messages-search__icon::after {
+  content: '';
+  position: absolute;
+  width: 7px;
+  height: 2px;
+  left: 10px;
+  top: 11px;
+  border-radius: 999px;
+  background: #64748b;
+  transform: rotate(45deg);
+  transform-origin: left center;
+}
+
+.messages-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.messages-search input::placeholder {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.messages-search__clear {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.72);
+  color: #64748b;
+  cursor: pointer;
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.messages-search__clear:hover {
+  background: rgba(219, 234, 254, 0.92);
+  color: #1d4ed8;
 }
 
 .messages-summary__item,
@@ -667,6 +819,23 @@ watch(
   display: none;
 }
 
+.messages-thread__avatar img,
+.messages-thread__avatar>span {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.messages-thread__avatar img {
+  display: block;
+  object-fit: cover;
+}
+
+.messages-thread__avatar>span {
+  display: grid;
+  place-items: center;
+}
+
 .messages-thread__status,
 .messages-thread__action {
   display: inline-flex;
@@ -747,7 +916,13 @@ watch(
     width: 100%;
     margin: 0;
     padding: 8px 8px 0;
-    gap: 0;
+    gap: 10px;
+  }
+
+  .messages-search {
+    min-height: 46px;
+    border-radius: 18px;
+    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
   }
 
   .messages-summary {

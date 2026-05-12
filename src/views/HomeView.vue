@@ -137,6 +137,7 @@ type LatestDealView = {
 const latestDeals = ref<LatestDealView[]>([])
 const selectedDeal = ref<LatestDealView | null>(null)
 const dealDetailVisible = ref(false)
+const publicDeveloperCount = ref(0)
 const pendingRequirements = ref<PendingRequirementView[]>([])
 const publicRequirementSpotlights = ref<PublicRequirementSpotlightItem[]>([])
 const processedTagTree = ref<McProcessedTagTree>({ roots: [] })
@@ -496,13 +497,10 @@ function openSpotlight(card: SpotlightCard) {
 
 const platformStats = computed(() => {
   const [completed, , turnover] = metrics.value
-  const creatorCount = new Set(
-    publicResources.value.map((item) => item.creator.trim() || item.author.trim()).filter(Boolean),
-  ).size
   const resourceCount = publicResources.value.length
 
   return [
-    { label: '公开作者', value: `${creatorCount} 位`, icon: '◌' },
+    { label: '开发者', value: `${publicDeveloperCount.value} 位`, icon: '◌' },
     { label: '公开资源', value: `${resourceCount} 条`, icon: '◎' },
     { label: '需求完成', value: completed?.value ?? '0 单', icon: '◈' },
     { label: '交易金额', value: turnover?.value ?? '¥ 0.00', icon: '✦' },
@@ -982,6 +980,7 @@ async function loadRequirementOverview() {
     if (!isMounted) {
       return
     }
+    publicDeveloperCount.value = Number(payload.developer_count ?? 0)
     metrics.value = [
       {
         label: '已完成需求数',
@@ -1785,13 +1784,7 @@ async function submitPublishRequirement() {
       </div>
     </div>
 
-    <a
-      class="portal-qq-float"
-      :href="qqBetaGroupUrl"
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="加入内测 QQ 群"
-    >
+    <a class="portal-qq-float" :href="qqBetaGroupUrl" target="_blank" rel="noopener noreferrer" aria-label="加入内测 QQ 群">
       <el-icon class="portal-qq-float__icon" aria-hidden="true">
         <ChatDotRound />
       </el-icon>
