@@ -73,6 +73,7 @@ type PortalCategory = {
   label: string
   icon: string
   summary: string
+  to: RouteLocationRaw
 }
 
 type WorkflowStep = {
@@ -323,6 +324,12 @@ const portalCategories = computed<PortalCategory[]>(() => {
       label: root.label,
       icon: iconPool[index % iconPool.length] ?? '◌',
       summary,
+      to: {
+        name: 'resource-catalog',
+        params: root.first_entry_key
+          ? { rootSlug: root.key, entrySlug: root.first_entry_key }
+          : { rootSlug: root.key },
+      },
     }
   })
 
@@ -331,12 +338,37 @@ const portalCategories = computed<PortalCategory[]>(() => {
   }
 
   return [
-    { label: '编程开发', icon: '</>', summary: '插件 / SDK / 后台' },
-    { label: '网站开发', icon: '◎', summary: '官网 / CMS / 企业站' },
-    { label: '插画设计', icon: '✦', summary: '视觉 / 角色 / 宣传' },
-    { label: 'Minecraft', icon: '▣', summary: '插件 / 模组 / 服务器' },
-    { label: '移动应用', icon: '⌘', summary: 'iOS / Android / 小程序' },
-    { label: '文案写作', icon: '✎', summary: '说明文档 / 宣发内容' },
+    {
+      label: '编程开发',
+      icon: '</>',
+      summary: '插件 / SDK / 后台',
+      to: { name: 'free-resources' },
+    },
+    {
+      label: '网站开发',
+      icon: '◎',
+      summary: '官网 / CMS / 企业站',
+      to: { name: 'free-resources' },
+    },
+    { label: '插画设计', icon: '✦', summary: '视觉 / 角色 / 宣传', to: { name: 'free-resources' } },
+    {
+      label: 'Minecraft',
+      icon: '▣',
+      summary: '插件 / 模组 / 服务器',
+      to: { name: 'free-resources' },
+    },
+    {
+      label: '移动应用',
+      icon: '⌘',
+      summary: 'iOS / Android / 小程序',
+      to: { name: 'free-resources' },
+    },
+    {
+      label: '文案写作',
+      icon: '✎',
+      summary: '说明文档 / 宣发内容',
+      to: { name: 'free-resources' },
+    },
   ]
 })
 const workflowSteps: WorkflowStep[] = [
@@ -402,6 +434,10 @@ function openQuickPanel(panel: QuickPanel) {
   }
 
   void openPublishModal()
+}
+
+function openPortalCategory(category: PortalCategory) {
+  void router.push(category.to)
 }
 
 function openWorkflowStep(step: WorkflowStep) {
@@ -1374,7 +1410,7 @@ async function submitPublishRequirement() {
                 <div v-if="heroSignals.length" class="portal-signal-list">
                   <span v-for="signal in heroSignals" :key="signal" class="portal-signal">{{
                     signal
-                  }}</span>
+                    }}</span>
                 </div>
 
                 <div class="portal-hero__actions">
@@ -1452,11 +1488,12 @@ async function submitPublishRequirement() {
               </button>
             </div>
             <div class="portal-category-grid">
-              <article v-for="category in portalCategories" :key="category.label" class="portal-category-card">
+              <button v-for="category in portalCategories" :key="category.label" class="portal-category-card"
+                type="button" @click="openPortalCategory(category)">
                 <div class="portal-category-card__icon">{{ category.icon }}</div>
                 <strong>{{ category.label }}</strong>
                 <span>{{ category.summary }}</span>
-              </article>
+              </button>
             </div>
           </section>
 
