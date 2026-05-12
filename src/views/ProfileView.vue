@@ -6,7 +6,6 @@ import RequirementConversationModal from '@/components/RequirementConversationMo
 import { apiUrl } from '@/api/http'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
-import { getMyRealnameVerification, type UserRealnameStatus } from '@/api/realname'
 import {
   confirmPayment,
   createAlipayPagePayment,
@@ -76,8 +75,6 @@ const editBudget = ref<string | number>('')
 const editAcceptance = ref('')
 const editPaymentMode = ref<RequirementPaymentMode>('self_managed')
 const editLoading = ref(false)
-const realnameStatus = ref<UserRealnameStatus | 'none' | ''>('')
-const realnameLoading = ref(false)
 const finalPaymentConfirmVisible = ref(false)
 const finalPaymentConfirmTarget = ref<RequirementItem | null>(null)
 const completionConfirmVisible = ref(false)
@@ -99,21 +96,6 @@ const accountEmailLabel = computed(() => profileEmail.value || '未绑定邮箱'
 const profileAvatarSrc = computed(() => (profileAvatarUrl.value ? apiUrl(profileAvatarUrl.value) : ''))
 const profileInitial = computed(() => Array.from(auth.username || newUsername.value || '用')[0] ?? '用')
 const subscriptionLabel = computed(() => (subscriptionOfficialActivity.value ? '已订阅' : '未订阅'))
-const realnameLabel = computed(() => {
-  if (realnameLoading.value) {
-    return '同步中'
-  }
-  if (realnameStatus.value === 'approved') {
-    return '已认证'
-  }
-  if (realnameStatus.value === 'pending') {
-    return '审核中'
-  }
-  if (realnameStatus.value === 'rejected') {
-    return '已驳回'
-  }
-  return '未认证'
-})
 const requirementStats = computed(() => ({
   total: myRequirements.value.length,
   pending: myRequirements.value.filter((item) => item.status === 'pending_review' || item.status === 'pending_deposit').length,
@@ -423,16 +405,6 @@ async function openPublishModal() {
     return
   }
 
-  if (realnameStatus.value !== 'approved') {
-    await loadRealnameStatus()
-  }
-
-  if (realnameStatus.value !== 'approved') {
-    showToast('请先完成实名认证后再发布需求', 'warning')
-    await router.push({ name: 'workbench-realname', query: { redirect_to: '/workbench' } })
-    return
-  }
-
   publishTitle.value = ''
   publishDescription.value = ''
   publishBudget.value = ''
@@ -452,23 +424,6 @@ function closeSecurityModal() {
   securityVisible.value = false
 }
 
-async function loadRealnameStatus() {
-  if (!auth.token.trim()) {
-    realnameStatus.value = ''
-    return
-  }
-
-  realnameLoading.value = true
-  try {
-    const record = await getMyRealnameVerification(auth.token)
-    realnameStatus.value = record.status
-  } catch {
-    realnameStatus.value = 'none'
-  } finally {
-    realnameLoading.value = false
-  }
-}
-
 async function refreshProfileData() {
   await Promise.all([
     loadCoupons(),
@@ -476,7 +431,6 @@ async function refreshProfileData() {
     loadRequirementConversations(),
     loadDepositRatio(),
     loadProfile(),
-    loadRealnameStatus(),
   ])
   showToast('资料已刷新', 'success')
 }
@@ -1153,7 +1107,6 @@ onMounted(async () => {
     loadRequirementConversations(),
     loadDepositRatio(),
     loadProfile(),
-    loadRealnameStatus(),
   ])
 })
 
@@ -1186,7 +1139,6 @@ onMounted(async () => {
         <div class="overview-hero__main">
           <div class="overview-hero__chips">
             <span>{{ accountEmailLabel }}</span>
-            <span>实名认证：{{ realnameLabel }}</span>
             <span>官方活动：{{ subscriptionLabel }}</span>
           </div>
         </div>

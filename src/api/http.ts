@@ -1,4 +1,5 @@
 import { apiUrl, normalizeBackendPath } from '@/shared/api/url'
+import { dispatchAuthUnauthorized } from '@/shared/api/authEvents'
 
 export { apiUrl, normalizeBackendPath }
 
@@ -24,7 +25,9 @@ function handleUnauthorized(resp: Response, path: string): void {
     return
   }
 
-  throw new HttpError(401, '未登录或登录已过期，请重新登录')
+  const message = '未登录或登录已过期，请重新登录'
+  dispatchAuthUnauthorized({ status: resp.status, path, message })
+  throw new HttpError(401, message)
 }
 
 async function parseJsonResponse<T>(resp: Response, fallbackError: string): Promise<T> {

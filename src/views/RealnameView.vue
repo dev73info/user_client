@@ -2,9 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { HttpError } from '@/api/http'
 import {
-  getMyRealnameVerification,
   submitMyRealnameVerification,
   type RealnameAuthType,
   type SubmitRealnameVerificationPayload,
@@ -18,7 +16,6 @@ const route = useRoute()
 const router = useRouter()
 const { showToast } = useToast()
 
-const loading = ref(false)
 const submitting = ref(false)
 const current = ref<UserRealnameVerification | null>(null)
 
@@ -111,31 +108,6 @@ async function tryRestoreBusinessPage(record?: UserRealnameVerification | null) 
   await router.replace(target)
 }
 
-async function loadMyRealname() {
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    showToast('登录状态已失效，请重新登录', 'error')
-    return
-  }
-
-  loading.value = true
-  try {
-    const record = await getMyRealnameVerification(auth.token)
-    current.value = record
-    patchForm(record)
-    await tryRestoreBusinessPage(record)
-  } catch (err) {
-    if (err instanceof HttpError && err.status === 404) {
-      current.value = null
-      return
-    }
-
-    showToast(err instanceof Error ? err.message : '加载实名认证信息失败', 'error')
-  } finally {
-    loading.value = false
-  }
-}
-
 function validate() {
   if (!form.realName.trim() || !form.idCardNo.trim()) {
     return '请填写姓名和证件号'
@@ -195,7 +167,7 @@ async function submit() {
 }
 
 onMounted(async () => {
-  await loadMyRealname()
+  auth.hydrate()
 })
 </script>
 
@@ -207,7 +179,6 @@ onMounted(async () => {
         <div class="realname-card__head">
           <div class="realname-card__actions">
             <el-tag :type="statusType">{{ statusText }}</el-tag>
-            <el-button plain class="realname-plain-btn" :loading="loading" @click="loadMyRealname">刷新状态</el-button>
           </div>
         </div>
 

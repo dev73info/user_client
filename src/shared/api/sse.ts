@@ -1,3 +1,5 @@
+import { dispatchAuthUnauthorized } from '@/shared/api/authEvents'
+
 type SseMessage = {
   event: string
   data: string
@@ -133,7 +135,14 @@ export function subscribeJsonEventStream<T>(
       })
 
       if (!resp.ok) {
-        if (resp.status === 401 || resp.status === 403) {
+        if (resp.status === 401) {
+          dispatchAuthUnauthorized({
+            status: resp.status,
+            path: url,
+            message: '未登录或登录已过期，请重新登录',
+          })
+          stopped = true
+        } else if (resp.status === 403) {
           stopped = true
         }
         throw new Error(await readStreamError(resp, '订阅会话失败'))

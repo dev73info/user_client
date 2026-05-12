@@ -10,8 +10,6 @@ import {
   sendResetPasswordEmailCode,
   type AuthPayload,
 } from '@dev/api/auth'
-import { getMyRealnameVerification } from '@/api/realname'
-import { HttpError } from '@/api/http'
 import { authHeaders as createAuthHeaders } from '@dev/api/http'
 import {
   applyAuthPayloadToState,
@@ -56,8 +54,6 @@ export const useAuthStore = defineStore('dev-auth', () => {
   const loading = ref(false)
   const profileLoaded = ref(false)
   const hydrated = ref(false)
-  const realnameVerified = ref(false)
-  const realnameChecked = ref(false)
   let refreshTimer: ReturnType<typeof setTimeout> | null = null
   const profileRequest = ref<Promise<AuthProfile> | null>(null)
   let visibilityHandler: (() => void) | null = null
@@ -147,10 +143,7 @@ export const useAuthStore = defineStore('dev-auth', () => {
     token.value = ''
     username.value = ''
     role.value = ''
-    resetAuthProfileState(profileState, () => {
-      realnameVerified.value = false
-      realnameChecked.value = false
-    })
+    resetAuthProfileState(profileState)
   }
 
   function hydrate(force = false) {
@@ -178,10 +171,7 @@ export const useAuthStore = defineStore('dev-auth', () => {
   function persist(newToken: string, preserveProfile = false) {
     token.value = newToken
     if (!preserveProfile) {
-      resetAuthProfileState(profileState, () => {
-        realnameVerified.value = false
-        realnameChecked.value = false
-      })
+      resetAuthProfileState(profileState)
       clearPersistedAuthProfile()
     } else if (profileLoaded.value) {
       applyAuthPayloadToState(
@@ -262,30 +252,6 @@ export const useAuthStore = defineStore('dev-auth', () => {
     }
 
     return isDev.value
-  }
-
-  async function ensureRealnameApproved(force = false): Promise<boolean> {
-    if (!token.value) {
-      return false
-    }
-
-    if (realnameChecked.value && !force) {
-      return realnameVerified.value
-    }
-
-    try {
-      const record = await getMyRealnameVerification(token.value)
-      realnameVerified.value = record.status === 'approved'
-      realnameChecked.value = true
-      return realnameVerified.value
-    } catch (error) {
-      if (error instanceof HttpError && error.status === 404) {
-        realnameVerified.value = false
-        realnameChecked.value = true
-        return false
-      }
-      throw error
-    }
   }
 
   function setToken(newToken: string) {
@@ -408,7 +374,6 @@ export const useAuthStore = defineStore('dev-auth', () => {
     setToken,
     fetchProfile,
     ensureDevAccess,
-    ensureRealnameApproved,
     login,
     register,
     sendRegisterEmailCode: sendRegisterEmailCodeAction,

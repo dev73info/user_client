@@ -343,26 +343,6 @@ export function installDevRouteGuard(router: Router) {
         // 身份校验接口异常时保留登录态，避免误登出
         return false
       }
-
-      if (to.meta.requiresRealname) {
-        try {
-          const approved = await auth.ensureRealnameApproved()
-          if (!approved) {
-            return {
-              name: 'workbench-realname',
-              query: { realname_required: '1', redirect_to: to.fullPath },
-              replace: true,
-            }
-          }
-        } catch {
-          // 实名校验异常时引导到实名页，不应判定为登录失效
-          return {
-            name: 'workbench-realname',
-            query: { realname_required: '1', realname_check_error: '1', redirect_to: to.fullPath },
-            replace: true,
-          }
-        }
-      }
     }
 
     if (auth.isAuthed && to.path === '/dev/login') {

@@ -1,19 +1,22 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 import AppToast from '@/components/AppToast.vue'
 import PortalTopNav from '@/components/PortalTopNav.vue'
 import PortalMobileDock from '@/components/PortalMobileDock.vue'
 import { useToast } from '@/composables/useToast'
+import { AUTH_UNAUTHORIZED_EVENT, type AuthUnauthorizedEventDetail } from '@/shared/api/authEvents'
 const auth = useAuthStore()
 const route = useRoute()
+const router = useRouter()
 const currentYear = new Date().getFullYear()
-const { toastVisible, toastMessage, toastType, hideToast } = useToast()
+const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
 const showSiteFooter = computed(() => !route.matched.some((record) => record.meta.hideSiteFooter === true))
 const DEV_AUTO_LOGIN_USERNAME = 'dev'
 const DEV_AUTO_LOGIN_PASSWORD = '123456'
+let handlingUnauthorized = false
 
 async function loginWithDevelopmentAccount() {
   if (!import.meta.env.DEV) {
@@ -44,8 +47,53 @@ async function initializeAuthSession() {
   }
 }
 
+function currentRedirectTarget() {
+  const fullPath = route.fullPath.trim()
+  if (!fullPath || !fullPath.startsWith('/') || fullPath.startsWith('//') || fullPath === '/') {
+    return ''
+  }
+  return fullPath
+}
+
+function handleUnauthorizedSession(event: Event) {
+  if (route.path.startsWith('/dev')) {
+    return
+  }
+
+  if (handlingUnauthorized) {
+    return
+  }
+
+  const alreadyShowingLogin = route.name === 'home' && route.query.modal === 'auth'
+  if (!auth.token.trim() && alreadyShowingLogin) {
+    return
+  }
+
+  handlingUnauthorized = true
+  const detail = (event as CustomEvent<AuthUnauthorizedEventDetail>).detail
+  const redirectTarget = currentRedirectTarget()
+  const nextQuery: Record<string, string> = { modal: 'auth', mode: 'login' }
+  if (redirectTarget) {
+    nextQuery.redirect_to = redirectTarget
+  }
+
+  auth.logout()
+  showToast(detail?.message || '未登录或登录已过期，请重新登录', 'warning')
+
+  void router.replace({ name: 'home', query: nextQuery }).finally(() => {
+    window.setTimeout(() => {
+      handlingUnauthorized = false
+    }, 500)
+  })
+}
+
 onMounted(() => {
+  window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorizedSession)
   void initializeAuthSession()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorizedSession)
 })
 </script>
 

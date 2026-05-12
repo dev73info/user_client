@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { getMyRealnameVerification, type UserRealnameVerification } from '@/api/realname'
-import { HttpError } from '@/api/http'
 import { useAuthStore } from '@dev/stores/auth'
 
 const router = useRouter()
@@ -11,43 +9,11 @@ const auth = useAuthStore()
 // ── 用户信息 ────────────────────────────────────────────────────
 const displayName = computed(() => auth.username || '开发者')
 
-// ── 实名认证状态 ───────────────────────────────────────────────
-const realnameLoading = ref(false)
-const realnameRecord = ref<UserRealnameVerification | null>(null)
-const realnameLoadError = ref(false)
-
-const realnameStatus = computed(() => realnameRecord.value?.status ?? null)
-
-const realnameStatusLabel = computed(() => {
-  const map: Record<string, string> = {
-    pending: '审核中',
-    approved: '已通过',
-    rejected: '未通过',
-  }
-  return realnameStatus.value ? (map[realnameStatus.value] ?? realnameStatus.value) : '未提交'
-})
-
-const realnameTagType = computed<'info' | 'warning' | 'success' | 'danger'>(() => {
-  if (realnameStatus.value === 'approved') return 'success'
-  if (realnameStatus.value === 'pending') return 'warning'
-  if (realnameStatus.value === 'rejected') return 'danger'
-  return 'info'
-})
-
-const realnameDesc = computed(() => {
-  if (realnameStatus.value === 'approved') return '身份信息已核验通过，可正常使用平台各项功能。'
-  if (realnameStatus.value === 'pending') return '认证信息已提交，请等待管理员审核（通常 1-3 个工作日）。'
-  if (realnameStatus.value === 'rejected') return `认证未通过：${realnameRecord.value?.review_note || '请查看审核备注后重新提交'}。`
-  return '提交姓名与证件号，经二要素核验后即可解锁资源上传与需求对接功能。'
-})
-
-// 用于卡片左侧的状态色条
-const realnameAccentClass = computed(() => {
-  if (realnameStatus.value === 'approved') return 'ov-realname--approved'
-  if (realnameStatus.value === 'pending') return 'ov-realname--pending'
-  if (realnameStatus.value === 'rejected') return 'ov-realname--rejected'
-  return 'ov-realname--none'
-})
+// ── 实名认证入口 ───────────────────────────────────────────────
+const realnameStatusLabel = '认证入口'
+const realnameTagType = 'info'
+const realnameDesc = '如需确认或更新实名认证信息，请进入统一工作台中的实名认证页面处理。'
+const realnameAccentClass = 'ov-realname--none'
 
 // ── 新手引导步骤 ───────────────────────────────────────────────
 const newcomerGuide = [
@@ -94,27 +60,6 @@ const quickLinks = [
   { label: '工单管理', icon: '🎫', route: null, disabled: true },
 ]
 
-async function loadRealname() {
-  auth.hydrate()
-  if (!auth.token.trim()) return
-  realnameLoading.value = true
-  realnameLoadError.value = false
-  try {
-    realnameRecord.value = await getMyRealnameVerification(auth.token)
-  } catch (err) {
-    if (err instanceof HttpError && err.status === 404) {
-      realnameRecord.value = null
-    } else {
-      realnameLoadError.value = true
-    }
-  } finally {
-    realnameLoading.value = false
-  }
-}
-
-onMounted(async () => {
-  await loadRealname()
-})
 </script>
 
 <template>
@@ -140,11 +85,8 @@ onMounted(async () => {
         </div>
         <p class="dev-section-desc ov-realname-card__desc">{{ realnameDesc }}</p>
         <div class="ov-realname-card__actions">
-          <el-button plain :loading="realnameLoading" size="small" @click="loadRealname">刷新</el-button>
-          <el-button v-if="realnameStatus !== 'approved'" type="primary" size="small"
-            @click="router.push({ name: 'workbench-realname', query: { redirect_to: '/workbench/developer/resources/plugins-init' } })">{{
-              realnameStatus === 'rejected' ? '重新认证' : realnameStatus === 'pending' ? '查看进度' : '去认证' }}</el-button>
-          <el-button v-else plain size="small" @click="router.push({ name: 'workbench-realname' })">查看详情</el-button>
+          <el-button type="primary" size="small"
+            @click="router.push({ name: 'workbench-realname', query: { redirect_to: '/workbench/developer/resources/plugins-init' } })">去认证</el-button>
         </div>
       </el-card>
 

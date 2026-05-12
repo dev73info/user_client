@@ -22,7 +22,7 @@ import {
   type WechatCreatePaymentResp,
 } from '@/api/payments'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
-import { HttpError, apiUrl } from '@/api/http'
+import { apiUrl } from '@/api/http'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import {
   createRequirement,
@@ -34,7 +34,6 @@ import {
   type RequirementPaymentMode,
   type RequirementStatus,
 } from '@/api/requirements'
-import { getMyRealnameVerification, type UserRealnameStatus } from '@/api/realname'
 import { getDepositRatio } from '@/api/settings'
 import { getProcessedTagTree, getResourceDetailSlug, normalizeTagName, type McProcessedTagTree } from '@/api/resourceTags'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
@@ -199,7 +198,6 @@ const depositPolicyAccepted = ref(false)
 const couponLoading = ref(false)
 const contractSigningStatus = ref<ContractSigningStatus | null>(null)
 const { showToast } = useToast()
-const publishRealnameStatus = ref<UserRealnameStatus | 'none' | ''>('')
 const heroSignals = computed(() => {
   const rootCount = processedTagTree.value.roots.length
   const resourceCount = publicResources.value.length
@@ -1134,48 +1132,13 @@ async function submitAuth() {
   }
 }
 
-function realnameStatusText(status: UserRealnameStatus | 'none' | '') {
-  if (status === 'approved') return '已通过'
-  if (status === 'pending') return '审核中'
-  if (status === 'rejected') return '已驳回'
-  return '未提交'
-}
-
 async function ensurePublishRealnameApproved() {
   if (!auth.isAuthed) {
     showToast('发布需求前请先登录', 'info')
     openAuth('login')
     return false
   }
-
-  if (publishRealnameStatus.value === 'approved') {
-    return true
-  }
-
-  try {
-    const record = await getMyRealnameVerification(auth.token)
-    publishRealnameStatus.value = record.status
-  } catch (err) {
-    if (err instanceof HttpError && err.status === 404) {
-      publishRealnameStatus.value = 'none'
-    } else {
-      showToast(err instanceof Error ? err.message : '加载实名认证状态失败', 'error')
-      return false
-    }
-  }
-
-  if (publishRealnameStatus.value === 'approved') {
-    return true
-  }
-
-  showToast(`请先完成实名认证后再发布需求（当前：${realnameStatusText(publishRealnameStatus.value)}）`, 'warning')
-  await router.push({
-    name: 'workbench-realname',
-    query: {
-      redirect_to: '/?modal=publish',
-    },
-  })
-  return false
+  return true
 }
 
 async function openPublishModal() {

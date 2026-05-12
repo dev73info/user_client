@@ -17,7 +17,6 @@ import {
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
-import { getMyRealnameVerification, type UserRealnameStatus } from '@/api/realname'
 import { getTagRouteSlug, normalizeTagName, parseResourceIdFromSlug } from '@/api/resourceTags'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -44,8 +43,6 @@ const commentsLoading = ref(false)
 const commentSubmitting = ref(false)
 const commentText = ref('')
 const likeSubmitting = ref(false)
-const realnameStatus = ref<UserRealnameStatus | 'none' | ''>('')
-const realnameLoading = ref(false)
 
 const tagNames = computed(
   () => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [],
@@ -143,7 +140,6 @@ const canSubmitComment = computed(
   () =>
     auth.isAuthed &&
     isPublishedResource.value &&
-    realnameStatus.value === 'approved' &&
     commentText.value.trim().length > 0 &&
     commentTextLength.value <= COMMENT_MAX_LENGTH &&
     !commentSubmitting.value,
@@ -167,43 +163,7 @@ const commentGate = computed<CommentGate | null>(() => {
     }
   }
 
-  if (realnameLoading.value) {
-    return {
-      title: '正在确认实名状态',
-      description: '稍等一下，系统正在同步你的实名认证状态。',
-      actionLabel: '',
-      action: '',
-    }
-  }
-
-  if (realnameStatus.value === 'approved') {
-    return null
-  }
-
-  if (realnameStatus.value === 'pending') {
-    return {
-      title: '实名认证审核中',
-      description: '审核通过后即可参与资源评论。',
-      actionLabel: '查看进度',
-      action: 'realname',
-    }
-  }
-
-  if (realnameStatus.value === 'rejected') {
-    return {
-      title: '实名认证未通过',
-      description: '请补充或修正认证信息，通过后再发表评论。',
-      actionLabel: '重新认证',
-      action: 'realname',
-    }
-  }
-
-  return {
-    title: '完成实名认证后可评论',
-    description: '为了保持资源评论可信，评论前需要先完成实名认证。',
-    actionLabel: '去实名认证',
-    action: 'realname',
-  }
+  return null
 })
 
 const markdownRenderer = new MarkdownIt({
@@ -383,23 +343,6 @@ async function loadComments(resourceId: number) {
   }
 }
 
-async function loadRealnameStatus() {
-  if (!auth.isAuthed || !auth.token.trim()) {
-    realnameStatus.value = ''
-    return
-  }
-
-  realnameLoading.value = true
-  try {
-    const record = await getMyRealnameVerification(auth.token)
-    realnameStatus.value = record.status
-  } catch {
-    realnameStatus.value = 'none'
-  } finally {
-    realnameLoading.value = false
-  }
-}
-
 function openCommentLogin() {
   showToast('请先登录后再发表评论', 'info')
   void router.push({
@@ -518,16 +461,6 @@ async function submitResourceComment() {
     return
   }
 
-  if (realnameStatus.value !== 'approved') {
-    await loadRealnameStatus()
-  }
-
-  if (realnameStatus.value !== 'approved') {
-    showToast('请先完成实名认证后再发表评论', 'warning')
-    openRealnamePage()
-    return
-  }
-
   const comment = commentText.value.trim()
   const commentLength = Array.from(comment).length
   if (!comment) {
@@ -553,8 +486,8 @@ async function submitResourceComment() {
     void loadComments(resourceId)
   } catch (error) {
     if (error instanceof HttpError && error.status === 403) {
-      realnameStatus.value = 'none'
       showToast('请先完成实名认证后再发表评论', 'warning')
+      openRealnamePage()
     } else {
       showToast(error instanceof Error ? error.message : '评论提交失败', 'error')
     }
@@ -583,7 +516,6 @@ async function loadResource() {
     resource.value = resourceDetail
     versions.value = resourceVersions
     void loadComments(resourceId)
-    void loadRealnameStatus()
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载资源主页失败'
     showToast(message, 'warning')
@@ -608,7 +540,6 @@ watch(
 watch(
   () => auth.token,
   () => {
-    void loadRealnameStatus()
     if (resource.value?.id) {
       void loadComments(resource.value.id)
       void refreshResourceLikeState(resource.value.id)
