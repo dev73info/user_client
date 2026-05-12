@@ -73,12 +73,14 @@ type PortalCategory = {
   label: string
   icon: string
   summary: string
+  matchLabels?: string[]
   to: RouteLocationRaw
 }
 
 type WorkflowStep = {
   step: string
   title: string
+  summary: string
   icon: string
   accent: string
   actionLabel: string
@@ -87,6 +89,7 @@ type WorkflowStep = {
 
 type QuickPanel = {
   title: string
+  summary: string
   action: string
   tone: 'gift' | 'briefcase'
 }
@@ -113,18 +116,9 @@ type DeveloperRank = {
 }
 
 const metrics = ref<Metric[]>([
-  {
-    label: '累计完成',
-    value: '0 单',
-  },
-  {
-    label: '综合评价',
-    value: '5.00 分',
-  },
-  {
-    label: '累计成交额',
-    value: '¥ 0.00',
-  },
+  { label: '累计完成', value: '0 单' },
+  { label: '综合评价', value: '5.00 分' },
+  { label: '累计成交额', value: '¥ 0.00' },
 ])
 const AUTO_REFRESH_INTERVAL_MS = 300_000
 
@@ -142,7 +136,6 @@ type LatestDealView = {
 const latestDeals = ref<LatestDealView[]>([])
 const selectedDeal = ref<LatestDealView | null>(null)
 const dealDetailVisible = ref(false)
-
 const pendingRequirements = ref<PendingRequirementView[]>([])
 const publicRequirementSpotlights = ref<PublicRequirementSpotlightItem[]>([])
 const processedTagTree = ref<McProcessedTagTree>({ roots: [] })
@@ -198,26 +191,7 @@ const depositPolicyAccepted = ref(false)
 const couponLoading = ref(false)
 const contractSigningStatus = ref<ContractSigningStatus | null>(null)
 const { showToast } = useToast()
-const heroSignals = computed(() => {
-  const rootCount = processedTagTree.value.roots.length
-  const resourceCount = publicResources.value.length
-  const latestDeal = latestDeals.value[0]
-  const signals: string[] = []
-
-  if (rootCount > 0) {
-    signals.push(`资源分区 ${rootCount} 个`)
-  }
-  if (publicRequirementSpotlights.value.length > 0) {
-    signals.push(`需求 ${publicRequirementSpotlights.value.length} 条`)
-  } else if (resourceCount > 0) {
-    signals.push(`公开资源 ${resourceCount} 条`)
-  }
-  if (latestDeal) {
-    signals.push(`最新成交 ${latestDeal.amount}`)
-  }
-
-  return signals
-})
+const heroSignals = ['免费资源共享', '有偿需求定制', '安全交易保障']
 
 const portalNotices = computed<PortalNotice[]>(() => {
   const notices: PortalNotice[] = []
@@ -291,122 +265,138 @@ const portalNotices = computed<PortalNotice[]>(() => {
 const quickPanels = computed<QuickPanel[]>(() => [
   {
     title: '免费资源',
+    summary: '开发者发布优质资源\n赚取信用点奖励',
     action: '立即查看',
     tone: 'gift',
   },
   {
-    title: '需求定制',
+    title: '有偿需求',
+    summary: '提交需求单，开发者接单\n完成后支付尾款',
     action: '立即发布',
     tone: 'briefcase',
   },
 ])
 
 const portalCategories = computed<PortalCategory[]>(() => {
-  const iconPool = ['</>', '◎', '✦', '▣', '⌘', '✎']
-
-  const dynamicCategories = processedTagTree.value.roots.slice(0, 6).map((root, index) => {
-    const entryCount = root.entries.length
-    const tagCount = root.entries.reduce(
-      (sum, entry) =>
-        sum + entry.publish_groups.reduce((innerSum, group) => innerSum + group.items.length, 0),
-      0,
-    )
-
-    const previewEntries = root.entries
-      .slice(0, 2)
-      .map((entry) => entry.label)
-      .join(' / ')
-    const summary = previewEntries
-      ? `${previewEntries}${entryCount > 2 ? ' 等分区' : ''}`
-      : `包含 ${entryCount} 个分区，覆盖 ${tagCount} 个标签节点`
-
-    return {
-      label: root.label,
-      icon: iconPool[index % iconPool.length] ?? '◌',
-      summary,
-      to: {
-        name: 'resource-catalog',
-        params: root.first_entry_key
-          ? { rootSlug: root.key, entrySlug: root.first_entry_key }
-          : { rootSlug: root.key },
-      },
-    }
-  })
-
-  if (dynamicCategories.length > 0) {
-    return dynamicCategories
-  }
-
-  return [
+  const tiles: Array<Omit<PortalCategory, 'to'> & { to?: RouteLocationRaw }> = [
     {
       label: '编程开发',
       icon: '</>',
-      summary: '插件 / SDK / 后台',
-      to: { name: 'free-resources' },
+      summary: '',
+      matchLabels: ['编程开发', '开发', '程序'],
     },
     {
       label: '网站开发',
       icon: '◎',
-      summary: '官网 / CMS / 企业站',
-      to: { name: 'free-resources' },
+      summary: '',
+      matchLabels: ['网站开发', '网站', '官网'],
     },
-    { label: '插画设计', icon: '✦', summary: '视觉 / 角色 / 宣传', to: { name: 'free-resources' } },
+    {
+      label: '绘画设计',
+      icon: '◕',
+      summary: '',
+      matchLabels: ['绘画设计', '插画设计', '设计', '美术'],
+    },
     {
       label: 'Minecraft',
       icon: '▣',
-      summary: '插件 / 模组 / 服务器',
-      to: { name: 'free-resources' },
+      summary: '插件 / 模组',
+      matchLabels: ['Minecraft', 'mc', '插件', '模组'],
     },
     {
       label: '移动应用',
-      icon: '⌘',
-      summary: 'iOS / Android / 小程序',
-      to: { name: 'free-resources' },
+      icon: '▯',
+      summary: '',
+      matchLabels: ['移动应用', '移动', '小程序', 'App'],
     },
     {
       label: '文案写作',
       icon: '✎',
-      summary: '说明文档 / 宣发内容',
-      to: { name: 'free-resources' },
+      summary: '',
+      matchLabels: ['文案写作', '文案', '写作', '文档'],
+    },
+    {
+      label: '更多分类',
+      icon: '•••',
+      summary: '',
     },
   ]
+
+  return tiles.map((tile) => ({
+    ...tile,
+    to: resolveCategoryRoute(tile.matchLabels),
+  }))
 })
+
+function resolveCategoryRoute(matchLabels?: string[]): RouteLocationRaw {
+  if (!matchLabels?.length) {
+    return { name: 'free-resources' }
+  }
+
+  const normalizedMatches = matchLabels.map((label) => normalizeTagName(label))
+  const matchedRoot = processedTagTree.value.roots.find((root) => {
+    const normalizedRoot = normalizeTagName(root.label)
+    return normalizedMatches.some(
+      (label) =>
+        normalizedRoot === label ||
+        normalizedRoot.includes(label) ||
+        label.includes(normalizedRoot),
+    )
+  })
+
+  if (!matchedRoot) {
+    return { name: 'free-resources' }
+  }
+
+  return {
+    name: 'resource-catalog',
+    params: matchedRoot.first_entry_key
+      ? { rootSlug: matchedRoot.key, entrySlug: matchedRoot.first_entry_key }
+      : { rootSlug: matchedRoot.key },
+  }
+}
+
 const workflowSteps: WorkflowStep[] = [
   {
-    step: '01',
+    step: '1',
     title: '提交需求',
-    icon: '◫',
+    summary: '填写需求并支付定金',
+    icon: '▣',
     accent: 'violet',
     actionLabel: '发布需求',
     action: 'publish',
   },
   {
-    step: '02',
-    title: '平台审核',
+    step: '2',
+    title: '需求审核',
+    summary: '平台审核需求\n确认信息准确',
     icon: '☑',
     accent: 'blue',
     actionLabel: '查看进度',
     action: 'progress',
   },
   {
-    step: '03',
-    title: '开发接单',
-    icon: '⌘',
+    step: '3',
+    title: '开发者接单',
+    summary: '开发者确认接单\n开始工作',
+    icon: '⊞',
     accent: 'green',
     actionLabel: '开发者入口',
     action: 'developer',
   },
   {
-    step: '04',
-    title: '验收交付',
-    icon: '✉',
-    accent: 'orange',
+    step: '4',
+    title: '完成验收',
+    summary: '确认需求满足\n支付尾款',
+    icon: '☑',
+    accent: 'violet',
     actionLabel: '我的需求',
     action: 'progress',
   },
   {
-    step: '05',
-    title: '评价归档',
+    step: '5',
+    title: '评价完成',
+    summary: '双方评价\n交易完成',
     icon: '♥',
     accent: 'red',
     actionLabel: '评价订单',
@@ -1405,7 +1395,10 @@ async function submitPublishRequirement() {
           <section class="portal-hero">
             <div class="portal-hero__main">
               <div class="portal-hero__copy">
-                <h1>需求定制开发交易平台</h1>
+                <h1>
+                  <span>需求</span><span class="portal-title-accent">定制开发</span><span>交易平台</span>
+                </h1>
+                <p class="portal-hero__lead">连接需求与能力 · 让创意变为现实</p>
 
                 <div v-if="heroSignals.length" class="portal-signal-list">
                   <span v-for="signal in heroSignals" :key="signal" class="portal-signal">{{
@@ -1424,40 +1417,124 @@ async function submitPublishRequirement() {
               </div>
 
               <div class="portal-hero__visual" aria-hidden="true">
-                <div class="portal-stage">
-                  <div class="portal-stage__halo"></div>
-                  <div class="portal-stage__core">73</div>
-                  <div class="portal-stage__tile portal-stage__tile--top">⌘</div>
-                  <div class="portal-stage__tile portal-stage__tile--left">◫</div>
-                  <div class="portal-stage__tile portal-stage__tile--right">✦</div>
-                  <div class="portal-stage__tile portal-stage__tile--bottom">▣</div>
-                  <div class="portal-stage__tile portal-stage__tile--accent">&lt;/&gt;</div>
-                </div>
-              </div>
-            </div>
-          </section>
+                <div class="hero-wrapper">
+                  <svg class="hero-svg" viewBox="0 28 900 480" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <linearGradient id="heroPanel" x1="0" x2="1" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#f8fbff" />
+                        <stop offset="100%" stop-color="#dbeafe" />
+                      </linearGradient>
+                      <linearGradient id="heroBlue" x1="0" x2="1" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#5b8cff" />
+                        <stop offset="100%" stop-color="#2563eb" />
+                      </linearGradient>
+                      <linearGradient id="heroBlueSide" x1="0" x2="1" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#3b82f6" />
+                        <stop offset="100%" stop-color="#1d4ed8" />
+                      </linearGradient>
+                      <linearGradient id="heroPurple" x1="0" x2="1" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#8b5cf6" />
+                        <stop offset="100%" stop-color="#6d28d9" />
+                      </linearGradient>
+                      <linearGradient id="heroCubeTop" x1="0" x2="1" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#7dd3fc" />
+                        <stop offset="100%" stop-color="#3b82f6" />
+                      </linearGradient>
+                      <linearGradient id="heroCubeLeft" x1="0" x2="1" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#3b82f6" />
+                        <stop offset="100%" stop-color="#1d4ed8" />
+                      </linearGradient>
+                      <linearGradient id="heroCubeRight" x1="0" x2="1" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#2563eb" />
+                        <stop offset="100%" stop-color="#1e40af" />
+                      </linearGradient>
+                      <linearGradient id="heroGrass" x1="0" x2="1" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#a3e635" />
+                        <stop offset="100%" stop-color="#65a30d" />
+                      </linearGradient>
+                      <linearGradient id="heroDirt" x1="0" x2="1" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#a16207" />
+                        <stop offset="100%" stop-color="#78350f" />
+                      </linearGradient>
+                      <filter id="heroSoftShadow" x="-30%" y="-30%" width="160%" height="180%">
+                        <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#2563eb" flood-opacity="0.18" />
+                      </filter>
+                      <filter id="heroTileShadow" x="-40%" y="-40%" width="180%" height="180%">
+                        <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#1e3a8a" flood-opacity="0.18" />
+                      </filter>
+                    </defs>
 
-          <section class="portal-section portal-section--workflow">
-            <div class="portal-section__header">
-              <div>
-                <p class="portal-section__eyebrow">需求定制流程</p>
-              </div>
-            </div>
-            <div class="portal-workflow-grid" aria-label="需求定制流程">
-              <div v-for="(step, index) in workflowSteps" :key="step.step + step.title" class="portal-workflow-item">
-                <button class="portal-step-card" :class="`portal-step-card--${step.accent}`" type="button"
-                  @click="openWorkflowStep(step)">
-                  <span class="portal-step-card__number">{{ step.step }}</span>
-                  <div class="portal-step-card__copy">
-                    <strong>{{ step.title }}</strong>
-                  </div>
-                  <div class="portal-step-card__footer">
-                    <span class="portal-step-card__icon" aria-hidden="true">{{ step.icon }}</span>
-                    <span class="portal-step-card__action">{{ step.actionLabel }}</span>
-                  </div>
-                </button>
-                <span v-if="index < workflowSteps.length - 1" class="portal-step-card__arrow"
-                  aria-hidden="true">›</span>
+                    <ellipse cx="450" cy="430" rx="330" ry="76" class="hero-platform-shadow" />
+                    <ellipse cx="450" cy="403" rx="302" ry="70" class="hero-platform-base" />
+                    <ellipse cx="450" cy="386" rx="270" ry="56" class="hero-platform-top" />
+                    <path class="hero-orbit" d="M190 377 C287 312 602 300 720 366" />
+                    <circle cx="242" cy="346" r="5" class="hero-orbit-dot" />
+                    <circle cx="360" cy="316" r="5" class="hero-orbit-dot" />
+                    <circle cx="652" cy="332" r="5" class="hero-orbit-dot" />
+
+                    <g class="hero-float-main" filter="url(#heroSoftShadow)">
+                      <path class="hero-base-top" d="M348 342 L548 342 L590 374 L390 374 Z" />
+                      <path class="hero-base-front" d="M390 374 L590 374 L562 404 L366 404 L348 342 Z" />
+                      <path class="hero-stand" d="M424 281 L492 281 L510 345 L402 345 Z" />
+                      <path class="hero-monitor-back"
+                        d="M332 82 L584 112 Q608 115 610 140 L610 274 Q610 300 584 296 L330 266 Q306 263 306 238 L306 104 Q306 78 332 82 Z" />
+                      <rect x="326" y="78" width="272" height="190" rx="30" class="hero-monitor-frame" />
+                      <rect x="350" y="102" width="224" height="140" rx="22" class="hero-monitor-screen" />
+                      <path class="hero-screen-shine" d="M368 116 H548 Q560 116 560 128 V144 H368 Z" />
+                      <text x="462" y="191" text-anchor="middle" class="hero-screen-text">73</text>
+                    </g>
+
+                    <g class="hero-float-palette" filter="url(#heroTileShadow)">
+                      <path class="hero-tether" d="M205 276 C220 238 232 203 232 165" />
+                      <rect x="174" y="100" width="76" height="76" rx="20" class="hero-blue-tile" />
+                      <path class="hero-palette-body"
+                        d="M212 123 C195 123 187 136 187 149 C187 162 198 169 209 167 C214 166 216 162 217 158 C218 154 221 151 226 151 H234 C242 151 247 145 244 137 C240 129 229 123 212 123 Z" />
+                      <circle cx="204" cy="141" r="4" class="hero-palette-dot hero-palette-dot--red" />
+                      <circle cx="216" cy="134" r="4" class="hero-palette-dot hero-palette-dot--yellow" />
+                      <circle cx="229" cy="142" r="4" class="hero-palette-dot hero-palette-dot--cyan" />
+                    </g>
+
+                    <g class="hero-float-scan" filter="url(#heroTileShadow)">
+                      <path class="hero-tether" d="M312 290 C306 242 304 188 308 142" />
+                      <rect x="278" y="68" width="74" height="74" rx="18" class="hero-blue-tile" />
+                      <path class="hero-scan-line" d="M296 93 H310 M320 93 H334 M296 116 H310 M320 116 H334" />
+                      <path class="hero-scan-corner"
+                        d="M296 100 V90 H306 M334 100 V90 H324 M296 110 V120 H306 M334 110 V120 H324" />
+                    </g>
+
+                    <g class="hero-float-cube" filter="url(#heroTileShadow)">
+                      <path class="hero-cube-top" d="M282 330 L338 300 L394 330 L338 360 Z" />
+                      <path class="hero-cube-left" d="M282 330 L338 360 L338 418 L282 386 Z" />
+                      <path class="hero-cube-right" d="M394 330 L338 360 L338 418 L394 386 Z" />
+                      <path class="hero-cube-mark"
+                        d="M318 336 H335 M326 327 V345 M360 338 L376 330 M367 346 V324 M309 372 H326 M318 363 V381" />
+                    </g>
+
+                    <g class="hero-float-code" filter="url(#heroTileShadow)">
+                      <path class="hero-tether" d="M628 345 C615 300 618 258 642 224" />
+                      <rect x="606" y="264" width="112" height="76" rx="18" class="hero-code-tile" />
+                      <text x="662" y="311" text-anchor="middle" class="hero-code-text">{ }</text>
+                    </g>
+
+                    <g class="hero-float-purple" filter="url(#heroTileShadow)">
+                      <path class="hero-tether" d="M668 264 C684 218 704 172 718 128" />
+                      <rect x="690" y="82" width="76" height="76" rx="20" class="hero-purple-tile" />
+                      <path class="hero-purple-icon"
+                        d="M728 112 C716 103 703 113 711 125 C698 124 693 139 706 145 C704 159 722 161 727 149 C737 160 752 150 743 137 C756 136 758 119 744 116 C742 104 731 101 728 112 Z" />
+                    </g>
+
+                    <g class="hero-float-mc" filter="url(#heroTileShadow)">
+                      <path class="hero-mc-top" d="M720 274 L782 246 L844 274 L782 304 Z" />
+                      <path class="hero-mc-left" d="M720 274 L782 304 L782 370 L720 338 Z" />
+                      <path class="hero-mc-right" d="M844 274 L782 304 L782 370 L844 338 Z" />
+                      <path class="hero-mc-grass-line" d="M720 274 L782 304 L844 274" />
+                      <rect x="737" y="305" width="10" height="10" class="hero-mc-pixel" />
+                      <rect x="760" y="326" width="9" height="9" class="hero-mc-pixel" />
+                      <rect x="805" y="307" width="9" height="9" class="hero-mc-pixel" />
+                      <rect x="824" y="329" width="10" height="10" class="hero-mc-pixel" />
+                    </g>
+                  </svg>
+                </div>
               </div>
             </div>
           </section>
@@ -1465,9 +1542,51 @@ async function submitPublishRequirement() {
           <section class="portal-quick-grid">
             <article v-for="panel in quickPanels" :key="panel.title" class="portal-quick-card"
               :class="`portal-quick-card--${panel.tone}`">
-              <div class="portal-quick-card__icon">{{ panel.tone === 'gift' ? '免' : '需' }}</div>
+              <div class="portal-quick-card__icon" aria-hidden="true">
+                <svg v-if="panel.tone === 'gift'" class="portal-quick-card__svg" viewBox="0 0 96 96" focusable="false">
+                  <defs>
+                    <linearGradient id="quickGiftRed" x1="0" x2="1" y1="0" y2="1">
+                      <stop offset="0%" stop-color="#ff8c5a" />
+                      <stop offset="100%" stop-color="#ef3f5f" />
+                    </linearGradient>
+                    <linearGradient id="quickGiftYellow" x1="0" x2="1" y1="0" y2="1">
+                      <stop offset="0%" stop-color="#ffd75f" />
+                      <stop offset="100%" stop-color="#ff9f1c" />
+                    </linearGradient>
+                    <filter id="quickIconShadow" x="-30%" y="-20%" width="160%" height="160%">
+                      <feDropShadow dx="0" dy="9" stdDeviation="7" flood-color="#ef4444" flood-opacity="0.22" />
+                    </filter>
+                  </defs>
+                  <g filter="url(#quickIconShadow)">
+                    <path fill="url(#quickGiftRed)" d="M17 38h62v39a7 7 0 0 1-7 7H24a7 7 0 0 1-7-7V38Z" />
+                    <path fill="#d9274a" d="M17 38h62v16H17z" opacity="0.45" />
+                    <path fill="url(#quickGiftYellow)" d="M43 38h10v46H43zM12 28h72v16H12z" />
+                    <path fill="url(#quickGiftRed)"
+                      d="M24 14c10-5 20 8 24 17-12 2-27 1-30-6-2-4 1-8 6-11Zm48 0c-10-5-20 8-24 17 12 2 27 1 30-6 2-4-1-8-6-11Z" />
+                    <path fill="url(#quickGiftYellow)" d="M42 20h12l-6 18-6-18Z" />
+                  </g>
+                </svg>
+                <svg v-else class="portal-quick-card__svg" viewBox="0 0 96 96" focusable="false">
+                  <defs>
+                    <linearGradient id="quickCaseOrange" x1="0" x2="1" y1="0" y2="1">
+                      <stop offset="0%" stop-color="#ffb15c" />
+                      <stop offset="100%" stop-color="#f97316" />
+                    </linearGradient>
+                    <filter id="quickCaseShadow" x="-30%" y="-20%" width="160%" height="160%">
+                      <feDropShadow dx="0" dy="9" stdDeviation="7" flood-color="#f97316" flood-opacity="0.2" />
+                    </filter>
+                  </defs>
+                  <g filter="url(#quickCaseShadow)">
+                    <path fill="none" stroke="#d97706" stroke-linecap="round" stroke-width="6" d="M34 31v-8h28v8" />
+                    <rect width="64" height="51" x="16" y="29" fill="url(#quickCaseOrange)" rx="10" />
+                    <path fill="#f59e0b" d="M16 44h64v12H16z" opacity="0.55" />
+                    <circle cx="48" cy="55" r="5" fill="#fee8a8" />
+                  </g>
+                </svg>
+              </div>
               <div class="portal-quick-card__copy">
                 <h3>{{ panel.title }}</h3>
+                <p>{{ panel.summary }}</p>
                 <button class="portal-inline-action" type="button" @click="openQuickPanel(panel)">
                   {{ panel.action }}
                   <el-icon>
@@ -1480,11 +1599,13 @@ async function submitPublishRequirement() {
 
           <section id="portal-spotlight" class="portal-section">
             <div class="portal-section__header">
-              <div>
-                <p class="portal-section__eyebrow">热门分类</p>
+              <div class="portal-section-title">
+                <span class="portal-section-title__icon" aria-hidden="true">▣</span>
+                <h2>热门分类</h2>
               </div>
               <button class="portal-link-btn" type="button" @click="router.push({ name: 'free-resources' })">
                 全部分类
+                <span aria-hidden="true">›</span>
               </button>
             </div>
             <div class="portal-category-grid">
@@ -1492,8 +1613,30 @@ async function submitPublishRequirement() {
                 type="button" @click="openPortalCategory(category)">
                 <div class="portal-category-card__icon">{{ category.icon }}</div>
                 <strong>{{ category.label }}</strong>
-                <span>{{ category.summary }}</span>
+                <span v-if="category.summary">{{ category.summary }}</span>
               </button>
+            </div>
+          </section>
+
+          <section class="portal-section portal-section--workflow">
+            <div class="portal-section__header">
+              <div class="portal-section-title portal-section-title--plain">
+                <h2>需求流程</h2>
+              </div>
+            </div>
+            <div class="portal-workflow-grid" aria-label="需求流程">
+              <div v-for="(step, index) in workflowSteps" :key="step.step + step.title" class="portal-workflow-item">
+                <button class="portal-step-card" :class="`portal-step-card--${step.accent}`" type="button"
+                  @click="openWorkflowStep(step)">
+                  <span class="portal-step-card__icon" aria-hidden="true">{{ step.icon }}</span>
+                  <span class="portal-step-card__body">
+                    <strong>{{ step.step }}. {{ step.title }}</strong>
+                    <span>{{ step.summary }}</span>
+                  </span>
+                </button>
+                <span v-if="index < workflowSteps.length - 1" class="portal-step-card__arrow"
+                  aria-hidden="true">›</span>
+              </div>
             </div>
           </section>
 
