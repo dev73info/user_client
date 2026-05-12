@@ -61,6 +61,7 @@
 
 .toastMsg {
   flex: 1;
+  font-weight: 700;
 }
 
 .toastClose {
@@ -70,7 +71,7 @@
   font-size: 18px;
   line-height: 1;
   padding: 0 2px;
-  opacity: 0.6;
+  opacity: 0.72;
   transition: opacity 0.15s;
   flex-shrink: 0;
   margin-top: -1px;
@@ -82,52 +83,71 @@
 .toast-success {
   background: rgba(16, 185, 129, 0.16);
   border-color: rgba(16, 185, 129, 0.5);
-  color: #6ee7b7;
+  color: #047857;
 }
 .toast-success .toastClose {
-  color: #6ee7b7;
+  color: #047857;
 }
 
 .toast-error {
   background: rgba(239, 68, 68, 0.16);
   border-color: rgba(239, 68, 68, 0.5);
-  color: #fca5a5;
+  color: #b91c1c;
 }
 .toast-error .toastClose {
-  color: #fca5a5;
+  color: #b91c1c;
 }
 
 .toast-info {
   background: rgba(59, 130, 246, 0.16);
   border-color: rgba(59, 130, 246, 0.5);
-  color: #93c5fd;
+  color: #1d4ed8;
 }
 .toast-info .toastClose {
-  color: #93c5fd;
+  color: #1d4ed8;
 }
 
 .toast-warning {
   background: rgba(245, 158, 11, 0.16);
   border-color: rgba(245, 158, 11, 0.5);
-  color: #fcd34d;
+  color: #92400e;
 }
 .toast-warning .toastClose {
-  color: #fcd34d;
+  color: #92400e;
 }
 
 @media (max-width: 640px) {
   .toastContainer {
-    bottom: 64px;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    bottom: auto;
     right: 12px;
     left: 12px;
     max-width: 100%;
   }
 
   .toast {
-    bottom: 64px;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+    bottom: auto;
     right: 12px;
     left: 12px;
     min-width: 0;
     max-width: none;
+    animation-name: toastInMobile;
+  }
+
+  .toast-fade-enter-from,
+  .toast-fade-leave-to {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes toastInMobile {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }

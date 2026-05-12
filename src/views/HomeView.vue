@@ -35,13 +35,17 @@ import {
   type RequirementStatus,
 } from '@/api/requirements'
 import { getDepositRatio } from '@/api/settings'
-import { getProcessedTagTree, getResourceDetailSlug, normalizeTagName, type McProcessedTagTree } from '@/api/resourceTags'
+import {
+  getProcessedTagTree,
+  getResourceDetailSlug,
+  normalizeTagName,
+  type McProcessedTagTree,
+} from '@/api/resourceTags'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
 
 type Metric = {
   label: string
   value: string
-  hint: string
 }
 
 type PendingRequirementView = {
@@ -74,7 +78,6 @@ type PortalCategory = {
 type WorkflowStep = {
   step: string
   title: string
-  hint: string
   icon: string
   accent: string
   actionLabel: string
@@ -83,7 +86,6 @@ type WorkflowStep = {
 
 type QuickPanel = {
   title: string
-  summary: string
   action: string
   tone: 'gift' | 'briefcase'
 }
@@ -113,17 +115,14 @@ const metrics = ref<Metric[]>([
   {
     label: '累计完成',
     value: '0 单',
-    hint: '已完成需求数',
   },
   {
     label: '综合评价',
     value: '5.00 分',
-    hint: '好评率 100%',
   },
   {
     label: '累计成交额',
     value: '¥ 0.00',
-    hint: '已支付订单累计金额',
   },
 ])
 const AUTO_REFRESH_INTERVAL_MS = 300_000
@@ -202,14 +201,21 @@ const heroSignals = computed(() => {
   const rootCount = processedTagTree.value.roots.length
   const resourceCount = publicResources.value.length
   const latestDeal = latestDeals.value[0]
+  const signals: string[] = []
 
-  return [
-    rootCount > 0 ? `开放 ${rootCount} 个资源根分区` : '免费资源共享',
-    publicRequirementSpotlights.value.length > 0
-      ? `精选需求 ${publicRequirementSpotlights.value.length} 条`
-      : resourceCount > 0 ? `公开资源 ${resourceCount} 条` : '有偿需求定制',
-    latestDeal ? `最新成交 ${latestDeal.amount}` : '安全交易保障',
-  ]
+  if (rootCount > 0) {
+    signals.push(`资源分区 ${rootCount} 个`)
+  }
+  if (publicRequirementSpotlights.value.length > 0) {
+    signals.push(`需求 ${publicRequirementSpotlights.value.length} 条`)
+  } else if (resourceCount > 0) {
+    signals.push(`公开资源 ${resourceCount} 条`)
+  }
+  if (latestDeal) {
+    signals.push(`最新成交 ${latestDeal.amount}`)
+  }
+
+  return signals
 })
 
 const portalNotices = computed<PortalNotice[]>(() => {
@@ -231,20 +237,23 @@ const portalNotices = computed<PortalNotice[]>(() => {
       tag: normalizeTagName(publicResources.value[0].platform),
       to: resourceRoute
         ? {
-            name: 'resource-detail',
-            params: {
-              rootSlug: resourceRoute.rootSlug,
-              entrySlug: resourceRoute.entrySlug,
-              resourceSlug: getResourceDetailSlug(publicResources.value[0].id, publicResources.value[0].title),
-            },
-          }
+          name: 'resource-detail',
+          params: {
+            rootSlug: resourceRoute.rootSlug,
+            entrySlug: resourceRoute.entrySlug,
+            resourceSlug: getResourceDetailSlug(
+              publicResources.value[0].id,
+              publicResources.value[0].title,
+            ),
+          },
+        }
         : { name: 'free-resources' },
     })
   }
 
   if (publicRequirementSpotlights.value[0]) {
     notices.push({
-      title: `精选需求：${publicRequirementSpotlights.value[0].title}`,
+      title: `需求：${publicRequirementSpotlights.value[0].title}`,
       date: formatTimeLabel(publicRequirementSpotlights.value[0].updated_at),
       tag: statusToLabel(publicRequirementSpotlights.value[0].status),
       to: { name: 'requirement-hall' },
@@ -281,20 +290,11 @@ const portalNotices = computed<PortalNotice[]>(() => {
 const quickPanels = computed<QuickPanel[]>(() => [
   {
     title: '免费资源',
-    summary:
-      processedTagTree.value.roots.length > 0
-        ? `已整理 ${processedTagTree.value.roots.length} 个根分区、${publicResources.value.length} 条公开资源。`
-        : `当前已发布 ${publicResources.value.length} 条公开资源。`,
     action: '立即查看',
     tone: 'gift',
   },
   {
-    title: '有偿需求',
-    summary: publicRequirementSpotlights.value.length > 0
-      ? `正在展示 ${publicRequirementSpotlights.value.length} 条平台精选需求。`
-      : auth.isAuthed
-      ? `你当前有 ${pendingRequirements.value.length} 条个人需求记录。`
-      : `平台累计成交 ${metrics.value[0]?.value ?? '0 单'}。`,
+    title: '需求定制',
     action: '立即发布',
     tone: 'briefcase',
   },
@@ -306,11 +306,15 @@ const portalCategories = computed<PortalCategory[]>(() => {
   const dynamicCategories = processedTagTree.value.roots.slice(0, 6).map((root, index) => {
     const entryCount = root.entries.length
     const tagCount = root.entries.reduce(
-      (sum, entry) => sum + entry.publish_groups.reduce((innerSum, group) => innerSum + group.items.length, 0),
+      (sum, entry) =>
+        sum + entry.publish_groups.reduce((innerSum, group) => innerSum + group.items.length, 0),
       0,
     )
 
-    const previewEntries = root.entries.slice(0, 2).map((entry) => entry.label).join(' / ')
+    const previewEntries = root.entries
+      .slice(0, 2)
+      .map((entry) => entry.label)
+      .join(' / ')
     const summary = previewEntries
       ? `${previewEntries}${entryCount > 2 ? ' 等分区' : ''}`
       : `包含 ${entryCount} 个分区，覆盖 ${tagCount} 个标签节点`
@@ -336,11 +340,46 @@ const portalCategories = computed<PortalCategory[]>(() => {
   ]
 })
 const workflowSteps: WorkflowStep[] = [
-  { step: '01', title: '提交需求', hint: '补充预算、描述和验收标准', icon: '◫', accent: 'violet', actionLabel: '发布需求', action: 'publish' },
-  { step: '02', title: '平台审核', hint: '查看审核结果和驳回原因', icon: '☑', accent: 'blue', actionLabel: '查看进度', action: 'progress' },
-  { step: '03', title: '开发接单', hint: '开发者关联项目并进入协作', icon: '⌘', accent: 'green', actionLabel: '开发者入口', action: 'developer' },
-  { step: '04', title: '验收交付', hint: '确认版本、尾款和交付状态', icon: '✉', accent: 'orange', actionLabel: '我的需求', action: 'progress' },
-  { step: '05', title: '评价归档', hint: '评价交付质量并沉淀信用', icon: '♥', accent: 'red', actionLabel: '评价订单', action: 'progress' },
+  {
+    step: '01',
+    title: '提交需求',
+    icon: '◫',
+    accent: 'violet',
+    actionLabel: '发布需求',
+    action: 'publish',
+  },
+  {
+    step: '02',
+    title: '平台审核',
+    icon: '☑',
+    accent: 'blue',
+    actionLabel: '查看进度',
+    action: 'progress',
+  },
+  {
+    step: '03',
+    title: '开发接单',
+    icon: '⌘',
+    accent: 'green',
+    actionLabel: '开发者入口',
+    action: 'developer',
+  },
+  {
+    step: '04',
+    title: '验收交付',
+    icon: '✉',
+    accent: 'orange',
+    actionLabel: '我的需求',
+    action: 'progress',
+  },
+  {
+    step: '05',
+    title: '评价归档',
+    icon: '♥',
+    accent: 'red',
+    actionLabel: '评价订单',
+    action: 'progress',
+  },
 ]
 
 function openDevWorkbench() {
@@ -424,15 +463,13 @@ function openSpotlight(card: SpotlightCard) {
     return
   }
 
-  showToast('该需求展示卡片仅作门户展示，详细能力页正在建设中', 'info')
+  showToast('请进入需求大厅查看需求', 'info')
 }
 
 const platformStats = computed(() => {
   const [completed, , turnover] = metrics.value
   const creatorCount = new Set(
-    publicResources.value
-      .map((item) => item.creator.trim() || item.author.trim())
-      .filter(Boolean),
+    publicResources.value.map((item) => item.creator.trim() || item.author.trim()).filter(Boolean),
   ).size
   const resourceCount = publicResources.value.length
 
@@ -455,11 +492,15 @@ const developerRanks = computed<DeveloperRank[]>(() => {
     const current = groupedResources.get(name)
     const latestAt = Date.parse(resource.updated_at)
     const avatarUrl = resource.creator_avatar_url ? apiUrl(resource.creator_avatar_url) : ''
-    const creditScore = typeof resource.creator_credit_score === 'number' ? resource.creator_credit_score : null
+    const creditScore =
+      typeof resource.creator_credit_score === 'number' ? resource.creator_credit_score : null
 
     if (current) {
       current.deals += 1
-      current.latestAt = Math.max(current.latestAt, Number.isNaN(latestAt) ? current.latestAt : latestAt)
+      current.latestAt = Math.max(
+        current.latestAt,
+        Number.isNaN(latestAt) ? current.latestAt : latestAt,
+      )
       if (!current.avatarUrl && avatarUrl) {
         current.avatarUrl = avatarUrl
       }
@@ -483,7 +524,12 @@ const developerRanks = computed<DeveloperRank[]>(() => {
   }
 
   return [...groupedResources.values()]
-    .sort((left, right) => right.deals - left.deals || right.latestAt - left.latestAt || left.name.localeCompare(right.name, 'zh-CN'))
+    .sort(
+      (left, right) =>
+        right.deals - left.deals ||
+        right.latestAt - left.latestAt ||
+        left.name.localeCompare(right.name, 'zh-CN'),
+    )
     .slice(0, 4)
     .map((item) => ({
       name: item.name,
@@ -504,7 +550,7 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
   const resourceCards = publicResources.value.slice(0, 4).map((item, index) => ({
     kind: 'resource' as const,
     title: item.title,
-    summary: item.description?.trim() || '公开资源已上架，可进入资源目录查看详情。',
+    summary: item.description?.trim() || '',
     budget: summarizeResourceTags(item) || normalizeTagName(item.platform) || '公开资源',
     status: item.visibility === 'published' ? '已公开' : '待发布',
     badge: normalizeTagName(item.platform) || '平台资源',
@@ -537,8 +583,10 @@ const authRedirectTarget = computed(() => {
 
 onMounted(() => {
   auth.hydrate()
-  const oauthToken = typeof route.query.oauth_token === 'string' ? route.query.oauth_token.trim() : ''
-  const oauthError = typeof route.query.oauth_error === 'string' ? route.query.oauth_error.trim() : ''
+  const oauthToken =
+    typeof route.query.oauth_token === 'string' ? route.query.oauth_token.trim() : ''
+  const oauthError =
+    typeof route.query.oauth_error === 'string' ? route.query.oauth_error.trim() : ''
 
   if (oauthToken) {
     auth.setToken(oauthToken)
@@ -587,9 +635,18 @@ async function runBackgroundAutoRefresh() {
   autoRefreshInFlight = true
   try {
     if (auth.isAuthed) {
-      await Promise.all([loadDepositRatio(), loadPendingRequirements(true), loadRequirementOverview(), loadPublicPortalData(true)])
+      await Promise.all([
+        loadDepositRatio(),
+        loadPendingRequirements(true),
+        loadRequirementOverview(),
+        loadPublicPortalData(true),
+      ])
     } else {
-      await Promise.all([loadPendingRequirements(true), loadRequirementOverview(), loadPublicPortalData(true)])
+      await Promise.all([
+        loadPendingRequirements(true),
+        loadRequirementOverview(),
+        loadPublicPortalData(true),
+      ])
     }
   } finally {
     autoRefreshInFlight = false
@@ -633,16 +690,6 @@ function formatTimeLabel(iso: string): string {
   })
 }
 
-function formatTrend(rate: number) {
-  if (rate > 0) {
-    return `↑ ${rate.toFixed(1)}%`
-  }
-  if (rate < 0) {
-    return `↓ ${Math.abs(rate).toFixed(1)}%`
-  }
-  return '持平'
-}
-
 function openDepositCard(item: PendingRequirementView) {
   if (item.status === 'rejected') {
     publishTitle.value = item.title || ''
@@ -667,13 +714,21 @@ function openDepositCard(item: PendingRequirementView) {
   contractSigningStatus.value = null
   router.push({ name: 'home', query: { modal: 'deposit', requirement_id: item.id } })
   void loadAvailableCoupons()
-  void fetchContractSigningStatus(auth.token, item.id).then((s) => {
-    contractSigningStatus.value = s
-  }).catch(() => { /* 忽略，不影响支付流程 */ })
+  void fetchContractSigningStatus(auth.token, item.id)
+    .then((s) => {
+      contractSigningStatus.value = s
+    })
+    .catch(() => {
+      /* 忽略，不影响支付流程 */
+    })
 }
 
 function canOpenPayment(item: PendingRequirementView) {
-  return item.status === 'pending_deposit' || item.status === 'pending_final' || item.status === 'rejected'
+  return (
+    item.status === 'pending_deposit' ||
+    item.status === 'pending_final' ||
+    item.status === 'rejected'
+  )
 }
 
 function selectCoupon(code: string, type: 'amount' | 'percent') {
@@ -766,7 +821,9 @@ const couponBaseAmount = computed(() => {
   return finalDepositAmount(depositRequirement.value)
 })
 
-const couponDiscount = computed(() => computeCouponDiscount(couponBaseAmount.value, selectedCoupon.value))
+const couponDiscount = computed(() =>
+  computeCouponDiscount(couponBaseAmount.value, selectedCoupon.value),
+)
 
 const couponFinalAmount = computed(() => {
   if (couponDiscount.value <= 0) {
@@ -827,9 +884,8 @@ function computeCouponDiscount(amount: number, coupon?: CouponItem) {
       ? coupon.discount_value
       : (amount * coupon.discount_value) / 100
 
-  const cappedDiscount = coupon.max_discount_cny != null
-    ? Math.min(rawDiscount, coupon.max_discount_cny)
-    : rawDiscount
+  const cappedDiscount =
+    coupon.max_discount_cny != null ? Math.min(rawDiscount, coupon.max_discount_cny) : rawDiscount
 
   const discount = Math.max(0, Math.min(cappedDiscount, amount - 0.01))
   return Number(discount.toFixed(2))
@@ -902,17 +958,14 @@ async function loadRequirementOverview() {
       {
         label: '已完成需求数',
         value: `${payload.total_orders ?? 0} 单`,
-        hint: `较昨日 ${formatTrend(payload.total_orders_change_rate ?? 0)}`,
       },
       {
         label: '好评率',
         value: `${payload.positive_rate?.toFixed(1) ?? '0.0'}%`,
-        hint: `较昨日 ${formatTrend(payload.positive_rate_change_rate ?? 0)}`,
       },
       {
         label: '已支付订单累计金额',
         value: `¥ ${(payload.total_turnover_cny ?? 0).toFixed(2)}`,
-        hint: `较昨日 ${formatTrend(payload.total_turnover_change_rate ?? 0)}`,
       },
     ]
 
@@ -942,7 +995,9 @@ function summarizeResourceTags(resource: PublicMcResourceItem): string {
   return tags.slice(0, 2).join(' / ')
 }
 
-function resolveResourceRoute(resource: PublicMcResourceItem): { rootSlug: string; entrySlug: string } | null {
+function resolveResourceRoute(
+  resource: PublicMcResourceItem,
+): { rootSlug: string; entrySlug: string } | null {
   for (const root of processedTagTree.value.roots) {
     const entry = root.entries.find((item) => item.platform === resource.platform)
     if (entry) {
@@ -984,7 +1039,9 @@ async function loadPublicPortalData(silent = false) {
 
   if (resourcesResult.status === 'fulfilled') {
     publicResources.value = resourcesResult.value
-      .filter((resource, index, array) => array.findIndex((item) => item.id === resource.id) === index)
+      .filter(
+        (resource, index, array) => array.findIndex((item) => item.id === resource.id) === index,
+      )
       .sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at))
   } else {
     publicResources.value = []
@@ -996,7 +1053,9 @@ async function loadPublicPortalData(silent = false) {
     publicRequirementSpotlights.value = []
   }
 
-  const failedResults = [treeResult, resourcesResult, requirementsResult].filter((result) => result.status === 'rejected')
+  const failedResults = [treeResult, resourcesResult, requirementsResult].filter(
+    (result) => result.status === 'rejected',
+  )
   if (failedResults.length > 0 && failedResults.length < 3 && !silent) {
     showToast('部分首页公开数据加载失败，已显示可用数据', 'warning')
   } else if (failedResults.length === 3 && !silent) {
@@ -1020,7 +1079,10 @@ async function submitDepositPayment() {
   depositLoading.value = true
   try {
     if (!depositPayment.value) {
-      let createPayload: AlipayCreatePaymentResp | WechatCreatePaymentResp | AlipayPageCreatePaymentResp
+      let createPayload:
+        | AlipayCreatePaymentResp
+        | WechatCreatePaymentResp
+        | AlipayPageCreatePaymentResp
 
       if (channel === 'alipay') {
         createPayload = await createAlipayPagePayment(auth.token, {
@@ -1069,7 +1131,9 @@ async function submitDepositPayment() {
           amount_cny: depositPayment.value.amount_cny.toString(),
           expires_at: depositPayment.value.expires_at,
           coupon_code: activeCouponCode.value || undefined,
-          ...(channel === 'alipay' ? { page: '1' } : { qr_content: depositPayment.value.alipay_order_string }),
+          ...(channel === 'alipay'
+            ? { page: '1' }
+            : { qr_content: depositPayment.value.alipay_order_string }),
         },
       })
       return
@@ -1087,11 +1151,16 @@ async function submitDepositPayment() {
   } catch (err) {
     const message = err instanceof Error ? err.message : '支付失败'
     if (
-      message.includes('developer must sign first and user must sign after that before paying deposit')
-      || message.includes('requirement contract must be signed by developer before paying deposit')
-      || message.includes('contract must be created before paying deposit')
+      message.includes(
+        'developer must sign first and user must sign after that before paying deposit',
+      ) ||
+      message.includes('requirement contract must be signed by developer before paying deposit') ||
+      message.includes('contract must be created before paying deposit')
     ) {
-      showToast('当前需求需先由开发者（乙方）签署，再由您（甲方）签署协议后，才能支付定金', 'warning')
+      showToast(
+        '当前需求需先由开发者（乙方）签署，再由您（甲方）签署协议后，才能支付定金',
+        'warning',
+      )
     } else {
       showToast(message, 'error')
     }
@@ -1128,7 +1197,12 @@ async function submitAuth() {
     }
 
     void router.replace({ name: 'home' })
-    await Promise.all([loadDepositRatio(), loadPendingRequirements(), loadRequirementOverview(), loadPublicPortalData()])
+    await Promise.all([
+      loadDepositRatio(),
+      loadPendingRequirements(),
+      loadRequirementOverview(),
+      loadPublicPortalData(),
+    ])
   }
 }
 
@@ -1164,9 +1238,18 @@ async function refreshHomeData() {
   homeRefreshLoading.value = true
   try {
     if (auth.isAuthed) {
-      await Promise.all([loadDepositRatio(), loadPendingRequirements(), loadRequirementOverview(), loadPublicPortalData()])
+      await Promise.all([
+        loadDepositRatio(),
+        loadPendingRequirements(),
+        loadRequirementOverview(),
+        loadPublicPortalData(),
+      ])
     } else {
-      await Promise.all([loadPendingRequirements(), loadRequirementOverview(), loadPublicPortalData()])
+      await Promise.all([
+        loadPendingRequirements(),
+        loadRequirementOverview(),
+        loadPublicPortalData(),
+      ])
     }
 
     if (isMounted) {
@@ -1276,7 +1359,6 @@ async function submitPublishRequirement() {
     }
   }
 }
-
 </script>
 
 <template>
@@ -1288,15 +1370,20 @@ async function submitPublishRequirement() {
             <div class="portal-hero__main">
               <div class="portal-hero__copy">
                 <h1>需求定制开发交易平台</h1>
-                <p class="portal-hero__desc">连接需求与能力，让创意变为现实。免费资源、定制需求、开发协作与支付交付在同一门户闭环完成。</p>
 
-                <div class="portal-signal-list">
-                  <span v-for="signal in heroSignals" :key="signal" class="portal-signal">{{ signal }}</span>
+                <div v-if="heroSignals.length" class="portal-signal-list">
+                  <span v-for="signal in heroSignals" :key="signal" class="portal-signal">{{
+                    signal
+                  }}</span>
                 </div>
 
                 <div class="portal-hero__actions">
-                  <button class="portal-primary-action" type="button" @click="openPublishModal">发布需求</button>
-                  <button class="portal-secondary-action" type="button" @click="openDevWorkbench">成为开发者</button>
+                  <button class="portal-primary-action" type="button" @click="openPublishModal">
+                    发布需求
+                  </button>
+                  <button class="portal-secondary-action" type="button" @click="openDevWorkbench">
+                    成为开发者
+                  </button>
                 </div>
               </div>
 
@@ -1314,13 +1401,37 @@ async function submitPublishRequirement() {
             </div>
           </section>
 
+          <section class="portal-section portal-section--workflow">
+            <div class="portal-section__header">
+              <div>
+                <p class="portal-section__eyebrow">需求定制流程</p>
+              </div>
+            </div>
+            <div class="portal-workflow-grid" aria-label="需求定制流程">
+              <div v-for="(step, index) in workflowSteps" :key="step.step + step.title" class="portal-workflow-item">
+                <button class="portal-step-card" :class="`portal-step-card--${step.accent}`" type="button"
+                  @click="openWorkflowStep(step)">
+                  <span class="portal-step-card__number">{{ step.step }}</span>
+                  <div class="portal-step-card__copy">
+                    <strong>{{ step.title }}</strong>
+                  </div>
+                  <div class="portal-step-card__footer">
+                    <span class="portal-step-card__icon" aria-hidden="true">{{ step.icon }}</span>
+                    <span class="portal-step-card__action">{{ step.actionLabel }}</span>
+                  </div>
+                </button>
+                <span v-if="index < workflowSteps.length - 1" class="portal-step-card__arrow"
+                  aria-hidden="true">›</span>
+              </div>
+            </div>
+          </section>
+
           <section class="portal-quick-grid">
             <article v-for="panel in quickPanels" :key="panel.title" class="portal-quick-card"
               :class="`portal-quick-card--${panel.tone}`">
               <div class="portal-quick-card__icon">{{ panel.tone === 'gift' ? '免' : '需' }}</div>
               <div class="portal-quick-card__copy">
                 <h3>{{ panel.title }}</h3>
-                <p>{{ panel.summary }}</p>
                 <button class="portal-inline-action" type="button" @click="openQuickPanel(panel)">
                   {{ panel.action }}
                   <el-icon>
@@ -1336,8 +1447,9 @@ async function submitPublishRequirement() {
               <div>
                 <p class="portal-section__eyebrow">热门分类</p>
               </div>
-              <button class="portal-link-btn" type="button"
-                @click="router.push({ name: 'free-resources' })">全部分类</button>
+              <button class="portal-link-btn" type="button" @click="router.push({ name: 'free-resources' })">
+                全部分类
+              </button>
             </div>
             <div class="portal-category-grid">
               <article v-for="category in portalCategories" :key="category.label" class="portal-category-card">
@@ -1348,39 +1460,14 @@ async function submitPublishRequirement() {
             </div>
           </section>
 
-          <section class="portal-section portal-section--workflow">
-            <div class="portal-section__header">
-              <div>
-                <p class="portal-section__eyebrow">交易流程</p>
-              </div>
-            </div>
-            <div class="portal-workflow-grid" aria-label="需求交易流程">
-              <div v-for="(step, index) in workflowSteps" :key="step.step + step.title" class="portal-workflow-item">
-                <button class="portal-step-card" :class="`portal-step-card--${step.accent}`" type="button"
-                  @click="openWorkflowStep(step)">
-                  <span class="portal-step-card__number">{{ step.step }}</span>
-                  <div class="portal-step-card__copy">
-                    <strong>{{ step.title }}</strong>
-                    <small>{{ step.hint }}</small>
-                  </div>
-                  <div class="portal-step-card__footer">
-                    <span class="portal-step-card__icon" aria-hidden="true">{{ step.icon }}</span>
-                    <span class="portal-step-card__action">{{ step.actionLabel }}</span>
-                  </div>
-                </button>
-                <span v-if="index < workflowSteps.length - 1" class="portal-step-card__arrow"
-                  aria-hidden="true">›</span>
-              </div>
-            </div>
-          </section>
-
           <section class="portal-section">
             <div class="portal-section__header">
               <div>
-                <p class="portal-section__eyebrow">精选免费资源</p>
+                <p class="portal-section__eyebrow">免费资源</p>
               </div>
-              <button class="portal-link-btn" type="button"
-                @click="router.push({ name: 'free-resources' })">更多免费资源</button>
+              <button class="portal-link-btn" type="button" @click="router.push({ name: 'free-resources' })">
+                更多免费资源
+              </button>
             </div>
             <div v-if="spotlightCards.length > 0" class="portal-spotlight-grid">
               <article v-for="card in spotlightCards" :key="card.title" class="portal-spotlight-card"
@@ -1395,7 +1482,7 @@ async function submitPublishRequirement() {
                 </div>
                 <div class="portal-spotlight-card__body">
                   <h3>{{ card.title }}</h3>
-                  <p>{{ card.summary }}</p>
+                  <p v-if="card.summary">{{ card.summary }}</p>
                   <div class="portal-spotlight-card__meta-row">
                     <strong>{{ card.budget }}</strong>
                     <span class="portal-spotlight-card__status">{{ card.status }}</span>
@@ -1407,8 +1494,7 @@ async function submitPublishRequirement() {
               </article>
             </div>
             <div v-else class="portal-empty-state">
-              <strong>暂无精选免费资源</strong>
-              <p>当前没有已公开的免费资源，发布后这里会自动更新。</p>
+              <strong>暂无免费资源</strong>
             </div>
           </section>
         </div>
@@ -1464,8 +1550,10 @@ async function submitPublishRequirement() {
 
           <section class="portal-card">
             <div class="portal-card__header">
-              <h2>优选开发者</h2>
-              <button class="portal-link-btn" type="button" @click="router.push({ name: 'community' })">查看动态</button>
+              <h2>开发者</h2>
+              <button class="portal-link-btn" type="button" @click="router.push({ name: 'community' })">
+                查看动态
+              </button>
             </div>
             <ul v-if="developerRanks.length > 0" class="portal-rank-list">
               <li v-for="developer in developerRanks" :key="developer.name" class="portal-rank-item">
@@ -1484,12 +1572,10 @@ async function submitPublishRequirement() {
             </ul>
             <div v-else class="portal-empty-state portal-empty-state--compact">
               <strong>暂无公开开发者</strong>
-              <p>公开资源通过审核后，会按作者自动生成这里的排行。</p>
             </div>
           </section>
         </aside>
       </div>
-
     </div>
 
     <div v-if="dealDetailVisible && selectedDeal" class="auth-modal-wrap" @click.self="closeDealDetail">
@@ -1498,7 +1584,10 @@ async function submitPublishRequirement() {
         <p class="auth-switch">需求号：{{ selectedDeal.requirementId }}</p>
         <p class="auth-switch">成交金额：{{ selectedDeal.amount }}</p>
         <p class="auth-switch">成交时间：{{ selectedDeal.at }}</p>
-        <p class="auth-switch">评分：{{ selectedDeal.rating != null ? `${selectedDeal.rating.toFixed(1)} / 5` : '暂无评分' }}
+        <p class="auth-switch">
+          评分：{{
+            selectedDeal.rating != null ? `${selectedDeal.rating.toFixed(1)} / 5` : '暂无评分'
+          }}
         </p>
         <p class="auth-switch">评论时间：{{ selectedDeal.commentedAt || '暂无评论时间' }}</p>
         <label class="auth-label">

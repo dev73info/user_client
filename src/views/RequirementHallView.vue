@@ -50,19 +50,14 @@ const hallStats = computed(() => [
   {
     label: '可浏览需求',
     value: `${requirements.value.length} 条`,
-    hint: keyword.value.trim()
-      ? `当前筛选 ${filteredRequirements.value.length} 条`
-      : '来自已付定金需求',
   },
   {
     label: '已完成需求',
     value: `${overview.value?.total_orders ?? 0} 单`,
-    hint: `较昨日 ${formatTrend(overview.value?.total_orders_change_rate ?? 0)}`,
   },
   {
     label: '好评率',
     value: `${(overview.value?.positive_rate ?? 0).toFixed(1)}%`,
-    hint: `较昨日 ${formatTrend(overview.value?.positive_rate_change_rate ?? 0)}`,
   },
 ])
 
@@ -148,16 +143,6 @@ function formatTimeLabel(value: string): string {
   })
 }
 
-function formatTrend(rate: number): string {
-  if (rate > 0) {
-    return `上升 ${rate.toFixed(1)}%`
-  }
-  if (rate < 0) {
-    return `下降 ${Math.abs(rate).toFixed(1)}%`
-  }
-  return '持平'
-}
-
 function selectRequirement(item: PublicRequirementSpotlightItem) {
   selectedRequirement.value = item
 }
@@ -206,9 +191,6 @@ async function loadHallData() {
           <div>
             <p class="portal-page__eyebrow">热门需求</p>
             <h2>当前大厅重点展示的合作机会</h2>
-            <p class="requirement-hall__subtitle">
-              展示已进入待开发阶段的真实需求，按最近更新优先排序。
-            </p>
           </div>
           <div class="portal-page__header-actions">
             <span v-if="overviewLoading" class="portal-page__loading-chip">同步中</span>
@@ -261,11 +243,6 @@ async function loadHallData() {
 
         <div v-else class="portal-page__empty portal-page__empty--stacked">
           <strong>{{ keyword.trim() ? '没有匹配的需求' : '当前没有可展示的需求' }}</strong>
-          <span>{{
-            keyword.trim()
-              ? '换一个关键词试试，或清空筛选查看全部公开需求。'
-              : '有新的待开发需求后会自动出现在这里。'
-          }}</span>
           <button v-if="keyword.trim()" class="portal-page__secondary" type="button" @click="resetKeyword">
             清空筛选
           </button>
@@ -273,15 +250,16 @@ async function loadHallData() {
       </section>
 
       <aside class="portal-page__aside">
-        <section class="portal-page__aside-card">
+        <section class="portal-page__aside-card requirement-hall__overview-card">
           <div class="portal-page__aside-head">
             <h3>大厅概览</h3>
           </div>
           <ul class="portal-page__timeline requirement-hall__stats">
-            <li v-for="item in hallStats" :key="item.label" class="portal-page__timeline-item">
-              <div>
+            <li v-for="item in hallStats" :key="item.label"
+              class="portal-page__timeline-item requirement-hall__stat-item">
+              <div class="requirement-hall__stat-main">
                 <strong>{{ item.value }}</strong>
-                <p>{{ item.label }} · {{ item.hint }}</p>
+                <span>{{ item.label }}</span>
               </div>
             </li>
           </ul>
@@ -314,19 +292,20 @@ async function loadHallData() {
           </dl>
         </section>
 
-        <section class="portal-page__aside-card">
+        <section class="portal-page__aside-card requirement-hall__recent-card">
           <div class="portal-page__aside-head">
             <h3>最近交付</h3>
           </div>
-          <ul v-if="recentDeals.length" class="portal-page__list">
-            <li v-for="deal in recentDeals" :key="deal.payment_id" class="portal-page__list-item">
+          <ul v-if="recentDeals.length" class="portal-page__list requirement-hall__deal-list">
+            <li v-for="deal in recentDeals" :key="deal.payment_id"
+              class="portal-page__list-item requirement-hall__deal-item">
               <strong>{{ deal.title }}</strong>
               <span class="portal-page__meta">{{ formatMoney(deal.amount_cny) }} · {{ formatTimeLabel(deal.paid_at)
                 }}</span>
               <p v-if="deal.comment_text">{{ deal.comment_text }}</p>
             </li>
           </ul>
-          <p v-else class="portal-page__empty">暂无最近交付记录。</p>
+          <p v-else class="portal-page__empty requirement-hall__empty-delivery">暂无最近交付记录。</p>
         </section>
       </aside>
     </section>
@@ -334,10 +313,6 @@ async function loadHallData() {
 </template>
 
 <style scoped>
-.requirement-hall__subtitle {
-  margin: 6px 0 0;
-}
-
 .requirement-hall__filters {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -402,6 +377,92 @@ async function loadHallData() {
   font-size: 20px;
 }
 
+.requirement-hall__overview-card,
+.requirement-hall__recent-card {
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+}
+
+.requirement-hall__overview-card .portal-page__aside-head,
+.requirement-hall__recent-card .portal-page__aside-head {
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.82);
+}
+
+.requirement-hall__overview-card .portal-page__aside-head h3,
+.requirement-hall__recent-card .portal-page__aside-head h3 {
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+.requirement-hall__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.portal-page--nav .requirement-hall__stats .requirement-hall__stat-item {
+  display: flex;
+  min-height: 0;
+  padding: 12px;
+  border-radius: 14px;
+  border-color: rgba(219, 234, 254, 0.9);
+  background: rgba(248, 250, 252, 0.78);
+  box-shadow: none;
+  backdrop-filter: none;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+}
+
+.requirement-hall__stat-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.requirement-hall__stat-main strong {
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.requirement-hall__stat-main span {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.requirement-hall__deal-list {
+  gap: 0;
+}
+
+.requirement-hall__deal-item {
+  padding: 12px 0;
+}
+
+.requirement-hall__deal-item:first-child {
+  padding-top: 0;
+}
+
+.requirement-hall__deal-item:last-child {
+  padding-bottom: 0;
+}
+
+.requirement-hall__empty-delivery.portal-page__empty {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.78);
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
 .requirement-hall__detail-card {
   display: flex;
   flex-direction: column;
@@ -450,6 +511,36 @@ async function loadHallData() {
 @media (max-width: 640px) {
   .requirement-hall__filters {
     grid-template-columns: 1fr;
+  }
+
+  .portal-page--nav .requirement-hall__overview-card,
+  .portal-page--nav .requirement-hall__recent-card {
+    padding: 14px 16px;
+    border-radius: 16px;
+  }
+
+  .requirement-hall__overview-card .portal-page__aside-head,
+  .requirement-hall__recent-card .portal-page__aside-head {
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+  }
+
+  .requirement-hall__overview-card .portal-page__aside-head h3,
+  .requirement-hall__recent-card .portal-page__aside-head h3 {
+    font-size: 18px;
+  }
+
+  .portal-page--nav .requirement-hall__stats .requirement-hall__stat-item {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .requirement-hall__stat-main strong {
+    font-size: 19px;
+  }
+
+  .requirement-hall__stat-main span {
+    font-size: 11px;
   }
 }
 </style>
