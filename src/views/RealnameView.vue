@@ -3,11 +3,13 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
+  getMyRealnameVerification,
   submitMyRealnameVerification,
   type RealnameAuthType,
   type SubmitRealnameVerificationPayload,
   type UserRealnameVerification,
 } from '@/api/realname'
+import { HttpError } from '@/api/http'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
@@ -166,8 +168,28 @@ async function submit() {
   }
 }
 
-onMounted(async () => {
+async function loadCurrentRealname() {
   auth.hydrate()
+  if (!auth.token.trim()) {
+    return
+  }
+
+  try {
+    const record = await getMyRealnameVerification(auth.token)
+    current.value = record
+    patchForm(record)
+    await tryRestoreBusinessPage(record)
+  } catch (err) {
+    if (err instanceof HttpError && err.status === 404) {
+      return
+    }
+
+    showToast(err instanceof Error ? err.message : '加载实名认证状态失败', 'error')
+  }
+}
+
+onMounted(async () => {
+  await loadCurrentRealname()
 })
 </script>
 

@@ -34,6 +34,18 @@ export type SubmitRealnameVerificationPayload = {
 
 export type SubmitRealnameVerificationResponse = UserRealnameVerification
 
+export async function getMyRealnameVerification(
+  token: string,
+): Promise<UserRealnameVerification> {
+  return requestJson<UserRealnameVerification>(
+    '/realname/me',
+    {
+      headers: authHeaders(token),
+    },
+    '加载实名认证状态失败',
+  )
+}
+
 export async function submitMyRealnameVerification(
   token: string,
   payload: SubmitRealnameVerificationPayload,

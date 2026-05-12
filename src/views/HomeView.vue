@@ -22,8 +22,9 @@ import {
   type WechatCreatePaymentResp,
 } from '@/api/payments'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
-import { apiUrl } from '@/api/http'
+import { HttpError, apiUrl } from '@/api/http'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
+import { getMyRealnameVerification } from '@/api/realname'
 import {
   createRequirement,
   getPublicRequirementOverview,
@@ -1233,12 +1234,37 @@ async function submitAuth() {
 }
 
 async function ensurePublishRealnameApproved() {
+  auth.hydrate()
   if (!auth.isAuthed) {
     showToast('发布需求前请先登录', 'info')
     openAuth('login')
     return false
   }
-  return true
+
+  try {
+    const record = await getMyRealnameVerification(auth.token)
+    if (record.status === 'approved') {
+      return true
+    }
+
+    if (record.status === 'pending') {
+      showToast('实名认证审核中，通过后可发布需求', 'warning')
+      return false
+    }
+
+    showToast('实名认证未通过，请重新提交后再发布需求', 'warning')
+    void router.push({ name: 'workbench-realname', query: { redirect_to: route.fullPath || '/' } })
+    return false
+  } catch (err) {
+    if (err instanceof HttpError && err.status === 404) {
+      showToast('发布需求前请先完成实名认证', 'warning')
+      void router.push({ name: 'workbench-realname', query: { redirect_to: route.fullPath || '/' } })
+      return false
+    }
+
+    showToast(err instanceof Error ? err.message : '实名认证状态校验失败', 'error')
+    return false
+  }
 }
 
 async function openPublishModal() {
