@@ -1,5 +1,7 @@
 import type { RouteLocationRaw, RouteRecordRaw, Router } from 'vue-router'
 import { useAuthStore } from '@dev/stores/auth'
+import { getMyRealnameVerification } from '@/api/realname'
+import { HttpError } from '@/api/http'
 import { DEV_PORTAL_URL, buildUnifiedAuthUrl } from '@/config/runtime'
 
 const DEV_OVERVIEW_SECTION_HASH = '#developer-overview'
@@ -341,6 +343,28 @@ export function installDevRouteGuard(router: Router) {
         }
       } catch {
         // 身份校验接口异常时保留登录态，避免误登出
+        return false
+      }
+    }
+
+    if (auth.isAuthed && !publicPaths.has(to.path) && to.meta.requiresRealname) {
+      try {
+        const verification = await getMyRealnameVerification(auth.token)
+        if (verification.status !== 'approved') {
+          return {
+            name: 'workbench-realname',
+            query: { redirect_to: to.fullPath },
+            replace: true,
+          }
+        }
+      } catch (error) {
+        if (error instanceof HttpError && error.status === 404) {
+          return {
+            name: 'workbench-realname',
+            query: { redirect_to: to.fullPath },
+            replace: true,
+          }
+        }
         return false
       }
     }

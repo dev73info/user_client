@@ -4,7 +4,7 @@ import '@/styles/home.css'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowRight } from '@element-plus/icons-vue'
+import { ArrowRight, ChatDotRound } from '@element-plus/icons-vue'
 
 import { useAuthStore } from '@/stores/auth'
 import AuthModal from '@/components/AuthModal.vue'
@@ -193,6 +193,7 @@ const couponLoading = ref(false)
 const contractSigningStatus = ref<ContractSigningStatus | null>(null)
 const { showToast } = useToast()
 const heroSignals = ['免费资源共享', '有偿需求定制', '安全交易保障']
+const qqBetaGroupUrl = 'https://qm.qq.com/q/AXb3VBPurC'
 
 const portalNotices = computed<PortalNotice[]>(() => {
   const notices: PortalNotice[] = []
@@ -1783,6 +1784,19 @@ async function submitPublishRequirement() {
         </aside>
       </div>
     </div>
+
+    <a
+      class="portal-qq-float"
+      :href="qqBetaGroupUrl"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="加入内测 QQ 群"
+    >
+      <el-icon class="portal-qq-float__icon" aria-hidden="true">
+        <ChatDotRound />
+      </el-icon>
+      <span>内测QQ群</span>
+    </a>
 
     <div v-if="dealDetailVisible && selectedDeal" class="auth-modal-wrap" @click.self="closeDealDetail">
       <section class="auth-modal" aria-label="最近成交详情">

@@ -16,7 +16,7 @@ const authClient = createAuthApiClient(
     isHttpError: (err): err is HttpError => err instanceof HttpError,
   },
   {
-    defaultRequestDevRole: true,
+    defaultRequestDevRole: false,
   },
 )
 

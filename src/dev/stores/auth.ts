@@ -10,7 +10,7 @@ import {
   sendResetPasswordEmailCode,
   type AuthPayload,
 } from '@dev/api/auth'
-import { authHeaders as createAuthHeaders } from '@dev/api/http'
+import { HttpError, authHeaders as createAuthHeaders } from '@dev/api/http'
 import {
   applyAuthPayloadToState,
   clearPersistedAuthProfile,
@@ -52,6 +52,7 @@ export const useAuthStore = defineStore('dev-auth', () => {
   const username = ref('')
   const role = ref('')
   const loading = ref(false)
+  const devAccessError = ref('')
   const profileLoaded = ref(false)
   const hydrated = ref(false)
   let refreshTimer: ReturnType<typeof setTimeout> | null = null
@@ -234,6 +235,7 @@ export const useAuthStore = defineStore('dev-auth', () => {
   }
 
   async function ensureDevAccess(): Promise<boolean> {
+    devAccessError.value = ''
     if (!token.value) {
       return false
     }
@@ -246,8 +248,11 @@ export const useAuthStore = defineStore('dev-auth', () => {
       try {
         await requestDevRole(token.value)
         await fetchProfile(true)
-      } catch {
-        // Keep existing behavior: return false when dev role cannot be granted.
+      } catch (error) {
+        devAccessError.value = error instanceof Error ? error.message : '开发者权限申请失败'
+        if (error instanceof HttpError && error.status === 403) {
+          return false
+        }
       }
     }
 
@@ -270,7 +275,7 @@ export const useAuthStore = defineStore('dev-auth', () => {
         passwordInput,
         undefined,
         undefined,
-        true,
+        false,
       )
       applyAuthPayload(payload)
       if (!payload.username || !payload.role) {
@@ -290,7 +295,7 @@ export const useAuthStore = defineStore('dev-auth', () => {
         passwordInput,
         undefined,
         undefined,
-        true,
+        false,
       )
       applyAuthPayload(payload)
       if (!payload.username || !payload.role) {
@@ -340,7 +345,7 @@ export const useAuthStore = defineStore('dev-auth', () => {
         passwordInput,
         emailInput,
         emailCodeInput,
-        true,
+        false,
       )
       applyAuthPayload(payload)
       if (!payload.username || !payload.role) {
@@ -364,6 +369,7 @@ export const useAuthStore = defineStore('dev-auth', () => {
     username,
     role,
     loading,
+    devAccessError,
     profileLoaded,
     hydrated,
     isAuthed,
