@@ -54,7 +54,7 @@ onMounted(() => {
     <div class="app-content">
       <el-scrollbar class="app-scrollbar">
         <div class="app-view-container" :class="{ 'app-view-container--no-footer': !showSiteFooter }">
-          <PortalTopNav />
+          <PortalTopNav :class="['app-top-nav', { 'app-top-nav--home': route.name === 'home' }]" />
           <RouterView v-slot="{ Component }">
             <Suspense>
               <component :is="Component" />
@@ -137,7 +137,11 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-@media (max-width: 780px) {
+@media (max-width: 900px) {
+
+  .app-top-nav:not(.app-top-nav--home) {
+    display: none;
+  }
 
   .app-shell,
   .app-content {

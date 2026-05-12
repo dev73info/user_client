@@ -78,7 +78,7 @@ function openPublish() {
 }
 
 function goMessages() {
-    goProtectedTarget({ name: 'workbench-messages' })
+    goProtectedTarget({ name: 'messages' })
 }
 
 function goWorkbench() {

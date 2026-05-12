@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Box, Connection, DataAnalysis, MagicStick } from '@element-plus/icons-vue'
+import { ArrowDown, Box, Close, Connection, DataAnalysis, MagicStick, Menu as MenuIcon } from '@element-plus/icons-vue'
 
 import { listRequirementConversations, type RequirementConversation } from '@/api/conversations'
 import { useAuthStore } from '@/stores/auth'
@@ -31,6 +31,15 @@ const { showToast } = useToast()
 
 const conversations = ref<RequirementConversation[]>([])
 const conversationLoading = ref(false)
+const mobileMenuOpen = ref(false)
+const touchStartX = ref(0)
+const touchStartY = ref(0)
+const touchTracking = ref(false)
+
+const MOBILE_MENU_BREAKPOINT_PX = 900
+const MOBILE_SWIPE_EDGE_PX = 44
+const MOBILE_SWIPE_THRESHOLD_PX = 72
+const MOBILE_SWIPE_VERTICAL_LIMIT_PX = 56
 
 const overviewItem: WorkbenchMenuItem = {
   label: '工作台总览',
@@ -139,6 +148,7 @@ watch(
     if (route.name === 'workbench-messages' && !openGroupKeys.value.includes('messages')) {
       openGroupKeys.value = [...openGroupKeys.value, 'messages']
     }
+    mobileMenuOpen.value = false
     void scrollToHash()
   },
   { immediate: true },
@@ -194,6 +204,7 @@ function openMessageCenter() {
     openGroupKeys.value = [...openGroupKeys.value, 'messages']
   }
 
+  mobileMenuOpen.value = false
   void router.push({ name: 'workbench-messages' })
 }
 
@@ -229,6 +240,63 @@ function toggleGroup(group: WorkbenchMenuGroup) {
   }
 
   openGroupKeys.value = [...openGroupKeys.value, group.key]
+}
+
+function openMobileMenu() {
+  mobileMenuOpen.value = true
+}
+
+function closeMobileMenu() {
+  mobileMenuOpen.value = false
+}
+
+function isMobileWorkbenchViewport() {
+  return typeof window !== 'undefined' && window.matchMedia(`(max-width: ${MOBILE_MENU_BREAKPOINT_PX}px)`).matches
+}
+
+function handleWorkbenchTouchStart(event: TouchEvent) {
+  if (!isMobileWorkbenchViewport()) {
+    touchTracking.value = false
+    return
+  }
+
+  const touch = event.touches[0]
+  if (!touch) {
+    touchTracking.value = false
+    return
+  }
+
+  const canStartGesture = mobileMenuOpen.value || touch.clientX <= MOBILE_SWIPE_EDGE_PX
+  touchTracking.value = canStartGesture
+  touchStartX.value = touch.clientX
+  touchStartY.value = touch.clientY
+}
+
+function handleWorkbenchTouchEnd(event: TouchEvent) {
+  if (!touchTracking.value) {
+    return
+  }
+
+  touchTracking.value = false
+  const touch = event.changedTouches[0]
+  if (!touch) {
+    return
+  }
+
+  const deltaX = touch.clientX - touchStartX.value
+  const deltaY = touch.clientY - touchStartY.value
+  if (Math.abs(deltaY) > MOBILE_SWIPE_VERTICAL_LIMIT_PX) {
+    return
+  }
+
+  if (!mobileMenuOpen.value && deltaX >= MOBILE_SWIPE_THRESHOLD_PX) {
+    openMobileMenu()
+    return
+  }
+
+  if (mobileMenuOpen.value && deltaX <= -MOBILE_SWIPE_THRESHOLD_PX) {
+    closeMobileMenu()
+  }
 }
 
 function findActiveItem() {
@@ -319,7 +387,14 @@ async function scrollToHash() {
 </script>
 
 <template>
-  <main class="user-workbench">
+  <main class="user-workbench" :class="{
+    'user-workbench--messages': route.name === 'workbench-messages',
+    'user-workbench--mobile-menu-open': mobileMenuOpen,
+  }" @touchstart.passive="handleWorkbenchTouchStart" @touchend.passive="handleWorkbenchTouchEnd"
+    @touchcancel.passive="touchTracking = false">
+    <button v-if="mobileMenuOpen" class="user-workbench__menu-backdrop" type="button" aria-label="关闭工作台菜单"
+      @click="closeMobileMenu" />
+
     <aside class="user-workbench__aside" aria-label="统一工作台菜单">
       <el-scrollbar class="app-scrollbar user-workbench__aside-scrollbar" max-height="calc(100vh - 120px)">
         <div class="user-workbench__aside-inner">
@@ -328,12 +403,17 @@ async function scrollToHash() {
               <strong>个人工作台</strong>
             </div>
             <em>{{ isDeveloperArea() ? '开发者功能' : '用户中心' }}</em>
+            <button class="user-workbench__drawer-close" type="button" aria-label="关闭工作台菜单" @click="closeMobileMenu">
+              <el-icon>
+                <Close />
+              </el-icon>
+            </button>
           </div>
 
           <nav class="user-workbench__menu">
             <p class="user-workbench__menu-section">我的事项</p>
             <RouterLink class="user-workbench__menu-link user-workbench__menu-link--root"
-              :class="{ active: isOverviewActive() }" :to="menuItemTo(overviewItem)">
+              :class="{ active: isOverviewActive() }" :to="menuItemTo(overviewItem)" @click="closeMobileMenu">
               <span class="user-workbench__menu-icon">
                 <el-icon>
                   <DataAnalysis />
@@ -364,7 +444,7 @@ async function scrollToHash() {
                 <div v-show="isMessageMenuOpen()" class="user-workbench__submenu user-workbench__submenu--messages">
                   <RouterLink v-for="item in visibleConversations" :key="item.conversation_id"
                     class="user-workbench__submenu-link user-workbench__conversation-link"
-                    :class="{ active: isConversationActive(item) }" :to="conversationTo(item)">
+                    :class="{ active: isConversationActive(item) }" :to="conversationTo(item)" @click="closeMobileMenu">
                     <span>{{ item.requirement_title || item.requirement_id }}</span>
                     <small>{{ partnerLabel(item) }} · {{ conversationMeta(item) }}</small>
                   </RouterLink>
@@ -401,7 +481,7 @@ async function scrollToHash() {
                 <div v-show="isGroupOpen(group)" class="user-workbench__submenu">
                   <RouterLink v-for="item in group.items" :key="`${item.name}-${item.hash ?? ''}`"
                     class="user-workbench__submenu-link" :class="{ active: isMenuItemActive(item) }"
-                    :to="menuItemTo(item)">
+                    :to="menuItemTo(item)" @click="closeMobileMenu">
                     <span>{{ item.label }}</span>
                     <small>{{ item.description }}</small>
                   </RouterLink>
@@ -414,6 +494,19 @@ async function scrollToHash() {
     </aside>
 
     <section class="user-workbench__main">
+      <div class="user-workbench__mobile-bar">
+        <button class="user-workbench__mobile-menu-btn" type="button" aria-label="打开工作台菜单" @click="openMobileMenu">
+          <el-icon>
+            <MenuIcon />
+          </el-icon>
+          <span>菜单</span>
+        </button>
+        <div>
+          <strong>个人工作台</strong>
+          <span>{{ currentEyebrow }}</span>
+        </div>
+      </div>
+
       <header v-if="showWorkbenchHeader" class="user-workbench__head">
         <div>
           <p>{{ currentEyebrow }}</p>
@@ -496,6 +589,20 @@ async function scrollToHash() {
   font-size: 12px;
   font-style: normal;
   font-weight: 800;
+}
+
+.user-workbench__drawer-close,
+.user-workbench__mobile-bar,
+.user-workbench__menu-backdrop {
+  display: none;
+}
+
+.user-workbench__drawer-close,
+.user-workbench__mobile-menu-btn,
+.user-workbench__menu-backdrop {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
 }
 
 .user-workbench__menu,
@@ -970,6 +1077,114 @@ async function scrollToHash() {
 @media (max-width: 900px) {
   .user-workbench {
     width: calc(100% - 16px);
+  }
+
+  .user-workbench__menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: block;
+    background: rgba(15, 23, 42, 0.36);
+    backdrop-filter: blur(2px);
+  }
+
+  .user-workbench__aside {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 80;
+    width: min(84vw, 320px);
+    max-height: none;
+    border-radius: 0 22px 22px 0;
+    transform: translateX(-104%);
+    transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .user-workbench--mobile-menu-open .user-workbench__aside {
+    transform: translateX(0);
+  }
+
+  .user-workbench__aside-scrollbar {
+    height: 100%;
+    max-height: none !important;
+  }
+
+  .user-workbench__aside-inner {
+    min-height: 100%;
+    padding: 16px;
+  }
+
+  .user-workbench__drawer-close {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 11px;
+    background: rgba(239, 246, 255, 0.94);
+    color: #1d4ed8;
+  }
+
+  .user-workbench__mobile-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid rgba(224, 232, 255, 0.96);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
+  }
+
+  .user-workbench__mobile-bar>div {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .user-workbench__mobile-bar strong,
+  .user-workbench__mobile-bar span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .user-workbench__mobile-bar strong {
+    color: #0f172a;
+    font-size: 15px;
+    line-height: 1.2;
+  }
+
+  .user-workbench__mobile-bar span {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .user-workbench__mobile-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    min-height: 38px;
+    padding: 0 12px;
+    border-radius: 12px;
+    background: rgba(219, 234, 254, 0.9);
+    color: #1d4ed8;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .user-workbench--messages {
+    margin-top: 8px;
+  }
+
+  .user-workbench--messages .user-workbench__aside,
+  .user-workbench--messages .user-workbench__head,
+  .user-workbench--messages .user-workbench__mobile-bar {
+    display: none;
   }
 }
 

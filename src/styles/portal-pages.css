@@ -487,6 +487,30 @@
 
   .portal-page--nav {
     width: calc(100% - 16px);
+    margin-top: 8px;
+    gap: 12px;
+  }
+
+  .portal-page--nav .portal-page__content {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .portal-page--nav .portal-page__panel,
+  .portal-page--nav .portal-page__aside-card {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .portal-page--nav .portal-page__section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .portal-page--nav .portal-page__header-actions {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .portal-page__hero,
@@ -515,5 +539,24 @@
     width: 48px;
     height: 48px;
     font-size: 15px;
+  }
+}
+
+@media (max-width: 640px) {
+  .portal-page--nav .portal-page__card,
+  .portal-page--nav .portal-page__collection-card,
+  .portal-page--nav .portal-page__timeline-item {
+    padding: 16px;
+  }
+
+  .portal-page--nav .portal-page__card-topline,
+  .portal-page--nav .portal-page__card-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .portal-page--nav .portal-page__action {
+    width: 100%;
+    text-align: center;
   }
 }

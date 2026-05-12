@@ -771,6 +771,39 @@ function submitSearch() {
   }
 }
 
+@media (max-width: 900px) {
+  .portal-header.app-top-nav--home {
+    top: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    width: calc(100% - 20px);
+    margin: 8px auto 10px;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .portal-header.app-top-nav--home .portal-brand,
+  .portal-header.app-top-nav--home .portal-nav,
+  .portal-header.app-top-nav--home .portal-subscription,
+  .portal-header.app-top-nav--home .portal-text-btn,
+  .portal-header.app-top-nav--home .portal-solid-btn,
+  .portal-header.app-top-nav--home .portal-user {
+    display: none;
+  }
+
+  .portal-header.app-top-nav--home .portal-header__tools {
+    width: 100%;
+    min-width: 0;
+    justify-content: stretch;
+  }
+
+  .portal-header.app-top-nav--home .portal-search {
+    width: 100%;
+    min-height: 42px;
+    background: rgba(248, 251, 255, 0.96);
+  }
+}
+
 @media (max-width: 1180px) {
   .portal-header--dev {
     grid-template-columns: minmax(0, 1fr) auto;

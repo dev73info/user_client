@@ -49,6 +49,7 @@ const activeTitle = ref('')
 const realtimeStatus = ref<RealtimeStatus>('idle')
 const realtimeError = ref('')
 let stopRealtimeEvents: (() => void) | null = null
+const currentMessagesRouteName = computed(() => (route.name === 'messages' ? 'messages' : 'workbench-messages'))
 
 const requirementById = computed(() =>
   Object.fromEntries(requirements.value.map((item) => [item.requirement_id, item])),
@@ -210,6 +211,11 @@ function buildPendingThread(item: RequirementItem): MessageThread {
   }
 }
 
+function threadAvatarText(item: MessageThread) {
+  const source = item.partnerLabel.replace(/^(开发者：|用户：)/, '').trim() || item.title.trim()
+  return source.slice(0, 1).toUpperCase()
+}
+
 function emptyTitle() {
   if (activeFilter.value === 'active') {
     return '还没有已开启的会话'
@@ -236,13 +242,13 @@ function showThread(item: MessageThread) {
 }
 
 function openThread(item: MessageThread) {
-  if (route.name === 'workbench-messages' && route.query.requirement_id === item.requirementId) {
+  if ((route.name === 'workbench-messages' || route.name === 'messages') && route.query.requirement_id === item.requirementId) {
     showThread(item)
     return
   }
 
   void router.push({
-    name: 'workbench-messages',
+    name: currentMessagesRouteName.value,
     query: {
       requirement_id: item.requirementId,
     },
@@ -266,7 +272,7 @@ function openThreadFromRoute() {
 }
 
 function closeConversation() {
-  void router.push({ name: 'workbench-messages' })
+  void router.push({ name: currentMessagesRouteName.value })
 }
 
 function applyConversationDetail(payload: RequirementConversationDetail) {
@@ -436,6 +442,7 @@ watch(
       <div v-else class="messages-thread-list">
         <button v-for="item in filteredThreads" :key="item.key" type="button" class="messages-thread"
           :class="{ 'messages-thread--pending': item.kind === 'pending' }" @click="openThread(item)">
+          <span class="messages-thread__avatar" aria-hidden="true">{{ threadAvatarText(item) }}</span>
           <span class="messages-thread__status">{{ item.statusLabel }}</span>
           <span class="messages-thread__main">
             <strong>{{ item.title }}</strong>
@@ -656,6 +663,10 @@ watch(
   background: #fffdf7;
 }
 
+.messages-thread__avatar {
+  display: none;
+}
+
 .messages-thread__status,
 .messages-thread__action {
   display: inline-flex;
@@ -731,61 +742,162 @@ watch(
   box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
 }
 
-@media (max-width: 820px) {
-
-  .messages-panel__header,
-  .messages-panel__tools {
-    flex-direction: column;
-  }
-
-  .messages-panel__tools,
-  .messages-filter {
+@media (max-width: 900px) {
+  .messages-page {
     width: 100%;
+    margin: 0;
+    padding: 8px 8px 0;
+    gap: 0;
   }
 
   .messages-summary {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+    display: none;
   }
 
-  .messages-summary__item {
-    padding: 12px;
+  .messages-panel {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
-  .messages-summary__item strong {
-    font-size: 22px;
+  .messages-panel__header {
+    display: none;
   }
 
-  .messages-filter button {
-    flex: 1;
-    min-width: 0;
+  .messages-state,
+  .messages-empty {
+    min-height: calc(100vh - 140px);
+    border-radius: 18px;
+  }
+
+  .messages-thread-list {
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid rgba(224, 232, 255, 0.88);
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
   }
 
   .messages-thread {
-    grid-template-columns: 1fr;
-    gap: 10px;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "avatar main meta"
+      "avatar main status";
+    gap: 0 10px;
+    min-height: 74px;
+    padding: 12px;
+    border: 0;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 0;
+    box-shadow: none;
   }
 
-  .messages-thread__status,
-  .messages-thread__action {
-    justify-self: start;
+  .messages-thread:last-child {
+    border-bottom: 0;
   }
 
-  .messages-thread__main strong,
-  .messages-thread__meta span,
+  .messages-thread__avatar {
+    grid-area: avatar;
+    align-self: center;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #2f68ff, #3fb7a6);
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 800;
+  }
+
+  .messages-thread--pending .messages-thread__avatar {
+    background: linear-gradient(135deg, #f59e0b, #ef7f5f);
+  }
+
+  .messages-thread__main {
+    grid-area: main;
+    align-self: center;
+    gap: 4px;
+  }
+
+  .messages-thread__main strong {
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  .messages-thread__main small {
+    display: none;
+  }
+
+  .messages-thread__main span {
+    overflow: hidden;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .messages-thread__meta {
+    grid-area: meta;
+    align-self: start;
+    justify-items: end;
+    min-width: 58px;
+    padding-top: 2px;
+  }
+
+  .messages-thread__meta span {
+    display: none;
+  }
+
   .messages-thread__meta time {
-    white-space: normal;
+    color: #94a3b8;
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .messages-thread__status {
+    grid-area: status;
+    align-self: end;
+    justify-self: end;
+    max-width: 74px;
+    padding: 2px 7px;
+    overflow: hidden;
+    font-size: 10px;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+  }
+
+  .messages-thread__action {
+    display: none;
   }
 }
 
 @media (max-width: 420px) {
 
   .messages-panel {
-    padding: 14px;
+    padding: 0;
   }
 
-  .messages-summary {
-    grid-template-columns: 1fr;
+  .messages-thread {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    min-height: 70px;
+    padding: 11px 10px;
+  }
+
+  .messages-thread__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
+    font-size: 17px;
+  }
+
+  .messages-thread__status {
+    max-width: 62px;
   }
 }
 </style>

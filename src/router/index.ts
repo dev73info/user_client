@@ -97,7 +97,10 @@ const router = createRouter({
     {
       path: '/messages',
       name: 'messages',
-      redirect: { name: 'workbench-messages' },
+      component: () => import('@/views/MessagesView.vue'),
+      meta: {
+        hideSiteFooter: true,
+      },
     },
     {
       path: '/my-custom-resources',
