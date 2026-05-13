@@ -208,9 +208,9 @@ function contractStartHint(item: RequirementItem): string {
 
   const status = signingStatusMap.value[item.requirement_id]
   if (!status?.party_b_signed) {
-    return '请先签署合同，甲方确认后自动开始开发'
+    return '请先签署合同，待甲方也签署后进入开发流程'
   }
-  return '等待甲方签署，双方签完后自动开始开发'
+  return '等待甲方签署，双方签署完成后进入开发流程'
 }
 
 function openContractSign(item: RequirementItem) {
@@ -339,7 +339,7 @@ async function loadRequirementConversations() {
             <template #default="scope">
               <el-button type="primary" link :disabled="!canOpenConversation(scope.row)"
                 @click="openConversation(scope.row)">{{ conversationButtonLabel(scope.row)
-              }}</el-button>
+                }}</el-button>
             </template>
           </el-table-column>
         </el-table>

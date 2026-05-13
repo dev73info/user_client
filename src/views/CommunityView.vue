@@ -5,7 +5,9 @@ import { EditorContent, useEditor } from '@tiptap/vue-3'
 import Link from '@tiptap/extension-link'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
+import { ChatDotRound, Star, StarFilled } from '@element-plus/icons-vue'
 
+import { apiUrl } from '@/api/http'
 import {
   createCommunityComment,
   createCommunityPost,
@@ -105,6 +107,19 @@ const tagOptions = computed(() => tags.value.map((tag) => tag.name))
 const canEditSelectedPost = computed(() =>
   Boolean(auth.isAuthed && selectedPost.value && selectedPost.value.author === auth.username),
 )
+
+function avatarInitial(name?: string | null): string {
+  return Array.from(name?.trim() || '用')[0] ?? '用'
+}
+
+function commentAvatarSrc(comment: CommunityComment): string {
+  const avatarUrl = comment.commenter_avatar_url?.trim()
+  return avatarUrl ? apiUrl(avatarUrl) : ''
+}
+
+function handleCommentAvatarError(comment: CommunityComment) {
+  comment.commenter_avatar_url = null
+}
 
 onMounted(() => {
   auth.hydrate()
@@ -394,7 +409,7 @@ async function submitComment() {
           <div>
             <p class="portal-page__eyebrow">社区内容</p>
             <h2>开发者与用户帖子</h2>
-            <p>发布公告、经验、资源维护记录和需求协作复盘，让平台内容从占位板块变成真实社区。</p>
+            <p>沉淀公告、经验、资源维护与需求协作记录。</p>
           </div>
           <div class="community-hero__actions">
             <el-button :loading="loading" @click="loadCommunityData">刷新</el-button>
@@ -403,22 +418,11 @@ async function submitComment() {
         </div>
 
         <div class="community-tag-row">
-          <button
-            class="community-tag"
-            :class="{ 'is-active': !selectedTag }"
-            type="button"
-            @click="selectTag('')"
-          >
+          <button class="community-tag" :class="{ 'is-active': !selectedTag }" type="button" @click="selectTag('')">
             全部
           </button>
-          <button
-            v-for="tag in tags"
-            :key="tag.id"
-            class="community-tag"
-            :class="{ 'is-active': selectedTag === tag.name }"
-            type="button"
-            @click="selectTag(tag.name)"
-          >
+          <button v-for="tag in tags" :key="tag.id" class="community-tag"
+            :class="{ 'is-active': selectedTag === tag.name }" type="button" @click="selectTag(tag.name)">
             {{ tag.name }}
           </button>
         </div>
@@ -429,13 +433,8 @@ async function submitComment() {
           <span>成为第一位发布内容的人。</span>
         </div>
         <div v-else class="community-post-list">
-          <article
-            v-for="post in posts"
-            :key="post.id"
-            class="community-post-card"
-            :class="{ 'is-active': selectedPost?.id === post.id }"
-            @click="selectPost(post)"
-          >
+          <article v-for="post in posts" :key="post.id" class="community-post-card"
+            :class="{ 'is-active': selectedPost?.id === post.id }" @click="selectPost(post)">
             <div class="community-post-card__head">
               <div>
                 <h3>{{ post.title }}</h3>
@@ -466,22 +465,11 @@ async function submitComment() {
 
           <el-form label-position="top" class="community-form">
             <el-form-item label="标题">
-              <el-input
-                v-model="postForm.title"
-                maxlength="80"
-                show-word-limit
-                placeholder="写一个清楚的标题"
-              />
+              <el-input v-model="postForm.title" maxlength="80" show-word-limit placeholder="写一个清楚的标题" />
             </el-form-item>
             <el-form-item label="标签">
-              <el-select
-                v-model="postForm.tag_names"
-                multiple
-                filterable
-                allow-create
-                default-first-option
-                placeholder="选择或输入标签"
-              >
+              <el-select v-model="postForm.tag_names" multiple filterable allow-create default-first-option
+                placeholder="选择或输入标签">
                 <el-option v-for="tag in tagOptions" :key="tag" :label="tag" :value="tag" />
               </el-select>
             </el-form-item>
@@ -489,31 +477,15 @@ async function submitComment() {
 
           <div class="community-editor">
             <div class="community-editor__toolbar">
-              <button
-                v-for="item in toolbarActions"
-                :key="item.action"
-                class="community-editor__tool"
-                :class="{ 'is-active': isToolbarActive(item.action) }"
-                type="button"
-                :title="item.title"
-                @click="runToolbarAction(item.action)"
-              >
+              <button v-for="item in toolbarActions" :key="item.action" class="community-editor__tool"
+                :class="{ 'is-active': isToolbarActive(item.action) }" type="button" :title="item.title"
+                @click="runToolbarAction(item.action)">
                 {{ item.label }}
               </button>
-              <button
-                class="community-editor__tool"
-                type="button"
-                title="插入链接"
-                @click="toggleLink"
-              >
+              <button class="community-editor__tool" type="button" title="插入链接" @click="toggleLink">
                 链接
               </button>
-              <button
-                class="community-editor__tool"
-                type="button"
-                title="清除格式"
-                @click="clearFormatting"
-              >
+              <button class="community-editor__tool" type="button" title="清除格式" @click="clearFormatting">
                 清除
               </button>
             </div>
@@ -539,21 +511,26 @@ async function submitComment() {
                 {{ selectedPost.updated_at }}
               </p>
             </div>
-            <el-button v-if="canEditSelectedPost" plain @click="openEditComposer(selectedPost)"
-              >编辑</el-button
-            >
+            <el-button v-if="canEditSelectedPost" plain @click="openEditComposer(selectedPost)">编辑</el-button>
           </div>
 
           <article class="community-rich-text" v-html="currentPostContent"></article>
 
           <div class="community-actions">
-            <el-button
-              :type="selectedPost.liked_by_me ? 'primary' : 'default'"
-              @click="toggleLike(selectedPost)"
-            >
-              {{ selectedPost.liked_by_me ? '已点赞' : '点赞' }} · {{ selectedPost.like_count }}
+            <el-button class="community-like-button" :class="{ 'is-liked': selectedPost.liked_by_me }"
+              :type="selectedPost.liked_by_me ? 'primary' : 'default'" @click="toggleLike(selectedPost)">
+              <el-icon>
+                <component :is="selectedPost.liked_by_me ? StarFilled : Star" />
+              </el-icon>
+              <span>{{ selectedPost.liked_by_me ? '已点赞' : '点赞' }}</span>
+              <strong>{{ selectedPost.like_count }}</strong>
             </el-button>
-            <span>{{ selectedPost.comment_count }} 条评论</span>
+            <span class="community-action-stat">
+              <el-icon>
+                <ChatDotRound />
+              </el-icon>
+              {{ selectedPost.comment_count }} 条评论
+            </span>
           </div>
 
           <section class="community-comments">
@@ -563,17 +540,9 @@ async function submitComment() {
             </div>
 
             <div class="community-comment-box">
-              <el-input
-                v-model="commentDraft"
-                type="textarea"
-                :rows="3"
-                maxlength="800"
-                show-word-limit
-                placeholder="说点具体的想法或补充"
-              />
-              <el-button type="primary" :loading="sendingComment" @click="submitComment"
-                >发表评论</el-button
-              >
+              <el-input v-model="commentDraft" type="textarea" :rows="3" maxlength="800" show-word-limit
+                placeholder="说点具体的想法或补充" />
+              <el-button type="primary" :loading="sendingComment" @click="submitComment">发表评论</el-button>
             </div>
 
             <div v-if="comments.length === 0" class="community-empty community-empty--compact">
@@ -582,12 +551,9 @@ async function submitComment() {
             <ul v-else class="community-comment-list">
               <li v-for="comment in comments" :key="comment.id" class="community-comment-item">
                 <div class="community-comment-item__avatar">
-                  <img
-                    v-if="comment.commenter_avatar_url"
-                    :src="comment.commenter_avatar_url"
-                    :alt="`${comment.commenter} 的头像`"
-                  />
-                  <span v-else>{{ comment.commenter.slice(0, 1) }}</span>
+                  <img v-if="commentAvatarSrc(comment)" :src="commentAvatarSrc(comment)"
+                    :alt="`${comment.commenter} 的头像`" @error="handleCommentAvatarError(comment)" />
+                  <span v-else>{{ avatarInitial(comment.commenter) }}</span>
                 </div>
                 <div>
                   <strong>{{ comment.commenter }}</strong>
@@ -609,45 +575,41 @@ async function submitComment() {
 </template>
 
 <style scoped>
-.community-page {
-  width: min(1360px, calc(100% - 24px));
-}
-
 .community-board {
   display: grid;
-  grid-template-columns: minmax(0, 0.92fr) minmax(420px, 1.08fr);
-  gap: 18px;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
 }
 
 .community-stream,
 .community-panel {
+  min-width: 0;
   border: 1px solid rgba(198, 210, 236, 0.72);
-  border-radius: 18px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 12px 30px rgba(90, 120, 180, 0.08);
+  box-shadow: 0 10px 24px rgba(90, 120, 180, 0.08);
 }
 
 .community-stream,
 .community-panel {
-  padding: 18px;
+  padding: 14px;
 }
 
 .community-detail {
   position: sticky;
-  top: 84px;
+  top: 76px;
+  min-width: 0;
 }
 
 .community-hero {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-  padding: 20px;
-  border-radius: 16px;
-  border: 1px solid rgba(219, 234, 254, 0.88);
-  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 58%, #eef6ff 100%);
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.86);
 }
 
 .community-hero h2,
@@ -660,7 +622,8 @@ async function submitComment() {
 
 .community-hero h2 {
   margin-top: 4px;
-  font-size: clamp(24px, 2vw, 32px);
+  font-size: 22px;
+  line-height: 1.25;
 }
 
 .community-hero p,
@@ -675,8 +638,9 @@ async function submitComment() {
 }
 
 .community-hero p {
-  max-width: 620px;
-  margin: 8px 0 0;
+  max-width: 320px;
+  margin: 6px 0 0;
+  font-size: 14px;
 }
 
 .community-hero__actions,
@@ -694,13 +658,15 @@ async function submitComment() {
 .community-tag-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.78);
 }
 
 .community-tag {
-  min-height: 30px;
-  padding: 5px 11px;
+  min-height: 28px;
+  padding: 4px 10px;
   border: 1px solid rgba(219, 234, 254, 0.92);
   border-radius: 999px;
   background: rgba(239, 246, 255, 0.76);
@@ -719,16 +685,16 @@ async function submitComment() {
 .community-post-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .community-post-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 14px;
   border: 1px solid rgba(226, 232, 240, 0.92);
-  border-radius: 16px;
+  border-radius: 12px;
   background: #fff;
   cursor: pointer;
   transition:
@@ -740,7 +706,7 @@ async function submitComment() {
 .community-post-card:hover,
 .community-post-card.is-active {
   border-color: rgba(37, 99, 235, 0.48);
-  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.09);
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.09);
   transform: translateY(-1px);
 }
 
@@ -753,7 +719,8 @@ async function submitComment() {
 
 .community-post-card__head h3 {
   margin-bottom: 6px;
-  font-size: 18px;
+  font-size: 16px;
+  line-height: 1.35;
 }
 
 .community-post-card__head span {
@@ -781,14 +748,15 @@ async function submitComment() {
 
 .community-post-card__meta {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  justify-content: flex-start;
   gap: 12px;
   font-size: 13px;
 }
 
 .community-panel__head,
 .community-detail__header {
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .community-detail__header {
@@ -797,8 +765,18 @@ async function submitComment() {
 
 .community-detail__header h2 {
   margin: 12px 0 8px;
-  font-size: clamp(24px, 2vw, 32px);
+  font-size: clamp(22px, 2vw, 28px);
   line-height: 1.2;
+}
+
+.community-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+  gap: 0 14px;
+}
+
+.community-form :deep(.el-form-item) {
+  margin-bottom: 14px;
 }
 
 .community-form :deep(.el-select) {
@@ -808,22 +786,22 @@ async function submitComment() {
 .community-editor {
   overflow: hidden;
   border: 1px solid rgba(203, 213, 225, 0.86);
-  border-radius: 14px;
+  border-radius: 12px;
   background: #fff;
 }
 
 .community-editor__toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px;
+  gap: 6px;
+  padding: 9px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.86);
   background: rgba(248, 250, 252, 0.92);
 }
 
 .community-editor__tool {
-  min-height: 30px;
-  padding: 5px 10px;
+  min-height: 28px;
+  padding: 4px 9px;
   border: 1px solid rgba(203, 213, 225, 0.86);
   border-radius: 8px;
   background: #fff;
@@ -841,8 +819,8 @@ async function submitComment() {
 }
 
 .community-editor :deep(.community-editor__surface) {
-  min-height: 260px;
-  padding: 16px;
+  min-height: clamp(240px, 36vh, 420px);
+  padding: 14px;
   outline: none;
 }
 
@@ -890,9 +868,83 @@ async function submitComment() {
 
 .community-actions {
   justify-content: flex-start;
-  padding: 14px 0;
-  border-top: 1px solid rgba(226, 232, 240, 0.86);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.86);
+  padding: 12px;
+  border: 1px solid rgba(219, 234, 254, 0.86);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.community-like-button.el-button {
+  min-width: 108px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  border-radius: 999px;
+  background: #fff;
+  color: #1d4ed8;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+}
+
+.community-like-button.el-button:hover,
+.community-like-button.el-button:focus-visible {
+  border-color: rgba(37, 99, 235, 0.5);
+  background: rgba(239, 246, 255, 0.96);
+  color: #1d4ed8;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.14);
+}
+
+.community-like-button.el-button.is-liked {
+  border-color: transparent;
+  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+}
+
+.community-like-button.el-button :deep(span) {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.community-like-button :deep(.el-icon) {
+  font-size: 15px;
+}
+
+.community-like-button strong {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.community-like-button.is-liked strong {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.community-action-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.community-action-stat .el-icon {
+  color: #2563eb;
+  font-size: 15px;
 }
 
 .community-comments {
@@ -958,13 +1010,13 @@ async function submitComment() {
 
 .community-empty {
   display: flex;
-  min-height: 160px;
+  min-height: 112px;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
   gap: 8px;
   padding: 18px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(248, 250, 252, 0.92);
 }
 
@@ -976,7 +1028,7 @@ async function submitComment() {
   color: #0f172a;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 920px) {
   .community-board {
     grid-template-columns: 1fr;
   }
@@ -984,12 +1036,13 @@ async function submitComment() {
   .community-detail {
     position: static;
   }
+
+  .community-form {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 760px) {
-  .community-page {
-    width: calc(100% - 16px);
-  }
 
   .community-hero,
   .community-post-card__head,
@@ -1002,6 +1055,10 @@ async function submitComment() {
 
   .community-hero__actions {
     width: 100%;
+  }
+
+  .community-hero p {
+    max-width: none;
   }
 }
 </style>

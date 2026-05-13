@@ -15,13 +15,16 @@ function ensureWasm(): Promise<unknown> {
 export type McTagOption = {
   id: number
   name: string
+  alias: string
 }
 
 export type McPublishTagGroup = {
   key: string
   group_id: number
   group_name: string
+  group_alias: string
   group_path: string[]
+  group_path_aliases: string[]
   label: string
   depth: number
   items: McTagOption[]
@@ -189,8 +192,20 @@ export function getPlatformSlug(rootName: string): string {
   return normalizeTagName(rootName)
 }
 
-export function getResourceDetailSlug(id: number, title: string): string {
-  return `${normalizeTagName(title)}--${id}`
+function normalizeResourceOwnerSlug(value: string): string {
+  const slug = value
+    .trim()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  return slug || 'resource'
+}
+
+export function getResourceDetailSlug(id: number, ownerName: string): string {
+  return `${normalizeResourceOwnerSlug(ownerName)}--${id}`
 }
 
 export function parseResourceIdFromSlug(slug: string): number | null {

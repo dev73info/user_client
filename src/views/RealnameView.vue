@@ -9,7 +9,7 @@ import {
   type SubmitRealnameVerificationPayload,
   type UserRealnameVerification,
 } from '@/api/realname'
-import { HttpError } from '@/api/http'
+import { HttpError, apiUrl } from '@/api/http'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
@@ -20,6 +20,7 @@ const { showToast } = useToast()
 
 const submitting = ref(false)
 const current = ref<UserRealnameVerification | null>(null)
+const reviewerAvatarLoadFailed = ref(false)
 
 const form = reactive({
   authType: 'IDENTITY_CARD' as RealnameAuthType,
@@ -61,8 +62,6 @@ const statusType = computed<'info' | 'warning' | 'success' | 'danger'>(() => {
   return 'danger'
 })
 
-const realnameLocked = computed(() => current.value?.status === 'approved')
-
 const authTypeText = computed(() => {
   const map: Record<RealnameAuthType, string> = {
     IDENTITY_CARD: '大陆身份证',
@@ -71,15 +70,43 @@ const authTypeText = computed(() => {
   }
   return map[form.authType]
 })
+
+const realnameSubmitted = computed(() => Boolean(current.value))
+
+const idCardPlaceholder = computed(() => {
+  const masked = current.value?.id_card_no_masked
+  return masked ? `当前 ${masked}` : '请输入证件号'
+})
+
+const submitButtonText = computed(() => {
+  if (!current.value) return '提交认证'
+  return '已提交，不能修改'
+})
+
+const reviewerName = computed(() => current.value?.reviewed_by?.trim() || '—')
+const reviewerInitial = computed(() => Array.from(reviewerName.value === '—' ? '审' : reviewerName.value)[0] ?? '审')
+const reviewerAvatarSrc = computed(() => {
+  if (reviewerAvatarLoadFailed.value) {
+    return ''
+  }
+
+  const avatarUrl = current.value?.reviewed_by_avatar_url?.trim()
+  return avatarUrl ? apiUrl(avatarUrl) : ''
+})
+
+function handleReviewerAvatarError() {
+  reviewerAvatarLoadFailed.value = true
+}
+
 function patchForm(record: UserRealnameVerification) {
   form.authType = record.auth_type
   form.realName = record.real_name ?? ''
-  form.idCardNo = record.id_card_no ?? ''
+  form.idCardNo = ''
   form.companyName = record.company_name ?? ''
   form.unifiedSocialCreditCode = record.unified_social_credit_code ?? ''
   form.businessLicenseNo = record.business_license_no ?? ''
   form.operatorName = record.operator_name ?? ''
-  form.operatorIdCardNo = record.operator_id_card_no ?? ''
+  form.operatorIdCardNo = ''
 }
 
 function formatTime(value?: string | null) {
@@ -138,13 +165,13 @@ function buildPayload(): SubmitRealnameVerificationPayload {
 
 async function submit() {
   auth.hydrate()
-  if (realnameLocked.value) {
-    showToast('该账号已完成实名认证，不能更换实名信息', 'warning')
+  if (!auth.token.trim()) {
+    showToast('登录状态已失效，请重新登录', 'error')
     return
   }
 
-  if (!auth.token.trim()) {
-    showToast('登录状态已失效，请重新登录', 'error')
+  if (realnameSubmitted.value) {
+    showToast('实名认证信息已提交，用户端不能再次修改', 'warning')
     return
   }
 
@@ -158,8 +185,12 @@ async function submit() {
   try {
     const updated = await submitMyRealnameVerification(auth.token, buildPayload())
     current.value = updated
+    reviewerAvatarLoadFailed.value = false
     patchForm(updated)
-    showToast('实名认证信息已提交，请等待审核', 'success')
+    showToast(
+      updated.status === 'approved' ? '实名认证信息已更新' : '实名认证信息已提交，请等待审核',
+      'success',
+    )
     await tryRestoreBusinessPage(updated)
   } catch (err) {
     showToast(err instanceof Error ? err.message : '提交实名认证失败', 'error')
@@ -177,6 +208,7 @@ async function loadCurrentRealname() {
   try {
     const record = await getMyRealnameVerification(auth.token)
     current.value = record
+    reviewerAvatarLoadFailed.value = false
     patchForm(record)
     await tryRestoreBusinessPage(record)
   } catch (err) {
@@ -195,7 +227,6 @@ onMounted(async () => {
 
 <template>
   <main class="portal-page realname-page-shell">
-
     <section class="realname-layout">
       <el-card shadow="never" class="realname-card realname-card--status">
         <div class="realname-card__head">
@@ -207,12 +238,24 @@ onMounted(async () => {
         <div v-if="current" class="realname-metrics">
           <div class="realname-metrics__item">
             <span>证件类型</span>
-            <strong>{{ current.auth_type === 'IDENTITY_CARD' ? '大陆身份证' : current.auth_type === 'RESIDENCE_HK_MC' ?
-              '港澳居民居住证' : '台湾居民居住证' }}</strong>
+            <strong>{{
+              current.auth_type === 'IDENTITY_CARD'
+                ? '大陆身份证'
+                : current.auth_type === 'RESIDENCE_HK_MC'
+                  ? '港澳居民居住证'
+                  : '台湾居民居住证'
+            }}</strong>
           </div>
           <div class="realname-metrics__item">
             <span>审核人</span>
-            <strong>{{ current.reviewed_by || '—' }}</strong>
+            <div class="realname-reviewer">
+              <span class="realname-reviewer__avatar" aria-hidden="true">
+                <img v-if="reviewerAvatarSrc" :src="reviewerAvatarSrc" :alt="`${reviewerName} 的头像`"
+                  @error="handleReviewerAvatarError" />
+                <span v-else>{{ reviewerInitial }}</span>
+              </span>
+              <strong>{{ reviewerName }}</strong>
+            </div>
           </div>
           <div class="realname-metrics__item">
             <span>审核时间</span>
@@ -233,7 +276,7 @@ onMounted(async () => {
 
         <el-form label-position="top" class="realname-form" @submit.prevent>
           <el-form-item label="证件类型">
-            <el-radio-group v-model="form.authType" :disabled="realnameLocked">
+            <el-radio-group v-model="form.authType" :disabled="realnameSubmitted">
               <el-radio value="IDENTITY_CARD">大陆身份证</el-radio>
               <el-radio value="RESIDENCE_HK_MC">港澳居民居住证</el-radio>
               <el-radio value="RESIDENCE_TAIWAN">台湾居民居住证</el-radio>
@@ -241,15 +284,17 @@ onMounted(async () => {
           </el-form-item>
 
           <el-form-item label="姓名">
-            <el-input v-model="form.realName" maxlength="120" placeholder="请输入真实姓名" :disabled="realnameLocked" />
+            <el-input v-model="form.realName" maxlength="120" placeholder="请输入真实姓名" :disabled="realnameSubmitted" />
           </el-form-item>
           <el-form-item label="证件号">
-            <el-input v-model="form.idCardNo" maxlength="64" placeholder="请输入证件号" :disabled="realnameLocked" />
+            <el-input v-model="form.idCardNo" maxlength="64" :placeholder="idCardPlaceholder"
+              :disabled="realnameSubmitted" />
           </el-form-item>
 
           <div class="realname-form__actions">
-            <el-button type="primary" class="realname-submit-btn" :loading="submitting" :disabled="realnameLocked" @click="submit">
-              {{ realnameLocked ? '已完成认证' : current ? '重新提交认证' : '提交认证' }}
+            <el-button type="primary" class="realname-submit-btn" :loading="submitting" :disabled="realnameSubmitted"
+              @click="submit">
+              {{ submitButtonText }}
             </el-button>
           </div>
         </el-form>
@@ -332,6 +377,38 @@ onMounted(async () => {
 .realname-metrics__item strong {
   color: #0f172a;
   font-size: 14px;
+}
+
+.realname-reviewer {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.realname-reviewer__avatar {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: rgba(219, 234, 254, 0.94);
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.realname-reviewer__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.realname-reviewer__avatar>span {
+  color: inherit;
+  font-size: inherit;
 }
 
 .realname-form__head {

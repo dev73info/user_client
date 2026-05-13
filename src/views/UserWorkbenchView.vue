@@ -112,6 +112,10 @@ const currentTitle = computed(() => {
   }
 
   const active = findActiveItem()
+  if (isActiveChildPage(active)) {
+    return compactRouteTitle.value || active?.label || overviewItem.label
+  }
+
   return active?.label ?? routeTitle.value ?? overviewItem.label
 })
 
@@ -123,12 +127,17 @@ const currentDescription = computed(() => {
   }
 
   const active = findActiveItem()
+  if (isActiveChildPage(active)) {
+    return routeDescription.value || active?.description || overviewItem.description
+  }
+
   return active?.description ?? routeDescription.value ?? overviewItem.description
 })
 
 const currentEyebrow = computed(() => (isDeveloperArea() ? '开发者功能' : '统一工作台'))
 const routeTitle = computed(() => (typeof route.meta.title === 'string' ? route.meta.title : ''))
 const routeDescription = computed(() => (typeof route.meta.description === 'string' ? route.meta.description : ''))
+const compactRouteTitle = computed(() => routeTitle.value.split('/').at(-1)?.trim() || routeTitle.value)
 const isWorkbenchOverview = computed(() =>
   route.name === overviewItem.name || route.matched.some((record) => record.name === overviewItem.name),
 )
@@ -136,7 +145,10 @@ const isMessageDetailPage = computed(() => {
   const requirementId = route.query.requirement_id
   return route.name === 'workbench-messages' && typeof requirementId === 'string' && requirementId.trim().length > 0
 })
-const showWorkbenchHeader = computed(() => !isWorkbenchOverview.value && !isMessageDetailPage.value)
+const isMergedHeaderPage = computed(() => route.name === 'dev-resource-homepage-edit')
+const showWorkbenchHeader = computed(
+  () => !isWorkbenchOverview.value && !isMessageDetailPage.value && !isMergedHeaderPage.value,
+)
 
 watch(
   () => route.fullPath,
@@ -309,6 +321,10 @@ function findActiveItem() {
   }
 
   return menuGroups.flatMap((group) => group.items).find((item) => isMenuItemActive(item)) ?? null
+}
+
+function isActiveChildPage(item: WorkbenchMenuItem | null) {
+  return Boolean(item && route.name && item.name !== route.name && item.activeNames?.includes(String(route.name)))
 }
 
 function isDeveloperArea() {

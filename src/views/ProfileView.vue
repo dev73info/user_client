@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PublishModal from '@/components/PublishModal.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
@@ -86,6 +86,25 @@ const requirementConversationMap = ref<Record<string, RequirementConversation>>(
 const completionLoading = ref(false)
 const depositRatioPercent = ref(20)
 const { showToast } = useToast()
+const failedProfileAvatarUrls = ref<Set<string>>(new Set())
+
+const avatarCropDefaultFrameSize = 320
+const avatarCropOutputSize = 512
+const avatarCropMaxSourceSize = 8 * 1024 * 1024
+const avatarCropMaxUploadSize = 2 * 1024 * 1024
+
+type ProfileAvatarCropOffset = {
+  left: number
+  top: number
+}
+
+type ProfileAvatarCropDragStart = {
+  pointerId: number
+  clientLeft: number
+  clientTop: number
+  offsetLeft: number
+  offsetTop: number
+}
 
 const amountCoupons = computed(() => coupons.value.filter((item) => item.discount_type === 'amount'))
 const discountCoupons = computed(() => coupons.value.filter((item) => item.discount_type === 'percent'))
@@ -93,8 +112,37 @@ const conversationCards = computed(() => myRequirements.value.filter(canOpenConv
 const availableConversationCount = computed(() => conversationCards.value.length)
 const usableCouponCount = computed(() => coupons.value.filter((item) => item.status !== 'used').length)
 const accountEmailLabel = computed(() => profileEmail.value || '未绑定邮箱')
-const profileAvatarSrc = computed(() => (profileAvatarUrl.value ? apiUrl(profileAvatarUrl.value) : ''))
+const profileAvatarSrc = computed(() => {
+  const avatarUrl = profileAvatarUrl.value.trim()
+  if (!avatarUrl || failedProfileAvatarUrls.value.has(avatarUrl)) {
+    return ''
+  }
+
+  const src = apiUrl(avatarUrl)
+  if (!profileAvatarCacheKey.value) {
+    return src
+  }
+
+  return `${src}${src.includes('?') ? '&' : '?'}v=${profileAvatarCacheKey.value}`
+})
 const profileInitial = computed(() => Array.from(auth.username || newUsername.value || '用')[0] ?? '用')
+const profileAvatarCropMaxScale = computed(() => profileAvatarCropMinScale.value * 3)
+const profileAvatarCropZoomPercent = computed(() =>
+  Math.round((profileAvatarCropScale.value / Math.max(profileAvatarCropMinScale.value, 0.001)) * 100),
+)
+const profileAvatarCropImageStyle = computed(() => {
+  const frameSize = profileAvatarCropFrameSize.value
+  const imageWidth = profileAvatarCropImageWidth.value * profileAvatarCropScale.value
+  const imageHeight = profileAvatarCropImageHeight.value * profileAvatarCropScale.value
+  const imageLeft = (frameSize - imageWidth) / 2 + profileAvatarCropOffset.value.left
+  const imageTop = (frameSize - imageHeight) / 2 + profileAvatarCropOffset.value.top
+
+  return {
+    width: `${imageWidth}px`,
+    height: `${imageHeight}px`,
+    transform: `translate(${imageLeft}px, ${imageTop}px)`,
+  }
+})
 const subscriptionLabel = computed(() => (subscriptionOfficialActivity.value ? '已订阅' : '未订阅'))
 const requirementStats = computed(() => ({
   total: myRequirements.value.length,
@@ -507,10 +555,14 @@ async function updateUsername() {
 }
 
 function openProfileAvatarPicker() {
+  if (profileAvatarUploading.value) {
+    return
+  }
+
   profileAvatarInput.value?.click()
 }
 
-async function handleProfileAvatarChange(event: Event) {
+function handleProfileAvatarChange(event: Event) {
   if (!auth.isAuthed) {
     showToast('请先登录后上传头像', 'error')
     return
@@ -528,22 +580,338 @@ async function handleProfileAvatarChange(event: Event) {
     return
   }
 
-  if (file.size > 2 * 1024 * 1024) {
-    showToast('头像图片请控制在 2MB 以内', 'warning')
+  if (file.size > avatarCropMaxSourceSize) {
+    showToast('原图请控制在 8MB 以内', 'warning')
     if (input) input.value = ''
+    return
+  }
+
+  openProfileAvatarCrop(file)
+  if (input) input.value = ''
+}
+
+function handleProfileAvatarError() {
+  const avatarUrl = profileAvatarUrl.value.trim()
+  if (!avatarUrl) return
+
+  const next = new Set(failedProfileAvatarUrls.value)
+  next.add(avatarUrl)
+  failedProfileAvatarUrls.value = next
+}
+
+function openProfileAvatarCrop(file: File) {
+  resetProfileAvatarCrop()
+  profileAvatarCropFile.value = file
+  profileAvatarCropImageUrl.value = URL.createObjectURL(file)
+  profileAvatarCropVisible.value = true
+  void nextTick(() => measureProfileAvatarCropFrame())
+}
+
+function resetProfileAvatarCrop() {
+  if (profileAvatarCropImageUrl.value) {
+    URL.revokeObjectURL(profileAvatarCropImageUrl.value)
+  }
+
+  profileAvatarCropVisible.value = false
+  profileAvatarCropFile.value = null
+  profileAvatarCropImageUrl.value = ''
+  profileAvatarCropImage.value = null
+  profileAvatarCropImageWidth.value = 0
+  profileAvatarCropImageHeight.value = 0
+  profileAvatarCropMinScale.value = 1
+  profileAvatarCropScale.value = 1
+  profileAvatarCropOffset.value = { left: 0, top: 0 }
+  profileAvatarCropDragStart.value = null
+  profileAvatarCropDragging.value = false
+}
+
+function closeProfileAvatarCrop() {
+  if (profileAvatarUploading.value) {
+    return
+  }
+
+  resetProfileAvatarCrop()
+}
+
+function handleProfileAvatarCropImageLoad(event: Event) {
+  const image = event.target as HTMLImageElement | null
+  if (!image?.naturalWidth || !image.naturalHeight) {
+    showToast('无法读取头像图片', 'error')
+    resetProfileAvatarCrop()
+    return
+  }
+
+  profileAvatarCropImage.value = image
+  profileAvatarCropImageWidth.value = image.naturalWidth
+  profileAvatarCropImageHeight.value = image.naturalHeight
+  resetProfileAvatarCropFrame()
+}
+
+function measureProfileAvatarCropFrame() {
+  const frameWidth = profileAvatarCropFrame.value?.clientWidth ?? avatarCropDefaultFrameSize
+  profileAvatarCropFrameSize.value = frameWidth > 0 ? frameWidth : avatarCropDefaultFrameSize
+}
+
+function resetProfileAvatarCropFrame() {
+  measureProfileAvatarCropFrame()
+
+  const shortestSide = Math.min(profileAvatarCropImageWidth.value, profileAvatarCropImageHeight.value)
+  if (shortestSide <= 0) {
+    return
+  }
+
+  profileAvatarCropMinScale.value = profileAvatarCropFrameSize.value / shortestSide
+  profileAvatarCropScale.value = profileAvatarCropMinScale.value
+  profileAvatarCropOffset.value = { left: 0, top: 0 }
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
+}
+
+function clampProfileAvatarCropOffsetValue(nextOffset: ProfileAvatarCropOffset) {
+  const frameSize = profileAvatarCropFrameSize.value
+  const imageWidth = profileAvatarCropImageWidth.value * profileAvatarCropScale.value
+  const imageHeight = profileAvatarCropImageHeight.value * profileAvatarCropScale.value
+  const horizontalLimit = Math.max(0, (imageWidth - frameSize) / 2)
+  const verticalLimit = Math.max(0, (imageHeight - frameSize) / 2)
+
+  return {
+    left: clampNumber(nextOffset.left, -horizontalLimit, horizontalLimit),
+    top: clampNumber(nextOffset.top, -verticalLimit, verticalLimit),
+  }
+}
+
+function clampProfileAvatarCropOffset() {
+  profileAvatarCropOffset.value = clampProfileAvatarCropOffsetValue(profileAvatarCropOffset.value)
+}
+
+function setProfileAvatarCropScale(nextScale: number, focus?: ProfileAvatarCropOffset) {
+  if (!profileAvatarCropImage.value) {
+    return
+  }
+
+  const frameSize = profileAvatarCropFrameSize.value
+  const oldScale = profileAvatarCropScale.value
+  const clampedScale = clampNumber(nextScale, profileAvatarCropMinScale.value, profileAvatarCropMaxScale.value)
+  const focusPoint = focus ?? { left: frameSize / 2, top: frameSize / 2 }
+
+  if (Math.abs(clampedScale - oldScale) < 0.0001) {
+    return
+  }
+
+  const oldImageWidth = profileAvatarCropImageWidth.value * oldScale
+  const oldImageHeight = profileAvatarCropImageHeight.value * oldScale
+  const oldImageLeft = (frameSize - oldImageWidth) / 2 + profileAvatarCropOffset.value.left
+  const oldImageTop = (frameSize - oldImageHeight) / 2 + profileAvatarCropOffset.value.top
+  const sourceLeft = (focusPoint.left - oldImageLeft) / oldScale
+  const sourceTop = (focusPoint.top - oldImageTop) / oldScale
+  const newImageWidth = profileAvatarCropImageWidth.value * clampedScale
+  const newImageHeight = profileAvatarCropImageHeight.value * clampedScale
+  const newImageLeft = focusPoint.left - sourceLeft * clampedScale
+  const newImageTop = focusPoint.top - sourceTop * clampedScale
+
+  profileAvatarCropScale.value = clampedScale
+  profileAvatarCropOffset.value = clampProfileAvatarCropOffsetValue({
+    left: newImageLeft - (frameSize - newImageWidth) / 2,
+    top: newImageTop - (frameSize - newImageHeight) / 2,
+  })
+}
+
+function handleProfileAvatarCropWheel(event: WheelEvent) {
+  if (!profileAvatarCropImage.value || profileAvatarUploading.value) {
+    return
+  }
+
+  const frame = profileAvatarCropFrame.value
+  if (!frame) {
+    return
+  }
+
+  const wheelDelta =
+    event.deltaMode === 1
+      ? event.deltaY * 16
+      : event.deltaMode === 2
+        ? event.deltaY * profileAvatarCropFrameSize.value
+        : event.deltaY
+  const zoomFactor = Math.exp(-wheelDelta * 0.0015)
+  const rect = frame.getBoundingClientRect()
+
+  setProfileAvatarCropScale(profileAvatarCropScale.value * zoomFactor, {
+    left: event.clientX - rect.left,
+    top: event.clientY - rect.top,
+  })
+}
+
+function handleProfileAvatarCropPointerDown(event: PointerEvent) {
+  if (!profileAvatarCropImage.value) {
+    return
+  }
+
+  event.preventDefault()
+  profileAvatarCropDragging.value = true
+  profileAvatarCropDragStart.value = {
+    pointerId: event.pointerId,
+    clientLeft: event.clientX,
+    clientTop: event.clientY,
+    offsetLeft: profileAvatarCropOffset.value.left,
+    offsetTop: profileAvatarCropOffset.value.top,
+  }
+  const stage = event.currentTarget as HTMLElement
+  stage.setPointerCapture(event.pointerId)
+}
+
+function handleProfileAvatarCropPointerMove(event: PointerEvent) {
+  const dragStart = profileAvatarCropDragStart.value
+  if (!dragStart || dragStart.pointerId !== event.pointerId) {
+    return
+  }
+
+  const nextOffset = {
+    left: dragStart.offsetLeft + event.clientX - dragStart.clientLeft,
+    top: dragStart.offsetTop + event.clientY - dragStart.clientTop,
+  }
+  profileAvatarCropOffset.value = clampProfileAvatarCropOffsetValue(nextOffset)
+}
+
+function stopProfileAvatarCropDrag(event: PointerEvent) {
+  const dragStart = profileAvatarCropDragStart.value
+  if (!dragStart || dragStart.pointerId !== event.pointerId) {
+    return
+  }
+
+  const target = event.currentTarget as HTMLElement | null
+  if (target?.hasPointerCapture(event.pointerId)) {
+    target.releasePointerCapture(event.pointerId)
+  }
+  profileAvatarCropDragStart.value = null
+  profileAvatarCropDragging.value = false
+}
+
+function handleProfileAvatarCropResize() {
+  if (!profileAvatarCropVisible.value || !profileAvatarCropImage.value) {
+    return
+  }
+
+  const previousMinScale = Math.max(profileAvatarCropMinScale.value, 0.001)
+  const zoomRatio = profileAvatarCropScale.value / previousMinScale
+  measureProfileAvatarCropFrame()
+
+  const shortestSide = Math.min(profileAvatarCropImageWidth.value, profileAvatarCropImageHeight.value)
+  if (shortestSide <= 0) {
+    return
+  }
+
+  profileAvatarCropMinScale.value = profileAvatarCropFrameSize.value / shortestSide
+  profileAvatarCropScale.value = clampNumber(
+    profileAvatarCropMinScale.value * zoomRatio,
+    profileAvatarCropMinScale.value,
+    profileAvatarCropMaxScale.value,
+  )
+  clampProfileAvatarCropOffset()
+}
+
+function profileAvatarCropOutputName(file: File) {
+  const baseName = file.name.replace(/\.[^.]+$/, '').trim() || 'avatar'
+  return `${baseName}-cropped.jpg`
+}
+
+async function createCroppedProfileAvatarFile() {
+  const sourceFile = profileAvatarCropFile.value
+  const image = profileAvatarCropImage.value
+  if (!sourceFile || !image) {
+    throw new Error('请先选择头像图片')
+  }
+
+  const frameSize = profileAvatarCropFrameSize.value
+  const imageWidth = profileAvatarCropImageWidth.value * profileAvatarCropScale.value
+  const imageHeight = profileAvatarCropImageHeight.value * profileAvatarCropScale.value
+  const imageLeft = (frameSize - imageWidth) / 2 + profileAvatarCropOffset.value.left
+  const imageTop = (frameSize - imageHeight) / 2 + profileAvatarCropOffset.value.top
+  const sourceSize = frameSize / profileAvatarCropScale.value
+  const maxSourceLeft = Math.max(0, profileAvatarCropImageWidth.value - sourceSize)
+  const maxSourceTop = Math.max(0, profileAvatarCropImageHeight.value - sourceSize)
+  const sourceLeft = clampNumber(-imageLeft / profileAvatarCropScale.value, 0, maxSourceLeft)
+  const sourceTop = clampNumber(-imageTop / profileAvatarCropScale.value, 0, maxSourceTop)
+  const canvas = document.createElement('canvas')
+  canvas.width = avatarCropOutputSize
+  canvas.height = avatarCropOutputSize
+
+  const context = canvas.getContext('2d')
+  if (!context) {
+    throw new Error('无法生成裁剪图片')
+  }
+
+  context.imageSmoothingEnabled = true
+  context.imageSmoothingQuality = 'high'
+  context.fillStyle = '#ffffff'
+  context.fillRect(0, 0, canvas.width, canvas.height)
+  context.drawImage(
+    image,
+    sourceLeft,
+    sourceTop,
+    sourceSize,
+    sourceSize,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  )
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blobValue) => {
+        if (blobValue) {
+          resolve(blobValue)
+          return
+        }
+
+        reject(new Error('生成裁剪图片失败'))
+      },
+      'image/jpeg',
+      0.9,
+    )
+  })
+
+  return new File([blob], profileAvatarCropOutputName(sourceFile), {
+    type: blob.type || 'image/jpeg',
+    lastModified: Date.now(),
+  })
+}
+
+async function submitProfileAvatarCrop() {
+  if (!auth.isAuthed) {
+    showToast('请先登录后上传头像', 'error')
+    return
+  }
+
+  if (profileAvatarUploading.value) {
     return
   }
 
   profileAvatarUploading.value = true
   try {
+    const file = await createCroppedProfileAvatarFile()
+    if (file.size > avatarCropMaxUploadSize) {
+      showToast('裁剪后图片仍超过 2MB，请缩小图片后重试', 'warning')
+      return
+    }
+
     const profile = await uploadProfileAvatar(auth.token, file)
-    profileAvatarUrl.value = profile.avatar_url ?? ''
+    const nextAvatarUrl = profile.avatar_url ?? ''
+    if (nextAvatarUrl) {
+      const nextFailedUrls = new Set(failedProfileAvatarUrls.value)
+      nextFailedUrls.delete(nextAvatarUrl)
+      failedProfileAvatarUrls.value = nextFailedUrls
+    }
+    profileAvatarUrl.value = nextAvatarUrl
+    profileAvatarCacheKey.value = Date.now()
     showToast('头像已更新', 'success')
+    resetProfileAvatarCrop()
   } catch (err) {
     showToast(err instanceof Error ? err.message : '上传头像失败', 'error')
   } finally {
     profileAvatarUploading.value = false
-    if (input) input.value = ''
   }
 }
 
@@ -937,8 +1305,22 @@ const finalPaymentConfirmButton = computed(() =>
 const newUsername = ref('')
 const usernameLoading = ref(false)
 const profileAvatarUrl = ref('')
+const profileAvatarCacheKey = ref(0)
 const profileAvatarInput = ref<HTMLInputElement | null>(null)
 const profileAvatarUploading = ref(false)
+const profileAvatarCropVisible = ref(false)
+const profileAvatarCropFile = ref<File | null>(null)
+const profileAvatarCropImageUrl = ref('')
+const profileAvatarCropImage = ref<HTMLImageElement | null>(null)
+const profileAvatarCropFrame = ref<HTMLDivElement | null>(null)
+const profileAvatarCropFrameSize = ref(avatarCropDefaultFrameSize)
+const profileAvatarCropImageWidth = ref(0)
+const profileAvatarCropImageHeight = ref(0)
+const profileAvatarCropMinScale = ref(1)
+const profileAvatarCropScale = ref(1)
+const profileAvatarCropOffset = ref<ProfileAvatarCropOffset>({ left: 0, top: 0 })
+const profileAvatarCropDragStart = ref<ProfileAvatarCropDragStart | null>(null)
+const profileAvatarCropDragging = ref(false)
 const profileEmail = ref('')
 const newEmail = ref('')
 const emailCode = ref('')
@@ -1099,6 +1481,7 @@ async function submitRequirementPayment() {
 
 
 onMounted(async () => {
+  window.addEventListener('resize', handleProfileAvatarCropResize)
   auth.hydrate()
   newUsername.value = auth.username
   await Promise.all([
@@ -1110,6 +1493,12 @@ onMounted(async () => {
   ])
 })
 
+onBeforeUnmount(() => {
+  profileAvatarCacheKey.value = Date.now()
+  window.removeEventListener('resize', handleProfileAvatarCropResize)
+  resetProfileAvatarCrop()
+})
+
 </script>
 
 <template>
@@ -1119,13 +1508,12 @@ onMounted(async () => {
         <div class="overview-hero__identity">
           <button class="profile-avatar-button" type="button" :disabled="profileAvatarUploading"
             @click="openProfileAvatarPicker">
-            <img v-if="profileAvatarSrc" :src="profileAvatarSrc" alt="用户头像" />
+            <img v-if="profileAvatarSrc" :src="profileAvatarSrc" alt="用户头像" @error="handleProfileAvatarError" />
             <span v-else>{{ profileInitial }}</span>
             <small>{{ profileAvatarUploading ? '上传中' : '更换' }}</small>
           </button>
           <input ref="profileAvatarInput" class="profile-avatar-input" type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            @change="handleProfileAvatarChange" />
+            accept="image/png,image/jpeg,image/webp,image/gif" @change="handleProfileAvatarChange" />
           <div>
             <p class="overview-eyebrow">统一工作台</p>
             <h1>{{ auth.username ? `你好，${auth.username}` : '你好，欢迎回来' }}</h1>
@@ -1269,6 +1657,47 @@ onMounted(async () => {
     <RequirementConversationModal :visible="conversationVisible" :token="auth.token" :current-username="auth.username"
       :requirement-id="conversationRequirement?.requirement_id ?? ''" :title="conversationRequirement?.title"
       @updated="applyConversationDetail" @close="closeConversation" />
+
+    <Teleport to="body">
+      <div v-if="profileAvatarCropVisible" class="modal-wrap modal-wrap--avatar-crop"
+        @click.self="closeProfileAvatarCrop">
+        <section class="pay-modal profile-avatar-crop-modal" aria-label="头像裁剪弹窗">
+          <div class="profile-avatar-crop-header">
+            <h3>头像裁剪</h3>
+            <button class="ghost small" type="button" :disabled="profileAvatarUploading"
+              @click="closeProfileAvatarCrop">关闭</button>
+          </div>
+
+          <div class="profile-avatar-crop-body">
+            <div class="profile-avatar-crop-stage-wrap">
+              <div ref="profileAvatarCropFrame" class="profile-avatar-crop-stage"
+                :class="{ 'is-dragging': profileAvatarCropDragging }" @pointerdown="handleProfileAvatarCropPointerDown"
+                @pointermove="handleProfileAvatarCropPointerMove" @pointerup="stopProfileAvatarCropDrag"
+                @pointercancel="stopProfileAvatarCropDrag" @wheel.prevent="handleProfileAvatarCropWheel">
+                <img v-if="profileAvatarCropImageUrl" class="profile-avatar-crop-image" :src="profileAvatarCropImageUrl"
+                  :style="profileAvatarCropImageStyle" alt="头像裁剪预览" draggable="false"
+                  @load="handleProfileAvatarCropImageLoad" />
+                <span class="profile-avatar-crop-ring" aria-hidden="true"></span>
+              </div>
+            </div>
+
+            <div class="profile-avatar-crop-controls">
+              <div class="profile-avatar-crop-zoom">缩放 {{ profileAvatarCropZoomPercent }}%</div>
+              <div class="profile-avatar-crop-actions">
+                <button class="ghost small" type="button" :disabled="profileAvatarUploading || !profileAvatarCropImage"
+                  @click="resetProfileAvatarCropFrame">居中</button>
+                <button class="ghost small" type="button" :disabled="profileAvatarUploading"
+                  @click="closeProfileAvatarCrop">取消</button>
+                <button class="ghost small" type="button" :disabled="profileAvatarUploading || !profileAvatarCropImage"
+                  @click="submitProfileAvatarCrop">
+                  {{ profileAvatarUploading ? '上传中...' : '保存头像' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </Teleport>
 
     <Teleport to="body">
       <div v-if="securityVisible" class="modal-wrap modal-wrap--account-security" @click.self="closeSecurityModal">
@@ -1521,12 +1950,14 @@ onMounted(async () => {
 }
 
 .profile-avatar-button {
+  appearance: none;
   position: relative;
   display: inline-grid;
   flex: 0 0 auto;
   place-items: center;
   width: 76px;
   height: 76px;
+  padding: 0;
   overflow: hidden;
   border: 1px solid rgba(183, 201, 238, 0.95);
   border-radius: 50%;
@@ -1535,6 +1966,7 @@ onMounted(async () => {
   cursor: pointer;
   font-size: 28px;
   font-weight: 900;
+  line-height: 1;
   box-shadow: 0 10px 22px rgba(76, 103, 172, 0.12);
 }
 
@@ -1544,9 +1976,17 @@ onMounted(async () => {
 }
 
 .profile-avatar-button img {
+  position: absolute;
+  inset: 0;
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.profile-avatar-button span {
+  position: relative;
+  z-index: 1;
 }
 
 .profile-avatar-button small {
@@ -1554,6 +1994,7 @@ onMounted(async () => {
   right: 0;
   bottom: 0;
   left: 0;
+  z-index: 2;
   padding: 5px 0;
   background: rgba(15, 23, 42, 0.72);
   color: #ffffff;
@@ -1564,6 +2005,142 @@ onMounted(async () => {
 
 .profile-avatar-input {
   display: none;
+}
+
+.modal-wrap--avatar-crop {
+  --profile-card-bg: rgba(255, 255, 255, 0.94);
+  --profile-card-bg-strong: #ffffff;
+  --profile-card-border: rgba(224, 232, 255, 0.96);
+  --profile-card-shadow: 0 14px 34px rgba(76, 103, 172, 0.08);
+  --profile-text-main: #0f172a;
+  --profile-text-sub: #64748b;
+  --profile-accent: #4f8cff;
+  background: rgba(15, 23, 42, 0.26);
+  backdrop-filter: blur(4px);
+  z-index: 120;
+}
+
+.profile-avatar-crop-modal {
+  width: min(720px, calc(100vw - 36px));
+  padding: 0;
+  overflow: hidden;
+  border-color: rgba(209, 220, 243, 0.95);
+  background: #ffffff;
+  box-shadow: 0 26px 70px rgba(30, 58, 138, 0.18);
+}
+
+.profile-avatar-crop-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(224, 232, 255, 0.9);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.profile-avatar-crop-header h3 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.profile-avatar-crop-body {
+  display: grid;
+  grid-template-columns: minmax(300px, 368px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: center;
+  padding: 22px;
+}
+
+.profile-avatar-crop-stage-wrap {
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  border: 1px solid rgba(224, 232, 255, 0.9);
+  border-radius: 24px;
+  background: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+}
+
+.profile-avatar-crop-stage {
+  position: relative;
+  width: min(320px, 100%);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid rgba(183, 201, 238, 0.95);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #eef5ff, #ffffff);
+  box-shadow: 0 18px 38px rgba(76, 103, 172, 0.18);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.profile-avatar-crop-stage.is-dragging {
+  cursor: grabbing;
+}
+
+.profile-avatar-crop-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  max-width: none;
+  transform-origin: top left;
+  pointer-events: none;
+  user-select: none;
+}
+
+.profile-avatar-crop-ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 999px rgba(15, 23, 42, 0.02), inset 0 0 24px rgba(15, 23, 42, 0.14);
+  pointer-events: none;
+}
+
+.profile-avatar-crop-controls {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  align-content: center;
+}
+
+.profile-avatar-crop-zoom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  width: fit-content;
+  padding: 8px 12px;
+  border: 1px solid rgba(209, 220, 243, 0.95);
+  border-radius: 999px;
+  background: #f8fbff;
+  color: var(--profile-text-sub);
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.profile-avatar-crop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.modal-wrap--avatar-crop button.ghost,
+.modal-wrap--avatar-crop button.ghost.small {
+  border-color: rgba(209, 220, 243, 0.95);
+  background: #ffffff;
+  color: var(--profile-text-main);
+  box-shadow: 0 8px 20px rgba(76, 103, 172, 0.06);
+}
+
+.modal-wrap--avatar-crop button.ghost:hover:not(:disabled) {
+  background: #f8fbff;
+  border-color: rgba(125, 155, 225, 0.92);
+  box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
 }
 
 .overview-hero__body {
@@ -2114,6 +2691,18 @@ onMounted(async () => {
 @media (max-width: 640px) {
   .overview-stat-grid {
     grid-template-columns: 1fr;
+  }
+
+  .profile-avatar-crop-body {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-avatar-crop-zoom {
+    width: 100%;
+  }
+
+  .profile-avatar-crop-actions .ghost.small {
+    flex: 1 1 120px;
   }
 
   .overview-hero__actions .ghost.small {

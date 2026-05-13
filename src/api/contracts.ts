@@ -14,10 +14,18 @@ export type ContractDetail = {
   content_sha256: string
   status: string
   party_a_name: string
-  party_a_username: string
+  party_a_username: string | null
+  party_a_account_email?: string | null
+  party_a_real_name?: string | null
+  party_a_id_card_no_masked?: string | null
+  party_a_signature_sha256?: string | null
   party_a_signed_at: string | null
   party_b_name: string
-  party_b_username: string
+  party_b_username: string | null
+  party_b_account_email?: string | null
+  party_b_real_name?: string | null
+  party_b_id_card_no_masked?: string | null
+  party_b_signature_sha256?: string | null
   party_b_signed_at: string | null
   created_by?: string
   created_at: string
@@ -34,8 +42,19 @@ export type SigningLogItem = {
   from_status?: string | null
   to_status?: string | null
   operator: string
+  signer_party?: string | null
+  signer_real_name?: string | null
+  signer_id_card_no_masked?: string | null
+  signer_username?: string | null
+  signer_email?: string | null
+  handwritten_signature?: string | null
+  signature_sha256?: string | null
   note?: string | null
   created_at: string
+}
+
+export type SignContractPayload = {
+  handwritten_signature: string
 }
 
 export async function fetchContractSigningStatus(
@@ -62,10 +81,18 @@ export async function fetchMyRequirementContract(
   return res.json() as Promise<ContractDetail>
 }
 
-export async function signContract(token: string, contractId: number): Promise<ContractDetail> {
+export async function signContract(
+  token: string,
+  contractId: number,
+  payload: SignContractPayload,
+): Promise<ContractDetail> {
   return requestJson<ContractDetail>(
     `/contracts/${contractId}/sign`,
-    { method: 'POST', headers: authHeader(token) },
+    {
+      method: 'POST',
+      headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
     '签署合同失败',
   )
 }

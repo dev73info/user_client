@@ -26,6 +26,7 @@ import { useAuthStore } from '@/stores/auth'
 type McCardItem = {
   id: number
   title: string
+  ownerName: string
   author: string
   description: string
   groupTags: Record<string, string[]>
@@ -45,6 +46,7 @@ type FilterSectionView = McTagFilterSection & {
 const props = defineProps<{
   platform: McResourcePlatform
   rootSlug: string
+  entrySlug: string
   groupName: string
 }>()
 
@@ -59,13 +61,8 @@ const filterSections = ref<FilterSectionView[]>([])
 const searchQuery = ref('')
 const selectedSort = ref('最新')
 
-const {
-  onTagPointerDown,
-  onTagPointerEnter,
-  onTagPointerUp,
-  onTagPointerCancel,
-  onTagClick,
-} = useMultiSelectTags()
+const { onTagPointerDown, onTagPointerEnter, onTagPointerUp, onTagPointerCancel, onTagClick } =
+  useMultiSelectTags()
 
 const cards = ref<McCardItem[]>([])
 
@@ -110,6 +107,7 @@ function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
   return {
     id: item.id,
     title: item.title,
+    ownerName: item.creator.trim() || item.author.trim() || item.title,
     author: item.author,
     description: item.description,
     groupTags,
@@ -157,7 +155,11 @@ const filteredCards = computed(() => {
     return filtered.slice().sort((a, b) => a.title.localeCompare(b.title, 'zh-CN'))
   }
   if (selectedSort.value === '点赞') {
-    return filtered.slice().sort((a, b) => b.likeCount - a.likeCount || Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
+    return filtered
+      .slice()
+      .sort(
+        (a, b) => b.likeCount - a.likeCount || Date.parse(b.updatedAt) - Date.parse(a.updatedAt),
+      )
   }
   return filtered.slice().sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
 })
@@ -189,8 +191,8 @@ function openResource(card: McCardItem) {
     name: 'resource-detail',
     params: {
       rootSlug: props.rootSlug,
-      entrySlug: getTagRouteSlug(props.groupName),
-      resourceSlug: getResourceDetailSlug(card.id, card.title),
+      entrySlug: props.entrySlug || getTagRouteSlug(props.groupName),
+      resourceSlug: getResourceDetailSlug(card.id, card.ownerName),
     },
   })
 }
@@ -246,10 +248,12 @@ async function loadTagTree() {
       listPublicMcResources(props.platform, token),
     ])
     cards.value = resources.map(mapResourceToCard)
-    filterSections.value = getTagFilterSections(tree, props.rootSlug, props.groupName).map((section) => ({
-      ...section,
-      selected: [],
-    }))
+    filterSections.value = getTagFilterSections(tree, props.rootSlug, props.entrySlug).map(
+      (section) => ({
+        ...section,
+        selected: [],
+      }),
+    )
     applyFiltersFromQuery()
   } catch (err) {
     showToast(err instanceof Error ? err.message : '加载标签失败', 'warning')
@@ -262,7 +266,7 @@ onMounted(() => {
 })
 
 watch(
-  () => [props.platform, props.groupName],
+  () => [props.platform, props.entrySlug, props.groupName],
   () => {
     void loadTagTree()
   },
@@ -289,9 +293,9 @@ watch(
       <div class="portal-resource-browser__row portal-resource-browser__row--between">
         <div v-if="primaryFilterSection" class="portal-resource-browser__group">
           <span class="portal-resource-browser__label">{{ primaryFilterSection.label }}：</span>
-          <button v-for="tag in primaryFilterSection.tags" :key="tag" class="portal-resource-browser__tag"
-            :class="{ 'portal-resource-browser__tag--active': primaryFilterSection.selected.includes(tag) }"
-            @pointerdown="onTagPointerDown(primaryFilterSection.selected, tag, $event)"
+          <button v-for="tag in primaryFilterSection.tags" :key="tag" class="portal-resource-browser__tag" :class="{
+            'portal-resource-browser__tag--active': primaryFilterSection.selected.includes(tag),
+          }" @pointerdown="onTagPointerDown(primaryFilterSection.selected, tag, $event)"
             @pointerenter="onTagPointerEnter(primaryFilterSection.selected, tag)" @pointerup="onTagPointerUp"
             @pointercancel="onTagPointerCancel" @click="onTagClick(primaryFilterSection.selected, tag, toggleFilter)">
             {{ tag }}
@@ -328,7 +332,9 @@ watch(
             {{ s }}
           </button>
         </div>
-        <button class="portal-resource-browser__reset" type="button" @click="resetFilters">↻ 重置筛选</button>
+        <button class="portal-resource-browser__reset" type="button" @click="resetFilters">
+          ↻ 重置筛选
+        </button>
       </div>
     </section>
 
@@ -337,7 +343,9 @@ watch(
         <div v-if="card.coverUrl" class="portal-resource-browser__cover portal-resource-browser__cover--image">
           <img :src="card.coverUrl" :alt="card.title" class="portal-resource-browser__cover-image" />
         </div>
-        <div v-else class="portal-resource-browser__cover" :class="fallbackIconClass">{{ fallbackIcon }}</div>
+        <div v-else class="portal-resource-browser__cover" :class="fallbackIconClass">
+          {{ fallbackIcon }}
+        </div>
 
         <div class="portal-resource-browser__body">
           <div class="portal-resource-browser__headline">
@@ -345,7 +353,9 @@ watch(
               <h3>{{ card.title }}</h3>
               <p class="portal-resource-browser__author">by {{ card.author }}</p>
             </div>
-            <span class="portal-resource-browser__updated">{{ formatUpdatedAt(card.updatedAt) }}</span>
+            <span class="portal-resource-browser__updated">{{
+              formatUpdatedAt(card.updatedAt)
+              }}</span>
           </div>
 
           <p class="portal-resource-browser__desc">{{ card.description }}</p>
@@ -371,7 +381,9 @@ watch(
         </div>
       </article>
 
-      <p v-if="filteredCards.length === 0" class="portal-resource-browser__empty">当前没有符合条件的资源。</p>
+      <p v-if="filteredCards.length === 0" class="portal-resource-browser__empty">
+        当前没有符合条件的资源。
+      </p>
     </section>
   </section>
 </template>
@@ -514,7 +526,9 @@ watch(
   gap: 16px;
   padding: 18px;
   border-radius: 22px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .portal-resource-browser__card:hover {

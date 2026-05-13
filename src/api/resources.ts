@@ -12,9 +12,12 @@ export type McResourcePlatform = string
 export type McResourceTagSelectionPayload = {
   group_id: number
   group_name: string
+  group_alias?: string
   group_path: string[]
+  group_path_aliases?: string[]
   tag_ids: number[]
   tag_names: string[]
+  tag_aliases?: string[]
 }
 
 export type PublicMcResourceItem = {
@@ -122,7 +125,9 @@ export async function listPublicMcResources(
   return all.filter((item) => item.platform === platform)
 }
 
-export async function listAllPublicMcResources(token?: string | null): Promise<PublicMcResourceItem[]> {
+export async function listAllPublicMcResources(
+  token?: string | null,
+): Promise<PublicMcResourceItem[]> {
   return getAllPublicMcResources(token)
 }
 

@@ -48,6 +48,7 @@ const conversations = ref<RequirementConversation[]>([])
 const requirements = ref<RequirementItem[]>([])
 const activeFilter = ref<MessageFilter>('all')
 const searchKeyword = ref('')
+const failedAvatarUrls = ref<Set<string>>(new Set())
 const activeRequirementId = ref('')
 const activeTitle = ref('')
 const realtimeStatus = ref<RealtimeStatus>('idle')
@@ -221,7 +222,8 @@ function avatarText(value?: string | null) {
 
 function customerAvatarUrl(item: RequirementConversation) {
   const avatarUrl = item.customer_avatar_url?.trim()
-  return avatarUrl ? apiUrl(avatarUrl) : ''
+  const src = avatarUrl ? apiUrl(avatarUrl) : ''
+  return src && !failedAvatarUrls.value.has(src) ? src : ''
 }
 
 function buildConversationThread(item: RequirementConversation): MessageThread {
@@ -263,6 +265,14 @@ function buildPendingThread(item: RequirementItem): MessageThread {
 
 function threadAvatarText(item: MessageThread) {
   return item.avatarText
+}
+
+function handleThreadAvatarError(item: MessageThread) {
+  if (!item.avatarUrl) return
+
+  const next = new Set(failedAvatarUrls.value)
+  next.add(item.avatarUrl)
+  failedAvatarUrls.value = next
 }
 
 function emptyTitle() {
@@ -515,7 +525,8 @@ watch(
         <button v-for="item in filteredThreads" :key="item.key" type="button" class="messages-thread"
           :class="{ 'messages-thread--pending': item.kind === 'pending' }" @click="openThread(item)">
           <span class="messages-thread__avatar" aria-hidden="true">
-            <img v-if="item.avatarUrl" :src="item.avatarUrl" :alt="`${item.title} 发布者头像`" loading="lazy" />
+            <img v-if="item.avatarUrl" :src="item.avatarUrl" :alt="`${item.title} 发布者头像`" loading="lazy"
+              @error="handleThreadAvatarError(item)" />
             <span v-else>{{ threadAvatarText(item) }}</span>
           </span>
           <span class="messages-thread__status">{{ item.statusLabel }}</span>

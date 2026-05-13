@@ -13,13 +13,16 @@ function ensureWasm(): Promise<unknown> {
 export type McTagOption = {
   id: number
   name: string
+  alias: string
 }
 
 export type McPublishTagGroup = {
   key: string
   group_id: number
   group_name: string
+  group_alias: string
   group_path: string[]
+  group_path_aliases: string[]
   label: string
   depth: number
   items: McTagOption[]
@@ -111,9 +114,11 @@ export async function getProcessedTagTree(): Promise<McProcessedTagTree> {
     return data
   })()
 
-  inflight.catch(() => {}).finally(() => {
-    inflight = null
-  })
+  inflight
+    .catch(() => {})
+    .finally(() => {
+      inflight = null
+    })
 
   return inflight
 }

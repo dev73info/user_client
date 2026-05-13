@@ -101,6 +101,18 @@ const resourceRootName = computed(() => {
     ?.group_path[0]
   return normalizeTagName(rootName || '')
 })
+const resourceRootAlias = computed(() => {
+  return (
+    resource.value?.tag_selections.find((item) => (item.group_path_aliases?.length ?? 0) > 0)
+      ?.group_path_aliases?.[0] ?? ''
+  )
+})
+const resourceEntryAlias = computed(() => {
+  return (
+    resource.value?.tag_selections.find((item) => (item.group_path_aliases?.length ?? 0) > 1)
+      ?.group_path_aliases?.[1] ?? ''
+  )
+})
 const infoCards = computed(() => {
   if (!resource.value) {
     return []
@@ -110,19 +122,16 @@ const infoCards = computed(() => {
     {
       label: '当前版本',
       value: latestVersion.value?.version ?? '暂无',
-      hint: latestVersion.value ? '可下载版本' : '等待开发者上传',
       tone: 'current-version',
     },
     {
       label: '历史版本',
       value: `${versions.value.length}`,
-      hint: versions.value.length > 0 ? '版本记录数量' : '暂无版本记录',
       tone: 'versions',
     },
     {
       label: '最近更新',
       value: formatUpdatedDate(resource.value.updated_at),
-      hint: formatUpdatedTime(resource.value.updated_at),
       tone: 'updated',
     },
   ]
@@ -191,8 +200,9 @@ function formatHomepageContent(value: string): string {
 }
 
 function backToPlatform() {
-  const fallbackRootSlug = getTagRouteSlug(resourceRootName.value)
-  const fallbackEntrySlug = getTagRouteSlug(resource.value?.platform ?? '')
+  const fallbackRootSlug = resourceRootAlias.value || getTagRouteSlug(resourceRootName.value)
+  const fallbackEntrySlug =
+    resourceEntryAlias.value || getTagRouteSlug(resource.value?.platform ?? '')
   router.push({
     name: 'resource-catalog',
     params: {
@@ -217,18 +227,6 @@ function formatUpdatedDate(value: string): string {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  })
-}
-
-function formatUpdatedTime(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return '时间未知'
-  }
-
-  return date.toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
   })
 }
 
@@ -529,12 +527,8 @@ watch(
       <template v-if="resource">
         <section class="resource-detail-page__lead">
           <div class="resource-detail-page__cover-card">
-            <img
-              v-if="resource.cover_url"
-              :src="resourceCoverUrl"
-              :alt="resource.title"
-              class="resource-detail-page__cover-image"
-            />
+            <img v-if="resource.cover_url" :src="resourceCoverUrl" :alt="resource.title"
+              class="resource-detail-page__cover-image" />
             <div v-else class="resource-detail-page__cover-placeholder">📁</div>
           </div>
 
@@ -556,48 +550,30 @@ watch(
             <div v-if="tagNames.length > 0" class="resource-detail-page__tags">
               <span v-for="item in tagNames" :key="item" class="resource-detail-page__tag">{{
                 item
-              }}</span>
+                }}</span>
             </div>
 
             <div v-if="infoCards.length" class="resource-detail-page__summary-stats">
-              <article
-                v-for="item in infoCards"
-                :key="item.label"
-                class="resource-detail-page__summary-stat"
-              >
+              <article v-for="item in infoCards" :key="item.label" class="resource-detail-page__summary-stat">
                 <strong>{{ item.value }}</strong>
                 <span>{{ item.label }}</span>
-                <small>{{ item.hint }}</small>
               </article>
             </div>
 
             <div class="resource-detail-page__cta-row">
               <div class="resource-detail-page__primary-actions">
-                <button
-                  class="resource-detail-page__primary-btn"
-                  type="button"
-                  @click="openResourceFile"
-                >
+                <button class="resource-detail-page__primary-btn" type="button" @click="openResourceFile">
                   下载最新版本
                 </button>
-                <button
-                  class="resource-detail-page__like-btn"
-                  type="button"
-                  :class="{ 'resource-detail-page__like-btn--active': resource.liked_by_me }"
-                  :disabled="likeSubmitting"
-                  :aria-pressed="resource.liked_by_me"
-                  @click="toggleResourceLike"
-                >
+                <button class="resource-detail-page__like-btn" type="button"
+                  :class="{ 'resource-detail-page__like-btn--active': resource.liked_by_me }" :disabled="likeSubmitting"
+                  :aria-pressed="resource.liked_by_me" @click="toggleResourceLike">
                   <span aria-hidden="true">{{ resource.liked_by_me ? '♥' : '♡' }}</span>
                   <span>{{ resource.liked_by_me ? '已点赞' : '点赞' }}</span>
                   <strong>{{ resource.like_count ?? 0 }}</strong>
                 </button>
               </div>
-              <button
-                class="resource-detail-page__secondary-btn"
-                type="button"
-                @click="backToPlatform"
-              >
+              <button class="resource-detail-page__secondary-btn" type="button" @click="backToPlatform">
                 继续浏览
               </button>
             </div>
@@ -610,11 +586,8 @@ watch(
               <h2>页面内容</h2>
               <span>Content</span>
             </header>
-            <div
-              v-if="pageContentHtml"
-              class="resource-detail-page__content-flow resource-detail-page__rich-text"
-              v-html="pageContentHtml"
-            />
+            <div v-if="pageContentHtml" class="resource-detail-page__content-flow resource-detail-page__rich-text"
+              v-html="pageContentHtml" />
             <p v-else class="resource-detail-page__paragraph">
               当前还没有额外补充说明。后续更新、兼容性说明或使用建议会展示在这里。
             </p>
@@ -626,21 +599,14 @@ watch(
               <span>Versions</span>
             </header>
             <div v-if="versions.length" class="resource-detail-page__version-list">
-              <article
-                v-for="version in versions"
-                :key="version.id"
-                class="resource-detail-page__version-card"
-              >
+              <article v-for="version in versions" :key="version.id" class="resource-detail-page__version-card">
                 <div class="resource-detail-page__version-headline">
                   <div class="resource-detail-page__version-meta">
                     <strong>{{ version.version }}</strong>
                     <span>{{ formatVersionTime(version.created_at) }}</span>
                   </div>
-                  <button
-                    class="resource-detail-page__version-download"
-                    type="button"
-                    @click="downloadVersion(version)"
-                  >
+                  <button class="resource-detail-page__version-download" type="button"
+                    @click="downloadVersion(version)">
                     下载
                   </button>
                 </div>
@@ -664,39 +630,20 @@ watch(
                   <strong>{{ commentGate.title }}</strong>
                   <p>{{ commentGate.description }}</p>
                 </div>
-                <button
-                  v-if="commentGate.actionLabel"
-                  class="resource-detail-page__comment-action"
-                  type="button"
-                  @click="handleCommentGateAction"
-                >
+                <button v-if="commentGate.actionLabel" class="resource-detail-page__comment-action" type="button"
+                  @click="handleCommentGateAction">
                   {{ commentGate.actionLabel }}
                 </button>
               </div>
-              <form
-                v-else
-                class="resource-detail-page__comment-form"
-                @submit.prevent="submitResourceComment"
-              >
-                <textarea
-                  v-model="commentText"
-                  class="resource-detail-page__comment-input"
-                  rows="4"
-                  maxlength="300"
-                  placeholder="写下你对这个资源的使用体验、兼容性补充或改进建议"
-                ></textarea>
+              <form v-else class="resource-detail-page__comment-form" @submit.prevent="submitResourceComment">
+                <textarea v-model="commentText" class="resource-detail-page__comment-input" rows="4" maxlength="300"
+                  placeholder="写下你对这个资源的使用体验、兼容性补充或改进建议"></textarea>
                 <div class="resource-detail-page__comment-toolbar">
-                  <span
-                    class="resource-detail-page__comment-count"
-                    :class="{ danger: commentTextLength > COMMENT_MAX_LENGTH }"
-                  >
+                  <span class="resource-detail-page__comment-count"
+                    :class="{ danger: commentTextLength > COMMENT_MAX_LENGTH }">
                     {{ commentTextLength }} / {{ COMMENT_MAX_LENGTH }}
                   </span>
-                  <button
-                    class="resource-detail-page__comment-submit"
-                    type="submit"
-                    :disabled="!canSubmitComment"
-                  >
+                  <button class="resource-detail-page__comment-submit" type="submit" :disabled="!canSubmitComment">
                     {{ commentSubmitting ? '发布中...' : '发布评论' }}
                   </button>
                 </div>
@@ -704,12 +651,8 @@ watch(
             </section>
 
             <div class="resource-detail-page__comment-list" v-loading="commentsLoading">
-              <article
-                v-for="comment in comments"
-                :key="comment.id"
-                class="resource-detail-page__comment-item"
-                :class="{ mine: auth.username && comment.commenter === auth.username }"
-              >
+              <article v-for="comment in comments" :key="comment.id" class="resource-detail-page__comment-item"
+                :class="{ mine: auth.username && comment.commenter === auth.username }">
                 <div class="resource-detail-page__comment-avatar">
                   {{ getCommenterInitial(comment.commenter) }}
                 </div>
@@ -721,10 +664,7 @@ watch(
                   <p>{{ comment.comment_text }}</p>
                 </div>
               </article>
-              <p
-                v-if="!commentsLoading && comments.length === 0"
-                class="resource-detail-page__paragraph"
-              >
+              <p v-if="!commentsLoading && comments.length === 0" class="resource-detail-page__paragraph">
                 暂时还没有评论。
               </p>
             </div>
@@ -849,7 +789,6 @@ watch(
 .resource-detail-page__meta,
 .resource-detail-page__summary,
 .resource-detail-page__paragraph,
-.resource-detail-page__stat-hint,
 .resource-detail-page__version-meta span,
 .resource-detail-page__rich-text :deep(p),
 .resource-detail-page__rich-text :deep(blockquote),
@@ -907,14 +846,6 @@ watch(
   color: #475569;
   font-size: 13px;
   font-weight: 800;
-}
-
-.resource-detail-page__summary-stat small {
-  min-width: 0;
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
 }
 
 .resource-detail-page__primary-actions {

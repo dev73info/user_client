@@ -95,9 +95,10 @@ function submitOnEnter() {
       <div class="auth-modal-body">
         <template v-if="authMode !== 'reset'">
           <label>
-            用户名
-            <input :value="authUsername" type="text" autocomplete="username" placeholder="请输入用户名"
-              @input="updateUsername" @keydown.enter.prevent="submitOnEnter" />
+            {{ authMode === 'login' ? '用户名或邮箱' : '用户名' }}
+            <input :value="authUsername" type="text" autocomplete="username"
+              :placeholder="authMode === 'login' ? '请输入用户名或邮箱' : '请输入用户名'" @input="updateUsername"
+              @keydown.enter.prevent="submitOnEnter" />
           </label>
           <template v-if="authMode === 'register'">
             <label>

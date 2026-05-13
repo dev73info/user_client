@@ -110,7 +110,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
         const username = authUsername.value.trim()
         const password = authPassword.value
         if (!username) {
-          showToast('请输入用户名', 'error')
+          showToast('请输入用户名或邮箱', 'error')
           return false
         }
         if (!password) {

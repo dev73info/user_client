@@ -27,7 +27,11 @@ const currentEntrySlug = computed(() => {
   return typeof raw === 'string' ? getTagRouteSlug(raw) : ''
 })
 const currentTab = computed(() => {
-  return platformTabs.value.find((tab) => tab.slug === currentEntrySlug.value) ?? platformTabs.value[0] ?? null
+  return (
+    platformTabs.value.find((tab) => tab.slug === currentEntrySlug.value) ??
+    platformTabs.value[0] ??
+    null
+  )
 })
 const currentPlatform = computed(() => currentTab.value?.platform ?? '')
 const currentEntryLabel = computed(() => currentTab.value?.groupName ?? '当前分区')
@@ -95,8 +99,8 @@ async function loadPlatformTabs() {
     }
 
     if (
-      currentRootSlug.value !== resolvedRoot.key
-      || !platformTabs.value.some((tab) => tab.slug === currentEntrySlug.value)
+      currentRootSlug.value !== resolvedRoot.key ||
+      !platformTabs.value.some((tab) => tab.slug === currentEntrySlug.value)
     ) {
       await router.replace({
         name: 'resource-catalog',
@@ -134,9 +138,14 @@ function resolveCurrentRoot(tree: McProcessedTagTree) {
         <section class="catalog-nav-row" aria-label="根节点导航">
           <span class="catalog-nav-row__label">根节点</span>
           <div class="hero-root-nav">
-            <button v-for="root in rootTabs" :key="root.slug" class="root-node-chip"
-              :class="{ active: root.slug === currentRootSlug }" type="button"
-              @click="openRoot(root.slug, root.firstEntrySlug)">
+            <button
+              v-for="root in rootTabs"
+              :key="root.slug"
+              class="root-node-chip"
+              :class="{ active: root.slug === currentRootSlug }"
+              type="button"
+              @click="openRoot(root.slug, root.firstEntrySlug)"
+            >
               {{ root.label }}
             </button>
           </div>
@@ -144,8 +153,14 @@ function resolveCurrentRoot(tree: McProcessedTagTree) {
         <section class="catalog-nav-row" aria-label="二级节点导航">
           <span class="catalog-nav-row__label">二级节点</span>
           <div class="hero-actions hero-actions--catalog">
-            <button v-for="tab in platformTabs" :key="tab.slug" class="platform-path-chip"
-              :class="{ active: tab.slug === currentEntrySlug }" type="button" @click="openPlatform(tab.slug)">
+            <button
+              v-for="tab in platformTabs"
+              :key="tab.slug"
+              class="platform-path-chip"
+              :class="{ active: tab.slug === currentEntrySlug }"
+              type="button"
+              @click="openPlatform(tab.slug)"
+            >
               <span class="platform-path-chip__label">{{ tab.groupName }}</span>
             </button>
           </div>
@@ -154,8 +169,12 @@ function resolveCurrentRoot(tree: McProcessedTagTree) {
     </section>
 
     <section class="portal-page__panel">
-      <ResourceCatalog :platform="currentPlatform" :rootSlug="currentRootSlug"
-        :groupName="currentTab?.groupName || currentEntryLabel" />
+      <ResourceCatalog
+        :platform="currentPlatform"
+        :rootSlug="currentRootSlug"
+        :entrySlug="currentEntrySlug"
+        :groupName="currentTab?.groupName || currentEntryLabel"
+      />
     </section>
   </main>
 </template>

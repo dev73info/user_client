@@ -8,14 +8,15 @@ export type UserRealnameVerification = {
   auth_type: RealnameAuthType
   status: UserRealnameStatus
   real_name?: string | null
-  id_card_no?: string | null
+  id_card_no_masked?: string | null
   company_name?: string | null
   unified_social_credit_code?: string | null
   business_license_no?: string | null
   operator_name?: string | null
-  operator_id_card_no?: string | null
+  operator_id_card_no_masked?: string | null
   review_note?: string | null
   reviewed_by?: string | null
+  reviewed_by_avatar_url?: string | null
   reviewed_at?: string | null
   created_at: string
   updated_at: string

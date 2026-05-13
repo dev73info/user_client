@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -47,18 +47,6 @@ const editVersionForm = reactive({
 })
 
 const deleteVersionTarget = ref<McResourceVersionPayload | null>(null)
-
-const pageTitle = computed(() => (resource.value ? `版本管理 · ${resource.value.title}` : '版本管理'))
-const statusText = computed(() => {
-  if (resource.value?.visibility === 'published') return '公开'
-  if (resource.value?.visibility === 'review') return '审核中'
-  return '私有'
-})
-const statusType = computed(() => {
-  if (resource.value?.visibility === 'published') return 'success'
-  if (resource.value?.visibility === 'review') return 'warning'
-  return 'info'
-})
 
 onMounted(async () => {
   auth.hydrate()
@@ -296,41 +284,11 @@ async function removeVersion() {
   }
 }
 
-function goBack() {
-  router.push({ name: 'dev-resource-list' })
-}
 </script>
 
 <template>
   <div class="dev-page dev-page--resource-versions">
-    <section class="dev-panel-banner dev-panel-banner--light">
-      <div>
-        <div class="dev-panel-banner__eyebrow">Version Manager</div>
-        <h2 class="dev-panel-banner__title">{{ pageTitle }}</h2>
-        <p class="dev-panel-banner__desc">在单独页面中管理当前资源的版本发布、编辑和删除，避免列表页弹窗层级过深。</p>
-      </div>
-      <div class="dev-panel-banner__meta">
-        <el-button text @click="goBack">返回资源列表</el-button>
-        <el-button text :loading="loading || versionsLoading" @click="loadPage">刷新页面</el-button>
-      </div>
-    </section>
-
     <section class="dev-resource-versions__layout" v-loading="loading">
-      <el-card shadow="never" class="dev-surface-card">
-        <div class="dev-resource-versions__resource-head">
-          <div>
-            <div class="dev-resource-versions__resource-title">{{ resource?.title || '资源版本管理' }}</div>
-            <div class="dev-resource-versions__resource-meta">
-              <span>{{ resource?.author || '未知作者' }}</span>
-              <span>{{ resource?.platform || '未知平台' }}</span>
-            </div>
-          </div>
-          <el-tag :type="statusType" effect="plain">{{ statusText }}</el-tag>
-        </div>
-
-        <p class="dev-resource-versions__resource-desc">{{ resource?.description || '暂无资源简介。' }}</p>
-      </el-card>
-
       <el-card shadow="never" class="dev-surface-card">
         <div class="dev-upload-section__head">
           <section>
@@ -451,33 +409,6 @@ function goBack() {
   gap: 20px;
 }
 
-.dev-resource-versions__resource-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.dev-resource-versions__resource-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--el-text-color-primary);
-}
-
-.dev-resource-versions__resource-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 8px;
-  color: var(--el-text-color-secondary);
-}
-
-.dev-resource-versions__resource-desc {
-  margin: 16px 0 0;
-  color: var(--el-text-color-regular);
-  line-height: 1.7;
-}
-
 .dev-resource-versions__create-actions {
   display: flex;
   justify-content: flex-end;
@@ -514,11 +445,5 @@ function goBack() {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-}
-
-@media (max-width: 900px) {
-  .dev-resource-versions__resource-head {
-    flex-direction: column;
-  }
 }
 </style>

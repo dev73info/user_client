@@ -116,6 +116,8 @@ type DeveloperRank = {
   deals: string
 }
 
+const failedDeveloperAvatarUrls = ref<Set<string>>(new Set())
+
 const metrics = ref<Metric[]>([
   { label: '累计完成', value: '0 单' },
   { label: '综合评价', value: '5.00 分' },
@@ -221,7 +223,7 @@ const portalNotices = computed<PortalNotice[]>(() => {
             entrySlug: resourceRoute.entrySlug,
             resourceSlug: getResourceDetailSlug(
               publicResources.value[0].id,
-              publicResources.value[0].title,
+              publicResources.value[0].creator || publicResources.value[0].author,
             ),
           },
         }
@@ -480,7 +482,7 @@ function openSpotlight(card: SpotlightCard) {
       params: {
         rootSlug: routeParams.rootSlug,
         entrySlug: routeParams.entrySlug,
-        resourceSlug: getResourceDetailSlug(target.id, target.title),
+        resourceSlug: getResourceDetailSlug(target.id, target.creator || target.author),
       },
     })
     return
@@ -508,6 +510,7 @@ const platformStats = computed(() => {
 })
 
 const developerRanks = computed<DeveloperRank[]>(() => {
+  const failedAvatarUrls = failedDeveloperAvatarUrls.value
   const groupedResources = new Map<
     string,
     { name: string; avatarUrl: string; creditScore: number | null; deals: number; latestAt: number }
@@ -559,11 +562,19 @@ const developerRanks = computed<DeveloperRank[]>(() => {
     .slice(0, 4)
     .map((item) => ({
       name: item.name,
-      avatarUrl: item.avatarUrl,
+      avatarUrl: failedAvatarUrls.has(item.avatarUrl) ? '' : item.avatarUrl,
       creditScore: item.creditScore,
       deals: `${item.deals} 个资源`,
     }))
 })
+
+function handleDeveloperAvatarError(developer: DeveloperRank) {
+  if (!developer.avatarUrl) return
+
+  const next = new Set(failedDeveloperAvatarUrls.value)
+  next.add(developer.avatarUrl)
+  failedDeveloperAvatarUrls.value = next
+}
 
 function formatCreditScore(value: number | null) {
   if (value == null || !Number.isFinite(value)) {
@@ -1258,7 +1269,10 @@ async function ensurePublishRealnameApproved() {
   } catch (err) {
     if (err instanceof HttpError && err.status === 404) {
       showToast('发布需求前请先完成实名认证', 'warning')
-      void router.push({ name: 'workbench-realname', query: { redirect_to: route.fullPath || '/' } })
+      void router.push({
+        name: 'workbench-realname',
+        query: { redirect_to: route.fullPath || '/' },
+      })
       return false
     }
 
@@ -1429,7 +1443,7 @@ async function submitPublishRequirement() {
                 <div v-if="heroSignals.length" class="portal-signal-list">
                   <span v-for="signal in heroSignals" :key="signal" class="portal-signal">{{
                     signal
-                    }}</span>
+                  }}</span>
                 </div>
 
                 <div class="portal-hero__actions">
@@ -1764,7 +1778,8 @@ async function submitPublishRequirement() {
             <ul v-if="developerRanks.length > 0" class="portal-rank-list">
               <li v-for="developer in developerRanks" :key="developer.name" class="portal-rank-item">
                 <div class="portal-rank-item__avatar">
-                  <img v-if="developer.avatarUrl" :src="developer.avatarUrl" :alt="`${developer.name} 的头像`" />
+                  <img v-if="developer.avatarUrl" :src="developer.avatarUrl" :alt="`${developer.name} 的头像`"
+                    @error="handleDeveloperAvatarError(developer)" />
                   <span v-else>{{ developer.name.slice(0, 1) }}</span>
                 </div>
                 <div class="portal-rank-item__meta">

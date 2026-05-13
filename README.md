@@ -41,6 +41,29 @@ pnpm dev
 pnpm build
 ```
 
+### OpenResty / Nginx History Fallback
+
+Production uses Vue Router history mode, so the web server must return `index.html`
+for non-file routes such as `/community` or `/free-resources`.
+
+Use `deploy/openresty/73info-user-client.conf` as the OpenResty server-block
+template. The essential rule is:
+
+```nginx
+location / {
+  try_files $uri $uri/ /index.html;
+}
+```
+
+`public/404.html` is also shipped as a last-resort browser redirect fallback, but
+the OpenResty `try_files` rule is the correct fix for crawlers and refreshes.
+If the same OpenResty virtual host also proxies `/api/` or `/uploads/`, keep
+those `location` blocks above `location /`.
+
+If refreshing a non-home route returns to the home page, the active OpenResty
+site config is still missing the `location /` rule above; `error_page 404
+/404.html` alone is only a fallback and should not be the main routing path.
+
 ### Run Unit Tests with [Vitest](https://vitest.dev/)
 
 ```sh

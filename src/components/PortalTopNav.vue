@@ -66,11 +66,6 @@ const headerLinks = computed<HeaderLink[]>(() => {
       active: allowActive && (currentName === 'requirement-hall' || currentName === 'payment'),
     },
     { label: '社区', to: { name: 'community' }, active: allowActive && currentName === 'community' },
-    {
-      label: '帮助中心',
-      to: { name: 'help-center' },
-      active: allowActive && (currentName === 'help-center' || currentName === 'terms' || currentName === 'privacy' || currentName === 'payment-refund'),
-    },
   ]
 
   if (auth.isAuthed) {

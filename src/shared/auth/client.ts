@@ -67,7 +67,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
       )
     } catch (err) {
       if (path === '/auth/login' && deps.isHttpError(err) && err.status === 401) {
-        throw new Error('用户名或密码不正确，请检查后重试')
+        throw new Error('用户名/邮箱或密码不正确，请检查后重试')
       }
 
       throw err

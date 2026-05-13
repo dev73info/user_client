@@ -14,6 +14,7 @@ type CustomResourceCard = {
   requirementId: string
   requirementTitle: string
   title: string
+  ownerName: string
   author: string
   description: string
   platform: string
@@ -43,21 +44,33 @@ const cards = computed<CustomResourceCard[]>(() => {
     .map((item) => {
       const tagSelections = item.bound_resource_tag_selections ?? []
       const rootName = tagSelections.find((s) => s.group_path.length > 0)?.group_path[0] ?? ''
-      const entryName = tagSelections.find((s) => s.group_path.length > 1)?.group_path[1] ?? (item.bound_resource_platform || '')
+      const entryName =
+        tagSelections.find((s) => s.group_path.length > 1)?.group_path[1] ??
+        (item.bound_resource_platform || '')
+      const rootAlias =
+        tagSelections.find((s) => (s.group_path_aliases?.length ?? 0) > 0)
+          ?.group_path_aliases?.[0] ?? ''
+      const entryAlias =
+        tagSelections.find((s) => (s.group_path_aliases?.length ?? 0) > 1)
+          ?.group_path_aliases?.[1] ?? ''
 
       return {
         id: item.bound_resource_id as number,
         requirementId: item.requirement_id,
         requirementTitle: item.title,
         title: item.bound_resource_title as string,
+        ownerName:
+          item.creator?.trim() || auth.username || item.bound_resource_author?.trim() || item.title,
         author: item.bound_resource_author?.trim() || '未知作者',
         description: item.bound_resource_description?.trim() || '暂未填写资源说明。',
         platform: item.bound_resource_platform || '未知平台',
-        rootSlug: getTagRouteSlug(rootName),
-        entrySlug: getTagRouteSlug(entryName),
+        rootSlug: rootAlias || getTagRouteSlug(rootName),
+        entrySlug: entryAlias || getTagRouteSlug(entryName),
         tags: Array.from(
           new Set(
-            (item.bound_resource_tag_selections ?? []).flatMap((entry) => entry.tag_names).filter(Boolean),
+            (item.bound_resource_tag_selections ?? [])
+              .flatMap((entry) => entry.tag_names)
+              .filter(Boolean),
           ),
         ),
         updatedAt: item.bound_resource_updated_at || item.updated_at,
@@ -84,7 +97,13 @@ const filteredCards = computed(() => {
       return true
     }
 
-    const haystack = [card.title, card.author, card.description, card.requirementTitle, ...card.tags]
+    const haystack = [
+      card.title,
+      card.author,
+      card.description,
+      card.requirementTitle,
+      ...card.tags,
+    ]
       .join(' ')
       .toLowerCase()
     return haystack.includes(keyword)
@@ -94,7 +113,9 @@ const filteredCards = computed(() => {
     return filtered.slice().sort((left, right) => left.title.localeCompare(right.title, 'zh-CN'))
   }
 
-  return filtered.slice().sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
+  return filtered
+    .slice()
+    .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
 })
 
 const stats = computed(() => {
@@ -139,7 +160,7 @@ function openPrimaryLink(card: CustomResourceCard) {
     params: {
       rootSlug: card.rootSlug,
       entrySlug: card.entrySlug,
-      resourceSlug: getResourceDetailSlug(card.id, card.title),
+      resourceSlug: getResourceDetailSlug(card.id, card.ownerName),
     },
   })
 }
@@ -176,7 +197,6 @@ onMounted(() => {
 
 <template>
   <main class="portal-page custom-resource-page">
-
     <section class="portal-page__stats">
       <article class="portal-page__stat-card">
         <strong>{{ stats.total }}</strong>
@@ -258,7 +278,9 @@ onMounted(() => {
             @click="selectedSort = '标题'">
             标题
           </button>
-          <button class="custom-resource-browser__reset" type="button" @click="resetFilters">↻ 重置筛选</button>
+          <button class="custom-resource-browser__reset" type="button" @click="resetFilters">
+            ↻ 重置筛选
+          </button>
         </div>
       </div>
     </section>
@@ -269,7 +291,9 @@ onMounted(() => {
         <div v-if="card.coverUrl" class="custom-resource-browser__cover custom-resource-browser__cover--image">
           <img :src="card.coverUrl" :alt="card.title" class="custom-resource-browser__cover-image" />
         </div>
-        <div v-else class="custom-resource-browser__cover custom-resource-browser__cover--fallback">📁</div>
+        <div v-else class="custom-resource-browser__cover custom-resource-browser__cover--fallback">
+          📁
+        </div>
 
         <div class="custom-resource-browser__body">
           <div class="custom-resource-browser__topline">
@@ -284,7 +308,9 @@ onMounted(() => {
               <h3>{{ card.title }}</h3>
               <p class="custom-resource-browser__author">by {{ card.author }}</p>
             </div>
-            <span class="custom-resource-browser__updated">{{ formatUpdatedAt(card.updatedAt) }}</span>
+            <span class="custom-resource-browser__updated">{{
+              formatUpdatedAt(card.updatedAt)
+              }}</span>
           </div>
 
           <p class="custom-resource-browser__requirement">关联需求：{{ card.requirementTitle }}</p>
@@ -306,7 +332,11 @@ onMounted(() => {
       <div v-if="!loading && filteredCards.length === 0" class="custom-resource-browser__empty">
         <h3>{{ cards.length === 0 ? '你还没有关联资源项目' : '没有符合当前筛选条件的资源' }}</h3>
         <p>
-          {{ cards.length === 0 ? '当开发者把资源项目关联到你的需求单后，这里会自动出现对应的资源卡片。' : '可以尝试重置筛选，或者回到工单中心调整资源公开状态。' }}
+          {{
+            cards.length === 0
+              ? '当开发者把资源项目关联到你的需求单后，这里会自动出现对应的资源卡片。'
+              : '可以尝试重置筛选，或者回到工单中心调整资源公开状态。'
+          }}
         </p>
         <button class="custom-resource-browser__reset" type="button"
           @click="cards.length === 0 ? openTicketCenter() : resetFilters">
@@ -441,7 +471,9 @@ onMounted(() => {
   gap: 16px;
   padding: 16px;
   border-radius: 16px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .custom-resource-browser__card:hover {

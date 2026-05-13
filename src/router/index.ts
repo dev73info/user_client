@@ -2,10 +2,34 @@ import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router
 import { useAuthStore } from '@/stores/auth'
 import { devRoutes, devWorkbenchRoutes, installDevRouteGuard } from '@dev/router'
 
+const SPA_FALLBACK_REDIRECT_PARAM = '__spa_redirect'
+
 const routerHistory =
   import.meta.env.VITE_ROUTER_MODE === 'history'
     ? createWebHistory(import.meta.env.BASE_URL)
     : createWebHashHistory(import.meta.env.BASE_URL)
+
+function takeSpaFallbackRedirect(): string {
+  if (typeof window === 'undefined' || import.meta.env.VITE_ROUTER_MODE !== 'history') {
+    return ''
+  }
+
+  const target = new URLSearchParams(window.location.search)
+    .get(SPA_FALLBACK_REDIRECT_PARAM)
+    ?.trim()
+    ?? ''
+
+  if (!target || !target.startsWith('/') || target.startsWith('//')) {
+    return ''
+  }
+  if (target.startsWith('/api/') || target.startsWith('/uploads/')) {
+    return ''
+  }
+
+  return target
+}
+
+let pendingSpaFallbackRedirect = takeSpaFallbackRedirect()
 
 const router = createRouter({
   history: routerHistory,
@@ -123,11 +147,6 @@ const router = createRouter({
       component: () => import('@/views/CouponClaimView.vue'),
     },
     {
-      path: '/help-center',
-      name: 'help-center',
-      component: () => import('@/views/HelpCenterView.vue'),
-    },
-    {
       path: '/terms',
       name: 'terms',
       component: () => import('@/views/TermsView.vue'),
@@ -161,6 +180,12 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
+  if (pendingSpaFallbackRedirect && to.fullPath !== pendingSpaFallbackRedirect) {
+    const target = pendingSpaFallbackRedirect
+    pendingSpaFallbackRedirect = ''
+    return next(target)
+  }
+
   if (to.path.startsWith('/dev')) {
     return next()
   }

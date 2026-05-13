@@ -1,11 +1,24 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, type Component } from 'vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import Link from '@tiptap/extension-link'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import MarkdownIt from 'markdown-it'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  Back,
+  Check,
+  Document,
+  Folder,
+  Link as LinkIcon,
+  List,
+  Picture,
+  Reading,
+  RefreshLeft,
+  Upload,
+  View,
+} from '@element-plus/icons-vue'
 
 import { apiUrl } from '@dev/api/http'
 import {
@@ -17,6 +30,7 @@ import {
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
+import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 
 type ToolbarAction =
@@ -30,6 +44,12 @@ type ToolbarAction =
   | 'blockquote'
   | 'code'
 type EditorMode = 'rich' | 'markdown'
+type HomepageEditorUpdatePayload = {
+  editor: {
+    getText: () => string
+    getHTML: () => string
+  }
+}
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -55,17 +75,22 @@ const form = reactive({
   release_note: '',
 })
 
-const toolbarActions: Array<{ label: string; action: ToolbarAction; title: string }> = [
-  { label: 'B', action: 'bold', title: '加粗' },
-  { label: 'I', action: 'italic', title: '斜体' },
-  { label: 'U', action: 'underline', title: '下划线' },
-  { label: 'H2', action: 'h2', title: '二级标题' },
-  { label: 'H3', action: 'h3', title: '三级标题' },
-  { label: '无序列表', action: 'bullet', title: '无序列表' },
-  { label: '有序列表', action: 'ordered', title: '有序列表' },
-  { label: '引用', action: 'blockquote', title: '引用' },
-  { label: '</>', action: 'code', title: '代码块' },
-]
+const toolbarActions: Array<{
+  label: string
+  action: ToolbarAction
+  title: string
+  icon?: Component
+}> = [
+    { label: 'B', action: 'bold', title: '加粗' },
+    { label: 'I', action: 'italic', title: '斜体' },
+    { label: 'U', action: 'underline', title: '下划线' },
+    { label: 'H2', action: 'h2', title: '二级标题' },
+    { label: 'H3', action: 'h3', title: '三级标题' },
+    { label: '', action: 'bullet', title: '无序列表', icon: List },
+    { label: '1.', action: 'ordered', title: '有序列表' },
+    { label: '引用', action: 'blockquote', title: '引用' },
+    { label: '</>', action: 'code', title: '代码块' },
+  ]
 
 const markdownRenderer = new MarkdownIt({
   html: false,
@@ -93,6 +118,8 @@ const editor = useEditor({
       heading: {
         levels: [2, 3],
       },
+      link: false,
+      underline: false,
     }),
     Underline,
     Link.configure({
@@ -106,8 +133,8 @@ const editor = useEditor({
       class: 'dev-resource-homepage-editor__editor-surface',
     },
   },
-  onUpdate: (payload: any) => {
-    const currentEditor = payload.editor as { getText: () => string; getHTML: () => string }
+  onUpdate: (payload: HomepageEditorUpdatePayload) => {
+    const currentEditor = payload.editor
     const text = currentEditor.getText().trim()
     form.release_note = text ? sanitizeRichHtml(currentEditor.getHTML()) : ''
   },
@@ -128,6 +155,7 @@ const coverPreviewUrl = computed(() => {
 const previewTagNames = computed(
   () => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [],
 )
+const previewTagCount = computed(() => previewTagNames.value.length)
 const resourceVisibilityLabel = computed(() => {
   if (resource.value?.visibility === 'published') {
     return '公开展示中'
@@ -139,7 +167,11 @@ const resourceVisibilityLabel = computed(() => {
 
   return '私有'
 })
+const resourcePlatformLabel = computed(() => resource.value?.platform || '未知平台')
+const heroTitle = computed(() => form.title.trim() || resource.value?.title || '资源主页')
+const resourceAuthorLabel = computed(() => form.author.trim() || resource.value?.author || '开发者')
 const previewContentHtml = computed(() => formatHomepageContent(currentEditorContent()))
+const userClientPreviewUrl = computed(() => (resource.value ? userClientResourceUrl(resource.value) : ''))
 
 function looksLikeHtml(value: string): boolean {
   return /<\/?[a-z][\s\S]*>/i.test(value)
@@ -391,16 +423,26 @@ function goBack() {
   router.push({ name: 'dev-resource-list' })
 }
 
-function openHomepagePreview() {
-  if (!resource.value) {
-    return
-  }
+function firstTagPathSegment(index: number): string {
+  return resource.value?.tag_selections.find((item) => item.group_path[index])?.group_path[index] ?? ''
+}
 
-  const configuredBase = (import.meta.env.VITE_USER_CLIENT_BASE_URL as string | undefined)
-    ?.trim()
-    .replace(/\/$/, '')
-  const baseUrl = configuredBase || 'http://73info.cn'
-  window.open(`${baseUrl}/resources/${resource.value.id}`, '_blank', 'noopener,noreferrer')
+function userClientResourceUrl(target: McResourcePayload): string {
+  const rootSlug = getTagRouteSlug(firstTagPathSegment(0) || 'resources')
+  const entrySlug = getTagRouteSlug(firstTagPathSegment(1) || target.platform || 'detail')
+  const ownerName = target.creator.trim() || target.author.trim() || target.title
+  const routeLocation = router.resolve({
+    name: 'resource-detail',
+    params: {
+      rootSlug,
+      entrySlug,
+      resourceSlug: getResourceDetailSlug(target.id, ownerName),
+    },
+  })
+
+  const configuredBase = (import.meta.env.VITE_USER_CLIENT_BASE_URL as string | undefined)?.trim()
+  const baseUrl = configuredBase ? configuredBase.replace(/\/$/, '') + '/' : window.location.href
+  return new URL(routeLocation.href, baseUrl).toString()
 }
 
 onMounted(async () => {
@@ -416,18 +458,31 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="dev-page dev-page--resource-homepage-editor">
-    <section class="dev-panel-banner dev-panel-banner--light">
-      <div>
-        <div class="dev-panel-banner__eyebrow">Homepage Editor</div>
-        <h2 class="dev-panel-banner__title">独立编辑资源主页</h2>
-        <p class="dev-panel-banner__desc">
-          左侧维护基础信息与主页补充说明，右侧同步预览最终呈现效果。
-        </p>
+    <section class="dev-panel-banner dev-panel-banner--light dev-resource-homepage-editor__hero">
+      <div class="dev-resource-homepage-editor__hero-main">
+        <div class="dev-resource-homepage-editor__hero-cover">
+          <img v-if="coverPreviewUrl" :src="coverPreviewUrl" :alt="heroTitle"
+            class="dev-resource-homepage-editor__hero-cover-image" />
+          <el-icon v-else>
+            <Folder />
+          </el-icon>
+        </div>
+        <div class="dev-resource-homepage-editor__hero-copy">
+          <div class="dev-panel-banner__eyebrow">资源主页编辑</div>
+          <h2 class="dev-panel-banner__title">{{ heroTitle }}</h2>
+          <div class="dev-resource-homepage-editor__hero-meta">
+            <span class="dev-resource-homepage-editor__hero-pill">{{ resourceVisibilityLabel }}</span>
+            <span class="dev-resource-homepage-editor__hero-pill">{{ resourcePlatformLabel }}</span>
+            <span class="dev-resource-homepage-editor__hero-pill">{{ previewTagCount }} 个标签</span>
+            <span class="dev-resource-homepage-editor__hero-pill">{{ resourceAuthorLabel }}</span>
+          </div>
+        </div>
       </div>
       <div class="dev-resource-homepage-editor__banner-actions">
-        <el-button plain @click="goBack">返回列表</el-button>
-        <el-button v-if="resource" @click="openHomepagePreview">打开用户端</el-button>
-        <el-button type="primary" :loading="saving" @click="saveHomepage">保存主页</el-button>
+        <el-button plain :icon="Back" @click="goBack">返回列表</el-button>
+        <el-button v-if="resource" tag="a" :href="userClientPreviewUrl" target="_blank" rel="noopener noreferrer"
+          :icon="View">打开用户端</el-button>
+        <el-button type="primary" :icon="Check" :loading="saving" @click="saveHomepage">保存主页</el-button>
       </div>
     </section>
 
@@ -437,42 +492,29 @@ onBeforeUnmount(() => {
           <div class="dev-resource-homepage-editor__section-head">
             <div>
               <h3 class="dev-section-title">基础信息</h3>
-              <p class="dev-section-desc">这里只保留资源标题、资源简介和图标文件三个核心入口。</p>
+              <p class="dev-section-desc">标题、简介与封面素材</p>
             </div>
+            <el-icon class="dev-resource-homepage-editor__section-icon">
+              <Picture />
+            </el-icon>
           </div>
 
           <el-form label-position="top" class="dev-resource-homepage-editor__form">
             <el-form-item label="资源标题" required>
-              <el-input
-                v-model="form.title"
-                maxlength="120"
-                show-word-limit
-                placeholder="输入资源标题"
-              />
+              <el-input v-model="form.title" maxlength="120" show-word-limit placeholder="输入资源标题" />
             </el-form-item>
             <el-form-item label="资源简介" required>
-              <el-input
-                v-model="form.description"
-                type="textarea"
-                :rows="5"
-                maxlength="500"
-                show-word-limit
-                placeholder="用一段简洁说明告诉用户这是什么资源、适合谁、解决什么问题"
-              />
+              <el-input v-model="form.description" type="textarea" :rows="5" maxlength="500" show-word-limit
+                placeholder="用一段简洁说明告诉用户这是什么资源、适合谁、解决什么问题" />
             </el-form-item>
             <el-form-item label="图标文件">
               <div class="dev-resource-homepage-editor__file-picker">
-                <input
-                  ref="coverFileInput"
-                  type="file"
-                  accept="image/*"
-                  class="dev-resource-homepage-editor__file-input"
-                  @change="handleCoverFileChange"
-                />
-                <el-button @click="triggerCoverPicker">选择图标文件</el-button>
-                <span class="dev-resource-homepage-editor__file-name">{{
-                  selectedCoverFileName || '未选择文件'
-                }}</span>
+                <input ref="coverFileInput" type="file" accept="image/*"
+                  class="dev-resource-homepage-editor__file-input" @change="handleCoverFileChange" />
+                <el-button :icon="Upload" @click="triggerCoverPicker">选择封面</el-button>
+                <span class="dev-resource-homepage-editor__file-name">
+                  {{ selectedCoverFileName || '未选择文件' }}
+                </span>
               </div>
             </el-form-item>
           </el-form>
@@ -482,63 +524,44 @@ onBeforeUnmount(() => {
           <div class="dev-resource-homepage-editor__section-head">
             <div>
               <h3 class="dev-section-title">主页补充说明</h3>
-              <p class="dev-section-desc">
-                富文本适合可视化编辑；如果你想直接写 `# dsa`、列表或代码块，请切到 Markdown 模式。
-              </p>
+              <p class="dev-section-desc">编辑发布页内容</p>
             </div>
+            <el-icon class="dev-resource-homepage-editor__section-icon">
+              <Document />
+            </el-icon>
           </div>
 
-          <div
-            class="dev-resource-homepage-editor__mode-switch"
-            role="tablist"
-            aria-label="编辑模式切换"
-          >
-            <button
-              class="dev-resource-homepage-editor__mode-button"
-              :class="{ 'is-active': editorMode === 'rich' }"
-              type="button"
-              @click="switchEditorMode('rich')"
-            >
+          <div class="dev-resource-homepage-editor__mode-switch" role="tablist" aria-label="编辑模式切换">
+            <button class="dev-resource-homepage-editor__mode-button" :class="{ 'is-active': editorMode === 'rich' }"
+              type="button" @click="switchEditorMode('rich')">
               富文本
             </button>
-            <button
-              class="dev-resource-homepage-editor__mode-button"
-              :class="{ 'is-active': editorMode === 'markdown' }"
-              type="button"
-              @click="switchEditorMode('markdown')"
-            >
+            <button class="dev-resource-homepage-editor__mode-button"
+              :class="{ 'is-active': editorMode === 'markdown' }" type="button" @click="switchEditorMode('markdown')">
               Markdown
             </button>
           </div>
 
           <div v-if="editorMode === 'rich'" class="dev-resource-homepage-editor__toolbar">
-            <button
-              v-for="item in toolbarActions"
-              :key="`${item.action}:${item.label}`"
-              class="dev-resource-homepage-editor__tool"
-              :class="{ 'is-active': isToolbarActive(item.action) }"
-              type="button"
-              :title="item.title"
-              @click="runToolbarAction(item.action)"
-            >
-              {{ item.label }}
+            <button v-for="item in toolbarActions" :key="`${item.action}:${item.label}`"
+              class="dev-resource-homepage-editor__tool" :class="{ 'is-active': isToolbarActive(item.action) }"
+              type="button" :title="item.title" :aria-label="item.title" @click="runToolbarAction(item.action)">
+              <el-icon v-if="item.icon">
+                <component :is="item.icon" />
+              </el-icon>
+              <span v-else>{{ item.label }}</span>
             </button>
-            <button
-              class="dev-resource-homepage-editor__tool"
-              :class="{ 'is-active': editor?.isActive('link') }"
-              type="button"
-              title="插入链接"
-              @click="toggleLink"
-            >
-              链接
+            <button class="dev-resource-homepage-editor__tool" :class="{ 'is-active': editor?.isActive('link') }"
+              type="button" title="插入链接" aria-label="插入链接" @click="toggleLink">
+              <el-icon>
+                <LinkIcon />
+              </el-icon>
             </button>
-            <button
-              class="dev-resource-homepage-editor__tool"
-              type="button"
-              title="清除格式"
-              @click="clearFormatting"
-            >
-              清除格式
+            <button class="dev-resource-homepage-editor__tool" type="button" title="清除格式" aria-label="清除格式"
+              @click="clearFormatting">
+              <el-icon>
+                <RefreshLeft />
+              </el-icon>
             </button>
           </div>
 
@@ -547,10 +570,7 @@ onBeforeUnmount(() => {
           </div>
 
           <div v-else class="dev-resource-homepage-editor__markdown-panel">
-            <textarea
-              v-model="markdownDraft"
-              class="dev-resource-homepage-editor__markdown-input"
-              spellcheck="false"
+            <textarea v-model="markdownDraft" class="dev-resource-homepage-editor__markdown-input" spellcheck="false"
               placeholder="# dsa
 
 ## 小标题
@@ -561,9 +581,7 @@ onBeforeUnmount(() => {
 ```ts
 console.log('hello')
 ```
-"
-              @input="form.release_note = markdownDraft"
-            />
+" @input="form.release_note = markdownDraft" />
           </div>
         </el-card>
       </div>
@@ -574,60 +592,29 @@ console.log('hello')
             <div>
               <div class="dev-panel-banner__eyebrow">Preview</div>
               <h3 class="dev-section-title">页面预览</h3>
-              <p class="dev-section-desc">右侧预览会尽量贴近用户端资源主页的阅读结构。</p>
             </div>
-            <span class="dev-resource-homepage-editor__status-pill">{{
-              resourceVisibilityLabel
-            }}</span>
           </div>
 
           <div class="dev-resource-homepage-editor__preview-shell">
             <div class="dev-resource-homepage-editor__preview-cover">
-              <img
-                v-if="coverPreviewUrl"
-                :src="coverPreviewUrl"
-                :alt="form.title"
-                class="dev-resource-homepage-editor__preview-cover-image"
-              />
-              <div v-else class="dev-resource-homepage-editor__preview-cover-fallback">📁</div>
-            </div>
-
-            <div class="dev-resource-homepage-editor__preview-summary">
-              <div class="dev-resource-homepage-editor__preview-pills">
-                <span class="dev-resource-homepage-editor__preview-pill">{{
-                  resource?.platform || '未知平台'
-                }}</span>
-                <span class="dev-resource-homepage-editor__preview-pill"
-                  >by {{ form.author || resource?.author || '开发者' }}</span
-                >
-              </div>
-              <h2 class="dev-resource-homepage-editor__preview-title">
-                {{ form.title || '资源标题预览' }}
-              </h2>
-              <p class="dev-resource-homepage-editor__preview-desc">
-                {{ form.description || '资源简介会展示在这里，建议保持短句、明确和可快速理解。' }}
-              </p>
-
-              <div v-if="previewTagNames.length" class="dev-resource-homepage-editor__preview-tags">
-                <span
-                  v-for="tag in previewTagNames"
-                  :key="tag"
-                  class="dev-resource-homepage-editor__preview-tag"
-                  >{{ tag }}</span
-                >
+              <img v-if="coverPreviewUrl" :src="coverPreviewUrl" :alt="form.title"
+                class="dev-resource-homepage-editor__preview-cover-image" />
+              <div v-else class="dev-resource-homepage-editor__preview-cover-fallback">
+                <el-icon>
+                  <Folder />
+                </el-icon>
               </div>
             </div>
 
             <div class="dev-resource-homepage-editor__preview-content">
               <div class="dev-resource-homepage-editor__preview-section-head">
                 <h4>页面内容</h4>
-                <span>Content</span>
+                <el-icon>
+                  <Reading />
+                </el-icon>
               </div>
-              <div
-                v-if="previewContentHtml"
-                class="dev-resource-homepage-editor__preview-rich-text"
-                v-html="previewContentHtml"
-              />
+              <div v-if="previewContentHtml" class="dev-resource-homepage-editor__preview-rich-text"
+                v-html="previewContentHtml" />
               <p v-else class="dev-resource-homepage-editor__preview-empty">
                 主页补充说明会显示在这里。可以用标题、列表、引用和链接组织内容结构。
               </p>
@@ -644,16 +631,83 @@ console.log('hello')
   gap: 24px;
 }
 
+.dev-resource-homepage-editor__hero {
+  align-items: center;
+  padding: 22px;
+}
+
+.dev-resource-homepage-editor__hero-main {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.dev-resource-homepage-editor__hero-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(31, 74, 209, 0.1), rgba(42, 166, 164, 0.14));
+  color: var(--dev-blue);
+}
+
+.dev-resource-homepage-editor__hero-cover :deep(.el-icon) {
+  font-size: 34px;
+}
+
+.dev-resource-homepage-editor__hero-cover-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dev-resource-homepage-editor__hero-copy {
+  min-width: 0;
+}
+
+.dev-resource-homepage-editor__hero-copy .dev-panel-banner__title,
+.dev-resource-homepage-editor__hero-copy .dev-panel-banner__desc {
+  overflow-wrap: anywhere;
+}
+
+.dev-resource-homepage-editor__hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.dev-resource-homepage-editor__hero-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(31, 74, 209, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .dev-resource-homepage-editor__banner-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 12px;
   flex-wrap: wrap;
+  flex: 0 0 auto;
 }
 
 .dev-resource-homepage-editor__layout {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(360px, 0.9fr);
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.78fr);
   gap: 24px;
   align-items: start;
 }
@@ -670,6 +724,19 @@ console.log('hello')
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
+}
+
+.dev-resource-homepage-editor__section-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  background: rgba(31, 74, 209, 0.08);
+  color: var(--dev-blue);
+  font-size: 18px;
 }
 
 .dev-resource-homepage-editor__section-tag,
@@ -696,6 +763,11 @@ console.log('hello')
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  width: 100%;
+  padding: 12px;
+  border: 1px dashed rgba(31, 74, 209, 0.22);
+  border-radius: 14px;
+  background: rgba(31, 74, 209, 0.04);
 }
 
 .dev-resource-homepage-editor__file-input {
@@ -705,13 +777,18 @@ console.log('hello')
 .dev-resource-homepage-editor__file-name {
   color: var(--dev-muted);
   word-break: break-all;
+  font-size: 13px;
 }
 
 .dev-resource-homepage-editor__toolbar {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   margin-top: 18px;
+  padding: 10px;
+  border: 1px solid rgba(17, 24, 39, 0.06);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.58);
 }
 
 .dev-resource-homepage-editor__mode-switch {
@@ -743,16 +820,24 @@ console.log('hello')
 }
 
 .dev-resource-homepage-editor__tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid rgba(17, 24, 39, 0.08);
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.8);
   color: var(--dev-ink);
+  min-width: 40px;
   min-height: 38px;
-  padding: 0 14px;
+  padding: 0 10px;
   font: inherit;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.dev-resource-homepage-editor__tool :deep(.el-icon) {
+  font-size: 16px;
 }
 
 .dev-resource-homepage-editor__tool.is-active {
@@ -795,8 +880,7 @@ console.log('hello')
   outline: none;
 }
 
-.dev-resource-homepage-editor__editor
-  :deep(.dev-resource-homepage-editor__editor-surface p.is-editor-empty:first-child::before) {
+.dev-resource-homepage-editor__editor :deep(.dev-resource-homepage-editor__editor-surface p.is-editor-empty:first-child::before) {
   content: '在这里输入主页补充说明，可插入标题、列表、引用、代码块与链接';
   color: #94a3b8;
   float: left;
@@ -901,7 +985,7 @@ console.log('hello')
 
 .dev-resource-homepage-editor__preview-card .el-card__body {
   display: grid;
-  gap: 18px;
+  gap: 16px;
 }
 
 .dev-resource-homepage-editor__preview-shell {
@@ -910,9 +994,10 @@ console.log('hello')
 }
 
 .dev-resource-homepage-editor__preview-cover {
-  min-height: 240px;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
   overflow: hidden;
-  border-radius: 22px;
+  border-radius: 18px;
   background: linear-gradient(145deg, rgba(17, 24, 39, 0.92), rgba(31, 74, 209, 0.76));
 }
 
@@ -931,46 +1016,20 @@ console.log('hello')
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 84px;
+  color: rgba(255, 255, 255, 0.92);
 }
 
-.dev-resource-homepage-editor__preview-summary,
+.dev-resource-homepage-editor__preview-cover-fallback :deep(.el-icon) {
+  font-size: 58px;
+}
+
 .dev-resource-homepage-editor__preview-content {
-  padding: 22px;
-  border-radius: 22px;
+  padding: 20px;
+  border-radius: 18px;
   border: 1px solid rgba(17, 24, 39, 0.08);
   background: rgba(255, 255, 255, 0.72);
 }
 
-.dev-resource-homepage-editor__preview-pills,
-.dev-resource-homepage-editor__preview-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.dev-resource-homepage-editor__preview-pill,
-.dev-resource-homepage-editor__preview-tag {
-  display: inline-flex;
-  align-items: center;
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: rgba(17, 24, 39, 0.06);
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  font-size: 12px;
-  font-weight: 700;
-  color: #475569;
-}
-
-.dev-resource-homepage-editor__preview-title {
-  margin: 14px 0 0;
-  font-size: 28px;
-  line-height: 1.18;
-  color: var(--dev-ink);
-}
-
-.dev-resource-homepage-editor__preview-desc,
 .dev-resource-homepage-editor__preview-empty,
 .dev-resource-homepage-editor__preview-section-head span,
 .dev-resource-homepage-editor__preview-rich-text {
@@ -983,6 +1042,11 @@ console.log('hello')
   margin: 0;
   font-size: 18px;
   color: var(--dev-ink);
+}
+
+.dev-resource-homepage-editor__preview-section-head :deep(.el-icon) {
+  color: var(--dev-blue);
+  font-size: 18px;
 }
 
 @media (max-width: 960px) {
@@ -1003,6 +1067,20 @@ console.log('hello')
 }
 
 @media (max-width: 720px) {
+  .dev-resource-homepage-editor__hero {
+    align-items: stretch;
+  }
+
+  .dev-resource-homepage-editor__hero-main {
+    align-items: flex-start;
+  }
+
+  .dev-resource-homepage-editor__hero-cover {
+    width: 72px;
+    height: 72px;
+    border-radius: 16px;
+  }
+
   .dev-resource-homepage-editor__banner-actions {
     width: 100%;
   }
