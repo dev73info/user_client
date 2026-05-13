@@ -4,6 +4,11 @@ import { useRouter } from 'vue-router'
 
 import { apiUrl } from '@dev/api/http'
 import {
+  getProcessedTagTree,
+  getResourceDetailSlug,
+  type McProcessedTagTree,
+} from '@/api/resourceTags'
+import {
   createMcResourceVersion,
   deleteMcResource,
   listMcResources,
@@ -28,6 +33,7 @@ const selectedVersionFile = ref<File | null>(null)
 const selectedVersionFileName = ref('')
 const resources = ref<McResourcePayload[]>([])
 const selectedResource = ref<McResourcePayload | null>(null)
+const processedTagTree = ref<McProcessedTagTree | null>(null)
 
 const versionForm = reactive({
   version: '',
@@ -44,8 +50,18 @@ const emptyText = computed(() => {
 
 onMounted(async () => {
   auth.hydrate()
+  void loadResourceRouteTree()
   await loadResources()
 })
+
+async function loadResourceRouteTree() {
+  try {
+    processedTagTree.value = await getProcessedTagTree()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '加载资源目录失败'
+    showToast(message, 'warning')
+  }
+}
 
 async function loadResources() {
   if (!auth.token) {
@@ -96,18 +112,57 @@ function tagSummary(resource: McResourcePayload): string {
   return resource.tag_selections.flatMap((group) => group.tag_names).join(' / ')
 }
 
-function resourceHomepageUrl(resource: McResourcePayload): string {
-  const configuredBase = (import.meta.env.VITE_USER_CLIENT_BASE_URL as string | undefined)?.trim().replace(/\/$/, '')
-  const baseUrl = configuredBase || 'http://127.0.0.1:5175'
-  return `${baseUrl}/resources/${resource.id}`
-}
-
 function resourceCoverUrl(resource: McResourcePayload): string {
   return apiUrl(resource.cover_url || '')
 }
 
-function openResourceHomepage(resource: McResourcePayload) {
-  window.open(resourceHomepageUrl(resource), '_blank', 'noopener,noreferrer')
+function resolveResourceRoute(resource: McResourcePayload): { rootSlug: string; entrySlug: string } | null {
+  const tree = processedTagTree.value
+  if (!tree) {
+    return null
+  }
+
+  for (const root of tree.roots) {
+    const entry = root.entries.find((item) => item.platform === resource.platform)
+    if (entry) {
+      return {
+        rootSlug: root.key,
+        entrySlug: entry.key,
+      }
+    }
+  }
+
+  const fallbackRoot = tree.roots[0]
+  const fallbackEntry = fallbackRoot?.entries[0]
+  if (fallbackRoot && fallbackEntry) {
+    return {
+      rootSlug: fallbackRoot.key,
+      entrySlug: fallbackEntry.key,
+    }
+  }
+
+  return null
+}
+
+async function openResourceHomepage(resource: McResourcePayload) {
+  if (!processedTagTree.value) {
+    await loadResourceRouteTree()
+  }
+
+  const routeParams = resolveResourceRoute(resource)
+  if (!routeParams) {
+    showToast('资源目录暂未配置完整标签路由', 'warning')
+    return
+  }
+
+  await router.push({
+    name: 'resource-detail',
+    params: {
+      rootSlug: routeParams.rootSlug,
+      entrySlug: routeParams.entrySlug,
+      resourceSlug: getResourceDetailSlug(resource.id, resource.creator || resource.author),
+    },
+  })
 }
 
 function openPublishVersionDialog(resource: McResourcePayload) {
@@ -174,7 +229,12 @@ async function removeResource(resource: McResourcePayload) {
   }
 }
 
-function handleResourceAction(command: 'publish' | 'edit' | 'versions' | 'delete', resource: McResourcePayload) {
+function handleResourceAction(command: 'view' | 'publish' | 'edit' | 'versions' | 'delete', resource: McResourcePayload) {
+  if (command === 'view') {
+    void openResourceHomepage(resource)
+    return
+  }
+
   if (command === 'publish') {
     openPublishVersionDialog(resource)
     return
@@ -204,7 +264,7 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
     return
   }
 
-  if (payload.action !== 'publish' && payload.action !== 'edit' && payload.action !== 'versions' && payload.action !== 'delete') {
+  if (payload.action !== 'view' && payload.action !== 'publish' && payload.action !== 'edit' && payload.action !== 'versions' && payload.action !== 'delete') {
     return
   }
 
@@ -354,6 +414,7 @@ async function setResourcePrivate(resource: McResourcePayload) {
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
+                  <el-dropdown-item :command="{ action: 'view', resource: scope.row }">查看前台页面</el-dropdown-item>
                   <el-dropdown-item :command="{ action: 'publish', resource: scope.row }">发布版本</el-dropdown-item>
                   <el-dropdown-item v-if="scope.row.visibility === 'draft'"
                     :disabled="Boolean(scope.row.requirement_id) || requestingReviewResourceId === scope.row.id"
