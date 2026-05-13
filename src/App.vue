@@ -134,7 +134,7 @@ onBeforeUnmount(() => {
                       <span>滇公网安备53062802000020号</span>
                     </a>
                   </p>
-                  <p>增值电信业务许可：按业务开展后补充</p>
+                  <p>增值电信业务许可：涉及相应许可的交易担保功能暂未开放</p>
                 </div>
                 <div class="site-footer-block">
                   <h3>服务说明</h3>

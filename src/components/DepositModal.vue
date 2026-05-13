@@ -126,9 +126,9 @@ function updateDepositPolicyAccepted(value: boolean) {
           </span>
         </div>
         <ul class="deposit-policy-list">
-          <li>定金为支付给平台的服务费，用于撮合与服务保障。</li>
-          <li>若无人接单，可退 100%。</li>
-          <li>若有人接单后放弃，且最终仍无人接单，可退 50%。</li>
+          <li>该支付仅适用于平台担保订单；新需求默认无平台担保，平台担保暂未开放。</li>
+          <li>定金、阶段款或平台服务费的具体用途，以订单页和合同展示为准。</li>
+          <li>退款条件按订单状态、合同约定、双方确认情况和《支付与退款说明》处理。</li>
         </ul>
       </div>
 
@@ -139,7 +139,7 @@ function updateDepositPolicyAccepted(value: boolean) {
           <span class="deposit-policy-check__box" aria-hidden="true">
             <span class="deposit-policy-check__tick" />
           </span>
-          <span class="deposit-policy-check__text">我已阅读并确认上述定金服务费与退款规则</span>
+          <span class="deposit-policy-check__text">我已阅读并确认上述平台担保支付与退款规则</span>
         </label>
         <p v-if="!depositPolicyAccepted" class="deposit-policy-warning">未确认前无法支付定金</p>
       </div>

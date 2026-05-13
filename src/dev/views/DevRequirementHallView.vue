@@ -546,7 +546,7 @@ async function handleSizeChange(nextSize: number) {
 <template>
   <div class="dev-page dev-page--requirement-hall">
 
-    <el-alert v-if="!canTakeOrders" title="平台担保需求需要可用保证金，无平台担保需求仍可继续关联" type="warning" show-icon :closable="false"
+    <el-alert v-if="!canTakeOrders" title="无平台担保需求可继续关联；历史平台担保需求需要满足保证金规则" type="warning" show-icon :closable="false"
       class="dev-requirement-hall__deposit-alert">
       <template #default>
         <div class="dev-requirement-hall__deposit-copy">
@@ -583,7 +583,7 @@ async function handleSizeChange(nextSize: number) {
     </div>
 
     <el-card shadow="never" class="dev-surface-card">
-      <el-alert title="平台担保需求按定金与尾款推进；无平台担保需求仅使用平台协作流程" type="warning" show-icon :closable="false"
+      <el-alert title="当前新需求仅开放无平台担保；平台担保需求暂未开放" type="warning" show-icon :closable="false"
         class="dev-requirement-hall__deposit-alert" />
 
       <div class="dev-requirement-hall__filters">

@@ -92,13 +92,13 @@ watch(
                         :class="{ active: publishPaymentMode === 'self_managed' }"
                         @click="updatePaymentMode('self_managed')">
                         <strong>无平台担保</strong>
-                        <small>平台内协作，付款双方另行约定</small>
+                        <small>平台提供协作与签署记录，付款双方另行约定</small>
                     </button>
                     <button type="button" class="publish-mode-option"
                         :class="{ active: publishPaymentMode === 'platform_guarantee', disabled: !allowPlatformGuarantee }"
                         :disabled="!allowPlatformGuarantee" @click="updatePaymentMode('platform_guarantee')">
                         <strong>平台担保</strong>
-                        <small>{{ allowPlatformGuarantee ? '按平台定金与尾款流程推进' : '暂未开放，请先使用无平台担保' }}</small>
+                        <small>{{ allowPlatformGuarantee ? '按平台定金与尾款规则推进' : '暂未开放，当前仅支持无平台担保' }}</small>
                     </button>
                 </div>
             </div>
