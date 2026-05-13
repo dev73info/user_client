@@ -5,7 +5,15 @@ import { EditorContent, useEditor } from '@tiptap/vue-3'
 import Link from '@tiptap/extension-link'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
-import { ChatDotRound, Star, StarFilled } from '@element-plus/icons-vue'
+import {
+  ChatDotRound,
+  Close,
+  EditPen,
+  Plus,
+  Refresh,
+  Star,
+  StarFilled,
+} from '@element-plus/icons-vue'
 
 import { apiUrl } from '@/api/http'
 import {
@@ -412,8 +420,20 @@ async function submitComment() {
             <p>沉淀公告、经验、资源维护与需求协作记录。</p>
           </div>
           <div class="community-hero__actions">
-            <el-button :loading="loading" @click="loadCommunityData">刷新</el-button>
-            <el-button type="primary" @click="openCreateComposer">发布帖子</el-button>
+            <button class="community-hero__button community-hero__button--ghost" type="button" :disabled="loading"
+              @click="loadCommunityData">
+              <el-icon :class="{ 'is-spinning': loading }">
+                <Refresh />
+              </el-icon>
+              <span>{{ loading ? '刷新中' : '刷新' }}</span>
+            </button>
+            <button class="community-hero__button community-hero__button--primary" type="button"
+              @click="openCreateComposer">
+              <el-icon>
+                <Plus />
+              </el-icon>
+              <span>发布帖子</span>
+            </button>
           </div>
         </div>
 
@@ -460,7 +480,12 @@ async function submitComment() {
               <p class="portal-page__eyebrow">{{ editingPost ? '编辑帖子' : '发布帖子' }}</p>
               <h3>{{ editingPost ? '更新社区内容' : '写一篇新帖子' }}</h3>
             </div>
-            <el-button plain @click="closeComposer">取消</el-button>
+            <el-button class="community-panel-action" plain @click="closeComposer">
+              <el-icon>
+                <Close />
+              </el-icon>
+              <span>取消</span>
+            </el-button>
           </div>
 
           <el-form label-position="top" class="community-form">
@@ -493,7 +518,7 @@ async function submitComment() {
           </div>
 
           <div class="community-composer__actions">
-            <el-button type="primary" :loading="savingPost" @click="submitPost">
+            <el-button class="community-submit-button" type="primary" :loading="savingPost" @click="submitPost">
               {{ editingPost ? '保存修改' : '发布帖子' }}
             </el-button>
           </div>
@@ -511,7 +536,13 @@ async function submitComment() {
                 {{ selectedPost.updated_at }}
               </p>
             </div>
-            <el-button v-if="canEditSelectedPost" plain @click="openEditComposer(selectedPost)">编辑</el-button>
+            <el-button v-if="canEditSelectedPost" class="community-panel-action" plain
+              @click="openEditComposer(selectedPost)">
+              <el-icon>
+                <EditPen />
+              </el-icon>
+              <span>编辑</span>
+            </el-button>
           </div>
 
           <article class="community-rich-text" v-html="currentPostContent"></article>
@@ -542,7 +573,10 @@ async function submitComment() {
             <div class="community-comment-box">
               <el-input v-model="commentDraft" type="textarea" :rows="3" maxlength="800" show-word-limit
                 placeholder="说点具体的想法或补充" />
-              <el-button type="primary" :loading="sendingComment" @click="submitComment">发表评论</el-button>
+              <el-button class="community-submit-button community-comment-submit" type="primary"
+                :loading="sendingComment" @click="submitComment">
+                发表评论
+              </el-button>
             </div>
 
             <div v-if="comments.length === 0" class="community-empty community-empty--compact">
@@ -655,6 +689,78 @@ async function submitComment() {
   gap: 12px;
 }
 
+.community-hero__actions {
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.community-hero__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.community-hero__button--ghost {
+  border-color: rgba(191, 219, 254, 0.96);
+  background: rgba(239, 246, 255, 0.82);
+  color: #2563eb;
+}
+
+.community-hero__button--ghost:hover:not(:disabled) {
+  border-color: rgba(37, 99, 235, 0.34);
+  background: rgba(219, 234, 254, 0.92);
+}
+
+.community-hero__button--primary {
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+}
+
+.community-hero__button--primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
+  transform: translateY(-1px);
+}
+
+.community-hero__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.community-hero__button .el-icon {
+  font-size: 15px;
+}
+
+.community-hero__button .el-icon.is-spinning {
+  animation: community-spin 900ms linear infinite;
+}
+
+@keyframes community-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .community-tag-row {
   display: flex;
   flex-wrap: wrap;
@@ -763,6 +869,72 @@ async function submitComment() {
   align-items: flex-start;
 }
 
+.community-panel-action.el-button,
+.community-submit-button.el-button {
+  min-height: 34px;
+  height: 34px;
+  padding: 0 13px;
+  border-radius: 9px;
+  font-weight: 800;
+  line-height: 1;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.community-panel-action.el-button {
+  border-color: rgba(191, 219, 254, 0.96);
+  background: rgba(248, 250, 252, 0.96);
+  color: #2563eb;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.06);
+}
+
+.community-panel-action.el-button:hover,
+.community-panel-action.el-button:focus-visible {
+  border-color: rgba(37, 99, 235, 0.4);
+  background: rgba(239, 246, 255, 0.98);
+  color: #1d4ed8;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.1);
+  transform: translateY(-1px);
+}
+
+.community-submit-button.el-button {
+  min-height: 36px;
+  height: 36px;
+  padding: 0 16px;
+  border-color: rgba(37, 99, 235, 0.88);
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 9px 20px rgba(37, 99, 235, 0.18);
+}
+
+.community-submit-button.el-button:hover,
+.community-submit-button.el-button:focus-visible {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+  transform: translateY(-1px);
+}
+
+.community-submit-button.el-button.is-loading {
+  transform: none;
+}
+
+.community-panel-action.el-button :deep(span),
+.community-submit-button.el-button :deep(span) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.community-panel-action.el-button :deep(.el-icon) {
+  font-size: 14px;
+}
+
 .community-detail__header h2 {
   margin: 12px 0 8px;
   font-size: clamp(22px, 2vw, 28px);
@@ -821,7 +993,26 @@ async function submitComment() {
 .community-editor :deep(.community-editor__surface) {
   min-height: clamp(240px, 36vh, 420px);
   padding: 14px;
+  color: #1e293b;
+  line-height: 1.75;
   outline: none;
+}
+
+.community-editor :deep(.community-editor__surface p),
+.community-editor :deep(.community-editor__surface ul),
+.community-editor :deep(.community-editor__surface ol) {
+  margin: 0 0 12px;
+  color: #334155;
+}
+
+.community-editor :deep(.community-editor__surface p:last-child),
+.community-editor :deep(.community-editor__surface ul:last-child),
+.community-editor :deep(.community-editor__surface ol:last-child) {
+  margin-bottom: 0;
+}
+
+.community-editor :deep(.community-editor__surface a) {
+  color: #2563eb;
 }
 
 .community-composer__actions {
@@ -846,6 +1037,7 @@ async function submitComment() {
 .community-rich-text :deep(ol),
 .community-rich-text :deep(blockquote) {
   margin: 0 0 12px;
+  color: #334155;
 }
 
 .community-rich-text :deep(a) {
@@ -1055,6 +1247,12 @@ async function submitComment() {
 
   .community-hero__actions {
     width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .community-hero__button {
+    flex: 1 1 132px;
   }
 
   .community-hero p {

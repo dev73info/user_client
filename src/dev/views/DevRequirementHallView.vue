@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { RefreshLeft, Search } from '@element-plus/icons-vue'
 
 import {
   getProcessedTagTree,
@@ -13,7 +14,11 @@ import {
 import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@dev/api/devOrderDeposit'
 import { getDevCreditSelf, type DevCreditSelf } from '@dev/api/devCredit'
 import { createMcResource, listMcResources, type McResourcePayload } from '@dev/api/mcResources'
-import { bindRequirementProject, listRequirementHall, type RequirementItem } from '@dev/api/requirements'
+import {
+  bindRequirementProject,
+  listRequirementHall,
+  type RequirementItem,
+} from '@dev/api/requirements'
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
 
@@ -78,9 +83,13 @@ const availableResourceOptions = computed(() =>
 const hasPendingBindableResources = computed(() =>
   resources.value.some((item) => !item.requirement_id && item.visibility !== 'draft'),
 )
-const selectedResource = computed(() => availableResourceOptions.value.find((item) => item.id === bindForm.resourceId) ?? null)
+const selectedResource = computed(
+  () => availableResourceOptions.value.find((item) => item.id === bindForm.resourceId) ?? null,
+)
 const canTakeOrders = computed(() => depositStatus.value?.can_bind_requirement ?? false)
-const availableDepositText = computed(() => `¥${(depositStatus.value?.available_cny ?? 0).toFixed(2)}`)
+const availableDepositText = computed(
+  () => `¥${(depositStatus.value?.available_cny ?? 0).toFixed(2)}`,
+)
 const frozenDepositText = computed(() => `¥${(depositStatus.value?.frozen_cny ?? 0).toFixed(2)}`)
 const orderCreditCap = computed(() => {
   if (!creditInfo.value || !creditInfo.value.enforce_order_limit) return Number.POSITIVE_INFINITY
@@ -107,7 +116,10 @@ function bindButtonLabel(requirement: RequirementItem) {
     return '关联需求'
   }
 
-  if (!canTakeOrders.value || (requirement.budget ?? 0) > (depositStatus.value?.available_cny ?? 0)) {
+  if (
+    !canTakeOrders.value ||
+    (requirement.budget ?? 0) > (depositStatus.value?.available_cny ?? 0)
+  ) {
     return '保证金不足'
   }
 
@@ -118,18 +130,26 @@ function bindButtonLabel(requirement: RequirementItem) {
   return '关联需求'
 }
 const rootTabs = computed<McTagCatalogRoot[]>(() => processedTree.value.roots)
-const currentRoot = computed<McTagCatalogRoot | null>(() =>
-  rootTabs.value.find((item) => item.key === currentRootKey.value) ?? rootTabs.value[0] ?? null,
+const currentRoot = computed<McTagCatalogRoot | null>(
+  () =>
+    rootTabs.value.find((item) => item.key === currentRootKey.value) ?? rootTabs.value[0] ?? null,
 )
 const entryTabs = computed<McTagCatalogEntry[]>(() => currentRoot.value?.entries ?? [])
-const currentEntry = computed<McTagCatalogEntry | null>(() =>
-  entryTabs.value.find((item) => item.key === currentEntryKey.value) ?? entryTabs.value[0] ?? null,
+const currentEntry = computed<McTagCatalogEntry | null>(
+  () =>
+    entryTabs.value.find((item) => item.key === currentEntryKey.value) ??
+    entryTabs.value[0] ??
+    null,
 )
 const currentPlatform = computed(() => currentEntry.value?.platform ?? '')
 const currentEntryLabel = computed(() => currentEntry.value?.group_name ?? '当前分区')
 const currentPlatformLabel = computed(() => currentPlatform.value || '当前平台')
-const platformTagGroups = computed<McPublishTagGroup[]>(() => currentEntry.value?.publish_groups ?? [])
-const selectedTagCount = computed(() => Object.values(selectedTagIdsByGroup).reduce((sum, ids) => sum + ids.length, 0))
+const platformTagGroups = computed<McPublishTagGroup[]>(
+  () => currentEntry.value?.publish_groups ?? [],
+)
+const selectedTagCount = computed(() =>
+  Object.values(selectedTagIdsByGroup).reduce((sum, ids) => sum + ids.length, 0),
+)
 const initSummary = computed(() => {
   if (!initForm.title.trim()) {
     return ''
@@ -183,31 +203,37 @@ watch(
   { immediate: true },
 )
 
-watch(platformTagGroups, (groups) => {
-  const validGroupIds = new Set(groups.map((group) => group.group_id))
+watch(
+  platformTagGroups,
+  (groups) => {
+    const validGroupIds = new Set(groups.map((group) => group.group_id))
 
-  for (const key of Object.keys(selectedTagIdsByGroup)) {
-    const groupId = Number(key)
-    if (!validGroupIds.has(groupId)) {
-      delete selectedTagIdsByGroup[groupId]
-      continue
+    for (const key of Object.keys(selectedTagIdsByGroup)) {
+      const groupId = Number(key)
+      if (!validGroupIds.has(groupId)) {
+        delete selectedTagIdsByGroup[groupId]
+        continue
+      }
+
+      const group = groups.find((item) => item.group_id === groupId)
+      if (!group) {
+        continue
+      }
+
+      const validTagIds = new Set(group.items.map((item) => item.id))
+      selectedTagIdsByGroup[groupId] = (selectedTagIdsByGroup[groupId] ?? []).filter((tagId) =>
+        validTagIds.has(tagId),
+      )
     }
 
-    const group = groups.find((item) => item.group_id === groupId)
-    if (!group) {
-      continue
+    for (const group of groups) {
+      if (!selectedTagIdsByGroup[group.group_id]) {
+        selectedTagIdsByGroup[group.group_id] = []
+      }
     }
-
-    const validTagIds = new Set(group.items.map((item) => item.id))
-    selectedTagIdsByGroup[groupId] = (selectedTagIdsByGroup[groupId] ?? []).filter((tagId) => validTagIds.has(tagId))
-  }
-
-  for (const group of groups) {
-    if (!selectedTagIdsByGroup[group.group_id]) {
-      selectedTagIdsByGroup[group.group_id] = []
-    }
-  }
-}, { immediate: true })
+  },
+  { immediate: true },
+)
 
 function formatMoney(value?: number | null): string {
   if (value == null) {
@@ -296,14 +322,20 @@ async function openBindDialog(requirement: RequirementItem) {
     return
   }
 
-  if (requiresDepositGate(requirement) && (requirement.budget ?? 0) > (depositStatus.value?.available_cny ?? 0)) {
+  if (
+    requiresDepositGate(requirement) &&
+    (requirement.budget ?? 0) > (depositStatus.value?.available_cny ?? 0)
+  ) {
     showToast('当前需求预算高于可用保证金，请先补充保证金', 'warning')
     void router.push('/dev/wallet/order-deposit')
     return
   }
 
   if (requiresDepositGate(requirement) && !isBudgetWithinCap(requirement.budget)) {
-    showToast(`当前信用最高可接 ¥${orderCreditCap.value.toFixed(2)} 的需求，无法绑定此预算`, 'warning')
+    showToast(
+      `当前信用最高可接 ¥${orderCreditCap.value.toFixed(2)} 的需求，无法绑定此预算`,
+      'warning',
+    )
     return
   }
 
@@ -388,7 +420,12 @@ async function submitBinding() {
 
     await bindRequirementProject(auth.token, selectedRequirement.value.requirement_id, resourceId!)
     bindDialogVisible.value = false
-    showToast(createdResourceTitle ? `已初始化资源“${createdResourceTitle}”，并完成需求关联` : '需求已关联到开发项目，并进入开发中', 'success')
+    showToast(
+      createdResourceTitle
+        ? `已初始化资源“${createdResourceTitle}”，并完成需求关联`
+        : '需求已关联到开发项目，并进入开发中',
+      'success',
+    )
     await loadRequirements()
     resources.value = []
     selectedRequirement.value = null
@@ -503,21 +540,23 @@ function buildTagSelections() {
 }
 
 function buildDerivedFileName() {
-  const normalizedTitle = initForm.title
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'resource'
+  const normalizedTitle =
+    initForm.title
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'resource'
 
   return `${normalizedTitle}.package`
 }
 
 function buildDerivedSourceUrl() {
-  const normalizedTitle = initForm.title
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'resource'
+  const normalizedTitle =
+    initForm.title
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'resource'
 
   return `pending://resource/${currentPlatform.value}/${currentEntryKey.value || 'catalog'}/${normalizedTitle}`
 }
@@ -545,7 +584,6 @@ async function handleSizeChange(nextSize: number) {
 
 <template>
   <div class="dev-page dev-page--requirement-hall">
-
     <el-alert v-if="!canTakeOrders" title="无平台担保需求可继续关联；历史平台担保需求需要满足保证金规则" type="warning" show-icon :closable="false"
       class="dev-requirement-hall__deposit-alert">
       <template #default>
@@ -583,7 +621,7 @@ async function handleSizeChange(nextSize: number) {
     </div>
 
     <el-card shadow="never" class="dev-surface-card">
-      <el-alert title="当前新需求仅开放无平台担保；平台担保需求暂未开放" type="warning" show-icon :closable="false"
+      <el-alert title="当前新需求仅开放无平台担保；平台担保需求暂未开放，可正常接取无平台担保需求" type="warning" show-icon :closable="false"
         class="dev-requirement-hall__deposit-alert" />
 
       <div class="dev-requirement-hall__filters">
@@ -602,8 +640,20 @@ async function handleSizeChange(nextSize: number) {
           @keyup.enter="applyFilters" />
 
         <div class="dev-requirement-hall__actions">
-          <el-button @click="resetFilters">重置</el-button>
-          <el-button type="primary" :loading="loading" @click="applyFilters">查询</el-button>
+          <el-button class="dev-requirement-hall__filter-button dev-requirement-hall__filter-button--ghost"
+            @click="resetFilters">
+            <el-icon>
+              <RefreshLeft />
+            </el-icon>
+            <span>重置</span>
+          </el-button>
+          <el-button class="dev-requirement-hall__filter-button dev-requirement-hall__filter-button--primary"
+            type="primary" :loading="loading" @click="applyFilters">
+            <el-icon v-if="!loading">
+              <Search />
+            </el-icon>
+            <span>查询</span>
+          </el-button>
         </div>
       </div>
 
@@ -614,7 +664,9 @@ async function handleSizeChange(nextSize: number) {
             <div class="dev-requirement-hall__title-cell">
               <div class="dev-requirement-hall__requirement-id">{{ scope.row.requirement_id }}</div>
               <div class="dev-requirement-hall__title">{{ scope.row.title }}</div>
-              <div class="dev-requirement-hall__desc">{{ scope.row.description || '暂无补充描述' }}</div>
+              <div class="dev-requirement-hall__desc">
+                {{ scope.row.description || '暂无补充描述' }}
+              </div>
             </div>
           </template>
         </el-table-column>
@@ -657,7 +709,9 @@ async function handleSizeChange(nextSize: number) {
     <el-dialog v-model="bindDialogVisible" width="720px"
       :title="selectedRequirement ? `关联需求 · ${selectedRequirement.title}` : '关联需求'">
       <div class="dev-requirement-hall__dialog-copy">
-        <p class="dev-section-desc">关联前请先阅读需求标题、需求描述、预算与验收标准，确认资源匹配后再继续。</p>
+        <p class="dev-section-desc">
+          关联前请先阅读需求标题、需求描述、预算与验收标准，确认资源匹配后再继续。
+        </p>
       </div>
 
       <section v-if="selectedRequirement" class="dev-requirement-hall__review-panel">
@@ -674,7 +728,9 @@ async function handleSizeChange(nextSize: number) {
         <div class="dev-requirement-hall__review-grid">
           <div class="dev-requirement-hall__review-item">
             <span class="dev-requirement-hall__review-label">预算</span>
-            <div class="dev-requirement-hall__review-value">{{ formatMoney(selectedRequirement.budget) }}</div>
+            <div class="dev-requirement-hall__review-value">
+              {{ formatMoney(selectedRequirement.budget) }}
+            </div>
           </div>
           <div class="dev-requirement-hall__review-item">
             <span class="dev-requirement-hall__review-label">验收标准</span>
@@ -716,7 +772,9 @@ async function handleSizeChange(nextSize: number) {
         <template v-else>
           <section class="dev-requirement-hall__init-panel">
             <div class="dev-requirement-hall__init-copy">
-              <p class="dev-section-desc">如果当前没有合适的资源项目，可以先初始化一个新的私有资源。创建完成后会直接用于本次需求关联。</p>
+              <p class="dev-section-desc">
+                如果当前没有合适的资源项目，可以先初始化一个新的私有资源。创建完成后会直接用于本次需求关联。
+              </p>
             </div>
 
             <div class="dev-upload-grid dev-upload-grid--two">
@@ -767,7 +825,9 @@ async function handleSizeChange(nextSize: number) {
                     <p class="dev-requirement-hall__tag-group-path">{{ group.label }}</p>
                   </div>
                   <span class="dev-requirement-hall__tag-group-count">{{ (selectedTagIdsByGroup[group.group_id] ??
-                    []).length }}/{{ group.items.length }}</span>
+                    []).length }}/{{
+                      group.items.length
+                    }}</span>
                 </div>
 
                 <div class="dev-requirement-hall__tag-group-selected">
@@ -805,7 +865,9 @@ async function handleSizeChange(nextSize: number) {
           <span class="dev-requirement-hall__confirm-meta">需求将进入开发中且不可重复绑定</span>
         </div>
         <p class="dev-requirement-hall__confirm-text">
-          当前将关联需求“{{ selectedRequirement.title }}”到资源“{{ confirmResourceLabel }}”。请确认资源能力、预算范围与验收标准均已匹配。
+          当前将关联需求“{{ selectedRequirement.title }}”到资源“{{
+            confirmResourceLabel
+          }}”。请确认资源能力、预算范围与验收标准均已匹配。
         </p>
         <el-checkbox v-model="finalConfirmed" :disabled="!reviewConfirmed">
           我确认本次关联无误，允许将该需求正式绑定到当前资源方案
@@ -823,9 +885,13 @@ async function handleSizeChange(nextSize: number) {
 
       <template #footer>
         <el-button @click="bindDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="binding"
-          :disabled="bindingMode === 'existing' ? (!availableResourceOptions.length || !reviewConfirmed || !finalConfirmed || !bindForm.resourceId) : (!reviewConfirmed || !finalConfirmed || !canCreateResource)"
-          @click="submitBinding">
+        <el-button type="primary" :loading="binding" :disabled="bindingMode === 'existing'
+          ? !availableResourceOptions.length ||
+          !reviewConfirmed ||
+          !finalConfirmed ||
+          !bindForm.resourceId
+          : !reviewConfirmed || !finalConfirmed || !canCreateResource
+          " @click="submitBinding">
           {{ bindingMode === 'existing' ? '确认关联' : '初始化并关联' }}
         </el-button>
       </template>
@@ -852,7 +918,11 @@ async function handleSizeChange(nextSize: number) {
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 .dev-requirement-hall__mode-button:hover {

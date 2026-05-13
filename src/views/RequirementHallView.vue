@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Plus, Refresh } from '@element-plus/icons-vue'
 
+import PublishModal from '@/components/PublishModal.vue'
+import { HttpError } from '@/api/http'
+import { getMyRealnameVerification } from '@/api/realname'
 import {
+  createRequirement,
   getPublicRequirementOverview,
   listPublicRequirementSpotlights,
   type PublicRequirementSpotlightItem,
@@ -12,9 +17,11 @@ import {
 } from '@/api/requirements'
 
 import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
+const auth = useAuthStore()
 const { showToast } = useToast()
 
 const loading = ref(false)
@@ -22,6 +29,13 @@ const overviewLoading = ref(false)
 const requirements = ref<PublicRequirementSpotlightItem[]>([])
 const overview = ref<RequirementOverviewResp | null>(null)
 const keyword = ref('')
+const publishVisible = ref(false)
+const publishTitle = ref('')
+const publishDescription = ref('')
+const publishBudget = ref<string | number>('')
+const publishAcceptance = ref('')
+const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
+const publishLoading = ref(false)
 
 const filteredRequirements = computed(() => {
   const normalized = keyword.value.trim().toLowerCase()
@@ -132,6 +146,143 @@ function resetKeyword() {
   }
 }
 
+function openAuthLogin() {
+  void router.push({
+    name: 'home',
+    query: {
+      modal: 'auth',
+      mode: 'login',
+      redirect_to: route.fullPath || '/requirement-hall',
+    },
+  })
+}
+
+async function ensurePublishRealnameApproved() {
+  auth.hydrate()
+  if (!auth.isAuthed) {
+    showToast('发布需求前请先登录', 'info')
+    openAuthLogin()
+    return false
+  }
+
+  try {
+    const record = await getMyRealnameVerification(auth.token)
+    if (record.status === 'approved') {
+      return true
+    }
+
+    if (record.status === 'pending') {
+      showToast('实名认证审核中，通过后可发布需求', 'warning')
+      return false
+    }
+
+    showToast('实名认证未通过，请重新提交后再发布需求', 'warning')
+    void router.push({
+      name: 'workbench-realname',
+      query: { redirect_to: route.fullPath || '/requirement-hall' },
+    })
+    return false
+  } catch (err) {
+    if (err instanceof HttpError && err.status === 404) {
+      showToast('发布需求前请先完成实名认证', 'warning')
+      void router.push({
+        name: 'workbench-realname',
+        query: { redirect_to: route.fullPath || '/requirement-hall' },
+      })
+      return false
+    }
+
+    showToast(err instanceof Error ? err.message : '实名认证状态校验失败', 'error')
+    return false
+  }
+}
+
+function resetPublishForm() {
+  publishTitle.value = ''
+  publishDescription.value = ''
+  publishBudget.value = ''
+  publishAcceptance.value = ''
+  publishPaymentMode.value = 'self_managed'
+}
+
+async function openPublishModal() {
+  const approved = await ensurePublishRealnameApproved()
+  if (!approved) {
+    return
+  }
+
+  resetPublishForm()
+  publishVisible.value = true
+}
+
+function closePublishModal() {
+  if (publishLoading.value) {
+    return
+  }
+
+  publishVisible.value = false
+  resetPublishForm()
+}
+
+async function submitPublishRequirement() {
+  const approved = await ensurePublishRealnameApproved()
+  if (!approved) {
+    return
+  }
+
+  const normalizedTitle = publishTitle.value.trim()
+  const normalizedDescription = publishDescription.value.trim()
+  const normalizedAcceptance = publishAcceptance.value.trim()
+  const budgetRaw = String(publishBudget.value ?? '').trim()
+
+  if (normalizedTitle.length < 4) {
+    showToast('需求标题至少 4 个字符', 'error')
+    return
+  }
+
+  if (normalizedDescription.length < 10) {
+    showToast('需求描述至少 10 个字符', 'error')
+    return
+  }
+
+  if (!budgetRaw) {
+    showToast('预算不能为空', 'error')
+    return
+  }
+
+  const budget = Number(budgetRaw)
+
+  if (!Number.isFinite(budget) || budget < 0) {
+    showToast('预算必须是大于等于0的数字', 'error')
+    return
+  }
+
+  if (!normalizedAcceptance) {
+    showToast('验收标准不能为空', 'error')
+    return
+  }
+
+  publishLoading.value = true
+  try {
+    await createRequirement(auth.token, {
+      title: normalizedTitle,
+      description: normalizedDescription,
+      budget,
+      acceptance_criteria: normalizedAcceptance,
+      payment_mode: publishPaymentMode.value,
+    })
+
+    showToast('需求已发布，等待审核', 'success')
+    publishVisible.value = false
+    resetPublishForm()
+    await loadHallData()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '发布失败', 'error')
+  } finally {
+    publishLoading.value = false
+  }
+}
+
 async function loadHallData() {
   loading.value = true
   overviewLoading.value = true
@@ -168,11 +319,20 @@ async function loadHallData() {
             <p class="portal-page__eyebrow">热门需求</p>
             <h2>当前大厅重点展示的合作机会</h2>
           </div>
-          <div class="portal-page__header-actions">
+          <div class="portal-page__header-actions requirement-hall__header-actions">
             <span v-if="overviewLoading" class="portal-page__loading-chip">同步中</span>
-            <button class="portal-page__link-btn" type="button" @click="loadHallData">刷新</button>
-            <button class="portal-page__link-btn" type="button" @click="router.push({ name: 'home' })">
-              返回门户
+            <button class="requirement-hall__publish-btn" type="button" @click="openPublishModal">
+              <el-icon>
+                <Plus />
+              </el-icon>
+              <span>发布需求</span>
+            </button>
+            <button class="requirement-hall__refresh-btn" type="button" :disabled="loading || overviewLoading"
+              @click="loadHallData">
+              <el-icon>
+                <Refresh />
+              </el-icon>
+              <span>刷新</span>
             </button>
           </div>
         </div>
@@ -246,18 +406,83 @@ async function loadHallData() {
               class="portal-page__list-item requirement-hall__deal-item">
               <strong>{{ deal.title }}</strong>
               <span class="portal-page__meta">{{ formatMoney(deal.amount_cny) }} · {{ formatTimeLabel(deal.paid_at)
-              }}</span>
+                }}</span>
               <p v-if="deal.comment_text">{{ deal.comment_text }}</p>
             </li>
           </ul>
-          <p v-else class="portal-page__empty requirement-hall__empty-delivery">暂无最近交付记录。</p>
+          <p v-else class="portal-page__empty requirement-hall__empty-delivery">
+            暂无最近交付记录。
+          </p>
         </section>
       </aside>
     </section>
   </main>
+
+  <PublishModal :visible="publishVisible" v-model:publishTitle="publishTitle"
+    v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
+    v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
+    :allowPlatformGuarantee="false" :publishLoading="publishLoading" @close="closePublishModal"
+    @submit="submitPublishRequirement" />
 </template>
 
 <style scoped>
+.requirement-hall__header-actions {
+  align-self: flex-start;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.requirement-hall__publish-btn,
+.requirement-hall__refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.requirement-hall__publish-btn {
+  padding: 0 14px;
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+}
+
+.requirement-hall__publish-btn:hover {
+  background: #1d4ed8;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
+  transform: translateY(-1px);
+}
+
+.requirement-hall__refresh-btn {
+  padding: 0 12px;
+  border-color: rgba(191, 219, 254, 0.96);
+  background: rgba(239, 246, 255, 0.82);
+  color: #2563eb;
+}
+
+.requirement-hall__refresh-btn:hover:not(:disabled) {
+  border-color: rgba(37, 99, 235, 0.34);
+  background: rgba(219, 234, 254, 0.92);
+}
+
+.requirement-hall__refresh-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .requirement-hall__filters {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -413,6 +638,15 @@ async function loadHallData() {
 }
 
 @media (max-width: 640px) {
+  .portal-page--nav .requirement-hall__header-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .requirement-hall__publish-btn {
+    width: 100%;
+  }
+
   .requirement-hall__filters {
     grid-template-columns: 1fr;
   }

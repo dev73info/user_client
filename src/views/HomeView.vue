@@ -1443,7 +1443,7 @@ async function submitPublishRequirement() {
                 <div v-if="heroSignals.length" class="portal-signal-list">
                   <span v-for="signal in heroSignals" :key="signal" class="portal-signal">{{
                     signal
-                  }}</span>
+                    }}</span>
                 </div>
 
                 <div class="portal-hero__actions">
@@ -1770,7 +1770,7 @@ async function submitPublishRequirement() {
 
           <section class="portal-card">
             <div class="portal-card__header">
-              <h2>开发者</h2>
+              <h2>优秀开发者</h2>
               <button class="portal-link-btn" type="button" @click="router.push({ name: 'community' })">
                 查看动态
               </button>

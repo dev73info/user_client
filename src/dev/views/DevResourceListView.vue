@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ArrowDown, MoreFilled } from '@element-plus/icons-vue'
 
 import { apiUrl } from '@dev/api/http'
 import {
@@ -116,7 +117,9 @@ function resourceCoverUrl(resource: McResourcePayload): string {
   return apiUrl(resource.cover_url || '')
 }
 
-function resolveResourceRoute(resource: McResourcePayload): { rootSlug: string; entrySlug: string } | null {
+function resolveResourceRoute(
+  resource: McResourcePayload,
+): { rootSlug: string; entrySlug: string } | null {
   const tree = processedTagTree.value
   if (!tree) {
     return null
@@ -211,7 +214,9 @@ async function removeResource(resource: McResourcePayload) {
     return
   }
 
-  const confirmed = window.confirm(`确认删除资源 ${resource.title} 吗？该操作会同时删除其历史版本，且不可撤销。`)
+  const confirmed = window.confirm(
+    `确认删除资源 ${resource.title} 吗？该操作会同时删除其历史版本，且不可撤销。`,
+  )
   if (!confirmed) {
     return
   }
@@ -229,7 +234,10 @@ async function removeResource(resource: McResourcePayload) {
   }
 }
 
-function handleResourceAction(command: 'view' | 'publish' | 'edit' | 'versions' | 'delete', resource: McResourcePayload) {
+function handleResourceAction(
+  command: 'view' | 'publish' | 'edit' | 'versions' | 'delete',
+  resource: McResourcePayload,
+) {
   if (command === 'view') {
     void openResourceHomepage(resource)
     return
@@ -264,7 +272,13 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
     return
   }
 
-  if (payload.action !== 'view' && payload.action !== 'publish' && payload.action !== 'edit' && payload.action !== 'versions' && payload.action !== 'delete') {
+  if (
+    payload.action !== 'view' &&
+    payload.action !== 'publish' &&
+    payload.action !== 'edit' &&
+    payload.action !== 'versions' &&
+    payload.action !== 'delete'
+  ) {
     return
   }
 
@@ -364,12 +378,10 @@ async function setResourcePrivate(resource: McResourcePayload) {
     settingPrivateResourceId.value = null
   }
 }
-
 </script>
 
 <template>
   <div class="dev-page dev-page--resource-list">
-
     <el-card shadow="never" class="dev-surface-card">
       <div class="dev-upload-section__head">
         <section>
@@ -385,9 +397,11 @@ async function setResourcePrivate(resource: McResourcePayload) {
               <img v-if="scope.row.cover_url" :src="resourceCoverUrl(scope.row)" alt="资源图标"
                 class="dev-resource-table__icon" />
               <div>
-                <button class="dev-resource-table__title-link" type="button" @click="openResourceHomepage(scope.row)">{{
-                  scope.row.title }}</button>
-                <div class="dev-resource-table__meta">{{ platformText(scope.row.platform) }} / {{ scope.row.author }}
+                <button class="dev-resource-table__title-link" type="button" @click="openResourceHomepage(scope.row)">
+                  {{ scope.row.title }}
+                </button>
+                <div class="dev-resource-table__meta">
+                  {{ platformText(scope.row.platform) }} / {{ scope.row.author }}
                 </div>
               </div>
             </div>
@@ -395,7 +409,9 @@ async function setResourcePrivate(resource: McResourcePayload) {
         </el-table-column>
         <el-table-column label="标签" min-width="260">
           <template #default="scope">
-            <span class="dev-resource-table__tags">{{ tagSummary(scope.row) || '未附带标签' }}</span>
+            <span class="dev-resource-table__tags">{{
+              tagSummary(scope.row) || '未附带标签'
+              }}</span>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="120">
@@ -408,17 +424,23 @@ async function setResourcePrivate(resource: McResourcePayload) {
         <el-table-column prop="created_at" label="创建时间" min-width="180" />
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="scope">
-            <el-dropdown trigger="click" @command="handleResourceCommand">
+            <el-dropdown trigger="click" popper-class="dev-resource-action-menu" @command="handleResourceCommand">
               <el-button type="primary" plain class="dev-resource-table__action-button">
-                更多
+                <el-icon>
+                  <MoreFilled />
+                </el-icon>
+                <span>更多</span>
+                <el-icon class="dev-resource-table__action-caret">
+                  <ArrowDown />
+                </el-icon>
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item :command="{ action: 'view', resource: scope.row }">查看前台页面</el-dropdown-item>
                   <el-dropdown-item :command="{ action: 'publish', resource: scope.row }">发布版本</el-dropdown-item>
-                  <el-dropdown-item v-if="scope.row.visibility === 'draft'"
-                    :disabled="Boolean(scope.row.requirement_id) || requestingReviewResourceId === scope.row.id"
-                    :command="{ action: 'request-review', resource: scope.row }">
+                  <el-dropdown-item v-if="scope.row.visibility === 'draft'" :disabled="Boolean(scope.row.requirement_id) ||
+                    requestingReviewResourceId === scope.row.id
+                    " :command="{ action: 'request-review', resource: scope.row }">
                     {{ requestingReviewResourceId === scope.row.id ? '提交中...' : '申请公开' }}
                   </el-dropdown-item>
                   <el-dropdown-item v-if="scope.row.visibility === 'published'"
@@ -451,7 +473,9 @@ async function setResourcePrivate(resource: McResourcePayload) {
             <input ref="versionFileInput" type="file" class="dev-version-file-picker__input"
               @change="handleVersionFileChange" />
             <el-button @click="triggerVersionFileSelect">选择文件</el-button>
-            <span class="dev-version-file-picker__name">{{ selectedVersionFileName || '未选择文件' }}</span>
+            <span class="dev-version-file-picker__name">{{
+              selectedVersionFileName || '未选择文件'
+              }}</span>
           </div>
         </el-form-item>
         <el-form-item label="备注">
@@ -467,7 +491,6 @@ async function setResourcePrivate(resource: McResourcePayload) {
         </el-button>
       </template>
     </el-dialog>
-
   </div>
 </template>
 

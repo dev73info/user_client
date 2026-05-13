@@ -171,7 +171,9 @@ const resourcePlatformLabel = computed(() => resource.value?.platform || '未知
 const heroTitle = computed(() => form.title.trim() || resource.value?.title || '资源主页')
 const resourceAuthorLabel = computed(() => form.author.trim() || resource.value?.author || '开发者')
 const previewContentHtml = computed(() => formatHomepageContent(currentEditorContent()))
-const userClientPreviewUrl = computed(() => (resource.value ? userClientResourceUrl(resource.value) : ''))
+const userClientPreviewUrl = computed(() =>
+  resource.value ? userClientResourceUrl(resource.value) : '',
+)
 
 function looksLikeHtml(value: string): boolean {
   return /<\/?[a-z][\s\S]*>/i.test(value)
@@ -424,7 +426,9 @@ function goBack() {
 }
 
 function firstTagPathSegment(index: number): string {
-  return resource.value?.tag_selections.find((item) => item.group_path[index])?.group_path[index] ?? ''
+  return (
+    resource.value?.tag_selections.find((item) => item.group_path[index])?.group_path[index] ?? ''
+  )
 }
 
 function userClientResourceUrl(target: McResourcePayload): string {
@@ -471,7 +475,9 @@ onBeforeUnmount(() => {
           <div class="dev-panel-banner__eyebrow">资源主页编辑</div>
           <h2 class="dev-panel-banner__title">{{ heroTitle }}</h2>
           <div class="dev-resource-homepage-editor__hero-meta">
-            <span class="dev-resource-homepage-editor__hero-pill">{{ resourceVisibilityLabel }}</span>
+            <span class="dev-resource-homepage-editor__hero-pill">{{
+              resourceVisibilityLabel
+              }}</span>
             <span class="dev-resource-homepage-editor__hero-pill">{{ resourcePlatformLabel }}</span>
             <span class="dev-resource-homepage-editor__hero-pill">{{ previewTagCount }} 个标签</span>
             <span class="dev-resource-homepage-editor__hero-pill">{{ resourceAuthorLabel }}</span>
@@ -912,6 +918,12 @@ console.log('hello')
 .dev-resource-homepage-editor__editor :deep(p),
 .dev-resource-homepage-editor__preview-rich-text :deep(p) {
   margin: 0 0 12px;
+  color: #334155;
+}
+
+.dev-resource-homepage-editor__editor :deep(li),
+.dev-resource-homepage-editor__preview-rich-text :deep(li) {
+  color: #334155;
 }
 
 .dev-resource-homepage-editor__editor :deep(blockquote),

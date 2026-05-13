@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Refresh, RefreshLeft, View } from '@element-plus/icons-vue'
 
 import {
   listMcResources,
@@ -9,7 +10,11 @@ import {
   type McResourceVersionPayload,
 } from '@dev/api/mcResources'
 import { listMyRequirements, type RequirementItem } from '@dev/api/requirements'
-import { getDevWalletOverview, type DevWalletIncomeItem, type DevWalletOverview } from '@dev/api/wallet'
+import {
+  getDevWalletOverview,
+  type DevWalletIncomeItem,
+  type DevWalletOverview,
+} from '@dev/api/wallet'
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
 
@@ -44,11 +49,17 @@ const filters = reactive({
   settlement: '',
 })
 
-const recentIncome = computed<DevWalletIncomeItem[]>(() => walletOverview.value?.recent_income ?? [])
+const recentIncome = computed<DevWalletIncomeItem[]>(
+  () => walletOverview.value?.recent_income ?? [],
+)
 const latestRelease = computed(() => releaseRows.value[0] ?? null)
-const publishedResourceCount = computed(() => resources.value.filter((item) => item.visibility === 'published').length)
+const publishedResourceCount = computed(
+  () => resources.value.filter((item) => item.visibility === 'published').length,
+)
 const totalVersionCount = computed(() => releaseRows.value.length)
-const linkedRequirementCount = computed(() => releaseRows.value.filter((item) => item.requirementId).length)
+const linkedRequirementCount = computed(
+  () => releaseRows.value.filter((item) => item.requirementId).length,
+)
 
 const filteredRows = computed(() => {
   const keyword = filters.keyword.trim().toLowerCase()
@@ -84,7 +95,9 @@ const releaseStats = computed(() => [
   {
     label: '最近交付',
     value: latestRelease.value?.version ?? '-',
-    meta: latestRelease.value ? `${latestRelease.value.resourceTitle} · ${formatTime(latestRelease.value.createdAt)}` : '当前还没有版本交付记录',
+    meta: latestRelease.value
+      ? `${latestRelease.value.resourceTitle} · ${formatTime(latestRelease.value.createdAt)}`
+      : '当前还没有版本交付记录',
   },
   {
     label: '版本总数',
@@ -158,7 +171,7 @@ function requirementStatusText(value: RequirementItem['status'] | null) {
     completed: '已完成',
     deposit_paid: '待开发',
   }
-  return value ? (map[value] || value) : '未关联需求'
+  return value ? map[value] || value : '未关联需求'
 }
 
 function settlementText(status: RequirementItem['status'] | null) {
@@ -216,7 +229,9 @@ async function loadPage() {
       }
     }
 
-    releaseRows.value = rows.sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+    releaseRows.value = rows.sort(
+      (left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt),
+    )
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载交付记录失败'
     showToast(message, 'error')
@@ -257,12 +272,10 @@ function resetFilters() {
 function openVersionsPage(row: ReleaseRecord) {
   router.push({ name: 'dev-resource-versions', params: { resourceId: row.resourceId } })
 }
-
 </script>
 
 <template>
   <div class="dev-page dev-release-page">
-
     <div class="dev-grid dev-grid--three">
       <el-card v-for="item in releaseStats" :key="item.label" shadow="never"
         class="dev-surface-card dev-surface-card--soft">
@@ -287,13 +300,16 @@ function openVersionsPage(row: ReleaseRecord) {
           <div class="dev-release-income-card__top">
             <div>
               <div class="dev-release-income-card__title">{{ item.title }}</div>
-              <div class="dev-release-income-card__meta">{{ item.requirement_id }} · {{ item.customer }}</div>
+              <div class="dev-release-income-card__meta">
+                {{ item.requirement_id }} · {{ item.customer }}
+              </div>
             </div>
             <strong class="dev-release-income-card__amount">{{ money(item.amount_cny) }}</strong>
           </div>
           <div class="dev-release-income-card__footer">
-            <el-tag type="success" size="small" effect="plain">{{ requirementStatusText(item.requirement_status as
-              RequirementItem['status']) }}</el-tag>
+            <el-tag type="success" size="small" effect="plain">{{
+              requirementStatusText(item.requirement_status as RequirementItem['status'])
+              }}</el-tag>
             <span>{{ formatTime(item.paid_at) }}</span>
           </div>
         </article>
@@ -319,8 +335,19 @@ function openVersionsPage(row: ReleaseRecord) {
           <el-option label="未关联" value="未关联" />
         </el-select>
         <div class="dev-release-toolbar__actions">
-          <el-button @click="resetFilters">重置</el-button>
-          <el-button type="primary" :loading="loading" @click="loadPage">刷新</el-button>
+          <el-button class="dev-release-toolbar__button dev-release-toolbar__button--ghost" @click="resetFilters">
+            <el-icon>
+              <RefreshLeft />
+            </el-icon>
+            <span>重置</span>
+          </el-button>
+          <el-button class="dev-release-toolbar__button dev-release-toolbar__button--primary" type="primary"
+            :loading="loading" @click="loadPage">
+            <el-icon v-if="!loading">
+              <Refresh />
+            </el-icon>
+            <span>刷新</span>
+          </el-button>
         </div>
       </div>
 
@@ -329,26 +356,36 @@ function openVersionsPage(row: ReleaseRecord) {
         <el-table-column label="版本交付" min-width="280">
           <template #default="scope">
             <div class="dev-release-record__title">{{ scope.row.resourceTitle }}</div>
-            <div class="dev-release-record__meta">{{ platformText(scope.row.platform) }} · {{ scope.row.version }}</div>
+            <div class="dev-release-record__meta">
+              {{ platformText(scope.row.platform) }} · {{ scope.row.version }}
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="关联需求" min-width="240">
           <template #default="scope">
-            <div class="dev-release-record__requirement">{{ scope.row.requirementId || '未关联需求' }}</div>
-            <div class="dev-release-record__meta">{{ scope.row.requirementTitle || '当前版本暂未绑定需求场景' }}</div>
+            <div class="dev-release-record__requirement">
+              {{ scope.row.requirementId || '未关联需求' }}
+            </div>
+            <div class="dev-release-record__meta">
+              {{ scope.row.requirementTitle || '当前版本暂未绑定需求场景' }}
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="资源状态" width="120">
           <template #default="scope">
             <el-tag :type="visibilityTagType(scope.row.resourceVisibility)" effect="plain">{{
-              visibilityText(scope.row.resourceVisibility) }}</el-tag>
+              visibilityText(scope.row.resourceVisibility)
+              }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="回款进度" width="120">
           <template #default="scope">
-            <el-tag
-              :type="scope.row.settlementText === '已回款' ? 'success' : scope.row.settlementText === '待付尾款' ? 'warning' : 'info'"
-              effect="plain">
+            <el-tag :type="scope.row.settlementText === '已回款'
+                ? 'success'
+                : scope.row.settlementText === '待付尾款'
+                  ? 'warning'
+                  : 'info'
+              " effect="plain">
               {{ scope.row.settlementText }}
             </el-tag>
           </template>
@@ -365,10 +402,16 @@ function openVersionsPage(row: ReleaseRecord) {
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="80" fixed="right">
+        <el-table-column label="操作" width="120" fixed="right">
           <template #default="scope">
             <div class="dev-release-record__actions">
-              <el-button size="small" type="primary" plain @click="openVersionsPage(scope.row)">查看版本</el-button>
+              <el-button class="dev-release-record__action-button" size="small" type="primary" plain
+                @click="openVersionsPage(scope.row)">
+                <el-icon>
+                  <View />
+                </el-icon>
+                <span>查看版本</span>
+              </el-button>
             </div>
           </template>
         </el-table-column>
@@ -399,8 +442,85 @@ function openVersionsPage(row: ReleaseRecord) {
 
 .dev-release-toolbar__actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   margin-left: auto;
+}
+
+.dev-release-toolbar__button.el-button,
+.dev-release-record__action-button.el-button {
+  border-radius: 10px;
+  font-weight: 800;
+  line-height: 1;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.dev-release-toolbar__button.el-button {
+  min-width: 88px;
+  min-height: 44px;
+  height: 44px;
+  padding: 0 16px;
+}
+
+.dev-release-toolbar__button.el-button :deep(span),
+.dev-release-record__action-button.el-button :deep(span) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dev-release-toolbar__button.el-button .el-icon,
+.dev-release-record__action-button.el-button .el-icon {
+  font-size: 15px;
+}
+
+.dev-release-toolbar__button--ghost.el-button,
+.dev-release-record__action-button.el-button {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(255, 255, 255, 0.88);
+  color: #475569;
+  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.04);
+}
+
+.dev-release-toolbar__button--ghost.el-button:hover,
+.dev-release-toolbar__button--ghost.el-button:focus-visible,
+.dev-release-record__action-button.el-button:hover,
+.dev-release-record__action-button.el-button:focus-visible {
+  border-color: rgba(31, 74, 209, 0.24);
+  background: rgba(31, 74, 209, 0.07);
+  color: var(--dev-blue);
+  box-shadow: 0 10px 20px rgba(31, 74, 209, 0.08);
+  transform: translateY(-1px);
+}
+
+.dev-release-toolbar__button--primary.el-button {
+  border-color: var(--dev-blue);
+  background: var(--dev-blue);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.18);
+}
+
+.dev-release-toolbar__button--primary.el-button:hover,
+.dev-release-toolbar__button--primary.el-button:focus-visible {
+  border-color: #173aaa;
+  background: #173aaa;
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(31, 74, 209, 0.22);
+  transform: translateY(-1px);
+}
+
+.dev-release-toolbar__button.el-button.is-loading {
+  transform: none;
+}
+
+.dev-release-record__action-button.el-button {
+  min-height: 34px;
+  height: 34px;
+  padding: 0 12px;
 }
 
 .dev-release-record__title,

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Close, Plus, Wallet } from '@element-plus/icons-vue'
 import QRCode from 'qrcode'
 
 import {
@@ -88,7 +89,9 @@ const withdrawHint = computed(() => {
   return `单次提现最低 1 元，当前余额 ${money(overview.value?.withdrawable_balance_cny)}，暂不满足提现条件`
 })
 
-const depositWithdrawable = computed(() => depositWithdrawalSummary.value?.withdrawable_balance_cny ?? 0)
+const depositWithdrawable = computed(
+  () => depositWithdrawalSummary.value?.withdrawable_balance_cny ?? 0,
+)
 const depositTotalPaid = computed(() => depositStatus.value?.total_paid_cny ?? 0)
 const canWithdrawDeposit = computed(() => depositWithdrawable.value >= 1)
 const depositWithdrawHint = computed(() => {
@@ -124,12 +127,17 @@ const countdownText = computed(() => {
 onMounted(async () => {
   auth.hydrate()
   await Promise.all([loadWallet(), loadDeposit()])
-  countdownTimer = setInterval(() => { nowTick.value = Date.now() }, 1000)
+  countdownTimer = setInterval(() => {
+    nowTick.value = Date.now()
+  }, 1000)
 })
 
 onUnmounted(() => {
   clearPaymentTimers()
-  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
 })
 
 function money(value?: number | null) {
@@ -257,7 +265,10 @@ async function refreshAll() {
 }
 
 function clearPaymentTimers() {
-  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
 }
 
 function startPaymentPoll(confirmFn: () => Promise<void>) {
@@ -468,7 +479,6 @@ async function submitDepositWithdrawal() {
 
 <template>
   <div class="dev-page dev-wallet-page">
-
     <!-- 次要统计条 -->
     <div class="wallet-meta-strip" v-loading="loading">
       <div class="wallet-meta-strip__item">
@@ -521,7 +531,13 @@ async function submitDepositWithdrawal() {
           </div>
         </div>
         <div class="wallet-hero__footer">
-          <el-button type="primary" :disabled="!canWithdraw" @click="openWithdrawDialog">申请提现</el-button>
+          <el-button class="wallet-hero__button wallet-hero__button--primary" type="primary" :disabled="!canWithdraw"
+            @click="openWithdrawDialog">
+            <el-icon>
+              <Wallet />
+            </el-icon>
+            <span>申请提现</span>
+          </el-button>
           <span class="wallet-hero__hint">最低 1 元，审核后打款</span>
         </div>
       </el-card>
@@ -551,14 +567,25 @@ async function submitDepositWithdrawal() {
               {{ canWithdrawDeposit ? '满足提现条件' : '不满足提现条件' }}
             </el-tag>
             <el-tag v-if="creditInfo && creditInfo.enforce_deposit_limit" size="small" type="primary" effect="plain">
-              信用 {{ creditInfo.credit_score.toFixed(2) }} · 剩余可充 {{ money(creditInfo.remaining_deposit_cap_cny) }}
+              信用 {{ creditInfo.credit_score.toFixed(2) }} · 剩余可充
+              {{ money(creditInfo.remaining_deposit_cap_cny) }}
             </el-tag>
           </div>
         </div>
         <div class="wallet-hero__footer">
-          <el-button type="primary" :disabled="!canWithdrawDeposit" :loading="depositLoading"
-            @click="openDepositWithdrawDialog">提现保证金</el-button>
-          <el-button plain @click="openRechargeDialog">充值</el-button>
+          <el-button class="wallet-hero__button wallet-hero__button--primary" type="primary"
+            :disabled="!canWithdrawDeposit" :loading="depositLoading" @click="openDepositWithdrawDialog">
+            <el-icon v-if="!depositLoading">
+              <Wallet />
+            </el-icon>
+            <span>提现保证金</span>
+          </el-button>
+          <el-button class="wallet-hero__button wallet-hero__button--ghost" plain @click="openRechargeDialog">
+            <el-icon>
+              <Plus />
+            </el-icon>
+            <span>充值</span>
+          </el-button>
           <span class="wallet-hero__hint">最低 1 元</span>
         </div>
       </el-card>
@@ -578,7 +605,9 @@ async function submitDepositWithdrawal() {
         <el-table-column label="需求" min-width="280">
           <template #default="scope">
             <div class="dev-wallet-table__title">{{ scope.row.title }}</div>
-            <div class="dev-wallet-table__meta">{{ scope.row.requirement_id }} · {{ scope.row.customer }}</div>
+            <div class="dev-wallet-table__meta">
+              {{ scope.row.requirement_id }} · {{ scope.row.customer }}
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="金额" width="140">
@@ -588,7 +617,9 @@ async function submitDepositWithdrawal() {
         </el-table-column>
         <el-table-column label="状态" width="120">
           <template #default="scope">
-            <el-tag size="small" type="success" effect="plain">{{ statusText(scope.row.requirement_status) }}</el-tag>
+            <el-tag size="small" type="success" effect="plain">{{
+              statusText(scope.row.requirement_status)
+              }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="paid_at" label="支付时间" min-width="180" />
@@ -599,7 +630,9 @@ async function submitDepositWithdrawal() {
     <el-dialog v-model="withdrawDialogVisible" title="申请提现" width="520px">
       <el-form label-position="top">
         <el-form-item label="可提现余额">
-          <div class="dev-wallet-withdraw__balance">{{ money(overview?.withdrawable_balance_cny) }}</div>
+          <div class="dev-wallet-withdraw__balance">
+            {{ money(overview?.withdrawable_balance_cny) }}
+          </div>
         </el-form-item>
         <el-form-item label="提现金额" required>
           <el-input-number v-model="withdrawForm.amount_cny" :min="1" :precision="2" :step="100" placeholder="提现金额"
@@ -665,25 +698,50 @@ async function submitDepositWithdrawal() {
     </el-dialog>
 
     <!-- 保证金充值弹窗 -->
-    <el-dialog v-model="rechargeDialogVisible" title="保证金充值" width="420px">
-      <el-form label-position="top">
+    <el-dialog v-model="rechargeDialogVisible" title="保证金充值" width="520px" class="dev-recharge-dialog" align-center>
+      <el-form class="dev-recharge-dialog__form" label-position="top">
         <el-form-item label="充值金额（元）" required>
-          <el-input-number v-model="rechargeAmount" :min="1" :precision="2" :step="100" style="width: 100%" />
-          <div class="dev-wallet-withdraw__note">充值后保证金余额增加，可用于解锁接单资格。</div>
-          <div v-if="creditInfo && creditInfo.enforce_deposit_limit" class="dev-wallet-withdraw__note">
-            当前信用 {{ creditInfo.credit_score.toFixed(2) }}（按 1 信用 = ¥{{ creditInfo.cny_per_credit.toFixed(2) }} 折算），
-            还可充 <strong>{{ money(creditInfo.remaining_deposit_cap_cny) }}</strong>。
+          <el-input-number v-model="rechargeAmount" class="dev-recharge-dialog__amount-input" :min="1" :precision="2"
+            :step="100" />
+          <div class="dev-recharge-dialog__notes">
+            <div class="dev-wallet-withdraw__note">充值后保证金余额增加，可用于解锁接单资格。</div>
+            <div v-if="creditInfo && creditInfo.enforce_deposit_limit" class="dev-wallet-withdraw__note">
+              当前信用 {{ creditInfo.credit_score.toFixed(2) }}（按 1 信用 = ¥{{
+                creditInfo.cny_per_credit.toFixed(2)
+              }}
+              折算），还可充 <strong>{{ money(creditInfo.remaining_deposit_cap_cny) }}</strong>。
+            </div>
           </div>
-          <el-alert
-            v-if="creditInfo && creditInfo.enforce_deposit_limit && rechargeAmount > creditInfo.remaining_deposit_cap_cny"
-            type="warning" :closable="false" show-icon style="margin-top: 8px;"
+          <el-alert v-if="
+            creditInfo &&
+            creditInfo.enforce_deposit_limit &&
+            rechargeAmount > creditInfo.remaining_deposit_cap_cny
+          " class="dev-recharge-dialog__limit-alert" type="warning" :closable="false" show-icon
             title="充值金额超过当前信用允许的额度，提交将被拒绝。请联系管理员提升信用，或下调充值金额。" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="rechargeDialogVisible = false">取消</el-button>
-        <el-button :loading="wechatLoading" @click="payWithWechat">微信支付</el-button>
-        <el-button type="primary" :loading="alipayLoading" @click="payWithAlipay">支付宝支付</el-button>
+        <el-button class="dev-recharge-dialog__button dev-recharge-dialog__button--ghost"
+          @click="rechargeDialogVisible = false">
+          <el-icon>
+            <Close />
+          </el-icon>
+          <span>取消</span>
+        </el-button>
+        <el-button class="dev-recharge-dialog__button dev-recharge-dialog__button--secondary" :loading="wechatLoading"
+          @click="payWithWechat">
+          <el-icon v-if="!wechatLoading">
+            <Wallet />
+          </el-icon>
+          <span>微信支付</span>
+        </el-button>
+        <el-button class="dev-recharge-dialog__button dev-recharge-dialog__button--primary" type="primary"
+          :loading="alipayLoading" @click="payWithAlipay">
+          <el-icon v-if="!alipayLoading">
+            <Wallet />
+          </el-icon>
+          <span>支付宝支付</span>
+        </el-button>
       </template>
     </el-dialog>
 
@@ -691,8 +749,8 @@ async function submitDepositWithdrawal() {
     <el-dialog v-model="alipayPayDialogVisible" title="支付宝扫码支付" width="380px" align-center
       :before-close="closeAlipayDialog">
       <div class="alipay-pay-qr">
-        <div class="pay-amount-banner">充值金额 <span class="pay-amount-banner__value">{{ money(pendingRechargeAmount)
-            }}</span>
+        <div class="pay-amount-banner">
+          充值金额 <span class="pay-amount-banner__value">{{ money(pendingRechargeAmount) }}</span>
         </div>
 
         <iframe v-if="alipayPageHtml" :srcdoc="alipayPageHtml" class="alipay-pay-frame" frameborder="0" scrolling="no"
@@ -712,11 +770,15 @@ async function submitDepositWithdrawal() {
     </el-dialog>
 
     <!-- 微信支付二维码弹窗 -->
-    <el-dialog v-model="wechatPayDialogVisible" title="微信扫码支付" width="320px" align-center
-      :before-close="() => { clearPaymentTimers(); wechatPayDialogVisible = false; pendingExpiresAt = '' }">
+    <el-dialog v-model="wechatPayDialogVisible" title="微信扫码支付" width="320px" align-center :before-close="() => {
+        clearPaymentTimers()
+        wechatPayDialogVisible = false
+        pendingExpiresAt = ''
+      }
+      ">
       <div class="wechat-pay-qr">
-        <div class="pay-amount-banner">充值金额 <span class="pay-amount-banner__value">{{ money(pendingRechargeAmount)
-        }}</span>
+        <div class="pay-amount-banner">
+          充值金额 <span class="pay-amount-banner__value">{{ money(pendingRechargeAmount) }}</span>
         </div>
         <img v-if="wechatQrDataUrl" :src="wechatQrDataUrl" alt="微信支付二维码" class="wechat-pay-qr__img" />
         <div class="pay-countdown" :class="{ 'pay-countdown--expired': isExpired }">
@@ -726,8 +788,13 @@ async function submitDepositWithdrawal() {
         <p class="wechat-pay-qr__hint">请使用微信扫码完成支付，支付成功后将自动关闭</p>
       </div>
       <template #footer>
-        <el-button
-          @click="() => { clearPaymentTimers(); wechatPayDialogVisible = false; pendingExpiresAt = '' }">取消</el-button>
+        <el-button @click="
+          () => {
+            clearPaymentTimers()
+            wechatPayDialogVisible = false
+            pendingExpiresAt = ''
+          }
+        ">取消</el-button>
         <el-button type="primary" :loading="confirmingWechat" :disabled="isExpired"
           @click="confirmWechatPay">我已支付</el-button>
       </template>
@@ -849,9 +916,85 @@ async function submitDepositWithdrawal() {
 .wallet-hero__footer {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   padding-top: 16px;
   border-top: 1px solid var(--dev-border, #f0f0f0);
+}
+
+.wallet-hero__button.el-button {
+  min-height: 44px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-weight: 800;
+  line-height: 1;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.wallet-hero__button.el-button :deep(span) {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.wallet-hero__button.el-button .el-icon {
+  font-size: 16px;
+}
+
+.wallet-hero__button--primary.el-button {
+  min-width: 132px;
+  border-color: var(--dev-blue);
+  background: var(--dev-blue);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.18);
+}
+
+.wallet-hero__button--primary.el-button:hover:not(.is-disabled),
+.wallet-hero__button--primary.el-button:focus-visible:not(.is-disabled) {
+  border-color: #173aaa;
+  background: #173aaa;
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(31, 74, 209, 0.22);
+  transform: translateY(-1px);
+}
+
+.wallet-hero__button--ghost.el-button {
+  min-width: 88px;
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(255, 255, 255, 0.9);
+  color: #475569;
+  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.04);
+}
+
+.wallet-hero__button--ghost.el-button:hover,
+.wallet-hero__button--ghost.el-button:focus-visible {
+  border-color: rgba(31, 74, 209, 0.24);
+  background: rgba(31, 74, 209, 0.07);
+  color: var(--dev-blue);
+  box-shadow: 0 10px 20px rgba(31, 74, 209, 0.08);
+  transform: translateY(-1px);
+}
+
+.wallet-hero__button.el-button.is-disabled,
+.wallet-hero__button.el-button.is-disabled:hover,
+.wallet-hero__button.el-button.is-disabled:focus-visible {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: #e5edf5;
+  color: #7c8da3;
+  box-shadow: none;
+  opacity: 1;
+  transform: none;
+}
+
+.wallet-hero__button.el-button.is-loading {
+  transform: none;
 }
 
 .wallet-hero__hint {
@@ -870,6 +1013,225 @@ async function submitDepositWithdrawal() {
   margin-top: 6px;
   font-size: 12px;
   color: var(--dev-muted);
+}
+
+:global(.dev-recharge-dialog.el-dialog) {
+  max-width: calc(100vw - 32px);
+  overflow: hidden;
+  border-radius: 14px;
+  box-shadow: 0 22px 56px rgba(15, 23, 42, 0.18);
+}
+
+:global(.dev-recharge-dialog .el-dialog__header) {
+  margin: 0;
+  padding: 26px 28px 0;
+}
+
+:global(.dev-recharge-dialog .el-dialog__title) {
+  color: #111827;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+:global(.dev-recharge-dialog .el-dialog__headerbtn) {
+  top: 22px;
+  right: 22px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+:global(.dev-recharge-dialog .el-dialog__headerbtn:hover) {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+:global(.dev-recharge-dialog .el-dialog__body) {
+  padding: 24px 28px 0;
+}
+
+:global(.dev-recharge-dialog .el-dialog__footer) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 28px 28px 26px;
+  background: #fff;
+  border-top: 1px solid rgba(226, 232, 240, 0.82);
+}
+
+.dev-recharge-dialog__form :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.dev-recharge-dialog__form :deep(.el-form-item__label) {
+  margin-bottom: 10px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.dev-recharge-dialog__amount-input.el-input-number {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.dev-recharge-dialog__amount-input :deep(.el-input__wrapper) {
+  min-height: 48px;
+  background: #f8fafc;
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px rgba(203, 213, 225, 0.9) inset;
+}
+
+.dev-recharge-dialog__amount-input :deep(.el-input__inner) {
+  color: #334155;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.dev-recharge-dialog__amount-input :deep(.el-input-number__decrease),
+.dev-recharge-dialog__amount-input :deep(.el-input-number__increase) {
+  width: 48px;
+  border-color: rgba(203, 213, 225, 0.9);
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.dev-recharge-dialog__amount-input :deep(.el-input-number__decrease) {
+  border-radius: 10px 0 0 10px;
+}
+
+.dev-recharge-dialog__amount-input :deep(.el-input-number__increase) {
+  border-radius: 0 10px 10px 0;
+}
+
+.dev-recharge-dialog__amount-input :deep(.el-input-number__decrease:hover),
+.dev-recharge-dialog__amount-input :deep(.el-input-number__increase:hover) {
+  color: var(--dev-blue);
+}
+
+.dev-recharge-dialog__notes {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.dev-recharge-dialog__notes .dev-wallet-withdraw__note {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dev-recharge-dialog__notes strong {
+  color: var(--dev-gold);
+  font-weight: 800;
+}
+
+.dev-recharge-dialog__limit-alert.el-alert {
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  border-radius: 10px;
+  background: #fff7ed;
+}
+
+.dev-recharge-dialog__limit-alert :deep(.el-alert__title) {
+  color: #b45309;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.dev-recharge-dialog__limit-alert :deep(.el-alert__icon) {
+  color: #f59e0b;
+}
+
+.dev-recharge-dialog__button.el-button {
+  min-height: 42px;
+  height: 42px;
+  margin-left: 0;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-weight: 800;
+  line-height: 1;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.dev-recharge-dialog__button.el-button :deep(span) {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dev-recharge-dialog__button.el-button .el-icon {
+  font-size: 16px;
+}
+
+.dev-recharge-dialog__button--ghost.el-button {
+  border-color: rgba(148, 163, 184, 0.32);
+  background: #fff;
+  color: #475569;
+}
+
+.dev-recharge-dialog__button--ghost.el-button:hover,
+.dev-recharge-dialog__button--ghost.el-button:focus-visible {
+  border-color: rgba(31, 74, 209, 0.24);
+  background: rgba(31, 74, 209, 0.07);
+  color: var(--dev-blue);
+  box-shadow: 0 10px 20px rgba(31, 74, 209, 0.08);
+  transform: translateY(-1px);
+}
+
+.dev-recharge-dialog__button--secondary.el-button {
+  border-color: rgba(16, 185, 129, 0.22);
+  background: #ecfdf5;
+  color: #047857;
+  box-shadow: 0 10px 20px rgba(16, 185, 129, 0.08);
+}
+
+.dev-recharge-dialog__button--secondary.el-button:hover,
+.dev-recharge-dialog__button--secondary.el-button:focus-visible {
+  border-color: rgba(16, 185, 129, 0.34);
+  background: #dff9ed;
+  color: #047857;
+  box-shadow: 0 12px 24px rgba(16, 185, 129, 0.12);
+  transform: translateY(-1px);
+}
+
+.dev-recharge-dialog__button--primary.el-button {
+  border-color: var(--dev-blue);
+  background: var(--dev-blue);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.18);
+}
+
+.dev-recharge-dialog__button--primary.el-button:hover,
+.dev-recharge-dialog__button--primary.el-button:focus-visible {
+  border-color: #173aaa;
+  background: #173aaa;
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(31, 74, 209, 0.22);
+  transform: translateY(-1px);
+}
+
+.dev-recharge-dialog__button.el-button.is-loading {
+  transform: none;
 }
 
 /* 收入表格 */
@@ -892,6 +1254,22 @@ async function submitDepositWithdrawal() {
 @media (max-width: 720px) {
   .wallet-hero {
     grid-template-columns: 1fr;
+  }
+
+  :global(.dev-recharge-dialog .el-dialog__header) {
+    padding: 22px 20px 0;
+  }
+
+  :global(.dev-recharge-dialog .el-dialog__body) {
+    padding: 20px 20px 0;
+  }
+
+  :global(.dev-recharge-dialog .el-dialog__footer) {
+    padding: 22px 20px 20px;
+  }
+
+  .dev-recharge-dialog__button.el-button {
+    flex: 1 1 140px;
   }
 }
 
