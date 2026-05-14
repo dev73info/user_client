@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, type Component } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import Link from '@tiptap/extension-link'
 import StarterKit from '@tiptap/starter-kit'
@@ -7,16 +7,22 @@ import Underline from '@tiptap/extension-underline'
 import MarkdownIt from 'markdown-it'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  ArrowDown,
   Back,
+  Brush,
+  ChatRound,
   Check,
   Document,
   Folder,
   Link as LinkIcon,
   List,
+  Paperclip,
   Picture,
   Reading,
   RefreshLeft,
+  RefreshRight,
   Upload,
+  VideoCamera,
   View,
 } from '@element-plus/icons-vue'
 
@@ -32,6 +38,20 @@ import { useAuthStore } from '@dev/stores/auth'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
+import {
+  hasMeaningfulRichEditorContent,
+  insertRichEditorAttachment,
+  insertRichEditorEmoji,
+  insertRichEditorImage,
+  insertRichEditorVideo,
+  isRichEditorLinkUrl,
+  isRichEditorMediaUrl,
+  normalizeRichEditorUrl,
+  RichEditorAttachment,
+  richEditorDefaultLabel,
+  RichEditorImage,
+  RichEditorVideo,
+} from '@/utils/richEditorMedia'
 
 type ToolbarAction =
   | 'bold'
@@ -75,23 +95,6 @@ const form = reactive({
   release_note: '',
 })
 
-const toolbarActions: Array<{
-  label: string
-  action: ToolbarAction
-  title: string
-  icon?: Component
-}> = [
-    { label: 'B', action: 'bold', title: '加粗' },
-    { label: 'I', action: 'italic', title: '斜体' },
-    { label: 'U', action: 'underline', title: '下划线' },
-    { label: 'H2', action: 'h2', title: '二级标题' },
-    { label: 'H3', action: 'h3', title: '三级标题' },
-    { label: '', action: 'bullet', title: '无序列表', icon: List },
-    { label: '1.', action: 'ordered', title: '有序列表' },
-    { label: '引用', action: 'blockquote', title: '引用' },
-    { label: '</>', action: 'code', title: '代码块' },
-  ]
-
 const markdownRenderer = new MarkdownIt({
   html: false,
   linkify: true,
@@ -127,6 +130,9 @@ const editor = useEditor({
       autolink: true,
       defaultProtocol: 'https',
     }),
+    RichEditorImage,
+    RichEditorVideo,
+    RichEditorAttachment,
   ],
   editorProps: {
     attributes: {
@@ -135,8 +141,9 @@ const editor = useEditor({
   },
   onUpdate: (payload: HomepageEditorUpdatePayload) => {
     const currentEditor = payload.editor
-    const text = currentEditor.getText().trim()
-    form.release_note = text ? sanitizeRichHtml(currentEditor.getHTML()) : ''
+    form.release_note = hasMeaningfulRichEditorContent(currentEditor)
+      ? sanitizeRichHtml(currentEditor.getHTML())
+      : ''
   },
 })
 
@@ -297,6 +304,110 @@ function toggleLink() {
   }
 
   editor.value.chain().focus().extendMarkRange('link').setLink({ href: value }).run()
+}
+
+function runHistoryAction(action: 'undo' | 'redo') {
+  if (!editor.value) {
+    return
+  }
+
+  if (action === 'undo') {
+    editor.value.chain().focus().undo().run()
+    return
+  }
+
+  editor.value.chain().focus().redo().run()
+}
+
+function canRunHistoryAction(action: 'undo' | 'redo'): boolean {
+  if (!editor.value) {
+    return false
+  }
+
+  if (action === 'undo') {
+    return editor.value.can().chain().focus().undo().run()
+  }
+
+  return editor.value.can().chain().focus().redo().run()
+}
+
+function promptInsertImage() {
+  if (!editor.value) {
+    return
+  }
+
+  const raw = window.prompt('输入图片地址，支持 https:// 或 /uploads/...')
+  if (raw === null) {
+    return
+  }
+
+  const src = normalizeRichEditorUrl(raw)
+  if (!isRichEditorMediaUrl(src)) {
+    showToast('请输入有效的图片地址', 'warning')
+    return
+  }
+
+  const alt = window.prompt('图片说明（可选）', richEditorDefaultLabel(src, '图片')) ?? ''
+  insertRichEditorImage(editor.value, src, alt.trim())
+}
+
+function promptInsertVideo() {
+  if (!editor.value) {
+    return
+  }
+
+  const raw = window.prompt('输入视频地址，支持 https:// 或 /uploads/...')
+  if (raw === null) {
+    return
+  }
+
+  const src = normalizeRichEditorUrl(raw)
+  if (!isRichEditorMediaUrl(src)) {
+    showToast('请输入有效的视频地址', 'warning')
+    return
+  }
+
+  const title = window.prompt('视频标题（可选）', richEditorDefaultLabel(src, '视频')) ?? ''
+  insertRichEditorVideo(editor.value, src, title.trim())
+}
+
+function promptInsertEmoji() {
+  if (!editor.value) {
+    return
+  }
+
+  const value = window.prompt('输入要插入的表情', '🙂')
+  if (value === null) {
+    return
+  }
+
+  const emoji = value.trim()
+  if (!emoji) {
+    showToast('请输入要插入的表情', 'warning')
+    return
+  }
+
+  insertRichEditorEmoji(editor.value, emoji)
+}
+
+function promptInsertAttachment() {
+  if (!editor.value) {
+    return
+  }
+
+  const raw = window.prompt('输入附件地址，支持 https://、mailto:、tel: 或 /uploads/...')
+  if (raw === null) {
+    return
+  }
+
+  const href = normalizeRichEditorUrl(raw)
+  if (!isRichEditorLinkUrl(href)) {
+    showToast('请输入有效的附件地址', 'warning')
+    return
+  }
+
+  const label = window.prompt('附件名称', richEditorDefaultLabel(href, '附件')) ?? ''
+  insertRichEditorAttachment(editor.value, href, label.trim() || richEditorDefaultLabel(href, '附件'))
 }
 
 function clearFormatting() {
@@ -548,25 +659,104 @@ onBeforeUnmount(() => {
             </button>
           </div>
 
-          <div v-if="editorMode === 'rich'" class="dev-resource-homepage-editor__toolbar">
-            <button v-for="item in toolbarActions" :key="`${item.action}:${item.label}`"
-              class="dev-resource-homepage-editor__tool" :class="{ 'is-active': isToolbarActive(item.action) }"
-              type="button" :title="item.title" :aria-label="item.title" @click="runToolbarAction(item.action)">
-              <el-icon v-if="item.icon">
-                <component :is="item.icon" />
+          <div v-if="editorMode === 'rich'" class="dev-resource-homepage-editor__toolbar" aria-label="编辑器工具栏">
+            <div class="dev-resource-homepage-editor__tool-group">
+              <button class="dev-resource-homepage-editor__tool dev-resource-homepage-editor__tool--bold"
+                :class="{ 'is-active': isToolbarActive('bold') }" type="button" title="加粗" aria-label="加粗"
+                @click="runToolbarAction('bold')">B</button>
+              <button class="dev-resource-homepage-editor__tool dev-resource-homepage-editor__tool--italic"
+                :class="{ 'is-active': isToolbarActive('italic') }" type="button" title="斜体" aria-label="斜体"
+                @click="runToolbarAction('italic')">I</button>
+              <button class="dev-resource-homepage-editor__tool dev-resource-homepage-editor__tool--underline"
+                :class="{ 'is-active': isToolbarActive('underline') }" type="button" title="下划线" aria-label="下划线"
+                @click="runToolbarAction('underline')">U</button>
+            </div>
+
+            <span class="dev-resource-homepage-editor__divider" aria-hidden="true"></span>
+
+            <div class="dev-resource-homepage-editor__tool-group">
+              <button class="dev-resource-homepage-editor__tool" :class="{ 'is-active': editor?.isActive('link') }"
+                type="button" title="插入链接" aria-label="插入链接" @click="toggleLink">
+                <el-icon aria-hidden="true">
+                  <LinkIcon />
+                </el-icon>
+              </button>
+              <button class="dev-resource-homepage-editor__tool" type="button" title="插入图片" aria-label="插入图片"
+                @click="promptInsertImage">
+                <el-icon aria-hidden="true">
+                  <Picture />
+                </el-icon>
+              </button>
+              <button class="dev-resource-homepage-editor__tool" type="button" title="插入视频" aria-label="插入视频"
+                @click="promptInsertVideo">
+                <el-icon aria-hidden="true">
+                  <VideoCamera />
+                </el-icon>
+              </button>
+            </div>
+
+            <span class="dev-resource-homepage-editor__divider" aria-hidden="true"></span>
+
+            <div class="dev-resource-homepage-editor__tool-group">
+              <button class="dev-resource-homepage-editor__tool" :class="{ 'is-active': isToolbarActive('bullet') }"
+                type="button" title="无序列表" aria-label="无序列表" @click="runToolbarAction('bullet')">
+                <el-icon aria-hidden="true">
+                  <List />
+                </el-icon>
+              </button>
+              <button class="dev-resource-homepage-editor__tool" :class="{ 'is-active': isToolbarActive('ordered') }"
+                type="button" title="有序列表" aria-label="有序列表" @click="runToolbarAction('ordered')">
+                <span class="dev-resource-homepage-editor__ordered-icon" aria-hidden="true">1.</span>
+              </button>
+              <button class="dev-resource-homepage-editor__tool"
+                :class="{ 'is-active': isToolbarActive('blockquote') }" type="button" title="引用" aria-label="引用"
+                @click="runToolbarAction('blockquote')">
+                <span class="dev-resource-homepage-editor__quote-icon" aria-hidden="true">“</span>
+              </button>
+              <button class="dev-resource-homepage-editor__tool dev-resource-homepage-editor__tool--code"
+                :class="{ 'is-active': isToolbarActive('code') }" type="button" title="代码块" aria-label="代码块"
+                @click="runToolbarAction('code')">&lt;/&gt;</button>
+              <button class="dev-resource-homepage-editor__tool" type="button" title="插入表情" aria-label="插入表情"
+                @click="promptInsertEmoji">
+                <el-icon aria-hidden="true">
+                  <ChatRound />
+                </el-icon>
+              </button>
+              <button class="dev-resource-homepage-editor__tool" type="button" title="添加附件" aria-label="添加附件"
+                @click="promptInsertAttachment">
+                <el-icon aria-hidden="true">
+                  <Paperclip />
+                </el-icon>
+              </button>
+            </div>
+
+            <span class="dev-resource-homepage-editor__divider" aria-hidden="true"></span>
+
+            <div class="dev-resource-homepage-editor__tool-group">
+              <button class="dev-resource-homepage-editor__tool" type="button" title="撤销" aria-label="撤销"
+                :disabled="!canRunHistoryAction('undo')" @click="runHistoryAction('undo')">
+                <el-icon aria-hidden="true">
+                  <RefreshLeft />
+                </el-icon>
+              </button>
+              <button class="dev-resource-homepage-editor__tool" type="button" title="重做" aria-label="重做"
+                :disabled="!canRunHistoryAction('redo')" @click="runHistoryAction('redo')">
+                <el-icon aria-hidden="true">
+                  <RefreshRight />
+                </el-icon>
+              </button>
+            </div>
+
+            <span class="dev-resource-homepage-editor__divider" aria-hidden="true"></span>
+
+            <button class="dev-resource-homepage-editor__tool dev-resource-homepage-editor__tool--clear" type="button"
+              title="清除格式" aria-label="清除格式" @click="clearFormatting">
+              <el-icon aria-hidden="true">
+                <Brush />
               </el-icon>
-              <span v-else>{{ item.label }}</span>
-            </button>
-            <button class="dev-resource-homepage-editor__tool" :class="{ 'is-active': editor?.isActive('link') }"
-              type="button" title="插入链接" aria-label="插入链接" @click="toggleLink">
-              <el-icon>
-                <LinkIcon />
-              </el-icon>
-            </button>
-            <button class="dev-resource-homepage-editor__tool" type="button" title="清除格式" aria-label="清除格式"
-              @click="clearFormatting">
-              <el-icon>
-                <RefreshLeft />
+              <span>清除格式</span>
+              <el-icon class="dev-resource-homepage-editor__clear-caret" aria-hidden="true">
+                <ArrowDown />
               </el-icon>
             </button>
           </div>
@@ -788,13 +978,29 @@ console.log('hello')
 
 .dev-resource-homepage-editor__toolbar {
   display: flex;
+  align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  overflow-x: auto;
   margin-top: 18px;
-  padding: 10px;
-  border: 1px solid rgba(17, 24, 39, 0.06);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.58);
+  padding: 10px 12px;
+  border: 1px solid rgba(226, 232, 240, 0.86);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f4f7fb 100%);
+  scrollbar-width: thin;
+}
+
+.dev-resource-homepage-editor__tool-group {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.dev-resource-homepage-editor__divider {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 26px;
+  background: rgba(203, 213, 225, 0.78);
 }
 
 .dev-resource-homepage-editor__mode-switch {
@@ -827,19 +1033,43 @@ console.log('hello')
 
 .dev-resource-homepage-editor__tool {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.8);
-  color: var(--dev-ink);
-  min-width: 40px;
-  min-height: 38px;
-  padding: 0 10px;
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid rgba(213, 222, 237, 0.95);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #334155;
   font: inherit;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
   cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+
+.dev-resource-homepage-editor__tool:hover:not(:disabled) {
+  border-color: rgba(37, 99, 235, 0.52);
+  background: #ffffff;
+  color: #1d4ed8;
+  box-shadow: 0 7px 16px rgba(37, 99, 235, 0.1);
+  transform: translateY(-1px);
+}
+
+.dev-resource-homepage-editor__tool:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+  box-shadow: none;
 }
 
 .dev-resource-homepage-editor__tool :deep(.el-icon) {
@@ -847,9 +1077,47 @@ console.log('hello')
 }
 
 .dev-resource-homepage-editor__tool.is-active {
-  background: rgba(31, 74, 209, 0.12);
-  border-color: rgba(31, 74, 209, 0.22);
-  color: var(--dev-blue);
+  border-color: #2563eb;
+  background: rgba(219, 234, 254, 0.92);
+  color: #1d4ed8;
+}
+
+.dev-resource-homepage-editor__tool--italic {
+  font-style: italic;
+}
+
+.dev-resource-homepage-editor__tool--underline {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dev-resource-homepage-editor__tool--code {
+  font-size: 12px;
+}
+
+.dev-resource-homepage-editor__ordered-icon {
+  font-size: 13px;
+}
+
+.dev-resource-homepage-editor__quote-icon {
+  font-size: 24px;
+  line-height: 0.7;
+}
+
+.dev-resource-homepage-editor__tool--clear {
+  width: auto;
+  min-width: 126px;
+  gap: 6px;
+  padding: 0 11px;
+}
+
+.dev-resource-homepage-editor__tool--clear span {
+  white-space: nowrap;
+}
+
+.dev-resource-homepage-editor__clear-caret.el-icon {
+  font-size: 13px;
+  color: #64748b;
 }
 
 .dev-resource-homepage-editor__editor {
@@ -960,6 +1228,43 @@ console.log('hello')
 .dev-resource-homepage-editor__editor :deep(a),
 .dev-resource-homepage-editor__preview-rich-text :deep(a) {
   color: var(--dev-blue);
+}
+
+.dev-resource-homepage-editor__editor :deep(.rich-editor-media),
+.dev-resource-homepage-editor__preview-rich-text :deep(.rich-editor-media) {
+  display: block;
+  max-width: 100%;
+  margin: 12px 0;
+  border: 1px solid rgba(203, 213, 225, 0.86);
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.dev-resource-homepage-editor__editor :deep(.rich-editor-image),
+.dev-resource-homepage-editor__preview-rich-text :deep(.rich-editor-image) {
+  height: auto;
+}
+
+.dev-resource-homepage-editor__editor :deep(.rich-editor-video),
+.dev-resource-homepage-editor__preview-rich-text :deep(.rich-editor-video) {
+  width: 100%;
+  min-height: 220px;
+}
+
+.dev-resource-homepage-editor__editor :deep(.rich-editor-attachment),
+.dev-resource-homepage-editor__preview-rich-text :deep(.rich-editor-attachment) {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin: 10px 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(191, 219, 254, 0.96);
+  border-radius: 10px;
+  background: rgba(239, 246, 255, 0.9);
+  color: var(--dev-blue);
+  font-weight: 800;
+  text-decoration: none;
+  overflow-wrap: anywhere;
 }
 
 .dev-resource-homepage-editor__editor :deep(hr),

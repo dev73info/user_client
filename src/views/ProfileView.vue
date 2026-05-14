@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Aim, Check, Close } from '@element-plus/icons-vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PublishModal from '@/components/PublishModal.vue'
@@ -1684,12 +1685,25 @@ onBeforeUnmount(() => {
             <div class="profile-avatar-crop-controls">
               <div class="profile-avatar-crop-zoom">缩放 {{ profileAvatarCropZoomPercent }}%</div>
               <div class="profile-avatar-crop-actions">
-                <button class="ghost small" type="button" :disabled="profileAvatarUploading || !profileAvatarCropImage"
-                  @click="resetProfileAvatarCropFrame">居中</button>
-                <button class="ghost small" type="button" :disabled="profileAvatarUploading"
-                  @click="closeProfileAvatarCrop">取消</button>
-                <button class="ghost small" type="button" :disabled="profileAvatarUploading || !profileAvatarCropImage"
-                  @click="submitProfileAvatarCrop">
+                <button class="ghost small profile-avatar-crop-action profile-avatar-crop-action--utility" type="button"
+                  :disabled="profileAvatarUploading || !profileAvatarCropImage" @click="resetProfileAvatarCropFrame">
+                  <el-icon aria-hidden="true">
+                    <Aim />
+                  </el-icon>
+                  <span>居中</span>
+                </button>
+                <button class="ghost small profile-avatar-crop-action profile-avatar-crop-action--cancel" type="button"
+                  :disabled="profileAvatarUploading" @click="closeProfileAvatarCrop">
+                  <el-icon aria-hidden="true">
+                    <Close />
+                  </el-icon>
+                  <span>取消</span>
+                </button>
+                <button class="ghost small profile-avatar-crop-action profile-avatar-crop-action--primary" type="button"
+                  :disabled="profileAvatarUploading || !profileAvatarCropImage" @click="submitProfileAvatarCrop">
+                  <el-icon v-if="!profileAvatarUploading" aria-hidden="true">
+                    <Check />
+                  </el-icon>
                   {{ profileAvatarUploading ? '上传中...' : '保存头像' }}
                 </button>
               </div>
@@ -2141,6 +2155,63 @@ onBeforeUnmount(() => {
   background: #f8fbff;
   border-color: rgba(125, 155, 225, 0.92);
   box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
+}
+
+.profile-avatar-crop-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  min-width: 76px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.profile-avatar-crop-action .el-icon {
+  flex: 0 0 auto;
+  font-size: 15px;
+}
+
+.modal-wrap--avatar-crop .profile-avatar-crop-action--utility.ghost {
+  border-color: rgba(147, 197, 253, 0.9);
+  background: #eff6ff;
+  color: #1d4ed8;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+}
+
+.modal-wrap--avatar-crop .profile-avatar-crop-action--cancel.ghost {
+  border-color: rgba(203, 213, 225, 0.95);
+  background: #ffffff;
+  color: #64748b;
+  box-shadow: none;
+}
+
+.modal-wrap--avatar-crop .profile-avatar-crop-action--primary.ghost {
+  min-width: 116px;
+  border-color: rgba(37, 99, 235, 0.95);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+}
+
+.modal-wrap--avatar-crop .profile-avatar-crop-action--utility.ghost:hover:not(:disabled) {
+  border-color: rgba(96, 165, 250, 0.95);
+  background: #dbeafe;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.12);
+}
+
+.modal-wrap--avatar-crop .profile-avatar-crop-action--cancel.ghost:hover:not(:disabled) {
+  border-color: rgba(148, 163, 184, 0.95);
+  background: #f8fafc;
+  color: #334155;
+  box-shadow: 0 10px 20px rgba(100, 116, 139, 0.1);
+}
+
+.modal-wrap--avatar-crop .profile-avatar-crop-action--primary.ghost:hover:not(:disabled) {
+  border-color: rgba(29, 78, 216, 0.98);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 16px 30px rgba(37, 99, 235, 0.28);
 }
 
 .overview-hero__body {

@@ -32,6 +32,7 @@ const allowedTags = [
   'tr',
   'u',
   'ul',
+  'video',
 ]
 
 const allowedAttrs = [
@@ -39,7 +40,10 @@ const allowedAttrs = [
   'aria-label',
   'class',
   'colspan',
+  'controls',
   'href',
+  'poster',
+  'preload',
   'rel',
   'rowspan',
   'src',

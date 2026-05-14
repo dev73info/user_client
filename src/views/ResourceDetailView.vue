@@ -993,6 +993,39 @@ watch(
   color: #2563eb;
 }
 
+.resource-detail-page__rich-text :deep(.rich-editor-media) {
+  display: block;
+  max-width: 100%;
+  margin: 12px 0;
+  border: 1px solid rgba(203, 213, 225, 0.86);
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.resource-detail-page__rich-text :deep(.rich-editor-image) {
+  height: auto;
+}
+
+.resource-detail-page__rich-text :deep(.rich-editor-video) {
+  width: 100%;
+  min-height: 220px;
+}
+
+.resource-detail-page__rich-text :deep(.rich-editor-attachment) {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin: 10px 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(191, 219, 254, 0.96);
+  border-radius: 10px;
+  background: rgba(239, 246, 255, 0.9);
+  color: #1d4ed8;
+  font-weight: 800;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
 .resource-detail-page__rich-text :deep(pre) {
   margin: 0 0 12px;
   padding: 14px 16px;
