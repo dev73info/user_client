@@ -3,52 +3,91 @@
 }
 
 .rich-code-copy-button {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
-  z-index: 12;
+  z-index: 44;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 54px;
-  height: 28px;
-  padding: 0 10px;
-  border: 1px solid rgba(191, 219, 254, 0.52);
+  gap: 6px;
+  min-width: 66px;
+  height: 30px;
+  padding: 0 11px 0 10px;
+  border: 1px solid rgba(191, 219, 254, 0.72);
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.82);
-  color: #f8fafc;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.24);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.9));
+  color: #1d4ed8;
+  box-shadow:
+    0 12px 28px rgba(15, 23, 42, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1;
   letter-spacing: 0;
   opacity: 0;
   pointer-events: none;
-  transform: translate3d(0, 0, 0);
   transition:
     opacity 0.16s ease,
+    transform 0.16s ease,
     background 0.16s ease,
     border-color 0.16s ease,
     color 0.16s ease;
+  transform: translateY(-2px);
   user-select: none;
   backdrop-filter: blur(12px);
+}
+
+.rich-code-copy-button::before {
+  width: 11px;
+  height: 12px;
+  border: 1.6px solid currentColor;
+  border-radius: 3px;
+  box-shadow: -3px -3px 0 -1px rgba(37, 99, 235, 0.34);
+  content: '';
+  opacity: 0.9;
 }
 
 .rich-code-copy-button.is-visible {
   opacity: 1;
   pointer-events: auto;
+  transform: translateY(0);
 }
 
 .rich-code-copy-button:hover,
 .rich-code-copy-button:focus-visible {
-  border-color: rgba(147, 197, 253, 0.92);
-  background: rgba(37, 99, 235, 0.92);
+  border-color: rgba(59, 130, 246, 0.82);
+  background:
+    linear-gradient(180deg, rgba(37, 99, 235, 0.96), rgba(29, 78, 216, 0.94));
   color: #ffffff;
   outline: none;
+  box-shadow:
+    0 14px 30px rgba(37, 99, 235, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.rich-code-copy-button:hover::before,
+.rich-code-copy-button:focus-visible::before {
+  box-shadow: -3px -3px 0 -1px rgba(255, 255, 255, 0.5);
 }
 
 .rich-code-copy-button.is-copied {
-  border-color: rgba(134, 239, 172, 0.86);
-  background: rgba(22, 163, 74, 0.92);
+  border-color: rgba(134, 239, 172, 0.9);
+  background:
+    linear-gradient(180deg, rgba(22, 163, 74, 0.96), rgba(21, 128, 61, 0.94));
   color: #f0fdf4;
+  box-shadow:
+    0 14px 30px rgba(22, 163, 74, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.rich-code-copy-button.is-copied::before {
+  width: 10px;
+  height: 6px;
+  border-top: 0;
+  border-right: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transform: translateY(-1px) rotate(-45deg);
 }

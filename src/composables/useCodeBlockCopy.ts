@@ -13,6 +13,35 @@ const buttonClass = 'rich-code-copy-button'
 const visibleClass = 'is-visible'
 const copiedClass = 'is-copied'
 const activeClass = 'is-copy-target'
+const viewportGap = 12
+const codeBlockGap = 10
+const fallbackButtonWidth = 66
+const fallbackButtonHeight = 30
+
+function clamp(value: number, min: number, max: number): number {
+  if (max < min) {
+    return min
+  }
+
+  return Math.min(max, Math.max(min, value))
+}
+
+function getFloatingTopBoundary(root: HTMLElement): number {
+  let top = viewportGap
+  const header = document.querySelector<HTMLElement>('.portal-header')
+  const headerRect = header?.getBoundingClientRect()
+  if (headerRect && headerRect.height > 0 && headerRect.bottom > 0) {
+    top = Math.max(top, Math.round(headerRect.bottom + codeBlockGap))
+  }
+
+  const floatingToolbar = root.querySelector<HTMLElement>('.rich-text-editor__toolbar.is-floating')
+  const toolbarRect = floatingToolbar?.getBoundingClientRect()
+  if (toolbarRect && toolbarRect.height > 0 && toolbarRect.bottom > 0) {
+    top = Math.max(top, Math.round(toolbarRect.bottom + codeBlockGap))
+  }
+
+  return top
+}
 
 function findCodeBlock(target: EventTarget | null, root: HTMLElement): HTMLElement | null {
   if (!(target instanceof Element)) {
@@ -113,11 +142,35 @@ export function useCodeBlockCopy({ rootRef, notify }: UseCodeBlockCopyOptions) {
 
     const rootRect = root.getBoundingClientRect()
     const preRect = preElement.getBoundingClientRect()
-    const buttonWidth = button.offsetWidth || 58
-    const left = Math.max(8, preRect.right - rootRect.left + root.scrollLeft - buttonWidth - 12)
-    const top = Math.max(8, preRect.top - rootRect.top + root.scrollTop + 10)
+    const buttonWidth = button.offsetWidth || fallbackButtonWidth
+    const buttonHeight = button.offsetHeight || fallbackButtonHeight
+    const visibleLeft = Math.max(preRect.left, rootRect.left, viewportGap)
+    const visibleRight = Math.min(preRect.right, rootRect.right, window.innerWidth - viewportGap)
+    const visibleTop = Math.max(preRect.top, rootRect.top, getFloatingTopBoundary(root))
+    const visibleBottom = Math.min(preRect.bottom, rootRect.bottom, window.innerHeight - viewportGap)
 
-    button.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`
+    if (
+      visibleRight - visibleLeft < buttonWidth + codeBlockGap * 2 ||
+      visibleBottom - visibleTop < buttonHeight + codeBlockGap * 2
+    ) {
+      button.classList.remove(visibleClass)
+      return
+    }
+
+    const left = clamp(
+      visibleRight - buttonWidth - codeBlockGap,
+      visibleLeft + codeBlockGap,
+      visibleRight - buttonWidth - codeBlockGap,
+    )
+    const top = clamp(
+      Math.max(preRect.top + codeBlockGap, visibleTop + codeBlockGap),
+      visibleTop + codeBlockGap,
+      visibleBottom - buttonHeight - codeBlockGap,
+    )
+
+    button.style.left = `${Math.round(left)}px`
+    button.style.top = `${Math.round(top)}px`
+    button.classList.add(visibleClass)
   }
 
   function schedulePositionButton() {
@@ -142,6 +195,10 @@ export function useCodeBlockCopy({ rootRef, notify }: UseCodeBlockCopyOptions) {
       copyButton.addEventListener('mousedown', (event) => {
         event.preventDefault()
       })
+
+      copyButton.addEventListener('pointerenter', clearHideTimer)
+
+      copyButton.addEventListener('pointerleave', handlePointerLeave)
 
       copyButton.addEventListener('click', async (event) => {
         event.preventDefault()
