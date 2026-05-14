@@ -13,6 +13,7 @@ import DepositModal from '@/components/DepositModal.vue'
 import { buildDevPortalUrl } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
 import { useAuthForm } from '@/composables/useAuthForm'
+import { validateRequirementRichText } from '@/utils/requirementRichText'
 import {
   confirmPayment,
   createAlipayPagePayment,
@@ -1412,8 +1413,12 @@ async function submitPublishRequirement() {
   }
 
   const normalizedTitle = publishTitle.value.trim()
-  const normalizedDescription = publishDescription.value.trim()
-  const normalizedAcceptance = publishAcceptance.value.trim()
+  const descriptionValidation = validateRequirementRichText(publishDescription.value, '需求描述', {
+    minTextLength: 10,
+  })
+  const acceptanceValidation = validateRequirementRichText(publishAcceptance.value, '验收标准', {
+    required: true,
+  })
 
   const budgetRaw = String(publishBudget.value ?? '').trim()
 
@@ -1422,8 +1427,8 @@ async function submitPublishRequirement() {
     return
   }
 
-  if (normalizedDescription.length < 10) {
-    showToast('需求描述至少 10 个字符', 'error')
+  if (descriptionValidation.error) {
+    showToast(descriptionValidation.error, 'error')
     return
   }
 
@@ -1439,8 +1444,8 @@ async function submitPublishRequirement() {
     return
   }
 
-  if (!normalizedAcceptance) {
-    showToast('验收标准不能为空', 'error')
+  if (acceptanceValidation.error) {
+    showToast(acceptanceValidation.error, 'error')
     return
   }
 
@@ -1449,9 +1454,9 @@ async function submitPublishRequirement() {
   try {
     const payload = {
       title: normalizedTitle,
-      description: normalizedDescription,
+      description: descriptionValidation.value,
       budget,
-      acceptance_criteria: normalizedAcceptance,
+      acceptance_criteria: acceptanceValidation.value,
       payment_mode: 'self_managed' as RequirementPaymentMode,
     }
 
@@ -1503,7 +1508,7 @@ async function submitPublishRequirement() {
                 <div v-if="heroSignals.length" class="portal-signal-list">
                   <span v-for="signal in heroSignals" :key="signal" class="portal-signal">{{
                     signal
-                    }}</span>
+                  }}</span>
                 </div>
 
                 <div class="portal-hero__actions">
@@ -1906,7 +1911,7 @@ async function submitPublishRequirement() {
       v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
       v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
       :modalTitle="publishModalTitle" :submitText="publishModalSubmitText" :loadingText="publishModalLoadingText"
-      :allowPlatformGuarantee="false" :publishLoading="publishLoading" @close="closePublishModal"
+      :allowPlatformGuarantee="false" :publishLoading="publishLoading" @close="closePublishModal" @notify="showToast"
       @submit="submitPublishRequirement" />
 
     <DepositModal v-if="depositVisible && depositRequirement" :visible="depositVisible"

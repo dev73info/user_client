@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { RefreshLeft, Search } from '@element-plus/icons-vue'
 
 import {
@@ -13,7 +13,7 @@ import {
 } from '@dev/api/Tags'
 import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@dev/api/devOrderDeposit'
 import { getDevCreditSelf, type DevCreditSelf } from '@dev/api/devCredit'
-import { createMcResource, listMcResources, type McResourcePayload } from '@dev/api/mcResources'
+import { createMcResource, type McResourcePayload } from '@dev/api/mcResources'
 import {
   bindRequirementProject,
   listRequirementHall,
@@ -21,8 +21,13 @@ import {
 } from '@dev/api/requirements'
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
+import {
+  requirementRichTextPreview,
+  sanitizeRequirementRichText,
+} from '@/utils/requirementRichText'
 
 const auth = useAuthStore()
+const route = useRoute()
 const router = useRouter()
 const { showToast } = useToast()
 
@@ -69,6 +74,8 @@ const sortOptions = [
   { value: 'budget', label: '预算' },
 ]
 
+const requirementPreviewMaxLength = 120
+
 const emptyText = computed(() => {
   if (loading.value) {
     return '资源关联加载中'
@@ -79,9 +86,6 @@ const emptyText = computed(() => {
 const currentPageCount = computed(() => rows.value.length)
 const availableResourceOptions = computed(() =>
   resources.value.filter((item) => !item.requirement_id && item.visibility === 'draft'),
-)
-const hasPendingBindableResources = computed(() =>
-  resources.value.some((item) => !item.requirement_id && item.visibility !== 'draft'),
 )
 const selectedResource = computed(
   () => availableResourceOptions.value.find((item) => item.id === bindForm.resourceId) ?? null,
@@ -187,11 +191,29 @@ const confirmResourceLabel = computed(() => {
 
 onMounted(async () => {
   auth.hydrate()
+  syncKeywordFromRoute()
   if (!initForm.author.trim()) {
     initForm.author = auth.username || ''
   }
   await Promise.all([loadRequirements(), loadDepositStatus()])
 })
+
+watch(
+  () => route.query.keyword,
+  (value) => {
+    const nextKeyword = routeKeyword(value)
+    if (nextKeyword === filters.keyword) {
+      return
+    }
+
+    filters.keyword = nextKeyword
+    page.value = 1
+
+    if (auth.token) {
+      void loadRequirements()
+    }
+  },
+)
 
 watch(
   () => auth.username,
@@ -243,6 +265,18 @@ function formatMoney(value?: number | null): string {
   return `¥${value}`
 }
 
+function routeKeyword(value = route.query.keyword): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function syncKeywordFromRoute() {
+  const nextKeyword = routeKeyword()
+  if (nextKeyword) {
+    filters.keyword = nextKeyword
+    page.value = 1
+  }
+}
+
 async function loadRequirements() {
   if (!auth.token) {
     showToast('登录状态已失效，请重新登录', 'error')
@@ -292,10 +326,6 @@ async function loadDepositStatus() {
   }
 }
 
-async function refreshHall() {
-  await Promise.all([loadRequirements(), loadDepositStatus()])
-}
-
 async function applyFilters() {
   page.value = 1
   await loadRequirements()
@@ -310,56 +340,11 @@ async function resetFilters() {
   await loadRequirements()
 }
 
-async function openBindDialog(requirement: RequirementItem) {
-  if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
-    return
-  }
-
-  if (requiresDepositGate(requirement) && !canTakeOrders.value) {
-    showToast('当前可用保证金不足，请先补充保证金后再关联需求', 'warning')
-    void router.push('/dev/wallet/order-deposit')
-    return
-  }
-
-  if (
-    requiresDepositGate(requirement) &&
-    (requirement.budget ?? 0) > (depositStatus.value?.available_cny ?? 0)
-  ) {
-    showToast('当前需求预算高于可用保证金，请先补充保证金', 'warning')
-    void router.push('/dev/wallet/order-deposit')
-    return
-  }
-
-  if (requiresDepositGate(requirement) && !isBudgetWithinCap(requirement.budget)) {
-    showToast(
-      `当前信用最高可接 ¥${orderCreditCap.value.toFixed(2)} 的需求，无法绑定此预算`,
-      'warning',
-    )
-    return
-  }
-
-  try {
-    const payload = await listMcResources(auth.token)
-    resources.value = payload
-    selectedRequirement.value = requirement
-    bindForm.resourceId = undefined
-    resetInitForm()
-    reviewConfirmed.value = false
-    finalConfirmed.value = false
-    bindingMode.value = availableResourceOptions.value.length > 0 ? 'existing' : 'new'
-    bindDialogVisible.value = true
-
-    if (bindingMode.value === 'new') {
-      await ensureTagTreeLoaded()
-      showToast('当前没有可直接关联的私有资源，可先初始化一个新资源项目再完成绑定', 'info')
-    } else if (availableResourceOptions.value.length === 0 && hasPendingBindableResources.value) {
-      showToast('当前没有可关联的私有资源。只有私有且未绑定的资源才能关联需求', 'warning')
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '加载项目列表失败'
-    showToast(message, 'error')
-  }
+function openBindDialog(requirement: RequirementItem) {
+  void router.push({
+    name: 'dev-requirement-detail',
+    params: { requirementId: requirement.requirement_id },
+  })
 }
 
 async function submitBinding() {
@@ -446,9 +431,18 @@ function projectOptionLabel(resource: McResourcePayload): string {
   return `${resource.title} · ${resource.author}`
 }
 
-function requirementFieldValue(value?: string | null, fallback = '未填写') {
-  const normalized = value?.trim()
-  return normalized ? normalized : fallback
+function requirementFieldPreview(value?: string | null, fallback = '未填写') {
+  const preview = requirementRichTextPreview(value, fallback)
+
+  if (preview.length <= requirementPreviewMaxLength) {
+    return preview
+  }
+
+  return `${preview.slice(0, requirementPreviewMaxLength).trimEnd()}...`
+}
+
+function requirementFieldHtml(value?: string | null, fallback = '未填写') {
+  return sanitizeRequirementRichText(value ?? '') || fallback
 }
 
 function handleResourceChange() {
@@ -645,9 +639,8 @@ async function handleSizeChange(nextSize: number) {
             <el-icon>
               <RefreshLeft />
             </el-icon>
-            <span>重置</span>
           </el-button>
-          <el-button class="dev-requirement-hall__filter-button dev-requirement-hall__filter-button--primary"
+          <el-button class="dev-requirement-hall__filter-button dev-requirement-hall__filter-button--ghost"
             type="primary" :loading="loading" @click="applyFilters">
             <el-icon v-if="!loading">
               <Search />
@@ -659,37 +652,37 @@ async function handleSizeChange(nextSize: number) {
 
       <el-table :data="rows" stripe v-loading="loading" class="dev-release-table dev-requirement-hall__table"
         :empty-text="emptyText">
-        <el-table-column label="需求" min-width="360">
+        <el-table-column label="需求" min-width="300">
           <template #default="scope">
             <div class="dev-requirement-hall__title-cell">
               <div class="dev-requirement-hall__requirement-id">{{ scope.row.requirement_id }}</div>
               <div class="dev-requirement-hall__title">{{ scope.row.title }}</div>
               <div class="dev-requirement-hall__desc">
-                {{ scope.row.description || '暂无补充描述' }}
+                {{ requirementFieldPreview(scope.row.description, '暂无补充描述') }}
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="creator" label="发起人" min-width="140" />
-        <el-table-column label="预算" min-width="120">
+        <el-table-column prop="creator" label="发起人" width="116" show-overflow-tooltip />
+        <el-table-column label="预算" width="92">
           <template #default="scope">
             <span>{{ formatMoney(scope.row.budget) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="发布方式" width="130">
+        <el-table-column label="发布方式" width="112">
           <template #default="scope">
             <el-tag :type="isSelfManagedRequirement(scope.row) ? 'info' : 'warning'" effect="plain">
               {{ paymentModeLabel(scope.row) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="140">
+        <el-table-column label="状态" width="96">
           <template #default>
             <el-tag type="success" effect="plain">待开发</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="updated_at" label="最近更新" min-width="180" />
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column prop="updated_at" label="最近更新" width="136" show-overflow-tooltip />
+        <el-table-column label="操作" width="130" fixed="right">
           <template #default="scope">
             <el-button type="primary" plain class="dev-requirement-hall__bind-button"
               @click="openBindDialog(scope.row)">
@@ -721,9 +714,9 @@ async function handleSizeChange(nextSize: number) {
         </div>
         <div class="dev-requirement-hall__review-item">
           <span class="dev-requirement-hall__review-label">需求描述</span>
-          <div class="dev-requirement-hall__review-value dev-requirement-hall__review-value--multiline">
-            {{ requirementFieldValue(selectedRequirement.description, '暂无需求描述') }}
-          </div>
+          <div
+            class="dev-requirement-hall__review-value dev-requirement-hall__review-value--multiline dev-requirement-hall__review-value--rich"
+            v-html="requirementFieldHtml(selectedRequirement.description, '暂无需求描述')"></div>
         </div>
         <div class="dev-requirement-hall__review-grid">
           <div class="dev-requirement-hall__review-item">
@@ -734,9 +727,9 @@ async function handleSizeChange(nextSize: number) {
           </div>
           <div class="dev-requirement-hall__review-item">
             <span class="dev-requirement-hall__review-label">验收标准</span>
-            <div class="dev-requirement-hall__review-value dev-requirement-hall__review-value--multiline">
-              {{ requirementFieldValue(selectedRequirement.acceptance_criteria, '暂无验收标准') }}
-            </div>
+            <div
+              class="dev-requirement-hall__review-value dev-requirement-hall__review-value--multiline dev-requirement-hall__review-value--rich"
+              v-html="requirementFieldHtml(selectedRequirement.acceptance_criteria, '暂无验收标准')"></div>
           </div>
         </div>
       </section>
@@ -907,6 +900,25 @@ async function handleSizeChange(nextSize: number) {
   width: 100%;
 }
 
+.dev-requirement-hall__table :deep(.cell),
+.dev-requirement-hall__title-cell {
+  min-width: 0;
+}
+
+.dev-requirement-hall__requirement-id,
+.dev-requirement-hall__title,
+.dev-requirement-hall__desc {
+  overflow-wrap: anywhere;
+}
+
+.dev-requirement-hall__desc {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+}
+
 .dev-requirement-hall__mode-button {
   appearance: none;
   border: 1px solid rgba(17, 24, 39, 0.08);
@@ -993,23 +1005,29 @@ async function handleSizeChange(nextSize: number) {
 
 .dev-requirement-hall__tag-groups {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .dev-requirement-hall__tag-group {
   display: grid;
-  gap: 10px;
-  padding: 14px;
-  border-radius: 18px;
+  grid-template-columns: minmax(126px, 0.36fr) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
   border: 1px solid rgba(17, 24, 39, 0.06);
   background: rgba(255, 255, 255, 0.6);
 }
 
 .dev-requirement-hall__tag-group-head {
+  grid-column: 1;
+  grid-row: 1 / span 2;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+  min-width: 0;
 }
 
 .dev-requirement-hall__tag-group-title {
@@ -1020,9 +1038,12 @@ async function handleSizeChange(nextSize: number) {
 }
 
 .dev-requirement-hall__tag-group-path {
-  margin: 4px 0 0;
-  font-size: 11px;
-  line-height: 1.4;
+  margin: 2px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.3;
   color: var(--dev-muted);
 }
 
@@ -1030,8 +1051,8 @@ async function handleSizeChange(nextSize: number) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 38px;
-  padding: 4px 8px;
+  min-width: 34px;
+  padding: 3px 7px;
   border-radius: 999px;
   background: rgba(17, 24, 39, 0.05);
   font-size: 10px;
@@ -1040,19 +1061,75 @@ async function handleSizeChange(nextSize: number) {
 }
 
 .dev-requirement-hall__tag-group-selected {
+  grid-column: 2;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
+  min-height: 20px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.dev-requirement-hall__tag-group-selected::-webkit-scrollbar {
+  display: none;
 }
 
 .dev-requirement-hall__tag-group-empty {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--dev-muted);
 }
 
+.dev-requirement-hall__tag-group .dev-requirement-hall__dialog-field {
+  grid-column: 2;
+}
+
+.dev-requirement-hall__tag-group :deep(.el-select__wrapper) {
+  min-height: 34px;
+  border-radius: 10px;
+}
+
+.dev-requirement-hall__review-value--rich {
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.dev-requirement-hall__review-value--rich :deep(p),
+.dev-requirement-hall__review-value--rich :deep(ul),
+.dev-requirement-hall__review-value--rich :deep(ol),
+.dev-requirement-hall__review-value--rich :deep(blockquote) {
+  margin: 0 0 8px;
+}
+
+.dev-requirement-hall__review-value--rich :deep(ul),
+.dev-requirement-hall__review-value--rich :deep(ol) {
+  padding-left: 20px;
+}
+
+.dev-requirement-hall__review-value--rich :deep(a) {
+  color: var(--dev-blue);
+}
+
+.dev-requirement-hall__review-value--rich :deep(.rich-editor-media) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border-radius: 12px;
+}
+
 @media (max-width: 720px) {
-  .dev-requirement-hall__mode-switch {
+
+  .dev-requirement-hall__mode-switch,
+  .dev-requirement-hall__tag-group {
     grid-template-columns: 1fr;
+  }
+
+  .dev-requirement-hall__tag-group-head,
+  .dev-requirement-hall__tag-group-selected,
+  .dev-requirement-hall__tag-group .dev-requirement-hall__dialog-field {
+    grid-column: 1;
+    grid-row: auto;
   }
 }
 </style>

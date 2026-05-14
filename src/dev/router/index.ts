@@ -147,6 +147,18 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: 'developer/requirements/hall/:requirementId',
+    name: 'dev-requirement-detail',
+    component: () => import('@dev/views/DevRequirementDetailView.vue'),
+    meta: {
+      title: '需求大厅 / 接取需求',
+      description: '查看需求单详情并关联或初始化开发资源。',
+      devArea: true,
+      requiresDevAccess: true,
+      requiresRealname: true,
+    },
+  },
+  {
     path: 'developer/requirements/my',
     name: 'dev-my-requirements',
     component: () => import('@dev/views/DevMyRequirementsView.vue'),
@@ -230,6 +242,10 @@ export const devRoutes: RouteRecordRaw[] = [
   {
     path: '/dev/requirements/hall',
     redirect: redirectToDevWorkbench('dev-requirement-hall'),
+  },
+  {
+    path: '/dev/requirements/hall/:requirementId',
+    redirect: redirectToDevWorkbench('dev-requirement-detail'),
   },
   {
     path: '/dev/requirements/my',

@@ -12,6 +12,7 @@ import { listMyRequirements, type RequirementItem } from '@dev/api/requirements'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@dev/api/contracts'
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
+import { requirementRichTextPreview } from '@/utils/requirementRichText'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -277,7 +278,7 @@ async function loadRequirementConversations() {
               <div class="dev-requirement-hall__title-cell">
                 <div class="dev-requirement-hall__requirement-id">{{ scope.row.requirement_id }}</div>
                 <div class="dev-requirement-hall__title">{{ scope.row.title }}</div>
-                <div class="dev-requirement-hall__desc">{{ scope.row.description || '暂无补充描述' }}</div>
+                <div class="dev-requirement-hall__desc">{{ requirementRichTextPreview(scope.row.description) }}</div>
               </div>
             </template>
           </el-table-column>

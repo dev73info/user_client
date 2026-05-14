@@ -2,6 +2,10 @@
 import { watch } from "vue";
 import type { PropType } from "vue";
 
+import RichTextEditor from "@/components/RichTextEditor.vue";
+
+type NotifyType = "success" | "warning" | "error";
+
 const props = defineProps({
   visible: { type: Boolean, default: false },
   modalTitle: { type: String, default: "发布需求" },
@@ -15,15 +19,15 @@ const props = defineProps({
     type: String as PropType<"platform_guarantee" | "self_managed">,
     default: "self_managed",
   },
-  allowPlatformGuarantee: { type: Boolean, default: true },
+  // TODO：后续实现平台担保功能后再开放此属性，目前先隐藏平台担保选项以免引起误解
+  allowPlatformGuarantee: { type: Boolean, default: false },
   publishLoading: { type: Boolean, default: false },
 });
-
-const requirementTextMaxLength = 1024 * 1024;
 
 const emit = defineEmits<{
   (e: "close"): void;
   (e: "submit"): void;
+  (e: "notify", message: string, type?: NotifyType): void;
   (e: "update:publishTitle", value: string): void;
   (e: "update:publishDescription", value: string): void;
   (e: "update:publishBudget", value: string | number): void;
@@ -35,16 +39,20 @@ function updateTitle(event: Event) {
   emit("update:publishTitle", (event.target as HTMLInputElement).value);
 }
 
-function updateDescription(event: Event) {
-  emit("update:publishDescription", (event.target as HTMLTextAreaElement).value);
+function updateDescription(value: string) {
+  emit("update:publishDescription", value);
 }
 
 function updateBudget(event: Event) {
   emit("update:publishBudget", (event.target as HTMLInputElement).value);
 }
 
-function updateAcceptance(event: Event) {
-  emit("update:publishAcceptance", (event.target as HTMLTextAreaElement).value);
+function updateAcceptance(value: string) {
+  emit("update:publishAcceptance", value);
+}
+
+function forwardNotify(message: string, type?: NotifyType) {
+  emit("notify", message, type);
 }
 
 function updatePaymentMode(value: "platform_guarantee" | "self_managed") {
@@ -68,11 +76,7 @@ watch(
 
 <template>
   <Teleport to="body">
-    <div
-      v-if="visible"
-      class="auth-modal-wrap publish-modal-wrap"
-      @click.self="emit('close')"
-    >
+    <div v-if="visible" class="auth-modal-wrap publish-modal-wrap" @click.self="emit('close')">
       <section class="auth-modal publish-modal" :aria-label="`${modalTitle}弹窗`">
         <header class="publish-modal__head">
           <h3>{{ modalTitle }}</h3>
@@ -81,77 +85,38 @@ watch(
         <div class="publish-modal__body">
           <label>
             需求标题 *
-            <input
-              :value="publishTitle"
-              type="text"
-              maxlength="60"
-              placeholder="例如：企业官网改版、小程序开发"
-              required
-              @input="updateTitle"
-            />
+            <input :value="publishTitle" type="text" maxlength="60" placeholder="例如：企业官网改版、小程序开发" required
+              @input="updateTitle" />
           </label>
-          <label>
-            需求描述 *
-            <textarea
-              :value="publishDescription"
-              rows="5"
-              :maxlength="requirementTextMaxLength"
-              placeholder="请描述你的目标、功能和期望交付时间，便于快速匹配。"
-              required
-              @input="updateDescription"
-            ></textarea>
-          </label>
+          <div class="publish-rich-field">
+            <span>需求描述 *</span>
+            <RichTextEditor :model-value="publishDescription" :floating-toolbar="false"
+              @update:model-value="updateDescription" @notify="forwardNotify" />
+          </div>
           <label>
             预算 *
-            <input
-              :value="publishBudget"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="如 2000"
-              required
-              @input="updateBudget"
-            />
+            <input :value="publishBudget" type="number" min="0" step="0.01" placeholder="如 2000" required
+              @input="updateBudget" />
           </label>
-          <label>
-            验收标准 *
-            <textarea
-              :value="publishAcceptance"
-              rows="3"
-              :maxlength="requirementTextMaxLength"
-              placeholder="请填写交付标准、验收节点等内容。"
-              required
-              @input="updateAcceptance"
-            ></textarea>
-          </label>
+          <div class="publish-rich-field">
+            <span>验收标准 *</span>
+            <RichTextEditor :model-value="publishAcceptance" :floating-toolbar="false"
+              @update:model-value="updateAcceptance" @notify="forwardNotify" />
+          </div>
           <div class="publish-mode-field">
             <span>发布方式 *</span>
-            <div class="publish-mode-options" role="radiogroup" aria-label="发布方式选择">
-              <button
-                type="button"
-                class="publish-mode-option"
-                :class="{ active: publishPaymentMode === 'self_managed' }"
-                @click="updatePaymentMode('self_managed')"
-              >
+            <div class="publish-mode-options" :class="{ 'publish-mode-options--single': !allowPlatformGuarantee }"
+              role="radiogroup" aria-label="发布方式选择">
+              <button type="button" class="publish-mode-option"
+                :class="{ active: publishPaymentMode === 'self_managed' }" @click="updatePaymentMode('self_managed')">
                 <strong>无平台担保</strong>
                 <small>平台提供协作与签署记录，付款双方另行约定</small>
               </button>
-              <button
-                type="button"
-                class="publish-mode-option"
-                :class="{
-                  active: publishPaymentMode === 'platform_guarantee',
-                  disabled: !allowPlatformGuarantee,
-                }"
-                :disabled="!allowPlatformGuarantee"
-                @click="updatePaymentMode('platform_guarantee')"
-              >
+              <button v-if="allowPlatformGuarantee" type="button" class="publish-mode-option"
+                :class="{ active: publishPaymentMode === 'platform_guarantee' }"
+                @click="updatePaymentMode('platform_guarantee')">
                 <strong>平台担保</strong>
-                <small>{{
-                  allowPlatformGuarantee
-                    ? "按平台定金与尾款规则推进"
-                    : "暂未开放，当前仅支持无平台担保"
-                }}</small>
+                <small>按平台定金与尾款规则推进</small>
               </button>
             </div>
           </div>
@@ -161,12 +126,7 @@ watch(
           <button class="auth-btn ghost" type="button" @click="emit('close')">
             取消
           </button>
-          <button
-            class="auth-btn solid"
-            type="button"
-            :disabled="publishLoading"
-            @click="emit('submit')"
-          >
+          <button class="auth-btn solid" type="button" :disabled="publishLoading" @click="emit('submit')">
             {{ publishLoading ? loadingText : submitText }}
           </button>
         </div>
@@ -180,15 +140,14 @@ watch(
   z-index: 1200;
   align-items: center;
   overflow-y: auto;
-  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
-    max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   background: rgba(15, 23, 42, 0.24);
   backdrop-filter: blur(5px);
   overscroll-behavior: contain;
 }
 
 .publish-modal {
-  width: min(600px, 100%);
+  width: min(920px, 100%);
   max-height: calc(100vh - 28px);
   max-height: calc(100dvh - 28px);
   border-radius: 18px;
@@ -230,6 +189,25 @@ watch(
   color: #334155;
   font-size: 13px;
   font-weight: 800;
+}
+
+.publish-rich-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.publish-rich-field :deep(.rich-text-editor) {
+  font-weight: 500;
+}
+
+.publish-rich-field :deep(.rich-text-editor__toolbar-shell) {
+  position: sticky;
+  top: 0;
+  z-index: 18;
 }
 
 .publish-modal__body input,
@@ -288,7 +266,7 @@ watch(
   gap: 9px;
 }
 
-.publish-mode-field > span {
+.publish-mode-field>span {
   color: #334155;
   font-size: 13px;
   font-weight: 800;
@@ -298,6 +276,10 @@ watch(
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 9px;
+}
+
+.publish-mode-options--single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .publish-mode-option {
@@ -322,12 +304,6 @@ watch(
   border-color: rgba(37, 99, 235, 0.86);
   background: #eff6ff;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
-.publish-mode-option.disabled {
-  cursor: not-allowed;
-  background: rgba(248, 250, 252, 0.68);
-  opacity: 0.62;
 }
 
 .publish-mode-option strong,

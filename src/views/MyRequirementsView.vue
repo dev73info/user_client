@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Close, Refresh } from '@element-plus/icons-vue'
 
 import PublishModal from '@/components/PublishModal.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
@@ -39,6 +40,7 @@ import {
 import { getDepositRatio } from '@/api/settings'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { sanitizeRequirementRichText, validateRequirementRichText } from '@/utils/requirementRichText'
 
 const router = useRouter()
 const route = useRoute()
@@ -49,6 +51,7 @@ const requirementLoading = ref(false)
 const myRequirements = ref<RequirementItem[]>([])
 const payVisible = ref(false)
 const payRequirement = ref<RequirementItem | null>(null)
+const detailRequirement = ref<RequirementItem | null>(null)
 const payChannel = ref<'alipay' | 'wechat'>('alipay')
 const payLoading = ref(false)
 const currentPayment = ref<AlipayCreatePaymentResp | null>(null)
@@ -89,6 +92,17 @@ const versionDeleteRejectTargetId = ref<number | null>(null)
 const versionDeleteRejectNotes = ref<Record<number, string>>({})
 const depositRatioPercent = ref(20)
 const contractSigningStatusMap = ref<Record<string, ContractSigningStatus | null>>({})
+
+const detailRequirementDescriptionHtml = computed(
+  () =>
+    sanitizeRequirementRichText(detailRequirement.value?.description ?? '') ||
+    '当前需求暂未补充详细描述。',
+)
+const detailRequirementAcceptanceHtml = computed(
+  () =>
+    sanitizeRequirementRichText(detailRequirement.value?.acceptance_criteria ?? '') ||
+    '当前需求暂未补充验收标准。',
+)
 
 const requirementStats = computed(() => ({
   total: myRequirements.value.length,
@@ -156,6 +170,10 @@ function formatRequirementTime(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function formatRequirementCreatedTime(item: RequirementItem) {
+  return item.created_time?.trim() ? formatRequirementTime(item.created_time) : '时间未知'
 }
 
 function formatBudget(value?: number | null) {
@@ -391,6 +409,14 @@ function openPayModal(item: RequirementItem) {
   payChannel.value = 'alipay'
   currentPayment.value = null
   payVisible.value = true
+}
+
+function openRequirementDetail(item: RequirementItem) {
+  detailRequirement.value = item
+}
+
+function closeRequirementDetail() {
+  detailRequirement.value = null
 }
 
 async function requestFinalPayment(item: RequirementItem) {
@@ -755,8 +781,12 @@ async function submitRequirementResubmit() {
   }
 
   const normalizedTitle = editTitle.value.trim()
-  const normalizedDescription = editDescription.value.trim()
-  const normalizedAcceptance = editAcceptance.value.trim()
+  const descriptionValidation = validateRequirementRichText(editDescription.value, '需求描述', {
+    minTextLength: 10,
+  })
+  const acceptanceValidation = validateRequirementRichText(editAcceptance.value, '验收标准', {
+    required: true,
+  })
   const budgetRaw = String(editBudget.value ?? '').trim()
 
   if (normalizedTitle.length < 4) {
@@ -764,8 +794,8 @@ async function submitRequirementResubmit() {
     return
   }
 
-  if (normalizedDescription.length < 10) {
-    showToast('需求描述至少 10 个字符', 'error')
+  if (descriptionValidation.error) {
+    showToast(descriptionValidation.error, 'error')
     return
   }
 
@@ -781,8 +811,8 @@ async function submitRequirementResubmit() {
     return
   }
 
-  if (!normalizedAcceptance) {
-    showToast('验收标准不能为空', 'error')
+  if (acceptanceValidation.error) {
+    showToast(acceptanceValidation.error, 'error')
     return
   }
 
@@ -790,9 +820,9 @@ async function submitRequirementResubmit() {
   try {
     await resubmitRequirementApi(auth.token, editRequirement.value.requirement_id, {
       title: normalizedTitle,
-      description: normalizedDescription,
+      description: descriptionValidation.value,
       budget,
-      acceptance_criteria: normalizedAcceptance,
+      acceptance_criteria: acceptanceValidation.value,
       payment_mode: editPaymentMode.value,
     })
 
@@ -813,8 +843,12 @@ async function submitRequirementPublish() {
   }
 
   const normalizedTitle = publishTitle.value.trim()
-  const normalizedDescription = publishDescription.value.trim()
-  const normalizedAcceptance = publishAcceptance.value.trim()
+  const descriptionValidation = validateRequirementRichText(publishDescription.value, '需求描述', {
+    minTextLength: 10,
+  })
+  const acceptanceValidation = validateRequirementRichText(publishAcceptance.value, '验收标准', {
+    required: true,
+  })
   const budgetRaw = String(publishBudget.value ?? '').trim()
 
   if (normalizedTitle.length < 4) {
@@ -822,8 +856,8 @@ async function submitRequirementPublish() {
     return
   }
 
-  if (normalizedDescription.length < 10) {
-    showToast('需求描述至少 10 个字符', 'error')
+  if (descriptionValidation.error) {
+    showToast(descriptionValidation.error, 'error')
     return
   }
 
@@ -839,8 +873,8 @@ async function submitRequirementPublish() {
     return
   }
 
-  if (!normalizedAcceptance) {
-    showToast('验收标准不能为空', 'error')
+  if (acceptanceValidation.error) {
+    showToast(acceptanceValidation.error, 'error')
     return
   }
 
@@ -848,9 +882,9 @@ async function submitRequirementPublish() {
   try {
     await createRequirementApi(auth.token, {
       title: normalizedTitle,
-      description: normalizedDescription,
+      description: descriptionValidation.value,
       budget,
-      acceptance_criteria: normalizedAcceptance,
+      acceptance_criteria: acceptanceValidation.value,
       payment_mode: publishPaymentMode.value,
     })
 
@@ -968,6 +1002,14 @@ async function loadMyRequirements() {
   } finally {
     requirementLoading.value = false
   }
+}
+
+async function refreshMyRequirements() {
+  if (requirementLoading.value || conversationLoading.value) {
+    return
+  }
+
+  await Promise.all([loadMyRequirements(), loadRequirementConversations(), loadDepositRatio()])
 }
 
 async function loadContractSigningStatuses(items: RequirementItem[]) {
@@ -1180,7 +1222,16 @@ onMounted(async () => {
           <h3>我提交的需求单</h3>
           <small class="requirement-note">点击可操作的需求行可快速处理待审核、支付、完成或评价。</small>
         </div>
-        <button class="ghost small" type="button" @click="openPublishModal">发布新需求</button>
+        <div class="my-requirements-header__actions">
+          <button class="ghost small my-requirements-refresh" type="button"
+            :disabled="requirementLoading || conversationLoading" @click="refreshMyRequirements">
+            <el-icon>
+              <Refresh />
+            </el-icon>
+            <span>{{ requirementLoading || conversationLoading ? '刷新中...' : '刷新' }}</span>
+          </button>
+          <button class="ghost small" type="button" @click="openPublishModal">发布新需求</button>
+        </div>
       </div>
 
       <div v-if="myRequirements.length === 0" class="empty">
@@ -1203,12 +1254,12 @@ onMounted(async () => {
               <small class="requirement-note">{{ paymentModeLabel(item) }} · {{ paymentModeHint(item) }}</small>
               <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
                 formatResourceVisibility(item)
-                }}</small>
+              }}</small>
               <small v-if="hasBoundResource(item)" class="requirement-note">已发布版本：{{ publishedVersionCount(item)
-                }}</small>
+              }}</small>
               <small v-if="contractStatusHint(item)" class="requirement-note">{{
                 contractStatusHint(item)
-                }}</small>
+              }}</small>
               <small v-if="hasBoundResource(item) && !canToggleRequirementResourceVisibility(item)"
                 class="requirement-note">资源公开/私有切换需在{{
                   isSelfManagedRequirement(item) ? '需求完成后' : '已付尾款后'
@@ -1222,7 +1273,7 @@ onMounted(async () => {
               </small>
               <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">{{
                 resourceVersionDeleteReviewHint(item)
-                }}</small>
+              }}</small>
               <small v-if="hasPendingResourceVersionDeleteReview(item)"
                 class="requirement-note">点击当前需求行，可在下方展开审核卡片。</small>
               <small v-else-if="
@@ -1235,8 +1286,8 @@ onMounted(async () => {
                 hasBoundResource(item) &&
                 publishedVersionCount(item) < 1
               " class="requirement-note">开发者至少发布 1 个版本后，用户才能{{
-                  isSelfManagedRequirement(item) ? '确认完成' : '结束开发并支付尾款'
-                }}</small>
+                isSelfManagedRequirement(item) ? '确认完成' : '结束开发并支付尾款'
+              }}</small>
               <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{
                 item.review_note }}</small>
               <small class="requirement-note">{{
@@ -1246,7 +1297,7 @@ onMounted(async () => {
               }}</small>
               <small v-if="canOpenConversation(item)" class="requirement-note">{{
                 conversationLastMessageText(item)
-                }}</small>
+              }}</small>
             </div>
             <span class="requirement-status" :class="{ 'requirement-status--contract': isWaitingContractSign(item) }">
               {{ formatRequirementDisplayStatus(item) }}
@@ -1254,6 +1305,9 @@ onMounted(async () => {
             <span>{{ formatBudget(item.budget) }}</span>
             <time>{{ formatRequirementTime(item.updated_at) }}</time>
             <div class="requirement-actions">
+              <button class="ghost small" type="button" @click.stop="openRequirementDetail(item)">
+                查看
+              </button>
               <button class="ghost small" type="button"
                 :disabled="requirementSubscriptionLoadingId === item.requirement_id"
                 @click.stop="toggleRequirementSubscription(item)">
@@ -1375,17 +1429,85 @@ onMounted(async () => {
     <PublishModal :visible="publishVisible" v-model:publishTitle="publishTitle"
       v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
       v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
-      :allowPlatformGuarantee="false" :publishLoading="publishLoading" @close="closePublishModal"
+      :allowPlatformGuarantee="false" :publishLoading="publishLoading" @close="closePublishModal" @notify="showToast"
       @submit="submitRequirementPublish" />
 
     <PublishModal :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核" loadingText="提交中..."
       v-model:publishTitle="editTitle" v-model:publishDescription="editDescription" v-model:publishBudget="editBudget"
       v-model:publishAcceptance="editAcceptance" v-model:publishPaymentMode="editPaymentMode"
-      :publishLoading="editLoading" @close="closeEditModal" @submit="submitRequirementResubmit" />
+      :allowPlatformGuarantee="false" :publishLoading="editLoading" @close="closeEditModal" @notify="showToast"
+      @submit="submitRequirementResubmit" />
 
     <RequirementConversationModal :visible="conversationVisible" :token="auth.token" :current-username="auth.username"
       :requirement-id="conversationRequirement?.requirement_id ?? ''" :title="conversationRequirement?.title"
       @updated="applyConversationDetail" @close="closeConversation" />
+
+    <Teleport to="body">
+      <div v-if="detailRequirement" class="my-requirement-detail-wrap" @click.self="closeRequirementDetail">
+        <section class="my-requirement-detail" :aria-label="`${detailRequirement.title}详情`">
+          <header class="my-requirement-detail__head">
+            <div>
+              <span class="my-requirement-detail__chip">{{ paymentModeLabel(detailRequirement) }}</span>
+              <h3>{{ detailRequirement.title }}</h3>
+              <p>
+                {{ detailRequirement.requirement_id }} ·
+                {{ formatRequirementDisplayStatus(detailRequirement) }}
+              </p>
+            </div>
+            <button class="my-requirement-detail__close" type="button" aria-label="关闭详情"
+              @click="closeRequirementDetail">
+              <el-icon>
+                <Close />
+              </el-icon>
+            </button>
+          </header>
+
+          <div class="my-requirement-detail__meta">
+            <span>编号：{{ detailRequirement.requirement_id }}</span>
+            <span>发布方式：{{ paymentModeLabel(detailRequirement) }}</span>
+            <span>状态：{{ formatRequirementDisplayStatus(detailRequirement) }}</span>
+            <span>更新：{{ formatRequirementTime(detailRequirement.updated_at) }}</span>
+            <span>创建：{{ formatRequirementCreatedTime(detailRequirement) }}</span>
+          </div>
+
+          <section class="my-requirement-detail__review-panel">
+            <div class="my-requirement-detail__review-item">
+              <span class="my-requirement-detail__review-label">需求标题</span>
+              <div class="my-requirement-detail__review-value">{{ detailRequirement.title }}</div>
+            </div>
+
+            <div class="my-requirement-detail__review-item">
+              <span class="my-requirement-detail__review-label">需求描述</span>
+              <article
+                class="my-requirement-detail__review-value my-requirement-detail__review-value--multiline my-requirement-detail__rich"
+                v-html="detailRequirementDescriptionHtml"></article>
+            </div>
+
+            <div class="my-requirement-detail__review-grid">
+              <div class="my-requirement-detail__review-item">
+                <span class="my-requirement-detail__review-label">预算</span>
+                <div class="my-requirement-detail__review-value">
+                  {{ formatBudget(detailRequirement.budget) }}
+                </div>
+              </div>
+
+              <div class="my-requirement-detail__review-item">
+                <span class="my-requirement-detail__review-label">验收标准</span>
+                <article
+                  class="my-requirement-detail__review-value my-requirement-detail__review-value--multiline my-requirement-detail__rich"
+                  v-html="detailRequirementAcceptanceHtml"></article>
+              </div>
+            </div>
+          </section>
+
+          <div class="my-requirement-detail__actions">
+            <button class="my-requirement-detail__secondary" type="button" @click="closeRequirementDetail">
+              关闭
+            </button>
+          </div>
+        </section>
+      </div>
+    </Teleport>
 
     <div v-if="payVisible && payRequirement" class="modal-wrap" @click.self="closePayModal">
       <section class="pay-modal" aria-label="需求支付弹窗">
@@ -1550,6 +1672,21 @@ onMounted(async () => {
   font-weight: 700;
 }
 
+.my-requirements-header__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.my-requirements-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
 .requirement-list {
   display: grid;
   gap: 10px;
@@ -1574,6 +1711,230 @@ onMounted(async () => {
   color: #7b8798;
 }
 
+.my-requirement-detail-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(5px);
+}
+
+.my-requirement-detail {
+  width: min(860px, 100%);
+  max-height: min(760px, calc(100dvh - 32px));
+  overflow-y: auto;
+  border: 1px solid rgba(203, 213, 225, 0.82);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 28px 72px rgba(15, 23, 42, 0.22);
+}
+
+.my-requirement-detail__head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.84);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.my-requirement-detail__head h3 {
+  margin: 10px 0 6px;
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.my-requirement-detail__head p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.my-requirement-detail__chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgba(191, 219, 254, 0.94);
+  border-radius: 999px;
+  background: rgba(239, 246, 255, 0.92);
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.my-requirement-detail__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(203, 213, 225, 0.86);
+  border-radius: 10px;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+}
+
+.my-requirement-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 14px 22px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.76);
+  color: #475569;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.my-requirement-detail__review-panel {
+  display: grid;
+  gap: 12px;
+  margin: 16px 22px;
+  padding: 16px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.92));
+}
+
+.my-requirement-detail__review-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 160px) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.my-requirement-detail__review-item {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.my-requirement-detail__review-label {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+}
+
+.my-requirement-detail__review-value {
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+  font-weight: 700;
+  line-height: 1.7;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+}
+
+.my-requirement-detail__review-value--multiline {
+  white-space: pre-wrap;
+}
+
+.my-requirement-detail__rich {
+  color: #334155;
+  font-weight: 500;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.my-requirement-detail__rich :deep(*:not(a)) {
+  color: inherit;
+}
+
+.my-requirement-detail__rich :deep(strong),
+.my-requirement-detail__rich :deep(b) {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.my-requirement-detail__rich :deep(p),
+.my-requirement-detail__rich :deep(ul),
+.my-requirement-detail__rich :deep(ol),
+.my-requirement-detail__rich :deep(blockquote) {
+  margin: 0 0 12px;
+}
+
+.my-requirement-detail__rich :deep(ul),
+.my-requirement-detail__rich :deep(ol) {
+  padding-left: 22px;
+}
+
+.my-requirement-detail__rich :deep(a) {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.my-requirement-detail__rich :deep(pre) {
+  overflow-x: auto;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.my-requirement-detail__rich :deep(.rich-editor-media) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 12px 0;
+  border-radius: 14px;
+}
+
+.my-requirement-detail__rich :deep(.rich-editor-attachment) {
+  display: inline-flex;
+  max-width: 100%;
+  margin: 8px 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(191, 219, 254, 0.96);
+  border-radius: 10px;
+  background: rgba(239, 246, 255, 0.9);
+  color: #1d4ed8;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.my-requirement-detail__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 22px 22px;
+  background: rgba(248, 250, 252, 0.62);
+}
+
+.my-requirement-detail__secondary {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid rgba(191, 219, 254, 0.96);
+  border-radius: 8px;
+  background: rgba(239, 246, 255, 0.82);
+  color: #2563eb;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.my-requirement-detail__secondary:hover {
+  border-color: rgba(37, 99, 235, 0.34);
+  background: rgba(219, 234, 254, 0.92);
+}
+
 @media (max-width: 980px) {
   .my-requirements-summary__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1595,7 +1956,33 @@ onMounted(async () => {
     align-items: stretch;
   }
 
+  .my-requirements-header__actions {
+    justify-content: stretch;
+  }
+
+  .my-requirements-header__actions .ghost.small {
+    flex: 1 1 0;
+  }
+
   .my-requirements-summary__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .my-requirement-detail__actions {
+    padding: 0 16px 18px;
+  }
+
+  .my-requirement-detail__secondary {
+    width: 100%;
+  }
+
+  .my-requirement-detail__review-panel {
+    margin: 14px 16px;
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .my-requirement-detail__review-grid {
     grid-template-columns: 1fr;
   }
 }

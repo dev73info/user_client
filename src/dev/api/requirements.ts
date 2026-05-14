@@ -84,6 +84,29 @@ export async function listRequirementHall(
   )
 }
 
+export async function getRequirementHallItem(
+  token: string,
+  requirementId: string,
+): Promise<RequirementItem> {
+  const normalizedRequirementId = requirementId.trim()
+  const payload = await listRequirementHall(token, {
+    page: 1,
+    pageSize: 20,
+    keyword: normalizedRequirementId,
+    sortBy: 'updated_at',
+    sortOrder: 'desc',
+  })
+  const item = payload.items.find(
+    (requirement) => requirement.requirement_id === normalizedRequirementId,
+  )
+
+  if (!item) {
+    throw new Error('需求不存在或已不可接取')
+  }
+
+  return item
+}
+
 export async function bindRequirementProject(
   token: string,
   requirementId: string,

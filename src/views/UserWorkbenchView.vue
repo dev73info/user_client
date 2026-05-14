@@ -119,24 +119,7 @@ const currentTitle = computed(() => {
   return active?.label ?? routeTitle.value ?? overviewItem.label
 })
 
-const currentDescription = computed(() => {
-  if (route.name === 'workbench-messages') {
-    return activeConversation.value
-      ? `${partnerLabel(activeConversation.value)} · ${conversationMeta(activeConversation.value)}`
-      : '选择左侧会话，继续用户与开发者沟通。'
-  }
-
-  const active = findActiveItem()
-  if (isActiveChildPage(active)) {
-    return routeDescription.value || active?.description || overviewItem.description
-  }
-
-  return active?.description ?? routeDescription.value ?? overviewItem.description
-})
-
-const currentEyebrow = computed(() => (isDeveloperArea() ? '开发者功能' : '统一工作台'))
 const routeTitle = computed(() => (typeof route.meta.title === 'string' ? route.meta.title : ''))
-const routeDescription = computed(() => (typeof route.meta.description === 'string' ? route.meta.description : ''))
 const compactRouteTitle = computed(() => routeTitle.value.split('/').at(-1)?.trim() || routeTitle.value)
 const isWorkbenchOverview = computed(() =>
   route.name === overviewItem.name || route.matched.some((record) => record.name === overviewItem.name),
@@ -145,7 +128,9 @@ const isMessageDetailPage = computed(() => {
   const requirementId = route.query.requirement_id
   return route.name === 'workbench-messages' && typeof requirementId === 'string' && requirementId.trim().length > 0
 })
-const isMergedHeaderPage = computed(() => route.name === 'dev-resource-homepage-edit')
+const isMergedHeaderPage = computed(() =>
+  route.name === 'dev-resource-homepage-edit' || route.name === 'dev-requirement-detail',
+)
 const showWorkbenchHeader = computed(
   () => !isWorkbenchOverview.value && !isMessageDetailPage.value && !isMergedHeaderPage.value,
 )
@@ -519,15 +504,13 @@ async function scrollToHash() {
         </button>
         <div>
           <strong>个人工作台</strong>
-          <span>{{ currentEyebrow }}</span>
+          <span>{{ currentTitle }}</span>
         </div>
       </div>
 
       <header v-if="showWorkbenchHeader" class="user-workbench__head">
-        <div>
-          <p>{{ currentEyebrow }}</p>
+        <div class="user-workbench__head-copy">
           <h1>{{ currentTitle }}</h1>
-          <span>{{ currentDescription }}</span>
         </div>
         <RouterLink class="user-workbench__dev-link" :to="{ name: 'home' }">返回首页</RouterLink>
       </header>
@@ -541,12 +524,12 @@ async function scrollToHash() {
 
 <style scoped>
 .user-workbench {
-  width: min(1280px, calc(100% - 24px));
+  width: min(1560px, calc(100% - 20px));
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(232px, 272px) minmax(0, 1fr);
-  gap: 18px;
-  margin: 16px auto 0;
+  grid-template-columns: minmax(220px, 252px) minmax(0, 1fr);
+  gap: 14px;
+  margin: 12px auto 0;
 }
 
 .user-workbench__aside,
@@ -935,53 +918,49 @@ async function scrollToHash() {
   min-width: 0;
   display: grid;
   align-content: start;
-  gap: 16px;
+  gap: 12px;
 }
 
 .user-workbench__head {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 22px 24px;
-  border-radius: 22px;
+  gap: 14px;
+  min-height: 72px;
+  padding: 12px 16px;
+  border-radius: 16px;
 }
 
-.user-workbench__head p,
-.user-workbench__head h1,
-.user-workbench__head span {
-  margin: 0;
-}
-
-.user-workbench__head p {
-  color: #4f8cff;
-  font-size: 13px;
-  font-weight: 800;
+.user-workbench__head-copy {
+  min-width: 0;
+  display: grid;
+  align-items: baseline;
 }
 
 .user-workbench__head h1 {
-  margin-top: 7px;
-  color: #0f172a;
-  font-size: clamp(24px, 3vw, 34px);
-  line-height: 1.12;
+  margin: 0;
 }
 
-.user-workbench__head span {
-  display: block;
-  margin-top: 8px;
-  color: #64748b;
-  line-height: 1.6;
+.user-workbench__head h1 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1.2;
 }
 
 .user-workbench__dev-link {
   flex: 0 0 auto;
-  align-self: flex-start;
-  padding: 9px 14px;
+  align-self: center;
+  padding: 8px 12px;
   border: 1px solid rgba(209, 220, 243, 0.95);
-  border-radius: 10px;
+  border-radius: 9px;
   background: #fff;
   color: #0f172a;
   text-decoration: none;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -1060,11 +1039,24 @@ async function scrollToHash() {
 }
 
 .user-workbench__content :deep(.dev-surface-card .el-card__body) {
-  padding: 18px;
+  padding: 14px;
 }
 
 .user-workbench__content :deep(.dev-stat--compact) {
-  min-height: 96px;
+  min-height: 74px;
+}
+
+.user-workbench__content :deep(.dev-stat) {
+  gap: 5px;
+}
+
+.user-workbench__content :deep(.dev-stat__value) {
+  font-size: 28px;
+}
+
+.user-workbench__content :deep(.dev-stat__hint) {
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 @media (max-width: 960px) {
@@ -1216,8 +1208,12 @@ async function scrollToHash() {
   }
 
   .user-workbench__head {
-    flex-direction: column;
-    padding: 18px;
+    min-height: 64px;
+    padding: 10px 12px;
+  }
+
+  .user-workbench__head h1 {
+    font-size: 19px;
   }
 
   .user-workbench__brand {
@@ -1239,7 +1235,7 @@ async function scrollToHash() {
   }
 
   .user-workbench__dev-link {
-    align-self: stretch;
+    align-self: center;
     text-align: center;
   }
 }

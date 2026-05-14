@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Plus, Refresh } from '@element-plus/icons-vue'
+import { Close, Connection, Plus, Refresh } from '@element-plus/icons-vue'
 
 import PublishModal from '@/components/PublishModal.vue'
 import { HttpError } from '@/api/http'
@@ -9,6 +9,7 @@ import { getMyRealnameVerification } from '@/api/realname'
 import {
   createRequirement,
   getPublicRequirementOverview,
+  getWorkbenchRequirementHallItem,
   listPublicRequirementSpotlights,
   type PublicRequirementSpotlightItem,
   type RequirementOverviewResp,
@@ -18,6 +19,11 @@ import {
 
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import {
+  requirementRichTextPreview,
+  sanitizeRequirementRichText,
+  validateRequirementRichText,
+} from '@/utils/requirementRichText'
 
 const router = useRouter()
 const route = useRoute()
@@ -36,6 +42,19 @@ const publishBudget = ref<string | number>('')
 const publishAcceptance = ref('')
 const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
 const publishLoading = ref(false)
+const selectedRequirement = ref<PublicRequirementSpotlightItem | null>(null)
+const selectedRequirementDetailLoading = ref(false)
+
+const selectedRequirementDescriptionHtml = computed(
+  () =>
+    sanitizeRequirementRichText(selectedRequirement.value?.description ?? '') ||
+    '当前需求暂未补充详细描述。',
+)
+const selectedRequirementAcceptanceHtml = computed(
+  () =>
+    sanitizeRequirementRichText(selectedRequirement.value?.acceptance_criteria ?? '') ||
+    (selectedRequirementDetailLoading.value ? '验收标准加载中...' : '当前需求暂未补充验收标准。'),
+)
 
 const filteredRequirements = computed(() => {
   const normalized = keyword.value.trim().toLowerCase()
@@ -47,7 +66,7 @@ const filteredRequirements = computed(() => {
     const searchable = [
       item.requirement_id,
       item.title,
-      item.description ?? '',
+      requirementRichTextPreview(item.description, ''),
       item.payment_method ?? '',
       paymentModeLabel(item.payment_mode),
       statusToLabel(item.status),
@@ -224,6 +243,61 @@ function closePublishModal() {
   resetPublishForm()
 }
 
+function openRequirementDetail(item: PublicRequirementSpotlightItem) {
+  selectedRequirement.value = item
+  void loadRequirementDetailForModal(item)
+}
+
+function closeRequirementDetail() {
+  selectedRequirementDetailLoading.value = false
+  selectedRequirement.value = null
+}
+
+function openRequirementWorkbench(requirement: PublicRequirementSpotlightItem) {
+  void router.push({
+    name: 'dev-requirement-detail',
+    params: { requirementId: requirement.requirement_id },
+  })
+}
+
+async function loadRequirementDetailForModal(item: PublicRequirementSpotlightItem) {
+  if (item.acceptance_criteria?.trim()) {
+    return
+  }
+
+  auth.hydrate()
+  if (!auth.token) {
+    return
+  }
+
+  selectedRequirementDetailLoading.value = true
+  try {
+    const detail = await getWorkbenchRequirementHallItem(auth.token, item.requirement_id)
+    if (selectedRequirement.value?.requirement_id !== item.requirement_id) {
+      return
+    }
+
+    selectedRequirement.value = {
+      ...selectedRequirement.value,
+      title: detail.title,
+      description: detail.description ?? selectedRequirement.value.description,
+      acceptance_criteria:
+        detail.acceptance_criteria ?? selectedRequirement.value.acceptance_criteria,
+      budget: detail.budget ?? selectedRequirement.value.budget,
+      payment_method: detail.payment_method ?? selectedRequirement.value.payment_method,
+      payment_mode: detail.payment_mode,
+      status: detail.status,
+      updated_at: detail.updated_at,
+    }
+  } catch {
+    // 公共详情仍可展示精选列表已有信息；完整详情补齐失败时保持当前内容。
+  } finally {
+    if (selectedRequirement.value?.requirement_id === item.requirement_id) {
+      selectedRequirementDetailLoading.value = false
+    }
+  }
+}
+
 async function submitPublishRequirement() {
   const approved = await ensurePublishRealnameApproved()
   if (!approved) {
@@ -231,8 +305,12 @@ async function submitPublishRequirement() {
   }
 
   const normalizedTitle = publishTitle.value.trim()
-  const normalizedDescription = publishDescription.value.trim()
-  const normalizedAcceptance = publishAcceptance.value.trim()
+  const descriptionValidation = validateRequirementRichText(publishDescription.value, '需求描述', {
+    minTextLength: 10,
+  })
+  const acceptanceValidation = validateRequirementRichText(publishAcceptance.value, '验收标准', {
+    required: true,
+  })
   const budgetRaw = String(publishBudget.value ?? '').trim()
 
   if (normalizedTitle.length < 4) {
@@ -240,8 +318,8 @@ async function submitPublishRequirement() {
     return
   }
 
-  if (normalizedDescription.length < 10) {
-    showToast('需求描述至少 10 个字符', 'error')
+  if (descriptionValidation.error) {
+    showToast(descriptionValidation.error, 'error')
     return
   }
 
@@ -257,8 +335,8 @@ async function submitPublishRequirement() {
     return
   }
 
-  if (!normalizedAcceptance) {
-    showToast('验收标准不能为空', 'error')
+  if (acceptanceValidation.error) {
+    showToast(acceptanceValidation.error, 'error')
     return
   }
 
@@ -266,9 +344,9 @@ async function submitPublishRequirement() {
   try {
     await createRequirement(auth.token, {
       title: normalizedTitle,
-      description: normalizedDescription,
+      description: descriptionValidation.value,
       budget,
-      acceptance_criteria: normalizedAcceptance,
+      acceptance_criteria: acceptanceValidation.value,
       payment_mode: publishPaymentMode.value,
     })
 
@@ -356,19 +434,22 @@ async function loadHallData() {
 
         <div v-else-if="filteredRequirements.length" class="portal-page__card-grid requirement-hall__grid">
           <article v-for="card in filteredRequirements" :key="card.requirement_id"
-            class="portal-page__card requirement-hall__card">
+            class="portal-page__card requirement-hall__card" role="button" tabindex="0"
+            @click="openRequirementDetail(card)" @keydown.enter="openRequirementDetail(card)"
+            @keydown.space.prevent="openRequirementDetail(card)">
             <div class="portal-page__card-topline">
               <span class="portal-page__chip">{{ paymentTag(card) }}</span>
               <span class="portal-page__meta">{{ statusToLabel(card.status) }}</span>
             </div>
             <h2>{{ card.title }}</h2>
-            <p>{{ card.description || '当前需求暂未补充详细描述。' }}</p>
+            <p>{{ requirementRichTextPreview(card.description, '当前需求暂未补充详细描述。') }}</p>
             <div class="requirement-hall__meta-row">
               <span>{{ card.requirement_id }}</span>
               <span>更新于 {{ formatTimeLabel(card.updated_at) }}</span>
             </div>
             <div class="portal-page__card-footer">
               <strong>{{ formatMoney(card.budget) }}</strong>
+              <span>查看详情</span>
             </div>
           </article>
         </div>
@@ -421,8 +502,79 @@ async function loadHallData() {
   <PublishModal :visible="publishVisible" v-model:publishTitle="publishTitle"
     v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
     v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
-    :allowPlatformGuarantee="false" :publishLoading="publishLoading" @close="closePublishModal"
+    :allowPlatformGuarantee="false" :publishLoading="publishLoading" @close="closePublishModal" @notify="showToast"
     @submit="submitPublishRequirement" />
+
+  <Teleport to="body">
+    <div v-if="selectedRequirement" class="requirement-hall-detail-wrap" @click.self="closeRequirementDetail">
+      <section class="requirement-hall-detail" :aria-label="`${selectedRequirement.title}详情`">
+        <header class="requirement-hall-detail__head">
+          <div>
+            <span class="portal-page__chip">{{ paymentTag(selectedRequirement) }}</span>
+            <h3>{{ selectedRequirement.title }}</h3>
+            <p>
+              {{ selectedRequirement.requirement_id }} ·
+              {{ statusToLabel(selectedRequirement.status) }}
+            </p>
+          </div>
+          <button class="requirement-hall-detail__close" type="button" aria-label="关闭详情"
+            @click="closeRequirementDetail">
+            <el-icon>
+              <Close />
+            </el-icon>
+          </button>
+        </header>
+
+        <div class="requirement-hall-detail__meta">
+          <span>编号：{{ selectedRequirement.requirement_id }}</span>
+          <span>发布方式：{{ paymentTag(selectedRequirement) }}</span>
+          <span>状态：{{ statusToLabel(selectedRequirement.status) }}</span>
+          <span>更新：{{ formatTimeLabel(selectedRequirement.updated_at) }}</span>
+          <span>创建：{{ formatTimeLabel(selectedRequirement.created_at) }}</span>
+        </div>
+
+        <section class="requirement-hall-detail__review-panel">
+          <div class="requirement-hall-detail__review-item">
+            <span class="requirement-hall-detail__review-label">需求标题</span>
+            <div class="requirement-hall-detail__review-value">{{ selectedRequirement.title }}</div>
+          </div>
+
+          <div class="requirement-hall-detail__review-item">
+            <span class="requirement-hall-detail__review-label">需求描述</span>
+            <article
+              class="requirement-hall-detail__review-value requirement-hall-detail__review-value--multiline requirement-hall-detail__rich"
+              v-html="selectedRequirementDescriptionHtml"></article>
+          </div>
+
+          <div class="requirement-hall-detail__review-grid">
+            <div class="requirement-hall-detail__review-item">
+              <span class="requirement-hall-detail__review-label">预算</span>
+              <div class="requirement-hall-detail__review-value">
+                {{ formatMoney(selectedRequirement.budget) }}
+              </div>
+            </div>
+
+            <div class="requirement-hall-detail__review-item">
+              <span class="requirement-hall-detail__review-label">验收标准</span>
+              <article
+                class="requirement-hall-detail__review-value requirement-hall-detail__review-value--multiline requirement-hall-detail__rich"
+                v-html="selectedRequirementAcceptanceHtml"></article>
+            </div>
+          </div>
+        </section>
+
+        <div class="requirement-hall-detail__actions">
+          <button class="requirement-hall-detail__bind" type="button"
+            @click="openRequirementWorkbench(selectedRequirement)">
+            <el-icon>
+              <Connection />
+            </el-icon>
+            <span>前往工作台接取需求</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -517,6 +669,7 @@ async function loadHallData() {
 
 .requirement-hall__card {
   min-height: 188px;
+  cursor: pointer;
   transition:
     transform 180ms ease,
     border-color 180ms ease,
@@ -529,8 +682,24 @@ async function loadHallData() {
   box-shadow: 0 16px 30px rgba(76, 103, 172, 0.14);
 }
 
+.requirement-hall__card:focus-visible {
+  border-color: rgba(37, 99, 235, 0.52);
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
 .requirement-hall__card p {
   min-height: 48px;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.requirement-hall__card .portal-page__card-footer span {
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .requirement-hall__meta-row {
@@ -637,6 +806,247 @@ async function loadHallData() {
   opacity: 0.55;
 }
 
+.requirement-hall-detail-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(5px);
+}
+
+.requirement-hall-detail {
+  width: min(860px, 100%);
+  max-height: min(760px, calc(100dvh - 32px));
+  overflow-y: auto;
+  border: 1px solid rgba(203, 213, 225, 0.82);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 28px 72px rgba(15, 23, 42, 0.22);
+}
+
+.requirement-hall-detail__head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.84);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.requirement-hall-detail__head h3 {
+  margin: 10px 0 6px;
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.requirement-hall-detail__head p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.requirement-hall-detail__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(203, 213, 225, 0.86);
+  border-radius: 10px;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+}
+
+.requirement-hall-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 14px 22px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.76);
+  color: #475569;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.requirement-hall-detail__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 22px 22px;
+  background: rgba(248, 250, 252, 0.62);
+}
+
+.requirement-hall-detail__bind {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid rgba(37, 99, 235, 0.34);
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.16);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.requirement-hall-detail__bind:hover {
+  border-color: rgba(29, 78, 216, 0.42);
+  background: #1d4ed8;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
+  transform: translateY(-1px);
+}
+
+.requirement-hall-detail__bind:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16);
+}
+
+.requirement-hall-detail__review-panel {
+  display: grid;
+  gap: 12px;
+  margin: 16px 22px;
+  padding: 16px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.92));
+}
+
+.requirement-hall-detail__review-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 160px) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.requirement-hall-detail__review-item {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.requirement-hall-detail__review-label {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+}
+
+.requirement-hall-detail__review-value {
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+  font-weight: 700;
+  line-height: 1.7;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+}
+
+.requirement-hall-detail__review-value--multiline {
+  white-space: pre-wrap;
+}
+
+.requirement-hall-detail__section {
+  padding: 20px 22px 4px;
+}
+
+.requirement-hall-detail__section:last-child {
+  padding-bottom: 22px;
+}
+
+.requirement-hall-detail__section h4 {
+  margin: 0 0 12px;
+  color: #0f172a;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.requirement-hall-detail__rich {
+  color: #334155;
+  font-weight: 500;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.requirement-hall-detail__rich :deep(*:not(a)) {
+  color: inherit;
+}
+
+.requirement-hall-detail__rich :deep(strong),
+.requirement-hall-detail__rich :deep(b) {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.requirement-hall-detail__rich :deep(p),
+.requirement-hall-detail__rich :deep(ul),
+.requirement-hall-detail__rich :deep(ol),
+.requirement-hall-detail__rich :deep(blockquote) {
+  margin: 0 0 12px;
+}
+
+.requirement-hall-detail__rich :deep(ul),
+.requirement-hall-detail__rich :deep(ol) {
+  padding-left: 22px;
+}
+
+.requirement-hall-detail__rich :deep(a) {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.requirement-hall-detail__rich :deep(pre) {
+  overflow-x: auto;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.requirement-hall-detail__rich :deep(.rich-editor-media) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 12px 0;
+  border-radius: 14px;
+}
+
+.requirement-hall-detail__rich :deep(.rich-editor-attachment) {
+  display: inline-flex;
+  max-width: 100%;
+  margin: 8px 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(191, 219, 254, 0.96);
+  border-radius: 10px;
+  background: rgba(239, 246, 255, 0.9);
+  color: #1d4ed8;
+  font-weight: 800;
+  text-decoration: none;
+}
+
 @media (max-width: 640px) {
   .portal-page--nav .requirement-hall__header-actions {
     justify-content: flex-start;
@@ -648,6 +1058,24 @@ async function loadHallData() {
   }
 
   .requirement-hall__filters {
+    grid-template-columns: 1fr;
+  }
+
+  .requirement-hall-detail__actions {
+    padding: 0 16px 18px;
+  }
+
+  .requirement-hall-detail__bind {
+    width: 100%;
+  }
+
+  .requirement-hall-detail__review-panel {
+    margin: 14px 16px;
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .requirement-hall-detail__review-grid {
     grid-template-columns: 1fr;
   }
 

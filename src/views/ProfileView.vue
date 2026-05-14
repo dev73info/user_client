@@ -43,6 +43,7 @@ import {
   updateProfileSubscriptions,
   uploadProfileAvatar,
 } from '@/api/settings'
+import { validateRequirementRichText } from '@/utils/requirementRichText'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -1148,8 +1149,12 @@ async function submitRequirementResubmit() {
   }
 
   const normalizedTitle = editTitle.value.trim()
-  const normalizedDescription = editDescription.value.trim()
-  const normalizedAcceptance = editAcceptance.value.trim()
+  const descriptionValidation = validateRequirementRichText(editDescription.value, '需求描述', {
+    minTextLength: 10,
+  })
+  const acceptanceValidation = validateRequirementRichText(editAcceptance.value, '验收标准', {
+    required: true,
+  })
   const budgetRaw = String(editBudget.value ?? '').trim()
 
   if (normalizedTitle.length < 4) {
@@ -1157,8 +1162,8 @@ async function submitRequirementResubmit() {
     return
   }
 
-  if (normalizedDescription.length < 10) {
-    showToast('需求描述至少 10 个字符', 'error')
+  if (descriptionValidation.error) {
+    showToast(descriptionValidation.error, 'error')
     return
   }
 
@@ -1174,8 +1179,8 @@ async function submitRequirementResubmit() {
     return
   }
 
-  if (!normalizedAcceptance) {
-    showToast('验收标准不能为空', 'error')
+  if (acceptanceValidation.error) {
+    showToast(acceptanceValidation.error, 'error')
     return
   }
 
@@ -1183,9 +1188,9 @@ async function submitRequirementResubmit() {
   try {
     await resubmitRequirementApi(auth.token, editRequirement.value.requirement_id, {
       title: normalizedTitle,
-      description: normalizedDescription,
+      description: descriptionValidation.value,
       budget,
-      acceptance_criteria: normalizedAcceptance,
+      acceptance_criteria: acceptanceValidation.value,
       payment_mode: editPaymentMode.value,
     })
 
@@ -1206,8 +1211,12 @@ async function submitRequirementPublish() {
   }
 
   const normalizedTitle = publishTitle.value.trim()
-  const normalizedDescription = publishDescription.value.trim()
-  const normalizedAcceptance = publishAcceptance.value.trim()
+  const descriptionValidation = validateRequirementRichText(publishDescription.value, '需求描述', {
+    minTextLength: 10,
+  })
+  const acceptanceValidation = validateRequirementRichText(publishAcceptance.value, '验收标准', {
+    required: true,
+  })
   const budgetRaw = String(publishBudget.value ?? '').trim()
 
   if (normalizedTitle.length < 4) {
@@ -1215,8 +1224,8 @@ async function submitRequirementPublish() {
     return
   }
 
-  if (normalizedDescription.length < 10) {
-    showToast('需求描述至少 10 个字符', 'error')
+  if (descriptionValidation.error) {
+    showToast(descriptionValidation.error, 'error')
     return
   }
 
@@ -1232,8 +1241,8 @@ async function submitRequirementPublish() {
     return
   }
 
-  if (!normalizedAcceptance) {
-    showToast('验收标准不能为空', 'error')
+  if (acceptanceValidation.error) {
+    showToast(acceptanceValidation.error, 'error')
     return
   }
 
@@ -1241,9 +1250,9 @@ async function submitRequirementPublish() {
   try {
     await createRequirementApi(auth.token, {
       title: normalizedTitle,
-      description: normalizedDescription,
+      description: descriptionValidation.value,
       budget,
-      acceptance_criteria: normalizedAcceptance,
+      acceptance_criteria: acceptanceValidation.value,
       payment_mode: publishPaymentMode.value,
     })
 
@@ -1647,13 +1656,14 @@ onBeforeUnmount(() => {
     <PublishModal :visible="publishVisible" v-model:publishTitle="publishTitle"
       v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
       v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
-      :allowPlatformGuarantee="false" :publishLoading="publishLoading" @close="closePublishModal"
+      :allowPlatformGuarantee="false" :publishLoading="publishLoading" @close="closePublishModal" @notify="showToast"
       @submit="submitRequirementPublish" />
 
     <PublishModal :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核" loadingText="提交中..."
       v-model:publishTitle="editTitle" v-model:publishDescription="editDescription" v-model:publishBudget="editBudget"
       v-model:publishAcceptance="editAcceptance" v-model:publishPaymentMode="editPaymentMode"
-      :publishLoading="editLoading" @close="closeEditModal" @submit="submitRequirementResubmit" />
+      :allowPlatformGuarantee="false" :publishLoading="editLoading" @close="closeEditModal" @notify="showToast"
+      @submit="submitRequirementResubmit" />
 
     <RequirementConversationModal :visible="conversationVisible" :token="auth.token" :current-username="auth.username"
       :requirement-id="conversationRequirement?.requirement_id ?? ''" :title="conversationRequirement?.title"

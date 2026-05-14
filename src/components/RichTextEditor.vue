@@ -39,6 +39,7 @@ type NotifyType = 'success' | 'warning' | 'error'
 
 const props = defineProps<{
     modelValue: string
+    floatingToolbar?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -109,6 +110,9 @@ const toolbarFloatingStyle = ref<Record<string, string>>({})
 const openDropdown = ref<ToolbarDropdown | null>(null)
 let pushingEditorUpdate = false
 let toolbarResizeObserver: ResizeObserver | null = null
+let toolbarScrollContainer: HTMLElement | null = null
+
+const floatingToolbarEnabled = computed(() => props.floatingToolbar !== false)
 
 const editorStyle: Record<string, string> = {
     '--rich-text-editor-min-height': 'clamp(280px, 38vh, 420px)',
@@ -129,8 +133,33 @@ useCodeBlockCopy({
     notify: (message, type) => emit('notify', message, type),
 })
 
-function getFloatingToolbarTop(): number {
+function isScrollableContainer(element: HTMLElement): boolean {
+    const style = getComputedStyle(element)
+    return /(auto|scroll|overlay)/.test(style.overflowY)
+}
+
+function findFloatingScrollContainer(root: HTMLElement): HTMLElement | null {
+    let current = root.parentElement
+    while (current && current !== document.body) {
+        if (isScrollableContainer(current)) {
+            return current
+        }
+        current = current.parentElement
+    }
+
+    return null
+}
+
+function getFloatingToolbarTop(root: HTMLElement): number {
     const defaultGap = 12
+    const scrollContainer = findFloatingScrollContainer(root)
+    if (scrollContainer) {
+        const containerRect = scrollContainer.getBoundingClientRect()
+        if (containerRect.height > 0 && containerRect.bottom > defaultGap) {
+            return Math.max(defaultGap, Math.round(containerRect.top + 10))
+        }
+    }
+
     const header = document.querySelector<HTMLElement>('.portal-header')
     const headerRect = header?.getBoundingClientRect()
     if (!headerRect || headerRect.height <= 0 || headerRect.bottom <= 0) {
@@ -140,17 +169,49 @@ function getFloatingToolbarTop(): number {
     return Math.max(defaultGap, Math.round(headerRect.bottom + 10))
 }
 
+function getFloatingToolbarHorizontalStyle(root: HTMLElement): Pick<CSSStyleDeclaration, 'left' | 'width'> {
+    const rootRect = root.getBoundingClientRect()
+    const viewportGap = 12
+    const scrollContainer = findFloatingScrollContainer(root)
+    const containerRect = scrollContainer?.getBoundingClientRect()
+    const leftLimit = Math.max(viewportGap, Math.round(containerRect?.left ?? viewportGap))
+    const rightLimit = Math.min(
+        window.innerWidth - viewportGap,
+        Math.round(containerRect?.right ?? window.innerWidth - viewportGap),
+    )
+    const left = Math.max(leftLimit, Math.round(rootRect.left))
+    const availableWidth = Math.max(0, rightLimit - left)
+    const width = Math.min(Math.round(rootRect.width), availableWidth)
+
+    return {
+        left: `${left}px`,
+        width: `${width}px`,
+    }
+}
+
+function resetFloatingToolbar() {
+    toolbarPlaceholderHeight.value = 0
+    toolbarFloating.value = false
+    toolbarFloatingStyle.value = {}
+}
+
 function updateFloatingToolbar() {
     const root = editorRootRef.value
     const toolbar = toolbarRef.value
-    if (!root || !toolbar) {
+    if (!root || !toolbar || !floatingToolbarEnabled.value) {
+        resetFloatingToolbar()
         return
     }
 
     const rootRect = root.getBoundingClientRect()
     const toolbarHeight = toolbar.offsetHeight
-    const top = getFloatingToolbarTop()
-    const canFloat = rootRect.top < top && rootRect.bottom - toolbarHeight - 16 > top
+    const top = getFloatingToolbarTop(root)
+    const scrollContainer = findFloatingScrollContainer(root)
+    const containerBottom = scrollContainer?.getBoundingClientRect().bottom ?? window.innerHeight
+    const canFloat =
+        rootRect.top < top &&
+        rootRect.bottom - toolbarHeight - 16 > top &&
+        top + toolbarHeight + 8 < containerBottom
 
     toolbarPlaceholderHeight.value = toolbarHeight
     toolbarFloating.value = canFloat
@@ -160,17 +221,16 @@ function updateFloatingToolbar() {
         return
     }
 
-    const viewportGap = 12
-    const left = Math.max(viewportGap, Math.round(rootRect.left))
-    const width = Math.max(
-        240,
-        Math.min(Math.round(rootRect.width), window.innerWidth - left - viewportGap),
-    )
     toolbarFloatingStyle.value = {
-        left: `${left}px`,
+        ...getFloatingToolbarHorizontalStyle(root),
         top: `${top}px`,
-        width: `${width}px`,
     }
+}
+
+function bindFloatingScrollContainer() {
+    toolbarScrollContainer?.removeEventListener('scroll', updateFloatingToolbar)
+    toolbarScrollContainer = editorRootRef.value ? findFloatingScrollContainer(editorRootRef.value) : null
+    toolbarScrollContainer?.addEventListener('scroll', updateFloatingToolbar, { passive: true })
 }
 
 function closeToolbarDropdown() {
@@ -391,8 +451,11 @@ watch(
     },
 )
 
+watch(floatingToolbarEnabled, updateFloatingToolbar)
+
 onMounted(() => {
     void nextTick(() => {
+        bindFloatingScrollContainer()
         updateFloatingToolbar()
         if (typeof ResizeObserver !== 'undefined') {
             toolbarResizeObserver = new ResizeObserver(updateFloatingToolbar)
@@ -413,6 +476,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     toolbarResizeObserver?.disconnect()
+    toolbarScrollContainer?.removeEventListener('scroll', updateFloatingToolbar)
     window.removeEventListener('scroll', updateFloatingToolbar, true)
     window.removeEventListener('resize', updateFloatingToolbar)
     document.removeEventListener('pointerdown', handleDocumentPointerDown)

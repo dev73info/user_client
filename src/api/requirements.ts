@@ -27,6 +27,7 @@ export type PublicRequirementSpotlightItem = {
   requirement_id: string
   title: string
   description?: string | null
+  acceptance_criteria?: string | null
   budget?: number | null
   payment_method?: string | null
   payment_mode: RequirementPaymentMode
@@ -158,6 +159,38 @@ export async function listPublicRequirementSpotlights(): Promise<PublicRequireme
     {},
     '加载精选需求失败',
   )
+}
+
+export async function getWorkbenchRequirementHallItem(
+  token: string,
+  requirementId: string,
+): Promise<RequirementItem> {
+  const normalizedRequirementId = requirementId.trim()
+  const params = new URLSearchParams({
+    page: '1',
+    page_size: '20',
+    keyword: normalizedRequirementId,
+    sort_by: 'updated_at',
+    sort_order: 'desc',
+  })
+  const payload = await requestJson<{ items: RequirementItem[] }>(
+    `/dev/requirements/hall/query?${params.toString()}`,
+    {
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '加载需求详情失败',
+  )
+  const item = payload.items.find(
+    (requirement) => requirement.requirement_id === normalizedRequirementId,
+  )
+
+  if (!item) {
+    throw new Error('需求不存在或已不可接取')
+  }
+
+  return item
 }
 
 export async function createRequirement(
