@@ -82,15 +82,6 @@ const statusType = computed<'info' | 'warning' | 'success' | 'danger'>(() => {
   return 'danger'
 })
 
-const authTypeText = computed(() => {
-  const map: Record<RealnameAuthType, string> = {
-    IDENTITY_CARD: '大陆身份证',
-    RESIDENCE_HK_MC: '港澳居民居住证',
-    RESIDENCE_TAIWAN: '台湾居民居住证',
-  }
-  return map[form.authType]
-})
-
 const realnameSubmitted = computed(() => Boolean(current.value))
 const identityCardSelected = computed(() => form.authType === 'IDENTITY_CARD')
 const realnameApproved = computed(() => current.value?.status === 'approved')
@@ -436,12 +427,6 @@ onBeforeUnmount(() => {
   <main class="portal-page realname-page-shell">
     <section class="realname-layout">
       <el-card shadow="never" class="realname-card realname-card--status">
-        <div class="realname-card__head">
-          <div class="realname-card__actions">
-            <el-tag :type="statusType">{{ statusText }}</el-tag>
-          </div>
-        </div>
-
         <div v-if="current" class="realname-metrics">
           <div class="realname-metrics__item">
             <span>证件类型</span>
@@ -468,17 +453,13 @@ onBeforeUnmount(() => {
             <span>审核时间</span>
             <strong>{{ formatTime(current.reviewed_at) }}</strong>
           </div>
-          <div class="realname-metrics__item">
-            <span>审核备注</span>
-            <strong>{{ current.review_note || '—' }}</strong>
-          </div>
         </div>
       </el-card>
 
       <el-card shadow="never" class="realname-card">
         <div class="realname-form__head">
           <h3>提交认证信息</h3>
-          <el-tag type="info">当前类型：{{ authTypeText }}</el-tag>
+          <el-tag :type="statusType" class="realname-form-status-tag" round>实名认证：{{ statusText }}</el-tag>
         </div>
 
         <div class="realname-form-layout" :class="{ 'realname-form-layout--with-faceid': faceidAuthUrl }">
@@ -563,35 +544,7 @@ onBeforeUnmount(() => {
   padding: 20px;
 }
 
-.realname-card__head {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-  flex-wrap: wrap;
-}
-
-.realname-card__head h2 {
-  margin: 0;
-  font-size: 22px;
-  color: #0f172a;
-}
-
-.realname-card__head p {
-  margin: 8px 0 0;
-  color: #64748b;
-  line-height: 1.75;
-}
-
-.realname-card__actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
 .realname-metrics {
-  margin-top: 16px;
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
