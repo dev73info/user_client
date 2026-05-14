@@ -16,6 +16,7 @@ import { HttpError, apiUrl } from '@/api/http'
 import {
   createCommunityComment,
   createCommunityPost,
+  getCommunityPost,
   likeCommunityPost,
   listCommunityComments,
   listCommunityPosts,
@@ -51,6 +52,7 @@ const searchKeyword = ref(initialSearchKeyword)
 const currentPage = ref(1)
 const hasNextPage = ref(false)
 const loading = ref(false)
+const selectedPostLoading = ref(false)
 const commentsLoading = ref(false)
 const savingPost = ref(false)
 const sendingComment = ref(false)
@@ -65,6 +67,7 @@ const composerActionsFloating = ref(false)
 const composerActionsPlaceholderHeight = ref(0)
 const composerActionsFloatingStyle = ref<Record<string, string>>({})
 let composerActionsResizeObserver: ResizeObserver | null = null
+let selectedPostRequestId = 0
 
 const postForm = reactive({
   title: '',
@@ -247,6 +250,13 @@ async function fetchPostPage(pageNumber: number) {
   }
 }
 
+function pickRandomPost(nextPosts: CommunityPost[]): CommunityPost | null {
+  if (nextPosts.length === 0) {
+    return null
+  }
+  return nextPosts[Math.floor(Math.random() * nextPosts.length)] ?? null
+}
+
 function applyPostPage(
   page: number,
   nextPosts: CommunityPost[],
@@ -259,8 +269,7 @@ function applyPostPage(
 
   const nextSelectedPost =
     (preferredPostId ? nextPosts.find((post) => post.id === preferredPostId) : null) ??
-    nextPosts[0] ??
-    null
+    pickRandomPost(nextPosts)
   selectPost(nextSelectedPost)
 }
 
@@ -330,23 +339,59 @@ function goToNextPage() {
 }
 
 function selectPost(post: CommunityPost | null) {
+  const requestId = ++selectedPostRequestId
   selectedPost.value = post
   commentDraft.value = ''
   if (post) {
-    void loadComments(post.id)
+    comments.value = []
+    if (post.content_html) {
+      selectedPostLoading.value = false
+    } else {
+      void loadSelectedPostDetail(post.id, requestId)
+    }
+    void loadComments(post.id, requestId)
   } else {
+    selectedPostLoading.value = false
+    commentsLoading.value = false
     comments.value = []
   }
 }
 
-async function loadComments(postId: number) {
+async function loadSelectedPostDetail(postId: number, requestId: number) {
+  selectedPostLoading.value = true
+  try {
+    const detail = await getCommunityPost(postId, auth.token)
+    if (requestId !== selectedPostRequestId) {
+      return
+    }
+    posts.value = posts.value.map((post) => (post.id === postId ? { ...post, ...detail } : post))
+    selectedPost.value = detail
+  } catch (error) {
+    if (requestId === selectedPostRequestId) {
+      showToast(error instanceof Error ? error.message : '加载帖子详情失败', 'error')
+    }
+  } finally {
+    if (requestId === selectedPostRequestId) {
+      selectedPostLoading.value = false
+    }
+  }
+}
+
+async function loadComments(postId: number, requestId = selectedPostRequestId) {
   commentsLoading.value = true
   try {
-    comments.value = await listCommunityComments(postId, auth.token)
+    const nextComments = await listCommunityComments(postId, auth.token)
+    if (requestId === selectedPostRequestId) {
+      comments.value = nextComments
+    }
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载评论失败', 'error')
+    if (requestId === selectedPostRequestId) {
+      showToast(error instanceof Error ? error.message : '加载评论失败', 'error')
+    }
   } finally {
-    commentsLoading.value = false
+    if (requestId === selectedPostRequestId) {
+      commentsLoading.value = false
+    }
   }
 }
 
@@ -413,15 +458,20 @@ async function openCreateComposer() {
   composerVisible.value = true
 }
 
-function openEditComposer(post: CommunityPost) {
+async function openEditComposer(post: CommunityPost) {
   if (!ensureAuthed()) {
     return
   }
-  editingPost.value = post
-  postForm.title = post.title
-  postForm.tag_names = post.tags.map((tag) => tag.name)
-  postForm.content_html = sanitizeRichHtml(post.content_html)
-  composerVisible.value = true
+  try {
+    const detail = post.content_html ? post : await getCommunityPost(post.id, auth.token)
+    editingPost.value = detail
+    postForm.title = detail.title
+    postForm.tag_names = detail.tags.map((tag) => tag.name)
+    postForm.content_html = sanitizeRichHtml(detail.content_html)
+    composerVisible.value = true
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '加载帖子详情失败', 'error')
+  }
 }
 
 function closeComposer() {
@@ -702,7 +752,10 @@ async function submitComment() {
             </el-button>
           </div>
 
-          <article ref="selectedPostContentRef" class="community-rich-text" v-html="currentPostContent"></article>
+          <div v-if="selectedPostLoading" class="community-detail-loading" role="status">
+            正文加载中...
+          </div>
+          <article v-else ref="selectedPostContentRef" class="community-rich-text" v-html="currentPostContent"></article>
 
           <div class="community-actions">
             <el-button class="community-like-button" :class="{ 'is-liked': selectedPost.liked_by_me }"
@@ -1326,6 +1379,12 @@ async function submitComment() {
   padding: 6px 0 18px;
   color: #1e293b;
   line-height: 1.75;
+}
+
+.community-detail-loading {
+  padding: 18px 0 28px;
+  color: #64748b;
+  font-weight: 700;
 }
 
 .community-rich-text :deep(h1),

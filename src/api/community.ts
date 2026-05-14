@@ -84,6 +84,21 @@ export async function listCommunityPosts(
   )
 }
 
+export async function getCommunityPost(
+  postId: number,
+  token?: string | null,
+): Promise<CommunityPost> {
+  const normalizedToken = token?.trim()
+  return requestJson<CommunityPost>(
+    `${COMMUNITY_API_PREFIX}/posts/${postId}`,
+    {
+      method: 'GET',
+      headers: normalizedToken ? authHeader(normalizedToken) : undefined,
+    },
+    '加载帖子详情失败',
+  )
+}
+
 export async function createCommunityPost(
   token: string,
   payload: CommunityPostPayload,
