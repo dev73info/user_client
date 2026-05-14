@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { EditorContent, useEditor } from '@tiptap/vue-3'
-import Link from '@tiptap/extension-link'
-import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline'
 import {
   ChatDotRound,
   Close,
@@ -29,20 +25,10 @@ import {
   type CommunityPost,
   type CommunityTag,
 } from '@/api/community'
+import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
-
-type ToolbarAction =
-  | 'bold'
-  | 'italic'
-  | 'underline'
-  | 'h2'
-  | 'h3'
-  | 'bullet'
-  | 'ordered'
-  | 'blockquote'
-  | 'code'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -60,51 +46,18 @@ const sendingComment = ref(false)
 const composerVisible = ref(false)
 const editingPost = ref<CommunityPost | null>(null)
 const commentDraft = ref('')
+const composerPanelRef = ref<HTMLElement | null>(null)
+const composerActionsShellRef = ref<HTMLElement | null>(null)
+const composerActionsRef = ref<HTMLElement | null>(null)
+const composerActionsFloating = ref(false)
+const composerActionsPlaceholderHeight = ref(0)
+const composerActionsFloatingStyle = ref<Record<string, string>>({})
+let composerActionsResizeObserver: ResizeObserver | null = null
 
 const postForm = reactive({
   title: '',
   tag_names: [] as string[],
   content_html: '',
-})
-
-const toolbarActions: Array<{ label: string; action: ToolbarAction; title: string }> = [
-  { label: 'B', action: 'bold', title: '加粗' },
-  { label: 'I', action: 'italic', title: '斜体' },
-  { label: 'U', action: 'underline', title: '下划线' },
-  { label: 'H2', action: 'h2', title: '二级标题' },
-  { label: 'H3', action: 'h3', title: '三级标题' },
-  { label: '列表', action: 'bullet', title: '无序列表' },
-  { label: '编号', action: 'ordered', title: '有序列表' },
-  { label: '引用', action: 'blockquote', title: '引用' },
-  { label: '</>', action: 'code', title: '代码块' },
-]
-
-const editor = useEditor({
-  content: '<p></p>',
-  extensions: [
-    StarterKit.configure({
-      heading: {
-        levels: [2, 3],
-      },
-    }),
-    Underline,
-    Link.configure({
-      openOnClick: false,
-      autolink: true,
-      defaultProtocol: 'https',
-    }),
-  ],
-  editorProps: {
-    attributes: {
-      class: 'community-editor__surface',
-    },
-  },
-  onUpdate: (payload: any) => {
-    const currentEditor = payload.editor as { getText: () => string; getHTML: () => string }
-    postForm.content_html = currentEditor.getText().trim()
-      ? sanitizeRichHtml(currentEditor.getHTML())
-      : ''
-  },
 })
 
 const currentPostContent = computed(() =>
@@ -115,6 +68,80 @@ const tagOptions = computed(() => tags.value.map((tag) => tag.name))
 const canEditSelectedPost = computed(() =>
   Boolean(auth.isAuthed && selectedPost.value && selectedPost.value.author === auth.username),
 )
+const composerActionsShellStyle = computed<Record<string, string> | undefined>(() => {
+  if (!composerActionsFloating.value || composerActionsPlaceholderHeight.value <= 0) {
+    return undefined
+  }
+
+  return {
+    height: `${composerActionsPlaceholderHeight.value}px`,
+  }
+})
+
+function resetFloatingComposerActions() {
+  composerActionsFloating.value = false
+  composerActionsPlaceholderHeight.value = 0
+  composerActionsFloatingStyle.value = {}
+}
+
+function updateFloatingComposerActions() {
+  const panel = composerPanelRef.value
+  const shell = composerActionsShellRef.value
+  const actions = composerActionsRef.value
+  if (!composerVisible.value || !panel || !shell || !actions) {
+    resetFloatingComposerActions()
+    return
+  }
+
+  const panelRect = panel.getBoundingClientRect()
+  const shellRect = shell.getBoundingClientRect()
+  const actionsHeight = actions.offsetHeight
+  const viewportGap = 12
+  const bottom = 16
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight
+  const floatingTop = viewportHeight - bottom - actionsHeight
+  const canFloat =
+    panelRect.top < floatingTop && panelRect.bottom > viewportHeight - bottom + actionsHeight + viewportGap
+
+  composerActionsPlaceholderHeight.value = actionsHeight
+  composerActionsFloating.value = canFloat
+
+  if (!canFloat) {
+    composerActionsFloatingStyle.value = {}
+    return
+  }
+
+  const left = Math.max(viewportGap, Math.round(shellRect.left))
+  const width = Math.max(
+    180,
+    Math.min(Math.round(shellRect.width), window.innerWidth - left - viewportGap),
+  )
+  composerActionsFloatingStyle.value = {
+    bottom: `${bottom}px`,
+    left: `${left}px`,
+    width: `${width}px`,
+  }
+}
+
+function observeComposerActions() {
+  composerActionsResizeObserver?.disconnect()
+  composerActionsResizeObserver = null
+
+  if (typeof ResizeObserver !== 'undefined' && composerVisible.value) {
+    composerActionsResizeObserver = new ResizeObserver(updateFloatingComposerActions)
+    if (composerPanelRef.value) {
+      composerActionsResizeObserver.observe(composerPanelRef.value)
+    }
+    if (composerActionsShellRef.value) {
+      composerActionsResizeObserver.observe(composerActionsShellRef.value)
+    }
+    if (composerActionsRef.value) {
+      composerActionsResizeObserver.observe(composerActionsRef.value)
+    }
+  }
+
+  updateFloatingComposerActions()
+}
 
 function avatarInitial(name?: string | null): string {
   return Array.from(name?.trim() || '用')[0] ?? '用'
@@ -132,10 +159,18 @@ function handleCommentAvatarError(comment: CommunityComment) {
 onMounted(() => {
   auth.hydrate()
   void loadCommunityData()
+  window.addEventListener('scroll', updateFloatingComposerActions, true)
+  window.addEventListener('resize', updateFloatingComposerActions)
 })
 
 onBeforeUnmount(() => {
-  editor.value?.destroy()
+  composerActionsResizeObserver?.disconnect()
+  window.removeEventListener('scroll', updateFloatingComposerActions, true)
+  window.removeEventListener('resize', updateFloatingComposerActions)
+})
+
+watch(composerVisible, () => {
+  void nextTick(observeComposerActions)
 })
 
 async function loadCommunityData() {
@@ -209,7 +244,6 @@ function resetComposer() {
   postForm.title = ''
   postForm.tag_names = selectedTag.value ? [selectedTag.value] : []
   postForm.content_html = ''
-  editor.value?.commands.setContent('<p></p>', { emitUpdate: false })
 }
 
 function openCreateComposer() {
@@ -228,100 +262,12 @@ function openEditComposer(post: CommunityPost) {
   postForm.title = post.title
   postForm.tag_names = post.tags.map((tag) => tag.name)
   postForm.content_html = sanitizeRichHtml(post.content_html)
-  editor.value?.commands.setContent(postForm.content_html || '<p></p>', { emitUpdate: false })
   composerVisible.value = true
 }
 
 function closeComposer() {
   composerVisible.value = false
   resetComposer()
-}
-
-function runToolbarAction(action: ToolbarAction) {
-  if (!editor.value) {
-    return
-  }
-
-  const chain = editor.value.chain().focus()
-  switch (action) {
-    case 'bold':
-      chain.toggleBold().run()
-      return
-    case 'italic':
-      chain.toggleItalic().run()
-      return
-    case 'underline':
-      chain.toggleUnderline().run()
-      return
-    case 'h2':
-      chain.toggleHeading({ level: 2 }).run()
-      return
-    case 'h3':
-      chain.toggleHeading({ level: 3 }).run()
-      return
-    case 'bullet':
-      chain.toggleBulletList().run()
-      return
-    case 'ordered':
-      chain.toggleOrderedList().run()
-      return
-    case 'blockquote':
-      chain.toggleBlockquote().run()
-      return
-    case 'code':
-      chain.toggleCodeBlock().run()
-      return
-  }
-}
-
-function isToolbarActive(action: ToolbarAction): boolean {
-  if (!editor.value) {
-    return false
-  }
-
-  switch (action) {
-    case 'bold':
-      return editor.value.isActive('bold')
-    case 'italic':
-      return editor.value.isActive('italic')
-    case 'underline':
-      return editor.value.isActive('underline')
-    case 'h2':
-      return editor.value.isActive('heading', { level: 2 })
-    case 'h3':
-      return editor.value.isActive('heading', { level: 3 })
-    case 'bullet':
-      return editor.value.isActive('bulletList')
-    case 'ordered':
-      return editor.value.isActive('orderedList')
-    case 'blockquote':
-      return editor.value.isActive('blockquote')
-    case 'code':
-      return editor.value.isActive('codeBlock')
-  }
-}
-
-function toggleLink() {
-  if (!editor.value) {
-    return
-  }
-
-  const currentHref = editor.value.getAttributes('link').href ?? ''
-  const value = window.prompt('输入跳转链接，留空将移除链接', currentHref)?.trim()
-  if (value === undefined) {
-    return
-  }
-
-  if (!value) {
-    editor.value.chain().focus().extendMarkRange('link').unsetLink().run()
-    return
-  }
-
-  editor.value.chain().focus().extendMarkRange('link').setLink({ href: value }).run()
-}
-
-function clearFormatting() {
-  editor.value?.chain().focus().unsetAllMarks().clearNodes().run()
 }
 
 async function submitPost() {
@@ -474,7 +420,7 @@ async function submitComment() {
       </section>
 
       <aside class="community-detail">
-        <section v-if="composerVisible" class="community-panel community-composer">
+        <section v-if="composerVisible" ref="composerPanelRef" class="community-panel community-composer">
           <div class="community-panel__head">
             <div>
               <p class="portal-page__eyebrow">{{ editingPost ? '编辑帖子' : '发布帖子' }}</p>
@@ -500,27 +446,17 @@ async function submitComment() {
             </el-form-item>
           </el-form>
 
-          <div class="community-editor">
-            <div class="community-editor__toolbar">
-              <button v-for="item in toolbarActions" :key="item.action" class="community-editor__tool"
-                :class="{ 'is-active': isToolbarActive(item.action) }" type="button" :title="item.title"
-                @click="runToolbarAction(item.action)">
-                {{ item.label }}
-              </button>
-              <button class="community-editor__tool" type="button" title="插入链接" @click="toggleLink">
-                链接
-              </button>
-              <button class="community-editor__tool" type="button" title="清除格式" @click="clearFormatting">
-                清除
-              </button>
-            </div>
-            <EditorContent v-if="editor" :editor="editor" />
-          </div>
+          <RichTextEditor v-model="postForm.content_html" @notify="showToast" />
 
-          <div class="community-composer__actions">
-            <el-button class="community-submit-button" type="primary" :loading="savingPost" @click="submitPost">
-              {{ editingPost ? '保存修改' : '发布帖子' }}
-            </el-button>
+          <div ref="composerActionsShellRef" class="community-composer__actions-shell"
+            :style="composerActionsShellStyle">
+            <div ref="composerActionsRef" class="community-composer__actions"
+              :class="{ 'is-floating': composerActionsFloating }" :style="composerActionsFloatingStyle">
+              <el-button class="community-submit-button community-composer__actions" type="primary"
+                :loading="savingPost" @click="submitPost">
+                {{ editingPost ? '保存修改' : '发布帖子' }}
+              </el-button>
+            </div>
           </div>
         </section>
 
@@ -955,69 +891,26 @@ async function submitComment() {
   width: 100%;
 }
 
-.community-editor {
-  overflow: hidden;
-  border: 1px solid rgba(203, 213, 225, 0.86);
-  border-radius: 12px;
-  background: #fff;
-}
-
-.community-editor__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 9px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.86);
-  background: rgba(248, 250, 252, 0.92);
-}
-
-.community-editor__tool {
-  min-height: 28px;
-  padding: 4px 9px;
-  border: 1px solid rgba(203, 213, 225, 0.86);
-  border-radius: 8px;
-  background: #fff;
-  color: #334155;
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.community-editor__tool.is-active {
-  border-color: #2563eb;
-  background: rgba(219, 234, 254, 0.92);
-  color: #1d4ed8;
-}
-
-.community-editor :deep(.community-editor__surface) {
-  min-height: clamp(240px, 36vh, 420px);
-  padding: 14px;
-  color: #1e293b;
-  line-height: 1.75;
-  outline: none;
-}
-
-.community-editor :deep(.community-editor__surface p),
-.community-editor :deep(.community-editor__surface ul),
-.community-editor :deep(.community-editor__surface ol) {
-  margin: 0 0 12px;
-  color: #334155;
-}
-
-.community-editor :deep(.community-editor__surface p:last-child),
-.community-editor :deep(.community-editor__surface ul:last-child),
-.community-editor :deep(.community-editor__surface ol:last-child) {
-  margin-bottom: 0;
-}
-
-.community-editor :deep(.community-editor__surface a) {
-  color: #2563eb;
+.community-composer__actions-shell {
+  position: relative;
+  z-index: 7;
+  margin-top: 14px;
 }
 
 .community-composer__actions {
   justify-content: flex-end;
-  margin-top: 14px;
+}
+
+.community-composer__actions.is-floating {
+  position: fixed;
+  z-index: 46;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(191, 219, 254, 0.92);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.94);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.14);
+  backdrop-filter: blur(14px);
 }
 
 .community-rich-text {
@@ -1026,10 +919,34 @@ async function submitComment() {
   line-height: 1.75;
 }
 
+.community-rich-text :deep(h1),
 .community-rich-text :deep(h2),
-.community-rich-text :deep(h3) {
+.community-rich-text :deep(h3),
+.community-rich-text :deep(h4),
+.community-rich-text :deep(h5) {
   margin: 18px 0 10px;
   color: #0f172a;
+  line-height: 1.28;
+}
+
+.community-rich-text :deep(h1) {
+  font-size: 28px;
+}
+
+.community-rich-text :deep(h2) {
+  font-size: 24px;
+}
+
+.community-rich-text :deep(h3) {
+  font-size: 21px;
+}
+
+.community-rich-text :deep(h4) {
+  font-size: 18px;
+}
+
+.community-rich-text :deep(h5) {
+  font-size: 16px;
 }
 
 .community-rich-text :deep(p),

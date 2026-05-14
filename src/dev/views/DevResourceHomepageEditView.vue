@@ -1,28 +1,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { EditorContent, useEditor } from '@tiptap/vue-3'
-import Link from '@tiptap/extension-link'
-import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline'
 import MarkdownIt from 'markdown-it'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  ArrowDown,
   Back,
-  Brush,
-  ChatRound,
   Check,
   Document,
   Folder,
-  Link as LinkIcon,
-  List,
-  Paperclip,
   Picture,
   Reading,
-  RefreshLeft,
-  RefreshRight,
   Upload,
-  VideoCamera,
   View,
 } from '@element-plus/icons-vue'
 
@@ -35,41 +22,12 @@ import {
 } from '@dev/api/mcResources'
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
+import RichTextEditor from '@/components/RichTextEditor.vue'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
-import {
-  hasMeaningfulRichEditorContent,
-  insertRichEditorAttachment,
-  insertRichEditorEmoji,
-  insertRichEditorImage,
-  insertRichEditorVideo,
-  isRichEditorLinkUrl,
-  isRichEditorMediaUrl,
-  normalizeRichEditorUrl,
-  RichEditorAttachment,
-  richEditorDefaultLabel,
-  RichEditorImage,
-  RichEditorVideo,
-} from '@/utils/richEditorMedia'
 
-type ToolbarAction =
-  | 'bold'
-  | 'italic'
-  | 'underline'
-  | 'h2'
-  | 'h3'
-  | 'bullet'
-  | 'ordered'
-  | 'blockquote'
-  | 'code'
-type EditorMode = 'rich' | 'markdown'
-type HomepageEditorUpdatePayload = {
-  editor: {
-    getText: () => string
-    getHTML: () => string
-  }
-}
+type RichTextEditorInstance = InstanceType<typeof RichTextEditor>
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -83,8 +41,8 @@ const coverFileInput = ref<HTMLInputElement | null>(null)
 const selectedCoverFile = ref<File | null>(null)
 const selectedCoverFileName = ref('')
 const localCoverPreviewUrl = ref('')
-const editorMode = ref<EditorMode>('rich')
-const markdownDraft = ref('')
+const richEditorContent = ref('')
+const richTextEditorRef = ref<RichTextEditorInstance | null>(null)
 
 const form = reactive({
   title: '',
@@ -113,39 +71,6 @@ function formatHomepageContent(value: string): string {
 
   return sanitizeRichHtml(markdownRenderer.render(trimmed))
 }
-
-const editor = useEditor({
-  content: '<p></p>',
-  extensions: [
-    StarterKit.configure({
-      heading: {
-        levels: [2, 3],
-      },
-      link: false,
-      underline: false,
-    }),
-    Underline,
-    Link.configure({
-      openOnClick: false,
-      autolink: true,
-      defaultProtocol: 'https',
-    }),
-    RichEditorImage,
-    RichEditorVideo,
-    RichEditorAttachment,
-  ],
-  editorProps: {
-    attributes: {
-      class: 'dev-resource-homepage-editor__editor-surface',
-    },
-  },
-  onUpdate: (payload: HomepageEditorUpdatePayload) => {
-    const currentEditor = payload.editor
-    form.release_note = hasMeaningfulRichEditorContent(currentEditor)
-      ? sanitizeRichHtml(currentEditor.getHTML())
-      : ''
-  },
-})
 
 const coverPreviewUrl = computed(() => {
   if (localCoverPreviewUrl.value) {
@@ -177,241 +102,21 @@ const resourceVisibilityLabel = computed(() => {
 const resourcePlatformLabel = computed(() => resource.value?.platform || '未知平台')
 const heroTitle = computed(() => form.title.trim() || resource.value?.title || '资源主页')
 const resourceAuthorLabel = computed(() => form.author.trim() || resource.value?.author || '开发者')
-const previewContentHtml = computed(() => formatHomepageContent(currentEditorContent()))
+const previewContentHtml = computed(() => formatHomepageContent(form.release_note || richEditorContent.value))
 const userClientPreviewUrl = computed(() =>
   resource.value ? userClientResourceUrl(resource.value) : '',
 )
 
-function looksLikeHtml(value: string): boolean {
-  return /<\/?[a-z][\s\S]*>/i.test(value)
-}
-
-function currentEditorContent(): string {
-  return editorMode.value === 'markdown' ? markdownDraft.value : form.release_note
-}
-
 function syncEditorContent(value: string) {
-  const normalized = formatHomepageContent(value) || '<p></p>'
-  editor.value?.commands.setContent(normalized, { emitUpdate: false })
+  const normalized = formatHomepageContent(value)
+  richEditorContent.value = normalized
+  form.release_note = normalized
+  richTextEditorRef.value?.setContent(normalized || '<p></p>', false)
 }
 
-function syncMarkdownDraft(value: string) {
-  markdownDraft.value = value
-  if (editorMode.value === 'markdown') {
-    form.release_note = value
-  }
-}
-
-function switchEditorMode(mode: EditorMode) {
-  if (mode === editorMode.value) {
-    return
-  }
-
-  if (mode === 'markdown') {
-    const nextMarkdown = looksLikeHtml(form.release_note)
-      ? editor.value?.getText({ blockSeparator: '\n\n' }) || ''
-      : form.release_note
-    syncMarkdownDraft(nextMarkdown)
-    editorMode.value = 'markdown'
-    return
-  }
-
-  editorMode.value = 'rich'
-  form.release_note = sanitizeRichHtml(
-    formatHomepageContent(markdownDraft.value || form.release_note),
-  )
-  syncEditorContent(markdownDraft.value || form.release_note)
-}
-
-function runToolbarAction(action: ToolbarAction) {
-  if (!editor.value) {
-    return
-  }
-
-  const chain = editor.value.chain().focus()
-  switch (action) {
-    case 'bold':
-      chain.toggleBold().run()
-      return
-    case 'italic':
-      chain.toggleItalic().run()
-      return
-    case 'underline':
-      chain.toggleUnderline().run()
-      return
-    case 'h2':
-      chain.toggleHeading({ level: 2 }).run()
-      return
-    case 'h3':
-      chain.toggleHeading({ level: 3 }).run()
-      return
-    case 'bullet':
-      chain.toggleBulletList().run()
-      return
-    case 'ordered':
-      chain.toggleOrderedList().run()
-      return
-    case 'blockquote':
-      chain.toggleBlockquote().run()
-      return
-    case 'code':
-      chain.toggleCodeBlock().run()
-      return
-  }
-}
-
-function isToolbarActive(action: ToolbarAction): boolean {
-  if (!editor.value) {
-    return false
-  }
-
-  switch (action) {
-    case 'bold':
-      return editor.value.isActive('bold')
-    case 'italic':
-      return editor.value.isActive('italic')
-    case 'underline':
-      return editor.value.isActive('underline')
-    case 'h2':
-      return editor.value.isActive('heading', { level: 2 })
-    case 'h3':
-      return editor.value.isActive('heading', { level: 3 })
-    case 'bullet':
-      return editor.value.isActive('bulletList')
-    case 'ordered':
-      return editor.value.isActive('orderedList')
-    case 'blockquote':
-      return editor.value.isActive('blockquote')
-    case 'code':
-      return editor.value.isActive('codeBlock')
-  }
-}
-
-function toggleLink() {
-  if (!editor.value) {
-    return
-  }
-
-  const currentHref = editor.value.getAttributes('link').href ?? ''
-  const value = window.prompt('输入跳转链接，留空将移除链接', currentHref)?.trim()
-  if (value === undefined) {
-    return
-  }
-
-  if (!value) {
-    editor.value.chain().focus().extendMarkRange('link').unsetLink().run()
-    return
-  }
-
-  editor.value.chain().focus().extendMarkRange('link').setLink({ href: value }).run()
-}
-
-function runHistoryAction(action: 'undo' | 'redo') {
-  if (!editor.value) {
-    return
-  }
-
-  if (action === 'undo') {
-    editor.value.chain().focus().undo().run()
-    return
-  }
-
-  editor.value.chain().focus().redo().run()
-}
-
-function canRunHistoryAction(action: 'undo' | 'redo'): boolean {
-  if (!editor.value) {
-    return false
-  }
-
-  if (action === 'undo') {
-    return editor.value.can().chain().focus().undo().run()
-  }
-
-  return editor.value.can().chain().focus().redo().run()
-}
-
-function promptInsertImage() {
-  if (!editor.value) {
-    return
-  }
-
-  const raw = window.prompt('输入图片地址，支持 https:// 或 /uploads/...')
-  if (raw === null) {
-    return
-  }
-
-  const src = normalizeRichEditorUrl(raw)
-  if (!isRichEditorMediaUrl(src)) {
-    showToast('请输入有效的图片地址', 'warning')
-    return
-  }
-
-  const alt = window.prompt('图片说明（可选）', richEditorDefaultLabel(src, '图片')) ?? ''
-  insertRichEditorImage(editor.value, src, alt.trim())
-}
-
-function promptInsertVideo() {
-  if (!editor.value) {
-    return
-  }
-
-  const raw = window.prompt('输入视频地址，支持 https:// 或 /uploads/...')
-  if (raw === null) {
-    return
-  }
-
-  const src = normalizeRichEditorUrl(raw)
-  if (!isRichEditorMediaUrl(src)) {
-    showToast('请输入有效的视频地址', 'warning')
-    return
-  }
-
-  const title = window.prompt('视频标题（可选）', richEditorDefaultLabel(src, '视频')) ?? ''
-  insertRichEditorVideo(editor.value, src, title.trim())
-}
-
-function promptInsertEmoji() {
-  if (!editor.value) {
-    return
-  }
-
-  const value = window.prompt('输入要插入的表情', '🙂')
-  if (value === null) {
-    return
-  }
-
-  const emoji = value.trim()
-  if (!emoji) {
-    showToast('请输入要插入的表情', 'warning')
-    return
-  }
-
-  insertRichEditorEmoji(editor.value, emoji)
-}
-
-function promptInsertAttachment() {
-  if (!editor.value) {
-    return
-  }
-
-  const raw = window.prompt('输入附件地址，支持 https://、mailto:、tel: 或 /uploads/...')
-  if (raw === null) {
-    return
-  }
-
-  const href = normalizeRichEditorUrl(raw)
-  if (!isRichEditorLinkUrl(href)) {
-    showToast('请输入有效的附件地址', 'warning')
-    return
-  }
-
-  const label = window.prompt('附件名称', richEditorDefaultLabel(href, '附件')) ?? ''
-  insertRichEditorAttachment(editor.value, href, label.trim() || richEditorDefaultLabel(href, '附件'))
-}
-
-function clearFormatting() {
-  editor.value?.chain().focus().unsetAllMarks().clearNodes().run()
+function handleRichEditorUpdate(value: string) {
+  richEditorContent.value = value
+  form.release_note = value
 }
 
 function triggerCoverPicker() {
@@ -461,9 +166,6 @@ async function loadResource() {
     form.cover_url = payload.cover_url || ''
     form.docs_url = payload.docs_url || ''
     form.release_note = payload.release_note || ''
-    markdownDraft.value = looksLikeHtml(payload.release_note || '')
-      ? ''
-      : payload.release_note || ''
     syncEditorContent(payload.release_note || '')
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载资源详情失败'
@@ -513,9 +215,6 @@ async function saveHomepage() {
     form.cover_url = updated.cover_url || ''
     form.docs_url = updated.docs_url || ''
     form.release_note = updated.release_note || ''
-    markdownDraft.value = looksLikeHtml(updated.release_note || '')
-      ? markdownDraft.value
-      : updated.release_note || ''
     selectedCoverFile.value = null
     selectedCoverFileName.value = ''
     if (coverFileInput.value) {
@@ -566,7 +265,6 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  editor.value?.destroy()
   resetLocalCoverPreview()
 })
 </script>
@@ -648,137 +346,8 @@ onBeforeUnmount(() => {
             </el-icon>
           </div>
 
-          <div class="dev-resource-homepage-editor__mode-switch" role="tablist" aria-label="编辑模式切换">
-            <button class="dev-resource-homepage-editor__mode-button" :class="{ 'is-active': editorMode === 'rich' }"
-              type="button" @click="switchEditorMode('rich')">
-              富文本
-            </button>
-            <button class="dev-resource-homepage-editor__mode-button"
-              :class="{ 'is-active': editorMode === 'markdown' }" type="button" @click="switchEditorMode('markdown')">
-              Markdown
-            </button>
-          </div>
-
-          <div v-if="editorMode === 'rich'" class="dev-resource-homepage-editor__toolbar" aria-label="编辑器工具栏">
-            <div class="dev-resource-homepage-editor__tool-group">
-              <button class="dev-resource-homepage-editor__tool dev-resource-homepage-editor__tool--bold"
-                :class="{ 'is-active': isToolbarActive('bold') }" type="button" title="加粗" aria-label="加粗"
-                @click="runToolbarAction('bold')">B</button>
-              <button class="dev-resource-homepage-editor__tool dev-resource-homepage-editor__tool--italic"
-                :class="{ 'is-active': isToolbarActive('italic') }" type="button" title="斜体" aria-label="斜体"
-                @click="runToolbarAction('italic')">I</button>
-              <button class="dev-resource-homepage-editor__tool dev-resource-homepage-editor__tool--underline"
-                :class="{ 'is-active': isToolbarActive('underline') }" type="button" title="下划线" aria-label="下划线"
-                @click="runToolbarAction('underline')">U</button>
-            </div>
-
-            <span class="dev-resource-homepage-editor__divider" aria-hidden="true"></span>
-
-            <div class="dev-resource-homepage-editor__tool-group">
-              <button class="dev-resource-homepage-editor__tool" :class="{ 'is-active': editor?.isActive('link') }"
-                type="button" title="插入链接" aria-label="插入链接" @click="toggleLink">
-                <el-icon aria-hidden="true">
-                  <LinkIcon />
-                </el-icon>
-              </button>
-              <button class="dev-resource-homepage-editor__tool" type="button" title="插入图片" aria-label="插入图片"
-                @click="promptInsertImage">
-                <el-icon aria-hidden="true">
-                  <Picture />
-                </el-icon>
-              </button>
-              <button class="dev-resource-homepage-editor__tool" type="button" title="插入视频" aria-label="插入视频"
-                @click="promptInsertVideo">
-                <el-icon aria-hidden="true">
-                  <VideoCamera />
-                </el-icon>
-              </button>
-            </div>
-
-            <span class="dev-resource-homepage-editor__divider" aria-hidden="true"></span>
-
-            <div class="dev-resource-homepage-editor__tool-group">
-              <button class="dev-resource-homepage-editor__tool" :class="{ 'is-active': isToolbarActive('bullet') }"
-                type="button" title="无序列表" aria-label="无序列表" @click="runToolbarAction('bullet')">
-                <el-icon aria-hidden="true">
-                  <List />
-                </el-icon>
-              </button>
-              <button class="dev-resource-homepage-editor__tool" :class="{ 'is-active': isToolbarActive('ordered') }"
-                type="button" title="有序列表" aria-label="有序列表" @click="runToolbarAction('ordered')">
-                <span class="dev-resource-homepage-editor__ordered-icon" aria-hidden="true">1.</span>
-              </button>
-              <button class="dev-resource-homepage-editor__tool"
-                :class="{ 'is-active': isToolbarActive('blockquote') }" type="button" title="引用" aria-label="引用"
-                @click="runToolbarAction('blockquote')">
-                <span class="dev-resource-homepage-editor__quote-icon" aria-hidden="true">“</span>
-              </button>
-              <button class="dev-resource-homepage-editor__tool dev-resource-homepage-editor__tool--code"
-                :class="{ 'is-active': isToolbarActive('code') }" type="button" title="代码块" aria-label="代码块"
-                @click="runToolbarAction('code')">&lt;/&gt;</button>
-              <button class="dev-resource-homepage-editor__tool" type="button" title="插入表情" aria-label="插入表情"
-                @click="promptInsertEmoji">
-                <el-icon aria-hidden="true">
-                  <ChatRound />
-                </el-icon>
-              </button>
-              <button class="dev-resource-homepage-editor__tool" type="button" title="添加附件" aria-label="添加附件"
-                @click="promptInsertAttachment">
-                <el-icon aria-hidden="true">
-                  <Paperclip />
-                </el-icon>
-              </button>
-            </div>
-
-            <span class="dev-resource-homepage-editor__divider" aria-hidden="true"></span>
-
-            <div class="dev-resource-homepage-editor__tool-group">
-              <button class="dev-resource-homepage-editor__tool" type="button" title="撤销" aria-label="撤销"
-                :disabled="!canRunHistoryAction('undo')" @click="runHistoryAction('undo')">
-                <el-icon aria-hidden="true">
-                  <RefreshLeft />
-                </el-icon>
-              </button>
-              <button class="dev-resource-homepage-editor__tool" type="button" title="重做" aria-label="重做"
-                :disabled="!canRunHistoryAction('redo')" @click="runHistoryAction('redo')">
-                <el-icon aria-hidden="true">
-                  <RefreshRight />
-                </el-icon>
-              </button>
-            </div>
-
-            <span class="dev-resource-homepage-editor__divider" aria-hidden="true"></span>
-
-            <button class="dev-resource-homepage-editor__tool dev-resource-homepage-editor__tool--clear" type="button"
-              title="清除格式" aria-label="清除格式" @click="clearFormatting">
-              <el-icon aria-hidden="true">
-                <Brush />
-              </el-icon>
-              <span>清除格式</span>
-              <el-icon class="dev-resource-homepage-editor__clear-caret" aria-hidden="true">
-                <ArrowDown />
-              </el-icon>
-            </button>
-          </div>
-
-          <div v-if="editorMode === 'rich'" class="dev-resource-homepage-editor__editor">
-            <EditorContent v-if="editor" :editor="editor" />
-          </div>
-
-          <div v-else class="dev-resource-homepage-editor__markdown-panel">
-            <textarea v-model="markdownDraft" class="dev-resource-homepage-editor__markdown-input" spellcheck="false"
-              placeholder="# dsa
-
-## 小标题
-
-- 列表项
-- 列表项
-
-```ts
-console.log('hello')
-```
-" @input="form.release_note = markdownDraft" />
-          </div>
+          <RichTextEditor ref="richTextEditorRef" :model-value="richEditorContent"
+            @update:model-value="handleRichEditorUpdate" @notify="showToast" />
         </el-card>
       </div>
 
@@ -976,225 +545,33 @@ console.log('hello')
   font-size: 13px;
 }
 
-.dev-resource-homepage-editor__toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow-x: auto;
-  margin-top: 18px;
-  padding: 10px 12px;
-  border: 1px solid rgba(226, 232, 240, 0.86);
-  border-radius: 12px;
-  background: linear-gradient(180deg, #f8fbff 0%, #f4f7fb 100%);
-  scrollbar-width: thin;
-}
-
-.dev-resource-homepage-editor__tool-group {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 6px;
-}
-
-.dev-resource-homepage-editor__divider {
-  flex: 0 0 auto;
-  width: 1px;
-  height: 26px;
-  background: rgba(203, 213, 225, 0.78);
-}
-
-.dev-resource-homepage-editor__mode-switch {
-  display: inline-flex;
-  gap: 8px;
-  margin-top: 18px;
-  padding: 6px;
-  border-radius: 16px;
-  background: rgba(17, 24, 39, 0.05);
-}
-
-.dev-resource-homepage-editor__mode-button {
-  border: 0;
-  min-height: 38px;
-  padding: 0 16px;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--dev-muted);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.dev-resource-homepage-editor__mode-button.is-active {
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--dev-ink);
-  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.08);
-}
-
-.dev-resource-homepage-editor__tool {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  min-height: 36px;
-  padding: 0;
-  border: 1px solid rgba(213, 222, 237, 0.95);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  color: #334155;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
-  transition:
-    border-color 160ms ease,
-    background-color 160ms ease,
-    color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease,
-    opacity 160ms ease;
-}
-
-.dev-resource-homepage-editor__tool:hover:not(:disabled) {
-  border-color: rgba(37, 99, 235, 0.52);
-  background: #ffffff;
-  color: #1d4ed8;
-  box-shadow: 0 7px 16px rgba(37, 99, 235, 0.1);
-  transform: translateY(-1px);
-}
-
-.dev-resource-homepage-editor__tool:disabled {
-  cursor: not-allowed;
-  opacity: 0.38;
-  box-shadow: none;
-}
-
-.dev-resource-homepage-editor__tool :deep(.el-icon) {
-  font-size: 16px;
-}
-
-.dev-resource-homepage-editor__tool.is-active {
-  border-color: #2563eb;
-  background: rgba(219, 234, 254, 0.92);
-  color: #1d4ed8;
-}
-
-.dev-resource-homepage-editor__tool--italic {
-  font-style: italic;
-}
-
-.dev-resource-homepage-editor__tool--underline {
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.dev-resource-homepage-editor__tool--code {
-  font-size: 12px;
-}
-
-.dev-resource-homepage-editor__ordered-icon {
-  font-size: 13px;
-}
-
-.dev-resource-homepage-editor__quote-icon {
-  font-size: 24px;
-  line-height: 0.7;
-}
-
-.dev-resource-homepage-editor__tool--clear {
-  width: auto;
-  min-width: 126px;
-  gap: 6px;
-  padding: 0 11px;
-}
-
-.dev-resource-homepage-editor__tool--clear span {
-  white-space: nowrap;
-}
-
-.dev-resource-homepage-editor__clear-caret.el-icon {
-  font-size: 13px;
-  color: #64748b;
-}
-
-.dev-resource-homepage-editor__editor {
-  margin-top: 16px;
-  border-radius: 18px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  background: rgba(255, 255, 255, 0.7);
-  overflow: hidden;
-}
-
-.dev-resource-homepage-editor__markdown-panel {
-  margin-top: 16px;
-}
-
-.dev-resource-homepage-editor__markdown-input {
-  width: 100%;
-  min-height: 320px;
-  padding: 18px;
-  border-radius: 18px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  background: rgba(255, 255, 255, 0.78);
-  color: var(--dev-ink);
-  font: inherit;
-  line-height: 1.8;
-  resize: vertical;
-  outline: none;
-}
-
-.dev-resource-homepage-editor__editor :deep(.dev-resource-homepage-editor__editor-surface) {
-  min-height: 320px;
-  padding: 18px;
-  color: var(--dev-ink);
-  line-height: 1.8;
-  outline: none;
-}
-
-.dev-resource-homepage-editor__editor :deep(.dev-resource-homepage-editor__editor-surface p.is-editor-empty:first-child::before) {
-  content: '在这里输入主页补充说明，可插入标题、列表、引用、代码块与链接';
-  color: #94a3b8;
-  float: left;
-  height: 0;
-  pointer-events: none;
-}
-
-.dev-resource-homepage-editor__editor :deep(h2),
 .dev-resource-homepage-editor__preview-rich-text :deep(h2) {
   margin: 0 0 12px;
   font-size: 22px;
   line-height: 1.3;
 }
 
-.dev-resource-homepage-editor__editor :deep(h1),
 .dev-resource-homepage-editor__preview-rich-text :deep(h1) {
   margin: 0 0 14px;
   font-size: 28px;
   line-height: 1.2;
 }
 
-.dev-resource-homepage-editor__editor :deep(h3),
 .dev-resource-homepage-editor__preview-rich-text :deep(h3) {
   margin: 0 0 12px;
   font-size: 18px;
   line-height: 1.4;
 }
 
-.dev-resource-homepage-editor__editor :deep(p),
 .dev-resource-homepage-editor__preview-rich-text :deep(p) {
   margin: 0 0 12px;
   color: #334155;
 }
 
-.dev-resource-homepage-editor__editor :deep(li),
 .dev-resource-homepage-editor__preview-rich-text :deep(li) {
   color: #334155;
 }
 
-.dev-resource-homepage-editor__editor :deep(blockquote),
 .dev-resource-homepage-editor__preview-rich-text :deep(blockquote) {
   margin: 0 0 12px;
   padding-left: 16px;
@@ -1202,15 +579,12 @@ console.log('hello')
   color: #475569;
 }
 
-.dev-resource-homepage-editor__editor :deep(ul),
-.dev-resource-homepage-editor__editor :deep(ol),
 .dev-resource-homepage-editor__preview-rich-text :deep(ul),
 .dev-resource-homepage-editor__preview-rich-text :deep(ol) {
   margin: 0 0 12px;
   padding-left: 20px;
 }
 
-.dev-resource-homepage-editor__editor :deep(pre),
 .dev-resource-homepage-editor__preview-rich-text :deep(pre) {
   margin: 0 0 12px;
   padding: 14px 16px;
@@ -1220,17 +594,14 @@ console.log('hello')
   overflow-x: auto;
 }
 
-.dev-resource-homepage-editor__editor :deep(code),
 .dev-resource-homepage-editor__preview-rich-text :deep(code) {
   font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
 }
 
-.dev-resource-homepage-editor__editor :deep(a),
 .dev-resource-homepage-editor__preview-rich-text :deep(a) {
   color: var(--dev-blue);
 }
 
-.dev-resource-homepage-editor__editor :deep(.rich-editor-media),
 .dev-resource-homepage-editor__preview-rich-text :deep(.rich-editor-media) {
   display: block;
   max-width: 100%;
@@ -1240,18 +611,15 @@ console.log('hello')
   background: #f8fafc;
 }
 
-.dev-resource-homepage-editor__editor :deep(.rich-editor-image),
 .dev-resource-homepage-editor__preview-rich-text :deep(.rich-editor-image) {
   height: auto;
 }
 
-.dev-resource-homepage-editor__editor :deep(.rich-editor-video),
 .dev-resource-homepage-editor__preview-rich-text :deep(.rich-editor-video) {
   width: 100%;
   min-height: 220px;
 }
 
-.dev-resource-homepage-editor__editor :deep(.rich-editor-attachment),
 .dev-resource-homepage-editor__preview-rich-text :deep(.rich-editor-attachment) {
   display: inline-flex;
   align-items: center;
@@ -1267,22 +635,18 @@ console.log('hello')
   overflow-wrap: anywhere;
 }
 
-.dev-resource-homepage-editor__editor :deep(hr),
 .dev-resource-homepage-editor__preview-rich-text :deep(hr) {
   margin: 18px 0;
   border: 0;
   border-top: 1px solid rgba(17, 24, 39, 0.1);
 }
 
-.dev-resource-homepage-editor__editor :deep(table),
 .dev-resource-homepage-editor__preview-rich-text :deep(table) {
   width: 100%;
   border-collapse: collapse;
   margin: 0 0 14px;
 }
 
-.dev-resource-homepage-editor__editor :deep(th),
-.dev-resource-homepage-editor__editor :deep(td),
 .dev-resource-homepage-editor__preview-rich-text :deep(th),
 .dev-resource-homepage-editor__preview-rich-text :deep(td) {
   padding: 10px 12px;
@@ -1290,7 +654,6 @@ console.log('hello')
   text-align: left;
 }
 
-.dev-resource-homepage-editor__editor :deep(th),
 .dev-resource-homepage-editor__preview-rich-text :deep(th) {
   background: rgba(17, 24, 39, 0.04);
 }

@@ -14,8 +14,9 @@ const router = useRouter()
 const currentYear = new Date().getFullYear()
 const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
 const showSiteFooter = computed(() => !route.matched.some((record) => record.meta.hideSiteFooter === true))
+// TODO: 生产环境不应该有默认的开发账号，后续可以考虑通过环境变量注入或者其他更安全的方式来支持开发模式下的自动登录
 const DEV_AUTO_LOGIN_USERNAME = 'dev'
-const DEV_AUTO_LOGIN_PASSWORD = '123456'
+const DEV_AUTO_LOGIN_PASSWORD = 'fanbo128'
 let handlingUnauthorized = false
 
 async function loginWithDevelopmentAccount() {

@@ -43,6 +43,7 @@ declare module 'vue' {
     PublishModal: typeof import('./src/components/PublishModal.vue')['default']
     RequirementConversationModal: typeof import('./src/components/RequirementConversationModal.vue')['default']
     ResourceCatalog: typeof import('./src/components/ResourceCatalog.vue')['default']
+    RichTextEditor: typeof import('./src/components/RichTextEditor.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }
