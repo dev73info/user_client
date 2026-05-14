@@ -35,6 +35,19 @@ pnpm install
 pnpm dev
 ```
 
+### Optional Development Auto Login
+
+Copy `.env.local.example` to `.env.local` and set both values to enable local
+auto-login during `pnpm dev`:
+
+```sh
+VITE_DEV_AUTO_LOGIN_USERNAME=
+VITE_DEV_AUTO_LOGIN_PASSWORD=
+```
+
+Leave either value empty to disable auto-login. Use only disposable development
+accounts; `.env.local` is ignored by git.
+
 ### Type-Check, Compile and Minify for Production
 
 ```sh

@@ -14,18 +14,21 @@ const router = useRouter()
 const currentYear = new Date().getFullYear()
 const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
 const showSiteFooter = computed(() => !route.matched.some((record) => record.meta.hideSiteFooter === true))
-// TODO: 生产环境不应该有默认的开发账号，后续可以考虑通过环境变量注入或者其他更安全的方式来支持开发模式下的自动登录
-const DEV_AUTO_LOGIN_USERNAME = 'dev'
-const DEV_AUTO_LOGIN_PASSWORD = 'fanbo128'
+const devAutoLoginCredentials = import.meta.env.DEV
+  ? {
+    username: import.meta.env.VITE_DEV_AUTO_LOGIN_USERNAME?.trim() ?? '',
+    password: import.meta.env.VITE_DEV_AUTO_LOGIN_PASSWORD?.trim() ?? '',
+  }
+  : null
 let handlingUnauthorized = false
 
 async function loginWithDevelopmentAccount() {
-  if (!import.meta.env.DEV) {
+  if (!devAutoLoginCredentials?.username || !devAutoLoginCredentials.password) {
     return
   }
 
   try {
-    await auth.login(DEV_AUTO_LOGIN_USERNAME, DEV_AUTO_LOGIN_PASSWORD)
+    await auth.login(devAutoLoginCredentials.username, devAutoLoginCredentials.password)
   } catch (error) {
     console.warn('开发模式自动登录失败', error)
   }
@@ -42,7 +45,11 @@ async function initializeAuthSession() {
     }
   }
 
-  if (import.meta.env.DEV && (!auth.token || auth.username !== DEV_AUTO_LOGIN_USERNAME)) {
+  if (
+    devAutoLoginCredentials?.username &&
+    devAutoLoginCredentials.password &&
+    (!auth.token || auth.username !== devAutoLoginCredentials.username)
+  ) {
     auth.logout()
     await loginWithDevelopmentAccount()
   }
