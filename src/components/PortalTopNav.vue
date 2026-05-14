@@ -23,6 +23,7 @@ const router = useRouter()
 const { showToast } = useToast()
 const menuOpen = ref(false)
 const searchQuery = ref('')
+const searchDraftFilled = ref(false)
 const officialActivitySubscriptionEnabled = ref(false)
 const devHallSubscriptionEnabled = ref(false)
 const subscriptionMenuOpen = ref(false)
@@ -33,6 +34,9 @@ const lastSyncedSubscriptions = ref({
   subscribe_dev_hall_deposit_paid: false,
 })
 const authModalVisible = computed(() => route.query.modal === 'auth')
+const searchHasInputValue = computed(
+  () => Boolean(searchQuery.value.trim()) || searchDraftFilled.value,
+)
 const isDeveloperArea = computed(
   () => route.path.startsWith('/dev') || route.path.startsWith('/workbench/developer'),
 )
@@ -333,6 +337,20 @@ function submitSearch() {
 
 function clearSearch() {
   searchQuery.value = ''
+  searchDraftFilled.value = false
+}
+
+function updateSearchDraftState(event: Event) {
+  const input = event.target as HTMLInputElement | null
+  searchDraftFilled.value = Boolean(input?.value.trim())
+}
+
+function startSearchComposition() {
+  searchDraftFilled.value = true
+}
+
+function finishSearchComposition(event: CompositionEvent) {
+  updateSearchDraftState(event)
 }
 </script>
 
@@ -358,13 +376,16 @@ function clearSearch() {
     </nav>
 
     <div class="portal-header__tools">
-      <form class="portal-search" :class="{ 'is-filled': Boolean(searchQuery.trim()) }" @submit.prevent="submitSearch">
+      <form class="portal-search" :class="{ 'is-filled': searchHasInputValue }" @submit.prevent="submitSearch">
         <el-icon>
           <Search />
         </el-icon>
         <input v-model="searchQuery" type="text" inputmode="search" enterkeyhint="search" aria-label="搜索资源、需求"
-          placeholder="搜索资源、需求..." />
-        <button v-if="searchQuery" class="portal-search-clear" type="button" aria-label="清空搜索" @click="clearSearch">
+          placeholder="搜索资源、需求..." @input="updateSearchDraftState" @compositionstart="startSearchComposition"
+          @compositionupdate="updateSearchDraftState" @compositionend="finishSearchComposition" />
+        <button class="portal-search-clear" :class="{ 'is-visible': Boolean(searchQuery) }" type="button"
+          aria-label="清空搜索" :aria-hidden="!searchQuery" :disabled="!searchQuery" :tabindex="searchQuery ? 0 : -1"
+          @click="clearSearch">
           <el-icon>
             <Close />
           </el-icon>
@@ -396,7 +417,7 @@ function clearSearch() {
             </span>
             <span class="portal-subscription-item__state">{{
               officialActivitySubscriptionEnabled ? '开' : '关'
-            }}</span>
+              }}</span>
           </button>
           <button class="portal-subscription-item" :class="{ active: devHallSubscriptionEnabled }" type="button"
             role="menuitemcheckbox" :aria-checked="devHallSubscriptionEnabled" :disabled="subscriptionBusy"
@@ -407,7 +428,7 @@ function clearSearch() {
             </span>
             <span class="portal-subscription-item__state">{{
               devHallSubscriptionEnabled ? '开' : '关'
-            }}</span>
+              }}</span>
           </button>
         </section>
       </div>
@@ -565,24 +586,16 @@ function clearSearch() {
     transform 220ms var(--portal-nav-motion);
 }
 
-.portal-search:hover {
+.portal-search:hover,
+.portal-search.is-filled {
   width: clamp(300px, 32vw, 430px);
   transform: translateX(-1px);
   border-color: rgba(147, 197, 253, 0.96);
   background: #fff;
 }
 
-.portal-search:focus-within {
-  border-color: rgba(37, 99, 235, 0.48);
-  background: #fff;
-  box-shadow:
-    0 0 0 3px rgba(37, 99, 235, 0.08),
-    0 12px 28px rgba(37, 99, 235, 0.1);
-}
-
 .portal-search.is-filled {
-  border-color: rgba(147, 197, 253, 0.96);
-  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
 .portal-search>.el-icon {
@@ -595,7 +608,6 @@ function clearSearch() {
 }
 
 .portal-search:hover>.el-icon,
-.portal-search:focus-within>.el-icon,
 .portal-search.is-filled>.el-icon {
   color: #2563eb;
 }
@@ -604,6 +616,7 @@ function clearSearch() {
   flex: 1;
   min-width: 0;
   height: 40px;
+  padding-right: 30px;
   border: 0;
   outline: 0;
   appearance: none;
@@ -622,13 +635,14 @@ function clearSearch() {
 }
 
 .portal-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 26px;
   width: 26px;
   height: 26px;
-  margin-right: -2px;
   padding: 0;
   border: 1px solid transparent;
   border-radius: 999px;
@@ -641,6 +655,9 @@ function clearSearch() {
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
@@ -650,12 +667,21 @@ function clearSearch() {
     transform 160ms ease;
 }
 
+.portal-search-clear.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.portal-search-clear:disabled {
+  cursor: default;
+}
+
 .portal-search-clear:hover {
   background: rgba(191, 219, 254, 0.96);
 }
 
 .portal-search-clear:active {
-  transform: scale(0.96);
+  transform: translateY(-50%) scale(0.96);
 }
 
 .portal-search-clear:focus-visible {
@@ -930,7 +956,8 @@ function clearSearch() {
     justify-content: space-between;
   }
 
-  .portal-search:hover {
+  .portal-search:hover,
+  .portal-search.is-filled {
     width: clamp(300px, 44vw, 520px);
   }
 }
@@ -950,7 +977,7 @@ function clearSearch() {
   }
 
   .portal-search:hover,
-  .portal-search:focus-within {
+  .portal-search.is-filled {
     width: 100%;
     transform: none;
   }
