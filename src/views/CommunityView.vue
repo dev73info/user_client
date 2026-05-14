@@ -611,7 +611,7 @@ async function submitComment() {
               </div>
               <div class="community-post-card__badges">
                 <span class="community-status-badge" :class="`is-${post.status}`">{{ postStatusText(post.status)
-                  }}</span>
+                }}</span>
                 <span>{{ post.like_count }} 赞</span>
               </div>
             </div>
@@ -689,9 +689,6 @@ async function submitComment() {
               <div class="community-post-card__tags">
                 <span v-for="tag in selectedPost.tags" :key="tag.id">{{ tag.name }}</span>
               </div>
-              <span class="community-status-badge" :class="`is-${selectedPost.status}`">
-                {{ postStatusText(selectedPost.status) }}
-              </span>
               <h2>{{ selectedPost.title }}</h2>
               <p>
                 {{ selectedPost.author }} 发布于 {{ selectedPost.published_at }} · 更新
@@ -730,7 +727,10 @@ async function submitComment() {
           <section class="community-comments">
             <div class="community-comments__head">
               <h3>评论</h3>
-              <span v-if="commentsLoading">加载中</span>
+              <span v-if="commentsLoading" class="community-comments__loading" role="status" aria-live="polite">
+                <span class="community-comments__spinner" aria-hidden="true"></span>
+                评论同步中
+              </span>
             </div>
 
             <div v-if="!selectedPostPublished" class="community-status-note">
@@ -745,7 +745,7 @@ async function submitComment() {
               </el-button>
             </div>
 
-            <div v-if="comments.length === 0" class="community-empty community-empty--compact">
+            <div v-if="!commentsLoading && comments.length === 0" class="community-empty community-empty--compact">
               暂无评论
             </div>
             <ul v-else class="community-comment-list">
@@ -1469,6 +1469,38 @@ async function submitComment() {
 
 .community-comments__head {
   margin-bottom: 12px;
+}
+
+.community-comments__loading {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid rgba(191, 219, 254, 0.86);
+  border-radius: 999px;
+  background: rgba(239, 246, 255, 0.92);
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+}
+
+.community-comments__spinner {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  border: 2px solid rgba(37, 99, 235, 0.18);
+  border-top-color: #2563eb;
+  border-radius: 999px;
+  animation: community-comments-spin 720ms linear infinite;
+}
+
+@keyframes community-comments-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .community-status-note {
