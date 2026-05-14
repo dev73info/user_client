@@ -344,6 +344,7 @@ onMounted(() => {
 .free-resource-entry {
   position: relative;
   overflow: hidden;
+  isolation: isolate;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -372,6 +373,7 @@ onMounted(() => {
   content: '';
   position: absolute;
   inset: 9px auto 9px 0;
+  z-index: -1;
   width: 3px;
   border-radius: 999px;
   background: #2563eb;
@@ -386,13 +388,22 @@ onMounted(() => {
   content: '';
   position: absolute;
   inset: 0;
+  z-index: -1;
   pointer-events: none;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0));
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0),
+      rgba(255, 255, 255, 0.86),
+      rgba(255, 255, 255, 0));
   opacity: 0;
   transform: translateX(-70%);
   transition:
     opacity 160ms ease,
     transform 340ms ease;
+}
+
+.free-resource-entry>* {
+  position: relative;
+  z-index: 1;
 }
 
 .free-resource-entry:hover,
