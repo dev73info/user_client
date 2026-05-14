@@ -26,6 +26,7 @@ const {
   authEmail,
   authEmailCode,
   acceptTerms,
+  loginRequiresTwoFactor,
   sendCodeLoading,
   sendCodeCountdown,
   resetAuthForm,
@@ -111,7 +112,9 @@ onMounted(() => {
     <div class="claim-page__panel">
       <p class="claim-page__eyebrow">73Info Activity</p>
       <h1>活动福利领取</h1>
-      <p class="claim-page__lead">邮件里的活动链接会把券发到当前登录账号的背包。账号绑定邮箱必须和收件邮箱一致。</p>
+      <p class="claim-page__lead">
+        邮件里的活动链接会把券发到当前登录账号的背包。账号绑定邮箱必须和收件邮箱一致。
+      </p>
 
       <div v-if="claiming" class="claim-page__state claim-page__state--loading">
         正在校验活动并发放福利，请稍候...
@@ -125,7 +128,9 @@ onMounted(() => {
         <p>券码：{{ claimResult.assigned_coupon_code }}</p>
         <p>领取时间：{{ claimResult.claimed_at }}</p>
         <div class="claim-page__actions">
-          <button class="claim-page__primary" type="button" @click="goWorkbench">前往工作台查看</button>
+          <button class="claim-page__primary" type="button" @click="goWorkbench">
+            前往工作台查看
+          </button>
         </div>
       </div>
 
@@ -133,20 +138,48 @@ onMounted(() => {
         <strong>尚未领取</strong>
         <p>{{ claimError || '点击下方按钮登录后继续领取。' }}</p>
         <div class="claim-page__actions">
-          <button v-if="!auth.isAuthed" class="claim-page__primary" type="button"
-            @click="openAuth('login')">登录后领取</button>
-          <button v-else class="claim-page__primary" type="button" @click="runClaim">重新尝试领取</button>
-          <button v-if="!auth.isAuthed" class="claim-page__ghost" type="button"
-            @click="openAuth('register')">注册新账号</button>
+          <button
+            v-if="!auth.isAuthed"
+            class="claim-page__primary"
+            type="button"
+            @click="openAuth('login')"
+          >
+            登录后领取
+          </button>
+          <button v-else class="claim-page__primary" type="button" @click="runClaim">
+            重新尝试领取
+          </button>
+          <button
+            v-if="!auth.isAuthed"
+            class="claim-page__ghost"
+            type="button"
+            @click="openAuth('register')"
+          >
+            注册新账号
+          </button>
         </div>
       </div>
     </div>
 
-    <AuthModal :visible="authVisible" :authMode="authMode" :authTitle="authTitle" v-model:authUsername="authUsername"
-      v-model:authPassword="authPassword" v-model:authEmail="authEmail" v-model:authEmailCode="authEmailCode"
-      v-model:acceptTerms="acceptTerms" :authLoading="auth.loading" :sendCodeLoading="sendCodeLoading"
-      :sendCodeCountdown="sendCodeCountdown" @close="closeAuth" @submit="handleSubmitAuth"
-      @github-login="loginWithGithub" @send-code="sendAuthCode" @change-mode="changeAuthMode" />
+    <AuthModal
+      :visible="authVisible"
+      :authMode="authMode"
+      :authTitle="authTitle"
+      v-model:authUsername="authUsername"
+      v-model:authPassword="authPassword"
+      v-model:authEmail="authEmail"
+      v-model:authEmailCode="authEmailCode"
+      v-model:acceptTerms="acceptTerms"
+      :authLoading="auth.loading"
+      :loginRequiresTwoFactor="loginRequiresTwoFactor"
+      :sendCodeLoading="sendCodeLoading"
+      :sendCodeCountdown="sendCodeCountdown"
+      @close="closeAuth"
+      @submit="handleSubmitAuth"
+      @loginWithGithub="loginWithGithub"
+      @sendAuthCode="sendAuthCode"
+      @change-mode="changeAuthMode"
+    />
   </section>
 </template>
 

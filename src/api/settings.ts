@@ -15,7 +15,9 @@ export type UserProfileResp = {
   username: string
   email?: string | null
   avatar_url?: string | null
+  two_factor_enabled: boolean
   subscribe_official_activity: boolean
+  subscribe_dev_hall_deposit_paid?: boolean
 }
 
 export type UserSubscriptionsResp = {
@@ -157,6 +159,38 @@ export async function updateProfilePassword(
       body: JSON.stringify({ new_password: newPassword, email_code: emailCode }),
     },
     '修改密码失败',
+  )
+}
+
+export async function sendProfileTwoFactorCode(token: string): Promise<void> {
+  await requestVoid(
+    '/settings/profile/two-factor-code',
+    {
+      method: 'POST',
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '发送两步验证验证码失败',
+  )
+}
+
+export async function updateProfileTwoFactor(
+  token: string,
+  enabled: boolean,
+  emailCode: string,
+): Promise<UserProfileResp> {
+  return requestJson<UserProfileResp>(
+    '/settings/profile/two-factor',
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify({ two_factor_enabled: enabled, email_code: emailCode }),
+    },
+    '更新两步验证失败',
   )
 }
 

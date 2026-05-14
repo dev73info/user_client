@@ -11,6 +11,7 @@ const props = defineProps({
   authPassword: { type: String, default: '' },
   authEmail: { type: String, default: '' },
   authEmailCode: { type: String, default: '' },
+  loginRequiresTwoFactor: { type: Boolean, default: false },
   acceptTerms: { type: Boolean, default: false },
   githubLoginLoading: { type: Boolean, default: false },
   sendCodeLoading: { type: Boolean, default: false },
@@ -77,16 +78,34 @@ function submitOnEnter() {
         <h3>{{ authTitle }}</h3>
 
         <div class="auth-mode-switch" role="tablist" aria-label="认证模式切换">
-          <button class="auth-mode-btn" :class="{ active: authMode === 'login' }" type="button"
-            :aria-pressed="authMode === 'login'" :disabled="authMode === 'login'" @click="changeMode('login')">
+          <button
+            class="auth-mode-btn"
+            :class="{ active: authMode === 'login' }"
+            type="button"
+            :aria-pressed="authMode === 'login'"
+            :disabled="authMode === 'login'"
+            @click="changeMode('login')"
+          >
             登录
           </button>
-          <button class="auth-mode-btn" :class="{ active: authMode === 'register' }" type="button"
-            :aria-pressed="authMode === 'register'" :disabled="authMode === 'register'" @click="changeMode('register')">
+          <button
+            class="auth-mode-btn"
+            :class="{ active: authMode === 'register' }"
+            type="button"
+            :aria-pressed="authMode === 'register'"
+            :disabled="authMode === 'register'"
+            @click="changeMode('register')"
+          >
             注册
           </button>
-          <button class="auth-mode-btn" :class="{ active: authMode === 'reset' }" type="button"
-            :aria-pressed="authMode === 'reset'" :disabled="authMode === 'reset'" @click="changeMode('reset')">
+          <button
+            class="auth-mode-btn"
+            :class="{ active: authMode === 'reset' }"
+            type="button"
+            :aria-pressed="authMode === 'reset'"
+            :disabled="authMode === 'reset'"
+            @click="changeMode('reset')"
+          >
             重置密码
           </button>
         </div>
@@ -96,29 +115,79 @@ function submitOnEnter() {
         <template v-if="authMode !== 'reset'">
           <label>
             {{ authMode === 'login' ? '用户名或邮箱' : '用户名' }}
-            <input :value="authUsername" type="text" autocomplete="username"
-              :placeholder="authMode === 'login' ? '请输入用户名或邮箱' : '请输入用户名'" @input="updateUsername"
-              @keydown.enter.prevent="submitOnEnter" />
+            <input
+              :value="authUsername"
+              type="text"
+              autocomplete="username"
+              :placeholder="authMode === 'login' ? '请输入用户名或邮箱' : '请输入用户名'"
+              @input="updateUsername"
+              @keydown.enter.prevent="submitOnEnter"
+            />
           </label>
           <template v-if="authMode === 'register'">
             <label>
               邮箱
-              <input :value="authEmail" type="email" autocomplete="email" placeholder="请输入注册邮箱" @input="updateEmail" />
+              <input
+                :value="authEmail"
+                type="email"
+                autocomplete="email"
+                placeholder="请输入注册邮箱"
+                @input="updateEmail"
+              />
             </label>
           </template>
         </template>
         <template v-else>
           <label>
             邮箱
-            <input :value="authEmail" type="email" autocomplete="email" placeholder="请输入注册邮箱" @input="updateEmail" />
+            <input
+              :value="authEmail"
+              type="email"
+              autocomplete="email"
+              placeholder="请输入注册邮箱"
+              @input="updateEmail"
+            />
           </label>
         </template>
 
         <template v-if="authMode === 'login'">
           <label>
             密码
-            <input :value="authPassword" type="password" autocomplete="current-password" placeholder="至少 6 位密码"
-              @input="updatePassword" @keydown.enter.prevent="submitOnEnter" />
+            <input
+              :value="authPassword"
+              type="password"
+              autocomplete="current-password"
+              placeholder="至少 6 位密码"
+              @input="updatePassword"
+              @keydown.enter.prevent="submitOnEnter"
+            />
+          </label>
+          <label v-if="loginRequiresTwoFactor">
+            邮箱验证码
+            <div class="inline-inputs auth-code-row">
+              <input
+                :value="authEmailCode"
+                type="text"
+                maxlength="6"
+                placeholder="输入 6 位验证码"
+                @input="updateEmailCode"
+                @keydown.enter.prevent="submitOnEnter"
+              />
+              <button
+                class="auth-btn ghost"
+                type="button"
+                :disabled="sendCodeLoading || sendCodeCountdown > 0"
+                @click="emit('sendAuthCode')"
+              >
+                {{
+                  sendCodeLoading
+                    ? '发送中...'
+                    : sendCodeCountdown > 0
+                      ? `${sendCodeCountdown}s`
+                      : '重新发送'
+                }}
+              </button>
+            </div>
           </label>
           <div class="auth-forgot-row">
             <button class="auth-link" type="button" @click="changeMode('reset')">忘记密码？</button>
@@ -129,26 +198,51 @@ function submitOnEnter() {
           <label>
             邮箱验证码
             <div class="inline-inputs auth-code-row">
-              <input :value="authEmailCode" type="text" maxlength="6" placeholder="输入 6 位验证码"
-                @input="updateEmailCode" />
-              <button class="auth-btn ghost" type="button" :disabled="sendCodeLoading || sendCodeCountdown > 0"
-                @click="emit('sendAuthCode')">
-                {{ sendCodeLoading ? '发送中...' : sendCodeCountdown > 0 ? `${sendCodeCountdown}s` : '发送验证码' }}
+              <input
+                :value="authEmailCode"
+                type="text"
+                maxlength="6"
+                placeholder="输入 6 位验证码"
+                @input="updateEmailCode"
+              />
+              <button
+                class="auth-btn ghost"
+                type="button"
+                :disabled="sendCodeLoading || sendCodeCountdown > 0"
+                @click="emit('sendAuthCode')"
+              >
+                {{
+                  sendCodeLoading
+                    ? '发送中...'
+                    : sendCodeCountdown > 0
+                      ? `${sendCodeCountdown}s`
+                      : '发送验证码'
+                }}
               </button>
             </div>
           </label>
 
           <label>
             {{ authMode === 'register' ? '密码' : '新码' }}
-            <input :value="authPassword" type="password" autocomplete="new-password" placeholder="至少 6 位新密码"
-              @input="updatePassword" />
+            <input
+              :value="authPassword"
+              type="password"
+              autocomplete="new-password"
+              placeholder="至少 6 位新密码"
+              @input="updatePassword"
+            />
           </label>
         </template>
 
         <template v-if="authMode === 'register' || authMode === 'login'">
           <div class="auth-agreement-row">
             <label class="checkbox-label">
-              <input class="checkbox-input" type="checkbox" :checked="acceptTerms" @change="updateAcceptTerms" />
+              <input
+                class="checkbox-input"
+                type="checkbox"
+                :checked="acceptTerms"
+                @change="updateAcceptTerms"
+              />
               <span class="checkbox-text">我已阅读并同意</span>
               <span class="agreement-links">
                 <router-link to="/terms">《用户协议》</router-link>
@@ -164,12 +258,32 @@ function submitOnEnter() {
 
       <div class="auth-modal-actions">
         <button class="auth-btn ghost" type="button" @click="emit('close')">取消</button>
-        <button v-if="authMode === 'login'" class="auth-btn ghost" type="button"
-          :disabled="githubLoginLoading || !acceptTerms" @click="emit('loginWithGithub')">
+        <button
+          v-if="authMode === 'login'"
+          class="auth-btn ghost"
+          type="button"
+          :disabled="githubLoginLoading || !acceptTerms"
+          @click="emit('loginWithGithub')"
+        >
           {{ githubLoginLoading ? '跳转中...' : 'GitHub 快捷登录' }}
         </button>
-        <button class="auth-btn solid" type="button" :disabled="!canSubmitAuth()" @click="emit('submit')">
-          {{ authLoading ? '登录中...' : authMode === 'login' ? '登录' : authMode === 'register' ? '注册并登录' : '重置密码' }}
+        <button
+          class="auth-btn solid"
+          type="button"
+          :disabled="!canSubmitAuth()"
+          @click="emit('submit')"
+        >
+          {{
+            authLoading
+              ? '登录中...'
+              : authMode === 'login'
+                ? loginRequiresTwoFactor
+                  ? '验证并登录'
+                  : '登录'
+                : authMode === 'register'
+                  ? '注册并登录'
+                  : '重置密码'
+          }}
         </button>
       </div>
     </section>

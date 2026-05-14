@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import {
   authRequest,
   type AuthPayload,
+  isTwoFactorRequiredPayload,
   refreshToken as refreshTokenApi,
   resetPassword,
   sendRegisterEmailCode as sendRegisterEmailCodeApi,
@@ -17,6 +18,11 @@ import {
   restorePersistedAuthProfile,
   type AuthProfile,
 } from '@/shared/auth/session'
+
+export type LoginResult = {
+  requiresTwoFactor: boolean
+  username?: string
+}
 
 const TOKEN_KEY = 'auth_token_73hub'
 const REFRESH_BEFORE_EXPIRY_MS = 2 * 60 * 1000
@@ -231,14 +237,33 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(usernameInput: string, passwordInput: string) {
+  async function login(
+    usernameInput: string,
+    passwordInput: string,
+    twoFactorCode?: string,
+  ): Promise<LoginResult> {
     loading.value = true
     try {
-      const payload = await authRequest('/auth/login', usernameInput, passwordInput)
+      const payload = await authRequest(
+        '/auth/login',
+        usernameInput,
+        passwordInput,
+        undefined,
+        undefined,
+        undefined,
+        twoFactorCode,
+      )
+      if (isTwoFactorRequiredPayload(payload)) {
+        return {
+          requiresTwoFactor: true,
+          username: payload.username,
+        }
+      }
       applyAuthPayload(payload)
       if (!payload.username || !payload.role) {
         await initializeSession(true)
       }
+      return { requiresTwoFactor: false }
     } finally {
       loading.value = false
     }
@@ -248,6 +273,9 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     try {
       const payload = await authRequest('/auth/register', usernameInput, passwordInput)
+      if (isTwoFactorRequiredPayload(payload)) {
+        throw new Error('注册流程不需要两步验证')
+      }
       applyAuthPayload(payload)
       if (!payload.username || !payload.role) {
         await initializeSession(true)
@@ -297,6 +325,9 @@ export const useAuthStore = defineStore('auth', () => {
         emailInput,
         emailCodeInput,
       )
+      if (isTwoFactorRequiredPayload(payload)) {
+        throw new Error('注册流程不需要两步验证')
+      }
       applyAuthPayload(payload)
       if (!payload.username || !payload.role) {
         await initializeSession(true)

@@ -9,6 +9,7 @@ import {
   sendRegisterEmailCode,
   sendResetPasswordEmailCode,
   type AuthPayload,
+  isTwoFactorRequiredPayload,
 } from '@dev/api/auth'
 import { HttpError, authHeaders as createAuthHeaders } from '@dev/api/http'
 import {
@@ -28,6 +29,11 @@ const REFRESH_BEFORE_EXPIRY_MS = 2 * 60 * 1000
 const MIN_REFRESH_DELAY_MS = 15_000
 // 刷新失败重试间隔
 const RETRY_AFTER_FAILURE_MS = 30_000
+
+export type LoginResult = {
+  requiresTwoFactor: boolean
+  username?: string
+}
 
 /** 解析 JWT payload 中的 exp（秒），不验证签名 */
 function getTokenExpMs(jwt: string): number {
@@ -266,7 +272,11 @@ export const useAuthStore = defineStore('dev-auth', () => {
     })
   }
 
-  async function login(usernameInput: string, passwordInput: string) {
+  async function login(
+    usernameInput: string,
+    passwordInput: string,
+    twoFactorCode?: string,
+  ): Promise<LoginResult> {
     loading.value = true
     try {
       const payload = await authRequest(
@@ -276,11 +286,19 @@ export const useAuthStore = defineStore('dev-auth', () => {
         undefined,
         undefined,
         false,
+        twoFactorCode,
       )
+      if (isTwoFactorRequiredPayload(payload)) {
+        return {
+          requiresTwoFactor: true,
+          username: payload.username,
+        }
+      }
       applyAuthPayload(payload)
       if (!payload.username || !payload.role) {
         await initializeSession(true)
       }
+      return { requiresTwoFactor: false }
     } finally {
       loading.value = false
     }
@@ -297,6 +315,9 @@ export const useAuthStore = defineStore('dev-auth', () => {
         undefined,
         false,
       )
+      if (isTwoFactorRequiredPayload(payload)) {
+        throw new Error('注册流程不需要两步验证')
+      }
       applyAuthPayload(payload)
       if (!payload.username || !payload.role) {
         await initializeSession(true)
@@ -347,6 +368,9 @@ export const useAuthStore = defineStore('dev-auth', () => {
         emailCodeInput,
         false,
       )
+      if (isTwoFactorRequiredPayload(payload)) {
+        throw new Error('注册流程不需要两步验证')
+      }
       applyAuthPayload(payload)
       if (!payload.username || !payload.role) {
         await initializeSession(true)

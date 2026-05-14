@@ -3,10 +3,13 @@ import {
   createAuthApiClient,
   type AgreementAcceptancePayload,
   type AuthPayload,
+  type AuthRequestPayload,
   type GithubAuthUrlResp,
+  isTwoFactorRequiredPayload,
 } from '@/shared/auth/client'
 
-export type { AgreementAcceptancePayload, AuthPayload, GithubAuthUrlResp }
+export type { AgreementAcceptancePayload, AuthPayload, AuthRequestPayload, GithubAuthUrlResp }
+export { isTwoFactorRequiredPayload }
 
 const authClient = createAuthApiClient(
   {

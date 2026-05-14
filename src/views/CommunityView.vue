@@ -10,8 +10,6 @@ import {
   Plus,
   Refresh,
   Search,
-  Star,
-  StarFilled,
 } from '@element-plus/icons-vue'
 
 import { HttpError, apiUrl } from '@/api/http'
@@ -711,7 +709,10 @@ async function submitComment() {
               :type="selectedPost.liked_by_me ? 'primary' : 'default'" :disabled="!selectedPostPublished"
               @click="toggleLike(selectedPost)">
               <el-icon>
-                <component :is="selectedPost.liked_by_me ? StarFilled : Star" />
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3m0 11V10l4-8a3 3 0 0 1 3 3v4h5.4a2 2 0 0 1 2 2.3l-1.2 8A2 2 0 0 1 18.2 21H7Z" />
+                </svg>
               </el-icon>
               <span>{{ selectedPost.liked_by_me ? '已点赞' : '点赞' }}</span>
               <strong>{{ selectedPost.like_count }}</strong>

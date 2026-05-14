@@ -4,6 +4,20 @@ export type AuthPayload = {
   role?: string
 }
 
+export type TwoFactorRequiredPayload = {
+  requires_two_factor: true
+  username: string
+  delivery: 'email'
+}
+
+export type AuthRequestPayload = AuthPayload | TwoFactorRequiredPayload
+
+export function isTwoFactorRequiredPayload(
+  payload: AuthRequestPayload,
+): payload is TwoFactorRequiredPayload {
+  return 'requires_two_factor' in payload && payload.requires_two_factor === true
+}
+
 export type AgreementAcceptancePayload = {
   username: string | null
   role: string | null
@@ -46,9 +60,10 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
     email?: string,
     emailCode?: string,
     requestDevRole = defaultRequestDevRole,
-  ): Promise<AuthPayload> {
+    twoFactorCode?: string,
+  ): Promise<AuthRequestPayload> {
     try {
-      return await deps.requestJson<AuthPayload>(
+      return await deps.requestJson<AuthRequestPayload>(
         path,
         {
           method: 'POST',
@@ -61,6 +76,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
             ...(requestDevRole ? { request_dev_role: true } : {}),
             ...(email ? { email } : {}),
             ...(emailCode ? { email_code: emailCode } : {}),
+            ...(twoFactorCode ? { two_factor_code: twoFactorCode } : {}),
           }),
         },
         '请求失败',

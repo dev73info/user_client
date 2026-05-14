@@ -8,9 +8,11 @@ import {
   getProfile,
   sendProfileEmailChangeCode,
   sendProfilePasswordCode,
+  sendProfileTwoFactorCode,
   updateProfile,
   updateProfileEmail,
   updateProfilePassword,
+  updateProfileTwoFactor,
   uploadProfileAvatar,
 } from '@/api/settings'
 import { useToast } from '@/composables/useToast'
@@ -39,6 +41,11 @@ const confirmPassword = ref('')
 const passwordCode = ref('')
 const passwordCodeSending = ref(false)
 const passwordLoading = ref(false)
+const twoFactorEnabled = ref(false)
+const twoFactorTargetEnabled = ref(false)
+const twoFactorCode = ref('')
+const twoFactorCodeSending = ref(false)
+const twoFactorLoading = ref(false)
 
 const amountCoupons = computed(() =>
   coupons.value.filter((item) => item.discount_type === 'amount'),
@@ -47,6 +54,13 @@ const discountCoupons = computed(() =>
   coupons.value.filter((item) => item.discount_type === 'percent'),
 )
 const accountEmailLabel = computed(() => profileEmail.value || '未绑定邮箱')
+const twoFactorChanged = computed(() => twoFactorTargetEnabled.value !== twoFactorEnabled.value)
+const twoFactorStatusText = computed(() => {
+  if (twoFactorChanged.value) {
+    return '待保存'
+  }
+  return twoFactorEnabled.value ? '已开启' : '已关闭'
+})
 const avatarSrc = computed(() => {
   const currentAvatarUrl = avatarUrl.value.trim()
   return currentAvatarUrl && !failedAvatarUrls.value.has(currentAvatarUrl)
@@ -123,6 +137,8 @@ async function loadProfile() {
     newUsername.value = profile.username
     avatarUrl.value = profile.avatar_url ?? ''
     profileEmail.value = profile.email ?? ''
+    twoFactorEnabled.value = profile.two_factor_enabled
+    twoFactorTargetEnabled.value = profile.two_factor_enabled
     if (!newEmail.value) {
       newEmail.value = profile.email ?? ''
     }
@@ -334,6 +350,81 @@ async function submitPasswordChange() {
   }
 }
 
+async function sendTwoFactorVerificationCode() {
+  if (!auth.isAuthed) {
+    showToast('请先登录后修改两步验证', 'error')
+    return
+  }
+  if (!profileEmail.value) {
+    showToast('请先绑定邮箱后再修改两步验证', 'error')
+    return
+  }
+  if (!twoFactorChanged.value) {
+    showToast('两步验证设置未发生变化', 'info')
+    return
+  }
+
+  twoFactorCodeSending.value = true
+  try {
+    await sendProfileTwoFactorCode(auth.token)
+    showToast('验证码已发送到当前绑定邮箱，请查收', 'success')
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '发送两步验证验证码失败', 'error')
+  } finally {
+    twoFactorCodeSending.value = false
+  }
+}
+
+async function handleTwoFactorTargetChange(event: Event) {
+  const input = event.target as HTMLInputElement | null
+  const nextEnabled = input?.checked ?? twoFactorTargetEnabled.value
+  twoFactorTargetEnabled.value = nextEnabled
+  twoFactorCode.value = ''
+
+  if (nextEnabled && !twoFactorEnabled.value && !twoFactorCodeSending.value) {
+    await sendTwoFactorVerificationCode()
+  }
+}
+
+async function submitTwoFactorChange() {
+  if (!auth.isAuthed) {
+    showToast('请先登录后修改两步验证', 'error')
+    return
+  }
+  if (!profileEmail.value) {
+    showToast('请先绑定邮箱后再修改两步验证', 'error')
+    return
+  }
+  if (!twoFactorChanged.value) {
+    showToast('两步验证设置未发生变化', 'info')
+    return
+  }
+
+  const trimmedCode = twoFactorCode.value.trim()
+  if (trimmedCode.length !== 6) {
+    showToast('请输入 6 位邮箱验证码', 'error')
+    return
+  }
+
+  twoFactorLoading.value = true
+  try {
+    const profile = await updateProfileTwoFactor(
+      auth.token,
+      twoFactorTargetEnabled.value,
+      trimmedCode,
+    )
+    twoFactorEnabled.value = profile.two_factor_enabled
+    twoFactorTargetEnabled.value = profile.two_factor_enabled
+    twoFactorCode.value = ''
+    await auth.fetchProfile(true).catch(() => undefined)
+    showToast(twoFactorEnabled.value ? '两步验证已开启' : '两步验证已关闭', 'success')
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '更新两步验证失败', 'error')
+  } finally {
+    twoFactorLoading.value = false
+  }
+}
+
 onMounted(async () => {
   auth.hydrate()
   newUsername.value = auth.username
@@ -417,6 +508,52 @@ onMounted(async () => {
             <button class="ghost small" type="button" :disabled="passwordLoading || !profileEmail"
               @click="submitPasswordChange">
               {{ passwordLoading ? '保存中...' : '保存密码' }}
+            </button>
+          </div>
+        </section>
+
+        <section class="account-settings-card account-security-card">
+          <div class="account-security-head">
+            <div>
+              <h4>两步验证</h4>
+              <small class="requirement-note">当前邮箱：{{ accountEmailLabel }}</small>
+            </div>
+            <span class="account-security-status" :class="{ pending: twoFactorChanged }">
+              {{ twoFactorStatusText }}
+            </span>
+          </div>
+
+          <label class="account-security-toggle-row">
+            <span class="account-security-toggle-copy">
+              <strong>邮箱验证码保护</strong>
+              <small class="requirement-note">
+                {{
+                  twoFactorTargetEnabled
+                    ? '登录时校验邮箱验证码，登录态最多保留 1 天。'
+                    : '关闭后登录态有效期按系统设置。'
+                }}
+              </small>
+            </span>
+            <span class="account-switch-control" :class="{ active: twoFactorTargetEnabled }">
+              <input v-model="twoFactorTargetEnabled" type="checkbox"
+                :disabled="twoFactorLoading || twoFactorCodeSending || !profileEmail"
+                @change="handleTwoFactorTargetChange" />
+              <span class="account-switch-track" aria-hidden="true">
+                <span class="account-switch-thumb"></span>
+              </span>
+            </span>
+          </label>
+
+          <div class="account-security-actions">
+            <input v-model="twoFactorCode" type="text" maxlength="6" placeholder="输入 6 位验证码"
+              :disabled="twoFactorLoading || !profileEmail || !twoFactorChanged" />
+            <button class="ghost small" type="button" :disabled="twoFactorCodeSending || twoFactorLoading || !profileEmail || !twoFactorChanged
+              " @click="sendTwoFactorVerificationCode">
+              {{ twoFactorCodeSending ? '发送中...' : '发送验证码' }}
+            </button>
+            <button class="ghost small" type="button" :disabled="twoFactorLoading || !profileEmail || !twoFactorChanged"
+              @click="submitTwoFactorChange">
+              {{ twoFactorLoading ? '保存中...' : '保存设置' }}
             </button>
           </div>
         </section>
@@ -633,6 +770,163 @@ onMounted(async () => {
   justify-self: end;
 }
 
+.account-security-card {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  grid-column: 1 / -1;
+  padding: 18px;
+  border-color: rgba(191, 210, 245, 0.98);
+}
+
+.account-security-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.account-security-head h4 {
+  margin-bottom: 6px;
+}
+
+.account-security-status {
+  flex: 0 0 auto;
+  min-width: 62px;
+  padding: 5px 10px;
+  border: 1px solid rgba(134, 239, 172, 0.92);
+  border-radius: 999px;
+  background: rgba(240, 253, 244, 0.96);
+  color: #166534;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.account-security-status.pending {
+  border-color: rgba(253, 230, 138, 0.95);
+  background: rgba(255, 251, 235, 0.98);
+  color: #92400e;
+}
+
+.account-security-toggle-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid rgba(224, 232, 255, 0.92);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+}
+
+.account-security-toggle-copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.account-security-toggle-copy strong {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.account-switch-control {
+  position: relative;
+  display: inline-grid;
+  width: 46px;
+  height: 26px;
+}
+
+.account-switch-control input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.account-switch-control input:disabled {
+  cursor: not-allowed;
+}
+
+.account-switch-track {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(203, 213, 225, 0.98);
+  border-radius: 999px;
+  background: #e2e8f0;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.account-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.2);
+  transition: transform 0.18s ease;
+}
+
+.account-switch-control.active .account-switch-track {
+  border-color: rgba(37, 99, 235, 0.92);
+  background: #2563eb;
+}
+
+.account-switch-control.active .account-switch-thumb {
+  transform: translateX(20px);
+}
+
+.account-security-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.account-security-actions input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(224, 232, 255, 0.96);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #ffffff;
+  color: #0f172a;
+  outline: none;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.account-security-actions input:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+.account-security-actions input::placeholder {
+  color: #94a3b8;
+}
+
+.account-security-actions .ghost.small {
+  min-width: 104px;
+}
+
+.account-security-actions .ghost.small:disabled {
+  border-color: rgba(226, 232, 240, 0.96);
+  background: #f8fafc;
+  color: #94a3b8;
+  box-shadow: none;
+}
+
 @media (max-width: 1100px) {
 
   .account-coupons-summary__grid,
@@ -658,11 +952,22 @@ onMounted(async () => {
   }
 
   .account-password-row--send,
-  .account-password-row--confirm {
+  .account-password-row--confirm,
+  .account-security-actions,
+  .account-security-toggle-row {
     grid-template-columns: 1fr;
   }
 
-  .account-password-card .ghost.small {
+  .account-security-head {
+    align-items: flex-start;
+  }
+
+  .account-switch-control {
+    justify-self: start;
+  }
+
+  .account-password-card .ghost.small,
+  .account-security-actions .ghost.small {
     width: 100%;
     justify-self: stretch;
   }
