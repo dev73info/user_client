@@ -1,0 +1,54 @@
+.rich-code-copy-host {
+  position: relative;
+}
+
+.rich-code-copy-button {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 12;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(191, 219, 254, 0.52);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #f8fafc;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.24);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity 0.16s ease,
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+  user-select: none;
+  backdrop-filter: blur(12px);
+}
+
+.rich-code-copy-button.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.rich-code-copy-button:hover,
+.rich-code-copy-button:focus-visible {
+  border-color: rgba(147, 197, 253, 0.92);
+  background: rgba(37, 99, 235, 0.92);
+  color: #ffffff;
+  outline: none;
+}
+
+.rich-code-copy-button.is-copied {
+  border-color: rgba(134, 239, 172, 0.86);
+  background: rgba(22, 163, 74, 0.92);
+  color: #f0fdf4;
+}

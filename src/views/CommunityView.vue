@@ -26,6 +26,7 @@ import {
   type CommunityTag,
 } from '@/api/community'
 import RichTextEditor from '@/components/RichTextEditor.vue'
+import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
@@ -49,6 +50,7 @@ const commentDraft = ref('')
 const composerPanelRef = ref<HTMLElement | null>(null)
 const composerActionsShellRef = ref<HTMLElement | null>(null)
 const composerActionsRef = ref<HTMLElement | null>(null)
+const selectedPostContentRef = ref<HTMLElement | null>(null)
 const composerActionsFloating = ref(false)
 const composerActionsPlaceholderHeight = ref(0)
 const composerActionsFloatingStyle = ref<Record<string, string>>({})
@@ -76,6 +78,11 @@ const composerActionsShellStyle = computed<Record<string, string> | undefined>((
   return {
     height: `${composerActionsPlaceholderHeight.value}px`,
   }
+})
+
+useCodeBlockCopy({
+  rootRef: selectedPostContentRef,
+  notify: showToast,
 })
 
 function resetFloatingComposerActions() {
@@ -481,7 +488,7 @@ async function submitComment() {
             </el-button>
           </div>
 
-          <article class="community-rich-text" v-html="currentPostContent"></article>
+          <article ref="selectedPostContentRef" class="community-rich-text" v-html="currentPostContent"></article>
 
           <div class="community-actions">
             <el-button class="community-like-button" :class="{ 'is-liked': selectedPost.liked_by_me }"

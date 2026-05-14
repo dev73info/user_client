@@ -23,6 +23,7 @@ import {
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
 import RichTextEditor from '@/components/RichTextEditor.vue'
+import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
@@ -43,6 +44,7 @@ const selectedCoverFileName = ref('')
 const localCoverPreviewUrl = ref('')
 const richEditorContent = ref('')
 const richTextEditorRef = ref<RichTextEditorInstance | null>(null)
+const previewRichTextRef = ref<HTMLElement | null>(null)
 
 const form = reactive({
   title: '',
@@ -88,6 +90,10 @@ const previewTagNames = computed(
   () => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [],
 )
 const previewTagCount = computed(() => previewTagNames.value.length)
+useCodeBlockCopy({
+  rootRef: previewRichTextRef,
+  notify: showToast,
+})
 const resourceVisibilityLabel = computed(() => {
   if (resource.value?.visibility === 'published') {
     return '公开展示中'
@@ -286,7 +292,7 @@ onBeforeUnmount(() => {
           <div class="dev-resource-homepage-editor__hero-meta">
             <span class="dev-resource-homepage-editor__hero-pill">{{
               resourceVisibilityLabel
-              }}</span>
+            }}</span>
             <span class="dev-resource-homepage-editor__hero-pill">{{ resourcePlatformLabel }}</span>
             <span class="dev-resource-homepage-editor__hero-pill">{{ previewTagCount }} 个标签</span>
             <span class="dev-resource-homepage-editor__hero-pill">{{ resourceAuthorLabel }}</span>
@@ -378,8 +384,8 @@ onBeforeUnmount(() => {
                   <Reading />
                 </el-icon>
               </div>
-              <div v-if="previewContentHtml" class="dev-resource-homepage-editor__preview-rich-text"
-                v-html="previewContentHtml" />
+              <div v-if="previewContentHtml" ref="previewRichTextRef"
+                class="dev-resource-homepage-editor__preview-rich-text" v-html="previewContentHtml" />
               <p v-else class="dev-resource-homepage-editor__preview-empty">
                 主页补充说明会显示在这里。可以用标题、列表、引用和链接组织内容结构。
               </p>

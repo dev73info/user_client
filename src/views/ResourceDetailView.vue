@@ -20,6 +20,7 @@ import {
 import { getTagRouteSlug, normalizeTagName, parseResourceIdFromSlug } from '@/api/resourceTags'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 
 type CommentGate = {
@@ -44,10 +45,15 @@ const commentsLoading = ref(false)
 const commentSubmitting = ref(false)
 const commentText = ref('')
 const likeSubmitting = ref(false)
+const pageContentRef = ref<HTMLElement | null>(null)
 
 const tagNames = computed(
   () => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [],
 )
+useCodeBlockCopy({
+  rootRef: pageContentRef,
+  notify: showToast,
+})
 const authorPillLabel = computed(() => {
   const current = resource.value
   if (!current) {
@@ -550,7 +556,7 @@ watch(
             <div v-if="tagNames.length > 0" class="resource-detail-page__tags">
               <span v-for="item in tagNames" :key="item" class="resource-detail-page__tag">{{
                 item
-                }}</span>
+              }}</span>
             </div>
 
             <div v-if="infoCards.length" class="resource-detail-page__summary-stats">
@@ -586,8 +592,8 @@ watch(
               <h2>页面内容</h2>
               <span>Content</span>
             </header>
-            <div v-if="pageContentHtml" class="resource-detail-page__content-flow resource-detail-page__rich-text"
-              v-html="pageContentHtml" />
+            <div v-if="pageContentHtml" ref="pageContentRef"
+              class="resource-detail-page__content-flow resource-detail-page__rich-text" v-html="pageContentHtml" />
             <p v-else class="resource-detail-page__paragraph">
               当前还没有额外补充说明。后续更新、兼容性说明或使用建议会展示在这里。
             </p>

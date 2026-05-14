@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
 import { EditorContent, Mark, mergeAttributes, useEditor, type Editor } from '@tiptap/vue-3'
 import Link from '@tiptap/extension-link'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
+import { common, createLowlight } from 'lowlight'
 import {
     ArrowDown,
     Brush,
@@ -26,6 +28,7 @@ import {
     RichEditorImage,
     RichEditorVideo,
 } from '@/utils/richEditorMedia'
+import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 
 type ToolbarAction = 'bold' | 'italic' | 'underline' | 'bullet' | 'ordered' | 'blockquote' | 'code'
 type InsertAction = 'attachment' | 'image' | 'video'
@@ -67,6 +70,7 @@ const insertOptions: Array<{ label: string; action: InsertAction }> = [
 ]
 const codeLanguageOptions: Array<{ label: string; value: string; aliases?: string[] }> = [
     { label: '纯文本', value: '' },
+    { label: 'MD', value: markdownCodeBlockLanguage, aliases: ['markdown'] },
     { label: 'JSON', value: 'json' },
     { label: 'Rust', value: 'rust', aliases: ['rs'] },
     { label: 'C++', value: 'cpp', aliases: ['c++', 'cxx', 'cc'] },
@@ -93,6 +97,7 @@ codeLanguageOptions.forEach((option) => {
         codeLanguageAliasMap.set(alias, option.value)
     })
 })
+const codeHighlighter = createLowlight(common)
 
 const fontSizeInput = ref('')
 const editorRevision = ref(0)
@@ -117,6 +122,11 @@ const toolbarShellStyle = computed<Record<string, string> | undefined>(() => {
     return {
         height: `${toolbarPlaceholderHeight.value}px`,
     }
+})
+
+useCodeBlockCopy({
+    rootRef: editorRootRef,
+    notify: (message, type) => emit('notify', message, type),
 })
 
 function getFloatingToolbarTop(): number {
@@ -290,12 +300,15 @@ const editor = useEditor({
             heading: {
                 levels: headingLevels,
             },
-            codeBlock: {
-                defaultLanguage: null,
-                enableTabIndentation: true,
-            },
+            codeBlock: false,
             link: false,
             underline: false,
+        }),
+        CodeBlockLowlight.configure({
+            lowlight: codeHighlighter,
+            defaultLanguage: null,
+            enableTabIndentation: true,
+            tabSize: 4,
         }),
         Underline,
         FontSize,
@@ -770,7 +783,8 @@ defineExpose({
                     {{ item.label }}
                 </button>
 
-                <div v-if="isCodeBlockActive()" class="rich-text-editor__dropdown rich-text-editor__dropdown--code-language">
+                <div v-if="isCodeBlockActive()"
+                    class="rich-text-editor__dropdown rich-text-editor__dropdown--code-language">
                     <button class="rich-text-editor__dropdown-trigger rich-text-editor__dropdown-trigger--code-language"
                         :class="{ 'is-open': openDropdown === 'codeLanguage' }" type="button" title="代码语言"
                         aria-haspopup="menu" :aria-expanded="openDropdown === 'codeLanguage'"
@@ -1196,12 +1210,15 @@ defineExpose({
     --rich-code-label: 'JSON';
 }
 
-.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-rust)) {
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-rust)),
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-rs)) {
     --rich-code-accent: #d97706;
     --rich-code-label: 'RUST';
 }
 
-.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-cpp)) {
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-cpp)),
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-cxx)),
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-cc)) {
     --rich-code-accent: #38bdf8;
     --rich-code-label: 'C++';
 }
@@ -1211,7 +1228,8 @@ defineExpose({
     --rich-code-label: 'C';
 }
 
-.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-csharp)) {
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-csharp)),
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-cs)) {
     --rich-code-accent: #8b5cf6;
     --rich-code-label: 'C#';
 }
@@ -1221,22 +1239,26 @@ defineExpose({
     --rich-code-label: 'JAVA';
 }
 
-.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-javascript)) {
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-javascript)),
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-js)) {
     --rich-code-accent: #facc15;
     --rich-code-label: 'JS';
 }
 
-.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-typescript)) {
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-typescript)),
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-ts)) {
     --rich-code-accent: #3b82f6;
     --rich-code-label: 'TS';
 }
 
-.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-python)) {
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-python)),
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-py)) {
     --rich-code-accent: #22c55e;
     --rich-code-label: 'PYTHON';
 }
 
-.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-go)) {
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-go)),
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-golang)) {
     --rich-code-accent: #06b6d4;
     --rich-code-label: 'GO';
 }
@@ -1246,7 +1268,10 @@ defineExpose({
     --rich-code-label: 'SQL';
 }
 
-.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-shell)) {
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-shell)),
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-bash)),
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-sh)),
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-zsh)) {
     --rich-code-accent: #10b981;
     --rich-code-label: 'SHELL';
 }
@@ -1266,7 +1291,8 @@ defineExpose({
     --rich-code-label: 'XML';
 }
 
-.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-yaml)) {
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-yaml)),
+.rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-yml)) {
     --rich-code-accent: #f59e0b;
     --rich-code-label: 'YAML';
 }
@@ -1287,6 +1313,88 @@ defineExpose({
     color: inherit;
     line-height: 1.75;
     tab-size: 4;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-comment),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-quote) {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-doctag),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-keyword),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-meta .hljs-keyword),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-template-tag),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-template-variable) {
+    color: #f472b6;
+    font-weight: 800;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-attr),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-attribute),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-property),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-variable) {
+    color: #7dd3fc;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-string),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-regexp) {
+    color: #86efac;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-number),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-literal),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-symbol),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-bullet) {
+    color: #fbbf24;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-built_in),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-class .hljs-title),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-title.class_),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-type) {
+    color: #67e8f9;
+    font-weight: 700;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-function .hljs-title),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-title.function_),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-title) {
+    color: #93c5fd;
+    font-weight: 700;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-meta),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-section),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-selector-tag),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-tag),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-name) {
+    color: #fb7185;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-link),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-operator),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-params),
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-subst) {
+    color: #cbd5e1;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-addition) {
+    color: #86efac;
+    background: rgba(34, 197, 94, 0.12);
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-deletion) {
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-emphasis) {
+    font-style: italic;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface pre .hljs-strong) {
+    font-weight: 800;
 }
 
 .rich-text-editor :deep(.rich-text-editor__surface blockquote) {
