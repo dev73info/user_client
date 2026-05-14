@@ -105,6 +105,7 @@ type SpotlightCard = {
   metaSecondary: string
   accent: string
   coverUrl?: string
+  coverAlt?: string
   requirementId?: string
   resourceId?: number
 }
@@ -608,13 +609,14 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
     .map((item, index) => ({
       kind: 'resource' as const,
       title: item.title,
-      summary: item.description?.trim() || '',
+      summary: buildResourceCardSummary(item),
       budget: summarizeResourceTags(item) || normalizeTagName(item.platform) || '公开资源',
       status: item.visibility === 'published' ? '已公开' : '待发布',
       badge: normalizeTagName(item.platform) || '平台资源',
       metaSecondary: `${item.author || item.creator || '匿名作者'} · ${formatTimeLabel(item.updated_at)}`,
       accent: ['nebula', 'sunset', 'forest', 'frost'][index % 4] ?? 'nebula',
       coverUrl: item.cover_url ? apiUrl(item.cover_url) : '',
+      coverAlt: buildResourceCoverAlt(item),
       resourceId: item.id,
     }))
 
@@ -1052,6 +1054,43 @@ function summarizeResourceTags(resource: PublicMcResourceItem): string {
     ),
   )
   return tags.slice(0, 2).join(' / ')
+}
+
+function normalizeInlineText(value?: string | null): string {
+  return value?.replace(/\s+/g, ' ').trim() ?? ''
+}
+
+function uniqueTextParts(parts: Array<string | null | undefined>): string[] {
+  return Array.from(new Set(parts.map((part) => normalizeInlineText(part)).filter(Boolean)))
+}
+
+function buildResourceCardSummary(resource: PublicMcResourceItem): string {
+  const description = normalizeInlineText(resource.description)
+  const title = normalizeInlineText(resource.title) || '73Info 免费资源'
+  const context = uniqueTextParts([normalizeTagName(resource.platform), summarizeResourceTags(resource)])
+
+  if (description.length >= 24 || context.length === 0) {
+    return description || `${title}，可在 73Info 免费资源区查看详情与下载。`
+  }
+
+  const contextText = context.join('、')
+
+  if (description) {
+    return `${description}，面向 ${contextText} 场景。`
+  }
+
+  return `${title}，面向 ${contextText} 场景，可查看详情与下载。`
+}
+
+function buildResourceCoverAlt(resource: PublicMcResourceItem): string {
+  const title = normalizeInlineText(resource.title) || '73Info 免费资源'
+  const context = uniqueTextParts([normalizeTagName(resource.platform), summarizeResourceTags(resource)])
+
+  if (context.length === 0) {
+    return `${title} 的资源封面图`
+  }
+
+  return `${title} 的资源封面图，分类为 ${context.join('、')}`
 }
 
 function resolveResourceRoute(
@@ -1715,7 +1754,8 @@ async function submitPublishRequirement() {
                 :class="`portal-spotlight-card--${card.accent}`" role="button" tabindex="0" @click="openSpotlight(card)"
                 @keydown.enter="openSpotlight(card)" @keydown.space.prevent="openSpotlight(card)">
                 <div class="portal-spotlight-card__cover">
-                  <img v-if="card.coverUrl" class="portal-spotlight-card__cover-img" :src="card.coverUrl" alt="" />
+                  <img v-if="card.coverUrl" class="portal-spotlight-card__cover-img" :src="card.coverUrl"
+                    :alt="card.coverAlt || `${card.title} 的资源封面图`" />
                   <span class="portal-spotlight-card__badge">{{ card.badge }}</span>
                   <div class="portal-spotlight-card__screen portal-spotlight-card__screen--primary"></div>
                   <div class="portal-spotlight-card__screen portal-spotlight-card__screen--secondary"></div>
