@@ -51,14 +51,18 @@ export async function listCommunityTags(): Promise<CommunityTag[]> {
   )
 }
 
-export async function listCommunityPosts(params: {
-  token?: string | null
-  tag?: string
-  limit?: number
-  offset?: number
-} = {}): Promise<CommunityPost[]> {
+export async function listCommunityPosts(
+  params: {
+    token?: string | null
+    tag?: string
+    keyword?: string
+    limit?: number
+    offset?: number
+  } = {},
+): Promise<CommunityPost[]> {
   const search = new URLSearchParams()
   if (params.tag?.trim()) search.set('tag', params.tag.trim())
+  if (params.keyword?.trim()) search.set('keyword', params.keyword.trim())
   if (params.limit) search.set('limit', String(params.limit))
   if (params.offset) search.set('offset', String(params.offset))
   const suffix = search.toString() ? `?${search.toString()}` : ''

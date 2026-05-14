@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
+  ArrowLeft,
+  ArrowRight,
   ChatDotRound,
   Close,
   EditPen,
   Plus,
   Refresh,
+  Search,
   Star,
   StarFilled,
 } from '@element-plus/icons-vue'
@@ -31,15 +34,23 @@ import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 
+const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const { showToast } = useToast()
+const POSTS_PER_PAGE = 8
+const initialSearchKeyword =
+  typeof route.query.keyword === 'string' ? route.query.keyword.trim() : ''
 
 const posts = ref<CommunityPost[]>([])
 const tags = ref<CommunityTag[]>([])
 const selectedPost = ref<CommunityPost | null>(null)
 const comments = ref<CommunityComment[]>([])
 const selectedTag = ref('')
+const searchDraft = ref(initialSearchKeyword)
+const searchKeyword = ref(initialSearchKeyword)
+const currentPage = ref(1)
+const hasNextPage = ref(false)
 const loading = ref(false)
 const commentsLoading = ref(false)
 const savingPost = ref(false)
@@ -67,6 +78,21 @@ const currentPostContent = computed(() =>
 )
 
 const tagOptions = computed(() => tags.value.map((tag) => tag.name))
+const searchActive = computed(() => searchKeyword.value.length > 0)
+const hasActiveFilters = computed(() => Boolean(selectedTag.value || searchActive.value))
+const pageStatus = computed(() => {
+  if (posts.value.length === 0) {
+    return `第 ${currentPage.value} 页`
+  }
+
+  const start = (currentPage.value - 1) * POSTS_PER_PAGE + 1
+  const end = start + posts.value.length - 1
+  return `第 ${currentPage.value} 页 · ${start}-${end} 条`
+})
+const emptyTitle = computed(() => (hasActiveFilters.value ? '没有匹配的帖子' : '暂无帖子'))
+const emptyDescription = computed(() =>
+  hasActiveFilters.value ? '换个关键词或标签再试试。' : '成为第一位发布内容的人。',
+)
 const canEditSelectedPost = computed(() =>
   Boolean(auth.isAuthed && selectedPost.value && selectedPost.value.author === auth.username),
 )
@@ -108,7 +134,8 @@ function updateFloatingComposerActions() {
   const viewportHeight = window.innerHeight || document.documentElement.clientHeight
   const floatingTop = viewportHeight - bottom - actionsHeight
   const canFloat =
-    panelRect.top < floatingTop && panelRect.bottom > viewportHeight - bottom + actionsHeight + viewportGap
+    panelRect.top < floatingTop &&
+    panelRect.bottom > viewportHeight - bottom + actionsHeight + viewportGap
 
   composerActionsPlaceholderHeight.value = actionsHeight
   composerActionsFloating.value = canFloat
@@ -180,16 +207,64 @@ watch(composerVisible, () => {
   void nextTick(observeComposerActions)
 })
 
+watch(
+  () => route.query.keyword,
+  (value) => {
+    const nextKeyword = typeof value === 'string' ? value.trim() : ''
+    if (nextKeyword === searchKeyword.value && nextKeyword === searchDraft.value.trim()) {
+      return
+    }
+
+    searchDraft.value = nextKeyword
+    searchKeyword.value = nextKeyword
+    void loadPostsPage(1)
+  },
+)
+
+async function fetchPostPage(pageNumber: number) {
+  const safePage = Math.max(1, pageNumber)
+  const nextPosts = await listCommunityPosts({
+    token: auth.token,
+    tag: selectedTag.value,
+    keyword: searchKeyword.value,
+    limit: POSTS_PER_PAGE + 1,
+    offset: (safePage - 1) * POSTS_PER_PAGE,
+  })
+
+  return {
+    page: safePage,
+    posts: nextPosts.slice(0, POSTS_PER_PAGE),
+    hasNext: nextPosts.length > POSTS_PER_PAGE,
+  }
+}
+
+function applyPostPage(
+  page: number,
+  nextPosts: CommunityPost[],
+  nextHasPage: boolean,
+  preferredPostId?: number,
+) {
+  currentPage.value = page
+  hasNextPage.value = nextHasPage
+  posts.value = nextPosts
+
+  const nextSelectedPost =
+    (preferredPostId ? nextPosts.find((post) => post.id === preferredPostId) : null) ??
+    nextPosts[0] ??
+    null
+  selectPost(nextSelectedPost)
+}
+
 async function loadCommunityData() {
   loading.value = true
   try {
-    const [nextTags, nextPosts] = await Promise.all([
+    const selectedPostId = selectedPost.value?.id
+    const [nextTags, postPage] = await Promise.all([
       listCommunityTags(),
-      listCommunityPosts({ token: auth.token, tag: selectedTag.value, limit: 30 }),
+      fetchPostPage(currentPage.value),
     ])
     tags.value = nextTags
-    posts.value = nextPosts
-    selectPost(nextPosts[0] ?? null)
+    applyPostPage(postPage.page, postPage.posts, postPage.hasNext, selectedPostId)
   } catch (error) {
     showToast(error instanceof Error ? error.message : '加载社区内容失败', 'error')
   } finally {
@@ -197,12 +272,11 @@ async function loadCommunityData() {
   }
 }
 
-async function loadPostsForTag(tagName = selectedTag.value) {
+async function loadPostsPage(pageNumber = currentPage.value, preferredPostId?: number) {
   loading.value = true
   try {
-    const nextPosts = await listCommunityPosts({ token: auth.token, tag: tagName, limit: 30 })
-    posts.value = nextPosts
-    selectPost(nextPosts[0] ?? null)
+    const postPage = await fetchPostPage(pageNumber)
+    applyPostPage(postPage.page, postPage.posts, postPage.hasNext, preferredPostId)
   } catch (error) {
     showToast(error instanceof Error ? error.message : '加载社区帖子失败', 'error')
   } finally {
@@ -212,7 +286,38 @@ async function loadPostsForTag(tagName = selectedTag.value) {
 
 function selectTag(tagName: string) {
   selectedTag.value = selectedTag.value === tagName ? '' : tagName
-  void loadPostsForTag(selectedTag.value)
+  void loadPostsPage(1)
+}
+
+function applySearch() {
+  searchKeyword.value = searchDraft.value.trim()
+  void loadPostsPage(1)
+}
+
+function clearSearch() {
+  if (!searchDraft.value && !searchKeyword.value) {
+    return
+  }
+
+  searchDraft.value = ''
+  searchKeyword.value = ''
+  void loadPostsPage(1)
+}
+
+function goToPreviousPage() {
+  if (currentPage.value <= 1 || loading.value) {
+    return
+  }
+
+  void loadPostsPage(currentPage.value - 1)
+}
+
+function goToNextPage() {
+  if (!hasNextPage.value || loading.value) {
+    return
+  }
+
+  void loadPostsPage(currentPage.value + 1)
 }
 
 function selectPost(post: CommunityPost | null) {
@@ -296,7 +401,11 @@ async function submitPost() {
         ? await updateCommunityPost(auth.token, editingId, payload)
         : await createCommunityPost(auth.token, payload)
 
-    await Promise.all([loadCommunityData(), loadComments(saved.id)])
+    if (!isEditing) {
+      currentPage.value = 1
+    }
+
+    await loadCommunityData()
     selectPost(saved)
     closeComposer()
     showToast(isEditing ? '帖子已更新' : '帖子已发布', 'success')
@@ -370,7 +479,6 @@ async function submitComment() {
           <div>
             <p class="portal-page__eyebrow">社区内容</p>
             <h2>开发者与用户帖子</h2>
-            <p>沉淀公告、经验、资源维护与需求协作记录。</p>
           </div>
           <div class="community-hero__actions">
             <button class="community-hero__button community-hero__button--ghost" type="button" :disabled="loading"
@@ -390,6 +498,28 @@ async function submitComment() {
           </div>
         </div>
 
+        <form class="community-search-bar" @submit.prevent="applySearch">
+          <div class="community-search-field">
+            <el-icon>
+              <Search />
+            </el-icon>
+            <input v-model="searchDraft" type="text" inputmode="search" enterkeyhint="search" aria-label="搜索社区帖子"
+              placeholder="搜索标题、作者、正文或标签" />
+            <button v-if="searchDraft || searchKeyword" class="community-search-clear" type="button" aria-label="清空搜索"
+              @click="clearSearch">
+              <el-icon>
+                <Close />
+              </el-icon>
+            </button>
+          </div>
+          <button class="community-search-submit" type="submit" :disabled="loading">
+            <el-icon>
+              <Search />
+            </el-icon>
+            <span>搜索</span>
+          </button>
+        </form>
+
         <div class="community-tag-row">
           <button class="community-tag" :class="{ 'is-active': !selectedTag }" type="button" @click="selectTag('')">
             全部
@@ -402,8 +532,8 @@ async function submitComment() {
 
         <div v-if="loading" class="community-empty">社区内容加载中</div>
         <div v-else-if="posts.length === 0" class="community-empty">
-          <strong>暂无帖子</strong>
-          <span>成为第一位发布内容的人。</span>
+          <strong>{{ emptyTitle }}</strong>
+          <span>{{ emptyDescription }}</span>
         </div>
         <div v-else class="community-post-list">
           <article v-for="post in posts" :key="post.id" class="community-post-card"
@@ -423,6 +553,22 @@ async function submitComment() {
               <span>更新 {{ post.updated_at }}</span>
             </div>
           </article>
+        </div>
+
+        <div v-if="!loading && (posts.length > 0 || currentPage > 1)" class="community-pagination">
+          <button class="community-page-button" type="button" :disabled="currentPage <= 1" @click="goToPreviousPage">
+            <el-icon>
+              <ArrowLeft />
+            </el-icon>
+            <span>上一页</span>
+          </button>
+          <span class="community-page-status">{{ pageStatus }}</span>
+          <button class="community-page-button" type="button" :disabled="!hasNextPage" @click="goToNextPage">
+            <span>下一页</span>
+            <el-icon>
+              <ArrowRight />
+            </el-icon>
+          </button>
         </div>
       </section>
 
@@ -704,6 +850,109 @@ async function submitComment() {
   }
 }
 
+.community-search-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.community-search-field {
+  display: flex;
+  min-width: 0;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid rgba(191, 219, 254, 0.96);
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.92);
+  color: #64748b;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.community-search-field:focus-within {
+  border-color: rgba(37, 99, 235, 0.44);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.community-search-field input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+}
+
+.community-search-field input::placeholder {
+  color: #94a3b8;
+}
+
+.community-search-clear,
+.community-search-submit,
+.community-page-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.community-search-clear {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  background: rgba(219, 234, 254, 0.74);
+  color: #2563eb;
+}
+
+.community-search-clear:hover {
+  background: rgba(191, 219, 254, 0.96);
+}
+
+.community-search-submit {
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-color: rgba(37, 99, 235, 0.78);
+  border-radius: 10px;
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.14);
+}
+
+.community-search-submit:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.community-search-submit:disabled,
+.community-page-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
+}
+
 .community-tag-row {
   display: flex;
   flex-wrap: wrap;
@@ -757,6 +1006,39 @@ async function submitComment() {
   border-color: rgba(37, 99, 235, 0.48);
   box-shadow: 0 12px 24px rgba(37, 99, 235, 0.09);
   transform: translateY(-1px);
+}
+
+.community-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(226, 232, 240, 0.78);
+}
+
+.community-page-button {
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-color: rgba(191, 219, 254, 0.96);
+  border-radius: 9px;
+  background: rgba(239, 246, 255, 0.82);
+  color: #2563eb;
+}
+
+.community-page-button:hover:not(:disabled) {
+  border-color: rgba(37, 99, 235, 0.34);
+  background: rgba(219, 234, 254, 0.92);
+}
+
+.community-page-status {
+  min-width: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
 }
 
 .community-post-card__head {
@@ -1177,6 +1459,27 @@ async function submitComment() {
 
   .community-hero__button {
     flex: 1 1 132px;
+  }
+
+  .community-search-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .community-search-submit {
+    width: 100%;
+  }
+
+  .community-pagination {
+    flex-wrap: wrap;
+  }
+
+  .community-page-status {
+    order: -1;
+    width: 100%;
+  }
+
+  .community-page-button {
+    flex: 1 1 126px;
   }
 
   .community-hero p {
