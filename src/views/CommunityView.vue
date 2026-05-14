@@ -97,6 +97,7 @@ const emptyDescription = computed(() =>
 const canEditSelectedPost = computed(() =>
   Boolean(auth.isAuthed && selectedPost.value && selectedPost.value.author === auth.username),
 )
+const selectedPostPublished = computed(() => selectedPost.value?.status === 'published')
 const composerActionsShellStyle = computed<Record<string, string> | undefined>(() => {
   if (!composerActionsFloating.value || composerActionsPlaceholderHeight.value <= 0) {
     return undefined
@@ -189,6 +190,15 @@ function commentAvatarSrc(comment: CommunityComment): string {
 
 function handleCommentAvatarError(comment: CommunityComment) {
   comment.commenter_avatar_url = null
+}
+
+function postStatusText(status: CommunityPost['status']): string {
+  const map: Record<CommunityPost['status'], string> = {
+    pending_review: '审核中',
+    published: '公开中',
+    rejected: '已驳回',
+  }
+  return map[status]
 }
 
 onMounted(() => {
@@ -334,7 +344,7 @@ function selectPost(post: CommunityPost | null) {
 async function loadComments(postId: number) {
   commentsLoading.value = true
   try {
-    comments.value = await listCommunityComments(postId)
+    comments.value = await listCommunityComments(postId, auth.token)
   } catch (error) {
     showToast(error instanceof Error ? error.message : '加载评论失败', 'error')
   } finally {
@@ -454,7 +464,7 @@ async function submitPost() {
     await loadCommunityData()
     selectPost(saved)
     closeComposer()
-    showToast(isEditing ? '帖子已更新' : '帖子已发布', 'success')
+    showToast(isEditing ? '帖子已更新，等待审核' : '帖子已提交审核', 'success')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '保存帖子失败', 'error')
   } finally {
@@ -473,6 +483,11 @@ function updateSelectedPost(patch: Partial<CommunityPost>) {
 
 async function toggleLike(post: CommunityPost) {
   if (!ensureAuthed()) {
+    return
+  }
+
+  if (post.status !== 'published') {
+    showToast('帖子公开后才能点赞', 'warning')
     return
   }
 
@@ -495,6 +510,11 @@ async function toggleLike(post: CommunityPost) {
 
 async function submitComment() {
   if (!selectedPost.value || !ensureAuthed() || sendingComment.value) {
+    return
+  }
+
+  if (selectedPost.value.status !== 'published') {
+    showToast('帖子公开后才能评论', 'warning')
     return
   }
 
@@ -589,7 +609,11 @@ async function submitComment() {
                 <h3>{{ post.title }}</h3>
                 <p>{{ post.author }} · {{ post.published_at }}</p>
               </div>
-              <span>{{ post.like_count }} 赞</span>
+              <div class="community-post-card__badges">
+                <span class="community-status-badge" :class="`is-${post.status}`">{{ postStatusText(post.status)
+                  }}</span>
+                <span>{{ post.like_count }} 赞</span>
+              </div>
             </div>
             <div class="community-post-card__tags">
               <span v-for="tag in post.tags" :key="tag.id">{{ tag.name }}</span>
@@ -665,6 +689,9 @@ async function submitComment() {
               <div class="community-post-card__tags">
                 <span v-for="tag in selectedPost.tags" :key="tag.id">{{ tag.name }}</span>
               </div>
+              <span class="community-status-badge" :class="`is-${selectedPost.status}`">
+                {{ postStatusText(selectedPost.status) }}
+              </span>
               <h2>{{ selectedPost.title }}</h2>
               <p>
                 {{ selectedPost.author }} 发布于 {{ selectedPost.published_at }} · 更新
@@ -684,7 +711,8 @@ async function submitComment() {
 
           <div class="community-actions">
             <el-button class="community-like-button" :class="{ 'is-liked': selectedPost.liked_by_me }"
-              :type="selectedPost.liked_by_me ? 'primary' : 'default'" @click="toggleLike(selectedPost)">
+              :type="selectedPost.liked_by_me ? 'primary' : 'default'" :disabled="!selectedPostPublished"
+              @click="toggleLike(selectedPost)">
               <el-icon>
                 <component :is="selectedPost.liked_by_me ? StarFilled : Star" />
               </el-icon>
@@ -705,7 +733,10 @@ async function submitComment() {
               <span v-if="commentsLoading">加载中</span>
             </div>
 
-            <div class="community-comment-box">
+            <div v-if="!selectedPostPublished" class="community-status-note">
+              帖子公开后可点赞和评论。
+            </div>
+            <div v-else class="community-comment-box">
               <el-input v-model="commentDraft" type="textarea" :rows="3" maxlength="800" show-word-limit
                 placeholder="说点具体的想法或补充" />
               <el-button class="community-submit-button community-comment-submit" type="primary"
@@ -1107,6 +1138,47 @@ async function submitComment() {
   font-weight: 800;
 }
 
+.community-post-card__badges {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.community-status-badge {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 9px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.9);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.community-status-badge.is-pending_review {
+  border-color: rgba(245, 158, 11, 0.28);
+  background: rgba(255, 251, 235, 0.95);
+  color: #b45309;
+}
+
+.community-status-badge.is-published {
+  border-color: rgba(34, 197, 94, 0.24);
+  background: rgba(240, 253, 244, 0.95);
+  color: #15803d;
+}
+
+.community-status-badge.is-rejected {
+  border-color: rgba(248, 113, 113, 0.28);
+  background: rgba(254, 242, 242, 0.95);
+  color: #b91c1c;
+}
+
 .community-post-card__tags {
   display: flex;
   flex-wrap: wrap;
@@ -1397,6 +1469,17 @@ async function submitComment() {
 
 .community-comments__head {
   margin-bottom: 12px;
+}
+
+.community-status-note {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 251, 235, 0.82);
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .community-comment-box {

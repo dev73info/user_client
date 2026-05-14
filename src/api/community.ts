@@ -5,11 +5,17 @@ export type CommunityTag = {
   name: string
 }
 
+export type CommunityPostStatus = 'pending_review' | 'published' | 'rejected'
+
 export type CommunityPost = {
   id: number
   author: string
   author_avatar_url?: string | null
   title: string
+  status: CommunityPostStatus
+  review_note?: string | null
+  reviewed_by?: string | null
+  reviewed_at?: string | null
   tags: CommunityTag[]
   content_html: string
   like_count: number
@@ -109,10 +115,17 @@ export async function updateCommunityPost(
   )
 }
 
-export async function listCommunityComments(postId: number): Promise<CommunityComment[]> {
+export async function listCommunityComments(
+  postId: number,
+  token?: string | null,
+): Promise<CommunityComment[]> {
+  const normalizedToken = token?.trim()
   return requestJson<CommunityComment[]>(
     `${COMMUNITY_API_PREFIX}/posts/${postId}/comments`,
-    { method: 'GET' },
+    {
+      method: 'GET',
+      headers: normalizedToken ? authHeader(normalizedToken) : undefined,
+    },
     '加载评论失败',
   )
 }
