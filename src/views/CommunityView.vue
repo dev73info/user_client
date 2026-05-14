@@ -609,7 +609,7 @@ async function submitComment() {
               </div>
               <div class="community-post-card__badges">
                 <span class="community-status-badge" :class="`is-${post.status}`">{{ postStatusText(post.status)
-                }}</span>
+                  }}</span>
                 <span>{{ post.like_count }} 赞</span>
               </div>
             </div>
@@ -710,7 +710,8 @@ async function submitComment() {
               @click="toggleLike(selectedPost)">
               <el-icon>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                    stroke-width="2"
                     d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3m0 11V10l4-8a3 3 0 0 1 3 3v4h5.4a2 2 0 0 1 2 2.3l-1.2 8A2 2 0 0 1 18.2 21H7Z" />
                 </svg>
               </el-icon>
