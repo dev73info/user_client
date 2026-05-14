@@ -14,7 +14,7 @@ import {
   StarFilled,
 } from '@element-plus/icons-vue'
 
-import { apiUrl } from '@/api/http'
+import { HttpError, apiUrl } from '@/api/http'
 import {
   createCommunityComment,
   createCommunityPost,
@@ -28,6 +28,7 @@ import {
   type CommunityPost,
   type CommunityTag,
 } from '@/api/community'
+import { getMyRealnameVerification } from '@/api/realname'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { useToast } from '@/composables/useToast'
@@ -351,6 +352,40 @@ function ensureAuthed(): boolean {
   return false
 }
 
+async function ensurePostRealnameApproved(): Promise<boolean> {
+  auth.hydrate()
+  if (!auth.isAuthed) {
+    showToast('发布帖子前请先登录', 'warning')
+    void router.push({ name: 'home', query: { modal: 'auth', redirect_to: '/community' } })
+    return false
+  }
+
+  try {
+    const record = await getMyRealnameVerification(auth.token)
+    if (record.status === 'approved') {
+      return true
+    }
+
+    if (record.status === 'pending') {
+      showToast('实名认证审核中，通过后可发布帖子', 'warning')
+      return false
+    }
+
+    showToast('实名认证未通过，请重新提交后再发布帖子', 'warning')
+    void router.push({ name: 'workbench-realname', query: { redirect_to: route.fullPath || '/community' } })
+    return false
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 404) {
+      showToast('发布帖子前请先完成实名认证', 'warning')
+      void router.push({ name: 'workbench-realname', query: { redirect_to: route.fullPath || '/community' } })
+      return false
+    }
+
+    showToast(error instanceof Error ? error.message : '实名认证状态校验失败', 'error')
+    return false
+  }
+}
+
 function resetComposer() {
   editingPost.value = null
   postForm.title = ''
@@ -358,8 +393,12 @@ function resetComposer() {
   postForm.content_html = ''
 }
 
-function openCreateComposer() {
+async function openCreateComposer() {
   if (!ensureAuthed()) {
+    return
+  }
+  const approved = await ensurePostRealnameApproved()
+  if (!approved) {
     return
   }
   resetComposer()
@@ -387,9 +426,16 @@ async function submitPost() {
     return
   }
 
+  const isEditing = Boolean(editingPost.value)
+  if (!isEditing) {
+    const approved = await ensurePostRealnameApproved()
+    if (!approved) {
+      return
+    }
+  }
+
   savingPost.value = true
   try {
-    const isEditing = Boolean(editingPost.value)
     const editingId = editingPost.value?.id
     const payload = {
       title: postForm.title.trim(),

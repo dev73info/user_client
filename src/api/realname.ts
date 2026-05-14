@@ -35,9 +35,20 @@ export type SubmitRealnameVerificationPayload = {
 
 export type SubmitRealnameVerificationResponse = UserRealnameVerification
 
-export async function getMyRealnameVerification(
-  token: string,
-): Promise<UserRealnameVerification> {
+export type StartWechatFaceidVerificationResponse = {
+  verification: UserRealnameVerification
+  order_no: string
+  biz_token: string
+  auth_url: string
+  expires_in_seconds: number
+}
+
+export type CompleteWechatFaceidVerificationPayload = {
+  order_no?: string | null
+  biz_token?: string | null
+}
+
+export async function getMyRealnameVerification(token: string): Promise<UserRealnameVerification> {
   return requestJson<UserRealnameVerification>(
     '/realname/me',
     {
@@ -61,5 +72,39 @@ export async function submitMyRealnameVerification(
       body: JSON.stringify(payload),
     },
     '提交实名认证失败',
+  )
+}
+
+export async function startWechatFaceidVerification(
+  token: string,
+  payload: SubmitRealnameVerificationPayload,
+): Promise<StartWechatFaceidVerificationResponse> {
+  return requestJson<StartWechatFaceidVerificationResponse>(
+    '/realname/faceid/wechat/start',
+    {
+      method: 'POST',
+      headers: authHeaders(token, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(payload),
+    },
+    '发起微信人脸核身失败',
+  )
+}
+
+export async function completeWechatFaceidVerification(
+  token: string,
+  payload: CompleteWechatFaceidVerificationPayload = {},
+): Promise<UserRealnameVerification> {
+  return requestJson<UserRealnameVerification>(
+    '/realname/faceid/wechat/result',
+    {
+      method: 'POST',
+      headers: authHeaders(token, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(payload),
+    },
+    '查询微信人脸核身结果失败',
   )
 }
