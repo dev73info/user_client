@@ -376,6 +376,9 @@ function finishSearchComposition(event: CompositionEvent) {
     </nav>
 
     <div class="portal-header__tools">
+      <RouterLink class="portal-search-menu" :to="{ name: 'community' }">
+        社区
+      </RouterLink>
       <form class="portal-search" :class="{ 'is-filled': searchHasInputValue }" @submit.prevent="submitSearch">
         <el-icon>
           <Search />
@@ -554,6 +557,39 @@ function finishSearchComposition(event: CompositionEvent) {
   justify-self: end;
   gap: 8px;
   min-width: 0;
+}
+
+.portal-search-menu {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(191, 219, 254, 0.92);
+  background: rgba(239, 246, 255, 0.94);
+  color: #1d4ed8;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.portal-search-menu:hover,
+.portal-search-menu:focus-visible {
+  border-color: rgba(37, 99, 235, 0.34);
+  background: rgba(219, 234, 254, 0.96);
+  color: #1d4ed8;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
+  transform: translateY(-1px);
 }
 
 .portal-subscription {
@@ -1012,11 +1048,19 @@ function finishSearchComposition(event: CompositionEvent) {
   .portal-header.app-top-nav--home .portal-header__tools {
     width: 100%;
     min-width: 0;
+    flex-wrap: nowrap;
     justify-content: stretch;
+    gap: 8px;
+  }
+
+  .portal-header.app-top-nav--home .portal-search-menu {
+    display: inline-flex;
   }
 
   .portal-header.app-top-nav--home .portal-search {
-    width: 100%;
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
     min-height: 42px;
     background: rgba(248, 251, 255, 0.96);
   }
