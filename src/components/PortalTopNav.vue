@@ -23,7 +23,6 @@ const router = useRouter()
 const { showToast } = useToast()
 const menuOpen = ref(false)
 const searchQuery = ref('')
-const searchFocused = ref(false)
 const officialActivitySubscriptionEnabled = ref(false)
 const devHallSubscriptionEnabled = ref(false)
 const subscriptionMenuOpen = ref(false)
@@ -335,23 +334,11 @@ function submitSearch() {
 function clearSearch() {
   searchQuery.value = ''
 }
-
-function handleSearchFocusOut(event: FocusEvent) {
-  const currentTarget = event.currentTarget as HTMLElement | null
-  const nextTarget = event.relatedTarget as Node | null
-
-  if (currentTarget && nextTarget && currentTarget.contains(nextTarget)) {
-    return
-  }
-
-  searchFocused.value = false
-}
 </script>
 
 <template>
   <header class="portal-header" :class="{
     'portal-header--dev': isDeveloperArea,
-    'portal-header--search-focused': searchFocused,
   }">
     <RouterLink class="portal-brand" :to="{ name: 'home' }">
       <div class="portal-brand__mark">73</div>
@@ -371,8 +358,7 @@ function handleSearchFocusOut(event: FocusEvent) {
     </nav>
 
     <div class="portal-header__tools">
-      <form class="portal-search" :class="{ 'is-filled': Boolean(searchQuery.trim()) }" @focusin="searchFocused = true"
-        @focusout="handleSearchFocusOut" @submit.prevent="submitSearch">
+      <form class="portal-search" :class="{ 'is-filled': Boolean(searchQuery.trim()) }" @submit.prevent="submitSearch">
         <el-icon>
           <Search />
         </el-icon>
@@ -410,7 +396,7 @@ function handleSearchFocusOut(event: FocusEvent) {
             </span>
             <span class="portal-subscription-item__state">{{
               officialActivitySubscriptionEnabled ? '开' : '关'
-              }}</span>
+            }}</span>
           </button>
           <button class="portal-subscription-item" :class="{ active: devHallSubscriptionEnabled }" type="button"
             role="menuitemcheckbox" :aria-checked="devHallSubscriptionEnabled" :disabled="subscriptionBusy"
@@ -421,7 +407,7 @@ function handleSearchFocusOut(event: FocusEvent) {
             </span>
             <span class="portal-subscription-item__state">{{
               devHallSubscriptionEnabled ? '开' : '关'
-              }}</span>
+            }}</span>
           </button>
         </section>
       </div>
@@ -512,11 +498,6 @@ function handleSearchFocusOut(event: FocusEvent) {
   justify-content: flex-start;
   width: 100%;
   min-width: 0;
-  transition: opacity 220ms ease;
-}
-
-.portal-header--search-focused .portal-nav {
-  opacity: 0.96;
 }
 
 .portal-nav__link {
@@ -585,13 +566,13 @@ function handleSearchFocusOut(event: FocusEvent) {
 }
 
 .portal-search:hover {
+  width: clamp(300px, 32vw, 430px);
+  transform: translateX(-1px);
   border-color: rgba(147, 197, 253, 0.96);
   background: #fff;
 }
 
 .portal-search:focus-within {
-  width: clamp(300px, 32vw, 430px);
-  transform: translateX(-1px);
   border-color: rgba(37, 99, 235, 0.48);
   background: #fff;
   box-shadow:
@@ -829,10 +810,28 @@ function handleSearchFocusOut(event: FocusEvent) {
 
 .portal-text-btn {
   padding: 9px 10px;
+  border-radius: 10px;
   background: transparent;
   color: #0f172a;
   font-weight: 700;
   font-size: 13px;
+  line-height: 1.2;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.portal-text-btn:hover {
+  color: #1d4ed8;
+  background: rgba(239, 246, 255, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.34);
+  transform: translateY(-1px);
+}
+
+.portal-text-btn:active {
+  transform: translateY(0);
 }
 
 .portal-solid-btn {
@@ -843,6 +842,30 @@ function handleSearchFocusOut(event: FocusEvent) {
   font-weight: 700;
   font-size: 13px;
   box-shadow: 0 10px 20px rgba(37, 99, 235, 0.22);
+  line-height: 1.2;
+  transition:
+    background 180ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease,
+    transform 160ms ease;
+}
+
+.portal-solid-btn:hover {
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  box-shadow: 0 14px 26px rgba(37, 99, 235, 0.3);
+  filter: saturate(1.06);
+  transform: translateY(-1px);
+}
+
+.portal-solid-btn:active {
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.24);
+  transform: translateY(0);
+}
+
+.portal-text-btn:focus-visible,
+.portal-solid-btn:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.16);
+  outline-offset: 2px;
 }
 
 .portal-user {
@@ -907,11 +930,7 @@ function handleSearchFocusOut(event: FocusEvent) {
     justify-content: space-between;
   }
 
-  .portal-header--search-focused .portal-nav {
-    opacity: 1;
-  }
-
-  .portal-search:focus-within {
+  .portal-search:hover {
     width: clamp(300px, 44vw, 520px);
   }
 }
@@ -930,8 +949,10 @@ function handleSearchFocusOut(event: FocusEvent) {
     width: 100%;
   }
 
+  .portal-search:hover,
   .portal-search:focus-within {
     width: 100%;
+    transform: none;
   }
 
   .portal-header__tools,
