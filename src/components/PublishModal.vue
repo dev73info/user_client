@@ -1,72 +1,78 @@
 <script setup lang="ts">
-import { watch } from 'vue'
-import type { PropType } from 'vue'
+import { watch } from "vue";
+import type { PropType } from "vue";
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
-  modalTitle: { type: String, default: '发布需求' },
-  submitText: { type: String, default: '确认发布' },
-  loadingText: { type: String, default: '发布中...' },
-  publishTitle: { type: [String, Number] as PropType<string | number>, default: '' },
-  publishDescription: { type: String, default: '' },
-  publishBudget: { type: [String, Number] as PropType<string | number>, default: '' },
-  publishAcceptance: { type: String, default: '' },
+  modalTitle: { type: String, default: "发布需求" },
+  submitText: { type: String, default: "确认发布" },
+  loadingText: { type: String, default: "发布中..." },
+  publishTitle: { type: [String, Number] as PropType<string | number>, default: "" },
+  publishDescription: { type: String, default: "" },
+  publishBudget: { type: [String, Number] as PropType<string | number>, default: "" },
+  publishAcceptance: { type: String, default: "" },
   publishPaymentMode: {
-    type: String as PropType<'platform_guarantee' | 'self_managed'>,
-    default: 'self_managed',
+    type: String as PropType<"platform_guarantee" | "self_managed">,
+    default: "self_managed",
   },
   allowPlatformGuarantee: { type: Boolean, default: true },
   publishLoading: { type: Boolean, default: false },
-})
+});
+
+const requirementTextMaxLength = 1024 * 1024;
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'submit'): void
-  (e: 'update:publishTitle', value: string): void
-  (e: 'update:publishDescription', value: string): void
-  (e: 'update:publishBudget', value: string | number): void
-  (e: 'update:publishAcceptance', value: string): void
-  (e: 'update:publishPaymentMode', value: 'platform_guarantee' | 'self_managed'): void
-}>()
+  (e: "close"): void;
+  (e: "submit"): void;
+  (e: "update:publishTitle", value: string): void;
+  (e: "update:publishDescription", value: string): void;
+  (e: "update:publishBudget", value: string | number): void;
+  (e: "update:publishAcceptance", value: string): void;
+  (e: "update:publishPaymentMode", value: "platform_guarantee" | "self_managed"): void;
+}>();
 
 function updateTitle(event: Event) {
-  emit('update:publishTitle', (event.target as HTMLInputElement).value)
+  emit("update:publishTitle", (event.target as HTMLInputElement).value);
 }
 
 function updateDescription(event: Event) {
-  emit('update:publishDescription', (event.target as HTMLTextAreaElement).value)
+  emit("update:publishDescription", (event.target as HTMLTextAreaElement).value);
 }
 
 function updateBudget(event: Event) {
-  emit('update:publishBudget', (event.target as HTMLInputElement).value)
+  emit("update:publishBudget", (event.target as HTMLInputElement).value);
 }
 
 function updateAcceptance(event: Event) {
-  emit('update:publishAcceptance', (event.target as HTMLTextAreaElement).value)
+  emit("update:publishAcceptance", (event.target as HTMLTextAreaElement).value);
 }
 
-function updatePaymentMode(value: 'platform_guarantee' | 'self_managed') {
-  if (value === 'platform_guarantee' && !props.allowPlatformGuarantee) {
-    return
+function updatePaymentMode(value: "platform_guarantee" | "self_managed") {
+  if (value === "platform_guarantee" && !props.allowPlatformGuarantee) {
+    return;
   }
 
-  emit('update:publishPaymentMode', value)
+  emit("update:publishPaymentMode", value);
 }
 
 watch(
   () => [props.allowPlatformGuarantee, props.publishPaymentMode] as const,
   ([allowPlatformGuarantee, publishPaymentMode]) => {
-    if (!allowPlatformGuarantee && publishPaymentMode === 'platform_guarantee') {
-      emit('update:publishPaymentMode', 'self_managed')
+    if (!allowPlatformGuarantee && publishPaymentMode === "platform_guarantee") {
+      emit("update:publishPaymentMode", "self_managed");
     }
   },
-  { immediate: true },
-)
+  { immediate: true }
+);
 </script>
 
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="auth-modal-wrap publish-modal-wrap" @click.self="emit('close')">
+    <div
+      v-if="visible"
+      class="auth-modal-wrap publish-modal-wrap"
+      @click.self="emit('close')"
+    >
       <section class="auth-modal publish-modal" :aria-label="`${modalTitle}弹窗`">
         <header class="publish-modal__head">
           <h3>{{ modalTitle }}</h3>
@@ -89,7 +95,7 @@ watch(
             <textarea
               :value="publishDescription"
               rows="5"
-              maxlength="300"
+              :maxlength="requirementTextMaxLength"
               placeholder="请描述你的目标、功能和期望交付时间，便于快速匹配。"
               required
               @input="updateDescription"
@@ -112,7 +118,7 @@ watch(
             <textarea
               :value="publishAcceptance"
               rows="3"
-              maxlength="240"
+              :maxlength="requirementTextMaxLength"
               placeholder="请填写交付标准、验收节点等内容。"
               required
               @input="updateAcceptance"
@@ -143,8 +149,8 @@ watch(
                 <strong>平台担保</strong>
                 <small>{{
                   allowPlatformGuarantee
-                    ? '按平台定金与尾款规则推进'
-                    : '暂未开放，当前仅支持无平台担保'
+                    ? "按平台定金与尾款规则推进"
+                    : "暂未开放，当前仅支持无平台担保"
                 }}</small>
               </button>
             </div>
@@ -152,7 +158,9 @@ watch(
         </div>
 
         <div class="auth-modal-actions publish-modal__actions">
-          <button class="auth-btn ghost" type="button" @click="emit('close')">取消</button>
+          <button class="auth-btn ghost" type="button" @click="emit('close')">
+            取消
+          </button>
           <button
             class="auth-btn solid"
             type="button"
@@ -241,7 +249,7 @@ watch(
   resize: vertical;
 }
 
-.publish-modal__body textarea[rows='3'] {
+.publish-modal__body textarea[rows="3"] {
   min-height: 86px;
 }
 
@@ -301,10 +309,7 @@ watch(
   color: #111827;
   text-align: left;
   cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    background-color 160ms ease,
-    box-shadow 160ms ease,
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease,
     transform 160ms ease;
 }
 
