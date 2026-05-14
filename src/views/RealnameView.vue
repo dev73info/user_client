@@ -93,7 +93,7 @@ const submitDisabled = computed(
 
 const idCardPlaceholder = computed(() => {
   const masked = current.value?.id_card_no_masked
-  return masked ? `当前 ${masked}` : '请输入证件号'
+  return masked ? `${masked}` : '请输入证件号'
 })
 
 const submitButtonText = computed(() => {
