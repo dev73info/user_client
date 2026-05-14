@@ -356,12 +356,12 @@ function clearSearch() {
     </nav>
 
     <div class="portal-header__tools">
-      <form class="portal-search" @submit.prevent="submitSearch">
+      <form class="portal-search" :class="{ 'is-filled': Boolean(searchQuery.trim()) }" @submit.prevent="submitSearch">
         <el-icon>
           <Search />
         </el-icon>
-        <input v-model="searchQuery" type="text" inputmode="search" enterkeyhint="search" aria-label="搜索资源、需求、开发者"
-          placeholder="搜索资源、需求、开发者..." />
+        <input v-model="searchQuery" type="text" inputmode="search" enterkeyhint="search" aria-label="搜索资源、需求"
+          placeholder="搜索资源、需求..." />
         <button v-if="searchQuery" class="portal-search-clear" type="button" aria-label="清空搜索" @click="clearSearch">
           <el-icon>
             <Close />
@@ -493,6 +493,7 @@ function clearSearch() {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .portal-nav__link {
@@ -516,7 +517,9 @@ function clearSearch() {
 .portal-header__tools {
   display: inline-flex;
   align-items: center;
+  justify-self: end;
   gap: 8px;
+  min-width: 0;
 }
 
 .portal-subscription {
@@ -526,38 +529,97 @@ function clearSearch() {
 }
 
 .portal-search {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  width: 260px;
-  padding: 0 12px;
-  min-height: 38px;
+  flex: 0 1 auto;
+  gap: 10px;
+  width: clamp(260px, 28vw, 360px);
+  min-width: 0;
+  padding: 0 10px 0 14px;
+  min-height: 42px;
   border-radius: 999px;
-  border: 1px solid rgba(226, 232, 240, 0.96);
-  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(203, 213, 225, 0.86);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
   color: #64748b;
+  transition:
+    width 220ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.portal-search:hover {
+  border-color: rgba(147, 197, 253, 0.96);
+  background: #fff;
+}
+
+.portal-search:focus-within {
+  width: clamp(360px, 42vw, 560px);
+  border-color: rgba(37, 99, 235, 0.48);
+  background: #fff;
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.08),
+    0 12px 28px rgba(37, 99, 235, 0.1);
+}
+
+.portal-search.is-filled {
+  border-color: rgba(147, 197, 253, 0.96);
+  background: #fff;
+}
+
+.portal-search>.el-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  color: #64748b;
+  transition: color 160ms ease;
+}
+
+.portal-search:hover>.el-icon,
+.portal-search:focus-within>.el-icon,
+.portal-search.is-filled>.el-icon {
+  color: #2563eb;
 }
 
 .portal-search input {
   flex: 1;
   min-width: 0;
+  height: 40px;
   border: 0;
   outline: 0;
+  appearance: none;
   background: transparent;
+  caret-color: #2563eb;
   color: #0f172a;
-  font-size: 13px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+}
+
+.portal-search input::placeholder {
+  color: #94a3b8;
+  font-weight: 500;
 }
 
 .portal-search-clear {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 26px;
   width: 26px;
   height: 26px;
+  margin-right: -2px;
   padding: 0;
   border: 1px solid transparent;
   border-radius: 999px;
   background: rgba(219, 234, 254, 0.74);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
   color: #2563eb;
   font: inherit;
   font-size: 13px;
@@ -576,6 +638,15 @@ function clearSearch() {
 
 .portal-search-clear:hover {
   background: rgba(191, 219, 254, 0.96);
+}
+
+.portal-search-clear:active {
+  transform: scale(0.96);
+}
+
+.portal-search-clear:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.16);
+  outline-offset: 2px;
 }
 
 .portal-icon-btn,
@@ -802,6 +873,10 @@ function clearSearch() {
   .portal-header__tools {
     justify-content: space-between;
   }
+
+  .portal-search:focus-within {
+    width: clamp(300px, 44vw, 520px);
+  }
 }
 
 @media (max-width: 780px) {
@@ -814,6 +889,11 @@ function clearSearch() {
   }
 
   .portal-search {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .portal-search:focus-within {
     width: 100%;
   }
 

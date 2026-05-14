@@ -4,7 +4,7 @@ import '@/styles/home.css'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowRight, ChatDotRound } from '@element-plus/icons-vue'
+import { ArrowRight, ChatDotRound, Files, Finished, Money, User } from '@element-plus/icons-vue'
 
 import { useAuthStore } from '@/stores/auth'
 import AuthModal from '@/components/AuthModal.vue'
@@ -115,6 +115,8 @@ type DeveloperRank = {
   creditScore: number | null
   deals: string
 }
+
+const TOP_LIKED_RESOURCE_LIMIT = 16
 
 const failedDeveloperAvatarUrls = ref<Set<string>>(new Set())
 
@@ -502,10 +504,10 @@ const platformStats = computed(() => {
   const resourceCount = publicResources.value.length
 
   return [
-    { label: '开发者', value: `${publicDeveloperCount.value} 位`, icon: '◌' },
-    { label: '公开资源', value: `${resourceCount} 条`, icon: '◎' },
-    { label: '需求完成', value: completed?.value ?? '0 单', icon: '◈' },
-    { label: '交易金额', value: turnover?.value ?? '¥ 0.00', icon: '✦' },
+    { label: '开发者', value: `${publicDeveloperCount.value} 位`, icon: User },
+    { label: '公开资源', value: `${resourceCount} 条`, icon: Files },
+    { label: '需求完成', value: completed?.value ?? '0 单', icon: Finished },
+    { label: '交易金额', value: turnover?.value ?? '¥ 0.00', icon: Money },
   ]
 })
 
@@ -584,18 +586,37 @@ function formatCreditScore(value: number | null) {
 }
 
 const spotlightCards = computed<SpotlightCard[]>(() => {
-  const resourceCards = publicResources.value.slice(0, 4).map((item, index) => ({
-    kind: 'resource' as const,
-    title: item.title,
-    summary: item.description?.trim() || '',
-    budget: summarizeResourceTags(item) || normalizeTagName(item.platform) || '公开资源',
-    status: item.visibility === 'published' ? '已公开' : '待发布',
-    badge: normalizeTagName(item.platform) || '平台资源',
-    metaSecondary: `${item.author || item.creator || '匿名作者'} · ${formatTimeLabel(item.updated_at)}`,
-    accent: ['nebula', 'sunset', 'forest', 'frost'][index % 4] ?? 'nebula',
-    coverUrl: item.cover_url ? apiUrl(item.cover_url) : '',
-    resourceId: item.id,
-  }))
+  const resourceCards = [...publicResources.value]
+    .sort((left, right) => {
+      const likeDelta = (right.like_count ?? 0) - (left.like_count ?? 0)
+      if (likeDelta !== 0) {
+        return likeDelta
+      }
+
+      const leftUpdatedAt = Date.parse(left.updated_at)
+      const rightUpdatedAt = Date.parse(right.updated_at)
+      const updatedDelta =
+        (Number.isNaN(rightUpdatedAt) ? 0 : rightUpdatedAt) -
+        (Number.isNaN(leftUpdatedAt) ? 0 : leftUpdatedAt)
+      if (updatedDelta !== 0) {
+        return updatedDelta
+      }
+
+      return right.id - left.id
+    })
+    .slice(0, TOP_LIKED_RESOURCE_LIMIT)
+    .map((item, index) => ({
+      kind: 'resource' as const,
+      title: item.title,
+      summary: item.description?.trim() || '',
+      budget: summarizeResourceTags(item) || normalizeTagName(item.platform) || '公开资源',
+      status: item.visibility === 'published' ? '已公开' : '待发布',
+      badge: normalizeTagName(item.platform) || '平台资源',
+      metaSecondary: `${item.author || item.creator || '匿名作者'} · ${formatTimeLabel(item.updated_at)}`,
+      accent: ['nebula', 'sunset', 'forest', 'frost'][index % 4] ?? 'nebula',
+      coverUrl: item.cover_url ? apiUrl(item.cover_url) : '',
+      resourceId: item.id,
+    }))
 
   return resourceCards
 })
@@ -1690,7 +1711,7 @@ async function submitPublishRequirement() {
               </button>
             </div>
             <div v-if="spotlightCards.length > 0" class="portal-spotlight-grid">
-              <article v-for="card in spotlightCards" :key="card.title" class="portal-spotlight-card"
+              <article v-for="card in spotlightCards" :key="card.resourceId ?? card.title" class="portal-spotlight-card"
                 :class="`portal-spotlight-card--${card.accent}`" role="button" tabindex="0" @click="openSpotlight(card)"
                 @keydown.enter="openSpotlight(card)" @keydown.space.prevent="openSpotlight(card)">
                 <div class="portal-spotlight-card__cover">
@@ -1733,9 +1754,10 @@ async function submitPublishRequirement() {
               </button>
             </div>
             <ul class="portal-notice-list">
-              <li v-for="notice in portalNotices" :key="`${notice.title}-${notice.date}`" class="portal-notice-item"
-                :class="{ 'portal-notice-item--clickable': notice.to }" :role="notice.to ? 'button' : undefined"
-                :tabindex="notice.to ? 0 : undefined" @click="openPortalNotice(notice)"
+              <li v-for="(notice, index) in portalNotices" :key="`${notice.title}-${notice.date}`"
+                class="portal-notice-item" :class="{ 'portal-notice-item--clickable': notice.to }"
+                :role="notice.to ? 'button' : undefined" :tabindex="notice.to ? 0 : undefined"
+                :style="{ '--notice-index': String(index) }" @click="openPortalNotice(notice)"
                 @keydown.enter="openPortalNotice(notice)" @keydown.space.prevent="openPortalNotice(notice)">
                 <div class="portal-notice-item__main">
                   <strong>{{ notice.title }}</strong>
@@ -1746,20 +1768,24 @@ async function submitPublishRequirement() {
             </ul>
           </section>
 
-          <section id="portal-developers" class="portal-card portal-card--stats">
+          <section id="portal-developers" class="portal-card portal-card--stats"
+            :class="{ 'is-refreshing': homeRefreshLoading }">
             <div class="portal-card__header portal-card__header--stats">
               <div class="portal-card__title portal-card__title--stats">
                 <span class="portal-stats-head__icon" aria-hidden="true">◉</span>
                 <h2>平台数据</h2>
               </div>
-              <button class="portal-link-btn" type="button" :disabled="homeRefreshLoading" @click="refreshHomeData">
+              <button class="portal-link-btn" :class="{ 'is-loading': homeRefreshLoading }" type="button"
+                :disabled="homeRefreshLoading" @click="refreshHomeData">
                 {{ homeRefreshLoading ? '刷新中' : '刷新' }}
               </button>
             </div>
             <div class="portal-stats-grid">
               <article v-for="(stat, index) in platformStats" :key="stat.label" class="portal-stat-item"
-                :class="`portal-stat-item--tone-${index % 4}`">
-                <span class="portal-stat-item__icon">{{ stat.icon }}</span>
+                :class="`portal-stat-item--tone-${index % 4}`" :style="{ '--stat-index': String(index) }">
+                <span class="portal-stat-item__icon" aria-hidden="true">
+                  <component :is="stat.icon" />
+                </span>
                 <div class="portal-stat-item__copy">
                   <span>{{ stat.label }}</span>
                   <strong>{{ stat.value }}</strong>
@@ -1768,7 +1794,7 @@ async function submitPublishRequirement() {
             </div>
           </section>
 
-          <section class="portal-card">
+          <section class="portal-card portal-card--rank">
             <div class="portal-card__header">
               <h2>优秀开发者</h2>
               <button class="portal-link-btn" type="button" @click="router.push({ name: 'community' })">
@@ -1776,7 +1802,8 @@ async function submitPublishRequirement() {
               </button>
             </div>
             <ul v-if="developerRanks.length > 0" class="portal-rank-list">
-              <li v-for="developer in developerRanks" :key="developer.name" class="portal-rank-item">
+              <li v-for="(developer, index) in developerRanks" :key="developer.name" class="portal-rank-item"
+                :style="{ '--rank-index': String(index) }">
                 <div class="portal-rank-item__avatar">
                   <img v-if="developer.avatarUrl" :src="developer.avatarUrl" :alt="`${developer.name} 的头像`"
                     @error="handleDeveloperAvatarError(developer)" />
