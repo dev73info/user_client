@@ -487,7 +487,7 @@ async function loadHallData() {
               class="portal-page__list-item requirement-hall__deal-item">
               <strong>{{ deal.title }}</strong>
               <span class="portal-page__meta">{{ formatMoney(deal.amount_cny) }} · {{ formatTimeLabel(deal.paid_at)
-                }}</span>
+              }}</span>
               <p v-if="deal.comment_text">{{ deal.comment_text }}</p>
             </li>
           </ul>
@@ -563,7 +563,7 @@ async function loadHallData() {
           </div>
         </section>
 
-        <div class="requirement-hall-detail__actions">
+        <div v-if="auth.isAuthed" class="requirement-hall-detail__actions">
           <button class="requirement-hall-detail__bind" type="button"
             @click="openRequirementWorkbench(selectedRequirement)">
             <el-icon>
