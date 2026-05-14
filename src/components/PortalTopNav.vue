@@ -23,6 +23,7 @@ const router = useRouter()
 const { showToast } = useToast()
 const menuOpen = ref(false)
 const searchQuery = ref('')
+const searchFocused = ref(false)
 const officialActivitySubscriptionEnabled = ref(false)
 const devHallSubscriptionEnabled = ref(false)
 const subscriptionMenuOpen = ref(false)
@@ -334,10 +335,27 @@ function submitSearch() {
 function clearSearch() {
   searchQuery.value = ''
 }
+
+function handleSearchFocusOut(event: FocusEvent) {
+  const currentTarget = event.currentTarget as HTMLElement | null
+  const nextTarget = event.relatedTarget as Node | null
+
+  if (currentTarget && nextTarget && currentTarget.contains(nextTarget)) {
+    return
+  }
+
+  searchFocused.value = false
+}
 </script>
 
 <template>
-  <header class="portal-header" :class="{ 'portal-header--dev': isDeveloperArea }">
+  <header
+    class="portal-header"
+    :class="{
+      'portal-header--dev': isDeveloperArea,
+      'portal-header--search-focused': searchFocused,
+    }"
+  >
     <RouterLink class="portal-brand" :to="{ name: 'home' }">
       <div class="portal-brand__mark">73</div>
       <div class="portal-brand__copy">
@@ -347,8 +365,14 @@ function clearSearch() {
 
     <nav class="portal-nav">
       <template v-for="link in headerLinks" :key="link.label">
-        <RouterLink v-if="link.to" :to="link.to" active-class="" exact-active-class="" class="portal-nav__link"
-          :class="{ active: link.active }">
+        <RouterLink
+          v-if="link.to"
+          :to="link.to"
+          active-class=""
+          exact-active-class=""
+          class="portal-nav__link"
+          :class="{ active: link.active }"
+        >
           {{ link.label }}
         </RouterLink>
         <a v-else :href="link.href || '#'" class="portal-nav__link">{{ link.label }}</a>
@@ -356,56 +380,99 @@ function clearSearch() {
     </nav>
 
     <div class="portal-header__tools">
-      <form class="portal-search" :class="{ 'is-filled': Boolean(searchQuery.trim()) }" @submit.prevent="submitSearch">
+      <form
+        class="portal-search"
+        :class="{ 'is-filled': Boolean(searchQuery.trim()) }"
+        @focusin="searchFocused = true"
+        @focusout="handleSearchFocusOut"
+        @submit.prevent="submitSearch"
+      >
         <el-icon>
           <Search />
         </el-icon>
-        <input v-model="searchQuery" type="text" inputmode="search" enterkeyhint="search" aria-label="搜索资源、需求"
-          placeholder="搜索资源、需求..." />
-        <button v-if="searchQuery" class="portal-search-clear" type="button" aria-label="清空搜索" @click="clearSearch">
+        <input
+          v-model="searchQuery"
+          type="text"
+          inputmode="search"
+          enterkeyhint="search"
+          aria-label="搜索资源、需求"
+          placeholder="搜索资源、需求..."
+        />
+        <button
+          v-if="searchQuery"
+          class="portal-search-clear"
+          type="button"
+          aria-label="清空搜索"
+          @click="clearSearch"
+        >
           <el-icon>
             <Close />
           </el-icon>
         </button>
       </form>
       <div class="portal-subscription" @click.stop>
-        <button class="portal-icon-btn portal-icon-btn--subscription" :class="{
-          'is-active': hasActiveSubscription,
-          'is-loading': subscriptionBusy,
-          'is-menu-open': subscriptionMenuOpen,
-        }" type="button" :aria-label="bellTitle" :aria-pressed="hasActiveSubscription" :title="bellTitle"
-          @click="handleBellClick" @contextmenu.prevent="openSubscriptionMenu">
+        <button
+          class="portal-icon-btn portal-icon-btn--subscription"
+          :class="{
+            'is-active': hasActiveSubscription,
+            'is-loading': subscriptionBusy,
+            'is-menu-open': subscriptionMenuOpen,
+          }"
+          type="button"
+          :aria-label="bellTitle"
+          :aria-pressed="hasActiveSubscription"
+          :title="bellTitle"
+          @click="handleBellClick"
+          @contextmenu.prevent="openSubscriptionMenu"
+        >
           <el-icon>
             <Bell />
           </el-icon>
         </button>
 
-        <section v-if="subscriptionMenuOpen" class="portal-subscription-menu" role="menu" aria-label="消息订阅设置"
-          @contextmenu.prevent>
+        <section
+          v-if="subscriptionMenuOpen"
+          class="portal-subscription-menu"
+          role="menu"
+          aria-label="消息订阅设置"
+          @contextmenu.prevent
+        >
           <header class="portal-subscription-menu__head">
             <strong>消息订阅</strong>
           </header>
-          <button class="portal-subscription-item" :class="{ active: officialActivitySubscriptionEnabled }"
-            type="button" role="menuitemcheckbox" :aria-checked="officialActivitySubscriptionEnabled"
-            :disabled="subscriptionBusy" @click="toggleSubscription('official_activity')">
+          <button
+            class="portal-subscription-item"
+            :class="{ active: officialActivitySubscriptionEnabled }"
+            type="button"
+            role="menuitemcheckbox"
+            :aria-checked="officialActivitySubscriptionEnabled"
+            :disabled="subscriptionBusy"
+            @click="toggleSubscription('official_activity')"
+          >
             <span class="portal-subscription-item__copy">
               <strong>官方活动通知</strong>
               <small>平台公告、活动与福利提醒</small>
             </span>
             <span class="portal-subscription-item__state">{{
               officialActivitySubscriptionEnabled ? '开' : '关'
-              }}</span>
+            }}</span>
           </button>
-          <button class="portal-subscription-item" :class="{ active: devHallSubscriptionEnabled }" type="button"
-            role="menuitemcheckbox" :aria-checked="devHallSubscriptionEnabled" :disabled="subscriptionBusy"
-            @click="toggleSubscription('dev_hall_deposit_paid')">
+          <button
+            class="portal-subscription-item"
+            :class="{ active: devHallSubscriptionEnabled }"
+            type="button"
+            role="menuitemcheckbox"
+            :aria-checked="devHallSubscriptionEnabled"
+            :disabled="subscriptionBusy"
+            @click="toggleSubscription('dev_hall_deposit_paid')"
+          >
             <span class="portal-subscription-item__copy">
               <strong>开发者接单提醒</strong>
               <small>需求托管付款后提醒开发者</small>
             </span>
             <span class="portal-subscription-item__state">{{
               devHallSubscriptionEnabled ? '开' : '关'
-              }}</span>
+            }}</span>
           </button>
         </section>
       </div>
@@ -491,21 +558,40 @@ function clearSearch() {
 .portal-nav {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-start;
+  width: 100%;
   min-width: 0;
+  transition: gap 220ms ease;
+}
+
+.portal-header--search-focused .portal-nav {
+  gap: 6px;
 }
 
 .portal-nav__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  min-width: max-content;
   border: 0;
   padding: 10px 12px;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 700;
+  text-align: center;
   color: #334155;
   text-decoration: none;
   background: transparent;
-  transition: 140ms ease;
+  transition:
+    flex-grow 220ms ease,
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.portal-header--search-focused .portal-nav__link {
+  flex-grow: 0;
 }
 
 .portal-nav__link:hover,
@@ -571,7 +657,7 @@ function clearSearch() {
   background: #fff;
 }
 
-.portal-search>.el-icon {
+.portal-search > .el-icon {
   flex: 0 0 auto;
   width: 18px;
   height: 18px;
@@ -580,9 +666,9 @@ function clearSearch() {
   transition: color 160ms ease;
 }
 
-.portal-search:hover>.el-icon,
-.portal-search:focus-within>.el-icon,
-.portal-search.is-filled>.el-icon {
+.portal-search:hover > .el-icon,
+.portal-search:focus-within > .el-icon,
+.portal-search.is-filled > .el-icon {
   color: #2563eb;
 }
 
@@ -872,6 +958,10 @@ function clearSearch() {
   .portal-nav,
   .portal-header__tools {
     justify-content: space-between;
+  }
+
+  .portal-header--search-focused .portal-nav {
+    justify-content: flex-start;
   }
 
   .portal-search:focus-within {
