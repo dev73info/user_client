@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Bell, Search } from '@element-plus/icons-vue'
+import { Bell, Close, Search } from '@element-plus/icons-vue'
 
 import { useAuthStore } from '@/stores/auth'
 import { buildDevPortalUrl } from '@/config/runtime'
@@ -33,13 +33,15 @@ const lastSyncedSubscriptions = ref({
   subscribe_dev_hall_deposit_paid: false,
 })
 const authModalVisible = computed(() => route.query.modal === 'auth')
-const isDeveloperArea = computed(() => route.path.startsWith('/dev') || route.path.startsWith('/workbench/developer'))
-const subscriptionBusy = computed(() => subscriptionLoading.value || subscriptionSaving.value)
-const hasActiveSubscription = computed(() =>
-  officialActivitySubscriptionEnabled.value || devHallSubscriptionEnabled.value,
+const isDeveloperArea = computed(
+  () => route.path.startsWith('/dev') || route.path.startsWith('/workbench/developer'),
 )
-const allSubscriptionsEnabled = computed(() =>
-  officialActivitySubscriptionEnabled.value && devHallSubscriptionEnabled.value,
+const subscriptionBusy = computed(() => subscriptionLoading.value || subscriptionSaving.value)
+const hasActiveSubscription = computed(
+  () => officialActivitySubscriptionEnabled.value || devHallSubscriptionEnabled.value,
+)
+const allSubscriptionsEnabled = computed(
+  () => officialActivitySubscriptionEnabled.value && devHallSubscriptionEnabled.value,
 )
 const bellTitle = computed(() => {
   if (subscriptionBusy.value) {
@@ -58,14 +60,22 @@ const headerLinks = computed<HeaderLink[]>(() => {
     {
       label: '免费资源',
       to: { name: 'free-resources' },
-      active: allowActive && (currentName === 'free-resources' || currentName === 'resource-catalog' || currentName === 'resource-detail'),
+      active:
+        allowActive &&
+        (currentName === 'free-resources' ||
+          currentName === 'resource-catalog' ||
+          currentName === 'resource-detail'),
     },
     {
       label: '需求大厅',
       to: { name: 'requirement-hall' },
       active: allowActive && (currentName === 'requirement-hall' || currentName === 'payment'),
     },
-    { label: '社区', to: { name: 'community' }, active: allowActive && currentName === 'community' },
+    {
+      label: '社区',
+      to: { name: 'community' },
+      active: allowActive && currentName === 'community',
+    },
   ]
 
   if (auth.isAuthed) {
@@ -202,7 +212,8 @@ async function toggleAllSubscriptions() {
     syncSubscriptionState(updated)
     showToast(nextEnabled ? '已开启全部消息订阅' : '已关闭全部消息订阅', 'success')
   } catch (err) {
-    officialActivitySubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_official_activity
+    officialActivitySubscriptionEnabled.value =
+      lastSyncedSubscriptions.value.subscribe_official_activity
     devHallSubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_dev_hall_deposit_paid
     showToast(err instanceof Error ? err.message : '保存消息订阅失败', 'error')
   } finally {
@@ -248,7 +259,8 @@ async function toggleSubscription(type: 'official_activity' | 'dev_hall_deposit_
       'success',
     )
   } catch (err) {
-    officialActivitySubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_official_activity
+    officialActivitySubscriptionEnabled.value =
+      lastSyncedSubscriptions.value.subscribe_official_activity
     devHallSubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_dev_hall_deposit_paid
     showToast(err instanceof Error ? err.message : '保存消息订阅失败', 'error')
   } finally {
@@ -258,7 +270,8 @@ async function toggleSubscription(type: 'official_activity' | 'dev_hall_deposit_
 
 function openAuth(mode: AuthMode) {
   const nextQuery: Record<string, string> = { modal: 'auth', mode }
-  const redirectTarget = typeof route.query.redirect_to === 'string' ? route.query.redirect_to.trim() : ''
+  const redirectTarget =
+    typeof route.query.redirect_to === 'string' ? route.query.redirect_to.trim() : ''
 
   if (redirectTarget && redirectTarget.startsWith('/') && !redirectTarget.startsWith('//')) {
     nextQuery.redirect_to = redirectTarget
@@ -317,6 +330,10 @@ function submitSearch() {
 
   void router.push({ name: 'free-resources', query: { keyword: normalized } })
 }
+
+function clearSearch() {
+  searchQuery.value = ''
+}
 </script>
 
 <template>
@@ -343,7 +360,13 @@ function submitSearch() {
         <el-icon>
           <Search />
         </el-icon>
-        <input v-model="searchQuery" type="search" placeholder="搜索资源、需求、开发者..." />
+        <input v-model="searchQuery" type="text" inputmode="search" enterkeyhint="search" aria-label="搜索资源、需求、开发者"
+          placeholder="搜索资源、需求、开发者..." />
+        <button v-if="searchQuery" class="portal-search-clear" type="button" aria-label="清空搜索" @click="clearSearch">
+          <el-icon>
+            <Close />
+          </el-icon>
+        </button>
       </form>
       <div class="portal-subscription" @click.stop>
         <button class="portal-icon-btn portal-icon-btn--subscription" :class="{
@@ -369,7 +392,9 @@ function submitSearch() {
               <strong>官方活动通知</strong>
               <small>平台公告、活动与福利提醒</small>
             </span>
-            <span class="portal-subscription-item__state">{{ officialActivitySubscriptionEnabled ? '开' : '关' }}</span>
+            <span class="portal-subscription-item__state">{{
+              officialActivitySubscriptionEnabled ? '开' : '关'
+              }}</span>
           </button>
           <button class="portal-subscription-item" :class="{ active: devHallSubscriptionEnabled }" type="button"
             role="menuitemcheckbox" :aria-checked="devHallSubscriptionEnabled" :disabled="subscriptionBusy"
@@ -378,7 +403,9 @@ function submitSearch() {
               <strong>开发者接单提醒</strong>
               <small>需求托管付款后提醒开发者</small>
             </span>
-            <span class="portal-subscription-item__state">{{ devHallSubscriptionEnabled ? '开' : '关' }}</span>
+            <span class="portal-subscription-item__state">{{
+              devHallSubscriptionEnabled ? '开' : '关'
+              }}</span>
           </button>
         </section>
       </div>
@@ -513,11 +540,42 @@ function submitSearch() {
 
 .portal-search input {
   flex: 1;
+  min-width: 0;
   border: 0;
   outline: 0;
   background: transparent;
   color: #0f172a;
   font-size: 13px;
+}
+
+.portal-search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: rgba(219, 234, 254, 0.74);
+  color: #2563eb;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.portal-search-clear:hover {
+  background: rgba(191, 219, 254, 0.96);
 }
 
 .portal-icon-btn,
