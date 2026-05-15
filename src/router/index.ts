@@ -71,6 +71,50 @@ const router = createRouter({
       component: () => import('@/views/PaymentView.vue'),
     },
     {
+      path: '/invite',
+      name: 'invite',
+      redirect: { name: 'workbench-invite' },
+    },
+    {
+      path: '/invite/leaderboard',
+      name: 'invite-leaderboard',
+      redirect: { name: 'workbench-invite' },
+    },
+    {
+      path: '/badges',
+      name: 'badges',
+      redirect: { name: 'workbench-badges' },
+    },
+    {
+      path: '/user/:username/badges',
+      name: 'user-badges',
+      component: () => import('@/views/UserBadgesView.vue'),
+    },
+    {
+      path: '/r/:code',
+      name: 'invite-short-link-fallback',
+      redirect: (to) => {
+        const code = String(to.params.code ?? '').trim()
+        const query: Record<string, string> = /^[A-Za-z0-9]{1,32}$/.test(code)
+          ? { modal: 'auth', mode: 'register', invite_code: code }
+          : {}
+        const shareType = typeof to.query.share_type === 'string' ? to.query.share_type.trim() : ''
+        const targetId = typeof to.query.target_id === 'string' ? to.query.target_id.trim() : ''
+        const redirectTo = typeof to.query.redirect_to === 'string' ? to.query.redirect_to.trim() : ''
+
+        if (['requirement', 'portfolio', 'resource', 'community_post'].includes(shareType)) {
+          query.share_type = shareType
+        }
+        if (targetId && /^[A-Za-z0-9_-]{1,64}$/.test(targetId)) {
+          query.share_target_id = targetId
+        }
+        if (redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')) {
+          query.redirect_to = redirectTo
+        }
+        return { name: 'home', query }
+      },
+    },
+    {
       path: '/profile',
       name: 'profile',
       redirect: { name: 'workbench' },
@@ -103,6 +147,24 @@ const router = createRouter({
           meta: {
             title: '账户与优惠券',
             description: '管理账户资料、安全设置与优惠券',
+          },
+        },
+        {
+          path: 'invite',
+          name: 'workbench-invite',
+          component: () => import('@/views/InviteView.vue'),
+          meta: {
+            title: '邀请成长',
+            description: '邀请码、统计与排行',
+          },
+        },
+        {
+          path: 'badges',
+          name: 'workbench-badges',
+          component: () => import('@/views/BadgesView.vue'),
+          meta: {
+            title: '徽章墙',
+            description: '查看徽章收集进度',
           },
         },
         {
@@ -251,6 +313,7 @@ router.beforeEach(async (to, from, next) => {
 
   const authRequired =
     to.path.startsWith('/workbench') ||
+    to.path.startsWith('/invite') ||
     to.name === 'profile' ||
     to.name === 'messages' ||
     to.name === 'payment' ||

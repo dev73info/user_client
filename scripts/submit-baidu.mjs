@@ -15,6 +15,8 @@ const sitemapPath = resolve(projectRoot, process.env.BAIDU_PUSH_SITEMAP_PATH || 
 const fallbackSitemapPath = resolve(projectRoot, 'public/sitemap.xml')
 const dryRun = process.env.BAIDU_PUSH_DRY_RUN === '1'
 const batchSize = positiveInteger(process.env.BAIDU_PUSH_BATCH_SIZE, 2000)
+const urlOffset = nonNegativeInteger(process.env.BAIDU_PUSH_OFFSET, 0)
+const urlLimit = nonNegativeInteger(process.env.BAIDU_PUSH_LIMIT, 0)
 
 async function main() {
   if (!dryRun && !token) {
@@ -22,7 +24,8 @@ async function main() {
   }
 
   const sitemapXml = readExistingFile(sitemapPath) || readExistingFile(fallbackSitemapPath)
-  const urlList = dedupeUrls(sitemapXml ? parseSitemapUrls(sitemapXml).map(toBaiduSiteUrl) : [`${siteUrl}/`])
+  const allUrls = dedupeUrls(sitemapXml ? parseSitemapUrls(sitemapXml).map(toBaiduSiteUrl) : [`${siteUrl}/`])
+  const urlList = urlLimit > 0 ? allUrls.slice(urlOffset, urlOffset + urlLimit) : allUrls.slice(urlOffset)
 
   if (urlList.length === 0) {
     throw new Error('[baidu] no urls found in sitemap')
@@ -61,11 +64,7 @@ async function main() {
 }
 
 async function submitBatch(urls) {
-  const url = new URL(endpoint)
-  url.searchParams.set('site', siteUrl)
-  url.searchParams.set('token', token)
-
-  const response = await fetch(url, {
+  const response = await fetch(buildSubmitUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
     body: `${urls.join('\n')}\n`,
@@ -84,6 +83,11 @@ async function submitBatch(urls) {
   }
 
   return data
+}
+
+function buildSubmitUrl() {
+  const separator = endpoint.includes('?') ? '&' : '?'
+  return `${endpoint}${separator}site=${siteUrl}&token=${encodeURIComponent(token)}`
 }
 
 function parseSitemapUrls(xml) {
@@ -146,6 +150,11 @@ function normalizeBaseUrl(value) {
 function positiveInteger(value, fallback) {
   const parsed = Number(value)
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function nonNegativeInteger(value, fallback) {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback
 }
 
 function decodeXml(value) {

@@ -29,6 +29,7 @@ import {
 } from '@/api/community'
 import { getMyRealnameVerification } from '@/api/realname'
 import RichTextEditor from '@/components/RichTextEditor.vue'
+import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -100,6 +101,9 @@ const canEditSelectedPost = computed(() =>
   Boolean(auth.isAuthed && selectedPost.value && selectedPost.value.author === auth.username),
 )
 const selectedPostPublished = computed(() => selectedPost.value?.status === 'published')
+const selectedPostShareTargetId = computed(() =>
+  selectedPost.value && selectedPostPublished.value ? String(selectedPost.value.id) : '',
+)
 const composerActionsShellStyle = computed<Record<string, string> | undefined>(() => {
   if (!composerActionsFloating.value || composerActionsPlaceholderHeight.value <= 0) {
     return undefined
@@ -860,6 +864,8 @@ async function submitComment() {
               <span>{{ selectedPost.liked_by_me ? '已点赞' : '点赞' }}</span>
               <strong>{{ selectedPost.like_count }}</strong>
             </el-button>
+            <ShareCardGenerator v-if="auth.isAuthed && selectedPostShareTargetId" share-type="community_post"
+              :target-id="selectedPostShareTargetId" />
             <span class="community-action-stat">
               <el-icon>
                 <ChatDotRound />

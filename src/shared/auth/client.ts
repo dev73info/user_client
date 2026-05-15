@@ -61,6 +61,9 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
     emailCode?: string,
     requestDevRole = defaultRequestDevRole,
     twoFactorCode?: string,
+    inviteCode?: string,
+    shareType?: string,
+    shareTargetId?: string,
   ): Promise<AuthRequestPayload> {
     try {
       return await deps.requestJson<AuthRequestPayload>(
@@ -77,6 +80,9 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
             ...(email ? { email } : {}),
             ...(emailCode ? { email_code: emailCode } : {}),
             ...(twoFactorCode ? { two_factor_code: twoFactorCode } : {}),
+            ...(inviteCode ? { invite_code: inviteCode } : {}),
+            ...(shareType ? { share_type: shareType } : {}),
+            ...(shareTargetId ? { share_target_id: shareTargetId } : {}),
           }),
         },
         '请求失败',

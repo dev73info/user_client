@@ -28,6 +28,7 @@ import { useToast } from '@/composables/useToast'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
+import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 
 type CommentGate = {
   title: string
@@ -581,7 +582,7 @@ watch(
             <div v-if="tagNames.length > 0" class="resource-detail-page__tags">
               <span v-for="item in tagNames" :key="item" class="resource-detail-page__tag">{{
                 item
-                }}</span>
+              }}</span>
             </div>
 
             <div v-if="infoCards.length" class="resource-detail-page__summary-stats">
@@ -603,6 +604,7 @@ watch(
                   <span>{{ resource.liked_by_me ? '已点赞' : '点赞' }}</span>
                   <strong>{{ resource.like_count ?? 0 }}</strong>
                 </button>
+                <ShareCardGenerator v-if="auth.isAuthed" share-type="resource" :target-id="String(resource.id)" />
               </div>
               <button class="resource-detail-page__secondary-btn" type="button" @click="backToPlatform">
                 继续浏览
@@ -954,6 +956,18 @@ watch(
 .resource-detail-page__like-btn:disabled {
   cursor: wait;
   opacity: 0.72;
+}
+
+.resource-detail-page__primary-actions :deep(.share-card-generator__start) {
+  min-height: 44px;
+  border-radius: 12px;
+  background: rgba(239, 246, 255, 0.9);
+  box-shadow: none;
+}
+
+.resource-detail-page__primary-actions :deep(.share-card-generator__start:hover:not(:disabled)) {
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
 }
 
 .resource-detail-page__section-head span {
@@ -1317,6 +1331,8 @@ watch(
 
   .resource-detail-page__primary-btn,
   .resource-detail-page__like-btn,
+  .resource-detail-page__primary-actions :deep(.share-card-generator),
+  .resource-detail-page__primary-actions :deep(.share-card-generator__start),
   .resource-detail-page__secondary-btn {
     width: 100%;
   }

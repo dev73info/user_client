@@ -13,6 +13,8 @@ declare module 'vue' {
   export interface GlobalComponents {
     AppToast: typeof import('./src/components/AppToast.vue')['default']
     AuthModal: typeof import('./src/components/AuthModal.vue')['default']
+    BadgeDisplay: typeof import('./src/components/BadgeDisplay.vue')['default']
+    BadgeWall: typeof import('./src/components/BadgeWall.vue')['default']
     DepositModal: typeof import('./src/components/DepositModal.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']
     ElButton: typeof import('element-plus/es')['ElButton']
@@ -38,6 +40,8 @@ declare module 'vue' {
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTag: typeof import('element-plus/es')['ElTag']
     HomeHeroSection: typeof import('./src/components/home/HomeHeroSection.vue')['default']
+    InviteLeaderboard: typeof import('./src/components/InviteLeaderboard.vue')['default']
+    InvitePanel: typeof import('./src/components/InvitePanel.vue')['default']
     PortalMobileDock: typeof import('./src/components/PortalMobileDock.vue')['default']
     PortalTopNav: typeof import('./src/components/PortalTopNav.vue')['default']
     PublishModal: typeof import('./src/components/PublishModal.vue')['default']
@@ -46,6 +50,8 @@ declare module 'vue' {
     RichTextEditor: typeof import('./src/components/RichTextEditor.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    ShareCardGenerator: typeof import('./src/components/ShareCardGenerator.vue')['default']
+    ShareStats: typeof import('./src/components/ShareStats.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

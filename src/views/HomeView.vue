@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import '@/styles/home.css'
 
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, ChatDotRound, Files, Finished, Money, User } from '@element-plus/icons-vue'
@@ -158,9 +158,27 @@ const publicResources = ref<PublicMcResourceItem[]>([])
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
-const routeModal = computed(() => String(route.query.modal || ''))
+
+function hashQueryValue(key: string) {
+  const hash = route.hash.trim()
+  if (!hash.startsWith('#/?')) {
+    return ''
+  }
+
+  return new URLSearchParams(hash.slice(3)).get(key)?.trim() ?? ''
+}
+
+function routeQueryValue(key: string) {
+  const value = route.query[key]
+  if (typeof value === 'string') {
+    return value.trim()
+  }
+  return hashQueryValue(key)
+}
+
+const routeModal = computed(() => routeQueryValue('modal'))
 const routeAuthMode = computed<AuthMode>(() => {
-  const mode = String(route.query.mode || 'login')
+  const mode = routeQueryValue('mode') || 'login'
   return mode === 'register' || mode === 'reset' ? mode : 'login'
 })
 const authVisible = computed(() => routeModal.value === 'auth')
@@ -171,6 +189,9 @@ const {
   authPassword,
   authEmail,
   authEmailCode,
+  authInviteCode,
+  authShareType,
+  authShareTargetId,
   acceptTerms,
   loginRequiresTwoFactor,
   sendCodeLoading,
@@ -633,12 +654,39 @@ const authTitle = computed(() => {
 })
 
 const authRedirectTarget = computed(() => {
-  const raw = typeof route.query.redirect_to === 'string' ? route.query.redirect_to.trim() : ''
+  const raw = routeQueryValue('redirect_to')
   if (!raw || !raw.startsWith('/') || raw.startsWith('//')) {
     return ''
   }
   return raw
 })
+
+const routeInviteCode = computed(() => {
+  const raw = routeQueryValue('invite_code')
+  return raw && /^[A-Za-z0-9]{1,32}$/.test(raw) ? raw : ''
+})
+
+const routeShareType = computed(() => {
+  const raw = routeQueryValue('share_type')
+  return ['requirement', 'portfolio', 'resource', 'community_post'].includes(raw) ? raw : ''
+})
+
+const routeShareTargetId = computed(() => {
+  const raw = routeQueryValue('share_target_id') || routeQueryValue('target_id')
+  return raw && /^[A-Za-z0-9_-]{1,64}$/.test(raw) ? raw : ''
+})
+
+watch(
+  () => [routeInviteCode.value, routeShareType.value, routeShareTargetId.value, routeAuthMode.value] as const,
+  ([inviteCode, shareType, shareTargetId, mode]) => {
+    if (mode === 'register' && inviteCode) {
+      authInviteCode.value = inviteCode
+      authShareType.value = shareType
+      authShareTargetId.value = shareTargetId
+    }
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   auth.hydrate()
@@ -1273,10 +1321,27 @@ async function submitDepositPayment() {
 }
 
 function openAuth(mode: AuthMode) {
+  const inviteCodeToKeep = authInviteCode.value.trim() || routeInviteCode.value
+  const shareTypeToKeep = authShareType.value.trim() || routeShareType.value
+  const shareTargetIdToKeep = authShareTargetId.value.trim() || routeShareTargetId.value
   resetAuthForm()
   const nextQuery: Record<string, string> = { modal: 'auth', mode }
   if (authRedirectTarget.value) {
     nextQuery.redirect_to = authRedirectTarget.value
+  }
+  if (inviteCodeToKeep) {
+    nextQuery.invite_code = inviteCodeToKeep
+  }
+  if (shareTypeToKeep) {
+    nextQuery.share_type = shareTypeToKeep
+  }
+  if (shareTargetIdToKeep) {
+    nextQuery.share_target_id = shareTargetIdToKeep
+  }
+  if (mode === 'register' && inviteCodeToKeep) {
+    authInviteCode.value = inviteCodeToKeep
+    authShareType.value = shareTypeToKeep
+    authShareTargetId.value = shareTargetIdToKeep
   }
   router.push({ name: 'home', query: nextQuery })
 }
@@ -1911,8 +1976,8 @@ async function submitPublishRequirement() {
 
     <AuthModal :visible="authVisible" :authMode="routeAuthMode" :authTitle="authTitle"
       v-model:authUsername="authUsername" v-model:authPassword="authPassword" v-model:authEmail="authEmail"
-      v-model:authEmailCode="authEmailCode" v-model:acceptTerms="acceptTerms" :authLoading="auth.loading"
-      :loginRequiresTwoFactor="loginRequiresTwoFactor" :githubLoginLoading="githubLoading"
+      v-model:authEmailCode="authEmailCode" v-model:authInviteCode="authInviteCode" v-model:acceptTerms="acceptTerms"
+      :authLoading="auth.loading" :loginRequiresTwoFactor="loginRequiresTwoFactor" :githubLoginLoading="githubLoading"
       :sendCodeLoading="sendCodeLoading" :sendCodeCountdown="sendCodeCountdown" @close="closeAuth" @submit="submitAuth"
       @loginWithGithub="loginWithGithub" @sendAuthCode="sendAuthCode" @change-mode="openAuth" />
 

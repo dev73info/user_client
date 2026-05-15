@@ -16,6 +16,9 @@ export function useAuthForm(mode: Ref<AuthMode>) {
   const authPassword = ref('')
   const authEmail = ref('')
   const authEmailCode = ref('')
+  const authInviteCode = ref('')
+  const authShareType = ref('')
+  const authShareTargetId = ref('')
   const acceptTerms = ref(false)
   const loginRequiresTwoFactor = ref(false)
   const sendCodeLoading = ref(false)
@@ -27,6 +30,9 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     authPassword.value = ''
     authEmail.value = ''
     authEmailCode.value = ''
+    authInviteCode.value = ''
+    authShareType.value = ''
+    authShareTargetId.value = ''
     acceptTerms.value = false
     loginRequiresTwoFactor.value = false
     sendCodeLoading.value = false
@@ -181,6 +187,9 @@ export function useAuthForm(mode: Ref<AuthMode>) {
           password,
           authEmail.value.trim(),
           authEmailCode.value.trim(),
+          authInviteCode.value.trim() || undefined,
+          authShareType.value.trim() || undefined,
+          authShareTargetId.value.trim() || undefined,
         )
         showToast('注册成功', 'success')
         return true
@@ -224,6 +233,9 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     authPassword,
     authEmail,
     authEmailCode,
+    authInviteCode,
+    authShareType,
+    authShareTargetId,
     acceptTerms,
     loginRequiresTwoFactor,
     sendCodeLoading,

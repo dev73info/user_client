@@ -315,6 +315,9 @@ export const useAuthStore = defineStore('auth', () => {
     passwordInput: string,
     emailInput: string,
     emailCodeInput: string,
+    inviteCodeInput?: string,
+    shareTypeInput?: string,
+    shareTargetIdInput?: string,
   ) {
     loading.value = true
     try {
@@ -324,6 +327,11 @@ export const useAuthStore = defineStore('auth', () => {
         passwordInput,
         emailInput,
         emailCodeInput,
+        undefined,
+        undefined,
+        inviteCodeInput?.trim() || undefined,
+        shareTypeInput?.trim() || undefined,
+        shareTargetIdInput?.trim() || undefined,
       )
       if (isTwoFactorRequiredPayload(payload)) {
         throw new Error('注册流程不需要两步验证')
