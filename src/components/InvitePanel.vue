@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Document, Link as LinkIcon, Refresh } from '@element-plus/icons-vue'
+import { Document, Refresh } from '@element-plus/icons-vue'
 
 import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 import { getMyInviteCode, getMyInviteStats, type InviteCodeResponse, type InviteStatsResponse } from '@/api/invite'
@@ -62,7 +62,7 @@ onMounted(() => {
     <section class="invite-panel" aria-label="邀请面板">
         <header class="invite-panel__head">
             <div>
-                <h2>邀请成长</h2>
+                <h2>我的邀请</h2>
                 <p>已成功邀请 {{ inviteCode?.invite_count ?? 0 }} 人</p>
             </div>
             <button type="button" :disabled="loading" @click="loadInvite" aria-label="刷新邀请信息">
@@ -72,26 +72,26 @@ onMounted(() => {
             </button>
         </header>
 
-        <div class="invite-panel__code">
-            <div>
-                <span>邀请码</span>
-                <strong>{{ inviteCode?.code || '--------' }}</strong>
+        <div class="invite-panel__code-shell">
+            <div class="invite-panel__code">
+                <div>
+                    <span>邀请码</span>
+                    <strong>{{ inviteCode?.code || '--------' }}</strong>
+                </div>
+                <button type="button" :disabled="!inviteCode" @click="copyText(inviteCode?.code || '', '邀请码')"
+                    aria-label="复制邀请码">
+                    <el-icon>
+                        <Document />
+                    </el-icon>
+                </button>
             </div>
-            <button type="button" :disabled="!inviteCode" @click="copyText(inviteCode?.code || '', '邀请码')"
-                aria-label="复制邀请码">
-                <el-icon>
-                    <Document />
-                </el-icon>
-            </button>
         </div>
 
-        <div class="invite-panel__url">
-            <el-icon>
-                <LinkIcon />
-            </el-icon>
-            <span>{{ inviteCode?.invite_url || '邀请链接生成中' }}</span>
-            <button type="button" :disabled="!inviteCode"
-                @click="copyText(inviteCode?.invite_url || '', '邀请链接')">复制</button>
+        <div class="invite-panel__actions-row">
+            <ShareCardGenerator share-type="invite" />
+            <RouterLink class="invite-panel__leaderboard-link" :to="{ name: 'workbench-invite-leaderboard' }">
+                查看排行榜
+            </RouterLink>
         </div>
 
         <section class="invite-panel__invitees">
@@ -108,7 +108,6 @@ onMounted(() => {
             </div>
         </section>
 
-        <ShareCardGenerator share-type="invite" />
     </section>
 </template>
 
@@ -120,7 +119,6 @@ onMounted(() => {
 
 .invite-panel__head,
 .invite-panel__code,
-.invite-panel__url,
 .invite-panel__invitee-list article {
     display: flex;
     align-items: center;
@@ -162,16 +160,52 @@ onMounted(() => {
 }
 
 .invite-panel__code,
-.invite-panel__url,
 .invite-panel__invitee-list article {
     border: 1px solid rgba(226, 232, 240, 0.96);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.92);
 }
 
+.invite-panel__code-shell {
+    display: grid;
+}
+
 .invite-panel__code {
     justify-content: space-between;
     padding: 16px;
+}
+
+.invite-panel__actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.invite-panel__leaderboard-link {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: #2563eb;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+    white-space: nowrap;
+    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
+    transition:
+        background-color 160ms ease,
+        box-shadow 160ms ease,
+        transform 160ms ease;
+}
+
+.invite-panel__leaderboard-link:hover {
+    background: #1d4ed8;
+    box-shadow: 0 12px 26px rgba(37, 99, 235, 0.24);
+    transform: translateY(-1px);
 }
 
 .invite-panel__code span,
@@ -188,34 +222,6 @@ onMounted(() => {
     font-size: 30px;
     line-height: 1;
     letter-spacing: 0;
-}
-
-.invite-panel__url {
-    min-height: 48px;
-    padding: 10px 12px;
-    color: #1d4ed8;
-}
-
-.invite-panel__url span {
-    min-width: 0;
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 13px;
-    font-weight: 800;
-}
-
-.invite-panel__url button {
-    flex: 0 0 auto;
-    min-height: 30px;
-    border: 0;
-    border-radius: 8px;
-    padding: 0 11px;
-    background: #2563eb;
-    color: #fff;
-    font-weight: 800;
-    cursor: pointer;
 }
 
 .invite-panel__invitees,
@@ -252,5 +258,16 @@ onMounted(() => {
 .invite-panel__invitee-list p {
     margin: 0;
     padding: 12px;
+}
+
+@media (max-width: 640px) {
+    .invite-panel__actions-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .invite-panel__leaderboard-link {
+        width: 100%;
+    }
 }
 </style>

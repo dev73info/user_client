@@ -63,8 +63,12 @@ const menuGroups: WorkbenchMenuGroup[] = [
     icon: Box,
     items: [
       { label: '账户与优惠券', name: 'workbench-account', description: '管理优惠券与账户入口' },
-      { label: '邀请成长', name: 'workbench-invite', description: '邀请码、统计与排行' },
-      { label: '徽章墙', name: 'workbench-badges', description: '查看徽章收集进度' },
+      {
+        label: '我的邀请',
+        name: 'workbench-invite',
+        description: '邀请码、统计与徽章',
+        activeNames: ['workbench-invite-leaderboard'],
+      },
       { label: '实名认证', name: 'workbench-realname', description: '提交或查看实名审核' },
       { label: '工单中心', name: 'workbench-tickets', description: '提交问题与查看回复' },
     ],

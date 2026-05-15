@@ -78,12 +78,12 @@ const router = createRouter({
     {
       path: '/invite/leaderboard',
       name: 'invite-leaderboard',
-      redirect: { name: 'workbench-invite' },
+      redirect: { name: 'workbench-invite-leaderboard' },
     },
     {
       path: '/badges',
       name: 'badges',
-      redirect: { name: 'workbench-badges' },
+      redirect: { name: 'workbench-invite', hash: '#badges' },
     },
     {
       path: '/user/:username/badges',
@@ -154,18 +154,23 @@ const router = createRouter({
           name: 'workbench-invite',
           component: () => import('@/views/InviteView.vue'),
           meta: {
-            title: '邀请成长',
-            description: '邀请码、统计与排行',
+            title: '我的邀请',
+            description: '邀请码、统计与徽章',
+          },
+        },
+        {
+          path: 'invite/leaderboard',
+          name: 'workbench-invite-leaderboard',
+          component: () => import('@/views/InviteLeaderboardView.vue'),
+          meta: {
+            title: '邀请排行榜',
+            description: '查看周榜与总榜',
           },
         },
         {
           path: 'badges',
           name: 'workbench-badges',
-          component: () => import('@/views/BadgesView.vue'),
-          meta: {
-            title: '徽章墙',
-            description: '查看徽章收集进度',
-          },
+          redirect: { name: 'workbench-invite', hash: '#badges' },
         },
         {
           path: 'messages',

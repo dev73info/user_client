@@ -157,12 +157,13 @@ onMounted(() => {
 
 .badge-wall__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(148px, 168px));
     gap: 10px;
+    justify-content: start;
 }
 
 .badge-wall__badge {
-    min-height: 150px;
+    aspect-ratio: 1 / 1;
     display: grid;
     gap: 7px;
     align-content: start;
@@ -189,6 +190,13 @@ onMounted(() => {
     font-size: 15px;
 }
 
+.badge-wall__badge p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
 .badge-wall__badge p,
 .badge-wall__badge small {
     margin: 0;
@@ -199,5 +207,11 @@ onMounted(() => {
 .badge-wall__badge small {
     color: #64748b;
     font-weight: 800;
+}
+
+@media (max-width: 640px) {
+    .badge-wall__grid {
+        grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+    }
 }
 </style>
