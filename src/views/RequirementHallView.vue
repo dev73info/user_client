@@ -103,6 +103,13 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => [route.query.requirement_id, route.query.view] as const,
+  () => {
+    openRouteRequirementDetail()
+  },
+)
+
 onMounted(() => {
   void loadHallData()
 })
@@ -163,6 +170,12 @@ function resetKeyword() {
     delete nextQuery.keyword
     void router.replace({ query: nextQuery })
   }
+}
+
+function routeRequirementId(): string {
+  const rawValue = route.query.requirement_id ?? route.query.view
+  const value = Array.isArray(rawValue) ? rawValue[0] : rawValue
+  return typeof value === 'string' ? value.trim() : ''
 }
 
 function openAuthLogin() {
@@ -248,9 +261,32 @@ function openRequirementDetail(item: PublicRequirementSpotlightItem) {
   void loadRequirementDetailForModal(item)
 }
 
+function openRouteRequirementDetail() {
+  const requirementId = routeRequirementId()
+  if (!requirementId || loading.value) {
+    return
+  }
+
+  if (selectedRequirement.value?.requirement_id === requirementId) {
+    return
+  }
+
+  const target = requirements.value.find((item) => item.requirement_id === requirementId)
+  if (target) {
+    openRequirementDetail(target)
+  }
+}
+
 function closeRequirementDetail() {
   selectedRequirementDetailLoading.value = false
   selectedRequirement.value = null
+
+  if (routeRequirementId()) {
+    const nextQuery = { ...route.query }
+    delete nextQuery.requirement_id
+    delete nextQuery.view
+    void router.replace({ query: nextQuery })
+  }
 }
 
 function openRequirementWorkbench(requirement: PublicRequirementSpotlightItem) {
@@ -385,6 +421,7 @@ async function loadHallData() {
 
   loading.value = false
   overviewLoading.value = false
+  openRouteRequirementDetail()
 }
 </script>
 
@@ -487,7 +524,7 @@ async function loadHallData() {
               class="portal-page__list-item requirement-hall__deal-item">
               <strong>{{ deal.title }}</strong>
               <span class="portal-page__meta">{{ formatMoney(deal.amount_cny) }} · {{ formatTimeLabel(deal.paid_at)
-                }}</span>
+              }}</span>
               <p v-if="deal.comment_text">{{ deal.comment_text }}</p>
             </li>
           </ul>

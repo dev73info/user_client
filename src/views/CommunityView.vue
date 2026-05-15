@@ -202,6 +202,17 @@ function postStatusText(status: CommunityPost['status']): string {
   return map[status]
 }
 
+function routePostId(): number | null {
+  const rawValue = route.query.post ?? route.query.postId
+  const value = Array.isArray(rawValue) ? rawValue[0] : rawValue
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const postId = Number(value)
+  return Number.isInteger(postId) && postId > 0 ? postId : null
+}
+
 onMounted(() => {
   auth.hydrate()
   void loadCommunityData()
@@ -229,7 +240,17 @@ watch(
 
     searchDraft.value = nextKeyword
     searchKeyword.value = nextKeyword
-    void loadPostsPage(1)
+    void loadPostsPage(1, routePostId() ?? undefined)
+  },
+)
+
+watch(
+  () => [route.query.post, route.query.postId] as const,
+  () => {
+    const postId = routePostId()
+    if (postId) {
+      selectPostById(postId)
+    }
   },
 )
 
@@ -267,16 +288,25 @@ function applyPostPage(
   hasNextPage.value = nextHasPage
   posts.value = nextPosts
 
-  const nextSelectedPost =
-    (preferredPostId ? nextPosts.find((post) => post.id === preferredPostId) : null) ??
-    pickRandomPost(nextPosts)
-  selectPost(nextSelectedPost)
+  const preferredPost = preferredPostId ? nextPosts.find((post) => post.id === preferredPostId) : null
+  if (preferredPost) {
+    selectPost(preferredPost)
+    return
+  }
+
+  if (preferredPostId) {
+    selectPost(null)
+    void loadStandalonePost(preferredPostId)
+    return
+  }
+
+  selectPost(pickRandomPost(nextPosts))
 }
 
 async function loadCommunityData() {
   loading.value = true
   try {
-    const selectedPostId = selectedPost.value?.id
+    const selectedPostId = routePostId() ?? selectedPost.value?.id
     const [nextTags, postPage] = await Promise.all([
       listCommunityTags(),
       fetchPostPage(currentPage.value),
@@ -354,6 +384,41 @@ function selectPost(post: CommunityPost | null) {
     selectedPostLoading.value = false
     commentsLoading.value = false
     comments.value = []
+  }
+}
+
+function selectPostById(postId: number) {
+  const post = posts.value.find((item) => item.id === postId)
+  if (post) {
+    selectPost(post)
+    return
+  }
+
+  void loadStandalonePost(postId)
+}
+
+async function loadStandalonePost(postId: number) {
+  const requestId = ++selectedPostRequestId
+  selectedPost.value = null
+  selectedPostLoading.value = true
+  commentsLoading.value = false
+  comments.value = []
+  commentDraft.value = ''
+
+  try {
+    const detail = await getCommunityPost(postId, auth.token)
+    if (requestId !== selectedPostRequestId) {
+      return
+    }
+
+    selectedPost.value = detail
+    selectedPostLoading.value = false
+    void loadComments(detail.id, requestId)
+  } catch (error) {
+    if (requestId === selectedPostRequestId) {
+      selectedPostLoading.value = false
+      showToast(error instanceof Error ? error.message : '加载帖子详情失败', 'error')
+    }
   }
 }
 
@@ -659,7 +724,7 @@ async function submitComment() {
               </div>
               <div class="community-post-card__badges">
                 <span class="community-status-badge" :class="`is-${post.status}`">{{ postStatusText(post.status)
-                  }}</span>
+                }}</span>
                 <span>{{ post.like_count }} 赞</span>
               </div>
             </div>

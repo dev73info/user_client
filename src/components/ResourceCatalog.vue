@@ -131,9 +131,24 @@ function toggleFilter(list: string[], item: string) {
 }
 
 const filteredCards = computed(() => {
+  const normalizedSearch = searchQuery.value.trim().toLowerCase()
   const filtered = cards.value.filter((card) => {
-    if (searchQuery.value && !card.title.toLowerCase().includes(searchQuery.value.toLowerCase())) {
-      return false
+    if (normalizedSearch) {
+      const searchable = [
+        card.title,
+        card.description,
+        card.author,
+        card.ownerName,
+        ...card.tags,
+        ...Object.keys(card.groupTags),
+        ...Object.values(card.groupTags).flat(),
+      ]
+        .join(' ')
+        .toLowerCase()
+
+      if (!searchable.includes(normalizedSearch)) {
+        return false
+      }
     }
 
     for (const section of filterSections.value) {
@@ -355,7 +370,7 @@ watch(
             </div>
             <span class="portal-resource-browser__updated">{{
               formatUpdatedAt(card.updatedAt)
-              }}</span>
+            }}</span>
           </div>
 
           <p class="portal-resource-browser__desc">{{ card.description }}</p>

@@ -9,6 +9,7 @@ import { useToast } from '@/composables/useToast'
 import { getProfileSubscriptions, updateProfileSubscriptions } from '@dev/api/settings'
 
 type AuthMode = 'login' | 'register'
+type SearchScope = 'auto' | 'resources' | 'requirements' | 'community'
 
 type HeaderLink = {
   label: string
@@ -23,6 +24,10 @@ const router = useRouter()
 const { showToast } = useToast()
 const menuOpen = ref(false)
 const searchQuery = ref('')
+const searchScope = ref<SearchScope>('auto')
+const searchScopeMenuOpen = ref(false)
+const searchInputFocused = ref(false)
+const searchInputHovered = ref(false)
 const searchDraftFilled = ref(false)
 const officialActivitySubscriptionEnabled = ref(false)
 const devHallSubscriptionEnabled = ref(false)
@@ -54,6 +59,28 @@ const bellTitle = computed(() => {
 
   return allSubscriptionsEnabled.value ? '关闭全部消息订阅' : '开启全部消息订阅'
 })
+const searchScopeOptions: Array<{ value: SearchScope; label: string }> = [
+  { value: 'auto', label: '全部' },
+  { value: 'resources', label: '资源' },
+  { value: 'requirements', label: '需求' },
+  { value: 'community', label: '社区' },
+]
+const searchableRouteScope: Partial<Record<string, SearchScope>> = {
+  search: 'auto',
+  'free-resources': 'resources',
+  'resource-catalog': 'resources',
+  'requirement-hall': 'requirements',
+  community: 'community',
+}
+const searchPlaceholder = computed(() => {
+  if (searchScope.value === 'resources') return '搜索公开资源...'
+  if (searchScope.value === 'requirements') return '搜索需求标题、编号...'
+  if (searchScope.value === 'community') return '搜索社区帖子...'
+  return '搜索资源、需求、社区...'
+})
+const activeSearchScopeLabel = computed(
+  () => searchScopeOptions.find((option) => option.value === searchScope.value)?.label ?? '全部',
+)
 
 const headerLinks = computed<HeaderLink[]>(() => {
   const currentName = String(route.name ?? '')
@@ -98,7 +125,10 @@ watch(
   () => {
     menuOpen.value = false
     subscriptionMenuOpen.value = false
+    searchScopeMenuOpen.value = false
+    syncSearchFromRoute()
   },
+  { immediate: true },
 )
 
 watch(
@@ -116,12 +146,16 @@ watch(
 
 onMounted(() => {
   document.addEventListener('click', closeSubscriptionMenu)
+  document.addEventListener('click', closeSearchScopeMenu)
   document.addEventListener('keydown', handleSubscriptionMenuKeydown)
+  document.addEventListener('keydown', handleSearchScopeMenuKeydown)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', closeSubscriptionMenu)
+  document.removeEventListener('click', closeSearchScopeMenu)
   document.removeEventListener('keydown', handleSubscriptionMenuKeydown)
+  document.removeEventListener('keydown', handleSearchScopeMenuKeydown)
 })
 
 function resetSubscriptionState() {
@@ -169,10 +203,29 @@ function closeSubscriptionMenu() {
   subscriptionMenuOpen.value = false
 }
 
+function closeSearchScopeMenu() {
+  searchScopeMenuOpen.value = false
+}
+
 function handleSubscriptionMenuKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') {
     closeSubscriptionMenu()
   }
+}
+
+function handleSearchScopeMenuKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    closeSearchScopeMenu()
+  }
+}
+
+function toggleSearchScopeMenu() {
+  searchScopeMenuOpen.value = !searchScopeMenuOpen.value
+}
+
+function selectSearchScope(scope: SearchScope) {
+  searchScope.value = scope
+  searchScopeMenuOpen.value = false
 }
 
 function openSubscriptionMenu() {
@@ -300,9 +353,82 @@ function logout() {
   void router.push({ name: 'home' })
 }
 
+function syncSearchFromRoute() {
+  const currentName = String(route.name ?? '')
+  const nextScope = searchableRouteScope[currentName]
+
+  if (!nextScope) {
+    searchScope.value = 'auto'
+    searchQuery.value = ''
+    searchDraftFilled.value = false
+    return
+  }
+
+  if (currentName === 'search') {
+    const routeScope = typeof route.query.scope === 'string' ? route.query.scope : ''
+    searchScope.value =
+      routeScope === 'resources' || routeScope === 'requirements' ? routeScope : 'auto'
+    searchQuery.value = typeof route.query.keyword === 'string' ? route.query.keyword.trim() : ''
+    searchDraftFilled.value = Boolean(searchQuery.value)
+    return
+  }
+
+  const routeKeyword =
+    currentName === 'resource-catalog'
+      ? typeof route.query.search === 'string'
+        ? route.query.search.trim()
+        : ''
+      : typeof route.query.keyword === 'string'
+        ? route.query.keyword.trim()
+        : ''
+
+  searchScope.value = nextScope
+  searchQuery.value = routeKeyword
+  searchDraftFilled.value = Boolean(routeKeyword)
+}
+
+function pushResourceSearch(keyword: string) {
+  void router.push({ name: 'search', query: { keyword, scope: 'resources' } })
+}
+
+function pushRequirementSearch(keyword: string) {
+  void router.push({ name: 'search', query: { keyword, scope: 'requirements' } })
+}
+
+function pushCommunitySearch(keyword: string) {
+  void router.push({ name: 'community', query: { keyword } })
+}
+
+function pushScopedSearch(keyword: string) {
+  if (searchScope.value === 'resources') {
+    pushResourceSearch(keyword)
+    return true
+  }
+
+  if (searchScope.value === 'requirements') {
+    pushRequirementSearch(keyword)
+    return true
+  }
+
+  if (searchScope.value === 'community') {
+    pushCommunitySearch(keyword)
+    return true
+  }
+
+  return false
+}
+
 function submitSearch() {
   const normalized = searchQuery.value.trim()
   if (!normalized) {
+    showToast('请输入搜索关键词', 'info')
+    return
+  }
+
+  searchQuery.value = normalized
+  searchDraftFilled.value = true
+
+  if (pushScopedSearch(normalized)) {
     return
   }
 
@@ -322,22 +448,43 @@ function submitSearch() {
     return
   }
 
-  if (/(需求|定制|项目|招募|外包)/.test(keyword)) {
-    void router.push({ name: 'requirement-hall', query: { keyword: normalized } })
+  if (/(需求|定制|项目|招募|外包|预算|验收)/.test(keyword)) {
+    pushRequirementSearch(normalized)
     return
   }
 
-  if (/(社区|动态|公告|帮助)/.test(keyword)) {
-    void router.push({ name: 'community', query: { keyword: normalized } })
+  if (/(社区|动态|公告|帮助|帖子|评论|话题|讨论)/.test(keyword)) {
+    pushCommunitySearch(normalized)
     return
   }
 
-  void router.push({ name: 'free-resources', query: { keyword: normalized } })
+  void router.push({ name: 'search', query: { keyword: normalized } })
 }
 
 function clearSearch() {
   searchQuery.value = ''
   searchDraftFilled.value = false
+
+  const currentName = String(route.name ?? '')
+  if (currentName === 'search' && route.query.keyword) {
+    const nextQuery = { ...route.query }
+    delete nextQuery.keyword
+    void router.replace({ query: nextQuery })
+    return
+  }
+
+  if (currentName === 'resource-catalog' && route.query.search) {
+    const nextQuery = { ...route.query }
+    delete nextQuery.search
+    void router.replace({ query: nextQuery })
+    return
+  }
+
+  if (['free-resources', 'requirement-hall', 'community'].includes(currentName) && route.query.keyword) {
+    const nextQuery = { ...route.query }
+    delete nextQuery.keyword
+    void router.replace({ query: nextQuery })
+  }
 }
 
 function updateSearchDraftState(event: Event) {
@@ -379,20 +526,42 @@ function finishSearchComposition(event: CompositionEvent) {
       <RouterLink class="portal-search-menu" :to="{ name: 'community' }">
         社区
       </RouterLink>
-      <form class="portal-search" :class="{ 'is-filled': searchHasInputValue }" @submit.prevent="submitSearch">
-        <el-icon>
-          <Search />
-        </el-icon>
-        <input v-model="searchQuery" type="text" inputmode="search" enterkeyhint="search" aria-label="搜索资源、需求"
-          placeholder="搜索资源、需求..." @input="updateSearchDraftState" @compositionstart="startSearchComposition"
-          @compositionupdate="updateSearchDraftState" @compositionend="finishSearchComposition" />
-        <button class="portal-search-clear" :class="{ 'is-visible': Boolean(searchQuery) }" type="button"
-          aria-label="清空搜索" :aria-hidden="!searchQuery" :disabled="!searchQuery" :tabindex="searchQuery ? 0 : -1"
-          @click="clearSearch">
+      <form class="portal-search" :class="{
+        'is-filled': searchHasInputValue,
+        'is-input-focused': searchInputFocused,
+        'is-input-hovered': searchInputHovered,
+      }" @submit.prevent="submitSearch">
+        <div class="portal-search-scope" @click.stop>
+          <button class="portal-search-scope__trigger" type="button" aria-haspopup="listbox"
+            :aria-expanded="searchScopeMenuOpen" @click="toggleSearchScopeMenu">
+            <span>{{ activeSearchScopeLabel }}</span>
+          </button>
+          <div v-if="searchScopeMenuOpen" class="portal-search-scope__menu" role="listbox" aria-label="搜索范围">
+            <button v-for="option in searchScopeOptions" :key="option.value" class="portal-search-scope__option"
+              :class="{ active: option.value === searchScope }" type="button" role="option"
+              :aria-selected="option.value === searchScope" @click="selectSearchScope(option.value)">
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+        <div class="portal-search-field" @mouseenter="searchInputHovered = true"
+          @mouseleave="searchInputHovered = false">
           <el-icon>
-            <Close />
+            <Search />
           </el-icon>
-        </button>
+          <input v-model="searchQuery" type="search" inputmode="search" enterkeyhint="search" autocomplete="off"
+            spellcheck="false" aria-label="顶部搜索" :placeholder="searchPlaceholder" @input="updateSearchDraftState"
+            @compositionstart="startSearchComposition" @compositionupdate="updateSearchDraftState"
+            @compositionend="finishSearchComposition" @focus="searchInputFocused = true"
+            @blur="searchInputFocused = false" @keydown.esc="clearSearch" />
+          <button class="portal-search-clear" :class="{ 'is-visible': Boolean(searchQuery) }" type="button"
+            aria-label="清空搜索" :aria-hidden="!searchQuery" :disabled="!searchQuery" :tabindex="searchQuery ? 0 : -1"
+            @click="clearSearch">
+            <el-icon>
+              <Close />
+            </el-icon>
+          </button>
+        </div>
       </form>
       <div class="portal-subscription" @click.stop>
         <button class="portal-icon-btn portal-icon-btn--subscription" :class="{
@@ -420,7 +589,7 @@ function finishSearchComposition(event: CompositionEvent) {
             </span>
             <span class="portal-subscription-item__state">{{
               officialActivitySubscriptionEnabled ? '开' : '关'
-              }}</span>
+            }}</span>
           </button>
           <button class="portal-subscription-item" :class="{ active: devHallSubscriptionEnabled }" type="button"
             role="menuitemcheckbox" :aria-checked="devHallSubscriptionEnabled" :disabled="subscriptionBusy"
@@ -431,7 +600,7 @@ function finishSearchComposition(event: CompositionEvent) {
             </span>
             <span class="portal-subscription-item__state">{{
               devHallSubscriptionEnabled ? '开' : '关'
-              }}</span>
+            }}</span>
           </button>
         </section>
       </div>
@@ -603,10 +772,10 @@ function finishSearchComposition(event: CompositionEvent) {
   display: inline-flex;
   align-items: center;
   flex: 0 1 auto;
-  gap: 10px;
+  gap: 9px;
   width: clamp(260px, 28vw, 360px);
   min-width: 0;
-  padding: 0 10px 0 14px;
+  padding: 0 10px 0 12px;
   min-height: 42px;
   border-radius: 999px;
   border: 1px solid rgba(203, 213, 225, 0.86);
@@ -622,8 +791,142 @@ function finishSearchComposition(event: CompositionEvent) {
     transform 220ms var(--portal-nav-motion);
 }
 
+.portal-search-scope {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-width: 64px;
+  padding-right: 9px;
+  border-right: 1px solid rgba(203, 213, 225, 0.82);
+}
+
+.portal-search-scope__trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  min-height: 32px;
+  gap: 7px;
+  padding: 0 17px 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #2563eb;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.portal-search-scope__trigger::after {
+  content: '';
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+  border-top: 5px solid currentColor;
+  pointer-events: none;
+  opacity: 0.56;
+  transform: translateY(-25%);
+  transition: transform 160ms ease;
+}
+
+.portal-search-scope__trigger[aria-expanded='true'] {
+  background: rgba(219, 234, 254, 0.86);
+  color: #1d4ed8;
+}
+
+.portal-search-scope__trigger[aria-expanded='true']::after {
+  transform: translateY(-35%) rotate(180deg);
+}
+
+.portal-search-scope__trigger:hover,
+.portal-search-scope__trigger:focus-visible {
+  background: rgba(239, 246, 255, 0.96);
+  color: #1d4ed8;
+  outline: none;
+}
+
+.portal-search-scope__menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 90;
+  display: grid;
+  width: 112px;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid rgba(191, 219, 254, 0.92);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 38px rgba(37, 99, 235, 0.16), 0 4px 12px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.portal-search-scope__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #334155;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.portal-search-scope__option::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.portal-search-scope__option:hover,
+.portal-search-scope__option:focus-visible {
+  background: rgba(239, 246, 255, 0.96);
+  color: #1d4ed8;
+  outline: none;
+}
+
+.portal-search-scope__option.active {
+  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+}
+
+.portal-search-scope__option.active::after {
+  background: currentColor;
+}
+
 .portal-search:hover,
-.portal-search:focus-within,
+.portal-search:focus-within {
+  border-color: rgba(147, 197, 253, 0.96);
+  background: #fff;
+}
+
+.portal-search.is-input-focused,
+.portal-search.is-input-hovered,
 .portal-search.is-filled {
   width: clamp(340px, 38vw, 540px);
   transform: translateX(-1px);
@@ -635,7 +938,16 @@ function finishSearchComposition(event: CompositionEvent) {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
-.portal-search>.el-icon {
+.portal-search-field {
+  display: inline-flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 9px;
+  align-self: stretch;
+}
+
+.portal-search-field>.el-icon {
   flex: 0 0 auto;
   width: 18px;
   height: 18px;
@@ -644,9 +956,11 @@ function finishSearchComposition(event: CompositionEvent) {
   transition: color 160ms ease;
 }
 
-.portal-search:hover>.el-icon,
-.portal-search:focus-within>.el-icon,
-.portal-search.is-filled>.el-icon {
+.portal-search:hover .portal-search-field>.el-icon,
+.portal-search:focus-within .portal-search-field>.el-icon,
+.portal-search.is-input-focused .portal-search-field>.el-icon,
+.portal-search.is-input-hovered .portal-search-field>.el-icon,
+.portal-search.is-filled .portal-search-field>.el-icon {
   color: #2563eb;
 }
 
@@ -670,6 +984,12 @@ function finishSearchComposition(event: CompositionEvent) {
 .portal-search input::placeholder {
   color: #94a3b8;
   font-weight: 500;
+}
+
+.portal-search input::-webkit-search-cancel-button,
+.portal-search input::-webkit-search-decoration {
+  appearance: none;
+  display: none;
 }
 
 .portal-search-clear {
@@ -1016,8 +1336,8 @@ function finishSearchComposition(event: CompositionEvent) {
     width: min(clamp(320px, 58vw, 620px), calc(100% - 176px));
   }
 
-  .portal-search:hover,
-  .portal-search:focus-within,
+  .portal-search.is-input-focused,
+  .portal-search.is-input-hovered,
   .portal-search.is-filled {
     width: min(clamp(420px, 70vw, 720px), calc(100% - 176px));
   }
@@ -1041,8 +1361,26 @@ function finishSearchComposition(event: CompositionEvent) {
     width: 100%;
   }
 
+  .portal-search-scope {
+    min-width: 58px;
+    padding-right: 8px;
+  }
+
+  .portal-search-scope__trigger {
+    min-width: 52px;
+    padding-left: 6px;
+    padding-right: 15px;
+    font-size: 12px;
+  }
+
+  .portal-search-scope__menu {
+    width: 104px;
+  }
+
   .portal-search:hover,
   .portal-search:focus-within,
+  .portal-search.is-input-focused,
+  .portal-search.is-input-hovered,
   .portal-search.is-filled {
     width: 100%;
     transform: none;
@@ -1093,6 +1431,10 @@ function finishSearchComposition(event: CompositionEvent) {
     min-width: 0;
     min-height: 42px;
     background: rgba(248, 251, 255, 0.96);
+  }
+
+  .portal-header.app-top-nav--home .portal-search-scope {
+    display: none;
   }
 }
 

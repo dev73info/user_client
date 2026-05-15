@@ -527,7 +527,7 @@
 }
 
 .portal-card--notice {
-  padding: 18px 22px 16px;
+  padding: 18px 20px 18px;
   animation-delay: 20ms;
 }
 
@@ -612,7 +612,7 @@
 }
 
 .portal-card__header--notice {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .portal-card__header--stats {
@@ -713,7 +713,7 @@
 }
 
 .portal-notice-list {
-  gap: 8px;
+  gap: 12px;
   margin-top: 12px;
 }
 
@@ -725,13 +725,15 @@
 
 .portal-notice-item {
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
   overflow: hidden;
   align-items: center;
-  gap: 14px;
-  padding: 12px 12px 12px 14px;
-  border: 1px solid rgba(226, 232, 240, 0.78);
-  border-radius: 12px;
-  background: rgba(248, 250, 252, 0.66);
+  gap: 10px 14px;
+  padding: 14px 16px 14px 18px;
+  border: 1px solid rgba(219, 226, 236, 0.88);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(248, 250, 252, 0.74));
   opacity: 0;
   outline: none;
   animation: portal-notice-item-in 340ms ease both;
@@ -778,11 +780,13 @@
 
 .portal-notice-item__main {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
   align-items: center;
   gap: 10px;
   min-width: 0;
-  padding-left: 14px;
+  width: 100%;
+  padding-left: 16px;
 }
 
 .portal-notice-item__main::before {
@@ -807,10 +811,15 @@
 }
 
 .portal-notice-item__main strong {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
   font-size: 15px;
   font-weight: 700;
   color: #1f2937;
   line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .portal-rank-item__meta {
@@ -833,9 +842,11 @@
 
 .portal-notice-item time {
   flex-shrink: 0;
+  justify-self: end;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 700;
   color: #9ca3af;
+  white-space: nowrap;
 }
 
 .portal-tag,
@@ -851,10 +862,14 @@
 }
 
 .portal-notice-item .portal-tag {
-  padding: 2px 8px;
+  justify-self: end;
+  min-width: max-content;
+  padding: 5px 10px;
   background: rgba(239, 68, 68, 0.08);
   font-size: 10px;
   letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .portal-stats-grid,

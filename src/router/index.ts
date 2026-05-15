@@ -56,6 +56,11 @@ const router = createRouter({
       component: () => import('@/views/CommunityView.vue'),
     },
     {
+      path: '/search',
+      name: 'search',
+      component: () => import('@/views/SearchResultsView.vue'),
+    },
+    {
       path: '/payment',
       name: 'payment',
       component: () => import('@/views/PaymentView.vue'),

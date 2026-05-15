@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import {
   getCachedProcessedTagTree,
@@ -28,14 +28,40 @@ type FreeResourceEntryView = {
 
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 const freeResourceSections = ref<FreeResourceSectionView[]>([])
 const freeResourceLoading = ref(false)
 const freeResourceLoaded = ref(false)
 const freeResourceError = ref('')
+const freeResourceKeyword = ref('')
 const { showToast } = useToast()
 
 const showResourceSkeleton = computed(() => freeResourceLoading.value && !freeResourceLoaded.value)
 const freeResourceRefreshing = computed(() => freeResourceLoading.value && freeResourceLoaded.value)
+const normalizedFreeResourceKeyword = computed(() => freeResourceKeyword.value.trim().toLowerCase())
+const freeResourceSearchActive = computed(() => normalizedFreeResourceKeyword.value.length > 0)
+const filteredFreeResourceSections = computed(() => {
+  const keyword = normalizedFreeResourceKeyword.value
+  if (!keyword) {
+    return freeResourceSections.value
+  }
+
+  return freeResourceSections.value
+    .map((section) => {
+      const rootMatches = section.rootName.toLowerCase().includes(keyword)
+      const entries = rootMatches
+        ? section.entries
+        : section.entries.filter((entry) =>
+          [entry.entryName, entry.entrySlug].join(' ').toLowerCase().includes(keyword),
+        )
+
+      return entries.length > 0 ? { ...section, entries } : null
+    })
+    .filter((section): section is FreeResourceSectionView => Boolean(section))
+})
+const filteredFreeResourceEntryCount = computed(() =>
+  filteredFreeResourceSections.value.reduce((sum, section) => sum + section.entries.length, 0),
+)
 
 const resourceGuide = [
   { title: '选择分区', detail: '从根分区进入对应资源目录。' },
@@ -97,11 +123,30 @@ async function loadFreeResourceSections() {
 }
 
 function openFreeResourceEntry(section: FreeResourceSectionView, entry: FreeResourceEntryView) {
+  const keyword = freeResourceKeyword.value.trim()
   router.push({
     name: 'resource-catalog',
     params: { rootSlug: section.rootSlug, entrySlug: entry.entrySlug },
+    query: keyword ? { search: keyword } : {},
   })
 }
+
+function resetFreeResourceKeyword() {
+  freeResourceKeyword.value = ''
+  if (route.query.keyword) {
+    const nextQuery = { ...route.query }
+    delete nextQuery.keyword
+    void router.replace({ query: nextQuery })
+  }
+}
+
+watch(
+  () => route.query.keyword,
+  (value) => {
+    freeResourceKeyword.value = typeof value === 'string' ? value.trim() : ''
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   auth.hydrate()
@@ -127,6 +172,16 @@ onMounted(() => {
           </div>
         </div>
 
+        <div v-if="freeResourceSearchActive" class="free-resource-search-summary">
+          <div>
+            <strong>“{{ freeResourceKeyword.trim() }}”</strong>
+            <span>匹配 {{ filteredFreeResourceEntryCount }} 个分区入口</span>
+          </div>
+          <button class="portal-page__link-btn" type="button" @click="resetFreeResourceKeyword">
+            清除
+          </button>
+        </div>
+
         <div v-if="showResourceSkeleton" class="portal-page__resource-grid portal-page__resource-grid--loading"
           aria-busy="true" aria-label="正在加载免费资源分类">
           <article v-for="index in 4" :key="index" class="portal-page__card portal-page__resource-skeleton">
@@ -138,8 +193,8 @@ onMounted(() => {
           </article>
         </div>
 
-        <div v-else-if="freeResourceSections.length > 0" class="portal-page__resource-grid free-resource-grid">
-          <article v-for="(section, sectionIndex) in freeResourceSections" :key="section.rootId"
+        <div v-else-if="filteredFreeResourceSections.length > 0" class="portal-page__resource-grid free-resource-grid">
+          <article v-for="(section, sectionIndex) in filteredFreeResourceSections" :key="section.rootId"
             class="portal-page__card free-resource-group" :style="{ '--group-index': String(sectionIndex) }">
             <div class="free-resource-group__head">
               <div class="free-resource-group__title">
@@ -166,8 +221,9 @@ onMounted(() => {
         </div>
 
         <div v-else class="portal-page__empty portal-page__empty--stacked">
-          <strong>{{ freeResourceError ? '加载失败' : '标签树暂无可用分区' }}</strong>
+          <strong>{{ freeResourceError ? '加载失败' : freeResourceSearchActive ? '没有匹配的资源分区' : '标签树暂无可用分区' }}</strong>
           <span v-if="freeResourceError">{{ freeResourceError }}</span>
+          <span v-else-if="freeResourceSearchActive">换个关键词或清除搜索后再试。</span>
           <button v-if="freeResourceError" class="portal-page__action" type="button" @click="loadFreeResourceSections">
             重新加载
           </button>
@@ -197,6 +253,41 @@ onMounted(() => {
 <style scoped>
 .free-resource-grid {
   gap: 14px;
+}
+
+.free-resource-search-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(191, 219, 254, 0.82);
+  border-radius: 16px;
+  background: rgba(239, 246, 255, 0.72);
+}
+
+.free-resource-search-summary div {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+
+.free-resource-search-summary strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #1d4ed8;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.free-resource-search-summary span {
+  flex: 0 0 auto;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .portal-page--nav .free-resource-group {
@@ -592,6 +683,12 @@ onMounted(() => {
 @media (max-width: 640px) {
   .portal-page--nav .free-resource-group {
     padding: 16px;
+  }
+
+  .free-resource-search-summary,
+  .free-resource-search-summary div {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .free-resource-group__head {
