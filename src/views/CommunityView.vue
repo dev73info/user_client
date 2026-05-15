@@ -33,6 +33,7 @@ import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
+import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 
 const route = useRoute()
 const router = useRouter()
@@ -203,7 +204,7 @@ function postStatusText(status: CommunityPost['status']): string {
 }
 
 function routePostId(): number | null {
-  const rawValue = route.query.post ?? route.query.postId
+  const rawValue = route.params.postId ?? route.query.post ?? route.query.postId
   const value = Array.isArray(rawValue) ? rawValue[0] : rawValue
   if (typeof value !== 'string') {
     return null
@@ -224,6 +225,7 @@ onBeforeUnmount(() => {
   composerActionsResizeObserver?.disconnect()
   window.removeEventListener('scroll', updateFloatingComposerActions, true)
   window.removeEventListener('resize', updateFloatingComposerActions)
+  resetSeoMeta()
 })
 
 watch(composerVisible, () => {
@@ -245,12 +247,33 @@ watch(
 )
 
 watch(
-  () => [route.query.post, route.query.postId] as const,
+  () => [route.params.postId, route.query.post, route.query.postId] as const,
   () => {
     const postId = routePostId()
     if (postId) {
       selectPostById(postId)
     }
+  },
+)
+
+watch(
+  selectedPost,
+  (post) => {
+    if (!post) {
+      setSeoMeta({
+        title: '社区帖子 - 73Info 柒叁信息',
+        description: '73Info 社区内容，查看开发者与用户发布的经验、反馈和讨论。',
+        path: '/community',
+      })
+      return
+    }
+
+    const tags = post.tags.map((tag) => tag.name).join('、')
+    setSeoMeta({
+      title: `${post.title} - 73Info 社区帖子`,
+      description: post.content_html || tags || '73Info 平台社区帖子详情。',
+      path: `/community/posts/${post.id}`,
+    })
   },
 )
 
@@ -724,7 +747,7 @@ async function submitComment() {
               </div>
               <div class="community-post-card__badges">
                 <span class="community-status-badge" :class="`is-${post.status}`">{{ postStatusText(post.status)
-                }}</span>
+                  }}</span>
                 <span>{{ post.like_count }} 赞</span>
               </div>
             </div>

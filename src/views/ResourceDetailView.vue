@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -17,11 +17,17 @@ import {
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
-import { getTagRouteSlug, normalizeTagName, parseResourceIdFromSlug } from '@/api/resourceTags'
+import {
+  getResourceDetailSlug,
+  getTagRouteSlug,
+  normalizeTagName,
+  parseResourceIdFromSlug,
+} from '@/api/resourceTags'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
+import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 
 type CommentGate = {
   title: string
@@ -509,6 +515,10 @@ onMounted(() => {
   void loadResource()
 })
 
+onBeforeUnmount(() => {
+  resetSeoMeta()
+})
+
 watch(
   () => route.params.resourceSlug,
   () => {
@@ -523,6 +533,21 @@ watch(
       void loadComments(resource.value.id)
       void refreshResourceLikeState(resource.value.id)
     }
+  },
+)
+
+watch(
+  resource,
+  (current) => {
+    if (!current) {
+      return
+    }
+
+    setSeoMeta({
+      title: `${current.title} - 73Info 资源`,
+      description: current.description || current.release_note || '73Info 平台公开资源详情。',
+      path: `/resources/${getResourceDetailSlug(current.id, current.creator || current.author)}`,
+    })
   },
 )
 </script>
@@ -556,7 +581,7 @@ watch(
             <div v-if="tagNames.length > 0" class="resource-detail-page__tags">
               <span v-for="item in tagNames" :key="item" class="resource-detail-page__tag">{{
                 item
-              }}</span>
+                }}</span>
             </div>
 
             <div v-if="infoCards.length" class="resource-detail-page__summary-stats">

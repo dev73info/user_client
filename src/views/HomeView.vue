@@ -50,6 +50,13 @@ type Metric = {
   value: string
 }
 
+type PlatformStat = {
+  label: string
+  value: string
+  icon: typeof User
+  disabledReason?: string
+}
+
 type PendingRequirementView = {
   id: string
   title: string
@@ -487,7 +494,7 @@ function openSpotlight(card: SpotlightCard) {
   showToast('请进入需求大厅查看需求', 'info')
 }
 
-const platformStats = computed(() => {
+const platformStats = computed<PlatformStat[]>(() => {
   const [completed, , turnover] = metrics.value
   const resourceCount = publicResources.value.length
 
@@ -495,7 +502,12 @@ const platformStats = computed(() => {
     { label: '开发者', value: `${publicDeveloperCount.value} 位`, icon: User },
     { label: '公开资源', value: `${resourceCount} 条`, icon: Files },
     { label: '需求完成', value: completed?.value ?? '0 单', icon: Finished },
-    { label: '交易金额', value: turnover?.value ?? '¥ 0.00', icon: Money },
+    {
+      label: '交易金额',
+      value: turnover?.value ?? '¥ 0.00',
+      icon: Money,
+      disabledReason: '涉及许可的交易担保、资金托管、代收代付和自动分账服务暂未开放。',
+    },
   ]
 })
 
@@ -1500,7 +1512,7 @@ async function submitPublishRequirement() {
                 <div v-if="heroSignals.length" class="portal-signal-list">
                   <span v-for="signal in heroSignals" :key="signal" class="portal-signal">{{
                     signal
-                  }}</span>
+                    }}</span>
                 </div>
 
                 <div class="portal-hero__actions">
@@ -1819,13 +1831,18 @@ async function submitPublishRequirement() {
             </div>
             <div class="portal-stats-grid">
               <article v-for="(stat, index) in platformStats" :key="stat.label" class="portal-stat-item"
-                :class="`portal-stat-item--tone-${index % 4}`" :style="{ '--stat-index': String(index) }">
+                :class="[`portal-stat-item--tone-${index % 4}`, { 'is-disabled': stat.disabledReason }]"
+                :style="{ '--stat-index': String(index) }" :aria-disabled="stat.disabledReason ? 'true' : undefined">
                 <span class="portal-stat-item__icon" aria-hidden="true">
                   <component :is="stat.icon" />
                 </span>
                 <div class="portal-stat-item__copy">
                   <span>{{ stat.label }}</span>
                   <strong>{{ stat.value }}</strong>
+                </div>
+                <div v-if="stat.disabledReason" class="portal-stat-item__disabled" aria-live="polite">
+                  <strong>暂未开放</strong>
+                  <span>{{ stat.disabledReason }}</span>
                 </div>
               </article>
             </div>

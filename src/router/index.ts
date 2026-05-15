@@ -56,6 +56,11 @@ const router = createRouter({
       component: () => import('@/views/CommunityView.vue'),
     },
     {
+      path: '/community/posts/:postId',
+      name: 'community-post',
+      component: () => import('@/views/CommunityView.vue'),
+    },
+    {
       path: '/search',
       name: 'search',
       component: () => import('@/views/SearchResultsView.vue'),
@@ -170,6 +175,11 @@ const router = createRouter({
       path: '/contract-sign',
       name: 'contract-sign',
       component: () => import('@/views/ContractSignView.vue'),
+    },
+    {
+      path: '/resources/:resourceSlug',
+      name: 'resource-detail-direct',
+      component: () => import('@/views/ResourceDetailView.vue'),
     },
     {
       path: '/:rootSlug/:entrySlug?',

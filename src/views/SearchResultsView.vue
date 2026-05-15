@@ -378,11 +378,9 @@ async function loadRequirementDetailForModal(requirement: PublicRequirementSpotl
 
 function openCommunityPost(post: CommunityPost) {
     void router.push({
-        name: 'community',
-        query: {
-            keyword: keyword.value || post.title,
-            post: String(post.id),
-        },
+        name: 'community-post',
+        params: { postId: String(post.id) },
+        query: keyword.value ? { keyword: keyword.value } : {},
     })
 }
 
@@ -509,7 +507,7 @@ function formatTimeLabel(value: string): string {
                             <p>{{ resourceDescription(resource) }}</p>
                             <div class="portal-search-result-card__tags">
                                 <span v-for="tag in resourceTags(resource)" :key="`${resource.id}-${tag}`">{{ tag
-                                    }}</span>
+                                }}</span>
                             </div>
                             <div class="portal-page__card-footer">
                                 <strong>{{ resource.creator || resource.author }}</strong>

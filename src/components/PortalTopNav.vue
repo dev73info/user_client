@@ -69,8 +69,10 @@ const searchableRouteScope: Partial<Record<string, SearchScope>> = {
   search: 'auto',
   'free-resources': 'resources',
   'resource-catalog': 'resources',
+  'resource-detail-direct': 'resources',
   'requirement-hall': 'requirements',
   community: 'community',
+  'community-post': 'community',
 }
 const searchPlaceholder = computed(() => {
   if (searchScope.value === 'resources') return '搜索公开资源...'
@@ -589,7 +591,7 @@ function finishSearchComposition(event: CompositionEvent) {
             </span>
             <span class="portal-subscription-item__state">{{
               officialActivitySubscriptionEnabled ? '开' : '关'
-            }}</span>
+              }}</span>
           </button>
           <button class="portal-subscription-item" :class="{ active: devHallSubscriptionEnabled }" type="button"
             role="menuitemcheckbox" :aria-checked="devHallSubscriptionEnabled" :disabled="subscriptionBusy"
@@ -600,7 +602,7 @@ function finishSearchComposition(event: CompositionEvent) {
             </span>
             <span class="portal-subscription-item__state">{{
               devHallSubscriptionEnabled ? '开' : '关'
-            }}</span>
+              }}</span>
           </button>
         </section>
       </div>
