@@ -58,7 +58,6 @@ const auth = useAuthStore()
 
 const filterSections = ref<FilterSectionView[]>([])
 
-const searchQuery = ref('')
 const selectedSort = ref('最新')
 
 const { onTagPointerDown, onTagPointerEnter, onTagPointerUp, onTagPointerCancel, onTagClick } =
@@ -67,7 +66,6 @@ const { onTagPointerDown, onTagPointerEnter, onTagPointerUp, onTagPointerCancel,
 const cards = ref<McCardItem[]>([])
 
 const groupLabel = computed(() => normalizeTagName(props.groupName || '当前分区'))
-const searchPlaceholder = computed(() => `搜索 ${groupLabel.value} 资源...`)
 const fallbackIconClass = computed(() => 'bg-blue')
 const fallbackIcon = computed(() => '📁')
 const primaryFilterSection = computed(() => filterSections.value[0] ?? null)
@@ -89,7 +87,6 @@ function normalizeQueryValues(value: unknown): string[] {
 }
 
 function applyFiltersFromQuery() {
-  searchQuery.value = typeof route.query.search === 'string' ? route.query.search.trim() : ''
   filterSections.value.forEach((section) => {
     section.selected = normalizeQueryValues(route.query[section.queryKey])
   })
@@ -131,26 +128,7 @@ function toggleFilter(list: string[], item: string) {
 }
 
 const filteredCards = computed(() => {
-  const normalizedSearch = searchQuery.value.trim().toLowerCase()
   const filtered = cards.value.filter((card) => {
-    if (normalizedSearch) {
-      const searchable = [
-        card.title,
-        card.description,
-        card.author,
-        card.ownerName,
-        ...card.tags,
-        ...Object.keys(card.groupTags),
-        ...Object.values(card.groupTags).flat(),
-      ]
-        .join(' ')
-        .toLowerCase()
-
-      if (!searchable.includes(normalizedSearch)) {
-        return false
-      }
-    }
-
     for (const section of filterSections.value) {
       if (section.selected.length === 0) {
         continue
@@ -180,7 +158,6 @@ const filteredCards = computed(() => {
 })
 
 function resetFilters() {
-  searchQuery.value = ''
   filterSections.value.forEach((section) => {
     section.selected = []
   })
@@ -316,11 +293,6 @@ watch(
             {{ tag }}
           </button>
         </div>
-
-        <label class="portal-resource-browser__search">
-          <span class="portal-resource-browser__search-icon">🔍</span>
-          <input v-model="searchQuery" type="text" :placeholder="searchPlaceholder" />
-        </label>
       </div>
 
       <div v-for="section in secondaryFilterSections" :key="section.id" class="portal-resource-browser__row">
@@ -370,7 +342,7 @@ watch(
             </div>
             <span class="portal-resource-browser__updated">{{
               formatUpdatedAt(card.updatedAt)
-            }}</span>
+              }}</span>
           </div>
 
           <p class="portal-resource-browser__desc">{{ card.description }}</p>
@@ -405,9 +377,10 @@ watch(
 
 <style scoped>
 .portal-resource-browser {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
 }
 
 .portal-resource-browser__filters,
@@ -422,14 +395,19 @@ watch(
 .portal-resource-browser__filters {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 22px;
-  border-radius: 24px;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  position: sticky;
+  top: 14px;
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .portal-resource-browser__row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
 }
 
@@ -442,6 +420,7 @@ watch(
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  width: 100%;
 }
 
 .portal-resource-browser__group--wrap {
@@ -495,33 +474,6 @@ watch(
   gap: 8px;
 }
 
-.portal-resource-browser__search {
-  position: relative;
-  min-width: 260px;
-}
-
-.portal-resource-browser__search input {
-  width: 100%;
-  padding: 12px 16px 12px 40px;
-  border: 1px solid rgba(198, 210, 236, 0.82);
-  border-radius: 14px;
-  background: rgba(248, 250, 252, 0.96);
-  color: #0f172a;
-  outline: none;
-}
-
-.portal-resource-browser__search input:focus {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.12);
-}
-
-.portal-resource-browser__search-icon {
-  position: absolute;
-  top: 50%;
-  left: 14px;
-  transform: translateY(-50%);
-}
-
 .portal-resource-browser__reset {
   padding: 10px 16px;
   border-radius: 12px;
@@ -537,13 +489,25 @@ watch(
 }
 
 .portal-resource-browser__card {
+  min-width: 0;
   display: flex;
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   padding: 18px;
   border-radius: 22px;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+
+  @media (max-width: 1200px) {
+    .portal-resource-browser {
+      grid-template-columns: 1fr;
+    }
+
+    .portal-resource-browser__filters {
+      position: static;
+      max-height: none;
+    }
+  }
+
+  transition: transform 0.2s ease,
+  box-shadow 0.2s ease;
 }
 
 .portal-resource-browser__card:hover {
@@ -684,10 +648,6 @@ watch(
   .portal-resource-browser__footer {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .portal-resource-browser__search {
-    min-width: 100%;
   }
 
   .portal-resource-browser__grid {
