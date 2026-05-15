@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Close, Refresh } from '@element-plus/icons-vue'
 
@@ -413,10 +413,39 @@ function openPayModal(item: RequirementItem) {
 
 function openRequirementDetail(item: RequirementItem) {
   detailRequirement.value = item
+  if (routeRequirementViewId() !== item.requirement_id) {
+    void router.replace({ query: { ...route.query, view: item.requirement_id } })
+  }
 }
 
 function closeRequirementDetail() {
   detailRequirement.value = null
+  if (routeRequirementViewId()) {
+    const nextQuery = { ...route.query }
+    delete nextQuery.view
+    void router.replace({ query: nextQuery })
+  }
+}
+
+function routeRequirementViewId() {
+  const value = route.query.view
+  if (Array.isArray(value)) {
+    return value[0]?.trim() ?? ''
+  }
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function syncRouteRequirementDetail() {
+  const requirementId = routeRequirementViewId()
+  if (!requirementId) {
+    detailRequirement.value = null
+    return
+  }
+
+  const target = myRequirements.value.find((item) => item.requirement_id === requirementId)
+  if (target) {
+    detailRequirement.value = target
+  }
 }
 
 async function requestFinalPayment(item: RequirementItem) {
@@ -986,6 +1015,7 @@ async function loadMyRequirements() {
   try {
     const rows = await listRequirements(auth.token)
     myRequirements.value = rows.slice(0, 20)
+    syncRouteRequirementDetail()
     await loadContractSigningStatuses(myRequirements.value)
     if (
       expandedVersionDeleteReviewRequirementId.value &&
@@ -1191,6 +1221,13 @@ onMounted(async () => {
   auth.hydrate()
   await Promise.all([loadMyRequirements(), loadRequirementConversations(), loadDepositRatio()])
 })
+
+watch(
+  () => route.query.view,
+  () => {
+    syncRouteRequirementDetail()
+  },
+)
 </script>
 
 <template>
@@ -1254,12 +1291,12 @@ onMounted(async () => {
               <small class="requirement-note">{{ paymentModeLabel(item) }} · {{ paymentModeHint(item) }}</small>
               <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
                 formatResourceVisibility(item)
-              }}</small>
+                }}</small>
               <small v-if="hasBoundResource(item)" class="requirement-note">已发布版本：{{ publishedVersionCount(item)
-              }}</small>
+                }}</small>
               <small v-if="contractStatusHint(item)" class="requirement-note">{{
                 contractStatusHint(item)
-              }}</small>
+                }}</small>
               <small v-if="hasBoundResource(item) && !canToggleRequirementResourceVisibility(item)"
                 class="requirement-note">资源公开/私有切换需在{{
                   isSelfManagedRequirement(item) ? '需求完成后' : '已付尾款后'
@@ -1273,7 +1310,7 @@ onMounted(async () => {
               </small>
               <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">{{
                 resourceVersionDeleteReviewHint(item)
-              }}</small>
+                }}</small>
               <small v-if="hasPendingResourceVersionDeleteReview(item)"
                 class="requirement-note">点击当前需求行，可在下方展开审核卡片。</small>
               <small v-else-if="
@@ -1287,7 +1324,7 @@ onMounted(async () => {
                 publishedVersionCount(item) < 1
               " class="requirement-note">开发者至少发布 1 个版本后，用户才能{{
                 isSelfManagedRequirement(item) ? '确认完成' : '结束开发并支付尾款'
-              }}</small>
+                }}</small>
               <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{
                 item.review_note }}</small>
               <small class="requirement-note">{{
@@ -1297,7 +1334,7 @@ onMounted(async () => {
               }}</small>
               <small v-if="canOpenConversation(item)" class="requirement-note">{{
                 conversationLastMessageText(item)
-              }}</small>
+                }}</small>
             </div>
             <span class="requirement-status" :class="{ 'requirement-status--contract': isWaitingContractSign(item) }">
               {{ formatRequirementDisplayStatus(item) }}
@@ -1815,12 +1852,17 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: minmax(0, 160px) minmax(0, 1fr);
   gap: 12px;
+  align-items: stretch;
 }
 
 .my-requirement-detail__review-item {
   display: grid;
   gap: 8px;
   min-width: 0;
+}
+
+.my-requirement-detail__review-grid .my-requirement-detail__review-item {
+  grid-template-rows: auto 1fr;
 }
 
 .my-requirement-detail__review-label {
@@ -1840,6 +1882,15 @@ onMounted(async () => {
   font-weight: 700;
   line-height: 1.7;
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+}
+
+.my-requirement-detail__review-grid .my-requirement-detail__review-value {
+  height: 100%;
+}
+
+.my-requirement-detail__review-grid div.my-requirement-detail__review-value {
+  display: flex;
+  align-items: center;
 }
 
 .my-requirement-detail__review-value--multiline {

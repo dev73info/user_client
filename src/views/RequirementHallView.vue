@@ -487,7 +487,7 @@ async function loadHallData() {
               class="portal-page__list-item requirement-hall__deal-item">
               <strong>{{ deal.title }}</strong>
               <span class="portal-page__meta">{{ formatMoney(deal.amount_cny) }} · {{ formatTimeLabel(deal.paid_at)
-              }}</span>
+                }}</span>
               <p v-if="deal.comment_text">{{ deal.comment_text }}</p>
             </li>
           </ul>
@@ -938,12 +938,17 @@ async function loadHallData() {
   display: grid;
   grid-template-columns: minmax(0, 160px) minmax(0, 1fr);
   gap: 12px;
+  align-items: stretch;
 }
 
 .requirement-hall-detail__review-item {
   display: grid;
   gap: 8px;
   min-width: 0;
+}
+
+.requirement-hall-detail__review-grid .requirement-hall-detail__review-item {
+  grid-template-rows: auto 1fr;
 }
 
 .requirement-hall-detail__review-label {
@@ -963,6 +968,15 @@ async function loadHallData() {
   font-weight: 700;
   line-height: 1.7;
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+}
+
+.requirement-hall-detail__review-grid .requirement-hall-detail__review-value {
+  height: 100%;
+}
+
+.requirement-hall-detail__review-grid div.requirement-hall-detail__review-value {
+  display: flex;
+  align-items: center;
 }
 
 .requirement-hall-detail__review-value--multiline {

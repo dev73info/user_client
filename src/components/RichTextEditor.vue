@@ -37,10 +37,16 @@ type HeadingOptionValue = '' | HeadingLevel
 type ToolbarDropdown = 'heading' | 'insert' | 'codeLanguage'
 type NotifyType = 'success' | 'warning' | 'error'
 
-const props = defineProps<{
-    modelValue: string
-    floatingToolbar?: boolean
-}>()
+const props = withDefaults(
+    defineProps<{
+        modelValue: string
+        floatingToolbar?: boolean
+        floatingToolbarTop?: number | string
+    }>(),
+    {
+        floatingToolbar: true,
+    },
+)
 
 const emit = defineEmits<{
     'update:modelValue': [value: string]
@@ -114,18 +120,32 @@ let toolbarScrollContainer: HTMLElement | null = null
 
 const floatingToolbarEnabled = computed(() => props.floatingToolbar !== false)
 
-const editorStyle: Record<string, string> = {
-    '--rich-text-editor-min-height': 'clamp(280px, 38vh, 420px)',
-}
+const floatingToolbarTop = computed(() => normalizeCssPixelValue(props.floatingToolbarTop))
+
+const editorStyle = computed<Record<string, string>>(() => {
+    const style: Record<string, string> = {
+        '--rich-text-editor-min-height': 'clamp(280px, 38vh, 420px)',
+    }
+    if (floatingToolbarTop.value !== null) {
+        style['--rich-text-editor-toolbar-top'] = `${floatingToolbarTop.value}px`
+    }
+    return style
+})
 
 const toolbarShellStyle = computed<Record<string, string> | undefined>(() => {
-    if (!toolbarFloating.value || toolbarPlaceholderHeight.value <= 0) {
-        return undefined
+    const style: Record<string, string> = {}
+
+    if (floatingToolbarEnabled.value) {
+        style.position = 'sticky'
+        style.top = 'var(--rich-text-editor-toolbar-top)'
     }
 
-    return {
-        height: `${toolbarPlaceholderHeight.value}px`,
+    if (!toolbarFloating.value || toolbarPlaceholderHeight.value <= 0) {
+        return Object.keys(style).length ? style : undefined
     }
+
+    style.height = `${toolbarPlaceholderHeight.value}px`
+    return style
 })
 
 useCodeBlockCopy({
@@ -136,6 +156,15 @@ useCodeBlockCopy({
 function isScrollableContainer(element: HTMLElement): boolean {
     const style = getComputedStyle(element)
     return /(auto|scroll|overlay)/.test(style.overflowY)
+}
+
+function normalizeCssPixelValue(value: number | string | undefined): number | null {
+    if (value === undefined || value === '') {
+        return null
+    }
+
+    const parsed = typeof value === 'number' ? value : Number.parseFloat(value)
+    return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : null
 }
 
 function findFloatingScrollContainer(root: HTMLElement): HTMLElement | null {
@@ -151,6 +180,10 @@ function findFloatingScrollContainer(root: HTMLElement): HTMLElement | null {
 }
 
 function getFloatingToolbarTop(root: HTMLElement): number {
+    if (floatingToolbarTop.value !== null) {
+        return floatingToolbarTop.value
+    }
+
     const defaultGap = 12
     const scrollContainer = findFloatingScrollContainer(root)
     if (scrollContainer) {
@@ -998,7 +1031,10 @@ defineExpose({
 .rich-text-editor__font-size {
     display: inline-flex;
     align-items: center;
+    flex: 0 0 auto;
+    width: auto;
     min-height: 34px;
+    margin-bottom: 0;
     border: 1px solid rgba(203, 213, 225, 0.86);
     border-radius: 8px;
     background: #fff;
@@ -1086,6 +1122,7 @@ defineExpose({
 }
 
 .rich-text-editor__font-size-input {
+    flex: 0 0 64px;
     width: 64px;
     min-height: 32px;
     padding: 0 4px 0 9px;

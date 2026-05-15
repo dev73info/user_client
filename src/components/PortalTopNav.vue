@@ -623,8 +623,9 @@ function finishSearchComposition(event: CompositionEvent) {
 }
 
 .portal-search:hover,
+.portal-search:focus-within,
 .portal-search.is-filled {
-  width: clamp(300px, 32vw, 430px);
+  width: clamp(340px, 38vw, 540px);
   transform: translateX(-1px);
   border-color: rgba(147, 197, 253, 0.96);
   background: #fff;
@@ -644,6 +645,7 @@ function finishSearchComposition(event: CompositionEvent) {
 }
 
 .portal-search:hover>.el-icon,
+.portal-search:focus-within>.el-icon,
 .portal-search.is-filled>.el-icon {
   color: #2563eb;
 }
@@ -983,18 +985,45 @@ function finishSearchComposition(event: CompositionEvent) {
 
 @media (max-width: 1180px) {
   .portal-header {
-    grid-template-columns: 1fr;
-    gap: 14px;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "brand nav"
+      "tools tools";
+    gap: 10px 14px;
+    padding: 10px 14px;
   }
 
-  .portal-nav,
-  .portal-header__tools {
+  .portal-brand {
+    grid-area: brand;
+  }
+
+  .portal-nav {
+    grid-area: nav;
     justify-content: space-between;
   }
 
+  .portal-nav__link {
+    padding: 9px 10px;
+  }
+
+  .portal-header__tools {
+    grid-area: tools;
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  .portal-search {
+    width: min(clamp(320px, 58vw, 620px), calc(100% - 176px));
+  }
+
   .portal-search:hover,
+  .portal-search:focus-within,
   .portal-search.is-filled {
-    width: clamp(300px, 44vw, 520px);
+    width: min(clamp(420px, 70vw, 720px), calc(100% - 176px));
+  }
+
+  .portal-user__trigger {
+    min-width: 112px;
   }
 }
 
@@ -1013,6 +1042,7 @@ function finishSearchComposition(event: CompositionEvent) {
   }
 
   .portal-search:hover,
+  .portal-search:focus-within,
   .portal-search.is-filled {
     width: 100%;
     transform: none;

@@ -717,7 +717,7 @@ async function submitComment() {
             </el-form-item>
           </el-form>
 
-          <RichTextEditor v-model="postForm.content_html" @notify="showToast" />
+          <RichTextEditor v-model="postForm.content_html" :floating-toolbar-top="86" @notify="showToast" />
 
           <div ref="composerActionsShellRef" class="community-composer__actions-shell"
             :style="composerActionsShellStyle">
@@ -755,7 +755,8 @@ async function submitComment() {
           <div v-if="selectedPostLoading" class="community-detail-loading" role="status">
             正文加载中...
           </div>
-          <article v-else ref="selectedPostContentRef" class="community-rich-text" v-html="currentPostContent"></article>
+          <article v-else ref="selectedPostContentRef" class="community-rich-text" v-html="currentPostContent">
+          </article>
 
           <div class="community-actions">
             <el-button class="community-like-button" :class="{ 'is-liked': selectedPost.liked_by_me }"
@@ -855,6 +856,12 @@ async function submitComment() {
   position: sticky;
   top: 76px;
   min-width: 0;
+}
+
+@media (max-width: 1180px) and (min-width: 921px) {
+  .community-detail {
+    top: 136px;
+  }
 }
 
 .community-hero {

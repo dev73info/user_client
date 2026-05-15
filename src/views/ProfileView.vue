@@ -486,22 +486,7 @@ async function refreshProfileData() {
 }
 
 function handleRequirementAction(item: RequirementItem) {
-  if (hasPendingResourceVersionDeleteReview(item)) {
-    void router.push({ name: 'workbench-requirements' })
-    return
-  }
-
-  if (canRequestFinalPayment(item)) {
-    void requestFinalPayment(item)
-  } else if (canPay(item.status, item)) {
-    openPayModal(item)
-  } else if (canComplete(item)) {
-    openCompletionConfirm(item)
-  } else if (canResubmit(item.status)) {
-    openRequirementEditModal(item)
-  } else if (canComment(item.status)) {
-    openCommentModal(item)
-  }
+  void router.push({ name: 'workbench-requirements', query: { view: item.requirement_id } })
 }
 
 function starFill(index: number) {
@@ -1590,9 +1575,9 @@ onBeforeUnmount(() => {
         <span>发布定制需求后，进度会在这里汇总。</span>
       </div>
       <ul v-else class="overview-requirement-list">
-        <li v-for="item in recentRequirements" :key="item.requirement_id"
-          :class="{ clickable: hasPendingResourceVersionDeleteReview(item) || canRequestFinalPayment(item) || canPay(item.status, item) || canComplete(item) || canComment(item.status) || canResubmit(item.status) }"
-          @click="handleRequirementAction(item)">
+        <li v-for="item in recentRequirements" :key="item.requirement_id" class="clickable" role="button" tabindex="0"
+          :aria-label="`查看需求：${item.title}`" @click="handleRequirementAction(item)"
+          @keydown.enter.prevent="handleRequirementAction(item)" @keydown.space.prevent="handleRequirementAction(item)">
           <div>
             <strong>{{ item.title }}</strong>
             <span>{{ item.requirement_id }} · {{ paymentModeLabel(item) }}</span>
@@ -1871,7 +1856,7 @@ onBeforeUnmount(() => {
         <div class="actions">
           <button class="ghost" type="button" @click="closeFinalPaymentConfirm">取消</button>
           <button class="ghost" type="button" @click="confirmFinalPaymentRequest">{{ finalPaymentConfirmButton
-            }}</button>
+          }}</button>
         </div>
       </section>
     </div>
