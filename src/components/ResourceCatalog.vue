@@ -474,7 +474,7 @@ watch(
   padding: 16px;
   border-radius: 18px;
   position: sticky;
-  top: 14px;
+  top: 86px;
 }
 
 .portal-resource-browser__menu {
@@ -488,7 +488,9 @@ watch(
 }
 
 .portal-resource-browser__menu-trigger {
-  position: relative;
+  position: sticky;
+  top: 86px;
+  z-index: 2;
   width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -502,6 +504,7 @@ watch(
   color: #334155;
   cursor: pointer;
   text-align: left;
+  backdrop-filter: blur(8px);
   transition:
     background 180ms ease,
     color 180ms ease,
