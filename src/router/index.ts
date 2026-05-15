@@ -31,6 +31,30 @@ function takeSpaFallbackRedirect(): string {
 
 let pendingSpaFallbackRedirect = takeSpaFallbackRedirect()
 
+function buildPublicShareRedirectPath(
+  shareType: string,
+  targetId: string,
+  redirectTo: string,
+): string {
+  if (redirectTo) {
+    return redirectTo
+  }
+
+  if (shareType === 'requirement' && targetId) {
+    return `/requirement-hall?requirement_id=${encodeURIComponent(targetId)}`
+  }
+
+  if (['resource', 'portfolio'].includes(shareType) && /^\d+$/.test(targetId)) {
+    return `/resources/resource--${targetId}`
+  }
+
+  if (shareType === 'community_post' && /^\d+$/.test(targetId)) {
+    return `/community/posts/${targetId}`
+  }
+
+  return '/'
+}
+
 const router = createRouter({
   history: routerHistory,
   routes: [
@@ -95,16 +119,17 @@ const router = createRouter({
       name: 'invite-short-link-fallback',
       redirect: (to) => {
         const code = String(to.params.code ?? '').trim()
-        const query: Record<string, string> = /^[A-Za-z0-9]{1,32}$/.test(code)
-          ? { modal: 'auth', mode: 'register', invite_code: code }
-          : {}
         const shareType = typeof to.query.share_type === 'string' ? to.query.share_type.trim() : ''
         const targetId = typeof to.query.target_id === 'string' ? to.query.target_id.trim() : ''
         const redirectTo = typeof to.query.redirect_to === 'string' ? to.query.redirect_to.trim() : ''
 
         if (['requirement', 'portfolio', 'resource', 'community_post'].includes(shareType)) {
-          query.share_type = shareType
+          return buildPublicShareRedirectPath(shareType, targetId, redirectTo)
         }
+
+        const query: Record<string, string> = /^[A-Za-z0-9]{1,32}$/.test(code)
+          ? { modal: 'auth', mode: 'register', invite_code: code }
+          : {}
         if (targetId && /^[A-Za-z0-9_-]{1,64}$/.test(targetId)) {
           query.share_target_id = targetId
         }
