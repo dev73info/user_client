@@ -1,6 +1,6 @@
 const DEFAULT_TITLE = '73Info 柒叁信息 - 免费资源与定制需求平台'
 const DEFAULT_DESCRIPTION =
-  '73Info 柒叁信息是面向用户与开发者的免费资源与定制开发协作平台，支持资源发现、需求发布、支付协作、交付验收与售后工单。'
+  '73Info 柒叁信息是面向用户、开发者、创作者与团队的资源发现和定制开发协作平台，聚合工具、模板、教程、服务方案与项目需求，支持公开资源浏览、需求发布、意向沟通、进度跟进、交付验收、售后工单、合同记录、合规说明和账户消息，帮助供需双方在一个清晰入口完成信息匹配、协作管理与后续服务，并提升项目推进效率。'
 const SITE_URL = ((import.meta.env.VITE_SITE_URL as string | undefined)?.trim() || 'https://73info.cn').replace(
   /\/+$/,
   '',
