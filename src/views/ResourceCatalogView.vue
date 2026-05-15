@@ -35,12 +35,50 @@ const currentTab = computed(() => {
 })
 const currentPlatform = computed(() => currentTab.value?.platform ?? '')
 const currentEntryLabel = computed(() => currentTab.value?.groupName ?? '当前分区')
+const sortOptions = ['最新', '点赞'] as const
+const selectedSort = ref<(typeof sortOptions)[number]>('最新')
+const catalogRef = ref<InstanceType<typeof ResourceCatalog> | null>(null)
+const pageState = ref({
+  current: 1,
+  total: 1,
+  hasPrev: false,
+  hasNext: false,
+  totalItems: 0,
+})
 const catalogStats = computed(() => [
   { label: '根分区', value: `${rootTabs.value.length}` },
   { label: '二级分区', value: `${platformTabs.value.length}` },
   { label: '当前平台', value: currentPlatform.value || '待选择' },
   { label: '浏览模式', value: '门户目录' },
 ])
+
+function setCatalogSort(sort: (typeof sortOptions)[number]) {
+  selectedSort.value = sort
+  catalogRef.value?.setSort(sort)
+}
+
+function resetCatalogFilters() {
+  selectedSort.value = '最新'
+  catalogRef.value?.resetFilters()
+}
+
+function handlePageStateChange(state: {
+  current: number
+  total: number
+  hasPrev: boolean
+  hasNext: boolean
+  totalItems: number
+}) {
+  pageState.value = state
+}
+
+function goPrevPage() {
+  catalogRef.value?.prevPage()
+}
+
+function goNextPage() {
+  catalogRef.value?.nextPage()
+}
 
 function openPlatform(entrySlug: string) {
   if (entrySlug === currentEntrySlug.value) {
@@ -126,16 +164,7 @@ function resolveCurrentRoot(tree: McProcessedTagTree) {
 <template>
   <main class="portal-page catalog-layout-page">
     <section class="portal-page__panel catalog-switch-panel">
-      <div class="portal-page__section-header">
-        <div>
-          <p class="portal-page__eyebrow">目录切换</p>
-          <h2>{{ currentRootName || '免费资源目录' }}</h2>
-        </div>
-        <span class="catalog-switch-panel__current">当前：{{ currentEntryLabel }}</span>
-      </div>
-
-      <section class="catalog-nav-row catalog-nav-row--root-top" aria-label="根节点导航">
-        <span class="catalog-nav-row__label">根节点</span>
+      <section class="catalog-nav-row catalog-nav-row--root-top catalog-nav-row--no-label" aria-label="根节点导航">
         <div class="hero-root-nav">
           <button v-for="root in rootTabs" :key="root.slug" class="root-node-chip"
             :class="{ active: root.slug === currentRootSlug }" type="button"
@@ -150,7 +179,6 @@ function resolveCurrentRoot(tree: McProcessedTagTree) {
       <aside class="catalog-layout-page__nodes">
         <div class="catalog-nav-stack">
           <section class="catalog-nav-row" aria-label="二级节点导航">
-            <span class="catalog-nav-row__label">二级节点</span>
             <div class="hero-actions hero-actions--catalog">
               <button v-for="tab in platformTabs" :key="tab.slug" class="platform-path-chip"
                 :class="{ active: tab.slug === currentEntrySlug }" type="button" @click="openPlatform(tab.slug)">
@@ -161,9 +189,38 @@ function resolveCurrentRoot(tree: McProcessedTagTree) {
         </div>
       </aside>
 
+      <section class="catalog-layout-page__sort" aria-label="排序与筛选操作">
+        <div class="catalog-sort-panel">
+          <div class="catalog-nav-row__tools">
+            <div class="catalog-nav-row__sort-actions">
+              <button v-for="s in sortOptions" :key="s" class="catalog-nav-row__sort-chip"
+                :class="{ 'catalog-nav-row__sort-chip--active': selectedSort === s }" type="button"
+                @click="setCatalogSort(s)">
+                {{ s }}
+              </button>
+              <button class="catalog-nav-row__reset" type="button" @click="resetCatalogFilters">
+                ↻ 重置筛选
+              </button>
+            </div>
+            <div class="catalog-nav-row__pager">
+              <button class="catalog-nav-row__pager-btn" type="button" :disabled="!pageState.hasPrev"
+                @click="goPrevPage">
+                上一页
+              </button>
+              <span class="catalog-nav-row__pager-text">{{ pageState.current }} / {{ pageState.total }}</span>
+              <button class="catalog-nav-row__pager-btn" type="button" :disabled="!pageState.hasNext"
+                @click="goNextPage">
+                下一页
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="catalog-layout-page__browser">
-        <ResourceCatalog :platform="currentPlatform" :rootSlug="currentRootSlug" :entrySlug="currentEntrySlug"
-          :groupName="currentTab?.groupName || currentEntryLabel" />
+        <ResourceCatalog ref="catalogRef" :platform="currentPlatform" :rootSlug="currentRootSlug"
+          :entrySlug="currentEntrySlug" :groupName="currentTab?.groupName || currentEntryLabel"
+          @page-state-change="handlePageStateChange" />
       </section>
     </section>
   </main>

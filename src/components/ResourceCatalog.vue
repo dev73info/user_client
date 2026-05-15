@@ -43,11 +43,23 @@ type FilterSectionView = McTagFilterSection & {
   selected: string[]
 }
 
+type CatalogPageState = {
+  current: number
+  total: number
+  hasPrev: boolean
+  hasNext: boolean
+  totalItems: number
+}
+
 const props = defineProps<{
   platform: McResourcePlatform
   rootSlug: string
   entrySlug: string
   groupName: string
+}>()
+
+const emit = defineEmits<{
+  (e: 'page-state-change', state: CatalogPageState): void
 }>()
 
 const sortOptions = ['最新', '点赞', '标题']
@@ -57,6 +69,9 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const filterSections = ref<FilterSectionView[]>([])
+const expandedSectionIds = ref<number[]>([])
+const pageSize = 12
+const currentPage = ref(1)
 
 const selectedSort = ref('最新')
 
@@ -68,8 +83,19 @@ const cards = ref<McCardItem[]>([])
 const groupLabel = computed(() => normalizeTagName(props.groupName || '当前分区'))
 const fallbackIconClass = computed(() => 'bg-blue')
 const fallbackIcon = computed(() => '📁')
-const primaryFilterSection = computed(() => filterSections.value[0] ?? null)
-const secondaryFilterSections = computed(() => filterSections.value.slice(1))
+
+function isSectionExpanded(sectionId: number) {
+  return expandedSectionIds.value.includes(sectionId)
+}
+
+function toggleSection(sectionId: number) {
+  if (isSectionExpanded(sectionId)) {
+    expandedSectionIds.value = expandedSectionIds.value.filter((id) => id !== sectionId)
+    return
+  }
+
+  expandedSectionIds.value = [...expandedSectionIds.value, sectionId]
+}
 
 function normalizeQueryValues(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -157,12 +183,60 @@ const filteredCards = computed(() => {
   return filtered.slice().sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
 })
 
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(filteredCards.value.length / pageSize))
+})
+
+const pagedCards = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return filteredCards.value.slice(start, start + pageSize)
+})
+
+function emitPageState() {
+  emit('page-state-change', {
+    current: currentPage.value,
+    total: totalPages.value,
+    hasPrev: currentPage.value > 1,
+    hasNext: currentPage.value < totalPages.value,
+    totalItems: filteredCards.value.length,
+  })
+}
+
+function goToPage(page: number) {
+  const target = Math.min(Math.max(page, 1), totalPages.value)
+  currentPage.value = target
+}
+
+function nextPage() {
+  goToPage(currentPage.value + 1)
+}
+
+function prevPage() {
+  goToPage(currentPage.value - 1)
+}
+
+function setSort(sort: string) {
+  if (sortOptions.includes(sort)) {
+    selectedSort.value = sort
+    goToPage(1)
+  }
+}
+
 function resetFilters() {
   filterSections.value.forEach((section) => {
     section.selected = []
   })
   selectedSort.value = '最新'
+  goToPage(1)
 }
+
+defineExpose({
+  setSort,
+  resetFilters,
+  nextPage,
+  prevPage,
+  goToPage,
+})
 
 function formatUpdatedAt(value: string): string {
   const date = new Date(value)
@@ -246,6 +320,7 @@ async function loadTagTree() {
         selected: [],
       }),
     )
+    expandedSectionIds.value = filterSections.value.map((section) => section.id)
     applyFiltersFromQuery()
   } catch (err) {
     showToast(err instanceof Error ? err.message : '加载标签失败', 'warning')
@@ -277,56 +352,56 @@ watch(
     void loadTagTree()
   },
 )
+
+watch(
+  () => filteredCards.value.length,
+  () => {
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value
+    }
+    emitPageState()
+  },
+  { immediate: true },
+)
+
+watch(
+  () => currentPage.value,
+  () => {
+    emitPageState()
+  },
+)
 </script>
 
 <template>
   <section class="portal-resource-browser">
     <section class="portal-resource-browser__filters">
-      <div class="portal-resource-browser__row portal-resource-browser__row--between">
-        <div v-if="primaryFilterSection" class="portal-resource-browser__group">
-          <span class="portal-resource-browser__label">{{ primaryFilterSection.label }}：</span>
-          <button v-for="tag in primaryFilterSection.tags" :key="tag" class="portal-resource-browser__tag" :class="{
-            'portal-resource-browser__tag--active': primaryFilterSection.selected.includes(tag),
-          }" @pointerdown="onTagPointerDown(primaryFilterSection.selected, tag, $event)"
-            @pointerenter="onTagPointerEnter(primaryFilterSection.selected, tag)" @pointerup="onTagPointerUp"
-            @pointercancel="onTagPointerCancel" @click="onTagClick(primaryFilterSection.selected, tag, toggleFilter)">
-            {{ tag }}
+      <nav class="portal-resource-browser__menu" aria-label="标签筛选菜单">
+        <section v-for="section in filterSections" :key="section.id" class="portal-resource-browser__menu-group" :class="{
+          'portal-resource-browser__menu-group--open': isSectionExpanded(section.id),
+          'portal-resource-browser__menu-group--active': section.selected.length > 0,
+        }">
+          <button class="portal-resource-browser__menu-trigger" type="button" @click="toggleSection(section.id)" :class="{
+            'portal-resource-browser__menu-trigger--active': section.selected.length > 0,
+          }">
+            <span class="portal-resource-browser__menu-title">{{ section.label }}</span>
           </button>
-        </div>
-      </div>
 
-      <div v-for="section in secondaryFilterSections" :key="section.id" class="portal-resource-browser__row">
-        <div class="portal-resource-browser__group portal-resource-browser__group--wrap"
-          :class="{ 'portal-resource-browser__group--top': section.tags.length > 8 }">
-          <span class="portal-resource-browser__label">{{ section.label }}：</span>
-          <div class="portal-resource-browser__tag-cloud">
-            <button v-for="tag in section.tags" :key="tag" class="portal-resource-browser__tag"
-              :class="{ 'portal-resource-browser__tag--active': section.selected.includes(tag) }"
-              @pointerdown="onTagPointerDown(section.selected, tag, $event)"
+          <div v-show="isSectionExpanded(section.id)" class="portal-resource-browser__submenu">
+            <button v-for="tag in section.tags" :key="tag" class="portal-resource-browser__submenu-link" :class="{
+              'portal-resource-browser__submenu-link--active': section.selected.includes(tag),
+            }" @pointerdown="onTagPointerDown(section.selected, tag, $event)"
               @pointerenter="onTagPointerEnter(section.selected, tag)" @pointerup="onTagPointerUp"
               @pointercancel="onTagPointerCancel" @click="onTagClick(section.selected, tag, toggleFilter)">
               {{ tag }}
             </button>
           </div>
-        </div>
-      </div>
+        </section>
+      </nav>
 
-      <div class="portal-resource-browser__row portal-resource-browser__row--between">
-        <div class="portal-resource-browser__group">
-          <span class="portal-resource-browser__label">排序：</span>
-          <button v-for="s in sortOptions" :key="s" class="portal-resource-browser__tag"
-            :class="{ 'portal-resource-browser__tag--active': selectedSort === s }" @click="selectedSort = s">
-            {{ s }}
-          </button>
-        </div>
-        <button class="portal-resource-browser__reset" type="button" @click="resetFilters">
-          ↻ 重置筛选
-        </button>
-      </div>
     </section>
 
     <section class="portal-resource-browser__grid">
-      <article v-for="card in filteredCards" :key="card.id" class="portal-resource-browser__card">
+      <article v-for="card in pagedCards" :key="card.id" class="portal-resource-browser__card">
         <div v-if="card.coverUrl" class="portal-resource-browser__cover portal-resource-browser__cover--image">
           <img :src="card.coverUrl" :alt="card.title" class="portal-resource-browser__cover-image" />
         </div>
@@ -342,7 +417,7 @@ watch(
             </div>
             <span class="portal-resource-browser__updated">{{
               formatUpdatedAt(card.updatedAt)
-              }}</span>
+            }}</span>
           </div>
 
           <p class="portal-resource-browser__desc">{{ card.description }}</p>
@@ -400,9 +475,116 @@ watch(
   border-radius: 18px;
   position: sticky;
   top: 14px;
-  max-height: calc(100vh - 140px);
-  overflow: auto;
-  overscroll-behavior: contain;
+}
+
+.portal-resource-browser__menu {
+  display: grid;
+  gap: 6px;
+}
+
+.portal-resource-browser__menu-group {
+  display: grid;
+  gap: 6px;
+}
+
+.portal-resource-browser__menu-trigger {
+  position: relative;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: 0;
+  background: transparent;
+  color: #334155;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.portal-resource-browser__menu-trigger::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 999px;
+  background: #2563eb;
+  opacity: 0;
+  transform: scaleY(0.45);
+  transform-origin: center;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.portal-resource-browser__menu-trigger:hover,
+.portal-resource-browser__menu-trigger--active,
+.portal-resource-browser__menu-group--open>.portal-resource-browser__menu-trigger {
+  background: rgba(239, 246, 255, 0.96);
+  color: #1d4ed8;
+  box-shadow: inset 0 0 0 1px rgba(191, 219, 254, 0.52);
+}
+
+.portal-resource-browser__menu-trigger:hover {
+  transform: translateX(2px);
+}
+
+.portal-resource-browser__menu-trigger--active::before,
+.portal-resource-browser__menu-group--open>.portal-resource-browser__menu-trigger::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.portal-resource-browser__menu-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #334155;
+}
+
+.portal-resource-browser__submenu {
+  display: grid;
+  gap: 6px;
+  margin-left: 12px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(209, 220, 243, 0.95);
+}
+
+.portal-resource-browser__submenu-link {
+  width: 100%;
+  min-height: 36px;
+  border: 0;
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: transparent;
+  color: #334155;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.portal-resource-browser__submenu-link:hover {
+  transform: translateX(2px);
+}
+
+.portal-resource-browser__submenu-link:hover,
+.portal-resource-browser__submenu-link--active {
+  background: rgba(248, 251, 255, 0.96);
+  color: #1d4ed8;
 }
 
 .portal-resource-browser__row {

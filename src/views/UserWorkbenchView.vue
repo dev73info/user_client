@@ -530,7 +530,7 @@ async function scrollToHash() {
 
 <style scoped>
 .user-workbench {
-  width: min(1560px, calc(100% - 20px));
+  width: min(1280px, calc(100% - 24px));
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(220px, 252px) minmax(0, 1fr);
