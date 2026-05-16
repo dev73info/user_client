@@ -292,7 +292,7 @@ onBeforeUnmount(() => {
           <div class="dev-resource-homepage-editor__hero-meta">
             <span class="dev-resource-homepage-editor__hero-pill">{{
               resourceVisibilityLabel
-            }}</span>
+              }}</span>
             <span class="dev-resource-homepage-editor__hero-pill">{{ resourcePlatformLabel }}</span>
             <span class="dev-resource-homepage-editor__hero-pill">{{ previewTagCount }} 个标签</span>
             <span class="dev-resource-homepage-editor__hero-pill">{{ resourceAuthorLabel }}</span>
@@ -330,7 +330,7 @@ onBeforeUnmount(() => {
             </el-form-item>
             <el-form-item label="图标文件">
               <div class="dev-resource-homepage-editor__file-picker">
-                <input ref="coverFileInput" type="file" accept="image/*"
+                <input ref="coverFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif"
                   class="dev-resource-homepage-editor__file-input" @change="handleCoverFileChange" />
                 <el-button :icon="Upload" @click="triggerCoverPicker">选择封面</el-button>
                 <span class="dev-resource-homepage-editor__file-name">

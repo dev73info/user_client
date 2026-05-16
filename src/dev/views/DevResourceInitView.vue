@@ -348,7 +348,7 @@ async function submitResource() {
               <el-form-item label="图标文件">
                 <div class="dev-icon-upload">
                   <input ref="iconInput" class="dev-icon-upload__native" type="file"
-                    accept="image/png,image/jpeg,image/webp,image/svg+xml" @change="handleIconFileChange" />
+                    accept="image/png,image/jpeg,image/webp,image/gif" @change="handleIconFileChange" />
                   <button class="dev-icon-upload__trigger" type="button" @click="openIconPicker">
                     <el-icon>
                       <UploadFilled />
@@ -357,7 +357,7 @@ async function submitResource() {
                   </button>
                   <div class="dev-icon-upload__meta">
                     <div class="dev-icon-upload__name">{{ iconFileName || '未选择文件' }}</div>
-                    <div class="dev-icon-upload__hint">支持 PNG、JPG、WEBP、SVG，大小不超过 2MB</div>
+                    <div class="dev-icon-upload__hint">支持 PNG、JPG、WEBP、GIF，大小不超过 2MB</div>
                   </div>
                   <div v-if="form.coverUrl" class="dev-icon-upload__preview">
                     <img :src="form.coverUrl" alt="图标预览" class="dev-icon-upload__image" />

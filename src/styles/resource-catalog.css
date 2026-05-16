@@ -167,6 +167,11 @@
   padding: 12px;
   border-color: rgba(198, 210, 236, 0.72);
   background: rgba(255, 255, 255, 0.84);
+  position: sticky;
+  top: 0; /* 与主内容 sticky 区域对齐，如有全局导航可调整 */
+  z-index: 10;
+  box-shadow: 0 2px 12px 0 rgba(37,99,235,0.03);
+  transition: box-shadow 0.2s;
 }
 
 .catalog-layout-page__nodes .catalog-nav-row__label {
@@ -186,6 +191,12 @@
   border: 1px solid rgba(198, 210, 236, 0.72);
   background: rgba(255, 255, 255, 0.84);
   height: 100%;
+  position: sticky;
+  top: 0; /* 如有全局顶部导航，请调整此值 */
+  z-index: 20;
+  /* 若左侧标签组也 sticky，需为其设置 top: 72px; z-index: 10; */
+  box-shadow: 0 2px 12px 0 rgba(37,99,235,0.04);
+  transition: box-shadow 0.2s;
 }
 
 .catalog-nav-row__tools {

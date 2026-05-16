@@ -28,6 +28,20 @@ let sendCodeTimer: ReturnType<typeof setInterval> | null = null
 
 const { showToast } = useToast()
 
+function isSafeGithubAuthorizeUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value)
+    const isGithubHost = parsed.hostname === 'github.com' || parsed.hostname === 'www.github.com'
+    return (
+      parsed.protocol === 'https:' &&
+      isGithubHost &&
+      parsed.pathname.startsWith('/login/oauth/authorize')
+    )
+  } catch {
+    return false
+  }
+}
+
 function clearSendCodeTimer() {
   if (sendCodeTimer) {
     clearInterval(sendCodeTimer)
@@ -112,6 +126,9 @@ async function loginWithGithub() {
     const payload = await getGithubAuthorizeUrl(redirectTarget)
     if (!payload.url) {
       throw new Error('GitHub 授权地址为空')
+    }
+    if (!isSafeGithubAuthorizeUrl(payload.url)) {
+      throw new Error('GitHub 授权地址不安全，已阻止跳转')
     }
     window.location.href = payload.url
   } catch (error) {
@@ -297,27 +314,13 @@ async function submitAuth() {
             <el-radio-button label="reset">重置密码</el-radio-button>
           </el-radio-group>
 
-          <el-input
-            v-if="authMode !== 'reset'"
-            v-model="authUsername"
-            placeholder="用户名"
-            autocomplete="username"
-          />
+          <el-input v-if="authMode !== 'reset'" v-model="authUsername" placeholder="用户名" autocomplete="username" />
 
-          <el-input
-            v-if="authMode !== 'login'"
-            v-model="authEmail"
-            placeholder="邮箱"
-            autocomplete="email"
-          />
+          <el-input v-if="authMode !== 'login'" v-model="authEmail" placeholder="邮箱" autocomplete="email" />
 
           <div v-if="authMode !== 'login' || loginRequiresTwoFactor" class="dev-login__code-row">
             <el-input v-model="authEmailCode" placeholder="6位邮箱验证码" maxlength="6" />
-            <el-button
-              :loading="sendCodeLoading"
-              :disabled="sendCodeCountdown > 0"
-              @click="sendEmailCode"
-            >
+            <el-button :loading="sendCodeLoading" :disabled="sendCodeCountdown > 0" @click="sendEmailCode">
               {{
                 sendCodeCountdown > 0
                   ? `${sendCodeCountdown}s`
@@ -328,20 +331,12 @@ async function submitAuth() {
             </el-button>
           </div>
 
-          <el-input
-            v-model="authPassword"
-            type="password"
-            :placeholder="
-              authMode === 'login'
-                ? '密码'
-                : authMode === 'register'
-                  ? '设置密码（至少6位）'
-                  : '新密码（至少6位）'
-            "
-            autocomplete="current-password"
-            show-password
-            @keyup.enter="submitAuth"
-          />
+          <el-input v-model="authPassword" type="password" :placeholder="authMode === 'login'
+              ? '密码'
+              : authMode === 'register'
+                ? '设置密码（至少6位）'
+                : '新密码（至少6位）'
+            " autocomplete="current-password" show-password @keyup.enter="submitAuth" />
 
           <div v-if="authMode === 'login' || authMode === 'register' || authMode === 'reset'">
             <el-checkbox v-model="acceptDevAgreement">
@@ -350,17 +345,9 @@ async function submitAuth() {
             </el-checkbox>
           </div>
 
-          <el-button
-            class="dev-login__submit"
-            type="primary"
-            size="large"
-            :loading="auth.loading"
-            :disabled="
-              (authMode === 'register' || authMode === 'login' || authMode === 'reset') &&
-              !acceptDevAgreement
-            "
-            @click="submitAuth"
-          >
+          <el-button class="dev-login__submit" type="primary" size="large" :loading="auth.loading" :disabled="(authMode === 'register' || authMode === 'login' || authMode === 'reset') &&
+            !acceptDevAgreement
+            " @click="submitAuth">
             {{
               authMode === 'login'
                 ? loginRequiresTwoFactor
@@ -372,15 +359,8 @@ async function submitAuth() {
             }}
           </el-button>
 
-          <el-button
-            v-if="authMode === 'login'"
-            class="dev-login__submit"
-            plain
-            size="large"
-            :loading="githubLoading"
-            :disabled="!acceptDevAgreement"
-            @click="loginWithGithub"
-          >
+          <el-button v-if="authMode === 'login'" class="dev-login__submit" plain size="large" :loading="githubLoading"
+            :disabled="!acceptDevAgreement" @click="loginWithGithub">
             {{ githubLoading ? '跳转中...' : 'GitHub 快捷登录' }}
           </el-button>
           <p class="dev-login__hint">
@@ -397,18 +377,12 @@ async function submitAuth() {
     <footer class="dev-compliance-footer dev-login__compliance-footer" aria-label="网站备案信息">
       <p>
         ICP备案号：
-        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"
-          >滇ICP备2026006119号-2</a
-        >
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">滇ICP备2026006119号-2</a>
       </p>
       <p>
         公安备案号：
-        <a
-          class="dev-public-security-beian-link"
-          href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000020"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <a class="dev-public-security-beian-link" href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000020"
+          target="_blank" rel="noopener noreferrer">
           <img class="dev-public-security-beian-icon" src="/icons/beian.png" alt="公安备案图标" />
           <span>滇公网安备53062802000020号</span>
         </a>

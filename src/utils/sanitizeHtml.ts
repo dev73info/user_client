@@ -48,7 +48,6 @@ const allowedAttrs = [
   'rel',
   'rowspan',
   'src',
-  'style',
   'target',
   'title',
 ]
@@ -106,6 +105,10 @@ function keepAllowedInlineStyles(value: string): string {
     if (fontSize) {
       element.style.fontSize = fontSize
     }
+  })
+
+  template.content.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]').forEach((anchor) => {
+    anchor.setAttribute('rel', 'noopener noreferrer')
   })
 
   return template.innerHTML
