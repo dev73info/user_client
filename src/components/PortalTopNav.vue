@@ -508,7 +508,7 @@ function finishSearchComposition(event: CompositionEvent) {
     'portal-header--dev': isDeveloperArea,
   }">
     <RouterLink class="portal-brand" :to="{ name: 'home' }">
-      <div class="portal-brand__mark">73</div>
+      <img class="portal-brand__mark" src="/icons/home-icon.svg" alt="73info 首页" />
       <div class="portal-brand__copy">
         <strong>73info.cn</strong>
       </div>
@@ -654,15 +654,11 @@ function finishSearchComposition(event: CompositionEvent) {
 }
 
 .portal-brand__mark {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 38px;
   height: 38px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #2f68ff, #69b1ff);
-  color: #fff;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  object-fit: cover;
 }
 
 .portal-brand__copy {

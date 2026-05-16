@@ -1,88 +1,90 @@
 <script setup lang="ts">
-import { computed, nextTick } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, nextTick } from "vue";
+import { useRoute, useRouter } from "vue-router";
 
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from "@/stores/auth";
 
-const route = useRoute()
-const router = useRouter()
-const auth = useAuthStore()
+const route = useRoute();
+const router = useRouter();
+const auth = useAuthStore();
 
-const routeName = computed(() => String(route.name ?? ''))
+const routeName = computed(() => String(route.name ?? ""));
 
 function isResourceActive() {
-    return ['free-resources', 'resource-catalog', 'resource-detail'].includes(routeName.value)
+    return ["free-resources", "resource-catalog", "resource-detail"].includes(
+        routeName.value
+    );
 }
 
 function isMessagesActive() {
-    return routeName.value === 'messages' || routeName.value === 'workbench-messages'
+    return routeName.value === "messages" || routeName.value === "workbench-messages";
 }
 
 function isWorkbenchActive() {
-    return route.path.startsWith('/workbench') && !isMessagesActive()
+    return route.path.startsWith("/workbench") && !isMessagesActive();
 }
 
 async function scrollPortalTop() {
-    await nextTick()
-    const wrap = document.querySelector<HTMLElement>('.app-scrollbar .el-scrollbar__wrap')
+    await nextTick();
+    const wrap = document.querySelector<HTMLElement>(".app-scrollbar .el-scrollbar__wrap");
     if (wrap) {
-        wrap.scrollTo({ top: 0, behavior: 'smooth' })
-        return
+        wrap.scrollTo({ top: 0, behavior: "smooth" });
+        return;
     }
 
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 async function goHome() {
-    if (routeName.value !== 'home') {
-        await router.push({ name: 'home' })
+    if (routeName.value !== "home") {
+        await router.push({ name: "home" });
     }
 
-    await scrollPortalTop()
+    await scrollPortalTop();
 }
 
 function goFreeResources() {
-    void router.push({ name: 'free-resources' })
+    void router.push({ name: "free-resources" });
 }
 
 function goProtectedTarget(target: { name: string; hash?: string }) {
     if (auth.isAuthed) {
-        void router.push(target)
-        return
+        void router.push(target);
+        return;
     }
 
     void router.push({
-        name: 'home',
+        name: "home",
         query: {
-            modal: 'auth',
-            mode: 'login',
+            modal: "auth",
+            mode: "login",
             redirect_to: router.resolve(target).fullPath,
         },
-    })
+    });
 }
 
 function openPublish() {
     if (auth.isAuthed) {
-        void router.push({ name: 'home', query: { modal: 'publish' } })
-        return
+        void router.push({ name: "home", query: { modal: "publish" } });
+        return;
     }
 
     void router.push({
-        name: 'home',
+        name: "home",
         query: {
-            modal: 'auth',
-            mode: 'login',
-            redirect_to: '/?modal=publish',
+            modal: "auth",
+            mode: "login",
+            redirect_to: "/?modal=publish",
         },
-    })
+    });
 }
 
 function goMessages() {
-    goProtectedTarget({ name: 'messages' })
+    goProtectedTarget({ name: "messages" });
 }
 
 function goWorkbench() {
-    goProtectedTarget({ name: 'workbench' })
+    goProtectedTarget({ name: "workbench" });
 }
 </script>
 
@@ -109,7 +111,16 @@ function goWorkbench() {
         </button>
         <button type="button" class="portal-mobile-dock__item" :class="{ active: isWorkbenchActive() }"
             @click="goWorkbench">
-            <span>◉</span>
+            <span class="portal-mobile-dock__icon portal-mobile-dock__icon--workbench" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <rect x="4" y="5" width="16" height="14" rx="3" />
+                    <path d="M8 4.5V7" />
+                    <path d="M16 4.5V7" />
+                    <path d="M4 10H20" />
+                    <path d="M8.5 13.5H11.5" />
+                    <path d="M13.5 13.5H16.5" />
+                </svg>
+            </span>
             <small>工作台</small>
         </button>
     </nav>
@@ -155,14 +166,31 @@ function goWorkbench() {
     line-height: 1;
 }
 
+.portal-mobile-dock__icon {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+}
+
+.portal-mobile-dock__icon svg {
+    width: 100%;
+    height: 100%;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 .portal-mobile-dock__item small {
     max-width: 100%;
     color: inherit;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
     line-height: 1.2;
     text-align: center;
     white-space: nowrap;
+    transform: translateY(-8px);
 }
 
 .portal-mobile-dock__item.active,
@@ -171,7 +199,31 @@ function goWorkbench() {
 }
 
 .portal-mobile-dock__item--primary {
-    background: rgba(219, 234, 254, 0.9);
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(160deg, rgba(223, 236, 255, 0.96), rgba(207, 226, 255, 0.9));
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.88),
+        0 8px 16px rgba(59, 106, 214, 0.14);
+}
+
+.portal-mobile-dock__item--primary span {
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1;
+    transform: translateY(1px);
+}
+
+.portal-mobile-dock__item--primary small {
+    font-size: 14px;
+    letter-spacing: 0.01em;
+}
+
+.portal-mobile-dock__item--primary:active {
+    transform: translateY(1px) scale(0.985);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.78),
+        0 5px 10px rgba(59, 106, 214, 0.16);
 }
 
 @media (max-width: 900px) {
@@ -191,7 +243,7 @@ function goWorkbench() {
     }
 
     .portal-mobile-dock__item small {
-        font-size: 10px;
+        font-size: 12px;
     }
 }
 </style>
