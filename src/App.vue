@@ -206,6 +206,7 @@ onBeforeUnmount(() => {
   }
 
   .site-footer-host {
+    display: none;
     width: calc(100% - 20px);
   }
 

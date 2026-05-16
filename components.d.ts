@@ -42,6 +42,7 @@ declare module 'vue' {
     HomeHeroSection: typeof import('./src/components/home/HomeHeroSection.vue')['default']
     InviteLeaderboard: typeof import('./src/components/InviteLeaderboard.vue')['default']
     InvitePanel: typeof import('./src/components/InvitePanel.vue')['default']
+    MobileResourceList: typeof import('./src/components/MobileResourceList.vue')['default']
     PortalMobileDock: typeof import('./src/components/PortalMobileDock.vue')['default']
     PortalTopNav: typeof import('./src/components/PortalTopNav.vue')['default']
     PublishModal: typeof import('./src/components/PublishModal.vue')['default']

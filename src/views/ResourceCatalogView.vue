@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import ResourceCatalog from '@/components/ResourceCatalog.vue'
+import MobileResourceList from '@/components/MobileResourceList.vue'
 import {
   getMcPluginPlatformEntries,
   getProcessedTagTree,
@@ -38,6 +39,7 @@ const currentEntryLabel = computed(() => currentTab.value?.groupName ?? '当前�
 const sortOptions = ['最新', '点赞'] as const
 const selectedSort = ref<(typeof sortOptions)[number]>('最新')
 const catalogRef = ref<InstanceType<typeof ResourceCatalog> | null>(null)
+const isMobile = ref(false)
 const pageState = ref({
   current: 1,
   total: 1,
@@ -100,7 +102,13 @@ function openRoot(rootSlug: string, firstEntrySlug: string | null) {
 }
 
 onMounted(() => {
+  updateViewport()
+  window.addEventListener('resize', updateViewport)
   void loadPlatformTabs()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateViewport)
 })
 
 watch(
@@ -159,11 +167,15 @@ function resolveCurrentRoot(tree: McProcessedTagTree) {
 
   return tree.roots.find((r) => r.entries.length > 0) ?? tree.roots[0] ?? null
 }
+
+function updateViewport() {
+  isMobile.value = window.innerWidth <= 900
+}
 </script>
 
 <template>
   <main class="portal-page catalog-layout-page">
-    <section class="portal-page__panel catalog-switch-panel">
+    <section v-if="!isMobile" class="portal-page__panel catalog-switch-panel">
       <section class="catalog-nav-row catalog-nav-row--root-top catalog-nav-row--no-label" aria-label="根节点导航">
         <div class="hero-root-nav">
           <button v-for="root in rootTabs" :key="root.slug" class="root-node-chip"
@@ -176,7 +188,7 @@ function resolveCurrentRoot(tree: McProcessedTagTree) {
     </section>
 
     <section class="catalog-layout-page__body">
-      <aside class="catalog-layout-page__nodes">
+      <aside v-if="!isMobile" class="catalog-layout-page__nodes">
         <div class="catalog-nav-stack">
           <section class="catalog-nav-row" aria-label="二级节点导航">
             <div class="hero-actions hero-actions--catalog">
@@ -189,7 +201,7 @@ function resolveCurrentRoot(tree: McProcessedTagTree) {
         </div>
       </aside>
 
-      <section class="catalog-layout-page__sort" aria-label="排序与筛选操作">
+      <section v-if="!isMobile" class="catalog-layout-page__sort" aria-label="排序与筛选操作">
         <div class="catalog-sort-panel">
           <div class="catalog-nav-row__tools">
             <div class="catalog-nav-row__sort-actions">
@@ -218,7 +230,9 @@ function resolveCurrentRoot(tree: McProcessedTagTree) {
       </section>
 
       <section class="catalog-layout-page__browser">
-        <ResourceCatalog ref="catalogRef" :platform="currentPlatform" :rootSlug="currentRootSlug"
+        <MobileResourceList v-if="isMobile" :platform="currentPlatform" :rootSlug="currentRootSlug"
+          :entrySlug="currentEntrySlug" :groupName="currentTab?.groupName || currentEntryLabel" />
+        <ResourceCatalog v-else ref="catalogRef" :platform="currentPlatform" :rootSlug="currentRootSlug"
           :entrySlug="currentEntrySlug" :groupName="currentTab?.groupName || currentEntryLabel"
           @page-state-change="handlePageStateChange" />
       </section>
