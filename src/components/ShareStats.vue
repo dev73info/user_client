@@ -12,6 +12,30 @@ const records = ref<ShareRecord[]>([])
 const totalVisits = ref(0)
 const totalRegistrations = ref(0)
 const loading = ref(false)
+const mergedRecords = computed(() => {
+    const merged = new Map<ShareRecord['share_type'], ShareRecord>()
+
+    for (const record of records.value) {
+        const current = merged.get(record.share_type)
+        if (current) {
+            merged.set(record.share_type, {
+                ...current,
+                visits: current.visits + record.visits,
+                registrations: current.registrations + record.registrations,
+            })
+            continue
+        }
+
+        merged.set(record.share_type, {
+            share_type: record.share_type,
+            target_id: record.target_id,
+            visits: record.visits,
+            registrations: record.registrations,
+        })
+    }
+
+    return Array.from(merged.values())
+})
 const conversionRate = computed(() => {
     if (totalVisits.value <= 0) {
         return '0%'
@@ -55,148 +79,140 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="share-stats" aria-label="分享数据">
-    <header class="share-stats__head">
-      <h2>分享数据</h2>
-      <button
-        type="button"
-        :disabled="loading"
-        @click="loadStats"
-        aria-label="刷新分享数据"
-      >
-        <el-icon>
-          <Refresh />
-        </el-icon>
-      </button>
-    </header>
+    <section class="share-stats" aria-label="分享数据">
+        <header class="share-stats__head">
+            <h2>分享数据</h2>
+            <button type="button" :disabled="loading" @click="loadStats" aria-label="刷新分享数据">
+                <el-icon>
+                    <Refresh />
+                </el-icon>
+            </button>
+        </header>
 
-    <div class="share-stats__metrics">
-      <article>
-        <span>访问</span>
-        <strong>{{ totalVisits }}</strong>
-      </article>
-      <article>
-        <span>注册</span>
-        <strong>{{ totalRegistrations }}</strong>
-      </article>
-      <article>
-        <span>转化</span>
-        <strong>{{ conversionRate }}</strong>
-      </article>
-    </div>
-
-    <div class="share-stats__records">
-      <article
-        v-for="record in records"
-        :key="`${record.share_type}-${record.target_id ?? ''}`"
-      >
-        <div>
-          <strong>{{ shareTypeLabel(record.share_type) }}</strong>
+        <div class="share-stats__metrics">
+            <article>
+                <span>访问</span>
+                <strong>{{ totalVisits }}</strong>
+            </article>
+            <article>
+                <span>注册</span>
+                <strong>{{ totalRegistrations }}</strong>
+            </article>
+            <article>
+                <span>转化</span>
+                <strong>{{ conversionRate }}</strong>
+            </article>
         </div>
-        <span>{{ record.visits }} / {{ record.registrations }}</span>
-      </article>
-      <div v-if="!loading && records.length === 0" class="share-stats__empty">
-        <el-icon>
-          <DataAnalysis />
-        </el-icon>
-        <span>暂无分享记录</span>
-      </div>
-    </div>
-  </section>
+
+        <div class="share-stats__records">
+            <article v-for="record in mergedRecords" :key="record.share_type">
+                <div>
+                    <strong>{{ shareTypeLabel(record.share_type) }}</strong>
+                </div>
+                <span>{{ record.visits }} / {{ record.registrations }}</span>
+            </article>
+            <div v-if="!loading && mergedRecords.length === 0" class="share-stats__empty">
+                <el-icon>
+                    <DataAnalysis />
+                </el-icon>
+                <span>暂无分享记录</span>
+            </div>
+        </div>
+    </section>
 </template>
 
 <style scoped>
 .share-stats {
-  display: grid;
-  gap: 14px;
+    display: grid;
+    gap: 14px;
 }
 
 .share-stats__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
 }
 
 .share-stats__head h2 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 22px;
+    margin: 0;
+    color: #0f172a;
+    font-size: 22px;
 }
 
 .share-stats__head button {
-  display: inline-grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: 8px;
-  background: #eff6ff;
-  color: #2563eb;
-  cursor: pointer;
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #2563eb;
+    cursor: pointer;
 }
 
 .share-stats__metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
 }
 
 .share-stats__metrics article,
 .share-stats__records article {
-  border: 1px solid rgba(226, 232, 240, 0.96);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(226, 232, 240, 0.96);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.9);
 }
 
 .share-stats__metrics article {
-  display: grid;
-  gap: 4px;
-  padding: 12px;
+    display: grid;
+    gap: 4px;
+    padding: 12px;
 }
 
 .share-stats__metrics span,
 .share-stats__records small {
-  color: #64748b;
-  font-size: 12px;
+    color: #64748b;
+    font-size: 12px;
 }
 
 .share-stats__metrics strong {
-  color: #0f172a;
-  font-size: 22px;
+    color: #0f172a;
+    font-size: 22px;
 }
 
 .share-stats__records {
-  display: grid;
-  gap: 8px;
+    display: grid;
+    gap: 8px;
 }
 
 .share-stats__records article {
-  min-height: 58px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+    min-height: 58px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
 }
 
 .share-stats__records strong,
 .share-stats__records small {
-  display: block;
+    display: block;
 }
 
 .share-stats__records span {
-  color: #1d4ed8;
-  font-weight: 900;
-  white-space: nowrap;
+    color: #1d4ed8;
+    font-weight: 900;
+    white-space: nowrap;
 }
 
 .share-stats__empty {
-  min-height: 86px;
-  display: grid;
-  place-items: center;
-  gap: 6px;
-  color: #94a3b8;
-  font-weight: 800;
+    min-height: 86px;
+    display: grid;
+    place-items: center;
+    gap: 6px;
+    color: #94a3b8;
+    font-weight: 800;
 }
 </style>
