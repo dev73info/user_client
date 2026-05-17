@@ -37,12 +37,8 @@ import {
   type RequirementStatus,
 } from '@/api/requirements'
 import { getDepositRatio } from '@/api/settings'
-import {
-  getProcessedTagTree,
-  getResourceDetailSlug,
-  normalizeTagName,
-  type McProcessedTagTree,
-} from '@/api/resourceTags'
+import { getResourceDetailSlug, normalizeTagName } from '@/api/resourceTags'
+import { useTagTreeStore } from '@/stores/tagTree'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
 
 type Metric = {
@@ -153,7 +149,8 @@ const dealDetailVisible = ref(false)
 const publicDeveloperCount = ref(0)
 const pendingRequirements = ref<PendingRequirementView[]>([])
 const publicRequirementSpotlights = ref<PublicRequirementSpotlightItem[]>([])
-const processedTagTree = ref<McProcessedTagTree>({ roots: [] })
+const tagTreeStore = useTagTreeStore()
+const processedTagTree = computed(() => tagTreeStore.tree ?? ({ roots: [] } as { roots: never[] }))
 const publicResources = ref<PublicMcResourceItem[]>([])
 const auth = useAuthStore()
 const router = useRouter()
@@ -677,7 +674,13 @@ const routeShareTargetId = computed(() => {
 })
 
 watch(
-  () => [routeInviteCode.value, routeShareType.value, routeShareTargetId.value, routeAuthMode.value] as const,
+  () =>
+    [
+      routeInviteCode.value,
+      routeShareType.value,
+      routeShareTargetId.value,
+      routeAuthMode.value,
+    ] as const,
   ([inviteCode, shareType, shareTargetId, mode]) => {
     if (mode === 'register' && inviteCode) {
       authInviteCode.value = inviteCode
@@ -1172,20 +1175,14 @@ function resolveResourceRoute(
 }
 
 async function loadPublicPortalData(silent = false) {
-  const [treeResult, resourcesResult, requirementsResult] = await Promise.allSettled([
-    getProcessedTagTree(),
+  const [resourcesResult, requirementsResult] = await Promise.allSettled([
     listAllPublicMcResources(),
     listPublicRequirementSpotlights(),
   ])
+  void tagTreeStore.ensure()
 
   if (!isMounted) {
     return
-  }
-
-  if (treeResult.status === 'fulfilled') {
-    processedTagTree.value = treeResult.value
-  } else {
-    processedTagTree.value = { roots: [] }
   }
 
   if (resourcesResult.status === 'fulfilled') {
@@ -1895,9 +1892,11 @@ async function submitPublishRequirement() {
               </button>
             </div>
             <div class="portal-stats-grid">
-              <article v-for="(stat, index) in platformStats" :key="stat.label" class="portal-stat-item"
-                :class="[`portal-stat-item--tone-${index % 4}`, { 'is-disabled': stat.disabledReason }]"
-                :style="{ '--stat-index': String(index) }" :aria-disabled="stat.disabledReason ? 'true' : undefined">
+              <article v-for="(stat, index) in platformStats" :key="stat.label" class="portal-stat-item" :class="[
+                `portal-stat-item--tone-${index % 4}`,
+                { 'is-disabled': stat.disabledReason },
+              ]" :style="{ '--stat-index': String(index) }"
+                :aria-disabled="stat.disabledReason ? 'true' : undefined">
                 <span class="portal-stat-item__icon" aria-hidden="true">
                   <component :is="stat.icon" />
                 </span>

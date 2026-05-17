@@ -14,11 +14,11 @@ import {
     type RequirementStatus,
 } from '@/api/requirements'
 import {
-    getProcessedTagTree,
     getResourceDetailSlug,
     normalizeTagName,
     type McProcessedTagTree,
 } from '@/api/resourceTags'
+import { useTagTreeStore } from '@/stores/tagTree'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import {
@@ -31,6 +31,7 @@ type SearchScope = 'all' | 'resources' | 'requirements' | 'community'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const tagTreeStore = useTagTreeStore()
 const { showToast } = useToast()
 
 const loading = ref(false)
@@ -67,7 +68,9 @@ const filteredResources = computed(() => {
         return resources.value.slice(0, 12)
     }
 
-    return resources.value.filter((resource) => buildResourceSearchText(resource).includes(searchText))
+    return resources.value.filter((resource) =>
+        buildResourceSearchText(resource).includes(searchText),
+    )
 })
 
 const filteredRequirements = computed(() => {
@@ -103,7 +106,10 @@ const filteredCommunityPosts = computed(() => {
 })
 
 const resultCount = computed(
-    () => filteredResources.value.length + filteredRequirements.value.length + filteredCommunityPosts.value.length,
+    () =>
+        filteredResources.value.length +
+        filteredRequirements.value.length +
+        filteredCommunityPosts.value.length,
 )
 const resultSummary = computed(() => {
     if (!keyword.value) {
@@ -159,14 +165,17 @@ async function loadSearchData() {
     try {
         const token = auth.token?.trim() ? auth.token : null
         const nextKeyword = keyword.value
-        const [treeResult, resourceResult, requirementResult, communityResult] = await Promise.allSettled([
-            showResources.value ? getProcessedTagTree() : Promise.resolve(tagTree.value),
-            showResources.value ? listAllPublicMcResources(token) : Promise.resolve(resources.value),
-            showRequirements.value ? listPublicRequirementSpotlights() : Promise.resolve(requirements.value),
-            showCommunity.value
-                ? listCommunityPosts({ token, keyword: nextKeyword, limit: 12 })
-                : Promise.resolve([]),
-        ])
+        const [treeResult, resourceResult, requirementResult, communityResult] =
+            await Promise.allSettled([
+                showResources.value ? tagTreeStore.ensure() : Promise.resolve(tagTree.value),
+                showResources.value ? listAllPublicMcResources(token) : Promise.resolve(resources.value),
+                showRequirements.value
+                    ? listPublicRequirementSpotlights()
+                    : Promise.resolve(requirements.value),
+                showCommunity.value
+                    ? listCommunityPosts({ token, keyword: nextKeyword, limit: 12 })
+                    : Promise.resolve([]),
+            ])
 
         if (treeResult.status === 'fulfilled') {
             tagTree.value = treeResult.value
@@ -251,7 +260,10 @@ function resourceTags(resource: PublicMcResourceItem): string[] {
     const tags = resource.tag_selections.flatMap((selection) =>
         selection.tag_names.map((tag) => normalizeTagName(tag)).filter(Boolean),
     )
-    return Array.from(new Set([normalizeTagName(resource.platform), ...tags].filter(Boolean))).slice(0, 3)
+    return Array.from(new Set([normalizeTagName(resource.platform), ...tags].filter(Boolean))).slice(
+        0,
+        3,
+    )
 }
 
 function resourceDescription(resource: PublicMcResourceItem): string {
@@ -307,7 +319,10 @@ function resolveResourceRoute(
 function openResource(resource: PublicMcResourceItem) {
     const routeParams = resolveResourceRoute(resource)
     if (!routeParams) {
-        void router.push({ name: 'free-resources', query: keyword.value ? { keyword: keyword.value } : {} })
+        void router.push({
+            name: 'free-resources',
+            query: keyword.value ? { keyword: keyword.value } : {},
+        })
         return
     }
 
@@ -475,7 +490,11 @@ function formatTimeLabel(value: string): string {
 
         <section v-else-if="resultCount === 0" class="portal-page__empty portal-page__empty--stacked">
             <strong>{{ keyword ? '没有找到匹配结果' : '还没有输入搜索关键词' }}</strong>
-            <span>{{ keyword ? '换个关键词，或切换搜索范围再试。' : '可以在顶部搜索栏输入资源名称、需求标题或编号。' }}</span>
+            <span>{{
+                keyword
+                    ? '换个关键词，或切换搜索范围再试。'
+                    : '可以在顶部搜索栏输入资源名称、需求标题或编号。'
+                }}</span>
         </section>
 
         <template v-else>
@@ -500,14 +519,17 @@ function formatTimeLabel(value: string): string {
                         </div>
                         <div class="portal-search-result-card__body">
                             <div class="portal-page__card-topline">
-                                <span class="portal-page__chip">{{ normalizeTagName(resource.platform) || '资源' }}</span>
+                                <span class="portal-page__chip">{{
+                                    normalizeTagName(resource.platform) || '资源'
+                                    }}</span>
                                 <span class="portal-page__meta">{{ formatTimeLabel(resource.updated_at) }}</span>
                             </div>
                             <h3>{{ resource.title }}</h3>
                             <p>{{ resourceDescription(resource) }}</p>
                             <div class="portal-search-result-card__tags">
-                                <span v-for="tag in resourceTags(resource)" :key="`${resource.id}-${tag}`">{{ tag
-                                }}</span>
+                                <span v-for="tag in resourceTags(resource)" :key="`${resource.id}-${tag}`">{{
+                                    tag
+                                    }}</span>
                             </div>
                             <div class="portal-page__card-footer">
                                 <strong>{{ resource.creator || resource.author }}</strong>

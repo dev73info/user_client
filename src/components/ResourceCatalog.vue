@@ -12,7 +12,6 @@ import {
   type PublicMcResourceItem,
 } from '@/api/resources'
 import {
-  getProcessedTagTree,
   getResourceDetailSlug,
   getTagFilterSections,
   getTagRouteSlug,
@@ -20,6 +19,7 @@ import {
   type McTagFilterSection,
 } from '@/api/resourceTags'
 import { useMultiSelectTags } from '@/composables/useMultiSelectTags'
+import { useTagTreeStore } from '@/stores/tagTree'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
@@ -67,6 +67,7 @@ const { showToast } = useToast()
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const tagTreeStore = useTagTreeStore()
 
 const filterSections = ref<FilterSectionView[]>([])
 const expandedSectionIds = ref<number[]>([])
@@ -309,10 +310,8 @@ async function toggleCardLike(card: McCardItem) {
 async function loadTagTree() {
   try {
     const token = auth.token?.trim() ? auth.token : null
-    const [tree, resources] = await Promise.all([
-      getProcessedTagTree(),
-      listPublicMcResources(props.platform, token),
-    ])
+    const tree = await tagTreeStore.ensure()
+    const resources = await listPublicMcResources(props.platform, token)
     cards.value = resources.map(mapResourceToCard)
     filterSections.value = getTagFilterSections(tree, props.rootSlug, props.entrySlug).map(
       (section) => ({
@@ -397,7 +396,6 @@ watch(
           </div>
         </section>
       </nav>
-
     </section>
 
     <section class="portal-resource-browser__grid">
@@ -417,7 +415,7 @@ watch(
             </div>
             <span class="portal-resource-browser__updated">{{
               formatUpdatedAt(card.updatedAt)
-            }}</span>
+              }}</span>
           </div>
 
           <p class="portal-resource-browser__desc">{{ card.description }}</p>

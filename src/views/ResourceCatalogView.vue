@@ -6,16 +6,16 @@ import ResourceCatalog from '@/components/ResourceCatalog.vue'
 import MobileResourceList from '@/components/MobileResourceList.vue'
 import {
   getMcPluginPlatformEntries,
-  getProcessedTagTree,
   getTagRouteSlug,
   type McPluginPlatformEntry,
-  type McProcessedTagTree,
 } from '@/api/resourceTags'
+import { useTagTreeStore } from '@/stores/tagTree'
 import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
 const route = useRoute()
 const { showToast } = useToast()
+const tagTreeStore = useTagTreeStore()
 const rootTabs = ref<Array<{ slug: string; label: string; firstEntrySlug: string | null }>>([])
 const platformTabs = ref<McPluginPlatformEntry[]>([])
 const currentRootName = ref('')
@@ -120,7 +120,7 @@ watch(
 
 async function loadPlatformTabs() {
   try {
-    const tree = await getProcessedTagTree()
+    const tree = await tagTreeStore.ensure()
 
     rootTabs.value = tree.roots.map((root) => ({
       slug: root.key,
