@@ -932,7 +932,7 @@ async function scrollToHash() {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  min-height: 72px;
+  min-height: 56px;
   padding: 12px 16px;
   border-radius: 16px;
 }
@@ -1071,6 +1071,46 @@ async function scrollToHash() {
   line-height: 1.35;
 }
 
+.user-workbench__content :deep(.messages-page) {
+  width: 100%;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+}
+
+.user-workbench__content :deep(.messages-search) {
+  position: sticky !important;
+  top: 8px !important;
+  z-index: 12 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: calc(100% - 16px) !important;
+  margin: 8px 8px 12px !important;
+  height: 50px !important;
+  min-height: 50px !important;
+  padding: 0 12px !important;
+  border: 1px solid rgba(224, 232, 255, 0.96) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08) !important;
+}
+
+@media (max-width: 900px) {
+  .user-workbench__content :deep(.messages-page) {
+    width: 100%;
+    min-height: 0;
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+  }
+}
+
 @media (max-width: 960px) {
   .user-workbench {
     grid-template-columns: 1fr;
@@ -1096,7 +1136,9 @@ async function scrollToHash() {
 
 @media (max-width: 900px) {
   .user-workbench {
-    width: calc(100% - 16px);
+    width: 100%;
+    margin: 0;
+    padding: 0;
   }
 
   .user-workbench__menu-backdrop {
@@ -1147,10 +1189,17 @@ async function scrollToHash() {
   }
 
   .user-workbench__mobile-bar {
+    position: sticky;
+    top: 8px;
+    z-index: 12;
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 12px;
+    width: calc(100% - 16px);
+    margin: 8px 8px 12px;
+    height: 50px;
+    min-height: 50px;
+    padding: 0 12px;
     border: 1px solid rgba(224, 232, 255, 0.96);
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.94);
@@ -1198,7 +1247,7 @@ async function scrollToHash() {
   }
 
   .user-workbench--messages {
-    margin-top: 8px;
+    margin-top: 0;
   }
 
   .user-workbench--messages .user-workbench__aside,
@@ -1208,7 +1257,7 @@ async function scrollToHash() {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 200px) {
   .user-workbench {
     gap: 12px;
     margin-top: 10px;
@@ -1220,7 +1269,7 @@ async function scrollToHash() {
   }
 
   .user-workbench__head {
-    min-height: 64px;
+    min-height: 50px;
     padding: 10px 12px;
   }
 

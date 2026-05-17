@@ -1895,8 +1895,7 @@ async function submitPublishRequirement() {
               <article v-for="(stat, index) in platformStats" :key="stat.label" class="portal-stat-item" :class="[
                 `portal-stat-item--tone-${index % 4}`,
                 { 'is-disabled': stat.disabledReason },
-              ]" :style="{ '--stat-index': String(index) }"
-                :aria-disabled="stat.disabledReason ? 'true' : undefined">
+              ]" :style="{ '--stat-index': String(index) }" :aria-disabled="stat.disabledReason ? 'true' : undefined">
                 <span class="portal-stat-item__icon" aria-hidden="true">
                   <component :is="stat.icon" />
                 </span>

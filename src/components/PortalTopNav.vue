@@ -591,7 +591,7 @@ function finishSearchComposition(event: CompositionEvent) {
             </span>
             <span class="portal-subscription-item__state">{{
               officialActivitySubscriptionEnabled ? '开' : '关'
-              }}</span>
+            }}</span>
           </button>
           <button class="portal-subscription-item" :class="{ active: devHallSubscriptionEnabled }" type="button"
             role="menuitemcheckbox" :aria-checked="devHallSubscriptionEnabled" :disabled="subscriptionBusy"
@@ -602,7 +602,7 @@ function finishSearchComposition(event: CompositionEvent) {
             </span>
             <span class="portal-subscription-item__state">{{
               devHallSubscriptionEnabled ? '开' : '关'
-              }}</span>
+            }}</span>
           </button>
         </section>
       </div>
@@ -1396,10 +1396,14 @@ function finishSearchComposition(event: CompositionEvent) {
     top: 0;
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
-    width: calc(100% - 20px);
-    margin: 8px auto 10px;
-    padding: 10px;
+    width: calc(100% - 16px);
+    margin: 8px 8px 12px;
+    height: 50px;
+    padding: 0 12px;
+    border: 1px solid rgba(224, 232, 255, 0.96);
     border-radius: 16px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
   }
 
   .portal-header.app-top-nav--home .portal-brand,

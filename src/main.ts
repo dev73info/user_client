@@ -5,6 +5,7 @@ import App from './App.vue'
 import router from './router'
 import { installGlobalFetchLoadingTracker } from './composables/useGlobalLoadingScreen'
 import './styles/user.css'
+import './styles/unified-top-card.css'
 import './dev/styles/dev.css'
 
 if (import.meta.env.DEV) {

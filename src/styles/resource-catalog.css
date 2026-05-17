@@ -394,28 +394,54 @@
   white-space: nowrap;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 900px) {
+  .catalog-layout-page {
+    gap: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
   .catalog-layout-page__body {
-    grid-template-columns: 1fr;
+    display: block !important;
+    grid-template-columns: unset !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    align-items: unset !important;
   }
 
-  .catalog-switch-panel .portal-page__section-header {
-    align-items: flex-start;
-    flex-direction: column;
+  .catalog-layout-page__browser {
+    display: block !important;
+    grid-column: unset !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-width: 0 !important;
   }
 
-  .catalog-nav-row {
-    grid-template-columns: 1fr;
-    padding: 12px 14px;
+  .catalog-switch-panel {
+    display: none !important;
+  }
+
+  .catalog-layout-page__nodes {
+    display: none !important;
   }
 
   .catalog-layout-page__sort {
-    grid-column: 1 / -1;
+    display: none !important;
   }
 
-  .catalog-nav-row__tools {
-    flex-direction: column;
-    align-items: flex-start;
+  .catalog-nav-row {
+    display: none !important;
+  }
+
+  .catalog-nav-stack {
+    display: none !important;
+  }
+
+  .catalog-sort-panel {
+    display: none !important;
   }
 }
 

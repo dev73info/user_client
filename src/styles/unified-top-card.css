@@ -1,0 +1,147 @@
+/* ============================================
+   统一顶部卡片样式
+   确保所有页面顶部的搜索/导航卡片保持一致的大小和外观
+   
+   统一规格:
+   - 桌面端: min-height: 56px
+   - 平板端 (≤900px): height: 50px, margin: 8px 8px 12px, padding: 0 12px
+   - 小屏端 (≤420px): min-height: 46px
+   ============================================ */
+
+/* ============================================
+   首页 - Hero 区域卡片
+   ============================================ */
+.portal-hero__main {
+  min-height: 56px !important;
+}
+
+/* ============================================
+   消息页面 - 搜索栏卡片
+   ============================================ */
+.messages-search {
+  min-height: 56px !important;
+}
+
+/* ============================================
+   免费资源/资源目录页面 - 导航卡片
+   ============================================ */
+.catalog-switch-panel {
+  min-height: 56px !important;
+}
+
+.catalog-nav-row--root-top {
+  min-height: 56px !important;
+}
+
+/* ============================================
+   工作台页面 - 头部卡片
+   ============================================ */
+.user-workbench__head {
+  min-height: 56px !important;
+}
+
+/* ============================================
+   响应式调整 - 移动端 (≤900px)
+   ============================================ */
+@media (max-width: 900px) {
+  /* 首页移动端顶部导航 - 统一规格 */
+  .portal-header.app-top-nav--home {
+    position: sticky !important;
+    top: 8px !important;
+    z-index: 12 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    width: calc(100% - 16px) !important;
+    margin: 8px 8px 12px !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    padding: 0 12px !important;
+    border: 1px solid rgba(224, 232, 255, 0.96) !important;
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08) !important;
+  }
+
+  /* 工作台移动端顶部栏 - 统一规格 */
+  .user-workbench__mobile-bar {
+    position: sticky !important;
+    top: 8px !important;
+    z-index: 12 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    width: calc(100% - 16px) !important;
+    margin: 8px 8px 12px !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    padding: 0 12px !important;
+    border: 1px solid rgba(224, 232, 255, 0.96) !important;
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08) !important;
+  }
+
+  /* 资源页移动端顶部栏 - 统一规格 */
+  .mobile-resource-header {
+    position: sticky !important;
+    top: 8px !important;
+    z-index: 12 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    width: calc(100% - 16px) !important;
+    margin: 8px 8px 12px !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    padding: 0 12px !important;
+    border: 1px solid rgba(224, 232, 255, 0.96) !important;
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08) !important;
+  }
+
+  /* 消息页移动端搜索栏 - 统一规格 */
+  .messages-search {
+    position: sticky !important;
+    top: 8px !important;
+    z-index: 12 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    width: calc(100% - 16px) !important;
+    margin: 8px 8px 12px !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    padding: 0 12px !important;
+    border: 1px solid rgba(224, 232, 255, 0.96) !important;
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08) !important;
+  }
+}
+
+/* ============================================
+   响应式调整 - 小屏移动端 (≤420px)
+   ============================================ */
+@media (max-width: 420px) {
+  .portal-hero__main {
+    min-height: 46px !important;
+  }
+
+  .messages-search {
+    min-height: 46px !important;
+  }
+
+  .catalog-switch-panel {
+    min-height: 46px !important;
+  }
+
+  .catalog-nav-row--root-top {
+    min-height: 46px !important;
+  }
+
+  .user-workbench__head {
+    min-height: 46px !important;
+  }
+}

@@ -463,6 +463,14 @@ watch(
       </button>
     </section>
 
+    <section v-else class="messages-search messages-search--detail" aria-label="会话导航">
+      <button type="button" class="messages-back-btn" aria-label="返回消息列表" @click="closeConversation">
+        <span class="messages-back-btn__icon" aria-hidden="true">‹</span>
+        <span class="messages-back-btn__text">返回</span>
+      </button>
+      <span class="messages-detail-title" aria-hidden="true">{{ activeTitle }}</span>
+    </section>
+
     <section v-if="!activeRequirementId" class="messages-summary" aria-label="消息概览">
       <article class="messages-summary__item">
         <strong>{{ activeConversations.length }}</strong>
@@ -567,7 +575,7 @@ watch(
   grid-template-columns: 18px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  min-height: 48px;
+  min-height: 56px;
   padding: 0 10px 0 14px;
   border: 1px solid rgba(209, 220, 243, 0.96);
   border-radius: 18px;
@@ -636,6 +644,44 @@ watch(
 .messages-search__clear:hover {
   background: rgba(219, 234, 254, 0.92);
   color: #1d4ed8;
+}
+
+.messages-search--detail {
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 0 14px;
+}
+
+.messages-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.messages-back-btn__icon {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.messages-back-btn__text {
+  display: none;
+}
+
+.messages-detail-title {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .messages-summary__item,
@@ -926,14 +972,26 @@ watch(
   .messages-page {
     width: 100%;
     margin: 0;
-    padding: 8px 8px 0;
+    padding: 0;
     gap: 10px;
   }
 
   .messages-search {
-    min-height: 46px;
-    border-radius: 18px;
-    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
+    position: sticky !important;
+    top: 8px !important;
+    z-index: 12 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    width: calc(100% - 16px) !important;
+    margin: 8px 8px 12px !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    padding: 0 12px !important;
+    border: 1px solid rgba(224, 232, 255, 0.96) !important;
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08) !important;
   }
 
   .messages-summary {

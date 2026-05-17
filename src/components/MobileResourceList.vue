@@ -513,17 +513,21 @@ watch(
     width: 100%;
     margin: 0 auto;
     background: #f8fafc;
-    padding: 12px 8px 92px;
+    padding: 0 0 92px;
 }
 
 .mobile-resource-header {
     position: sticky;
-    top: 0;
+    top: 8px;
     z-index: 12;
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 12px;
+    width: calc(100% - 16px);
+    margin: 8px 8px 12px;
+    height: 50px;
+    min-height: 50px;
+    padding: 0 12px;
     border: 1px solid rgba(224, 232, 255, 0.96);
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.94);

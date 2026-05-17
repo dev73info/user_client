@@ -150,7 +150,7 @@
   grid-template-columns: minmax(450px, 1.04fr) minmax(360px, 0.96fr);
   align-items: center;
   gap: 18px;
-  min-height: 266px;
+  min-height: 56px;
   min-width: 0;
   border: 0;
   border-radius: 0;
@@ -2061,9 +2061,19 @@
   }
 }
 
+@media (max-width: 900px) {
+  .portal-hero__main {
+    min-height: 50px;
+  }
+}
+
 @media (max-width: 560px) {
   .portal-shell {
     width: calc(100% - 12px);
+  }
+
+  .portal-hero__main {
+    min-height: 46px;
   }
 
   .portal-hero__main,
