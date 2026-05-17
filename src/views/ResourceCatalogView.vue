@@ -8,6 +8,7 @@ import {
   getMcPluginPlatformEntries,
   getTagRouteSlug,
   type McPluginPlatformEntry,
+  type McProcessedTagTree,
 } from '@/api/resourceTags'
 import { useTagTreeStore } from '@/stores/tagTree'
 import { useToast } from '@/composables/useToast'
@@ -161,11 +162,11 @@ async function loadPlatformTabs() {
 
 function resolveCurrentRoot(tree: McProcessedTagTree) {
   if (currentRootSlug.value) {
-    const matched = tree.roots.find((r) => r.key === currentRootSlug.value)
+    const matched = tree.roots.find((r: typeof tree.roots[number]) => r.key === currentRootSlug.value)
     if (matched) return matched
   }
 
-  return tree.roots.find((r) => r.entries.length > 0) ?? tree.roots[0] ?? null
+  return tree.roots.find((r: typeof tree.roots[number]) => r.entries.length > 0) ?? tree.roots[0] ?? null
 }
 
 function updateViewport() {

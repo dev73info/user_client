@@ -513,7 +513,7 @@ watch(
     width: 100%;
     margin: 0 auto;
     background: #f8fafc;
-    padding: 0 0 92px;
+    padding: 0 0 0px;
 }
 
 .mobile-resource-header {

@@ -1201,12 +1201,12 @@ async function loadPublicPortalData(silent = false) {
     publicRequirementSpotlights.value = []
   }
 
-  const failedResults = [treeResult, resourcesResult, requirementsResult].filter(
+  const failedResults = [resourcesResult, requirementsResult].filter(
     (result) => result.status === 'rejected',
   )
-  if (failedResults.length > 0 && failedResults.length < 3 && !silent) {
+  if (failedResults.length > 0 && failedResults.length < 2 && !silent) {
     showToast('部分首页公开数据加载失败，已显示可用数据', 'warning')
-  } else if (failedResults.length === 3 && !silent) {
+  } else if (failedResults.length === 2 && !silent) {
     showToast('加载首页公开数据失败', 'warning')
   }
 }

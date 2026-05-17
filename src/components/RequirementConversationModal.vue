@@ -681,13 +681,13 @@ function handleBackdropClick() {
                       <span>{{ messageAttachmentLabel(row.message) }}</span>
                       <small v-if="row.message.attachment_size">{{
                         formatBytes(row.message.attachment_size)
-                        }}</small>
+                      }}</small>
                     </div>
                   </div>
                   <p v-if="row.message.content">{{ row.message.content }}</p>
                   <time :title="row.message.created_at">{{
                     formatMessageClock(row.message.created_at)
-                    }}</time>
+                  }}</time>
                 </div>
               </article>
             </template>
@@ -699,13 +699,15 @@ function handleBackdropClick() {
           <div class="conversation-modal__composer-main">
             <div class="conversation-modal__tools">
               <button class="conversation-modal__tool-btn" :class="{ 'is-active': emojiPanelOpen }" type="button"
-                :disabled="sending || loading || conversationClosed" aria-label="选择表情" title="选择表情" @click="toggleEmojiPanel">
+                :disabled="sending || loading || conversationClosed" aria-label="选择表情" title="选择表情"
+                @click="toggleEmojiPanel">
                 <el-icon>
                   <MagicStick />
                 </el-icon>
               </button>
-              <button class="conversation-modal__tool-btn" type="button" :disabled="sending || loading || conversationClosed"
-                aria-label="添加截图附件" title="添加截图附件" @click="openAttachmentPicker">
+              <button class="conversation-modal__tool-btn" type="button"
+                :disabled="sending || loading || conversationClosed" aria-label="添加截图附件" title="添加截图附件"
+                @click="openAttachmentPicker">
                 <el-icon>
                   <Paperclip />
                 </el-icon>
@@ -746,8 +748,7 @@ function handleBackdropClick() {
                 autocomplete="new-password" autocorrect="off" autocapitalize="off" aria-autocomplete="none"
                 data-ms-editor="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
                 data-lt-active="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true"
-                :disabled="conversationClosed"
-                @keydown="handleComposerKeydown" @paste="handleComposerPaste"></textarea>
+                :disabled="conversationClosed" @keydown="handleComposerKeydown" @paste="handleComposerPaste"></textarea>
               <span>{{ draft.trim().length }} / 5000</span>
             </div>
           </div>
