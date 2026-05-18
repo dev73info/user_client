@@ -37,10 +37,10 @@ export default defineConfig({
     vue(),
     wasm(),
     AutoImport({
-      resolvers: [ElementPlusResolver()],
+      resolvers: [ElementPlusResolver({ importStyle: false })],
     }),
     Components({
-      resolvers: [ElementPlusResolver()],
+      resolvers: [ElementPlusResolver({ importStyle: false })],
     }),
     {
       name: 'copy-spa-fallback-htaccess',
