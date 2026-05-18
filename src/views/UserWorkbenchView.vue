@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Box, Close, Connection, DataAnalysis, MagicStick, Menu as MenuIcon } from '@element-plus/icons-vue'
+import { ArrowDown, Box, Close, Connection, DataAnalysis, MagicStick, Menu as MenuIcon, UserFilled } from '@element-plus/icons-vue'
 
 import { listRequirementConversations, type RequirementConversation } from '@/api/conversations'
 import { useAuthStore } from '@/stores/auth'
@@ -71,6 +71,14 @@ const menuGroups: WorkbenchMenuGroup[] = [
       },
       { label: '实名认证', name: 'workbench-realname', description: '提交或查看实名审核' },
       { label: '工单中心', name: 'workbench-tickets', description: '提交问题与查看回复' },
+    ],
+  },
+  {
+    key: 'team',
+    label: '团队服务',
+    icon: UserFilled,
+    items: [
+      { label: '我的团队', name: 'workbench-teams', description: '查看和管理团队' },
     ],
   },
   {

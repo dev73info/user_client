@@ -1922,6 +1922,9 @@ onBeforeUnmount(() => {
 .profile-page {
   display: grid;
   gap: 16px;
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 32px 20px 56px;
 }
 
 .overview-hero,
