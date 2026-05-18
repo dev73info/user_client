@@ -525,9 +525,9 @@ watch(
     gap: 10px;
     width: calc(100% - 16px);
     margin: 8px 8px 12px;
-    height: 50px;
-    min-height: 50px;
-    padding: 0 12px;
+    height: auto;
+    min-height: 66px;
+    padding: 12px;
     border: 1px solid rgba(224, 232, 255, 0.96);
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.94);
@@ -1053,9 +1053,25 @@ watch(
     gap: 12px;
     padding: 12px;
     border-radius: 14px;
-    border: 1px solid #dbe2ef;
+    border: 1px solid rgba(203, 213, 225, 0.7);
     background: #fff;
     cursor: pointer;
+    transition:
+        box-shadow 200ms ease,
+        border-color 200ms ease,
+        transform 200ms ease;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.mobile-card:hover {
+    border-color: rgba(147, 197, 253, 0.6);
+    box-shadow: 0 4px 20px rgba(76, 103, 172, 0.1);
+}
+
+.mobile-card:active {
+    transform: scale(0.985);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    transition-duration: 80ms;
 }
 
 .card-thumb {
@@ -1065,6 +1081,8 @@ watch(
     overflow: hidden;
     flex-shrink: 0;
     background: #e2e8f0;
+    border: 1px solid rgba(203, 213, 225, 0.5);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
 }
 
 .card-thumb img {
@@ -1079,11 +1097,15 @@ watch(
     width: 100%;
     height: 100%;
     font-size: 26px;
+    background: linear-gradient(135deg, #eef2ff, #dbeafe);
 }
 
 .card-body {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .card-title {
@@ -1091,12 +1113,21 @@ watch(
     font-size: 18px;
     line-height: 1.3;
     color: #0f172a;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .card-desc {
     margin: 6px 0;
     font-size: 15px;
+    line-height: 1.4;
     color: #475569;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .card-stats {
@@ -1105,11 +1136,17 @@ watch(
     margin-bottom: 4px;
     color: #334155;
     font-size: 13px;
+    font-weight: 500;
+}
+
+.card-stats span:first-child {
+    color: #e11d48;
 }
 
 .card-meta {
     color: #64748b;
     font-size: 12px;
+    font-weight: 500;
 }
 
 .load-more {

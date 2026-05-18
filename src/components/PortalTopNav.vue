@@ -1398,8 +1398,9 @@ function finishSearchComposition(event: CompositionEvent) {
     gap: 0;
     width: calc(100% - 16px);
     margin: 8px 8px 12px;
-    height: 50px;
-    padding: 0 12px;
+    height: auto;
+    min-height: 66px;
+    padding: 12px;
     border: 1px solid rgba(224, 232, 255, 0.96);
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.94);

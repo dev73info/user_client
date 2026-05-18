@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Search } from '@element-plus/icons-vue'
 
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import { apiUrl } from '@/api/http'
@@ -453,23 +454,27 @@ watch(
 
 <template>
   <main class="page-shell custom-page-shell messages-page">
-    <section v-if="!activeRequirementId" class="messages-search" aria-label="搜索消息">
-      <span class="messages-search__icon" aria-hidden="true"></span>
-      <input v-model="searchKeyword" type="text" inputmode="search" enterkeyhint="search" autocomplete="off"
-        spellcheck="false" placeholder="搜索需求标题、编号、对方或消息..." @keydown.esc="clearSearch" />
-      <button v-if="searchKeyword.trim()" type="button" class="messages-search__clear" aria-label="清空搜索关键词" title="清空搜索"
-        @click="clearSearch">
-        ×
-      </button>
-    </section>
+    <header v-if="!activeRequirementId" class="messages-search-bar">
+      <form class="messages-search mobile-search-form" aria-label="搜索消息" @submit.prevent>
+        <el-icon class="mobile-search-icon"><Search /></el-icon>
+        <input v-model="searchKeyword" type="search" inputmode="search" enterkeyhint="search" autocomplete="off"
+          spellcheck="false" placeholder="搜索需求标题、编号、对方或消息..." @keydown.esc="clearSearch" />
+        <button v-if="searchKeyword.trim()" type="button" class="messages-search__clear" aria-label="清空搜索关键词" title="清空搜索"
+          @click="clearSearch">
+          ×
+        </button>
+      </form>
+    </header>
 
-    <section v-else class="messages-search messages-search--detail" aria-label="会话导航">
-      <button type="button" class="messages-back-btn" aria-label="返回消息列表" @click="closeConversation">
-        <span class="messages-back-btn__icon" aria-hidden="true">‹</span>
-        <span class="messages-back-btn__text">返回</span>
-      </button>
-      <span class="messages-detail-title" aria-hidden="true">{{ activeTitle }}</span>
-    </section>
+    <header v-else class="messages-search-bar">
+      <section class="messages-search messages-search--detail" aria-label="会话导航">
+        <button type="button" class="messages-back-btn" aria-label="返回消息列表" @click="closeConversation">
+          <span class="messages-back-btn__icon" aria-hidden="true">‹</span>
+          <span class="messages-back-btn__text">返回</span>
+        </button>
+        <span class="messages-detail-title" aria-hidden="true">{{ activeTitle }}</span>
+      </section>
+    </header>
 
     <section v-if="!activeRequirementId" class="messages-summary" aria-label="消息概览">
       <article class="messages-summary__item">
@@ -569,61 +574,89 @@ watch(
   gap: 10px;
 }
 
-.messages-search {
-  position: relative;
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
+.messages-search-bar {
+  position: sticky;
+  top: 8px;
+  z-index: 12;
+  display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 56px;
-  padding: 0 10px 0 14px;
-  border: 1px solid rgba(209, 220, 243, 0.96);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 8px 20px rgba(76, 103, 172, 0.06);
+  width: calc(100% - 16px);
+  margin: 8px 8px 12px;
+  height: auto;
+  min-height: 66px;
+  padding: 12px;
+  border: 1px solid rgba(224, 232, 255, 0.96);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
 }
 
-.messages-search:focus-within {
-  border-color: rgba(37, 99, 235, 0.36);
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08), 0 10px 24px rgba(76, 103, 172, 0.1);
+.messages-search.mobile-search-form {
+  display: inline-flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 9px;
+  min-height: 38px;
+  padding: 0 10px 0 12px;
+  border-radius: 999px !important;
+  border: 1px solid rgba(203, 213, 225, 0.86);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  color: #64748b;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
 }
 
-.messages-search__icon {
-  position: relative;
-  width: 14px;
-  height: 14px;
-  border: 2px solid #64748b;
-  border-radius: 999px;
+.messages-search.mobile-search-form:hover,
+.messages-search.mobile-search-form:focus-within {
+  border-color: rgba(147, 197, 253, 0.96);
+  background: #fff;
 }
 
-.messages-search__icon::after {
-  content: '';
-  position: absolute;
-  width: 7px;
-  height: 2px;
-  left: 10px;
-  top: 11px;
-  border-radius: 999px;
-  background: #64748b;
-  transform: rotate(45deg);
-  transform-origin: left center;
+.messages-search .mobile-search-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  color: #64748b;
+  transition: color 160ms ease;
+}
+
+.messages-search.mobile-search-form:hover .mobile-search-icon,
+.messages-search.mobile-search-form:focus-within .mobile-search-icon {
+  color: #2563eb;
 }
 
 .messages-search input {
-  width: 100%;
+  flex: 1;
   min-width: 0;
+  height: 40px;
   border: 0;
   outline: 0;
+  appearance: none;
   background: transparent;
+  caret-color: #2563eb;
   color: #0f172a;
   font: inherit;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
 }
 
 .messages-search input::placeholder {
   color: #94a3b8;
-  font-weight: 600;
+  font-weight: 500;
+}
+
+.messages-search input::-webkit-search-cancel-button,
+.messages-search input::-webkit-search-decoration {
+  appearance: none;
+  display: none;
 }
 
 .messages-search__clear {
@@ -647,8 +680,10 @@ watch(
 }
 
 .messages-search--detail {
-  grid-template-columns: auto minmax(0, 1fr);
-  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
 }
 
 .messages-back-btn {
@@ -976,7 +1011,7 @@ watch(
     gap: 10px;
   }
 
-  .messages-search {
+  .messages-search-bar {
     position: sticky !important;
     top: 8px !important;
     z-index: 12 !important;
@@ -985,13 +1020,18 @@ watch(
     gap: 10px !important;
     width: calc(100% - 16px) !important;
     margin: 8px 8px 12px !important;
-    height: 50px !important;
-    min-height: 50px !important;
-    padding: 0 12px !important;
+    height: auto !important;
+    min-height: 66px !important;
+    padding: 12px !important;
     border: 1px solid rgba(224, 232, 255, 0.96) !important;
     border-radius: 16px !important;
     background: rgba(255, 255, 255, 0.94) !important;
     box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08) !important;
+  }
+
+  .messages-search {
+    height: auto !important;
+    min-height: 38px !important;
   }
 
   .messages-summary {
