@@ -1,0 +1,69 @@
+# 柒叁信息用户端 — 源码可用许可协议
+
+## 1. 定义
+
+本协议中的「软件」指柒叁信息用户端（73info user-client）的全部源代码及相关文档。
+
+「商用目的」指以直接或间接获取经济利益为目的的使用行为，包括但不限于：
+- 将本软件或其衍生作品作为产品或服务的一部分进行销售、许可或租赁；
+- 在商业性 SaaS 平台、托管服务中使用本软件或其衍生作品向第三方提供服务；
+- 将本软件或其衍生作品集成于商业产品中。
+
+## 2. 授权许可
+
+在遵守本协议条款的前提下，您被授予以下权利：
+
+- **使用** — 出于非商用目的，在任意数量的设备上运行本软件；
+- **修改** — 出于非商用目的，对本软件进行修改、改编或创作衍生作品；
+- **分发** — 出于非商用目的，以源代码或编译后的形式复制和分发本软件；
+- **学习与研究** — 阅读、学习和研究本软件的源代码实现。
+
+## 3. 限制
+
+- **禁止商用** — 未经柒叁信息科技（73info）明确的书面授权，任何个人或组织不得将本软件或其衍生作品用于任何商用目的。
+- **保留署名** — 在分发本软件或其衍生作品时，必须保留原始作者署名及本许可协议声明。
+
+## 4. 商用授权
+
+如需将本软件用于商用目的，请联系我们获取商业授权许可：
+- 邮箱：fanbo@73info.cn
+
+## 5. 免责声明
+
+本软件按「原样」提供，不附带任何明示或暗示的担保，包括但不限于适销性、特定用途适用性或不侵权的担保。
+
+---
+
+# 73info User-Client — Source Available License
+
+## 1. Definitions
+
+"Software" refers to all source code and related documentation of 73info user-client.
+
+"Commercial Purpose" means any use that is intended for or directed toward commercial advantage or monetary compensation, including but not limited to:
+- Selling, licensing, or renting the Software or derivative works as part of a product or service;
+- Using the Software or derivative works in a commercial SaaS platform or hosted service to provide services to third parties;
+- Integrating the Software or derivative works into commercial products.
+
+## 2. Grant of Rights
+
+Subject to the terms of this License, you are granted:
+
+- **Use** — Run the Software on any number of devices for non-commercial purposes;
+- **Modify** — Modify, adapt, or create derivative works for non-commercial purposes;
+- **Distribute** — Reproduce and distribute the Software in source or compiled form for non-commercial purposes;
+- **Study** — Read, learn from, and study the source code implementation.
+
+## 3. Restrictions
+
+- **No Commercial Use** — Without explicit written authorization from 73info Technology, no individual or organization may use the Software or any derivative works for any Commercial Purpose.
+- **Attribution** — When distributing the Software or derivative works, you must retain the original author attribution and this license notice.
+
+## 4. Commercial Licensing
+
+For commercial use, please contact us to obtain a commercial license:
+- Email: fanbo@73info.cn
+
+## 5. Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.

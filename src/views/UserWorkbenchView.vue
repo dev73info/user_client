@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Box, Close, Connection, DataAnalysis, MagicStick, Menu as MenuIcon } from '@element-plus/icons-vue'
+import { ArrowDown, Box, Close, Connection, DataAnalysis, MagicStick, Menu as MenuIcon, UserFilled } from '@element-plus/icons-vue'
 
 import { listRequirementConversations, type RequirementConversation } from '@/api/conversations'
 import { useAuthStore } from '@/stores/auth'
@@ -71,6 +71,14 @@ const menuGroups: WorkbenchMenuGroup[] = [
       },
       { label: '实名认证', name: 'workbench-realname', description: '提交或查看实名审核' },
       { label: '工单中心', name: 'workbench-tickets', description: '提交问题与查看回复' },
+    ],
+  },
+  {
+    key: 'team',
+    label: '团队服务',
+    icon: UserFilled,
+    items: [
+      { label: '我的团队', name: 'workbench-teams', description: '查看和管理团队' },
     ],
   },
   {
@@ -1197,9 +1205,9 @@ async function scrollToHash() {
     gap: 10px;
     width: calc(100% - 16px);
     margin: 8px 8px 12px;
-    height: 50px;
-    min-height: 50px;
-    padding: 0 12px;
+    height: auto;
+    min-height: 66px;
+    padding: 12px;
     border: 1px solid rgba(224, 232, 255, 0.96);
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.94);

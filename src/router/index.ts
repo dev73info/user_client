@@ -175,6 +175,24 @@ const router = createRouter({
           },
         },
         {
+          path: 'teams',
+          name: 'workbench-teams',
+          component: () => import('@/views/TeamsView.vue'),
+          meta: {
+            title: '我的团队',
+            description: '查看和管理团队',
+          },
+        },
+        {
+          path: 'teams/:teamId',
+          name: 'workbench-team-detail',
+          component: () => import('@/views/TeamDetailView.vue'),
+          meta: {
+            title: '团队详情',
+            description: '团队信息、成员管理',
+          },
+        },
+        {
           path: 'invite',
           name: 'workbench-invite',
           component: () => import('@/views/InviteView.vue'),
