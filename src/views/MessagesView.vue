@@ -456,11 +456,13 @@ watch(
   <main class="page-shell custom-page-shell messages-page">
     <header v-if="!activeRequirementId" class="messages-search-bar">
       <form class="messages-search mobile-search-form" aria-label="搜索消息" @submit.prevent>
-        <el-icon class="mobile-search-icon"><Search /></el-icon>
+        <el-icon class="mobile-search-icon">
+          <Search />
+        </el-icon>
         <input v-model="searchKeyword" type="search" inputmode="search" enterkeyhint="search" autocomplete="off"
           spellcheck="false" placeholder="搜索需求标题、编号、对方或消息..." @keydown.esc="clearSearch" />
-        <button v-if="searchKeyword.trim()" type="button" class="messages-search__clear" aria-label="清空搜索关键词" title="清空搜索"
-          @click="clearSearch">
+        <button v-if="searchKeyword.trim()" type="button" class="messages-search__clear" aria-label="清空搜索关键词"
+          title="清空搜索" @click="clearSearch">
           ×
         </button>
       </form>
