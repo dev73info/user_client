@@ -15,6 +15,8 @@ const backendPathAliases: ReadonlyArray<readonly [string, string]> = [
   ['/dev/payments', '/payment'],
   ['/dev/contracts', '/contract'],
   ['/dev/credit', '/credit/credit'],
+  ['/team/teams', '/teams'],
+  ['/team/invitations', '/teams/invitations'],
   ['/requirements', '/requirement'],
   ['/settings', '/system/settings'],
   ['/resources/tags', '/tag/tags'],

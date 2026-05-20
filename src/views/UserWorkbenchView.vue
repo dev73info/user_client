@@ -79,6 +79,7 @@ const menuGroups: WorkbenchMenuGroup[] = [
     icon: UserFilled,
     items: [
       { label: '我的团队', name: 'workbench-teams', description: '查看和管理团队' },
+      { label: '资源项目', name: 'workbench-team-resources', description: '管理团队共享资源项目' },
     ],
   },
   {

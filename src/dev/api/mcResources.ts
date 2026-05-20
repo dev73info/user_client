@@ -28,11 +28,13 @@ export type CreateMcResourceRequest = {
   docs_url?: string | null
   visibility: McResourceVisibility
   release_note?: string | null
+  ownership_type?: 'individual' | 'team' | null
 }
 
 export type McResourcePayload = {
   id: number
   creator: string
+  ownership_type: 'individual' | 'team'
   requirement_id: string | null
   delete_request_status?: 'pending' | 'rejected' | null
   delete_requested_at?: string | null
@@ -86,6 +88,7 @@ export type UpdateMcResourceHomepageRequest = {
   docs_url?: string | null
   visibility?: McResourceVisibility
   release_note?: string | null
+  ownership_type?: 'individual' | 'team' | null
 }
 
 export async function createMcResource(
@@ -116,6 +119,19 @@ export async function listMcResources(token: string): Promise<McResourcePayload[
       },
     },
     '加载资源列表失败',
+  )
+}
+
+export async function listTeamResources(token: string): Promise<McResourcePayload[]> {
+  return requestJson<McResourcePayload[]>(
+    '/dev/resources/resources/team',
+    {
+      method: 'GET',
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '加载团队资源列表失败',
   )
 }
 

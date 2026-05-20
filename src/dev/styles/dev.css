@@ -1040,6 +1040,17 @@ a {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.dev-upload-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dev-select-empty {
+  padding: 12px;
+  text-align: center;
+  color: #64748b;
+  font-size: 13px;
+}
+
 .dev-upload-grid--tag-groups {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -2819,6 +2830,7 @@ a {
 
   .dev-upload-layout,
   .dev-upload-grid--two,
+  .dev-upload-grid--three,
   .dev-upload-grid--tag-groups,
   .dev-upload-grid--four,
   .dev-preview-meta {

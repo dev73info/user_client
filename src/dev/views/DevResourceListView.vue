@@ -109,6 +109,14 @@ function visibilityTagType(value: McResourcePayload['visibility']): 'success' | 
   return 'info'
 }
 
+function ownershipText(value: McResourcePayload['ownership_type']): string {
+  return value === 'team' ? '团队项目' : '个人项目'
+}
+
+function ownershipTagType(value: McResourcePayload['ownership_type']): 'primary' | 'info' {
+  return value === 'team' ? 'primary' : 'info'
+}
+
 function tagSummary(resource: McResourcePayload): string {
   return resource.tag_selections.flatMap((group) => group.tag_names).join(' / ')
 }
@@ -414,10 +422,13 @@ async function setResourcePrivate(resource: McResourcePayload) {
               }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="120">
+        <el-table-column label="状态" width="180">
           <template #default="scope">
             <el-tag :type="visibilityTagType(scope.row.visibility)" effect="plain">
               {{ visibilityText(scope.row.visibility) }}
+            </el-tag>
+            <el-tag :type="ownershipTagType(scope.row.ownership_type)" effect="plain" class="ml-2">
+              {{ ownershipText(scope.row.ownership_type) }}
             </el-tag>
           </template>
         </el-table-column>

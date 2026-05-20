@@ -193,6 +193,15 @@ const router = createRouter({
           },
         },
         {
+          path: 'team-resources',
+          name: 'workbench-team-resources',
+          component: () => import('@/views/TeamResourcesView.vue'),
+          meta: {
+            title: '团队资源项目',
+            description: '管理团队共享资源项目',
+          },
+        },
+        {
           path: 'invite',
           name: 'workbench-invite',
           component: () => import('@/views/InviteView.vue'),

@@ -19,6 +19,7 @@ import {
 } from '@dev/api/Tags'
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
+import { listMyTeams, type TeamResponse } from '@/api/team'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -33,11 +34,14 @@ const iconInput = ref<HTMLInputElement | null>(null)
 const iconFileName = ref('')
 const selectedIconFile = ref<File | null>(null)
 const selectedTagIdsByGroup = reactive<Record<number, number[]>>({})
+const myTeams = ref<TeamResponse[]>([])
 
 const form = reactive({
   title: '',
   author: auth.username || '',
   coverUrl: '',
+  ownershipType: 'individual' as 'individual' | 'team',
+  teamId: null as string | null,
 })
 
 const rootTabs = computed<McTagCatalogRoot[]>(() => processedTree.value.roots)
@@ -102,6 +106,10 @@ const submitBlockReason = computed(() => {
     return '请填写作者名称'
   }
 
+  if (form.ownershipType === 'team' && !form.teamId) {
+    return '请选择所属团队'
+  }
+
   if (platformTagGroups.value.length === 0) {
     return '当前二级节点尚未配置完整标签组'
   }
@@ -154,8 +162,21 @@ watch(platformTagGroups, (groups) => {
 
 onMounted(async () => {
   auth.hydrate()
+  if (auth.username) {
+    form.author = auth.username
+  }
   await loadTagTree()
+  await loadMyTeams()
 })
+
+async function loadMyTeams() {
+  if (!auth.token) return
+  try {
+    myTeams.value = await listMyTeams(auth.token)
+  } catch (error) {
+    console.error('Failed to load teams:', error)
+  }
+}
 
 async function loadTagTree() {
   isLoadingTags.value = true
@@ -265,6 +286,8 @@ function resetForm() {
   form.title = ''
   form.author = auth.username || ''
   form.coverUrl = ''
+  form.ownershipType = 'individual'
+  form.teamId = null
   iconFileName.value = ''
   selectedIconFile.value = null
 
@@ -303,6 +326,8 @@ async function submitResource() {
       docs_url: null,
       visibility: 'draft',
       release_note: null,
+      ownership_type: form.ownershipType,
+      team_id: form.ownershipType === 'team' && form.teamId ? Number(form.teamId) : null,
     })
 
     if (selectedIconFile.value) {
@@ -339,10 +364,30 @@ async function submitResource() {
           </header>
 
           <el-form label-position="top" class="dev-upload-form">
-            <div class="dev-upload-grid dev-upload-grid--two">
+            <div class="dev-upload-grid dev-upload-grid--three">
               <el-form-item label="资源标题" required>
                 <el-input v-model="form.title" maxlength="200" show-word-limit
                   placeholder="例如：Better Combat Reloaded" />
+              </el-form-item>
+
+              <el-form-item label="归属类型" required>
+                <el-radio-group v-model="form.ownershipType">
+                  <el-radio value="individual">个人项目</el-radio>
+                  <el-radio value="team">团队项目</el-radio>
+                </el-radio-group>
+              </el-form-item>
+
+              <el-form-item v-if="form.ownershipType === 'team'" label="所属团队" required>
+                <el-select v-model="form.teamId" placeholder="选择团队" style="width: 100%" filterable>
+                  <el-option v-for="team in myTeams" :key="team.team_id" :label="team.name"
+                    :value="String(team.team_id)" />
+                  <template #empty>
+                    <div class="dev-select-empty">
+                      <p v-if="myTeams.length === 0">您还没有加入任何团队</p>
+                      <p v-else>未找到匹配的团队</p>
+                    </div>
+                  </template>
+                </el-select>
               </el-form-item>
 
               <el-form-item label="图标文件">
