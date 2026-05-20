@@ -11,9 +11,12 @@ export type CreateMcResourceTagSelection = {
 export type McResourceTagSelectionPayload = {
   group_id: number
   group_name: string
+  group_alias?: string
   group_path: string[]
+  group_path_aliases?: string[]
   tag_ids: number[]
   tag_names: string[]
+  tag_aliases?: string[]
 }
 
 export type CreateMcResourceRequest = {
@@ -29,6 +32,7 @@ export type CreateMcResourceRequest = {
   visibility: McResourceVisibility
   release_note?: string | null
   ownership_type?: 'individual' | 'team' | null
+  team_id?: number | null
 }
 
 export type McResourcePayload = {
