@@ -1373,17 +1373,16 @@ a {
 }
 
 .dev-page--publish .dev-team-select-native__control .el-select__placeholder {
-  color: #94a3b8;
+  position: relative;
+  top: auto !important;
+  transform: none !important;
+  color: #0f172a;
   line-height: 44px;
   z-index: 1;
 }
 
-.dev-page--publish .dev-team-select-native__control .el-select__placeholder.is-transparent {
-  color: #94a3b8;
-}
-
 .dev-page--publish .dev-team-select-native__control .el-select__selection {
-  overflow: visible;
+  overflow: visible !important;
 }
 
 .dev-page--publish .dev-team-select-native__control .el-select__selected-item {

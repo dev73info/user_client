@@ -577,7 +577,14 @@ watch(
           <div class="resource-detail-page__summary-card">
             <div class="resource-detail-page__headline-row">
               <span class="resource-detail-page__status-pill">{{ visibilityLabel }}</span>
-              <span class="resource-detail-page__author-pill">{{ authorPillLabel }}</span>
+              <router-link
+                v-if="resource.creator"
+                :to="{ name: 'dev-profile', params: { username: resource.creator } }"
+                class="resource-detail-page__author-pill resource-detail-page__author-pill--link"
+              >
+                {{ authorPillLabel }}
+              </router-link>
+              <span v-else class="resource-detail-page__author-pill">{{ authorPillLabel }}</span>
             </div>
             <div class="resource-detail-page__identity-block">
               <h1 class="resource-detail-page__title">{{ resource.title }}</h1>
@@ -811,6 +818,16 @@ watch(
 .resource-detail-page__author-pill {
   color: #1d4ed8;
   background: rgba(219, 234, 254, 0.92);
+}
+
+.resource-detail-page__author-pill--link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.resource-detail-page__author-pill--link:hover {
+  background: rgba(191, 219, 254, 0.95);
 }
 
 .resource-detail-page__identity-block {

@@ -36,6 +36,14 @@ const groups = computed(() => [
 ])
 const acquiredCount = computed(() => earnedBadges.value.length)
 
+function isBadgeIconSvg(icon: string) {
+  return icon.startsWith('badges/')
+}
+
+function badgeIconUrl(icon: string) {
+  return `/uploads/${icon}`
+}
+
 function awardTime(code: string) {
     const badge = earnedMap.value.get(code)
     if (!badge) {
@@ -97,7 +105,15 @@ onMounted(() => {
                 <div class="badge-wall__grid">
                     <article v-for="badge in group.badges" :key="badge.code" class="badge-wall__badge"
                         :class="{ acquired: earnedMap.has(badge.code) }">
-                        <span class="badge-wall__icon">{{ badge.icon }}</span>
+                        <span class="badge-wall__icon">
+                            <img
+                                v-if="isBadgeIconSvg(badge.icon)"
+                                :src="badgeIconUrl(badge.icon)"
+                                class="badge-wall__icon-img"
+                                alt=""
+                            />
+                            <template v-else>{{ badge.icon }}</template>
+                        </span>
                         <strong>{{ badge.name }}</strong>
                         <p>{{ badge.description }}</p>
                         <small>{{ earnedMap.has(badge.code) ? awardTime(badge.code) : '未获得' }}</small>
@@ -163,16 +179,17 @@ onMounted(() => {
 }
 
 .badge-wall__badge {
-    aspect-ratio: 1 / 1;
     display: grid;
     gap: 7px;
-    align-content: start;
     padding: 16px;
     border: 1px solid rgba(226, 232, 240, 0.96);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.88);
     color: #94a3b8;
     filter: grayscale(1);
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .badge-wall__badge.acquired {
@@ -184,6 +201,12 @@ onMounted(() => {
 
 .badge-wall__icon {
     font-size: 28px;
+}
+
+.badge-wall__icon-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .badge-wall__badge strong {

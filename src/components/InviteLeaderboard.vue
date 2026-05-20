@@ -17,7 +17,7 @@ const badgeMap = computed(() => new Map(badges.value.map((badge) => [badge.code,
 
 function badgeLabel(code: string) {
     const badge = badgeMap.value.get(code)
-    return badge ? `${badge.icon} ${badge.name}` : code
+    return badge ? badge.name : code
 }
 
 async function loadLeaderboard(nextPeriod = period.value) {

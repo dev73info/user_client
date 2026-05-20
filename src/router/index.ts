@@ -115,6 +115,24 @@ const router = createRouter({
       component: () => import('@/views/UserBadgesView.vue'),
     },
     {
+      path: '/user/:username/profile',
+      name: 'dev-profile',
+      component: () => import('@/views/DevProfileView.vue'),
+      meta: {
+        title: '开发者主页',
+        description: '查看开发者的公开资源与徽章',
+      },
+    },
+    {
+      path: '/team/:teamId',
+      name: 'team-profile',
+      component: () => import('@/views/TeamProfileView.vue'),
+      meta: {
+        title: '团队主页',
+        description: '查看团队的公开资源',
+      },
+    },
+    {
       path: '/r/:code',
       name: 'invite-short-link-fallback',
       redirect: (to) => {

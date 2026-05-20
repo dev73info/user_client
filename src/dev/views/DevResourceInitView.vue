@@ -403,6 +403,7 @@ async function submitResource() {
                     class="dev-team-select-native__control"
                     popper-class="dev-team-select-popper"
                     popper-append-to-body
+                    filterable
                   >
                     <el-option
                       v-for="team in teamOptions"
@@ -413,6 +414,7 @@ async function submitResource() {
                     <template #empty>
                       <div class="dev-team-select-popper__empty">
                         <p v-if="myTeams.length === 0">您还没有加入任何团队</p>
+                        <p v-else>未找到匹配的团队</p>
                       </div>
                     </template>
                   </el-select>

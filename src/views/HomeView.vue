@@ -116,14 +116,22 @@ type SpotlightCard = {
 
 type DeveloperRank = {
   name: string
+  username: string
   avatarUrl: string
   creditScore: number | null
   deals: string
 }
 
+type TeamRank = {
+  teamId: number
+  teamName: string
+  resourceCount: number
+}
+
 const TOP_LIKED_RESOURCE_LIMIT = 16
 
 const failedDeveloperAvatarUrls = ref<Set<string>>(new Set())
+const failedSpotlightCoverUrls = ref<Set<string>>(new Set())
 
 const metrics = ref<Metric[]>([
   { label: '累计完成', value: '0 单' },
@@ -155,6 +163,98 @@ const publicResources = ref<PublicMcResourceItem[]>([])
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
+
+// --- QQ 浮窗拖动逻辑 ---
+const qqFloatRef = ref<HTMLElement | null>(null)
+const isDraggingQQFloat = ref(false)
+const qqFloatStyle = ref<Record<string, string>>({})
+let qqFloatDragStart = { x: 0, y: 0, elX: 0, elY: 0 }
+let qqFloatHasMoved = false
+const QQ_FLOAT_EDGE_GAP = 16
+const QQ_FLOAT_SNAP_THRESHOLD = 0.5 // 超过屏幕一半则吸附到另一边
+
+function clampQQFloatPosition(left: number, top: number) {
+  const el = qqFloatRef.value
+  if (!el) return { left, top }
+  const rect = el.getBoundingClientRect()
+  const maxLeft = window.innerWidth - rect.width - QQ_FLOAT_EDGE_GAP
+  const maxTop = window.innerHeight - rect.height - QQ_FLOAT_EDGE_GAP
+  return {
+    left: Math.max(QQ_FLOAT_EDGE_GAP, Math.min(left, maxLeft)),
+    top: Math.max(QQ_FLOAT_EDGE_GAP, Math.min(top, maxTop)),
+  }
+}
+
+function snapQQFloatToEdge(left: number) {
+  const el = qqFloatRef.value
+  if (!el) return left
+  const centerX = left + el.getBoundingClientRect().width / 2
+  const screenCenter = window.innerWidth / 2
+  if (centerX < screenCenter * QQ_FLOAT_SNAP_THRESHOLD) {
+    return QQ_FLOAT_EDGE_GAP
+  }
+  return window.innerWidth - el.getBoundingClientRect().width - QQ_FLOAT_EDGE_GAP
+}
+
+function onQQFloatPointerDown(event: PointerEvent) {
+  const el = qqFloatRef.value
+  if (!el) return
+  el.setPointerCapture(event.pointerId)
+  const rect = el.getBoundingClientRect()
+  qqFloatDragStart = {
+    x: event.clientX,
+    y: event.clientY,
+    elX: rect.left,
+    elY: rect.top,
+  }
+  qqFloatHasMoved = false
+  isDraggingQQFloat.value = true
+
+  const onMove = (e: PointerEvent) => {
+    const dx = e.clientX - qqFloatDragStart.x
+    const dy = e.clientY - qqFloatDragStart.y
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      qqFloatHasMoved = true
+    }
+    const pos = clampQQFloatPosition(qqFloatDragStart.elX + dx, qqFloatDragStart.elY + dy)
+    qqFloatStyle.value = {
+      position: 'fixed',
+      left: `${pos.left}px`,
+      top: `${pos.top}px`,
+      right: 'auto',
+      bottom: 'auto',
+    }
+  }
+
+  const onUp = () => {
+    el.removeEventListener('pointermove', onMove)
+    el.removeEventListener('pointerup', onUp)
+    el.removeEventListener('pointercancel', onUp)
+    isDraggingQQFloat.value = false
+
+    const currentLeft = parseFloat(qqFloatStyle.value.left || '0')
+    const snappedLeft = snapQQFloatToEdge(currentLeft)
+    const pos = clampQQFloatPosition(snappedLeft, parseFloat(qqFloatStyle.value.top || '0'))
+    qqFloatStyle.value = {
+      position: 'fixed',
+      left: `${pos.left}px`,
+      top: `${pos.top}px`,
+      right: 'auto',
+      bottom: 'auto',
+    }
+  }
+
+  el.addEventListener('pointermove', onMove)
+  el.addEventListener('pointerup', onUp)
+  el.addEventListener('pointercancel', onUp)
+}
+
+function openQQFloat() {
+  if (qqFloatHasMoved) return
+  window.open(qqBetaGroupUrl, '_blank', 'noopener,noreferrer')
+}
+
+// --- QQ 浮窗拖动逻辑结束 ---
 
 function hashQueryValue(key: string) {
   const hash = route.hash.trim()
@@ -533,12 +633,13 @@ const developerRanks = computed<DeveloperRank[]>(() => {
   const failedAvatarUrls = failedDeveloperAvatarUrls.value
   const groupedResources = new Map<
     string,
-    { name: string; avatarUrl: string; creditScore: number | null; deals: number; latestAt: number }
+    { name: string; username: string; avatarUrl: string; creditScore: number | null; deals: number; latestAt: number }
   >()
 
   for (const resource of publicResources.value) {
     const name = resource.creator.trim() || resource.author.trim() || '匿名开发者'
-    const current = groupedResources.get(name)
+    const username = resource.creator.trim() || ''
+    const current = groupedResources.get(username)
     const latestAt = Date.parse(resource.updated_at)
     const avatarUrl = resource.creator_avatar_url ? apiUrl(resource.creator_avatar_url) : ''
     const creditScore =
@@ -559,8 +660,9 @@ const developerRanks = computed<DeveloperRank[]>(() => {
       continue
     }
 
-    groupedResources.set(name, {
+    groupedResources.set(username, {
       name,
+      username,
       avatarUrl,
       creditScore,
       deals: 1,
@@ -577,11 +679,12 @@ const developerRanks = computed<DeveloperRank[]>(() => {
       (left, right) =>
         right.deals - left.deals ||
         right.latestAt - left.latestAt ||
-        left.name.localeCompare(right.name, 'zh-CN'),
+        left.username.localeCompare(right.username, 'zh-CN'),
     )
     .slice(0, 4)
     .map((item) => ({
       name: item.name,
+      username: item.username,
       avatarUrl: failedAvatarUrls.has(item.avatarUrl) ? '' : item.avatarUrl,
       creditScore: item.creditScore,
       deals: `${item.deals} 个资源`,
@@ -594,6 +697,45 @@ function handleDeveloperAvatarError(developer: DeveloperRank) {
   const next = new Set(failedDeveloperAvatarUrls.value)
   next.add(developer.avatarUrl)
   failedDeveloperAvatarUrls.value = next
+}
+
+const teamRanks = computed<TeamRank[]>(() => {
+  const grouped = new Map<number, { teamName: string; resourceCount: number }>()
+
+  for (const resource of publicResources.value) {
+    if (!resource.team_id || !resource.team_name) continue
+    const existing = grouped.get(resource.team_id)
+    if (existing) {
+      existing.resourceCount += 1
+    } else {
+      grouped.set(resource.team_id, {
+        teamName: resource.team_name,
+        resourceCount: 1,
+      })
+    }
+  }
+
+  if (grouped.size === 0) return []
+
+  return [...grouped.entries()]
+    .sort(([, a], [, b]) => b.resourceCount - a.resourceCount)
+    .slice(0, 4)
+    .map(([teamId, info]) => ({
+      teamId,
+      teamName: info.teamName,
+      resourceCount: info.resourceCount,
+    }))
+})
+
+function handleSpotlightCoverError(url: string) {
+  if (!url) return
+  const next = new Set(failedSpotlightCoverUrls.value)
+  next.add(url)
+  failedSpotlightCoverUrls.value = next
+}
+
+function spotlightCoverSrc(card: { coverUrl: string }) {
+  return card.coverUrl && !failedSpotlightCoverUrls.value.has(card.coverUrl) ? card.coverUrl : ''
 }
 
 function formatCreditScore(value: number | null) {
@@ -693,6 +835,16 @@ watch(
 
 onMounted(() => {
   auth.hydrate()
+
+  // 初始化 QQ 浮窗默认位置：右侧中偏上
+  qqFloatStyle.value = {
+    position: 'fixed',
+    right: `${QQ_FLOAT_EDGE_GAP}px`,
+    top: '30%',
+    left: 'auto',
+    bottom: 'auto',
+  }
+
   const oauthToken =
     typeof route.query.oauth_token === 'string' ? route.query.oauth_token.trim() : ''
   const oauthError =
@@ -1567,21 +1719,33 @@ async function submitPublishRequirement() {
             <div class="portal-hero__main">
               <div class="portal-hero__copy">
                 <h1>
-                  <span>需求</span><span class="portal-title-accent">定制开发</span><span>交易平台</span>
+                  <span>需求</span><span class="portal-title-accent">定制开发</span
+                  ><span>交易平台</span>
                 </h1>
                 <p class="portal-hero__lead">连接需求与能力 · 让创意变为现实</p>
 
                 <div v-if="heroSignals.length" class="portal-signal-list">
-                  <span v-for="signal in heroSignals" :key="signal" class="portal-signal">{{
-                    signal
-                    }}</span>
+                  <span
+                    v-for="signal in heroSignals"
+                    :key="signal"
+                    class="portal-signal"
+                    >{{ signal }}</span
+                  >
                 </div>
 
                 <div class="portal-hero__actions">
-                  <button class="portal-primary-action" type="button" @click="openPublishModal">
+                  <button
+                    class="portal-primary-action"
+                    type="button"
+                    @click="openPublishModal"
+                  >
                     发布需求
                   </button>
-                  <button class="portal-secondary-action" type="button" @click="openDevWorkbench">
+                  <button
+                    class="portal-secondary-action"
+                    type="button"
+                    @click="openDevWorkbench"
+                  >
                     成为开发者
                   </button>
                 </div>
@@ -1589,7 +1753,11 @@ async function submitPublishRequirement() {
 
               <div class="portal-hero__visual" aria-hidden="true">
                 <div class="hero-wrapper">
-                  <svg class="hero-svg" viewBox="0 28 900 480" xmlns="http://www.w3.org/2000/svg">
+                  <svg
+                    class="hero-svg"
+                    viewBox="0 28 900 480"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
                     <defs>
                       <linearGradient id="heroPanel" x1="0" x2="1" y1="0" y2="1">
                         <stop offset="0%" stop-color="#f8fbff" />
@@ -1627,82 +1795,240 @@ async function submitPublishRequirement() {
                         <stop offset="0%" stop-color="#a16207" />
                         <stop offset="100%" stop-color="#78350f" />
                       </linearGradient>
-                      <filter id="heroSoftShadow" x="-30%" y="-30%" width="160%" height="180%">
-                        <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#2563eb" flood-opacity="0.18" />
+                      <filter
+                        id="heroSoftShadow"
+                        x="-30%"
+                        y="-30%"
+                        width="160%"
+                        height="180%"
+                      >
+                        <feDropShadow
+                          dx="0"
+                          dy="18"
+                          stdDeviation="18"
+                          flood-color="#2563eb"
+                          flood-opacity="0.18"
+                        />
                       </filter>
-                      <filter id="heroTileShadow" x="-40%" y="-40%" width="180%" height="180%">
-                        <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#1e3a8a" flood-opacity="0.18" />
+                      <filter
+                        id="heroTileShadow"
+                        x="-40%"
+                        y="-40%"
+                        width="180%"
+                        height="180%"
+                      >
+                        <feDropShadow
+                          dx="0"
+                          dy="10"
+                          stdDeviation="10"
+                          flood-color="#1e3a8a"
+                          flood-opacity="0.18"
+                        />
                       </filter>
                     </defs>
 
-                    <ellipse cx="450" cy="430" rx="330" ry="76" class="hero-platform-shadow" />
-                    <ellipse cx="450" cy="403" rx="302" ry="70" class="hero-platform-base" />
-                    <ellipse cx="450" cy="386" rx="270" ry="56" class="hero-platform-top" />
+                    <ellipse
+                      cx="450"
+                      cy="430"
+                      rx="330"
+                      ry="76"
+                      class="hero-platform-shadow"
+                    />
+                    <ellipse
+                      cx="450"
+                      cy="403"
+                      rx="302"
+                      ry="70"
+                      class="hero-platform-base"
+                    />
+                    <ellipse
+                      cx="450"
+                      cy="386"
+                      rx="270"
+                      ry="56"
+                      class="hero-platform-top"
+                    />
                     <path class="hero-orbit" d="M190 377 C287 312 602 300 720 366" />
                     <circle cx="242" cy="346" r="5" class="hero-orbit-dot" />
                     <circle cx="360" cy="316" r="5" class="hero-orbit-dot" />
                     <circle cx="652" cy="332" r="5" class="hero-orbit-dot" />
 
                     <g class="hero-float-main" filter="url(#heroSoftShadow)">
-                      <path class="hero-base-top" d="M348 342 L548 342 L590 374 L390 374 Z" />
-                      <path class="hero-base-front" d="M390 374 L590 374 L562 404 L366 404 L348 342 Z" />
-                      <path class="hero-stand" d="M424 281 L492 281 L510 345 L402 345 Z" />
-                      <path class="hero-monitor-back"
-                        d="M332 82 L584 112 Q608 115 610 140 L610 274 Q610 300 584 296 L330 266 Q306 263 306 238 L306 104 Q306 78 332 82 Z" />
-                      <rect x="326" y="78" width="272" height="190" rx="30" class="hero-monitor-frame" />
-                      <rect x="350" y="102" width="224" height="140" rx="22" class="hero-monitor-screen" />
-                      <path class="hero-screen-shine" d="M368 116 H548 Q560 116 560 128 V144 H368 Z" />
-                      <text x="462" y="191" text-anchor="middle" class="hero-screen-text">73</text>
+                      <path
+                        class="hero-base-top"
+                        d="M348 342 L548 342 L590 374 L390 374 Z"
+                      />
+                      <path
+                        class="hero-base-front"
+                        d="M390 374 L590 374 L562 404 L366 404 L348 342 Z"
+                      />
+                      <path
+                        class="hero-stand"
+                        d="M424 281 L492 281 L510 345 L402 345 Z"
+                      />
+                      <path
+                        class="hero-monitor-back"
+                        d="M332 82 L584 112 Q608 115 610 140 L610 274 Q610 300 584 296 L330 266 Q306 263 306 238 L306 104 Q306 78 332 82 Z"
+                      />
+                      <rect
+                        x="326"
+                        y="78"
+                        width="272"
+                        height="190"
+                        rx="30"
+                        class="hero-monitor-frame"
+                      />
+                      <rect
+                        x="350"
+                        y="102"
+                        width="224"
+                        height="140"
+                        rx="22"
+                        class="hero-monitor-screen"
+                      />
+                      <path
+                        class="hero-screen-shine"
+                        d="M368 116 H548 Q560 116 560 128 V144 H368 Z"
+                      />
+                      <text x="462" y="191" text-anchor="middle" class="hero-screen-text">
+                        73
+                      </text>
                     </g>
 
                     <g class="hero-float-palette" filter="url(#heroTileShadow)">
                       <path class="hero-tether" d="M205 276 C220 238 232 203 232 165" />
-                      <rect x="174" y="100" width="76" height="76" rx="20" class="hero-blue-tile" />
-                      <path class="hero-palette-body"
-                        d="M212 123 C195 123 187 136 187 149 C187 162 198 169 209 167 C214 166 216 162 217 158 C218 154 221 151 226 151 H234 C242 151 247 145 244 137 C240 129 229 123 212 123 Z" />
-                      <circle cx="204" cy="141" r="4" class="hero-palette-dot hero-palette-dot--red" />
-                      <circle cx="216" cy="134" r="4" class="hero-palette-dot hero-palette-dot--yellow" />
-                      <circle cx="229" cy="142" r="4" class="hero-palette-dot hero-palette-dot--cyan" />
+                      <rect
+                        x="174"
+                        y="100"
+                        width="76"
+                        height="76"
+                        rx="20"
+                        class="hero-blue-tile"
+                      />
+                      <path
+                        class="hero-palette-body"
+                        d="M212 123 C195 123 187 136 187 149 C187 162 198 169 209 167 C214 166 216 162 217 158 C218 154 221 151 226 151 H234 C242 151 247 145 244 137 C240 129 229 123 212 123 Z"
+                      />
+                      <circle
+                        cx="204"
+                        cy="141"
+                        r="4"
+                        class="hero-palette-dot hero-palette-dot--red"
+                      />
+                      <circle
+                        cx="216"
+                        cy="134"
+                        r="4"
+                        class="hero-palette-dot hero-palette-dot--yellow"
+                      />
+                      <circle
+                        cx="229"
+                        cy="142"
+                        r="4"
+                        class="hero-palette-dot hero-palette-dot--cyan"
+                      />
                     </g>
 
                     <g class="hero-float-scan" filter="url(#heroTileShadow)">
                       <path class="hero-tether" d="M312 290 C306 242 304 188 308 142" />
-                      <rect x="278" y="68" width="74" height="74" rx="18" class="hero-blue-tile" />
-                      <path class="hero-scan-line" d="M296 93 H310 M320 93 H334 M296 116 H310 M320 116 H334" />
-                      <path class="hero-scan-corner"
-                        d="M296 100 V90 H306 M334 100 V90 H324 M296 110 V120 H306 M334 110 V120 H324" />
+                      <rect
+                        x="278"
+                        y="68"
+                        width="74"
+                        height="74"
+                        rx="18"
+                        class="hero-blue-tile"
+                      />
+                      <path
+                        class="hero-scan-line"
+                        d="M296 93 H310 M320 93 H334 M296 116 H310 M320 116 H334"
+                      />
+                      <path
+                        class="hero-scan-corner"
+                        d="M296 100 V90 H306 M334 100 V90 H324 M296 110 V120 H306 M334 110 V120 H324"
+                      />
                     </g>
 
                     <g class="hero-float-cube" filter="url(#heroTileShadow)">
-                      <path class="hero-cube-top" d="M282 330 L338 300 L394 330 L338 360 Z" />
-                      <path class="hero-cube-left" d="M282 330 L338 360 L338 418 L282 386 Z" />
-                      <path class="hero-cube-right" d="M394 330 L338 360 L338 418 L394 386 Z" />
-                      <path class="hero-cube-mark"
-                        d="M318 336 H335 M326 327 V345 M360 338 L376 330 M367 346 V324 M309 372 H326 M318 363 V381" />
+                      <path
+                        class="hero-cube-top"
+                        d="M282 330 L338 300 L394 330 L338 360 Z"
+                      />
+                      <path
+                        class="hero-cube-left"
+                        d="M282 330 L338 360 L338 418 L282 386 Z"
+                      />
+                      <path
+                        class="hero-cube-right"
+                        d="M394 330 L338 360 L338 418 L394 386 Z"
+                      />
+                      <path
+                        class="hero-cube-mark"
+                        d="M318 336 H335 M326 327 V345 M360 338 L376 330 M367 346 V324 M309 372 H326 M318 363 V381"
+                      />
                     </g>
 
                     <g class="hero-float-code" filter="url(#heroTileShadow)">
                       <path class="hero-tether" d="M628 345 C615 300 618 258 642 224" />
-                      <rect x="606" y="264" width="112" height="76" rx="18" class="hero-code-tile" />
-                      <text x="662" y="311" text-anchor="middle" class="hero-code-text">{ }</text>
+                      <rect
+                        x="606"
+                        y="264"
+                        width="112"
+                        height="76"
+                        rx="18"
+                        class="hero-code-tile"
+                      />
+                      <text x="662" y="311" text-anchor="middle" class="hero-code-text">
+                        { }
+                      </text>
                     </g>
 
                     <g class="hero-float-purple" filter="url(#heroTileShadow)">
                       <path class="hero-tether" d="M668 264 C684 218 704 172 718 128" />
-                      <rect x="690" y="82" width="76" height="76" rx="20" class="hero-purple-tile" />
-                      <path class="hero-purple-icon"
-                        d="M728 112 C716 103 703 113 711 125 C698 124 693 139 706 145 C704 159 722 161 727 149 C737 160 752 150 743 137 C756 136 758 119 744 116 C742 104 731 101 728 112 Z" />
+                      <rect
+                        x="690"
+                        y="82"
+                        width="76"
+                        height="76"
+                        rx="20"
+                        class="hero-purple-tile"
+                      />
+                      <path
+                        class="hero-purple-icon"
+                        d="M728 112 C716 103 703 113 711 125 C698 124 693 139 706 145 C704 159 722 161 727 149 C737 160 752 150 743 137 C756 136 758 119 744 116 C742 104 731 101 728 112 Z"
+                      />
                     </g>
 
                     <g class="hero-float-mc" filter="url(#heroTileShadow)">
-                      <path class="hero-mc-top" d="M720 274 L782 246 L844 274 L782 304 Z" />
-                      <path class="hero-mc-left" d="M720 274 L782 304 L782 370 L720 338 Z" />
-                      <path class="hero-mc-right" d="M844 274 L782 304 L782 370 L844 338 Z" />
+                      <path
+                        class="hero-mc-top"
+                        d="M720 274 L782 246 L844 274 L782 304 Z"
+                      />
+                      <path
+                        class="hero-mc-left"
+                        d="M720 274 L782 304 L782 370 L720 338 Z"
+                      />
+                      <path
+                        class="hero-mc-right"
+                        d="M844 274 L782 304 L782 370 L844 338 Z"
+                      />
                       <path class="hero-mc-grass-line" d="M720 274 L782 304 L844 274" />
-                      <rect x="737" y="305" width="10" height="10" class="hero-mc-pixel" />
+                      <rect
+                        x="737"
+                        y="305"
+                        width="10"
+                        height="10"
+                        class="hero-mc-pixel"
+                      />
                       <rect x="760" y="326" width="9" height="9" class="hero-mc-pixel" />
                       <rect x="805" y="307" width="9" height="9" class="hero-mc-pixel" />
-                      <rect x="824" y="329" width="10" height="10" class="hero-mc-pixel" />
+                      <rect
+                        x="824"
+                        y="329"
+                        width="10"
+                        height="10"
+                        class="hero-mc-pixel"
+                      />
                     </g>
                   </svg>
                 </div>
@@ -1711,10 +2037,19 @@ async function submitPublishRequirement() {
           </section>
 
           <section class="portal-quick-grid">
-            <article v-for="panel in quickPanels" :key="panel.title" class="portal-quick-card"
-              :class="`portal-quick-card--${panel.tone}`">
+            <article
+              v-for="panel in quickPanels"
+              :key="panel.title"
+              class="portal-quick-card"
+              :class="`portal-quick-card--${panel.tone}`"
+            >
               <div class="portal-quick-card__icon" aria-hidden="true">
-                <svg v-if="panel.tone === 'gift'" class="portal-quick-card__svg" viewBox="0 0 96 96" focusable="false">
+                <svg
+                  v-if="panel.tone === 'gift'"
+                  class="portal-quick-card__svg"
+                  viewBox="0 0 96 96"
+                  focusable="false"
+                >
                   <defs>
                     <linearGradient id="quickGiftRed" x1="0" x2="1" y1="0" y2="1">
                       <stop offset="0%" stop-color="#ff8c5a" />
@@ -1724,32 +2059,82 @@ async function submitPublishRequirement() {
                       <stop offset="0%" stop-color="#ffd75f" />
                       <stop offset="100%" stop-color="#ff9f1c" />
                     </linearGradient>
-                    <filter id="quickIconShadow" x="-30%" y="-20%" width="160%" height="160%">
-                      <feDropShadow dx="0" dy="9" stdDeviation="7" flood-color="#ef4444" flood-opacity="0.22" />
+                    <filter
+                      id="quickIconShadow"
+                      x="-30%"
+                      y="-20%"
+                      width="160%"
+                      height="160%"
+                    >
+                      <feDropShadow
+                        dx="0"
+                        dy="9"
+                        stdDeviation="7"
+                        flood-color="#ef4444"
+                        flood-opacity="0.22"
+                      />
                     </filter>
                   </defs>
                   <g filter="url(#quickIconShadow)">
-                    <path fill="url(#quickGiftRed)" d="M17 38h62v39a7 7 0 0 1-7 7H24a7 7 0 0 1-7-7V38Z" />
+                    <path
+                      fill="url(#quickGiftRed)"
+                      d="M17 38h62v39a7 7 0 0 1-7 7H24a7 7 0 0 1-7-7V38Z"
+                    />
                     <path fill="#d9274a" d="M17 38h62v16H17z" opacity="0.45" />
-                    <path fill="url(#quickGiftYellow)" d="M43 38h10v46H43zM12 28h72v16H12z" />
-                    <path fill="url(#quickGiftRed)"
-                      d="M24 14c10-5 20 8 24 17-12 2-27 1-30-6-2-4 1-8 6-11Zm48 0c-10-5-20 8-24 17 12 2 27 1 30-6 2-4-1-8-6-11Z" />
+                    <path
+                      fill="url(#quickGiftYellow)"
+                      d="M43 38h10v46H43zM12 28h72v16H12z"
+                    />
+                    <path
+                      fill="url(#quickGiftRed)"
+                      d="M24 14c10-5 20 8 24 17-12 2-27 1-30-6-2-4 1-8 6-11Zm48 0c-10-5-20 8-24 17 12 2 27 1 30-6 2-4-1-8-6-11Z"
+                    />
                     <path fill="url(#quickGiftYellow)" d="M42 20h12l-6 18-6-18Z" />
                   </g>
                 </svg>
-                <svg v-else class="portal-quick-card__svg" viewBox="0 0 96 96" focusable="false">
+                <svg
+                  v-else
+                  class="portal-quick-card__svg"
+                  viewBox="0 0 96 96"
+                  focusable="false"
+                >
                   <defs>
                     <linearGradient id="quickCaseOrange" x1="0" x2="1" y1="0" y2="1">
                       <stop offset="0%" stop-color="#ffb15c" />
                       <stop offset="100%" stop-color="#f97316" />
                     </linearGradient>
-                    <filter id="quickCaseShadow" x="-30%" y="-20%" width="160%" height="160%">
-                      <feDropShadow dx="0" dy="9" stdDeviation="7" flood-color="#f97316" flood-opacity="0.2" />
+                    <filter
+                      id="quickCaseShadow"
+                      x="-30%"
+                      y="-20%"
+                      width="160%"
+                      height="160%"
+                    >
+                      <feDropShadow
+                        dx="0"
+                        dy="9"
+                        stdDeviation="7"
+                        flood-color="#f97316"
+                        flood-opacity="0.2"
+                      />
                     </filter>
                   </defs>
                   <g filter="url(#quickCaseShadow)">
-                    <path fill="none" stroke="#d97706" stroke-linecap="round" stroke-width="6" d="M34 31v-8h28v8" />
-                    <rect width="64" height="51" x="16" y="29" fill="url(#quickCaseOrange)" rx="10" />
+                    <path
+                      fill="none"
+                      stroke="#d97706"
+                      stroke-linecap="round"
+                      stroke-width="6"
+                      d="M34 31v-8h28v8"
+                    />
+                    <rect
+                      width="64"
+                      height="51"
+                      x="16"
+                      y="29"
+                      fill="url(#quickCaseOrange)"
+                      rx="10"
+                    />
                     <path fill="#f59e0b" d="M16 44h64v12H16z" opacity="0.55" />
                     <circle cx="48" cy="55" r="5" fill="#fee8a8" />
                   </g>
@@ -1758,7 +2143,11 @@ async function submitPublishRequirement() {
               <div class="portal-quick-card__copy">
                 <h3>{{ panel.title }}</h3>
                 <p>{{ panel.summary }}</p>
-                <button class="portal-inline-action" type="button" @click="openQuickPanel(panel)">
+                <button
+                  class="portal-inline-action"
+                  type="button"
+                  @click="openQuickPanel(panel)"
+                >
                   {{ panel.action }}
                   <el-icon>
                     <ArrowRight />
@@ -1774,14 +2163,23 @@ async function submitPublishRequirement() {
                 <span class="portal-section-title__icon" aria-hidden="true">▣</span>
                 <h2>热门分类</h2>
               </div>
-              <button class="portal-link-btn" type="button" @click="router.push({ name: 'free-resources' })">
+              <button
+                class="portal-link-btn"
+                type="button"
+                @click="router.push({ name: 'free-resources' })"
+              >
                 全部分类
                 <span aria-hidden="true">›</span>
               </button>
             </div>
             <div class="portal-category-grid">
-              <button v-for="category in portalCategories" :key="category.label" class="portal-category-card"
-                type="button" @click="openPortalCategory(category)">
+              <button
+                v-for="category in portalCategories"
+                :key="category.label"
+                class="portal-category-card"
+                type="button"
+                @click="openPortalCategory(category)"
+              >
                 <div class="portal-category-card__icon">{{ category.icon }}</div>
                 <strong>{{ category.label }}</strong>
                 <span v-if="category.summary">{{ category.summary }}</span>
@@ -1796,17 +2194,31 @@ async function submitPublishRequirement() {
               </div>
             </div>
             <div class="portal-workflow-grid" aria-label="需求流程">
-              <div v-for="(step, index) in workflowSteps" :key="step.step + step.title" class="portal-workflow-item">
-                <button class="portal-step-card" :class="`portal-step-card--${step.accent}`" type="button"
-                  @click="openWorkflowStep(step)">
-                  <span class="portal-step-card__icon" aria-hidden="true">{{ step.icon }}</span>
+              <div
+                v-for="(step, index) in workflowSteps"
+                :key="step.step + step.title"
+                class="portal-workflow-item"
+              >
+                <button
+                  class="portal-step-card"
+                  :class="`portal-step-card--${step.accent}`"
+                  type="button"
+                  @click="openWorkflowStep(step)"
+                >
+                  <span class="portal-step-card__icon" aria-hidden="true">{{
+                    step.icon
+                  }}</span>
                   <span class="portal-step-card__body">
                     <strong>{{ step.step }}. {{ step.title }}</strong>
                     <span>{{ step.summary }}</span>
                   </span>
                 </button>
-                <span v-if="index < workflowSteps.length - 1" class="portal-step-card__arrow"
-                  aria-hidden="true">›</span>
+                <span
+                  v-if="index < workflowSteps.length - 1"
+                  class="portal-step-card__arrow"
+                  aria-hidden="true"
+                  >›</span
+                >
               </div>
             </div>
           </section>
@@ -1816,21 +2228,47 @@ async function submitPublishRequirement() {
               <div>
                 <p class="portal-section__eyebrow">免费资源</p>
               </div>
-              <button class="portal-link-btn" type="button" @click="router.push({ name: 'free-resources' })">
+              <button
+                class="portal-link-btn"
+                type="button"
+                @click="router.push({ name: 'free-resources' })"
+              >
                 更多免费资源
               </button>
             </div>
             <div v-if="spotlightCards.length > 0" class="portal-spotlight-grid">
-              <article v-for="card in spotlightCards" :key="card.resourceId ?? card.title" class="portal-spotlight-card"
-                :class="`portal-spotlight-card--${card.accent}`" role="button" tabindex="0" @click="openSpotlight(card)"
-                @keydown.enter="openSpotlight(card)" @keydown.space.prevent="openSpotlight(card)">
+              <article
+                v-for="card in spotlightCards"
+                :key="card.resourceId ?? card.title"
+                class="portal-spotlight-card"
+                :class="`portal-spotlight-card--${card.accent}`"
+                role="button"
+                tabindex="0"
+                @click="openSpotlight(card)"
+                @keydown.enter="openSpotlight(card)"
+                @keydown.space.prevent="openSpotlight(card)"
+              >
                 <div class="portal-spotlight-card__cover">
-                  <img v-if="card.coverUrl" class="portal-spotlight-card__cover-img" :src="card.coverUrl"
-                    :alt="card.coverAlt || `${card.title} 的资源封面图`" />
+                  <img
+                    v-if="spotlightCoverSrc(card)"
+                    class="portal-spotlight-card__cover-img"
+                    :src="card.coverUrl"
+                    :alt="card.coverAlt || `${card.title} 的资源封面图`"
+                    @error="handleSpotlightCoverError(card.coverUrl)"
+                  />
+                  <span v-else class="portal-spotlight-card__cover-text">{{
+                    card.title.slice(0, 1).toUpperCase()
+                  }}</span>
                   <span class="portal-spotlight-card__badge">{{ card.badge }}</span>
-                  <div class="portal-spotlight-card__screen portal-spotlight-card__screen--primary"></div>
-                  <div class="portal-spotlight-card__screen portal-spotlight-card__screen--secondary"></div>
-                  <div class="portal-spotlight-card__screen portal-spotlight-card__screen--tertiary"></div>
+                  <div
+                    class="portal-spotlight-card__screen portal-spotlight-card__screen--primary"
+                  ></div>
+                  <div
+                    class="portal-spotlight-card__screen portal-spotlight-card__screen--secondary"
+                  ></div>
+                  <div
+                    class="portal-spotlight-card__screen portal-spotlight-card__screen--tertiary"
+                  ></div>
                 </div>
                 <div class="portal-spotlight-card__body">
                   <h3>{{ card.title }}</h3>
@@ -1858,18 +2296,28 @@ async function submitPublishRequirement() {
                 <span class="portal-notice-head__icon" aria-hidden="true">◔</span>
                 <h2>平台公告</h2>
               </div>
-              <button class="portal-link-btn portal-link-btn--notice" type="button"
-                @click="router.push({ name: 'community' })">
+              <button
+                class="portal-link-btn portal-link-btn--notice"
+                type="button"
+                @click="router.push({ name: 'community' })"
+              >
                 更多
                 <span aria-hidden="true">›</span>
               </button>
             </div>
             <ul class="portal-notice-list">
-              <li v-for="(notice, index) in portalNotices" :key="`${notice.title}-${notice.date}`"
-                class="portal-notice-item" :class="{ 'portal-notice-item--clickable': notice.to }"
-                :role="notice.to ? 'button' : undefined" :tabindex="notice.to ? 0 : undefined"
-                :style="{ '--notice-index': String(index) }" @click="openPortalNotice(notice)"
-                @keydown.enter="openPortalNotice(notice)" @keydown.space.prevent="openPortalNotice(notice)">
+              <li
+                v-for="(notice, index) in portalNotices"
+                :key="`${notice.title}-${notice.date}`"
+                class="portal-notice-item"
+                :class="{ 'portal-notice-item--clickable': notice.to }"
+                :role="notice.to ? 'button' : undefined"
+                :tabindex="notice.to ? 0 : undefined"
+                :style="{ '--notice-index': String(index) }"
+                @click="openPortalNotice(notice)"
+                @keydown.enter="openPortalNotice(notice)"
+                @keydown.space.prevent="openPortalNotice(notice)"
+              >
                 <div class="portal-notice-item__main">
                   <strong>{{ notice.title }}</strong>
                   <span v-if="notice.tag" class="portal-tag">{{ notice.tag }}</span>
@@ -1879,23 +2327,38 @@ async function submitPublishRequirement() {
             </ul>
           </section>
 
-          <section id="portal-developers" class="portal-card portal-card--stats"
-            :class="{ 'is-refreshing': homeRefreshLoading }">
+          <section
+            id="portal-developers"
+            class="portal-card portal-card--stats"
+            :class="{ 'is-refreshing': homeRefreshLoading }"
+          >
             <div class="portal-card__header portal-card__header--stats">
               <div class="portal-card__title portal-card__title--stats">
                 <span class="portal-stats-head__icon" aria-hidden="true">◉</span>
                 <h2>平台数据</h2>
               </div>
-              <button class="portal-link-btn" :class="{ 'is-loading': homeRefreshLoading }" type="button"
-                :disabled="homeRefreshLoading" @click="refreshHomeData">
-                {{ homeRefreshLoading ? '刷新中' : '刷新' }}
+              <button
+                class="portal-link-btn"
+                :class="{ 'is-loading': homeRefreshLoading }"
+                type="button"
+                :disabled="homeRefreshLoading"
+                @click="refreshHomeData"
+              >
+                {{ homeRefreshLoading ? "刷新中" : "刷新" }}
               </button>
             </div>
             <div class="portal-stats-grid">
-              <article v-for="(stat, index) in platformStats" :key="stat.label" class="portal-stat-item" :class="[
-                `portal-stat-item--tone-${index % 4}`,
-                { 'is-disabled': stat.disabledReason },
-              ]" :style="{ '--stat-index': String(index) }" :aria-disabled="stat.disabledReason ? 'true' : undefined">
+              <article
+                v-for="(stat, index) in platformStats"
+                :key="stat.label"
+                class="portal-stat-item"
+                :class="[
+                  `portal-stat-item--tone-${index % 4}`,
+                  { 'is-disabled': stat.disabledReason },
+                ]"
+                :style="{ '--stat-index': String(index) }"
+                :aria-disabled="stat.disabledReason ? 'true' : undefined"
+              >
                 <span class="portal-stat-item__icon" aria-hidden="true">
                   <component :is="stat.icon" />
                 </span>
@@ -1903,7 +2366,11 @@ async function submitPublishRequirement() {
                   <span>{{ stat.label }}</span>
                   <strong>{{ stat.value }}</strong>
                 </div>
-                <div v-if="stat.disabledReason" class="portal-stat-item__disabled" aria-live="polite">
+                <div
+                  v-if="stat.disabledReason"
+                  class="portal-stat-item__disabled"
+                  aria-live="polite"
+                >
                   <strong>暂未开放</strong>
                   <span>{{ stat.disabledReason }}</span>
                 </div>
@@ -1914,16 +2381,34 @@ async function submitPublishRequirement() {
           <section class="portal-card portal-card--rank">
             <div class="portal-card__header">
               <h2>优秀开发者</h2>
-              <button class="portal-link-btn" type="button" @click="router.push({ name: 'community' })">
+              <button
+                class="portal-link-btn"
+                type="button"
+                @click="router.push({ name: 'community' })"
+              >
                 查看动态
               </button>
             </div>
             <ul v-if="developerRanks.length > 0" class="portal-rank-list">
-              <li v-for="(developer, index) in developerRanks" :key="developer.name" class="portal-rank-item"
-                :style="{ '--rank-index': String(index) }">
+              <li
+                v-for="(developer, index) in developerRanks"
+                :key="developer.username"
+                class="portal-rank-item"
+                :style="{ '--rank-index': String(index) }"
+                @click="
+                  router.push({
+                    name: 'dev-profile',
+                    params: { username: developer.username },
+                  })
+                "
+              >
                 <div class="portal-rank-item__avatar">
-                  <img v-if="developer.avatarUrl" :src="developer.avatarUrl" :alt="`${developer.name} 的头像`"
-                    @error="handleDeveloperAvatarError(developer)" />
+                  <img
+                    v-if="developer.avatarUrl"
+                    :src="developer.avatarUrl"
+                    :alt="`${developer.name} 的头像`"
+                    @error="handleDeveloperAvatarError(developer)"
+                  />
                   <span v-else>{{ developer.name.slice(0, 1) }}</span>
                 </div>
                 <div class="portal-rank-item__meta">
@@ -1939,18 +2424,70 @@ async function submitPublishRequirement() {
               <strong>暂无公开开发者</strong>
             </div>
           </section>
+          <section class="portal-card portal-card--team">
+            <div class="portal-card__header">
+              <h2>优秀团队</h2>
+              <button
+                class="portal-link-btn"
+                type="button"
+                @click="router.push({ name: 'community' })"
+              >
+                查看动态
+              </button>
+            </div>
+            <ul v-if="teamRanks.length > 0" class="portal-rank-list">
+              <li
+                v-for="(team, index) in teamRanks"
+                :key="team.teamId"
+                class="portal-rank-item"
+                :style="{ '--rank-index': String(index) }"
+                @click="
+                  router.push({ name: 'team-profile', params: { teamId: team.teamId } })
+                "
+              >
+                <div class="portal-rank-item__avatar">
+                  <span>{{ team.teamName.slice(0, 1) }}</span>
+                </div>
+                <div class="portal-rank-item__meta">
+                  <strong>{{ team.teamName }}</strong>
+                </div>
+                <div class="portal-rank-item__score">
+                  <strong>{{ team.resourceCount }} 个资源</strong>
+                </div>
+              </li>
+            </ul>
+            <div v-else class="portal-empty-state portal-empty-state--compact">
+              <strong>暂无公开团队</strong>
+            </div>
+          </section>
         </aside>
       </div>
     </div>
 
-    <a class="portal-qq-float" :href="qqBetaGroupUrl" target="_blank" rel="noopener noreferrer" aria-label="加入内测 QQ 群">
+    <div
+      ref="qqFloatRef"
+      class="portal-qq-float"
+      :class="{ 'is-dragging': isDraggingQQFloat }"
+      :style="qqFloatStyle"
+      role="button"
+      tabindex="0"
+      aria-label="加入内测 QQ 群"
+      @pointerdown="onQQFloatPointerDown"
+      @click="openQQFloat"
+      @keydown.enter="openQQFloat"
+      @keydown.space.prevent="openQQFloat"
+    >
       <el-icon class="portal-qq-float__icon" aria-hidden="true">
         <ChatDotRound />
       </el-icon>
       <span>内测QQ群</span>
-    </a>
+    </div>
 
-    <div v-if="dealDetailVisible && selectedDeal" class="auth-modal-wrap" @click.self="closeDealDetail">
+    <div
+      v-if="dealDetailVisible && selectedDeal"
+      class="auth-modal-wrap"
+      @click.self="closeDealDetail"
+    >
       <section class="auth-modal" aria-label="最近成交详情">
         <h3>{{ selectedDeal.title }}</h3>
         <p class="auth-switch">需求号：{{ selectedDeal.requirementId }}</p>
@@ -1958,43 +2495,90 @@ async function submitPublishRequirement() {
         <p class="auth-switch">成交时间：{{ selectedDeal.at }}</p>
         <p class="auth-switch">
           评分：{{
-            selectedDeal.rating != null ? `${selectedDeal.rating.toFixed(1)} / 5` : '暂无评分'
+            selectedDeal.rating != null
+              ? `${selectedDeal.rating.toFixed(1)} / 5`
+              : "暂无评分"
           }}
         </p>
-        <p class="auth-switch">评论时间：{{ selectedDeal.commentedAt || '暂无评论时间' }}</p>
+        <p class="auth-switch">
+          评论时间：{{ selectedDeal.commentedAt || "暂无评论时间" }}
+        </p>
         <label class="auth-label">
           <span>评论内容</span>
           <textarea :value="selectedDeal.comment || '暂无评论内容'" rows="4" readonly />
         </label>
         <div class="auth-modal-actions">
-          <button class="auth-btn solid" type="button" @click="closeDealDetail">关闭</button>
+          <button class="auth-btn solid" type="button" @click="closeDealDetail">
+            关闭
+          </button>
         </div>
       </section>
     </div>
 
-    <AuthModal :visible="authVisible" :authMode="routeAuthMode" :authTitle="authTitle"
-      v-model:authUsername="authUsername" v-model:authPassword="authPassword" v-model:authEmail="authEmail"
-      v-model:authEmailCode="authEmailCode" v-model:authInviteCode="authInviteCode" v-model:acceptTerms="acceptTerms"
-      :authLoading="auth.loading" :loginRequiresTwoFactor="loginRequiresTwoFactor" :githubLoginLoading="githubLoading"
-      :sendCodeLoading="sendCodeLoading" :sendCodeCountdown="sendCodeCountdown" @close="closeAuth" @submit="submitAuth"
-      @loginWithGithub="loginWithGithub" @sendAuthCode="sendAuthCode" @change-mode="openAuth" />
+    <AuthModal
+      :visible="authVisible"
+      :authMode="routeAuthMode"
+      :authTitle="authTitle"
+      v-model:authUsername="authUsername"
+      v-model:authPassword="authPassword"
+      v-model:authEmail="authEmail"
+      v-model:authEmailCode="authEmailCode"
+      v-model:authInviteCode="authInviteCode"
+      v-model:acceptTerms="acceptTerms"
+      :authLoading="auth.loading"
+      :loginRequiresTwoFactor="loginRequiresTwoFactor"
+      :githubLoginLoading="githubLoading"
+      :sendCodeLoading="sendCodeLoading"
+      :sendCodeCountdown="sendCodeCountdown"
+      @close="closeAuth"
+      @submit="submitAuth"
+      @loginWithGithub="loginWithGithub"
+      @sendAuthCode="sendAuthCode"
+      @change-mode="openAuth"
+    />
 
-    <PublishModal :visible="publishVisible" v-model:publishTitle="publishTitle"
-      v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
-      v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
-      :modalTitle="publishModalTitle" :submitText="publishModalSubmitText" :loadingText="publishModalLoadingText"
-      :allowPlatformGuarantee="false" :publishLoading="publishLoading" @close="closePublishModal" @notify="showToast"
-      @submit="submitPublishRequirement" />
+    <PublishModal
+      :visible="publishVisible"
+      v-model:publishTitle="publishTitle"
+      v-model:publishDescription="publishDescription"
+      v-model:publishBudget="publishBudget"
+      v-model:publishAcceptance="publishAcceptance"
+      v-model:publishPaymentMode="publishPaymentMode"
+      :modalTitle="publishModalTitle"
+      :submitText="publishModalSubmitText"
+      :loadingText="publishModalLoadingText"
+      :allowPlatformGuarantee="false"
+      :publishLoading="publishLoading"
+      @close="closePublishModal"
+      @notify="showToast"
+      @submit="submitPublishRequirement"
+    />
 
-    <DepositModal v-if="depositVisible && depositRequirement" :visible="depositVisible"
-      :depositRequirement="depositRequirement" :formattedBudget="formatMoney(depositRequirement.budget)"
-      :paymentStageLabel="paymentStageLabel" :depositChannel="depositChannel" :amountCouponCode="amountCouponCode"
-      :discountCouponCode="discountCouponCode" :isFinalPayment="isFinalPayment"
-      :depositRatioPercent="depositRatioPercent" :couponSummary="couponSummary" :availableCoupons="availableCoupons"
-      :couponLoading="couponLoading" :depositLoading="depositLoading" :depositPayment="depositPayment"
-      :couponFinalAmount="couponFinalAmount" :depositPolicyAccepted="depositPolicyAccepted"
-      :contractSigningStatus="contractSigningStatus" @close="closeDepositCard" @submit="submitDepositPayment"
-      @update:depositPolicyAccepted="depositPolicyAccepted = $event" @update:depositChannel="depositChannel = $event"
-      @selectCoupon="selectCoupon" @loadAvailableCoupons="loadAvailableCoupons" />
+    <DepositModal
+      v-if="depositVisible && depositRequirement"
+      :visible="depositVisible"
+      :depositRequirement="depositRequirement"
+      :formattedBudget="formatMoney(depositRequirement.budget)"
+      :paymentStageLabel="paymentStageLabel"
+      :depositChannel="depositChannel"
+      :amountCouponCode="amountCouponCode"
+      :discountCouponCode="discountCouponCode"
+      :isFinalPayment="isFinalPayment"
+      :depositRatioPercent="depositRatioPercent"
+      :couponSummary="couponSummary"
+      :availableCoupons="availableCoupons"
+      :couponLoading="couponLoading"
+      :depositLoading="depositLoading"
+      :depositPayment="depositPayment"
+      :couponFinalAmount="couponFinalAmount"
+      :depositPolicyAccepted="depositPolicyAccepted"
+      :contractSigningStatus="contractSigningStatus"
+      @close="closeDepositCard"
+      @submit="submitDepositPayment"
+      @update:depositPolicyAccepted="depositPolicyAccepted = $event"
+      @update:depositChannel="depositChannel = $event"
+      @selectCoupon="selectCoupon"
+      @loadAvailableCoupons="loadAvailableCoupons"
+    />
   </main>
 </template>

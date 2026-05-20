@@ -16,13 +16,29 @@ const props = withDefaults(
 
 const visibleBadges = computed(() => props.badges.slice(0, props.limit))
 const overflowCount = computed(() => Math.max(props.badges.length - visibleBadges.value.length, 0))
+
+function isBadgeIconSvg(icon: string) {
+  return icon.startsWith('badges/')
+}
+
+function badgeIconUrl(icon: string) {
+  return `/uploads/${icon}`
+}
 </script>
 
 <template>
     <div class="badge-display" :class="{ 'badge-display--compact': compact }" aria-label="徽章">
         <span v-for="badge in visibleBadges" :key="badge.code" class="badge-display__item"
             :title="`${badge.name}：${badge.description}`">
-            <span class="badge-display__icon">{{ badge.icon }}</span>
+            <span class="badge-display__icon">
+                <img
+                    v-if="isBadgeIconSvg(badge.icon)"
+                    :src="badgeIconUrl(badge.icon)"
+                    class="badge-display__icon-img"
+                    alt=""
+                />
+                <template v-else>{{ badge.icon }}</template>
+            </span>
             <span v-if="!compact" class="badge-display__name">{{ badge.name }}</span>
         </span>
         <span v-if="overflowCount > 0" class="badge-display__more">+{{ overflowCount }}</span>
@@ -62,6 +78,15 @@ const overflowCount = computed(() => Math.max(props.badges.length - visibleBadge
 
 .badge-display__icon {
     font-size: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.badge-display__icon-img {
+    width: 15px;
+    height: 15px;
+    object-fit: contain;
 }
 
 .badge-display__name {
