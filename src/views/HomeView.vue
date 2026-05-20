@@ -727,14 +727,14 @@ const teamRanks = computed<TeamRank[]>(() => {
     }))
 })
 
-function handleSpotlightCoverError(url: string) {
+function handleSpotlightCoverError(url: string | undefined) {
   if (!url) return
   const next = new Set(failedSpotlightCoverUrls.value)
   next.add(url)
   failedSpotlightCoverUrls.value = next
 }
 
-function spotlightCoverSrc(card: { coverUrl: string }) {
+function spotlightCoverSrc(card: { coverUrl?: string }) {
   return card.coverUrl && !failedSpotlightCoverUrls.value.has(card.coverUrl) ? card.coverUrl : ''
 }
 

@@ -49,7 +49,7 @@ onMounted(async () => {
   loading.value = true
   try {
     const [profile, resources] = await Promise.all([
-      requestJson<TeamPublicProfile>(`/team/public/${teamId.value}`),
+      requestJson<TeamPublicProfile>(`/team/public/${teamId.value}`, {}),
       listAllPublicMcResources(),
     ])
     team.value = profile
