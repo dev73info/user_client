@@ -69,6 +69,16 @@ const authorPillLabel = computed(() => {
 
   const author = current.author.trim()
   const creator = current.creator.trim()
+
+  // 团队资源：显示"团队名称-作者"
+  if (current.ownership_type === 'team' && current.team_name) {
+    if (author) {
+      return `${current.team_name} - ${author}`
+    }
+    return current.team_name
+  }
+
+  // 个人资源：保持原有逻辑
   if (author && creator && author === creator) {
     return `作者 / 创建者 ${author}`
   }

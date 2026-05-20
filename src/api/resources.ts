@@ -41,6 +41,9 @@ export type PublicMcResourceItem = {
   like_count: number
   creator_credit_score?: number | null
   liked_by_me: boolean
+  ownership_type: string
+  team_id: number | null
+  team_name: string | null
 }
 
 export type PublicMcResourceVersionItem = {

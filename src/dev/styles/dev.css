@@ -1044,13 +1044,6 @@ a {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.dev-select-empty {
-  padding: 12px;
-  text-align: center;
-  color: #64748b;
-  font-size: 13px;
-}
-
 .dev-upload-grid--tag-groups {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -1335,6 +1328,119 @@ a {
 .dev-page--publish .el-input__inner,
 .dev-page--publish .el-select__placeholder {
   line-height: 40px;
+}
+
+.dev-page--publish .dev-team-select-native {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.dev-page--publish .dev-team-select-native__control {
+  width: 100%;
+}
+
+.dev-page--publish .dev-team-select-native__control .el-select__wrapper {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 44px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 0 0 1px rgba(255, 255, 255, 0.65) inset;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.dev-page--publish .dev-team-select-native__control .el-select__wrapper:hover {
+  border-color: rgba(59, 130, 246, 0.36);
+  background: rgba(255, 255, 255, 1);
+}
+
+.dev-page--publish .dev-team-select-native__control.is-focus .el-select__wrapper,
+.dev-page--publish .dev-team-select-native__control .el-select__wrapper.is-focus {
+  border-color: #3b82f6;
+  box-shadow:
+    0 0 0 3px rgba(59, 130, 246, 0.14),
+    0 8px 18px rgba(59, 130, 246, 0.08);
+}
+
+.dev-page--publish .dev-team-select-native__control .el-select__placeholder {
+  color: #94a3b8;
+  line-height: 44px;
+  z-index: 1;
+}
+
+.dev-page--publish .dev-team-select-native__control .el-select__placeholder.is-transparent {
+  color: #94a3b8;
+}
+
+.dev-page--publish .dev-team-select-native__control .el-select__selection {
+  overflow: visible;
+}
+
+.dev-page--publish .dev-team-select-native__control .el-select__selected-item {
+  color: #0f172a;
+  line-height: 44px;
+}
+
+
+
+.dev-team-select-popper {
+  border-radius: 14px !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  background: #ffffff !important;
+  box-shadow:
+    0 12px 32px rgba(15, 23, 42, 0.12),
+    0 4px 8px rgba(15, 23, 42, 0.06) !important;
+  overflow: hidden;
+  padding: 6px 0;
+}
+
+.dev-team-select-popper .el-select-dropdown__item {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  margin: 0 6px;
+  border-radius: 10px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  min-height: 40px;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.dev-team-select-popper .el-select-dropdown__item:hover {
+  background: rgba(59, 130, 246, 0.08);
+  color: #1e40af;
+}
+
+.dev-team-select-popper .el-select-dropdown__item.is-selected {
+  background: rgba(59, 130, 246, 0.1);
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.dev-team-select-popper .el-select-dropdown__item.is-hovering {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.dev-team-select-popper__empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .dev-page--publish .el-select__selection {

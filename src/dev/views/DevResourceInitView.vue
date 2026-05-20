@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Close, Folder, MagicStick, Refresh, UploadFilled } from '@element-plus/icons-vue'
 
@@ -35,13 +35,12 @@ const iconFileName = ref('')
 const selectedIconFile = ref<File | null>(null)
 const selectedTagIdsByGroup = reactive<Record<number, number[]>>({})
 const myTeams = ref<TeamResponse[]>([])
-
 const form = reactive({
   title: '',
   author: auth.username || '',
   coverUrl: '',
   ownershipType: 'individual' as 'individual' | 'team',
-  teamId: null as string | null,
+  teamId: '',
 })
 
 const rootTabs = computed<McTagCatalogRoot[]>(() => processedTree.value.roots)
@@ -73,6 +72,13 @@ const selectedGroupsSummary = computed(() =>
     .filter((group) => group.names.length > 0),
 )
 const previewTags = computed(() => selectedGroupsSummary.value.flatMap((group) => group.names))
+const teamOptions = computed(() =>
+  myTeams.value.map((team) => ({
+    value: String(team.team_id),
+    label: team.name,
+  })),
+)
+
 const resourceSummary = computed(() => {
   if (!form.title.trim()) {
     return ''
@@ -134,6 +140,15 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => form.ownershipType,
+  (value) => {
+    if (value !== 'team') {
+      form.teamId = ''
+    }
+  },
+)
+
 watch(platformTagGroups, (groups) => {
   const validGroupIds = new Set(groups.map((group) => group.group_id))
 
@@ -167,6 +182,9 @@ onMounted(async () => {
   }
   await loadTagTree()
   await loadMyTeams()
+})
+
+onBeforeUnmount(() => {
 })
 
 async function loadMyTeams() {
@@ -287,7 +305,7 @@ function resetForm() {
   form.author = auth.username || ''
   form.coverUrl = ''
   form.ownershipType = 'individual'
-  form.teamId = null
+  form.teamId = ''
   iconFileName.value = ''
   selectedIconFile.value = null
 
@@ -377,17 +395,29 @@ async function submitResource() {
                 </el-radio-group>
               </el-form-item>
 
-              <el-form-item v-if="form.ownershipType === 'team'" label="所属团队" required>
-                <el-select v-model="form.teamId" placeholder="选择团队" style="width: 100%" filterable>
-                  <el-option v-for="team in myTeams" :key="team.team_id" :label="team.name"
-                    :value="String(team.team_id)" />
-                  <template #empty>
-                    <div class="dev-select-empty">
-                      <p v-if="myTeams.length === 0">您还没有加入任何团队</p>
-                      <p v-else>未找到匹配的团队</p>
-                    </div>
-                  </template>
-                </el-select>
+              <el-form-item v-show="form.ownershipType === 'team'" label="所属团队" required>
+                <div class="dev-team-select-native">
+                  <el-select
+                    v-model="form.teamId"
+                    placeholder="请选择团队"
+                    class="dev-team-select-native__control"
+                    popper-class="dev-team-select-popper"
+                    popper-append-to-body
+                  >
+                    <el-option
+                      v-for="team in teamOptions"
+                      :key="team.value"
+                      :label="team.label"
+                      :value="team.value"
+                    />
+                    <template #empty>
+                      <div class="dev-team-select-popper__empty">
+                        <p v-if="myTeams.length === 0">您还没有加入任何团队</p>
+                      </div>
+                    </template>
+                  </el-select>
+
+                </div>
               </el-form-item>
 
               <el-form-item label="图标文件">

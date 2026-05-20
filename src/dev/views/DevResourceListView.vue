@@ -437,9 +437,6 @@ async function setResourcePrivate(resource: McResourcePayload) {
           <template #default="scope">
             <el-dropdown trigger="click" popper-class="dev-resource-action-menu" @command="handleResourceCommand">
               <el-button type="primary" plain class="dev-resource-table__action-button">
-                <el-icon>
-                  <MoreFilled />
-                </el-icon>
                 <span>更多</span>
                 <el-icon class="dev-resource-table__action-caret">
                   <ArrowDown />
