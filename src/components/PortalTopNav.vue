@@ -117,6 +117,13 @@ const headerLinks = computed<HeaderLink[]>(() => {
       to: { name: 'workbench' },
       active: allowActive && route.path.startsWith('/workbench'),
     })
+    links.push({
+      label: '🎁 邀请有礼',
+      to: { name: 'workbench-invite' },
+      active:
+        allowActive &&
+        (currentName === 'workbench-invite' || currentName === 'workbench-invite-leaderboard'),
+    })
   }
 
   return links
