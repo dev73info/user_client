@@ -770,7 +770,7 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
       title: item.title,
       summary: buildResourceCardSummary(item),
       budget: summarizeResourceTags(item) || normalizeTagName(item.platform) || '公开资源',
-      status: item.visibility === 'published' ? '已公开' : '待发布',
+      status: `${item.like_count ?? 0} 赞`,
       badge: normalizeTagName(item.platform) || '平台资源',
       metaSecondary: `${item.author || item.creator || '匿名作者'} · ${formatTimeLabel(item.updated_at)}`,
       accent: ['nebula', 'sunset', 'forest', 'frost'][index % 4] ?? 'nebula',
