@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Close, Connection, Plus, Refresh } from '@element-plus/icons-vue'
 
 import PublishModal from '@/components/PublishModal.vue'
+import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 import { HttpError } from '@/api/http'
 import { getMyRealnameVerification } from '@/api/realname'
 import {
@@ -486,7 +487,15 @@ async function loadHallData() {
             </div>
             <div class="portal-page__card-footer">
               <strong>{{ formatMoney(card.budget) }}</strong>
-              <span>查看详情</span>
+              <div class="requirement-hall__card-actions">
+                <span>查看详情</span>
+                <ShareCardGenerator
+                  v-if="auth.isAuthed"
+                  share-type="requirement"
+                  :target-id="card.requirement_id"
+                  label="分享"
+                />
+              </div>
             </div>
           </article>
         </div>
@@ -737,6 +746,12 @@ async function loadHallData() {
   color: #2563eb;
   font-size: 13px;
   font-weight: 800;
+}
+
+.requirement-hall__card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .requirement-hall__meta-row {

@@ -64,9 +64,9 @@ const menuGroups: WorkbenchMenuGroup[] = [
     items: [
       { label: '账户与优惠券', name: 'workbench-account', description: '管理优惠券与账户入口' },
       {
-        label: '我的邀请',
+        label: '🎁 我的邀请',
         name: 'workbench-invite',
-        description: '邀请码、统计与徽章',
+        description: '邀请好友得徽章，查看排行榜',
         activeNames: ['workbench-invite-leaderboard'],
       },
       { label: '实名认证', name: 'workbench-realname', description: '提交或查看实名审核' },

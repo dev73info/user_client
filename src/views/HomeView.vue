@@ -2378,6 +2378,21 @@ async function submitPublishRequirement() {
             </div>
           </section>
 
+          <section v-if="auth.isAuthed" class="portal-card portal-card--invite">
+            <div class="portal-card__header">
+              <h2>🎁 邀请有礼</h2>
+            </div>
+            <p class="portal-invite-banner__text">
+              每邀请一位好友注册，即可解锁专属徽章和排行榜荣誉
+            </p>
+            <RouterLink
+              class="portal-invite-banner__cta"
+              :to="{ name: 'workbench-invite' }"
+            >
+              立即邀请
+            </RouterLink>
+          </section>
+
           <section class="portal-card portal-card--rank">
             <div class="portal-card__header">
               <h2>优秀开发者</h2>
