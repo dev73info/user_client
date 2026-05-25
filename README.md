@@ -1,5 +1,7 @@
 # user-client
 
+[![73Info](https://img.shields.io/badge/Platform-73Info_%E6%9F%92%E5%8F%82%E4%BF%A1%E6%81%AF-1a237e?style=flat)](https://73info.cn)
+
 This template should help get you started developing with Vue 3 in Vite.
 
 ## Recommended IDE Setup
@@ -107,3 +109,13 @@ pnpm test:e2e --debug
 ```sh
 pnpm lint
 ```
+
+---
+
+<div align="center">
+
+🌐 **[73Info 柒叁信息](https://73info.cn)** — 开发者资源发现 · 需求对接 · 定制协作平台
+
+*73Info 前端用户客户端，基于 Vue 3 + Vite + TypeScript 构建。*
+
+</div>
