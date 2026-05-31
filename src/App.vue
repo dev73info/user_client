@@ -123,8 +123,9 @@ onBeforeUnmount(() => {
                 <div class="site-footer-block">
                   <h3>网站信息</h3>
                   <p>平台名称：柒叁信息（73info）</p>
-                  <p>主体类型：企业服务平台</p>
+                  <p>平台状态：资源与需求协作内测中</p>
                   <p>联系邮箱：fanbo@73info.cn</p>
+                  <p>投诉与侵权处理：fanbo@73info.cn</p>
                 </div>
                 <div class="site-footer-block">
                   <h3>备案与合规</h3>
@@ -142,13 +143,14 @@ onBeforeUnmount(() => {
                       <span>滇公网安备53062802000020号</span>
                     </a>
                   </p>
-                  <p>增值电信业务许可：涉及相应许可的交易担保功能暂未开放</p>
+                  <p>交易功能说明：平台担保、资金托管、代收代付和自动分账暂未开放</p>
                 </div>
                 <div class="site-footer-block">
                   <h3>服务说明</h3>
                   <p><router-link to="/terms">用户协议</router-link></p>
                   <p><router-link to="/privacy">隐私政策</router-link></p>
                   <p><router-link to="/payment-refund">支付与退款说明</router-link></p>
+                  <p><router-link to="/tickets">工单中心</router-link></p>
                 </div>
               </div>
               <p class="site-footer-copy">© {{ currentYear }} 柒叁信息 73Info. All rights reserved.</p>

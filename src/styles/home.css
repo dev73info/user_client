@@ -1558,6 +1558,40 @@
   position: relative;
 }
 
+.portal-section--beta {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.portal-beta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.portal-beta-card {
+  min-height: 116px;
+  padding: 16px;
+  border: 1px solid rgba(203, 213, 225, 0.72);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.portal-beta-card strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.portal-beta-card p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.65;
+}
+
 .portal-step-card {
   position: relative;
   display: flex;
@@ -2030,9 +2064,9 @@
 
   .portal-qq-float {
     top: auto;
-    right: auto;
+    right: 18px;
     left: auto;
-    bottom: 18px;
+    bottom: 104px;
     flex-direction: row;
     width: auto;
     min-height: 44px;
@@ -2082,6 +2116,10 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
+  }
+
+  .portal-beta-grid {
+    grid-template-columns: 1fr;
   }
 
   .portal-step-card {

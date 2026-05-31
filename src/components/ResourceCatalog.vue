@@ -441,9 +441,10 @@ watch(
         </div>
       </article>
 
-      <p v-if="filteredCards.length === 0" class="portal-resource-browser__empty">
-        当前没有符合条件的资源。
-      </p>
+      <div v-if="filteredCards.length === 0" class="portal-resource-browser__empty">
+        <strong>当前筛选下还没有公开资源</strong>
+        <span>可以清空筛选看看其他分区；如果你有插件、汉化、模板或教程，也欢迎在内测期投稿。</span>
+      </div>
     </section>
   </section>
 </template>
@@ -816,11 +817,25 @@ watch(
 }
 
 .portal-resource-browser__empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
   grid-column: 1 / -1;
   padding: 28px;
   border-radius: 22px;
   text-align: center;
   color: #64748b;
+}
+
+.portal-resource-browser__empty strong {
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.portal-resource-browser__empty span {
+  max-width: 520px;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 @media (max-width: 900px) {

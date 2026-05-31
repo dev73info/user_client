@@ -176,6 +176,18 @@ function updateViewport() {
 
 <template>
   <main class="portal-page catalog-layout-page">
+    <section class="catalog-intro-panel">
+      <div class="catalog-intro-panel__copy">
+        <span>内测资源库</span>
+        <h1>Minecraft、网站开发和小工具资源</h1>
+        <p>先把可复用资源沉淀下来，再用真实需求推动开发者协作。当前资源库优先收录插件、汉化、模板、教程和工具类内容。</p>
+      </div>
+      <div class="catalog-intro-panel__stats" aria-label="资源库状态">
+        <strong>{{ pageState.totalItems }}</strong>
+        <span>当前筛选资源</span>
+      </div>
+    </section>
+
     <section v-if="!isMobile" class="portal-page__panel catalog-switch-panel">
       <section class="catalog-nav-row catalog-nav-row--root-top catalog-nav-row--no-label" aria-label="根节点导航">
         <div class="hero-root-nav">

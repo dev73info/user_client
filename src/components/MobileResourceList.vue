@@ -499,7 +499,10 @@ watch(
                 </div>
             </article>
 
-            <p v-if="filteredItems.length === 0" class="mobile-empty">暂无符合条件的资源</p>
+            <div v-if="filteredItems.length === 0" class="mobile-empty">
+                <strong>当前筛选下暂无资源</strong>
+                <span>清空筛选可查看其他分区；也欢迎投稿插件、汉化、模板或教程。</span>
+            </div>
             <button v-else-if="visibleItems.length < filteredItems.length" class="load-more" type="button"
                 @click="loadMore">
                 加载更多
@@ -1160,6 +1163,8 @@ watch(
 }
 
 .mobile-empty {
+    display: grid;
+    gap: 6px;
     margin: 8px 0;
     padding: 18px;
     text-align: center;
@@ -1167,6 +1172,16 @@ watch(
     background: #fff;
     border: 1px solid #dbe2ef;
     color: #64748b;
+}
+
+.mobile-empty strong {
+    color: #0f172a;
+    font-size: 15px;
+}
+
+.mobile-empty span {
+    font-size: 13px;
+    line-height: 1.6;
 }
 </style>
 

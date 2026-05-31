@@ -1,6 +1,6 @@
-const DEFAULT_TITLE = '73Info 柒叁信息 - 免费资源与定制需求平台'
+const DEFAULT_TITLE = '73Info 柒叁信息 - 资源与需求内测协作平台'
 const DEFAULT_DESCRIPTION =
-  '73Info 柒叁信息是面向用户、开发者、创作者与团队的资源发现和定制开发协作平台，聚合工具、模板、教程、服务方案与项目需求，支持公开资源浏览、需求发布、意向沟通、进度跟进、交付验收、售后工单、合同记录、合规说明和账户消息，帮助供需双方在一个清晰入口完成信息匹配、协作管理与后续服务，并提升项目推进效率。'
+  '73Info 柒叁信息是内测中的资源与需求协作平台，优先沉淀 Minecraft、网站开发和小工具资源，支持公开资源浏览、需求发布、沟通记录、工单跟进与合规说明。平台担保、资金托管、代收代付和自动分账等涉及许可的交易功能暂未开放。'
 const SITE_URL = ((import.meta.env.VITE_SITE_URL as string | undefined)?.trim() || 'https://73info.cn').replace(
   /\/+$/,
   '',

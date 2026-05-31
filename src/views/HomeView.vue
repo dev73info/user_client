@@ -325,8 +325,23 @@ const depositPolicyAccepted = ref(false)
 const couponLoading = ref(false)
 const contractSigningStatus = ref<ContractSigningStatus | null>(null)
 const { showToast } = useToast()
-const heroSignals = ['免费资源共享', '有偿需求定制', '安全交易保障']
+const heroSignals = ['免费资源共享', '需求记录留痕', '工单沟通协作']
 const qqBetaGroupUrl = 'https://qm.qq.com/q/AXb3VBPurC'
+
+const betaCapabilities = [
+  {
+    title: '当前开放',
+    summary: '公开资源浏览、资源投稿、需求发布、开发者接单意向和工单沟通。',
+  },
+  {
+    title: '暂未开放',
+    summary: '平台担保、资金托管、代收代付、自动分账等涉及许可的交易功能。',
+  },
+  {
+    title: '内测重点',
+    summary: '先服务 Minecraft、网站开发和小工具定制场景，优先打磨真实资源和需求流程。',
+  },
+]
 
 const portalNotices = computed<PortalNotice[]>(() => {
   const notices: PortalNotice[] = []
@@ -385,13 +400,13 @@ const portalNotices = computed<PortalNotice[]>(() => {
 const quickPanels = computed<QuickPanel[]>(() => [
   {
     title: '免费资源',
-    summary: '开发者发布优质资源\n赚取信用点奖励',
+    summary: 'Minecraft、网站与工具资源\n优先沉淀可复用内容',
     action: '立即查看',
     tone: 'gift',
   },
   {
-    title: '有偿需求',
-    summary: '提交需求单，开发者接单\n完成后支付尾款',
+    title: '需求协作',
+    summary: '提交需求单并留存记录\n线下付款风险自行确认',
     action: '立即发布',
     tone: 'briefcase',
   },
@@ -617,14 +632,14 @@ const platformStats = computed<PlatformStat[]>(() => {
   const resourceCount = publicResources.value.length
 
   return [
-    { label: '开发者', value: `${publicDeveloperCount.value} 位`, icon: User },
+    { label: '内测开发者', value: `${publicDeveloperCount.value} 位`, icon: User },
     { label: '公开资源', value: `${resourceCount} 条`, icon: Files },
-    { label: '需求完成', value: completed?.value ?? '0 单', icon: Finished },
+    { label: '完成记录', value: completed?.value ?? '0 单', icon: Finished },
     {
-      label: '交易金额',
-      value: turnover?.value ?? '¥ 0.00',
+      label: '担保交易',
+      value: '暂未开放',
       icon: Money,
-      disabledReason: '涉及许可的交易担保、资金托管、代收代付和自动分账服务暂未开放。',
+      disabledReason: `历史支付统计：${turnover?.value ?? '¥ 0.00'}。涉及许可的交易担保、资金托管、代收代付和自动分账服务暂未开放。`,
     },
   ]
 })
@@ -836,14 +851,22 @@ watch(
 onMounted(() => {
   auth.hydrate()
 
-  // 初始化 QQ 浮窗默认位置：右侧中偏上
-  qqFloatStyle.value = {
-    position: 'fixed',
-    right: `${QQ_FLOAT_EDGE_GAP}px`,
-    top: '30%',
-    left: 'auto',
-    bottom: 'auto',
-  }
+  const isMobileViewport = window.innerWidth <= 900
+  qqFloatStyle.value = isMobileViewport
+    ? {
+        position: 'fixed',
+        right: `${QQ_FLOAT_EDGE_GAP}px`,
+        bottom: '104px',
+        left: 'auto',
+        top: 'auto',
+      }
+    : {
+        position: 'fixed',
+        right: `${QQ_FLOAT_EDGE_GAP}px`,
+        top: '30%',
+        left: 'auto',
+        bottom: 'auto',
+      }
 
   const oauthToken =
     typeof route.query.oauth_token === 'string' ? route.query.oauth_token.trim() : ''
@@ -1719,10 +1742,10 @@ async function submitPublishRequirement() {
             <div class="portal-hero__main">
               <div class="portal-hero__copy">
                 <h1>
-                  <span>需求</span><span class="portal-title-accent">定制开发</span
-                  ><span>交易平台</span>
+                  <span>资源与需求</span><span class="portal-title-accent">内测协作</span
+                  ><span>平台</span>
                 </h1>
-                <p class="portal-hero__lead">连接需求与能力 · 让创意变为现实</p>
+                <p class="portal-hero__lead">先沉淀 Minecraft、网站和小工具资源，再承接真实需求</p>
 
                 <div v-if="heroSignals.length" class="portal-signal-list">
                   <span
@@ -2223,6 +2246,24 @@ async function submitPublishRequirement() {
             </div>
           </section>
 
+          <section class="portal-section portal-section--beta">
+            <div class="portal-section__header">
+              <div class="portal-section-title portal-section-title--plain">
+                <h2>内测说明</h2>
+              </div>
+            </div>
+            <div class="portal-beta-grid">
+              <article
+                v-for="item in betaCapabilities"
+                :key="item.title"
+                class="portal-beta-card"
+              >
+                <strong>{{ item.title }}</strong>
+                <p>{{ item.summary }}</p>
+              </article>
+            </div>
+          </section>
+
           <section class="portal-section">
             <div class="portal-section__header">
               <div>
@@ -2335,7 +2376,7 @@ async function submitPublishRequirement() {
             <div class="portal-card__header portal-card__header--stats">
               <div class="portal-card__title portal-card__title--stats">
                 <span class="portal-stats-head__icon" aria-hidden="true">◉</span>
-                <h2>平台数据</h2>
+                <h2>内测数据</h2>
               </div>
               <button
                 class="portal-link-btn"
@@ -2395,7 +2436,7 @@ async function submitPublishRequirement() {
 
           <section class="portal-card portal-card--rank">
             <div class="portal-card__header">
-              <h2>优秀开发者</h2>
+              <h2>活跃开发者</h2>
               <button
                 class="portal-link-btn"
                 type="button"
@@ -2441,7 +2482,7 @@ async function submitPublishRequirement() {
           </section>
           <section class="portal-card portal-card--team">
             <div class="portal-card__header">
-              <h2>优秀团队</h2>
+              <h2>活跃团队</h2>
               <button
                 class="portal-link-btn"
                 type="button"
