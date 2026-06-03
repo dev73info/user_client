@@ -455,7 +455,7 @@ const editor = useEditor({
                 const $pos = view.state.doc.resolve(pos)
                 if ($pos.parent.type.name === 'codeBlock') {
                     const tr = view.state.tr.setSelection(
-                        view.state.selection.constructor.near($pos)
+                        (view.state.selection.constructor as any).near($pos)
                     )
                     view.dispatch(tr)
                     view.focus()
@@ -468,7 +468,7 @@ const editor = useEditor({
             const $pos = view.state.doc.resolve(pos)
             if ($pos.parent.type.name === 'codeBlock') {
                 const tr = view.state.tr.setSelection(
-                    view.state.selection.constructor.near($pos)
+                    (view.state.selection.constructor as any).near($pos)
                 )
                 view.dispatch(tr)
                 view.focus()
