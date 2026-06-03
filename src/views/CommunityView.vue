@@ -33,7 +33,7 @@ import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
-import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
+import { sanitizeRichHtml, sanitizeRichHtmlForEditing } from '@/utils/sanitizeHtml'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 
 const route = useRoute()
@@ -559,7 +559,7 @@ async function openEditComposer(post: CommunityPost) {
     editingPost.value = detail
     postForm.title = detail.title
     postForm.tag_names = detail.tags.map((tag) => tag.name)
-    postForm.content_html = sanitizeRichHtml(detail.content_html)
+    postForm.content_html = sanitizeRichHtmlForEditing(detail.content_html)
     composerVisible.value = true
   } catch (error) {
     showToast(error instanceof Error ? error.message : '加载帖子详情失败', 'error')

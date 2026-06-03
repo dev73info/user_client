@@ -151,3 +151,11 @@ function renderMarkdownCodeBlocks(value: string): string {
 export function sanitizeRichHtml(value: string): string {
   return keepAllowedInlineStyles(renderMarkdownCodeBlocks(purifyRichHtml(value)))
 }
+
+/**
+ * 仅做安全净化，不转换 markdown 代码块。
+ * 用于编辑器 onUpdate 等场景，避免将 language-md 代码块转为富文本导致编辑状态丢失。
+ */
+export function sanitizeRichHtmlForEditing(value: string): string {
+  return keepAllowedInlineStyles(purifyRichHtml(value))
+}

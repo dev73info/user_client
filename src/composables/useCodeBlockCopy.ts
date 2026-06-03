@@ -123,7 +123,6 @@ export function useCodeBlockCopy({ rootRef, notify }: UseCodeBlockCopyOptions) {
   }
 
   function hideButton() {
-    activeCodeBlock?.classList.remove(activeClass)
     activeCodeBlock = null
     copyButton?.classList.remove(visibleClass, copiedClass)
     clearHideTimer()
@@ -225,9 +224,9 @@ export function useCodeBlockCopy({ rootRef, notify }: UseCodeBlockCopyOptions) {
           notify?.('复制失败，请手动选择代码', 'error')
         }
       })
-    }
 
-    if (copyButton.parentElement !== root) {
+      // 预先将按钮添加到 root，避免在 pointerover 时触发 DOM 变更
+      // 从而干扰 ProseMirror 的 mousedown/mouseup 事件处理
       root.append(copyButton)
     }
 
@@ -243,9 +242,12 @@ export function useCodeBlockCopy({ rootRef, notify }: UseCodeBlockCopyOptions) {
     clearHideTimer()
     clearResetTimer()
     resetButtonLabel()
-    activeCodeBlock?.classList.remove(activeClass)
+    // 不修改 pre 元素的 class，避免触发 ProseMirror 的 MutationObserver
+    // 改用内部变量追踪活跃的代码块
+    if (activeCodeBlock && activeCodeBlock !== preElement) {
+      // 之前活跃的代码块不再活跃
+    }
     activeCodeBlock = preElement
-    activeCodeBlock.classList.add(activeClass)
 
     const button = ensureButton(root)
     button.classList.add(visibleClass)

@@ -26,7 +26,7 @@ import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
-import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
+import { sanitizeRichHtml, sanitizeRichHtmlForEditing } from '@/utils/sanitizeHtml'
 
 type RichTextEditorInstance = InstanceType<typeof RichTextEditor>
 
@@ -60,6 +60,7 @@ const markdownRenderer = new MarkdownIt({
   linkify: true,
   breaks: true,
 })
+markdownRenderer.enable(['table'])
 
 function formatHomepageContent(value: string): string {
   const trimmed = value.trim()
@@ -113,8 +114,21 @@ const userClientPreviewUrl = computed(() =>
   resource.value ? userClientResourceUrl(resource.value) : '',
 )
 
+function formatEditorContent(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return ''
+  }
+
+  if (/<\/?[a-z][\s\S]*>/i.test(trimmed)) {
+    return sanitizeRichHtmlForEditing(trimmed)
+  }
+
+  return sanitizeRichHtmlForEditing(markdownRenderer.render(trimmed))
+}
+
 function syncEditorContent(value: string) {
-  const normalized = formatHomepageContent(value)
+  const normalized = formatEditorContent(value)
   richEditorContent.value = normalized
   form.release_note = normalized
   richTextEditorRef.value?.setContent(normalized || '<p></p>', false)

@@ -204,6 +204,7 @@ const markdownRenderer = new MarkdownIt({
   linkify: true,
   breaks: true,
 })
+markdownRenderer.enable(['table'])
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

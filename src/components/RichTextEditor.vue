@@ -4,6 +4,10 @@ import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
 import { EditorContent, Mark, mergeAttributes, useEditor, type Editor } from '@tiptap/vue-3'
 import Link from '@tiptap/extension-link'
 import StarterKit from '@tiptap/starter-kit'
+import { Table } from '@tiptap/extension-table'
+import { TableCell } from '@tiptap/extension-table-cell'
+import { TableHeader } from '@tiptap/extension-table-header'
+import { TableRow } from '@tiptap/extension-table-row'
 import Underline from '@tiptap/extension-underline'
 import { common, createLowlight } from 'lowlight'
 import {
@@ -14,7 +18,7 @@ import {
     RefreshRight,
 } from '@element-plus/icons-vue'
 
-import { renderMarkdownToRichHtml, sanitizeRichHtml } from '@/utils/sanitizeHtml'
+import { renderMarkdownToRichHtml, sanitizeRichHtml, sanitizeRichHtmlForEditing } from '@/utils/sanitizeHtml'
 import {
     hasMeaningfulRichEditorContent,
     insertRichEditorAttachment,
@@ -353,6 +357,22 @@ function isMarkdownCodeBlockLanguage(language: string): boolean {
     return ['md', 'markdown'].includes(language)
 }
 
+function looksLikeMarkdown(text: string): boolean {
+    const lines = text.split('\n')
+    let tableSeparatorCount = 0
+    for (const line of lines) {
+        const trimmed = line.trim()
+        if (/^\|[-:| ]+\|$/.test(trimmed)) {
+            tableSeparatorCount++
+        }
+    }
+    if (tableSeparatorCount >= 1) {
+        return true
+    }
+    const markdownPatterns = /^#{1,6}\s|^\s*[-*+]\s|^\s*>\s|^\d+\.\s|```|~~~|\*\*[^*]+\*\*|\[.+\]\(.+\)/m
+    return markdownPatterns.test(text)
+}
+
 const FontSize = Mark.create({
     name: 'fontSize',
 
@@ -397,11 +417,17 @@ const editor = useEditor({
             link: false,
             underline: false,
         }),
-        CodeBlockLowlight.configure({
+        CodeBlockLowlight.extend({
+            name: 'codeBlock',
+            defining: false,
+        }).configure({
             lowlight: codeHighlighter,
             defaultLanguage: null,
             enableTabIndentation: true,
             tabSize: 4,
+            HTMLAttributes: {
+                class: 'code-block',
+            },
         }),
         Underline,
         FontSize,
@@ -413,50 +439,92 @@ const editor = useEditor({
         RichEditorImage,
         RichEditorVideo,
         RichEditorAttachment,
+        Table.configure({
+            resizable: false,
+        }),
+        TableRow,
+        TableCell,
+        TableHeader,
     ],
     editorProps: {
         attributes: {
             class: 'rich-text-editor__surface',
+        },
+        handleClickOn: (view, pos, node, nodePos, event, direct) => {
+            if (node.type.name === 'codeBlock' && direct) {
+                const $pos = view.state.doc.resolve(pos)
+                if ($pos.parent.type.name === 'codeBlock') {
+                    const tr = view.state.tr.setSelection(
+                        view.state.selection.constructor.near($pos)
+                    )
+                    view.dispatch(tr)
+                    view.focus()
+                    return true
+                }
+            }
+            return false
+        },
+        handleClick: (view, pos, event) => {
+            const $pos = view.state.doc.resolve(pos)
+            if ($pos.parent.type.name === 'codeBlock') {
+                const tr = view.state.tr.setSelection(
+                    view.state.selection.constructor.near($pos)
+                )
+                view.dispatch(tr)
+                view.focus()
+                return true
+            }
+            return false
         },
         handlePaste: (view, event) => {
             if (!event.clipboardData || editor.value?.isActive('codeBlock')) {
                 return false
             }
 
-            const fencedCodeBlock = parseMarkdownCodeFence(event.clipboardData.getData('text/plain'))
-            if (!fencedCodeBlock) {
-                return false
-            }
+            const plainText = event.clipboardData.getData('text/plain')
+            const fencedCodeBlock = parseMarkdownCodeFence(plainText)
+            if (fencedCodeBlock) {
+                if (isMarkdownCodeBlockLanguage(fencedCodeBlock.language)) {
+                    const renderedMarkdown = renderMarkdownToRichHtml(fencedCodeBlock.code)
+                    if (!renderedMarkdown) {
+                        return false
+                    }
 
-            if (isMarkdownCodeBlockLanguage(fencedCodeBlock.language)) {
-                const renderedMarkdown = renderMarkdownToRichHtml(fencedCodeBlock.code)
-                if (!renderedMarkdown) {
+                    event.preventDefault()
+                    editor.value?.commands.insertContent(renderedMarkdown)
+                    return true
+                }
+
+                const codeBlock = view.state.schema.nodes.codeBlock
+                if (!codeBlock) {
                     return false
                 }
 
                 event.preventDefault()
-                editor.value?.commands.insertContent(renderedMarkdown)
+                const codeNode = fencedCodeBlock.code ? view.state.schema.text(fencedCodeBlock.code) : undefined
+                const transaction = view.state.tr
+                    .replaceSelectionWith(codeBlock.create({ language: fencedCodeBlock.language }, codeNode))
+                    .scrollIntoView()
+                view.dispatch(transaction)
+
                 return true
             }
 
-            const codeBlock = view.state.schema.nodes.codeBlock
-            if (!codeBlock) {
-                return false
+            if (plainText && looksLikeMarkdown(plainText)) {
+                const renderedMarkdown = renderMarkdownToRichHtml(plainText)
+                if (renderedMarkdown) {
+                    event.preventDefault()
+                    editor.value?.commands.insertContent(renderedMarkdown)
+                    return true
+                }
             }
 
-            event.preventDefault()
-            const codeNode = fencedCodeBlock.code ? view.state.schema.text(fencedCodeBlock.code) : undefined
-            const transaction = view.state.tr
-                .replaceSelectionWith(codeBlock.create({ language: fencedCodeBlock.language }, codeNode))
-                .scrollIntoView()
-            view.dispatch(transaction)
-
-            return true
+            return false
         },
     },
     onUpdate: ({ editor: currentEditor }) => {
         const nextValue = hasMeaningfulRichEditorContent(currentEditor)
-            ? sanitizeRichHtml(currentEditor.getHTML())
+            ? sanitizeRichHtmlForEditing(currentEditor.getHTML())
             : ''
         pushingEditorUpdate = true
         emit('update:modelValue', nextValue)
@@ -1304,6 +1372,7 @@ defineExpose({
     font-weight: 900;
     line-height: 1.2;
     letter-spacing: 0;
+    pointer-events: none;
 }
 
 .rich-text-editor :deep(.rich-text-editor__surface pre:has(code.language-json)) {
