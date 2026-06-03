@@ -60,6 +60,7 @@ const markdownRenderer = new MarkdownIt({
   linkify: true,
   breaks: true,
 })
+markdownRenderer.enable(['table'])
 
 const domPurifyConfig = {
   ALLOWED_ATTR: allowedAttrs,

@@ -4,7 +4,7 @@ import '@/styles/home.css'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowRight, ChatDotRound, Files, Finished, Money, User } from '@element-plus/icons-vue'
+import { ArrowRight, Files, Finished, Money, User } from '@element-plus/icons-vue'
 
 import { useAuthStore } from '@/stores/auth'
 import AuthModal from '@/components/AuthModal.vue'
@@ -164,97 +164,9 @@ const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 
-// --- QQ 浮窗拖动逻辑 ---
-const qqFloatRef = ref<HTMLElement | null>(null)
-const isDraggingQQFloat = ref(false)
-const qqFloatStyle = ref<Record<string, string>>({})
-let qqFloatDragStart = { x: 0, y: 0, elX: 0, elY: 0 }
-let qqFloatHasMoved = false
-const QQ_FLOAT_EDGE_GAP = 16
-const QQ_FLOAT_SNAP_THRESHOLD = 0.5 // 超过屏幕一半则吸附到另一边
-
-function clampQQFloatPosition(left: number, top: number) {
-  const el = qqFloatRef.value
-  if (!el) return { left, top }
-  const rect = el.getBoundingClientRect()
-  const maxLeft = window.innerWidth - rect.width - QQ_FLOAT_EDGE_GAP
-  const maxTop = window.innerHeight - rect.height - QQ_FLOAT_EDGE_GAP
-  return {
-    left: Math.max(QQ_FLOAT_EDGE_GAP, Math.min(left, maxLeft)),
-    top: Math.max(QQ_FLOAT_EDGE_GAP, Math.min(top, maxTop)),
-  }
-}
-
-function snapQQFloatToEdge(left: number) {
-  const el = qqFloatRef.value
-  if (!el) return left
-  const centerX = left + el.getBoundingClientRect().width / 2
-  const screenCenter = window.innerWidth / 2
-  if (centerX < screenCenter * QQ_FLOAT_SNAP_THRESHOLD) {
-    return QQ_FLOAT_EDGE_GAP
-  }
-  return window.innerWidth - el.getBoundingClientRect().width - QQ_FLOAT_EDGE_GAP
-}
-
-function onQQFloatPointerDown(event: PointerEvent) {
-  const el = qqFloatRef.value
-  if (!el) return
-  el.setPointerCapture(event.pointerId)
-  const rect = el.getBoundingClientRect()
-  qqFloatDragStart = {
-    x: event.clientX,
-    y: event.clientY,
-    elX: rect.left,
-    elY: rect.top,
-  }
-  qqFloatHasMoved = false
-  isDraggingQQFloat.value = true
-
-  const onMove = (e: PointerEvent) => {
-    const dx = e.clientX - qqFloatDragStart.x
-    const dy = e.clientY - qqFloatDragStart.y
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-      qqFloatHasMoved = true
-    }
-    const pos = clampQQFloatPosition(qqFloatDragStart.elX + dx, qqFloatDragStart.elY + dy)
-    qqFloatStyle.value = {
-      position: 'fixed',
-      left: `${pos.left}px`,
-      top: `${pos.top}px`,
-      right: 'auto',
-      bottom: 'auto',
-    }
-  }
-
-  const onUp = () => {
-    el.removeEventListener('pointermove', onMove)
-    el.removeEventListener('pointerup', onUp)
-    el.removeEventListener('pointercancel', onUp)
-    isDraggingQQFloat.value = false
-
-    const currentLeft = parseFloat(qqFloatStyle.value.left || '0')
-    const snappedLeft = snapQQFloatToEdge(currentLeft)
-    const pos = clampQQFloatPosition(snappedLeft, parseFloat(qqFloatStyle.value.top || '0'))
-    qqFloatStyle.value = {
-      position: 'fixed',
-      left: `${pos.left}px`,
-      top: `${pos.top}px`,
-      right: 'auto',
-      bottom: 'auto',
-    }
-  }
-
-  el.addEventListener('pointermove', onMove)
-  el.addEventListener('pointerup', onUp)
-  el.addEventListener('pointercancel', onUp)
-}
-
-function openQQFloat() {
-  if (qqFloatHasMoved) return
+function openBetaGroup() {
   window.open(qqBetaGroupUrl, '_blank', 'noopener,noreferrer')
 }
-
-// --- QQ 浮窗拖动逻辑结束 ---
 
 function hashQueryValue(key: string) {
   const hash = route.hash.trim()
@@ -327,21 +239,6 @@ const contractSigningStatus = ref<ContractSigningStatus | null>(null)
 const { showToast } = useToast()
 const heroSignals = ['免费资源共享', '需求记录留痕', '工单沟通协作']
 const qqBetaGroupUrl = 'https://qm.qq.com/q/AXb3VBPurC'
-
-const betaCapabilities = [
-  {
-    title: '当前开放',
-    summary: '公开资源浏览、资源投稿、需求发布、开发者接单意向和工单沟通。',
-  },
-  {
-    title: '暂未开放',
-    summary: '平台担保、资金托管、代收代付、自动分账等涉及许可的交易功能。',
-  },
-  {
-    title: '内测重点',
-    summary: '先服务 Minecraft、网站开发和小工具定制场景，优先打磨真实资源和需求流程。',
-  },
-]
 
 const portalNotices = computed<PortalNotice[]>(() => {
   const notices: PortalNotice[] = []
@@ -541,15 +438,6 @@ const workflowSteps: WorkflowStep[] = [
 
 function openDevWorkbench() {
   void router.push(buildDevPortalUrl(auth.token))
-}
-
-function scrollToSection(sectionId: string) {
-  const element = document.getElementById(sectionId)
-  if (!element) {
-    return
-  }
-
-  element.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function openQuickPanel(panel: QuickPanel) {
@@ -850,23 +738,6 @@ watch(
 
 onMounted(() => {
   auth.hydrate()
-
-  const isMobileViewport = window.innerWidth <= 900
-  qqFloatStyle.value = isMobileViewport
-    ? {
-        position: 'fixed',
-        right: `${QQ_FLOAT_EDGE_GAP}px`,
-        bottom: '104px',
-        left: 'auto',
-        top: 'auto',
-      }
-    : {
-        position: 'fixed',
-        right: `${QQ_FLOAT_EDGE_GAP}px`,
-        top: '30%',
-        left: 'auto',
-        bottom: 'auto',
-      }
 
   const oauthToken =
     typeof route.query.oauth_token === 'string' ? route.query.oauth_token.trim() : ''
@@ -1745,7 +1616,7 @@ async function submitPublishRequirement() {
                   <span>资源与需求</span><span class="portal-title-accent">内测协作</span
                   ><span>平台</span>
                 </h1>
-                <p class="portal-hero__lead">先沉淀 Minecraft、网站和小工具资源，再承接真实需求</p>
+                <p class="portal-hero__lead">你要的资源免费拿，你想做的事找人做</p>
 
                 <div v-if="heroSignals.length" class="portal-signal-list">
                   <span
@@ -2246,28 +2117,11 @@ async function submitPublishRequirement() {
             </div>
           </section>
 
-          <section class="portal-section portal-section--beta">
-            <div class="portal-section__header">
-              <div class="portal-section-title portal-section-title--plain">
-                <h2>内测说明</h2>
-              </div>
-            </div>
-            <div class="portal-beta-grid">
-              <article
-                v-for="item in betaCapabilities"
-                :key="item.title"
-                class="portal-beta-card"
-              >
-                <strong>{{ item.title }}</strong>
-                <p>{{ item.summary }}</p>
-              </article>
-            </div>
-          </section>
-
           <section class="portal-section">
             <div class="portal-section__header">
-              <div>
-                <p class="portal-section__eyebrow">免费资源</p>
+              <div class="portal-section-title">
+                <span class="portal-section-title__icon" aria-hidden="true">★</span>
+                <h2>免费资源</h2>
               </div>
               <button
                 class="portal-link-btn"
@@ -2366,6 +2220,22 @@ async function submitPublishRequirement() {
                 <time>{{ notice.date }}</time>
               </li>
             </ul>
+          </section>
+
+          <section class="portal-card portal-section--beta">
+            <div class="portal-beta-notice">
+              <span class="portal-beta-notice__badge">内测中</span>
+              <p class="portal-beta-notice__text">
+                资源浏览、投稿、需求发布和工单沟通均可免费使用，欢迎反馈建议。
+              </p>
+              <button
+                class="portal-beta-notice__btn"
+                type="button"
+                @click="openBetaGroup"
+              >
+                加入内测QQ群
+              </button>
+            </div>
           </section>
 
           <section
@@ -2518,25 +2388,6 @@ async function submitPublishRequirement() {
           </section>
         </aside>
       </div>
-    </div>
-
-    <div
-      ref="qqFloatRef"
-      class="portal-qq-float"
-      :class="{ 'is-dragging': isDraggingQQFloat }"
-      :style="qqFloatStyle"
-      role="button"
-      tabindex="0"
-      aria-label="加入内测 QQ 群"
-      @pointerdown="onQQFloatPointerDown"
-      @click="openQQFloat"
-      @keydown.enter="openQQFloat"
-      @keydown.space.prevent="openQQFloat"
-    >
-      <el-icon class="portal-qq-float__icon" aria-hidden="true">
-        <ChatDotRound />
-      </el-icon>
-      <span>内测QQ群</span>
     </div>
 
     <div
