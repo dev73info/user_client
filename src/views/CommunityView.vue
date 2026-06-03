@@ -684,7 +684,6 @@ async function submitComment() {
         <div class="community-hero">
           <div>
             <p class="portal-page__eyebrow">社区内容</p>
-            <h2>开发者与用户帖子</h2>
           </div>
           <div class="community-hero__actions">
             <button class="community-hero__button community-hero__button--ghost" type="button" :disabled="loading"
@@ -755,10 +754,10 @@ async function submitComment() {
                 <span>{{ post.like_count }} 赞</span>
               </div>
             </div>
-            <div class="community-post-card__tags">
-              <span v-for="tag in post.tags" :key="tag.id">{{ tag.name }}</span>
-            </div>
             <div class="community-post-card__meta">
+              <div class="community-post-card__tags">
+                <span v-for="tag in post.tags" :key="tag.id">{{ tag.name }}</span>
+              </div>
               <span>{{ post.comment_count }} 条评论</span>
               <span>更新 {{ post.updated_at }}</span>
             </div>
@@ -946,6 +945,11 @@ async function submitComment() {
   padding: 14px;
 }
 
+.community-stream {
+  position: sticky;
+  top: 76px;
+}
+
 .community-detail {
   position: sticky;
   top: 76px;
@@ -953,6 +957,7 @@ async function submitComment() {
 }
 
 @media (max-width: 1180px) and (min-width: 921px) {
+  .community-stream,
   .community-detail {
     top: 136px;
   }
@@ -1216,16 +1221,16 @@ async function submitComment() {
 .community-post-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .community-post-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px;
+  gap: 4px;
+  padding: 8px 12px;
   border: 1px solid rgba(226, 232, 240, 0.92);
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fff;
   cursor: pointer;
   transition:
@@ -1278,19 +1283,23 @@ async function submitComment() {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
 }
 
 .community-post-card__head h3 {
-  margin-bottom: 6px;
-  font-size: 16px;
-  line-height: 1.35;
+  margin-bottom: 1px;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.community-post-card__head p {
+  font-size: 12px;
 }
 
 .community-post-card__head span {
   flex-shrink: 0;
   color: #2563eb;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -1338,25 +1347,27 @@ async function submitComment() {
 .community-post-card__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
 }
 
 .community-post-card__tags span {
   display: inline-flex;
-  padding: 5px 10px;
+  padding: 1px 7px;
   border-radius: 999px;
   background: rgba(219, 234, 254, 0.9);
   color: #1d4ed8;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
 }
 
 .community-post-card__meta {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 12px;
-  font-size: 13px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #94a3b8;
 }
 
 .community-panel__head,
@@ -1754,6 +1765,7 @@ async function submitComment() {
     grid-template-columns: 1fr;
   }
 
+  .community-stream,
   .community-detail {
     position: static;
   }

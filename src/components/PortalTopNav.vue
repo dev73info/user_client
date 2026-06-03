@@ -1480,9 +1480,7 @@ function finishSearchComposition(event: CompositionEvent) {
     font-size: 14px;
   }
 
-  .portal-header--dev .portal-brand__copy span,
-  .portal-header--dev .portal-nav,
-  .portal-header--dev .portal-search {
+  .portal-header--dev .portal-brand__copy span {
     display: none;
   }
 

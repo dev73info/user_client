@@ -34,6 +34,7 @@ type McCardItem = {
   updatedAt: string
   sourceUrl: string
   coverUrl: string | null
+  coverFailed: boolean
   likeCount: number
   likedByMe: boolean
   likeSubmitting: boolean
@@ -89,6 +90,10 @@ function isSectionExpanded(sectionId: number) {
   return expandedSectionIds.value.includes(sectionId)
 }
 
+function onCoverError(card: McCardItem) {
+  card.coverFailed = true
+}
+
 function toggleSection(sectionId: number) {
   if (isSectionExpanded(sectionId)) {
     expandedSectionIds.value = expandedSectionIds.value.filter((id) => id !== sectionId)
@@ -139,6 +144,7 @@ function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
     updatedAt: item.updated_at,
     sourceUrl: item.source_url,
     coverUrl: item.cover_url ? apiUrl(item.cover_url) : null,
+    coverFailed: false,
     likeCount: item.like_count ?? 0,
     likedByMe: item.liked_by_me ?? false,
     likeSubmitting: false,
@@ -319,7 +325,6 @@ async function loadTagTree() {
         selected: [],
       }),
     )
-    expandedSectionIds.value = filterSections.value.map((section) => section.id)
     applyFiltersFromQuery()
   } catch (err) {
     showToast(err instanceof Error ? err.message : '加载标签失败', 'warning')
@@ -400,8 +405,8 @@ watch(
 
     <section class="portal-resource-browser__grid">
       <article v-for="card in pagedCards" :key="card.id" class="portal-resource-browser__card">
-        <div v-if="card.coverUrl" class="portal-resource-browser__cover portal-resource-browser__cover--image">
-          <img :src="card.coverUrl" :alt="card.title" class="portal-resource-browser__cover-image" />
+        <div v-if="card.coverUrl && !card.coverFailed" class="portal-resource-browser__cover portal-resource-browser__cover--image">
+          <img :src="card.coverUrl" :alt="card.title" class="portal-resource-browser__cover-image" @error="onCoverError(card)" />
         </div>
         <div v-else class="portal-resource-browser__cover" :class="fallbackIconClass">
           {{ fallbackIcon }}

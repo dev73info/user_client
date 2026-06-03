@@ -349,7 +349,7 @@ const portalCategories = computed<PortalCategory[]>(() => {
     },
     {
       label: '更多分类',
-      icon: '•••',
+      icon: '⋯',
       summary: '',
     },
   ]
@@ -1936,6 +1936,11 @@ async function submitPublishRequirement() {
               :key="panel.title"
               class="portal-quick-card"
               :class="`portal-quick-card--${panel.tone}`"
+              role="button"
+              tabindex="0"
+              @click="openQuickPanel(panel)"
+              @keydown.enter="openQuickPanel(panel)"
+              @keydown.space.prevent="openQuickPanel(panel)"
             >
               <div class="portal-quick-card__icon" aria-hidden="true">
                 <svg
@@ -2037,48 +2042,14 @@ async function submitPublishRequirement() {
               <div class="portal-quick-card__copy">
                 <h3>{{ panel.title }}</h3>
                 <p>{{ panel.summary }}</p>
-                <button
-                  class="portal-inline-action"
-                  type="button"
-                  @click="openQuickPanel(panel)"
-                >
+                <span class="portal-inline-action">
                   {{ panel.action }}
                   <el-icon>
                     <ArrowRight />
                   </el-icon>
-                </button>
+                </span>
               </div>
             </article>
-          </section>
-
-          <section id="portal-spotlight" class="portal-section">
-            <div class="portal-section__header">
-              <div class="portal-section-title">
-                <span class="portal-section-title__icon" aria-hidden="true">▣</span>
-                <h2>热门分类</h2>
-              </div>
-              <button
-                class="portal-link-btn"
-                type="button"
-                @click="router.push({ name: 'free-resources' })"
-              >
-                全部分类
-                <span aria-hidden="true">›</span>
-              </button>
-            </div>
-            <div class="portal-category-grid">
-              <button
-                v-for="category in portalCategories"
-                :key="category.label"
-                class="portal-category-card"
-                type="button"
-                @click="openPortalCategory(category)"
-              >
-                <div class="portal-category-card__icon">{{ category.icon }}</div>
-                <strong>{{ category.label }}</strong>
-                <span v-if="category.summary">{{ category.summary }}</span>
-              </button>
-            </div>
           </section>
 
           <section class="portal-section portal-section--workflow">
@@ -2114,6 +2085,36 @@ async function submitPublishRequirement() {
                   >›</span
                 >
               </div>
+            </div>
+          </section>
+
+          <section id="portal-spotlight" class="portal-section">
+            <div class="portal-section__header">
+              <div class="portal-section-title">
+                <span class="portal-section-title__icon" aria-hidden="true">▣</span>
+                <h2>热门分类</h2>
+              </div>
+              <button
+                class="portal-link-btn"
+                type="button"
+                @click="router.push({ name: 'free-resources' })"
+              >
+                全部分类
+                <span aria-hidden="true">›</span>
+              </button>
+            </div>
+            <div class="portal-category-grid">
+              <button
+                v-for="category in portalCategories"
+                :key="category.label"
+                class="portal-category-card"
+                type="button"
+                @click="openPortalCategory(category)"
+              >
+                <div class="portal-category-card__icon">{{ category.icon }}</div>
+                <strong>{{ category.label }}</strong>
+                <span v-if="category.summary">{{ category.summary }}</span>
+              </button>
             </div>
           </section>
 
@@ -2185,6 +2186,37 @@ async function submitPublishRequirement() {
         </div>
 
         <aside class="portal-sidebar">
+          <section v-if="auth.isAuthed" class="portal-card portal-card--invite">
+            <div class="portal-card__header">
+              <h2>🎁 邀请有礼</h2>
+            </div>
+            <p class="portal-invite-banner__text">
+              每邀请一位好友注册，即可解锁专属徽章和排行榜荣誉
+            </p>
+            <RouterLink
+              class="portal-invite-banner__cta"
+              :to="{ name: 'workbench-invite' }"
+            >
+              立即邀请
+            </RouterLink>
+          </section>
+
+          <section class="portal-card portal-section--beta">
+            <div class="portal-beta-notice">
+              <span class="portal-beta-notice__badge">内测中</span>
+              <p class="portal-beta-notice__text">
+                资源浏览、投稿、需求发布和工单沟通均可免费使用，欢迎反馈建议。
+              </p>
+              <button
+                class="portal-beta-notice__btn"
+                type="button"
+                @click="openBetaGroup"
+              >
+                加入内测QQ群
+              </button>
+            </div>
+          </section>
+
           <section class="portal-card portal-card--notice">
             <div class="portal-card__header portal-card__header--notice">
               <div class="portal-card__title portal-card__title--notice">
@@ -2220,22 +2252,6 @@ async function submitPublishRequirement() {
                 <time>{{ notice.date }}</time>
               </li>
             </ul>
-          </section>
-
-          <section class="portal-card portal-section--beta">
-            <div class="portal-beta-notice">
-              <span class="portal-beta-notice__badge">内测中</span>
-              <p class="portal-beta-notice__text">
-                资源浏览、投稿、需求发布和工单沟通均可免费使用，欢迎反馈建议。
-              </p>
-              <button
-                class="portal-beta-notice__btn"
-                type="button"
-                @click="openBetaGroup"
-              >
-                加入内测QQ群
-              </button>
-            </div>
           </section>
 
           <section
@@ -2287,21 +2303,6 @@ async function submitPublishRequirement() {
                 </div>
               </article>
             </div>
-          </section>
-
-          <section v-if="auth.isAuthed" class="portal-card portal-card--invite">
-            <div class="portal-card__header">
-              <h2>🎁 邀请有礼</h2>
-            </div>
-            <p class="portal-invite-banner__text">
-              每邀请一位好友注册，即可解锁专属徽章和排行榜荣誉
-            </p>
-            <RouterLink
-              class="portal-invite-banner__cta"
-              :to="{ name: 'workbench-invite' }"
-            >
-              立即邀请
-            </RouterLink>
           </section>
 
           <section class="portal-card portal-card--rank">

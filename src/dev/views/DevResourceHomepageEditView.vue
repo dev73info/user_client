@@ -26,7 +26,7 @@ import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
-import { sanitizeRichHtml, sanitizeRichHtmlForEditing } from '@/utils/sanitizeHtml'
+import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 
 type RichTextEditorInstance = InstanceType<typeof RichTextEditor>
 
@@ -121,10 +121,11 @@ function formatEditorContent(value: string): string {
   }
 
   if (/<\/?[a-z][\s\S]*>/i.test(trimmed)) {
-    return sanitizeRichHtmlForEditing(trimmed)
+    // 加载已保存的 HTML 内容，使用 sanitizeRichHtml 保持与保存时一致
+    return sanitizeRichHtml(trimmed)
   }
 
-  return sanitizeRichHtmlForEditing(markdownRenderer.render(trimmed))
+  return sanitizeRichHtml(markdownRenderer.render(trimmed))
 }
 
 function syncEditorContent(value: string) {
@@ -227,7 +228,8 @@ async function saveHomepage() {
       description: form.description.trim(),
       cover_url: nextCoverUrl,
       docs_url: form.docs_url.trim() || null,
-      release_note: form.release_note.trim() || null,
+      // 保存时用 sanitizeRichHtml 将 language-md 代码块渲染为富文本
+      release_note: sanitizeRichHtml(form.release_note.trim()) || null,
     })
 
     resource.value = updated
