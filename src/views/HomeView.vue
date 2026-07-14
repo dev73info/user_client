@@ -239,6 +239,10 @@ const contractSigningStatus = ref<ContractSigningStatus | null>(null)
 const { showToast } = useToast()
 const heroSignals = ['免费资源共享', '需求记录留痕', '工单沟通协作']
 const qqBetaGroupUrl = 'https://qm.qq.com/q/AXb3VBPurC'
+const isDeveloperAccount = computed(() => auth.role === 'dev' || auth.role === 'super_admin')
+const devActionLabel = computed(() =>
+  isDeveloperAccount.value ? '创建资源' : '成为开发者',
+)
 
 const portalNotices = computed<PortalNotice[]>(() => {
   const notices: PortalNotice[] = []
@@ -437,6 +441,11 @@ const workflowSteps: WorkflowStep[] = [
 ]
 
 function openDevWorkbench() {
+  if (isDeveloperAccount.value) {
+    void router.push({ name: 'dev-plugins' })
+    return
+  }
+
   void router.push(buildDevPortalUrl(auth.token))
 }
 
@@ -1640,7 +1649,7 @@ async function submitPublishRequirement() {
                     type="button"
                     @click="openDevWorkbench"
                   >
-                    成为开发者
+                    {{ devActionLabel }}
                   </button>
                 </div>
               </div>

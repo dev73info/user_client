@@ -20,6 +20,7 @@ const apiBaseUrl = normalizeBaseUrl(
 const resolvedApiBaseUrl = resolveBaseUrl(apiBaseUrl)
 const maxCommunityPosts = positiveInteger(process.env.SITEMAP_MAX_COMMUNITY_POSTS, 1000)
 const today = new Date().toISOString().slice(0, 10)
+let sitemapFetchFailed = false
 
 const staticEntries = [
   { path: '/', lastmod: today, changefreq: 'daily', priority: '1.0' },
@@ -32,7 +33,10 @@ const staticEntries = [
 ]
 
 async function main() {
-  const [resources, posts] = await Promise.all([fetchResources(), fetchCommunityPosts()])
+  const [resources, posts] = await Promise.all([
+    fetchResources().catch((error) => handleFetchFailure('resources', error)),
+    fetchCommunityPosts().catch((error) => handleFetchFailure('community posts', error)),
+  ])
   const entries = [
     ...staticEntries,
     ...resources.map((resource) => ({
@@ -48,6 +52,11 @@ async function main() {
       priority: '0.6',
     })),
   ]
+
+  if (sitemapFetchFailed && hasExistingSitemap()) {
+    console.warn(`[sitemap] keeping existing sitemap because dynamic API data is unavailable -> ${sitemapPath}`)
+    return
+  }
 
   await mkdir(dirname(sitemapPath), { recursive: true })
   await writeFile(sitemapPath, renderSitemap(dedupeEntries(entries)), 'utf8')
@@ -93,6 +102,21 @@ async function fetchJson(path) {
   }
 
   return response.json()
+}
+
+function handleFetchFailure(label, error) {
+  sitemapFetchFailed = true
+  const message = error instanceof Error ? error.message : String(error)
+  console.warn(`[sitemap] failed to fetch ${label}: ${message}`)
+  return []
+}
+
+function hasExistingSitemap() {
+  try {
+    return readFileSync(sitemapPath, 'utf8').trim().length > 0
+  } catch {
+    return false
+  }
 }
 
 function renderSitemap(entries) {
