@@ -57,6 +57,14 @@ const selectedRequirementAcceptanceHtml = computed(
     (selectedRequirementDetailLoading.value ? '验收标准加载中...' : '当前需求暂未补充验收标准。'),
 )
 
+const isSelectedRequirementOwnedByCurrentUser = computed(() => {
+  if (!auth.isAuthed || !selectedRequirement.value?.creator) {
+    return false
+  }
+
+  return selectedRequirement.value.creator === auth.username
+})
+
 const filteredRequirements = computed(() => {
   const normalized = keyword.value.trim().toLowerCase()
   if (!normalized) {
@@ -609,7 +617,7 @@ async function loadHallData() {
           </div>
         </section>
 
-        <div v-if="auth.isAuthed" class="requirement-hall-detail__actions">
+        <div v-if="auth.isAuthed && !isSelectedRequirementOwnedByCurrentUser" class="requirement-hall-detail__actions">
           <button class="requirement-hall-detail__bind" type="button"
             @click="openRequirementWorkbench(selectedRequirement)">
             <el-icon>

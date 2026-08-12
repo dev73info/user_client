@@ -8,7 +8,12 @@ import {
   type RequirementConversation,
   type RequirementConversationDetail,
 } from '@dev/api/conversations'
-import { listMyRequirements, type RequirementItem } from '@dev/api/requirements'
+import {
+  listMyRequirements,
+  requestUnbindRequirement,
+  respondUnbindRequirement,
+  type RequirementItem,
+} from '@dev/api/requirements'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@dev/api/contracts'
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
@@ -25,6 +30,14 @@ const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const conversationLoading = ref(false)
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
+
+const unbindVisible = ref(false)
+const unbindRequirement = ref<RequirementItem | null>(null)
+const unbindReason = ref('')
+const unbindLoading = ref(false)
+const unbindRespondVisible = ref(false)
+const unbindRespondRequirement = ref<RequirementItem | null>(null)
+const unbindRespondLoading = ref(false)
 
 const emptyText = computed(() => (loading.value ? '我的需求单加载中' : '当前账号还没有已关联需求'))
 const boundCount = computed(() => rows.value.filter((item) => item.bound_resource_id != null).length)
@@ -221,6 +234,118 @@ function openContractSign(item: RequirementItem) {
   })
 }
 
+function canRequestUnbind(item: RequirementItem) {
+  return (
+    (item.status === 'in_development' || item.status === 'deposit_paid') &&
+    !item.pending_unbind_request
+  )
+}
+
+function unbindRequestHint(item: RequirementItem) {
+  const request = item.pending_unbind_request
+  if (!request) {
+    return ''
+  }
+
+  if (request.status === 'pending') {
+    return request.initiator === 'creator'
+      ? '需求方申请解除，等待你确认'
+      : '已提交解除申请，等待需求方确认'
+  }
+
+  if (request.status === 'approved') {
+    return '解除申请已通过，需求已重新挂回大厅'
+  }
+
+  return '解除申请已被拒绝'
+}
+
+function openUnbindRequest(item: RequirementItem) {
+  if (!canRequestUnbind(item)) {
+    return
+  }
+  unbindRequirement.value = item
+  unbindReason.value = ''
+  unbindVisible.value = true
+}
+
+function closeUnbindRequest() {
+  if (unbindLoading.value) {
+    return
+  }
+  unbindVisible.value = false
+  unbindRequirement.value = null
+  unbindReason.value = ''
+}
+
+async function submitUnbindRequest() {
+  const item = unbindRequirement.value
+  if (!item) {
+    return
+  }
+
+  const reason = unbindReason.value.trim()
+  if (!reason) {
+    showToast('请填写解除绑定的原因', 'warning')
+    return
+  }
+
+  unbindLoading.value = true
+  try {
+    await requestUnbindRequirement(auth.token, item.requirement_id, reason)
+    showToast('解除申请已提交，等待需求方确认', 'success')
+    unbindVisible.value = false
+    unbindRequirement.value = null
+    unbindReason.value = ''
+    await loadMyRequirements()
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '提交解除申请失败', 'error')
+  } finally {
+    unbindLoading.value = false
+  }
+}
+
+function hasPendingCreatorUnbindRequest(item: RequirementItem) {
+  return item.pending_unbind_request?.status === 'pending' &&
+    item.pending_unbind_request.initiator === 'creator'
+}
+
+function openUnbindRespond(item: RequirementItem) {
+  if (!hasPendingCreatorUnbindRequest(item)) {
+    return
+  }
+  unbindRespondRequirement.value = item
+  unbindRespondVisible.value = true
+}
+
+function closeUnbindRespond() {
+  if (unbindRespondLoading.value) {
+    return
+  }
+  unbindRespondVisible.value = false
+  unbindRespondRequirement.value = null
+}
+
+async function submitUnbindRespond(action: 'approve' | 'reject') {
+  const item = unbindRespondRequirement.value
+  if (!item) {
+    return
+  }
+
+  unbindRespondLoading.value = true
+  try {
+    await respondUnbindRequirement(auth.token, item.requirement_id, action)
+    showToast(action === 'approve' ? '已同意解除，需求已重新挂回大厅' : '已拒绝解除申请', 'success')
+    unbindRespondVisible.value = false
+    unbindRespondRequirement.value = null
+    await loadMyRequirements()
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '处理解除申请失败', 'error')
+  } finally {
+    unbindRespondLoading.value = false
+  }
+}
+
 async function loadRequirementConversations() {
   if (!auth.token) {
     requirementConversationMap.value = {}
@@ -336,6 +461,14 @@ async function loadRequirementConversations() {
               </span>
             </template>
           </el-table-column>
+          <el-table-column label="解除状态" min-width="160">
+            <template #default="scope">
+              <el-tag v-if="scope.row.pending_unbind_request?.status === 'pending'" type="warning" effect="plain">
+                解除待确认
+              </el-tag>
+              <span v-else class="conversation-status-text">{{ unbindRequestHint(scope.row) || '—' }}</span>
+            </template>
+          </el-table-column>
           <el-table-column label="沟通" width="96">
             <template #default="scope">
               <el-button type="primary" link :disabled="!canOpenConversation(scope.row)"
@@ -343,9 +476,52 @@ async function loadRequirementConversations() {
                 }}</el-button>
             </template>
           </el-table-column>
+          <el-table-column label="操作" width="140">
+            <template #default="scope">
+              <el-button v-if="hasPendingCreatorUnbindRequest(scope.row)" type="warning" link
+                @click="openUnbindRespond(scope.row)">处理解除申请</el-button>
+              <el-button v-else-if="canRequestUnbind(scope.row)" type="danger" link
+                @click="openUnbindRequest(scope.row)">申请解除</el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </div>
     </el-card>
+
+    <el-dialog v-model="unbindVisible" title="申请解除需求绑定" width="480px"
+      :close-on-click-modal="false" :close-on-press-escape="false" @close="closeUnbindRequest">
+      <div class="unbind-dialog-body">
+        <p class="unbind-dialog-tip">
+          解除后需求将重新挂回大厅，等待其他开发者承接。此操作需要需求方确认，请填写真实原因。
+        </p>
+        <el-input v-model="unbindReason" type="textarea" :rows="4" maxlength="1000" show-word-limit
+          placeholder="请说明无法继续完成的原因，例如：与需求方沟通后确认技术方案无法实现" />
+      </div>
+      <template #footer>
+        <el-button :disabled="unbindLoading" @click="closeUnbindRequest">取消</el-button>
+        <el-button type="danger" :loading="unbindLoading" @click="submitUnbindRequest">提交申请</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="unbindRespondVisible" title="需求方申请解除绑定" width="480px"
+      :close-on-click-modal="false" :close-on-press-escape="false" @close="closeUnbindRespond">
+      <div class="unbind-dialog-body">
+        <p class="unbind-dialog-tip">需求方申请解除绑定，请确认是否同意。</p>
+        <p class="unbind-dialog-line">
+          <strong>需求编号：</strong>{{ unbindRespondRequirement?.requirement_id }}
+        </p>
+        <p class="unbind-dialog-line">
+          <strong>申请原因：</strong>{{ unbindRespondRequirement?.pending_unbind_request?.reason }}
+        </p>
+      </div>
+      <template #footer>
+        <el-button :disabled="unbindRespondLoading" @click="closeUnbindRespond">取消</el-button>
+        <el-button type="danger" :disabled="unbindRespondLoading"
+          @click="submitUnbindRespond('reject')">拒绝解除</el-button>
+        <el-button type="primary" :loading="unbindRespondLoading"
+          @click="submitUnbindRespond('approve')">同意解除</el-button>
+      </template>
+    </el-dialog>
 
     <RequirementConversationModal :visible="conversationVisible" api-mode="dev" :token="auth.token"
       :current-username="auth.username" :requirement-id="conversationRequirement?.requirement_id ?? ''"
@@ -441,6 +617,27 @@ async function loadRequirementConversations() {
   max-width: 100%;
   color: #606266;
   font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.unbind-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.unbind-dialog-tip {
+  margin: 0;
+  color: #b45309;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.unbind-dialog-line {
+  margin: 0;
+  color: #303133;
+  font-size: 13px;
+  line-height: 1.6;
   overflow-wrap: anywhere;
 }
 </style>

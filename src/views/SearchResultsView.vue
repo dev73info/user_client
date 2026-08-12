@@ -144,6 +144,14 @@ const selectedRequirementAcceptanceHtml = computed(
         (selectedRequirementDetailLoading.value ? '验收标准加载中...' : '当前需求暂未补充验收标准。'),
 )
 
+const isSelectedRequirementOwnedByCurrentUser = computed(() => {
+    if (!auth.isAuthed || !selectedRequirement.value?.creator) {
+        return false
+    }
+
+    return selectedRequirement.value.creator === auth.username
+})
+
 watch(
     () => [route.query.keyword, route.query.scope] as const,
     () => {
@@ -665,7 +673,7 @@ function formatTimeLabel(value: string): string {
                     </div>
                 </section>
 
-                <div v-if="auth.isAuthed" class="portal-search-detail__actions">
+                <div v-if="auth.isAuthed && !isSelectedRequirementOwnedByCurrentUser" class="portal-search-detail__actions">
                     <button class="portal-search-detail__bind" type="button"
                         @click="openRequirementWorkbench(selectedRequirement)">
                         <el-icon>

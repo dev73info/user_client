@@ -582,7 +582,6 @@ async function submitBinding() {
 <template>
     <div class="dev-page dev-requirement-detail" v-loading="loading">
         <div class="dev-requirement-detail__toolbar">
-            <el-button class="dev-requirement-detail__back" plain @click="goBack">返回需求大厅</el-button>
             <div v-if="requirement" class="dev-requirement-detail__toolbar-meta">
                 <span>{{ requirement.requirement_id }}</span>
                 <span>{{ statusToLabel(requirement.status) }}</span>
@@ -817,7 +816,7 @@ async function submitBinding() {
 
         <el-card v-else-if="!loading" shadow="never" class="dev-surface-card dev-requirement-detail__empty">
             <p class="dev-empty-state">当前需求不存在或已不可接取。</p>
-            <el-button type="primary" plain @click="goBack">返回需求大厅</el-button>
+            <el-button class="dev-requirement-detail__back" plain @click="goBack">返回需求大厅</el-button>
         </el-card>
     </div>
 </template>
@@ -841,6 +840,32 @@ async function submitBinding() {
 .dev-requirement-detail__back.el-button {
     border-radius: 999px;
     font-weight: 800;
+    --el-button-text-color: #247f7d;
+    --el-button-bg-color: rgba(255, 255, 255, 0.88);
+    --el-button-border-color: rgba(42, 166, 164, 0.32);
+    --el-button-hover-text-color: #fff;
+    --el-button-hover-bg-color: #247f7d;
+    --el-button-hover-border-color: #247f7d;
+    --el-button-active-text-color: #fff;
+    --el-button-active-bg-color: #1f6f6d;
+    --el-button-active-border-color: #1f6f6d;
+    color: #247f7d;
+    box-shadow: 0 8px 18px rgba(42, 166, 164, 0.1);
+    transition:
+        color 160ms ease,
+        background-color 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        transform 160ms ease;
+}
+
+.dev-requirement-detail__back.el-button:hover,
+.dev-requirement-detail__back.el-button:focus-visible {
+    color: #fff;
+    border-color: #247f7d;
+    background-color: #247f7d;
+    box-shadow: 0 10px 22px rgba(42, 166, 164, 0.18);
+    transform: translateY(-1px);
 }
 
 .dev-requirement-detail__toolbar-meta {

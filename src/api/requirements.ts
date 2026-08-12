@@ -25,6 +25,7 @@ export type RequirementOverviewResp = {
 
 export type PublicRequirementSpotlightItem = {
   requirement_id: string
+  creator?: string
   title: string
   description?: string | null
   acceptance_criteria?: string | null
@@ -90,6 +91,19 @@ export type RequirementItem = {
   payment_method?: string | null
   payment_mode: RequirementPaymentMode
   updated_at: string
+  pending_unbind_request?: UnbindRequirementResponse | null
+}
+
+export type UnbindRequirementResponse = {
+  requirement_id: string
+  status: 'pending' | 'approved' | 'rejected'
+  developer: string
+  initiator: 'developer' | 'creator'
+  reason: string
+  created_at: string
+  responded_by?: string | null
+  responded_at?: string | null
+  response_note?: string | null
 }
 
 export type CreateRequirementPayload = {
@@ -262,6 +276,45 @@ export async function completeRequirement(
   )
 }
 
+export async function respondUnbindRequirement(
+  token: string,
+  requirementId: string,
+  action: 'approve' | 'reject',
+  note?: string,
+): Promise<UnbindRequirementResponse> {
+  return requestJson<UnbindRequirementResponse>(
+    `/requirements/${encodeURIComponent(requirementId)}/unbind-response`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify({ action, note: note?.trim() || undefined }),
+    },
+    '处理解除申请失败',
+  )
+}
+
+export async function requestUnbindRequirement(
+  token: string,
+  requirementId: string,
+  reason: string,
+): Promise<UnbindRequirementResponse> {
+  return requestJson<UnbindRequirementResponse>(
+    `/requirements/${encodeURIComponent(requirementId)}/unbind-request`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify({ reason }),
+    },
+    '提交解除申请失败',
+  )
+}
+
 export async function resubmitRequirement(
   token: string,
   requirementId: string,
@@ -278,6 +331,19 @@ export async function resubmitRequirement(
       body: JSON.stringify(payload),
     },
     '重新提交失败',
+  )
+}
+
+export async function cancelRequirement(token: string, requirementId: string): Promise<void> {
+  await requestJson<unknown>(
+    `/requirements/${encodeURIComponent(requirementId)}/cancel`,
+    {
+      method: 'DELETE',
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '取消需求失败',
   )
 }
 

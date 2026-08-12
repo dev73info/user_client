@@ -22,12 +22,15 @@ import {
   type WechatCreatePaymentResp,
 } from '@/api/payments'
 import {
+  cancelRequirement as cancelRequirementApi,
   completeRequirement as completeRequirementApi,
   commentRequirement as commentRequirementApi,
   createRequirement as createRequirementApi,
   listRequirements,
   requestRequirementFinalPayment as requestRequirementFinalPaymentApi,
+  requestUnbindRequirement as requestUnbindRequirementApi,
   resubmitRequirement as resubmitRequirementApi,
+  respondUnbindRequirement as respondUnbindRequirementApi,
   reviewRequirementResourceDelete as reviewRequirementResourceDeleteApi,
   updateRequirementResourceVisibility as updateRequirementResourceVisibilityApi,
   updateRequirementSubscription as updateRequirementSubscriptionApi,
@@ -92,6 +95,16 @@ const versionDeleteRejectTargetId = ref<number | null>(null)
 const versionDeleteRejectNotes = ref<Record<number, string>>({})
 const depositRatioPercent = ref(20)
 const contractSigningStatusMap = ref<Record<string, ContractSigningStatus | null>>({})
+const unbindRespondVisible = ref(false)
+const unbindRespondRequirement = ref<RequirementItem | null>(null)
+const unbindRespondLoading = ref(false)
+const unbindRequestVisible = ref(false)
+const unbindRequestRequirement = ref<RequirementItem | null>(null)
+const unbindRequestReason = ref('')
+const unbindRequestLoading = ref(false)
+const cancelConfirmVisible = ref(false)
+const cancelConfirmTarget = ref<RequirementItem | null>(null)
+const cancelLoading = ref(false)
 
 const detailRequirementDescriptionHtml = computed(
   () =>
@@ -214,6 +227,18 @@ function requirementFinalActionLabel(item: RequirementItem) {
 
 function canResubmit(status: RequirementStatus) {
   return status === 'rejected'
+}
+
+function canCancel(item: RequirementItem) {
+  return !hasBoundResource(item) && item.status !== 'completed' && item.status !== 'final_paid'
+}
+
+function canRequestUnbindAsCreator(item: RequirementItem) {
+  return (
+    hasBoundResource(item) &&
+    (item.status === 'in_development' || item.status === 'deposit_paid') &&
+    !item.pending_unbind_request
+  )
 }
 
 function hasBoundResource(item: RequirementItem) {
@@ -503,6 +528,134 @@ function openCompletionConfirm(item: RequirementItem) {
   completionConfirmVisible.value = true
 }
 
+function hasPendingUnbindRequest(item: RequirementItem) {
+  return item.pending_unbind_request?.status === 'pending'
+}
+
+function hasPendingDeveloperUnbindRequest(item: RequirementItem) {
+  return (
+    item.pending_unbind_request?.status === 'pending' &&
+    item.pending_unbind_request.initiator === 'developer'
+  )
+}
+
+function openUnbindRespond(item: RequirementItem) {
+  if (!hasPendingDeveloperUnbindRequest(item)) {
+    return
+  }
+  unbindRespondRequirement.value = item
+  unbindRespondVisible.value = true
+}
+
+function closeUnbindRespond() {
+  if (unbindRespondLoading.value) {
+    return
+  }
+  unbindRespondVisible.value = false
+  unbindRespondRequirement.value = null
+}
+
+async function submitUnbindRespond(action: 'approve' | 'reject') {
+  const item = unbindRespondRequirement.value
+  if (!item) {
+    return
+  }
+
+  unbindRespondLoading.value = true
+  try {
+    await respondUnbindRequirementApi(auth.token, item.requirement_id, action)
+    showToast(action === 'approve' ? '已同意解除，需求已重新挂回大厅' : '已拒绝解除申请', 'success')
+    unbindRespondVisible.value = false
+    unbindRespondRequirement.value = null
+    await loadMyRequirements()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '处理解除申请失败', 'error')
+  } finally {
+    unbindRespondLoading.value = false
+  }
+}
+
+function openUnbindRequest(item: RequirementItem) {
+  if (!canRequestUnbindAsCreator(item)) {
+    return
+  }
+  unbindRequestRequirement.value = item
+  unbindRequestReason.value = ''
+  unbindRequestVisible.value = true
+}
+
+function closeUnbindRequest() {
+  if (unbindRequestLoading.value) {
+    return
+  }
+  unbindRequestVisible.value = false
+  unbindRequestRequirement.value = null
+  unbindRequestReason.value = ''
+}
+
+async function submitUnbindRequest() {
+  const item = unbindRequestRequirement.value
+  if (!item) {
+    return
+  }
+
+  const reason = unbindRequestReason.value.trim()
+  if (!reason) {
+    showToast('请填写解除绑定的原因', 'warning')
+    return
+  }
+
+  unbindRequestLoading.value = true
+  try {
+    await requestUnbindRequirementApi(auth.token, item.requirement_id, reason)
+    showToast('解除申请已提交，等待开发者确认', 'success')
+    unbindRequestVisible.value = false
+    unbindRequestRequirement.value = null
+    unbindRequestReason.value = ''
+    await loadMyRequirements()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '提交解除申请失败', 'error')
+  } finally {
+    unbindRequestLoading.value = false
+  }
+}
+
+function openCancelConfirm(item: RequirementItem) {
+  if (!canCancel(item)) {
+    return
+  }
+  cancelConfirmTarget.value = item
+  cancelConfirmVisible.value = true
+}
+
+function closeCancelConfirm() {
+  if (cancelLoading.value) {
+    return
+  }
+  cancelConfirmVisible.value = false
+  cancelConfirmTarget.value = null
+}
+
+async function submitCancelRequirement() {
+  const item = cancelConfirmTarget.value
+  if (!item) {
+    return
+  }
+
+  cancelLoading.value = true
+  try {
+    await cancelRequirementApi(auth.token, item.requirement_id)
+    showToast('需求已取消', 'success')
+    cancelConfirmVisible.value = false
+    cancelConfirmTarget.value = null
+    await loadMyRequirements()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '取消需求失败', 'error')
+  } finally {
+    cancelLoading.value = false
+  }
+}
+
 function closeCompletionConfirm() {
   if (completionLoading.value) {
     return
@@ -521,7 +674,8 @@ async function submitRequirementCompletion() {
   try {
     await completeRequirementApi(auth.token, completionConfirmTarget.value.requirement_id)
     showToast('需求已确认完成', 'success')
-    closeCompletionConfirm()
+    completionConfirmVisible.value = false
+    completionConfirmTarget.value = null
     await loadMyRequirements()
   } catch (err) {
     showToast(err instanceof Error ? err.message : '确认完成失败', 'error')
@@ -1151,6 +1305,11 @@ async function submitRequirementPayment() {
 }
 
 function handleRequirementAction(item: RequirementItem) {
+  if (hasPendingDeveloperUnbindRequest(item)) {
+    openUnbindRespond(item)
+    return
+  }
+
   if (hasPendingResourceVersionDeleteReview(item)) {
     toggleVersionDeleteReviewCard(item)
     return
@@ -1278,6 +1437,7 @@ watch(
         <template v-for="item in myRequirements" :key="item.requirement_id">
           <li class="requirement-row" :class="{
             clickable:
+              hasPendingDeveloperUnbindRequest(item) ||
               hasPendingResourceVersionDeleteReview(item) ||
               canPay(item.status, item) ||
               canComplete(item) ||
@@ -1327,6 +1487,16 @@ watch(
                 }}</small>
               <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{
                 item.review_note }}</small>
+              <small v-if="hasPendingDeveloperUnbindRequest(item)" class="requirement-note">
+                <strong>开发者申请解除绑定：</strong>{{ item.pending_unbind_request?.reason }}
+              </small>
+              <small v-if="hasPendingDeveloperUnbindRequest(item)" class="requirement-note">
+                点击当前需求行，可同意解除（需求重新挂回大厅）或拒绝解除。
+              </small>
+              <small v-if="hasPendingUnbindRequest(item) && !hasPendingDeveloperUnbindRequest(item)"
+                class="requirement-note">
+                已提交解除申请，等待开发者确认。
+              </small>
               <small class="requirement-note">{{
                 item.subscribe_status_change
                   ? '已订阅该需求的状态变化通知'
@@ -1342,6 +1512,14 @@ watch(
             <span>{{ formatBudget(item.budget) }}</span>
             <time>{{ formatRequirementTime(item.updated_at) }}</time>
             <div class="requirement-actions">
+              <button v-if="hasPendingDeveloperUnbindRequest(item)" class="ghost small" type="button"
+                @click.stop="openUnbindRespond(item)">
+                处理解除申请
+              </button>
+              <button v-if="canRequestUnbindAsCreator(item)" class="ghost small" type="button"
+                @click.stop="openUnbindRequest(item)">
+                申请解除
+              </button>
               <button class="ghost small" type="button" @click.stop="openRequirementDetail(item)">
                 查看
               </button>
@@ -1382,6 +1560,10 @@ watch(
               <button v-if="canResubmit(item.status)" class="ghost small" type="button"
                 @click.stop="openRequirementEditModal(item)">
                 重新编辑
+              </button>
+              <button v-if="canCancel(item)" class="ghost small" type="button"
+                @click.stop="openCancelConfirm(item)">
+                取消需求
               </button>
               <button v-else-if="canPay(item.status, item)" class="ghost small" type="button"
                 @click.stop="openPayModal(item)">
@@ -1621,6 +1803,90 @@ watch(
           </button>
           <button class="ghost" type="button" :disabled="completionLoading" @click="submitRequirementCompletion">
             {{ completionLoading ? '提交中...' : '确认完成' }}
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="unbindRespondVisible && unbindRespondRequirement" class="modal-wrap"
+      @click.self="closeUnbindRespond">
+      <section class="pay-modal" aria-label="解除绑定申请弹窗">
+        <h3>开发者申请解除绑定</h3>
+        <p class="pay-line"><strong>需求标题：</strong>{{ unbindRespondRequirement.title }}</p>
+        <p class="pay-line">
+          <strong>需求编号：</strong>{{ unbindRespondRequirement.requirement_id }}
+        </p>
+        <p class="pay-line">
+          <strong>开发者：</strong>{{ unbindRespondRequirement.pending_unbind_request?.developer }}
+        </p>
+        <p class="pay-line">
+          <strong>申请时间：</strong>{{ unbindRespondRequirement.pending_unbind_request?.created_at }}
+        </p>
+        <p class="pay-line">
+          <strong>申请原因：</strong>{{ unbindRespondRequirement.pending_unbind_request?.reason }}
+        </p>
+        <p class="tip">同意解除后，需求将重新挂回需求大厅，供其他开发者承接；如拒绝，当前绑定关系保持不变。</p>
+
+        <div class="actions">
+          <button class="ghost" type="button" :disabled="unbindRespondLoading" @click="closeUnbindRespond">
+            取消
+          </button>
+          <button class="ghost danger" type="button" :disabled="unbindRespondLoading"
+            @click="submitUnbindRespond('reject')">
+            拒绝解除
+          </button>
+          <button class="ghost" type="button" :disabled="unbindRespondLoading"
+            @click="submitUnbindRespond('approve')">
+            {{ unbindRespondLoading ? '处理中...' : '同意解除' }}
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="unbindRequestVisible && unbindRequestRequirement" class="modal-wrap"
+      @click.self="closeUnbindRequest">
+      <section class="pay-modal" aria-label="申请解除绑定弹窗">
+        <h3>申请解除绑定</h3>
+        <p class="pay-line"><strong>需求标题：</strong>{{ unbindRequestRequirement.title }}</p>
+        <p class="pay-line">
+          <strong>需求编号：</strong>{{ unbindRequestRequirement.requirement_id }}
+        </p>
+        <label class="pay-line" style="display:flex;flex-direction:column;gap:6px;">
+          <strong>解除原因</strong>
+          <textarea v-model="unbindRequestReason" rows="4" maxlength="1000"
+            placeholder="请说明申请解除绑定的原因，例如：项目安排调整，不再需要继续开发"></textarea>
+        </label>
+        <p class="tip">解除申请提交后需开发者确认；同意后需求将重新挂回大厅。</p>
+
+        <div class="actions">
+          <button class="ghost" type="button" :disabled="unbindRequestLoading" @click="closeUnbindRequest">
+            取消
+          </button>
+          <button class="ghost" type="button" :disabled="unbindRequestLoading"
+            @click="submitUnbindRequest">
+            {{ unbindRequestLoading ? '提交中...' : '提交申请' }}
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="cancelConfirmVisible && cancelConfirmTarget" class="modal-wrap"
+      @click.self="closeCancelConfirm">
+      <section class="pay-modal" aria-label="取消需求弹窗">
+        <h3>取消需求单</h3>
+        <p class="pay-line"><strong>需求标题：</strong>{{ cancelConfirmTarget.title }}</p>
+        <p class="pay-line">
+          <strong>需求编号：</strong>{{ cancelConfirmTarget.requirement_id }}
+        </p>
+        <p class="tip">取消后该需求单将被删除且无法恢复。仅未被开发者接取的需求可以取消。</p>
+
+        <div class="actions">
+          <button class="ghost" type="button" :disabled="cancelLoading" @click="closeCancelConfirm">
+            返回
+          </button>
+          <button class="ghost danger" type="button" :disabled="cancelLoading"
+            @click="submitCancelRequirement">
+            {{ cancelLoading ? '取消中...' : '确认取消' }}
           </button>
         </div>
       </section>
