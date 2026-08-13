@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
+import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import {
   listRequirementConversations,
   type RequirementConversation,
@@ -398,12 +399,15 @@ async function loadRequirementConversations() {
       <div class="dev-my-requirements-table-wrap">
         <el-table :data="rows" stripe v-loading="loading" class="dev-release-table dev-my-requirements-table"
           :empty-text="emptyText" scrollbar-always-on>
-          <el-table-column label="需求" min-width="320">
+          <el-table-column label="需求" min-width="340">
             <template #default="scope">
               <div class="dev-requirement-hall__title-cell">
                 <div class="dev-requirement-hall__requirement-id">{{ scope.row.requirement_id }}</div>
                 <div class="dev-requirement-hall__title">{{ scope.row.title }}</div>
                 <div class="dev-requirement-hall__desc">{{ requirementRichTextPreview(scope.row.description) }}</div>
+                <div class="dev-my-requirements-progress">
+                  <RequirementProgressGuide :requirement="scope.row" :payment-mode="scope.row.payment_mode" view="dev" />
+                </div>
               </div>
             </template>
           </el-table-column>
@@ -618,6 +622,10 @@ async function loadRequirementConversations() {
   color: #606266;
   font-size: 12px;
   overflow-wrap: anywhere;
+}
+
+.dev-my-requirements-progress {
+  margin-top: 10px;
 }
 
 .unbind-dialog-body {

@@ -4,6 +4,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PublishModal from '@/components/PublishModal.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
+import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import { apiUrl } from '@/api/http'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -1578,7 +1579,7 @@ onBeforeUnmount(() => {
         <li v-for="item in recentRequirements" :key="item.requirement_id" class="clickable" role="button" tabindex="0"
           :aria-label="`查看需求：${item.title}`" @click="handleRequirementAction(item)"
           @keydown.enter.prevent="handleRequirementAction(item)" @keydown.space.prevent="handleRequirementAction(item)">
-          <div>
+          <div class="overview-requirement-meta">
             <strong>{{ item.title }}</strong>
             <span>{{ item.requirement_id }} · {{ paymentModeLabel(item) }}</span>
           </div>
@@ -1586,6 +1587,9 @@ onBeforeUnmount(() => {
             formatRequirementStatus(item.status) }}</span>
           <small>{{ formatBudget(item.budget) }}</small>
           <time>{{ formatRequirementTime(item.updated_at) }}</time>
+          <div class="overview-requirement-progress" @click.stop>
+            <RequirementProgressGuide :requirement="item" :payment-mode="item.payment_mode" />
+          </div>
         </li>
       </ul>
     </section>
@@ -2430,6 +2434,15 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(224, 232, 255, 0.96);
   border-radius: 16px;
   background: #ffffff;
+}
+
+.overview-requirement-list .overview-requirement-meta {
+  min-width: 0;
+}
+
+.overview-requirement-list .overview-requirement-progress {
+  grid-column: 1 / -1;
+  margin-top: 4px;
 }
 
 .overview-requirement-list li.clickable {
