@@ -29,7 +29,7 @@ const stats = computed(() => ({
   resourceCount: userResources.value.length,
   badgeCount: userBadges.value.length,
   totalLikes: userResources.value.reduce((sum, r) => sum + r.like_count, 0),
-  platforms: [...new Set(userResources.value.map((r) => r.platform).filter(Boolean))].length,
+  platforms: new Set(userResources.value.map((r) => r.platform).filter(Boolean)).size,
 }))
 
 const failedAvatarUrls = ref<Set<string>>(new Set())

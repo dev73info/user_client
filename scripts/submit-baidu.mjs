@@ -134,7 +134,7 @@ function readEnvFile(path) {
         .map((line) => {
           const index = line.indexOf('=')
           const key = line.slice(0, index).trim()
-          const value = line.slice(index + 1).trim().replace(/^[\"']|[\"']$/g, '')
+          const value = line.slice(index + 1).trim().replace(/^["']|["']$/g, '')
           return [key, value]
         }),
     )

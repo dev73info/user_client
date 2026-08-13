@@ -36,7 +36,7 @@ const teamResources = computed(() =>
 const stats = computed(() => ({
   resourceCount: teamResources.value.length,
   totalLikes: teamResources.value.reduce((sum, r) => sum + r.like_count, 0),
-  platforms: [...new Set(teamResources.value.map((r) => r.platform).filter(Boolean))].length,
+  platforms: new Set(teamResources.value.map((r) => r.platform).filter(Boolean)).size,
 }))
 
 const avatarSrc = computed(() => {
