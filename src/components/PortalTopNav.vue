@@ -639,7 +639,7 @@ function finishSearchComposition(event: CompositionEvent) {
   top: 10px;
   z-index: 40;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(max-content, 1fr) auto;
   align-items: center;
   gap: 20px;
   margin: 10px auto 14px;
@@ -731,6 +731,10 @@ function finishSearchComposition(event: CompositionEvent) {
   justify-self: end;
   gap: 8px;
   min-width: 0;
+}
+
+.portal-header__tools > * {
+  flex-shrink: 0;
 }
 
 .portal-search-menu {
@@ -933,8 +937,6 @@ function finishSearchComposition(event: CompositionEvent) {
 .portal-search.is-input-focused,
 .portal-search.is-input-hovered,
 .portal-search.is-filled {
-  width: clamp(340px, 38vw, 540px);
-  transform: translateX(-1px);
   border-color: rgba(147, 197, 253, 0.96);
   background: #fff;
 }
@@ -1339,12 +1341,6 @@ function finishSearchComposition(event: CompositionEvent) {
 
   .portal-search {
     width: min(clamp(320px, 58vw, 620px), calc(100% - 176px));
-  }
-
-  .portal-search.is-input-focused,
-  .portal-search.is-input-hovered,
-  .portal-search.is-filled {
-    width: min(clamp(420px, 70vw, 720px), calc(100% - 176px));
   }
 
   .portal-user__trigger {

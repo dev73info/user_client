@@ -301,13 +301,13 @@ const portalNotices = computed<PortalNotice[]>(() => {
 const quickPanels = computed<QuickPanel[]>(() => [
   {
     title: '免费资源',
-    summary: 'Minecraft、网站与工具资源\n优先沉淀可复用内容',
+    summary: 'Minecraft、网站与工具资源\n发现并复用现成的优质内容',
     action: '立即查看',
     tone: 'gift',
   },
   {
     title: '需求协作',
-    summary: '提交需求单并留存记录\n线下付款风险自行确认',
+    summary: '发布定制需求，匹配合适的开发者\n平台提供沟通、合同与工单留痕',
     action: '立即发布',
     tone: 'briefcase',
   },
