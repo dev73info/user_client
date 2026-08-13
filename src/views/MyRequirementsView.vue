@@ -154,7 +154,14 @@ function isWaitingContractSign(item: RequirementItem) {
   )
 }
 
+function isUnbinding(item: RequirementItem) {
+  return item.pending_unbind_request?.status === 'pending'
+}
+
 function formatRequirementDisplayStatus(item: RequirementItem) {
+  if (isUnbinding(item)) {
+    return item.pending_unbind_request?.initiator === 'creator' ? '解除待确认' : '开发者申请解除'
+  }
   return isWaitingContractSign(item) ? '待签合同' : formatRequirementStatus(item.status)
 }
 
@@ -1506,7 +1513,10 @@ watch(
                 conversationLastMessageText(item)
                 }}</small>
             </div>
-            <span class="requirement-status" :class="{ 'requirement-status--contract': isWaitingContractSign(item) }">
+            <span class="requirement-status" :class="{
+              'requirement-status--contract': isWaitingContractSign(item),
+              'requirement-status--unbind': isUnbinding(item),
+            }">
               {{ formatRequirementDisplayStatus(item) }}
             </span>
             <span>{{ formatBudget(item.budget) }}</span>
@@ -1759,7 +1769,7 @@ watch(
 
         <div class="actions">
           <button class="ghost" type="button" @click="closePayModal">取消</button>
-          <button class="ghost" type="button" :disabled="payLoading" @click="submitRequirementPayment">
+          <button class="ghost primary" type="button" :disabled="payLoading" @click="submitRequirementPayment">
             {{
               payLoading ? '处理中...' : currentPayment ? '查询支付结果' : `支付${payStageLabel}`
             }}
@@ -1780,7 +1790,7 @@ watch(
 
         <div class="actions">
           <button class="ghost" type="button" @click="closeFinalPaymentConfirm">取消</button>
-          <button class="ghost" type="button" @click="confirmFinalPaymentRequest">
+          <button class="ghost primary" type="button" @click="confirmFinalPaymentRequest">
             {{ finalPaymentConfirmButton }}
           </button>
         </div>
@@ -1801,7 +1811,7 @@ watch(
           <button class="ghost" type="button" :disabled="completionLoading" @click="closeCompletionConfirm">
             取消
           </button>
-          <button class="ghost" type="button" :disabled="completionLoading" @click="submitRequirementCompletion">
+          <button class="ghost primary" type="button" :disabled="completionLoading" @click="submitRequirementCompletion">
             {{ completionLoading ? '提交中...' : '确认完成' }}
           </button>
         </div>
@@ -1831,11 +1841,11 @@ watch(
           <button class="ghost" type="button" :disabled="unbindRespondLoading" @click="closeUnbindRespond">
             取消
           </button>
-          <button class="ghost danger" type="button" :disabled="unbindRespondLoading"
+          <button class="ghost danger-plain" type="button" :disabled="unbindRespondLoading"
             @click="submitUnbindRespond('reject')">
             拒绝解除
           </button>
-          <button class="ghost" type="button" :disabled="unbindRespondLoading"
+          <button class="ghost primary" type="button" :disabled="unbindRespondLoading"
             @click="submitUnbindRespond('approve')">
             {{ unbindRespondLoading ? '处理中...' : '同意解除' }}
           </button>
@@ -1862,7 +1872,7 @@ watch(
           <button class="ghost" type="button" :disabled="unbindRequestLoading" @click="closeUnbindRequest">
             取消
           </button>
-          <button class="ghost" type="button" :disabled="unbindRequestLoading"
+          <button class="ghost primary" type="button" :disabled="unbindRequestLoading"
             @click="submitUnbindRequest">
             {{ unbindRequestLoading ? '提交中...' : '提交申请' }}
           </button>
@@ -1926,7 +1936,7 @@ watch(
 
         <div class="actions">
           <button class="ghost" type="button" @click="closeCommentModal">取消</button>
-          <button class="ghost" type="button" :disabled="commentLoading" @click="submitRequirementComment">
+          <button class="ghost primary" type="button" :disabled="commentLoading" @click="submitRequirementComment">
             {{ commentLoading ? '提交中...' : '提交评论' }}
           </button>
         </div>

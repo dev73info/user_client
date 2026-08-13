@@ -1842,7 +1842,7 @@ onBeforeUnmount(() => {
 
         <div class="actions">
           <button class="ghost" type="button" @click="closePayModal">取消</button>
-          <button class="ghost" type="button" :disabled="payLoading" @click="submitRequirementPayment">
+          <button class="ghost primary" type="button" :disabled="payLoading" @click="submitRequirementPayment">
             {{ payLoading ? '处理中...' : currentPayment ? '查询支付结果' : `支付${payStageLabel}` }}
           </button>
         </div>
@@ -1859,7 +1859,7 @@ onBeforeUnmount(() => {
 
         <div class="actions">
           <button class="ghost" type="button" @click="closeFinalPaymentConfirm">取消</button>
-          <button class="ghost" type="button" @click="confirmFinalPaymentRequest">{{ finalPaymentConfirmButton
+          <button class="ghost primary" type="button" @click="confirmFinalPaymentRequest">{{ finalPaymentConfirmButton
           }}</button>
         </div>
       </section>
@@ -1875,7 +1875,7 @@ onBeforeUnmount(() => {
 
         <div class="actions">
           <button class="ghost" type="button" :disabled="completionLoading" @click="closeCompletionConfirm">取消</button>
-          <button class="ghost" type="button" :disabled="completionLoading" @click="submitRequirementCompletion">
+          <button class="ghost primary" type="button" :disabled="completionLoading" @click="submitRequirementCompletion">
             {{ completionLoading ? '提交中...' : '确认完成' }}
           </button>
         </div>
@@ -1912,7 +1912,7 @@ onBeforeUnmount(() => {
 
         <div class="actions">
           <button class="ghost" type="button" @click="closeCommentModal">取消</button>
-          <button class="ghost" type="button" :disabled="commentLoading" @click="submitRequirementComment">
+          <button class="ghost primary" type="button" :disabled="commentLoading" @click="submitRequirementComment">
             {{ commentLoading ? '提交中...' : '提交评论' }}
           </button>
         </div>

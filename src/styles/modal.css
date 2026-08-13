@@ -952,3 +952,74 @@
   color: #ffd166;
   font-size: 28px;
 }
+
+/* === 确认/处理弹窗统一按钮体系 === */
+/* 作用域限定在 .modal-wrap（确认弹窗）内，避免影响列表中的 ghost 按钮 */
+.modal-wrap .pay-modal .actions {
+  justify-content: flex-end;
+}
+
+.modal-wrap .pay-modal .actions .ghost {
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid rgba(209, 220, 243, 0.95);
+  background: #ffffff;
+  color: #334155;
+  box-shadow: 0 6px 16px rgba(76, 103, 172, 0.06);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.modal-wrap .pay-modal .actions .ghost:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #f8fbff;
+  border-color: rgba(125, 155, 225, 0.92);
+  box-shadow: 0 10px 22px rgba(76, 103, 172, 0.1);
+}
+
+/* 主操作：蓝色实心 */
+.modal-wrap .pay-modal .actions .ghost.primary {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.2);
+}
+
+.modal-wrap .pay-modal .actions .ghost.primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.26);
+}
+
+/* 危险操作：红色实心 */
+.modal-wrap .pay-modal .actions .ghost.danger {
+  border-color: #dc2626;
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(220, 38, 38, 0.18);
+}
+
+.modal-wrap .pay-modal .actions .ghost.danger:hover:not(:disabled) {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  box-shadow: 0 12px 26px rgba(220, 38, 38, 0.24);
+}
+
+/* 危险操作（弱化）：红色描边 */
+.modal-wrap .pay-modal .actions .ghost.danger-plain {
+  border-color: rgba(220, 38, 38, 0.4);
+  background: rgba(254, 242, 242, 0.92);
+  color: #b91c1c;
+}
+
+.modal-wrap .pay-modal .actions .ghost.danger-plain:hover:not(:disabled) {
+  background: rgba(254, 226, 226, 0.96);
+  border-color: rgba(220, 38, 38, 0.6);
+}
