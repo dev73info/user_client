@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>监护人同意书模板 - 73info</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px 16px;
+      background: #f5f7fa;
+      color: #1f2937;
+      font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    }
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      padding: 48px 56px;
+      box-shadow: 0 6px 24px rgba(15, 23, 42, 0.08);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 26px;
+      text-align: center;
+      letter-spacing: 2px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #64748b;
+      font-size: 13px;
+      margin: 0 0 32px;
+    }
+    p { line-height: 1.9; font-size: 15px; }
+    .field {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin: 18px 0;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+    .field .label { flex: 0 0 auto; color: #475569; }
+    .field .value { flex: 1 1 auto; min-height: 24px; }
+    .note {
+      margin-top: 28px;
+      padding: 12px 16px;
+      background: #f8fafc;
+      border-left: 4px solid #3b82f6;
+      border-radius: 6px;
+      color: #475569;
+      font-size: 13px;
+    }
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 32px;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .print-btn { background: #2563eb; color: #fff; }
+    .print-btn:hover { background: #1d4ed8; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .page { box-shadow: none; border-radius: 0; padding: 40px 48px; }
+      .actions { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>监护人同意书</h1>
+    <p class="subtitle">未成年人实名认证使用</p>
+
+    <p>致 柒叁信息（73info）平台：</p>
+    <p>
+      本人系未成年人 <span class="blank">________</span> 的监护人，已充分了解并同意其在
+      柒叁信息（73info）平台注册账号并提交实名认证信息。
+    </p>
+
+    <div class="field">
+      <span class="label">未成年人姓名：</span>
+      <span class="value"></span>
+    </div>
+    <div class="field">
+      <span class="label">未成年人证件号：</span>
+      <span class="value"></span>
+    </div>
+    <div class="field">
+      <span class="label">监护人姓名：</span>
+      <span class="value"></span>
+    </div>
+    <div class="field">
+      <span class="label">监护人证件号：</span>
+      <span class="value"></span>
+    </div>
+    <div class="field">
+      <span class="label">与未成年人关系：</span>
+      <span class="value"></span>
+    </div>
+    <div class="field">
+      <span class="label">监护人联系电话：</span>
+      <span class="value"></span>
+    </div>
+    <div class="field">
+      <span class="label">签署日期：</span>
+      <span class="value"></span>
+    </div>
+
+    <p>本人承诺以上信息真实有效，并授权平台依法处理上述个人信息用于实名认证与合规审核。</p>
+
+    <div class="field" style="margin-top: 40px;">
+      <span class="label">监护人签名：</span>
+      <span class="value"></span>
+    </div>
+
+    <div class="note">
+      说明：请监护人打印或抄写本模板，完整填写各项信息并亲笔签名后，扫描或拍照上传至平台。
+      上传的同意书仅用于未成年人实名认证合规审核。
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="print-btn" onclick="window.print()">打印 / 保存为 PDF</button>
+  </div>
+</body>
+</html>

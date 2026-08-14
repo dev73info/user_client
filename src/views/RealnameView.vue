@@ -9,6 +9,7 @@ import {
   getMyRealnameVerification,
   startWechatFaceidVerification,
   submitMyRealnameVerification,
+  uploadGuardianConsentFile,
   type RealnameAuthType,
   type CompleteWechatFaceidVerificationPayload,
   type SubmitRealnameVerificationPayload,
@@ -26,6 +27,8 @@ const { showToast } = useToast()
 const submitting = ref(false)
 const faceidStarting = ref(false)
 const faceidChecking = ref(false)
+const consentUploading = ref(false)
+const consentFileInput = ref<HTMLInputElement | null>(null)
 const current = ref<UserRealnameVerification | null>(null)
 const reviewerAvatarLoadFailed = ref(false)
 const faceidAuthUrl = ref('')
@@ -51,6 +54,8 @@ const form = reactive({
   businessLicenseNo: '',
   operatorName: '',
   operatorIdCardNo: '',
+  guardianConsent: false,
+  guardianConsentFile: '',
 })
 
 const redirectTarget = computed(() => {
@@ -91,6 +96,54 @@ const submitDisabled = computed(
   () => realnameApproved.value || (realnameLocked.value && !identityCardSelected.value),
 )
 
+function idCardAge(idCardNo: string): number | null {
+  const text = idCardNo.trim().toUpperCase()
+  if (text.length !== 18) {
+    return null
+  }
+  const birthday = text.slice(6, 14)
+  if (!/^\d{8}$/.test(birthday)) {
+    return null
+  }
+  const year = Number(birthday.slice(0, 4))
+  const month = Number(birthday.slice(4, 6))
+  const day = Number(birthday.slice(6, 8))
+  const birth = new Date(year, month - 1, day)
+  if (
+    birth.getFullYear() !== year ||
+    birth.getMonth() !== month - 1 ||
+    birth.getDate() !== day
+  ) {
+    return null
+  }
+  const now = new Date()
+  let age = now.getFullYear() - year
+  const monthDiff = now.getMonth() - (month - 1)
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < day)) {
+    age -= 1
+  }
+  return age
+}
+
+// 仅在选中大陆身份证且证件号为 18 位时计算年龄
+const idCardAgeValue = computed(() =>
+  identityCardSelected.value ? idCardAge(form.idCardNo) : null,
+)
+// 未满 14 周岁：禁止实名
+const isUnder14 = computed(() =>
+  idCardAgeValue.value !== null && idCardAgeValue.value < 14,
+)
+// 14~18 周岁：需要监护人同意
+const isMinor14To18 = computed(() =>
+  idCardAgeValue.value !== null &&
+  idCardAgeValue.value >= 14 &&
+  idCardAgeValue.value < 18,
+)
+// 已满 18 周岁：无需监护人同意
+const isAdult = computed(() =>
+  idCardAgeValue.value !== null && idCardAgeValue.value >= 18,
+)
+
 const idCardPlaceholder = computed(() => {
   const masked = current.value?.id_card_no_masked
   return masked ? `${masked}` : '请输入证件号'
@@ -129,6 +182,8 @@ function patchForm(record: UserRealnameVerification) {
   form.businessLicenseNo = record.business_license_no ?? ''
   form.operatorName = record.operator_name ?? ''
   form.operatorIdCardNo = ''
+  form.guardianConsent = record.guardian_consent ?? false
+  form.guardianConsentFile = record.guardian_consent_file ?? ''
 }
 
 function formatTime(value?: string | null) {
@@ -185,6 +240,13 @@ function buildPayload(): SubmitRealnameVerificationPayload {
   if (form.businessLicenseNo.trim()) payload.business_license_no = form.businessLicenseNo.trim()
   if (form.operatorName.trim()) payload.operator_name = form.operatorName.trim()
   if (form.operatorIdCardNo.trim()) payload.operator_id_card_no = form.operatorIdCardNo.trim()
+  // 只有 14~18 周岁的未成年人才需要监护人同意；成年人无需传
+  if (isMinor14To18.value) {
+    payload.guardian_consent = form.guardianConsent
+    if (form.guardianConsentFile.trim()) {
+      payload.guardian_consent_file = form.guardianConsentFile.trim()
+    }
+  }
 
   return payload
 }
@@ -252,6 +314,73 @@ function openWechatFaceidPage() {
     return
   }
   window.open(faceidAuthUrl.value, '_blank', 'noopener,noreferrer')
+}
+
+const MAX_CONSENT_FILE_SIZE = 5 * 1024 * 1024
+const ALLOWED_CONSENT_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/webp',
+  'application/pdf',
+  'application/octet-stream',
+]
+const ALLOWED_CONSENT_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'pdf']
+
+function consentFileExtension(name: string): string {
+  const dot = name.lastIndexOf('.')
+  if (dot < 0) {
+    return ''
+  }
+  return name.slice(dot + 1).toLowerCase()
+}
+
+function isAllowedConsentFile(file: File): boolean {
+  const ext = consentFileExtension(file.name)
+  if (ext && ALLOWED_CONSENT_EXTENSIONS.includes(ext)) {
+    return true
+  }
+  const mime = (file.type || '').toLowerCase()
+  return mime === 'image/png' || mime === 'image/jpeg' || mime === 'image/jpg' || mime === 'image/webp' || mime === 'application/pdf'
+}
+
+function openConsentPicker() {
+  consentFileInput.value?.click()
+}
+
+async function handleConsentFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) {
+    return
+  }
+
+  if (!isAllowedConsentFile(file)) {
+    showToast('同意书仅支持 PNG、JPG、WEBP 图片或 PDF 文件', 'warning')
+    return
+  }
+  if (file.size > MAX_CONSENT_FILE_SIZE) {
+    showToast('同意书文件不能超过 5MB', 'warning')
+    return
+  }
+
+  auth.hydrate()
+  if (!auth.token.trim()) {
+    showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+
+  consentUploading.value = true
+  try {
+    const result = await uploadGuardianConsentFile(auth.token, file)
+    form.guardianConsentFile = result.guardian_consent_file
+    showToast('监护人同意书已上传', 'success')
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '上传监护人同意书失败', 'error')
+  } finally {
+    consentUploading.value = false
+  }
 }
 
 async function startWechatFaceid() {
@@ -480,6 +609,54 @@ onBeforeUnmount(() => {
                 :disabled="realnameLocked" />
             </el-form-item>
 
+            <el-form-item v-if="isUnder14">
+              <el-alert
+                type="error"
+                :closable="false"
+                show-icon
+                title="未满 14 周岁的未成年人不能进行实名认证"
+              />
+            </el-form-item>
+
+            <el-form-item v-if="isMinor14To18">
+              <el-checkbox v-model="form.guardianConsent" :disabled="realnameLocked">
+                我已取得监护人同意
+              </el-checkbox>
+            </el-form-item>
+
+            <el-form-item v-if="isMinor14To18 && form.guardianConsent" label="监护人同意书">
+              <div class="realname-consent-upload">
+                <input
+                  ref="consentFileInput"
+                  class="realname-consent-upload__native"
+                  type="file"
+                  accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf"
+                  @change="handleConsentFileChange"
+                />
+                <el-button plain :loading="consentUploading" :disabled="realnameLocked" @click="openConsentPicker">
+                  选择文件上传
+                </el-button>
+                <span v-if="form.guardianConsentFile" class="realname-consent-upload__name">
+                  已上传：{{ form.guardianConsentFile.split('/').pop() || '同意书' }}
+                </span>
+                <span v-else class="realname-consent-upload__hint">
+                  请上传监护人签署的同意书（图片或 PDF，5MB 以内）
+                </span>
+                <a class="realname-consent-template" href="/guardian-consent-template.html" target="_blank" rel="noopener noreferrer">
+                  下载监护人同意书模板
+                </a>
+              </div>
+            </el-form-item>
+
+            <el-form-item v-if="isAdult">
+              <el-alert
+                type="info"
+                :closable="false"
+                show-icon
+                title="您已年满 18 周岁，无需上传监护人同意书"
+              />
+            </el-form-item>
+
             <div class="realname-form__actions">
               <el-button type="primary" class="realname-submit-btn" :loading="submitting || faceidStarting"
                 :disabled="submitDisabled" @click="submit">
@@ -636,6 +813,43 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.realname-consent-upload {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.realname-consent-upload__native {
+  display: none;
+}
+
+.realname-consent-upload__name {
+  color: #15803d;
+  font-size: 13px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.realname-consent-upload__hint {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.realname-consent-template {
+  color: #d97706;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.realname-consent-template:hover {
+  color: #b45309;
+  opacity: 1;
 }
 
 .realname-faceid-panel {

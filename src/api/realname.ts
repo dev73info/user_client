@@ -1,4 +1,4 @@
-import { authHeaders, requestJson } from '@/api/http'
+import { authHeader, authHeaders, requestJson } from '@/api/http'
 
 export type RealnameAuthType = 'IDENTITY_CARD' | 'RESIDENCE_HK_MC' | 'RESIDENCE_TAIWAN'
 export type UserRealnameStatus = 'pending' | 'approved' | 'rejected'
@@ -15,6 +15,8 @@ export type UserRealnameVerification = {
   business_license_no?: string | null
   operator_name?: string | null
   operator_id_card_no_masked?: string | null
+  guardian_consent?: boolean | null
+  guardian_consent_file?: string | null
   review_note?: string | null
   reviewed_by?: string | null
   reviewed_by_avatar_url?: string | null
@@ -32,6 +34,8 @@ export type SubmitRealnameVerificationPayload = {
   business_license_no?: string | null
   operator_name?: string | null
   operator_id_card_no?: string | null
+  guardian_consent?: boolean | null
+  guardian_consent_file?: string | null
 }
 
 export type SubmitRealnameVerificationResponse = UserRealnameVerification
@@ -107,5 +111,29 @@ export async function completeWechatFaceidVerification(
       body: JSON.stringify(payload),
     },
     '查询微信人脸核身结果失败',
+  )
+}
+
+export type GuardianConsentUploadResponse = {
+  guardian_consent_file: string
+}
+
+export async function uploadGuardianConsentFile(
+  token: string,
+  file: File,
+): Promise<GuardianConsentUploadResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return requestJson<GuardianConsentUploadResponse>(
+    '/realname/consent-file',
+    {
+      method: 'POST',
+      headers: {
+        ...authHeader(token),
+      },
+      body: formData,
+    },
+    '上传监护人同意书失败',
   )
 }
