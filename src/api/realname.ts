@@ -9,6 +9,7 @@ export type UserRealnameVerification = {
   status: UserRealnameStatus
   real_name?: string | null
   id_card_no_masked?: string | null
+  birthday?: string | null
   company_name?: string | null
   unified_social_credit_code?: string | null
   business_license_no?: string | null
