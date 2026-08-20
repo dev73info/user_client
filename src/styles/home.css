@@ -1558,6 +1558,54 @@
   border-color: rgba(37, 99, 235, 0.45);
 }
 
+/* 内测卡片内嵌的「邀请有礼」区块 */
+.portal-beta-invite {
+  margin-top: 6px;
+  padding: 12px 14px;
+  border: 1px dashed rgba(37, 99, 235, 0.28);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(239, 246, 255, 0.7) 0%, rgba(240, 253, 244, 0.7) 50%, rgba(255, 247, 237, 0.7) 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.portal-beta-invite__title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.portal-beta-invite__text {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.portal-beta-invite__cta {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 2px;
+  padding: 7px 18px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.portal-beta-invite__cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.3);
+}
+
 .portal-step-card {
   position: relative;
   display: flex;

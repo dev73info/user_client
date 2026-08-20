@@ -123,7 +123,7 @@ onBeforeUnmount(() => {
                 <div class="site-footer-block">
                   <h3>网站信息</h3>
                   <p>平台名称：柒叁信息（73info）</p>
-                  <p>平台状态：资源与需求协作内测中</p>
+                  <p>平台状态：内测中</p>
                   <p>联系邮箱：fanbo@73info.cn</p>
                   <p>投诉与侵权处理：fanbo@73info.cn</p>
                 </div>
@@ -143,7 +143,7 @@ onBeforeUnmount(() => {
                       <span>滇公网安备53062802000020号</span>
                     </a>
                   </p>
-                  <p>交易功能说明：平台担保、资金托管、代收代付和自动分账暂未开放</p>
+                  <p>交易功能说明：使用第三方分账系统进行交易担保于分账，资金安全有保障</p>
                 </div>
                 <div class="site-footer-block">
                   <h3>服务说明</h3>

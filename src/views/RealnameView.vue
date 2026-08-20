@@ -5,13 +5,13 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
-  completeWechatFaceidVerification,
+  completeAsignIdentify,
   getMyRealnameVerification,
-  startWechatFaceidVerification,
+  startAsignIdentify,
   submitMyRealnameVerification,
   uploadGuardianConsentFile,
   type RealnameAuthType,
-  type CompleteWechatFaceidVerificationPayload,
+  type StartAsignIdentifyPayload,
   type SubmitRealnameVerificationPayload,
   type UserRealnameVerification,
 } from '@/api/realname'
@@ -35,6 +35,7 @@ const faceidAuthUrl = ref('')
 const faceidQrDataUrl = ref('')
 const faceidOrderNo = ref('')
 const faceidBizToken = ref('')
+const faceidBizId = ref('')
 const FACEID_POLL_INTERVAL_MS = 10_000
 
 let faceidPollTimer: number | null = null
@@ -49,6 +50,7 @@ const form = reactive({
   authType: 'IDENTITY_CARD' as RealnameAuthType,
   realName: '',
   idCardNo: '',
+  mobile: '',
   companyName: '',
   unifiedSocialCreditCode: '',
   businessLicenseNo: '',
@@ -89,6 +91,7 @@ const statusType = computed<'info' | 'warning' | 'success' | 'danger'>(() => {
 
 const realnameSubmitted = computed(() => Boolean(current.value))
 const identityCardSelected = computed(() => form.authType === 'IDENTITY_CARD')
+const enterpriseSelected = computed(() => form.authType === 'ENTERPRISE')
 const realnameApproved = computed(() => current.value?.status === 'approved')
 const realnameRejected = computed(() => current.value?.status === 'rejected')
 const realnameLocked = computed(() => current.value?.status === 'pending' || realnameApproved.value)
@@ -151,11 +154,10 @@ const idCardPlaceholder = computed(() => {
 
 const submitButtonText = computed(() => {
   if (realnameApproved.value) return '已通过认证'
-  if (identityCardSelected.value) return current.value ? '重新发起微信刷脸' : '微信刷脸认证'
+  if (identityCardSelected.value) return current.value ? '重新发起实名认证' : '实名认证'
   if (!current.value || realnameRejected.value) return current.value ? '重新提交认证' : '提交认证'
   return '已提交，不能修改'
 })
-
 const reviewerName = computed(() => current.value?.reviewed_by?.trim() || '—')
 const reviewerInitial = computed(
   () => Array.from(reviewerName.value === '—' ? '审' : reviewerName.value)[0] ?? '审',
@@ -177,6 +179,7 @@ function patchForm(record: UserRealnameVerification) {
   form.authType = record.auth_type
   form.realName = record.real_name ?? ''
   form.idCardNo = ''
+  form.mobile = ''
   form.companyName = record.company_name ?? ''
   form.unifiedSocialCreditCode = record.unified_social_credit_code ?? ''
   form.businessLicenseNo = record.business_license_no ?? ''
@@ -219,11 +222,26 @@ function validate() {
     return ''
   }
 
+  if (enterpriseSelected.value) {
+    if (!form.companyName.trim()) return '请填写企业名称'
+    if (!form.unifiedSocialCreditCode.trim()) return '请填写统一社会信用代码'
+    if (!form.operatorName.trim()) return '请填写经办人姓名'
+    if (!form.operatorIdCardNo.trim()) return '请填写经办人身份证号'
+    if (!isValidMobile(form.mobile)) return '请填写正确的手机号'
+    return ''
+  }
+
   if (!form.realName.trim() || !form.idCardNo.trim()) {
     return '请填写姓名和证件号'
   }
+  if (!isValidMobile(form.mobile)) return '请填写正确的手机号'
 
   return ''
+}
+
+function isValidMobile(value: string): boolean {
+  const text = value.trim()
+  return /^1\d{10}$/.test(text)
 }
 
 function buildPayload(): SubmitRealnameVerificationPayload {
@@ -233,6 +251,7 @@ function buildPayload(): SubmitRealnameVerificationPayload {
 
   if (form.realName.trim()) payload.real_name = form.realName.trim()
   if (form.idCardNo.trim()) payload.id_card_no = form.idCardNo.trim()
+  if (form.mobile.trim()) payload.mobile = form.mobile.trim()
   if (form.companyName.trim()) payload.company_name = form.companyName.trim()
   if (form.unifiedSocialCreditCode.trim()) {
     payload.unified_social_credit_code = form.unifiedSocialCreditCode.trim()
@@ -257,16 +276,18 @@ function routeStringValue(value: unknown) {
   return ''
 }
 
-function faceidReturnPayload(): CompleteWechatFaceidVerificationPayload {
-  const orderNo = routeStringValue(route.query.orderNo) || routeStringValue(route.query.order_no)
-  const bizToken =
-    routeStringValue(route.query.BizToken) ||
-    routeStringValue(route.query.bizToken) ||
-    routeStringValue(route.query.biz_token)
+function faceidReturnPayload(): { serial_no?: string; order_no?: string; biz_id?: string } {
+  const serialNo =
+    routeStringValue(route.query.serial_no) ||
+    routeStringValue(route.query.serialNo) ||
+    routeStringValue(route.query.order_no) ||
+    routeStringValue(route.query.orderNo)
+  const bizId = routeStringValue(route.query.biz_id) || routeStringValue(route.query.bizId)
 
   return {
-    order_no: orderNo || undefined,
-    biz_token: bizToken || undefined,
+    serial_no: serialNo || undefined,
+    order_no: serialNo || undefined,
+    biz_id: bizId || undefined,
   }
 }
 
@@ -307,6 +328,7 @@ function clearFaceidChallenge() {
   faceidQrDataUrl.value = ''
   faceidOrderNo.value = ''
   faceidBizToken.value = ''
+  faceidBizId.value = ''
 }
 
 function openWechatFaceidPage() {
@@ -403,25 +425,31 @@ async function startWechatFaceid() {
 
   faceidStarting.value = true
   try {
-    const result = await startWechatFaceidVerification(auth.token, buildPayload())
-    current.value = result.verification
-    reviewerAvatarLoadFailed.value = false
-    patchForm(result.verification)
+    const payload: StartAsignIdentifyPayload = {
+      real_name: form.realName.trim(),
+      id_card_no: form.idCardNo.trim(),
+      mobile: form.mobile.trim() || null,
+    }
+    const result = await startAsignIdentify(auth.token, payload)
     faceidAuthUrl.value = result.auth_url
-    faceidOrderNo.value = result.order_no
-    faceidBizToken.value = result.biz_token
+    faceidOrderNo.value = result.serial_no ?? ''
+    faceidBizToken.value = result.serial_no ?? ''
+    faceidBizId.value = result.biz_id ?? ''
     await renderFaceidQrCode(result.auth_url)
-    startFaceidAutoPolling()
-    showToast('微信人脸核身已创建', 'success')
+    // 重新加载当前实名状态（后端已创建 pending 记录）
+    const record = await getMyRealnameVerification(auth.token)
+    current.value = record
+    patchForm(record)
+    showToast('爱签实名认证已发起', 'success')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发起微信人脸核身失败', 'error')
+    showToast(err instanceof Error ? err.message : '发起爱签实名认证失败', 'error')
   } finally {
     faceidStarting.value = false
   }
 }
 
 async function checkWechatFaceidResult(
-  payload: CompleteWechatFaceidVerificationPayload = {},
+  payload: { serial_no?: string; order_no?: string; biz_id?: string } = {},
   options: FaceidCheckOptions = {},
 ) {
   if (faceidCheckInFlight) {
@@ -438,8 +466,9 @@ async function checkWechatFaceidResult(
   }
 
   const queryPayload = {
+    biz_id: payload.biz_id || faceidBizId.value || undefined,
+    serial_no: payload.serial_no || faceidOrderNo.value || undefined,
     order_no: payload.order_no || faceidOrderNo.value || undefined,
-    biz_token: payload.biz_token || faceidBizToken.value || undefined,
   }
 
   faceidCheckInFlight = true
@@ -447,7 +476,7 @@ async function checkWechatFaceidResult(
     faceidChecking.value = true
   }
   try {
-    const updated = await completeWechatFaceidVerification(auth.token, queryPayload)
+    const updated = await completeAsignIdentify(auth.token, queryPayload)
     if (options.background && updated.status === 'rejected') {
       return
     }
@@ -457,17 +486,17 @@ async function checkWechatFaceidResult(
     patchForm(updated)
     if (updated.status === 'approved') {
       clearFaceidChallenge()
-      showToast('微信人脸核身已通过', 'success')
+      showToast('爱签实名认证已通过', 'success')
       await tryRestoreBusinessPage(updated)
     } else if (updated.status === 'rejected') {
       clearFaceidChallenge()
-      showToast(updated.review_note || '微信人脸核身未通过', 'error')
+      showToast(updated.review_note || '爱签实名认证未通过', 'error')
     } else if (!options.silent) {
-      showToast('微信人脸核身结果已更新', 'success')
+      showToast('爱签实名认证结果已更新', 'success')
     }
   } catch (err) {
     if (!options.silent) {
-      showToast(err instanceof Error ? err.message : '查询微信人脸核身结果失败', 'error')
+      showToast(err instanceof Error ? err.message : '查询爱签实名认证结果失败', 'error')
     }
   } finally {
     faceidCheckInFlight = false
@@ -484,6 +513,7 @@ async function submit() {
     return
   }
 
+  // 大陆身份证走爱签人脸核身；企业/港澳/台湾走人工提交审核。
   if (identityCardSelected.value) {
     await startWechatFaceid()
     return
@@ -542,7 +572,7 @@ async function loadCurrentRealname() {
 onMounted(async () => {
   await loadCurrentRealname()
   const payload = faceidReturnPayload()
-  if (payload.order_no || payload.biz_token) {
+  if (payload.serial_no || payload.order_no || payload.biz_id) {
     await checkWechatFaceidResult(payload)
   }
 })
@@ -562,9 +592,11 @@ onBeforeUnmount(() => {
             <strong>{{
               current.auth_type === 'IDENTITY_CARD'
                 ? '大陆身份证'
-                : current.auth_type === 'RESIDENCE_HK_MC'
-                  ? '港澳居民居住证'
-                  : '台湾居民居住证'
+                : current.auth_type === 'ENTERPRISE'
+                  ? '企业认证'
+                  : current.auth_type === 'RESIDENCE_HK_MC'
+                    ? '港澳居民居住证'
+                    : '台湾居民居住证'
             }}</strong>
           </div>
           <div class="realname-metrics__item">
@@ -596,18 +628,58 @@ onBeforeUnmount(() => {
             <el-form-item label="证件类型">
               <el-radio-group v-model="form.authType" :disabled="realnameLocked">
                 <el-radio value="IDENTITY_CARD">大陆身份证</el-radio>
+                <el-radio value="ENTERPRISE">企业认证</el-radio>
                 <el-radio value="RESIDENCE_HK_MC">港澳居民居住证</el-radio>
                 <el-radio value="RESIDENCE_TAIWAN">台湾居民居住证</el-radio>
               </el-radio-group>
             </el-form-item>
 
-            <el-form-item label="姓名">
-              <el-input v-model="form.realName" maxlength="120" placeholder="请输入真实姓名" :disabled="realnameLocked" />
-            </el-form-item>
-            <el-form-item label="证件号">
-              <el-input v-model="form.idCardNo" maxlength="64" :placeholder="idCardPlaceholder"
-                :disabled="realnameLocked" />
-            </el-form-item>
+            <!-- 企业认证字段 -->
+            <template v-if="enterpriseSelected">
+              <el-form-item label="企业名称">
+                <el-input v-model="form.companyName" maxlength="120" placeholder="请输入企业名称"
+                  :disabled="realnameLocked" />
+              </el-form-item>
+              <el-form-item label="统一社会信用代码">
+                <el-input v-model="form.unifiedSocialCreditCode" maxlength="64" placeholder="请输入统一社会信用代码"
+                  :disabled="realnameLocked" />
+              </el-form-item>
+              <el-form-item label="营业执照号">
+                <el-input v-model="form.businessLicenseNo" maxlength="64" placeholder="请输入营业执照号（可选）"
+                  :disabled="realnameLocked" />
+              </el-form-item>
+              <el-form-item label="经办人姓名">
+                <el-input v-model="form.operatorName" maxlength="120" placeholder="请输入经办人姓名"
+                  :disabled="realnameLocked" />
+              </el-form-item>
+              <el-form-item label="经办人身份证号">
+                <el-input v-model="form.operatorIdCardNo" maxlength="64" placeholder="请输入经办人身份证号"
+                  :disabled="realnameLocked" />
+              </el-form-item>
+              <el-form-item label="手机号">
+                <el-input v-model="form.mobile" maxlength="11" placeholder="请输入经办人手机号（用于电子签署）"
+                  :disabled="realnameLocked" />
+              </el-form-item>
+              <el-form-item>
+                <el-alert type="info" :closable="false" show-icon
+                  title="企业认证信息提交后将由平台审核，审核通过后可用于合同签署。" />
+              </el-form-item>
+            </template>
+
+            <!-- 个人证件字段（非企业） -->
+            <template v-else>
+              <el-form-item label="姓名">
+                <el-input v-model="form.realName" maxlength="120" placeholder="请输入真实姓名" :disabled="realnameLocked" />
+              </el-form-item>
+              <el-form-item label="证件号">
+                <el-input v-model="form.idCardNo" maxlength="64" :placeholder="idCardPlaceholder"
+                  :disabled="realnameLocked" />
+              </el-form-item>
+              <el-form-item label="手机号">
+                <el-input v-model="form.mobile" maxlength="11" placeholder="请输入本人手机号（用于电子签署）"
+                  :disabled="realnameLocked" />
+              </el-form-item>
+            </template>
 
             <el-form-item v-if="isUnder14">
               <el-alert
@@ -671,17 +743,17 @@ onBeforeUnmount(() => {
           <div v-if="faceidAuthUrl" class="realname-faceid-panel">
             <div class="realname-faceid-panel__main">
               <div class="realname-faceid-panel__copy">
-                <strong>微信扫码核身</strong>
+                <strong>爱签实名认证</strong>
                 <span>二维码有效期约 120 分钟</span>
               </div>
-              <img v-if="faceidQrDataUrl" class="realname-faceid-panel__qr" :src="faceidQrDataUrl" alt="微信人脸核身二维码" />
+              <img v-if="faceidQrDataUrl" class="realname-faceid-panel__qr" :src="faceidQrDataUrl" alt="爱签实名认证二维码" />
             </div>
             <div class="realname-faceid-panel__actions">
               <el-button class="realname-plain-btn" @click="openWechatFaceidPage">
                 <el-icon>
                   <Promotion />
                 </el-icon>
-                打开核身页面
+                打开认证页面
               </el-button>
               <el-button type="primary" class="realname-submit-btn" :loading="faceidChecking"
                 @click="checkWechatFaceidResult()">

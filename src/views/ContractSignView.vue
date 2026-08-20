@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+    fetchDeveloperAgreement,
     fetchMyRequirementContract,
-    signContract,
+    initiateAsignSign,
+    syncAsignSignStatus,
     type ContractDetail,
     type SigningLogItem,
 } from '@/api/contracts'
@@ -14,6 +16,7 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const requirementId = String(route.query.requirement_id ?? '')
+const isDeveloperAgreement = route.query.agreement === 'developer'
 
 const loading = ref(true)
 const signing = ref(false)
@@ -21,8 +24,6 @@ const contract = ref<ContractDetail | null>(null)
 const error = ref('')
 const successMsg = ref('')
 const accepted = ref(false)
-const signatureCanvas = ref<HTMLCanvasElement | null>(null)
-const signatureTouched = ref(false)
 
 type ContractParty = 'party_a' | 'party_b'
 
@@ -38,8 +39,6 @@ type PartyDisplay = {
     signatureSha256: string | null
     signatureImage: string
 }
-
-let drawingSignature = false
 
 const signingLogs = computed(() => contract.value?.signing_logs ?? [])
 const currentParty = computed<'party_a' | 'party_b' | null>(() => {
@@ -61,17 +60,13 @@ const waitingMessage = computed(() => {
     if (contract.value.status === 'pending_party_a') return '等待甲方需求方签署合同'
     return ''
 })
-const partyCards = computed(() => {
-    const cards = [partyDisplay('party_a'), partyDisplay('party_b')]
-    return cards.filter((item): item is PartyDisplay => item !== null)
-})
 const currentSigner = computed(() => (currentParty.value ? partyDisplay(currentParty.value) : null))
 const signerIdentityReady = computed(() => {
     const signer = currentSigner.value
     return Boolean(signer?.legalName && signer?.idCardNo && signer.idCardNo !== '未完成实名认证')
 })
 const canSubmitSign = computed(
-    () => canSignContract.value && accepted.value && signatureTouched.value && signerIdentityReady.value && !signing.value,
+    () => canSignContract.value && accepted.value && signerIdentityReady.value && !signing.value,
 )
 
 function displayText(value: string | null | undefined, fallback: string): string {
@@ -93,12 +88,14 @@ function partyDisplay(party: ContractParty): PartyDisplay | null {
     const item = contract.value
     if (!item) return null
     const log = partySigningLog(party)
+    // 开发者入驻协议：甲方为平台（官方），乙方为开发者。
+    const partyARole = isDeveloperAgreement ? '平台' : '需求方'
 
     if (party === 'party_a') {
         return {
             party,
             label: '甲方',
-            role: '需求方',
+            role: partyARole,
             legalName: displayText(item.party_a_real_name ?? item.party_a_name, '未完成实名认证'),
             idCardNo: displayText(item.party_a_id_card_no_masked, '未完成实名认证'),
             username: displayText(item.party_a_username, '未绑定账号'),
@@ -123,102 +120,6 @@ function partyDisplay(party: ContractParty): PartyDisplay | null {
     }
 }
 
-function prepareSignatureContext(ctx: CanvasRenderingContext2D) {
-    ctx.lineWidth = 2.8
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    ctx.strokeStyle = '#111827'
-}
-
-function setupSignatureCanvas(clear = false) {
-    const canvas = signatureCanvas.value
-    if (!canvas) return
-
-    const rect = canvas.getBoundingClientRect()
-    const width = Math.max(280, Math.floor(rect.width || canvas.clientWidth || 640))
-    const height = 180
-    const dpr = window.devicePixelRatio || 1
-    const nextWidth = Math.floor(width * dpr)
-    const nextHeight = Math.floor(height * dpr)
-
-    if (canvas.width !== nextWidth || canvas.height !== nextHeight) {
-        canvas.width = nextWidth
-        canvas.height = nextHeight
-        canvas.style.height = `${height}px`
-        clear = true
-    }
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    prepareSignatureContext(ctx)
-    if (clear) {
-        ctx.clearRect(0, 0, width, height)
-    }
-}
-
-function resetSignaturePad() {
-    drawingSignature = false
-    signatureTouched.value = false
-    setupSignatureCanvas(true)
-}
-
-function signaturePoint(event: PointerEvent) {
-    const canvas = signatureCanvas.value
-    if (!canvas) return null
-    const rect = canvas.getBoundingClientRect()
-    return {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
-    }
-}
-
-function beginSignature(event: PointerEvent) {
-    if (!canSignContract.value) return
-    setupSignatureCanvas(false)
-    const canvas = signatureCanvas.value
-    const point = signaturePoint(event)
-    const ctx = canvas?.getContext('2d')
-    if (!canvas || !point || !ctx) return
-
-    event.preventDefault()
-    drawingSignature = true
-    signatureTouched.value = true
-    canvas.setPointerCapture(event.pointerId)
-    prepareSignatureContext(ctx)
-    ctx.beginPath()
-    ctx.moveTo(point.x, point.y)
-    ctx.lineTo(point.x + 0.01, point.y + 0.01)
-    ctx.stroke()
-}
-
-function drawSignature(event: PointerEvent) {
-    if (!drawingSignature) return
-    const point = signaturePoint(event)
-    const ctx = signatureCanvas.value?.getContext('2d')
-    if (!point || !ctx) return
-
-    event.preventDefault()
-    ctx.lineTo(point.x, point.y)
-    ctx.stroke()
-}
-
-function endSignature(event: PointerEvent) {
-    if (!drawingSignature) return
-    drawingSignature = false
-    const canvas = signatureCanvas.value
-    if (canvas?.hasPointerCapture(event.pointerId)) {
-        canvas.releasePointerCapture(event.pointerId)
-    }
-}
-
-function handleResize() {
-    if (!signatureTouched.value) {
-        setupSignatureCanvas(true)
-    }
-}
-
 function actionLabel(action: string): string {
     const labels: Record<string, string> = {
         created: '创建合同',
@@ -227,6 +128,8 @@ function actionLabel(action: string): string {
         auto_created: '系统生成',
         party_a_signed: '甲方签署',
         party_b_signed: '乙方签署',
+        asign_sign_initiated: '发起电子签署',
+        asign_sign_completed: '电子签署完成',
     }
     return labels[action] ?? action
 }
@@ -246,10 +149,27 @@ async function loadContract() {
     loading.value = true
     error.value = ''
     try {
-        contract.value = await fetchMyRequirementContract(auth.token, requirementId)
+        if (isDeveloperAgreement) {
+            contract.value = await fetchDeveloperAgreement(auth.token)
+        } else {
+            contract.value = await fetchMyRequirementContract(auth.token, requirementId)
+        }
         accepted.value = false
-        await nextTick()
-        resetSignaturePad()
+        // 已发起爱签签署但本地仍是待签署（回调可能延迟/丢失）：主动向爱签同步状态。
+        // 用户从爱签签署页返回本页时，若已在爱签完成签署，这里会把本地合同更新为已签署。
+        const item = contract.value
+        if (item && !['signed', 'void', 'draft'].includes(item.status)) {
+            const hasInitiated = (item.signing_logs ?? []).some(
+                (log) => log.action === 'asign_sign_initiated',
+            )
+            if (hasInitiated) {
+                try {
+                    contract.value = await syncAsignSignStatus(auth.token, item.id)
+                } catch {
+                    // 同步失败不阻断页面展示，保留已加载状态。
+                }
+            }
+        }
     } catch {
         error.value = '加载合同失败，请刷新重试'
     } finally {
@@ -267,29 +187,29 @@ async function handleSign() {
         error.value = '请先完成实名认证，签署身份必须包含真实姓名和身份证号'
         return
     }
-    if (!signatureTouched.value || !signatureCanvas.value) {
-        error.value = '请先完成手写签名'
-        return
-    }
     signing.value = true
     error.value = ''
     try {
-        const handwrittenSignature = signatureCanvas.value.toDataURL('image/png')
-        contract.value = await signContract(auth.token, contract.value.id, {
-            handwritten_signature: handwrittenSignature,
-        })
-        successMsg.value = '合同已签署成功！'
-        accepted.value = false
-        await nextTick()
-        resetSignaturePad()
+        const result = await initiateAsignSign(auth.token, contract.value.id)
+        if (result.sign_url) {
+            // 跳转到爱签签署页面
+            window.location.href = result.sign_url
+            return
+        }
+        successMsg.value = '已发起签署，请稍后刷新查看签署状态'
+        await loadContract()
     } catch (err) {
-        error.value = err instanceof Error ? err.message : '签署失败，请稍后重试'
+        error.value = err instanceof Error ? err.message : '发起签署失败，请稍后重试'
     } finally {
         signing.value = false
     }
 }
 
 function goHome() {
+    if (isDeveloperAgreement) {
+        router.push({ name: 'workbench' })
+        return
+    }
     if (route.query.from === 'dev') {
         router.push({ name: 'dev-my-requirements' })
         return
@@ -297,10 +217,26 @@ function goHome() {
     router.push({ name: 'workbench-requirements' })
 }
 
+/** 未实名认证时引导用户去完成实名认证，认证通过后回到签署页。 */
+function goRealname() {
+    void router.push({
+        name: 'workbench-realname',
+        query: { redirect_to: '/contract-sign?agreement=developer' },
+    })
+}
+
+function goBecomeDeveloper() {
+    // 跳转到开发者资源初始化入口路由（devArea + requiresDevAccess + requiresRealname），
+    // 触发 dev 路由守卫中的 ensureDevAccess → requestDevRole，从而授予开发者角色并刷新 profile。
+    // ⚠️ 不能直接跳 /workbench#developer-overview：它只匹配 workbench 路由，
+    //    不会触发 dev 守卫，开发者角色申请不会执行，前端 profile 会停留在旧角色。
+    // ⚠️ 也不能跳 dev-overview（开发概览）：该页面已废弃，开发者入口应指向资源初始化。
+    void router.push({ name: 'dev-plugins' })
+}
+
 onMounted(async () => {
-    window.addEventListener('resize', handleResize)
     auth.hydrate()
-    if (!requirementId) {
+    if (!isDeveloperAgreement && !requirementId) {
         router.replace('/')
         return
     }
@@ -309,10 +245,6 @@ onMounted(async () => {
     }
     void loadContract()
 })
-
-onBeforeUnmount(() => {
-    window.removeEventListener('resize', handleResize)
-})
 </script>
 
 <template>
@@ -320,7 +252,7 @@ onBeforeUnmount(() => {
         <section class="panel">
             <header class="panel-head">
                 <div>
-                    <h2>需求服务合同</h2>
+                    <h2>{{ isDeveloperAgreement ? '开发者入驻协议' : '需求服务合同' }}</h2>
                     <p class="lead">请核对实名认证身份、合同正文与签署证据后完成签署。</p>
                 </div>
             </header>
@@ -341,42 +273,6 @@ onBeforeUnmount(() => {
                             }}</span></p>
                     <p><strong>合同指纹：</strong><span class="hash-text">{{ contract.content_sha256 }}</span></p>
                 </div>
-
-                <section class="party-grid" aria-label="合同当事人">
-                    <article v-for="party in partyCards" :key="party.party" class="party-card"
-                        :class="{ 'party-card--current': currentParty === party.party }">
-                        <div class="party-card__head">
-                            <span>{{ party.label }}</span>
-                            <strong>{{ party.role }}</strong>
-                        </div>
-                        <dl class="party-fields">
-                            <div>
-                                <dt>实名姓名</dt>
-                                <dd>{{ party.legalName }}</dd>
-                            </div>
-                            <div>
-                                <dt>身份证号</dt>
-                                <dd>{{ party.idCardNo }}</dd>
-                            </div>
-                            <div>
-                                <dt>平台账户</dt>
-                                <dd>{{ party.username }} / {{ party.email }}</dd>
-                            </div>
-                            <div>
-                                <dt>签署时间</dt>
-                                <dd>{{ party.signedAt ?? '待签署' }}</dd>
-                            </div>
-                            <div v-if="party.signatureSha256">
-                                <dt>手写签名指纹</dt>
-                                <dd class="hash-text hash-text--compact">{{ party.signatureSha256 }}</dd>
-                            </div>
-                            <div v-if="party.signatureImage">
-                                <dt>手写签名</dt>
-                                <dd><img class="signature-preview" :src="party.signatureImage" alt="手写签名" /></dd>
-                            </div>
-                        </dl>
-                    </article>
-                </section>
 
                 <section class="contract-content">{{ contract.content }}</section>
 
@@ -424,31 +320,45 @@ onBeforeUnmount(() => {
                                 <dd>{{ currentSigner.username }} / {{ currentSigner.email }}</dd>
                             </div>
                         </dl>
-                        <p v-if="!signerIdentityReady" class="identity-warning">实名认证审核通过后才能签署合同。</p>
+                        <p v-if="!signerIdentityReady" class="identity-warning">
+                            实名认证审核通过后才能签署合同。
+                        </p>
+                        <button
+                            v-if="!signerIdentityReady"
+                            type="button"
+                            class="btn-realname"
+                            @click="goRealname"
+                        >
+                            去实名认证
+                        </button>
                     </div>
 
                     <div class="signature-box">
                         <div class="signature-box__head">
-                            <h3>手写签名</h3>
-                            <button type="button" class="btn-text" @click="resetSignaturePad">清空</button>
+                            <h3>电子签署</h3>
                         </div>
-                        <canvas ref="signatureCanvas" class="signature-canvas" aria-label="手写签名区域"
-                            @pointerdown="beginSignature" @pointermove="drawSignature" @pointerup="endSignature"
-                            @pointercancel="endSignature" @pointerleave="endSignature"></canvas>
+                        <p class="signature-hint">点击下方按钮将跳转至爱签电子签署页面完成实名认证与签署。</p>
                     </div>
 
                     <label class="accept-row">
                         <input v-model="accepted" type="checkbox" />
-                        <span>我已完整阅读合同正文，确认以以上实名认证姓名、身份证号和手写签名签署，并同意系统保存本次签署记录作为履约证据。</span>
+                        <span>我已完整阅读合同正文，确认以以上实名认证姓名和身份证号进行电子签署，并同意系统保存本次签署记录作为履约证据。</span>
                     </label>
                 </section>
 
                 <div class="contract-actions">
                     <button v-if="canSignContract" class="btn-primary" :disabled="!canSubmitSign" @click="handleSign">
-                        {{ signing ? '签署中…' : '确认签署合同' }}
+                        {{ signing ? '发起签署中…' : '发起电子签署' }}
                     </button>
                     <span v-else-if="contract.status === 'signed'" class="badge-signed">已签署</span>
                     <span v-else-if="waitingMessage" class="badge-pending">{{ waitingMessage }}</span>
+                    <button
+                        v-if="isDeveloperAgreement && contract.status === 'signed'"
+                        class="btn-primary"
+                        @click="goBecomeDeveloper"
+                    >
+                        签署完成，成为开发者
+                    </button>
                     <button class="btn-secondary" @click="goHome">返回首页</button>
                 </div>
             </template>
@@ -588,54 +498,12 @@ onBeforeUnmount(() => {
     overflow-wrap: anywhere;
 }
 
-.party-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.party-card {
-    border: 1px solid #d5dde8;
-    border-radius: 8px;
-    background: #ffffff;
-    padding: 1rem;
-}
-
-.party-card--current {
-    border-color: #f59e0b;
-    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.14);
-}
-
-.party-card__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding-bottom: 0.7rem;
-    margin-bottom: 0.75rem;
-    border-bottom: 1px solid #eef2f7;
-}
-
-.party-card__head span {
-    color: #f59e0b;
-    font-size: 0.92rem;
-    font-weight: 800;
-}
-
-.party-card__head strong {
-    color: #334155;
-    font-size: 0.88rem;
-}
-
-.party-fields,
 .signer-fields {
     display: grid;
     gap: 0.62rem;
     margin: 0;
 }
 
-.party-fields div,
 .signer-fields div {
     display: grid;
     grid-template-columns: 92px minmax(0, 1fr);
@@ -643,13 +511,11 @@ onBeforeUnmount(() => {
     align-items: baseline;
 }
 
-.party-fields dt,
 .signer-fields dt {
     color: #64748b;
     font-size: 0.86rem;
 }
 
-.party-fields dd,
 .signer-fields dd {
     margin: 0;
     color: #172033;
@@ -774,6 +640,30 @@ onBeforeUnmount(() => {
     color: #b91c1c;
     font-size: 0.9rem;
     font-weight: 700;
+}
+
+.btn-realname {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 0.75rem;
+    padding: 8px 20px;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background 140ms ease,
+        border-color 140ms ease,
+        transform 140ms ease;
+}
+
+.btn-realname:hover {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    transform: translateY(-1px);
 }
 
 .signature-box {
@@ -902,11 +792,6 @@ onBeforeUnmount(() => {
         padding: 1rem;
     }
 
-    .party-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .party-fields div,
     .signer-fields div {
         grid-template-columns: 1fr;
         gap: 0.2rem;

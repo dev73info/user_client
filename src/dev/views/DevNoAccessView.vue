@@ -1,20 +1,52 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
+import { getMyRealnameVerification } from '@/api/realname'
+import { HttpError } from '@/api/http'
 import { DEV_PORTAL_URL, buildUnifiedAuthUrl } from '@/config/runtime'
 
 const auth = useAuthStore()
 const router = useRouter()
 const { showToast } = useToast()
 
+const realnameApproved = ref(false)
+const realnameChecked = ref(false)
+
 const displayName = computed(() => auth.username || '当前账号')
-const accessMessage = computed(
-  () => auth.devAccessError || '当前账号需要先完成实名认证，认证通过后才能开通开发者权限。',
-)
+const accessMessage = computed(() => {
+  if (auth.devAccessError) {
+    return auth.devAccessError
+  }
+  if (realnameApproved.value) {
+    return '当前账号已完成实名认证，但尚未开通开发者权限。请签署《开发者入驻协议》后申请开通。'
+  }
+  return '当前账号需要先完成实名认证，认证通过后才能开通开发者权限。'
+})
 const retrying = ref(false)
+
+async function checkRealname() {
+  auth.hydrate()
+  if (!auth.token) {
+    return
+  }
+  try {
+    const record = await getMyRealnameVerification(auth.token)
+    realnameApproved.value = record.status === 'approved'
+  } catch (err) {
+    if (err instanceof HttpError && err.status === 404) {
+      realnameApproved.value = false
+    }
+  } finally {
+    realnameChecked.value = true
+  }
+}
+
+onMounted(() => {
+  void checkRealname()
+})
 
 function backToLogin() {
   auth.logout()
@@ -23,6 +55,11 @@ function backToLogin() {
 
 function goRealname() {
   void router.push({ name: 'workbench-realname', query: { redirect_to: '/dev/overview' } })
+}
+
+function goBecomeDeveloper() {
+  // 已实名用户：签署《开发者入驻协议》后申请开发者角色
+  void router.push({ name: 'contract-sign', query: { agreement: 'developer' } })
 }
 
 async function retryAccessCheck() {
@@ -38,7 +75,7 @@ async function retryAccessCheck() {
 
     if (hasAccess) {
       showToast('开发者权限已开通，正在进入工作台', 'success')
-      await router.replace({ name: 'dev-overview' })
+      await router.replace({ name: 'dev-plugins' })
       return
     }
 
@@ -63,7 +100,8 @@ async function retryAccessCheck() {
       </p>
 
       <div class="dev-no-access__actions">
-        <el-button type="primary" @click="goRealname">去实名认证</el-button>
+        <el-button v-if="!realnameApproved" type="primary" @click="goRealname">去实名认证</el-button>
+        <el-button v-if="realnameApproved" type="primary" @click="goBecomeDeveloper">申请开发者权限</el-button>
         <el-button plain @click="backToLogin">退出当前账号</el-button>
         <el-button plain :loading="retrying" @click="retryAccessCheck">重试权限校验</el-button>
       </div>

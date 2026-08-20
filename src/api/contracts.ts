@@ -57,6 +57,13 @@ export type SignContractPayload = {
   handwritten_signature: string
 }
 
+export type SignContractInitiateResponse = {
+  contract_id: number
+  contract_no: string
+  sign_url: string | null
+  status: string
+}
+
 export async function fetchContractSigningStatus(
   token: string,
   requirementId: string,
@@ -94,5 +101,51 @@ export async function signContract(
       body: JSON.stringify(payload),
     },
     '签署合同失败',
+  )
+}
+
+export async function initiateAsignSign(
+  token: string,
+  contractId: number,
+): Promise<SignContractInitiateResponse> {
+  return requestJson<SignContractInitiateResponse>(
+    `/contracts/${contractId}/asign-sign`,
+    {
+      method: 'POST',
+      headers: authHeader(token),
+    },
+    '发起爱签签署失败',
+  )
+}
+
+export async function fetchDeveloperAgreement(
+  token: string,
+): Promise<ContractDetail> {
+  return requestJson<ContractDetail>(
+    '/contracts/developer-agreement',
+    { headers: authHeader(token) },
+    '获取开发者入驻协议失败',
+  )
+}
+
+/**
+ * 用户端同步爱签签署状态到本地合同。
+ *
+ * 场景：用户已在爱签页面完成签署，但爱签回调可能延迟/丢失
+ * （本地开发环境回调发到生产域名，本地收不到），导致本地合同仍停留在
+ * pending。前端在签约页加载/轮询时调用本接口，主动向爱签查询签署状态，
+ * 若爱签侧已完成则更新本地合同为已签署。
+ */
+export async function syncAsignSignStatus(
+  token: string,
+  contractId: number,
+): Promise<ContractDetail> {
+  return requestJson<ContractDetail>(
+    `/contracts/${contractId}/asign-sync`,
+    {
+      method: 'POST',
+      headers: authHeader(token),
+    },
+    '同步签署状态失败',
   )
 }

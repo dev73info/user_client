@@ -241,7 +241,7 @@ const heroSignals = ['免费资源共享', '需求记录留痕', '工单沟通�
 const qqBetaGroupUrl = 'https://qm.qq.com/q/AXb3VBPurC'
 const isDeveloperAccount = computed(() => auth.role === 'dev' || auth.role === 'super_admin')
 const devActionLabel = computed(() =>
-  isDeveloperAccount.value ? '创建资源' : '成为开发者',
+  isDeveloperAccount.value ? '开始接单' : '成为开发者',
 )
 
 const portalNotices = computed<PortalNotice[]>(() => {
@@ -306,9 +306,9 @@ const quickPanels = computed<QuickPanel[]>(() => [
     tone: 'gift',
   },
   {
-    title: '需求协作',
-    summary: '发布定制需求，匹配合适的开发者\n平台提供沟通、合同与工单留痕',
-    action: '立即发布',
+    title: '社区交流',
+    summary: '社区互动、动态分享与内容交流\n结识同好、展示成果与获取灵感',
+    action: '进入社区',
     tone: 'briefcase',
   },
 ])
@@ -440,13 +440,21 @@ const workflowSteps: WorkflowStep[] = [
   },
 ]
 
-function openDevWorkbench() {
+async function openDevWorkbench() {
+  // 已成为开发者：进入需求大厅（开始接单）。
   if (isDeveloperAccount.value) {
-    void router.push({ name: 'dev-plugins' })
+    void router.push({ name: 'dev-requirement-hall' })
     return
   }
 
-  void router.push(buildDevPortalUrl(auth.token))
+  // 未登录：先去登录
+  if (!auth.isAuthed) {
+    void router.push(buildDevPortalUrl(auth.token))
+    return
+  }
+
+  // 还没成为开发者：跳转到《开发者入驻协议》签署页面
+  void router.push({ name: 'contract-sign', query: { agreement: 'developer' } })
 }
 
 function openQuickPanel(panel: QuickPanel) {
@@ -455,7 +463,8 @@ function openQuickPanel(panel: QuickPanel) {
     return
   }
 
-  void openPublishModal()
+  // briefcase（社区交流）：跳转到社区页面。
+  void router.push({ name: 'community' })
 }
 
 function openPortalCategory(category: PortalCategory) {
@@ -1622,7 +1631,7 @@ async function submitPublishRequirement() {
             <div class="portal-hero__main">
               <div class="portal-hero__copy">
                 <h1>
-                  <span>资源与需求</span><span class="portal-title-accent">内测协作</span
+                  <span>资源与需求</span><span class="portal-title-accent">协作</span
                   ><span>平台</span>
                 </h1>
                 <p class="portal-hero__lead">你要的资源免费拿，你想做的事找人做</p>
@@ -2029,22 +2038,12 @@ async function submitPublishRequirement() {
                   </defs>
                   <g filter="url(#quickCaseShadow)">
                     <path
-                      fill="none"
-                      stroke="#d97706"
-                      stroke-linecap="round"
-                      stroke-width="6"
-                      d="M34 31v-8h28v8"
-                    />
-                    <rect
-                      width="64"
-                      height="51"
-                      x="16"
-                      y="29"
                       fill="url(#quickCaseOrange)"
-                      rx="10"
+                      d="M20 30a12 12 0 0 1 12-12h32a12 12 0 0 1 12 12v22a12 12 0 0 1-12 12H44l-14 10v-10h-6a12 12 0 0 1-4-23z"
                     />
-                    <path fill="#f59e0b" d="M16 44h64v12H16z" opacity="0.55" />
-                    <circle cx="48" cy="55" r="5" fill="#fee8a8" />
+                    <circle cx="36" cy="44" r="4" fill="#fff7ed" />
+                    <circle cx="48" cy="44" r="4" fill="#fff7ed" />
+                    <circle cx="60" cy="44" r="4" fill="#fff7ed" />
                   </g>
                 </svg>
               </div>
@@ -2195,27 +2194,26 @@ async function submitPublishRequirement() {
         </div>
 
         <aside class="portal-sidebar">
-          <section v-if="auth.isAuthed" class="portal-card portal-card--invite">
-            <div class="portal-card__header">
-              <h2>🎁 邀请有礼</h2>
-            </div>
-            <p class="portal-invite-banner__text">
-              每邀请一位好友注册，即可解锁专属徽章和排行榜荣誉
-            </p>
-            <RouterLink
-              class="portal-invite-banner__cta"
-              :to="{ name: 'workbench-invite' }"
-            >
-              立即邀请
-            </RouterLink>
-          </section>
-
           <section class="portal-card portal-section--beta">
             <div class="portal-beta-notice">
               <span class="portal-beta-notice__badge">内测中</span>
               <p class="portal-beta-notice__text">
                 资源浏览、投稿、需求发布和工单沟通均可免费使用，欢迎反馈建议。
               </p>
+
+              <div v-if="auth.isAuthed" class="portal-beta-invite">
+                <span class="portal-beta-invite__title">🎁 邀请有礼</span>
+                <p class="portal-beta-invite__text">
+                  每邀请一位好友注册，即可解锁专属徽章和排行榜荣誉
+                </p>
+                <RouterLink
+                  class="portal-beta-invite__cta"
+                  :to="{ name: 'workbench-invite' }"
+                >
+                  立即邀请
+                </RouterLink>
+              </div>
+
               <button
                 class="portal-beta-notice__btn"
                 type="button"

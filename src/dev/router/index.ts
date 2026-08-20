@@ -4,8 +4,6 @@ import { getMyRealnameVerification } from '@/api/realname'
 import { HttpError } from '@/api/http'
 import { DEV_PORTAL_URL, buildUnifiedAuthUrl } from '@/config/runtime'
 
-const DEV_OVERVIEW_SECTION_HASH = '#developer-overview'
-
 function redirectToDevWorkbench(
   name: string,
 ): (to: { params: unknown; query: unknown; hash: string }) => RouteLocationRaw {
@@ -17,19 +15,12 @@ function redirectToDevWorkbench(
   })
 }
 
-function redirectToDeveloperOverviewSection(to: { query: unknown }): RouteLocationRaw {
-  return {
-    name: 'workbench',
-    query: to.query as Record<string, string | string[]>,
-    hash: DEV_OVERVIEW_SECTION_HASH,
-  }
-}
-
 export const devWorkbenchRoutes: RouteRecordRaw[] = [
   {
     path: 'developer/overview',
     name: 'dev-overview',
-    redirect: redirectToDeveloperOverviewSection,
+    // 开发概览（DevOverviewView）已废弃：开发者入口统一指向资源初始化。
+    redirect: { name: 'dev-plugins' },
     meta: {
       title: '开发概览',
       description: '账户实名、资源、需求和交付入口。',
@@ -189,11 +180,11 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
 export const devRoutes: RouteRecordRaw[] = [
   {
     path: '/dev',
-    redirect: redirectToDeveloperOverviewSection,
+    redirect: { name: 'dev-plugins' },
   },
   {
     path: '/dev/overview',
-    redirect: redirectToDeveloperOverviewSection,
+    redirect: { name: 'dev-plugins' },
   },
   {
     path: '/dev/wallet',
@@ -257,7 +248,7 @@ export const devRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/dev/login',
-    redirect: redirectToDeveloperOverviewSection,
+    redirect: { name: 'dev-plugins' },
   },
   {
     path: '/dev/developer-agreement',
@@ -388,7 +379,7 @@ export function installDevRouteGuard(router: Router) {
     if (auth.isAuthed && to.path === '/dev/login') {
       try {
         const hasAccess = await auth.ensureDevAccess()
-        return { name: hasAccess ? 'dev-overview' : 'dev-no-access', replace: true }
+        return { name: hasAccess ? 'dev-plugins' : 'dev-no-access', replace: true }
       } catch {
         // 登录页下校验异常时不强制登出，保持当前页即可
         return true

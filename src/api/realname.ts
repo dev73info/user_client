@@ -1,6 +1,10 @@
 import { authHeader, authHeaders, requestJson } from '@/api/http'
 
-export type RealnameAuthType = 'IDENTITY_CARD' | 'RESIDENCE_HK_MC' | 'RESIDENCE_TAIWAN'
+export type RealnameAuthType =
+  | 'IDENTITY_CARD'
+  | 'ENTERPRISE'
+  | 'RESIDENCE_HK_MC'
+  | 'RESIDENCE_TAIWAN'
 export type UserRealnameStatus = 'pending' | 'approved' | 'rejected'
 
 export type UserRealnameVerification = {
@@ -10,6 +14,7 @@ export type UserRealnameVerification = {
   real_name?: string | null
   id_card_no_masked?: string | null
   birthday?: string | null
+  mobile_masked?: string | null
   company_name?: string | null
   unified_social_credit_code?: string | null
   business_license_no?: string | null
@@ -29,6 +34,7 @@ export type SubmitRealnameVerificationPayload = {
   auth_type: RealnameAuthType
   real_name?: string | null
   id_card_no?: string | null
+  mobile?: string | null
   company_name?: string | null
   unified_social_credit_code?: string | null
   business_license_no?: string | null
@@ -111,6 +117,60 @@ export async function completeWechatFaceidVerification(
       body: JSON.stringify(payload),
     },
     '查询微信人脸核身结果失败',
+  )
+}
+
+export type StartAsignIdentifyPayload = {
+  real_name: string
+  id_card_no: string
+  mobile?: string | null
+}
+
+export type StartAsignIdentifyResponse = {
+  auth_url: string
+  serial_no?: string | null
+  /** 业务 ID，用于查询人脸活体认证结果 */
+  biz_id?: string | null
+}
+
+export type CompleteAsignIdentifyPayload = {
+  serial_no?: string | null
+  order_no?: string | null
+  /** 业务 ID（发起认证时返回） */
+  biz_id?: string | null
+}
+
+export async function startAsignIdentify(
+  token: string,
+  payload: StartAsignIdentifyPayload,
+): Promise<StartAsignIdentifyResponse> {
+  return requestJson<StartAsignIdentifyResponse>(
+    '/realname/asign/start',
+    {
+      method: 'POST',
+      headers: authHeaders(token, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(payload),
+    },
+    '发起爱签实名认证失败',
+  )
+}
+
+export async function completeAsignIdentify(
+  token: string,
+  payload: CompleteAsignIdentifyPayload,
+): Promise<UserRealnameVerification> {
+  return requestJson<UserRealnameVerification>(
+    '/realname/asign/result',
+    {
+      method: 'POST',
+      headers: authHeaders(token, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(payload),
+    },
+    '查询爱签实名认证结果失败',
   )
 }
 
