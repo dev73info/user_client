@@ -109,6 +109,11 @@ const headerLinks = computed<HeaderLink[]>(() => {
       to: { name: 'community' },
       active: allowActive && currentName === 'community',
     },
+    {
+      label: '关于我们',
+      to: { name: 'about' },
+      active: allowActive && currentName === 'about',
+    },
   ]
 
   if (auth.isAuthed) {

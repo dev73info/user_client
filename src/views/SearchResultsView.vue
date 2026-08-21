@@ -408,7 +408,7 @@ function openCommunityPost(post: CommunityPost) {
 }
 
 function paymentModeLabel(mode: RequirementPaymentMode): string {
-    return mode === 'self_managed' ? '无平台担保' : '平台担保'
+    return mode === 'self_managed' ? '无电签约定' : '电签担保'
 }
 
 function paymentTag(requirement: PublicRequirementSpotlightItem): string {

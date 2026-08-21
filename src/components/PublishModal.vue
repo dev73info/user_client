@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from "vue";
+import { computed, watch } from "vue";
 import type { PropType } from "vue";
 
 import RichTextEditor from "@/components/RichTextEditor.vue";
@@ -22,6 +22,8 @@ const props = defineProps({
   // TODO：后续实现平台担保功能后再开放此属性，目前先隐藏平台担保选项以免引起误解
   allowPlatformGuarantee: { type: Boolean, default: false },
   publishLoading: { type: Boolean, default: false },
+  // 草稿作用域（一般传当前用户名），用于按用户隔离草稿，避免多账号共用浏览器时串数据
+  draftScope: { type: String, default: "default" },
 });
 
 const emit = defineEmits<{
@@ -63,6 +65,175 @@ function updatePaymentMode(value: "platform_guarantee" | "self_managed") {
   emit("update:publishPaymentMode", value);
 }
 
+// ===== 草稿系统 =====
+// 所有使用场景（新建发布、重新编辑、重新提交审核）都启用草稿自动保存。
+// draftScope 用于隔离不同场景/不同用户的数据，避免互相覆盖：
+//   - 新建发布：username（或 default）
+//   - 重新编辑/重提：edit-<id> / resubmit-<id> 等独立作用域
+// 草稿在关闭弹窗后仍保留在 localStorage，下次打开自动恢复，防止误关丢失内容。
+
+type PublishDraft = {
+  title: string;
+  description: string;
+  budget: string;
+  acceptance: string;
+  paymentMode: "platform_guarantee" | "self_managed";
+  savedAt: number;
+};
+
+const DRAFT_STORAGE_PREFIX = "73info_publish_draft_";
+
+const draftEnabled = computed(() => props.draftScope !== "");
+
+function draftStorageKey(scope = props.draftScope): string | null {
+  if (!scope) {
+    return null;
+  }
+  return `${DRAFT_STORAGE_PREFIX}${scope}`;
+}
+
+const hasMeaningfulDraft = computed(() => {
+  const title = String(props.publishTitle ?? "").trim();
+  const description = String(props.publishDescription ?? "").trim();
+  const budget = String(props.publishBudget ?? "").trim();
+  const acceptance = String(props.publishAcceptance ?? "").trim();
+  return Boolean(title || description || budget || acceptance);
+});
+
+// 草稿是否已恢复过（避免组件在父组件主动重置表单时又覆盖回去）
+let draftRestored = false;
+
+function savePublishDraft() {
+  const key = draftStorageKey();
+  if (!draftEnabled.value || !key || !props.visible) {
+    return;
+  }
+
+  if (!hasMeaningfulDraft.value) {
+    // 用户主动清空全部内容时删除草稿，避免下次打开又"复活"
+    clearPublishDraft();
+    return;
+  }
+
+  if (!draftRestored) {
+    return;
+  }
+
+  const draft: PublishDraft = {
+    title: String(props.publishTitle ?? ""),
+    description: String(props.publishDescription ?? ""),
+    budget: String(props.publishBudget ?? ""),
+    acceptance: String(props.publishAcceptance ?? ""),
+    paymentMode: props.publishPaymentMode,
+    savedAt: Date.now(),
+  };
+
+  try {
+    window.localStorage.setItem(key, JSON.stringify(draft));
+  } catch {
+    // localStorage 不可用或超限时静默忽略，不影响正常发布流程
+  }
+}
+
+function clearPublishDraft(scope?: string) {
+  const key = draftStorageKey(scope);
+  if (!key) {
+    return;
+  }
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // 同上，静默忽略
+  }
+}
+
+function restorePublishDraft() {
+  const key = draftStorageKey();
+  if (!draftEnabled.value || !key || !props.visible || draftRestored) {
+    return;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<PublishDraft>;
+      if (typeof parsed !== "object" || parsed === null) {
+        return;
+      }
+
+      // 校验字段类型，避免脏数据导致表单异常
+      const title = typeof parsed.title === "string" ? parsed.title : "";
+      const description = typeof parsed.description === "string" ? parsed.description : "";
+      const budget = typeof parsed.budget === "string" ? parsed.budget : "";
+      const acceptance = typeof parsed.acceptance === "string" ? parsed.acceptance : "";
+      const paymentMode =
+        parsed.paymentMode === "platform_guarantee" || parsed.paymentMode === "self_managed"
+          ? parsed.paymentMode
+          : "self_managed";
+
+      if (title || description || budget || acceptance) {
+        emit("update:publishTitle", title);
+        emit("update:publishDescription", description);
+        emit("update:publishBudget", budget);
+        emit("update:publishAcceptance", acceptance);
+        emit("update:publishPaymentMode", paymentMode);
+      }
+    }
+  } catch {
+    // 草稿损坏时忽略，下次输入会重新覆盖
+  } finally {
+    draftRestored = true;
+  }
+}
+
+// 打开弹窗时恢复草稿（immediate：页面通过 URL 直接带 modal=publish 加载时也能恢复）
+watch(
+  () => [props.visible, props.draftScope] as const,
+  ([visible, draftScope]) => {
+    if (visible && draftScope !== "") {
+      restorePublishDraft();
+    }
+  },
+  { immediate: true }
+);
+
+// 输入过程中自动保存草稿
+watch(
+  () => [
+    props.publishTitle,
+    props.publishDescription,
+    props.publishBudget,
+    props.publishAcceptance,
+    props.publishPaymentMode,
+  ],
+  () => {
+    savePublishDraft();
+  }
+);
+
+// 弹窗关闭后重置恢复标记，下次打开重新恢复
+watch(
+  () => props.visible,
+  (visible) => {
+    if (!visible) {
+      draftRestored = false;
+    }
+  }
+);
+
+// 遮罩点击：直接关闭。填写内容已通过草稿自动保存，无需确认，避免打断操作习惯
+function handleBackdropClick() {
+  if (props.publishLoading) {
+    return;
+  }
+
+  emit("close");
+}
+
+defineExpose({
+  clearDraft: clearPublishDraft,
+});
+
 watch(
   () => [props.allowPlatformGuarantee, props.publishPaymentMode] as const,
   ([allowPlatformGuarantee, publishPaymentMode]) => {
@@ -76,7 +247,7 @@ watch(
 
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="auth-modal-wrap publish-modal-wrap" @click.self="emit('close')">
+    <div v-if="visible" class="auth-modal-wrap publish-modal-wrap" @click.self="handleBackdropClick">
       <section class="auth-modal publish-modal" :aria-label="`${modalTitle}弹窗`">
         <header class="publish-modal__head">
           <h3>{{ modalTitle }}</h3>
@@ -109,13 +280,13 @@ watch(
               role="radiogroup" aria-label="发布方式选择">
               <button type="button" class="publish-mode-option"
                 :class="{ active: publishPaymentMode === 'self_managed' }" @click="updatePaymentMode('self_managed')">
-                <strong>无平台担保</strong>
+                <strong>无电签约定</strong>
                 <small>平台提供协作与签署记录，付款双方另行约定</small>
               </button>
               <button v-if="allowPlatformGuarantee" type="button" class="publish-mode-option"
                 :class="{ active: publishPaymentMode === 'platform_guarantee' }"
                 @click="updatePaymentMode('platform_guarantee')">
-                <strong>平台担保</strong>
+                <strong>电签担保</strong>
                 <small>按平台定金与尾款规则推进</small>
               </button>
             </div>
@@ -130,6 +301,10 @@ watch(
             {{ publishLoading ? loadingText : submitText }}
           </button>
         </div>
+
+        <footer v-if="draftEnabled" class="publish-modal__draft-hint">
+          <span>内容将自动保存为草稿</span>
+        </footer>
       </section>
     </div>
   </Teleport>
@@ -259,6 +434,26 @@ watch(
 
 .publish-modal__actions .auth-btn.solid:hover:not(:disabled) {
   background: #1d4ed8;
+}
+
+.publish-modal__draft-hint {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 22px 14px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.publish-modal__draft-hint::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex: 0 0 auto;
 }
 
 .publish-mode-field {

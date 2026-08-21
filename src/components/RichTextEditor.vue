@@ -552,6 +552,16 @@ watch(
     },
 )
 
+// editor 在组件 onMounted 后才由 tiptap 的 useEditor 创建。
+// 若打开弹窗时（如发布草稿恢复）modelValue 的更新先于 editor 就绪，
+// 上面的 watch 会因 editor 尚未创建而静默丢弃内容，导致富文本恢复为空。
+// 因此在 editor 就绪后把当前的 modelValue 同步一次，确保内容不丢失。
+watch(editor, (editorInstance) => {
+    if (editorInstance && props.modelValue) {
+        editorInstance.commands.setContent(props.modelValue, { emitUpdate: false })
+    }
+})
+
 watch(floatingToolbarEnabled, updateFloatingToolbar)
 
 onMounted(() => {

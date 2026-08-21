@@ -127,7 +127,7 @@ function displayStatusLabel(item: RequirementItem): string {
 }
 
 function paymentModeLabel(item: RequirementItem): string {
-  return item.payment_mode === 'self_managed' ? '无平台担保' : '平台担保'
+  return item.payment_mode === 'self_managed' ? '无电签约定' : '电签担保'
 }
 
 function statusType(status: RequirementItem['status']): 'info' | 'success' | 'warning' | 'danger' {

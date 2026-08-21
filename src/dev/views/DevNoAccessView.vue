@@ -21,7 +21,7 @@ const accessMessage = computed(() => {
     return auth.devAccessError
   }
   if (realnameApproved.value) {
-    return '当前账号已完成实名认证，但尚未开通开发者权限。请签署《开发者入驻协议》后申请开通。'
+    return '当前账号已完成实名认证，正在等待开通开发者权限。'
   }
   return '当前账号需要先完成实名认证，认证通过后才能开通开发者权限。'
 })
@@ -58,8 +58,8 @@ function goRealname() {
 }
 
 function goBecomeDeveloper() {
-  // 已实名用户：签署《开发者入驻协议》后申请开发者角色
-  void router.push({ name: 'contract-sign', query: { agreement: 'developer' } })
+  // 双轨制：dev 角色仅需实名成年即可授予（不再强制签署《开发者入驻协议》）。
+  void retryAccessCheck()
 }
 
 async function retryAccessCheck() {

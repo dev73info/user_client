@@ -108,7 +108,7 @@ function isSelfManagedRequirement(requirement: RequirementItem) {
 }
 
 function paymentModeLabel(requirement: RequirementItem) {
-  return isSelfManagedRequirement(requirement) ? '无平台担保' : '平台担保'
+  return isSelfManagedRequirement(requirement) ? '无电签约定' : '电签担保'
 }
 
 function requiresDepositGate(requirement: RequirementItem) {
@@ -578,7 +578,7 @@ async function handleSizeChange(nextSize: number) {
 
 <template>
   <div class="dev-page dev-page--requirement-hall">
-    <el-alert v-if="!canTakeOrders" title="无平台担保需求可继续关联；历史平台担保需求需要满足保证金规则" type="warning" show-icon :closable="false"
+    <el-alert v-if="!canTakeOrders" title="无电签约定需求可继续关联；历史电签担保需求需要满足保证金规则" type="warning" show-icon :closable="false"
       class="dev-requirement-hall__deposit-alert">
       <template #default>
         <div class="dev-requirement-hall__deposit-copy">
@@ -615,7 +615,7 @@ async function handleSizeChange(nextSize: number) {
     </div>
 
     <el-card shadow="never" class="dev-surface-card">
-      <el-alert title="当前新需求仅开放无平台担保；平台担保需求暂未开放，可正常接取无平台担保需求" type="warning" show-icon :closable="false"
+      <el-alert title="当前新需求仅开放无电签约定；电签担保需求暂未开放，可正常接取无电签约定需求" type="warning" show-icon :closable="false"
         class="dev-requirement-hall__deposit-alert" />
 
       <div class="dev-requirement-hall__filters">

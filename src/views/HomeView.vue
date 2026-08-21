@@ -26,6 +26,7 @@ import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import { HttpError, apiUrl } from '@/api/http'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import { getMyRealnameVerification } from '@/api/realname'
+import { requestDevRole } from '@/dev/api/auth'
 import {
   createRequirement,
   getPublicRequirementOverview,
@@ -222,6 +223,7 @@ const publishAcceptance = ref('')
 const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
 const activeResubmitRequirementId = ref<string | null>(null)
 const publishLoading = ref(false)
+const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
 const homeRefreshLoading = ref(false)
 const depositRequirement = computed<PendingRequirementView | null>(() => {
   const id = String(route.query.requirement_id || '')
@@ -453,8 +455,35 @@ async function openDevWorkbench() {
     return
   }
 
-  // 还没成为开发者：跳转到《开发者入驻协议》签署页面
-  void router.push({ name: 'contract-sign', query: { agreement: 'developer' } })
+  // 双轨制：dev 角色仅需实名成年即可授予（不再强制签署《开发者入驻协议》）。
+  // 直接申请开发者角色；未实名/未成年则由后端 403 提示，前端引导去实名认证。
+  try {
+    const result = await requestDevRole(auth.token)
+    if (result.role) {
+      await auth.fetchProfile(true)
+      showToast('开发者权限已开通，正在进入需求大厅', 'success')
+      void router.push({ name: 'dev-requirement-hall' })
+      return
+    }
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 403) {
+      const message = error.message || '申请开发者权限失败'
+      if (message.includes('实名')) {
+        showToast('请先完成实名认证后再申请开发者权限', 'warning')
+        void router.push({
+          name: 'workbench-realname',
+          query: { redirect_to: '/workbench/developer/resources/plugins-init' },
+        })
+        return
+      }
+      showToast(message, 'warning')
+      return
+    }
+    showToast(error instanceof Error ? error.message : '申请开发者权限失败', 'error')
+  }
+
+  // 兜底：进入 dev 入口（由路由守卫 ensureDevAccess 处理）
+  void router.push(buildDevPortalUrl(auth.token))
 }
 
 function openQuickPanel(panel: QuickPanel) {
@@ -1601,12 +1630,18 @@ async function submitPublishRequirement() {
     }
 
     const wasResubmit = Boolean(activeResubmitRequirementId.value)
+    const resubmitId = activeResubmitRequirementId.value
     activeResubmitRequirementId.value = null
     publishTitle.value = ''
     publishDescription.value = ''
     publishBudget.value = ''
     publishAcceptance.value = ''
     publishPaymentMode.value = 'self_managed'
+    if (resubmitId) {
+      publishModalRef.value?.clearDraft(`edit-${resubmitId}`)
+    } else {
+      publishModalRef.value?.clearDraft()
+    }
     showToast(wasResubmit ? '需求已重新提交，等待审核' : '需求已发布', 'success')
     void router.replace({ name: 'home' })
     await loadPendingRequirements()
@@ -2453,6 +2488,7 @@ async function submitPublishRequirement() {
     />
 
     <PublishModal
+      ref="publishModalRef"
       :visible="publishVisible"
       v-model:publishTitle="publishTitle"
       v-model:publishDescription="publishDescription"
@@ -2464,6 +2500,7 @@ async function submitPublishRequirement() {
       :loadingText="publishModalLoadingText"
       :allowPlatformGuarantee="false"
       :publishLoading="publishLoading"
+      :draft-scope="activeResubmitRequirementId ? `edit-${activeResubmitRequirementId}` : (auth.isAuthed ? auth.username : 'default')"
       @close="closePublishModal"
       @notify="showToast"
       @submit="submitPublishRequirement"

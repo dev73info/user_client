@@ -43,6 +43,7 @@ const publishBudget = ref<string | number>('')
 const publishAcceptance = ref('')
 const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
 const publishLoading = ref(false)
+const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
 const selectedRequirement = ref<PublicRequirementSpotlightItem | null>(null)
 const selectedRequirementDetailLoading = ref(false)
 
@@ -139,7 +140,7 @@ function statusToLabel(status: RequirementStatus): string {
 }
 
 function paymentModeLabel(mode: RequirementPaymentMode): string {
-  return mode === 'self_managed' ? '无平台担保' : '平台担保'
+  return mode === 'self_managed' ? '无电签约定' : '电签担保'
 }
 
 function paymentTag(item: PublicRequirementSpotlightItem): string {
@@ -398,6 +399,7 @@ async function submitPublishRequirement() {
     showToast('需求已发布，等待审核', 'success')
     publishVisible.value = false
     resetPublishForm()
+    publishModalRef.value?.clearDraft()
     await loadHallData()
   } catch (err) {
     showToast(err instanceof Error ? err.message : '发布失败', 'error')
@@ -553,10 +555,11 @@ async function loadHallData() {
     </section>
   </main>
 
-  <PublishModal :visible="publishVisible" v-model:publishTitle="publishTitle"
+  <PublishModal ref="publishModalRef" :visible="publishVisible" v-model:publishTitle="publishTitle"
     v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
     v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
-    :allowPlatformGuarantee="false" :publishLoading="publishLoading" @close="closePublishModal" @notify="showToast"
+    :allowPlatformGuarantee="false" :publishLoading="publishLoading"
+    :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="showToast"
     @submit="submitPublishRequirement" />
 
   <Teleport to="body">

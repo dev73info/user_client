@@ -6,12 +6,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { HttpError, apiUrl } from '@/api/http'
 import {
   createPublicMcResourceComment,
+  downloadPublicMcResourceFile,
+  extractResourceFileNameFromUrl,
   getPublicMcResource,
   invalidateResourceListCache,
   likePublicMcResource,
   listPublicMcResourceComments,
   listPublicMcResourceVersions,
-  downloadPublicMcResourceFile,
   unlikePublicMcResource,
   type PublicMcResourceCommentItem,
   type PublicMcResourceItem,
@@ -24,6 +25,7 @@ import {
   parseResourceIdFromSlug,
 } from '@/api/resourceTags'
 import { useAuthStore } from '@/stores/auth'
+import { useDownloadStore } from '@/stores/download'
 import { useToast } from '@/composables/useToast'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
@@ -42,6 +44,7 @@ const COMMENT_MAX_LENGTH = 300
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const downloadStore = useDownloadStore()
 const { showToast } = useToast()
 
 const loading = ref(false)
@@ -256,11 +259,17 @@ function formatUpdatedDate(value: string): string {
 
 async function triggerDownload(url: string, fileName: string) {
   const token = auth.token?.trim() ? auth.token : null
+  downloadStore.start(fileName)
   try {
     const { blob, fileName: resolvedFileName } = await downloadPublicMcResourceFile(
       url,
       fileName,
       token,
+      (progress) => {
+        // 注意：这里不能用 resolvedFileName（它在 await 完成前处于 TDZ），
+        // 必须使用外层已初始化的 fileName。
+        downloadStore.progress(progress.percent, progress.loaded, progress.total)
+      },
     )
 
     const objectUrl = URL.createObjectURL(blob)
@@ -287,6 +296,8 @@ async function triggerDownload(url: string, fileName: string) {
     }
 
     throw error
+  } finally {
+    downloadStore.finish()
   }
 }
 
@@ -296,8 +307,10 @@ async function openResourceFile() {
     return
   }
 
-  const fileName =
-    resource.value?.file_name || latestVersion.value.resource.split('/').pop() || 'download'
+  const fileName = extractResourceFileNameFromUrl(
+    latestVersion.value.resource,
+    resource.value?.file_name || 'download',
+  )
   try {
     await triggerDownload(latestVersion.value.resource, fileName)
   } catch (error) {
@@ -306,7 +319,10 @@ async function openResourceFile() {
 }
 
 async function downloadVersion(version: PublicMcResourceVersionItem) {
-  const fileName = resource.value?.file_name || version.resource.split('/').pop() || 'download'
+  const fileName = extractResourceFileNameFromUrl(
+    version.resource,
+    resource.value?.file_name || 'download',
+  )
   try {
     await triggerDownload(version.resource, fileName)
   } catch (error) {
@@ -612,9 +628,21 @@ watch(
 
             <div class="resource-detail-page__cta-row">
               <div class="resource-detail-page__primary-actions">
-                <button class="resource-detail-page__primary-btn" type="button" @click="openResourceFile">
-                  下载最新版本
+                <button class="resource-detail-page__primary-btn" type="button"
+                  :disabled="downloadStore.state.active" @click="openResourceFile">
+                  {{ downloadStore.state.active ? '下载中...' : '下载最新版本' }}
                 </button>
+                <div v-if="downloadStore.state.active" class="resource-detail-page__download-progress"
+                  role="progressbar" :aria-valuenow="downloadStore.state.percent" aria-valuemin="0"
+                  aria-valuemax="100">
+                  <div class="resource-detail-page__download-progress__track">
+                    <div class="resource-detail-page__download-progress__bar"
+                      :style="{ width: `${downloadStore.state.percent}%` }"></div>
+                  </div>
+                  <span class="resource-detail-page__download-progress__label">
+                    {{ downloadStore.state.percent }}%
+                  </span>
+                </div>
                 <button class="resource-detail-page__like-btn" type="button"
                   :class="{ 'resource-detail-page__like-btn--active': resource.liked_by_me }" :disabled="likeSubmitting"
                   :aria-pressed="resource.liked_by_me" @click="toggleResourceLike">
@@ -657,8 +685,8 @@ watch(
                     <span>{{ formatVersionTime(version.created_at) }}</span>
                   </div>
                   <button class="resource-detail-page__version-download" type="button"
-                    @click="downloadVersion(version)">
-                    下载
+                    :disabled="downloadStore.state.active" @click="downloadVersion(version)">
+                    {{ downloadStore.state.active && downloadStore.state.fileName === extractResourceFileNameFromUrl(version.resource, resource.file_name || 'download') ? `下载中 ${downloadStore.state.percent}%` : '下载' }}
                   </button>
                 </div>
                 <p class="resource-detail-page__paragraph">
@@ -950,6 +978,51 @@ watch(
   background: linear-gradient(135deg, #2563eb, #4f8cff);
   font-weight: 700;
   box-shadow: 0 14px 26px rgba(37, 99, 235, 0.2);
+}
+
+.resource-detail-page__primary-btn:disabled {
+  cursor: wait;
+  opacity: 0.78;
+}
+
+.resource-detail-page__download-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.96);
+  border: 1px solid rgba(219, 229, 247, 0.82);
+}
+
+.resource-detail-page__download-progress__track {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(219, 229, 247, 0.9);
+  overflow: hidden;
+}
+
+.resource-detail-page__download-progress__bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2563eb, #4f8cff);
+  transition: width 120ms linear;
+}
+
+.resource-detail-page__download-progress__label {
+  flex: 0 0 auto;
+  min-width: 42px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 800;
+  color: #1d4ed8;
+  font-variant-numeric: tabular-nums;
 }
 
 .resource-detail-page__secondary-btn,

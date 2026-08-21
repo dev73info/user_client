@@ -70,6 +70,8 @@ const publishBudget = ref<string | number>('')
 const publishAcceptance = ref('')
 const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
 const publishLoading = ref(false)
+const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
+const editModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
 const editVisible = ref(false)
 const editRequirement = ref<RequirementItem | null>(null)
 const editTitle = ref('')
@@ -170,7 +172,7 @@ function isSelfManagedRequirement(item: RequirementItem) {
 }
 
 function paymentModeLabel(item: RequirementItem) {
-  return isSelfManagedRequirement(item) ? '无平台担保' : '平台担保'
+  return isSelfManagedRequirement(item) ? '无电签约定' : '电签担保'
 }
 
 function paymentModeHint(item: RequirementItem) {
@@ -1017,6 +1019,7 @@ async function submitRequirementResubmit() {
     })
 
     showToast('需求已重新提交，等待审核', 'success')
+    editModalRef.value?.clearDraft(`edit-${editRequirement.value.requirement_id}`)
     forceCloseEditModal()
     await loadMyRequirements()
   } catch (err) {
@@ -1080,6 +1083,7 @@ async function submitRequirementPublish() {
 
     showToast('需求已发布，等待审核', 'success')
     forceClosePublishModal()
+    publishModalRef.value?.clearDraft()
     await loadMyRequirements()
   } catch (err) {
     showToast(err instanceof Error ? err.message : '发布失败', 'error')
@@ -1655,17 +1659,19 @@ watch(
       </ul>
     </section>
 
-    <PublishModal :visible="publishVisible" v-model:publishTitle="publishTitle"
+    <PublishModal ref="publishModalRef" :visible="publishVisible" v-model:publishTitle="publishTitle"
       v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
       v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
-      :allowPlatformGuarantee="false" :publishLoading="publishLoading" @close="closePublishModal" @notify="showToast"
+      :allowPlatformGuarantee="false" :publishLoading="publishLoading"
+      :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="showToast"
       @submit="submitRequirementPublish" />
 
-    <PublishModal :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核" loadingText="提交中..."
-      v-model:publishTitle="editTitle" v-model:publishDescription="editDescription" v-model:publishBudget="editBudget"
-      v-model:publishAcceptance="editAcceptance" v-model:publishPaymentMode="editPaymentMode"
-      :allowPlatformGuarantee="false" :publishLoading="editLoading" @close="closeEditModal" @notify="showToast"
-      @submit="submitRequirementResubmit" />
+    <PublishModal ref="editModalRef" :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核"
+      loadingText="提交中..." v-model:publishTitle="editTitle" v-model:publishDescription="editDescription"
+      v-model:publishBudget="editBudget" v-model:publishAcceptance="editAcceptance"
+      v-model:publishPaymentMode="editPaymentMode" :allowPlatformGuarantee="false" :publishLoading="editLoading"
+      :draft-scope="editRequirement ? `edit-${editRequirement.requirement_id}` : ''" @close="closeEditModal"
+      @notify="showToast" @submit="submitRequirementResubmit" />
 
     <RequirementConversationModal :visible="conversationVisible" :token="auth.token" :current-username="auth.username"
       :requirement-id="conversationRequirement?.requirement_id ?? ''" :title="conversationRequirement?.title"

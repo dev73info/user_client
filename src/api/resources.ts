@@ -242,10 +242,50 @@ function getResponseFileName(response: Response, fallbackFileName: string): stri
   return fallbackFileName
 }
 
+/**
+ * 从资源文件 URL（`/uploads/resource-versions/{resource_id}/{uuid}-{original_name}`）中
+ * 提取真实文件名：去掉 `{uuid}-` 前缀，还原上传时的原始文件名。
+ * 若 URL 不符合该格式则返回 fallback。
+ */
+export function extractResourceFileNameFromUrl(
+  path: string,
+  fallbackFileName: string,
+): string {
+  try {
+    const raw = path.split('?')[0] ?? ''
+    const segments = raw.split('/').filter(Boolean)
+    const last = segments[segments.length - 1] ?? ''
+    if (!last) {
+      return fallbackFileName
+    }
+
+    // 匹配 `{uuid}-{original_name}` 形式：uuid 通常为 36 位（含连字符）
+    const uuidMatch = last.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-(.+)$/i)
+    if (uuidMatch?.[1]) {
+      return decodeURIComponent(uuidMatch[1])
+    }
+
+    // 兼容：如果没有 uuid 前缀，直接用文件名；但排除 `.package` 占位名
+    if (last.toLowerCase().endsWith('.package')) {
+      return fallbackFileName
+    }
+    return decodeURIComponent(last)
+  } catch {
+    return fallbackFileName
+  }
+}
+
+export type DownloadProgress = {
+  loaded: number
+  total: number
+  percent: number
+}
+
 export async function downloadPublicMcResourceFile(
   path: string,
   fallbackFileName: string,
   token?: string | null,
+  onProgress?: (progress: DownloadProgress) => void,
 ): Promise<{ blob: Blob; fileName: string }> {
   const response = await fetch(apiUrl(path), {
     method: 'GET',
@@ -256,8 +296,41 @@ export async function downloadPublicMcResourceFile(
     throw new HttpError(response.status, await readErrorMessage(response, '下载资源失败'))
   }
 
+  const contentLength = Number(response.headers.get('content-length') ?? '0')
+  const total = Number.isFinite(contentLength) && contentLength > 0 ? contentLength : 0
+
+  // 无 Content-Length 或无法流式读取时，退化为一次性读取（无进度）。
+  if (!response.body || !total) {
+    onProgress?.({ loaded: total, total, percent: 100 })
+    return {
+      blob: await response.blob(),
+      fileName: getResponseFileName(response, fallbackFileName),
+    }
+  }
+
+  const reader = response.body.getReader()
+  const chunks: BlobPart[] = []
+  let loaded = 0
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) {
+      break
+    }
+    chunks.push(value as unknown as BlobPart)
+    loaded += value.byteLength
+    onProgress?.({
+      loaded,
+      total,
+      percent: total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0,
+    })
+  }
+
+  const blob = new Blob(chunks, { type: response.headers.get('content-type') ?? 'application/octet-stream' })
+  onProgress?.({ loaded, total, percent: 100 })
   return {
-    blob: await response.blob(),
+    blob,
     fileName: getResponseFileName(response, fallbackFileName),
   }
 }

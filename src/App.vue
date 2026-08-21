@@ -3,12 +3,14 @@ import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
+import { useDownloadStore } from '@/stores/download'
 import AppToast from '@/components/AppToast.vue'
 import PortalTopNav from '@/components/PortalTopNav.vue'
 import PortalMobileDock from '@/components/PortalMobileDock.vue'
 import { useToast } from '@/composables/useToast'
 import { AUTH_UNAUTHORIZED_EVENT, type AuthUnauthorizedEventDetail } from '@/shared/api/authEvents'
 const auth = useAuthStore()
+const downloadStore = useDownloadStore()
 const route = useRoute()
 const router = useRouter()
 const currentYear = new Date().getFullYear()
@@ -132,7 +134,7 @@ onBeforeUnmount(() => {
                   <p>
                     ICP备案号：
                     <a href="https://beian.miit.gov.cn/" target="_blank"
-                      rel="noopener noreferrer">滇ICP备2026006119号-2</a>
+                      rel="noopener noreferrer">滇ICP备2026006119号-3</a>
                   </p>
                   <p>
                     公安备案号：
@@ -140,13 +142,14 @@ onBeforeUnmount(() => {
                       href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000020" target="_blank"
                       rel="noopener noreferrer">
                       <img class="public-security-beian-icon" src="/icons/beian.png" alt="公安备案图标" />
-                      <span>滇公网安备53062802000020号</span>
+                      <span>滇公网安备53062802000020号（正常重新备案）</span>
                     </a>
                   </p>
                   <p>交易功能说明：使用第三方分账系统进行交易担保于分账，资金安全有保障</p>
                 </div>
                 <div class="site-footer-block">
                   <h3>服务说明</h3>
+                  <p><router-link to="/about">关于我们</router-link></p>
                   <p><router-link to="/terms">用户协议</router-link></p>
                   <p><router-link to="/privacy">隐私政策</router-link></p>
                   <p><router-link to="/payment-refund">支付与退款说明</router-link></p>
@@ -161,6 +164,32 @@ onBeforeUnmount(() => {
       <PortalMobileDock />
     </div>
     <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
+
+    <!-- 全局资源下载进度浮层：切换路由不中断下载，浮层持续展示进度 -->
+    <Transition name="download-pop">
+      <div v-if="downloadStore.state.active" class="global-download-card" role="status"
+        aria-live="polite">
+        <div class="global-download-card__body">
+          <div class="global-download-card__row">
+            <span class="global-download-card__file">{{ downloadStore.state.fileName }}</span>
+            <span class="global-download-card__pct">{{ downloadStore.state.percent }}%</span>
+          </div>
+          <div class="global-download-card__track">
+            <div class="global-download-card__bar"
+              :style="{ width: `${downloadStore.state.percent}%` }"></div>
+          </div>
+          <div class="global-download-card__meta">
+            <span v-if="downloadStore.loadedBytes > 0">
+              {{ downloadStore.formatBytes(downloadStore.loadedBytes) }}
+              <template v-if="downloadStore.totalBytes > 0">
+                / {{ downloadStore.formatBytes(downloadStore.totalBytes) }}
+              </template>
+            </span>
+            <span v-else>正在下载…</span>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -215,6 +244,84 @@ onBeforeUnmount(() => {
   .app-view-container {
     padding-bottom: 108px;
   }
+}
+
+/* ── 全局资源下载进度浮层 ── */
+.global-download-card {
+  position: fixed;
+  right: 18px;
+  bottom: 84px;
+  z-index: 3000;
+  width: min(340px, calc(100vw - 36px));
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.94);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: #e2e8f0;
+}
+
+.global-download-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.global-download-card__file {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f1f5f9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.global-download-card__pct {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 800;
+  color: #93c5fd;
+  font-variant-numeric: tabular-nums;
+}
+
+.global-download-card__track {
+  position: relative;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.28);
+  overflow: hidden;
+}
+
+.global-download-card__bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  transition: width 120ms linear;
+}
+
+.global-download-card__meta {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+.download-pop-enter-active,
+.download-pop-leave-active {
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.download-pop-enter-from,
+.download-pop-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
 }
 </style>
 
