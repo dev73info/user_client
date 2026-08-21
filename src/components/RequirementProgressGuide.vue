@@ -24,7 +24,9 @@ const hasBudget = computed(() => (props.requirement.budget ?? 0) > 0)
 
 type Step = { key: string; title: string; desc: string; rank: number }
 
-// 需求者视角：审核 → 预算缴纳（零预算自动跳过）→ 签署合同 → 开发与验收 → 已完成
+// 需求者视角：
+// 无担保模式：审核 → 开发与验收 → 已完成（无合同、无预算缴纳）
+// 担保模式：审核 → 预算缴纳（零预算自动跳过）→ 签署合同 → 开发与验收 → 已完成
 const creatorSteps = computed<Step[]>(() => {
   const titles = [
     { key: 'review', title: '审核', desc: '提交需求等待平台审核' },
@@ -35,8 +37,12 @@ const creatorSteps = computed<Step[]>(() => {
     titles.push({ key: 'deposit', title: '预算缴纳', desc: '支付定金锁定需求' })
   }
 
+  // 仅担保模式需要签署合同；无担保模式直接进入开发与验收
+  if (!isSelfManaged.value) {
+    titles.push({ key: 'contract', title: '签署合同', desc: '双方签署需求开发合同' })
+  }
+
   titles.push(
-    { key: 'contract', title: '签署合同', desc: '双方签署需求开发合同' },
     { key: 'develop', title: '开发与验收', desc: '开发交付并完成验收' },
     { key: 'done', title: '已完成', desc: '需求完成可评价' },
   )
@@ -46,21 +52,36 @@ const creatorSteps = computed<Step[]>(() => {
 
 // 开发者视角
 const devSteps = computed<Step[]>(() => {
-  return [
+  const steps = [
     { key: 'bind', title: '接单', desc: '关联资源项目接取需求', rank: 0 },
-    { key: 'contract', title: '签合同', desc: '双方签署需求开发合同', rank: 1 },
+  ] as Step[]
+
+  // 仅担保模式需要签合同；无担保模式接单后直接开发
+  if (!isSelfManaged.value) {
+    steps.push({ key: 'contract', title: '签合同', desc: '双方签署需求开发合同', rank: 1 })
+  }
+
+  steps.push(
     { key: 'develop', title: '开发', desc: '开发并发布资源版本', rank: 2 },
     { key: 'final', title: '交付', desc: '交付成果等待验收', rank: 3 },
     { key: 'done', title: '结算', desc: '完成结算与评价', rank: 4 },
-  ]
+  )
+
+  // 无担保模式没有签合同步骤，后续阶段整体前移 1 位
+  if (isSelfManaged.value) {
+    return steps.map((step) => ({ ...step, rank: step.rank - 1 }))
+  }
+
+  return steps
 })
 
 const steps = computed(() => (view.value === 'dev' ? devSteps.value : creatorSteps.value))
 
 // 需求状态 → 生命周期阶段（需求者视角）
-// 0=审核 1=预算缴纳 2=签署合同 3=开发与验收 4=已完成
-// 无预算缴纳步骤时，后续阶段整体前移 1 位
+// 担保模式：0=审核 1=预算缴纳 2=签署合同 3=开发与验收 4=已完成
+// 无担保模式：0=审核 1=开发与验收 2=已完成（无预算缴纳、无合同）
 const hasDepositPhase = computed(() => !isSelfManaged.value && hasBudget.value)
+const hasContractPhase = computed(() => !isSelfManaged.value)
 
 const currentRank = computed(() => {
   const status = props.requirement.status
@@ -90,6 +111,10 @@ const currentRank = computed(() => {
 
   // 无预算缴纳阶段时，deposit 之后的所有阶段前移一位
   if (!hasDepositPhase.value && phase >= 1) {
+    phase -= 1
+  }
+  // 无合同阶段时，合同之后的阶段再前移一位
+  if (!hasContractPhase.value && phase >= 2) {
     phase -= 1
   }
   return phase

@@ -148,6 +148,10 @@ function formatRequirementStatus(status: RequirementStatus) {
 }
 
 function isWaitingContractSign(item: RequirementItem) {
+  // 无担保模式（self_managed）不需要合同签署
+  if (isSelfManagedRequirement(item)) {
+    return false
+  }
   const status = signingStatusForRequirement(item)
   return Boolean(
     item.status === 'deposit_paid' &&
@@ -222,11 +226,13 @@ function publishedVersionCount(item: RequirementItem) {
 }
 
 function canRequestFinalPayment(item: RequirementItem) {
+  // 无担保模式（self_managed）完成无需合同已签；仅担保模式需要双方已签合同
+  const contractSigned = isSelfManagedRequirement(item) || isRequirementContractSigned(item)
   return (
     hasBoundResource(item) &&
     item.status === 'in_development' &&
     publishedVersionCount(item) > 0 &&
-    isRequirementContractSigned(item)
+    contractSigned
   )
 }
 
@@ -277,11 +283,19 @@ function isRequirementContractSigned(item: RequirementItem) {
 }
 
 function canOpenContractSign(item: RequirementItem) {
+  // 无担保模式（self_managed）不提供合同签署入口
+  if (isSelfManagedRequirement(item)) {
+    return false
+  }
   const status = signingStatusForRequirement(item)
   return Boolean(status?.has_contract && !status.party_a_signed && status.party_b_signed)
 }
 
 function contractStatusHint(item: RequirementItem) {
+  // 无担保模式（self_managed）不需要合同，不显示合同状态提示
+  if (isSelfManagedRequirement(item)) {
+    return ''
+  }
   const status = signingStatusForRequirement(item)
   if (!status?.has_contract) return ''
   if (status.party_a_signed && status.party_b_signed) return '合同已签署'
@@ -1213,8 +1227,11 @@ async function loadContractSigningStatuses(items: RequirementItem[]) {
     return
   }
 
+  // 无担保模式（self_managed）不需要合同，无需查询合同签署状态
+  const guaranteedItems = items.filter((item) => item.payment_mode !== 'self_managed')
+
   const entries = await Promise.allSettled(
-    items.map((item) =>
+    guaranteedItems.map((item) =>
       fetchContractSigningStatus(auth.token, item.requirement_id).then((status) => ({
         requirementId: item.requirement_id,
         status,

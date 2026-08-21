@@ -58,9 +58,11 @@ async function loadMyRequirements() {
   loading.value = true
   try {
     rows.value = await listMyRequirements(auth.token)
+    // 无担保模式（self_managed）不需要合同，无需查询合同签署状态
+    const guaranteedRows = rows.value.filter((item) => item.payment_mode !== 'self_managed')
     const [statusEntries] = await Promise.all([
       Promise.allSettled(
-        rows.value.map((item) =>
+        guaranteedRows.map((item) =>
           fetchContractSigningStatus(auth.token!, item.requirement_id).then((s) => ({ id: item.requirement_id, s })),
         ),
       ),
@@ -114,6 +116,10 @@ function statusLabel(status: RequirementItem['status']): string {
 }
 
 function isWaitingContractSign(item: RequirementItem): boolean {
+  // 无担保模式（self_managed）不需要合同签署
+  if (item.payment_mode === 'self_managed') {
+    return false
+  }
   const status = signingStatusMap.value[item.requirement_id]
   return Boolean(
     item.status === 'deposit_paid' &&
@@ -208,6 +214,10 @@ function conversationButtonLabel(item: RequirementItem) {
 }
 
 function canOpenContractSign(item: RequirementItem) {
+  // 无担保模式（self_managed）不提供合同签署/查看入口
+  if (item.payment_mode === 'self_managed') {
+    return false
+  }
   return Boolean(signingStatusMap.value[item.requirement_id]?.has_contract)
 }
 
@@ -436,7 +446,7 @@ async function loadRequirementConversations() {
             <RequirementProgressGuide :requirement="item" :payment-mode="item.payment_mode" view="dev" />
           </div>
 
-          <div class="dev-requirement-card__signing">
+          <div v-if="item.payment_mode !== 'self_managed'" class="dev-requirement-card__signing">
             <div class="signing-status-bar">
               <span class="signing-step"
                 :class="signingStatusMap[item.requirement_id]?.has_contract ? 'done' : 'pending'">
