@@ -38,6 +38,12 @@ const faceidBizToken = ref('')
 const faceidBizId = ref('')
 const FACEID_POLL_INTERVAL_MS = 10_000
 
+const isMobile = ref(false)
+let mobileMatch: MediaQueryList | null = null
+function syncMobileViewport() {
+  isMobile.value = Boolean(mobileMatch?.matches)
+}
+
 let faceidPollTimer: number | null = null
 let faceidCheckInFlight = false
 
@@ -514,7 +520,12 @@ async function checkWechatFaceidResult(
       clearFaceidChallenge()
       showToast(updated.review_note || '爱签实名认证未通过', 'error')
     } else if (!options.silent) {
-      showToast('爱签实名认证结果已更新', 'success')
+      // 认证结果仍为处理中（pending）：如实提示，避免误导为「已更新」
+      if (faceidAuthUrl.value) {
+        showToast('认证仍在处理中，请先完成人脸核身后再查询', 'warning')
+      } else {
+        showToast('实名认证正在处理中，请稍后查询结果', 'warning')
+      }
     }
   } catch (err) {
     if (!options.silent) {
@@ -592,6 +603,10 @@ async function loadCurrentRealname() {
 }
 
 onMounted(async () => {
+  mobileMatch = window.matchMedia('(max-width: 720px)')
+  syncMobileViewport()
+  mobileMatch.addEventListener('change', syncMobileViewport)
+
   await loadCurrentRealname()
   const payload = faceidReturnPayload()
   if (payload.serial_no || payload.order_no || payload.biz_id) {
@@ -600,6 +615,8 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  mobileMatch?.removeEventListener('change', syncMobileViewport)
+  mobileMatch = null
   stopFaceidAutoPolling()
 })
 </script>
@@ -765,17 +782,32 @@ onBeforeUnmount(() => {
           <div v-if="faceidAuthUrl" class="realname-faceid-panel">
             <div class="realname-faceid-panel__main">
               <div class="realname-faceid-panel__copy">
-                <strong>爱签实名认证</strong>
-                <span>二维码有效期约 120 分钟</span>
+                <strong>{{ isMobile ? '请完成人脸核身认证' : '请使用手机扫码，完成人脸核身认证' }}</strong>
+                <span>认证通过后将自动生效，无需重复提交</span>
               </div>
-              <img v-if="faceidQrDataUrl" class="realname-faceid-panel__qr" :src="faceidQrDataUrl" alt="爱签实名认证二维码" />
+
+              <template v-if="!isMobile">
+                <img v-if="faceidQrDataUrl" class="realname-faceid-panel__qr" :src="faceidQrDataUrl" alt="爱签实名认证二维码" />
+                <ol class="realname-faceid-panel__steps">
+                  <li>用手机 <strong>微信 / 支付宝</strong> 扫描上方二维码</li>
+                  <li>在手机端按提示完成 <strong>人脸核身</strong></li>
+                  <li>认证通过后状态自动更新为「已通过」</li>
+                </ol>
+              </template>
+
+              <div v-else class="realname-faceid-panel__mobile-tip">
+                <p>请在手机上完成人脸核身认证。</p>
+                <p class="realname-faceid-panel__mobile-sub">
+                  点击下方「打开认证页面」，将跳转到爱签认证页面完成核身。
+                </p>
+              </div>
             </div>
             <div class="realname-faceid-panel__actions">
               <el-button class="realname-plain-btn" @click="openWechatFaceidPage">
                 <el-icon>
                   <Promotion />
                 </el-icon>
-                打开认证页面
+                {{ isMobile ? '打开认证页面完成核身' : '扫码不便？点此打开认证页面' }}
               </el-button>
               <el-button type="primary" class="realname-submit-btn" :loading="faceidChecking"
                 @click="checkWechatFaceidResult()">
@@ -785,6 +817,9 @@ onBeforeUnmount(() => {
                 查询结果
               </el-button>
             </div>
+            <p class="realname-faceid-panel__hint">
+              实名认证需本人完成，二维码有效期约 120 分钟。若已完成核身，可点击「查询结果」刷新认证状态。
+            </p>
           </div>
         </div>
       </el-card>
@@ -985,6 +1020,45 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(198, 210, 236, 0.78);
   background: #fff;
   box-shadow: 0 12px 26px rgba(37, 99, 235, 0.12);
+}
+
+.realname-faceid-panel__steps {
+  margin: 2px 0 0;
+  padding: 0 0 0 20px;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.realname-faceid-panel__steps li {
+  list-style: decimal;
+}
+
+.realname-faceid-panel__steps strong {
+  color: #0f172a;
+}
+
+.realname-faceid-panel__mobile-tip {
+  display: grid;
+  gap: 6px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.realname-faceid-panel__mobile-sub {
+  color: #64748b;
+}
+
+.realname-faceid-panel__hint {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
 }
 
 .realname-faceid-panel__actions {
