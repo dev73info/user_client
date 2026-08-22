@@ -41,6 +41,7 @@ import { getDepositRatio } from '@/api/settings'
 import { getResourceDetailSlug, normalizeTagName } from '@/api/resourceTags'
 import { useTagTreeStore } from '@/stores/tagTree'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
+import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 
 type Metric = {
   label: string
@@ -122,6 +123,23 @@ type TeamRank = {
 }
 
 const TOP_LIKED_RESOURCE_LIMIT = 16
+
+const mockDeveloperRanks: DeveloperRank[] = [
+  {
+    name: '示例开发者',
+    username: 'demo-developer',
+    avatarUrl: '',
+    creditScore: 98,
+    deals: '3 个资源',
+  },
+  {
+    name: '资源创作者',
+    username: 'resource-maker',
+    avatarUrl: '',
+    creditScore: 95,
+    deals: '2 个资源',
+  },
+]
 
 const failedDeveloperAvatarUrls = ref<Set<string>>(new Set())
 const failedSpotlightCoverUrls = ref<Set<string>>(new Set())
@@ -311,7 +329,7 @@ const workflowSteps: WorkflowStep[] = [
   {
     step: '1',
     title: '提交需求',
-    summary: '填写需求并支付定金',
+    summary: '填写需求与预算',
     icon: '▣',
     accent: 'violet',
     actionLabel: '发布需求',
@@ -320,7 +338,7 @@ const workflowSteps: WorkflowStep[] = [
   {
     step: '2',
     title: '需求审核',
-    summary: '平台审核需求\n确认信息准确',
+    summary: 'AI+人工复核\n确认需求信息',
     icon: '☑',
     accent: 'blue',
     actionLabel: '查看进度',
@@ -329,7 +347,7 @@ const workflowSteps: WorkflowStep[] = [
   {
     step: '3',
     title: '开发者接单',
-    summary: '开发者确认接单\n开始工作',
+    summary: '开发者接单\n开始工作',
     icon: '⊞',
     accent: 'green',
     actionLabel: '开发者入口',
@@ -338,7 +356,7 @@ const workflowSteps: WorkflowStep[] = [
   {
     step: '4',
     title: '完成验收',
-    summary: '确认需求满足\n支付尾款',
+    summary: '确认需求',
     icon: '☑',
     accent: 'violet',
     actionLabel: '我的需求',
@@ -347,7 +365,7 @@ const workflowSteps: WorkflowStep[] = [
   {
     step: '5',
     title: '评价完成',
-    summary: '双方评价\n交易完成',
+    summary: '交易完成\n双方评价',
     icon: '♥',
     accent: 'red',
     actionLabel: '评价订单',
@@ -529,9 +547,7 @@ const developerRanks = computed<DeveloperRank[]>(() => {
     })
   }
 
-  if (groupedResources.size === 0) {
-    return []
-  }
+  if (groupedResources.size === 0) return mockDeveloperRanks
 
   return [...groupedResources.values()]
     .sort(
@@ -693,6 +709,13 @@ watch(
 )
 
 onMounted(() => {
+  setSeoMeta({
+    title: '73Info 柒叁信息 - 资源与需求协作平台',
+    description:
+      '73Info 柒叁信息面向 Minecraft、网站开发和小工具场景提供免费资源浏览、需求发布、开发者协作、沟通记录、工单跟进与合规说明服务。',
+    path: '/',
+  })
+
   auth.hydrate()
 
   const oauthToken =
@@ -732,6 +755,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   isMounted = false
+  resetSeoMeta()
   resetAuthForm()
   if (autoRefreshTimer) {
     clearInterval(autoRefreshTimer)
@@ -1828,9 +1852,6 @@ async function submitPublishRequirement() {
           <section class="portal-card portal-section--beta">
             <div class="portal-beta-notice">
               <span class="portal-beta-notice__badge">内测中</span>
-              <p class="portal-beta-notice__text">
-                资源浏览、投稿、需求发布和工单沟通均可免费使用，欢迎反馈建议。
-              </p>
 
               <div v-if="auth.isAuthed" class="portal-beta-invite">
                 <span class="portal-beta-invite__title">🎁 邀请有礼</span>
@@ -1850,7 +1871,7 @@ async function submitPublishRequirement() {
                 type="button"
                 @click="openBetaGroup"
               >
-                加入内测QQ群
+                加入QQ群
               </button>
             </div>
           </section>
@@ -1900,17 +1921,8 @@ async function submitPublishRequirement() {
             <div class="portal-card__header portal-card__header--stats">
               <div class="portal-card__title portal-card__title--stats">
                 <span class="portal-stats-head__icon" aria-hidden="true">◉</span>
-                <h2>内测数据</h2>
+                <h2>公开数据</h2>
               </div>
-              <button
-                class="portal-link-btn"
-                :class="{ 'is-loading': homeRefreshLoading }"
-                type="button"
-                :disabled="homeRefreshLoading"
-                @click="refreshHomeData"
-              >
-                {{ homeRefreshLoading ? "刷新中" : "刷新" }}
-              </button>
             </div>
             <div class="portal-stats-grid">
               <article
@@ -1945,14 +1957,16 @@ async function submitPublishRequirement() {
 
           <section class="portal-card portal-card--rank">
             <div class="portal-card__header">
-              <h2>活跃开发者</h2>
-              <button
-                class="portal-link-btn"
-                type="button"
-                @click="router.push({ name: 'community' })"
-              >
-                查看动态
-              </button>
+              <div class="portal-card__title portal-card__title--rank">
+                <span class="portal-card-title-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="m8 9-4 3 4 3" />
+                    <path d="m16 9 4 3-4 3" />
+                    <path d="m14 5-4 14" />
+                  </svg>
+                </span>
+                <h2>活跃开发者</h2>
+              </div>
             </div>
             <ul v-if="developerRanks.length > 0" class="portal-rank-list">
               <li
@@ -1989,18 +2003,21 @@ async function submitPublishRequirement() {
               <strong>暂无公开开发者</strong>
             </div>
           </section>
-          <section class="portal-card portal-card--team">
+          <section v-if="teamRanks.length > 0" class="portal-card portal-card--team">
             <div class="portal-card__header">
-              <h2>活跃团队</h2>
-              <button
-                class="portal-link-btn"
-                type="button"
-                @click="router.push({ name: 'community' })"
-              >
-                查看动态
-              </button>
+              <div class="portal-card__title portal-card__title--team">
+                <span class="portal-card-title-icon portal-card-title-icon--team" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                </span>
+                <h2>活跃团队</h2>
+              </div>
             </div>
-            <ul v-if="teamRanks.length > 0" class="portal-rank-list">
+            <ul class="portal-rank-list">
               <li
                 v-for="(team, index) in teamRanks"
                 :key="team.teamId"
@@ -2021,9 +2038,6 @@ async function submitPublishRequirement() {
                 </div>
               </li>
             </ul>
-            <div v-else class="portal-empty-state portal-empty-state--compact">
-              <strong>暂无公开团队</strong>
-            </div>
           </section>
         </aside>
       </div>

@@ -16,6 +16,8 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="alternate icon" href="/icons/home-icon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/site.webmanifest" />
+    <link rel="canonical" href="https://73info.cn/" />
+    <meta name="robots" content="index,follow" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="73Info 柒叁信息" />
     <meta property="og:title" content="73Info 柒叁信息 - 资源与需求协作平台" />
@@ -33,26 +35,110 @@
     <title>73Info 柒叁信息 - 资源与需求协作平台</title>
     <style>
       .seo-fallback {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border: 0;
+        min-height: 100vh;
+        box-sizing: border-box;
+        padding: 56px max(24px, calc((100vw - 1080px) / 2));
+        color: #14213d;
+        background: #f7fafc;
+        font-family:
+          "Noto Sans SC",
+          "Microsoft YaHei",
+          sans-serif;
+      }
+
+      .seo-fallback__eyebrow {
+        margin: 0 0 14px;
+        color: #2563eb;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .seo-fallback h1 {
+        max-width: 780px;
+        margin: 0;
+        font-size: clamp(30px, 5vw, 56px);
+        line-height: 1.08;
+      }
+
+      .seo-fallback__lead {
+        max-width: 760px;
+        margin: 18px 0 30px;
+        color: #475569;
+        font-size: 18px;
+        line-height: 1.8;
+      }
+
+      .seo-fallback__links {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 18px;
+        max-width: 920px;
+      }
+
+      .seo-fallback__links a {
+        display: block;
+        padding: 18px 20px;
+        color: #1d4ed8;
+        text-decoration: none;
+        background: #ffffff;
+        border: 1px solid #dbeafe;
+        border-radius: 8px;
+      }
+
+      .seo-fallback__links span {
+        display: block;
+        font-size: 20px;
+        font-weight: 700;
+      }
+
+      .seo-fallback__links small {
+        display: block;
+        margin-top: 8px;
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.6;
       }
     </style>
   </head>
   <body>
     <div id="app">
-      <main class="seo-fallback" aria-label="柒叁信息">
-        <h1>73Info 柒叁信息 - 资源与需求协作平台</h1>
-        <p>面向 Minecraft、网站开发和小工具场景提供资源发现、需求发布、沟通记录、工单跟进与合规说明服务。</p>
+      <!-- SEO_FALLBACK_START -->
+      <main class="seo-fallback" aria-label="柒叁信息" itemscope itemtype="https://schema.org/WebSite">
+        <p class="seo-fallback__eyebrow">73INFO · 柒叁信息</p>
+        <h1 itemprop="name">73Info 柒叁信息 - 资源与需求协作平台</h1>
+        <p class="seo-fallback__lead" itemprop="description">
+          面向 Minecraft、网站开发和小工具场景提供资源发现、需求发布、开发者协作、沟通记录、工单跟进与合规说明服务。
+        </p>
+        <nav class="seo-fallback__links" aria-label="站点核心入口" itemscope itemtype="https://schema.org/SiteNavigationElement">
+          <a itemprop="url" href="/free-resources">
+            <span itemprop="name">免费资源</span>
+            <small>浏览 Minecraft、网站开发、小工具等公开资源。</small>
+          </a>
+          <a itemprop="url" href="/requirement-hall">
+            <span itemprop="name">需求大厅</span>
+            <small>发布需求、查看合作机会、对接开发者。</small>
+          </a>
+          <a itemprop="url" href="/community">
+            <span itemprop="name">社区交流</span>
+            <small>查看平台公告、经验分享和用户讨论。</small>
+          </a>
+          <a itemprop="url" href="/about">
+            <span itemprop="name">关于我们</span>
+            <small>了解 73Info 平台定位、合规说明与联系方式。</small>
+          </a>
+          <a itemprop="url" href="/terms">
+            <span itemprop="name">用户协议</span>
+            <small>查看平台服务规则、账号使用与内容规范。</small>
+          </a>
+          <a itemprop="url" href="/privacy">
+            <span itemprop="name">隐私政策</span>
+            <small>了解个人信息处理、数据使用和安全保护说明。</small>
+          </a>
+        </nav>
       </main>
+      <!-- SEO_FALLBACK_END -->
     </div>
-    <noscript>柒叁信息需要启用 JavaScript 才能获得完整体验。</noscript>
+    <noscript>柒叁信息需要启用 JavaScript 才能获得完整体验；你仍可通过上方入口访问免费资源、需求大厅、社区交流和平台说明。</noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

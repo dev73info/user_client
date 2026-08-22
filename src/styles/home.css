@@ -263,6 +263,10 @@
   animation-delay: 140ms;
 }
 
+.portal-card--team {
+  animation-delay: 180ms;
+}
+
 .portal-card--invite {
   animation-delay: 110ms;
   background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 50%, #fff7ed 100%);
@@ -296,7 +300,8 @@
 
 .portal-card--notice::before,
 .portal-card--stats::before,
-.portal-card--rank::before {
+.portal-card--rank::before,
+.portal-card--team::before {
   content: '';
   position: absolute;
   inset: 0 0 auto;
@@ -317,7 +322,8 @@
 
 .portal-card--notice:hover,
 .portal-card--stats:hover,
-.portal-card--rank:hover {
+.portal-card--rank:hover,
+.portal-card--team:hover {
   border-color: rgba(147, 197, 253, 0.92);
   box-shadow: var(--portal-shadow-hover);
   transform: translateY(-1px);
@@ -326,6 +332,7 @@
 .portal-card--notice:hover::before,
 .portal-card--stats:hover::before,
 .portal-card--rank:hover::before,
+.portal-card--team:hover::before,
 .portal-card--stats.is-refreshing::before {
   opacity: 1;
   transform: translateX(0);
@@ -358,6 +365,40 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
+}
+
+.portal-card__title--rank h2,
+.portal-card__title--team h2 {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.portal-card-title-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #dbeafe, #eff6ff);
+  color: #2563eb;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.14);
+}
+
+.portal-card-title-icon--team {
+  background: linear-gradient(135deg, #fef3c7, #fff7ed);
+  color: #d97706;
+  box-shadow: 0 8px 18px rgba(245, 158, 11, 0.14);
+}
+
+.portal-card-title-icon svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .portal-card__title--notice h2 {
@@ -951,6 +992,48 @@
   flex-direction: column;
   align-items: flex-end;
   min-width: 66px;
+}
+
+.portal-card--rank .portal-rank-list,
+.portal-card--team .portal-rank-list {
+  gap: 8px;
+}
+
+.portal-card--rank .portal-rank-item,
+.portal-card--team .portal-rank-item {
+  width: calc(100% - 12px);
+  min-height: 52px;
+  margin: 0 auto;
+  padding: 7px 9px;
+  gap: 9px;
+  border-radius: 12px;
+}
+
+.portal-card--rank .portal-rank-item__avatar,
+.portal-card--team .portal-rank-item__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+.portal-card--rank .portal-rank-item__meta strong,
+.portal-card--team .portal-rank-item__meta strong {
+  font-size: 13px;
+}
+
+.portal-card--rank .portal-rank-item__score,
+.portal-card--team .portal-rank-item__score {
+  min-width: 54px;
+}
+
+.portal-card--rank .portal-rank-item__score strong,
+.portal-card--team .portal-rank-item__score strong {
+  font-size: 13px;
+}
+
+.portal-card--rank .portal-rank-item__score span,
+.portal-card--team .portal-rank-item__score span {
+  font-size: 11px;
 }
 
 @keyframes portal-sidebar-card-in {
@@ -1565,9 +1648,65 @@
   margin-top: 12px;
 }
 
+.portal-card--rank .portal-empty-state--compact,
+.portal-card--team .portal-empty-state--compact {
+  position: relative;
+  min-height: 124px;
+  margin-top: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(203, 213, 225, 0.58);
+  border-radius: 14px;
+  background:
+    linear-gradient(90deg, rgba(37, 99, 235, 0.06), rgba(245, 158, 11, 0.08), transparent),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.88));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+.portal-card--rank .portal-empty-state--compact::before,
+.portal-card--team .portal-empty-state--compact::before {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
+}
+
+.portal-card--rank .portal-empty-state--compact::before {
+  content: '</>';
+}
+
+.portal-card--team .portal-empty-state--compact::before {
+  content: 'TEAM';
+  font-size: 10px;
+  letter-spacing: 0;
+}
+
+.portal-card--rank .portal-empty-state--compact::after,
+.portal-card--team .portal-empty-state--compact::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(120deg, transparent 0 62%, rgba(37, 99, 235, 0.08) 62% 100%);
+}
+
 .portal-empty-state strong {
   color: #0f172a;
   font-size: 15px;
+}
+
+.portal-card--rank .portal-empty-state strong,
+.portal-card--team .portal-empty-state strong {
+  position: relative;
+  z-index: 1;
+  font-size: 16px;
 }
 
 .portal-spotlight-card {

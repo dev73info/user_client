@@ -95,8 +95,20 @@ const enterpriseSelected = computed(() => form.authType === 'ENTERPRISE')
 const realnameApproved = computed(() => current.value?.status === 'approved')
 const realnameRejected = computed(() => current.value?.status === 'rejected')
 const realnameLocked = computed(() => current.value?.status === 'pending' || realnameApproved.value)
+const identityCardRequiredMissing = computed(
+  () =>
+    identityCardSelected.value &&
+    (!form.realName.trim() || !form.idCardNo.trim() || !form.mobile.trim()),
+)
+const minorGuardianRequiredMissing = computed(
+  () => isMinor14To18.value && (!form.guardianConsent || !form.guardianConsentFile.trim()),
+)
 const submitDisabled = computed(
-  () => realnameApproved.value || (realnameLocked.value && !identityCardSelected.value),
+  () =>
+    realnameLocked.value ||
+    identityCardRequiredMissing.value ||
+    isUnder14.value ||
+    minorGuardianRequiredMissing.value,
 )
 
 function idCardAge(idCardNo: string): number | null {
@@ -154,6 +166,7 @@ const idCardPlaceholder = computed(() => {
 
 const submitButtonText = computed(() => {
   if (realnameApproved.value) return '已通过认证'
+  if (realnameLocked.value && identityCardSelected.value) return '认证处理中'
   if (identityCardSelected.value) return current.value ? '重新发起实名认证' : '实名认证'
   if (!current.value || realnameRejected.value) return current.value ? '重新提交认证' : '提交认证'
   return '已提交，不能修改'
@@ -218,10 +231,6 @@ async function tryRestoreBusinessPage(record?: UserRealnameVerification | null) 
 }
 
 function validate() {
-  if (realnameSubmitted.value && identityCardSelected.value && !realnameRejected.value) {
-    return ''
-  }
-
   if (enterpriseSelected.value) {
     if (!form.companyName.trim()) return '请填写企业名称'
     if (!form.unifiedSocialCreditCode.trim()) return '请填写统一社会信用代码'
@@ -234,7 +243,11 @@ function validate() {
   if (!form.realName.trim() || !form.idCardNo.trim()) {
     return '请填写姓名和证件号'
   }
+  if (!form.mobile.trim()) return '请填写手机号'
   if (!isValidMobile(form.mobile)) return '请填写正确的手机号'
+  if (isUnder14.value) return '未满 14 周岁的未成年人不能进行实名认证'
+  if (isMinor14To18.value && !form.guardianConsent) return '请确认已取得监护人同意'
+  if (isMinor14To18.value && !form.guardianConsentFile.trim()) return '请上传监护人同意书'
 
   return ''
 }
@@ -417,6 +430,11 @@ async function startWechatFaceid() {
     return
   }
 
+  if (realnameLocked.value && !realnameRejected.value) {
+    showToast('实名认证正在处理中，请稍后查询结果', 'warning')
+    return
+  }
+
   const msg = validate()
   if (msg) {
     showToast(msg, 'warning')
@@ -429,6 +447,10 @@ async function startWechatFaceid() {
       real_name: form.realName.trim(),
       id_card_no: form.idCardNo.trim(),
       mobile: form.mobile.trim() || null,
+    }
+    if (isMinor14To18.value) {
+      payload.guardian_consent = form.guardianConsent
+      payload.guardian_consent_file = form.guardianConsentFile.trim()
     }
     const result = await startAsignIdentify(auth.token, payload)
     faceidAuthUrl.value = result.auth_url
@@ -636,11 +658,11 @@ onBeforeUnmount(() => {
 
             <!-- 企业认证字段 -->
             <template v-if="enterpriseSelected">
-              <el-form-item label="企业名称">
+              <el-form-item label="企业名称" required>
                 <el-input v-model="form.companyName" maxlength="120" placeholder="请输入企业名称"
                   :disabled="realnameLocked" />
               </el-form-item>
-              <el-form-item label="统一社会信用代码">
+              <el-form-item label="统一社会信用代码" required>
                 <el-input v-model="form.unifiedSocialCreditCode" maxlength="64" placeholder="请输入统一社会信用代码"
                   :disabled="realnameLocked" />
               </el-form-item>
@@ -648,15 +670,15 @@ onBeforeUnmount(() => {
                 <el-input v-model="form.businessLicenseNo" maxlength="64" placeholder="请输入营业执照号（可选）"
                   :disabled="realnameLocked" />
               </el-form-item>
-              <el-form-item label="经办人姓名">
+              <el-form-item label="经办人姓名" required>
                 <el-input v-model="form.operatorName" maxlength="120" placeholder="请输入经办人姓名"
                   :disabled="realnameLocked" />
               </el-form-item>
-              <el-form-item label="经办人身份证号">
+              <el-form-item label="经办人身份证号" required>
                 <el-input v-model="form.operatorIdCardNo" maxlength="64" placeholder="请输入经办人身份证号"
                   :disabled="realnameLocked" />
               </el-form-item>
-              <el-form-item label="手机号">
+              <el-form-item label="手机号" required>
                 <el-input v-model="form.mobile" maxlength="11" placeholder="请输入经办人手机号（用于电子签署）"
                   :disabled="realnameLocked" />
               </el-form-item>
@@ -668,14 +690,14 @@ onBeforeUnmount(() => {
 
             <!-- 个人证件字段（非企业） -->
             <template v-else>
-              <el-form-item label="姓名">
+              <el-form-item label="姓名" required>
                 <el-input v-model="form.realName" maxlength="120" placeholder="请输入真实姓名" :disabled="realnameLocked" />
               </el-form-item>
-              <el-form-item label="证件号">
+              <el-form-item label="证件号" required>
                 <el-input v-model="form.idCardNo" maxlength="64" :placeholder="idCardPlaceholder"
                   :disabled="realnameLocked" />
               </el-form-item>
-              <el-form-item label="手机号">
+              <el-form-item label="手机号" required>
                 <el-input v-model="form.mobile" maxlength="11" placeholder="请输入本人手机号（用于电子签署）"
                   :disabled="realnameLocked" />
               </el-form-item>
@@ -696,7 +718,7 @@ onBeforeUnmount(() => {
               </el-checkbox>
             </el-form-item>
 
-            <el-form-item v-if="isMinor14To18 && form.guardianConsent" label="监护人同意书">
+            <el-form-item v-if="isMinor14To18 && form.guardianConsent" label="监护人同意书" required>
               <div class="realname-consent-upload">
                 <input
                   ref="consentFileInput"

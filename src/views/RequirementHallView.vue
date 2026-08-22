@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Close, Connection, Plus, Refresh } from '@element-plus/icons-vue'
 
@@ -25,6 +25,7 @@ import {
   sanitizeRequirementRichText,
   validateRequirementRichText,
 } from '@/utils/requirementRichText'
+import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 
 const router = useRouter()
 const route = useRoute()
@@ -121,7 +122,17 @@ watch(
 )
 
 onMounted(() => {
+  setSeoMeta({
+    title: '需求大厅 - 73Info 柒叁信息',
+    description:
+      '73Info 需求大厅展示公开合作机会，支持发布需求、查看预算与交付方式、对接开发者并沉淀沟通记录。',
+    path: '/requirement-hall',
+  })
   void loadHallData()
+})
+
+onBeforeUnmount(() => {
+  resetSeoMeta()
 })
 
 function statusToLabel(status: RequirementStatus): string {

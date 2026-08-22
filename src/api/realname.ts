@@ -124,6 +124,8 @@ export type StartAsignIdentifyPayload = {
   real_name: string
   id_card_no: string
   mobile?: string | null
+  guardian_consent?: boolean | null
+  guardian_consent_file?: string | null
 }
 
 export type StartAsignIdentifyResponse = {

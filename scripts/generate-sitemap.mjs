@@ -27,6 +27,7 @@ const staticEntries = [
   { path: '/free-resources', lastmod: today, changefreq: 'daily', priority: '0.8' },
   { path: '/requirement-hall', lastmod: today, changefreq: 'daily', priority: '0.8' },
   { path: '/community', lastmod: today, changefreq: 'weekly', priority: '0.6' },
+  { path: '/about', lastmod: today, changefreq: 'monthly', priority: '0.5' },
   { path: '/terms', lastmod: today, changefreq: 'monthly', priority: '0.4' },
   { path: '/privacy', lastmod: today, changefreq: 'monthly', priority: '0.4' },
   { path: '/payment-refund', lastmod: today, changefreq: 'monthly', priority: '0.4' },
