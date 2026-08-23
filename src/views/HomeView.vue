@@ -54,6 +54,10 @@ type PlatformStat = {
   value: string
   icon: typeof User
   disabledReason?: string
+  /** 冷启动里程碑进度：当前值 / 目标值 */
+  progress?: { current: number; target: number }
+  /** 附加说明文字 */
+  note?: string
 }
 
 type PendingRequirementView = {
@@ -125,22 +129,12 @@ type TeamRank = {
 
 const TOP_LIKED_RESOURCE_LIMIT = 16
 
-const mockDeveloperRanks: DeveloperRank[] = [
-  {
-    name: '示例开发者',
-    username: 'demo-developer',
-    avatarUrl: '',
-    creditScore: 98,
-    deals: '3 个资源',
-  },
-  {
-    name: '资源创作者',
-    username: 'resource-maker',
-    avatarUrl: '',
-    creditScore: 95,
-    deals: '2 个资源',
-  },
-]
+/** 冷启动里程碑目标（当前为内测期写死，后续可改为配置） */
+const MILESTONE_TARGETS = {
+  developers: 1000,
+  resources: 50,
+  orders: 100,
+} as const
 
 const failedDeveloperAvatarUrls = ref<Set<string>>(new Set())
 const failedSpotlightCoverUrls = ref<Set<string>>(new Set())
@@ -388,8 +382,32 @@ async function openDevWorkbench() {
     return
   }
 
-  // 双轨制：dev 角色仅需实名成年即可授予（不再强制签署《开发者入驻协议》）。
-  // 直接申请开发者角色；未实名/未成年则由后端 403 提示，前端引导去实名认证。
+  // 实名核验：已通过实名认证（且成年，由后端校验）才直接授予开发者权限，
+  // 不再强制签署《开发者入驻协议》。未实名/未通过则引导去实名认证。
+  try {
+    const verification = await getMyRealnameVerification(auth.token)
+    if (verification.status !== 'approved') {
+      showToast('请先完成实名认证后再申请开发者权限', 'warning')
+      void router.push({
+        name: 'workbench-realname',
+        query: { redirect_to: '/workbench/developer/resources/plugins-init' },
+      })
+      return
+    }
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 404) {
+      showToast('请先完成实名认证后再申请开发者权限', 'warning')
+      void router.push({
+        name: 'workbench-realname',
+        query: { redirect_to: '/workbench/developer/resources/plugins-init' },
+      })
+      return
+    }
+    showToast(error instanceof Error ? error.message : '实名认证状态查询失败', 'error')
+    return
+  }
+
+  // 实名已通过：直接授予开发者角色（无需签署《开发者入驻协议》）。
   try {
     const result = await requestDevRole(auth.token)
     if (result.role) {
@@ -398,25 +416,12 @@ async function openDevWorkbench() {
       void router.push({ name: 'dev-requirement-hall' })
       return
     }
+    showToast('开发者权限申请失败', 'warning')
+    void router.push(buildDevPortalUrl(auth.token))
   } catch (error) {
-    if (error instanceof HttpError && error.status === 403) {
-      const message = error.message || '申请开发者权限失败'
-      if (message.includes('实名')) {
-        showToast('请先完成实名认证后再申请开发者权限', 'warning')
-        void router.push({
-          name: 'workbench-realname',
-          query: { redirect_to: '/workbench/developer/resources/plugins-init' },
-        })
-        return
-      }
-      showToast(message, 'warning')
-      return
-    }
     showToast(error instanceof Error ? error.message : '申请开发者权限失败', 'error')
+    void router.push(buildDevPortalUrl(auth.token))
   }
-
-  // 兜底：进入 dev 入口（由路由守卫 ensureDevAccess 处理）
-  void router.push(buildDevPortalUrl(auth.token))
 }
 
 function openQuickPanel(panel: QuickPanel) {
@@ -494,19 +499,41 @@ function openSpotlight(card: SpotlightCard) {
 const platformStats = computed<PlatformStat[]>(() => {
   const [completed, , turnover] = metrics.value
   const resourceCount = publicResources.value.length
+  const developerCount = publicDeveloperCount.value
 
   return [
-    { label: '内测开发者', value: `${publicDeveloperCount.value} 位`, icon: User },
-    { label: '公开资源', value: `${resourceCount} 条`, icon: Files },
-    { label: '完成记录', value: completed?.value ?? '0 单', icon: Finished },
+    {
+      label: '内测开发者',
+      value: `${developerCount}/${MILESTONE_TARGETS.developers} 位`,
+      icon: User,
+      progress: { current: developerCount, target: MILESTONE_TARGETS.developers },
+    },
+    {
+      label: '公开资源',
+      value: `${resourceCount}/${MILESTONE_TARGETS.resources} 条`,
+      icon: Files,
+      progress: { current: resourceCount, target: MILESTONE_TARGETS.resources },
+    },
+    {
+      label: '完成记录',
+      value: completed?.value ?? '0 单',
+      icon: Finished,
+      note: completed?.value === '0 单' ? '首单在路上' : undefined,
+    },
     {
       label: '担保交易',
-      value: '暂未开放',
+      value: '筹备中',
       icon: Money,
-      disabledReason: `历史支付统计：${turnover?.value ?? '¥ 0.00'}。涉及许可的交易担保、资金托管、代收代付和自动分账服务暂未开放。`,
+      disabledReason: `历史支付统计：${turnover?.value ?? '¥ 0.00'}。涉及许可的交易担保、资金托管、代收代付和自动分账服务筹备中，上线后开放。`,
     },
   ]
 })
+
+function progressPercent(progress: { current: number; target: number }) {
+  if (!progress.target) return '0%'
+  const ratio = Math.min(100, Math.round((progress.current / progress.target) * 100))
+  return `${ratio}%`
+}
 
 const developerRanks = computed<DeveloperRank[]>(() => {
   const failedAvatarUrls = failedDeveloperAvatarUrls.value
@@ -549,7 +576,7 @@ const developerRanks = computed<DeveloperRank[]>(() => {
     })
   }
 
-  if (groupedResources.size === 0) return mockDeveloperRanks
+  if (groupedResources.size === 0) return []
 
   return [...groupedResources.values()]
     .sort(
@@ -567,6 +594,13 @@ const developerRanks = computed<DeveloperRank[]>(() => {
       deals: `${item.deals} 个资源`,
     }))
 })
+
+const totalContribResources = computed<number>(() =>
+  developerRanks.value.reduce((sum, developer) => {
+    const match = developer.deals.match(/\d+/)
+    return sum + (match ? Number(match[0]) : 0)
+  }, 0),
+)
 
 function handleDeveloperAvatarError(developer: DeveloperRank) {
   if (!developer.avatarUrl) return
@@ -613,13 +647,6 @@ function handleSpotlightCoverError(url: string | undefined) {
 
 function spotlightCoverSrc(card: { coverUrl?: string }) {
   return card.coverUrl && !failedSpotlightCoverUrls.value.has(card.coverUrl) ? card.coverUrl : ''
-}
-
-function formatCreditScore(value: number | null) {
-  if (value == null || !Number.isFinite(value)) {
-    return '暂无'
-  }
-  return Number.isInteger(value) ? String(value) : value.toFixed(2)
 }
 
 const spotlightCards = computed<SpotlightCard[]>(() => {
@@ -1780,10 +1807,10 @@ async function submitPublishRequirement() {
           <section class="portal-section portal-section--workflow">
             <div class="portal-section__header">
               <div class="portal-section-title portal-section-title--plain">
-                <h2>需求流程</h2>
+                <h2>定制流程</h2>
               </div>
             </div>
-            <div class="portal-workflow-grid" aria-label="需求流程">
+            <div class="portal-workflow-grid" aria-label="定制流程">
               <div
                 v-for="(step, index) in workflowSteps"
                 :key="step.step + step.title"
@@ -1953,9 +1980,15 @@ async function submitPublishRequirement() {
             <div class="portal-card__header portal-card__header--stats">
               <div class="portal-card__title portal-card__title--stats">
                 <span class="portal-stats-head__icon" aria-hidden="true">◉</span>
-                <h2>公开数据</h2>
+                <h2>内测里程碑</h2>
               </div>
             </div>
+            <p class="portal-milestone__intro">
+              成为种子开发者，抢先占位。
+              <button class="portal-milestone__cta" type="button" @click="openDevWorkbench">
+                立即入驻 →
+              </button>
+            </p>
             <div class="portal-stats-grid">
               <article
                 v-for="(stat, index) in platformStats"
@@ -1974,37 +2007,44 @@ async function submitPublishRequirement() {
                 <div class="portal-stat-item__copy">
                   <span>{{ stat.label }}</span>
                   <strong>{{ stat.value }}</strong>
+                  <span v-if="stat.note" class="portal-stat-item__note">{{ stat.note }}</span>
+                  <div v-if="stat.progress" class="portal-stat-item__progress">
+                    <span
+                      class="portal-stat-item__progress-bar"
+                      :style="{ width: progressPercent(stat.progress) }"
+                    ></span>
+                  </div>
                 </div>
                 <div
                   v-if="stat.disabledReason"
                   class="portal-stat-item__disabled"
                   aria-live="polite"
                 >
-                  <strong>暂未开放</strong>
+                  <strong>筹备中</strong>
                   <span>{{ stat.disabledReason }}</span>
                 </div>
               </article>
             </div>
           </section>
 
-          <section class="portal-card portal-card--rank">
-            <div class="portal-card__header">
+          <section class="portal-card portal-card--rank portal-contrib">
+            <div class="portal-card__header portal-contrib__header">
               <div class="portal-card__title portal-card__title--rank">
                 <span class="portal-card-title-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" focusable="false">
-                    <path d="m8 9-4 3 4 3" />
-                    <path d="m16 9 4 3-4 3" />
-                    <path d="m14 5-4 14" />
+                    <circle cx="12" cy="8" r="6" />
+                    <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
                   </svg>
                 </span>
-                <h2>活跃开发者</h2>
+                <h2>开发者贡献榜</h2>
               </div>
             </div>
-            <ul v-if="developerRanks.length > 0" class="portal-rank-list">
+            <ol v-if="developerRanks.length > 0" class="portal-contrib-list">
               <li
                 v-for="(developer, index) in developerRanks"
                 :key="developer.username"
-                class="portal-rank-item"
+                class="portal-contrib-item"
+                :class="`portal-contrib-item--rank-${index + 1}`"
                 :style="{ '--rank-index': String(index) }"
                 @click="
                   router.push({
@@ -2013,7 +2053,8 @@ async function submitPublishRequirement() {
                   })
                 "
               >
-                <div class="portal-rank-item__avatar">
+                <span class="portal-contrib-item__rank">{{ index + 1 }}</span>
+                <span class="portal-contrib-item__avatar">
                   <img
                     v-if="developer.avatarUrl"
                     :src="developer.avatarUrl"
@@ -2021,37 +2062,44 @@ async function submitPublishRequirement() {
                     @error="handleDeveloperAvatarError(developer)"
                   />
                   <span v-else>{{ developer.name.slice(0, 1) }}</span>
-                </div>
-                <div class="portal-rank-item__meta">
+                </span>
+                <div class="portal-contrib-item__meta">
                   <strong>{{ developer.name }}</strong>
-                  <div class="portal-rank-item__badges" v-if="devBadges(developer.username).length > 0">
+                  <div class="portal-contrib-item__badges" v-if="devBadges(developer.username).length > 0">
                     <span
                       v-for="badge in devBadges(developer.username).slice(0, 3)"
                       :key="badge.code"
-                      class="portal-rank-item__badge"
+                      class="portal-contrib-item__badge"
                       :title="`${badge.name}：${badge.description}`"
                     >
                       <img
                         v-if="badge.icon.startsWith('badges/')"
                         :src="`/uploads/${badge.icon}`"
-                        class="portal-rank-item__badge-img"
+                        class="portal-contrib-item__badge-img"
                         alt=""
                       />
                       <template v-else>{{ badge.icon }}</template>
                     </span>
-                    <span v-if="devBadges(developer.username).length > 3" class="portal-rank-item__badge-more">
+                    <span v-if="devBadges(developer.username).length > 3" class="portal-contrib-item__badge-more">
                       +{{ devBadges(developer.username).length - 3 }}
                     </span>
                   </div>
+                  <span v-else class="portal-contrib-item__role">开发者</span>
                 </div>
-                <div class="portal-rank-item__score">
-                  <strong>{{ developer.deals }}</strong>
-                  <span>信用 {{ formatCreditScore(developer.creditScore) }}</span>
+                <div class="portal-contrib-item__side">
+                  <strong class="portal-contrib-item__count">{{ developer.deals }}</strong>
                 </div>
               </li>
-            </ul>
+            </ol>
             <div v-else class="portal-empty-state portal-empty-state--compact">
               <strong>暂无公开开发者</strong>
+            </div>
+            <div v-if="developerRanks.length > 0" class="portal-contrib-footer">
+              本周
+              <strong>{{ totalContribResources }}</strong>
+              个资源 ·
+              <strong>{{ developerRanks.length }}</strong>
+              位开发者
             </div>
           </section>
           <section v-if="teamRanks.length > 0" class="portal-card portal-card--team">

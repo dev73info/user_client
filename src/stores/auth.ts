@@ -95,7 +95,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (!token.value) return
       try {
         const resp = await refreshTokenApi(token.value)
-        persist(resp.token, true)
+        applyAuthPayload(resp, true)
       } catch (error) {
         if (isTokenExpired(token.value) || isAuthRejected(error)) {
           logout()
@@ -123,7 +123,7 @@ export const useAuthStore = defineStore('auth', () => {
         clearRefreshTimer()
         void refreshTokenApi(token.value)
           .then((resp) => {
-            persist(resp.token, true)
+            applyAuthPayload(resp, true)
           })
           .catch((error) => {
             if (isTokenExpired(token.value) || isAuthRejected(error)) {
@@ -228,7 +228,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     try {
-      return await fetchProfile(force)
+      // 始终向服务端校验最新角色，避免复用本地持久化的过期角色（例如开发者权限已被收回）。
+      return await fetchProfile(true)
     } catch (error) {
       if (isTokenExpired(token.value) || isAuthRejected(error)) {
         logout()

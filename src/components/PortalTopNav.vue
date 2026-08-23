@@ -1274,9 +1274,9 @@ function finishSearchComposition(event: CompositionEvent) {
 .portal-user__menu {
   position: absolute;
   top: calc(100% + 10px);
-  right: 0;
+  right: -16px;
   display: none;
-  min-width: 190px;
+  min-width: 140px;
   padding: 10px;
   border-radius: 18px;
   border: 1px solid rgba(203, 213, 225, 0.92);
