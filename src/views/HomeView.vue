@@ -2084,7 +2084,6 @@ async function submitPublishRequirement() {
                       +{{ devBadges(developer.username).length - 3 }}
                     </span>
                   </div>
-                  <span v-else class="portal-contrib-item__role">开发者</span>
                 </div>
                 <div class="portal-contrib-item__side">
                   <strong class="portal-contrib-item__count">{{ developer.deals }}</strong>
