@@ -41,6 +41,7 @@ import { getDepositRatio } from '@/api/settings'
 import { getResourceDetailSlug, normalizeTagName } from '@/api/resourceTags'
 import { useTagTreeStore } from '@/stores/tagTree'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
+import { getUserBadges, type UserBadge } from '@/api/invite'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 
 type Metric = {
@@ -171,6 +172,7 @@ const publicRequirementSpotlights = ref<PublicRequirementSpotlightItem[]>([])
 const tagTreeStore = useTagTreeStore()
 const processedTagTree = computed(() => tagTreeStore.tree ?? ({ roots: [] } as { roots: never[] }))
 const publicResources = ref<PublicMcResourceItem[]>([])
+const developerBadges = ref<Record<string, UserBadge[]>>({})
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
@@ -1235,6 +1237,36 @@ async function loadPublicPortalData(silent = false) {
   } else if (failedResults.length === 2 && !silent) {
     showToast('加载首页公开数据失败', 'warning')
   }
+
+  void loadDeveloperBadges()
+}
+
+async function loadDeveloperBadges() {
+  const usernames = [
+    ...new Set(
+      developerRanks.value.map((dev) => dev.username).filter((username) => username.length > 0),
+    ),
+  ]
+  if (usernames.length === 0) {
+    developerBadges.value = {}
+    return
+  }
+
+  const entries = await Promise.all(
+    usernames.map(async (username): Promise<[string, UserBadge[]]> => {
+      try {
+        const response = await getUserBadges(username)
+        return [username, response.badges.filter((badge) => badge.equipped)]
+      } catch {
+        return [username, []]
+      }
+    }),
+  )
+  developerBadges.value = Object.fromEntries(entries)
+}
+
+function devBadges(username: string): UserBadge[] {
+  return developerBadges.value[username] ?? []
 }
 
 async function submitDepositPayment() {
@@ -1992,6 +2024,25 @@ async function submitPublishRequirement() {
                 </div>
                 <div class="portal-rank-item__meta">
                   <strong>{{ developer.name }}</strong>
+                  <div class="portal-rank-item__badges" v-if="devBadges(developer.username).length > 0">
+                    <span
+                      v-for="badge in devBadges(developer.username).slice(0, 3)"
+                      :key="badge.code"
+                      class="portal-rank-item__badge"
+                      :title="`${badge.name}：${badge.description}`"
+                    >
+                      <img
+                        v-if="badge.icon.startsWith('badges/')"
+                        :src="`/uploads/${badge.icon}`"
+                        class="portal-rank-item__badge-img"
+                        alt=""
+                      />
+                      <template v-else>{{ badge.icon }}</template>
+                    </span>
+                    <span v-if="devBadges(developer.username).length > 3" class="portal-rank-item__badge-more">
+                      +{{ devBadges(developer.username).length - 3 }}
+                    </span>
+                  </div>
                 </div>
                 <div class="portal-rank-item__score">
                   <strong>{{ developer.deals }}</strong>

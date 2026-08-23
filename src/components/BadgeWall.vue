@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { getBadges, getMyBadges, getUserBadges, type BadgeDefinition, type UserBadge } from '@/api/invite'
+import {
+  getBadges,
+  getMyBadges,
+  getUserBadges,
+  setMyEquippedBadges,
+  type BadgeDefinition,
+  type UserBadge,
+} from '@/api/invite'
 import { useToast } from '@/composables/useToast'
 
 const props = withDefaults(
@@ -20,6 +27,7 @@ const { showToast } = useToast()
 const allBadges = ref<BadgeDefinition[]>([])
 const earnedBadges = ref<UserBadge[]>([])
 const loading = ref(false)
+const saving = ref(false)
 
 const earnedMap = computed(() => new Map(earnedBadges.value.map((badge) => [badge.code, badge])))
 const groups = computed(() => [
@@ -35,6 +43,20 @@ const groups = computed(() => [
     },
 ])
 const acquiredCount = computed(() => earnedBadges.value.length)
+const equippedCount = computed(() => earnedBadges.value.filter((badge) => badge.equipped).length)
+const isOwn = computed(() => !props.username && !props.publicOnly && !!auth.token)
+
+function canEquip(badge: BadgeDefinition) {
+  return isOwn.value && earnedMap.value.has(badge.code)
+}
+
+function badgeTooltip(badge: BadgeDefinition) {
+  const earned = earnedMap.value.get(badge.code)
+  if (earned?.equipped) {
+    return `${badge.name}：${badge.description}（佩戴中）`
+  }
+  return `${badge.name}：${badge.description}`
+}
 
 function isBadgeIconSvg(icon: string) {
   return icon.startsWith('badges/')
@@ -44,16 +66,29 @@ function badgeIconUrl(icon: string) {
   return `/uploads/${icon}`
 }
 
-function awardTime(code: string) {
-    const badge = earnedMap.value.get(code)
-    if (!badge) {
-        return ''
+async function toggleEquip(badge: BadgeDefinition) {
+    if (!isOwn.value || saving.value) return
+    const current = earnedMap.value.get(badge.code)
+    if (!current) return
+
+    const willEquip = !current.equipped
+    const codes = earnedBadges.value
+        .filter((item) => item.equipped && item.code !== badge.code)
+        .map((item) => item.code)
+    if (willEquip) {
+        codes.push(badge.code)
     }
-    const date = new Date(badge.awarded_at)
-    if (Number.isNaN(date.getTime())) {
-        return badge.awarded_at
+
+    saving.value = true
+    try {
+        const result = await setMyEquippedBadges(auth.token!, codes)
+        earnedBadges.value = result.badges
+        showToast(willEquip ? `已佩戴「${badge.name}」` : `已取消佩戴「${badge.name}」`, 'success')
+    } catch (error) {
+        showToast(error instanceof Error ? error.message : '更新佩戴徽章失败', 'error')
+    } finally {
+        saving.value = false
     }
-    return date.toLocaleDateString('zh-CN')
 }
 
 async function loadBadges() {
@@ -95,6 +130,7 @@ onMounted(() => {
             <div>
                 <h2>{{ username ? `${username} 的徽章` : '我的徽章墙' }}</h2>
                 <p>{{ acquiredCount }} / {{ allBadges.length }}</p>
+                <p v-if="isOwn">已佩戴 {{ equippedCount }} 个徽章</p>
             </div>
             <span v-if="loading" class="badge-wall__loading">同步中</span>
         </header>
@@ -104,7 +140,13 @@ onMounted(() => {
                 <h3>{{ group.title }}</h3>
                 <div class="badge-wall__grid">
                     <article v-for="badge in group.badges" :key="badge.code" class="badge-wall__badge"
-                        :class="{ acquired: earnedMap.has(badge.code) }">
+                        :class="{
+                            acquired: earnedMap.has(badge.code),
+                            equipped: !!earnedMap.get(badge.code)?.equipped,
+                            interactable: canEquip(badge),
+                        }"
+                        :title="badgeTooltip(badge)"
+                        @click="toggleEquip(badge)">
                         <span class="badge-wall__icon">
                             <img
                                 v-if="isBadgeIconSvg(badge.icon)"
@@ -116,10 +158,15 @@ onMounted(() => {
                         </span>
                         <strong>{{ badge.name }}</strong>
                         <p>{{ badge.description }}</p>
+                        <span v-if="canEquip(badge)" class="badge-wall__equip-state"
+                            :class="{ 'is-on': !!earnedMap.get(badge.code)?.equipped }">
+                            {{ earnedMap.get(badge.code)?.equipped ? '✓ 佩戴中' : '+ 佩戴' }}
+                        </span>
                     </article>
                 </div>
             </section>
         </div>
+        <p v-if="isOwn && !loading" class="badge-wall__hint">点击已获得的徽章可佩戴或取消佩戴（支持多个）。</p>
     </section>
 </template>
 
@@ -197,6 +244,43 @@ onMounted(() => {
     background: linear-gradient(180deg, rgba(239, 246, 255, 0.98), rgba(255, 255, 255, 0.96));
     color: #0f172a;
     filter: none;
+}
+
+.badge-wall__badge.interactable {
+    cursor: pointer;
+}
+
+.badge-wall__badge.interactable:hover {
+    border-color: rgba(59, 130, 246, 0.7);
+}
+
+.badge-wall__badge.equipped {
+    border-color: rgba(37, 99, 235, 0.8);
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25) inset;
+}
+
+.badge-wall__equip-state {
+    margin-top: 2px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    background: rgba(226, 232, 240, 0.9);
+    color: #475569;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1.2;
+    text-align: center;
+}
+
+.badge-wall__equip-state.is-on {
+    background: rgba(37, 99, 235, 0.14);
+    color: #1d4ed8;
+}
+
+.badge-wall__hint {
+    margin: 8px 0 0;
+    color: #64748b;
+    font-size: 10px;
+    line-height: 1.5;
 }
 
 .badge-wall__icon {

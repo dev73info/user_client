@@ -48,6 +48,7 @@ export type BadgeDefinition = {
 
 export type UserBadge = BadgeDefinition & {
   awarded_at: string
+  equipped: boolean
 }
 
 export type UserBadgesResponse = {
@@ -121,6 +122,21 @@ export function getMyBadges(token: string): Promise<UserBadgesResponse> {
     '/badges/my',
     { headers: { ...authHeader(token) } },
     '加载我的徽章失败',
+  )
+}
+
+export function setMyEquippedBadges(token: string, codes: string[]): Promise<UserBadgesResponse> {
+  return requestJson<UserBadgesResponse>(
+    '/badges/my/equipped',
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify({ codes }),
+    },
+    '更新佩戴徽章失败',
   )
 }
 

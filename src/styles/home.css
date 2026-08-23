@@ -619,9 +619,11 @@
 
 .portal-rank-item__meta {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
+  flex: 1;
 }
 
 .portal-notice-item time,
@@ -992,6 +994,43 @@
   flex-direction: column;
   align-items: flex-end;
   min-width: 66px;
+}
+
+.portal-rank-item__badges {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.portal-rank-item__badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid rgba(191, 219, 254, 0.72);
+  background: rgba(239, 246, 255, 0.9);
+  color: #1e3a8a;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.portal-rank-item__badge-img {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
+.portal-rank-item__badge-more {
+  flex: none;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
 }
 
 .portal-card--rank .portal-rank-list,

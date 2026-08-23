@@ -23,6 +23,8 @@ const userResources = computed(() =>
   allResources.value.filter((r) => r.creator === username.value),
 )
 
+const wornBadges = computed(() => userBadges.value.filter((badge) => badge.equipped))
+
 const creatorInfo = computed(() => userResources.value[0] ?? null)
 
 const stats = computed(() => ({
@@ -116,11 +118,11 @@ function openResource(resource: PublicMcResourceItem) {
       </div>
       <div class="dev-profile__head-content">
         <h1 class="dev-profile__name">{{ username }}</h1>
-        <p class="dev-profile__badge-line" v-if="userBadges.length > 0">
-          <BadgeDisplay :badges="userBadges" :limit="4" />
+        <p class="dev-profile__badge-line" v-if="wornBadges.length > 0">
+          <BadgeDisplay :badges="wornBadges" :limit="4" />
         </p>
         <p class="dev-profile__badge-line dev-profile__badge-line--empty" v-else>
-          暂未获得徽章
+          {{ userBadges.length > 0 ? '暂未佩戴徽章' : '暂未获得徽章' }}
         </p>
       </div>
     </section>

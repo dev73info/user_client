@@ -1515,7 +1515,6 @@ onBeforeUnmount(() => {
           <input ref="profileAvatarInput" class="profile-avatar-input" type="file"
             accept="image/png,image/jpeg,image/webp,image/gif" @change="handleProfileAvatarChange" />
           <div>
-            <p class="overview-eyebrow">统一工作台</p>
             <h1>{{ auth.username ? `你好，${auth.username}` : '你好，欢迎回来' }}</h1>
             <p>账户、需求与优惠券概览</p>
           </div>
@@ -1531,6 +1530,10 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div class="overview-hero__actions">
+          <button class="ghost small" type="button" :disabled="!auth.username"
+            @click="router.push({ name: 'dev-profile', params: { username: auth.username } })">
+            我的主页
+          </button>
           <button class="ghost small" type="button" @click="openPublishModal">发布需求</button>
           <button class="ghost small" type="button" @click="router.push({ name: 'workbench-messages' })">消息中心</button>
           <button class="ghost small" type="button" @click="openSecurityModal">账户安全</button>
