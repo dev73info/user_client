@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Search } from '@element-plus/icons-vue'
 
 import { apiUrl } from '@/api/http'
 import { listRequirements, type RequirementItem } from '@/api/requirements'
@@ -169,10 +170,6 @@ function openDevWorkbench() {
   void router.push(buildDevPortalUrl(auth.token))
 }
 
-function openTicketCenter() {
-  void router.push({ name: 'workbench-tickets' })
-}
-
 async function loadCustomResources() {
   if (!auth.token) {
     requirements.value = []
@@ -199,20 +196,20 @@ onMounted(() => {
   <main class="portal-page custom-resource-page">
     <section class="portal-page__stats">
       <article class="portal-page__stat-card">
-        <strong>{{ stats.total }}</strong>
         <span>已关联资源</span>
+        <strong>{{ stats.total }}</strong>
       </article>
       <article class="portal-page__stat-card">
-        <strong>{{ stats.publicCount }}</strong>
         <span>公开中</span>
+        <strong>{{ stats.publicCount }}</strong>
       </article>
       <article class="portal-page__stat-card">
-        <strong>{{ stats.privateCount }}</strong>
         <span>私有中</span>
+        <strong>{{ stats.privateCount }}</strong>
       </article>
       <article class="portal-page__stat-card">
-        <strong>{{ availablePlatforms.length }}</strong>
         <span>涉及平台</span>
+        <strong>{{ availablePlatforms.length }}</strong>
       </article>
     </section>
 
@@ -220,7 +217,6 @@ onMounted(() => {
       <div class="portal-page__section-header">
         <div>
           <p class="portal-page__eyebrow">资源筛选</p>
-          <h2>按平台、可见性和关键词过滤你的交付资源</h2>
         </div>
       </div>
 
@@ -240,7 +236,11 @@ onMounted(() => {
         </div>
 
         <label class="custom-resource-browser__search">
-          <span class="custom-resource-browser__search-icon">🔍</span>
+          <span class="custom-resource-browser__search-icon">
+            <el-icon>
+              <Search />
+            </el-icon>
+          </span>
           <input v-model="searchQuery" type="text" placeholder="搜索我的定制资源..." />
         </label>
       </div>
@@ -283,9 +283,8 @@ onMounted(() => {
           </button>
         </div>
       </div>
-    </section>
 
-    <section class="custom-resource-browser__grid">
+      <section class="custom-resource-browser__grid">
       <article v-for="card in filteredCards" :key="`${card.requirementId}-${card.id}`"
         class="custom-resource-browser__card">
         <div v-if="card.coverUrl" class="custom-resource-browser__cover custom-resource-browser__cover--image">
@@ -330,7 +329,6 @@ onMounted(() => {
       </article>
 
       <div v-if="!loading && filteredCards.length === 0" class="custom-resource-browser__empty">
-        <h3>{{ cards.length === 0 ? '你还没有关联资源项目' : '没有符合当前筛选条件的资源' }}</h3>
         <p>
           {{
             cards.length === 0
@@ -338,21 +336,42 @@ onMounted(() => {
               : '可以尝试重置筛选，或者回到工单中心调整资源公开状态。'
           }}
         </p>
-        <button class="custom-resource-browser__reset" type="button"
-          @click="cards.length === 0 ? openTicketCenter() : resetFilters">
-          {{ cards.length === 0 ? '前往工单中心' : '重置筛选' }}
-        </button>
       </div>
 
       <div v-if="loading" class="custom-resource-browser__empty">
-        <h3>资源加载中...</h3>
         <p>正在同步你的需求关联资源。</p>
       </div>
+      </section>
     </section>
   </main>
 </template>
 
 <style scoped>
+.portal-page__stat-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid rgba(224, 232, 255, 0.96);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.06);
+}
+
+.portal-page__stat-card span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.portal-page__stat-card strong {
+  display: block;
+  margin-bottom: 0;
+  color: #0f172a;
+  font-size: 28px;
+  line-height: 1;
+}
+
 .custom-resource-browser__filters,
 .custom-resource-browser__card,
 .custom-resource-browser__empty {
@@ -365,6 +384,10 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.portal-page__section-header {
+  margin-bottom: 0;
 }
 
 .custom-resource-browser__row {
@@ -450,6 +473,13 @@ onMounted(() => {
   top: 50%;
   left: 14px;
   transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  color: #94a3b8;
+}
+
+.custom-resource-browser__search-icon .el-icon {
+  font-size: 16px;
 }
 
 .custom-resource-browser__reset {
@@ -591,15 +621,14 @@ onMounted(() => {
 
 .custom-resource-browser__empty {
   grid-column: 1 / -1;
-  display: flex;
-  min-height: 200px;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 32px;
+  color: var(--profile-text-sub);
+  padding: 20px 18px;
+  font-size: 14px;
+  line-height: 1.6;
+  border: 1px dashed rgba(204, 214, 237, 0.98);
   border-radius: 16px;
-  text-align: center;
+  background: rgba(248, 251, 255, 0.8);
+  box-shadow: none;
 }
 
 @media (max-width: 900px) {

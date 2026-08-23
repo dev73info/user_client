@@ -493,6 +493,8 @@
 .profile-page .empty {
   color: var(--profile-text-sub);
   padding: 20px 18px;
+  font-size: 14px;
+  line-height: 1.6;
   border: 1px dashed rgba(204, 214, 237, 0.98);
   border-radius: 16px;
   background: rgba(248, 251, 255, 0.8);

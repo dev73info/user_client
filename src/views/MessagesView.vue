@@ -454,6 +454,21 @@ watch(
 
 <template>
   <main class="page-shell custom-page-shell messages-page">
+    <section v-if="!activeRequirementId" class="messages-summary" aria-label="消息概览">
+      <article class="messages-summary__item">
+        <strong>{{ activeConversations.length }}</strong>
+        <span>已开启会话</span>
+      </article>
+      <article class="messages-summary__item">
+        <strong>{{ pendingThreads.length }}</strong>
+        <span>待同步会话</span>
+      </article>
+      <article class="messages-summary__item">
+        <strong>{{ recentConversationCount }}</strong>
+        <span>近 7 天更新</span>
+      </article>
+    </section>
+
     <header v-if="!activeRequirementId" class="messages-search-bar">
       <form class="messages-search mobile-search-form" aria-label="搜索消息" @submit.prevent>
         <el-icon class="mobile-search-icon">
@@ -478,21 +493,6 @@ watch(
       </section>
     </header>
 
-    <section v-if="!activeRequirementId" class="messages-summary" aria-label="消息概览">
-      <article class="messages-summary__item">
-        <strong>{{ activeConversations.length }}</strong>
-        <span>已开启会话</span>
-      </article>
-      <article class="messages-summary__item">
-        <strong>{{ pendingThreads.length }}</strong>
-        <span>待同步会话</span>
-      </article>
-      <article class="messages-summary__item">
-        <strong>{{ recentConversationCount }}</strong>
-        <span>近 7 天更新</span>
-      </article>
-    </section>
-
     <RequirementConversationModal v-if="activeRequirementId" display-mode="inline" :visible="true" :token="auth.token"
       :current-username="auth.username" :requirement-id="activeRequirementId" :title="activeTitle"
       @updated="applyConversationDetail" @close="closeConversation" />
@@ -501,7 +501,6 @@ watch(
       <header class="messages-panel__header">
         <div>
           <h2>会话列表</h2>
-          <p>点击任意会话即可查看历史消息并继续回复。</p>
         </div>
         <div class="messages-panel__tools">
           <span v-if="auth.token" class="messages-live-state" :class="`messages-live-state--${realtimeStatus}`"

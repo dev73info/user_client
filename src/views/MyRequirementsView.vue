@@ -1422,20 +1422,20 @@ watch(
     <section class="wallet-section my-requirements-summary">
       <div class="my-requirements-summary__grid">
         <article>
-          <strong>{{ requirementStats.total }}</strong>
           <span>全部需求</span>
+          <strong>{{ requirementStats.total }}</strong>
         </article>
         <article>
+          <span>待审核/付定金</span>
           <strong>{{ requirementStats.pending }}</strong>
-          <span>待处理</span>
         </article>
         <article>
+          <span>开发中/付尾款</span>
           <strong>{{ requirementStats.active }}</strong>
-          <span>开发中</span>
         </article>
         <article>
-          <strong>{{ requirementStats.completed }}</strong>
           <span>可评价/已完成</span>
+          <strong>{{ requirementStats.completed }}</strong>
         </article>
       </div>
     </section>
@@ -1443,8 +1443,7 @@ watch(
     <section class="wallet-section">
       <div class="wallet-header">
         <div>
-          <h3>我提交的需求单</h3>
-          <small class="requirement-note">点击可操作的需求行可快速处理待审核、支付、完成或评价。</small>
+          <h3 class="portal-page__eyebrow">需求列表</h3>
         </div>
         <div class="my-requirements-header__actions">
           <button class="ghost small my-requirements-refresh" type="button"
@@ -1459,7 +1458,7 @@ watch(
       </div>
 
       <div v-if="myRequirements.length === 0" class="empty">
-        {{ requirementLoading ? '需求单加载中...' : '暂无已提交需求单' }}
+        {{ requirementLoading ? '需求单加载中...' : '你还没有提交过需求单，点击右上角「发布新需求」即可创建你的第一个需求。' }}
       </div>
       <ul v-else class="requirement-list">
         <template v-for="item in myRequirements" :key="item.requirement_id">
@@ -1973,6 +1972,10 @@ watch(
   gap: 16px;
 }
 
+.wallet-header {
+  align-items: flex-start;
+}
+
 .my-requirements-summary.wallet-section {
   padding: 0;
   border: 0;
@@ -2283,6 +2286,16 @@ watch(
 .my-requirement-detail__secondary:hover {
   border-color: rgba(37, 99, 235, 0.34);
   background: rgba(219, 234, 254, 0.92);
+}
+
+.wallet-header h3.portal-page__eyebrow {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.7;
 }
 
 @media (max-width: 980px) {

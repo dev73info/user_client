@@ -120,6 +120,23 @@ export async function completeWechatFaceidVerification(
   )
 }
 
+export type WithdrawRealnameVerificationResponse = {
+  withdrawn: boolean
+}
+
+export async function withdrawMyRealnameVerification(
+  token: string,
+): Promise<WithdrawRealnameVerificationResponse> {
+  return requestJson<WithdrawRealnameVerificationResponse>(
+    '/realname/withdraw',
+    {
+      method: 'POST',
+      headers: authHeaders(token),
+    },
+    '撤回实名认证失败',
+  )
+}
+
 export type StartAsignIdentifyPayload = {
   real_name: string
   id_card_no: string
@@ -133,6 +150,8 @@ export type StartAsignIdentifyResponse = {
   serial_no?: string | null
   /** 业务 ID，用于查询人脸活体认证结果 */
   biz_id?: string | null
+  /** 是否为人工审核（非大陆身份证个人证件，爱签不提供实名认证服务时） */
+  manual_review?: boolean
 }
 
 export type CompleteAsignIdentifyPayload = {
@@ -156,6 +175,62 @@ export async function startAsignIdentify(
       body: JSON.stringify(payload),
     },
     '发起爱签实名认证失败',
+  )
+}
+
+export type StartCompanyIdentifyPayload = {
+  company_name: string
+  unified_social_credit_code: string
+  operator_name: string
+  operator_id_card_no: string
+  mobile: string
+}
+
+export type StartCompanyIdentifyResponse = {
+  auth_url: string
+  serial_no?: string | null
+  /** 业务 ID（发起认证时返回） */
+  biz_id?: string | null
+}
+
+export async function startCompanyAsignIdentify(
+  token: string,
+  payload: StartCompanyIdentifyPayload,
+): Promise<StartCompanyIdentifyResponse> {
+  return requestJson<StartCompanyIdentifyResponse>(
+    '/realname/asign/company/start',
+    {
+      method: 'POST',
+      headers: authHeaders(token, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(payload),
+    },
+    '发起爱签企业实名认证失败',
+  )
+}
+
+export async function resumeAsignIdentify(token: string): Promise<StartAsignIdentifyResponse> {
+  return requestJson<StartAsignIdentifyResponse>(
+    '/realname/asign/resume',
+    {
+      method: 'POST',
+      headers: authHeaders(token),
+    },
+    '恢复实名认证二维码失败',
+  )
+}
+
+export async function resumeCompanyAsignIdentify(
+  token: string,
+): Promise<StartCompanyIdentifyResponse> {
+  return requestJson<StartCompanyIdentifyResponse>(
+    '/realname/asign/company/resume',
+    {
+      method: 'POST',
+      headers: authHeaders(token),
+    },
+    '恢复企业认证二维码失败',
   )
 }
 

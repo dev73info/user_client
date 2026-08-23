@@ -621,7 +621,7 @@ function finishSearchComposition(event: CompositionEvent) {
             {{ auth.username || '已登录用户' }}
           </button>
           <div class="portal-user__menu" :class="{ open: menuOpen }">
-            <button type="button" @click="goWorkbench">个人工作台</button>
+            <button type="button" @click="goWorkbench">工作台</button>
             <button type="button" class="danger" @click="logout">退出登录</button>
           </div>
         </div>

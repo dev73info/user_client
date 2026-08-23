@@ -116,7 +116,6 @@ onMounted(() => {
                         </span>
                         <strong>{{ badge.name }}</strong>
                         <p>{{ badge.description }}</p>
-                        <small>{{ earnedMap.has(badge.code) ? awardTime(badge.code) : '未获得' }}</small>
                     </article>
                 </div>
             </section>
@@ -127,7 +126,7 @@ onMounted(() => {
 <style scoped>
 .badge-wall {
     display: grid;
-    gap: 16px;
+    gap: 8px;
 }
 
 .badge-wall__head {
@@ -149,46 +148,47 @@ onMounted(() => {
 }
 
 .badge-wall__head p {
-    margin: 6px 0 0;
+    margin: 3px 0 0;
     color: #64748b;
-    font-size: 13px;
+    font-size: 10px;
     font-weight: 800;
 }
 
 .badge-wall__loading {
     color: #2563eb;
-    font-size: 13px;
+    font-size: 10px;
     font-weight: 800;
 }
 
 .badge-wall__groups,
 .badge-wall__group {
     display: grid;
-    gap: 14px;
+    gap: 6px;
 }
 
 .badge-wall__group h3 {
-    font-size: 16px;
+    font-size: 12px;
 }
 
 .badge-wall__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(148px, 168px));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, 72px);
+    gap: 6px;
     justify-content: start;
 }
 
 .badge-wall__badge {
     display: grid;
-    gap: 7px;
-    padding: 16px;
+    gap: 3px;
+    padding: 8px;
     border: 1px solid rgba(226, 232, 240, 0.96);
-    border-radius: 8px;
+    border-radius: 6px;
     background: rgba(255, 255, 255, 0.88);
     color: #94a3b8;
     filter: grayscale(1);
     min-width: 0;
     min-height: 0;
+    width: 72px;
     overflow: hidden;
 }
 
@@ -200,7 +200,7 @@ onMounted(() => {
 }
 
 .badge-wall__icon {
-    font-size: 28px;
+    font-size: 14px;
 }
 
 .badge-wall__icon-img {
@@ -210,7 +210,7 @@ onMounted(() => {
 }
 
 .badge-wall__badge strong {
-    font-size: 15px;
+    font-size: 10px;
 }
 
 .badge-wall__badge p {
@@ -218,13 +218,14 @@ onMounted(() => {
     overflow: hidden;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
 }
 
 .badge-wall__badge p,
 .badge-wall__badge small {
     margin: 0;
-    font-size: 12px;
-    line-height: 1.5;
+    font-size: 10px;
+    line-height: 1.4;
 }
 
 .badge-wall__badge small {
@@ -234,7 +235,7 @@ onMounted(() => {
 
 @media (max-width: 640px) {
     .badge-wall__grid {
-        grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     }
 }
 </style>

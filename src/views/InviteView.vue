@@ -24,7 +24,7 @@ import InvitePanel from '@/components/InvitePanel.vue'
 
 .invite-view__primary,
 .invite-view__badges {
-    padding: 22px 26px;
+    padding: 18px 20px;
 }
 
 .invite-view__primary {

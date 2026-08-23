@@ -298,7 +298,6 @@ onMounted(async () => {
         </div>
 
         <div v-if="!loading && tickets.length === 0" class="ticket-empty-state">
-          <h3>还没有工单</h3>
           <p>提交第一张工单后，这里会显示处理状态和最近回复。</p>
         </div>
 
@@ -342,7 +341,6 @@ onMounted(async () => {
           </header>
 
           <div v-if="detailLoading" class="ticket-empty-state">
-            <h3>会话加载中...</h3>
             <p>正在同步当前工单的最新消息。</p>
           </div>
 
@@ -380,7 +378,6 @@ onMounted(async () => {
         </div>
 
         <div v-else class="ticket-empty-state">
-          <h3>请选择一张工单</h3>
           <p>左侧会展示你的全部工单。选中后可以查看消息记录并继续回复。</p>
         </div>
       </section>

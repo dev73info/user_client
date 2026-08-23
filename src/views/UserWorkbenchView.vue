@@ -47,6 +47,12 @@ const overviewItem: WorkbenchMenuItem = {
   description: '账户、需求与优惠券概览',
 }
 
+const ticketsItem: WorkbenchMenuItem = {
+  label: '工单中心',
+  name: 'workbench-tickets',
+  description: '提交问题与查看回复',
+}
+
 const menuGroups: WorkbenchMenuGroup[] = [
   {
     key: 'collaboration',
@@ -64,13 +70,12 @@ const menuGroups: WorkbenchMenuGroup[] = [
     items: [
       { label: '账户与优惠券', name: 'workbench-account', description: '管理优惠券与账户入口' },
       {
-        label: '🎁 我的邀请',
+        label: '我的邀请',
         name: 'workbench-invite',
         description: '邀请好友得徽章，查看排行榜',
         activeNames: ['workbench-invite-leaderboard'],
       },
       { label: '实名认证', name: 'workbench-realname', description: '提交或查看实名审核' },
-      { label: '工单中心', name: 'workbench-tickets', description: '提交问题与查看回复' },
     ],
   },
   {
@@ -220,6 +225,16 @@ function openMessageCenter() {
   void router.push({ name: 'workbench-messages' })
 }
 
+function toggleMessageCenter() {
+  if (isMessageMenuOpen()) {
+    openGroupKeys.value = openGroupKeys.value.filter((key) => key !== 'messages')
+    mobileMenuOpen.value = false
+    return
+  }
+
+  openMessageCenter()
+}
+
 function isConversationActive(item: RequirementConversation) {
   return route.name === 'workbench-messages' && route.query.requirement_id === item.requirement_id
 }
@@ -320,15 +335,12 @@ function findActiveItem() {
     return null
   }
 
-  return menuGroups.flatMap((group) => group.items).find((item) => isMenuItemActive(item)) ?? null
+  return [...menuGroups.flatMap((group) => group.items), ticketsItem]
+    .find((item) => isMenuItemActive(item)) ?? null
 }
 
 function isActiveChildPage(item: WorkbenchMenuItem | null) {
   return Boolean(item && route.name && item.name !== route.name && item.activeNames?.includes(String(route.name)))
-}
-
-function isDeveloperArea() {
-  return route.matched.some((record) => Boolean(record.meta.devArea))
 }
 
 async function loadConversations(silent = false) {
@@ -416,9 +428,8 @@ async function scrollToHash() {
         <div class="user-workbench__aside-inner">
           <div class="user-workbench__brand">
             <div>
-              <strong>个人工作台</strong>
+              <strong>工作台</strong>
             </div>
-            <em>{{ isDeveloperArea() ? '开发者功能' : '用户中心' }}</em>
             <button class="user-workbench__drawer-close" type="button" aria-label="关闭工作台菜单" @click="closeMobileMenu">
               <el-icon>
                 <Close />
@@ -444,7 +455,7 @@ async function scrollToHash() {
             <section class="user-workbench__menu-group"
               :class="{ active: isMessageMenuActive(), open: isMessageMenuOpen() }">
               <button class="user-workbench__menu-group-head" type="button" :aria-expanded="isMessageMenuOpen()"
-                @click="openMessageCenter">
+                @click="toggleMessageCenter">
                 <span class="user-workbench__menu-icon">
                   <el-icon>
                     <Connection />
@@ -504,6 +515,14 @@ async function scrollToHash() {
                 </div>
               </Transition>
             </section>
+
+            <section class="user-workbench__menu-group user-workbench__menu-group--standalone">
+              <RouterLink class="user-workbench__submenu-link" :class="{ active: isMenuItemActive(ticketsItem) }"
+                :to="menuItemTo(ticketsItem)" @click="closeMobileMenu">
+                <span>{{ ticketsItem.label }}</span>
+                <small>{{ ticketsItem.description }}</small>
+              </RouterLink>
+            </section>
           </nav>
         </div>
       </el-scrollbar>
@@ -518,7 +537,7 @@ async function scrollToHash() {
           <span>菜单</span>
         </button>
         <div>
-          <strong>个人工作台</strong>
+          <strong>工作台</strong>
           <span>{{ currentTitle }}</span>
         </div>
       </div>
@@ -570,6 +589,21 @@ async function scrollToHash() {
   padding: 16px;
 }
 
+.user-workbench__aside-scrollbar :deep(.el-scrollbar__bar) {
+  display: none;
+}
+
+.user-workbench__aside-scrollbar :deep(.el-scrollbar__wrap) {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.user-workbench__aside-scrollbar :deep(.el-scrollbar__wrap::-webkit-scrollbar) {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .user-workbench__brand {
   display: flex;
   align-items: flex-start;
@@ -586,9 +620,17 @@ async function scrollToHash() {
 }
 
 .user-workbench__brand strong {
-  color: #0f172a;
-  font-size: 18px;
-  line-height: 1.2;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(239, 246, 255, 0.94);
+  color: #1d4ed8;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
 }
 
 .user-workbench__brand em {
@@ -764,6 +806,14 @@ async function scrollToHash() {
 
 .user-workbench__submenu {
   --workbench-submenu-max: 420px;
+  margin-left: 38px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(209, 220, 243, 0.95);
+}
+
+.user-workbench__menu-group--standalone {
+  display: grid;
+  gap: 6px;
   margin-left: 38px;
   padding-left: 10px;
   border-left: 1px solid rgba(209, 220, 243, 0.95);
@@ -1029,7 +1079,7 @@ async function scrollToHash() {
 }
 
 .user-workbench__content :deep(.portal-page__stat-card strong) {
-  margin-bottom: 6px;
+  margin-bottom: 0;
   font-size: 28px;
   line-height: 1;
 }
