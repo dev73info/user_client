@@ -134,10 +134,6 @@ onMounted(() => {
         <div class="teams-page__empty-icon">👥</div>
         <h2>还没有团队</h2>
         <p>创建或加入一个团队，与伙伴一起协作</p>
-        <button class="teams-page__create-btn teams-page__create-btn--large" type="button"
-          @click="showCreateModal = true">
-          + 创建团队
-        </button>
       </section>
 
       <section v-else class="teams-list">
@@ -197,15 +193,14 @@ onMounted(() => {
 
 <style scoped>
 .teams-page {
-  max-width: 1024px;
-  margin: 32px auto 56px;
-  padding: 0 20px;
+  margin: 0;
+  padding: 0;
 }
 
 .teams-page__card {
   display: grid;
   gap: 24px;
-  padding: 28px;
+  padding: 14px;
   border: 1px solid rgba(224, 232, 255, 0.96);
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.94);
@@ -279,12 +274,6 @@ onMounted(() => {
   margin: 0;
   color: #64748b;
   font-size: 14px;
-}
-
-.teams-page__create-btn--large {
-  margin-top: 4px;
-  padding: 12px 28px;
-  font-size: 15px;
 }
 
 .teams-list {

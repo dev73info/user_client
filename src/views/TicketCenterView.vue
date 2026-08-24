@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import {
   closeTicket,
@@ -32,12 +32,24 @@ const newContent = ref('')
 const replyContent = ref('')
 const { showToast } = useToast()
 
+const priorityOpen = ref(false)
+const prioritySelectRef = ref<HTMLElement | null>(null)
+
 const priorityOptions: Array<{ value: TicketPriority; label: string }> = [
   { value: 'low', label: '低优先级' },
   { value: 'normal', label: '普通' },
   { value: 'high', label: '高优先级' },
   { value: 'urgent', label: '紧急' },
 ]
+
+const selectedPriorityLabel = computed(
+  () => priorityOptions.find((option) => option.value === newPriority.value)?.label ?? '',
+)
+
+function selectPriority(value: TicketPriority) {
+  newPriority.value = value
+  priorityOpen.value = false
+}
 
 const selectedTicket = computed(() => tickets.value.find((item) => item.ticket_id === selectedTicketId.value) ?? null)
 const ticketStats = computed(() => ({
@@ -220,9 +232,21 @@ async function submitClose() {
   }
 }
 
+function onDocumentClick(event: MouseEvent) {
+  const el = prioritySelectRef.value
+  if (el && !el.contains(event.target as Node)) {
+    priorityOpen.value = false
+  }
+}
+
 onMounted(async () => {
   auth.hydrate()
+  document.addEventListener('click', onDocumentClick)
   await loadTicketsAndKeepSelection()
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocumentClick)
 })
 </script>
 
@@ -230,21 +254,20 @@ onMounted(async () => {
   <main class="portal-page ticket-page-shell">
     <section class="portal-page__stats">
       <article class="portal-page__stat-card">
-        <strong>{{ ticketStats.total }}</strong>
         <span>全部工单</span>
+        <strong>{{ ticketStats.total }}</strong>
       </article>
       <article class="portal-page__stat-card">
-        <strong>{{ ticketStats.pending }}</strong>
         <span>处理中</span>
+        <strong>{{ ticketStats.pending }}</strong>
       </article>
       <article class="portal-page__stat-card">
-        <!-- <strong>{{ ticketStats.resolved }}</strong>
-        <span>已完成</span> -->
-        
+        <span>已完成</span>
+        <strong>{{ ticketStats.resolved }}</strong>
       </article>
       <article class="portal-page__stat-card">
-        <strong>优先级档位</strong>
-        <span>{{ priorityOptions.length }}</span>
+        <span>优先级档位</span>
+        <strong>{{ priorityOptions.length }}</strong>
       </article>
     </section>
 
@@ -270,10 +293,24 @@ onMounted(async () => {
         </label>
         <label class="field">
           <span>优先级</span>
-          <select v-model="newPriority">
-            <option v-for="option in priorityOptions" :key="option.value" :value="option.value">{{ option.label }}
-            </option>
-          </select>
+          <div ref="prioritySelectRef" class="priority-select" :class="{ 'is-open': priorityOpen }">
+            <button class="priority-select__trigger" :class="`is-${newPriority}`" type="button"
+              @click="priorityOpen = !priorityOpen" aria-haspopup="listbox" :aria-expanded="priorityOpen">
+              <span class="priority-select__value">
+                <span class="priority-select__dot" aria-hidden="true"></span>
+                <span>{{ selectedPriorityLabel }}</span>
+              </span>
+              <span class="priority-select__arrow">⌄</span>
+            </button>
+            <div v-if="priorityOpen" class="priority-select__menu" role="listbox">
+              <button v-for="option in priorityOptions" :key="option.value" type="button" role="option"
+                class="priority-select__option"
+                :class="[`is-${option.value}`, { 'is-active': option.value === newPriority }]"
+                @click="selectPriority(option.value)">
+                {{ option.label }}
+              </button>
+            </div>
+          </div>
         </label>
         <label class="field field--full">
           <span>问题描述</span>
@@ -390,6 +427,11 @@ onMounted(async () => {
   gap: 16px;
 }
 
+/* 统计条保持一行 4 列，避免被全局响应式断点改写成两行 */
+.ticket-page-shell .portal-page__stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .ticket-compose-panel,
 .ticket-list-panel,
 .ticket-detail-panel {
@@ -450,6 +492,147 @@ onMounted(async () => {
   grid-column: 1 / -1;
 }
 
+.priority-select {
+  position: relative;
+}
+
+.priority-select__trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-radius: 16px;
+  border: 1px solid rgba(198, 210, 236, 0.82);
+  background: rgba(248, 250, 252, 0.96);
+  color: #0f172a;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  outline: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.priority-select__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.priority-select__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--priority-color, #94a3b8);
+  flex-shrink: 0;
+}
+
+.priority-select__trigger.is-low {
+  --priority-color: #16a34a;
+}
+
+.priority-select__trigger.is-normal {
+  --priority-color: #3b82f6;
+}
+
+.priority-select__trigger.is-high {
+  --priority-color: #f59e0b;
+}
+
+.priority-select__trigger.is-urgent {
+  --priority-color: #ef4444;
+}
+
+.priority-select.is-open .priority-select__trigger {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.12);
+}
+
+.priority-select__arrow {
+  transition: transform 0.2s;
+  color: #64748b;
+}
+
+.priority-select.is-open .priority-select__arrow {
+  transform: rotate(180deg);
+}
+
+.priority-select__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  border: 1px solid rgba(198, 210, 236, 0.82);
+  border-radius: 14px;
+  background: rgba(243, 246, 252, 0.98);
+  box-shadow: 0 12px 28px rgba(76, 103, 172, 0.14);
+  overflow: hidden;
+  padding: 4px;
+}
+
+.priority-select__option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  color: #0f172a;
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+
+.priority-select__option::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--priority-color, #94a3b8);
+  flex-shrink: 0;
+}
+
+.priority-select__option.is-low {
+  --priority-color: #16a34a;
+  --priority-soft: rgba(22, 163, 74, 0.12);
+}
+
+.priority-select__option.is-normal {
+  --priority-color: #3b82f6;
+  --priority-soft: rgba(59, 130, 246, 0.12);
+}
+
+.priority-select__option.is-high {
+  --priority-color: #f59e0b;
+  --priority-soft: rgba(245, 158, 11, 0.14);
+}
+
+.priority-select__option.is-urgent {
+  --priority-color: #ef4444;
+  --priority-soft: rgba(239, 68, 68, 0.12);
+}
+
+.priority-select__option:hover {
+  background: var(--priority-soft, rgba(96, 165, 250, 0.1));
+}
+
+.priority-select__option.is-active {
+  background: var(--priority-color, #3b82f6);
+  color: #fff;
+}
+
+.priority-select__option.is-active::before {
+  background: #fff;
+}
+
 .compose-actions {
   display: flex;
   justify-content: flex-end;
@@ -460,13 +643,14 @@ onMounted(async () => {
 .ticket-secondary-btn,
 .refresh-btn {
   border: 0;
-  font: inherit;
+  font-size: 14px;
+  font-family: inherit;
   cursor: pointer;
 }
 
 .ticket-primary-btn {
-  min-height: 44px;
-  padding: 0 18px;
+  min-height: 36px;
+  padding: 0 16px;
   border-radius: 12px;
   background: linear-gradient(135deg, #2563eb, #4f8cff);
   color: #fff;
@@ -475,8 +659,8 @@ onMounted(async () => {
 
 .ticket-secondary-btn,
 .refresh-btn {
-  min-height: 44px;
-  padding: 0 16px;
+  min-height: 36px;
+  padding: 0 14px;
   border-radius: 12px;
   background: rgba(239, 246, 255, 0.9);
   color: #1d4ed8;
