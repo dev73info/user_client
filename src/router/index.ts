@@ -179,7 +179,7 @@ const router = createRouter({
           name: 'workbench-requirements',
           component: () => import('@/views/MyRequirementsView.vue'),
           meta: {
-            title: '我的需求单',
+            title: '我的需求',
             description: '查看支付、交付与验收进度',
           },
         },

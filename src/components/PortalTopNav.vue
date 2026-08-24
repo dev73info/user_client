@@ -1000,18 +1000,17 @@ function finishSearchComposition(event: CompositionEvent) {
 .portal-search-clear {
   position: absolute;
   top: 50%;
-  right: 8px;
+  right: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 26px;
   height: 26px;
   padding: 0;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: 999px;
-  background: rgba(219, 234, 254, 0.74);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  color: #2563eb;
+  background: transparent;
+  color: #94a3b8;
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -1040,7 +1039,8 @@ function finishSearchComposition(event: CompositionEvent) {
 }
 
 .portal-search-clear:hover {
-  background: rgba(191, 219, 254, 0.96);
+  background: rgba(226, 232, 240, 0.66);
+  color: #475569;
 }
 
 .portal-search-clear:active {

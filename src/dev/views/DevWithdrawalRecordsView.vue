@@ -78,27 +78,24 @@ async function loadWithdrawals() {
 
 <template>
   <div class="dev-page dev-withdraw-page">
-    <div class="dev-withdraw-meta-strip" v-loading="loading">
-      <div class="dev-withdraw-meta-strip__item">
-        <span class="dev-withdraw-meta-strip__label">当前可提现</span>
-        <span class="dev-withdraw-meta-strip__value">{{
+    <div class="dev-meta-strip" v-loading="loading">
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">当前可提现</span>
+        <span class="dev-meta-strip__value">{{
           money(summary?.withdrawable_balance_cny)
           }}</span>
-        <span class="dev-withdraw-meta-strip__hint">从已收尾款扣减已提现和审核中金额</span>
       </div>
-      <div class="dev-withdraw-meta-strip__divider" />
-      <div class="dev-withdraw-meta-strip__item">
-        <span class="dev-withdraw-meta-strip__label">审核中金额</span>
-        <span class="dev-withdraw-meta-strip__value">{{
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">审核中金额</span>
+        <span class="dev-meta-strip__value">{{
           money(summary?.pending_withdraw_cny)
           }}</span>
-        <span class="dev-withdraw-meta-strip__hint">待审核和待打款申请会先锁定余额</span>
       </div>
-      <div class="dev-withdraw-meta-strip__divider" />
-      <div class="dev-withdraw-meta-strip__item">
-        <span class="dev-withdraw-meta-strip__label">累计已提现</span>
-        <span class="dev-withdraw-meta-strip__value">{{ money(summary?.paid_withdraw_cny) }}</span>
-        <span class="dev-withdraw-meta-strip__hint">管理员标记已打款后累计到这里</span>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">累计已提现</span>
+        <span class="dev-meta-strip__value">{{ money(summary?.paid_withdraw_cny) }}</span>
       </div>
     </div>
 
@@ -144,53 +141,6 @@ async function loadWithdrawals() {
   gap: 16px;
 }
 
-.dev-withdraw-meta-strip {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: stretch;
-  gap: 18px;
-  padding: 18px 20px;
-  border: 1px solid rgba(223, 210, 168, 0.64);
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 250, 237, 0.86));
-  box-shadow: 0 14px 32px rgba(105, 78, 18, 0.08);
-}
-
-.dev-withdraw-meta-strip__item {
-  min-width: 0;
-  display: grid;
-  gap: 7px;
-  align-content: start;
-}
-
-.dev-withdraw-meta-strip__divider {
-  width: 1px;
-  min-height: 62px;
-  background: linear-gradient(180deg, transparent, rgba(223, 210, 168, 0.82), transparent);
-}
-
-.dev-withdraw-meta-strip__label {
-  color: var(--dev-muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.dev-withdraw-meta-strip__value {
-  overflow: hidden;
-  color: var(--dev-ink);
-  font-size: 24px;
-  font-weight: 800;
-  line-height: 1.1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dev-withdraw-meta-strip__hint {
-  color: var(--dev-muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
 .dev-withdraw-table__amount {
   font-weight: 700;
   color: var(--dev-gold);
@@ -199,18 +149,5 @@ async function loadWithdrawals() {
 .dev-withdraw-table__title {
   font-weight: 700;
   color: var(--dev-ink);
-}
-
-@media (max-width: 900px) {
-  .dev-withdraw-meta-strip {
-    grid-template-columns: 1fr;
-  }
-
-  .dev-withdraw-meta-strip__divider {
-    width: 100%;
-    min-height: 1px;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(223, 210, 168, 0.82), transparent);
-  }
 }
 </style>

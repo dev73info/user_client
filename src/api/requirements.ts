@@ -92,6 +92,7 @@ export type RequirementItem = {
   payment_mode: RequirementPaymentMode
   updated_at: string
   pending_unbind_request?: UnbindRequirementResponse | null
+  developer?: string | null
 }
 
 export type UnbindRequirementResponse = {

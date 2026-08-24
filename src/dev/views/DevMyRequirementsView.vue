@@ -381,28 +381,21 @@ async function loadRequirementConversations() {
 <template>
   <div class="dev-page dev-page--my-requirements">
 
-    <div class="dev-grid dev-grid--three">
-      <el-card shadow="never" class="dev-surface-card dev-surface-card--soft">
-        <div class="dev-stat dev-stat--compact">
-          <span class="dev-stat__label">总需求单</span>
-          <span class="dev-stat__value">{{ rows.length }}</span>
-          <span class="dev-stat__hint">当前账号已经关联的全部需求数</span>
-        </div>
-      </el-card>
-      <el-card shadow="never" class="dev-surface-card dev-surface-card--soft">
-        <div class="dev-stat dev-stat--compact">
-          <span class="dev-stat__label">已关联资源</span>
-          <span class="dev-stat__value">{{ boundCount }}</span>
-          <span class="dev-stat__hint">已经和当前开发者资源项目建立关联的需求数</span>
-        </div>
-      </el-card>
-      <el-card shadow="never" class="dev-surface-card dev-surface-card--soft">
-        <div class="dev-stat dev-stat--compact">
-          <span class="dev-stat__label">开发中</span>
-          <span class="dev-stat__value">{{ activeCount }}</span>
-          <span class="dev-stat__hint">当前已经推进到开发中的需求数</span>
-        </div>
-      </el-card>
+    <div class="dev-meta-strip">
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">总需求单</span>
+        <span class="dev-meta-strip__value">{{ rows.length }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">已关联资源</span>
+        <span class="dev-meta-strip__value">{{ boundCount }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">开发中</span>
+        <span class="dev-meta-strip__value">{{ activeCount }}</span>
+      </div>
     </div>
 
     <el-card shadow="never" class="dev-surface-card dev-my-requirements-card">

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowDown, MoreFilled } from '@element-plus/icons-vue'
+import { ArrowDown, MoreFilled, Plus } from '@element-plus/icons-vue'
 
 import { apiUrl } from '@dev/api/http'
 import {
@@ -48,6 +48,17 @@ const emptyText = computed(() => {
 
   return '当前还没有资源记录'
 })
+
+const totalCount = computed(() => resources.value.length)
+const publishedCount = computed(
+  () => resources.value.filter((item) => item.visibility === 'published').length,
+)
+const reviewCount = computed(
+  () => resources.value.filter((item) => item.visibility === 'review').length,
+)
+const draftCount = computed(
+  () => resources.value.filter((item) => item.visibility === 'draft').length,
+)
 
 onMounted(async () => {
   auth.hydrate()
@@ -390,12 +401,39 @@ async function setResourcePrivate(resource: McResourcePayload) {
 
 <template>
   <div class="dev-page dev-page--resource-list">
+    <div class="dev-meta-strip">
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">资源总数</span>
+        <span class="dev-meta-strip__value">{{ totalCount }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">公开</span>
+        <span class="dev-meta-strip__value">{{ publishedCount }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">审核中</span>
+        <span class="dev-meta-strip__value">{{ reviewCount }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">私有</span>
+        <span class="dev-meta-strip__value">{{ draftCount }}</span>
+      </div>
+    </div>
+
     <el-card shadow="never" class="dev-surface-card">
       <div class="dev-upload-section__head">
         <section>
           <h3 class="dev-section-title">资源列表</h3>
-          <p class="dev-section-desc">集中查看当前开发者已提交的 免费资源资源。</p>
         </section>
+        <RouterLink class="dev-resource-list__create-btn" :to="{ path: '/workbench/developer/resources/plugins-init' }">
+          <el-icon>
+            <Plus />
+          </el-icon>
+          <span>资源初始化</span>
+        </RouterLink>
       </div>
 
       <el-table :data="resources" stripe v-loading="isLoading" class="dev-resource-table" :empty-text="emptyText">

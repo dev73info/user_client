@@ -38,6 +38,7 @@ import {
   type RequirementStatus,
 } from '@/api/requirements'
 import { getDepositRatio } from '@/api/settings'
+import { listCommunityPosts, type CommunityPost } from '@/api/community'
 import { getResourceDetailSlug, normalizeTagName } from '@/api/resourceTags'
 import { useTagTreeStore } from '@/stores/tagTree'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
@@ -172,6 +173,7 @@ const processedTagTree = computed(() => tagTreeStore.tree ?? ({ roots: [] } as {
 const publicResources = ref<PublicMcResourceItem[]>([])
 const developerBadges = ref<Record<string, UserBadge[]>>({})
 const auth = useAuthStore()
+const announcementPosts = ref<CommunityPost[]>([])
 const router = useRouter()
 const route = useRoute()
 
@@ -259,6 +261,15 @@ const devActionLabel = computed(() =>
 const portalNotices = computed<PortalNotice[]>(() => {
   const notices: PortalNotice[] = []
 
+  for (const post of announcementPosts.value.slice(0, 3)) {
+    notices.push({
+      title: post.title,
+      date: formatTimeLabel(post.published_at),
+      tag: '公告',
+      to: { name: 'community-post', params: { postId: String(post.id) } },
+    })
+  }
+
   if (latestDeals.value[0]) {
     notices.push({
       title: `最新成交：${latestDeals.value[0].title}`,
@@ -295,15 +306,6 @@ const portalNotices = computed<PortalNotice[]>(() => {
       date: formatTimeLabel(publicRequirementSpotlights.value[0].updated_at),
       tag: statusToLabel(publicRequirementSpotlights.value[0].status),
       to: { name: 'requirement-hall' },
-    })
-  }
-
-  if (pendingRequirements.value[0]) {
-    notices.push({
-      title: `我的需求：${pendingRequirements.value[0].title}`,
-      date: pendingRequirements.value[0].updatedAtLabel,
-      tag: pendingRequirements.value[0].statusLabel,
-      to: { name: 'workbench-requirements' },
     })
   }
 
@@ -526,9 +528,9 @@ const platformStats = computed<PlatformStat[]>(() => {
     },
     {
       label: '担保交易',
-      value: '筹备中',
+      value: '即将上线',
       icon: Money,
-      disabledReason: `历史支付统计：${turnover?.value ?? '¥ 0.00'}。涉及许可的交易担保、资金托管、代收代付和自动分账服务筹备中，上线后开放。`,
+      disabledReason: '交易担保、资金托管、代收代付与自动分账服务即将上线，敬请期待。',
     },
   ]
 })
@@ -1243,9 +1245,10 @@ function resolveResourceRoute(
 }
 
 async function loadPublicPortalData(silent = false) {
-  const [resourcesResult, requirementsResult] = await Promise.allSettled([
+  const [resourcesResult, requirementsResult, announcementsResult] = await Promise.allSettled([
     listAllPublicMcResources(),
     listPublicRequirementSpotlights(),
+    listCommunityPosts({ tag: '公告', limit: 5, offset: 0 }),
   ])
   void tagTreeStore.ensure()
 
@@ -1267,6 +1270,12 @@ async function loadPublicPortalData(silent = false) {
     publicRequirementSpotlights.value = requirementsResult.value
   } else {
     publicRequirementSpotlights.value = []
+  }
+
+  if (announcementsResult.status === 'fulfilled') {
+    announcementPosts.value = announcementsResult.value.filter((post) => post.status === 'published')
+  } else {
+    announcementPosts.value = []
   }
 
   const failedResults = [resourcesResult, requirementsResult].filter(

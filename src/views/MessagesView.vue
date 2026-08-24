@@ -483,16 +483,6 @@ watch(
       </form>
     </header>
 
-    <header v-else class="messages-search-bar">
-      <section class="messages-search messages-search--detail" aria-label="会话导航">
-        <button type="button" class="messages-back-btn" aria-label="返回消息列表" @click="closeConversation">
-          <span class="messages-back-btn__icon" aria-hidden="true">‹</span>
-          <span class="messages-back-btn__text">返回</span>
-        </button>
-        <span class="messages-detail-title" aria-hidden="true">{{ activeTitle }}</span>
-      </section>
-    </header>
-
     <RequirementConversationModal v-if="activeRequirementId" display-mode="inline" :visible="true" :token="auth.token"
       :current-username="auth.username" :requirement-id="activeRequirementId" :title="activeTitle"
       @updated="applyConversationDetail" @close="closeConversation" />

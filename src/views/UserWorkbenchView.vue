@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Box, Close, Connection, DataAnalysis, MagicStick, Menu as MenuIcon, UserFilled } from '@element-plus/icons-vue'
+import { ArrowDown, Box, Close, Connection, DataAnalysis, MagicStick, Menu as MenuIcon, Service, UserFilled } from '@element-plus/icons-vue'
 
 import { listRequirementConversations, type RequirementConversation } from '@/api/conversations'
 import { useAuthStore } from '@/stores/auth'
@@ -59,7 +59,7 @@ const menuGroups: WorkbenchMenuGroup[] = [
     label: '需求协作',
     icon: Connection,
     items: [
-      { label: '我的需求单', name: 'workbench-requirements', description: '查看支付、交付与验收进度' },
+      { label: '我的需求', name: 'workbench-requirements', description: '查看支付、交付与验收进度' },
       { label: '我的定制资源', name: 'workbench-resources', description: '查看需求关联交付资源' },
     ],
   },
@@ -93,9 +93,8 @@ const menuGroups: WorkbenchMenuGroup[] = [
     label: '开发者功能',
     icon: MagicStick,
     items: [
-      { label: '资源初始化', name: 'dev-plugins', description: '创建资源并提交审核' },
       {
-        label: '资源列表',
+        label: '我的资源项目',
         name: 'dev-resource-list',
         description: '管理主页、版本与资源状态',
         activeNames: ['dev-resource-homepage-edit', 'dev-resource-versions'],
@@ -109,7 +108,7 @@ const menuGroups: WorkbenchMenuGroup[] = [
   },
 ]
 
-const openGroupKeys = ref<string[]>(['collaboration'])
+const openGroupKeys = ref<string[]>([])
 const sortedConversations = computed(() =>
   [...conversations.value].sort((left, right) =>
     parseConversationTime(right.last_message_at ?? right.updated_at ?? right.created_at)
@@ -193,6 +192,14 @@ function menuItemTo(item: WorkbenchMenuItem) {
   return {
     name: item.name,
     hash: item.hash ?? '',
+  }
+}
+
+function goBack() {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push({ name: 'home' })
   }
 }
 
@@ -449,7 +456,6 @@ async function scrollToHash() {
               </span>
               <span>
                 <strong>{{ overviewItem.label }}</strong>
-                <small>{{ overviewItem.description }}</small>
               </span>
             </RouterLink>
 
@@ -511,17 +517,23 @@ async function scrollToHash() {
                     class="user-workbench__submenu-link" :class="{ active: isMenuItemActive(item) }"
                     :to="menuItemTo(item)" @click="closeMobileMenu">
                     <span>{{ item.label }}</span>
-                    <small>{{ item.description }}</small>
                   </RouterLink>
                 </div>
               </Transition>
             </section>
 
             <section class="user-workbench__menu-group user-workbench__menu-group--standalone">
-              <RouterLink class="user-workbench__submenu-link" :class="{ active: isMenuItemActive(ticketsItem) }"
-                :to="menuItemTo(ticketsItem)" @click="closeMobileMenu">
-                <span>{{ ticketsItem.label }}</span>
-                <small>{{ ticketsItem.description }}</small>
+              <RouterLink class="user-workbench__menu-link user-workbench__menu-link--root"
+                :class="{ active: isMenuItemActive(ticketsItem) }" :to="menuItemTo(ticketsItem)"
+                @click="closeMobileMenu">
+                <span class="user-workbench__menu-icon">
+                  <el-icon>
+                    <Service />
+                  </el-icon>
+                </span>
+                <span>
+                  <strong>{{ ticketsItem.label }}</strong>
+                </span>
               </RouterLink>
             </section>
           </nav>
@@ -547,7 +559,7 @@ async function scrollToHash() {
         <div class="user-workbench__head-copy">
           <h1>{{ currentTitle }}</h1>
         </div>
-        <RouterLink class="user-workbench__dev-link" :to="{ name: 'home' }">返回首页</RouterLink>
+        <a class="user-workbench__dev-link" href="#" @click.prevent="goBack">返回</a>
       </header>
 
       <div class="user-workbench__content">
@@ -815,9 +827,9 @@ async function scrollToHash() {
 .user-workbench__menu-group--standalone {
   display: grid;
   gap: 6px;
-  margin-left: 38px;
-  padding-left: 10px;
-  border-left: 1px solid rgba(209, 220, 243, 0.95);
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(209, 220, 243, 0.95);
 }
 
 .user-workbench__submenu-link {

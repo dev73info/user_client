@@ -453,8 +453,8 @@ async function loadHallData() {
       <section class="portal-page__panel" v-loading="loading">
         <div class="portal-page__section-header">
           <div>
-            <p class="portal-page__eyebrow">热门需求</p>
-            <h2>当前大厅重点展示的合作机会</h2>
+            <p class="portal-page__eyebrow">需求大厅</p>
+            <h2>发现并接取合作机会</h2>
           </div>
           <div class="portal-page__header-actions requirement-hall__header-actions">
             <span v-if="overviewLoading" class="portal-page__loading-chip">同步中</span>
@@ -475,7 +475,20 @@ async function loadHallData() {
         </div>
 
         <div class="requirement-hall__filters">
-          <input v-model="keyword" type="search" placeholder="搜索需求标题、编号、交付方式..." />
+          <div class="requirement-hall__search">
+            <input v-model="keyword" type="search" placeholder="搜索需求标题、编号、交付方式..." />
+            <button
+              v-if="keyword.trim()"
+              class="requirement-hall__search-clear"
+              type="button"
+              aria-label="清空搜索"
+              @click="resetKeyword"
+            >
+              <el-icon>
+                <Close />
+              </el-icon>
+            </button>
+          </div>
           <button class="portal-page__secondary" type="button" :disabled="!keyword.trim()" @click="resetKeyword">
             清空
           </button>
@@ -497,8 +510,10 @@ async function loadHallData() {
             @click="openRequirementDetail(card)" @keydown.enter="openRequirementDetail(card)"
             @keydown.space.prevent="openRequirementDetail(card)">
             <div class="portal-page__card-topline">
-              <span class="portal-page__chip">{{ paymentTag(card) }}</span>
-              <span class="portal-page__meta">{{ statusToLabel(card.status) }}</span>
+              <span
+                class="requirement-hall__pay-chip"
+                :class="`requirement-hall__pay-chip--${card.payment_mode}`"
+              >{{ paymentTag(card) }} · {{ statusToLabel(card.status) }}</span>
             </div>
             <h2>{{ card.title }}</h2>
             <p>{{ requirementRichTextPreview(card.description, '当前需求暂未补充详细描述。') }}</p>
@@ -538,8 +553,8 @@ async function loadHallData() {
             <li v-for="item in hallStats" :key="item.label"
               class="portal-page__timeline-item requirement-hall__stat-item">
               <div class="requirement-hall__stat-main">
-                <strong>{{ item.value }}</strong>
                 <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
               </div>
             </li>
           </ul>
@@ -578,7 +593,10 @@ async function loadHallData() {
       <section class="requirement-hall-detail" :aria-label="`${selectedRequirement.title}详情`">
         <header class="requirement-hall-detail__head">
           <div>
-            <span class="portal-page__chip">{{ paymentTag(selectedRequirement) }}</span>
+            <span
+              class="requirement-hall__pay-chip"
+              :class="`requirement-hall__pay-chip--${selectedRequirement.payment_mode}`"
+            >{{ paymentTag(selectedRequirement) }}</span>
             <h3>{{ selectedRequirement.title }}</h3>
             <p>
               {{ selectedRequirement.requirement_id }} ·
@@ -710,19 +728,54 @@ async function loadHallData() {
   margin-bottom: 14px;
 }
 
+.requirement-hall__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .requirement-hall__filters input {
   width: 100%;
   min-height: 42px;
   border: 1px solid rgba(198, 210, 236, 0.86);
   border-radius: 14px;
-  background: rgba(248, 250, 252, 0.92);
+  background: #fff;
   color: #0f172a;
-  padding: 0 14px;
+  padding: 0 40px 0 14px;
   outline: none;
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
     background-color 180ms ease;
+}
+
+.requirement-hall__filters input::-webkit-search-cancel-button,
+.requirement-hall__filters input::-webkit-search-decoration {
+  display: none;
+  -webkit-appearance: none;
+}
+
+.requirement-hall__search-clear {
+  position: absolute;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.requirement-hall__search-clear:hover {
+  background: rgba(226, 232, 240, 0.66);
+  color: #475569;
 }
 
 .requirement-hall__filters input:focus {
@@ -733,6 +786,27 @@ async function loadHallData() {
 
 .requirement-hall__grid {
   align-items: stretch;
+}
+
+.requirement-hall__pay-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.requirement-hall__pay-chip--self_managed {
+  background: rgba(253, 230, 138, 0.55);
+  color: #92400e;
+}
+
+.requirement-hall__pay-chip--platform_guarantee {
+  background: rgba(187, 247, 208, 0.6);
+  color: #166534;
 }
 
 .requirement-hall__card {

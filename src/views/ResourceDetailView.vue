@@ -795,7 +795,8 @@ watch(
 }
 
 .resource-detail-page__cover-card {
-  min-height: 360px;
+  aspect-ratio: 1.618;
+  min-height: 0;
   overflow: hidden;
   background:
     radial-gradient(circle at top right, rgba(84, 124, 255, 0.18), transparent 30%),
@@ -822,7 +823,6 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 18px;
-  min-height: 360px;
 }
 
 .resource-detail-page__headline-row,
@@ -1461,7 +1461,8 @@ watch(
   }
 
   .resource-detail-page__cover-card {
-    min-height: 280px;
+    aspect-ratio: 1.618;
+    min-height: 0;
   }
 
   .resource-detail-page__version-headline {

@@ -84,6 +84,12 @@ const emptyText = computed(() => {
   return '当前没有可接的待关联需求'
 })
 const currentPageCount = computed(() => rows.value.length)
+const selfManagedCount = computed(
+  () => rows.value.filter((item) => isSelfManagedRequirement(item)).length,
+)
+const guaranteeCount = computed(
+  () => rows.value.filter((item) => !isSelfManagedRequirement(item)).length,
+)
 const availableResourceOptions = computed(() =>
   resources.value.filter((item) => !item.requirement_id && item.visibility === 'draft'),
 )
@@ -563,61 +569,46 @@ function resetInitForm() {
     selectedTagIdsByGroup[Number(key)] = []
   }
 }
-
-async function handlePageChange(nextPage: number) {
-  page.value = nextPage
-  await loadRequirements()
-}
-
-async function handleSizeChange(nextSize: number) {
-  pageSize.value = nextSize
-  page.value = 1
-  await loadRequirements()
-}
 </script>
 
 <template>
   <div class="dev-page dev-page--requirement-hall">
+    <div class="dev-meta-strip">
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">需求单</span>
+        <span class="dev-meta-strip__value">{{ total }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">无电签</span>
+        <span class="dev-meta-strip__value">{{ selfManagedCount }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">电签</span>
+        <span class="dev-meta-strip__value">{{ guaranteeCount }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">可用保证金</span>
+        <span class="dev-meta-strip__value">{{ availableDepositText }}</span>
+      </div>
+      <div class="dev-meta-strip__item dev-meta-strip__action">
+        <el-button type="primary" size="small" @click="goToOrderDeposit">去缴纳保证金</el-button>
+      </div>
+    </div>
+
     <el-alert v-if="!canTakeOrders" title="无电签约定需求可继续关联；历史电签担保需求需要满足保证金规则" type="warning" show-icon :closable="false"
       class="dev-requirement-hall__deposit-alert">
       <template #default>
         <div class="dev-requirement-hall__deposit-copy">
-          <span>当前可用保证金：{{ availableDepositText }}</span>
           <span v-if="depositStatus?.frozen_cny">当前已冻结：{{ frozenDepositText }}</span>
           <span v-if="depositStatus?.latest_order">最近订单状态：{{ depositStatus.latest_order.status }}</span>
         </div>
-        <el-button type="primary" size="small" @click="goToOrderDeposit">去缴纳保证金</el-button>
       </template>
     </el-alert>
 
-    <div class="dev-grid dev-grid--three">
-      <el-card shadow="never" class="dev-surface-card dev-surface-card--soft">
-        <div class="dev-stat dev-stat--compact">
-          <span class="dev-stat__label">当前命中</span>
-          <span class="dev-stat__value">{{ total }}</span>
-          <span class="dev-stat__hint">按当前筛选条件统计的需求总数</span>
-        </div>
-      </el-card>
-      <el-card shadow="never" class="dev-surface-card dev-surface-card--soft">
-        <div class="dev-stat dev-stat--compact">
-          <span class="dev-stat__label">当前页</span>
-          <span class="dev-stat__value">{{ currentPageCount }}</span>
-          <span class="dev-stat__hint">当前分页内尚未关联资源的需求数量</span>
-        </div>
-      </el-card>
-      <el-card shadow="never" class="dev-surface-card dev-surface-card--soft">
-        <div class="dev-stat dev-stat--compact">
-          <span class="dev-stat__label">处理规则</span>
-          <span class="dev-stat__value">1:1</span>
-          <span class="dev-stat__hint">一个需求只能绑定一个开发项目</span>
-        </div>
-      </el-card>
-    </div>
-
     <el-card shadow="never" class="dev-surface-card">
-      <el-alert title="当前新需求仅开放无电签约定；电签担保需求暂未开放，可正常接取无电签约定需求" type="warning" show-icon :closable="false"
-        class="dev-requirement-hall__deposit-alert" />
-
       <div class="dev-requirement-hall__filters">
         <el-select v-model="filters.sortBy" placeholder="排序字段" class="dev-requirement-hall__field"
           @change="applyFilters">
@@ -635,17 +626,16 @@ async function handleSizeChange(nextSize: number) {
 
         <div class="dev-requirement-hall__actions">
           <el-button class="dev-requirement-hall__filter-button dev-requirement-hall__filter-button--ghost"
-            @click="resetFilters">
-            <el-icon>
-              <RefreshLeft />
-            </el-icon>
-          </el-button>
-          <el-button class="dev-requirement-hall__filter-button dev-requirement-hall__filter-button--ghost"
             type="primary" :loading="loading" @click="applyFilters">
             <el-icon v-if="!loading">
               <Search />
             </el-icon>
-            <span>查询</span>
+          </el-button>
+          <el-button class="dev-requirement-hall__filter-button dev-requirement-hall__filter-button--ghost"
+            @click="resetFilters">
+            <el-icon>
+              <RefreshLeft />
+            </el-icon>
           </el-button>
         </div>
       </div>
@@ -691,12 +681,6 @@ async function handleSizeChange(nextSize: number) {
           </template>
         </el-table-column>
       </el-table>
-
-      <div class="dev-requirement-hall__footer">
-        <el-pagination background layout="total, sizes, prev, pager, next" :current-page="page" :page-size="pageSize"
-          :page-sizes="[10, 20, 50]" :total="total" @current-change="handlePageChange"
-          @size-change="handleSizeChange" />
-      </div>
     </el-card>
 
     <el-dialog v-model="bindDialogVisible" width="720px"

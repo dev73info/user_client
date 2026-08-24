@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Close, Folder, MagicStick, Refresh, UploadFilled } from '@element-plus/icons-vue'
+import { Close, Folder, MagicStick, Plus, Refresh, UploadFilled } from '@element-plus/icons-vue'
+import { Cropper } from 'vue-advanced-cropper'
+import 'vue-advanced-cropper/dist/style.css'
 
 import {
   createMcResource,
@@ -33,6 +35,11 @@ const submitting = ref(false)
 const iconInput = ref<HTMLInputElement | null>(null)
 const iconFileName = ref('')
 const selectedIconFile = ref<File | null>(null)
+const iconDialogVisible = ref(false)
+const iconUploading = ref(false)
+const iconEditorRef = ref<InstanceType<typeof Cropper> | null>(null)
+const iconCropSource = ref('')
+const iconCropResult = ref('')
 const selectedTagIdsByGroup = reactive<Record<number, number[]>>({})
 const myTeams = ref<TeamResponse[]>([])
 const form = reactive({
@@ -233,6 +240,10 @@ function openEntry(entryKey: string) {
 }
 
 function openIconPicker() {
+  iconDialogVisible.value = true
+}
+
+function triggerIconFileSelect() {
   iconInput.value?.click()
 }
 
@@ -240,6 +251,8 @@ function clearIconFile() {
   form.coverUrl = ''
   iconFileName.value = ''
   selectedIconFile.value = null
+  iconCropSource.value = ''
+  iconCropResult.value = ''
 
   if (iconInput.value) {
     iconInput.value.value = ''
@@ -276,14 +289,53 @@ async function handleIconFileChange(event: Event) {
   }
 
   try {
-    form.coverUrl = await readFileAsDataUrl(file)
+    const dataUrl = await readFileAsDataUrl(file)
     iconFileName.value = file.name
     selectedIconFile.value = file
+    iconCropSource.value = dataUrl
+    iconCropResult.value = dataUrl
+    form.coverUrl = dataUrl
   } catch (error) {
     const message = error instanceof Error ? error.message : '读取图标文件失败'
     showToast(message, 'error')
     clearIconFile()
   }
+}
+
+function rotateIcon(direction: 'left' | 'right') {
+  iconEditorRef.value?.rotate(direction === 'left' ? -90 : 90)
+}
+
+function zoomIcon(factor: number) {
+  iconEditorRef.value?.zoom(factor)
+}
+
+function resetIconTransform() {
+  iconEditorRef.value?.reset()
+}
+
+function confirmIconCrop() {
+  const result = iconEditorRef.value?.getResult()
+  if (!result?.canvas) {
+    showToast('未能生成裁剪结果，请重试', 'warning')
+    return
+  }
+
+  const dataUrl = result.canvas.toDataURL('image/png')
+  iconCropResult.value = dataUrl
+  form.coverUrl = dataUrl
+
+  result.canvas.toBlob((blob) => {
+    if (!blob) {
+      return
+    }
+
+    const baseName = iconFileName.value.replace(/\.[^.]+$/, '') || 'icon'
+    const croppedFile = new File([blob], `${baseName}.png`, { type: 'image/png' })
+    selectedIconFile.value = croppedFile
+  }, 'image/png')
+
+  iconDialogVisible.value = false
 }
 
 function selectedNamesForGroup(group: McPublishTagGroup): string[] {
@@ -377,7 +429,6 @@ async function submitResource() {
           <header class="dev-upload-section__head">
             <section class="dev-upload-section__copy">
               <h3 class="dev-section-title">基础信息</h3>
-              <p class="dev-section-desc">先填写资源标题和图标，完成资源主体信息配置。</p>
             </section>
           </header>
 
@@ -423,23 +474,9 @@ async function submitResource() {
               </el-form-item>
 
               <el-form-item label="图标文件">
-                <div class="dev-icon-upload">
-                  <input ref="iconInput" class="dev-icon-upload__native" type="file"
-                    accept="image/png,image/jpeg,image/webp,image/gif" @change="handleIconFileChange" />
-                  <button class="dev-icon-upload__trigger" type="button" @click="openIconPicker">
-                    <el-icon>
-                      <UploadFilled />
-                    </el-icon>
-                    <span>{{ form.coverUrl ? '重新选择图标' : '选择图标文件' }}</span>
-                  </button>
-                  <div class="dev-icon-upload__meta">
-                    <div class="dev-icon-upload__name">{{ iconFileName || '未选择文件' }}</div>
-                    <div class="dev-icon-upload__hint">支持 PNG、JPG、WEBP、GIF，大小不超过 2MB</div>
-                  </div>
-                  <div v-if="form.coverUrl" class="dev-icon-upload__preview">
-                    <img :src="form.coverUrl" alt="图标预览" class="dev-icon-upload__image" />
-                  </div>
-                  <el-button v-if="form.coverUrl" text :icon="Close" @click="clearIconFile">移除</el-button>
+                <div class="dev-icon-upload dev-icon-upload--square" @click="openIconPicker">
+                  <img v-if="form.coverUrl" :src="form.coverUrl" alt="图标预览" class="dev-icon-upload__square-image" />
+                  <el-icon v-else class="dev-icon-upload__square-plus"><Plus /></el-icon>
                 </div>
               </el-form-item>
 
@@ -451,62 +488,48 @@ async function submitResource() {
           <header class="dev-upload-section__head">
             <section class="dev-upload-section__copy">
               <h3 class="dev-section-title">标签归类</h3>
-              <p class="dev-section-desc">按根节点与二级节点动态解析标签组，已选结果会直接显示在组内。</p>
-              <div class="dev-tag-panel-meta">
-                <span class="dev-chip dev-chip--catalog">{{ currentRootLabel }}</span>
-                <span class="dev-chip dev-chip--catalog">{{ currentEntryLabel }}</span>
-                <span class="dev-chip dev-chip--catalog">{{ currentPlatformLabel }}</span>
-                <span class="dev-chip dev-chip--cyan">{{ selectedGroupsSummary.length }} 组已选择</span>
-                <span class="dev-chip">{{ selectedTagCount }} 个标签</span>
-              </div>
             </section>
             <el-button text :icon="Refresh" :loading="isLoadingTags" @click="loadTagTree">刷新标签</el-button>
           </header>
 
-          <section v-if="entryTabs.length > 0" class="dev-catalog-nav" aria-label="资源目录导航">
-            <div class="dev-catalog-nav__row">
-              <div class="dev-catalog-nav__head">
-                <span class="dev-catalog-nav__label">二级节点</span>
-                <span class="dev-catalog-nav__meta">当前：{{ currentEntryLabel }}</span>
+          <div v-if="entryTabs.length > 0" class="dev-catalog-section">
+            <section class="dev-catalog-nav" aria-label="资源目录导航">
+              <div class="dev-catalog-nav__row">
+                <div class="dev-catalog-nav__head">
+                  <span class="dev-catalog-nav__label">二级节点</span>
+                  <span class="dev-catalog-nav__meta">当前：{{ currentEntryLabel }}</span>
+                </div>
+                <div class="dev-catalog-nav__chips dev-catalog-nav__chips--scroll">
+                  <button v-for="entry in entryTabs" :key="entry.key" class="dev-catalog-chip dev-catalog-chip--secondary"
+                    :class="{ active: entry.key === currentEntryKey }" type="button" @click="openEntry(entry.key)">
+                    {{ entry.group_name }}
+                  </button>
+                </div>
               </div>
-              <div class="dev-catalog-nav__chips dev-catalog-nav__chips--scroll">
-                <button v-for="entry in entryTabs" :key="entry.key" class="dev-catalog-chip dev-catalog-chip--secondary"
-                  :class="{ active: entry.key === currentEntryKey }" type="button" @click="openEntry(entry.key)">
-                  {{ entry.group_name }}
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <div v-if="platformTagGroups.length > 0"
-            class="dev-tag-group-panel dev-upload-grid dev-upload-grid--tag-groups">
-            <section v-for="group in platformTagGroups" :key="group.key" class="dev-tag-group-row">
-              <header class="dev-tag-group-row__head">
-                <section class="dev-tag-group-row__copy">
-                  <h4 class="dev-tag-group-row__title">{{ group.group_name }}</h4>
-                  <p class="dev-tag-group-row__path" :title="group.label">{{ group.label }}</p>
-                </section>
-                <span class="dev-tag-group-row__count">{{ (selectedTagIdsByGroup[group.group_id] ??
-                  []).length }}/{{ group.items.length }}</span>
-              </header>
-
-              <div class="dev-tag-group-row__selected">
-                <template v-if="selectedNamesForGroup(group).length > 0">
-                  <span v-for="name in selectedNamesForGroup(group)" :key="`${group.key}:${name}`"
-                    class="dev-chip dev-chip--cyan">{{ name }}</span>
-                </template>
-                <span v-else class="dev-tag-group-row__placeholder">尚未选择标签</span>
-              </div>
-
-              <el-form-item class="dev-tag-group-row__field">
-                <el-select v-model="selectedTagIdsByGroup[group.group_id]" multiple filterable placeholder="选择一个或多个标签">
-                  <el-option v-for="item in group.items" :key="item.id" :label="item.name" :value="item.id" />
-                </el-select>
-              </el-form-item>
             </section>
-          </div>
 
-          <p v-else class="dev-empty-state">当前二级节点尚未配置完整标签组，请先在管理端补齐标签树。</p>
+            <div v-if="platformTagGroups.length > 0"
+              class="dev-tag-group-panel dev-upload-grid dev-upload-grid--tag-groups">
+              <section v-for="group in platformTagGroups" :key="group.key" class="dev-tag-group-row">
+                <header class="dev-tag-group-row__head">
+                  <section class="dev-tag-group-row__copy">
+                    <h4 class="dev-tag-group-row__title">{{ group.group_name }}</h4>
+                    <p class="dev-tag-group-row__path" :title="group.label">{{ group.label }}</p>
+                  </section>
+                  <span class="dev-tag-group-row__count">{{ (selectedTagIdsByGroup[group.group_id] ??
+                    []).length }}/{{ group.items.length }}</span>
+                </header>
+
+                <el-form-item class="dev-tag-group-row__field">
+                  <el-select v-model="selectedTagIdsByGroup[group.group_id]" multiple filterable placeholder="选择一个或多个标签">
+                    <el-option v-for="item in group.items" :key="item.id" :label="item.name" :value="item.id" />
+                  </el-select>
+                </el-form-item>
+              </section>
+            </div>
+
+            <p v-else class="dev-empty-state">当前二级节点尚未配置完整标签组，请先在管理端补齐标签树。</p>
+          </div>
         </section>
 
         <footer class="dev-upload-actions dev-upload-actions--split" :class="{ 'is-ready': canSubmit }">
@@ -541,47 +564,93 @@ async function submitResource() {
 
         <el-card shadow="never" class="dev-surface-card dev-surface-card--sticky">
           <h3 class="dev-section-title">预览摘要</h3>
-          <p class="dev-section-desc">保留实时摘要，便于提交前快速核对标题、标签和初始化操作；公开展示需要初始化后另行申请审核。</p>
 
           <article class="dev-preview-card dev-list--spaced">
-            <header class="dev-preview-card__hero">
-              <div class="dev-preview-card__icon">
-                <img v-if="form.coverUrl" :src="form.coverUrl" alt="资源图标" class="dev-preview-card__icon-image" />
-                <el-icon v-else>
-                  <Folder />
-                </el-icon>
-              </div>
-              <section class="dev-preview-card__copy">
-                <div class="dev-resource-card__title">{{ form.title || '资源标题预览' }}</div>
-                <div class="dev-resource-card__eyebrow">by {{ form.author || auth.username || '开发者' }}
-                </div>
-              </section>
-            </header>
-
-            <p class="dev-resource-card__desc">{{ resourceSummary || '这里会显示资源摘要预览。' }}</p>
-
-            <div class="dev-preview-meta">
-              <div>
-                <span class="dev-filter-label">根节点</span>
-                <div class="dev-preview-meta__value">{{ currentRootLabel }}</div>
-              </div>
-              <div>
-                <span class="dev-filter-label">标签组</span>
-                <div class="dev-preview-meta__value">{{ selectedGroupsSummary.length }} 组 / {{
-                  selectedTagCount }} 项</div>
-              </div>
-              <div>
-                <span class="dev-filter-label">二级节点</span>
-                <div class="dev-preview-meta__value">{{ currentEntryLabel }}</div>
-              </div>
+            <div class="dev-preview-card__cover">
+              <img
+                v-if="form.coverUrl"
+                :src="form.coverUrl"
+                alt="资源图标"
+                class="dev-preview-card__cover-img"
+              />
+              <span v-else class="dev-preview-card__cover-text">{{ (form.title || '资源').slice(0, 1).toUpperCase() }}</span>
+              <span class="dev-preview-card__badge">{{ currentRootLabel }}</span>
+              <div class="dev-preview-card__screen dev-preview-card__screen--primary"></div>
+              <div class="dev-preview-card__screen dev-preview-card__screen--secondary"></div>
+              <div class="dev-preview-card__screen dev-preview-card__screen--tertiary"></div>
             </div>
-
-            <div v-if="previewTags.length > 0" class="dev-resource-card__chips">
-              <span v-for="item in previewTags" :key="item" class="dev-chip">{{ item }}</span>
+            <div class="dev-preview-card__body">
+              <h3>{{ form.title || '资源标题预览' }}</h3>
+              <p v-if="resourceSummary">{{ resourceSummary }}</p>
+              <div class="dev-preview-card__meta-row">
+                <strong>{{ currentEntryLabel }}</strong>
+                <span class="dev-preview-card__status">{{ selectedGroupsSummary.length }} 组 / {{ selectedTagCount }} 项</span>
+              </div>
+              <div class="dev-preview-card__footer">
+                <span>by {{ form.author || auth.username || '开发者' }}</span>
+                <span class="dev-preview-card__time">根节点 · {{ currentRootLabel }}</span>
+              </div>
+              <div v-if="previewTags.length > 0" class="dev-resource-card__chips">
+                <span v-for="item in previewTags" :key="item" class="dev-chip">{{ item }}</span>
+              </div>
             </div>
           </article>
         </el-card>
       </aside>
     </div>
   </div>
+
+  <el-dialog v-model="iconDialogVisible" title="上传图标" width="400px" align-center
+    :close-on-click-modal="!iconUploading" :destroy-on-close="false">
+    <div class="dev-icon-dialog">
+      <input ref="iconInput" class="dev-icon-upload__native" type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif" @change="handleIconFileChange" />
+
+      <template v-if="iconCropSource">
+        <div class="dev-icon-editor">
+          <Cropper
+            ref="iconEditorRef"
+            class="dev-icon-editor__cropper"
+            :src="iconCropSource"
+            image-restriction="stencil"
+            :stencil-props="{ aspectRatio: 1.618 }"
+          />
+          <div class="dev-icon-editor__toolbar">
+            <el-button text :icon="Refresh" @click="resetIconTransform">重置</el-button>
+            <el-button text @click="rotateIcon('left')">左旋</el-button>
+            <el-button text @click="rotateIcon('right')">右旋</el-button>
+            <el-button text @click="zoomIcon(0.1)">放大</el-button>
+            <el-button text @click="zoomIcon(-0.1)">缩小</el-button>
+          </div>
+        </div>
+
+        <div class="dev-icon-dialog__meta">
+          <div class="dev-icon-dialog__name">{{ iconFileName || '未选择文件' }}</div>
+          <div class="dev-icon-dialog__hint">可拖动图片调整位置，支持裁剪、旋转和缩放，确认后保存为 1:1 图标</div>
+        </div>
+
+        <div class="dev-icon-dialog__actions">
+          <el-button @click="triggerIconFileSelect">重新选择</el-button>
+          <el-button type="primary" @click="confirmIconCrop">应用</el-button>
+          <el-button type="danger" plain @click="clearIconFile">移除</el-button>
+        </div>
+      </template>
+
+      <template v-else>
+        <div class="dev-icon-dialog__preview" @click="triggerIconFileSelect">
+          <el-icon class="dev-icon-dialog__plus"><Plus /></el-icon>
+          <span>点击选择图标</span>
+        </div>
+
+        <div class="dev-icon-dialog__meta">
+          <div class="dev-icon-dialog__name">{{ iconFileName || '未选择文件' }}</div>
+          <div class="dev-icon-dialog__hint">支持 PNG、JPG、WEBP、GIF，大小不超过 2MB</div>
+        </div>
+
+        <div class="dev-icon-dialog__actions">
+          <el-button @click="triggerIconFileSelect">选择文件</el-button>
+        </div>
+      </template>
+    </div>
+  </el-dialog>
 </template>

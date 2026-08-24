@@ -38,6 +38,7 @@
     "qrcode": "^1.5.4",
     "tags-wasm": "link:../tags-wasm/pkg",
     "vue": "^3.5.31",
+    "vue-advanced-cropper": "^2.8.9",
     "vue-router": "^4.3.9"
   },
   "devDependencies": {

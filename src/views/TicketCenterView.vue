@@ -238,12 +238,13 @@ onMounted(async () => {
         <span>处理中</span>
       </article>
       <article class="portal-page__stat-card">
-        <strong>{{ ticketStats.resolved }}</strong>
-        <span>已完成</span>
+        <!-- <strong>{{ ticketStats.resolved }}</strong>
+        <span>已完成</span> -->
+        
       </article>
       <article class="portal-page__stat-card">
-        <strong>{{ priorityOptions.length }}</strong>
-        <span>优先级档位</span>
+        <strong>优先级档位</strong>
+        <span>{{ priorityOptions.length }}</span>
       </article>
     </section>
 
@@ -251,11 +252,10 @@ onMounted(async () => {
       <div class="panel-head panel-head--stack">
         <div>
           <h2>提交新工单</h2>
-          <p class="lead">建议把现象、时间点、需求号或资源号写清楚，方便后台快速定位。</p>
         </div>
         <button class="refresh-btn" type="button" :disabled="loading || detailLoading"
           @click="loadTicketsAndKeepSelection()">
-          {{ loading || detailLoading ? '同步中...' : '刷新工单' }}
+          {{ loading || detailLoading ? '同步中...' : '刷新' }}
         </button>
       </div>
 
@@ -293,7 +293,6 @@ onMounted(async () => {
         <div class="panel-head">
           <div>
             <h2>工单列表</h2>
-            <p class="lead">点击左侧工单查看完整沟通记录。</p>
           </div>
         </div>
 
@@ -482,6 +481,25 @@ onMounted(async () => {
   background: rgba(239, 246, 255, 0.9);
   color: #1d4ed8;
   font-weight: 700;
+}
+
+.refresh-btn {
+  background: #ffffff;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  box-shadow: 0 8px 20px rgba(76, 103, 172, 0.08);
+  color: #334155;
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: rgba(241, 245, 249, 0.96);
+  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.12);
+  transform: translateY(-1px);
+}
+
+.refresh-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .ticket-main-grid {

@@ -131,6 +131,15 @@ const profileAvatarSrc = computed(() => {
   return `${src}${src.includes('?') ? '&' : '?'}v=${profileAvatarCacheKey.value}`
 })
 const profileInitial = computed(() => Array.from(auth.username || newUsername.value || '用')[0] ?? '用')
+const timeGreeting = computed(() => {
+  const hour = new Date().getHours()
+  if (hour < 6) return '夜深了，注意休息'
+  if (hour < 11) return '早上好，开启美好的一天'
+  if (hour < 14) return '中午好，记得按时吃饭'
+  if (hour < 18) return '下午好，继续加油'
+  if (hour < 23) return '晚上好，辛苦了'
+  return '夜深了，早点休息'
+})
 const profileAvatarCropMaxScale = computed(() => profileAvatarCropMinScale.value * 3)
 const profileAvatarCropZoomPercent = computed(() =>
   Math.round((profileAvatarCropScale.value / Math.max(profileAvatarCropMinScale.value, 0.001)) * 100),
@@ -1515,8 +1524,8 @@ onBeforeUnmount(() => {
           <input ref="profileAvatarInput" class="profile-avatar-input" type="file"
             accept="image/png,image/jpeg,image/webp,image/gif" @change="handleProfileAvatarChange" />
           <div>
-            <h1>{{ auth.username ? `你好，${auth.username}` : '你好，欢迎回来' }}</h1>
-            <p>账户、需求与优惠券概览</p>
+            <h1>{{ auth.username || '欢迎回来' }}</h1>
+            <p>{{ timeGreeting }}</p>
           </div>
         </div>
         <RouterLink class="overview-home-link" :to="{ name: 'home' }">返回首页</RouterLink>

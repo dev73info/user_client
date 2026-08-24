@@ -44,7 +44,6 @@ const walletOverview = ref<DevWalletOverview | null>(null)
 
 const filters = reactive({
   keyword: '',
-  platform: '',
   visibility: '',
   settlement: '',
 })
@@ -65,10 +64,6 @@ const filteredRows = computed(() => {
   const keyword = filters.keyword.trim().toLowerCase()
 
   return releaseRows.value.filter((item) => {
-    if (filters.platform && !item.platform.includes(filters.platform)) {
-      return false
-    }
-
     if (filters.visibility && item.resourceVisibility !== filters.visibility) {
       return false
     }
@@ -264,7 +259,6 @@ function mapReleaseRecord(
 
 function resetFilters() {
   filters.keyword = ''
-  filters.platform = ''
   filters.visibility = ''
   filters.settlement = ''
 }
@@ -276,15 +270,14 @@ function openVersionsPage(row: ReleaseRecord) {
 
 <template>
   <div class="dev-page dev-release-page">
-    <div class="dev-grid dev-grid--three">
-      <el-card v-for="item in releaseStats" :key="item.label" shadow="never"
-        class="dev-surface-card dev-surface-card--soft">
-        <div class="dev-stat dev-stat--compact">
-          <span class="dev-stat__label">{{ item.label }}</span>
-          <span class="dev-stat__value">{{ item.value }}</span>
-          <span class="dev-stat__hint">{{ item.meta }}</span>
+    <div class="dev-meta-strip">
+      <template v-for="(item, index) in releaseStats" :key="item.label">
+        <div v-if="index > 0" class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">{{ item.label }}</span>
+          <span class="dev-meta-strip__value">{{ item.value }}</span>
         </div>
-      </el-card>
+      </template>
     </div>
 
     <el-card shadow="never" class="dev-surface-card">
@@ -318,10 +311,6 @@ function openVersionsPage(row: ReleaseRecord) {
 
     <el-card shadow="never" class="dev-surface-card">
       <div class="dev-release-toolbar">
-        <el-input v-model="filters.keyword" clearable placeholder="搜索资源标题、版本号、需求编号或备注"
-          class="dev-release-toolbar__search" />
-        <el-input v-model="filters.platform" clearable placeholder="平台" class="dev-release-toolbar__field"
-          style="width: 140px" />
         <el-select v-model="filters.visibility" clearable placeholder="资源状态" class="dev-release-toolbar__field">
           <el-option label="已公开" value="published" />
           <el-option label="审核中" value="review" />
@@ -334,6 +323,8 @@ function openVersionsPage(row: ReleaseRecord) {
           <el-option label="仅定金" value="仅定金" />
           <el-option label="未关联" value="未关联" />
         </el-select>
+        <el-input v-model="filters.keyword" clearable placeholder="搜索资源标题、版本号、需求编号或备注"
+          class="dev-release-toolbar__search" />
         <div class="dev-release-toolbar__actions">
           <el-button class="dev-release-toolbar__button dev-release-toolbar__button--ghost" @click="resetFilters">
             <el-icon>
@@ -341,7 +332,7 @@ function openVersionsPage(row: ReleaseRecord) {
             </el-icon>
             <span>重置</span>
           </el-button>
-          <el-button class="dev-release-toolbar__button dev-release-toolbar__button--primary" type="primary"
+          <el-button class="dev-release-toolbar__button dev-release-toolbar__button--ghost" type="primary"
             :loading="loading" @click="loadPage">
             <el-icon v-if="!loading">
               <Refresh />
@@ -426,24 +417,25 @@ function openVersionsPage(row: ReleaseRecord) {
 }
 
 .dev-release-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 18px;
+  display: grid;
+  grid-template-columns: minmax(120px, 150px) minmax(120px, 150px) minmax(220px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .dev-release-toolbar__search {
-  flex: 1 1 280px;
+  width: 100%;
 }
 
 .dev-release-toolbar__field {
-  width: 150px;
+  width: 100%;
 }
 
 .dev-release-toolbar__actions {
   display: flex;
+  justify-content: flex-end;
   gap: 8px;
-  margin-left: auto;
 }
 
 .dev-release-toolbar__button.el-button,
@@ -460,10 +452,10 @@ function openVersionsPage(row: ReleaseRecord) {
 }
 
 .dev-release-toolbar__button.el-button {
-  min-width: 88px;
-  min-height: 44px;
-  height: 44px;
-  padding: 0 16px;
+  min-width: 76px;
+  min-height: 38px;
+  height: 38px;
+  padding: 0 12px;
 }
 
 .dev-release-toolbar__button.el-button :deep(span),
@@ -475,7 +467,7 @@ function openVersionsPage(row: ReleaseRecord) {
 
 .dev-release-toolbar__button.el-button .el-icon,
 .dev-release-record__action-button.el-button .el-icon {
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .dev-release-toolbar__button--ghost.el-button,
@@ -490,26 +482,10 @@ function openVersionsPage(row: ReleaseRecord) {
 .dev-release-toolbar__button--ghost.el-button:focus-visible,
 .dev-release-record__action-button.el-button:hover,
 .dev-release-record__action-button.el-button:focus-visible {
-  border-color: rgba(31, 74, 209, 0.24);
-  background: rgba(31, 74, 209, 0.07);
-  color: var(--dev-blue);
-  box-shadow: 0 10px 20px rgba(31, 74, 209, 0.08);
-  transform: translateY(-1px);
-}
-
-.dev-release-toolbar__button--primary.el-button {
-  border-color: var(--dev-blue);
-  background: var(--dev-blue);
-  color: #fff;
-  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.18);
-}
-
-.dev-release-toolbar__button--primary.el-button:hover,
-.dev-release-toolbar__button--primary.el-button:focus-visible {
-  border-color: #173aaa;
-  background: #173aaa;
-  color: #fff;
-  box-shadow: 0 12px 24px rgba(31, 74, 209, 0.22);
+  border-color: rgba(42, 166, 164, 0.28);
+  background: rgba(42, 166, 164, 0.08);
+  color: #247f7d;
+  box-shadow: 0 10px 20px rgba(42, 166, 164, 0.08);
   transform: translateY(-1px);
 }
 
@@ -587,8 +563,12 @@ function openVersionsPage(row: ReleaseRecord) {
 }
 
 @media (max-width: 900px) {
+  .dev-release-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .dev-release-toolbar__actions {
-    margin-left: 0;
+    justify-content: flex-start;
   }
 }
 </style>

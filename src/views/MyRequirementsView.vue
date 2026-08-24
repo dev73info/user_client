@@ -181,7 +181,7 @@ function paymentModeLabel(item: RequirementItem) {
 
 function paymentModeHint(item: RequirementItem) {
   return isSelfManagedRequirement(item)
-    ? '平台内沟通协作，付款由双方另行约定'
+    ? '付款由双方另行约定'
     : '按平台定金与尾款流程推进'
 }
 
@@ -414,10 +414,6 @@ function nextResourceVisibility(item: RequirementItem): RequirementResourceVisib
 }
 
 function toggleResourceVisibilityLabel(item: RequirementItem) {
-  if (!canToggleRequirementResourceVisibility(item)) {
-    return isSelfManagedRequirement(item) ? '完成后可设置' : '尾款后可设置'
-  }
-
   return nextResourceVisibility(item) === 'public' ? '设为公开' : '设为私有'
 }
 
@@ -1485,7 +1481,7 @@ watch(
                 contractStatusHint(item)
                 }}</small>
               <small v-if="hasBoundResource(item) && !canToggleRequirementResourceVisibility(item)"
-                class="requirement-note">资源公开/私有切换需在{{
+                class="requirement-note">切换资源公开状态需在{{
                   isSelfManagedRequirement(item) ? '需求完成后' : '已付尾款后'
                 }}开放</small>
               <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">
@@ -1509,7 +1505,7 @@ watch(
                 item.status === 'in_development' &&
                 hasBoundResource(item) &&
                 publishedVersionCount(item) < 1
-              " class="requirement-note">开发者至少发布 1 个版本后，用户才能{{
+              " class="requirement-note">开发者发布至少 1 个版本后，才能{{
                 isSelfManagedRequirement(item) ? '确认完成' : '结束开发并支付尾款'
                 }}</small>
               <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{
@@ -1524,14 +1520,6 @@ watch(
                 class="requirement-note">
                 已提交解除申请，等待开发者确认。
               </small>
-              <small class="requirement-note">{{
-                item.subscribe_status_change
-                  ? '已订阅该需求的状态变化通知'
-                  : '未订阅该需求的状态变化通知'
-              }}</small>
-              <small v-if="canOpenConversation(item)" class="requirement-note">{{
-                conversationLastMessageText(item)
-                }}</small>
             </div>
             <span class="requirement-status" :class="{
               'requirement-status--contract': isWaitingContractSign(item),
@@ -1562,9 +1550,9 @@ watch(
                     : requirementSubscriptionLabel(item)
                 }}
               </button>
-              <button v-if="hasBoundResource(item)" class="ghost small" type="button" :disabled="resourceVisibilityLoadingId === item.requirement_id ||
-                !canToggleRequirementResourceVisibility(item)
-                " @click.stop="toggleRequirementResourceVisibility(item)">
+              <button v-if="hasBoundResource(item) && canToggleRequirementResourceVisibility(item)"
+                class="ghost small" type="button" :disabled="resourceVisibilityLoadingId === item.requirement_id"
+                @click.stop="toggleRequirementResourceVisibility(item)">
                 {{
                   resourceVisibilityLoadingId === item.requirement_id
                     ? '提交中...'
@@ -1698,12 +1686,7 @@ watch(
         <section class="my-requirement-detail" :aria-label="`${detailRequirement.title}详情`">
           <header class="my-requirement-detail__head">
             <div>
-              <span class="my-requirement-detail__chip">{{ paymentModeLabel(detailRequirement) }}</span>
               <h3>{{ detailRequirement.title }}</h3>
-              <p>
-                {{ detailRequirement.requirement_id }} ·
-                {{ formatRequirementDisplayStatus(detailRequirement) }}
-              </p>
             </div>
             <button class="my-requirement-detail__close" type="button" aria-label="关闭详情"
               @click="closeRequirementDetail">
@@ -1717,16 +1700,14 @@ watch(
             <span>编号：{{ detailRequirement.requirement_id }}</span>
             <span>发布方式：{{ paymentModeLabel(detailRequirement) }}</span>
             <span>状态：{{ formatRequirementDisplayStatus(detailRequirement) }}</span>
-            <span>更新：{{ formatRequirementTime(detailRequirement.updated_at) }}</span>
             <span>创建：{{ formatRequirementCreatedTime(detailRequirement) }}</span>
+            <span>更新：{{ formatRequirementTime(detailRequirement.updated_at) }}</span>
+            <span v-if="detailRequirement.developer" class="my-requirement-detail__meta--developer">
+              开发者：{{ detailRequirement.developer }}
+            </span>
           </div>
 
           <section class="my-requirement-detail__review-panel">
-            <div class="my-requirement-detail__review-item">
-              <span class="my-requirement-detail__review-label">需求标题</span>
-              <div class="my-requirement-detail__review-value">{{ detailRequirement.title }}</div>
-            </div>
-
             <div class="my-requirement-detail__review-item">
               <span class="my-requirement-detail__review-label">需求描述</span>
               <article
@@ -2087,7 +2068,7 @@ watch(
 }
 
 .my-requirement-detail__head h3 {
-  margin: 10px 0 6px;
+  margin: 0;
   color: #0f172a;
   font-size: 22px;
   line-height: 1.3;
@@ -2132,12 +2113,28 @@ watch(
 .my-requirement-detail__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 14px;
+  justify-content: space-between;
+  gap: 8px 10px;
   padding: 14px 22px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.76);
+}
+
+.my-requirement-detail__meta span {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.92);
   color: #475569;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.my-requirement-detail__meta span.my-requirement-detail__meta--developer {
+  background: rgba(236, 253, 245, 0.92);
+  border: 1px solid rgba(167, 243, 208, 0.96);
+  color: #047857;
 }
 
 .my-requirement-detail__review-panel {

@@ -372,7 +372,7 @@ html::-webkit-scrollbar-thumb:hover {
 }
 
 .app-scrollbar .el-scrollbar__bar.is-vertical {
-  width: 8px;
+  width: 4px;
   right: 0;
 }
 
