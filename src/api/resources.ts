@@ -41,6 +41,7 @@ export type PublicMcResourceItem = {
   like_count: number
   creator_credit_score?: number | null
   creator_username_gradient?: boolean
+  author_username_gradient?: boolean
   creator_home_background_static?: string | null
   liked_by_me: boolean
   ownership_type: string

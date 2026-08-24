@@ -85,6 +85,26 @@ export async function updateProfileBackgroundStatic(
   )
 }
 
+export async function uploadProfileBackground(
+  token: string,
+  file: File,
+): Promise<UserProfileResp> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return requestJson<UserProfileResp>(
+    '/settings/profile/background-static/upload',
+    {
+      method: 'POST',
+      headers: {
+        ...authHeader(token),
+      },
+      body: formData,
+    },
+    '上传背景图片失败',
+  )
+}
+
 export async function getProfile(token: string): Promise<UserProfileResp> {
   return requestJson<UserProfileResp>(
     '/settings/profile',

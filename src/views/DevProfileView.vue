@@ -6,10 +6,9 @@ import { apiUrl } from '@/api/http'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
 import { getUserBadges, getBadges, type BadgeDefinition, type UserBadge } from '@/api/invite'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
-import { updateProfileBackgroundStatic } from '@/api/settings'
+import { uploadProfileBackground } from '@/api/settings'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
-import { ElMessageBox } from 'element-plus'
 import BadgeDisplay from '@/components/BadgeDisplay.vue'
 
 const route = useRoute()
@@ -60,6 +59,13 @@ const stats = computed(() => ({
 
 const failedAvatarUrls = ref<Set<string>>(new Set())
 const failedCoverUrls = ref<Set<string>>(new Set())
+
+const backgroundDialogVisible = ref(false)
+const backgroundUploading = ref(false)
+const backgroundInput = ref<HTMLInputElement | null>(null)
+const backgroundFile = ref<File | null>(null)
+const backgroundPreview = ref('')
+const backgroundMaxSize = 5 * 1024 * 1024
 
 function avatarSrc() {
   const url = creatorInfo.value?.creator_avatar_url
@@ -123,25 +129,54 @@ function openResource(resource: PublicMcResourceItem) {
   })
 }
 
-async function setBackground() {
+function setBackground() {
   if (!auth.token) return
+  backgroundDialogVisible.value = true
+}
+
+function resetBackgroundDialog() {
+  backgroundFile.value = null
+  if (backgroundPreview.value) {
+    URL.revokeObjectURL(backgroundPreview.value)
+    backgroundPreview.value = ''
+  }
+}
+
+function onBackgroundFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+  if (!allowedTypes.includes(file.type)) {
+    showToast('背景图仅支持 PNG、JPG、WEBP 或 GIF 图片', 'warning')
+    return
+  }
+  if (file.size > backgroundMaxSize) {
+    showToast('背景图片不能超过 5MB', 'warning')
+    return
+  }
+
+  if (backgroundPreview.value) {
+    URL.revokeObjectURL(backgroundPreview.value)
+  }
+  backgroundFile.value = file
+  backgroundPreview.value = URL.createObjectURL(file)
+}
+
+async function submitBackgroundUpload() {
+  if (!auth.token || !backgroundFile.value || backgroundUploading.value) return
+  backgroundUploading.value = true
   try {
-    const { value } = await ElMessageBox.prompt('请输入主页背景图片 URL', '设置主页背景', {
-      confirmButtonText: '保存',
-      cancelButtonText: '取消',
-      inputPlaceholder: 'https://example.com/bg.jpg',
-    })
-    const trimmed = String(value || '').trim()
-    if (!trimmed) {
-      showToast('背景图片 URL 不能为空', 'warning')
-      return
-    }
-    await updateProfileBackgroundStatic(auth.token, trimmed)
+    await uploadProfileBackground(auth.token, backgroundFile.value)
     showToast('主页背景已更新', 'success')
+    backgroundDialogVisible.value = false
     await loadData()
   } catch (err) {
-    if ((err as Error)?.name === 'Canceled' || (err as Error)?.message?.includes('cancel')) return
     showToast(err instanceof Error ? err.message : '设置主页背景失败', 'error')
+  } finally {
+    backgroundUploading.value = false
   }
 }
 </script>
@@ -235,6 +270,29 @@ async function setBackground() {
         </article>
       </div>
     </section>
+
+    <!-- 设置主页背景 -->
+    <el-dialog v-model="backgroundDialogVisible" title="设置主页背景" width="480px" align-center
+      :close-on-click-modal="false" @closed="resetBackgroundDialog">
+      <div class="dev-profile__bg-upload">
+        <input ref="backgroundInput" class="dev-profile__bg-input" type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif" @change="onBackgroundFileChange" />
+        <button type="button" class="dev-profile__bg-pick" :class="{ 'has-preview': !!backgroundPreview }"
+          @click="backgroundInput?.click()">
+          <img v-if="backgroundPreview" :src="backgroundPreview" alt="背景预览" class="dev-profile__bg-preview" />
+          <template v-else>
+            <span class="dev-profile__bg-pick-icon">＋</span>
+            <span class="dev-profile__bg-pick-text">选择背景图片</span>
+          </template>
+        </button>
+        <p class="dev-profile__bg-tip">支持 PNG / JPG / WEBP / GIF，最大 5MB</p>
+      </div>
+      <template #footer>
+        <el-button @click="backgroundDialogVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!backgroundFile || backgroundUploading"
+          :loading="backgroundUploading" @click="submitBackgroundUpload">保存</el-button>
+      </template>
+    </el-dialog>
   </main>
 </template>
 
@@ -292,6 +350,68 @@ async function setBackground() {
 
 .dev-profile__bg-btn:hover {
   background: #eff6ff;
+}
+
+.dev-profile__bg-upload {
+  display: grid;
+  gap: 12px;
+}
+
+.dev-profile__bg-input {
+  display: none;
+}
+
+.dev-profile__bg-pick {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 6;
+  border: 1px dashed rgba(148, 163, 184, 0.5);
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #64748b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.dev-profile__bg-pick:hover {
+  border-color: rgba(59, 130, 246, 0.5);
+  background: #eff6ff;
+}
+
+.dev-profile__bg-pick.has-preview {
+  border-style: solid;
+  border-color: rgba(59, 130, 246, 0.3);
+  background: #fff;
+}
+
+.dev-profile__bg-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dev-profile__bg-pick-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.dev-profile__bg-pick-text {
+  font-size: 14px;
+}
+
+.dev-profile__bg-tip {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: center;
 }
 
 .dev-profile__avatar-wrap {

@@ -64,29 +64,32 @@ useCodeBlockCopy({
   rootRef: pageContentRef,
   notify: showToast,
 })
-const authorPillLabel = computed(() => {
+const authorPillParts = computed(() => {
   const current = resource.value
   if (!current) {
-    return ''
+    return { prefix: '', name: '' }
   }
 
   const author = current.author.trim()
   const creator = current.creator.trim()
 
-  // 团队资源：显示"团队名称-作者"
+  // 团队资源：显示"团队名称-作者"，团队名（前缀）不带炫彩
   if (current.ownership_type === 'team' && current.team_name) {
     if (author) {
-      return `${current.team_name} - ${author}`
+      return { prefix: `${current.team_name} -`, name: author }
     }
-    return current.team_name
+    return { prefix: current.team_name, name: '' }
   }
 
-  // 个人资源：保持原有逻辑
+  // 个人资源：保持原有逻辑，只有用户名带炫彩
   if (author && creator && author === creator) {
-    return `作者 / 创建者 ${author}`
+    return { prefix: '作者 / 开发者', name: author }
   }
 
-  return author ? `作者 ${author}` : '作者未知'
+  if (author) {
+    return { prefix: '作者', name: author }
+  }
+  return { prefix: '作者未知', name: '' }
 })
 const showCreatorMeta = computed(() => {
   const current = resource.value
@@ -592,20 +595,29 @@ watch(
           <div class="resource-detail-page__summary-card">
             <div class="resource-detail-page__headline-row">
               <span class="resource-detail-page__status-pill">{{ visibilityLabel }}</span>
-              <router-link
-                v-if="resource.creator"
-                :to="{ name: 'dev-profile', params: { username: resource.creator } }"
-                class="resource-detail-page__author-pill resource-detail-page__author-pill--link"
-              >
-                {{ authorPillLabel }}
-              </router-link>
-              <span v-else class="resource-detail-page__author-pill">{{ authorPillLabel }}</span>
+              <span class="resource-detail-page__headline-right">
+                <router-link
+                  v-if="resource.author"
+                  :to="{ name: 'dev-profile', params: { username: resource.author } }"
+                  class="resource-detail-page__author-pill resource-detail-page__author-pill--link"
+                >
+                  <span class="resource-detail-page__author-pill-label">{{ authorPillParts.prefix }}</span><span v-if="authorPillParts.name" :class="{ 'username-gradient': resource.author_username_gradient }">{{ authorPillParts.name }}</span>
+                </router-link>
+                <span v-else class="resource-detail-page__author-pill">
+                  <span class="resource-detail-page__author-pill-label">{{ authorPillParts.prefix }}</span><span v-if="authorPillParts.name" :class="{ 'username-gradient': resource.author_username_gradient }">{{ authorPillParts.name }}</span>
+                </span>
+                <p v-if="showCreatorMeta" class="resource-detail-page__meta resource-detail-page__meta--aside">
+                  开发者：<router-link
+                    v-if="resource.creator"
+                    :to="{ name: 'dev-profile', params: { username: resource.creator } }"
+                    :class="{ 'username-gradient': resource.creator_username_gradient }"
+                  >{{ resource.creator }}</router-link>
+                  <span v-else :class="{ 'username-gradient': resource.creator_username_gradient }">{{ resource.creator }}</span>
+                </p>
+              </span>
             </div>
             <div class="resource-detail-page__identity-block">
               <h1 class="resource-detail-page__title">{{ resource.title }}</h1>
-              <p v-if="showCreatorMeta" class="resource-detail-page__meta">
-                创建者：{{ resource.creator }}
-              </p>
               <p class="resource-detail-page__summary">
                 {{ resourceSummaryText || '当前资源暂无简介。' }}
               </p>
@@ -831,6 +843,7 @@ watch(
 .resource-detail-page__meta-chip {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   border-radius: 999px;
   padding: 6px 12px;
   font-size: 12px;
@@ -855,6 +868,36 @@ watch(
 
 .resource-detail-page__author-pill--link:hover {
   background: rgba(191, 219, 254, 0.95);
+}
+
+.resource-detail-page__headline-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__meta--aside {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  background: rgba(241, 245, 249, 0.92);
+}
+
+.resource-detail-page__meta--aside a {
+  color: #64748b;
+  text-decoration: none;
+  transition: color 0.18s ease;
+}
+
+.resource-detail-page__meta--aside a:hover {
+  color: #1d4ed8;
 }
 
 .resource-detail-page__identity-block {

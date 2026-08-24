@@ -688,7 +688,7 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
       badge: normalizeTagName(item.platform) || '平台资源',
       authorLabel: item.author || item.creator || '匿名作者',
       metaTime: formatTimeLabel(item.updated_at),
-      gradient: !!item.creator_username_gradient,
+      gradient: !!item.author_username_gradient,
       metaSecondary: `${item.author || item.creator || '匿名作者'} · ${formatTimeLabel(item.updated_at)}`,
       accent: ['nebula', 'sunset', 'forest', 'frost'][index % 4] ?? 'nebula',
       coverUrl: item.cover_url ? apiUrl(item.cover_url) : '',
