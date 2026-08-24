@@ -6,11 +6,15 @@ import { apiUrl } from '@/api/http'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
 import { getUserBadges, getBadges, type BadgeDefinition, type UserBadge } from '@/api/invite'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
+import { updateProfileBackgroundStatic } from '@/api/settings'
 import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
+import { ElMessageBox } from 'element-plus'
 import BadgeDisplay from '@/components/BadgeDisplay.vue'
 
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
 const { showToast } = useToast()
 
 const username = computed(() => String(route.params.username || '').trim())
@@ -26,6 +30,26 @@ const userResources = computed(() =>
 const wornBadges = computed(() => userBadges.value.filter((badge) => badge.equipped))
 
 const creatorInfo = computed(() => userResources.value[0] ?? null)
+
+const profileGradient = computed(() =>
+  userResources.value.some((resource) => resource.creator_username_gradient),
+)
+
+const isSelf = computed(() => !!auth.username && auth.username === username.value)
+const backgroundUrl = computed(() => {
+  const url = creatorInfo.value?.creator_home_background_static
+  return url ? apiUrl(url) : ''
+})
+const headStyle = computed(() =>
+  backgroundUrl.value
+    ? {
+        backgroundImage: `url(${backgroundUrl.value})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }
+    : {},
+)
 
 const stats = computed(() => ({
   resourceCount: userResources.value.length,
@@ -98,12 +122,34 @@ function openResource(resource: PublicMcResourceItem) {
     },
   })
 }
+
+async function setBackground() {
+  if (!auth.token) return
+  try {
+    const { value } = await ElMessageBox.prompt('请输入主页背景图片 URL', '设置主页背景', {
+      confirmButtonText: '保存',
+      cancelButtonText: '取消',
+      inputPlaceholder: 'https://example.com/bg.jpg',
+    })
+    const trimmed = String(value || '').trim()
+    if (!trimmed) {
+      showToast('背景图片 URL 不能为空', 'warning')
+      return
+    }
+    await updateProfileBackgroundStatic(auth.token, trimmed)
+    showToast('主页背景已更新', 'success')
+    await loadData()
+  } catch (err) {
+    if ((err as Error)?.name === 'Canceled' || (err as Error)?.message?.includes('cancel')) return
+    showToast(err instanceof Error ? err.message : '设置主页背景失败', 'error')
+  }
+}
 </script>
 
 <template>
   <main class="dev-profile" v-loading="loading">
     <!-- 头部 -->
-    <section class="dev-profile__head">
+    <section class="dev-profile__head" :class="{ 'has-bg': !!backgroundUrl }" :style="headStyle">
       <div class="dev-profile__avatar-wrap">
         <img
           v-if="avatarSrc()"
@@ -117,7 +163,7 @@ function openResource(resource: PublicMcResourceItem) {
         </span>
       </div>
       <div class="dev-profile__head-content">
-        <h1 class="dev-profile__name">{{ username }}</h1>
+        <h1 class="dev-profile__name" :class="{ 'username-gradient': profileGradient }">{{ username }}</h1>
         <p class="dev-profile__badge-line" v-if="wornBadges.length > 0">
           <BadgeDisplay :badges="wornBadges" :limit="4" />
         </p>
@@ -125,6 +171,7 @@ function openResource(resource: PublicMcResourceItem) {
           {{ userBadges.length > 0 ? '暂未佩戴徽章' : '暂未获得徽章' }}
         </p>
       </div>
+      <button v-if="isSelf" class="dev-profile__bg-btn" @click="setBackground">设置背景</button>
     </section>
 
     <!-- 统计 -->
@@ -200,6 +247,8 @@ function openResource(resource: PublicMcResourceItem) {
 }
 
 .dev-profile__head {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: 20px;
@@ -212,6 +261,37 @@ function openResource(resource: PublicMcResourceItem) {
     rgba(248, 250, 252, 0.94)
   );
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.dev-profile__head.has-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.dev-profile__head.has-bg .dev-profile__avatar-wrap,
+.dev-profile__head.has-bg .dev-profile__head-content,
+.dev-profile__head.has-bg .dev-profile__bg-btn {
+  position: relative;
+  z-index: 1;
+}
+
+.dev-profile__bg-btn {
+  margin-left: auto;
+  align-self: flex-start;
+  padding: 8px 16px;
+  border: 1px solid rgba(96, 165, 250, 0.5);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #2563eb;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.dev-profile__bg-btn:hover {
+  background: #eff6ff;
 }
 
 .dev-profile__avatar-wrap {

@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import { apiUrl } from '@/api/http'
 import {
   getProfile,
@@ -23,8 +22,6 @@ const auth = useAuthStore()
 const { showToast } = useToast()
 
 const profileLoading = ref(false)
-const couponLoading = ref(false)
-const coupons = ref<CouponItem[]>([])
 const newUsername = ref('')
 const usernameLoading = ref(false)
 const avatarUrl = ref('')
@@ -47,12 +44,6 @@ const twoFactorCode = ref('')
 const twoFactorCodeSending = ref(false)
 const twoFactorLoading = ref(false)
 
-const amountCoupons = computed(() =>
-  coupons.value.filter((item) => item.discount_type === 'amount'),
-)
-const discountCoupons = computed(() =>
-  coupons.value.filter((item) => item.discount_type === 'percent'),
-)
 const accountEmailLabel = computed(() => profileEmail.value || '未绑定邮箱')
 const twoFactorChanged = computed(() => twoFactorTargetEnabled.value !== twoFactorEnabled.value)
 const twoFactorStatusText = computed(() => {
@@ -70,60 +61,6 @@ const avatarSrc = computed(() => {
 const avatarInitial = computed(
   () => Array.from(auth.username || newUsername.value || '用')[0] ?? '用',
 )
-
-function formatRange(item: CouponItem) {
-  if (!item.starts_at && !item.ends_at) {
-    return '永久有效'
-  }
-
-  const parts: string[] = []
-  if (item.starts_at) {
-    parts.push(`起始：${item.starts_at.replace('T', ' ')}`)
-  }
-  if (item.ends_at) {
-    parts.push(`截止：${item.ends_at.replace('T', ' ')}`)
-  }
-  return parts.join('，')
-}
-
-function formatDiscount(item: CouponItem) {
-  if (item.discount_type === 'amount') {
-    return `减免 ¥${item.discount_value.toFixed(2)}`
-  }
-  return `折扣 ${item.discount_value.toFixed(1)}%${item.max_discount_cny != null ? `，上限 ¥${item.max_discount_cny.toFixed(2)}` : ''}`
-}
-
-async function copyCouponCode(code: string) {
-  const value = code.trim()
-  if (!value) {
-    showToast('券码为空，无法复制', 'error')
-    return
-  }
-
-  try {
-    await navigator.clipboard.writeText(value)
-    showToast('券码已复制', 'success')
-  } catch {
-    showToast('复制失败，请手动复制', 'error')
-  }
-}
-
-async function loadCoupons() {
-  auth.hydrate()
-  if (!auth.isAuthed) {
-    coupons.value = []
-    return
-  }
-
-  couponLoading.value = true
-  try {
-    coupons.value = await listAvailableCoupons(auth.token)
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载券包失败', 'error')
-  } finally {
-    couponLoading.value = false
-  }
-}
 
 async function loadProfile() {
   auth.hydrate()
@@ -428,7 +365,7 @@ async function submitTwoFactorChange() {
 onMounted(async () => {
   auth.hydrate()
   newUsername.value = auth.username
-  await Promise.all([loadProfile(), loadCoupons()])
+  await loadProfile()
 })
 </script>
 
@@ -559,64 +496,6 @@ onMounted(async () => {
         </section>
       </div>
     </section>
-
-    <section class="wallet-section">
-      <div class="wallet-header">
-        <div>
-          <h3>满减优惠券</h3>
-          <small class="requirement-note">点击券卡复制券码。</small>
-        </div>
-        <button class="ghost small" type="button" :disabled="couponLoading" @click="loadCoupons">
-          {{ couponLoading ? '刷新中...' : '刷新券包' }}
-        </button>
-      </div>
-      <div v-if="amountCoupons.length === 0" class="empty">暂无满减优惠券</div>
-      <div v-else class="coupon-items account-coupon-grid">
-        <button v-for="item in amountCoupons" :key="item.code" type="button" class="coupon-item"
-          @click="copyCouponCode(item.code)">
-          <div class="coupon-head">
-            <strong>{{ item.code }}</strong>
-            <span class="coupon-status" :class="item.status">{{
-              item.status === 'used' ? '已使用' : '可用'
-              }}</span>
-          </div>
-          <small>{{ item.name }}</small>
-          <p>{{ formatDiscount(item) }}</p>
-          <p class="coupon-meta">
-            门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
-          </p>
-        </button>
-      </div>
-    </section>
-
-    <section class="wallet-section">
-      <div class="wallet-header">
-        <div>
-          <h3>折扣优惠券</h3>
-          <small class="requirement-note">点击券卡复制券码。</small>
-        </div>
-        <button class="ghost small" type="button" :disabled="couponLoading" @click="loadCoupons">
-          {{ couponLoading ? '刷新中...' : '刷新券包' }}
-        </button>
-      </div>
-      <div v-if="discountCoupons.length === 0" class="empty">暂无折扣优惠券</div>
-      <div v-else class="coupon-items account-coupon-grid">
-        <button v-for="item in discountCoupons" :key="item.code" type="button" class="coupon-item"
-          @click="copyCouponCode(item.code)">
-          <div class="coupon-head">
-            <strong>{{ item.code }}</strong>
-            <span class="coupon-status" :class="item.status">{{
-              item.status === 'used' ? '已使用' : '可用'
-              }}</span>
-          </div>
-          <small>{{ item.name }}</small>
-          <p>{{ formatDiscount(item) }}</p>
-          <p class="coupon-meta">
-            门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
-          </p>
-        </button>
-      </div>
-    </section>
   </main>
 </template>
 
@@ -740,10 +619,6 @@ onMounted(async () => {
 
 .account-avatar-input {
   display: none;
-}
-
-.account-coupon-grid {
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 .account-password-card {

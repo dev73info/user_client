@@ -6,3 +6,30 @@
 @import './payment.css';
 @import './resource-catalog.css';
 @import './rich-code-copy.css';
+
+/* 用户名渐变展示：由积分商城「权限」类商品兑换开启 */
+.username-gradient {
+  background: linear-gradient(90deg, #ff7e5f 0%, #feb47b 25%, #6d5dfc 50%, #feb47b 75%, #ff7e5f 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  font-weight: 700;
+  animation: username-gradient-flow 4s linear infinite;
+}
+
+@keyframes username-gradient-flow {
+  0% {
+    background-position: 0% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .username-gradient {
+    animation: none;
+  }
+}

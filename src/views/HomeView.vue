@@ -106,6 +106,9 @@ type SpotlightCard = {
   status: string
   badge: string
   metaSecondary: string
+  authorLabel?: string
+  metaTime?: string
+  gradient?: boolean
   accent: string
   coverUrl?: string
   coverAlt?: string
@@ -119,6 +122,7 @@ type DeveloperRank = {
   avatarUrl: string
   creditScore: number | null
   deals: string
+  gradient?: boolean
 }
 
 type TeamRank = {
@@ -539,7 +543,7 @@ const developerRanks = computed<DeveloperRank[]>(() => {
   const failedAvatarUrls = failedDeveloperAvatarUrls.value
   const groupedResources = new Map<
     string,
-    { name: string; username: string; avatarUrl: string; creditScore: number | null; deals: number; latestAt: number }
+    { name: string; username: string; avatarUrl: string; creditScore: number | null; deals: number; latestAt: number; gradient: boolean }
   >()
 
   for (const resource of publicResources.value) {
@@ -550,6 +554,7 @@ const developerRanks = computed<DeveloperRank[]>(() => {
     const avatarUrl = resource.creator_avatar_url ? apiUrl(resource.creator_avatar_url) : ''
     const creditScore =
       typeof resource.creator_credit_score === 'number' ? resource.creator_credit_score : null
+    const gradient = !!resource.creator_username_gradient
 
     if (current) {
       current.deals += 1
@@ -563,6 +568,9 @@ const developerRanks = computed<DeveloperRank[]>(() => {
       if (current.creditScore == null && creditScore != null) {
         current.creditScore = creditScore
       }
+      if (!current.gradient) {
+        current.gradient = gradient
+      }
       continue
     }
 
@@ -573,6 +581,7 @@ const developerRanks = computed<DeveloperRank[]>(() => {
       creditScore,
       deals: 1,
       latestAt: Number.isNaN(latestAt) ? 0 : latestAt,
+      gradient,
     })
   }
 
@@ -592,6 +601,7 @@ const developerRanks = computed<DeveloperRank[]>(() => {
       avatarUrl: failedAvatarUrls.has(item.avatarUrl) ? '' : item.avatarUrl,
       creditScore: item.creditScore,
       deals: `${item.deals} 个资源`,
+      gradient: item.gradient,
     }))
 })
 
@@ -676,6 +686,9 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
       budget: summarizeResourceTags(item) || normalizeTagName(item.platform) || '公开资源',
       status: `${item.like_count ?? 0} 赞`,
       badge: normalizeTagName(item.platform) || '平台资源',
+      authorLabel: item.author || item.creator || '匿名作者',
+      metaTime: formatTimeLabel(item.updated_at),
+      gradient: !!item.creator_username_gradient,
       metaSecondary: `${item.author || item.creator || '匿名作者'} · ${formatTimeLabel(item.updated_at)}`,
       accent: ['nebula', 'sunset', 'forest', 'frost'][index % 4] ?? 'nebula',
       coverUrl: item.cover_url ? apiUrl(item.cover_url) : '',
@@ -1896,7 +1909,8 @@ async function submitPublishRequirement() {
                     <span class="portal-spotlight-card__status">{{ card.status }}</span>
                   </div>
                   <div class="portal-spotlight-card__footer">
-                    <span>{{ card.metaSecondary }}</span>
+                    <span v-if="card.authorLabel" :class="{ 'username-gradient': card.gradient }">{{ card.authorLabel }}</span>
+                    <span v-if="card.metaTime" class="portal-spotlight-card__time">{{ card.metaTime }}</span>
                   </div>
                 </div>
               </article>
@@ -2064,7 +2078,7 @@ async function submitPublishRequirement() {
                   <span v-else>{{ developer.name.slice(0, 1) }}</span>
                 </span>
                 <div class="portal-contrib-item__meta">
-                  <strong>{{ developer.name }}</strong>
+                  <strong :class="{ 'username-gradient': developer.gradient }">{{ developer.name }}</strong>
                   <div class="portal-contrib-item__badges" v-if="devBadges(developer.username).length > 0">
                     <span
                       v-for="badge in devBadges(developer.username).slice(0, 3)"

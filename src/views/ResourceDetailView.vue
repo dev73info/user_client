@@ -490,9 +490,7 @@ async function submitResourceComment() {
     const saved = await createPublicMcResourceComment(auth.token, resourceId, { comment })
     comments.value = [
       saved,
-      ...comments.value.filter(
-        (item) => item.id !== saved.id && item.commenter !== saved.commenter,
-      ),
+      ...comments.value.filter((item) => item.id !== saved.id),
     ]
     commentText.value = ''
     showToast('评论已发布', 'success')
@@ -737,7 +735,7 @@ watch(
                 </div>
                 <div class="resource-detail-page__comment-body">
                   <div class="resource-detail-page__comment-meta">
-                    <strong>{{ comment.commenter }}</strong>
+                    <strong :class="{ 'username-gradient': comment.commenter_username_gradient }">{{ comment.commenter }}</strong>
                     <span>{{ formatVersionTime(comment.updated_at) }}</span>
                   </div>
                   <p>{{ comment.comment_text }}</p>
@@ -1150,6 +1148,13 @@ watch(
 
 .resource-detail-page__rich-text :deep(.rich-editor-image) {
   height: auto;
+}
+
+.resource-detail-page__rich-text :deep(img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  align-self: flex-start;
 }
 
 .resource-detail-page__rich-text :deep(.rich-editor-video) {

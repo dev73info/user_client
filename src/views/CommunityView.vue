@@ -746,7 +746,10 @@ async function submitComment() {
             <div class="community-post-card__head">
               <div>
                 <h3>{{ post.title }}</h3>
-                <p>{{ post.author }} · {{ post.published_at }}</p>
+                <p>
+                  <strong :class="{ 'username-gradient': post.author_username_gradient }">{{ post.author }}</strong> ·
+                  {{ post.published_at }}
+                </p>
               </div>
               <div class="community-post-card__badges">
                 <span class="community-status-badge" :class="`is-${post.status}`">{{ postStatusText(post.status)
@@ -824,23 +827,31 @@ async function submitComment() {
 
         <section v-else-if="selectedPost" class="community-panel community-post-detail">
           <div class="community-detail__header">
-            <div>
-              <div class="community-post-card__tags">
-                <span v-for="tag in selectedPost.tags" :key="tag.id">{{ tag.name }}</span>
+            <div class="community-detail__main">
+              <div class="community-detail__title-row">
+                <div class="community-detail__title">
+                  <div class="community-post-card__tags">
+                    <span v-for="tag in selectedPost.tags" :key="tag.id">{{ tag.name }}</span>
+                  </div>
+                  <h2>{{ selectedPost.title }}</h2>
+                </div>
+                <el-button v-if="canEditSelectedPost" class="community-panel-action" plain
+                  @click="openEditComposer(selectedPost)">
+                  <el-icon>
+                    <EditPen />
+                  </el-icon>
+                  <span>编辑</span>
+                </el-button>
               </div>
-              <h2>{{ selectedPost.title }}</h2>
-              <p>
-                {{ selectedPost.author }} 发布于 {{ selectedPost.published_at }} · 更新
-                {{ selectedPost.updated_at }}
-              </p>
+              <div class="community-detail__meta">
+                <div class="community-detail__author">
+                  <strong :class="{ 'username-gradient': selectedPost.author_username_gradient }">{{ selectedPost.author }}</strong>
+                </div>
+                <p class="community-detail__post-time">
+                  发布于 {{ selectedPost.published_at }} · 更新 {{ selectedPost.updated_at }}
+                </p>
+              </div>
             </div>
-            <el-button v-if="canEditSelectedPost" class="community-panel-action" plain
-              @click="openEditComposer(selectedPost)">
-              <el-icon>
-                <EditPen />
-              </el-icon>
-              <span>编辑</span>
-            </el-button>
           </div>
 
           <div v-if="selectedPostLoading" class="community-detail-loading" role="status">
@@ -985,6 +996,41 @@ async function submitComment() {
   margin-top: 4px;
   font-size: 22px;
   line-height: 1.25;
+}
+
+.community-detail__header .community-detail__main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.community-detail__title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.community-detail__title-row .community-detail__title {
+  min-width: 0;
+}
+
+.community-detail__header .community-detail__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.community-detail__header .community-detail__author strong {
+  font-size: 15px;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.community-detail__header .community-detail__post-time {
+  white-space: nowrap;
+  margin: 0 0 0 auto;
 }
 
 .community-hero p,
@@ -1541,6 +1587,13 @@ async function submitComment() {
   color: #2563eb;
 }
 
+.community-rich-text :deep(img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  align-self: flex-start;
+}
+
 .community-rich-text :deep(pre) {
   overflow: auto;
   padding: 14px;
@@ -1780,10 +1833,15 @@ async function submitComment() {
   .community-hero,
   .community-post-card__head,
   .community-detail__header,
+  .community-detail__title-row,
   .community-panel__head,
   .community-post-card__meta {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .community-detail__header .community-detail__post-time {
+    white-space: normal;
   }
 
   .community-hero__actions {

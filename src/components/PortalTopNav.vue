@@ -109,11 +109,6 @@ const headerLinks = computed<HeaderLink[]>(() => {
       to: { name: 'community' },
       active: allowActive && currentName === 'community',
     },
-    {
-      label: '关于我们',
-      to: { name: 'about' },
-      active: allowActive && currentName === 'about',
-    },
   ]
 
   if (auth.isAuthed) {
@@ -121,6 +116,11 @@ const headerLinks = computed<HeaderLink[]>(() => {
       label: '工作台',
       to: { name: 'workbench' },
       active: allowActive && route.path.startsWith('/workbench'),
+    })
+    links.splice(4, 0, {
+      label: '积分商城',
+      to: { name: 'points-mall' },
+      active: allowActive && currentName === 'points-mall' || route.path.startsWith('/points-mall'),
     })
   }
 

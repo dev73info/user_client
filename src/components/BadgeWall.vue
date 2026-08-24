@@ -32,14 +32,14 @@ const saving = ref(false)
 const earnedMap = computed(() => new Map(earnedBadges.value.map((badge) => [badge.code, badge])))
 const groups = computed(() => [
     {
-        key: 'invite',
-        title: '邀请徽章',
-        badges: allBadges.value.filter((badge) => badge.category === 'invite'),
+        key: 'achievement',
+        title: '成就徽章',
+        badges: allBadges.value.filter((badge) => badge.category === '成就徽章'),
     },
     {
-        key: 'activity',
-        title: '活跃徽章',
-        badges: allBadges.value.filter((badge) => badge.category === 'activity'),
+        key: 'special',
+        title: '特殊徽章',
+        badges: allBadges.value.filter((badge) => badge.category === '特殊徽章'),
     },
 ])
 const acquiredCount = computed(() => earnedBadges.value.length)

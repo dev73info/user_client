@@ -11,6 +11,7 @@ export type CommunityPost = {
   id: number
   author: string
   author_avatar_url?: string | null
+  author_username_gradient?: boolean
   title: string
   status: CommunityPostStatus
   review_note?: string | null

@@ -15,6 +15,7 @@ export type UserProfileResp = {
   username: string
   email?: string | null
   avatar_url?: string | null
+  home_background_static?: string | null
   two_factor_enabled: boolean
   subscribe_official_activity: boolean
   subscribe_dev_hall_deposit_paid?: boolean
@@ -63,6 +64,24 @@ export async function updateProfile(
       body: JSON.stringify({ new_username: newUsername }),
     },
     '修改用户名失败',
+  )
+}
+
+export async function updateProfileBackgroundStatic(
+  token: string,
+  imageUrl: string,
+): Promise<UserProfileResp> {
+  return requestJson<UserProfileResp>(
+    '/settings/profile/background-static',
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify({ image_url: imageUrl }),
+    },
+    '设置主页背景失败',
   )
 }
 

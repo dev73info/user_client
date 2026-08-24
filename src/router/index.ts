@@ -193,6 +193,15 @@ const router = createRouter({
           },
         },
         {
+          path: 'points',
+          name: 'workbench-points',
+          component: () => import('@/views/PointsView.vue'),
+          meta: {
+            title: '我的背包',
+            description: '查看积分余额与明细',
+          },
+        },
+        {
           path: 'teams',
           name: 'workbench-teams',
           component: () => import('@/views/TeamsView.vue'),
@@ -297,6 +306,11 @@ const router = createRouter({
       path: '/about',
       name: 'about',
       component: () => import('@/views/AboutView.vue'),
+    },
+    {
+      path: '/points-mall',
+      name: 'points-mall',
+      component: () => import('@/views/MallView.vue'),
     },
     {
       path: '/terms',

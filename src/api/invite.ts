@@ -43,7 +43,7 @@ export type BadgeDefinition = {
   description: string
   icon: string
   tier: number
-  category: 'invite' | 'activity'
+  category: '成就徽章' | '特殊徽章'
 }
 
 export type UserBadge = BadgeDefinition & {

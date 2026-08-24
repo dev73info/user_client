@@ -637,6 +637,13 @@ onBeforeUnmount(() => {
   height: auto;
 }
 
+.dev-resource-homepage-editor__preview-rich-text :deep(img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  align-self: flex-start;
+}
+
 .dev-resource-homepage-editor__preview-rich-text :deep(.rich-editor-video) {
   width: 100%;
   min-height: 220px;

@@ -69,6 +69,7 @@ const menuGroups: WorkbenchMenuGroup[] = [
     icon: Box,
     items: [
       { label: '账户与优惠券', name: 'workbench-account', description: '管理优惠券与账户入口' },
+      { label: '我的背包', name: 'workbench-points', description: '查看积分余额与明细' },
       {
         label: '我的邀请',
         name: 'workbench-invite',
