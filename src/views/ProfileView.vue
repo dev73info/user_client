@@ -1548,7 +1548,7 @@ onBeforeUnmount(() => {
           <button class="ghost small" type="button" @click="openSecurityModal">账户安全</button>
           <button class="ghost small" type="button" :disabled="loading || requirementLoading"
             @click="refreshProfileData">
-            {{ loading || requirementLoading ? '刷新中...' : '刷新资料' }}
+            {{ loading || requirementLoading ? '刷新中...' : '刷新' }}
           </button>
 
         </div>
@@ -1618,10 +1618,6 @@ onBeforeUnmount(() => {
             <h2>最近沟通</h2>
           </div>
           <div class="overview-inline-actions">
-            <button class="ghost small" type="button" :disabled="conversationLoading"
-              @click="loadRequirementConversations">
-              {{ conversationLoading ? '刷新中...' : '刷新会话' }}
-            </button>
             <RouterLink class="overview-link" :to="{ name: 'workbench-messages' }">消息中心</RouterLink>
           </div>
         </div>
@@ -2322,15 +2318,15 @@ onBeforeUnmount(() => {
 .overview-stat-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
 }
 
 .overview-stat-card {
   display: grid;
-  gap: 8px;
+  gap: 5px;
   min-width: 0;
-  padding: 18px;
-  border-radius: 18px;
+  padding: 14px 16px;
+  border-radius: 14px;
   color: inherit;
   text-decoration: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
@@ -2356,7 +2352,7 @@ onBeforeUnmount(() => {
 .overview-stat-card strong {
   overflow: hidden;
   color: #0f172a;
-  font-size: 34px;
+  font-size: 28px;
   line-height: 1;
   text-overflow: ellipsis;
 }
@@ -2364,7 +2360,12 @@ onBeforeUnmount(() => {
 .overview-focus-panel,
 .overview-panel {
   padding: 20px;
-  border-radius: 22px;
+  border-radius: 18px;
+}
+
+.overview-focus-panel {
+  padding: 22px;
+  background: linear-gradient(135deg, rgba(238, 244, 255, 0.88), rgba(255, 255, 255, 0.96) 58%);
 }
 
 .overview-section-head {
@@ -2448,10 +2449,10 @@ onBeforeUnmount(() => {
   gap: 12px;
   align-items: center;
   min-height: 64px;
-  padding: 12px 14px;
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  border-radius: 16px;
-  background: #ffffff;
+  padding: 16px 18px;
+  border: 1px solid rgba(191, 219, 254, 0.78);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.86);
 }
 
 .overview-requirement-list .overview-requirement-meta {
@@ -2460,7 +2461,18 @@ onBeforeUnmount(() => {
 
 .overview-requirement-list .overview-requirement-progress {
   grid-column: 1 / -1;
-  margin-top: 4px;
+  margin-top: 6px;
+}
+
+.overview-requirement-progress :deep(.req-progress) {
+  padding: 16px 18px 14px;
+  border-color: rgba(191, 219, 254, 0.76);
+  border-radius: 12px;
+  background: rgba(248, 251, 255, 0.78);
+}
+
+.overview-requirement-progress :deep(.req-progress__head) {
+  display: none;
 }
 
 .overview-requirement-list li.clickable {
@@ -2470,7 +2482,7 @@ onBeforeUnmount(() => {
 
 .overview-requirement-list li.clickable:hover {
   border-color: rgba(125, 155, 225, 0.92);
-  background: #f8fbff;
+  background: rgba(248, 251, 255, 0.98);
   box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
 }
 

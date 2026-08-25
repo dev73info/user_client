@@ -202,6 +202,15 @@ const router = createRouter({
           },
         },
         {
+          path: 'favorites',
+          name: 'workbench-favorites',
+          component: () => import('@/views/MyFavoritesView.vue'),
+          meta: {
+            title: '我的收藏',
+            description: '查看收藏的社区帖子',
+          },
+        },
+        {
           path: 'teams',
           name: 'workbench-teams',
           component: () => import('@/views/TeamsView.vue'),

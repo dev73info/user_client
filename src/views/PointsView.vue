@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
+import { listMyCommentWarnings, type CommentWarning } from '@/api/community'
 import { getMyPoints, setPerkEquipped, type UserPerk, type UserPointsLog } from '@/api/points'
 import { HttpError } from '@/api/http'
 import { useToast } from '@/composables/useToast'
@@ -17,6 +18,7 @@ const loading = ref(false)
 const error = ref('')
 const perks = ref<UserPerk[]>([])
 const perkSaving = ref('')
+const commentWarnings = ref<CommentWarning[]>([])
 
 const couponLoading = ref(false)
 const coupons = ref<CouponItem[]>([])
@@ -45,6 +47,14 @@ async function loadPoints() {
     error.value = err instanceof HttpError ? err.message : '加载积分失败'
   } finally {
     loading.value = false
+  }
+}
+
+async function loadCommentWarnings() {
+  try {
+    commentWarnings.value = await listMyCommentWarnings(auth.token)
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '加载评论警告失败', 'error')
   }
 }
 
@@ -136,7 +146,7 @@ onMounted(async () => {
     router.replace('/')
     return
   }
-  await Promise.all([loadPoints(), loadCoupons()])
+  await Promise.all([loadPoints(), loadCoupons(), loadCommentWarnings()])
 })
 </script>
 
@@ -227,6 +237,23 @@ onMounted(async () => {
           </p>
         </button>
       </div>
+    </section>
+
+    <section class="wallet-section">
+      <div class="wallet-header">
+        <div>
+          <h3>评论警告</h3>
+          <small class="requirement-note">管理员不会修改原评论，违规内容会保留记录并说明原因。</small>
+        </div>
+      </div>
+      <div v-if="commentWarnings.length" class="warning-list">
+        <article v-for="warning in commentWarnings" :key="warning.id" class="warning-item">
+          <small>{{ warning.created_at }} · {{ warning.operator }}</small>
+          <p>原评论：{{ warning.comment_snapshot }}</p>
+          <strong>警告原因：{{ warning.reason }}</strong>
+        </article>
+      </div>
+      <p v-else class="empty">暂无评论警告</p>
     </section>
 
     <div class="points-log">

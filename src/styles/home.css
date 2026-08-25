@@ -930,10 +930,31 @@
   gap: 6px;
 }
 
+.portal-stat-item__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .portal-stat-item__copy span {
   font-size: 13px;
   color: #64748b;
   line-height: 1.4;
+}
+
+.portal-stat-item__target {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .portal-stat-item__copy strong {

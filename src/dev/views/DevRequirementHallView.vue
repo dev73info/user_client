@@ -123,7 +123,7 @@ function requiresDepositGate(requirement: RequirementItem) {
 
 function bindButtonLabel(requirement: RequirementItem) {
   if (!requiresDepositGate(requirement)) {
-    return '关联需求'
+    return '接单'
   }
 
   if (
@@ -137,7 +137,7 @@ function bindButtonLabel(requirement: RequirementItem) {
     return '信用不足'
   }
 
-  return '关联需求'
+  return '接单'
 }
 const rootTabs = computed<McTagCatalogRoot[]>(() => processedTree.value.roots)
 const currentRoot = computed<McTagCatalogRoot | null>(

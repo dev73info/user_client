@@ -54,6 +54,9 @@ export type PointsProduct = {
   enabled: boolean
   sort_order: number
   duration_days: number
+  category: string
+  effect_target: string | null
+  effect_script: string | null
 }
 
 export type PointsRedeemOrder = {

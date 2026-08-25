@@ -91,7 +91,6 @@ onMounted(async () => {
     <div class="mall-balance">
       <div>
         <h2>积分商城</h2>
-        <p>用积分兑换权限与徽章</p>
       </div>
       <div class="mall-balance__num">
         <span>当前积分</span>
@@ -108,11 +107,11 @@ onMounted(async () => {
           </div>
           <div class="mall-card__body">
             <div class="mall-card__head">
-              <span class="mall-card__kind">{{ kindLabel(product.kind) }}</span>
+              <span class="mall-card__kind">{{ product.category || '其他' }} · {{ kindLabel(product.kind) }}</span>
               <span class="mall-card__cost">{{ product.points_cost }} 积分</span>
             </div>
             <h4>{{ product.name }}</h4>
-            <p class="mall-card__duration">有效期：{{ durationLabel(product.duration_days) }}</p>
+            <p class="mall-card__duration">有效期：{{ durationLabel(product.duration_days) }} · 库存：{{ product.stock }}</p>
             <p v-if="product.description" class="mall-card__desc">{{ product.description }}</p>
             <el-button type="primary" :disabled="balance < product.points_cost || product.stock <= 0"
               :loading="redeemingId === product.id" style="width: 100%" @click="redeem(product)">
@@ -154,8 +153,10 @@ onMounted(async () => {
   gap: 16px;
   padding: 24px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #3a7afe 0%, #6d5dfc 100%);
-  color: #fff;
+  background: linear-gradient(135deg, #eef4ff 0%, #f7faff 55%, #ffffff 100%);
+  border: 1px solid rgba(224, 232, 255, 0.96);
+  color: #0f172a;
+  box-shadow: 0 12px 26px rgba(76, 103, 172, 0.08);
   margin-bottom: 24px;
 }
 .mall-balance h2 {
@@ -174,12 +175,13 @@ onMounted(async () => {
 .mall-balance__num span {
   display: block;
   font-size: 12px;
-  opacity: 0.85;
+  color: #64748b;
   margin-bottom: 4px;
 }
 .mall-balance__num strong {
   font-size: 40px;
   line-height: 1;
+  color: #4f8cff;
 }
 .mall-products,
 .mall-orders {
@@ -196,14 +198,21 @@ onMounted(async () => {
   gap: 16px;
 }
 .mall-card {
-  border: 1px solid #ebeef5;
+  border: 1px solid rgba(224, 232, 255, 0.96);
   border-radius: 12px;
   overflow: hidden;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.06);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+.mall-card:hover {
+  border-color: rgba(147, 197, 253, 0.96);
+  box-shadow: 0 14px 28px rgba(76, 103, 172, 0.12);
+  transform: translateY(-2px);
 }
 .mall-card__img {
   height: 120px;
-  background: #f5f7fa;
+  background: #eef4ff;
 }
 .mall-card__img img {
   width: 100%;
@@ -221,31 +230,31 @@ onMounted(async () => {
 }
 .mall-card__kind {
   font-size: 12px;
-  color: #409eff;
-  background: rgba(64, 158, 255, 0.1);
+  color: #164e63;
+  background: #cffafe;
   padding: 2px 8px;
   border-radius: 6px;
 }
 .mall-card__cost {
   font-size: 14px;
   font-weight: 700;
-  color: #f56c6c;
+  color: #1d4ed8;
 }
 .mall-card h4 {
   margin: 0 0 6px;
   font-size: 15px;
-  color: #303133;
+  color: #0f172a;
 }
 .mall-card__desc {
   margin: 0 0 12px;
-  color: #909399;
+  color: #64748b;
   font-size: 12px;
   line-height: 1.5;
   min-height: 18px;
 }
 .mall-card__duration {
   margin: 0 0 8px;
-  color: #67c23a;
+  color: #1e40af;
   font-size: 12px;
 }
 </style>

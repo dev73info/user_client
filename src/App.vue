@@ -142,7 +142,7 @@ onBeforeUnmount(() => {
                       href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000020" target="_blank"
                       rel="noopener noreferrer">
                       <img class="public-security-beian-icon" src="/icons/beian.png" alt="公安备案图标" />
-                      <span>滇公网安备53062802000020号（正常重新备案）</span>
+                      <span>滇公网安备53062802000020号（重新备案中）</span>
                     </a>
                   </p>
                   <p>交易功能说明：使用第三方分账系统进行交易担保于分账，资金安全有保障</p>

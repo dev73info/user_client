@@ -225,9 +225,9 @@ export function useCodeBlockCopy({ rootRef, notify }: UseCodeBlockCopyOptions) {
         }
       })
 
-      // 预先将按钮添加到 root，避免在 pointerover 时触发 DOM 变更
+      // 预先将按钮添加到 body，确保 fixed 定位始终相对视口
       // 从而干扰 ProseMirror 的 mousedown/mouseup 事件处理
-      root.append(copyButton)
+      document.body.append(copyButton)
     }
 
     return copyButton

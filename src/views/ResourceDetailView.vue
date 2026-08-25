@@ -586,36 +586,37 @@ watch(
     <section class="resource-detail-page__panel" v-loading="loading">
       <template v-if="resource">
         <section class="resource-detail-page__lead">
-          <div class="resource-detail-page__cover-card">
-            <img v-if="resource.cover_url" :src="resourceCoverUrl" :alt="resource.title"
-              class="resource-detail-page__cover-image" />
-            <div v-else class="resource-detail-page__cover-placeholder">📁</div>
-          </div>
-
-          <div class="resource-detail-page__summary-card">
-            <div class="resource-detail-page__headline-row">
-              <span class="resource-detail-page__status-pill">{{ visibilityLabel }}</span>
-              <span class="resource-detail-page__headline-right">
-                <router-link
-                  v-if="resource.author"
-                  :to="{ name: 'dev-profile', params: { username: resource.author } }"
-                  class="resource-detail-page__author-pill resource-detail-page__author-pill--link"
-                >
-                  <span class="resource-detail-page__author-pill-label">{{ authorPillParts.prefix }}</span><span v-if="authorPillParts.name" :class="{ 'username-gradient': resource.author_username_gradient }">{{ authorPillParts.name }}</span>
-                </router-link>
-                <span v-else class="resource-detail-page__author-pill">
-                  <span class="resource-detail-page__author-pill-label">{{ authorPillParts.prefix }}</span><span v-if="authorPillParts.name" :class="{ 'username-gradient': resource.author_username_gradient }">{{ authorPillParts.name }}</span>
-                </span>
-                <p v-if="showCreatorMeta" class="resource-detail-page__meta resource-detail-page__meta--aside">
-                  开发者：<router-link
-                    v-if="resource.creator"
-                    :to="{ name: 'dev-profile', params: { username: resource.creator } }"
-                    :class="{ 'username-gradient': resource.creator_username_gradient }"
-                  >{{ resource.creator }}</router-link>
-                  <span v-else :class="{ 'username-gradient': resource.creator_username_gradient }">{{ resource.creator }}</span>
-                </p>
-              </span>
+          <div class="resource-detail-page__left-stack">
+            <div class="resource-detail-page__cover-card">
+              <img v-if="resource.cover_url" :src="resourceCoverUrl" :alt="resource.title"
+                class="resource-detail-page__cover-image" />
+              <div v-else class="resource-detail-page__cover-placeholder">📁</div>
             </div>
+
+            <div class="resource-detail-page__summary-card">
+              <div class="resource-detail-page__headline-row">
+                <span class="resource-detail-page__status-pill">{{ visibilityLabel }}</span>
+                <span class="resource-detail-page__headline-right">
+                  <router-link
+                    v-if="resource.author"
+                    :to="{ name: 'dev-profile', params: { username: resource.author } }"
+                    class="resource-detail-page__author-pill resource-detail-page__author-pill--link"
+                  >
+                    <span class="resource-detail-page__author-pill-label">{{ authorPillParts.prefix }}</span><span v-if="authorPillParts.name" :class="{ 'username-gradient': resource.author_username_gradient }">{{ authorPillParts.name }}</span>
+                  </router-link>
+                  <span v-else class="resource-detail-page__author-pill">
+                    <span class="resource-detail-page__author-pill-label">{{ authorPillParts.prefix }}</span><span v-if="authorPillParts.name" :class="{ 'username-gradient': resource.author_username_gradient }">{{ authorPillParts.name }}</span>
+                  </span>
+                  <p v-if="showCreatorMeta" class="resource-detail-page__meta resource-detail-page__meta--aside">
+                    <span class="resource-detail-page__meta-label--green">开发者：</span><router-link
+                      v-if="resource.creator"
+                      :to="{ name: 'dev-profile', params: { username: resource.creator } }"
+                      :class="{ 'username-gradient': resource.creator_username_gradient }"
+                    >{{ resource.creator }}</router-link>
+                    <span v-else :class="{ 'username-gradient': resource.creator_username_gradient }">{{ resource.creator }}</span>
+                  </p>
+                </span>
+              </div>
             <div class="resource-detail-page__identity-block">
               <h1 class="resource-detail-page__title">{{ resource.title }}</h1>
               <p class="resource-detail-page__summary">
@@ -627,13 +628,6 @@ watch(
               <span v-for="item in tagNames" :key="item" class="resource-detail-page__tag">{{
                 item
               }}</span>
-            </div>
-
-            <div v-if="infoCards.length" class="resource-detail-page__summary-stats">
-              <article v-for="item in infoCards" :key="item.label" class="resource-detail-page__summary-stat">
-                <strong>{{ item.value }}</strong>
-                <span>{{ item.label }}</span>
-              </article>
             </div>
 
             <div class="resource-detail-page__cta-row">
@@ -666,23 +660,10 @@ watch(
                 继续浏览
               </button>
             </div>
+            </div>
           </div>
-        </section>
 
-        <section class="resource-detail-page__detail-grid">
-          <article class="resource-detail-page__content-card">
-            <header class="resource-detail-page__section-head">
-              <h2>页面内容</h2>
-              <span>Content</span>
-            </header>
-            <div v-if="pageContentHtml" ref="pageContentRef"
-              class="resource-detail-page__content-flow resource-detail-page__rich-text" v-html="pageContentHtml" />
-            <p v-else class="resource-detail-page__paragraph">
-              当前还没有额外补充说明。后续更新、兼容性说明或使用建议会展示在这里。
-            </p>
-          </article>
-
-          <article class="resource-detail-page__content-card">
+          <article class="resource-detail-page__content-card resource-detail-page__versions-side-card">
             <header class="resource-detail-page__section-head">
               <h2>历史版本</h2>
               <span>Versions</span>
@@ -705,6 +686,20 @@ watch(
               </article>
             </div>
             <p v-else class="resource-detail-page__paragraph">当前还没有可展示的历史版本。</p>
+          </article>
+        </section>
+
+        <section class="resource-detail-page__detail-grid">
+          <article class="resource-detail-page__content-card">
+            <header class="resource-detail-page__section-head">
+              <h2>页面内容</h2>
+              <span>Content</span>
+            </header>
+            <div v-if="pageContentHtml" ref="pageContentRef"
+              class="resource-detail-page__content-flow resource-detail-page__rich-text" v-html="pageContentHtml" />
+            <p v-else class="resource-detail-page__paragraph">
+              当前还没有额外补充说明。后续更新、兼容性说明或使用建议会展示在这里。
+            </p>
           </article>
 
           <article class="resource-detail-page__content-card resource-detail-page__comments-card">
@@ -794,10 +789,22 @@ watch(
   background: rgba(248, 250, 252, 0.92);
 }
 
+.resource-detail-page__left-stack {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid rgba(198, 210, 236, 0.72);
+  background: rgba(248, 250, 252, 0.92);
+}
+
 .resource-detail-page__cover-card {
   aspect-ratio: 1.618;
   min-height: 0;
   overflow: hidden;
+  border: 0;
+  border-radius: 0;
   background:
     radial-gradient(circle at top right, rgba(84, 124, 255, 0.18), transparent 30%),
     linear-gradient(160deg, rgba(219, 234, 254, 0.95), rgba(239, 246, 255, 0.92));
@@ -823,6 +830,16 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 18px;
+  border: 0;
+  border-radius: 0;
+  border-top: 1px solid rgba(198, 210, 236, 0.72);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.resource-detail-page__versions-side-card {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-width: 0;
 }
 
 .resource-detail-page__headline-row,
@@ -888,6 +905,10 @@ watch(
   font-weight: 700;
   color: #64748b;
   background: rgba(241, 245, 249, 0.92);
+}
+
+.resource-detail-page__meta-label--green {
+  color: #16a34a;
 }
 
 .resource-detail-page__meta--aside a {
@@ -1438,6 +1459,12 @@ watch(
 @media (max-width: 980px) {
   .resource-detail-page__lead {
     grid-template-columns: 1fr;
+  }
+
+  .resource-detail-page__left-stack,
+  .resource-detail-page__versions-side-card {
+    grid-column: auto;
+    grid-row: auto;
   }
 }
 

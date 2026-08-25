@@ -1871,9 +1871,9 @@ async function submitPublishRequirement() {
               <button
                 class="portal-link-btn"
                 type="button"
-                @click="router.push({ name: 'free-resources' })"
+                @click="router.push(buildDevPortalUrl(auth.token))"
               >
-                更多免费资源
+                发布资源
               </button>
             </div>
             <div v-if="spotlightCards.length > 0" class="portal-spotlight-grid">
@@ -2028,7 +2028,10 @@ async function submitPublishRequirement() {
                   <component :is="stat.icon" />
                 </span>
                 <div class="portal-stat-item__copy">
-                  <span>{{ stat.label }}</span>
+                  <div class="portal-stat-item__label">
+                    <span>{{ stat.label }}</span>
+                    <span v-if="stat.progress" class="portal-stat-item__target">目标</span>
+                  </div>
                   <strong>{{ stat.value }}</strong>
                   <span v-if="stat.note" class="portal-stat-item__note">{{ stat.note }}</span>
                   <div v-if="stat.progress" class="portal-stat-item__progress">

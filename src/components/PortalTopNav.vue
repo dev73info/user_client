@@ -154,6 +154,7 @@ watch(
 onMounted(() => {
   document.addEventListener('click', closeSubscriptionMenu)
   document.addEventListener('click', closeSearchScopeMenu)
+  document.addEventListener('click', closeUserMenu)
   document.addEventListener('keydown', handleSubscriptionMenuKeydown)
   document.addEventListener('keydown', handleSearchScopeMenuKeydown)
 })
@@ -161,6 +162,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('click', closeSubscriptionMenu)
   document.removeEventListener('click', closeSearchScopeMenu)
+  document.removeEventListener('click', closeUserMenu)
   document.removeEventListener('keydown', handleSubscriptionMenuKeydown)
   document.removeEventListener('keydown', handleSearchScopeMenuKeydown)
 })
@@ -212,6 +214,15 @@ function closeSubscriptionMenu() {
 
 function closeSearchScopeMenu() {
   searchScopeMenuOpen.value = false
+}
+
+function closeUserMenu(event: MouseEvent) {
+  const target = event.target
+  if (target instanceof Element && target.closest('.portal-user')) {
+    return
+  }
+
+  menuOpen.value = false
 }
 
 function handleSubscriptionMenuKeydown(event: KeyboardEvent) {
@@ -620,10 +631,12 @@ function finishSearchComposition(event: CompositionEvent) {
           <button class="portal-user__trigger" type="button" @click="menuOpen = !menuOpen">
             {{ auth.username || '已登录用户' }}
           </button>
-          <div class="portal-user__menu" :class="{ open: menuOpen }">
-            <button type="button" @click="goWorkbench">工作台</button>
-            <button type="button" class="danger" @click="logout">退出登录</button>
-          </div>
+          <Transition name="portal-user-menu">
+            <div v-show="menuOpen" class="portal-user__menu" :class="{ open: menuOpen }">
+              <button type="button" @click="goWorkbench">工作台</button>
+              <button type="button" class="danger" @click="logout">退出登录</button>
+            </div>
+          </Transition>
         </div>
       </template>
     </div>
@@ -1275,7 +1288,9 @@ function finishSearchComposition(event: CompositionEvent) {
   position: absolute;
   top: calc(100% + 10px);
   right: -16px;
-  display: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   min-width: 140px;
   padding: 10px;
   border-radius: 18px;
@@ -1284,10 +1299,37 @@ function finishSearchComposition(event: CompositionEvent) {
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
 }
 
-.portal-user__menu.open {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.portal-user-menu-enter-active,
+.portal-user-menu-leave-active {
+  transition:
+    opacity 180ms ease,
+    transform 220ms var(--portal-nav-motion);
+  transform-origin: top right;
+}
+
+.portal-user-menu-enter-from,
+.portal-user-menu-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
+}
+
+.portal-user-menu-enter-active .portal-user__menu button {
+  animation: portal-user-menu-item-in 220ms var(--portal-nav-motion) both;
+}
+
+.portal-user-menu-enter-active .portal-user__menu button:nth-child(2) {
+  animation-delay: 35ms;
+}
+
+@keyframes portal-user-menu-item-in {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .portal-user__menu button {
@@ -1306,6 +1348,15 @@ function finishSearchComposition(event: CompositionEvent) {
 
 .portal-user__menu .danger {
   color: #dc2626;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-user-menu-enter-active,
+  .portal-user-menu-leave-active,
+  .portal-user-menu-enter-active .portal-user__menu button {
+    animation: none;
+    transition: none;
+  }
 }
 
 @media (max-width: 1180px) {

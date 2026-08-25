@@ -1810,6 +1810,13 @@ a {
   color: var(--dev-muted);
 }
 
+.dev-page--publish .dev-upload-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .dev-page--publish .dev-upload-actions--split .el-button {
   flex: 0 0 auto;
   min-width: 154px;
@@ -3380,6 +3387,19 @@ a {
 
   .dev-route-view--shell {
     padding: 20px;
+  }
+
+  .dev-page--publish .dev-upload-actions--split {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dev-page--publish .dev-upload-actions__buttons {
+    justify-content: stretch;
+  }
+
+  .dev-page--publish .dev-upload-actions__buttons .el-button {
+    flex: 1 1 154px;
   }
 
   .dev-login__title,

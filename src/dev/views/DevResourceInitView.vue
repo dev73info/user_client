@@ -7,6 +7,7 @@ import 'vue-advanced-cropper/dist/style.css'
 
 import {
   createMcResource,
+  updateMcResourceHomepage,
   uploadMcResourceCover,
   type McResourcePayload,
   type CreateMcResourceTagSelection,
@@ -94,7 +95,6 @@ const resourceSummary = computed(() => {
   const scopeLabel = `${currentEntryLabel.value} · ${currentPlatformLabel.value}`
   return `${scopeLabel}资源，已选择 ${selectedTagCount.value} 个标签。`
 })
-const actionLabel = computed(() => '初始化私有项目')
 const normalizedResourceKey = computed(() => {
   const base = form.title
     .trim()
@@ -370,7 +370,7 @@ function resetForm() {
   }
 }
 
-async function submitResource() {
+async function submitResource(mode: 'private' | 'public') {
   if (!auth.token) {
     showToast('登录状态已失效，请重新登录', 'error')
     return
@@ -408,7 +408,21 @@ async function submitResource() {
       }
     }
 
-    showToast(`资源已初始化为私有项目，编号 #${resource.id}`, 'success')
+    if (mode === 'public') {
+      resource = await updateMcResourceHomepage(auth.token, resource.id, {
+        title: resource.title,
+        author: resource.author,
+        description: resource.description,
+        cover_url: resource.cover_url,
+        docs_url: resource.docs_url,
+        visibility: 'review',
+        release_note: resource.release_note,
+      })
+    }
+
+    showToast(mode === 'public'
+      ? `公开申请已提交，项目编号 #${resource.id}`
+      : `资源已初始化为私有项目，编号 #${resource.id}`, 'success')
     resetForm()
     await router.push({ name: 'dev-resource-list' })
   } catch (error) {
@@ -538,10 +552,16 @@ async function submitResource() {
             <span class="dev-submit-summary__meta">{{ currentEntryLabel }} · {{ selectedTagCount }}
               个标签</span>
           </section>
-          <el-button type="primary" :icon="MagicStick" :disabled="!canSubmit" :loading="submitting"
-            @click="submitResource">
-            {{ actionLabel }}
-          </el-button>
+          <div class="dev-upload-actions__buttons">
+            <el-button type="primary" :icon="MagicStick" :disabled="!canSubmit" :loading="submitting"
+              @click="submitResource('private')">
+              初始化私有项目
+            </el-button>
+            <el-button type="success" :icon="MagicStick" :disabled="!canSubmit" :loading="submitting"
+              @click="submitResource('public')">
+              初始化公开项目
+            </el-button>
+          </div>
         </footer>
       </el-card>
 

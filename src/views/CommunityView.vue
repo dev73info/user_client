@@ -10,18 +10,24 @@ import {
   Plus,
   Refresh,
   Search,
+  Star,
+  Top,
 } from '@element-plus/icons-vue'
 
 import { HttpError, apiUrl } from '@/api/http'
 import {
   createCommunityComment,
   createCommunityPost,
+  favoriteCommunityPost,
   getCommunityPost,
+  likeCommunityComment,
   likeCommunityPost,
   listCommunityComments,
   listCommunityPosts,
   listCommunityTags,
+  unlikeCommunityComment,
   unlikeCommunityPost,
+  unfavoriteCommunityPost,
   updateCommunityPost,
   type CommunityComment,
   type CommunityPost,
@@ -58,6 +64,9 @@ const selectedPostLoading = ref(false)
 const commentsLoading = ref(false)
 const savingPost = ref(false)
 const sendingComment = ref(false)
+const replyingTo = ref<CommunityComment | null>(null)
+const commentLikeLoading = ref<number | null>(null)
+const favoriteLoading = ref(false)
 const composerVisible = ref(false)
 const editingPost = ref<CommunityPost | null>(null)
 const commentDraft = ref('')
@@ -68,6 +77,8 @@ const selectedPostContentRef = ref<HTMLElement | null>(null)
 const composerActionsFloating = ref(false)
 const composerActionsPlaceholderHeight = ref(0)
 const composerActionsFloatingStyle = ref<Record<string, string>>({})
+const showScrollTop = ref(false)
+const expandedReplyIds = ref(new Set<number>())
 let composerActionsResizeObserver: ResizeObserver | null = null
 let selectedPostRequestId = 0
 
@@ -80,6 +91,34 @@ const postForm = reactive({
 const currentPostContent = computed(() =>
   selectedPost.value?.content_html ? sanitizeRichHtml(selectedPost.value.content_html) : '',
 )
+
+const orderedComments = computed(() => {
+  const childrenByParent = new Map<number | null, CommunityComment[]>()
+  for (const comment of comments.value) {
+    const parentId = comment.parent_comment_id ?? null
+    const children = childrenByParent.get(parentId) ?? []
+    children.push(comment)
+    childrenByParent.set(parentId, children)
+  }
+
+  const ordered: CommunityComment[] = []
+  const appendComments = (parentId: number | null) => {
+    for (const comment of childrenByParent.get(parentId) ?? []) {
+      ordered.push(comment)
+      appendComments(comment.id)
+    }
+  }
+  appendComments(null)
+  return ordered
+})
+
+const commentFloors = computed(() => {
+  const floors = new Map<number, number>()
+  orderedComments.value.forEach((comment, index) => {
+    floors.set(comment.id, index + 1)
+  })
+  return floors
+})
 
 const tagOptions = computed(() => tags.value.map((tag) => tag.name))
 const searchActive = computed(() => searchKeyword.value.length > 0)
@@ -165,6 +204,21 @@ function updateFloatingComposerActions() {
   }
 }
 
+function updateScrollTopVisibility() {
+  const scrollWrap = document.querySelector<HTMLElement>('.app-scrollbar .el-scrollbar__wrap')
+  showScrollTop.value = Boolean(scrollWrap && scrollWrap.scrollTop > 240)
+}
+
+function scrollToTop() {
+  const scrollWrap = document.querySelector<HTMLElement>('.app-scrollbar .el-scrollbar__wrap')
+  if (scrollWrap) {
+    scrollWrap.scrollTo({ top: 0, behavior: 'smooth' })
+    return
+  }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 function observeComposerActions() {
   composerActionsResizeObserver?.disconnect()
   composerActionsResizeObserver = null
@@ -222,12 +276,15 @@ onMounted(() => {
   auth.hydrate()
   void loadCommunityData()
   window.addEventListener('scroll', updateFloatingComposerActions, true)
+  window.addEventListener('scroll', updateScrollTopVisibility, true)
   window.addEventListener('resize', updateFloatingComposerActions)
+  updateScrollTopVisibility()
 })
 
 onBeforeUnmount(() => {
   composerActionsResizeObserver?.disconnect()
   window.removeEventListener('scroll', updateFloatingComposerActions, true)
+  window.removeEventListener('scroll', updateScrollTopVisibility, true)
   window.removeEventListener('resize', updateFloatingComposerActions)
   resetSeoMeta()
 })
@@ -399,6 +456,7 @@ function selectPost(post: CommunityPost | null) {
   const requestId = ++selectedPostRequestId
   selectedPost.value = post
   commentDraft.value = ''
+  replyingTo.value = null
   if (post) {
     comments.value = []
     if (post.content_html) {
@@ -648,6 +706,31 @@ async function toggleLike(post: CommunityPost) {
   }
 }
 
+async function toggleFavorite(post: CommunityPost) {
+  if (!ensureAuthed()) {
+    return
+  }
+  if (post.status !== 'published' || favoriteLoading.value) {
+    showToast('帖子公开后才能收藏', 'warning')
+    return
+  }
+
+  favoriteLoading.value = true
+  try {
+    const state = post.favorited_by_me
+      ? await unfavoriteCommunityPost(auth.token, post.id)
+      : await favoriteCommunityPost(auth.token, post.id)
+    updateSelectedPost({ favorited_by_me: state.favorited_by_me })
+    posts.value = posts.value.map((item) =>
+      item.id === post.id ? { ...item, favorited_by_me: state.favorited_by_me } : item,
+    )
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '收藏帖子失败', 'error')
+  } finally {
+    favoriteLoading.value = false
+  }
+}
+
 async function submitComment() {
   if (!selectedPost.value || !ensureAuthed() || sendingComment.value) {
     return
@@ -664,15 +747,147 @@ async function submitComment() {
       auth.token,
       selectedPost.value.id,
       commentDraft.value,
+      replyingTo.value?.id,
     )
     comments.value = [...comments.value, created]
     updateSelectedPost({ comment_count: (selectedPost.value.comment_count ?? 0) + 1 })
     commentDraft.value = ''
+    replyingTo.value = null
     showToast('评论已发布', 'success')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '发表评论失败', 'error')
   } finally {
     sendingComment.value = false
+  }
+}
+
+function replyToComment(comment: CommunityComment) {
+  if (!ensureAuthed()) {
+    return
+  }
+  replyingTo.value = comment
+}
+
+function parentCommenter(comment: CommunityComment): string {
+  if (comment.parent_commenter?.trim()) {
+    return comment.parent_commenter.trim()
+  }
+  if (!comment.parent_comment_id) {
+    return ''
+  }
+  return comments.value.find((item) => item.id === comment.parent_comment_id)?.commenter ?? ''
+}
+
+function parentCommentText(comment: CommunityComment): string {
+  if (!comment.parent_comment_id) {
+    return ''
+  }
+  return comments.value.find((item) => item.id === comment.parent_comment_id)?.comment_text?.trim() ?? ''
+}
+
+function truncateCommentText(text: string, maxLength = 56): string {
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
+}
+
+function commentDepth(comment: CommunityComment): number {
+  let depth = 0
+  let parentId = comment.parent_comment_id ?? null
+  const visited = new Set<number>()
+  while (parentId && !visited.has(parentId)) {
+    visited.add(parentId)
+    depth += 1
+    parentId = comments.value.find((item) => item.id === parentId)?.parent_comment_id ?? null
+  }
+  return depth
+}
+
+function threadRootId(comment: CommunityComment): number {
+  let rootId = comment.id
+  let parentId = comment.parent_comment_id ?? null
+  const visited = new Set<number>()
+  while (parentId && !visited.has(parentId)) {
+    visited.add(parentId)
+    rootId = parentId
+    parentId = comments.value.find((item) => item.id === parentId)?.parent_comment_id ?? null
+  }
+  return rootId
+}
+
+function threadReplies(rootId: number): CommunityComment[] {
+  return orderedComments.value.filter(
+    (comment) => comment.id !== rootId && threadRootId(comment) === rootId,
+  )
+}
+
+function replyIndex(comment: CommunityComment): number {
+  if (!comment.parent_comment_id) {
+    return -1
+  }
+  return threadReplies(threadRootId(comment)).findIndex((item) => item.id === comment.id)
+}
+
+function isReplyCollapsed(comment: CommunityComment): boolean {
+  const rootId = threadRootId(comment)
+  if (!comment.parent_comment_id || expandedReplyIds.value.has(rootId)) {
+    return false
+  }
+  return replyIndex(comment) >= 3
+}
+
+function shouldShowReplyToggle(comment: CommunityComment): boolean {
+  const rootId = threadRootId(comment)
+  return Boolean(
+    comment.parent_comment_id &&
+      replyIndex(comment) === 3 &&
+      threadReplies(rootId).length > 3 &&
+      !expandedReplyIds.value.has(rootId),
+  )
+}
+
+function shouldShowCollapseToggle(comment: CommunityComment): boolean {
+  const rootId = threadRootId(comment)
+  const replies = threadReplies(rootId)
+  return Boolean(
+    comment.parent_comment_id &&
+      expandedReplyIds.value.has(rootId) &&
+      replies.length > 3 &&
+      replyIndex(comment) === replies.length - 1,
+  )
+}
+
+function hiddenReplyCount(rootId: number): number {
+  return Math.max(0, threadReplies(rootId).length - 3)
+}
+
+function toggleReplies(rootId: number) {
+  const nextExpandedReplyIds = new Set(expandedReplyIds.value)
+  if (nextExpandedReplyIds.has(rootId)) {
+    nextExpandedReplyIds.delete(rootId)
+  } else {
+    nextExpandedReplyIds.add(rootId)
+  }
+  expandedReplyIds.value = nextExpandedReplyIds
+}
+
+async function toggleCommentLike(comment: CommunityComment) {
+  if (!ensureAuthed() || commentLikeLoading.value === comment.id) {
+    return
+  }
+
+  commentLikeLoading.value = comment.id
+  try {
+    const state = comment.liked_by_me
+      ? await unlikeCommunityComment(auth.token, comment.id)
+      : await likeCommunityComment(auth.token, comment.id)
+    comments.value = comments.value.map((item) =>
+      item.id === comment.id
+        ? { ...item, liked_by_me: state.liked_by_me, like_count: state.like_count }
+        : item,
+    )
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '点赞评论失败', 'error')
+  } finally {
+    commentLikeLoading.value = null
   }
 }
 </script>
@@ -874,6 +1089,12 @@ async function submitComment() {
               <span>{{ selectedPost.liked_by_me ? '已点赞' : '点赞' }}</span>
               <strong>{{ selectedPost.like_count }}</strong>
             </el-button>
+            <el-button class="community-favorite-button" :class="{ 'is-favorited': selectedPost.favorited_by_me }"
+              :type="selectedPost.favorited_by_me ? 'warning' : 'default'"
+              :disabled="!selectedPostPublished || favoriteLoading" @click="toggleFavorite(selectedPost)">
+              <el-icon><Star /></el-icon>
+              <span>{{ selectedPost.favorited_by_me ? '已收藏' : '收藏' }}</span>
+            </el-button>
             <ShareCardGenerator v-if="auth.isAuthed && selectedPostShareTargetId" share-type="community_post"
               :target-id="selectedPostShareTargetId" />
             <span class="community-action-stat">
@@ -896,7 +1117,7 @@ async function submitComment() {
             <div v-if="!selectedPostPublished" class="community-status-note">
               帖子公开后可点赞和评论。
             </div>
-            <div v-else class="community-comment-box">
+            <div v-else-if="!replyingTo" class="community-comment-box">
               <el-input v-model="commentDraft" type="textarea" :rows="3" maxlength="800" show-word-limit
                 placeholder="说点具体的想法或补充" />
               <el-button class="community-submit-button community-comment-submit" type="primary"
@@ -909,18 +1130,63 @@ async function submitComment() {
               暂无评论
             </div>
             <ul v-else class="community-comment-list">
-              <li v-for="comment in comments" :key="comment.id" class="community-comment-item">
+              <template v-for="comment in orderedComments" :key="comment.id">
+                <button v-if="shouldShowReplyToggle(comment)" class="community-replies-toggle" type="button"
+                  @click="toggleReplies(threadRootId(comment))">
+                  展开 {{ hiddenReplyCount(threadRootId(comment)) }} 条回复
+                </button>
+                <li v-if="!isReplyCollapsed(comment)" class="community-comment-item"
+                  :class="{ 'is-reply': comment.parent_comment_id }"
+                  :style="{ '--comment-depth': String(commentDepth(comment)) }">
                 <div class="community-comment-item__avatar">
                   <img v-if="commentAvatarSrc(comment)" :src="commentAvatarSrc(comment)"
                     :alt="`${comment.commenter} 的头像`" @error="handleCommentAvatarError(comment)" />
                   <span v-else>{{ avatarInitial(comment.commenter) }}</span>
                 </div>
-                <div>
+                <div class="community-comment-item__body">
                   <strong>{{ comment.commenter }}</strong>
+                  <span class="community-comment-item__floor">#{{ commentFloors.get(comment.id) }}</span>
+                  <div v-if="parentCommenter(comment) || parentCommentText(comment)"
+                    class="community-comment-item__reply-context">
+                    <span v-if="parentCommenter(comment)" class="community-comment-item__reply-to">
+                      回复 @{{ parentCommenter(comment) }}
+                    </span>
+                    <span v-if="parentCommentText(comment)" class="community-comment-item__reply-quote"
+                      :title="parentCommentText(comment)">
+                      {{ truncateCommentText(parentCommentText(comment)) }}
+                    </span>
+                  </div>
                   <p>{{ comment.comment_text }}</p>
-                  <time>{{ comment.created_at }}</time>
+                  <div class="community-comment-item__actions">
+                    <button type="button" @click="replyToComment(comment)">回复</button>
+                    <button type="button" :class="{ 'is-liked': comment.liked_by_me }"
+                      :disabled="commentLikeLoading === comment.id" @click="toggleCommentLike(comment)">
+                      {{ comment.liked_by_me ? '已赞' : '赞' }}
+                      <span>{{ comment.like_count || 0 }}</span>
+                    </button>
+                    <time>{{ comment.created_at }}</time>
+                  </div>
+                  <div v-if="replyingTo?.id === comment.id" class="community-inline-reply-box">
+                    <div class="community-comment-replying">
+                      回复 {{ comment.commenter }}
+                      <button class="community-reply-cancel" type="button" @click="replyingTo = null">
+                        取消回复
+                      </button>
+                    </div>
+                    <el-input v-model="commentDraft" type="textarea" :rows="3" maxlength="800"
+                      show-word-limit :placeholder="`回复 ${comment.commenter}：`" />
+                    <el-button class="community-submit-button community-comment-submit" type="primary"
+                      :loading="sendingComment" @click="submitComment">
+                      发表评论
+                    </el-button>
+                  </div>
                 </div>
-              </li>
+                </li>
+                <button v-if="shouldShowCollapseToggle(comment)" class="community-replies-toggle" type="button"
+                  @click="toggleReplies(threadRootId(comment))">
+                  收起
+                </button>
+              </template>
             </ul>
           </section>
         </section>
@@ -931,6 +1197,13 @@ async function submitComment() {
         </section>
       </aside>
     </section>
+
+    <button v-if="showScrollTop" class="community-scroll-top" type="button" aria-label="回到顶部"
+      title="回到顶部" @click="scrollToTop">
+      <el-icon>
+        <Top />
+      </el-icon>
+    </button>
   </main>
 </template>
 
@@ -940,6 +1213,36 @@ async function submitComment() {
   grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
   gap: 14px;
   align-items: start;
+}
+
+.community-scroll-top {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 20;
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(191, 219, 254, 0.96);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.96);
+  color: #2563eb;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.16);
+  cursor: pointer;
+  transition: background-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.community-scroll-top:hover,
+.community-scroll-top:focus-visible {
+  background: #eff6ff;
+  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.22);
+  transform: translateY(-2px);
+}
+
+.community-scroll-top .el-icon {
+  font-size: 18px;
 }
 
 .community-stream,
@@ -1273,8 +1576,8 @@ async function submitComment() {
 .community-post-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: 2px;
+  padding: 7px 10px;
   border: 1px solid rgba(226, 232, 240, 0.92);
   border-radius: 10px;
   background: #fff;
@@ -1335,10 +1638,11 @@ async function submitComment() {
 .community-post-card__head h3 {
   margin-bottom: 1px;
   font-size: 14px;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
 .community-post-card__head p {
+  line-height: 1.35;
   font-size: 12px;
 }
 
@@ -1360,7 +1664,7 @@ async function submitComment() {
 .community-status-badge {
   display: inline-flex;
   width: fit-content;
-  min-height: 24px;
+  min-height: 22px;
   align-items: center;
   padding: 0 9px;
   border: 1px solid rgba(148, 163, 184, 0.28);
@@ -1411,9 +1715,10 @@ async function submitComment() {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
   font-size: 12px;
   color: #94a3b8;
+  line-height: 1.35;
 }
 
 .community-panel__head,
@@ -1671,6 +1976,27 @@ async function submitComment() {
   color: #fff;
 }
 
+.community-favorite-button.el-button {
+  min-height: 36px;
+  border-color: rgba(226, 232, 240, 0.96);
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  font-weight: 800;
+}
+
+.community-favorite-button.el-button:hover,
+.community-favorite-button.el-button:focus-visible,
+.community-favorite-button.el-button.is-favorited {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.community-favorite-button :deep(.el-icon) {
+  margin-right: 5px;
+}
+
 .community-action-stat {
   display: inline-flex;
   align-items: center;
@@ -1746,6 +2072,71 @@ async function submitComment() {
   margin-bottom: 18px;
 }
 
+.community-comment-replying {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-left: 3px solid #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.community-comment-replying button,
+.community-comment-item__actions button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #64748b;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.community-comment-replying button:hover,
+.community-comment-item__actions button:hover,
+.community-comment-item__actions button.is-liked {
+  color: #2563eb;
+}
+
+.community-inline-reply-box {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.community-inline-reply-box .community-comment-replying {
+  padding: 0;
+  border-left: 0;
+  background: transparent;
+}
+
+.community-reply-cancel {
+  min-height: 28px;
+  padding: 0 10px !important;
+  border: 1px solid rgba(148, 163, 184, 0.5) !important;
+  border-radius: 7px;
+  background: #fff !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  font-weight: 700;
+}
+
+.community-reply-cancel:hover {
+  border-color: rgba(37, 99, 235, 0.5) !important;
+  background: #eff6ff !important;
+  color: #2563eb !important;
+}
+
+.community-inline-reply-box .community-comment-submit {
+  justify-self: end;
+}
+
 .community-comment-box .el-button {
   justify-self: flex-end;
 }
@@ -1763,6 +2154,7 @@ async function submitComment() {
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr);
   gap: 12px;
+  align-items: start;
 }
 
 .community-comment-item__avatar {
@@ -1783,6 +2175,69 @@ async function submitComment() {
   object-fit: cover;
 }
 
+.community-comment-item__body {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.community-comment-item__floor {
+  margin-left: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.community-comment-item.is-reply {
+  margin-left: 28px;
+}
+
+.community-replies-toggle {
+  display: block;
+  margin: -4px 0 -2px 50px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.community-replies-toggle:hover,
+.community-replies-toggle:focus-visible {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.community-comment-item__reply-to {
+  flex-shrink: 0;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.community-comment-item__reply-context {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 3px;
+  line-height: 1.5;
+}
+
+.community-comment-item__reply-quote {
+  min-width: 0;
+  overflow: hidden;
+  color: #94a3b8;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .community-comment-item strong {
   color: #0f172a;
 }
@@ -1791,6 +2246,47 @@ async function submitComment() {
   margin: 6px 0;
   color: #334155;
   line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.community-comment-item time {
+  display: block;
+  margin-left: auto;
+  color: #94a3b8;
+  font-size: 11px;
+  text-align: right;
+}
+
+.community-comment-item__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.community-comment-item__actions button {
+  min-height: 26px;
+  padding: 0 9px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.community-comment-item__actions button span {
+  margin-left: 3px;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.community-comment-item__actions button:hover,
+.community-comment-item__actions button.is-liked {
+  border-color: rgba(147, 197, 253, 0.9);
+  background: #eff6ff;
+}
+
+.community-comment-item__actions button:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 .community-empty {
@@ -1814,6 +2310,12 @@ async function submitComment() {
 }
 
 @media (max-width: 920px) {
+  .community-scroll-top {
+    right: 14px;
+    bottom: calc(102px + env(safe-area-inset-bottom));
+    z-index: 70;
+  }
+
   .community-board {
     grid-template-columns: 1fr;
   }
@@ -1831,13 +2333,18 @@ async function submitComment() {
 @media (max-width: 760px) {
 
   .community-hero,
-  .community-post-card__head,
   .community-detail__header,
   .community-detail__title-row,
   .community-panel__head,
   .community-post-card__meta {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .community-post-card__head,
+  .community-post-card__meta {
+    flex-direction: row;
+    align-items: center;
   }
 
   .community-detail__header .community-detail__post-time {

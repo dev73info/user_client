@@ -70,6 +70,7 @@ const menuGroups: WorkbenchMenuGroup[] = [
     items: [
       { label: '账户与优惠券', name: 'workbench-account', description: '管理优惠券与账户入口' },
       { label: '我的背包', name: 'workbench-points', description: '查看积分余额与明细' },
+      { label: '我的收藏', name: 'workbench-favorites', description: '查看收藏的社区帖子' },
       {
         label: '我的邀请',
         name: 'workbench-invite',
@@ -90,7 +91,7 @@ const menuGroups: WorkbenchMenuGroup[] = [
   },
   {
     key: 'developer-resources',
-    label: '开发者功能',
+    label: '开发者工作台',
     icon: MagicStick,
     items: [
       {
@@ -459,45 +460,9 @@ async function scrollToHash() {
               </span>
             </RouterLink>
 
-            <section class="user-workbench__menu-group"
-              :class="{ active: isMessageMenuActive(), open: isMessageMenuOpen() }">
-              <button class="user-workbench__menu-group-head" type="button" :aria-expanded="isMessageMenuOpen()"
-                @click="toggleMessageCenter">
-                <span class="user-workbench__menu-icon">
-                  <el-icon>
-                    <Connection />
-                  </el-icon>
-                </span>
-                <strong>消息中心</strong>
-                <el-icon class="user-workbench__menu-arrow">
-                  <ArrowDown />
-                </el-icon>
-              </button>
-
-              <Transition name="workbench-submenu">
-                <div v-show="isMessageMenuOpen()" class="user-workbench__submenu user-workbench__submenu--messages">
-                  <RouterLink v-for="item in visibleConversations" :key="item.conversation_id"
-                    class="user-workbench__submenu-link user-workbench__conversation-link"
-                    :class="{ active: isConversationActive(item) }" :to="conversationTo(item)" @click="closeMobileMenu">
-                    <span>{{ item.requirement_title || item.requirement_id }}</span>
-                    <small>{{ partnerLabel(item) }} · {{ conversationMeta(item) }}</small>
-                  </RouterLink>
-
-                  <button v-if="hiddenConversationCount > 0" class="user-workbench__submenu-more" type="button"
-                    @click="openMessageCenter">
-                    查看全部消息
-                  </button>
-
-                  <span v-if="!conversationLoading && sortedConversations.length === 0"
-                    class="user-workbench__submenu-empty">暂无会话</span>
-                  <span v-else-if="conversationLoading" class="user-workbench__submenu-empty">同步会话中</span>
-                </div>
-              </Transition>
-            </section>
-
             <section v-for="group in menuGroups" :key="group.key" class="user-workbench__menu-group"
               :class="{ active: isGroupActive(group), open: isGroupOpen(group) }">
-              <p v-if="group.key !== 'collaboration'" class="user-workbench__menu-section">{{ group.label }}</p>
+              <p v-if="group.key !== 'collaboration' && group.key !== 'account'" class="user-workbench__menu-section">{{ group.label }}</p>
               <button class="user-workbench__menu-group-head" type="button" :aria-expanded="isGroupOpen(group)"
                 @click="toggleGroup(group)">
                 <span class="user-workbench__menu-icon">
@@ -513,6 +478,31 @@ async function scrollToHash() {
 
               <Transition name="workbench-submenu">
                 <div v-show="isGroupOpen(group)" class="user-workbench__submenu">
+                  <template v-if="group.key === 'collaboration'">
+                    <button class="user-workbench__submenu-link user-workbench__message-toggle" type="button"
+                      :class="{ active: isMessageMenuActive() }" :aria-expanded="isMessageMenuOpen()"
+                      @click="toggleMessageCenter">
+                      <span>消息中心</span>
+                      <el-icon class="user-workbench__menu-arrow"><ArrowDown /></el-icon>
+                    </button>
+                    <Transition name="workbench-submenu">
+                      <div v-show="isMessageMenuOpen()" class="user-workbench__submenu user-workbench__submenu--messages">
+                        <RouterLink v-for="item in visibleConversations" :key="item.conversation_id"
+                          class="user-workbench__submenu-link user-workbench__conversation-link"
+                          :class="{ active: isConversationActive(item) }" :to="conversationTo(item)" @click="closeMobileMenu">
+                          <span>{{ item.requirement_title || item.requirement_id }}</span>
+                          <small>{{ partnerLabel(item) }} · {{ conversationMeta(item) }}</small>
+                        </RouterLink>
+                        <button v-if="hiddenConversationCount > 0" class="user-workbench__submenu-more" type="button"
+                          @click="openMessageCenter">
+                          查看全部消息
+                        </button>
+                        <span v-if="!conversationLoading && sortedConversations.length === 0"
+                          class="user-workbench__submenu-empty">暂无会话</span>
+                        <span v-else-if="conversationLoading" class="user-workbench__submenu-empty">同步会话中</span>
+                      </div>
+                    </Transition>
+                  </template>
                   <RouterLink v-for="item in group.items" :key="`${item.name}-${item.hash ?? ''}`"
                     class="user-workbench__submenu-link" :class="{ active: isMenuItemActive(item) }"
                     :to="menuItemTo(item)" @click="closeMobileMenu">
@@ -774,6 +764,13 @@ async function scrollToHash() {
     background 180ms ease,
     color 180ms ease,
     transform 180ms ease;
+}
+
+.user-workbench__message-toggle {
+  grid-template-columns: minmax(0, 1fr) auto;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
 }
 
 .user-workbench__menu-link:hover .user-workbench__menu-icon,
