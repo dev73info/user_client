@@ -22,6 +22,21 @@ const products = ref<PointsProduct[]>([])
 const orders = ref<PointsRedeemOrder[]>([])
 const loading = ref(false)
 const redeemingId = ref<number | null>(null)
+const ownedPerks = ref<Set<string>>(new Set())
+
+function permissionPerkCode(product: PointsProduct) {
+  if (product.kind !== 'permission') return null
+  // 正式关联：优先使用商品绑定的 perk_code；兼容老数据按名称兜底。
+  if (product.perk_code?.trim()) return product.perk_code
+  if (product.name.includes('动态背景')) return 'home_background_dynamic'
+  if (product.name.includes('静态背景')) return 'home_background_static'
+  if (product.name.includes('用户名渐变')) return 'username_gradient'
+  if (product.name.includes('特定颜色') || product.name.includes('用户名颜色')) return 'username_color'
+  return null
+}
+
+const isOwned = (product: PointsProduct) =>
+  Boolean(permissionPerkCode(product) && ownedPerks.value.has(permissionPerkCode(product)!))
 
 function kindLabel(kind: string) {
   if (kind === 'permission') return '权限'
@@ -51,6 +66,11 @@ async function loadAll() {
       listMyRedeemOrders(auth.token),
     ])
     balance.value = me.points_balance
+    ownedPerks.value = new Set(
+      (me.perks ?? [])
+        .filter((perk) => perk.owned && !perk.expires_at)
+        .map((perk) => perk.perk_code),
+    )
     products.value = prods
     orders.value = ords
   } catch (err) {
@@ -61,6 +81,11 @@ async function loadAll() {
 }
 
 async function redeem(product: PointsProduct) {
+  if (isOwned(product)) {
+    ElMessage.info('你已永久拥有该权益，无需重复兑换')
+    return
+  }
+
   if (!window.confirm(`确认用 ${product.points_cost} 积分兑换“${product.name}”吗？`)) {
     return
   }
@@ -70,7 +95,8 @@ async function redeem(product: PointsProduct) {
     ElMessage.success('兑换成功')
     await loadAll()
   } catch (err) {
-    ElMessage.error(err instanceof HttpError ? err.message : '兑换失败')
+    const message = err instanceof HttpError ? err.message : ''
+    ElMessage.error(message === 'you already own this perk' ? '你已永久拥有该权益，无需重复兑换' : message || '兑换失败')
   } finally {
     redeemingId.value = null
   }
@@ -102,20 +128,16 @@ onMounted(async () => {
       <h3>可兑换</h3>
       <div v-if="products.length" class="mall-grid">
         <div v-for="product in products" :key="product.id" class="mall-card">
-          <div v-if="product.image_url" class="mall-card__img">
-            <img :src="product.image_url" :alt="product.name" />
-          </div>
           <div class="mall-card__body">
             <div class="mall-card__head">
-              <span class="mall-card__kind">{{ product.category || '其他' }} · {{ kindLabel(product.kind) }}</span>
+              <span class="mall-card__kind">{{ kindLabel(product.kind) }}</span>
               <span class="mall-card__cost">{{ product.points_cost }} 积分</span>
             </div>
             <h4>{{ product.name }}</h4>
             <p class="mall-card__duration">有效期：{{ durationLabel(product.duration_days) }} · 库存：{{ product.stock }}</p>
-            <p v-if="product.description" class="mall-card__desc">{{ product.description }}</p>
-            <el-button type="primary" :disabled="balance < product.points_cost || product.stock <= 0"
+            <el-button type="primary" :disabled="isOwned(product) || balance < product.points_cost || product.stock <= 0"
               :loading="redeemingId === product.id" style="width: 100%" @click="redeem(product)">
-              {{ product.stock <= 0 ? '已售罄' : balance < product.points_cost ? '积分不足' : '立即兑换' }}
+              {{ isOwned(product) ? '已拥有' : product.stock <= 0 ? '已售罄' : balance < product.points_cost ? '积分不足' : '立即兑换' }}
             </el-button>
           </div>
         </div>
@@ -210,15 +232,6 @@ onMounted(async () => {
   box-shadow: 0 14px 28px rgba(76, 103, 172, 0.12);
   transform: translateY(-2px);
 }
-.mall-card__img {
-  height: 120px;
-  background: #eef4ff;
-}
-.mall-card__img img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
 .mall-card__body {
   padding: 14px;
 }
@@ -244,13 +257,6 @@ onMounted(async () => {
   margin: 0 0 6px;
   font-size: 15px;
   color: #0f172a;
-}
-.mall-card__desc {
-  margin: 0 0 12px;
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.5;
-  min-height: 18px;
 }
 .mall-card__duration {
   margin: 0 0 8px;

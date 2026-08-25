@@ -13,9 +13,13 @@ export type UpdateProfileResp = {
 
 export type UserProfileResp = {
   username: string
+  profile_description?: string
   email?: string | null
   avatar_url?: string | null
   home_background_static?: string | null
+  home_background_dynamic?: string | null
+  home_background_static_focus?: string | null
+  home_background_dynamic_focus?: string | null
   two_factor_enabled: boolean
   subscribe_official_activity: boolean
   subscribe_dev_hall_deposit_paid?: boolean
@@ -52,6 +56,7 @@ export async function getDepositRatio(token: string): Promise<DepositRatioResp |
 export async function updateProfile(
   token: string,
   newUsername: string,
+  profileDescription?: string,
 ): Promise<UpdateProfileResp> {
   return requestJson<UpdateProfileResp>(
     '/settings/profile',
@@ -61,7 +66,7 @@ export async function updateProfile(
         'Content-Type': 'application/json',
         ...authHeader(token),
       },
-      body: JSON.stringify({ new_username: newUsername }),
+      body: JSON.stringify({ new_username: newUsername, profile_description: profileDescription }),
     },
     '修改用户名失败',
   )
@@ -70,6 +75,7 @@ export async function updateProfile(
 export async function updateProfileBackgroundStatic(
   token: string,
   imageUrl: string,
+  focus?: string,
 ): Promise<UserProfileResp> {
   return requestJson<UserProfileResp>(
     '/settings/profile/background-static',
@@ -79,7 +85,7 @@ export async function updateProfileBackgroundStatic(
         'Content-Type': 'application/json',
         ...authHeader(token),
       },
-      body: JSON.stringify({ image_url: imageUrl }),
+      body: JSON.stringify({ image_url: imageUrl, focus: focus ?? null }),
     },
     '设置主页背景失败',
   )
@@ -102,6 +108,35 @@ export async function uploadProfileBackground(
       body: formData,
     },
     '上传背景图片失败',
+  )
+}
+
+export async function updateProfileBackgroundDynamic(token: string, imageUrl: string, focus?: string): Promise<UserProfileResp> {
+  return requestJson<UserProfileResp>(
+    '/settings/profile/background-dynamic',
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify({ image_url: imageUrl, focus: focus ?? null }),
+    },
+    '设置动态背景失败',
+  )
+}
+
+export async function uploadProfileBackgroundDynamic(token: string, file: File): Promise<UserProfileResp> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return requestJson<UserProfileResp>(
+    '/settings/profile/background-dynamic/upload',
+    {
+      method: 'POST',
+      headers: { ...authHeader(token) },
+      body: formData,
+    },
+    '上传动态背景失败',
   )
 }
 

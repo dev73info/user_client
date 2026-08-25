@@ -12,6 +12,7 @@ export type CommunityPost = {
   author: string
   author_avatar_url?: string | null
   author_username_gradient?: boolean
+  author_username_color?: string | null
   title: string
   status: CommunityPostStatus
   review_note?: string | null
@@ -34,6 +35,8 @@ export type CommunityComment = {
   parent_commenter?: string | null
   commenter: string
   commenter_avatar_url?: string | null
+  commenter_username_gradient?: boolean
+  commenter_username_color?: string | null
   comment_text: string
   like_count: number
   liked_by_me: boolean

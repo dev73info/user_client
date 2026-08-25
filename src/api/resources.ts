@@ -42,7 +42,10 @@ export type PublicMcResourceItem = {
   creator_credit_score?: number | null
   creator_username_gradient?: boolean
   author_username_gradient?: boolean
+  creator_username_color?: string | null
+  author_username_color?: string | null
   creator_home_background_static?: string | null
+  creator_home_background_dynamic?: string | null
   liked_by_me: boolean
   ownership_type: string
   team_id: number | null
@@ -67,6 +70,7 @@ export type PublicMcResourceCommentItem = {
   created_at: string
   updated_at: string
   commenter_username_gradient?: boolean
+  commenter_username_color?: string | null
 }
 
 export type CreatePublicMcResourceCommentPayload = {

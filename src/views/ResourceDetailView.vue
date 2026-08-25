@@ -602,18 +602,19 @@ watch(
                     :to="{ name: 'dev-profile', params: { username: resource.author } }"
                     class="resource-detail-page__author-pill resource-detail-page__author-pill--link"
                   >
-                    <span class="resource-detail-page__author-pill-label">{{ authorPillParts.prefix }}</span><span v-if="authorPillParts.name" :class="{ 'username-gradient': resource.author_username_gradient }">{{ authorPillParts.name }}</span>
+                    <span class="resource-detail-page__author-pill-label">{{ authorPillParts.prefix }}</span><span v-if="authorPillParts.name" :class="{ 'username-gradient': resource.author_username_gradient && !resource.author_username_color }" :style="resource.author_username_color ? { color: resource.author_username_color } : {}">{{ authorPillParts.name }}</span>
                   </router-link>
                   <span v-else class="resource-detail-page__author-pill">
-                    <span class="resource-detail-page__author-pill-label">{{ authorPillParts.prefix }}</span><span v-if="authorPillParts.name" :class="{ 'username-gradient': resource.author_username_gradient }">{{ authorPillParts.name }}</span>
+                    <span class="resource-detail-page__author-pill-label">{{ authorPillParts.prefix }}</span><span v-if="authorPillParts.name" :class="{ 'username-gradient': resource.author_username_gradient && !resource.author_username_color }" :style="resource.author_username_color ? { color: resource.author_username_color } : {}">{{ authorPillParts.name }}</span>
                   </span>
                   <p v-if="showCreatorMeta" class="resource-detail-page__meta resource-detail-page__meta--aside">
                     <span class="resource-detail-page__meta-label--green">开发者：</span><router-link
                       v-if="resource.creator"
                       :to="{ name: 'dev-profile', params: { username: resource.creator } }"
-                      :class="{ 'username-gradient': resource.creator_username_gradient }"
+                      :class="{ 'username-gradient': resource.creator_username_gradient && !resource.creator_username_color }"
+                      :style="resource.creator_username_color ? { color: resource.creator_username_color } : {}"
                     >{{ resource.creator }}</router-link>
-                    <span v-else :class="{ 'username-gradient': resource.creator_username_gradient }">{{ resource.creator }}</span>
+                    <span v-else :class="{ 'username-gradient': resource.creator_username_gradient && !resource.creator_username_color }" :style="resource.creator_username_color ? { color: resource.creator_username_color } : {}">{{ resource.creator }}</span>
                   </p>
                 </span>
               </div>
@@ -742,7 +743,7 @@ watch(
                 </div>
                 <div class="resource-detail-page__comment-body">
                   <div class="resource-detail-page__comment-meta">
-                    <strong :class="{ 'username-gradient': comment.commenter_username_gradient }">{{ comment.commenter }}</strong>
+                    <strong :class="{ 'username-gradient': comment.commenter_username_gradient && !comment.commenter_username_color }" :style="comment.commenter_username_color ? { color: comment.commenter_username_color } : {}">{{ comment.commenter }}</strong>
                     <span>{{ formatVersionTime(comment.updated_at) }}</span>
                   </div>
                   <p>{{ comment.comment_text }}</p>

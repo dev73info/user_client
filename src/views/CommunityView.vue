@@ -962,7 +962,7 @@ async function toggleCommentLike(comment: CommunityComment) {
               <div>
                 <h3>{{ post.title }}</h3>
                 <p>
-                  <strong :class="{ 'username-gradient': post.author_username_gradient }">{{ post.author }}</strong> ·
+                  <strong :class="{ 'username-gradient': post.author_username_gradient && !post.author_username_color }" :style="post.author_username_color ? { color: post.author_username_color } : {}">{{ post.author }}</strong> ·
                   {{ post.published_at }}
                 </p>
               </div>
@@ -1060,7 +1060,7 @@ async function toggleCommentLike(comment: CommunityComment) {
               </div>
               <div class="community-detail__meta">
                 <div class="community-detail__author">
-                  <strong :class="{ 'username-gradient': selectedPost.author_username_gradient }">{{ selectedPost.author }}</strong>
+                  <strong :class="{ 'username-gradient': selectedPost.author_username_gradient && !selectedPost.author_username_color }" :style="selectedPost.author_username_color ? { color: selectedPost.author_username_color } : {}">{{ selectedPost.author }}</strong>
                 </div>
                 <p class="community-detail__post-time">
                   发布于 {{ selectedPost.published_at }} · 更新 {{ selectedPost.updated_at }}
@@ -1144,7 +1144,10 @@ async function toggleCommentLike(comment: CommunityComment) {
                   <span v-else>{{ avatarInitial(comment.commenter) }}</span>
                 </div>
                 <div class="community-comment-item__body">
-                  <strong>{{ comment.commenter }}</strong>
+                  <strong
+                    :class="{ 'username-gradient': comment.commenter_username_gradient && !comment.commenter_username_color }"
+                    :style="comment.commenter_username_color ? { color: comment.commenter_username_color } : {}"
+                  >{{ comment.commenter }}</strong>
                   <span class="community-comment-item__floor">#{{ commentFloors.get(comment.id) }}</span>
                   <div v-if="parentCommenter(comment) || parentCommentText(comment)"
                     class="community-comment-item__reply-context">

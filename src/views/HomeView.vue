@@ -110,6 +110,7 @@ type SpotlightCard = {
   authorLabel?: string
   metaTime?: string
   gradient?: boolean
+  userColor?: string
   accent: string
   coverUrl?: string
   coverAlt?: string
@@ -124,6 +125,7 @@ type DeveloperRank = {
   creditScore: number | null
   deals: string
   gradient?: boolean
+  userColor?: string
 }
 
 type TeamRank = {
@@ -376,7 +378,7 @@ const workflowSteps: WorkflowStep[] = [
 ]
 
 async function openDevWorkbench() {
-  // 已成为开发者：进入需求大厅（开始接单）。
+  // 已成为开发者：进入需求大厅开始接单。
   if (isDeveloperAccount.value) {
     void router.push({ name: 'dev-requirement-hall' })
     return
@@ -428,6 +430,10 @@ async function openDevWorkbench() {
     showToast(error instanceof Error ? error.message : '申请开发者权限失败', 'error')
     void router.push(buildDevPortalUrl(auth.token))
   }
+}
+
+function openResourceInit() {
+  void router.push({ name: 'dev-plugins' })
 }
 
 function openQuickPanel(panel: QuickPanel) {
@@ -545,7 +551,7 @@ const developerRanks = computed<DeveloperRank[]>(() => {
   const failedAvatarUrls = failedDeveloperAvatarUrls.value
   const groupedResources = new Map<
     string,
-    { name: string; username: string; avatarUrl: string; creditScore: number | null; deals: number; latestAt: number; gradient: boolean }
+    { name: string; username: string; avatarUrl: string; creditScore: number | null; deals: number; latestAt: number; gradient: boolean; userColor?: string }
   >()
 
   for (const resource of publicResources.value) {
@@ -557,6 +563,7 @@ const developerRanks = computed<DeveloperRank[]>(() => {
     const creditScore =
       typeof resource.creator_credit_score === 'number' ? resource.creator_credit_score : null
     const gradient = !!resource.creator_username_gradient
+    const userColor = resource.creator_username_color || ''
 
     if (current) {
       current.deals += 1
@@ -573,6 +580,9 @@ const developerRanks = computed<DeveloperRank[]>(() => {
       if (!current.gradient) {
         current.gradient = gradient
       }
+      if (!current.userColor) {
+        current.userColor = userColor
+      }
       continue
     }
 
@@ -584,6 +594,7 @@ const developerRanks = computed<DeveloperRank[]>(() => {
       deals: 1,
       latestAt: Number.isNaN(latestAt) ? 0 : latestAt,
       gradient,
+      userColor,
     })
   }
 
@@ -604,6 +615,7 @@ const developerRanks = computed<DeveloperRank[]>(() => {
       creditScore: item.creditScore,
       deals: `${item.deals} 个资源`,
       gradient: item.gradient,
+      userColor: item.userColor,
     }))
 })
 
@@ -691,6 +703,7 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
       authorLabel: item.author || item.creator || '匿名作者',
       metaTime: formatTimeLabel(item.updated_at),
       gradient: !!item.author_username_gradient,
+      userColor: item.author_username_color || '',
       metaSecondary: `${item.author || item.creator || '匿名作者'} · ${formatTimeLabel(item.updated_at)}`,
       accent: ['nebula', 'sunset', 'forest', 'frost'][index % 4] ?? 'nebula',
       coverUrl: item.cover_url ? apiUrl(item.cover_url) : '',
@@ -1530,6 +1543,15 @@ async function openPublishModal() {
   await router.push({ name: 'home', query: { modal: 'publish' } })
 }
 
+function openPrimaryPublishAction() {
+  if (isDeveloperAccount.value) {
+    void router.push({ name: 'dev-plugins' })
+    return
+  }
+
+  void openPublishModal()
+}
+
 async function refreshHomeData() {
   if (homeRefreshLoading.value) {
     return
@@ -1696,11 +1718,11 @@ async function submitPublishRequirement() {
 
                 <div class="portal-hero__actions">
                   <button
-                    class="portal-primary-action"
+                    class="portal-primary-action portal-publish-action"
                     type="button"
-                    @click="openPublishModal"
+                    @click="openPrimaryPublishAction"
                   >
-                    发布需求
+                    {{ isDeveloperAccount ? '发布资源' : '发布需求' }}
                   </button>
                   <button
                     class="portal-secondary-action"
@@ -1871,9 +1893,9 @@ async function submitPublishRequirement() {
               <button
                 class="portal-link-btn"
                 type="button"
-                @click="router.push(buildDevPortalUrl(auth.token))"
+                @click="router.push({ name: 'free-resources' })"
               >
-                发布资源
+                更多免费资源
               </button>
             </div>
             <div v-if="spotlightCards.length > 0" class="portal-spotlight-grid">
@@ -1918,7 +1940,9 @@ async function submitPublishRequirement() {
                     <span class="portal-spotlight-card__status">{{ card.status }}</span>
                   </div>
                   <div class="portal-spotlight-card__footer">
-                    <span v-if="card.authorLabel" :class="{ 'username-gradient': card.gradient }">{{ card.authorLabel }}</span>
+                    <span v-if="card.authorLabel"
+                      :class="{ 'username-gradient': card.gradient && !card.userColor }"
+                      :style="card.userColor ? { color: card.userColor } : {}">{{ card.authorLabel }}</span>
                     <span v-if="card.metaTime" class="portal-spotlight-card__time">{{ card.metaTime }}</span>
                   </div>
                 </div>
@@ -2007,9 +2031,9 @@ async function submitPublishRequirement() {
               </div>
             </div>
             <p class="portal-milestone__intro">
-              成为种子开发者，抢先占位。
-              <button class="portal-milestone__cta" type="button" @click="openDevWorkbench">
-                立即入驻 →
+              {{ isDeveloperAccount ? '优秀的开发者，有着优秀作品' : '成为种子开发者，抢先占位。' }}
+              <button class="portal-milestone__cta" type="button" @click="openResourceInit">
+                {{ isDeveloperAccount ? '发布资源 →' : '立即入驻 →' }}
               </button>
             </p>
             <div class="portal-stats-grid">
@@ -2090,7 +2114,10 @@ async function submitPublishRequirement() {
                   <span v-else>{{ developer.name.slice(0, 1) }}</span>
                 </span>
                 <div class="portal-contrib-item__meta">
-                  <strong :class="{ 'username-gradient': developer.gradient }">{{ developer.name }}</strong>
+                  <strong
+                    :class="{ 'username-gradient': developer.gradient && !developer.userColor }"
+                    :style="developer.userColor ? { color: developer.userColor } : {}"
+                  >{{ developer.name }}</strong>
                   <div class="portal-contrib-item__badges" v-if="devBadges(developer.username).length > 0">
                     <span
                       v-for="badge in devBadges(developer.username).slice(0, 3)"

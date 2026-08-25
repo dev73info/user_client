@@ -97,6 +97,14 @@
   transform: translateY(-1px);
 }
 
+.portal-publish-action {
+  background: #2563eb;
+}
+
+.portal-publish-action:hover {
+  background: #1d4ed8;
+}
+
 .portal-hero {
   display: block;
 }

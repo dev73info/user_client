@@ -45,18 +45,13 @@ export async function getMyPoints(token: string): Promise<UserPointsSelf> {
 export type PointsProduct = {
   id: number
   name: string
-  description: string | null
-  image_url: string | null
   points_cost: number
   stock: number
   kind: 'permission' | 'badge'
   payload: string | null
   enabled: boolean
-  sort_order: number
   duration_days: number
-  category: string
-  effect_target: string | null
-  effect_script: string | null
+  perk_code: string | null
 }
 
 export type PointsRedeemOrder = {
@@ -116,6 +111,22 @@ export async function setUsernameGradient(
       body: JSON.stringify({ equipped }),
     },
     '更新渐变展示状态失败',
+  )
+}
+
+export async function setUsernameAppearance(
+  token: string,
+  appearance: 'gradient' | 'color',
+  color?: string,
+): Promise<UsernameGradientStatus> {
+  return requestJson<UsernameGradientStatus>(
+    '/points/appearance/username',
+    {
+      method: 'POST',
+      headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ appearance, color: color || null }),
+    },
+    '设置用户名展示样式失败',
   )
 }
 

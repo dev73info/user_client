@@ -43,6 +43,7 @@ async function loadPoints() {
     pointsBalance.value = data.points_balance
     logs.value = data.logs
     perks.value = data.perks ?? []
+    initUsernameAppearance()
   } catch (err) {
     error.value = err instanceof HttpError ? err.message : '加载积分失败'
   } finally {
@@ -59,7 +60,11 @@ async function loadCommentWarnings() {
 }
 
 function perkTitle(code: string) {
-  if (code === 'username_gradient') return '用户名渐变展示'
+  if (code === 'username_gradient') return '用户名渐变'
+  if (code.startsWith('username_color')) {
+    const hex = code.split(':')[1] ?? ''
+    return hex ? `用户名特定颜色 #${hex}` : '用户名特定颜色'
+  }
   if (code === 'home_background_static') return '主页静态背景自定义'
   if (code === 'home_background_dynamic') return '主页动态背景自定义'
   return code
@@ -68,6 +73,60 @@ function perkTitle(code: string) {
 function perkExpireText(perk: UserPerk) {
   if (!perk.expires_at) return '永久有效'
   return `有效期至 ${perk.expires_at}`
+}
+
+// 用户名颜色设置：渐变/特定颜色由统一面板管理，权益列表不再散落展示。
+const colorPerks = computed(() =>
+  perks.value.filter((p) => p.perk_code.startsWith('username_color:') && p.owned),
+)
+const gradientPerk = computed(() =>
+  perks.value.find((p) => p.perk_code === 'username_gradient' && p.owned),
+)
+const hasUsernameAppearance = computed(() => !!gradientPerk.value || colorPerks.value.length > 0)
+const displayedPerks = computed(() =>
+  perks.value.filter(
+    (p) => p.perk_code !== 'username_gradient' && !p.perk_code.startsWith('username_color'),
+  ),
+)
+const appearanceSaving = ref(false)
+const appearanceMode = ref<'gradient' | 'color'>('gradient')
+const selectedColor = ref('')
+
+function perkCodeHex(code: string): string {
+  const hex = code.split(':')[1] ?? ''
+  return hex ? `#${hex}` : ''
+}
+function initUsernameAppearance() {
+  const equippedColor = perks.value.find(
+    (p) => p.perk_code.startsWith('username_color:') && p.equipped,
+  )
+  if (equippedColor) {
+    appearanceMode.value = 'color'
+    selectedColor.value = equippedColor.perk_code
+  } else {
+    appearanceMode.value = 'gradient'
+  }
+}
+async function saveAppearance() {
+  if (!auth.token || appearanceSaving.value) return
+  appearanceSaving.value = true
+  try {
+    if (appearanceMode.value === 'gradient') {
+      await setPerkEquipped(auth.token, 'username_gradient', true)
+    } else {
+      if (!selectedColor.value) {
+        showToast('请选择颜色', 'warning')
+        return
+      }
+      await setPerkEquipped(auth.token, selectedColor.value, true)
+    }
+    showToast('用户名颜色设置已更新', 'success')
+    await loadPoints()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '设置用户名颜色失败', 'error')
+  } finally {
+    appearanceSaving.value = false
+  }
 }
 
 async function togglePerk(code: string, value: boolean | string | number) {
@@ -85,6 +144,8 @@ async function togglePerk(code: string, value: boolean | string | number) {
     perkSaving.value = ''
   }
 }
+
+
 
 function formatRange(item: CouponItem) {
   if (!item.starts_at && !item.ends_at) {
@@ -172,8 +233,8 @@ onMounted(async () => {
           <small class="requirement-note">管理已解锁的积分商城权益。</small>
         </div>
       </div>
-      <div v-if="perks.length" class="perk-list">
-        <div v-for="perk in perks" :key="perk.perk_code" class="perk-item">
+      <div v-if="displayedPerks.length" class="perk-list">
+        <div v-for="perk in displayedPerks" :key="perk.perk_code" class="perk-item">
           <div class="perk-item__info">
             <strong>{{ perkTitle(perk.perk_code) }}</strong>
             <small class="requirement-note">{{ perkExpireText(perk) }}</small>
@@ -182,7 +243,25 @@ onMounted(async () => {
             :loading="perkSaving === perk.perk_code" @change="togglePerk(perk.perk_code, $event)" />
         </div>
       </div>
-      <p v-else class="empty">尚未解锁，可在积分商城兑换相应权益后开启。</p>
+      <p v-if="!displayedPerks.length && !hasUsernameAppearance" class="empty">尚未解锁，可在积分商城兑换相应权益后开启。</p>
+
+      <div v-if="hasUsernameAppearance" class="appearance-panel">
+        <strong>用户名颜色设置</strong>
+        <small class="requirement-note">渐变与特定颜色为两个独立权益，二者只能使用一种。</small>
+        <el-radio-group v-model="appearanceMode">
+          <el-radio value="gradient" :disabled="!gradientPerk">渐变</el-radio>
+          <el-radio value="color" :disabled="colorPerks.length === 0">特定颜色</el-radio>
+        </el-radio-group>
+        <div v-if="appearanceMode === 'color'" class="appearance-color-row">
+          <el-select v-model="selectedColor" placeholder="选择颜色" style="min-width: 200px">
+            <el-option v-for="p in colorPerks" :key="p.perk_code" :value="p.perk_code">
+              <span class="perk-color" :style="{ background: perkCodeHex(p.perk_code) }"></span>
+              {{ perkTitle(p.perk_code) }}
+            </el-option>
+          </el-select>
+        </div>
+        <el-button type="primary" :loading="appearanceSaving" @click="saveAppearance">保存</el-button>
+      </div>
     </section>
 
     <section class="wallet-section">
@@ -429,5 +508,26 @@ onMounted(async () => {
 .perk-item__info strong {
   color: var(--profile-text-main);
   font-size: 14px;
+}
+.perk-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+.appearance-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--profile-card-border);
+  border-radius: 14px;
+  background: rgba(248, 251, 255, 0.8);
+}
+.appearance-color-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 </style>
