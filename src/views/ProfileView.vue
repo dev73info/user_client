@@ -1941,6 +1941,7 @@ onBeforeUnmount(() => {
   display: grid;
   gap: 16px;
   max-width: 1024px;
+  min-height: calc(100vh - 113px);
   margin: 0 auto;
   padding: 32px 20px 56px;
 }

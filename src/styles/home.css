@@ -2075,6 +2075,9 @@
 }
 
 .portal-spotlight-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   overflow: hidden;
   border: 1px solid rgba(191, 219, 254, 0.88);
   border-radius: 18px;
@@ -2212,6 +2215,7 @@
 
 .portal-spotlight-card__body {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 10px;
   min-height: 176px;
@@ -2222,6 +2226,8 @@
   display: -webkit-box;
   margin: 0;
   overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -2235,6 +2241,8 @@
   display: -webkit-box;
   margin: 0;
   overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -2248,7 +2256,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 2px;
+  margin-top: auto;
 }
 
 .portal-spotlight-card__meta-row strong {
@@ -2288,7 +2296,6 @@
   align-items: center;
   justify-content: flex-start;
   gap: 10px;
-  margin-top: auto;
   padding-top: 10px;
   border-top: 1px solid rgba(226, 232, 240, 0.92);
 }

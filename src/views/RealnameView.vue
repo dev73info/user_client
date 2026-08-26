@@ -1440,6 +1440,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .realname-page-shell {
+  min-height: calc(100vh - 120px);
   gap: 26px;
 }
 

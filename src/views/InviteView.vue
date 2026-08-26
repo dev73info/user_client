@@ -18,6 +18,7 @@ import InvitePanel from '@/components/InvitePanel.vue'
 .invite-view {
     width: min(1280px, calc(100% - 24px));
     display: grid;
+    min-height: calc(100vh - 185px);
     background: rgba(255, 255, 255, 0.94);
     box-shadow: 0 14px 34px rgba(76, 103, 172, 0.08);
 }

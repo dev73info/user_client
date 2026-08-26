@@ -86,9 +86,13 @@ onMounted(() => {
 
 <style scoped>
 .favorites-page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   max-width: 980px;
+  min-height: calc(100vh - 140px);
   margin: 0 auto;
-  padding: 8px 0 48px;
+  padding: 8px 0 24px;
 }
 
 .favorites-page__intro {
@@ -139,6 +143,9 @@ onMounted(() => {
 }
 
 .favorites-page__list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   min-height: 220px;
   padding-top: 20px;
 }
@@ -237,10 +244,14 @@ onMounted(() => {
 .favorites-empty {
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex: 1;
   flex-direction: column;
-  max-width: 560px;
-  margin: 24px auto 0;
-  padding: 44px 24px 40px;
+  width: 100%;
+  max-width: none;
+  min-height: 320px;
+  margin: 0;
+  padding: 28px 24px 36px;
   border: 1px dashed rgb(79 140 255 / 42%);
   border-radius: 12px;
   background: linear-gradient(145deg, rgb(238 244 255 / 92%), rgb(248 250 252 / 92%));

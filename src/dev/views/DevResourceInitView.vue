@@ -194,9 +194,10 @@ onMounted(async () => {
   // 从「团队资源」页进入时，自动归属团队项目
   if (route.query.ownership === 'team') {
     form.ownershipType = 'team'
+    const onlyTeam = myTeams.value[0]
     // 若只有一个团队，自动选中；多个团队则让用户挑选
-    if (myTeams.value.length === 1) {
-      form.teamId = String(myTeams.value[0].team_id)
+    if (myTeams.value.length === 1 && onlyTeam) {
+      form.teamId = String(onlyTeam.team_id)
     }
   }
 })

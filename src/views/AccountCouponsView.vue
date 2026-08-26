@@ -501,6 +501,7 @@ onMounted(async () => {
 
 <style scoped>
 .account-coupons-page {
+  min-height: calc(100vh - 185px);
   gap: 16px;
 }
 

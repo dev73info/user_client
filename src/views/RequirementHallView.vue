@@ -810,12 +810,17 @@ async function loadHallData() {
 }
 
 .requirement-hall__card {
+  height: 100%;
   min-height: 188px;
   cursor: pointer;
   transition:
     transform 180ms ease,
     border-color 180ms ease,
     box-shadow 180ms ease;
+}
+
+.requirement-hall__card .portal-page__card-footer {
+  margin-top: auto;
 }
 
 .requirement-hall__card:hover {

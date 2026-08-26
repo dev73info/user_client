@@ -24,6 +24,14 @@ const couponLoading = ref(false)
 const coupons = ref<CouponItem[]>([])
 const { showToast } = useToast()
 
+const logPage = ref(1)
+const logPageSize = 10
+const pagedLogs = computed(() => {
+  const start = (logPage.value - 1) * logPageSize
+  return logs.value.slice(start, start + logPageSize)
+})
+const logTotal = computed(() => logs.value.length)
+
 const amountCoupons = computed(() =>
   coupons.value.filter((item) => item.discount_type === 'amount'),
 )
@@ -341,7 +349,7 @@ onMounted(async () => {
         <el-button :loading="loading" size="small" plain @click="loadPoints">刷新</el-button>
       </div>
 
-      <el-table v-if="logs.length" :data="logs" stripe>
+      <el-table v-if="logs.length" :data="pagedLogs" stripe max-height="420">
         <el-table-column label="时间" prop="created_at" width="180" />
         <el-table-column label="变动" width="120" align="center">
           <template #default="{ row }">
@@ -352,6 +360,16 @@ onMounted(async () => {
         <el-table-column label="原因" prop="reason" min-width="200" show-overflow-tooltip />
       </el-table>
 
+      <el-pagination
+        v-if="logs.length"
+        v-model:current-page="logPage"
+        :page-size="logPageSize"
+        :total="logTotal"
+        layout="prev, pager, next, total"
+        background
+        class="points-log__pagination"
+      />
+
       <el-empty v-else-if="!loading" description="暂无积分明细" />
     </div>
   </div>
@@ -360,6 +378,7 @@ onMounted(async () => {
 <style scoped>
 .points-page {
   max-width: 100%;
+  min-height: calc(100vh - 185px);
 }
 .points-hero {
   position: relative;
@@ -476,6 +495,12 @@ onMounted(async () => {
 }
 .points-log :deep(.el-table__row) {
   transition: background-color 0.2s ease;
+}
+.points-log__pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+  padding-bottom: 12px;
 }
 
 .points-page .wallet-section {
