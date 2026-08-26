@@ -283,6 +283,14 @@ export function extractResourceFileNameFromUrl(
   }
 }
 
+/** 将资源下载文件名的最后一个后缀替换为 .73。 */
+export function with73Extension(fileName: string): string {
+  const normalized = fileName.trim() || 'download'
+  return /\.[^./\\]+$/.test(normalized)
+    ? normalized.replace(/\.[^./\\]+$/, '.73')
+    : `${normalized}.73`
+}
+
 export type DownloadProgress = {
   loaded: number
   total: number

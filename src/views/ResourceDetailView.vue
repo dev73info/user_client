@@ -14,6 +14,7 @@ import {
   listPublicMcResourceComments,
   listPublicMcResourceVersions,
   unlikePublicMcResource,
+  with73Extension,
   type PublicMcResourceCommentItem,
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
@@ -262,11 +263,12 @@ function formatUpdatedDate(value: string): string {
 
 async function triggerDownload(url: string, fileName: string) {
   const token = auth.token?.trim() ? auth.token : null
-  downloadStore.start(fileName)
+  const downloadFileName = with73Extension(fileName)
+  downloadStore.start(downloadFileName)
   try {
     const { blob, fileName: resolvedFileName } = await downloadPublicMcResourceFile(
       url,
-      fileName,
+      downloadFileName,
       token,
       (progress) => {
         // 注意：这里不能用 resolvedFileName（它在 await 完成前处于 TDZ），
@@ -279,7 +281,7 @@ async function triggerDownload(url: string, fileName: string) {
     try {
       const link = document.createElement('a')
       link.href = objectUrl
-      link.download = resolvedFileName
+      link.download = with73Extension(resolvedFileName)
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -678,7 +680,7 @@ watch(
                   </div>
                   <button class="resource-detail-page__version-download" type="button"
                     :disabled="downloadStore.state.active" @click="downloadVersion(version)">
-                    {{ downloadStore.state.active && downloadStore.state.fileName === extractResourceFileNameFromUrl(version.resource, resource.file_name || 'download') ? `下载中 ${downloadStore.state.percent}%` : '下载' }}
+                    {{ downloadStore.state.active && downloadStore.state.fileName === with73Extension(extractResourceFileNameFromUrl(version.resource, resource.file_name || 'download')) ? `下载中 ${downloadStore.state.percent}%` : '下载' }}
                   </button>
                 </div>
                 <p class="resource-detail-page__paragraph">
@@ -1286,6 +1288,10 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-height: min(680px, calc(100vh - 220px));
+  overflow-y: auto;
+  padding-right: 8px;
+  scrollbar-gutter: stable;
 }
 
 .resource-detail-page__version-card {
@@ -1478,6 +1484,10 @@ watch(
 @media (max-width: 640px) {
   .resource-detail-page__panel {
     padding: 18px;
+  }
+
+  .resource-detail-page__version-list {
+    max-height: min(520px, calc(100vh - 260px));
   }
 
   .resource-detail-page__summary-card {

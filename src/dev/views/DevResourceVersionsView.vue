@@ -4,6 +4,7 @@ import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { apiUrl } from '@dev/api/http'
+import { with73Extension } from '@/api/resources'
 import {
   createMcResourceVersion,
   deleteMcResourceVersion,
@@ -162,7 +163,8 @@ function versionDownloadUrl(version: McResourceVersionPayload): string {
 
 function versionFileName(version: McResourceVersionPayload): string {
   const segments = version.resource.split('/')
-  return segments[segments.length - 1] || `${version.version}.bin`
+  const sourceName = segments[segments.length - 1] || `${version.version}.bin`
+  return with73Extension(sourceName)
 }
 
 function downloadVersion(version: McResourceVersionPayload) {
