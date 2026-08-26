@@ -715,6 +715,8 @@ watch(faceidAuthUrl, (url) => {
   if (url) {
     faceidDialogVisible.value = true
     realnameDialogVisible.value = false
+    // 生成人脸核身二维码后，自动开始轮询认证结果
+    startFaceidAutoPolling()
   } else {
     faceidDialogVisible.value = false
   }

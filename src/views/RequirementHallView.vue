@@ -819,8 +819,12 @@ async function loadHallData() {
     box-shadow 180ms ease;
 }
 
-.requirement-hall__card .portal-page__card-footer {
+.requirement-hall__card .requirement-hall__meta-row {
   margin-top: auto;
+}
+
+.requirement-hall__card .portal-page__card-footer {
+  margin-top: 0;
 }
 
 .requirement-hall__card:hover {
