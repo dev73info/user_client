@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Close, Folder, MagicStick, Plus, Refresh, UploadFilled } from '@element-plus/icons-vue'
 import { Cropper } from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css'
@@ -26,6 +26,7 @@ import { listMyTeams, type TeamResponse } from '@/api/team'
 
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 const { showToast } = useToast()
 
 const processedTree = ref<McProcessedTagTree>({ roots: [] })
@@ -189,6 +190,15 @@ onMounted(async () => {
   }
   await loadTagTree()
   await loadMyTeams()
+
+  // 从「团队资源」页进入时，自动归属团队项目
+  if (route.query.ownership === 'team') {
+    form.ownershipType = 'team'
+    // 若只有一个团队，自动选中；多个团队则让用户挑选
+    if (myTeams.value.length === 1) {
+      form.teamId = String(myTeams.value[0].team_id)
+    }
+  }
 })
 
 onBeforeUnmount(() => {
@@ -468,7 +478,6 @@ async function submitResource(mode: 'private' | 'public') {
                     class="dev-team-select-native__control"
                     popper-class="dev-team-select-popper"
                     popper-append-to-body
-                    filterable
                   >
                     <el-option
                       v-for="team in teamOptions"

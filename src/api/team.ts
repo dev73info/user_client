@@ -15,6 +15,7 @@ export type TeamMemberResponse = {
   username: string
   role: string
   joined_at: string
+  avatar_url?: string | null
 }
 
 export type TeamDetailResponse = {
@@ -107,6 +108,25 @@ export async function updateTeam(
   )
 }
 
+export async function uploadTeamAvatar(
+  token: string,
+  teamId: number,
+  file: File,
+): Promise<TeamResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return requestJson<TeamResponse>(
+    `/team/teams/${teamId}/avatar`,
+    {
+      method: 'POST',
+      headers: authHeader(token),
+      body: formData,
+    },
+    '上传头像失败',
+  )
+}
+
 export async function deleteTeam(
   token: string,
   teamId: number,
@@ -171,6 +191,22 @@ export async function leaveTeam(
     `/team/teams/${teamId}/leave`,
     { method: 'POST', headers: authHeader(token) },
     '退出团队失败',
+  )
+}
+
+export async function transferTeamOwner(
+  token: string,
+  teamId: number,
+  username: string,
+): Promise<TeamResponse> {
+  return requestJson<TeamResponse>(
+    `/team/teams/${teamId}/transfer-owner`,
+    {
+      method: 'POST',
+      headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    },
+    '转移所有权失败',
   )
 }
 

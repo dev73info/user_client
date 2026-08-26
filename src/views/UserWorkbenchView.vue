@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowDown, Box, Close, Connection, DataAnalysis, MagicStick, Menu as MenuIcon, Service, UserFilled } from '@element-plus/icons-vue'
 
 import { listRequirementConversations, type RequirementConversation } from '@/api/conversations'
+import { listUserInvitations } from '@/api/team'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
@@ -31,6 +32,7 @@ const { showToast } = useToast()
 
 const conversations = ref<RequirementConversation[]>([])
 const conversationLoading = ref(false)
+const teamInvitationCount = ref(0)
 const mobileMenuOpen = ref(false)
 const touchStartX = ref(0)
 const touchStartY = ref(0)
@@ -176,6 +178,7 @@ watch(
   () => auth.token,
   () => {
     void loadConversations()
+    void loadTeamInvitations()
   },
   { immediate: true },
 )
@@ -352,6 +355,19 @@ function isActiveChildPage(item: WorkbenchMenuItem | null) {
   return Boolean(item && route.name && item.name !== route.name && item.activeNames?.includes(String(route.name)))
 }
 
+async function loadTeamInvitations() {
+  if (!auth.token.trim()) {
+    teamInvitationCount.value = 0
+    return
+  }
+  try {
+    const invitations = await listUserInvitations(auth.token)
+    teamInvitationCount.value = invitations.filter((inv) => inv.status === 'pending').length
+  } catch {
+    teamInvitationCount.value = 0
+  }
+}
+
 async function loadConversations(silent = false) {
   auth.hydrate()
   if (!auth.token.trim()) {
@@ -507,6 +523,8 @@ async function scrollToHash() {
                     class="user-workbench__submenu-link" :class="{ active: isMenuItemActive(item) }"
                     :to="menuItemTo(item)" @click="closeMobileMenu">
                     <span>{{ item.label }}</span>
+                    <span v-if="item.name === 'workbench-teams' && teamInvitationCount > 0"
+                      class="user-workbench__submenu-badge">{{ teamInvitationCount }}</span>
                   </RouterLink>
                 </div>
               </Transition>
@@ -859,6 +877,28 @@ async function scrollToHash() {
   white-space: nowrap;
   font-size: 13px;
   font-weight: 800;
+}
+
+.user-workbench__submenu-link span.user-workbench__submenu-badge {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  white-space: nowrap;
 }
 
 .user-workbench__submenu:not(.user-workbench__submenu--messages) .user-workbench__submenu-link small {

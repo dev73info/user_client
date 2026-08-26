@@ -3,14 +3,19 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import {
+  acceptInvitation,
   createTeam,
   listMyTeams,
   deleteTeam,
   leaveTeam,
+  listUserInvitations,
+  rejectInvitation,
+  type TeamInvitationResponse,
   type TeamResponse,
 } from '@/api/team'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import { apiUrl } from '@/api/http'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -23,6 +28,9 @@ const createName = ref('')
 const createDesc = ref('')
 const creating = ref(false)
 const deletingId = ref<number | null>(null)
+const invitations = ref<TeamInvitationResponse[]>([])
+const invitationsLoading = ref(false)
+const processingInvitationId = ref<number | null>(null)
 
 const sortedTeams = computed(() =>
   [...teams.value].sort((a, b) => b.team_id - a.team_id),
@@ -107,8 +115,70 @@ function goDetail(teamId: number) {
   router.push({ name: 'workbench-team-detail', params: { teamId } })
 }
 
+function formatInvitationTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+async function loadInvitations() {
+  const token = auth.token?.trim()
+  if (!token) return
+
+  invitationsLoading.value = true
+  try {
+    invitations.value = await listUserInvitations(token)
+  } catch {
+    // 邀请列表加载失败不阻塞团队页面
+  } finally {
+    invitationsLoading.value = false
+  }
+}
+
+async function handleAcceptInvitation(inv: TeamInvitationResponse) {
+  const token = auth.token?.trim()
+  if (!token) return
+
+  processingInvitationId.value = inv.id
+  try {
+    await acceptInvitation(token, inv.id)
+    invitations.value = invitations.value.filter((i) => i.id !== inv.id)
+    showToast(`已加入「${inv.team_name}」`)
+    await loadTeams()
+  } catch (e) {
+    showToast(e instanceof Error ? e.message : '接受邀请失败', 'warning')
+  } finally {
+    processingInvitationId.value = null
+  }
+}
+
+async function handleRejectInvitation(inv: TeamInvitationResponse) {
+  const token = auth.token?.trim()
+  if (!token) return
+
+  processingInvitationId.value = inv.id
+  try {
+    await rejectInvitation(token, inv.id)
+    invitations.value = invitations.value.filter((i) => i.id !== inv.id)
+    showToast('已拒绝邀请')
+  } catch (e) {
+    showToast(e instanceof Error ? e.message : '拒绝邀请失败', 'warning')
+  } finally {
+    processingInvitationId.value = null
+  }
+}
+
 onMounted(() => {
   loadTeams()
+  loadInvitations()
 })
 </script>
 
@@ -126,12 +196,44 @@ onMounted(() => {
         </button>
       </header>
 
+      <section v-if="invitations.length" class="teams-page__invitations">
+        <div class="teams-page__invitations-head">
+          <h2>收到的邀请</h2>
+          <span>{{ invitations.length }} 条待处理</span>
+        </div>
+        <ul class="teams-page__invitation-list">
+          <li v-for="inv in invitations" :key="inv.id" class="teams-page__invitation-item">
+            <div class="teams-page__invitation-info">
+              <strong>{{ inv.team_name }}</strong>
+              <span>由 {{ inv.inviter_username }} 邀请 · {{ formatInvitationTime(inv.created_at) }}</span>
+            </div>
+            <div class="teams-page__invitation-actions">
+              <button class="teams-page__invitation-btn teams-page__invitation-btn--accept" type="button"
+                :disabled="processingInvitationId === inv.id" @click="handleAcceptInvitation(inv)">
+                {{ processingInvitationId === inv.id ? '处理中...' : '接受' }}
+              </button>
+              <button class="teams-page__invitation-btn teams-page__invitation-btn--reject" type="button"
+                :disabled="processingInvitationId === inv.id" @click="handleRejectInvitation(inv)">
+                拒绝
+              </button>
+            </div>
+          </li>
+        </ul>
+      </section>
+
       <section v-if="loading" class="teams-page__empty">
         <p>加载中...</p>
       </section>
 
       <section v-else-if="sortedTeams.length === 0" class="teams-page__empty">
-        <div class="teams-page__empty-icon">👥</div>
+        <div class="teams-page__empty-icon" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="24" cy="23" r="9" fill="#DBEAFE" stroke="#93C5FD" stroke-width="3" />
+            <circle cx="43" cy="26" r="7" fill="#DBEAFE" stroke="#93C5FD" stroke-width="3" />
+            <path d="M9 49c0-7 7-11 15-11s15 4 15 11" fill="#EFF6FF" stroke="#93C5FD" stroke-width="3" stroke-linecap="round" />
+            <path d="M41 49c0-6 5-9 11-9 5 0 9 3 9 9" fill="#EFF6FF" stroke="#93C5FD" stroke-width="3" stroke-linecap="round" />
+          </svg>
+        </div>
         <h2>还没有团队</h2>
         <p>创建或加入一个团队，与伙伴一起协作</p>
       </section>
@@ -139,8 +241,14 @@ onMounted(() => {
       <section v-else class="teams-list">
         <article v-for="team in sortedTeams" :key="team.team_id" class="team-card" @click="goDetail(team.team_id)">
           <div class="team-card__avatar">
-            <img v-if="team.avatar_url" :src="team.avatar_url" :alt="team.name" />
-            <span v-else>👥</span>
+            <img v-if="team.avatar_url" :src="apiUrl(team.avatar_url)" :alt="team.name" />
+            <svg v-else class="team-card__avatar-icon" viewBox="0 0 64 64" fill="none"
+              xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <circle cx="24" cy="23" r="9" fill="#C7D2FE" stroke="#818CF8" stroke-width="3" />
+              <circle cx="43" cy="26" r="7" fill="#C7D2FE" stroke="#818CF8" stroke-width="3" />
+              <path d="M9 49c0-7 7-11 15-11s15 4 15 11" fill="#E0E7FF" stroke="#818CF8" stroke-width="3" stroke-linecap="round" />
+              <path d="M41 49c0-6 5-9 11-9 5 0 9 3 9 9" fill="#E0E7FF" stroke="#818CF8" stroke-width="3" stroke-linecap="round" />
+            </svg>
           </div>
           <div class="team-card__body">
             <h3>{{ team.name }}</h3>
@@ -227,6 +335,110 @@ onMounted(() => {
   font-size: 14px;
 }
 
+.teams-page__invitations {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f8faff, #eef2ff);
+}
+
+.teams-page__invitations-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.teams-page__invitations-head h2 {
+  margin: 0;
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.teams-page__invitations-head span {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.teams-page__invitation-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.teams-page__invitation-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  flex-wrap: wrap;
+}
+
+.teams-page__invitation-info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.teams-page__invitation-info strong {
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.teams-page__invitation-info span {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.teams-page__invitation-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.teams-page__invitation-btn {
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.teams-page__invitation-btn--accept {
+  background: #2563eb;
+  color: #fff;
+}
+
+.teams-page__invitation-btn--accept:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.teams-page__invitation-btn--reject {
+  background: #fff;
+  color: #64748b;
+  border-color: #e5e7eb;
+}
+
+.teams-page__invitation-btn--reject:hover:not(:disabled) {
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+.teams-page__invitation-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .teams-page__create-btn {
   display: inline-flex;
   align-items: center;
@@ -260,8 +472,15 @@ onMounted(() => {
 }
 
 .teams-page__empty-icon {
-  font-size: 56px;
-  line-height: 1;
+  width: 72px;
+  height: 72px;
+  color: #93c5fd;
+}
+
+.teams-page__empty-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .teams-page__empty h2 {
@@ -318,6 +537,11 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.team-card__avatar-icon {
+  width: 70%;
+  height: 70%;
 }
 
 .team-card__body {

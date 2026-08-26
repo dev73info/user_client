@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+
+import { ArrowDown, ArrowUp, ChatDotRound } from '@element-plus/icons-vue'
 
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
@@ -31,6 +33,9 @@ const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const conversationLoading = ref(false)
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
+const descriptionOverflowMap = ref<Record<string, boolean>>({})
+const expandedRequirements = ref<Record<string, boolean>>({})
+const descriptionEls = ref<Record<string, HTMLElement>>({})
 
 const unbindVisible = ref(false)
 const unbindRequirement = ref<RequirementItem | null>(null)
@@ -210,11 +215,42 @@ function conversationStatusLabel(item: RequirementItem) {
   return conversation.last_message_at ? `最近：${conversation.last_message_at}` : '暂无消息'
 }
 
-function conversationButtonLabel(item: RequirementItem) {
-  if (isRequirementCompleted(item)) {
-    return '已停用'
+function isDescriptionExpanded(item: RequirementItem) {
+  return Boolean(expandedRequirements.value[item.requirement_id])
+}
+
+function descriptionOverflow(item: RequirementItem) {
+  return Boolean(descriptionOverflowMap.value[item.requirement_id])
+}
+
+function toggleDescription(item: RequirementItem) {
+  expandedRequirements.value = {
+    ...expandedRequirements.value,
+    [item.requirement_id]: !isDescriptionExpanded(item),
   }
-  return conversationForRequirement(item)?.last_message_at ? '查看' : '开始'
+}
+
+function setDescriptionRef(el: HTMLElement | null, item: RequirementItem) {
+  if (!el) {
+    delete descriptionEls.value[item.requirement_id]
+    return
+  }
+
+  descriptionEls.value[item.requirement_id] = el
+  void nextTick(() => {
+    const target = descriptionEls.value[item.requirement_id]
+    if (!target) {
+      return
+    }
+
+    const overflows = target.scrollHeight > target.clientHeight + 2
+    if (overflows !== Boolean(descriptionOverflowMap.value[item.requirement_id])) {
+      descriptionOverflowMap.value = {
+        ...descriptionOverflowMap.value,
+        [item.requirement_id]: overflows,
+      }
+    }
+  })
 }
 
 function canOpenContractSign(item: RequirementItem) {
@@ -411,7 +447,17 @@ async function loadRequirementConversations() {
               <span class="dev-requirement-hall__requirement-id">{{ item.requirement_id }}</span>
               <h3 class="dev-requirement-hall__title">{{ item.title }}</h3>
               <article class="dev-requirement-hall__desc dev-requirement-card__description"
+                :class="{ 'is-collapsed': !isDescriptionExpanded(item) }"
+                :ref="(el) => setDescriptionRef(el as HTMLElement | null, item)"
                 v-html="requirementFieldHtml(item.description)"></article>
+              <button v-if="isDescriptionExpanded(item) || descriptionOverflow(item)" type="button"
+                class="dev-requirement-card__description-toggle" @click="toggleDescription(item)">
+                <el-icon>
+                  <ArrowUp v-if="isDescriptionExpanded(item)" />
+                  <ArrowDown v-else />
+                </el-icon>
+                <span>{{ isDescriptionExpanded(item) ? '收起' : '展开' }}</span>
+              </button>
             </div>
             <div class="dev-requirement-card__tags">
               <el-tag :type="displayStatusType(item)" effect="plain">{{ displayStatusLabel(item) }}</el-tag>
@@ -474,8 +520,10 @@ async function loadRequirementConversations() {
               <el-button v-if="canOpenContractSign(item)" size="small" @click="openContractSign(item)">
                 {{ contractButtonLabel(item) }}
               </el-button>
-              <el-button size="small" :disabled="!canOpenConversation(item)" @click="openConversation(item)">
-                {{ conversationButtonLabel(item) }}
+              <el-button type="primary" plain size="small" class="dev-requirement-card__conversation"
+                :disabled="!canOpenConversation(item)" @click="openConversation(item)">
+                <el-icon><ChatDotRound /></el-icon>
+                <span>会话</span>
               </el-button>
               <el-button v-if="hasPendingCreatorUnbindRequest(item)" type="warning" size="small"
                 @click="openUnbindRespond(item)">处理解除申请</el-button>
@@ -616,6 +664,34 @@ async function loadRequirementConversations() {
   border-radius: 8px;
   background: rgba(17, 24, 39, 0.06);
   white-space: pre;
+}
+
+.dev-requirement-card__description.is-collapsed {
+  max-height: 84px;
+  overflow: hidden;
+}
+
+.dev-requirement-card__description-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #247f7d;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dev-requirement-card__description-toggle:hover {
+  color: #1f6f6d;
+}
+
+.dev-requirement-card__conversation {
+  border-radius: 999px;
+  font-weight: 700;
 }
 
 .dev-requirement-card__tags {

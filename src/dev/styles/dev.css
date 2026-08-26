@@ -1504,7 +1504,8 @@ a {
   position: relative;
   top: auto !important;
   transform: none !important;
-  color: #0f172a;
+  /* 占位符应用浅灰色，选中项由 .el-select__selected-item 负责深色 */
+  color: var(--el-text-color-placeholder, #a8abb2);
   line-height: 44px;
   z-index: 1;
 }

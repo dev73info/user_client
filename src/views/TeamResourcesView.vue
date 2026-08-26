@@ -32,6 +32,13 @@ onMounted(async () => {
   await loadResources()
 })
 
+function goCreate() {
+  router.push({
+    path: '/workbench/developer/resources/plugins-init',
+    query: { ownership: 'team' },
+  })
+}
+
 async function loadResources() {
   if (!auth.token) {
     resources.value = []
@@ -169,6 +176,9 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
           <h3 class="dev-section-title">团队资源项目</h3>
           <p class="dev-section-desc">管理并查看你所在团队共享的所有资源项目。</p>
         </section>
+        <button class="dev-resource-list__create-btn" type="button" @click="goCreate">
+          + 新建团队资源
+        </button>
       </div>
 
       <el-table :data="resources" stripe v-loading="isLoading" class="dev-resource-table" :empty-text="emptyText">

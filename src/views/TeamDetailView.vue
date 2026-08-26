@@ -10,11 +10,14 @@ import {
   leaveTeam,
   deleteTeam,
   updateTeam,
+  uploadTeamAvatar,
+  transferTeamOwner,
   type TeamDetailResponse,
   type TeamMemberResponse,
 } from '@/api/team'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import { apiUrl } from '@/api/http'
 
 const route = useRoute()
 const router = useRouter()
@@ -31,6 +34,8 @@ const editingName = ref(false)
 const editName = ref('')
 const editDesc = ref('')
 const saving = ref(false)
+const avatarUploading = ref(false)
+const avatarFileInput = ref<HTMLInputElement | null>(null)
 
 const teamId = computed(() => Number(route.params.teamId))
 
@@ -45,6 +50,7 @@ const myRole = computed(() => {
   if (!team.value) return null
   return team.value.members.find((m) => m.username === auth.username) ?? null
 })
+const canManageTeam = computed(() => isOwner.value || isAdmin.value)
 
 async function loadTeam() {
   const token = auth.token?.trim()
@@ -115,6 +121,27 @@ async function handleRoleToggle(member: TeamMemberResponse) {
   }
 }
 
+async function handleTransferOwner(member: TeamMemberResponse) {
+  if (!team.value) return
+  if (!confirm(`确定要将「${team.value.name}」的所有权转移给「${member.username}」吗？`)) return
+  const token = auth.token?.trim()
+  if (!token) return
+  try {
+    const updated = await transferTeamOwner(token, teamId.value, member.username)
+    if (team.value) {
+      team.value.owner_username = updated.owner_username
+      team.value.members = team.value.members.map((m) => {
+        if (m.username === member.username) return { ...m, role: 'owner' }
+        if (m.username === auth.username) return { ...m, role: 'admin' }
+        return m
+      })
+    }
+    showToast('所有权已转移')
+  } catch (e) {
+    showToast(e instanceof Error ? e.message : '转移失败', 'warning')
+  }
+}
+
 async function handleLeave() {
   if (!confirm('确定要退出该团队吗？')) return
   const token = auth.token?.trim()
@@ -174,6 +201,36 @@ async function saveEdit() {
   }
 }
 
+function goMemberProfile(username: string) {
+  router.push({ name: 'dev-profile', params: { username } })
+}
+
+function triggerAvatarSelect() {
+  if (!canManageTeam.value) return
+  avatarFileInput.value?.click()
+}
+
+async function handleAvatarFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
+  if (!file) return
+  const token = auth.token?.trim()
+  if (!token) return
+  avatarUploading.value = true
+  try {
+    const updated = await uploadTeamAvatar(token, teamId.value, file)
+    if (team.value) {
+      team.value.avatar_url = updated.avatar_url
+    }
+    showToast('头像已更新')
+  } catch (e) {
+    showToast(e instanceof Error ? e.message : '上传头像失败', 'warning')
+  } finally {
+    avatarUploading.value = false
+    input.value = ''
+  }
+}
+
 onMounted(() => {
   loadTeam()
 })
@@ -181,18 +238,22 @@ onMounted(() => {
 
 <template>
   <main class="page-shell team-detail-page">
-    <header class="team-detail-page__back">
-      <button type="button" @click="router.push({ name: 'workbench-teams' })">
-        ‹ 返回团队列表
-      </button>
-    </header>
-
     <section v-if="loading" class="team-detail-page__empty">
       <p>加载中...</p>
     </section>
 
     <template v-else-if="team">
       <section class="team-detail-hero">
+        <div class="team-detail-hero__avatar">
+          <img v-if="team.avatar_url" :src="apiUrl(team.avatar_url)" :alt="team.name" />
+          <span v-else>{{ team.name.charAt(0).toUpperCase() }}</span>
+          <input ref="avatarFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif"
+            class="team-detail-hero__avatar-input" @change="handleAvatarFileChange" />
+          <button v-if="canManageTeam" type="button" class="team-detail-hero__avatar-edit"
+            :disabled="avatarUploading" @click="triggerAvatarSelect">
+            {{ avatarUploading ? '上传中...' : '更换头像' }}
+          </button>
+        </div>
         <div class="team-detail-hero__info">
           <template v-if="editingName">
             <div class="team-detail-hero__edit">
@@ -256,14 +317,18 @@ onMounted(() => {
 
         <div class="team-detail-members__list">
           <div v-for="member in team.members" :key="member.username" class="team-detail-members__item">
-            <div class="team-detail-members__item-avatar">{{ member.username.charAt(0).toUpperCase() }}</div>
+            <div class="team-detail-members__item-avatar" @click="goMemberProfile(member.username)">
+              <img v-if="member.avatar_url" :src="apiUrl(member.avatar_url)" :alt="member.username" />
+              <span v-else>{{ member.username.charAt(0).toUpperCase() }}</span>
+            </div>
             <div class="team-detail-members__item-body">
-              <strong>{{ member.username }}</strong>
+              <strong @click="goMemberProfile(member.username)">{{ member.username }}</strong>
               <span :class="{ admin: member.role === 'admin', owner: member.role === 'owner' }">
                 {{ member.role === 'owner' ? '所有者' : member.role === 'admin' ? '管理员' : '成员' }}
               </span>
             </div>
             <div v-if="isOwner && member.role !== 'owner'" class="team-detail-members__item-actions">
+              <button type="button" class="owner" @click="handleTransferOwner(member)">设为所有者</button>
               <button type="button" @click="handleRoleToggle(member)">
                 {{ member.role === 'admin' ? '降为成员' : '升为管理' }}
               </button>
@@ -287,35 +352,6 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-.team-detail-page__back button {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 16px;
-  border: 1px solid rgba(226, 232, 240, 0.96);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.94);
-  color: #475569;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease;
-}
-
-.team-detail-page__back button:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #0f172a;
-}
-
-.team-detail-page__back button:hover {
-  color: #2563eb;
-}
-
 .team-detail-page__empty {
   padding: 64px 24px;
   text-align: center;
@@ -332,6 +368,51 @@ onMounted(() => {
   border: 1px solid #e5e7eb;
   border-radius: 16px;
   background: #fff;
+}
+
+.team-detail-hero__avatar {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #eef2ff, #dbeafe);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  font-weight: 700;
+  color: #2563eb;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.team-detail-hero__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.team-detail-hero__avatar-input {
+  display: none;
+}
+
+.team-detail-hero__avatar-edit {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 4px 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.55);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.team-detail-hero__avatar-edit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .team-detail-hero__info {
@@ -567,6 +648,14 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 700;
   flex-shrink: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.team-detail-members__item-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .team-detail-members__item-body {
@@ -583,6 +672,11 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.team-detail-members__item-body strong:hover {
+  color: #2563eb;
 }
 
 .team-detail-members__item-body span {
@@ -619,6 +713,17 @@ onMounted(() => {
 
 .team-detail-members__item-actions button:hover:not(:disabled) {
   background: #f8fafc;
+}
+
+.team-detail-members__item-actions button.owner {
+  border-color: #fcd34d;
+  color: #b45309;
+}
+
+.team-detail-members__item-actions button.owner:hover:not(:disabled) {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #fcd34d;
 }
 
 .team-detail-members__item-actions button.danger:hover:not(:disabled) {
