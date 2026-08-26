@@ -18,7 +18,7 @@ import {
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@dev/api/contracts'
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
-import { requirementRichTextPreview } from '@/utils/requirementRichText'
+import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -134,6 +134,10 @@ function displayStatusLabel(item: RequirementItem): string {
 
 function paymentModeLabel(item: RequirementItem): string {
   return item.payment_mode === 'self_managed' ? '无电签约定' : '电签担保'
+}
+
+function requirementFieldHtml(value?: string | null): string {
+  return sanitizeRequirementRichText(value ?? '') || '当前需求暂未补充详细描述。'
 }
 
 function statusType(status: RequirementItem['status']): 'info' | 'success' | 'warning' | 'danger' {
@@ -406,7 +410,8 @@ async function loadRequirementConversations() {
             <div class="dev-requirement-card__title-block">
               <span class="dev-requirement-hall__requirement-id">{{ item.requirement_id }}</span>
               <h3 class="dev-requirement-hall__title">{{ item.title }}</h3>
-              <p class="dev-requirement-hall__desc">{{ requirementRichTextPreview(item.description) }}</p>
+              <article class="dev-requirement-hall__desc dev-requirement-card__description"
+                v-html="requirementFieldHtml(item.description)"></article>
             </div>
             <div class="dev-requirement-card__tags">
               <el-tag :type="displayStatusType(item)" effect="plain">{{ displayStatusLabel(item) }}</el-tag>
@@ -570,6 +575,47 @@ async function loadRequirementConversations() {
 
 .dev-requirement-card__title-block .dev-requirement-hall__title {
   font-size: 17px;
+}
+
+.dev-requirement-card__description {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.dev-requirement-card__description :deep(p) {
+  margin: 0 0 8px;
+}
+
+.dev-requirement-card__description :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.dev-requirement-card__description :deep(ul),
+.dev-requirement-card__description :deep(ol) {
+  margin: 0 0 8px;
+  padding-left: 22px;
+}
+
+.dev-requirement-card__description :deep(blockquote) {
+  margin: 8px 0;
+  padding-left: 12px;
+  border-left: 3px solid rgba(42, 166, 164, 0.35);
+  color: var(--dev-ink);
+}
+
+.dev-requirement-card__description :deep(hr) {
+  margin: 12px 0;
+  border: 0;
+  border-top: 1px solid rgba(17, 24, 39, 0.12);
+}
+
+.dev-requirement-card__description :deep(pre) {
+  overflow-x: auto;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(17, 24, 39, 0.06);
+  white-space: pre;
 }
 
 .dev-requirement-card__tags {
