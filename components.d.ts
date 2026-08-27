@@ -55,6 +55,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     ShareCardGenerator: typeof import('./src/components/ShareCardGenerator.vue')['default']
     ShareStats: typeof import('./src/components/ShareStats.vue')['default']
+    SupportChatWidget: typeof import('./src/components/SupportChatWidget.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

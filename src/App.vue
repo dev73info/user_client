@@ -7,6 +7,7 @@ import { useDownloadStore } from '@/stores/download'
 import AppToast from '@/components/AppToast.vue'
 import PortalTopNav from '@/components/PortalTopNav.vue'
 import PortalMobileDock from '@/components/PortalMobileDock.vue'
+import SupportChatWidget from '@/components/SupportChatWidget.vue'
 import { useToast } from '@/composables/useToast'
 import { AUTH_UNAUTHORIZED_EVENT, type AuthUnauthorizedEventDetail } from '@/shared/api/authEvents'
 const auth = useAuthStore()
@@ -139,10 +140,10 @@ onBeforeUnmount(() => {
                   <p>
                     公安备案号：
                     <a class="public-security-beian-link"
-                      href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000020" target="_blank"
+                      href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000023" target="_blank"
                       rel="noopener noreferrer">
                       <img class="public-security-beian-icon" src="/icons/beian.png" alt="公安备案图标" />
-                      <span>滇公网安备53062802000020号（重新备案中）</span>
+                      <span>滇公网安备53062802000023号</span>
                     </a>
                   </p>
                   <p>交易功能说明：使用第三方分账系统进行交易担保于分账，资金安全有保障</p>
@@ -164,6 +165,9 @@ onBeforeUnmount(() => {
       <PortalMobileDock />
     </div>
     <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
+
+    <!-- 在线客服浮窗：仅登录用户可见 -->
+    <SupportChatWidget v-if="auth.isAuthed" />
 
     <!-- 全局资源下载进度浮层：切换路由不中断下载，浮层持续展示进度 -->
     <Transition name="download-pop">

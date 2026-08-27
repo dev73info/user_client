@@ -381,10 +381,10 @@ async function submitAuth() {
       </p>
       <p>
         公安备案号：
-        <a class="dev-public-security-beian-link" href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000020"
+        <a class="dev-public-security-beian-link" href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000023"
           target="_blank" rel="noopener noreferrer">
           <img class="dev-public-security-beian-icon" src="/icons/beian.png" alt="公安备案图标" />
-          <span>滇公网安备53062802000020号</span>
+          <span>滇公网安备53062802000023号</span>
         </a>
       </p>
     </footer>

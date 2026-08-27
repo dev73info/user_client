@@ -26,7 +26,7 @@ const proxyPaths = [
   '/uploads',
 ]
 const proxyConfig = Object.fromEntries(
-  proxyPaths.map((path) => [path, { target: proxyTarget, changeOrigin: true }]),
+  proxyPaths.map((path) => [path, { target: proxyTarget, changeOrigin: true, ws: true }]),
 )
 const publicHtaccessPath = resolve(import.meta.dirname, 'public/.htaccess')
 const distHtaccessPath = resolve(import.meta.dirname, 'dist/.htaccess')
