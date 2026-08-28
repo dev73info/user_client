@@ -30,6 +30,7 @@ const newCategory = ref('')
 const newPriority = ref<TicketPriority>('normal')
 const newContent = ref('')
 const replyContent = ref('')
+const composeOpen = ref(false)
 const { showToast } = useToast()
 
 const priorityOpen = ref(false)
@@ -57,6 +58,21 @@ const ticketStats = computed(() => ({
   pending: tickets.value.filter((item) => item.status === 'open' || item.status === 'processing').length,
   resolved: tickets.value.filter((item) => item.status === 'resolved' || item.status === 'closed').length,
 }))
+
+// 待处理/处理中 置顶，已解决/已关闭 靠后；同状态内按更新时间倒序
+const sortedTickets = computed(() => {
+  const rank: Record<TicketStatus, number> = { open: 0, processing: 1, resolved: 2, closed: 3 }
+  return [...tickets.value].sort((a, b) => {
+    const diff = (rank[a.status] ?? 9) - (rank[b.status] ?? 9)
+    if (diff !== 0) return diff
+    return new Date(b.updated_at ?? '').getTime() - new Date(a.updated_at ?? '').getTime()
+  })
+})
+
+// 已关闭/已解决 视为“可收缩”，精简展示
+function isCollapsedTicket(status: TicketStatus) {
+  return status === 'closed' || status === 'resolved'
+}
 
 function formatTime(value?: string | null) {
   if (!value) {
@@ -114,6 +130,10 @@ function resetCreateForm() {
   newContent.value = ''
 }
 
+function openCompose() {
+  composeOpen.value = true
+}
+
 async function loadDetail(ticketId: string) {
   if (!auth.token || !ticketId) {
     currentDetail.value = null
@@ -142,7 +162,9 @@ async function loadTicketsAndKeepSelection(preferredTicketId?: string) {
   try {
     const items = await listTickets(auth.token)
     tickets.value = items
-    const targetId = preferredTicketId || selectedTicketId.value || items[0]?.ticket_id || ''
+    // 默认选中排序后的第一张（优先展示待处理/处理中）
+    const targetId =
+      preferredTicketId || selectedTicketId.value || sortedTickets.value[0]?.ticket_id || ''
     if (targetId) {
       await loadDetail(targetId)
     } else {
@@ -186,6 +208,7 @@ async function submitCreate() {
   try {
     const created = await createTicket(auth.token, payload)
     resetCreateForm()
+    composeOpen.value = false
     showToast('工单已创建', 'success')
     await loadTicketsAndKeepSelection(created.ticket_id)
   } catch (err) {
@@ -271,17 +294,95 @@ onBeforeUnmount(() => {
       </article>
     </section>
 
-    <section class="portal-page__panel ticket-compose-panel">
-      <div class="panel-head panel-head--stack">
-        <div>
-          <h2>提交新工单</h2>
+    <section class="ticket-main-grid">
+      <aside class="portal-page__panel ticket-list-panel">
+        <div class="panel-head">
+          <div>
+            <h2>工单列表</h2>
+          </div>
+          <button class="ticket-primary-btn" type="button" @click="openCompose">
+            提交新工单
+          </button>
         </div>
-        <button class="refresh-btn" type="button" :disabled="loading || detailLoading"
-          @click="loadTicketsAndKeepSelection()">
-          {{ loading || detailLoading ? '同步中...' : '刷新' }}
-        </button>
-      </div>
 
+        <div v-if="!loading && tickets.length === 0" class="ticket-empty-state">
+          <p>提交第一张工单后，这里会显示处理状态和最近回复。</p>
+        </div>
+
+        <button v-for="ticket in sortedTickets" :key="ticket.ticket_id" class="ticket-list-item"
+          :class="{ active: selectedTicketId === ticket.ticket_id, 'is-collapsed': isCollapsedTicket(ticket.status) }"
+          type="button" @click="loadDetail(ticket.ticket_id)">
+          <div class="ticket-list-item__top">
+            <strong class="ticket-list-item__subject">{{ ticket.subject }}</strong>
+            <span class="ticket-status-pill" :class="`is-${ticket.status}`">{{ formatStatus(ticket.status) }}</span>
+          </div>
+          <p v-if="!isCollapsedTicket(ticket.status)" class="ticket-list-item__summary">{{
+            ticket.category || '未分类' }} · 优先级 {{ formatPriority(ticket.priority) }}</p>
+          <div class="ticket-list-item__meta">
+            <span class="ticket-list-item__ticket-id" :title="ticket.ticket_id">{{ ticket.ticket_id }}</span>
+            <time class="ticket-list-item__time">{{ formatTime(ticket.updated_at) }}</time>
+          </div>
+        </button>
+      </aside>
+
+      <section class="portal-page__panel ticket-detail-panel">
+        <div v-if="selectedTicket && currentDetail" class="ticket-detail-shell">
+          <header class="ticket-detail-header">
+            <div class="ticket-detail-header__main">
+              <h2>{{ selectedTicket.subject }}</h2>
+              <p class="ticket-detail-header__meta">
+                <span class="ticket-detail-header__ticket-id">{{ selectedTicket.ticket_id }}</span>
+                <span>·</span>
+                {{ selectedTicket.category || '未分类' }}
+                <span>·</span>
+                优先级 {{ formatPriority(selectedTicket.priority) }}
+              </p>
+            </div>
+            <div class="ticket-detail-header__actions">
+              <span class="ticket-status-pill" :class="`is-${selectedTicket.status}`">{{
+                formatStatus(selectedTicket.status) }}</span>
+              <button v-if="selectedTicket.status !== 'closed'" class="ticket-secondary-btn" type="button"
+                :disabled="closing" @click="submitClose">
+                {{ closing ? '关闭中...' : '关闭工单' }}
+              </button>
+            </div>
+          </header>
+
+          <div v-if="detailLoading" class="ticket-empty-state">
+            <p>正在同步当前工单的最新消息。</p>
+          </div>
+
+          <div v-else class="ticket-thread">
+            <article v-for="message in currentDetail.messages" :key="message.id" class="ticket-message"
+              :class="{ 'is-self': message.sender === auth.username, 'is-official': message.sender !== auth.username }">
+              <div v-if="message.sender !== auth.username" class="ticket-message__meta">
+                <div class="ticket-message__identity">
+                  <span class="ticket-message__badge is-official">
+                    {{ messageBadgeLabel(message.sender, message.sender_role) }}
+                  </span>
+                </div>
+              </div>
+              <p class="ticket-message__content">{{ message.content }}</p>
+              <time class="ticket-message__time">{{ formatTime(message.created_at) }}</time>
+            </article>
+          </div>
+
+          <div v-if="selectedTicket.status !== 'closed'" class="ticket-reply-box">
+            <textarea v-model="replyContent" rows="2" placeholder="补充新的现象、截图说明或你的确认结果。"
+              @keydown.enter.exact.prevent="replyContent.trim() && submitReply()" />
+            <button class="ticket-primary-btn" type="button" :disabled="replying" @click="submitReply">
+              {{ replying ? '发送中...' : '发送回复' }}
+            </button>
+          </div>
+        </div>
+
+        <div v-else class="ticket-empty-state">
+          <p>左侧会展示你的全部工单。选中后可以查看消息记录并继续回复。</p>
+        </div>
+      </section>
+    </section>
+
+    <el-dialog v-model="composeOpen" title="提交新工单" width="720px" :close-on-click-modal="false">
       <div class="compose-grid">
         <label class="field">
           <span>工单标题</span>
@@ -318,106 +419,14 @@ onBeforeUnmount(() => {
         </label>
       </div>
 
-      <div class="compose-actions">
-        <button class="ticket-primary-btn" type="button" :disabled="creating" @click="submitCreate">
-          {{ creating ? '提交中...' : '提交工单' }}
-        </button>
-      </div>
-    </section>
-
-    <section class="ticket-main-grid">
-      <aside class="portal-page__panel ticket-list-panel">
-        <div class="panel-head">
-          <div>
-            <h2>工单列表</h2>
-          </div>
+      <template #footer>
+        <div class="compose-actions">
+          <button class="ticket-primary-btn" type="button" :disabled="creating" @click="submitCreate">
+            {{ creating ? '提交中...' : '提交工单' }}
+          </button>
         </div>
-
-        <div v-if="!loading && tickets.length === 0" class="ticket-empty-state">
-          <p>提交第一张工单后，这里会显示处理状态和最近回复。</p>
-        </div>
-
-        <button v-for="ticket in tickets" :key="ticket.ticket_id" class="ticket-list-item"
-          :class="{ active: selectedTicketId === ticket.ticket_id }" type="button"
-          @click="loadDetail(ticket.ticket_id)">
-          <div class="ticket-list-item__top">
-            <strong class="ticket-list-item__subject">{{ ticket.subject }}</strong>
-            <span class="ticket-status-pill" :class="`is-${ticket.status}`">{{ formatStatus(ticket.status) }}</span>
-          </div>
-          <p class="ticket-list-item__summary">{{ ticket.category || '未分类' }} · 优先级 {{ formatPriority(ticket.priority)
-            }}</p>
-          <div class="ticket-list-item__meta">
-            <span class="ticket-list-item__ticket-id">{{ ticket.ticket_id }}</span>
-            <time class="ticket-list-item__time">{{ formatTime(ticket.updated_at) }}</time>
-          </div>
-        </button>
-      </aside>
-
-      <section class="portal-page__panel ticket-detail-panel">
-        <div v-if="selectedTicket && currentDetail" class="ticket-detail-shell">
-          <header class="ticket-detail-header">
-            <div class="ticket-detail-header__main">
-              <h2>{{ selectedTicket.subject }}</h2>
-              <p class="ticket-detail-header__meta">
-                <span class="ticket-detail-header__ticket-id">{{ selectedTicket.ticket_id }}</span>
-                <span>·</span>
-                {{ selectedTicket.category || '未分类' }}
-                <span>·</span>
-                优先级 {{ formatPriority(selectedTicket.priority) }}
-              </p>
-            </div>
-            <div class="ticket-detail-header__actions">
-              <span class="ticket-status-pill" :class="`is-${selectedTicket.status}`">{{
-                formatStatus(selectedTicket.status) }}</span>
-              <button v-if="selectedTicket.status !== 'closed'" class="ticket-secondary-btn" type="button"
-                :disabled="closing" @click="submitClose">
-                {{ closing ? '关闭中...' : '关闭工单' }}
-              </button>
-            </div>
-          </header>
-
-          <div v-if="detailLoading" class="ticket-empty-state">
-            <p>正在同步当前工单的最新消息。</p>
-          </div>
-
-          <div v-else class="ticket-thread">
-            <article v-for="message in currentDetail.messages" :key="message.id" class="ticket-message"
-              :class="{ 'is-self': message.sender === auth.username, 'is-official': message.sender !== auth.username }">
-              <div class="ticket-message__meta">
-                <div class="ticket-message__identity">
-                  <span v-if="message.sender !== auth.username" class="ticket-message__badge"
-                    :class="message.sender === auth.username ? 'is-self' : 'is-official'">
-                    {{ messageBadgeLabel(message.sender, message.sender_role) }}
-                  </span>
-                </div>
-                <span v-if="message.sender === auth.username" class="ticket-message__badge"
-                  :class="message.sender === auth.username ? 'is-self' : 'is-official'">
-                  {{ messageBadgeLabel(message.sender, message.sender_role) }}
-                </span>
-              </div>
-              <p class="ticket-message__content">{{ message.content }}</p>
-              <time class="ticket-message__time">{{ formatTime(message.created_at) }}</time>
-            </article>
-          </div>
-
-          <div v-if="selectedTicket.status !== 'closed'" class="ticket-reply-box">
-            <label class="field field--full">
-              <span>继续回复</span>
-              <textarea v-model="replyContent" rows="4" placeholder="补充新的现象、截图说明或你的确认结果。" />
-            </label>
-            <div class="compose-actions">
-              <button class="ticket-primary-btn" type="button" :disabled="replying" @click="submitReply">
-                {{ replying ? '发送中...' : '发送回复' }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div v-else class="ticket-empty-state">
-          <p>左侧会展示你的全部工单。选中后可以查看消息记录并继续回复。</p>
-        </div>
-      </section>
-    </section>
+      </template>
+    </el-dialog>
   </main>
 </template>
 
@@ -432,10 +441,11 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.ticket-compose-panel,
 .ticket-list-panel,
 .ticket-detail-panel {
   padding: 18px;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-head--stack {
@@ -694,22 +704,28 @@ onBeforeUnmount(() => {
 
 .ticket-list-panel {
   display: grid;
-  gap: 14px;
+  gap: 10px;
   align-content: start;
 }
 
 .ticket-list-item {
   width: 100%;
   text-align: left;
-  border-radius: 18px;
+  border-radius: 14px;
   border: 1px solid rgba(198, 210, 236, 0.72);
   background: rgba(248, 250, 252, 0.92);
   color: #0f172a;
-  padding: 16px;
+  padding: 12px 14px;
   cursor: pointer;
   display: grid;
-  gap: 10px;
+  gap: 6px;
   overflow: hidden;
+}
+
+/* 已关闭/已解决：自动收缩，减少高度并淡显示 */
+.ticket-list-item.is-collapsed {
+  opacity: 0.6;
+  padding: 10px 14px;
 }
 
 .ticket-list-item.active {
@@ -747,19 +763,24 @@ onBeforeUnmount(() => {
 .ticket-list-item__subject {
   flex: 1 1 auto;
   overflow-wrap: anywhere;
+  font-size: 14px;
 }
 
 .ticket-list-item__summary {
   overflow-wrap: anywhere;
+  font-size: 12px;
 }
 
 .ticket-list-item__meta {
-  align-items: flex-end;
+  align-items: center;
 }
 
 .ticket-list-item__ticket-id {
   flex: 1 1 auto;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 11px;
 }
 
 .ticket-list-item__time {
@@ -818,13 +839,13 @@ onBeforeUnmount(() => {
 }
 
 .ticket-status-pill.is-open {
-  background: rgba(219, 234, 254, 0.92);
-  color: #1d4ed8;
+  background: rgba(254, 243, 199, 0.96);
+  color: #d97706;
 }
 
 .ticket-status-pill.is-processing {
-  background: rgba(254, 249, 195, 0.96);
-  color: #a16207;
+  background: rgba(219, 234, 254, 0.92);
+  color: #1d4ed8;
 }
 
 .ticket-status-pill.is-resolved {
@@ -834,19 +855,24 @@ onBeforeUnmount(() => {
 
 .ticket-status-pill.is-closed {
   background: rgba(241, 245, 249, 0.96);
-  color: #475569;
+  color: #64748b;
 }
 
 .ticket-detail-shell {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 18px;
+  flex: 1;
+  min-height: 0;
 }
 
 .ticket-thread {
   display: grid;
   gap: 14px;
-  max-height: 680px;
+  flex: 1;
   overflow: auto;
+  min-height: 0;
+  align-content: start;
 }
 
 .ticket-message {
@@ -913,6 +939,7 @@ onBeforeUnmount(() => {
 }
 
 .ticket-message__content {
+  font-size: 14px;
   line-height: 1.8;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -935,10 +962,35 @@ onBeforeUnmount(() => {
 }
 
 .ticket-reply-box {
-  display: grid;
-  gap: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
   border-top: 1px solid rgba(226, 232, 240, 0.92);
-  padding-top: 18px;
+  padding-top: 14px;
+}
+
+.ticket-reply-box textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-radius: 16px;
+  border: 1px solid rgba(198, 210, 236, 0.82);
+  background: rgba(248, 250, 252, 0.96);
+  color: #0f172a;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  outline: none;
+  resize: vertical;
+  line-height: 1.6;
+  font-family: inherit;
+}
+
+.ticket-reply-box textarea:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.12);
+}
+
+.ticket-reply-box .ticket-primary-btn {
+  flex: 0 0 auto;
 }
 
 .ticket-empty-state {

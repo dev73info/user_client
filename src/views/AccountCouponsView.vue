@@ -517,11 +517,11 @@ onMounted(async () => {
 
 .account-coupons-summary__grid article,
 .account-settings-card {
-  padding: 16px;
+  padding: 18px;
   border: 1px solid rgba(224, 232, 255, 0.96);
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.06);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 26px rgba(76, 103, 172, 0.08);
 }
 
 .account-coupons-summary__grid article {
@@ -559,6 +559,11 @@ onMounted(async () => {
 
 .account-settings-card .profile-update-row:last-child {
   margin-bottom: 0;
+}
+
+/* 输入框圆角与工作台其他面板保持一致 */
+.account-settings-card .profile-update-row input {
+  border-radius: 16px;
 }
 
 .account-avatar-card {
@@ -652,7 +657,7 @@ onMounted(async () => {
   gap: 14px;
   grid-column: 1 / -1;
   padding: 18px;
-  border-color: rgba(191, 210, 245, 0.98);
+  border-color: rgba(224, 232, 255, 0.96);
 }
 
 .account-security-head {
@@ -775,7 +780,7 @@ onMounted(async () => {
   width: 100%;
   min-width: 0;
   border: 1px solid rgba(224, 232, 255, 0.96);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 12px 14px;
   background: #ffffff;
   color: #0f172a;

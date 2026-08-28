@@ -89,10 +89,9 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 980px;
   min-height: calc(100vh - 140px);
-  margin: 0 auto;
-  padding: 8px 0 24px;
+  /* 占满内容区最大宽度，与其他工作台面板一致 */
+  padding: 8px 0 0;
 }
 
 .favorites-page__intro {
@@ -102,7 +101,7 @@ onMounted(() => {
   gap: 24px;
   padding: 24px 28px 26px;
   border: 1px solid rgb(224 232 255 / 96%);
-  border-radius: 12px;
+  border-radius: 18px;
   background: linear-gradient(135deg, #eef4ff 0%, #f7faff 55%, #ffffff 100%);
   box-shadow: 0 12px 26px rgb(76 103 172 / 8%);
 }
@@ -245,15 +244,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 1;
   flex-direction: column;
   width: 100%;
   max-width: none;
-  min-height: 320px;
   margin: 0;
   padding: 28px 24px 36px;
   border: 1px dashed rgb(79 140 255 / 42%);
-  border-radius: 12px;
+  border-radius: 18px;
   background: linear-gradient(145deg, rgb(238 244 255 / 92%), rgb(248 250 252 / 92%));
   text-align: center;
 }

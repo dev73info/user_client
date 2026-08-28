@@ -1037,6 +1037,10 @@ async function scrollToHash() {
 }
 
 .user-workbench__head {
+  position: sticky;
+  top: 98px;
+  z-index: 10;
+  align-self: start;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1081,6 +1085,8 @@ async function scrollToHash() {
 
 .user-workbench__content {
   min-width: 0;
+  /* 与侧边栏底部留白（sticky aside 顶部 98 + max-height 100vh-120 => 底部 22px）保持一致 */
+  padding-bottom: 22px;
 }
 
 .user-workbench__content :deep(.page-shell) {

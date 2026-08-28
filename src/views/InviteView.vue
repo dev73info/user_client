@@ -21,6 +21,10 @@ import InvitePanel from '@/components/InvitePanel.vue'
     min-height: calc(100vh - 185px);
     background: rgba(255, 255, 255, 0.94);
     box-shadow: 0 14px 34px rgba(76, 103, 172, 0.08);
+    /* 与其工作台面板保持一致的圆角与边框样式 */
+    border: 1px solid rgba(224, 232, 255, 0.96);
+    border-radius: 18px;
+    overflow: hidden;
 }
 
 .invite-view__primary,

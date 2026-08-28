@@ -1450,7 +1450,7 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
   gap: 24px;
-  padding: 30px 32px;
+  padding: 20px 24px;
   border-radius: 26px;
   border: 1px solid rgba(198, 210, 236, 0.72);
   background:
