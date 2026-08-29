@@ -28,6 +28,8 @@ type McCardItem = {
   title: string
   ownerName: string
   author: string
+  authorUsernameGradient: boolean
+  authorUsernameColor: string
   description: string
   groupTags: Record<string, string[]>
   tags: string[]
@@ -142,6 +144,8 @@ function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
     title: item.title,
     ownerName: item.creator.trim() || item.author.trim() || item.title,
     author: item.author,
+    authorUsernameGradient: !!item.author_username_gradient,
+    authorUsernameColor: item.author_username_color || '',
     description: item.description,
     groupTags,
     tags: tags.length > 0 ? tags : ['未标注'],
@@ -253,18 +257,16 @@ defineExpose({
   goToPage,
 })
 
-function formatUpdatedAt(value: string): string {
+function formatUpdatedAt(value: string): string[] {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
-    return '最近更新'
+    return ['最近更新']
   }
 
-  return date.toLocaleString('zh-CN', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return [
+    date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }),
+    date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+  ]
 }
 
 function openResource(card: McCardItem) {
@@ -413,44 +415,54 @@ watch(
 
     <section class="portal-resource-browser__grid">
       <article v-for="card in pagedCards" :key="card.id" class="portal-resource-browser__card">
-        <div v-if="card.coverUrl && !card.coverFailed" class="portal-resource-browser__cover portal-resource-browser__cover--image">
-          <img :src="card.coverUrl" :alt="card.title" class="portal-resource-browser__cover-image" @error="onCoverError(card)" />
-        </div>
-        <div v-else class="portal-resource-browser__cover" :class="fallbackIconClass">
-          {{ fallbackIcon }}
-        </div>
-
-        <div class="portal-resource-browser__body">
-          <div class="portal-resource-browser__headline">
-            <div>
-              <h3>{{ card.title }}</h3>
-              <p class="portal-resource-browser__author">by {{ card.author }}</p>
-            </div>
-            <span class="portal-resource-browser__updated">{{
-              formatUpdatedAt(card.updatedAt)
-              }}</span>
+        <div class="portal-resource-browser__card-main">
+          <div v-if="card.coverUrl && !card.coverFailed" class="portal-resource-browser__cover portal-resource-browser__cover--image">
+            <img :src="card.coverUrl" :alt="card.title" class="portal-resource-browser__cover-image" @error="onCoverError(card)" />
+          </div>
+          <div v-else class="portal-resource-browser__cover" :class="fallbackIconClass">
+            {{ fallbackIcon }}
           </div>
 
-          <p class="portal-resource-browser__desc">{{ card.description }}</p>
+          <div class="portal-resource-browser__body">
+            <div class="portal-resource-browser__headline">
+              <div class="portal-resource-browser__headline-main">
+                <div class="portal-resource-browser__title-row">
+                  <h3>{{ card.title }}</h3>
+                  <span class="portal-resource-browser__updated">
+                    <span v-for="part in formatUpdatedAt(card.updatedAt)" :key="part">{{ part }}</span>
+                  </span>
+                </div>
+                <div class="portal-resource-browser__author-line">
+                  <p class="portal-resource-browser__author-pill">
+                    <span class="portal-resource-browser__author-pill-label">作者 / 开发者</span><span v-if="card.author"
+                      :class="{ 'username-gradient': card.authorUsernameGradient && !card.authorUsernameColor }"
+                      :style="card.authorUsernameColor ? { color: card.authorUsernameColor } : {}">{{ card.author }}</span>
+                  </p>
+                  <span class="portal-resource-browser__meta"
+                    :class="{ 'is-repost': card.originType === 'repost' }">{{ card.originType === 'repost' ? '转载' : '原创' }}</span>
+                </div>
+              </div>
+            </div>
 
+          </div>
+        </div>
+
+        <p class="portal-resource-browser__desc">{{ card.description }}</p>
+
+        <div class="portal-resource-browser__footer">
           <div class="portal-resource-browser__tags">
             <span v-for="tag in card.tags" :key="`${card.id}-${tag}`">{{ tag }}</span>
           </div>
-
-          <div class="portal-resource-browser__footer">
-            <span class="portal-resource-browser__meta"
-              :class="{ 'is-repost': card.originType === 'repost' }">{{ card.originType === 'repost' ? '转载' : '原创' }}</span>
-            <div class="portal-resource-browser__actions">
-              <button class="portal-resource-browser__like" type="button"
-                :class="{ 'portal-resource-browser__like--active': card.likedByMe }" :disabled="card.likeSubmitting"
-                :aria-pressed="card.likedByMe" @click="toggleCardLike(card)">
-                <span aria-hidden="true">{{ card.likedByMe ? '♥' : '♡' }}</span>
-                <span>{{ card.likeCount }}</span>
-              </button>
-              <button class="portal-resource-browser__action" type="button" @click="openResource(card)">
-                查看详情
-              </button>
-            </div>
+          <div class="portal-resource-browser__actions">
+            <button class="portal-resource-browser__like" type="button"
+              :class="{ 'portal-resource-browser__like--active': card.likedByMe }" :disabled="card.likeSubmitting"
+              :aria-pressed="card.likedByMe" @click="toggleCardLike(card)">
+              <span aria-hidden="true">{{ card.likedByMe ? '♥' : '♡' }}</span>
+              <span>{{ card.likeCount }}</span>
+            </button>
+            <button class="portal-resource-browser__action" type="button" @click="openResource(card)">
+              查看详情
+            </button>
           </div>
         </div>
       </article>
@@ -630,7 +642,7 @@ watch(
 }
 
 .portal-resource-browser__label,
-.portal-resource-browser__author,
+.portal-resource-browser__author-pill,
 .portal-resource-browser__updated,
 .portal-resource-browser__meta {
   color: #64748b;
@@ -683,12 +695,15 @@ watch(
 .portal-resource-browser__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
   gap: 18px;
 }
 
 .portal-resource-browser__card {
   min-width: 0;
   display: flex;
+  flex-direction: column;
+  gap: 12px;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   padding: 18px;
   border-radius: 22px;
@@ -711,6 +726,14 @@ watch(
 .portal-resource-browser__card:hover {
   transform: translateY(-3px);
   box-shadow: 0 24px 40px rgba(76, 103, 172, 0.16);
+}
+
+.portal-resource-browser__card-main {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .portal-resource-browser__cover {
@@ -744,12 +767,26 @@ watch(
   gap: 12px;
 }
 
-.portal-resource-browser__headline,
-.portal-resource-browser__footer {
-  display: flex;
+.portal-resource-browser__headline {
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+}
+
+.portal-resource-browser__footer {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  margin-top: auto;
+}
+
+.portal-resource-browser__actions {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .portal-resource-browser__headline h3 {
@@ -757,9 +794,54 @@ watch(
   color: #0f172a;
 }
 
+.portal-resource-browser__headline-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.portal-resource-browser__title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.portal-resource-browser__title-row h3 {
+  min-width: 0;
+}
+
+.portal-resource-browser__title-row .portal-resource-browser__updated {
+  flex-shrink: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.portal-resource-browser__author-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: rgba(219, 234, 254, 0.92);
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.portal-resource-browser__author-line {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
 
 
-.portal-resource-browser__author,
 .portal-resource-browser__desc,
 .portal-resource-browser__updated,
 .portal-resource-browser__meta,
@@ -767,7 +849,7 @@ watch(
   line-height: 1.7;
 }
 
-.portal-resource-browser__author,
+.portal-resource-browser__author-pill,
 .portal-resource-browser__updated {
   margin: 4px 0 0;
   font-size: 12px;
@@ -780,11 +862,23 @@ watch(
 
 .portal-resource-browser__tags {
   display: flex;
+  align-items: flex-end;
   flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
+  align-self: stretch;
+  width: 100%;
+  max-width: 100%;
 }
 
-.portal-resource-browser__tags span,
+.portal-resource-browser__tags::after {
+  content: '';
+  flex: 0 0 170px;
+  height: 43px;
+  visibility: hidden;
+}
+
+.portal-resource-browser__tags > span,
 .portal-resource-browser__meta {
   display: inline-flex;
   padding: 5px 10px;
@@ -812,12 +906,6 @@ watch(
   background: rgba(239, 246, 255, 0.9);
   color: #1d4ed8;
   font-weight: 700;
-}
-
-.portal-resource-browser__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .portal-resource-browser__like {

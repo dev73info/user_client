@@ -324,7 +324,7 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
           <h3 class="dev-section-title">团队资源项目</h3>
         </section>
         <button class="dev-resource-list__create-btn" type="button" @click="goCreate">
-          + 新建团队资源
+          + 新建资源
         </button>
       </div>
 
