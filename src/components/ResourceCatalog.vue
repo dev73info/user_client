@@ -38,6 +38,10 @@ type McCardItem = {
   likeCount: number
   likedByMe: boolean
   likeSubmitting: boolean
+  originType: 'original' | 'repost'
+  originAuthor: string | null
+  originOrg: string | null
+  originUrl: string | null
 }
 
 type FilterSectionView = McTagFilterSection & {
@@ -148,6 +152,10 @@ function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
     likeCount: item.like_count ?? 0,
     likedByMe: item.liked_by_me ?? false,
     likeSubmitting: false,
+    originType: item.origin_type,
+    originAuthor: item.origin_author ?? null,
+    originOrg: item.origin_org ?? null,
+    originUrl: item.origin_url ?? null,
   }
 }
 
@@ -430,7 +438,8 @@ watch(
           </div>
 
           <div class="portal-resource-browser__footer">
-            <span class="portal-resource-browser__meta">{{ groupLabel }}</span>
+            <span class="portal-resource-browser__meta"
+              :class="{ 'is-repost': card.originType === 'repost' }">{{ card.originType === 'repost' ? '转载' : '原创' }}</span>
             <div class="portal-resource-browser__actions">
               <button class="portal-resource-browser__like" type="button"
                 :class="{ 'portal-resource-browser__like--active': card.likedByMe }" :disabled="card.likeSubmitting"
@@ -748,6 +757,8 @@ watch(
   color: #0f172a;
 }
 
+
+
 .portal-resource-browser__author,
 .portal-resource-browser__desc,
 .portal-resource-browser__updated,
@@ -782,6 +793,17 @@ watch(
   color: #1d4ed8;
   font-size: 12px;
   font-weight: 700;
+}
+
+/* 「原创/转载」标签用靛蓝，与资源详情页一致 */
+.portal-resource-browser__meta {
+  background: rgba(99, 102, 241, 0.14);
+  color: #4f46e5;
+}
+
+.portal-resource-browser__meta.is-repost {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
 }
 
 .portal-resource-browser__action {

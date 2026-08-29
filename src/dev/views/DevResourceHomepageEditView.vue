@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -8,7 +8,8 @@ import {
   Document,
   Folder,
   Picture,
-  Reading,
+  Plus,
+  Refresh,
   Upload,
   View,
 } from '@element-plus/icons-vue'
@@ -16,14 +17,22 @@ import {
 import { apiUrl } from '@dev/api/http'
 import {
   getMcResource,
+  type CreateMcResourceTagSelection,
   type McResourcePayload,
   uploadMcResourceCover,
   updateMcResourceHomepage,
 } from '@dev/api/mcResources'
+import {
+  getProcessedTagTree,
+  invalidateTagTreeCache,
+  type McPublishTagGroup,
+  type McTagCatalogEntry,
+  type McTagCatalogRoot,
+  type McProcessedTagTree,
+} from '@dev/api/Tags'
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
 import RichTextEditor from '@/components/RichTextEditor.vue'
-import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
@@ -44,7 +53,12 @@ const selectedCoverFileName = ref('')
 const localCoverPreviewUrl = ref('')
 const richEditorContent = ref('')
 const richTextEditorRef = ref<RichTextEditorInstance | null>(null)
-const previewRichTextRef = ref<HTMLElement | null>(null)
+
+const processedTree = ref<McProcessedTagTree>({ roots: [] })
+const currentRootKey = ref('')
+const currentEntryKey = ref('')
+const isLoadingTags = ref(false)
+const selectedTagIdsByGroup = reactive<Record<number, number[]>>({})
 
 const form = reactive({
   title: '',
@@ -62,19 +76,6 @@ const markdownRenderer = new MarkdownIt({
 })
 markdownRenderer.enable(['table'])
 
-function formatHomepageContent(value: string): string {
-  const trimmed = value.trim()
-  if (!trimmed) {
-    return ''
-  }
-
-  if (/<\/?[a-z][\s\S]*>/i.test(trimmed)) {
-    return sanitizeRichHtml(trimmed)
-  }
-
-  return sanitizeRichHtml(markdownRenderer.render(trimmed))
-}
-
 const coverPreviewUrl = computed(() => {
   if (localCoverPreviewUrl.value) {
     return localCoverPreviewUrl.value
@@ -91,10 +92,20 @@ const previewTagNames = computed(
   () => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [],
 )
 const previewTagCount = computed(() => previewTagNames.value.length)
-useCodeBlockCopy({
-  rootRef: previewRichTextRef,
-  notify: showToast,
-})
+
+const rootTabs = computed<McTagCatalogRoot[]>(() => processedTree.value.roots)
+const currentRoot = computed<McTagCatalogRoot | null>(
+  () => rootTabs.value.find((r) => r.key === currentRootKey.value) ?? rootTabs.value[0] ?? null,
+)
+const entryTabs = computed<McTagCatalogEntry[]>(() => currentRoot.value?.entries ?? [])
+const currentEntry = computed<McTagCatalogEntry | null>(
+  () => entryTabs.value.find((entry) => entry.key === currentEntryKey.value) ?? entryTabs.value[0] ?? null,
+)
+const currentEntryLabel = computed(() => currentEntry.value?.group_name ?? '当前分区')
+const platformTagGroups = computed<McPublishTagGroup[]>(() => currentEntry.value?.publish_groups ?? [])
+const selectedTagCount = computed(() =>
+  Object.values(selectedTagIdsByGroup).reduce((sum, ids) => sum + ids.length, 0),
+)
 const resourceVisibilityLabel = computed(() => {
   if (resource.value?.visibility === 'published') {
     return '公开展示中'
@@ -109,7 +120,6 @@ const resourceVisibilityLabel = computed(() => {
 const resourcePlatformLabel = computed(() => resource.value?.platform || '未知平台')
 const heroTitle = computed(() => form.title.trim() || resource.value?.title || '资源主页')
 const resourceAuthorLabel = computed(() => form.author.trim() || resource.value?.author || '开发者')
-const previewContentHtml = computed(() => formatHomepageContent(form.release_note || richEditorContent.value))
 const userClientPreviewUrl = computed(() =>
   resource.value ? userClientResourceUrl(resource.value) : '',
 )
@@ -160,6 +170,85 @@ function handleCoverFileChange(event: Event) {
   resetLocalCoverPreview()
   if (file) {
     localCoverPreviewUrl.value = URL.createObjectURL(file)
+  }
+}
+
+watch(
+  platformTagGroups,
+  (groups) => {
+    const validGroupIds = new Set(groups.map((group) => group.group_id))
+    for (const key of Object.keys(selectedTagIdsByGroup)) {
+      const groupId = Number(key)
+      if (!validGroupIds.has(groupId)) {
+        delete selectedTagIdsByGroup[groupId]
+        continue
+      }
+      const group = groups.find((item) => item.group_id === groupId)
+      if (!group) continue
+      const validTagIds = new Set(group.items.map((item) => item.id))
+      selectedTagIdsByGroup[groupId] = (selectedTagIdsByGroup[groupId] ?? []).filter((tagId) =>
+        validTagIds.has(tagId),
+      )
+    }
+    for (const group of groups) {
+      if (!selectedTagIdsByGroup[group.group_id]) {
+        selectedTagIdsByGroup[group.group_id] = []
+      }
+    }
+  },
+  { immediate: true },
+)
+
+async function loadTagTree() {
+  isLoadingTags.value = true
+  try {
+    invalidateTagTreeCache()
+    processedTree.value = await getProcessedTagTree()
+
+    const firstRoot = processedTree.value.roots[0]
+    if (firstRoot && !processedTree.value.roots.some((r) => r.key === currentRootKey.value)) {
+      currentRootKey.value = firstRoot.key
+      currentEntryKey.value = firstRoot.first_entry_key ?? ''
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '加载标签失败'
+    showToast(message, 'error')
+  } finally {
+    isLoadingTags.value = false
+  }
+}
+
+function openEntry(entryKey: string) {
+  if (entryKey === currentEntryKey.value) return
+  currentEntryKey.value = entryKey
+}
+
+function buildTagSelections(): CreateMcResourceTagSelection[] {
+  return platformTagGroups.value
+    .map((group) => ({
+      group_id: group.group_id,
+      tag_ids: [...(selectedTagIdsByGroup[group.group_id] ?? [])],
+    }))
+    .filter((selection) => selection.tag_ids.length > 0)
+}
+
+function applyResourceTagSelections() {
+  const selections = resource.value?.tag_selections ?? []
+  for (const key of Object.keys(selectedTagIdsByGroup)) {
+    delete selectedTagIdsByGroup[Number(key)]
+  }
+  for (const sel of selections) {
+    selectedTagIdsByGroup[sel.group_id] = [...sel.tag_ids]
+  }
+
+  const platform = resource.value?.platform
+  if (platform) {
+    const root = rootTabs.value.find((r) => r.entries.some((e) => e.platform === platform))
+    if (root) {
+      currentRootKey.value = root.key
+      const entry = root.entries.find((e) => e.platform === platform) ?? root.entries[0]
+      currentEntryKey.value = entry?.key ?? root.first_entry_key ?? ''
+    }
   }
 }
 
@@ -226,6 +315,7 @@ async function saveHomepage() {
       title: form.title.trim(),
       author: form.author.trim(),
       description: form.description.trim(),
+      tag_selections: buildTagSelections(),
       cover_url: nextCoverUrl,
       docs_url: form.docs_url.trim() || null,
       // 保存时用 sanitizeRichHtml 将 language-md 代码块渲染为富文本
@@ -254,6 +344,10 @@ async function saveHomepage() {
 }
 
 function goBack() {
+  if (window.history.state?.back) {
+    router.back()
+    return
+  }
   router.push({ name: 'dev-resource-list' })
 }
 
@@ -284,6 +378,8 @@ function userClientResourceUrl(target: McResourcePayload): string {
 onMounted(async () => {
   auth.hydrate()
   await loadResource()
+  await loadTagTree()
+  applyResourceTagSelections()
 })
 
 onBeforeUnmount(() => {
@@ -292,7 +388,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="dev-page dev-page--resource-homepage-editor">
+  <div class="dev-page dev-page--resource-homepage-editor dev-page--publish">
     <section class="dev-panel-banner dev-panel-banner--light dev-resource-homepage-editor__hero">
       <div class="dev-resource-homepage-editor__hero-main">
         <div class="dev-resource-homepage-editor__hero-cover">
@@ -325,89 +421,138 @@ onBeforeUnmount(() => {
 
     <section class="dev-resource-homepage-editor__layout" v-loading="loading">
       <div class="dev-resource-homepage-editor__forms">
-        <el-card shadow="never" class="dev-surface-card">
-          <div class="dev-resource-homepage-editor__section-head">
-            <div>
-              <h3 class="dev-section-title">基础信息</h3>
-              <p class="dev-section-desc">标题、简介与封面素材</p>
-            </div>
-            <el-icon class="dev-resource-homepage-editor__section-icon">
-              <Picture />
-            </el-icon>
-          </div>
+        <el-card shadow="never" class="dev-surface-card dev-upload-combined-card">
+          <section class="dev-upload-block">
+            <header class="dev-upload-section__head">
+              <section class="dev-upload-section__copy">
+                <h3 class="dev-section-title">基础信息</h3>
+                <p class="dev-section-desc">标题、简介与封面素材</p>
+              </section>
+            </header>
 
-          <el-form label-position="top" class="dev-resource-homepage-editor__form">
-            <el-form-item label="资源标题" required>
-              <el-input v-model="form.title" maxlength="120" show-word-limit placeholder="输入资源标题" />
-            </el-form-item>
-            <el-form-item label="资源简介" required>
-              <el-input v-model="form.description" type="textarea" :rows="5" maxlength="500" show-word-limit
-                placeholder="用一段简洁说明告诉用户这是什么资源、适合谁、解决什么问题" />
-            </el-form-item>
-            <el-form-item label="图标文件">
-              <div class="dev-resource-homepage-editor__file-picker">
+            <el-form label-position="top"
+              class="dev-resource-homepage-editor__form dev-resource-homepage-editor__form--inline">
+              <el-form-item label="资源标题" required>
+                <el-input v-model="form.title" maxlength="120" show-word-limit placeholder="输入资源标题" />
+              </el-form-item>
+              <el-form-item label="资源简介" required>
+                <el-input v-model="form.description" type="textarea" :rows="4" maxlength="500" show-word-limit
+                  placeholder="用一段简洁说明告诉用户这是什么资源、适合谁、解决什么问题" />
+              </el-form-item>
+              <el-form-item label="图标文件">
+                <div class="dev-icon-upload dev-icon-upload--square" @click="triggerCoverPicker">
+                  <img v-if="coverPreviewUrl" :src="coverPreviewUrl" alt="图标预览"
+                    class="dev-icon-upload__square-image" />
+                  <el-icon v-else class="dev-icon-upload__square-plus"><Plus /></el-icon>
+                </div>
                 <input ref="coverFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif"
-                  class="dev-resource-homepage-editor__file-input" @change="handleCoverFileChange" />
-                <el-button :icon="Upload" @click="triggerCoverPicker">选择封面</el-button>
-                <span class="dev-resource-homepage-editor__file-name">
-                  {{ selectedCoverFileName || '未选择文件' }}
-                </span>
+                  class="dev-icon-upload__native" @change="handleCoverFileChange" />
+              </el-form-item>
+            </el-form>
+          </section>
+
+          <section class="dev-upload-block dev-upload-block--split">
+            <header class="dev-upload-section__head">
+              <section class="dev-upload-section__copy">
+                <h3 class="dev-section-title">标签归类</h3>
+              </section>
+              <el-button text :icon="Refresh" :loading="isLoadingTags" @click="loadTagTree">刷新标签</el-button>
+            </header>
+
+            <div v-if="entryTabs.length > 0" class="dev-catalog-section">
+              <section class="dev-catalog-nav" aria-label="资源目录导航">
+                <div class="dev-catalog-nav__row">
+                  <div class="dev-catalog-nav__head">
+                    <span class="dev-catalog-nav__label">二级节点</span>
+                    <span class="dev-catalog-nav__meta">当前：{{ currentEntryLabel }}</span>
+                  </div>
+                  <div class="dev-catalog-nav__chips dev-catalog-nav__chips--scroll">
+                    <button v-for="entry in entryTabs" :key="entry.key"
+                      class="dev-catalog-chip dev-catalog-chip--secondary"
+                      :class="{ active: entry.key === currentEntryKey }" type="button"
+                      @click="openEntry(entry.key)">
+                      {{ entry.group_name }}
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              <div v-if="platformTagGroups.length > 0"
+                class="dev-tag-group-panel dev-upload-grid dev-upload-grid--tag-groups">
+                <section v-for="group in platformTagGroups" :key="group.key" class="dev-tag-group-row">
+                  <header class="dev-tag-group-row__head">
+                    <section class="dev-tag-group-row__copy">
+                      <h4 class="dev-tag-group-row__title">{{ group.group_name }}</h4>
+                      <p class="dev-tag-group-row__path" :title="group.label">{{ group.label }}</p>
+                    </section>
+                    <span class="dev-tag-group-row__count">{{ (selectedTagIdsByGroup[group.group_id] ?? []).length }}/{{ group.items.length }}</span>
+                  </header>
+                  <el-form-item class="dev-tag-group-row__field">
+                    <el-select v-model="selectedTagIdsByGroup[group.group_id]" multiple filterable
+                      placeholder="选择一个或多个标签">
+                      <el-option v-for="item in group.items" :key="item.id" :label="item.name" :value="item.id" />
+                    </el-select>
+                  </el-form-item>
+                </section>
               </div>
-            </el-form-item>
-          </el-form>
-        </el-card>
-
-        <el-card shadow="never" class="dev-surface-card">
-          <div class="dev-resource-homepage-editor__section-head">
-            <div>
-              <h3 class="dev-section-title">主页补充说明</h3>
-              <p class="dev-section-desc">编辑发布页内容</p>
+              <p v-else class="dev-empty-state">当前二级节点尚未配置完整标签组，请先在管理端补齐标签树。</p>
             </div>
-            <el-icon class="dev-resource-homepage-editor__section-icon">
-              <Document />
-            </el-icon>
-          </div>
+          </section>
 
-          <RichTextEditor ref="richTextEditorRef" :model-value="richEditorContent"
-            @update:model-value="handleRichEditorUpdate" @notify="showToast" />
+          <section class="dev-upload-block dev-upload-block--split">
+            <header class="dev-upload-section__head">
+              <section class="dev-upload-section__copy">
+                <h3 class="dev-section-title">页面内容</h3>
+              </section>
+            </header>
+            <RichTextEditor ref="richTextEditorRef" :model-value="richEditorContent"
+              min-height="clamp(320px, 42vh, 480px)" @update:model-value="handleRichEditorUpdate" @notify="showToast" />
+          </section>
         </el-card>
       </div>
 
-      <aside class="dev-resource-homepage-editor__preview-column">
-        <el-card shadow="never" class="dev-surface-card dev-resource-homepage-editor__preview-card">
-          <div class="dev-resource-homepage-editor__preview-top">
-            <div>
-              <div class="dev-panel-banner__eyebrow">Preview</div>
-              <h3 class="dev-section-title">页面预览</h3>
+      <aside class="dev-upload-side">
+        <header class="dev-side-toolbar">
+          <section class="dev-root-switch" aria-label="根节点选择">
+            <div class="dev-root-switch__head">
+              <span class="dev-root-switch__label">根节点</span>
+              <span class="dev-root-switch__meta">当前：{{ resourcePlatformLabel }}</span>
             </div>
-          </div>
+            <div class="dev-root-switch__chips">
+              <button class="dev-catalog-chip active" type="button">
+                {{ firstTagPathSegment(0) || resourcePlatformLabel }}
+              </button>
+            </div>
+          </section>
+        </header>
 
-          <div class="dev-resource-homepage-editor__preview-shell">
-            <div class="dev-resource-homepage-editor__preview-cover">
-              <img v-if="coverPreviewUrl" :src="coverPreviewUrl" :alt="form.title"
-                class="dev-resource-homepage-editor__preview-cover-image" />
-              <div v-else class="dev-resource-homepage-editor__preview-cover-fallback">
-                <el-icon>
-                  <Folder />
-                </el-icon>
+        <el-card shadow="never" class="dev-surface-card dev-surface-card--sticky">
+          <h3 class="dev-section-title">预览摘要</h3>
+          <article class="dev-preview-card dev-list--spaced">
+            <div class="dev-preview-card__cover">
+              <img v-if="coverPreviewUrl" :src="coverPreviewUrl" alt="资源图标"
+                class="dev-preview-card__cover-img" />
+              <span v-else class="dev-preview-card__cover-text">{{ (heroTitle || '资源').slice(0, 1).toUpperCase() }}</span>
+              <span class="dev-preview-card__badge">{{ resourcePlatformLabel }}</span>
+              <div class="dev-preview-card__screen dev-preview-card__screen--primary"></div>
+              <div class="dev-preview-card__screen dev-preview-card__screen--secondary"></div>
+              <div class="dev-preview-card__screen dev-preview-card__screen--tertiary"></div>
+            </div>
+            <div class="dev-preview-card__body">
+              <h3>{{ heroTitle }}</h3>
+              <p v-if="form.description.trim()">{{ form.description }}</p>
+              <div class="dev-preview-card__meta-row">
+                <strong>{{ firstTagPathSegment(1) || resourcePlatformLabel }}</strong>
+                <span class="dev-preview-card__status">{{ previewTagCount }} 个标签</span>
+              </div>
+              <div class="dev-preview-card__footer">
+                <span>by {{ resourceAuthorLabel }}</span>
+                <span class="dev-preview-card__time">根节点 · {{ resourcePlatformLabel }}</span>
               </div>
             </div>
-
-            <div class="dev-resource-homepage-editor__preview-content">
-              <div class="dev-resource-homepage-editor__preview-section-head">
-                <h4>页面内容</h4>
-                <el-icon>
-                  <Reading />
-                </el-icon>
-              </div>
-              <div v-if="previewContentHtml" ref="previewRichTextRef"
-                class="dev-resource-homepage-editor__preview-rich-text" v-html="previewContentHtml" />
-              <p v-else class="dev-resource-homepage-editor__preview-empty">
-                主页补充说明会显示在这里。可以用标题、列表、引用和链接组织内容结构。
-              </p>
-            </div>
-          </div>
+          </article>
         </el-card>
+
       </aside>
     </section>
   </div>
@@ -494,7 +639,7 @@ onBeforeUnmount(() => {
 
 .dev-resource-homepage-editor__layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.78fr);
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.5fr);
   gap: 24px;
   align-items: start;
 }
@@ -511,6 +656,13 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
+}
+
+/* 合并到一个卡片后，为第二个分区标题增加上间距与分隔线 */
+.dev-resource-homepage-editor__section-head--spaced {
+  margin-top: 30px;
+  padding-top: 28px;
+  border-top: 1px solid rgba(31, 74, 209, 0.1);
 }
 
 .dev-resource-homepage-editor__section-icon {
@@ -543,6 +695,35 @@ onBeforeUnmount(() => {
 
 .dev-resource-homepage-editor__form {
   margin-top: 18px;
+}
+
+/* 基础信息：标题 + 图标文件一行，资源简介一行 */
+.dev-resource-homepage-editor__form--inline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  grid-template-areas:
+    'title cover'
+    'description description';
+  gap: 16px;
+  row-gap: 10px;
+  align-items: start;
+}
+
+/* grid 内用 gap 控制间距，去掉表单项自身的下边距，避免资源简介上方间距过大 */
+.dev-resource-homepage-editor__form--inline > .el-form-item {
+  margin-bottom: 0;
+}
+
+.dev-resource-homepage-editor__form--inline > .el-form-item:nth-child(1) {
+  grid-area: title;
+}
+
+.dev-resource-homepage-editor__form--inline > .el-form-item:nth-child(2) {
+  grid-area: description;
+}
+
+.dev-resource-homepage-editor__form--inline > .el-form-item:nth-child(3) {
+  grid-area: cover;
 }
 
 .dev-resource-homepage-editor__file-picker {
@@ -634,6 +815,8 @@ onBeforeUnmount(() => {
 }
 
 .dev-resource-homepage-editor__preview-rich-text :deep(.rich-editor-image) {
+  display: inline-block;
+  vertical-align: middle;
   height: auto;
 }
 
@@ -765,6 +948,14 @@ onBeforeUnmount(() => {
 
   .dev-resource-homepage-editor__preview-column {
     position: static;
+  }
+
+  .dev-resource-homepage-editor__form--inline {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'title'
+      'description'
+      'cover';
   }
 
   .dev-resource-homepage-editor__section-head,

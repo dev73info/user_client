@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
+import { common, createLowlight } from 'lowlight'
 import { useRoute, useRouter } from 'vue-router'
 
 import { HttpError, apiUrl } from '@/api/http'
 import {
   createPublicMcResourceComment,
-  downloadPublicMcResourceFile,
+  downloadPublicMcResourceVersionFile,
   extractResourceFileNameFromUrl,
   getPublicMcResource,
   invalidateResourceListCache,
@@ -15,6 +16,7 @@ import {
   listPublicMcResourceVersions,
   unlikePublicMcResource,
   with73Extension,
+  type DownloadProgress,
   type PublicMcResourceCommentItem,
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
@@ -51,6 +53,18 @@ const { showToast } = useToast()
 const loading = ref(false)
 const resource = ref<PublicMcResourceItem | null>(null)
 const versions = ref<PublicMcResourceVersionItem[]>([])
+const expandedVersionIds = ref<number[]>([])
+function isVersionNoteExpanded(versionId: number): boolean {
+  return expandedVersionIds.value.includes(versionId)
+}
+function toggleVersionNote(versionId: number) {
+  const index = expandedVersionIds.value.indexOf(versionId)
+  if (index >= 0) {
+    expandedVersionIds.value.splice(index, 1)
+  } else {
+    expandedVersionIds.value.push(versionId)
+  }
+}
 const comments = ref<PublicMcResourceCommentItem[]>([])
 const commentsLoading = ref(false)
 const commentSubmitting = ref(false)
@@ -118,6 +132,24 @@ const resourceSummaryText = computed(() => {
 const visibilityLabel = computed(() =>
   resource.value?.visibility === 'published' ? '公开展示中' : '待正式发布',
 )
+const isRepost = computed(() => resource.value?.origin_type === 'repost')
+const originTypeLabel = computed(() =>
+  resource.value?.origin_type === 'repost' ? '转载' : '原创',
+)
+const repostOriginLabel = computed(() => {
+  const current = resource.value
+  if (!current || current.origin_type !== 'repost') {
+    return ''
+  }
+  const parts: string[] = []
+  if (current.origin_org) {
+    parts.push(`转载自 ${current.origin_org}`)
+  }
+  if (current.origin_author) {
+    parts.push(`原作者 ${current.origin_author}`)
+  }
+  return parts.join(' · ')
+})
 const currentRootSlug = computed(() => {
   const raw = route.params.rootSlug
   return typeof raw === 'string' ? raw.trim() : ''
@@ -213,8 +245,94 @@ const markdownRenderer = new MarkdownIt({
 })
 markdownRenderer.enable(['table'])
 
+const codeHighlighter = createLowlight(common)
+
+type HastNode =
+  | { type: 'text'; value: string }
+  | { type: 'element'; tagName: string; properties?: { className?: string[] }; children: HastNode[] }
+  | { type: 'root'; children: HastNode[] }
+
+function escapeHtmlText(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function hastToHtml(node: HastNode): string {
+  if (node.type === 'text') {
+    return escapeHtmlText(node.value)
+  }
+  if (node.type === 'root') {
+    return node.children.map(hastToHtml).join('')
+  }
+  const classAttr = node.properties?.className?.length
+    ? ` class="${node.properties.className.join(' ')}"`
+    : ''
+  const children = node.children.map(hastToHtml).join('')
+  return `<${node.tagName}${classAttr}>${children}</${node.tagName}>`
+}
+
+// 让只读富文本中的代码块与编辑器保持一致：按语言重新高亮并补充 code-block 类。
+function highlightRichCodeBlocks(html: string): string {
+  if (!html) {
+    return html
+  }
+  const template = document.createElement('template')
+  template.innerHTML = html
+  template.content.querySelectorAll<HTMLElement>('pre > code').forEach((codeElement) => {
+    const preElement = codeElement.parentElement
+    if (!preElement) {
+      return
+    }
+    preElement.classList.add('code-block')
+    const codeText = codeElement.textContent ?? ''
+    if (!codeText.trim()) {
+      return
+    }
+    const languageClass = Array.from(codeElement.classList).find((item) =>
+      /^language-[a-z0-9_-]+$/i.test(item),
+    )
+    const language = languageClass ? languageClass.slice('language-'.length) : undefined
+    try {
+      const registered =
+        language && codeHighlighter.listLanguages().includes(language.toLowerCase())
+      const root = registered
+        ? codeHighlighter.highlight(language!.toLowerCase(), codeText)
+        : codeHighlighter.highlightAuto(codeText)
+      const children = (root as { children?: HastNode[] }).children ?? []
+      const detectedLanguage = registered
+        ? language!.toLowerCase()
+        : ((root as { data?: { language?: string } }).data?.language ?? undefined)
+      // 未识别出语言时（例如纯中文文本），保留原始内容，仅应用代码块外观，避免内容被清空
+      if (children.length === 0 || !detectedLanguage) {
+        return
+      }
+      codeElement.innerHTML = hastToHtml(root as HastNode)
+      codeElement.classList.add('hljs')
+      codeElement.classList.add(`language-${detectedLanguage}`)
+    } catch {
+      // 单个代码块高亮失败时保留原始内容
+    }
+  })
+  return template.innerHTML
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+// 把富文本表格包进可横向滚动的容器，避免移动端列被压得很窄导致文字竖排。
+function wrapRichTables(html: string): string {
+  if (!html) {
+    return html
+  }
+  const template = document.createElement('template')
+  template.innerHTML = html
+  template.content.querySelectorAll('table').forEach((table) => {
+    const wrap = document.createElement('div')
+    wrap.className = 'rich-table-scroll'
+    table.parentNode?.insertBefore(wrap, table)
+    wrap.appendChild(table)
+  })
+  return template.innerHTML
 }
 
 function formatHomepageContent(value: string): string {
@@ -223,11 +341,11 @@ function formatHomepageContent(value: string): string {
     return ''
   }
 
-  if (/<\/?[a-z][\s\S]*>/i.test(trimmed)) {
-    return sanitizeRichHtml(trimmed)
-  }
+  const rendered = /<\/?[a-z][\s\S]*>/i.test(trimmed)
+    ? sanitizeRichHtml(trimmed)
+    : sanitizeRichHtml(markdownRenderer.render(trimmed))
 
-  return sanitizeRichHtml(markdownRenderer.render(trimmed))
+  return wrapRichTables(highlightRichCodeBlocks(rendered))
 }
 
 function backToPlatform() {
@@ -261,21 +379,18 @@ function formatUpdatedDate(value: string): string {
   })
 }
 
-async function triggerDownload(url: string, fileName: string) {
-  const token = auth.token?.trim() ? auth.token : null
+async function triggerDownload(
+  run: (onProgress: (progress: DownloadProgress) => void) => Promise<{ blob: Blob; fileName: string }>,
+  fileName: string,
+) {
   const downloadFileName = with73Extension(fileName)
   downloadStore.start(downloadFileName)
   try {
-    const { blob, fileName: resolvedFileName } = await downloadPublicMcResourceFile(
-      url,
-      downloadFileName,
-      token,
-      (progress) => {
-        // 注意：这里不能用 resolvedFileName（它在 await 完成前处于 TDZ），
-        // 必须使用外层已初始化的 fileName。
-        downloadStore.progress(progress.percent, progress.loaded, progress.total)
-      },
-    )
+    const { blob, fileName: resolvedFileName } = await run((progress) => {
+      // 注意：这里不能用 resolvedFileName（它在 await 完成前处于 TDZ），
+      // 必须使用外层已初始化的 fileName。
+      downloadStore.progress(progress.percent, progress.loaded, progress.total)
+    })
 
     const objectUrl = URL.createObjectURL(blob)
     try {
@@ -316,8 +431,22 @@ async function openResourceFile() {
     latestVersion.value.resource,
     resource.value?.file_name || 'download',
   )
+  const resourceId = resource.value?.id
+  if (resourceId == null) {
+    showToast('资源编号无效', 'warning')
+    return
+  }
   try {
-    await triggerDownload(latestVersion.value.resource, fileName)
+    await triggerDownload(
+      (onProgress) =>
+        downloadPublicMcResourceVersionFile(
+          resourceId,
+          latestVersion.value!.id,
+          auth.token?.trim() || null,
+          onProgress,
+        ),
+      fileName,
+    )
   } catch (error) {
     showToast(error instanceof Error ? error.message : '下载资源失败', 'warning')
   }
@@ -328,8 +457,22 @@ async function downloadVersion(version: PublicMcResourceVersionItem) {
     version.resource,
     resource.value?.file_name || 'download',
   )
+  const resourceId = resource.value?.id
+  if (resourceId == null) {
+    showToast('资源编号无效', 'warning')
+    return
+  }
   try {
-    await triggerDownload(version.resource, fileName)
+    await triggerDownload(
+      (onProgress) =>
+        downloadPublicMcResourceVersionFile(
+          resourceId,
+          version.id,
+          auth.token?.trim() || null,
+          onProgress,
+        ),
+      fileName,
+    )
   } catch (error) {
     showToast(error instanceof Error ? error.message : '下载资源失败', 'warning')
   }
@@ -597,7 +740,11 @@ watch(
 
             <div class="resource-detail-page__summary-card">
               <div class="resource-detail-page__headline-row">
-                <span class="resource-detail-page__status-pill">{{ visibilityLabel }}</span>
+                <div class="resource-detail-page__headline-left">
+                  <span class="resource-detail-page__status-pill">{{ visibilityLabel }}</span>
+                  <span class="resource-detail-page__repost-badge"
+                    :class="{ 'is-repost': isRepost }">{{ originTypeLabel }}</span>
+                </div>
                 <span class="resource-detail-page__headline-right">
                   <router-link
                     v-if="resource.author"
@@ -622,6 +769,13 @@ watch(
               </div>
             <div class="resource-detail-page__identity-block">
               <h1 class="resource-detail-page__title">{{ resource.title }}</h1>
+              <div v-if="isRepost" class="resource-detail-page__repost-meta">
+                <a v-if="resource.origin_url" :href="resource.origin_url" target="_blank"
+                  rel="nofollow noopener" class="resource-detail-page__repost-origin">
+                  {{ repostOriginLabel || '查看原始出处' }}
+                </a>
+                <span v-else class="resource-detail-page__repost-origin">{{ repostOriginLabel }}</span>
+              </div>
               <p class="resource-detail-page__summary">
                 {{ resourceSummaryText || '当前资源暂无简介。' }}
               </p>
@@ -678,14 +832,23 @@ watch(
                     <strong>{{ version.version }}</strong>
                     <span>{{ formatVersionTime(version.created_at) }}</span>
                   </div>
+                </div>
+                <button v-if="version.note" class="resource-detail-page__version-note-toggle" type="button"
+                  @click="toggleVersionNote(version.id)">
+                  {{ isVersionNoteExpanded(version.id) ? '收起' : '展开' }}
+                </button>
+                <div class="resource-detail-page__version-note-wrap">
+                  <p v-if="version.note" class="resource-detail-page__version-note"
+                    :class="{ 'is-collapsed': !isVersionNoteExpanded(version.id) }"
+                    v-html="formatHomepageContent(version.note)"></p>
+                  <p v-else class="resource-detail-page__paragraph">当前版本暂无补充说明。</p>
+                </div>
+                <div class="resource-detail-page__version-actions">
                   <button class="resource-detail-page__version-download" type="button"
                     :disabled="downloadStore.state.active" @click="downloadVersion(version)">
                     {{ downloadStore.state.active && downloadStore.state.fileName === with73Extension(extractResourceFileNameFromUrl(version.resource, resource.file_name || 'download')) ? `下载中 ${downloadStore.state.percent}%` : '下载' }}
                   </button>
                 </div>
-                <p class="resource-detail-page__paragraph">
-                  {{ version.note || '当前版本暂无补充说明。' }}
-                </p>
               </article>
             </div>
             <p v-else class="resource-detail-page__paragraph">当前还没有可展示的历史版本。</p>
@@ -940,6 +1103,48 @@ watch(
   overflow-wrap: anywhere;
 }
 
+.resource-detail-page__repost-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__headline-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__repost-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+}
+
+.resource-detail-page__repost-badge.is-repost {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.resource-detail-page__repost-origin {
+  color: #6366f1;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+a.resource-detail-page__repost-origin:hover {
+  text-decoration: underline;
+}
+
 .resource-detail-page__meta,
 .resource-detail-page__summary,
 .resource-detail-page__paragraph,
@@ -1097,6 +1302,13 @@ watch(
   font-weight: 700;
 }
 
+.resource-detail-page__version-download {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
 .resource-detail-page__like-btn {
   display: inline-flex;
   align-items: center;
@@ -1163,8 +1375,22 @@ watch(
 
 .resource-detail-page__content-flow {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 16px;
+}
+
+/* 文本块级元素占满整行；行内媒体（如 badge 图片）可并排同行 */
+.resource-detail-page__rich-text :deep(p),
+.resource-detail-page__rich-text :deep(h2),
+.resource-detail-page__rich-text :deep(h3),
+.resource-detail-page__rich-text :deep(h4),
+.resource-detail-page__rich-text :deep(ul),
+.resource-detail-page__rich-text :deep(ol),
+.resource-detail-page__rich-text :deep(blockquote),
+.resource-detail-page__rich-text :deep(pre),
+.resource-detail-page__rich-text :deep(hr),
+.resource-detail-page__rich-text :deep(table) {
+  flex: 0 0 100%;
 }
 
 .resource-detail-page__rich-text :deep(h2) {
@@ -1214,14 +1440,16 @@ watch(
 }
 
 .resource-detail-page__rich-text :deep(.rich-editor-image) {
+  display: inline-block;
+  vertical-align: middle;
   height: auto;
 }
 
 .resource-detail-page__rich-text :deep(img) {
-  display: block;
+  display: inline-block;
+  vertical-align: middle;
   max-width: 100%;
   height: auto;
-  align-self: flex-start;
 }
 
 .resource-detail-page__rich-text :deep(.rich-editor-video) {
@@ -1245,11 +1473,139 @@ watch(
 }
 
 .resource-detail-page__rich-text :deep(pre) {
+  --rich-code-accent: #64748b;
+  --rich-code-label: 'CODE';
+  position: relative;
+  overflow: auto;
   margin: 0 0 12px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.92);
-  overflow-x: auto;
+  padding: 38px 16px 14px;
+  border: 1px solid rgba(30, 41, 59, 0.88);
+  border-left: 4px solid var(--rich-code-accent);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.045), transparent 42%),
+    #0f172a;
+  color: #e2e8f0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.resource-detail-page__rich-text :deep(pre)::before {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--rich-code-accent) 54%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rich-code-accent) 18%, rgba(15, 23, 42, 0.86));
+  color: #f8fafc;
+  content: var(--rich-code-label);
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: 0;
+  pointer-events: none;
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-json)) {
+  --rich-code-accent: #f97316;
+  --rich-code-label: 'JSON';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-rust)),
+.resource-detail-page__rich-text :deep(pre:has(code.language-rs)) {
+  --rich-code-accent: #d97706;
+  --rich-code-label: 'RUST';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-cpp)),
+.resource-detail-page__rich-text :deep(pre:has(code.language-cxx)),
+.resource-detail-page__rich-text :deep(pre:has(code.language-cc)) {
+  --rich-code-accent: #38bdf8;
+  --rich-code-label: 'C++';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-c)) {
+  --rich-code-accent: #94a3b8;
+  --rich-code-label: 'C';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-csharp)),
+.resource-detail-page__rich-text :deep(pre:has(code.language-cs)) {
+  --rich-code-accent: #8b5cf6;
+  --rich-code-label: 'C#';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-java)) {
+  --rich-code-accent: #ef4444;
+  --rich-code-label: 'JAVA';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-javascript)),
+.resource-detail-page__rich-text :deep(pre:has(code.language-js)) {
+  --rich-code-accent: #facc15;
+  --rich-code-label: 'JS';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-typescript)),
+.resource-detail-page__rich-text :deep(pre:has(code.language-ts)) {
+  --rich-code-accent: #3b82f6;
+  --rich-code-label: 'TS';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-python)),
+.resource-detail-page__rich-text :deep(pre:has(code.language-py)) {
+  --rich-code-accent: #22c55e;
+  --rich-code-label: 'PYTHON';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-go)),
+.resource-detail-page__rich-text :deep(pre:has(code.language-golang)) {
+  --rich-code-accent: #06b6d4;
+  --rich-code-label: 'GO';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-sql)) {
+  --rich-code-accent: #a78bfa;
+  --rich-code-label: 'SQL';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-shell)),
+.resource-detail-page__rich-text :deep(pre:has(code.language-bash)),
+.resource-detail-page__rich-text :deep(pre:has(code.language-sh)),
+.resource-detail-page__rich-text :deep(pre:has(code.language-zsh)) {
+  --rich-code-accent: #10b981;
+  --rich-code-label: 'SHELL';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-html)) {
+  --rich-code-accent: #fb7185;
+  --rich-code-label: 'HTML';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-css)) {
+  --rich-code-accent: #60a5fa;
+  --rich-code-label: 'CSS';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-xml)) {
+  --rich-code-accent: #f472b6;
+  --rich-code-label: 'XML';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-yaml)),
+.resource-detail-page__rich-text :deep(pre:has(code.language-yml)) {
+  --rich-code-accent: #f59e0b;
+  --rich-code-label: 'YAML';
+}
+
+.resource-detail-page__rich-text :deep(pre:has(code.language-md)),
+.resource-detail-page__rich-text :deep(pre:has(code.language-markdown)) {
+  --rich-code-accent: #2563eb;
+  --rich-code-label: 'MD';
 }
 
 .resource-detail-page__rich-text :deep(code) {
@@ -1257,7 +1613,85 @@ watch(
 }
 
 .resource-detail-page__rich-text :deep(pre code) {
-  color: #e2e8f0;
+  display: block;
+  min-width: max-content;
+  color: inherit;
+  line-height: 1.75;
+  tab-size: 4;
+}
+
+.resource-detail-page__rich-text :deep(pre .hljs-comment),
+.resource-detail-page__rich-text :deep(pre .hljs-quote) {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.resource-detail-page__rich-text :deep(pre .hljs-doctag),
+.resource-detail-page__rich-text :deep(pre .hljs-keyword),
+.resource-detail-page__rich-text :deep(pre .hljs-meta .hljs-keyword),
+.resource-detail-page__rich-text :deep(pre .hljs-template-tag),
+.resource-detail-page__rich-text :deep(pre .hljs-template-variable) {
+  color: #f472b6;
+  font-weight: 800;
+}
+
+.resource-detail-page__rich-text :deep(pre .hljs-attr),
+.resource-detail-page__rich-text :deep(pre .hljs-attribute),
+.resource-detail-page__rich-text :deep(pre .hljs-property),
+.resource-detail-page__rich-text :deep(pre .hljs-variable) {
+  color: #7dd3fc;
+}
+
+.resource-detail-page__rich-text :deep(pre .hljs-string),
+.resource-detail-page__rich-text :deep(pre .hljs-regexp) {
+  color: #86efac;
+}
+
+.resource-detail-page__rich-text :deep(pre .hljs-number),
+.resource-detail-page__rich-text :deep(pre .hljs-literal),
+.resource-detail-page__rich-text :deep(pre .hljs-symbol),
+.resource-detail-page__rich-text :deep(pre .hljs-bullet) {
+  color: #fbbf24;
+}
+
+.resource-detail-page__rich-text :deep(pre .hljs-built_in),
+.resource-detail-page__rich-text :deep(pre .hljs-class .hljs-title),
+.resource-detail-page__rich-text :deep(pre .hljs-title.class_),
+.resource-detail-page__rich-text :deep(pre .hljs-type) {
+  color: #67e8f9;
+  font-weight: 700;
+}
+
+.resource-detail-page__rich-text :deep(pre .hljs-function .hljs-title),
+.resource-detail-page__rich-text :deep(pre .hljs-title.function_),
+.resource-detail-page__rich-text :deep(pre .hljs-title) {
+  color: #93c5fd;
+  font-weight: 700;
+}
+
+.resource-detail-page__rich-text :deep(pre .hljs-meta),
+.resource-detail-page__rich-text :deep(pre .hljs-section),
+.resource-detail-page__rich-text :deep(pre .hljs-selector-tag),
+.resource-detail-page__rich-text :deep(pre .hljs-tag),
+.resource-detail-page__rich-text :deep(pre .hljs-name) {
+  color: #fb7185;
+}
+
+.resource-detail-page__rich-text :deep(pre .hljs-link),
+.resource-detail-page__rich-text :deep(pre .hljs-operator),
+.resource-detail-page__rich-text :deep(pre .hljs-params),
+.resource-detail-page__rich-text :deep(pre .hljs-subst) {
+  color: #cbd5e1;
+}
+
+.resource-detail-page__rich-text :deep(pre .hljs-addition) {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.resource-detail-page__rich-text :deep(pre .hljs-deletion) {
+  color: #fda4af;
+  background: rgba(244, 63, 94, 0.12);
 }
 
 .resource-detail-page__rich-text :deep(hr) {
@@ -1266,10 +1700,23 @@ watch(
   border-top: 1px solid rgba(226, 232, 240, 0.9);
 }
 
+.resource-detail-page__rich-text :deep(.rich-table-scroll) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 0 14px;
+  max-width: 100%;
+}
+
 .resource-detail-page__rich-text :deep(table) {
   width: 100%;
   border-collapse: collapse;
   margin: 0 0 14px;
+}
+
+.resource-detail-page__rich-text :deep(.rich-table-scroll > table) {
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
 }
 
 .resource-detail-page__rich-text :deep(th),
@@ -1296,7 +1743,84 @@ watch(
 
 .resource-detail-page__version-card {
   border-radius: 18px;
-  padding: 18px;
+  padding: 18px 18px 5px;
+}
+
+.resource-detail-page__version-note-wrap {
+  margin-top: 4px;
+}
+
+.resource-detail-page__version-note {
+  margin: 0;
+  color: #334155;
+  line-height: 1.8;
+}
+
+.resource-detail-page__version-note :deep(p),
+.resource-detail-page__version-note :deep(ul),
+.resource-detail-page__version-note :deep(ol),
+.resource-detail-page__version-note :deep(blockquote) {
+  color: #334155;
+  line-height: 1.8;
+  margin: 8px 0;
+}
+
+.resource-detail-page__version-note :deep(p:first-child),
+.resource-detail-page__version-note :deep(ul:first-child),
+.resource-detail-page__version-note :deep(ol:first-child),
+.resource-detail-page__version-note :deep(blockquote:first-child) {
+  margin-top: 0;
+}
+
+.resource-detail-page__version-note :deep(p:last-child),
+.resource-detail-page__version-note :deep(ul:last-child),
+.resource-detail-page__version-note :deep(ol:last-child),
+.resource-detail-page__version-note :deep(blockquote:last-child) {
+  margin-bottom: 0;
+}
+
+.resource-detail-page__version-note :deep(code) {
+  color: #0f172a;
+}
+
+.resource-detail-page__version-note.is-collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.resource-detail-page__version-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(219, 229, 247, 0.78);
+}
+
+.resource-detail-page__version-note-toggle {
+  position: sticky;
+  top: 8px;
+  float: right;
+  margin: -25px 0 8px 12px;
+  padding: 4px 14px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.09);
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+  z-index: 2;
+}
+
+.resource-detail-page__version-note-toggle:hover {
+  background: rgba(100, 116, 139, 0.18);
 }
 
 .resource-detail-page__version-meta strong {

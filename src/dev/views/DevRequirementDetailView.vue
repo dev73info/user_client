@@ -52,6 +52,11 @@ const bindForm = reactive({
 const initForm = reactive({
     title: '',
     author: '',
+    originType: 'original' as 'original' | 'repost',
+    originAuthor: '',
+    originUrl: '',
+    originOrg: '',
+    originNote: '',
 })
 
 const selectedTagIdsByGroup = reactive<Record<number, number[]>>({})
@@ -544,6 +549,11 @@ async function submitBinding() {
                 return
             }
 
+            if (initForm.originType === 'repost' && !initForm.originUrl.trim()) {
+                showToast('转载资源必须填写原始出处链接', 'warning')
+                return
+            }
+
             const created = await createMcResource(auth.token, {
                 platform: currentPlatform.value,
                 title: initForm.title.trim(),
@@ -556,6 +566,11 @@ async function submitBinding() {
                 docs_url: null,
                 visibility: 'draft',
                 release_note: null,
+                origin_type: initForm.originType,
+                origin_author: initForm.originAuthor.trim() || null,
+                origin_url: initForm.originUrl.trim() || null,
+                origin_org: initForm.originOrg.trim() || null,
+                origin_note: initForm.originNote.trim() || null,
             })
 
             resourceId = created.id
@@ -702,6 +717,33 @@ async function submitBinding() {
                                         <el-input v-model="initForm.author" maxlength="100" placeholder="默认使用当前开发者账号"
                                             @input="handleInitFieldChange" />
                                     </el-form-item>
+
+                                    <el-form-item label="类型">
+                                        <el-select v-model="initForm.originType" style="width: 100%"
+                                            @change="handleInitFieldChange">
+                                            <el-option label="原创" value="original" />
+                                            <el-option label="转载" value="repost" />
+                                        </el-select>
+                                    </el-form-item>
+
+                                    <template v-if="initForm.originType === 'repost'">
+                                        <el-form-item label="原作者">
+                                            <el-input v-model="initForm.originAuthor" maxlength="80"
+                                                placeholder="原始资源的作者" @input="handleInitFieldChange" />
+                                        </el-form-item>
+                                        <el-form-item label="原始出处链接" required>
+                                            <el-input v-model="initForm.originUrl" maxlength="500"
+                                                placeholder="原始出处 URL，例如原贴/来源页" @input="handleInitFieldChange" />
+                                        </el-form-item>
+                                        <el-form-item label="来源站点">
+                                            <el-input v-model="initForm.originOrg" maxlength="80"
+                                                placeholder="例如：苦力怕论坛、CurseForge" @input="handleInitFieldChange" />
+                                        </el-form-item>
+                                        <el-form-item label="转载说明 / 授权">
+                                            <el-input v-model="initForm.originNote" maxlength="500"
+                                                placeholder="授权情况、转载说明等（可选）" @input="handleInitFieldChange" />
+                                        </el-form-item>
+                                    </template>
                                 </div>
 
                                 <section v-if="rootTabs.length > 0" class="dev-requirement-hall__catalog-block">

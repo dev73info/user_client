@@ -193,15 +193,37 @@ async function send() {
   }
 }
 
+async function syncActiveConversation() {
+  if (!auth.token || activeConversationId.value === null) return
+  try {
+    const detail = await getSupportConversationDetail(auth.token, activeConversationId.value)
+    if (activeConversationId.value === detail.conversation.id) {
+      setMessages(detail.messages)
+    }
+  } catch {
+    // 忽略，下次重连会再同步
+  }
+}
+
 function connectWs() {
   if (!auth.token) return
   ws = new WebSocket(supportConversationWsUrl(auth.token))
   ws.onopen = () => {
     connected.value = true
+    // 连接建立后确保已加载当前会话，客户端才能实时收到客服的新消息
+    if (activeConversationId.value === null) {
+      void ensureConversation()
+    } else {
+      void syncActiveConversation()
+    }
   }
   ws.onmessage = (ev) => {
     try {
       const detail = JSON.parse(ev.data) as SupportConversationDetail
+      // 若客户尚未加载任何会话，先接管后端推来的会话，避免推送被丢弃
+      if (activeConversationId.value === null) {
+        activeConversationId.value = detail.conversation.id
+      }
       if (activeConversationId.value === detail.conversation.id) {
         setMessages(detail.messages)
         // 用户正在查看该会话：有新消息时实时标记已读，客服端才能显示“已读”

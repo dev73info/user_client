@@ -33,6 +33,11 @@ export type CreateMcResourceRequest = {
   release_note?: string | null
   ownership_type?: 'individual' | 'team' | null
   team_id?: number | null
+  origin_type?: 'original' | 'repost' | null
+  origin_author?: string | null
+  origin_url?: string | null
+  origin_org?: string | null
+  origin_note?: string | null
 }
 
 export type McResourcePayload = {
@@ -55,6 +60,11 @@ export type McResourcePayload = {
   docs_url: string | null
   visibility: McResourceVisibility
   release_note: string | null
+  origin_type: 'original' | 'repost'
+  origin_author: string | null
+  origin_url: string | null
+  origin_org: string | null
+  origin_note: string | null
   created_at: string
   updated_at: string
 }
@@ -68,6 +78,7 @@ export type CreateMcResourceVersionRequest = {
 export type UpdateMcResourceVersionRequest = {
   version: string
   note?: string | null
+  file?: File
 }
 
 export type McResourceVersionPayload = {
@@ -88,11 +99,17 @@ export type UpdateMcResourceHomepageRequest = {
   title: string
   author: string
   description: string
+  tag_selections?: CreateMcResourceTagSelection[]
   cover_url?: string | null
   docs_url?: string | null
   visibility?: McResourceVisibility
   release_note?: string | null
   ownership_type?: 'individual' | 'team' | null
+  origin_type?: 'original' | 'repost' | null
+  origin_author?: string | null
+  origin_url?: string | null
+  origin_org?: string | null
+  origin_note?: string | null
 }
 
 export async function createMcResource(
@@ -199,6 +216,26 @@ export async function updateMcResourceVersion(
   versionId: number,
   payload: UpdateMcResourceVersionRequest,
 ): Promise<McResourceVersionPayload> {
+  if (payload.file) {
+    const formData = new FormData()
+    formData.append('version', payload.version)
+    if (payload.note?.trim()) {
+      formData.append('note', payload.note.trim())
+    }
+    formData.append('file', payload.file)
+    return requestJson<McResourceVersionPayload>(
+      `/dev/resources/resources/${resourceId}/versions/${versionId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          ...authHeader(token),
+        },
+        body: formData,
+      },
+      '更新版本失败',
+    )
+  }
+
   return requestJson<McResourceVersionPayload>(
     `/dev/resources/resources/${resourceId}/versions/${versionId}`,
     {

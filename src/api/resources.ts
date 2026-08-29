@@ -39,6 +39,8 @@ export type PublicMcResourceItem = {
   created_at: string
   updated_at: string
   like_count: number
+  download_count: number
+  view_count: number
   creator_credit_score?: number | null
   creator_username_gradient?: boolean
   author_username_gradient?: boolean
@@ -50,6 +52,11 @@ export type PublicMcResourceItem = {
   ownership_type: string
   team_id: number | null
   team_name: string | null
+  origin_type: 'original' | 'repost'
+  origin_author: string | null
+  origin_url: string | null
+  origin_org: string | null
+  origin_note: string | null
 }
 
 export type PublicMcResourceVersionItem = {
@@ -349,4 +356,19 @@ export async function downloadPublicMcResourceFile(
     blob,
     fileName: getResponseFileName(response, fallbackFileName),
   }
+}
+
+// 通过版本下载接口下载资源文件，后端会累计下载量。
+export async function downloadPublicMcResourceVersionFile(
+  resourceId: number,
+  versionId: number,
+  token?: string | null,
+  onProgress?: (progress: DownloadProgress) => void,
+): Promise<{ blob: Blob; fileName: string }> {
+  return downloadPublicMcResourceFile(
+    `/resource/resources/${resourceId}/versions/${versionId}/download`,
+    'download',
+    token,
+    onProgress,
+  )
 }

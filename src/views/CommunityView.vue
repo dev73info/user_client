@@ -86,6 +86,11 @@ const postForm = reactive({
   title: '',
   tag_names: [] as string[],
   content_html: '',
+  origin_type: 'original' as 'original' | 'repost',
+  origin_author: '',
+  origin_url: '',
+  origin_org: '',
+  origin_note: '',
 })
 
 const currentPostContent = computed(() =>
@@ -259,6 +264,21 @@ function postStatusText(status: CommunityPost['status']): string {
     rejected: '已驳回',
   }
   return map[status]
+}
+
+function isRepostPost(post: CommunityPost): boolean {
+  return post.origin_type === 'repost'
+}
+
+function repostLabel(post: CommunityPost): string {
+  const parts: string[] = []
+  if (post.origin_org) {
+    parts.push(`转载自 ${post.origin_org}`)
+  }
+  if (post.origin_author) {
+    parts.push(`原作者 ${post.origin_author}`)
+  }
+  return parts.join(' · ')
 }
 
 function routePostId(): number | null {
@@ -594,6 +614,11 @@ function resetComposer() {
   postForm.title = ''
   postForm.tag_names = selectedTag.value ? [selectedTag.value] : []
   postForm.content_html = ''
+  postForm.origin_type = 'original'
+  postForm.origin_author = ''
+  postForm.origin_url = ''
+  postForm.origin_org = ''
+  postForm.origin_note = ''
 }
 
 async function openCreateComposer() {
@@ -618,6 +643,11 @@ async function openEditComposer(post: CommunityPost) {
     postForm.title = detail.title
     postForm.tag_names = detail.tags.map((tag) => tag.name)
     postForm.content_html = sanitizeRichHtmlForEditing(detail.content_html)
+    postForm.origin_type = detail.origin_type
+    postForm.origin_author = detail.origin_author ?? ''
+    postForm.origin_url = detail.origin_url ?? ''
+    postForm.origin_org = detail.origin_org ?? ''
+    postForm.origin_note = detail.origin_note ?? ''
     composerVisible.value = true
   } catch (error) {
     showToast(error instanceof Error ? error.message : '加载帖子详情失败', 'error')
@@ -642,6 +672,11 @@ async function submitPost() {
     }
   }
 
+  if (postForm.origin_type === 'repost' && !postForm.origin_url.trim()) {
+    showToast('转载帖子必须填写原始出处链接', 'warning')
+    return
+  }
+
   savingPost.value = true
   try {
     const editingId = editingPost.value?.id
@@ -649,6 +684,11 @@ async function submitPost() {
       title: postForm.title.trim(),
       tag_names: postForm.tag_names.map((tag) => tag.trim()).filter(Boolean),
       content_html: sanitizeRichHtml(postForm.content_html),
+      origin_type: postForm.origin_type,
+      origin_author: postForm.origin_author.trim() || null,
+      origin_url: postForm.origin_url.trim() || null,
+      origin_org: postForm.origin_org.trim() || null,
+      origin_note: postForm.origin_note.trim() || null,
     }
     const saved =
       isEditing && editingId
@@ -967,8 +1007,10 @@ async function toggleCommentLike(comment: CommunityComment) {
                 </p>
               </div>
               <div class="community-post-card__badges">
-                <span class="community-status-badge" :class="`is-${post.status}`">{{ postStatusText(post.status)
-                  }}</span>
+                <span v-if="post.status !== 'published'" class="community-status-badge"
+                  :class="`is-${post.status}`">{{ postStatusText(post.status) }}</span>
+                <span class="community-repost-badge"
+                  :class="{ 'is-repost': isRepostPost(post) }">{{ isRepostPost(post) ? '转载' : '原创' }}</span>
                 <span>{{ post.like_count }} 赞</span>
               </div>
             </div>
@@ -1024,6 +1066,26 @@ async function toggleCommentLike(comment: CommunityComment) {
                 <el-option v-for="tag in tagOptions" :key="tag" :label="tag" :value="tag" />
               </el-select>
             </el-form-item>
+            <el-form-item label="类型">
+              <el-select v-model="postForm.origin_type" style="width: 100%">
+                <el-option label="原创" value="original" />
+                <el-option label="转载" value="repost" />
+              </el-select>
+            </el-form-item>
+            <template v-if="postForm.origin_type === 'repost'">
+              <el-form-item label="原作者">
+                <el-input v-model="postForm.origin_author" maxlength="80" placeholder="原始内容的作者" />
+              </el-form-item>
+              <el-form-item label="原始出处链接" required>
+                <el-input v-model="postForm.origin_url" maxlength="500" placeholder="转载内容的原始出处 URL" />
+              </el-form-item>
+              <el-form-item label="来源站点">
+                <el-input v-model="postForm.origin_org" maxlength="80" placeholder="例如：苦力怕论坛、CurseForge" />
+              </el-form-item>
+              <el-form-item label="转载说明 / 授权">
+                <el-input v-model="postForm.origin_note" maxlength="500" placeholder="授权情况、转载说明等（可选）" />
+              </el-form-item>
+            </template>
           </el-form>
 
           <RichTextEditor v-model="postForm.content_html" :floating-toolbar-top="86" @notify="showToast" />
@@ -1061,10 +1123,17 @@ async function toggleCommentLike(comment: CommunityComment) {
               <div class="community-detail__meta">
                 <div class="community-detail__author">
                   <strong :class="{ 'username-gradient': selectedPost.author_username_gradient && !selectedPost.author_username_color }" :style="selectedPost.author_username_color ? { color: selectedPost.author_username_color } : {}">{{ selectedPost.author }}</strong>
+                  <span class="community-repost-badge"
+                    :class="{ 'is-repost': isRepostPost(selectedPost) }">{{ isRepostPost(selectedPost) ? '转载' : '原创' }}</span>
                 </div>
                 <p class="community-detail__post-time">
                   发布于 {{ selectedPost.published_at }} · 更新 {{ selectedPost.updated_at }}
                 </p>
+                <div v-if="isRepostPost(selectedPost)" class="community-detail__repost">
+                  <a v-if="selectedPost.origin_url" :href="selectedPost.origin_url" target="_blank"
+                    rel="nofollow noopener">{{ repostLabel(selectedPost) || '查看原始出处' }}</a>
+                  <span v-else>{{ repostLabel(selectedPost) }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1326,6 +1395,12 @@ async function toggleCommentLike(comment: CommunityComment) {
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 2px;
+}
+
+.community-detail__header .community-detail__author {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .community-detail__header .community-detail__author strong {
@@ -1662,6 +1737,53 @@ async function toggleCommentLike(comment: CommunityComment) {
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.community-repost-badge {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 22px;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.community-repost-badge.is-repost {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+/* 卡片内标签覆盖 .community-post-card__head span 的蓝色，保持靛蓝 */
+.community-post-card__badges .community-repost-badge {
+  color: #4f46e5;
+}
+
+.community-post-card__badges .community-repost-badge.is-repost {
+  color: #b45309;
+}
+
+.community-detail__repost {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.community-detail__repost a {
+  color: #6366f1;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.community-detail__repost a:hover {
+  text-decoration: underline;
 }
 
 .community-status-badge {

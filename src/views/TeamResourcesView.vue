@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowDown } from '@element-plus/icons-vue'
 
@@ -7,6 +7,8 @@ import { apiUrl } from '@/api/http'
 import {
   listTeamResources,
   deleteMcResource,
+  createMcResourceVersion,
+  updateMcResourceHomepage,
   type McResourcePayload,
 } from '@dev/api/mcResources'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
@@ -18,7 +20,20 @@ const router = useRouter()
 const isLoading = ref(false)
 const deletingResourceId = ref<number | null>(null)
 const resources = ref<McResourcePayload[]>([])
+const publishingResourceId = ref<number | null>(null)
+const settingPrivateResourceId = ref<number | null>(null)
+const requestingReviewResourceId = ref<number | null>(null)
+const publishDialogVisible = ref(false)
+const versionFileInput = ref<HTMLInputElement | null>(null)
+const selectedVersionFile = ref<File | null>(null)
+const selectedVersionFileName = ref('')
+const selectedResource = ref<McResourcePayload | null>(null)
 const { showToast } = useToast()
+
+const versionForm = reactive({
+  version: '',
+  note: '',
+})
 
 const emptyText = computed(() => {
   if (isLoading.value) {
@@ -71,13 +86,6 @@ function visibilityTagType(value: McResourcePayload['visibility']): 'success' | 
   return 'info'
 }
 
-function ownershipText(value: McResourcePayload['ownership_type']): string {
-  return value === 'team' ? '团队项目' : '个人项目'
-}
-
-function ownershipTagType(value: McResourcePayload['ownership_type']): 'primary' | 'info' {
-  return value === 'team' ? 'primary' : 'info'
-}
 
 function tagSummary(resource: McResourcePayload): string {
   return resource.tag_selections.flatMap((group) => group.tag_names).join(' / ')
@@ -145,9 +153,141 @@ function openResourceHomepage(resource: McResourcePayload) {
   })
 }
 
+function openPublishVersionDialog(resource: McResourcePayload) {
+  selectedResource.value = resource
+  versionForm.version = ''
+  versionForm.note = ''
+  selectedVersionFile.value = null
+  selectedVersionFileName.value = ''
+  if (versionFileInput.value) {
+    versionFileInput.value.value = ''
+  }
+  publishDialogVisible.value = true
+}
+
+function triggerVersionFileSelect() {
+  versionFileInput.value?.click()
+}
+
+function handleVersionFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
+  selectedVersionFile.value = file
+  selectedVersionFileName.value = file?.name ?? ''
+}
+
+async function submitVersion() {
+  if (!auth.token || !selectedResource.value) {
+    showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+
+  if (!versionForm.version.trim()) {
+    showToast('请填写版本号', 'warning')
+    return
+  }
+
+  if (!selectedVersionFile.value) {
+    showToast('请选择资源文件', 'warning')
+    return
+  }
+
+  publishingResourceId.value = selectedResource.value.id
+  try {
+    await createMcResourceVersion(auth.token, selectedResource.value.id, {
+      version: versionForm.version.trim(),
+      file: selectedVersionFile.value,
+      note: versionForm.note.trim() || null,
+    })
+    publishDialogVisible.value = false
+    selectedVersionFile.value = null
+    selectedVersionFileName.value = ''
+    showToast('新版本已发布', 'success')
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '发布新版本失败'
+    showToast(message, 'error')
+  } finally {
+    publishingResourceId.value = null
+  }
+}
+
+async function setResourcePrivate(resource: McResourcePayload) {
+  if (!auth.token) {
+    showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+
+  settingPrivateResourceId.value = resource.id
+  try {
+    await updateMcResourceHomepage(auth.token, resource.id, {
+      title: resource.title,
+      author: resource.author,
+      description: resource.description,
+      cover_url: resource.cover_url,
+      docs_url: resource.docs_url,
+      visibility: 'draft',
+      release_note: resource.release_note,
+    })
+    showToast('资源已设为私有', 'success')
+    await loadResources()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '设为私有失败'
+    showToast(message, 'error')
+  } finally {
+    settingPrivateResourceId.value = null
+  }
+}
+
+async function requestPublicReview(resource: McResourcePayload) {
+  if (!auth.token) {
+    showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+
+  if (resource.requirement_id) {
+    showToast('已关联需求的资源不能申请公开审核', 'warning')
+    return
+  }
+
+  requestingReviewResourceId.value = resource.id
+  try {
+    await updateMcResourceHomepage(auth.token, resource.id, {
+      title: resource.title,
+      author: resource.author,
+      description: resource.description,
+      cover_url: resource.cover_url,
+      docs_url: resource.docs_url,
+      visibility: 'review',
+      release_note: resource.release_note,
+    })
+    showToast('公开申请已提交，等待管理员审核', 'success')
+    await loadResources()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '提交公开审核失败'
+    showToast(message, 'error')
+  } finally {
+    requestingReviewResourceId.value = null
+  }
+}
+
 function handleResourceCommand(payload: { action: string; resource: McResourcePayload }) {
+  if (payload.action === 'request-review') {
+    void requestPublicReview(payload.resource)
+    return
+  }
+
   if (payload.action === 'view') {
     openResourceHomepage(payload.resource)
+    return
+  }
+
+  if (payload.action === 'publish') {
+    openPublishVersionDialog(payload.resource)
+    return
+  }
+
+  if (payload.action === 'set-private') {
+    void setResourcePrivate(payload.resource)
     return
   }
 
@@ -157,12 +297,20 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
   }
 
   if (payload.action === 'versions') {
-    router.push({ name: 'dev-resource-versions', params: { resourceId: payload.resource.id } })
+    router.push({
+      name: 'dev-resource-versions',
+      params: { resourceId: payload.resource.id },
+      query: { from: 'team-resources' },
+    })
     return
   }
 
   if (payload.action === 'edit') {
-    router.push({ name: 'dev-resource-homepage-edit', params: { resourceId: payload.resource.id } })
+    router.push({
+      name: 'dev-resource-homepage-edit',
+      params: { resourceId: payload.resource.id },
+      query: { from: 'team-resources' },
+    })
     return
   }
 }
@@ -174,7 +322,6 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
       <div class="dev-upload-section__head">
         <section>
           <h3 class="dev-section-title">团队资源项目</h3>
-          <p class="dev-section-desc">管理并查看你所在团队共享的所有资源项目。</p>
         </section>
         <button class="dev-resource-list__create-btn" type="button" @click="goCreate">
           + 新建团队资源
@@ -182,7 +329,7 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
       </div>
 
       <el-table :data="resources" stripe v-loading="isLoading" class="dev-resource-table" :empty-text="emptyText">
-        <el-table-column label="资源" min-width="260">
+        <el-table-column label="资源" min-width="160">
           <template #default="scope">
             <div class="dev-resource-table__title-cell">
               <img v-if="scope.row.cover_url" :src="resourceCoverUrl(scope.row)" alt="资源图标"
@@ -198,23 +345,20 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="标签" min-width="260">
+        <el-table-column label="标签" min-width="120">
           <template #default="scope">
             <span class="dev-resource-table__tags">{{ tagSummary(scope.row) || '未附带标签' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="180">
+        <el-table-column label="状态" min-width="110">
           <template #default="scope">
             <el-tag :type="visibilityTagType(scope.row.visibility)" effect="plain">
               {{ visibilityText(scope.row.visibility) }}
             </el-tag>
-            <el-tag :type="ownershipTagType(scope.row.ownership_type)" effect="plain" class="ml-2">
-              {{ ownershipText(scope.row.ownership_type) }}
-            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" min-width="180" />
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column prop="created_at" label="创建时间" min-width="150" />
+        <el-table-column label="操作" min-width="120" fixed="right">
           <template #default="scope">
             <el-dropdown trigger="click" popper-class="dev-resource-action-menu" @command="handleResourceCommand">
               <el-button type="primary" plain class="dev-resource-table__action-button">
@@ -226,6 +370,17 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item :command="{ action: 'view', resource: scope.row }">查看前台页面</el-dropdown-item>
+                  <el-dropdown-item :command="{ action: 'publish', resource: scope.row }">发布版本</el-dropdown-item>
+                  <el-dropdown-item v-if="scope.row.visibility === 'draft'"
+                    :disabled="Boolean(scope.row.requirement_id) || requestingReviewResourceId === scope.row.id"
+                    :command="{ action: 'request-review', resource: scope.row }">
+                    {{ requestingReviewResourceId === scope.row.id ? '提交中...' : '申请公开' }}
+                  </el-dropdown-item>
+                  <el-dropdown-item v-if="scope.row.visibility === 'published'"
+                    :disabled="settingPrivateResourceId === scope.row.id"
+                    :command="{ action: 'set-private', resource: scope.row }">
+                    {{ settingPrivateResourceId === scope.row.id ? '设置中...' : '设为私有' }}
+                  </el-dropdown-item>
                   <el-dropdown-item :command="{ action: 'versions', resource: scope.row }">版本管理</el-dropdown-item>
                   <el-dropdown-item :command="{ action: 'edit', resource: scope.row }">编辑主页</el-dropdown-item>
                   <el-dropdown-item :command="{ action: 'delete', resource: scope.row }"
@@ -238,11 +393,42 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
           </template>
         </el-table-column>
       </el-table>
+
+      <el-dialog v-model="publishDialogVisible" width="520px"
+        :title="selectedResource ? `发布版本 · ${selectedResource.title}` : '发布版本'">
+        <el-form label-position="top" class="dev-version-form">
+          <el-form-item label="版本号" required>
+            <el-input v-model="versionForm.version" maxlength="80" placeholder="例如：1.20.1-2.0.0" />
+          </el-form-item>
+          <el-form-item label="资源文件" required>
+            <div class="dev-version-file-picker">
+              <input ref="versionFileInput" type="file" class="dev-version-file-picker__input"
+                @change="handleVersionFileChange" />
+              <el-button @click="triggerVersionFileSelect">选择文件</el-button>
+              <span class="dev-version-file-picker__name">{{
+                selectedVersionFileName || '未选择文件'
+                }}</span>
+            </div>
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input v-model="versionForm.note" type="textarea" :rows="4" maxlength="1000" show-word-limit
+              placeholder="记录本次新版本说明、兼容性变化或补充信息" />
+          </el-form-item>
+        </el-form>
+
+        <template #footer>
+          <el-button @click="publishDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="publishingResourceId === selectedResource?.id" @click="submitVersion">
+            发布版本
+          </el-button>
+        </template>
+      </el-dialog>
     </el-card>
   </div>
 </template>
 
 <style scoped>
+
 .dev-resource-table__title-link {
   padding: 0;
   border: none;
@@ -256,5 +442,21 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
 
 .dev-resource-table__title-link:hover {
   color: var(--el-color-primary-light-3);
+}
+
+.dev-version-file-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dev-version-file-picker__input {
+  display: none;
+}
+
+.dev-version-file-picker__name {
+  color: var(--el-text-color-regular);
+  word-break: break-all;
 }
 </style>

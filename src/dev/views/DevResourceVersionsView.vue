@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { nextTick, reactive, ref } from 'vue'
 import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -17,6 +17,9 @@ import {
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
+import { ArrowDown, Plus } from '@element-plus/icons-vue'
+import RichTextEditor from '@/components/RichTextEditor.vue'
+import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -36,6 +39,12 @@ const selectedVersionFile = ref<File | null>(null)
 const selectedVersionFileName = ref('')
 const editingVersion = ref<McResourceVersionPayload | null>(null)
 const editVersionDialogVisible = ref(false)
+const editVersionFileInput = ref<HTMLInputElement | null>(null)
+const editSelectedFile = ref<File | null>(null)
+const editSelectedFileName = ref('')
+const createNoteEditor = ref<InstanceType<typeof RichTextEditor> | null>(null)
+const editNoteEditor = ref<InstanceType<typeof RichTextEditor> | null>(null)
+const createVersionDialogVisible = ref(false)
 
 const createForm = reactive({
   version: '',
@@ -113,14 +122,38 @@ function handleVersionFileChange(event: Event) {
   selectedVersionFileName.value = file?.name ?? ''
 }
 
+function triggerEditVersionFileSelect() {
+  editVersionFileInput.value?.click()
+}
+
+function handleEditVersionFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
+  editSelectedFile.value = file
+  editSelectedFileName.value = file?.name ?? ''
+}
+
 function resetCreateForm() {
   createForm.version = ''
   createForm.note = ''
+  createNoteEditor.value?.setContent('<p></p>', false)
   selectedVersionFile.value = null
   selectedVersionFileName.value = ''
   if (versionFileInput.value) {
     versionFileInput.value.value = ''
   }
+}
+
+function openCreateVersionDialog() {
+  resetCreateForm()
+  createVersionDialogVisible.value = true
+}
+
+function onEditVersionChange(value: string) {
+  const found = versionRows.value.find((v) => v.version === value)
+  if (!found) return
+  editVersionForm.note = found.note || ''
+  editNoteEditor.value?.setContent(found.note || '<p></p>', false)
 }
 
 async function submitVersion() {
@@ -144,9 +177,10 @@ async function submitVersion() {
     await createMcResourceVersion(auth.token, resource.value.id, {
       version: createForm.version.trim(),
       file: selectedVersionFile.value,
-      note: createForm.note.trim() || null,
+      note: sanitizeRichHtml(createForm.note.trim()) || null,
     })
     resetCreateForm()
+    createVersionDialogVisible.value = false
     await loadPage()
     showToast('新版本已发布', 'success')
   } catch (error) {
@@ -165,6 +199,16 @@ function versionFileName(version: McResourceVersionPayload): string {
   const segments = version.resource.split('/')
   const sourceName = segments[segments.length - 1] || `${version.version}.bin`
   return with73Extension(sourceName)
+}
+
+function handleVersionAction(command: string, version: McResourceVersionPayload) {
+  if (command === 'download') {
+    downloadVersion(version)
+  } else if (command === 'edit') {
+    openEditVersionDialog(version)
+  } else if (command === 'delete') {
+    openDeleteVersionDialog(version)
+  }
 }
 
 function downloadVersion(version: McResourceVersionPayload) {
@@ -196,7 +240,15 @@ function openEditVersionDialog(version: McResourceVersionPayload) {
   editingVersion.value = version
   editVersionForm.version = version.version
   editVersionForm.note = version.note || ''
+  editSelectedFile.value = null
+  editSelectedFileName.value = ''
+  if (editVersionFileInput.value) {
+    editVersionFileInput.value.value = ''
+  }
   editVersionDialogVisible.value = true
+  nextTick(() => {
+    editNoteEditor.value?.setContent(editVersionForm.note || '<p></p>', false)
+  })
 }
 
 async function submitVersionEdit() {
@@ -214,7 +266,8 @@ async function submitVersionEdit() {
   try {
     const updated = await updateMcResourceVersion(auth.token, resource.value.id, editingVersion.value.id, {
       version: editVersionForm.version.trim(),
-      note: editVersionForm.note.trim() || null,
+      note: sanitizeRichHtml(editVersionForm.note.trim()) || null,
+      file: editSelectedFile.value ?? undefined,
     })
 
     versionRows.value = versionRows.value.map((item) => (item.id === updated.id ? updated : item))
@@ -292,43 +345,13 @@ async function removeVersion() {
   <div class="dev-page dev-page--resource-versions">
     <section class="dev-resource-versions__layout" v-loading="loading">
       <el-card shadow="never" class="dev-surface-card">
-        <div class="dev-upload-section__head">
-          <section>
-            <h3 class="dev-section-title">发布版本</h3>
-            <p class="dev-section-desc">上传新的资源文件并填写版本说明。提交后资源会进入重新审核流程。</p>
-          </section>
-        </div>
-
-        <el-form label-position="top" class="dev-version-form">
-          <el-form-item label="版本号" required>
-            <el-input v-model="createForm.version" maxlength="80" placeholder="例如：1.20.1-2.0.0" />
-          </el-form-item>
-          <el-form-item label="资源文件" required>
-            <div class="dev-version-file-picker">
-              <input ref="versionFileInput" type="file" class="dev-version-file-picker__input"
-                @change="handleVersionFileChange" />
-              <el-button @click="triggerVersionFileSelect">选择文件</el-button>
-              <span class="dev-version-file-picker__name">{{ selectedVersionFileName || '未选择文件' }}</span>
-            </div>
-          </el-form-item>
-          <el-form-item label="备注">
-            <el-input v-model="createForm.note" type="textarea" :rows="4" maxlength="1000" show-word-limit
-              placeholder="记录本次新版本说明、兼容性变化或补充信息" />
-          </el-form-item>
-          <div class="dev-resource-versions__create-actions">
-            <el-button @click="resetCreateForm">清空</el-button>
-            <el-button type="primary" :loading="publishing" @click="submitVersion">发布版本</el-button>
+          <div class="dev-upload-section__head dev-resource-versions__list-head">
+            <section>
+              <h3 class="dev-section-title">版本列表</h3>
+              <p class="dev-section-desc">查看历史版本，支持下载、编辑版本说明和删除版本。</p>
+            </section>
+            <el-button type="primary" :icon="Plus" @click="openCreateVersionDialog">发布版本</el-button>
           </div>
-        </el-form>
-      </el-card>
-
-      <el-card shadow="never" class="dev-surface-card">
-        <div class="dev-upload-section__head">
-          <section>
-            <h3 class="dev-section-title">版本列表</h3>
-            <p class="dev-section-desc">查看历史版本，支持下载、编辑版本说明和删除版本。</p>
-          </section>
-        </div>
 
         <el-table :data="versionRows" stripe v-loading="versionsLoading" empty-text="当前还没有版本记录">
           <el-table-column prop="version" label="版本号" min-width="140" />
@@ -342,7 +365,7 @@ async function removeVersion() {
           </el-table-column>
           <el-table-column label="备注" min-width="180" show-overflow-tooltip>
             <template #default="scope">
-              {{ scope.row.note || '无' }}
+              <span class="dev-version-note" v-html="scope.row.note ? sanitizeRichHtml(scope.row.note) : '无'"></span>
             </template>
           </el-table-column>
           <el-table-column label="发布时间" min-width="180">
@@ -350,31 +373,75 @@ async function removeVersion() {
               {{ formatCreatedAt(scope.row.created_at) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="260">
+          <el-table-column label="操作" width="120">
             <template #default="scope">
-              <div class="dev-version-actions">
-                <el-button link type="success" @click="downloadVersion(scope.row)">下载</el-button>
-                <el-button link type="primary" @click="openEditVersionDialog(scope.row)">编辑</el-button>
-                <el-button link type="danger" :loading="deletingVersionId === scope.row.id"
-                  @click="openDeleteVersionDialog(scope.row)">
-                  {{ scope.row.delete_request_status === 'pending' ? '删除审核中' : '删除' }}
+              <el-dropdown trigger="click" @command="(cmd: string) => handleVersionAction(cmd, scope.row)">
+                <el-button link type="primary">
+                  更多<el-icon class="el-icon--right"><ArrowDown /></el-icon>
                 </el-button>
-              </div>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="download">下载</el-dropdown-item>
+                    <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                    <el-dropdown-item command="delete" :disabled="scope.row.delete_request_status === 'pending'">
+                      {{ scope.row.delete_request_status === 'pending' ? '删除审核中' : '删除' }}
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </template>
           </el-table-column>
         </el-table>
       </el-card>
     </section>
 
-    <el-dialog v-model="editVersionDialogVisible" width="520px"
+    <el-dialog v-model="createVersionDialogVisible" title="发布版本" width="720px" align-center
+      :close-on-click-modal="!publishing">
+      <el-form label-position="top" class="dev-version-form">
+        <el-form-item label="版本号" required>
+          <el-input v-model="createForm.version" maxlength="80" placeholder="例如：1.20.1-2.0.0" />
+        </el-form-item>
+        <el-form-item label="资源文件" required>
+          <div class="dev-version-file-picker">
+            <input ref="versionFileInput" type="file" class="dev-version-file-picker__input"
+              @change="handleVersionFileChange" />
+            <el-button @click="triggerVersionFileSelect">选择文件</el-button>
+            <span class="dev-version-file-picker__name">{{ selectedVersionFileName || '未选择文件' }}</span>
+          </div>
+        </el-form-item>
+        <el-form-item label="备注">
+          <RichTextEditor ref="createNoteEditor" :model-value="createForm.note" min-height="clamp(120px, 18vh, 160px)"
+            max-height="clamp(200px, 30vh, 280px)" @update:model-value="createForm.note = $event" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="resetCreateForm">清空</el-button>
+        <el-button type="primary" :loading="publishing" @click="submitVersion">发布版本</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="editVersionDialogVisible" width="720px" align-center
       :title="editingVersion ? `编辑版本 · ${editingVersion.version}` : '编辑版本'">
       <el-form label-position="top" class="dev-version-form">
         <el-form-item label="版本号" required>
-          <el-input v-model="editVersionForm.version" maxlength="80" placeholder="例如：1.20.1-2.0.1" />
+          <el-select v-model="editVersionForm.version" filterable allow-create default-first-option
+            placeholder="输入或选择历史版本号" style="width: 100%" @change="onEditVersionChange">
+            <el-option v-for="v in versionRows" :key="v.id" :label="v.version" :value="v.version" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="资源文件">
+          <div class="dev-version-file-picker">
+            <input ref="editVersionFileInput" type="file" class="dev-version-file-picker__input"
+              @change="handleEditVersionFileChange" />
+            <el-button @click="triggerEditVersionFileSelect">更换文件</el-button>
+            <span class="dev-version-file-picker__name">
+              {{ editSelectedFileName || (editingVersion ? versionFileName(editingVersion) : '未选择文件') }}
+            </span>
+          </div>
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="editVersionForm.note" type="textarea" :rows="4" maxlength="1000" show-word-limit
-            placeholder="更新该版本的说明信息" />
+          <RichTextEditor ref="editNoteEditor" :model-value="editVersionForm.note" min-height="clamp(120px, 18vh, 160px)"
+            max-height="clamp(200px, 30vh, 280px)" @update:model-value="editVersionForm.note = $event" />
         </el-form-item>
       </el-form>
 
@@ -411,6 +478,13 @@ async function removeVersion() {
   gap: 20px;
 }
 
+.dev-resource-versions__list-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
 .dev-resource-versions__create-actions {
   display: flex;
   justify-content: flex-end;
@@ -442,10 +516,30 @@ async function removeVersion() {
   text-decoration: underline;
 }
 
-.dev-version-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
+.dev-version-note {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
+  color: var(--text-main);
 }
+
+.dev-version-note p {
+  margin: 0;
+}
+
+.dev-version-note p + p {
+  margin-top: 4px;
+}
+
+.dev-page--resource-versions :deep(.el-dialog__footer) {
+  margin-top: 0;
+  padding: 16px 0 0;
+  border-top: none;
+  background: none;
+  text-align: right;
+}
+
 </style>

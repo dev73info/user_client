@@ -78,7 +78,7 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
     name: 'dev-plugins',
     component: () => import('@dev/views/DevResourceInitView.vue'),
     meta: {
-      title: '资源管理 / 资源初始化',
+      title: '创建资源',
       description: '创建插件、工具或服务资源并提交审核。',
       devArea: true,
       requiresDevAccess: true,

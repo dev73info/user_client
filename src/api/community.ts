@@ -26,6 +26,11 @@ export type CommunityPost = {
   favorited_by_me: boolean
   published_at: string
   updated_at: string
+  origin_type: 'original' | 'repost'
+  origin_author: string | null
+  origin_url: string | null
+  origin_org: string | null
+  origin_note: string | null
 }
 
 export type CommunityComment = {
@@ -81,6 +86,11 @@ export type CommunityPostPayload = {
   title: string
   tag_names: string[]
   content_html: string
+  origin_type?: 'original' | 'repost' | null
+  origin_author?: string | null
+  origin_url?: string | null
+  origin_org?: string | null
+  origin_note?: string | null
 }
 
 const COMMUNITY_API_PREFIX = '/community'

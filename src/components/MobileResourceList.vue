@@ -38,6 +38,7 @@ type MobileCard = {
     img: string | null
     groupTags: Record<string, string[]>
     tagsText: string
+    originType: 'original' | 'repost'
 }
 
 type SectionView = McTagFilterSection & {
@@ -136,6 +137,7 @@ function mapResourceToCard(item: PublicMcResourceItem): MobileCard {
         img: item.cover_url ? apiUrl(item.cover_url) : null,
         groupTags,
         tagsText: item.tag_selections.flatMap((entry) => entry.tag_names).join(' '),
+        originType: item.origin_type,
     }
 }
 
@@ -489,7 +491,8 @@ watch(
                     <span v-else class="card-thumb-fallback">📦</span>
                 </div>
                 <div class="card-body">
-                    <h3 class="card-title">{{ item.title }}</h3>
+                    <h3 class="card-title">{{ item.title }}<span class="card-repost-badge"
+                        :class="{ 'is-repost': item.originType === 'repost' }">{{ item.originType === 'repost' ? '转载' : '原创' }}</span></h3>
                     <p class="card-desc">{{ item.desc }}</p>
                     <div class="card-stats">
                         <span>♥ {{ item.likeCount }}</span>
@@ -1120,6 +1123,25 @@ watch(
     -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+.card-repost-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(99, 102, 241, 0.12);
+    color: #4f46e5;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.5;
+    vertical-align: middle;
+}
+
+.card-repost-badge.is-repost {
+    background: rgba(245, 158, 11, 0.14);
+    color: #b45309;
 }
 
 .card-desc {

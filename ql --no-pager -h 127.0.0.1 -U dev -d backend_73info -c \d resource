@@ -1,0 +1,25 @@
+                                             Table "public.resource"
+     Column     |           Type           | Collation | Nullable |                    Default                    
+----------------+--------------------------+-----------+----------+-----------------------------------------------
+ resource_id    | bigint                   |           | not null | nextval('resource_resource_id_seq'::regclass)
+ project_name   | text                     |           | not null | 
+ creator        | text                     |           | not null | 
+ ownership_type | text                     |           | not null | 'individual'::text
+ team_id        | bigint                   |           |          | 
+ created_at     | timestamp with time zone |           | not null | timezone('Asia/Shanghai'::text, now())
+Indexes:
+    "resource_pkey" PRIMARY KEY, btree (resource_id)
+    "idx_resource_creator_created_at" btree (creator, created_at DESC, resource_id DESC)
+    "idx_resource_project_name_created_at" btree (project_name, created_at DESC, resource_id DESC)
+Check constraints:
+    "resource_ownership_type_check" CHECK (ownership_type = ANY (ARRAY['individual'::text, 'team'::text]))
+Foreign-key constraints:
+    "resource_team_id_fkey" FOREIGN KEY (team_id) REFERENCES teams(team_id) ON DELETE SET NULL
+Referenced by:
+    TABLE "requirement_resource_relation" CONSTRAINT "requirement_resource_relation_resource_id_fkey" FOREIGN KEY (resource_id) REFERENCES resource(resource_id) ON DELETE CASCADE
+    TABLE "resource_comment" CONSTRAINT "resource_comment_resource_id_fkey" FOREIGN KEY (resource_id) REFERENCES resource(resource_id) ON DELETE CASCADE
+    TABLE "resource_detail" CONSTRAINT "resource_detail_resource_id_fkey" FOREIGN KEY (resource_id) REFERENCES resource(resource_id) ON DELETE CASCADE
+    TABLE "resource_like" CONSTRAINT "resource_like_resource_id_fkey" FOREIGN KEY (resource_id) REFERENCES resource(resource_id) ON DELETE CASCADE
+    TABLE "resource_project_version" CONSTRAINT "resource_project_version_resource_id_fkey" FOREIGN KEY (resource_id) REFERENCES resource(resource_id) ON DELETE CASCADE
+    TABLE "resource_status" CONSTRAINT "resource_status_resource_id_fkey" FOREIGN KEY (resource_id) REFERENCES resource(resource_id) ON DELETE CASCADE
+

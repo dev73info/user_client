@@ -109,6 +109,8 @@ type SpotlightCard = {
   metaSecondary: string
   authorLabel?: string
   metaTime?: string
+  viewCount: number
+  downloadCount: number
   gradient?: boolean
   userColor?: string
   accent: string
@@ -116,6 +118,8 @@ type SpotlightCard = {
   coverAlt?: string
   requirementId?: string
   resourceId?: number
+  originLabel?: string
+  originRepost?: boolean
 }
 
 type DeveloperRank = {
@@ -702,6 +706,8 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
       badge: normalizeTagName(item.platform) || '平台资源',
       authorLabel: item.author || item.creator || '匿名作者',
       metaTime: formatTimeLabel(item.updated_at),
+      viewCount: item.view_count ?? 0,
+      downloadCount: item.download_count ?? 0,
       gradient: !!item.author_username_gradient,
       userColor: item.author_username_color || '',
       metaSecondary: `${item.author || item.creator || '匿名作者'} · ${formatTimeLabel(item.updated_at)}`,
@@ -709,6 +715,8 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
       coverUrl: item.cover_url ? apiUrl(item.cover_url) : '',
       coverAlt: buildResourceCoverAlt(item),
       resourceId: item.id,
+      originLabel: item.origin_type === 'repost' ? '转载' : '原创',
+      originRepost: item.origin_type === 'repost',
     }))
 
   return resourceCards
@@ -1940,10 +1948,35 @@ async function submitPublishRequirement() {
                     <span class="portal-spotlight-card__status">{{ card.status }}</span>
                   </div>
                   <div class="portal-spotlight-card__footer">
-                    <span v-if="card.authorLabel"
-                      :class="{ 'username-gradient': card.gradient && !card.userColor }"
-                      :style="card.userColor ? { color: card.userColor } : {}">{{ card.authorLabel }}</span>
-                    <span v-if="card.metaTime" class="portal-spotlight-card__time">{{ card.metaTime }}</span>
+                    <div class="portal-spotlight-card__footer-main">
+                      <span class="portal-spotlight-card__stats">
+                        <span class="portal-spotlight-card__stat" title="浏览量">
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                          </svg>
+                          {{ card.viewCount }}
+                        </span>
+                        <span class="portal-spotlight-card__stat" title="下载量">
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                          </svg>
+                          {{ card.downloadCount }}
+                        </span>
+                      </span>
+                      <span v-if="card.authorLabel"
+                        :class="{ 'username-gradient': card.gradient && !card.userColor }"
+                        :style="card.userColor ? { color: card.userColor } : {}">{{ card.authorLabel }}</span>
+                    </div>
+                    <div class="portal-spotlight-card__footer-bottom">
+                      <span v-if="card.originLabel" class="portal-spotlight-card__origin"
+                        :class="{ 'is-repost': card.originRepost }">{{ card.originLabel }}</span>
+                      <span v-if="card.metaTime" class="portal-spotlight-card__time">{{ card.metaTime }}</span>
+                    </div>
                   </div>
                 </div>
               </article>

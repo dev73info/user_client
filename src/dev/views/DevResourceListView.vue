@@ -83,7 +83,8 @@ async function loadResources() {
 
   isLoading.value = true
   try {
-    resources.value = await listMcResources(auth.token)
+    const all = await listMcResources(auth.token)
+    resources.value = all.filter((item) => item.ownership_type !== 'team')
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载资源列表失败'
     showToast(message, 'error')
@@ -432,12 +433,12 @@ async function setResourcePrivate(resource: McResourcePayload) {
           <el-icon>
             <Plus />
           </el-icon>
-          <span>资源初始化</span>
+          <span>发布资源</span>
         </RouterLink>
       </div>
 
       <el-table :data="resources" stripe v-loading="isLoading" class="dev-resource-table" :empty-text="emptyText">
-        <el-table-column label="资源" min-width="260">
+        <el-table-column label="资源" min-width="160">
           <template #default="scope">
             <div class="dev-resource-table__title-cell">
               <img v-if="scope.row.cover_url" :src="resourceCoverUrl(scope.row)" alt="资源图标"
@@ -453,25 +454,22 @@ async function setResourcePrivate(resource: McResourcePayload) {
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="标签" min-width="260">
+        <el-table-column label="标签" min-width="120">
           <template #default="scope">
             <span class="dev-resource-table__tags">{{
               tagSummary(scope.row) || '未附带标签'
               }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="180">
+        <el-table-column label="状态" min-width="110">
           <template #default="scope">
             <el-tag :type="visibilityTagType(scope.row.visibility)" effect="plain">
               {{ visibilityText(scope.row.visibility) }}
             </el-tag>
-            <el-tag :type="ownershipTagType(scope.row.ownership_type)" effect="plain" class="ml-2">
-              {{ ownershipText(scope.row.ownership_type) }}
-            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" min-width="180" />
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column prop="created_at" label="创建时间" min-width="150" />
+        <el-table-column label="操作" min-width="120" fixed="right">
           <template #default="scope">
             <el-dropdown trigger="click" popper-class="dev-resource-action-menu" @command="handleResourceCommand">
               <el-button type="primary" plain class="dev-resource-table__action-button">

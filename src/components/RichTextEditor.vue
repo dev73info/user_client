@@ -9,6 +9,7 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { TableRow } from '@tiptap/extension-table-row'
 import Underline from '@tiptap/extension-underline'
+import { ElMessageBox } from 'element-plus'
 import { common, createLowlight } from 'lowlight'
 import {
     ArrowDown,
@@ -46,9 +47,12 @@ const props = withDefaults(
         modelValue: string
         floatingToolbar?: boolean
         floatingToolbarTop?: number | string
+        minHeight?: string
+        maxHeight?: string
     }>(),
     {
         floatingToolbar: true,
+        minHeight: 'clamp(280px, 38vh, 420px)',
     },
 )
 
@@ -128,7 +132,10 @@ const floatingToolbarTop = computed(() => normalizeCssPixelValue(props.floatingT
 
 const editorStyle = computed<Record<string, string>>(() => {
     const style: Record<string, string> = {
-        '--rich-text-editor-min-height': 'clamp(280px, 38vh, 420px)',
+        '--rich-text-editor-min-height': props.minHeight,
+    }
+    if (props.maxHeight) {
+        style['--rich-text-editor-max-height'] = props.maxHeight
     }
     if (floatingToolbarTop.value !== null) {
         style['--rich-text-editor-toolbar-top'] = `${floatingToolbarTop.value}px`
@@ -189,21 +196,23 @@ function getFloatingToolbarTop(root: HTMLElement): number {
     }
 
     const defaultGap = 12
+    let top = defaultGap
+
+    const header = document.querySelector<HTMLElement>('.portal-header')
+    const headerRect = header?.getBoundingClientRect()
+    if (headerRect && headerRect.height > 0 && headerRect.bottom > 0) {
+        top = Math.max(top, Math.round(headerRect.bottom + 10))
+    }
+
     const scrollContainer = findFloatingScrollContainer(root)
     if (scrollContainer) {
         const containerRect = scrollContainer.getBoundingClientRect()
         if (containerRect.height > 0 && containerRect.bottom > defaultGap) {
-            return Math.max(defaultGap, Math.round(containerRect.top + 10))
+            top = Math.max(top, Math.round(containerRect.top + 10))
         }
     }
 
-    const header = document.querySelector<HTMLElement>('.portal-header')
-    const headerRect = header?.getBoundingClientRect()
-    if (!headerRect || headerRect.height <= 0 || headerRect.bottom <= 0) {
-        return defaultGap
-    }
-
-    return Math.max(defaultGap, Math.round(headerRect.bottom + 10))
+    return top
 }
 
 function getFloatingToolbarHorizontalStyle(root: HTMLElement): Pick<CSSStyleDeclaration, 'left' | 'width'> {
@@ -420,6 +429,26 @@ const editor = useEditor({
         CodeBlockLowlight.extend({
             name: 'codeBlock',
             defining: false,
+            renderHTML({ node, HTMLAttributes }) {
+                let language = node.attrs.language || null
+                if (!language) {
+                    try {
+                        const auto = codeHighlighter.highlightAuto(node.textContent || '')
+                        const detected = (auto as { data?: { language?: string } } | null)?.data
+                            ?.language
+                        if (detected && codeHighlighter.listLanguages().includes(detected)) {
+                            language = detected
+                        }
+                    } catch {
+                        language = null
+                    }
+                }
+                return [
+                    'pre',
+                    mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
+                    ['code', { class: language ? `language-${language}` : null }, 0],
+                ]
+            },
         }).configure({
             lowlight: codeHighlighter,
             defaultLanguage: null,
@@ -713,13 +742,40 @@ function isCodeBlockActive(): boolean {
     return Boolean(editor.value?.isActive('codeBlock'))
 }
 
+function detectActiveCodeBlockLanguage(): string | null {
+    const state = editor.value?.state
+    if (!state) {
+        return null
+    }
+    const parent = state.selection.$head.parent
+    const node = parent.type.name === 'codeBlock' ? parent : null
+    if (!node) {
+        return null
+    }
+    try {
+        const auto = codeHighlighter.highlightAuto(node.textContent || '')
+        const detected = (auto as { data?: { language?: string } } | null)?.data?.language
+        if (detected && codeHighlighter.listLanguages().includes(detected)) {
+            return normalizeCodeBlockLanguage(detected)
+        }
+    } catch {
+        return null
+    }
+    return null
+}
+
 function currentCodeLanguageValue(): string {
     editorRevision.value
     if (!editor.value?.isActive('codeBlock')) {
         return ''
     }
 
-    return normalizeCodeBlockLanguage(editor.value.getAttributes('codeBlock').language)
+    const explicit = normalizeCodeBlockLanguage(editor.value.getAttributes('codeBlock').language)
+    if (explicit) {
+        return explicit
+    }
+
+    return detectActiveCodeBlockLanguage() ?? ''
 }
 
 function currentCodeLanguageLabel(): string {
@@ -768,13 +824,13 @@ function applyFontSize(value = fontSizeInput.value) {
     fontSizeInput.value = String(size)
 }
 
-function toggleLink() {
+async function toggleLink() {
     if (!editor.value) {
         return
     }
 
     const currentHref = editor.value.getAttributes('link').href ?? ''
-    const raw = window.prompt('输入跳转链接，留空将移除链接', currentHref)
+    const raw = await promptValue('输入跳转链接，留空将移除链接', '插入链接', currentHref)
     if (raw === null) {
         return
     }
@@ -837,8 +893,21 @@ function insertAttachment(href: string, label = '') {
     }
 }
 
-function promptInsertImage() {
-    const raw = window.prompt('输入图片地址，支持 https:// 或 /uploads/...')
+async function promptValue(message: string, title: string, defaultValue = ''): Promise<string | null> {
+    try {
+        const { value } = await ElMessageBox.prompt(message, title, {
+            inputValue: defaultValue,
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+        })
+        return value
+    } catch {
+        return null
+    }
+}
+
+async function promptInsertImage() {
+    const raw = await promptValue('输入图片地址，支持 https:// 或 /uploads/...', '插入图片')
     if (raw === null) {
         return
     }
@@ -849,12 +918,12 @@ function promptInsertImage() {
         return
     }
 
-    const alt = window.prompt('图片说明（可选）', richEditorDefaultLabel(src, '图片')) ?? ''
+    const alt = (await promptValue('图片说明（可选）', '图片说明', richEditorDefaultLabel(src, '图片'))) ?? ''
     insertImage(src, alt.trim())
 }
 
-function promptInsertVideo() {
-    const raw = window.prompt('输入视频地址，支持 https:// 或 /uploads/...')
+async function promptInsertVideo() {
+    const raw = await promptValue('输入视频地址，支持 https:// 或 /uploads/...', '插入视频')
     if (raw === null) {
         return
     }
@@ -865,12 +934,12 @@ function promptInsertVideo() {
         return
     }
 
-    const title = window.prompt('视频标题（可选）', richEditorDefaultLabel(src, '视频')) ?? ''
+    const title = (await promptValue('视频标题（可选）', '视频标题', richEditorDefaultLabel(src, '视频'))) ?? ''
     insertVideo(src, title.trim())
 }
 
-function promptInsertAttachment() {
-    const raw = window.prompt('输入附件地址，支持 https://、mailto:、tel: 或 /uploads/...')
+async function promptInsertAttachment() {
+    const raw = await promptValue('输入附件地址，支持 https://、mailto:、tel: 或 /uploads/...', '插入附件')
     if (raw === null) {
         return
     }
@@ -881,7 +950,7 @@ function promptInsertAttachment() {
         return
     }
 
-    const label = window.prompt('附件名称', richEditorDefaultLabel(href, '附件')) ?? ''
+    const label = (await promptValue('附件名称', '附件名称', richEditorDefaultLabel(href, '附件'))) ?? ''
     insertAttachment(href, label.trim())
 }
 
@@ -1293,6 +1362,8 @@ defineExpose({
 
 .rich-text-editor :deep(.rich-text-editor__surface) {
     min-height: var(--rich-text-editor-min-height);
+    max-height: var(--rich-text-editor-max-height, none);
+    overflow-y: auto;
     padding: 16px;
     color: #1e293b;
     line-height: 1.75;
@@ -1597,7 +1668,10 @@ defineExpose({
 }
 
 .rich-text-editor :deep(.rich-text-editor__surface .rich-editor-image) {
+    display: inline-block;
+    vertical-align: middle;
     height: auto;
+    margin: 12px 8px 12px 0;
 }
 
 .rich-text-editor :deep(.rich-text-editor__surface .rich-editor-video) {

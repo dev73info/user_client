@@ -50,6 +50,11 @@ const form = reactive({
   coverUrl: '',
   ownershipType: 'individual' as 'individual' | 'team',
   teamId: '',
+  originType: 'original' as 'original' | 'repost',
+  originAuthor: '',
+  originUrl: '',
+  originOrg: '',
+  originNote: '',
 })
 
 const rootTabs = computed<McTagCatalogRoot[]>(() => processedTree.value.roots)
@@ -369,6 +374,11 @@ function resetForm() {
   form.coverUrl = ''
   form.ownershipType = 'individual'
   form.teamId = ''
+  form.originType = 'original'
+  form.originAuthor = ''
+  form.originUrl = ''
+  form.originOrg = ''
+  form.originNote = ''
   iconFileName.value = ''
   selectedIconFile.value = null
 
@@ -392,6 +402,11 @@ async function submitResource(mode: 'private' | 'public') {
     return
   }
 
+  if (form.originType === 'repost' && !form.originUrl.trim()) {
+    showToast('转载资源必须填写原始出处链接', 'warning')
+    return
+  }
+
   submitting.value = true
 
   try {
@@ -409,6 +424,11 @@ async function submitResource(mode: 'private' | 'public') {
       release_note: null,
       ownership_type: form.ownershipType,
       team_id: form.ownershipType === 'team' && form.teamId ? Number(form.teamId) : null,
+      origin_type: form.originType,
+      origin_author: form.originAuthor.trim() || null,
+      origin_url: form.originUrl.trim() || null,
+      origin_org: form.originOrg.trim() || null,
+      origin_note: form.originNote.trim() || null,
     })
 
     if (selectedIconFile.value) {
@@ -428,6 +448,11 @@ async function submitResource(mode: 'private' | 'public') {
         docs_url: resource.docs_url,
         visibility: 'review',
         release_note: resource.release_note,
+        origin_type: form.originType,
+        origin_author: form.originAuthor.trim() || null,
+        origin_url: form.originUrl.trim() || null,
+        origin_org: form.originOrg.trim() || null,
+        origin_note: form.originNote.trim() || null,
       })
     }
 
@@ -465,10 +490,10 @@ async function submitResource(mode: 'private' | 'public') {
               </el-form-item>
 
               <el-form-item label="归属类型" required>
-                <el-radio-group v-model="form.ownershipType">
-                  <el-radio value="individual">个人项目</el-radio>
-                  <el-radio value="team">团队项目</el-radio>
-                </el-radio-group>
+                <el-select v-model="form.ownershipType" style="width: 100%">
+                  <el-option label="个人项目" value="individual" />
+                  <el-option label="团队项目" value="team" />
+                </el-select>
               </el-form-item>
 
               <el-form-item v-show="form.ownershipType === 'team'" label="所属团队" required>
@@ -496,6 +521,28 @@ async function submitResource(mode: 'private' | 'public') {
 
                 </div>
               </el-form-item>
+
+              <el-form-item label="类型">
+                <el-select v-model="form.originType" style="width: 100%">
+                  <el-option label="原创" value="original" />
+                  <el-option label="转载" value="repost" />
+                </el-select>
+              </el-form-item>
+
+              <template v-if="form.originType === 'repost'">
+                <el-form-item label="原作者">
+                  <el-input v-model="form.originAuthor" maxlength="80" placeholder="原始资源的作者" />
+                </el-form-item>
+                <el-form-item label="原始出处链接" required>
+                  <el-input v-model="form.originUrl" maxlength="500" placeholder="原始出处 URL，例如原贴/来源页" />
+                </el-form-item>
+                <el-form-item label="来源站点">
+                  <el-input v-model="form.originOrg" maxlength="80" placeholder="例如：苦力怕论坛、CurseForge" />
+                </el-form-item>
+                <el-form-item label="转载说明 / 授权">
+                  <el-input v-model="form.originNote" maxlength="500" placeholder="授权情况、转载说明等（可选）" />
+                </el-form-item>
+              </template>
 
               <el-form-item label="图标文件">
                 <div class="dev-icon-upload dev-icon-upload--square" @click="openIconPicker">
@@ -565,11 +612,11 @@ async function submitResource(mode: 'private' | 'public') {
           <div class="dev-upload-actions__buttons">
             <el-button type="primary" :icon="MagicStick" :disabled="!canSubmit" :loading="submitting"
               @click="submitResource('private')">
-              初始化私有项目
+              创建私有项目
             </el-button>
             <el-button type="success" :icon="MagicStick" :disabled="!canSubmit" :loading="submitting"
               @click="submitResource('public')">
-              初始化公开项目
+              发布公开项目
             </el-button>
           </div>
         </footer>
@@ -619,9 +666,6 @@ async function submitResource(mode: 'private' | 'public') {
               <div class="dev-preview-card__footer">
                 <span>by {{ form.author || auth.username || '开发者' }}</span>
                 <span class="dev-preview-card__time">根节点 · {{ currentRootLabel }}</span>
-              </div>
-              <div v-if="previewTags.length > 0" class="dev-resource-card__chips">
-                <span v-for="item in previewTags" :key="item" class="dev-chip">{{ item }}</span>
               </div>
             </div>
           </article>

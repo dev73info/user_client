@@ -253,6 +253,18 @@ function isConversationActive(item: RequirementConversation) {
 
 function isMenuItemActive(item: WorkbenchMenuItem) {
   const currentName = String(route.name ?? '')
+  const isTeamResourceAction =
+    route.query.from === 'team-resources' &&
+    (currentName === 'dev-resource-versions' || currentName === 'dev-resource-homepage-edit')
+
+  // 从团队资源进入版本管理/编辑主页时，高亮「资源项目」而非「我的资源项目」
+  if (item.name === 'workbench-team-resources' && isTeamResourceAction) {
+    return true
+  }
+  if (item.name === 'dev-resource-list' && isTeamResourceAction) {
+    return false
+  }
+
   if (item.activeNames?.includes(currentName)) {
     return true
   }
