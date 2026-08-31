@@ -3,6 +3,7 @@ import { authHeader, authHeaders, requestJson } from '@/api/http'
 export type RealnameAuthType =
   | 'IDENTITY_CARD'
   | 'ENTERPRISE'
+  | 'SOLE_PROPRIETOR'
   | 'RESIDENCE_HK_MC'
   | 'RESIDENCE_TAIWAN'
 export type UserRealnameStatus = 'pending' | 'approved' | 'rejected'
@@ -18,6 +19,7 @@ export type UserRealnameVerification = {
   company_name?: string | null
   unified_social_credit_code?: string | null
   business_license_no?: string | null
+  business_license_file?: string | null
   operator_name?: string | null
   operator_id_card_no_masked?: string | null
   guardian_consent?: boolean | null
@@ -38,6 +40,7 @@ export type SubmitRealnameVerificationPayload = {
   company_name?: string | null
   unified_social_credit_code?: string | null
   business_license_no?: string | null
+  business_license_file?: string | null
   operator_name?: string | null
   operator_id_card_no?: string | null
   guardian_consent?: boolean | null
@@ -184,6 +187,7 @@ export type StartCompanyIdentifyPayload = {
   operator_name: string
   operator_id_card_no: string
   mobile: string
+  business_license_file: string
 }
 
 export type StartCompanyIdentifyResponse = {
@@ -272,5 +276,29 @@ export async function uploadGuardianConsentFile(
       body: formData,
     },
     '上传监护人同意书失败',
+  )
+}
+
+export type BusinessLicenseUploadResponse = {
+  business_license_file: string
+}
+
+export async function uploadBusinessLicenseFile(
+  token: string,
+  file: File,
+): Promise<BusinessLicenseUploadResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return requestJson<BusinessLicenseUploadResponse>(
+    '/realname/business-license-file',
+    {
+      method: 'POST',
+      headers: {
+        ...authHeader(token),
+      },
+      body: formData,
+    },
+    '上传营业执照失败',
   )
 }

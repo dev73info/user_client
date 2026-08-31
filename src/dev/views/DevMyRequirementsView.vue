@@ -4,6 +4,13 @@ import { useRouter } from 'vue-router'
 
 import { ArrowDown, ArrowUp, ChatDotRound } from '@element-plus/icons-vue'
 
+import {
+  listAdapayDeliveryVersions,
+  reportAdapayBreach,
+  submitAdapayDeliveryVersion,
+  uploadAdapayDeliveryArtifact,
+  type AdapayDeliveryVersion,
+} from '@/api/adapay'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import {
@@ -44,6 +51,20 @@ const unbindLoading = ref(false)
 const unbindRespondVisible = ref(false)
 const unbindRespondRequirement = ref<RequirementItem | null>(null)
 const unbindRespondLoading = ref(false)
+const deliveryVisible = ref(false)
+const deliveryRequirement = ref<RequirementItem | null>(null)
+const deliveryTitle = ref('')
+const deliveryDescription = ref('')
+const deliveryArtifactUrl = ref('')
+const deliveryArtifactFile = ref<File | null>(null)
+const deliveryArtifactFileInput = ref<HTMLInputElement | null>(null)
+const deliveryLoading = ref(false)
+const deliveryVersionsMap = ref<Record<string, AdapayDeliveryVersion[]>>({})
+const breachVisible = ref(false)
+const breachRequirement = ref<RequirementItem | null>(null)
+const breachLiableParty = ref<'customer' | 'developer' | 'platform'>('customer')
+const breachReason = ref('')
+const breachLoading = ref(false)
 
 const emptyText = computed(() => (loading.value ? '我的需求单加载中' : '当前账号还没有已关联需求'))
 const boundCount = computed(() => rows.value.filter((item) => item.bound_resource_id != null).length)
@@ -63,6 +84,7 @@ async function loadMyRequirements() {
   loading.value = true
   try {
     rows.value = await listMyRequirements(auth.token)
+    await loadDeliveryVersions(rows.value)
     // 无担保模式（self_managed）不需要合同，无需查询合同签署状态
     const guaranteedRows = rows.value.filter((item) => item.payment_mode !== 'self_managed')
     const [statusEntries] = await Promise.all([
@@ -89,6 +111,25 @@ async function loadMyRequirements() {
   }
 }
 
+async function loadDeliveryVersions(items: RequirementItem[]) {
+  const guaranteedItems = items.filter(
+    (item) => item.payment_mode !== 'self_managed' && ['in_development', 'pending_final'].includes(item.status),
+  )
+  const entries = await Promise.allSettled(
+    guaranteedItems.map(async (item) => ({
+      requirementId: item.requirement_id,
+      versions: await listAdapayDeliveryVersions(auth.token, item.requirement_id),
+    })),
+  )
+  const nextMap: Record<string, AdapayDeliveryVersion[]> = {}
+  for (const entry of entries) {
+    if (entry.status === 'fulfilled') {
+      nextMap[entry.value.requirementId] = entry.value.versions
+    }
+  }
+  deliveryVersionsMap.value = nextMap
+}
+
 function formatMoney(value?: number | null): string {
   if (value == null) {
     return '待议价'
@@ -104,7 +145,7 @@ function statusLabel(status: RequirementItem['status']): string {
     case 'rejected':
       return '已驳回'
     case 'pending_deposit':
-      return '待付定金'
+      return '待签合同'
     case 'deposit_paid':
       return '待开发'
     case 'in_development':
@@ -127,7 +168,7 @@ function isWaitingContractSign(item: RequirementItem): boolean {
   }
   const status = signingStatusMap.value[item.requirement_id]
   return Boolean(
-    item.status === 'deposit_paid' &&
+    (item.status === 'pending_deposit' || item.status === 'deposit_paid') &&
     status?.has_contract &&
     (!status.party_a_signed || !status.party_b_signed),
   )
@@ -272,10 +313,130 @@ function contractStartHint(item: RequirementItem): string {
   }
 
   const status = signingStatusMap.value[item.requirement_id]
-  if (!status?.party_b_signed) {
-    return '请先签署合同，待甲方也签署后进入开发流程'
+  if (!status?.party_b_signed && !status?.party_a_signed) {
+    return '请完成开发者签署，客户也需完成签署后才能支付定金'
   }
-  return '等待甲方签署，双方签署完成后进入开发流程'
+  if (!status.party_b_signed) {
+    return '等待开发者完成签署'
+  }
+  return '等待客户签署，双方签署完成后由需求方支付定金'
+}
+
+function deliveryVersions(item: RequirementItem) {
+  return deliveryVersionsMap.value[item.requirement_id] ?? []
+}
+
+function canSubmitDelivery(item: RequirementItem) {
+  return item.payment_mode !== 'self_managed' && item.status === 'in_development'
+}
+
+function openDeliveryDialog(item: RequirementItem) {
+  if (!canSubmitDelivery(item)) {
+    return
+  }
+  deliveryRequirement.value = item
+  deliveryTitle.value = ''
+  deliveryDescription.value = ''
+  deliveryArtifactUrl.value = ''
+  deliveryArtifactFile.value = null
+  deliveryVisible.value = true
+}
+
+function closeDeliveryDialog() {
+  if (deliveryLoading.value) {
+    return
+  }
+  deliveryVisible.value = false
+  deliveryRequirement.value = null
+}
+
+async function submitDelivery() {
+  const item = deliveryRequirement.value
+  const description = deliveryDescription.value.trim()
+  if (!item || !description) {
+    showToast('请填写本次交付说明', 'warning')
+    return
+  }
+
+  deliveryLoading.value = true
+  try {
+    if (deliveryArtifactFile.value) {
+      const upload = await uploadAdapayDeliveryArtifact(
+        auth.token,
+        item.requirement_id,
+        deliveryArtifactFile.value,
+      )
+      deliveryArtifactUrl.value = upload.artifactUrl
+    }
+    const version = await submitAdapayDeliveryVersion(auth.token, item.requirement_id, {
+      title: deliveryTitle.value.trim(),
+      description,
+      artifact_url: deliveryArtifactUrl.value.trim(),
+    })
+    deliveryVersionsMap.value = {
+      ...deliveryVersionsMap.value,
+      [item.requirement_id]: [version, ...deliveryVersions(item)],
+    }
+    showToast(`第 ${version.versionNo} 版交付已提交`, 'success')
+    closeDeliveryDialog()
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '提交交付版本失败', 'error')
+  } finally {
+    deliveryLoading.value = false
+  }
+}
+
+function chooseDeliveryArtifact() {
+  deliveryArtifactFileInput.value?.click()
+}
+
+function handleDeliveryArtifactChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  deliveryArtifactFile.value = input.files?.[0] ?? null
+  input.value = ''
+}
+
+function canReportBreach(item: RequirementItem) {
+  return item.payment_mode !== 'self_managed' &&
+    ['deposit_paid', 'in_development', 'pending_final'].includes(item.status)
+}
+
+function openBreachReport(item: RequirementItem) {
+  if (!canReportBreach(item)) {
+    return
+  }
+  breachRequirement.value = item
+  breachLiableParty.value = 'customer'
+  breachReason.value = ''
+  breachVisible.value = true
+}
+
+function closeBreachReport() {
+  if (breachLoading.value) {
+    return
+  }
+  breachVisible.value = false
+  breachRequirement.value = null
+  breachReason.value = ''
+}
+
+async function submitBreachReport() {
+  const item = breachRequirement.value
+  const reason = breachReason.value.trim()
+  if (!item || !reason) {
+    showToast('请填写违约事实和相关依据', 'warning')
+    return
+  }
+  breachLoading.value = true
+  try {
+    await reportAdapayBreach(auth.token, item.requirement_id, breachLiableParty.value, reason)
+    showToast('违约申报已提交，等待平台审核', 'success')
+    closeBreachReport()
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '提交违约申报失败', 'error')
+  } finally {
+    breachLoading.value = false
+  }
 }
 
 function openContractSign(item: RequirementItem) {
@@ -484,10 +645,15 @@ async function loadRequirementConversations() {
               <label>会话</label>
               <strong>{{ conversationLoading ? '加载中' : conversationStatusLabel(item) }}</strong>
             </span>
+            <span v-if="item.payment_mode !== 'self_managed'" class="dev-requirement-card__meta-item">
+              <label>交付版本</label>
+              <strong>{{ deliveryVersions(item).length }} 版</strong>
+            </span>
           </div>
 
           <div class="dev-requirement-card__progress">
-            <RequirementProgressGuide :requirement="item" :payment-mode="item.payment_mode" view="dev" />
+            <RequirementProgressGuide :requirement="item" :payment-mode="item.payment_mode" view="dev"
+              :contract-status="signingStatusMap[item.requirement_id]" />
           </div>
 
           <div v-if="item.payment_mode !== 'self_managed'" class="dev-requirement-card__signing">
@@ -517,6 +683,14 @@ async function loadRequirementConversations() {
               </span>
             </div>
             <div class="dev-requirement-card__buttons">
+              <el-button v-if="canSubmitDelivery(item)" type="primary" plain size="small"
+                @click="openDeliveryDialog(item)">
+                提交交付
+              </el-button>
+              <el-button v-if="canReportBreach(item)" type="danger" plain size="small"
+                @click="openBreachReport(item)">
+                申报违约
+              </el-button>
               <el-button v-if="canOpenContractSign(item)" size="small" @click="openContractSign(item)">
                 {{ contractButtonLabel(item) }}
               </el-button>
@@ -567,6 +741,69 @@ async function loadRequirementConversations() {
           @click="submitUnbindRespond('reject')">拒绝解除</el-button>
         <el-button type="primary" :loading="unbindRespondLoading"
           @click="submitUnbindRespond('approve')">同意解除</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="deliveryVisible" title="提交交付版本" width="520px"
+      :close-on-click-modal="false" :close-on-press-escape="false" @close="closeDeliveryDialog">
+      <div class="delivery-dialog-body">
+        <p class="unbind-dialog-tip">
+          交付说明会作为本次需求的履约记录，客户确认验收前至少需要提交一版。
+        </p>
+        <el-form label-position="top">
+          <el-form-item label="版本标题">
+            <el-input v-model="deliveryTitle" maxlength="200" placeholder="例如：首版功能交付" />
+          </el-form-item>
+          <el-form-item label="交付说明" required>
+            <el-input v-model="deliveryDescription" type="textarea" :rows="6" maxlength="20000"
+              show-word-limit placeholder="请说明已完成的功能、使用方式和已知限制" />
+          </el-form-item>
+          <el-form-item label="交付物" required>
+            <div class="delivery-artifact-field">
+              <input ref="deliveryArtifactFileInput" class="realname-consent-upload__native" type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.zip,.gz,.tar,.txt,.md,application/pdf,image/png,image/jpeg,image/webp,application/zip,application/gzip,application/x-tar,text/plain,text/markdown"
+                @change="handleDeliveryArtifactChange" />
+              <div class="delivery-artifact-field__upload">
+                <el-button plain @click="chooseDeliveryArtifact">上传交付物</el-button>
+                <span v-if="deliveryArtifactFile" class="realname-consent-upload__name">
+                  {{ deliveryArtifactFile.name }}
+                </span>
+              </div>
+              <el-input v-model="deliveryArtifactUrl" maxlength="500"
+                placeholder="或填写可访问的演示、仓库链接" />
+            </div>
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <el-button :disabled="deliveryLoading" @click="closeDeliveryDialog">取消</el-button>
+        <el-button type="primary" :loading="deliveryLoading" @click="submitDelivery">提交版本</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="breachVisible" title="申报履约违约" width="520px"
+      :close-on-click-modal="false" :close-on-press-escape="false" @close="closeBreachReport">
+      <div class="delivery-dialog-body">
+        <p class="unbind-dialog-tip">
+          平台会核对合同、支付、交付和沟通记录，最终责任及资金处理由平台管理员裁决。
+        </p>
+        <el-form label-position="top">
+          <el-form-item label="责任方向" required>
+            <el-select v-model="breachLiableParty" style="width: 100%">
+              <el-option label="客户违约" value="customer" />
+              <el-option label="开发者违约" value="developer" />
+              <el-option label="平台违约" value="platform" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="事实与依据" required>
+            <el-input v-model="breachReason" type="textarea" :rows="6" maxlength="2000" show-word-limit
+              placeholder="请填写时间、已交付内容、沟通记录和希望平台核查的事实" />
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <el-button :disabled="breachLoading" @click="closeBreachReport">取消</el-button>
+        <el-button type="primary" :loading="breachLoading" @click="submitBreachReport">提交申报</el-button>
       </template>
     </el-dialog>
 

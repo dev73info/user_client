@@ -6,16 +6,10 @@ import PublishModal from '@/components/PublishModal.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import { apiUrl } from '@/api/http'
+import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
-import {
-  confirmPayment,
-  createAlipayPagePayment,
-  createPayment,
-  type AlipayCreatePaymentResp,
-  type AlipayPageCreatePaymentResp,
-  type WechatCreatePaymentResp,
-} from '@/api/payments'
+import { createAdapayPayment, getAdapayPayment, type AdapayPaymentResponse } from '@/api/adapay'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import {
   listRequirementConversations,
@@ -52,11 +46,22 @@ const loading = ref(false)
 const coupons = ref<CouponItem[]>([])
 const requirementLoading = ref(false)
 const myRequirements = ref<RequirementItem[]>([])
+const contractSigningStatusMap = ref<Record<string, ContractSigningStatus | null>>({})
 const payVisible = ref(false)
 const payRequirement = ref<RequirementItem | null>(null)
 const payChannel = ref<'alipay' | 'wechat'>('alipay')
 const payLoading = ref(false)
-const currentPayment = ref<AlipayCreatePaymentResp | null>(null)
+type PaymentState = {
+  payment_id: string
+  requirement_id: string
+  channel: string
+  amount_cny: number
+  status: string
+  alipay_order_string?: string
+  expires_at: string
+  adapay?: boolean
+}
+const currentPayment = ref<PaymentState | null>(null)
 const commentVisible = ref(false)
 const commentRequirement = ref<RequirementItem | null>(null)
 const commentRating = ref(5)
@@ -71,6 +76,7 @@ const publishDescription = ref('')
 const publishBudget = ref<string | number>('')
 const publishAcceptance = ref('')
 const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
+const publishPaymentMethod = ref<'alipay' | 'wechat'>('alipay')
 const publishLoading = ref(false)
 const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
 const editModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
@@ -79,6 +85,7 @@ const editDescription = ref('')
 const editBudget = ref<string | number>('')
 const editAcceptance = ref('')
 const editPaymentMode = ref<RequirementPaymentMode>('self_managed')
+const editPaymentMethod = ref<'alipay' | 'wechat'>('alipay')
 const editLoading = ref(false)
 const finalPaymentConfirmVisible = ref(false)
 const finalPaymentConfirmTarget = ref<RequirementItem | null>(null)
@@ -199,8 +206,31 @@ function isSelfManagedRequirement(item: RequirementItem) {
   return item.payment_mode === 'self_managed'
 }
 
+function isAdapayRequirement(item: RequirementItem) {
+  return item.payment_mode === 'platform_guarantee'
+}
+
 function paymentModeLabel(item: RequirementItem) {
   return isSelfManagedRequirement(item) ? '无电签约定' : '电签担保'
+}
+
+function formatRequirementDisplayStatus(item: RequirementItem) {
+  if (isSelfManagedRequirement(item) || item.status !== 'pending_deposit') {
+    return formatRequirementStatus(item.status)
+  }
+  if (item.bound_resource_id == null) {
+    return '待开发者接单'
+  }
+
+  const status = contractSigningStatusMap.value[item.requirement_id]
+  return status?.has_contract && status.party_a_signed && status.party_b_signed
+    ? '待付定金'
+    : '待签合同'
+}
+
+function isRequirementContractSigned(item: RequirementItem) {
+  const status = contractSigningStatusMap.value[item.requirement_id]
+  return Boolean(status?.has_contract && status.party_a_signed && status.party_b_signed)
 }
 
 function formatRequirementTime(value: string) {
@@ -238,6 +268,9 @@ function formatBudget(value?: number | null) {
 
 function canPay(status: RequirementStatus, item?: RequirementItem) {
   if (item && isSelfManagedRequirement(item)) {
+    return false
+  }
+  if (item && !isRequirementContractSigned(item)) {
     return false
   }
 
@@ -458,6 +491,7 @@ function openRequirementEditModal(item: RequirementItem) {
   editBudget.value = item.budget ?? ''
   editAcceptance.value = item.acceptance_criteria ?? ''
   editPaymentMode.value = item.payment_mode
+  editPaymentMethod.value = item.payment_method === 'wechat' ? 'wechat' : 'alipay'
   editVisible.value = true
 }
 
@@ -472,6 +506,7 @@ async function openPublishModal() {
   publishBudget.value = ''
   publishAcceptance.value = ''
   publishPaymentMode.value = 'self_managed'
+  publishPaymentMethod.value = 'alipay'
   publishVisible.value = true
 }
 
@@ -1082,6 +1117,7 @@ function forceCloseEditModal() {
   editVisible.value = false
   editRequirement.value = null
   editPaymentMode.value = 'self_managed'
+  editPaymentMethod.value = 'alipay'
 }
 
 function forceClosePublishModal() {
@@ -1091,6 +1127,7 @@ function forceClosePublishModal() {
   publishBudget.value = ''
   publishAcceptance.value = ''
   publishPaymentMode.value = 'self_managed'
+  publishPaymentMethod.value = 'alipay'
 }
 
 function closeEditModal() {
@@ -1189,6 +1226,8 @@ async function submitRequirementResubmit() {
       budget,
       acceptance_criteria: acceptanceValidation.value,
       payment_mode: editPaymentMode.value,
+      payment_method:
+        editPaymentMode.value === 'platform_guarantee' ? editPaymentMethod.value : undefined,
     })
 
     showToast('需求已重新提交，等待审核', 'success')
@@ -1252,6 +1291,8 @@ async function submitRequirementPublish() {
       budget,
       acceptance_criteria: acceptanceValidation.value,
       payment_mode: publishPaymentMode.value,
+      payment_method:
+        publishPaymentMode.value === 'platform_guarantee' ? publishPaymentMethod.value : undefined,
     })
 
     showToast('需求已发布', 'success')
@@ -1401,6 +1442,22 @@ async function loadMyRequirements() {
   try {
     const rows = await listRequirements(auth.token)
     myRequirements.value = rows.slice(0, 20)
+    const guaranteedRows = myRequirements.value.filter((item) => !isSelfManagedRequirement(item))
+    const entries = await Promise.allSettled(
+      guaranteedRows.map((item) =>
+        fetchContractSigningStatus(auth.token, item.requirement_id).then((status) => ({
+          requirementId: item.requirement_id,
+          status,
+        })),
+      ),
+    )
+    const statusMap: Record<string, ContractSigningStatus | null> = {}
+    for (const entry of entries) {
+      if (entry.status === 'fulfilled') {
+        statusMap[entry.value.requirementId] = entry.value.status
+      }
+    }
+    contractSigningStatusMap.value = statusMap
   } catch (err) {
     showToast(err instanceof Error ? err.message : '加载需求单失败', 'error')
   } finally {
@@ -1415,72 +1472,59 @@ async function submitRequirementPayment() {
 
   const requirement = payRequirement.value
   const channel = payChannel.value
-  const amount = payAmount.value
+  if (!isAdapayRequirement(requirement)) {
+    showToast('无担保订单不通过平台收款，请由双方按约定自行结算', 'warning')
+    return
+  }
 
   payLoading.value = true
   try {
     if (!currentPayment.value) {
-      let createPayload: AlipayCreatePaymentResp | WechatCreatePaymentResp | AlipayPageCreatePaymentResp
-
-      if (channel === 'alipay') {
-        createPayload = await createAlipayPagePayment(auth.token, {
-          requirement_id: requirement.requirement_id,
-          amount_cny: amount,
-          description: `需求 ${requirement.requirement_id} ${payStageLabel.value}`,
-        })
-
-        currentPayment.value = {
-          payment_id: createPayload.payment_id,
-          requirement_id: createPayload.requirement_id,
-          channel: createPayload.channel,
-          amount_cny: createPayload.amount_cny,
-          status: createPayload.status,
-          alipay_order_string: '',
-          expires_at: createPayload.expires_at,
-        }
-      } else {
-        createPayload = await createPayment(auth.token, channel, {
-          requirement_id: requirement.requirement_id,
-          amount_cny: amount,
-          description: `需求 ${requirement.requirement_id} ${payStageLabel.value}`,
-        })
-
-        const wechatPayload = createPayload as WechatCreatePaymentResp
-        currentPayment.value = {
-          payment_id: wechatPayload.payment_id,
-          requirement_id: wechatPayload.requirement_id,
-          channel: wechatPayload.channel,
-          amount_cny: wechatPayload.amount_cny,
-          status: wechatPayload.status,
-          alipay_order_string: wechatPayload.code_url,
-          expires_at: wechatPayload.expires_at,
-        }
+      const adapayPayment: AdapayPaymentResponse = await createAdapayPayment(
+        auth.token,
+        requirement.requirement_id,
+        requirement.status === 'pending_final' ? 'final' : 'deposit',
+        channel,
+      )
+      currentPayment.value = {
+        payment_id: adapayPayment.paymentId,
+        requirement_id: adapayPayment.requirementId,
+        channel,
+        amount_cny: Number(adapayPayment.amountCny),
+        status: adapayPayment.status,
+        alipay_order_string: adapayPayment.payUrl ?? '',
+        expires_at: '',
+        adapay: true,
       }
-
       showToast(`${payStageLabel.value}支付订单已生成，正在跳转支付页`, 'success')
       router.push({
         name: 'payment',
         query: {
+          adapay: '1',
           payment_id: currentPayment.value.payment_id,
-          requirement_id: requirement.requirement_id,
+          requirement_id: adapayPayment.requirementId,
           channel,
-          amount_cny: currentPayment.value.amount_cny.toString(),
-          expires_at: currentPayment.value.expires_at,
-          ...(channel === 'alipay' ? { page: '1' } : { qr_content: currentPayment.value.alipay_order_string }),
+          amount_cny: adapayPayment.amountCny,
+          qr_content: adapayPayment.payUrl ?? undefined,
         },
       })
       return
     }
 
-    const confirmResult = await confirmPayment(auth.token, channel, currentPayment.value.payment_id)
-
-    if (!confirmResult.ok) {
-      throw new Error(confirmResult.message || `确认${payStageLabel.value}支付失败`)
+    if (currentPayment.value.adapay) {
+      const adapayPayment = await getAdapayPayment(auth.token, currentPayment.value.payment_id)
+      if (adapayPayment.status !== 'paid' && adapayPayment.status !== 'confirmed') {
+        showToast('支付尚未完成，请先完成 Adapay 支付', 'warning')
+        return
+      }
+      showToast(`${payStageLabel.value}支付确认成功`, 'success')
+      currentPayment.value = null
+      payVisible.value = false
+      await loadMyRequirements()
+      return
     }
 
-    showToast(`${payStageLabel.value}支付确认成功`, 'success')
-    payVisible.value = false
-    await loadMyRequirements()
+    throw new Error('支付订单状态无效，请重新发起 Adapay 支付')
   } catch (err) {
     showToast(err instanceof Error ? err.message : '支付失败', 'error')
   } finally {
@@ -1600,11 +1644,12 @@ onBeforeUnmount(() => {
             <span>{{ item.requirement_id }} · {{ paymentModeLabel(item) }}</span>
           </div>
           <span class="overview-status" :class="`overview-status--${item.status}`">{{
-            formatRequirementStatus(item.status) }}</span>
+            formatRequirementDisplayStatus(item) }}</span>
           <small>{{ formatBudget(item.budget) }}</small>
           <time>{{ formatRequirementTime(item.updated_at) }}</time>
           <div class="overview-requirement-progress" @click.stop>
-            <RequirementProgressGuide :requirement="item" :payment-mode="item.payment_mode" />
+            <RequirementProgressGuide :requirement="item" :payment-mode="item.payment_mode"
+              :contract-status="contractSigningStatusMap[item.requirement_id]" />
           </div>
         </li>
       </ul>
@@ -1657,14 +1702,18 @@ onBeforeUnmount(() => {
     <PublishModal ref="publishModalRef" :visible="publishVisible" v-model:publishTitle="publishTitle"
       v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
       v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
-      :allowPlatformGuarantee="false" :publishLoading="publishLoading"
+      v-model:publishPaymentMethod="publishPaymentMethod"
+      :allowPlatformGuarantee="false"
+      :publishLoading="publishLoading"
       :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="showToast"
       @submit="submitRequirementPublish" />
 
     <PublishModal ref="editModalRef" :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核"
       loadingText="提交中..." v-model:publishTitle="editTitle" v-model:publishDescription="editDescription"
       v-model:publishBudget="editBudget" v-model:publishAcceptance="editAcceptance"
-      v-model:publishPaymentMode="editPaymentMode" :allowPlatformGuarantee="false" :publishLoading="editLoading"
+      v-model:publishPaymentMode="editPaymentMode" v-model:publishPaymentMethod="editPaymentMethod"
+      :allowPlatformGuarantee="false"
+      :publishLoading="editLoading"
       :draft-scope="editRequirement ? `edit-${editRequirement.requirement_id}` : ''" @close="closeEditModal"
       @notify="showToast" @submit="submitRequirementResubmit" />
 

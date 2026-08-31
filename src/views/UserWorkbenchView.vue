@@ -71,6 +71,7 @@ const menuGroups: WorkbenchMenuGroup[] = [
     icon: Box,
     items: [
       { label: '账户与优惠券', name: 'workbench-account', description: '管理优惠券与账户入口' },
+        { label: '发票中心', name: 'workbench-invoices', description: '申请平台发票或上传开发者发票' },
       { label: '我的背包', name: 'workbench-points', description: '查看积分余额与明细' },
       { label: '我的收藏', name: 'workbench-favorites', description: '查看收藏的社区帖子' },
       {

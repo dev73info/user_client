@@ -241,7 +241,7 @@ function statusToLabel(status: RequirementStatus): string {
     const mapping: Record<RequirementStatus, string> = {
         pending_review: '待审核',
         rejected: '已拒绝',
-        pending_deposit: '待付定金',
+        pending_deposit: '待接单/签约',
         deposit_paid: '待开发',
         in_development: '开发中',
         pending_final: '待付尾款',

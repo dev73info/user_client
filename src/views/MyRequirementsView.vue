@@ -14,13 +14,13 @@ import {
 } from '@/api/conversations'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import {
-  confirmPayment,
-  createAlipayPagePayment,
-  createPayment,
-  type AlipayCreatePaymentResp,
-  type AlipayPageCreatePaymentResp,
-  type WechatCreatePaymentResp,
-} from '@/api/payments'
+  createAdapayPayment,
+  getAdapayPayment,
+  listAdapayDeliveryVersions,
+  reportAdapayBreach,
+  type AdapayDeliveryVersion,
+  type AdapayPaymentResponse,
+} from '@/api/adapay'
 import {
   cancelRequirement as cancelRequirementApi,
   completeRequirement as completeRequirementApi,
@@ -57,7 +57,17 @@ const payRequirement = ref<RequirementItem | null>(null)
 const detailRequirement = ref<RequirementItem | null>(null)
 const payChannel = ref<'alipay' | 'wechat'>('alipay')
 const payLoading = ref(false)
-const currentPayment = ref<AlipayCreatePaymentResp | null>(null)
+type PaymentState = {
+  payment_id: string
+  requirement_id: string
+  channel: string
+  amount_cny: number
+  status: string
+  alipay_order_string?: string
+  expires_at: string
+  adapay?: boolean
+}
+const currentPayment = ref<PaymentState | null>(null)
 const commentVisible = ref(false)
 const commentRequirement = ref<RequirementItem | null>(null)
 const commentRating = ref(5)
@@ -69,6 +79,7 @@ const publishDescription = ref('')
 const publishBudget = ref<string | number>('')
 const publishAcceptance = ref('')
 const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
+const publishPaymentMethod = ref<'alipay' | 'wechat'>('alipay')
 const publishLoading = ref(false)
 const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
 const editModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
@@ -79,6 +90,7 @@ const editDescription = ref('')
 const editBudget = ref<string | number>('')
 const editAcceptance = ref('')
 const editPaymentMode = ref<RequirementPaymentMode>('self_managed')
+const editPaymentMethod = ref<'alipay' | 'wechat'>('alipay')
 const editLoading = ref(false)
 const requirementSubscriptionLoadingId = ref<string | null>(null)
 const resourceVisibilityLoadingId = ref<string | null>(null)
@@ -97,6 +109,7 @@ const versionDeleteRejectTargetId = ref<number | null>(null)
 const versionDeleteRejectNotes = ref<Record<number, string>>({})
 const depositRatioPercent = ref(20)
 const contractSigningStatusMap = ref<Record<string, ContractSigningStatus | null>>({})
+const deliveryVersionsMap = ref<Record<string, AdapayDeliveryVersion[]>>({})
 const unbindRespondVisible = ref(false)
 const unbindRespondRequirement = ref<RequirementItem | null>(null)
 const unbindRespondLoading = ref(false)
@@ -107,6 +120,11 @@ const unbindRequestLoading = ref(false)
 const cancelConfirmVisible = ref(false)
 const cancelConfirmTarget = ref<RequirementItem | null>(null)
 const cancelLoading = ref(false)
+const breachVisible = ref(false)
+const breachRequirement = ref<RequirementItem | null>(null)
+const breachLiableParty = ref<'customer' | 'developer' | 'platform'>('developer')
+const breachReason = ref('')
+const breachLoading = ref(false)
 
 const detailRequirementDescriptionHtml = computed(
   () =>
@@ -154,7 +172,7 @@ function isWaitingContractSign(item: RequirementItem) {
   }
   const status = signingStatusForRequirement(item)
   return Boolean(
-    item.status === 'deposit_paid' &&
+    (item.status === 'pending_deposit' || item.status === 'deposit_paid') &&
     status?.has_contract &&
     (!status.party_a_signed || !status.party_b_signed),
   )
@@ -168,11 +186,24 @@ function formatRequirementDisplayStatus(item: RequirementItem) {
   if (isUnbinding(item)) {
     return item.pending_unbind_request?.initiator === 'creator' ? '解除待确认' : '开发者申请解除'
   }
+  if (!isSelfManagedRequirement(item) && item.status === 'pending_deposit') {
+    if (!hasBoundResource(item)) {
+      return '待开发者接单'
+    }
+    if (!isRequirementContractSigned(item)) {
+      return '待签合同'
+    }
+    return '待付定金'
+  }
   return isWaitingContractSign(item) ? '待签合同' : formatRequirementStatus(item.status)
 }
 
 function isSelfManagedRequirement(item: RequirementItem) {
   return item.payment_mode === 'self_managed'
+}
+
+function isAdapayRequirement(item: RequirementItem) {
+  return item.payment_mode === 'platform_guarantee'
 }
 
 function paymentModeLabel(item: RequirementItem) {
@@ -213,6 +244,9 @@ function canPay(status: RequirementStatus, item?: RequirementItem) {
   if (item && isSelfManagedRequirement(item)) {
     return false
   }
+  if (item && !isRequirementContractSigned(item)) {
+    return false
+  }
 
   return status === 'pending_deposit' || status === 'pending_final'
 }
@@ -222,6 +256,9 @@ function canComplete(item: RequirementItem) {
 }
 
 function publishedVersionCount(item: RequirementItem) {
+  if (!isSelfManagedRequirement(item)) {
+    return deliveryVersionsMap.value[item.requirement_id]?.length ?? 0
+  }
   return item.bound_resource_version_count ?? 0
 }
 
@@ -256,6 +293,49 @@ function canRequestUnbindAsCreator(item: RequirementItem) {
   )
 }
 
+function canReportBreach(item: RequirementItem) {
+  return item.payment_mode !== 'self_managed' &&
+    ['deposit_paid', 'in_development', 'pending_final'].includes(item.status)
+}
+
+function openBreachReport(item: RequirementItem) {
+  if (!canReportBreach(item)) {
+    return
+  }
+  breachRequirement.value = item
+  breachLiableParty.value = 'developer'
+  breachReason.value = ''
+  breachVisible.value = true
+}
+
+function closeBreachReport() {
+  if (breachLoading.value) {
+    return
+  }
+  breachVisible.value = false
+  breachRequirement.value = null
+  breachReason.value = ''
+}
+
+async function submitBreachReport() {
+  const item = breachRequirement.value
+  const reason = breachReason.value.trim()
+  if (!item || !reason) {
+    showToast('请填写违约事实和相关依据', 'warning')
+    return
+  }
+  breachLoading.value = true
+  try {
+    await reportAdapayBreach(auth.token, item.requirement_id, breachLiableParty.value, reason)
+    showToast('违约申报已提交，等待平台审核', 'success')
+    closeBreachReport()
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '提交违约申报失败', 'error')
+  } finally {
+    breachLoading.value = false
+  }
+}
+
 function hasBoundResource(item: RequirementItem) {
   return item.bound_resource_id != null
 }
@@ -279,7 +359,10 @@ function signingStatusForRequirement(item: RequirementItem) {
 
 function isRequirementContractSigned(item: RequirementItem) {
   const status = signingStatusForRequirement(item)
-  return Boolean(status?.party_a_signed && status.party_b_signed)
+  return Boolean(
+    status?.party_a_signed &&
+      status.party_b_signed,
+  )
 }
 
 function canOpenContractSign(item: RequirementItem) {
@@ -288,7 +371,10 @@ function canOpenContractSign(item: RequirementItem) {
     return false
   }
   const status = signingStatusForRequirement(item)
-  return Boolean(status?.has_contract && !status.party_a_signed && status.party_b_signed)
+  return Boolean(
+    status?.has_contract &&
+      (!status.party_a_signed || !status.party_b_signed),
+  )
 }
 
 function contractStatusHint(item: RequirementItem) {
@@ -298,9 +384,10 @@ function contractStatusHint(item: RequirementItem) {
   }
   const status = signingStatusForRequirement(item)
   if (!status?.has_contract) return ''
-  if (status.party_a_signed && status.party_b_signed) return '合同已签署'
-  if (status.party_b_signed) return '待您签署合同，签完后进入开发中'
-  return '等待开发者签署合同，双方签完后进入开发中'
+  if (status.party_a_signed && status.party_b_signed) return '合同已签署，可支付定金'
+  if (status.party_a_signed) return '等待开发者签署合同，双方签完后可支付定金'
+  if (status.party_b_signed) return '待您签署合同，签完后可支付定金'
+  return '客户和开发者均可进入双方合同签署'
 }
 
 function openContractSign(item: RequirementItem) {
@@ -750,6 +837,7 @@ function openRequirementEditModal(item: RequirementItem) {
   editBudget.value = item.budget ?? ''
   editAcceptance.value = item.acceptance_criteria ?? ''
   editPaymentMode.value = item.payment_mode
+  editPaymentMethod.value = item.payment_method === 'wechat' ? 'wechat' : 'alipay'
   editVisible.value = true
 }
 
@@ -810,6 +898,7 @@ function resetPublishForm() {
   publishBudget.value = ''
   publishAcceptance.value = ''
   publishPaymentMode.value = 'self_managed'
+  publishPaymentMethod.value = 'alipay'
 }
 
 async function openPublishModal() {
@@ -839,6 +928,7 @@ function forceCloseEditModal() {
   editVisible.value = false
   editRequirement.value = null
   editPaymentMode.value = 'self_managed'
+  editPaymentMethod.value = 'alipay'
 }
 
 function closeEditModal() {
@@ -1026,6 +1116,8 @@ async function submitRequirementResubmit() {
       budget,
       acceptance_criteria: acceptanceValidation.value,
       payment_mode: editPaymentMode.value,
+      payment_method:
+        editPaymentMode.value === 'platform_guarantee' ? editPaymentMethod.value : undefined,
     })
 
     showToast('需求已重新提交，等待审核', 'success')
@@ -1089,6 +1181,8 @@ async function submitRequirementPublish() {
       budget,
       acceptance_criteria: acceptanceValidation.value,
       payment_mode: publishPaymentMode.value,
+      payment_method:
+        publishPaymentMode.value === 'platform_guarantee' ? publishPaymentMethod.value : undefined,
     })
 
     showToast('需求已发布，等待审核', 'success')
@@ -1192,6 +1286,7 @@ async function loadMyRequirements() {
     myRequirements.value = rows.slice(0, 20)
     syncRouteRequirementDetail()
     await loadContractSigningStatuses(myRequirements.value)
+    await loadDeliveryVersions(myRequirements.value)
     if (
       expandedVersionDeleteReviewRequirementId.value &&
       !myRequirements.value.some(
@@ -1207,6 +1302,30 @@ async function loadMyRequirements() {
   } finally {
     requirementLoading.value = false
   }
+}
+
+async function loadDeliveryVersions(items: RequirementItem[]) {
+  if (!auth.token) {
+    deliveryVersionsMap.value = {}
+    return
+  }
+
+  const guaranteedItems = items.filter(
+    (item) => item.payment_mode !== 'self_managed' && ['in_development', 'pending_final'].includes(item.status),
+  )
+  const entries = await Promise.allSettled(
+    guaranteedItems.map(async (item) => ({
+      requirementId: item.requirement_id,
+      versions: await listAdapayDeliveryVersions(auth.token, item.requirement_id),
+    })),
+  )
+  const map: Record<string, AdapayDeliveryVersion[]> = {}
+  for (const entry of entries) {
+    if (entry.status === 'fulfilled') {
+      map[entry.value.requirementId] = entry.value.versions
+    }
+  }
+  deliveryVersionsMap.value = map
 }
 
 async function refreshMyRequirements() {
@@ -1250,77 +1369,59 @@ async function submitRequirementPayment() {
 
   const requirement = payRequirement.value
   const channel = payChannel.value
-  const amount = payAmount.value
+  if (!isAdapayRequirement(requirement)) {
+    showToast('无担保订单不通过平台收款，请由双方按约定自行结算', 'warning')
+    return
+  }
 
   payLoading.value = true
   try {
     if (!currentPayment.value) {
-      let createPayload:
-        | AlipayCreatePaymentResp
-        | WechatCreatePaymentResp
-        | AlipayPageCreatePaymentResp
-
-      if (channel === 'alipay') {
-        createPayload = await createAlipayPagePayment(auth.token, {
-          requirement_id: requirement.requirement_id,
-          amount_cny: amount,
-          description: `需求 ${requirement.requirement_id} ${payStageLabel.value}`,
-        })
-
-        currentPayment.value = {
-          payment_id: createPayload.payment_id,
-          requirement_id: createPayload.requirement_id,
-          channel: createPayload.channel,
-          amount_cny: createPayload.amount_cny,
-          status: createPayload.status,
-          alipay_order_string: '',
-          expires_at: createPayload.expires_at,
-        }
-      } else {
-        createPayload = await createPayment(auth.token, channel, {
-          requirement_id: requirement.requirement_id,
-          amount_cny: amount,
-          description: `需求 ${requirement.requirement_id} ${payStageLabel.value}`,
-        })
-
-        const wechatPayload = createPayload as WechatCreatePaymentResp
-        currentPayment.value = {
-          payment_id: wechatPayload.payment_id,
-          requirement_id: wechatPayload.requirement_id,
-          channel: wechatPayload.channel,
-          amount_cny: wechatPayload.amount_cny,
-          status: wechatPayload.status,
-          alipay_order_string: wechatPayload.code_url,
-          expires_at: wechatPayload.expires_at,
-        }
+      const adapayPayment: AdapayPaymentResponse = await createAdapayPayment(
+        auth.token,
+        requirement.requirement_id,
+        requirement.status === 'pending_final' ? 'final' : 'deposit',
+        channel,
+      )
+      currentPayment.value = {
+        payment_id: adapayPayment.paymentId,
+        requirement_id: adapayPayment.requirementId,
+        channel,
+        amount_cny: Number(adapayPayment.amountCny),
+        status: adapayPayment.status,
+        alipay_order_string: adapayPayment.payUrl ?? '',
+        expires_at: '',
+        adapay: true,
       }
-
       showToast(`${payStageLabel.value}支付订单已生成，正在跳转支付页`, 'success')
       router.push({
         name: 'payment',
         query: {
+          adapay: '1',
           payment_id: currentPayment.value.payment_id,
-          requirement_id: requirement.requirement_id,
+          requirement_id: adapayPayment.requirementId,
           channel,
-          amount_cny: currentPayment.value.amount_cny.toString(),
-          expires_at: currentPayment.value.expires_at,
-          ...(channel === 'alipay'
-            ? { page: '1' }
-            : { qr_content: currentPayment.value.alipay_order_string }),
+          amount_cny: adapayPayment.amountCny,
+          qr_content: adapayPayment.payUrl ?? undefined,
         },
       })
       return
     }
 
-    const confirmResult = await confirmPayment(auth.token, channel, currentPayment.value.payment_id)
-
-    if (!confirmResult.ok) {
-      throw new Error(confirmResult.message || `确认${payStageLabel.value}支付失败`)
+    if (currentPayment.value.adapay) {
+      const adapayPayment = await getAdapayPayment(auth.token, currentPayment.value.payment_id)
+      if (adapayPayment.status !== 'paid' && adapayPayment.status !== 'confirmed') {
+        showToast('支付尚未完成，请先完成 Adapay 支付', 'warning')
+        return
+      }
+      showToast(`${payStageLabel.value}支付确认成功`, 'success')
+      currentPayment.value = null
+      payVisible.value = false
+      await loadMyRequirements()
+      return
     }
 
-    showToast(`${payStageLabel.value}支付确认成功`, 'success')
-    payVisible.value = false
-    await loadMyRequirements()
+    throw new Error('支付订单状态无效，请重新发起 Adapay 支付')
   } catch (err) {
     showToast(err instanceof Error ? err.message : '支付失败', 'error')
   } finally {
@@ -1468,67 +1569,84 @@ watch(
               canResubmit(item.status),
             expanded: isVersionDeleteReviewExpanded(item),
           }" @click="handleRequirementAction(item)">
-            <div class="requirement-main">
-              <strong>{{ item.title }}</strong>
-              <span>{{ item.requirement_id }}</span>
-              <small class="requirement-note">{{ paymentModeLabel(item) }} · {{ paymentModeHint(item) }}</small>
-              <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
-                formatResourceVisibility(item)
-                }}</small>
-              <small v-if="hasBoundResource(item)" class="requirement-note">已发布版本：{{ publishedVersionCount(item)
-                }}</small>
-              <small v-if="contractStatusHint(item)" class="requirement-note">{{
-                contractStatusHint(item)
-                }}</small>
-              <small v-if="hasBoundResource(item) && !canToggleRequirementResourceVisibility(item)"
-                class="requirement-note">切换资源公开状态需在{{
-                  isSelfManagedRequirement(item) ? '需求完成后' : '已付尾款后'
-                }}开放</small>
-              <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">
-                <strong>待审核删除版本：</strong>
-                <span class="pending-review-pill">
-                  {{ pendingResourceVersionDeleteRequests(item).length }} 个待审核
+            <div class="requirement-card-body">
+              <div class="requirement-main">
+                <div class="requirement-title">
+                  <strong>{{ item.title }}</strong>
+                  <span>{{ item.requirement_id }}</span>
+                </div>
+                <div class="requirement-details">
+                <small class="requirement-note">{{ paymentModeLabel(item) }} · {{ paymentModeHint(item) }}</small>
+                <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
+                  formatResourceVisibility(item)
+                  }}</small>
+                <small v-if="hasBoundResource(item)" class="requirement-note">已发布版本：{{ publishedVersionCount(item)
+                  }}</small>
+                <small v-if="!isSelfManagedRequirement(item)" class="requirement-note">
+                  托管交付版本：{{ publishedVersionCount(item) }}
+                </small>
+                <small v-if="contractStatusHint(item)" class="requirement-note">{{
+                  contractStatusHint(item)
+                  }}</small>
+                <small v-if="hasBoundResource(item) && !canToggleRequirementResourceVisibility(item)"
+                  class="requirement-note">切换资源公开状态需在{{
+                    isSelfManagedRequirement(item) ? '需求完成后' : '已付尾款后'
+                  }}开放</small>
+                <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">
+                  <strong>待审核删除版本：</strong>
+                  <span class="pending-review-pill">
+                    {{ pendingResourceVersionDeleteRequests(item).length }} 个待审核
+                  </span>
+                  <span class="pending-review-count">共 {{ pendingResourceVersionDeleteRequests(item).length }} 个</span>
+                </small>
+                <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">{{
+                  resourceVersionDeleteReviewHint(item)
+                  }}</small>
+                <small v-if="hasPendingResourceVersionDeleteReview(item)"
+                  class="requirement-note">点击当前需求行，可在下方展开审核卡片。</small>
+                <small v-else-if="
+                  hasBoundResource(item) &&
+                  item.resource_version_delete_request_status === 'rejected' &&
+                  item.resource_version_delete_review_note
+                " class="requirement-note">{{ resourceVersionDeleteReviewHint(item) }}</small>
+                <small v-if="
+                  item.status === 'in_development' &&
+                  hasBoundResource(item) &&
+                  publishedVersionCount(item) < 1
+                " class="requirement-note">开发者发布至少 1 个版本后，才能{{
+                  isSelfManagedRequirement(item) ? '确认完成' : '结束开发并支付尾款'
+                  }}</small>
+                <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{
+                  item.review_note }}</small>
+                <small v-if="hasPendingDeveloperUnbindRequest(item)" class="requirement-note">
+                  <strong>开发者申请解除绑定：</strong>{{ item.pending_unbind_request?.reason }}
+                </small>
+                <small v-if="hasPendingDeveloperUnbindRequest(item)" class="requirement-note">
+                  点击当前需求行，可同意解除（需求重新挂回大厅）或拒绝解除。
+                </small>
+                <small v-if="hasPendingUnbindRequest(item) && !hasPendingDeveloperUnbindRequest(item)"
+                  class="requirement-note">
+                  已提交解除申请，等待开发者确认。
+                </small>
+                </div>
+              </div>
+              <aside class="requirement-summary" aria-label="需求摘要">
+                <span class="requirement-status" :class="{
+                  'requirement-status--contract': isWaitingContractSign(item),
+                  'requirement-status--unbind': isUnbinding(item),
+                }">
+                  {{ formatRequirementDisplayStatus(item) }}
                 </span>
-                <span class="pending-review-count">共 {{ pendingResourceVersionDeleteRequests(item).length }} 个</span>
-              </small>
-              <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">{{
-                resourceVersionDeleteReviewHint(item)
-                }}</small>
-              <small v-if="hasPendingResourceVersionDeleteReview(item)"
-                class="requirement-note">点击当前需求行，可在下方展开审核卡片。</small>
-              <small v-else-if="
-                hasBoundResource(item) &&
-                item.resource_version_delete_request_status === 'rejected' &&
-                item.resource_version_delete_review_note
-              " class="requirement-note">{{ resourceVersionDeleteReviewHint(item) }}</small>
-              <small v-if="
-                item.status === 'in_development' &&
-                hasBoundResource(item) &&
-                publishedVersionCount(item) < 1
-              " class="requirement-note">开发者发布至少 1 个版本后，才能{{
-                isSelfManagedRequirement(item) ? '确认完成' : '结束开发并支付尾款'
-                }}</small>
-              <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{
-                item.review_note }}</small>
-              <small v-if="hasPendingDeveloperUnbindRequest(item)" class="requirement-note">
-                <strong>开发者申请解除绑定：</strong>{{ item.pending_unbind_request?.reason }}
-              </small>
-              <small v-if="hasPendingDeveloperUnbindRequest(item)" class="requirement-note">
-                点击当前需求行，可同意解除（需求重新挂回大厅）或拒绝解除。
-              </small>
-              <small v-if="hasPendingUnbindRequest(item) && !hasPendingDeveloperUnbindRequest(item)"
-                class="requirement-note">
-                已提交解除申请，等待开发者确认。
-              </small>
+                <div class="requirement-budget">
+                  <small>预算</small>
+                  <strong>{{ formatBudget(item.budget) }}</strong>
+                </div>
+                <time>
+                  <small>更新时间</small>
+                  <span>{{ formatRequirementTime(item.updated_at) }}</span>
+                </time>
+              </aside>
             </div>
-            <span class="requirement-status" :class="{
-              'requirement-status--contract': isWaitingContractSign(item),
-              'requirement-status--unbind': isUnbinding(item),
-            }">
-              {{ formatRequirementDisplayStatus(item) }}
-            </span>
-            <span>{{ formatBudget(item.budget) }}</span>
-            <time>{{ formatRequirementTime(item.updated_at) }}</time>
             <div class="requirement-actions">
               <button v-if="hasPendingDeveloperUnbindRequest(item)" class="ghost small" type="button"
                 @click.stop="openUnbindRespond(item)">
@@ -1569,7 +1687,11 @@ watch(
               </button>
               <button v-if="canRequestFinalPayment(item)" class="ghost small" type="button"
                 @click.stop="requestFinalPayment(item)">
-                {{ requirementFinalActionLabel(item) }}
+                {{ isSelfManagedRequirement(item) ? requirementFinalActionLabel(item) : '确认验收并支付尾款' }}
+              </button>
+              <button v-if="canReportBreach(item)" class="ghost small danger-plain" type="button"
+                @click.stop="openBreachReport(item)">
+                申报违约
               </button>
               <button v-if="canComplete(item)" class="ghost small" type="button"
                 @click.stop="openCompletionConfirm(item)">
@@ -1666,14 +1788,18 @@ watch(
     <PublishModal ref="publishModalRef" :visible="publishVisible" v-model:publishTitle="publishTitle"
       v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
       v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
-      :allowPlatformGuarantee="false" :publishLoading="publishLoading"
+      v-model:publishPaymentMethod="publishPaymentMethod"
+      :allowPlatformGuarantee="false"
+      :publishLoading="publishLoading"
       :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="showToast"
       @submit="submitRequirementPublish" />
 
     <PublishModal ref="editModalRef" :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核"
       loadingText="提交中..." v-model:publishTitle="editTitle" v-model:publishDescription="editDescription"
       v-model:publishBudget="editBudget" v-model:publishAcceptance="editAcceptance"
-      v-model:publishPaymentMode="editPaymentMode" :allowPlatformGuarantee="false" :publishLoading="editLoading"
+      v-model:publishPaymentMode="editPaymentMode" v-model:publishPaymentMethod="editPaymentMethod"
+      :allowPlatformGuarantee="false"
+      :publishLoading="editLoading"
       :draft-scope="editRequirement ? `edit-${editRequirement.requirement_id}` : ''" @close="closeEditModal"
       @notify="showToast" @submit="submitRequirementResubmit" />
 
@@ -1900,6 +2026,34 @@ watch(
           <button class="ghost danger" type="button" :disabled="cancelLoading"
             @click="submitCancelRequirement">
             {{ cancelLoading ? '取消中...' : '确认取消' }}
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="breachVisible && breachRequirement" class="modal-wrap" @click.self="closeBreachReport">
+      <section class="pay-modal" aria-label="违约申报弹窗">
+        <h3>申报履约违约</h3>
+        <p class="pay-line"><strong>需求标题：</strong>{{ breachRequirement.title }}</p>
+        <p class="pay-line"><strong>需求编号：</strong>{{ breachRequirement.requirement_id }}</p>
+        <label class="pay-line" style="display:flex;flex-direction:column;gap:6px;">
+          <strong>责任方向</strong>
+          <select v-model="breachLiableParty">
+            <option value="developer">开发者违约</option>
+            <option value="customer">客户违约</option>
+            <option value="platform">平台违约</option>
+          </select>
+        </label>
+        <label class="pay-line" style="display:flex;flex-direction:column;gap:6px;">
+          <strong>事实与依据</strong>
+          <textarea v-model="breachReason" rows="6" maxlength="2000"
+            placeholder="请填写时间、已交付内容、沟通记录和希望平台核查的事实"></textarea>
+        </label>
+        <p class="tip">平台会核对合同、支付、交付和沟通记录。客户违约、开发者违约或平台责任的资金处理由管理员裁决。</p>
+        <div class="actions">
+          <button class="ghost" type="button" :disabled="breachLoading" @click="closeBreachReport">取消</button>
+          <button class="ghost primary" type="button" :disabled="breachLoading" @click="submitBreachReport">
+            {{ breachLoading ? '提交中...' : '提交申报' }}
           </button>
         </div>
       </section>

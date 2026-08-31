@@ -242,19 +242,33 @@ export async function unlikePublicMcResource(
   )
 }
 
+function isDownloadPlaceholder(fileName: string): boolean {
+  const normalized = fileName.trim().toLowerCase()
+  return normalized === 'download' || normalized === 'download.73' || normalized.endsWith('.package')
+}
+
+export function resolveResourceDownloadFileName(
+  fileName: string | null | undefined,
+  fallbackFileName: string,
+): string {
+  const normalized = fileName?.trim() ?? ''
+  const fallback = fallbackFileName.trim() || 'resource'
+  return !normalized || isDownloadPlaceholder(normalized) ? fallback : normalized
+}
+
 function getResponseFileName(response: Response, fallbackFileName: string): string {
   const disposition = response.headers.get('content-disposition') ?? ''
   const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i)
   if (utf8Match?.[1]) {
-    return decodeURIComponent(utf8Match[1])
+    return extractResourceFileNameFromUrl(decodeURIComponent(utf8Match[1]), fallbackFileName)
   }
 
   const plainMatch = disposition.match(/filename="?([^";]+)"?/i)
   if (plainMatch?.[1]) {
-    return plainMatch[1]
+    return extractResourceFileNameFromUrl(plainMatch[1], fallbackFileName)
   }
 
-  return fallbackFileName
+  return resolveResourceDownloadFileName(fallbackFileName, fallbackFileName)
 }
 
 /**
@@ -277,25 +291,23 @@ export function extractResourceFileNameFromUrl(
     // 匹配 `{uuid}-{original_name}` 形式：uuid 通常为 36 位（含连字符）
     const uuidMatch = last.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-(.+)$/i)
     if (uuidMatch?.[1]) {
-      return decodeURIComponent(uuidMatch[1])
+      return resolveResourceDownloadFileName(decodeURIComponent(uuidMatch[1]), fallbackFileName)
     }
 
     // 兼容：如果没有 uuid 前缀，直接用文件名；但排除 `.package` 占位名
     if (last.toLowerCase().endsWith('.package')) {
-      return fallbackFileName
+      return resolveResourceDownloadFileName(fallbackFileName, fallbackFileName)
     }
-    return decodeURIComponent(last)
+    return resolveResourceDownloadFileName(decodeURIComponent(last), fallbackFileName)
   } catch {
-    return fallbackFileName
+    return resolveResourceDownloadFileName(fallbackFileName, fallbackFileName)
   }
 }
 
-/** 将资源下载文件名的最后一个后缀替换为 .73。 */
-export function with73Extension(fileName: string): string {
-  const normalized = fileName.trim() || 'download'
-  return /\.[^./\\]+$/.test(normalized)
-    ? normalized.replace(/\.[^./\\]+$/, '.73')
-    : `${normalized}.73`
+/** 在原始资源文件名后追加 .73，保留原有扩展名。 */
+export function with73Extension(fileName: string, fallbackFileName = 'resource'): string {
+  const normalized = resolveResourceDownloadFileName(fileName, fallbackFileName)
+  return normalized.toLowerCase().endsWith('.73') ? normalized : `${normalized}.73`
 }
 
 export type DownloadProgress = {
@@ -367,7 +379,7 @@ export async function downloadPublicMcResourceVersionFile(
 ): Promise<{ blob: Blob; fileName: string }> {
   return downloadPublicMcResourceFile(
     `/resource/resources/${resourceId}/versions/${versionId}/download`,
-    'download',
+    `resource-${resourceId}-v${versionId}`,
     token,
     onProgress,
   )

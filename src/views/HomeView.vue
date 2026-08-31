@@ -14,19 +14,12 @@ import { buildDevPortalUrl } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
 import { useAuthForm } from '@/composables/useAuthForm'
 import { validateRequirementRichText } from '@/utils/requirementRichText'
-import {
-  confirmPayment,
-  createAlipayPagePayment,
-  createPayment,
-  type AlipayCreatePaymentResp,
-  type AlipayPageCreatePaymentResp,
-  type WechatCreatePaymentResp,
-} from '@/api/payments'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import { HttpError, apiUrl } from '@/api/http'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import { getMyRealnameVerification } from '@/api/realname'
 import { requestDevRole } from '@/dev/api/auth'
+import { createAdapayPayment, getAdapayPayment, type AdapayPaymentResponse } from '@/api/adapay'
 import {
   createRequirement,
   getPublicRequirementOverview,
@@ -72,6 +65,17 @@ type PendingRequirementView = {
   budget?: number | null
   paymentMethod?: string | null
   paymentMode: RequirementPaymentMode
+}
+
+type PaymentState = {
+  payment_id: string
+  requirement_id: string
+  channel: string
+  amount_cny: number
+  status: string
+  alipay_order_string?: string
+  expires_at: string
+  adapay?: boolean
 }
 
 type AuthMode = 'login' | 'register' | 'reset'
@@ -239,6 +243,7 @@ const publishBudget = ref<string | number>('')
 const depositChannel = ref<'alipay' | 'wechat'>('alipay')
 const publishAcceptance = ref('')
 const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
+const publishPaymentMethod = ref<'alipay' | 'wechat'>('alipay')
 const activeResubmitRequirementId = ref<string | null>(null)
 const publishLoading = ref(false)
 const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
@@ -247,7 +252,7 @@ const depositRequirement = computed<PendingRequirementView | null>(() => {
   const id = String(route.query.requirement_id || '')
   return pendingRequirements.value.find((item) => item.id === id) ?? null
 })
-const depositPayment = ref<AlipayCreatePaymentResp | null>(null)
+const depositPayment = ref<PaymentState | null>(null)
 const depositLoading = ref(false)
 const depositRatioPercent = ref(20)
 const availableCoupons = ref<CouponItem[]>([])
@@ -538,9 +543,9 @@ const platformStats = computed<PlatformStat[]>(() => {
     },
     {
       label: '担保交易',
-      value: '即将上线',
+      value: '已开放',
       icon: Money,
-      disabledReason: '交易担保、资金托管、代收代付与自动分账服务即将上线，敬请期待。',
+      note: '生产环境可用',
     },
   ]
 })
@@ -898,12 +903,17 @@ function openDepositCard(item: PendingRequirementView) {
     publishBudget.value = item.budget ?? ''
     publishAcceptance.value = item.acceptanceCriteria || ''
     publishPaymentMode.value = item.paymentMode
+    publishPaymentMethod.value = item.paymentMethod === 'wechat' ? 'wechat' : 'alipay'
     activeResubmitRequirementId.value = item.id
     router.push({ name: 'home', query: { modal: 'publish' } })
     return
   }
 
   if (item.status !== 'pending_deposit' && item.status !== 'pending_final') {
+    return
+  }
+  if (!isAdapayRequirement(item)) {
+    showToast('无担保订单不通过平台收款，请由双方按约定自行结算', 'warning')
     return
   }
 
@@ -926,9 +936,8 @@ function openDepositCard(item: PendingRequirementView) {
 
 function canOpenPayment(item: PendingRequirementView) {
   return (
-    item.status === 'pending_deposit' ||
-    item.status === 'pending_final' ||
-    item.status === 'rejected'
+    item.status === 'rejected' ||
+    (isAdapayRequirement(item) && item.status === 'pending_final')
   )
 }
 
@@ -993,6 +1002,10 @@ function finalPaymentAmount(item: PendingRequirementView) {
   return Number(tail.toFixed(2))
 }
 
+function isAdapayRequirement(item: PendingRequirementView) {
+  return item.paymentMode === 'platform_guarantee'
+}
+
 const isFinalPayment = computed(() => depositRequirement.value?.status === 'pending_final')
 
 const paymentStageLabel = computed(() => (isFinalPayment.value ? '尾款' : '定金'))
@@ -1027,6 +1040,9 @@ const couponDiscount = computed(() =>
 )
 
 const couponFinalAmount = computed(() => {
+  if (depositRequirement.value && isAdapayRequirement(depositRequirement.value)) {
+    return couponBaseAmount.value
+  }
   if (couponDiscount.value <= 0) {
     return couponBaseAmount.value
   }
@@ -1351,79 +1367,59 @@ async function submitDepositPayment() {
 
   const currentStage = depositRequirement.value.status === 'pending_final' ? '尾款' : '定金'
   const channel = depositChannel.value
+  if (!isAdapayRequirement(depositRequirement.value)) {
+    showToast('无担保订单不通过平台收款，请由双方按约定自行结算', 'warning')
+    return
+  }
 
   depositLoading.value = true
   try {
     if (!depositPayment.value) {
-      let createPayload:
-        | AlipayCreatePaymentResp
-        | WechatCreatePaymentResp
-        | AlipayPageCreatePaymentResp
-
-      if (channel === 'alipay') {
-        createPayload = await createAlipayPagePayment(auth.token, {
-          requirement_id: depositRequirement.value.id,
-          amount_cny: couponBaseAmount.value,
-          coupon_code: activeCouponCode.value || undefined,
-          description: `需求 ${depositRequirement.value.id} ${currentStage}`,
-        })
-
-        depositPayment.value = {
-          payment_id: createPayload.payment_id,
-          requirement_id: createPayload.requirement_id,
-          channel: createPayload.channel,
-          amount_cny: createPayload.amount_cny,
-          status: createPayload.status,
-          alipay_order_string: '',
-          expires_at: createPayload.expires_at,
-        }
-      } else {
-        createPayload = await createPayment(auth.token, channel, {
-          requirement_id: depositRequirement.value.id,
-          amount_cny: couponBaseAmount.value,
-          coupon_code: activeCouponCode.value || undefined,
-          description: `需求 ${depositRequirement.value.id} ${currentStage}`,
-        })
-
-        const wechatPayload = createPayload as WechatCreatePaymentResp
-        depositPayment.value = {
-          payment_id: wechatPayload.payment_id,
-          requirement_id: wechatPayload.requirement_id,
-          channel: wechatPayload.channel,
-          amount_cny: wechatPayload.amount_cny,
-          status: wechatPayload.status,
-          alipay_order_string: wechatPayload.code_url,
-          expires_at: wechatPayload.expires_at,
-        }
+      const adapayPayment: AdapayPaymentResponse = await createAdapayPayment(
+        auth.token,
+        depositRequirement.value.id,
+        currentStage === '定金' ? 'deposit' : 'final',
+        channel,
+      )
+      depositPayment.value = {
+        payment_id: adapayPayment.paymentId,
+        requirement_id: adapayPayment.requirementId,
+        channel,
+        amount_cny: Number(adapayPayment.amountCny),
+        status: adapayPayment.status,
+        alipay_order_string: adapayPayment.payUrl ?? '',
+        expires_at: '',
+        adapay: true,
       }
-
       showToast(`${currentStage}支付订单已生成，正在跳转支付页`, 'success')
       router.push({
         name: 'payment',
         query: {
+          adapay: '1',
           payment_id: depositPayment.value.payment_id,
-          requirement_id: depositRequirement.value.id,
+          requirement_id: adapayPayment.requirementId,
           channel,
-          amount_cny: depositPayment.value.amount_cny.toString(),
-          expires_at: depositPayment.value.expires_at,
-          coupon_code: activeCouponCode.value || undefined,
-          ...(channel === 'alipay'
-            ? { page: '1' }
-            : { qr_content: depositPayment.value.alipay_order_string }),
+          amount_cny: adapayPayment.amountCny,
+          qr_content: adapayPayment.payUrl ?? undefined,
         },
       })
       return
     }
 
-    const confirmResult = await confirmPayment(auth.token, channel, depositPayment.value.payment_id)
-
-    if (!confirmResult.ok) {
-      throw new Error(confirmResult.message || `确认${currentStage}支付失败`)
+    if (depositPayment.value.adapay) {
+      const adapayPayment = await getAdapayPayment(auth.token, depositPayment.value.payment_id)
+      if (adapayPayment.status !== 'paid' && adapayPayment.status !== 'confirmed') {
+        showToast('支付尚未完成，请先完成 Adapay 支付', 'warning')
+        return
+      }
+      showToast(`${currentStage}支付确认成功`, 'success')
+      depositPayment.value = null
+      void router.replace({ name: 'home' })
+      await loadPendingRequirements()
+      return
     }
 
-    showToast(`${currentStage}支付确认成功`, 'success')
-    void router.replace({ name: 'home' })
-    await loadPendingRequirements()
+    throw new Error('支付订单状态无效，请重新发起 Adapay 支付')
   } catch (err) {
     const message = err instanceof Error ? err.message : '支付失败'
     if (
@@ -1548,6 +1544,7 @@ async function openPublishModal() {
   publishBudget.value = ''
   publishAcceptance.value = ''
   publishPaymentMode.value = 'self_managed'
+  publishPaymentMethod.value = 'alipay'
   await router.push({ name: 'home', query: { modal: 'publish' } })
 }
 
@@ -1660,7 +1657,9 @@ async function submitPublishRequirement() {
       description: descriptionValidation.value,
       budget,
       acceptance_criteria: acceptanceValidation.value,
-      payment_mode: 'self_managed' as RequirementPaymentMode,
+      payment_mode: publishPaymentMode.value,
+      payment_method:
+        publishPaymentMode.value === 'platform_guarantee' ? publishPaymentMethod.value : undefined,
     }
 
     if (activeResubmitRequirementId.value) {
@@ -1681,6 +1680,7 @@ async function submitPublishRequirement() {
     publishBudget.value = ''
     publishAcceptance.value = ''
     publishPaymentMode.value = 'self_managed'
+    publishPaymentMethod.value = 'alipay'
     if (resubmitId) {
       publishModalRef.value?.clearDraft(`edit-${resubmitId}`)
     } else {
@@ -2289,6 +2289,7 @@ async function submitPublishRequirement() {
       v-model:publishBudget="publishBudget"
       v-model:publishAcceptance="publishAcceptance"
       v-model:publishPaymentMode="publishPaymentMode"
+      v-model:publishPaymentMethod="publishPaymentMethod"
       :modalTitle="publishModalTitle"
       :submitText="publishModalSubmitText"
       :loadingText="publishModalLoadingText"
@@ -2317,6 +2318,7 @@ async function submitPublishRequirement() {
       :depositLoading="depositLoading"
       :depositPayment="depositPayment"
       :couponFinalAmount="couponFinalAmount"
+      :isEscrowPayment="depositRequirement.paymentMode === 'platform_guarantee'"
       :depositPolicyAccepted="depositPolicyAccepted"
       :contractSigningStatus="contractSigningStatus"
       @close="closeDepositCard"

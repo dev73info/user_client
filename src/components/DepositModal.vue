@@ -29,6 +29,7 @@ const props = defineProps({
   amountCouponCode: { type: String, default: '' },
   discountCouponCode: { type: String, default: '' },
   isFinalPayment: { type: Boolean, default: false },
+  isEscrowPayment: { type: Boolean, default: false },
   depositRatioPercent: { type: Number, default: 0 },
   couponSummary: { type: String, default: '' },
   availableCoupons: { type: Array as PropType<DepositCoupon[]>, default: () => [] },
@@ -126,9 +127,10 @@ function updateDepositPolicyAccepted(value: boolean) {
           </span>
         </div>
         <ul class="deposit-policy-list">
-          <li>该支付仅适用于电签担保订单；新需求默认无电签约定，电签担保暂未开放。</li>
+          <li>该支付仅适用于已启用的电签担保订单，具体金额以双方签署的合同快照为准。</li>
           <li>定金、阶段款或平台服务费的具体用途，以订单页和合同展示为准。</li>
           <li>退款条件按订单状态、合同约定、双方确认情况和《支付与退款说明》处理。</li>
+          <li v-if="isEscrowPayment">电签担保订单不使用优惠券，支付金额由服务端合同快照计算。</li>
         </ul>
       </div>
 
@@ -146,7 +148,7 @@ function updateDepositPolicyAccepted(value: boolean) {
 
       <p v-if="couponSummary" class="coupon-summary">{{ couponSummary }}</p>
 
-      <div v-if="!isFinalPayment" class="coupon-list">
+      <div v-if="!isFinalPayment && !isEscrowPayment" class="coupon-list">
         <div class="coupon-list-header">
           <span>可用优惠券</span>
           <button class="auth-btn ghost" type="button" :disabled="couponLoading" @click="emit('loadAvailableCoupons')">

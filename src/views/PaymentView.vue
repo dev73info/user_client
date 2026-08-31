@@ -5,6 +5,7 @@ import QRCode from 'qrcode'
 
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { getAdapayPayment } from '@/api/adapay'
 import { confirmPayment as confirmPaymentApi, getAlipayPageHtml, listPaymentOrders as listPaymentOrdersApi, type ConfirmPaymentResp } from '@/api/payments'
 
 const route = useRoute()
@@ -17,6 +18,7 @@ const requirementId = computed(() => String(route.query.requirement_id ?? ''))
 const amountCny = computed(() => String(route.query.amount_cny ?? ''))
 const couponCode = computed(() => String(route.query.coupon_code ?? ''))
 const paymentChannel = computed(() => String(route.query.channel ?? 'alipay'))
+const isAdapayPayment = computed(() => route.query.adapay === '1')
 const qrContent = computed(
   () => String(route.query.qr_content ?? route.query.alipay_order_string ?? ''),
 )
@@ -36,9 +38,9 @@ let pollTimer: ReturnType<typeof setInterval> | null = null
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 const PAYMENT_POLL_INTERVAL_MS = 8_000
 
-const isAlipayPage = computed(() => paymentChannel.value === 'alipay')
+const isAlipayPage = computed(() => paymentChannel.value === 'alipay' && !isAdapayPayment.value)
 const hasOrder = computed(
-  () => paymentId.value && (qrContent.value || isAlipayPage.value),
+  () => paymentId.value && (isAdapayPayment.value || qrContent.value || isAlipayPage.value),
 )
 
 const expiresAtMs = computed(() => {
@@ -64,6 +66,9 @@ const countdownMs = computed(() => {
 const isExpired = computed(() => Number.isFinite(countdownMs.value) && countdownMs.value <= 0)
 
 const countdownText = computed(() => {
+  if (!expiresAt.value.trim()) {
+    return '以支付机构订单为准'
+  }
   if (!Number.isFinite(countdownMs.value)) {
     return '时间格式无效'
   }
@@ -174,7 +179,7 @@ watch(
     () => auth.token,
   ],
   async ([id, channel]) => {
-    if (channel !== 'alipay' || !id) {
+    if (channel !== 'alipay' || !id || isAdapayPayment.value) {
       return
     }
 
@@ -208,6 +213,24 @@ async function confirmPayment() {
 
   confirming.value = true
   try {
+    if (isAdapayPayment.value) {
+      const result = await getAdapayPayment(auth.token, paymentId.value)
+      if (result.status !== 'paid' && result.status !== 'confirmed') {
+        return
+      }
+
+      paid.value = true
+      if (pollTimer) {
+        clearInterval(pollTimer)
+        pollTimer = null
+      }
+      showToast('支付成功，正在返回首页', 'success')
+      window.setTimeout(() => {
+        router.push('/')
+      }, 900)
+      return
+    }
+
     const channel = paymentChannel.value === 'wechat' ? 'wechat' : 'alipay'
     const result = await confirmPaymentApi(auth.token, channel, paymentId.value)
 
@@ -330,7 +353,7 @@ onUnmounted(() => {
               <span>剩余支付时间</span><strong :class="{ expired: isExpired }">{{ countdownText }}</strong>
             </p>
           </div>
-          <p class="tip">支付截止：{{ expiresAt }}（超时后需重新发起支付）</p>
+            <p class="tip">{{ expiresAt ? `支付截止：${expiresAt}（超时后需重新发起支付）` : '支付截止时间以 Adapay 支付机构订单为准。' }}</p>
         </article>
       </div>
 

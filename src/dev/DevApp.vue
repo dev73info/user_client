@@ -100,12 +100,11 @@ function openMobileMenu() {
             </el-icon>
             <span>开发概览</span>
           </el-menu-item>
-          <!-- 钱包：暂时禁用 -->
-          <el-menu-item index="/dev/wallet/disabled" disabled class="dev-shell__menu-item--disabled">
+          <el-menu-item index="/dev/wallet">
             <el-icon>
               <Wallet />
             </el-icon>
-            <span>钱包<em class="dev-shell__menu-tag">暂未开放</em></span>
+            <span>钱包</span>
           </el-menu-item>
           <el-sub-menu index="resources">
             <template #title>
@@ -193,12 +192,11 @@ function openMobileMenu() {
             </el-icon>
             <span>开发概览</span>
           </el-menu-item>
-          <!-- 钱包：暂时禁用 -->
-          <el-menu-item index="/dev/wallet/disabled" disabled class="dev-shell__menu-item--disabled">
+          <el-menu-item index="/dev/wallet">
             <el-icon>
               <Wallet />
             </el-icon>
-            <span>钱包<em class="dev-shell__menu-tag">暂未开放</em></span>
+            <span>钱包</span>
           </el-menu-item>
           <el-sub-menu index="resources">
             <template #title>

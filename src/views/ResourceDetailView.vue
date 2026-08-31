@@ -15,6 +15,7 @@ import {
   listPublicMcResourceComments,
   listPublicMcResourceVersions,
   unlikePublicMcResource,
+  resolveResourceDownloadFileName,
   with73Extension,
   type DownloadProgress,
   type PublicMcResourceCommentItem,
@@ -427,15 +428,16 @@ async function openResourceFile() {
     return
   }
 
-  const fileName = extractResourceFileNameFromUrl(
-    latestVersion.value.resource,
-    resource.value?.file_name || 'download',
-  )
   const resourceId = resource.value?.id
   if (resourceId == null) {
     showToast('资源编号无效', 'warning')
     return
   }
+  const fallbackFileName = resolveResourceDownloadFileName(
+    resource.value?.file_name,
+    `resource-${resourceId}-v${latestVersion.value.id}`,
+  )
+  const fileName = extractResourceFileNameFromUrl(latestVersion.value.resource, fallbackFileName)
   try {
     await triggerDownload(
       (onProgress) =>
@@ -453,15 +455,16 @@ async function openResourceFile() {
 }
 
 async function downloadVersion(version: PublicMcResourceVersionItem) {
-  const fileName = extractResourceFileNameFromUrl(
-    version.resource,
-    resource.value?.file_name || 'download',
-  )
   const resourceId = resource.value?.id
   if (resourceId == null) {
     showToast('资源编号无效', 'warning')
     return
   }
+  const fallbackFileName = resolveResourceDownloadFileName(
+    resource.value?.file_name,
+    `resource-${resourceId}-v${version.id}`,
+  )
+  const fileName = extractResourceFileNameFromUrl(version.resource, fallbackFileName)
   try {
     await triggerDownload(
       (onProgress) =>
@@ -846,7 +849,7 @@ watch(
                 <div class="resource-detail-page__version-actions">
                   <button class="resource-detail-page__version-download" type="button"
                     :disabled="downloadStore.state.active" @click="downloadVersion(version)">
-                    {{ downloadStore.state.active && downloadStore.state.fileName === with73Extension(extractResourceFileNameFromUrl(version.resource, resource.file_name || 'download')) ? `下载中 ${downloadStore.state.percent}%` : '下载' }}
+                    {{ downloadStore.state.active && downloadStore.state.fileName === with73Extension(extractResourceFileNameFromUrl(version.resource, resolveResourceDownloadFileName(resource.file_name, `resource-${resource.id}-v${version.id}`))) ? `下载中 ${downloadStore.state.percent}%` : '下载' }}
                   </button>
                 </div>
               </article>

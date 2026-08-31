@@ -4,6 +4,7 @@ export type ContractSigningStatus = {
   has_contract: boolean
   party_b_signed: boolean
   party_a_signed: boolean
+  party_c_signed?: boolean
 }
 
 export type ContractDetail = {
@@ -27,6 +28,9 @@ export type ContractDetail = {
   party_b_id_card_no_masked?: string | null
   party_b_signature_sha256?: string | null
   party_b_signed_at: string | null
+  party_c_name?: string
+  party_c_username?: string | null
+  party_c_signed_at?: string | null
   created_by?: string
   created_at: string
   updated_at?: string

@@ -48,16 +48,20 @@ const currentParty = computed<'party_a' | 'party_b' | null>(() => {
     return null
 })
 const canSignContract = computed(() => {
-    if (!contract.value) return false
-    return (
-        (contract.value.status === 'pending_party_a' && currentParty.value === 'party_a') ||
-        (contract.value.status === 'pending_party_b' && currentParty.value === 'party_b')
-    )
+    if (!contract.value || !currentParty.value) return false
+    if (!['pending_party_a', 'pending_party_b'].includes(contract.value.status)) return false
+    return currentParty.value === 'party_a'
+        ? !contract.value.party_a_signed_at
+        : !contract.value.party_b_signed_at
 })
 const waitingMessage = computed(() => {
     if (!contract.value || contract.value.status === 'signed') return ''
-    if (contract.value.status === 'pending_party_b') return '等待乙方开发者签署合同'
-    if (contract.value.status === 'pending_party_a') return '等待甲方需求方签署合同'
+    if (currentParty.value === 'party_a') {
+        return contract.value.party_a_signed_at ? '等待开发者完成签署' : '等待您完成客户签署'
+    }
+    if (currentParty.value === 'party_b') {
+        return contract.value.party_b_signed_at ? '等待客户完成签署' : '等待您完成开发者签署'
+    }
     return ''
 })
 const currentSigner = computed(() => (currentParty.value ? partyDisplay(currentParty.value) : null))
@@ -120,20 +124,6 @@ function partyDisplay(party: ContractParty): PartyDisplay | null {
     }
 }
 
-function actionLabel(action: string): string {
-    const labels: Record<string, string> = {
-        created: '创建合同',
-        updated: '更新合同',
-        deleted: '删除合同',
-        auto_created: '系统生成',
-        party_a_signed: '甲方签署',
-        party_b_signed: '乙方签署',
-        asign_sign_initiated: '发起电子签署',
-        asign_sign_completed: '电子签署完成',
-    }
-    return labels[action] ?? action
-}
-
 function statusLabel(status: string): string {
     const labels: Record<string, string> = {
         draft: '草稿',
@@ -180,7 +170,7 @@ async function loadContract() {
 async function handleSign() {
     if (!contract.value || signing.value) return
     if (!accepted.value) {
-        error.value = '请先确认已阅读并同意合同内容'
+        error.value = '请先确认实名认证信息并同意电子签署'
         return
     }
     if (!signerIdentityReady.value) {
@@ -253,7 +243,7 @@ onMounted(async () => {
             <header class="panel-head">
                 <div>
                     <h2>{{ isDeveloperAgreement ? '开发者入驻协议' : '需求服务合同' }}</h2>
-                    <p class="lead">请核对实名认证身份、合同正文与签署证据后完成签署。</p>
+                    <p class="lead">请核对实名认证身份后完成签署。</p>
                 </div>
             </header>
 
@@ -273,32 +263,6 @@ onMounted(async () => {
                             }}</span></p>
                     <p><strong>合同指纹：</strong><span class="hash-text">{{ contract.content_sha256 }}</span></p>
                 </div>
-
-                <section class="contract-content">{{ contract.content }}</section>
-
-                <section class="evidence-panel">
-                    <h3>签署证据摘要</h3>
-                    <p>本页记录实名认证姓名、身份证号、平台账户、手写签名指纹、签署时间、合同内容指纹与状态流转。</p>
-                    <div v-if="signingLogs.length > 0" class="log-list">
-                        <div v-for="log in signingLogs" :key="log.id" class="log-item">
-                            <div>
-                                <strong>{{ actionLabel(log.action) }}</strong>
-                                <span>{{ log.created_at }}</span>
-                            </div>
-                            <p>操作账号：{{ log.operator }}</p>
-                            <p v-if="log.signer_real_name">实名签署：{{ log.signer_real_name }}（{{
-                                log.signer_id_card_no_masked }}）</p>
-                            <p v-if="log.signer_username">平台账户：{{ log.signer_username }} / {{ log.signer_email ??
-                                '未绑定邮箱' }}</p>
-                            <p v-if="log.signature_sha256">手写签名指纹：<span class="hash-inline">{{ log.signature_sha256
-                            }}</span></p>
-                            <img v-if="safeSignatureSrc(log.handwritten_signature)" class="log-signature-preview"
-                                :src="safeSignatureSrc(log.handwritten_signature)" alt="手写签名" />
-                            <p v-if="log.note">{{ log.note }}</p>
-                        </div>
-                    </div>
-                    <p v-else class="empty-log">暂无签署日志。</p>
-                </section>
 
                 <div v-if="successMsg" class="msg-success">{{ successMsg }}</div>
                 <div v-if="error" class="msg-error">{{ error }}</div>
@@ -342,7 +306,7 @@ onMounted(async () => {
 
                     <label class="accept-row">
                         <input v-model="accepted" type="checkbox" />
-                        <span>我已完整阅读合同正文，确认以以上实名认证姓名和身份证号进行电子签署，并同意系统保存本次签署记录作为履约证据。</span>
+                        <span>我已确认以上实名认证姓名和身份证号，并同意通过爱签完成电子签署。</span>
                     </label>
                 </section>
 

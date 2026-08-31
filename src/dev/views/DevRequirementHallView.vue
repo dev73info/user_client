@@ -117,6 +117,10 @@ function paymentModeLabel(requirement: RequirementItem) {
   return isSelfManagedRequirement(requirement) ? '无电签约定' : '电签担保'
 }
 
+function statusLabel(requirement: RequirementItem) {
+  return requirement.status === 'pending_deposit' ? '待接单/签约' : '待开发'
+}
+
 function requiresDepositGate(requirement: RequirementItem) {
   return !isSelfManagedRequirement(requirement)
 }
@@ -667,8 +671,10 @@ function resetInitForm() {
           </template>
         </el-table-column>
         <el-table-column label="状态" width="96">
-          <template #default>
-            <el-tag type="success" effect="plain">待开发</el-tag>
+          <template #default="scope">
+            <el-tag :type="scope.row.status === 'pending_deposit' ? 'warning' : 'success'" effect="plain">
+              {{ statusLabel(scope.row) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="updated_at" label="最近更新" width="136" show-overflow-tooltip />

@@ -43,6 +43,7 @@ const publishDescription = ref('')
 const publishBudget = ref<string | number>('')
 const publishAcceptance = ref('')
 const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
+const publishPaymentMethod = ref<'alipay' | 'wechat'>('alipay')
 const publishLoading = ref(false)
 const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
 const selectedRequirement = ref<PublicRequirementSpotlightItem | null>(null)
@@ -256,6 +257,7 @@ function resetPublishForm() {
   publishBudget.value = ''
   publishAcceptance.value = ''
   publishPaymentMode.value = 'self_managed'
+  publishPaymentMethod.value = 'alipay'
 }
 
 async function openPublishModal() {
@@ -405,6 +407,8 @@ async function submitPublishRequirement() {
       budget,
       acceptance_criteria: acceptanceValidation.value,
       payment_mode: publishPaymentMode.value,
+      payment_method:
+        publishPaymentMode.value === 'platform_guarantee' ? publishPaymentMethod.value : undefined,
     })
 
     showToast('需求已发布，等待审核', 'success')
@@ -584,7 +588,9 @@ async function loadHallData() {
   <PublishModal ref="publishModalRef" :visible="publishVisible" v-model:publishTitle="publishTitle"
     v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
     v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
-    :allowPlatformGuarantee="false" :publishLoading="publishLoading"
+    v-model:publishPaymentMethod="publishPaymentMethod"
+    :allowPlatformGuarantee="false"
+    :publishLoading="publishLoading"
     :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="showToast"
     @submit="submitPublishRequirement" />
 

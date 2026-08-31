@@ -11,6 +11,7 @@ import {
   resumeCompanyAsignIdentify,
   startAsignIdentify,
   submitMyRealnameVerification,
+  uploadBusinessLicenseFile,
   uploadGuardianConsentFile,
   withdrawMyRealnameVerification,
   startCompanyAsignIdentify,
@@ -46,6 +47,8 @@ const faceidChecking = ref(false)
 const faceidRestoring = ref(false)
 const consentUploading = ref(false)
 const consentFileInput = ref<HTMLInputElement | null>(null)
+const businessLicenseUploading = ref(false)
+const businessLicenseFileInput = ref<HTMLInputElement | null>(null)
 const current = ref<UserRealnameVerification | null>(null)
 const reviewerAvatarLoadFailed = ref(false)
 const faceidAuthUrl = ref('')
@@ -85,6 +88,7 @@ const form = reactive({
   operatorIdCardNo: '',
   guardianConsent: false,
   guardianConsentFile: '',
+  businessLicenseFile: '',
 })
 
 const redirectTarget = computed(() => {
@@ -120,6 +124,7 @@ const authTypeLabel = computed(() => {
   const t = current.value?.auth_type
   if (t === 'IDENTITY_CARD') return '个人'
   if (t === 'ENTERPRISE') return '企业认证'
+  if (t === 'SOLE_PROPRIETOR') return '个体工商户认证'
   if (t === 'RESIDENCE_HK_MC') return '港澳居民居住证'
   return '台湾居民居住证'
 })
@@ -134,15 +139,24 @@ const realnameHeroDesc = computed(() => {
 const realnameSubmitted = computed(() => Boolean(current.value))
 const identityCardSelected = computed(() => form.authType === 'IDENTITY_CARD')
 const enterpriseSelected = computed(() => form.authType === 'ENTERPRISE')
+const soleProprietorSelected = computed(() => form.authType === 'SOLE_PROPRIETOR')
+const businessSelected = computed(() => enterpriseSelected.value || soleProprietorSelected.value)
 const realnameApproved = computed(() => current.value?.status === 'approved')
 // 当前认证主体是否为「企业」（用于爱签账户管理按身份区分功能）
-const assignEnterprise = computed(() => current.value?.auth_type === 'ENTERPRISE')
+const assignEnterprise = computed(() =>
+  current.value?.auth_type === 'ENTERPRISE' || current.value?.auth_type === 'SOLE_PROPRIETOR',
+)
 const realnameRejected = computed(() => current.value?.status === 'rejected')
 const realnameLocked = computed(() => current.value?.status === 'pending' || realnameApproved.value)
 const identityCardRequiredMissing = computed(
   () =>
     identityCardSelected.value &&
     (!form.realName.trim() || !form.idCardNo.trim() || !form.mobile.trim()),
+)
+const enterpriseRequiredMissing = computed(
+  () => businessSelected.value && (!form.companyName.trim() || !form.unifiedSocialCreditCode.trim() ||
+    !form.operatorName.trim() || !form.operatorIdCardNo.trim() || !form.mobile.trim() ||
+    !form.businessLicenseFile.trim()),
 )
 const minorGuardianRequiredMissing = computed(
   () => isMinor14To18.value && (!form.guardianConsent || !form.guardianConsentFile.trim()),
@@ -151,6 +165,7 @@ const submitDisabled = computed(
   () =>
     realnameLocked.value ||
     identityCardRequiredMissing.value ||
+    enterpriseRequiredMissing.value ||
     isUnder14.value ||
     minorGuardianRequiredMissing.value,
 )
@@ -240,6 +255,7 @@ function patchForm(record: UserRealnameVerification) {
   form.companyName = record.company_name ?? ''
   form.unifiedSocialCreditCode = record.unified_social_credit_code ?? ''
   form.businessLicenseNo = record.business_license_no ?? ''
+  form.businessLicenseFile = record.business_license_file ?? ''
   form.operatorName = record.operator_name ?? ''
   form.operatorIdCardNo = ''
   form.guardianConsent = record.guardian_consent ?? false
@@ -275,12 +291,13 @@ async function tryRestoreBusinessPage(record?: UserRealnameVerification | null) 
 }
 
 function validate() {
-  if (enterpriseSelected.value) {
+  if (businessSelected.value) {
     if (!form.companyName.trim()) return '请填写企业名称'
     if (!form.unifiedSocialCreditCode.trim()) return '请填写统一社会信用代码'
     if (!form.operatorName.trim()) return '请填写经办人姓名'
     if (!form.operatorIdCardNo.trim()) return '请填写经办人身份证号'
     if (!isValidMobile(form.mobile)) return '请填写正确的手机号'
+    if (!form.businessLicenseFile.trim()) return '请上传营业执照'
     return ''
   }
 
@@ -314,6 +331,7 @@ function buildPayload(): SubmitRealnameVerificationPayload {
     payload.unified_social_credit_code = form.unifiedSocialCreditCode.trim()
   }
   if (form.businessLicenseNo.trim()) payload.business_license_no = form.businessLicenseNo.trim()
+  if (form.businessLicenseFile.trim()) payload.business_license_file = form.businessLicenseFile.trim()
   if (form.operatorName.trim()) payload.operator_name = form.operatorName.trim()
   if (form.operatorIdCardNo.trim()) payload.operator_id_card_no = form.operatorIdCardNo.trim()
   // 只有 14~18 周岁的未成年人才需要监护人同意；成年人无需传
@@ -425,6 +443,40 @@ function isAllowedConsentFile(file: File): boolean {
 
 function openConsentPicker() {
   consentFileInput.value?.click()
+}
+
+function openBusinessLicensePicker() {
+  businessLicenseFileInput.value?.click()
+}
+
+async function handleBusinessLicenseFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  if (!isAllowedConsentFile(file)) {
+    showToast('营业执照仅支持 PNG、JPG、WEBP 图片或 PDF 文件', 'warning')
+    return
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('营业执照文件不能超过 10MB', 'warning')
+    return
+  }
+  auth.hydrate()
+  if (!auth.token.trim()) {
+    showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+  businessLicenseUploading.value = true
+  try {
+    const result = await uploadBusinessLicenseFile(auth.token, file)
+    form.businessLicenseFile = result.business_license_file
+    showToast('营业执照已上传', 'success')
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '上传营业执照失败', 'error')
+  } finally {
+    businessLicenseUploading.value = false
+  }
 }
 
 async function handleConsentFileChange(event: Event) {
@@ -549,6 +601,7 @@ async function startEnterpriseAsign() {
       operator_name: form.operatorName.trim(),
       operator_id_card_no: form.operatorIdCardNo.trim(),
       mobile: form.mobile.trim(),
+      business_license_file: form.businessLicenseFile.trim(),
     }
     const result = await startCompanyAsignIdentify(auth.token, payload)
     faceidAuthUrl.value = result.auth_url
@@ -744,6 +797,7 @@ async function handleWithdraw() {
     form.companyName = ''
     form.unifiedSocialCreditCode = ''
     form.businessLicenseNo = ''
+    form.businessLicenseFile = ''
     form.operatorName = ''
     form.operatorIdCardNo = ''
     form.guardianConsent = false
@@ -785,6 +839,7 @@ async function startEnterpriseCertification() {
     form.companyName = ''
     form.unifiedSocialCreditCode = ''
     form.businessLicenseNo = ''
+    form.businessLicenseFile = ''
     form.operatorName = ''
     form.operatorIdCardNo = ''
     form.guardianConsent = false
@@ -1185,12 +1240,13 @@ onBeforeUnmount(() => {
               <el-radio-group v-model="form.authType" :disabled="realnameLocked">
                 <el-radio value="IDENTITY_CARD">个人</el-radio>
                 <el-radio value="ENTERPRISE">企业认证</el-radio>
+                <el-radio value="SOLE_PROPRIETOR">个体工商户</el-radio>
               </el-radio-group>
             </el-form-item>
 
             <!-- 企业认证字段 -->
-            <template v-if="enterpriseSelected">
-              <el-form-item label="企业名称" required>
+            <template v-if="businessSelected">
+              <el-form-item :label="soleProprietorSelected ? '个体工商户名称' : '企业名称'" required>
                 <el-input v-model="form.companyName" maxlength="120" placeholder="请输入企业名称"
                   :disabled="realnameLocked" />
               </el-form-item>
@@ -1201,6 +1257,23 @@ onBeforeUnmount(() => {
               <el-form-item label="营业执照号">
                 <el-input v-model="form.businessLicenseNo" maxlength="64" placeholder="请输入营业执照号（可选）"
                   :disabled="realnameLocked" />
+              </el-form-item>
+              <el-form-item label="营业执照文件" required>
+                <div class="realname-consent-upload">
+                  <input ref="businessLicenseFileInput" class="realname-consent-upload__native" type="file"
+                    accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf"
+                    @change="handleBusinessLicenseFileChange" />
+                  <el-button plain :loading="businessLicenseUploading" :disabled="realnameLocked"
+                    @click="openBusinessLicensePicker">
+                    选择文件上传
+                  </el-button>
+                  <span v-if="form.businessLicenseFile" class="realname-consent-upload__name">
+                    已上传：{{ form.businessLicenseFile.split('/').pop() || '营业执照' }}
+                  </span>
+                  <span v-else class="realname-consent-upload__hint">
+                    请上传营业执照扫描件或照片（图片或 PDF，10MB 以内）
+                  </span>
+                </div>
               </el-form-item>
               <el-form-item label="经办人姓名" required>
                 <el-input v-model="form.operatorName" maxlength="120" placeholder="请输入经办人姓名"

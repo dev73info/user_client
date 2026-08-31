@@ -184,6 +184,15 @@ const router = createRouter({
           },
         },
         {
+          path: 'invoices',
+          name: 'workbench-invoices',
+          component: () => import('@/views/InvoiceCenterView.vue'),
+          meta: {
+            title: '发票中心',
+            description: '申请平台发票或上传开发者发票',
+          },
+        },
+        {
           path: 'account',
           name: 'workbench-account',
           component: () => import('@/views/AccountCouponsView.vue'),

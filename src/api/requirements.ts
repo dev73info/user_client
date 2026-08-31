@@ -113,6 +113,7 @@ export type CreateRequirementPayload = {
   budget: number
   acceptance_criteria: string
   payment_mode: RequirementPaymentMode
+  payment_method?: 'alipay' | 'wechat'
 }
 
 export type CommentRequirementPayload = {

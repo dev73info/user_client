@@ -100,3 +100,19 @@ export function apiUrl(path: string): string {
 
   return `${apiBase}${normalizedPath}`
 }
+
+export function backendFileUrl(path: string): string {
+  if (/^https?:\/\//i.test(path)) {
+    return path
+  }
+
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  if (!API_BASE_URL) {
+    return normalizedPath
+  }
+
+  const backendBase = API_BASE_URL.endsWith('/api')
+    ? API_BASE_URL.slice(0, -'/api'.length)
+    : API_BASE_URL
+  return `${backendBase}${normalizedPath}`
+}

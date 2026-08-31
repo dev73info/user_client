@@ -1,7 +1,7 @@
-import { apiUrl, normalizeBackendPath } from '@/shared/api/url'
+import { apiUrl, backendFileUrl, normalizeBackendPath } from '@/shared/api/url'
 import { dispatchAuthUnauthorized } from '@/shared/api/authEvents'
 
-export { apiUrl, normalizeBackendPath }
+export { apiUrl, backendFileUrl, normalizeBackendPath }
 
 function isHtmlResponse(body: string): boolean {
   const trimmed = body.trim().toLowerCase()

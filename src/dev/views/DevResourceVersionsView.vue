@@ -4,7 +4,7 @@ import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { apiUrl } from '@dev/api/http'
-import { with73Extension } from '@/api/resources'
+import { extractResourceFileNameFromUrl, with73Extension } from '@/api/resources'
 import {
   createMcResourceVersion,
   deleteMcResourceVersion,
@@ -196,9 +196,9 @@ function versionDownloadUrl(version: McResourceVersionPayload): string {
 }
 
 function versionFileName(version: McResourceVersionPayload): string {
-  const segments = version.resource.split('/')
-  const sourceName = segments[segments.length - 1] || `${version.version}.bin`
-  return with73Extension(sourceName)
+  const fallbackFileName = `resource-${resource.value?.id ?? 'resource'}-v${version.id}`
+  const sourceName = extractResourceFileNameFromUrl(version.resource, fallbackFileName)
+  return with73Extension(sourceName, fallbackFileName)
 }
 
 function handleVersionAction(command: string, version: McResourceVersionPayload) {

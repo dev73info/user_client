@@ -5,6 +5,7 @@ import type { PropType } from "vue";
 import RichTextEditor from "@/components/RichTextEditor.vue";
 
 type NotifyType = "success" | "warning" | "error";
+type PublishPaymentMethod = "alipay" | "wechat";
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -19,7 +20,10 @@ const props = defineProps({
     type: String as PropType<"platform_guarantee" | "self_managed">,
     default: "self_managed",
   },
-  // TODO：后续实现平台担保功能后再开放此属性，目前先隐藏平台担保选项以免引起误解
+  publishPaymentMethod: {
+    type: String as PropType<PublishPaymentMethod>,
+    default: "alipay",
+  },
   allowPlatformGuarantee: { type: Boolean, default: false },
   publishLoading: { type: Boolean, default: false },
   // 草稿作用域（一般传当前用户名），用于按用户隔离草稿，避免多账号共用浏览器时串数据
@@ -35,6 +39,7 @@ const emit = defineEmits<{
   (e: "update:publishBudget", value: string | number): void;
   (e: "update:publishAcceptance", value: string): void;
   (e: "update:publishPaymentMode", value: "platform_guarantee" | "self_managed"): void;
+  (e: "update:publishPaymentMethod", value: PublishPaymentMethod): void;
 }>();
 
 function updateTitle(event: Event) {
@@ -65,6 +70,13 @@ function updatePaymentMode(value: "platform_guarantee" | "self_managed") {
   emit("update:publishPaymentMode", value);
 }
 
+function updatePaymentMethod(event: Event) {
+  const value = (event.target as HTMLSelectElement).value;
+  if (value === "alipay" || value === "wechat") {
+    emit("update:publishPaymentMethod", value);
+  }
+}
+
 // ===== 草稿系统 =====
 // 所有使用场景（新建发布、重新编辑、重新提交审核）都启用草稿自动保存。
 // draftScope 用于隔离不同场景/不同用户的数据，避免互相覆盖：
@@ -78,6 +90,7 @@ type PublishDraft = {
   budget: string;
   acceptance: string;
   paymentMode: "platform_guarantee" | "self_managed";
+  paymentMethod: PublishPaymentMethod;
   savedAt: number;
 };
 
@@ -125,6 +138,7 @@ function savePublishDraft() {
     budget: String(props.publishBudget ?? ""),
     acceptance: String(props.publishAcceptance ?? ""),
     paymentMode: props.publishPaymentMode,
+    paymentMethod: props.publishPaymentMethod,
     savedAt: Date.now(),
   };
 
@@ -170,6 +184,7 @@ function restorePublishDraft() {
         parsed.paymentMode === "platform_guarantee" || parsed.paymentMode === "self_managed"
           ? parsed.paymentMode
           : "self_managed";
+      const paymentMethod = parsed.paymentMethod === "wechat" ? "wechat" : "alipay";
 
       if (title || description || budget || acceptance) {
         emit("update:publishTitle", title);
@@ -177,6 +192,7 @@ function restorePublishDraft() {
         emit("update:publishBudget", budget);
         emit("update:publishAcceptance", acceptance);
         emit("update:publishPaymentMode", paymentMode);
+        emit("update:publishPaymentMethod", paymentMethod);
       }
     }
   } catch {
@@ -205,6 +221,7 @@ watch(
     props.publishBudget,
     props.publishAcceptance,
     props.publishPaymentMode,
+    props.publishPaymentMethod,
   ],
   () => {
     savePublishDraft();
@@ -290,6 +307,14 @@ watch(
                 <small>按平台定金与尾款规则推进</small>
               </button>
             </div>
+            <label v-if="allowPlatformGuarantee && publishPaymentMode === 'platform_guarantee'"
+              class="publish-payment-field">
+              <span>收款方式 *</span>
+              <select :value="publishPaymentMethod" aria-label="收款方式" required @change="updatePaymentMethod">
+                <option value="alipay">支付宝</option>
+                <option value="wechat">微信</option>
+              </select>
+            </label>
           </div>
         </div>
 
@@ -511,6 +536,25 @@ watch(
   color: #6b7280;
   font-size: 12px;
   line-height: 1.4;
+}
+
+.publish-payment-field {
+  display: grid;
+  gap: 7px;
+  margin-top: 2px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.publish-payment-field select {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid rgba(203, 213, 225, 0.86);
+  border-radius: 9px;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
 }
 
 @media (max-width: 640px) {
