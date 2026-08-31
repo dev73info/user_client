@@ -397,7 +397,10 @@ async function triggerDownload(
     try {
       const link = document.createElement('a')
       link.href = objectUrl
-      link.download = with73Extension(resolvedFileName)
+      // 优先使用从资源 URL 还原出的真实文件名（稳定，不依赖 CORS 暴露 Content-Disposition）；
+      // 服务器 Content-Disposition 解析结果仅作为兜底，避免读不到响应头时回退成 resource-{id}-v{version_id}.73。
+      const finalFileName = resolveResourceDownloadFileName(fileName, resolvedFileName)
+      link.download = with73Extension(finalFileName)
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
