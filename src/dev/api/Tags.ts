@@ -1,14 +1,5 @@
 import { requestJson } from '@dev/api/http'
-import init, { process_tags } from 'tags-wasm'
-
-let wasmReady: Promise<unknown> | null = null
-
-function ensureWasm(): Promise<unknown> {
-  if (!wasmReady) {
-    wasmReady = init()
-  }
-  return wasmReady!
-}
+import { process_tags } from 'tags-wasm'
 
 export type McTagOption = {
   id: number
@@ -101,7 +92,6 @@ export async function getProcessedTagTree(): Promise<McProcessedTagTree> {
   }
 
   inflight = (async () => {
-    await ensureWasm()
     const rawGroups = await requestJson<unknown[]>(
       '/resources/tags',
       { method: 'GET' },

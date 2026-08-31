@@ -543,9 +543,9 @@ const platformStats = computed<PlatformStat[]>(() => {
     },
     {
       label: '担保交易',
-      value: '已开放',
+      value: '开发中',
       icon: Money,
-      note: '生产环境可用',
+      note: '正在开发测试中',
     },
   ]
 })
