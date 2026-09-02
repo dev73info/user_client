@@ -437,7 +437,7 @@ function conversationLastMessageText(item: RequirementItem) {
 }
 
 function conversationButtonLabel(item: RequirementItem) {
-  return conversationForRequirement(item)?.last_message_at ? '查看沟通' : '开始沟通'
+  return conversationForRequirement(item)?.last_message_at ? '查看沟通' : '沟通'
 }
 
 async function loadRequirementConversations() {
@@ -504,7 +504,7 @@ function formatResourceVisibility(item: RequirementItem) {
 }
 
 function requirementSubscriptionLabel(item: RequirementItem) {
-  return item.subscribe_status_change ? '取消订阅动态' : '订阅状态变化'
+  return item.subscribe_status_change ? '取消订阅动态' : '订阅状态'
 }
 
 function nextResourceVisibility(item: RequirementItem): RequirementResourceVisibility {
@@ -547,6 +547,7 @@ function openPayModal(item: RequirementItem) {
   if (!canPay(item.status, item)) {
     return
   }
+  openRequirementDetail(item)
   payRequirement.value = item
   payChannel.value = 'alipay'
   currentPayment.value = null
@@ -569,6 +570,7 @@ function openRequirementDetail(item: RequirementItem) {
 }
 
 function closeRequirementDetail() {
+  closePayModal()
   detailRequirement.value = null
   if (routeRequirementViewId()) {
     const nextQuery = { ...route.query }
@@ -595,6 +597,9 @@ function syncRouteRequirementDetail() {
   const target = myRequirements.value.find((item) => item.requirement_id === requirementId)
   if (target) {
     detailRequirement.value = target
+    if (payRequirement.value && payRequirement.value.requirement_id !== target.requirement_id) {
+      closePayModal()
+    }
   }
 }
 
@@ -1761,9 +1766,6 @@ watch(
                 @click.stop="openUnbindRequest(item)">
                 申请解除
               </button>
-              <button class="ghost small" type="button" @click.stop="openRequirementDetail(item)">
-                查看
-              </button>
               <button class="ghost small" type="button"
                 :disabled="requirementSubscriptionLoadingId === item.requirement_id"
                 @click.stop="toggleRequirementSubscription(item)">
@@ -1812,7 +1814,7 @@ watch(
               </button>
               <button v-else-if="canPay(item.status, item)" class="ghost small" type="button"
                 @click.stop="openPayModal(item)">
-                去支付
+                支付
               </button>
               <button v-else-if="canComment(item.status) && !canComplete(item)" class="ghost small" type="button"
                 @click.stop="openCommentModal(item)">
@@ -1963,50 +1965,60 @@ watch(
             </div>
           </section>
 
+          <section v-if="payVisible && payRequirement" class="my-requirement-detail__payment-panel"
+            aria-label="需求支付">
+            <div class="my-requirement-detail__payment-head">
+              <div>
+                <span class="my-requirement-detail__payment-label">支付{{ payStageLabel }}</span>
+                <strong>本次应付 {{ formatBudget(payAmount) }}</strong>
+              </div>
+              <span class="my-requirement-detail__payment-status">
+                {{ currentPayment ? '待确认' : '待支付' }}
+              </span>
+            </div>
+
+            <div class="my-requirement-detail__payment-summary">
+              <span v-if="!isFinalPayment">定金占比：{{ depositRatioPercent.toFixed(2) }}%</span>
+              <span>支付方式：支付宝</span>
+            </div>
+
+            <div class="my-requirement-detail__payment-channel">
+              <strong>支付方式</strong>
+              <div class="payment-options" role="radiogroup" aria-label="支付方式选择">
+                <button type="button" class="payment-option"
+                  :class="{ active: payChannel === 'alipay', 'payment-option--alipay': payChannel === 'alipay' }"
+                  @click="updatePayChannel('alipay')">
+                  <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
+                  支付宝
+                </button>
+              </div>
+            </div>
+          </section>
+
           <div class="my-requirement-detail__actions">
-            <button class="my-requirement-detail__secondary" type="button" @click="closeRequirementDetail">
-              关闭
-            </button>
+            <template v-if="payVisible && payRequirement">
+              <button class="my-requirement-detail__secondary" type="button" @click="closePayModal">
+                取消支付
+              </button>
+              <button class="my-requirement-detail__primary" type="button" :disabled="payLoading"
+                @click="submitRequirementPayment">
+                {{ payLoading ? '处理中...' : currentPayment ? '查询支付结果' : `支付${payStageLabel}` }}
+              </button>
+            </template>
+            <template v-else>
+              <button v-if="canPay(detailRequirement.status, detailRequirement)"
+                class="my-requirement-detail__primary" type="button"
+                @click="openPayModal(detailRequirement)">
+                支付{{ detailRequirement.status === 'pending_final' ? '尾款' : '定金' }}
+              </button>
+              <button class="my-requirement-detail__secondary" type="button" @click="closeRequirementDetail">
+                关闭
+              </button>
+            </template>
           </div>
         </section>
       </div>
     </Teleport>
-
-    <div v-if="payVisible && payRequirement" class="modal-wrap" @click.self="closePayModal">
-      <section class="pay-modal" aria-label="需求支付弹窗">
-        <h3>支付{{ payStageLabel }}</h3>
-        <p class="pay-line"><strong>需求标题：</strong>{{ payRequirement.title }}</p>
-        <p class="pay-line"><strong>需求编号：</strong>{{ payRequirement.requirement_id }}</p>
-        <p class="pay-line"><strong>预算：</strong>{{ formatBudget(payRequirement.budget) }}</p>
-        <p v-if="!isFinalPayment" class="pay-line">
-          <strong>定金占比：</strong>{{ depositRatioPercent.toFixed(2) }}%
-        </p>
-        <p class="pay-amount">
-          实付款：<strong>¥{{ payAmount.toFixed(2) }}</strong>
-        </p>
-
-        <div class="pay-channel-row">
-          <strong>支付方式：</strong>
-          <div class="payment-options" role="radiogroup" aria-label="支付方式选择">
-            <button type="button" class="payment-option"
-              :class="{ active: payChannel === 'alipay', 'payment-option--alipay': payChannel === 'alipay' }"
-              @click="updatePayChannel('alipay')">
-              <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
-              支付宝
-            </button>
-          </div>
-        </div>
-
-        <div class="actions">
-          <button class="ghost" type="button" @click="closePayModal">取消</button>
-          <button class="ghost primary" type="button" :disabled="payLoading" @click="submitRequirementPayment">
-            {{
-              payLoading ? '处理中...' : currentPayment ? '查询支付结果' : `支付${payStageLabel}`
-            }}
-          </button>
-        </div>
-      </section>
-    </div>
 
     <div v-if="finalPaymentConfirmVisible && finalPaymentConfirmTarget" class="modal-wrap"
       @click.self="closeFinalPaymentConfirm">
@@ -2133,19 +2145,20 @@ watch(
     </div>
 
     <div v-if="breachVisible && breachRequirement" class="modal-wrap" @click.self="closeBreachReport">
-      <section class="pay-modal" aria-label="违约申报弹窗">
+      <section class="pay-modal breach-modal" aria-label="违约申报弹窗">
         <h3>申报履约违约</h3>
         <p class="pay-line"><strong>需求标题：</strong>{{ breachRequirement.title }}</p>
         <p class="pay-line"><strong>需求编号：</strong>{{ breachRequirement.requirement_id }}</p>
-        <label class="pay-line" style="display:flex;flex-direction:column;gap:6px;">
+        <label class="pay-line breach-modal__field">
           <strong>责任方向</strong>
-          <select v-model="breachLiableParty">
-            <option value="developer">开发者违约</option>
-            <option value="customer">客户违约</option>
-            <option value="platform">平台违约</option>
-          </select>
+          <el-select v-model="breachLiableParty" class="breach-modal__select" aria-label="责任方向"
+            popper-class="breach-modal__select-popper">
+            <el-option label="开发者违约" value="developer" />
+            <el-option label="客户违约" value="customer" />
+            <el-option label="平台违约" value="platform" />
+          </el-select>
         </label>
-        <label class="pay-line" style="display:flex;flex-direction:column;gap:6px;">
+        <label class="pay-line breach-modal__field">
           <strong>事实与依据</strong>
           <textarea v-model="breachReason" rows="6" maxlength="2000"
             placeholder="请填写时间、已交付内容、沟通记录和希望平台核查的事实"></textarea>
@@ -2523,11 +2536,104 @@ watch(
 }
 
 .my-requirement-detail__actions {
+  position: relative;
+  z-index: 1;
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
+  margin-top: 12px;
   padding: 0 22px 22px;
   background: rgba(248, 250, 252, 0.62);
+}
+
+.my-requirement-detail__payment-panel {
+  display: grid;
+  gap: 14px;
+  margin: 16px 22px 0;
+  padding: 16px;
+  border: 1px solid rgba(147, 197, 253, 0.82);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.9), rgba(248, 250, 252, 0.94));
+}
+
+.my-requirement-detail__payment-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.my-requirement-detail__payment-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.my-requirement-detail__payment-label {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.my-requirement-detail__payment-head strong {
+  color: #1d4ed8;
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+.my-requirement-detail__payment-status {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(219, 234, 254, 0.92);
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.my-requirement-detail__payment-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.my-requirement-detail__payment-channel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.my-requirement-detail__payment-channel > strong {
+  color: #334155;
+  font-size: 13px;
+}
+
+.my-requirement-detail__primary {
+  min-height: 38px;
+  padding: 0 18px;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.my-requirement-detail__primary:hover:not(:disabled) {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
+
+.my-requirement-detail__primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .my-requirement-detail__secondary {
@@ -2546,6 +2652,88 @@ watch(
 .my-requirement-detail__secondary:hover {
   border-color: rgba(37, 99, 235, 0.34);
   background: rgba(219, 234, 254, 0.92);
+}
+
+.pay-modal .breach-modal__field {
+  display: grid;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.pay-modal .breach-modal__field > strong {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pay-modal .breach-modal__select {
+  width: 100%;
+}
+
+.pay-modal .breach-modal__select :deep(.el-select__wrapper) {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid rgba(198, 210, 236, 0.9);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.92);
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 42px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.62);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.pay-modal .breach-modal__select :deep(.el-select__wrapper:hover) {
+  border-color: rgba(125, 155, 225, 0.92);
+  background-color: #fff;
+}
+
+.pay-modal .breach-modal__select :deep(.el-select__wrapper.is-focused),
+.pay-modal .breach-modal__select :deep(.el-select__wrapper.is-focus) {
+  border-color: rgba(37, 99, 235, 0.58);
+  background-color: #fff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.pay-modal .breach-modal__select :deep(.el-select__selected-item) {
+  color: #0f172a;
+}
+
+:deep(.breach-modal__select-popper.el-popper) {
+  overflow: hidden;
+  padding: 6px;
+  border: 1px solid rgba(198, 210, 236, 0.9);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 14px 30px rgba(76, 103, 172, 0.16);
+}
+
+:deep(.breach-modal__select-popper .el-select-dropdown__item) {
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: #334155;
+  font-family: 'Space Grotesk', 'Noto Sans SC', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 38px;
+}
+
+:deep(.breach-modal__select-popper .el-select-dropdown__item.is-hovering) {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+:deep(.breach-modal__select-popper .el-select-dropdown__item.is-selected) {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 700;
 }
 
 .wallet-header h3.portal-page__eyebrow {
@@ -2595,8 +2783,28 @@ watch(
     padding: 0 16px 18px;
   }
 
+  .my-requirement-detail__payment-panel {
+    margin: 14px 16px 0;
+    padding: 14px;
+  }
+
+  .my-requirement-detail__payment-channel {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
   .my-requirement-detail__secondary {
     width: 100%;
+  }
+
+  .my-requirement-detail__primary {
+    width: 100%;
+  }
+
+  .pay-modal .breach-modal__select :deep(.el-select__wrapper) {
+    min-height: 44px;
+    font-size: 16px;
+    line-height: 44px;
   }
 
   .my-requirement-detail__review-panel {
