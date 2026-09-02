@@ -25,7 +25,7 @@ const props = defineProps({
   depositRequirement: { type: Object as PropType<{ title: string; id: string; budget?: number | null }>, required: true },
   formattedBudget: { type: String, default: '' },
   paymentStageLabel: { type: String, required: true },
-  depositChannel: { type: String as PropType<'alipay' | 'wechat'>, required: true },
+  depositChannel: { type: String as PropType<'alipay' | 'wechat' | 'union'>, required: true },
   amountCouponCode: { type: String, default: '' },
   discountCouponCode: { type: String, default: '' },
   isFinalPayment: { type: Boolean, default: false },
@@ -44,7 +44,7 @@ const props = defineProps({
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'submit'): void
-  (e: 'update:depositChannel', value: 'alipay' | 'wechat'): void
+  (e: 'update:depositChannel', value: 'alipay' | 'wechat' | 'union'): void
   (e: 'selectCoupon', code: string, type: 'amount' | 'percent'): void
   (e: 'loadAvailableCoupons'): void
   (e: 'update:depositPolicyAccepted', value: boolean): void
@@ -53,7 +53,7 @@ const emit = defineEmits<{
 const amountCoupons = computed(() => props.availableCoupons.filter((item) => item.discount_type === 'amount'))
 const percentCoupons = computed(() => props.availableCoupons.filter((item) => item.discount_type === 'percent'))
 
-function updateChannel(channel: 'alipay' | 'wechat') {
+function updateChannel(channel: 'alipay' | 'wechat' | 'union') {
   emit('update:depositChannel', channel)
 }
 
@@ -78,15 +78,11 @@ function updateDepositPolicyAccepted(value: boolean) {
       <div class="deposit-channel-row">
         <strong>支付方式：</strong>
         <div class="payment-options" role="radiogroup" aria-label="支付方式选择">
-          <button type="button" class="payment-option" :class="{ active: depositChannel === 'alipay' }"
+          <button type="button" class="payment-option"
+            :class="{ active: depositChannel === 'alipay', 'payment-option--alipay': depositChannel === 'alipay' }"
             @click="updateChannel('alipay')">
             <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
             支付宝
-          </button>
-          <button type="button" class="payment-option" :class="{ active: depositChannel === 'wechat' }"
-            @click="updateChannel('wechat')">
-            <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="微信支付" />
-            微信支付
           </button>
         </div>
       </div>

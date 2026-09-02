@@ -1,6 +1,16 @@
 import { authHeader, requestJson } from '@/api/http'
 
 export type AdapayMilestone = 'deposit' | 'final'
+export type AdapayClientPlatform = 'mobile' | 'pc'
+export type AdapayBusinessPayChannel = 'alipay' | 'wechat' | 'union'
+
+export function getAdapayClientPlatform(): AdapayClientPlatform {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent,
+  )
+    ? 'mobile'
+    : 'pc'
+}
 
 export type AdapayPaymentResponse = {
   paymentId: string
@@ -71,7 +81,8 @@ export async function createAdapayPayment(
   token: string,
   requirementId: string,
   milestone: AdapayMilestone,
-  payChannel: string,
+  payChannel: AdapayBusinessPayChannel,
+  clientPlatform: AdapayClientPlatform = getAdapayClientPlatform(),
 ): Promise<AdapayPaymentResponse> {
   const path = milestone === 'deposit'
     ? `/adapay/requirements/${encodeURIComponent(requirementId)}/deposit`
@@ -85,7 +96,10 @@ export async function createAdapayPayment(
         'Content-Type': 'application/json',
         ...authHeader(token),
       },
-      body: JSON.stringify({ pay_channel: payChannel === 'wechat' ? 'wx_pub' : 'alipay' }),
+      body: JSON.stringify({
+        pay_channel: payChannel === 'wechat' ? 'wx_pub' : payChannel === 'union' ? 'union' : 'alipay',
+        client_platform: clientPlatform,
+      }),
     },
     `创建 Adapay${milestone === 'deposit' ? '定金' : '尾款'}订单失败`,
   )

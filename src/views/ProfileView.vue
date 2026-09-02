@@ -1,15 +1,28 @@
 <script setup lang="ts">
 import { Aim, Check, Close } from '@element-plus/icons-vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import PublishModal from '@/components/PublishModal.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
+import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
+import {
+  getUnionPaymentAuthorizeUrl,
+  getWechatPaymentAuthorizeUrl,
+  isUnionPaymentAuthorizationRequired,
+  isWechatPaymentAuthorizationRequired,
+} from '@/api/auth'
 import { apiUrl } from '@/api/http'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
-import { createAdapayPayment, getAdapayPayment, type AdapayPaymentResponse } from '@/api/adapay'
+import {
+  createAdapayPayment,
+  getAdapayPayment,
+  getAdapayClientPlatform,
+  type AdapayBusinessPayChannel,
+  type AdapayPaymentResponse,
+} from '@/api/adapay'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import {
   listRequirementConversations,
@@ -41,6 +54,7 @@ import {
 import { validateRequirementRichText } from '@/utils/requirementRichText'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const loading = ref(false)
 const coupons = ref<CouponItem[]>([])
@@ -49,7 +63,7 @@ const myRequirements = ref<RequirementItem[]>([])
 const contractSigningStatusMap = ref<Record<string, ContractSigningStatus | null>>({})
 const payVisible = ref(false)
 const payRequirement = ref<RequirementItem | null>(null)
-const payChannel = ref<'alipay' | 'wechat'>('alipay')
+const payChannel = ref<AdapayBusinessPayChannel>('alipay')
 const payLoading = ref(false)
 type PaymentState = {
   payment_id: string
@@ -62,6 +76,8 @@ type PaymentState = {
   adapay?: boolean
 }
 const currentPayment = ref<PaymentState | null>(null)
+const wechatAuthorizationVisible = ref(false)
+const wechatAuthorizationUrl = ref('')
 const commentVisible = ref(false)
 const commentRequirement = ref<RequirementItem | null>(null)
 const commentRating = ref(5)
@@ -370,6 +386,14 @@ function openPayModal(item: RequirementItem) {
   payChannel.value = 'alipay'
   currentPayment.value = null
   payVisible.value = true
+}
+
+function updatePayChannel(channel: AdapayBusinessPayChannel) {
+  if (payChannel.value === channel) {
+    return
+  }
+  payChannel.value = channel
+  currentPayment.value = null
 }
 
 async function requestFinalPayment(item: RequirementItem) {
@@ -1472,6 +1496,7 @@ async function submitRequirementPayment() {
 
   const requirement = payRequirement.value
   const channel = payChannel.value
+  const clientPlatform = getAdapayClientPlatform()
   if (!isAdapayRequirement(requirement)) {
     showToast('无担保订单不通过平台收款，请由双方按约定自行结算', 'warning')
     return
@@ -1485,6 +1510,7 @@ async function submitRequirementPayment() {
         requirement.requirement_id,
         requirement.status === 'pending_final' ? 'final' : 'deposit',
         channel,
+        clientPlatform,
       )
       currentPayment.value = {
         payment_id: adapayPayment.paymentId,
@@ -1504,6 +1530,7 @@ async function submitRequirementPayment() {
           payment_id: currentPayment.value.payment_id,
           requirement_id: adapayPayment.requirementId,
           channel,
+          client_platform: clientPlatform,
           amount_cny: adapayPayment.amountCny,
           qr_content: adapayPayment.payUrl ?? undefined,
         },
@@ -1526,10 +1553,67 @@ async function submitRequirementPayment() {
 
     throw new Error('支付订单状态无效，请重新发起 Adapay 支付')
   } catch (err) {
+    if (isWechatPaymentAuthorizationRequired(err)) {
+      try {
+        const inWechatBrowser = /MicroMessenger/i.test(navigator.userAgent)
+        const authorization = await getWechatPaymentAuthorizeUrl(
+          auth.token,
+          window.location.href,
+          inWechatBrowser ? 'redirect' : 'qr',
+        )
+        if (!authorization.url.trim()) {
+          throw new Error('微信授权地址为空')
+        }
+        if (inWechatBrowser) {
+          window.location.assign(authorization.url)
+        } else {
+          wechatAuthorizationUrl.value = authorization.url
+          wechatAuthorizationVisible.value = true
+        }
+        return
+      } catch (authorizationError) {
+        showToast(
+          authorizationError instanceof Error ? authorizationError.message : '发起微信授权失败',
+          'error',
+        )
+        return
+      }
+    }
+    if (isUnionPaymentAuthorizationRequired(err)) {
+      if (clientPlatform !== 'mobile') {
+        showToast('云闪付授权仅适用于移动端，请重新选择支付方式', 'warning')
+        return
+      }
+      try {
+        const authorization = await getUnionPaymentAuthorizeUrl(auth.token, window.location.href)
+        if (!authorization.url.trim()) {
+          throw new Error('云闪付授权地址为空')
+        }
+        window.location.assign(authorization.url)
+        return
+      } catch (authorizationError) {
+        showToast(
+          authorizationError instanceof Error ? authorizationError.message : '发起云闪付授权失败',
+          'error',
+        )
+        return
+      }
+    }
+
     showToast(err instanceof Error ? err.message : '支付失败', 'error')
   } finally {
     payLoading.value = false
   }
+}
+
+function closeWechatAuthorization() {
+  wechatAuthorizationVisible.value = false
+  wechatAuthorizationUrl.value = ''
+}
+
+function handleWechatAuthorized() {
+  closeWechatAuthorization()
+  showToast('微信授权成功，请再次点击支付', 'success')
 }
 
 
@@ -1544,6 +1628,32 @@ onMounted(async () => {
     loadDepositRatio(),
     loadProfile(),
   ])
+
+  const oauthResult = typeof route.query.wechat_oauth === 'string' ? route.query.wechat_oauth : ''
+  const oauthError =
+    typeof route.query.wechat_oauth_error === 'string' ? route.query.wechat_oauth_error : ''
+  const unionOauthResult = typeof route.query.union_oauth === 'string' ? route.query.union_oauth : ''
+  const unionOauthError =
+    typeof route.query.union_oauth_error === 'string' ? route.query.union_oauth_error : ''
+  if (oauthResult === 'success') {
+    showToast('微信授权成功，请再次点击支付', 'success')
+  } else if (oauthError) {
+    showToast(`微信授权失败：${oauthError}`, 'error')
+  }
+  if (unionOauthResult === 'success') {
+    payChannel.value = 'union'
+    showToast('云闪付授权成功，请再次点击支付', 'success')
+  } else if (unionOauthError) {
+    showToast(`云闪付授权失败：${unionOauthError}`, 'error')
+  }
+  if (oauthResult || oauthError || unionOauthResult || unionOauthError) {
+    const nextQuery = { ...route.query }
+    delete nextQuery.wechat_oauth
+    delete nextQuery.wechat_oauth_error
+    delete nextQuery.union_oauth
+    delete nextQuery.union_oauth_error
+    void router.replace({ query: nextQuery })
+  }
 })
 
 onBeforeUnmount(() => {
@@ -1890,15 +2000,11 @@ onBeforeUnmount(() => {
         <div class="pay-channel-row">
           <strong>支付方式：</strong>
           <div class="payment-options" role="radiogroup" aria-label="支付方式选择">
-            <button type="button" class="payment-option" :class="{ active: payChannel === 'alipay' }"
-              @click="payChannel = 'alipay'">
+            <button type="button" class="payment-option"
+              :class="{ active: payChannel === 'alipay', 'payment-option--alipay': payChannel === 'alipay' }"
+              @click="updatePayChannel('alipay')">
               <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
               支付宝
-            </button>
-            <button type="button" class="payment-option" :class="{ active: payChannel === 'wechat' }"
-              @click="payChannel = 'wechat'">
-              <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="微信支付" />
-              微信支付
             </button>
           </div>
         </div>
@@ -1981,6 +2087,14 @@ onBeforeUnmount(() => {
         </div>
       </section>
     </div>
+
+    <WechatAuthorizationModal
+      :visible="wechatAuthorizationVisible"
+      :authorization-url="wechatAuthorizationUrl"
+      :token="auth.token"
+      @close="closeWechatAuthorization"
+      @authorized="handleWechatAuthorized"
+    />
 
   </main>
 </template>

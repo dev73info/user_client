@@ -56,6 +56,7 @@ declare module 'vue' {
     ShareCardGenerator: typeof import('./src/components/ShareCardGenerator.vue')['default']
     ShareStats: typeof import('./src/components/ShareStats.vue')['default']
     SupportChatWidget: typeof import('./src/components/SupportChatWidget.vue')['default']
+    WechatAuthorizationModal: typeof import('./src/components/WechatAuthorizationModal.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

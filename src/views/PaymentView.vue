@@ -5,7 +5,12 @@ import QRCode from 'qrcode'
 
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
-import { getAdapayPayment } from '@/api/adapay'
+import {
+  getAdapayClientPlatform,
+  getAdapayPayment,
+  type AdapayClientPlatform,
+  type AdapayPaymentResponse,
+} from '@/api/adapay'
 import { confirmPayment as confirmPaymentApi, getAlipayPageHtml, listPaymentOrders as listPaymentOrdersApi, type ConfirmPaymentResp } from '@/api/payments'
 
 const route = useRoute()
@@ -17,10 +22,26 @@ const paymentId = computed(() => String(route.query.payment_id ?? ''))
 const requirementId = computed(() => String(route.query.requirement_id ?? ''))
 const amountCny = computed(() => String(route.query.amount_cny ?? ''))
 const couponCode = computed(() => String(route.query.coupon_code ?? ''))
-const paymentChannel = computed(() => String(route.query.channel ?? 'alipay'))
 const isAdapayPayment = computed(() => route.query.adapay === '1')
-const qrContent = computed(
-  () => String(route.query.qr_content ?? route.query.alipay_order_string ?? ''),
+const adapayPayment = ref<AdapayPaymentResponse | null>(null)
+const queryPaymentChannel = computed(() => {
+  const value = String(route.query.channel ?? 'alipay').trim().toLowerCase()
+  return normalizePaymentChannel(value) || 'alipay'
+})
+const paymentChannel = computed(
+  () => normalizePaymentChannel(adapayPayment.value?.payChannel ?? '') || queryPaymentChannel.value,
+)
+const clientPlatform = computed<AdapayClientPlatform>(() => {
+  const value = String(route.query.client_platform ?? '').trim()
+  if (value === 'mobile' || value === 'pc') {
+    return value
+  }
+  return getAdapayClientPlatform()
+})
+const rawPaymentContent = computed(
+  () =>
+    adapayPayment.value?.payUrl?.trim() ||
+    String(route.query.qr_content ?? route.query.alipay_order_string ?? ''),
 )
 const expiresAt = computed(() => String(route.query.expires_at ?? ''))
 const qrDataUrl = ref('')
@@ -34,11 +55,150 @@ const alipayCanvasError = ref('')
 const nowTick = ref(Date.now())
 const confirming = ref(false)
 const paid = ref(false)
+const wechatPayLoading = ref(false)
+const wechatPayError = ref('')
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let countdownTimer: ReturnType<typeof setInterval> | null = null
+let wechatBridgeListener: (() => void) | null = null
 const PAYMENT_POLL_INTERVAL_MS = 8_000
 
 const isAlipayPage = computed(() => paymentChannel.value === 'alipay' && !isAdapayPayment.value)
+const isWechatPayment = computed(() => isAdapayPayment.value && paymentChannel.value === 'wechat')
+const isWechatMobilePayment = computed(
+  () => isWechatPayment.value && clientPlatform.value === 'mobile',
+)
+const isWechatPcPayment = computed(() => isWechatPayment.value && clientPlatform.value === 'pc')
+const isAlipayMobilePayment = computed(
+  () => isAdapayPayment.value && paymentChannel.value === 'alipay' && clientPlatform.value === 'mobile',
+)
+const isUnionPayment = computed(() => isAdapayPayment.value && paymentChannel.value === 'union')
+const isUnionMobilePayment = computed(
+  () => isUnionPayment.value && clientPlatform.value === 'mobile',
+)
+const isUnionPcPayment = computed(() => isUnionPayment.value && clientPlatform.value === 'pc')
+
+function normalizePaymentChannel(value: string): 'alipay' | 'wechat' | 'union' | '' {
+  switch (value.trim().toLowerCase()) {
+    case 'alipay':
+    case 'alipay_qr':
+    case 'alipay_wap':
+      return 'alipay'
+    case 'wechat':
+    case 'wx_pub':
+    case 'wx_lite':
+      return 'wechat'
+    case 'union':
+    case 'union_qr':
+    case 'union_wap':
+      return 'union'
+    default:
+      return ''
+  }
+}
+
+type WechatJsapiPaymentInfo = {
+  appId: string
+  timeStamp: string
+  nonceStr: string
+  package: string
+  signType: string
+  paySign: string
+}
+
+function parseWechatPayInfo(raw: string): WechatJsapiPaymentInfo | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return null
+  }
+
+  const source = parsed as Record<string, unknown>
+  const read = (...keys: string[]) => {
+    for (const key of keys) {
+      const value = source[key]
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim()
+      }
+    }
+    return ''
+  }
+
+  const paymentInfo = {
+    appId: read('appId', 'app_id'),
+    timeStamp: read('timeStamp', 'timestamp', 'time_stamp'),
+    nonceStr: read('nonceStr', 'nonce_str'),
+    package: read('package'),
+    signType: read('signType', 'sign_type'),
+    paySign: read('paySign', 'pay_sign'),
+  }
+
+  return Object.values(paymentInfo).every(Boolean) ? paymentInfo : null
+}
+
+const wechatPayInfo = computed(() => parseWechatPayInfo(rawPaymentContent.value))
+const isWechatBrowser = computed(
+  () => typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent),
+)
+const alipayPaymentUrl = computed(() => {
+  const value = rawPaymentContent.value.trim()
+  if (/^(https?:\/\/|alipays:\/\/)/i.test(value)) {
+    return value
+  }
+  return ''
+})
+const unionPaymentUrl = computed(() => {
+  const value = rawPaymentContent.value.trim()
+  return /^(https?:\/\/).*?(95516|unionpay|cloudpay)/i.test(value) ? value : ''
+})
+const isAlipayPaymentUrl = computed(() => {
+  const value = rawPaymentContent.value.trim()
+  return /^(https?:\/\/|alipays:\/\/).*?(alipay|qr\.alipay\.com)/i.test(value)
+})
+const invalidUnionPaymentContent = computed(
+  () => isUnionPayment.value && Boolean(rawPaymentContent.value.trim()) && !unionPaymentUrl.value && !qrContent.value,
+)
+const invalidAdapayPaymentContent = computed(
+  () =>
+    isAdapayPayment.value &&
+    !adapayPayment.value &&
+    ((paymentChannel.value === 'union' && !unionPaymentUrl.value && !isUnionMobilePayment.value) ||
+      (paymentChannel.value === 'alipay' && !isAlipayPaymentUrl.value)),
+)
+const wechatHandoffUrl = computed(() => {
+  if (!isWechatPcPayment.value || !wechatPayInfo.value || typeof window === 'undefined') {
+    return ''
+  }
+
+  const query = new URLSearchParams({
+    adapay: '1',
+    payment_id: paymentId.value,
+    requirement_id: requirementId.value,
+    channel: 'wechat',
+    client_platform: 'mobile',
+    amount_cny: amountCny.value,
+    qr_content: rawPaymentContent.value,
+  })
+  return `${window.location.origin}${window.location.pathname}#/payment?${query.toString()}`
+})
+const qrContent = computed(() => {
+  if (
+    isWechatMobilePayment.value ||
+    isAlipayMobilePayment.value ||
+    isUnionMobilePayment.value ||
+    invalidAdapayPaymentContent.value
+  ) {
+    return ''
+  }
+  if (wechatHandoffUrl.value) {
+    return wechatHandoffUrl.value
+  }
+  return rawPaymentContent.value
+})
 const hasOrder = computed(
   () => paymentId.value && (isAdapayPayment.value || qrContent.value || isAlipayPage.value),
 )
@@ -127,6 +287,79 @@ async function loadAlipayPageHtml(paymentIdValue: string) {
   }
 }
 
+async function loadAdapayPayment(paymentIdValue: string) {
+  if (!isAdapayPayment.value || !auth.token || !paymentIdValue) {
+    return
+  }
+
+  try {
+    adapayPayment.value = await getAdapayPayment(auth.token, paymentIdValue)
+  } catch {
+    adapayPayment.value = null
+  }
+}
+
+type WechatBridge = {
+  invoke: (
+    method: string,
+    params: WechatJsapiPaymentInfo,
+    callback: (result: { err_msg?: string }) => void,
+  ) => void
+}
+
+function getWechatBridge(): WechatBridge | null {
+  return (window as Window & { WeixinJSBridge?: WechatBridge }).WeixinJSBridge ?? null
+}
+
+function launchWechatPayment() {
+  wechatPayError.value = ''
+  const paymentInfo = wechatPayInfo.value
+  if (!paymentInfo) {
+    wechatPayError.value = '微信支付信息无效，请返回订单页重新发起支付。'
+    return
+  }
+  if (!isWechatBrowser.value) {
+    wechatPayError.value = '请用手机微信打开当前支付页后再发起支付。'
+    return
+  }
+
+  const invoke = () => {
+    wechatBridgeListener = null
+    const bridge = getWechatBridge()
+    if (!bridge) {
+      wechatPayError.value = '微信支付环境未就绪，请稍后重试。'
+      return
+    }
+
+    wechatPayLoading.value = true
+    bridge.invoke('getBrandWCPayRequest', paymentInfo, (result) => {
+      wechatPayLoading.value = false
+      const message = result.err_msg?.toLowerCase() ?? ''
+      if (message.includes(':ok')) {
+        showToast('微信支付请求已提交，请等待支付结果', 'success')
+        if (auth.token) {
+          void confirmPayment()
+        }
+      } else if (message.includes('cancel')) {
+        wechatPayError.value = '你已取消微信支付。'
+      } else {
+        wechatPayError.value = '微信支付未完成，请重试或返回订单页。'
+      }
+    })
+  }
+
+  if (getWechatBridge()) {
+    invoke()
+    return
+  }
+
+  if (wechatBridgeListener) {
+    document.removeEventListener('WeixinJSBridgeReady', wechatBridgeListener)
+  }
+  wechatBridgeListener = invoke
+  document.addEventListener('WeixinJSBridgeReady', wechatBridgeListener, { once: true })
+}
+
 function copyIframeCanvas(retryCount = 8) {
   alipayCanvasError.value = ''
 
@@ -175,6 +408,24 @@ function handleIframeLoad() {
 watch(
   [
     () => paymentId.value,
+    () => auth.token,
+    () => isAdapayPayment.value,
+  ],
+  async ([id, token, isAdapay]) => {
+    if (!id || !token || !isAdapay) {
+      adapayPayment.value = null
+      return
+    }
+    await loadAdapayPayment(id)
+  },
+  {
+    immediate: true,
+  },
+)
+
+watch(
+  [
+    () => paymentId.value,
     () => paymentChannel.value,
     () => auth.token,
   ],
@@ -191,7 +442,7 @@ watch(
 )
 
 function goBack() {
-  router.push('/')
+  router.back()
 }
 
 async function checkOrderPaidByList() {
@@ -207,7 +458,6 @@ async function confirmPayment() {
 
   auth.hydrate()
   if (!auth.isAuthed) {
-    showToast('请先登录后再查询支付结果', 'error')
     return
   }
 
@@ -215,6 +465,7 @@ async function confirmPayment() {
   try {
     if (isAdapayPayment.value) {
       const result = await getAdapayPayment(auth.token, paymentId.value)
+      adapayPayment.value = result
       if (result.status !== 'paid' && result.status !== 'confirmed') {
         return
       }
@@ -298,6 +549,10 @@ onUnmounted(() => {
     clearInterval(pollTimer)
     pollTimer = null
   }
+  if (wechatBridgeListener) {
+    document.removeEventListener('WeixinJSBridgeReady', wechatBridgeListener)
+    wechatBridgeListener = null
+  }
 })
 </script>
 
@@ -307,18 +562,53 @@ onUnmounted(() => {
       <header class="panel-head">
         <div>
           <p class="eyebrow">73Info Sandbox</p>
-          <h2>扫码支付</h2>
-          <p class="lead">请使用{{ paymentChannel === 'wechat' ? '微信' : '支付宝' }}扫码完成支付，支付成功后将自动返回首页。</p>
+          <h2>{{ isWechatMobilePayment ? '微信支付' : isAlipayMobilePayment ? '支付宝支付' : isUnionMobilePayment ? '云闪付' : '扫码支付' }}</h2>
+          <p class="lead">
+            {{ isWechatMobilePayment ? '请在微信内发起支付，支付成功后将自动返回首页。' : isAlipayMobilePayment ? '请打开支付宝完成支付，支付成功后将自动返回首页。' : isUnionMobilePayment ? '请打开云闪付完成支付，支付成功后将自动返回首页。' : `请使用${paymentChannel === 'wechat' ? '微信' : paymentChannel === 'union' ? '云闪付' : '支付宝'}扫码完成支付，支付成功后将自动返回首页。` }}
+          </p>
         </div>
-        <button class="top-back" @click="goBack">返回首页</button>
+        <button class="top-back" @click="goBack">返回</button>
       </header>
 
       <div v-if="hasOrder" class="pay-layout">
         <article class="qr-card">
           <p class="card-title">支付入口</p>
 
-          <!-- 添加外层容器解决裁剪问题 -->
-          <div v-if="alipayPageHtml" class="alipay-iframe-wrapper">
+          <div v-if="isWechatMobilePayment" class="payment-launch-panel">
+            <p class="payment-launch-panel__title">微信支付</p>
+            <p class="payment-launch-panel__tip">请在微信内点击下方按钮调起支付。</p>
+            <button class="payment-launch-panel__button" type="button" :disabled="wechatPayLoading"
+              @click="launchWechatPayment">
+              {{ wechatPayLoading ? '正在打开微信支付...' : '发起微信支付' }}
+            </button>
+            <p v-if="wechatPayError" class="payment-launch-panel__error">{{ wechatPayError }}</p>
+          </div>
+
+          <div v-else-if="isAlipayMobilePayment" class="payment-launch-panel">
+            <p class="payment-launch-panel__title">支付宝支付</p>
+            <p class="payment-launch-panel__tip">请点击下方按钮打开支付宝完成支付。</p>
+            <a v-if="alipayPaymentUrl" class="payment-launch-panel__button" :href="alipayPaymentUrl">
+              打开支付宝支付
+            </a>
+            <p v-else class="payment-launch-panel__error">支付宝支付链接无效，请返回订单页重新发起支付。</p>
+          </div>
+
+          <div v-else-if="isUnionMobilePayment" class="payment-launch-panel">
+            <p class="payment-launch-panel__title">云闪付</p>
+            <p class="payment-launch-panel__tip">请点击下方按钮打开云闪付完成支付。</p>
+            <a v-if="unionPaymentUrl" class="payment-launch-panel__button payment-launch-panel__button--union"
+              :href="unionPaymentUrl">
+              打开云闪付支付
+            </a>
+            <p v-else class="payment-launch-panel__error">云闪付支付链接无效，请返回订单页重新发起支付。</p>
+          </div>
+
+          <div v-else-if="invalidAdapayPaymentContent || invalidUnionPaymentContent" class="payment-launch-panel">
+            <p class="payment-launch-panel__title">支付订单不匹配</p>
+            <p class="payment-launch-panel__error">当前订单内容不是云闪付订单，请返回需求页重新发起支付。</p>
+          </div>
+
+          <div v-else-if="alipayPageHtml" class="alipay-iframe-wrapper">
             <iframe ref="alipayIframeRef" :srcdoc="alipayPageHtml" class="alipay-frame" frameborder="0"
               sandbox="allow-scripts allow-forms allow-same-origin" scrolling="no" @load="handleIframeLoad"></iframe>
             <div v-if="alipayPageLoading || alipayIframeLoading" class="alipay-loading-overlay">
@@ -328,9 +618,11 @@ onUnmounted(() => {
           </div>
 
           <div v-else>
-            <img v-if="qrDataUrl" :src="qrDataUrl" :alt="`${paymentChannel === 'wechat' ? '微信' : '支付宝'}扫码支付二维码`"
+            <img v-if="qrDataUrl" :src="qrDataUrl" :alt="`${paymentChannel === 'wechat' ? '微信' : paymentChannel === 'union' ? '云闪付' : '支付宝'}扫码支付二维码`"
               class="qr-code" />
             <div v-else class="qr-fallback">二维码生成失败，请返回首页重新发起支付。</div>
+            <p v-if="isWechatPcPayment" class="payment-qr-hint">请用手机微信扫码，并在手机上完成支付。</p>
+            <p v-else-if="isUnionPcPayment" class="payment-qr-hint">请用手机云闪付扫码，并在手机上完成支付。</p>
           </div>
         </article>
 

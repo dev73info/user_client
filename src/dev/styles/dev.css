@@ -4,8 +4,8 @@
     'IBM Plex Sans', 'PingFang SC', 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', sans-serif;
   color: #0f172a;
-  background: #f3efe6;
-  --dev-bg: #f3efe6;
+  background: #edf3f5;
+  --dev-bg: #edf3f5;
   --dev-surface: rgba(255, 251, 244, 0.88);
   --dev-surface-strong: #fffaf2;
   --dev-ink: #111827;

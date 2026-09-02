@@ -1,14 +1,14 @@
 /* --- 1. 变量与基础重置 --- */
 :root {
-  --bg-deep: #07223a;
-  --bg-mid: #0e3b5d;
-  --bg-soft: #1f6d7f;
-  --card-bg: rgba(255, 255, 255, 0.08);
-  --card-border: rgba(255, 255, 255, 0.18);
-  --text-main: #030809;
-  --text-sub: #2563eb;
-  --accent: #ffd166;
-  --success: #95d5b2;
+  --bg-deep: #edf3f5;
+  --bg-mid: #f5f8fa;
+  --bg-soft: #ffffff;
+  --card-bg: rgba(255, 255, 255, 0.92);
+  --card-border: rgba(148, 163, 184, 0.3);
+  --text-main: #172033;
+  --text-sub: #52627a;
+  --accent: #1f4ad1;
+  --success: #16805c;
   --glass-blur: 12px;
 }
 
@@ -24,8 +24,8 @@ body {
   font-family: 'Space Grotesk', 'Noto Sans SC', sans-serif;
   color: var(--text-main);
   background:
-    radial-gradient(circle at 12% 15%, rgba(255, 209, 102, 0.12), transparent 30%),
-    radial-gradient(circle at 88% 72%, rgba(149, 213, 178, 0.15), transparent 35%),
+    radial-gradient(circle at 12% 15%, rgba(31, 74, 209, 0.08), transparent 30%),
+    radial-gradient(circle at 88% 72%, rgba(42, 166, 164, 0.08), transparent 35%),
     linear-gradient(145deg, var(--bg-deep), var(--bg-mid) 45%, var(--bg-soft));
   background-attachment: fixed;
   min-height: 100vh;
