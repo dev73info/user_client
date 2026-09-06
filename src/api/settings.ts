@@ -23,6 +23,7 @@ export type UserProfileResp = {
   two_factor_enabled: boolean
   subscribe_official_activity: boolean
   subscribe_dev_hall_deposit_paid?: boolean
+  wechat_bound?: boolean
 }
 
 export type UserSubscriptionsResp = {
@@ -37,6 +38,7 @@ export type ActivityCampaignClaimResp = {
   assigned_coupon_code: string
   claimed_at: string
   already_claimed: boolean
+  points_awarded?: number | null
 }
 
 export async function getDepositRatio(token: string): Promise<DepositRatioResp | null> {

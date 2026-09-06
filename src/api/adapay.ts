@@ -210,3 +210,52 @@ export async function reportAdapayBreach(
     '提交违约申报失败',
   )
 }
+
+export type AdapayMemberStatus = {
+  username: string
+  memberType?: string | null
+  memberId?: string | null
+  settleAccountId?: string | null
+  onboardingStatus: string
+  providerStatus?: string | null
+  settlementReady: boolean
+}
+
+export async function getMyAdapayMember(token: string): Promise<AdapayMemberStatus> {
+  return requestJson<AdapayMemberStatus>(
+    '/adapay/me',
+    {
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '加载 Adapay 认证状态失败',
+  )
+}
+
+export type MySettlementAccountPayload = {
+  card_id: string
+  bank_code: string
+  prov_code: string
+  area_code: string
+  bank_acct_type?: string
+  bank_name?: string
+}
+
+export async function createMyAdapaySettlementAccount(
+  token: string,
+  payload: MySettlementAccountPayload,
+): Promise<AdapayMemberStatus> {
+  return requestJson<AdapayMemberStatus>(
+    '/adapay/me/settle-account',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify(payload),
+    },
+    '设置 Adapay 结算账户失败',
+  )
+}

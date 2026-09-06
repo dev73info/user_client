@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 
 import {
   listInvoicePaymentOptions,
@@ -29,6 +29,14 @@ const uploadingInvoiceId = ref<number | null>(null)
 const platformForm = reactive({ invoiceTitle: '', taxNumber: '', recipientEmail: '' })
 const developerForm = reactive({ invoiceTitle: '', taxNumber: '', recipientEmail: '' })
 
+// 弹窗可见性
+const platformModalVisible = ref(false)
+const developerModalVisible = ref(false)
+
+// 临时草稿（localStorage 持久化，跨刷新/关闭保留）
+const PLATFORM_DRAFT_KEY = 'invoice_platform_draft_v1'
+const DEVELOPER_DRAFT_KEY = 'invoice_developer_draft_v1'
+
 const platformOptions = computed(() =>
   paymentOptions.value.filter((item) => item.payer === auth.username),
 )
@@ -47,6 +55,22 @@ onMounted(() => {
   void loadData()
 })
 
+watch(
+  [platformModalVisible, developerModalVisible],
+  ([platformOpen, developerOpen]) => {
+    if (platformOpen || developerOpen) {
+      document.addEventListener('keydown', handleModalKeydown)
+    } else {
+      document.removeEventListener('keydown', handleModalKeydown)
+    }
+  },
+  { immediate: true },
+)
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleModalKeydown)
+})
+
 function statusLabel(status: InvoiceRecord['status']) {
   return {
     requested: '待处理',
@@ -58,6 +82,10 @@ function statusLabel(status: InvoiceRecord['status']) {
 
 function statusClass(status: InvoiceRecord['status']) {
   return `invoice-status--${status}`
+}
+
+function countByStatus(status: InvoiceRecord['status']) {
+  return invoices.value.filter((item) => item.status === status).length
 }
 
 function roleLabel(role: InvoiceRecord['invoiceRole']) {
@@ -111,6 +139,108 @@ function resetDeveloperForm() {
   developerForm.recipientEmail = ''
 }
 
+function persistPlatformDraft() {
+  const draft = {
+    selectedPaymentId: selectedPlatformPaymentId.value,
+    invoiceTitle: platformForm.invoiceTitle,
+    taxNumber: platformForm.taxNumber,
+    recipientEmail: platformForm.recipientEmail,
+  }
+  localStorage.setItem(PLATFORM_DRAFT_KEY, JSON.stringify(draft))
+}
+
+function savePlatformDraft() {
+  persistPlatformDraft()
+  showToast('草稿已保存', 'success')
+}
+
+function loadPlatformDraft() {
+  try {
+    const raw = localStorage.getItem(PLATFORM_DRAFT_KEY)
+    if (!raw) {
+      return
+    }
+    const draft = JSON.parse(raw) as Partial<typeof platformForm> & { selectedPaymentId?: string }
+    selectedPlatformPaymentId.value = draft.selectedPaymentId ?? ''
+    platformForm.invoiceTitle = draft.invoiceTitle ?? ''
+    platformForm.taxNumber = draft.taxNumber ?? ''
+    platformForm.recipientEmail = draft.recipientEmail ?? ''
+  } catch {
+    localStorage.removeItem(PLATFORM_DRAFT_KEY)
+  }
+}
+
+function clearPlatformDraft() {
+  localStorage.removeItem(PLATFORM_DRAFT_KEY)
+}
+
+function persistDeveloperDraft() {
+  const draft = {
+    selectedPaymentId: selectedDeveloperPaymentId.value,
+    invoiceTitle: developerForm.invoiceTitle,
+    taxNumber: developerForm.taxNumber,
+    recipientEmail: developerForm.recipientEmail,
+  }
+  localStorage.setItem(DEVELOPER_DRAFT_KEY, JSON.stringify(draft))
+}
+
+function saveDeveloperDraft() {
+  persistDeveloperDraft()
+  showToast('草稿已保存', 'success')
+}
+
+function loadDeveloperDraft() {
+  try {
+    const raw = localStorage.getItem(DEVELOPER_DRAFT_KEY)
+    if (!raw) {
+      return
+    }
+    const draft = JSON.parse(raw) as Partial<typeof developerForm> & { selectedPaymentId?: string }
+    selectedDeveloperPaymentId.value = draft.selectedPaymentId ?? ''
+    developerForm.invoiceTitle = draft.invoiceTitle ?? ''
+    developerForm.taxNumber = draft.taxNumber ?? ''
+    developerForm.recipientEmail = draft.recipientEmail ?? ''
+  } catch {
+    localStorage.removeItem(DEVELOPER_DRAFT_KEY)
+  }
+}
+
+function clearDeveloperDraft() {
+  localStorage.removeItem(DEVELOPER_DRAFT_KEY)
+}
+
+function openPlatformModal() {
+  loadPlatformDraft()
+  platformModalVisible.value = true
+}
+
+function closePlatformModal() {
+  persistPlatformDraft()
+  platformModalVisible.value = false
+}
+
+function openDeveloperModal() {
+  loadDeveloperDraft()
+  developerModalVisible.value = true
+}
+
+function closeDeveloperModal() {
+  persistDeveloperDraft()
+  developerModalVisible.value = false
+}
+
+function handleModalKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Escape') {
+    return
+  }
+  if (platformModalVisible.value) {
+    closePlatformModal()
+  }
+  if (developerModalVisible.value) {
+    closeDeveloperModal()
+  }
+}
+
 async function submitPlatformInvoice() {
   const payment = selectedPlatformPayment.value
   if (!payment || !platformForm.invoiceTitle.trim()) {
@@ -127,6 +257,8 @@ async function submitPlatformInvoice() {
     })
     invoices.value = [invoice, ...invoices.value.filter((item) => item.id !== invoice.id)]
     resetPlatformForm()
+    clearPlatformDraft()
+    platformModalVisible.value = false
     showToast('平台发票申请已提交', 'success')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '申请平台发票失败', 'error')
@@ -151,6 +283,8 @@ async function submitDeveloperInvoice() {
     })
     invoices.value = [invoice, ...invoices.value.filter((item) => item.id !== invoice.id)]
     resetDeveloperForm()
+    clearDeveloperDraft()
+    developerModalVisible.value = false
     showToast('开发者发票申请已创建，请上传发票文件', 'success')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '申请开发者发票失败', 'error')
@@ -208,88 +342,149 @@ async function openDocument(invoice: InvoiceRecord) {
 
 <template>
   <main class="invoice-center">
-    <header class="invoice-center__head">
-      <div>
-        <span class="invoice-center__eyebrow">INVOICE / COMPLIANCE</span>
-        <h1>发票中心</h1>
-        <p>平台服务费由平台开具，开发者按自身主体开具服务收入发票并上传留痕。</p>
-      </div>
+    <div class="invoice-center__toolbar">
+      <p class="invoice-center__desc">平台服务费由平台开具，开发者按自身主体开具服务收入发票并上传留痕。</p>
       <button class="invoice-center__refresh" type="button" :disabled="loading" @click="loadData">
         {{ loading ? '加载中...' : '刷新' }}
       </button>
-    </header>
+    </div>
 
-    <section class="invoice-center__forms">
-      <article class="invoice-panel">
-        <div class="invoice-panel__head">
-          <div>
-            <span class="invoice-panel__kicker">CUSTOMER / PLATFORM</span>
-            <h2>申请平台服务费发票</h2>
-          </div>
-          <strong>平台开具</strong>
-        </div>
-        <p class="invoice-panel__hint">开票金额以平台服务费结算记录为准，不包含开发者收入。</p>
-        <label>
-          已成功结算的支付节点
-          <select v-model="selectedPlatformPaymentId">
-            <option value="">请选择支付节点</option>
-            <option v-for="item in platformOptions" :key="item.paymentId" :value="item.paymentId">
-              {{ optionLabel(item, 'platform') }}
-            </option>
-          </select>
-        </label>
-        <label>
-          发票抬头
-          <input v-model="platformForm.invoiceTitle" type="text" maxlength="200" placeholder="个人姓名或单位名称" />
-        </label>
-        <label>
-          税号（可选）
-          <input v-model="platformForm.taxNumber" type="text" maxlength="64" placeholder="单位纳税人识别号" />
-        </label>
-        <label>
-          接收邮箱（可选）
-          <input v-model="platformForm.recipientEmail" type="email" maxlength="254" placeholder="用于接收开票文件" />
-        </label>
-        <button class="invoice-panel__submit" type="button" :disabled="submitting !== null" @click="submitPlatformInvoice">
-          {{ submitting === 'platform' ? '提交中...' : '提交平台开票申请' }}
-        </button>
+    <section class="invoice-stats">
+      <article class="invoice-stat">
+        <span class="invoice-stat__label">全部发票</span>
+        <strong class="invoice-stat__value">{{ invoices.length }}</strong>
+        <span class="invoice-stat__hint">累计申请</span>
       </article>
-
-      <article class="invoice-panel">
-        <div class="invoice-panel__head">
-          <div>
-            <span class="invoice-panel__kicker">DEVELOPER / SELF ISSUED</span>
-            <h2>申请开发者发票</h2>
-          </div>
-          <strong>开发者开具</strong>
-        </div>
-        <p class="invoice-panel__hint">开发者按实名主体开具，企业和个体工商户需填写税号。</p>
-        <label>
-          已成功结算的支付节点
-          <select v-model="selectedDeveloperPaymentId">
-            <option value="">请选择支付节点</option>
-            <option v-for="item in developerOptions" :key="item.paymentId" :value="item.paymentId">
-              {{ optionLabel(item, 'developer') }}
-            </option>
-          </select>
-        </label>
-        <label>
-          发票抬头
-          <input v-model="developerForm.invoiceTitle" type="text" maxlength="200" placeholder="个人姓名、个体户或企业名称" />
-        </label>
-        <label>
-          税号
-          <input v-model="developerForm.taxNumber" type="text" maxlength="64" placeholder="企业或个体工商户必填" />
-        </label>
-        <label>
-          接收邮箱（可选）
-          <input v-model="developerForm.recipientEmail" type="email" maxlength="254" placeholder="用于保留开票联系信息" />
-        </label>
-        <button class="invoice-panel__submit" type="button" :disabled="submitting !== null" @click="submitDeveloperInvoice">
-          {{ submitting === 'developer' ? '提交中...' : '创建开发者开票记录' }}
-        </button>
+      <article class="invoice-stat invoice-stat--requested">
+        <span class="invoice-stat__label">待处理</span>
+        <strong class="invoice-stat__value">{{ countByStatus('requested') }}</strong>
+        <span class="invoice-stat__hint">等待平台处理</span>
+      </article>
+      <article class="invoice-stat invoice-stat--under_review">
+        <span class="invoice-stat__label">审核中</span>
+        <strong class="invoice-stat__value">{{ countByStatus('under_review') }}</strong>
+        <span class="invoice-stat__hint">补充材料 / 核实</span>
+      </article>
+      <article class="invoice-stat invoice-stat--approved">
+        <span class="invoice-stat__label">已通过</span>
+        <strong class="invoice-stat__value">{{ countByStatus('approved') }}</strong>
+        <span class="invoice-stat__hint">已开具 / 通过</span>
+      </article>
+      <article class="invoice-stat invoice-stat--rejected">
+        <span class="invoice-stat__label">需补充材料</span>
+        <strong class="invoice-stat__value">{{ countByStatus('rejected') }}</strong>
+        <span class="invoice-stat__hint">按备注补交</span>
       </article>
     </section>
+
+    <section class="invoice-entry-grid">
+      <article class="invoice-entry-card" role="button" tabindex="0" @click="openPlatformModal"
+        @keydown.enter.prevent="openPlatformModal">
+        <div class="invoice-entry-card__head">
+          <span class="invoice-panel__kicker">CUSTOMER / PLATFORM</span>
+          <strong>平台开具</strong>
+        </div>
+        <h2 class="invoice-entry-card__title">申请平台服务费发票</h2>
+        <p class="invoice-entry-card__desc">开票金额以平台服务费结算记录为准，不包含开发者收入。</p>
+        <button class="invoice-panel__submit" type="button">去申请</button>
+      </article>
+      <article class="invoice-entry-card invoice-entry-card--developer" role="button" tabindex="0"
+        @click="openDeveloperModal" @keydown.enter.prevent="openDeveloperModal">
+        <div class="invoice-entry-card__head">
+          <span class="invoice-panel__kicker">DEVELOPER / SELF ISSUED</span>
+          <strong>开发者开具</strong>
+        </div>
+        <h2 class="invoice-entry-card__title">申请开发者发票</h2>
+        <p class="invoice-entry-card__desc">开发者按实名主体开具，企业和个体工商户需填写税号。</p>
+        <button class="invoice-panel__submit" type="button">去申请</button>
+      </article>
+    </section>
+
+    <Teleport to="body">
+      <div v-if="platformModalVisible" class="invoice-modal-overlay" @click.self="closePlatformModal">
+        <article class="invoice-panel invoice-modal" role="dialog" aria-modal="true" aria-label="申请平台服务费发票">
+          <div class="invoice-panel__head invoice-modal__head">
+            <div>
+              <span class="invoice-panel__kicker">CUSTOMER / PLATFORM</span>
+              <h2>申请平台服务费发票</h2>
+            </div>
+            <strong>平台开具</strong>
+            <button class="invoice-modal__close" type="button" aria-label="关闭" @click="closePlatformModal">×</button>
+          </div>
+          <p class="invoice-panel__hint">开票金额以平台服务费结算记录为准，不包含开发者收入。</p>
+          <label>
+            已成功结算的支付节点
+            <select v-model="selectedPlatformPaymentId">
+              <option value="">请选择支付节点</option>
+              <option v-for="item in platformOptions" :key="item.paymentId" :value="item.paymentId">
+                {{ optionLabel(item, 'platform') }}
+              </option>
+            </select>
+          </label>
+          <label>
+            发票抬头
+            <input v-model="platformForm.invoiceTitle" type="text" maxlength="200" placeholder="个人姓名或单位名称" />
+          </label>
+          <label>
+            税号（可选）
+            <input v-model="platformForm.taxNumber" type="text" maxlength="64" placeholder="单位纳税人识别号" />
+          </label>
+          <label>
+            接收邮箱（可选）
+            <input v-model="platformForm.recipientEmail" type="email" maxlength="254" placeholder="用于接收开票文件" />
+          </label>
+          <div class="invoice-modal__actions">
+            <button class="invoice-modal__draft" type="button" @click="savePlatformDraft">保存草稿</button>
+            <button class="invoice-panel__submit" type="button" :disabled="submitting !== null"
+              @click="submitPlatformInvoice">
+              {{ submitting === 'platform' ? '提交中...' : '提交平台开票申请' }}
+            </button>
+          </div>
+        </article>
+      </div>
+
+      <div v-if="developerModalVisible" class="invoice-modal-overlay" @click.self="closeDeveloperModal">
+        <article class="invoice-panel invoice-modal" role="dialog" aria-modal="true" aria-label="申请开发者发票">
+          <div class="invoice-panel__head invoice-modal__head">
+            <div>
+              <span class="invoice-panel__kicker">DEVELOPER / SELF ISSUED</span>
+              <h2>申请开发者发票</h2>
+            </div>
+            <strong>开发者开具</strong>
+            <button class="invoice-modal__close" type="button" aria-label="关闭" @click="closeDeveloperModal">×</button>
+          </div>
+          <p class="invoice-panel__hint">开发者按实名主体开具，企业和个体工商户需填写税号。</p>
+          <label>
+            已成功结算的支付节点
+            <select v-model="selectedDeveloperPaymentId">
+              <option value="">请选择支付节点</option>
+              <option v-for="item in developerOptions" :key="item.paymentId" :value="item.paymentId">
+                {{ optionLabel(item, 'developer') }}
+              </option>
+            </select>
+          </label>
+          <label>
+            发票抬头
+            <input v-model="developerForm.invoiceTitle" type="text" maxlength="200" placeholder="个人姓名、个体户或企业名称" />
+          </label>
+          <label>
+            税号
+            <input v-model="developerForm.taxNumber" type="text" maxlength="64" placeholder="企业或个体工商户必填" />
+          </label>
+          <label>
+            接收邮箱（可选）
+            <input v-model="developerForm.recipientEmail" type="email" maxlength="254" placeholder="用于保留开票联系信息" />
+          </label>
+          <div class="invoice-modal__actions">
+            <button class="invoice-modal__draft" type="button" @click="saveDeveloperDraft">保存草稿</button>
+            <button class="invoice-panel__submit" type="button" :disabled="submitting !== null"
+              @click="submitDeveloperInvoice">
+              {{ submitting === 'developer' ? '提交中...' : '创建开发者开票记录' }}
+            </button>
+          </div>
+        </article>
+      </div>
+    </Teleport>
 
     <section class="invoice-list-panel">
       <div class="invoice-list-panel__head">
@@ -297,7 +492,7 @@ async function openDocument(invoice: InvoiceRecord) {
           <span class="invoice-panel__kicker">TRACEABLE LEDGER</span>
           <h2>我的发票记录</h2>
         </div>
-        <span>{{ invoices.length }} 条</span>
+        <span class="invoice-list-panel__count">{{ invoices.length }} 条</span>
       </div>
       <div v-if="invoices.length === 0" class="invoice-empty">暂无发票记录</div>
       <div v-else class="invoice-list">
@@ -328,11 +523,25 @@ async function openDocument(invoice: InvoiceRecord) {
 .invoice-center {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 32px 20px 56px;
+  padding: 20px 20px 40px;
   color: #172033;
 }
 
-.invoice-center__head,
+.invoice-center__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.invoice-center__desc {
+  margin: 0;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .invoice-panel__head,
 .invoice-list-panel__head,
 .invoice-row,
@@ -343,7 +552,6 @@ async function openDocument(invoice: InvoiceRecord) {
   gap: 16px;
 }
 
-.invoice-center__eyebrow,
 .invoice-panel__kicker {
   color: #247f7d;
   font-size: 11px;
@@ -351,17 +559,20 @@ async function openDocument(invoice: InvoiceRecord) {
   letter-spacing: 0.12em;
 }
 
-.invoice-center h1,
 .invoice-panel h2,
 .invoice-list-panel h2 {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
 }
 
-.invoice-center__head p,
 .invoice-panel__hint {
   color: #667085;
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 6px;
+}
+
+.invoice-center__refresh {
+  flex-shrink: 0;
 }
 
 .invoice-center__refresh,
@@ -382,11 +593,124 @@ async function openDocument(invoice: InvoiceRecord) {
   opacity: 0.55;
 }
 
-.invoice-center__forms {
+/* 统计概览 */
+.invoice-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.invoice-stat {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  border-left: 3px solid #247f7d;
+}
+
+.invoice-stat--requested {
+  border-left-color: #9a6700;
+}
+
+.invoice-stat--under_review {
+  border-left-color: #247f7d;
+}
+
+.invoice-stat--approved {
+  border-left-color: #247a46;
+}
+
+.invoice-stat--rejected {
+  border-left-color: #b42318;
+}
+
+.invoice-stat__label {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.invoice-stat__value {
+  color: #172033;
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.invoice-stat__hint {
+  color: #98a2b3;
+  font-size: 12px;
+}
+
+/* 申请入口卡片 */
+.invoice-entry-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 26px;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.invoice-entry-card {
+  display: grid;
+  gap: 10px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.invoice-entry-card:hover {
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+  transform: translateY(-2px);
+}
+
+.invoice-entry-card:focus-visible {
+  outline: 2px solid #247f7d;
+  outline-offset: 2px;
+}
+
+.invoice-entry-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.invoice-entry-card__head strong {
+  color: #b26b1c;
+  font-size: 13px;
+}
+
+.invoice-entry-card--developer .invoice-entry-card__head strong {
+  color: #247f7d;
+}
+
+.invoice-entry-card__title {
+  margin: 4px 0 0;
+  font-size: 18px;
+  color: #172033;
+}
+
+.invoice-entry-card__desc {
+  margin: 0;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.invoice-entry-card .invoice-panel__submit {
+  justify-self: start;
+}
+
+/* 记录面板计数 */
+.invoice-list-panel__count {
+  color: #667085;
+  font-size: 13px;
 }
 
 .invoice-panel,
@@ -394,7 +718,7 @@ async function openDocument(invoice: InvoiceRecord) {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   background: #fff;
-  padding: 22px;
+  padding: 18px;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
 }
 
@@ -429,35 +753,37 @@ async function openDocument(invoice: InvoiceRecord) {
 }
 
 .invoice-list-panel {
-  margin-top: 22px;
-}
-
-.invoice-list-panel__head > span {
-  color: #667085;
-  font-size: 13px;
+  margin-top: 0;
 }
 
 .invoice-empty {
-  padding: 42px 0 20px;
+  padding: 30px 0 16px;
   text-align: center;
   color: #667085;
+  font-size: 14px;
 }
 
 .invoice-list {
   display: grid;
-  gap: 10px;
-  margin-top: 18px;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .invoice-row {
-  padding: 14px 0;
+  padding: 12px 0;
   border-top: 1px solid #eef0f3;
+  align-items: center;
 }
 
 .invoice-row__main {
   display: grid;
-  gap: 5px;
+  gap: 2px;
   min-width: 0;
+}
+
+.invoice-row__main strong {
+  font-size: 14px;
+  color: #172033;
 }
 
 .invoice-row__main span,
@@ -466,6 +792,12 @@ async function openDocument(invoice: InvoiceRecord) {
   color: #667085;
   font-size: 13px;
   line-height: 1.5;
+}
+
+.invoice-row__main span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .invoice-row__side {
@@ -512,13 +844,88 @@ async function openDocument(invoice: InvoiceRecord) {
   color: #b42318;
 }
 
+/* 弹窗遮罩与内容 */
+.invoice-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.invoice-modal {
+  position: relative;
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+}
+
+.invoice-modal__head {
+  padding-right: 28px;
+}
+
+.invoice-modal__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #667085;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.invoice-modal__close:hover {
+  background: #f2f4f7;
+  color: #172033;
+}
+
+.invoice-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.invoice-modal__draft {
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  padding: 9px 14px;
+  background: #fff;
+  color: #344054;
+  cursor: pointer;
+}
+
+.invoice-modal__draft:hover {
+  background: #f2f4f7;
+}
+
+@media (max-width: 900px) {
+  .invoice-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 760px) {
-  .invoice-center__head,
+  .invoice-center__toolbar,
+  .invoice-list-panel__head,
   .invoice-row {
     display: grid;
   }
 
-  .invoice-center__forms {
+  .invoice-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .invoice-entry-grid {
     grid-template-columns: 1fr;
   }
 

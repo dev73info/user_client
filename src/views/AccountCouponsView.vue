@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ArrowRight } from '@element-plus/icons-vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { apiUrl } from '@/api/http'
+import { getWechatBindAuthorizeUrl } from '@/api/auth'
 import {
   getProfile,
   sendProfileEmailChangeCode,
@@ -16,9 +18,12 @@ import {
 } from '@/api/settings'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import RealnameHero from '@/components/RealnameHero.vue'
+import RealnameView from '@/views/RealnameView.vue'
 
-const router = useRouter()
 const auth = useAuthStore()
+const route = useRoute()
+const router = useRouter()
 const { showToast } = useToast()
 
 const profileLoading = ref(false)
@@ -43,6 +48,15 @@ const twoFactorTargetEnabled = ref(false)
 const twoFactorCode = ref('')
 const twoFactorCodeSending = ref(false)
 const twoFactorLoading = ref(false)
+const twoFactorMethod = ref<'email' | 'mobile'>('email')
+const wechatBindingLoading = ref(false)
+const wechatBound = ref(false)
+
+// 设置弹窗可见性
+const emailDialogVisible = ref(false)
+const passwordDialogVisible = ref(false)
+const usernameDialogVisible = ref(false)
+const twoFactorDialogVisible = ref(false)
 
 const accountEmailLabel = computed(() => profileEmail.value || '未绑定邮箱')
 const twoFactorChanged = computed(() => twoFactorTargetEnabled.value !== twoFactorEnabled.value)
@@ -76,6 +90,7 @@ async function loadProfile() {
     profileEmail.value = profile.email ?? ''
     twoFactorEnabled.value = profile.two_factor_enabled
     twoFactorTargetEnabled.value = profile.two_factor_enabled
+    wechatBound.value = profile.wechat_bound ?? false
     if (!newEmail.value) {
       newEmail.value = profile.email ?? ''
     }
@@ -362,22 +377,70 @@ async function submitTwoFactorChange() {
   }
 }
 
+async function openWechatBinding() {
+  if (!auth.isAuthed) {
+    showToast('请先登录后再绑定微信', 'error')
+    return
+  }
+  if (wechatBindingLoading.value) {
+    return
+  }
+  wechatBindingLoading.value = true
+  try {
+    const { url } = await getWechatBindAuthorizeUrl(auth.token, window.location.href)
+    if (!url.trim()) {
+      throw new Error('微信授权地址为空')
+    }
+    window.location.assign(url)
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '发起微信授权失败', 'error')
+    wechatBindingLoading.value = false
+  }
+}
+
+function consumeWechatBindResult() {
+  const result = typeof route.query.wechat_bind === 'string' ? route.query.wechat_bind.trim() : ''
+  const error = typeof route.query.wechat_bind_error === 'string'
+    ? route.query.wechat_bind_error.trim()
+    : ''
+  if (result === 'success') {
+    showToast('微信绑定成功', 'success')
+  } else if (error) {
+    showToast(`微信绑定失败：${error}`, 'error')
+  }
+  if (result || error) {
+    const nextQuery = { ...route.query }
+    delete nextQuery.wechat_bind
+    delete nextQuery.wechat_bind_error
+    void router.replace({ query: nextQuery })
+  }
+}
+
+function scrollToRealname() {
+  document.getElementById('account-realname')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 onMounted(async () => {
   auth.hydrate()
   newUsername.value = auth.username
+  consumeWechatBindResult()
   await loadProfile()
 })
 </script>
 
 <template>
   <main class="page-shell custom-page-shell profile-page account-coupons-page">
+    <div class="account-realname-hero">
+      <RealnameHero />
+    </div>
+
     <section class="wallet-section account-settings-section">
       <div class="wallet-header">
         <div>
           <h3>账户资料</h3>
           <small class="requirement-note">当前邮箱：{{ accountEmailLabel }}</small>
         </div>
-        <button class="ghost small" type="button" @click="router.push({ name: 'workbench-realname' })">
+        <button class="ghost small" type="button" @click="scrollToRealname">
           实名认证
         </button>
       </div>
@@ -402,74 +465,117 @@ onMounted(async () => {
             accept="image/png,image/jpeg,image/webp,image/gif" @change="handleAvatarChange" />
         </section>
 
-        <section class="account-settings-card">
-          <h4>修改用户名</h4>
-          <div class="profile-update-row">
-            <input v-model="newUsername" type="text" placeholder="请输入新的用户名" :disabled="usernameLoading" />
-            <button class="ghost small" type="button" :disabled="usernameLoading" @click="updateUsername">
-              {{ usernameLoading ? '保存中...' : '保存用户名' }}
-            </button>
+        <section class="account-settings-card account-entries-card">
+          <h4>账号设置</h4>
+          <div class="account-entries">
+            <el-button class="account-entry" type="button" @click="emailDialogVisible = true">
+              <span>修改邮箱</span>
+              <el-icon class="account-entry__arrow"><ArrowRight /></el-icon>
+            </el-button>
+            <el-button class="account-entry" type="button" @click="passwordDialogVisible = true">
+              <span>修改密码</span>
+              <el-icon class="account-entry__arrow"><ArrowRight /></el-icon>
+            </el-button>
+            <el-button class="account-entry" type="button" @click="usernameDialogVisible = true">
+              <span>修改用户名</span>
+              <el-icon class="account-entry__arrow"><ArrowRight /></el-icon>
+            </el-button>
+            <el-button class="account-entry" type="button" @click="twoFactorDialogVisible = true">
+              <span>两步验证</span>
+              <el-icon class="account-entry__arrow"><ArrowRight /></el-icon>
+            </el-button>
+            <el-button class="account-entry" type="button" :disabled="wechatBound" :loading="wechatBindingLoading" @click="openWechatBinding">
+              <span>{{ wechatBound ? '已绑定微信' : '绑定微信' }}</span>
+              <el-icon class="account-entry__arrow"><ArrowRight /></el-icon>
+            </el-button>
+            <el-button class="account-entry" type="button" :loading="wechatBindingLoading" @click="openWechatBinding">
+              <span>换绑微信</span>
+              <el-icon class="account-entry__arrow"><ArrowRight /></el-icon>
+            </el-button>
           </div>
         </section>
+      </div>
+    </section>
 
-        <section class="account-settings-card">
-          <h4>修改邮箱</h4>
-          <div class="profile-update-row">
-            <input v-model="newEmail" type="email" placeholder="请输入新的邮箱地址"
-              :disabled="emailLoading || emailCodeSending" />
-            <button class="ghost small" type="button" :disabled="emailLoading || emailCodeSending"
-              @click="sendEmailVerificationCode">
-              {{ emailCodeSending ? '发送中...' : '发送验证码' }}
-            </button>
-          </div>
-          <div class="profile-update-row">
-            <input v-model="emailCode" type="text" maxlength="6" placeholder="输入6位验证码" :disabled="emailLoading" />
-            <button class="ghost small" type="button" :disabled="emailLoading" @click="submitEmailChange">
-              {{ emailLoading ? '保存中...' : '保存邮箱' }}
-            </button>
-          </div>
-        </section>
-        <section class="account-settings-card account-password-card">
-          <h4>修改密码</h4>
-          <div class="profile-update-row account-password-row account-password-row--send">
-            <input v-model="newPassword" type="password" placeholder="请输入新的密码，至少 6 位"
-              :disabled="passwordLoading || passwordCodeSending" />
-            <button class="ghost small" type="button"
-              :disabled="passwordLoading || passwordCodeSending || !profileEmail" @click="sendPasswordVerificationCode">
-              {{ passwordCodeSending ? '发送中...' : '发送验证码' }}
-            </button>
-          </div>
-          <div class="profile-update-row profile-update-row--triple account-password-row account-password-row--confirm">
-            <input v-model="confirmPassword" type="password" placeholder="请再次输入新密码" :disabled="passwordLoading" />
-            <input v-model="passwordCode" type="text" maxlength="6" placeholder="输入6位验证码" :disabled="passwordLoading" />
-            <button class="ghost small" type="button" :disabled="passwordLoading || !profileEmail"
-              @click="submitPasswordChange">
-              {{ passwordLoading ? '保存中...' : '保存密码' }}
-            </button>
-          </div>
-        </section>
+    <section id="account-realname" class="account-realname-section">
+      <RealnameView :show-hero="false" />
+    </section>
 
-        <section class="account-settings-card account-security-card">
-          <div class="account-security-head">
-            <div>
-              <h4>两步验证</h4>
-              <small class="requirement-note">当前邮箱：{{ accountEmailLabel }}</small>
-            </div>
-            <span class="account-security-status" :class="{ pending: twoFactorChanged }">
-              {{ twoFactorStatusText }}
-            </span>
-          </div>
+    <el-dialog v-model="emailDialogVisible" title="修改邮箱" class="account-dialog" width="480px"
+      :close-on-click-modal="true">
+      <div class="dialog-form">
+        <div class="profile-update-row">
+          <input v-model="newEmail" type="email" placeholder="请输入新的邮箱地址"
+            :disabled="emailLoading || emailCodeSending" />
+          <button class="ghost small" type="button" :disabled="emailLoading || emailCodeSending"
+            @click="sendEmailVerificationCode">
+            {{ emailCodeSending ? '发送中...' : '发送验证码' }}
+          </button>
+        </div>
+        <div class="profile-update-row">
+          <input v-model="emailCode" type="text" maxlength="6" placeholder="输入6位验证码" :disabled="emailLoading" />
+          <button class="ghost small" type="button" :disabled="emailLoading" @click="submitEmailChange">
+            {{ emailLoading ? '保存中...' : '保存邮箱' }}
+          </button>
+        </div>
+      </div>
+    </el-dialog>
 
+    <el-dialog v-model="passwordDialogVisible" title="修改密码" class="account-dialog" width="480px"
+      :close-on-click-modal="true">
+      <div class="dialog-form">
+        <div class="profile-update-row account-password-row account-password-row--send">
+          <input v-model="newPassword" type="password" placeholder="请输入新的密码，至少 6 位"
+            :disabled="passwordLoading || passwordCodeSending" />
+          <button class="ghost small" type="button"
+            :disabled="passwordLoading || passwordCodeSending || !profileEmail" @click="sendPasswordVerificationCode">
+            {{ passwordCodeSending ? '发送中...' : '发送验证码' }}
+          </button>
+        </div>
+        <div class="profile-update-row profile-update-row--triple account-password-row account-password-row--confirm">
+          <input v-model="confirmPassword" type="password" placeholder="请再次输入新密码" :disabled="passwordLoading" />
+          <input v-model="passwordCode" type="text" maxlength="6" placeholder="输入6位验证码" :disabled="passwordLoading" />
+          <button class="ghost small" type="button" :disabled="passwordLoading || !profileEmail"
+            @click="submitPasswordChange">
+            {{ passwordLoading ? '保存中...' : '保存密码' }}
+          </button>
+        </div>
+      </div>
+    </el-dialog>
+
+    <el-dialog v-model="usernameDialogVisible" title="修改用户名" class="account-dialog" width="480px"
+      :close-on-click-modal="true">
+      <div class="dialog-form">
+        <div class="profile-update-row">
+          <input v-model="newUsername" type="text" placeholder="请输入新的用户名" :disabled="usernameLoading" />
+          <button class="ghost small" type="button" :disabled="usernameLoading" @click="updateUsername">
+            {{ usernameLoading ? '保存中...' : '保存用户名' }}
+          </button>
+        </div>
+      </div>
+    </el-dialog>
+
+    <el-dialog v-model="twoFactorDialogVisible" title="两步验证" class="account-dialog" width="480px"
+      :close-on-click-modal="true">
+      <div class="dialog-form">
+        <div class="account-2fa-methods">
+          <button class="account-2fa-method" :class="{ active: twoFactorMethod === 'email' }"
+            type="button" @click="twoFactorMethod = 'email'">
+            <span class="account-2fa-method__name">邮箱验证码</span>
+            <small class="account-2fa-method__desc">通过绑定邮箱接收验证码</small>
+          </button>
+          <button class="account-2fa-method" :class="{ active: twoFactorMethod === 'mobile' }" type="button" disabled>
+            <span class="account-2fa-method__name">手机号验证码</span>
+            <small class="account-2fa-method__desc">通过绑定手机号接收验证码</small>
+            <el-tag size="small" type="info" class="account-2fa-method__tag">暂不支持</el-tag>
+          </button>
+        </div>
+
+        <template v-if="twoFactorMethod === 'email'">
           <label class="account-security-toggle-row">
             <span class="account-security-toggle-copy">
               <strong>邮箱验证码保护</strong>
-              <small class="requirement-note">
-                {{
-                  twoFactorTargetEnabled
-                    ? '登录时校验邮箱验证码，登录态最多保留 1 天。'
-                    : '关闭后登录态有效期按系统设置。'
-                }}
-              </small>
+              <small class="requirement-note">当前邮箱：{{ accountEmailLabel }}</small>
             </span>
             <span class="account-switch-control" :class="{ active: twoFactorTargetEnabled }">
               <input v-model="twoFactorTargetEnabled" type="checkbox"
@@ -480,22 +586,26 @@ onMounted(async () => {
               </span>
             </span>
           </label>
-
           <div class="account-security-actions">
             <input v-model="twoFactorCode" type="text" maxlength="6" placeholder="输入 6 位验证码"
               :disabled="twoFactorLoading || !profileEmail || !twoFactorChanged" />
-            <button class="ghost small" type="button" :disabled="twoFactorCodeSending || twoFactorLoading || !profileEmail || !twoFactorChanged
-              " @click="sendTwoFactorVerificationCode">
+            <button class="ghost small" type="button"
+              :disabled="twoFactorCodeSending || twoFactorLoading || !profileEmail || !twoFactorChanged"
+              @click="sendTwoFactorVerificationCode">
               {{ twoFactorCodeSending ? '发送中...' : '发送验证码' }}
             </button>
-            <button class="ghost small" type="button" :disabled="twoFactorLoading || !profileEmail || !twoFactorChanged"
-              @click="submitTwoFactorChange">
+            <button class="ghost small" type="button"
+              :disabled="twoFactorLoading || !profileEmail || !twoFactorChanged" @click="submitTwoFactorChange">
               {{ twoFactorLoading ? '保存中...' : '保存设置' }}
             </button>
           </div>
-        </section>
+        </template>
+
+        <div v-else class="account-2fa-unsupported">
+          <el-tag type="info" round>手机号两步验证暂不支持，请使用邮箱验证码</el-tag>
+        </div>
       </div>
-    </section>
+    </el-dialog>
   </main>
 </template>
 
@@ -503,6 +613,14 @@ onMounted(async () => {
 .account-coupons-page {
   min-height: calc(100vh - 185px);
   gap: 16px;
+}
+
+.account-realname-hero {
+  margin-bottom: 4px;
+}
+
+.account-realname-section {
+  margin-top: 4px;
 }
 
 .account-coupons-summary__head {
@@ -651,13 +769,70 @@ onMounted(async () => {
   justify-self: end;
 }
 
-.account-security-card {
-  display: grid;
-  align-content: start;
-  gap: 14px;
+.account-avatar-card {
   grid-column: 1 / -1;
-  padding: 18px;
-  border-color: rgba(224, 232, 255, 0.96);
+}
+
+.account-entries-card {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.account-entries {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.account-entry.el-button {
+  width: 100%;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 14px 16px;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  background: rgba(248, 250, 252, 0.92);
+  color: #0f172a;
+  font-weight: 600;
+  text-align: left;
+}
+
+.account-entry.el-button:hover {
+  border-color: rgba(96, 165, 250, 0.55);
+  background: rgba(239, 246, 255, 0.96);
+  color: #1d4ed8;
+}
+
+.account-entry.el-button.is-disabled {
+  background: rgba(241, 245, 249, 0.8);
+  border-color: rgba(226, 232, 240, 0.8);
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.account-entry.el-button.is-disabled:hover {
+  background: rgba(241, 245, 249, 0.8);
+  border-color: rgba(226, 232, 240, 0.8);
+  color: #94a3b8;
+}
+
+.account-entry.el-button.is-disabled .account-entry__arrow {
+  color: #cbd5e1;
+  transform: none;
+}
+
+.account-entry__arrow {
+  color: #94a3b8;
+  flex: 0 0 auto;
+  transition: transform 0.2s ease;
+}
+
+.account-entry.el-button:hover .account-entry__arrow {
+  transform: translateX(3px);
 }
 
 .account-security-head {
@@ -797,6 +972,62 @@ onMounted(async () => {
   color: #94a3b8;
 }
 
+.account-2fa-methods {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.account-2fa-method {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(224, 232, 255, 0.92);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.account-2fa-method.active {
+  border-color: rgba(37, 99, 235, 0.92);
+  box-shadow: 0 10px 26px rgba(76, 103, 172, 0.14);
+  background: linear-gradient(180deg, #eef4ff 0%, #ffffff 100%);
+}
+
+.account-2fa-method:disabled {
+  cursor: not-allowed;
+  opacity: 0.66;
+}
+
+.account-2fa-method__name {
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.account-2fa-method__desc {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.account-2fa-method__tag {
+  justify-self: start;
+  margin-top: 2px;
+}
+
+.account-2fa-unsupported {
+  display: flex;
+  justify-content: center;
+  padding: 22px 0;
+}
+
 .account-security-actions .ghost.small {
   min-width: 104px;
 }
@@ -832,10 +1063,18 @@ onMounted(async () => {
     white-space: normal;
   }
 
+  .account-entries {
+    grid-template-columns: 1fr;
+  }
+
   .account-password-row--send,
   .account-password-row--confirm,
   .account-security-actions,
   .account-security-toggle-row {
+    grid-template-columns: 1fr;
+  }
+
+  .account-2fa-methods {
     grid-template-columns: 1fr;
   }
 
@@ -852,5 +1091,29 @@ onMounted(async () => {
     width: 100%;
     justify-self: stretch;
   }
+}
+
+.dialog-form {
+  display: grid;
+  gap: 12px;
+}
+
+:global(.account-dialog.el-dialog) {
+  border-radius: 18px;
+  border: 1px solid rgba(198, 210, 236, 0.72);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
+}
+
+:global(.el-overlay-dialog:has(> .account-dialog)) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+:global(.account-dialog .el-dialog__title) {
+  font-weight: 800;
+  color: #0f172a;
 }
 </style>

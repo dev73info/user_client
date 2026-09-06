@@ -15,6 +15,9 @@ const props = defineProps({
   loginRequiresTwoFactor: { type: Boolean, default: false },
   acceptTerms: { type: Boolean, default: false },
   githubLoginLoading: { type: Boolean, default: false },
+  wechatLoginLoading: { type: Boolean, default: false },
+  githubLoginAvailable: { type: Boolean, default: true },
+  wechatLoginAvailable: { type: Boolean, default: true },
   sendCodeLoading: { type: Boolean, default: false },
   sendCodeCountdown: { type: Number, default: 0 },
   authLoading: { type: Boolean, default: false },
@@ -24,6 +27,7 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'submit'): void
   (e: 'loginWithGithub'): void
+  (e: 'loginWithWechat'): void
   (e: 'sendAuthCode'): void
   (e: 'change-mode', mode: 'login' | 'register' | 'reset'): void
   (e: 'update:authUsername', value: string): void
@@ -199,9 +203,13 @@ function submitOnEnter() {
 
       <div class="auth-modal-actions">
         <button class="auth-btn ghost" type="button" @click="emit('close')">取消</button>
-        <button v-if="authMode === 'login'" class="auth-btn ghost" type="button"
+        <button v-if="authMode === 'login' && githubLoginAvailable" class="auth-btn ghost" type="button"
           :disabled="githubLoginLoading || !acceptTerms" @click="emit('loginWithGithub')">
           {{ githubLoginLoading ? '跳转中...' : 'GitHub 快捷登录' }}
+        </button>
+        <button v-if="authMode === 'login' && wechatLoginAvailable" class="auth-btn ghost" type="button"
+          :disabled="wechatLoginLoading || !acceptTerms" @click="emit('loginWithWechat')">
+          {{ wechatLoginLoading ? '跳转中...' : '微信快捷登录' }}
         </button>
         <button class="auth-btn solid" type="button" :disabled="!canSubmitAuth()" @click="emit('submit')">
           {{

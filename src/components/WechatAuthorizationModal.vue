@@ -105,42 +105,44 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="visible" class="auth-modal-wrap wechat-authorization-modal-wrap" @click.self="close">
-    <section class="auth-modal wechat-authorization-modal" aria-label="微信授权">
-      <header class="wechat-authorization-modal__head">
-        <div>
-          <p class="wechat-authorization-modal__eyebrow">PC 端微信支付</p>
-          <h3>微信授权</h3>
+  <Teleport to="body">
+    <div v-if="visible" class="auth-modal-wrap wechat-authorization-modal-wrap" @click.self="close">
+      <section class="auth-modal wechat-authorization-modal" aria-label="微信授权">
+        <header class="wechat-authorization-modal__head">
+          <div>
+            <p class="wechat-authorization-modal__eyebrow">PC 端微信支付</p>
+            <h3>微信授权</h3>
+          </div>
+          <button class="wechat-authorization-modal__close" type="button" aria-label="关闭微信授权"
+            @click="close">
+            ×
+          </button>
+        </header>
+
+        <p class="wechat-authorization-modal__intro">
+          请用手机微信扫描二维码，完成公众号授权。授权成功后，本页面会自动更新。
+        </p>
+
+        <div class="wechat-authorization-modal__qr" aria-live="polite">
+          <img v-if="qrDataUrl" :src="qrDataUrl" alt="微信授权二维码" />
+          <span v-else>{{ qrError || '二维码生成中...' }}</span>
         </div>
-        <button class="wechat-authorization-modal__close" type="button" aria-label="关闭微信授权"
-          @click="close">
-          ×
-        </button>
-      </header>
 
-      <p class="wechat-authorization-modal__intro">
-        请用手机微信扫描二维码，完成公众号授权。授权成功后，本页面会自动更新。
-      </p>
+        <p class="wechat-authorization-modal__hint">
+          扫码后请在微信中确认授权，无需在手机上完成支付。
+        </p>
 
-      <div class="wechat-authorization-modal__qr" aria-live="polite">
-        <img v-if="qrDataUrl" :src="qrDataUrl" alt="微信授权二维码" />
-        <span v-else>{{ qrError || '二维码生成中...' }}</span>
-      </div>
-
-      <p class="wechat-authorization-modal__hint">
-        扫码后请在微信中确认授权，无需在手机上完成支付。
-      </p>
-
-      <div class="auth-modal-actions">
-        <button class="auth-btn ghost" type="button" @click="close">取消</button>
-      </div>
-    </section>
-  </div>
+        <div class="auth-modal-actions">
+          <button class="auth-btn ghost" type="button" @click="close">取消</button>
+        </div>
+      </section>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
 .wechat-authorization-modal-wrap {
-  z-index: 1300;
+  z-index: 1600;
 }
 
 .wechat-authorization-modal {

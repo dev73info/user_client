@@ -8,7 +8,6 @@ import RequirementConversationModal from '@/components/RequirementConversationMo
 import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
 import {
   getUnionPaymentAuthorizeUrl,
-  getWechatPaymentAuthorizeUrl,
   isUnionPaymentAuthorizationRequired,
   isWechatPaymentAuthorizationRequired,
 } from '@/api/auth'
@@ -1249,6 +1248,16 @@ function finalPaymentAmount(item: RequirementItem) {
 
 const isFinalPayment = computed(() => payRequirement.value?.status === 'pending_final')
 const payStageLabel = computed(() => (isFinalPayment.value ? '尾款' : '定金'))
+const payChannelLabel = computed(() => {
+  switch (payChannel.value) {
+    case 'wechat':
+      return '微信'
+    case 'union':
+      return '云闪付'
+    default:
+      return '支付宝'
+  }
+})
 
 const finalPaymentConfirmTitle = computed(() =>
   finalPaymentConfirmTarget.value && isSelfManagedRequirement(finalPaymentConfirmTarget.value)
@@ -1438,6 +1447,12 @@ async function submitRequirementPayment() {
     if (currentPayment.value.adapay) {
       const adapayPayment = await getAdapayPayment(auth.token, currentPayment.value.payment_id)
       if (adapayPayment.status !== 'paid' && adapayPayment.status !== 'confirmed') {
+        if (adapayPayment.status === 'failed') {
+          currentPayment.value = null
+          showToast('上次支付订单已失效，重新发起支付', 'warning')
+          void submitRequirementPayment()
+          return
+        }
         showToast('支付尚未完成，请先完成 Adapay 支付', 'warning')
         return
       }
@@ -1451,30 +1466,23 @@ async function submitRequirementPayment() {
     throw new Error('支付订单状态无效，请重新发起 Adapay 支付')
   } catch (err) {
     if (isWechatPaymentAuthorizationRequired(err)) {
-      try {
-        const inWechatBrowser = /MicroMessenger/i.test(navigator.userAgent)
-        const authorization = await getWechatPaymentAuthorizeUrl(
-          auth.token,
-          window.location.href,
-          inWechatBrowser ? 'redirect' : 'qr',
-        )
-        if (!authorization.url.trim()) {
-          throw new Error('微信授权地址为空')
-        }
-        if (inWechatBrowser) {
-          window.location.assign(authorization.url)
-        } else {
-          wechatAuthorizationUrl.value = authorization.url
-          wechatAuthorizationVisible.value = true
-        }
-        return
-      } catch (authorizationError) {
-        showToast(
-          authorizationError instanceof Error ? authorizationError.message : '发起微信授权失败',
-          'error',
-        )
+      // 尚未绑定 open_id：直接跳转到支付页（意图模式），由支付页在微信内自动静默授权并下单。
+      if (!payRequirement.value) {
         return
       }
+      router.push({
+        name: 'payment',
+        query: {
+          adapay: '1',
+          requirement_id: payRequirement.value.requirement_id,
+          milestone: isFinalPayment.value ? 'final' : 'deposit',
+          channel: 'wechat',
+          client_platform: clientPlatform,
+          amount_cny: String(payAmount.value),
+          intent: '1',
+        },
+      })
+      return
     }
     if (isUnionPaymentAuthorizationRequired(err)) {
       if (clientPlatform !== 'mobile') {
@@ -1979,7 +1987,7 @@ watch(
 
             <div class="my-requirement-detail__payment-summary">
               <span v-if="!isFinalPayment">定金占比：{{ depositRatioPercent.toFixed(2) }}%</span>
-              <span>支付方式：支付宝</span>
+              <span>支付方式：{{ payChannelLabel }}</span>
             </div>
 
             <div class="my-requirement-detail__payment-channel">
@@ -1990,6 +1998,12 @@ watch(
                   @click="updatePayChannel('alipay')">
                   <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
                   支付宝
+                </button>
+                <button type="button" class="payment-option"
+                  :class="{ active: payChannel === 'wechat', 'payment-option--wechat': payChannel === 'wechat' }"
+                  @click="updatePayChannel('wechat')">
+                  <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="微信" />
+                  微信
                 </button>
               </div>
             </div>

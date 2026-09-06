@@ -4,6 +4,7 @@ import QRCode from 'qrcode'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { createMyAdapaySettlementAccount, getMyAdapayMember } from '@/api/adapay'
 import {
   completeAsignIdentify,
   getMyRealnameVerification,
@@ -24,7 +25,6 @@ import {
 import {
   modifyCompanyInfo,
   modifyMobileByCode,
-  modifyMobileThree,
   modifySignPassword,
   modifyUserName,
   resetSignPassword,
@@ -40,6 +40,8 @@ const route = useRoute()
 const router = useRouter()
 const { showToast } = useToast()
 
+const props = defineProps<{ showHero?: boolean }>()
+
 const submitting = ref(false)
 const realnameDialogVisible = ref(false)
 const faceidStarting = ref(false)
@@ -50,6 +52,7 @@ const consentFileInput = ref<HTMLInputElement | null>(null)
 const businessLicenseUploading = ref(false)
 const businessLicenseFileInput = ref<HTMLInputElement | null>(null)
 const current = ref<UserRealnameVerification | null>(null)
+const adapayMember = ref<{ onboardingStatus: string; settleAccountId?: string | null } | null>(null)
 const reviewerAvatarLoadFailed = ref(false)
 const faceidAuthUrl = ref('')
 const faceidQrDataUrl = ref('')
@@ -123,10 +126,28 @@ const statusType = computed<'info' | 'warning' | 'success' | 'danger'>(() => {
 const authTypeLabel = computed(() => {
   const t = current.value?.auth_type
   if (t === 'IDENTITY_CARD') return '个人'
-  if (t === 'ENTERPRISE') return '企业认证'
-  if (t === 'SOLE_PROPRIETOR') return '个体工商户认证'
-  if (t === 'RESIDENCE_HK_MC') return '港澳居民居住证'
-  return '台湾居民居住证'
+  if (t === 'ENTERPRISE') return '企业'
+  if (t === 'SOLE_PROPRIETOR') return '个体工商户'
+  if (t === 'RESIDENCE_HK_MC') return '港澳居民'
+  if (t === 'RESIDENCE_TAIWAN') return '台湾居民'
+  return '未认证'
+})
+
+const asignAuthText = computed(() => {
+  const status = current.value?.status
+  if (status === 'approved') return '已认证'
+  if (status === 'pending') return '审核中'
+  if (status === 'rejected') return '未通过'
+  return '未认证'
+})
+
+const adapayStatusText = computed(() => {
+  const status = adapayMember.value?.onboardingStatus
+  if (status === 'active') return '已认证'
+  if (status === 'under_review') return '审核中'
+  if (status === 'pending') return '待认证'
+  if (status === 'failed') return '未通过'
+  return '未认证'
 })
 
 const realnameHeroDesc = computed(() => {
@@ -860,7 +881,6 @@ const asignDialogKind = ref('')
 const asignEntries = computed(() => {
   const entries: { key: string; title: string }[] = [
     { key: 'mobileByCode', title: '修改绑定手机号（验证码方式）' },
-    { key: 'mobileThree', title: '修改手机号（运营商三要素校验）' },
     { key: 'signPwd', title: '修改签约密码' },
     { key: 'startSignPwd', title: '初始化签约密码' },
     { key: 'resetSignPwd', title: '重置签约密码' },
@@ -895,9 +915,72 @@ function openAsignDialog(key: string) {
   asignDialogKind.value = key
   asignDialogVisible.value = true
 }
+
+// ── Adapay 结算账户 ──────────────────────────────────────────
+const settleDialogVisible = ref(false)
+const settleSaving = ref(false)
+const settleLoading = ref(false)
+const settleForm = reactive({
+  card_id: '',
+  bank_code: '',
+  prov_code: '',
+  area_code: '',
+  bank_acct_type: '2',
+  bank_name: '',
+})
+
+const settleStatusText = computed(() => {
+  const status = adapayMember.value?.onboardingStatus
+  if (status === 'active') return '已认证'
+  if (status === 'under_review') return '审核中'
+  if (status === 'pending') return '待认证'
+  if (status === 'failed') return '未通过'
+  return '未认证'
+})
+
+const settleStatusTagType = computed<'success' | 'warning' | 'danger' | 'info'>(() => {
+  const status = adapayMember.value?.onboardingStatus
+  if (status === 'active') return 'success'
+  if (status === 'under_review' || status === 'pending') return 'warning'
+  if (status === 'failed') return 'danger'
+  return 'info'
+})
+
+async function openSettleDialog() {
+  settleDialogVisible.value = true
+  settleLoading.value = true
+  try {
+    if (auth.token) {
+      adapayMember.value = await getMyAdapayMember(auth.token)
+    }
+  } catch {
+    adapayMember.value = null
+  } finally {
+    settleLoading.value = false
+  }
+}
+
+async function saveSettleAccount() {
+  if (!auth.token) return
+  if (!settleForm.card_id.trim() || !settleForm.bank_code.trim()) {
+    showToast('请填写银行卡号和银行编码', 'warning')
+    return
+  }
+  settleSaving.value = true
+  try {
+    const member = await createMyAdapaySettlementAccount(auth.token, { ...settleForm })
+    adapayMember.value = member
+    showToast('结算账户已设置', 'success')
+    settleDialogVisible.value = false
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '设置结算账户失败', 'error')
+  } finally {
+    settleSaving.value = false
+  }
+}
+
 const asign = reactive({
   mobileByCode: { mobile: '', code: '', ctoken: '' },
-  mobileThree: { name: '', idCard: '', mobile: '' },
   modifyPwd: { oldSignPwd: '', signPwd: '' },
   resetPwd: { signPwd: '' },
   company: { companyName: '', legalName: '', legalIdCard: '' },
@@ -906,7 +989,6 @@ const asign = reactive({
 const asignLoading = reactive({
   sendCode: false,
   mobileByCode: false,
-  mobileThree: false,
   signPwd: false,
   startSignPwd: false,
   resetSignPwd: false,
@@ -966,29 +1048,6 @@ async function handleModifyMobileByCode() {
     showToast(err instanceof Error ? err.message : '修改手机号失败', 'error')
   } finally {
     asignLoading.mobileByCode = false
-  }
-}
-
-async function handleModifyMobileThree() {
-  if (!requireToken()) return
-  if (!asign.mobileThree.name.trim() || !asign.mobileThree.idCard.trim() || !asign.mobileThree.mobile.trim()) {
-    showToast('请填写姓名、证件号、新手机号', 'warning')
-    return
-  }
-  asignLoading.mobileThree = true
-  try {
-    const res = await modifyMobileThree(auth.token, {
-      name: asign.mobileThree.name.trim(),
-      idCard: asign.mobileThree.idCard.trim(),
-      mobile: asign.mobileThree.mobile.trim(),
-    })
-    if (res.success) {
-      showToast('手机号已修改', 'success')
-    }
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '修改手机号失败', 'error')
-  } finally {
-    asignLoading.mobileThree = false
   }
 }
 
@@ -1181,6 +1240,11 @@ onMounted(async () => {
   mobileMatch.addEventListener('change', syncMobileViewport)
 
   await loadCurrentRealname()
+  try {
+    adapayMember.value = await getMyAdapayMember(auth.token)
+  } catch {
+    adapayMember.value = null
+  }
   const payload = faceidReturnPayload()
   if (payload.serial_no || payload.order_no || payload.biz_id) {
     await checkWechatFaceidResult(payload)
@@ -1197,38 +1261,33 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="portal-page realname-page-shell">
-    <section class="realname-hero" :class="`realname-hero--${statusType}`">
-      <div class="realname-hero__copy">
-        <p class="realname-hero__eyebrow">Identity Verification</p>
-        <h1 class="realname-hero__title">实名认证</h1>
-        <p class="realname-hero__desc">{{ realnameHeroDesc }}</p>
-        <div class="realname-hero__tag">
-          <el-tag :type="statusType" round>实名认证：{{ statusText }}</el-tag>
-        </div>
-      </div>
-      <div v-if="current" class="realname-hero__metrics">
-        <div class="realname-metrics__item">
-          <span>证件类型</span>
-          <strong>{{ authTypeLabel }}</strong>
-        </div>
-        <div class="realname-metrics__item">
-          <span>审核人</span>
-          <div class="realname-reviewer">
-            <span class="realname-reviewer__avatar" aria-hidden="true">
-              <img v-if="reviewerAvatarSrc" :src="reviewerAvatarSrc" :alt="`${reviewerName} 的头像`"
-                @error="handleReviewerAvatarError" />
-              <span v-else>{{ reviewerInitial }}</span>
-            </span>
-            <strong>{{ reviewerName }}</strong>
+  <div class="portal-page realname-page-shell">
+    <template v-if="props.showHero !== false">
+      <section class="realname-hero" :class="`realname-hero--${statusType}`">
+        <div class="realname-hero__copy">
+          <p class="realname-hero__eyebrow">Identity Verification</p>
+          <h1 class="realname-hero__title">实名认证</h1>
+          <p class="realname-hero__desc">{{ realnameHeroDesc }}</p>
+          <div class="realname-hero__tag">
+            <el-tag :type="statusType" round>实名认证：{{ statusText }}</el-tag>
           </div>
         </div>
-        <div class="realname-metrics__item">
-          <span>审核时间</span>
-          <strong>{{ formatTime(current.reviewed_at) }}</strong>
+        <div class="realname-hero__metrics">
+          <div class="realname-metrics__item">
+            <span>认证类型</span>
+            <strong>{{ authTypeLabel }}</strong>
+          </div>
+          <div class="realname-metrics__item">
+            <span>爱签认证</span>
+            <strong>{{ asignAuthText }}</strong>
+          </div>
+          <div class="realname-metrics__item">
+            <span>Adapay认证</span>
+            <strong>{{ adapayStatusText }}</strong>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </template>
 
     <el-dialog v-model="realnameDialogVisible" title="提交认证信息" class="realname-dialog" width="620px" :close-on-click-modal="true">
           <div class="realname-form__head">
@@ -1384,6 +1443,10 @@ onBeforeUnmount(() => {
             <span>开始认证</span>
             <el-icon class="asign-entry__arrow"><ArrowRight /></el-icon>
           </el-button>
+          <el-button class="asign-entry" @click="openSettleDialog">
+            <span>结算账户</span>
+            <el-icon class="asign-entry__arrow"><ArrowRight /></el-icon>
+          </el-button>
           <el-button v-for="entry in asignEntries" :key="entry.key" class="asign-entry"
             :loading="entry.key === 'startSignPwd' ? asignLoading.startSignPwd : false" @click="openAsignDialog(entry.key)">
             <span>{{ entry.title }}</span>
@@ -1391,6 +1454,50 @@ onBeforeUnmount(() => {
           </el-button>
         </div>
       </el-card>
+
+    <el-dialog v-model="settleDialogVisible" title="Adapay 结算账户" class="realname-dialog" width="520px"
+      :close-on-click-modal="true">
+      <div v-loading="settleLoading" class="settle-dialog">
+        <div class="settle-dialog__status">
+          <div class="settle-dialog__status-item">
+            <span>Adapay 认证状态</span>
+            <el-tag :type="settleStatusTagType" round>{{ settleStatusText }}</el-tag>
+          </div>
+          <div class="settle-dialog__status-item">
+            <span>结算账户</span>
+            <strong>{{ adapayMember?.settleAccountId || '未设置' }}</strong>
+          </div>
+        </div>
+        <el-form label-width="96px" class="settle-form">
+          <el-form-item label="银行卡号" required>
+            <el-input v-model="settleForm.card_id" placeholder="银行卡号" />
+          </el-form-item>
+          <el-form-item label="银行编码" required>
+            <el-input v-model="settleForm.bank_code" placeholder="银行编码" />
+          </el-form-item>
+          <el-form-item label="省份代码">
+            <el-input v-model="settleForm.prov_code" placeholder="省份代码" />
+          </el-form-item>
+          <el-form-item label="地区代码">
+            <el-input v-model="settleForm.area_code" placeholder="地区代码" />
+          </el-form-item>
+          <el-form-item label="账户类型">
+            <el-select v-model="settleForm.bank_acct_type" style="width: 100%">
+              <el-option label="个人账户（2）" value="2" />
+              <el-option label="对公账户（1）" value="1" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="银行名称">
+            <el-input v-model="settleForm.bank_name" placeholder="银行名称（可选）" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="settleSaving" @click="saveSettleAccount">
+              {{ settleSaving ? '保存中...' : '保存结算账户' }}
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+    </el-dialog>
 
     <el-card shadow="never" class="realname-card realname-guide-card">
       <h3>认证说明</h3>
@@ -1459,14 +1566,6 @@ onBeforeUnmount(() => {
         </div>
       </template>
 
-      <template v-else-if="asignDialogKind === 'mobileThree'">
-        <p class="asign-hint">校验本人姓名与身份证号后，将爱签账户绑定手机号更换为新手机号。</p>
-        <div class="asign-row"><el-input v-model="asign.mobileThree.name" placeholder="本人姓名" /></div>
-        <div class="asign-row"><el-input v-model="asign.mobileThree.idCard" placeholder="本人身份证号" /></div>
-        <div class="asign-row"><el-input v-model="asign.mobileThree.mobile" placeholder="新手机号" /></div>
-        <el-button type="primary" :loading="asignLoading.mobileThree" @click="handleModifyMobileThree">确认修改</el-button>
-      </template>
-
       <template v-else-if="asignDialogKind === 'signPwd'">
         <p class="asign-hint">需提供旧签约密码，用于修改爱签账户签约密码。</p>
         <div class="asign-row"><el-input v-model="asign.modifyPwd.oldSignPwd" type="password" placeholder="旧签约密码" /></div>
@@ -1510,7 +1609,7 @@ onBeforeUnmount(() => {
         <el-button type="primary" :loading="withdrawing" @click="startEnterpriseCertification">继续</el-button>
       </div>
     </el-dialog>
-  </main>
+  </div>
 </template>
 
 <style scoped>
@@ -1636,6 +1735,7 @@ onBeforeUnmount(() => {
   border-radius: 12px;
   border: 1px solid rgba(226, 232, 240, 0.92);
   background: rgba(248, 250, 252, 0.92);
+  justify-self: stretch;
 }
 
 .realname-metrics__item span {
@@ -2075,5 +2175,39 @@ onBeforeUnmount(() => {
   font-size: 12px;
   line-height: 1.6;
   margin: 0 0 12px;
+}
+
+.settle-dialog {
+  display: grid;
+  gap: 16px;
+}
+
+.settle-dialog__status {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.settle-dialog__status-item {
+  display: grid;
+  gap: 4px;
+}
+
+.settle-dialog__status-item span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.settle-dialog__status-item strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.settle-form :deep(.el-form-item) {
+  margin-bottom: 14px;
 }
 </style>

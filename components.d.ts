@@ -47,6 +47,7 @@ declare module 'vue' {
     PortalMobileDock: typeof import('./src/components/PortalMobileDock.vue')['default']
     PortalTopNav: typeof import('./src/components/PortalTopNav.vue')['default']
     PublishModal: typeof import('./src/components/PublishModal.vue')['default']
+    RealnameHero: typeof import('./src/components/RealnameHero.vue')['default']
     RequirementConversationModal: typeof import('./src/components/RequirementConversationModal.vue')['default']
     RequirementProgressGuide: typeof import('./src/components/RequirementProgressGuide.vue')['default']
     ResourceCatalog: typeof import('./src/components/ResourceCatalog.vue')['default']
@@ -57,6 +58,7 @@ declare module 'vue' {
     ShareStats: typeof import('./src/components/ShareStats.vue')['default']
     SupportChatWidget: typeof import('./src/components/SupportChatWidget.vue')['default']
     WechatAuthorizationModal: typeof import('./src/components/WechatAuthorizationModal.vue')['default']
+    WechatLoginQrModal: typeof import('./src/components/WechatLoginQrModal.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

@@ -70,7 +70,7 @@ const menuGroups: WorkbenchMenuGroup[] = [
     label: '账户服务',
     icon: Box,
     items: [
-      { label: '账户与优惠券', name: 'workbench-account', description: '管理优惠券与账户入口' },
+      { label: '账户详情', name: 'workbench-account', description: '管理账户' },
         { label: '发票中心', name: 'workbench-invoices', description: '申请平台发票或上传开发者发票' },
       { label: '我的背包', name: 'workbench-points', description: '查看积分余额与明细' },
       { label: '我的收藏', name: 'workbench-favorites', description: '查看收藏的社区帖子' },
@@ -80,7 +80,6 @@ const menuGroups: WorkbenchMenuGroup[] = [
         description: '邀请好友得徽章，查看排行榜',
         activeNames: ['workbench-invite-leaderboard'],
       },
-      { label: '实名认证', name: 'workbench-realname', description: '提交或查看实名审核' },
     ],
   },
   {
@@ -1052,7 +1051,7 @@ async function scrollToHash() {
 .user-workbench__head {
   position: sticky;
   top: 98px;
-  z-index: 10;
+  z-index: 1;
   align-self: start;
   display: flex;
   align-items: center;

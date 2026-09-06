@@ -1,9 +1,10 @@
 import type { Ref } from 'vue'
-import { ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
-import { getGithubAuthorizeUrl } from '@/api/auth'
+import { apiUrl } from '@/api/http'
+import { getGithubAuthorizeUrl, getOauthStatus, getWechatLoginQrUrl } from '@/api/auth'
 
 type AuthMode = 'login' | 'register' | 'reset'
 
@@ -45,6 +46,21 @@ export function useAuthForm(mode: Ref<AuthMode>) {
 
   const githubLoading = ref(false)
 
+  // 各快捷登录是否可用（由后端配置决定），不可用时前端不展示对应按钮。
+  const githubAvailable = ref(false)
+  const wechatAvailable = ref(false)
+
+  async function loadOauthStatus() {
+    try {
+      const status = await getOauthStatus()
+      githubAvailable.value = !!status.github
+      wechatAvailable.value = !!status.wechat
+    } catch {
+      githubAvailable.value = false
+      wechatAvailable.value = false
+    }
+  }
+
   async function loginWithGithub() {
     if (githubLoading.value || auth.loading) {
       return
@@ -69,6 +85,67 @@ export function useAuthForm(mode: Ref<AuthMode>) {
       showToast(err instanceof Error ? err.message : 'GitHub 登录失败', 'error')
       githubLoading.value = false
     }
+  }
+
+  const wechatLoginLoading = ref(false)
+
+  // PC 端扫码登录：展示二维码并轮询登录 token。
+  const wechatQrLogin = reactive({ visible: false, url: '', state: '' })
+
+  function isWechatBrowser() {
+    return /MicroMessenger/i.test(navigator.userAgent)
+  }
+
+  async function loginWithWechat() {
+    if (wechatLoginLoading.value || auth.loading) {
+      return
+    }
+    if (!acceptTerms.value) {
+      showToast('请先同意用户协议、隐私政策和支付与退款说明', 'error')
+      return
+    }
+
+    wechatLoginLoading.value = true
+    const homeHref = router.resolve({ name: 'home' }).href
+    const redirectTarget = `${window.location.origin}${homeHref}`
+
+    // 微信内（移动端）：点击跳转服务号网页授权；PC 端：展示二维码扫码登录。
+    if (isWechatBrowser()) {
+      const loginUrl = apiUrl(
+        `/auth/wechat/login/url?redirect_to=${encodeURIComponent(redirectTarget)}`,
+      )
+      window.location.href = loginUrl
+      return
+    }
+
+    try {
+      const qr = await getWechatLoginQrUrl(redirectTarget)
+      if (!qr.url.trim() || !qr.state.trim()) {
+        throw new Error('微信扫码登录地址为空')
+      }
+      wechatQrLogin.url = qr.url
+      wechatQrLogin.state = qr.state
+      wechatQrLogin.visible = true
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : '微信扫码登录失败', 'error')
+    } finally {
+      wechatLoginLoading.value = false
+    }
+  }
+
+  function closeWechatQrLogin() {
+    wechatQrLogin.visible = false
+    wechatQrLogin.url = ''
+    wechatQrLogin.state = ''
+  }
+
+  async function handleWechatQrToken(token: string) {
+    closeWechatQrLogin()
+    auth.setToken(token)
+    showToast('登录成功', 'success')
+    await auth.fetchProfile(true).catch(() => undefined)
+    const homeHref = router.resolve({ name: 'home' }).href
+    await router.replace(homeHref)
   }
 
   async function sendAuthCode() {
@@ -228,6 +305,8 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     authEmailCode.value = ''
   }
 
+  void loadOauthStatus()
+
   return {
     authUsername,
     authPassword,
@@ -241,10 +320,18 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     sendCodeLoading,
     sendCodeCountdown,
     githubLoading,
+    wechatLoginLoading,
+    githubAvailable,
+    wechatAvailable,
+    loadOauthStatus,
     resetAuthForm,
     loginWithGithub,
+    loginWithWechat,
     sendAuthCode,
     submitAuth,
     changeAuthMode,
+    wechatQrLogin,
+    closeWechatQrLogin,
+    handleWechatQrToken,
   }
 }

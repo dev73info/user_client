@@ -9,11 +9,11 @@ import { ArrowRight, Files, Finished, Money, User } from '@element-plus/icons-vu
 import { useAuthStore } from '@/stores/auth'
 import {
   getUnionPaymentAuthorizeUrl,
-  getWechatPaymentAuthorizeUrl,
   isUnionPaymentAuthorizationRequired,
   isWechatPaymentAuthorizationRequired,
 } from '@/api/auth'
 import AuthModal from '@/components/AuthModal.vue'
+import WechatLoginQrModal from '@/components/WechatLoginQrModal.vue'
 import PublishModal from '@/components/PublishModal.vue'
 import DepositModal from '@/components/DepositModal.vue'
 import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
@@ -48,6 +48,7 @@ import { listCommunityPosts, type CommunityPost } from '@/api/community'
 import { getResourceDetailSlug, normalizeTagName } from '@/api/resourceTags'
 import { useTagTreeStore } from '@/stores/tagTree'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
+import { doCheckin, getCheckinStatus, type CheckinStatus } from '@/api/points'
 import { getUserBadges, type UserBadge } from '@/api/invite'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 
@@ -242,8 +243,15 @@ const {
   sendCodeLoading,
   sendCodeCountdown,
   githubLoading,
+  wechatLoginLoading,
+  githubAvailable,
+  wechatAvailable,
   resetAuthForm,
   loginWithGithub,
+  loginWithWechat,
+  wechatQrLogin,
+  closeWechatQrLogin,
+  handleWechatQrToken,
   sendAuthCode: sendAuthCodeAction,
   submitAuth: submitAuthAction,
 } = useAuthForm(routeAuthMode)
@@ -277,6 +285,44 @@ const depositPolicyAccepted = ref(false)
 const couponLoading = ref(false)
 const contractSigningStatus = ref<ContractSigningStatus | null>(null)
 const { showToast } = useToast()
+
+// 首页侧栏：签到卡片（未签到显示签到，已签到显示邀请有礼）
+const homeCheckinStatus = ref<CheckinStatus | null>(null)
+const checkinHomeSaving = ref(false)
+
+async function loadHomeCheckin() {
+  if (!auth.isAuthed || !auth.token) {
+    homeCheckinStatus.value = null
+    return
+  }
+  try {
+    homeCheckinStatus.value = await getCheckinStatus(auth.token)
+  } catch {
+    // 静默失败，签到卡不展示
+    homeCheckinStatus.value = null
+  }
+}
+
+async function handleHomeCheckin() {
+  if (!auth.token || checkinHomeSaving.value) {
+    return
+  }
+  checkinHomeSaving.value = true
+  try {
+    const res = await doCheckin(auth.token)
+    homeCheckinStatus.value = {
+      username: res.username,
+      today_checked_in: true,
+      streak_count: res.streak_count,
+      today_potential: res.total_awarded,
+    }
+    showToast(`签到成功，获得 ${res.total_awarded} 积分`, 'success')
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '签到失败', 'error')
+  } finally {
+    checkinHomeSaving.value = false
+  }
+}
 const heroSignals = ['免费资源共享', '需求记录留痕', '工单沟通协作']
 const qqBetaGroupUrl = 'https://qm.qq.com/q/AXb3VBPurC'
 const isDeveloperAccount = computed(() => auth.role === 'dev' || auth.role === 'super_admin')
@@ -793,6 +839,13 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => auth.isAuthed,
+  () => {
+    void loadHomeCheckin()
+  },
+)
+
 onMounted(() => {
   setSeoMeta({
     title: '73Info 柒叁信息 - 资源与需求协作平台',
@@ -802,6 +855,7 @@ onMounted(() => {
   })
 
   auth.hydrate()
+  void loadHomeCheckin()
 
   const oauthToken =
     typeof route.query.oauth_token === 'string' ? route.query.oauth_token.trim() : ''
@@ -810,10 +864,10 @@ onMounted(() => {
 
   if (oauthToken) {
     auth.setToken(oauthToken)
-    showToast('GitHub 登录成功', 'success')
+    showToast('登录成功', 'success')
     void router.replace({ query: {} })
   } else if (oauthError) {
-    showToast(`GitHub 登录失败: ${oauthError}`, 'error')
+    showToast(`登录失败: ${oauthError}`, 'error')
     const nextQuery = { ...route.query }
     delete nextQuery.oauth_token
     delete nextQuery.oauth_error
@@ -1473,30 +1527,28 @@ async function submitDepositPayment() {
   } catch (err) {
     const message = err instanceof Error ? err.message : '支付失败'
     if (isWechatPaymentAuthorizationRequired(err)) {
-      try {
-        const inWechatBrowser = /MicroMessenger/i.test(navigator.userAgent)
-        const authorization = await getWechatPaymentAuthorizeUrl(
-          auth.token,
-          window.location.href,
-          inWechatBrowser ? 'redirect' : 'qr',
-        )
-        if (!authorization.url.trim()) {
-          throw new Error('微信授权地址为空')
-        }
-        if (inWechatBrowser) {
-          window.location.assign(authorization.url)
-        } else {
-          wechatAuthorizationUrl.value = authorization.url
-          wechatAuthorizationVisible.value = true
-        }
-        return
-      } catch (authorizationError) {
-        showToast(
-          authorizationError instanceof Error ? authorizationError.message : '发起微信授权失败',
-          'error',
-        )
+      // 尚未绑定 open_id：直接跳转到支付页（意图模式），由支付页在微信内自动静默授权并下单，
+      // 避免在 PC 侧先弹授权二维码、再点一次支付的额外步骤。
+      if (!depositRequirement.value) {
         return
       }
+      const expectedAmount =
+        currentStage === '定金'
+          ? finalDepositAmount(depositRequirement.value)
+          : finalPaymentAmount(depositRequirement.value)
+      router.push({
+        name: 'payment',
+        query: {
+          adapay: '1',
+          requirement_id: depositRequirement.value.id,
+          milestone: currentStage === '定金' ? 'deposit' : 'final',
+          channel: 'wechat',
+          client_platform: clientPlatform,
+          amount_cny: String(expectedAmount),
+          intent: '1',
+        },
+      })
+      return
     } else if (isUnionPaymentAuthorizationRequired(err)) {
       if (clientPlatform !== 'mobile') {
         showToast('云闪付授权仅适用于移动端，请重新选择支付方式', 'warning')
@@ -2097,16 +2149,36 @@ async function submitPublishRequirement() {
               <span class="portal-beta-notice__badge">内测中</span>
 
               <div v-if="auth.isAuthed" class="portal-beta-invite">
-                <span class="portal-beta-invite__title">🎁 邀请有礼</span>
-                <p class="portal-beta-invite__text">
-                  每邀请一位好友注册，即可解锁专属徽章和排行榜荣誉
-                </p>
-                <RouterLink
-                  class="portal-beta-invite__cta"
-                  :to="{ name: 'workbench-invite' }"
-                >
-                  立即邀请
-                </RouterLink>
+                <template v-if="homeCheckinStatus && !homeCheckinStatus.today_checked_in">
+                  <span class="portal-beta-invite__title">📅 每日签到</span>
+                  <p class="portal-beta-invite__text">
+                    今日签到可得
+                    <strong>{{ homeCheckinStatus.today_potential }}</strong>
+                    积分，连续签到
+                    <strong>{{ homeCheckinStatus.streak_count }}</strong>
+                    天。
+                  </p>
+                  <button
+                    class="portal-checkin-card__cta"
+                    type="button"
+                    :disabled="checkinHomeSaving"
+                    @click="handleHomeCheckin"
+                  >
+                    {{ checkinHomeSaving ? '签到中…' : '立即签到' }}
+                  </button>
+                </template>
+                <template v-else>
+                  <span class="portal-beta-invite__title">🎁 邀请有礼</span>
+                  <p class="portal-beta-invite__text">
+                    每邀请一位好友注册，即可解锁专属徽章和排行榜荣誉
+                  </p>
+                  <RouterLink
+                    class="portal-beta-invite__cta"
+                    :to="{ name: 'workbench-invite' }"
+                  >
+                    立即邀请
+                  </RouterLink>
+                </template>
               </div>
 
               <button
@@ -2376,13 +2448,25 @@ async function submitPublishRequirement() {
       :authLoading="auth.loading"
       :loginRequiresTwoFactor="loginRequiresTwoFactor"
       :githubLoginLoading="githubLoading"
+      :wechatLoginLoading="wechatLoginLoading"
+      :githubLoginAvailable="githubAvailable"
+      :wechatLoginAvailable="wechatAvailable"
       :sendCodeLoading="sendCodeLoading"
       :sendCodeCountdown="sendCodeCountdown"
       @close="closeAuth"
       @submit="submitAuth"
       @loginWithGithub="loginWithGithub"
+      @loginWithWechat="loginWithWechat"
       @sendAuthCode="sendAuthCode"
       @change-mode="openAuth"
+    />
+
+    <WechatLoginQrModal
+      :visible="wechatQrLogin.visible"
+      :url="wechatQrLogin.url"
+      :state="wechatQrLogin.state"
+      @close="closeWechatQrLogin"
+      @logged-in="handleWechatQrToken"
     />
 
     <PublishModal

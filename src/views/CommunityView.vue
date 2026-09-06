@@ -16,6 +16,9 @@ import {
 
 import { HttpError, apiUrl } from '@/api/http'
 import {
+  acceptBountyAnswer,
+  boostCommunityPost,
+  cancelPostBounty,
   createCommunityComment,
   createCommunityPost,
   favoriteCommunityPost,
@@ -32,6 +35,7 @@ import {
   type CommunityComment,
   type CommunityPost,
   type CommunityTag,
+  type PostBoostKind,
 } from '@/api/community'
 import { getMyRealnameVerification } from '@/api/realname'
 import RichTextEditor from '@/components/RichTextEditor.vue'
@@ -70,6 +74,7 @@ const favoriteLoading = ref(false)
 const composerVisible = ref(false)
 const editingPost = ref<CommunityPost | null>(null)
 const commentDraft = ref('')
+const boostingKind = ref<PostBoostKind | null>(null)
 const composerPanelRef = ref<HTMLElement | null>(null)
 const composerActionsShellRef = ref<HTMLElement | null>(null)
 const composerActionsRef = ref<HTMLElement | null>(null)
@@ -82,6 +87,14 @@ const expandedReplyIds = ref(new Set<number>())
 let composerActionsResizeObserver: ResizeObserver | null = null
 let selectedPostRequestId = 0
 
+const BOOST_OPTIONS: { kind: PostBoostKind; label: string; cost: number; desc: string }[] = [
+  { kind: 'bump', label: '上浮', cost: 50, desc: '帖子排到列表顶部持续 24 小时' },
+  { kind: 'highlight', label: '高亮', cost: 100, desc: '帖子高亮标识持续 72 小时' },
+  { kind: 'homepage', label: '首页推荐', cost: 200, desc: '首页推荐位持续 24 小时' },
+  { kind: 'section', label: '板块推荐', cost: 120, desc: '板块推荐位持续 48 小时' },
+  { kind: 'hot', label: '热门展示', cost: 150, desc: '进入热门榜单展示 48 小时' },
+]
+
 const postForm = reactive({
   title: '',
   tag_names: [] as string[],
@@ -91,6 +104,7 @@ const postForm = reactive({
   origin_url: '',
   origin_org: '',
   origin_note: '',
+  bounty_points: 0,
 })
 
 const currentPostContent = computed(() =>
@@ -145,6 +159,24 @@ const canEditSelectedPost = computed(() =>
   Boolean(auth.isAuthed && selectedPost.value && selectedPost.value.author === auth.username),
 )
 const selectedPostPublished = computed(() => selectedPost.value?.status === 'published')
+const canBoostSelectedPost = computed(() =>
+  Boolean(
+    auth.isAuthed &&
+      selectedPost.value &&
+      selectedPost.value.status === 'published' &&
+      selectedPost.value.author === auth.username,
+  ),
+)
+const activeBoostLabels = computed<string[]>(() => {
+  const post = selectedPost.value
+  if (!post) return []
+  const labels: string[] = []
+  if (post.highlight_until && new Date(post.highlight_until) > new Date()) labels.push('高亮')
+  if (post.homepage_until && new Date(post.homepage_until) > new Date()) labels.push('首页推荐')
+  if (post.section_until && new Date(post.section_until) > new Date()) labels.push('板块推荐')
+  if (post.hot_until && new Date(post.hot_until) > new Date()) labels.push('热门展示')
+  return labels
+})
 const selectedPostShareTargetId = computed(() =>
   selectedPost.value && selectedPostPublished.value ? String(selectedPost.value.id) : '',
 )
@@ -185,9 +217,17 @@ function updateFloatingComposerActions() {
   const bottom = 16
   const viewportHeight = window.innerHeight || document.documentElement.clientHeight
   const floatingTop = viewportHeight - bottom - actionsHeight
-  const canFloat =
-    panelRect.top < floatingTop &&
+  const floats = panelRect.top < floatingTop
+  const coversBottom =
     panelRect.bottom > viewportHeight - bottom + actionsHeight + viewportGap
+
+  // 滞回（hysteresis）：进入/退出漂浮采用不同的判定阈值，避免在临界处反复切换导致闪烁。
+  let canFloat
+  if (composerActionsFloating.value) {
+    canFloat = floats && panelRect.bottom > viewportHeight - bottom + actionsHeight + 4
+  } else {
+    canFloat = floats && coversBottom
+  }
 
   composerActionsPlaceholderHeight.value = actionsHeight
   composerActionsFloating.value = canFloat
@@ -228,16 +268,11 @@ function observeComposerActions() {
   composerActionsResizeObserver?.disconnect()
   composerActionsResizeObserver = null
 
+  // 仅观察内容面板，不观察 shell/操作按钮（它们会随漂浮状态改变，形成反馈循环导致闪烁）。
   if (typeof ResizeObserver !== 'undefined' && composerVisible.value) {
     composerActionsResizeObserver = new ResizeObserver(updateFloatingComposerActions)
     if (composerPanelRef.value) {
       composerActionsResizeObserver.observe(composerPanelRef.value)
-    }
-    if (composerActionsShellRef.value) {
-      composerActionsResizeObserver.observe(composerActionsShellRef.value)
-    }
-    if (composerActionsRef.value) {
-      composerActionsResizeObserver.observe(composerActionsRef.value)
     }
   }
 
@@ -279,6 +314,27 @@ function repostLabel(post: CommunityPost): string {
     parts.push(`原作者 ${post.origin_author}`)
   }
   return parts.join(' · ')
+}
+
+function postBoostLabel(post: CommunityPost): string {
+  const now = Date.now()
+  const labels: string[] = []
+  if (post.bumped_at && new Date(post.bumped_at).getTime() > now - 2 * 24 * 60 * 60 * 1000) {
+    labels.push('上浮')
+  }
+  if (post.highlight_until && new Date(post.highlight_until) > new Date(now)) {
+    labels.push('高亮')
+  }
+  if (post.homepage_until && new Date(post.homepage_until) > new Date(now)) {
+    labels.push('首页推荐')
+  }
+  if (post.section_until && new Date(post.section_until) > new Date(now)) {
+    labels.push('板块推荐')
+  }
+  if (post.hot_until && new Date(post.hot_until) > new Date(now)) {
+    labels.push('热门展示')
+  }
+  return labels.join(' · ')
 }
 
 function routePostId(): number | null {
@@ -619,6 +675,7 @@ function resetComposer() {
   postForm.origin_url = ''
   postForm.origin_org = ''
   postForm.origin_note = ''
+  postForm.bounty_points = 0
 }
 
 async function openCreateComposer() {
@@ -680,7 +737,7 @@ async function submitPost() {
   savingPost.value = true
   try {
     const editingId = editingPost.value?.id
-    const payload = {
+    const baseline = {
       title: postForm.title.trim(),
       tag_names: postForm.tag_names.map((tag) => tag.trim()).filter(Boolean),
       content_html: sanitizeRichHtml(postForm.content_html),
@@ -690,6 +747,10 @@ async function submitPost() {
       origin_org: postForm.origin_org.trim() || null,
       origin_note: postForm.origin_note.trim() || null,
     }
+    // 悬赏积分仅在发帖时提交（编辑不改变悬赏）。
+    const payload = isEditing
+      ? baseline
+      : { ...baseline, bounty_points: Math.max(0, Math.trunc(postForm.bounty_points || 0)) }
     const saved =
       isEditing && editingId
         ? await updateCommunityPost(auth.token, editingId, payload)
@@ -717,6 +778,114 @@ function updateSelectedPost(patch: Partial<CommunityPost>) {
   const postId = selectedPost.value.id
   posts.value = posts.value.map((post) => (post.id === postId ? { ...post, ...patch } : post))
   selectedPost.value = { ...selectedPost.value, ...patch }
+}
+
+// ---------- 帖子推广（积分消费） ----------
+
+async function handleBoost(kind: PostBoostKind) {
+  if (!ensureAuthed() || !selectedPost.value || boostingKind.value) {
+    return
+  }
+  const option = BOOST_OPTIONS.find((item) => item.kind === kind)
+  if (!option) {
+    return
+  }
+  const confirmed = window.confirm(
+    `确认花费 ${option.cost} 积分购买「${option.label}」推广？${option.desc}。`,
+  )
+  if (!confirmed) {
+    return
+  }
+
+  boostingKind.value = kind
+  try {
+    const updated = await boostCommunityPost(auth.token, selectedPost.value.id, kind)
+    updateSelectedPost({
+      bumped_at: updated.bumped_at,
+      highlight_until: updated.highlight_until,
+      homepage_until: updated.homepage_until,
+      section_until: updated.section_until,
+      hot_until: updated.hot_until,
+    })
+    showToast(`已购买「${option.label}」推广`, 'success')
+    // 刷新列表以反映排序与推广标识。
+    void loadCommunityData()
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '购买推广失败', 'error')
+  } finally {
+    boostingKind.value = null
+  }
+}
+
+// ---------- 悬赏 ----------
+
+const selectedPostBountyLabel = computed(() => {
+  const post = selectedPost.value
+  if (!post || post.bounty_points <= 0) return ''
+  if (post.bounty_status === 'closed') return '悬赏已采纳'
+  if (post.bounty_status === 'cancelled') return '悬赏已取消'
+  return `悬赏 ${post.bounty_points} 积分`
+})
+
+const canCancelBounty = computed(() => {
+  const post = selectedPost.value
+  return Boolean(
+    auth.isAuthed &&
+      post &&
+      post.bounty_status === 'active' &&
+      post.bounty_points > 0 &&
+      post.author === auth.username,
+  )
+})
+
+const canAcceptBounty = computed(() => {
+  const post = selectedPost.value
+  return Boolean(
+    auth.isAuthed &&
+      post &&
+      post.bounty_status === 'active' &&
+      post.bounty_points > 0 &&
+      post.author === auth.username,
+  )
+})
+
+function isAcceptedComment(comment: CommunityComment): boolean {
+  const post = selectedPost.value
+  return Boolean(
+    post && post.bounty_accepted_comment_id != null && post.bounty_accepted_comment_id === comment.id,
+  )
+}
+
+async function acceptBountyAnswerHandler(comment: CommunityComment) {
+  if (!ensureAuthed() || !selectedPost.value) {
+    return
+  }
+  try {
+    const updated = await acceptBountyAnswer(auth.token, selectedPost.value.id, comment.id)
+    updateSelectedPost({
+      bounty_status: updated.bounty_status,
+      bounty_accepted_comment_id: updated.bounty_accepted_comment_id,
+    })
+    showToast(`已采纳 ${comment.commenter} 的回答，悬赏积分已发放`, 'success')
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '采纳回答失败', 'error')
+  }
+}
+
+async function cancelBountyHandler() {
+  if (!ensureAuthed() || !selectedPost.value) {
+    return
+  }
+  try {
+    const updated = await cancelPostBounty(auth.token, selectedPost.value.id)
+    updateSelectedPost({
+      bounty_status: updated.bounty_status,
+      bounty_accepted_comment_id: updated.bounty_accepted_comment_id,
+    })
+    showToast('已取消悬赏，积分已退回', 'success')
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '取消悬赏失败', 'error')
+  }
 }
 
 async function toggleLike(post: CommunityPost) {
@@ -1009,6 +1178,8 @@ async function toggleCommentLike(comment: CommunityComment) {
               <div class="community-post-card__badges">
                 <span v-if="post.status !== 'published'" class="community-status-badge"
                   :class="`is-${post.status}`">{{ postStatusText(post.status) }}</span>
+                <span v-if="post.is_featured" class="community-featured-badge">精华</span>
+                <span v-if="postBoostLabel(post)" class="community-boost-badge">{{ postBoostLabel(post) }}</span>
                 <span class="community-repost-badge"
                   :class="{ 'is-repost': isRepostPost(post) }">{{ isRepostPost(post) ? '转载' : '原创' }}</span>
                 <span>{{ post.like_count }} 赞</span>
@@ -1049,15 +1220,12 @@ async function toggleCommentLike(comment: CommunityComment) {
               <h3>{{ editingPost ? '更新社区内容' : '写一篇新帖子' }}</h3>
             </div>
             <el-button class="community-panel-action" plain @click="closeComposer">
-              <el-icon>
-                <Close />
-              </el-icon>
               <span>取消</span>
             </el-button>
           </div>
 
           <el-form label-position="top" class="community-form">
-            <el-form-item label="标题">
+            <el-form-item label="标题" class="community-form-item--full">
               <el-input v-model="postForm.title" maxlength="80" show-word-limit placeholder="写一个清楚的标题" />
             </el-form-item>
             <el-form-item label="标签">
@@ -1067,10 +1235,20 @@ async function toggleCommentLike(comment: CommunityComment) {
               </el-select>
             </el-form-item>
             <el-form-item label="类型">
-              <el-select v-model="postForm.origin_type" style="width: 100%">
+              <el-select v-model="postForm.origin_type" style="width: 160px">
                 <el-option label="原创" value="original" />
                 <el-option label="转载" value="repost" />
               </el-select>
+            </el-form-item>
+            <el-form-item v-if="!editingPost" label="悬赏积分" class="community-form-item--full">
+              <div class="community-bounty-field">
+                <el-input-number v-model="postForm.bounty_points" :min="0" :max="10000" :step="10"
+                  :precision="0" />
+                <span class="community-bounty-field__unit">积分</span>
+              </div>
+              <div class="community-form__hint">
+                设置悬赏后，被采纳的回答可获得对应积分；发布时扣除，未采纳可取消退回。
+              </div>
             </el-form-item>
             <template v-if="postForm.origin_type === 'repost'">
               <el-form-item label="原作者">
@@ -1110,7 +1288,15 @@ async function toggleCommentLike(comment: CommunityComment) {
                   <div class="community-post-card__tags">
                     <span v-for="tag in selectedPost.tags" :key="tag.id">{{ tag.name }}</span>
                   </div>
-                  <h2>{{ selectedPost.title }}</h2>
+                  <h2>
+                    {{ selectedPost.title }}
+                    <span v-if="selectedPost.is_featured" class="community-featured-badge">精华</span>
+                    <span v-if="selectedPost.bounty_points > 0" class="community-bounty-badge"
+                      :class="`is-${selectedPost.bounty_status}`">
+                      {{ selectedPostBountyLabel }}
+                    </span>
+                    <span v-if="activeBoostLabels.length" class="community-boost-badge">{{ activeBoostLabels.join(' · ') }}</span>
+                  </h2>
                 </div>
                 <el-button v-if="canEditSelectedPost" class="community-panel-action" plain
                   @click="openEditComposer(selectedPost)">
@@ -1164,6 +1350,24 @@ async function toggleCommentLike(comment: CommunityComment) {
               <el-icon><Star /></el-icon>
               <span>{{ selectedPost.favorited_by_me ? '已收藏' : '收藏' }}</span>
             </el-button>
+            <el-button v-if="canCancelBounty" class="community-bounty-cancel-button" type="warning" plain
+              @click="cancelBountyHandler">
+              取消悬赏
+            </el-button>
+            <el-dropdown v-if="canBoostSelectedPost" trigger="click" @command="handleBoost">
+              <el-button class="community-boost-button" type="primary" plain :loading="boostingKind !== null">
+                <el-icon><Top /></el-icon>
+                <span>推广</span>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-for="option in BOOST_OPTIONS" :key="option.kind"
+                    :command="option.kind" :disabled="boostingKind !== null">
+                    {{ option.label }} · {{ option.cost }} 积分
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
             <ShareCardGenerator v-if="auth.isAuthed && selectedPostShareTargetId" share-type="community_post"
               :target-id="selectedPostShareTargetId" />
             <span class="community-action-stat">
@@ -1205,7 +1409,7 @@ async function toggleCommentLike(comment: CommunityComment) {
                   展开 {{ hiddenReplyCount(threadRootId(comment)) }} 条回复
                 </button>
                 <li v-if="!isReplyCollapsed(comment)" class="community-comment-item"
-                  :class="{ 'is-reply': comment.parent_comment_id }"
+                  :class="{ 'is-reply': comment.parent_comment_id, 'is-accepted': isAcceptedComment(comment) }"
                   :style="{ '--comment-depth': String(commentDepth(comment)) }">
                 <div class="community-comment-item__avatar">
                   <img v-if="commentAvatarSrc(comment)" :src="commentAvatarSrc(comment)"
@@ -1217,6 +1421,7 @@ async function toggleCommentLike(comment: CommunityComment) {
                     :class="{ 'username-gradient': comment.commenter_username_gradient && !comment.commenter_username_color }"
                     :style="comment.commenter_username_color ? { color: comment.commenter_username_color } : {}"
                   >{{ comment.commenter }}</strong>
+                  <span v-if="isAcceptedComment(comment)" class="community-comment-item__accepted">已采纳</span>
                   <span class="community-comment-item__floor">#{{ commentFloors.get(comment.id) }}</span>
                   <div v-if="parentCommenter(comment) || parentCommentText(comment)"
                     class="community-comment-item__reply-context">
@@ -1230,6 +1435,11 @@ async function toggleCommentLike(comment: CommunityComment) {
                   </div>
                   <p>{{ comment.comment_text }}</p>
                   <div class="community-comment-item__actions">
+                    <button v-if="canAcceptBounty && comment.commenter !== selectedPost?.author && !isAcceptedComment(comment)"
+                      type="button" class="community-comment-item__accept"
+                      @click="acceptBountyAnswerHandler(comment)">
+                      采纳
+                    </button>
                     <button type="button" @click="replyToComment(comment)">回复</button>
                     <button type="button" :class="{ 'is-liked': comment.liked_by_me }"
                       :disabled="commentLikeLoading === comment.id" @click="toggleCommentLike(comment)">
@@ -1387,6 +1597,120 @@ async function toggleCommentLike(comment: CommunityComment) {
 
 .community-detail__title-row .community-detail__title {
   min-width: 0;
+}
+
+.community-bounty-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.community-featured-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  vertical-align: middle;
+  white-space: nowrap;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+}
+.community-post-card__badges .community-featured-badge {
+  margin-left: 0;
+  padding: 1px 8px;
+  font-size: 11px;
+}
+.community-boost-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  vertical-align: middle;
+  white-space: nowrap;
+  color: #6d28d9;
+  background: #ede9fe;
+  border: 1px solid #c4b5fd;
+}
+.community-post-card__badges .community-boost-badge {
+  margin-left: 0;
+  padding: 1px 8px;
+  font-size: 11px;
+}
+.community-boost-button {
+  margin-left: 8px;
+}
+.community-bounty-badge.is-active {
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+}
+.community-bounty-badge.is-closed {
+  color: #1d4ed8;
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+}
+.community-bounty-badge.is-cancelled {
+  color: #64748b;
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1;
+}
+.community-bounty-cancel-button {
+  margin-left: 8px;
+}
+.community-bounty-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.community-bounty-field .el-input-number {
+  width: 160px;
+  flex: none;
+}
+.community-bounty-field__unit {
+  font-size: 13px;
+  color: #64748b;
+}
+.community-form__hint {
+  width: 100%;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.6;
+}
+.community-comment-item.is-accepted {
+  border-color: var(--el-color-warning) !important;
+  background: var(--el-color-warning-light-9);
+}
+.community-comment-item__accepted {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #b45309;
+  background: #fef3c7;
+}
+.community-comment-item__actions .community-comment-item__accept {
+  color: #b45309;
+  border-color: #fcd34d;
 }
 
 .community-detail__header .community-detail__meta {
@@ -1929,12 +2253,22 @@ async function toggleCommentLike(comment: CommunityComment) {
 
 .community-form {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 14px;
 }
 
 .community-form :deep(.el-form-item) {
   margin-bottom: 14px;
+}
+
+.community-form-item--full {
+  grid-column: 1 / -1;
+}
+
+.community-form :deep(.el-form-item__label) {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
 }
 
 .community-form :deep(.el-select) {

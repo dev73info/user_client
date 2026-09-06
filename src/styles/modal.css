@@ -1,5 +1,18 @@
 /* === 弹窗、表单与支付选项 === */
 
+/* 让所有 Element Plus 弹窗在遮罩中居中显示 */
+.el-overlay-dialog:has(> .el-dialog) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* 提升弹窗遮罩层级，确保弹窗覆盖在工作台头部等页面层级之上 */
+.el-overlay {
+  z-index: 3000 !important;
+}
+
 .auth-modal-wrap,
 .modal-wrap {
   position: fixed;
@@ -805,7 +818,7 @@
 /* --- 支付方式选择 --- */
 .payment-options {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 8px;
   padding: 6px;
   border: 1px solid rgba(148, 163, 184, 0.42);

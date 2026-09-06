@@ -127,6 +127,9 @@ onMounted(() => {
         <p>券名称：{{ claimResult.coupon_name }}</p>
         <p>券码：{{ claimResult.assigned_coupon_code }}</p>
         <p>领取时间：{{ claimResult.claimed_at }}</p>
+        <p v-if="!claimResult.already_claimed && claimResult.points_awarded">
+          参与活动获得 <strong class="claim-page__points">+{{ claimResult.points_awarded }}</strong> 积分
+        </p>
         <div class="claim-page__actions">
           <button class="claim-page__primary" type="button" @click="goWorkbench">
             前往工作台查看
@@ -240,6 +243,9 @@ onMounted(() => {
 .claim-page__result p {
   margin: 8px 0;
   color: rgba(244, 247, 255, 0.82);
+}
+.claim-page__points {
+  color: #fbbf24;
 }
 
 .claim-page__actions {

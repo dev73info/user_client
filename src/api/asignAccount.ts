@@ -10,8 +10,6 @@ export type SendVerifyCodePayload = { mobile: string }
 
 export type ModifyMobileByCodePayload = { mobile: string; code: string; ctoken: string }
 
-export type ModifyMobileThreePayload = { name: string; idCard: string; mobile: string }
-
 export type ModifySignPasswordPayload = { oldSignPwd: string; signPwd: string }
 
 export type StartModSignPasswordPayload = { isNotice?: number; isShowResult?: number }
@@ -59,15 +57,6 @@ export async function modifyMobileByCode(token: string, payload: ModifyMobileByC
   return post<void>(
     token,
     '/realname/asign-account/modify-mobile-by-code',
-    payload,
-    '修改手机号失败',
-  )
-}
-
-export async function modifyMobileThree(token: string, payload: ModifyMobileThreePayload) {
-  return post<void>(
-    token,
-    '/realname/asign-account/modify-mobile-three',
     payload,
     '修改手机号失败',
   )

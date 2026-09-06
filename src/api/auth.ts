@@ -19,6 +19,19 @@ export type WechatPaymentAuthorizationStatusResp = {
   authorized: boolean
 }
 
+export type OauthStatusResp = {
+  github: boolean
+  wechat: boolean
+}
+
+export async function getOauthStatus(): Promise<OauthStatusResp> {
+  return requestJson<OauthStatusResp>(
+    '/auth/oauth-status',
+    { headers: {} },
+    '加载登录方式失败',
+  )
+}
+
 export type UnionPaymentAuthorizeUrlResp = {
   url: string
 }
@@ -60,6 +73,51 @@ export async function getWechatPaymentAuthorizeUrl(
       headers: authHeaders(token),
     },
     '微信授权暂不可用',
+  )
+}
+
+export async function getWechatBindAuthorizeUrl(
+  token: string,
+  redirectTo: string,
+): Promise<WechatPaymentAuthorizeUrlResp> {
+  const query = new URLSearchParams({ redirect_to: redirectTo })
+  return requestJson<WechatPaymentAuthorizeUrlResp>(
+    `/auth/wechat/bind/url?${query.toString()}`,
+    {
+      headers: authHeaders(token),
+    },
+    '微信绑定暂不可用',
+  )
+}
+
+export type WechatLoginQrUrlResp = {
+  url: string
+  state: string
+}
+
+export type WechatLoginQrStatusResp = {
+  token?: string | null
+}
+
+export async function getWechatLoginQrUrl(
+  redirectTo: string,
+): Promise<WechatLoginQrUrlResp> {
+  const query = new URLSearchParams({ redirect_to: redirectTo })
+  return requestJson<WechatLoginQrUrlResp>(
+    `/auth/wechat/login/qr/url?${query.toString()}`,
+    { headers: {} },
+    '微信扫码登录暂不可用',
+  )
+}
+
+export async function getWechatLoginQrStatus(
+  state: string,
+): Promise<WechatLoginQrStatusResp> {
+  const query = new URLSearchParams({ state })
+  return requestJson<WechatLoginQrStatusResp>(
+    `/auth/wechat/login/qr/status?${query.toString()}`,
+    { headers: {} },
+    '查询微信扫码登录状态失败',
   )
 }
 

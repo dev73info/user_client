@@ -8,7 +8,6 @@ import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
 import {
   getUnionPaymentAuthorizeUrl,
-  getWechatPaymentAuthorizeUrl,
   isUnionPaymentAuthorizationRequired,
   isWechatPaymentAuthorizationRequired,
 } from '@/api/auth'
@@ -1554,30 +1553,23 @@ async function submitRequirementPayment() {
     throw new Error('支付订单状态无效，请重新发起 Adapay 支付')
   } catch (err) {
     if (isWechatPaymentAuthorizationRequired(err)) {
-      try {
-        const inWechatBrowser = /MicroMessenger/i.test(navigator.userAgent)
-        const authorization = await getWechatPaymentAuthorizeUrl(
-          auth.token,
-          window.location.href,
-          inWechatBrowser ? 'redirect' : 'qr',
-        )
-        if (!authorization.url.trim()) {
-          throw new Error('微信授权地址为空')
-        }
-        if (inWechatBrowser) {
-          window.location.assign(authorization.url)
-        } else {
-          wechatAuthorizationUrl.value = authorization.url
-          wechatAuthorizationVisible.value = true
-        }
-        return
-      } catch (authorizationError) {
-        showToast(
-          authorizationError instanceof Error ? authorizationError.message : '发起微信授权失败',
-          'error',
-        )
+      // 尚未绑定 open_id：直接跳转到支付页（意图模式），由支付页在微信内自动静默授权并下单。
+      if (!payRequirement.value) {
         return
       }
+      router.push({
+        name: 'payment',
+        query: {
+          adapay: '1',
+          requirement_id: payRequirement.value.requirement_id,
+          milestone: isFinalPayment.value ? 'final' : 'deposit',
+          channel: 'wechat',
+          client_platform: clientPlatform,
+          amount_cny: String(payAmount.value),
+          intent: '1',
+        },
+      })
+      return
     }
     if (isUnionPaymentAuthorizationRequired(err)) {
       if (clientPlatform !== 'mobile') {

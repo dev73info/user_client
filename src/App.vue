@@ -154,7 +154,6 @@ onBeforeUnmount(() => {
                   <p><router-link to="/terms">用户协议</router-link></p>
                   <p><router-link to="/privacy">隐私政策</router-link></p>
                   <p><router-link to="/payment-refund">支付与退款说明</router-link></p>
-                  <p><router-link to="/tickets">工单中心</router-link></p>
                 </div>
               </div>
               <p class="site-footer-copy">© {{ currentYear }} 柒叁信息 73Info. All rights reserved.</p>

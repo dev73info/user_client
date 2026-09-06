@@ -31,7 +31,19 @@ export type CommunityPost = {
   origin_url: string | null
   origin_org: string | null
   origin_note: string | null
+  bounty_points: number
+  bounty_status: 'none' | 'active' | 'closed' | 'cancelled'
+  bounty_accepted_comment_id: number | null
+  is_featured: boolean
+  featured_at: string | null
+  bumped_at: string | null
+  highlight_until: string | null
+  homepage_until: string | null
+  section_until: string | null
+  hot_until: string | null
 }
+
+export type PostBoostKind = 'bump' | 'highlight' | 'homepage' | 'section' | 'hot'
 
 export type CommunityComment = {
   id: number
@@ -91,6 +103,8 @@ export type CommunityPostPayload = {
   origin_url?: string | null
   origin_org?: string | null
   origin_note?: string | null
+  /** 悬赏积分数，仅发帖时生效（0 或缺省表示无悬赏）。 */
+  bounty_points?: number
 }
 
 const COMMUNITY_API_PREFIX = '/community'
@@ -221,6 +235,46 @@ export async function createCommunityComment(
       body: JSON.stringify({ comment, parent_comment_id: parentCommentId ?? null }),
     },
     '发表评论失败',
+  )
+}
+
+export async function acceptBountyAnswer(
+  token: string,
+  postId: number,
+  commentId: number,
+): Promise<CommunityPost> {
+  return requestJson<CommunityPost>(
+    `${COMMUNITY_API_PREFIX}/posts/${postId}/bounty/accept/${commentId}`,
+    { method: 'POST', headers: authHeaders(token) },
+    '采纳回答失败',
+  )
+}
+
+export async function cancelPostBounty(
+  token: string,
+  postId: number,
+): Promise<CommunityPost> {
+  return requestJson<CommunityPost>(
+    `${COMMUNITY_API_PREFIX}/posts/${postId}/bounty/cancel`,
+    { method: 'POST', headers: authHeaders(token) },
+    '取消悬赏失败',
+  )
+}
+
+/** 用积分购买帖子推广（bump/highlight/homepage/section/hot）。 */
+export async function boostCommunityPost(
+  token: string,
+  postId: number,
+  kind: PostBoostKind,
+): Promise<CommunityPost> {
+  return requestJson<CommunityPost>(
+    `${COMMUNITY_API_PREFIX}/posts/${postId}/boost`,
+    {
+      method: 'POST',
+      headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ kind }),
+    },
+    '购买推广失败',
   )
 }
 

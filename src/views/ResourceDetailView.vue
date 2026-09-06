@@ -436,6 +436,9 @@ async function openResourceFile() {
     showToast('资源编号无效', 'warning')
     return
   }
+  if (!requireDownloadLogin()) {
+    return
+  }
   const fallbackFileName = resolveResourceDownloadFileName(
     resource.value?.file_name,
     `resource-${resourceId}-v${latestVersion.value.id}`,
@@ -461,6 +464,9 @@ async function downloadVersion(version: PublicMcResourceVersionItem) {
   const resourceId = resource.value?.id
   if (resourceId == null) {
     showToast('资源编号无效', 'warning')
+    return
+  }
+  if (!requireDownloadLogin()) {
     return
   }
   const fallbackFileName = resolveResourceDownloadFileName(
@@ -532,6 +538,23 @@ function openLikeLogin() {
       redirect_to: route.fullPath,
     },
   })
+}
+
+/** 下载资源需登录：未登录时提示并引导到登录弹窗。 */
+function requireDownloadLogin(): boolean {
+  if (auth.isAuthed && auth.token.trim()) {
+    return true
+  }
+  showToast('请先登录后再下载资源', 'info')
+  void router.push({
+    name: 'home',
+    query: {
+      modal: 'auth',
+      mode: 'login',
+      redirect_to: route.fullPath,
+    },
+  })
+  return false
 }
 
 async function refreshResourceLikeState(resourceId: number) {

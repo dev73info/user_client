@@ -4,7 +4,20 @@ import { useRouter } from 'vue-router'
 
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import { listMyCommentWarnings, type CommentWarning } from '@/api/community'
-import { getMyPoints, setPerkEquipped, type UserPerk, type UserPointsLog } from '@/api/points'
+import {
+  getMyPoints,
+  setPerkEquipped,
+  doCheckin,
+  getCheckinStatus,
+  transferPoints,
+  listMyTransfers,
+  getTransferMeta,
+  type UserPerk,
+  type UserPointsLog,
+  type CheckinStatus,
+  type PointsTransfer,
+  type PointsTransferMeta,
+} from '@/api/points'
 import { HttpError } from '@/api/http'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -23,6 +36,30 @@ const commentWarnings = ref<CommentWarning[]>([])
 const couponLoading = ref(false)
 const coupons = ref<CouponItem[]>([])
 const { showToast } = useToast()
+
+// 签到
+const checkinStatus = ref<CheckinStatus | null>(null)
+const checkinSaving = ref(false)
+
+// 打赏
+const transferMeta = ref<PointsTransferMeta | null>(null)
+const transferTo = ref('')
+const transferAmount = ref<number | null>(null)
+const transferNote = ref('')
+const transferSaving = ref(false)
+const transfers = ref<PointsTransfer[]>([])
+
+const feeRate = computed(() => transferMeta.value?.fee_rate ?? 0)
+const transferFee = computed(() => {
+  const amount = transferAmount.value
+  if (!amount || amount <= 0) return 0
+  return Math.floor((amount * feeRate.value) / 100)
+})
+const transferReceived = computed(() => {
+  const amount = transferAmount.value
+  if (!amount || amount <= 0) return 0
+  return amount - transferFee.value
+})
 
 const logPage = ref(1)
 const logPageSize = 10
@@ -64,6 +101,84 @@ async function loadCommentWarnings() {
     commentWarnings.value = await listMyCommentWarnings(auth.token)
   } catch (err) {
     showToast(err instanceof Error ? err.message : '加载评论警告失败', 'error')
+  }
+}
+
+async function loadCheckinStatus() {
+  if (!auth.token) return
+  try {
+    checkinStatus.value = await getCheckinStatus(auth.token)
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '加载签到状态失败', 'error')
+  }
+}
+
+async function handleCheckin() {
+  if (!auth.token || checkinSaving.value) return
+  checkinSaving.value = true
+  try {
+    const res = await doCheckin(auth.token)
+    showToast(`签到成功，获得 ${res.total_awarded} 积分`, 'success')
+    checkinStatus.value = {
+      username: res.username,
+      today_checked_in: true,
+      streak_count: res.streak_count,
+      today_potential: res.total_awarded,
+    }
+    await loadPoints()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '签到失败', 'error')
+  } finally {
+    checkinSaving.value = false
+  }
+}
+
+async function loadTransferMeta() {
+  if (!auth.token) return
+  try {
+    transferMeta.value = await getTransferMeta(auth.token)
+  } catch {
+    // 忽略，使用默认展示
+  }
+}
+
+async function loadTransfers() {
+  if (!auth.token) return
+  try {
+    transfers.value = await listMyTransfers(auth.token)
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '加载打赏记录失败', 'error')
+  }
+}
+
+async function submitTransfer() {
+  if (!auth.token || transferSaving.value) return
+  const to = transferTo.value.trim()
+  const amount = transferAmount.value
+  if (!to) {
+    showToast('请输入接收方用户名', 'warning')
+    return
+  }
+  if (!amount || amount <= 0) {
+    showToast('请输入打赏金额', 'warning')
+    return
+  }
+  transferSaving.value = true
+  try {
+    await transferPoints(auth.token, {
+      to_username: to,
+      amount,
+      note: transferNote.value.trim() || undefined,
+    })
+    showToast('打赏成功', 'success')
+    transferTo.value = ''
+    transferAmount.value = null
+    transferNote.value = ''
+    await Promise.all([loadPoints(), loadTransfers()])
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '打赏失败', 'error')
+  } finally {
+    transferSaving.value = false
   }
 }
 
@@ -215,7 +330,14 @@ onMounted(async () => {
     router.replace('/')
     return
   }
-  await Promise.all([loadPoints(), loadCoupons(), loadCommentWarnings()])
+  await Promise.all([
+    loadPoints(),
+    loadCoupons(),
+    loadCommentWarnings(),
+    loadCheckinStatus(),
+    loadTransferMeta(),
+    loadTransfers(),
+  ])
 })
 </script>
 
@@ -233,6 +355,78 @@ onMounted(async () => {
     </div>
 
     <p v-if="error" class="points-error">{{ error }}</p>
+
+    <section class="wallet-section">
+      <div class="checkin-card">
+        <div class="checkin-card__info">
+          <h3>每日签到</h3>
+          <p v-if="checkinStatus">
+            <template v-if="checkinStatus.today_checked_in">
+              今日已签到，连续签到 <strong>{{ checkinStatus.streak_count }}</strong> 天。
+            </template>
+            <template v-else>
+              今日签到可得 <strong>{{ checkinStatus.today_potential }}</strong> 积分，当前连续签到
+              {{ checkinStatus.streak_count }} 天。
+            </template>
+          </p>
+          <p v-else class="requirement-note">每日签到、连续签到可获得积分奖励。</p>
+          <small v-if="!checkinStatus?.today_checked_in" class="requirement-note">
+            连续签到奖励逐日递增，满 7 天/30 天有额外奖励。
+          </small>
+        </div>
+        <el-button type="primary" :loading="checkinSaving"
+          :disabled="checkinStatus?.today_checked_in || checkinSaving" @click="handleCheckin">
+          {{ checkinStatus?.today_checked_in ? '今日已签到' : '立即签到' }}
+        </el-button>
+      </div>
+    </section>
+
+    <section class="wallet-section">
+      <div class="wallet-header">
+        <div>
+          <h3>积分打赏</h3>
+          <small class="requirement-note">向你认可的用户打赏积分，平台按 {{ feeRate }}% 收取手续费（接收方到账 {{ 100 - feeRate }}%）。</small>
+        </div>
+      </div>
+      <div class="transfer-form">
+        <el-input v-model="transferTo" placeholder="接收方用户名" clearable />
+        <el-input-number v-model="transferAmount" :min="1" :precision="0" placeholder="打赏金额"
+          style="width: 100%" />
+        <el-input v-model="transferNote" placeholder="附言（可选）" clearable />
+        <div v-if="transferAmount && transferAmount > 0" class="transfer-preview">
+          接收方到账 <strong>{{ transferReceived }}</strong> 积分 · 手续费 <strong>{{ transferFee }}</strong> 积分
+        </div>
+        <el-button type="primary" :loading="transferSaving" @click="submitTransfer">打赏</el-button>
+      </div>
+    </section>
+
+    <section class="wallet-section">
+      <div class="wallet-header">
+        <div>
+          <h3>打赏记录</h3>
+          <small class="requirement-note">最近打赏与收款记录。</small>
+        </div>
+      </div>
+      <div v-if="transfers.length" class="transfer-list">
+        <article v-for="t in transfers" :key="t.id" class="transfer-item">
+          <div class="transfer-item__main">
+            <span>
+              <strong>{{ t.from_username === auth.username ? '我' : t.from_username }}</strong>
+              <span class="requirement-note"> → </span>
+              <strong>{{ t.to_username === auth.username ? '我' : t.to_username }}</strong>
+            </span>
+            <span
+              :class="['transfer-item__amount', t.to_username === auth.username ? 'transfer-in' : 'transfer-out']">
+              {{ t.to_username === auth.username ? '+' : '-' }}{{ t.to_username === auth.username ? t.received : t.amount }}
+            </span>
+          </div>
+          <small class="requirement-note">
+            {{ t.created_at }}{{ t.fee > 0 ? ' · 手续费 ' + t.fee : '' }}{{ t.note ? ' · ' + t.note : '' }}
+          </small>
+        </article>
+      </div>
+      <p v-else class="empty">暂无打赏记录</p>
+    </section>
 
     <section class="wallet-section">
       <div class="wallet-header">
@@ -554,5 +748,86 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   gap: 10px;
+}
+
+.checkin-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+  border: 1px solid rgba(224, 232, 255, 0.96);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fff7ed 0%, #fffaf3 60%, #ffffff 100%);
+  box-shadow: 0 10px 22px rgba(180, 130, 60, 0.08);
+}
+.checkin-card__info {
+  display: grid;
+  gap: 6px;
+}
+.checkin-card__info h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.checkin-card__info p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+.checkin-card__info p strong {
+  color: #d97706;
+}
+
+.transfer-form {
+  display: grid;
+  gap: 12px;
+}
+.transfer-form :deep(.el-input-number) {
+  width: 100%;
+}
+.transfer-preview {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(79, 140, 255, 0.06);
+  border: 1px dashed rgba(79, 140, 255, 0.3);
+  color: #475569;
+  font-size: 13px;
+}
+.transfer-preview strong {
+  color: #4f8cff;
+}
+
+.transfer-list {
+  display: grid;
+  gap: 10px;
+}
+.transfer-item {
+  padding: 14px 16px;
+  border: 1px solid var(--profile-card-border);
+  border-radius: 14px;
+  background: rgba(248, 251, 255, 0.8);
+}
+.transfer-item__main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.transfer-item__main strong {
+  color: var(--profile-text-main);
+  font-size: 14px;
+}
+.transfer-item__amount {
+  font-weight: 700;
+  font-size: 14px;
+}
+.transfer-in {
+  color: #16a34a;
+}
+.transfer-out {
+  color: #dc2626;
 }
 </style>
