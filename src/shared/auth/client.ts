@@ -33,6 +33,17 @@ export type GithubAuthUrlResp = {
 
 export type AuthPath = '/auth/login' | '/auth/register'
 
+function detectClientPlatform(): string {
+  if (typeof navigator === 'undefined') return 'web'
+  const ua = navigator.userAgent
+  if (/MicroMessenger/i.test(ua)) return 'wechat'
+  if (/windows/i.test(ua)) return 'web-windows'
+  if (/macintosh|Mac OS/i.test(ua)) return 'web-macos'
+  if (/android/i.test(ua)) return 'web-android'
+  if (/iphone|ipad|ipod/i.test(ua)) return 'web-ios'
+  return 'web'
+}
+
 type RequestJson = <T>(path: string, init: RequestInit, fallbackError?: string) => Promise<T>
 type RequestVoid = (path: string, init: RequestInit, fallbackError?: string) => Promise<void>
 type AuthHeaders = (token: string, headers?: HeadersInit) => Headers
@@ -72,6 +83,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'X-Client-Platform': detectClientPlatform(),
           },
           body: JSON.stringify({
             username,
@@ -177,6 +189,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
     agreementCode: string,
     agreementVersion: string,
     clientPlatform: string,
+    source = '',
   ): Promise<AgreementAcceptancePayload> {
     try {
       return await deps.requestJson<AgreementAcceptancePayload>(
@@ -190,6 +203,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
             agreement_code: agreementCode,
             agreement_version: agreementVersion,
             client_platform: clientPlatform,
+            source,
           }),
         },
         '协议留痕失败',

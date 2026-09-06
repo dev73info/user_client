@@ -49,13 +49,19 @@
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://73info.cn/resources/gardin233--35</loc>
-    <lastmod>2026-09-05</lastmod>
+    <loc>https://73info.cn/resources/gardin233--34</loc>
+    <lastmod>2026-09-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://73info.cn/resources/gardin233--34</loc>
+    <loc>https://73info.cn/resources/banchen21--9</loc>
+    <lastmod>2026-09-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://73info.cn/resources/gardin233--35</loc>
     <lastmod>2026-09-05</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -98,12 +104,6 @@
   </url>
   <url>
     <loc>https://73info.cn/resources/gardin233--26</loc>
-    <lastmod>2026-09-05</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://73info.cn/resources/banchen21--9</loc>
     <lastmod>2026-09-05</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>

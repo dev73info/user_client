@@ -99,6 +99,17 @@ export type WechatLoginQrStatusResp = {
   token?: string | null
 }
 
+export type WechatBindQrUrlResp = {
+  url: string
+  state: string
+}
+
+export type WechatBindQrStatusResp = {
+  done: boolean
+  success: boolean
+  error?: string | null
+}
+
 export async function getWechatLoginQrUrl(
   redirectTo: string,
 ): Promise<WechatLoginQrUrlResp> {
@@ -121,6 +132,29 @@ export async function getWechatLoginQrStatus(
   )
 }
 
+export async function getWechatBindQrUrl(
+  token: string,
+  redirectTo: string,
+): Promise<WechatBindQrUrlResp> {
+  const query = new URLSearchParams({ redirect_to: redirectTo })
+  return requestJson<WechatBindQrUrlResp>(
+    `/auth/wechat/bind/qr/url?${query.toString()}`,
+    { headers: authHeaders(token) },
+    '微信绑定暂不可用',
+  )
+}
+
+export async function getWechatBindQrStatus(
+  state: string,
+): Promise<WechatBindQrStatusResp> {
+  const query = new URLSearchParams({ state })
+  return requestJson<WechatBindQrStatusResp>(
+    `/auth/wechat/bind/qr/status?${query.toString()}`,
+    { headers: {} },
+    '查询微信绑定状态失败',
+  )
+}
+
 export async function getWechatPaymentAuthorizationStatus(
   token: string,
 ): Promise<WechatPaymentAuthorizationStatusResp> {
@@ -130,6 +164,22 @@ export async function getWechatPaymentAuthorizationStatus(
       headers: authHeaders(token),
     },
     '查询微信授权状态失败',
+  )
+}
+
+export type UserServiceAgreement = {
+  code: string
+  title: string
+  content: string
+  version: string
+  effective_at: string
+}
+
+export async function fetchUserServiceAgreement(): Promise<UserServiceAgreement> {
+  return requestJson<UserServiceAgreement>(
+    '/auth/user-service-agreement',
+    { headers: {} },
+    '加载用户服务协议失败',
   )
 }
 

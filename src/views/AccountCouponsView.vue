@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ArrowRight } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { apiUrl } from '@/api/http'
-import { getWechatBindAuthorizeUrl } from '@/api/auth'
+import { getWechatBindAuthorizeUrl, getWechatBindQrUrl } from '@/api/auth'
 import {
   getProfile,
   sendProfileEmailChangeCode,
@@ -20,6 +20,7 @@ import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import RealnameHero from '@/components/RealnameHero.vue'
 import RealnameView from '@/views/RealnameView.vue'
+import WechatBindQrModal from '@/components/WechatBindQrModal.vue'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -377,6 +378,13 @@ async function submitTwoFactorChange() {
   }
 }
 
+// PC 端扫码绑定：展示二维码并轮询绑定结果。
+const wechatBindQr = reactive({ visible: false, url: '', state: '' })
+
+function isWechatBrowser() {
+  return /MicroMessenger/i.test(navigator.userAgent)
+}
+
 async function openWechatBinding() {
   if (!auth.isAuthed) {
     showToast('请先登录后再绑定微信', 'error')
@@ -387,14 +395,44 @@ async function openWechatBinding() {
   }
   wechatBindingLoading.value = true
   try {
-    const { url } = await getWechatBindAuthorizeUrl(auth.token, window.location.href)
-    if (!url.trim()) {
-      throw new Error('微信授权地址为空')
+    // 微信内（移动端）：跳转服务号网页授权；PC 端：展示二维码扫码绑定。
+    if (isWechatBrowser()) {
+      const { url } = await getWechatBindAuthorizeUrl(auth.token, window.location.href)
+      if (!url.trim()) {
+        throw new Error('微信授权地址为空')
+      }
+      window.location.assign(url)
+      return
     }
-    window.location.assign(url)
+
+    const qr = await getWechatBindQrUrl(auth.token, window.location.href)
+    if (!qr.url.trim() || !qr.state.trim()) {
+      throw new Error('微信绑定二维码地址为空')
+    }
+    wechatBindQr.url = qr.url
+    wechatBindQr.state = qr.state
+    wechatBindQr.visible = true
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发起微信授权失败', 'error')
+    showToast(err instanceof Error ? err.message : '发起微信绑定失败', 'error')
+  } finally {
     wechatBindingLoading.value = false
+  }
+}
+
+function closeWechatBindQr() {
+  wechatBindQr.visible = false
+  wechatBindQr.url = ''
+  wechatBindQr.state = ''
+}
+
+async function handleWechatBound(result: { success: boolean; error?: string }) {
+  closeWechatBindQr()
+  if (result.success) {
+    wechatBound.value = true
+    showToast('微信绑定成功', 'success')
+    await auth.fetchProfile(true).catch(() => undefined)
+  } else {
+    showToast(`微信绑定失败：${result.error ?? '未完成'}`, 'error')
   }
 }
 
@@ -606,6 +644,14 @@ onMounted(async () => {
         </div>
       </div>
     </el-dialog>
+
+    <WechatBindQrModal
+      :visible="wechatBindQr.visible"
+      :url="wechatBindQr.url"
+      :state="wechatBindQr.state"
+      @close="closeWechatBindQr"
+      @bound="handleWechatBound"
+    />
   </main>
 </template>
 

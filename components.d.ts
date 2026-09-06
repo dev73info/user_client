@@ -58,6 +58,7 @@ declare module 'vue' {
     ShareStats: typeof import('./src/components/ShareStats.vue')['default']
     SupportChatWidget: typeof import('./src/components/SupportChatWidget.vue')['default']
     WechatAuthorizationModal: typeof import('./src/components/WechatAuthorizationModal.vue')['default']
+    WechatBindQrModal: typeof import('./src/components/WechatBindQrModal.vue')['default']
     WechatLoginQrModal: typeof import('./src/components/WechatLoginQrModal.vue')['default']
   }
   export interface GlobalDirectives {

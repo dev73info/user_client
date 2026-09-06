@@ -1,7 +1,31 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  fetchUserServiceAgreement,
+  recordAgreementAcceptance,
+  type UserServiceAgreement,
+} from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const auth = useAuthStore()
+const agreement = ref<UserServiceAgreement | null>(null)
+const loading = ref(true)
+
+const staticTitle = '用户服务协议'
+const staticLead = '欢迎使用柒叁信息 73Info 平台。请在注册或使用服务前完整阅读并理解本协议。'
+
+function detectClientPlatform(): string {
+  if (typeof navigator === 'undefined') return 'web'
+  const ua = navigator.userAgent
+  if (/MicroMessenger/i.test(ua)) return 'wechat'
+  if (/windows/i.test(ua)) return 'web-windows'
+  if (/macintosh|Mac OS/i.test(ua)) return 'web-macos'
+  if (/android/i.test(ua)) return 'web-android'
+  if (/iphone|ipad|ipod/i.test(ua)) return 'web-ios'
+  return 'web'
+}
 
 function goBack() {
     if (window.history.state?.back) {
@@ -11,6 +35,48 @@ function goBack() {
 
     router.push('/')
 }
+
+// 将 YYYY-MM-DD 统一为「YYYY年M月D日」，展示格式统一。
+function formatEffectiveDate(value: string): string {
+    const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(value.trim())
+    if (!match) return value
+    return `${match[1]}年${Number(match[2])}月${Number(match[3])}日`
+}
+
+async function loadAgreement() {
+    loading.value = true
+    try {
+        agreement.value = await fetchUserServiceAgreement()
+        // 已登录用户阅读协议时记录一次留痕（source=terms），非阻断。
+        if (agreement.value && auth.isAuthed) {
+            recordAgreementAcceptance(
+                auth.token,
+                agreement.value.code,
+                agreement.value.version,
+                detectClientPlatform(),
+                'terms',
+            ).catch(() => undefined)
+        }
+    } catch {
+        agreement.value = null
+    } finally {
+        loading.value = false
+    }
+}
+
+onMounted(loadAgreement)
+
+function splitLines(content: string): { text: string; isHeading: boolean }[] {
+    return content
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => ({
+            text: line,
+            // 章节标题：如「一、」「二、」等中文序号后带顿号/圆点，区别于「1. 」正文条目。
+            isHeading: /^第?[一二三四五六七八九十百]+[、.．]/.test(line),
+        }))
+}
 </script>
 
 <template>
@@ -18,56 +84,26 @@ function goBack() {
         <section class="panel">
             <header class="panel-head">
                 <div>
-                    <h2>用户服务协议</h2>
-                    <p class="lead">欢迎使用柒叁信息 73Info 平台。请在注册或使用服务前完整阅读并理解本协议。</p>
+                    <h2>{{ agreement?.title || staticTitle }}</h2>
+                    <p class="lead">{{ staticLead }}</p>
                 </div>
                 <button class="top-back" type="button" @click="goBack">返回</button>
             </header>
 
             <article class="content-block">
-                <p><strong>生效日期：</strong>2026年5月13日</p>
+                <template v-if="agreement">
+                    <p><strong>生效日期：</strong>{{ formatEffectiveDate(agreement.effective_at) }}</p>
 
-                <h3>1. 协议主体与适用范围</h3>
-                <p>本协议由柒叁信息 73Info 平台与平台注册用户共同订立，适用于账号注册、登录、需求发布、资源浏览、项目协作、合同签署、工单沟通、评价反馈等平台服务。</p>
-                <p>涉及依法需要取得备案、许可、审批或第三方资质后方可开展的功能，平台将在满足相应条件并完成页面公示后开放；具体以当前环境的支付页面、订单状态和平台公告为准。</p>
+                    <template v-for="(line, i) in splitLines(agreement.content)" :key="i">
+                        <h3 v-if="line.isHeading">{{ line.text }}</h3>
+                        <p v-else>{{ line.text }}</p>
+                    </template>
+                </template>
 
-                <h3>2. 服务性质与需求单类型</h3>
-                <p>平台当前主要提供信息发布、需求匹配、开发协作、合同留痕与工单沟通服务。平台不是项目成果的实际开发方，也不当然成为用户与开发者之间具体项目合同的一方。</p>
-                <p>平台需求单分为“无电签约定”和“电签担保”。生产环境已开放电签担保模式；测试环境或支付配置未就绪时，担保入口会按服务端状态关闭。</p>
-                <p>无电签约定需求中，需求方与开发者自行协商项目费用、支付方式、发票、交付与售后安排。平台可提供沟通记录、合同签署、状态流转和工单协助，但不承诺对双方自行约定的付款、退款、履约结果或收益进行担保。</p>
-
-                <h3>3. 账户、实名认证与签署</h3>
-                <p>您应提供真实、准确、完整的信息完成注册，并妥善保管账号、密码、验证码及第三方登录授权。通过您账号完成的操作，除有相反证据外，视为您本人行为。</p>
-                <p>部分服务可能要求实名认证。您提交的实名姓名、证件信息、企业信息、邮箱、手写签名及合同确认记录，将用于身份核验、合同签署、履约证据留存和争议沟通。</p>
-                <p>您在平台点击确认、勾选同意、提交手写签名或继续使用服务，可能形成相应的电子记录。平台会保存合同正文、签署时间、签署账号、实名信息、内容指纹和签名指纹作为履约证据。</p>
-
-                <h3>4. 需求发布与内容规范</h3>
-                <p>您发布的需求应合法、真实、清晰，并确保有权提交相关资料。不得发布违法违规、侵权、虚假、误导、涉密、恶意引流、诱导违规交易或损害他人权益的内容。</p>
-                <p>平台有权基于法律法规、平台规则、投诉举报或风控需要，对需求、资源、评论、账号或沟通内容采取驳回、隐藏、下线、限制功能、冻结账号等措施。</p>
-
-                <h3>5. 支付、费用与退款</h3>
-                <p>无电签约定需求下，平台不作为项目款项收取方、保管方或结算方。双方自行发生的付款、退款、发票、税费及收款账户风险，由双方按照约定和法律规定自行承担。</p>
-                <p>电签担保、平台服务费、保证金、充值、提现及其他支付功能，以具体页面展示的金额、用途、规则和《支付与退款说明》为准，并通过平台指定的第三方支付渠道处理。平台不会要求您以平台担保、托管或保证金名义向私人账户转账。</p>
-
-                <h3>6. 交付、验收与争议沟通</h3>
-                <p>开发者交付后，需求方应按约定标准及时验收并反馈。双方应基于事实沟通变更、延期、返工、取消、退款或售后安排，不得恶意拖延、虚假投诉或滥用工单机制。</p>
-                <p>平台可根据双方提交的记录提供协助沟通、证据留存和规则解释，但不替代司法、仲裁、行政机关或专业鉴定机构作出最终法律认定。</p>
-
-                <h3>7. 知识产权与保密</h3>
-                <p>您依法享有对原始资料和合法内容的权利。项目成果、源代码、文档、设计稿、数据、商业信息等权利归属，以双方订单、合同或补充约定为准；没有约定的，按法律规定处理。</p>
-                <p>任何一方不得未经授权披露、复制、出售或用于项目以外目的使用对方的资料、源码、账号、密钥、隐私信息或商业秘密。</p>
-
-                <h3>8. 禁止行为与违约处理</h3>
-                <p>您不得冒用身份、虚假宣传、刷单刷评、攻击系统、绕过风控、发布违法内容、诱导他人相信平台已提供担保或托管服务，或以平台名义收取任何费用。</p>
-                <p>如您违反法律法规、本协议或平台规则，平台可视情节采取提醒、删除内容、限制功能、暂停服务、冻结账号、终止服务、保存证据并依法追责等措施；造成他方损失的，您应依法承担责任。</p>
-
-                <h3>9. 责任边界</h3>
-                <p>平台会尽合理努力维护服务连续性与数据安全，但因不可抗力、基础运营商故障、第三方服务异常、支付渠道处理、用户自身原因或双方线下约定产生的损失，平台在法律允许范围内承担相应责任。</p>
-                <p>平台页面、消息、状态和规则说明用于辅助协作，不构成对项目收益、交易成功、交付质量、退款结果或任何行政许可状态的保证。</p>
-
-                <h3>10. 协议更新与争议解决</h3>
-                <p>平台可根据业务调整、合规要求或产品变化更新本协议，并通过页面展示、站内通知或其他合理方式提示。更新后继续使用平台服务，即视为接受更新内容。</p>
-                <p>本协议适用中华人民共和国法律。因本协议产生争议，双方应先协商解决；协商不成的，提交平台所在地有管辖权人民法院处理。</p>
+                <template v-else>
+                    <p>{{ loading ? '协议内容加载中…' : '协议内容暂时无法获取，请稍后重试。' }}</p>
+                    <button v-if="!loading" type="button" class="top-back" @click="loadAgreement">重新加载</button>
+                </template>
             </article>
         </section>
     </main>
