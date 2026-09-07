@@ -5,6 +5,7 @@ import {
   type AuthPayload,
   isTwoFactorRequiredPayload,
   refreshToken as refreshTokenApi,
+  requestDevRole,
   resetPassword,
   sendRegisterEmailCode as sendRegisterEmailCodeApi,
   sendResetPasswordEmailCode as sendResetPasswordEmailCodeApi,
@@ -19,11 +20,11 @@ import {
   type AuthProfile,
 } from '@/shared/auth/session'
 import {
-  getTokenExpMs,
+  AUTH_TOKEN_STORAGE_KEY,
+  clearObsoleteAuthTokenStorage,
+} from '@/shared/auth/storage'
+import {
   isTokenExpired,
-  MIN_REFRESH_DELAY_MS,
-  REFRESH_BEFORE_EXPIRY_MS,
-  RETRY_AFTER_FAILURE_MS,
 } from '@/shared/auth/token'
 import { createTokenRefreshController } from '@/shared/auth/tokenLifecycle'
 
@@ -31,8 +32,6 @@ export type LoginResult = {
   requiresTwoFactor: boolean
   username?: string
 }
-
-const TOKEN_KEY = 'auth_token_73hub'
 
 function isAuthRejected(error: unknown): boolean {
   return error instanceof HttpError && (error.status === 401 || error.status === 403)
@@ -46,8 +45,11 @@ export const useAuthStore = defineStore('auth', () => {
   const profileLoaded = ref(false)
   const hydrated = ref(false)
   const profileRequest = ref<Promise<AuthProfile> | null>(null)
+  const devAccessError = ref('')
+  const developerAgreementRequired = ref(false)
 
   const isAuthed = computed(() => token.value.length > 0)
+  const isDev = computed(() => role.value === 'dev' || role.value === 'super_admin')
   const profileState = {
     username,
     role,
@@ -58,7 +60,11 @@ export const useAuthStore = defineStore('auth', () => {
   const tokenLifecycle = createTokenRefreshController({
     getToken: () => token.value,
     refreshToken: refreshTokenApi,
-    applyRefreshedToken: (payload) => applyAuthPayload(payload, true),
+    applyRefreshedToken: (payload, sourceToken) => {
+      if (token.value === sourceToken) {
+        applyAuthPayload(payload, true)
+      }
+    },
     logout,
     isAuthRejected,
   })
@@ -83,7 +89,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     hydrated.value = true
-    const saved = localStorage.getItem(TOKEN_KEY)
+    clearObsoleteAuthTokenStorage()
+    const saved = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)
     if (!saved) {
       resetAuthState()
       clearPersistedAuthProfile()
@@ -108,7 +115,8 @@ export const useAuthStore = defineStore('auth', () => {
         { token: newToken, username: username.value, role: role.value },
         (nextToken) => {
           token.value = nextToken
-          localStorage.setItem(TOKEN_KEY, nextToken)
+          localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, nextToken)
+          clearObsoleteAuthTokenStorage()
           tokenLifecycle.schedule(nextToken)
           tokenLifecycle.setupVisibility()
         },
@@ -116,7 +124,8 @@ export const useAuthStore = defineStore('auth', () => {
       )
       return
     }
-    localStorage.setItem(TOKEN_KEY, newToken)
+    localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, newToken)
+    clearObsoleteAuthTokenStorage()
     tokenLifecycle.schedule(newToken)
     tokenLifecycle.setupVisibility()
   }
@@ -131,7 +140,11 @@ export const useAuthStore = defineStore('auth', () => {
       force,
       state: profileState,
       loadProfile: async () => {
-        const payload = await refreshTokenApi(token.value)
+        const sourceToken = token.value
+        const payload = await refreshTokenApi(sourceToken)
+        if (token.value !== sourceToken) {
+          throw new Error('会话已更新')
+        }
         persist(payload.token, true)
 
         if (payload.username && payload.role) {
@@ -154,13 +167,43 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       // 始终向服务端校验最新角色，避免复用本地持久化的过期角色（例如开发者权限已被收回）。
-      return await fetchProfile(true)
+      return await fetchProfile(force)
     } catch (error) {
       if (isTokenExpired(token.value) || isAuthRejected(error)) {
         logout()
       }
       throw error
     }
+  }
+
+  async function ensureDevAccess(): Promise<boolean> {
+    devAccessError.value = ''
+    developerAgreementRequired.value = false
+    if (!token.value) {
+      return false
+    }
+
+    if (!profileLoaded.value) {
+      await fetchProfile()
+    }
+
+    if (!isDev.value) {
+      try {
+        await requestDevRole(token.value)
+        await fetchProfile(true)
+      } catch (error) {
+        devAccessError.value = error instanceof Error ? error.message : '开发者权限申请失败'
+        developerAgreementRequired.value =
+          error instanceof HttpError &&
+          error.status === 403 &&
+          error.message.includes('开发者协议')
+        if (error instanceof HttpError && error.status === 403) {
+          return false
+        }
+      }
+    }
+
+    return isDev.value
   }
 
   async function login(
@@ -273,9 +316,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   function logout() {
     hydrated.value = true
+    devAccessError.value = ''
+    developerAgreementRequired.value = false
     resetAuthState()
     clearPersistedAuthProfile()
-    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
+    clearObsoleteAuthTokenStorage()
   }
 
   function setToken(newToken: string) {
@@ -291,10 +337,14 @@ export const useAuthStore = defineStore('auth', () => {
     profileLoaded,
     hydrated,
     isAuthed,
+    isDev,
+    devAccessError,
+    developerAgreementRequired,
     authHeaders,
     hydrate,
     fetchProfile,
     initializeSession,
+    ensureDevAccess,
     login,
     register,
     sendRegisterEmailCode,

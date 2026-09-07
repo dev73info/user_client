@@ -10,7 +10,7 @@ import {
   createMcResourceVersion,
   updateMcResourceHomepage,
   type McResourcePayload,
-} from '@dev/api/mcResources'
+} from '@/api/mcResources'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'

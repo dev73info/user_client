@@ -416,6 +416,89 @@
   flex: 0 0 auto;
 }
 
+.auth-login-methods {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.auth-login-divider {
+  display: flex;
+  align-items: center;
+  flex: 0 0 100%;
+  width: 100%;
+  gap: 16px;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.auth-login-divider::before,
+.auth-login-divider::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: rgba(226, 232, 240, 0.9);
+}
+
+.auth-login-methods .auth-btn {
+  flex: 1 1 140px;
+}
+
+.auth-login-method {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+}
+
+.auth-login-method__icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.auth-qq-login .auth-login-method__icon {
+  object-fit: contain;
+}
+
+.auth-login-methods .auth-qq-login {
+  border: 1px solid #28a8df;
+  color: #fff;
+  background: #28a8df;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+
+.auth-login-methods .auth-qq-login:hover:not(:disabled) {
+  border-color: #1594c9;
+  background: #1594c9;
+  box-shadow: 0 8px 18px rgba(40, 168, 223, 0.24);
+  transform: translateY(-1px);
+}
+
+.auth-login-methods .auth-qq-login:disabled {
+  cursor: not-allowed;
+  border-color: #b8dce9;
+  color: rgba(255, 255, 255, 0.9);
+  background: #b8dce9;
+}
+
+.auth-qq-login:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 4px;
+}
+
 @media (max-width: 640px) {
   .auth-modal-wrap,
   .modal-wrap {
@@ -461,6 +544,14 @@
 
   .auth-modal-actions .auth-btn {
     flex: 1 1 auto;
+  }
+
+  .auth-login-methods .auth-btn {
+    flex-basis: 100%;
+  }
+
+  .auth-login-methods .auth-qq-login {
+    margin-inline: auto;
   }
 }
 

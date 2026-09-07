@@ -9,7 +9,7 @@ import {
 export type TokenRefreshControllerOptions<TokenPayload> = {
   getToken: () => string
   refreshToken: (token: string) => Promise<TokenPayload>
-  applyRefreshedToken: (payload: TokenPayload) => void
+  applyRefreshedToken: (payload: TokenPayload, sourceToken: string) => void
   logout: () => void
   isAuthRejected?: (error: unknown) => boolean
   retryOnVisibilityFailure?: boolean
@@ -48,8 +48,10 @@ export function createTokenRefreshController<TokenPayload>(
 
       try {
         const payload = await options.refreshToken(activeToken)
-        options.applyRefreshedToken(payload)
+        if (options.getToken() !== activeToken) return
+        options.applyRefreshedToken(payload, activeToken)
       } catch (error) {
+        if (options.getToken() !== activeToken) return
         if (shouldLogout(error, activeToken)) {
           options.logout()
           return
@@ -77,9 +79,11 @@ export function createTokenRefreshController<TokenPayload>(
         clear()
         void options.refreshToken(token)
           .then((payload) => {
-            options.applyRefreshedToken(payload)
+            if (options.getToken() !== token) return
+            options.applyRefreshedToken(payload, token)
           })
           .catch((error) => {
+            if (options.getToken() !== token) return
             if (shouldLogout(error, token)) {
               options.logout()
             } else if (options.retryOnVisibilityFailure !== false) {

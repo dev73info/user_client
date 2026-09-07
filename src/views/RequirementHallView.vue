@@ -128,6 +128,17 @@ watch(
   },
 )
 
+watch(
+  () => route.query.modal,
+  (value) => {
+    if (value === 'publish' && !publishVisible.value) {
+      resetPublishForm()
+      publishVisible.value = true
+    }
+  },
+  { immediate: true },
+)
+
 onMounted(() => {
   setSeoMeta({
     title: '需求大厅 - 73Info 柒叁信息',
@@ -165,18 +176,26 @@ function routeRequirementId(): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function publishRedirectTarget() {
+  return router.resolve({
+    name: 'requirement-hall',
+    query: { ...route.query, modal: 'publish' },
+  }).fullPath
+}
+
 function openAuthLogin() {
   void router.push({
     name: 'home',
     query: {
       modal: 'auth',
       mode: 'login',
-      redirect_to: route.fullPath || '/requirement-hall',
+      redirect_to: publishRedirectTarget(),
     },
   })
 }
 
 async function ensurePublishRealnameApproved() {
+  const redirectTarget = publishRedirectTarget()
   auth.hydrate()
   if (!auth.isAuthed) {
     showToast('发布需求前请先登录', 'info')
@@ -198,7 +217,7 @@ async function ensurePublishRealnameApproved() {
     showToast('实名认证未通过，请重新提交后再发布需求', 'warning')
     void router.push({
       name: 'workbench-realname',
-      query: { redirect_to: route.fullPath || '/requirement-hall' },
+      query: { redirect_to: redirectTarget },
     })
     return false
   } catch (err) {
@@ -206,7 +225,7 @@ async function ensurePublishRealnameApproved() {
       showToast('发布需求前请先完成实名认证', 'warning')
       void router.push({
         name: 'workbench-realname',
-        query: { redirect_to: route.fullPath || '/requirement-hall' },
+        query: { redirect_to: redirectTarget },
       })
       return false
     }
@@ -235,6 +254,16 @@ async function openPublishModal() {
   publishVisible.value = true
 }
 
+function clearPublishModalQuery() {
+  if (route.query.modal !== 'publish') {
+    return
+  }
+
+  const nextQuery = { ...route.query }
+  delete nextQuery.modal
+  void router.replace({ query: nextQuery })
+}
+
 function closePublishModal() {
   if (publishLoading.value) {
     return
@@ -242,6 +271,7 @@ function closePublishModal() {
 
   publishVisible.value = false
   resetPublishForm()
+  clearPublishModalQuery()
 }
 
 function openRequirementDetail(item: PublicRequirementSpotlightItem) {
@@ -379,6 +409,7 @@ async function submitPublishRequirement() {
     showToast('需求已发布，等待审核', 'success')
     publishVisible.value = false
     resetPublishForm()
+    clearPublishModalQuery()
     publishModalRef.value?.clearDraft()
     await loadHallData()
   } catch (err) {

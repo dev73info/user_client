@@ -17,6 +17,57 @@ const auth = useAuthStore()
 
 const requirementId = String(route.query.requirement_id ?? '')
 const isDeveloperAgreement = route.query.agreement === 'developer'
+const DEVELOPER_AGREEMENT_REDIRECT_KEY = '73info_developer_agreement_redirect'
+
+function normalizeRedirectTarget(value: unknown): string {
+    const raw = typeof value === 'string' ? value.trim() : ''
+    if (!raw || !raw.startsWith('/') || raw.startsWith('//')) {
+        return ''
+    }
+    return raw
+}
+
+const redirectTarget = computed(() => {
+    const queryTarget = normalizeRedirectTarget(route.query.redirect_to)
+    if (queryTarget) {
+        return queryTarget
+    }
+
+    if (typeof window === 'undefined') {
+        return ''
+    }
+
+    try {
+        return normalizeRedirectTarget(window.sessionStorage.getItem(DEVELOPER_AGREEMENT_REDIRECT_KEY))
+    } catch {
+        return ''
+    }
+})
+
+function rememberRedirectTarget() {
+    const target = normalizeRedirectTarget(route.query.redirect_to)
+    if (!target || typeof window === 'undefined') {
+        return
+    }
+
+    try {
+        window.sessionStorage.setItem(DEVELOPER_AGREEMENT_REDIRECT_KEY, target)
+    } catch {
+        // sessionStorage 不可用时仍可依赖当前路由参数完成回跳。
+    }
+}
+
+function clearRememberedRedirectTarget() {
+    if (typeof window === 'undefined') {
+        return
+    }
+
+    try {
+        window.sessionStorage.removeItem(DEVELOPER_AGREEMENT_REDIRECT_KEY)
+    } catch {
+        // sessionStorage 不可用时忽略清理。
+    }
+}
 
 const loading = ref(true)
 const signing = ref(false)
@@ -167,6 +218,16 @@ async function loadContract() {
     }
 }
 
+function continueAfterDeveloperAgreement() {
+    if (!isDeveloperAgreement || contract.value?.status !== 'signed') {
+        return
+    }
+
+    const target = redirectTarget.value || { name: 'dev-plugins' }
+    clearRememberedRedirectTarget()
+    void router.replace(target)
+}
+
 async function handleSign() {
     if (!contract.value || signing.value) return
     if (!accepted.value) {
@@ -188,6 +249,7 @@ async function handleSign() {
         }
         successMsg.value = '已发起签署，请稍后刷新查看签署状态'
         await loadContract()
+        continueAfterDeveloperAgreement()
     } catch (err) {
         error.value = err instanceof Error ? err.message : '发起签署失败，请稍后重试'
     } finally {
@@ -221,7 +283,9 @@ function goBecomeDeveloper() {
     // ⚠️ 不能直接跳 /workbench#developer-overview：它只匹配 workbench 路由，
     //    不会触发 dev 守卫，开发者角色申请不会执行，前端 profile 会停留在旧角色。
     // ⚠️ 也不能跳 dev-overview（开发概览）：该页面已废弃，开发者入口应指向资源初始化。
-    void router.push({ name: 'dev-plugins' })
+    const target = redirectTarget.value || { name: 'dev-plugins' }
+    clearRememberedRedirectTarget()
+    void router.replace(target)
 }
 
 onMounted(async () => {
@@ -230,10 +294,12 @@ onMounted(async () => {
         router.replace('/')
         return
     }
+    rememberRedirectTarget()
     if (auth.token) {
         await auth.initializeSession().catch(() => undefined)
     }
-    void loadContract()
+    await loadContract()
+    continueAfterDeveloperAgreement()
 })
 </script>
 

@@ -5,9 +5,9 @@ import {
   getDevWithdrawalSummary,
   type DevWithdrawalRecord,
   type DevWithdrawalSummary,
-} from '@dev/api/wallet'
-import { useToast } from '@dev/composables/useToast'
-import { useAuthStore } from '@dev/stores/auth'
+} from '@/api/devWallet'
+import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 const { showToast } = useToast()

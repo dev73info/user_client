@@ -94,7 +94,7 @@ export default defineConfig({
             return 'dev-tools'
           }
 
-          if (normalizedId.includes('/src/dev/views/')) {
+          if (normalizedId.includes('/src/views/Dev')) {
             if (normalizedId.includes('DevResource')) {
               return 'dev-resources'
             }
@@ -151,7 +151,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@dev': fileURLToPath(new URL('./src/dev', import.meta.url)),
     },
   },
   optimizeDeps: {

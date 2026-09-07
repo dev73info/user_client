@@ -17,16 +17,16 @@ import {
   listRequirementConversations,
   type RequirementConversation,
   type RequirementConversationDetail,
-} from '@dev/api/conversations'
+} from '@/api/conversations'
 import {
   listMyRequirements,
   requestUnbindRequirement,
   respondUnbindRequirement,
   type RequirementItem,
-} from '@dev/api/requirements'
-import { fetchContractSigningStatus, type ContractSigningStatus } from '@dev/api/contracts'
-import { useToast } from '@dev/composables/useToast'
-import { useAuthStore } from '@dev/stores/auth'
+} from '@/api/devRequirements'
+import { fetchDevContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
+import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 
 const auth = useAuthStore()
@@ -90,7 +90,7 @@ async function loadMyRequirements() {
     const [statusEntries] = await Promise.all([
       Promise.allSettled(
         guaranteedRows.map((item) =>
-          fetchContractSigningStatus(auth.token!, item.requirement_id).then((s) => ({ id: item.requirement_id, s })),
+          fetchDevContractSigningStatus(auth.token!, item.requirement_id).then((s) => ({ id: item.requirement_id, s })),
         ),
       ),
       loadRequirementConversations(),

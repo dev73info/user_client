@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowDown, Plus } from '@element-plus/icons-vue'
 
-import { apiUrl } from '@dev/api/http'
+import { apiUrl } from '@/api/http'
 import {
   getProcessedTagTree,
   getResourceDetailSlug,
@@ -15,9 +15,9 @@ import {
   listMcResources,
   updateMcResourceHomepage,
   type McResourcePayload,
-} from '@dev/api/mcResources'
-import { useToast } from '@dev/composables/useToast'
-import { useAuthStore } from '@dev/stores/auth'
+} from '@/api/mcResources'
+import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 import { useResourceVersionDraft } from '@/composables/useResourceVersionDraft'
 import {
   canDeleteResource,

@@ -1,5 +1,5 @@
 import type { RouteLocationRaw, RouteRecordRaw, Router } from 'vue-router'
-import { useAuthStore } from '@dev/stores/auth'
+import { useAuthStore } from '@/stores/auth'
 import { getMyRealnameVerification } from '@/api/realname'
 import { HttpError } from '@/api/http'
 import { DEV_PORTAL_URL, buildUnifiedAuthUrl } from '@/config/runtime'
@@ -39,7 +39,7 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
   {
     path: 'developer/wallet/overview',
     name: 'dev-wallet',
-    component: () => import('@dev/views/DevWalletView.vue'),
+    component: () => import('@/views/DevWalletView.vue'),
     meta: {
       title: '钱包 / 我的余额',
       description: '查看开发者余额、保证金和结算信息。',
@@ -50,7 +50,7 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
   {
     path: 'developer/wallet/releases',
     name: 'dev-wallet-releases',
-    component: () => import('@dev/views/DevReleasesView.vue'),
+    component: () => import('@/views/DevReleasesView.vue'),
     meta: {
       title: '钱包 / 交付记录',
       description: '查看资源版本交付与收入记录。',
@@ -61,7 +61,7 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
   {
     path: 'developer/wallet/withdrawals',
     name: 'dev-wallet-withdrawals',
-    component: () => import('@dev/views/DevWithdrawalRecordsView.vue'),
+    component: () => import('@/views/DevWithdrawalRecordsView.vue'),
     meta: {
       title: '钱包 / 提现记录',
       description: '查看开发者提现申请和处理状态。',
@@ -76,7 +76,7 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
   {
     path: 'developer/resources/plugins-init',
     name: 'dev-plugins',
-    component: () => import('@dev/views/DevResourceInitView.vue'),
+    component: () => import('@/views/DevResourceInitView.vue'),
     meta: {
       title: '创建资源',
       description: '创建插件、工具或服务资源并提交审核。',
@@ -88,7 +88,7 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
   {
     path: 'developer/resources/list',
     name: 'dev-resource-list',
-    component: () => import('@dev/views/DevResourceListView.vue'),
+    component: () => import('@/views/DevResourceListView.vue'),
     meta: {
       title: '资源管理 / 资源列表',
       description: '管理已创建资源、主页和版本。',
@@ -100,7 +100,7 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
   {
     path: 'developer/resources/:resourceId/homepage',
     name: 'dev-resource-homepage-edit',
-    component: () => import('@dev/views/DevResourceHomepageEditView.vue'),
+    component: () => import('@/views/DevResourceHomepageEditView.vue'),
     meta: {
       title: '资源管理 / 编辑资源主页',
       description: '维护资源介绍、展示内容和发布信息。',
@@ -112,7 +112,7 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
   {
     path: 'developer/resources/:resourceId/versions',
     name: 'dev-resource-versions',
-    component: () => import('@dev/views/DevResourceVersionsView.vue'),
+    component: () => import('@/views/DevResourceVersionsView.vue'),
     meta: {
       title: '资源管理 / 版本管理',
       description: '维护资源版本、文件和交付状态。',
@@ -128,7 +128,7 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
   {
     path: 'developer/requirements/hall',
     name: 'dev-requirement-hall',
-    component: () => import('@dev/views/DevRequirementHallView.vue'),
+    component: () => import('@/views/DevRequirementHallView.vue'),
     meta: {
       title: '需求大厅 / 资源关联',
       description: '浏览可接需求并绑定开发资源。',
@@ -140,7 +140,7 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
   {
     path: 'developer/requirements/hall/:requirementId',
     name: 'dev-requirement-detail',
-    component: () => import('@dev/views/DevRequirementDetailView.vue'),
+    component: () => import('@/views/DevRequirementDetailView.vue'),
     meta: {
       title: '需求大厅 / 接取需求',
       description: '查看需求单详情并关联或初始化开发资源。',
@@ -152,7 +152,7 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
   {
     path: 'developer/requirements/my',
     name: 'dev-my-requirements',
-    component: () => import('@dev/views/DevMyRequirementsView.vue'),
+    component: () => import('@/views/DevMyRequirementsView.vue'),
     meta: {
       title: '需求大厅 / 我的需求单',
       description: '查看已关联需求、签署状态和沟通会话。',
@@ -168,7 +168,7 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
   {
     path: 'developer/no-access',
     name: 'dev-no-access',
-    component: () => import('@dev/views/DevNoAccessView.vue'),
+    component: () => import('@/views/DevNoAccessView.vue'),
     meta: {
       title: '开发者权限',
       description: '当前账号还没有开发者访问权限。',
@@ -253,7 +253,7 @@ export const devRoutes: RouteRecordRaw[] = [
   {
     path: '/dev/developer-agreement',
     name: 'developer-agreement',
-    component: () => import('@dev/views/DeveloperAgreementView.vue'),
+    component: () => import('@/views/DeveloperAgreementView.vue'),
     meta: {
       title: '开发者入驻协议',
     },
@@ -276,17 +276,13 @@ export function installDevRouteGuard(router: Router) {
     const auth = useAuthStore()
     auth.hydrate()
 
-    // 在 hash 路由模式下，跨站传入的 `?sso_token=...`/`?oauth_*=...` 位于 `#` 之前，
+    // 在 hash 路由模式下，跨站传入的 `?oauth_*=...` 位于 `#` 之前，
     // 不会出现在 `to.query` 中，需要额外从 window.location.search 取一次。
     const searchParams =
       typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
-    const ssoTokenFromSearch = (searchParams?.get('sso_token') ?? '').trim()
     const oauthTokenFromSearch = (searchParams?.get('oauth_token') ?? '').trim()
     const oauthErrorFromSearch = (searchParams?.get('oauth_error') ?? '').trim()
 
-    const ssoToken =
-      (typeof to.query.sso_token === 'string' ? to.query.sso_token.trim() : '') ||
-      ssoTokenFromSearch
     const oauthToken =
       (typeof to.query.oauth_token === 'string' ? to.query.oauth_token.trim() : '') ||
       oauthTokenFromSearch
@@ -295,18 +291,11 @@ export function installDevRouteGuard(router: Router) {
       oauthErrorFromSearch
 
     if (
-      (ssoTokenFromSearch || oauthTokenFromSearch || oauthErrorFromSearch) &&
+      (oauthTokenFromSearch || oauthErrorFromSearch) &&
       typeof window !== 'undefined' &&
       window.location.search
     ) {
       window.history.replaceState({}, '', `${window.location.pathname}${window.location.hash}`)
-    }
-
-    if (ssoToken) {
-      auth.setToken(ssoToken)
-      const nextQuery = { ...to.query }
-      delete nextQuery.sso_token
-      return { path: to.path, query: nextQuery, replace: true }
     }
 
     if (oauthToken) {
@@ -339,21 +328,6 @@ export function installDevRouteGuard(router: Router) {
       return buildUnifiedAuthUrl('login', to.fullPath || DEV_PORTAL_URL)
     }
 
-    if (auth.isAuthed && !publicPaths.has(to.path) && to.meta.requiresDevAccess) {
-      try {
-        const hasAccess = await auth.ensureDevAccess()
-        if (!hasAccess) {
-          if (to.name !== 'dev-no-access') {
-            return { name: 'dev-no-access', replace: true }
-          }
-          return true
-        }
-      } catch {
-        // 身份校验接口异常时保留登录态，避免误登出
-        return false
-      }
-    }
-
     if (auth.isAuthed && !publicPaths.has(to.path) && to.meta.requiresRealname) {
       try {
         const verification = await getMyRealnameVerification(auth.token)
@@ -376,9 +350,44 @@ export function installDevRouteGuard(router: Router) {
       }
     }
 
+    if (auth.isAuthed && !publicPaths.has(to.path) && to.meta.requiresDevAccess) {
+      try {
+        const hasAccess = await auth.ensureDevAccess()
+        if (!hasAccess) {
+          if (auth.developerAgreementRequired) {
+            return {
+              name: 'contract-sign',
+              query: {
+                agreement: 'developer',
+                redirect_to: to.fullPath,
+              },
+              replace: true,
+            }
+          }
+          if (to.name !== 'dev-no-access') {
+            return { name: 'dev-no-access', replace: true }
+          }
+          return true
+        }
+      } catch {
+        // 身份校验接口异常时保留登录态，避免误登出
+        return false
+      }
+    }
+
     if (auth.isAuthed && to.path === '/dev/login') {
       try {
         const hasAccess = await auth.ensureDevAccess()
+        if (!hasAccess && auth.developerAgreementRequired) {
+          return {
+            name: 'contract-sign',
+            query: {
+              agreement: 'developer',
+              redirect_to: DEV_PORTAL_URL,
+            },
+            replace: true,
+          }
+        }
         return { name: hasAccess ? 'dev-plugins' : 'dev-no-access', replace: true }
       } catch {
         // 登录页下校验异常时不强制登出，保持当前页即可

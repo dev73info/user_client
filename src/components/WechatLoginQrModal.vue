@@ -28,14 +28,25 @@ function stopPolling() {
   }
 }
 
-async function checkLogin() {
-  if (!props.visible || !props.state || polling.value) {
+async function checkLogin(expectedGeneration = generation, expectedState = props.state) {
+  if (
+    !props.visible ||
+    !expectedState ||
+    expectedGeneration !== generation ||
+    props.state !== expectedState ||
+    polling.value
+  ) {
     return
   }
   polling.value = true
   try {
-    const result = await getWechatLoginQrStatus(props.state)
-    if (result.token) {
+    const result = await getWechatLoginQrStatus(expectedState)
+    if (
+      result.token &&
+      props.visible &&
+      expectedGeneration === generation &&
+      props.state === expectedState
+    ) {
       stopPolling()
       emit('logged-in', result.token)
     }
@@ -48,6 +59,7 @@ async function checkLogin() {
 
 async function prepare() {
   const currentGeneration = ++generation
+  const expectedState = props.state
   stopPolling()
   qrDataUrl.value = ''
   qrError.value = ''
@@ -73,13 +85,13 @@ async function prepare() {
     return
   }
 
-  await checkLogin()
+  await checkLogin(currentGeneration, expectedState)
   if (currentGeneration !== generation || !props.visible) {
     return
   }
 
   pollTimer = setInterval(() => {
-    void checkLogin()
+    void checkLogin(currentGeneration, expectedState)
   }, 2000)
 }
 

@@ -9,7 +9,7 @@ import {
   uploadMcResourceCover,
   type McResourcePayload,
   type CreateMcResourceTagSelection,
-} from '@dev/api/mcResources'
+} from '@/api/mcResources'
 import {
   getProcessedTagTree,
   invalidateTagTreeCache,
@@ -17,9 +17,9 @@ import {
   type McTagCatalogEntry,
   type McTagCatalogRoot,
   type McProcessedTagTree,
-} from '@dev/api/Tags'
-import { useToast } from '@dev/composables/useToast'
-import { useAuthStore } from '@dev/stores/auth'
+} from '@/api/resourceTags'
+import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 import { listMyTeams, type TeamResponse } from '@/api/team'
 
 const auth = useAuthStore()

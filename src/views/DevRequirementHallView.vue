@@ -10,17 +10,17 @@ import {
   type McPublishTagGroup,
   type McTagCatalogEntry,
   type McTagCatalogRoot,
-} from '@dev/api/Tags'
-import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@dev/api/devOrderDeposit'
-import { getDevCreditSelf, type DevCreditSelf } from '@dev/api/devCredit'
-import { createMcResource, type McResourcePayload } from '@dev/api/mcResources'
+} from '@/api/resourceTags'
+import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@/api/devOrderDeposit'
+import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
+import { createMcResource, type McResourcePayload } from '@/api/mcResources'
 import {
   bindRequirementProject,
   listRequirementHall,
   type RequirementItem,
-} from '@dev/api/requirements'
-import { useToast } from '@dev/composables/useToast'
-import { useAuthStore } from '@dev/stores/auth'
+} from '@/api/devRequirements'
+import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 import {
   requirementRichTextPreview,
   sanitizeRequirementRichText,

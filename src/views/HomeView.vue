@@ -13,6 +13,7 @@ import {
   isWechatPaymentAuthorizationRequired,
 } from '@/api/auth'
 import AuthModal from '@/components/AuthModal.vue'
+import QqLoginQrModal from '@/components/QqLoginQrModal.vue'
 import WechatLoginQrModal from '@/components/WechatLoginQrModal.vue'
 import PublishModal from '@/components/PublishModal.vue'
 import DepositModal from '@/components/DepositModal.vue'
@@ -31,7 +32,6 @@ import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import { HttpError, apiUrl } from '@/api/http'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import { getMyRealnameVerification } from '@/api/realname'
-import { requestDevRole } from '@/dev/api/auth'
 import {
   createAdapayPayment,
   getAdapayPayment,
@@ -250,14 +250,20 @@ const {
   sendCodeCountdown,
   githubLoading,
   wechatLoginLoading,
+  qqLoginLoading,
   githubAvailable,
   wechatAvailable,
+  qqAvailable,
   resetAuthForm,
   loginWithGithub,
   loginWithWechat,
   wechatQrLogin,
   closeWechatQrLogin,
   handleWechatQrToken,
+  loginWithQq,
+  qqQrLogin,
+  closeQqQrLogin,
+  handleQqQrToken,
   sendAuthCode: sendAuthCodeAction,
   submitAuth: submitAuthAction,
 } = useAuthForm(routeAuthMode)
@@ -454,58 +460,17 @@ const workflowSteps: WorkflowStep[] = [
 ]
 
 async function openDevWorkbench() {
-  // 已成为开发者：进入需求大厅开始接单。
   if (isDeveloperAccount.value) {
     void router.push({ name: 'dev-requirement-hall' })
     return
   }
 
-  // 未登录：先去登录
   if (!auth.isAuthed) {
     void router.push(buildDevPortalUrl(auth.token))
     return
   }
 
-  // 实名核验：已通过实名认证（且成年，由后端校验）才直接授予开发者权限，
-  // 不再强制签署《开发者入驻协议》。未实名/未通过则引导去实名认证。
-  try {
-    const verification = await getMyRealnameVerification(auth.token)
-    if (verification.status !== 'approved') {
-      showToast('请先完成实名认证后再申请开发者权限', 'warning')
-      void router.push({
-        name: 'workbench-realname',
-        query: { redirect_to: '/workbench/developer/resources/plugins-init' },
-      })
-      return
-    }
-  } catch (error) {
-    if (error instanceof HttpError && error.status === 404) {
-      showToast('请先完成实名认证后再申请开发者权限', 'warning')
-      void router.push({
-        name: 'workbench-realname',
-        query: { redirect_to: '/workbench/developer/resources/plugins-init' },
-      })
-      return
-    }
-    showToast(error instanceof Error ? error.message : '实名认证状态查询失败', 'error')
-    return
-  }
-
-  // 实名已通过：直接授予开发者角色（无需签署《开发者入驻协议》）。
-  try {
-    const result = await requestDevRole(auth.token)
-    if (result.role) {
-      await auth.fetchProfile(true)
-      showToast('开发者权限已开通，正在进入需求大厅', 'success')
-      void router.push({ name: 'dev-requirement-hall' })
-      return
-    }
-    showToast('开发者权限申请失败', 'warning')
-    void router.push(buildDevPortalUrl(auth.token))
-  } catch (error) {
-    showToast(error instanceof Error ? error.message : '申请开发者权限失败', 'error')
-    void router.push(buildDevPortalUrl(auth.token))
-  }
+  await router.push({ name: 'dev-requirement-hall' })
 }
 
 function openResourceInit() {
@@ -1553,14 +1518,15 @@ function handleWechatAuthorized() {
   showToast('微信授权成功，请再次点击支付', 'success')
 }
 
-function openAuth(mode: AuthMode) {
+function openAuth(mode: AuthMode, redirectTo = authRedirectTarget.value) {
   const inviteCodeToKeep = authInviteCode.value.trim() || routeInviteCode.value
   const shareTypeToKeep = authShareType.value.trim() || routeShareType.value
   const shareTargetIdToKeep = authShareTargetId.value.trim() || routeShareTargetId.value
   resetAuthForm()
   const nextQuery: Record<string, string> = { modal: 'auth', mode }
-  if (authRedirectTarget.value) {
-    nextQuery.redirect_to = authRedirectTarget.value
+  const normalizedRedirectTo = redirectTo.trim()
+  if (normalizedRedirectTo && normalizedRedirectTo.startsWith('/') && !normalizedRedirectTo.startsWith('//')) {
+    nextQuery.redirect_to = normalizedRedirectTo
   }
   if (inviteCodeToKeep) {
     nextQuery.invite_code = inviteCodeToKeep
@@ -1608,10 +1574,15 @@ async function submitAuth() {
 }
 
 async function ensurePublishRealnameApproved() {
+  const publishRedirectTarget = router.resolve({
+    name: 'home',
+    query: { modal: 'publish' },
+  }).fullPath
+
   auth.hydrate()
   if (!auth.isAuthed) {
     showToast('发布需求前请先登录', 'info')
-    openAuth('login')
+    openAuth('login', publishRedirectTarget)
     return false
   }
 
@@ -1627,14 +1598,14 @@ async function ensurePublishRealnameApproved() {
     }
 
     showToast('实名认证未通过，请重新提交后再发布需求', 'warning')
-    void router.push({ name: 'workbench-realname', query: { redirect_to: route.fullPath || '/' } })
+    void router.push({ name: 'workbench-realname', query: { redirect_to: publishRedirectTarget } })
     return false
   } catch (err) {
     if (err instanceof HttpError && err.status === 404) {
       showToast('发布需求前请先完成实名认证', 'warning')
       void router.push({
         name: 'workbench-realname',
-        query: { redirect_to: route.fullPath || '/' },
+        query: { redirect_to: publishRedirectTarget },
       })
       return false
     }
@@ -2405,14 +2376,17 @@ async function submitPublishRequirement() {
       :loginRequiresTwoFactor="loginRequiresTwoFactor"
       :githubLoginLoading="githubLoading"
       :wechatLoginLoading="wechatLoginLoading"
+      :qqLoginLoading="qqLoginLoading"
       :githubLoginAvailable="githubAvailable"
       :wechatLoginAvailable="wechatAvailable"
+      :qqLoginAvailable="qqAvailable"
       :sendCodeLoading="sendCodeLoading"
       :sendCodeCountdown="sendCodeCountdown"
       @close="closeAuth"
       @submit="submitAuth"
       @loginWithGithub="loginWithGithub"
       @loginWithWechat="loginWithWechat"
+      @loginWithQq="loginWithQq"
       @sendAuthCode="sendAuthCode"
       @change-mode="openAuth"
     />
@@ -2423,6 +2397,14 @@ async function submitPublishRequirement() {
       :state="wechatQrLogin.state"
       @close="closeWechatQrLogin"
       @logged-in="handleWechatQrToken"
+    />
+
+    <QqLoginQrModal
+      :visible="qqQrLogin.visible"
+      :url="qqQrLogin.url"
+      :state="qqQrLogin.state"
+      @close="closeQqQrLogin"
+      @logged-in="handleQqQrToken"
     />
 
     <PublishModal

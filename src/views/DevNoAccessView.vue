@@ -2,8 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { useToast } from '@dev/composables/useToast'
-import { useAuthStore } from '@dev/stores/auth'
+import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 import { getMyRealnameVerification } from '@/api/realname'
 import { HttpError } from '@/api/http'
 import { DEV_PORTAL_URL, buildUnifiedAuthUrl } from '@/config/runtime'
@@ -16,6 +16,7 @@ const realnameApproved = ref(false)
 const realnameChecked = ref(false)
 
 const displayName = computed(() => auth.username || '当前账号')
+const developerAgreementRequired = computed(() => auth.developerAgreementRequired)
 const accessMessage = computed(() => {
   if (auth.devAccessError) {
     return auth.devAccessError
@@ -57,8 +58,17 @@ function goRealname() {
   void router.push({ name: 'workbench-realname', query: { redirect_to: '/dev/overview' } })
 }
 
+function goDeveloperAgreement() {
+  void router.push({
+    name: 'contract-sign',
+    query: {
+      agreement: 'developer',
+      redirect_to: '/workbench/developer/resources/plugins-init',
+    },
+  })
+}
+
 function goBecomeDeveloper() {
-  // 双轨制：dev 角色仅需实名成年即可授予（不再强制签署《开发者入驻协议》）。
   void retryAccessCheck()
 }
 
@@ -100,8 +110,13 @@ async function retryAccessCheck() {
       </p>
 
       <div class="dev-no-access__actions">
+        <el-button v-if="developerAgreementRequired" type="primary" @click="goDeveloperAgreement">
+          签署开发者协议
+        </el-button>
         <el-button v-if="!realnameApproved" type="primary" @click="goRealname">去实名认证</el-button>
-        <el-button v-if="realnameApproved" type="primary" @click="goBecomeDeveloper">申请开发者权限</el-button>
+        <el-button v-if="realnameApproved && !developerAgreementRequired" type="primary" @click="goBecomeDeveloper">
+          申请开发者权限
+        </el-button>
         <el-button plain @click="backToLogin">退出当前账号</el-button>
         <el-button plain :loading="retrying" @click="retryAccessCheck">重试权限校验</el-button>
       </div>

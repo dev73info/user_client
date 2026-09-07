@@ -7,7 +7,7 @@ import { installGlobalFetchLoadingTracker } from './composables/useGlobalLoading
 import 'element-plus/dist/index.css'
 import './styles/user.css'
 import './styles/unified-top-card.css'
-import './dev/styles/dev.css'
+import './styles/dev.css'
 
 // 维护模式：设置 VITE_MAINTENANCE_MODE=true 后，用户端重定向到维护页。
 if (

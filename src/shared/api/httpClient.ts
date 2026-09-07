@@ -71,6 +71,13 @@ export async function readErrorMessage(resp: Response, fallback: string): Promis
   }
 }
 
+function withoutCredentials(init: RequestInit): RequestInit {
+  return {
+    ...init,
+    credentials: 'omit',
+  }
+}
+
 export function createHttpClient(options: HttpClientOptions = {}) {
   function handleUnauthorized(resp: Response, path: string) {
     if (resp.status === 401) {
@@ -83,7 +90,7 @@ export function createHttpClient(options: HttpClientOptions = {}) {
     init: RequestInit,
     fallbackError = '请求失败',
   ): Promise<T> {
-    const resp = await fetch(apiUrl(path), init)
+    const resp = await fetch(apiUrl(path), withoutCredentials(init))
     handleUnauthorized(resp, path)
 
     if (!resp.ok) {
@@ -102,7 +109,7 @@ export function createHttpClient(options: HttpClientOptions = {}) {
     init: RequestInit,
     fallbackError = '请求失败',
   ): Promise<string> {
-    const resp = await fetch(apiUrl(path), init)
+    const resp = await fetch(apiUrl(path), withoutCredentials(init))
     handleUnauthorized(resp, path)
 
     if (!resp.ok) {
@@ -117,7 +124,7 @@ export function createHttpClient(options: HttpClientOptions = {}) {
     init: RequestInit,
     fallbackError = '请求失败',
   ): Promise<void> {
-    const resp = await fetch(apiUrl(path), init)
+    const resp = await fetch(apiUrl(path), withoutCredentials(init))
     handleUnauthorized(resp, path)
 
     if (!resp.ok) {

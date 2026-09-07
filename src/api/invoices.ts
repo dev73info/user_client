@@ -100,6 +100,7 @@ export async function uploadInvoiceDocument(
 export async function downloadInvoiceDocument(token: string, invoiceId: number): Promise<Blob> {
   const response = await fetch(apiUrl(`/invoices/${invoiceId}/document`), {
     headers: authHeader(token),
+    credentials: 'omit',
   })
   if (!response.ok) {
     const message = (await response.text()).trim()

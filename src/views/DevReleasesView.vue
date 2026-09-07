@@ -8,15 +8,15 @@ import {
   listMcResourceVersions,
   type McResourcePayload,
   type McResourceVersionPayload,
-} from '@dev/api/mcResources'
-import { listMyRequirements, type RequirementItem } from '@dev/api/requirements'
+} from '@/api/mcResources'
+import { listMyRequirements, type RequirementItem } from '@/api/devRequirements'
 import {
   getDevWalletOverview,
   type DevWalletIncomeItem,
   type DevWalletOverview,
-} from '@dev/api/wallet'
-import { useToast } from '@dev/composables/useToast'
-import { useAuthStore } from '@dev/stores/auth'
+} from '@/api/devWallet'
+import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 
 type ReleaseRecord = {
   resourceId: number

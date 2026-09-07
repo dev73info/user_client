@@ -1,4 +1,4 @@
-import { apiUrl, authHeaders, requestJson } from '@dev/api/http'
+import { apiUrl, authHeaders, requestJson } from '@/api/http'
 
 export type DevOrderDepositOrderSummary = {
   payment_id: string

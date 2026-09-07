@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Aim, Check, Close } from '@element-plus/icons-vue'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PublishModal from '@/components/PublishModal.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
@@ -11,7 +11,8 @@ import {
   isUnionPaymentAuthorizationRequired,
   isWechatPaymentAuthorizationRequired,
 } from '@/api/auth'
-import { apiUrl } from '@/api/http'
+import { HttpError, apiUrl } from '@/api/http'
+import { getMyRealnameVerification } from '@/api/realname'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -454,10 +455,64 @@ function canComment(status: RequirementStatus) {
   return status === 'final_paid' || status === 'completed'
 }
 
+function publishRedirectTarget() {
+  return router.resolve({
+    name: 'workbench',
+    query: { ...route.query, modal: 'publish' },
+  }).fullPath
+}
+
+async function ensurePublishRealnameApproved() {
+  const redirectTarget = publishRedirectTarget()
+  auth.hydrate()
+  if (!auth.isAuthed) {
+    showToast('发布需求前请先登录', 'info')
+    void router.push({
+      name: 'home',
+      query: { modal: 'auth', mode: 'login', redirect_to: redirectTarget },
+    })
+    return false
+  }
+
+  try {
+    const record = await getMyRealnameVerification(auth.token)
+    if (record.status === 'approved') {
+      return true
+    }
+
+    if (record.status === 'pending') {
+      showToast('实名认证审核中，通过后可发布需求', 'warning')
+      return false
+    }
+
+    showToast('实名认证未通过，请重新提交后再发布需求', 'warning')
+    void router.push({
+      name: 'workbench-realname',
+      query: { redirect_to: redirectTarget },
+    })
+    return false
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 404) {
+      showToast('发布需求前请先完成实名认证', 'warning')
+      void router.push({
+        name: 'workbench-realname',
+        query: { redirect_to: redirectTarget },
+      })
+      return false
+    }
+
+    showToast(error instanceof Error ? error.message : '实名认证状态校验失败', 'error')
+    return false
+  }
+}
 
 async function openPublishModal() {
+  const approved = await ensurePublishRealnameApproved()
+  if (!approved) {
+    return
+  }
+
   if (!auth.isAuthed) {
-    showToast('请先登录后再发布需求', 'error')
     return
   }
 
@@ -1090,6 +1145,16 @@ function forceClosePublishModal() {
   publishPaymentMethod.value = 'alipay'
 }
 
+function clearPublishModalQuery() {
+  if (route.query.modal !== 'publish') {
+    return
+  }
+
+  const nextQuery = { ...route.query }
+  delete nextQuery.modal
+  void router.replace({ query: nextQuery })
+}
+
 function closeEditModal() {
   if (editLoading.value) {
     return
@@ -1102,6 +1167,7 @@ function closePublishModal() {
     return
   }
   forceClosePublishModal()
+  clearPublishModalQuery()
 }
 
 async function submitRequirementComment() {
@@ -1202,8 +1268,8 @@ async function submitRequirementResubmit() {
 }
 
 async function submitRequirementPublish() {
-  if (!auth.isAuthed) {
-    showToast('请先登录后再发布需求', 'error')
+  const approved = await ensurePublishRealnameApproved()
+  if (!approved) {
     return
   }
 
@@ -1257,6 +1323,7 @@ async function submitRequirementPublish() {
 
     showToast('需求已发布', 'success')
     forceClosePublishModal()
+    clearPublishModalQuery()
     publishModalRef.value?.clearDraft()
     await loadMyRequirements()
   } catch (err) {
@@ -1563,6 +1630,17 @@ onMounted(async () => {
     void router.replace({ query: nextQuery })
   }
 })
+
+watch(
+  () => route.query.modal,
+  (value) => {
+    if (value === 'publish' && !publishVisible.value) {
+      forceClosePublishModal()
+      publishVisible.value = true
+    }
+  },
+  { immediate: true },
+)
 
 onBeforeUnmount(() => {
   profileAvatarCacheKey.value = Date.now()

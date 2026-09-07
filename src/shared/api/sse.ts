@@ -131,6 +131,7 @@ export function subscribeJsonEventStream<T>(
     try {
       const resp = await fetch(url, {
         ...init,
+        credentials: 'omit',
         signal: controller.signal,
       })
 

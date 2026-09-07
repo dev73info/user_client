@@ -4,9 +4,9 @@
 // ⚠️ 不能直接用 /workbench#developer-overview：它只匹配 workbench 路由（工作台），
 //    不会触发 dev 守卫，开发者角色申请不会执行。
 // ⚠️ dev-overview（开发概览）页面已废弃，开发者入口统一指向资源初始化（dev-plugins）。
-export const DEV_PORTAL_URL = '/workbench/developer/resources/plugins-init'
+import { AUTH_TOKEN_STORAGE_KEY } from '@/shared/auth/storage'
 
-const USER_AUTH_TOKEN_KEY = 'auth_token_73hub'
+export const DEV_PORTAL_URL = '/workbench/developer/resources/plugins-init'
 
 function normalizeInternalPath(path?: string): string {
   const normalized = path?.trim() ?? ''
@@ -43,7 +43,7 @@ export function buildDevPortalUrl(token?: string): string {
   const directToken = token?.trim() ?? ''
   const persistedToken =
     typeof window !== 'undefined'
-      ? (window.localStorage.getItem(USER_AUTH_TOKEN_KEY) ?? '').trim()
+      ? (window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ?? '').trim()
       : ''
   const activeToken = directToken || persistedToken
 

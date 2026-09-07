@@ -178,7 +178,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
       `/auth/github/url?${query.toString()}`,
       {
         method: 'GET',
-        credentials: 'include',
+        credentials: 'omit',
       },
       'GitHub 登录暂不可用',
     )

@@ -142,6 +142,13 @@ const breachLiableParty = ref<'customer' | 'developer' | 'platform'>('developer'
 const breachReason = ref('')
 const breachLoading = ref(false)
 
+function syncPublishModalFromRoute(value: unknown) {
+  if (value === 'publish' && !publishVisible.value) {
+    resetPublishForm()
+    publishVisible.value = true
+  }
+}
+
 const detailRequirementDescriptionHtml = computed(
   () =>
     sanitizeRequirementRichText(detailRequirement.value?.description ?? '') ||
@@ -846,18 +853,26 @@ function openRequirementEditModal(item: RequirementItem) {
   editVisible.value = true
 }
 
+function publishRedirectTarget() {
+  return router.resolve({
+    name: 'workbench-requirements',
+    query: { ...route.query, modal: 'publish' },
+  }).fullPath
+}
+
 function openAuthLogin() {
   void router.push({
     name: 'home',
     query: {
       modal: 'auth',
       mode: 'login',
-      redirect_to: route.fullPath || '/workbench/requirements',
+      redirect_to: publishRedirectTarget(),
     },
   })
 }
 
 async function ensurePublishRealnameApproved() {
+  const redirectTarget = publishRedirectTarget()
   auth.hydrate()
   if (!auth.isAuthed) {
     showToast('发布需求前请先登录', 'info')
@@ -879,7 +894,7 @@ async function ensurePublishRealnameApproved() {
     showToast('实名认证未通过，请重新提交后再发布需求', 'warning')
     void router.push({
       name: 'workbench-realname',
-      query: { redirect_to: route.fullPath || '/workbench/requirements' },
+      query: { redirect_to: redirectTarget },
     })
     return false
   } catch (err) {
@@ -887,7 +902,7 @@ async function ensurePublishRealnameApproved() {
       showToast('发布需求前请先完成实名认证', 'warning')
       void router.push({
         name: 'workbench-realname',
-        query: { redirect_to: route.fullPath || '/workbench/requirements' },
+        query: { redirect_to: redirectTarget },
       })
       return false
     }
@@ -929,6 +944,16 @@ function forceClosePublishModal() {
   resetPublishForm()
 }
 
+function clearPublishModalQuery() {
+  if (route.query.modal !== 'publish') {
+    return
+  }
+
+  const nextQuery = { ...route.query }
+  delete nextQuery.modal
+  void router.replace({ query: nextQuery })
+}
+
 function forceCloseEditModal() {
   editVisible.value = false
   editRequirement.value = null
@@ -949,6 +974,7 @@ function closePublishModal() {
   }
 
   forceClosePublishModal()
+  clearPublishModalQuery()
 }
 
 async function toggleRequirementResourceVisibility(item: RequirementItem) {
@@ -1192,6 +1218,7 @@ async function submitRequirementPublish() {
 
     showToast('需求已发布，等待审核', 'success')
     forceClosePublishModal()
+    clearPublishModalQuery()
     publishModalRef.value?.clearDraft()
     await loadMyRequirements()
   } catch (err) {
@@ -1584,6 +1611,14 @@ onMounted(async () => {
     void router.replace({ query: nextQuery })
   }
 })
+
+watch(
+  () => route.query.modal,
+  (value) => {
+    syncPublishModalFromRoute(value)
+  },
+  { immediate: true },
+)
 
 watch(
   () => route.query.view,

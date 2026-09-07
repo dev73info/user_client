@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 import { apiUrl, authHeader, HttpError, normalizeBackendPath } from '@/api/http'
+import { createHttpClient } from '@/shared/api/httpClient'
 
 describe('api/http utilities', () => {
   it('apiUrl preserves absolute http(s) URLs as-is', () => {
@@ -60,5 +61,23 @@ describe('api/http utilities', () => {
     expect(err.status).toBe(401)
     expect(err.message).toBe('未登录')
     expect(err.name).toBe('HttpError')
+  })
+
+  it('always omits credentials from HTTP requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      text: async () => '{}',
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    try {
+      await createHttpClient().requestJson('/auth/refresh', { credentials: 'same-origin' })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/auth/refresh', { credentials: 'omit' })
   })
 })

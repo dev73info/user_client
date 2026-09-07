@@ -13,7 +13,7 @@ import {
   type DevWalletIncomeItem,
   type DevWalletOverview,
   validateDevWithdrawalRequest,
-} from '@dev/api/wallet'
+} from '@/api/devWallet'
 import {
   confirmDevOrderDepositAlipayPayment,
   confirmDevOrderDepositWechatPayment,
@@ -25,10 +25,10 @@ import {
   type CreateDevOrderDepositWithdrawalRequest,
   type DevOrderDepositStatus,
   type DevOrderDepositWithdrawalSummary,
-} from '@dev/api/devOrderDeposit'
-import { getDevCreditSelf, type DevCreditSelf } from '@dev/api/devCredit'
-import { useToast } from '@dev/composables/useToast'
-import { useAuthStore } from '@dev/stores/auth'
+} from '@/api/devOrderDeposit'
+import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
+import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 const router = useRouter()

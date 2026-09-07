@@ -14,14 +14,14 @@ import {
   View,
 } from '@element-plus/icons-vue'
 
-import { apiUrl } from '@dev/api/http'
+import { apiUrl } from '@/api/http'
 import {
   getMcResource,
   type CreateMcResourceTagSelection,
   type McResourcePayload,
   uploadMcResourceCover,
   updateMcResourceHomepage,
-} from '@dev/api/mcResources'
+} from '@/api/mcResources'
 import {
   getProcessedTagTree,
   invalidateTagTreeCache,
@@ -29,9 +29,9 @@ import {
   type McTagCatalogEntry,
   type McTagCatalogRoot,
   type McProcessedTagTree,
-} from '@dev/api/Tags'
-import { useToast } from '@dev/composables/useToast'
-import { useAuthStore } from '@dev/stores/auth'
+} from '@/api/resourceTags'
+import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'

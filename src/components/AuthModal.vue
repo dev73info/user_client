@@ -16,18 +16,23 @@ const props = defineProps({
   acceptTerms: { type: Boolean, default: false },
   githubLoginLoading: { type: Boolean, default: false },
   wechatLoginLoading: { type: Boolean, default: false },
+  qqLoginLoading: { type: Boolean, default: false },
   githubLoginAvailable: { type: Boolean, default: true },
   wechatLoginAvailable: { type: Boolean, default: true },
+  qqLoginAvailable: { type: Boolean, default: true },
   sendCodeLoading: { type: Boolean, default: false },
   sendCodeCountdown: { type: Number, default: 0 },
   authLoading: { type: Boolean, default: false },
 })
+
+const qqLoginIconImage = '/icons/qq_loge.png'
 
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'submit'): void
   (e: 'loginWithGithub'): void
   (e: 'loginWithWechat'): void
+  (e: 'loginWithQq'): void
   (e: 'sendAuthCode'): void
   (e: 'change-mode', mode: 'login' | 'register' | 'reset'): void
   (e: 'update:authUsername', value: string): void
@@ -201,16 +206,33 @@ function submitOnEnter() {
         </template>
       </div>
 
+      <div v-if="authMode === 'login' && (githubLoginAvailable || wechatLoginAvailable || qqLoginAvailable)"
+        class="auth-login-methods" aria-label="第三方登录方式">
+        <div class="auth-login-divider">
+          <span>其他方式登录</span>
+        </div>
+        <button v-if="authMode === 'login' && githubLoginAvailable" class="auth-btn ghost auth-login-method"
+          type="button"
+          :disabled="githubLoginLoading || !acceptTerms" @click="emit('loginWithGithub')">
+          <img class="auth-login-method__icon" src="/icons/github.svg" alt="" aria-hidden="true" />
+          <span>{{ githubLoginLoading ? '跳转中...' : 'GitHub 快捷登录' }}</span>
+        </button>
+        <button v-if="authMode === 'login' && wechatLoginAvailable" class="auth-btn ghost auth-login-method"
+          type="button"
+          :disabled="wechatLoginLoading || !acceptTerms" @click="emit('loginWithWechat')">
+          <img class="auth-login-method__icon" src="/icons/wechat.svg" alt="" aria-hidden="true" />
+          <span>{{ wechatLoginLoading ? '跳转中...' : '微信快捷登录' }}</span>
+        </button>
+        <button v-if="authMode === 'login' && qqLoginAvailable"
+          class="auth-btn ghost auth-login-method auth-qq-login" type="button" :aria-busy="qqLoginLoading"
+          aria-label="使用QQ登录" :disabled="qqLoginLoading || !acceptTerms" @click="emit('loginWithQq')">
+          <img class="auth-login-method__icon" :src="qqLoginIconImage" alt="" aria-hidden="true" />
+          <span>{{ qqLoginLoading ? '跳转中...' : 'QQ快捷登录' }}</span>
+        </button>
+      </div>
+
       <div class="auth-modal-actions">
         <button class="auth-btn ghost" type="button" @click="emit('close')">取消</button>
-        <button v-if="authMode === 'login' && githubLoginAvailable" class="auth-btn ghost" type="button"
-          :disabled="githubLoginLoading || !acceptTerms" @click="emit('loginWithGithub')">
-          {{ githubLoginLoading ? '跳转中...' : 'GitHub 快捷登录' }}
-        </button>
-        <button v-if="authMode === 'login' && wechatLoginAvailable" class="auth-btn ghost" type="button"
-          :disabled="wechatLoginLoading || !acceptTerms" @click="emit('loginWithWechat')">
-          {{ wechatLoginLoading ? '跳转中...' : '微信快捷登录' }}
-        </button>
         <button class="auth-btn solid" type="button" :disabled="!canSubmitAuth()" @click="emit('submit')">
           {{
             authLoading

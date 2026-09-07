@@ -3,7 +3,7 @@ import { nextTick, reactive, ref } from 'vue'
 import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { apiUrl } from '@dev/api/http'
+import { apiUrl } from '@/api/http'
 import { extractResourceFileNameFromUrl, with73Extension } from '@/api/resources'
 import {
   createMcResourceVersion,
@@ -13,9 +13,9 @@ import {
   type McResourcePayload,
   type McResourceVersionPayload,
   updateMcResourceVersion,
-} from '@dev/api/mcResources'
-import { useToast } from '@dev/composables/useToast'
-import { useAuthStore } from '@dev/stores/auth'
+} from '@/api/mcResources'
+import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
 import { ArrowDown, Plus } from '@element-plus/icons-vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'

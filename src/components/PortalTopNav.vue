@@ -6,7 +6,7 @@ import { Bell, Close, Search } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { buildDevPortalUrl } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
-import { getProfileSubscriptions, updateProfileSubscriptions } from '@dev/api/settings'
+import { getProfileSubscriptions, updateProfileSubscriptions } from '@/api/settings'
 
 type AuthMode = 'login' | 'register'
 type SearchScope = 'auto' | 'resources' | 'requirements' | 'community'

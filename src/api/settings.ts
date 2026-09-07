@@ -26,7 +26,12 @@ export type UserProfileResp = {
   wechat_bound?: boolean
 }
 
-export type UserSubscriptionsResp = {
+export type ProfileSubscriptionsResp = {
+  subscribe_official_activity: boolean
+  subscribe_dev_hall_deposit_paid: boolean
+}
+
+export type UserSubscriptionsResp = Partial<ProfileSubscriptionsResp> & {
   subscribe_official_activity: boolean
 }
 
@@ -46,6 +51,7 @@ export async function getDepositRatio(token: string): Promise<DepositRatioResp |
     headers: {
       ...authHeader(token),
     },
+    credentials: 'omit',
   })
 
   if (!resp.ok) {
@@ -53,6 +59,17 @@ export async function getDepositRatio(token: string): Promise<DepositRatioResp |
   }
 
   return (await resp.json()) as DepositRatioResp
+}
+
+export async function getProfileSubscriptions(token: string): Promise<ProfileSubscriptionsResp> {
+  return requestJson<ProfileSubscriptionsResp>(
+    '/settings/profile/subscriptions',
+    {
+      method: 'GET',
+      headers: authHeader(token),
+    },
+    '加载订阅设置失败',
+  )
 }
 
 export async function updateProfile(
@@ -272,9 +289,9 @@ export async function updateProfileTwoFactor(
 
 export async function updateProfileSubscriptions(
   token: string,
-  payload: UserSubscriptionsResp,
-): Promise<UserSubscriptionsResp> {
-  return requestJson<UserSubscriptionsResp>(
+  payload: Partial<ProfileSubscriptionsResp>,
+): Promise<ProfileSubscriptionsResp> {
+  return requestJson<ProfileSubscriptionsResp>(
     '/settings/profile/subscriptions',
     {
       method: 'PUT',
@@ -284,7 +301,7 @@ export async function updateProfileSubscriptions(
       },
       body: JSON.stringify(payload),
     },
-    '更新订阅设置失败',
+    '保存订阅设置失败',
   )
 }
 

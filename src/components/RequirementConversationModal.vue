@@ -12,7 +12,7 @@ import {
 } from '@element-plus/icons-vue'
 
 import * as userConversationApi from '@/api/conversations'
-import * as devConversationApi from '@dev/api/conversations'
+import * as devConversationApi from '@/api/conversations'
 import type {
   RequirementConversationDetail,
   RequirementConversationMessage,

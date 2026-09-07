@@ -1,4 +1,4 @@
-import { authHeader, requestJson } from '@dev/api/http'
+import { authHeader, requestJson } from '@/api/http'
 
 export type RequirementStatus =
   | 'pending_review'

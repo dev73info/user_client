@@ -75,13 +75,24 @@ export async function fetchContractSigningStatus(
   )
 }
 
+export async function fetchDevContractSigningStatus(
+  token: string,
+  requirementId: string,
+): Promise<ContractSigningStatus> {
+  return requestJson<ContractSigningStatus>(
+    `/dev/contracts/signing-status/${encodeURIComponent(requirementId)}`,
+    { headers: authHeader(token) },
+    '获取合同签署状态失败',
+  )
+}
+
 export async function fetchMyRequirementContract(
   token: string,
   requirementId: string,
 ): Promise<ContractDetail | null> {
   const res = await fetch(
     apiUrl(`/contracts/requirement/${encodeURIComponent(requirementId)}/my-contract`),
-    { headers: authHeader(token) },
+    { headers: authHeader(token), credentials: 'omit' },
   )
   if (res.status === 404) return null
   if (!res.ok) throw new Error('获取合同失败')

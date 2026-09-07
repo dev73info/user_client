@@ -9,19 +9,19 @@ import {
     type McPublishTagGroup,
     type McTagCatalogEntry,
     type McTagCatalogRoot,
-} from '@dev/api/Tags'
-import { getDevCreditSelf, type DevCreditSelf } from '@dev/api/devCredit'
-import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@dev/api/devOrderDeposit'
-import { createMcResource, listMcResources, type McResourcePayload } from '@dev/api/mcResources'
+} from '@/api/resourceTags'
+import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
+import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@/api/devOrderDeposit'
+import { createMcResource, listMcResources, type McResourcePayload } from '@/api/mcResources'
 import {
     bindRequirementProject,
     getRequirementHallItem,
     type RequirementItem,
     type RequirementPaymentMode,
     type RequirementStatus,
-} from '@dev/api/requirements'
-import { useToast } from '@dev/composables/useToast'
-import { useAuthStore } from '@dev/stores/auth'
+} from '@/api/devRequirements'
+import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 
 const route = useRoute()

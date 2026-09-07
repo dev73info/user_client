@@ -22,6 +22,7 @@ export type WechatPaymentAuthorizationStatusResp = {
 export type OauthStatusResp = {
   github: boolean
   wechat: boolean
+  qq: boolean
 }
 
 export async function getOauthStatus(): Promise<OauthStatusResp> {
@@ -132,6 +133,37 @@ export async function getWechatLoginQrStatus(
   )
 }
 
+export type QqLoginQrUrlResp = {
+  url: string
+  state: string
+}
+
+export type QqLoginQrStatusResp = {
+  token?: string | null
+}
+
+export async function getQqLoginQrUrl(
+  redirectTo: string,
+): Promise<QqLoginQrUrlResp> {
+  const query = new URLSearchParams({ redirect_to: redirectTo })
+  return requestJson<QqLoginQrUrlResp>(
+    `/auth/qq/login/qr/url?${query.toString()}`,
+    { headers: {} },
+    'QQ扫码登录暂不可用',
+  )
+}
+
+export async function getQqLoginQrStatus(
+  state: string,
+): Promise<QqLoginQrStatusResp> {
+  const query = new URLSearchParams({ state })
+  return requestJson<QqLoginQrStatusResp>(
+    `/auth/qq/login/qr/status?${query.toString()}`,
+    { headers: {} },
+    '查询QQ扫码登录状态失败',
+  )
+}
+
 export async function getWechatBindQrUrl(
   token: string,
   redirectTo: string,
@@ -180,6 +212,17 @@ export async function fetchUserServiceAgreement(): Promise<UserServiceAgreement>
     '/auth/user-service-agreement',
     { headers: {} },
     '加载用户服务协议失败',
+  )
+}
+
+export async function requestDevRole(token: string): Promise<{ username: string; role: string }> {
+  return requestJson<{ username: string; role: string }>(
+    '/auth/request-dev-role',
+    {
+      method: 'POST',
+      headers: authHeaders(token),
+    },
+    '申请开发者权限失败',
   )
 }
 

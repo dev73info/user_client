@@ -47,6 +47,7 @@ export async function listPaymentOrders(token: string): Promise<PaymentOrderItem
     headers: {
       ...authHeader(token),
     },
+    credentials: 'omit',
   })
 
   if (!resp.ok) {
@@ -111,6 +112,7 @@ export async function getAlipayPageHtml(token: string, paymentId: string): Promi
       headers: {
         ...authHeader(token),
       },
+      credentials: 'omit',
     },
   )
 
@@ -134,6 +136,7 @@ export async function confirmPayment(
       ...authHeader(token),
     },
     body: JSON.stringify({ payment_id: paymentId }),
+    credentials: 'omit',
   })
 
   if (!resp.ok) {

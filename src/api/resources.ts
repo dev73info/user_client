@@ -325,6 +325,7 @@ export async function downloadPublicMcResourceFile(
   const response = await fetch(apiUrl(path), {
     method: 'GET',
     headers: token ? authHeader(token) : undefined,
+    credentials: 'omit',
   })
 
   if (!response.ok) {
@@ -347,7 +348,7 @@ export async function downloadPublicMcResourceFile(
   const chunks: BlobPart[] = []
   let loaded = 0
 
-   
+
   while (true) {
     const { done, value } = await reader.read()
     if (done) {

@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { devRoutes, devWorkbenchRoutes, installDevRouteGuard } from '@dev/router'
+import { devRoutes, devWorkbenchRoutes, installDevRouteGuard } from '@/router/dev'
 
 const SPA_FALLBACK_REDIRECT_PARAM = '__spa_redirect'
 
@@ -434,6 +434,7 @@ router.beforeEach(async (to, from, next) => {
     to.name === 'payment' ||
     to.name === 'my-custom-resources' ||
     to.name === 'tickets' ||
+    to.name === 'contract-sign' ||
     to.name === 'realname'
 
   if (auth.isAuthed && !auth.profileLoaded) {

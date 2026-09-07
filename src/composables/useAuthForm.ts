@@ -4,7 +4,12 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { apiUrl } from '@/api/http'
-import { getGithubAuthorizeUrl, getOauthStatus, getWechatLoginQrUrl } from '@/api/auth'
+import {
+  getGithubAuthorizeUrl,
+  getOauthStatus,
+  getQqLoginQrUrl,
+  getWechatLoginQrUrl,
+} from '@/api/auth'
 
 type AuthMode = 'login' | 'register' | 'reset'
 
@@ -49,15 +54,18 @@ export function useAuthForm(mode: Ref<AuthMode>) {
   // 各快捷登录是否可用（由后端配置决定），不可用时前端不展示对应按钮。
   const githubAvailable = ref(false)
   const wechatAvailable = ref(false)
+  const qqAvailable = ref(false)
 
   async function loadOauthStatus() {
     try {
       const status = await getOauthStatus()
       githubAvailable.value = !!status.github
       wechatAvailable.value = !!status.wechat
+      qqAvailable.value = !!status.qq
     } catch {
       githubAvailable.value = false
       wechatAvailable.value = false
+      qqAvailable.value = false
     }
   }
 
@@ -94,6 +102,10 @@ export function useAuthForm(mode: Ref<AuthMode>) {
 
   function isWechatBrowser() {
     return /MicroMessenger/i.test(navigator.userAgent)
+  }
+
+  function isQqBrowser() {
+    return /(?:QQ|MQQBrowser)/i.test(navigator.userAgent)
   }
 
   async function loginWithWechat() {
@@ -141,6 +153,60 @@ export function useAuthForm(mode: Ref<AuthMode>) {
 
   async function handleWechatQrToken(token: string) {
     closeWechatQrLogin()
+    auth.setToken(token)
+    showToast('登录成功', 'success')
+    await auth.fetchProfile(true).catch(() => undefined)
+    const homeHref = router.resolve({ name: 'home' }).href
+    await router.replace(homeHref)
+  }
+
+  const qqLoginLoading = ref(false)
+  const qqQrLogin = reactive({ visible: false, url: '', state: '' })
+
+  async function loginWithQq() {
+    if (qqLoginLoading.value || auth.loading) {
+      return
+    }
+    if (!acceptTerms.value) {
+      showToast('请先同意用户协议、隐私政策和支付与退款说明', 'error')
+      return
+    }
+
+    qqLoginLoading.value = true
+    const homeHref = router.resolve({ name: 'home' }).href
+    const redirectTarget = `${window.location.origin}${homeHref}`
+
+    if (isQqBrowser()) {
+      const loginUrl = apiUrl(
+        `/auth/qq/login/url?redirect_to=${encodeURIComponent(redirectTarget)}`,
+      )
+      window.location.href = loginUrl
+      return
+    }
+
+    try {
+      const qr = await getQqLoginQrUrl(redirectTarget)
+      if (!qr.url.trim() || !qr.state.trim()) {
+        throw new Error('QQ扫码登录地址为空')
+      }
+      qqQrLogin.url = qr.url
+      qqQrLogin.state = qr.state
+      qqQrLogin.visible = true
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'QQ扫码登录失败', 'error')
+    } finally {
+      qqLoginLoading.value = false
+    }
+  }
+
+  function closeQqQrLogin() {
+    qqQrLogin.visible = false
+    qqQrLogin.url = ''
+    qqQrLogin.state = ''
+  }
+
+  async function handleQqQrToken(token: string) {
+    closeQqQrLogin()
     auth.setToken(token)
     showToast('登录成功', 'success')
     await auth.fetchProfile(true).catch(() => undefined)
@@ -321,8 +387,10 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     sendCodeCountdown,
     githubLoading,
     wechatLoginLoading,
+    qqLoginLoading,
     githubAvailable,
     wechatAvailable,
+    qqAvailable,
     loadOauthStatus,
     resetAuthForm,
     loginWithGithub,
@@ -333,5 +401,9 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     wechatQrLogin,
     closeWechatQrLogin,
     handleWechatQrToken,
+    loginWithQq,
+    qqQrLogin,
+    closeQqQrLogin,
+    handleQqQrToken,
   }
 }
