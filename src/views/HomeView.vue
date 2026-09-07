@@ -20,6 +20,12 @@ import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
 import { buildDevPortalUrl } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
 import { useAuthForm } from '@/composables/useAuthForm'
+import { requirementStatusLabel } from '@/shared/requirementStatus'
+import {
+  calculateFinalDepositAmount,
+  calculateFinalPaymentAmount,
+} from '@/shared/requirementPayment'
+import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
 import { validateRequirementRichText } from '@/utils/requirementRichText'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import { HttpError, apiUrl } from '@/api/http'
@@ -953,18 +959,7 @@ async function runBackgroundAutoRefresh() {
 }
 
 function statusToLabel(status: RequirementStatus): string {
-  const mapping: Record<RequirementStatus, string> = {
-    pending_review: '待审核',
-    rejected: '已拒绝',
-    pending_deposit: '待付定金',
-    deposit_paid: '待开发',
-    in_development: '开发中',
-    pending_final: '待付尾款',
-    final_paid: '已付尾款',
-    completed: '已完成',
-  }
-
-  return mapping[status]
+  return requirementStatusLabel(status)
 }
 
 function formatMoney(budget?: number | null) {
@@ -1072,35 +1067,12 @@ function closeDealDetail() {
   selectedDeal.value = null
 }
 
-function depositAmount(item: PendingRequirementView) {
-  if (typeof item.budget === 'number') {
-    return item.budget
-  }
-
-  return 1
-}
-
 function finalDepositAmount(item: PendingRequirementView) {
-  const base = Number(depositAmount(item))
-  if (!Number.isFinite(base) || base < 0.01) {
-    return 0.01
-  }
-
-  const ratio = Number(depositRatioPercent.value)
-  const scaled = Number.isFinite(ratio) && ratio > 0 ? (base * ratio) / 100 : base
-  const raw = Math.max(0.01, scaled)
-
-  return Number(raw.toFixed(2))
+  return calculateFinalDepositAmount(item, depositRatioPercent.value)
 }
 
 function finalPaymentAmount(item: PendingRequirementView) {
-  const base = Number(depositAmount(item))
-  if (!Number.isFinite(base) || base < 0.01) {
-    return 0.01
-  }
-
-  const tail = Math.max(0.01, base - finalDepositAmount(item))
-  return Number(tail.toFixed(2))
+  return calculateFinalPaymentAmount(item, depositRatioPercent.value)
 }
 
 function isAdapayRequirement(item: PendingRequirementView) {
@@ -1325,22 +1297,8 @@ function uniqueTextParts(parts: Array<string | null | undefined>): string[] {
 function buildResourceCardSummary(resource: PublicMcResourceItem): string {
   const description = normalizeInlineText(resource.description)
   const title = normalizeInlineText(resource.title) || '73Info 免费资源'
-  const context = uniqueTextParts([
-    normalizeTagName(resource.platform),
-    summarizeResourceTags(resource),
-  ])
 
-  if (description.length >= 24 || context.length === 0) {
-    return description || `${title}，可在 73Info 免费资源区查看详情与下载。`
-  }
-
-  const contextText = context.join('、')
-
-  if (description) {
-    return `${description}，面向 ${contextText} 场景。`
-  }
-
-  return `${title}，面向 ${contextText} 场景，可查看详情与下载。`
+  return description || `${title}，可在 73Info 免费资源区查看详情与下载。`
 }
 
 function buildResourceCoverAlt(resource: PublicMcResourceItem): string {
@@ -1497,15 +1455,14 @@ async function submitDepositPayment() {
       showToast(`${currentStage}支付订单已生成，正在跳转支付页`, 'success')
       router.push({
         name: 'payment',
-        query: {
-          adapay: '1',
-          payment_id: depositPayment.value.payment_id,
-          requirement_id: adapayPayment.requirementId,
+        query: buildAdapayPaymentQuery({
+          paymentId: depositPayment.value.payment_id,
+          requirementId: adapayPayment.requirementId,
           channel,
-          client_platform: clientPlatform,
-          amount_cny: adapayPayment.amountCny,
-          qr_content: adapayPayment.payUrl ?? undefined,
-        },
+          clientPlatform,
+          amountCny: adapayPayment.amountCny,
+          qrContent: adapayPayment.payUrl,
+        }),
       })
       return
     }
@@ -1538,15 +1495,14 @@ async function submitDepositPayment() {
           : finalPaymentAmount(depositRequirement.value)
       router.push({
         name: 'payment',
-        query: {
-          adapay: '1',
-          requirement_id: depositRequirement.value.id,
+        query: buildAdapayPaymentQuery({
+          requirementId: depositRequirement.value.id,
           milestone: currentStage === '定金' ? 'deposit' : 'final',
           channel: 'wechat',
-          client_platform: clientPlatform,
-          amount_cny: String(expectedAmount),
-          intent: '1',
-        },
+          clientPlatform,
+          amountCny: expectedAmount,
+          intent: true,
+        }),
       })
       return
     } else if (isUnionPaymentAuthorizationRequired(err)) {

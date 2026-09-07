@@ -7,8 +7,19 @@ import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 
-const current = ref<UserRealnameVerification | null>(null)
-const adapayMember = ref<{ onboardingStatus: string } | null>(null)
+const props = defineProps<{
+  verification?: UserRealnameVerification | null
+  adapayMember?: { onboardingStatus: string } | null
+}>()
+
+const localVerification = ref<UserRealnameVerification | null>(null)
+const localAdapayMember = ref<{ onboardingStatus: string } | null>(null)
+const current = computed(() =>
+  props.verification === undefined ? localVerification.value : props.verification,
+)
+const adapayMember = computed(() =>
+  props.adapayMember === undefined ? localAdapayMember.value : props.adapayMember,
+)
 
 const statusText = computed(() => {
   const status = current.value?.status
@@ -64,18 +75,24 @@ const heroDesc = computed(() => {
 
 onMounted(async () => {
   auth.hydrate()
-  if (!auth.token) {
+  if (!auth.token || (props.verification !== undefined && props.adapayMember !== undefined)) {
     return
   }
-  try {
-    current.value = await getMyRealnameVerification(auth.token)
-  } catch {
-    current.value = null
+
+  if (props.verification === undefined) {
+    try {
+      localVerification.value = await getMyRealnameVerification(auth.token)
+    } catch {
+      localVerification.value = null
+    }
   }
-  try {
-    adapayMember.value = await getMyAdapayMember(auth.token)
-  } catch {
-    adapayMember.value = null
+
+  if (props.adapayMember === undefined) {
+    try {
+      localAdapayMember.value = await getMyAdapayMember(auth.token)
+    } catch {
+      localAdapayMember.value = null
+    }
   }
 })
 </script>
@@ -179,38 +196,6 @@ onMounted(async () => {
 .realname-metrics__item strong {
   color: #0f172a;
   font-size: 14px;
-}
-
-.realname-reviewer {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-}
-
-.realname-reviewer__avatar {
-  display: inline-grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 50%;
-  background: rgba(219, 234, 254, 0.94);
-  color: #1d4ed8;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.realname-reviewer__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.realname-reviewer__avatar>span {
-  color: inherit;
-  font-size: inherit;
 }
 
 @media (max-width: 860px) {

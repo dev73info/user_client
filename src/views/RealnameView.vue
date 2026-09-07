@@ -34,6 +34,7 @@ import {
 import { HttpError, apiUrl } from '@/api/http'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import RealnameHero from '@/components/RealnameHero.vue'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -148,13 +149,6 @@ const adapayStatusText = computed(() => {
   if (status === 'pending') return '待认证'
   if (status === 'failed') return '未通过'
   return '未认证'
-})
-
-const realnameHeroDesc = computed(() => {
-  if (realnameApproved.value) return '已完成实名认证，信息核验通过，可正常使用合同签署等权益。'
-  if (current.value?.status === 'pending') return '实名认证审核中，请耐心等待平台核验结果。'
-  if (current.value?.status === 'rejected') return '实名认证未通过，请核对证件信息后重新提交。'
-  return '提交真实身份信息，经平台核验后即可开通合同签署等权益。'
 })
 
 const realnameSubmitted = computed(() => Boolean(current.value))
@@ -1240,6 +1234,9 @@ onMounted(async () => {
   mobileMatch.addEventListener('change', syncMobileViewport)
 
   await loadCurrentRealname()
+  if (redirectTarget.value && !realnameApproved.value) {
+    realnameDialogVisible.value = true
+  }
   try {
     adapayMember.value = await getMyAdapayMember(auth.token)
   } catch {
@@ -1262,32 +1259,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="portal-page realname-page-shell">
-    <template v-if="props.showHero !== false">
-      <section class="realname-hero" :class="`realname-hero--${statusType}`">
-        <div class="realname-hero__copy">
-          <p class="realname-hero__eyebrow">Identity Verification</p>
-          <h1 class="realname-hero__title">实名认证</h1>
-          <p class="realname-hero__desc">{{ realnameHeroDesc }}</p>
-          <div class="realname-hero__tag">
-            <el-tag :type="statusType" round>实名认证：{{ statusText }}</el-tag>
-          </div>
-        </div>
-        <div class="realname-hero__metrics">
-          <div class="realname-metrics__item">
-            <span>认证类型</span>
-            <strong>{{ authTypeLabel }}</strong>
-          </div>
-          <div class="realname-metrics__item">
-            <span>爱签认证</span>
-            <strong>{{ asignAuthText }}</strong>
-          </div>
-          <div class="realname-metrics__item">
-            <span>Adapay认证</span>
-            <strong>{{ adapayStatusText }}</strong>
-          </div>
-        </div>
-      </section>
-    </template>
+    <RealnameHero v-if="props.showHero !== false" :verification="current" :adapay-member="adapayMember" />
 
     <el-dialog v-model="realnameDialogVisible" title="提交认证信息" class="realname-dialog" width="620px" :close-on-click-modal="true">
           <div class="realname-form__head">
@@ -1618,60 +1590,6 @@ onBeforeUnmount(() => {
   gap: 26px;
 }
 
-.realname-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
-  gap: 24px;
-  padding: 20px 24px;
-  border-radius: 26px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  background:
-    radial-gradient(circle at top left, rgba(84, 124, 255, 0.16), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(100, 213, 255, 0.12), transparent 26%),
-    rgba(255, 255, 255, 0.84);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 18px 42px rgba(76, 103, 172, 0.12);
-  align-items: center;
-}
-
-.realname-hero__copy {
-  display: grid;
-  gap: 12px;
-  align-content: center;
-}
-
-.realname-hero__eyebrow {
-  margin: 0;
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.realname-hero__title {
-  margin: 0;
-  font-size: 28px;
-  color: #0f172a;
-}
-
-.realname-hero__desc {
-  margin: 0;
-  color: #64748b;
-  font-size: 14px;
-  line-height: 1.7;
-}
-
-.realname-hero__tag {
-  margin-top: 2px;
-}
-
-.realname-hero__metrics {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 .realname-guide-card :deep(.el-card__body) {
   padding: 18px 20px;
 }
@@ -1726,26 +1644,6 @@ onBeforeUnmount(() => {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-.realname-metrics__item {
-  display: grid;
-  gap: 4px;
-  padding: 11px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(226, 232, 240, 0.92);
-  background: rgba(248, 250, 252, 0.92);
-  justify-self: stretch;
-}
-
-.realname-metrics__item span {
-  color: #64748b;
-  font-size: 12px;
-}
-
-.realname-metrics__item strong {
-  color: #0f172a;
-  font-size: 14px;
 }
 
 .realname-reviewer {
@@ -2047,20 +1945,9 @@ onBeforeUnmount(() => {
   background: linear-gradient(135deg, #1d4ed8, #3b82f6);
 }
 
-@media (max-width: 860px) {
-  .realname-hero {
-    grid-template-columns: 1fr;
-    padding: 22px;
-  }
-}
-
 @media (max-width: 720px) {
   :deep(.realname-card .el-card__body) {
     padding: 16px;
-  }
-
-  .realname-hero__metrics {
-    grid-template-columns: 1fr;
   }
 
   .asign-account-card__entries {

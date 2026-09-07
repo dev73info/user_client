@@ -818,7 +818,7 @@
   min-height: 24px;
   padding: 0 10px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  background: var(--primary-gradient);
   color: #fff;
   font-size: 12px;
   font-weight: 700;

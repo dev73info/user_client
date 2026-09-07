@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { PropType } from 'vue'
+import type { ContractSigningStatus } from '@/shared/contracts'
 
 type DepositCoupon = {
   code: string
@@ -13,12 +14,6 @@ type DepositCoupon = {
 }
 
 type DepositPayment = Record<string, unknown> | null
-
-type ContractSigningStatus = {
-  has_contract: boolean
-  party_b_signed: boolean
-  party_a_signed: boolean
-}
 
 const props = defineProps({
   visible: { type: Boolean, default: false },

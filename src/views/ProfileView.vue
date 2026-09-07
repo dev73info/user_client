@@ -15,6 +15,12 @@ import { apiUrl } from '@/api/http'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { requirementStatusLabel } from '@/shared/requirementStatus'
+import {
+  calculateFinalDepositAmount,
+  calculateFinalPaymentAmount,
+} from '@/shared/requirementPayment'
+import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
 import {
   createAdapayPayment,
   getAdapayPayment,
@@ -135,7 +141,13 @@ type ProfileAvatarCropDragStart = {
 
 const amountCoupons = computed(() => coupons.value.filter((item) => item.discount_type === 'amount'))
 const discountCoupons = computed(() => coupons.value.filter((item) => item.discount_type === 'percent'))
-const conversationCards = computed(() => myRequirements.value.filter(canOpenConversation))
+const conversationCards = computed(() => myRequirements.value.filter((item) => {
+  if (!canOpenConversation(item)) {
+    return false
+  }
+
+  return requirementConversationMap.value[item.requirement_id]?.status !== 'closed'
+}))
 const availableConversationCount = computed(() => conversationCards.value.length)
 const usableCouponCount = computed(() => coupons.value.filter((item) => item.status !== 'used').length)
 const accountEmailLabel = computed(() => profileEmail.value || '未绑定邮箱')
@@ -203,18 +215,7 @@ const recentConversationCards = computed(() =>
 )
 
 function formatRequirementStatus(status: RequirementStatus) {
-  const mapping: Record<RequirementStatus, string> = {
-    pending_review: '待审核',
-    rejected: '已拒绝',
-    pending_deposit: '待付定金',
-    deposit_paid: '待开发',
-    in_development: '开发中',
-    pending_final: '待付尾款',
-    final_paid: '已付尾款',
-    completed: '已完成',
-  }
-
-  return mapping[status]
+  return requirementStatusLabel(status)
 }
 
 function isSelfManagedRequirement(item: RequirementItem) {
@@ -395,49 +396,9 @@ function updatePayChannel(channel: AdapayBusinessPayChannel) {
   currentPayment.value = null
 }
 
-async function requestFinalPayment(item: RequirementItem) {
-  if (!auth.isAuthed) {
-    showToast('请先登录后再继续操作', 'error')
-    return
-  }
-
-  if (!hasBoundResource(item)) {
-    showToast('当前需求尚未关联资源项目', 'warning')
-    return
-  }
-
-  if (item.status !== 'in_development') {
-    showToast(isSelfManagedRequirement(item) ? '只有开发中的需求单才能确认完成' : '只有开发中的需求单才能结束开发并支付尾款', 'warning')
-    return
-  }
-
-  if (publishedVersionCount(item) <= 0) {
-    showToast(isSelfManagedRequirement(item) ? '开发者至少发布一个资源版本后，才能确认完成' : '开发者至少发布一个资源版本后，才能结束开发并支付尾款', 'warning')
-    return
-  }
-
-  finalPaymentConfirmTarget.value = item
-  finalPaymentConfirmVisible.value = true
-}
-
 function closeFinalPaymentConfirm() {
   finalPaymentConfirmVisible.value = false
   finalPaymentConfirmTarget.value = null
-}
-
-function openCompletionConfirm(item: RequirementItem) {
-  if (!auth.isAuthed) {
-    showToast('请先登录后再继续操作', 'error')
-    return
-  }
-
-  if (!canComplete(item)) {
-    showToast('当前需求尚不能确认完成', 'warning')
-    return
-  }
-
-  completionConfirmTarget.value = item
-  completionConfirmVisible.value = true
 }
 
 function closeCompletionConfirm() {
@@ -493,30 +454,6 @@ function canComment(status: RequirementStatus) {
   return status === 'final_paid' || status === 'completed'
 }
 
-function openCommentModal(item: RequirementItem) {
-  if (!canComment(item.status)) {
-    return
-  }
-  commentRequirement.value = item
-  commentRating.value = item.comment_rating ?? 5
-  commentText.value = item.comment_text ?? ''
-  commentVisible.value = true
-}
-
-function openRequirementEditModal(item: RequirementItem) {
-  if (!canResubmit(item.status)) {
-    return
-  }
-
-  editRequirement.value = item
-  editTitle.value = item.title
-  editDescription.value = item.description ?? ''
-  editBudget.value = item.budget ?? ''
-  editAcceptance.value = item.acceptance_criteria ?? ''
-  editPaymentMode.value = item.payment_mode
-  editPaymentMethod.value = item.payment_method === 'wechat' ? 'wechat' : 'alipay'
-  editVisible.value = true
-}
 
 async function openPublishModal() {
   if (!auth.isAuthed) {
@@ -1329,31 +1266,12 @@ async function submitRequirementPublish() {
   }
 }
 
-function depositAmount(item: RequirementItem) {
-  if (typeof item.budget === 'number') {
-    return item.budget
-  }
-  return 1
-}
-
 function finalDepositAmount(item: RequirementItem) {
-  const base = Number(depositAmount(item))
-  if (!Number.isFinite(base) || base < 0.01) {
-    return 0.01
-  }
-  const ratio = Number(depositRatioPercent.value)
-  const scaled = Number.isFinite(ratio) && ratio > 0 ? (base * ratio) / 100 : base
-  const raw = Math.max(0.01, scaled)
-  return Number(raw.toFixed(2))
+  return calculateFinalDepositAmount(item, depositRatioPercent.value)
 }
 
 function finalPaymentAmount(item: RequirementItem) {
-  const base = Number(depositAmount(item))
-  if (!Number.isFinite(base) || base < 0.01) {
-    return 0.01
-  }
-  const tail = Math.max(0.01, base - finalDepositAmount(item))
-  return Number(tail.toFixed(2))
+  return calculateFinalPaymentAmount(item, depositRatioPercent.value)
 }
 
 const isFinalPayment = computed(() => payRequirement.value?.status === 'pending_final')
@@ -1524,15 +1442,14 @@ async function submitRequirementPayment() {
       showToast(`${payStageLabel.value}支付订单已生成，正在跳转支付页`, 'success')
       router.push({
         name: 'payment',
-        query: {
-          adapay: '1',
-          payment_id: currentPayment.value.payment_id,
-          requirement_id: adapayPayment.requirementId,
+        query: buildAdapayPaymentQuery({
+          paymentId: currentPayment.value.payment_id,
+          requirementId: adapayPayment.requirementId,
           channel,
-          client_platform: clientPlatform,
-          amount_cny: adapayPayment.amountCny,
-          qr_content: adapayPayment.payUrl ?? undefined,
-        },
+          clientPlatform,
+          amountCny: adapayPayment.amountCny,
+          qrContent: adapayPayment.payUrl,
+        }),
       })
       return
     }
@@ -1559,15 +1476,14 @@ async function submitRequirementPayment() {
       }
       router.push({
         name: 'payment',
-        query: {
-          adapay: '1',
-          requirement_id: payRequirement.value.requirement_id,
+        query: buildAdapayPaymentQuery({
+          requirementId: payRequirement.value.requirement_id,
           milestone: isFinalPayment.value ? 'final' : 'deposit',
           channel: 'wechat',
-          client_platform: clientPlatform,
-          amount_cny: String(payAmount.value),
-          intent: '1',
-        },
+          clientPlatform,
+          amountCny: payAmount.value,
+          intent: true,
+        }),
       })
       return
     }
@@ -1728,8 +1644,7 @@ onBeforeUnmount(() => {
     <section class="overview-focus-panel">
       <div class="overview-section-head">
         <div>
-          <p class="overview-eyebrow">最近需求</p>
-          <h2>需求进度</h2>
+          <p class="overview-eyebrow">需求进度</p>
         </div>
         <RouterLink class="overview-link" :to="{ name: 'workbench-requirements' }">查看需求单</RouterLink>
       </div>

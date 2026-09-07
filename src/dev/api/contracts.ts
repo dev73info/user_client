@@ -1,11 +1,7 @@
 import { authHeader, requestJson } from '@dev/api/http'
+import type { ContractSigningStatus } from '@/shared/contracts'
 
-export type ContractSigningStatus = {
-  has_contract: boolean
-  party_b_signed: boolean
-  party_a_signed: boolean
-  party_c_signed?: boolean
-}
+export type { ContractSigningStatus } from '@/shared/contracts'
 
 export async function fetchContractSigningStatus(
   token: string,

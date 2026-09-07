@@ -1,20 +1,19 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElConfigProvider } from 'element-plus'
+import zhCn from 'element-plus/es/locale/lang/zh-cn.mjs'
 
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import { listMyCommentWarnings, type CommentWarning } from '@/api/community'
 import {
   getMyPoints,
   setPerkEquipped,
-  doCheckin,
-  getCheckinStatus,
   transferPoints,
   listMyTransfers,
   getTransferMeta,
   type UserPerk,
   type UserPointsLog,
-  type CheckinStatus,
   type PointsTransfer,
   type PointsTransferMeta,
 } from '@/api/points'
@@ -25,7 +24,6 @@ import { useAuthStore } from '@/stores/auth'
 const router = useRouter()
 const auth = useAuthStore()
 
-const pointsBalance = ref(0)
 const logs = ref<UserPointsLog[]>([])
 const loading = ref(false)
 const error = ref('')
@@ -36,10 +34,6 @@ const commentWarnings = ref<CommentWarning[]>([])
 const couponLoading = ref(false)
 const coupons = ref<CouponItem[]>([])
 const { showToast } = useToast()
-
-// 签到
-const checkinStatus = ref<CheckinStatus | null>(null)
-const checkinSaving = ref(false)
 
 // 打赏
 const transferMeta = ref<PointsTransferMeta | null>(null)
@@ -62,12 +56,17 @@ const transferReceived = computed(() => {
 })
 
 const logPage = ref(1)
-const logPageSize = 10
+const logPageSize = ref(10)
+const logTotal = ref(0)
+const serverPagedLogs = ref(true)
 const pagedLogs = computed(() => {
-  const start = (logPage.value - 1) * logPageSize
-  return logs.value.slice(start, start + logPageSize)
+  if (serverPagedLogs.value) {
+    return logs.value
+  }
+
+  const start = (logPage.value - 1) * logPageSize.value
+  return logs.value.slice(start, start + logPageSize.value)
 })
-const logTotal = computed(() => logs.value.length)
 
 const amountCoupons = computed(() =>
   coupons.value.filter((item) => item.discount_type === 'amount'),
@@ -80,13 +79,27 @@ function deltaTagType(delta: number) {
   return delta > 0 ? 'success' : 'danger'
 }
 
-async function loadPoints() {
+async function loadPoints(page = logPage.value, pageSize = logPageSize.value) {
   loading.value = true
   error.value = ''
   try {
-    const data = await getMyPoints(auth.token)
-    pointsBalance.value = data.points_balance
+    const data = await getMyPoints(auth.token, { page, page_size: pageSize })
+    const responseHasPagination = data.logs_total != null
+    const total = data.logs_total ?? data.logs.length
+    const lastPage = Math.max(1, Math.ceil(total / pageSize))
+    const normalizedPage = Math.min(Math.max(1, page), lastPage)
+
+    if (normalizedPage !== page) {
+      logPage.value = normalizedPage
+      await loadPoints(normalizedPage, pageSize)
+      return
+    }
+
     logs.value = data.logs
+    logTotal.value = total
+    logPage.value = data.logs_page ?? page
+    logPageSize.value = data.logs_page_size ?? pageSize
+    serverPagedLogs.value = responseHasPagination
     perks.value = data.perks ?? []
     initUsernameAppearance()
   } catch (err) {
@@ -96,40 +109,21 @@ async function loadPoints() {
   }
 }
 
+function handleLogPageChange(page: number) {
+  void loadPoints(page, logPageSize.value)
+}
+
+function handleLogPageSizeChange(pageSize: number) {
+  logPage.value = 1
+  logPageSize.value = pageSize
+  void loadPoints(1, pageSize)
+}
+
 async function loadCommentWarnings() {
   try {
     commentWarnings.value = await listMyCommentWarnings(auth.token)
   } catch (err) {
     showToast(err instanceof Error ? err.message : '加载评论警告失败', 'error')
-  }
-}
-
-async function loadCheckinStatus() {
-  if (!auth.token) return
-  try {
-    checkinStatus.value = await getCheckinStatus(auth.token)
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载签到状态失败', 'error')
-  }
-}
-
-async function handleCheckin() {
-  if (!auth.token || checkinSaving.value) return
-  checkinSaving.value = true
-  try {
-    const res = await doCheckin(auth.token)
-    showToast(`签到成功，获得 ${res.total_awarded} 积分`, 'success')
-    checkinStatus.value = {
-      username: res.username,
-      today_checked_in: true,
-      streak_count: res.streak_count,
-      today_potential: res.total_awarded,
-    }
-    await loadPoints()
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '签到失败', 'error')
-  } finally {
-    checkinSaving.value = false
   }
 }
 
@@ -334,7 +328,6 @@ onMounted(async () => {
     loadPoints(),
     loadCoupons(),
     loadCommentWarnings(),
-    loadCheckinStatus(),
     loadTransferMeta(),
     loadTransfers(),
   ])
@@ -342,200 +335,167 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="points-page profile-page">
-    <div class="points-hero">
-      <div>
-        <h2>我的背包</h2>
-        <p>通过发布资源、发布需求以及资源的互动获得积分</p>
-      </div>
-      <div class="points-hero__balance">
-        <span>当前积分</span>
-        <strong>{{ pointsBalance }}</strong>
-      </div>
-    </div>
-
+  <ElConfigProvider :locale="zhCn">
+    <div class="points-page profile-page">
     <p v-if="error" class="points-error">{{ error }}</p>
 
-    <section class="wallet-section">
-      <div class="checkin-card">
-        <div class="checkin-card__info">
-          <h3>每日签到</h3>
-          <p v-if="checkinStatus">
-            <template v-if="checkinStatus.today_checked_in">
-              今日已签到，连续签到 <strong>{{ checkinStatus.streak_count }}</strong> 天。
-            </template>
-            <template v-else>
-              今日签到可得 <strong>{{ checkinStatus.today_potential }}</strong> 积分，当前连续签到
-              {{ checkinStatus.streak_count }} 天。
-            </template>
-          </p>
-          <p v-else class="requirement-note">每日签到、连续签到可获得积分奖励。</p>
-          <small v-if="!checkinStatus?.today_checked_in" class="requirement-note">
-            连续签到奖励逐日递增，满 7 天/30 天有额外奖励。
-          </small>
-        </div>
-        <el-button type="primary" :loading="checkinSaving"
-          :disabled="checkinStatus?.today_checked_in || checkinSaving" @click="handleCheckin">
-          {{ checkinStatus?.today_checked_in ? '今日已签到' : '立即签到' }}
-        </el-button>
-      </div>
-    </section>
-
-    <section class="wallet-section">
-      <div class="wallet-header">
-        <div>
-          <h3>积分打赏</h3>
-          <small class="requirement-note">向你认可的用户打赏积分，平台按 {{ feeRate }}% 收取手续费（接收方到账 {{ 100 - feeRate }}%）。</small>
-        </div>
-      </div>
-      <div class="transfer-form">
-        <el-input v-model="transferTo" placeholder="接收方用户名" clearable />
-        <el-input-number v-model="transferAmount" :min="1" :precision="0" placeholder="打赏金额"
-          style="width: 100%" />
-        <el-input v-model="transferNote" placeholder="附言（可选）" clearable />
-        <div v-if="transferAmount && transferAmount > 0" class="transfer-preview">
-          接收方到账 <strong>{{ transferReceived }}</strong> 积分 · 手续费 <strong>{{ transferFee }}</strong> 积分
-        </div>
-        <el-button type="primary" :loading="transferSaving" @click="submitTransfer">打赏</el-button>
-      </div>
-    </section>
-
-    <section class="wallet-section">
-      <div class="wallet-header">
-        <div>
-          <h3>打赏记录</h3>
-          <small class="requirement-note">最近打赏与收款记录。</small>
-        </div>
-      </div>
-      <div v-if="transfers.length" class="transfer-list">
-        <article v-for="t in transfers" :key="t.id" class="transfer-item">
-          <div class="transfer-item__main">
-            <span>
-              <strong>{{ t.from_username === auth.username ? '我' : t.from_username }}</strong>
-              <span class="requirement-note"> → </span>
-              <strong>{{ t.to_username === auth.username ? '我' : t.to_username }}</strong>
-            </span>
-            <span
-              :class="['transfer-item__amount', t.to_username === auth.username ? 'transfer-in' : 'transfer-out']">
-              {{ t.to_username === auth.username ? '+' : '-' }}{{ t.to_username === auth.username ? t.received : t.amount }}
-            </span>
+    <div class="points-page__layout">
+      <div class="points-page__main-column">
+        <section class="wallet-section points-section points-section--transfer">
+          <div class="wallet-header">
+            <div>
+              <h3>积分打赏</h3>
+              <small class="requirement-note">向你认可的用户打赏积分，平台按 {{ feeRate }}% 收取手续费（接收方到账 {{ 100 - feeRate }}%）。</small>
+            </div>
           </div>
-          <small class="requirement-note">
-            {{ t.created_at }}{{ t.fee > 0 ? ' · 手续费 ' + t.fee : '' }}{{ t.note ? ' · ' + t.note : '' }}
-          </small>
-        </article>
-      </div>
-      <p v-else class="empty">暂无打赏记录</p>
-    </section>
-
-    <section class="wallet-section">
-      <div class="wallet-header">
-        <div>
-          <h3>我的权益</h3>
-          <small class="requirement-note">管理已解锁的积分商城权益。</small>
-        </div>
-      </div>
-      <div v-if="displayedPerks.length" class="perk-list">
-        <div v-for="perk in displayedPerks" :key="perk.perk_code" class="perk-item">
-          <div class="perk-item__info">
-            <strong>{{ perkTitle(perk.perk_code) }}</strong>
-            <small class="requirement-note">{{ perkExpireText(perk) }}</small>
+          <div class="transfer-form">
+            <el-input v-model="transferTo" placeholder="接收方用户名" clearable />
+            <el-input-number v-model="transferAmount" :min="1" :precision="0" placeholder="打赏金额"
+              style="width: 100%" />
+            <el-input v-model="transferNote" placeholder="附言（可选）" clearable />
+            <div v-if="transferAmount && transferAmount > 0" class="transfer-preview">
+              接收方到账 <strong>{{ transferReceived }}</strong> 积分 · 手续费 <strong>{{ transferFee }}</strong> 积分
+            </div>
+            <el-button type="primary" :loading="transferSaving" @click="submitTransfer">打赏</el-button>
           </div>
-          <el-switch :model-value="perk.equipped" :disabled="perkSaving === perk.perk_code"
-            :loading="perkSaving === perk.perk_code" @change="togglePerk(perk.perk_code, $event)" />
-        </div>
-      </div>
-      <p v-if="!displayedPerks.length && !hasUsernameAppearance" class="empty">尚未解锁，可在积分商城兑换相应权益后开启。</p>
+        </section>
 
-      <div v-if="hasUsernameAppearance" class="appearance-panel">
-        <strong>用户名颜色设置</strong>
-        <small class="requirement-note">渐变与特定颜色为两个独立权益，二者只能使用一种。</small>
-        <el-radio-group v-model="appearanceMode">
-          <el-radio value="gradient" :disabled="!gradientPerk">渐变</el-radio>
-          <el-radio value="color" :disabled="colorPerks.length === 0">特定颜色</el-radio>
-        </el-radio-group>
-        <div v-if="appearanceMode === 'color'" class="appearance-color-row">
-          <el-select v-model="selectedColor" placeholder="选择颜色" style="min-width: 200px">
-            <el-option v-for="p in colorPerks" :key="p.perk_code" :value="p.perk_code">
-              <span class="perk-color" :style="{ background: perkCodeHex(p.perk_code) }"></span>
-              {{ perkTitle(p.perk_code) }}
-            </el-option>
-          </el-select>
-        </div>
-        <el-button type="primary" :loading="appearanceSaving" @click="saveAppearance">保存</el-button>
-      </div>
-    </section>
-
-    <section class="wallet-section">
-      <div class="wallet-header">
-        <div>
-          <h3>满减优惠券</h3>
-          <small class="requirement-note">点击券卡复制券码。</small>
-        </div>
-        <button class="ghost small" type="button" :disabled="couponLoading" @click="loadCoupons">
-          {{ couponLoading ? '刷新中...' : '刷新券包' }}
-        </button>
-      </div>
-      <div v-if="amountCoupons.length === 0" class="empty">暂无满减优惠券</div>
-      <div v-else class="coupon-items account-coupon-grid">
-        <button v-for="item in amountCoupons" :key="item.code" type="button" class="coupon-item"
-          @click="copyCouponCode(item.code)">
-          <div class="coupon-head">
-            <strong>{{ item.code }}</strong>
-            <span class="coupon-status" :class="item.status">{{ item.status === 'used' ? '已使用' : '可用' }}</span>
+        <section class="wallet-section points-section points-section--transfers">
+          <div class="wallet-header">
+            <div>
+              <h3>打赏记录</h3>
+              <small class="requirement-note">最近打赏与收款记录。</small>
+            </div>
           </div>
-          <small>{{ item.name }}</small>
-          <p>{{ formatDiscount(item) }}</p>
-          <p class="coupon-meta">
-            门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
-          </p>
-        </button>
-      </div>
-    </section>
-
-    <section class="wallet-section">
-      <div class="wallet-header">
-        <div>
-          <h3>折扣优惠券</h3>
-          <small class="requirement-note">点击券卡复制券码。</small>
-        </div>
-        <button class="ghost small" type="button" :disabled="couponLoading" @click="loadCoupons">
-          {{ couponLoading ? '刷新中...' : '刷新券包' }}
-        </button>
-      </div>
-      <div v-if="discountCoupons.length === 0" class="empty">暂无折扣优惠券</div>
-      <div v-else class="coupon-items account-coupon-grid">
-        <button v-for="item in discountCoupons" :key="item.code" type="button" class="coupon-item"
-          @click="copyCouponCode(item.code)">
-          <div class="coupon-head">
-            <strong>{{ item.code }}</strong>
-            <span class="coupon-status" :class="item.status">{{ item.status === 'used' ? '已使用' : '可用' }}</span>
+          <div v-if="transfers.length" class="transfer-list">
+            <article v-for="t in transfers" :key="t.id" class="transfer-item">
+              <div class="transfer-item__main">
+                <span>
+                  <strong>{{ t.from_username === auth.username ? '我' : t.from_username }}</strong>
+                  <span class="requirement-note"> → </span>
+                  <strong>{{ t.to_username === auth.username ? '我' : t.to_username }}</strong>
+                </span>
+                <span
+                  :class="['transfer-item__amount', t.to_username === auth.username ? 'transfer-in' : 'transfer-out']">
+                  {{ t.to_username === auth.username ? '+' : '-' }}{{ t.to_username === auth.username ? t.received : t.amount }}
+                </span>
+              </div>
+              <small class="requirement-note">
+                {{ t.created_at }}{{ t.fee > 0 ? ' · 手续费 ' + t.fee : '' }}{{ t.note ? ' · ' + t.note : '' }}
+              </small>
+            </article>
           </div>
-          <small>{{ item.name }}</small>
-          <p>{{ formatDiscount(item) }}</p>
-          <p class="coupon-meta">
-            门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
-          </p>
-        </button>
+          <p v-else class="empty">暂无打赏记录</p>
+        </section>
       </div>
-    </section>
 
-    <section class="wallet-section">
-      <div class="wallet-header">
-        <div>
-          <h3>评论警告</h3>
-          <small class="requirement-note">管理员不会修改原评论，违规内容会保留记录并说明原因。</small>
-        </div>
-      </div>
-      <div v-if="commentWarnings.length" class="warning-list">
-        <article v-for="warning in commentWarnings" :key="warning.id" class="warning-item">
-          <small>{{ warning.created_at }} · {{ warning.operator }}</small>
-          <p>原评论：{{ warning.comment_snapshot }}</p>
-          <strong>警告原因：{{ warning.reason }}</strong>
-        </article>
-      </div>
-      <p v-else class="empty">暂无评论警告</p>
-    </section>
+      <aside class="points-page__side-column">
+        <section class="wallet-section points-section points-section--perks">
+          <div class="wallet-header">
+            <div>
+              <h3>我的权益</h3>
+              <small class="requirement-note">管理已解锁的积分商城权益。</small>
+            </div>
+          </div>
+          <div v-if="displayedPerks.length" class="perk-list">
+            <div v-for="perk in displayedPerks" :key="perk.perk_code" class="perk-item">
+              <div class="perk-item__info">
+                <strong>{{ perkTitle(perk.perk_code) }}</strong>
+                <small class="requirement-note">{{ perkExpireText(perk) }}</small>
+              </div>
+              <el-switch :model-value="perk.equipped" :disabled="perkSaving === perk.perk_code"
+                :loading="perkSaving === perk.perk_code" @change="togglePerk(perk.perk_code, $event)" />
+            </div>
+          </div>
+          <p v-if="!displayedPerks.length && !hasUsernameAppearance" class="empty">尚未解锁，可在积分商城兑换相应权益后开启。</p>
+
+          <div v-if="hasUsernameAppearance" class="appearance-panel">
+            <strong>用户名颜色设置</strong>
+            <small class="requirement-note">渐变与特定颜色为两个独立权益，二者只能使用一种。</small>
+            <el-radio-group v-model="appearanceMode">
+              <el-radio value="gradient" :disabled="!gradientPerk">渐变</el-radio>
+              <el-radio value="color" :disabled="colorPerks.length === 0">特定颜色</el-radio>
+            </el-radio-group>
+            <div v-if="appearanceMode === 'color'" class="appearance-color-row">
+              <el-select v-model="selectedColor" placeholder="选择颜色" style="min-width: 200px">
+                <el-option v-for="p in colorPerks" :key="p.perk_code" :value="p.perk_code">
+                  <span class="perk-color" :style="{ background: perkCodeHex(p.perk_code) }"></span>
+                  {{ perkTitle(p.perk_code) }}
+                </el-option>
+              </el-select>
+            </div>
+            <el-button type="primary" :loading="appearanceSaving" @click="saveAppearance">保存</el-button>
+          </div>
+        </section>
+
+        <section class="wallet-section points-section points-section--coupons">
+          <div class="wallet-header">
+            <div>
+              <h3>优惠券</h3>
+              <small class="requirement-note">点击券卡复制券码。</small>
+            </div>
+            <button class="ghost small" type="button" :disabled="couponLoading" @click="loadCoupons">
+              {{ couponLoading ? '刷新中...' : '刷新券包' }}
+            </button>
+          </div>
+          <div class="points-coupon-groups">
+            <div class="points-coupon-group">
+              <div class="points-subhead"><strong>满减优惠券</strong><span>{{ amountCoupons.length }}</span></div>
+              <div v-if="amountCoupons.length === 0" class="empty">暂无</div>
+              <div v-else class="coupon-items account-coupon-grid">
+                <button v-for="item in amountCoupons" :key="item.code" type="button" class="coupon-item"
+                  @click="copyCouponCode(item.code)">
+                  <div class="coupon-head">
+                    <strong>{{ item.code }}</strong>
+                    <span class="coupon-status" :class="item.status">{{ item.status === 'used' ? '已使用' : '可用' }}</span>
+                  </div>
+                  <small>{{ item.name }}</small>
+                  <p>{{ formatDiscount(item) }}</p>
+                  <p class="coupon-meta">
+                    门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
+                  </p>
+                </button>
+              </div>
+            </div>
+            <div class="points-coupon-group">
+              <div class="points-subhead"><strong>折扣优惠券</strong><span>{{ discountCoupons.length }}</span></div>
+              <div v-if="discountCoupons.length === 0" class="empty">暂无</div>
+              <div v-else class="coupon-items account-coupon-grid">
+                <button v-for="item in discountCoupons" :key="item.code" type="button" class="coupon-item"
+                  @click="copyCouponCode(item.code)">
+                  <div class="coupon-head">
+                    <strong>{{ item.code }}</strong>
+                    <span class="coupon-status" :class="item.status">{{ item.status === 'used' ? '已使用' : '可用' }}</span>
+                  </div>
+                  <small>{{ item.name }}</small>
+                  <p>{{ formatDiscount(item) }}</p>
+                  <p class="coupon-meta">
+                    门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
+                  </p>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="wallet-section points-section points-section--warnings">
+          <div class="wallet-header">
+            <div>
+              <h3>评论警告</h3>
+              <small class="requirement-note">管理员不会修改原评论，违规内容会保留记录并说明原因。</small>
+            </div>
+          </div>
+          <div v-if="commentWarnings.length" class="warning-list">
+            <article v-for="warning in commentWarnings" :key="warning.id" class="warning-item">
+              <small>{{ warning.created_at }} · {{ warning.operator }}</small>
+              <p>原评论：{{ warning.comment_snapshot }}</p>
+              <strong>警告原因：{{ warning.reason }}</strong>
+            </article>
+          </div>
+          <p v-else class="empty">暂无评论警告</p>
+        </section>
+      </aside>
+    </div>
 
     <div class="points-log">
       <div class="points-log__head">
@@ -557,92 +517,273 @@ onMounted(async () => {
       <el-pagination
         v-if="logs.length"
         v-model:current-page="logPage"
-        :page-size="logPageSize"
+        v-model:page-size="logPageSize"
+        :page-sizes="[10, 20, 50]"
         :total="logTotal"
-        layout="prev, pager, next, total"
+        layout="total, sizes, prev, pager, next"
         background
         class="points-log__pagination"
+        @current-change="handleLogPageChange"
+        @size-change="handleLogPageSizeChange"
       />
 
       <el-empty v-else-if="!loading" description="暂无积分明细" />
     </div>
-  </div>
+    </div>
+  </ElConfigProvider>
 </template>
 
 <style scoped>
+.points-page.profile-page {
+  --profile-card-bg: rgba(255, 255, 253, 0.97);
+  --profile-card-bg-strong: #fffefa;
+  --profile-card-border: rgba(213, 227, 222, 0.98);
+  --profile-card-shadow: 0 16px 34px rgba(35, 72, 69, 0.08);
+  --profile-text-main: #203039;
+  --profile-text-sub: #627477;
+  --profile-text-soft: #94a4a3;
+  --profile-accent: #0f766e;
+  --profile-accent-soft: rgba(15, 118, 110, 0.12);
+  --profile-success-soft: rgba(39, 122, 87, 0.12);
+  --profile-success-border: rgba(119, 190, 153, 0.9);
+  --profile-success-text: #277a57;
+  --profile-warning-soft: rgba(217, 119, 6, 0.13);
+  --profile-warning-text: #a76017;
+  --profile-danger-soft: rgba(180, 72, 63, 0.12);
+  --profile-danger-text: #b4483f;
+  --points-teal: #0f766e;
+  --points-teal-dark: #0b5f59;
+  --points-teal-soft: #e8f3f0;
+  --points-line: #d5e3de;
+}
+
 .points-page {
   max-width: 100%;
   min-height: calc(100vh - 185px);
+  background: linear-gradient(180deg, rgba(232, 243, 239, 0.46), rgba(246, 248, 251, 0) 560px);
 }
-.points-hero {
+
+.points-page__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(300px, 0.82fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.points-page__main-column,
+.points-page__side-column {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.points-page__layout .wallet-section {
+  min-width: 0;
+  margin-top: 0;
+  border-color: var(--points-line);
+  background: var(--profile-card-bg);
+  box-shadow: var(--profile-card-shadow);
+}
+
+.points-page > .points-log {
+  margin-top: 16px;
+  border-color: var(--points-line);
+  background: var(--profile-card-bg);
+  box-shadow: var(--profile-card-shadow);
+}
+
+.points-section .wallet-header {
+  align-items: flex-start;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(213, 227, 222, 0.78);
+}
+
+.points-section .wallet-header h3 {
   position: relative;
+  padding-left: 13px;
+  color: var(--profile-text-main);
+  font-size: 18px;
+  letter-spacing: 0.01em;
+}
+
+.points-section .wallet-header h3::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 3px;
+  bottom: 3px;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--section-accent, var(--points-teal));
+}
+
+.points-section--transfer {
+  --section-accent: var(--points-teal);
+}
+
+.points-section--transfers {
+  --section-accent: #c08457;
+}
+
+.points-section--perks {
+  --section-accent: #d97706;
+}
+
+.points-section--coupons {
+  --section-accent: var(--points-teal);
+}
+
+.points-section--warnings {
+  --section-accent: #b4483f;
+}
+
+.points-page :deep(.el-button--primary) {
+  --el-button-bg-color: var(--points-teal);
+  --el-button-border-color: var(--points-teal);
+  --el-button-hover-bg-color: var(--points-teal-dark);
+  --el-button-hover-border-color: var(--points-teal-dark);
+  --el-button-active-bg-color: #084c48;
+  --el-button-active-border-color: #084c48;
+  border-radius: 10px;
+  box-shadow: 0 8px 16px rgba(15, 118, 110, 0.16);
+  font-weight: 700;
+}
+
+.points-page :deep(.el-input__wrapper),
+.points-page :deep(.el-select__wrapper) {
+  border-radius: 10px;
+  background: var(--profile-card-bg-strong);
+  box-shadow: 0 0 0 1px var(--points-line) inset;
+}
+
+.points-page :deep(.el-input__wrapper:hover),
+.points-page :deep(.el-select__wrapper:hover) {
+  box-shadow: 0 0 0 1px rgba(15, 118, 110, 0.5) inset;
+}
+
+.points-page :deep(.el-input__wrapper:focus-within),
+.points-page :deep(.el-select__wrapper.is-focused) {
+  box-shadow: 0 0 0 1px var(--points-teal) inset, 0 0 0 3px rgba(15, 118, 110, 0.12) !important;
+}
+
+.points-page :deep(.el-input__inner::placeholder) {
+  color: var(--profile-text-soft);
+}
+
+.points-page :deep(.el-input-number__decrease),
+.points-page :deep(.el-input-number__increase) {
+  background: #f3f8f6;
+  color: var(--profile-text-sub);
+}
+
+.points-page :deep(.el-input-number__decrease:hover),
+.points-page :deep(.el-input-number__increase:hover) {
+  background: var(--points-teal-soft);
+  color: var(--points-teal);
+}
+
+.points-page button.ghost.small {
+  border-color: var(--points-line);
+  border-radius: 9px;
+  background: var(--profile-card-bg-strong);
+  color: var(--points-teal-dark);
+  box-shadow: 0 6px 14px rgba(35, 72, 69, 0.06);
+  font-weight: 700;
+}
+
+.points-page button.ghost.small:hover:not(:disabled) {
+  border-color: rgba(15, 118, 110, 0.5);
+  background: var(--points-teal-soft);
+  color: var(--points-teal-dark);
+}
+
+.points-section--transfer .transfer-form {
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 0.55fr);
+  align-items: start;
+}
+
+.points-section--transfer .transfer-form > .el-input:first-child,
+.points-section--transfer .transfer-preview,
+.points-section--transfer .transfer-form > .el-button {
+  grid-column: 1 / -1;
+}
+
+.points-section--transfer .transfer-form > .el-input-number {
+  grid-column: 1;
+}
+
+.points-section--transfer .transfer-form > .el-input:nth-child(3) {
+  grid-column: 2;
+}
+
+.points-section--transfer .transfer-form > .el-button {
+  justify-self: end;
+  min-width: 120px;
+}
+
+.points-coupon-groups {
+  display: grid;
+  gap: 12px;
+}
+
+.points-coupon-group {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(224, 232, 255, 0.9);
+  border-radius: 14px;
+  background: rgba(248, 251, 255, 0.72);
+}
+
+.points-subhead {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 26px 28px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #eef4ff 0%, #f7faff 55%, #ffffff 100%);
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  color: #0f172a;
-  margin-bottom: 20px;
-  overflow: hidden;
-  box-shadow: 0 12px 26px rgba(76, 103, 172, 0.08);
-}
-.points-hero::before,
-.points-hero::after {
-  content: '';
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(79, 140, 255, 0.08);
-  pointer-events: none;
-}
-.points-hero::before {
-  width: 180px;
-  height: 180px;
-  right: -50px;
-  top: -80px;
-}
-.points-hero::after {
-  width: 130px;
-  height: 130px;
-  right: 110px;
-  bottom: -70px;
-  background: rgba(79, 140, 255, 0.05);
-}
-.points-hero > * {
-  position: relative;
-  z-index: 1;
-}
-.points-hero h2 {
-  margin: 0 0 6px;
-  font-size: 23px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  color: #0f172a;
-}
-.points-hero p {
-  margin: 0;
-  color: #64748b;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: var(--profile-text-main);
   font-size: 13px;
 }
-.points-hero__balance {
-  text-align: center;
-  flex-shrink: 0;
-}
-.points-hero__balance span {
-  display: block;
+
+.points-subhead span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--profile-accent-soft);
+  color: var(--profile-accent);
   font-size: 12px;
-  color: #64748b;
-  margin-bottom: 4px;
-  letter-spacing: 1px;
+  font-weight: 700;
 }
-.points-hero__balance strong {
-  font-size: 44px;
-  line-height: 1;
-  font-weight: 800;
-  color: #4f8cff;
+
+.points-coupon-group .account-coupon-grid {
+  grid-template-columns: 1fr;
+  gap: 8px;
 }
+
+.points-coupon-group .coupon-item {
+  min-width: 0;
+  padding: 12px;
+}
+
+@media (max-width: 820px) {
+  .points-page__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .points-section--transfer .transfer-form {
+    grid-template-columns: 1fr;
+  }
+
+  .points-section--transfer .transfer-form > .el-input-number,
+  .points-section--transfer .transfer-form > .el-input:nth-child(3) {
+    grid-column: 1;
+  }
+}
+
 .points-error {
   color: #f56c6c;
   margin-bottom: 16px;
@@ -750,36 +891,6 @@ onMounted(async () => {
   gap: 10px;
 }
 
-.checkin-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 18px 20px;
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  border-radius: 16px;
-  background: linear-gradient(135deg, #fff7ed 0%, #fffaf3 60%, #ffffff 100%);
-  box-shadow: 0 10px 22px rgba(180, 130, 60, 0.08);
-}
-.checkin-card__info {
-  display: grid;
-  gap: 6px;
-}
-.checkin-card__info h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
-}
-.checkin-card__info p {
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
-}
-.checkin-card__info p strong {
-  color: #d97706;
-}
-
 .transfer-form {
   display: grid;
   gap: 12px;
@@ -790,13 +901,13 @@ onMounted(async () => {
 .transfer-preview {
   padding: 12px 14px;
   border-radius: 12px;
-  background: rgba(79, 140, 255, 0.06);
-  border: 1px dashed rgba(79, 140, 255, 0.3);
-  color: #475569;
+  background: var(--points-teal-soft);
+  border: 1px dashed rgba(15, 118, 110, 0.34);
+  color: #466562;
   font-size: 13px;
 }
 .transfer-preview strong {
-  color: #4f8cff;
+  color: var(--points-teal-dark);
 }
 
 .transfer-list {
@@ -805,9 +916,9 @@ onMounted(async () => {
 }
 .transfer-item {
   padding: 14px 16px;
-  border: 1px solid var(--profile-card-border);
+  border: 1px solid var(--points-line);
   border-radius: 14px;
-  background: rgba(248, 251, 255, 0.8);
+  background: #f7faf8;
 }
 .transfer-item__main {
   display: flex;
@@ -828,6 +939,58 @@ onMounted(async () => {
   color: #16a34a;
 }
 .transfer-out {
-  color: #dc2626;
+  color: #b4483f;
+}
+
+.points-coupon-group {
+  border-color: rgba(213, 227, 222, 0.96);
+  background: rgba(244, 249, 247, 0.82);
+}
+
+.points-subhead span {
+  border: 1px solid rgba(15, 118, 110, 0.16);
+  background: var(--points-teal-soft);
+  color: var(--points-teal-dark);
+}
+
+.points-coupon-group .coupon-item {
+  border-color: var(--points-line);
+  background: var(--profile-card-bg-strong);
+  box-shadow: 0 5px 12px rgba(35, 72, 69, 0.04);
+}
+
+.points-coupon-group .coupon-item:hover {
+  border-color: rgba(15, 118, 110, 0.52);
+  background: #fbfffd;
+  box-shadow: 0 10px 20px rgba(35, 72, 69, 0.1);
+  transform: translateY(-2px);
+}
+
+.points-page .empty {
+  border-color: rgba(191, 212, 204, 0.95);
+  background: rgba(244, 249, 247, 0.84);
+}
+
+.points-log {
+  border-color: var(--points-line);
+  background: var(--profile-card-bg);
+  box-shadow: var(--profile-card-shadow);
+}
+
+.points-log__head h3 {
+  color: var(--profile-text-main);
+}
+
+.points-log__head h3::before {
+  background: var(--points-teal);
+}
+
+.points-log :deep(.el-table th.el-table__cell) {
+  background: #edf5f2;
+  color: #36534f;
+}
+
+.points-log :deep(.el-table tr:hover > td.el-table__cell) {
+  background: #f4faf8;
 }
 </style>

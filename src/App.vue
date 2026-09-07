@@ -67,7 +67,10 @@ function currentRedirectTarget() {
 }
 
 function handleUnauthorizedSession(event: Event) {
-  if (route.path.startsWith('/dev')) {
+  const isDeveloperRoute =
+    route.path.startsWith('/dev') || route.matched.some((record) => Boolean(record.meta.devArea))
+
+  if (isDeveloperRoute) {
     return
   }
 
@@ -377,109 +380,5 @@ html::-webkit-scrollbar-thumb:hover {
 .app-scrollbar .el-scrollbar__bar.is-vertical {
   width: 4px;
   right: 0;
-}
-
-.app-dev-host .dev-shell {
-  min-height: 0;
-  height: 100%;
-  border-radius: 24px;
-  border: 1px solid rgba(228, 234, 246, 0.95);
-  box-shadow: 0 16px 40px rgba(90, 120, 180, 0.08);
-  overflow: hidden;
-  background:
-    radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 24%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(247, 249, 253, 0.92));
-}
-
-.app-dev-host .dev-shell__aside,
-.app-dev-host .dev-shell>.el-container:last-child {
-  height: 100%;
-}
-
-.app-dev-host .dev-shell__aside {
-  background:
-    radial-gradient(circle at top left, rgba(96, 165, 250, 0.18), transparent 26%),
-    linear-gradient(180deg, rgba(18, 28, 45, 0.96), rgba(24, 36, 58, 0.96));
-  border-right: 1px solid rgba(191, 219, 254, 0.14);
-  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.05);
-}
-
-.app-dev-host .dev-shell__brand {
-  padding: 8px 8px 0;
-}
-
-.app-dev-host .dev-shell__brand-subtitle {
-  color: rgba(203, 213, 225, 0.6);
-}
-
-.app-dev-host .dev-shell__menu .el-menu-item,
-.app-dev-host .dev-shell__menu .el-sub-menu__title {
-  margin-bottom: 6px;
-  border-radius: 14px;
-}
-
-.app-dev-host .dev-shell__menu .el-menu-item.is-active {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.3), rgba(59, 130, 246, 0.18));
-  border-color: rgba(147, 197, 253, 0.2);
-  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.18);
-}
-
-.app-dev-host .dev-shell__menu .el-menu-item:hover,
-.app-dev-host .dev-shell__menu .el-sub-menu__title:hover {
-  background: rgba(96, 165, 250, 0.12);
-}
-
-.app-dev-host .dev-shell__header {
-  padding: 24px 28px 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0));
-}
-
-.app-dev-host .dev-shell__title {
-  color: #0f172a;
-}
-
-.app-dev-host .dev-shell__main {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
-}
-
-.app-dev-host .dev-route-view--shell {
-  padding: 14px 28px 24px;
-}
-
-@media (max-width: 780px) {
-  .app-dev-layout {
-    gap: 8px;
-    height: 100%;
-    min-height: 0;
-    padding-bottom: 6px;
-    overflow: hidden;
-  }
-
-  .app-dev-host {
-    flex: 1 1 0;
-    width: calc(100% - 16px);
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .app-dev-host .dev-shell {
-    min-height: 0;
-    height: 100%;
-    border-radius: 20px;
-  }
-
-  .app-dev-host .dev-shell__header {
-    padding: 0;
-    background: transparent;
-  }
-
-  .app-dev-host .dev-route-view--shell {
-    padding: 16px 14px 24px;
-  }
-
-  .app-dev-host .dev-shell__aside,
-  .app-dev-host .dev-shell>.el-container:last-child {
-    height: 100%;
-  }
 }
 </style>

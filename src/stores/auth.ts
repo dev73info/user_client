@@ -18,6 +18,14 @@ import {
   restorePersistedAuthProfile,
   type AuthProfile,
 } from '@/shared/auth/session'
+import {
+  getTokenExpMs,
+  isTokenExpired,
+  MIN_REFRESH_DELAY_MS,
+  REFRESH_BEFORE_EXPIRY_MS,
+  RETRY_AFTER_FAILURE_MS,
+} from '@/shared/auth/token'
+import { createTokenRefreshController } from '@/shared/auth/tokenLifecycle'
 
 export type LoginResult = {
   requiresTwoFactor: boolean
@@ -25,27 +33,6 @@ export type LoginResult = {
 }
 
 const TOKEN_KEY = 'auth_token_73hub'
-const REFRESH_BEFORE_EXPIRY_MS = 2 * 60 * 1000
-const MIN_REFRESH_DELAY_MS = 15_000
-const RETRY_AFTER_FAILURE_MS = 30_000
-
-function getTokenExpMs(jwt: string): number {
-  try {
-    const payload = jwt.split('.')[1]
-    if (!payload) return NaN
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
-    const json = JSON.parse(atob(padded)) as { exp?: unknown }
-    return typeof json.exp === 'number' ? json.exp * 1000 : NaN
-  } catch {
-    return NaN
-  }
-}
-
-function isTokenExpired(jwt: string): boolean {
-  const exp = getTokenExpMs(jwt)
-  return Number.isFinite(exp) && Date.now() >= exp
-}
 
 function isAuthRejected(error: unknown): boolean {
   return error instanceof HttpError && (error.status === 401 || error.status === 403)
@@ -58,9 +45,7 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
   const profileLoaded = ref(false)
   const hydrated = ref(false)
-  let refreshTimer: ReturnType<typeof setTimeout> | null = null
   const profileRequest = ref<Promise<AuthProfile> | null>(null)
-  let visibilityHandler: (() => void) | null = null
 
   const isAuthed = computed(() => token.value.length > 0)
   const profileState = {
@@ -70,72 +55,16 @@ export const useAuthStore = defineStore('auth', () => {
     profileRequest,
   }
 
+  const tokenLifecycle = createTokenRefreshController({
+    getToken: () => token.value,
+    refreshToken: refreshTokenApi,
+    applyRefreshedToken: (payload) => applyAuthPayload(payload, true),
+    logout,
+    isAuthRejected,
+  })
+
   function authHeaders(headers: HeadersInit = {}) {
     return createAuthHeaders(token.value, headers)
-  }
-
-  function clearRefreshTimer() {
-    if (refreshTimer !== null) {
-      clearTimeout(refreshTimer)
-      refreshTimer = null
-    }
-  }
-
-  function scheduleRefresh(currentToken?: string) {
-    clearRefreshTimer()
-    const jwt = currentToken ?? token.value
-    if (!jwt) return
-
-    const expMs = getTokenExpMs(jwt)
-    const delay = Number.isFinite(expMs)
-      ? Math.max(MIN_REFRESH_DELAY_MS, expMs - Date.now() - REFRESH_BEFORE_EXPIRY_MS)
-      : 5 * 60 * 1000
-
-    refreshTimer = setTimeout(async () => {
-      if (!token.value) return
-      try {
-        const resp = await refreshTokenApi(token.value)
-        applyAuthPayload(resp, true)
-      } catch (error) {
-        if (isTokenExpired(token.value) || isAuthRejected(error)) {
-          logout()
-          return
-        }
-
-        refreshTimer = setTimeout(() => scheduleRefresh(), RETRY_AFTER_FAILURE_MS)
-      }
-    }, delay)
-  }
-
-  function setupVisibilityRefresh() {
-    if (visibilityHandler || typeof document === 'undefined') return
-
-    visibilityHandler = () => {
-      if (document.visibilityState !== 'visible' || !token.value) return
-
-      const expMs = getTokenExpMs(token.value)
-      if (isTokenExpired(token.value)) {
-        logout()
-        return
-      }
-
-      if (Number.isFinite(expMs) && expMs - Date.now() < REFRESH_BEFORE_EXPIRY_MS + 60_000) {
-        clearRefreshTimer()
-        void refreshTokenApi(token.value)
-          .then((resp) => {
-            applyAuthPayload(resp, true)
-          })
-          .catch((error) => {
-            if (isTokenExpired(token.value) || isAuthRejected(error)) {
-              logout()
-            } else {
-              scheduleRefresh()
-            }
-          })
-      }
-    }
-
-    document.addEventListener('visibilitychange', visibilityHandler)
   }
 
   function resetProfile() {
@@ -143,11 +72,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function resetAuthState() {
-    clearRefreshTimer()
-    if (visibilityHandler && typeof document !== 'undefined') {
-      document.removeEventListener('visibilitychange', visibilityHandler)
-      visibilityHandler = null
-    }
+    tokenLifecycle.dispose()
     token.value = ''
     resetProfile()
   }
@@ -168,8 +93,8 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = saved
     resetProfile()
     restorePersistedAuthProfile(profileState)
-    scheduleRefresh(saved)
-    setupVisibilityRefresh()
+    tokenLifecycle.schedule(saved)
+    tokenLifecycle.setupVisibility()
   }
 
   function persist(newToken: string, preserveProfile = false) {
@@ -184,16 +109,16 @@ export const useAuthStore = defineStore('auth', () => {
         (nextToken) => {
           token.value = nextToken
           localStorage.setItem(TOKEN_KEY, nextToken)
-          scheduleRefresh(nextToken)
-          setupVisibilityRefresh()
+          tokenLifecycle.schedule(nextToken)
+          tokenLifecycle.setupVisibility()
         },
         true,
       )
       return
     }
     localStorage.setItem(TOKEN_KEY, newToken)
-    scheduleRefresh(newToken)
-    setupVisibilityRefresh()
+    tokenLifecycle.schedule(newToken)
+    tokenLifecycle.setupVisibility()
   }
 
   function applyAuthPayload(payload: AuthPayload, preserveProfile = false) {

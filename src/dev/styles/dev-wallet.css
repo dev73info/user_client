@@ -1,0 +1,528 @@
+/* 钱包模块样式 */
+.dev-wallet-page {
+  gap: 20px;
+}
+
+.dev-meta-strip__tag {
+  margin-left: 2px;
+}
+
+/* 主余额卡片区 */
+.wallet-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.wallet-hero__card {
+  display: flex;
+  flex-direction: column;
+}
+
+.wallet-hero__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.wallet-hero__section-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dev-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wallet-hero__body {
+  flex: 1;
+  margin-bottom: 20px;
+}
+
+.wallet-hero__main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.wallet-hero__label {
+  font-size: 13px;
+  color: var(--dev-muted);
+}
+
+.wallet-hero__amount {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--dev-gold);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.wallet-hero__amount--dim {
+  color: var(--dev-muted);
+}
+
+.wallet-hero__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wallet-hero__footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--dev-border, #f0f0f0);
+}
+
+.wallet-hero__button.el-button {
+  min-height: 44px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-weight: 800;
+  line-height: 1;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.wallet-hero__button.el-button span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.wallet-hero__button.el-button .el-icon {
+  font-size: 16px;
+}
+
+.wallet-hero__button--primary.el-button {
+  min-width: 132px;
+  border-color: var(--dev-blue);
+  background: var(--dev-blue);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.18);
+}
+
+.wallet-hero__button--primary.el-button:hover:not(.is-disabled),
+.wallet-hero__button--primary.el-button:focus-visible:not(.is-disabled) {
+  border-color: #173aaa;
+  background: #173aaa;
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(31, 74, 209, 0.22);
+  transform: translateY(-1px);
+}
+
+.wallet-hero__button--ghost.el-button {
+  min-width: 88px;
+  border-color: rgba(148, 163, 184, 0.3);
+  background: rgba(255, 255, 255, 0.9);
+  color: #475569;
+  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.04);
+}
+
+.wallet-hero__button--ghost.el-button:hover,
+.wallet-hero__button--ghost.el-button:focus-visible {
+  border-color: rgba(31, 74, 209, 0.24);
+  background: rgba(31, 74, 209, 0.07);
+  color: var(--dev-blue);
+  box-shadow: 0 10px 20px rgba(31, 74, 209, 0.08);
+  transform: translateY(-1px);
+}
+
+.wallet-hero__button.el-button.is-disabled,
+.wallet-hero__button.el-button.is-disabled:hover,
+.wallet-hero__button.el-button.is-disabled:focus-visible {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: #e5edf5;
+  color: #7c8da3;
+  box-shadow: none;
+  opacity: 1;
+  transform: none;
+}
+
+.wallet-hero__button.el-button.is-loading {
+  transform: none;
+}
+
+.wallet-hero__hint {
+  font-size: 12px;
+  color: var(--dev-muted);
+}
+
+/* 提现弹窗 */
+.dev-wallet-withdraw__balance {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--dev-gold);
+}
+
+.dev-wallet-withdraw__note {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--dev-muted);
+}
+
+.dev-recharge-dialog.el-dialog {
+  max-width: calc(100vw - 32px);
+  overflow: hidden;
+  border-radius: 14px;
+  box-shadow: 0 22px 56px rgba(15, 23, 42, 0.18);
+}
+
+.dev-recharge-dialog .el-dialog__header {
+  margin: 0;
+  padding: 26px 28px 0;
+}
+
+.dev-recharge-dialog .el-dialog__title {
+  color: #111827;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.dev-recharge-dialog .el-dialog__headerbtn {
+  top: 22px;
+  right: 22px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.dev-recharge-dialog .el-dialog__headerbtn:hover {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.dev-recharge-dialog .el-dialog__body {
+  padding: 24px 28px 0;
+}
+
+.dev-recharge-dialog .el-dialog__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 28px 28px 26px;
+  background: #fff;
+  border-top: 1px solid rgba(226, 232, 240, 0.82);
+}
+
+.dev-recharge-dialog__form .el-form-item {
+  margin-bottom: 0;
+}
+
+.dev-recharge-dialog__form .el-form-item__label {
+  margin-bottom: 10px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.dev-recharge-dialog__amount-input.el-input-number {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.dev-recharge-dialog__amount-input .el-input__wrapper {
+  min-height: 48px;
+  background: #f8fafc;
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px rgba(203, 213, 225, 0.9) inset;
+}
+
+.dev-recharge-dialog__amount-input .el-input__inner {
+  color: #334155;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.dev-recharge-dialog__amount-input .el-input-number__decrease,
+.dev-recharge-dialog__amount-input .el-input-number__increase {
+  width: 48px;
+  border-color: rgba(203, 213, 225, 0.9);
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.dev-recharge-dialog__amount-input .el-input-number__decrease {
+  border-radius: 10px 0 0 10px;
+}
+
+.dev-recharge-dialog__amount-input .el-input-number__increase {
+  border-radius: 0 10px 10px 0;
+}
+
+.dev-recharge-dialog__amount-input .el-input-number__decrease:hover,
+.dev-recharge-dialog__amount-input .el-input-number__increase:hover {
+  color: var(--dev-blue);
+}
+
+.dev-recharge-dialog__notes {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.dev-recharge-dialog__notes .dev-wallet-withdraw__note {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dev-recharge-dialog__notes strong {
+  color: var(--dev-gold);
+  font-weight: 800;
+}
+
+.dev-recharge-dialog__limit-alert.el-alert {
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  border-radius: 10px;
+  background: #fff7ed;
+}
+
+.dev-recharge-dialog__limit-alert .el-alert__title {
+  color: #b45309;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.dev-recharge-dialog__limit-alert .el-alert__icon {
+  color: #f59e0b;
+}
+
+.dev-recharge-dialog__button.el-button {
+  min-height: 42px;
+  height: 42px;
+  margin-left: 0;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-weight: 800;
+  line-height: 1;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.dev-recharge-dialog__button.el-button span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dev-recharge-dialog__button.el-button .el-icon {
+  font-size: 16px;
+}
+
+.dev-recharge-dialog__button--ghost.el-button {
+  border-color: rgba(148, 163, 184, 0.32);
+  background: #fff;
+  color: #475569;
+}
+
+.dev-recharge-dialog__button--ghost.el-button:hover,
+.dev-recharge-dialog__button--ghost.el-button:focus-visible {
+  border-color: rgba(31, 74, 209, 0.24);
+  background: rgba(31, 74, 209, 0.07);
+  color: var(--dev-blue);
+  box-shadow: 0 10px 20px rgba(31, 74, 209, 0.08);
+  transform: translateY(-1px);
+}
+
+.dev-recharge-dialog__button--secondary.el-button {
+  border-color: rgba(16, 185, 129, 0.22);
+  background: #ecfdf5;
+  color: #047857;
+  box-shadow: 0 10px 20px rgba(16, 185, 129, 0.08);
+}
+
+.dev-recharge-dialog__button--secondary.el-button:hover,
+.dev-recharge-dialog__button--secondary.el-button:focus-visible {
+  border-color: rgba(16, 185, 129, 0.34);
+  background: #dff9ed;
+  color: #047857;
+  box-shadow: 0 12px 24px rgba(16, 185, 129, 0.12);
+  transform: translateY(-1px);
+}
+
+.dev-recharge-dialog__button--primary.el-button {
+  border-color: var(--dev-blue);
+  background: var(--dev-blue);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.18);
+}
+
+.dev-recharge-dialog__button--primary.el-button:hover,
+.dev-recharge-dialog__button--primary.el-button:focus-visible {
+  border-color: #173aaa;
+  background: #173aaa;
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(31, 74, 209, 0.22);
+  transform: translateY(-1px);
+}
+
+.dev-recharge-dialog__button.el-button.is-loading {
+  transform: none;
+}
+
+/* 收入表格 */
+.dev-wallet-table__title {
+  font-weight: 700;
+  color: var(--dev-ink);
+}
+
+.dev-wallet-table__meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--dev-muted);
+}
+
+.dev-wallet-table__amount {
+  font-weight: 700;
+  color: var(--dev-gold);
+}
+
+@media (max-width: 720px) {
+  .wallet-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .dev-recharge-dialog .el-dialog__header {
+    padding: 22px 20px 0;
+  }
+
+  .dev-recharge-dialog .el-dialog__body {
+    padding: 20px 20px 0;
+  }
+
+  .dev-recharge-dialog .el-dialog__footer {
+    padding: 22px 20px 20px;
+  }
+
+  .dev-recharge-dialog__button.el-button {
+    flex: 1 1 140px;
+  }
+}
+
+/* 金额横幅 */
+.pay-amount-banner {
+  width: 100%;
+  padding: 10px 16px;
+  background: var(--el-color-primary-light-9, #ecf5ff);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--dev-muted);
+  text-align: center;
+}
+
+.pay-amount-banner__value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--dev-gold);
+  margin-left: 6px;
+}
+
+/* 倒计时 */
+.pay-countdown {
+  font-size: 13px;
+  color: var(--dev-muted);
+  margin: 6px 0 2px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.pay-countdown--expired {
+  color: var(--el-color-danger);
+  font-weight: 600;
+}
+
+.pay-countdown__polling {
+  font-size: 12px;
+  color: var(--el-color-primary);
+  animation: fade-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes fade-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* 支付宝二维码 */
+.alipay-pay-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.alipay-pay-frame {
+  width: 300px;
+  height: 300px;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.alipay-pay-loading {
+  width: 100%;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--dev-muted);
+}
+
+/* 微信二维码 */
+.wechat-pay-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.wechat-pay-qr__img {
+  width: 240px;
+  height: 240px;
+  border-radius: 8px;
+}
+
+.wechat-pay-qr__hint {
+  font-size: 13px;
+  color: var(--dev-muted);
+  text-align: center;
+  line-height: 1.6;
+}

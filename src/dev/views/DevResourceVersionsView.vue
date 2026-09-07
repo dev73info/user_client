@@ -491,22 +491,6 @@ async function removeVersion() {
   gap: 12px;
 }
 
-.dev-version-file-picker {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.dev-version-file-picker__input {
-  display: none;
-}
-
-.dev-version-file-picker__name {
-  color: var(--el-text-color-regular);
-  word-break: break-all;
-}
-
 .dev-version-link {
   color: var(--el-color-primary);
   text-decoration: none;

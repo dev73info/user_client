@@ -18,6 +18,7 @@ export type DevOrderDepositStatus = {
   total_paid_cny: number
   frozen_cny: number
   available_cny: number
+  pending_refund_cny: number
   pending_withdraw_cny: number
   paid_withdraw_cny: number
   latest_order?: DevOrderDepositOrderSummary | null
@@ -32,7 +33,7 @@ export type DevOrderDepositWithdrawalRecord = {
   account_name: string
   account_no: string
   account_no_masked: string
-  status: 'pending_review' | 'approved' | 'rejected' | 'paid'
+  status: 'pending_review' | 'approved' | 'payout_processing' | 'payout_failed' | 'rejected' | 'paid'
   note?: string | null
   review_note?: string | null
   reviewed_by?: string | null

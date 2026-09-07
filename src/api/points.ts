@@ -4,6 +4,9 @@ export type UserPointsSelf = {
   username: string
   points_balance: number
   logs: UserPointsLog[]
+  logs_total?: number
+  logs_page?: number
+  logs_page_size?: number
   username_gradient_owned: boolean
   username_gradient: boolean
   perks: UserPerk[]
@@ -34,9 +37,22 @@ export type UserPointsLog = {
   created_at: string
 }
 
-export async function getMyPoints(token: string): Promise<UserPointsSelf> {
+export type UserPointsQuery = {
+  page?: number
+  page_size?: number
+}
+
+export async function getMyPoints(
+  token: string,
+  query: UserPointsQuery = {},
+): Promise<UserPointsSelf> {
+  const params = new URLSearchParams()
+  if (query.page != null) params.set('page', String(query.page))
+  if (query.page_size != null) params.set('page_size', String(query.page_size))
+  const suffix = params.toString() ? `?${params.toString()}` : ''
+
   return requestJson<UserPointsSelf>(
-    '/points/me',
+    `/points/me${suffix}`,
     { headers: authHeaders(token) },
     '加载积分失败',
   )

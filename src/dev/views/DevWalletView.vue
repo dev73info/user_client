@@ -6,8 +6,10 @@ import QRCode from 'qrcode'
 
 import {
   createDevWithdrawalRequest,
+  getDevWithdrawalLimits,
   getDevWalletOverview,
   type CreateDevWithdrawalRequest,
+  type DevWithdrawalLimits,
   type DevWalletIncomeItem,
   type DevWalletOverview,
   validateDevWithdrawalRequest,
@@ -36,6 +38,7 @@ const loading = ref(false)
 const withdrawDialogVisible = ref(false)
 const submittingWithdrawal = ref(false)
 const overview = ref<DevWalletOverview | null>(null)
+const withdrawalLimits = ref<DevWithdrawalLimits | null>(null)
 const withdrawForm = reactive<CreateDevWithdrawalRequest>({
   amount_cny: 0,
   channel: 'alipay',
@@ -80,26 +83,15 @@ let pollTimer: ReturnType<typeof setInterval> | null = null
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 
 const recentIncome = computed<DevWalletIncomeItem[]>(() => overview.value?.recent_income ?? [])
-const canWithdraw = computed(() => (overview.value?.withdrawable_balance_cny ?? 0) >= 1)
-const withdrawHint = computed(() => {
-  if (canWithdraw.value) {
-    return '单次提现最低 1 元，可直接发起申请'
-  }
-
-  return `单次提现最低 1 元，当前余额 ${money(overview.value?.withdrawable_balance_cny)}，暂不满足提现条件`
-})
+const withdrawalMinAmount = computed(() => withdrawalLimits.value?.min_amount_cny ?? 0.01)
+const withdrawalMaxAmount = computed(() => withdrawalLimits.value?.max_amount_cny ?? 999999)
+const canWithdraw = computed(() => (overview.value?.withdrawable_balance_cny ?? 0) >= withdrawalMinAmount.value)
 
 const depositWithdrawable = computed(
   () => depositWithdrawalSummary.value?.withdrawable_balance_cny ?? 0,
 )
 const depositTotalPaid = computed(() => depositStatus.value?.total_paid_cny ?? 0)
-const canWithdrawDeposit = computed(() => depositWithdrawable.value >= 1)
-const depositWithdrawHint = computed(() => {
-  if (canWithdrawDeposit.value) {
-    return '单次提现最低 1 元，可直接发起申请'
-  }
-  return `单次提现最低 1 元，当前可提现 ${money(depositWithdrawable.value)}，暂不满足提现条件`
-})
+const canWithdrawDeposit = computed(() => depositWithdrawable.value >= withdrawalMinAmount.value)
 
 const expiresAtMs = computed(() => {
   const raw = pendingExpiresAt.value.trim()
@@ -126,7 +118,7 @@ const countdownText = computed(() => {
 
 onMounted(async () => {
   auth.hydrate()
-  await Promise.all([loadWallet(), loadDeposit()])
+  await Promise.all([loadWallet(), loadDeposit(), loadWithdrawalLimits()])
   countdownTimer = setInterval(() => {
     nowTick.value = Date.now()
   }, 1000)
@@ -146,6 +138,10 @@ function money(value?: number | null) {
   }
 
   return `¥${value.toFixed(2)}`
+}
+
+function normalizeCnyAmount(value: number) {
+  return Math.round(value * 100) / 100
 }
 
 function rateText(value?: number | null) {
@@ -181,6 +177,24 @@ async function loadWallet() {
     showToast(message, 'error')
   } finally {
     loading.value = false
+  }
+}
+
+async function loadWithdrawalLimits() {
+  if (!auth.token) return
+
+  try {
+    withdrawalLimits.value = await getDevWithdrawalLimits(auth.token)
+    if (withdrawalLimits.value.alipay_enabled === false) {
+      if (withdrawForm.channel === 'alipay') withdrawForm.channel = 'wechat'
+      if (depositWithdrawForm.channel === 'alipay') depositWithdrawForm.channel = 'wechat'
+    }
+    if (withdrawalLimits.value.wechat_enabled === false) {
+      if (withdrawForm.channel === 'wechat') withdrawForm.channel = 'alipay'
+      if (depositWithdrawForm.channel === 'wechat') depositWithdrawForm.channel = 'alipay'
+    }
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '加载提现配置失败', 'error')
   }
 }
 
@@ -229,7 +243,7 @@ async function submitWithdrawal() {
   }
 
   const payload: CreateDevWithdrawalRequest = {
-    amount_cny: Number(withdrawForm.amount_cny),
+    amount_cny: normalizeCnyAmount(Number(withdrawForm.amount_cny)),
     channel: withdrawForm.channel,
     account_name: withdrawForm.account_name.trim(),
     account_no: withdrawForm.account_no.trim(),
@@ -239,6 +253,7 @@ async function submitWithdrawal() {
   const validationMessage = validateDevWithdrawalRequest(
     payload,
     overview.value?.withdrawable_balance_cny,
+    withdrawalLimits.value,
   )
   if (validationMessage) {
     showToast(validationMessage, 'warning')
@@ -258,10 +273,6 @@ async function submitWithdrawal() {
   } finally {
     submittingWithdrawal.value = false
   }
-}
-
-async function refreshAll() {
-  await Promise.all([loadWallet(), loadDeposit()])
 }
 
 function clearPaymentTimers() {
@@ -289,9 +300,9 @@ async function payWithAlipay() {
     showToast('登录状态已失效，请重新登录', 'error')
     return
   }
-  const amount = Number(rechargeAmount.value)
+  const amount = normalizeCnyAmount(Number(rechargeAmount.value))
   if (!Number.isFinite(amount) || amount <= 0 || amount > 999999) {
-    showToast('请输入合法金额（0.01 – 999999 元）', 'warning')
+    showToast('请输入大于 0 的金额（单位：元，最多两位小数，最高 999999 元）', 'warning')
     return
   }
 
@@ -362,9 +373,9 @@ async function payWithWechat() {
     showToast('登录状态已失效，请重新登录', 'error')
     return
   }
-  const amount = Number(rechargeAmount.value)
+  const amount = normalizeCnyAmount(Number(rechargeAmount.value))
   if (!Number.isFinite(amount) || amount <= 0 || amount > 999999) {
-    showToast('请输入合法金额（0.01 – 999999 元）', 'warning')
+    showToast('请输入大于 0 的金额（单位：元，最多两位小数，最高 999999 元）', 'warning')
     return
   }
 
@@ -448,14 +459,19 @@ async function submitDepositWithdrawal() {
   }
 
   const payload: CreateDevOrderDepositWithdrawalRequest = {
-    amount_cny: Number(depositWithdrawForm.amount_cny),
+    amount_cny: normalizeCnyAmount(Number(depositWithdrawForm.amount_cny)),
     channel: depositWithdrawForm.channel,
     account_name: depositWithdrawForm.account_name.trim(),
     account_no: depositWithdrawForm.account_no.trim(),
     note: depositWithdrawForm.note?.trim() || null,
   }
 
-  const validationMessage = validateDevWithdrawalRequest(payload, depositWithdrawable.value)
+  const validationMessage = validateDevWithdrawalRequest(
+    payload,
+    depositWithdrawable.value,
+    withdrawalLimits.value,
+    true,
+  )
   if (validationMessage) {
     showToast(validationMessage, 'warning')
     return
@@ -480,29 +496,29 @@ async function submitDepositWithdrawal() {
 <template>
   <div class="dev-page dev-wallet-page">
     <!-- 次要统计条 -->
-    <div class="wallet-meta-strip" v-loading="loading">
-      <div class="wallet-meta-strip__item">
-        <span class="wallet-meta-strip__label">累计收入</span>
-        <span class="wallet-meta-strip__value">{{ money(overview?.total_income_cny) }}</span>
+    <div class="dev-meta-strip" v-loading="loading">
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">累计收入</span>
+        <span class="dev-meta-strip__value">{{ money(overview?.total_income_cny) }}</span>
       </div>
-      <div class="wallet-meta-strip__divider" />
-      <div class="wallet-meta-strip__item">
-        <span class="wallet-meta-strip__label">今日入账</span>
-        <span class="wallet-meta-strip__value">{{ money(overview?.today_income_cny) }}</span>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">今日入账</span>
+        <span class="dev-meta-strip__value">{{ money(overview?.today_income_cny) }}</span>
         <el-tag size="small" :type="(overview?.today_income_change_rate ?? 0) >= 0 ? 'success' : 'danger'"
-          effect="plain" class="wallet-meta-strip__tag">
+          effect="plain" class="dev-meta-strip__tag">
           {{ rateText(overview?.today_income_change_rate) }}
         </el-tag>
       </div>
-      <div class="wallet-meta-strip__divider" />
-      <div class="wallet-meta-strip__item">
-        <span class="wallet-meta-strip__label">完成订单</span>
-        <span class="wallet-meta-strip__value">{{ overview?.total_completed_orders ?? 0 }}</span>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">完成订单</span>
+        <span class="dev-meta-strip__value">{{ overview?.total_completed_orders ?? 0 }}</span>
       </div>
-      <div class="wallet-meta-strip__divider" />
-      <div class="wallet-meta-strip__item">
-        <span class="wallet-meta-strip__label">活跃需求</span>
-        <span class="wallet-meta-strip__value">{{ overview?.active_requirement_count ?? 0 }}</span>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">活跃需求</span>
+        <span class="dev-meta-strip__value">{{ overview?.active_requirement_count ?? 0 }}</span>
       </div>
     </div>
 
@@ -538,14 +554,14 @@ async function submitDepositWithdrawal() {
             </el-icon>
             <span>申请提现</span>
           </el-button>
-          <span class="wallet-hero__hint">最低 1 元，审核后打款</span>
+          <span class="wallet-hero__hint">金额需大于 0 元，审核后打款</span>
         </div>
       </el-card>
 
-      <!-- 接单保证金 -->
+      <!-- 保证金余额 -->
       <el-card shadow="never" class="dev-surface-card wallet-hero__card">
         <div class="wallet-hero__header">
-          <span class="wallet-hero__section-label">接单保证金</span>
+          <span class="wallet-hero__section-label">保证金余额</span>
           <el-tag size="small" effect="plain" type="info">充值总额 {{ money(depositTotalPaid) }}</el-tag>
         </div>
         <div class="wallet-hero__body">
@@ -558,6 +574,9 @@ async function submitDepositWithdrawal() {
           <div class="wallet-hero__tags">
             <el-tag v-if="(depositStatus?.frozen_cny ?? 0) > 0" size="small" type="warning" effect="plain">
               冻结中 {{ money(depositStatus?.frozen_cny) }}
+            </el-tag>
+            <el-tag v-if="(depositStatus?.pending_refund_cny ?? 0) > 0" size="small" type="warning" effect="plain">
+              退款处理中 {{ money(depositStatus?.pending_refund_cny) }}
             </el-tag>
             <el-tag v-if="(depositWithdrawalSummary?.pending_withdraw_cny ?? 0) > 0" size="small" type="warning"
               effect="plain">
@@ -586,7 +605,7 @@ async function submitDepositWithdrawal() {
             </el-icon>
             <span>充值</span>
           </el-button>
-          <span class="wallet-hero__hint">最低 1 元</span>
+          <span class="wallet-hero__hint">金额需大于 0 元</span>
         </div>
       </el-card>
     </div>
@@ -635,24 +654,24 @@ async function submitDepositWithdrawal() {
           </div>
         </el-form-item>
         <el-form-item label="提现金额" required>
-          <el-input-number v-model="withdrawForm.amount_cny" :min="1" :precision="2" :step="100" placeholder="提现金额"
+          <el-input-number v-model="withdrawForm.amount_cny" :min="withdrawalMinAmount" :max="withdrawalMaxAmount" :precision="2" :step="0.01" placeholder="提现金额"
             style="width: 100%" />
-          <div class="dev-wallet-withdraw__note">单次最低 1 元，不能超过可提现余额。</div>
+          <div class="dev-wallet-withdraw__note">可提现 {{ money(withdrawalMinAmount) }} 至 {{ money(withdrawalMaxAmount) }}，最多保留两位小数，不能超过可提现余额。</div>
         </el-form-item>
         <el-form-item label="收款方式" required>
           <el-select v-model="withdrawForm.channel" placeholder="收款方式" style="width: 100%">
-            <el-option label="支付宝" value="alipay" />
-            <el-option label="微信" value="wechat" />
+            <el-option v-if="withdrawalLimits?.alipay_enabled !== false" label="支付宝" value="alipay" />
+            <el-option v-if="withdrawalLimits?.wechat_enabled !== false" label="微信" value="wechat" />
           </el-select>
         </el-form-item>
         <el-form-item label="收款人姓名" required>
-          <el-input v-model="withdrawForm.account_name" placeholder="收款人姓名" maxlength="40" />
+          <el-input v-model="withdrawForm.account_name" placeholder="收款人姓名" :maxlength="withdrawalLimits?.account_name_max_len ?? 40" />
         </el-form-item>
         <el-form-item label="收款账号" required>
-          <el-input v-model="withdrawForm.account_no" placeholder="收款账号" maxlength="80" />
+          <el-input v-model="withdrawForm.account_no" placeholder="收款账号" :maxlength="withdrawalLimits?.account_no_max_len ?? 80" />
         </el-form-item>
         <el-form-item label="申请备注">
-          <el-input v-model="withdrawForm.note" type="textarea" :rows="3" maxlength="200" show-word-limit
+          <el-input v-model="withdrawForm.note" type="textarea" :rows="3" :maxlength="withdrawalLimits?.note_max_len ?? 200" show-word-limit
             placeholder="可选" />
         </el-form-item>
       </el-form>
@@ -669,24 +688,28 @@ async function submitDepositWithdrawal() {
           <div class="dev-wallet-withdraw__balance">{{ money(depositWithdrawable) }}</div>
         </el-form-item>
         <el-form-item label="提现金额" required>
-          <el-input-number v-model="depositWithdrawForm.amount_cny" :min="1" :precision="2" :step="100"
+          <el-input-number v-model="depositWithdrawForm.amount_cny" :min="withdrawalMinAmount" :max="withdrawalMaxAmount" :precision="2" :step="0.01"
             placeholder="提现金额" style="width: 100%" />
-          <div class="dev-wallet-withdraw__note">单次最低 1 元，不能超过可提现保证金余额。</div>
+          <div class="dev-wallet-withdraw__note">可提现 {{ money(withdrawalMinAmount) }} 至 {{ money(withdrawalMaxAmount) }}，最多保留两位小数，不能超过可提现保证金余额。</div>
         </el-form-item>
         <el-form-item label="收款方式" required>
-          <el-select v-model="depositWithdrawForm.channel" placeholder="收款方式" style="width: 100%">
-            <el-option label="支付宝" value="alipay" />
-            <el-option label="微信" value="wechat" />
+          <el-select v-model="depositWithdrawForm.channel" placeholder="收款方式" style="width: 100%"
+            @change="depositWithdrawForm.account_no = ''">
+            <el-option v-if="withdrawalLimits?.alipay_enabled !== false" label="支付宝" value="alipay" />
+            <el-option v-if="withdrawalLimits?.wechat_enabled !== false" label="微信" value="wechat" />
           </el-select>
         </el-form-item>
         <el-form-item label="收款人姓名" required>
-          <el-input v-model="depositWithdrawForm.account_name" placeholder="收款人姓名" maxlength="40" />
+          <el-input v-model="depositWithdrawForm.account_name" placeholder="收款人姓名" :maxlength="withdrawalLimits?.account_name_max_len ?? 40" />
         </el-form-item>
-        <el-form-item label="收款账号" required>
-          <el-input v-model="depositWithdrawForm.account_no" placeholder="收款账号" maxlength="80" />
+        <el-form-item :label="depositWithdrawForm.channel === 'wechat' ? '微信绑定账户' : '收款账号'" required>
+          <el-input v-model="depositWithdrawForm.account_no"
+            :disabled="depositWithdrawForm.channel === 'wechat'"
+            :placeholder="depositWithdrawForm.channel === 'wechat' ? '使用已绑定微信账户' : '收款账号'"
+            :maxlength="withdrawalLimits?.account_no_max_len ?? 80" />
         </el-form-item>
         <el-form-item label="申请备注">
-          <el-input v-model="depositWithdrawForm.note" type="textarea" :rows="3" maxlength="200" show-word-limit
+          <el-input v-model="depositWithdrawForm.note" type="textarea" :rows="3" :maxlength="withdrawalLimits?.note_max_len ?? 200" show-word-limit
             placeholder="可选" />
         </el-form-item>
       </el-form>
@@ -701,8 +724,8 @@ async function submitDepositWithdrawal() {
     <el-dialog v-model="rechargeDialogVisible" title="保证金充值" width="520px" class="dev-recharge-dialog" align-center>
       <el-form class="dev-recharge-dialog__form" label-position="top">
         <el-form-item label="充值金额（元）" required>
-          <el-input-number v-model="rechargeAmount" class="dev-recharge-dialog__amount-input" :min="1" :precision="2"
-            :step="100" />
+          <el-input-number v-model="rechargeAmount" class="dev-recharge-dialog__amount-input" :min="0.01"
+            :precision="2" :step="0.01" />
           <div class="dev-recharge-dialog__notes">
             <div class="dev-wallet-withdraw__note">充值后保证金余额增加，可用于解锁接单资格。</div>
             <div v-if="creditInfo && creditInfo.enforce_deposit_limit" class="dev-wallet-withdraw__note">
@@ -801,573 +824,3 @@ async function submitDepositWithdrawal() {
     </el-dialog>
   </div>
 </template>
-
-<style scoped>
-.dev-wallet-page {
-  gap: 20px;
-}
-
-/* 次要统计条 */
-.wallet-meta-strip {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  padding: 12px 20px;
-  background: var(--dev-surface, #fff);
-  border: 1px solid var(--dev-border, #e8e8e8);
-  border-radius: 10px;
-  flex-wrap: wrap;
-  row-gap: 10px;
-}
-
-.wallet-meta-strip__item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 20px;
-}
-
-.wallet-meta-strip__divider {
-  width: 1px;
-  height: 18px;
-  background: var(--dev-border, #e8e8e8);
-  flex-shrink: 0;
-}
-
-.wallet-meta-strip__label {
-  font-size: 12px;
-  color: var(--dev-muted);
-  white-space: nowrap;
-}
-
-.wallet-meta-strip__value {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--dev-ink);
-  white-space: nowrap;
-}
-
-.wallet-meta-strip__tag {
-  margin-left: 2px;
-}
-
-/* 主余额卡片区 */
-.wallet-hero {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.wallet-hero__card {
-  display: flex;
-  flex-direction: column;
-}
-
-.wallet-hero__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.wallet-hero__section-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--dev-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.wallet-hero__body {
-  flex: 1;
-  margin-bottom: 20px;
-}
-
-.wallet-hero__main {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 12px;
-}
-
-.wallet-hero__label {
-  font-size: 13px;
-  color: var(--dev-muted);
-}
-
-.wallet-hero__amount {
-  font-size: 36px;
-  font-weight: 800;
-  color: var(--dev-gold);
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-
-.wallet-hero__amount--dim {
-  color: var(--dev-muted);
-}
-
-.wallet-hero__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.wallet-hero__footer {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding-top: 16px;
-  border-top: 1px solid var(--dev-border, #f0f0f0);
-}
-
-.wallet-hero__button.el-button {
-  min-height: 44px;
-  height: 44px;
-  padding: 0 18px;
-  border-radius: 10px;
-  font-weight: 800;
-  line-height: 1;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    color 160ms ease,
-    opacity 160ms ease,
-    transform 160ms ease;
-}
-
-.wallet-hero__button.el-button :deep(span) {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.wallet-hero__button.el-button .el-icon {
-  font-size: 16px;
-}
-
-.wallet-hero__button--primary.el-button {
-  min-width: 132px;
-  border-color: var(--dev-blue);
-  background: var(--dev-blue);
-  color: #fff;
-  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.18);
-}
-
-.wallet-hero__button--primary.el-button:hover:not(.is-disabled),
-.wallet-hero__button--primary.el-button:focus-visible:not(.is-disabled) {
-  border-color: #173aaa;
-  background: #173aaa;
-  color: #fff;
-  box-shadow: 0 12px 24px rgba(31, 74, 209, 0.22);
-  transform: translateY(-1px);
-}
-
-.wallet-hero__button--ghost.el-button {
-  min-width: 88px;
-  border-color: rgba(148, 163, 184, 0.3);
-  background: rgba(255, 255, 255, 0.9);
-  color: #475569;
-  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.04);
-}
-
-.wallet-hero__button--ghost.el-button:hover,
-.wallet-hero__button--ghost.el-button:focus-visible {
-  border-color: rgba(31, 74, 209, 0.24);
-  background: rgba(31, 74, 209, 0.07);
-  color: var(--dev-blue);
-  box-shadow: 0 10px 20px rgba(31, 74, 209, 0.08);
-  transform: translateY(-1px);
-}
-
-.wallet-hero__button.el-button.is-disabled,
-.wallet-hero__button.el-button.is-disabled:hover,
-.wallet-hero__button.el-button.is-disabled:focus-visible {
-  border-color: rgba(148, 163, 184, 0.22);
-  background: #e5edf5;
-  color: #7c8da3;
-  box-shadow: none;
-  opacity: 1;
-  transform: none;
-}
-
-.wallet-hero__button.el-button.is-loading {
-  transform: none;
-}
-
-.wallet-hero__hint {
-  font-size: 12px;
-  color: var(--dev-muted);
-}
-
-/* 提现弹窗 */
-.dev-wallet-withdraw__balance {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--dev-gold);
-}
-
-.dev-wallet-withdraw__note {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--dev-muted);
-}
-
-:global(.dev-recharge-dialog.el-dialog) {
-  max-width: calc(100vw - 32px);
-  overflow: hidden;
-  border-radius: 14px;
-  box-shadow: 0 22px 56px rgba(15, 23, 42, 0.18);
-}
-
-:global(.dev-recharge-dialog .el-dialog__header) {
-  margin: 0;
-  padding: 26px 28px 0;
-}
-
-:global(.dev-recharge-dialog .el-dialog__title) {
-  color: #111827;
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
-:global(.dev-recharge-dialog .el-dialog__headerbtn) {
-  top: 22px;
-  right: 22px;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  transition:
-    background-color 160ms ease,
-    color 160ms ease;
-}
-
-:global(.dev-recharge-dialog .el-dialog__headerbtn:hover) {
-  background: rgba(15, 23, 42, 0.06);
-}
-
-:global(.dev-recharge-dialog .el-dialog__body) {
-  padding: 24px 28px 0;
-}
-
-:global(.dev-recharge-dialog .el-dialog__footer) {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 28px 28px 26px;
-  background: #fff;
-  border-top: 1px solid rgba(226, 232, 240, 0.82);
-}
-
-.dev-recharge-dialog__form :deep(.el-form-item) {
-  margin-bottom: 0;
-}
-
-.dev-recharge-dialog__form :deep(.el-form-item__label) {
-  margin-bottom: 10px;
-  color: #334155;
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.dev-recharge-dialog__amount-input.el-input-number {
-  width: 100%;
-  overflow: hidden;
-  border-radius: 10px;
-}
-
-.dev-recharge-dialog__amount-input :deep(.el-input__wrapper) {
-  min-height: 48px;
-  background: #f8fafc;
-  border-radius: 10px;
-  box-shadow: 0 0 0 1px rgba(203, 213, 225, 0.9) inset;
-}
-
-.dev-recharge-dialog__amount-input :deep(.el-input__inner) {
-  color: #334155;
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.dev-recharge-dialog__amount-input :deep(.el-input-number__decrease),
-.dev-recharge-dialog__amount-input :deep(.el-input-number__increase) {
-  width: 48px;
-  border-color: rgba(203, 213, 225, 0.9);
-  background: #f8fafc;
-  color: #64748b;
-}
-
-.dev-recharge-dialog__amount-input :deep(.el-input-number__decrease) {
-  border-radius: 10px 0 0 10px;
-}
-
-.dev-recharge-dialog__amount-input :deep(.el-input-number__increase) {
-  border-radius: 0 10px 10px 0;
-}
-
-.dev-recharge-dialog__amount-input :deep(.el-input-number__decrease:hover),
-.dev-recharge-dialog__amount-input :deep(.el-input-number__increase:hover) {
-  color: var(--dev-blue);
-}
-
-.dev-recharge-dialog__notes {
-  display: grid;
-  gap: 8px;
-  width: 100%;
-  margin-top: 14px;
-  padding: 12px 14px;
-  border: 1px solid rgba(226, 232, 240, 0.92);
-  border-radius: 10px;
-  background: #f8fafc;
-}
-
-.dev-recharge-dialog__notes .dev-wallet-withdraw__note {
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.dev-recharge-dialog__notes strong {
-  color: var(--dev-gold);
-  font-weight: 800;
-}
-
-.dev-recharge-dialog__limit-alert.el-alert {
-  width: 100%;
-  margin-top: 14px;
-  padding: 12px 14px;
-  border: 1px solid rgba(245, 158, 11, 0.18);
-  border-radius: 10px;
-  background: #fff7ed;
-}
-
-.dev-recharge-dialog__limit-alert :deep(.el-alert__title) {
-  color: #b45309;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.55;
-}
-
-.dev-recharge-dialog__limit-alert :deep(.el-alert__icon) {
-  color: #f59e0b;
-}
-
-.dev-recharge-dialog__button.el-button {
-  min-height: 42px;
-  height: 42px;
-  margin-left: 0;
-  padding: 0 18px;
-  border-radius: 10px;
-  font-weight: 800;
-  line-height: 1;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
-}
-
-.dev-recharge-dialog__button.el-button :deep(span) {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.dev-recharge-dialog__button.el-button .el-icon {
-  font-size: 16px;
-}
-
-.dev-recharge-dialog__button--ghost.el-button {
-  border-color: rgba(148, 163, 184, 0.32);
-  background: #fff;
-  color: #475569;
-}
-
-.dev-recharge-dialog__button--ghost.el-button:hover,
-.dev-recharge-dialog__button--ghost.el-button:focus-visible {
-  border-color: rgba(31, 74, 209, 0.24);
-  background: rgba(31, 74, 209, 0.07);
-  color: var(--dev-blue);
-  box-shadow: 0 10px 20px rgba(31, 74, 209, 0.08);
-  transform: translateY(-1px);
-}
-
-.dev-recharge-dialog__button--secondary.el-button {
-  border-color: rgba(16, 185, 129, 0.22);
-  background: #ecfdf5;
-  color: #047857;
-  box-shadow: 0 10px 20px rgba(16, 185, 129, 0.08);
-}
-
-.dev-recharge-dialog__button--secondary.el-button:hover,
-.dev-recharge-dialog__button--secondary.el-button:focus-visible {
-  border-color: rgba(16, 185, 129, 0.34);
-  background: #dff9ed;
-  color: #047857;
-  box-shadow: 0 12px 24px rgba(16, 185, 129, 0.12);
-  transform: translateY(-1px);
-}
-
-.dev-recharge-dialog__button--primary.el-button {
-  border-color: var(--dev-blue);
-  background: var(--dev-blue);
-  color: #fff;
-  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.18);
-}
-
-.dev-recharge-dialog__button--primary.el-button:hover,
-.dev-recharge-dialog__button--primary.el-button:focus-visible {
-  border-color: #173aaa;
-  background: #173aaa;
-  color: #fff;
-  box-shadow: 0 12px 24px rgba(31, 74, 209, 0.22);
-  transform: translateY(-1px);
-}
-
-.dev-recharge-dialog__button.el-button.is-loading {
-  transform: none;
-}
-
-/* 收入表格 */
-.dev-wallet-table__title {
-  font-weight: 700;
-  color: var(--dev-ink);
-}
-
-.dev-wallet-table__meta {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--dev-muted);
-}
-
-.dev-wallet-table__amount {
-  font-weight: 700;
-  color: var(--dev-gold);
-}
-
-@media (max-width: 720px) {
-  .wallet-hero {
-    grid-template-columns: 1fr;
-  }
-
-  :global(.dev-recharge-dialog .el-dialog__header) {
-    padding: 22px 20px 0;
-  }
-
-  :global(.dev-recharge-dialog .el-dialog__body) {
-    padding: 20px 20px 0;
-  }
-
-  :global(.dev-recharge-dialog .el-dialog__footer) {
-    padding: 22px 20px 20px;
-  }
-
-  .dev-recharge-dialog__button.el-button {
-    flex: 1 1 140px;
-  }
-}
-
-/* 金额横幅 */
-.pay-amount-banner {
-  width: 100%;
-  padding: 10px 16px;
-  background: var(--el-color-primary-light-9, #ecf5ff);
-  border-radius: 8px;
-  font-size: 14px;
-  color: var(--dev-muted);
-  text-align: center;
-}
-
-.pay-amount-banner__value {
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--dev-gold);
-  margin-left: 6px;
-}
-
-/* 倒计时 */
-.pay-countdown {
-  font-size: 13px;
-  color: var(--dev-muted);
-  margin: 6px 0 2px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-.pay-countdown--expired {
-  color: var(--el-color-danger);
-  font-weight: 600;
-}
-
-.pay-countdown__polling {
-  font-size: 12px;
-  color: var(--el-color-primary);
-  animation: fade-pulse 1.8s ease-in-out infinite;
-}
-
-@keyframes fade-pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.45;
-  }
-}
-
-/* 支付宝二维码 */
-.alipay-pay-qr {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-.alipay-pay-frame {
-  width: 300px;
-  height: 300px;
-  border: none;
-  border-radius: 8px;
-  background: #fff;
-}
-
-.alipay-pay-loading {
-  width: 100%;
-  height: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  color: var(--dev-muted);
-}
-
-/* 微信二维码 */
-.wechat-pay-qr {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 0;
-}
-
-.wechat-pay-qr__img {
-  width: 240px;
-  height: 240px;
-  border-radius: 8px;
-}
-
-.wechat-pay-qr__hint {
-  font-size: 13px;
-  color: var(--dev-muted);
-  text-align: center;
-  line-height: 1.6;
-}
-</style>

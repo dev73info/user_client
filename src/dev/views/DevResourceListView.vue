@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowDown, MoreFilled, Plus } from '@element-plus/icons-vue'
+import { ArrowDown, Plus } from '@element-plus/icons-vue'
 
 import { apiUrl } from '@dev/api/http'
 import {
@@ -18,6 +18,15 @@ import {
 } from '@dev/api/mcResources'
 import { useToast } from '@dev/composables/useToast'
 import { useAuthStore } from '@dev/stores/auth'
+import { useResourceVersionDraft } from '@/composables/useResourceVersionDraft'
+import {
+  canDeleteResource,
+  resourceCoverUrl,
+  resourcePlatformLabel,
+  resourceTagSummary,
+  resourceVisibilityLabel,
+  resourceVisibilityTagType,
+} from '@/shared/resourcePresentation'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -29,17 +38,20 @@ const requestingReviewResourceId = ref<number | null>(null)
 const settingPrivateResourceId = ref<number | null>(null)
 const publishDialogVisible = ref(false)
 const deletingResourceId = ref<number | null>(null)
-const versionFileInput = ref<HTMLInputElement | null>(null)
-const selectedVersionFile = ref<File | null>(null)
-const selectedVersionFileName = ref('')
 const resources = ref<McResourcePayload[]>([])
 const selectedResource = ref<McResourcePayload | null>(null)
 const processedTagTree = ref<McProcessedTagTree | null>(null)
 
-const versionForm = reactive({
-  version: '',
-  note: '',
-})
+const {
+  versionFileInput,
+  selectedVersionFile,
+  selectedVersionFileName,
+  versionForm,
+  clearFileSelection,
+  reset: resetVersionDraft,
+  triggerFileSelect: triggerVersionFileSelect,
+  handleFileChange: handleVersionFileChange,
+} = useResourceVersionDraft()
 
 const emptyText = computed(() => {
   if (isLoading.value) {
@@ -91,50 +103,6 @@ async function loadResources() {
   } finally {
     isLoading.value = false
   }
-}
-
-function platformText(value: string): string {
-  return value || '未知平台'
-}
-
-function visibilityText(value: McResourcePayload['visibility']): string {
-  if (value === 'published') {
-    return '公开'
-  }
-
-  if (value === 'review') {
-    return '审核中'
-  }
-
-  return '私有'
-}
-
-function visibilityTagType(value: McResourcePayload['visibility']): 'success' | 'warning' | 'info' {
-  if (value === 'published') {
-    return 'success'
-  }
-
-  if (value === 'review') {
-    return 'warning'
-  }
-
-  return 'info'
-}
-
-function ownershipText(value: McResourcePayload['ownership_type']): string {
-  return value === 'team' ? '团队项目' : '个人项目'
-}
-
-function ownershipTagType(value: McResourcePayload['ownership_type']): 'primary' | 'info' {
-  return value === 'team' ? 'primary' : 'info'
-}
-
-function tagSummary(resource: McResourcePayload): string {
-  return resource.tag_selections.flatMap((group) => group.tag_names).join(' / ')
-}
-
-function resourceCoverUrl(resource: McResourcePayload): string {
-  return apiUrl(resource.cover_url || '')
 }
 
 function resolveResourceRoute(
@@ -190,25 +158,8 @@ async function openResourceHomepage(resource: McResourcePayload) {
 
 function openPublishVersionDialog(resource: McResourcePayload) {
   selectedResource.value = resource
-  versionForm.version = ''
-  versionForm.note = ''
-  selectedVersionFile.value = null
-  selectedVersionFileName.value = ''
-  if (versionFileInput.value) {
-    versionFileInput.value.value = ''
-  }
+  resetVersionDraft()
   publishDialogVisible.value = true
-}
-
-function triggerVersionFileSelect() {
-  versionFileInput.value?.click()
-}
-
-function handleVersionFileChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0] ?? null
-  selectedVersionFile.value = file
-  selectedVersionFileName.value = file?.name ?? ''
 }
 
 function openEditHomepagePage(resource: McResourcePayload) {
@@ -217,10 +168,6 @@ function openEditHomepagePage(resource: McResourcePayload) {
 
 function openVersionsPage(resource: McResourcePayload) {
   router.push({ name: 'dev-resource-versions', params: { resourceId: resource.id } })
-}
-
-function canDeleteResource(resource: McResourcePayload) {
-  return !resource.requirement_id
 }
 
 async function removeResource(resource: McResourcePayload) {
@@ -329,8 +276,7 @@ async function submitVersion() {
       note: versionForm.note.trim() || null,
     })
     publishDialogVisible.value = false
-    selectedVersionFile.value = null
-    selectedVersionFileName.value = ''
+    clearFileSelection()
     showToast('新版本已发布', 'success')
   } catch (error) {
     const message = error instanceof Error ? error.message : '发布新版本失败'
@@ -441,14 +387,14 @@ async function setResourcePrivate(resource: McResourcePayload) {
         <el-table-column label="资源" min-width="160">
           <template #default="scope">
             <div class="dev-resource-table__title-cell">
-              <img v-if="scope.row.cover_url" :src="resourceCoverUrl(scope.row)" alt="资源图标"
+              <img v-if="scope.row.cover_url" :src="resourceCoverUrl(scope.row, apiUrl)" alt="资源图标"
                 class="dev-resource-table__icon" />
               <div>
                 <button class="dev-resource-table__title-link" type="button" @click="openResourceHomepage(scope.row)">
                   {{ scope.row.title }}
                 </button>
                 <div class="dev-resource-table__meta">
-                  {{ platformText(scope.row.platform) }} / {{ scope.row.author }}
+                  {{ resourcePlatformLabel(scope.row.platform) }} / {{ scope.row.author }}
                 </div>
               </div>
             </div>
@@ -457,14 +403,14 @@ async function setResourcePrivate(resource: McResourcePayload) {
         <el-table-column label="标签" min-width="120">
           <template #default="scope">
             <span class="dev-resource-table__tags">{{
-              tagSummary(scope.row) || '未附带标签'
+              resourceTagSummary(scope.row) || '未附带标签'
               }}</span>
           </template>
         </el-table-column>
         <el-table-column label="状态" min-width="110">
           <template #default="scope">
-            <el-tag :type="visibilityTagType(scope.row.visibility)" effect="plain">
-              {{ visibilityText(scope.row.visibility) }}
+            <el-tag :type="resourceVisibilityTagType(scope.row.visibility)" effect="plain">
+              {{ resourceVisibilityLabel(scope.row.visibility) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -552,21 +498,5 @@ async function setResourcePrivate(resource: McResourcePayload) {
 
 .dev-resource-table__title-link:hover {
   color: var(--el-color-primary-light-3);
-}
-
-.dev-version-file-picker {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.dev-version-file-picker__input {
-  display: none;
-}
-
-.dev-version-file-picker__name {
-  color: var(--el-text-color-regular);
-  word-break: break-all;
 }
 </style>

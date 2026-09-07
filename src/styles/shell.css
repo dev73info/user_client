@@ -22,14 +22,6 @@
   padding: 32px 20px 56px;
 }
 
-.page-shell {
-  width: min(1100px, calc(100% - 48px));
-  margin: 16px auto 32px;
-  padding: 1.2rem 1.5rem 2.5rem;
-  display: grid;
-  gap: 24px;
-}
-
 .custom-page-shell {
   gap: 28px;
 }
@@ -37,53 +29,6 @@
 /* --- Hero 区域 --- */
 .hero {
   animation: reveal 520ms ease-out;
-}
-
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 2px;
-}
-
-.brand-link {
-  font-size: 15px;
-  font-weight: 700;
-  color: #f8fafc;
-  text-decoration: none;
-  border: 1px solid rgba(56, 189, 248, 0.75);
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(14, 165, 233, 0.16);
-  box-shadow: 0 10px 30px rgba(14, 165, 233, 0.18);
-  line-height: 1.5;
-  transition:
-    background 120ms ease,
-    color 120ms ease,
-    transform 120ms ease,
-    box-shadow 120ms ease;
-}
-
-.brand-link:hover {
-  background: rgba(14, 165, 233, 0.28);
-  color: #ffffff;
-  transform: translateY(-1px);
-  box-shadow: 0 12px 36px rgba(14, 165, 233, 0.22);
-}
-
-.brand-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #95d5b2;
-  box-shadow: 0 0 12px rgba(149, 213, 178, 0.85);
-}
-
-.brand-text {
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: rgba(243, 252, 255, 0.9);
 }
 
 /* --- 用户菜单与认证按钮 --- */
@@ -138,7 +83,7 @@
 .auth-btn.solid {
   border: 0;
   color: #fff;
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  background: var(--primary-gradient);
 }
 
 .auth-btn.solid:hover:not(:disabled) {
@@ -237,13 +182,6 @@ h1 {
 }
 
 /* --- Hero 布局 --- */
-.hero-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
 .hero-content,
 .hero-meta {
   width: 100%;
@@ -262,15 +200,6 @@ h1 {
 
 .hero-meta > .hero h1 {
   margin-bottom: 12px;
-}
-
-.hero-actions {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  min-width: 160px;
 }
 
 .hero-copy {

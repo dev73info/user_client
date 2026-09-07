@@ -51,6 +51,12 @@ import {
 import { getDepositRatio } from '@/api/settings'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { requirementStatusLabel } from '@/shared/requirementStatus'
+import {
+  calculateFinalDepositAmount,
+  calculateFinalPaymentAmount,
+} from '@/shared/requirementPayment'
+import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
 import { sanitizeRequirementRichText, validateRequirementRichText } from '@/utils/requirementRichText'
 
 const router = useRouter()
@@ -161,18 +167,7 @@ const requirementStats = computed(() => ({
 }))
 
 function formatRequirementStatus(status: RequirementStatus) {
-  const mapping: Record<RequirementStatus, string> = {
-    pending_review: '待审核',
-    rejected: '已拒绝',
-    pending_deposit: '待付定金',
-    deposit_paid: '待开发',
-    in_development: '开发中',
-    pending_final: '待付尾款',
-    final_paid: '已付尾款',
-    completed: '已完成',
-  }
-
-  return mapping[status]
+  return requirementStatusLabel(status)
 }
 
 function isWaitingContractSign(item: RequirementItem) {
@@ -420,19 +415,6 @@ function applyConversationDetail(payload: RequirementConversationDetail) {
 
 function conversationForRequirement(item: RequirementItem) {
   return requirementConversationMap.value[item.requirement_id] ?? null
-}
-
-function conversationLastMessageText(item: RequirementItem) {
-  const conversation = conversationForRequirement(item)
-  if (!conversation) {
-    return '打开会话后开始沟通'
-  }
-
-  if (!conversation.last_message_at) {
-    return '会话已创建，暂无消息'
-  }
-
-  return `最近沟通：${formatRequirementTime(conversation.last_message_at)}`
 }
 
 function conversationButtonLabel(item: RequirementItem) {
@@ -1219,31 +1201,12 @@ async function submitRequirementPublish() {
   }
 }
 
-function depositAmount(item: RequirementItem) {
-  if (typeof item.budget === 'number') {
-    return item.budget
-  }
-  return 1
-}
-
 function finalDepositAmount(item: RequirementItem) {
-  const base = Number(depositAmount(item))
-  if (!Number.isFinite(base) || base < 0.01) {
-    return 0.01
-  }
-  const ratio = Number(depositRatioPercent.value)
-  const scaled = Number.isFinite(ratio) && ratio > 0 ? (base * ratio) / 100 : base
-  const raw = Math.max(0.01, scaled)
-  return Number(raw.toFixed(2))
+  return calculateFinalDepositAmount(item, depositRatioPercent.value)
 }
 
 function finalPaymentAmount(item: RequirementItem) {
-  const base = Number(depositAmount(item))
-  if (!Number.isFinite(base) || base < 0.01) {
-    return 0.01
-  }
-  const tail = Math.max(0.01, base - finalDepositAmount(item))
-  return Number(tail.toFixed(2))
+  return calculateFinalPaymentAmount(item, depositRatioPercent.value)
 }
 
 const isFinalPayment = computed(() => payRequirement.value?.status === 'pending_final')
@@ -1431,15 +1394,14 @@ async function submitRequirementPayment() {
       showToast(`${payStageLabel.value}支付订单已生成，正在跳转支付页`, 'success')
       router.push({
         name: 'payment',
-        query: {
-          adapay: '1',
-          payment_id: currentPayment.value.payment_id,
-          requirement_id: adapayPayment.requirementId,
+        query: buildAdapayPaymentQuery({
+          paymentId: currentPayment.value.payment_id,
+          requirementId: adapayPayment.requirementId,
           channel,
-          client_platform: clientPlatform,
-          amount_cny: adapayPayment.amountCny,
-          qr_content: adapayPayment.payUrl ?? undefined,
-        },
+          clientPlatform,
+          amountCny: adapayPayment.amountCny,
+          qrContent: adapayPayment.payUrl,
+        }),
       })
       return
     }
@@ -1472,15 +1434,14 @@ async function submitRequirementPayment() {
       }
       router.push({
         name: 'payment',
-        query: {
-          adapay: '1',
-          requirement_id: payRequirement.value.requirement_id,
+        query: buildAdapayPaymentQuery({
+          requirementId: payRequirement.value.requirement_id,
           milestone: isFinalPayment.value ? 'final' : 'deposit',
           channel: 'wechat',
-          client_platform: clientPlatform,
-          amount_cny: String(payAmount.value),
-          intent: '1',
-        },
+          clientPlatform,
+          amountCny: payAmount.value,
+          intent: true,
+        }),
       })
       return
     }

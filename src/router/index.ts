@@ -375,7 +375,10 @@ router.beforeEach(async (to, from, next) => {
     return next(target)
   }
 
-  if (to.path.startsWith('/dev')) {
+  const isDeveloperRoute =
+    to.path.startsWith('/dev') || to.matched.some((record) => Boolean(record.meta.devArea))
+
+  if (isDeveloperRoute) {
     return next()
   }
 

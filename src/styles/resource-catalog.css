@@ -233,7 +233,7 @@
 }
 
 .catalog-nav-row__sort-chip--active {
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  background: var(--primary-gradient);
   color: #fff;
   box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
 }
@@ -351,7 +351,7 @@
 .root-node-chip.active {
   color: #fff;
   border-color: rgba(37, 99, 235, 0.5);
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  background: var(--primary-gradient);
   box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
 }
 
@@ -386,7 +386,7 @@
 .platform-path-chip.active {
   color: #fff;
   border-color: rgba(37, 99, 235, 0.5);
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  background: var(--primary-gradient);
   box-shadow: 0 10px 20px rgba(37, 99, 235, 0.18);
 }
 

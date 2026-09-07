@@ -62,7 +62,7 @@ const menuGroups: WorkbenchMenuGroup[] = [
     icon: Connection,
     items: [
       { label: '我的需求', name: 'workbench-requirements', description: '查看支付、交付与验收进度' },
-      { label: '我的定制资源', name: 'workbench-resources', description: '查看需求关联交付资源' },
+      { label: '我的定制', name: 'workbench-resources', description: '查看需求关联交付资源' },
     ],
   },
   {
@@ -1051,7 +1051,7 @@ async function scrollToHash() {
 .user-workbench__head {
   position: sticky;
   top: 98px;
-  z-index: 1;
+  z-index: 5;
   align-self: start;
   display: flex;
   align-items: center;
@@ -1060,6 +1060,7 @@ async function scrollToHash() {
   min-height: 56px;
   padding: 12px 16px;
   border-radius: 16px;
+  background: #fff;
 }
 
 .user-workbench__head-copy {
@@ -1238,7 +1239,7 @@ async function scrollToHash() {
   }
 }
 
-@media (max-width: 960px) {
+@media (max-width: 900px) {
   .user-workbench {
     grid-template-columns: 1fr;
   }

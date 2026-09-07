@@ -1,15 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { RequirementStatus } from '@/api/requirements'
+import type { ContractSigningStatus } from '@/shared/contracts'
 
 type ViewMode = 'creator' | 'dev'
-type ContractStatus = {
-  has_contract: boolean
-  party_b_signed: boolean
-  party_a_signed: boolean
-  party_c_signed?: boolean
-}
-
 const props = defineProps<{
   requirement: {
     requirement_id: string
@@ -21,7 +15,7 @@ const props = defineProps<{
     pending_unbind_request?: { status: string; initiator: string } | null
   }
   paymentMode: 'self_managed' | 'platform_guarantee'
-  contractStatus?: ContractStatus | null
+  contractStatus?: ContractSigningStatus | null
   view?: ViewMode
 }>()
 

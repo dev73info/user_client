@@ -30,7 +30,7 @@ export type DevWithdrawalRecord = {
   account_name: string
   account_no: string
   account_no_masked: string
-  status: 'pending_review' | 'approved' | 'rejected' | 'paid'
+  status: 'pending_review' | 'approved' | 'payout_processing' | 'payout_failed' | 'rejected' | 'paid'
   note?: string | null
   review_note?: string | null
   reviewed_by?: string | null
@@ -48,6 +48,18 @@ export type DevWithdrawalSummary = {
   withdrawals: DevWithdrawalRecord[]
 }
 
+export type DevWithdrawalLimits = {
+  min_amount_cny: number
+  max_amount_cny: number
+  alipay_enabled: boolean
+  wechat_enabled: boolean
+  account_name_min_len: number
+  account_name_max_len: number
+  account_no_min_len: number
+  account_no_max_len: number
+  note_max_len: number
+}
+
 export type CreateDevWithdrawalRequest = {
   amount_cny: number
   channel: 'alipay' | 'wechat'
@@ -59,12 +71,17 @@ export type CreateDevWithdrawalRequest = {
 export function validateDevWithdrawalRequest(
   payload: CreateDevWithdrawalRequest,
   withdrawableBalance?: number | null,
+  limits?: DevWithdrawalLimits | null,
+  allowEmptyWechatAccount = false,
 ): string | null {
-  if (!Number.isFinite(payload.amount_cny) || payload.amount_cny < 1 || payload.amount_cny > 999999) {
-    return '提现金额需在 1 元到 999999 元之间'
+  const minAmount = limits?.min_amount_cny ?? 0.01
+  const maxAmount = limits?.max_amount_cny ?? 999999
+  const normalizedAmount = Math.round(payload.amount_cny * 100) / 100
+  if (!Number.isFinite(normalizedAmount) || normalizedAmount < minAmount || normalizedAmount > maxAmount) {
+    return `提现金额需在 ${minAmount.toFixed(2)} 元到 ${maxAmount.toFixed(2)} 元之间，最多保留两位小数`
   }
 
-  if (withdrawableBalance != null && payload.amount_cny > withdrawableBalance) {
+  if (withdrawableBalance != null && normalizedAmount > withdrawableBalance) {
     return '提现金额不能超过当前可提现余额'
   }
 
@@ -72,19 +89,32 @@ export function validateDevWithdrawalRequest(
     return '收款方式仅支持支付宝或微信'
   }
 
+  if (payload.channel === 'alipay' && limits && !limits.alipay_enabled) {
+    return '当前未启用支付宝提现'
+  }
+  if (payload.channel === 'wechat' && limits && !limits.wechat_enabled) {
+    return '当前未启用微信提现'
+  }
+
   const accountName = payload.account_name.trim()
-  if (accountName.length < 2 || accountName.length > 40) {
-    return '收款人姓名长度需在 2 到 40 个字符之间'
+  const accountNameMin = limits?.account_name_min_len ?? 2
+  const accountNameMax = limits?.account_name_max_len ?? 40
+  if (accountName.length < accountNameMin || accountName.length > accountNameMax) {
+    return `收款人姓名长度需在 ${accountNameMin} 到 ${accountNameMax} 个字符之间`
   }
 
   const accountNo = payload.account_no.trim()
-  if (accountNo.length < 6 || accountNo.length > 80) {
-    return '收款账号长度需在 6 到 80 个字符之间'
+  const accountNoMin = limits?.account_no_min_len ?? 6
+  const accountNoMax = limits?.account_no_max_len ?? 80
+  const canUseBoundWechatAccount = allowEmptyWechatAccount && payload.channel === 'wechat'
+  if ((!canUseBoundWechatAccount && accountNo.length < accountNoMin) || accountNo.length > accountNoMax) {
+    return `收款账号长度需在 ${accountNoMin} 到 ${accountNoMax} 个字符之间`
   }
 
   const note = payload.note?.trim() ?? ''
-  if (note.length > 200) {
-    return '申请备注不能超过 200 个字符'
+  const noteMax = limits?.note_max_len ?? 200
+  if (note.length > noteMax) {
+    return `申请备注不能超过 ${noteMax} 个字符`
   }
 
   return null
@@ -111,6 +141,18 @@ export async function getDevWithdrawalSummary(token: string): Promise<DevWithdra
       },
     },
     '加载提现记录失败',
+  )
+}
+
+export async function getDevWithdrawalLimits(token: string): Promise<DevWithdrawalLimits> {
+  return requestJson<DevWithdrawalLimits>(
+    '/dev/payments/withdrawal-limits',
+    {
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '加载提现配置失败',
   )
 }
 

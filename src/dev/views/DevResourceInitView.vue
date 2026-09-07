@@ -2,8 +2,6 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Close, Folder, MagicStick, Plus, Refresh, UploadFilled } from '@element-plus/icons-vue'
-import { Cropper } from 'vue-advanced-cropper'
-import 'vue-advanced-cropper/dist/style.css'
 
 import {
   createMcResource,
@@ -38,10 +36,22 @@ const iconInput = ref<HTMLInputElement | null>(null)
 const iconFileName = ref('')
 const selectedIconFile = ref<File | null>(null)
 const iconDialogVisible = ref(false)
-const iconUploading = ref(false)
-const iconEditorRef = ref<InstanceType<typeof Cropper> | null>(null)
 const iconCropSource = ref('')
-const iconCropResult = ref('')
+const iconCropScale = ref(1)
+const iconCropX = ref(0)
+const iconCropY = ref(0)
+const iconCropMediaStyle = computed(() => ({
+  transform: `translate(${iconCropX.value}%, ${iconCropY.value}%) scale(${iconCropScale.value})`,
+}))
+let iconCropDrag = {
+  active: false,
+  startX: 0,
+  startY: 0,
+  baseX: 0,
+  baseY: 0,
+  width: 1,
+  height: 1,
+}
 const selectedTagIdsByGroup = reactive<Record<number, number[]>>({})
 const myTeams = ref<TeamResponse[]>([])
 const form = reactive({
@@ -92,6 +102,7 @@ const teamOptions = computed(() =>
     label: team.name,
   })),
 )
+const hasJoinedTeam = computed(() => myTeams.value.length > 0)
 
 const resourceSummary = computed(() => {
   if (!form.title.trim()) {
@@ -197,7 +208,7 @@ onMounted(async () => {
   await loadMyTeams()
 
   // 从「团队资源」页进入时，自动归属团队项目
-  if (route.query.ownership === 'team') {
+  if (route.query.ownership === 'team' && hasJoinedTeam.value) {
     form.ownershipType = 'team'
     const onlyTeam = myTeams.value[0]
     // 若只有一个团队，自动选中；多个团队则让用户挑选
@@ -259,6 +270,66 @@ function openIconPicker() {
   iconDialogVisible.value = true
 }
 
+function iconCropLimit(scale: number) {
+  return ((scale - 1) / scale) * 50
+}
+
+function clampIconCrop(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function resetIconCrop() {
+  iconCropScale.value = 1
+  iconCropX.value = 0
+  iconCropY.value = 0
+}
+
+function onIconCropPointerDown(event: PointerEvent) {
+  const element = event.currentTarget as HTMLElement
+  const rect = element.getBoundingClientRect()
+  iconCropDrag = {
+    active: true,
+    startX: event.clientX,
+    startY: event.clientY,
+    baseX: iconCropX.value,
+    baseY: iconCropY.value,
+    width: rect.width || 1,
+    height: rect.height || 1,
+  }
+  element.setPointerCapture(event.pointerId)
+}
+
+function onIconCropPointerMove(event: PointerEvent) {
+  if (!iconCropDrag.active) return
+  const limit = iconCropLimit(iconCropScale.value)
+  iconCropX.value = clampIconCrop(
+    iconCropDrag.baseX + ((event.clientX - iconCropDrag.startX) / iconCropDrag.width) * 100,
+    -limit,
+    limit,
+  )
+  iconCropY.value = clampIconCrop(
+    iconCropDrag.baseY + ((event.clientY - iconCropDrag.startY) / iconCropDrag.height) * 100,
+    -limit,
+    limit,
+  )
+}
+
+function onIconCropPointerUp() {
+  iconCropDrag.active = false
+}
+
+function onIconCropWheel(event: WheelEvent) {
+  const delta = event.deltaY < 0 ? 0.12 : -0.12
+  iconCropScale.value = clampIconCrop(
+    Math.round((iconCropScale.value + delta) * 100) / 100,
+    1,
+    4,
+  )
+  const limit = iconCropLimit(iconCropScale.value)
+  iconCropX.value = clampIconCrop(iconCropX.value, -limit, limit)
+  iconCropY.value = clampIconCrop(iconCropY.value, -limit, limit)
+}
+
 function triggerIconFileSelect() {
   iconInput.value?.click()
 }
@@ -268,7 +339,7 @@ function clearIconFile() {
   iconFileName.value = ''
   selectedIconFile.value = null
   iconCropSource.value = ''
-  iconCropResult.value = ''
+  resetIconCrop()
 
   if (iconInput.value) {
     iconInput.value.value = ''
@@ -287,6 +358,9 @@ function readFileAsDataUrl(file: File): Promise<string> {
 async function handleIconFileChange(event: Event) {
   const input = event.target as HTMLInputElement | null
   const file = input?.files?.[0]
+  if (input) {
+    input.value = ''
+  }
 
   if (!file) {
     return
@@ -309,7 +383,7 @@ async function handleIconFileChange(event: Event) {
     iconFileName.value = file.name
     selectedIconFile.value = file
     iconCropSource.value = dataUrl
-    iconCropResult.value = dataUrl
+    resetIconCrop()
     form.coverUrl = dataUrl
   } catch (error) {
     const message = error instanceof Error ? error.message : '读取图标文件失败'
@@ -318,40 +392,53 @@ async function handleIconFileChange(event: Event) {
   }
 }
 
-function rotateIcon(direction: 'left' | 'right') {
-  iconEditorRef.value?.rotate(direction === 'left' ? -90 : 90)
+function loadIconImage(source: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('图标预览加载失败'))
+    image.src = source
+  })
 }
 
-function zoomIcon(factor: number) {
-  iconEditorRef.value?.zoom(factor)
-}
+async function confirmIconCrop() {
+  if (!iconCropSource.value) return
 
-function resetIconTransform() {
-  iconEditorRef.value?.reset()
-}
+  try {
+    const image = await loadIconImage(iconCropSource.value)
+    const canvas = document.createElement('canvas')
+    const width = 1200
+    const height = Math.round(width / 1.618)
+    canvas.width = width
+    canvas.height = height
 
-function confirmIconCrop() {
-  const result = iconEditorRef.value?.getResult()
-  if (!result?.canvas) {
-    showToast('未能生成裁剪结果，请重试', 'warning')
-    return
-  }
+    const context = canvas.getContext('2d')
+    if (!context || !image.naturalWidth || !image.naturalHeight) {
+      throw new Error('未能生成裁剪结果')
+    }
 
-  const dataUrl = result.canvas.toDataURL('image/png')
-  iconCropResult.value = dataUrl
-  form.coverUrl = dataUrl
+    const coverScale = Math.max(width / image.naturalWidth, height / image.naturalHeight)
+    const drawWidth = image.naturalWidth * coverScale * iconCropScale.value
+    const drawHeight = image.naturalHeight * coverScale * iconCropScale.value
+    const drawX = (width - drawWidth) / 2 + (iconCropX.value / 100) * width
+    const drawY = (height - drawHeight) / 2 + (iconCropY.value / 100) * height
+    context.drawImage(image, drawX, drawY, drawWidth, drawHeight)
 
-  result.canvas.toBlob((blob) => {
+    const dataUrl = canvas.toDataURL('image/png')
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, 'image/png')
+    })
     if (!blob) {
-      return
+      throw new Error('未能生成裁剪文件')
     }
 
     const baseName = iconFileName.value.replace(/\.[^.]+$/, '') || 'icon'
-    const croppedFile = new File([blob], `${baseName}.png`, { type: 'image/png' })
-    selectedIconFile.value = croppedFile
-  }, 'image/png')
-
-  iconDialogVisible.value = false
+    selectedIconFile.value = new File([blob], `${baseName}.png`, { type: 'image/png' })
+    form.coverUrl = dataUrl
+    iconDialogVisible.value = false
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '未能生成裁剪结果，请重试', 'warning')
+  }
 }
 
 function selectedNamesForGroup(group: McPublishTagGroup): string[] {
@@ -490,9 +577,13 @@ async function submitResource(mode: 'private' | 'public') {
               </el-form-item>
 
               <el-form-item label="归属类型" required>
-                <el-select v-model="form.ownershipType" style="width: 100%">
+                <el-select v-model="form.ownershipType">
                   <el-option label="个人项目" value="individual" />
-                  <el-option label="团队项目" value="team" />
+                  <el-option
+                    label="团队项目"
+                    value="team"
+                    :disabled="!hasJoinedTeam"
+                  />
                 </el-select>
               </el-form-item>
 
@@ -502,7 +593,6 @@ async function submitResource(mode: 'private' | 'public') {
                     v-model="form.teamId"
                     placeholder="请选择团队"
                     class="dev-team-select-native__control"
-                    popper-class="dev-team-select-popper"
                     popper-append-to-body
                   >
                     <el-option
@@ -512,7 +602,7 @@ async function submitResource(mode: 'private' | 'public') {
                       :value="team.value"
                     />
                     <template #empty>
-                      <div class="dev-team-select-popper__empty">
+                      <div class="dev-team-select-empty">
                         <p v-if="myTeams.length === 0">您还没有加入任何团队</p>
                         <p v-else>未找到匹配的团队</p>
                       </div>
@@ -563,8 +653,22 @@ async function submitResource(mode: 'private' | 'public') {
             <el-button text :icon="Refresh" :loading="isLoadingTags" @click="loadTagTree">刷新标签</el-button>
           </header>
 
-          <div v-if="entryTabs.length > 0" class="dev-catalog-section">
-            <section class="dev-catalog-nav" aria-label="资源目录导航">
+          <div class="dev-catalog-section">
+            <section class="dev-root-switch dev-root-switch--catalog" aria-label="根节点选择">
+              <div class="dev-root-switch__head">
+                <span class="dev-root-switch__label">根节点</span>
+                <span class="dev-root-switch__meta">当前：{{ currentRootLabel }}</span>
+              </div>
+              <div class="dev-root-switch__chips">
+                <button v-for="root in rootTabs" :key="root.key" class="dev-catalog-chip"
+                  :class="{ active: root.key === currentRootKey }" type="button"
+                  @click="openRoot(root.key, root.first_entry_key)">
+                  {{ root.label }}
+                </button>
+              </div>
+            </section>
+
+            <section v-if="entryTabs.length > 0" class="dev-catalog-nav" aria-label="资源目录导航">
               <div class="dev-catalog-nav__row">
                 <div class="dev-catalog-nav__head">
                   <span class="dev-catalog-nav__label">二级节点</span>
@@ -579,7 +683,7 @@ async function submitResource(mode: 'private' | 'public') {
               </div>
             </section>
 
-            <div v-if="platformTagGroups.length > 0"
+            <div v-if="entryTabs.length > 0 && platformTagGroups.length > 0"
               class="dev-tag-group-panel dev-upload-grid dev-upload-grid--tag-groups">
               <section v-for="group in platformTagGroups" :key="group.key" class="dev-tag-group-row">
                 <header class="dev-tag-group-row__head">
@@ -599,7 +703,8 @@ async function submitResource(mode: 'private' | 'public') {
               </section>
             </div>
 
-            <p v-else class="dev-empty-state">当前二级节点尚未配置完整标签组，请先在管理端补齐标签树。</p>
+            <p v-else-if="entryTabs.length > 0" class="dev-empty-state">当前二级节点尚未配置完整标签组，请先在管理端补齐标签树。</p>
+            <p v-else class="dev-empty-state">当前根节点尚未配置二级节点，请先在管理端补齐标签树。</p>
           </div>
         </section>
 
@@ -623,24 +728,7 @@ async function submitResource(mode: 'private' | 'public') {
       </el-card>
 
       <aside class="dev-upload-side">
-        <header class="dev-side-toolbar">
-          <section class="dev-root-switch" aria-label="根节点选择">
-            <div class="dev-root-switch__head">
-              <span class="dev-root-switch__label">根节点</span>
-              <span class="dev-root-switch__meta">当前：{{ currentRootLabel }}</span>
-            </div>
-            <div class="dev-root-switch__chips">
-              <button v-for="root in rootTabs" :key="root.key" class="dev-catalog-chip"
-                :class="{ active: root.key === currentRootKey }" type="button"
-                @click="openRoot(root.key, root.first_entry_key)">
-                {{ root.label }}
-              </button>
-            </div>
-          </section>
-        </header>
-
         <el-card shadow="never" class="dev-surface-card dev-surface-card--sticky">
-          <h3 class="dev-section-title">预览摘要</h3>
 
           <article class="dev-preview-card dev-list--spaced">
             <div class="dev-preview-card__cover">
@@ -674,39 +762,35 @@ async function submitResource(mode: 'private' | 'public') {
     </div>
   </div>
 
-  <el-dialog v-model="iconDialogVisible" title="上传图标" width="400px" align-center
-    :close-on-click-modal="!iconUploading" :destroy-on-close="false">
+  <el-dialog v-model="iconDialogVisible" class="dev-icon-dialog-modal" title="上传图标" width="400px" align-center
+    :close-on-click-modal="false" :destroy-on-close="false">
     <div class="dev-icon-dialog">
       <input ref="iconInput" class="dev-icon-upload__native" type="file"
         accept="image/png,image/jpeg,image/webp,image/gif" @change="handleIconFileChange" />
 
       <template v-if="iconCropSource">
         <div class="dev-icon-editor">
-          <Cropper
-            ref="iconEditorRef"
-            class="dev-icon-editor__cropper"
-            :src="iconCropSource"
-            image-restriction="stencil"
-            :stencil-props="{ aspectRatio: 1.618 }"
-          />
-          <div class="dev-icon-editor__toolbar">
-            <el-button text :icon="Refresh" @click="resetIconTransform">重置</el-button>
-            <el-button text @click="rotateIcon('left')">左旋</el-button>
-            <el-button text @click="rotateIcon('right')">右旋</el-button>
-            <el-button text @click="zoomIcon(0.1)">放大</el-button>
-            <el-button text @click="zoomIcon(-0.1)">缩小</el-button>
+          <div class="dev-icon-editor__crop" @wheel.prevent="onIconCropWheel" @dragstart.prevent
+            @pointerdown="onIconCropPointerDown" @pointermove="onIconCropPointerMove"
+            @pointerup="onIconCropPointerUp" @pointercancel="onIconCropPointerUp">
+            <img :src="iconCropSource" alt="图标裁剪预览" class="dev-icon-editor__media"
+              :style="iconCropMediaStyle" draggable="false" />
+            <span class="dev-icon-editor__hint">拖动调整位置 · 滚轮缩放</span>
+            <button type="button" class="dev-icon-editor__reselect" @pointerdown.stop
+              @click="triggerIconFileSelect">重新选择</button>
           </div>
         </div>
 
         <div class="dev-icon-dialog__meta">
           <div class="dev-icon-dialog__name">{{ iconFileName || '未选择文件' }}</div>
-          <div class="dev-icon-dialog__hint">可拖动图片调整位置，支持裁剪、旋转和缩放，确认后保存为 1:1 图标</div>
         </div>
 
         <div class="dev-icon-dialog__actions">
-          <el-button @click="triggerIconFileSelect">重新选择</el-button>
-          <el-button type="primary" @click="confirmIconCrop">应用</el-button>
-          <el-button type="danger" plain @click="clearIconFile">移除</el-button>
+          <el-button @click="resetIconCrop">重置位置</el-button>
+          <div class="dev-icon-dialog__actions-main">
+            <el-button type="danger" plain @click="clearIconFile">移除</el-button>
+            <el-button type="primary" @click="confirmIconCrop">应用</el-button>
+          </div>
         </div>
       </template>
 
@@ -719,10 +803,6 @@ async function submitResource(mode: 'private' | 'public') {
         <div class="dev-icon-dialog__meta">
           <div class="dev-icon-dialog__name">{{ iconFileName || '未选择文件' }}</div>
           <div class="dev-icon-dialog__hint">支持 PNG、JPG、WEBP、GIF，大小不超过 2MB</div>
-        </div>
-
-        <div class="dev-icon-dialog__actions">
-          <el-button @click="triggerIconFileSelect">选择文件</el-button>
         </div>
       </template>
     </div>

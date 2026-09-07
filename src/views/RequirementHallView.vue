@@ -20,6 +20,12 @@ import {
 
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { requirementStatusLabel } from '@/shared/requirementStatus'
+import {
+  formatCnDateTime as formatTimeLabel,
+  formatCny as formatMoney,
+  requirementPaymentModeLabel as paymentModeLabel,
+} from '@/shared/requirementDisplay'
 import {
   requirementRichTextPreview,
   sanitizeRequirementRichText,
@@ -137,52 +143,11 @@ onBeforeUnmount(() => {
 })
 
 function statusToLabel(status: RequirementStatus): string {
-  const mapping: Record<RequirementStatus, string> = {
-    pending_review: '待审核',
-    rejected: '已拒绝',
-    pending_deposit: '待付定金',
-    deposit_paid: '待开发',
-    in_development: '开发中',
-    pending_final: '待付尾款',
-    final_paid: '已付尾款',
-    completed: '已完成',
-  }
-
-  return mapping[status]
-}
-
-function paymentModeLabel(mode: RequirementPaymentMode): string {
-  return mode === 'self_managed' ? '无电签约定' : '电签担保'
+  return requirementStatusLabel(status)
 }
 
 function paymentTag(item: PublicRequirementSpotlightItem): string {
   return item.payment_method?.trim() || paymentModeLabel(item.payment_mode)
-}
-
-function formatMoney(value?: number | null): string {
-  if (value == null) {
-    return '待议价'
-  }
-
-  return new Intl.NumberFormat('zh-CN', {
-    style: 'currency',
-    currency: 'CNY',
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-  }).format(value)
-}
-
-function formatTimeLabel(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return '时间未知'
-  }
-
-  return date.toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 function resetKeyword() {
@@ -850,6 +815,7 @@ async function loadHallData() {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
+  line-clamp: 3;
   -webkit-line-clamp: 3;
 }
 

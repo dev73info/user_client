@@ -10,6 +10,7 @@
   --accent: #1f4ad1;
   --success: #16805c;
   --glass-blur: 12px;
+  --primary-gradient: linear-gradient(135deg, #2563eb, #4f8cff);
 }
 
 * {
@@ -34,11 +35,13 @@ body {
 /* --- 3. 结构化页面类定义 --- */
 .page-shell {
   width: min(1100px, calc(100% - 48px));
-  margin: 0 auto;
-  padding: 2rem 1.5rem;
+  margin: 16px auto 32px;
+  padding: 1.2rem 1.5rem 2.5rem;
   min-height: calc(100vh - 120px);
   position: relative;
   z-index: 2;
+  display: grid;
+  gap: 24px;
 }
 
 .page-header,
@@ -64,9 +67,12 @@ body {
 }
 
 .hero-actions {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
+  min-width: 160px;
 }
 
 .brand-mark {
@@ -87,18 +93,25 @@ body {
   background: rgba(14, 165, 233, 0.16);
   box-shadow: 0 10px 30px rgba(14, 165, 233, 0.18);
   line-height: 1.5;
+  transition:
+    background 120ms ease,
+    color 120ms ease,
+    transform 120ms ease,
+    box-shadow 120ms ease;
 }
 
 .brand-link:hover {
   background: rgba(14, 165, 233, 0.28);
   color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 36px rgba(14, 165, 233, 0.22);
 }
 
 .brand-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--success);
+  background: #95d5b2;
   box-shadow: 0 0 12px rgba(149, 213, 178, 0.85);
 }
 
@@ -112,10 +125,10 @@ body {
 .glass-panel {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-radius: 20px;
+  border-radius: 16px;
   padding: 1.5rem;
   margin-bottom: 2rem;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(var(--glass-blur));
   transition: transform 0.3s ease;
 }
 
@@ -124,7 +137,7 @@ body {
   margin: 0 auto;
 }
 
-footer {
+.site-footer {
   margin-top: 4rem;
   padding: 2rem;
   border-top: 1px solid var(--card-border);
@@ -179,11 +192,4 @@ a:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.glass-panel {
-  background: var(--card-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--card-border);
-  border-radius: 16px;
 }

@@ -549,7 +549,8 @@ async function removeBackground() {
     </section>
 
     <!-- 设置主页背景 -->
-    <el-dialog v-model="backgroundDialogVisible" :title="backgroundMode === 'dynamic' ? '设置动态背景' : '设置静态背景'" width="480px" align-center
+    <el-dialog v-model="backgroundDialogVisible" class="dev-profile__background-dialog"
+      :title="backgroundMode === 'dynamic' ? '设置动态背景' : '设置静态背景'" width="480px" align-center
       :close-on-click-modal="false" @closed="resetBackgroundDialog">
       <div class="dev-profile__bg-upload">
         <input ref="backgroundInput" class="dev-profile__bg-input" type="file"
@@ -559,6 +560,7 @@ async function removeBackground() {
           @change="onBackgroundFileChange" />
         <div v-if="backgroundPreview" class="dev-profile__crop"
           @wheel.prevent="onCropWheel"
+          @dragstart.prevent
           @pointerdown="onCropPointerDown"
           @pointermove="onCropPointerMove"
           @pointerup="onCropPointerUp"
@@ -566,7 +568,8 @@ async function removeBackground() {
           <video v-if="isVideoBackgroundPreview" :src="backgroundPreview"
             class="dev-profile__crop-media dev-profile__bg-video" :style="cropMediaStyle"
             autoplay loop muted playsinline></video>
-          <img v-else :src="backgroundPreview" alt="背景预览" class="dev-profile__crop-media" :style="cropMediaStyle" />
+          <img v-else :src="backgroundPreview" alt="背景预览" class="dev-profile__crop-media"
+            :style="cropMediaStyle" draggable="false" />
           <span class="dev-profile__crop-hint">拖动调整位置 · 滚轮缩放</span>
           <button type="button" class="dev-profile__crop-reselect" @pointerdown.stop @click="backgroundInput?.click()">重新选择</button>
         </div>
@@ -581,11 +584,15 @@ async function removeBackground() {
         </p>
       </div>
       <template #footer>
-        <el-button v-if="backgroundUrl" type="danger" text :loading="backgroundRemoving"
-          @click="removeBackground">移除背景</el-button>
-        <el-button @click="backgroundDialogVisible = false">取消</el-button>
-        <el-button type="primary" :disabled="!backgroundFile || backgroundUploading || backgroundRemoving"
-          :loading="backgroundUploading" @click="submitBackgroundUpload">保存</el-button>
+        <div class="dev-profile__background-dialog-actions">
+          <el-button v-if="backgroundUrl" class="dev-profile__background-dialog-remove" type="danger" text
+            :loading="backgroundRemoving" @click="removeBackground">移除背景</el-button>
+          <div class="dev-profile__background-dialog-actions-main">
+            <el-button @click="backgroundDialogVisible = false">取消</el-button>
+            <el-button type="primary" :disabled="!backgroundFile || backgroundUploading || backgroundRemoving"
+              :loading="backgroundUploading" @click="submitBackgroundUpload">保存</el-button>
+          </div>
+        </div>
       </template>
     </el-dialog>
 
@@ -848,6 +855,92 @@ async function removeBackground() {
   font-size: 12px;
   color: #94a3b8;
   text-align: center;
+}
+
+.dev-profile__background-dialog {
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(191, 219, 254, 0.72);
+  border-radius: 18px;
+  box-shadow: 0 20px 48px rgba(30, 64, 175, 0.16);
+}
+
+.dev-profile__background-dialog .el-dialog__header {
+  margin: 0;
+  padding: 22px 24px 14px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.82);
+}
+
+.dev-profile__background-dialog .el-dialog__title {
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.dev-profile__background-dialog .el-dialog__headerbtn {
+  top: 18px;
+  right: 18px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.dev-profile__background-dialog .el-dialog__headerbtn:hover {
+  background: #eff6ff;
+}
+
+.dev-profile__background-dialog .el-dialog__body {
+  padding: 20px 24px 10px;
+}
+
+.dev-profile__background-dialog .el-dialog__footer {
+  margin-top: 0;
+  padding: 14px 24px 20px;
+  border-top: 1px solid rgba(226, 232, 240, 0.72);
+  background: #fff;
+  text-align: initial;
+}
+
+.dev-profile__background-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dev-profile__background-dialog-actions-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.dev-profile__background-dialog .el-button {
+  min-width: 84px;
+  height: 38px;
+  border-radius: 9px;
+  font-weight: 700;
+}
+
+.dev-profile__background-dialog .el-button--primary {
+  border-color: #2563eb;
+  background: #2563eb;
+}
+
+.dev-profile__background-dialog .el-button--primary:hover {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
+
+.dev-profile__background-dialog-remove {
+  min-width: auto !important;
+  padding: 0 8px;
+  color: #dc2626;
+}
+
+.dev-profile__background-dialog-remove:hover {
+  background: #fef2f2;
+  color: #b91c1c;
 }
 
 .dev-profile__avatar-wrap {

@@ -20,37 +20,21 @@ import {
   restorePersistedAuthProfile,
   type AuthProfile,
 } from '@/shared/auth/session'
+import {
+  getTokenExpMs,
+  isTokenExpired,
+  MIN_REFRESH_DELAY_MS,
+  REFRESH_BEFORE_EXPIRY_MS,
+  RETRY_AFTER_FAILURE_MS,
+} from '@/shared/auth/token'
+import { createTokenRefreshController } from '@/shared/auth/tokenLifecycle'
 
 const TOKEN_KEY = 'auth_token_73hub'
 const LEGACY_TOKEN_KEY = 'dev_auth_token_73hub'
-// 提前多少毫秒刷新 token
-const REFRESH_BEFORE_EXPIRY_MS = 2 * 60 * 1000
-// 最短到15秒后刷新（防止立即刷新死循环）
-const MIN_REFRESH_DELAY_MS = 15_000
-// 刷新失败重试间隔
-const RETRY_AFTER_FAILURE_MS = 30_000
 
 export type LoginResult = {
   requiresTwoFactor: boolean
   username?: string
-}
-
-/** 解析 JWT payload 中的 exp（秒），不验证签名 */
-function getTokenExpMs(jwt: string): number {
-  try {
-    const payload = jwt.split('.')[1]
-    if (!payload) return NaN
-    const json = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
-    return typeof json.exp === 'number' ? json.exp * 1000 : NaN
-  } catch {
-    return NaN
-  }
-}
-
-/** token 是否已经过期 */
-function isTokenExpired(jwt: string): boolean {
-  const exp = getTokenExpMs(jwt)
-  return Number.isFinite(exp) && Date.now() >= exp
 }
 
 export const useAuthStore = defineStore('dev-auth', () => {
@@ -61,9 +45,7 @@ export const useAuthStore = defineStore('dev-auth', () => {
   const devAccessError = ref('')
   const profileLoaded = ref(false)
   const hydrated = ref(false)
-  let refreshTimer: ReturnType<typeof setTimeout> | null = null
   const profileRequest = ref<Promise<AuthProfile> | null>(null)
-  let visibilityHandler: (() => void) | null = null
 
   const isAuthed = computed(() => token.value.length > 0)
   const isDev = computed(() => role.value === 'dev' || role.value === 'super_admin')
@@ -74,79 +56,20 @@ export const useAuthStore = defineStore('dev-auth', () => {
     profileRequest,
   }
 
+  const tokenLifecycle = createTokenRefreshController({
+    getToken: () => token.value,
+    refreshToken,
+    applyRefreshedToken: (payload) => persist(payload.token, true),
+    logout,
+    retryOnVisibilityFailure: false,
+  })
+
   function authHeaders(headers: HeadersInit = {}) {
     return createAuthHeaders(token.value, headers)
   }
 
-  function clearRefreshTimer() {
-    if (refreshTimer !== null) {
-      clearTimeout(refreshTimer)
-      refreshTimer = null
-    }
-  }
-
-  /** 根据 token 自身的 exp 计算延迟，在过期前 2 分钟刷新 */
-  function scheduleRefresh(currentToken?: string) {
-    clearRefreshTimer()
-    const jwt = currentToken ?? token.value
-    if (!jwt) return
-
-    const expMs = getTokenExpMs(jwt)
-    let delay: number
-    if (Number.isFinite(expMs)) {
-      delay = Math.max(MIN_REFRESH_DELAY_MS, expMs - Date.now() - REFRESH_BEFORE_EXPIRY_MS)
-    } else {
-      // 无法解析 exp，默认 5 分钟
-      delay = 5 * 60 * 1000
-    }
-
-    refreshTimer = setTimeout(async () => {
-      if (!token.value) return
-      try {
-        const resp = await refreshToken(token.value)
-        persist(resp.token, true)
-      } catch {
-        // 刻意已过期才 logout，短暂网络错误则重试
-        if (isTokenExpired(token.value)) {
-          logout()
-        } else {
-          // 网络临时出错，稍后重试
-          refreshTimer = setTimeout(() => scheduleRefresh(), RETRY_AFTER_FAILURE_MS)
-        }
-      }
-    }, delay)
-  }
-
-  function setupVisibilityRefresh() {
-    if (visibilityHandler) return // 已经注册过
-    visibilityHandler = () => {
-      if (document.visibilityState !== 'visible' || !token.value) return
-      const expMs = getTokenExpMs(token.value)
-      // 标签页重新可见时：如果已过期就 logout，即将过期就立即刷新
-      if (isTokenExpired(token.value)) {
-        logout()
-        return
-      }
-      if (Number.isFinite(expMs) && expMs - Date.now() < REFRESH_BEFORE_EXPIRY_MS + 60_000) {
-        clearRefreshTimer()
-        void refreshToken(token.value)
-          .then((resp) => {
-            persist(resp.token, true)
-          })
-          .catch(() => {
-            if (isTokenExpired(token.value)) logout()
-          })
-      }
-    }
-    document.addEventListener('visibilitychange', visibilityHandler)
-  }
-
   function resetAuthState() {
-    clearRefreshTimer()
-    if (visibilityHandler) {
-      document.removeEventListener('visibilitychange', visibilityHandler)
-      visibilityHandler = null
-    }
+    tokenLifecycle.dispose()
     token.value = ''
     username.value = ''
     role.value = ''
@@ -171,8 +94,8 @@ export const useAuthStore = defineStore('dev-auth', () => {
     token.value = saved
     resetAuthProfileState(profileState)
     restorePersistedAuthProfile(profileState)
-    scheduleRefresh(saved)
-    setupVisibilityRefresh()
+    tokenLifecycle.schedule(saved)
+    tokenLifecycle.setupVisibility()
   }
 
   function persist(newToken: string, preserveProfile = false) {
@@ -188,8 +111,8 @@ export const useAuthStore = defineStore('dev-auth', () => {
           token.value = nextToken
           localStorage.setItem(TOKEN_KEY, nextToken)
           localStorage.setItem(LEGACY_TOKEN_KEY, nextToken)
-          scheduleRefresh(nextToken)
-          setupVisibilityRefresh()
+          tokenLifecycle.schedule(nextToken)
+          tokenLifecycle.setupVisibility()
         },
         true,
       )
@@ -197,8 +120,8 @@ export const useAuthStore = defineStore('dev-auth', () => {
     }
     localStorage.setItem(TOKEN_KEY, newToken)
     localStorage.setItem(LEGACY_TOKEN_KEY, newToken)
-    scheduleRefresh(newToken)
-    setupVisibilityRefresh()
+    tokenLifecycle.schedule(newToken)
+    tokenLifecycle.setupVisibility()
   }
 
   function applyAuthPayload(payload: AuthPayload, preserveProfile = false) {

@@ -1,0 +1,246 @@
+@media (max-width: 900px) {
+  .dev-hero,
+  .dev-panel-banner {
+    grid-template-columns: 1fr;
+  }
+
+  .dev-platform-switch {
+    width: 100%;
+    grid-template-columns: 1fr;
+  }
+
+  .dev-grid--three,
+  .dev-grid--two,
+  .dev-resource-grid,
+  .dev-upload-layout,
+  .dev-upload-grid--two,
+  .dev-upload-grid--three,
+  .dev-upload-grid--tag-groups,
+  .dev-upload-grid--four {
+    grid-template-columns: 1fr;
+  }
+
+  .dev-filter-toolbar,
+  .dev-filter-toolbar--footer,
+  .dev-resource-card__footer,
+  .dev-requirement-hall__footer,
+  .dev-upload-section__head,
+  .dev-upload-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dev-requirement-hall__filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dev-requirement-hall__review-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dev-requirement-hall__actions {
+    grid-column: 1 / -1;
+    justify-content: stretch;
+  }
+
+  .dev-requirement-hall__actions .el-button {
+    flex: 1 1 0;
+  }
+
+  .dev-page--publish .dev-icon-upload:not(.dev-icon-upload--square) {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .dev-page--publish .dev-upload-form .dev-upload-grid--three {
+    grid-template-columns: 1fr;
+    gap: 10px 14px;
+  }
+
+  .dev-page--publish .dev-upload-form .dev-upload-grid--three > .el-form-item {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr);
+    align-items: center;
+    column-gap: 12px;
+  }
+
+  .dev-page--publish .dev-upload-form .dev-upload-grid--three > .el-form-item > .el-form-item__label {
+    display: flex;
+    align-items: center;
+    height: 40px;
+    margin: 0;
+    padding: 0;
+    line-height: 1.4;
+    white-space: normal;
+  }
+
+  .dev-page--publish .dev-upload-form .dev-upload-grid--three > .el-form-item > .el-form-item__content {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    margin-left: 0 !important;
+  }
+
+  .dev-page--publish .dev-upload-block--split > .dev-upload-section__head {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .dev-page--publish .dev-upload-block--split > .dev-upload-section__head .el-button {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .dev-page--publish .dev-upload-actions--split {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-height: 0;
+    margin-top: 10px;
+    padding: 10px 12px;
+  }
+
+  .dev-page--publish .dev-submit-summary {
+    flex: 1 1 120px;
+  }
+
+  .dev-page--publish .dev-upload-actions__buttons {
+    flex: 1 1 300px;
+    min-width: 0;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .dev-page--publish .dev-upload-actions--split .el-button {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 36px;
+  }
+
+  .dev-page--publish .dev-icon-upload__preview {
+    width: 56px;
+    height: 56px;
+  }
+
+  .dev-surface-card--sticky {
+    position: static;
+  }
+
+  .dev-tag-group-panel {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .dev-page--publish .dev-tag-group-row {
+    grid-template-columns: 1fr;
+  }
+
+  .dev-page--publish .dev-tag-group-row__head,
+  .dev-page--publish .dev-tag-group-row__selected,
+  .dev-page--publish .dev-tag-group-row__field {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .dev-stack-item {
+    flex-direction: column;
+  }
+
+  .dev-stack-item__side {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .dev-requirement-hall__filters {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+@media (max-width: 720px) {
+  .dev-panel-banner,
+  .dev-hero,
+  .dev-surface-card .el-card__body {
+    padding: 20px;
+  }
+
+  .dev-page--publish .dev-upload-actions--split {
+    align-items: stretch;
+    flex-direction: row;
+  }
+
+  .dev-page--publish .dev-upload-actions__buttons {
+    justify-content: flex-end;
+  }
+
+  .dev-page--publish .dev-upload-actions__buttons .el-button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .dev-panel-banner__title,
+  .dev-hero__title {
+    font-size: 26px;
+  }
+}
+
+/* Tighten common page layouts on narrow screens */
+@media (max-width: 640px) {
+  .dev-surface-card .el-card__body,
+  .dev-panel-banner,
+  .dev-hero {
+    padding: 16px;
+  }
+
+  .dev-panel-banner {
+    border-radius: 18px;
+  }
+
+  .dev-panel-banner__title,
+  .dev-hero__title {
+    font-size: 22px;
+  }
+
+  /* Allow horizontal scrolling for wide tables rather than overflow clipping */
+  .el-table {
+    width: 100%;
+  }
+
+  .el-table__body-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Full-width form controls */
+  .el-input,
+  .el-select,
+  .el-textarea,
+  .el-cascader,
+  .el-date-editor,
+  .el-input-number {
+    width: 100%;
+  }
+
+  /* Dialogs take near-full width on small screens */
+  .el-overlay-dialog .el-dialog {
+    width: 92vw !important;
+    max-width: 92vw;
+    margin: 5vh auto !important;
+  }
+
+  .el-message-box {
+    width: 88vw !important;
+    max-width: 88vw;
+  }
+
+  /* Buttons inside rows wrap naturally */
+  .dev-filter-toolbar .el-button,
+  .dev-filter-toolbar--footer .el-button {
+    width: 100%;
+  }
+}
+

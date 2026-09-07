@@ -32,6 +32,9 @@ let upHandler: ((e: PointerEvent) => void) | null = null
 
 // 侧边签宽度（近似，用于吸附计算）
 const TAB = 48
+const MOBILE_BREAKPOINT_PX = 900
+const DESKTOP_FAB_HEIGHT = 140
+const MOBILE_FAB_HEIGHT = 48
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
@@ -39,6 +42,20 @@ function clamp(value: number, min: number, max: number): number {
 
 function currentContainerLeft(): number {
   return side.value === 'right' ? window.innerWidth - TAB : 0
+}
+
+function currentFabHeight(): number {
+  return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX}px)`).matches
+    ? MOBILE_FAB_HEIGHT
+    : DESKTOP_FAB_HEIGHT
+}
+
+function clampFabTop(value: number): number {
+  return clamp(value, 8, Math.max(8, window.innerHeight - currentFabHeight()))
+}
+
+function handleViewportResize() {
+  top.value = clampFabTop(top.value)
 }
 
 const widgetStyle = computed(() => {
@@ -88,7 +105,7 @@ function onDragMove(e: PointerEvent) {
     0,
     window.innerWidth - TAB,
   )
-  dragTop.value = clamp(startTop + (e.clientY - startY), 8, window.innerHeight - 140)
+  dragTop.value = clampFabTop(startTop + (e.clientY - startY))
 }
 
 function onDragEnd(e: PointerEvent) {
@@ -112,7 +129,7 @@ function onDragEnd(e: PointerEvent) {
   // 水平按靠近哪一侧贴边吸附；垂直方向自由，仅限制在可视范围内
   const centerX = left + TAB / 2
   side.value = centerX < window.innerWidth / 2 ? 'left' : 'right'
-  top.value = clamp(topNow, 8, window.innerHeight - 140)
+  top.value = clampFabTop(topNow)
 }
 
 const loading = ref(false)
@@ -251,11 +268,13 @@ function connectWs() {
 }
 
 onMounted(() => {
-  top.value = clamp((window.innerHeight - 140) / 2, 8, window.innerHeight - 140)
+  top.value = clampFabTop((window.innerHeight - currentFabHeight()) / 2)
+  window.addEventListener('resize', handleViewportResize)
   connectWs()
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleViewportResize)
   detachDragListeners()
   if (reconnectTimer) window.clearTimeout(reconnectTimer)
   ws?.close()
@@ -417,6 +436,24 @@ onBeforeUnmount(() => {
   writing-mode: vertical-rl;
   letter-spacing: 2px;
   font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .support-fab {
+    width: 48px;
+    height: 48px;
+    gap: 0;
+    padding: 0;
+  }
+
+  .support-fab__icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .support-fab__text {
+    display: none;
+  }
 }
 
 .support-panel {

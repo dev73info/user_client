@@ -18,6 +18,7 @@ import {
 } from '@/api/requirements'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { requirementStatusLabel } from '@/shared/requirementStatus'
 
 type MessageFilter = 'all' | 'active' | 'pending'
 
@@ -132,18 +133,7 @@ function hasBoundResource(item: RequirementItem) {
 }
 
 function formatRequirementStatus(status: RequirementStatus) {
-  const mapping: Record<RequirementStatus, string> = {
-    pending_review: '待审核',
-    rejected: '已拒绝',
-    pending_deposit: '待付定金',
-    deposit_paid: '待开发',
-    in_development: '开发中',
-    pending_final: '待付尾款',
-    final_paid: '已付尾款',
-    completed: '已完成',
-  }
-
-  return mapping[status]
+  return requirementStatusLabel(status)
 }
 
 function formatPaymentMode(item?: RequirementItem) {

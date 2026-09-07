@@ -33,6 +33,8 @@ function statusText(status: DevWithdrawalRecord['status']) {
   const map: Record<DevWithdrawalRecord['status'], string> = {
     pending_review: '待审核',
     approved: '待打款',
+    payout_processing: '自动打款中',
+    payout_failed: '自动打款失败',
     rejected: '已驳回',
     paid: '已打款',
   }
@@ -46,6 +48,9 @@ function statusTagType(
     return 'warning'
   }
   if (status === 'approved') {
+    return 'info'
+  }
+  if (status === 'payout_processing') {
     return 'info'
   }
   if (status === 'paid') {
