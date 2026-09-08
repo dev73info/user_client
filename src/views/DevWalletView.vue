@@ -74,6 +74,7 @@ const confirmingWechat = ref(false)
 const alipayPayDialogVisible = ref(false)
 const alipayPaymentId = ref('')
 const alipayPageHtml = ref('')
+const alipayIframeLoading = ref(false)
 const confirmingAlipay = ref(false)
 const pendingRechargeAmount = ref(0)
 const pendingExpiresAt = ref('')
@@ -309,14 +310,35 @@ async function payWithAlipay() {
   alipayLoading.value = true
   try {
     const order = await createDevOrderDepositAlipayPage(auth.token, amount)
-    const rawHtml = order.page_html
-    alipayPageHtml.value = rawHtml
+    const parsedPaymentPage = new DOMParser().parseFromString(order.page_html, 'text/html')
+    const sourceForm = parsedPaymentPage.forms.namedItem('alipaysubmit')
+    if (!sourceForm?.action) {
+      throw new Error('支付宝支付表单无效')
+    }
+
+    alipayPageHtml.value = order.page_html
+    alipayIframeLoading.value = true
     alipayPaymentId.value = order.payment_id
     pendingRechargeAmount.value = amount
     pendingExpiresAt.value = order.expires_at ?? ''
     rechargeDialogVisible.value = false
-    await nextTick()
     alipayPayDialogVisible.value = true
+    await nextTick()
+
+    const submitForm = document.createElement('form')
+    submitForm.method = sourceForm.method || 'post'
+    submitForm.action = sourceForm.action
+    submitForm.target = 'alipay-payment-frame'
+    for (const input of Array.from(sourceForm.querySelectorAll<HTMLInputElement>('input[name]'))) {
+      const hiddenInput = document.createElement('input')
+      hiddenInput.type = 'hidden'
+      hiddenInput.name = input.name
+      hiddenInput.value = input.value
+      submitForm.appendChild(hiddenInput)
+    }
+    document.body.appendChild(submitForm)
+    submitForm.submit()
+    submitForm.remove()
     startPaymentPoll(pollConfirmAlipay)
   } catch (error) {
     showToast(error instanceof Error ? error.message : '创建支付宝订单失败', 'error')
@@ -365,6 +387,7 @@ function closeAlipayDialog() {
   clearPaymentTimers()
   alipayPayDialogVisible.value = false
   alipayPageHtml.value = ''
+  alipayIframeLoading.value = false
   pendingExpiresAt.value = ''
 }
 
@@ -776,10 +799,17 @@ async function submitDepositWithdrawal() {
           充值金额 <span class="pay-amount-banner__value">{{ money(pendingRechargeAmount) }}</span>
         </div>
 
-        <iframe v-if="alipayPageHtml" :srcdoc="alipayPageHtml" class="alipay-pay-frame" frameborder="0" scrolling="no"
-          sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
-
-        <div v-else class="alipay-pay-loading">加载支付宝页面中…</div>
+        <iframe v-if="alipayPageHtml" name="alipay-payment-frame" class="alipay-pay-frame" frameborder="0"
+          sandbox="allow-scripts allow-forms allow-same-origin" scrolling="no"
+          @load="alipayIframeLoading = false"></iframe>
+        <div v-else class="alipay-pay-launch-status">
+          <Wallet />
+          <strong>正在加载支付宝二维码</strong>
+          <span>请稍候...</span>
+        </div>
+        <div v-if="alipayIframeLoading" class="alipay-pay-launch-status alipay-pay-launch-status--loading">
+          <span>支付宝二维码加载中...</span>
+        </div>
         <div class="pay-countdown" :class="{ 'pay-countdown--expired': isExpired }">
           <span v-if="countdownText">{{ isExpired ? '订单已过期' : `剩余 ${countdownText}` }}</span>
           <span v-else class="pay-countdown__polling">支付中…每 8 秒自动检测</span>

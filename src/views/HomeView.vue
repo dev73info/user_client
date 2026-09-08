@@ -249,13 +249,16 @@ const {
   sendCodeLoading,
   sendCodeCountdown,
   githubLoading,
+  giteeLoading,
   wechatLoginLoading,
   qqLoginLoading,
   githubAvailable,
   wechatAvailable,
   qqAvailable,
+  giteeAvailable,
   resetAuthForm,
   loginWithGithub,
+  loginWithGitee,
   loginWithWechat,
   wechatQrLogin,
   closeWechatQrLogin,
@@ -2377,9 +2380,11 @@ async function submitPublishRequirement() {
       :githubLoginLoading="githubLoading"
       :wechatLoginLoading="wechatLoginLoading"
       :qqLoginLoading="qqLoginLoading"
+      :giteeLoginLoading="giteeLoading"
       :githubLoginAvailable="githubAvailable"
       :wechatLoginAvailable="wechatAvailable"
       :qqLoginAvailable="qqAvailable"
+      :giteeLoginAvailable="giteeAvailable"
       :sendCodeLoading="sendCodeLoading"
       :sendCodeCountdown="sendCodeCountdown"
       @close="closeAuth"
@@ -2387,6 +2392,7 @@ async function submitPublishRequirement() {
       @loginWithGithub="loginWithGithub"
       @loginWithWechat="loginWithWechat"
       @loginWithQq="loginWithQq"
+      @loginWithGitee="loginWithGitee"
       @sendAuthCode="sendAuthCode"
       @change-mode="openAuth"
     />

@@ -31,6 +31,10 @@ export type GithubAuthUrlResp = {
   url: string
 }
 
+export type GiteeAuthUrlResp = {
+  url: string
+}
+
 export type AuthPath = '/auth/login' | '/auth/register'
 
 function detectClientPlatform(): string {
@@ -184,6 +188,22 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
     )
   }
 
+  function getGiteeAuthorizeUrl(redirectTo: string): Promise<GiteeAuthUrlResp> {
+    const query = new URLSearchParams({ redirect_to: redirectTo })
+    if (defaultRequestDevRole) {
+      query.set('request_dev_role', 'true')
+    }
+
+    return deps.requestJson<GiteeAuthUrlResp>(
+      `/auth/gitee/url?${query.toString()}`,
+      {
+        method: 'GET',
+        credentials: 'omit',
+      },
+      'Gitee 登录暂不可用',
+    )
+  }
+
   async function recordAgreementAcceptance(
     token: string,
     agreementCode: string,
@@ -231,6 +251,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
     sendResetPasswordEmailCode,
     resetPassword,
     getGithubAuthorizeUrl,
+    getGiteeAuthorizeUrl,
     recordAgreementAcceptance,
   }
 }

@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { apiUrl } from '@/api/http'
 import {
+  getGiteeAuthorizeUrl,
   getGithubAuthorizeUrl,
   getOauthStatus,
   getQqLoginQrUrl,
@@ -50,11 +51,13 @@ export function useAuthForm(mode: Ref<AuthMode>) {
   }
 
   const githubLoading = ref(false)
+  const giteeLoading = ref(false)
 
   // 各快捷登录是否可用（由后端配置决定），不可用时前端不展示对应按钮。
   const githubAvailable = ref(false)
   const wechatAvailable = ref(false)
   const qqAvailable = ref(false)
+  const giteeAvailable = ref(false)
 
   async function loadOauthStatus() {
     try {
@@ -62,10 +65,12 @@ export function useAuthForm(mode: Ref<AuthMode>) {
       githubAvailable.value = !!status.github
       wechatAvailable.value = !!status.wechat
       qqAvailable.value = !!status.qq
+      giteeAvailable.value = !!status.gitee
     } catch {
       githubAvailable.value = false
       wechatAvailable.value = false
       qqAvailable.value = false
+      giteeAvailable.value = false
     }
   }
 
@@ -92,6 +97,32 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'GitHub 登录失败', 'error')
       githubLoading.value = false
+    }
+  }
+
+  async function loginWithGitee() {
+    if (giteeLoading.value || auth.loading) {
+      return
+    }
+    if (!acceptTerms.value) {
+      showToast('请先同意用户协议、隐私政策和支付与退款说明', 'error')
+      return
+    }
+
+    giteeLoading.value = true
+    // 与开发者端保持一致：固定回到首页，减少不同页面路径带来的回调不稳定。
+    const homeHref = router.resolve({ name: 'home' }).href
+    const redirectTarget = `${window.location.origin}${homeHref}`
+
+    try {
+      const resp = await getGiteeAuthorizeUrl(redirectTarget)
+      if (!resp.url) {
+        throw new Error('Gitee 授权地址为空')
+      }
+      window.location.href = resp.url
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Gitee 登录失败', 'error')
+      giteeLoading.value = false
     }
   }
 
@@ -386,14 +417,17 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     sendCodeLoading,
     sendCodeCountdown,
     githubLoading,
+    giteeLoading,
     wechatLoginLoading,
     qqLoginLoading,
     githubAvailable,
     wechatAvailable,
     qqAvailable,
+    giteeAvailable,
     loadOauthStatus,
     resetAuthForm,
     loginWithGithub,
+    loginWithGitee,
     loginWithWechat,
     sendAuthCode,
     submitAuth,

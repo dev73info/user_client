@@ -287,7 +287,11 @@ const router = createRouter({
         {
           path: 'realname',
           name: 'workbench-realname',
-          component: () => import('@/views/RealnameView.vue'),
+          redirect: (to) => ({
+            name: 'workbench-account',
+            query: to.query,
+            hash: to.hash,
+          }),
         },
         ...devWorkbenchRoutes,
       ],
@@ -313,7 +317,11 @@ const router = createRouter({
     {
       path: '/realname',
       name: 'realname',
-      redirect: { name: 'workbench-realname' },
+      redirect: (to) => ({
+        name: 'workbench-account',
+        query: to.query,
+        hash: to.hash,
+      }),
     },
     {
       path: '/coupon-claim',

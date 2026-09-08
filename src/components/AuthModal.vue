@@ -17,9 +17,11 @@ const props = defineProps({
   githubLoginLoading: { type: Boolean, default: false },
   wechatLoginLoading: { type: Boolean, default: false },
   qqLoginLoading: { type: Boolean, default: false },
+  giteeLoginLoading: { type: Boolean, default: false },
   githubLoginAvailable: { type: Boolean, default: true },
   wechatLoginAvailable: { type: Boolean, default: true },
   qqLoginAvailable: { type: Boolean, default: true },
+  giteeLoginAvailable: { type: Boolean, default: false },
   sendCodeLoading: { type: Boolean, default: false },
   sendCodeCountdown: { type: Number, default: 0 },
   authLoading: { type: Boolean, default: false },
@@ -33,6 +35,7 @@ const emit = defineEmits<{
   (e: 'loginWithGithub'): void
   (e: 'loginWithWechat'): void
   (e: 'loginWithQq'): void
+  (e: 'loginWithGitee'): void
   (e: 'sendAuthCode'): void
   (e: 'change-mode', mode: 'login' | 'register' | 'reset'): void
   (e: 'update:authUsername', value: string): void
@@ -206,7 +209,8 @@ function submitOnEnter() {
         </template>
       </div>
 
-      <div v-if="authMode === 'login' && (githubLoginAvailable || wechatLoginAvailable || qqLoginAvailable)"
+      <div
+        v-if="authMode === 'login' && (githubLoginAvailable || wechatLoginAvailable || qqLoginAvailable || giteeLoginAvailable)"
         class="auth-login-methods" aria-label="第三方登录方式">
         <div class="auth-login-divider">
           <span>其他方式登录</span>
@@ -228,6 +232,12 @@ function submitOnEnter() {
           aria-label="使用QQ登录" :disabled="qqLoginLoading || !acceptTerms" @click="emit('loginWithQq')">
           <img class="auth-login-method__icon" :src="qqLoginIconImage" alt="" aria-hidden="true" />
           <span>{{ qqLoginLoading ? '跳转中...' : 'QQ快捷登录' }}</span>
+        </button>
+        <button v-if="authMode === 'login' && giteeLoginAvailable"
+          class="auth-btn ghost auth-login-method auth-gitee-login" type="button" :aria-busy="giteeLoginLoading"
+          aria-label="使用Gitee登录" :disabled="giteeLoginLoading || !acceptTerms" @click="emit('loginWithGitee')">
+          <img class="auth-login-method__icon" src="/icons/gitee.svg" alt="" aria-hidden="true" />
+          <span>{{ giteeLoginLoading ? '跳转中...' : 'Gitee快捷登录' }}</span>
         </button>
       </div>
 

@@ -29,8 +29,19 @@ const {
   loginRequiresTwoFactor,
   sendCodeLoading,
   sendCodeCountdown,
+  githubLoading,
+  wechatLoginLoading,
+  qqLoginLoading,
+  giteeLoading,
+  githubAvailable,
+  wechatAvailable,
+  qqAvailable,
+  giteeAvailable,
   resetAuthForm,
   loginWithGithub,
+  loginWithWechat,
+  loginWithQq,
+  loginWithGitee,
   sendAuthCode,
   submitAuth,
   changeAuthMode,
@@ -175,11 +186,22 @@ onMounted(() => {
       v-model:acceptTerms="acceptTerms"
       :authLoading="auth.loading"
       :loginRequiresTwoFactor="loginRequiresTwoFactor"
+      :githubLoginLoading="githubLoading"
+      :wechatLoginLoading="wechatLoginLoading"
+      :qqLoginLoading="qqLoginLoading"
+      :giteeLoginLoading="giteeLoading"
+      :githubLoginAvailable="githubAvailable"
+      :wechatLoginAvailable="wechatAvailable"
+      :qqLoginAvailable="qqAvailable"
+      :giteeLoginAvailable="giteeAvailable"
       :sendCodeLoading="sendCodeLoading"
       :sendCodeCountdown="sendCodeCountdown"
       @close="closeAuth"
       @submit="handleSubmitAuth"
       @loginWithGithub="loginWithGithub"
+      @loginWithWechat="loginWithWechat"
+      @loginWithQq="loginWithQq"
+      @loginWithGitee="loginWithGitee"
       @sendAuthCode="sendAuthCode"
       @change-mode="changeAuthMode"
     />

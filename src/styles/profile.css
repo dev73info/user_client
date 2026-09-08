@@ -1,7 +1,6 @@
 /* === 个人中心：钱包、需求单、优惠券 === */
 
-.profile-page,
-.modal-wrap--account-security {
+.profile-page {
   --profile-card-bg: rgba(255, 255, 255, 0.94);
   --profile-card-bg-strong: #ffffff;
   --profile-card-border: rgba(224, 232, 255, 0.96);
@@ -18,10 +17,6 @@
   --profile-warning-text: #92400e;
   --profile-danger-soft: rgba(239, 68, 68, 0.12);
   --profile-danger-text: #b42318;
-}
-
-.modal-wrap--account-security {
-  z-index: 120;
 }
 
 .profile-update-row {
@@ -91,61 +86,6 @@
   box-shadow: var(--profile-card-shadow);
 }
 
-.account-security-modal {
-  display: flex;
-  flex-direction: column;
-  width: min(920px, 100%);
-  max-height: calc(100vh - 48px);
-  max-height: calc(100dvh - 48px);
-  padding: 0;
-  overflow: hidden;
-}
-
-.account-security-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  flex: 0 0 auto;
-  padding: 22px 22px 16px;
-  border-bottom: 1px solid rgba(224, 232, 255, 0.86);
-  background: rgba(255, 255, 255, 0.96);
-}
-
-.account-security-header h3 {
-  margin: 0 0 8px;
-}
-
-.account-security-header p {
-  margin: 0;
-  color: var(--profile-text-sub);
-}
-
-.account-security-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: grid;
-  gap: 14px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 16px 22px 22px;
-}
-
-.account-security-section {
-  margin-top: 0;
-  padding: 18px;
-  border-radius: 18px;
-}
-
-.account-security-section .wallet-header {
-  align-items: flex-start;
-  margin-bottom: 14px;
-}
-
-.account-security-section .profile-update-row:last-child {
-  margin-bottom: 0;
-}
-
 .wallet-header {
   display: flex;
   justify-content: space-between;
@@ -172,34 +112,6 @@
 
   .profile-update-row button.ghost.small {
     width: 100%;
-  }
-
-  .account-security-modal {
-    max-height: calc(100vh - 24px);
-    max-height: calc(100dvh - 24px);
-  }
-
-  .account-security-header {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 18px 18px 14px;
-  }
-
-  .account-security-header button.ghost.small {
-    width: 100%;
-  }
-
-  .account-security-body {
-    padding: 14px 14px 18px;
-  }
-
-  .account-security-section {
-    padding: 16px;
-  }
-
-  .account-security-section .wallet-header {
-    flex-direction: column;
-    gap: 8px;
   }
 
 }
@@ -632,23 +544,15 @@
 }
 
 .profile-page button.ghost,
-.profile-page button.ghost.small,
-.modal-wrap--account-security button.ghost,
-.modal-wrap--account-security button.ghost.small {
+.profile-page button.ghost.small {
   border-color: rgba(209, 220, 243, 0.95);
   background: #ffffff;
   color: var(--profile-text-main);
   box-shadow: 0 8px 20px rgba(76, 103, 172, 0.06);
 }
 
-.profile-page button.ghost:hover:not(:disabled),
-.modal-wrap--account-security button.ghost:hover:not(:disabled) {
+.profile-page button.ghost:hover:not(:disabled) {
   background: #f8fbff;
   border-color: rgba(125, 155, 225, 0.92);
   box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
-}
-
-.profile-page .account-security-modal .requirement-note,
-.modal-wrap--account-security .account-security-modal .requirement-note {
-  color: var(--profile-text-sub);
 }

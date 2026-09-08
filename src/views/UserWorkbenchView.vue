@@ -1051,7 +1051,7 @@ async function scrollToHash() {
 .user-workbench__head {
   position: sticky;
   top: 98px;
-  z-index: 5;
+  z-index: 1;
   align-self: start;
   display: flex;
   align-items: center;
