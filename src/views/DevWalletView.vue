@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Close, Refresh, Wallet } from '@element-plus/icons-vue'
+import { Wallet } from '@element-plus/icons-vue'
+import DevWithdrawalRecordsView from './DevWithdrawalRecordsView.vue'
 
 import {
   createDevWithdrawalRequest,
@@ -204,16 +205,6 @@ function rateText(value?: number | null) {
 
   const prefix = value > 0 ? '+' : ''
   return `${prefix}${value.toFixed(1)}%`
-}
-
-function statusText(status: string) {
-  const map: Record<string, string> = {
-    in_development: '开发中',
-    pending_final: '待付尾款',
-    final_paid: '已付尾款',
-    completed: '已完成',
-  }
-  return map[status] || status
 }
 
 async function loadWallet() {
@@ -505,10 +496,6 @@ async function submitDepositWithdrawal() {
     <section class="wallet-records" aria-label="钱包记录">
       <div class="dev-upload-section__head">
         <h3 class="dev-section-title">钱包记录</h3>
-        <el-tooltip v-if="activeRecordTab === 'deposit'" content="刷新保证金记录">
-          <el-button :icon="Refresh" :loading="depositLoading" aria-label="刷新保证金记录" @click="loadDeposit()" />
-        </el-tooltip>
-        <el-button v-else text @click="router.push('/dev/wallet/withdrawals')">查看全部提现记录 →</el-button>
       </div>
       <el-tabs v-model="activeRecordTab">
         <el-tab-pane label="保证金退回" name="deposit">
@@ -539,30 +526,8 @@ async function submitDepositWithdrawal() {
         <el-pagination v-model:current-page="depositRecordPage" :page-size="depositRecordPageSize" :total="depositRecords.length" :pager-count="5" layout="prev, pager, next" background aria-label="保证金退回记录分页" />
       </div>
         </el-tab-pane>
-        <el-tab-pane label="最近收入" name="income">
-      <el-table class="wallet-records__table" :data="recentIncome" stripe v-loading="loading" :empty-text="loading ? '加载中' : '暂无收入记录'">
-        <el-table-column label="需求" min-width="280">
-          <template #default="scope">
-            <div class="dev-wallet-table__title">{{ scope.row.title }}</div>
-            <div class="dev-wallet-table__meta">
-              {{ scope.row.requirement_id }} · {{ scope.row.customer }}
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="金额" width="140">
-          <template #default="scope">
-            <span class="dev-wallet-table__amount">{{ money(scope.row.amount_cny) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="120">
-          <template #default="scope">
-            <el-tag size="small" type="success" effect="plain">{{
-              statusText(scope.row.requirement_status)
-              }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="paid_at" label="支付时间" min-width="180" />
-      </el-table>
+        <el-tab-pane label="收入记录" name="income" lazy>
+          <DevWithdrawalRecordsView v-if="activeRecordTab === 'income'" :income="recentIncome" />
         </el-tab-pane>
       </el-tabs>
     </section>
@@ -653,15 +618,21 @@ async function submitDepositWithdrawal() {
             title="充值金额超过当前信用允许的额度，提交将被拒绝。请联系管理员提升信用，或下调充值金额。" />
         </el-form-item>
         <el-form-item label="支付方式" required>
-          <el-radio-group v-model="rechargeChannel">
-            <el-radio-button value="alipay">支付宝</el-radio-button>
-            <el-radio-button value="wechat">微信</el-radio-button>
+          <el-radio-group v-model="rechargeChannel" class="dev-recharge-dialog__channels">
+            <el-radio-button value="alipay" class="dev-recharge-dialog__channel--alipay">
+              <img src="/icons/alipay.png" class="dev-recharge-dialog__channel-icon" width="22" height="22" alt="" />
+              <span>支付宝</span>
+            </el-radio-button>
+            <el-radio-button value="wechat" class="dev-recharge-dialog__channel--wechat">
+              <img src="/icons/wechat-pay.png" class="dev-recharge-dialog__channel-icon" width="22" height="22" alt="" />
+              <span>微信</span>
+            </el-radio-button>
           </el-radio-group>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="rechargeDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="adapayRechargeLoading" @click="startAdapayRecharge">充值</el-button>
+        <el-button class="dev-recharge-dialog__action" @click="rechargeDialogVisible = false">取消</el-button>
+        <el-button class="dev-recharge-dialog__action" type="primary" :loading="adapayRechargeLoading" @click="startAdapayRecharge">充值</el-button>
       </template>
     </el-dialog>
 
@@ -680,14 +651,15 @@ async function submitDepositWithdrawal() {
   height: 48px;
 }
 
-.wallet-records__table {
+.wallet-records :deep(.wallet-records__table) {
   width: 100%;
+  max-width: 100%;
   --el-table-header-bg-color: var(--el-fill-color-light);
   --el-table-header-text-color: var(--el-text-color-regular);
   --el-table-row-hover-bg-color: var(--el-color-primary-light-9);
 }
 
-.wallet-records__table :deep(.el-table__cell) {
+.wallet-records :deep(.wallet-records__table .el-table__cell) {
   padding: 12px 0;
   font-variant-numeric: tabular-nums;
 }
@@ -697,31 +669,31 @@ async function submitDepositWithdrawal() {
   color: var(--el-text-color-primary);
 }
 
-.wallet-records__footer,
-.wallet-records__count {
+.wallet-records :deep(.wallet-records__footer),
+.wallet-records :deep(.wallet-records__count) {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
 }
 
-.wallet-records__footer {
+.wallet-records :deep(.wallet-records__footer) {
   justify-content: space-between;
   padding: 16px 0;
   color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
-.wallet-records__page-size {
+.wallet-records :deep(.wallet-records__page-size) {
   width: 116px;
 }
 
 @media (max-width: 600px) {
-  .wallet-records__footer {
+  .wallet-records :deep(.wallet-records__footer) {
     justify-content: center;
   }
 
-  .wallet-records__count {
+  .wallet-records :deep(.wallet-records__count) {
     width: 100%;
     justify-content: space-between;
   }

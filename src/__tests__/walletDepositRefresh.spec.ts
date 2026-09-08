@@ -23,7 +23,16 @@ vi.mock('@/api/devWallet', async (importOriginal) => ({
 vi.mock('@/api/devCredit', () => ({ getDevCreditSelf: vi.fn().mockResolvedValue(null) }))
 
 function mountWallet() {
-  return shallowMount(DevWalletView, { global: { config: { warnHandler: () => {} } } })
+  return shallowMount(DevWalletView, { global: {
+    config: { warnHandler: () => {} },
+    stubs: {
+      ElTabs: { template: '<div><slot /></div>' },
+      ElTabPane: { template: '<div><slot /></div>' },
+      ElTable: { name: 'ElTable', props: ['data'], template: '<div />' },
+      ElPagination: { name: 'ElPagination', props: ['currentPage', 'pageSize', 'total'], template: '<div />' },
+      ElSelect: { name: 'ElSelect', props: ['modelValue'], template: '<div />' },
+    },
+  } })
 }
 
 describe('wallet deposit status refresh', () => {
@@ -78,6 +87,40 @@ describe('wallet deposit status refresh', () => {
     document.dispatchEvent(new Event('visibilitychange'))
     await flushPromises()
     expect(mocks.toast).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('paginates records, resets on page size change and clamps after refresh', async () => {
+    const records = Array.from({ length: 23 }, (_, index) => ({
+      withdrawal_id: `withdrawal-${index}`, status: 'paid', amount_cny: 1,
+    }))
+    mocks.summary.mockResolvedValue({ withdrawals: records })
+    const wrapper = mountWallet()
+    await flushPromises()
+    const table = wrapper.findAllComponents({ name: 'ElTable' })[0]!
+    const pagination = wrapper.findComponent({ name: 'ElPagination' })
+    expect(table.props('data')).toEqual(records.slice(0, 10))
+    expect(pagination.props('total')).toBe(23)
+    pagination.vm.$emit('update:current-page', 3)
+    await flushPromises()
+    expect(table.props('data')).toEqual(records.slice(20))
+    wrapper.findComponent({ name: 'ElSelect' }).vm.$emit('update:modelValue', 20)
+    await flushPromises()
+    expect(pagination.props('currentPage')).toBe(1)
+    expect(table.props('data')).toEqual(records.slice(0, 20))
+    pagination.vm.$emit('update:current-page', 2)
+    await flushPromises()
+    mocks.summary.mockResolvedValue({ withdrawals: records.slice(0, 2) })
+    window.dispatchEvent(new Event('focus'))
+    await flushPromises()
+    expect(pagination.props('currentPage')).toBe(1)
+    expect(table.props('data')).toEqual(records.slice(0, 2))
+    mocks.summary.mockResolvedValue({ withdrawals: [] })
+    window.dispatchEvent(new Event('focus'))
+    await flushPromises()
+    expect(pagination.props('currentPage')).toBe(1)
+    expect(pagination.props('total')).toBe(0)
+    expect(table.props('data')).toEqual([])
     wrapper.unmount()
   })
 })

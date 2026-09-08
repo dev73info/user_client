@@ -106,7 +106,6 @@ const menuGroups: WorkbenchMenuGroup[] = [
       { label: '我的接单', name: 'dev-my-requirements', description: '查看已关联需求和会话' },
       { label: '收益钱包', name: 'dev-wallet', description: '查看余额与保证金信息' },
       { label: '交付记录', name: 'dev-wallet-releases', description: '查看资源交付与收入' },
-      { label: '提现记录', name: 'dev-wallet-withdrawals', description: '查看提现申请状态' },
     ],
   },
 ]

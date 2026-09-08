@@ -61,7 +61,7 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
   {
     path: 'developer/wallet/withdrawals',
     name: 'dev-wallet-withdrawals',
-    component: () => import('@/views/DevWithdrawalRecordsView.vue'),
+    redirect: { name: 'dev-wallet' },
     meta: {
       title: '钱包 / 提现记录',
       description: '查看开发者提现申请和处理状态。',
