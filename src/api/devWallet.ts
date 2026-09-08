@@ -62,7 +62,7 @@ export type DevWithdrawalLimits = {
 
 export type CreateDevWithdrawalRequest = {
   amount_cny: number
-  channel: 'alipay' | 'wechat'
+  channel: 'alipay' | 'wechat' | 'adapay'
   account_name: string
   account_no: string
   note?: string | null
@@ -73,6 +73,7 @@ export function validateDevWithdrawalRequest(
   withdrawableBalance?: number | null,
   limits?: DevWithdrawalLimits | null,
   allowEmptyWechatAccount = false,
+  source: 'income' | 'developer_order_deposit' = 'income',
 ): string | null {
   const minAmount = limits?.min_amount_cny ?? 0.01
   const maxAmount = limits?.max_amount_cny ?? 999999
@@ -85,8 +86,24 @@ export function validateDevWithdrawalRequest(
     return '提现金额不能超过当前可提现余额'
   }
 
-  if (payload.channel !== 'alipay' && payload.channel !== 'wechat') {
+  if (payload.channel !== 'alipay' && payload.channel !== 'wechat' && payload.channel !== 'adapay') {
     return '收款方式仅支持支付宝或微信'
+  }
+
+  const note = payload.note?.trim() ?? ''
+  const noteMax = limits?.note_max_len ?? 200
+  if (note.length > noteMax) {
+    return `申请备注不能超过 ${noteMax} 个字符`
+  }
+  if (source === 'developer_order_deposit') {
+    return payload.channel === 'adapay' ? null : '保证金需通过原充值订单退回'
+  }
+
+  if (payload.channel === 'adapay') {
+    if (!payload.account_name.trim()) {
+      return '请填写收款户名：个人为实名姓名，企业为认证企业全称'
+    }
+    return null
   }
 
   if (payload.channel === 'alipay' && limits && !limits.alipay_enabled) {
@@ -109,12 +126,6 @@ export function validateDevWithdrawalRequest(
   const canUseBoundWechatAccount = allowEmptyWechatAccount && payload.channel === 'wechat'
   if ((!canUseBoundWechatAccount && accountNo.length < accountNoMin) || accountNo.length > accountNoMax) {
     return `收款账号长度需在 ${accountNoMin} 到 ${accountNoMax} 个字符之间`
-  }
-
-  const note = payload.note?.trim() ?? ''
-  const noteMax = limits?.note_max_len ?? 200
-  if (note.length > noteMax) {
-    return `申请备注不能超过 ${noteMax} 个字符`
   }
 
   return null

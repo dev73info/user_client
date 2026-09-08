@@ -108,7 +108,16 @@ function keepAllowedInlineStyles(value: string): string {
     }
   })
 
-  template.content.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]').forEach((anchor) => {
+  template.content.querySelectorAll<HTMLElement>('[href], [src], [poster]').forEach((element) => {
+    for (const attribute of ['href', 'src', 'poster']) {
+      const value = element.getAttribute(attribute)
+      if (value !== null && !domPurifyConfig.ALLOWED_URI_REGEXP.test(value.trim())) {
+        element.removeAttribute(attribute)
+      }
+    }
+  })
+
+  template.content.querySelectorAll<HTMLAnchorElement>('a').forEach((anchor) => {
     anchor.setAttribute('rel', 'noopener noreferrer')
   })
 

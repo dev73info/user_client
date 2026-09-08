@@ -13,7 +13,6 @@ import {
   isWechatPaymentAuthorizationRequired,
 } from '@/api/auth'
 import AuthModal from '@/components/AuthModal.vue'
-import QqLoginQrModal from '@/components/QqLoginQrModal.vue'
 import WechatLoginQrModal from '@/components/WechatLoginQrModal.vue'
 import PublishModal from '@/components/PublishModal.vue'
 import DepositModal from '@/components/DepositModal.vue'
@@ -264,9 +263,6 @@ const {
   closeWechatQrLogin,
   handleWechatQrToken,
   loginWithQq,
-  qqQrLogin,
-  closeQqQrLogin,
-  handleQqQrToken,
   sendAuthCode: sendAuthCodeAction,
   submitAuth: submitAuthAction,
 } = useAuthForm(routeAuthMode)
@@ -2401,16 +2397,9 @@ async function submitPublishRequirement() {
       :visible="wechatQrLogin.visible"
       :url="wechatQrLogin.url"
       :state="wechatQrLogin.state"
+      :poll-secret="wechatQrLogin.pollSecret"
       @close="closeWechatQrLogin"
       @logged-in="handleWechatQrToken"
-    />
-
-    <QqLoginQrModal
-      :visible="qqQrLogin.visible"
-      :url="qqQrLogin.url"
-      :state="qqQrLogin.state"
-      @close="closeQqQrLogin"
-      @logged-in="handleQqQrToken"
     />
 
     <PublishModal

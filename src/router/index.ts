@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { devRoutes, devWorkbenchRoutes, installDevRouteGuard } from '@/router/dev'
+import { isWechatPaymentHandoff } from '@/utils/wechatPayment'
 
 const SPA_FALLBACK_REDIRECT_PARAM = '__spa_redirect'
 
@@ -439,7 +440,7 @@ router.beforeEach(async (to, from, next) => {
     to.path.startsWith('/invite') ||
     to.name === 'profile' ||
     to.name === 'messages' ||
-    to.name === 'payment' ||
+    (to.name === 'payment' && !isWechatPaymentHandoff(to.query)) ||
     to.name === 'my-custom-resources' ||
     to.name === 'tickets' ||
     to.name === 'contract-sign' ||

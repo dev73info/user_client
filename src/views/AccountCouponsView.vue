@@ -55,6 +55,12 @@ import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import RealnameHero from '@/components/RealnameHero.vue'
 import WechatBindQrModal from '@/components/WechatBindQrModal.vue'
+import {
+  getSettlementCities,
+  prepareSettlementAccount,
+  settlementBanks,
+  settlementProvinces,
+} from '@/utils/settlementAccount'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -907,8 +913,13 @@ const settleForm = reactive({
   prov_code: '',
   area_code: '',
   bank_acct_type: '2',
-  bank_name: '',
 })
+
+const settleCities = computed(() => getSettlementCities(settleForm.prov_code))
+
+function changeSettleProvince() {
+  settleForm.area_code = settleCities.value.length === 1 ? settleCities.value[0]!.value : ''
+}
 
 const settleStatusText = computed(() => {
   const status = adapayMember.value?.onboardingStatus
@@ -942,14 +953,17 @@ async function openSettleDialog() {
 }
 
 async function saveSettleAccount() {
-  if (!auth.token) return
-  if (!settleForm.card_id.trim() || !settleForm.bank_code.trim()) {
-    showToast('请填写银行卡号和银行编码', 'warning')
+  if (!auth.token || settleSaving.value) return
+  let payload
+  try {
+    payload = prepareSettlementAccount(settleForm)
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '请检查银行卡信息', 'warning')
     return
   }
   settleSaving.value = true
   try {
-    const member = await createMyAdapaySettlementAccount(auth.token, { ...settleForm })
+    const member = await createMyAdapaySettlementAccount(auth.token, payload)
     adapayMember.value = member
     showToast('结算账户已设置', 'success')
     settleDialogVisible.value = false
@@ -2129,7 +2143,7 @@ onBeforeUnmount(() => {
 
         <el-dialog
           v-model="settleDialogVisible"
-          title="Adapay 结算账户"
+          title="收款银行卡"
           class="realname-dialog"
           width="520px"
           :close-on-click-modal="true"
@@ -2137,38 +2151,77 @@ onBeforeUnmount(() => {
           <div v-loading="settleLoading" class="settle-dialog">
             <div class="settle-dialog__status">
               <div class="settle-dialog__status-item">
-                <span>Adapay 认证状态</span>
+                <span>收款认证</span>
                 <el-tag :type="settleStatusTagType" round>{{ settleStatusText }}</el-tag>
               </div>
               <div class="settle-dialog__status-item">
                 <span>结算账户</span>
-                <strong>{{ adapayMember?.settleAccountId || '未设置' }}</strong>
+                <strong>{{ adapayMember?.settleAccountId ? '已设置' : '未设置' }}</strong>
               </div>
             </div>
-            <el-form label-width="96px" class="settle-form">
+            <el-form
+              v-if="!adapayMember?.settleAccountId"
+              label-width="96px"
+              class="settle-form"
+              :disabled="settleSaving || settleLoading"
+              @submit.prevent="saveSettleAccount"
+            >
               <el-form-item label="银行卡号" required>
-                <el-input v-model="settleForm.card_id" placeholder="银行卡号" />
+                <el-input v-model="settleForm.card_id" inputmode="numeric" placeholder="请输入收款银行卡号" />
               </el-form-item>
-              <el-form-item label="银行编码" required>
-                <el-input v-model="settleForm.bank_code" placeholder="银行编码" />
+              <el-form-item label="开户银行" required>
+                <el-select-v2
+                  v-model="settleForm.bank_code"
+                  :options="settlementBanks"
+                  filterable
+                  clearable
+                  placeholder="搜索或选择银行名称"
+                  no-match-text="未找到该银行"
+                  style="width: 100%"
+                />
               </el-form-item>
-              <el-form-item label="省份代码">
-                <el-input v-model="settleForm.prov_code" placeholder="省份代码" />
+              <el-form-item label="开户省份" required>
+                <el-select
+                  v-model="settleForm.prov_code"
+                  filterable
+                  clearable
+                  placeholder="选择开户银行所在省份"
+                  style="width: 100%"
+                  @change="changeSettleProvince"
+                >
+                  <el-option
+                    v-for="province in settlementProvinces"
+                    :key="province.value"
+                    :label="province.title"
+                    :value="province.value"
+                  />
+                </el-select>
               </el-form-item>
-              <el-form-item label="地区代码">
-                <el-input v-model="settleForm.area_code" placeholder="地区代码" />
+              <el-form-item label="开户城市" required>
+                <el-select
+                  v-model="settleForm.area_code"
+                  filterable
+                  clearable
+                  :disabled="!settleForm.prov_code"
+                  :placeholder="settleForm.prov_code ? '选择开户银行所在城市' : '请先选择开户省份'"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="city in settleCities"
+                    :key="city.value"
+                    :label="city.title"
+                    :value="city.value"
+                  />
+                </el-select>
               </el-form-item>
               <el-form-item label="账户类型">
                 <el-select v-model="settleForm.bank_acct_type" style="width: 100%">
-                  <el-option label="个人账户（2）" value="2" />
-                  <el-option label="对公账户（1）" value="1" />
+                  <el-option label="个人银行卡" value="2" />
+                  <el-option label="企业对公账户" value="1" />
                 </el-select>
               </el-form-item>
-              <el-form-item label="银行名称">
-                <el-input v-model="settleForm.bank_name" placeholder="银行名称（可选）" />
-              </el-form-item>
               <el-form-item>
-                <el-button type="primary" :loading="settleSaving" @click="saveSettleAccount">
+                <el-button type="primary" native-type="submit" :loading="settleSaving">
                   {{ settleSaving ? '保存中...' : '保存结算账户' }}
                 </el-button>
               </el-form-item>

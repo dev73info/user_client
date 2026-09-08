@@ -28,6 +28,17 @@ export type AdapayPaymentResponse = {
   payUrl?: string | null
 }
 
+export type AdapayDeveloperDepositPaymentResponse = {
+  paymentId: string
+  amountCny: string
+  payChannel: string
+  payMode: 'delay'
+  status: string
+  providerPaymentId?: string | null
+  providerStatus?: string | null
+  payUrl?: string | null
+}
+
 export type AdapayDeliveryVersion = {
   id: number
   requirementId: string
@@ -117,6 +128,45 @@ export async function getAdapayPayment(
       },
     },
     '查询 Adapay 支付状态失败',
+  )
+}
+
+export async function createAdapayDeveloperDepositPayment(
+  token: string,
+  amountCny: number,
+  payChannel: 'alipay' | 'wechat',
+  clientPlatform: AdapayClientPlatform = getAdapayClientPlatform(),
+): Promise<AdapayDeveloperDepositPaymentResponse> {
+  return requestJson<AdapayDeveloperDepositPaymentResponse>(
+    '/adapay/developer-deposits',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify({
+        amount_cny: amountCny,
+        pay_channel: payChannel,
+        client_platform: clientPlatform,
+      }),
+    },
+    '创建 Adapay 保证金充值订单失败',
+  )
+}
+
+export async function getAdapayDeveloperDepositPayment(
+  token: string,
+  paymentId: string,
+): Promise<AdapayDeveloperDepositPaymentResponse> {
+  return requestJson<AdapayDeveloperDepositPaymentResponse>(
+    `/adapay/developer-deposits/${encodeURIComponent(paymentId)}`,
+    {
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '查询 Adapay 保证金充值状态失败',
   )
 }
 

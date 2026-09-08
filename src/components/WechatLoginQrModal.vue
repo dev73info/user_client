@@ -8,6 +8,7 @@ const props = defineProps({
   visible: { type: Boolean, default: false },
   url: { type: String, default: '' },
   state: { type: String, default: '' },
+  pollSecret: { type: String, default: '' },
 })
 
 const emit = defineEmits<{
@@ -28,24 +29,31 @@ function stopPolling() {
   }
 }
 
-async function checkLogin(expectedGeneration = generation, expectedState = props.state) {
+async function checkLogin(
+  expectedGeneration = generation,
+  expectedState = props.state,
+  expectedSecret = props.pollSecret,
+) {
   if (
     !props.visible ||
     !expectedState ||
+    !expectedSecret ||
     expectedGeneration !== generation ||
     props.state !== expectedState ||
+    props.pollSecret !== expectedSecret ||
     polling.value
   ) {
     return
   }
   polling.value = true
   try {
-    const result = await getWechatLoginQrStatus(expectedState)
+    const result = await getWechatLoginQrStatus(expectedState, expectedSecret)
     if (
       result.token &&
       props.visible &&
       expectedGeneration === generation &&
-      props.state === expectedState
+      props.state === expectedState &&
+      props.pollSecret === expectedSecret
     ) {
       stopPolling()
       emit('logged-in', result.token)
@@ -60,11 +68,12 @@ async function checkLogin(expectedGeneration = generation, expectedState = props
 async function prepare() {
   const currentGeneration = ++generation
   const expectedState = props.state
+  const expectedSecret = props.pollSecret
   stopPolling()
   qrDataUrl.value = ''
   qrError.value = ''
 
-  if (!props.visible || !props.url.trim() || !props.state) {
+  if (!props.visible || !props.url.trim() || !props.state || !expectedSecret) {
     return
   }
 
@@ -85,13 +94,13 @@ async function prepare() {
     return
   }
 
-  await checkLogin(currentGeneration, expectedState)
+  await checkLogin(currentGeneration, expectedState, expectedSecret)
   if (currentGeneration !== generation || !props.visible) {
     return
   }
 
   pollTimer = setInterval(() => {
-    void checkLogin(currentGeneration, expectedState)
+    void checkLogin(currentGeneration, expectedState, expectedSecret)
   }, 2000)
 }
 
@@ -102,7 +111,7 @@ function close() {
 }
 
 watch(
-  () => [props.visible, props.url, props.state] as const,
+  () => [props.visible, props.url, props.state, props.pollSecret] as const,
   () => {
     void prepare()
   },
@@ -131,7 +140,7 @@ onBeforeUnmount(() => {
         </header>
 
         <p class="wechat-authorization-modal__intro">
-          请用手机微信扫描二维码，在微信中确认授权后即可登录。
+          请用手机微信扫码并授权，核对电脑 IP 和登录时间后，点击“确认登录”。
         </p>
 
         <div class="wechat-authorization-modal__qr" aria-live="polite">
@@ -140,7 +149,7 @@ onBeforeUnmount(() => {
         </div>
 
         <p class="wechat-authorization-modal__hint">
-          扫码后请保持本页面打开，授权成功后会自动登录。
+          请保持本页面打开，手机确认后电脑才会登录。非本人操作请在手机上取消。
         </p>
 
         <div class="auth-modal-actions">

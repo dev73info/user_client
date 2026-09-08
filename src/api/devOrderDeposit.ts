@@ -2,7 +2,7 @@ import { apiUrl, authHeaders, requestJson } from '@/api/http'
 
 export type DevOrderDepositOrderSummary = {
   payment_id: string
-  channel: 'alipay' | 'wechat'
+  channel: 'adapay'
   amount_cny: number
   status: 'created' | 'paid' | 'failed' | 'closed'
   expires_at?: string | null
@@ -29,7 +29,7 @@ export type DevOrderDepositWithdrawalRecord = {
   creator: string
   source: 'developer_order_deposit'
   amount_cny: number
-  channel: 'alipay' | 'wechat'
+  channel: 'adapay'
   account_name: string
   account_no: string
   account_no_masked: string
@@ -40,6 +40,7 @@ export type DevOrderDepositWithdrawalRecord = {
   reviewed_at?: string | null
   paid_reference?: string | null
   paid_at?: string | null
+  payout_failure_message?: string | null
   created_at: string
   updated_at: string
 }
@@ -53,7 +54,7 @@ export type DevOrderDepositWithdrawalSummary = {
 
 export type CreateDevOrderDepositWithdrawalRequest = {
   amount_cny: number
-  channel: 'alipay' | 'wechat'
+  channel: 'adapay'
   account_name: string
   account_no: string
   note?: string | null

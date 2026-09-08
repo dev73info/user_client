@@ -148,6 +148,7 @@ export async function getWechatBindAuthorizeUrl(
 export type WechatLoginQrUrlResp = {
   url: string
   state: string
+  poll_secret: string
 }
 
 export type WechatLoginQrStatusResp = {
@@ -178,11 +179,12 @@ export async function getWechatLoginQrUrl(
 
 export async function getWechatLoginQrStatus(
   state: string,
+  pollSecret: string,
 ): Promise<WechatLoginQrStatusResp> {
   const query = new URLSearchParams({ state })
   return requestJson<WechatLoginQrStatusResp>(
     `/auth/wechat/login/qr/status?${query.toString()}`,
-    { headers: {} },
+    { headers: { 'X-Wechat-Login-Poll-Secret': pollSecret }, cache: 'no-store' },
     '查询微信扫码登录状态失败',
   )
 }

@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import { reactive, ref } from 'vue'
+import { onBeforeUnmount, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -8,6 +8,7 @@ import {
   getGiteeAuthorizeUrl,
   getGithubAuthorizeUrl,
   getOauthStatus,
+  getQqLoginQrStatus,
   getQqLoginQrUrl,
   getWechatLoginQrUrl,
 } from '@/api/auth'
@@ -129,7 +130,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
   const wechatLoginLoading = ref(false)
 
   // PC 端扫码登录：展示二维码并轮询登录 token。
-  const wechatQrLogin = reactive({ visible: false, url: '', state: '' })
+  const wechatQrLogin = reactive({ visible: false, url: '', state: '', pollSecret: '' })
 
   function isWechatBrowser() {
     return /MicroMessenger/i.test(navigator.userAgent)
@@ -163,11 +164,12 @@ export function useAuthForm(mode: Ref<AuthMode>) {
 
     try {
       const qr = await getWechatLoginQrUrl(redirectTarget)
-      if (!qr.url.trim() || !qr.state.trim()) {
+      if (!qr.url.trim() || !qr.state.trim() || !qr.poll_secret?.trim()) {
         throw new Error('微信扫码登录地址为空')
       }
       wechatQrLogin.url = qr.url
       wechatQrLogin.state = qr.state
+      wechatQrLogin.pollSecret = qr.poll_secret
       wechatQrLogin.visible = true
     } catch (err) {
       showToast(err instanceof Error ? err.message : '微信扫码登录失败', 'error')
@@ -180,7 +182,10 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     wechatQrLogin.visible = false
     wechatQrLogin.url = ''
     wechatQrLogin.state = ''
+    wechatQrLogin.pollSecret = ''
   }
+
+  onBeforeUnmount(closeWechatQrLogin)
 
   async function handleWechatQrToken(token: string) {
     closeWechatQrLogin()
@@ -192,7 +197,46 @@ export function useAuthForm(mode: Ref<AuthMode>) {
   }
 
   const qqLoginLoading = ref(false)
-  const qqQrLogin = reactive({ visible: false, url: '', state: '' })
+  let qqAuthorizationWindow: Window | null = null
+  let qqPollTimer: ReturnType<typeof setTimeout> | null = null
+  let qqLoginGeneration = 0
+
+  function stopQqLogin() {
+    qqLoginGeneration += 1
+    if (qqPollTimer) {
+      clearTimeout(qqPollTimer)
+      qqPollTimer = null
+    }
+    qqAuthorizationWindow?.close()
+    qqAuthorizationWindow = null
+  }
+
+  async function checkQqLogin(state: string, generation: number) {
+    if (generation !== qqLoginGeneration) return
+    try {
+      const result = await getQqLoginQrStatus(state)
+      if (generation !== qqLoginGeneration) return
+      if (result.token) {
+        stopQqLogin()
+        auth.setToken(result.token)
+        showToast('登录成功', 'success')
+        await auth.fetchProfile(true).catch(() => undefined)
+        const homeHref = router.resolve({ name: 'home' }).href
+        await router.replace(homeHref)
+        return
+      }
+    } catch {
+      if (generation !== qqLoginGeneration) return
+    }
+    if (generation !== qqLoginGeneration) return
+    if (qqAuthorizationWindow?.closed) {
+      stopQqLogin()
+      return
+    }
+    qqPollTimer = setTimeout(() => void checkQqLogin(state, generation), 2000)
+  }
+
+  onBeforeUnmount(stopQqLogin)
 
   async function loginWithQq() {
     if (qqLoginLoading.value || auth.loading) {
@@ -215,34 +259,33 @@ export function useAuthForm(mode: Ref<AuthMode>) {
       return
     }
 
+    stopQqLogin()
+    const generation = qqLoginGeneration
+    qqAuthorizationWindow = window.open(
+      '',
+      'TencentLogin',
+      'width=450,height=640,menubar=0,scrollbars=1,resizable=1,status=1,titlebar=0,toolbar=0,location=1',
+    )
+
     try {
       const qr = await getQqLoginQrUrl(redirectTarget)
+      if (generation !== qqLoginGeneration) return
       if (!qr.url.trim() || !qr.state.trim()) {
-        throw new Error('QQ扫码登录地址为空')
+        throw new Error('QQ授权地址为空')
       }
-      qqQrLogin.url = qr.url
-      qqQrLogin.state = qr.state
-      qqQrLogin.visible = true
+      if (!qqAuthorizationWindow) {
+        window.location.assign(qr.url)
+        return
+      }
+      qqAuthorizationWindow.location.href = qr.url
+      void checkQqLogin(qr.state, generation)
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'QQ扫码登录失败', 'error')
+      if (generation !== qqLoginGeneration) return
+      stopQqLogin()
+      showToast(err instanceof Error ? err.message : 'QQ登录失败', 'error')
     } finally {
       qqLoginLoading.value = false
     }
-  }
-
-  function closeQqQrLogin() {
-    qqQrLogin.visible = false
-    qqQrLogin.url = ''
-    qqQrLogin.state = ''
-  }
-
-  async function handleQqQrToken(token: string) {
-    closeQqQrLogin()
-    auth.setToken(token)
-    showToast('登录成功', 'success')
-    await auth.fetchProfile(true).catch(() => undefined)
-    const homeHref = router.resolve({ name: 'home' }).href
-    await router.replace(homeHref)
   }
 
   async function sendAuthCode() {
@@ -436,8 +479,5 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     closeWechatQrLogin,
     handleWechatQrToken,
     loginWithQq,
-    qqQrLogin,
-    closeQqQrLogin,
-    handleQqQrToken,
   }
 }

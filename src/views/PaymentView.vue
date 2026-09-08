@@ -2,14 +2,19 @@
 import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import QRCode from 'qrcode'
+import { CircleCheck, Clock } from '@element-plus/icons-vue'
 
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { isWechatPaymentHandoff, parseWechatPayInfo, type WechatJsapiPaymentInfo } from '@/utils/wechatPayment'
 import {
+  createAdapayDeveloperDepositPayment,
   createAdapayPayment,
   getAdapayClientPlatform,
+  getAdapayDeveloperDepositPayment,
   getAdapayPayment,
   type AdapayClientPlatform,
+  type AdapayDeveloperDepositPaymentResponse,
   type AdapayPaymentResponse,
 } from '@/api/adapay'
 import { confirmPayment as confirmPaymentApi, getAlipayPageHtml, listPaymentOrders as listPaymentOrdersApi, type ConfirmPaymentResp } from '@/api/payments'
@@ -29,21 +34,32 @@ const milestone = computed(() => String(route.query.milestone ?? ''))
 const amountCny = computed(() => String(route.query.amount_cny ?? ''))
 const couponCode = computed(() => String(route.query.coupon_code ?? ''))
 const isAdapayPayment = computed(() => route.query.adapay === '1')
+const isDeveloperDepositPayment = computed(() => route.query.developer_deposit === '1')
+const isDeveloperDepositIntentMode = computed(
+  () =>
+    isDeveloperDepositPayment.value &&
+    !paymentId.value &&
+    queryPaymentChannel.value === 'wechat' &&
+    Number.isFinite(Number(amountCny.value)) &&
+    Number(amountCny.value) > 0,
+)
 // 意图模式：adapay 微信支付尚未创建订单，携带 requirement_id + milestone；由支付页在微信内自动静默授权后下单。
 const isIntentMode = computed(
   () =>
     isAdapayPayment.value &&
-    !paymentId.value &&
-    Boolean(requirementId.value && milestone.value) &&
-    paymentChannel.value === 'wechat',
+    (isDeveloperDepositIntentMode.value ||
+      (!paymentId.value &&
+        Boolean(requirementId.value && milestone.value) &&
+        paymentChannel.value === 'wechat')),
 )
 const adapayPayment = ref<AdapayPaymentResponse | null>(null)
+const developerDepositPayment = ref<AdapayDeveloperDepositPaymentResponse | null>(null)
 const queryPaymentChannel = computed(() => {
   const value = String(route.query.channel ?? 'alipay').trim().toLowerCase()
   return normalizePaymentChannel(value) || 'alipay'
 })
 const paymentChannel = computed(
-  () => normalizePaymentChannel(adapayPayment.value?.payChannel ?? '') || queryPaymentChannel.value,
+  () => normalizePaymentChannel(adapayPayment.value?.payChannel ?? developerDepositPayment.value?.payChannel ?? '') || queryPaymentChannel.value,
 )
 const clientPlatform = computed<AdapayClientPlatform>(() => {
   const value = String(route.query.client_platform ?? '').trim()
@@ -52,10 +68,10 @@ const clientPlatform = computed<AdapayClientPlatform>(() => {
   }
   return getAdapayClientPlatform()
 })
-const rawPaymentContent = computed(
-  () =>
-    adapayPayment.value?.payUrl?.trim() ||
-    String(route.query.qr_content ?? route.query.alipay_order_string ?? ''),
+const rawPaymentContent = computed(() =>
+  adapayPayment.value?.payUrl?.trim() ||
+  developerDepositPayment.value?.payUrl?.trim() ||
+  String(route.query.qr_content ?? route.query.alipay_order_string ?? ''),
 )
 const expiresAt = computed(() => String(route.query.expires_at ?? ''))
 const qrDataUrl = ref('')
@@ -69,12 +85,17 @@ const alipayCanvasError = ref('')
 const nowTick = ref(Date.now())
 const confirming = ref(false)
 const paid = ref(false)
+const wechatSubmitted = ref(false)
+const confirmationError = ref('')
+const paymentResultVisible = computed(() => paid.value || wechatSubmitted.value)
 const wechatPayLoading = ref(false)
 const wechatPayError = ref('')
 const wechatAuthChecked = ref(false)
 const wechatAutoAuthRedirecting = ref(false)
 const wechatAutoInvoked = ref(false)
 const creatingIntentOrder = ref(false)
+const intentOrderAttempted = ref(false)
+const isPaymentHandoff = computed(() => isWechatPaymentHandoff(route.query))
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 let wechatBridgeListener: (() => void) | null = null
@@ -112,50 +133,6 @@ function normalizePaymentChannel(value: string): 'alipay' | 'wechat' | 'union' |
     default:
       return ''
   }
-}
-
-type WechatJsapiPaymentInfo = {
-  appId: string
-  timeStamp: string
-  nonceStr: string
-  package: string
-  signType: string
-  paySign: string
-}
-
-function parseWechatPayInfo(raw: string): WechatJsapiPaymentInfo | null {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    return null
-  }
-
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return null
-  }
-
-  const source = parsed as Record<string, unknown>
-  const read = (...keys: string[]) => {
-    for (const key of keys) {
-      const value = source[key]
-      if (typeof value === 'string' && value.trim()) {
-        return value.trim()
-      }
-    }
-    return ''
-  }
-
-  const paymentInfo = {
-    appId: read('appId', 'app_id'),
-    timeStamp: read('timeStamp', 'timestamp', 'time_stamp'),
-    nonceStr: read('nonceStr', 'nonce_str'),
-    package: read('package'),
-    signType: read('signType', 'sign_type'),
-    paySign: read('paySign', 'pay_sign'),
-  }
-
-  return Object.values(paymentInfo).every(Boolean) ? paymentInfo : null
 }
 
 const wechatPayInfo = computed(() => parseWechatPayInfo(rawPaymentContent.value))
@@ -197,31 +174,14 @@ const wechatHandoffUrl = computed(() => {
     name: 'payment',
     query: {
       adapay: '1',
+      developer_deposit: isDeveloperDepositPayment.value ? '1' : undefined,
       payment_id: paymentId.value,
+      payment_handoff: '1',
       requirement_id: requirementId.value,
       channel: 'wechat',
       client_platform: 'mobile',
       amount_cny: amountCny.value,
       qr_content: rawPaymentContent.value,
-    },
-  })
-  return new URL(resolved.href, window.location.origin).toString()
-})
-// 意图模式下的 PC 交接二维码：扫码后在微信内打开 mobile 意图页，自动静默授权 + 下单 + 调起支付。
-const intentHandoffUrl = computed(() => {
-  if (!isIntentMode.value || !isWechatPayment.value || typeof window === 'undefined') {
-    return ''
-  }
-  const resolved = router.resolve({
-    name: 'payment',
-    query: {
-      adapay: '1',
-      requirement_id: requirementId.value,
-      milestone: milestone.value,
-      channel: 'wechat',
-      client_platform: 'mobile',
-      amount_cny: amountCny.value,
-      intent: '1',
     },
   })
   return new URL(resolved.href, window.location.origin).toString()
@@ -236,7 +196,7 @@ const qrContent = computed(() => {
     return ''
   }
   if (isWechatPcPayment.value) {
-    return isIntentMode.value ? intentHandoffUrl.value : wechatHandoffUrl.value
+    return wechatHandoffUrl.value
   }
   return rawPaymentContent.value
 })
@@ -337,9 +297,16 @@ async function loadAdapayPayment(paymentIdValue: string) {
   }
 
   try {
-    adapayPayment.value = await getAdapayPayment(auth.token, paymentIdValue)
+    if (isDeveloperDepositPayment.value) {
+      developerDepositPayment.value = await getAdapayDeveloperDepositPayment(auth.token, paymentIdValue)
+      adapayPayment.value = null
+    } else {
+      adapayPayment.value = await getAdapayPayment(auth.token, paymentIdValue)
+      developerDepositPayment.value = null
+    }
   } catch {
     adapayPayment.value = null
+    developerDepositPayment.value = null
   }
 }
 
@@ -360,18 +327,43 @@ async function createIntentAdapayOrder() {
   if (creatingIntentOrder.value) {
     return
   }
-  if (!isIntentMode.value || !isWechatPayment.value || !auth.token || !isWechatBrowser.value) {
+  if (!isIntentMode.value || !isWechatPayment.value || !auth.token || isPaymentHandoff.value ||
+      (!isWechatPcPayment.value && !isWechatBrowser.value)) {
     return
   }
+  intentOrderAttempted.value = true
   creatingIntentOrder.value = true
   wechatPayError.value = ''
   try {
+    if (isDeveloperDepositIntentMode.value) {
+      const payment = await createAdapayDeveloperDepositPayment(
+        auth.token,
+        Number(amountCny.value),
+        'wechat',
+        clientPlatform.value,
+      )
+      developerDepositPayment.value = payment
+      await router.replace({
+        name: 'payment',
+        query: {
+          adapay: '1',
+          developer_deposit: '1',
+          payment_id: payment.paymentId,
+          channel: payment.payChannel,
+          client_platform: clientPlatform.value,
+          amount_cny: payment.amountCny,
+          qr_content: payment.payUrl ?? undefined,
+        },
+      })
+      return
+    }
+
     const payment = await createAdapayPayment(
       auth.token,
       requirementId.value,
       milestone.value === 'final' ? 'final' : 'deposit',
       'wechat',
-      'mobile',
+      clientPlatform.value,
     )
     adapayPayment.value = payment
     // 回写为已创建订单地址，便于后续确认/轮询
@@ -382,7 +374,7 @@ async function createIntentAdapayOrder() {
         payment_id: payment.paymentId,
         requirement_id: payment.requirementId,
         channel: 'wechat',
-        client_platform: 'mobile',
+        client_platform: clientPlatform.value,
         amount_cny: payment.amountCny,
         qr_content: payment.payUrl ?? undefined,
       },
@@ -398,6 +390,15 @@ async function createIntentAdapayOrder() {
 // 授权完成后若为意图模式则自动下单，并在微信内自动调起支付，实现「点支付 → 直接输密码付款」。
 // 授权回调会带 wechat_oauth=success，据此避免重复跳转造成死循环。
 async function runWechatFlow() {
+  if (isPaymentHandoff.value) {
+    if (!isWechatBrowser.value) {
+      wechatPayError.value = '请用手机微信打开当前页面后再发起支付。'
+    } else if (wechatPayInfo.value && !wechatAutoInvoked.value) {
+      wechatAutoInvoked.value = true
+      launchWechatPayment()
+    }
+    return
+  }
   if (!auth.isAuthed || !auth.token) {
     return
   }
@@ -405,6 +406,10 @@ async function runWechatFlow() {
     return
   }
   if (!isWechatPayment.value) {
+    return
+  }
+  if (isWechatPcPayment.value && isIntentMode.value) {
+    if (!intentOrderAttempted.value) await createIntentAdapayOrder()
     return
   }
   // 移动端微信支付但不在微信内，无法调起 JSAPI
@@ -452,7 +457,7 @@ async function runWechatFlow() {
   }
 
   // 意图模式：订单未创建则先创建
-  if (isIntentMode.value && !wechatPayInfo.value && !creatingIntentOrder.value) {
+  if (isIntentMode.value && !wechatPayInfo.value && !creatingIntentOrder.value && !intentOrderAttempted.value) {
     await createIntentAdapayOrder()
     return
   }
@@ -465,8 +470,8 @@ async function runWechatFlow() {
     !wechatAutoInvoked.value &&
     !creatingIntentOrder.value
   ) {
-    const status = adapayPayment.value?.status
-    if (status && status !== 'creating' && status !== 'created') {
+    const status = adapayPayment.value?.status ?? developerDepositPayment.value?.status
+    if (status !== 'creating' && status !== 'created') {
       return
     }
     wechatAutoInvoked.value = true
@@ -475,6 +480,7 @@ async function runWechatFlow() {
 }
 
 function launchWechatPayment() {
+  if (wechatSubmitted.value || paid.value || wechatPayLoading.value || wechatBridgeListener) return
   wechatPayError.value = ''
   const paymentInfo = wechatPayInfo.value
   if (!paymentInfo) {
@@ -488,6 +494,7 @@ function launchWechatPayment() {
 
   const invoke = () => {
     wechatBridgeListener = null
+    if (wechatSubmitted.value || paid.value) return
     const bridge = getWechatBridge()
     if (!bridge) {
       wechatPayError.value = '微信支付环境未就绪，请稍后重试。'
@@ -499,8 +506,9 @@ function launchWechatPayment() {
       wechatPayLoading.value = false
       const message = result.err_msg?.toLowerCase() ?? ''
       if (message.includes(':ok')) {
+        wechatSubmitted.value = true
         showToast('微信支付请求已提交，请等待支付结果', 'success')
-        if (auth.token) {
+        if (auth.token && !isPaymentHandoff.value) {
           void confirmPayment()
         }
       } else if (message.includes('cancel')) {
@@ -573,10 +581,12 @@ watch(
     () => paymentId.value,
     () => auth.token,
     () => isAdapayPayment.value,
+    () => isDeveloperDepositPayment.value,
   ],
   async ([id, token, isAdapay]) => {
-    if (!id || !token || !isAdapay) {
+    if (!id || !token || !isAdapay || isPaymentHandoff.value) {
       adapayPayment.value = null
+      developerDepositPayment.value = null
       return
     }
     await loadAdapayPayment(id)
@@ -608,6 +618,19 @@ function goBack() {
   router.back()
 }
 
+function markPaymentPaid() {
+  paid.value = true
+  confirmationError.value = ''
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+function refreshPaymentOnReturn() {
+  if (document.visibilityState === 'visible') void confirmPayment()
+}
+
 async function checkOrderPaidByList() {
   const rows = await listPaymentOrdersApi(auth.token)
   const current = rows.find((item) => item.payment_id === paymentId.value)
@@ -615,7 +638,7 @@ async function checkOrderPaidByList() {
 }
 
 async function confirmPayment() {
-  if (!paymentId.value || confirming.value || paid.value) {
+  if (!paymentId.value || confirming.value || paid.value || isPaymentHandoff.value) {
     return
   }
 
@@ -625,23 +648,22 @@ async function confirmPayment() {
   }
 
   confirming.value = true
+  confirmationError.value = ''
   try {
     if (isAdapayPayment.value) {
-      const result = await getAdapayPayment(auth.token, paymentId.value)
-      adapayPayment.value = result
+      const result = isDeveloperDepositPayment.value
+        ? await getAdapayDeveloperDepositPayment(auth.token, paymentId.value)
+        : await getAdapayPayment(auth.token, paymentId.value)
+      if (isDeveloperDepositPayment.value) {
+        developerDepositPayment.value = result as AdapayDeveloperDepositPaymentResponse
+      } else {
+        adapayPayment.value = result as AdapayPaymentResponse
+      }
       if (result.status !== 'paid' && result.status !== 'confirmed') {
         return
       }
 
-      paid.value = true
-      if (pollTimer) {
-        clearInterval(pollTimer)
-        pollTimer = null
-      }
-      showToast('支付成功，正在返回首页', 'success')
-      window.setTimeout(() => {
-        router.push('/')
-      }, 900)
+      markPaymentPaid()
       return
     }
 
@@ -652,15 +674,7 @@ async function confirmPayment() {
       if (result.status === 409) {
         const isPaid = await checkOrderPaidByList()
         if (isPaid) {
-          paid.value = true
-          if (pollTimer) {
-            clearInterval(pollTimer)
-            pollTimer = null
-          }
-          showToast('支付成功，正在返回首页', 'success')
-          window.setTimeout(() => {
-            router.push('/')
-          }, 900)
+          markPaymentPaid()
           return
         }
       }
@@ -673,19 +687,20 @@ async function confirmPayment() {
       return
     }
 
-    paid.value = true
-    if (pollTimer) {
-      clearInterval(pollTimer)
-      pollTimer = null
-    }
-    showToast('支付成功，正在返回首页', 'success')
-    window.setTimeout(() => {
-      router.push('/')
-    }, 900)
+    markPaymentPaid()
+  } catch (err) {
+    confirmationError.value = err instanceof Error ? err.message : '支付结果暂时无法查询，请稍后重试'
   } finally {
     confirming.value = false
   }
 }
+
+watch(
+  () => adapayPayment.value?.status ?? developerDepositPayment.value?.status,
+  (status) => {
+    if (status === 'paid' || status === 'confirmed') markPaymentPaid()
+  },
+)
 
 watch(
   () => [
@@ -697,6 +712,7 @@ watch(
     wechatPayInfo.value,
     creatingIntentOrder.value,
     paid.value,
+    adapayPayment.value?.status ?? developerDepositPayment.value?.status,
   ],
   () => {
     void runWechatFlow()
@@ -706,12 +722,14 @@ watch(
 
 onMounted(() => {
   auth.hydrate()
+  document.addEventListener('visibilitychange', refreshPaymentOnReturn)
+  window.addEventListener('focus', refreshPaymentOnReturn)
 
   countdownTimer = setInterval(() => {
     nowTick.value = Date.now()
   }, 1000)
 
-  pollTimer = setInterval(() => {
+  if (!isPaymentHandoff.value && !paid.value) pollTimer = setInterval(() => {
     if (document.visibilityState !== 'visible') {
       return
     }
@@ -720,6 +738,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  document.removeEventListener('visibilitychange', refreshPaymentOnReturn)
+  window.removeEventListener('focus', refreshPaymentOnReturn)
   if (countdownTimer) {
     clearInterval(countdownTimer)
     countdownTimer = null
@@ -741,16 +761,29 @@ onUnmounted(() => {
     <section class="panel">
       <header class="panel-head">
         <div>
-          <p class="eyebrow">73Info Sandbox</p>
-          <h2>{{ isWechatMobilePayment ? '微信支付' : isAlipayMobilePayment ? '支付宝支付' : isUnionMobilePayment ? '云闪付' : '扫码支付' }}</h2>
-          <p class="lead">
-            {{ isWechatMobilePayment ? '请在微信内发起支付，支付成功后将自动返回首页。' : isAlipayMobilePayment ? '请打开支付宝完成支付，支付成功后将自动返回首页。' : isUnionMobilePayment ? '请打开云闪付完成支付，支付成功后将自动返回首页。' : `请使用${paymentChannel === 'wechat' ? '微信' : paymentChannel === 'union' ? '云闪付' : '支付宝'}扫码完成支付，支付成功后将自动返回首页。` }}
+          <p class="eyebrow">73Info</p>
+          <h2>{{ paymentResultVisible ? '支付结果' : isWechatMobilePayment ? '微信支付' : isAlipayMobilePayment ? '支付宝支付' : isUnionMobilePayment ? '云闪付' : '扫码支付' }}</h2>
+          <p v-if="!paymentResultVisible" class="lead">
+            {{ isWechatMobilePayment ? '微信支付' : isAlipayMobilePayment ? '支付宝支付' : isUnionMobilePayment ? '云闪付支付' : '订单付款' }}
           </p>
         </div>
         <button class="top-back" @click="goBack">返回</button>
       </header>
 
-      <div v-if="hasOrder" class="pay-layout">
+      <div v-if="paymentResultVisible" class="payment-result" role="status" aria-live="polite">
+        <CircleCheck v-if="paid" class="payment-result__icon payment-result__icon--success" aria-hidden="true" />
+        <Clock v-else class="payment-result__icon" aria-hidden="true" />
+        <h2>{{ paid ? '支付成功' : isPaymentHandoff ? '微信已返回支付成功' : '正在确认支付结果' }}</h2>
+        <p>{{ paid ? '平台已确认收款。' : isPaymentHandoff ? '平台到账状态以电脑端订单为准，请勿重复付款。' : '微信付款已完成，平台到账确认中，请勿重复付款。' }}</p>
+        <p>订单号：{{ paymentId }}</p>
+        <p v-if="amountCny">支付金额：¥{{ amountCny }}</p>
+        <p v-if="confirmationError" class="payment-launch-panel__error">{{ confirmationError }}</p>
+        <button v-if="!paid && !isPaymentHandoff" class="payment-launch-panel__button" type="button"
+          :disabled="confirming" @click="confirmPayment">{{ confirming ? '查询中...' : '查询支付结果' }}</button>
+        <button v-if="!isPaymentHandoff" class="top-back" type="button" @click="router.push('/')">返回首页</button>
+      </div>
+
+      <div v-else-if="hasOrder" class="pay-layout">
         <article class="qr-card">
           <p class="card-title">支付入口</p>
 
@@ -765,6 +798,13 @@ onUnmounted(() => {
               {{ wechatPayLoading ? '正在打开微信支付...' : creatingIntentOrder || (isIntentMode && !wechatPayInfo) ? '正在创建微信支付订单...' : '发起微信支付' }}
             </button>
             <p v-if="wechatPayError" class="payment-launch-panel__error">{{ wechatPayError }}</p>
+          </div>
+
+          <div v-else-if="isWechatPcPayment && (isIntentMode || !qrDataUrl)" class="payment-launch-panel">
+            <p v-if="wechatPayError" class="payment-launch-panel__error">{{ wechatPayError }}</p>
+            <p v-else class="payment-launch-panel__tip">{{ creatingIntentOrder ? '正在创建微信支付订单...' : '正在准备微信付款码...' }}</p>
+            <button v-if="wechatPayError && isIntentMode" class="payment-launch-panel__button" type="button"
+              :disabled="creatingIntentOrder" @click="createIntentAdapayOrder">重试</button>
           </div>
 
           <div v-else-if="isAlipayMobilePayment" class="payment-launch-panel">
@@ -829,6 +869,12 @@ onUnmounted(() => {
             </p>
           </div>
             <p class="tip">{{ expiresAt ? `支付截止：${expiresAt}（超时后需重新发起支付）` : '支付截止时间以 Adapay 支付机构订单为准。' }}</p>
+          <template v-if="paymentId && !isPaymentHandoff">
+            <button class="top-back" type="button" :disabled="confirming" @click="confirmPayment">
+              {{ confirming ? '查询中...' : '查询支付结果' }}
+            </button>
+            <p v-if="confirmationError" class="payment-launch-panel__error" role="alert">{{ confirmationError }}</p>
+          </template>
         </article>
       </div>
 
@@ -836,3 +882,39 @@ onUnmounted(() => {
     </section>
   </main>
 </template>
+
+<style scoped>
+.payment-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 36px 16px;
+  text-align: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.payment-result h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.5;
+}
+
+.payment-result p {
+  margin: 0;
+  max-width: 100%;
+  line-height: 1.7;
+}
+
+.payment-result__icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  color: #b7791f;
+}
+
+.payment-result__icon--success {
+  color: #16804a;
+}
+</style>
