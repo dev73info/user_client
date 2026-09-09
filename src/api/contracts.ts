@@ -5,6 +5,8 @@ export type { ContractSigningStatus } from '@/shared/contracts'
 
 export type ContractDetail = {
   id: number
+  template_name?: string
+  requirement_id?: string | null
   contract_no: string
   title: string
   content: string
@@ -31,6 +33,22 @@ export type ContractDetail = {
   created_at: string
   updated_at?: string
   signing_logs?: SigningLogItem[]
+}
+
+export type MyContractSummary = Pick<ContractDetail,
+  'id' | 'contract_no' | 'title' | 'status' | 'party_a_name' | 'party_a_username' |
+  'party_a_signed_at' | 'party_b_name' | 'party_b_username' | 'party_b_signed_at' |
+  'party_c_name' | 'party_c_signed_at' | 'created_at' | 'updated_at' | 'requirement_id'
+> & { template_name: string }
+
+export function listMyContracts(token: string): Promise<MyContractSummary[]> {
+  return requestJson<MyContractSummary[]>('/contracts/mine',
+    { headers: authHeader(token) }, '获取我的签署失败')
+}
+
+export function fetchMyContract(token: string, contractId: number): Promise<ContractDetail> {
+  return requestJson<ContractDetail>(`/contracts/mine/${contractId}`,
+    { headers: authHeader(token) }, '获取合同详情失败')
 }
 
 export type SigningLogItem = {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Wallet } from '@element-plus/icons-vue'
 import DevWithdrawalRecordsView from './DevWithdrawalRecordsView.vue'
 
@@ -28,9 +28,11 @@ import {
 } from '@/api/adapay'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { getDevAccessStatus } from '@/api/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 const { showToast } = useToast()
 
 const loading = ref(false)
@@ -98,14 +100,45 @@ const depositWithdrawable = computed(
 const depositTotalPaid = computed(() => depositStatus.value?.total_paid_cny ?? 0)
 const canWithdrawDeposit = computed(() => depositWithdrawable.value >= withdrawalMinAmount.value)
 
-function openRechargeDialog() {
+async function openRechargeDialog() {
+  if (!(await ensureDeveloperAgreementBeforeRecharge())) {
+    return
+  }
   rechargeAmount.value = 100
   rechargeDialogVisible.value = true
+}
+
+function goSignDeveloperAgreement() {
+  void router.push({
+    name: 'contract-sign',
+    query: { agreement: 'developer', redirect_to: route.fullPath },
+  })
+}
+
+async function ensureDeveloperAgreementBeforeRecharge(): Promise<boolean> {
+  if (!auth.token) {
+    showToast('登录状态已失效，请重新登录', 'error')
+    return false
+  }
+  try {
+    const status = await getDevAccessStatus(auth.token)
+    if (!status.developer_agreement_signed) {
+      showToast('请先签署《开发者入驻协议》后再缴纳保证金', 'warning')
+      void goSignDeveloperAgreement()
+      return false
+    }
+  } catch {
+    // 状态查询失败时交由后端充值接口兑底拦截
+  }
+  return true
 }
 
 async function startAdapayRecharge() {
   if (!auth.token) {
     showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+  if (!(await ensureDeveloperAgreementBeforeRecharge())) {
     return
   }
   if (!Number.isFinite(rechargeAmount.value) || rechargeAmount.value <= 0) {

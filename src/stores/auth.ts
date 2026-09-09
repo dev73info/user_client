@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import {
   authRequest,
   type AuthPayload,
+  getDevAccessStatus,
   isTwoFactorRequiredPayload,
   refreshToken as refreshTokenApi,
   requestDevRole,
@@ -46,7 +47,7 @@ export const useAuthStore = defineStore('auth', () => {
   const hydrated = ref(false)
   const profileRequest = ref<Promise<AuthProfile> | null>(null)
   const devAccessError = ref('')
-  const developerAgreementRequired = ref(false)
+  const developerAgreementSigned = ref(false)
 
   const isAuthed = computed(() => token.value.length > 0)
   const isDev = computed(() => role.value === 'dev' || role.value === 'super_admin')
@@ -178,7 +179,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function ensureDevAccess(): Promise<boolean> {
     devAccessError.value = ''
-    developerAgreementRequired.value = false
+    developerAgreementSigned.value = false
     if (!token.value) {
       return false
     }
@@ -187,20 +188,31 @@ export const useAuthStore = defineStore('auth', () => {
       await fetchProfile()
     }
 
-    if (!isDev.value) {
-      try {
-        await requestDevRole(token.value)
-        await fetchProfile(true)
-      } catch (error) {
-        devAccessError.value = error instanceof Error ? error.message : '开发者权限申请失败'
-        developerAgreementRequired.value =
-          error instanceof HttpError &&
-          error.status === 403 &&
-          error.message.includes('开发者协议')
-        if (error instanceof HttpError && error.status === 403) {
-          return false
+    if (role.value === 'super_admin') {
+      return true
+    }
+
+    try {
+      // 先只读查询开发者资格与签约状态：已签约与否不影响进入工作台。
+      const status = await getDevAccessStatus(token.value).catch(() => null)
+      if (status) {
+        developerAgreementSigned.value = status.developer_agreement_signed
+        if (status.is_dev || status.is_super_admin) {
+          return true
         }
       }
+
+      // 尚未成为开发者：申请开发者角色（后端仅要求实名认证与成年）。
+      await requestDevRole(token.value)
+      if (!isDev.value) {
+        await fetchProfile(true)
+      }
+    } catch (error) {
+      devAccessError.value = error instanceof Error ? error.message : '开发者权限校验失败'
+      if (error instanceof HttpError && error.status === 403) {
+        return false
+      }
+      throw error
     }
 
     return isDev.value
@@ -317,7 +329,7 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     hydrated.value = true
     devAccessError.value = ''
-    developerAgreementRequired.value = false
+    developerAgreementSigned.value = false
     resetAuthState()
     clearPersistedAuthProfile()
     localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
@@ -339,7 +351,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthed,
     isDev,
     devAccessError,
-    developerAgreementRequired,
+    developerAgreementSigned,
     authHeaders,
     hydrate,
     fetchProfile,

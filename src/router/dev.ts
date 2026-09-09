@@ -354,16 +354,6 @@ export function installDevRouteGuard(router: Router) {
       try {
         const hasAccess = await auth.ensureDevAccess()
         if (!hasAccess) {
-          if (auth.developerAgreementRequired) {
-            return {
-              name: 'contract-sign',
-              query: {
-                agreement: 'developer',
-                redirect_to: to.fullPath,
-              },
-              replace: true,
-            }
-          }
           if (to.name !== 'dev-no-access') {
             return { name: 'dev-no-access', replace: true }
           }
@@ -378,16 +368,6 @@ export function installDevRouteGuard(router: Router) {
     if (auth.isAuthed && to.path === '/dev/login') {
       try {
         const hasAccess = await auth.ensureDevAccess()
-        if (!hasAccess && auth.developerAgreementRequired) {
-          return {
-            name: 'contract-sign',
-            query: {
-              agreement: 'developer',
-              redirect_to: DEV_PORTAL_URL,
-            },
-            replace: true,
-          }
-        }
         return { name: hasAccess ? 'dev-plugins' : 'dev-no-access', replace: true }
       } catch {
         // 登录页下校验异常时不强制登出，保持当前页即可

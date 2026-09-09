@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { ArrowLeft, Refresh } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
     fetchDeveloperAgreement,
+    fetchMyContract,
     fetchMyRequirementContract,
     initiateAsignSign,
     syncAsignSignStatus,
@@ -16,7 +18,8 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const requirementId = String(route.query.requirement_id ?? '')
-const isDeveloperAgreement = route.query.agreement === 'developer'
+const isWorkbenchSignature = computed(() => route.name === 'workbench-signature-detail')
+const isDeveloperAgreement = computed(() => route.query.agreement === 'developer' || contract.value?.template_name === 'developer_agreement')
 const DEVELOPER_AGREEMENT_REDIRECT_KEY = '73info_developer_agreement_redirect'
 
 function normalizeRedirectTarget(value: unknown): string {
@@ -74,7 +77,41 @@ const signing = ref(false)
 const contract = ref<ContractDetail | null>(null)
 const error = ref('')
 const successMsg = ref('')
-const accepted = ref(false)
+
+// 已发起爱签签署但本地仍是待签署时，主动轮询爱签状态。
+// 爱签回调（callback_url 指向生产域名）在本地开发环境收不到，且爱签侧状态更新可能有延迟，
+// 所以前端周期性调用 syncAsignSignStatus，直到合同变为已签署后自动跳转。
+const POLL_INTERVAL_MS = 3000
+let statusPollTimer: ReturnType<typeof setInterval> | null = null
+
+function stopStatusPolling() {
+    if (statusPollTimer !== null) {
+        clearInterval(statusPollTimer)
+        statusPollTimer = null
+    }
+}
+
+function startStatusPolling() {
+    stopStatusPolling()
+    statusPollTimer = setInterval(async () => {
+        if (signing.value || loading.value || !contract.value) return
+        const item = contract.value
+        if (item.status === 'signed' || item.status === 'void' || item.status === 'draft') {
+            stopStatusPolling()
+            return
+        }
+        try {
+            const updated = await syncAsignSignStatus(auth.token, item.id)
+            contract.value = updated
+            if (updated.status === 'signed') {
+                stopStatusPolling()
+                continueAfterDeveloperAgreement()
+            }
+        } catch {
+            // 单次同步失败不中断轮询，继续重试。
+        }
+    }, POLL_INTERVAL_MS)
+}
 
 type ContractParty = 'party_a' | 'party_b'
 
@@ -121,7 +158,7 @@ const signerIdentityReady = computed(() => {
     return Boolean(signer?.legalName && signer?.idCardNo && signer.idCardNo !== '未完成实名认证')
 })
 const canSubmitSign = computed(
-    () => canSignContract.value && accepted.value && signerIdentityReady.value && !signing.value,
+    () => canSignContract.value && signerIdentityReady.value && !signing.value,
 )
 
 function displayText(value: string | null | undefined, fallback: string): string {
@@ -144,7 +181,7 @@ function partyDisplay(party: ContractParty): PartyDisplay | null {
     if (!item) return null
     const log = partySigningLog(party)
     // 开发者入驻协议：甲方为平台（官方），乙方为开发者。
-    const partyARole = isDeveloperAgreement ? '平台' : '需求方'
+    const partyARole = isDeveloperAgreement.value ? '平台' : '需求方'
 
     if (party === 'party_a') {
         return {
@@ -190,14 +227,16 @@ async function loadContract() {
     loading.value = true
     error.value = ''
     try {
-        if (isDeveloperAgreement) {
+        if (isWorkbenchSignature.value) {
+            contract.value = await fetchMyContract(auth.token, Number(route.params.contractId))
+        } else if (isDeveloperAgreement.value) {
             contract.value = await fetchDeveloperAgreement(auth.token)
         } else {
             contract.value = await fetchMyRequirementContract(auth.token, requirementId)
         }
-        accepted.value = false
         // 已发起爱签签署但本地仍是待签署（回调可能延迟/丢失）：主动向爱签同步状态。
         // 用户从爱签签署页返回本页时，若已在爱签完成签署，这里会把本地合同更新为已签署。
+        // 若同步后仍未签署，则启动轮询持续同步，直到爱签侧完成或合同变为已签署。
         const item = contract.value
         if (item && !['signed', 'void', 'draft'].includes(item.status)) {
             const hasInitiated = (item.signing_logs ?? []).some(
@@ -209,31 +248,33 @@ async function loadContract() {
                 } catch {
                     // 同步失败不阻断页面展示，保留已加载状态。
                 }
+                if (contract.value && contract.value.status !== 'signed') {
+                    startStatusPolling()
+                }
             }
         }
-    } catch {
-        error.value = '加载合同失败，请刷新重试'
+    } catch (cause) {
+        contract.value = null
+        error.value = cause instanceof Error ? cause.message : '加载合同失败，请刷新重试'
     } finally {
         loading.value = false
     }
 }
 
 function continueAfterDeveloperAgreement() {
-    if (!isDeveloperAgreement || contract.value?.status !== 'signed') {
+    if (isWorkbenchSignature.value || !isDeveloperAgreement.value || contract.value?.status !== 'signed') {
         return
     }
 
-    const target = redirectTarget.value || { name: 'dev-plugins' }
+    stopStatusPolling()
+    // 开发者协议签署完成后，默认回到收益钱包页（用户来源页优先，丢失时回钱包）。
+    const target = redirectTarget.value || { name: 'dev-wallet' }
     clearRememberedRedirectTarget()
     void router.replace(target)
 }
 
 async function handleSign() {
     if (!contract.value || signing.value) return
-    if (!accepted.value) {
-        error.value = '请先确认实名认证信息并同意电子签署'
-        return
-    }
     if (!signerIdentityReady.value) {
         error.value = '请先完成实名认证，签署身份必须包含真实姓名和身份证号'
         return
@@ -258,7 +299,11 @@ async function handleSign() {
 }
 
 function goHome() {
-    if (isDeveloperAgreement) {
+    if (isWorkbenchSignature.value) {
+        router.push({ name: 'workbench-signatures' })
+        return
+    }
+    if (isDeveloperAgreement.value) {
         router.push({ name: 'workbench' })
         return
     }
@@ -273,7 +318,7 @@ function goHome() {
 function goRealname() {
     void router.push({
         name: 'workbench-realname',
-        query: { redirect_to: '/contract-sign?agreement=developer' },
+        query: { redirect_to: route.fullPath },
     })
 }
 
@@ -290,34 +335,42 @@ function goBecomeDeveloper() {
 
 onMounted(async () => {
     auth.hydrate()
-    if (!isDeveloperAgreement && !requirementId) {
+    if (!isWorkbenchSignature.value && !isDeveloperAgreement.value && !requirementId) {
         router.replace('/')
         return
     }
-    rememberRedirectTarget()
+    if (!isWorkbenchSignature.value) rememberRedirectTarget()
     if (auth.token) {
         await auth.initializeSession().catch(() => undefined)
     }
     await loadContract()
     continueAfterDeveloperAgreement()
 })
+
+onUnmounted(() => {
+    stopStatusPolling()
+})
 </script>
 
 <template>
-    <main class="page-shell">
+    <main class="page-shell" :class="{ 'page-shell--workbench': isWorkbenchSignature }">
         <section class="panel">
             <header class="panel-head">
                 <div>
-                    <h2>{{ isDeveloperAgreement ? '开发者入驻协议' : '需求服务合同' }}</h2>
-                    <p class="lead">请核对实名认证身份后完成签署。</p>
+                    <h2>{{ isWorkbenchSignature ? (contract?.title || '合同详情') : (isDeveloperAgreement ? '开发者入驻协议' : '需求服务合同') }}</h2>
+                    <p v-if="!isWorkbenchSignature" class="lead">请核对实名认证身份后完成签署。</p>
                 </div>
+                <button v-if="isWorkbenchSignature" type="button" class="btn-secondary" @click="goHome">
+                    <el-icon><ArrowLeft /></el-icon>返回我的签署
+                </button>
             </header>
 
             <div v-if="loading" class="status-msg">加载中…</div>
 
             <div v-else-if="!contract" class="status-msg">
-                <p>暂无可签署的合同，可能合同尚在生成中，请稍后刷新页面。</p>
-                <button class="btn-secondary" @click="goHome">返回首页</button>
+                <p :role="error ? 'alert' : 'status'">{{ error || '暂无可签署的合同' }}</p>
+                <button type="button" class="btn-secondary" @click="loadContract"><el-icon><Refresh /></el-icon>重新加载</button>
+                <button class="btn-secondary" @click="goHome">{{ isWorkbenchSignature ? '返回我的签署' : '返回首页' }}</button>
             </div>
 
             <template v-else>
@@ -332,6 +385,21 @@ onMounted(async () => {
 
                 <div v-if="successMsg" class="msg-success">{{ successMsg }}</div>
                 <div v-if="error" class="msg-error">{{ error }}</div>
+
+                <template v-if="isWorkbenchSignature">
+                    <section class="signature-parties">
+                        <h3>签约方</h3>
+                        <dl>
+                            <div><dt>甲方</dt><dd>{{ contract.party_a_name }}<span>{{ contract.party_a_signed_at ? `已签署 · ${contract.party_a_signed_at}` : '未签署' }}</span></dd></div>
+                            <div><dt>乙方</dt><dd>{{ contract.party_b_name }}<span>{{ contract.party_b_signed_at ? `已签署 · ${contract.party_b_signed_at}` : '未签署' }}</span></dd></div>
+                            <div v-if="contract.party_c_name"><dt>丙方</dt><dd>{{ contract.party_c_name }}<span>{{ contract.party_c_signed_at ? `已签署 · ${contract.party_c_signed_at}` : '未签署' }}</span></dd></div>
+                        </dl>
+                    </section>
+                    <details class="signature-document" open>
+                        <summary>合同正文</summary>
+                        <div class="contract-content">{{ contract.content }}</div>
+                    </details>
+                </template>
 
                 <section v-if="canSignContract" class="sign-panel">
                     <div class="sign-panel__identity">
@@ -363,40 +431,72 @@ onMounted(async () => {
                         </button>
                     </div>
 
-                    <div class="signature-box">
-                        <div class="signature-box__head">
-                            <h3>电子签署</h3>
-                        </div>
-                        <p class="signature-hint">点击下方按钮将跳转至爱签电子签署页面完成实名认证与签署。</p>
-                    </div>
-
-                    <label class="accept-row">
-                        <input v-model="accepted" type="checkbox" />
-                        <span>我已确认以上实名认证姓名和身份证号，并同意通过爱签完成电子签署。</span>
-                    </label>
                 </section>
 
                 <div class="contract-actions">
                     <button v-if="canSignContract" class="btn-primary" :disabled="!canSubmitSign" @click="handleSign">
-                        {{ signing ? '发起签署中…' : '发起电子签署' }}
+                        {{ signing ? '签署中…' : '开始签署' }}
                     </button>
                     <span v-else-if="contract.status === 'signed'" class="badge-signed">已签署</span>
                     <span v-else-if="waitingMessage" class="badge-pending">{{ waitingMessage }}</span>
                     <button
-                        v-if="isDeveloperAgreement && contract.status === 'signed'"
+                        v-if="!isWorkbenchSignature && isDeveloperAgreement && contract.status === 'signed'"
                         class="btn-primary"
                         @click="goBecomeDeveloper"
                     >
                         签署完成，成为开发者
                     </button>
-                    <button class="btn-secondary" @click="goHome">返回首页</button>
+                    <button v-if="isWorkbenchSignature" class="btn-secondary" :disabled="loading || signing" @click="loadContract">
+                        <el-icon><Refresh /></el-icon>刷新状态
+                    </button>
+                    <button v-else class="btn-secondary" @click="goHome">返回首页</button>
                 </div>
+                <section v-if="isWorkbenchSignature" class="signature-history">
+                    <h3>签署记录</h3>
+                    <p v-if="!signingLogs.length" class="empty-log">暂无签署记录</p>
+                    <ol v-else>
+                        <li v-for="log in signingLogs" :key="log.id">
+                            <time>{{ log.created_at }}</time>
+                            <span>{{ log.note || ({ created: '合同已创建', updated: '合同已更新', party_a_signed: '甲方已签署', party_b_signed: '乙方已签署', party_c_signed: '丙方已签署', asign_sign_initiated: '已发起电子签署', signed: '签署已完成', void: '合同已作废' } as Record<string, string>)[log.action] || '合同状态已更新' }}</span>
+                        </li>
+                    </ol>
+                </section>
             </template>
         </section>
     </main>
 </template>
 
 <style scoped>
+.page-shell.page-shell--workbench {
+    min-height: auto;
+    max-width: 1180px;
+    padding: 20px 20px 40px;
+    overflow-wrap: anywhere;
+}
+.page-shell--workbench .panel { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.page-shell--workbench .panel-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.page-shell--workbench .panel-head h2 { color: #172033; font-size: 18px; }
+.page-shell--workbench .btn-primary { background: #247f7d; border-color: #247f7d; color: #fff; }
+.page-shell--workbench .btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: #247f7d; border-color: #cce3e2; background: #fff; white-space: normal; }
+.page-shell--workbench .sign-panel { background: #f5fafa; border-color: #cce3e2; }
+.page-shell--workbench .contract-meta { border: 0; border-left: 3px solid #247f7d; border-radius: 0; }
+.signature-parties, .signature-document, .signature-history { margin: 24px 0; }
+.signature-parties h3, .signature-history h3 { font-size: 15px; margin: 0 0 16px; }
+.signature-parties dl { margin: 0; display: grid; gap: 14px; }
+.signature-parties dl > div { display: grid; grid-template-columns: 50px minmax(0, 1fr); font-size: 14px; gap: 12px; }
+.signature-parties dt { color: #667085; }
+.signature-parties dd { margin: 0; display: grid; gap: 4px; }
+.signature-parties dd span { color: #667085; font-size: 12px; }
+.signature-document summary { cursor: pointer; font-weight: 600; font-size: 15px; padding: 14px 0; border-top: 1px solid #e5e9ef; }
+.signature-history { border-top: 1px solid #e5e9ef; padding-top: 24px; }
+.signature-history ol { list-style: none; padding: 0; margin: 0; }
+.signature-history li { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 16px; padding: 12px 0; border-bottom: 1px solid #eef1f4; font-size: 13px; }
+.signature-history time { color: #667085; }
+@media (max-width: 600px) {
+    .page-shell.page-shell--workbench { padding: 16px 12px 28px; }
+    .signature-history li { grid-template-columns: 1fr; gap: 6px; }
+}
+
 .page-shell {
     min-height: 100vh;
     padding: 2.5rem 1rem 3rem;
@@ -622,28 +722,6 @@ onMounted(async () => {
 
 .empty-log {
     color: #475569;
-}
-
-.accept-row {
-    display: flex;
-    gap: 0.55rem;
-    align-items: flex-start;
-    margin-bottom: 1.1rem;
-    padding: 0.9rem 1rem;
-    color: #1f2937;
-    font-size: 0.94rem;
-    line-height: 1.6;
-    border: 1px solid #f59e0b;
-    border-radius: 8px;
-    background: #fffbeb;
-}
-
-.accept-row input {
-    width: 18px;
-    height: 18px;
-    margin-top: 0.25rem;
-    flex: 0 0 auto;
-    accent-color: #f59e0b;
 }
 
 .sign-panel {

@@ -8,7 +8,10 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
 }))
 
-vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  useRoute: () => ({ fullPath: '/workbench/developer/wallet/overview' }),
+}))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ token: 'test-token', hydrate: vi.fn() }) }))
 vi.mock('@/composables/useToast', () => ({ useToast: () => ({ showToast: mocks.toast }) }))
 vi.mock('@/api/devOrderDeposit', async (importOriginal) => ({

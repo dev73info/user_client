@@ -13,6 +13,7 @@ import {
 } from '@/api/resourceTags'
 import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@/api/devOrderDeposit'
 import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
+import { getDevAccessStatus } from '@/api/auth'
 import { createMcResource, type McResourcePayload } from '@/api/mcResources'
 import {
   bindRequirementProject,
@@ -46,6 +47,7 @@ const reviewConfirmed = ref(false)
 const finalConfirmed = ref(false)
 const depositStatus = ref<DevOrderDepositStatus | null>(null)
 const creditInfo = ref<DevCreditSelf | null>(null)
+const developerAgreementSigned = ref(false)
 const processedTree = ref<McProcessedTagTree>({ roots: [] })
 const initTagsLoading = ref(false)
 const currentRootKey = ref('')
@@ -128,6 +130,10 @@ function requiresDepositGate(requirement: RequirementItem) {
 function bindButtonLabel(requirement: RequirementItem) {
   if (!requiresDepositGate(requirement)) {
     return '接单'
+  }
+
+  if (!developerAgreementSigned.value) {
+    return '需先签署协议'
   }
 
   if (
@@ -321,12 +327,16 @@ async function loadDepositStatus() {
 
   depositLoading.value = true
   try {
-    const [status, credit] = await Promise.all([
+    const [status, credit, accessStatus] = await Promise.all([
       getDevOrderDepositStatus(auth.token),
       getDevCreditSelf(auth.token).catch(() => null),
+      getDevAccessStatus(auth.token).catch(() => null),
     ])
     depositStatus.value = status
     creditInfo.value = credit
+    if (accessStatus) {
+      developerAgreementSigned.value = accessStatus.developer_agreement_signed
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载接单保证金状态失败'
     showToast(message, 'error')
@@ -351,6 +361,10 @@ async function resetFilters() {
 }
 
 function openBindDialog(requirement: RequirementItem) {
+  if (requiresDepositGate(requirement) && !developerAgreementSigned.value) {
+    goSignDeveloperAgreement(requirement.requirement_id)
+    return
+  }
   void router.push({
     name: 'dev-requirement-detail',
     params: { requirementId: requirement.requirement_id },
@@ -434,7 +448,21 @@ async function submitBinding() {
 }
 
 function goToOrderDeposit() {
+  if (!developerAgreementSigned.value) {
+    goSignDeveloperAgreement()
+    return
+  }
   void router.push('/dev/wallet/order-deposit')
+}
+
+function goSignDeveloperAgreement(requirementId?: string) {
+  const redirectTo = requirementId
+    ? `/workbench/developer/requirements/hall/${encodeURIComponent(requirementId)}`
+    : route.fullPath
+  void router.push({
+    name: 'contract-sign',
+    query: { agreement: 'developer', redirect_to: redirectTo },
+  })
 }
 
 function projectOptionLabel(resource: McResourcePayload): string {
@@ -601,6 +629,13 @@ function resetInitForm() {
         <el-button type="primary" size="small" @click="goToOrderDeposit">去缴纳保证金</el-button>
       </div>
     </div>
+
+    <el-alert v-if="!developerAgreementSigned" title="尚未签署《开发者入驻协议》：可接取无电签约定需求；接取电签担保需求或缴纳保证金前需先签署协议" type="warning" show-icon :closable="false"
+      class="dev-requirement-hall__deposit-alert">
+      <template #default>
+        <el-button type="primary" size="small" @click="goSignDeveloperAgreement()">去签署协议</el-button>
+      </template>
+    </el-alert>
 
     <el-alert v-if="!canTakeOrders" title="无电签约定需求可继续关联；历史电签担保需求需要满足保证金规则" type="warning" show-icon :closable="false"
       class="dev-requirement-hall__deposit-alert">

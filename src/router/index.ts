@@ -1,5 +1,7 @@
 import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { getMyRealnameVerification } from '@/api/realname'
+import { HttpError } from '@/api/http'
 import { devRoutes, devWorkbenchRoutes, installDevRouteGuard } from '@/router/dev'
 import { isWechatPaymentHandoff } from '@/utils/wechatPayment'
 
@@ -192,6 +194,18 @@ const router = createRouter({
             title: '发票中心',
             description: '申请平台发票或上传开发者发票',
           },
+        },
+        {
+          path: 'signatures',
+          name: 'workbench-signatures',
+          component: () => import('@/views/MySignaturesView.vue'),
+          meta: { title: '我的签署', requiresRealname: true },
+        },
+        {
+          path: 'signatures/:contractId(\\d+)',
+          name: 'workbench-signature-detail',
+          component: () => import('@/views/ContractSignView.vue'),
+          meta: { title: '我的签署 / 合同详情', requiresRealname: true },
         },
         {
           path: 'account',
@@ -458,6 +472,20 @@ router.beforeEach(async (to, from, next) => {
 
   if (authRequired && !auth.isAuthed) {
     return next({ name: 'home' })
+  }
+
+  if (auth.isAuthed && to.meta.requiresRealname) {
+    try {
+      const verification = await getMyRealnameVerification(auth.token)
+      if (verification.status !== 'approved') {
+        return next({ name: 'workbench-realname', query: { redirect_to: to.fullPath }, replace: true })
+      }
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 404) {
+        return next({ name: 'workbench-realname', query: { redirect_to: to.fullPath }, replace: true })
+      }
+      return next(false)
+    }
   }
 
   return next()

@@ -282,6 +282,28 @@ export async function requestDevRole(token: string): Promise<{ username: string;
   )
 }
 
+export type DevAccessStatus = {
+  is_dev: boolean
+  is_super_admin: boolean
+  realname_approved: boolean
+  is_adult: boolean
+  developer_agreement_signed: boolean
+}
+
+/**
+ * 只读查询当前用户的开发者资格与入驻协议签约状态。
+ *
+ * 与 `requestDevRole` 不同：本接口不会授予角色，也不会因未签署入驻协议而失败，
+ * 前端用它展示签约状态，并在担保接单前提示开发者签署入驻协议。
+ */
+export async function getDevAccessStatus(token: string): Promise<DevAccessStatus> {
+  return requestJson<DevAccessStatus>(
+    '/auth/dev-access-status',
+    { headers: authHeaders(token) },
+    '获取开发者权限状态失败',
+  )
+}
+
 const authClient = createAuthApiClient(
   {
     requestJson,

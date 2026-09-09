@@ -5,6 +5,7 @@ import { ArrowDown, Box, Close, Connection, DataAnalysis, MagicStick, Menu as Me
 
 import { listRequirementConversations, type RequirementConversation } from '@/api/conversations'
 import { listUserInvitations } from '@/api/team'
+import { getMyRealnameVerification } from '@/api/realname'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
@@ -37,6 +38,7 @@ const mobileMenuOpen = ref(false)
 const touchStartX = ref(0)
 const touchStartY = ref(0)
 const touchTracking = ref(false)
+const realnameApproved = ref(false)
 
 const MOBILE_MENU_BREAKPOINT_PX = 900
 const MOBILE_SWIPE_EDGE_PX = 44
@@ -55,7 +57,7 @@ const ticketsItem: WorkbenchMenuItem = {
   description: '提交问题与查看回复',
 }
 
-const menuGroups: WorkbenchMenuGroup[] = [
+const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
   {
     key: 'collaboration',
     label: '需求协作',
@@ -71,6 +73,7 @@ const menuGroups: WorkbenchMenuGroup[] = [
     icon: Box,
     items: [
       { label: '账户详情', name: 'workbench-account', description: '管理账户' },
+      ...(realnameApproved.value ? [{ label: '我的签署', name: 'workbench-signatures', description: '查看合同与签署进度', activeNames: ['workbench-signature-detail'] }] : []),
         { label: '发票中心', name: 'workbench-invoices', description: '申请平台发票或上传开发者发票' },
       { label: '我的背包', name: 'workbench-points', description: '查看积分余额与明细' },
       { label: '我的收藏', name: 'workbench-favorites', description: '查看收藏的社区帖子' },
@@ -108,7 +111,7 @@ const menuGroups: WorkbenchMenuGroup[] = [
       { label: '交付记录', name: 'dev-wallet-releases', description: '查看资源交付与收入' },
     ],
   },
-]
+])
 
 const openGroupKeys = ref<string[]>([])
 const sortedConversations = computed(() =>
@@ -158,9 +161,26 @@ const showWorkbenchHeader = computed(
 )
 
 watch(
-  () => route.fullPath,
+  [() => auth.token, () => route.fullPath],
+  async ([token], [previousToken], onCleanup) => {
+    let cancelled = false
+    onCleanup(() => { cancelled = true })
+    if (token !== previousToken) realnameApproved.value = false
+    if (!token) return
+    try {
+      const verification = await getMyRealnameVerification(auth.token)
+      if (!cancelled) realnameApproved.value = verification.status === 'approved'
+    } catch {
+      if (!cancelled) realnameApproved.value = false
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  [() => route.fullPath, menuGroups],
   () => {
-    const activeGroup = menuGroups.find((group) => group.items.some((item) => isMenuItemActive(item)))
+    const activeGroup = menuGroups.value.find((group) => group.items.some((item) => isMenuItemActive(item)))
     if (activeGroup && !openGroupKeys.value.includes(activeGroup.key)) {
       openGroupKeys.value = [...openGroupKeys.value, activeGroup.key]
     }
@@ -358,7 +378,7 @@ function findActiveItem() {
     return null
   }
 
-  return [...menuGroups.flatMap((group) => group.items), ticketsItem]
+  return [...menuGroups.value.flatMap((group) => group.items), ticketsItem]
     .find((item) => isMenuItemActive(item)) ?? null
 }
 

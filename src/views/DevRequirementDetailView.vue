@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { getDevAccessStatus } from '@/api/auth'
 import {
     getProcessedTagTree,
     invalidateTagTreeCache,
@@ -40,6 +41,7 @@ const reviewConfirmed = ref(false)
 const finalConfirmed = ref(false)
 const depositStatus = ref<DevOrderDepositStatus | null>(null)
 const creditInfo = ref<DevCreditSelf | null>(null)
+const developerAgreementSigned = ref(false)
 const processedTree = ref<McProcessedTagTree>({ roots: [] })
 const initTagsLoading = ref(false)
 const currentRootKey = ref('')
@@ -149,10 +151,20 @@ const requirementDescriptionHtml = computed(() =>
 const requirementAcceptanceHtml = computed(() =>
     requirementFieldHtml(requirement.value?.acceptance_criteria, '暂无验收标准'),
 )
+const agreementBlocked = computed(
+    () =>
+        Boolean(requirement.value) &&
+        requiresDepositGate(requirement.value!) &&
+        !developerAgreementSigned.value,
+)
 const bindingBlockReason = computed(() => {
     const currentRequirement = requirement.value
     if (!currentRequirement || !requiresDepositGate(currentRequirement)) {
         return ''
+    }
+
+    if (!developerAgreementSigned.value) {
+        return '请先签署《开发者入驻协议》后再接取电签担保需求'
     }
 
     if (!canTakeOrders.value) {
@@ -342,15 +354,19 @@ async function loadBindingContext() {
     resourcesLoading.value = true
     depositLoading.value = true
     try {
-        const [resourceList, deposit, credit] = await Promise.all([
+        const [resourceList, deposit, credit, accessStatus] = await Promise.all([
             listMcResources(auth.token),
             getDevOrderDepositStatus(auth.token),
             getDevCreditSelf(auth.token).catch(() => null),
+            getDevAccessStatus(auth.token).catch(() => null),
         ])
 
         resources.value = resourceList
         depositStatus.value = deposit
         creditInfo.value = credit
+        if (accessStatus) {
+            developerAgreementSigned.value = accessStatus.developer_agreement_signed
+        }
     } finally {
         resourcesLoading.value = false
         depositLoading.value = false
@@ -381,6 +397,16 @@ function goBack() {
 
 function goToOrderDeposit() {
     void router.push('/dev/wallet/order-deposit')
+}
+
+function goSignDeveloperAgreement() {
+    void router.push({
+        name: 'contract-sign',
+        query: {
+            agreement: 'developer',
+            redirect_to: route.fullPath,
+        },
+    })
 }
 
 function projectOptionLabel(resource: McResourcePayload): string {
@@ -658,7 +684,11 @@ async function submitBinding() {
 
                     <div v-if="bindingBlockReason" class="dev-requirement-detail__block-note">
                         <span>{{ bindingBlockReason }}</span>
-                        <el-button v-if="requirement && requiresDepositGate(requirement)" type="primary" plain
+                        <el-button v-if="agreementBlocked" type="primary" plain size="small"
+                            @click="goSignDeveloperAgreement">
+                            去签署协议
+                        </el-button>
+                        <el-button v-else-if="requirement && requiresDepositGate(requirement)" type="primary" plain
                             size="small" @click="goToOrderDeposit">
                             去缴纳保证金
                         </el-button>
