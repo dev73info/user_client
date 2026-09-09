@@ -136,12 +136,14 @@ export async function signContract(
 export async function initiateAsignSign(
   token: string,
   contractId: number,
+  notice = false,
 ): Promise<SignContractInitiateResponse> {
   return requestJson<SignContractInitiateResponse>(
     `/contracts/${contractId}/asign-sign`,
     {
       method: 'POST',
-      headers: authHeader(token),
+      headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notice }),
     },
     '发起爱签签署失败',
   )

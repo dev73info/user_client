@@ -145,7 +145,11 @@ const currentTitle = computed(() => {
 })
 
 const routeTitle = computed(() => (typeof route.meta.title === 'string' ? route.meta.title : ''))
-const compactRouteTitle = computed(() => routeTitle.value.split('/').at(-1)?.trim() || routeTitle.value)
+const compactRouteTitle = computed(() => {
+  const parts = routeTitle.value.split('/')
+  const last = parts.length > 0 ? parts[parts.length - 1]?.trim() : ''
+  return last || routeTitle.value
+})
 const isWorkbenchOverview = computed(() =>
   route.name === overviewItem.name || route.matched.some((record) => record.name === overviewItem.name),
 )

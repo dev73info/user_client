@@ -9,7 +9,6 @@ import {
     initiateAsignSign,
     syncAsignSignStatus,
     type ContractDetail,
-    type SigningLogItem,
 } from '@/api/contracts'
 import { useAuthStore } from '@/stores/auth'
 
@@ -77,6 +76,8 @@ const signing = ref(false)
 const contract = ref<ContractDetail | null>(null)
 const error = ref('')
 const successMsg = ref('')
+// 发起爱签签署时是否短信通知签署人，默认不通知。
+const noticeSigner = ref(false)
 
 // 已发起爱签签署但本地仍是待签署时，主动轮询爱签状态。
 // 爱签回调（callback_url 指向生产域名）在本地开发环境收不到，且爱签侧状态更新可能有延迟，
@@ -124,8 +125,6 @@ type PartyDisplay = {
     username: string
     email: string
     signedAt: string | null
-    signatureSha256: string | null
-    signatureImage: string
 }
 
 const signingLogs = computed(() => contract.value?.signing_logs ?? [])
@@ -166,20 +165,9 @@ function displayText(value: string | null | undefined, fallback: string): string
     return text ? text : fallback
 }
 
-function safeSignatureSrc(value?: string | null): string {
-    const text = value?.trim() ?? ''
-    return /^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(text) ? text : ''
-}
-
-function partySigningLog(party: ContractParty): SigningLogItem | null {
-    const signedAction = party === 'party_a' ? 'party_a_signed' : 'party_b_signed'
-    return signingLogs.value.find((log) => log.signer_party === party || log.action === signedAction) ?? null
-}
-
 function partyDisplay(party: ContractParty): PartyDisplay | null {
     const item = contract.value
     if (!item) return null
-    const log = partySigningLog(party)
     // 开发者入驻协议：甲方为平台（官方），乙方为开发者。
     const partyARole = isDeveloperAgreement.value ? '平台' : '需求方'
 
@@ -193,8 +181,6 @@ function partyDisplay(party: ContractParty): PartyDisplay | null {
             username: displayText(item.party_a_username, '未绑定账号'),
             email: displayText(item.party_a_account_email, '未绑定邮箱'),
             signedAt: item.party_a_signed_at,
-            signatureSha256: log?.signature_sha256 ?? item.party_a_signature_sha256 ?? null,
-            signatureImage: safeSignatureSrc(log?.handwritten_signature),
         }
     }
 
@@ -207,8 +193,6 @@ function partyDisplay(party: ContractParty): PartyDisplay | null {
         username: displayText(item.party_b_username, '未绑定账号'),
         email: displayText(item.party_b_account_email, '未绑定邮箱'),
         signedAt: item.party_b_signed_at,
-        signatureSha256: log?.signature_sha256 ?? item.party_b_signature_sha256 ?? null,
-        signatureImage: safeSignatureSrc(log?.handwritten_signature),
     }
 }
 
@@ -282,20 +266,42 @@ async function handleSign() {
     signing.value = true
     error.value = ''
     try {
-        const result = await initiateAsignSign(auth.token, contract.value.id)
-        if (result.sign_url) {
-            // 跳转到爱签签署页面
+        const result = await initiateAsignSign(auth.token, contract.value.id, noticeSigner.value)
+        if (result.sign_url && !noticeSigner.value) {
+            // 未勾选短信通知时，跳转到爱签签署页面
             window.location.href = result.sign_url
             return
         }
-        successMsg.value = '已发起签署，请稍后刷新查看签署状态'
+        if (noticeSigner.value) {
+            // 勾选了短信通知：不跳转页面，短信通知签署人，停留本页轮询状态。
+            successMsg.value = '已发起并短信通知签署人'
+        } else {
+            successMsg.value = '已发起签署，请稍后刷新查看签署状态'
+        }
         await loadContract()
-        continueAfterDeveloperAgreement()
+        startStatusPolling()
     } catch (err) {
         error.value = err instanceof Error ? err.message : '发起签署失败，请稍后重试'
     } finally {
         signing.value = false
     }
+}
+
+/** 返回上一层级：优先浏览器历史回退，无历史时回工作台。 */
+function goBack() {
+    if (window.history.length > 1) {
+        router.back()
+        return
+    }
+    if (isWorkbenchSignature.value) {
+        router.push({ name: 'workbench-signatures' })
+        return
+    }
+    if (isDeveloperAgreement.value) {
+        router.push({ name: 'workbench' })
+        return
+    }
+    router.push({ name: 'workbench-requirements' })
 }
 
 function goHome() {
@@ -356,12 +362,15 @@ onUnmounted(() => {
     <main class="page-shell" :class="{ 'page-shell--workbench': isWorkbenchSignature }">
         <section class="panel">
             <header class="panel-head">
-                <div>
+                <div class="panel-head__title">
                     <h2>{{ isWorkbenchSignature ? (contract?.title || '合同详情') : (isDeveloperAgreement ? '开发者入驻协议' : '需求服务合同') }}</h2>
                     <p v-if="!isWorkbenchSignature" class="lead">请核对实名认证身份后完成签署。</p>
                 </div>
                 <button v-if="isWorkbenchSignature" type="button" class="btn-secondary" @click="goHome">
                     <el-icon><ArrowLeft /></el-icon>返回我的签署
+                </button>
+                <button v-else type="button" class="btn-secondary panel-head__back" @click="goBack">
+                    <el-icon><ArrowLeft /></el-icon>返回
                 </button>
             </header>
 
@@ -370,7 +379,7 @@ onUnmounted(() => {
             <div v-else-if="!contract" class="status-msg">
                 <p :role="error ? 'alert' : 'status'">{{ error || '暂无可签署的合同' }}</p>
                 <button type="button" class="btn-secondary" @click="loadContract"><el-icon><Refresh /></el-icon>重新加载</button>
-                <button class="btn-secondary" @click="goHome">{{ isWorkbenchSignature ? '返回我的签署' : '返回首页' }}</button>
+                <button class="btn-secondary" @click="goBack"><el-icon><ArrowLeft /></el-icon>返回</button>
             </div>
 
             <template v-else>
@@ -434,6 +443,10 @@ onUnmounted(() => {
                 </section>
 
                 <div class="contract-actions">
+                    <label v-if="canSignContract" class="notice-toggle">
+                        <input v-model="noticeSigner" type="checkbox" />
+                        <span>短信通知签署</span>
+                    </label>
                     <button v-if="canSignContract" class="btn-primary" :disabled="!canSubmitSign" @click="handleSign">
                         {{ signing ? '签署中…' : '开始签署' }}
                     </button>
@@ -449,7 +462,6 @@ onUnmounted(() => {
                     <button v-if="isWorkbenchSignature" class="btn-secondary" :disabled="loading || signing" @click="loadContract">
                         <el-icon><Refresh /></el-icon>刷新状态
                     </button>
-                    <button v-else class="btn-secondary" @click="goHome">返回首页</button>
                 </div>
                 <section v-if="isWorkbenchSignature" class="signature-history">
                     <h3>签署记录</h3>
@@ -457,7 +469,7 @@ onUnmounted(() => {
                     <ol v-else>
                         <li v-for="log in signingLogs" :key="log.id">
                             <time>{{ log.created_at }}</time>
-                            <span>{{ log.note || ({ created: '合同已创建', updated: '合同已更新', party_a_signed: '甲方已签署', party_b_signed: '乙方已签署', party_c_signed: '丙方已签署', asign_sign_initiated: '已发起电子签署', signed: '签署已完成', void: '合同已作废' } as Record<string, string>)[log.action] || '合同状态已更新' }}</span>
+                            <span>{{ log.note || ({ created: '合同已创建', updated: '合同已更新', party_a_signed: '甲方已签署', party_b_signed: '乙方已签署', party_c_signed: '丙方已签署', asign_sign_initiated: '已发起电子签署', asign_sign_completed: '电子签署完成', signed: '签署已完成', void: '合同已作废' } as Record<string, string>)[log.action] || '合同状态已更新' }}</span>
                         </li>
                     </ol>
                 </section>
@@ -514,9 +526,26 @@ onUnmounted(() => {
 }
 
 .panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid #e8edf4;
+}
+
+.panel-head__title {
+    min-width: 0;
+}
+
+.panel-head__back {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-left: auto;
 }
 
 .panel-head h2 {
@@ -808,11 +837,29 @@ onUnmounted(() => {
 
 .contract-actions {
     display: flex;
-    gap: 1rem;
+    flex-direction: column;
     align-items: center;
-    flex-wrap: wrap;
+    gap: 0.75rem;
     padding-top: 1rem;
     border-top: 1px solid #e2e8f0;
+}
+
+.notice-toggle {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #475569;
+    font-size: 0.9rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.notice-toggle input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #f59e0b;
 }
 
 .btn-primary {

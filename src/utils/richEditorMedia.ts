@@ -137,7 +137,8 @@ export function richEditorDefaultLabel(value: string, fallback: string): string 
 
   try {
     const url = new URL(trimmed, window.location.origin)
-    const segment = url.pathname.split('/').filter(Boolean).at(-1)
+    const segments = url.pathname.split('/').filter(Boolean)
+    const segment = segments.length > 0 ? segments[segments.length - 1] : undefined
     return segment ? decodeURIComponent(segment) : fallback
   } catch {
     return fallback
