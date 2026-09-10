@@ -44,7 +44,6 @@ declare module 'vue' {
     ElTabPane: typeof import('element-plus/es')['ElTabPane']
     ElTabs: typeof import('element-plus/es')['ElTabs']
     ElTag: typeof import('element-plus/es')['ElTag']
-    ElTooltip: typeof import('element-plus/es')['ElTooltip']
     HomeHeroSection: typeof import('./src/components/home/HomeHeroSection.vue')['default']
     InviteLeaderboard: typeof import('./src/components/InviteLeaderboard.vue')['default']
     InvitePanel: typeof import('./src/components/InvitePanel.vue')['default']

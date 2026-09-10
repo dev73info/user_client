@@ -82,6 +82,8 @@ const noticeSigner = ref(false)
 // 已发起爱签签署但本地仍是待签署时，主动轮询爱签状态。
 // 爱签回调（callback_url 指向生产域名）在本地开发环境收不到，且爱签侧状态更新可能有延迟，
 // 所以前端周期性调用 syncAsignSignStatus，直到合同变为已签署后自动跳转。
+// 轮询间隔保持 3s：爱签侧状态更新约需十几秒，无需 1s 级轮询；
+// 且后端对写接口有 15 次/分限流（asign-sync 已单独放宽），1s 轮询会触发 429 导致同步延迟。
 const POLL_INTERVAL_MS = 3000
 let statusPollTimer: ReturnType<typeof setInterval> | null = null
 
@@ -92,26 +94,33 @@ function stopStatusPolling() {
     }
 }
 
+// 单次状态同步：查询爱签签署状态并更新本地合同，已签署则停止轮询并继续后续动作。
+async function pollStatusOnce() {
+    if (signing.value || loading.value || !contract.value) return
+    const item = contract.value
+    if (item.status === 'signed' || item.status === 'void' || item.status === 'draft') {
+        stopStatusPolling()
+        return
+    }
+    try {
+        const updated = await syncAsignSignStatus(auth.token, item.id)
+        contract.value = updated
+        if (updated.status === 'signed') {
+            stopStatusPolling()
+            continueAfterDeveloperAgreement()
+        }
+    } catch {
+        // 单次同步失败不中断轮询，继续重试。
+    }
+}
+
 function startStatusPolling() {
     stopStatusPolling()
-    statusPollTimer = setInterval(async () => {
-        if (signing.value || loading.value || !contract.value) return
-        const item = contract.value
-        if (item.status === 'signed' || item.status === 'void' || item.status === 'draft') {
-            stopStatusPolling()
-            return
-        }
-        try {
-            const updated = await syncAsignSignStatus(auth.token, item.id)
-            contract.value = updated
-            if (updated.status === 'signed') {
-                stopStatusPolling()
-                continueAfterDeveloperAgreement()
-            }
-        } catch {
-            // 单次同步失败不中断轮询，继续重试。
-        }
+    statusPollTimer = setInterval(() => {
+        void pollStatusOnce()
     }, POLL_INTERVAL_MS)
+    // 立即执行一次，避免首个轮询周期内的空白，缩短从爱签返回后的等待。
+    void pollStatusOnce()
 }
 
 type ContractParty = 'party_a' | 'party_b'
