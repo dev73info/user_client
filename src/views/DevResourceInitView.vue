@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Close, Folder, MagicStick, Plus, Refresh, UploadFilled } from '@element-plus/icons-vue'
+import { Close, Folder, MagicStick, Refresh, UploadFilled } from '@element-plus/icons-vue'
 
 import {
   createMcResource,
@@ -21,6 +21,7 @@ import {
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { listMyTeams, type TeamResponse } from '@/api/team'
+import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -32,26 +33,7 @@ const currentRootKey = ref('')
 const currentEntryKey = ref('')
 const isLoadingTags = ref(false)
 const submitting = ref(false)
-const iconInput = ref<HTMLInputElement | null>(null)
-const iconFileName = ref('')
 const selectedIconFile = ref<File | null>(null)
-const iconDialogVisible = ref(false)
-const iconCropSource = ref('')
-const iconCropScale = ref(1)
-const iconCropX = ref(0)
-const iconCropY = ref(0)
-const iconCropMediaStyle = computed(() => ({
-  transform: `translate(${iconCropX.value}%, ${iconCropY.value}%) scale(${iconCropScale.value})`,
-}))
-let iconCropDrag = {
-  active: false,
-  startX: 0,
-  startY: 0,
-  baseX: 0,
-  baseY: 0,
-  width: 1,
-  height: 1,
-}
 const selectedTagIdsByGroup = reactive<Record<number, number[]>>({})
 const myTeams = ref<TeamResponse[]>([])
 const form = reactive({
@@ -218,9 +200,6 @@ onMounted(async () => {
   }
 })
 
-onBeforeUnmount(() => {
-})
-
 async function loadMyTeams() {
   if (!auth.token) return
   try {
@@ -266,181 +245,6 @@ function openEntry(entryKey: string) {
   currentEntryKey.value = entryKey
 }
 
-function openIconPicker() {
-  iconDialogVisible.value = true
-}
-
-function iconCropLimit(scale: number) {
-  return ((scale - 1) / scale) * 50
-}
-
-function clampIconCrop(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value))
-}
-
-function resetIconCrop() {
-  iconCropScale.value = 1
-  iconCropX.value = 0
-  iconCropY.value = 0
-}
-
-function onIconCropPointerDown(event: PointerEvent) {
-  const element = event.currentTarget as HTMLElement
-  const rect = element.getBoundingClientRect()
-  iconCropDrag = {
-    active: true,
-    startX: event.clientX,
-    startY: event.clientY,
-    baseX: iconCropX.value,
-    baseY: iconCropY.value,
-    width: rect.width || 1,
-    height: rect.height || 1,
-  }
-  element.setPointerCapture(event.pointerId)
-}
-
-function onIconCropPointerMove(event: PointerEvent) {
-  if (!iconCropDrag.active) return
-  const limit = iconCropLimit(iconCropScale.value)
-  iconCropX.value = clampIconCrop(
-    iconCropDrag.baseX + ((event.clientX - iconCropDrag.startX) / iconCropDrag.width) * 100,
-    -limit,
-    limit,
-  )
-  iconCropY.value = clampIconCrop(
-    iconCropDrag.baseY + ((event.clientY - iconCropDrag.startY) / iconCropDrag.height) * 100,
-    -limit,
-    limit,
-  )
-}
-
-function onIconCropPointerUp() {
-  iconCropDrag.active = false
-}
-
-function onIconCropWheel(event: WheelEvent) {
-  const delta = event.deltaY < 0 ? 0.12 : -0.12
-  iconCropScale.value = clampIconCrop(
-    Math.round((iconCropScale.value + delta) * 100) / 100,
-    1,
-    4,
-  )
-  const limit = iconCropLimit(iconCropScale.value)
-  iconCropX.value = clampIconCrop(iconCropX.value, -limit, limit)
-  iconCropY.value = clampIconCrop(iconCropY.value, -limit, limit)
-}
-
-function triggerIconFileSelect() {
-  iconInput.value?.click()
-}
-
-function clearIconFile() {
-  form.coverUrl = ''
-  iconFileName.value = ''
-  selectedIconFile.value = null
-  iconCropSource.value = ''
-  resetIconCrop()
-
-  if (iconInput.value) {
-    iconInput.value.value = ''
-  }
-}
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result ?? ''))
-    reader.onerror = () => reject(new Error('读取图标文件失败'))
-    reader.readAsDataURL(file)
-  })
-}
-
-async function handleIconFileChange(event: Event) {
-  const input = event.target as HTMLInputElement | null
-  const file = input?.files?.[0]
-  if (input) {
-    input.value = ''
-  }
-
-  if (!file) {
-    return
-  }
-
-  if (!file.type.startsWith('image/')) {
-    showToast('图标文件仅支持图片格式', 'warning')
-    clearIconFile()
-    return
-  }
-
-  if (file.size > 2 * 1024 * 1024) {
-    showToast('图标文件请控制在 2MB 以内', 'warning')
-    clearIconFile()
-    return
-  }
-
-  try {
-    const dataUrl = await readFileAsDataUrl(file)
-    iconFileName.value = file.name
-    selectedIconFile.value = file
-    iconCropSource.value = dataUrl
-    resetIconCrop()
-    form.coverUrl = dataUrl
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '读取图标文件失败'
-    showToast(message, 'error')
-    clearIconFile()
-  }
-}
-
-function loadIconImage(source: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const image = new Image()
-    image.onload = () => resolve(image)
-    image.onerror = () => reject(new Error('图标预览加载失败'))
-    image.src = source
-  })
-}
-
-async function confirmIconCrop() {
-  if (!iconCropSource.value) return
-
-  try {
-    const image = await loadIconImage(iconCropSource.value)
-    const canvas = document.createElement('canvas')
-    const width = 1200
-    const height = Math.round(width / 1.618)
-    canvas.width = width
-    canvas.height = height
-
-    const context = canvas.getContext('2d')
-    if (!context || !image.naturalWidth || !image.naturalHeight) {
-      throw new Error('未能生成裁剪结果')
-    }
-
-    const coverScale = Math.max(width / image.naturalWidth, height / image.naturalHeight)
-    const drawWidth = image.naturalWidth * coverScale * iconCropScale.value
-    const drawHeight = image.naturalHeight * coverScale * iconCropScale.value
-    const drawX = (width - drawWidth) / 2 + (iconCropX.value / 100) * width
-    const drawY = (height - drawHeight) / 2 + (iconCropY.value / 100) * height
-    context.drawImage(image, drawX, drawY, drawWidth, drawHeight)
-
-    const dataUrl = canvas.toDataURL('image/png')
-    const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(resolve, 'image/png')
-    })
-    if (!blob) {
-      throw new Error('未能生成裁剪文件')
-    }
-
-    const baseName = iconFileName.value.replace(/\.[^.]+$/, '') || 'icon'
-    selectedIconFile.value = new File([blob], `${baseName}.png`, { type: 'image/png' })
-    form.coverUrl = dataUrl
-    iconDialogVisible.value = false
-  } catch (error) {
-    showToast(error instanceof Error ? error.message : '未能生成裁剪结果，请重试', 'warning')
-  }
-}
-
 function selectedNamesForGroup(group: McPublishTagGroup): string[] {
   const selectedIds = new Set(selectedTagIdsByGroup[group.group_id] ?? [])
   return group.items.filter((item) => selectedIds.has(item.id)).map((item) => item.name)
@@ -466,12 +270,7 @@ function resetForm() {
   form.originUrl = ''
   form.originOrg = ''
   form.originNote = ''
-  iconFileName.value = ''
   selectedIconFile.value = null
-
-  if (iconInput.value) {
-    iconInput.value.value = ''
-  }
 
   for (const key of Object.keys(selectedTagIdsByGroup)) {
     selectedTagIdsByGroup[Number(key)] = []
@@ -635,10 +434,7 @@ async function submitResource(mode: 'private' | 'public') {
               </template>
 
               <el-form-item label="图标文件">
-                <div class="dev-icon-upload dev-icon-upload--square" @click="openIconPicker">
-                  <img v-if="form.coverUrl" :src="form.coverUrl" alt="图标预览" class="dev-icon-upload__square-image" />
-                  <el-icon v-else class="dev-icon-upload__square-plus"><Plus /></el-icon>
-                </div>
+                <ResourceIconPicker v-model="form.coverUrl" v-model:file="selectedIconFile" />
               </el-form-item>
 
             </div>
@@ -761,50 +557,4 @@ async function submitResource(mode: 'private' | 'public') {
       </aside>
     </div>
   </div>
-
-  <el-dialog v-model="iconDialogVisible" class="dev-icon-dialog-modal" title="上传图标" width="400px" align-center
-    :close-on-click-modal="false" :destroy-on-close="false">
-    <div class="dev-icon-dialog">
-      <input ref="iconInput" class="dev-icon-upload__native" type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif" @change="handleIconFileChange" />
-
-      <template v-if="iconCropSource">
-        <div class="dev-icon-editor">
-          <div class="dev-icon-editor__crop" @wheel.prevent="onIconCropWheel" @dragstart.prevent
-            @pointerdown="onIconCropPointerDown" @pointermove="onIconCropPointerMove"
-            @pointerup="onIconCropPointerUp" @pointercancel="onIconCropPointerUp">
-            <img :src="iconCropSource" alt="图标裁剪预览" class="dev-icon-editor__media"
-              :style="iconCropMediaStyle" draggable="false" />
-            <span class="dev-icon-editor__hint">拖动调整位置 · 滚轮缩放</span>
-            <button type="button" class="dev-icon-editor__reselect" @pointerdown.stop
-              @click="triggerIconFileSelect">重新选择</button>
-          </div>
-        </div>
-
-        <div class="dev-icon-dialog__meta">
-          <div class="dev-icon-dialog__name">{{ iconFileName || '未选择文件' }}</div>
-        </div>
-
-        <div class="dev-icon-dialog__actions">
-          <el-button @click="resetIconCrop">重置位置</el-button>
-          <div class="dev-icon-dialog__actions-main">
-            <el-button type="danger" plain @click="clearIconFile">移除</el-button>
-            <el-button type="primary" @click="confirmIconCrop">应用</el-button>
-          </div>
-        </div>
-      </template>
-
-      <template v-else>
-        <div class="dev-icon-dialog__preview" @click="triggerIconFileSelect">
-          <el-icon class="dev-icon-dialog__plus"><Plus /></el-icon>
-          <span>点击选择图标</span>
-        </div>
-
-        <div class="dev-icon-dialog__meta">
-          <div class="dev-icon-dialog__name">{{ iconFileName || '未选择文件' }}</div>
-          <div class="dev-icon-dialog__hint">支持 PNG、JPG、WEBP、GIF，大小不超过 2MB</div>
-        </div>
-      </template>
-    </div>
-  </el-dialog>
 </template>

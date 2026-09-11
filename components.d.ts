@@ -55,6 +55,7 @@ declare module 'vue' {
     RequirementConversationModal: typeof import('./src/components/RequirementConversationModal.vue')['default']
     RequirementProgressGuide: typeof import('./src/components/RequirementProgressGuide.vue')['default']
     ResourceCatalog: typeof import('./src/components/ResourceCatalog.vue')['default']
+    ResourceIconPicker: typeof import('./src/components/ResourceIconPicker.vue')['default']
     RichTextEditor: typeof import('./src/components/RichTextEditor.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
