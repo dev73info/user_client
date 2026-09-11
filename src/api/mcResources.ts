@@ -44,6 +44,7 @@ export type McResourcePayload = {
   id: number
   creator: string
   ownership_type: 'individual' | 'team'
+  team_id?: number | null
   requirement_id: string | null
   delete_request_status?: 'pending' | 'rejected' | null
   delete_requested_at?: string | null
@@ -105,6 +106,7 @@ export type UpdateMcResourceHomepageRequest = {
   visibility?: McResourceVisibility
   release_note?: string | null
   ownership_type?: 'individual' | 'team' | null
+  team_id?: number | null
   origin_type?: 'original' | 'repost' | null
   origin_author?: string | null
   origin_url?: string | null
