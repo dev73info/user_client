@@ -22,9 +22,12 @@ import {
 import { createRequirementContract, fetchAsignRequirementPreviewUrl, fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import {
   createAdapayPayment,
+  getAdapayBreachCase,
   getAdapayPayment,
   reportAdapayBreach,
+  requestAdapayPlatformReview,
   getAdapayClientPlatform,
+  type AdapayBreachCase,
   type AdapayBusinessPayChannel,
   type AdapayPaymentResponse,
 } from '@/api/adapay'
@@ -139,6 +142,18 @@ const breachRequirement = ref<RequirementItem | null>(null)
 const breachLiableParty = ref<'customer' | 'developer'>('developer')
 const breachReason = ref('')
 const breachLoading = ref(false)
+const breachCase = ref<AdapayBreachCase | null>(null)
+const breachCaseLoading = ref(false)
+const platformReviewLoading = ref(false)
+
+/** 违约案件状态文案（与后端 adapay_breach_case.status 对应）。 */
+const BREACH_STATUS_LABELS: Record<string, string> = {
+  submitted: '待平台处理',
+  processing: '退款／赔付处理中',
+  manual_required: '平台介入中',
+  succeeded: '已结案',
+  rejected: '已驳回',
+}
 
 function syncPublishModalFromRoute(value: unknown) {
   if (value === 'publish' && !publishVisible.value) {
@@ -329,23 +344,48 @@ function canReportBreach(item: RequirementItem) {
     ['deposit_paid', 'in_development', 'pending_final'].includes(item.status)
 }
 
-function openBreachReport(item: RequirementItem) {
+async function openBreachReport(item: RequirementItem) {
   if (!canReportBreach(item)) {
     return
   }
   breachRequirement.value = item
   breachLiableParty.value = 'developer'
   breachReason.value = ''
+  breachCase.value = null
   breachVisible.value = true
+  breachCaseLoading.value = true
+  try {
+    breachCase.value = await getAdapayBreachCase(auth.token, item.requirement_id)
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '加载违约案件失败', 'error')
+  } finally {
+    breachCaseLoading.value = false
+  }
 }
 
 function closeBreachReport() {
-  if (breachLoading.value) {
+  if (breachLoading.value || platformReviewLoading.value || breachCaseLoading.value) {
     return
   }
   breachVisible.value = false
   breachRequirement.value = null
   breachReason.value = ''
+  breachCase.value = null
+}
+
+async function submitPlatformReview() {
+  if (!breachCase.value) {
+    return
+  }
+  platformReviewLoading.value = true
+  try {
+    breachCase.value = await requestAdapayPlatformReview(auth.token, breachCase.value.id)
+    showToast('已申请平台介入，请等待平台裁决', 'success')
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '申请平台介入失败', 'error')
+  } finally {
+    platformReviewLoading.value = false
+  }
 }
 
 async function submitBreachReport() {
@@ -357,9 +397,13 @@ async function submitBreachReport() {
   }
   breachLoading.value = true
   try {
-    await reportAdapayBreach(auth.token, item.requirement_id, breachLiableParty.value, reason)
+    breachCase.value = await reportAdapayBreach(
+      auth.token,
+      item.requirement_id,
+      breachLiableParty.value,
+      reason,
+    )
     showToast('违约申报已提交，等待平台审核', 'success')
-    closeBreachReport()
   } catch (error) {
     showToast(error instanceof Error ? error.message : '提交违约申报失败', 'error')
   } finally {
@@ -1833,7 +1877,7 @@ watch(
               </button>
               <button v-if="canReportBreach(item)" class="ghost small danger-plain" type="button"
                 @click.stop="openBreachReport(item)">
-                申报违约
+                违约处理
               </button>
               <button v-if="canResubmit(item.status)" class="ghost small" type="button"
                 @click.stop="openRequirementEditModal(item)">
@@ -2182,30 +2226,51 @@ watch(
     </div>
 
     <div v-if="breachVisible && breachRequirement" class="modal-wrap" @click.self="closeBreachReport">
-      <section class="pay-modal breach-modal" aria-label="违约申报弹窗">
-        <h3>申报履约违约</h3>
+      <section class="pay-modal breach-modal" aria-label="违约案件弹窗">
+        <h3>{{ breachCase ? '违约案件进展' : '申报履约违约' }}</h3>
         <p class="pay-line"><strong>需求标题：</strong>{{ breachRequirement.title }}</p>
         <p class="pay-line"><strong>需求编号：</strong>{{ breachRequirement.requirement_id }}</p>
-        <label class="pay-line breach-modal__field">
-          <strong>责任方向</strong>
-          <el-select v-model="breachLiableParty" class="breach-modal__select" aria-label="责任方向"
-            popper-class="breach-modal__select-popper">
-            <el-option label="开发者违约" value="developer" />
-            <el-option label="客户违约" value="customer" />
-          </el-select>
-        </label>
-        <label class="pay-line breach-modal__field">
-          <strong>事实与依据</strong>
-          <textarea v-model="breachReason" rows="6" maxlength="2000"
-            placeholder="请填写时间、已交付内容、沟通记录和希望平台核查的事实"></textarea>
-        </label>
-        <p class="tip">平台会核对合同、支付、交付和沟通记录。客户违约、开发者违约的资金处理由管理员裁决。</p>
-        <div class="actions">
-          <button class="ghost" type="button" :disabled="breachLoading" @click="closeBreachReport">取消</button>
-          <button class="ghost primary" type="button" :disabled="breachLoading" @click="submitBreachReport">
-            {{ breachLoading ? '提交中...' : '提交申报' }}
-          </button>
-        </div>
+        <p v-if="breachCaseLoading" class="pay-line">正在加载违约案件…</p>
+        <template v-else-if="breachCase">
+          <p class="pay-line"><strong>案件编号：</strong>{{ breachCase.caseNo }}</p>
+          <p class="pay-line"><strong>当前状态：</strong>{{ BREACH_STATUS_LABELS[breachCase.status] ?? breachCase.status }}</p>
+          <p class="pay-line"><strong>责任方：</strong>{{ breachCase.liableParty === 'customer' ? '客户' : '开发者' }}</p>
+          <p class="pay-line"><strong>申报理由：</strong>{{ breachCase.reason }}</p>
+          <p class="pay-line">
+            <strong>资金处理：</strong>定金 ¥{{ breachCase.depositAmountCny }} · 已退尾款 ¥{{ breachCase.refundAmountCny }} · 赔付 ¥{{ breachCase.compensationAmountCny }}
+          </p>
+          <p v-if="breachCase.resolutionNote" class="pay-line"><strong>裁决说明：</strong>{{ breachCase.resolutionNote }}</p>
+          <p class="tip">协商不成时可申请平台介入，由平台裁决责任归属与尾款退还比例。</p>
+          <div class="actions">
+            <button class="ghost" type="button" :disabled="platformReviewLoading" @click="closeBreachReport">关闭</button>
+            <button v-if="breachCase.status === 'submitted'" class="ghost primary" type="button"
+              :disabled="platformReviewLoading" @click="submitPlatformReview">
+              {{ platformReviewLoading ? '提交中...' : '申请平台介入' }}
+            </button>
+          </div>
+        </template>
+        <template v-else>
+          <label class="pay-line breach-modal__field">
+            <strong>责任方向</strong>
+            <el-select v-model="breachLiableParty" class="breach-modal__select" aria-label="责任方向"
+              popper-class="breach-modal__select-popper">
+              <el-option label="开发者违约" value="developer" />
+              <el-option label="客户违约" value="customer" />
+            </el-select>
+          </label>
+          <label class="pay-line breach-modal__field">
+            <strong>事实与依据</strong>
+            <textarea v-model="breachReason" rows="6" maxlength="2000"
+              placeholder="请填写时间、已交付内容、沟通记录和希望平台核查的事实"></textarea>
+          </label>
+          <p class="tip">平台会核对合同、支付、交付和沟通记录。客户违约、开发者违约的资金处理由管理员裁决。</p>
+          <div class="actions">
+            <button class="ghost" type="button" :disabled="breachLoading" @click="closeBreachReport">取消</button>
+            <button class="ghost primary" type="button" :disabled="breachLoading" @click="submitBreachReport">
+              {{ breachLoading ? '提交中...' : '提交申报' }}
+            </button>
+          </div>
+        </template>
       </section>
     </div>
 

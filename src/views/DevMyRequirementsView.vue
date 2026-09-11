@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 
 import { ArrowDown, ArrowUp, ChatDotRound, Close, Document, UploadFilled } from '@element-plus/icons-vue'
 
-import { reportAdapayBreach } from '@/api/adapay'
+import { getAdapayBreachCase, reportAdapayBreach, requestAdapayPlatformReview, type AdapayBreachCase } from '@/api/adapay'
 import {
   createMcResourceVersion,
   listMcResourceVersions,
@@ -70,6 +70,18 @@ const breachRequirement = ref<RequirementItem | null>(null)
 const breachLiableParty = ref<'customer' | 'developer'>('customer')
 const breachReason = ref('')
 const breachLoading = ref(false)
+const breachCase = ref<AdapayBreachCase | null>(null)
+const breachCaseLoading = ref(false)
+const platformReviewLoading = ref(false)
+
+/** 违约案件状态文案（与后端 adapay_breach_case.status 对应）。 */
+const BREACH_STATUS_LABELS: Record<string, string> = {
+  submitted: '待平台处理',
+  processing: '退款／赔付处理中',
+  manual_required: '平台介入中',
+  succeeded: '已结案',
+  rejected: '已驳回',
+}
 
 const emptyText = computed(() => (loading.value ? '我的需求单加载中' : '当前账号还没有已关联需求'))
 const boundCount = computed(() => rows.value.filter((item) => item.bound_resource_id != null).length)
@@ -455,23 +467,48 @@ function canReportBreach(item: RequirementItem) {
     ['deposit_paid', 'in_development', 'pending_final'].includes(item.status)
 }
 
-function openBreachReport(item: RequirementItem) {
+async function openBreachReport(item: RequirementItem) {
   if (!canReportBreach(item)) {
     return
   }
   breachRequirement.value = item
   breachLiableParty.value = 'customer'
   breachReason.value = ''
+  breachCase.value = null
   breachVisible.value = true
+  breachCaseLoading.value = true
+  try {
+    breachCase.value = await getAdapayBreachCase(auth.token, item.requirement_id)
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '加载违约案件失败', 'error')
+  } finally {
+    breachCaseLoading.value = false
+  }
 }
 
 function closeBreachReport() {
-  if (breachLoading.value) {
+  if (breachLoading.value || platformReviewLoading.value || breachCaseLoading.value) {
     return
   }
   breachVisible.value = false
   breachRequirement.value = null
   breachReason.value = ''
+  breachCase.value = null
+}
+
+async function submitPlatformReview() {
+  if (!breachCase.value) {
+    return
+  }
+  platformReviewLoading.value = true
+  try {
+    breachCase.value = await requestAdapayPlatformReview(auth.token, breachCase.value.id)
+    showToast('已申请平台介入，请等待平台裁决', 'success')
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '申请平台介入失败', 'error')
+  } finally {
+    platformReviewLoading.value = false
+  }
 }
 
 async function submitBreachReport() {
@@ -483,9 +520,13 @@ async function submitBreachReport() {
   }
   breachLoading.value = true
   try {
-    await reportAdapayBreach(auth.token, item.requirement_id, breachLiableParty.value, reason)
+    breachCase.value = await reportAdapayBreach(
+      auth.token,
+      item.requirement_id,
+      breachLiableParty.value,
+      reason,
+    )
     showToast('违约申报已提交，等待平台审核', 'success')
-    closeBreachReport()
   } catch (error) {
     showToast(error instanceof Error ? error.message : '提交违约申报失败', 'error')
   } finally {
@@ -806,7 +847,7 @@ async function loadRequirementConversations() {
               </el-button>
               <el-button v-if="canReportBreach(item)" type="danger" plain size="small"
                 @click="openBreachReport(item)">
-                申报违约
+                违约处理
               </el-button>
               <el-button v-if="canCreateRequirementContract(item)" type="primary" size="small"
                 :loading="contractCreatingId === item.requirement_id"
@@ -936,13 +977,33 @@ async function loadRequirementConversations() {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="breachVisible" title="申报履约违约" width="520px"
+    <el-dialog v-model="breachVisible" :title="breachCase ? '违约案件进展' : '申报履约违约'" width="520px"
       :close-on-click-modal="false" :close-on-press-escape="false" @close="closeBreachReport">
       <div class="delivery-dialog-body">
         <p class="unbind-dialog-tip">
           平台会核对合同、支付、交付和沟通记录，最终责任及资金处理由平台管理员裁决。
         </p>
-        <el-form label-position="top">
+        <p v-if="breachCaseLoading" class="unbind-dialog-tip">正在加载违约案件…</p>
+        <template v-else-if="breachCase">
+          <el-descriptions :column="1" border size="small">
+            <el-descriptions-item label="案件编号">{{ breachCase.caseNo }}</el-descriptions-item>
+            <el-descriptions-item label="当前状态">
+              {{ BREACH_STATUS_LABELS[breachCase.status] ?? breachCase.status }}
+            </el-descriptions-item>
+            <el-descriptions-item label="责任方">
+              {{ breachCase.liableParty === 'customer' ? '客户' : '开发者' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="申报理由">{{ breachCase.reason }}</el-descriptions-item>
+            <el-descriptions-item label="资金处理">
+              定金 ¥{{ breachCase.depositAmountCny }} · 已退尾款 ¥{{ breachCase.refundAmountCny }} · 赔付 ¥{{ breachCase.compensationAmountCny }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="breachCase.resolutionNote" label="裁决说明">
+              {{ breachCase.resolutionNote }}
+            </el-descriptions-item>
+          </el-descriptions>
+          <p class="unbind-dialog-tip">协商不成时可申请平台介入，由平台裁决责任归属与尾款退还比例。</p>
+        </template>
+        <el-form v-else label-position="top">
           <el-form-item label="责任方向" required>
             <el-select v-model="breachLiableParty" style="width: 100%">
               <el-option label="客户违约" value="customer" />
@@ -956,8 +1017,14 @@ async function loadRequirementConversations() {
         </el-form>
       </div>
       <template #footer>
-        <el-button :disabled="breachLoading" @click="closeBreachReport">取消</el-button>
-        <el-button type="primary" :loading="breachLoading" @click="submitBreachReport">提交申报</el-button>
+        <el-button :disabled="platformReviewLoading || breachLoading" @click="closeBreachReport">
+          {{ breachCase ? '关闭' : '取消' }}
+        </el-button>
+        <el-button v-if="breachCase && breachCase.status === 'submitted'" type="primary"
+          :loading="platformReviewLoading" @click="submitPlatformReview">申请平台介入</el-button>
+        <el-button v-else-if="!breachCase" type="primary" :loading="breachLoading" @click="submitBreachReport">
+          提交申报
+        </el-button>
       </template>
     </el-dialog>
 

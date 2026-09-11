@@ -193,6 +193,33 @@ export async function reportAdapayBreach(
   )
 }
 
+/** 查询当前需求上的违约案件（无案件时返回 null）。 */
+export async function getAdapayBreachCase(
+  token: string,
+  requirementId: string,
+): Promise<AdapayBreachCase | null> {
+  return requestJson<AdapayBreachCase | null>(
+    `/adapay/requirements/${encodeURIComponent(requirementId)}/breach-case`,
+    { headers: authHeader(token) },
+    '加载违约案件失败',
+  )
+}
+
+/** 协商不成时申请平台介入裁决。 */
+export async function requestAdapayPlatformReview(
+  token: string,
+  caseId: number,
+): Promise<AdapayBreachCase> {
+  return requestJson<AdapayBreachCase>(
+    `/adapay/breaches/${caseId}/request-platform-review`,
+    {
+      method: 'POST',
+      headers: authHeader(token),
+    },
+    '申请平台介入失败',
+  )
+}
+
 export type AdapayMemberStatus = {
   username: string
   memberType?: string | null
