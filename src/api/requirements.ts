@@ -30,7 +30,6 @@ export type PublicRequirementSpotlightItem = {
   description?: string | null
   acceptance_criteria?: string | null
   budget?: number | null
-  payment_method?: string | null
   payment_mode: RequirementPaymentMode
   status: RequirementStatus
   created_at: string
@@ -44,8 +43,8 @@ export type RequirementStatus =
   | 'deposit_paid'
   | 'in_development'
   | 'pending_final'
-  | 'final_paid'
   | 'completed'
+  | 'cancelled'
 
 export type RequirementPaymentMode = 'platform_guarantee' | 'self_managed'
 
@@ -88,7 +87,6 @@ export type RequirementItem = {
   comment_text?: string | null
   status: RequirementStatus
   budget?: number | null
-  payment_method?: string | null
   payment_mode: RequirementPaymentMode
   updated_at: string
   pending_unbind_request?: UnbindRequirementResponse | null
@@ -113,7 +111,6 @@ export type CreateRequirementPayload = {
   budget: number
   acceptance_criteria: string
   payment_mode: RequirementPaymentMode
-  payment_method?: 'alipay' | 'wechat'
 }
 
 export type CommentRequirementPayload = {
@@ -259,22 +256,6 @@ export async function requestRequirementFinalPayment(
       },
     },
     '结束开发失败',
-  )
-}
-
-export async function completeRequirement(
-  token: string,
-  requirementId: string,
-): Promise<RequirementItem> {
-  return requestJson<RequirementItem>(
-    `/requirements/${encodeURIComponent(requirementId)}/complete`,
-    {
-      method: 'POST',
-      headers: {
-        ...authHeader(token),
-      },
-    },
-    '确认完成失败',
   )
 }
 

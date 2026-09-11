@@ -52,6 +52,7 @@ export type PublicMcResourceItem = {
   ownership_type: string
   team_id: number | null
   team_name: string | null
+  team_avatar_url?: string | null
   origin_type: 'original' | 'repost'
   origin_author: string | null
   origin_url: string | null

@@ -49,7 +49,6 @@ const publishDescription = ref('')
 const publishBudget = ref<string | number>('')
 const publishAcceptance = ref('')
 const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
-const publishPaymentMethod = ref<'alipay' | 'wechat'>('alipay')
 const publishLoading = ref(false)
 const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
 const selectedRequirement = ref<PublicRequirementSpotlightItem | null>(null)
@@ -85,7 +84,6 @@ const filteredRequirements = computed(() => {
       item.requirement_id,
       item.title,
       requirementRichTextPreview(item.description, ''),
-      item.payment_method ?? '',
       paymentModeLabel(item.payment_mode),
       statusToLabel(item.status),
     ]
@@ -158,7 +156,7 @@ function statusToLabel(status: RequirementStatus): string {
 }
 
 function paymentTag(item: PublicRequirementSpotlightItem): string {
-  return item.payment_method?.trim() || paymentModeLabel(item.payment_mode)
+  return paymentModeLabel(item.payment_mode)
 }
 
 function resetKeyword() {
@@ -241,7 +239,6 @@ function resetPublishForm() {
   publishBudget.value = ''
   publishAcceptance.value = ''
   publishPaymentMode.value = 'self_managed'
-  publishPaymentMethod.value = 'alipay'
 }
 
 async function openPublishModal() {
@@ -338,7 +335,6 @@ async function loadRequirementDetailForModal(item: PublicRequirementSpotlightIte
       acceptance_criteria:
         detail.acceptance_criteria ?? selectedRequirement.value.acceptance_criteria,
       budget: detail.budget ?? selectedRequirement.value.budget,
-      payment_method: detail.payment_method ?? selectedRequirement.value.payment_method,
       payment_mode: detail.payment_mode,
       status: detail.status,
       updated_at: detail.updated_at,
@@ -402,8 +398,6 @@ async function submitPublishRequirement() {
       budget,
       acceptance_criteria: acceptanceValidation.value,
       payment_mode: publishPaymentMode.value,
-      payment_method:
-        publishPaymentMode.value === 'platform_guarantee' ? publishPaymentMethod.value : undefined,
     })
 
     showToast('需求已发布，等待审核', 'success')
@@ -584,8 +578,6 @@ async function loadHallData() {
   <PublishModal ref="publishModalRef" :visible="publishVisible" v-model:publishTitle="publishTitle"
     v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
     v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
-    v-model:publishPaymentMethod="publishPaymentMethod"
-    :allowPlatformGuarantee="false"
     :publishLoading="publishLoading"
     :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="showToast"
     @submit="submitPublishRequirement" />

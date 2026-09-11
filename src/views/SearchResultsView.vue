@@ -249,7 +249,6 @@ function buildRequirementSearchText(requirement: PublicRequirementSpotlightItem)
         requirement.title,
         requirementRichTextPreview(requirement.description, ''),
         requirementRichTextPreview(requirement.acceptance_criteria, ''),
-        requirement.payment_method ?? '',
         paymentModeLabel(requirement.payment_mode),
         statusToLabel(requirement.status),
     ]
@@ -390,7 +389,6 @@ async function loadRequirementDetailForModal(requirement: PublicRequirementSpotl
             acceptance_criteria:
                 detail.acceptance_criteria ?? selectedRequirement.value.acceptance_criteria,
             budget: detail.budget ?? selectedRequirement.value.budget,
-            payment_method: detail.payment_method ?? selectedRequirement.value.payment_method,
             payment_mode: detail.payment_mode,
             status: detail.status,
             updated_at: detail.updated_at,
@@ -413,7 +411,7 @@ function openCommunityPost(post: CommunityPost) {
 }
 
 function paymentTag(requirement: PublicRequirementSpotlightItem): string {
-    return requirement.payment_method?.trim() || paymentModeLabel(requirement.payment_mode)
+    return paymentModeLabel(requirement.payment_mode)
 }
 
 function statusToLabel(status: RequirementStatus): string {

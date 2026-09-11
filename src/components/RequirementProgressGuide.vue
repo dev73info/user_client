@@ -99,7 +99,7 @@ const currentStepKey = computed(() => {
     if (status === 'pending_final' && view.value === 'dev') {
       return 'final'
     }
-    if (status === 'final_paid' || status === 'completed') {
+    if (status === 'completed') {
       return 'done'
     }
     return 'develop'
@@ -120,7 +120,6 @@ const currentStepKey = computed(() => {
       return 'develop'
     case 'pending_final':
       return view.value === 'dev' ? 'final' : 'develop'
-    case 'final_paid':
     case 'completed':
       return 'done'
     default:

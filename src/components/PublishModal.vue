@@ -1,11 +1,19 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { PropType } from "vue";
+import { ArrowDown } from "@element-plus/icons-vue";
 
 import RichTextEditor from "@/components/RichTextEditor.vue";
+import {
+  loadAdapayAvailability,
+  platformGuaranteeLoaded,
+  platformGuaranteeReady,
+} from "@/shared/adapayAvailability";
+import { acceptanceTemplates, type AcceptanceTemplate } from "@/utils/acceptanceTemplates";
+import { requirementRichTextHasMeaningfulContent } from "@/utils/requirementRichText";
+import { sanitizeRichHtml } from "@/utils/sanitizeHtml";
 
 type NotifyType = "success" | "warning" | "error";
-type PublishPaymentMethod = "alipay" | "wechat";
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -20,11 +28,7 @@ const props = defineProps({
     type: String as PropType<"platform_guarantee" | "self_managed">,
     default: "self_managed",
   },
-  publishPaymentMethod: {
-    type: String as PropType<PublishPaymentMethod>,
-    default: "alipay",
-  },
-  allowPlatformGuarantee: { type: Boolean, default: false },
+  allowPlatformGuarantee: { type: Boolean as PropType<boolean | undefined>, default: undefined },
   publishLoading: { type: Boolean, default: false },
   // 草稿作用域（一般传当前用户名），用于按用户隔离草稿，避免多账号共用浏览器时串数据
   draftScope: { type: String, default: "default" },
@@ -39,7 +43,6 @@ const emit = defineEmits<{
   (e: "update:publishBudget", value: string | number): void;
   (e: "update:publishAcceptance", value: string): void;
   (e: "update:publishPaymentMode", value: "platform_guarantee" | "self_managed"): void;
-  (e: "update:publishPaymentMethod", value: PublishPaymentMethod): void;
 }>();
 
 function updateTitle(event: Event) {
@@ -63,19 +66,108 @@ function forwardNotify(message: string, type?: NotifyType) {
 }
 
 function updatePaymentMode(value: "platform_guarantee" | "self_managed") {
-  if (value === "platform_guarantee" && !props.allowPlatformGuarantee) {
+  if (value === "platform_guarantee" && !platformGuaranteeAllowed.value) {
     return;
   }
 
   emit("update:publishPaymentMode", value);
 }
 
-function updatePaymentMethod(event: Event) {
-  const value = (event.target as HTMLSelectElement).value;
-  if (value === "alipay" || value === "wechat") {
-    emit("update:publishPaymentMethod", value);
+// ===== 验收标准模板 =====
+// 模板入口固定在「验收标准」标签行右侧。选择模板后在编辑器中填入结构化骨架，
+// 编辑器已有内容时先弹站内样式的覆盖确认，避免误操作丢掉已写内容。
+
+const acceptanceTemplateMenuOpen = ref(false);
+const pendingAcceptanceTemplate = ref<AcceptanceTemplate | null>(null);
+const acceptanceTemplateRootRef = ref<HTMLElement | null>(null);
+const acceptanceTemplateTriggerRef = ref<HTMLButtonElement | null>(null);
+const acceptanceTemplateConfirmRef = ref<HTMLButtonElement | null>(null);
+const acceptanceEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null);
+
+function toggleAcceptanceTemplateMenu() {
+  acceptanceTemplateMenuOpen.value = !acceptanceTemplateMenuOpen.value;
+}
+
+function closeAcceptanceTemplateMenu() {
+  acceptanceTemplateMenuOpen.value = false;
+}
+
+function handleAcceptanceTemplatePointerDown(event: PointerEvent) {
+  if (!acceptanceTemplateMenuOpen.value) {
+    return;
+  }
+
+  const target = event.target;
+  // 点击入口或菜单内部不关闭，由其自身交互处理
+  if (target instanceof Node && acceptanceTemplateRootRef.value?.contains(target)) {
+    return;
+  }
+
+  closeAcceptanceTemplateMenu();
+}
+
+function handleAcceptanceTemplateKeydown(event: KeyboardEvent) {
+  if (event.key !== "Escape") {
+    return;
+  }
+
+  // 覆盖确认打开时，Escape 只关闭确认框
+  if (pendingAcceptanceTemplate.value) {
+    cancelAcceptanceTemplate();
+    return;
+  }
+
+  closeAcceptanceTemplateMenu();
+}
+
+function fillAcceptanceTemplate(template: AcceptanceTemplate) {
+  emit("update:publishAcceptance", sanitizeRichHtml(template.html));
+  void nextTick(() => {
+    // 填入后聚焦编辑器，方便直接按括号提示补充内容
+    acceptanceEditorRef.value?.focus();
+  });
+}
+
+function requestAcceptanceTemplate(template: AcceptanceTemplate) {
+  closeAcceptanceTemplateMenu();
+
+  if (requirementRichTextHasMeaningfulContent(String(props.publishAcceptance ?? ""))) {
+    pendingAcceptanceTemplate.value = template;
+    void nextTick(() => acceptanceTemplateConfirmRef.value?.focus());
+    return;
+  }
+
+  fillAcceptanceTemplate(template);
+}
+
+function cancelAcceptanceTemplate() {
+  if (!pendingAcceptanceTemplate.value) {
+    return;
+  }
+
+  pendingAcceptanceTemplate.value = null;
+  void nextTick(() => acceptanceTemplateTriggerRef.value?.focus());
+}
+
+function confirmAcceptanceTemplate() {
+  const template = pendingAcceptanceTemplate.value;
+  pendingAcceptanceTemplate.value = null;
+
+  if (template) {
+    fillAcceptanceTemplate(template);
   }
 }
+
+// 弹窗关闭时收起模板菜单与覆盖确认，避免下次打开残留
+watch(
+  () => props.visible,
+  (visible) => {
+    if (!visible) {
+      closeAcceptanceTemplateMenu();
+      pendingAcceptanceTemplate.value = null;
+    }
+  }
+);
 
 // ===== 草稿系统 =====
 // 所有使用场景（新建发布、重新编辑、重新提交审核）都启用草稿自动保存。
@@ -90,7 +182,6 @@ type PublishDraft = {
   budget: string;
   acceptance: string;
   paymentMode: "platform_guarantee" | "self_managed";
-  paymentMethod: PublishPaymentMethod;
   savedAt: number;
 };
 
@@ -138,7 +229,6 @@ function savePublishDraft() {
     budget: String(props.publishBudget ?? ""),
     acceptance: String(props.publishAcceptance ?? ""),
     paymentMode: props.publishPaymentMode,
-    paymentMethod: props.publishPaymentMethod,
     savedAt: Date.now(),
   };
 
@@ -184,7 +274,6 @@ function restorePublishDraft() {
         parsed.paymentMode === "platform_guarantee" || parsed.paymentMode === "self_managed"
           ? parsed.paymentMode
           : "self_managed";
-      const paymentMethod = parsed.paymentMethod === "wechat" ? "wechat" : "alipay";
 
       if (title || description || budget || acceptance) {
         emit("update:publishTitle", title);
@@ -192,7 +281,6 @@ function restorePublishDraft() {
         emit("update:publishBudget", budget);
         emit("update:publishAcceptance", acceptance);
         emit("update:publishPaymentMode", paymentMode);
-        emit("update:publishPaymentMethod", paymentMethod);
       }
     }
   } catch {
@@ -221,7 +309,6 @@ watch(
     props.publishBudget,
     props.publishAcceptance,
     props.publishPaymentMode,
-    props.publishPaymentMethod,
   ],
   () => {
     savePublishDraft();
@@ -251,10 +338,34 @@ defineExpose({
   clearDraft: clearPublishDraft,
 });
 
+// 是否展示「电签担保」：显式传入时以传入值为准，否则跟随服务端可用性
+// （后端会校验 Adapay 密钥、回调地址、个税规则等配置是否齐备）。
+const platformGuaranteeAllowed = computed(
+  () => props.allowPlatformGuarantee ?? platformGuaranteeReady.value
+);
+
+onMounted(() => {
+  if (props.allowPlatformGuarantee === undefined) {
+    void loadAdapayAvailability();
+  }
+
+  document.addEventListener("pointerdown", handleAcceptanceTemplatePointerDown, true);
+  document.addEventListener("keydown", handleAcceptanceTemplateKeydown);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("pointerdown", handleAcceptanceTemplatePointerDown, true);
+  document.removeEventListener("keydown", handleAcceptanceTemplateKeydown);
+});
+
 watch(
-  () => [props.allowPlatformGuarantee, props.publishPaymentMode] as const,
-  ([allowPlatformGuarantee, publishPaymentMode]) => {
-    if (!allowPlatformGuarantee && publishPaymentMode === "platform_guarantee") {
+  () => [platformGuaranteeAllowed.value, platformGuaranteeLoaded.value, props.publishPaymentMode] as const,
+  ([allowed, loaded, publishPaymentMode]) => {
+    // 可用性尚未加载完成时不降级，否则会误清掉草稿里已选的担保模式。
+    if (!loaded && props.allowPlatformGuarantee === undefined) {
+      return;
+    }
+    if (!allowed && publishPaymentMode === "platform_guarantee") {
       emit("update:publishPaymentMode", "self_managed");
     }
   },
@@ -278,7 +389,7 @@ watch(
           </label>
           <div class="publish-rich-field">
             <span>需求描述 *</span>
-            <RichTextEditor :model-value="publishDescription" :floating-toolbar="false"
+            <RichTextEditor :model-value="publishDescription" :floating-toolbar="false" auto-height toolbar-on-focus
               @update:model-value="updateDescription" @notify="forwardNotify" />
           </div>
           <label>
@@ -287,34 +398,47 @@ watch(
               @input="updateBudget" />
           </label>
           <div class="publish-rich-field">
-            <span>验收标准 *</span>
-            <RichTextEditor :model-value="publishAcceptance" :floating-toolbar="false"
-              @update:model-value="updateAcceptance" @notify="forwardNotify" />
+            <div class="publish-rich-field__head">
+              <span>验收标准 *</span>
+              <div ref="acceptanceTemplateRootRef" class="publish-template">
+                <button ref="acceptanceTemplateTriggerRef" type="button" class="publish-template__trigger"
+                  :class="{ 'is-open': acceptanceTemplateMenuOpen }" title="使用验收标准模板" aria-haspopup="menu"
+                  :aria-expanded="acceptanceTemplateMenuOpen ? 'true' : 'false'"
+                  @click="toggleAcceptanceTemplateMenu">
+                  <span>模板</span>
+                  <el-icon class="publish-template__caret" aria-hidden="true">
+                    <ArrowDown />
+                  </el-icon>
+                </button>
+                <div v-if="acceptanceTemplateMenuOpen" class="publish-template__menu" role="menu"
+                  aria-label="验收标准模板">
+                  <button v-for="template in acceptanceTemplates" :key="template.id" type="button"
+                    class="publish-template__option" role="menuitem" @click="requestAcceptanceTemplate(template)">
+                    <strong>{{ template.name }}</strong>
+                    <small>{{ template.description }}</small>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <RichTextEditor ref="acceptanceEditorRef" :model-value="publishAcceptance" :floating-toolbar="false"
+              auto-height toolbar-on-focus @update:model-value="updateAcceptance" @notify="forwardNotify" />
           </div>
           <div class="publish-mode-field">
             <span>发布方式 *</span>
-            <div class="publish-mode-options" :class="{ 'publish-mode-options--single': !allowPlatformGuarantee }"
+            <div class="publish-mode-options" :class="{ 'publish-mode-options--single': !platformGuaranteeAllowed }"
               role="radiogroup" aria-label="发布方式选择">
               <button type="button" class="publish-mode-option"
                 :class="{ active: publishPaymentMode === 'self_managed' }" @click="updatePaymentMode('self_managed')">
                 <strong>无电签约定</strong>
                 <small>平台提供协作与签署记录，付款双方另行约定</small>
               </button>
-              <button v-if="allowPlatformGuarantee" type="button" class="publish-mode-option"
+              <button v-if="platformGuaranteeAllowed" type="button" class="publish-mode-option"
                 :class="{ active: publishPaymentMode === 'platform_guarantee' }"
                 @click="updatePaymentMode('platform_guarantee')">
                 <strong>电签担保</strong>
                 <small>按平台定金与尾款规则推进</small>
               </button>
             </div>
-            <label v-if="allowPlatformGuarantee && publishPaymentMode === 'platform_guarantee'"
-              class="publish-payment-field">
-              <span>收款方式 *</span>
-              <select :value="publishPaymentMethod" aria-label="收款方式" required @change="updatePaymentMethod">
-                <option value="alipay">支付宝</option>
-                <option value="wechat">微信</option>
-              </select>
-            </label>
           </div>
         </div>
 
@@ -330,6 +454,24 @@ watch(
         <footer v-if="draftEnabled" class="publish-modal__draft-hint">
           <span>内容将自动保存为草稿</span>
         </footer>
+      </section>
+    </div>
+
+    <!-- 覆盖确认：沿用站内弹窗/按钮风格，不用组件库默认样式 -->
+    <div v-if="pendingAcceptanceTemplate" class="auth-modal-wrap publish-confirm-wrap"
+      @click.self="cancelAcceptanceTemplate">
+      <section class="auth-modal publish-confirm" role="dialog" aria-modal="true"
+        aria-labelledby="publish-template-confirm-title">
+        <h3 id="publish-template-confirm-title">使用模板</h3>
+        <p class="publish-confirm__meta">
+          {{ pendingAcceptanceTemplate?.name }} · {{ pendingAcceptanceTemplate?.description }}
+        </p>
+        <p class="publish-confirm__text">验收标准中已有内容，继续将用模板覆盖现有内容。</p>
+        <div class="auth-modal-actions publish-confirm__actions">
+          <button class="auth-btn ghost" type="button" @click="cancelAcceptanceTemplate">取消</button>
+          <button ref="acceptanceTemplateConfirmRef" class="auth-btn solid" type="button"
+            @click="confirmAcceptanceTemplate">覆盖并填入</button>
+        </div>
       </section>
     </div>
   </Teleport>
@@ -402,6 +544,168 @@ watch(
 
 .publish-rich-field :deep(.rich-text-editor) {
   font-weight: 500;
+}
+
+.publish-rich-field__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.publish-template {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.publish-template__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 3px 9px;
+  border: 1px solid rgba(203, 213, 225, 0.86);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #475569;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.publish-template__trigger:hover {
+  border-color: rgba(37, 99, 235, 0.5);
+  background: #f8fafc;
+  color: #1d4ed8;
+}
+
+.publish-template__trigger:focus-visible,
+.publish-template__trigger.is-open {
+  border-color: rgba(37, 99, 235, 0.7);
+  background: #eff6ff;
+  color: #1d4ed8;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.publish-template__caret {
+  font-size: 12px;
+  transition: transform 160ms ease;
+}
+
+.publish-template__trigger.is-open .publish-template__caret {
+  transform: rotate(180deg);
+}
+
+.publish-template__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 232px;
+  max-width: min(320px, calc(100vw - 56px));
+  gap: 3px;
+  padding: 6px;
+  border: 1px solid rgba(191, 219, 254, 0.9);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.14);
+  backdrop-filter: blur(14px);
+}
+
+.publish-template__option {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.publish-template__option:hover,
+.publish-template__option:focus-visible {
+  outline: none;
+  background: rgba(219, 234, 254, 0.78);
+  color: #1d4ed8;
+}
+
+.publish-template__option strong {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.publish-template__option small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.publish-confirm-wrap {
+  z-index: 1260;
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(5px);
+}
+
+.publish-confirm {
+  width: min(430px, 100%);
+  padding: 20px 22px 18px;
+  border-radius: 18px;
+  border-color: rgba(203, 213, 225, 0.84);
+  background: #ffffff;
+  box-shadow: 0 28px 68px rgba(15, 23, 42, 0.2);
+}
+
+.publish-confirm h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.publish-confirm__meta {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.publish-confirm__text {
+  margin: 12px 0 0;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.7;
+}
+
+.publish-confirm__actions {
+  margin-top: 16px;
+}
+
+.publish-confirm__actions .auth-btn {
+  min-height: 40px;
+  border-radius: 10px;
+  padding: 0 18px;
+  font-weight: 800;
+}
+
+.publish-confirm__actions .auth-btn.solid {
+  background: #2563eb;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.2);
+}
+
+.publish-confirm__actions .auth-btn.solid:hover:not(:disabled) {
+  background: #1d4ed8;
 }
 
 .publish-rich-field :deep(.rich-text-editor__toolbar-shell) {
@@ -538,31 +842,23 @@ watch(
   line-height: 1.4;
 }
 
-.publish-payment-field {
-  display: grid;
-  gap: 7px;
-  margin-top: 2px;
-  color: #334155;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.publish-payment-field select {
-  min-height: 42px;
-  padding: 0 12px;
-  border: 1px solid rgba(203, 213, 225, 0.86);
-  border-radius: 9px;
-  background: #ffffff;
-  color: #111827;
-  font: inherit;
-}
-
 @media (max-width: 640px) {
   .publish-modal-wrap {
     align-items: flex-end;
     padding: 10px;
     padding-top: max(10px, env(safe-area-inset-top));
     padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  .publish-confirm-wrap {
+    padding: 14px;
+    padding-top: max(14px, env(safe-area-inset-top));
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+
+  .publish-confirm {
+    width: 100%;
+    padding: 18px;
   }
 
   .publish-modal {

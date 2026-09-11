@@ -1,6 +1,6 @@
 const DEFAULT_TITLE = '73Info 柒叁信息 - 资源与需求协作平台'
 const DEFAULT_DESCRIPTION =
-  '73Info 柒叁信息是内测中的资源与需求协作平台，优先沉淀 Minecraft、网站开发和小工具资源，支持公开资源浏览、需求发布、沟通记录、合同签署、担保支付、交付验收和合规说明。'
+  '73Info 柒叁信息是内测中的资源与需求协作平台，优先沉淀网站开发和小工具资源，支持公开资源浏览、需求发布、沟通记录、合同签署、担保支付、交付验收和合规说明。'
 const SITE_URL = ((import.meta.env.VITE_SITE_URL as string | undefined)?.trim() || 'https://73info.cn').replace(
   /\/+$/,
   '',
@@ -46,11 +46,19 @@ function normalizeDescription(value: string): string {
 }
 
 function normalizePath(path: string): string {
-  if (/^https?:\/\//i.test(path)) {
-    return new URL(path).pathname
+  const normalized = /^https?:\/\//i.test(path)
+    ? new URL(path).pathname
+    : path.startsWith('/')
+      ? path
+      : `/${path}`
+
+  // 线上静态快照以目录形式提供（/community/ 而非 /community，无斜杠会 301），
+  // canonical 统一输出带斜杠的最终形态，避免“canonical 指向重定向地址”。
+  if (normalized === '/') {
+    return '/'
   }
 
-  return path.startsWith('/') ? path : `/${path}`
+  return `${normalized.replace(/\/+$/, '')}/`
 }
 
 function setMeta(attribute: 'name' | 'property', key: string, content: string): void {

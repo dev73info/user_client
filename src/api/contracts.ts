@@ -160,6 +160,25 @@ export async function fetchDeveloperAgreement(
 }
 
 /**
+ * 由需求方或已接单开发者主动发起《需求开发合同》。
+ * 接单不再自动建合同，双方任一当事人均可发起（幂等）。
+ */
+export async function createRequirementContract(
+  token: string,
+  requirementId: string,
+): Promise<ContractDetail> {
+  return requestJson<ContractDetail>(
+    `/contracts/requirement/${encodeURIComponent(requirementId)}`,
+    {
+      method: 'POST',
+      headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    },
+    '发起合同失败',
+  )
+}
+
+/**
  * 用户端同步爱签签署状态到本地合同。
  *
  * 场景：用户已在爱签页面完成签署，但爱签回调可能延迟/丢失

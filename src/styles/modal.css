@@ -1068,10 +1068,26 @@
   transform: translateY(-1px);
 }
 
+/* 半星是用渐变背景绘制出的字符（background-clip: text + 文字填充透明），
+   hover 时必须保留渐变背景，否则星形会「消失」 */
+.rating-star.half:hover {
+  background: linear-gradient(90deg, #ffd166 50%, rgba(255, 255, 255, 0.22) 50%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 .comment-modal .rating-star:hover {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
+}
+
+.comment-modal .rating-star.half:hover {
+  background: linear-gradient(90deg, #f59e0b 50%, #cbd5e1 50%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .rating-value {

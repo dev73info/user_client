@@ -36,7 +36,6 @@ import {
   type RequirementConversationDetail,
 } from '@/api/conversations'
 import {
-  completeRequirement as completeRequirementApi,
   commentRequirement as commentRequirementApi,
   createRequirement as createRequirementApi,
   listRequirements,
@@ -91,7 +90,6 @@ const publishDescription = ref('')
 const publishBudget = ref<string | number>('')
 const publishAcceptance = ref('')
 const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
-const publishPaymentMethod = ref<'alipay' | 'wechat'>('alipay')
 const publishLoading = ref(false)
 const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
 const editModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
@@ -100,17 +98,13 @@ const editDescription = ref('')
 const editBudget = ref<string | number>('')
 const editAcceptance = ref('')
 const editPaymentMode = ref<RequirementPaymentMode>('self_managed')
-const editPaymentMethod = ref<'alipay' | 'wechat'>('alipay')
 const editLoading = ref(false)
 const finalPaymentConfirmVisible = ref(false)
 const finalPaymentConfirmTarget = ref<RequirementItem | null>(null)
-const completionConfirmVisible = ref(false)
-const completionConfirmTarget = ref<RequirementItem | null>(null)
 const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const conversationLoading = ref(false)
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
-const completionLoading = ref(false)
 const depositRatioPercent = ref(20)
 const { showToast } = useToast()
 const failedProfileAvatarUrls = ref<Set<string>>(new Set())
@@ -191,14 +185,14 @@ const requirementStats = computed(() => ({
   pending: myRequirements.value.filter((item) => item.status === 'pending_review' || item.status === 'pending_deposit').length,
   active: myRequirements.value.filter((item) => item.status === 'deposit_paid' || item.status === 'in_development' || item.status === 'pending_final').length,
   payment: myRequirements.value.filter((item) => canPay(item.status, item)).length,
-  completed: myRequirements.value.filter((item) => item.status === 'final_paid' || item.status === 'completed').length,
+  completed: myRequirements.value.filter((item) => item.status === 'completed').length,
 }))
 const sortedRequirements = computed(() =>
   [...myRequirements.value].sort((left, right) => requirementTimeValue(right.updated_at) - requirementTimeValue(left.updated_at)),
 )
 const actionableRequirements = computed(() =>
   sortedRequirements.value
-    .filter((item) => hasPendingResourceVersionDeleteReview(item) || canRequestFinalPayment(item) || canPay(item.status, item) || canComplete(item) || canResubmit(item.status) || canComment(item.status))
+    .filter((item) => hasPendingResourceVersionDeleteReview(item) || canRequestFinalPayment(item) || canPay(item.status, item) || canResubmit(item.status) || canComment(item.status))
     .slice(0, 4),
 )
 const recentRequirements = computed(() => sortedRequirements.value.slice(0, 5))
@@ -287,10 +281,6 @@ function canPay(status: RequirementStatus, item?: RequirementItem) {
   return status === 'pending_deposit' || status === 'pending_final'
 }
 
-function canComplete(item: RequirementItem) {
-  return item.status === 'final_paid'
-}
-
 function publishedVersionCount(item: RequirementItem) {
   return item.bound_resource_version_count ?? 0
 }
@@ -308,7 +298,7 @@ function hasBoundResource(item: RequirementItem) {
 }
 
 function isRequirementCompleted(item: RequirementItem) {
-  return item.status === 'completed' || item.status === 'final_paid'
+  return item.status === 'completed'
 }
 
 function canOpenConversation(item: RequirementItem) {
@@ -395,33 +385,6 @@ function closeFinalPaymentConfirm() {
   finalPaymentConfirmTarget.value = null
 }
 
-function closeCompletionConfirm() {
-  if (completionLoading.value) {
-    return
-  }
-
-  completionConfirmVisible.value = false
-  completionConfirmTarget.value = null
-}
-
-async function submitRequirementCompletion() {
-  if (!completionConfirmTarget.value) {
-    return
-  }
-
-  completionLoading.value = true
-  try {
-    await completeRequirementApi(auth.token, completionConfirmTarget.value.requirement_id)
-    showToast('需求已确认完成', 'success')
-    closeCompletionConfirm()
-    await loadMyRequirements()
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '确认完成失败', 'error')
-  } finally {
-    completionLoading.value = false
-  }
-}
-
 async function confirmFinalPaymentRequest() {
   if (!finalPaymentConfirmTarget.value) {
     return
@@ -445,7 +408,7 @@ async function confirmFinalPaymentRequest() {
 }
 
 function canComment(status: RequirementStatus) {
-  return status === 'final_paid' || status === 'completed'
+  return status === 'completed'
 }
 
 function publishRedirectTarget() {
@@ -497,25 +460,6 @@ async function ensurePublishRealnameApproved() {
     showToast(error instanceof Error ? error.message : '实名认证状态校验失败', 'error')
     return false
   }
-}
-
-async function openPublishModal() {
-  const approved = await ensurePublishRealnameApproved()
-  if (!approved) {
-    return
-  }
-
-  if (!auth.isAuthed) {
-    return
-  }
-
-  publishTitle.value = ''
-  publishDescription.value = ''
-  publishBudget.value = ''
-  publishAcceptance.value = ''
-  publishPaymentMode.value = 'self_managed'
-  publishPaymentMethod.value = 'alipay'
-  publishVisible.value = true
 }
 
 async function refreshProfileData() {
@@ -945,7 +889,6 @@ function forceCloseEditModal() {
   editVisible.value = false
   editRequirement.value = null
   editPaymentMode.value = 'self_managed'
-  editPaymentMethod.value = 'alipay'
 }
 
 function forceClosePublishModal() {
@@ -955,7 +898,6 @@ function forceClosePublishModal() {
   publishBudget.value = ''
   publishAcceptance.value = ''
   publishPaymentMode.value = 'self_managed'
-  publishPaymentMethod.value = 'alipay'
 }
 
 function clearPublishModalQuery() {
@@ -1065,8 +1007,6 @@ async function submitRequirementResubmit() {
       budget,
       acceptance_criteria: acceptanceValidation.value,
       payment_mode: editPaymentMode.value,
-      payment_method:
-        editPaymentMode.value === 'platform_guarantee' ? editPaymentMethod.value : undefined,
     })
 
     showToast('需求已重新提交，等待审核', 'success')
@@ -1130,8 +1070,6 @@ async function submitRequirementPublish() {
       budget,
       acceptance_criteria: acceptanceValidation.value,
       payment_mode: publishPaymentMode.value,
-      payment_method:
-        publishPaymentMode.value === 'platform_guarantee' ? publishPaymentMethod.value : undefined,
     })
 
     showToast('需求已发布', 'success')
@@ -1595,8 +1533,6 @@ onBeforeUnmount(() => {
     <PublishModal ref="publishModalRef" :visible="publishVisible" v-model:publishTitle="publishTitle"
       v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
       v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
-      v-model:publishPaymentMethod="publishPaymentMethod"
-      :allowPlatformGuarantee="false"
       :publishLoading="publishLoading"
       :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="showToast"
       @submit="submitRequirementPublish" />
@@ -1604,8 +1540,7 @@ onBeforeUnmount(() => {
     <PublishModal ref="editModalRef" :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核"
       loadingText="提交中..." v-model:publishTitle="editTitle" v-model:publishDescription="editDescription"
       v-model:publishBudget="editBudget" v-model:publishAcceptance="editAcceptance"
-      v-model:publishPaymentMode="editPaymentMode" v-model:publishPaymentMethod="editPaymentMethod"
-      :allowPlatformGuarantee="false"
+      v-model:publishPaymentMode="editPaymentMode"
       :publishLoading="editLoading"
       :draft-scope="editRequirement ? `edit-${editRequirement.requirement_id}` : ''" @close="closeEditModal"
       @notify="showToast" @submit="submitRequirementResubmit" />
@@ -1710,23 +1645,6 @@ onBeforeUnmount(() => {
           <button class="ghost" type="button" @click="closeFinalPaymentConfirm">取消</button>
           <button class="ghost primary" type="button" @click="confirmFinalPaymentRequest">{{ finalPaymentConfirmButton
           }}</button>
-        </div>
-      </section>
-    </div>
-
-    <div v-if="completionConfirmVisible && completionConfirmTarget" class="modal-wrap"
-      @click.self="closeCompletionConfirm">
-      <section class="pay-modal" aria-label="需求完成确认弹窗">
-        <h3>确认需求已完成</h3>
-        <p class="pay-line"><strong>需求标题：</strong>{{ completionConfirmTarget.title }}</p>
-        <p class="pay-line"><strong>需求编号：</strong>{{ completionConfirmTarget.requirement_id }}</p>
-        <p class="tip">确认后，当前需求会从已付尾款进入已完成状态，后续可继续评价。</p>
-
-        <div class="actions">
-          <button class="ghost" type="button" :disabled="completionLoading" @click="closeCompletionConfirm">取消</button>
-          <button class="ghost primary" type="button" :disabled="completionLoading" @click="submitRequirementCompletion">
-            {{ completionLoading ? '提交中...' : '确认完成' }}
-          </button>
         </div>
       </section>
     </div>
@@ -2356,8 +2274,7 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-.overview-status--completed,
-.overview-status--final_paid {
+.overview-status--completed {
   background: rgba(34, 197, 94, 0.12);
   color: #166534;
 }

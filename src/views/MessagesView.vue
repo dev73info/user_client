@@ -69,7 +69,7 @@ const activeConversations = computed(() =>
   }),
 )
 const readyRequirements = computed(() =>
-  requirements.value.filter((item) => hasBoundResource(item) && item.status !== 'completed' && item.status !== 'final_paid'),
+  requirements.value.filter((item) => hasBoundResource(item) && item.status !== 'completed'),
 )
 const pendingRequirements = computed(() =>
   readyRequirements.value.filter((item) => !conversationRequirementIds.value.has(item.requirement_id)),

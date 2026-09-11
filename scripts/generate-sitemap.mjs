@@ -3,21 +3,22 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import {
+  dateOnly,
+  fetchPublishedPosts,
+  fetchPublishedResources,
+  positiveInteger,
+  resourceDetailSlug,
+  resolveApiBaseUrl,
+  resolveSiteUrl,
+} from './lib/seo-utils.mjs'
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const projectRoot = resolve(__dirname, '..')
 const sitemapPath = resolve(projectRoot, 'public/sitemap.xml')
-const productionEnv = readEnvFile(resolve(projectRoot, '.env.production'))
 
-const siteUrl = normalizeBaseUrl(
-  process.env.SITEMAP_SITE_URL || process.env.VITE_SITE_URL || 'https://73info.cn',
-)
-const apiBaseUrl = normalizeBaseUrl(
-  process.env.SITEMAP_API_BASE_URL ||
-    process.env.VITE_API_BASE_URL ||
-    productionEnv.VITE_API_BASE_URL ||
-    'https://api.73info.cn',
-)
-const resolvedApiBaseUrl = resolveBaseUrl(apiBaseUrl)
+const siteUrl = resolveSiteUrl()
+const apiBaseUrl = resolveApiBaseUrl(projectRoot)
 const maxCommunityPosts = positiveInteger(process.env.SITEMAP_MAX_COMMUNITY_POSTS, 1000)
 const today = new Date().toISOString().slice(0, 10)
 let sitemapFetchFailed = false
@@ -35,13 +36,15 @@ const staticEntries = [
 
 async function main() {
   const [resources, posts] = await Promise.all([
-    fetchResources().catch((error) => handleFetchFailure('resources', error)),
-    fetchCommunityPosts().catch((error) => handleFetchFailure('community posts', error)),
+    fetchPublishedResources(apiBaseUrl).catch((error) => handleFetchFailure('resources', error)),
+    fetchPublishedPosts(apiBaseUrl, maxCommunityPosts).catch((error) =>
+      handleFetchFailure('community posts', error),
+    ),
   ])
   const entries = [
     ...staticEntries,
     ...resources.map((resource) => ({
-      path: `/resources/${resourceSlug(resource)}`,
+      path: `/resources/${resourceDetailSlug(resource)}`,
       lastmod: dateOnly(resource.updated_at || resource.created_at) || today,
       changefreq: 'weekly',
       priority: '0.7',
@@ -67,44 +70,6 @@ async function main() {
   )
 }
 
-async function fetchResources() {
-  const data = await fetchJson('/resource/resources')
-  return Array.isArray(data) ? data.filter((item) => item?.id && item?.visibility === 'published') : []
-}
-
-async function fetchCommunityPosts() {
-  const posts = []
-  const pageSize = 50
-
-  for (let offset = 0; posts.length < maxCommunityPosts; offset += pageSize) {
-    const batch = await fetchJson(`/community/posts?limit=${pageSize}&offset=${offset}`)
-    if (!Array.isArray(batch) || batch.length === 0) {
-      break
-    }
-
-    posts.push(...batch.filter((item) => item?.id && item?.status === 'published'))
-
-    if (batch.length < pageSize) {
-      break
-    }
-  }
-
-  return posts.slice(0, maxCommunityPosts)
-}
-
-async function fetchJson(path) {
-  const url = new URL(`${resolvedApiBaseUrl}${path.startsWith('/') ? path : `/${path}`}`)
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json' },
-  })
-
-  if (!response.ok) {
-    throw new Error(`[sitemap] ${url} returned HTTP ${response.status}`)
-  }
-
-  return response.json()
-}
-
 function handleFetchFailure(label, error) {
   sitemapFetchFailed = true
   const message = error instanceof Error ? error.message : String(error)
@@ -124,7 +89,7 @@ function renderSitemap(entries) {
   const urls = entries
     .map(
       (entry) => `  <url>
-    <loc>${escapeXml(`${siteUrl}${entry.path}`)}</loc>
+    <loc>${escapeXml(sitemapUrl(entry.path))}</loc>
     <lastmod>${escapeXml(entry.lastmod)}</lastmod>
     <changefreq>${escapeXml(entry.changefreq)}</changefreq>
     <priority>${escapeXml(entry.priority)}</priority>
@@ -139,6 +104,15 @@ ${urls}
 `
 }
 
+// 线上页面以目录形式提供（/xxx/），无斜杠 URL 会 301，sitemap 直接列出最终形态。
+function sitemapUrl(path) {
+  if (path === '/') {
+    return `${siteUrl}/`
+  }
+
+  return `${siteUrl}${String(path).replace(/\/+$/, '')}/`
+}
+
 function dedupeEntries(entries) {
   const seen = new Set()
   return entries.filter((entry) => {
@@ -148,67 +122,6 @@ function dedupeEntries(entries) {
     seen.add(entry.path)
     return true
   })
-}
-
-function normalizeBaseUrl(value) {
-  return String(value || '').trim().replace(/\/+$/, '')
-}
-
-function readEnvFile(path) {
-  try {
-    return Object.fromEntries(
-      readFileSync(path, 'utf8')
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter((line) => line && !line.startsWith('#') && line.includes('='))
-        .map((line) => {
-          const index = line.indexOf('=')
-          const key = line.slice(0, index).trim()
-          const value = line.slice(index + 1).trim().replace(/^['"]|['"]$/g, '')
-          return [key, value]
-        }),
-    )
-  } catch {
-    return {}
-  }
-}
-
-function resolveBaseUrl(value) {
-  const base = /^https?:\/\//i.test(value)
-    ? value
-    : `${siteUrl}${value.startsWith('/') ? value : `/${value}`}`
-
-  if (base.endsWith('/api')) {
-    return base
-  }
-
-  return `${base}/api`
-}
-
-function positiveInteger(value, fallback) {
-  const parsed = Number(value)
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
-}
-
-function resourceSlug(resource) {
-  return `${ownerSlug(resource.creator || resource.author || '')}--${Number(resource.id)}`
-}
-
-function ownerSlug(value) {
-  const slug = String(value || '')
-    .trim()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-
-  return slug || 'resource'
-}
-
-function dateOnly(value) {
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10)
 }
 
 function escapeXml(value) {

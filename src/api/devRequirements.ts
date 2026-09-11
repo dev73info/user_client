@@ -7,8 +7,8 @@ export type RequirementStatus =
   | 'deposit_paid'
   | 'in_development'
   | 'pending_final'
-  | 'final_paid'
   | 'completed'
+  | 'cancelled'
 
 export type RequirementPaymentMode = 'platform_guarantee' | 'self_managed'
 
@@ -16,6 +16,7 @@ export type RequirementItem = {
   id: number
   requirement_id: string
   bound_resource_id?: number | null
+  bound_resource_version_count?: number | null
   resource_visibility?: 'public' | 'private' | null
   created_time: string
   creator: string
@@ -23,7 +24,6 @@ export type RequirementItem = {
   budget?: number | null
   description?: string | null
   acceptance_criteria?: string | null
-  payment_method?: string | null
   payment_mode: RequirementPaymentMode
   status: RequirementStatus
   updated_at: string

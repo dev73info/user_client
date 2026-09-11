@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import '@/styles/home.css'
 
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, Files, Finished, Money, User } from '@element-plus/icons-vue'
@@ -82,7 +82,6 @@ type PendingRequirementView = {
   description?: string | null
   acceptanceCriteria?: string | null
   budget?: number | null
-  paymentMethod?: string | null
   paymentMode: RequirementPaymentMode
 }
 
@@ -158,10 +157,9 @@ type DeveloperRank = {
 type TeamRank = {
   teamId: number
   teamName: string
+  avatarUrl: string
   resourceCount: number
 }
-
-const TOP_LIKED_RESOURCE_LIMIT = 16
 
 /** 冷启动里程碑目标（当前为内测期写死，后续可改为配置） */
 const MILESTONE_TARGETS = {
@@ -171,6 +169,7 @@ const MILESTONE_TARGETS = {
 } as const
 
 const failedDeveloperAvatarUrls = ref<Set<string>>(new Set())
+const failedTeamAvatarUrls = ref<Set<string>>(new Set())
 const failedSpotlightCoverUrls = ref<Set<string>>(new Set())
 
 const metrics = ref<Metric[]>([
@@ -275,7 +274,6 @@ const publishBudget = ref<string | number>('')
 const depositChannel = ref<AdapayBusinessPayChannel>('alipay')
 const publishAcceptance = ref('')
 const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
-const publishPaymentMethod = ref<'alipay' | 'wechat'>('alipay')
 const activeResubmitRequirementId = ref<string | null>(null)
 const publishLoading = ref(false)
 const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
@@ -674,17 +672,31 @@ function handleDeveloperAvatarError(developer: DeveloperRank) {
   failedDeveloperAvatarUrls.value = next
 }
 
+function handleTeamAvatarError(team: TeamRank) {
+  if (!team.avatarUrl) return
+
+  const next = new Set(failedTeamAvatarUrls.value)
+  next.add(team.avatarUrl)
+  failedTeamAvatarUrls.value = next
+}
+
 const teamRanks = computed<TeamRank[]>(() => {
-  const grouped = new Map<number, { teamName: string; resourceCount: number }>()
+  const failedAvatarUrls = failedTeamAvatarUrls.value
+  const grouped = new Map<number, { teamName: string; avatarUrl: string; resourceCount: number }>()
 
   for (const resource of publicResources.value) {
     if (!resource.team_id || !resource.team_name) continue
+    const avatarUrl = resource.team_avatar_url ? apiUrl(resource.team_avatar_url) : ''
     const existing = grouped.get(resource.team_id)
     if (existing) {
       existing.resourceCount += 1
+      if (!existing.avatarUrl && avatarUrl) {
+        existing.avatarUrl = avatarUrl
+      }
     } else {
       grouped.set(resource.team_id, {
         teamName: resource.team_name,
+        avatarUrl,
         resourceCount: 1,
       })
     }
@@ -698,6 +710,7 @@ const teamRanks = computed<TeamRank[]>(() => {
     .map(([teamId, info]) => ({
       teamId,
       teamName: info.teamName,
+      avatarUrl: failedAvatarUrls.has(info.avatarUrl) ? '' : info.avatarUrl,
       resourceCount: info.resourceCount,
     }))
 })
@@ -732,7 +745,6 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
 
       return right.id - left.id
     })
-    .slice(0, TOP_LIKED_RESOURCE_LIMIT)
     .map((item, index) => ({
       kind: 'resource' as const,
       title: item.title,
@@ -756,6 +768,108 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
     }))
 
   return resourceCards
+})
+
+const SPOTLIGHT_PAGE_SIZE = 8
+const spotlightPage = ref(1)
+const spotlightPageCount = computed(() =>
+  Math.max(1, Math.ceil(spotlightCards.value.length / SPOTLIGHT_PAGE_SIZE)),
+)
+const pagedSpotlightCards = computed(() => {
+  const start = (spotlightPage.value - 1) * SPOTLIGHT_PAGE_SIZE
+  return spotlightCards.value.slice(start, start + SPOTLIGHT_PAGE_SIZE)
+})
+
+function goSpotlightPage(target: number) {
+  if (target < 1 || target > spotlightPageCount.value || target === spotlightPage.value) {
+    return
+  }
+  // 翻页前先用当前高度撑住网格，翻页后保持两页中的较大高度，避免区块高度变化导致页面元素跳动
+  const gridElement = document.querySelector<HTMLElement>('.portal-spotlight-grid')
+  const previousHeight = gridElement?.offsetHeight ?? 0
+  if (gridElement && previousHeight > 0) {
+    gridElement.style.minHeight = `${previousHeight}px`
+  }
+  spotlightPage.value = target
+  void nextTick(() => {
+    if (!gridElement) {
+      return
+    }
+    const nextHeight = gridElement.offsetHeight
+    gridElement.style.minHeight = `${Math.max(previousHeight, nextHeight)}px`
+  })
+}
+
+watch(spotlightPageCount, (next) => {
+  if (spotlightPage.value > next) {
+    spotlightPage.value = next
+  }
+})
+
+type SpotlightPaginationItem = { key: string; label: string; page: number | null }
+
+const SPOTLIGHT_PAGE_WINDOW = 1
+
+const spotlightPaginationItems = computed<SpotlightPaginationItem[]>(() => {
+  const total = spotlightPageCount.value
+  const current = spotlightPage.value
+  const items: SpotlightPaginationItem[] = []
+  if (total <= 9) {
+    for (let page = 1; page <= total; page += 1) {
+      items.push({ key: `page-${page}`, label: String(page), page })
+    }
+    return items
+  }
+  items.push({ key: 'page-1', label: '1', page: 1 })
+  const start = Math.max(2, current - SPOTLIGHT_PAGE_WINDOW)
+  const end = Math.min(total - 1, current + SPOTLIGHT_PAGE_WINDOW)
+  if (start > 2) {
+    items.push({ key: 'ellipsis-left', label: '…', page: null })
+  }
+  for (let page = start; page <= end; page += 1) {
+    items.push({ key: `page-${page}`, label: String(page), page })
+  }
+  if (end < total - 1) {
+    items.push({ key: 'ellipsis-right', label: '…', page: null })
+  }
+  items.push({ key: `page-${total}`, label: String(total), page: total })
+  return items
+})
+
+const spotlightJumpOpen = ref(false)
+const spotlightJumpAnchor = ref<string | null>(null)
+const spotlightJumpValue = ref('')
+
+function toggleSpotlightJump(anchorKey: string) {
+  if (spotlightJumpOpen.value && spotlightJumpAnchor.value === anchorKey) {
+    spotlightJumpOpen.value = false
+    return
+  }
+  spotlightJumpAnchor.value = anchorKey
+  spotlightJumpValue.value = String(spotlightPage.value)
+  spotlightJumpOpen.value = true
+}
+
+function submitSpotlightJump() {
+  const parsed = Number.parseInt(spotlightJumpValue.value, 10)
+  if (Number.isFinite(parsed)) {
+    goSpotlightPage(Math.min(Math.max(parsed, 1), spotlightPageCount.value))
+  }
+  spotlightJumpOpen.value = false
+}
+
+function handleSpotlightJumpOutsideClick() {
+  if (spotlightJumpOpen.value) {
+    spotlightJumpOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleSpotlightJumpOutsideClick)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleSpotlightJumpOutsideClick)
 })
 
 const authTitle = computed(() => {
@@ -820,7 +934,7 @@ onMounted(() => {
   setSeoMeta({
     title: '73Info 柒叁信息 - 资源与需求协作平台',
     description:
-      '73Info 柒叁信息面向 Minecraft、网站开发和小工具场景提供免费资源浏览、需求发布、开发者协作、沟通记录、工单跟进与合规说明服务。',
+      '73Info 柒叁信息面向网站开发和小工具场景提供免费资源浏览、需求发布、开发者协作、沟通记录、工单跟进与合规说明服务。',
     path: '/',
   })
 
@@ -955,7 +1069,6 @@ function openDepositCard(item: PendingRequirementView) {
     publishBudget.value = item.budget ?? ''
     publishAcceptance.value = item.acceptanceCriteria || ''
     publishPaymentMode.value = item.paymentMode
-    publishPaymentMethod.value = item.paymentMethod === 'wechat' ? 'wechat' : 'alipay'
     activeResubmitRequirementId.value = item.id
     router.push({ name: 'home', query: { modal: 'publish' } })
     return
@@ -1192,7 +1305,6 @@ async function loadPendingRequirements(silent = false) {
         description: item.description,
         acceptanceCriteria: item.acceptance_criteria,
         budget: item.budget,
-        paymentMethod: item.payment_method,
         paymentMode: item.payment_mode,
       }))
   } catch (err) {
@@ -1626,7 +1738,6 @@ async function openPublishModal() {
   publishBudget.value = ''
   publishAcceptance.value = ''
   publishPaymentMode.value = 'self_managed'
-  publishPaymentMethod.value = 'alipay'
   await router.push({ name: 'home', query: { modal: 'publish' } })
 }
 
@@ -1740,8 +1851,6 @@ async function submitPublishRequirement() {
       budget,
       acceptance_criteria: acceptanceValidation.value,
       payment_mode: publishPaymentMode.value,
-      payment_method:
-        publishPaymentMode.value === 'platform_guarantee' ? publishPaymentMethod.value : undefined,
     }
 
     if (activeResubmitRequirementId.value) {
@@ -1762,7 +1871,6 @@ async function submitPublishRequirement() {
     publishBudget.value = ''
     publishAcceptance.value = ''
     publishPaymentMode.value = 'self_managed'
-    publishPaymentMethod.value = 'alipay'
     if (resubmitId) {
       publishModalRef.value?.clearDraft(`edit-${resubmitId}`)
     } else {
@@ -1988,9 +2096,10 @@ async function submitPublishRequirement() {
                 更多免费资源
               </button>
             </div>
-            <div v-if="spotlightCards.length > 0" class="portal-spotlight-grid">
+            <template v-if="spotlightCards.length > 0">
+              <div class="portal-spotlight-grid">
               <article
-                v-for="card in spotlightCards"
+                v-for="card in pagedSpotlightCards"
                 :key="card.resourceId ?? card.title"
                 class="portal-spotlight-card"
                 :class="`portal-spotlight-card--${card.accent}`"
@@ -2062,7 +2171,80 @@ async function submitPublishRequirement() {
                   </div>
                 </div>
               </article>
-            </div>
+              </div>
+
+              <nav
+                v-if="spotlightPageCount > 1"
+                class="portal-pagination"
+                aria-label="免费资源分页"
+              >
+                <button
+                  class="portal-pagination__nav"
+                  type="button"
+                  :disabled="spotlightPage <= 1"
+                  @click="goSpotlightPage(spotlightPage - 1)"
+                >
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                  </svg>
+                  上一页
+                </button>
+                <template v-for="item in spotlightPaginationItems" :key="item.key">
+                  <button
+                    v-if="item.page"
+                    class="portal-pagination__page"
+                    :class="{ 'is-active': item.page === spotlightPage }"
+                    type="button"
+                    @click="goSpotlightPage(item.page ?? spotlightPage)"
+                  >
+                    {{ item.label }}
+                  </button>
+                  <span v-else class="portal-pagination__jump-wrap">
+                    <button
+                      class="portal-pagination__ellipsis"
+                      type="button"
+                      aria-label="跳转到指定页"
+                      @click.stop="toggleSpotlightJump(item.key)"
+                    >
+                      {{ item.label }}
+                    </button>
+                    <div
+                      v-if="spotlightJumpOpen && spotlightJumpAnchor === item.key"
+                      class="portal-pagination__jump"
+                      @click.stop
+                    >
+                      <span class="portal-pagination__jump-label">转到第</span>
+                      <input
+                        v-model="spotlightJumpValue"
+                        class="portal-pagination__jump-input"
+                        type="number"
+                        :min="1"
+                        :max="spotlightPageCount"
+                        inputmode="numeric"
+                        @keydown.enter.prevent="submitSpotlightJump"
+                      />
+                      <span class="portal-pagination__jump-label">页</span>
+                      <button class="portal-pagination__jump-submit" type="button" @click="submitSpotlightJump">
+                        跳转
+                      </button>
+                    </div>
+                  </span>
+                </template>
+                <button
+                  class="portal-pagination__nav"
+                  type="button"
+                  :disabled="spotlightPage >= spotlightPageCount"
+                  @click="goSpotlightPage(spotlightPage + 1)"
+                >
+                  下一页
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
+              </nav>
+            </template>
             <div v-else class="portal-empty-state">
               <strong>暂无免费资源</strong>
             </div>
@@ -2314,7 +2496,13 @@ async function submitPublishRequirement() {
                 "
               >
                 <div class="portal-rank-item__avatar">
-                  <span>{{ team.teamName.slice(0, 1) }}</span>
+                  <img
+                    v-if="team.avatarUrl"
+                    :src="team.avatarUrl"
+                    :alt="`${team.teamName} 的头像`"
+                    @error="handleTeamAvatarError(team)"
+                  />
+                  <span v-else>{{ team.teamName.slice(0, 1) }}</span>
                 </div>
                 <div class="portal-rank-item__meta">
                   <strong>{{ team.teamName }}</strong>
@@ -2410,11 +2598,9 @@ async function submitPublishRequirement() {
       v-model:publishBudget="publishBudget"
       v-model:publishAcceptance="publishAcceptance"
       v-model:publishPaymentMode="publishPaymentMode"
-      v-model:publishPaymentMethod="publishPaymentMethod"
       :modalTitle="publishModalTitle"
       :submitText="publishModalSubmitText"
       :loadingText="publishModalLoadingText"
-      :allowPlatformGuarantee="false"
       :publishLoading="publishLoading"
       :draft-scope="activeResubmitRequirementId ? `edit-${activeResubmitRequirementId}` : (auth.isAuthed ? auth.username : 'default')"
       @close="closePublishModal"

@@ -382,7 +382,7 @@ onBeforeUnmount(() => {
       </section>
     </section>
 
-    <el-dialog v-model="composeOpen" title="提交新工单" width="720px" :close-on-click-modal="false">
+    <el-dialog v-model="composeOpen" title="提交新工单" width="720px">
       <div class="compose-grid">
         <label class="field">
           <span>工单标题</span>

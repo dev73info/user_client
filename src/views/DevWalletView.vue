@@ -82,11 +82,46 @@ const rechargeAmount = ref(100)
 const rechargeChannel = ref<'alipay' | 'wechat'>('alipay')
 const adapayRechargeLoading = ref(false)
 const nowTick = ref(Date.now())
+// 后台轮询心跳：处理中的记录 5s 检查一次，仅剩打款失败（需人工处理）时放宽到 30s
+const DEPOSIT_ACTIVE_POLL_MS = 5000
+const DEPOSIT_STALLED_POLL_MS = 30000
+// 焦点/可见性触发的刷新最小间隔，避免切换窗口时连续重复请求
+const DEPOSIT_BACKGROUND_MIN_INTERVAL_MS = 3000
+// 轮询节拍与节流阈值相等时，setInterval 的毫秒级抖动会让整次轮询被跳过，故留出容差
+const DEPOSIT_POLL_JITTER_TOLERANCE_MS = 1000
+const DEPOSIT_ACTIVE_STATUSES = ['pending_review', 'approved', 'payout_processing']
+const DEPOSIT_STALLED_STATUSES = ['payout_failed']
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 let depositRefreshTimer: ReturnType<typeof setInterval> | null = null
+// 后台刷新只做并发保护，不点亮 depositLoading，否则表格每 5 秒闪一次遮罩
+let depositFetching = false
+// 记录最后一次刷新的启动时间（而非完成时间），避免请求耗时把下一次轮询挤掉
+let depositRefreshStartedAt = 0
+
+function depositRecordStatuses(): string[] {
+  return (depositWithdrawalSummary.value?.withdrawals ?? []).map((record) => record.status)
+}
+
+function refreshDepositInBackground(minIntervalMs = DEPOSIT_BACKGROUND_MIN_INTERVAL_MS) {
+  if (document.visibilityState !== 'visible') return
+  if (depositFetching) return
+  if (depositRefreshStartedAt && Date.now() - depositRefreshStartedAt < minIntervalMs) return
+  void loadDeposit({ silent: true, background: true })
+}
 
 function refreshDepositWhenVisible() {
-  if (document.visibilityState === 'visible') void loadDeposit(true)
+  refreshDepositInBackground()
+}
+
+function pollDepositStatus() {
+  const statuses = depositRecordStatuses()
+  if (statuses.some((status) => DEPOSIT_ACTIVE_STATUSES.includes(status))) {
+    refreshDepositInBackground(DEPOSIT_ACTIVE_POLL_MS - DEPOSIT_POLL_JITTER_TOLERANCE_MS)
+    return
+  }
+  if (statuses.some((status) => DEPOSIT_STALLED_STATUSES.includes(status))) {
+    refreshDepositInBackground(DEPOSIT_STALLED_POLL_MS - DEPOSIT_POLL_JITTER_TOLERANCE_MS)
+  }
 }
 
 const recentIncome = computed<DevWalletIncomeItem[]>(() => overview.value?.recent_income ?? [])
@@ -196,11 +231,7 @@ onMounted(async () => {
   countdownTimer = setInterval(() => {
     nowTick.value = Date.now()
   }, 1000)
-  depositRefreshTimer = setInterval(() => {
-    if (depositWithdrawalSummary.value?.withdrawals.some((record) =>
-      ['pending_review', 'approved', 'payout_processing', 'payout_failed'].includes(record.status),
-    )) refreshDepositWhenVisible()
-  }, 5000)
+  depositRefreshTimer = setInterval(pollDepositStatus, DEPOSIT_ACTIVE_POLL_MS)
   document.addEventListener('visibilitychange', refreshDepositWhenVisible)
   window.addEventListener('focus', refreshDepositWhenVisible)
   await Promise.all([loadWallet(), loadDeposit()])
@@ -257,10 +288,22 @@ async function loadWallet() {
   }
 }
 
-async function loadDeposit(silent = false) {
-  if (!auth.token || depositLoading.value) return
+type LoadDepositOptions = {
+  /** 失败时不弹 toast（后台轮询使用） */
+  silent?: boolean
+  /** 后台刷新：不点亮表格/按钮的 loading 遮罩，避免闪烁 */
+  background?: boolean
+}
 
-  depositLoading.value = true
+async function loadDeposit(options: LoadDepositOptions = {}) {
+  if (!auth.token || depositFetching) return
+
+  const { silent = false, background = false } = options
+  depositFetching = true
+  depositRefreshStartedAt = Date.now()
+  if (!background) {
+    depositLoading.value = true
+  }
   try {
     const [status, summary, credit] = await Promise.all([
       getDevOrderDepositStatus(auth.token),
@@ -274,7 +317,10 @@ async function loadDeposit(silent = false) {
     const message = error instanceof Error ? error.message : '加载保证金数据失败'
     if (!silent) showToast(message, 'error')
   } finally {
-    depositLoading.value = false
+    depositFetching = false
+    if (!background) {
+      depositLoading.value = false
+    }
   }
 }
 
@@ -401,7 +447,8 @@ async function submitDepositWithdrawal() {
     }
     depositWithdrawDialogVisible.value = false
     resetDepositWithdrawForm()
-    await loadDeposit()
+    // 静默刷新，避免提交后表格再闪一次 loading
+    await loadDeposit({ silent: true, background: true })
   } catch (error) {
     const message = error instanceof Error ? error.message : '提交保证金提现申请失败'
     depositWithdrawalError.value = message

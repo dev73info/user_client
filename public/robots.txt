@@ -1,4 +1,16 @@
 User-agent: *
 Allow: /
 
+# 需要登录或承载订单参数的私有页面，避免爬虫把 SPA 空壳/登录页当成有效内容收录。
+Disallow: /workbench
+Disallow: /profile
+Disallow: /messages
+Disallow: /tickets
+Disallow: /realname
+Disallow: /coupon-claim
+Disallow: /contract-sign
+# 用 $ 锚点避免误伤 /payment-refund（合规页需要收录）
+Disallow: /payment$
+Disallow: /payment?
+
 Sitemap: https://73info.cn/sitemap.xml

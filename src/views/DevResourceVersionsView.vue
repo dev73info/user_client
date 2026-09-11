@@ -452,7 +452,7 @@ async function removeVersion() {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="deleteVersionDialogVisible" width="520px" :close-on-click-modal="false"
+    <el-dialog v-model="deleteVersionDialogVisible" width="520px"
       :title="deleteVersionTarget ? `删除版本 · ${deleteVersionTarget.version}` : '删除版本'" @close="closeDeleteVersionDialog">
       <div class="dev-version-delete-dialog">
         <p>

@@ -257,8 +257,8 @@ function statusToLabel(status: RequirementStatus): string {
         deposit_paid: '待开发',
         in_development: '开发中',
         pending_final: '待付尾款',
-        final_paid: '已付尾款',
         completed: '已完成',
+        cancelled: '已取消',
     }
 
     return mapping[status]
@@ -299,7 +299,7 @@ function paymentModeLabel(mode: RequirementPaymentMode) {
 }
 
 function paymentLabel(currentRequirement: RequirementItem) {
-    return currentRequirement.payment_method?.trim() || paymentModeLabel(currentRequirement.payment_mode)
+    return paymentModeLabel(currentRequirement.payment_mode)
 }
 
 function requiresDepositGate(currentRequirement: RequirementItem) {

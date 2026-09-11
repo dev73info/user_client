@@ -49,10 +49,11 @@ const props = withDefaults(
         floatingToolbarTop?: number | string
         minHeight?: string
         maxHeight?: string
+        autoHeight?: boolean
+        toolbarOnFocus?: boolean
     }>(),
     {
         floatingToolbar: true,
-        minHeight: 'clamp(280px, 38vh, 420px)',
     },
 )
 
@@ -130,9 +131,60 @@ const floatingToolbarEnabled = computed(() => props.floatingToolbar !== false)
 
 const floatingToolbarTop = computed(() => normalizeCssPixelValue(props.floatingToolbarTop))
 
+// 默认最小高度：固定起点，适合长文档编辑。
+const DEFAULT_MIN_HEIGHT = 'clamp(280px, 38vh, 420px)'
+// 自动高度模式下的最小高度：正好容纳一行正文。
+// 1.75em 对应 surface 的 line-height，32px 对应其上下各 16px 的内边距，
+// 因此空内容时高度即为一行，不留多余空白。
+const AUTO_HEIGHT_MIN_HEIGHT = 'calc(1.75em + 32px)'
+
+const autoHeightEnabled = computed(() => props.autoHeight === true)
+
+// 工具栏按需显示：仅在编辑器获得焦点时出现，减少空置时的视觉干扰。
+const toolbarOnFocusEnabled = computed(() => props.toolbarOnFocus === true)
+const toolbarVisible = ref(false)
+
+function handleRootFocusIn() {
+    if (toolbarOnFocusEnabled.value) {
+        toolbarVisible.value = true
+    }
+}
+
+function handleRootFocusOut(event: FocusEvent) {
+    if (!toolbarOnFocusEnabled.value) {
+        return
+    }
+    const nextTarget = event.relatedTarget
+    // 焦点仍在编辑器内部（如字号输入框）时保持工具栏可见。
+    if (nextTarget instanceof Node && editorRootRef.value?.contains(nextTarget)) {
+        return
+    }
+    toolbarVisible.value = false
+    closeToolbarDropdown()
+}
+
+// 阻止工具栏按钮抢走编辑器焦点：否则按钮会在 mousedown 后、click 生效前
+// 就因编辑器失焦而被隐藏，导致点击不生效。
+function handleToolbarPointerDown(event: MouseEvent) {
+    if (!toolbarOnFocusEnabled.value) {
+        return
+    }
+    const target = event.target
+    // 字号输入框等可编辑控件需要正常获取焦点，不阻止默认行为。
+    if (target instanceof HTMLElement && target.closest('input, textarea, [contenteditable="true"]')) {
+        return
+    }
+    event.preventDefault()
+}
+
+// 显式传入 minHeight 时优先使用，否则按是否开启自动高度选择默认值。
+const resolvedMinHeight = computed(
+    () => props.minHeight || (autoHeightEnabled.value ? AUTO_HEIGHT_MIN_HEIGHT : DEFAULT_MIN_HEIGHT),
+)
+
 const editorStyle = computed<Record<string, string>>(() => {
     const style: Record<string, string> = {
-        '--rich-text-editor-min-height': props.minHeight,
+        '--rich-text-editor-min-height': resolvedMinHeight.value,
     }
     if (props.maxHeight) {
         style['--rich-text-editor-max-height'] = props.maxHeight
@@ -987,10 +1039,15 @@ defineExpose({
 </script>
 
 <template>
-    <div ref="editorRootRef" class="rich-text-editor" :style="editorStyle">
-        <div class="rich-text-editor__toolbar-shell" :style="toolbarShellStyle">
+    <div ref="editorRootRef" class="rich-text-editor"
+        :class="{
+            'rich-text-editor--auto-height': autoHeightEnabled,
+            'rich-text-editor--toolbar-on-focus': toolbarOnFocusEnabled,
+        }" :style="editorStyle" @focusin="handleRootFocusIn" @focusout="handleRootFocusOut">
+        <div v-show="!toolbarOnFocusEnabled || toolbarVisible" class="rich-text-editor__toolbar-shell"
+            :style="toolbarShellStyle">
             <div ref="toolbarRef" class="rich-text-editor__toolbar" :class="{ 'is-floating': toolbarFloating }"
-                :style="toolbarFloatingStyle" aria-label="编辑器工具栏">
+                :style="toolbarFloatingStyle" aria-label="编辑器工具栏" @mousedown="handleToolbarPointerDown">
                 <div class="rich-text-editor__dropdown">
                     <button class="rich-text-editor__dropdown-trigger"
                         :class="{ 'is-open': openDropdown === 'heading' }" type="button" title="标题级别"
@@ -1121,6 +1178,22 @@ defineExpose({
 .rich-text-editor__toolbar-shell {
     position: relative;
     z-index: 8;
+}
+
+/* 按需显示的工具栏：淡入避免突然出现。
+   仅使用 opacity，不加 transform，否则会改变 .is-floating 固定定位的包含块。 */
+@keyframes rich-text-editor-toolbar-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.rich-text-editor--toolbar-on-focus .rich-text-editor__toolbar-shell {
+    animation: rich-text-editor-toolbar-in 160ms ease;
 }
 
 .rich-text-editor__toolbar {
@@ -1368,6 +1441,11 @@ defineExpose({
     color: #1e293b;
     line-height: 1.75;
     outline: none;
+}
+
+/* 自动高度：由内容撑开编辑器，仅在超过 max-height 时才在内部滚动。 */
+.rich-text-editor--auto-height :deep(.rich-text-editor__surface) {
+    height: auto;
 }
 
 .rich-text-editor :deep(.rich-text-editor__surface p),

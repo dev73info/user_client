@@ -38,6 +38,10 @@ function mountWallet() {
   } })
 }
 
+function walletState(wrapper: ReturnType<typeof mountWallet>): Record<string, unknown> {
+  return (wrapper.vm.$ as unknown as { setupState: Record<string, unknown> }).setupState
+}
+
 describe('wallet deposit status refresh', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -65,18 +69,64 @@ describe('wallet deposit status refresh', () => {
     wrapper.unmount()
   })
 
-  it('refreshes on return to the page and removes listeners and timers on unmount', async () => {
+  it('keeps the table loading state untouched for background refreshes', async () => {
+    mocks.summary.mockResolvedValue({ withdrawals: [{ status: 'payout_processing' }] })
     const wrapper = mountWallet()
     await flushPromises()
+    expect(walletState(wrapper).depositLoading).toBe(false)
+
+    await vi.advanceTimersByTimeAsync(5000)
+    await flushPromises()
+    expect(mocks.summary).toHaveBeenCalledTimes(2)
+    // 后台轮询不得点亮表格 loading 遮罩，否则会持续闪烁
+    expect(walletState(wrapper).depositLoading).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('slows polling when the only pending record needs manual handling', async () => {
+    mocks.summary.mockResolvedValue({ withdrawals: [{ status: 'payout_failed' }] })
+    const wrapper = mountWallet()
+    await flushPromises()
+    expect(mocks.summary).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(10000)
+    await flushPromises()
+    expect(mocks.summary).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(20000)
+    await flushPromises()
+    expect(mocks.summary).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+
+  it('refreshes on return to the page, throttles repeat events and removes listeners on unmount', async () => {
+    const wrapper = mountWallet()
+    await flushPromises()
+    expect(mocks.summary).toHaveBeenCalledTimes(1)
+
+    // 刚加载完就触发的 focus / visibilitychange 应被节流，避免重复请求
     window.dispatchEvent(new Event('focus'))
     document.dispatchEvent(new Event('visibilitychange'))
     await flushPromises()
+    expect(mocks.summary).toHaveBeenCalledTimes(1)
+
+    // 超过节流窗口后回到页面才真正刷新
+    await vi.advanceTimersByTimeAsync(3000)
+    window.dispatchEvent(new Event('focus'))
+    await flushPromises()
     expect(mocks.summary).toHaveBeenCalledTimes(2)
+
+    // 轮询心跳同样遵守节流：t=5000 的心跳距上次刷新（t=3000）不足 5s 会被跳过，
+    // t=10000 的心跳才真正发起请求，因此不会与回到页面的刷新叠加
+    await vi.advanceTimersByTimeAsync(7000)
+    await flushPromises()
+    expect(mocks.summary).toHaveBeenCalledTimes(3)
+
     wrapper.unmount()
     window.dispatchEvent(new Event('focus'))
     document.dispatchEvent(new Event('visibilitychange'))
     await vi.advanceTimersByTimeAsync(10000)
-    expect(mocks.summary).toHaveBeenCalledTimes(2)
+    expect(mocks.summary).toHaveBeenCalledTimes(3)
   })
 
   it('does not poll while hidden or display repeated background errors', async () => {
@@ -114,11 +164,13 @@ describe('wallet deposit status refresh', () => {
     pagination.vm.$emit('update:current-page', 2)
     await flushPromises()
     mocks.summary.mockResolvedValue({ withdrawals: records.slice(0, 2) })
+    await vi.advanceTimersByTimeAsync(3000)
     window.dispatchEvent(new Event('focus'))
     await flushPromises()
     expect(pagination.props('currentPage')).toBe(1)
     expect(table.props('data')).toEqual(records.slice(0, 2))
     mocks.summary.mockResolvedValue({ withdrawals: [] })
+    await vi.advanceTimersByTimeAsync(3000)
     window.dispatchEvent(new Event('focus'))
     await flushPromises()
     expect(pagination.props('currentPage')).toBe(1)

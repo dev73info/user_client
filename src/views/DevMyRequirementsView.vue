@@ -2,15 +2,14 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { ArrowDown, ArrowUp, ChatDotRound } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowUp, ChatDotRound, Close, Document, UploadFilled } from '@element-plus/icons-vue'
 
+import { reportAdapayBreach } from '@/api/adapay'
 import {
-  listAdapayDeliveryVersions,
-  reportAdapayBreach,
-  submitAdapayDeliveryVersion,
-  uploadAdapayDeliveryArtifact,
-  type AdapayDeliveryVersion,
-} from '@/api/adapay'
+  createMcResourceVersion,
+  listMcResourceVersions,
+  type McResourceVersionPayload,
+} from '@/api/mcResources'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import {
@@ -24,7 +23,11 @@ import {
   respondUnbindRequirement,
   type RequirementItem,
 } from '@/api/devRequirements'
-import { fetchDevContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
+import {
+  createRequirementContract,
+  fetchDevContractSigningStatus,
+  type ContractSigningStatus,
+} from '@/api/contracts'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
@@ -36,6 +39,7 @@ const { showToast } = useToast()
 const loading = ref(false)
 const rows = ref<RequirementItem[]>([])
 const signingStatusMap = ref<Record<string, ContractSigningStatus | null>>({})
+const contractCreatingId = ref('')
 const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const conversationLoading = ref(false)
@@ -51,16 +55,16 @@ const unbindLoading = ref(false)
 const unbindRespondVisible = ref(false)
 const unbindRespondRequirement = ref<RequirementItem | null>(null)
 const unbindRespondLoading = ref(false)
-const deliveryVisible = ref(false)
-const deliveryRequirement = ref<RequirementItem | null>(null)
-const deliveryTitle = ref('')
-const deliveryDescription = ref('')
-const deliveryArtifactUrl = ref('')
-const deliveryArtifactFile = ref<File | null>(null)
-const deliveryArtifactFileInput = ref<HTMLInputElement | null>(null)
-const deliveryLoading = ref(false)
-const deliveryVersionsMap = ref<Record<string, AdapayDeliveryVersion[]>>({})
 const breachVisible = ref(false)
+const deliveryDialogVisible = ref(false)
+const deliveryRequirement = ref<RequirementItem | null>(null)
+const deliveryVersion = ref('')
+const deliveryNote = ref('')
+const deliveryFile = ref<File | null>(null)
+const deliveryFileInput = ref<HTMLInputElement | null>(null)
+const deliverySubmitting = ref(false)
+const deliveryVersions = ref<McResourceVersionPayload[]>([])
+const deliveryVersionsLoading = ref(false)
 const breachRequirement = ref<RequirementItem | null>(null)
 const breachLiableParty = ref<'customer' | 'developer' | 'platform'>('customer')
 const breachReason = ref('')
@@ -84,7 +88,6 @@ async function loadMyRequirements() {
   loading.value = true
   try {
     rows.value = await listMyRequirements(auth.token)
-    await loadDeliveryVersions(rows.value)
     // 无担保模式（self_managed）不需要合同，无需查询合同签署状态
     const guaranteedRows = rows.value.filter((item) => item.payment_mode !== 'self_managed')
     const [statusEntries] = await Promise.all([
@@ -111,25 +114,6 @@ async function loadMyRequirements() {
   }
 }
 
-async function loadDeliveryVersions(items: RequirementItem[]) {
-  const guaranteedItems = items.filter(
-    (item) => item.payment_mode !== 'self_managed' && ['in_development', 'pending_final'].includes(item.status),
-  )
-  const entries = await Promise.allSettled(
-    guaranteedItems.map(async (item) => ({
-      requirementId: item.requirement_id,
-      versions: await listAdapayDeliveryVersions(auth.token, item.requirement_id),
-    })),
-  )
-  const nextMap: Record<string, AdapayDeliveryVersion[]> = {}
-  for (const entry of entries) {
-    if (entry.status === 'fulfilled') {
-      nextMap[entry.value.requirementId] = entry.value.versions
-    }
-  }
-  deliveryVersionsMap.value = nextMap
-}
-
 function formatMoney(value?: number | null): string {
   if (value == null) {
     return '待议价'
@@ -152,8 +136,6 @@ function statusLabel(status: RequirementItem['status']): string {
       return '开发中'
     case 'pending_final':
       return '待付尾款'
-    case 'final_paid':
-      return '已付尾款'
     case 'completed':
       return '已完成'
     default:
@@ -189,7 +171,6 @@ function requirementFieldHtml(value?: string | null): string {
 function statusType(status: RequirementItem['status']): 'info' | 'success' | 'warning' | 'danger' {
   switch (status) {
     case 'completed':
-    case 'final_paid':
     case 'deposit_paid':
       return 'success'
     case 'in_development':
@@ -223,7 +204,7 @@ function openConversation(item: RequirementItem) {
 }
 
 function isRequirementCompleted(item: RequirementItem) {
-  return item.status === 'completed' || item.status === 'final_paid'
+  return item.status === 'completed'
 }
 
 function canOpenConversation(item: RequirementItem) {
@@ -322,78 +303,150 @@ function contractStartHint(item: RequirementItem): string {
   return '等待客户签署，双方签署完成后由需求方支付定金'
 }
 
-function deliveryVersions(item: RequirementItem) {
-  return deliveryVersionsMap.value[item.requirement_id] ?? []
+function resourceVersionCount(item: RequirementItem) {
+  return item.bound_resource_version_count ?? 0
 }
 
-function canSubmitDelivery(item: RequirementItem) {
-  return item.payment_mode !== 'self_managed' && item.status === 'in_development'
+// 方案 B：交付物就是绑定资源项目的资源版本，直接复用资源项目版本接口。
+function canSubmitDeliveryVersion(item: RequirementItem) {
+  return (
+    item.bound_resource_id != null &&
+    ['in_development', 'pending_final'].includes(item.status)
+  )
+}
+
+function resetDeliveryForm() {
+  deliveryVersion.value = ''
+  deliveryNote.value = ''
+  deliveryFile.value = null
+  if (deliveryFileInput.value) {
+    deliveryFileInput.value.value = ''
+  }
+}
+
+async function loadDeliveryVersions(resourceId: number) {
+  if (!auth.token) {
+    return
+  }
+
+  deliveryVersionsLoading.value = true
+  try {
+    deliveryVersions.value = await listMcResourceVersions(auth.token, resourceId)
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '加载资源版本失败', 'error')
+  } finally {
+    deliveryVersionsLoading.value = false
+  }
 }
 
 function openDeliveryDialog(item: RequirementItem) {
-  if (!canSubmitDelivery(item)) {
+  if (item.bound_resource_id == null) {
+    showToast('当前需求还没有关联资源项目', 'warning')
     return
   }
+
   deliveryRequirement.value = item
-  deliveryTitle.value = ''
-  deliveryDescription.value = ''
-  deliveryArtifactUrl.value = ''
-  deliveryArtifactFile.value = null
-  deliveryVisible.value = true
+  resetDeliveryForm()
+  deliveryVersions.value = []
+  deliveryDialogVisible.value = true
+  void loadDeliveryVersions(item.bound_resource_id)
 }
 
 function closeDeliveryDialog() {
-  if (deliveryLoading.value) {
+  if (deliverySubmitting.value) {
     return
   }
-  deliveryVisible.value = false
+
+  deliveryDialogVisible.value = false
   deliveryRequirement.value = null
 }
 
-async function submitDelivery() {
+function openResourceVersionPage(resourceId: number) {
+  void router.push({ name: 'dev-resource-versions', params: { resourceId } })
+}
+
+function chooseDeliveryFile() {
+  deliveryFileInput.value?.click()
+}
+
+function handleDeliveryFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  deliveryFile.value = input.files?.[0] ?? null
+  input.value = ''
+}
+
+function clearDeliveryFile() {
+  deliveryFile.value = null
+  if (deliveryFileInput.value) {
+    deliveryFileInput.value.value = ''
+  }
+}
+
+function formatBytes(value?: number | null) {
+  if (!value || value <= 0) {
+    return '0 B'
+  }
+
+  const units = ['B', 'KB', 'MB', 'GB']
+  let size = value
+  let unitIndex = 0
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024
+    unitIndex += 1
+  }
+
+  const precision = unitIndex === 0 || size >= 10 ? 0 : 1
+  return `${size.toFixed(precision)} ${units[unitIndex]}`
+}
+
+function deliveryVersionSummary() {
+  if (deliveryVersionsLoading.value) {
+    return '加载中...'
+  }
+
+  if (deliveryVersions.value.length === 0) {
+    return '暂无'
+  }
+
+  const labels = deliveryVersions.value.slice(0, 3).map((item) => item.version)
+  const suffix = deliveryVersions.value.length > 3 ? ` 等 ${deliveryVersions.value.length} 版` : ''
+  return `${labels.join('、')}${suffix}`
+}
+
+async function submitDeliveryVersion() {
   const item = deliveryRequirement.value
-  const description = deliveryDescription.value.trim()
-  if (!item || !description) {
-    showToast('请填写本次交付说明', 'warning')
+  if (!item?.bound_resource_id) {
     return
   }
 
-  deliveryLoading.value = true
+  const version = deliveryVersion.value.trim()
+  if (!version) {
+    showToast('请填写版本号', 'warning')
+    return
+  }
+
+  if (!deliveryFile.value) {
+    showToast('请选择交付文件', 'warning')
+    return
+  }
+
+  deliverySubmitting.value = true
   try {
-    if (deliveryArtifactFile.value) {
-      const upload = await uploadAdapayDeliveryArtifact(
-        auth.token,
-        item.requirement_id,
-        deliveryArtifactFile.value,
-      )
-      deliveryArtifactUrl.value = upload.artifactUrl
-    }
-    const version = await submitAdapayDeliveryVersion(auth.token, item.requirement_id, {
-      title: deliveryTitle.value.trim(),
-      description,
-      artifact_url: deliveryArtifactUrl.value.trim(),
+    const created = await createMcResourceVersion(auth.token, item.bound_resource_id, {
+      version,
+      file: deliveryFile.value,
+      note: deliveryNote.value.trim() || null,
     })
-    deliveryVersionsMap.value = {
-      ...deliveryVersionsMap.value,
-      [item.requirement_id]: [version, ...deliveryVersions(item)],
-    }
-    showToast(`第 ${version.versionNo} 版交付已提交`, 'success')
-    closeDeliveryDialog()
+    showToast(`交付版本 ${created.version} 已提交，等待客户验收`, 'success')
+    resetDeliveryForm()
+    deliveryDialogVisible.value = false
+    deliveryRequirement.value = null
+    await loadMyRequirements()
   } catch (error) {
     showToast(error instanceof Error ? error.message : '提交交付版本失败', 'error')
   } finally {
-    deliveryLoading.value = false
+    deliverySubmitting.value = false
   }
-}
-
-function chooseDeliveryArtifact() {
-  deliveryArtifactFileInput.value?.click()
-}
-
-function handleDeliveryArtifactChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  deliveryArtifactFile.value = input.files?.[0] ?? null
-  input.value = ''
 }
 
 function canReportBreach(item: RequirementItem) {
@@ -446,9 +499,43 @@ function openContractSign(item: RequirementItem) {
   })
 }
 
+/**
+ * 担保模式下，接单不再自动创建合同，需由需求方或开发者主动发起。
+ */
+function canCreateRequirementContract(item: RequirementItem) {
+  if (item.payment_mode === 'self_managed') {
+    return false
+  }
+  if (item.status !== 'pending_deposit' && item.status !== 'deposit_paid') {
+    return false
+  }
+  return !signingStatusMap.value[item.requirement_id]?.has_contract
+}
+
+async function createRequirementContractAction(item: RequirementItem) {
+  if (!auth.token) {
+    showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+  contractCreatingId.value = item.requirement_id
+  try {
+    await createRequirementContract(auth.token, item.requirement_id)
+    showToast('合同已发起，请完成签署', 'success')
+    const status = await fetchDevContractSigningStatus(auth.token, item.requirement_id)
+    signingStatusMap.value = { ...signingStatusMap.value, [item.requirement_id]: status }
+    openContractSign(item)
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '发起合同失败', 'error')
+  } finally {
+    contractCreatingId.value = ''
+  }
+}
+
 function canRequestUnbind(item: RequirementItem) {
   return (
-    (item.status === 'in_development' || item.status === 'deposit_paid') &&
+    (item.status === 'in_development' ||
+      item.status === 'deposit_paid' ||
+      item.status === 'pending_deposit') &&
     !item.pending_unbind_request
   )
 }
@@ -645,9 +732,9 @@ async function loadRequirementConversations() {
               <label>会话</label>
               <strong>{{ conversationLoading ? '加载中' : conversationStatusLabel(item) }}</strong>
             </span>
-            <span v-if="item.payment_mode !== 'self_managed'" class="dev-requirement-card__meta-item">
-              <label>交付版本</label>
-              <strong>{{ deliveryVersions(item).length }} 版</strong>
+            <span v-if="item.bound_resource_id != null" class="dev-requirement-card__meta-item">
+              <label>资源版本</label>
+              <strong>{{ resourceVersionCount(item) }} 版</strong>
             </span>
           </div>
 
@@ -683,13 +770,18 @@ async function loadRequirementConversations() {
               </span>
             </div>
             <div class="dev-requirement-card__buttons">
-              <el-button v-if="canSubmitDelivery(item)" type="primary" plain size="small"
-                @click="openDeliveryDialog(item)">
-                提交交付
+              <el-button v-if="canSubmitDeliveryVersion(item)" type="primary" plain size="small"
+                title="交付物以绑定资源项目的新版本提交" @click="openDeliveryDialog(item)">
+                提交交付版本
               </el-button>
               <el-button v-if="canReportBreach(item)" type="danger" plain size="small"
                 @click="openBreachReport(item)">
                 申报违约
+              </el-button>
+              <el-button v-if="canCreateRequirementContract(item)" type="primary" size="small"
+                :loading="contractCreatingId === item.requirement_id"
+                @click="createRequirementContractAction(item)">
+                发起合同
               </el-button>
               <el-button v-if="canOpenContractSign(item)" size="small" @click="openContractSign(item)">
                 {{ contractButtonLabel(item) }}
@@ -744,40 +836,73 @@ async function loadRequirementConversations() {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="deliveryVisible" title="提交交付版本" width="520px"
-      :close-on-click-modal="false" :close-on-press-escape="false" @close="closeDeliveryDialog">
+    <el-dialog v-model="deliveryDialogVisible" title="提交交付版本" width="520px"
+      style="--el-dialog-padding-primary: 12px" :close-on-click-modal="false"
+      :close-on-press-escape="false" @close="closeDeliveryDialog">
       <div class="delivery-dialog-body">
-        <p class="unbind-dialog-tip">
-          交付说明会作为本次需求的履约记录，客户确认验收前至少需要提交一版。
-        </p>
-        <el-form label-position="top">
-          <el-form-item label="版本标题">
-            <el-input v-model="deliveryTitle" maxlength="200" placeholder="例如：首版功能交付" />
+        <p class="unbind-dialog-tip">交付物会保存为绑定资源项目的新版本，验收前至少提交一版。</p>
+        <el-form label-position="top" class="delivery-dialog-form">
+          <el-form-item label="版本号" required>
+            <el-input v-model="deliveryVersion" maxlength="80" placeholder="例如：1.0.0、首版功能交付" />
           </el-form-item>
-          <el-form-item label="交付说明" required>
-            <el-input v-model="deliveryDescription" type="textarea" :rows="6" maxlength="20000"
-              show-word-limit placeholder="请说明已完成的功能、使用方式和已知限制" />
+          <el-form-item label="交付说明">
+            <el-input v-model="deliveryNote" type="textarea" :rows="2" maxlength="1000" show-word-limit
+              placeholder="已完成的功能、使用方式和已知限制（会作为版本备注）" />
           </el-form-item>
-          <el-form-item label="交付物" required>
+          <el-form-item label="交付文件" required>
             <div class="delivery-artifact-field">
-              <input ref="deliveryArtifactFileInput" class="realname-consent-upload__native" type="file"
-                accept=".pdf,.png,.jpg,.jpeg,.webp,.zip,.gz,.tar,.txt,.md,application/pdf,image/png,image/jpeg,image/webp,application/zip,application/gzip,application/x-tar,text/plain,text/markdown"
-                @change="handleDeliveryArtifactChange" />
-              <div class="delivery-artifact-field__upload">
-                <el-button plain @click="chooseDeliveryArtifact">上传交付物</el-button>
-                <span v-if="deliveryArtifactFile" class="realname-consent-upload__name">
-                  {{ deliveryArtifactFile.name }}
+              <input ref="deliveryFileInput" class="delivery-artifact-field__native" type="file"
+                @change="handleDeliveryFileChange" />
+
+              <div v-if="!deliveryFile" class="delivery-artifact-field__dropzone" role="button" tabindex="0"
+                @click="chooseDeliveryFile" @keydown.enter.prevent="chooseDeliveryFile"
+                @keydown.space.prevent="chooseDeliveryFile">
+                <span class="delivery-artifact-field__icon" aria-hidden="true">
+                  <el-icon>
+                    <UploadFilled />
+                  </el-icon>
+                </span>
+                <span class="delivery-artifact-field__copy">
+                  <strong>点击选择交付文件</strong>
+                  <small>文件会作为资源项目新版本保存，客户可在需求详情中下载</small>
                 </span>
               </div>
-              <el-input v-model="deliveryArtifactUrl" maxlength="500"
-                placeholder="或填写可访问的演示、仓库链接" />
+
+              <div v-else class="delivery-artifact-field__file">
+                <span class="delivery-artifact-field__icon delivery-artifact-field__icon--file" aria-hidden="true">
+                  <el-icon>
+                    <Document />
+                  </el-icon>
+                </span>
+                <span class="delivery-artifact-field__copy">
+                  <strong :title="deliveryFile.name">{{ deliveryFile.name }}</strong>
+                  <small>{{ formatBytes(deliveryFile.size) }} · 提交后可在资源项目版本页管理</small>
+                </span>
+                <button type="button" class="delivery-artifact-field__remove" title="移除文件"
+                  @click="clearDeliveryFile">
+                  <el-icon>
+                    <Close />
+                  </el-icon>
+                </button>
+              </div>
             </div>
           </el-form-item>
         </el-form>
+
+        <div class="delivery-existing">
+          <span class="delivery-existing__label">已有交付版本</span>
+          <span class="delivery-existing__value">{{ deliveryVersionSummary() }}</span>
+          <button v-if="deliveryRequirement?.bound_resource_id" type="button" class="delivery-existing__link"
+            @click="openResourceVersionPage(deliveryRequirement.bound_resource_id)">
+            去资源项目版本页
+          </button>
+        </div>
       </div>
       <template #footer>
-        <el-button :disabled="deliveryLoading" @click="closeDeliveryDialog">取消</el-button>
-        <el-button type="primary" :loading="deliveryLoading" @click="submitDelivery">提交版本</el-button>
+        <el-button :disabled="deliverySubmitting" @click="closeDeliveryDialog">取消</el-button>
+        <el-button type="primary" :loading="deliverySubmitting" @click="submitDeliveryVersion">
+          提交交付版本
+        </el-button>
       </template>
     </el-dialog>
 
@@ -1055,6 +1180,165 @@ async function loadRequirementConversations() {
   font-size: 13px;
   line-height: 1.6;
   overflow-wrap: anywhere;
+}
+
+.delivery-dialog-body {
+  display: grid;
+  gap: 10px;
+}
+
+.delivery-dialog-body .unbind-dialog-tip {
+  padding: 8px 10px;
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  border-radius: 10px;
+  background: rgba(254, 243, 199, 0.48);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.delivery-dialog-form :deep(.el-form-item) {
+  margin-bottom: 12px;
+}
+
+.delivery-dialog-form :deep(.el-form-item:last-child) {
+  margin-bottom: 0;
+}
+
+.delivery-artifact-field {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+/* 真正的文件选择框由上传卡片代理，原生控件不再出现 */
+.delivery-artifact-field__native {
+  display: none;
+}
+
+.delivery-artifact-field__dropzone,
+.delivery-artifact-field__file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 11px 12px;
+  border-radius: 12px;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.delivery-artifact-field__dropzone {
+  border: 1px dashed rgba(148, 163, 184, 0.72);
+  background: rgba(248, 250, 252, 0.78);
+  cursor: pointer;
+}
+
+.delivery-artifact-field__dropzone:hover {
+  border-color: rgba(37, 99, 235, 0.58);
+  background: rgba(239, 246, 255, 0.72);
+}
+
+.delivery-artifact-field__dropzone:focus-visible {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.7);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.delivery-artifact-field__file {
+  border: 1px solid rgba(34, 197, 94, 0.34);
+  background: rgba(240, 253, 244, 0.66);
+}
+
+.delivery-artifact-field__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 16px;
+}
+
+.delivery-artifact-field__icon--file {
+  background: rgba(220, 252, 231, 0.9);
+  color: #15803d;
+}
+
+.delivery-artifact-field__copy {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.delivery-artifact-field__copy strong {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delivery-artifact-field__copy small {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.delivery-artifact-field__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.delivery-artifact-field__remove:hover {
+  background: rgba(254, 226, 226, 0.8);
+  color: #dc2626;
+}
+
+.delivery-existing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.delivery-existing__label {
+  flex: 0 0 auto;
+  color: #334155;
+  font-weight: 800;
+}
+
+.delivery-existing__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delivery-existing__link {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 @media (max-width: 720px) {

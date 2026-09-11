@@ -39,22 +39,6 @@ export type AdapayDeveloperDepositPaymentResponse = {
   payUrl?: string | null
 }
 
-export type AdapayDeliveryVersion = {
-  id: number
-  requirementId: string
-  contractId: number
-  developer: string
-  versionNo: number
-  title: string
-  description: string
-  artifactUrl: string
-  submittedAt: string
-}
-
-export type AdapayDeliveryArtifactUploadResponse = {
-  artifactUrl: string
-}
-
 export type AdapayAcceptanceResponse = {
   requirementId: string
   contractId: number
@@ -170,58 +154,6 @@ export async function getAdapayDeveloperDepositPayment(
   )
 }
 
-export async function listAdapayDeliveryVersions(
-  token: string,
-  requirementId: string,
-): Promise<AdapayDeliveryVersion[]> {
-  return requestJson<AdapayDeliveryVersion[]>(
-    `/adapay/requirements/${encodeURIComponent(requirementId)}/delivery-versions`,
-    {
-      headers: {
-        ...authHeader(token),
-      },
-    },
-    '加载交付版本失败',
-  )
-}
-
-export async function submitAdapayDeliveryVersion(
-  token: string,
-  requirementId: string,
-  payload: { title?: string; description: string; artifact_url?: string },
-): Promise<AdapayDeliveryVersion> {
-  return requestJson<AdapayDeliveryVersion>(
-    `/adapay/requirements/${encodeURIComponent(requirementId)}/delivery-versions`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader(token),
-      },
-      body: JSON.stringify(payload),
-    },
-    '提交交付版本失败',
-  )
-}
-
-export async function uploadAdapayDeliveryArtifact(
-  token: string,
-  requirementId: string,
-  file: File,
-): Promise<AdapayDeliveryArtifactUploadResponse> {
-  const formData = new FormData()
-  formData.append('file', file)
-  return requestJson<AdapayDeliveryArtifactUploadResponse>(
-    `/adapay/requirements/${encodeURIComponent(requirementId)}/delivery-file`,
-    {
-      method: 'POST',
-      headers: authHeader(token),
-      body: formData,
-    },
-    '上传交付物失败',
-  )
-}
-
 export async function acceptAdapayDelivery(
   token: string,
   requirementId: string,
@@ -307,5 +239,27 @@ export async function createMyAdapaySettlementAccount(
       body: JSON.stringify(payload),
     },
     '设置 Adapay 结算账户失败',
+  )
+}
+
+export type AdapayAvailability = {
+  enabled: boolean
+  paymentReady: boolean
+  /** 是否开启「仅测试角色可用电签担保」灰度 */
+  escrowBetaOnly?: boolean
+  /** 当前用户是否可用电签担保（已综合测试角色判断） */
+  escrowAllowed?: boolean
+}
+
+/**
+ * 查询电签担保是否可用（需 Adapay 密钥、回调地址、个税规则等配置齐备）。
+ * 公开接口；带上令牌时后端会按当前用户是否拥有「电签担保测试」权限
+ * 返回 `escrowAllowed`（线上灰度期间仅对测试角色开放）。
+ */
+export async function getAdapayAvailability(token?: string): Promise<AdapayAvailability> {
+  return requestJson<AdapayAvailability>(
+    '/adapay/availability',
+    { method: 'GET', headers: token ? authHeader(token) : undefined },
+    '查询支付渠道可用性失败',
   )
 }

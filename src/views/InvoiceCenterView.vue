@@ -11,6 +11,8 @@ import {
   type InvoicePaymentOption,
   type InvoiceRecord,
 } from '@/api/invoices'
+import { getMyRealnameVerification, type UserRealnameVerification } from '@/api/realname'
+import { getProfile } from '@/api/settings'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
@@ -50,9 +52,117 @@ const selectedDeveloperPayment = computed(() =>
   developerOptions.value.find((item) => item.paymentId === selectedDeveloperPaymentId.value),
 )
 
+// 开票信息预填：抬头/税号取自实名认证主体，邮箱取自账户资料。
+const realname = ref<UserRealnameVerification | null>(null)
+const accountEmail = ref('')
+const prefillLoaded = ref(false)
+let prefillRequest: Promise<void> | null = null
+
+// 仅已通过认证的实名记录可用于开票，审核中或未认证时不做预填。
+const approvedRealname = computed(() =>
+  realname.value?.status === 'approved' ? realname.value : null,
+)
+
+const isOrganizationRealname = computed(() => {
+  const authType = approvedRealname.value?.auth_type
+  return authType === 'ENTERPRISE' || authType === 'SOLE_PROPRIETOR'
+})
+
+// 企业/个体户用公司全称，个人用实名姓名。
+const prefillTitle = computed(() => {
+  const record = approvedRealname.value
+  if (!record) {
+    return ''
+  }
+  return isOrganizationRealname.value
+    ? record.company_name?.trim() ?? ''
+    : record.real_name?.trim() ?? ''
+})
+
+// 税号（统一社会信用代码）仅企业/个体户有值，与后端校验保持一致。
+const prefillTaxNumber = computed(() =>
+  isOrganizationRealname.value
+    ? approvedRealname.value?.unified_social_credit_code?.trim() ?? ''
+    : '',
+)
+
+const prefillNotice = computed(() => {
+  if (!prefillLoaded.value || approvedRealname.value) {
+    return ''
+  }
+  return realname.value?.status === 'pending'
+    ? '实名认证审核中，抬头与税号需手动填写。'
+    : '未完成实名认证，抬头与税号需手动填写。'
+})
+
+/**
+ * 只填充空字段，绝不覆盖用户输入或已保存的草稿。
+ * 必须在 loadXxxDraft 之后调用，否则会冲掉上次手动填写的内容。
+ */
+function applyInvoicePrefill(form: {
+  invoiceTitle: string
+  taxNumber: string
+  recipientEmail: string
+}) {
+  if (!form.invoiceTitle.trim() && prefillTitle.value) {
+    form.invoiceTitle = prefillTitle.value
+  }
+  if (!form.taxNumber.trim() && prefillTaxNumber.value) {
+    form.taxNumber = prefillTaxNumber.value
+  }
+  if (!form.recipientEmail.trim() && accountEmail.value) {
+    form.recipientEmail = accountEmail.value
+  }
+}
+
+/** 抬头与实名主体不一致时给出提醒文案；一致或无从比对时返回空串。 */
+function invoiceTitleNotice(title: string) {
+  const expected = prefillTitle.value
+  const trimmed = title.trim()
+  if (expected && trimmed && trimmed !== expected) {
+    return `发票抬头与实名主体「${expected}」不一致，请确认无误`
+  }
+  return ''
+}
+
+async function ensureInvoicePrefill(): Promise<void> {
+  const token = auth.token
+  if (prefillLoaded.value || !token) {
+    return
+  }
+  if (prefillRequest) {
+    return prefillRequest
+  }
+  prefillRequest = (async () => {
+    // 预填属于增强能力，任一接口失败都静默降级，不阻塞开票申请。
+    const [realnameResult, profileResult] = await Promise.allSettled([
+      getMyRealnameVerification(token),
+      getProfile(token),
+    ])
+    if (realnameResult.status === 'fulfilled') {
+      realname.value = realnameResult.value
+    }
+    if (profileResult.status === 'fulfilled') {
+      accountEmail.value = profileResult.value.email?.trim() ?? ''
+    }
+    prefillLoaded.value = true
+    // 弹窗可能已经打开，数据到位后再补一次。
+    if (platformModalVisible.value) {
+      applyInvoicePrefill(platformForm)
+    }
+    if (developerModalVisible.value) {
+      applyInvoicePrefill(developerForm)
+    }
+  })().finally(() => {
+    prefillRequest = null
+  })
+  return prefillRequest
+}
+
 onMounted(() => {
   auth.hydrate()
   void loadData()
+  void ensureInvoicePrefill()
 })
 
 watch(
@@ -211,6 +321,8 @@ function clearDeveloperDraft() {
 
 function openPlatformModal() {
   loadPlatformDraft()
+  applyInvoicePrefill(platformForm)
+  void ensureInvoicePrefill()
   platformModalVisible.value = true
 }
 
@@ -221,6 +333,8 @@ function closePlatformModal() {
 
 function openDeveloperModal() {
   loadDeveloperDraft()
+  applyInvoicePrefill(developerForm)
+  void ensureInvoicePrefill()
   developerModalVisible.value = true
 }
 
@@ -247,6 +361,7 @@ async function submitPlatformInvoice() {
     showToast('请选择支付节点并填写发票抬头', 'warning')
     return
   }
+  const titleNotice = invoiceTitleNotice(platformForm.invoiceTitle)
   submitting.value = 'platform'
   try {
     const invoice = await requestPlatformInvoice(auth.token, {
@@ -259,7 +374,7 @@ async function submitPlatformInvoice() {
     resetPlatformForm()
     clearPlatformDraft()
     platformModalVisible.value = false
-    showToast('平台发票申请已提交', 'success')
+    showToast(titleNotice || '平台发票申请已提交', titleNotice ? 'warning' : 'success')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '申请平台发票失败', 'error')
   } finally {
@@ -273,6 +388,7 @@ async function submitDeveloperInvoice() {
     showToast('请选择支付节点并填写发票抬头', 'warning')
     return
   }
+  const titleNotice = invoiceTitleNotice(developerForm.invoiceTitle)
   submitting.value = 'developer'
   try {
     const invoice = await requestDeveloperInvoice(auth.token, {
@@ -285,7 +401,7 @@ async function submitDeveloperInvoice() {
     resetDeveloperForm()
     clearDeveloperDraft()
     developerModalVisible.value = false
-    showToast('开发者发票申请已创建，请上传发票文件', 'success')
+    showToast(titleNotice || '开发者发票申请已创建，请上传发票文件', titleNotice ? 'warning' : 'success')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '申请开发者发票失败', 'error')
   } finally {
@@ -412,6 +528,7 @@ async function openDocument(invoice: InvoiceRecord) {
             <button class="invoice-modal__close" type="button" aria-label="关闭" @click="closePlatformModal">×</button>
           </div>
           <p class="invoice-panel__hint">开票金额以平台服务费结算记录为准，不包含开发者收入。</p>
+          <p v-if="prefillNotice" class="invoice-panel__notice">{{ prefillNotice }}</p>
           <label>
             已成功结算的支付节点
             <select v-model="selectedPlatformPaymentId">
@@ -454,6 +571,7 @@ async function openDocument(invoice: InvoiceRecord) {
             <button class="invoice-modal__close" type="button" aria-label="关闭" @click="closeDeveloperModal">×</button>
           </div>
           <p class="invoice-panel__hint">开发者按实名主体开具，企业和个体工商户需填写税号。</p>
+          <p v-if="prefillNotice" class="invoice-panel__notice">{{ prefillNotice }}</p>
           <label>
             已成功结算的支付节点
             <select v-model="selectedDeveloperPaymentId">
@@ -569,6 +687,16 @@ async function openDocument(invoice: InvoiceRecord) {
   font-size: 13px;
   line-height: 1.6;
   margin-top: 6px;
+}
+
+.invoice-panel__notice {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fffaeb;
+  color: #9a6700;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .invoice-center__refresh {

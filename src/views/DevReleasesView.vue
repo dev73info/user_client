@@ -162,7 +162,6 @@ function requirementStatusText(value: RequirementItem['status'] | null) {
   const map: Record<string, string> = {
     in_development: '开发中',
     pending_final: '待付尾款',
-    final_paid: '已付尾款',
     completed: '已完成',
     deposit_paid: '待开发',
   }
@@ -170,7 +169,7 @@ function requirementStatusText(value: RequirementItem['status'] | null) {
 }
 
 function settlementText(status: RequirementItem['status'] | null) {
-  if (status === 'final_paid' || status === 'completed') {
+  if (status === 'completed') {
     return '已回款'
   }
   if (status === 'pending_final') {
