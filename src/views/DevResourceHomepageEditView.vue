@@ -506,7 +506,6 @@ onMounted(async () => {
           </el-icon>
         </div>
         <div class="dev-resource-homepage-editor__hero-copy">
-          <div class="dev-panel-banner__eyebrow">资源主页编辑</div>
           <h2 class="dev-panel-banner__title">{{ heroTitle }}</h2>
           <div class="dev-resource-homepage-editor__hero-meta">
             <span class="dev-chip" :class="visibilityChipTone">{{ resourceVisibilityLabel }}</span>

@@ -1361,11 +1361,9 @@ function finishSearchComposition(event: CompositionEvent) {
 
 @media (max-width: 1180px) {
   .portal-header {
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      "brand nav"
-      "tools tools";
-    gap: 10px 14px;
+    grid-template-columns: auto max-content minmax(0, 1fr);
+    grid-template-areas: "brand nav tools";
+    gap: 10px 12px;
     padding: 10px 14px;
   }
 
@@ -1386,14 +1384,43 @@ function finishSearchComposition(event: CompositionEvent) {
     grid-area: tools;
     justify-content: flex-end;
     width: 100%;
+    min-width: 0;
   }
 
+  /* 单行时由搜索框让出宽度，导航保持内容宽度不被压缩 */
   .portal-search {
-    width: min(clamp(320px, 58vw, 620px), calc(100% - 176px));
+    flex: 0 1 auto;
+    width: 100%;
+    max-width: 330px;
+    min-width: 0;
   }
 
   .portal-user__trigger {
     min-width: 112px;
+  }
+}
+
+/* 再窄就放不下单行，退回「品牌+导航 / 工具栏」两行 */
+@media (max-width: 960px) {
+  .portal-header {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "brand nav"
+      "tools tools";
+    gap: 10px 14px;
+  }
+
+  .portal-header--dev {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .portal-header__tools {
+    width: 100%;
+  }
+
+  .portal-search {
+    width: min(clamp(320px, 58vw, 620px), calc(100% - 176px));
+    max-width: none;
   }
 }
 
@@ -1495,7 +1522,6 @@ function finishSearchComposition(event: CompositionEvent) {
 
 @media (max-width: 1180px) {
   .portal-header--dev {
-    grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
     width: calc(100% - 16px);
     margin: 6px auto 8px;
@@ -1530,7 +1556,7 @@ function finishSearchComposition(event: CompositionEvent) {
   }
 
   .portal-header--dev .portal-header__tools {
-    width: auto;
+    width: 100%;
     min-width: 0;
     justify-content: flex-end;
     flex-wrap: nowrap;
