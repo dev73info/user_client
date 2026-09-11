@@ -1419,7 +1419,8 @@ function resolveResourceRoute(
 async function loadPublicPortalData(silent = false) {
   const [resourcesResult, requirementsResult, announcementsResult] = await Promise.allSettled([
     listAllPublicMcResources(),
-    listPublicRequirementSpotlights(),
+    // 首页只用最新一条需求做公告，取 1 条即可。
+    listPublicRequirementSpotlights(1, 1),
     listCommunityPosts({ tag: '公告', limit: 5, offset: 0 }),
   ])
   void tagTreeStore.ensure()
@@ -1439,7 +1440,7 @@ async function loadPublicPortalData(silent = false) {
   }
 
   if (requirementsResult.status === 'fulfilled') {
-    publicRequirementSpotlights.value = requirementsResult.value
+    publicRequirementSpotlights.value = requirementsResult.value.items
   } else {
     publicRequirementSpotlights.value = []
   }

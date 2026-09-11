@@ -36,6 +36,13 @@ export type PublicRequirementSpotlightItem = {
   updated_at: string
 }
 
+export type PublicRequirementSpotlightPage = {
+  total: number
+  page: number
+  page_size: number
+  items: PublicRequirementSpotlightItem[]
+}
+
 export type RequirementStatus =
   | 'pending_review'
   | 'rejected'
@@ -166,9 +173,16 @@ export async function getPublicRequirementOverview(): Promise<RequirementOvervie
   )
 }
 
-export async function listPublicRequirementSpotlights(): Promise<PublicRequirementSpotlightItem[]> {
-  return requestJson<PublicRequirementSpotlightItem[]>(
-    '/public/requirements/public-spotlight',
+export async function listPublicRequirementSpotlights(
+  page = 1,
+  pageSize = 20,
+): Promise<PublicRequirementSpotlightPage> {
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  })
+  return requestJson<PublicRequirementSpotlightPage>(
+    `/public/requirements/public-spotlight?${params.toString()}`,
     {},
     '加载精选需求失败',
   )

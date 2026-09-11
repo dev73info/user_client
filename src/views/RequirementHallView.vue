@@ -41,6 +41,10 @@ const { showToast } = useToast()
 const loading = ref(false)
 const overviewLoading = ref(false)
 const requirements = ref<PublicRequirementSpotlightItem[]>([])
+// 需求大厅分页：后端公开接口单页上限 100 条，默认 20 条一页。
+const HALL_PAGE_SIZE = 20
+const hallPage = ref(1)
+const hallTotal = ref(0)
 const overview = ref<RequirementOverviewResp | null>(null)
 const keyword = ref('')
 const publishVisible = ref(false)
@@ -97,7 +101,7 @@ const filteredRequirements = computed(() => {
 const hallStats = computed(() => [
   {
     label: '可浏览需求',
-    value: `${requirements.value.length} 条`,
+    value: `${hallTotal.value} 条`,
   },
   {
     label: '已完成需求',
@@ -413,18 +417,21 @@ async function submitPublishRequirement() {
   }
 }
 
-async function loadHallData() {
+async function loadHallData(page = hallPage.value) {
   loading.value = true
   overviewLoading.value = true
   const [requirementsResult, overviewResult] = await Promise.allSettled([
-    listPublicRequirementSpotlights(),
+    listPublicRequirementSpotlights(page, HALL_PAGE_SIZE),
     getPublicRequirementOverview(),
   ])
 
   if (requirementsResult.status === 'fulfilled') {
-    requirements.value = requirementsResult.value
+    requirements.value = requirementsResult.value.items
+    hallTotal.value = requirementsResult.value.total
+    hallPage.value = requirementsResult.value.page
   } else {
     requirements.value = []
+    hallTotal.value = 0
     showToast('加载需求大厅失败', 'warning')
   }
 
@@ -459,7 +466,7 @@ async function loadHallData() {
               <span>发布需求</span>
             </button>
             <button class="requirement-hall__refresh-btn" type="button" :disabled="loading || overviewLoading"
-              @click="loadHallData">
+              @click="loadHallData()">
               <el-icon>
                 <Refresh />
               </el-icon>
@@ -529,6 +536,16 @@ async function loadHallData() {
             </div>
           </article>
         </div>
+
+        <el-pagination
+          v-if="!loading && hallTotal > HALL_PAGE_SIZE"
+          class="requirement-hall__pager"
+          layout="prev, pager, next"
+          :current-page="hallPage"
+          :page-size="HALL_PAGE_SIZE"
+          :total="hallTotal"
+          @current-change="loadHallData"
+        />
 
         <div v-else class="portal-page__empty portal-page__empty--stacked">
           <strong>{{ keyword.trim() ? '没有匹配的需求' : '当前没有可展示的需求' }}</strong>
@@ -780,6 +797,12 @@ async function loadHallData() {
 
 .requirement-hall__grid {
   align-items: stretch;
+}
+
+.requirement-hall__pager {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
 }
 
 .requirement-hall__pay-chip {

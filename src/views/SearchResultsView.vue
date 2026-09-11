@@ -183,7 +183,8 @@ async function loadSearchData() {
                 showResources.value ? tagTreeStore.ensure() : Promise.resolve(tagTree.value),
                 showResources.value ? listAllPublicMcResources(token) : Promise.resolve(resources.value),
                 showRequirements.value
-                    ? listPublicRequirementSpotlights()
+                    // 搜索是前端在结果集里过滤，公开接口单页上限 100 条，取满一页。
+                    ? listPublicRequirementSpotlights(1, 100).then((page) => page.items)
                     : Promise.resolve(requirements.value),
                 showCommunity.value
                     ? listCommunityPosts({ token, keyword: nextKeyword, limit: 12 })
