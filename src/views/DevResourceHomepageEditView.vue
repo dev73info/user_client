@@ -738,8 +738,8 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 68px;
   height: 68px;
+  aspect-ratio: var(--dev-resource-aspect-ratio);
   flex: 0 0 auto;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -1097,7 +1097,6 @@ onMounted(async () => {
   }
 
   .dev-resource-homepage-editor__hero-cover {
-    width: 56px;
     height: 56px;
     border-radius: 12px;
   }
