@@ -386,7 +386,12 @@ async function saveHomepage() {
     }
     resetLocalCoverPreview()
     syncEditorContent(updated.release_note || '')
-    showToast('资源主页已更新', 'success')
+    showToast(
+      updated.visibility === 'review'
+        ? '资源主页已保存，已提交重新审核，审核期间前台暂不展示'
+        : '资源主页已更新',
+      'success',
+    )
   } catch (error) {
     const message = error instanceof Error ? error.message : '更新资源主页失败'
     showToast(message, 'error')
