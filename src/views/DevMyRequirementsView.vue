@@ -25,6 +25,7 @@ import {
 } from '@/api/devRequirements'
 import {
   createRequirementContract,
+  fetchAsignRequirementPreviewUrl,
   fetchDevContractSigningStatus,
   type ContractSigningStatus,
 } from '@/api/contracts'
@@ -66,7 +67,7 @@ const deliverySubmitting = ref(false)
 const deliveryVersions = ref<McResourceVersionPayload[]>([])
 const deliveryVersionsLoading = ref(false)
 const breachRequirement = ref<RequirementItem | null>(null)
-const breachLiableParty = ref<'customer' | 'developer' | 'platform'>('customer')
+const breachLiableParty = ref<'customer' | 'developer'>('customer')
 const breachReason = ref('')
 const breachLoading = ref(false)
 
@@ -500,6 +501,35 @@ function openContractSign(item: RequirementItem) {
 }
 
 /**
+ * 「查看合同」跳转到爱签的合同预览页（previewContract）。
+ *
+ * 合同已在爱签侧发起签署时可获取预览链接；若合同尚未发起爱签签署
+ * 或爱签接口异常，则回退到本地合同签署页展示。
+ */
+async function viewContractPreview(item: RequirementItem) {
+  if (auth.token) {
+    try {
+      const previewUrl = await fetchAsignRequirementPreviewUrl(auth.token, item.requirement_id)
+      if (previewUrl) {
+        window.location.href = previewUrl
+        return
+      }
+    } catch {
+      // 爱签预览不可用：回退本地合同展示。
+    }
+  }
+  openContractSign(item)
+}
+
+function handleContractButtonClick(item: RequirementItem) {
+  if (contractButtonLabel(item) === '查看合同') {
+    void viewContractPreview(item)
+    return
+  }
+  openContractSign(item)
+}
+
+/**
  * 担保模式下，接单不再自动创建合同，需由需求方或开发者主动发起。
  */
 function canCreateRequirementContract(item: RequirementItem) {
@@ -783,7 +813,7 @@ async function loadRequirementConversations() {
                 @click="createRequirementContractAction(item)">
                 发起合同
               </el-button>
-              <el-button v-if="canOpenContractSign(item)" size="small" @click="openContractSign(item)">
+              <el-button v-if="canOpenContractSign(item)" size="small" @click="handleContractButtonClick(item)">
                 {{ contractButtonLabel(item) }}
               </el-button>
               <el-button type="primary" plain size="small" class="dev-requirement-card__conversation"
@@ -917,7 +947,6 @@ async function loadRequirementConversations() {
             <el-select v-model="breachLiableParty" style="width: 100%">
               <el-option label="客户违约" value="customer" />
               <el-option label="开发者违约" value="developer" />
-              <el-option label="平台违约" value="platform" />
             </el-select>
           </el-form-item>
           <el-form-item label="事实与依据" required>

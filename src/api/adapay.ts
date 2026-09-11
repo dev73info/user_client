@@ -54,7 +54,7 @@ export type AdapayBreachCase = {
   requirementId: string
   paymentId: string
   reportedBy: string
-  liableParty: 'customer' | 'developer' | 'platform'
+  liableParty: 'customer' | 'developer'
   reason: string
   status: string
   depositAmountFen: number

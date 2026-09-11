@@ -21,6 +21,7 @@ import { confirmPayment as confirmPaymentApi, getAlipayPageHtml, listPaymentOrde
 import {
   getWechatPaymentAuthorizationStatus,
   getWechatPaymentAuthorizeUrl,
+  isWechatPaymentAuthorizationRequired,
 } from '@/api/auth'
 
 const route = useRoute()
@@ -95,6 +96,14 @@ const wechatAutoAuthRedirecting = ref(false)
 const wechatAutoInvoked = ref(false)
 const creatingIntentOrder = ref(false)
 const intentOrderAttempted = ref(false)
+// PC 端未绑定微信（缺少 open_id）时：展示服务号静默授权（snsapi_base）二维码，
+// 手机微信扫码后无授权确认页、无感知完成绑定，PC 轮询授权状态后自动继续下单。
+const silentAuthQrDataUrl = ref('')
+const silentAuthWaiting = ref(false)
+let silentAuthTimer: ReturnType<typeof setInterval> | null = null
+let silentAuthExpireTimer: ReturnType<typeof setTimeout> | null = null
+// 后端授权 state 有效期 10 分钟，超时后二维码失效，需要重新发起。
+const SILENT_AUTH_QR_TTL_MS = 10 * 60 * 1000
 const isPaymentHandoff = computed(() => isWechatPaymentHandoff(route.query))
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let countdownTimer: ReturnType<typeof setInterval> | null = null
@@ -324,7 +333,7 @@ function getWechatBridge(): WechatBridge | null {
 
 // 意图模式：微信内自动静默授权（绑定 open_id）后创建 adapay wx_pub 订单。
 async function createIntentAdapayOrder() {
-  if (creatingIntentOrder.value) {
+  if (creatingIntentOrder.value || silentAuthWaiting.value) {
     return
   }
   if (!isIntentMode.value || !isWechatPayment.value || !auth.token || isPaymentHandoff.value ||
@@ -380,9 +389,90 @@ async function createIntentAdapayOrder() {
       },
     })
   } catch (err) {
+    if (isWechatPaymentAuthorizationRequired(err)) {
+      // 未绑定微信（缺少 open_id）：展示服务号静默授权二维码，扫码无感知完成后自动继续下单。
+      await startSilentWechatAuth()
+      return
+    }
     wechatPayError.value = err instanceof Error ? err.message : '微信订单创建失败，请重试。'
   } finally {
     creatingIntentOrder.value = false
+  }
+}
+
+function stopSilentWechatAuthPolling() {
+  if (silentAuthTimer) {
+    clearInterval(silentAuthTimer)
+    silentAuthTimer = null
+  }
+}
+
+function resetSilentWechatAuth() {
+  stopSilentWechatAuthPolling()
+  if (silentAuthExpireTimer) {
+    clearTimeout(silentAuthExpireTimer)
+    silentAuthExpireTimer = null
+  }
+  silentAuthWaiting.value = false
+  silentAuthQrDataUrl.value = ''
+}
+
+// PC 端 snsapi_base 静默授权：手机微信扫码后微信直接回调落 openid，无需用户确认；
+// PC 轮询 /auth/wechat/payment/status，检测到已授权后自动重试下单。
+async function startSilentWechatAuth() {
+  if (!auth.token || silentAuthWaiting.value) {
+    return
+  }
+  silentAuthWaiting.value = true
+  silentAuthQrDataUrl.value = ''
+  wechatPayError.value = ''
+  try {
+    const { url } = await getWechatPaymentAuthorizeUrl(auth.token, window.location.href, 'qr')
+    if (!url.trim()) {
+      throw new Error('微信授权二维码地址为空')
+    }
+    silentAuthQrDataUrl.value = await QRCode.toDataURL(url, {
+      width: 280,
+      margin: 2,
+      errorCorrectionLevel: 'M',
+    })
+    silentAuthTimer = setInterval(() => {
+      void checkSilentWechatAuth()
+    }, 2000)
+    silentAuthExpireTimer = setTimeout(() => {
+      if (!silentAuthWaiting.value) {
+        return
+      }
+      resetSilentWechatAuth()
+      wechatPayError.value = '微信授权二维码已过期，请点击重试重新获取。'
+    }, SILENT_AUTH_QR_TTL_MS)
+  } catch (err) {
+    resetSilentWechatAuth()
+    wechatPayError.value =
+      err instanceof Error ? err.message : '获取微信授权二维码失败，请重试。'
+  }
+}
+
+async function checkSilentWechatAuth() {
+  if (!silentAuthWaiting.value || !auth.token) {
+    return
+  }
+  try {
+    const { authorized } = await getWechatPaymentAuthorizationStatus(auth.token)
+    if (!authorized) {
+      return
+    }
+  } catch {
+    // 轮询失败保留二维码，继续下一轮。
+    return
+  }
+  resetSilentWechatAuth()
+  showToast('微信授权成功，正在继续支付', 'success')
+  await auth.fetchProfile(true).catch(() => undefined)
+  if (isIntentMode.value && !wechatPayInfo.value && !creatingIntentOrder.value) {
+    wechatAuthChecked.value = true
+    intentOrderAttempted.value = false
+    await createIntentAdapayOrder()
   }
 }
 
@@ -753,6 +843,11 @@ onUnmounted(() => {
     document.removeEventListener('WeixinJSBridgeReady', wechatBridgeListener)
     wechatBridgeListener = null
   }
+  stopSilentWechatAuthPolling()
+  if (silentAuthExpireTimer) {
+    clearTimeout(silentAuthExpireTimer)
+    silentAuthExpireTimer = null
+  }
 })
 </script>
 
@@ -780,7 +875,7 @@ onUnmounted(() => {
         <p v-if="confirmationError" class="payment-launch-panel__error">{{ confirmationError }}</p>
         <button v-if="!paid && !isPaymentHandoff" class="payment-launch-panel__button" type="button"
           :disabled="confirming" @click="confirmPayment">{{ confirming ? '查询中...' : '查询支付结果' }}</button>
-        <button v-if="!isPaymentHandoff" class="top-back" type="button" @click="router.push('/')">返回首页</button>
+        <button v-if="!isPaymentHandoff" class="top-back" type="button" @click="router.push({ name: 'workbench-requirements' })">返回工作台</button>
       </div>
 
       <div v-else-if="hasOrder" class="pay-layout">
@@ -801,10 +896,18 @@ onUnmounted(() => {
           </div>
 
           <div v-else-if="isWechatPcPayment && (isIntentMode || !qrDataUrl)" class="payment-launch-panel">
-            <p v-if="wechatPayError" class="payment-launch-panel__error">{{ wechatPayError }}</p>
-            <p v-else class="payment-launch-panel__tip">{{ creatingIntentOrder ? '正在创建微信支付订单...' : '正在准备微信付款码...' }}</p>
-            <button v-if="wechatPayError && isIntentMode" class="payment-launch-panel__button" type="button"
-              :disabled="creatingIntentOrder" @click="createIntentAdapayOrder">重试</button>
+            <template v-if="silentAuthWaiting">
+              <p class="payment-launch-panel__title">微信授权</p>
+              <p class="payment-launch-panel__tip">首次使用微信支付，请用手机微信扫码完成授权（无需确认，授权成功后自动继续支付）。</p>
+              <img v-if="silentAuthQrDataUrl" :src="silentAuthQrDataUrl" alt="微信授权二维码" class="qr-code" />
+              <p v-else class="payment-launch-panel__tip">二维码生成中…</p>
+            </template>
+            <template v-else>
+              <p v-if="wechatPayError" class="payment-launch-panel__error">{{ wechatPayError }}</p>
+              <p v-else class="payment-launch-panel__tip">{{ creatingIntentOrder ? '正在创建微信支付订单...' : '正在准备微信付款码...' }}</p>
+              <button v-if="wechatPayError && isIntentMode" class="payment-launch-panel__button" type="button"
+                :disabled="creatingIntentOrder" @click="createIntentAdapayOrder">重试</button>
+            </template>
           </div>
 
           <div v-else-if="isAlipayMobilePayment" class="payment-launch-panel">

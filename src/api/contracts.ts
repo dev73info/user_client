@@ -199,3 +199,36 @@ export async function syncAsignSignStatus(
     '同步签署状态失败',
   )
 }
+
+/**
+ * 获取爱签合同预览链接（previewContract）。
+ *
+ * 合同已在爱签侧创建（已发起过签署）时返回预览链接，前端跳转即可查看
+ * 签署完成后的合同样式；未发起或爱签异常时接口报错，调用方回退本地合同展示。
+ */
+export async function fetchAsignContractPreviewUrl(
+  token: string,
+  contractId: number,
+): Promise<string> {
+  const res = await requestJson<{ preview_url: string }>(
+    `/contracts/${contractId}/asign/preview`,
+    { headers: authHeader(token) },
+    '获取合同预览失败',
+  )
+  return res.preview_url
+}
+
+/**
+ * 按需求获取爱签合同预览链接。
+ */
+export async function fetchAsignRequirementPreviewUrl(
+  token: string,
+  requirementId: string,
+): Promise<string> {
+  const res = await requestJson<{ preview_url: string }>(
+    `/contracts/requirement/${encodeURIComponent(requirementId)}/asign/preview`,
+    { headers: authHeader(token) },
+    '获取合同预览失败',
+  )
+  return res.preview_url
+}

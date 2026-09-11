@@ -19,7 +19,7 @@ import {
   type RequirementConversation,
   type RequirementConversationDetail,
 } from '@/api/conversations'
-import { createRequirementContract, fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
+import { createRequirementContract, fetchAsignRequirementPreviewUrl, fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import {
   createAdapayPayment,
   getAdapayPayment,
@@ -136,7 +136,7 @@ const cancelConfirmTarget = ref<RequirementItem | null>(null)
 const cancelLoading = ref(false)
 const breachVisible = ref(false)
 const breachRequirement = ref<RequirementItem | null>(null)
-const breachLiableParty = ref<'customer' | 'developer' | 'platform'>('developer')
+const breachLiableParty = ref<'customer' | 'developer'>('developer')
 const breachReason = ref('')
 const breachLoading = ref(false)
 
@@ -401,11 +401,12 @@ function canOpenContractSign(item: RequirementItem) {
   if (isSelfManagedRequirement(item)) {
     return false
   }
+  return Boolean(signingStatusForRequirement(item)?.has_contract)
+}
+
+function contractButtonLabel(item: RequirementItem) {
   const status = signingStatusForRequirement(item)
-  return Boolean(
-    status?.has_contract &&
-      (!status.party_a_signed || !status.party_b_signed),
-  )
+  return status?.party_a_signed ? '查看合同' : '签署合同'
 }
 
 function contractStatusHint(item: RequirementItem) {
@@ -426,6 +427,35 @@ function openContractSign(item: RequirementItem) {
     name: 'contract-sign',
     query: { requirement_id: item.requirement_id, from: 'user' },
   })
+}
+
+/**
+ * 「查看合同」跳转到爱签的合同预览页（previewContract）。
+ *
+ * 合同已在爱签侧发起签署时可获取预览链接；若合同尚未发起爱签签署
+ * 或爱签接口异常，则回退到本地合同签署页展示。
+ */
+async function viewContractPreview(item: RequirementItem) {
+  if (auth.token) {
+    try {
+      const previewUrl = await fetchAsignRequirementPreviewUrl(auth.token, item.requirement_id)
+      if (previewUrl) {
+        window.location.href = previewUrl
+        return
+      }
+    } catch {
+      // 爱签预览不可用：回退本地合同展示。
+    }
+  }
+  openContractSign(item)
+}
+
+function handleContractButtonClick(item: RequirementItem) {
+  if (contractButtonLabel(item) === '查看合同') {
+    void viewContractPreview(item)
+    return
+  }
+  openContractSign(item)
 }
 
 /**
@@ -1794,8 +1824,8 @@ watch(
                 {{ contractCreatingId === item.requirement_id ? '发起中...' : '发起合同' }}
               </button>
               <button v-if="canOpenContractSign(item)" class="ghost small" type="button"
-                @click.stop="openContractSign(item)">
-                签署合同
+                @click.stop="handleContractButtonClick(item)">
+                {{ contractButtonLabel(item) }}
               </button>
               <button v-if="canRequestFinalPayment(item)" class="ghost small" type="button"
                 @click.stop="requestFinalPayment(item)">
@@ -2162,7 +2192,6 @@ watch(
             popper-class="breach-modal__select-popper">
             <el-option label="开发者违约" value="developer" />
             <el-option label="客户违约" value="customer" />
-            <el-option label="平台违约" value="platform" />
           </el-select>
         </label>
         <label class="pay-line breach-modal__field">
@@ -2170,7 +2199,7 @@ watch(
           <textarea v-model="breachReason" rows="6" maxlength="2000"
             placeholder="请填写时间、已交付内容、沟通记录和希望平台核查的事实"></textarea>
         </label>
-        <p class="tip">平台会核对合同、支付、交付和沟通记录。客户违约、开发者违约或平台责任的资金处理由管理员裁决。</p>
+        <p class="tip">平台会核对合同、支付、交付和沟通记录。客户违约、开发者违约的资金处理由管理员裁决。</p>
         <div class="actions">
           <button class="ghost" type="button" :disabled="breachLoading" @click="closeBreachReport">取消</button>
           <button class="ghost primary" type="button" :disabled="breachLoading" @click="submitBreachReport">
