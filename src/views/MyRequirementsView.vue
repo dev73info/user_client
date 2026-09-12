@@ -26,8 +26,11 @@ import {
   getAdapayPayment,
   reportAdapayBreach,
   requestAdapayPlatformReview,
+  submitAdapayBreachDecision,
   getAdapayClientPlatform,
   type AdapayBreachCase,
+  type AdapayBreachDecisionValue,
+  type AdapayBreachLiableParty,
   type AdapayBusinessPayChannel,
   type AdapayPaymentResponse,
 } from '@/api/adapay'
@@ -53,6 +56,7 @@ import { getDepositRatio } from '@/api/settings'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
+import { formatCnDateTime } from '@/shared/requirementDisplay'
 import {
   calculateFinalDepositAmount,
   calculateFinalPaymentAmount,
@@ -139,20 +143,57 @@ const cancelConfirmTarget = ref<RequirementItem | null>(null)
 const cancelLoading = ref(false)
 const breachVisible = ref(false)
 const breachRequirement = ref<RequirementItem | null>(null)
-const breachLiableParty = ref<'customer' | 'developer'>('developer')
 const breachReason = ref('')
 const breachLoading = ref(false)
 const breachCase = ref<AdapayBreachCase | null>(null)
 const breachCaseLoading = ref(false)
 const platformReviewLoading = ref(false)
+const breachDecisionLoading = ref(false)
+const breachRejectPanel = ref(false)
+const breachDecisionNote = ref('')
 
 /** 违约案件状态文案（与后端 adapay_breach_case.status 对应）。 */
 const BREACH_STATUS_LABELS: Record<string, string> = {
-  submitted: '待平台处理',
-  processing: '退款／赔付处理中',
-  manual_required: '平台介入中',
+  submitted: '待 AI 审核',
+  ai_reviewing: 'AI 审核中',
+  ai_judged: 'AI 已判定，待双方确认',
+  support_reviewing: '客服人工判定中',
+  processing: '资金处理中',
+  manual_required: '资金执行待处理',
   succeeded: '已结案',
   rejected: '已驳回',
+}
+
+/** 责任方文案。 */
+function breachLiablePartyLabel(party: AdapayBreachLiableParty) {
+  return party === 'customer' ? '客户（需求方）违约' : '开发者违约'
+}
+
+/** 表态文案：`null` 表示该方尚未表态。 */
+function breachDecisionText(decision?: AdapayBreachDecisionValue | null) {
+  if (!decision) {
+    return '未表态'
+  }
+  return decision === 'accepted' ? '已接受 AI 判定' : '不接受 AI 判定'
+}
+
+/** 双方表态状态只在 AI 判定后才有意义。 */
+function showBreachDecisions(item: AdapayBreachCase) {
+  return (
+    item.status === 'ai_judged' ||
+    item.customerDecision != null ||
+    item.developerDecision != null
+  )
+}
+
+/** 本页是需求方（客户）视角：`customerDecision` 是我方表态，`developerDecision` 是对方表态。 */
+function canDecideBreachCase(item: AdapayBreachCase | null) {
+  return item?.status === 'ai_judged' && item.customerDecision == null
+}
+
+/** 资金尚未开始执行时才允许申请平台介入（后端在 processing / manual_required 会拒绝）。 */
+function canRequestPlatformReview(item: AdapayBreachCase | null) {
+  return item != null && ['submitted', 'ai_reviewing', 'ai_judged'].includes(item.status)
 }
 
 function syncPublishModalFromRoute(value: unknown) {
@@ -349,7 +390,6 @@ async function openBreachReport(item: RequirementItem) {
     return
   }
   breachRequirement.value = item
-  breachLiableParty.value = 'developer'
   breachReason.value = ''
   breachCase.value = null
   breachVisible.value = true
@@ -364,13 +404,20 @@ async function openBreachReport(item: RequirementItem) {
 }
 
 function closeBreachReport() {
-  if (breachLoading.value || platformReviewLoading.value || breachCaseLoading.value) {
+  if (
+    breachLoading.value ||
+    platformReviewLoading.value ||
+    breachDecisionLoading.value ||
+    breachCaseLoading.value
+  ) {
     return
   }
   breachVisible.value = false
   breachRequirement.value = null
   breachReason.value = ''
   breachCase.value = null
+  breachRejectPanel.value = false
+  breachDecisionNote.value = ''
 }
 
 async function submitPlatformReview() {
@@ -380,11 +427,50 @@ async function submitPlatformReview() {
   platformReviewLoading.value = true
   try {
     breachCase.value = await requestAdapayPlatformReview(auth.token, breachCase.value.id)
-    showToast('已申请平台介入，请等待平台裁决', 'success')
+    showToast('已申请平台介入，案件转客服人工判定', 'success')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '申请平台介入失败', 'error')
   } finally {
     platformReviewLoading.value = false
+  }
+}
+
+function openBreachRejectPanel() {
+  breachDecisionNote.value = ''
+  breachRejectPanel.value = true
+}
+
+function cancelBreachRejectPanel() {
+  if (breachDecisionLoading.value) {
+    return
+  }
+  breachRejectPanel.value = false
+  breachDecisionNote.value = ''
+}
+
+async function submitBreachDecision(decision: AdapayBreachDecisionValue) {
+  const current = breachCase.value
+  if (!current) {
+    return
+  }
+  breachDecisionLoading.value = true
+  try {
+    breachCase.value = await submitAdapayBreachDecision(
+      auth.token,
+      current.id,
+      decision,
+      decision === 'rejected' ? breachDecisionNote.value.trim() : '',
+    )
+    breachRejectPanel.value = false
+    breachDecisionNote.value = ''
+    showToast(
+      decision === 'accepted' ? '已接受 AI 判定，等待对方表态' : '已提交不接受，案件转客服人工判定',
+      'success',
+    )
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '提交违约案件表态失败', 'error')
+  } finally {
+    breachDecisionLoading.value = false
   }
 }
 
@@ -397,13 +483,8 @@ async function submitBreachReport() {
   }
   breachLoading.value = true
   try {
-    breachCase.value = await reportAdapayBreach(
-      auth.token,
-      item.requirement_id,
-      breachLiableParty.value,
-      reason,
-    )
-    showToast('违约申报已提交，等待平台审核', 'success')
+    breachCase.value = await reportAdapayBreach(auth.token, item.requirement_id, reason)
+    showToast('违约申报已提交，平台将先由审核智能体判定责任方', 'success')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '提交违约申报失败', 'error')
   } finally {
@@ -2234,36 +2315,85 @@ watch(
         <template v-else-if="breachCase">
           <p class="pay-line"><strong>案件编号：</strong>{{ breachCase.caseNo }}</p>
           <p class="pay-line"><strong>当前状态：</strong>{{ BREACH_STATUS_LABELS[breachCase.status] ?? breachCase.status }}</p>
-          <p class="pay-line"><strong>责任方：</strong>{{ breachCase.liableParty === 'customer' ? '客户' : '开发者' }}</p>
-          <p class="pay-line"><strong>申报理由：</strong>{{ breachCase.reason }}</p>
-          <p class="pay-line">
-            <strong>资金处理：</strong>定金 ¥{{ breachCase.depositAmountCny }} · 已退尾款 ¥{{ breachCase.refundAmountCny }} · 赔付 ¥{{ breachCase.compensationAmountCny }}
+          <p v-if="breachCase.liableParty" class="pay-line">
+            <strong>责任认定：</strong>{{ breachLiablePartyLabel(breachCase.liableParty) }}
           </p>
-          <p v-if="breachCase.resolutionNote" class="pay-line"><strong>裁决说明：</strong>{{ breachCase.resolutionNote }}</p>
-          <p class="tip">协商不成时可申请平台介入，由平台裁决责任归属与尾款退还比例。</p>
+          <p class="pay-line"><strong>申报理由：</strong>{{ breachCase.reason }}</p>
+          <template v-if="breachCase.aiJudgedAt || breachCase.aiReasoning">
+            <p class="pay-line">
+              <strong>AI 判定：</strong>{{ breachCase.aiLiableParty ? breachLiablePartyLabel(breachCase.aiLiableParty) : '无法判定，已转客服人工判定' }}
+            </p>
+            <p v-if="breachCase.aiJudgedAt" class="pay-line">
+              <strong>判定时间：</strong>{{ formatCnDateTime(breachCase.aiJudgedAt) }}
+            </p>
+            <p v-if="breachCase.aiReasoning" class="pay-line">
+              <strong>判定理由：</strong>{{ breachCase.aiReasoning }}
+            </p>
+          </template>
+          <p v-if="breachCase.decisionDeadlineAt" class="pay-line">
+            <strong>表态截止：</strong>{{ formatCnDateTime(breachCase.decisionDeadlineAt) }}
+          </p>
+          <template v-if="showBreachDecisions(breachCase)">
+            <p class="pay-line"><strong>我方表态：</strong>{{ breachDecisionText(breachCase.customerDecision) }}</p>
+            <p class="pay-line"><strong>对方表态：</strong>{{ breachDecisionText(breachCase.developerDecision) }}</p>
+          </template>
+          <p class="pay-line">
+            <strong>资金处理：</strong>定金 ¥{{ breachCase.depositAmountCny }} · 已退尾款 ¥{{ breachCase.refundAmountCny }} · 赔付 ¥{{ breachCase.compensationAmountCny }}<template v-if="breachCase.extraCompensationFen > 0"> · 额外赔偿 ¥{{ breachCase.extraCompensationCny }}</template>
+          </p>
+          <p v-if="breachCase.verdictSource" class="pay-line">
+            <strong>判定来源：</strong>{{ breachCase.verdictSource === 'ai' ? '双方接受 AI 判定' : '客服人工判定' }}
+          </p>
+          <p v-if="breachCase.resolutionNote" class="pay-line"><strong>处理说明：</strong>{{ breachCase.resolutionNote }}</p>
+
+          <div v-if="canDecideBreachCase(breachCase)" class="breach-modal__decision">
+            <p class="pay-line"><strong>是否接受：</strong>双方都接受 AI 判定后平台才会执行退款／赔付；任一方不接受或逾期未全部表态，案件转客服人工判定。</p>
+            <label v-if="breachRejectPanel" class="pay-line breach-modal__field">
+              <strong>不接受的原因</strong>
+              <textarea v-model="breachDecisionNote" rows="3" maxlength="1000"
+                placeholder="可选：说明不接受该判定的理由，便于客服人工复核"></textarea>
+            </label>
+            <div class="actions">
+              <template v-if="breachRejectPanel">
+                <button class="ghost" type="button" :disabled="breachDecisionLoading" @click="cancelBreachRejectPanel">
+                  取消
+                </button>
+                <button class="ghost danger" type="button" :disabled="breachDecisionLoading"
+                  @click="submitBreachDecision('rejected')">
+                  {{ breachDecisionLoading ? '提交中...' : '确认不接受' }}
+                </button>
+              </template>
+              <template v-else>
+                <button class="ghost danger-plain" type="button" :disabled="breachDecisionLoading"
+                  @click="openBreachRejectPanel">
+                  不接受
+                </button>
+                <button class="ghost primary" type="button" :disabled="breachDecisionLoading"
+                  @click="submitBreachDecision('accepted')">
+                  {{ breachDecisionLoading ? '提交中...' : '接受判定' }}
+                </button>
+              </template>
+            </div>
+          </div>
+
+          <p v-else-if="breachCase.status === 'submitted' || breachCase.status === 'ai_reviewing'" class="tip">
+            AI 判定完成后由双方各自选择是否接受；双方都接受平台才会执行退款／赔付，协商不成可申请平台介入转客服人工判定。
+          </p>
           <div class="actions">
-            <button class="ghost" type="button" :disabled="platformReviewLoading" @click="closeBreachReport">关闭</button>
-            <button v-if="breachCase.status === 'submitted'" class="ghost primary" type="button"
-              :disabled="platformReviewLoading" @click="submitPlatformReview">
+            <button class="ghost" type="button"
+              :disabled="platformReviewLoading || breachDecisionLoading" @click="closeBreachReport">关闭</button>
+            <button v-if="canRequestPlatformReview(breachCase)" class="ghost primary" type="button"
+              :disabled="platformReviewLoading || breachDecisionLoading" @click="submitPlatformReview">
               {{ platformReviewLoading ? '提交中...' : '申请平台介入' }}
             </button>
           </div>
         </template>
         <template v-else>
           <label class="pay-line breach-modal__field">
-            <strong>责任方向</strong>
-            <el-select v-model="breachLiableParty" class="breach-modal__select" aria-label="责任方向"
-              popper-class="breach-modal__select-popper">
-              <el-option label="开发者违约" value="developer" />
-              <el-option label="客户违约" value="customer" />
-            </el-select>
-          </label>
-          <label class="pay-line breach-modal__field">
             <strong>事实与依据</strong>
             <textarea v-model="breachReason" rows="6" maxlength="2000"
               placeholder="请填写时间、已交付内容、沟通记录和希望平台核查的事实"></textarea>
           </label>
-          <p class="tip">平台会核对合同、支付、交付和沟通记录。客户违约、开发者违约的资金处理由管理员裁决。</p>
+          <p class="tip">平台会核对合同、支付、交付和沟通记录，先由审核智能体依据双方会话判定责任方。</p>
           <div class="actions">
             <button class="ghost" type="button" :disabled="breachLoading" @click="closeBreachReport">取消</button>
             <button class="ghost primary" type="button" :disabled="breachLoading" @click="submitBreachReport">
@@ -2822,73 +2952,21 @@ watch(
   font-weight: 700;
 }
 
-.pay-modal .breach-modal__select {
-  width: 100%;
+/* 违约案件：双方表态（接受 / 不接受）区块 */
+.pay-modal .breach-modal__decision {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(191, 219, 254, 0.9);
+  border-radius: 14px;
+  background: rgba(239, 246, 255, 0.72);
 }
 
-.pay-modal .breach-modal__select :deep(.el-select__wrapper) {
-  min-height: 42px;
-  padding: 0 12px;
-  border: 1px solid rgba(198, 210, 236, 0.9);
-  border-radius: 12px;
-  background: rgba(248, 250, 252, 0.92);
-  color: #0f172a;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 42px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.62);
-  transition:
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    background-color 180ms ease;
+.pay-modal .breach-modal__decision .pay-line {
+  margin-bottom: 0;
 }
 
-.pay-modal .breach-modal__select :deep(.el-select__wrapper:hover) {
-  border-color: rgba(125, 155, 225, 0.92);
-  background-color: #fff;
-}
-
-.pay-modal .breach-modal__select :deep(.el-select__wrapper.is-focused),
-.pay-modal .breach-modal__select :deep(.el-select__wrapper.is-focus) {
-  border-color: rgba(37, 99, 235, 0.58);
-  background-color: #fff;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
-}
-
-.pay-modal .breach-modal__select :deep(.el-select__selected-item) {
-  color: #0f172a;
-}
-
-:deep(.breach-modal__select-popper.el-popper) {
-  overflow: hidden;
-  padding: 6px;
-  border: 1px solid rgba(198, 210, 236, 0.9);
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 14px 30px rgba(76, 103, 172, 0.16);
-}
-
-:deep(.breach-modal__select-popper .el-select-dropdown__item) {
-  height: 38px;
-  padding: 0 12px;
-  border-radius: 8px;
-  color: #334155;
-  font-family: 'Space Grotesk', 'Noto Sans SC', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 38px;
-}
-
-:deep(.breach-modal__select-popper .el-select-dropdown__item.is-hovering) {
-  background: #eff6ff;
-  color: #1d4ed8;
-}
-
-:deep(.breach-modal__select-popper .el-select-dropdown__item.is-selected) {
-  background: #dbeafe;
-  color: #1d4ed8;
-  font-weight: 700;
+.pay-modal .breach-modal__decision .actions {
+  margin-top: 12px;
 }
 
 .wallet-header h3.portal-page__eyebrow {
@@ -2956,10 +3034,12 @@ watch(
     width: 100%;
   }
 
-  .pay-modal .breach-modal__select :deep(.el-select__wrapper) {
+  .pay-modal .breach-modal__decision .actions .ghost {
     min-height: 44px;
-    font-size: 16px;
-    line-height: 44px;
+  }
+
+  .pay-modal .breach-modal__decision .actions {
+    flex-direction: column;
   }
 
   .my-requirement-detail__review-panel {

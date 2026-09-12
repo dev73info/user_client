@@ -4,7 +4,15 @@ import { useRouter } from 'vue-router'
 
 import { ArrowDown, ArrowUp, ChatDotRound, Close, Document, UploadFilled } from '@element-plus/icons-vue'
 
-import { getAdapayBreachCase, reportAdapayBreach, requestAdapayPlatformReview, type AdapayBreachCase } from '@/api/adapay'
+import {
+  getAdapayBreachCase,
+  reportAdapayBreach,
+  requestAdapayPlatformReview,
+  submitAdapayBreachDecision,
+  type AdapayBreachCase,
+  type AdapayBreachDecisionValue,
+  type AdapayBreachLiableParty,
+} from '@/api/adapay'
 import {
   createMcResourceVersion,
   listMcResourceVersions,
@@ -31,6 +39,7 @@ import {
 } from '@/api/contracts'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { formatCnDateTime } from '@/shared/requirementDisplay'
 import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 
 const auth = useAuthStore()
@@ -67,20 +76,57 @@ const deliverySubmitting = ref(false)
 const deliveryVersions = ref<McResourceVersionPayload[]>([])
 const deliveryVersionsLoading = ref(false)
 const breachRequirement = ref<RequirementItem | null>(null)
-const breachLiableParty = ref<'customer' | 'developer'>('customer')
 const breachReason = ref('')
 const breachLoading = ref(false)
 const breachCase = ref<AdapayBreachCase | null>(null)
 const breachCaseLoading = ref(false)
 const platformReviewLoading = ref(false)
+const breachDecisionLoading = ref(false)
+const breachRejectPanel = ref(false)
+const breachDecisionNote = ref('')
 
 /** 违约案件状态文案（与后端 adapay_breach_case.status 对应）。 */
 const BREACH_STATUS_LABELS: Record<string, string> = {
-  submitted: '待平台处理',
-  processing: '退款／赔付处理中',
-  manual_required: '平台介入中',
+  submitted: '待 AI 审核',
+  ai_reviewing: 'AI 审核中',
+  ai_judged: 'AI 已判定，待双方确认',
+  support_reviewing: '客服人工判定中',
+  processing: '资金处理中',
+  manual_required: '资金执行待处理',
   succeeded: '已结案',
   rejected: '已驳回',
+}
+
+/** 责任方文案。 */
+function breachLiablePartyLabel(party: AdapayBreachLiableParty) {
+  return party === 'customer' ? '客户（需求方）违约' : '开发者违约'
+}
+
+/** 表态文案：`null` 表示该方尚未表态。 */
+function breachDecisionText(decision?: AdapayBreachDecisionValue | null) {
+  if (!decision) {
+    return '未表态'
+  }
+  return decision === 'accepted' ? '已接受 AI 判定' : '不接受 AI 判定'
+}
+
+/** 双方表态状态只在 AI 判定后才有意义。 */
+function showBreachDecisions(item: AdapayBreachCase) {
+  return (
+    item.status === 'ai_judged' ||
+    item.customerDecision != null ||
+    item.developerDecision != null
+  )
+}
+
+/** 本页是开发者视角：`developerDecision` 是我方表态，`customerDecision` 是对方表态。 */
+function canDecideBreachCase(item: AdapayBreachCase | null) {
+  return item?.status === 'ai_judged' && item.developerDecision == null
+}
+
+/** 资金尚未开始执行时才允许申请平台介入（后端在 processing / manual_required 会拒绝）。 */
+function canRequestPlatformReview(item: AdapayBreachCase | null) {
+  return item != null && ['submitted', 'ai_reviewing', 'ai_judged'].includes(item.status)
 }
 
 const emptyText = computed(() => (loading.value ? '我的需求单加载中' : '当前账号还没有已关联需求'))
@@ -472,7 +518,6 @@ async function openBreachReport(item: RequirementItem) {
     return
   }
   breachRequirement.value = item
-  breachLiableParty.value = 'customer'
   breachReason.value = ''
   breachCase.value = null
   breachVisible.value = true
@@ -487,13 +532,20 @@ async function openBreachReport(item: RequirementItem) {
 }
 
 function closeBreachReport() {
-  if (breachLoading.value || platformReviewLoading.value || breachCaseLoading.value) {
+  if (
+    breachLoading.value ||
+    platformReviewLoading.value ||
+    breachDecisionLoading.value ||
+    breachCaseLoading.value
+  ) {
     return
   }
   breachVisible.value = false
   breachRequirement.value = null
   breachReason.value = ''
   breachCase.value = null
+  breachRejectPanel.value = false
+  breachDecisionNote.value = ''
 }
 
 async function submitPlatformReview() {
@@ -503,11 +555,50 @@ async function submitPlatformReview() {
   platformReviewLoading.value = true
   try {
     breachCase.value = await requestAdapayPlatformReview(auth.token, breachCase.value.id)
-    showToast('已申请平台介入，请等待平台裁决', 'success')
+    showToast('已申请平台介入，案件转客服人工判定', 'success')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '申请平台介入失败', 'error')
   } finally {
     platformReviewLoading.value = false
+  }
+}
+
+function openBreachRejectPanel() {
+  breachDecisionNote.value = ''
+  breachRejectPanel.value = true
+}
+
+function cancelBreachRejectPanel() {
+  if (breachDecisionLoading.value) {
+    return
+  }
+  breachRejectPanel.value = false
+  breachDecisionNote.value = ''
+}
+
+async function submitBreachDecision(decision: AdapayBreachDecisionValue) {
+  const current = breachCase.value
+  if (!current) {
+    return
+  }
+  breachDecisionLoading.value = true
+  try {
+    breachCase.value = await submitAdapayBreachDecision(
+      auth.token,
+      current.id,
+      decision,
+      decision === 'rejected' ? breachDecisionNote.value.trim() : '',
+    )
+    breachRejectPanel.value = false
+    breachDecisionNote.value = ''
+    showToast(
+      decision === 'accepted' ? '已接受 AI 判定，等待对方表态' : '已提交不接受，案件转客服人工判定',
+      'success',
+    )
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '提交违约案件表态失败', 'error')
+  } finally {
+    breachDecisionLoading.value = false
   }
 }
 
@@ -520,13 +611,8 @@ async function submitBreachReport() {
   }
   breachLoading.value = true
   try {
-    breachCase.value = await reportAdapayBreach(
-      auth.token,
-      item.requirement_id,
-      breachLiableParty.value,
-      reason,
-    )
-    showToast('违约申报已提交，等待平台审核', 'success')
+    breachCase.value = await reportAdapayBreach(auth.token, item.requirement_id, reason)
+    showToast('违约申报已提交，平台将先由审核智能体判定责任方', 'success')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '提交违约申报失败', 'error')
   } finally {
@@ -981,7 +1067,7 @@ async function loadRequirementConversations() {
       :close-on-click-modal="false" :close-on-press-escape="false" @close="closeBreachReport">
       <div class="delivery-dialog-body">
         <p class="unbind-dialog-tip">
-          平台会核对合同、支付、交付和沟通记录，最终责任及资金处理由平台管理员裁决。
+          平台会核对合同、支付、交付和沟通记录，先由审核智能体依据双方会话判定责任方，资金处理按双方表态执行。
         </p>
         <p v-if="breachCaseLoading" class="unbind-dialog-tip">正在加载违约案件…</p>
         <template v-else-if="breachCase">
@@ -990,26 +1076,65 @@ async function loadRequirementConversations() {
             <el-descriptions-item label="当前状态">
               {{ BREACH_STATUS_LABELS[breachCase.status] ?? breachCase.status }}
             </el-descriptions-item>
-            <el-descriptions-item label="责任方">
-              {{ breachCase.liableParty === 'customer' ? '客户' : '开发者' }}
+            <el-descriptions-item v-if="breachCase.liableParty" label="责任认定">
+              {{ breachLiablePartyLabel(breachCase.liableParty) }}
             </el-descriptions-item>
             <el-descriptions-item label="申报理由">{{ breachCase.reason }}</el-descriptions-item>
-            <el-descriptions-item label="资金处理">
-              定金 ¥{{ breachCase.depositAmountCny }} · 已退尾款 ¥{{ breachCase.refundAmountCny }} · 赔付 ¥{{ breachCase.compensationAmountCny }}
+            <el-descriptions-item v-if="breachCase.aiJudgedAt || breachCase.aiReasoning" label="AI 判定">
+              {{ breachCase.aiLiableParty ? breachLiablePartyLabel(breachCase.aiLiableParty) : '无法判定，已转客服人工判定' }}
             </el-descriptions-item>
-            <el-descriptions-item v-if="breachCase.resolutionNote" label="裁决说明">
+            <el-descriptions-item v-if="breachCase.aiJudgedAt" label="判定时间">
+              {{ formatCnDateTime(breachCase.aiJudgedAt) }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="breachCase.aiReasoning" label="判定理由">
+              {{ breachCase.aiReasoning }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="breachCase.decisionDeadlineAt" label="表态截止">
+              {{ formatCnDateTime(breachCase.decisionDeadlineAt) }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="showBreachDecisions(breachCase)" label="我方表态">
+              {{ breachDecisionText(breachCase.developerDecision) }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="showBreachDecisions(breachCase)" label="对方表态">
+              {{ breachDecisionText(breachCase.customerDecision) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="资金处理">
+              定金 ¥{{ breachCase.depositAmountCny }} · 已退尾款 ¥{{ breachCase.refundAmountCny }} · 赔付 ¥{{ breachCase.compensationAmountCny }}<template v-if="breachCase.extraCompensationFen > 0"> · 额外赔偿 ¥{{ breachCase.extraCompensationCny }}</template>
+            </el-descriptions-item>
+            <el-descriptions-item v-if="breachCase.verdictSource" label="判定来源">
+              {{ breachCase.verdictSource === 'ai' ? '双方接受 AI 判定' : '客服人工判定' }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="breachCase.resolutionNote" label="处理说明">
               {{ breachCase.resolutionNote }}
             </el-descriptions-item>
           </el-descriptions>
-          <p class="unbind-dialog-tip">协商不成时可申请平台介入，由平台裁决责任归属与尾款退还比例。</p>
+
+          <div v-if="canDecideBreachCase(breachCase)" class="breach-decision">
+            <p class="unbind-dialog-line">
+              请选择是否接受 AI 判定：双方都接受后平台才会执行退款／赔付；任一方不接受或逾期未全部表态，案件转客服人工判定。
+            </p>
+            <el-input v-if="breachRejectPanel" v-model="breachDecisionNote" type="textarea" :rows="3" maxlength="1000"
+              show-word-limit placeholder="可选：说明不接受该判定的理由，便于客服人工复核" />
+            <div class="breach-decision__actions">
+              <template v-if="breachRejectPanel">
+                <el-button :disabled="breachDecisionLoading" @click="cancelBreachRejectPanel">取消</el-button>
+                <el-button type="danger" :loading="breachDecisionLoading"
+                  @click="submitBreachDecision('rejected')">确认不接受</el-button>
+              </template>
+              <template v-else>
+                <el-button type="danger" plain :disabled="breachDecisionLoading"
+                  @click="openBreachRejectPanel">不接受</el-button>
+                <el-button type="primary" :loading="breachDecisionLoading"
+                  @click="submitBreachDecision('accepted')">接受判定</el-button>
+              </template>
+            </div>
+          </div>
+          <p v-else-if="breachCase.status === 'submitted' || breachCase.status === 'ai_reviewing'"
+            class="unbind-dialog-tip">
+            AI 判定完成后由双方各自选择是否接受；双方都接受平台才会执行退款／赔付，协商不成可申请平台介入转客服人工判定。
+          </p>
         </template>
         <el-form v-else label-position="top">
-          <el-form-item label="责任方向" required>
-            <el-select v-model="breachLiableParty" style="width: 100%">
-              <el-option label="客户违约" value="customer" />
-              <el-option label="开发者违约" value="developer" />
-            </el-select>
-          </el-form-item>
           <el-form-item label="事实与依据" required>
             <el-input v-model="breachReason" type="textarea" :rows="6" maxlength="2000" show-word-limit
               placeholder="请填写时间、已交付内容、沟通记录和希望平台核查的事实" />
@@ -1017,10 +1142,11 @@ async function loadRequirementConversations() {
         </el-form>
       </div>
       <template #footer>
-        <el-button :disabled="platformReviewLoading || breachLoading" @click="closeBreachReport">
+        <el-button :disabled="platformReviewLoading || breachLoading || breachDecisionLoading"
+          @click="closeBreachReport">
           {{ breachCase ? '关闭' : '取消' }}
         </el-button>
-        <el-button v-if="breachCase && breachCase.status === 'submitted'" type="primary"
+        <el-button v-if="canRequestPlatformReview(breachCase)" type="primary" plain
           :loading="platformReviewLoading" @click="submitPlatformReview">申请平台介入</el-button>
         <el-button v-else-if="!breachCase" type="primary" :loading="breachLoading" @click="submitBreachReport">
           提交申报
@@ -1292,6 +1418,28 @@ async function loadRequirementConversations() {
   line-height: 1.5;
 }
 
+/* 违约案件：双方表态（接受 / 不接受）区块 */
+.breach-decision {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(191, 219, 254, 0.9);
+  border-radius: 12px;
+  background: rgba(239, 246, 255, 0.72);
+}
+
+.breach-decision .unbind-dialog-line {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.breach-decision__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .delivery-dialog-form :deep(.el-form-item) {
   margin-bottom: 12px;
 }
@@ -1444,6 +1592,12 @@ async function loadRequirementConversations() {
 
   .dev-requirement-card__meta {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .breach-decision__actions :deep(.el-button) {
+    flex: 1 1 140px;
+    min-height: 44px;
+    margin-left: 0;
   }
 }
 </style>

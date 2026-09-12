@@ -48,13 +48,21 @@ export type AdapayAcceptanceResponse = {
   depositSplitStatus: string
 }
 
+/** 违约案件责任方：`customer` 客户（需求方）/ `developer` 开发者。 */
+export type AdapayBreachLiableParty = 'customer' | 'developer'
+/** 合同双方对 AI 判定的表态。 */
+export type AdapayBreachDecisionValue = 'accepted' | 'rejected'
+/** 最终判定来源：`ai` 双方接受 AI 判定 / `support` 客服人工判定。 */
+export type AdapayBreachVerdictSource = 'ai' | 'support'
+
 export type AdapayBreachCase = {
   id: number
   caseNo: string
   requirementId: string
   paymentId: string
   reportedBy: string
-  liableParty: 'customer' | 'developer'
+  /** 最终认定的责任方；AI 判定完成前为空。 */
+  liableParty?: AdapayBreachLiableParty | null
   reason: string
   status: string
   depositAmountFen: number
@@ -63,13 +71,28 @@ export type AdapayBreachCase = {
   refundAmountCny: string
   compensationAmountFen: number
   compensationAmountCny: string
+  /** 开发者额外赔偿金额（分 / 元字符串）。 */
+  extraCompensationFen: number
+  extraCompensationCny: string
   providerRefundId?: string | null
+  /** 渠道回调里的真实转账号（只读展示，不是人工填写的字段）。 */
   providerTransferId?: string | null
   resolutionNote?: string | null
   resolvedBy?: string | null
   resolvedAt?: string | null
   createdAt: string
   updatedAt: string
+  /** AI 判定责任方；AI 无法判定时后端不写该字段，直接转客服人工判定。 */
+  aiLiableParty?: AdapayBreachLiableParty | null
+  aiReasoning?: string | null
+  aiJudgedAt?: string | null
+  /** 双方表态截止时间；超时未全部接受会由后端转客服人工判定。 */
+  decisionDeadlineAt?: string | null
+  customerDecision?: AdapayBreachDecisionValue | null
+  customerDecidedAt?: string | null
+  developerDecision?: AdapayBreachDecisionValue | null
+  developerDecidedAt?: string | null
+  verdictSource?: AdapayBreachVerdictSource | null
 }
 
 export async function createAdapayPayment(
@@ -173,10 +196,10 @@ export async function acceptAdapayDelivery(
   )
 }
 
+/** 申报违约：只提交违约事实，责任方由审核智能体依据需求会话判定。 */
 export async function reportAdapayBreach(
   token: string,
   requirementId: string,
-  liableParty: AdapayBreachCase['liableParty'],
   reason: string,
 ): Promise<AdapayBreachCase> {
   return requestJson<AdapayBreachCase>(
@@ -187,7 +210,7 @@ export async function reportAdapayBreach(
         'Content-Type': 'application/json',
         ...authHeader(token),
       },
-      body: JSON.stringify({ liable_party: liableParty, reason }),
+      body: JSON.stringify({ reason }),
     },
     '提交违约申报失败',
   )
@@ -205,7 +228,28 @@ export async function getAdapayBreachCase(
   )
 }
 
-/** 协商不成时申请平台介入裁决。 */
+/** 合同双方对 AI 判定表态：接受即按判定执行，不接受则转客服人工判定。 */
+export async function submitAdapayBreachDecision(
+  token: string,
+  caseId: number,
+  decision: AdapayBreachDecisionValue,
+  note = '',
+): Promise<AdapayBreachCase> {
+  return requestJson<AdapayBreachCase>(
+    `/adapay/breaches/${caseId}/decision`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify({ decision, note }),
+    },
+    '提交违约案件表态失败',
+  )
+}
+
+/** 协商不成或 AI 未判定时申请平台介入（转客服人工判定）。 */
 export async function requestAdapayPlatformReview(
   token: string,
   caseId: number,
