@@ -1354,6 +1354,16 @@ async function removeBackground() {
     max-width: 100%;
   }
 
+  /* 窄屏改为纵向排列后，flex 子项仍按 align-items:center 收缩到 max-content，
+     长用户名（下划线不换行）会把内容撑出容器并被 overflow:hidden 裁掉。 */
+  .dev-profile__head-content {
+    width: 100%;
+  }
+
+  .dev-profile__name {
+    overflow-wrap: anywhere;
+  }
+
   .dev-profile__edit-dialog {
     width: calc(100% - 32px) !important;
   }
