@@ -1,4 +1,4 @@
-import { apiUrl, authHeaders, requestJson } from '@/api/http'
+import { authHeaders, requestJson } from '@/api/http'
 
 export type DevOrderDepositOrderSummary = {
   payment_id: string
@@ -60,30 +60,6 @@ export type CreateDevOrderDepositWithdrawalRequest = {
   note?: string | null
 }
 
-export type DevOrderDepositAlipayPage = {
-  payment_id: string
-  channel: 'alipay'
-  amount_cny: number
-  status: string
-  page_html: string
-  expires_at: string
-}
-
-export type DevOrderDepositWechatPayment = {
-  payment_id: string
-  channel: 'wechat'
-  amount_cny: number
-  status: string
-  code_url: string
-  expires_at: string
-}
-
-export type DevOrderDepositConfirmResponse = {
-  payment_id: string
-  status: string
-  has_paid_deposit: boolean
-}
-
 export async function getDevOrderDepositStatus(token: string): Promise<DevOrderDepositStatus> {
   return requestJson<DevOrderDepositStatus>(
     '/dev/payments/developer-order-deposit',
@@ -119,70 +95,4 @@ export async function createDevOrderDepositWithdrawalRequest(
     },
     '提交保证金提现申请失败',
   )
-}
-
-export async function createDevOrderDepositAlipayPage(token: string, amount_cny: number): Promise<DevOrderDepositAlipayPage> {
-  return requestJson<DevOrderDepositAlipayPage>(
-    '/dev/payments/developer-order-deposit/alipay/page',
-    {
-      method: 'POST',
-      headers: authHeaders(token, {
-        'Content-Type': 'application/json',
-      }),
-      body: JSON.stringify({ amount_cny }),
-    },
-    '创建支付宝保证金订单失败',
-  )
-}
-
-export async function createDevOrderDepositWechatPayment(token: string, amount_cny: number): Promise<DevOrderDepositWechatPayment> {
-  return requestJson<DevOrderDepositWechatPayment>(
-    '/dev/payments/developer-order-deposit/wechat/create',
-    {
-      method: 'POST',
-      headers: authHeaders(token, {
-        'Content-Type': 'application/json',
-      }),
-      body: JSON.stringify({ amount_cny }),
-    },
-    '创建微信保证金订单失败',
-  )
-}
-
-export async function confirmDevOrderDepositAlipayPayment(
-  token: string,
-  payment_id: string,
-): Promise<DevOrderDepositConfirmResponse> {
-  return requestJson<DevOrderDepositConfirmResponse>(
-    '/dev/payments/developer-order-deposit/alipay/confirm',
-    {
-      method: 'POST',
-      headers: authHeaders(token, {
-        'Content-Type': 'application/json',
-      }),
-      body: JSON.stringify({ payment_id }),
-    },
-    '确认支付宝保证金支付失败',
-  )
-}
-
-export async function confirmDevOrderDepositWechatPayment(
-  token: string,
-  payment_id: string,
-): Promise<DevOrderDepositConfirmResponse> {
-  return requestJson<DevOrderDepositConfirmResponse>(
-    '/dev/payments/developer-order-deposit/wechat/confirm',
-    {
-      method: 'POST',
-      headers: authHeaders(token, {
-        'Content-Type': 'application/json',
-      }),
-      body: JSON.stringify({ payment_id }),
-    },
-    '确认微信保证金支付失败',
-  )
-}
-
-export function getDevOrderDepositAlipayPageUrl(paymentId: string): string {
-  return apiUrl(`/dev/payments/developer-order-deposit/alipay/page?payment_id=${encodeURIComponent(paymentId)}`)
 }
