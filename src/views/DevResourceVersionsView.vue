@@ -3,7 +3,7 @@ import { nextTick, reactive, ref } from 'vue'
 import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { apiUrl } from '@/api/http'
+import { apiUrl, HttpError } from '@/api/http'
 import { extractResourceFileNameFromUrl, with73Extension } from '@/api/resources'
 import {
   createMcResourceVersion,
@@ -87,7 +87,10 @@ async function loadPage() {
     resource.value = resourcePayload
     versionRows.value = versionsPayload
   } catch (error) {
-    const message = error instanceof Error ? error.message : '加载版本管理失败'
+    // 404 同时覆盖「资源不存在」与「私有/待审资源无权查看」，按后端原文弹「not found」对用户没意义
+    const message = error instanceof HttpError && error.status === 404
+      ? '资源不存在或无权访问'
+      : error instanceof Error ? error.message : '加载版本管理失败'
     showToast(message, 'error')
     router.replace({ name: 'dev-resource-list' })
   } finally {

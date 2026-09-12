@@ -13,7 +13,7 @@ import {
   View,
 } from '@element-plus/icons-vue'
 
-import { apiUrl } from '@/api/http'
+import { apiUrl, HttpError } from '@/api/http'
 import {
   getMcResource,
   type CreateMcResourceTagSelection,
@@ -346,7 +346,10 @@ async function loadResource() {
     coverPreview.value = payload.cover_url ? apiUrl(payload.cover_url) : ''
     syncEditorContent(payload.release_note || '')
   } catch (error) {
-    const message = error instanceof Error ? error.message : '加载资源详情失败'
+    // 404 同时覆盖「资源不存在」与「私有/待审资源无权查看」，按后端原文弹「not found」对用户没意义
+    const message = error instanceof HttpError && error.status === 404
+      ? '资源不存在或无权访问'
+      : error instanceof Error ? error.message : '加载资源详情失败'
     showToast(message, 'error')
     router.replace({ name: 'dev-resource-list' })
   } finally {
