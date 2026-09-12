@@ -537,8 +537,15 @@ async function loadHallData(page = hallPage.value) {
           </article>
         </div>
 
+        <div v-else class="portal-page__empty portal-page__empty--stacked">
+          <strong>{{ keyword.trim() ? '没有匹配的需求' : '当前没有可展示的需求' }}</strong>
+          <button v-if="keyword.trim()" class="portal-page__secondary" type="button" @click="resetKeyword">
+            清空筛选
+          </button>
+        </div>
+
         <el-pagination
-          v-if="!loading && hallTotal > HALL_PAGE_SIZE"
+          v-if="!loading && filteredRequirements.length"
           class="requirement-hall__pager"
           layout="prev, pager, next"
           :current-page="hallPage"
@@ -546,13 +553,6 @@ async function loadHallData(page = hallPage.value) {
           :total="hallTotal"
           @current-change="loadHallData"
         />
-
-        <div v-else class="portal-page__empty portal-page__empty--stacked">
-          <strong>{{ keyword.trim() ? '没有匹配的需求' : '当前没有可展示的需求' }}</strong>
-          <button v-if="keyword.trim()" class="portal-page__secondary" type="button" @click="resetKeyword">
-            清空筛选
-          </button>
-        </div>
       </section>
 
       <aside class="portal-page__aside">
