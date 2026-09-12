@@ -6,6 +6,7 @@ import {
   createSupportConversation,
   getSupportConversationDetail,
   listMySupportConversations,
+  listPublicSupportChannels,
   sendSupportMessage,
   supportConversationWsUrl,
   type SupportConversationDetail,
@@ -13,6 +14,9 @@ import {
 } from '@/api/support'
 
 const auth = useAuthStore()
+
+// 客服端可在「系统设置 → 渠道配置」停用网页渠道，此时整个浮窗不展示
+const channelEnabled = ref(true)
 
 const opened = ref(false)
 const openLabel = computed(() => (opened.value ? '收起' : '在线客服'))
@@ -267,7 +271,16 @@ function connectWs() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // 渠道被客服端停用时，整个浮窗不渲染也不建连
+  try {
+    const channels = await listPublicSupportChannels()
+    const widgetChannel = channels.find((c) => c.channel_key === 'web_widget')
+    channelEnabled.value = widgetChannel ? widgetChannel.enabled : true
+  } catch {
+    // 渠道接口异常时保持展示，避免误伤线上入口
+  }
+  if (!channelEnabled.value) return
   top.value = clampFabTop((window.innerHeight - currentFabHeight()) / 2)
   window.addEventListener('resize', handleViewportResize)
   connectWs()
@@ -283,7 +296,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="widgetRef" class="support-widget" :style="widgetStyle">
+  <div v-if="channelEnabled" ref="widgetRef" class="support-widget" :style="widgetStyle">
     <!-- 聊天面板 -->
     <Transition name="support-pop">
       <div

@@ -81,3 +81,10 @@ export function supportConversationWsUrl(token: string): string {
   const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
   return `${proto}://${window.location.host}/api/support/conversations/ws?token=${encodeURIComponent(token)}`
 }
+
+/** 公开的客服渠道开关（无需登录），用于决定是否展示在线客服浮窗 */
+export async function listPublicSupportChannels(): Promise<
+  Array<{ channel_key: string; label: string; enabled: boolean }>
+> {
+  return requestJson('/support/channels/public', {}, '加载客服渠道失败')
+}
