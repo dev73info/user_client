@@ -1806,6 +1806,13 @@ onMounted(async () => {
   } catch {
     adapayMember.value = null
   }
+  // 钱包页的「去绑定收款银行卡」入口：带 settle=1 直接打开结算账户弹窗
+  if (route.query.settle === '1') {
+    void openSettleDialog()
+    const nextQuery = { ...route.query }
+    delete nextQuery.settle
+    void router.replace({ query: nextQuery })
+  }
   const payload = faceidReturnPayload()
   if (payload.serial_no || payload.order_no || payload.biz_id) {
     await checkWechatFaceidResult(payload)

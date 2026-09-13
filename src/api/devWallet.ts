@@ -26,7 +26,8 @@ export type DevWithdrawalRecord = {
   withdrawal_id: string
   creator: string
   amount_cny: number
-  channel: 'alipay' | 'wechat'
+  /** 出款渠道：接单收入与保证金退回都经 Adapay 出款，alipay / wechat 是历史数据的兼容取值 */
+  channel: 'adapay' | 'alipay' | 'wechat'
   account_name: string
   account_no: string
   account_no_masked: string
@@ -37,6 +38,10 @@ export type DevWithdrawalRecord = {
   reviewed_at?: string | null
   paid_reference?: string | null
   paid_at?: string | null
+  /** 出款失败原因；出款中与已出款时为空 */
+  payout_failure_message?: string | null
+  payout_started_at?: string | null
+  payout_attempts?: number
   created_at: string
   updated_at: string
 }
@@ -68,6 +73,16 @@ export type CreateDevWithdrawalRequest = {
   note?: string | null
 }
 
+/** 收益提现偏好与出款通道状态（自动提现开关 + T+1 到账说明）。 */
+export type DevWithdrawalSetting = {
+  auto_withdraw_enabled: boolean
+  auto_withdraw_enabled_at?: string | null
+  payout_channel_ready: boolean
+  payout_channel_message?: string | null
+  payout_schedule_note: string
+  payout_account_no?: string | null
+}
+
 export function validateDevWithdrawalRequest(
   payload: CreateDevWithdrawalRequest,
   withdrawableBalance?: number | null,
@@ -97,6 +112,12 @@ export function validateDevWithdrawalRequest(
   }
   if (source === 'developer_order_deposit') {
     return payload.channel === 'adapay' ? null : '保证金需通过原充值订单退回'
+  }
+
+  // 收益提现的出款由服务端按「开发者已绑定的 Adapay 收款账户」补全，前端不再采集收款信息，
+  // 因此这里只校验金额与备注。
+  if (source === 'income') {
+    return null
   }
 
   if (payload.channel === 'adapay') {
@@ -164,6 +185,38 @@ export async function getDevWithdrawalLimits(token: string): Promise<DevWithdraw
       },
     },
     '加载提现配置失败',
+  )
+}
+
+/** 读取收益提现偏好：自动提现开关、出款通道状态与 T+1 到账说明。 */
+export async function getDevWithdrawalSetting(token: string): Promise<DevWithdrawalSetting> {
+  return requestJson<DevWithdrawalSetting>(
+    '/dev/payments/withdrawal-setting',
+    {
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '加载自动提现设置失败',
+  )
+}
+
+/** 开启或关闭收益自动提现（开启前必须在账号中心绑定 Adapay 收款银行卡）。 */
+export async function updateDevWithdrawalSetting(
+  token: string,
+  autoWithdrawEnabled: boolean,
+): Promise<DevWithdrawalSetting> {
+  return requestJson<DevWithdrawalSetting>(
+    '/dev/payments/withdrawal-setting',
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify({ auto_withdraw_enabled: autoWithdrawEnabled }),
+    },
+    autoWithdrawEnabled ? '开启自动提现失败' : '关闭自动提现失败',
   )
 }
 

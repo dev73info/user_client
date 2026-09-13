@@ -153,8 +153,69 @@
   transform: none;
 }
 
-.wallet-hero__hint {
+/* 接单收入的两条提现路径：手动提现（开发者发起）与自动提现（平台财务每日批量出款） */
+.wallet-payout {
+  display: grid;
+  gap: 14px;
+  padding-top: 16px;
+  border-top: 1px solid var(--dev-border, #f0f0f0);
+}
+
+.wallet-payout__path {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wallet-payout__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.wallet-payout__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dev-ink);
+}
+
+.wallet-payout__desc {
   font-size: 12px;
+  line-height: 1.6;
+  color: var(--dev-muted);
+}
+
+.wallet-payout__switch {
+  flex-shrink: 0;
+}
+
+.wallet-payout__alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #b45309;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.wallet-payout__alert .el-button {
+  margin-left: auto;
+  padding: 0;
+}
+
+.wallet-payout__note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
   color: var(--dev-muted);
 }
 
@@ -169,6 +230,16 @@
   margin-top: 6px;
   font-size: 12px;
   color: var(--dev-muted);
+}
+
+.dev-wallet-withdraw__account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  font-size: 14px;
+  color: #334155;
 }
 
 .dev-recharge-dialog.el-dialog {

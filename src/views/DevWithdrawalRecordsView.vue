@@ -68,11 +68,11 @@ function money(value?: number | null) {
 function statusText(status: DevWithdrawalRecord['status']) {
   const map: Record<DevWithdrawalRecord['status'], string> = {
     pending_review: '待审核',
-    approved: '待打款',
-    payout_processing: '自动打款中',
-    payout_failed: '自动打款失败',
+    approved: '待出款',
+    payout_processing: '出款中（T+1）',
+    payout_failed: '出款失败',
     rejected: '已驳回',
-    paid: '已打款',
+    paid: '已到账',
   }
   return map[status]
 }
