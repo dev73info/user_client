@@ -8,8 +8,12 @@ import type { RouteLocationRaw } from 'vue-router'
 export type ConversationCardMeta = {
   title: string
   description: string
-  actionLabel: string
-  to: RouteLocationRaw
+  /** 动作按钮文案；为空表示这张卡片当前不给按钮（例如定金缴完后需求方已无事可做）。 */
+  actionLabel?: string
+  /** 站内跳转目标；与 asignPreview 同时给出时，作为爱签预览取不到链接的回退。 */
+  to?: RouteLocationRaw
+  /** 跳爱签合同预览页（可查看可签署），取不到链接时回退 to。 */
+  asignPreview?: boolean
 }
 
 export type ConversationCardRole = 'customer' | 'developer'
@@ -18,6 +22,7 @@ export function conversationCardMeta(
   actionType: string,
   requirementId: string,
   role: ConversationCardRole | null,
+  requirementStatus: string | null,
 ): ConversationCardMeta | null {
   const requirementListRoute: RouteLocationRaw =
     role === 'developer'
@@ -29,11 +34,14 @@ export function conversationCardMeta(
   }
 
   switch (actionType) {
+    // 去签署合同直接进爱签：签约页本就是要唤起爱签签署链接，绕一趟站内页只是多一次点击；
+    // 爱签侧还没发起签署（取不到预览链接）时回退站内签约页。
     case 'contract_party_b_signed':
       return {
         title: '开发者已签署合同',
         description: '《需求开发合同》等待需求方签署，双方签完并支付定金后进入开发。',
         actionLabel: '去签署合同',
+        asignPreview: true,
         to: contractSignRoute,
       }
     case 'contract_party_a_signed':
@@ -41,20 +49,28 @@ export function conversationCardMeta(
         title: '需求方已签署合同',
         description: '《需求开发合同》等待开发者签署，双方签完并支付定金后进入开发。',
         actionLabel: '去签署合同',
+        asignPreview: true,
         to: contractSignRoute,
       }
     case 'contract_signed':
       return {
         title: '合同已签署完成',
         description: '《需求开发合同》双方已签署，等待需求方支付定金。',
-        actionLabel: role === 'developer' ? '去我的需求' : '去支付定金',
+        // 定金缴清后这张历史卡片不再给按钮，否则点进去只会重复发起一笔已完成的支付。
+        actionLabel:
+          role === 'developer'
+            ? '去我的需求'
+            : requirementStatus === 'pending_deposit'
+              ? '去支付定金'
+              : undefined,
         to: requirementListRoute,
       }
     case 'deposit_paid':
       return {
         title: '定金已缴纳',
         description: '需求方已缴纳定金，需求进入开发阶段。',
-        actionLabel: role === 'developer' ? '去交付' : '去我的需求',
+        // 交付是开发者的动作，需求方这边没有可执行入口，只保留卡片本身。
+        actionLabel: role === 'developer' ? '去交付' : undefined,
         to: requirementListRoute,
       }
     case 'delivery_submitted':

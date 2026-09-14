@@ -19,6 +19,7 @@ import type {
   RequirementConversationDetail,
   RequirementConversationMessage,
 } from '@/api/conversations'
+import { fetchAsignRequirementPreviewUrl } from '@/api/contracts'
 import { apiUrl } from '@/api/http'
 import RequirementConversationActions from '@/components/RequirementConversationActions.vue'
 import {
@@ -209,9 +210,15 @@ const timelineItems = computed<ConversationTimelineItem[]>(() => {
 
     const mine = isMine(message)
     // 平台写入的状态变化卡片：左对齐，与对面的聊天气泡同侧；未知事件码退化成普通消息，避免丢信息。
+    // 需要需求当前状态，历史卡片的按钮才不会停在已经过去的步骤上（如定金缴完还挂着「去支付定金」）。
     const card =
       message.message_type === 'card'
-        ? conversationCardMeta(message.action_type ?? '', props.requirementId, viewerRole.value)
+        ? conversationCardMeta(
+            message.action_type ?? '',
+            props.requirementId,
+            viewerRole.value,
+            conversation.value?.requirement_status ?? null,
+          )
         : null
     if (card) {
       rows.push({
@@ -259,6 +266,29 @@ async function scrollToBottom() {
   await nextTick()
   if (messageListRef.value) {
     messageListRef.value.scrollTop = messageListRef.value.scrollHeight
+  }
+}
+
+/**
+ * 执行卡片按钮：爱签合同预览优先（点进去即可查看/签署），取不到链接再回退站内路由。
+ *
+ * 与需求列表页「查看合同」同一口径：合同还没在爱签侧发起签署、或爱签接口异常时，
+ * 接口会报错，这里静默回退到本地签约页。
+ */
+async function runCardAction(card: ConversationCardMeta) {
+  if (card.asignPreview) {
+    try {
+      const previewUrl = await fetchAsignRequirementPreviewUrl(props.token, props.requirementId)
+      if (previewUrl) {
+        window.location.href = previewUrl
+        return
+      }
+    } catch {
+      // 忽略：回退站内合同页
+    }
+  }
+  if (card.to) {
+    await router.push(card.to)
   }
 }
 
@@ -709,8 +739,8 @@ function handleBackdropClick() {
                 <p v-if="row.message?.action_ref" class="conversation-card__ref">{{ row.message.action_ref }}</p>
                 <div class="conversation-card__foot">
                   <time :title="row.createdAt">{{ formatMessageClock(row.createdAt) }}</time>
-                  <el-button class="conversation-card__action" type="primary" size="small"
-                    @click="router.push(row.card.to)">
+                  <el-button v-if="row.card.actionLabel" class="conversation-card__action" type="primary" size="small"
+                    @click="runCardAction(row.card)">
                     {{ row.card.actionLabel }}
                   </el-button>
                 </div>
