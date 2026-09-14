@@ -39,6 +39,7 @@ import {
 } from '@/api/requirements'
 import { createMcResourceVersion } from '@/api/mcResources'
 import { getDepositRatio } from '@/api/settings'
+import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
 import {
@@ -97,6 +98,7 @@ const BREACH_STATUS_LABELS: Record<string, string> = {
 const BREACH_CLOSED_STATUSES = ['withdrawn', 'rejected', 'succeeded']
 
 const router = useRouter()
+const auth = useAuthStore()
 const { showToast } = useToast()
 
 const requirement = ref<ActionRequirement | null>(null)
@@ -224,10 +226,12 @@ const canRequestPlatformReview = computed(
     activeBreachCase.value != null &&
     ['submitted', 'ai_reviewing', 'ai_judged'].includes(activeBreachCase.value.status),
 )
+/** 撤回是申报人的单方动作：待判定期间（还没有结论）只有本人能撤回自己的申报，与需求列表页一致。 */
 const canWithdrawBreach = computed(
   () =>
     activeBreachCase.value != null &&
-    ['submitted', 'ai_reviewing'].includes(activeBreachCase.value.status),
+    ['submitted', 'ai_reviewing'].includes(activeBreachCase.value.status) &&
+    activeBreachCase.value.reportedBy === auth.username,
 )
 
 const payStage = computed<'deposit' | 'final'>(() =>
