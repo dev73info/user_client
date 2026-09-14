@@ -10,7 +10,7 @@ const meta = (
 describe('conversation status cards', () => {
   it('offers signing through asign with the in-app page as fallback', () => {
     const card = meta('contract_party_b_signed', 'customer', 'pending_deposit')
-    expect(card?.actionLabel).toBe('去签署合同')
+    expect(card?.actionLabel).toBe('查看合同')
     expect(card?.asignPreview).toBe(true)
     expect(card?.to).toEqual({
       name: 'contract-sign',

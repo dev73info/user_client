@@ -34,13 +34,13 @@ export function conversationCardMeta(
   }
 
   switch (actionType) {
-    // 去签署合同直接进爱签：签约页本就是要唤起爱签签署链接，绕一趟站内页只是多一次点击；
-    // 爱签侧还没发起签署（取不到预览链接）时回退站内签约页。
+    // 合同在爱签侧，点按钮就是去看爱签那份合同（未签署时爱签页面里也能直接签），
+    // 所以文案与需求列表页的「查看合同」一致；爱签侧还没发起签署（取不到预览链接）时回退站内签约页。
     case 'contract_party_b_signed':
       return {
         title: '开发者已签署合同',
         description: '《需求开发合同》等待需求方签署，双方签完并支付定金后进入开发。',
-        actionLabel: '去签署合同',
+        actionLabel: '查看合同',
         asignPreview: true,
         to: contractSignRoute,
       }
@@ -48,7 +48,7 @@ export function conversationCardMeta(
       return {
         title: '需求方已签署合同',
         description: '《需求开发合同》等待开发者签署，双方签完并支付定金后进入开发。',
-        actionLabel: '去签署合同',
+        actionLabel: '查看合同',
         asignPreview: true,
         to: contractSignRoute,
       }
