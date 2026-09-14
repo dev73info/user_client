@@ -57,6 +57,32 @@ export type AdapayBreachDecisionValue = 'accepted' | 'rejected'
 /** 最终判定来源：`ai` 双方接受 AI 判定 / `support` 客服人工判定。 */
 export type AdapayBreachVerdictSource = 'ai' | 'support'
 
+/**
+ * 协商终止合作里的一方身份：`customer` 甲方（需求方）/ `developer` 乙方。
+ * 与违约案件上的 `customerDecision` / `developerDecision` 同口径，也是当前登录人在案件里的角色。
+ */
+export type AdapayBreachNegotiationParty = 'customer' | 'developer'
+/** 协商提议状态：`pending` 等待对方表态 / `accepted` 已同意 / `rejected` 已拒绝。 */
+export type AdapayBreachNegotiationStatus = 'pending' | 'accepted' | 'rejected'
+
+/** 双方就定金 / 尾款退还额度达成的协商提议（金额为具体分值）。 */
+export type AdapayBreachNegotiation = {
+  id: number
+  /** 发起方身份。 */
+  initiatedBy: AdapayBreachNegotiationParty
+  depositRefundAmountFen: number
+  depositRefundAmountCny: string
+  finalRefundAmountFen: number
+  finalRefundAmountCny: string
+  note: string
+  status: AdapayBreachNegotiationStatus
+  /** 应答人用户名与说明（未应答时为空）。 */
+  respondedBy?: string | null
+  responseNote?: string | null
+  createdAt: string
+  respondedAt?: string | null
+}
+
 export type AdapayBreachCase = {
   id: number
   caseNo: string
@@ -95,6 +121,8 @@ export type AdapayBreachCase = {
   developerDecision?: AdapayBreachDecisionValue | null
   developerDecidedAt?: string | null
   verdictSource?: AdapayBreachVerdictSource | null
+  /** 最近一条双方协商提议（含已同意 / 已拒绝的历史）；案件列表接口不返回。 */
+  negotiation?: AdapayBreachNegotiation | null
 }
 
 export async function createAdapayPayment(
@@ -278,6 +306,56 @@ export async function withdrawAdapayBreach(
       headers: authHeader(token),
     },
     '撤回违约申报失败',
+  )
+}
+
+/**
+ * 发起「协商终止合作」的提议：定金与尾款退还额度由提议方给出（单位：分）。
+ * 两个额度都可以省略，省略即表示该项全额退还甲方。
+ */
+export async function proposeAdapayBreachNegotiation(
+  token: string,
+  caseId: number,
+  depositRefundAmountFen: number,
+  finalRefundAmountFen: number,
+  note: string,
+): Promise<AdapayBreachCase> {
+  return requestJson<AdapayBreachCase>(
+    `/adapay/breaches/${caseId}/negotiation`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify({
+        deposit_refund_amount_fen: depositRefundAmountFen,
+        final_refund_amount_fen: finalRefundAmountFen,
+        note,
+      }),
+    },
+    '发起协商失败',
+  )
+}
+
+/** 应答对方的协商提议：`approve` 同意后案件转入客服确认队列，`reject` 只作废本次提议。 */
+export async function respondAdapayBreachNegotiation(
+  token: string,
+  caseId: number,
+  action: 'approve' | 'reject',
+  note = '',
+): Promise<AdapayBreachCase> {
+  return requestJson<AdapayBreachCase>(
+    `/adapay/breaches/${caseId}/negotiation/respond`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify({ action, note }),
+    },
+    action === 'approve' ? '同意协商失败' : '拒绝协商失败',
   )
 }
 
