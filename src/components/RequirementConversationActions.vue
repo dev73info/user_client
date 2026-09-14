@@ -99,6 +99,9 @@ const BREACH_STATUS_LABELS: Record<string, string> = {
 /** 已结束的案件不再提供入口，只需要能重新申报时给出表单。 */
 const BREACH_CLOSED_STATUSES = ['withdrawn', 'rejected', 'succeeded']
 
+/** 已结案 / 已驳回：结论定案不可翻案，新一轮申报会新建一条案件。 */
+const SETTLED_BREACH_STATUSES = ['rejected', 'succeeded']
+
 const router = useRouter()
 const auth = useAuthStore()
 const { showToast } = useToast()
@@ -229,8 +232,25 @@ const canUseBreach = computed(
         status.value === 'pending_final')),
 )
 
-/** 已撤回 / 已驳回 / 已结案的案件不再展示明细，回到申报表单（与需求列表页的「重新申报」一致）。 */
+/** 已撤回 / 已驳回 / 已结案的案件不再展示明细，回到申报表单（与需求列表页一致）。 */
 const activeBreachCase = computed(() => (hasLiveBreachCase.value ? breachCase.value : null))
+/** 已结案 / 已驳回的案件：结论在表单上方只读展示，入口回到「新一轮申报」。 */
+const settledBreachCase = computed(() =>
+  breachCase.value && SETTLED_BREACH_STATUSES.includes(breachCase.value.status)
+    ? breachCase.value
+    : null,
+)
+/**
+ * 上一轮已撤回的案件：撤回不等于没有案件，表单上方要把上一轮交代清楚，
+ * 否则用户看到「重新申报」也不知道自己重的是什么。
+ */
+const withdrawnBreachCase = computed(() =>
+  breachCase.value?.status === 'withdrawn' ? breachCase.value : null,
+)
+/** 撤回方是不是本人：只有本人撤回才叫「重新申报」，对方撤回时本人是首次申报。 */
+const breachWithdrawnByMe = computed(
+  () => withdrawnBreachCase.value?.reportedBy === auth.username,
+)
 const canDecideBreach = computed(
   () =>
     activeBreachCase.value?.status === 'ai_judged' &&
@@ -318,9 +338,32 @@ const unbindHint = computed(() => {
   return '合同已签署，协商解除已关闭；如需终止合作请走「违约处理」'
 })
 
-const breachDialogTitle = computed(() =>
-  activeBreachCase.value ? '违约案件进展' : breachCase.value ? '重新申报履约违约' : '申报履约违约',
-)
+const breachDialogTitle = computed(() => {
+  if (activeBreachCase.value) {
+    return '违约案件进展'
+  }
+  if (settledBreachCase.value) {
+    return '申报新的违约'
+  }
+  return breachWithdrawnByMe.value ? '重新申报履约违约' : '申报履约违约'
+})
+
+/**
+ * 申报表单上方的「上一轮」说明：把歧义点讲清楚——结案 / 驳回的结论不能翻案、新一轮会新建案件，
+ * 撤回则是沿用同一案件重新提交（案件编号不变，申报人与理由以本次提交为准）。
+ */
+const breachRoundHint = computed(() => {
+  const settled = settledBreachCase.value
+  if (settled) {
+    return `上一轮案件已${settled.status === 'succeeded' ? '结案' : '驳回'}，结论不能翻案；下面提交的是新一轮申报，会新建一条案件，只针对结案之后新发生的违约事实。`
+  }
+  if (withdrawnBreachCase.value) {
+    return breachWithdrawnByMe.value
+      ? '上一轮由你撤回，本次提交沿用同一条案件（案件编号不变），申报人与理由以本次提交为准，双方继续跟踪这一条。'
+      : '上一轮由对方申报后撤回，本次提交沿用同一条案件（案件编号不变），按你本次提交的事实与依据重新判定。'
+  }
+  return ''
+})
 
 /** 按当前身份与需求状态给出可用操作；顺序即业务流程顺序。 */
 const chips = computed<ActionChip[]>(() => {
@@ -1005,12 +1048,41 @@ function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
     </template>
 
     <template v-else>
+      <template v-if="settledBreachCase">
+        <p class="conversation-actions__line"><strong>上一轮案件编号：</strong>{{ settledBreachCase.caseNo }}</p>
+        <p v-if="settledBreachCase.liableParty" class="conversation-actions__line">
+          <strong>责任认定：</strong>{{ breachLiablePartyLabel(settledBreachCase.liableParty) }}
+        </p>
+        <p v-if="settledBreachCase.resolutionNote" class="conversation-actions__line">
+          <strong>处理结论：</strong>{{ settledBreachCase.resolutionNote }}
+        </p>
+        <p class="conversation-actions__line">
+          <strong>资金处理：</strong>定金 ¥{{ settledBreachCase.depositAmountCny }} · 已退尾款 ¥{{
+            settledBreachCase.refundAmountCny }} · 赔付 ¥{{ settledBreachCase.compensationAmountCny }}
+        </p>
+        <p v-if="settledBreachCase.resolvedAt" class="conversation-actions__line">
+          <strong>处理时间：</strong>{{ formatCnDateTime(settledBreachCase.resolvedAt) }}
+        </p>
+      </template>
+      <template v-if="withdrawnBreachCase">
+        <p class="conversation-actions__line"><strong>上一轮案件编号：</strong>{{ withdrawnBreachCase.caseNo }}</p>
+        <p class="conversation-actions__line">
+          <strong>上一轮申报人：</strong>{{ breachWithdrawnByMe ? '我方' : '对方' }}
+        </p>
+        <p class="conversation-actions__line"><strong>上一轮申报理由：</strong>{{ withdrawnBreachCase.reason }}</p>
+        <p v-if="withdrawnBreachCase.resolvedAt" class="conversation-actions__line">
+          <strong>撤回时间：</strong>{{ formatCnDateTime(withdrawnBreachCase.resolvedAt) }}
+        </p>
+      </template>
+      <p v-if="breachRoundHint" class="conversation-actions__tip">{{ breachRoundHint }}</p>
       <label class="conversation-actions__field">
         <span>事实与依据</span>
         <textarea v-model="breachReason" rows="6" maxlength="2000"
           placeholder="请描述违约事实、时间与相关证据说明"></textarea>
       </label>
-      <p class="conversation-actions__tip">责任方由审核智能体依据需求会话与材料判定，恶意申报会影响账号信用。</p>
+      <p class="conversation-actions__tip">
+        平台会核对合同、支付、交付和沟通记录，由审核智能体依据需求会话与材料判定责任方；判定后按结论执行退款／赔付并解除需求绑定（即终止合作）。恶意申报会影响账号信用。
+      </p>
     </template>
 
     <template #footer>
@@ -1036,7 +1108,7 @@ function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
         </template>
       </template>
       <el-button v-else type="danger" :loading="breachSubmitting" @click="submitBreachReport">
-        {{ breachCase ? '重新申报' : '提交违约申报' }}
+        {{ settledBreachCase ? '提交新的违约申报' : breachWithdrawnByMe ? '重新申报' : '提交违约申报' }}
       </el-button>
     </template>
   </el-dialog>

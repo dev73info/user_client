@@ -148,6 +148,8 @@ const breachReason = ref('')
 const breachLoading = ref(false)
 const breachCase = ref<AdapayBreachCase | null>(null)
 const breachCaseLoading = ref(false)
+/** 已结束的案件走「新一轮申报」时置真：表单与上一轮说明同屏展示，提交会新建一条案件。 */
+const breachNewRound = ref(false)
 const platformReviewLoading = ref(false)
 const breachWithdrawLoading = ref(false)
 const breachWithdrawConfirm = ref(false)
@@ -209,6 +211,32 @@ function canWithdrawBreachCase(item: AdapayBreachCase | null) {
     ['submitted', 'ai_reviewing'].includes(item.status) &&
     item.reportedBy === auth.username
   )
+}
+
+/** 上一轮撤回人是不是本人：只有本人撤回才叫「重新申报」，对方撤回时本人是首次申报。 */
+const breachWithdrawnByMe = computed(
+  () => breachCase.value?.status === 'withdrawn' && breachCase.value.reportedBy === auth.username,
+)
+
+/**
+ * 撤回后再次申报沿用同一条案件（后端复用该行、案件编号不变），只有驳回 / 结案才会新建案件。
+ * 标题与提交按钮都按这个口径措辞，避免出现「标题写新一轮、提示写沿用同一条」的自相矛盾。
+ */
+function breachDialogTitle() {
+  if (!breachNewRound.value && breachCase.value) {
+    return '违约案件进展'
+  }
+  if (breachCase.value?.status === 'withdrawn') {
+    return breachWithdrawnByMe.value ? '重新申报履约违约' : '申报履约违约'
+  }
+  return breachNewRound.value ? '申报新的违约' : '申报履约违约'
+}
+
+function breachSubmitLabel() {
+  if (breachCase.value?.status === 'withdrawn') {
+    return breachWithdrawnByMe.value ? '重新申报' : '提交违约申报'
+  }
+  return breachNewRound.value ? '提交新的违约申报' : '提交申报'
 }
 
 function syncPublishModalFromRoute(value: unknown) {
@@ -422,6 +450,7 @@ async function openBreachReport(item: RequirementItem) {
   breachRequirement.value = item
   breachReason.value = ''
   breachCase.value = null
+  breachNewRound.value = false
   breachVisible.value = true
   breachCaseLoading.value = true
   try {
@@ -447,6 +476,7 @@ function closeBreachReport() {
   breachRequirement.value = null
   breachReason.value = ''
   breachCase.value = null
+  breachNewRound.value = false
   breachRejectPanel.value = false
   breachDecisionNote.value = ''
   breachWithdrawConfirm.value = false
@@ -496,11 +526,28 @@ async function submitBreachWithdraw() {
   }
 }
 
-/** 已撤回的案件回到申报表单，交回给用户重新填写事实与依据。 */
+/**
+ * 已结束的案件回到申报表单：结案 / 驳回会新建一条案件，撤回则沿用同一案件重新提交；
+ * 两种情况都保留上一轮案件，供表单上方的说明引用。
+ */
 function reopenBreachReport() {
-  breachCase.value = null
+  breachNewRound.value = true
   breachReason.value = ''
   breachWithdrawConfirm.value = false
+}
+
+/** 申报表单上方的「上一轮」说明：讲清楚结论不能翻案，以及本次提交是新建案件还是沿用同一条。 */
+function breachRoundHint() {
+  const item = breachCase.value
+  if (!item) {
+    return ''
+  }
+  if (item.status === 'withdrawn') {
+    return breachWithdrawnByMe.value
+      ? '上一轮由你撤回，本次提交沿用同一条案件（案件编号不变），申报人与理由以本次提交为准，双方继续跟踪这一条。'
+      : '上一轮由对方申报后撤回，本次提交沿用同一条案件（案件编号不变），按你本次提交的事实与依据重新判定。'
+  }
+  return `上一轮案件已${item.status === 'succeeded' ? '结案' : '驳回'}，结论不能翻案；本次提交会新建一条案件，只针对结案之后新发生的违约事实。`
 }
 
 function openBreachRejectPanel() {
@@ -552,6 +599,7 @@ async function submitBreachReport() {
   breachLoading.value = true
   try {
     breachCase.value = await reportAdapayBreach(auth.token, item.requirement_id, reason)
+    breachNewRound.value = false
     showToast('违约申报已提交，平台将先由审核智能体判定责任方', 'success')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '提交违约申报失败', 'error')
@@ -2380,13 +2428,19 @@ watch(
 
     <div v-if="breachVisible && breachRequirement" class="modal-wrap" @click.self="closeBreachReport">
       <section class="pay-modal breach-modal" aria-label="违约案件弹窗">
-        <h3>{{ breachCase ? '违约案件进展' : '申报履约违约' }}</h3>
+        <h3>{{ breachDialogTitle() }}</h3>
         <p class="pay-line"><strong>需求标题：</strong>{{ breachRequirement.title }}</p>
         <p class="pay-line"><strong>需求编号：</strong>{{ breachRequirement.requirement_id }}</p>
         <p v-if="breachCaseLoading" class="pay-line">正在加载违约案件…</p>
-        <template v-else-if="breachCase">
+        <template v-else-if="breachCase && !breachNewRound">
           <p class="pay-line"><strong>案件编号：</strong>{{ breachCase.caseNo }}</p>
           <p class="pay-line"><strong>当前状态：</strong>{{ BREACH_STATUS_LABELS[breachCase.status] ?? breachCase.status }}</p>
+          <p v-if="breachCase.status === 'withdrawn'" class="pay-line">
+            <strong>申报人：</strong>{{ breachWithdrawnByMe ? '我方' : '对方' }}
+          </p>
+          <p v-if="breachCase.status === 'withdrawn' && breachCase.resolvedAt" class="pay-line">
+            <strong>撤回时间：</strong>{{ formatCnDateTime(breachCase.resolvedAt) }}
+          </p>
           <p v-if="breachCase.liableParty" class="pay-line">
             <strong>责任认定：</strong>{{ breachLiablePartyLabel(breachCase.liableParty) }}
           </p>
@@ -2475,7 +2529,13 @@ watch(
             <button v-if="breachCase.status === 'withdrawn'" class="ghost primary" type="button"
               :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
               @click="reopenBreachReport">
-              重新申报
+              {{ breachWithdrawnByMe ? '重新申报' : '提交违约申报' }}
+            </button>
+            <button v-else-if="breachCase.status === 'rejected' || breachCase.status === 'succeeded'"
+              class="ghost primary" type="button"
+              :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
+              @click="reopenBreachReport">
+              申报新的违约
             </button>
             <button v-if="canRequestPlatformReview(breachCase)" class="ghost primary" type="button"
               :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
@@ -2485,6 +2545,7 @@ watch(
           </div>
         </template>
         <template v-else>
+          <p v-if="breachNewRound" class="tip">{{ breachRoundHint() }}</p>
           <label class="pay-line breach-modal__field">
             <strong>事实与依据</strong>
             <textarea v-model="breachReason" rows="6" maxlength="2000"
@@ -2494,7 +2555,7 @@ watch(
           <div class="actions">
             <button class="ghost" type="button" :disabled="breachLoading" @click="closeBreachReport">取消</button>
             <button class="ghost primary" type="button" :disabled="breachLoading" @click="submitBreachReport">
-              {{ breachLoading ? '提交中...' : '提交申报' }}
+              {{ breachLoading ? '提交中...' : breachSubmitLabel() }}
             </button>
           </div>
         </template>
