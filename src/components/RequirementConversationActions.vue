@@ -13,7 +13,7 @@ import {
   withdrawAdapayBreach,
   type AdapayBreachCase,
   type AdapayBreachDecisionValue,
-  type AdapayBreachLiableParty,
+  type AdapayBreachVerdictParty,
 } from '@/api/adapay'
 import {
   createRequirementContract,
@@ -148,6 +148,15 @@ const pendingUnbindRequest = computed(() =>
     ? requirement.value.pending_unbind_request
     : null,
 )
+/** 合同一经签署，担保模式的协商解除关闭，退出只能走违约处理（后端同样会拒绝）。 */
+const unbindBlockedByContract = computed(
+  () =>
+    !isSelfManaged.value &&
+    contractSigned.value &&
+    (status.value === 'pending_deposit' ||
+      status.value === 'deposit_paid' ||
+      status.value === 'in_development'),
+)
 
 const canCreateContract = computed(
   () =>
@@ -193,7 +202,8 @@ const canRequestUnbind = computed(
     (status.value === 'pending_deposit' ||
       status.value === 'deposit_paid' ||
       status.value === 'in_development') &&
-    !pendingUnbindRequest.value,
+    !pendingUnbindRequest.value &&
+    !unbindBlockedByContract.value,
 )
 const canRespondUnbind = computed(
   () => pendingUnbindRequest.value?.initiator === (isDeveloper.value ? 'creator' : 'developer'),
@@ -247,11 +257,20 @@ const payAmount = computed(() => {
     : calculateFinalDepositAmount(item, depositRatioPercent.value)
 })
 
-const unbindHint = computed(() =>
-  pendingUnbindRequest.value && !canRespondUnbind.value
-    ? `${pendingUnbindRequest.value.initiator === 'creator' ? '需求方' : '开发者'}已提交解除申请，等待对方处理`
-    : '',
-)
+const unbindHint = computed(() => {
+  if (pendingUnbindRequest.value && !canRespondUnbind.value) {
+    return `${pendingUnbindRequest.value.initiator === 'creator' ? '需求方' : '开发者'}已提交解除申请，等待对方处理`
+  }
+  if (!unbindBlockedByContract.value) {
+    return ''
+  }
+  // 定金未缴时违约申报也进不去（违约案件必须挂在一张已完成的定金支付单上），
+  // 此时唯一的出口是缴款期限到期后由系统自动解除合同，不能把用户指去「违约处理」。
+  if (!canUseBreach.value) {
+    return '合同已签署，协商解除已关闭；请先完成定金支付，逾期未缴定金将由系统自动解除合同并释放接单保证金'
+  }
+  return '合同已签署，协商解除已关闭；如需终止合作请走「违约处理」'
+})
 
 const breachDialogTitle = computed(() =>
   activeBreachCase.value ? '违约案件进展' : breachCase.value ? '重新申报履约违约' : '申报履约违约',
@@ -706,8 +725,10 @@ function breachStatusLabel(status: string) {
   return BREACH_STATUS_LABELS[status] ?? status
 }
 
-function breachLiablePartyLabel(party: AdapayBreachLiableParty) {
-  return party === 'customer' ? '客户（需求方）违约' : '开发者违约'
+function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
+  if (party === 'customer') return '客户（需求方）违约'
+  if (party === 'mutual') return '双方协商一致（无责退出）'
+  return '开发者违约'
 }
 </script>
 

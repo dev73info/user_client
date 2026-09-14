@@ -12,7 +12,7 @@ import {
   withdrawAdapayBreach,
   type AdapayBreachCase,
   type AdapayBreachDecisionValue,
-  type AdapayBreachLiableParty,
+  type AdapayBreachVerdictParty,
 } from '@/api/adapay'
 import {
   createMcResourceVersion,
@@ -102,8 +102,10 @@ const BREACH_STATUS_LABELS: Record<string, string> = {
 }
 
 /** 责任方文案。 */
-function breachLiablePartyLabel(party: AdapayBreachLiableParty) {
-  return party === 'customer' ? '客户（需求方）违约' : '开发者违约'
+function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
+  if (party === 'customer') return '客户（需求方）违约'
+  if (party === 'mutual') return '双方协商一致（无责退出）'
+  return '开发者违约'
 }
 
 /** 表态文案：`null` 表示该方尚未表态。 */
@@ -526,6 +528,11 @@ function canReportBreach(item: RequirementItem) {
     ['deposit_paid', 'in_development', 'pending_final'].includes(item.status)
 }
 
+/** 已签约但定金未缴：协商解除已关闭，违约申报又要求有一张已完成的定金支付单，出口只剩缴款期限到期后由系统自动解除。 */
+function awaitingDepositDeadline(item: RequirementItem) {
+  return item.status === 'pending_deposit' && unbindBlockedByContract(item)
+}
+
 async function openBreachReport(item: RequirementItem) {
   if (!canReportBreach(item)) {
     return
@@ -744,8 +751,18 @@ function canRequestUnbind(item: RequirementItem) {
     (item.status === 'in_development' ||
       item.status === 'deposit_paid' ||
       item.status === 'pending_deposit') &&
-    !item.pending_unbind_request
+    !item.pending_unbind_request &&
+    !unbindBlockedByContract(item)
   )
+}
+
+/** 合同一经签署，担保模式的协商解除关闭，退出只能走违约处理（后端同样会拒绝）。 */
+function unbindBlockedByContract(item: RequirementItem) {
+  if (item.payment_mode === 'self_managed') {
+    return false
+  }
+  const status = signingStatusMap.value[item.requirement_id]
+  return Boolean(status?.party_a_signed && status?.party_b_signed)
 }
 
 function unbindRequestHint(item: RequirementItem) {
@@ -984,6 +1001,10 @@ async function loadRequirementConversations() {
               </el-button>
               <el-button v-if="canReportBreach(item)" type="danger" plain size="small"
                 @click="openBreachReport(item)">
+                违约处理
+              </el-button>
+              <el-button v-else-if="awaitingDepositDeadline(item)" type="danger" plain size="small" disabled
+                title="定金未缴，暂不能申报违约；逾期未缴定金将由系统自动解除合同并释放接单保证金">
                 违约处理
               </el-button>
               <el-button v-if="canCreateRequirementContract(item)" type="primary" size="small"

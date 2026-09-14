@@ -50,6 +50,8 @@ export type AdapayAcceptanceResponse = {
 
 /** 违约案件责任方：`customer` 客户（需求方）/ `developer` 开发者。 */
 export type AdapayBreachLiableParty = 'customer' | 'developer'
+/** 最终认定结论：责任方之外多一个 `mutual`（双方协商一致、无责退出），只能由客服人工认定。 */
+export type AdapayBreachVerdictParty = AdapayBreachLiableParty | 'mutual'
 /** 合同双方对 AI 判定的表态。 */
 export type AdapayBreachDecisionValue = 'accepted' | 'rejected'
 /** 最终判定来源：`ai` 双方接受 AI 判定 / `support` 客服人工判定。 */
@@ -61,8 +63,8 @@ export type AdapayBreachCase = {
   requirementId: string
   paymentId: string
   reportedBy: string
-  /** 最终认定的责任方；AI 判定完成前为空。 */
-  liableParty?: AdapayBreachLiableParty | null
+  /** 最终认定的责任方；AI 判定完成前为空。`mutual` 表示双方协商一致、无责退出。 */
+  liableParty?: AdapayBreachVerdictParty | null
   reason: string
   status: string
   depositAmountFen: number
