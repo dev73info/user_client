@@ -54,6 +54,7 @@ declare module 'vue' {
     PortalTopNav: typeof import('./src/components/PortalTopNav.vue')['default']
     PublishModal: typeof import('./src/components/PublishModal.vue')['default']
     RealnameHero: typeof import('./src/components/RealnameHero.vue')['default']
+    RequirementConversationActions: typeof import('./src/components/RequirementConversationActions.vue')['default']
     RequirementConversationModal: typeof import('./src/components/RequirementConversationModal.vue')['default']
     RequirementProgressGuide: typeof import('./src/components/RequirementProgressGuide.vue')['default']
     ResourceCatalog: typeof import('./src/components/ResourceCatalog.vue')['default']

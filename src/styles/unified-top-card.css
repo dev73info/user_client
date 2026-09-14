@@ -18,11 +18,8 @@
 /* ============================================
    消息页面 - 搜索栏卡片
    ============================================ */
-.messages-search-bar {
-  min-height: 66px !important;
-  border-radius: 16px !important;
-}
-
+/* 消息页搜索栏在桌面端与「会话列表」标题同排，不再是独立顶部卡片；
+   移动端（≤900px）的卡片样式见下方媒体查询 */
 .messages-search {
   border-radius: 999px !important;
 }

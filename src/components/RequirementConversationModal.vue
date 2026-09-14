@@ -18,6 +18,7 @@ import type {
   RequirementConversationMessage,
 } from '@/api/conversations'
 import { apiUrl } from '@/api/http'
+import RequirementConversationActions from '@/components/RequirementConversationActions.vue'
 
 const props = defineProps<{
   visible: boolean
@@ -111,6 +112,21 @@ const canSend = computed(
 )
 const isInline = computed(() => props.displayMode === 'inline')
 const closeActionLabel = computed(() => (isInline.value ? '返回列表' : '关闭'))
+/** 当前登录用户在这条会话里的角色：需求方（甲方）或开发者（乙方）。 */
+const viewerRole = computed<'customer' | 'developer' | null>(() => {
+  const item = conversation.value
+  const username = props.currentUsername
+  if (!item || !username) {
+    return null
+  }
+  if (item.customer === username) {
+    return 'customer'
+  }
+  if (item.developer === username) {
+    return 'developer'
+  }
+  return null
+})
 const conversationTitle = computed(
   () => props.title || conversation.value?.requirement_title || '需求沟通',
 )
@@ -698,6 +714,8 @@ function handleBackdropClick() {
           <p v-if="conversationClosed" class="conversation-modal__closed-tip">需求已完成，会话已停用</p>
           <div class="conversation-modal__composer-main">
             <div class="conversation-modal__tools">
+              <RequirementConversationActions v-if="viewerRole" :token="token" :requirement-id="requirementId"
+                :role="viewerRole" @changed="loadConversation" />
               <button class="conversation-modal__tool-btn" :class="{ 'is-active': emojiPanelOpen }" type="button"
                 :disabled="sending || loading || conversationClosed" aria-label="选择表情" title="选择表情"
                 @click="toggleEmojiPanel">
@@ -1672,6 +1690,7 @@ function handleBackdropClick() {
 .conversation-modal__tools {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   padding-left: 2px;
 }

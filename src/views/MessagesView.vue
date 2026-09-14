@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Search } from '@element-plus/icons-vue'
+import { Refresh, Search } from '@element-plus/icons-vue'
 
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import { apiUrl } from '@/api/http'
@@ -459,25 +459,25 @@ watch(
       </article>
     </section>
 
-    <header v-if="!activeRequirementId" class="messages-search-bar">
-      <form class="messages-search mobile-search-form" aria-label="搜索消息" @submit.prevent>
-        <el-icon class="mobile-search-icon">
-          <Search />
-        </el-icon>
-        <input v-model="searchKeyword" type="search" inputmode="search" enterkeyhint="search" autocomplete="off"
-          spellcheck="false" placeholder="搜索需求标题、编号、对方或消息..." @keydown.esc="clearSearch" />
-        <button v-if="searchKeyword.trim()" type="button" class="messages-search__clear" aria-label="清空搜索关键词"
-          title="清空搜索" @click="clearSearch">
-          ×
-        </button>
-      </form>
-    </header>
-
     <RequirementConversationModal v-if="activeRequirementId" display-mode="inline" :visible="true" :token="auth.token"
       :current-username="auth.username" :requirement-id="activeRequirementId" :title="activeTitle"
       @updated="applyConversationDetail" @close="closeConversation" />
 
     <section v-else class="messages-panel">
+      <header class="messages-search-bar">
+        <form class="messages-search mobile-search-form" aria-label="搜索消息" @submit.prevent>
+          <el-icon class="mobile-search-icon">
+            <Search />
+          </el-icon>
+          <input v-model="searchKeyword" type="search" inputmode="search" enterkeyhint="search" autocomplete="off"
+            spellcheck="false" placeholder="搜索需求标题、编号、对方或消息..." @keydown.esc="clearSearch" />
+          <button v-if="searchKeyword.trim()" type="button" class="messages-search__clear" aria-label="清空搜索关键词"
+            title="清空搜索" @click="clearSearch">
+            ×
+          </button>
+        </form>
+      </header>
+
       <header class="messages-panel__header">
         <div>
           <h2>会话列表</h2>
@@ -487,20 +487,17 @@ watch(
             :title="realtimeError">
             {{ realtimeStatusLabel }}
           </span>
-          <button class="ghost small" type="button" :disabled="loading" @click="loadMessages(true)">
-            {{ loading ? '刷新中...' : '刷新消息' }}
+          <button class="ghost small messages-refresh" type="button" :disabled="loading" aria-label="刷新消息"
+            title="刷新消息" @click="loadMessages(true)">
+            <el-icon>
+              <Refresh />
+            </el-icon>
           </button>
-          <div class="messages-filter" role="tablist" aria-label="消息筛选">
-            <button type="button" :class="{ active: activeFilter === 'all' }" @click="activeFilter = 'all'">
-              全部
-            </button>
-            <button type="button" :class="{ active: activeFilter === 'active' }" @click="activeFilter = 'active'">
-              已开启
-            </button>
-            <button type="button" :class="{ active: activeFilter === 'pending' }" @click="activeFilter = 'pending'">
-              待同步
-            </button>
-          </div>
+          <el-select v-model="activeFilter" class="messages-filter" aria-label="消息筛选">
+            <el-option label="全部" value="all" />
+            <el-option label="已开启" value="active" />
+            <el-option label="待同步" value="pending" />
+          </el-select>
         </div>
       </header>
 
@@ -556,21 +553,10 @@ watch(
 }
 
 .messages-search-bar {
-  position: sticky;
-  top: 8px;
-  z-index: 12;
   display: flex;
   align-items: center;
   gap: 10px;
-  width: calc(100% - 16px);
-  margin: 8px 8px 12px;
-  height: auto;
-  min-height: 66px;
-  padding: 12px;
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
+  margin-bottom: 12px;
 }
 
 .messages-search.mobile-search-form {
@@ -800,32 +786,37 @@ watch(
   background: #d97706;
 }
 
-.messages-filter {
+/* 图标按钮：覆盖 shell.css 里 button.ghost.small 的 padding，做成正方形 */
+.messages-page button.messages-refresh {
   display: inline-flex;
-  flex: 0 0 auto;
-  padding: 4px;
-  border: 1px solid rgba(209, 220, 243, 0.95);
-  border-radius: 14px;
-  background: #f8fbff;
+  align-items: center;
+  justify-content: center;
+  width: 35px;
+  height: 35px;
+  padding: 0;
+  font-size: 16px;
 }
 
-.messages-filter button {
-  min-width: 70px;
-  border: 0;
+.messages-filter {
+  flex: 0 0 auto;
+  width: 118px;
+}
+
+.messages-filter :deep(.el-select__wrapper) {
+  min-height: 35px;
+  padding: 0 10px;
+  border: 1px solid rgba(209, 220, 243, 0.95);
   border-radius: 10px;
-  padding: 8px 12px;
-  background: transparent;
-  color: #64748b;
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(76, 103, 172, 0.06);
+  color: #0f172a;
   font-weight: 700;
 }
 
-.messages-filter button.active {
-  background: #ffffff;
-  color: #1d4ed8;
-  box-shadow: 0 8px 16px rgba(76, 103, 172, 0.12);
+.messages-filter :deep(.el-select__wrapper:hover),
+.messages-filter :deep(.el-select__wrapper.is-focused) {
+  border-color: rgba(125, 155, 225, 0.92);
+  box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
 }
 
 .messages-state,
@@ -1163,6 +1154,47 @@ watch(
 
   .messages-thread__status {
     max-width: 62px;
+  }
+}
+
+/* 桌面端：搜索框与「会话列表」标题同排——标题 | 搜索 | 工具条。
+   宽度不够时工具条换到下一行，保证搜索框仍有可用宽度。
+   放在样式表末尾，避免被上方的基础规则（.messages-panel__header 的 display: flex）覆盖 */
+@media (min-width: 901px) {
+  .messages-panel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 12px;
+  }
+
+  /* 拆掉 header 自身的盒子，让标题与工具条直接参与上面的弹性布局 */
+  .messages-panel__header {
+    display: contents;
+  }
+
+  .messages-panel__header > div:first-child {
+    order: 1;
+  }
+
+  .messages-search-bar {
+    order: 2;
+    flex: 1 1 260px;
+    max-width: 480px;
+    margin-bottom: 0;
+  }
+
+  .messages-panel__tools {
+    order: 3;
+    margin-left: auto;
+  }
+
+  .messages-state,
+  .messages-empty,
+  .messages-thread-list {
+    order: 4;
+    flex: 0 0 100%;
   }
 }
 </style>

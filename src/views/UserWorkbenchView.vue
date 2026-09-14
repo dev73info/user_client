@@ -1232,24 +1232,6 @@ async function scrollToHash() {
   padding: 0;
 }
 
-.user-workbench__content :deep(.messages-search) {
-  position: sticky !important;
-  top: 8px !important;
-  z-index: 12 !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-  width: calc(100% - 16px) !important;
-  margin: 8px 8px 12px !important;
-  height: 50px !important;
-  min-height: 50px !important;
-  padding: 0 12px !important;
-  border: 1px solid rgba(224, 232, 255, 0.96) !important;
-  border-radius: 16px !important;
-  background: rgba(255, 255, 255, 0.94) !important;
-  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08) !important;
-}
-
 @media (max-width: 900px) {
   .user-workbench__content :deep(.messages-page) {
     width: 100%;
@@ -1259,6 +1241,25 @@ async function scrollToHash() {
     gap: 10px;
     margin: 0;
     padding: 0;
+  }
+
+  /* 移动端搜索框仍是页首吸附的卡片；桌面端已并入「会话列表」标题行，不要卡片外观 */
+  .user-workbench__content :deep(.messages-search) {
+    position: sticky !important;
+    top: 8px !important;
+    z-index: 12 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    width: calc(100% - 16px) !important;
+    margin: 8px 8px 12px !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    padding: 0 12px !important;
+    border: 1px solid rgba(224, 232, 255, 0.96) !important;
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08) !important;
   }
 }
 
