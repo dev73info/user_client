@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { ArrowLeft, Refresh } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+    fetchAsignContractPreviewUrl,
     fetchDeveloperAgreement,
     fetchMyContract,
     fetchMyRequirementContract,
@@ -78,6 +79,8 @@ const error = ref('')
 const successMsg = ref('')
 // 发起爱签签署时是否短信通知签署人，默认不通知。
 const noticeSigner = ref(false)
+// 已签署的合同不再在本地铺正文（爱签那份才是准的），只有爱签取不到预览链接时才回退本地正文。
+const localDocumentFallback = ref(false)
 
 // 已发起爱签签署但本地仍是待签署时，主动轮询爱签状态。
 // 爱签回调（callback_url 指向生产域名）在本地开发环境收不到，且爱签侧状态更新可能有延迟，
@@ -299,6 +302,27 @@ async function handleSign() {
     }
 }
 
+/**
+ * 「查看合同」：跳爱签的合同预览页（previewContract），与需求列表页同一口径。
+ *
+ * 爱签侧还没有这份合同（例如平台自动生成的协议没走过爱签）时回退本地合同正文，
+ * 否则页面上就没有任何地方能看到合同内容了。
+ */
+async function viewContract() {
+    if (!contract.value) return
+    try {
+        const previewUrl = await fetchAsignContractPreviewUrl(auth.token, contract.value.id)
+        if (previewUrl) {
+            window.location.href = previewUrl
+            return
+        }
+    } catch {
+        // 忽略：回退本地合同正文
+    }
+    localDocumentFallback.value = true
+    error.value = '爱签暂未提供该合同的查看页，以下为本地留存的合同正文'
+}
+
 /** 返回上一层级：优先浏览器历史回退，无历史时回工作台。 */
 function goBack() {
     if (window.history.length > 1) {
@@ -416,7 +440,10 @@ onUnmounted(() => {
                             <div v-if="contract.party_c_name"><dt>丙方</dt><dd>{{ contract.party_c_name }}<span>{{ contract.party_c_signed_at ? `已签署 · ${contract.party_c_signed_at}` : '未签署' }}</span></dd></div>
                         </dl>
                     </section>
-                    <details class="signature-document" open>
+                    <!-- 已签署的合同正文以爱签那份为准，由「查看合同」入口跳过去；
+                         只有爱签取不到预览链接时才回退展示本地正文。 -->
+                    <details v-if="showSignatureFacts && (contract.status !== 'signed' || localDocumentFallback)"
+                        class="signature-document" open>
                         <summary>合同正文</summary>
                         <div class="contract-content">{{ contract.content }}</div>
                     </details>
@@ -462,7 +489,9 @@ onUnmounted(() => {
                     <button v-if="canSignContract" class="btn-primary" :disabled="!canSubmitSign" @click="handleSign">
                         {{ signing ? '签署中…' : '开始签署' }}
                     </button>
-                    <span v-else-if="contract.status === 'signed'" class="badge-signed">已签署</span>
+                    <button v-else-if="contract.status === 'signed'" class="btn-primary" @click="viewContract">
+                        查看合同
+                    </button>
                     <span v-else-if="waitingMessage" class="badge-pending">{{ waitingMessage }}</span>
                     <button
                         v-if="!isWorkbenchSignature && isDeveloperAgreement && contract.status === 'signed'"
@@ -902,17 +931,6 @@ onUnmounted(() => {
     cursor: pointer;
     font-size: 0.95rem;
     font-weight: 650;
-}
-
-.badge-signed {
-    display: inline-block;
-    padding: 0.55rem 1rem;
-    background: #ecfdf5;
-    color: #047857;
-    border: 1px solid #bbf7d0;
-    border-radius: 999px;
-    font-size: 0.9rem;
-    font-weight: 800;
 }
 
 .badge-pending {

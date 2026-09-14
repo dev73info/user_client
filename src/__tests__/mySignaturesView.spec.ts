@@ -10,12 +10,13 @@ import type { MyContractSummary } from '@/api/contracts'
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(), realname: vi.fn(), detail: vi.fn(), developerAgreement: vi.fn(), sync: vi.fn(),
-  initiate: vi.fn(),
+  initiate: vi.fn(), preview: vi.fn(),
 }))
 vi.mock('@/api/contracts', () => ({
   listMyContracts: mocks.list, fetchMyContract: mocks.detail,
   fetchDeveloperAgreement: mocks.developerAgreement, fetchMyRequirementContract: vi.fn(),
   syncAsignSignStatus: mocks.sync, initiateAsignSign: mocks.initiate,
+  fetchAsignContractPreviewUrl: mocks.preview,
 }))
 vi.mock('@/api/realname', () => ({ getMyRealnameVerification: mocks.realname }))
 vi.mock('@/api/conversations', () => ({ listRequirementConversations: vi.fn().mockResolvedValue([]) }))
@@ -136,8 +137,21 @@ describe('signature detail', () => {
     expect(mocks.detail).toHaveBeenCalledWith('test-token', 1)
     expect(mocks.developerAgreement).not.toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('workbench-signature-detail')
-    expect(wrapper.find('.contract-content').text()).toBe('正文')
+    // 已签署的合同不在本地铺正文，改为「查看合同」跳爱签预览页。
+    expect(wrapper.find('.contract-content').exists()).toBe(false)
+    expect(wrapper.find('.contract-actions').text()).toContain('查看合同')
     expect(wrapper.text()).not.toContain('签署完成，成为开发者')
+    wrapper.unmount()
+  })
+  it('falls back to the local body when asign has no preview for the signed contract', async () => {
+    mocks.detail.mockResolvedValue({ ...base, status: 'signed', content: '正文', content_sha256: 'abc', signing_logs: [] })
+    mocks.preview.mockResolvedValue('')
+    const { wrapper } = await render(ContractSignView, true)
+    await wrapper.find('.contract-actions .btn-primary').trigger('click')
+    await flushPromises()
+    expect(mocks.preview).toHaveBeenCalledWith('test-token', 1)
+    expect(wrapper.find('.contract-content').text()).toBe('正文')
+    expect(wrapper.text()).toContain('爱签暂未提供该合同的查看页')
     wrapper.unmount()
   })
   it('keeps signing disabled until the user accepts with verified identity', async () => {
