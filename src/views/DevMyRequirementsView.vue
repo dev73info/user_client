@@ -9,6 +9,7 @@ import {
   reportAdapayBreach,
   requestAdapayPlatformReview,
   submitAdapayBreachDecision,
+  withdrawAdapayBreach,
   type AdapayBreachCase,
   type AdapayBreachDecisionValue,
   type AdapayBreachLiableParty,
@@ -81,6 +82,8 @@ const breachLoading = ref(false)
 const breachCase = ref<AdapayBreachCase | null>(null)
 const breachCaseLoading = ref(false)
 const platformReviewLoading = ref(false)
+const breachWithdrawLoading = ref(false)
+const breachWithdrawConfirm = ref(false)
 const breachDecisionLoading = ref(false)
 const breachRejectPanel = ref(false)
 const breachDecisionNote = ref('')
@@ -91,6 +94,7 @@ const BREACH_STATUS_LABELS: Record<string, string> = {
   ai_reviewing: 'AI 审核中',
   ai_judged: 'AI 已判定，待双方确认',
   support_reviewing: '客服人工判定中',
+  withdrawn: '申报人已撤回',
   processing: '资金处理中',
   manual_required: '资金执行待处理',
   succeeded: '已结案',
@@ -127,6 +131,15 @@ function canDecideBreachCase(item: AdapayBreachCase | null) {
 /** 资金尚未开始执行时才允许申请平台介入（后端在 processing / manual_required 会拒绝）。 */
 function canRequestPlatformReview(item: AdapayBreachCase | null) {
   return item != null && ['submitted', 'ai_reviewing', 'ai_judged'].includes(item.status)
+}
+
+/** 只有申报人本人能在 AI 判定与客服介入之前撤回自己的申报（后端同样按状态与申报人校验）。 */
+function canWithdrawBreachCase(item: AdapayBreachCase | null) {
+  return (
+    item != null &&
+    ['submitted', 'ai_reviewing'].includes(item.status) &&
+    item.reportedBy === auth.username
+  )
 }
 
 const emptyText = computed(() => (loading.value ? '我的需求单加载中' : '当前账号还没有已关联需求'))
@@ -535,6 +548,7 @@ function closeBreachReport() {
   if (
     breachLoading.value ||
     platformReviewLoading.value ||
+    breachWithdrawLoading.value ||
     breachDecisionLoading.value ||
     breachCaseLoading.value
   ) {
@@ -546,6 +560,7 @@ function closeBreachReport() {
   breachCase.value = null
   breachRejectPanel.value = false
   breachDecisionNote.value = ''
+  breachWithdrawConfirm.value = false
 }
 
 async function submitPlatformReview() {
@@ -561,6 +576,42 @@ async function submitPlatformReview() {
   } finally {
     platformReviewLoading.value = false
   }
+}
+
+/** 撤回是不可撤销动作（撤回后要重新申报），故先要求二次确认。 */
+function openBreachWithdrawConfirm() {
+  breachWithdrawConfirm.value = true
+}
+
+function cancelBreachWithdrawConfirm() {
+  if (breachWithdrawLoading.value) {
+    return
+  }
+  breachWithdrawConfirm.value = false
+}
+
+async function submitBreachWithdraw() {
+  const current = breachCase.value
+  if (!current) {
+    return
+  }
+  breachWithdrawLoading.value = true
+  try {
+    breachCase.value = await withdrawAdapayBreach(auth.token, current.id)
+    breachWithdrawConfirm.value = false
+    showToast('违约申报已撤回，如仍有争议可重新申报', 'success')
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '撤回违约申报失败', 'error')
+  } finally {
+    breachWithdrawLoading.value = false
+  }
+}
+
+/** 已撤回的案件回到申报表单，交回给用户重新填写事实与依据。 */
+function reopenBreachReport() {
+  breachCase.value = null
+  breachReason.value = ''
+  breachWithdrawConfirm.value = false
 }
 
 function openBreachRejectPanel() {
@@ -1133,6 +1184,16 @@ async function loadRequirementConversations() {
             class="unbind-dialog-tip">
             AI 判定完成后由双方各自选择是否接受；双方都接受平台才会执行退款／赔付，协商不成可申请平台介入转客服人工判定。
           </p>
+
+          <div v-if="breachWithdrawConfirm" class="breach-decision">
+            <p class="unbind-dialog-line">
+              确认撤回本次违约申报？撤回后本次申报结束，如仍有争议可在同一需求上重新申报；撤回不会触发任何退款或赔付。
+            </p>
+            <div class="breach-decision__actions">
+              <el-button :disabled="breachWithdrawLoading" @click="cancelBreachWithdrawConfirm">再想想</el-button>
+              <el-button type="danger" :loading="breachWithdrawLoading" @click="submitBreachWithdraw">确认撤回申报</el-button>
+            </div>
+          </div>
         </template>
         <el-form v-else label-position="top">
           <el-form-item label="事实与依据" required>
@@ -1142,10 +1203,16 @@ async function loadRequirementConversations() {
         </el-form>
       </div>
       <template #footer>
-        <el-button :disabled="platformReviewLoading || breachLoading || breachDecisionLoading"
+        <el-button :disabled="platformReviewLoading || breachLoading || breachDecisionLoading || breachWithdrawLoading"
           @click="closeBreachReport">
           {{ breachCase ? '关闭' : '取消' }}
         </el-button>
+        <el-button v-if="canWithdrawBreachCase(breachCase) && !breachWithdrawConfirm" type="danger" plain
+          :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
+          @click="openBreachWithdrawConfirm">撤回申报</el-button>
+        <el-button v-else-if="breachCase?.status === 'withdrawn'" type="primary"
+          :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
+          @click="reopenBreachReport">重新申报</el-button>
         <el-button v-if="canRequestPlatformReview(breachCase)" type="primary" plain
           :loading="platformReviewLoading" @click="submitPlatformReview">申请平台介入</el-button>
         <el-button v-else-if="!breachCase" type="primary" :loading="breachLoading" @click="submitBreachReport">

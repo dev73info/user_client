@@ -264,6 +264,21 @@ export async function requestAdapayPlatformReview(
   )
 }
 
+/** 申报人在 AI 判定与客服介入之前自行撤回申报（撤回后同一需求可再次申报）。 */
+export async function withdrawAdapayBreach(
+  token: string,
+  caseId: number,
+): Promise<AdapayBreachCase> {
+  return requestJson<AdapayBreachCase>(
+    `/adapay/breaches/${caseId}/withdraw`,
+    {
+      method: 'POST',
+      headers: authHeader(token),
+    },
+    '撤回违约申报失败',
+  )
+}
+
 export type AdapayMemberStatus = {
   username: string
   memberType?: string | null
