@@ -150,6 +150,9 @@ const canSignContract = computed(() => {
         ? !contract.value.party_a_signed_at
         : !contract.value.party_b_signed_at
 })
+// 从需求列表 / 需求会话的「查看合同」进来时，页面同样要能看清是谁在什么时候签的。
+// 只有在本人还需要签署时才收起这些区块，保持签署流程页只聚焦签署动作。
+const showSignatureFacts = computed(() => isWorkbenchSignature.value || !canSignContract.value)
 const waitingMessage = computed(() => {
     if (!contract.value || contract.value.status === 'signed') return ''
     if (currentParty.value === 'party_a') {
@@ -373,7 +376,7 @@ onUnmounted(() => {
             <header class="panel-head">
                 <div class="panel-head__title">
                     <h2>{{ isWorkbenchSignature ? (contract?.title || '合同详情') : (isDeveloperAgreement ? '开发者入驻协议' : '需求服务合同') }}</h2>
-                    <p v-if="!isWorkbenchSignature" class="lead">请核对实名认证身份后完成签署。</p>
+                    <p v-if="canSignContract" class="lead">请核对实名认证身份后完成签署。</p>
                 </div>
                 <button v-if="isWorkbenchSignature" type="button" class="btn-secondary" @click="goHome">
                     <el-icon><ArrowLeft /></el-icon>返回我的签署
@@ -404,7 +407,7 @@ onUnmounted(() => {
                 <div v-if="successMsg" class="msg-success">{{ successMsg }}</div>
                 <div v-if="error" class="msg-error">{{ error }}</div>
 
-                <template v-if="isWorkbenchSignature">
+                <template v-if="showSignatureFacts">
                     <section class="signature-parties">
                         <h3>签约方</h3>
                         <dl>
@@ -472,7 +475,7 @@ onUnmounted(() => {
                         <el-icon><Refresh /></el-icon>刷新状态
                     </button>
                 </div>
-                <section v-if="isWorkbenchSignature" class="signature-history">
+                <section v-if="showSignatureFacts" class="signature-history">
                     <h3>签署记录</h3>
                     <p v-if="!signingLogs.length" class="empty-log">暂无签署记录</p>
                     <ol v-else>

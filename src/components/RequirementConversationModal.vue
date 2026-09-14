@@ -208,7 +208,7 @@ const timelineItems = computed<ConversationTimelineItem[]>(() => {
     }
 
     const mine = isMine(message)
-    // 平台写入的状态变化卡片：做成居中卡片；未知事件码退化成普通消息，避免丢信息。
+    // 平台写入的状态变化卡片：左对齐，与对面的聊天气泡同侧；未知事件码退化成普通消息，避免丢信息。
     const card =
       message.message_type === 'card'
         ? conversationCardMeta(message.action_type ?? '', props.requirementId, viewerRole.value)
@@ -2378,12 +2378,12 @@ function handleBackdropClick() {
   width: min(280px, 64vw);
 }
 
-/* 状态变化卡片：居中展示，与聊天气泡明显区分 */
+/* 状态变化卡片：与聊天气泡同侧左对齐，不挤在会话中间 */
 .conversation-card {
   display: grid;
   gap: 6px;
   width: min(420px, 92%);
-  margin: 0 auto 14px;
+  margin: 0 0 14px;
   padding: 12px 14px;
   border: 1px solid rgba(37, 99, 235, 0.22);
   border-radius: 12px;
