@@ -23,12 +23,18 @@ export type RequirementConversationMessage = {
   id: number
   conversation_id: string
   sender: string
-  sender_role: 'customer' | 'developer'
+  sender_role: 'customer' | 'developer' | 'platform'
   content: string
   attachment_url?: string | null
   attachment_name?: string | null
   attachment_mime?: string | null
   attachment_size?: number | null
+  /** 'text' 为双方手发消息，'card' 为平台写入的状态变化卡片。 */
+  message_type?: string | null
+  /** 卡片事件码（仅卡片消息有值），见 @/shared/conversationCards。 */
+  action_type?: string | null
+  /** 卡片关联标识：合同编号 / 交付版本号 / 解绑原因等。 */
+  action_ref?: string | null
   created_at: string
 }
 

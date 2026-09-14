@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ArrowLeft,
+  Bell,
   ChatDotRound,
   Close,
   MagicStick,
@@ -19,6 +21,10 @@ import type {
 } from '@/api/conversations'
 import { apiUrl } from '@/api/http'
 import RequirementConversationActions from '@/components/RequirementConversationActions.vue'
+import {
+  conversationCardMeta,
+  type ConversationCardMeta,
+} from '@/shared/conversationCards'
 
 const props = defineProps<{
   visible: boolean
@@ -62,11 +68,13 @@ type ConversationAttachmentDraft = {
 
 type ConversationTimelineItem = {
   key: string
-  kind: 'date' | 'message'
+  kind: 'date' | 'message' | 'card'
   label?: string
   message?: RequirementConversationMessage
   mine?: boolean
   showAvatar?: boolean
+  card?: ConversationCardMeta
+  createdAt?: string
 }
 
 type ConversationApi = {
@@ -98,6 +106,7 @@ const emojiOptions = [
 const conversationApi = computed<ConversationApi>(() =>
   props.apiMode === 'dev' ? devConversationApi : userConversationApi,
 )
+const router = useRouter()
 const conversation = computed(() => detail.value?.conversation ?? null)
 const messages = computed(() => detail.value?.messages ?? [])
 const conversationClosed = computed(
@@ -199,6 +208,21 @@ const timelineItems = computed<ConversationTimelineItem[]>(() => {
     }
 
     const mine = isMine(message)
+    // 平台写入的状态变化卡片：做成居中卡片；未知事件码退化成普通消息，避免丢信息。
+    const card =
+      message.message_type === 'card'
+        ? conversationCardMeta(message.action_type ?? '', props.requirementId, viewerRole.value)
+        : null
+    if (card) {
+      rows.push({
+        key: `card-${message.id}`,
+        kind: 'card',
+        card,
+        message,
+        createdAt: message.created_at,
+      })
+      continue
+    }
     rows.push({
       key: `message-${message.id}`,
       kind: 'message',
@@ -674,6 +698,23 @@ function handleBackdropClick() {
           <template v-else>
             <template v-for="row in timelineItems" :key="row.key">
               <div v-if="row.kind === 'date'" class="conversation-date-pill">{{ row.label }}</div>
+              <article v-else-if="row.kind === 'card' && row.card" class="conversation-card">
+                <div class="conversation-card__head">
+                  <el-icon class="conversation-card__icon">
+                    <Bell />
+                  </el-icon>
+                  <strong>{{ row.card.title }}</strong>
+                </div>
+                <p class="conversation-card__desc">{{ row.card.description }}</p>
+                <p v-if="row.message?.action_ref" class="conversation-card__ref">{{ row.message.action_ref }}</p>
+                <div class="conversation-card__foot">
+                  <time :title="row.createdAt">{{ formatMessageClock(row.createdAt) }}</time>
+                  <el-button class="conversation-card__action" type="primary" size="small"
+                    @click="router.push(row.card.to)">
+                    {{ row.card.actionLabel }}
+                  </el-button>
+                </div>
+              </article>
               <article v-else-if="row.message" class="conversation-message"
                 :class="{ 'conversation-message--mine': row.mine }">
                 <div v-if="!row.mine" class="conversation-message__avatar-slot" aria-hidden="true">
@@ -2335,6 +2376,75 @@ function handleBackdropClick() {
 
 .conversation-message__attachment {
   width: min(280px, 64vw);
+}
+
+/* 状态变化卡片：居中展示，与聊天气泡明显区分 */
+.conversation-card {
+  display: grid;
+  gap: 6px;
+  width: min(420px, 92%);
+  margin: 0 auto 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.96), rgba(255, 255, 255, 0.98));
+}
+
+.conversation-card__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #1d4ed8;
+  font-size: 13.5px;
+}
+
+.conversation-card__icon {
+  font-size: 15px;
+}
+
+.conversation-card__desc {
+  margin: 0;
+  color: #475569;
+  font-size: 12.5px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.conversation-card__ref {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.conversation-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.conversation-card__foot time {
+  color: #94a3b8;
+  font-size: 11.5px;
+}
+
+.conversation-card .conversation-card__action {
+  min-height: 32px;
+}
+
+@media (max-width: 640px) {
+  .conversation-card {
+    width: 100%;
+    padding: 10px 12px;
+  }
+
+  /* 移动端触摸目标 ≥44px */
+  .conversation-card .conversation-card__action {
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 640px) {

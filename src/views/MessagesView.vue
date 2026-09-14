@@ -190,7 +190,12 @@ function lastMessageLabel(item: RequirementConversation) {
     return '会话已创建，等待第一条消息'
   }
 
-  const sender = item.last_message_by === auth.username ? '我' : item.last_message_by || '对方'
+  const sender =
+    item.last_message_by === auth.username
+      ? '我'
+      : item.last_message_by === 'platform'
+        ? '系统'
+        : item.last_message_by || '对方'
   return `${formatMessageTime(item.last_message_at)} · ${sender}`
 }
 
