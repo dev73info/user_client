@@ -85,11 +85,11 @@ type ActionChip = {
 }
 
 const BREACH_STATUS_LABELS: Record<string, string> = {
-  submitted: '待 AI 审核',
+  submitted: '协商中',
   ai_reviewing: 'AI 审核中',
   ai_judged: 'AI 已判定，待双方确认',
   support_reviewing: '客服人工判定中',
-  withdrawn: '申报人已撤回',
+  withdrawn: '申请人已撤回',
   processing: '资金处理中',
   manual_required: '资金执行待处理',
   succeeded: '已结案',
@@ -158,15 +158,8 @@ const pendingUnbindRequest = computed(() =>
     ? requirement.value.pending_unbind_request
     : null,
 )
-/** 合同一经签署，担保模式的协商解除关闭，退出只能走违约处理（后端同样会拒绝）。 */
-const unbindBlockedByContract = computed(
-  () =>
-    !isSelfManaged.value &&
-    contractSigned.value &&
-    (status.value === 'pending_deposit' ||
-      status.value === 'deposit_paid' ||
-      status.value === 'in_development'),
-)
+/** 担保模式的退出入口只有「终止合作」：解绑申请对担保模式一律拒绝（后端同样会拒绝）。 */
+const unbindBlockedByPaymentMode = computed(() => !isSelfManaged.value)
 
 const canCreateContract = computed(
   () =>
@@ -213,7 +206,7 @@ const canRequestUnbind = computed(
       status.value === 'deposit_paid' ||
       status.value === 'in_development') &&
     !pendingUnbindRequest.value &&
-    !unbindBlockedByContract.value,
+    !unbindBlockedByPaymentMode.value,
 )
 const canRespondUnbind = computed(
   () => pendingUnbindRequest.value?.initiator === (isDeveloper.value ? 'creator' : 'developer'),
@@ -258,12 +251,8 @@ const canDecideBreach = computed(
       ? activeBreachCase.value.developerDecision == null
       : activeBreachCase.value.customerDecision == null),
 )
-const canRequestPlatformReview = computed(
-  () =>
-    activeBreachCase.value != null &&
-    ['submitted', 'ai_reviewing', 'ai_judged'].includes(activeBreachCase.value.status),
-)
-/** 撤回是申报人的单方动作：待判定期间（还没有结论）只有本人能撤回自己的申报，与需求列表页一致。 */
+const canRequestPlatformReview = computed(() => activeBreachCase.value?.status === 'submitted')
+/** 撤回是申请人的单方动作：待判定期间（还没有结论）只有本人能撤回自己的申请，与需求列表页一致。 */
 const canWithdrawBreach = computed(
   () =>
     activeBreachCase.value != null &&
@@ -302,7 +291,7 @@ const negotiationFinalCapYuan = computed(() => {
 
 const negotiationHint = computed(() => {
   if (canRespondNegotiation.value) {
-    return '对方已发起协商终止合作，同意后案件转客服确认并按该额度退款'
+    return '对方已发起协商终止合作，同意后即按该额度退款结案'
   }
   if (pendingNegotiation.value) {
     return '协商提议已提交，等待对方同意或拒绝；被拒绝后可重新发起'
@@ -327,40 +316,40 @@ const unbindHint = computed(() => {
   if (pendingUnbindRequest.value && !canRespondUnbind.value) {
     return `${pendingUnbindRequest.value.initiator === 'creator' ? '需求方' : '开发者'}已提交解除申请，等待对方处理`
   }
-  if (!unbindBlockedByContract.value) {
+  if (!unbindBlockedByPaymentMode.value) {
     return ''
   }
-  // 定金未缴时违约申报也进不去（违约案件必须挂在一张已完成的定金支付单上），
-  // 此时唯一的出口是缴款期限到期后由系统自动解除合同，不能把用户指去「违约处理」。
+  // 担保模式的退出入口只有「终止合作」，而案件必须挂在一张已完成的定金支付单上（定金未缴时
+  // 建不了案）；这段死角由缴款期限到期后的系统兜底终止，不能把用户指去「终止合作」。
   if (!canUseBreach.value) {
-    return '合同已签署，协商解除已关闭；请先完成定金支付，逾期未缴定金将由系统自动解除合同并释放接单保证金'
+    return '担保模式不支持协商解除；请先完成签约与定金支付，逾期未缴定金将由系统自动终止合作并释放接单保证金'
   }
-  return '合同已签署，协商解除已关闭；如需终止合作请走「违约处理」'
+  return '担保模式不支持协商解除；如需结束合作请使用「终止合作」'
 })
 
 const breachDialogTitle = computed(() => {
   if (activeBreachCase.value) {
-    return '违约案件进展'
+    return '终止合作进展'
   }
   if (settledBreachCase.value) {
-    return '申报新的违约'
+    return '发起新的终止合作'
   }
-  return breachWithdrawnByMe.value ? '重新申报履约违约' : '申报履约违约'
+  return breachWithdrawnByMe.value ? '重新发起终止合作' : '终止合作'
 })
 
 /**
- * 申报表单上方的「上一轮」说明：把歧义点讲清楚——结案 / 驳回的结论不能翻案、新一轮会新建案件，
- * 撤回则是沿用同一案件重新提交（案件编号不变，申报人与理由以本次提交为准）。
+ * 申请表单上方的「上一轮」说明：把歧义点讲清楚——结案 / 驳回的结论不能翻案、新一轮会新建案件，
+ * 撤回则是沿用同一案件重新提交（案件编号不变，申请人与理由以本次提交为准）。
  */
 const breachRoundHint = computed(() => {
   const settled = settledBreachCase.value
   if (settled) {
-    return `上一轮案件已${settled.status === 'succeeded' ? '结案' : '驳回'}，结论不能翻案；下面提交的是新一轮申报，会新建一条案件，只针对结案之后新发生的违约事实。`
+    return `上一轮案件已${settled.status === 'succeeded' ? '结案' : '驳回'}，结论不能翻案；下面提交的是新一轮申请，会新建一条案件，只针对结案之后新发生的事实。`
   }
   if (withdrawnBreachCase.value) {
     return breachWithdrawnByMe.value
-      ? '上一轮由你撤回，本次提交沿用同一条案件（案件编号不变），申报人与理由以本次提交为准，双方继续跟踪这一条。'
-      : '上一轮由对方申报后撤回，本次提交沿用同一条案件（案件编号不变），按你本次提交的事实与依据重新判定。'
+      ? '上一轮由你撤回，本次提交沿用同一条案件（案件编号不变），申请人与理由以本次提交为准，双方继续跟踪这一条。'
+      : '上一轮由对方申请后撤回，本次提交沿用同一条案件（案件编号不变），按你本次提交的事实与依据重新判定。'
   }
   return ''
 })
@@ -407,7 +396,7 @@ const chips = computed<ActionChip[]>(() => {
     list.push({ key: 'unbind', label: '处理解除申请', tone: 'primary', run: openUnbindDialog })
   }
   if (canUseBreach.value) {
-    list.push({ key: 'breach', label: '违约处理', tone: 'danger', run: () => void openBreachDialog() })
+    list.push({ key: 'breach', label: '终止合作', tone: 'danger', run: () => void openBreachDialog() })
   }
   if (canProposeNegotiation.value || canRespondNegotiation.value) {
     list.push({
@@ -783,7 +772,7 @@ async function submitNegotiationRespond(action: 'approve' | 'reject') {
   negotiationActing.value = true
   try {
     breachCase.value = await respondAdapayBreachNegotiation(props.token, current.id, action)
-    showToast(action === 'approve' ? '已同意协商，等待客服确认执行' : '已拒绝协商', 'success')
+    showToast(action === 'approve' ? '已同意协商，平台将按该额度退款结案' : '已拒绝协商', 'success')
     emit('changed')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '处理协商提议失败', 'error')
@@ -800,18 +789,18 @@ async function submitBreachReport() {
 
   const reason = breachReason.value.trim()
   if (!reason) {
-    showToast('请填写违约事实与依据', 'warning')
+    showToast('请填写终止合作的事实与依据', 'warning')
     return
   }
 
   breachSubmitting.value = true
   try {
     breachCase.value = await reportAdapayBreach(props.token, item.requirement_id, reason)
-    showToast('违约申报已提交，审核完成后由双方确认', 'success')
+    showToast('终止合作申请已提交，请先与对方协商', 'success')
     breachVisible.value = false
     emit('changed')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交违约申报失败', 'error')
+    showToast(error instanceof Error ? error.message : '提交终止合作申请失败', 'error')
   } finally {
     breachSubmitting.value = false
   }
@@ -851,7 +840,7 @@ async function submitPlatformReview() {
   breachActing.value = true
   try {
     breachCase.value = await requestAdapayPlatformReview(props.token, current.id)
-    showToast('已申请平台介入，等待客服人工判定', 'success')
+    showToast('已申请平台介入，等待平台判定', 'success')
     emit('changed')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '申请平台介入失败', 'error')
@@ -869,10 +858,10 @@ async function submitBreachWithdraw() {
   breachActing.value = true
   try {
     breachCase.value = await withdrawAdapayBreach(props.token, current.id)
-    showToast('已撤回违约申报，如仍有争议可重新申报', 'success')
+    showToast('已撤回终止合作申请，如仍有争议可重新发起', 'success')
     emit('changed')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '撤回违约申报失败', 'error')
+    showToast(error instanceof Error ? error.message : '撤回终止合作申请失败', 'error')
   } finally {
     breachActing.value = false
   }
@@ -979,7 +968,7 @@ function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
       <p v-if="activeBreachCase.liableParty" class="conversation-actions__line">
         <strong>责任认定：</strong>{{ breachLiablePartyLabel(activeBreachCase.liableParty) }}
       </p>
-      <p class="conversation-actions__line"><strong>申报理由：</strong>{{ activeBreachCase.reason }}</p>
+      <p class="conversation-actions__line"><strong>申请理由：</strong>{{ activeBreachCase.reason }}</p>
       <p v-if="activeBreachCase.aiJudgedAt || activeBreachCase.aiReasoning" class="conversation-actions__line">
         <strong>AI 判定：</strong>{{ activeBreachCase.aiLiableParty ?
           breachLiablePartyLabel(activeBreachCase.aiLiableParty) : '无法判定，已转客服人工判定' }}
@@ -996,7 +985,7 @@ function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
       </p>
 
       <template v-if="canProposeNegotiation || canRespondNegotiation || activeBreachCase.negotiation">
-        <p class="conversation-actions__line"><strong>协商终止合作：</strong>双方谈定定金与尾款的退还额度，同意后由客服按该额度执行</p>
+        <p class="conversation-actions__line"><strong>协商终止合作：</strong>双方谈定定金与尾款的退还额度，谈成即按该额度退款结案，不必等平台判定</p>
         <template v-if="activeBreachCase.negotiation">
           <p class="conversation-actions__line">
             <strong>{{ activeBreachCase.negotiation.initiatedBy === role ? '我方' : '对方' }}提议：</strong>
@@ -1043,7 +1032,8 @@ function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
       </template>
       <p v-else-if="activeBreachCase.status === 'submitted' || activeBreachCase.status === 'ai_reviewing'"
         class="conversation-actions__tip">
-        AI 判定完成后由双方各自选择是否接受；协商不成可申请平台介入转客服人工判定。
+        双方先自行协商；协商不成由任一方申请平台介入，平台按 AI 判定 + 客服人工审核认定责任方，
+        AI 判定完成后由双方各自选择是否接受。
       </p>
     </template>
 
@@ -1067,9 +1057,9 @@ function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
       <template v-if="withdrawnBreachCase">
         <p class="conversation-actions__line"><strong>上一轮案件编号：</strong>{{ withdrawnBreachCase.caseNo }}</p>
         <p class="conversation-actions__line">
-          <strong>上一轮申报人：</strong>{{ breachWithdrawnByMe ? '我方' : '对方' }}
+          <strong>上一轮申请人：</strong>{{ breachWithdrawnByMe ? '我方' : '对方' }}
         </p>
-        <p class="conversation-actions__line"><strong>上一轮申报理由：</strong>{{ withdrawnBreachCase.reason }}</p>
+        <p class="conversation-actions__line"><strong>上一轮申请理由：</strong>{{ withdrawnBreachCase.reason }}</p>
         <p v-if="withdrawnBreachCase.resolvedAt" class="conversation-actions__line">
           <strong>撤回时间：</strong>{{ formatCnDateTime(withdrawnBreachCase.resolvedAt) }}
         </p>
@@ -1078,17 +1068,20 @@ function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
       <label class="conversation-actions__field">
         <span>事实与依据</span>
         <textarea v-model="breachReason" rows="6" maxlength="2000"
-          placeholder="请描述违约事实、时间与相关证据说明"></textarea>
+          placeholder="请描述合作终止的事实、时间与相关证据说明"></textarea>
       </label>
       <p class="conversation-actions__tip">
-        平台会核对合同、支付、交付和沟通记录，由审核智能体依据需求会话与材料判定责任方；判定后按结论执行退款／赔付并解除需求绑定（即终止合作）。恶意申报会影响账号信用。
+        提交后案件进入「协商中」：双方先在案件内协商定金与尾款的退还额度，谈成即直接退款结案。
+        协商不成再由任一方申请平台介入，平台会核对合同、支付、交付与沟通记录，由审核智能体
+        依据需求会话与材料判定责任方，客服人工复核后按结论执行退款／赔付并解除需求绑定。
+        恶意申报会影响账号信用。
       </p>
     </template>
 
     <template #footer>
       <el-button @click="breachVisible = false">关闭</el-button>
       <template v-if="activeBreachCase">
-        <el-button v-if="canWithdrawBreach" :loading="breachActing" @click="submitBreachWithdraw">撤回申报</el-button>
+        <el-button v-if="canWithdrawBreach" :loading="breachActing" @click="submitBreachWithdraw">撤回申请</el-button>
         <el-button v-if="canRequestPlatformReview" :loading="breachActing" @click="submitPlatformReview">申请平台介入</el-button>
         <template v-if="canRespondNegotiation">
           <el-button :loading="negotiationActing" @click="submitNegotiationRespond('reject')">拒绝协商</el-button>
@@ -1108,7 +1101,7 @@ function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
         </template>
       </template>
       <el-button v-else type="danger" :loading="breachSubmitting" @click="submitBreachReport">
-        {{ settledBreachCase ? '提交新的违约申报' : breachWithdrawnByMe ? '重新申报' : '提交违约申报' }}
+        {{ settledBreachCase ? '发起新一轮终止合作' : breachWithdrawnByMe ? '重新发起' : '提交终止合作申请' }}
       </el-button>
     </template>
   </el-dialog>

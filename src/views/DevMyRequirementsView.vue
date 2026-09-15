@@ -92,11 +92,11 @@ const breachDecisionNote = ref('')
 
 /** 违约案件状态文案（与后端 adapay_breach_case.status 对应）。 */
 const BREACH_STATUS_LABELS: Record<string, string> = {
-  submitted: '待 AI 审核',
+  submitted: '协商中',
   ai_reviewing: 'AI 审核中',
   ai_judged: 'AI 已判定，待双方确认',
   support_reviewing: '客服人工判定中',
-  withdrawn: '申报人已撤回',
+  withdrawn: '申请人已撤回',
   processing: '资金处理中',
   manual_required: '资金执行待处理',
   succeeded: '已结案',
@@ -132,12 +132,12 @@ function canDecideBreachCase(item: AdapayBreachCase | null) {
   return item?.status === 'ai_judged' && item.developerDecision == null
 }
 
-/** 资金尚未开始执行时才允许申请平台介入（后端在 processing / manual_required 会拒绝）。 */
+/** 只有协商中（`submitted`）才允许申请平台介入：AI 判定由这个动作触发，出结论后不再重复申请。 */
 function canRequestPlatformReview(item: AdapayBreachCase | null) {
-  return item != null && ['submitted', 'ai_reviewing', 'ai_judged'].includes(item.status)
+  return item?.status === 'submitted'
 }
 
-/** 只有申报人本人能在 AI 判定与客服介入之前撤回自己的申报（后端同样按状态与申报人校验）。 */
+/** 只有申请人本人能在 AI 判定与客服介入之前撤回自己的申请（后端同样按状态与申请人校验）。 */
 function canWithdrawBreachCase(item: AdapayBreachCase | null) {
   return (
     item != null &&
@@ -530,9 +530,9 @@ function canReportBreach(item: RequirementItem) {
     ['deposit_paid', 'in_development', 'pending_final'].includes(item.status)
 }
 
-/** 已签约但定金未缴：协商解除已关闭，违约申报又要求有一张已完成的定金支付单，出口只剩缴款期限到期后由系统自动解除。 */
+/** 担保模式接单后未缴定金：解绑入口一律关闭、终止合作又要求有一张已完成的定金支付单，出口只剩缴款期限到期后由系统自动终止合作。 */
 function awaitingDepositDeadline(item: RequirementItem) {
-  return item.status === 'pending_deposit' && unbindBlockedByContract(item)
+  return item.status === 'pending_deposit' && item.payment_mode !== 'self_managed'
 }
 
 async function openBreachReport(item: RequirementItem) {
@@ -610,9 +610,9 @@ async function submitBreachWithdraw() {
   try {
     breachCase.value = await withdrawAdapayBreach(auth.token, current.id)
     breachWithdrawConfirm.value = false
-    showToast('违约申报已撤回，如仍有争议可重新申报', 'success')
+    showToast('终止合作申请已撤回，如仍有争议可重新发起', 'success')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '撤回违约申报失败', 'error')
+    showToast(error instanceof Error ? error.message : '撤回终止合作申请失败', 'error')
   } finally {
     breachWithdrawLoading.value = false
   }
@@ -634,27 +634,27 @@ const breachWithdrawnByMe = computed(
 )
 
 /**
- * 撤回后再次申报沿用同一条案件（后端复用该行、案件编号不变），只有驳回 / 结案才会新建案件。
+ * 撤回后再次申请沿用同一条案件（后端复用该行、案件编号不变），只有驳回 / 结案才会新建案件。
  * 标题与提交按钮都按这个口径措辞，避免出现「标题写新一轮、提示写沿用同一条」的自相矛盾。
  */
 function breachDialogTitle() {
   if (!breachNewRound.value && breachCase.value) {
-    return '违约案件进展'
+    return '终止合作进展'
   }
   if (breachCase.value?.status === 'withdrawn') {
-    return breachWithdrawnByMe.value ? '重新申报履约违约' : '申报履约违约'
+    return breachWithdrawnByMe.value ? '重新发起终止合作' : '终止合作'
   }
-  return breachNewRound.value ? '申报新的违约' : '申报履约违约'
+  return breachNewRound.value ? '发起新的终止合作' : '终止合作'
 }
 
 function breachSubmitLabel() {
   if (breachCase.value?.status === 'withdrawn') {
-    return breachWithdrawnByMe.value ? '重新申报' : '提交违约申报'
+    return breachWithdrawnByMe.value ? '重新发起' : '提交终止合作申请'
   }
-  return breachNewRound.value ? '提交新的违约申报' : '提交申报'
+  return breachNewRound.value ? '发起新一轮终止合作' : '提交终止合作申请'
 }
 
-/** 申报表单上方的「上一轮」说明：讲清楚结论不能翻案，以及本次提交是新建案件还是沿用同一条。 */
+/** 申请表单上方的「上一轮」说明：讲清楚结论不能翻案，以及本次提交是新建案件还是沿用同一条。 */
 function breachRoundHint() {
   const item = breachCase.value
   if (!item) {
@@ -662,10 +662,10 @@ function breachRoundHint() {
   }
   if (item.status === 'withdrawn') {
     return breachWithdrawnByMe.value
-      ? '上一轮由你撤回，本次提交沿用同一条案件（案件编号不变），申报人与理由以本次提交为准，双方继续跟踪这一条。'
-      : '上一轮由对方申报后撤回，本次提交沿用同一条案件（案件编号不变），按你本次提交的事实与依据重新判定。'
+      ? '上一轮由你撤回，本次提交沿用同一条案件（案件编号不变），申请人与理由以本次提交为准，双方继续跟踪这一条。'
+      : '上一轮由对方申请后撤回，本次提交沿用同一条案件（案件编号不变），按你本次提交的事实与依据重新判定。'
   }
-  return `上一轮案件已${item.status === 'succeeded' ? '结案' : '驳回'}，结论不能翻案；本次提交会新建一条案件，只针对结案之后新发生的违约事实。`
+  return `上一轮案件已${item.status === 'succeeded' ? '结案' : '驳回'}，结论不能翻案；本次提交会新建一条案件，只针对结案之后新发生的事实。`
 }
 
 function openBreachRejectPanel() {
@@ -711,16 +711,16 @@ async function submitBreachReport() {
   const item = breachRequirement.value
   const reason = breachReason.value.trim()
   if (!item || !reason) {
-    showToast('请填写违约事实和相关依据', 'warning')
+    showToast('请填写终止合作的事实和相关依据', 'warning')
     return
   }
   breachLoading.value = true
   try {
     breachCase.value = await reportAdapayBreach(auth.token, item.requirement_id, reason)
     breachNewRound.value = false
-    showToast('违约申报已提交，平台将先由审核智能体判定责任方', 'success')
+    showToast('终止合作申请已提交，请先与对方协商', 'success')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交违约申报失败', 'error')
+    showToast(error instanceof Error ? error.message : '提交终止合作申请失败', 'error')
   } finally {
     breachLoading.value = false
   }
@@ -796,21 +796,12 @@ async function createRequirementContractAction(item: RequirementItem) {
 
 function canRequestUnbind(item: RequirementItem) {
   return (
+    item.payment_mode === 'self_managed' &&
     (item.status === 'in_development' ||
       item.status === 'deposit_paid' ||
       item.status === 'pending_deposit') &&
-    !item.pending_unbind_request &&
-    !unbindBlockedByContract(item)
+    !item.pending_unbind_request
   )
-}
-
-/** 合同一经签署，担保模式的协商解除关闭，退出只能走违约处理（后端同样会拒绝）。 */
-function unbindBlockedByContract(item: RequirementItem) {
-  if (item.payment_mode === 'self_managed') {
-    return false
-  }
-  const status = signingStatusMap.value[item.requirement_id]
-  return Boolean(status?.party_a_signed && status?.party_b_signed)
 }
 
 function unbindRequestHint(item: RequirementItem) {
@@ -1049,11 +1040,11 @@ async function loadRequirementConversations() {
               </el-button>
               <el-button v-if="canReportBreach(item)" type="danger" plain size="small"
                 @click="openBreachReport(item)">
-                违约处理
+                终止合作
               </el-button>
               <el-button v-else-if="awaitingDepositDeadline(item)" type="danger" plain size="small" disabled
-                title="定金未缴，暂不能申报违约；逾期未缴定金将由系统自动解除合同并释放接单保证金">
-                违约处理
+                title="定金未缴，暂不能发起终止合作；逾期未缴定金将由系统自动终止合作并释放接单保证金">
+                终止合作
               </el-button>
               <el-button v-if="canCreateRequirementContract(item)" type="primary" size="small"
                 :loading="contractCreatingId === item.requirement_id"
@@ -1187,16 +1178,17 @@ async function loadRequirementConversations() {
       :close-on-click-modal="false" :close-on-press-escape="false" @close="closeBreachReport">
       <div class="delivery-dialog-body">
         <p class="unbind-dialog-tip">
-          平台会核对合同、支付、交付和沟通记录，先由审核智能体依据双方会话判定责任方，资金处理按双方表态执行。
+          提交后案件进入「协商中」：双方先在案件内协商定金与尾款的退还额度，谈成即直接退款结案。
+          协商不成再由任一方申请平台介入，平台核对合同、支付、交付与沟通记录，由审核智能体判定责任方，客服人工复核。
         </p>
-        <p v-if="breachCaseLoading" class="unbind-dialog-tip">正在加载违约案件…</p>
+        <p v-if="breachCaseLoading" class="unbind-dialog-tip">正在加载终止合作案件…</p>
         <template v-else-if="breachCase && !breachNewRound">
           <el-descriptions :column="1" border size="small">
             <el-descriptions-item label="案件编号">{{ breachCase.caseNo }}</el-descriptions-item>
             <el-descriptions-item label="当前状态">
               {{ BREACH_STATUS_LABELS[breachCase.status] ?? breachCase.status }}
             </el-descriptions-item>
-            <el-descriptions-item v-if="breachCase.status === 'withdrawn'" label="申报人">
+            <el-descriptions-item v-if="breachCase.status === 'withdrawn'" label="申请人">
               {{ breachWithdrawnByMe ? '我方' : '对方' }}
             </el-descriptions-item>
             <el-descriptions-item v-if="breachCase.status === 'withdrawn' && breachCase.resolvedAt" label="撤回时间">
@@ -1205,7 +1197,7 @@ async function loadRequirementConversations() {
             <el-descriptions-item v-if="breachCase.liableParty" label="责任认定">
               {{ breachLiablePartyLabel(breachCase.liableParty) }}
             </el-descriptions-item>
-            <el-descriptions-item label="申报理由">{{ breachCase.reason }}</el-descriptions-item>
+            <el-descriptions-item label="申请理由">{{ breachCase.reason }}</el-descriptions-item>
             <el-descriptions-item v-if="breachCase.aiJudgedAt || breachCase.aiReasoning" label="AI 判定">
               {{ breachCase.aiLiableParty ? breachLiablePartyLabel(breachCase.aiLiableParty) : '无法判定，已转客服人工判定' }}
             </el-descriptions-item>
@@ -1257,16 +1249,16 @@ async function loadRequirementConversations() {
           </div>
           <p v-else-if="breachCase.status === 'submitted' || breachCase.status === 'ai_reviewing'"
             class="unbind-dialog-tip">
-            AI 判定完成后由双方各自选择是否接受；双方都接受平台才会执行退款／赔付，协商不成可申请平台介入转客服人工判定。
+            双方先自行协商：谈成即按协商额度退款结案；协商不成由任一方申请平台介入，平台按 AI 判定 + 客服人工审核认定责任方，判定完成后由双方各自选择是否接受。
           </p>
 
           <div v-if="breachWithdrawConfirm" class="breach-decision">
             <p class="unbind-dialog-line">
-              确认撤回本次违约申报？撤回后本次申报结束，如仍有争议可在同一需求上重新申报；撤回不会触发任何退款或赔付。
+              确认撤回本次终止合作申请？撤回后本次申请结束，如仍有争议可在同一需求上重新发起；撤回不会触发任何退款或赔付。
             </p>
             <div class="breach-decision__actions">
               <el-button :disabled="breachWithdrawLoading" @click="cancelBreachWithdrawConfirm">再想想</el-button>
-              <el-button type="danger" :loading="breachWithdrawLoading" @click="submitBreachWithdraw">确认撤回申报</el-button>
+              <el-button type="danger" :loading="breachWithdrawLoading" @click="submitBreachWithdraw">确认撤回申请</el-button>
             </div>
           </div>
         </template>
@@ -1285,14 +1277,14 @@ async function loadRequirementConversations() {
         </el-button>
         <el-button v-if="canWithdrawBreachCase(breachCase) && !breachWithdrawConfirm" type="danger" plain
           :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-          @click="openBreachWithdrawConfirm">撤回申报</el-button>
+          @click="openBreachWithdrawConfirm">撤回申请</el-button>
         <el-button v-else-if="breachCase?.status === 'withdrawn' && !breachNewRound" type="primary"
           :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-          @click="reopenBreachReport">{{ breachWithdrawnByMe ? '重新申报' : '提交违约申报' }}</el-button>
+          @click="reopenBreachReport">{{ breachWithdrawnByMe ? '重新发起' : '提交终止合作申请' }}</el-button>
         <el-button
           v-else-if="(breachCase?.status === 'rejected' || breachCase?.status === 'succeeded') && !breachNewRound"
           type="primary" :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-          @click="reopenBreachReport">申报新的违约</el-button>
+          @click="reopenBreachReport">发起新的终止合作</el-button>
         <el-button v-if="canRequestPlatformReview(breachCase)" type="primary" plain
           :loading="platformReviewLoading" @click="submitPlatformReview">申请平台介入</el-button>
         <el-button v-else-if="!breachCase || breachNewRound" type="primary" :loading="breachLoading"

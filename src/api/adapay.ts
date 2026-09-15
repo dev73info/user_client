@@ -226,7 +226,7 @@ export async function acceptAdapayDelivery(
   )
 }
 
-/** 申报违约：只提交违约事实，责任方由审核智能体依据需求会话判定。 */
+/** 发起终止合作：案件建立后停在「协商中」，双方先自行协商，谈不成再申请平台介入。 */
 export async function reportAdapayBreach(
   token: string,
   requirementId: string,
@@ -242,11 +242,11 @@ export async function reportAdapayBreach(
       },
       body: JSON.stringify({ reason }),
     },
-    '提交违约申报失败',
+    '提交终止合作申请失败',
   )
 }
 
-/** 查询当前需求上的违约案件（无案件时返回 null）。 */
+/** 查询当前需求上的终止合作案件（无案件时返回 null）。 */
 export async function getAdapayBreachCase(
   token: string,
   requirementId: string,
@@ -254,7 +254,7 @@ export async function getAdapayBreachCase(
   return requestJson<AdapayBreachCase | null>(
     `/adapay/requirements/${encodeURIComponent(requirementId)}/breach-case`,
     { headers: authHeader(token) },
-    '加载违约案件失败',
+    '加载终止合作案件失败',
   )
 }
 
@@ -279,7 +279,7 @@ export async function submitAdapayBreachDecision(
   )
 }
 
-/** 协商不成或 AI 未判定时申请平台介入（转客服人工判定）。 */
+/** 协商不成时申请平台介入：案件从「协商中」转入 AI 判定（AI 不可用时直接转客服人工审核）。 */
 export async function requestAdapayPlatformReview(
   token: string,
   caseId: number,
@@ -294,7 +294,7 @@ export async function requestAdapayPlatformReview(
   )
 }
 
-/** 申报人在 AI 判定与客服介入之前自行撤回申报（撤回后同一需求可再次申报）。 */
+/** 发起人在平台介入进程启动前自行撤回终止合作申请（撤回后同一需求可再次发起）。 */
 export async function withdrawAdapayBreach(
   token: string,
   caseId: number,
@@ -305,7 +305,7 @@ export async function withdrawAdapayBreach(
       method: 'POST',
       headers: authHeader(token),
     },
-    '撤回违约申报失败',
+    '撤回终止合作申请失败',
   )
 }
 
@@ -338,7 +338,7 @@ export async function proposeAdapayBreachNegotiation(
   )
 }
 
-/** 应答对方的协商提议：`approve` 同意后案件转入客服确认队列，`reject` 只作废本次提议。 */
+/** 应答对方的协商提议：`approve` 同意后直接按该额度退款结案，`reject` 只作废本次提议。 */
 export async function respondAdapayBreachNegotiation(
   token: string,
   caseId: number,
