@@ -70,6 +70,9 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError'
 }
 
+/** 重连退避上限：后端长时间不可用时不再按固定间隔反复请求。 */
+const MAX_RECONNECT_DELAY_MS = 15_000
+
 async function readStreamError(resp: Response, fallbackError: string): Promise<string> {
   try {
     const text = await resp.text()
@@ -86,6 +89,8 @@ export function subscribeJsonEventStream<T>(
   callbacks: JsonEventStreamCallbacks<T>,
 ): () => void {
   const reconnectDelayMs = callbacks.reconnectDelayMs ?? 2000
+  // 每次重连后翻倍、连上后重置，避免后端异常时按固定间隔一直打
+  let nextReconnectDelayMs = reconnectDelayMs
   let stopped = false
   let retryTimer: ReturnType<typeof setTimeout> | null = null
   let controller: AbortController | null = null
@@ -105,7 +110,8 @@ export function subscribeJsonEventStream<T>(
     clearRetryTimer()
     retryTimer = setTimeout(() => {
       void connect()
-    }, reconnectDelayMs)
+    }, nextReconnectDelayMs)
+    nextReconnectDelayMs = Math.min(nextReconnectDelayMs * 2, MAX_RECONNECT_DELAY_MS)
   }
 
   function dispatchMessage(message: SseMessage) {
@@ -153,6 +159,7 @@ export function subscribeJsonEventStream<T>(
       }
 
       opened = true
+      nextReconnectDelayMs = reconnectDelayMs
       callbacks.onOpen?.()
 
       const reader = resp.body.getReader()

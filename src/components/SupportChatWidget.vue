@@ -146,6 +146,10 @@ const connected = ref(false)
 
 let ws: WebSocket | null = null
 let reconnectTimer: number | null = null
+// 重连退避：后端不可用时每次翻倍，连上后重置，避免按固定 3s 一直重连
+const WS_RECONNECT_BASE_MS = 3000
+const WS_RECONNECT_MAX_MS = 15_000
+let wsReconnectDelayMs = WS_RECONNECT_BASE_MS
 
 function formatTime(value: string): string {
   const date = new Date(value)
@@ -231,6 +235,7 @@ function connectWs() {
   ws = new WebSocket(supportConversationWsUrl(auth.token))
   ws.onopen = () => {
     connected.value = true
+    wsReconnectDelayMs = WS_RECONNECT_BASE_MS
     // 连接建立后确保已加载当前会话，客户端才能实时收到客服的新消息
     if (activeConversationId.value === null) {
       void ensureConversation()
@@ -264,7 +269,8 @@ function connectWs() {
     connected.value = false
     ws = null
     if (reconnectTimer) window.clearTimeout(reconnectTimer)
-    reconnectTimer = window.setTimeout(connectWs, 3000)
+    reconnectTimer = window.setTimeout(connectWs, wsReconnectDelayMs)
+    wsReconnectDelayMs = Math.min(wsReconnectDelayMs * 2, WS_RECONNECT_MAX_MS)
   }
   ws.onerror = () => {
     ws?.close()
