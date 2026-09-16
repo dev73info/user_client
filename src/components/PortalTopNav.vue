@@ -42,9 +42,9 @@ const authModalVisible = computed(() => route.query.modal === 'auth')
 const searchHasInputValue = computed(
   () => Boolean(searchQuery.value.trim()) || searchDraftFilled.value,
 )
-const isDeveloperArea = computed(
-  () => route.path.startsWith('/dev') || route.path.startsWith('/workbench/developer'),
-)
+// 开发者工作台已并入统一工作台外壳（/workbench/developer/**），顶栏跟随整站样式，
+// 不再单开紧凑版式；只有遗留的独立 /dev 页面（如开发者入驻协议）保留 dev 版式。
+const isDeveloperArea = computed(() => route.path.startsWith('/dev'))
 const subscriptionBusy = computed(() => subscriptionLoading.value || subscriptionSaving.value)
 const hasActiveSubscription = computed(
   () => officialActivitySubscriptionEnabled.value || devHallSubscriptionEnabled.value,

@@ -78,6 +78,11 @@ describe('workbench mode switch', () => {
     expect(text).not.toContain('工单中心')
     expect(wrapper.find('.user-workbench__mode-switch').attributes('aria-label')).toBe('回到用户工作台')
     expect(wrapper.find('.user-workbench__brand-title').text()).toBe('开发者工作台')
+    // 与用户菜单同一套一级条目版式（带图标的一级菜单），切换模式时侧边栏只有文字变化
+    const devLinks = wrapper.findAll('.user-workbench__menu > .user-workbench__menu-link--root')
+    expect(devLinks).toHaveLength(5)
+    expect(devLinks[0]?.find('.user-workbench__menu-icon').exists()).toBe(true)
+    expect(devLinks.map((link) => link.text())).toEqual(['我的资源项目', '需求大厅', '我的接单', '收益钱包', '交付记录'])
     wrapper.unmount()
   })
 

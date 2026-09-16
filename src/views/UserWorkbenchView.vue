@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Box, Close, Connection, DataAnalysis, Menu as MenuIcon, Service, Switch as SwitchIcon, UserFilled } from '@element-plus/icons-vue'
+import { ArrowDown, Box, Close, Compass, Connection, DataAnalysis, Files, Menu as MenuIcon, Promotion, Service, Switch as SwitchIcon, Tickets, UserFilled, Wallet } from '@element-plus/icons-vue'
 
 import { listRequirementConversations, type RequirementConversation } from '@/api/conversations'
 import { listUserInvitations } from '@/api/team'
@@ -58,17 +58,19 @@ const ticketsItem: WorkbenchMenuItem = {
 }
 
 // 开发者工作台菜单：侧边栏切到开发者模式时展示（此前是底部「开发者工作台」折叠组的内容）。
-const devWorkbenchItems: WorkbenchMenuItem[] = [
+// 版式与用户菜单的一级条目一致（图标 + 加粗标题），切换模式时侧边栏只有文字在变。
+const devWorkbenchItems: (WorkbenchMenuItem & { icon: Component })[] = [
   {
     label: '我的资源项目',
     name: 'dev-resource-list',
     description: '管理主页、版本与资源状态',
     activeNames: ['dev-resource-homepage-edit', 'dev-resource-versions'],
+    icon: Files,
   },
-  { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求' },
-  { label: '我的接单', name: 'dev-my-requirements', description: '查看已关联需求和会话' },
-  { label: '收益钱包', name: 'dev-wallet', description: '查看余额与保证金信息' },
-  { label: '交付记录', name: 'dev-wallet-releases', description: '查看资源交付与收入' },
+  { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求', icon: Compass },
+  { label: '我的接单', name: 'dev-my-requirements', description: '查看已关联需求和会话', icon: Tickets },
+  { label: '收益钱包', name: 'dev-wallet', description: '查看余额与保证金信息', icon: Wallet },
+  { label: '交付记录', name: 'dev-wallet-releases', description: '查看资源交付与收入', icon: Promotion },
 ]
 
 const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
@@ -518,13 +520,19 @@ async function scrollToHash() {
           <nav class="user-workbench__menu">
             <template v-if="isDevWorkbenchMode">
               <p class="user-workbench__menu-section">开发者事项</p>
-              <div class="user-workbench__submenu user-workbench__submenu--flat">
-                <RouterLink v-for="item in devWorkbenchItems" :key="item.name"
-                  class="user-workbench__submenu-link" :class="{ active: isMenuItemActive(item) }"
-                  :to="menuItemTo(item)" @click="closeMobileMenu">
-                  <span>{{ item.label }}</span>
-                </RouterLink>
-              </div>
+              <!-- 与用户菜单同一套一级条目版式（图标 + 加粗标题），切换模式时只有文字变化 -->
+              <RouterLink v-for="item in devWorkbenchItems" :key="item.name"
+                class="user-workbench__menu-link user-workbench__menu-link--root"
+                :class="{ active: isMenuItemActive(item) }" :to="menuItemTo(item)" @click="closeMobileMenu">
+                <span class="user-workbench__menu-icon">
+                  <el-icon>
+                    <component :is="item.icon" />
+                  </el-icon>
+                </span>
+                <span>
+                  <strong>{{ item.label }}</strong>
+                </span>
+              </RouterLink>
             </template>
 
             <!-- 开发者模式下整块换成开发者菜单，用户菜单不出现在侧边栏 -->
@@ -933,13 +941,6 @@ async function scrollToHash() {
 .user-workbench__mode-switch:focus-visible {
   border-color: rgba(147, 197, 253, 0.95);
   background: rgba(219, 234, 254, 0.95);
-}
-
-/* 开发者模式下的扁平菜单：与顶部按钮左对齐，不显示子级竖线 */
-.user-workbench__submenu--flat {
-  margin-left: 0;
-  padding-left: 0;
-  border-left: 0;
 }
 
 .user-workbench__menu-group--standalone {
