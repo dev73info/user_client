@@ -498,7 +498,8 @@ async function scrollToHash() {
       <el-scrollbar class="app-scrollbar user-workbench__aside-scrollbar" max-height="calc(100vh - 120px)">
         <div class="user-workbench__aside-inner">
           <div class="user-workbench__brand">
-            <!-- 工作台模式切换：用户菜单与开发者菜单之间来回切，靠右对齐 -->
+            <!-- 侧边栏标题用普通标题样式（原版是有浅蓝底的药丸标签），模式切换按钮靠右 -->
+            <strong class="user-workbench__brand-title">{{ isDevWorkbenchMode ? '开发者工作台' : '工作台' }}</strong>
             <button class="user-workbench__mode-switch" type="button"
               :title="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'"
               :aria-label="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'" @click="switchWorkbenchMode">
@@ -696,12 +697,25 @@ async function scrollToHash() {
 
 .user-workbench__brand {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  /* 左右不再留内边距：品牌行只剩「切换工作台」按钮（移动端多一个关闭），右边缘与下方菜单项对齐 */
+  /* 左右不再留内边距：右边缘与下方菜单项对齐 */
   padding: 4px 0 10px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.82);
+}
+
+/* 品牌行标题：普通标题样式，空间不足时省略号截断 */
+.user-workbench__brand-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-workbench__brand span {

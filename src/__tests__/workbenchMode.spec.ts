@@ -58,6 +58,8 @@ describe('workbench mode switch', () => {
     expect(modeSwitch.exists()).toBe(true)
     expect(modeSwitch.text()).toContain('切换工作台')
     expect(modeSwitch.attributes('aria-label')).toBe('进入开发者工作台')
+    // 左侧标题是文字标题（不是药丸标签），标题内容随模式变
+    expect(wrapper.find('.user-workbench__brand > .user-workbench__brand-title').text()).toBe('工作台')
     expect(sidebar(wrapper)).toContain('工作台总览')
     // 开发者条目不再挤在用户侧边栏底部
     expect(sidebar(wrapper)).not.toContain('我的资源项目')
@@ -75,6 +77,7 @@ describe('workbench mode switch', () => {
     expect(text).not.toContain('我的团队')
     expect(text).not.toContain('工单中心')
     expect(wrapper.find('.user-workbench__mode-switch').attributes('aria-label')).toBe('回到用户工作台')
+    expect(wrapper.find('.user-workbench__brand-title').text()).toBe('开发者工作台')
     wrapper.unmount()
   })
 
