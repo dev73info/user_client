@@ -273,9 +273,9 @@ const router = createRouter({
           component: () => import('@/views/MessagesView.vue'),
         },
         {
+          // 「我的定制」已并入「我的需求」：旧路径保留为跳转，避免收藏夹与站外链接 404。
           path: 'resources',
-          name: 'workbench-resources',
-          component: () => import('@/views/MyCustomResourcesView.vue'),
+          redirect: { name: 'workbench-requirements' },
         },
         {
           path: 'tickets',
@@ -305,7 +305,7 @@ const router = createRouter({
     {
       path: '/my-custom-resources',
       name: 'my-custom-resources',
-      redirect: { name: 'workbench-resources' },
+      redirect: { name: 'workbench-requirements' },
     },
     {
       path: '/tickets',
@@ -438,7 +438,6 @@ router.beforeEach(async (to, from, next) => {
     to.name === 'profile' ||
     to.name === 'messages' ||
     (to.name === 'payment' && !isWechatPaymentHandoff(to.query)) ||
-    to.name === 'my-custom-resources' ||
     to.name === 'tickets' ||
     to.name === 'contract-sign' ||
     to.name === 'realname'

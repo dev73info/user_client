@@ -44,7 +44,7 @@ beforeEach(() => {
 })
 
 async function render(component: typeof MySignaturesView | typeof UserWorkbenchView | typeof ContractSignView, detail = false) {
-  const names = ['workbench', 'workbench-requirements', 'workbench-resources', 'workbench-account',
+  const names = ['workbench', 'workbench-requirements', 'workbench-account',
     'workbench-invoices', 'workbench-points', 'workbench-favorites', 'workbench-invite', 'workbench-teams',
     'workbench-team-resources', 'workbench-tickets', 'dev-resource-list', 'dev-requirement-hall',
     'dev-my-requirements', 'dev-wallet', 'dev-wallet-releases']

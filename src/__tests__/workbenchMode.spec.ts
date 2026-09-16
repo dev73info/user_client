@@ -12,7 +12,7 @@ vi.mock('@/api/team', () => ({ listUserInvitations: vi.fn().mockResolvedValue([]
 // 开发者页面在 router/dev.ts 里都带 devArea 标记，侧边栏据此把整条菜单换成开发者菜单。
 // 团队服务已整体移入开发者工作台，这三个页面同样是 devArea 路由，不再属于用户菜单。
 // 消息中心两端共用同一套页面，但各自一条路由：开发者端走 dev-messages，点进去不会切回用户工作台。
-const USER_ROUTE_NAMES = ['workbench', 'workbench-requirements', 'workbench-resources', 'workbench-account',
+const USER_ROUTE_NAMES = ['workbench', 'workbench-requirements', 'workbench-account',
   'workbench-signatures', 'workbench-invoices', 'workbench-points', 'workbench-favorites', 'workbench-invite',
   'workbench-tickets', 'workbench-messages']
 const DEV_ROUTE_NAMES = ['dev-resource-list', 'dev-requirement-hall', 'dev-my-requirements', 'dev-wallet',
@@ -69,6 +69,8 @@ describe('workbench mode switch', () => {
     // 团队服务已搬进开发者工作台，用户侧边栏不再出现
     expect(sidebar(wrapper)).not.toContain('团队服务')
     expect(sidebar(wrapper)).not.toContain('我的团队')
+    // 「我的定制」已并入「我的需求」，需求协作下只剩一个条目
+    expect(sidebar(wrapper)).not.toContain('我的定制')
     // 消息中心提升到一级：排在「需求协作」之后、「账户服务」之前，不再嵌在需求协作的子菜单里
     expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text()))
       .toEqual(['需求协作', '消息中心', '账户服务'])

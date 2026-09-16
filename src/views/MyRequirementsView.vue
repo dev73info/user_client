@@ -12,7 +12,13 @@ import {
   isWechatPaymentAuthorizationRequired,
 } from '@/api/auth'
 import { HttpError, apiUrl } from '@/api/http'
-import { listPublicMcResourceVersions, type PublicMcResourceVersionItem } from '@/api/resources'
+import {
+  downloadPublicMcResourceVersionFile,
+  extractResourceFileNameFromUrl,
+  listPublicMcResourceVersions,
+  type PublicMcResourceVersionItem,
+} from '@/api/resources'
+import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { getMyRealnameVerification } from '@/api/realname'
 import {
   listRequirementConversations,
@@ -54,6 +60,7 @@ import {
   type RequirementStatus,
 } from '@/api/requirements'
 import { getDepositRatio } from '@/api/settings'
+import { useResourceDownload } from '@/composables/useResourceDownload'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
@@ -73,6 +80,7 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const { showToast } = useToast()
+const { triggerDownload } = useResourceDownload()
 
 const requirementLoading = ref(false)
 const myRequirements = ref<RequirementItem[]>([])
@@ -118,6 +126,7 @@ const editPaymentMode = ref<RequirementPaymentMode>('self_managed')
 const editLoading = ref(false)
 const requirementSubscriptionLoadingId = ref<string | null>(null)
 const resourceVisibilityLoadingId = ref<string | null>(null)
+const resourceDownloadingId = ref<number | null>(null)
 const resourceVersionDeleteReviewLoadingId = ref<string | null>(null)
 const finalPaymentConfirmVisible = ref(false)
 const finalPaymentConfirmTarget = ref<RequirementItem | null>(null)
@@ -826,6 +835,67 @@ function toggleResourceVisibilityLabel(item: RequirementItem) {
   }
 
   return nextResourceVisibility(item) === 'public' ? '设为公开' : '设为私有'
+}
+
+/**
+ * 需求行上的「主页」需要拼资源详情路由，标签口径沿用原「我的定制」页：
+ * 主标签 / 次标签取 group_path 的前两级（次标签缺失时回退平台），别名优先于原名。
+ */
+function boundResourceRouteSlugs(item: RequirementItem) {
+  const tagSelections = item.bound_resource_tag_selections ?? []
+  const rootName = tagSelections.find((entry) => entry.group_path.length > 0)?.group_path[0] ?? ''
+  const entryName =
+    tagSelections.find((entry) => entry.group_path.length > 1)?.group_path[1] ??
+    (item.bound_resource_platform || '')
+  const rootAlias =
+    tagSelections.find((entry) => (entry.group_path_aliases?.length ?? 0) > 0)
+      ?.group_path_aliases?.[0] ?? ''
+  const entryAlias =
+    tagSelections.find((entry) => (entry.group_path_aliases?.length ?? 0) > 1)
+      ?.group_path_aliases?.[1] ?? ''
+  const ownerName =
+    item.creator?.trim() || auth.username || item.bound_resource_author?.trim() || item.title
+
+  return {
+    rootSlug: rootAlias || getTagRouteSlug(rootName),
+    entrySlug: entryAlias || getTagRouteSlug(entryName),
+    resourceSlug: getResourceDetailSlug(item.bound_resource_id as number, ownerName),
+  }
+}
+
+function openBoundResourceHomepage(item: RequirementItem) {
+  if (!hasBoundResource(item)) {
+    return
+  }
+
+  void router.push({ name: 'resource-detail', params: boundResourceRouteSlugs(item) })
+}
+
+/** 下载绑定资源的最新已发布版本；版本列表在 loadResourceVersions 里已加载，不再单独发请求。 */
+async function downloadBoundResource(item: RequirementItem) {
+  if (!hasBoundResource(item) || !auth.token) {
+    return
+  }
+
+  const latest = deliveryVersionsFor(item)[0]
+  if (!latest) {
+    showToast('开发者还没有发布可下载的版本', 'info')
+    return
+  }
+
+  const resourceId = item.bound_resource_id as number
+  resourceDownloadingId.value = resourceId
+  try {
+    await triggerDownload(
+      (onProgress) =>
+        downloadPublicMcResourceVersionFile(resourceId, latest.id, auth.token?.trim() || null, onProgress),
+      extractResourceFileNameFromUrl(latest.resource, `resource-${resourceId}-v${latest.id}`),
+    )
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '下载资源失败', 'warning')
+  } finally {
+    resourceDownloadingId.value = null
+  }
 }
 
 function isRejectingVersion(request: RequirementPendingResourceVersionDeleteRequest) {
@@ -2061,6 +2131,15 @@ watch(
                     ? '提交中...'
                     : toggleResourceVisibilityLabel(item)
                 }}
+              </button>
+              <button v-if="hasBoundResource(item)" class="ghost small action-quiet" type="button"
+                @click.stop="openBoundResourceHomepage(item)">
+                主页
+              </button>
+              <button v-if="hasBoundResource(item)" class="ghost small" type="button"
+                :disabled="resourceDownloadingId === item.bound_resource_id"
+                @click.stop="downloadBoundResource(item)">
+                {{ resourceDownloadingId === item.bound_resource_id ? '准备中...' : '下载' }}
               </button>
               <button v-if="hasBoundResource(item)" class="ghost small action-quiet" type="button"
                 @click.stop="openConversation(item)">

@@ -120,7 +120,6 @@ export default defineConfig({
           if (normalizedId.includes('/src/views/')) {
             if (
               normalizedId.includes('ProfileView') ||
-              normalizedId.includes('MyCustomResourcesView') ||
               normalizedId.includes('TicketCenterView')
             ) {
               return 'user-account'

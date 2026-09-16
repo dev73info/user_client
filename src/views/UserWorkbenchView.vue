@@ -91,7 +91,6 @@ const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
     icon: Connection,
     items: [
       { label: '我的需求', name: 'workbench-requirements', description: '查看支付、交付与验收进度' },
-      { label: '我的定制', name: 'workbench-resources', description: '查看需求关联交付资源' },
     ],
   },
   {
