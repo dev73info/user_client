@@ -633,6 +633,10 @@ async function scrollToHash() {
           <strong>{{ isDevWorkbenchMode ? '开发者工作台' : '工作台' }}</strong>
           <span>{{ currentTitle }}</span>
         </div>
+        <!-- 移动端返回按钮：与「菜单」同排在标题栏右侧，内容区不再重复标题与返回 -->
+        <button v-if="showWorkbenchHeader" class="user-workbench__mobile-back" type="button" @click="goBack">
+          返回
+        </button>
       </div>
 
       <header v-if="showWorkbenchHeader" class="user-workbench__head">
@@ -748,6 +752,7 @@ async function scrollToHash() {
 
 .user-workbench__drawer-close,
 .user-workbench__mobile-menu-btn,
+.user-workbench__mobile-back,
 .user-workbench__menu-backdrop {
   border: 0;
   font: inherit;
@@ -1392,6 +1397,11 @@ async function scrollToHash() {
     color: #1d4ed8;
   }
 
+  /* 移动端页面标题与返回已并入顶部标题栏，内容区不再重复渲染标题头 */
+  .user-workbench__head {
+    display: none;
+  }
+
   .user-workbench__mobile-bar {
     position: sticky;
     top: 8px;
@@ -1413,6 +1423,7 @@ async function scrollToHash() {
   .user-workbench__mobile-bar>div {
     display: grid;
     gap: 2px;
+    flex: 1 1 auto;
     min-width: 0;
   }
 
@@ -1436,7 +1447,8 @@ async function scrollToHash() {
     line-height: 1.2;
   }
 
-  .user-workbench__mobile-menu-btn {
+  .user-workbench__mobile-menu-btn,
+  .user-workbench__mobile-back {
     display: inline-flex;
     align-items: center;
     gap: 6px;

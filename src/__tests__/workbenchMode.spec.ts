@@ -74,6 +74,20 @@ describe('workbench mode switch', () => {
     wrapper.unmount()
   })
 
+  it('返回按钮放在移动端顶部标题栏内，总览页不显示', async () => {
+    const dev = await render('dev-resource-list')
+    const back = dev.wrapper.find('.user-workbench__mobile-bar .user-workbench__mobile-back')
+    expect(back.exists()).toBe(true)
+    expect(back.text()).toContain('返回')
+    // 内容区不再重复渲染标题头（由 CSS 在移动端隐藏，此处确认返回按钮不在其中）
+    expect(dev.wrapper.find('.user-workbench__head .user-workbench__mobile-back').exists()).toBe(false)
+    dev.wrapper.unmount()
+
+    const overview = await render('workbench')
+    expect(overview.wrapper.find('.user-workbench__mobile-bar .user-workbench__mobile-back').exists()).toBe(false)
+    overview.wrapper.unmount()
+  })
+
   it('点切换工作台在两种模式之间来回跳转', async () => {
     const { wrapper, router } = await render('workbench')
     await wrapper.find('.user-workbench__mode-switch').trigger('click')
