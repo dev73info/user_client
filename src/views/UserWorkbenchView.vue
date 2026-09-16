@@ -86,6 +86,8 @@ const teamMenuGroup: WorkbenchMenuGroup = {
 
 const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
   {
+    // 只剩一个页面：侧边栏按一级条目渲染成「需求协作」，
+    // 条目的 label 仍用于工作台顶部标题（进的是「我的需求」这一页）。
     key: 'collaboration',
     label: '需求协作',
     icon: Connection,
@@ -563,9 +565,25 @@ async function scrollToHash() {
             </RouterLink>
 
             <template v-for="(group, index) in visibleMenuGroups" :key="group.key">
-              <section class="user-workbench__menu-group"
+              <!-- 只剩一个页面的分组（如「需求协作」）直接渲染成一级条目，省掉一层没意义的展开 -->
+              <section v-if="group.items.length === 1" class="user-workbench__menu-group">
+                <RouterLink v-for="item in group.items" :key="item.name"
+                  class="user-workbench__menu-link user-workbench__menu-link--root"
+                  :class="{ active: isMenuItemActive(item) }" :to="menuItemTo(item)" @click="closeMobileMenu">
+                  <span class="user-workbench__menu-icon">
+                    <el-icon>
+                      <component :is="group.icon" />
+                    </el-icon>
+                  </span>
+                  <span>
+                    <strong>{{ group.label }}</strong>
+                  </span>
+                </RouterLink>
+              </section>
+
+              <section v-else class="user-workbench__menu-group"
                 :class="{ active: isGroupActive(group), open: isGroupOpen(group) }">
-                <p v-if="group.key !== 'collaboration' && group.key !== 'account'" class="user-workbench__menu-section">{{ group.label }}</p>
+                <p v-if="group.key !== 'account'" class="user-workbench__menu-section">{{ group.label }}</p>
                 <button class="user-workbench__menu-group-head" type="button" :aria-expanded="isGroupOpen(group)"
                   @click="toggleGroup(group)">
                   <span class="user-workbench__menu-icon">

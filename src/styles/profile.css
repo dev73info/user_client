@@ -292,27 +292,41 @@
 
 .requirement-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   padding: 14px 20px 16px;
   border-top: 1px solid rgba(209, 220, 243, 0.72);
   background: rgba(248, 251, 255, 0.72);
 }
 
-/* 需求单操作区按钮分三档，避免一排按钮长得完全一样：
-   action-switch  状态开关（订阅状态 / 设为公开），带状态点，开启时点亮
-   action-quiet   只做跳转的（查看沟通 / 查看合同），无边框无底色
-   action-primary 当前该做的那一步（支付 / 去评价），实心渐变
-   其余为常规操作，保持白底胶囊；危险操作加 danger-plain。 */
+/* 围绕同一个交付资源的动作（设为公开 / 主页 / 下载）成组显示：
+   组内间距略紧、左侧加一道分隔线，否则会和整行其它按钮糊成一片，看不出是一组。 */
+.requirement-actions__resource {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-left: 11px;
+  border-left: 1px solid rgba(209, 220, 243, 0.95);
+}
+
+/* 需求单操作区按钮按「同一档长得一样、不同档一眼分得开」来配：
+   action-switch    状态开关（订阅状态），中性灰底，开启时转蓝
+   action-quiet     只做跳转的（主页 / 查看沟通 / 查看合同），无边框无底色
+   action-download  资源分组里的主操作（下载），白底蓝字带描边
+   action-primary   当前该做的那一步（支付 / 去评价），实心渐变
+   其余为常规操作，保持白底胶囊；危险操作加 danger-plain。
+   资源相关的动作（设为公开 / 主页 / 下载）另包一层 .requirement-actions__resource 成组显示。 */
 .profile-page .requirement-actions button.ghost {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 34px;
-  padding: 0 14px;
-  border-radius: 10px;
+  min-height: 36px;
+  padding: 0 15px;
+  border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
   color: var(--profile-text-main);
@@ -321,6 +335,18 @@
 .profile-page .requirement-actions button.ghost:focus-visible {
   outline: 2px solid rgba(79, 140, 255, 0.55);
   outline-offset: 2px;
+}
+
+/* 订阅状态是设置项而不是动作：中性灰底、不描边，不与白底动作按钮抢注意力 */
+.profile-page .requirement-actions button.ghost.action-switch {
+  border-color: transparent;
+  background: rgba(241, 245, 249, 0.92);
+  color: var(--profile-text-sub);
+}
+
+.profile-page .requirement-actions button.ghost.action-switch:hover:not(:disabled) {
+  border-color: transparent;
+  background: rgba(226, 232, 240, 0.95);
 }
 
 .profile-page .requirement-actions button.ghost.action-switch::before {
@@ -341,6 +367,12 @@
   color: #1d4ed8;
 }
 
+/* 已开启的开关悬停时保持蓝色：上面的 :hover 规则权重更高，不补这条会把它压回灰底 */
+.profile-page .requirement-actions button.ghost.action-switch.is-on:hover:not(:disabled) {
+  border-color: rgba(79, 140, 255, 0.5);
+  background: rgba(79, 140, 255, 0.16);
+}
+
 .profile-page .requirement-actions button.ghost.action-switch.is-on::before {
   background: var(--profile-accent);
   box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.18);
@@ -359,6 +391,19 @@
 }
 
 .profile-page .requirement-actions button.ghost.action-quiet:hover:not(:disabled) {
+  background: var(--profile-accent-soft);
+  color: #1d4ed8;
+}
+
+/* 下载是资源分组里的主操作：白底蓝字带描边，和同组的「主页」链接式按钮拉开层次 */
+.profile-page .requirement-actions button.ghost.action-download {
+  border-color: rgba(79, 140, 255, 0.32);
+  background: #ffffff;
+  color: #1d4ed8;
+}
+
+.profile-page .requirement-actions button.ghost.action-download:hover:not(:disabled) {
+  border-color: rgba(79, 140, 255, 0.5);
   background: var(--profile-accent-soft);
   color: #1d4ed8;
 }
@@ -411,6 +456,12 @@
   .requirement-actions {
     padding: 14px 18px 16px;
     justify-content: flex-start;
+  }
+
+  /* 窄屏折行后按钮可能落到行首，分隔线会变成一段孤立的竖线，这里收掉 */
+  .requirement-actions__resource {
+    padding-left: 0;
+    border-left: 0;
   }
 }
 

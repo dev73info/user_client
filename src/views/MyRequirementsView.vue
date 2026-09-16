@@ -648,7 +648,7 @@ function isContractButtonViewOnly(item: RequirementItem) {
 }
 
 function contractButtonLabel(item: RequirementItem) {
-  return isContractButtonViewOnly(item) ? '查看合同' : '签署合同'
+  return isContractButtonViewOnly(item) ? '合同' : '签署合同'
 }
 
 function contractStatusHint(item: RequirementItem) {
@@ -693,7 +693,7 @@ async function viewContractPreview(item: RequirementItem) {
 }
 
 function handleContractButtonClick(item: RequirementItem) {
-  if (contractButtonLabel(item) === '查看合同') {
+  if (contractButtonLabel(item) === '合同') {
     void viewContractPreview(item)
     return
   }
@@ -818,15 +818,19 @@ function formatResourceVisibility(item: RequirementItem) {
     return '资源已公开'
   }
 
-  return visibility === 'review' ? '资源审核中' : '资源私有中'
+  return visibility === 'review' ? '审核中' : '私有'
 }
 
 function requirementSubscriptionLabel(item: RequirementItem) {
-  return item.subscribe_status_change ? '取消订阅动态' : '订阅状态'
+  return item.subscribe_status_change ? '取消订阅' : '订阅'
 }
 
+/**
+ * 只有当前是私有才提交公开审核，其余（已公开、审核中）都切回私有：
+ * 审核中点一下即撤回，避免公开申请卡在审核队列里没有出口。
+ */
 function nextResourceVisibility(item: RequirementItem): RequirementResourceVisibility {
-  return currentResourceVisibility(item) === 'public' ? 'private' : 'public'
+  return currentResourceVisibility(item) === 'private' ? 'public' : 'private'
 }
 
 function toggleResourceVisibilityLabel(item: RequirementItem) {
@@ -834,7 +838,7 @@ function toggleResourceVisibilityLabel(item: RequirementItem) {
     return '审核中'
   }
 
-  return nextResourceVisibility(item) === 'public' ? '设为公开' : '设为私有'
+  return nextResourceVisibility(item) === 'public' ? '公开' : '私有'
 }
 
 /**
@@ -2109,7 +2113,7 @@ watch(
               </button>
               <button v-if="canRequestUnbindAsCreator(item)" class="ghost small" type="button"
                 @click.stop="openUnbindRequest(item)">
-                申请解除
+                解除
               </button>
               <button class="ghost small action-switch" type="button"
                 :class="{ 'is-on': item.subscribe_status_change }"
@@ -2121,26 +2125,28 @@ watch(
                     : requirementSubscriptionLabel(item)
                 }}
               </button>
-              <button v-if="hasBoundResource(item) && canToggleRequirementResourceVisibility(item)"
-                class="ghost small action-switch" :class="{ 'is-on': currentResourceVisibility(item) === 'public' }"
-                type="button"
-                :disabled="resourceVisibilityLoadingId === item.requirement_id || currentResourceVisibility(item) === 'review'"
-                @click.stop="toggleRequirementResourceVisibility(item)">
-                {{
-                  resourceVisibilityLoadingId === item.requirement_id
-                    ? '提交中...'
-                    : toggleResourceVisibilityLabel(item)
-                }}
-              </button>
-              <button v-if="hasBoundResource(item)" class="ghost small action-quiet" type="button"
-                @click.stop="openBoundResourceHomepage(item)">
-                主页
-              </button>
-              <button v-if="hasBoundResource(item)" class="ghost small" type="button"
-                :disabled="resourceDownloadingId === item.bound_resource_id"
-                @click.stop="downloadBoundResource(item)">
-                {{ resourceDownloadingId === item.bound_resource_id ? '准备中...' : '下载' }}
-              </button>
+              <!-- 交付资源相关动作归到一个分组里：三者都围绕需求绑定的资源，分组后与其它动作区分开 -->
+              <div v-if="hasBoundResource(item)" class="requirement-actions__resource" aria-label="交付资源操作">
+                <button v-if="canToggleRequirementResourceVisibility(item)" class="ghost small action-switch"
+                  :class="{ 'is-on': currentResourceVisibility(item) === 'public' }" type="button"
+                  :disabled="resourceVisibilityLoadingId === item.requirement_id"
+                  :title="currentResourceVisibility(item) === 'review' ? '点击撤回公开审核，资源恢复为私有' : undefined"
+                  @click.stop="toggleRequirementResourceVisibility(item)">
+                  {{
+                    resourceVisibilityLoadingId === item.requirement_id
+                      ? '提交中...'
+                      : toggleResourceVisibilityLabel(item)
+                  }}
+                </button>
+                <button class="ghost small action-quiet" type="button" @click.stop="openBoundResourceHomepage(item)">
+                  主页
+                </button>
+                <button class="ghost small action-download" type="button"
+                  :disabled="resourceDownloadingId === item.bound_resource_id"
+                  @click.stop="downloadBoundResource(item)">
+                  {{ resourceDownloadingId === item.bound_resource_id ? '准备中...' : '下载' }}
+                </button>
+              </div>
               <button v-if="hasBoundResource(item)" class="ghost small action-quiet" type="button"
                 @click.stop="openConversation(item)">
                 {{ conversationButtonLabel(item) }}

@@ -383,7 +383,7 @@ const chips = computed<ActionChip[]>(() => {
     })
   }
   if (canDeliver.value) {
-    list.push({ key: 'deliver', label: '提交交付版本', tone: 'primary', run: openDeliveryDialog })
+    list.push({ key: 'deliver', label: '交付版本', tone: 'primary', run: openDeliveryDialog })
   }
   if (canRequestUnbind.value) {
     list.push({ key: 'unbind', label: '申请解除', tone: 'default', run: openUnbindDialog })
