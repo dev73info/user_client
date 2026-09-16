@@ -16,6 +16,9 @@ import {
 import * as userConversationApi from '@/api/conversations'
 import * as devConversationApi from '@/api/conversations'
 import type {
+  ConversationConsent,
+  ConversationHistoryDisclosureBrief,
+  ConversationHistorySegment,
   RequirementConversationDetail,
   RequirementConversationMessage,
 } from '@/api/conversations'
@@ -59,6 +62,8 @@ const attachmentDraft = ref<ConversationAttachmentDraft | null>(null)
 const messageListRef = ref<HTMLElement | null>(null)
 const realtimeStatus = ref<RealtimeStatus>('idle')
 const realtimeError = ref('')
+const historyRequesting = ref(false)
+const historyVotingId = ref<number | null>(null)
 let stopRealtimeEvents: (() => void) | null = null
 
 type RealtimeStatus = 'idle' | 'connecting' | 'connected' | 'error'
@@ -85,6 +90,8 @@ type ConversationTimelineItem = {
 type ConversationApi = {
   getRequirementConversationByRequirement: typeof userConversationApi.getRequirementConversationByRequirement
   sendRequirementConversationMessage: typeof userConversationApi.sendRequirementConversationMessage
+  requestRequirementHistoryDisclosure: typeof userConversationApi.requestRequirementHistoryDisclosure
+  respondConversationHistoryDisclosure: typeof userConversationApi.respondConversationHistoryDisclosure
   subscribeRequirementConversationEvents: typeof userConversationApi.subscribeRequirementConversationEvents
 }
 
@@ -127,6 +134,25 @@ const canSend = computed(
 )
 const isInline = computed(() => props.displayMode === 'inline')
 const closeActionLabel = computed(() => (isInline.value ? '返回列表' : '关闭'))
+/**
+ * 接手前的历史沟通区段：只有现任开发者视角下才有值（客户不受隐藏限制、后端返回空数组）。
+ * 已公开的那几段消息会直接回到时间线里，因此只提示仍未公开的部分。
+ */
+const hiddenHistorySegments = computed(() =>
+  (conversation.value?.history_segments ?? []).filter((segment) => segment.status !== 'approved'),
+)
+const canRequestHistory = computed(() =>
+  (conversation.value?.history_segments ?? []).some((segment) => segment.status === 'hidden'),
+)
+const hiddenHistoryDevelopers = computed(() =>
+  [...new Set(hiddenHistorySegments.value.map((segment) => segment.previous_developer))].join('、'),
+)
+/** 待我确认的公开申请：我是这段的前任开发者或客户，且自己那一票还没投。 */
+const pendingHistoryVotes = computed(() =>
+  (conversation.value?.history_disclosures ?? []).filter(
+    (item) => item.status === 'pending' && myHistoryConsent(item) === 'pending',
+  ),
+)
 /** 当前登录用户在这条会话里的角色：需求方（甲方）或开发者（乙方）。 */
 const viewerRole = computed<'customer' | 'developer' | null>(() => {
   const item = conversation.value
@@ -366,6 +392,75 @@ function applyRealtimeDetail(payload: RequirementConversationDetail) {
   detail.value = payload
   emit('updated', payload)
   void scrollToBottom()
+}
+
+/** 我是这条申请里的哪一票：前任开发者票、客户票，都不是则不投（现任发起人不投票）。 */
+function myHistoryConsent(item: ConversationHistoryDisclosureBrief): ConversationConsent | null {
+  if (props.currentUsername === item.previous_developer) {
+    return item.developer_consent
+  }
+  if (props.currentUsername === conversation.value?.customer) {
+    return item.customer_consent
+  }
+  return null
+}
+
+function historySegmentStateLabel(status: ConversationHistorySegment['status']) {
+  if (status === 'pending') {
+    return '等待双方确认'
+  }
+  if (status === 'rejected') {
+    return '申请已被拒绝'
+  }
+  return '未公开'
+}
+
+/** 被公开的历史区段里，非现任开发者发的开发者消息：署名标注，避免误认成当前负责人。 */
+function isPreviousDeveloperMessage(message: RequirementConversationMessage) {
+  const item = conversation.value
+  if (!item || message.sender_role !== 'developer') {
+    return false
+  }
+  return message.sender !== item.developer
+}
+
+/** 现任开发者申请公开接手前的历史沟通（一次性覆盖所有还没申请的区段）。 */
+async function requestHistoryDisclosure() {
+  if (!props.token || !props.requirementId || historyRequesting.value) {
+    return
+  }
+
+  historyRequesting.value = true
+  try {
+    detail.value = await conversationApi.value.requestRequirementHistoryDisclosure(
+      props.token,
+      props.requirementId,
+    )
+    emit('updated', detail.value)
+    showToast('已提交申请，等待前任开发者与客户确认', 'success')
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '申请查看历史沟通失败', 'warning')
+  } finally {
+    historyRequesting.value = false
+  }
+}
+
+async function respondHistoryDisclosure(item: ConversationHistoryDisclosureBrief, decision: 'approved' | 'rejected') {
+  if (!props.token || historyVotingId.value !== null) {
+    return
+  }
+
+  historyVotingId.value = item.id
+  try {
+    await conversationApi.value.respondConversationHistoryDisclosure(props.token, item.id, decision)
+    showToast(decision === 'approved' ? '已同意公开这段历史沟通' : '已拒绝公开这段历史沟通', 'success')
+    // 两票齐后那段消息会出现在时间线里，重新拉一次详情即可看到
+    await loadConversation()
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '提交表决失败', 'warning')
+  } finally {
+    historyVotingId.value = null
+  }
 }
 
 function startRealtime() {
@@ -753,6 +848,26 @@ function handleBackdropClick() {
         </header>
 
         <div ref="messageListRef" class="conversation-modal__messages">
+          <div v-if="hiddenHistorySegments.length" class="conversation-history-notice">
+            <strong>此前的沟通记录未公开</strong>
+            <p>
+              接手前由 {{ hiddenHistoryDevelopers }} 负责的那段沟通默认不展示，需要前任开发者与客户都确认后才会公开。
+            </p>
+            <ul class="conversation-history-notice__segments">
+              <li v-for="segment in hiddenHistorySegments" :key="`${segment.previous_developer}-${segment.segment_start}`">
+                <span>前任开发者 {{ segment.previous_developer }}</span>
+                <small>{{ segment.segment_start }} ~ {{ segment.segment_end }}</small>
+                <em>{{ historySegmentStateLabel(segment.status) }}</em>
+              </li>
+            </ul>
+            <button v-if="canRequestHistory" class="conversation-history-notice__action" type="button"
+              :disabled="historyRequesting" @click="requestHistoryDisclosure">
+              {{ historyRequesting ? '提交中...' : '申请查看历史沟通' }}
+            </button>
+            <p v-else class="conversation-history-notice__tip">
+              已提交申请，等待前任开发者与客户确认；如有申请被拒绝，那段沟通不会公开。
+            </p>
+          </div>
           <div v-if="loading" class="conversation-modal__empty">
             <el-icon>
               <ChatDotRound />
@@ -767,7 +882,7 @@ function handleBackdropClick() {
             <el-icon>
               <ChatDotRound />
             </el-icon>
-            <span>暂无消息</span>
+            <span>{{ hiddenHistorySegments.length ? '此前的沟通记录未公开，暂时没有可查看的消息' : '暂无消息' }}</span>
           </div>
           <template v-else>
             <template v-for="row in timelineItems" :key="row.key">
@@ -798,6 +913,9 @@ function handleBackdropClick() {
                   </div>
                 </div>
                 <div class="conversation-message__bubble">
+                  <span v-if="isPreviousDeveloperMessage(row.message)" class="conversation-message__history-tag">
+                    前任开发者 {{ row.message.sender }}
+                  </span>
                   <div v-if="row.message.attachment_url" class="conversation-message__attachment">
                     <a class="conversation-message__attachment-link" :href="messageAttachmentUrl(row.message)"
                       target="_blank" rel="noopener noreferrer" :title="messageAttachmentLabel(row.message)">
@@ -824,6 +942,23 @@ function handleBackdropClick() {
               </article>
             </template>
           </template>
+        </div>
+
+        <div v-for="item in pendingHistoryVotes" :key="`history-vote-${item.id}`" class="conversation-history-vote">
+          <p>
+            {{ item.current_developer }} 申请查看前任开发者 {{ item.previous_developer }} 期间的沟通记录。
+            同意后这段记录会对他公开，拒绝则维持隐藏。
+          </p>
+          <div class="conversation-history-vote__actions">
+            <button type="button" :disabled="historyVotingId !== null"
+              @click="respondHistoryDisclosure(item, 'approved')">
+              同意公开
+            </button>
+            <button type="button" :disabled="historyVotingId !== null"
+              @click="respondHistoryDisclosure(item, 'rejected')">
+              拒绝
+            </button>
+          </div>
         </div>
 
         <footer class="conversation-modal__composer">
@@ -2535,6 +2670,166 @@ function handleBackdropClick() {
   .conversation-message__bubble p,
   .conversation-message--mine .conversation-message__bubble p {
     font-size: 14px;
+  }
+}
+
+/* 历史沟通未公开提示：贴在消息列表顶部，说明接手前那段为何看不到 */
+.conversation-history-notice {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto 14px;
+  padding: 12px 14px;
+  border: 1px dashed rgba(180, 143, 60, 0.42);
+  border-radius: 12px;
+  background: rgba(255, 252, 244, 0.94);
+}
+
+.conversation-history-notice strong {
+  color: #92400e;
+  font-size: 13px;
+}
+
+.conversation-history-notice p {
+  margin: 0;
+  color: #78594a;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.conversation-history-notice__segments {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.conversation-history-notice__segments li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  color: #475569;
+  font-size: 12px;
+}
+
+.conversation-history-notice__segments small {
+  color: #94a3b8;
+  font-size: 11.5px;
+}
+
+.conversation-history-notice__segments em {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.16);
+  color: #92400e;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.conversation-history-notice__action {
+  justify-self: start;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #2d76ec;
+  color: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.conversation-history-notice__action:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.conversation-history-notice__tip {
+  color: #64748b;
+}
+
+/* 待我确认的公开申请：会话通道上方一条确认条 */
+.conversation-history-vote {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(216, 228, 244, 0.95);
+  background: #fffaf0;
+}
+
+.conversation-history-vote p {
+  margin: 0;
+  color: #78594a;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.conversation-history-vote__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.conversation-history-vote__actions button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.conversation-history-vote__actions button:first-child {
+  border-color: #2d76ec;
+  background: #2d76ec;
+  color: #ffffff;
+}
+
+.conversation-history-vote__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* 被公开的历史消息：标出这是前任开发者发的 */
+.conversation-message__history-tag {
+  align-self: flex-start;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.16);
+  color: #92400e;
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .conversation-history-notice {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+  }
+
+  /* 移动端触摸目标 ≥44px */
+  .conversation-history-notice__action,
+  .conversation-history-vote__actions button {
+    min-height: 44px;
+  }
+
+  .conversation-history-notice__segments em {
+    margin-left: 0;
   }
 }
 </style>

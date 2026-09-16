@@ -6,8 +6,11 @@ import { Refresh, Search } from '@element-plus/icons-vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import { apiUrl } from '@/api/http'
 import {
+  listConversationHistoryDisclosures,
   listRequirementConversations,
+  respondConversationHistoryDisclosure,
   subscribeRequirementConversationEvents,
+  type ConversationHistoryDisclosure,
   type RequirementConversation,
   type RequirementConversationDetail,
 } from '@/api/conversations'
@@ -55,6 +58,8 @@ const activeRequirementId = ref('')
 const activeTitle = ref('')
 const realtimeStatus = ref<RealtimeStatus>('idle')
 const realtimeError = ref('')
+const historyDisclosures = ref<ConversationHistoryDisclosure[]>([])
+const historyVotingId = ref<number | null>(null)
 let stopRealtimeEvents: (() => void) | null = null
 const currentMessagesRouteName = computed(() => (route.name === 'messages' ? 'messages' : 'workbench-messages'))
 
@@ -124,6 +129,26 @@ const realtimeStatusLabel = computed(() => {
   }
   return '实时待连接'
 })
+/**
+ * 待我确认的历史沟通公开申请。
+ *
+ * 前任开发者已经读不到这条会话（不再是参与方），所以由消息中心给他入口：
+ * 只要两票里还差他这一票，就在这里列出。
+ */
+const pendingHistoryVotes = computed(() =>
+  historyDisclosures.value.filter((item) => {
+    if (item.status !== 'pending') {
+      return false
+    }
+    if (auth.username === item.previous_developer) {
+      return item.developer_consent === 'pending'
+    }
+    if (auth.username === item.customer) {
+      return item.customer_consent === 'pending'
+    }
+    return false
+  }),
+)
 
 function hasBoundResource(item: RequirementItem) {
   return item.bound_resource_id != null
@@ -392,11 +417,46 @@ function disconnectRealtime() {
   realtimeError.value = ''
 }
 
+async function loadHistoryDisclosures() {
+  if (!auth.token.trim()) {
+    historyDisclosures.value = []
+    return
+  }
+
+  try {
+    historyDisclosures.value = await listConversationHistoryDisclosures(auth.token)
+  } catch {
+    // 公开申请只是消息中心的附加待办，拉取失败不影响会话列表本身
+    historyDisclosures.value = []
+  }
+}
+
+async function respondHistoryDisclosure(
+  item: ConversationHistoryDisclosure,
+  decision: 'approved' | 'rejected',
+) {
+  if (!auth.token.trim() || historyVotingId.value !== null) {
+    return
+  }
+
+  historyVotingId.value = item.id
+  try {
+    await respondConversationHistoryDisclosure(auth.token, item.id, decision)
+    showToast(decision === 'approved' ? '已同意公开这段历史沟通' : '已拒绝公开这段历史沟通', 'success')
+    await loadHistoryDisclosures()
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '提交表决失败', 'warning')
+  } finally {
+    historyVotingId.value = null
+  }
+}
+
 async function loadMessages(showSuccess = false) {
   auth.hydrate()
   if (!auth.token.trim()) {
     conversations.value = []
     requirements.value = []
+    historyDisclosures.value = []
     disconnectRealtime()
     return
   }
@@ -410,6 +470,7 @@ async function loadMessages(showSuccess = false) {
     requirements.value = nextRequirements
     conversations.value = nextConversations
     openThreadFromRoute()
+    await loadHistoryDisclosures()
     if (showSuccess) {
       showToast('消息已刷新', 'success')
     }
@@ -502,6 +563,29 @@ watch(
           </el-select>
         </div>
       </header>
+
+      <section v-if="pendingHistoryVotes.length && filteredThreads.length" class="messages-disclosure-panel"
+        aria-label="待我确认的历史沟通公开申请">
+        <article v-for="item in pendingHistoryVotes" :key="`history-vote-${item.id}`" class="messages-disclosure">
+          <div class="messages-disclosure__main">
+            <strong>{{ item.requirement_title || item.requirement_id }}</strong>
+            <small>{{ item.requirement_id }} · 前任开发者 {{ item.previous_developer }}</small>
+            <p>
+              {{ item.current_developer }} 申请查看 {{ item.previous_developer }} 负责期间的沟通记录。同意后这段记录会对现任开发者公开，拒绝则维持隐藏。
+            </p>
+          </div>
+          <div class="messages-disclosure__actions">
+            <button type="button" class="ghost small" :disabled="historyVotingId !== null"
+              @click="respondHistoryDisclosure(item, 'approved')">
+              同意公开
+            </button>
+            <button type="button" class="ghost small" :disabled="historyVotingId !== null"
+              @click="respondHistoryDisclosure(item, 'rejected')">
+              拒绝
+            </button>
+          </div>
+        </article>
+      </section>
 
       <div v-if="loading" class="messages-state">消息加载中...</div>
       <div v-else-if="filteredThreads.length === 0" class="messages-empty">
@@ -855,6 +939,54 @@ watch(
   gap: 8px;
 }
 
+/* 待我确认的历史沟通公开申请：会话列表上方一条待办 */
+.messages-disclosure-panel {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.messages-disclosure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(222, 189, 120, 0.5);
+  border-radius: 14px;
+  background: #fffaf0;
+}
+
+.messages-disclosure__main {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.messages-disclosure__main strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.messages-disclosure__main small {
+  color: #92400e;
+  font-size: 12px;
+}
+
+.messages-disclosure__main p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.messages-disclosure__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
 .messages-thread {
   width: 100%;
   display: grid;
@@ -1030,6 +1162,23 @@ watch(
     border-radius: 18px;
   }
 
+  .messages-disclosure-panel {
+    width: calc(100% - 16px);
+    margin: 0 8px 10px;
+  }
+
+  .messages-disclosure {
+    flex-direction: column;
+    align-items: stretch;
+    border-radius: 16px;
+  }
+
+  /* 移动端触摸目标 ≥44px */
+  .messages-disclosure__actions button {
+    flex: 1;
+    min-height: 44px;
+  }
+
   .messages-thread-list {
     gap: 0;
     overflow: hidden;
@@ -1195,6 +1344,12 @@ watch(
   .messages-state,
   .messages-empty,
   .messages-thread-list {
+    order: 4;
+    flex: 0 0 100%;
+  }
+
+  /* 待我确认的申请排在会话列表之上（同一 order，靠 DOM 顺序） */
+  .messages-disclosure-panel {
     order: 4;
     flex: 0 0 100%;
   }
