@@ -68,6 +68,10 @@ describe('workbench mode switch', () => {
     // 团队服务已搬进开发者工作台，用户侧边栏不再出现
     expect(sidebar(wrapper)).not.toContain('团队服务')
     expect(sidebar(wrapper)).not.toContain('我的团队')
+    // 消息中心提升到一级：排在「需求协作」之后、「账户服务」之前，不再嵌在需求协作的子菜单里
+    expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text()))
+      .toEqual(['需求协作', '消息中心', '账户服务'])
+    expect(wrapper.find('.user-workbench__submenu .user-workbench__menu-group-head').exists()).toBe(false)
     wrapper.unmount()
   })
 
@@ -82,6 +86,9 @@ describe('workbench mode switch', () => {
     expect(text).toContain('团队服务')
     expect(text).toContain('我的团队')
     expect(text).toContain('资源项目')
+    // 消息中心在开发者工作台也留一份，同样是一级条目，跟在「团队服务」之后
+    expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text()))
+      .toEqual(['团队服务', '消息中心'])
     // 工单中心两种模式都保留：开发者工作台同样要能直接进工单
     expect(text).toContain('工单中心')
     expect(wrapper.find('.user-workbench__mode-switch').attributes('aria-label')).toBe('回到用户工作台')
