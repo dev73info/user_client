@@ -53,7 +53,12 @@ beforeEach(() => {
 describe('workbench mode switch', () => {
   it('用户端页面只渲染用户菜单', async () => {
     const { wrapper } = await render('workbench')
-    expect(wrapper.find('.user-workbench__mode-switch').text()).toContain('进入开发者工作台')
+    // 切换按钮挂在品牌标签右侧，按钮文字固定，切换方向放在 aria-label / title
+    const modeSwitch = wrapper.find('.user-workbench__brand-labels .user-workbench__mode-switch')
+    expect(modeSwitch.exists()).toBe(true)
+    expect(wrapper.find('.user-workbench__brand-labels > strong').text()).toBe('工作台')
+    expect(modeSwitch.text()).toContain('切换工作台')
+    expect(modeSwitch.attributes('aria-label')).toBe('进入开发者工作台')
     expect(sidebar(wrapper)).toContain('工作台总览')
     // 开发者条目不再挤在用户侧边栏底部
     expect(sidebar(wrapper)).not.toContain('我的资源项目')
@@ -70,7 +75,8 @@ describe('workbench mode switch', () => {
     expect(text).not.toContain('工作台总览')
     expect(text).not.toContain('我的团队')
     expect(text).not.toContain('工单中心')
-    expect(wrapper.find('.user-workbench__mode-switch').text()).toContain('回到用户工作台')
+    expect(wrapper.find('.user-workbench__brand-labels > strong').text()).toBe('开发者工作台')
+    expect(wrapper.find('.user-workbench__mode-switch').attributes('aria-label')).toBe('回到用户工作台')
     wrapper.unmount()
   })
 

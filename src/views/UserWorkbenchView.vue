@@ -498,8 +498,17 @@ async function scrollToHash() {
       <el-scrollbar class="app-scrollbar user-workbench__aside-scrollbar" max-height="calc(100vh - 120px)">
         <div class="user-workbench__aside-inner">
           <div class="user-workbench__brand">
-            <div>
+            <div class="user-workbench__brand-labels">
               <strong>{{ isDevWorkbenchMode ? '开发者工作台' : '工作台' }}</strong>
+              <!-- 工作台模式切换：放在品牌标签右侧，用户菜单与开发者菜单之间来回切 -->
+              <button class="user-workbench__mode-switch" type="button"
+                :title="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'"
+                :aria-label="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'" @click="switchWorkbenchMode">
+                <el-icon>
+                  <SwitchIcon />
+                </el-icon>
+                切换工作台
+              </button>
             </div>
             <button class="user-workbench__drawer-close" type="button" aria-label="关闭工作台菜单" @click="closeMobileMenu">
               <el-icon>
@@ -509,19 +518,6 @@ async function scrollToHash() {
           </div>
 
           <nav class="user-workbench__menu">
-            <button class="user-workbench__menu-link user-workbench__menu-link--root user-workbench__mode-switch"
-              type="button" @click="switchWorkbenchMode">
-              <span class="user-workbench__menu-icon">
-                <el-icon>
-                  <SwitchIcon />
-                </el-icon>
-              </span>
-              <span>
-                <strong>切换工作台</strong>
-                <small>{{ isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台' }}</small>
-              </span>
-            </button>
-
             <template v-if="isDevWorkbenchMode">
               <p class="user-workbench__menu-section">开发者事项</p>
               <div class="user-workbench__submenu user-workbench__submenu--flat">
@@ -916,11 +912,35 @@ async function scrollToHash() {
   border-left: 1px solid rgba(209, 220, 243, 0.95);
 }
 
-/* 工作台模式切换：整条侧边栏在用户菜单与开发者菜单之间切换 */
+/* 工作台模式切换：放在品牌标签右侧，用户菜单与开发者菜单之间来回切 */
+.user-workbench__brand-labels {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .user-workbench__mode-switch {
-  margin-bottom: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 0 9px;
   border: 1px solid rgba(191, 219, 254, 0.9);
+  border-radius: 999px;
   background: rgba(239, 246, 255, 0.6);
+  color: #1d4ed8;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.user-workbench__mode-switch:hover,
+.user-workbench__mode-switch:focus-visible {
+  border-color: rgba(147, 197, 253, 0.95);
+  background: rgba(219, 234, 254, 0.95);
 }
 
 /* 开发者模式下的扁平菜单：与顶部按钮左对齐，不显示子级竖线 */
@@ -1397,6 +1417,12 @@ async function scrollToHash() {
     color: #1d4ed8;
   }
 
+  /* 抽屉里的模式切换与关闭按钮同高，便于手指点击 */
+  .user-workbench__mode-switch {
+    min-height: 32px;
+    padding: 0 11px;
+  }
+
   /* 移动端页面标题与返回已并入顶部标题栏，内容区不再重复渲染标题头 */
   .user-workbench__head {
     display: none;
@@ -1510,6 +1536,13 @@ async function scrollToHash() {
   .user-workbench__dev-link {
     align-self: center;
     text-align: center;
+  }
+}
+
+/* 极窄屏（≤360px）：品牌行要同时放下「开发者工作台 + 切换工作台 + 关闭」三个元素，抽屉加宽一点 */
+@media (max-width: 360px) {
+  .user-workbench__aside {
+    width: min(92vw, 320px);
   }
 }
 </style>
