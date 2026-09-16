@@ -498,18 +498,15 @@ async function scrollToHash() {
       <el-scrollbar class="app-scrollbar user-workbench__aside-scrollbar" max-height="calc(100vh - 120px)">
         <div class="user-workbench__aside-inner">
           <div class="user-workbench__brand">
-            <div class="user-workbench__brand-labels">
-              <strong>{{ isDevWorkbenchMode ? '开发者工作台' : '工作台' }}</strong>
-              <!-- 工作台模式切换：放在品牌标签右侧，用户菜单与开发者菜单之间来回切 -->
-              <button class="user-workbench__mode-switch" type="button"
-                :title="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'"
-                :aria-label="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'" @click="switchWorkbenchMode">
-                <el-icon>
-                  <SwitchIcon />
-                </el-icon>
-                切换工作台
-              </button>
-            </div>
+            <!-- 工作台模式切换：用户菜单与开发者菜单之间来回切，靠右对齐 -->
+            <button class="user-workbench__mode-switch" type="button"
+              :title="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'"
+              :aria-label="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'" @click="switchWorkbenchMode">
+              <el-icon>
+                <SwitchIcon />
+              </el-icon>
+              切换工作台
+            </button>
             <button class="user-workbench__drawer-close" type="button" aria-label="关闭工作台菜单" @click="closeMobileMenu">
               <el-icon>
                 <Close />
@@ -702,27 +699,14 @@ async function scrollToHash() {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 4px 4px 10px;
+  /* 左右不再留内边距：品牌行只剩「切换工作台」按钮（移动端多一个关闭），右边缘与下方菜单项对齐 */
+  padding: 4px 0 10px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.82);
 }
 
 .user-workbench__brand span {
   color: #4f8cff;
   font-size: 12px;
-  font-weight: 800;
-}
-
-.user-workbench__brand strong {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  min-height: 26px;
-  padding: 4px 9px;
-  border-radius: 999px;
-  background: rgba(239, 246, 255, 0.94);
-  color: #1d4ed8;
-  font-size: 12px;
-  font-style: normal;
   font-weight: 800;
 }
 
@@ -912,19 +896,13 @@ async function scrollToHash() {
   border-left: 1px solid rgba(209, 220, 243, 0.95);
 }
 
-/* 工作台模式切换：放在品牌标签右侧，用户菜单与开发者菜单之间来回切 */
-.user-workbench__brand-labels {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
+/* 工作台模式切换：用户菜单与开发者菜单之间来回切，在品牌行里靠右 */
 .user-workbench__mode-switch {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   flex: 0 0 auto;
+  margin-left: auto;
   min-height: 26px;
   padding: 0 9px;
   border: 1px solid rgba(191, 219, 254, 0.9);
@@ -1536,13 +1514,6 @@ async function scrollToHash() {
   .user-workbench__dev-link {
     align-self: center;
     text-align: center;
-  }
-}
-
-/* 极窄屏（≤360px）：品牌行要同时放下「开发者工作台 + 切换工作台 + 关闭」三个元素，抽屉加宽一点 */
-@media (max-width: 360px) {
-  .user-workbench__aside {
-    width: min(92vw, 320px);
   }
 }
 </style>
