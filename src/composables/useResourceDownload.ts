@@ -10,7 +10,7 @@ import { useDownloadStore } from '@/stores/download'
 /**
  * 资源文件下载的统一入口：接管全局下载进度条、落盘与登录态失效处理。
  *
- * 资源主页卡片与「我的定制资源」卡片共用同一份实现，避免两处各写一套
+ * 资源详情页的下载按钮与「我的需求」需求行的「下载」共用同一份实现，避免两处各写一套
  * blob 下载逻辑后进度条与 401 行为出现分叉。
  */
 export function useResourceDownload() {
