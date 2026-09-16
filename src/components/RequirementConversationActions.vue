@@ -39,7 +39,7 @@ import {
   type RequirementPaymentMode,
   type RequirementStatus,
 } from '@/api/requirements'
-import { createMcResourceVersion } from '@/api/mcResources'
+import DeliverySubmitDialog from '@/components/DeliverySubmitDialog.vue'
 import { getDepositRatio } from '@/api/settings'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -118,11 +118,6 @@ const payLoading = ref(false)
 const depositPolicyAccepted = ref(false)
 
 const deliveryVisible = ref(false)
-const deliveryVersion = ref('')
-const deliveryNote = ref('')
-const deliveryFile = ref<File | null>(null)
-const deliveryFileInputRef = ref<HTMLInputElement | null>(null)
-const deliverySubmitting = ref(false)
 
 const unbindVisible = ref(false)
 const unbindReason = ref('')
@@ -589,53 +584,18 @@ async function requestFinalPayment() {
 }
 
 function openDeliveryDialog() {
-  deliveryVersion.value = ''
-  deliveryNote.value = ''
-  deliveryFile.value = null
-  if (deliveryFileInputRef.value) {
-    deliveryFileInputRef.value.value = ''
-  }
-  deliveryVisible.value = true
-}
-
-function handleDeliveryFileChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  deliveryFile.value = input.files?.[0] ?? null
-}
-
-async function submitDelivery() {
-  const item = requirement.value
-  if (!item?.bound_resource_id) {
+  if (!hasBoundResource.value) {
     showToast('当前需求还没有关联资源项目', 'warning')
     return
   }
 
-  const version = deliveryVersion.value.trim()
-  if (!version) {
-    showToast('请填写版本号', 'warning')
-    return
-  }
-  if (!deliveryFile.value) {
-    showToast('请选择交付文件', 'warning')
-    return
-  }
+  deliveryVisible.value = true
+}
 
-  deliverySubmitting.value = true
-  try {
-    const created = await createMcResourceVersion(props.token, item.bound_resource_id, {
-      version,
-      file: deliveryFile.value,
-      note: deliveryNote.value.trim() || null,
-    })
-    showToast(`交付版本 ${created.version} 已提交，等待客户验收`, 'success')
-    deliveryVisible.value = false
-    await loadActions()
-    emit('changed')
-  } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交交付版本失败', 'error')
-  } finally {
-    deliverySubmitting.value = false
-  }
+/** 交付版本提交成功后刷新会话动作：需求的交付版本与可用入口会一起变化。 */
+async function handleDeliverySubmitted() {
+  await loadActions()
+  emit('changed')
 }
 
 function openUnbindDialog() {
@@ -896,26 +856,8 @@ function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
     :deposit-policy-accepted="depositPolicyAccepted" :contract-signing-status="signing" @close="payVisible = false"
     @submit="submitPayment" @update:depositPolicyAccepted="depositPolicyAccepted = $event" />
 
-  <el-dialog v-model="deliveryVisible" title="提交交付版本" width="480px" append-to-body>
-    <p class="conversation-actions__meta">{{ requirement?.title }} · {{ requirementId }}</p>
-    <p class="conversation-actions__tip">交付物以绑定资源项目的新版本提交，提交后由客户验收。</p>
-    <label class="conversation-actions__field">
-      <span>版本号</span>
-      <input v-model="deliveryVersion" type="text" maxlength="40" placeholder="例如 v1.0.0" />
-    </label>
-    <label class="conversation-actions__field">
-      <span>版本说明（可选）</span>
-      <textarea v-model="deliveryNote" rows="3" maxlength="500" placeholder="本次交付包含的内容"></textarea>
-    </label>
-    <label class="conversation-actions__field">
-      <span>交付文件</span>
-      <input ref="deliveryFileInputRef" type="file" @change="handleDeliveryFileChange" />
-    </label>
-    <template #footer>
-      <el-button @click="deliveryVisible = false">取消</el-button>
-      <el-button type="primary" :loading="deliverySubmitting" @click="submitDelivery">提交交付版本</el-button>
-    </template>
-  </el-dialog>
+  <DeliverySubmitDialog v-model:visible="deliveryVisible" :token="token"
+    :bound-resource-id="requirement?.bound_resource_id ?? null" @submitted="handleDeliverySubmitted" />
 
   <el-dialog v-model="unbindVisible" :title="canRespondUnbind ? '处理解除申请' : '申请解除需求'" width="480px"
     append-to-body>

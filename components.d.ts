@@ -15,6 +15,7 @@ declare module 'vue' {
     AuthModal: typeof import('./src/components/AuthModal.vue')['default']
     BadgeDisplay: typeof import('./src/components/BadgeDisplay.vue')['default']
     BadgeWall: typeof import('./src/components/BadgeWall.vue')['default']
+    DeliverySubmitDialog: typeof import('./src/components/DeliverySubmitDialog.vue')['default']
     DepositModal: typeof import('./src/components/DepositModal.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']
     ElButton: typeof import('element-plus/es')['ElButton']
