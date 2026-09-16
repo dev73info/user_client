@@ -30,6 +30,16 @@ describe('conversation status cards', () => {
     expect(meta('deposit_paid', 'customer', 'deposit_paid')?.actionLabel).toBeUndefined()
   })
 
+  it('turns the delivered version card into a download for the customer', () => {
+    const customer = meta('delivery_submitted', 'customer', 'in_development')
+    expect(customer?.actionLabel).toBe('下载交付产物')
+    expect(customer?.downloadDelivery).toBe(true)
+
+    const developer = meta('delivery_submitted', 'developer', 'in_development')
+    expect(developer?.actionLabel).toBe('去我的需求')
+    expect(developer?.downloadDelivery).toBe(false)
+  })
+
   it('ignores unknown event codes', () => {
     expect(meta('whatever', 'customer', 'deposit_paid')).toBeNull()
   })

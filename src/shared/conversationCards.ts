@@ -14,6 +14,8 @@ export type ConversationCardMeta = {
   to?: RouteLocationRaw
   /** 跳爱签合同预览页（可查看可签署），取不到链接时回退 to。 */
   asignPreview?: boolean
+  /** 下载交付产物：按卡片上的版本号取绑定资源项目的交付版本文件，不再走 to 跳转。 */
+  downloadDelivery?: boolean
 }
 
 export type ConversationCardRole = 'customer' | 'developer'
@@ -77,7 +79,9 @@ export function conversationCardMeta(
       return {
         title: '收到交付版本',
         description: '开发者已提交交付版本，请验收后支付尾款。',
-        actionLabel: role === 'developer' ? '去我的需求' : '去验收',
+        // 需求方这边直接给交付产物的下载入口（不跳页）；开发者是交付方，只需回自己的工作台。
+        actionLabel: role === 'developer' ? '去我的需求' : '下载交付产物',
+        downloadDelivery: role !== 'developer',
         to: requirementListRoute,
       }
     case 'acceptance_passed':

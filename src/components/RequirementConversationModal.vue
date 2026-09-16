@@ -21,7 +21,10 @@ import type {
 } from '@/api/conversations'
 import { fetchAsignRequirementPreviewUrl } from '@/api/contracts'
 import { apiUrl } from '@/api/http'
+import { listRequirements } from '@/api/requirements'
+import { listPublicMcResourceVersions } from '@/api/resources'
 import RequirementConversationActions from '@/components/RequirementConversationActions.vue'
+import { useToast } from '@/composables/useToast'
 import {
   conversationCardMeta,
   type ConversationCardMeta,
@@ -48,6 +51,7 @@ const sending = ref(false)
 const draft = ref('')
 const errorMessage = ref('')
 const attachmentError = ref('')
+const downloadLoading = ref(false)
 const emojiPanelOpen = ref(false)
 const draftInputRef = ref<HTMLTextAreaElement | null>(null)
 const attachmentInputRef = ref<HTMLInputElement | null>(null)
@@ -108,6 +112,7 @@ const conversationApi = computed<ConversationApi>(() =>
   props.apiMode === 'dev' ? devConversationApi : userConversationApi,
 )
 const router = useRouter()
+const { showToast } = useToast()
 const conversation = computed(() => detail.value?.conversation ?? null)
 const messages = computed(() => detail.value?.messages ?? [])
 const conversationClosed = computed(
@@ -275,7 +280,11 @@ async function scrollToBottom() {
  * 与需求列表页「查看合同」同一口径：合同还没在爱签侧发起签署、或爱签接口异常时，
  * 接口会报错，这里静默回退到本地签约页。
  */
-async function runCardAction(card: ConversationCardMeta) {
+async function runCardAction(card: ConversationCardMeta, message?: RequirementConversationMessage) {
+  if (card.downloadDelivery) {
+    await downloadDeliveryArtifact(message?.action_ref ?? '')
+    return
+  }
   if (card.asignPreview) {
     try {
       const previewUrl = await fetchAsignRequirementPreviewUrl(props.token, props.requirementId)
@@ -289,6 +298,41 @@ async function runCardAction(card: ConversationCardMeta) {
   }
   if (card.to) {
     await router.push(card.to)
+  }
+}
+
+/**
+ * 下载交付产物：交付即「绑定资源项目的一次版本发布」，卡片上的 ref 是那次交付的版本号。
+ * 版本号对不上（例如卡片之后又发过新版本）时退回最新版本；没有绑定资源或还没发版本就只提示。
+ */
+async function downloadDeliveryArtifact(versionRef: string) {
+  if (downloadLoading.value || !props.token || !props.requirementId) {
+    return
+  }
+
+  downloadLoading.value = true
+  try {
+    const requirements = await listRequirements(props.token)
+    const boundResourceId = requirements.find(
+      (row) => row.requirement_id === props.requirementId,
+    )?.bound_resource_id
+    if (boundResourceId == null) {
+      showToast('该需求还没有绑定的交付资源，暂时没有可下载的产物', 'warning')
+      return
+    }
+
+    const versions = await listPublicMcResourceVersions(boundResourceId, props.token)
+    const target = versions.find((item) => item.version === versionRef) ?? versions[0]
+    if (!target) {
+      showToast('开发者还没有提交交付版本', 'warning')
+      return
+    }
+
+    window.open(apiUrl(target.resource), '_blank', 'noopener')
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '下载交付产物失败', 'warning')
+  } finally {
+    downloadLoading.value = false
   }
 }
 
@@ -740,7 +784,8 @@ function handleBackdropClick() {
                 <div class="conversation-card__foot">
                   <time :title="row.createdAt">{{ formatMessageClock(row.createdAt) }}</time>
                   <el-button v-if="row.card.actionLabel" class="conversation-card__action" type="primary" size="small"
-                    @click="runCardAction(row.card)">
+                    :loading="downloadLoading && row.card.downloadDelivery"
+                    @click="runCardAction(row.card, row.message)">
                     {{ row.card.actionLabel }}
                   </el-button>
                 </div>
