@@ -1462,14 +1462,10 @@ async function scrollToHash() {
     font-weight: 800;
   }
 
+  /* 消息页不再隐藏侧边栏、标题头、顶部栏：顶部栏被 unified-top-card.css 用 !important 强制保留，
+     若只隐藏侧边栏，「菜单」按钮点开就只剩遮罩、抽屉不出现（移动端曾出现的白屏+遮罩 bug）。 */
   .user-workbench--messages {
     margin-top: 0;
-  }
-
-  .user-workbench--messages .user-workbench__aside,
-  .user-workbench--messages .user-workbench__head,
-  .user-workbench--messages .user-workbench__mobile-bar {
-    display: none;
   }
 }
 
