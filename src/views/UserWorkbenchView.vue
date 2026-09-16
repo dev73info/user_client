@@ -133,7 +133,7 @@ const activeConversation = computed(() => {
 })
 
 const currentTitle = computed(() => {
-  if (route.name === 'workbench-messages') {
+  if (isMessagesRoute.value) {
     return activeConversation.value?.requirement_title || '消息中心'
   }
 
@@ -156,7 +156,7 @@ const isWorkbenchOverview = computed(() =>
 )
 const isMessageDetailPage = computed(() => {
   const requirementId = route.query.requirement_id
-  return route.name === 'workbench-messages' && typeof requirementId === 'string' && requirementId.trim().length > 0
+  return isMessagesRoute.value && typeof requirementId === 'string' && requirementId.trim().length > 0
 })
 const isMergedHeaderPage = computed(() =>
   route.name === 'dev-resource-homepage-edit' || route.name === 'dev-requirement-detail',
@@ -175,6 +175,15 @@ const allMenuGroups = computed<WorkbenchMenuGroup[]>(() => [...menuGroups.value,
 
 // 开发者模式下侧边栏不渲染用户菜单分组，只保留团队服务。
 const visibleMenuGroups = computed(() => (isDevWorkbenchMode.value ? [teamMenuGroup] : menuGroups.value))
+
+// 消息中心在两种工作台各有一条路由（开发者端走 devArea 路由，点进去不会切回用户工作台），
+// 页面内的高亮、会话链接与「查看全部消息」都跟着当前所处的那条走。
+const MESSAGES_ROUTE_NAMES = ['workbench-messages', 'dev-messages']
+function isMessagesRouteName(name: unknown) {
+  return MESSAGES_ROUTE_NAMES.includes(String(name ?? ''))
+}
+const isMessagesRoute = computed(() => isMessagesRouteName(route.name))
+const messagesRouteName = computed(() => (isDevWorkbenchMode.value ? 'dev-messages' : 'workbench-messages'))
 
 watch(
   [() => auth.token, () => route.fullPath],
@@ -200,7 +209,7 @@ watch(
     if (activeGroup && !openGroupKeys.value.includes(activeGroup.key)) {
       openGroupKeys.value = [...openGroupKeys.value, activeGroup.key]
     }
-    if (route.name === 'workbench-messages' && !openGroupKeys.value.includes('messages')) {
+    if (isMessagesRoute.value && !openGroupKeys.value.includes('messages')) {
       openGroupKeys.value = [...openGroupKeys.value, 'messages']
     }
     mobileMenuOpen.value = false
@@ -221,7 +230,7 @@ watch(
 watch(
   () => route.name,
   (name) => {
-    if (name === 'workbench-messages') {
+    if (isMessagesRouteName(name)) {
       void loadConversations(true)
     }
   },
@@ -250,7 +259,7 @@ function switchWorkbenchMode() {
 
 function conversationTo(item: RequirementConversation) {
   return {
-    name: 'workbench-messages',
+    name: messagesRouteName.value,
     query: {
       requirement_id: item.requirement_id,
     },
@@ -262,7 +271,7 @@ function isOverviewActive() {
 }
 
 function isMessageMenuActive() {
-  return route.name === 'workbench-messages'
+  return isMessagesRoute.value
 }
 
 function isMessageMenuOpen() {
@@ -275,7 +284,7 @@ function openMessageCenter() {
   }
 
   mobileMenuOpen.value = false
-  void router.push({ name: 'workbench-messages' })
+  void router.push({ name: messagesRouteName.value })
 }
 
 function toggleMessageCenter() {
@@ -289,7 +298,7 @@ function toggleMessageCenter() {
 }
 
 function isConversationActive(item: RequirementConversation) {
-  return route.name === 'workbench-messages' && route.query.requirement_id === item.requirement_id
+  return isMessagesRoute.value && route.query.requirement_id === item.requirement_id
 }
 
 function isMenuItemActive(item: WorkbenchMenuItem) {
@@ -396,7 +405,7 @@ function findActiveItem() {
     return overviewItem
   }
 
-  if (route.name === 'workbench-messages') {
+  if (isMessagesRoute.value) {
     return null
   }
 
@@ -494,7 +503,7 @@ async function scrollToHash() {
 
 <template>
   <main class="user-workbench" :class="{
-    'user-workbench--messages': route.name === 'workbench-messages',
+    'user-workbench--messages': isMessagesRoute,
     'user-workbench--mobile-menu-open': mobileMenuOpen,
   }" @touchstart.passive="handleWorkbenchTouchStart" @touchend.passive="handleWorkbenchTouchEnd"
     @touchcancel.passive="touchTracking = false">

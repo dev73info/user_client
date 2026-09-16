@@ -11,11 +11,12 @@ vi.mock('@/api/team', () => ({ listUserInvitations: vi.fn().mockResolvedValue([]
 
 // 开发者页面在 router/dev.ts 里都带 devArea 标记，侧边栏据此把整条菜单换成开发者菜单。
 // 团队服务已整体移入开发者工作台，这三个页面同样是 devArea 路由，不再属于用户菜单。
+// 消息中心两端共用同一套页面，但各自一条路由：开发者端走 dev-messages，点进去不会切回用户工作台。
 const USER_ROUTE_NAMES = ['workbench', 'workbench-requirements', 'workbench-resources', 'workbench-account',
   'workbench-signatures', 'workbench-invoices', 'workbench-points', 'workbench-favorites', 'workbench-invite',
-  'workbench-tickets']
+  'workbench-tickets', 'workbench-messages']
 const DEV_ROUTE_NAMES = ['dev-resource-list', 'dev-requirement-hall', 'dev-my-requirements', 'dev-wallet',
-  'dev-wallet-releases', 'workbench-teams', 'workbench-team-detail', 'workbench-team-resources']
+  'dev-wallet-releases', 'workbench-teams', 'workbench-team-detail', 'workbench-team-resources', 'dev-messages']
 
 const routes: RouteRecordRaw[] = [
   ...USER_ROUTE_NAMES.map((name): RouteRecordRaw => ({
@@ -112,6 +113,25 @@ describe('workbench mode switch', () => {
     expect(head.attributes('aria-expanded')).toBe('true')
     expect(wrapper.find('.user-workbench__menu-group-head strong').text()).toBe('团队服务')
     wrapper.unmount()
+  })
+
+  it('开发者工作台点消息中心留在开发者工作台，用户工作台仍走用户端路由', async () => {
+    const messagesHead = (w: Awaited<ReturnType<typeof render>>['wrapper']) =>
+      w.findAll('.user-workbench__menu-group-head').find((head) => head.text().includes('消息中心'))!
+
+    const dev = await render('dev-resource-list')
+    await messagesHead(dev.wrapper).trigger('click')
+    await flushPromises()
+    expect(dev.router.currentRoute.value.name).toBe('dev-messages')
+    expect(dev.wrapper.find('.user-workbench__brand-title').text()).toBe('开发者工作台')
+    dev.wrapper.unmount()
+
+    const user = await render('workbench')
+    await messagesHead(user.wrapper).trigger('click')
+    await flushPromises()
+    expect(user.router.currentRoute.value.name).toBe('workbench-messages')
+    expect(user.wrapper.find('.user-workbench__brand-title').text()).toBe('工作台')
+    user.wrapper.unmount()
   })
 
   it('返回按钮放在移动端顶部标题栏内，总览页不显示', async () => {

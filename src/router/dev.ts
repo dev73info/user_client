@@ -192,6 +192,18 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
       devArea: true,
     },
   },
+  // 消息中心用户端也要用，用户端路由留在用户区；这里是开发者工作台的入口，
+  // 带上 devArea 才不会被侧边栏当成用户页面、一点就切回用户工作台。
+  {
+    path: 'developer/messages',
+    name: 'dev-messages',
+    component: () => import('@/views/MessagesView.vue'),
+    meta: {
+      title: '消息中心',
+      description: '查看需求会话与沟通记录。',
+      devArea: true,
+    },
+  },
   {
     path: 'developer/realname',
     redirect: { name: 'workbench-realname' },

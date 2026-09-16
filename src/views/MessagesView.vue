@@ -61,7 +61,12 @@ const realtimeError = ref('')
 const historyDisclosures = ref<ConversationHistoryDisclosure[]>([])
 const historyVotingId = ref<number | null>(null)
 let stopRealtimeEvents: (() => void) | null = null
-const currentMessagesRouteName = computed(() => (route.name === 'messages' ? 'messages' : 'workbench-messages'))
+// 消息中心有三个入口（独立页 /messages、用户工作台、开发者工作台），
+// 页面内切换会话时保持停留在当前入口，避免把开发者带回用户工作台。
+const MESSAGES_ROUTE_NAMES = ['messages', 'workbench-messages', 'dev-messages']
+const currentMessagesRouteName = computed(() =>
+  MESSAGES_ROUTE_NAMES.includes(String(route.name ?? '')) ? String(route.name) : 'workbench-messages',
+)
 
 const requirementById = computed(() =>
   Object.fromEntries(requirements.value.map((item) => [item.requirement_id, item])),
@@ -329,7 +334,7 @@ function clearSearch() {
 }
 
 function openThread(item: MessageThread) {
-  if ((route.name === 'workbench-messages' || route.name === 'messages') && route.query.requirement_id === item.requirementId) {
+  if (MESSAGES_ROUTE_NAMES.includes(String(route.name ?? '')) && route.query.requirement_id === item.requirementId) {
     showThread(item)
     return
   }
