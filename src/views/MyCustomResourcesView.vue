@@ -129,18 +129,16 @@ const stats = computed(() => {
   }
 })
 
-function formatUpdatedAt(value: string): string {
+function formatUpdatedAt(value: string): string[] {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
-    return '最近更新'
+    return ['最近更新']
   }
 
-  return date.toLocaleString('zh-CN', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return [
+    date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }),
+    date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+  ]
 }
 
 function resetFilters() {
@@ -283,44 +281,42 @@ onMounted(() => {
           </button>
         </div>
       </div>
+    </section>
 
-      <section class="custom-resource-browser__grid">
+    <section class="custom-resource-browser__grid">
       <article v-for="card in filteredCards" :key="`${card.requirementId}-${card.id}`"
         class="custom-resource-browser__card">
-        <div v-if="card.coverUrl" class="custom-resource-browser__cover custom-resource-browser__cover--image">
-          <img :src="card.coverUrl" :alt="card.title" class="custom-resource-browser__cover-image" />
-        </div>
-        <div v-else class="custom-resource-browser__cover custom-resource-browser__cover--fallback">
-          📁
-        </div>
-
-        <div class="custom-resource-browser__body">
-          <div class="custom-resource-browser__topline">
-            <span class="custom-resource-browser__pill">需求单 {{ card.requirementId }}</span>
-            <span class="custom-resource-browser__pill" :class="`custom-resource-browser__pill--${card.visibility}`">
-              {{ card.visibility === 'public' ? '公开中' : '私有中' }}
-            </span>
+        <div class="custom-resource-browser__card-main">
+          <div v-if="card.coverUrl" class="custom-resource-browser__cover custom-resource-browser__cover--image">
+            <img :src="card.coverUrl" :alt="card.title" class="custom-resource-browser__cover-image" />
           </div>
+          <div v-else class="custom-resource-browser__cover">📁</div>
 
           <div class="custom-resource-browser__headline">
-            <div>
+            <div class="custom-resource-browser__title-row">
               <h3>{{ card.title }}</h3>
-              <p class="custom-resource-browser__author">by {{ card.author }}</p>
+              <span class="custom-resource-browser__updated">
+                <span v-for="part in formatUpdatedAt(card.updatedAt)" :key="part">{{ part }}</span>
+              </span>
             </div>
-            <span class="custom-resource-browser__updated">{{
-              formatUpdatedAt(card.updatedAt)
-              }}</span>
+            <div class="custom-resource-browser__meta-line">
+              <span class="custom-resource-browser__author-pill">作者 / 开发者 {{ card.author }}</span>
+              <span class="custom-resource-browser__pill" :class="`custom-resource-browser__pill--${card.visibility}`">
+                {{ card.visibility === 'public' ? '公开中' : '私有中' }}
+              </span>
+            </div>
           </div>
+        </div>
 
-          <p class="custom-resource-browser__requirement">关联需求：{{ card.requirementTitle }}</p>
-          <p class="custom-resource-browser__desc">{{ card.description }}</p>
+        <p class="custom-resource-browser__requirement">需求单 {{ card.requirementId }} · {{ card.requirementTitle }}</p>
+        <p class="custom-resource-browser__desc">{{ card.description }}</p>
 
+        <div class="custom-resource-browser__footer">
           <div class="custom-resource-browser__tags">
+            <span class="custom-resource-browser__meta">{{ card.platform }}</span>
             <span v-for="tag in card.tags.length ? card.tags : ['未标注']" :key="`${card.id}-${tag}`">{{ tag }}</span>
           </div>
-
-          <div class="custom-resource-browser__footer">
-            <span class="custom-resource-browser__meta">{{ card.platform }}</span>
+          <div class="custom-resource-browser__actions">
             <button class="custom-resource-browser__action" type="button" @click="openPrimaryLink(card)">
               {{ card.visibility === 'public' ? '查看公开页' : '查看并下载' }}
             </button>
@@ -341,7 +337,6 @@ onMounted(() => {
       <div v-if="loading" class="custom-resource-browser__empty">
         <p>正在同步你的需求关联资源。</p>
       </div>
-      </section>
     </section>
   </main>
 </template>
@@ -375,9 +370,10 @@ onMounted(() => {
 .custom-resource-browser__filters,
 .custom-resource-browser__card,
 .custom-resource-browser__empty {
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 12px 26px rgba(76, 103, 172, 0.08);
+  border: 1px solid rgba(198, 210, 236, 0.72);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 18px 42px rgba(76, 103, 172, 0.12);
+  backdrop-filter: blur(18px);
 }
 
 .custom-resource-browser__filters {
@@ -412,7 +408,6 @@ onMounted(() => {
 }
 
 .custom-resource-browser__label,
-.custom-resource-browser__author,
 .custom-resource-browser__updated,
 .custom-resource-browser__requirement,
 .custom-resource-browser__desc,
@@ -493,22 +488,25 @@ onMounted(() => {
 .custom-resource-browser__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  align-items: stretch;
+  gap: 18px;
 }
 
 .custom-resource-browser__card {
+  min-width: 0;
   display: flex;
-  gap: 16px;
-  padding: 16px;
-  border-radius: 16px;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 18px;
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
 }
 
 .custom-resource-browser__card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 30px rgba(76, 103, 172, 0.12);
+  transform: translateY(-3px);
+  box-shadow: 0 24px 40px rgba(76, 103, 172, 0.16);
 }
 
 .custom-resource-browser__cover {
@@ -535,26 +533,60 @@ onMounted(() => {
   object-fit: cover;
 }
 
-.custom-resource-browser__body {
+.custom-resource-browser__card-main {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.custom-resource-browser__headline {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
-.custom-resource-browser__topline,
-.custom-resource-browser__headline,
-.custom-resource-browser__footer {
+.custom-resource-browser__title-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
+}
+
+.custom-resource-browser__title-row h3 {
+  min-width: 0;
+}
+
+.custom-resource-browser__meta-line {
+  display: inline-flex;
+  align-items: center;
   flex-wrap: wrap;
+  gap: 8px;
+}
+
+.custom-resource-browser__footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  margin-top: auto;
+}
+
+.custom-resource-browser__actions {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .custom-resource-browser__pill,
 .custom-resource-browser__meta,
+.custom-resource-browser__author-pill,
 .custom-resource-browser__tags span {
   display: inline-flex;
   padding: 5px 10px;
@@ -563,7 +595,8 @@ onMounted(() => {
   font-weight: 700;
 }
 
-.custom-resource-browser__pill {
+.custom-resource-browser__pill,
+.custom-resource-browser__author-pill {
   background: rgba(219, 234, 254, 0.92);
   color: #1d4ed8;
 }
@@ -584,7 +617,6 @@ onMounted(() => {
   color: #0f172a;
 }
 
-.custom-resource-browser__author,
 .custom-resource-browser__updated,
 .custom-resource-browser__requirement,
 .custom-resource-browser__desc,
@@ -593,22 +625,38 @@ onMounted(() => {
   line-height: 1.7;
 }
 
-.custom-resource-browser__author,
-.custom-resource-browser__updated,
+.custom-resource-browser__updated {
+  flex-shrink: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: right;
+}
+
 .custom-resource-browser__requirement {
   font-size: 13px;
 }
 
 .custom-resource-browser__tags {
   display: flex;
+  align-items: flex-end;
+  flex: 1;
   flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
 }
 
-.custom-resource-browser__tags span,
-.custom-resource-browser__meta {
+.custom-resource-browser__tags span {
   background: rgba(219, 234, 254, 0.92);
   color: #1d4ed8;
+}
+
+/* 平台属性和标签区分开，用靛蓝，与资源详情页一致 */
+.custom-resource-browser__meta {
+  background: rgba(99, 102, 241, 0.14);
+  color: #4f46e5;
 }
 
 .custom-resource-browser__action {
@@ -617,6 +665,7 @@ onMounted(() => {
   background: rgba(239, 246, 255, 0.9);
   color: #1d4ed8;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .custom-resource-browser__empty {
@@ -634,9 +683,7 @@ onMounted(() => {
 @media (max-width: 900px) {
 
   .custom-resource-browser__row,
-  .custom-resource-browser__row--between,
-  .custom-resource-browser__headline,
-  .custom-resource-browser__footer {
+  .custom-resource-browser__row--between {
     flex-direction: column;
     align-items: stretch;
   }
@@ -649,8 +696,19 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .custom-resource-browser__card {
+  .custom-resource-browser__footer {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .custom-resource-browser__actions {
+    display: flex;
+    align-items: stretch;
+  }
+
+  .custom-resource-browser__action {
+    flex: 1;
+    min-height: 44px;
   }
 }
 </style>
