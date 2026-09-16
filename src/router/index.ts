@@ -234,33 +234,16 @@ const router = createRouter({
             description: '查看收藏的社区帖子',
           },
         },
-        {
-          path: 'teams',
-          name: 'workbench-teams',
-          component: () => import('@/views/TeamsView.vue'),
-          meta: {
-            title: '我的团队',
-            description: '查看和管理团队',
-          },
-        },
+        // 团队服务已并入开发者工作台（路由见 router/dev.ts 的 devWorkbenchRoutes），旧路径保留重定向
+        { path: 'teams', redirect: { name: 'workbench-teams' } },
         {
           path: 'teams/:teamId',
-          name: 'workbench-team-detail',
-          component: () => import('@/views/TeamDetailView.vue'),
-          meta: {
-            title: '团队详情',
-            description: '团队信息、成员管理',
-          },
+          redirect: (to) => ({
+            name: 'workbench-team-detail',
+            params: to.params as Record<string, string | string[]>,
+          }),
         },
-        {
-          path: 'team-resources',
-          name: 'workbench-team-resources',
-          component: () => import('@/views/TeamResourcesView.vue'),
-          meta: {
-            title: '团队资源项目',
-            description: '管理团队共享资源项目',
-          },
-        },
+        { path: 'team-resources', redirect: { name: 'workbench-team-resources' } },
         {
           path: 'invite',
           name: 'workbench-invite',

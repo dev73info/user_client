@@ -161,6 +161,37 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
       requiresRealname: true,
     },
   },
+  // 团队服务从用户工作台整体移入开发者工作台：侧边栏模式下路由需带 devArea，否则进页会切回用户菜单
+  {
+    path: 'developer/teams',
+    name: 'workbench-teams',
+    component: () => import('@/views/TeamsView.vue'),
+    meta: {
+      title: '我的团队',
+      description: '查看和管理团队',
+      devArea: true,
+    },
+  },
+  {
+    path: 'developer/teams/:teamId',
+    name: 'workbench-team-detail',
+    component: () => import('@/views/TeamDetailView.vue'),
+    meta: {
+      title: '团队详情',
+      description: '团队信息、成员管理',
+      devArea: true,
+    },
+  },
+  {
+    path: 'developer/team-resources',
+    name: 'workbench-team-resources',
+    component: () => import('@/views/TeamResourcesView.vue'),
+    meta: {
+      title: '团队资源项目',
+      description: '管理团队共享资源项目',
+      devArea: true,
+    },
+  },
   {
     path: 'developer/realname',
     redirect: { name: 'workbench-realname' },

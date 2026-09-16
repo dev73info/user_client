@@ -73,6 +73,17 @@ const devWorkbenchItems: (WorkbenchMenuItem & { icon: Component })[] = [
   { label: '交付记录', name: 'dev-wallet-releases', description: '查看资源交付与收入', icon: Promotion },
 ]
 
+// 团队服务已整体移入开发者工作台：用户模式下不出现，开发者模式下按原来的折叠组版式展示。
+const teamMenuGroup: WorkbenchMenuGroup = {
+  key: 'team',
+  label: '团队服务',
+  icon: UserFilled,
+  items: [
+    { label: '我的团队', name: 'workbench-teams', description: '查看和管理团队' },
+    { label: '资源项目', name: 'workbench-team-resources', description: '管理团队共享资源项目' },
+  ],
+}
+
 const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
   {
     key: 'collaboration',
@@ -99,15 +110,6 @@ const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
         description: '邀请好友得徽章，查看排行榜',
         activeNames: ['workbench-invite-leaderboard'],
       },
-    ],
-  },
-  {
-    key: 'team',
-    label: '团队服务',
-    icon: UserFilled,
-    items: [
-      { label: '我的团队', name: 'workbench-teams', description: '查看和管理团队' },
-      { label: '资源项目', name: 'workbench-team-resources', description: '管理团队共享资源项目' },
     ],
   },
 ])
@@ -168,8 +170,11 @@ const isDevWorkbenchMode = computed(
   () => route.matched.some((record) => Boolean(record.meta.devArea)),
 )
 
-// 开发者模式下侧边栏不渲染用户菜单分组。
-const visibleMenuGroups = computed(() => (isDevWorkbenchMode.value ? [] : menuGroups.value))
+// 全部菜单分组：团队服务只在开发者模式下渲染，但两种模式都要能解析当前页归属的条目。
+const allMenuGroups = computed<WorkbenchMenuGroup[]>(() => [...menuGroups.value, teamMenuGroup])
+
+// 开发者模式下侧边栏不渲染用户菜单分组，只保留团队服务。
+const visibleMenuGroups = computed(() => (isDevWorkbenchMode.value ? [teamMenuGroup] : menuGroups.value))
 
 watch(
   [() => auth.token, () => route.fullPath],
@@ -191,7 +196,7 @@ watch(
 watch(
   [() => route.fullPath, menuGroups],
   () => {
-    const activeGroup = menuGroups.value.find((group) => group.items.some((item) => isMenuItemActive(item)))
+    const activeGroup = allMenuGroups.value.find((group) => group.items.some((item) => isMenuItemActive(item)))
     if (activeGroup && !openGroupKeys.value.includes(activeGroup.key)) {
       openGroupKeys.value = [...openGroupKeys.value, activeGroup.key]
     }
@@ -395,7 +400,7 @@ function findActiveItem() {
     return null
   }
 
-  return [...menuGroups.value.flatMap((group) => group.items), ticketsItem]
+  return [...allMenuGroups.value.flatMap((group) => group.items), ticketsItem]
     .find((item) => isMenuItemActive(item)) ?? null
 }
 

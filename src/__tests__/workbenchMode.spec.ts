@@ -10,11 +10,12 @@ vi.mock('@/api/conversations', () => ({ listRequirementConversations: vi.fn().mo
 vi.mock('@/api/team', () => ({ listUserInvitations: vi.fn().mockResolvedValue([]) }))
 
 // 开发者页面在 router/dev.ts 里都带 devArea 标记，侧边栏据此把整条菜单换成开发者菜单。
+// 团队服务已整体移入开发者工作台，这三个页面同样是 devArea 路由，不再属于用户菜单。
 const USER_ROUTE_NAMES = ['workbench', 'workbench-requirements', 'workbench-resources', 'workbench-account',
   'workbench-signatures', 'workbench-invoices', 'workbench-points', 'workbench-favorites', 'workbench-invite',
-  'workbench-teams', 'workbench-team-resources', 'workbench-tickets']
+  'workbench-tickets']
 const DEV_ROUTE_NAMES = ['dev-resource-list', 'dev-requirement-hall', 'dev-my-requirements', 'dev-wallet',
-  'dev-wallet-releases']
+  'dev-wallet-releases', 'workbench-teams', 'workbench-team-detail', 'workbench-team-resources']
 
 const routes: RouteRecordRaw[] = [
   ...USER_ROUTE_NAMES.map((name): RouteRecordRaw => ({
@@ -64,6 +65,9 @@ describe('workbench mode switch', () => {
     // 开发者条目不再挤在用户侧边栏底部
     expect(sidebar(wrapper)).not.toContain('我的资源项目')
     expect(sidebar(wrapper)).not.toContain('需求大厅')
+    // 团队服务已搬进开发者工作台，用户侧边栏不再出现
+    expect(sidebar(wrapper)).not.toContain('团队服务')
+    expect(sidebar(wrapper)).not.toContain('我的团队')
     wrapper.unmount()
   })
 
@@ -74,7 +78,10 @@ describe('workbench mode switch', () => {
     expect(text).toContain('我的资源项目')
     expect(text).toContain('交付记录')
     expect(text).not.toContain('工作台总览')
-    expect(text).not.toContain('我的团队')
+    // 团队服务搬到这里：以原来的折叠组形式跟在开发者条目之后
+    expect(text).toContain('团队服务')
+    expect(text).toContain('我的团队')
+    expect(text).toContain('资源项目')
     // 工单中心两种模式都保留：开发者工作台同样要能直接进工单
     expect(text).toContain('工单中心')
     expect(wrapper.find('.user-workbench__mode-switch').attributes('aria-label')).toBe('回到用户工作台')
@@ -84,6 +91,19 @@ describe('workbench mode switch', () => {
     expect(devLinks).toHaveLength(5)
     expect(devLinks[0]?.find('.user-workbench__menu-icon').exists()).toBe(true)
     expect(devLinks.map((link) => link.text())).toEqual(['我的资源项目', '需求大厅', '我的接单', '收益钱包', '交付记录'])
+    wrapper.unmount()
+  })
+
+  it('团队页面属于开发者工作台：进页不切回用户菜单，团队服务组自动展开', async () => {
+    const { wrapper } = await render('workbench-teams')
+    // 团队页面带 devArea，落在页面上时侧边栏仍是开发者菜单
+    expect(wrapper.find('.user-workbench__brand-title').text()).toBe('开发者工作台')
+    expect(sidebar(wrapper)).not.toContain('工作台总览')
+    const head = wrapper.find('.user-workbench__menu-group-head')
+    expect(head.text()).toContain('团队服务')
+    // 当前页在该组内，进页时分组自动展开
+    expect(head.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find('.user-workbench__menu-group-head strong').text()).toBe('团队服务')
     wrapper.unmount()
   })
 
