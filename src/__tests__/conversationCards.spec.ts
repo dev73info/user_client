@@ -44,6 +44,11 @@ describe('conversation status cards', () => {
     expect(developer?.downloadDelivery).toBe(false)
   })
 
+  it('treats the completed card as a notification without a dead-end list jump', () => {
+    expect(meta('final_paid', 'customer', 'completed')?.actionLabel).toBeUndefined()
+    expect(meta('final_paid', 'developer', 'completed')?.actionLabel).toBeUndefined()
+  })
+
   it('ignores unknown event codes', () => {
     expect(meta('whatever', 'customer', 'deposit_paid')).toBeNull()
   })

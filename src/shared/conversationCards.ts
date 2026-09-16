@@ -93,8 +93,7 @@ export function conversationCardMeta(
       return {
         title: '需求已结单',
         description: '尾款已支付，需求已完成结单。',
-        actionLabel: '去我的需求',
-        to: requirementListRoute,
+        // 结单是终态，双方都没有可执行的动作；「去我的需求」只是把人送回自己已经在的需求列表，属空跳转，故不给按钮。
       }
     case 'binding_released':
       return {
