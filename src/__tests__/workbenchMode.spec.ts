@@ -75,7 +75,8 @@ describe('workbench mode switch', () => {
     expect(text).toContain('交付记录')
     expect(text).not.toContain('工作台总览')
     expect(text).not.toContain('我的团队')
-    expect(text).not.toContain('工单中心')
+    // 工单中心两种模式都保留：开发者工作台同样要能直接进工单
+    expect(text).toContain('工单中心')
     expect(wrapper.find('.user-workbench__mode-switch').attributes('aria-label')).toBe('回到用户工作台')
     expect(wrapper.find('.user-workbench__brand-title').text()).toBe('开发者工作台')
     // 与用户菜单同一套一级条目版式（带图标的一级菜单），切换模式时侧边栏只有文字变化

@@ -603,7 +603,7 @@ async function scrollToHash() {
               </Transition>
             </section>
 
-            <section v-if="!isDevWorkbenchMode"
+            <section
               class="user-workbench__menu-group user-workbench__menu-group--standalone">
               <RouterLink class="user-workbench__menu-link user-workbench__menu-link--root"
                 :class="{ active: isMenuItemActive(ticketsItem) }" :to="menuItemTo(ticketsItem)"
