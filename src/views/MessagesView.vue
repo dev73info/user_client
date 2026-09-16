@@ -466,11 +466,13 @@ async function loadMessages(showSuccess = false) {
     const [nextRequirements, nextConversations] = await Promise.all([
       listRequirements(auth.token),
       listRequirementConversations(auth.token),
+      // 待办是前任开发者在消息中心唯一的表决入口（他读不到会话本身），
+      // 拉取要与会话列表并列，不能被那两个请求的失败带着一起跳过
+      loadHistoryDisclosures(),
     ])
     requirements.value = nextRequirements
     conversations.value = nextConversations
     openThreadFromRoute()
-    await loadHistoryDisclosures()
     if (showSuccess) {
       showToast('消息已刷新', 'success')
     }
@@ -564,7 +566,7 @@ watch(
         </div>
       </header>
 
-      <section v-if="pendingHistoryVotes.length && filteredThreads.length" class="messages-disclosure-panel"
+      <section v-if="pendingHistoryVotes.length" class="messages-disclosure-panel"
         aria-label="待我确认的历史沟通公开申请">
         <article v-for="item in pendingHistoryVotes" :key="`history-vote-${item.id}`" class="messages-disclosure">
           <div class="messages-disclosure__main">
@@ -588,7 +590,7 @@ watch(
       </section>
 
       <div v-if="loading" class="messages-state">消息加载中...</div>
-      <div v-else-if="filteredThreads.length === 0" class="messages-empty">
+      <div v-else-if="filteredThreads.length === 0 && pendingHistoryVotes.length === 0" class="messages-empty">
         <strong>{{ emptyTitle() }}</strong>
         <p>{{ emptyDescription() }}</p>
         <button v-if="searchKeyword.trim()" class="ghost small" type="button" @click="clearSearch">
