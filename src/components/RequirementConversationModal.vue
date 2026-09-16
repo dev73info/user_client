@@ -946,8 +946,8 @@ function handleBackdropClick() {
 
         <div v-for="item in pendingHistoryVotes" :key="`history-vote-${item.id}`" class="conversation-history-vote">
           <p>
-            {{ item.current_developer }} 申请查看前任开发者 {{ item.previous_developer }} 期间的沟通记录。
-            同意后这段记录会对他公开，拒绝则维持隐藏。
+            现任开发者 {{ item.current_developer }} 申请查看前任开发者 {{ item.previous_developer }} 负责期间的沟通记录。
+            你和对方都同意后，这段记录才会向现任开发者公开；任何一方拒绝则维持隐藏。
           </p>
           <div class="conversation-history-vote__actions">
             <button type="button" :disabled="historyVotingId !== null"

@@ -578,7 +578,7 @@ watch(
             <strong>{{ item.requirement_title || item.requirement_id }}</strong>
             <small>{{ item.requirement_id }} · 前任开发者 {{ item.previous_developer }}</small>
             <p>
-              {{ item.current_developer }} 申请查看 {{ item.previous_developer }} 负责期间的沟通记录。同意后这段记录会对现任开发者公开，拒绝则维持隐藏。
+              现任开发者 {{ item.current_developer }} 申请查看前任开发者 {{ item.previous_developer }} 负责期间的沟通记录。你和对方都同意后，这段记录才会向现任开发者公开；任何一方拒绝则维持隐藏。
             </p>
           </div>
           <div class="messages-disclosure__actions">
