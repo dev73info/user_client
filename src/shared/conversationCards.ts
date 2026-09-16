@@ -58,13 +58,10 @@ export function conversationCardMeta(
       return {
         title: '合同已签署完成',
         description: '《需求开发合同》双方已签署，等待需求方支付定金。',
-        // 定金缴清后这张历史卡片不再给按钮，否则点进去只会重复发起一笔已完成的支付。
+        // 付定金是需求方的动作，开发者这边只是通知；定金缴清后这张历史卡片也不再给按钮，
+        // 否则点进去只会重复发起一笔已完成的支付。
         actionLabel:
-          role === 'developer'
-            ? '去我的需求'
-            : requirementStatus === 'pending_deposit'
-              ? '去支付定金'
-              : undefined,
+          role !== 'developer' && requirementStatus === 'pending_deposit' ? '去支付定金' : undefined,
         to: requirementListRoute,
       }
     case 'deposit_paid':
@@ -88,7 +85,8 @@ export function conversationCardMeta(
       return {
         title: '验收已通过',
         description: '需求方已验收通过，等待支付尾款。',
-        actionLabel: role === 'developer' ? '去我的需求' : '去支付尾款',
+        // 付尾款是需求方的动作，开发者这边只是通知，不给按钮。
+        actionLabel: role === 'developer' ? undefined : '去支付尾款',
         to: requirementListRoute,
       }
     case 'final_paid':

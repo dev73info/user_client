@@ -22,7 +22,10 @@ describe('conversation status cards', () => {
     expect(meta('contract_signed', 'customer', 'pending_deposit')?.actionLabel).toBe('去支付定金')
     expect(meta('contract_signed', 'customer', 'deposit_paid')?.actionLabel).toBeUndefined()
     expect(meta('contract_signed', 'customer', 'in_development')?.actionLabel).toBeUndefined()
-    expect(meta('contract_signed', 'developer', 'in_development')?.actionLabel).toBe('去我的需求')
+    // 开发者在合同签署完成 / 验收通过这两步都没有可做的动作，卡片只作通知。
+    expect(meta('contract_signed', 'developer', 'in_development')?.actionLabel).toBeUndefined()
+    expect(meta('acceptance_passed', 'developer', 'pending_final')?.actionLabel).toBeUndefined()
+    expect(meta('acceptance_passed', 'customer', 'pending_final')?.actionLabel).toBe('去支付尾款')
   })
 
   it('keeps the delivery entry to the developer only', () => {
