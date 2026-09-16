@@ -270,6 +270,11 @@ const requirementStats = computed(() => ({
   ).length,
 }))
 
+/** 刷新按钮只有一个图标，加载态与说明都靠 aria-label / title 承载。 */
+const refreshButtonLabel = computed(() =>
+  requirementLoading.value || conversationLoading.value ? '刷新中...' : '刷新',
+)
+
 function formatRequirementStatus(status: RequirementStatus) {
   return requirementStatusLabel(status)
 }
@@ -1916,11 +1921,11 @@ watch(
         </div>
         <div class="my-requirements-header__actions">
           <button class="ghost small my-requirements-refresh" type="button"
-            :disabled="requirementLoading || conversationLoading" @click="refreshMyRequirements">
-            <el-icon>
+            :disabled="requirementLoading || conversationLoading" :aria-label="refreshButtonLabel"
+            :title="refreshButtonLabel" @click="refreshMyRequirements">
+            <el-icon :class="{ 'is-spinning': requirementLoading || conversationLoading }">
               <Refresh />
             </el-icon>
-            <span>{{ requirementLoading || conversationLoading ? '刷新中...' : '刷新' }}</span>
           </button>
           <button class="ghost small" type="button" @click="openPublishModal">发布新需求</button>
         </div>
@@ -2655,11 +2660,27 @@ watch(
   flex: 0 0 auto;
 }
 
-.my-requirements-refresh {
+.my-requirements-refresh.small {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.my-requirements-refresh .el-icon {
+  font-size: 16px;
+}
+
+.my-requirements-refresh .el-icon.is-spinning {
+  animation: my-requirements-spin 900ms linear infinite;
+}
+
+@keyframes my-requirements-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .requirement-list {
@@ -3154,6 +3175,12 @@ watch(
 
   .my-requirements-header__actions .ghost.small {
     flex: 1 1 0;
+  }
+
+  .my-requirements-header__actions .ghost.small.my-requirements-refresh {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
   }
 
   .my-requirements-summary__grid {
