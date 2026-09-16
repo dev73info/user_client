@@ -4,11 +4,24 @@ import { useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 
 import { apiUrl } from '@/api/http'
-import { listRequirements, type RequirementItem } from '@/api/requirements'
+import {
+  listRequirements,
+  updateRequirementResourceVisibility,
+  type RequirementItem,
+} from '@/api/requirements'
+import {
+  downloadPublicMcResourceVersionFile,
+  extractResourceFileNameFromUrl,
+  listPublicMcResourceVersions,
+  resolveResourceDownloadFileName,
+} from '@/api/resources'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { buildDevPortalUrl } from '@/config/runtime'
+import { useResourceDownload } from '@/composables/useResourceDownload'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+
+type ResourceVisibility = 'public' | 'review' | 'private'
 
 type CustomResourceCard = {
   id: number
@@ -26,7 +39,9 @@ type CustomResourceCard = {
   sourceUrl: string | null
   docsUrl: string | null
   coverUrl: string | null
-  visibility: 'public' | 'private'
+  visibility: ResourceVisibility
+  /** 需求未完成时不允许调整公开状态，与需求列表页同一门槛 */
+  canToggleVisibility: boolean
 }
 
 const auth = useAuthStore()
@@ -34,9 +49,12 @@ const router = useRouter()
 const loading = ref(false)
 const searchQuery = ref('')
 const selectedPlatform = ref('all')
-const selectedVisibility = ref<'all' | 'public' | 'private'>('all')
+const selectedVisibility = ref<'all' | ResourceVisibility>('all')
 const selectedSort = ref<'最新' | '标题'>('最新')
 const requirements = ref<RequirementItem[]>([])
+const resourceVisibilityLoadingId = ref<string | null>(null)
+const resourceDownloadingId = ref<number | null>(null)
+const { triggerDownload } = useResourceDownload()
 const { showToast } = useToast()
 
 const cards = computed<CustomResourceCard[]>(() => {
@@ -78,10 +96,19 @@ const cards = computed<CustomResourceCard[]>(() => {
         sourceUrl: item.bound_resource_source_url ?? null,
         docsUrl: item.bound_resource_docs_url ?? null,
         coverUrl: item.bound_resource_cover_url ? apiUrl(item.bound_resource_cover_url) : null,
-        visibility: item.resource_visibility === 'public' ? 'public' : 'private',
+        visibility: toResourceVisibility(item.resource_visibility),
+        canToggleVisibility: item.status === 'completed',
       }
     })
 })
+
+function toResourceVisibility(value: RequirementItem['resource_visibility']): ResourceVisibility {
+  if (value === 'public' || value === 'review') {
+    return value
+  }
+
+  return 'private'
+}
 
 const filteredCards = computed(() => {
   const keyword = searchQuery.value.trim().toLowerCase()
@@ -122,12 +149,21 @@ const filteredCards = computed(() => {
 const stats = computed(() => {
   const total = cards.value.length
   const publicCount = cards.value.filter((card) => card.visibility === 'public').length
+  const reviewCount = cards.value.filter((card) => card.visibility === 'review').length
   return {
     total,
-    privateCount: total - publicCount,
     publicCount,
+    reviewCount,
+    privateCount: total - publicCount - reviewCount,
   }
 })
+
+/** 卡片状态标签与筛选按钮共用的文案 */
+const VISIBILITY_LABELS: Record<ResourceVisibility, string> = {
+  public: '公开中',
+  review: '审核中',
+  private: '私有中',
+}
 
 function formatUpdatedAt(value: string): string[] {
   const date = new Date(value)
@@ -168,6 +204,70 @@ function openDevWorkbench() {
   void router.push(buildDevPortalUrl(auth.token))
 }
 
+/** 状态按钮文案：公开中可撤回为私有，审核中不可点，私有时提交审核 */
+function resourceVisibilityActionLabel(card: CustomResourceCard) {
+  if (card.visibility === 'public') {
+    return '设为私有'
+  }
+
+  if (card.visibility === 'review') {
+    return '审核中'
+  }
+
+  return '设为公开'
+}
+
+async function toggleResourceVisibility(card: CustomResourceCard) {
+  if (!auth.token || card.visibility === 'review') {
+    return
+  }
+
+  const visibility = card.visibility === 'public' ? 'private' : 'public'
+  resourceVisibilityLoadingId.value = card.requirementId
+  try {
+    await updateRequirementResourceVisibility(auth.token, card.requirementId, { visibility })
+    showToast(visibility === 'public' ? '关联资源已提交公开审核' : '关联资源已设为私有')
+    await loadCustomResources()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '调整资源公开状态失败', 'error')
+  } finally {
+    resourceVisibilityLoadingId.value = null
+  }
+}
+
+async function downloadCardResource(card: CustomResourceCard) {
+  if (!auth.token) {
+    return
+  }
+
+  resourceDownloadingId.value = card.id
+  try {
+    const versions = await listPublicMcResourceVersions(card.id, auth.token)
+    const latest = versions[0]
+    if (!latest) {
+      showToast('开发者还没有发布可下载的版本', 'info')
+      return
+    }
+
+    const fallbackFileName = `resource-${card.id}-v${latest.id}`
+    const fileName = extractResourceFileNameFromUrl(latest.resource, fallbackFileName)
+    await triggerDownload(
+      (onProgress) =>
+        downloadPublicMcResourceVersionFile(
+          card.id,
+          latest.id,
+          auth.token?.trim() || null,
+          onProgress,
+        ),
+      fileName,
+    )
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '下载资源失败', 'warning')
+  } finally {
+    resourceDownloadingId.value = null
+  }
+}
+
 async function loadCustomResources() {
   if (!auth.token) {
     requirements.value = []
@@ -202,6 +302,10 @@ onMounted(() => {
         <strong>{{ stats.publicCount }}</strong>
       </article>
       <article class="portal-page__stat-card">
+        <span>审核中</span>
+        <strong>{{ stats.reviewCount }}</strong>
+      </article>
+      <article class="portal-page__stat-card">
         <span>私有中</span>
         <strong>{{ stats.privateCount }}</strong>
       </article>
@@ -212,25 +316,12 @@ onMounted(() => {
     </section>
 
     <section class="portal-page__panel custom-resource-browser__filters">
-      <div class="portal-page__section-header">
-        <div>
-          <p class="portal-page__eyebrow">资源筛选</p>
-        </div>
-      </div>
-
-      <div class="custom-resource-browser__row custom-resource-browser__row--between">
-        <div class="custom-resource-browser__group">
-          <span class="custom-resource-browser__label">平台：</span>
-          <button class="custom-resource-browser__tag"
-            :class="{ 'custom-resource-browser__tag--active': selectedPlatform === 'all' }" type="button"
-            @click="selectedPlatform = 'all'">
-            全部
-          </button>
-          <button v-for="p in availablePlatforms" :key="p" class="custom-resource-browser__tag"
-            :class="{ 'custom-resource-browser__tag--active': selectedPlatform === p }" type="button"
-            @click="selectedPlatform = p">
-            {{ p }}
-          </button>
+      <div class="custom-resource-browser__filters-head">
+        <div class="custom-resource-browser__filters-title">
+          <span class="custom-resource-browser__eyebrow">资源筛选</span>
+          <span class="custom-resource-browser__count">
+            {{ filteredCards.length }} / {{ cards.length }} 个资源
+          </span>
         </div>
 
         <label class="custom-resource-browser__search">
@@ -239,47 +330,77 @@ onMounted(() => {
               <Search />
             </el-icon>
           </span>
-          <input v-model="searchQuery" type="text" placeholder="搜索我的定制资源..." />
+          <input v-model="searchQuery" type="search" inputmode="search" autocomplete="off" spellcheck="false"
+            placeholder="搜索标题、作者或标签" @keydown.esc="searchQuery = ''" />
         </label>
       </div>
 
-      <div
-        class="custom-resource-browser__row custom-resource-browser__row--between custom-resource-browser__row--wrap">
+      <div class="custom-resource-browser__filters-body">
         <div class="custom-resource-browser__group">
-          <span class="custom-resource-browser__label">可见性：</span>
-          <button class="custom-resource-browser__tag"
-            :class="{ 'custom-resource-browser__tag--active': selectedVisibility === 'all' }" type="button"
-            @click="selectedVisibility = 'all'">
-            全部
-          </button>
-          <button class="custom-resource-browser__tag"
-            :class="{ 'custom-resource-browser__tag--active': selectedVisibility === 'public' }" type="button"
-            @click="selectedVisibility = 'public'">
-            公开中
-          </button>
-          <button class="custom-resource-browser__tag"
-            :class="{ 'custom-resource-browser__tag--active': selectedVisibility === 'private' }" type="button"
-            @click="selectedVisibility = 'private'">
-            私有中
-          </button>
+          <span class="custom-resource-browser__label">平台</span>
+          <div class="custom-resource-browser__segments">
+            <button class="custom-resource-browser__tag"
+              :class="{ 'custom-resource-browser__tag--active': selectedPlatform === 'all' }" type="button"
+              @click="selectedPlatform = 'all'">
+              全部
+            </button>
+            <button v-for="p in availablePlatforms" :key="p" class="custom-resource-browser__tag"
+              :class="{ 'custom-resource-browser__tag--active': selectedPlatform === p }" type="button"
+              @click="selectedPlatform = p">
+              {{ p }}
+            </button>
+          </div>
         </div>
 
+        <span class="custom-resource-browser__divider" aria-hidden="true"></span>
+
         <div class="custom-resource-browser__group">
-          <span class="custom-resource-browser__label">排序：</span>
-          <button class="custom-resource-browser__tag"
-            :class="{ 'custom-resource-browser__tag--active': selectedSort === '最新' }" type="button"
-            @click="selectedSort = '最新'">
-            最新
-          </button>
-          <button class="custom-resource-browser__tag"
-            :class="{ 'custom-resource-browser__tag--active': selectedSort === '标题' }" type="button"
-            @click="selectedSort = '标题'">
-            标题
-          </button>
-          <button class="custom-resource-browser__reset" type="button" @click="resetFilters">
-            ↻ 重置筛选
-          </button>
+          <span class="custom-resource-browser__label">可见性</span>
+          <div class="custom-resource-browser__segments">
+            <button class="custom-resource-browser__tag"
+              :class="{ 'custom-resource-browser__tag--active': selectedVisibility === 'all' }" type="button"
+              @click="selectedVisibility = 'all'">
+              全部
+            </button>
+            <button class="custom-resource-browser__tag"
+              :class="{ 'custom-resource-browser__tag--active': selectedVisibility === 'public' }" type="button"
+              @click="selectedVisibility = 'public'">
+              公开中
+            </button>
+            <button class="custom-resource-browser__tag"
+              :class="{ 'custom-resource-browser__tag--active': selectedVisibility === 'review' }" type="button"
+              @click="selectedVisibility = 'review'">
+              审核中
+            </button>
+            <button class="custom-resource-browser__tag"
+              :class="{ 'custom-resource-browser__tag--active': selectedVisibility === 'private' }" type="button"
+              @click="selectedVisibility = 'private'">
+              私有中
+            </button>
+          </div>
         </div>
+
+        <span class="custom-resource-browser__divider" aria-hidden="true"></span>
+
+        <div class="custom-resource-browser__group">
+          <span class="custom-resource-browser__label">排序</span>
+          <div class="custom-resource-browser__segments">
+            <button class="custom-resource-browser__tag"
+              :class="{ 'custom-resource-browser__tag--active': selectedSort === '最新' }" type="button"
+              @click="selectedSort = '最新'">
+              最新
+            </button>
+            <button class="custom-resource-browser__tag"
+              :class="{ 'custom-resource-browser__tag--active': selectedSort === '标题' }" type="button"
+              @click="selectedSort = '标题'">
+              标题
+            </button>
+          </div>
+        </div>
+
+        <button class="custom-resource-browser__reset" type="button" @click="resetFilters">
+          ↻ 重置
+        </button>
       </div>
     </section>
 
@@ -302,7 +423,7 @@ onMounted(() => {
             <div class="custom-resource-browser__meta-line">
               <span class="custom-resource-browser__author-pill">作者 / 开发者 {{ card.author }}</span>
               <span class="custom-resource-browser__pill" :class="`custom-resource-browser__pill--${card.visibility}`">
-                {{ card.visibility === 'public' ? '公开中' : '私有中' }}
+                {{ VISIBILITY_LABELS[card.visibility] }}
               </span>
             </div>
           </div>
@@ -317,8 +438,22 @@ onMounted(() => {
             <span v-for="tag in card.tags.length ? card.tags : ['未标注']" :key="`${card.id}-${tag}`">{{ tag }}</span>
           </div>
           <div class="custom-resource-browser__actions">
-            <button class="custom-resource-browser__action" type="button" @click="openPrimaryLink(card)">
-              {{ card.visibility === 'public' ? '查看公开页' : '查看并下载' }}
+            <button v-if="card.canToggleVisibility" class="custom-resource-browser__action custom-resource-browser__action--ghost"
+              type="button" :disabled="card.visibility === 'review' || resourceVisibilityLoadingId === card.requirementId"
+              @click="toggleResourceVisibility(card)">
+              {{
+                resourceVisibilityLoadingId === card.requirementId
+                  ? '提交中…'
+                  : resourceVisibilityActionLabel(card)
+              }}
+            </button>
+            <button class="custom-resource-browser__action custom-resource-browser__action--ghost" type="button"
+              @click="openPrimaryLink(card)">
+              主页
+            </button>
+            <button class="custom-resource-browser__action" type="button"
+              :disabled="resourceDownloadingId === card.id" @click="downloadCardResource(card)">
+              {{ resourceDownloadingId === card.id ? '准备中…' : '下载' }}
             </button>
           </div>
         </div>
@@ -379,25 +514,55 @@ onMounted(() => {
 .custom-resource-browser__filters {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 250, 255, 0.92));
 }
 
-.portal-page__section-header {
-  margin-bottom: 0;
-}
-
-.custom-resource-browser__row {
+.custom-resource-browser__filters-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.custom-resource-browser__row--between {
   justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.custom-resource-browser__row--wrap {
+.custom-resource-browser__filters-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.custom-resource-browser__eyebrow {
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.custom-resource-browser__count {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(219, 234, 254, 0.72);
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.custom-resource-browser__filters-body {
+  display: flex;
+  align-items: center;
   flex-wrap: wrap;
+  gap: 12px 16px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(203, 213, 245, 0.9);
+}
+
+.custom-resource-browser__divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(203, 213, 245, 0.9);
 }
 
 .custom-resource-browser__group {
@@ -405,6 +570,16 @@ onMounted(() => {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.custom-resource-browser__segments {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(219, 228, 248, 0.96);
+  border-radius: 999px;
+  background: rgba(241, 245, 255, 0.9);
 }
 
 .custom-resource-browser__label,
@@ -416,8 +591,10 @@ onMounted(() => {
 }
 
 .custom-resource-browser__label {
-  font-size: 13px;
-  font-weight: 700;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
 }
 
 .custom-resource-browser__tag,
@@ -429,37 +606,57 @@ onMounted(() => {
 }
 
 .custom-resource-browser__tag {
-  padding: 8px 14px;
+  padding: 6px 14px;
   border-radius: 999px;
-  background: rgba(239, 246, 255, 0.9);
-  color: #1d4ed8;
+  background: transparent;
+  color: #475569;
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
-.custom-resource-browser__tag--active {
+.custom-resource-browser__tag:hover {
+  background: rgba(219, 234, 254, 0.72);
+  color: #1d4ed8;
+}
+
+.custom-resource-browser__tag--active,
+.custom-resource-browser__tag--active:hover {
   background: linear-gradient(135deg, #2563eb, #4f8cff);
   color: #fff;
-  box-shadow: 0 12px 22px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.22);
 }
 
 .custom-resource-browser__search {
   position: relative;
-  min-width: 260px;
+  flex: 1 1 240px;
+  max-width: 320px;
 }
 
 .custom-resource-browser__search input {
   width: 100%;
-  padding: 12px 16px 12px 40px;
+  padding: 11px 16px 11px 40px;
   border: 1px solid rgba(198, 210, 236, 0.82);
-  border-radius: 14px;
+  border-radius: 999px;
   background: rgba(248, 250, 252, 0.96);
   color: #0f172a;
   outline: none;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.custom-resource-browser__search input::placeholder {
+  color: #a5b0c2;
 }
 
 .custom-resource-browser__search input:focus {
   border-color: #60a5fa;
+  background: #fff;
   box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.12);
 }
 
@@ -478,11 +675,25 @@ onMounted(() => {
 }
 
 .custom-resource-browser__reset {
-  padding: 10px 16px;
-  border-radius: 12px;
-  background: rgba(248, 250, 252, 0.92);
+  margin-left: auto;
+  padding: 9px 16px;
+  border: 1px solid rgba(198, 210, 236, 0.9);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
   color: #475569;
+  font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
+  transition:
+    color 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.custom-resource-browser__reset:hover {
+  border-color: rgba(96, 165, 250, 0.9);
+  background: rgba(239, 246, 255, 0.96);
+  color: #1d4ed8;
 }
 
 .custom-resource-browser__grid {
@@ -490,6 +701,13 @@ onMounted(() => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
   gap: 18px;
+}
+
+/* 本页统计有 5 张卡（比全局的 4 列多一张），宽屏下改成按宽度自适应；窄屏沿用全局的 2 列 */
+@media (min-width: 901px) {
+  .custom-resource-page .portal-page__stats {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
 }
 
 .custom-resource-browser__card {
@@ -571,6 +789,7 @@ onMounted(() => {
 .custom-resource-browser__footer {
   display: flex;
   align-items: flex-end;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   width: 100%;
@@ -582,6 +801,9 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
+  gap: 8px;
+  /* 三个动作按钮比原来的一个宽，放不下时整组换行并靠右 */
+  margin-left: auto;
 }
 
 .custom-resource-browser__pill,
@@ -604,6 +826,11 @@ onMounted(() => {
 .custom-resource-browser__pill--public {
   background: rgba(220, 252, 231, 0.92);
   color: #15803d;
+}
+
+.custom-resource-browser__pill--review {
+  background: rgba(254, 249, 195, 0.92);
+  color: #a16207;
 }
 
 .custom-resource-browser__pill--private {
@@ -668,6 +895,24 @@ onMounted(() => {
   white-space: nowrap;
 }
 
+/* 主页与公开/私有开关是次级动作，弱化成描边按钮，让「下载」保持主按钮视觉 */
+.custom-resource-browser__action--ghost {
+  border: 1px solid rgba(198, 210, 236, 0.9);
+  background: rgba(255, 255, 255, 0.92);
+  color: #475569;
+}
+
+.custom-resource-browser__action--ghost:hover:not(:disabled) {
+  border-color: rgba(96, 165, 250, 0.9);
+  background: rgba(239, 246, 255, 0.96);
+  color: #1d4ed8;
+}
+
+.custom-resource-browser__action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .custom-resource-browser__empty {
   grid-column: 1 / -1;
   color: var(--profile-text-sub);
@@ -681,15 +926,69 @@ onMounted(() => {
 }
 
 @media (max-width: 900px) {
+  /* 移动端把统计卡片收成 2×2 窄条，避免四张大卡纵向占满首屏 */
+  .portal-page__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
 
-  .custom-resource-browser__row,
-  .custom-resource-browser__row--between {
+  /* 选择器要压过 UserWorkbenchView 里 :deep(.portal-page__stat-card) 的样式 */
+  .custom-resource-page .portal-page__stats > .portal-page__stat-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 44px;
+    padding: 10px 14px;
+    border-radius: 14px;
+  }
+
+  .custom-resource-page .portal-page__stats > .portal-page__stat-card span {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  .custom-resource-page .portal-page__stats > .portal-page__stat-card strong {
+    font-size: 20px;
+  }
+
+  .custom-resource-browser__filters {
+    gap: 14px;
+  }
+
+  .custom-resource-browser__filters-head,
+  .custom-resource-browser__filters-body {
     flex-direction: column;
     align-items: stretch;
   }
 
+  .custom-resource-browser__divider {
+    display: none;
+  }
+
+  .custom-resource-browser__group {
+    justify-content: space-between;
+  }
+
+  .custom-resource-browser__segments {
+    flex: 1;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    border-radius: 16px;
+  }
+
+  .custom-resource-browser__tag {
+    min-height: 40px;
+  }
+
   .custom-resource-browser__search {
-    min-width: 100%;
+    flex: 1 1 auto;
+    max-width: none;
+  }
+
+  .custom-resource-browser__reset {
+    margin-left: 0;
+    min-height: 44px;
   }
 
   .custom-resource-browser__grid {
@@ -703,11 +1002,13 @@ onMounted(() => {
 
   .custom-resource-browser__actions {
     display: flex;
+    flex-wrap: wrap;
     align-items: stretch;
+    gap: 8px;
   }
 
   .custom-resource-browser__action {
-    flex: 1;
+    flex: 1 1 auto;
     min-height: 44px;
   }
 }

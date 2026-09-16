@@ -17,7 +17,6 @@ import {
   unlikePublicMcResource,
   resolveResourceDownloadFileName,
   with73Extension,
-  type DownloadProgress,
   type PublicMcResourceCommentItem,
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
@@ -31,6 +30,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { useDownloadStore } from '@/stores/download'
 import { useToast } from '@/composables/useToast'
+import { useResourceDownload } from '@/composables/useResourceDownload'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
@@ -49,6 +49,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const downloadStore = useDownloadStore()
+const { triggerDownload } = useResourceDownload()
 const { showToast } = useToast()
 
 const loading = ref(false)
@@ -378,51 +379,6 @@ function formatUpdatedDate(value: string): string {
     month: '2-digit',
     day: '2-digit',
   })
-}
-
-async function triggerDownload(
-  run: (onProgress: (progress: DownloadProgress) => void) => Promise<{ blob: Blob; fileName: string }>,
-  fileName: string,
-) {
-  const downloadFileName = with73Extension(fileName)
-  downloadStore.start(downloadFileName)
-  try {
-    const { blob, fileName: resolvedFileName } = await run((progress) => {
-      // 注意：这里不能用 resolvedFileName（它在 await 完成前处于 TDZ），
-      // 必须使用外层已初始化的 fileName。
-      downloadStore.progress(progress.percent, progress.loaded, progress.total)
-    })
-
-    const objectUrl = URL.createObjectURL(blob)
-    try {
-      const link = document.createElement('a')
-      link.href = objectUrl
-      // 优先使用从资源 URL 还原出的真实文件名（稳定，不依赖 CORS 暴露 Content-Disposition）；
-      // 服务器 Content-Disposition 解析结果仅作为兜底，避免读不到响应头时回退成 resource-{id}-v{version_id}.73。
-      const finalFileName = resolveResourceDownloadFileName(fileName, resolvedFileName)
-      link.download = with73Extension(finalFileName)
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    } finally {
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
-    }
-  } catch (error) {
-    if (error instanceof HttpError && error.status === 401) {
-      auth.logout()
-      const isHistoryMode = import.meta.env.VITE_ROUTER_MODE === 'history'
-      const normalizedPath = window.location.pathname.endsWith('/')
-        ? window.location.pathname
-        : `${window.location.pathname}/`
-      const target = isHistoryMode ? normalizedPath : `${normalizedPath}#/`
-      window.location.replace(target)
-      throw new Error('未登录或登录已过期，请重新登录')
-    }
-
-    throw error
-  } finally {
-    downloadStore.finish()
-  }
 }
 
 async function openResourceFile() {

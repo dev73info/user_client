@@ -17,7 +17,7 @@ export type RequirementItem = {
   requirement_id: string
   bound_resource_id?: number | null
   bound_resource_version_count?: number | null
-  resource_visibility?: 'public' | 'private' | null
+  resource_visibility?: 'public' | 'review' | 'private' | null
   created_time: string
   creator: string
   title: string

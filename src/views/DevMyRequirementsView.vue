@@ -257,7 +257,11 @@ function resourceVisibilityLabel(item: RequirementItem): string {
     return '未关联资源'
   }
 
-  return item.resource_visibility === 'public' ? '资源已公开' : '资源私有中'
+  if (item.resource_visibility === 'public') {
+    return '资源已公开'
+  }
+
+  return item.resource_visibility === 'review' ? '资源审核中' : '资源私有中'
 }
 
 function openConversation(item: RequirementItem) {

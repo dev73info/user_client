@@ -764,7 +764,7 @@ async function loadRequirementConversations() {
   }
 }
 
-function currentResourceVisibility(item: RequirementItem): RequirementResourceVisibility | null {
+function currentResourceVisibility(item: RequirementItem): RequirementItem['resource_visibility'] {
   return item.resource_visibility ?? null
 }
 
@@ -804,7 +804,12 @@ function resourceVersionDeleteReviewHint(item: RequirementItem) {
 }
 
 function formatResourceVisibility(item: RequirementItem) {
-  return currentResourceVisibility(item) === 'public' ? '资源已公开' : '资源私有中'
+  const visibility = currentResourceVisibility(item)
+  if (visibility === 'public') {
+    return '资源已公开'
+  }
+
+  return visibility === 'review' ? '资源审核中' : '资源私有中'
 }
 
 function requirementSubscriptionLabel(item: RequirementItem) {
@@ -816,6 +821,10 @@ function nextResourceVisibility(item: RequirementItem): RequirementResourceVisib
 }
 
 function toggleResourceVisibilityLabel(item: RequirementItem) {
+  if (currentResourceVisibility(item) === 'review') {
+    return '审核中'
+  }
+
   return nextResourceVisibility(item) === 'public' ? '设为公开' : '设为私有'
 }
 
@@ -1266,7 +1275,10 @@ async function toggleRequirementResourceVisibility(item: RequirementItem) {
   resourceVisibilityLoadingId.value = item.requirement_id
   try {
     await updateRequirementResourceVisibilityApi(auth.token, item.requirement_id, { visibility })
-    showToast(visibility === 'public' ? '关联资源已设为公开' : '关联资源已设为私有', 'success')
+    showToast(
+      visibility === 'public' ? '关联资源已提交公开审核' : '关联资源已设为私有',
+      'success',
+    )
     await loadMyRequirements()
   } catch (err) {
     showToast(err instanceof Error ? err.message : '更新资源可见性失败', 'error')
@@ -2041,7 +2053,8 @@ watch(
               </button>
               <button v-if="hasBoundResource(item) && canToggleRequirementResourceVisibility(item)"
                 class="ghost small action-switch" :class="{ 'is-on': currentResourceVisibility(item) === 'public' }"
-                type="button" :disabled="resourceVisibilityLoadingId === item.requirement_id"
+                type="button"
+                :disabled="resourceVisibilityLoadingId === item.requirement_id || currentResourceVisibility(item) === 'review'"
                 @click.stop="toggleRequirementResourceVisibility(item)">
                 {{
                   resourceVisibilityLoadingId === item.requirement_id

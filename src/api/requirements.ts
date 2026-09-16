@@ -67,7 +67,7 @@ export type RequirementItem = {
   subscribe_status_change: boolean
   bound_resource_id?: number | null
   bound_resource_version_count?: number | null
-  resource_visibility?: 'public' | 'private' | null
+  resource_visibility?: 'public' | 'review' | 'private' | null
   resource_version_delete_request_id?: number | null
   resource_version_delete_request_version?: string | null
   resource_version_delete_request_status?: 'pending' | 'rejected' | null
