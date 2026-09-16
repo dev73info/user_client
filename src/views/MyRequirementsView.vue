@@ -603,14 +603,6 @@ function hasBoundResource(item: RequirementItem) {
   return item.bound_resource_id != null
 }
 
-function isRequirementCompleted(item: RequirementItem) {
-  return item.status === 'completed'
-}
-
-function canOpenConversation(item: RequirementItem) {
-  return hasBoundResource(item) && !isRequirementCompleted(item)
-}
-
 function openConversation(item: RequirementItem) {
   conversationRequirement.value = item
   conversationVisible.value = true
@@ -2046,7 +2038,7 @@ watch(
                     : toggleResourceVisibilityLabel(item)
                 }}
               </button>
-              <button v-if="canOpenConversation(item)" class="ghost small" type="button"
+              <button v-if="hasBoundResource(item)" class="ghost small" type="button"
                 @click.stop="openConversation(item)">
                 {{ conversationButtonLabel(item) }}
               </button>

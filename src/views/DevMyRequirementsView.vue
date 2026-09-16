@@ -261,19 +261,8 @@ function resourceVisibilityLabel(item: RequirementItem): string {
 }
 
 function openConversation(item: RequirementItem) {
-  if (!canOpenConversation(item)) {
-    return
-  }
   conversationRequirement.value = item
   conversationVisible.value = true
-}
-
-function isRequirementCompleted(item: RequirementItem) {
-  return item.status === 'completed'
-}
-
-function canOpenConversation(item: RequirementItem) {
-  return !isRequirementCompleted(item)
 }
 
 function closeConversation() {
@@ -292,9 +281,6 @@ function conversationForRequirement(item: RequirementItem) {
 }
 
 function conversationStatusLabel(item: RequirementItem) {
-  if (isRequirementCompleted(item)) {
-    return '需求已完成，会话已停用'
-  }
   const conversation = conversationForRequirement(item)
   if (!conversation) {
     return '打开后创建会话'
@@ -925,7 +911,7 @@ async function loadRequirementConversations() {
                 {{ contractButtonLabel(item) }}
               </el-button>
               <el-button type="primary" plain size="small" class="dev-requirement-card__conversation"
-                :disabled="!canOpenConversation(item)" @click="openConversation(item)">
+                @click="openConversation(item)">
                 <el-icon><ChatDotRound /></el-icon>
                 <span>会话</span>
               </el-button>

@@ -116,7 +116,7 @@ const { showToast } = useToast()
 const conversation = computed(() => detail.value?.conversation ?? null)
 const messages = computed(() => detail.value?.messages ?? [])
 const conversationClosed = computed(
-  () => conversation.value?.status === 'closed' || conversation.value?.requirement_status === 'completed',
+  () => conversation.value?.status === 'closed',
 )
 const canSend = computed(
   () =>
@@ -827,7 +827,7 @@ function handleBackdropClick() {
         </div>
 
         <footer class="conversation-modal__composer">
-          <p v-if="conversationClosed" class="conversation-modal__closed-tip">需求已完成，会话已停用</p>
+          <p v-if="conversationClosed" class="conversation-modal__closed-tip">会话已关闭</p>
           <div class="conversation-modal__composer-main">
             <div class="conversation-modal__tools">
               <RequirementConversationActions v-if="viewerRole" :token="token" :requirement-id="requirementId"

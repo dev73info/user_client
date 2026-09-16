@@ -130,7 +130,7 @@ type ProfileAvatarCropDragStart = {
 const amountCoupons = computed(() => coupons.value.filter((item) => item.discount_type === 'amount'))
 const discountCoupons = computed(() => coupons.value.filter((item) => item.discount_type === 'percent'))
 const conversationCards = computed(() => myRequirements.value.filter((item) => {
-  if (!canOpenConversation(item)) {
+  if (!hasBoundResource(item)) {
     return false
   }
 
@@ -295,14 +295,6 @@ function canResubmit(status: RequirementStatus) {
 
 function hasBoundResource(item: RequirementItem) {
   return item.bound_resource_id != null
-}
-
-function isRequirementCompleted(item: RequirementItem) {
-  return item.status === 'completed'
-}
-
-function canOpenConversation(item: RequirementItem) {
-  return hasBoundResource(item) && !isRequirementCompleted(item)
 }
 
 function openConversation(item: RequirementItem) {

@@ -63,10 +63,7 @@ const requirementById = computed(() =>
 )
 const conversationRequirementIds = computed(() => new Set(conversations.value.map((item) => item.requirement_id)))
 const activeConversations = computed(() =>
-  conversations.value.filter((item) => {
-    const requirement = requirementById.value[item.requirement_id]
-    return item.status === 'open' && item.requirement_status !== 'completed' && requirement?.status !== 'completed'
-  }),
+  conversations.value.filter((item) => item.status === 'open'),
 )
 const readyRequirements = computed(() =>
   requirements.value.filter((item) => hasBoundResource(item) && item.status !== 'completed'),
