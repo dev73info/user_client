@@ -497,7 +497,7 @@ async function scrollToHash() {
       @click="closeMobileMenu" />
 
     <aside class="user-workbench__aside" aria-label="统一工作台菜单">
-      <el-scrollbar class="app-scrollbar user-workbench__aside-scrollbar" max-height="calc(100vh - 120px)">
+      <el-scrollbar class="app-scrollbar user-workbench__aside-scrollbar" max-height="calc(100vh - var(--portal-header-footprint, 98px) - 22px)">
         <div class="user-workbench__aside-inner">
           <div class="user-workbench__brand">
             <!-- 侧边栏标题用普通标题样式（原版是有浅蓝底的药丸标签），模式切换按钮靠右 -->
@@ -674,9 +674,11 @@ async function scrollToHash() {
 
 .user-workbench__aside {
   position: sticky;
-  top: 98px;
+  /* 顶栏占位高度由顶栏自己公布（--portal-header-footprint，随断点变化）：
+     侧边栏按它做 sticky 偏移与高度，长短页面之间才会停在同一个位置，不再上下跳。 */
+  top: var(--portal-header-footprint, 98px);
   align-self: start;
-  height: calc(100vh - 120px);
+  height: calc(100vh - var(--portal-header-footprint, 98px) - 22px);
   overflow: hidden;
   padding: 0;
   border-radius: 22px;
@@ -1142,7 +1144,9 @@ async function scrollToHash() {
 
 .user-workbench__head {
   position: sticky;
-  top: 98px;
+  /* 与侧边栏同一套偏移：写死 98px 会让它在长页面被 sticky 往下推 7px、短页面推不动，
+     于是和侧边栏一起在长短页面之间上下跳。 */
+  top: var(--portal-header-footprint, 98px);
   z-index: 1;
   align-self: start;
   display: flex;

@@ -151,12 +151,33 @@ watch(
   { immediate: true },
 )
 
+const headerRef = ref<HTMLElement | null>(null)
+let headerObserver: ResizeObserver | undefined
+
+// 顶栏自身是 sticky 的，高度随断点变化（单行 / 双行）。把它的实际占位高度（含上下外边距）
+// 挂到根元素上，供需要贴在顶栏下方的 sticky 元素取用：工作台侧边栏与内容页头都用它当
+// sticky 偏移，这样在长短页面之间切换时两者都停在同一位置，不会上下跳。
+function syncHeaderFootprint() {
+  const header = headerRef.value
+  if (!header) return
+  const styles = getComputedStyle(header)
+  const footprint = header.offsetHeight === 0
+    ? 0
+    : Math.round(header.offsetHeight + parseFloat(styles.marginTop) + parseFloat(styles.marginBottom))
+  document.documentElement.style.setProperty('--portal-header-footprint', `${footprint}px`)
+}
+
 onMounted(() => {
   document.addEventListener('click', closeSubscriptionMenu)
   document.addEventListener('click', closeSearchScopeMenu)
   document.addEventListener('click', closeUserMenu)
   document.addEventListener('keydown', handleSubscriptionMenuKeydown)
   document.addEventListener('keydown', handleSearchScopeMenuKeydown)
+  syncHeaderFootprint()
+  if (typeof ResizeObserver !== 'undefined' && headerRef.value) {
+    headerObserver = new ResizeObserver(syncHeaderFootprint)
+    headerObserver.observe(headerRef.value)
+  }
 })
 
 onBeforeUnmount(() => {
@@ -165,6 +186,8 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', closeUserMenu)
   document.removeEventListener('keydown', handleSubscriptionMenuKeydown)
   document.removeEventListener('keydown', handleSearchScopeMenuKeydown)
+  headerObserver?.disconnect()
+  headerObserver = undefined
 })
 
 function resetSubscriptionState() {
@@ -520,7 +543,7 @@ function finishSearchComposition(event: CompositionEvent) {
 </script>
 
 <template>
-  <header class="portal-header" :class="{
+  <header ref="headerRef" class="portal-header" :class="{
     'portal-header--dev': isDeveloperArea,
   }">
     <RouterLink class="portal-brand" :to="{ name: 'home' }">
