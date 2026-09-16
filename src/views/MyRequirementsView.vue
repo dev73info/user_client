@@ -628,9 +628,13 @@ function canOpenContractSign(item: RequirementItem) {
   return Boolean(signingStatusForRequirement(item)?.has_contract)
 }
 
+// 我方已签时该按钮只是「查看合同」，未签时是「签署合同」，前者按查看类弱化显示。
+function isContractButtonViewOnly(item: RequirementItem) {
+  return Boolean(signingStatusForRequirement(item)?.party_a_signed)
+}
+
 function contractButtonLabel(item: RequirementItem) {
-  const status = signingStatusForRequirement(item)
-  return status?.party_a_signed ? '查看合同' : '签署合同'
+  return isContractButtonViewOnly(item) ? '查看合同' : '签署合同'
 }
 
 function contractStatusHint(item: RequirementItem) {
@@ -2020,7 +2024,8 @@ watch(
                 @click.stop="openUnbindRequest(item)">
                 申请解除
               </button>
-              <button class="ghost small" type="button"
+              <button class="ghost small action-switch" type="button"
+                :class="{ 'is-on': item.subscribe_status_change }"
                 :disabled="requirementSubscriptionLoadingId === item.requirement_id"
                 @click.stop="toggleRequirementSubscription(item)">
                 {{
@@ -2030,7 +2035,8 @@ watch(
                 }}
               </button>
               <button v-if="hasBoundResource(item) && canToggleRequirementResourceVisibility(item)"
-                class="ghost small" type="button" :disabled="resourceVisibilityLoadingId === item.requirement_id"
+                class="ghost small action-switch" :class="{ 'is-on': currentResourceVisibility(item) === 'public' }"
+                type="button" :disabled="resourceVisibilityLoadingId === item.requirement_id"
                 @click.stop="toggleRequirementResourceVisibility(item)">
                 {{
                   resourceVisibilityLoadingId === item.requirement_id
@@ -2038,7 +2044,7 @@ watch(
                     : toggleResourceVisibilityLabel(item)
                 }}
               </button>
-              <button v-if="hasBoundResource(item)" class="ghost small" type="button"
+              <button v-if="hasBoundResource(item)" class="ghost small action-quiet" type="button"
                 @click.stop="openConversation(item)">
                 {{ conversationButtonLabel(item) }}
               </button>
@@ -2048,6 +2054,7 @@ watch(
                 {{ contractCreatingId === item.requirement_id ? '发起中...' : '发起合同' }}
               </button>
               <button v-if="canOpenContractSign(item)" class="ghost small" type="button"
+                :class="{ 'action-quiet': isContractButtonViewOnly(item) }"
                 @click.stop="handleContractButtonClick(item)">
                 {{ contractButtonLabel(item) }}
               </button>
@@ -2067,15 +2074,15 @@ watch(
                 @click.stop="openRequirementEditModal(item)">
                 重新编辑
               </button>
-              <button v-if="canCancel(item)" class="ghost small" type="button"
+              <button v-if="canCancel(item)" class="ghost small danger-plain" type="button"
                 @click.stop="openCancelConfirm(item)">
                 取消需求
               </button>
-              <button v-else-if="canPay(item.status, item)" class="ghost small" type="button"
+              <button v-else-if="canPay(item.status, item)" class="ghost small action-primary" type="button"
                 @click.stop="openPayModal(item)">
                 支付
               </button>
-              <button v-else-if="canComment(item.status)" class="ghost small" type="button"
+              <button v-else-if="canComment(item.status)" class="ghost small action-primary" type="button"
                 @click.stop="openCommentModal(item)">
                 去评价
               </button>
