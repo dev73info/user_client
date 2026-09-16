@@ -633,7 +633,7 @@ async function scrollToHash() {
   position: sticky;
   top: 98px;
   align-self: start;
-  max-height: calc(100vh - 120px);
+  height: calc(100vh - 120px);
   overflow: hidden;
   padding: 0;
   border-radius: 22px;
@@ -1309,6 +1309,7 @@ async function scrollToHash() {
     left: 0;
     z-index: 80;
     width: min(84vw, 320px);
+    height: auto;
     max-height: none;
     border-radius: 0 22px 22px 0;
     transform: translateX(-104%);

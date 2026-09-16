@@ -398,15 +398,9 @@ const chips = computed<ActionChip[]>(() => {
   if (canUseBreach.value) {
     list.push({ key: 'breach', label: '终止合作', tone: 'danger', run: () => void openBreachDialog() })
   }
-  if (canProposeNegotiation.value || canRespondNegotiation.value) {
-    list.push({
-      key: 'negotiation',
-      label: '协商终止',
-      tone: 'primary',
-      run: () => void openBreachDialog(),
-    })
-  }
-
+  // 协商终止不另设入口：`canProposeNegotiation` / `canRespondNegotiation` 成立的前提是存在存活案件，
+  // 而存活案件本身就已经让上面的「终止合作」成立，两个 chip 会打开同一个弹窗。协商状态与
+  // 提议 / 同意 / 拒绝都在弹窗内展示（弹窗已是协商优先），所以这里再放一个入口纯属重复。
   return list
 })
 
@@ -739,11 +733,6 @@ async function submitNegotiationPropose() {
     )
     return
   }
-  if (!negotiationNote.value.trim()) {
-    showToast('请填写协商说明', 'warning')
-    return
-  }
-
   negotiationActing.value = true
   try {
     breachCase.value = await proposeAdapayBreachNegotiation(
@@ -992,7 +981,9 @@ function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
             定金退还 ¥{{ activeBreachCase.negotiation.depositRefundAmountCny }} · 尾款退还 ¥{{
               activeBreachCase.negotiation.finalRefundAmountCny }}
           </p>
-          <p class="conversation-actions__line"><strong>提议说明：</strong>{{ activeBreachCase.negotiation.note }}</p>
+          <p v-if="activeBreachCase.negotiation.note" class="conversation-actions__line">
+            <strong>提议说明：</strong>{{ activeBreachCase.negotiation.note }}
+          </p>
           <p v-if="activeBreachCase.negotiation.respondedAt" class="conversation-actions__line">
             <strong>处理结果：</strong>{{ activeBreachCase.negotiation.status === 'accepted' ? '已同意' : '已拒绝' }}
             （{{ formatCnDateTime(activeBreachCase.negotiation.respondedAt) }}）{{
@@ -1013,9 +1004,9 @@ function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
           </label>
           <p v-if="!finalRefundable" class="conversation-actions__tip">尾款尚未缴纳，尾款退还金额只能为 0</p>
           <label class="conversation-actions__field">
-            <span>协商说明</span>
+            <span>说明（选填，供平台人工判定参考）</span>
             <textarea v-model="negotiationNote" rows="2" maxlength="1000"
-              placeholder="双方约定终止合作的原因与额度依据"></textarea>
+              placeholder="可留空。写明额度依据；内容双方与平台客服均可见"></textarea>
           </label>
         </template>
       </template>

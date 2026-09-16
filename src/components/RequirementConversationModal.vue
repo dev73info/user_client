@@ -888,9 +888,9 @@ function handleBackdropClick() {
 
 .conversation-modal-wrap--inline .conversation-modal {
   width: 100%;
-  height: min(860px, calc(100dvh - 92px));
-  min-height: min(440px, calc(100dvh - 92px));
-  max-height: calc(100dvh - 92px);
+  height: min(860px, calc(100dvh - 109px));
+  min-height: min(440px, calc(100dvh - 109px));
+  max-height: calc(100dvh - 109px);
   border-radius: 16px;
   box-shadow: 0 8px 20px rgba(76, 103, 172, 0.06);
 }
@@ -1181,9 +1181,9 @@ function handleBackdropClick() {
 }
 
 .conversation-modal-wrap--inline .conversation-modal {
-  height: min(860px, calc(100dvh - 92px));
-  min-height: min(440px, calc(100dvh - 92px));
-  max-height: calc(100dvh - 92px);
+  height: min(860px, calc(100dvh - 109px));
+  min-height: min(440px, calc(100dvh - 109px));
+  max-height: calc(100dvh - 109px);
   box-shadow: 0 10px 28px rgba(76, 103, 172, 0.08);
 }
 

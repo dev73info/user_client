@@ -312,6 +312,7 @@ export async function withdrawAdapayBreach(
 /**
  * 发起「协商终止合作」的提议：定金与尾款退还额度由提议方给出（单位：分）。
  * 两个额度都可以省略，省略即表示该项全额退还甲方。
+ * 说明（note）选填，留空即不记；内容双方与平台客服均可见，供人工判定时参考。
  */
 export async function proposeAdapayBreachNegotiation(
   token: string,
