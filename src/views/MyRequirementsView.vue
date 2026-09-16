@@ -658,9 +658,19 @@ function contractStatusHint(item: RequirementItem) {
   }
   const status = signingStatusForRequirement(item)
   if (!status?.has_contract) return ''
-  if (status.party_a_signed && status.party_b_signed) return '合同已签署，可支付定金'
-  if (status.party_a_signed) return '等待开发者签署合同，双方签完后可支付定金'
-  if (status.party_b_signed) return '待您签署合同，签完后可支付定金'
+
+  // 「可支付定金」只在还停在待付定金这一步时才成立。合同双方签完后是既成事实，
+  // 需求还在开发中 / 待付尾款 / 已完成时再挂着「合同已签署」只是噪音，直接不显示。
+  const awaitingDeposit = item.status === 'pending_deposit'
+  if (status.party_a_signed && status.party_b_signed) {
+    return awaitingDeposit ? '合同已签署，可支付定金' : ''
+  }
+  if (status.party_a_signed) {
+    return awaitingDeposit ? '等待开发者签署合同，双方签完后可支付定金' : '等待开发者签署合同'
+  }
+  if (status.party_b_signed) {
+    return awaitingDeposit ? '待您签署合同，签完后可支付定金' : '待您签署合同'
+  }
   return '客户和开发者均可进入双方合同签署'
 }
 
@@ -2047,10 +2057,6 @@ watch(
                 <small v-if="contractStatusHint(item)" class="requirement-note">{{
                   contractStatusHint(item)
                   }}</small>
-                <small v-if="hasBoundResource(item) && !canToggleRequirementResourceVisibility(item)"
-                  class="requirement-note">切换资源公开状态需在{{
-                    isSelfManagedRequirement(item) ? '需求完成后' : '已付尾款后'
-                  }}开放</small>
                 <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">
                   <strong>待审核删除版本：</strong>
                   <span class="pending-review-pill">
@@ -2068,13 +2074,6 @@ watch(
                   item.resource_version_delete_request_status === 'rejected' &&
                   item.resource_version_delete_review_note
                 " class="requirement-note">{{ resourceVersionDeleteReviewHint(item) }}</small>
-                <small v-if="
-                  item.status === 'in_development' &&
-                  hasBoundResource(item) &&
-                  publishedVersionCount(item) < 1
-                " class="requirement-note">开发者发布至少 1 个版本后，才能{{
-                  isSelfManagedRequirement(item) ? '确认完成' : '结束开发并支付尾款'
-                  }}</small>
                 <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{
                   item.review_note }}</small>
                 <small v-if="hasPendingDeveloperUnbindRequest(item)" class="requirement-note">
