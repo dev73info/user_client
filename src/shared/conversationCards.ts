@@ -79,10 +79,10 @@ export function conversationCardMeta(
       return {
         title: '收到交付版本',
         description: '开发者已提交交付版本，请验收后支付尾款。',
-        // 需求方这边直接给交付产物的下载入口（不跳页）；开发者是交付方，只需回自己的工作台。
-        actionLabel: role === 'developer' ? '去我的需求' : '下载交付产物',
+        // 交付是开发者自己提交的，这张卡片对开发者只是通知，不给按钮；
+        // 需求方这边直接给交付产物的下载入口（不跳页）。
+        actionLabel: role === 'developer' ? undefined : '下载交付产物',
         downloadDelivery: role !== 'developer',
-        to: requirementListRoute,
       }
     case 'acceptance_passed':
       return {

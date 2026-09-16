@@ -35,8 +35,9 @@ describe('conversation status cards', () => {
     expect(customer?.actionLabel).toBe('下载交付产物')
     expect(customer?.downloadDelivery).toBe(true)
 
+    // 交付是开发者自己提交的，这张卡片对开发者只是通知，没有可做的动作。
     const developer = meta('delivery_submitted', 'developer', 'in_development')
-    expect(developer?.actionLabel).toBe('去我的需求')
+    expect(developer?.actionLabel).toBeUndefined()
     expect(developer?.downloadDelivery).toBe(false)
   })
 
