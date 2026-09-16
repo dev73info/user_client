@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Box, Close, Connection, DataAnalysis, MagicStick, Menu as MenuIcon, Service, UserFilled } from '@element-plus/icons-vue'
+import { ArrowDown, Box, Close, Connection, DataAnalysis, Menu as MenuIcon, Service, Switch as SwitchIcon, UserFilled } from '@element-plus/icons-vue'
 
 import { listRequirementConversations, type RequirementConversation } from '@/api/conversations'
 import { listUserInvitations } from '@/api/team'
@@ -57,6 +57,20 @@ const ticketsItem: WorkbenchMenuItem = {
   description: '提交问题与查看回复',
 }
 
+// 开发者工作台菜单：侧边栏切到开发者模式时展示（此前是底部「开发者工作台」折叠组的内容）。
+const devWorkbenchItems: WorkbenchMenuItem[] = [
+  {
+    label: '我的资源项目',
+    name: 'dev-resource-list',
+    description: '管理主页、版本与资源状态',
+    activeNames: ['dev-resource-homepage-edit', 'dev-resource-versions'],
+  },
+  { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求' },
+  { label: '我的接单', name: 'dev-my-requirements', description: '查看已关联需求和会话' },
+  { label: '收益钱包', name: 'dev-wallet', description: '查看余额与保证金信息' },
+  { label: '交付记录', name: 'dev-wallet-releases', description: '查看资源交付与收入' },
+]
+
 const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
   {
     key: 'collaboration',
@@ -92,23 +106,6 @@ const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
     items: [
       { label: '我的团队', name: 'workbench-teams', description: '查看和管理团队' },
       { label: '资源项目', name: 'workbench-team-resources', description: '管理团队共享资源项目' },
-    ],
-  },
-  {
-    key: 'developer-resources',
-    label: '开发者工作台',
-    icon: MagicStick,
-    items: [
-      {
-        label: '我的资源项目',
-        name: 'dev-resource-list',
-        description: '管理主页、版本与资源状态',
-        activeNames: ['dev-resource-homepage-edit', 'dev-resource-versions'],
-      },
-      { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求' },
-      { label: '我的接单', name: 'dev-my-requirements', description: '查看已关联需求和会话' },
-      { label: '收益钱包', name: 'dev-wallet', description: '查看余额与保证金信息' },
-      { label: '交付记录', name: 'dev-wallet-releases', description: '查看资源交付与收入' },
     ],
   },
 ])
@@ -163,6 +160,14 @@ const isMergedHeaderPage = computed(() =>
 const showWorkbenchHeader = computed(
   () => !isWorkbenchOverview.value && !isMessageDetailPage.value && !isMergedHeaderPage.value,
 )
+
+// 工作台模式跟随路由：命中 devArea 路由时侧边栏整体换成开发者菜单，回到用户端页面即自动切回。
+const isDevWorkbenchMode = computed(
+  () => route.matched.some((record) => Boolean(record.meta.devArea)),
+)
+
+// 开发者模式下侧边栏不渲染用户菜单分组。
+const visibleMenuGroups = computed(() => (isDevWorkbenchMode.value ? [] : menuGroups.value))
 
 watch(
   [() => auth.token, () => route.fullPath],
@@ -228,6 +233,12 @@ function goBack() {
   } else {
     router.push({ name: 'home' })
   }
+}
+
+// 切换工作台：用户模式进开发者工作台首页，开发者模式回到用户工作台总览。
+function switchWorkbenchMode() {
+  mobileMenuOpen.value = false
+  void router.push(isDevWorkbenchMode.value ? { name: overviewItem.name } : { name: 'dev-resource-list' })
 }
 
 function conversationTo(item: RequirementConversation) {
@@ -488,7 +499,7 @@ async function scrollToHash() {
         <div class="user-workbench__aside-inner">
           <div class="user-workbench__brand">
             <div>
-              <strong>工作台</strong>
+              <strong>{{ isDevWorkbenchMode ? '开发者工作台' : '工作台' }}</strong>
             </div>
             <button class="user-workbench__drawer-close" type="button" aria-label="关闭工作台菜单" @click="closeMobileMenu">
               <el-icon>
@@ -498,8 +509,33 @@ async function scrollToHash() {
           </div>
 
           <nav class="user-workbench__menu">
-            <p class="user-workbench__menu-section">我的事项</p>
-            <RouterLink class="user-workbench__menu-link user-workbench__menu-link--root"
+            <button class="user-workbench__menu-link user-workbench__menu-link--root user-workbench__mode-switch"
+              type="button" @click="switchWorkbenchMode">
+              <span class="user-workbench__menu-icon">
+                <el-icon>
+                  <SwitchIcon />
+                </el-icon>
+              </span>
+              <span>
+                <strong>切换工作台</strong>
+                <small>{{ isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台' }}</small>
+              </span>
+            </button>
+
+            <template v-if="isDevWorkbenchMode">
+              <p class="user-workbench__menu-section">开发者事项</p>
+              <div class="user-workbench__submenu user-workbench__submenu--flat">
+                <RouterLink v-for="item in devWorkbenchItems" :key="item.name"
+                  class="user-workbench__submenu-link" :class="{ active: isMenuItemActive(item) }"
+                  :to="menuItemTo(item)" @click="closeMobileMenu">
+                  <span>{{ item.label }}</span>
+                </RouterLink>
+              </div>
+            </template>
+
+            <!-- 开发者模式下整块换成开发者菜单，用户菜单不出现在侧边栏 -->
+            <p v-if="!isDevWorkbenchMode" class="user-workbench__menu-section">我的事项</p>
+            <RouterLink v-if="!isDevWorkbenchMode" class="user-workbench__menu-link user-workbench__menu-link--root"
               :class="{ active: isOverviewActive() }" :to="menuItemTo(overviewItem)" @click="closeMobileMenu">
               <span class="user-workbench__menu-icon">
                 <el-icon>
@@ -511,7 +547,7 @@ async function scrollToHash() {
               </span>
             </RouterLink>
 
-            <section v-for="group in menuGroups" :key="group.key" class="user-workbench__menu-group"
+            <section v-for="group in visibleMenuGroups" :key="group.key" class="user-workbench__menu-group"
               :class="{ active: isGroupActive(group), open: isGroupOpen(group) }">
               <p v-if="group.key !== 'collaboration' && group.key !== 'account'" class="user-workbench__menu-section">{{ group.label }}</p>
               <button class="user-workbench__menu-group-head" type="button" :aria-expanded="isGroupOpen(group)"
@@ -565,7 +601,8 @@ async function scrollToHash() {
               </Transition>
             </section>
 
-            <section class="user-workbench__menu-group user-workbench__menu-group--standalone">
+            <section v-if="!isDevWorkbenchMode"
+              class="user-workbench__menu-group user-workbench__menu-group--standalone">
               <RouterLink class="user-workbench__menu-link user-workbench__menu-link--root"
                 :class="{ active: isMenuItemActive(ticketsItem) }" :to="menuItemTo(ticketsItem)"
                 @click="closeMobileMenu">
@@ -593,7 +630,7 @@ async function scrollToHash() {
           <span>菜单</span>
         </button>
         <div>
-          <strong>工作台</strong>
+          <strong>{{ isDevWorkbenchMode ? '开发者工作台' : '工作台' }}</strong>
           <span>{{ currentTitle }}</span>
         </div>
       </div>
@@ -872,6 +909,20 @@ async function scrollToHash() {
   margin-left: 38px;
   padding-left: 10px;
   border-left: 1px solid rgba(209, 220, 243, 0.95);
+}
+
+/* 工作台模式切换：整条侧边栏在用户菜单与开发者菜单之间切换 */
+.user-workbench__mode-switch {
+  margin-bottom: 4px;
+  border: 1px solid rgba(191, 219, 254, 0.9);
+  background: rgba(239, 246, 255, 0.6);
+}
+
+/* 开发者模式下的扁平菜单：与顶部按钮左对齐，不显示子级竖线 */
+.user-workbench__submenu--flat {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
 }
 
 .user-workbench__menu-group--standalone {
