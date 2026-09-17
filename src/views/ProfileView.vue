@@ -290,7 +290,8 @@ function canRequestFinalPayment(item: RequirementItem) {
 }
 
 function canResubmit(status: RequirementStatus) {
-  return status === 'rejected'
+  // 与后端一致：被驳回的需求改完可以再提；过审后撤回（已取消）的需求同样保留着，也能改完重新提交审核。
+  return status === 'rejected' || status === 'cancelled'
 }
 
 function hasBoundResource(item: RequirementItem) {

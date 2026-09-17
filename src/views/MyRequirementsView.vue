@@ -413,18 +413,29 @@ function requirementFinalActionLabel(item: RequirementItem) {
 }
 
 function canResubmit(status: RequirementStatus) {
-  return status === 'rejected'
+  // 与后端一致：被驳回的需求改完可以再提；过审后撤回（已取消）的需求同样保留着，也能改完重新提交审核。
+  return status === 'rejected' || status === 'cancelled'
 }
 
 function canCancel(item: RequirementItem) {
   // 与后端一致：无活跃接单（开发者还没接单）且处于可取消状态；
   // 已产生资金/违约记录的会转为「已取消」终态。
+  // 自管模式过审即「待开发者接单」（deposit_paid），没有合同也没有定金，同样允许撤回。
   return (
     !hasBoundResource(item) &&
     (item.status === 'pending_review' ||
       item.status === 'rejected' ||
-      item.status === 'pending_deposit')
+      item.status === 'pending_deposit' ||
+      (isSelfManagedRequirement(item) && item.status === 'deposit_paid'))
   )
+}
+
+/** 取消确认文案：过审进过大厅的需求保留为「已取消」终态（可以改完重新提交审核），纯审核阶段的才真删除。 */
+function cancelConfirmHint(item: RequirementItem) {
+  if (item.status === 'pending_deposit' || item.status === 'deposit_paid') {
+    return '取消后该需求单保留为「已取消」，可以重新编辑后再提交审核。仅未被开发者接取的需求可以取消。'
+  }
+  return '取消后该需求单将被删除且无法恢复。仅未被开发者接取的需求可以取消。'
 }
 
 function canRequestUnbindAsCreator(item: RequirementItem) {
@@ -1216,6 +1227,12 @@ function openRequirementEditModal(item: RequirementItem) {
   editAcceptance.value = item.acceptance_criteria ?? ''
   editPaymentMode.value = item.payment_mode
   editVisible.value = true
+}
+
+/** 详情面板里直接改完重提：先收起详情（?view= 也会一并清掉），再打开编辑弹窗。 */
+function resubmitFromDetail(item: RequirementItem) {
+  closeRequirementDetail()
+  openRequirementEditModal(item)
 }
 
 function publishRedirectTarget() {
@@ -2401,7 +2418,11 @@ watch(
               </button>
             </template>
             <template v-else>
-              <button v-if="canPay(detailRequirement.status, detailRequirement)"
+              <button v-if="canResubmit(detailRequirement.status)" class="my-requirement-detail__primary" type="button"
+                @click="resubmitFromDetail(detailRequirement)">
+                重新编辑并提交审核
+              </button>
+              <button v-else-if="canPay(detailRequirement.status, detailRequirement)"
                 class="my-requirement-detail__primary" type="button"
                 @click="openPayModal(detailRequirement)">
                 支付{{ detailRequirement.status === 'pending_final' ? '尾款' : '定金' }}
@@ -2504,7 +2525,7 @@ watch(
         <p class="pay-line">
           <strong>需求编号：</strong>{{ cancelConfirmTarget.requirement_id }}
         </p>
-        <p class="tip">取消后该需求单将被删除且无法恢复。仅未被开发者接取的需求可以取消。</p>
+        <p class="tip">{{ cancelConfirmHint(cancelConfirmTarget) }}</p>
 
         <div class="actions">
           <button class="ghost" type="button" :disabled="cancelLoading" @click="closeCancelConfirm">
