@@ -264,11 +264,13 @@ const pendingNegotiation = computed(() => {
   return negotiation?.status === 'pending' ? negotiation : null
 })
 
+/** 可以发起协商：案件在协商窗口内，且没有「对方发起的」未决提议——我自己那条可以改额度重提
+ *  （后端会把旧提议就地作废），对方持有的未决提议顶不掉，只能先表态。 */
 const canProposeNegotiation = computed(
   () =>
     activeBreachCase.value != null &&
     NEGOTIATION_OPEN_STATUSES.includes(activeBreachCase.value.status) &&
-    pendingNegotiation.value == null,
+    (pendingNegotiation.value == null || pendingNegotiation.value.initiatedBy === props.role),
 )
 /** 承诺方是对方：未决提议由对方发起时才轮到我同意 / 拒绝（自己不能替对方拍板）。 */
 const canRespondNegotiation = computed(
@@ -285,13 +287,13 @@ const negotiationFinalCapYuan = computed(() => {
 })
 
 const negotiationHint = computed(() => {
-  if (canRespondNegotiation.value) {
-    return '对方已发起协商终止合作，同意后即按该额度退款结案'
+  const pending = pendingNegotiation.value
+  if (!pending) {
+    return ''
   }
-  if (pendingNegotiation.value) {
-    return '协商提议已提交，等待对方同意或拒绝；被拒绝后可重新发起'
-  }
-  return ''
+  return pending.initiatedBy === props.role
+    ? '协商提议已提交，等待对方同意或拒绝；改额度可直接重新发起'
+    : '对方已发起协商终止合作，同意后即按该额度退款结案'
 })
 
 const payStage = computed<'deposit' | 'final'>(() =>
@@ -665,11 +667,17 @@ async function openBreachDialog() {
   resetNegotiationForm()
 }
 
-/** 协商表单以「全额退还甲方」为默认值，与后端缺省口径一致；费用上限随案件与需求状态变化。 */
+/** 协商表单默认「全额退还甲方」，与后端缺省口径一致；我自己那条未决提议按原额度回填，
+ *  免得改主意重提时顺手把额度改成默认的全额。费用上限随案件与需求状态变化。 */
 function resetNegotiationForm() {
-  negotiationDepositYuan.value = String(negotiationDepositCapYuan.value)
-  negotiationFinalYuan.value = String(negotiationFinalCapYuan.value)
-  negotiationNote.value = ''
+  const mine = pendingNegotiation.value?.initiatedBy === props.role ? pendingNegotiation.value : null
+  negotiationDepositYuan.value = String(
+    mine ? mine.depositRefundAmountFen / 100 : negotiationDepositCapYuan.value,
+  )
+  negotiationFinalYuan.value = String(
+    mine ? mine.finalRefundAmountFen / 100 : negotiationFinalCapYuan.value,
+  )
+  negotiationNote.value = mine ? mine.note : ''
 }
 
 async function submitNegotiationPropose() {
