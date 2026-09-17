@@ -2289,6 +2289,14 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div class="realname-faceid-panel__actions">
+            <el-button class="realname-plain-btn" @click="openWechatFaceidPage">
+              <el-icon>
+                <Promotion />
+              </el-icon>
+              {{ isMobile ? '打开认证页面完成核身' : '扫码不便？点此打开认证页面' }}
+            </el-button>
+          </div>
+          <div class="realname-faceid-panel__actions">
             <el-button type="danger" plain :loading="withdrawing" @click="handleWithdraw"
               >撤回认证</el-button
             >
@@ -2302,12 +2310,6 @@ onBeforeUnmount(() => {
                 <RefreshRight />
               </el-icon>
               查询结果
-            </el-button>
-            <el-button class="realname-plain-btn" @click="openWechatFaceidPage">
-              <el-icon>
-                <Promotion />
-              </el-icon>
-              {{ isMobile ? '打开认证页面完成核身' : '扫码不便？点此打开认证页面' }}
             </el-button>
           </div>
           <p class="realname-faceid-panel__hint">
