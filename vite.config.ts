@@ -34,7 +34,12 @@ const distHtaccessPath = resolve(import.meta.dirname, 'dist/.htaccess')
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    vue(),
+    vue({
+      // 模板里的绝对路径都是 public/ 下的静态资源（如 /icons/alipay.png），
+      // 它们本来就由运行时的根路径直接提供，不需要 Vite 在构建期改写成模块 import。
+      // 保持原样还能避免 vitest 在处理这类 import 时解析失败，导致引用这些组件的用例整包加载不起来。
+      template: { transformAssetUrls: { includeAbsolute: false } },
+    }),
     wasm(),
     AutoImport({
       resolvers: [ElementPlusResolver({ importStyle: false })],
@@ -50,7 +55,10 @@ export default defineConfig({
         }
       },
     },
-    ...(process.env.NODE_ENV !== 'production' ? [vueDevTools()] : []),
+    // 「在编辑器中打开」默认走 `code`（VS Code）；本机用 Cursor，这里固定指向 cursor。
+    // 注意不要写成 process.env.LAUNCH_EDITOR ?? 'cursor'：该变量正是本选项回填到进程环境的，
+    // dev server 因配置变更原地重启时会读到上一次注入的 'code'，等于永远改不过来。
+    ...(process.env.NODE_ENV !== 'production' ? [vueDevTools({ launchEditor: 'cursor' })] : []),
   ],
   build: {
     chunkSizeWarningLimit: 1200,
