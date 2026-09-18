@@ -410,14 +410,14 @@ function canReportBreach(item: RequirementItem) {
     ['deposit_paid', 'in_development', 'pending_final', 'pending_settlement'].includes(item.status)
 }
 
-/** 售后入口：结单后打开 `AfterSalesModal`，案件列表、表态与撤回都在弹窗内。 */
+/** 售后入口：结单后打开 `AfterSalesModal`。开发者是乙方，只查看案件与表态，不能发起。 */
 function canOpenAfterSales(item: RequirementItem) {
   return item.status === 'completed' && item.payment_mode !== 'self_managed'
 }
 
 function openAfterSalesModal(item: RequirementItem) {
   if (!canOpenAfterSales(item)) {
-    showToast('只有已结单的需求可以发起售后', 'warning')
+    showToast('只有已结单的需求有售后入口', 'warning')
     return
   }
   afterSalesTarget.value = item
@@ -1138,6 +1138,7 @@ async function loadRequirementConversations() {
       :current-username="auth.username"
       :requirement-id="afterSalesTarget?.requirement_id ?? ''"
       :requirement-title="afterSalesTarget?.title ?? ''"
+      :can-open-case="false"
       @close="closeAfterSalesModal"
     />
 

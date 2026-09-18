@@ -2,9 +2,10 @@
 /**
  * 售后弹窗（结单后的唯一业务入口）。
  *
- * 需求方与开发者共用：双方都能发起售后、查看案件与历史、对对方的诉求表态；
- * 发起人自己只能撤回，不能给自己表态。所有状态守卫与后端一致，前端只做入口收敛，
- * 真正的判定仍在服务层。
+ * 需求方与开发者共用：发起售后只放行需求方（甲方）——资金出口只有「原路退还需求方尾款」
+ * 与「从开发者保证金扣划赔付需求方」两个方向，开发者发起没有能落地的诉求，因此开发者侧
+ * 只保留案件查看与「接受 / 不接受」表态（由调用方用 `canOpenCase` 关掉发起表单）。
+ * 所有状态守卫与后端一致，前端只做入口收敛，真正的判定仍在服务层。
  */
 import { computed, ref, watch } from 'vue'
 import {
@@ -25,6 +26,8 @@ const props = defineProps<{
   currentUsername: string
   requirementId: string
   requirementTitle: string
+  /** 当前登录人是否是本需求的需求方（甲方）：只有甲方能发起售后。 */
+  canOpenCase: boolean
 }>()
 
 const emit = defineEmits<{ close: [] }>()
@@ -131,7 +134,7 @@ async function refresh() {
 }
 
 async function submit() {
-  if (!props.token || !props.requirementId) {
+  if (!props.token || !props.requirementId || !props.canOpenCase) {
     return
   }
   if (!description.value.trim()) {
@@ -270,7 +273,7 @@ watch(
         </div>
       </template>
 
-      <template v-else>
+      <template v-else-if="canOpenCase">
         <div class="after-sales-modal__field">
           <strong>诉求类型</strong>
           <div class="after-sales-modal__kinds" role="group" aria-label="诉求类型">
@@ -299,6 +302,13 @@ watch(
         </p>
       </template>
 
+      <template v-else>
+        <p class="tip">
+          售后由需求方（甲方）发起，你这边用于查看诉求并表态：接受即按诉求执行，不接受由平台裁决。
+          结单后如需反映其它问题，请走工单中心联系平台。
+        </p>
+      </template>
+
       <div v-if="closedCases.length" class="after-sales-modal__history">
         <div class="after-sales-modal__history-head">
           <strong>历史售后案件</strong>
@@ -318,8 +328,8 @@ watch(
 
       <div class="actions">
         <button class="ghost" type="button" :disabled="busy" @click="close">关闭</button>
-        <button v-if="!currentCase && !casesLoading" class="ghost primary" type="button" :disabled="submitting"
-          @click="submit">
+        <button v-if="canOpenCase && !currentCase && !casesLoading" class="ghost primary" type="button"
+          :disabled="submitting" @click="submit">
           {{ submitting ? '提交中...' : '提交售后申请' }}
         </button>
       </div>

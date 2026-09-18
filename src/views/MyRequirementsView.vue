@@ -1319,7 +1319,7 @@ function canOpenAfterSales(item: RequirementItem) {
   return item.status === 'completed' && !isSelfManagedRequirement(item)
 }
 
-/** 售后入口：结单后打开 `AfterSalesModal`，案件列表、表态与撤回都在弹窗内。 */
+/** 售后入口：结单后打开 `AfterSalesModal`（本页是需求方视角，可发起），案件列表与表态都在弹窗内。 */
 function openAfterSalesModal(item: RequirementItem) {
   if (!auth.isAuthed || !auth.token) {
     showToast('请先登录后再继续操作', 'error')
@@ -2888,6 +2888,7 @@ watch(
       :current-username="auth.username"
       :requirement-id="afterSalesTarget?.requirement_id ?? ''"
       :requirement-title="afterSalesTarget?.title ?? ''"
+      :can-open-case="true"
       @close="closeAfterSalesModal"
     />
 
