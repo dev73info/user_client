@@ -61,6 +61,12 @@ const ticketsItem: WorkbenchMenuItem = {
 // 版式与用户菜单的一级条目一致（图标 + 加粗标题），切换模式时侧边栏只有文字在变。
 const devWorkbenchItems: (WorkbenchMenuItem & { icon: Component })[] = [
   {
+    label: '工作台总览',
+    name: 'dev-home',
+    description: '接单收入、保证金与交付概览',
+    icon: DataAnalysis,
+  },
+  {
     label: '我的资源项目',
     name: 'dev-resource-list',
     description: '管理主页、版本与资源状态',
@@ -252,10 +258,10 @@ function goBack() {
   }
 }
 
-// 切换工作台：用户模式进开发者工作台首页，开发者模式回到用户工作台总览。
+// 切换工作台：用户模式进开发者工作台总览，开发者模式回到用户工作台总览。
 function switchWorkbenchMode() {
   mobileMenuOpen.value = false
-  void router.push(isDevWorkbenchMode.value ? { name: overviewItem.name } : { name: 'dev-resource-list' })
+  void router.push(isDevWorkbenchMode.value ? { name: overviewItem.name } : { name: 'dev-home' })
 }
 
 function conversationTo(item: RequirementConversation) {

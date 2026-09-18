@@ -29,6 +29,19 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    // 开发者工作台首页：接单收入、保证金、接单与交付概览。
+    // 刻意不带 requiresRealname —— 落地页若要求实名，未实名的开发者一进来就被弹去认证，看不到任何概览数据。
+    path: 'developer/home',
+    name: 'dev-home',
+    component: () => import('@/views/DevHomeView.vue'),
+    meta: {
+      title: '工作台总览',
+      description: '接单收入、保证金与交付概览。',
+      devArea: true,
+      requiresDevAccess: true,
+    },
+  },
+  {
     path: 'developer/wallet',
     redirect: { name: 'dev-wallet' },
   },

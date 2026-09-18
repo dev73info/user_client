@@ -15,7 +15,7 @@ vi.mock('@/api/team', () => ({ listUserInvitations: vi.fn().mockResolvedValue([]
 const USER_ROUTE_NAMES = ['workbench', 'workbench-requirements', 'workbench-account',
   'workbench-signatures', 'workbench-invoices', 'workbench-points', 'workbench-favorites', 'workbench-invite',
   'workbench-tickets', 'workbench-messages']
-const DEV_ROUTE_NAMES = ['dev-resource-list', 'dev-requirement-hall', 'dev-my-requirements', 'dev-wallet',
+const DEV_ROUTE_NAMES = ['dev-home', 'dev-resource-list', 'dev-requirement-hall', 'dev-my-requirements', 'dev-wallet',
   'dev-wallet-releases', 'workbench-teams', 'workbench-team-detail', 'workbench-team-resources', 'dev-messages']
 
 const routes: RouteRecordRaw[] = [
@@ -87,9 +87,12 @@ describe('workbench mode switch', () => {
     const { wrapper } = await render('dev-resource-list')
     const text = sidebar(wrapper)
     expect(text).toContain('开发者事项')
+    // 开发者菜单首位是新的总览页；用户端菜单整条换掉，不再出现
+    expect(text).toContain('工作台总览')
     expect(text).toContain('我的资源项目')
     expect(text).toContain('交付记录')
-    expect(text).not.toContain('工作台总览')
+    expect(text).not.toContain('需求协作')
+    expect(text).not.toContain('账户服务')
     // 团队服务搬到这里：以原来的折叠组形式跟在开发者条目之后
     expect(text).toContain('团队服务')
     expect(text).toContain('我的团队')
@@ -103,9 +106,10 @@ describe('workbench mode switch', () => {
     expect(wrapper.find('.user-workbench__brand-title').text()).toBe('开发者工作台')
     // 与用户菜单同一套一级条目版式（带图标的一级菜单），切换模式时侧边栏只有文字变化
     const devLinks = wrapper.findAll('.user-workbench__menu > .user-workbench__menu-link--root')
-    expect(devLinks).toHaveLength(5)
+    expect(devLinks).toHaveLength(6)
     expect(devLinks[0]?.find('.user-workbench__menu-icon').exists()).toBe(true)
-    expect(devLinks.map((link) => link.text())).toEqual(['我的资源项目', '需求大厅', '我的接单', '收益钱包', '交付记录'])
+    expect(devLinks.map((link) => link.text()))
+      .toEqual(['工作台总览', '我的资源项目', '需求大厅', '我的接单', '收益钱包', '交付记录'])
     wrapper.unmount()
   })
 
@@ -113,7 +117,7 @@ describe('workbench mode switch', () => {
     const { wrapper } = await render('workbench-teams')
     // 团队页面带 devArea，落在页面上时侧边栏仍是开发者菜单
     expect(wrapper.find('.user-workbench__brand-title').text()).toBe('开发者工作台')
-    expect(sidebar(wrapper)).not.toContain('工作台总览')
+    expect(sidebar(wrapper)).not.toContain('需求协作')
     const head = wrapper.find('.user-workbench__menu-group-head')
     expect(head.text()).toContain('团队服务')
     // 当前页在该组内，进页时分组自动展开
@@ -159,8 +163,9 @@ describe('workbench mode switch', () => {
     const { wrapper, router } = await render('workbench')
     await wrapper.find('.user-workbench__mode-switch').trigger('click')
     await flushPromises()
-    expect(router.currentRoute.value.name).toBe('dev-resource-list')
-    expect(sidebar(wrapper)).toContain('我的资源项目')
+    // 落地页是开发者工作台总览，不再直接跳资源列表
+    expect(router.currentRoute.value.name).toBe('dev-home')
+    expect(sidebar(wrapper)).toContain('工作台总览')
 
     await wrapper.find('.user-workbench__mode-switch').trigger('click')
     await flushPromises()
