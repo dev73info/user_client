@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AfterSalesModal: typeof import('./src/components/AfterSalesModal.vue')['default']
     AppToast: typeof import('./src/components/AppToast.vue')['default']
     AuthModal: typeof import('./src/components/AuthModal.vue')['default']
     BadgeDisplay: typeof import('./src/components/BadgeDisplay.vue')['default']

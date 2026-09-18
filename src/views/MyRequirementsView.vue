@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Close, Refresh } from '@element-plus/icons-vue'
 
 import PublishModal from '@/components/PublishModal.vue'
+import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
 import {
@@ -27,14 +28,18 @@ import {
 } from '@/api/conversations'
 import { createRequirementContract, fetchAsignRequirementPreviewUrl, fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import {
+  acceptAdapayDelivery,
   createAdapayPayment,
   getAdapayBreachCase,
   getAdapayPayment,
+  listAdapayAcceptances,
   reportAdapayBreach,
   requestAdapayPlatformReview,
   submitAdapayBreachDecision,
   withdrawAdapayBreach,
   getAdapayClientPlatform,
+  type AdapayAcceptanceRecord,
+  type AdapayAcceptanceResult,
   type AdapayBreachCase,
   type AdapayBreachDecisionValue,
   type AdapayBreachVerdictParty,
@@ -130,6 +135,17 @@ const resourceDownloadingId = ref<number | null>(null)
 const resourceVersionDeleteReviewLoadingId = ref<string | null>(null)
 const finalPaymentConfirmVisible = ref(false)
 const finalPaymentConfirmTarget = ref<RequirementItem | null>(null)
+/** 验收弹窗：担保模式的验收可重复提交，弹窗里同时展示历史验收留档。 */
+const acceptanceVisible = ref(false)
+const acceptanceTarget = ref<RequirementItem | null>(null)
+const acceptanceResult = ref<AdapayAcceptanceResult>('passed')
+const acceptanceNote = ref('')
+const acceptanceLoading = ref(false)
+const acceptanceRecords = ref<AdapayAcceptanceRecord[]>([])
+const acceptanceRecordsLoading = ref(false)
+/** 售后：结单后的唯一业务入口，案件列表与表态都在 `AfterSalesModal` 里。 */
+const afterSalesVisible = ref(false)
+const afterSalesTarget = ref<RequirementItem | null>(null)
 const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const conversationLoading = ref(false)
@@ -438,6 +454,17 @@ function cancelConfirmHint(item: RequirementItem) {
   return '取消后该需求单将被删除且无法恢复。仅未被开发者接取的需求可以取消。'
 }
 
+/** 待分账 / 结单后的提示：尾款缴清到渠道分账之间有等待期，结单后还有售后窗口。 */
+function settlementHint(item: RequirementItem): string {
+  if (item.status === 'pending_settlement') {
+    return '尾款已缴纳，正在等待渠道分账（通常 7 天）；分账完成后正式结单并开放售后入口。'
+  }
+  if (item.status === 'completed') {
+    return '需求已结单，接单保证金在售后窗口结束且无未结售后案件后释放。'
+  }
+  return ''
+}
+
 function canRequestUnbindAsCreator(item: RequirementItem) {
   return (
     item.payment_mode === 'self_managed' &&
@@ -450,8 +477,9 @@ function canRequestUnbindAsCreator(item: RequirementItem) {
 }
 
 function canReportBreach(item: RequirementItem) {
+  // 待分账（尾款已缴、分账在排队）也允许终止合作：等待期内的违约由后端取消排队中的分账。
   return item.payment_mode !== 'self_managed' &&
-    ['deposit_paid', 'in_development', 'pending_final'].includes(item.status)
+    ['deposit_paid', 'in_development', 'pending_final', 'pending_settlement'].includes(item.status)
 }
 
 /** 担保模式接单后未缴定金：解绑入口一律关闭、终止合作又要求有一张已完成的定金支付单，出口只剩缴款期限到期后由系统自动终止合作。 */
@@ -1011,6 +1039,7 @@ function syncRouteRequirementDetail() {
   }
 }
 
+/** 无担保模式的「确认完成」入口：担保模式的验收与尾款走 accept / pay，不再经过这里。 */
 async function requestFinalPayment(item: RequirementItem) {
   if (!auth.isAuthed) {
     showToast('请先登录后再继续操作', 'error')
@@ -1023,22 +1052,12 @@ async function requestFinalPayment(item: RequirementItem) {
   }
 
   if (item.status !== 'in_development') {
-    showToast(
-      isSelfManagedRequirement(item)
-        ? '只有开发中的需求单才能确认完成'
-        : '只有开发中的需求单才能结束开发并支付尾款',
-      'warning',
-    )
+    showToast('只有开发中的需求单才能确认完成', 'warning')
     return
   }
 
   if (publishedVersionCount(item) <= 0) {
-    showToast(
-      isSelfManagedRequirement(item)
-        ? '开发者至少发布一个资源版本后，才能确认完成'
-        : '开发者至少发布一个资源版本后，才能结束开发并支付尾款',
-      'warning',
-    )
+    showToast('开发者至少发布一个资源版本后，才能确认完成', 'warning')
     return
   }
 
@@ -1185,20 +1204,139 @@ async function confirmFinalPaymentRequest() {
   }
 
   const item = finalPaymentConfirmTarget.value
+  // 担保模式的尾款入口已经换成「验收」（见 openAcceptanceModal）：验收通过后由用户自己点支付，
+  // 这里只剩无担保模式的「确认完成」——它没有合同与尾款，验收标准由双方线下把关。
+  if (!isSelfManagedRequirement(item)) {
+    closeFinalPaymentConfirm()
+    return
+  }
 
   try {
-    const updated = await requestRequirementFinalPaymentApi(auth.token, item.requirement_id)
+    await requestRequirementFinalPaymentApi(auth.token, item.requirement_id)
     await loadMyRequirements()
-    if (isSelfManagedRequirement(item)) {
-      showToast('需求已确认完成', 'success')
-    } else {
-      showToast('请支付尾款', 'success')
-      openPayModal(updated)
-    }
+    showToast('需求已确认完成', 'success')
     closeFinalPaymentConfirm()
   } catch (err) {
     showToast(err instanceof Error ? err.message : '结束开发失败', 'error')
   }
+}
+
+/**
+ * 担保模式的验收入口：开发中与待付尾款都能提交。
+ *
+ * 验收可重复提交——不通过只留档并通知开发者整改，需求留在开发中；
+ * 已到待付尾款后仍可追加验收记录（后端同样放行这两个状态）。
+ */
+function canOpenAcceptance(item: RequirementItem) {
+  if (isSelfManagedRequirement(item) || !isRequirementContractSigned(item)) {
+    return false
+  }
+  if (!hasBoundResource(item)) {
+    return false
+  }
+  if (item.status !== 'in_development' && item.status !== 'pending_final') {
+    return false
+  }
+  return publishedVersionCount(item) > 0
+}
+
+async function openAcceptanceModal(item: RequirementItem) {
+  if (!auth.isAuthed || !auth.token) {
+    showToast('请先登录后再继续操作', 'error')
+    return
+  }
+  if (!canOpenAcceptance(item)) {
+    showToast('当前需求还不能验收，请确认双方已签合同且开发者已提交交付版本', 'warning')
+    return
+  }
+
+  acceptanceTarget.value = item
+  acceptanceResult.value = 'passed'
+  acceptanceNote.value = ''
+  acceptanceRecords.value = []
+  acceptanceVisible.value = true
+  acceptanceRecordsLoading.value = true
+  try {
+    acceptanceRecords.value = await listAdapayAcceptances(auth.token, item.requirement_id)
+  } catch (err) {
+    // 历史留档只是辅助信息，取不到不挡本次验收。
+    showToast(err instanceof Error ? err.message : '加载验收记录失败', 'error')
+  } finally {
+    acceptanceRecordsLoading.value = false
+  }
+}
+
+function closeAcceptanceModal() {
+  if (acceptanceLoading.value) {
+    return
+  }
+  acceptanceVisible.value = false
+  acceptanceTarget.value = null
+  acceptanceRecords.value = []
+}
+
+async function submitAcceptance() {
+  const item = acceptanceTarget.value
+  if (!item || !auth.token) {
+    return
+  }
+  // 不通过必须写明原因（后端同样要求），否则开发者不知道该整改什么。
+  if (acceptanceResult.value === 'rejected' && !acceptanceNote.value.trim()) {
+    showToast('验收不通过时请写明需要整改的问题', 'warning')
+    return
+  }
+
+  acceptanceLoading.value = true
+  try {
+    await acceptAdapayDelivery(
+      auth.token,
+      item.requirement_id,
+      acceptanceResult.value,
+      acceptanceNote.value.trim(),
+    )
+    const rejected = acceptanceResult.value === 'rejected'
+    await loadMyRequirements()
+    const updated = myRequirements.value.find((row) => row.requirement_id === item.requirement_id)
+    acceptanceLoading.value = false
+    closeAcceptanceModal()
+    if (rejected) {
+      showToast('已记下验收结论，开发者会收到整改通知', 'success')
+      return
+    }
+    showToast('验收已通过，请继续支付尾款', 'success')
+    if (updated) {
+      openPayModal(updated)
+    }
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '提交验收结果失败', 'error')
+  } finally {
+    acceptanceLoading.value = false
+  }
+}
+
+/** 售后入口：只有担保模式的需求有售后（结单后仍需冻结接单保证金、且能原路退回尾款）。 */
+function canOpenAfterSales(item: RequirementItem) {
+  return item.status === 'completed' && !isSelfManagedRequirement(item)
+}
+
+/** 售后入口：结单后打开 `AfterSalesModal`，案件列表、表态与撤回都在弹窗内。 */
+function openAfterSalesModal(item: RequirementItem) {
+  if (!auth.isAuthed || !auth.token) {
+    showToast('请先登录后再继续操作', 'error')
+    return
+  }
+  if (!canOpenAfterSales(item)) {
+    showToast('只有已结单的需求可以发起售后', 'warning')
+    return
+  }
+
+  afterSalesTarget.value = item
+  afterSalesVisible.value = true
+}
+
+function closeAfterSalesModal() {
+  afterSalesVisible.value = false
+  afterSalesTarget.value = null
 }
 
 function canComment(status: RequirementStatus) {
@@ -1628,21 +1766,9 @@ const payChannelLabel = computed(() => {
   }
 })
 
-const finalPaymentConfirmTitle = computed(() =>
-  finalPaymentConfirmTarget.value && isSelfManagedRequirement(finalPaymentConfirmTarget.value)
-    ? '确认交付完成'
-    : '确认进入尾款支付',
-)
-const finalPaymentConfirmTip = computed(() =>
-  finalPaymentConfirmTarget.value && isSelfManagedRequirement(finalPaymentConfirmTarget.value)
-    ? '确认后，当前需求会直接进入已完成状态，后续可继续评价。'
-    : '确认后会将当前需求推进到待付尾款，并立即进入支付流程。',
-)
-const finalPaymentConfirmButton = computed(() =>
-  finalPaymentConfirmTarget.value && isSelfManagedRequirement(finalPaymentConfirmTarget.value)
-    ? '确认完成'
-    : '确认进入尾款支付',
-)
+const finalPaymentConfirmTitle = computed(() => '确认交付完成')
+const finalPaymentConfirmTip = computed(() => '确认后，当前需求会直接进入已完成状态，后续可继续评价。')
+const finalPaymentConfirmButton = computed(() => '确认完成')
 
 const payAmount = computed(() => {
   if (!payRequirement.value) {
@@ -2103,6 +2229,7 @@ watch(
                   class="requirement-note">
                   已提交解除申请，等待开发者确认。
                 </small>
+                <small v-if="settlementHint(item)" class="requirement-note">{{ settlementHint(item) }}</small>
                 </div>
               </div>
               <aside class="requirement-summary" aria-label="需求摘要">
@@ -2177,9 +2304,17 @@ watch(
                 @click.stop="handleContractButtonClick(item)">
                 {{ contractButtonLabel(item) }}
               </button>
-              <button v-if="canRequestFinalPayment(item)" class="ghost small" type="button"
+              <button v-if="canOpenAcceptance(item)" class="ghost small" type="button"
+                @click.stop="openAcceptanceModal(item)">
+                验收
+              </button>
+              <button v-else-if="canRequestFinalPayment(item)" class="ghost small" type="button"
                 @click.stop="requestFinalPayment(item)">
-                {{ isSelfManagedRequirement(item) ? requirementFinalActionLabel(item) : '确认验收并支付尾款' }}
+                {{ requirementFinalActionLabel(item) }}
+              </button>
+              <button v-if="canOpenAfterSales(item)" class="ghost small action-primary" type="button"
+                @click.stop="openAfterSalesModal(item)">
+                售后
               </button>
               <button v-if="canReportBreach(item)" class="ghost small danger-plain" type="button"
                 @click.stop="openBreachReport(item)">
@@ -2422,10 +2557,18 @@ watch(
                 @click="resubmitFromDetail(detailRequirement)">
                 重新编辑并提交审核
               </button>
+              <button v-else-if="canOpenAfterSales(detailRequirement)" class="my-requirement-detail__primary"
+                type="button" @click="openAfterSalesModal(detailRequirement)">
+                售后
+              </button>
               <button v-else-if="canPay(detailRequirement.status, detailRequirement)"
                 class="my-requirement-detail__primary" type="button"
                 @click="openPayModal(detailRequirement)">
                 支付{{ detailRequirement.status === 'pending_final' ? '尾款' : '定金' }}
+              </button>
+              <button v-else-if="canOpenAcceptance(detailRequirement)" class="my-requirement-detail__primary"
+                type="button" @click="openAcceptanceModal(detailRequirement)">
+                验收
               </button>
               <button class="my-requirement-detail__secondary" type="button" @click="closeRequirementDetail">
                 关闭
@@ -2674,6 +2817,79 @@ watch(
         </template>
       </section>
     </div>
+
+    <div v-if="acceptanceVisible && acceptanceTarget" class="modal-wrap" @click.self="closeAcceptanceModal">
+      <section class="pay-modal acceptance-modal" aria-label="验收弹窗">
+        <h3>验收交付</h3>
+        <p class="pay-line"><strong>需求标题：</strong>{{ acceptanceTarget.title }}</p>
+        <p class="pay-line"><strong>需求编号：</strong>{{ acceptanceTarget.requirement_id }}</p>
+
+        <div class="acceptance-modal__choice" role="group" aria-label="验收结论">
+          <button class="acceptance-modal__choice-btn" :class="{ 'is-active': acceptanceResult === 'passed' }"
+            type="button" @click="acceptanceResult = 'passed'">
+            验收通过
+            <small>推进到待付尾款，随后可继续支付尾款</small>
+          </button>
+          <button class="acceptance-modal__choice-btn" :class="{ 'is-active': acceptanceResult === 'rejected' }"
+            type="button" @click="acceptanceResult = 'rejected'">
+            验收不通过
+            <small>只留档并通知开发者整改，需求留在开发中</small>
+          </button>
+        </div>
+
+        <label class="pay-line acceptance-modal__field">
+          <strong>验收说明</strong>
+          <textarea v-model="acceptanceNote" rows="4" maxlength="1000"
+            :placeholder="acceptanceResult === 'rejected'
+              ? '请写明需要整改的问题，开发者会收到整改通知'
+              : '可选：记录本次验收的范围与结论'"></textarea>
+        </label>
+
+        <p class="tip">
+          验收可以反复提交：不通过只留档并通知开发者，状态不前推；通过后进入待付尾款，
+          付清尾款还要等渠道分账完成才正式结单，之后进入售后窗口。
+        </p>
+
+        <div class="acceptance-modal__history">
+          <div class="acceptance-modal__history-head">
+            <strong>历史验收记录</strong>
+            <span v-if="acceptanceRecords.length">共 {{ acceptanceRecords.length }} 条</span>
+          </div>
+          <p v-if="acceptanceRecordsLoading" class="acceptance-modal__empty">正在加载验收记录…</p>
+          <p v-else-if="acceptanceRecords.length === 0" class="acceptance-modal__empty">暂无验收记录</p>
+          <ul v-else class="acceptance-modal__records">
+            <li v-for="record in acceptanceRecords" :key="record.id">
+              <div class="acceptance-modal__record-head">
+                <strong :class="record.result === 'passed' ? 'is-passed' : 'is-rejected'">
+                  {{ record.result === 'passed' ? '验收通过' : '验收不通过' }}
+                </strong>
+                <time>{{ formatCnDateTime(record.createdAt) }}</time>
+              </div>
+              <p v-if="record.note">{{ record.note }}</p>
+              <small>提交人：{{ record.submittedBy }}</small>
+            </li>
+          </ul>
+        </div>
+
+        <div class="actions">
+          <button class="ghost" type="button" :disabled="acceptanceLoading" @click="closeAcceptanceModal">
+            取消
+          </button>
+          <button class="ghost primary" type="button" :disabled="acceptanceLoading" @click="submitAcceptance">
+            {{ acceptanceLoading ? '提交中...' : '提交验收结论' }}
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <AfterSalesModal
+      :visible="afterSalesVisible"
+      :token="auth.token"
+      :current-username="auth.username"
+      :requirement-id="afterSalesTarget?.requirement_id ?? ''"
+      :requirement-title="afterSalesTarget?.title ?? ''"
+      @close="closeAfterSalesModal"
+    />
 
     <div v-if="commentVisible && commentRequirement" class="modal-wrap" @click.self="closeCommentModal">
       <section class="pay-modal comment-modal" aria-label="需求评论弹窗">
@@ -3256,6 +3472,146 @@ watch(
   margin-top: 12px;
 }
 
+/* 验收弹窗比默认 pay-modal 长，限高内滚，避免小屏撑出屏幕 */
+.pay-modal.acceptance-modal {
+  width: min(600px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+}
+
+/* 验收弹窗：结论选择（通过 / 不通过） */
+.pay-modal .acceptance-modal__choice {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0 14px;
+}
+
+.pay-modal .acceptance-modal__choice-btn {
+  display: grid;
+  gap: 4px;
+  min-height: 64px;
+  padding: 12px 14px;
+  border: 1px solid rgba(209, 220, 243, 0.95);
+  border-radius: 14px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.pay-modal .acceptance-modal__choice-btn small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.pay-modal .acceptance-modal__choice-btn.is-active {
+  border-color: rgba(37, 99, 235, 0.62);
+  background: rgba(239, 246, 255, 0.96);
+  color: #1d4ed8;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.1);
+}
+
+.pay-modal .acceptance-modal__field {
+  display: grid;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.pay-modal .acceptance-modal__field > strong {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 验收弹窗：历史留档列表 */
+.pay-modal .acceptance-modal__history {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.pay-modal .acceptance-modal__history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.pay-modal .acceptance-modal__history-head span,
+.pay-modal .acceptance-modal__history-head time {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pay-modal .acceptance-modal__empty {
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.pay-modal .acceptance-modal__records {
+  display: grid;
+  gap: 10px;
+  max-height: 220px;
+  margin: 10px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.pay-modal .acceptance-modal__records > li {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.pay-modal .acceptance-modal__record-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pay-modal .acceptance-modal__records p {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.pay-modal .acceptance-modal__records small {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.pay-modal .acceptance-modal__record-head strong.is-passed {
+  color: #15803d;
+}
+
+.pay-modal .acceptance-modal__record-head strong.is-rejected {
+  color: #b91c1c;
+}
+
 .wallet-header h3.portal-page__eyebrow {
   margin: 0;
   color: #64748b;
@@ -3333,6 +3689,15 @@ watch(
 
   .pay-modal .breach-modal__decision .actions {
     flex-direction: column;
+  }
+
+  /* 小屏下验收结论竖排，避免两个选项挤成窄条 */
+  .pay-modal .acceptance-modal__choice {
+    grid-template-columns: 1fr;
+  }
+
+  .pay-modal .acceptance-modal__records {
+    max-height: none;
   }
 
   .my-requirement-detail__review-panel {

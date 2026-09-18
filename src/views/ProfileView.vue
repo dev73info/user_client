@@ -183,7 +183,7 @@ const subscriptionLabel = computed(() => (subscriptionOfficialActivity.value ? '
 const requirementStats = computed(() => ({
   total: myRequirements.value.length,
   pending: myRequirements.value.filter((item) => item.status === 'pending_review' || item.status === 'pending_deposit').length,
-  active: myRequirements.value.filter((item) => item.status === 'deposit_paid' || item.status === 'in_development' || item.status === 'pending_final').length,
+  active: myRequirements.value.filter((item) => item.status === 'deposit_paid' || item.status === 'in_development' || item.status === 'pending_final' || item.status === 'pending_settlement').length,
   payment: myRequirements.value.filter((item) => canPay(item.status, item)).length,
   completed: myRequirements.value.filter((item) => item.status === 'completed').length,
 }))

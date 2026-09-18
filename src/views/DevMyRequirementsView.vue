@@ -14,6 +14,7 @@ import {
   type AdapayBreachDecisionValue,
   type AdapayBreachVerdictParty,
 } from '@/api/adapay'
+import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import DeliverySubmitDialog from '@/components/DeliverySubmitDialog.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
@@ -63,6 +64,9 @@ const unbindRespondVisible = ref(false)
 const unbindRespondRequirement = ref<RequirementItem | null>(null)
 const unbindRespondLoading = ref(false)
 const breachVisible = ref(false)
+/** 售后：结单后的唯一业务入口，案件列表与表态都在 `AfterSalesModal` 里。 */
+const afterSalesVisible = ref(false)
+const afterSalesTarget = ref<RequirementItem | null>(null)
 const deliveryDialogVisible = ref(false)
 const deliveryRequirement = ref<RequirementItem | null>(null)
 const breachRequirement = ref<RequirementItem | null>(null)
@@ -201,6 +205,8 @@ function statusLabel(status: RequirementItem['status']): string {
       return '开发中'
     case 'pending_final':
       return '待付尾款'
+    case 'pending_settlement':
+      return '待分账'
     case 'completed':
       return '已完成'
     default:
@@ -237,6 +243,7 @@ function statusType(status: RequirementItem['status']): 'info' | 'success' | 'wa
   switch (status) {
     case 'completed':
     case 'deposit_paid':
+    case 'pending_settlement':
       return 'success'
     case 'in_development':
     case 'pending_final':
@@ -358,6 +365,17 @@ function contractStartHint(item: RequirementItem): string {
   return '等待客户签署，双方签署完成后由需求方支付定金'
 }
 
+/** 待分账 / 结单后的提示：尾款缴清到渠道分账之间有等待期，结单后还有售后窗口。 */
+function settlementHint(item: RequirementItem): string {
+  if (item.status === 'pending_settlement') {
+    return '需求方已缴纳尾款，正在等待渠道分账（通常 7 天），分账完成后正式结单并结算'
+  }
+  if (item.status === 'completed') {
+    return '需求已结单，接单保证金在售后窗口结束且无未结售后案件后释放'
+  }
+  return ''
+}
+
 function resourceVersionCount(item: RequirementItem) {
   return item.bound_resource_version_count ?? 0
 }
@@ -387,7 +405,28 @@ async function handleDeliverySubmitted() {
 
 function canReportBreach(item: RequirementItem) {
   return item.payment_mode !== 'self_managed' &&
-    ['deposit_paid', 'in_development', 'pending_final'].includes(item.status)
+    // 待分账（尾款已缴、分账排队中）仍在等待期内，此时终止合作会把排队分账置为 cancelled，
+    // 与后端一样留出这条出口。
+    ['deposit_paid', 'in_development', 'pending_final', 'pending_settlement'].includes(item.status)
+}
+
+/** 售后入口：结单后打开 `AfterSalesModal`，案件列表、表态与撤回都在弹窗内。 */
+function canOpenAfterSales(item: RequirementItem) {
+  return item.status === 'completed' && item.payment_mode !== 'self_managed'
+}
+
+function openAfterSalesModal(item: RequirementItem) {
+  if (!canOpenAfterSales(item)) {
+    showToast('只有已结单的需求可以发起售后', 'warning')
+    return
+  }
+  afterSalesTarget.value = item
+  afterSalesVisible.value = true
+}
+
+function closeAfterSalesModal() {
+  afterSalesVisible.value = false
+  afterSalesTarget.value = null
 }
 
 /** 担保模式接单后未缴定金：解绑入口一律关闭、终止合作又要求有一张已完成的定金支付单，出口只剩缴款期限到期后由系统自动终止合作。 */
@@ -867,6 +906,8 @@ async function loadRequirementConversations() {
               :contract-status="signingStatusMap[item.requirement_id]" />
           </div>
 
+          <div v-if="settlementHint(item)" class="signing-start-hint">{{ settlementHint(item) }}</div>
+
           <div v-if="item.payment_mode !== 'self_managed'" class="dev-requirement-card__signing">
             <div class="signing-status-bar">
               <span class="signing-step"
@@ -897,6 +938,10 @@ async function loadRequirementConversations() {
               <el-button v-if="canSubmitDeliveryVersion(item)" type="primary" plain size="small"
                 title="交付物以绑定资源项目的新版本提交" @click="openDeliveryDialog(item)">
                 提交交付版本
+              </el-button>
+              <el-button v-if="canOpenAfterSales(item)" type="primary" plain size="small"
+                @click="openAfterSalesModal(item)">
+                售后
               </el-button>
               <el-button v-if="canReportBreach(item)" type="danger" plain size="small"
                 @click="openBreachReport(item)">
@@ -1086,6 +1131,15 @@ async function loadRequirementConversations() {
         </el-button>
       </template>
     </el-dialog>
+
+    <AfterSalesModal
+      :visible="afterSalesVisible"
+      :token="auth.token"
+      :current-username="auth.username"
+      :requirement-id="afterSalesTarget?.requirement_id ?? ''"
+      :requirement-title="afterSalesTarget?.title ?? ''"
+      @close="closeAfterSalesModal"
+    />
 
     <RequirementConversationModal :visible="conversationVisible" api-mode="dev" :token="auth.token"
       :current-username="auth.username" :requirement-id="conversationRequirement?.requirement_id ?? ''"

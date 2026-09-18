@@ -44,9 +44,26 @@ describe('conversation status cards', () => {
     expect(developer?.downloadDelivery).toBe(false)
   })
 
-  it('treats the completed card as a notification without a dead-end list jump', () => {
-    expect(meta('final_paid', 'customer', 'completed')?.actionLabel).toBeUndefined()
-    expect(meta('final_paid', 'developer', 'completed')?.actionLabel).toBeUndefined()
+  it('treats the paid-but-unsettled card as a notification without a dead-end list jump', () => {
+    // 尾款缴清只是进入「待分账」，还要等渠道分账，双方在这段时间都没有可执行的动作。
+    expect(meta('final_paid', 'customer', 'pending_settlement')?.actionLabel).toBeUndefined()
+    expect(meta('final_paid', 'developer', 'pending_settlement')?.actionLabel).toBeUndefined()
+    expect(meta('final_paid', 'customer', 'pending_settlement')?.description).toContain('分账')
+  })
+
+  it('treats the settled card as a notification pointing at the after-sales entry', () => {
+    const card = meta('requirement_settled', 'customer', 'completed')
+    expect(card?.title).toBe('需求已结单')
+    expect(card?.description).toContain('售后')
+    // 售后入口就在需求卡片上，再给按钮只是空跳转回自己已经在的列表。
+    expect(card?.actionLabel).toBeUndefined()
+    expect(meta('requirement_settled', 'developer', 'completed')?.actionLabel).toBeUndefined()
+  })
+
+  it('sends the developer back to delivery after a rejected acceptance', () => {
+    // 需求方验收不通过后，整改与重新交付是开发者的动作。
+    expect(meta('acceptance_rejected', 'developer', 'in_development')?.actionLabel).toBe('去交付')
+    expect(meta('acceptance_rejected', 'customer', 'in_development')?.actionLabel).toBeUndefined()
   })
 
   it('ignores unknown event codes', () => {

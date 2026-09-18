@@ -162,6 +162,7 @@ function requirementStatusText(value: RequirementItem['status'] | null) {
   const map: Record<string, string> = {
     in_development: '开发中',
     pending_final: '待付尾款',
+    pending_settlement: '待分账',
     completed: '已完成',
     deposit_paid: '待开发',
   }
@@ -171,6 +172,10 @@ function requirementStatusText(value: RequirementItem['status'] | null) {
 function settlementText(status: RequirementItem['status'] | null) {
   if (status === 'completed') {
     return '已回款'
+  }
+  if (status === 'pending_settlement') {
+    // 尾款已缴但分账还在等待期，钱到账了、结算动作还没落地。
+    return '待分账'
   }
   if (status === 'pending_final') {
     return '待付尾款'

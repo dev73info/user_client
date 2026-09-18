@@ -7,6 +7,8 @@ export type RequirementStatus =
   | 'deposit_paid'
   | 'in_development'
   | 'pending_final'
+  // 尾款已缴、等渠道分账完成；分账成功后才转 `completed`。
+  | 'pending_settlement'
   | 'completed'
   | 'cancelled'
 

@@ -89,11 +89,26 @@ export function conversationCardMeta(
         actionLabel: role === 'developer' ? undefined : '去支付尾款',
         to: requirementListRoute,
       }
+    case 'acceptance_rejected':
+      return {
+        title: '验收未通过',
+        description: '需求方验收未通过，开发者整改后可重新提交验收。',
+        // 整改与重新交付都是开发者的动作，需求方这边只是通知，不给按钮。
+        actionLabel: role === 'developer' ? '去交付' : undefined,
+        to: requirementListRoute,
+      }
     case 'final_paid':
       return {
         title: '尾款已缴纳',
-        description: '需求方已缴纳尾款，需求已完成结单。',
-        // 结单是终态，双方都没有可执行的动作；「去我的需求」只是把人送回自己已经在的需求列表，属空跳转，故不给按钮。
+        description: '需求方已缴纳尾款，等待渠道分账完成（通常 7 天），分账成功后正式结单。',
+        // 待分账期间双方都没有可执行的动作（等待期内终止合作走需求卡片上的入口）；
+        // 「去我的需求」只是把人送回自己已经在的需求列表，属空跳转，故不给按钮。
+      }
+    case 'requirement_settled':
+      return {
+        title: '需求已结单',
+        description: '尾款分账已完成，需求正式结单，售后入口已开放。',
+        // 与 final_paid 同口径：售后入口就在需求卡片上，这里再给按钮只是空跳转。
       }
     case 'binding_released':
       return {

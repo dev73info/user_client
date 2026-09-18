@@ -39,13 +39,28 @@ export type AdapayDeveloperDepositPaymentResponse = {
   payUrl?: string | null
 }
 
+export type AdapayAcceptanceResult = 'passed' | 'rejected'
+
 export type AdapayAcceptanceResponse = {
+  /** 本次提交的验收留档 ID；验收可重复提交，历史记录按时间倒序展示。 */
+  recordId: number
   requirementId: string
-  contractId: number
-  status: string
+  /** 无担保模式没有合同，此时为空。 */
+  contractId: number | null
+  /** 本次提交的验收结论。 */
+  status: AdapayAcceptanceResult
   note: string
   acceptedAt: string
   depositSplitStatus: string
+}
+
+/** 一条验收留档。 */
+export type AdapayAcceptanceRecord = {
+  id: number
+  result: AdapayAcceptanceResult
+  submittedBy: string
+  note: string
+  createdAt: string
 }
 
 /** 违约案件责任方：`customer` 客户（需求方）/ `developer` 开发者。 */
@@ -210,6 +225,7 @@ export async function getAdapayDeveloperDepositPayment(
 export async function acceptAdapayDelivery(
   token: string,
   requirementId: string,
+  result: AdapayAcceptanceResult = 'passed',
   note = '',
 ): Promise<AdapayAcceptanceResponse> {
   return requestJson<AdapayAcceptanceResponse>(
@@ -220,9 +236,25 @@ export async function acceptAdapayDelivery(
         'Content-Type': 'application/json',
         ...authHeader(token),
       },
-      body: JSON.stringify({ note }),
+      body: JSON.stringify({ result, note }),
     },
     '提交验收结果失败',
+  )
+}
+
+/** 查询需求的验收留档（验收可重复提交，按时间倒序）。 */
+export async function listAdapayAcceptances(
+  token: string,
+  requirementId: string,
+): Promise<AdapayAcceptanceRecord[]> {
+  return requestJson<AdapayAcceptanceRecord[]>(
+    `/adapay/requirements/${encodeURIComponent(requirementId)}/acceptances`,
+    {
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '加载验收记录失败',
   )
 }
 

@@ -217,7 +217,9 @@ const canUseBreach = computed(
     (!isSelfManaged.value &&
       (status.value === 'deposit_paid' ||
         status.value === 'in_development' ||
-        status.value === 'pending_final')),
+        status.value === 'pending_final' ||
+        // 待分账时尾款已缴、排队分账尚未执行，终止合作仍能取消排队（与需求卡片同口径）。
+        status.value === 'pending_settlement')),
 )
 
 /** 已撤回 / 已驳回 / 已结案的案件不再展示明细，回到申报表单（与需求列表页一致）。 */
