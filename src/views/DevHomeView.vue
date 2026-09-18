@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { WarningFilled } from '@element-plus/icons-vue'
 import { computed, onMounted, ref } from 'vue'
 
+import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
 import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@/api/devOrderDeposit'
 import { getDevWalletOverview, type DevWalletIncomeItem, type DevWalletOverview } from '@/api/devWallet'
 import { listMcResources, type McResourcePayload } from '@/api/mcResources'
@@ -86,18 +88,10 @@ const statCards = computed(() => [
   },
 ])
 
-const heroSummary = computed(() => {
-  const received = `已接取 ${requirements.value.length} 单`
-  return deposit.value ? `${received} · 保证金可用 ${money(deposit.value.available_cny)}` : received
-})
+/** 保证金不足时直接在总览页充值，不走跳转：与收益钱包页共用同一个充值弹窗 */
+const rechargeDialog = ref<InstanceType<typeof DevDepositRechargeDialog> | null>(null)
 
-const quickLinks = [
-  { label: '需求大厅', name: 'dev-requirement-hall' },
-  { label: '我的资源项目', name: 'dev-resource-list' },
-  { label: '收益钱包', name: 'dev-wallet' },
-  { label: '交付记录', name: 'dev-wallet-releases' },
-] as const
-
+// 页面标题与「已接取/保证金可用」摘要都由工作台外壳与统计卡承载，这里不再重复渲染。
 onMounted(() => {
   void loadPage()
 })
@@ -140,28 +134,7 @@ async function loadPage() {
 
 <template>
   <main class="portal-page dev-home">
-    <section class="portal-page__panel dev-home__hero">
-      <div class="dev-home__hero-copy">
-        <p class="portal-page__eyebrow">开发者工作台</p>
-        <h2>{{ auth.username || '开发者' }} 的接单概览</h2>
-        <p class="portal-page__meta">{{ heroSummary }}</p>
-      </div>
-      <div class="dev-home__hero-actions">
-        <span v-if="loading" class="portal-page__loading-chip">同步中</span>
-        <RouterLink class="portal-page__secondary dev-home__action" :to="{ name: 'dev-wallet' }">收益钱包</RouterLink>
-        <button class="portal-page__secondary dev-home__action" type="button" :disabled="loading" @click="loadPage">
-          {{ loading ? '刷新中' : '刷新' }}
-        </button>
-      </div>
-    </section>
-
-    <p v-if="depositInsufficient" class="portal-page__empty dev-home__alert" role="alert">
-      <strong>保证金不足，暂不可接单</strong>
-      <span>当前可用保证金 {{ money(deposit?.available_cny) }}，补齐后才能绑定资源项目。</span>
-      <RouterLink class="portal-page__link-btn" :to="{ name: 'dev-wallet' }">去收益钱包充值</RouterLink>
-    </p>
-
-    <section class="portal-page__stats">
+    <section class="portal-page__stats" :class="{ 'dev-home__stats--loading': loading }">
       <RouterLink v-for="card in statCards" :key="card.label" class="portal-page__stat-card dev-home__stat"
         :to="{ name: card.target }">
         <span>{{ card.label }}</span>
@@ -170,14 +143,24 @@ async function loadPage() {
       </RouterLink>
     </section>
 
+    <div v-if="depositInsufficient" class="dev-home__alert" role="alert">
+      <span class="dev-home__alert-icon" aria-hidden="true">
+        <el-icon>
+          <WarningFilled />
+        </el-icon>
+      </span>
+      <div class="dev-home__alert-copy">
+        <strong>保证金不足，暂不可接单</strong>
+        <p>当前可用保证金 {{ money(deposit?.available_cny) }}，补齐后才能绑定资源项目。</p>
+      </div>
+      <button class="dev-home__alert-action" type="button" @click="rechargeDialog?.open()">去收益钱包充值</button>
+    </div>
+
     <section class="portal-page__content">
       <div class="dev-home__main">
         <section class="portal-page__panel">
           <div class="portal-page__section-header">
-            <div>
-              <p class="portal-page__eyebrow">需求大厅</p>
-              <h2>已接取需求单</h2>
-            </div>
+            <h2>已接取需求单</h2>
             <RouterLink class="portal-page__link-btn" :to="{ name: 'dev-my-requirements' }">查看全部</RouterLink>
           </div>
 
@@ -194,21 +177,15 @@ async function loadPage() {
           </ul>
           <p v-else class="portal-page__empty portal-page__empty--stacked">
             <strong>暂无已接取需求</strong>
-            <span>去需求大厅关联资源项目后，接单进度会在这里汇总。</span>
+            <span>去需求大厅接单后会显示在这里。</span>
           </p>
         </section>
 
         <section class="portal-page__panel">
           <div class="portal-page__section-header">
-            <div>
-              <p class="portal-page__eyebrow">交付记录</p>
-              <h2>最近交付</h2>
-            </div>
+            <h2>最近交付</h2>
             <RouterLink class="portal-page__link-btn" :to="{ name: 'dev-wallet-releases' }">查看全部</RouterLink>
           </div>
-          <p class="portal-page__meta dev-home__section-note">
-            交付即绑定资源项目的资源版本，累计 {{ deliveryVersionCount }} 个版本。
-          </p>
 
           <ul v-if="deliveryRows.length" class="portal-page__list dev-home__rows">
             <li v-for="row in deliveryRows" :key="row.requirementId" class="portal-page__list-item dev-home__row">
@@ -221,7 +198,7 @@ async function loadPage() {
           </ul>
           <p v-else class="portal-page__empty portal-page__empty--stacked">
             <strong>暂无交付记录</strong>
-            <span>绑定资源项目并发布资源版本后，交付会显示在这里。</span>
+            <span>绑定资源项目并发布版本后会显示在这里。</span>
           </p>
         </section>
       </div>
@@ -260,56 +237,102 @@ async function loadPage() {
               <span>{{ money(item.amount_cny) }}</span>
             </li>
           </ul>
-          <p v-else class="portal-page__empty">暂无收入记录，需求结单后尾款会显示在这里。</p>
-        </section>
-
-        <section class="portal-page__aside-card">
-          <div class="portal-page__aside-head">
-            <h3>快捷入口</h3>
-          </div>
-          <ul class="portal-page__list">
-            <li v-for="link in quickLinks" :key="link.name" class="portal-page__list-item dev-home__link-item">
-              <RouterLink class="portal-page__link-btn" :to="{ name: link.name }">{{ link.label }}</RouterLink>
-            </li>
-          </ul>
+          <p v-else class="portal-page__empty">暂无收入记录</p>
         </section>
       </aside>
     </section>
+
+    <!-- 保证金充值弹窗：与收益钱包页共用同一组件 -->
+    <DevDepositRechargeDialog ref="rechargeDialog" />
   </main>
 </template>
 
 <style scoped>
-.dev-home__hero {
+/* 加载中把统计数字压暗，避免把「还没拿到数据」误读成真实的 0 */
+.dev-home__stats--loading {
+  opacity: 0.55;
+}
+
+/* 卡片标题与下方明细贴得太紧，间距对齐需求大厅的同款卡片 */
+.dev-home .portal-page__aside-head {
+  margin-bottom: 12px;
+}
+
+/* 保证金不足是阻断接单的状态，用警示色与同页 .wallet-payout__alert 保持一套配色 */
+.dev-home__alert {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 14px;
+  padding: 16px 20px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-left: 4px solid #f59e0b;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fffaf2, #fff4e2);
+  box-shadow: 0 12px 26px rgba(180, 83, 9, 0.08);
 }
 
-.dev-home__hero-copy h2 {
+.dev-home__alert-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+  font-size: 20px;
+}
+
+.dev-home__alert-copy {
+  display: grid;
+  flex: 1 1 240px;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dev-home__alert-copy strong {
+  color: #92400e;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.dev-home__alert-copy p {
   margin: 0;
+  color: #b45309;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
-.dev-home__hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-}
-
-/* 复用 portal-page 的按钮外观，链接形态下补上对齐与触摸高度 */
-.dev-home__action {
+.dev-home__alert-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  text-decoration: none;
+  /* 按钮形态：清掉浏览器默认边框与字体，只保留渐变胶囊外观 */
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0 20px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.dev-home__alert {
-  display: grid;
-  gap: 6px;
+.dev-home__alert-action:hover {
+  box-shadow: 0 10px 22px rgba(217, 119, 6, 0.28);
+  transform: translateY(-1px);
+}
+
+.dev-home__alert-action:focus-visible {
+  outline: 2px solid #b45309;
+  outline-offset: 2px;
 }
 
 .dev-home__stat {
@@ -331,10 +354,6 @@ async function loadPage() {
   align-content: start;
 }
 
-.dev-home__section-note {
-  margin: 0 0 12px;
-}
-
 .dev-home__row {
   flex-direction: row;
   flex-wrap: wrap;
@@ -347,18 +366,9 @@ async function loadPage() {
   min-width: 0;
 }
 
-.dev-home__link-item {
-  justify-content: center;
-  min-height: 44px;
-}
-
 @media (max-width: 640px) {
-  .dev-home__hero-actions {
-    width: 100%;
-  }
-
-  .dev-home__action {
-    flex: 1 1 140px;
+  .dev-home__alert-action {
+    flex: 1 1 100%;
   }
 }
 </style>

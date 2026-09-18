@@ -10,12 +10,23 @@ const mocks = vi.hoisted(() => ({
   deposit: vi.fn(),
   requirements: vi.fn(),
   resources: vi.fn(),
+  devAccess: vi.fn(),
+  credit: vi.fn(),
 }))
 
 vi.mock('@/api/devWallet', () => ({ getDevWalletOverview: mocks.wallet }))
 vi.mock('@/api/devOrderDeposit', () => ({ getDevOrderDepositStatus: mocks.deposit }))
 vi.mock('@/api/devRequirements', () => ({ listMyRequirements: mocks.requirements }))
 vi.mock('@/api/mcResources', () => ({ listMcResources: mocks.resources }))
+// 充值弹窗会先查开发者协议与信用额度，这里只关心弹窗是否被拉起，两个接口给固定值即可
+vi.mock('@/api/auth', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/api/auth')>(),
+  getDevAccessStatus: mocks.devAccess,
+}))
+vi.mock('@/api/devCredit', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/api/devCredit')>(),
+  getDevCreditSelf: mocks.credit,
+}))
 
 const ROUTE_NAMES = ['dev-home', 'dev-wallet', 'dev-wallet-releases', 'dev-my-requirements', 'dev-requirement-hall', 'dev-resource-list']
 
@@ -63,6 +74,8 @@ beforeEach(() => {
 
   mocks.wallet.mockResolvedValue(baseWallet)
   mocks.deposit.mockResolvedValue(depositReady)
+  mocks.devAccess.mockResolvedValue({ developer_agreement_signed: true })
+  mocks.credit.mockResolvedValue(null)
   mocks.requirements.mockResolvedValue([
     {
       id: 1,
@@ -183,8 +196,21 @@ describe('developer workbench overview', () => {
     expect(alert.attributes('role')).toBe('alert')
     // 接单资格异常时提示里的可用余额仍按接口返回值展示
     expect(alert.text()).toContain('¥380.00')
-    expect(alert.find('a').attributes('href')).toBe('/dev-wallet')
     blocked.wrapper.unmount()
+  })
+
+  it('充值按钮就地拉起充值弹窗，不再跳转收益钱包', async () => {
+    mocks.deposit.mockResolvedValue({ ...depositReady, has_paid_deposit: false, can_bind_requirement: false })
+    const { wrapper } = await render()
+    const action = wrapper.find('.dev-home__alert-action')
+    expect(action.element.tagName).toBe('BUTTON')
+    expect(wrapper.find('.dev-recharge-dialog').exists()).toBe(false)
+
+    await action.trigger('click')
+    await flushPromises()
+    expect(mocks.devAccess).toHaveBeenCalledWith('test-token')
+    expect(wrapper.find('.dev-recharge-dialog').exists()).toBe(true)
+    wrapper.unmount()
   })
 
   it('没有需求单与收入时给出空态', async () => {

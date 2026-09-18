@@ -39,6 +39,29 @@
   margin-bottom: 20px;
 }
 
+/* 接单收入卡片：余额居左，T+1 说明居右（正好落在「已提现」标签下方）。
+   两项都给了明确基准宽度，卡片变窄时说明会自动换到下一行铺满，
+   避免大号金额被挤成溢出。 */
+.wallet-hero__body--split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.wallet-hero__balance {
+  flex: 1 1 220px;
+}
+
+/* T+1 到账与免手续费的说明：排在余额右侧并右对齐，与上方「已提现」标签同一条右边界 */
+.wallet-hero__note {
+  flex: 1 1 200px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--dev-muted);
+  text-align: right;
+}
+
 .wallet-hero__main {
   display: flex;
   flex-direction: column;
@@ -161,6 +184,19 @@
   border-top: 1px solid var(--dev-border, #f0f0f0);
 }
 
+/* 两条路径并成一行，说明折到行下方：比各占一行省一半高度，窄屏自动换行成两行 */
+.wallet-payout__paths {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.wallet-payout__paths .wallet-payout__desc {
+  flex-basis: 100%;
+}
+
 .wallet-payout__path {
   display: flex;
   align-items: center;
@@ -191,6 +227,7 @@
 }
 
 .wallet-payout__switch {
+  /* 与「自动提现」标题同一行，紧邻标题右侧，不被压扁 */
   flex-shrink: 0;
 }
 
@@ -210,13 +247,6 @@
 .wallet-payout__alert .el-button {
   margin-left: auto;
   padding: 0;
-}
-
-.wallet-payout__note {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--dev-muted);
 }
 
 /* 提现弹窗 */

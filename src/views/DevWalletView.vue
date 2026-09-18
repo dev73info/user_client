@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { Wallet, WarningFilled } from '@element-plus/icons-vue'
+import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
 import DevWithdrawalRecordsView from './DevWithdrawalRecordsView.vue'
 
 import {
@@ -25,28 +26,24 @@ import {
   type DevOrderDepositWithdrawalSummary,
 } from '@/api/devOrderDeposit'
 import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
-import {
-  createAdapayDeveloperDepositPayment,
-  getAdapayClientPlatform,
-} from '@/api/adapay'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
-import { getDevAccessStatus } from '@/api/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
-const route = useRoute()
 const { showToast } = useToast()
 
 const loading = ref(false)
 const activeRecordTab = ref<'deposit' | 'income'>('deposit')
 const withdrawDialogVisible = ref(false)
 const submittingWithdrawal = ref(false)
+/** 保证金充值弹窗：表单与下单都由子组件承载，这里只留一个调用句柄 */
+const rechargeDialog = ref<InstanceType<typeof DevDepositRechargeDialog> | null>(null)
 const overview = ref<DevWalletOverview | null>(null)
 const withdrawalLimits = ref<DevWithdrawalLimits | null>(null)
 /**
  * 接单收入的提现偏好：自动提现开关 + 出款通道是否就绪。
- * 出款说明（T+1 到账、手续费已在交易内扣）由后端下发，前端原样展示，避免两边文案不一致。
+ * 出款说明（T+1 到账、免手续费）由后端下发，前端原样展示，避免两边文案不一致。
  */
 const withdrawalSetting = ref<DevWithdrawalSetting | null>(null)
 const autoWithdrawSaving = ref(false)
@@ -87,10 +84,6 @@ const depositWithdrawForm = reactive<CreateDevOrderDepositWithdrawalRequest>({
   note: '',
 })
 
-const rechargeDialogVisible = ref(false)
-const rechargeAmount = ref(100)
-const rechargeChannel = ref<'alipay' | 'wechat'>('alipay')
-const adapayRechargeLoading = ref(false)
 const nowTick = ref(Date.now())
 // 后台轮询心跳：处理中的记录 5s 检查一次，仅剩打款失败（需人工处理）时放宽到 30s
 const DEPOSIT_ACTIVE_POLL_MS = 5000
@@ -140,8 +133,7 @@ const withdrawalMaxAmount = computed(() => withdrawalLimits.value?.max_amount_cn
 const canWithdraw = computed(() => (overview.value?.withdrawable_balance_cny ?? 0) >= withdrawalMinAmount.value)
 
 /** 出款说明兜底文案：正常情况下由后端 `payout_schedule_note` 下发，只在设置接口失败时兜底。 */
-const DEFAULT_PAYOUT_SCHEDULE_NOTE =
-  '提现由平台通过 Adapay 下达出款指令到你在账号中心绑定的收款银行卡，一般 T+1 到账；提现不再额外收取手续费，平台服务费已在交易内扣。'
+const DEFAULT_PAYOUT_SCHEDULE_NOTE = 'T+1 到账，免手续费'
 
 /** 设置接口是否已经返回：返回前不判断通道状态，避免误报「通道未就绪」。 */
 const withdrawalSettingLoaded = computed(() => withdrawalSetting.value !== null)
@@ -150,7 +142,7 @@ const payoutChannelMessage = computed(() => withdrawalSetting.value?.payout_chan
 /** 通道状态未知时按就绪处理，真正的拦截交给后端，避免一次请求失败就禁用提现入口。 */
 const payoutChannelUsable = computed(() => withdrawalSettingLoaded.value === false || payoutChannelReady.value)
 const autoWithdrawEnabled = computed(() => withdrawalSetting.value?.auto_withdraw_enabled ?? false)
-/** T+1 到账与「手续费已在交易内扣」的说明，两条提现路径共用 */
+/** T+1 到账与免手续费的说明，两条提现路径共用 */
 const payoutScheduleNote = computed(
   () => withdrawalSetting.value?.payout_schedule_note || DEFAULT_PAYOUT_SCHEDULE_NOTE,
 )
@@ -158,19 +150,6 @@ const payoutScheduleNote = computed(
 const canSubmitWithdrawal = computed(() => canWithdraw.value && payoutChannelUsable.value)
 /** 自动提现开关：通道不可用时禁用（已开启的开关要允许关闭） */
 const autoWithdrawReady = computed(() => payoutChannelUsable.value || autoWithdrawEnabled.value)
-const autoWithdrawDescription = computed(() => {
-  if (!autoWithdrawEnabled.value) {
-    return '开启后由平台财务每日批量出款，无需自己发起'
-  }
-  const enabledAt = withdrawalSetting.value?.auto_withdraw_enabled_at
-  return enabledAt
-    ? `已开启（${enabledAt}），由平台财务每日批量出款`
-    : '已开启，由平台财务每日批量出款'
-})
-const manualWithdrawDescription = computed(() => {
-  const base = `余额达到 ${money(withdrawalMinAmount.value)} 即可随时发起`
-  return autoWithdrawEnabled.value ? `${base}；已开启自动提现仍可手动提交` : base
-})
 
 /** 手动提现的收款账户：固定为账号中心绑定的 Adapay 收款银行卡 */
 const payoutAccountLabel = computed(() =>
@@ -182,97 +161,6 @@ const depositWithdrawable = computed(
 )
 const depositTotalPaid = computed(() => depositStatus.value?.total_paid_cny ?? 0)
 const canWithdrawDeposit = computed(() => depositWithdrawable.value >= withdrawalMinAmount.value)
-
-async function openRechargeDialog() {
-  if (!(await ensureDeveloperAgreementBeforeRecharge())) {
-    return
-  }
-  rechargeAmount.value = 100
-  rechargeDialogVisible.value = true
-}
-
-function goSignDeveloperAgreement() {
-  void router.push({
-    name: 'contract-sign',
-    query: { agreement: 'developer', redirect_to: route.fullPath },
-  })
-}
-
-async function ensureDeveloperAgreementBeforeRecharge(): Promise<boolean> {
-  if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
-    return false
-  }
-  try {
-    const status = await getDevAccessStatus(auth.token)
-    if (!status.developer_agreement_signed) {
-      showToast('请先签署《开发者入驻协议》后再缴纳保证金', 'warning')
-      void goSignDeveloperAgreement()
-      return false
-    }
-  } catch {
-    // 状态查询失败时交由后端充值接口兑底拦截
-  }
-  return true
-}
-
-async function startAdapayRecharge() {
-  if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
-    return
-  }
-  if (!(await ensureDeveloperAgreementBeforeRecharge())) {
-    return
-  }
-  if (!Number.isFinite(rechargeAmount.value) || rechargeAmount.value <= 0) {
-    showToast('请输入有效的充值金额', 'warning')
-    return
-  }
-  adapayRechargeLoading.value = true
-  try {
-    const amountCny = normalizeCnyAmount(Number(rechargeAmount.value))
-    const clientPlatform = getAdapayClientPlatform()
-    if (rechargeChannel.value === 'wechat') {
-      rechargeDialogVisible.value = false
-      await router.push({
-        name: 'payment',
-        query: {
-          adapay: '1',
-          developer_deposit: '1',
-          intent: '1',
-          channel: 'wechat',
-          client_platform: clientPlatform,
-          amount_cny: amountCny,
-        },
-      })
-      return
-    }
-    const payment = await createAdapayDeveloperDepositPayment(
-      auth.token,
-      amountCny,
-      rechargeChannel.value,
-      clientPlatform,
-    )
-    rechargeDialogVisible.value = false
-    await router.push({
-      name: 'payment',
-      query: {
-        adapay: '1',
-        developer_deposit: '1',
-        payment_id: payment.paymentId,
-        channel: payment.payChannel,
-        client_platform: clientPlatform,
-        amount_cny: payment.amountCny,
-        qr_content: payment.payUrl ?? undefined,
-      },
-    })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '创建保证金充值订单失败'
-    showToast(message, 'error')
-  } finally {
-    adapayRechargeLoading.value = false
-  }
-}
 
 onMounted(async () => {
   auth.hydrate()
@@ -484,6 +372,11 @@ async function submitWithdrawal() {
   }
 }
 
+/** 打开保证金充值弹窗：签约前置校验与信用额度查询都在子组件内完成 */
+function openRechargeDialog() {
+  void rechargeDialog.value?.open()
+}
+
 function openDepositWithdrawDialog() {
   if (!canWithdrawDeposit.value) {
     showToast('当前可提现保证金不足，暂时无法发起提现', 'warning')
@@ -600,53 +493,45 @@ async function submitDepositWithdrawal() {
           <span class="wallet-hero__section-label">接单收入</span>
           <el-tag size="small" effect="plain" type="info">已提现 {{ money(overview?.paid_withdraw_cny) }}</el-tag>
         </div>
-        <div class="wallet-hero__body">
-          <div class="wallet-hero__main">
-            <span class="wallet-hero__label">可提现余额</span>
-            <span class="wallet-hero__amount" :class="{ 'wallet-hero__amount--dim': !canWithdraw }">
-              {{ money(overview?.withdrawable_balance_cny) }}
-            </span>
+        <div class="wallet-hero__body wallet-hero__body--split">
+          <div class="wallet-hero__balance">
+            <div class="wallet-hero__main">
+              <span class="wallet-hero__label">可提现余额</span>
+              <span class="wallet-hero__amount" :class="{ 'wallet-hero__amount--dim': !canWithdraw }">
+                {{ money(overview?.withdrawable_balance_cny) }}
+              </span>
+            </div>
+            <div class="wallet-hero__tags">
+              <el-tag v-if="(overview?.pending_withdraw_cny ?? 0) > 0" size="small" type="warning" effect="plain">
+                提现处理中 {{ money(overview?.pending_withdraw_cny) }}
+              </el-tag>
+              <el-tag size="small" effect="plain" :type="canWithdraw ? 'success' : 'info'">
+                {{ canWithdraw ? '满足提现条件' : '不满足提现条件' }}
+              </el-tag>
+            </div>
           </div>
-          <div class="wallet-hero__tags">
-            <el-tag v-if="(overview?.pending_withdraw_cny ?? 0) > 0" size="small" type="warning" effect="plain">
-              提现处理中 {{ money(overview?.pending_withdraw_cny) }}
-            </el-tag>
-            <el-tag size="small" effect="plain" :type="canWithdraw ? 'success' : 'info'">
-              {{ canWithdraw ? '满足提现条件' : '不满足提现条件' }}
-            </el-tag>
-          </div>
+          <!-- T+1 到账与免手续费的说明由后端下发，排在余额右侧（即已提现标签下方） -->
+          <p class="wallet-hero__note">{{ payoutScheduleNote }}</p>
         </div>
 
-        <!-- 两条提现路径：手动提现由开发者发起，自动提现由平台财务每日批量出款 -->
+        <!-- 自动提现与手动提现是并存的两条出款路径：并成一行展示，说明折到行下方 -->
         <div class="wallet-payout">
-          <div class="wallet-payout__path">
-            <div class="wallet-payout__meta">
-              <span class="wallet-payout__title">
-                手动提现
-                <el-tag size="small" effect="plain" type="info">自己发起</el-tag>
-              </span>
-              <span class="wallet-payout__desc">{{ manualWithdrawDescription }}</span>
+          <div class="wallet-payout__paths">
+            <div class="wallet-payout__path">
+              <span class="wallet-payout__title">自动提现</span>
+              <el-switch class="wallet-payout__switch" :model-value="autoWithdrawEnabled" :loading="autoWithdrawSaving"
+                :disabled="!autoWithdrawReady" :before-change="beforeAutoWithdrawChange" aria-label="自动提现" />
             </div>
-            <el-button class="wallet-hero__button wallet-hero__button--primary" type="primary"
-              :disabled="!canSubmitWithdrawal" @click="openWithdrawDialog">
-              <el-icon>
-                <Wallet />
-              </el-icon>
-              <span>申请提现</span>
-            </el-button>
-          </div>
-          <div class="wallet-payout__path">
-            <div class="wallet-payout__meta">
-              <span class="wallet-payout__title">
-                自动提现
-                <el-tag size="small" effect="plain" :type="autoWithdrawEnabled ? 'success' : 'info'">
-                  {{ autoWithdrawEnabled ? '已开启' : '未开启' }}
-                </el-tag>
-              </span>
-              <span class="wallet-payout__desc">{{ autoWithdrawDescription }}</span>
+            <div class="wallet-payout__path">
+              <span class="wallet-payout__title">手动提现</span>
+              <el-button class="wallet-hero__button wallet-hero__button--primary" type="primary"
+                :disabled="!canSubmitWithdrawal" @click="openWithdrawDialog">
+                <el-icon>
+                  <Wallet />
+                </el-icon>
+                <span>申请提现</span>
+              </el-button>
             </div>
-            <el-switch class="wallet-payout__switch" :model-value="autoWithdrawEnabled" :loading="autoWithdrawSaving"
-              :disabled="!autoWithdrawReady" :before-change="beforeAutoWithdrawChange" aria-label="自动提现" />
           </div>
           <div v-if="withdrawalSettingLoaded && !payoutChannelReady" class="wallet-payout__alert" role="status">
             <el-icon>
@@ -655,8 +540,6 @@ async function submitDepositWithdrawal() {
             <span>{{ payoutChannelMessage || '出款通道暂未就绪，请先绑定收款银行卡' }}</span>
             <el-button link type="primary" @click="goBindSettlementAccount">去绑定</el-button>
           </div>
-          <!-- T+1 到账与手续费「交易内扣」的说明由后端下发，两条路径共用 -->
-          <p class="wallet-payout__note">{{ payoutScheduleNote }}</p>
         </div>
       </el-card>
 
@@ -808,46 +691,8 @@ async function submitDepositWithdrawal() {
       </template>
     </el-dialog>
 
-    <!-- 保证金充值弹窗 -->
-    <el-dialog v-model="rechargeDialogVisible" title="保证金充值" width="520px" class="dev-recharge-dialog" align-center>
-      <el-form class="dev-recharge-dialog__form" label-position="top">
-        <el-form-item label="充值金额（元）" required>
-          <el-input-number v-model="rechargeAmount" class="dev-recharge-dialog__amount-input" :min="0.01"
-            :precision="2" :step="0.01" />
-          <div class="dev-recharge-dialog__notes">
-            <div class="dev-wallet-withdraw__note">充值后保证金余额增加，可用于解锁接单资格。</div>
-            <div v-if="creditInfo && creditInfo.enforce_deposit_limit" class="dev-wallet-withdraw__note">
-              当前信用 {{ creditInfo.credit_score.toFixed(2) }}（按 1 信用 = ¥{{
-                creditInfo.cny_per_credit.toFixed(2)
-              }}
-              折算），还可充 <strong>{{ money(creditInfo.remaining_deposit_cap_cny) }}</strong>。
-            </div>
-          </div>
-          <el-alert v-if="
-            creditInfo &&
-            creditInfo.enforce_deposit_limit &&
-            rechargeAmount > creditInfo.remaining_deposit_cap_cny
-          " class="dev-recharge-dialog__limit-alert" type="warning" :closable="false" show-icon
-            title="充值金额超过当前信用允许的额度，提交将被拒绝。请联系管理员提升信用，或下调充值金额。" />
-        </el-form-item>
-        <el-form-item label="支付方式" required>
-          <el-radio-group v-model="rechargeChannel" class="dev-recharge-dialog__channels">
-            <el-radio-button value="alipay" class="dev-recharge-dialog__channel--alipay">
-              <img src="/icons/alipay.png" class="dev-recharge-dialog__channel-icon" width="22" height="22" alt="" />
-              <span>支付宝</span>
-            </el-radio-button>
-            <el-radio-button value="wechat" class="dev-recharge-dialog__channel--wechat">
-              <img src="/icons/wechat-pay.png" class="dev-recharge-dialog__channel-icon" width="22" height="22" alt="" />
-              <span>微信</span>
-            </el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button class="dev-recharge-dialog__action" @click="rechargeDialogVisible = false">取消</el-button>
-        <el-button class="dev-recharge-dialog__action" type="primary" :loading="adapayRechargeLoading" @click="startAdapayRecharge">充值</el-button>
-      </template>
-    </el-dialog>
+    <!-- 保证金充值弹窗：与工作台总览的「保证金不足」提示共用同一组件 -->
+    <DevDepositRechargeDialog ref="rechargeDialog" />
 
   </div>
 </template>
