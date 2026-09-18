@@ -5,7 +5,9 @@
  * 需求方与开发者共用：发起售后只放行需求方（甲方）——资金出口只有「原路退还需求方尾款」
  * 与「从开发者保证金扣划赔付需求方」两个方向，开发者发起没有能落地的诉求，因此开发者侧
  * 只保留案件查看与「接受 / 不接受」表态（由调用方用 `canOpenCase` 关掉发起表单）。
- * 所有状态守卫与后端一致，前端只做入口收敛，真正的判定仍在服务层。
+ * 入口守卫里还包含售后窗口：窗口状态由服务端在案件列表响应里给出（`windowOpen`），
+ * 窗口关闭后不再渲染发起表单，避免用户填完表单一律被后端 409 拒绝；前端不自己拿时间戳
+ * 比大小，真正的判定仍在服务层。
  */
 import { computed, ref, watch } from 'vue'
 import {
@@ -53,6 +55,27 @@ const cases = ref<AfterSalesCase[]>([])
 const casesLoading = ref(false)
 const respondingId = ref<number | null>(null)
 const withdrawingId = ref<number | null>(null)
+
+/** 售后窗口是否还开着（服务端判定）；窗口状态未知时为 null。 */
+const windowOpen = ref<boolean | null>(null)
+/** 售后窗口关闭时间，用于在窗口已关闭时告知需求方。 */
+const windowClosesAt = ref<string | null>(null)
+
+/** 售后窗口已关闭：此时不再渲染发起表单——表单填完必然被后端 409 拒绝。 */
+const windowClosed = computed(() => windowOpen.value === false)
+
+/**
+ * 能不能发起售后：调用方允许（需求方视角）+ 窗口还开着。
+ * 窗口状态为 null（老后端或没按需求查询）时不拦，保留后端 409 兜底。
+ */
+const canSubmitCase = computed(() => props.canOpenCase && !windowClosed.value)
+
+/** 窗口已关闭时的说明文案：拿得到关闭时间就说清楚，拿不到（结单时间异常）退化为通用措辞。 */
+const windowClosedTip = computed(() =>
+  windowClosesAt.value
+    ? `售后窗口已于 ${formatCnDateTime(windowClosesAt.value)} 关闭，本需求不再受理新的售后申请。如需反映其它问题，请走工单中心联系平台。`
+    : '本需求的售后窗口已关闭，不再受理新的售后申请。如需反映其它问题，请走工单中心联系平台。',
+)
 
 /** 当前需求正在办理的售后案件（同一需求同时只允许一条在办案件）。 */
 const currentCase = computed(() =>
@@ -126,6 +149,8 @@ async function refresh() {
   try {
     const result = await listMyAfterSalesCases(props.token, props.requirementId)
     cases.value = result.items
+    windowOpen.value = result.windowOpen
+    windowClosesAt.value = result.windowClosesAt
   } catch (err) {
     showToast(err instanceof Error ? err.message : '加载售后案件失败', 'error')
   } finally {
@@ -212,6 +237,8 @@ watch(
     description.value = ''
     claimAmount.value = ''
     cases.value = []
+    windowOpen.value = null
+    windowClosesAt.value = null
     await refresh()
   },
 )
@@ -273,7 +300,7 @@ watch(
         </div>
       </template>
 
-      <template v-else-if="canOpenCase">
+      <template v-else-if="canSubmitCase">
         <div class="after-sales-modal__field">
           <strong>诉求类型</strong>
           <div class="after-sales-modal__kinds" role="group" aria-label="诉求类型">
@@ -302,6 +329,10 @@ watch(
         </p>
       </template>
 
+      <p v-else-if="canOpenCase && windowClosed" class="tip">
+        {{ windowClosedTip }}
+      </p>
+
       <template v-else>
         <p class="tip">
           售后由需求方（甲方）发起，你这边用于查看诉求并表态：接受即按诉求执行，不接受由平台裁决。
@@ -328,7 +359,7 @@ watch(
 
       <div class="actions">
         <button class="ghost" type="button" :disabled="busy" @click="close">关闭</button>
-        <button v-if="canOpenCase && !currentCase && !casesLoading" class="ghost primary" type="button"
+        <button v-if="canSubmitCase && !currentCase && !casesLoading" class="ghost primary" type="button"
           :disabled="submitting" @click="submit">
           {{ submitting ? '提交中...' : '提交售后申请' }}
         </button>

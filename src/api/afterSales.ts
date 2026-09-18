@@ -57,6 +57,10 @@ export type AfterSalesCase = {
 
 export type AfterSalesCaseList = {
   items: AfterSalesCase[]
+  /** 按需求查询时：该需求是否仍在售后窗口内（服务端判定，客户端不自己比时间）；否则为 null。 */
+  windowOpen: boolean | null
+  /** 按需求查询时：该需求的售后窗口关闭时间；需求未结单时为 null。 */
+  windowClosesAt: string | null
 }
 
 /** 发起售后申请；`claimAmountFen` 是诉求额度（分），只有退款型诉求才该大于 0。 */
