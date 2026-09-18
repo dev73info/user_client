@@ -7,7 +7,15 @@ type SseMessage = {
 
 export type JsonEventStreamCallbacks<T> = {
   onEvent: (payload: T) => void
+  /** 连上（含重连）时触发；首次连上也会触发。 */
   onOpen?: () => void
+  /**
+   * 掉线后重新连上时触发，首次连上不触发。
+   *
+   * 事件流只推「连上之后」产生的数据，断线期间的内容不会补发，调用方收到这个回调
+   * 应当自行补拉一次，否则界面会一直停在断线前那一刻。
+   */
+  onReconnect?: () => void
   onClose?: () => void
   onError?: (error: Error) => void
   reconnectDelayMs?: number
@@ -94,6 +102,8 @@ export function subscribeJsonEventStream<T>(
   let stopped = false
   let retryTimer: ReturnType<typeof setTimeout> | null = null
   let controller: AbortController | null = null
+  // 是否已经连上过一次：用来区分首次连上（调用方自己刚拉过数据）与掉线后重连（要补拉）
+  let connectedOnce = false
 
   function clearRetryTimer() {
     if (retryTimer !== null) {
@@ -160,6 +170,10 @@ export function subscribeJsonEventStream<T>(
 
       opened = true
       nextReconnectDelayMs = reconnectDelayMs
+      if (connectedOnce) {
+        callbacks.onReconnect?.()
+      }
+      connectedOnce = true
       callbacks.onOpen?.()
 
       const reader = resp.body.getReader()

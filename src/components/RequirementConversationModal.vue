@@ -293,6 +293,12 @@ onBeforeUnmount(() => {
   clearAttachmentDraft()
 })
 
+/**
+ * 滚到时间线最底部（最新一条）。
+ *
+ * ponytail: 只滚一次，不做「贴底跟随」。作曲器里的提示文案与快捷操作晚一两帧才定型，
+ * 消息区被挤矮后这次滚动会差最后几十像素（最多遮住最新卡片的底边），要彻底钉住底部
+ * 得上 ResizeObserver；目前差量在可视范围内，先不引入。 */
 async function scrollToBottom() {
   await nextTick()
   if (messageListRef.value) {
@@ -375,12 +381,38 @@ async function loadConversation() {
       props.requirementId,
     )
     emit('updated', detail.value)
-    await scrollToBottom()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '加载会话失败'
     detail.value = null
   } finally {
     loading.value = false
+  }
+  // 必须等 loading 关掉之后再滚：加载态里消息列表被「会话加载中」占位块取代，容器没有
+  // 可滚动高度，此时赋值 scrollTop 会被浏览器夹回 0，数据回来后就停在时间线最上面，
+  // 最新的卡片（如结单）要手动往下滚才看得见。
+  await scrollToBottom()
+}
+
+/**
+ * 断线重连后补一次全量：实时流只推「连上之后」发生的事件，断线期间平台写入的卡片
+ * 与双方消息都不会补发，不重拉就会一直停在上次连上那一刻（例如结单卡片始终不出现）。
+ * 与 loadConversation 的区别是不置 loading，避免把正在看的时间线换成加载态、顺手禁掉输入框。
+ */
+async function syncAfterRealtimeReconnect() {
+  if (!props.token || !props.requirementId) {
+    return
+  }
+
+  try {
+    const next = await conversationApi.value.getRequirementConversationByRequirement(
+      props.token,
+      props.requirementId,
+    )
+    detail.value = next
+    emit('updated', next)
+    await scrollToBottom()
+  } catch {
+    // 补拉失败不打扰用户：下一次重连或手动刷新会再试
   }
 }
 
@@ -476,6 +508,10 @@ function startRealtime() {
     onOpen: () => {
       realtimeStatus.value = 'connected'
       realtimeError.value = ''
+    },
+    onReconnect: () => {
+      // 断线期间可能已经写入卡片/消息，重连后补拉一次，避免时间线停在断线前的样子
+      void syncAfterRealtimeReconnect()
     },
     onClose: () => {
       if (props.visible && props.token) {

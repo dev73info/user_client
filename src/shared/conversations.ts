@@ -92,6 +92,8 @@ export type RequirementConversationDetail = {
 export type RequirementConversationEventCallbacks = {
   onUpdate: (detail: RequirementConversationDetail) => void
   onOpen?: () => void
+  /** 掉线后重新连上时触发（首次连上不触发），用于补拉断线期间漏掉的消息。 */
+  onReconnect?: () => void
   onClose?: () => void
   onError?: (error: Error) => void
 }
@@ -225,6 +227,7 @@ export function createConversationApi(http: ConversationHttpClient) {
       {
         onEvent: callbacks.onUpdate,
         onOpen: callbacks.onOpen,
+        onReconnect: callbacks.onReconnect,
         onClose: callbacks.onClose,
         onError: callbacks.onError,
       },

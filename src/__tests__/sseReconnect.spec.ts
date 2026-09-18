@@ -54,4 +54,28 @@ describe('subscribeJsonEventStream 重连退避', () => {
     }
     expect(gaps).toEqual([2000, 4000, 2000, 4000, 8000, 15000, 15000])
   })
+
+  it('掉线后重新连上触发 onReconnect，首次连上不触发', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve({ ok: true, status: 200, body: emptyStreamBody })),
+    )
+
+    const onOpen = vi.fn()
+    const onReconnect = vi.fn()
+
+    const stop = subscribeJsonEventStream(
+      'http://localhost/api/conversations/events',
+      {},
+      'conversation.updated',
+      { onEvent: () => {}, onOpen, onReconnect },
+    )
+
+    await vi.advanceTimersByTimeAsync(10_000)
+    stop()
+
+    // 每次连上都会 onOpen（连上后流立刻结束 → 重连），但只有第二次及以后才算「重连」
+    expect(onOpen.mock.calls.length).toBeGreaterThan(1)
+    expect(onReconnect).toHaveBeenCalledTimes(onOpen.mock.calls.length - 1)
+  })
 })
