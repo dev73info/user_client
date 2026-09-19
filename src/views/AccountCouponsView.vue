@@ -2264,7 +2264,6 @@ onBeforeUnmount(() => {
                     ? '请使用手机扫码，完成企业实名认证'
                     : '请使用手机扫码，完成人脸核身认证'
               }}</strong>
-              <span>认证通过后将自动生效，无需重复提交</span>
             </div>
 
             <template v-if="!isMobile">
@@ -2293,7 +2292,7 @@ onBeforeUnmount(() => {
               <el-icon>
                 <Promotion />
               </el-icon>
-              {{ isMobile ? '打开认证页面完成核身' : '扫码不便？点此打开认证页面' }}
+              {{ isMobile ? '打开认证页面完成核身' : '打开认证页面' }}
             </el-button>
           </div>
           <div class="realname-faceid-panel__actions">

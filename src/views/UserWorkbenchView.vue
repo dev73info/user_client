@@ -67,7 +67,7 @@ const devWorkbenchItems: (WorkbenchMenuItem & { icon: Component })[] = [
     icon: DataAnalysis,
   },
   {
-    label: '我的资源项目',
+    label: '资源项目',
     name: 'dev-resource-list',
     description: '管理主页、版本与资源状态',
     activeNames: ['dev-resource-homepage-edit', 'dev-resource-versions'],
@@ -314,7 +314,7 @@ function isMenuItemActive(item: WorkbenchMenuItem) {
     route.query.from === 'team-resources' &&
     (currentName === 'dev-resource-versions' || currentName === 'dev-resource-homepage-edit')
 
-  // 从团队资源进入版本管理/编辑主页时，高亮「资源项目」而非「我的资源项目」
+  // 从团队资源进入版本管理/编辑主页时，高亮「资源项目」而非「资源项目」
   if (item.name === 'workbench-team-resources' && isTeamResourceAction) {
     return true
   }
