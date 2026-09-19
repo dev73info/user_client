@@ -114,8 +114,13 @@ function statusText(status: AfterSalesCase['status']) {
       return '待对方表态'
     case 'negotiating':
       return '协商中'
+    case 'support_reviewing':
+      return '平台裁决中'
     case 'processing':
       return '平台处理中'
+    case 'manual_required':
+      // 渠道扣划失败或超时无人处理后的兜底状态，等客服人工介入。
+      return '需人工处理'
     case 'succeeded':
       return '已结案'
     case 'rejected':

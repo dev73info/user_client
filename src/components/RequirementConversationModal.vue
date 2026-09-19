@@ -931,7 +931,6 @@ function handleBackdropClick() {
                   <strong>{{ row.card.title }}</strong>
                 </div>
                 <p class="conversation-card__desc">{{ row.card.description }}</p>
-                <p v-if="row.message?.action_ref" class="conversation-card__ref">{{ row.message.action_ref }}</p>
                 <div class="conversation-card__foot">
                   <time :title="row.createdAt">{{ formatMessageClock(row.createdAt) }}</time>
                   <el-button v-if="row.card.actionLabel" class="conversation-card__action" type="primary" size="small"
@@ -2654,13 +2653,6 @@ function handleBackdropClick() {
   font-size: 12.5px;
   line-height: 1.6;
   word-break: break-word;
-}
-
-.conversation-card__ref {
-  margin: 0;
-  color: #64748b;
-  font-size: 12px;
-  word-break: break-all;
 }
 
 .conversation-card__foot {

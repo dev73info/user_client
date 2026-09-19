@@ -1181,7 +1181,12 @@ async function loadMyRequirements() {
   requirementLoading.value = true
   try {
     const rows = await listRequirements(auth.token)
-    myRequirements.value = rows.slice(0, 20)
+    // 不截断：这一页的「待办」「可操作需求」与统计都由这份列表算出来，
+    // 此前 `slice(0, 20)` 会让需求多的账号漏掉第 21 条起的全部待办。
+    // 展示侧仍有各自的 slice（最近需求 5 条等），取数与展示不再混为一谈。
+    // ponytail: 下方合同签署状态按条发起，请求数随需求数线性增长；
+    // 上限的真正解法是服务端分页 + 批量状态接口。
+    myRequirements.value = rows
     const guaranteedRows = myRequirements.value.filter((item) => !isSelfManagedRequirement(item))
     const entries = await Promise.allSettled(
       guaranteedRows.map((item) =>

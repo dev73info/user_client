@@ -100,7 +100,7 @@ export function conversationCardMeta(
     case 'final_paid':
       return {
         title: '尾款已缴纳',
-        description: '需求方已缴纳尾款，等待渠道分账完成（通常 7 天），分账成功后正式结单。',
+        description: '需求方已缴纳尾款，等待渠道分账完成后正式结单。',
         // 待分账期间双方都没有可执行的动作（等待期内终止合作走需求卡片上的入口）；
         // 「去我的需求」只是把人送回自己已经在的需求列表，属空跳转，故不给按钮。
       }
@@ -116,6 +116,44 @@ export function conversationCardMeta(
         description: '需求已回到待接单状态。',
         actionLabel: '去需求大厅',
         to: role === 'developer' ? { name: 'dev-requirement-hall' } : requirementListRoute,
+      }
+    // 违约案件进展（AD-5）：后端在案件每一步流转时都写一条卡片，这里给出对应中文。
+    // 案件详情（责任方、退款与赔付金额、协商记录）都在需求卡片的违约弹窗里，
+    // 没有可一键执行的资金动作，所以全部不给按钮，避免空跳转。
+    case 'breach_case_submitted':
+      return {
+        title: '违约申报已提交',
+        description: '双方可先在案件内自行协商；协商不成再由任一方申请平台介入判定。',
+      }
+    case 'breach_case_ai_judged':
+      return {
+        title: '平台已完成责任判定',
+        description: '请在案件内表态是否接受判定，双方都接受后平台才会执行退款与赔付。',
+      }
+    case 'breach_case_support_reviewing':
+      return {
+        title: '违约案件已转客服人工判定',
+        description: '请等待客服处理，判定结论会同步到案件与这里。',
+      }
+    case 'breach_case_resolved':
+      return {
+        title: '违约案件已结案',
+        description: '资金已按判定处理完成，需求已回到待接单状态。',
+      }
+    case 'breach_case_rejected':
+      return {
+        title: '违约申报未获支持',
+        description: '平台未支持本次违约申报，案件已关闭，双方合同仍按原约定继续履行。',
+      }
+    case 'breach_case_withdrawn':
+      return {
+        title: '违约申报已撤回',
+        description: '申报人已撤回本次申报，合作按原约定继续履行。',
+      }
+    case 'breach_case_manual_required':
+      return {
+        title: '违约案件需人工处理',
+        description: '资金处理未能自动完成，客服会尽快跟进并在案件内同步进展。',
       }
     default:
       return null

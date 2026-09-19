@@ -49,6 +49,7 @@ import {
   calculateFinalPaymentAmount,
 } from '@/shared/requirementPayment'
 import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
+import { breachStatusLabel } from '@/shared/breachStatus'
 
 type ViewerRole = 'customer' | 'developer'
 
@@ -82,18 +83,6 @@ type ActionChip = {
   label: string
   tone: ActionTone
   run: () => void
-}
-
-const BREACH_STATUS_LABELS: Record<string, string> = {
-  submitted: '协商中',
-  ai_reviewing: 'AI 审核中',
-  ai_judged: 'AI 已判定，待双方确认',
-  support_reviewing: '客服人工判定中',
-  withdrawn: '申请人已撤回',
-  processing: '资金处理中',
-  manual_required: '资金执行待处理',
-  succeeded: '已结案',
-  rejected: '已驳回',
 }
 
 /** 已结束的案件不再提供入口，只需要能重新申报时给出表单。 */
@@ -835,10 +824,6 @@ function formatBudget(value?: number | null) {
     return '待议价'
   }
   return `¥${value.toFixed(2)}`
-}
-
-function breachStatusLabel(status: string) {
-  return BREACH_STATUS_LABELS[status] ?? status
 }
 
 function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {

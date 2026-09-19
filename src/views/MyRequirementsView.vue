@@ -43,9 +43,11 @@ import {
   type AdapayBreachCase,
   type AdapayBreachDecisionValue,
   type AdapayBreachVerdictParty,
+  type AdapayBreachVerdictSource,
   type AdapayBusinessPayChannel,
   type AdapayPaymentResponse,
 } from '@/api/adapay'
+import { breachStatusLabel } from '@/shared/breachStatus'
 import {
   cancelRequirement as cancelRequirementApi,
   commentRequirement as commentRequirementApi,
@@ -182,19 +184,6 @@ const breachDecisionLoading = ref(false)
 const breachRejectPanel = ref(false)
 const breachDecisionNote = ref('')
 
-/** 违约案件状态文案（与后端 adapay_breach_case.status 对应）。 */
-const BREACH_STATUS_LABELS: Record<string, string> = {
-  submitted: '协商中',
-  ai_reviewing: 'AI 审核中',
-  ai_judged: 'AI 已判定，待双方确认',
-  support_reviewing: '客服人工判定中',
-  withdrawn: '申请人已撤回',
-  processing: '资金处理中',
-  manual_required: '资金执行待处理',
-  succeeded: '已结案',
-  rejected: '已驳回',
-}
-
 /** 责任方文案。 */
 function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
   if (party === 'customer') return '客户（需求方）违约'
@@ -208,6 +197,20 @@ function breachDecisionText(decision?: AdapayBreachDecisionValue | null) {
     return '未表态'
   }
   return decision === 'accepted' ? '已接受 AI 判定' : '不接受 AI 判定'
+}
+
+/**
+ * 判定来源文案：`mutual` 是双方在案件内自行协商一致结案（没经过客服），
+ * 不能和 `support` 一起显示成「客服人工判定」。
+ */
+function breachVerdictSourceText(source?: AdapayBreachVerdictSource | null) {
+  if (source === 'ai') {
+    return '双方接受 AI 判定'
+  }
+  if (source === 'mutual') {
+    return '双方协商一致'
+  }
+  return '客服人工判定'
 }
 
 /** 双方表态状态只在 AI 判定后才有意义。 */
@@ -1811,7 +1814,11 @@ async function loadMyRequirements() {
   requirementLoading.value = true
   try {
     const rows = await listRequirements(auth.token)
-    myRequirements.value = rows.slice(0, 20)
+    // 不截断：列表页要能点进任何一条需求（此前 `slice(0, 20)` 让第 21 条起从列表消失，
+    // 连售后弹窗都进不去）。下方的合同签署状态与资源版本查询是按条发起的，
+    // ponytail: 请求数随需求数线性增长（N 条 ≈ 2N 个请求），需求很多时页面会变慢；
+    // 上限的真正解法是服务端分页 + 批量状态接口，等 `/requirement/mine` 支持分页再做。
+    myRequirements.value = rows
     syncRouteRequirementDetail()
     await loadContractSigningStatuses(myRequirements.value)
     await loadResourceVersions(myRequirements.value)
@@ -2690,7 +2697,7 @@ watch(
         <p v-if="breachCaseLoading" class="pay-line">正在加载违约案件…</p>
         <template v-else-if="breachCase && !breachNewRound">
           <p class="pay-line"><strong>案件编号：</strong>{{ breachCase.caseNo }}</p>
-          <p class="pay-line"><strong>当前状态：</strong>{{ BREACH_STATUS_LABELS[breachCase.status] ?? breachCase.status }}</p>
+          <p class="pay-line"><strong>当前状态：</strong>{{ breachStatusLabel(breachCase.status) }}</p>
           <p v-if="breachCase.status === 'withdrawn'" class="pay-line">
             <strong>申请人：</strong>{{ breachWithdrawnByMe ? '我方' : '对方' }}
           </p>
@@ -2723,7 +2730,7 @@ watch(
             <strong>资金处理：</strong>定金 ¥{{ breachCase.depositAmountCny }} · 已退尾款 ¥{{ breachCase.refundAmountCny }} · 赔付 ¥{{ breachCase.compensationAmountCny }}<template v-if="breachCase.extraCompensationFen > 0"> · 额外赔偿 ¥{{ breachCase.extraCompensationCny }}</template>
           </p>
           <p v-if="breachCase.verdictSource" class="pay-line">
-            <strong>判定来源：</strong>{{ breachCase.verdictSource === 'ai' ? '双方接受 AI 判定' : '客服人工判定' }}
+            <strong>判定来源：</strong>{{ breachVerdictSourceText(breachCase.verdictSource) }}
           </p>
           <p v-if="breachCase.resolutionNote" class="pay-line"><strong>处理说明：</strong>{{ breachCase.resolutionNote }}</p>
 

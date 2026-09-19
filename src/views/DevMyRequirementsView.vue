@@ -13,11 +13,13 @@ import {
   type AdapayBreachCase,
   type AdapayBreachDecisionValue,
   type AdapayBreachVerdictParty,
+  type AdapayBreachVerdictSource,
 } from '@/api/adapay'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import DeliverySubmitDialog from '@/components/DeliverySubmitDialog.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
+import { breachStatusLabel } from '@/shared/breachStatus'
 import {
   listRequirementConversations,
   type RequirementConversation,
@@ -83,19 +85,6 @@ const breachDecisionLoading = ref(false)
 const breachRejectPanel = ref(false)
 const breachDecisionNote = ref('')
 
-/** 违约案件状态文案（与后端 adapay_breach_case.status 对应）。 */
-const BREACH_STATUS_LABELS: Record<string, string> = {
-  submitted: '协商中',
-  ai_reviewing: 'AI 审核中',
-  ai_judged: 'AI 已判定，待双方确认',
-  support_reviewing: '客服人工判定中',
-  withdrawn: '申请人已撤回',
-  processing: '资金处理中',
-  manual_required: '资金执行待处理',
-  succeeded: '已结案',
-  rejected: '已驳回',
-}
-
 /** 责任方文案。 */
 function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
   if (party === 'customer') return '客户（需求方）违约'
@@ -109,6 +98,20 @@ function breachDecisionText(decision?: AdapayBreachDecisionValue | null) {
     return '未表态'
   }
   return decision === 'accepted' ? '已接受 AI 判定' : '不接受 AI 判定'
+}
+
+/**
+ * 判定来源文案：`mutual` 是双方在案件内自行协商一致结案（没经过客服），
+ * 不能和 `support` 一起显示成「客服人工判定」。
+ */
+function breachVerdictSourceText(source?: AdapayBreachVerdictSource | null) {
+  if (source === 'ai') {
+    return '双方接受 AI 判定'
+  }
+  if (source === 'mutual') {
+    return '双方协商一致'
+  }
+  return '客服人工判定'
 }
 
 /** 双方表态状态只在 AI 判定后才有意义。 */
@@ -1024,7 +1027,7 @@ async function loadRequirementConversations() {
           <el-descriptions :column="1" border size="small">
             <el-descriptions-item label="案件编号">{{ breachCase.caseNo }}</el-descriptions-item>
             <el-descriptions-item label="当前状态">
-              {{ BREACH_STATUS_LABELS[breachCase.status] ?? breachCase.status }}
+              {{ breachStatusLabel(breachCase.status) }}
             </el-descriptions-item>
             <el-descriptions-item v-if="breachCase.status === 'withdrawn'" label="申请人">
               {{ breachWithdrawnByMe ? '我方' : '对方' }}
@@ -1058,7 +1061,7 @@ async function loadRequirementConversations() {
               定金 ¥{{ breachCase.depositAmountCny }} · 已退尾款 ¥{{ breachCase.refundAmountCny }} · 赔付 ¥{{ breachCase.compensationAmountCny }}<template v-if="breachCase.extraCompensationFen > 0"> · 额外赔偿 ¥{{ breachCase.extraCompensationCny }}</template>
             </el-descriptions-item>
             <el-descriptions-item v-if="breachCase.verdictSource" label="判定来源">
-              {{ breachCase.verdictSource === 'ai' ? '双方接受 AI 判定' : '客服人工判定' }}
+              {{ breachVerdictSourceText(breachCase.verdictSource) }}
             </el-descriptions-item>
             <el-descriptions-item v-if="breachCase.resolutionNote" label="处理说明">
               {{ breachCase.resolutionNote }}

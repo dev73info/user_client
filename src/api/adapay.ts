@@ -69,8 +69,8 @@ export type AdapayBreachLiableParty = 'customer' | 'developer'
 export type AdapayBreachVerdictParty = AdapayBreachLiableParty | 'mutual'
 /** 合同双方对 AI 判定的表态。 */
 export type AdapayBreachDecisionValue = 'accepted' | 'rejected'
-/** 最终判定来源：`ai` 双方接受 AI 判定 / `support` 客服人工判定。 */
-export type AdapayBreachVerdictSource = 'ai' | 'support'
+/** 最终判定来源：`ai` 双方接受 AI 判定 / `support` 客服人工判定 / `mutual` 双方自行协商一致（未经客服）。 */
+export type AdapayBreachVerdictSource = 'ai' | 'support' | 'mutual'
 
 /**
  * 协商终止合作里的一方身份：`customer` 甲方（需求方）/ `developer` 乙方。

@@ -426,6 +426,13 @@ onUnmounted(() => {
                             :class="`contract-status-chip--${contract.status}`">{{ statusLabel(contract.status)
                             }}</span></p>
                     <p><strong>合同指纹：</strong><span class="hash-text">{{ contract.content_sha256 }}</span></p>
+                    <!-- CT-2：平台作废不联动爱签（爱签 OpenAPI 没有作废/撤回接口），
+                         用户可能在渠道侧仍看到这份合同，必须在页面上讲清楚边界。 -->
+                    <p v-if="contract.status === 'void'" class="void-hint">
+                        <strong>本合同已由平台作废。</strong>
+                        平台作废只影响本站：爱签渠道侧的合同不会同步撤回，请不要再在爱签侧签署这份合同；
+                        如已签署，请联系客服处理。
+                    </p>
                 </div>
 
                 <div v-if="successMsg" class="msg-success">{{ successMsg }}</div>
@@ -962,6 +969,17 @@ onUnmounted(() => {
     border: 1px solid #fecaca;
     margin-bottom: 1rem;
     font-weight: 700;
+}
+
+/* 已作废合同在渠道侧的提示（CT-2）：平台作废不联动爱签，需要显眼但不吓人。 */
+.void-hint {
+    color: #92400e;
+    padding: 0.75rem 0.9rem;
+    border-radius: 8px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    margin-bottom: 1rem;
+    line-height: 1.6;
 }
 
 @media (max-width: 640px) {
