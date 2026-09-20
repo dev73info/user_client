@@ -348,22 +348,6 @@ function goBack() {
     router.push({ name: 'workbench-requirements' })
 }
 
-function goHome() {
-    if (isWorkbenchSignature.value) {
-        router.push({ name: 'workbench-signatures' })
-        return
-    }
-    if (isDeveloperAgreement.value) {
-        router.push({ name: 'workbench' })
-        return
-    }
-    if (route.query.from === 'dev') {
-        router.push({ name: 'dev-my-requirements' })
-        return
-    }
-    router.push({ name: 'workbench-requirements' })
-}
-
 /** 未实名认证时引导用户去完成实名认证，认证通过后回到签署页。 */
 function goRealname() {
     void router.push({
@@ -407,15 +391,13 @@ onUnmounted(() => {
 <template>
     <main class="page-shell" :class="{ 'page-shell--workbench': isWorkbenchSignature }">
         <section class="panel">
-            <header class="panel-head">
+            <!-- 工作台签署详情使用外层工作台标题栏（合同详情/合同名 + 返回），页内不再重复标题与返回。 -->
+            <header v-if="!isWorkbenchSignature" class="panel-head">
                 <div class="panel-head__title">
-                    <h2>{{ isWorkbenchSignature ? (contract?.title || '合同详情') : (isDeveloperAgreement ? '开发者入驻协议' : '需求服务合同') }}</h2>
+                    <h2>{{ isDeveloperAgreement ? '开发者入驻协议' : '需求服务合同' }}</h2>
                     <p v-if="canSignContract" class="lead">请核对实名认证身份后完成签署。</p>
                 </div>
-                <button v-if="isWorkbenchSignature" type="button" class="btn-secondary" @click="goHome">
-                    <el-icon><ArrowLeft /></el-icon>返回我的签署
-                </button>
-                <button v-else type="button" class="btn-secondary panel-head__back" @click="goBack">
+                <button type="button" class="btn-secondary panel-head__back" @click="goBack">
                     <el-icon><ArrowLeft /></el-icon>返回
                 </button>
             </header>
@@ -429,13 +411,6 @@ onUnmounted(() => {
             </div>
 
             <template v-else>
-                <!-- 工作台签署详情：「刷新状态」移到页头右下方，与「返回我的签署」同处右上角。 -->
-                <div v-if="isWorkbenchSignature" class="panel-actions">
-                    <button type="button" class="btn-secondary" :disabled="signing" @click="loadContract">
-                        <el-icon><Refresh /></el-icon>刷新状态
-                    </button>
-                </div>
-
                 <div class="contract-meta">
                     <p><strong>合同编号：</strong>{{ contract.contract_no }}</p>
                     <p><strong>合同标题：</strong>{{ contract.title }}</p>
@@ -551,8 +526,6 @@ onUnmounted(() => {
     overflow-wrap: anywhere;
 }
 .page-shell--workbench .panel { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.page-shell--workbench .panel-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-.page-shell--workbench .panel-head h2 { color: #172033; font-size: 18px; }
 .page-shell--workbench .btn-primary { background: #247f7d; border-color: #247f7d; color: #fff; }
 .page-shell--workbench .btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: #247f7d; border-color: #cce3e2; background: #fff; white-space: normal; }
 .page-shell--workbench .sign-panel { background: #f5fafa; border-color: #cce3e2; }
@@ -901,13 +874,6 @@ onUnmounted(() => {
     background: #ffffff;
     touch-action: none;
     cursor: crosshair;
-}
-
-.panel-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
 }
 
 .contract-actions {
