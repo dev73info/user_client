@@ -12,10 +12,13 @@ import {
     type ContractDetail,
 } from '@/api/contracts'
 import { useAuthStore } from '@/stores/auth'
+import { useWorkbenchSubtitle } from '@/composables/useWorkbenchSubtitle'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+// 工作台标题栏的二级标题：让「合同详情」后面跟上具体合同名（如「合同详情/开发者入驻协议」）。
+const workbenchSubtitle = useWorkbenchSubtitle()
 
 const requirementId = String(route.query.requirement_id ?? '')
 const isWorkbenchSignature = computed(() => route.name === 'workbench-signature-detail')
@@ -262,6 +265,7 @@ async function loadContract() {
     } finally {
         loading.value = false
     }
+    workbenchSubtitle.value = isWorkbenchSignature.value ? (contract.value?.title ?? '') : ''
 }
 
 function continueAfterDeveloperAgreement() {
@@ -395,6 +399,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
     stopStatusPolling()
+    // 离开详情页时清掉标题栏二级标题，避免残留在别的页面。
+    workbenchSubtitle.value = ''
 })
 </script>
 

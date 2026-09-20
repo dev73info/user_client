@@ -8,6 +8,7 @@ import { listUserInvitations } from '@/api/team'
 import { getMyRealnameVerification } from '@/api/realname'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import { useWorkbenchSubtitle } from '@/composables/useWorkbenchSubtitle'
 
 type WorkbenchRouteName = string
 
@@ -30,6 +31,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const { showToast } = useToast()
+const workbenchSubtitle = useWorkbenchSubtitle()
 
 const conversations = ref<RequirementConversation[]>([])
 const conversationLoading = ref(false)
@@ -692,7 +694,7 @@ async function scrollToHash() {
 
       <header v-if="showWorkbenchHeader" class="user-workbench__head">
         <div class="user-workbench__head-copy">
-          <h1>{{ currentTitle }}</h1>
+          <h1>{{ workbenchSubtitle ? `${currentTitle}/${workbenchSubtitle}` : currentTitle }}</h1>
         </div>
         <a class="user-workbench__dev-link" href="#" @click.prevent="goBack">返回</a>
       </header>
