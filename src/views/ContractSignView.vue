@@ -526,7 +526,7 @@ onUnmounted(() => {
     overflow-wrap: anywhere;
 }
 .page-shell--workbench .panel { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.page-shell--workbench .btn-primary { background: #247f7d; border-color: #247f7d; color: #fff; }
+.page-shell--workbench .btn-primary { background: #247f7d; border-color: #247f7d; color: #fff; box-shadow: none; }
 .page-shell--workbench .btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: #247f7d; border-color: #cce3e2; background: #fff; white-space: normal; }
 .page-shell--workbench .sign-panel { background: #f5fafa; border-color: #cce3e2; }
 .page-shell--workbench .contract-meta { border: 0; border-left: 3px solid #247f7d; border-radius: 0; }
