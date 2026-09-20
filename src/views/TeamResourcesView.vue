@@ -125,14 +125,19 @@ function openResourceHomepage(resource: McResourcePayload) {
   const entryAlias =
     tagSelections.find((s) => (s.group_path_aliases?.length ?? 0) > 1)
       ?.group_path_aliases?.[1] ?? ''
+  const rootSlug = rootAlias || getTagRouteSlug(rootName)
+  const entrySlug = entryAlias || getTagRouteSlug(entryName)
+  const resourceSlug = getResourceDetailSlug(resource.id, resource.creator || resource.author)
 
-  router.push({
+  // 资源没有分类标签时分类段是空字符串，push 带分类的路由会抛 `Missing required param "rootSlug"`。
+  if (!rootSlug || !entrySlug) {
+    void router.push({ name: 'resource-detail-direct', params: { resourceSlug } })
+    return
+  }
+
+  void router.push({
     name: 'resource-detail',
-    params: {
-      rootSlug: rootAlias || getTagRouteSlug(rootName),
-      entrySlug: entryAlias || getTagRouteSlug(entryName),
-      resourceSlug: getResourceDetailSlug(resource.id, resource.creator || resource.author),
-    },
+    params: { rootSlug, entrySlug, resourceSlug },
   })
 }
 

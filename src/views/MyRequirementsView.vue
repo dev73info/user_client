@@ -921,7 +921,17 @@ function openBoundResourceHomepage(item: RequirementItem) {
     return
   }
 
-  void router.push({ name: 'resource-detail', params: boundResourceRouteSlugs(item) })
+  const { rootSlug, entrySlug, resourceSlug } = boundResourceRouteSlugs(item)
+
+  // 关联资源没有标签选择（历史数据未回填）时，分类段会拼成空字符串，
+  // 直接 push 进带分类的详情路由会抛 `Missing required param "rootSlug"`。
+  // 这种情况退回只需要资源 slug 的直达路由 `/resources/:resourceSlug`，主页照样能打开。
+  if (!rootSlug || !entrySlug) {
+    void router.push({ name: 'resource-detail-direct', params: { resourceSlug } })
+    return
+  }
+
+  void router.push({ name: 'resource-detail', params: { rootSlug, entrySlug, resourceSlug } })
 }
 
 /** 下载绑定资源的最新已发布版本；版本列表在 loadResourceVersions 里已加载，不再单独发请求。 */
