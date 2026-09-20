@@ -86,10 +86,27 @@ describe('InvoiceApplyDialog', () => {
 
   it('支付节点只列当前需求的记录', async () => {
     const wrapper = await render('customer', 'alice')
-    const values = wrapper.findAll('select option').map((item) => item.attributes('value'))
+    await wrapper.find('.invoice-payment__trigger').trigger('click')
 
-    expect(values).toEqual(['', 'PAY-1', 'PAY-2'])
+    const options = wrapper.findAll('.invoice-payment__option')
+
+    expect(options).toHaveLength(2)
+    expect(options.map((item) => item.attributes('aria-selected'))).toEqual(['false', 'false'])
+    expect(options[0]!.text()).toContain('REQ-1')
+    expect(options[0]!.text()).toContain('可开票 ¥200.00')
     expect(wrapper.text()).not.toContain('REQ-2')
+
+    wrapper.unmount()
+  })
+
+  it('选中支付节点后回填到触发器并收起列表', async () => {
+    const wrapper = await render('customer', 'alice')
+    await wrapper.find('.invoice-payment__trigger').trigger('click')
+    await wrapper.findAll('.invoice-payment__option')[0]!.trigger('click')
+
+    expect(wrapper.find('.invoice-payment__menu').exists()).toBe(false)
+    expect(wrapper.find('.invoice-payment__trigger').text()).toContain('定金')
+    expect(wrapper.find('.invoice-payment__trigger').text()).toContain('可开票 ¥200.00')
 
     wrapper.unmount()
   })
@@ -112,7 +129,8 @@ describe('InvoiceApplyDialog', () => {
     mocks.platform.mockResolvedValue({ id: 1 })
     const wrapper = await render('customer', 'alice')
 
-    await wrapper.find('select').setValue('PAY-2')
+    await wrapper.find('.invoice-payment__trigger').trigger('click')
+    await wrapper.findAll('.invoice-payment__option')[1]!.trigger('click')
     await wrapper.find('input[type="text"]').setValue('某某科技有限公司')
     await wrapper.find('.invoice-panel__submit').trigger('click')
     await flushPromises()

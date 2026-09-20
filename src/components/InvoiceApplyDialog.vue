@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 
 import {
   listInvoicePaymentOptions,
@@ -129,11 +129,58 @@ function blockedReason(target: InvoiceSide) {
   return ''
 }
 
-function optionLabel(item: InvoicePaymentOption) {
-  const amount =
-    side.value === 'platform' ? item.platformFeeCny : item.developerGrossAmountCny
-  const milestone = item.milestone === 'deposit' ? '定金' : '尾款'
-  return `${item.requirementId} · ${milestone} · 可开票 ¥${amount}`
+function milestoneLabel(item: InvoicePaymentOption) {
+  return item.milestone === 'deposit' ? '定金' : '尾款'
+}
+
+function optionAmount(item: InvoicePaymentOption) {
+  return side.value === 'platform' ? item.platformFeeCny : item.developerGrossAmountCny
+}
+
+/** 触发器只放紧凑摘要，需求编号留给列表行，避免收起态出现超长文本。 */
+function optionSummary(item: InvoicePaymentOption) {
+  return `${milestoneLabel(item)} · 可开票 ¥${optionAmount(item)}`
+}
+
+const paymentTriggerText = computed(() => {
+  if (optionsLoading.value) {
+    return '加载中...'
+  }
+  const selected = activeSelectedPayment.value
+  return selected ? optionSummary(selected) : '请选择支付节点'
+})
+
+function isSelectedPayment(item: InvoicePaymentOption) {
+  return item.paymentId === selectedPaymentId[side.value]
+}
+
+// 支付节点列表：原生 select 的弹出层由系统绘制、无法统一风格，
+// 这里用自绘列表，交互照搬 PublishModal 的模板菜单（点击外部收起）。
+const paymentMenuOpen = ref(false)
+const paymentFieldRef = ref<HTMLElement | null>(null)
+
+function togglePaymentMenu() {
+  if (optionsLoading.value || activeOptions.value.length === 0) {
+    return
+  }
+  paymentMenuOpen.value = !paymentMenuOpen.value
+}
+
+function selectPayment(item: InvoicePaymentOption) {
+  selectedPaymentId[side.value] = item.paymentId
+  paymentMenuOpen.value = false
+}
+
+function handlePaymentPointerDown(event: PointerEvent) {
+  if (!paymentMenuOpen.value) {
+    return
+  }
+  const target = event.target
+  // 点击触发区或列表内部不关闭，由其自身交互处理
+  if (target instanceof Node && paymentFieldRef.value?.contains(target)) {
+    return
+  }
+  paymentMenuOpen.value = false
 }
 
 // 开票信息预填：抬头/税号取自实名认证主体，邮箱取自账户资料。
@@ -297,6 +344,7 @@ function switchSide(target: InvoiceSide) {
   if (blockedReason(target)) {
     return
   }
+  paymentMenuOpen.value = false
   persistDraft(side.value)
   side.value = target
   restoreDraft(target)
@@ -304,14 +352,21 @@ function switchSide(target: InvoiceSide) {
 }
 
 function close() {
+  paymentMenuOpen.value = false
   persistDraft(side.value)
   emit('update:visible', false)
 }
 
 function handleKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') {
-    close()
+  if (event.key !== 'Escape') {
+    return
   }
+  // 下拉展开时 Escape 先收起列表，不直接关掉整个弹窗
+  if (paymentMenuOpen.value) {
+    paymentMenuOpen.value = false
+    return
+  }
+  close()
 }
 
 async function submit() {
@@ -337,6 +392,7 @@ async function submit() {
     }
     forms[currentSide] = { invoiceTitle: '', taxNumber: '', recipientEmail: '' }
     selectedPaymentId[currentSide] = ''
+    paymentMenuOpen.value = false
     localStorage.removeItem(DRAFT_KEYS[currentSide])
     emit('update:visible', false)
     emit('submitted')
@@ -357,19 +413,26 @@ watch(
   (open) => {
     if (open) {
       side.value = props.role === 'developer' ? 'developer' : 'platform'
+      paymentMenuOpen.value = false
       restoreDraft(side.value)
       applyPrefill()
       void ensureOptions()
       void ensureInvoicePrefill()
       document.addEventListener('keydown', handleKeydown)
     } else {
+      paymentMenuOpen.value = false
       document.removeEventListener('keydown', handleKeydown)
     }
   },
   { immediate: true },
 )
 
+onMounted(() => {
+  document.addEventListener('pointerdown', handlePaymentPointerDown, true)
+})
+
 onUnmounted(() => {
+  document.removeEventListener('pointerdown', handlePaymentPointerDown, true)
   document.removeEventListener('keydown', handleKeydown)
 })
 </script>
@@ -402,12 +465,24 @@ onUnmounted(() => {
 
         <label>
           已成功结算的支付节点
-          <select v-model="selectedPaymentId[side]" :disabled="optionsLoading || activeOptions.length === 0">
-            <option value="">{{ optionsLoading ? '加载中...' : '请选择支付节点' }}</option>
-            <option v-for="item in activeOptions" :key="item.paymentId" :value="item.paymentId">
-              {{ optionLabel(item) }}
-            </option>
-          </select>
+          <span ref="paymentFieldRef" class="invoice-payment">
+            <button type="button" class="invoice-payment__trigger"
+              :class="{ 'is-open': paymentMenuOpen }" :disabled="optionsLoading || activeOptions.length === 0"
+              aria-haspopup="listbox" :aria-expanded="paymentMenuOpen ? 'true' : 'false'" @click="togglePaymentMenu">
+              <span class="invoice-payment__value" :class="{ 'is-placeholder': !activeSelectedPayment }">
+                {{ paymentTriggerText }}
+              </span>
+            </button>
+            <div v-if="paymentMenuOpen" class="invoice-payment__menu" role="listbox" aria-label="已成功结算的支付节点">
+              <button v-for="item in activeOptions" :key="item.paymentId" type="button" role="option"
+                class="invoice-payment__option" :class="{ 'is-selected': isSelectedPayment(item) }"
+                :aria-selected="isSelectedPayment(item) ? 'true' : 'false'" @click="selectPayment(item)">
+                <span class="invoice-payment__milestone">{{ milestoneLabel(item) }}</span>
+                <span class="invoice-payment__amount">可开票 ¥{{ optionAmount(item) }}</span>
+                <small class="invoice-payment__id">{{ item.requirementId }}</small>
+              </button>
+            </div>
+          </span>
         </label>
         <p v-if="!optionsLoading && activeOptions.length === 0" class="invoice-panel__hint">
           本需求暂无可开票的已结算支付节点（该节点分账结算成功后才会出现在这里）。
@@ -543,8 +618,7 @@ onUnmounted(() => {
   font-weight: 700;
 }
 
-.invoice-panel input,
-.invoice-panel select {
+.invoice-panel input {
   width: 100%;
   min-height: 40px;
   box-sizing: border-box;
@@ -562,25 +636,158 @@ onUnmounted(() => {
   color: #98a2b3;
 }
 
-/* 原生下拉框统一成项目风格：去掉系统箭头，换成自绘 chevron，并留出点击区域。 */
-.invoice-panel select {
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: 34px;
-  cursor: pointer;
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5 6 6.5l5-5' stroke='%23667085' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 12px 8px;
+/* 支付节点下拉：原生 select 的弹出层由系统绘制、样式改不动，
+   这里换成自绘列表，行内按「节点 / 金额 / 需求编号」三段排版。 */
+.invoice-payment {
+  position: relative;
+  display: block;
 }
 
-.invoice-panel input:hover,
-.invoice-panel select:hover {
+.invoice-payment__trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
+  border: 1px solid #d0d5dd;
+  border-radius: 7px;
+  padding: 8px 34px 8px 10px;
+  background: #fff;
+  color: #172033;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.invoice-payment__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.invoice-payment__value.is-placeholder {
+  color: #98a2b3;
+}
+
+/* 自绘 chevron，展开时翻转，替代系统箭头 */
+.invoice-payment__trigger::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 12px;
+  height: 8px;
+  margin-top: -4px;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5 6 6.5l5-5' stroke='%23667085' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 12px 8px;
+  transition: transform 0.18s ease;
+}
+
+.invoice-payment__trigger.is-open::after {
+  transform: rotate(180deg);
+}
+
+.invoice-payment__trigger:hover:not(:disabled) {
   border-color: #b7c0cd;
 }
 
-.invoice-panel input:focus,
-.invoice-panel select:focus {
+.invoice-payment__trigger:focus-visible {
+  outline: none;
+  border-color: #247f7d;
+  box-shadow: 0 0 0 3px rgba(36, 127, 125, 0.14);
+}
+
+.invoice-payment__trigger:disabled {
+  background: #f9fafb;
+  color: #98a2b3;
+  cursor: not-allowed;
+}
+
+.invoice-payment__menu {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 2px;
+  max-height: 216px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 6px;
+  background: #fff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16);
+}
+
+.invoice-payment__option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 8px;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  font-family: inherit;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+}
+
+.invoice-payment__option:hover,
+.invoice-payment__option:focus-visible {
+  outline: none;
+  background: #f4f8f7;
+}
+
+.invoice-payment__option.is-selected {
+  background: rgba(36, 127, 125, 0.08);
+}
+
+.invoice-payment__option.is-selected .invoice-payment__amount {
+  color: #247f7d;
+}
+
+.invoice-payment__milestone {
+  justify-self: start;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: rgba(36, 127, 125, 0.1);
+  color: #247f7d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.invoice-payment__amount {
+  color: #172033;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 需求编号是次要信息：独占一行、字号更小、超长省略 */
+.invoice-payment__id {
+  grid-column: 1 / -1;
+  color: #98a2b3;
+  font-size: 11px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.invoice-panel input:hover {
+  border-color: #b7c0cd;
+}
+
+.invoice-panel input:focus {
   outline: none;
   border-color: #247f7d;
   box-shadow: 0 0 0 3px rgba(36, 127, 125, 0.14);
