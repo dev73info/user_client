@@ -295,37 +295,172 @@
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 10px;
-  padding: 14px 20px 16px;
+  gap: 8px;
+  padding: 12px 20px 14px;
   border-top: 1px solid rgba(209, 220, 243, 0.72);
-  background: rgba(248, 251, 255, 0.72);
 }
 
-/* 围绕同一个交付资源的动作（设为公开 / 主页 / 下载）成组显示：
-   组内间距略紧、左侧加一道分隔线，否则会和整行其它按钮糊成一片，看不出是一组。 */
-.requirement-actions__resource {
+/* 操作区分左右两段：左边是开关芯片（状态设置），右边是动作，中间靠 margin-right: auto 撑开。 */
+.requirement-toggles {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  padding-left: 11px;
-  border-left: 1px solid rgba(209, 220, 243, 0.95);
+  margin-right: auto;
 }
 
-/* 需求单操作区按钮按「同一档长得一样、不同档一眼分得开」来配：
-   action-switch    状态开关（订阅状态），中性灰底，开启时转蓝
-   action-quiet     只做跳转的（主页 / 查看沟通 / 查看合同），无边框无底色
-   action-download  资源分组里的主操作（下载），白底蓝字带描边
-   action-primary   当前该做的那一步（支付 / 去评价），实心渐变
-   其余为常规操作，保持白底胶囊；危险操作加 danger-plain。
-   资源相关的动作（设为公开 / 主页 / 下载）另包一层 .requirement-actions__resource 成组显示。 */
+.requirement-actions__list {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 状态开关（订阅 / 公开）不是动作，用带轨道的灰底芯片表示，避免和动作按钮长得一样。 */
+.requirement-toggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--profile-text-sub);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.requirement-toggle:hover:not(:disabled) {
+  border-color: rgba(148, 163, 184, 0.95);
+  color: var(--profile-text-main);
+}
+
+.requirement-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.requirement-toggle:focus-visible {
+  outline: 2px solid rgba(79, 140, 255, 0.55);
+  outline-offset: 2px;
+}
+
+.requirement-toggle__track {
+  position: relative;
+  flex: none;
+  width: 26px;
+  height: 14px;
+  border-radius: 999px;
+  background: #cbd5e1;
+  transition: background-color 180ms ease;
+}
+
+.requirement-toggle__track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 180ms ease;
+}
+
+/* 开关态用 aria-pressed 表达：颜色之外还有轨道位置，不靠颜色单独承载状态。 */
+.requirement-toggle[aria-pressed='true'] {
+  border-color: rgba(79, 140, 255, 0.45);
+  background: var(--profile-accent-soft);
+  color: #1d4ed8;
+}
+
+.requirement-toggle[aria-pressed='true'] .requirement-toggle__track {
+  background: var(--profile-accent);
+}
+
+.requirement-toggle[aria-pressed='true'] .requirement-toggle__track::after {
+  transform: translateX(12px);
+}
+
+.requirement-actions__more {
+  gap: 6px;
+  color: var(--profile-text-sub);
+}
+
+/* 「更多」菜单的弹层挂在 body 上（el-dropdown 的 popper 会 teleport），
+   所以这份样式必须写在全局样式文件里，scoped 样式够不到。
+   层级不用这里指定：Element Plus 给 popper 打的是行内 z-index（2000 起），
+   已经高于页面顶栏，也低于 modal.css 里弹窗的 3000。 */
+.requirement-action-menu.el-popper {
+  border: 1px solid var(--profile-card-border);
+  border-radius: 12px;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+}
+
+.requirement-action-menu.el-popper[data-popper-placement^='bottom'] {
+  margin-top: 4px;
+}
+
+.requirement-action-menu.el-popper[data-popper-placement^='top'] {
+  margin-bottom: 4px;
+}
+
+.requirement-action-menu .el-dropdown-menu {
+  min-width: 180px;
+  padding: 6px;
+}
+
+.requirement-action-menu .el-dropdown-menu__item {
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--profile-text-main);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.requirement-action-menu .el-dropdown-menu__item:not(.is-disabled):focus,
+.requirement-action-menu .el-dropdown-menu__item:not(.is-disabled):hover {
+  background: var(--profile-accent-soft);
+  color: #1d4ed8;
+}
+
+.requirement-action-menu .el-dropdown-menu__item.is-disabled {
+  color: rgba(100, 116, 139, 0.55);
+}
+
+/* 菜单里的危险动作（终止合作 / 取消需求）单独上红字，与普通跳转区分。 */
+.requirement-action-menu .el-dropdown-menu__item.is-danger:not(.is-disabled) {
+  color: var(--profile-danger-text);
+}
+
+.requirement-action-menu .el-dropdown-menu__item.is-danger:not(.is-disabled):focus,
+.requirement-action-menu .el-dropdown-menu__item.is-danger:not(.is-disabled):hover {
+  background: rgba(254, 242, 242, 0.96);
+  color: var(--profile-danger-text);
+}
+
+/* 需求单操作区四层：开关芯片 → 行内常用动作 → 更多菜单 → 唯一主操作。
+   action-quiet     只做跳转的（查看沟通），无边框无底色
+   action-emphasis  需要看见的次要动作（下载 / 售后），白底蓝字带描边
+   action-primary   当前该做的那一步（处理解除申请 / 签署合同 / 支付 / 验收 / 去评价），实心渐变
+   同一行最多一个 action-primary；其余低频与危险动作收进「更多」菜单。 */
 .profile-page .requirement-actions button.ghost {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 36px;
-  padding: 0 15px;
+  min-height: 32px;
+  padding: 0 12px;
   border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
@@ -335,47 +470,6 @@
 .profile-page .requirement-actions button.ghost:focus-visible {
   outline: 2px solid rgba(79, 140, 255, 0.55);
   outline-offset: 2px;
-}
-
-/* 订阅状态是设置项而不是动作：中性灰底、不描边，不与白底动作按钮抢注意力 */
-.profile-page .requirement-actions button.ghost.action-switch {
-  border-color: transparent;
-  background: rgba(241, 245, 249, 0.92);
-  color: var(--profile-text-sub);
-}
-
-.profile-page .requirement-actions button.ghost.action-switch:hover:not(:disabled) {
-  border-color: transparent;
-  background: rgba(226, 232, 240, 0.95);
-}
-
-.profile-page .requirement-actions button.ghost.action-switch::before {
-  content: '';
-  flex: none;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #cbd5e1;
-  transition:
-    background-color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.profile-page .requirement-actions button.ghost.action-switch.is-on {
-  border-color: rgba(79, 140, 255, 0.45);
-  background: var(--profile-accent-soft);
-  color: #1d4ed8;
-}
-
-/* 已开启的开关悬停时保持蓝色：上面的 :hover 规则权重更高，不补这条会把它压回灰底 */
-.profile-page .requirement-actions button.ghost.action-switch.is-on:hover:not(:disabled) {
-  border-color: rgba(79, 140, 255, 0.5);
-  background: rgba(79, 140, 255, 0.16);
-}
-
-.profile-page .requirement-actions button.ghost.action-switch.is-on::before {
-  background: var(--profile-accent);
-  box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.18);
 }
 
 .profile-page .requirement-actions button.ghost.action-quiet,
@@ -395,14 +489,14 @@
   color: #1d4ed8;
 }
 
-/* 下载是资源分组里的主操作：白底蓝字带描边，和同组的「主页」链接式按钮拉开层次 */
-.profile-page .requirement-actions button.ghost.action-download {
+/* 需要被看见的次要动作（下载 / 售后）：白底蓝字带描边，和链接式的 action-quiet 拉开层次 */
+.profile-page .requirement-actions button.ghost.action-emphasis {
   border-color: rgba(79, 140, 255, 0.32);
   background: #ffffff;
   color: #1d4ed8;
 }
 
-.profile-page .requirement-actions button.ghost.action-download:hover:not(:disabled) {
+.profile-page .requirement-actions button.ghost.action-emphasis:hover:not(:disabled) {
   border-color: rgba(79, 140, 255, 0.5);
   background: var(--profile-accent-soft);
   color: #1d4ed8;
@@ -420,18 +514,6 @@
   background: var(--primary-gradient);
   box-shadow: 0 14px 26px rgba(37, 99, 235, 0.32);
   filter: brightness(1.06);
-}
-
-.profile-page .requirement-actions button.ghost.danger-plain {
-  border-color: rgba(220, 38, 38, 0.3);
-  background: #ffffff;
-  color: var(--profile-danger-text);
-}
-
-.profile-page .requirement-actions button.ghost.danger-plain:hover:not(:disabled) {
-  border-color: rgba(220, 38, 38, 0.5);
-  background: rgba(254, 242, 242, 0.96);
-  box-shadow: 0 12px 24px rgba(185, 28, 28, 0.1);
 }
 
 @media (max-width: 820px) {
@@ -452,22 +534,58 @@
   .requirement-summary .requirement-status {
     grid-column: 1 / -1;
   }
+}
 
+/* 触屏档：操作区竖排两段——开关芯片独占一行，动作行排在下面，主操作整宽置底（拇指可达）。
+   触摸目标不小于 44px（对齐项目既有约定）。 */
+@media (max-width: 640px) {
   .requirement-actions {
-    padding: 14px 18px 16px;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 18px 14px;
+  }
+
+  .requirement-toggles {
+    margin-right: 0;
+  }
+
+  .requirement-actions__list {
     justify-content: flex-start;
   }
 
-  /* 窄屏折行后按钮可能落到行首，分隔线会变成一段孤立的竖线，这里收掉 */
-  .requirement-actions__resource {
-    padding-left: 0;
-    border-left: 0;
-  }
-}
-
-/* 移动端触摸目标不小于 44px（对齐项目既有约定） */
-@media (max-width: 640px) {
   .profile-page .requirement-actions button.ghost {
+    min-height: 44px;
+  }
+
+  /* 主操作单独占最后一行整宽：窄屏折行后它不会被挤在中间，也不与其它按钮抢位置 */
+  .profile-page .requirement-actions button.ghost.action-primary {
+    flex: 1 1 100%;
+    order: 99;
+  }
+
+  .requirement-toggle {
+    height: 44px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+
+  .requirement-toggle__track {
+    width: 32px;
+    height: 18px;
+  }
+
+  .requirement-toggle__track::after {
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+  }
+
+  .requirement-toggle[aria-pressed='true'] .requirement-toggle__track::after {
+    transform: translateX(14px);
+  }
+
+  .requirement-action-menu .el-dropdown-menu__item {
     min-height: 44px;
   }
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Close, Refresh } from '@element-plus/icons-vue'
+import { ArrowDown, Close, Refresh } from '@element-plus/icons-vue'
 
 import PublishModal from '@/components/PublishModal.vue'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
@@ -693,13 +693,9 @@ function canOpenContractSign(item: RequirementItem) {
   return Boolean(signingStatusForRequirement(item)?.has_contract)
 }
 
-// 我方已签时该按钮只是「查看合同」，未签时是「签署合同」，前者按查看类弱化显示。
+// 我方已签时该入口只是「查看合同」，未签时是「签署合同」，前者按查看类弱化显示。
 function isContractButtonViewOnly(item: RequirementItem) {
   return Boolean(signingStatusForRequirement(item)?.party_a_signed)
-}
-
-function contractButtonLabel(item: RequirementItem) {
-  return isContractButtonViewOnly(item) ? '合同' : '签署合同'
 }
 
 function contractStatusHint(item: RequirementItem) {
@@ -749,14 +745,6 @@ async function viewContractPreview(item: RequirementItem) {
     } catch {
       // 爱签预览不可用：回退本地合同展示。
     }
-  }
-  openContractSign(item)
-}
-
-function handleContractButtonClick(item: RequirementItem) {
-  if (contractButtonLabel(item) === '合同') {
-    void viewContractPreview(item)
-    return
   }
   openContractSign(item)
 }
@@ -2029,6 +2017,203 @@ function handleWechatAuthorized() {
   showToast('微信授权成功，请再次点击支付', 'success')
 }
 
+/**
+ * 需求行操作区分四层展示：开关芯片（订阅 / 公开）、行内常用动作（下载 / 沟通 / 售后）、
+ * 唯一主操作、以及低频动作的「更多」菜单。
+ *
+ * 下面这些函数只做展示分组，能不能做仍然由既有的 canXxx / hasXxx 守卫函数决定，
+ * 展示层不重复实现业务判定，避免两处规则漂移。
+ */
+type RequirementRowActionKey =
+  | 'unbind-respond'
+  | 'contract-create'
+  | 'contract-sign'
+  | 'contract-view'
+  | 'resubmit'
+  | 'pay'
+  | 'acceptance'
+  | 'finish'
+  | 'comment'
+  | 'download'
+  | 'conversation'
+  | 'after-sales'
+  | 'homepage'
+  | 'invoice'
+  | 'unbind-request'
+  | 'breach'
+  | 'cancel'
+
+type RequirementRowAction = {
+  key: RequirementRowActionKey
+  label: string
+  danger?: boolean
+  disabled?: boolean
+  title?: string
+}
+
+/** 合同入口全行只有一个：无合同→发起，我方未签→签署，已签→只看（进「更多」）。 */
+function rowContractAction(item: RequirementItem): 'create' | 'sign' | 'view' | null {
+  if (canCreateRequirementContract(item)) {
+    return 'create'
+  }
+  if (!canOpenContractSign(item)) {
+    return null
+  }
+  return isContractButtonViewOnly(item) ? 'view' : 'sign'
+}
+
+/**
+ * 唯一主操作（实心按钮），取「当前该做的那一步」。
+ * 返回 null 表示这一行没有待办（例如已结单且已评价），此时不画实心按钮。
+ */
+function primaryRowAction(item: RequirementItem): RequirementRowAction | null {
+  if (hasPendingDeveloperUnbindRequest(item)) {
+    return { key: 'unbind-respond', label: '处理解除申请' }
+  }
+
+  const contractAction = rowContractAction(item)
+  if (contractAction === 'create') {
+    const creating = contractCreatingId.value === item.requirement_id
+    return {
+      key: 'contract-create',
+      label: creating ? '发起中...' : '发起合同',
+      disabled: creating,
+    }
+  }
+  if (contractAction === 'sign') {
+    return { key: 'contract-sign', label: '签署合同' }
+  }
+
+  if (canResubmit(item.status)) {
+    return { key: 'resubmit', label: '重新编辑' }
+  }
+
+  // 「取消需求」与「支付 / 验收 / 评价」在原来的 v-if 链里就是互斥的，这里保持同样的优先级。
+  if (!canCancel(item)) {
+    if (canPay(item.status, item)) {
+      return { key: 'pay', label: item.status === 'pending_final' ? '支付尾款' : '支付定金' }
+    }
+    if (canOpenAcceptance(item)) {
+      return { key: 'acceptance', label: '验收' }
+    }
+    if (canRequestFinalPayment(item)) {
+      return { key: 'finish', label: requirementFinalActionLabel(item) }
+    }
+    if (canComment(item.status) && item.comment_rating == null) {
+      return { key: 'comment', label: '去评价' }
+    }
+  }
+
+  return null
+}
+
+/**
+ * 「更多」菜单项，同时用于决定是否渲染「更多」触发器（空数组时不渲染）。
+ *
+ * 已评价的行不再把评价做成主操作，但后端是 upsert（`comment_requirement_by_user`），
+ * 仍可以改，所以菜单里保留「修改评价」，不能让这个入口消失。
+ */
+function moreRowActions(item: RequirementItem): RequirementRowAction[] {
+  const entries: RequirementRowAction[] = []
+
+  if (rowContractAction(item) === 'view') {
+    entries.push({ key: 'contract-view', label: '查看合同' })
+  }
+  if (hasBoundResource(item)) {
+    entries.push({ key: 'homepage', label: '查看交付资源主页' })
+  }
+  if (canComment(item.status) && item.comment_rating != null && !canCancel(item)) {
+    entries.push({ key: 'comment', label: '修改评价' })
+  }
+  entries.push({ key: 'invoice', label: '开票' })
+  if (canRequestUnbindAsCreator(item)) {
+    entries.push({ key: 'unbind-request', label: '申请解除绑定' })
+  }
+  if (canReportBreach(item)) {
+    entries.push({ key: 'breach', label: '终止合作', danger: true })
+  } else if (awaitingDepositDeadline(item)) {
+    entries.push({
+      key: 'breach',
+      label: '终止合作',
+      danger: true,
+      disabled: true,
+      title: '定金未缴，暂不能发起终止合作；逾期未缴定金将由系统自动终止合作并释放接单保证金',
+    })
+  }
+  if (canCancel(item)) {
+    entries.push({ key: 'cancel', label: '取消需求', danger: true })
+  }
+
+  return entries
+}
+
+/** 行内动作与菜单项统一从这里分发到既有 handler，不新增业务逻辑。 */
+function runRowAction(item: RequirementItem, key: RequirementRowActionKey) {
+  switch (key) {
+    case 'unbind-respond':
+      openUnbindRespond(item)
+      return
+    case 'contract-create':
+      void createRequirementContractAction(item)
+      return
+    case 'contract-sign':
+      openContractSign(item)
+      return
+    case 'contract-view':
+      void viewContractPreview(item)
+      return
+    case 'resubmit':
+      openRequirementEditModal(item)
+      return
+    case 'pay':
+      openPayModal(item)
+      return
+    case 'acceptance':
+      void openAcceptanceModal(item)
+      return
+    case 'finish':
+      void requestFinalPayment(item)
+      return
+    case 'comment':
+      openCommentModal(item)
+      return
+    case 'download':
+      void downloadBoundResource(item)
+      return
+    case 'conversation':
+      openConversation(item)
+      return
+    case 'after-sales':
+      openAfterSalesModal(item)
+      return
+    case 'homepage':
+      openBoundResourceHomepage(item)
+      return
+    case 'invoice':
+      openInvoiceDialog(item)
+      return
+    case 'unbind-request':
+      openUnbindRequest(item)
+      return
+    case 'breach':
+      void openBreachReport(item)
+      return
+    case 'cancel':
+      openCancelConfirm(item)
+      return
+    default:
+      return
+  }
+}
+
+/**
+ * 「更多」菜单的 `command` 回传的是字符串，在脚本里收口成联合类型再分发，
+ * 避免在模板表达式里写类型断言。
+ */
+function runMoreRowAction(item: RequirementItem, key: string) {
+  runRowAction(item, key as RequirementRowActionKey)
+}
+
 function handleRequirementAction(item: RequirementItem) {
   if (hasPendingDeveloperUnbindRequest(item)) {
     openUnbindRespond(item)
@@ -2265,100 +2450,77 @@ watch(
                 </time>
               </aside>
             </div>
+            <!-- 操作区分四层：开关芯片（订阅 / 公开）→ 行内常用动作 → 更多菜单 → 唯一主操作。
+                 订阅开关每行都有，所以这块不会为空。 -->
             <div class="requirement-actions">
-              <button v-if="hasPendingDeveloperUnbindRequest(item)" class="ghost small" type="button"
-                @click.stop="openUnbindRespond(item)">
-                处理解除申请
-              </button>
-              <button v-if="canRequestUnbindAsCreator(item)" class="ghost small" type="button"
-                @click.stop="openUnbindRequest(item)">
-                解除
-              </button>
-              <button class="ghost small action-switch" type="button"
-                :class="{ 'is-on': item.subscribe_status_change }"
-                :disabled="requirementSubscriptionLoadingId === item.requirement_id"
-                @click.stop="toggleRequirementSubscription(item)">
-                {{
-                  requirementSubscriptionLoadingId === item.requirement_id
-                    ? '提交中...'
-                    : requirementSubscriptionLabel(item)
-                }}
-              </button>
-              <!-- 交付资源相关动作归到一个分组里：三者都围绕需求绑定的资源，分组后与其它动作区分开 -->
-              <div v-if="hasBoundResource(item)" class="requirement-actions__resource" aria-label="交付资源操作">
-                <button v-if="canToggleRequirementResourceVisibility(item)" class="ghost small action-switch"
-                  :class="{ 'is-on': currentResourceVisibility(item) === 'public' }" type="button"
+              <div class="requirement-toggles">
+                <button class="requirement-toggle" type="button" :aria-pressed="item.subscribe_status_change"
+                  :disabled="requirementSubscriptionLoadingId === item.requirement_id"
+                  :title="item.subscribe_status_change ? '已订阅状态变化，点击取消' : '订阅状态变化后通知我'"
+                  @click.stop="toggleRequirementSubscription(item)">
+                  <span class="requirement-toggle__track" aria-hidden="true"></span>
+                  {{
+                    requirementSubscriptionLoadingId === item.requirement_id
+                      ? '提交中...'
+                      : requirementSubscriptionLabel(item)
+                  }}
+                </button>
+                <button v-if="canToggleRequirementResourceVisibility(item)" class="requirement-toggle" type="button"
+                  :aria-pressed="currentResourceVisibility(item) === 'public'"
                   :disabled="resourceVisibilityLoadingId === item.requirement_id"
-                  :title="currentResourceVisibility(item) === 'review' ? '点击撤回公开审核，资源恢复为私有' : undefined"
+                  :title="currentResourceVisibility(item) === 'review' ? '点击撤回公开审核，资源恢复为私有' : '切换关联资源的公开 / 私有'"
                   @click.stop="toggleRequirementResourceVisibility(item)">
+                  <span class="requirement-toggle__track" aria-hidden="true"></span>
                   {{
                     resourceVisibilityLoadingId === item.requirement_id
                       ? '提交中...'
                       : toggleResourceVisibilityLabel(item)
                   }}
                 </button>
-                <button class="ghost small action-quiet" type="button" @click.stop="openBoundResourceHomepage(item)">
-                  主页
-                </button>
-                <button class="ghost small action-download" type="button"
+              </div>
+
+              <div class="requirement-actions__list">
+                <button v-if="hasBoundResource(item)" class="ghost small action-emphasis" type="button"
                   :disabled="resourceDownloadingId === item.bound_resource_id"
-                  @click.stop="downloadBoundResource(item)">
+                  @click.stop="runRowAction(item, 'download')">
                   {{ resourceDownloadingId === item.bound_resource_id ? '准备中...' : '下载' }}
                 </button>
+                <button v-if="hasBoundResource(item)" class="ghost small action-quiet" type="button"
+                  @click.stop="runRowAction(item, 'conversation')">
+                  {{ conversationButtonLabel(item) }}
+                </button>
+                <button v-if="canOpenAfterSales(item)" class="ghost small action-emphasis" type="button"
+                  @click.stop="runRowAction(item, 'after-sales')">
+                  售后
+                </button>
+
+                <el-dropdown v-if="moreRowActions(item).length" trigger="click"
+                  popper-class="requirement-action-menu"
+                  @command="(key: string) => runMoreRowAction(item, key)">
+                  <button class="ghost small requirement-actions__more" type="button" aria-haspopup="menu"
+                    title="更多操作" @click.stop>
+                    更多
+                    <el-icon>
+                      <ArrowDown />
+                    </el-icon>
+                  </button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item v-for="entry in moreRowActions(item)" :key="entry.key" :command="entry.key"
+                        :disabled="entry.disabled" :title="entry.title"
+                        :class="{ 'is-danger': entry.danger }">
+                        {{ entry.label }}
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+
+                <button v-if="primaryRowAction(item)" class="ghost small action-primary" type="button"
+                  :disabled="primaryRowAction(item)?.disabled"
+                  @click.stop="runRowAction(item, primaryRowAction(item)!.key)">
+                  {{ primaryRowAction(item)!.label }}
+                </button>
               </div>
-              <button v-if="hasBoundResource(item)" class="ghost small action-quiet" type="button"
-                @click.stop="openConversation(item)">
-                {{ conversationButtonLabel(item) }}
-              </button>
-              <button class="ghost small" type="button" @click.stop="openInvoiceDialog(item)">
-                开票
-              </button>
-              <button v-if="canCreateRequirementContract(item)" class="ghost small" type="button"
-                :disabled="contractCreatingId === item.requirement_id"
-                @click.stop="createRequirementContractAction(item)">
-                {{ contractCreatingId === item.requirement_id ? '发起中...' : '发起合同' }}
-              </button>
-              <button v-if="canOpenContractSign(item)" class="ghost small" type="button"
-                :class="{ 'action-quiet': isContractButtonViewOnly(item) }"
-                @click.stop="handleContractButtonClick(item)">
-                {{ contractButtonLabel(item) }}
-              </button>
-              <button v-if="canOpenAcceptance(item)" class="ghost small" type="button"
-                @click.stop="openAcceptanceModal(item)">
-                验收
-              </button>
-              <button v-else-if="canRequestFinalPayment(item)" class="ghost small" type="button"
-                @click.stop="requestFinalPayment(item)">
-                {{ requirementFinalActionLabel(item) }}
-              </button>
-              <button v-if="canOpenAfterSales(item)" class="ghost small action-primary" type="button"
-                @click.stop="openAfterSalesModal(item)">
-                售后
-              </button>
-              <button v-if="canReportBreach(item)" class="ghost small danger-plain" type="button"
-                @click.stop="openBreachReport(item)">
-                终止合作
-              </button>
-              <button v-else-if="awaitingDepositDeadline(item)" class="ghost small danger-plain" type="button" disabled
-                title="定金未缴，暂不能发起终止合作；逾期未缴定金将由系统自动终止合作并释放接单保证金">
-                终止合作
-              </button>
-              <button v-if="canResubmit(item.status)" class="ghost small" type="button"
-                @click.stop="openRequirementEditModal(item)">
-                重新编辑
-              </button>
-              <button v-if="canCancel(item)" class="ghost small danger-plain" type="button"
-                @click.stop="openCancelConfirm(item)">
-                取消需求
-              </button>
-              <button v-else-if="canPay(item.status, item)" class="ghost small action-primary" type="button"
-                @click.stop="openPayModal(item)">
-                支付
-              </button>
-              <button v-else-if="canComment(item.status)" class="ghost small action-primary" type="button"
-                @click.stop="openCommentModal(item)">
-                去评价
-              </button>
             </div>
           </li>
 
@@ -3653,10 +3815,6 @@ watch(
   .requirement-row {
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
-  }
-
-  .requirement-actions {
-    justify-content: flex-start;
   }
 }
 
