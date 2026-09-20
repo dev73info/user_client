@@ -174,6 +174,10 @@ const signerIdentityReady = computed(() => {
 const canSubmitSign = computed(
     () => canSignContract.value && signerIdentityReady.value && !signing.value,
 )
+// 开发者入驻协议签署完成后的引导按钮；工作台签署详情已有「返回我的签署」入口，不在此重复展示。
+const showBecomeDeveloper = computed(
+    () => !isWorkbenchSignature.value && isDeveloperAgreement.value && contract.value?.status === 'signed',
+)
 
 function displayText(value: string | null | undefined, fallback: string): string {
     const text = value?.trim()
@@ -419,6 +423,13 @@ onUnmounted(() => {
             </div>
 
             <template v-else>
+                <!-- 工作台签署详情：「刷新状态」移到页头右下方，与「返回我的签署」同处右上角。 -->
+                <div v-if="isWorkbenchSignature" class="panel-actions">
+                    <button type="button" class="btn-secondary" :disabled="signing" @click="loadContract">
+                        <el-icon><Refresh /></el-icon>刷新状态
+                    </button>
+                </div>
+
                 <div class="contract-meta">
                     <p><strong>合同编号：</strong>{{ contract.contract_no }}</p>
                     <p><strong>合同标题：</strong>{{ contract.title }}</p>
@@ -440,12 +451,18 @@ onUnmounted(() => {
 
                 <template v-if="showSignatureFacts">
                     <section class="signature-parties">
-                        <h3>签约方</h3>
-                        <dl>
-                            <div><dt>甲方</dt><dd>{{ contract.party_a_name }}<span>{{ contract.party_a_signed_at ? `已签署 · ${contract.party_a_signed_at}` : '未签署' }}</span></dd></div>
-                            <div><dt>乙方</dt><dd>{{ contract.party_b_name }}<span>{{ contract.party_b_signed_at ? `已签署 · ${contract.party_b_signed_at}` : '未签署' }}</span></dd></div>
-                            <div v-if="contract.party_c_name"><dt>丙方</dt><dd>{{ contract.party_c_name }}<span>{{ contract.party_c_signed_at ? `已签署 · ${contract.party_c_signed_at}` : '未签署' }}</span></dd></div>
-                        </dl>
+                        <div class="signature-parties__main">
+                            <h3>签约方</h3>
+                            <dl>
+                                <div><dt>甲方</dt><dd>{{ contract.party_a_name }}<span>{{ contract.party_a_signed_at ? `已签署 · ${contract.party_a_signed_at}` : '未签署' }}</span></dd></div>
+                                <div><dt>乙方</dt><dd>{{ contract.party_b_name }}<span>{{ contract.party_b_signed_at ? `已签署 · ${contract.party_b_signed_at}` : '未签署' }}</span></dd></div>
+                                <div v-if="contract.party_c_name"><dt>丙方</dt><dd>{{ contract.party_c_name }}<span>{{ contract.party_c_signed_at ? `已签署 · ${contract.party_c_signed_at}` : '未签署' }}</span></dd></div>
+                            </dl>
+                        </div>
+                        <!-- 「查看合同」跟随签约方一起看：已签署的合同正文以爱签那份为准。 -->
+                        <button v-if="contract.status === 'signed'" class="btn-primary" @click="viewContract">
+                            查看合同
+                        </button>
                     </section>
                     <!-- 已签署的合同正文以爱签那份为准，由「查看合同」入口跳过去；
                          只有爱签取不到预览链接时才回退展示本地正文。 -->
@@ -488,7 +505,7 @@ onUnmounted(() => {
 
                 </section>
 
-                <div class="contract-actions">
+                <div v-if="canSignContract || waitingMessage || showBecomeDeveloper" class="contract-actions">
                     <label v-if="canSignContract" class="notice-toggle">
                         <input v-model="noticeSigner" type="checkbox" />
                         <span>短信通知签署</span>
@@ -496,19 +513,13 @@ onUnmounted(() => {
                     <button v-if="canSignContract" class="btn-primary" :disabled="!canSubmitSign" @click="handleSign">
                         {{ signing ? '签署中…' : '开始签署' }}
                     </button>
-                    <button v-else-if="contract.status === 'signed'" class="btn-primary" @click="viewContract">
-                        查看合同
-                    </button>
                     <span v-else-if="waitingMessage" class="badge-pending">{{ waitingMessage }}</span>
                     <button
-                        v-if="!isWorkbenchSignature && isDeveloperAgreement && contract.status === 'signed'"
+                        v-if="showBecomeDeveloper"
                         class="btn-primary"
                         @click="goBecomeDeveloper"
                     >
                         签署完成，成为开发者
-                    </button>
-                    <button v-if="isWorkbenchSignature" class="btn-secondary" :disabled="loading || signing" @click="loadContract">
-                        <el-icon><Refresh /></el-icon>刷新状态
                     </button>
                 </div>
                 <section v-if="showSignatureFacts" class="signature-history">
@@ -541,6 +552,8 @@ onUnmounted(() => {
 .page-shell--workbench .sign-panel { background: #f5fafa; border-color: #cce3e2; }
 .page-shell--workbench .contract-meta { border: 0; border-left: 3px solid #247f7d; border-radius: 0; }
 .signature-parties, .signature-document, .signature-history { margin: 24px 0; }
+.signature-parties { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.signature-parties__main { flex: 1 1 auto; min-width: 0; }
 .signature-parties h3, .signature-history h3 { font-size: 15px; margin: 0 0 16px; }
 .signature-parties dl { margin: 0; display: grid; gap: 14px; }
 .signature-parties dl > div { display: grid; grid-template-columns: 50px minmax(0, 1fr); font-size: 14px; gap: 12px; }
@@ -555,6 +568,7 @@ onUnmounted(() => {
 @media (max-width: 600px) {
     .page-shell.page-shell--workbench { padding: 16px 12px 28px; }
     .signature-history li { grid-template-columns: 1fr; gap: 6px; }
+    .signature-parties { flex-direction: column; align-items: flex-start; }
 }
 
 .page-shell {
@@ -881,6 +895,13 @@ onUnmounted(() => {
     background: #ffffff;
     touch-action: none;
     cursor: crosshair;
+}
+
+.panel-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
 }
 
 .contract-actions {
