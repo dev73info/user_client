@@ -412,19 +412,25 @@ onUnmounted(() => {
 
             <template v-else>
                 <div class="contract-meta">
-                    <p><strong>合同编号：</strong>{{ contract.contract_no }}</p>
-                    <p><strong>合同标题：</strong>{{ contract.title }}</p>
-                    <p><strong>签署状态：</strong><span class="contract-status-chip"
-                            :class="`contract-status-chip--${contract.status}`">{{ statusLabel(contract.status)
-                            }}</span></p>
-                    <p><strong>合同指纹：</strong><span class="hash-text">{{ contract.content_sha256 }}</span></p>
-                    <!-- CT-2：平台作废不联动爱签（爱签 OpenAPI 没有作废/撤回接口），
-                         用户可能在渠道侧仍看到这份合同，必须在页面上讲清楚边界。 -->
-                    <p v-if="contract.status === 'void'" class="void-hint">
-                        <strong>本合同已由平台作废。</strong>
-                        平台作废只影响本站：爱签渠道侧的合同不会同步撤回，请不要再在爱签侧签署这份合同；
-                        如已签署，请联系客服处理。
-                    </p>
+                    <div class="contract-meta__facts">
+                        <p><strong>合同编号：</strong>{{ contract.contract_no }}</p>
+                        <p><strong>合同标题：</strong>{{ contract.title }}</p>
+                        <p><strong>签署状态：</strong><span class="contract-status-chip"
+                                :class="`contract-status-chip--${contract.status}`">{{ statusLabel(contract.status)
+                                }}</span></p>
+                        <p><strong>合同指纹：</strong><span class="hash-text">{{ contract.content_sha256 }}</span></p>
+                        <!-- CT-2：平台作废不联动爱签（爱签 OpenAPI 没有作废/撤回接口），
+                             用户可能在渠道侧仍看到这份合同，必须在页面上讲清楚边界。 -->
+                        <p v-if="contract.status === 'void'" class="void-hint">
+                            <strong>本合同已由平台作废。</strong>
+                            平台作废只影响本站：爱签渠道侧的合同不会同步撤回，请不要再在爱签侧签署这份合同；
+                            如已签署，请联系客服处理。
+                        </p>
+                    </div>
+                    <!-- 已签署的合同正文以爱签那份为准，「查看合同」跳爱签预览页。 -->
+                    <button v-if="contract.status === 'signed'" class="btn-primary" @click="viewContract">
+                        查看合同
+                    </button>
                 </div>
 
                 <div v-if="successMsg" class="msg-success">{{ successMsg }}</div>
@@ -432,18 +438,12 @@ onUnmounted(() => {
 
                 <template v-if="showSignatureFacts">
                     <section class="signature-parties">
-                        <div class="signature-parties__main">
-                            <h3>签约方</h3>
-                            <dl>
-                                <div><dt>甲方</dt><dd>{{ contract.party_a_name }}<span>{{ contract.party_a_signed_at ? `已签署 · ${contract.party_a_signed_at}` : '未签署' }}</span></dd></div>
-                                <div><dt>乙方</dt><dd>{{ contract.party_b_name }}<span>{{ contract.party_b_signed_at ? `已签署 · ${contract.party_b_signed_at}` : '未签署' }}</span></dd></div>
-                                <div v-if="contract.party_c_name"><dt>丙方</dt><dd>{{ contract.party_c_name }}<span>{{ contract.party_c_signed_at ? `已签署 · ${contract.party_c_signed_at}` : '未签署' }}</span></dd></div>
-                            </dl>
-                        </div>
-                        <!-- 「查看合同」跟随签约方一起看：已签署的合同正文以爱签那份为准。 -->
-                        <button v-if="contract.status === 'signed'" class="btn-primary" @click="viewContract">
-                            查看合同
-                        </button>
+                        <h3>签约方</h3>
+                        <dl>
+                            <div><dt>甲方</dt><dd>{{ contract.party_a_name }}<span>{{ contract.party_a_signed_at ? `已签署 · ${contract.party_a_signed_at}` : '未签署' }}</span></dd></div>
+                            <div><dt>乙方</dt><dd>{{ contract.party_b_name }}<span>{{ contract.party_b_signed_at ? `已签署 · ${contract.party_b_signed_at}` : '未签署' }}</span></dd></div>
+                            <div v-if="contract.party_c_name"><dt>丙方</dt><dd>{{ contract.party_c_name }}<span>{{ contract.party_c_signed_at ? `已签署 · ${contract.party_c_signed_at}` : '未签署' }}</span></dd></div>
+                        </dl>
                     </section>
                     <!-- 已签署的合同正文以爱签那份为准，由「查看合同」入口跳过去；
                          只有爱签取不到预览链接时才回退展示本地正文。 -->
@@ -531,8 +531,6 @@ onUnmounted(() => {
 .page-shell--workbench .sign-panel { background: #f5fafa; border-color: #cce3e2; }
 .page-shell--workbench .contract-meta { border: 0; border-left: 3px solid #247f7d; border-radius: 0; }
 .signature-parties, .signature-document, .signature-history { margin: 24px 0; }
-.signature-parties { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.signature-parties__main { flex: 1 1 auto; min-width: 0; }
 .signature-parties h3, .signature-history h3 { font-size: 15px; margin: 0 0 16px; }
 .signature-parties dl { margin: 0; display: grid; gap: 14px; }
 .signature-parties dl > div { display: grid; grid-template-columns: 50px minmax(0, 1fr); font-size: 14px; gap: 12px; }
@@ -547,7 +545,6 @@ onUnmounted(() => {
 @media (max-width: 600px) {
     .page-shell.page-shell--workbench { padding: 16px 12px 28px; }
     .signature-history li { grid-template-columns: 1fr; gap: 6px; }
-    .signature-parties { flex-direction: column; align-items: flex-start; }
 }
 
 .page-shell {
@@ -609,12 +606,25 @@ onUnmounted(() => {
 }
 
 .contract-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
     background: #f8fafc;
     border: 1px solid #dbe5f0;
     border-left: 4px solid #2563eb;
     border-radius: 8px;
     padding: 1rem 1.2rem;
     margin-bottom: 1.5rem;
+}
+
+.contract-meta__facts {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.contract-meta > .btn-primary {
+    flex: 0 0 auto;
 }
 
 .contract-meta p {
@@ -991,6 +1001,11 @@ onUnmounted(() => {
     .signer-fields div {
         grid-template-columns: 1fr;
         gap: 0.2rem;
+    }
+
+    .contract-meta {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }
 </style>
