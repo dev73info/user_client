@@ -3848,8 +3848,41 @@ watch(
     height: 44px;
   }
 
+  /* 触屏档：四张统计卡改成一条统计条，四列并排用竖线分隔。
+     单列堆叠时四张卡各占 89px，吃掉大半屏首屏空间；这里压到约 64px 一行。 */
   .my-requirements-summary__grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    padding: 12px 4px;
+    border: 1px solid rgba(224, 232, 255, 0.96);
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.06);
+  }
+
+  .my-requirements-summary__grid article {
+    align-content: end;
+    gap: 2px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    text-align: center;
+  }
+
+  .my-requirements-summary__grid article + article {
+    border-left: 1px solid rgba(224, 232, 255, 0.96);
+  }
+
+  .my-requirements-summary__grid span {
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .my-requirements-summary__grid strong {
+    font-size: 22px;
   }
 
   .my-requirement-detail__actions {
