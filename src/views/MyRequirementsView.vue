@@ -5,6 +5,7 @@ import { Close, Refresh } from '@element-plus/icons-vue'
 
 import PublishModal from '@/components/PublishModal.vue'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
+import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
 import {
@@ -151,6 +152,9 @@ const afterSalesTarget = ref<RequirementItem | null>(null)
 const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const conversationLoading = ref(false)
+/** 开票：申请入口在每条需求的操作栏，弹窗内再切换平台开具 / 开发者开具。 */
+const invoiceDialogVisible = ref(false)
+const invoiceRequirement = ref<RequirementItem | null>(null)
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
 const expandedVersionDeleteReviewRequirementId = ref<string | null>(null)
 const versionDeleteRejectTargetId = ref<number | null>(null)
@@ -662,6 +666,11 @@ function hasBoundResource(item: RequirementItem) {
 function openConversation(item: RequirementItem) {
   conversationRequirement.value = item
   conversationVisible.value = true
+}
+
+function openInvoiceDialog(item: RequirementItem) {
+  invoiceRequirement.value = item
+  invoiceDialogVisible.value = true
 }
 
 function signingStatusForRequirement(item: RequirementItem) {
@@ -2301,6 +2310,9 @@ watch(
                 @click.stop="openConversation(item)">
                 {{ conversationButtonLabel(item) }}
               </button>
+              <button class="ghost small" type="button" @click.stop="openInvoiceDialog(item)">
+                开票
+              </button>
               <button v-if="canCreateRequirementContract(item)" class="ghost small" type="button"
                 :disabled="contractCreatingId === item.requirement_id"
                 @click.stop="createRequirementContractAction(item)">
@@ -2437,6 +2449,9 @@ watch(
     <RequirementConversationModal :visible="conversationVisible" :token="auth.token" :current-username="auth.username"
       :requirement-id="conversationRequirement?.requirement_id ?? ''" :title="conversationRequirement?.title"
       @updated="applyConversationDetail" @close="closeConversation" />
+
+    <InvoiceApplyDialog v-model:visible="invoiceDialogVisible" :token="auth.token"
+      :requirement-id="invoiceRequirement?.requirement_id ?? ''" role="customer" @submitted="loadMyRequirements" />
 
     <Teleport to="body">
       <div v-if="detailRequirement" class="my-requirement-detail-wrap" @click.self="closeRequirementDetail">

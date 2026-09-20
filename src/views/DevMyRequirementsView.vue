@@ -17,6 +17,7 @@ import {
 } from '@/api/adapay'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import DeliverySubmitDialog from '@/components/DeliverySubmitDialog.vue'
+import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import { breachStatusLabel } from '@/shared/breachStatus'
@@ -53,6 +54,9 @@ const contractCreatingId = ref('')
 const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const conversationLoading = ref(false)
+/** 开票：乙方开的是开发者发票，入口与需求方共用同一个弹窗（弹窗按身份自动选边）。 */
+const invoiceDialogVisible = ref(false)
+const invoiceRequirement = ref<RequirementItem | null>(null)
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
 const descriptionOverflowMap = ref<Record<string, boolean>>({})
 const expandedRequirements = ref<Record<string, boolean>>({})
@@ -277,6 +281,11 @@ function resourceVisibilityLabel(item: RequirementItem): string {
 function openConversation(item: RequirementItem) {
   conversationRequirement.value = item
   conversationVisible.value = true
+}
+
+function openInvoiceDialog(item: RequirementItem) {
+  invoiceRequirement.value = item
+  invoiceDialogVisible.value = true
 }
 
 function closeConversation() {
@@ -967,6 +976,9 @@ async function loadRequirementConversations() {
                 <el-icon><ChatDotRound /></el-icon>
                 <span>会话</span>
               </el-button>
+              <el-button size="small" @click="openInvoiceDialog(item)">
+                开票
+              </el-button>
               <el-button v-if="hasPendingCreatorUnbindRequest(item)" type="warning" size="small"
                 @click="openUnbindRespond(item)">处理解除申请</el-button>
               <el-button v-else-if="canRequestUnbind(item)" type="danger" plain size="small"
@@ -1148,6 +1160,9 @@ async function loadRequirementConversations() {
     <RequirementConversationModal :visible="conversationVisible" api-mode="dev" :token="auth.token"
       :current-username="auth.username" :requirement-id="conversationRequirement?.requirement_id ?? ''"
       :title="conversationRequirement?.title" @updated="applyConversationDetail" @close="closeConversation" />
+
+    <InvoiceApplyDialog v-model:visible="invoiceDialogVisible" :token="auth.token"
+      :requirement-id="invoiceRequirement?.requirement_id ?? ''" role="developer" @submitted="loadMyRequirements" />
   </div>
 </template>
 
