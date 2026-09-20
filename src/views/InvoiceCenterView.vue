@@ -878,6 +878,37 @@ async function openDocument(invoice: InvoiceRecord) {
   padding: 8px 10px;
   color: #172033;
   background: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.invoice-panel input::placeholder {
+  color: #98a2b3;
+}
+
+/* 原生下拉框统一成项目风格：去掉系统箭头，换成自绘 chevron，并留出点击区域。 */
+.invoice-panel select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5 6 6.5l5-5' stroke='%23667085' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px 8px;
+}
+
+.invoice-panel input:hover,
+.invoice-panel select:hover {
+  border-color: #b7c0cd;
+}
+
+.invoice-panel input:focus,
+.invoice-panel select:focus {
+  outline: none;
+  border-color: #247f7d;
+  box-shadow: 0 0 0 3px rgba(36, 127, 125, 0.14);
 }
 
 .invoice-list-panel {
