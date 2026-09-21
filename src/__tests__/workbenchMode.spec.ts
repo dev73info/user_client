@@ -86,30 +86,30 @@ describe('workbench mode switch', () => {
   it('开发者路由下整条侧边栏换成开发者菜单', async () => {
     const { wrapper } = await render('dev-resource-list')
     const text = sidebar(wrapper)
-    expect(text).toContain('开发者事项')
-    // 开发者菜单首位是新的总览页；用户端菜单整条换掉，不再出现
-    expect(text).toContain('工作台总览')
-    expect(text).toContain('我的资源项目')
-    expect(text).toContain('交付记录')
+    // 开发者菜单按三段分类铺开：概览与接单 → 资源与收益 → 协作与支持
+    expect(wrapper.findAll('.user-workbench__menu > .user-workbench__menu-section').map((section) => section.text()))
+      .toEqual(['概览与接单', '资源与收益', '协作与支持'])
+    // 侧边栏标题已经写着「开发者工作台」，第一段不再重复叫「开发者事项」
+    expect(text).not.toContain('开发者事项')
+    // 用户端菜单整条换掉，不再出现
     expect(text).not.toContain('需求协作')
     expect(text).not.toContain('账户服务')
-    // 团队服务搬到这里：以原来的折叠组形式跟在开发者条目之后
-    expect(text).toContain('团队服务')
-    expect(text).toContain('我的团队')
-    expect(text).toContain('资源项目')
-    // 消息中心在开发者工作台也留一份，同样是一级条目，跟在「团队服务」之后
+    // 与用户菜单同一套一级条目版式（带图标的一级菜单），切换模式时侧边栏只有文字变化；
+    // 条目按分类的先后顺序排：先接单，再资产与收益
+    const devLinks = wrapper.findAll('.user-workbench__menu > .user-workbench__menu-link--root')
+    expect(devLinks[0]?.find('.user-workbench__menu-icon').exists()).toBe(true)
+    expect(devLinks.map((link) => link.text()))
+      .toEqual(['工作台总览', '需求大厅', '我的接单', '资源项目', '交付记录', '收益钱包'])
+    // 协作与支持段：团队服务与消息中心是折叠组（分组头自带组名），工单中心是一级条目
     expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text()))
       .toEqual(['团队服务', '消息中心'])
+    expect(text.match(/团队服务/g)).toHaveLength(1)
+    expect(text).toContain('我的团队')
+    expect(text).toContain('团队资源项目')
     // 工单中心两种模式都保留：开发者工作台同样要能直接进工单
     expect(text).toContain('工单中心')
     expect(wrapper.find('.user-workbench__mode-switch').attributes('aria-label')).toBe('回到用户工作台')
     expect(wrapper.find('.user-workbench__brand-title').text()).toBe('开发者工作台')
-    // 与用户菜单同一套一级条目版式（带图标的一级菜单），切换模式时侧边栏只有文字变化
-    const devLinks = wrapper.findAll('.user-workbench__menu > .user-workbench__menu-link--root')
-    expect(devLinks).toHaveLength(6)
-    expect(devLinks[0]?.find('.user-workbench__menu-icon').exists()).toBe(true)
-    expect(devLinks.map((link) => link.text()))
-      .toEqual(['工作台总览', '我的资源项目', '需求大厅', '我的接单', '收益钱包', '交付记录'])
     wrapper.unmount()
   })
 

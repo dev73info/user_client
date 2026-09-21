@@ -27,6 +27,20 @@ type WorkbenchMenuGroup = {
   items: WorkbenchMenuItem[]
 }
 
+/** 开发者菜单的一级条目：与用户菜单的一级条目同版式，每条带一个图标。 */
+type DevWorkbenchItem = WorkbenchMenuItem & { icon: Component }
+
+/**
+ * 开发者菜单的分类：侧边栏按分类标题把一级条目分组。
+ * items 允许省略——「协作与支持」的成员是折叠组与固定条目（团队服务 / 消息中心 / 工单中心），
+ * 由侧边栏后面那几块渲染，这里只留分类小标题。
+ */
+type DevWorkbenchSection = {
+  key: string
+  label: string
+  items?: DevWorkbenchItem[]
+}
+
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
@@ -61,36 +75,62 @@ const ticketsItem: WorkbenchMenuItem = {
 
 // 开发者工作台菜单：侧边栏切到开发者模式时展示（此前是底部「开发者工作台」折叠组的内容）。
 // 版式与用户菜单的一级条目一致（图标 + 加粗标题），切换模式时侧边栏只有文字在变。
-const devWorkbenchItems: (WorkbenchMenuItem & { icon: Component })[] = [
+// 分类按开发者自己的动线划三段：先看概览与接单，再看资产与收益，最后是协作与支持。
+// 第一段不再叫「开发者事项」——侧边栏标题已经写着「开发者工作台」，重复一遍不带来信息，
+// 而段内三条（总览 / 需求大厅 / 我的接单）都是接单这一件事。
+const devWorkbenchSections: DevWorkbenchSection[] = [
   {
-    label: '工作台总览',
-    name: 'dev-home',
-    description: '接单收入、保证金与交付概览',
-    icon: DataAnalysis,
+    key: 'orders',
+    label: '概览与接单',
+    items: [
+      {
+        label: '工作台总览',
+        name: 'dev-home',
+        description: '接单收入、保证金与交付概览',
+        icon: DataAnalysis,
+      },
+      { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求', icon: Compass },
+      { label: '我的接单', name: 'dev-my-requirements', description: '查看已关联需求和会话', icon: Tickets },
+    ],
   },
   {
-    label: '资源项目',
-    name: 'dev-resource-list',
-    description: '管理主页、版本与资源状态',
-    activeNames: ['dev-resource-homepage-edit', 'dev-resource-versions'],
-    icon: Files,
+    key: 'assets',
+    label: '资源与收益',
+    items: [
+      {
+        label: '资源项目',
+        name: 'dev-resource-list',
+        description: '管理主页、版本与资源状态',
+        activeNames: ['dev-resource-homepage-edit', 'dev-resource-versions'],
+        icon: Files,
+      },
+      { label: '交付记录', name: 'dev-wallet-releases', description: '查看资源交付与收入', icon: Promotion },
+      { label: '收益钱包', name: 'dev-wallet', description: '查看余额与保证金信息', icon: Wallet },
+    ],
   },
-  { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求', icon: Compass },
-  { label: '我的接单', name: 'dev-my-requirements', description: '查看已关联需求和会话', icon: Tickets },
-  { label: '收益钱包', name: 'dev-wallet', description: '查看余额与保证金信息', icon: Wallet },
-  { label: '交付记录', name: 'dev-wallet-releases', description: '查看资源交付与收入', icon: Promotion },
+  {
+    // 只出小标题：这一段的三条入口各有各的版式（团队服务与消息中心是折叠组、工单中心是一级条目），
+    // 由下面几块分别渲染。把标签放在这里，是为了三段分类的文案集中在一处、不会和渲染块分离。
+    key: 'support',
+    label: '协作与支持',
+  },
 ]
 
 // 团队服务已整体移入开发者工作台：用户模式下不出现，开发者模式下按原来的折叠组版式展示。
+// 组内条目叫「团队资源项目」：开发者侧边栏另有一条自己的「资源项目」，重名会让两条菜单分不清。
 const teamMenuGroup: WorkbenchMenuGroup = {
   key: 'team',
   label: '团队服务',
   icon: UserFilled,
   items: [
     { label: '我的团队', name: 'workbench-teams', description: '查看和管理团队' },
-    { label: '资源项目', name: 'workbench-team-resources', description: '管理团队共享资源项目' },
+    { label: '团队资源项目', name: 'workbench-team-resources', description: '管理团队共享资源项目' },
   ],
 }
+
+// 分组头已经写着组名，因此这两类分组不再额外顶一行灰色小标题：
+// 账户服务靠分组头识别；团队服务挂在开发者菜单的「协作与支持」段下，再加一行会把「团队服务」写两遍。
+const GROUPS_WITHOUT_SECTION_LABEL = ['account', 'team']
 
 const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
   {
@@ -542,20 +582,23 @@ async function scrollToHash() {
 
           <nav class="user-workbench__menu">
             <template v-if="isDevWorkbenchMode">
-              <p class="user-workbench__menu-section">开发者事项</p>
-              <!-- 与用户菜单同一套一级条目版式（图标 + 加粗标题），切换模式时只有文字变化 -->
-              <RouterLink v-for="item in devWorkbenchItems" :key="item.name"
-                class="user-workbench__menu-link user-workbench__menu-link--root"
-                :class="{ active: isMenuItemActive(item) }" :to="menuItemTo(item)" @click="closeMobileMenu">
-                <span class="user-workbench__menu-icon">
-                  <el-icon>
-                    <component :is="item.icon" />
-                  </el-icon>
-                </span>
-                <span>
-                  <strong>{{ item.label }}</strong>
-                </span>
-              </RouterLink>
+              <!-- 开发者菜单按分类铺开，每类一个灰色小标题；第三段「协作与支持」的成员在下面几块里渲染 -->
+              <template v-for="section in devWorkbenchSections" :key="section.key">
+                <p class="user-workbench__menu-section">{{ section.label }}</p>
+                <!-- 与用户菜单同一套一级条目版式（图标 + 加粗标题），切换模式时只有文字变化 -->
+                <RouterLink v-for="item in section.items ?? []" :key="item.name"
+                  class="user-workbench__menu-link user-workbench__menu-link--root"
+                  :class="{ active: isMenuItemActive(item) }" :to="menuItemTo(item)" @click="closeMobileMenu">
+                  <span class="user-workbench__menu-icon">
+                    <el-icon>
+                      <component :is="item.icon" />
+                    </el-icon>
+                  </span>
+                  <span>
+                    <strong>{{ item.label }}</strong>
+                  </span>
+                </RouterLink>
+              </template>
             </template>
 
             <!-- 开发者模式下整块换成开发者菜单，用户菜单不出现在侧边栏 -->
@@ -591,7 +634,11 @@ async function scrollToHash() {
 
               <section v-else class="user-workbench__menu-group"
                 :class="{ active: isGroupActive(group), open: isGroupOpen(group) }">
-                <p v-if="group.key !== 'account'" class="user-workbench__menu-section">{{ group.label }}</p>
+                <!-- 账户服务与团队服务不另起小标题：账户服务靠分组头自己识别，
+                     团队服务挂在开发者菜单的「协作与支持」段下，再加一行会把「团队服务」写两遍 -->
+                <p v-if="!GROUPS_WITHOUT_SECTION_LABEL.includes(group.key)" class="user-workbench__menu-section">
+                  {{ group.label }}
+                </p>
                 <button class="user-workbench__menu-group-head" type="button" :aria-expanded="isGroupOpen(group)"
                   @click="toggleGroup(group)">
                   <span class="user-workbench__menu-icon">
