@@ -1,15 +1,30 @@
 <script setup lang="ts">
-import { ArrowRight, Money, Wallet, WarningFilled } from '@element-plus/icons-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import {
+  ArrowRight,
+  CircleCheck,
+  Clock,
+  Money,
+  Promotion,
+  Tickets,
+  TrendCharts,
+  Wallet,
+  WarningFilled,
+} from '@element-plus/icons-vue'
+import { computed, onMounted, ref, type Component } from 'vue'
+import { useRoute, type RouteLocationRaw } from 'vue-router'
 
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
 import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@/api/devOrderDeposit'
-import { getDevWalletOverview, type DevWalletIncomeItem, type DevWalletOverview } from '@/api/devWallet'
+import {
+  getDevWalletOverview,
+  type DevWalletIncomeItem,
+  type DevWalletOverview,
+} from '@/api/devWallet'
 import { listMcResources, type McResourcePayload } from '@/api/mcResources'
 import { listMyRequirements, type RequirementItem } from '@/api/devRequirements'
 import { useToast } from '@/composables/useToast'
 import {
+  DEMO_DEV_HOME_DAILY_INCOME,
   DEMO_DEV_HOME_DEPOSIT,
   DEMO_DEV_HOME_REQUIREMENTS,
   DEMO_DEV_HOME_RESOURCES,
@@ -17,16 +32,57 @@ import {
   devHomeMockEnabled,
 } from '@/shared/devHomeMock'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
-import { requirementStatusLabel } from '@/shared/requirementStatus'
+import {
+  isActiveRequirement,
+  requirementProgressPercent,
+  requirementStatusLabel,
+} from '@/shared/requirementStatus'
 import { useAuthStore } from '@/stores/auth'
 
 /** 页面只用开发者体系的三个强调色，灰色留给终止态，不引入第五种颜色。 */
 type DevHomeTone = 'blue' | 'gold' | 'cyan' | 'muted'
 
-/** 汇总条上的一格：与收益钱包的 dev-meta-strip 同一份结构。 */
-type DevHomeMetaItem = {
+/** 总览页只做汇总：列表最多展示 5 条，完整明细留在「我的接单」与「交付记录」页。 */
+const OVERVIEW_LIST_LIMIT = 5
+
+/** 交付记录排成三列卡片，正好铺满一行；多出来的条数交给「查看全部」去「交付记录」页看。 */
+const DELIVERY_GRID_LIMIT = 3
+
+/** 四格统计卡：图标 + 口径数字 + 跳到明细页的箭头。 */
+type DevHomeStatCard = {
   label: string
   value: string
+  icon: Component
+  to: RouteLocationRaw
+}
+
+/** 进行中项目列表的一行：状态、预算与流程进度都来自同一条接单。 */
+type DevHomeProjectRow = {
+  requirementId: string
+  title: string
+  status: string
+  statusLabel: string
+  tone: DevHomeTone
+  createdAt: string
+  updatedAt: string
+  budget: number | null
+  progress: number
+}
+
+/** 交付行：一条接了资源的需求单 = 一次交付，金额取该单的到账尾款。 */
+type DevHomeDeliveryRow = {
+  requirementId: string
+  requirementTitle: string
+  resourceTitle: string
+  versionCount: number
+  delivered: boolean
+  updatedAt: string
+  amount: number | null
+}
+
+type DevHomeIncomeBucket = {
+  label: string
+  value: number
 }
 
 const auth = useAuthStore()
@@ -41,88 +97,6 @@ const resources = ref<McResourcePayload[]>([])
 
 /** 演示数据开关：开着时整页不读接口，只用于本地预览布局。 */
 const mockEnabled = devHomeMockEnabled(route.query.mock === '1')
-
-// 总览页只做汇总：列表最多展示 5 条，完整明细留在「我的接单」与「交付记录」页。
-const OVERVIEW_LIST_LIMIT = 5
-
-const recentRequirements = computed(() =>
-  [...requirements.value]
-    .sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at))
-    .slice(0, OVERVIEW_LIST_LIMIT),
-)
-
-const resourceTitleMap = computed(() => new Map(resources.value.map((item) => [item.id, item.title])))
-
-/** 交付 = 绑定资源项目的资源版本，所以交付记录按「已绑定资源的需求单」汇总。 */
-const deliveryRows = computed(() =>
-  [...requirements.value]
-    .filter((item) => item.bound_resource_id != null)
-    .sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at))
-    .slice(0, OVERVIEW_LIST_LIMIT)
-    .flatMap((item) => {
-      const resourceId = item.bound_resource_id
-      if (resourceId == null) {
-        return []
-      }
-      return [{
-        requirementId: item.requirement_id,
-        requirementTitle: item.title,
-        resourceTitle: resourceTitleMap.value.get(resourceId) ?? `资源 #${resourceId}`,
-        versionCount: item.bound_resource_version_count ?? 0,
-      }]
-    }),
-)
-
-const recentIncome = computed<DevWalletIncomeItem[]>(() => overview.value?.recent_income ?? [])
-
-/** 未缴保证金或可用余额不足时后端会关掉绑定开关，两种情况共用同一条提示。 */
-const depositInsufficient = computed(() => (deposit.value ? !deposit.value.can_bind_requirement : false))
-
-/** 保证金进度条只表达「可用占比」，冻结与充值总额在下方用标签补齐，避免小字被压得看不清。 */
-const depositAvailablePercent = computed(() => {
-  const total = deposit.value?.total_paid_cny ?? 0
-  if (total <= 0) {
-    return 0
-  }
-
-  const available = deposit.value?.available_cny ?? 0
-  return Math.min(100, Math.max(0, Math.round((available / total) * 100)))
-})
-
-/**
- * 接单状态分档：进行中 = 已接单且还没结单，从「待付定金」一路到「待分账」。
- * 已终止的两档（`rejected` / `cancelled`）不算，`completed` 归已完成。
- */
-const ACTIVE_PROJECT_STATUSES: ReadonlyArray<RequirementItem['status']> = [
-  'pending_deposit',
-  'deposit_paid',
-  'in_development',
-  'pending_final',
-  'pending_settlement',
-]
-
-/** 进行中项目：所有未结单的接单，是「待交付」的上位口径。 */
-const activeProjectCount = computed(
-  () => requirements.value.filter((item) => ACTIVE_PROJECT_STATUSES.includes(item.status)).length,
-)
-
-/** 待交付：已交出成果、等需求方验收付尾款（状态 `pending_final`）。 */
-const pendingDeliveryCount = computed(
-  () => requirements.value.filter((item) => item.status === 'pending_final').length,
-)
-
-/** 已完成项目：只算已结单（状态 `completed`），待分账仍在进行中那一档里。 */
-const completedProjectCount = computed(
-  () => requirements.value.filter((item) => item.status === 'completed').length,
-)
-
-/** 汇总条的四格读数：三格按接单状态分档，收入固定取后端给的累计到账金额。 */
-const metaItems = computed<DevHomeMetaItem[]>(() => [
-  { label: '进行中项目', value: String(activeProjectCount.value) },
-  { label: '已完成项目', value: String(completedProjectCount.value) },
-  { label: '待交付', value: String(pendingDeliveryCount.value) },
-  { label: '累计收入', value: money(overview.value?.total_income_cny) },
-])
 
 /** 需求状态 → 色调：进行中蓝、等待付款金、已完成青，终止态灰。 */
 const STATUS_TONES: Record<string, DevHomeTone> = {
@@ -145,18 +119,319 @@ const CHIP_TONES: Record<DevHomeTone, string> = {
   muted: 'dev-home__chip--muted',
 }
 
-function statusTone(status: string): DevHomeTone {
-  return STATUS_TONES[status] ?? 'blue'
-}
+type ProjectTabKey = 'all' | 'active' | 'pending' | 'completed'
 
-function statusChipClass(status: string) {
-  return CHIP_TONES[statusTone(status)]
-}
+const PROJECT_TABS: ReadonlyArray<{ key: ProjectTabKey; label: string }> = [
+  { key: 'all', label: '全部' },
+  { key: 'active', label: '进行中' },
+  { key: 'pending', label: '待交付' },
+  { key: 'completed', label: '已完成' },
+]
+
+type DeliveryTabKey = 'all' | 'delivered' | 'pending'
+
+const DELIVERY_TABS: ReadonlyArray<{ key: DeliveryTabKey; label: string }> = [
+  { key: 'all', label: '全部' },
+  { key: 'delivered', label: '已交付' },
+  { key: 'pending', label: '未交付' },
+]
+
+const activeProjectTab = ref<ProjectTabKey>('all')
+const activeDeliveryTab = ref<DeliveryTabKey>('all')
 
 /** 保证金不足时直接在总览页充值，不走跳转：与收益钱包页共用同一个充值弹窗 */
 const rechargeDialog = ref<InstanceType<typeof DevDepositRechargeDialog> | null>(null)
 
-// 页面标题与「已接取/保证金可用」摘要都由工作台外壳与汇总条承载，这里不再重复渲染。
+const displayName = computed(() => auth.username || '开发者')
+
+/** 问候语按本机时间分档，只影响一句话，不参与任何数据口径。 */
+const greeting = computed(() => {
+  const hour = new Date().getHours()
+  if (hour < 6) {
+    return '凌晨好'
+  }
+  if (hour < 12) {
+    return '早上好'
+  }
+  if (hour < 18) {
+    return '下午好'
+  }
+
+  return '晚上好'
+})
+
+const recentIncome = computed<DevWalletIncomeItem[]>(() => overview.value?.recent_income ?? [])
+
+const resourceTitleMap = computed(
+  () => new Map(resources.value.map((item) => [item.id, item.title])),
+)
+
+/** 需求单 → 已到账尾款金额：交付行右侧用它显示这一单回款了多少。 */
+const incomeByRequirement = computed(() => {
+  const map = new Map<string, number>()
+  for (const item of recentIncome.value) {
+    map.set(item.requirement_id, (map.get(item.requirement_id) ?? 0) + item.amount_cny)
+  }
+
+  return map
+})
+
+/** 进行中项目：所有未结单的接单，是「待交付」的上位口径。 */
+const activeProjectCount = computed(
+  () => requirements.value.filter((item) => isActiveRequirement(item.status)).length,
+)
+
+/** 待交付：已交出成果、等需求方验收付尾款（状态 `pending_final`）。 */
+const pendingDeliveryCount = computed(
+  () => requirements.value.filter((item) => item.status === 'pending_final').length,
+)
+
+/** 已完成项目：只算已结单（状态 `completed`），待分账仍在进行中那一档里。 */
+const completedProjectCount = computed(
+  () => requirements.value.filter((item) => item.status === 'completed').length,
+)
+
+/** 四格统计卡读数：三格按接单状态分档，收入固定取后端给的累计到账金额。 */
+const statCards = computed<DevHomeStatCard[]>(() => [
+  {
+    label: '进行中项目',
+    value: String(activeProjectCount.value),
+    icon: Tickets,
+    to: { name: 'dev-my-requirements' },
+  },
+  {
+    label: '已完成项目',
+    value: String(completedProjectCount.value),
+    icon: CircleCheck,
+    to: { name: 'dev-my-requirements' },
+  },
+  {
+    label: '待交付',
+    value: String(pendingDeliveryCount.value),
+    icon: Clock,
+    to: { name: 'dev-my-requirements' },
+  },
+  {
+    label: '累计收入',
+    value: money(overview.value?.total_income_cny),
+    icon: Wallet,
+    to: { name: 'dev-wallet' },
+  },
+])
+
+/** 终止态不进总览列表：那是已经结束的接单，留在「我的接单」里查。 */
+const openRequirements = computed(() =>
+  requirements.value.filter((item) => item.status !== 'cancelled' && item.status !== 'rejected'),
+)
+
+const projectRows = computed<DevHomeProjectRow[]>(() => {
+  const filtered = openRequirements.value.filter((item) => {
+    if (activeProjectTab.value === 'active') {
+      return isActiveRequirement(item.status)
+    }
+    if (activeProjectTab.value === 'pending') {
+      return item.status === 'pending_final'
+    }
+    if (activeProjectTab.value === 'completed') {
+      return item.status === 'completed'
+    }
+
+    return true
+  })
+
+  return [...filtered]
+    .sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at))
+    .slice(0, OVERVIEW_LIST_LIMIT)
+    .map((item) => ({
+      requirementId: item.requirement_id,
+      title: item.title,
+      status: item.status,
+      statusLabel: requirementStatusLabel(item.status),
+      tone: STATUS_TONES[item.status] ?? 'blue',
+      createdAt: item.created_time,
+      updatedAt: item.updated_at,
+      budget: item.budget ?? null,
+      progress: requirementProgressPercent(item.status),
+    }))
+})
+
+/** 交付 = 绑定资源项目的资源版本，所以交付记录按「已绑定资源的需求单」汇总。 */
+const deliveryRows = computed<DevHomeDeliveryRow[]>(() =>
+  [...requirements.value]
+    .filter((item) => item.bound_resource_id != null)
+    .filter((item) => {
+      if (activeDeliveryTab.value === 'delivered') {
+        return (item.bound_resource_version_count ?? 0) > 0
+      }
+      if (activeDeliveryTab.value === 'pending') {
+        return (item.bound_resource_version_count ?? 0) === 0
+      }
+
+      return true
+    })
+    .sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at))
+    .slice(0, DELIVERY_GRID_LIMIT)
+    .flatMap((item) => {
+      const resourceId = item.bound_resource_id
+      if (resourceId == null) {
+        return []
+      }
+
+      const versionCount = item.bound_resource_version_count ?? 0
+
+      return [{
+        requirementId: item.requirement_id,
+        requirementTitle: item.title,
+        resourceTitle: resourceTitleMap.value.get(resourceId) ?? `资源 #${resourceId}`,
+        versionCount,
+        delivered: versionCount > 0,
+        updatedAt: item.updated_at,
+        amount: incomeByRequirement.value.get(item.requirement_id) ?? null,
+      }]
+    }),
+)
+
+/** 资金状态：可提现与待提现两根，比例条只表达这两者之间的占比。 */
+const withdrawable = computed(() => overview.value?.withdrawable_balance_cny ?? 0)
+const pendingWithdraw = computed(() => overview.value?.pending_withdraw_cny ?? 0)
+const paidWithdraw = computed(() => overview.value?.paid_withdraw_cny ?? 0)
+
+const withdrawTotal = computed(() => withdrawable.value + pendingWithdraw.value)
+
+const withdrawablePercent = computed(() => {
+  if (withdrawTotal.value <= 0) {
+    return 0
+  }
+
+  return Math.min(100, Math.max(0, Math.round((withdrawable.value / withdrawTotal.value) * 100)))
+})
+
+const pendingWithdrawPercent = computed(() => (withdrawTotal.value > 0 ? 100 - withdrawablePercent.value : 0))
+
+/** 未缴保证金或可用余额不足时后端会关掉绑定开关，两种情况共用同一条提示。 */
+const depositInsufficient = computed(() => (deposit.value ? !deposit.value.can_bind_requirement : false))
+
+const changeRate = computed(() => overview.value?.today_income_change_rate ?? null)
+
+/** 涨幅正负都只影响颜色与符号，文案口径固定为「较昨日」。 */
+const changeRateText = computed(() => {
+  if (changeRate.value == null || !Number.isFinite(changeRate.value)) {
+    return ''
+  }
+
+  const sign = changeRate.value > 0 ? '+' : ''
+  return `${sign}${changeRate.value.toFixed(1)}%`
+})
+
+/** 曲线口径：近 7 天（含今天）的到账金额，最早一天在左。 */
+const CHART_BUCKETS = 7
+const CHART_WIDTH = 320
+const CHART_HEIGHT = 104
+const CHART_PAD_X = 10
+const CHART_PAD_TOP = 16
+const CHART_PAD_BOTTOM = 10
+
+function pad2(value: number): string {
+  return String(value).padStart(2, '0')
+}
+
+function dayKey(date: Date): string {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`
+}
+
+/**
+ * 后端没有时间序列接口：演示模式用自带序列，真实模式把最近到账记录按到账日归集。
+ * 真实模式下接口最多只返回 5 笔，所以这条曲线是「最近到账的分布」，不是完整流水。
+ */
+const incomeBuckets = computed<DevHomeIncomeBucket[]>(() => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const byDay = new Map<string, number>()
+  if (mockEnabled) {
+    DEMO_DEV_HOME_DAILY_INCOME.forEach((amount, index) => {
+      const date = new Date(today)
+      date.setDate(date.getDate() - (DEMO_DEV_HOME_DAILY_INCOME.length - 1 - index))
+      byDay.set(dayKey(date), amount)
+    })
+  } else {
+    for (const item of recentIncome.value) {
+      const paidAt = new Date(item.paid_at)
+      if (Number.isNaN(paidAt.getTime())) {
+        continue
+      }
+      byDay.set(dayKey(paidAt), (byDay.get(dayKey(paidAt)) ?? 0) + item.amount_cny)
+    }
+  }
+
+  const buckets: DevHomeIncomeBucket[] = []
+  for (let offset = CHART_BUCKETS - 1; offset >= 0; offset -= 1) {
+    const date = new Date(today)
+    date.setDate(date.getDate() - offset)
+    buckets.push({
+      label: `${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}`,
+      value: byDay.get(dayKey(date)) ?? 0,
+    })
+  }
+
+  return buckets
+})
+
+const chartMax = computed(() => incomeBuckets.value.reduce((max, bucket) => Math.max(max, bucket.value), 0))
+const hasIncomeData = computed(() => chartMax.value > 0)
+
+/** 折线与面积共用同一串坐标：横向铺满、纵向按最大值等比缩放。 */
+const chartGeometry = computed(() => {
+  const buckets = incomeBuckets.value
+  const usableWidth = CHART_WIDTH - CHART_PAD_X * 2
+  const usableHeight = CHART_HEIGHT - CHART_PAD_TOP - CHART_PAD_BOTTOM
+  const step = buckets.length > 1 ? usableWidth / (buckets.length - 1) : 0
+  const baseline = CHART_HEIGHT - CHART_PAD_BOTTOM
+
+  const points = buckets.map((bucket, index) => {
+    const ratio = chartMax.value > 0 ? bucket.value / chartMax.value : 0
+
+    return {
+      ...bucket,
+      x: CHART_PAD_X + step * index,
+      y: baseline - ratio * usableHeight,
+    }
+  })
+
+  const line = points
+    .map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(1)},${point.y.toFixed(1)}`)
+    .join(' ')
+  const first = points[0]
+  const last = points[points.length - 1]
+  const area =
+    first && last
+      ? `${line} L${last.x.toFixed(1)},${baseline} L${first.x.toFixed(1)},${baseline} Z`
+      : ''
+
+  return { points, line, area, baseline }
+})
+
+/** 最高一天的读数标在它自己上方；贴边时把标签拉回画布内，避免溢出卡片。 */
+const peakIndex = computed(() =>
+  incomeBuckets.value.reduce((best, bucket, index) => (bucket.value > (incomeBuckets.value[best]?.value ?? 0) ? index : best), 0),
+)
+
+const peakLabel = computed(() => money(incomeBuckets.value[peakIndex.value]?.value))
+
+const peakLabelLeft = computed(() => {
+  const lastIndex = incomeBuckets.value.length - 1
+  if (lastIndex <= 0) {
+    return '50%'
+  }
+
+  const percent = (peakIndex.value / lastIndex) * 100
+  return `${Math.min(88, Math.max(12, percent)).toFixed(1)}%`
+})
+
+const chartCaption = computed(() =>
+  mockEnabled ? '演示数据：近 7 天完整序列' : '按最近到账记录绘制（接口最多返回 5 笔）',
+)
+
 onMounted(() => {
   void loadPage()
 })
@@ -167,6 +442,10 @@ function money(value?: number | null) {
   }
 
   return `¥${value.toFixed(2)}`
+}
+
+function statusChipClass(status: string) {
+  return CHIP_TONES[STATUS_TONES[status] ?? 'blue']
 }
 
 async function loadPage() {
@@ -229,23 +508,47 @@ async function loadPage() {
       </button>
     </section>
 
-    <!-- 汇总条：与收益钱包同款，只承载口径数字，把版面留给下面的列表与资金卡 -->
-    <div class="dev-meta-strip dev-home__strip">
-      <template v-for="(item, index) in metaItems" :key="item.label">
-        <div class="dev-meta-strip__item">
-          <span class="dev-meta-strip__label">{{ item.label }}</span>
-          <span class="dev-meta-strip__value">{{ item.value }}</span>
-        </div>
-        <div v-if="index < metaItems.length - 1" class="dev-meta-strip__divider" aria-hidden="true" />
-      </template>
-    </div>
+    <!-- 问候卡：只出现在总览页，代替了别处那条「标题 + 返回」的页头 -->
+    <section class="dev-home__hero">
+      <div class="dev-home__hero-copy">
+        <h1 class="dev-home__hero-title">{{ greeting }}，{{ displayName }}</h1>
+        <p class="dev-home__hero-desc">今天也要加油，创造更多价值！</p>
+      </div>
+      <span class="dev-home__hero-mark" aria-hidden="true">
+        <span>73</span>
+      </span>
+    </section>
+
+    <!-- 四格统计卡：都是接单状态分档的读数，点进去是对应明细页 -->
+    <section class="dev-home__stats" aria-label="接单与收入概览">
+      <RouterLink v-for="card in statCards" :key="card.label" class="dev-home__stat" :to="card.to">
+        <span class="dev-home__stat-inner">
+          <span class="dev-home__stat-icon" aria-hidden="true">
+            <el-icon>
+              <component :is="card.icon" />
+            </el-icon>
+          </span>
+          <span class="dev-home__stat-label">{{ card.label }}</span>
+          <strong class="dev-home__stat-value">{{ card.value }}</strong>
+          <el-icon class="dev-home__stat-arrow" aria-hidden="true">
+            <ArrowRight />
+          </el-icon>
+        </span>
+      </RouterLink>
+    </section>
 
     <section class="dev-home__layout">
       <div class="dev-home__main">
         <section class="dev-surface-card dev-home__panel">
           <header class="dev-home__panel-head">
-            <h2 class="dev-section-title">已接取需求单</h2>
-            <span v-if="recentRequirements.length" class="dev-home__panel-count">{{ recentRequirements.length }}</span>
+            <h2 class="dev-section-title">进行中项目</h2>
+            <div class="dev-home__tabs" role="tablist" aria-label="进行中项目筛选">
+              <button v-for="tab in PROJECT_TABS" :key="tab.key" class="dev-home__tab" type="button" role="tab"
+                :aria-selected="activeProjectTab === tab.key" :class="{ 'is-active': activeProjectTab === tab.key }"
+                @click="activeProjectTab = tab.key">
+                {{ tab.label }}
+              </button>
+            </div>
             <RouterLink class="dev-home__more" :to="{ name: 'dev-my-requirements' }">
               <span>查看全部</span>
               <el-icon>
@@ -254,30 +557,49 @@ async function loadPage() {
             </RouterLink>
           </header>
 
-          <ul v-if="recentRequirements.length" class="dev-home__list">
-            <li v-for="item in recentRequirements" :key="item.requirement_id" class="dev-home__row">
-              <div class="dev-home__row-main">
-                <strong class="dev-home__row-title">{{ item.title }}</strong>
-                <span class="dev-home__row-meta">{{ item.requirement_id }} · 更新于
-                  {{ formatCnDateTime(item.updated_at) }}</span>
-              </div>
-              <div class="dev-home__row-side">
-                <span class="dev-chip dev-home__chip" :class="statusChipClass(item.status)">
-                  {{ requirementStatusLabel(item.status) }}
+          <ul v-if="projectRows.length" class="dev-home__projects">
+            <li v-for="row in projectRows" :key="row.requirementId" class="dev-home__project">
+              <div class="dev-home__project-top">
+                <strong class="dev-home__project-title">{{ row.title }}</strong>
+                <span class="dev-chip dev-home__chip" :class="statusChipClass(row.status)">
+                  {{ row.statusLabel }}
                 </span>
-                <strong class="dev-home__row-amount">{{ money(item.budget) }}</strong>
+              </div>
+
+              <div class="dev-home__project-foot">
+                <p class="dev-home__project-meta">
+                  {{ row.requirementId }} · 预算
+                  <strong class="dev-home__project-amount">{{ money(row.budget) }}</strong>
+                  · 更新于 {{ formatCnDateTime(row.updatedAt) }}
+                </p>
+
+                <!-- 进度条表达的是「流程走到哪一步」（按接单状态推算），不是工作量完成度 -->
+                <div class="dev-home__progress" title="按接单状态推算的流程进度">
+                  <span class="dev-home__progress-track" role="progressbar" :aria-valuenow="row.progress"
+                    aria-valuemin="0" aria-valuemax="100" :aria-label="`${row.title} 流程进度`">
+                    <span class="dev-home__progress-fill" :class="`dev-home__progress-fill--${row.tone}`"
+                      :style="{ width: `${row.progress}%` }" />
+                  </span>
+                  <span class="dev-home__progress-text">{{ row.progress }}%</span>
+                </div>
               </div>
             </li>
           </ul>
           <p v-else class="dev-empty-state dev-home__empty">
-            <strong>暂无已接取需求</strong>
+            <strong>当前筛选下没有项目</strong>
           </p>
         </section>
 
         <section class="dev-surface-card dev-home__panel">
           <header class="dev-home__panel-head">
             <h2 class="dev-section-title">最近交付</h2>
-            <span v-if="deliveryRows.length" class="dev-home__panel-count">{{ deliveryRows.length }}</span>
+            <div class="dev-home__tabs" role="tablist" aria-label="最近交付筛选">
+              <button v-for="tab in DELIVERY_TABS" :key="tab.key" class="dev-home__tab" type="button" role="tab"
+                :aria-selected="activeDeliveryTab === tab.key"
+                :class="{ 'is-active': activeDeliveryTab === tab.key }" @click="activeDeliveryTab = tab.key">
+                {{ tab.label }}
+              </button>
+            </div>
             <RouterLink class="dev-home__more" :to="{ name: 'dev-wallet-releases' }">
               <span>查看全部</span>
               <el-icon>
@@ -286,108 +608,201 @@ async function loadPage() {
             </RouterLink>
           </header>
 
-          <ul v-if="deliveryRows.length" class="dev-home__list">
-            <li v-for="row in deliveryRows" :key="row.requirementId" class="dev-home__row">
-              <div class="dev-home__row-main">
-                <strong class="dev-home__row-title">{{ row.resourceTitle }}</strong>
-                <span class="dev-home__row-meta">{{ row.requirementId }} · {{ row.requirementTitle }}</span>
+          <ul v-if="deliveryRows.length" class="dev-home__deliveries">
+            <li v-for="row in deliveryRows" :key="row.requirementId" class="dev-home__delivery">
+              <div class="dev-home__delivery-top">
+                <span class="dev-home__delivery-icon" aria-hidden="true">
+                  <el-icon>
+                    <Promotion />
+                  </el-icon>
+                </span>
+                <strong class="dev-home__delivery-title">{{ row.resourceTitle }}</strong>
+                <!-- 交付过的打勾：卡片只看一行，没有勾就得逐字读版本数才知道交付没交付 -->
+                <el-icon v-if="row.delivered" class="dev-home__delivery-check" aria-hidden="true">
+                  <CircleCheck />
+                </el-icon>
               </div>
-              <div class="dev-home__row-side">
+
+              <p class="dev-home__delivery-meta">{{ row.requirementId }}</p>
+
+              <div class="dev-home__delivery-foot">
+                <span class="dev-home__delivery-time">{{ formatCnDateTime(row.updatedAt) }}</span>
                 <span class="dev-chip dev-chip--cyan dev-home__chip">{{ row.versionCount }} 个版本</span>
+                <strong v-if="row.amount != null" class="dev-home__delivery-amount">
+                  {{ money(row.amount) }}
+                </strong>
               </div>
             </li>
           </ul>
           <p v-else class="dev-empty-state dev-home__empty">
-            <strong>暂无交付记录</strong>
+            <strong>当前筛选下没有交付记录</strong>
           </p>
         </section>
       </div>
 
       <aside class="dev-home__aside">
-        <!-- 可提现余额：与收益钱包的主卡同一套视觉（金色大数 + 说明标签 + 底部操作条） -->
         <section class="dev-surface-card dev-home__panel">
           <header class="dev-home__panel-head">
-            <h2 class="dev-section-title">可提现余额</h2>
+            <h2 class="dev-section-title">收入分析</h2>
+            <span class="dev-home__panel-tag">近 7 天</span>
+          </header>
+
+          <div class="dev-home__income-head">
+            <span class="dev-home__income-label">总收入</span>
+            <strong class="dev-home__income-value">{{ money(overview?.total_income_cny) }}</strong>
+            <span v-if="changeRateText" class="dev-home__trend"
+              :class="changeRate != null && changeRate < 0 ? 'dev-home__trend--down' : ''"
+              :title="'今日到账较昨日的环比'">
+              {{ changeRateText }} 较昨日
+            </span>
+          </div>
+
+          <div class="dev-home__chart" :title="chartCaption">
+            <span v-if="hasIncomeData" class="dev-home__chart-peak" :style="{ left: peakLabelLeft }">
+              {{ peakLabel }}
+            </span>
+
+            <svg class="dev-home__chart-svg" :viewBox="`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`"
+              preserveAspectRatio="none" role="img" :aria-label="`近 7 天到账金额，最高一天 ${peakLabel}`">
+              <defs>
+                <linearGradient id="devHomeIncomeFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop class="dev-home__chart-stop-a" offset="0%" />
+                  <stop class="dev-home__chart-stop-b" offset="100%" />
+                </linearGradient>
+              </defs>
+              <line class="dev-home__chart-axis" x1="0" :x2="CHART_WIDTH" :y1="chartGeometry.baseline"
+                :y2="chartGeometry.baseline" />
+              <template v-if="hasIncomeData">
+                <path class="dev-home__chart-area" :d="chartGeometry.area" fill="url(#devHomeIncomeFill)" />
+                <path class="dev-home__chart-line" :d="chartGeometry.line" vector-effect="non-scaling-stroke" />
+                <circle v-for="(point, index) in chartGeometry.points" :key="point.label" class="dev-home__chart-dot"
+                  :class="{ 'is-peak': index === peakIndex }" :cx="point.x" :cy="point.y"
+                  :r="index === peakIndex ? 3.5 : 2" vector-effect="non-scaling-stroke" />
+              </template>
+            </svg>
+
+            <div class="dev-home__chart-axis-labels" aria-hidden="true">
+              <span v-for="bucket in incomeBuckets" :key="bucket.label">{{ bucket.label }}</span>
+            </div>
+          </div>
+
+          <p v-if="!hasIncomeData" class="dev-home__chart-empty">近 7 天没有到账记录</p>
+
+          <!-- 四个读数两行两列：提现口径一对、收入口径一对，图标区分，避免整屏都是纯数字 -->
+          <dl class="dev-home__facts">
+            <div class="dev-home__fact">
+              <span class="dev-home__fact-icon dev-home__fact-icon--gold" aria-hidden="true">
+                <el-icon>
+                  <Clock />
+                </el-icon>
+              </span>
+              <div class="dev-home__fact-copy">
+                <dt>待提现</dt>
+                <dd>{{ money(pendingWithdraw) }}</dd>
+              </div>
+            </div>
+
+            <div class="dev-home__fact">
+              <span class="dev-home__fact-icon dev-home__fact-icon--cyan" aria-hidden="true">
+                <el-icon>
+                  <CircleCheck />
+                </el-icon>
+              </span>
+              <div class="dev-home__fact-copy">
+                <dt>已提现</dt>
+                <dd>{{ money(paidWithdraw) }}</dd>
+              </div>
+            </div>
+
+            <div class="dev-home__fact">
+              <span class="dev-home__fact-icon" aria-hidden="true">
+                <el-icon>
+                  <TrendCharts />
+                </el-icon>
+              </span>
+              <div class="dev-home__fact-copy">
+                <dt>今日收入</dt>
+                <dd>{{ money(overview?.today_income_cny) }}</dd>
+              </div>
+            </div>
+
+            <div class="dev-home__fact">
+              <span class="dev-home__fact-icon" aria-hidden="true">
+                <el-icon>
+                  <Tickets />
+                </el-icon>
+              </span>
+              <div class="dev-home__fact-copy">
+                <dt>累计订单</dt>
+                <dd>{{ overview?.total_completed_orders ?? 0 }}</dd>
+              </div>
+            </div>
+          </dl>
+        </section>
+
+        <section class="dev-surface-card dev-home__panel">
+          <header class="dev-home__panel-head">
+            <h2 class="dev-section-title">资金状态</h2>
           </header>
 
           <div class="dev-home__money">
-            <p class="dev-home__money-main">
-              <span class="dev-home__money-label">当前可提现</span>
-              <strong class="dev-home__money-value">{{ money(overview?.withdrawable_balance_cny) }}</strong>
-            </p>
-            <p class="dev-home__money-tags">
-              <span class="dev-chip dev-home__chip">待提现 {{ money(overview?.pending_withdraw_cny) }}</span>
-              <span class="dev-chip dev-home__chip">累计收入 {{ money(overview?.total_income_cny) }}</span>
-            </p>
-            <div class="dev-home__money-footer">
-              <RouterLink class="dev-home__button dev-home__button--primary" :to="{ name: 'dev-wallet' }">
+            <div class="dev-home__money-head">
+              <span class="dev-home__money-figure">
+                <span class="dev-home__money-label">可提现余额</span>
+                <strong class="dev-home__money-value">{{ money(withdrawable) }}</strong>
+              </span>
+              <!-- 提现按钮就贴在余额右侧：这张卡的主操作只有一个，不必再排一行页脚 -->
+              <RouterLink class="dev-home__button dev-home__button--primary dev-home__money-action"
+                :to="{ name: 'dev-wallet' }">
                 <el-icon>
                   <Wallet />
                 </el-icon>
-                <span>去提现</span>
-              </RouterLink>
-              <RouterLink class="dev-home__button dev-home__button--ghost" :to="{ name: 'dev-wallet-releases' }">
-                <span>交付记录</span>
+                <span>提现</span>
               </RouterLink>
             </div>
+
+            <!-- 比例条只表达「可提现 / 待提现」两根之间的占比，具体金额在下方图例里 -->
+            <div class="dev-home__track" role="progressbar" aria-label="可提现与待提现占比"
+              :aria-valuenow="withdrawablePercent" aria-valuemin="0" aria-valuemax="100">
+              <span class="dev-home__track-segment dev-home__track-segment--blue"
+                :style="{ width: `${withdrawablePercent}%` }" />
+              <span class="dev-home__track-segment dev-home__track-segment--gold"
+                :style="{ width: `${pendingWithdrawPercent}%` }" />
+            </div>
+
+            <!-- 图例只报占比：两笔金额在本卡上方的大数与右栏「收入分析」里各出现一次，
+                 再抄一遍会把 140px 宽的格子撑到换行 -->
+            <ul class="dev-home__money-legend">
+              <li>
+                <i class="dev-home__dot dev-home__dot--blue" aria-hidden="true" />
+                <span>可提现</span>
+                <strong>{{ withdrawablePercent }}%</strong>
+              </li>
+              <li>
+                <i class="dev-home__dot dev-home__dot--gold" aria-hidden="true" />
+                <span>待提现</span>
+                <strong>{{ pendingWithdrawPercent }}%</strong>
+              </li>
+            </ul>
           </div>
-        </section>
 
-        <section class="dev-surface-card dev-home__panel">
-          <header class="dev-home__panel-head">
-            <h2 class="dev-section-title">接单保证金</h2>
-          </header>
-
-          <div class="dev-home__money">
-            <p class="dev-home__money-main">
+          <div class="dev-home__deposit">
+            <p class="dev-home__deposit-main">
               <span class="dev-home__money-label">可用保证金</span>
-              <strong class="dev-home__money-value">{{ money(deposit?.available_cny) }}</strong>
+              <strong class="dev-home__deposit-value">{{ money(deposit?.available_cny) }}</strong>
             </p>
-            <!-- 进度条只表达可用占比，具体金额在下方两个标签里 -->
-            <div class="dev-home__track" role="progressbar" aria-label="可用保证金占累计充值"
-              :aria-valuenow="depositAvailablePercent" aria-valuemin="0" aria-valuemax="100">
-              <span class="dev-home__fill" :style="{ width: `${depositAvailablePercent}%` }" />
-            </div>
-            <p class="dev-home__money-tags">
+            <p class="dev-home__deposit-tags">
               <span class="dev-chip dev-home__chip">冻结 {{ money(deposit?.frozen_cny) }}</span>
               <span class="dev-chip dev-home__chip">累计充值 {{ money(deposit?.total_paid_cny) }}</span>
             </p>
-            <div class="dev-home__money-footer">
-              <button class="dev-home__button dev-home__button--primary" type="button"
-                @click="rechargeDialog?.open()">
-                <el-icon>
-                  <Money />
-                </el-icon>
-                <span>立即充值</span>
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section class="dev-surface-card dev-home__panel">
-          <header class="dev-home__panel-head">
-            <h2 class="dev-section-title">最近收入</h2>
-            <span v-if="recentIncome.length" class="dev-home__panel-count">{{ recentIncome.length }}</span>
-            <RouterLink class="dev-home__more" :to="{ name: 'dev-wallet-releases' }">
-              <span>查看全部</span>
+            <button class="dev-home__button dev-home__button--ghost dev-home__deposit-action" type="button"
+              @click="rechargeDialog?.open()">
               <el-icon>
-                <ArrowRight />
+                <Money />
               </el-icon>
-            </RouterLink>
-          </header>
-
-          <ul v-if="recentIncome.length" class="dev-home__list">
-            <li v-for="item in recentIncome" :key="item.payment_id" class="dev-home__income-row">
-              <div class="dev-home__row-main">
-                <strong class="dev-home__row-title">{{ item.title }}</strong>
-                <span class="dev-home__row-meta">{{ item.customer }} · {{ formatCnDateTime(item.paid_at) }}</span>
-              </div>
-              <strong class="dev-home__row-amount">{{ money(item.amount_cny) }}</strong>
-            </li>
-          </ul>
-          <p v-else class="dev-empty-state dev-home__empty">
-            <strong>暂无收入记录</strong>
-          </p>
+              <span>立即充值</span>
+            </button>
+          </div>
         </section>
       </aside>
     </section>
@@ -398,8 +813,8 @@ async function loadPage() {
 </template>
 
 <style scoped>
-/* 本页只用开发者体系令牌（--dev-*），骨架照收益钱包那一套来：
-   汇总条读数 → 面板列表 → 金色大数的资金卡。见 doc/设计规范.md 第一节。 */
+/* 本页只用开发者体系令牌（--dev-*）：问候卡 → 四格统计 → 左列表右资金卡。
+   口径与颜色沿用收益钱包那一套，见 doc/设计规范.md 第一节。 */
 
 /* 收益钱包的页面节奏是 20px，dev-page 默认 24px，这里跟钱包对齐 */
 .dev-home {
@@ -407,12 +822,14 @@ async function loadPage() {
 }
 
 /* 加载中压暗数据区，避免把「还没拿到数据」误读成真实的 0 */
-.dev-home--loading .dev-home__strip,
+.dev-home--loading .dev-home__hero,
+.dev-home--loading .dev-home__stats,
 .dev-home--loading .dev-home__panel {
   opacity: 0.6;
 }
 
-.dev-home__strip,
+.dev-home__hero,
+.dev-home__stats,
 .dev-home__panel {
   transition: opacity 0.2s ease;
 }
@@ -421,9 +838,9 @@ async function loadPage() {
 .dev-home__mock-hint {
   margin: 0;
   padding: 10px 16px;
-  border: 1px dashed rgba(17, 24, 39, 0.16);
+  border: 1px dashed rgba(148, 163, 184, 0.4);
   border-radius: 12px;
-  background: rgba(255, 251, 244, 0.72);
+  background: rgba(244, 247, 255, 0.72);
   color: var(--dev-muted);
   font-size: 13px;
   line-height: 1.6;
@@ -446,8 +863,8 @@ async function loadPage() {
   gap: 14px;
   padding: 16px 20px;
   border: 1px solid rgba(185, 129, 43, 0.28);
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(255, 250, 242, 0.96), rgba(255, 243, 224, 0.9));
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 252, 246, 0.98), rgba(255, 245, 230, 0.92));
   box-shadow: var(--dev-shadow);
 }
 
@@ -458,7 +875,7 @@ async function loadPage() {
   flex: 0 0 36px;
   width: 36px;
   height: 36px;
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(185, 129, 43, 0.14);
   color: var(--dev-gold);
   font-size: 18px;
@@ -485,10 +902,159 @@ async function loadPage() {
   line-height: 1.6;
 }
 
-/* 左栏是两条长列表，右栏是三张资金卡；窄屏并成一栏 */
+/* 问候卡：浅蓝渐变 + 右侧水印字标，替代了别处那条「标题 + 返回」的页头 */
+.dev-home__hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 26px;
+  border: 1px solid rgba(191, 219, 254, 0.7);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(226, 236, 255, 0.98), rgba(240, 246, 255, 0.92));
+  box-shadow: var(--dev-shadow);
+  overflow: hidden;
+}
+
+.dev-home__hero-copy {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.dev-home__hero-title {
+  margin: 0;
+  color: var(--dev-ink);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.dev-home__hero-desc {
+  margin: 0;
+  color: var(--dev-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* 水印字标：纯装饰，缺资源图时也不空一块 */
+.dev-home__hero-mark {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 78px;
+  height: 78px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(219, 234, 254, 0.9));
+  box-shadow: 0 12px 26px rgba(31, 74, 209, 0.12);
+  color: var(--dev-blue);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  transform: rotate(-6deg);
+}
+
+/* 四格统计卡：图标 + 口径数字 + 箭头，整卡可点 */
+.dev-home__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.dev-home__stat {
+  /* 卡片自称容器：读数按卡片自身宽度决定字号与换行，见文件末尾那两条 @container。
+     容器查询改不了容器元素自身，所以真正那一行 flex 是内层的 .dev-home__stat-inner。 */
+  container-type: inline-size;
+  display: block;
+  min-height: 74px;
+  padding: 14px 16px;
+  border: 1px solid var(--dev-line);
+  border-radius: 14px;
+  background: var(--dev-surface);
+  box-shadow: var(--dev-shadow);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.dev-home__stat:hover,
+.dev-home__stat:focus-visible {
+  border-color: rgba(31, 74, 209, 0.28);
+  box-shadow: 0 18px 36px rgba(31, 74, 209, 0.12);
+  transform: translateY(-1px);
+}
+
+.dev-home__stat:focus-visible {
+  outline: 2px solid var(--dev-blue);
+  outline-offset: 2px;
+}
+
+/* 统计卡里唯一的一行：图标 / 标签+读数 / 箭头；卡片放不下时在下面那条 @container 里折行 */
+/* 统计卡内部：图标与箭头各占满两行，中间一列上行标签、下行读数（与参考图一致）。
+   窄卡片换行时只动读数那一格，图标与标签始终留在同一行。 */
+.dev-home__stat-inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'icon label arrow'
+    'icon value arrow';
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 4px;
+}
+
+.dev-home__stat-icon {
+  grid-area: icon;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(31, 74, 209, 0.1);
+  color: var(--dev-blue);
+  font-size: 18px;
+}
+
+.dev-home__stat-label {
+  grid-area: label;
+  align-self: end;
+  color: var(--dev-muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.dev-home__stat-value {
+  grid-area: value;
+  align-self: start;
+  color: var(--dev-ink);
+  /* 9cqi 跟着卡片宽度缩：窄卡片里不会再出现「¥3860 / 0.00」这种从数字中间折开的两行 */
+  font-size: clamp(15px, 9cqi, 22px);
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dev-home__stat-arrow {
+  grid-area: arrow;
+  color: rgba(148, 163, 184, 0.9);
+  font-size: 14px;
+  transition: transform 160ms ease;
+}
+
+.dev-home__stat:hover .dev-home__stat-arrow {
+  transform: translateX(2px);
+}
+
+/* 左栏是两条列表，右栏是两张资金卡；窄屏并成一栏 */
 .dev-home__layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.85fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
   gap: 16px;
   align-items: start;
 }
@@ -507,23 +1073,58 @@ async function loadPage() {
 .dev-home__panel-head {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 14px;
 }
 
-.dev-home__panel-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
+.dev-home__panel-tag {
+  padding: 4px 10px;
   border-radius: 999px;
   background: rgba(31, 74, 209, 0.1);
   color: var(--dev-blue);
   font-size: 12px;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
+}
+
+/* 列表内的筛选标签：右侧「查看全部」占住头行末尾，所以这组标签跟着标题走 */
+.dev-home__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dev-home__tab {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--dev-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.dev-home__tab:hover {
+  background: rgba(31, 74, 209, 0.1);
+  color: var(--dev-blue);
+}
+
+.dev-home__tab.is-active {
+  border-color: rgba(31, 74, 209, 0.2);
+  background: rgba(31, 74, 209, 0.12);
+  color: var(--dev-blue);
+}
+
+.dev-home__tab:focus-visible {
+  outline: 2px solid var(--dev-blue);
+  outline-offset: 2px;
 }
 
 .dev-home__more {
@@ -552,66 +1153,117 @@ async function loadPage() {
   border-radius: 8px;
 }
 
-/* 列表行不做整行点击（点击目标是右侧「查看全部」），所以只用细分隔线，不给悬浮态 */
-.dev-home__list {
+/* 项目行：图标 + 正文（编号 / 数字 / 进度条），行与行之间只用分隔线 */
+.dev-home__projects {
   display: grid;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.dev-home__row,
-.dev-home__income-row {
+/* 每条项目只占两行：标题 + 状态，以及「编号 · 预算 · 更新时间」+ 进度。
+   原来还有一列装饰性图标和一行独立数字——图标每行都相同、不承载信息，
+   数字另起一行则白占一行高度；合并后单条约 63px（原 119px），一屏能多放近一倍。 */
+.dev-home__project {
   display: grid;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 0;
+  gap: 5px;
+  padding: 11px 0;
   border-bottom: 1px solid var(--dev-line);
 }
 
-.dev-home__row {
-  grid-template-columns: minmax(0, 1fr) auto;
+.dev-home__project:first-child {
+  padding-top: 4px;
 }
 
-.dev-home__income-row {
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.dev-home__row:last-child,
-.dev-home__income-row:last-child {
+.dev-home__project:last-child {
   padding-bottom: 0;
   border-bottom: 0;
 }
 
-.dev-home__row-main {
+/* 交付记录是三列卡片而不是行列表：一张卡只讲一次交付，
+   行列表在这里信息密度过低（右侧大片留白），见设计规范第五节。 */
+.dev-home__deliveries {
   display: grid;
-  gap: 2px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dev-home__delivery {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--dev-line);
+  border-radius: 12px;
+  background: var(--dev-surface-strong);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.dev-home__delivery:hover {
+  border-color: rgba(42, 166, 164, 0.36);
+  box-shadow: 0 12px 24px rgba(42, 166, 164, 0.1);
+}
+
+/* 项目行不再带图标：每行的图标都相同、不承载信息，去掉后标题能与面板标题左对齐。
+   图标只留给交付卡，且比原尺寸矮一档——三列宽的卡片上 38px 会把标题挤掉两三个字。 */
+.dev-home__delivery-icon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(42, 166, 164, 0.12);
+  color: var(--dev-cyan);
+  font-size: 16px;
+}
+
+/* 第二行：左侧「编号 · 预算 · 更新时间」，右侧进度。
+   进度列给固定宽，用 auto 的话只按读数文字算宽、轨道会被挤成 0。 */
+.dev-home__project-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 128px;
+  align-items: center;
+  gap: 4px 14px;
   min-width: 0;
 }
 
-.dev-home__row-title {
-  color: var(--dev-ink);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.45;
+.dev-home__project-foot .dev-home__progress {
+  min-width: 0;
 }
 
-.dev-home__row-meta {
-  color: var(--dev-muted);
-  font-size: 12px;
-  line-height: 1.6;
-  font-variant-numeric: tabular-nums;
-}
-
-.dev-home__row-side {
+.dev-home__project-top {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 10px;
+}
+
+.dev-home__delivery-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dev-home__project-title,
+.dev-home__delivery-title {
+  min-width: 0;
+  color: var(--dev-ink);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 /* 行内标签比 .dev-chip 默认形态矮一档，避免把行撑高 */
 .dev-home__chip {
+  flex: 0 0 auto;
   padding: 4px 10px;
 }
 
@@ -621,34 +1273,305 @@ async function loadPage() {
   color: var(--dev-muted);
 }
 
-/* 金额用金色：与钱包页、需求大厅对金额的取色保持一致 */
-.dev-home__row-amount {
-  min-width: 88px;
-  color: var(--dev-gold);
-  font-size: 15px;
+.dev-home__project-meta,
+.dev-home__delivery-meta {
+  margin: 0;
+  color: var(--dev-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 预算读数跟在「预算」二字后面，不再单独占一行，所以只加深、加粗即可：
+   字号与 tabular-nums 都从 .dev-home__project-meta 继承。 */
+.dev-home__project-amount {
+  color: var(--dev-ink);
+  font-weight: 700;
+}
+
+/* 进度：轨道 + 按状态着色的填充，读数写在右侧 */
+.dev-home__progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.dev-home__progress-track {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+  overflow: hidden;
+}
+
+.dev-home__progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--dev-blue);
+  transition: width 0.3s ease;
+}
+
+.dev-home__progress-fill--gold {
+  background: var(--dev-gold);
+}
+
+.dev-home__progress-fill--cyan {
+  background: var(--dev-cyan);
+}
+
+.dev-home__progress-fill--muted {
+  background: rgba(148, 163, 184, 0.7);
+}
+
+.dev-home__progress-text {
+  color: var(--dev-muted);
+  font-size: 12px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  text-align: right;
   white-space: nowrap;
 }
 
-.dev-home__income-row .dev-home__row-amount {
+.dev-home__delivery-check {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--dev-cyan);
+  font-size: 16px;
+}
+
+/* 交付卡页脚：日期贴左，版本胶囊居中，金额靠右 —— 金额是这张卡最想让人看到的一格 */
+.dev-home__delivery-amount {
+  margin-left: auto;
+  color: var(--dev-gold);
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dev-home__delivery-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dev-home__delivery-time {
+  color: var(--dev-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 收入分析：大数 + 环比 + 折线 + 两根图例 + 底部两个读数 */
+.dev-home__income-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dev-home__income-label {
+  color: var(--dev-muted);
+  font-size: 13px;
+}
+
+.dev-home__income-value {
+  color: var(--dev-ink);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-home__trend {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(42, 166, 164, 0.12);
+  color: var(--dev-cyan);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-home__trend--down {
+  background: rgba(185, 129, 43, 0.12);
+  color: var(--dev-gold);
+}
+
+.dev-home__chart {
+  position: relative;
+  margin-top: 14px;
+}
+
+.dev-home__chart-svg {
+  display: block;
+  width: 100%;
+  height: 104px;
+}
+
+.dev-home__chart-stop-a {
+  stop-color: var(--dev-blue);
+  stop-opacity: 0.24;
+}
+
+.dev-home__chart-stop-b {
+  stop-color: var(--dev-blue);
+  stop-opacity: 0;
+}
+
+.dev-home__chart-axis {
+  stroke: var(--dev-line);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.dev-home__chart-line {
+  fill: none;
+  stroke: var(--dev-blue);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dev-home__chart-dot {
+  fill: var(--dev-surface-strong);
+  stroke: var(--dev-blue);
+  stroke-width: 1.5;
+}
+
+.dev-home__chart-dot.is-peak {
+  fill: var(--dev-blue);
+}
+
+.dev-home__chart-peak {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--dev-blue);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dev-home__chart-axis-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 6px;
+  color: var(--dev-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-home__chart-empty {
+  margin: 8px 0 0;
+  color: var(--dev-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* 收入分析下沿的四个读数：两行两列，图标 + 标签 + 数字 */
+.dev-home__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--dev-line);
+}
+
+.dev-home__fact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
 }
 
-/* 资金卡：金色大数 + 说明标签 + 底部分隔线，与收益钱包的主卡同一套读数口径 */
+.dev-home__fact-icon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(31, 74, 209, 0.1);
+  color: var(--dev-blue);
+  font-size: 16px;
+}
+
+.dev-home__fact-icon--gold {
+  background: rgba(185, 129, 43, 0.14);
+  color: var(--dev-gold);
+}
+
+.dev-home__fact-icon--cyan {
+  background: rgba(42, 166, 164, 0.14);
+  color: var(--dev-cyan);
+}
+
+.dev-home__fact-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dev-home__fact-copy dt {
+  color: var(--dev-muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.dev-home__fact-copy dd {
+  margin: 0;
+  color: var(--dev-ink);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.dev-home__dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--dev-blue);
+}
+
+.dev-home__dot--gold {
+  background: var(--dev-gold);
+}
+
+/* 资金状态：可提现大数（右侧贴提现按钮）+ 比例条 + 图例，下面是保证金 */
 .dev-home__money {
   display: grid;
   gap: 12px;
 }
 
-.dev-home__money-main {
+.dev-home__money-head {
   display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin: 0;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+}
+
+.dev-home__money-figure {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dev-home__money-action {
+  flex: 0 0 auto;
 }
 
 .dev-home__money-label {
@@ -658,51 +1581,111 @@ async function loadPage() {
 
 .dev-home__money-value {
   color: var(--dev-gold);
-  font-size: 34px;
+  font-size: 30px;
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
 
-.dev-home__money-tags {
+.dev-home__track {
+  display: flex;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+  overflow: hidden;
+}
+
+.dev-home__track-segment {
+  display: block;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.dev-home__track-segment--blue {
+  background: var(--dev-blue);
+}
+
+.dev-home__track-segment--gold {
+  background: var(--dev-gold);
+}
+
+/* 两组占比并成一行，与上方比例条的左右顺序一致 */
+.dev-home__money-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dev-home__money-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--dev-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 标签不折行：卡片最窄时一列只剩 140px 上下，「可提现」被拆成两行会顶高整行 */
+.dev-home__money-legend li>span {
+  white-space: nowrap;
+}
+
+/* 占比贴右，「可提现 85% / 待提现 15%」两列的小数点对齐才好扫 */
+.dev-home__money-legend strong {
+  margin-left: auto;
+  color: var(--dev-ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dev-home__deposit {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--dev-line);
+}
+
+.dev-home__deposit-main {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+}
+
+.dev-home__deposit-value {
+  color: var(--dev-ink);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-home__deposit-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin: 0;
 }
 
-.dev-home__track {
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(17, 24, 39, 0.08);
-  overflow: hidden;
+.dev-home__deposit-action {
+  justify-self: start;
 }
 
-.dev-home__fill {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  /* 复用开发者侧的品牌渐变（滚动条同款蓝→青），不再引入新色值 */
-  background: var(--dev-scrollbar-thumb);
-  transition: width 0.3s ease;
-}
-
-.dev-home__money-footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding-top: 16px;
-  border-top: 1px solid var(--dev-line);
-}
-
-/* 按钮：与收益钱包主卡同高同圆角；链接与 <button> 共用一套外观 */
+/* 按钮：链接与 <button> 共用一套外观，圆角与钱包页的主按钮一致 */
 .dev-home__button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 44px;
+  min-height: 42px;
   padding: 0 18px;
   border: 1px solid transparent;
   border-radius: 10px;
@@ -727,7 +1710,7 @@ async function loadPage() {
 }
 
 .dev-home__button--primary {
-  min-width: 132px;
+  min-width: 112px;
   border-color: var(--dev-blue);
   background: var(--dev-blue);
   color: #ffffff;
@@ -759,11 +1742,11 @@ async function loadPage() {
 }
 
 .dev-home__button--ghost {
-  min-width: 88px;
-  border-color: rgba(148, 163, 184, 0.3);
+  min-width: 118px;
+  border-color: var(--dev-line);
   background: rgba(255, 255, 255, 0.9);
   color: #475569;
-  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.04);
+  box-shadow: 0 8px 18px rgba(71, 85, 105, 0.06);
 }
 
 .dev-home__button--ghost:hover,
@@ -780,45 +1763,104 @@ async function loadPage() {
   outline-offset: 2px;
 }
 
-/* 980：双栏并一栏；汇总条由 dev-meta-strip 自己换行 */
+/* 980：双栏并一栏；四格统计降到两格，交付卡片三列降两列 */
 @media (max-width: 980px) {
   .dev-home__layout {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .dev-home__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dev-home__deliveries {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
-  /* 触屏档：状态与金额换到标题下面一行，窄屏不再挤在一起 */
-  .dev-home__row,
-  .dev-home__income-row {
+  /* 触屏档：统计卡与列表行都撑满一列，可点目标不小于 44px */
+  .dev-home__stats,
+  .dev-home__deliveries,
+  .dev-home__facts,
+  .dev-home__money-legend {
     grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-    min-height: 44px;
   }
 
-  .dev-home__row-side {
-    justify-content: space-between;
+  .dev-home__stat {
+    min-height: 64px;
   }
 
-  .dev-home__income-row .dev-home__row-amount {
-    text-align: left;
+  .dev-home__hero {
+    padding: 18px;
+  }
+
+  .dev-home__hero-title {
+    font-size: 19px;
+  }
+
+  .dev-home__hero-mark {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    font-size: 22px;
   }
 
   .dev-home__panel {
     padding: 16px;
   }
 
-  .dev-home__money-value {
-    font-size: 28px;
+  /* 标签组换行占满一行后，「查看全部」仍然贴在右边 */
+  .dev-home__tabs {
+    order: 3;
+    width: 100%;
   }
 
-  /* 触屏下按钮与可点文字不小于 44px */
+  .dev-home__tab {
+    min-height: 32px;
+  }
+
   .dev-home__more {
     min-height: 44px;
   }
 
+  /* 项目行在触屏档：编号行独占整宽并允许折行，进度整块落到下一行，条与读数仍同行 */
+  .dev-home__project-foot {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .dev-home__progress {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .dev-home__income-value,
+  .dev-home__money-value {
+    font-size: 26px;
+  }
+
+  .dev-home__button,
+  .dev-home__deposit-action {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
   .dev-home__alert-action {
     flex: 1 1 100%;
+  }
+}
+
+/* 窄卡片换行：侧边栏还在占位、四格又没并成两列的那一段，单张统计卡会被挤到 170px 上下，
+   「图标 + 标签 + 读数 + 箭头」一行摆不下（读数只剩 60px 出头，长金额会从中间折开）。
+   这里只把读数挪到第二行并独占整宽，图标与标签仍留在第一行。
+   查询的是卡片自身的宽度（容器是 .dev-home__stat，被查的是它内层的 .dev-home__stat-inner），
+   所以不必为这一段再补一个视口断点。 */
+@container (max-width: 190px) {
+  .dev-home__stat-inner {
+    grid-template-areas:
+      'icon label arrow'
+      'value value value';
   }
 }
 </style>

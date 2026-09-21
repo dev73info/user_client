@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Box, ChatDotRound, Close, Compass, Connection, DataAnalysis, Files, Menu as MenuIcon, Promotion, Service, Switch as SwitchIcon, Tickets, UserFilled, Wallet } from '@element-plus/icons-vue'
+import { ArrowDown, Box, ChatDotRound, Close, Compass, Connection, DataAnalysis, Files, Grid, Menu as MenuIcon, Promotion, Service, Switch as SwitchIcon, Tickets, UserFilled, Wallet } from '@element-plus/icons-vue'
 
 import { listRequirementConversations, type RequirementConversation } from '@/api/conversations'
+import { listMyRequirements } from '@/api/devRequirements'
 import { listUserInvitations } from '@/api/team'
 import { getMyRealnameVerification } from '@/api/realname'
+import { isActiveRequirement } from '@/shared/requirementStatus'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { useWorkbenchSubtitle } from '@/composables/useWorkbenchSubtitle'
@@ -30,17 +32,6 @@ type WorkbenchMenuGroup = {
 /** 开发者菜单的一级条目：与用户菜单的一级条目同版式，每条带一个图标。 */
 type DevWorkbenchItem = WorkbenchMenuItem & { icon: Component }
 
-/**
- * 开发者菜单的分类：侧边栏按分类标题把一级条目分组。
- * items 允许省略——「协作与支持」的成员是折叠组与固定条目（团队服务 / 消息中心 / 工单中心），
- * 由侧边栏后面那几块渲染，这里只留分类小标题。
- */
-type DevWorkbenchSection = {
-  key: string
-  label: string
-  items?: DevWorkbenchItem[]
-}
-
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
@@ -50,6 +41,8 @@ const workbenchSubtitle = useWorkbenchSubtitle()
 const conversations = ref<RequirementConversation[]>([])
 const conversationLoading = ref(false)
 const teamInvitationCount = ref(0)
+/** 「我的接单」角标：在途接单数，与总览页「进行中项目」同一口径。 */
+const devActiveOrderCount = ref(0)
 const mobileMenuOpen = ref(false)
 const touchStartX = ref(0)
 const touchStartY = ref(0)
@@ -75,61 +68,42 @@ const ticketsItem: WorkbenchMenuItem = {
 
 // 开发者工作台菜单：侧边栏切到开发者模式时展示（此前是底部「开发者工作台」折叠组的内容）。
 // 版式与用户菜单的一级条目一致（图标 + 加粗标题），切换模式时侧边栏只有文字在变。
-// 分类按开发者自己的动线划三段：先看概览与接单，再看资产与收益，最后是协作与支持。
-// 第一段不再叫「开发者事项」——侧边栏标题已经写着「开发者工作台」，重复一遍不带来信息，
-// 而段内三条（总览 / 需求大厅 / 我的接单）都是接单这一件事。
-const devWorkbenchSections: DevWorkbenchSection[] = [
+// 一级条目不再分小标题，按开发者每天的动线从上往下排：总览 → 资源 → 接单 → 钱包 → 交付；
+// 团队服务那一段也不顶小标题，靠折叠组的分组头自己报名字。
+const devWorkbenchItems: DevWorkbenchItem[] = [
   {
-    key: 'orders',
-    label: '概览与接单',
-    items: [
-      {
-        label: '工作台总览',
-        name: 'dev-home',
-        description: '接单收入、保证金与交付概览',
-        icon: DataAnalysis,
-      },
-      { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求', icon: Compass },
-      { label: '我的接单', name: 'dev-my-requirements', description: '查看已关联需求和会话', icon: Tickets },
-    ],
+    label: '工作台总览',
+    name: 'dev-home',
+    description: '接单收入、保证金与交付概览',
+    icon: DataAnalysis,
   },
   {
-    key: 'assets',
-    label: '资源与收益',
-    items: [
-      {
-        label: '资源项目',
-        name: 'dev-resource-list',
-        description: '管理主页、版本与资源状态',
-        activeNames: ['dev-resource-homepage-edit', 'dev-resource-versions'],
-        icon: Files,
-      },
-      { label: '交付记录', name: 'dev-wallet-releases', description: '查看资源交付与收入', icon: Promotion },
-      { label: '收益钱包', name: 'dev-wallet', description: '查看余额与保证金信息', icon: Wallet },
-    ],
+    label: '资源项目',
+    name: 'dev-resource-list',
+    description: '管理主页、版本与资源状态',
+    activeNames: ['dev-resource-homepage-edit', 'dev-resource-versions'],
+    icon: Files,
   },
-  {
-    // 只出小标题：这一段的三条入口各有各的版式（团队服务与消息中心是折叠组、工单中心是一级条目），
-    // 由下面几块分别渲染。把标签放在这里，是为了三段分类的文案集中在一处、不会和渲染块分离。
-    key: 'support',
-    label: '协作与支持',
-  },
+  { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求', icon: Compass },
+  { label: '我的接单', name: 'dev-my-requirements', description: '查看已关联需求和会话', icon: Tickets },
+  { label: '收益钱包', name: 'dev-wallet', description: '查看余额与保证金信息', icon: Wallet },
+  { label: '交付记录', name: 'dev-wallet-releases', description: '查看资源交付与收入', icon: Promotion },
 ]
 
 // 团队服务已整体移入开发者工作台：用户模式下不出现，开发者模式下按原来的折叠组版式展示。
-// 组内条目叫「团队资源项目」：开发者侧边栏另有一条自己的「资源项目」，重名会让两条菜单分不清。
+// 组内条目叫「团队资源」：开发者侧边栏另有一条自己的「资源项目」，重名会让两条菜单分不清。
 const teamMenuGroup: WorkbenchMenuGroup = {
   key: 'team',
   label: '团队服务',
   icon: UserFilled,
   items: [
     { label: '我的团队', name: 'workbench-teams', description: '查看和管理团队' },
-    { label: '团队资源项目', name: 'workbench-team-resources', description: '管理团队共享资源项目' },
+    { label: '团队资源', name: 'workbench-team-resources', description: '管理团队共享资源项目' },
   ],
 }
 
 // 分组头已经写着组名，因此这两类分组不再额外顶一行灰色小标题：
-// 账户服务靠分组头识别；团队服务挂在开发者菜单的「协作与支持」段下，再加一行会把「团队服务」写两遍。
+// 账户服务靠分组头识别；团队服务靠分组头识别，再加一行会把「团队服务」写两遍。
 const GROUPS_WITHOUT_SECTION_LABEL = ['account', 'team']
 
 const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
@@ -172,6 +146,18 @@ const sortedConversations = computed(() =>
 )
 const visibleConversations = computed(() => sortedConversations.value.slice(0, 3))
 const hiddenConversationCount = computed(() => Math.max(sortedConversations.value.length - visibleConversations.value.length, 0))
+
+/**
+ * 消息中心角标：最后一条不是我发的、且会话仍然打开的，就是要我回复的。
+ * 后端没有「未读」字段，所以这里表达的是「待我回复」，不是「未读消息数」。
+ */
+const messagesAwaitingReplyCount = computed(
+  () =>
+    conversations.value.filter(
+      (item) => item.status === 'open' && Boolean(item.last_message_by) && item.last_message_by !== auth.username,
+    ).length,
+)
+
 const activeConversation = computed(() => {
   const requirementId = route.query.requirement_id
   if (typeof requirementId !== 'string') {
@@ -208,7 +194,10 @@ const isMessageDetailPage = computed(() => {
   return isMessagesRoute.value && typeof requirementId === 'string' && requirementId.trim().length > 0
 })
 const isMergedHeaderPage = computed(() =>
-  route.name === 'dev-resource-homepage-edit' || route.name === 'dev-requirement-detail',
+  route.name === 'dev-resource-homepage-edit'
+  || route.name === 'dev-requirement-detail'
+  // 开发者工作台总览自带问候卡当页头，再叠一条「标题 + 返回」是两层标题
+  || route.name === 'dev-home',
 )
 const showWorkbenchHeader = computed(
   () => !isWorkbenchOverview.value && !isMessageDetailPage.value && !isMergedHeaderPage.value,
@@ -276,6 +265,20 @@ watch(
   { immediate: true },
 )
 
+// 「我的接单」角标只在开发者模式拉取：用户模式下这个接口会 403，没必要发。
+watch(
+  [() => auth.token, () => isDevWorkbenchMode.value],
+  ([token, devMode]) => {
+    if (!token || !devMode) {
+      devActiveOrderCount.value = 0
+      return
+    }
+
+    void loadDevActiveOrders()
+  },
+  { immediate: true },
+)
+
 watch(
   () => route.name,
   (name) => {
@@ -290,6 +293,15 @@ function menuItemTo(item: WorkbenchMenuItem) {
     name: item.name,
     hash: item.hash ?? '',
   }
+}
+
+/** 一级条目上的角标：只有「我的接单」有，计数为 0 时不显示，避免一条空数字挂在菜单上。 */
+function menuItemBadge(item: WorkbenchMenuItem) {
+  if (item.name === 'dev-my-requirements' && devActiveOrderCount.value > 0) {
+    return String(devActiveOrderCount.value)
+  }
+
+  return ''
 }
 
 function goBack() {
@@ -479,6 +491,21 @@ async function loadTeamInvitations() {
   }
 }
 
+/** 侧边栏角标只做提示，拿不到数据就当没有，不弹提示打断页面。 */
+async function loadDevActiveOrders() {
+  if (!auth.token.trim()) {
+    devActiveOrderCount.value = 0
+    return
+  }
+
+  try {
+    const items = await listMyRequirements(auth.token)
+    devActiveOrderCount.value = items.filter((item) => isActiveRequirement(item.status)).length
+  } catch {
+    devActiveOrderCount.value = 0
+  }
+}
+
 async function loadConversations(silent = false) {
   auth.hydrate()
   if (!auth.token.trim()) {
@@ -563,15 +590,23 @@ async function scrollToHash() {
       <el-scrollbar class="app-scrollbar user-workbench__aside-scrollbar" max-height="calc(100vh - var(--portal-header-footprint, 98px) - 22px)">
         <div class="user-workbench__aside-inner">
           <div class="user-workbench__brand">
+            <!-- 开发者模式在标题前挂一个工作台字标；用户模式不挂，标题仍是纯文字 -->
+            <span v-if="isDevWorkbenchMode" class="user-workbench__brand-mark" aria-hidden="true">
+              <el-icon>
+                <Grid />
+              </el-icon>
+            </span>
             <!-- 侧边栏标题用普通标题样式（原版是有浅蓝底的药丸标签），模式切换按钮靠右 -->
             <strong class="user-workbench__brand-title">{{ isDevWorkbenchMode ? '开发者工作台' : '工作台' }}</strong>
+            <!-- 开发者模式下标题有六个字，按钮缩成图标，否则标题会被挤成「开发者…」 -->
             <button class="user-workbench__mode-switch" type="button"
+              :class="{ 'user-workbench__mode-switch--icon': isDevWorkbenchMode }"
               :title="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'"
               :aria-label="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'" @click="switchWorkbenchMode">
               <el-icon>
                 <SwitchIcon />
               </el-icon>
-              切换工作台
+              <span v-if="!isDevWorkbenchMode">切换工作台</span>
             </button>
             <button class="user-workbench__drawer-close" type="button" aria-label="关闭工作台菜单" @click="closeMobileMenu">
               <el-icon>
@@ -582,23 +617,23 @@ async function scrollToHash() {
 
           <nav class="user-workbench__menu">
             <template v-if="isDevWorkbenchMode">
-              <!-- 开发者菜单按分类铺开，每类一个灰色小标题；第三段「协作与支持」的成员在下面几块里渲染 -->
-              <template v-for="section in devWorkbenchSections" :key="section.key">
-                <p class="user-workbench__menu-section">{{ section.label }}</p>
-                <!-- 与用户菜单同一套一级条目版式（图标 + 加粗标题），切换模式时只有文字变化 -->
-                <RouterLink v-for="item in section.items ?? []" :key="item.name"
-                  class="user-workbench__menu-link user-workbench__menu-link--root"
-                  :class="{ active: isMenuItemActive(item) }" :to="menuItemTo(item)" @click="closeMobileMenu">
-                  <span class="user-workbench__menu-icon">
-                    <el-icon>
-                      <component :is="item.icon" />
-                    </el-icon>
-                  </span>
-                  <span>
-                    <strong>{{ item.label }}</strong>
-                  </span>
-                </RouterLink>
-              </template>
+              <!-- 开发者菜单不分小标题，一级条目直接平铺；角标给「我的接单」 -->
+              <RouterLink v-for="item in devWorkbenchItems" :key="item.name"
+                class="user-workbench__menu-link user-workbench__menu-link--root"
+                :class="{
+                  active: isMenuItemActive(item),
+                  'user-workbench__menu-link--badged': Boolean(menuItemBadge(item)),
+                }" :to="menuItemTo(item)" @click="closeMobileMenu">
+                <span class="user-workbench__menu-icon">
+                  <el-icon>
+                    <component :is="item.icon" />
+                  </el-icon>
+                </span>
+                <span>
+                  <strong>{{ item.label }}</strong>
+                </span>
+                <span v-if="menuItemBadge(item)" class="user-workbench__menu-badge">{{ menuItemBadge(item) }}</span>
+              </RouterLink>
             </template>
 
             <!-- 开发者模式下整块换成开发者菜单，用户菜单不出现在侧边栏 -->
@@ -634,8 +669,8 @@ async function scrollToHash() {
 
               <section v-else class="user-workbench__menu-group"
                 :class="{ active: isGroupActive(group), open: isGroupOpen(group) }">
-                <!-- 账户服务与团队服务不另起小标题：账户服务靠分组头自己识别，
-                     团队服务挂在开发者菜单的「协作与支持」段下，再加一行会把「团队服务」写两遍 -->
+                <!-- 账户服务与团队服务不另起小标题：两者都靠分组头自己识别，
+                     再加一行会把组名写成两遍 -->
                 <p v-if="!GROUPS_WITHOUT_SECTION_LABEL.includes(group.key)" class="user-workbench__menu-section">
                   {{ group.label }}
                 </p>
@@ -675,7 +710,11 @@ async function scrollToHash() {
                       <ChatDotRound />
                     </el-icon>
                   </span>
-                  <strong>消息中心</strong>
+                  <span class="user-workbench__menu-label">
+                    <strong>消息中心</strong>
+                    <span v-if="messagesAwaitingReplyCount > 0" class="user-workbench__menu-badge"
+                      title="待我回复的会话">{{ messagesAwaitingReplyCount }}</span>
+                  </span>
                   <el-icon class="user-workbench__menu-arrow">
                     <ArrowDown />
                   </el-icon>
@@ -717,6 +756,7 @@ async function scrollToHash() {
               </RouterLink>
             </section>
           </nav>
+
         </div>
       </el-scrollbar>
     </aside>
@@ -782,9 +822,13 @@ async function scrollToHash() {
   border-radius: 22px;
 }
 
+/* 侧边栏内层用纵向 flex，菜单组之间保持固定间距。
+   不要改用 flex-grow 撑菜单——菜单是 grid，多出来的高度会把条目间距拉开。 */
 .user-workbench__aside-inner {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 14px;
+  min-height: 100%;
   padding: 16px;
 }
 
@@ -811,6 +855,19 @@ async function scrollToHash() {
   /* 左右不再留内边距：右边缘与下方菜单项对齐 */
   padding: 4px 0 10px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.82);
+}
+
+/* 开发者菜单的品牌字标：小方块 + 图标，与标题同排；用户模式不挂 */
+.user-workbench__brand-mark {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(219, 234, 254, 0.9);
+  color: #1d4ed8;
+  font-size: 14px;
 }
 
 /* 品牌行标题：普通标题样式，空间不足时省略号截断 */
@@ -929,6 +986,37 @@ async function scrollToHash() {
   grid-template-columns: auto minmax(0, 1fr);
 }
 
+/* 带角标的一级条目多占一列：图标 / 标题 / 角标 */
+.user-workbench__menu-link--root.user-workbench__menu-link--badged {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+/* 菜单角标：一级条目与折叠组头共用，口径与子菜单角标一致（红底白字） */
+.user-workbench__menu-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 折叠组头里的标题 + 角标：同排，标题被挤时先截断 */
+.user-workbench__menu-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .user-workbench__menu-link:hover,
 .user-workbench__menu-group-head:hover,
 .user-workbench__menu-link.active,
@@ -1034,6 +1122,14 @@ async function scrollToHash() {
 .user-workbench__mode-switch:focus-visible {
   border-color: rgba(147, 197, 253, 0.95);
   background: rgba(219, 234, 254, 0.95);
+}
+
+/* 开发者模式：按钮只留图标（两个类名是为了盖住 900px 断点里那条 padding 覆盖） */
+.user-workbench__mode-switch.user-workbench__mode-switch--icon {
+  width: 28px;
+  min-width: 28px;
+  padding: 0;
+  justify-content: center;
 }
 
 .user-workbench__menu-group--standalone {
