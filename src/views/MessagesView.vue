@@ -238,7 +238,9 @@ function partnerLabel(item: RequirementConversation) {
 
 function lastMessageLabel(item: RequirementConversation) {
   if (!item.last_message_at) {
-    return '会话已创建，等待第一条消息'
+    // 这一格只回答「上一次动静是什么时候」。空会话左边那行预览已经写过「会话已开启，
+    // 可以发送第一条消息」，两处各说一遍只是让右侧多出一条更长的句子。
+    return '暂无消息'
   }
 
   const sender =
@@ -1187,6 +1189,10 @@ watch(
   min-width: 0;
   padding: 5px 8px;
   overflow: hidden;
+  /* 贴住标题那一行，而不是跟着整行居中：整行居中时它的中线落在标题与第二行之间，
+     看着像悬在行左侧的独立部件；靠 start 对齐后胶囊与标题同一条线，
+     读作标题的前置状态，同时保住了状态列在固定 x 上成列可扫。 */
+  align-self: start;
   background: var(--thread-status-soft);
   color: var(--thread-status-ink);
   line-height: 16px;
@@ -1482,8 +1488,8 @@ watch(
   .messages-thread__meta {
     grid-area: meta;
     align-self: start;
-    /* 时间那格是「会话已创建，等待第一条消息」这种整句时会把标题挤成几个字，
-       小屏给它封顶，长了就走省略号。这里写死 px 而不是百分比：百分比 max-width
+    /* 时间那格最长是「12/31 23:59 · 平台」这种串，仍会压到标题列，小屏给它封顶，
+       长了就走省略号。这里写死 px 而不是百分比：百分比 max-width
        与 auto 列的宽度互相依赖，会让列宽算错。 */
     min-width: 0;
     max-width: 96px;
