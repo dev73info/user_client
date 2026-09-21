@@ -145,6 +145,8 @@ describe('developer workbench overview', () => {
     expect(cards[2]).toContain('已完成 3 单')
     expect(cards[3]).toContain('已接取需求')
     expect(cards[3]).toContain('累计交付 2 个版本')
+    // 今日收入环比由后端给值，0 也要出标签（这里 baseWallet 给的是 0）
+    expect(cards[0]).toContain('0.0%')
 
     expect(wrapper.findAll('.dev-home__stat').map((card) => card.attributes('href')))
       .toEqual(['/dev-wallet', '/dev-wallet', '/dev-my-requirements', '/dev-wallet-releases'])
@@ -180,6 +182,8 @@ describe('developer workbench overview', () => {
     expect(wrapper.text()).toContain('数据清洗插件定制')
     expect(wrapper.text()).toContain('alice')
     expect(wrapper.text()).toContain('¥600.00')
+    // 保证金进度条只表达可用占比：380 / 500 = 76%
+    expect(wrapper.find('[role="progressbar"]').attributes('aria-valuenow')).toBe('76')
     wrapper.unmount()
   })
 
@@ -229,8 +233,8 @@ describe('developer workbench overview', () => {
     mocks.wallet.mockResolvedValue({ ...baseWallet, recent_income: [] })
     const { wrapper } = await render()
 
-    // 两个面板的空态各自只剩一行主标题，没有额外的 <span> 说明
-    const empties = wrapper.findAll('.portal-page__panel .portal-page__empty')
+    // 两个主面板的空态各自只剩一行主标题，没有额外的 <span> 说明
+    const empties = wrapper.findAll('.dev-home__main .dev-home__empty')
     expect(empties).toHaveLength(2)
     for (const empty of empties) {
       expect(empty.findAll('span')).toHaveLength(0)
