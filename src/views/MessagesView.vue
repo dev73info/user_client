@@ -25,12 +25,17 @@ import { requirementStatusLabel } from '@/shared/requirementStatus'
 
 type MessageFilter = 'all' | 'active' | 'pending'
 
+/** 会话行的状态色调：决定左侧色条与状态胶囊的颜色。
+ *  四档只对 requirementStatusLabel 里已有的状态值分组，不新增业务语义。 */
+type ThreadTone = 'attention' | 'active' | 'done' | 'closed'
+
 type MessageThread = {
   key: string
   kind: 'conversation' | 'pending'
   requirementId: string
   title: string
   statusLabel: string
+  tone: ThreadTone
   modeLabel: string
   partnerLabel: string
   lastLabel: string
@@ -163,6 +168,25 @@ function formatRequirementStatus(status: RequirementStatus) {
   return requirementStatusLabel(status)
 }
 
+/** 需求状态归成四档色调：待用户动手 / 进行中 / 已结单 / 已关闭。
+ *  未列出的状态（pending_review、pending_deposit、rejected… 里未单列的）都归「待处理」。 */
+function threadToneOf(status?: string): ThreadTone {
+  switch (status) {
+    case 'completed':
+      return 'done'
+    case 'cancelled':
+    case 'rejected':
+      return 'closed'
+    case 'deposit_paid':
+    case 'in_development':
+    case 'pending_final':
+    case 'pending_settlement':
+      return 'active'
+    default:
+      return 'attention'
+  }
+}
+
 function formatPaymentMode(item?: RequirementItem) {
   if (!item) {
     return '协作模式待同步'
@@ -251,12 +275,16 @@ function customerAvatarUrl(item: RequirementConversation) {
 
 function buildConversationThread(item: RequirementConversation): MessageThread {
   const requirement = requirementById.value[item.requirement_id]
+  // 需求数据缺失时退回会话自身的状态：沟通中算进行中，已关闭算已关闭。
+  const statusLabel = requirement ? formatRequirementStatus(requirement.status) : item.status === 'open' ? '沟通中' : '已关闭'
+  const tone: ThreadTone = requirement ? threadToneOf(requirement.status) : item.status === 'open' ? 'active' : 'closed'
   return {
     key: `conversation-${item.conversation_id}`,
     kind: 'conversation',
     requirementId: item.requirement_id,
     title: item.requirement_title || requirement?.title || item.requirement_id,
-    statusLabel: requirement ? formatRequirementStatus(requirement.status) : item.status === 'open' ? '沟通中' : '已关闭',
+    statusLabel,
+    tone,
     modeLabel: formatPaymentMode(requirement),
     partnerLabel: partnerLabel(item),
     lastLabel: lastMessageLabel(item),
@@ -275,6 +303,7 @@ function buildPendingThread(item: RequirementItem): MessageThread {
     requirementId: item.requirement_id,
     title: item.title,
     statusLabel: formatRequirementStatus(item.status),
+    tone: threadToneOf(item.status),
     modeLabel: formatPaymentMode(item),
     partnerLabel: '会话待开启',
     lastLabel: '打开后创建沟通会话',
@@ -607,7 +636,8 @@ watch(
       </div>
       <div v-else class="messages-thread-list">
         <button v-for="item in filteredThreads" :key="item.key" type="button" class="messages-thread"
-          :class="{ 'messages-thread--pending': item.kind === 'pending' }" @click="openThread(item)">
+          :class="[`messages-thread--${item.tone}`, { 'messages-thread--pending': item.kind === 'pending' }]"
+          @click="openThread(item)">
           <span class="messages-thread__avatar" aria-hidden="true">
             <img v-if="item.avatarUrl" :src="item.avatarUrl" :alt="`${item.title} 发布者头像`" loading="lazy"
               @error="handleThreadAvatarError(item)" />
@@ -620,7 +650,7 @@ watch(
               <span class="messages-thread__code">{{ item.requirementId }}</span>
               <span class="messages-thread__mode">{{ item.modeLabel }}</span>
             </small>
-            <span>{{ item.description }}</span>
+            <span class="messages-thread__desc">{{ item.description }}</span>
           </span>
           <span class="messages-thread__meta">
             <span>{{ item.partnerLabel }}</span>
@@ -997,34 +1027,85 @@ watch(
   gap: 8px;
 }
 
-/* 会话行：左边状态胶囊，中间三行（标题 / 编号·模式 / 最新动静），右边对方·时间与操作胶囊。
-   整行按行首对齐——原来四项都垂直居中，状态胶囊会飘到第二行旁边，看着像没对齐；
-   只有右侧操作胶囊留在垂直中线上，它是这一行的主操作。 */
+/* 会话行：左边缘一条状态色条，左边是头像与状态胶囊，中间三行（标题 / 编号·模式 / 最新动静），
+   右边一列对方·时间（带竖分隔线）与主操作胶囊。整行按行块垂直居中。
+   色条与状态胶囊按状态分四档（待处理 / 进行中 / 已结单 / 已关闭），一列扫下来状态就看得见。
+   状态胶囊占一列固定宽度：标签长短不一，若让它按内容撑开，每行的标题就会左右错位。 */
 .messages-thread {
+  /* 无色调时的兜底：色条 / 胶囊底色与字色 / 常态与悬停底色 */
+  --thread-rail: rgba(224, 232, 255, 0.96);
+  --thread-status-soft: rgba(245, 158, 11, 0.14);
+  --thread-status-ink: #92400e;
+  --thread-surface: #ffffff;
+  --thread-surface-hover: linear-gradient(90deg, rgba(79, 140, 255, 0.08), rgba(255, 255, 255, 0) 54%), #f8fbff;
+  position: relative;
+  z-index: 0;
   width: 100%;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(168px, 216px) auto;
-  align-items: start;
-  gap: 12px;
-  padding: 12px 14px;
+  grid-template-columns: 44px 84px minmax(0, 1fr) minmax(0, max-content) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
   border: 1px solid rgba(224, 232, 255, 0.96);
-  border-radius: 14px;
-  background: #ffffff;
+  border-radius: 16px;
+  background: var(--thread-surface);
   color: inherit;
   text-align: left;
   cursor: pointer;
+  overflow: hidden;
   box-shadow: 0 6px 16px rgba(76, 103, 172, 0.05);
   transition:
-    border-color 160ms ease,
-    background-color 160ms ease,
-    box-shadow 160ms ease;
+    border-color 180ms ease,
+    box-shadow 200ms ease,
+    transform 200ms ease;
 }
 
+/* 左边缘 4px 状态色条：做成伪元素而不是 border，悬停加宽时才不会顶动行内布局 */
+.messages-thread::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--thread-rail);
+  transition: width 180ms ease;
+}
+
+/* 四档状态色：与 profile.css 的状态色同一族（待处理=琥珀、进行中=蓝、已结单=绿、已关闭=灰） */
+.messages-thread--attention {
+  --thread-rail: #efae2f;
+}
+
+.messages-thread--active {
+  --thread-rail: #5b8def;
+  --thread-status-soft: rgba(79, 140, 255, 0.14);
+  --thread-status-ink: #1d4ed8;
+}
+
+.messages-thread--done {
+  --thread-rail: #34c17a;
+  --thread-status-soft: rgba(34, 197, 94, 0.12);
+  --thread-status-ink: #166534;
+}
+
+.messages-thread--closed {
+  --thread-rail: rgba(148, 163, 184, 0.72);
+  --thread-status-soft: rgba(148, 163, 184, 0.2);
+  --thread-status-ink: #475569;
+}
+
+/* 悬停只换整圈描边与底色，色条保持自己的颜色——否则鼠标一过状态色就没了 */
 .messages-thread:hover,
 .messages-thread:focus-visible {
+  z-index: 1;
   border-color: rgba(125, 155, 225, 0.92);
-  background: #f8fbff;
-  box-shadow: 0 8px 18px rgba(76, 103, 172, 0.08);
+  background: var(--thread-surface-hover);
+  box-shadow: 0 16px 30px rgba(76, 103, 172, 0.13);
+  transform: translateY(-1px);
+}
+
+.messages-thread:hover::before,
+.messages-thread:focus-visible::before {
+  width: 6px;
 }
 
 /* 键盘走到这一行时给个环，别让焦点只能靠 hover 才看得见 */
@@ -1033,27 +1114,30 @@ watch(
   outline-offset: 2px;
 }
 
-/* 会话待开启：移动端有暖色头像做标识，桌面端没有头像，底色差一点几乎看不出来 */
+/* 会话待开启：整行铺一层暖底、头像换成暖色渐变，把它和已有会话区分开 */
 .messages-thread--pending {
-  background: #fffaf0;
+  --thread-surface: #fffaf0;
+  --thread-surface-hover: linear-gradient(90deg, rgba(245, 158, 11, 0.12), rgba(255, 255, 255, 0) 54%), #fff6e6;
 }
 
-/* 桌面端一行一张独立卡片，可以靠描边点出来；移动端整列连成一体，描边会变成一条突兀的分隔线，
-   那边交给暖色头像标识 */
-@media (min-width: 901px) {
-  .messages-thread--pending {
-    border-color: rgba(245, 158, 11, 0.34);
-  }
-
-  .messages-thread--pending:hover,
-  .messages-thread--pending:focus-visible {
-    border-color: rgba(217, 119, 6, 0.52);
-    background: #fff6e6;
-  }
-}
-
+/* 头像：门户蓝→青的字母牌，没有头像图时用发布者首字顶上。桌面与移动端都显示，
+   它是这一行唯一的图形锚点——没有它，整列卡片只剩文字，扫起来很平。 */
 .messages-thread__avatar {
-  display: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2f68ff, #3fb7a6);
+  box-shadow: 0 6px 14px rgba(47, 104, 255, 0.18);
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  overflow: hidden;
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
 }
 
 .messages-thread__avatar img,
@@ -1073,6 +1157,17 @@ watch(
   place-items: center;
 }
 
+.messages-thread--pending .messages-thread__avatar {
+  background: linear-gradient(135deg, #f59e0b, #ef7f5f);
+  box-shadow: 0 6px 14px rgba(245, 158, 11, 0.2);
+}
+
+.messages-thread:hover .messages-thread__avatar,
+.messages-thread:focus-visible .messages-thread__avatar {
+  transform: scale(1.04);
+  box-shadow: 0 8px 18px rgba(47, 104, 255, 0.26);
+}
+
 .messages-thread__status,
 .messages-thread__action {
   display: inline-flex;
@@ -1084,13 +1179,26 @@ watch(
   white-space: nowrap;
 }
 
-/* 行高写死 16px：胶囊总高 = 5 + 16 + 5 = 26px，与标题首行的行高相同，
-   两个盒子的中线才对得齐（整行都按行首对齐，差 1px 看得出来） */
+/* 状态胶囊：撑满整列（84px），软底 + 深字，字色也用在前面那颗小圆点上，
+   和左边缘色条呼应但不相邻，扫一眼就知道这一行落在哪一档 */
 .messages-thread__status {
-  padding: 5px 9px;
+  gap: 5px;
+  width: 100%;
+  min-width: 0;
+  padding: 5px 8px;
+  overflow: hidden;
+  background: var(--thread-status-soft);
+  color: var(--thread-status-ink);
   line-height: 16px;
-  background: rgba(245, 158, 11, 0.14);
-  color: #92400e;
+}
+
+.messages-thread__status::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
 }
 
 .messages-thread__main {
@@ -1102,22 +1210,16 @@ watch(
 .messages-thread__main strong {
   overflow: hidden;
   color: #0f172a;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 26px;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: color 180ms ease;
 }
 
-.messages-thread__main small,
-.messages-thread__main span,
-.messages-thread__meta {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.messages-thread__main span {
-  overflow-wrap: anywhere;
+.messages-thread:hover .messages-thread__main strong,
+.messages-thread:focus-visible .messages-thread__main strong {
+  color: #1d4ed8;
 }
 
 /* 第二行：编号加等宽数字，模式做成一枚小标签。编号是拿来对的，模式是扫一眼要认出来的，
@@ -1127,6 +1229,9 @@ watch(
   align-items: center;
   gap: 8px;
   min-width: 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .messages-thread__code {
@@ -1147,14 +1252,39 @@ watch(
   line-height: 16px;
 }
 
+/* 第三行只留一行：最新消息长短不一，放开换行会让整列行高参差，
+   对不齐的列表比截断一段预览更难扫 */
+.messages-thread__desc {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 右侧元信息：一条竖分隔线把「谁 / 什么时候」和会话内容分开，与主操作胶囊一起构成行尾。
+   分隔线要按住整行高度（align-self: stretch）才像一条线，只裹住两行文字会像漂着的短杠。
+   两行文字都用默认的 stretch 填满这一列（靠 text-align 右对齐），不用 justify-items: end——
+   那是按内容宽度摆放，nowrap 的文字会溢出列宽压到标题上，省略号也不会生效。 */
 .messages-thread__meta {
   display: grid;
-  justify-items: end;
+  align-self: stretch;
+  align-content: center;
   gap: 4px;
   min-width: 0;
-  /* 4 + 9 = 13px 是首行文字的中线，与标题首行（26px 行高）的中线对齐 */
-  padding-top: 4px;
+  padding-left: 16px;
+  border-left: 1px solid rgba(226, 232, 240, 0.9);
+  color: #64748b;
+  font-size: 12px;
+  line-height: 18px;
   text-align: right;
+  transition: border-color 180ms ease;
+}
+
+.messages-thread:hover .messages-thread__meta,
+.messages-thread:focus-visible .messages-thread__meta {
+  border-left-color: rgba(125, 155, 225, 0.6);
 }
 
 .messages-thread__meta span,
@@ -1164,12 +1294,44 @@ watch(
   white-space: nowrap;
 }
 
-/* 主操作留在整行的垂直中线上：左中两列有三行文字，操作胶囊跟着行首会显得被顶在上边 */
+/* 时间戳比对方名更轻：对方名是「这行跟谁有关」，时间只是排序依据 */
+.messages-thread__meta time {
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 主操作留在整行的垂直中线上：左中两列是一整块内容，操作胶囊跟着行首会显得被顶在上边。
+   整行都可点，这枚胶囊是行里唯一的「按钮」，鼠标进来时填实成主色并推出箭头，指向更明确。 */
 .messages-thread__action {
-  align-self: center;
-  padding: 7px 10px;
+  gap: 4px;
+  padding: 8px 13px;
   background: rgba(219, 234, 254, 0.9);
   color: #1d4ed8;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+/* 箭头只在行尾做一个指向动作，悬停时往右推 2px */
+.messages-thread__action::after {
+  content: '›';
+  font-size: 15px;
+  line-height: 1;
+  transition: transform 180ms ease;
+}
+
+.messages-thread:hover .messages-thread__action,
+.messages-thread:focus-visible .messages-thread__action {
+  /* 用纯色而不是渐变：background-color 能过渡，渐变只会硬切 */
+  background: #3f7cff;
+  color: #ffffff;
+  box-shadow: 0 6px 14px rgba(47, 104, 255, 0.28);
+}
+
+.messages-thread:hover .messages-thread__action::after,
+.messages-thread:focus-visible .messages-thread__action::after {
+  transform: translateX(2px);
 }
 
 .messages-page button.ghost.small {
@@ -1264,14 +1426,16 @@ watch(
     box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
   }
 
+  /* 整列连成一体，卡片拆成列表项，只留分隔线；左侧状态色条保留，状态色到小屏也别丢 */
   .messages-thread {
-    grid-template-columns: 48px minmax(0, 1fr) auto;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
     grid-template-areas:
       "avatar main meta"
       "avatar main status";
-    gap: 0 10px;
+    align-items: center;
+    gap: 2px 10px;
     min-height: 74px;
-    padding: 12px;
+    padding: 12px 12px 12px 10px;
     border: 0;
     border-bottom: 1px solid rgba(226, 232, 240, 0.8);
     border-radius: 0;
@@ -1282,22 +1446,16 @@ watch(
     border-bottom: 0;
   }
 
+  /* 小屏不抬起也不加阴影：整列已经是一个整体，抬起一行会把它从列表里摘出去 */
+  .messages-thread:hover,
+  .messages-thread:focus-visible {
+    transform: none;
+    box-shadow: none;
+  }
+
   .messages-thread__avatar {
     grid-area: avatar;
     align-self: center;
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, #2f68ff, #3fb7a6);
-    color: #ffffff;
-    font-size: 18px;
-    font-weight: 800;
-  }
-
-  .messages-thread--pending .messages-thread__avatar {
-    background: linear-gradient(135deg, #f59e0b, #ef7f5f);
   }
 
   .messages-thread__main {
@@ -1308,28 +1466,29 @@ watch(
 
   .messages-thread__main strong {
     font-size: 15px;
-    line-height: 1.25;
+    line-height: 20px;
   }
 
-  .messages-thread__main small {
+  /* 小屏只留标题 + 最新动静：编号与模式挤进来会把标题压成一两个词 */
+  .messages-thread__sub {
     display: none;
   }
 
-  .messages-thread__main span {
-    overflow: hidden;
-    color: #64748b;
+  .messages-thread__desc {
     font-size: 13px;
-    line-height: 1.35;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 18px;
   }
 
   .messages-thread__meta {
     grid-area: meta;
     align-self: start;
-    justify-items: end;
-    min-width: 58px;
-    padding-top: 2px;
+    /* 时间那格是「会话已创建，等待第一条消息」这种整句时会把标题挤成几个字，
+       小屏给它封顶，长了就走省略号。这里写死 px 而不是百分比：百分比 max-width
+       与 auto 列的宽度互相依赖，会让列宽算错。 */
+    min-width: 0;
+    max-width: 96px;
+    padding-left: 0;
+    border-left: 0;
   }
 
   .messages-thread__meta span {
@@ -1337,50 +1496,23 @@ watch(
   }
 
   .messages-thread__meta time {
-    color: #94a3b8;
     font-size: 12px;
     line-height: 1.2;
-    white-space: nowrap;
   }
 
   .messages-thread__status {
     grid-area: status;
     align-self: end;
     justify-self: end;
-    max-width: 74px;
-    padding: 2px 7px;
-    overflow: hidden;
+    width: auto;
+    max-width: 100%;
+    padding: 2px 8px;
     font-size: 10px;
     line-height: 1.4;
-    text-overflow: ellipsis;
   }
 
   .messages-thread__action {
     display: none;
-  }
-}
-
-@media (max-width: 420px) {
-
-  .messages-panel {
-    padding: 0;
-  }
-
-  .messages-thread {
-    grid-template-columns: 44px minmax(0, 1fr) auto;
-    min-height: 70px;
-    padding: 11px 10px;
-  }
-
-  .messages-thread__avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 13px;
-    font-size: 17px;
-  }
-
-  .messages-thread__status {
-    max-width: 62px;
   }
 }
 
