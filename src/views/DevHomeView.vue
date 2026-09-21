@@ -280,6 +280,17 @@ const paidWithdraw = computed(() => overview.value?.paid_withdraw_cny ?? 0)
 /** 未缴保证金或可用余额不足时后端会关掉绑定开关，两种情况共用同一条提示。 */
 const depositInsufficient = computed(() => (deposit.value ? !deposit.value.can_bind_requirement : false))
 
+/** 保证金状态胶囊：拿到接口数据后才出现，避免加载中把「还没读到」显示成「可接单」。 */
+const depositStatusChip = computed(() => {
+  if (!deposit.value) {
+    return null
+  }
+
+  return depositInsufficient.value
+    ? { label: '保证金不足', className: 'dev-chip--warm' }
+    : { label: '可接单', className: 'dev-chip--cyan' }
+})
+
 const changeRate = computed(() => overview.value?.today_income_change_rate ?? null)
 
 /** 涨幅正负都只影响颜色与符号，文案口径固定为「较昨日」。 */
@@ -696,22 +707,31 @@ async function loadPage() {
             </dl>
           </div>
 
+          <!-- 保证金是这一栏唯一带操作、也是唯一会阻断接单的一段：
+               给它浅蓝内嵌底 + 状态胶囊，与上面纯读数的收入、提现两段分开。 -->
           <div class="dev-home__deposit">
-            <p class="dev-home__deposit-main">
+            <div class="dev-home__deposit-head">
               <span class="dev-home__money-label">可用保证金</span>
+              <span v-if="depositStatusChip" class="dev-chip dev-home__chip" :class="depositStatusChip.className">
+                {{ depositStatusChip.label }}
+              </span>
+            </div>
+
+            <div class="dev-home__deposit-figure">
               <strong class="dev-home__deposit-value">{{ money(deposit?.available_cny) }}</strong>
+              <button class="dev-home__button dev-home__button--ghost dev-home__deposit-action" type="button"
+                @click="rechargeDialog?.open()">
+                <el-icon>
+                  <Money />
+                </el-icon>
+                <span>立即充值</span>
+              </button>
+            </div>
+
+            <p class="dev-home__deposit-meta">
+              <span>冻结 {{ money(deposit?.frozen_cny) }}</span>
+              <span>累计充值 {{ money(deposit?.total_paid_cny) }}</span>
             </p>
-            <p class="dev-home__deposit-tags">
-              <span class="dev-chip dev-home__chip">冻结 {{ money(deposit?.frozen_cny) }}</span>
-              <span class="dev-chip dev-home__chip">累计充值 {{ money(deposit?.total_paid_cny) }}</span>
-            </p>
-            <button class="dev-home__button dev-home__button--ghost dev-home__deposit-action" type="button"
-              @click="rechargeDialog?.open()">
-              <el-icon>
-                <Money />
-              </el-icon>
-              <span>立即充值</span>
-            </button>
           </div>
         </section>
       </aside>
@@ -1432,40 +1452,68 @@ async function loadPage() {
   font-variant-numeric: tabular-nums;
 }
 
+/* 保证金：这一栏三段里唯一带操作、也是唯一会阻断接单的一段。
+   前两段（收入、提现）已经各有一条 hairline 起头，第三段再来一条只是「又一段」；
+   改用浅蓝内嵌块把它从卡片里拎出来，底色取自主色 --dev-blue。 */
 .dev-home__deposit {
   display: grid;
   gap: 10px;
   margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--dev-line);
+  padding: 14px;
+  border: 1px solid rgba(31, 74, 209, 0.14);
+  border-radius: 12px;
+  background: rgba(31, 74, 209, 0.045);
 }
 
-.dev-home__deposit-main {
+/* 首行：标签在左、接单状态在右。状态才用胶囊；原先「冻结 / 累计充值」两笔读数也用胶囊装，
+   而 .dev-chip 是「浅底 + 深字」的状态形态，装金额会与真正的状态标签混作一谈。 */
+.dev-home__deposit-head {
   display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
+  gap: 8px;
+}
+
+/* 次行：大数在左、充值按钮同排——与上面「可提现余额 + 提现」同一套排法。
+   读数与按钮各占一头，中间留白由 space-between 吃掉，窄到摆不下时按钮整块落到下一行。 */
+.dev-home__deposit-figure {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
-  margin: 0;
 }
 
 .dev-home__deposit-value {
   color: var(--dev-ink);
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 800;
-  line-height: 1.2;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
 
-.dev-home__deposit-tags {
+/* 冻结与累计充值并成一行脚注：它们只在充值那一下才需要看，各占一枚胶囊会把这一段撑成三行 */
+.dev-home__deposit-meta {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 2px 6px;
   margin: 0;
+  color: var(--dev-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 分隔点由样式给出，模板里少一个纯装饰节点；换行时它会跟着第二个读数一起落行 */
+.dev-home__deposit-meta span + span::before {
+  content: '·';
+  margin-right: 6px;
+  color: rgba(148, 163, 184, 0.8);
 }
 
 .dev-home__deposit-action {
-  justify-self: start;
+  flex: 0 0 auto;
 }
 
 /* 按钮：链接与 <button> 共用一套外观，圆角与钱包页的主按钮一致 */
@@ -1613,10 +1661,17 @@ async function loadPage() {
     font-size: 26px;
   }
 
+  /* 内嵌块跟着卡片一起收窄，否则卡片 16px 内边距下这块只剩一层薄框 */
+  .dev-home__deposit {
+    padding: 12px;
+  }
+
+  /* 触屏档按钮撑满整行并抬到 44px：42px 的可点面积不达标，见设计规范第六节 */
   .dev-home__button,
   .dev-home__deposit-action {
     flex: 1 1 100%;
     min-width: 0;
+    min-height: 44px;
   }
 
   .dev-home__alert-action {

@@ -289,6 +289,8 @@ describe('developer workbench overview', () => {
   it('保证金不足时给出提示，够用时不出提示', async () => {
     const ok = await render()
     expect(ok.wrapper.find('.dev-home__alert').exists()).toBe(false)
+    // 够用时卡片里给一个正向状态，不必靠「没有警示条」反推
+    expect(ok.wrapper.find('.dev-home__deposit-head .dev-chip').text()).toBe('可接单')
     ok.wrapper.unmount()
 
     mocks.deposit.mockResolvedValue({ ...depositReady, has_paid_deposit: false, can_bind_requirement: false })
@@ -297,8 +299,9 @@ describe('developer workbench overview', () => {
     expect(alert.exists()).toBe(true)
     expect(alert.text()).toContain('保证金不足，暂不可接单')
     expect(alert.attributes('role')).toBe('alert')
-    // 接单资格异常时提示里的可用余额仍按接口返回值展示
+    // 接单资格异常时提示里的可用余额仍按接口返回值展示，保证金块里的状态胶囊同步变金
     expect(alert.text()).toContain('¥380.00')
+    expect(blocked.wrapper.find('.dev-home__deposit-head .dev-chip').text()).toBe('保证金不足')
     blocked.wrapper.unmount()
   })
 
