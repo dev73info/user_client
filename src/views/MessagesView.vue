@@ -616,7 +616,10 @@ watch(
           <span class="messages-thread__status">{{ item.statusLabel }}</span>
           <span class="messages-thread__main">
             <strong>{{ item.title }}</strong>
-            <small>{{ item.requirementId }} · {{ item.modeLabel }}</small>
+            <small class="messages-thread__sub">
+              <span class="messages-thread__code">{{ item.requirementId }}</span>
+              <span class="messages-thread__mode">{{ item.modeLabel }}</span>
+            </small>
             <span>{{ item.description }}</span>
           </span>
           <span class="messages-thread__meta">
@@ -994,11 +997,14 @@ watch(
   gap: 8px;
 }
 
+/* 会话行：左边状态胶囊，中间三行（标题 / 编号·模式 / 最新动静），右边对方·时间与操作胶囊。
+   整行按行首对齐——原来四项都垂直居中，状态胶囊会飘到第二行旁边，看着像没对齐；
+   只有右侧操作胶囊留在垂直中线上，它是这一行的主操作。 */
 .messages-thread {
   width: 100%;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(180px, 240px) auto;
-  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) minmax(168px, 216px) auto;
+  align-items: start;
   gap: 12px;
   padding: 12px 14px;
   border: 1px solid rgba(224, 232, 255, 0.96);
@@ -1008,16 +1014,42 @@ watch(
   text-align: left;
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(76, 103, 172, 0.05);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
-.messages-thread:hover {
+.messages-thread:hover,
+.messages-thread:focus-visible {
   border-color: rgba(125, 155, 225, 0.92);
   background: #f8fbff;
   box-shadow: 0 8px 18px rgba(76, 103, 172, 0.08);
 }
 
+/* 键盘走到这一行时给个环，别让焦点只能靠 hover 才看得见 */
+.messages-thread:focus-visible {
+  outline: 2px solid rgba(47, 104, 255, 0.5);
+  outline-offset: 2px;
+}
+
+/* 会话待开启：移动端有暖色头像做标识，桌面端没有头像，底色差一点几乎看不出来 */
 .messages-thread--pending {
-  background: #fffdf7;
+  background: #fffaf0;
+}
+
+/* 桌面端一行一张独立卡片，可以靠描边点出来；移动端整列连成一体，描边会变成一条突兀的分隔线，
+   那边交给暖色头像标识 */
+@media (min-width: 901px) {
+  .messages-thread--pending {
+    border-color: rgba(245, 158, 11, 0.34);
+  }
+
+  .messages-thread--pending:hover,
+  .messages-thread--pending:focus-visible {
+    border-color: rgba(217, 119, 6, 0.52);
+    background: #fff6e6;
+  }
 }
 
 .messages-thread__avatar {
@@ -1048,19 +1080,22 @@ watch(
   justify-content: center;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   white-space: nowrap;
 }
 
+/* 行高写死 16px：胶囊总高 = 5 + 16 + 5 = 26px，与标题首行的行高相同，
+   两个盒子的中线才对得齐（整行都按行首对齐，差 1px 看得出来） */
 .messages-thread__status {
   padding: 5px 9px;
+  line-height: 16px;
   background: rgba(245, 158, 11, 0.14);
   color: #92400e;
 }
 
 .messages-thread__main {
   display: grid;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -1068,6 +1103,7 @@ watch(
   overflow: hidden;
   color: #0f172a;
   font-size: 15px;
+  line-height: 26px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1084,10 +1120,41 @@ watch(
   overflow-wrap: anywhere;
 }
 
+/* 第二行：编号加等宽数字，模式做成一枚小标签。编号是拿来对的，模式是扫一眼要认出来的，
+   两者权重本来不该一样，拆开之后整行只多一枚灰标签，不会抢标题。 */
+.messages-thread__sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.messages-thread__code {
+  min-width: 0;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.messages-thread__main span.messages-thread__mode {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+  color: #475569;
+  font-size: 11px;
+  line-height: 16px;
+}
+
 .messages-thread__meta {
   display: grid;
+  justify-items: end;
   gap: 4px;
   min-width: 0;
+  /* 4 + 9 = 13px 是首行文字的中线，与标题首行（26px 行高）的中线对齐 */
+  padding-top: 4px;
+  text-align: right;
 }
 
 .messages-thread__meta span,
@@ -1097,7 +1164,9 @@ watch(
   white-space: nowrap;
 }
 
+/* 主操作留在整行的垂直中线上：左中两列有三行文字，操作胶囊跟着行首会显得被顶在上边 */
 .messages-thread__action {
+  align-self: center;
   padding: 7px 10px;
   background: rgba(219, 234, 254, 0.9);
   color: #1d4ed8;
