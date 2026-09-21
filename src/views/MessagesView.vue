@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { Refresh, Search } from '@element-plus/icons-vue'
 
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
-import { apiUrl } from '@/api/http'
 import {
   listConversationHistoryDisclosures,
   listRequirementConversations,
@@ -41,8 +40,6 @@ type MessageThread = {
   lastLabel: string
   description: string
   actionLabel: string
-  avatarUrl: string
-  avatarText: string
   sortTime: number
 }
 
@@ -58,7 +55,6 @@ const conversations = ref<RequirementConversation[]>([])
 const requirements = ref<RequirementItem[]>([])
 const activeFilter = ref<MessageFilter>('all')
 const searchKeyword = ref('')
-const failedAvatarUrls = ref<Set<string>>(new Set())
 const activeRequirementId = ref('')
 const activeTitle = ref('')
 const realtimeStatus = ref<RealtimeStatus>('idle')
@@ -264,17 +260,6 @@ function latestMessagePreview(item: RequirementConversation) {
   return content || '[附件]'
 }
 
-function avatarText(value?: string | null) {
-  const normalized = value?.trim() || 'U'
-  return normalized.slice(0, 1).toUpperCase()
-}
-
-function customerAvatarUrl(item: RequirementConversation) {
-  const avatarUrl = item.customer_avatar_url?.trim()
-  const src = avatarUrl ? apiUrl(avatarUrl) : ''
-  return src && !failedAvatarUrls.value.has(src) ? src : ''
-}
-
 function buildConversationThread(item: RequirementConversation): MessageThread {
   const requirement = requirementById.value[item.requirement_id]
   // 需求数据缺失时退回会话自身的状态：沟通中算进行中，已关闭算已关闭。
@@ -292,8 +277,6 @@ function buildConversationThread(item: RequirementConversation): MessageThread {
     lastLabel: lastMessageLabel(item),
     description: latestMessagePreview(item),
     actionLabel: item.last_message_at ? '查看沟通' : '开始沟通',
-    avatarUrl: customerAvatarUrl(item),
-    avatarText: avatarText(item.customer || item.requirement_title),
     sortTime: parseTime(item.last_message_at ?? item.updated_at ?? item.created_at),
   }
 }
@@ -311,22 +294,8 @@ function buildPendingThread(item: RequirementItem): MessageThread {
     lastLabel: '打开后创建沟通会话',
     description: '需求已接取但本地尚未拿到会话记录，打开后会自动同步。',
     actionLabel: '开启会话',
-    avatarUrl: '',
-    avatarText: avatarText(item.creator || item.title),
     sortTime: parseTime(item.updated_at),
   }
-}
-
-function threadAvatarText(item: MessageThread) {
-  return item.avatarText
-}
-
-function handleThreadAvatarError(item: MessageThread) {
-  if (!item.avatarUrl) return
-
-  const next = new Set(failedAvatarUrls.value)
-  next.add(item.avatarUrl)
-  failedAvatarUrls.value = next
 }
 
 function emptyTitle() {
@@ -640,14 +609,11 @@ watch(
         <button v-for="item in filteredThreads" :key="item.key" type="button" class="messages-thread"
           :class="[`messages-thread--${item.tone}`, { 'messages-thread--pending': item.kind === 'pending' }]"
           @click="openThread(item)">
-          <span class="messages-thread__avatar" aria-hidden="true">
-            <img v-if="item.avatarUrl" :src="item.avatarUrl" :alt="`${item.title} 发布者头像`" loading="lazy"
-              @error="handleThreadAvatarError(item)" />
-            <span v-else>{{ threadAvatarText(item) }}</span>
-          </span>
-          <span class="messages-thread__status">{{ item.statusLabel }}</span>
           <span class="messages-thread__main">
-            <strong>{{ item.title }}</strong>
+            <span class="messages-thread__head">
+              <strong>{{ item.title }}</strong>
+              <span class="messages-thread__status">{{ item.statusLabel }}</span>
+            </span>
             <small class="messages-thread__sub">
               <span class="messages-thread__code">{{ item.requirementId }}</span>
               <span class="messages-thread__mode">{{ item.modeLabel }}</span>
@@ -1029,10 +995,11 @@ watch(
   gap: 8px;
 }
 
-/* 会话行：左边缘一条状态色条，左边是头像与状态胶囊，中间三行（标题 / 编号·模式 / 最新动静），
+/* 会话行：左边缘一条状态色条，中间三行（标题 + 状态胶囊 / 编号·模式 / 最新动静），
    右边一列对方·时间（带竖分隔线）与主操作胶囊。整行按行块垂直居中。
-   色条与状态胶囊按状态分四档（待处理 / 进行中 / 已结单 / 已关闭），一列扫下来状态就看得见。
-   状态胶囊占一列固定宽度：标签长短不一，若让它按内容撑开，每行的标题就会左右错位。 */
+   色条与状态胶囊按状态分四档（待处理 / 进行中 / 已结单 / 已关闭），扫一眼就知道这一行落在哪一档。
+   不放头像：那 44px 只够放一枚发布者首字牌，不承载信息，去掉后省下的宽度全给标题那一列。
+   状态胶囊跟在标题后面同一行，也不自占一列——空出一列等于把省下来的宽度又吃掉。 */
 .messages-thread {
   /* 无色调时的兜底：色条 / 胶囊底色与字色 / 常态与悬停底色 */
   --thread-rail: rgba(224, 232, 255, 0.96);
@@ -1044,7 +1011,7 @@ watch(
   z-index: 0;
   width: 100%;
   display: grid;
-  grid-template-columns: 44px 84px minmax(0, 1fr) minmax(0, max-content) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) auto;
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
@@ -1116,58 +1083,19 @@ watch(
   outline-offset: 2px;
 }
 
-/* 会话待开启：整行铺一层暖底、头像换成暖色渐变，把它和已有会话区分开 */
+/* 会话待开启：整行铺一层暖底，把它和已有会话区分开 */
 .messages-thread--pending {
   --thread-surface: #fffaf0;
   --thread-surface-hover: linear-gradient(90deg, rgba(245, 158, 11, 0.12), rgba(255, 255, 255, 0) 54%), #fff6e6;
 }
 
-/* 头像：门户蓝→青的字母牌，没有头像图时用发布者首字顶上。桌面与移动端都显示，
-   它是这一行唯一的图形锚点——没有它，整列卡片只剩文字，扫起来很平。 */
-.messages-thread__avatar {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #2f68ff, #3fb7a6);
-  box-shadow: 0 6px 14px rgba(47, 104, 255, 0.18);
-  color: #ffffff;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1;
-  overflow: hidden;
-  transition:
-    transform 200ms ease,
-    box-shadow 200ms ease;
-}
-
-.messages-thread__avatar img,
-.messages-thread__avatar>span {
-  width: 100%;
-  height: 100%;
-  border-radius: inherit;
-}
-
-.messages-thread__avatar img {
-  display: block;
-  object-fit: cover;
-}
-
-.messages-thread__avatar>span {
-  display: grid;
-  place-items: center;
-}
-
-.messages-thread--pending .messages-thread__avatar {
-  background: linear-gradient(135deg, #f59e0b, #ef7f5f);
-  box-shadow: 0 6px 14px rgba(245, 158, 11, 0.2);
-}
-
-.messages-thread:hover .messages-thread__avatar,
-.messages-thread:focus-visible .messages-thread__avatar {
-  transform: scale(1.04);
-  box-shadow: 0 8px 18px rgba(47, 104, 255, 0.26);
+/* 首行：标题 + 状态胶囊。标题 flex: 0 1 auto 让位给胶囊，太长时走省略号；
+   胶囊 flex: 0 0 auto，永远不会被标题压扁或截断。 */
+.messages-thread__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .messages-thread__status,
@@ -1181,18 +1109,12 @@ watch(
   white-space: nowrap;
 }
 
-/* 状态胶囊：撑满整列（84px），软底 + 深字，字色也用在前面那颗小圆点上，
-   和左边缘色条呼应但不相邻，扫一眼就知道这一行落在哪一档 */
+/* 状态胶囊：软底 + 深字，字色也用在前面那颗小圆点上，与左边缘色条呼应。
+   宽度按内容走（状态名最多四个字），不再撑满一列。 */
 .messages-thread__status {
+  flex: 0 0 auto;
   gap: 5px;
-  width: 100%;
-  min-width: 0;
   padding: 5px 8px;
-  overflow: hidden;
-  /* 贴住标题那一行，而不是跟着整行居中：整行居中时它的中线落在标题与第二行之间，
-     看着像悬在行左侧的独立部件；靠 start 对齐后胶囊与标题同一条线，
-     读作标题的前置状态，同时保住了状态列在固定 x 上成列可扫。 */
-  align-self: start;
   background: var(--thread-status-soft);
   color: var(--thread-status-ink);
   line-height: 16px;
@@ -1214,6 +1136,9 @@ watch(
 }
 
 .messages-thread__main strong {
+  /* 与状态胶囊同一行：标题让位给胶囊，长了走省略号（min-width: 0 是 flex 里省略号生效的前提） */
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   color: #0f172a;
   font-size: 16px;
@@ -1434,11 +1359,9 @@ watch(
 
   /* 整列连成一体，卡片拆成列表项，只留分隔线；左侧状态色条保留，状态色到小屏也别丢 */
   .messages-thread {
-    grid-template-columns: 44px minmax(0, 1fr) auto;
-    grid-template-areas:
-      "avatar main meta"
-      "avatar main status";
-    align-items: center;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'main meta';
+    align-items: start;
     gap: 2px 10px;
     min-height: 74px;
     padding: 12px 12px 12px 10px;
@@ -1459,15 +1382,16 @@ watch(
     box-shadow: none;
   }
 
-  .messages-thread__avatar {
-    grid-area: avatar;
-    align-self: center;
-  }
-
   .messages-thread__main {
     grid-area: main;
-    align-self: center;
     gap: 4px;
+  }
+
+  /* 胶囊与标题同一行；小屏标题本来就长，挤不下时让胶囊落到第二行，
+     而不是把标题压成一两个词（换行发生在收缩之前，所以标题先拿满整行宽度） */
+  .messages-thread__head {
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
   .messages-thread__main strong {
@@ -1506,12 +1430,9 @@ watch(
     line-height: 1.2;
   }
 
+  /* 胶囊跟在标题后面（.messages-thread__head 里的第二个孩子），窄屏字号与内线都收一点，
+     状态色与桌面端同一套变量 */
   .messages-thread__status {
-    grid-area: status;
-    align-self: end;
-    justify-self: end;
-    width: auto;
-    max-width: 100%;
     padding: 2px 8px;
     font-size: 10px;
     line-height: 1.4;
