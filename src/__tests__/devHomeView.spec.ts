@@ -121,35 +121,44 @@ async function render(query: Record<string, string> = {}) {
   return { wrapper, router }
 }
 
-const statCards = (wrapper: Awaited<ReturnType<typeof render>>['wrapper']) =>
-  wrapper.findAll('.dev-home__stat').map((card) => card.text())
+/** 汇总条读数：五格分别是今日入账、累计收入、进行中接单、已接取需求、累计交付。 */
+const stripItems = (wrapper: Awaited<ReturnType<typeof render>>['wrapper']) =>
+  wrapper.findAll('.dev-meta-strip__item').map((item) => item.text())
 
 describe('developer workbench overview', () => {
-  it('把四个接口的汇总值渲染成可跳转的统计卡', async () => {
+  it('把四个接口的汇总值渲染成顶部汇总条与两张资金卡', async () => {
     const { wrapper } = await render()
     expect(mocks.wallet).toHaveBeenCalledWith('test-token')
     expect(mocks.deposit).toHaveBeenCalledWith('test-token')
     expect(mocks.requirements).toHaveBeenCalledWith('test-token')
     expect(mocks.resources).toHaveBeenCalledWith('test-token')
 
-    const cards = statCards(wrapper)
-    expect(cards).toHaveLength(4)
-    expect(cards[0]).toContain('接单收入')
-    expect(cards[0]).toContain('¥1200.50')
-    expect(cards[0]).toContain('今日 ¥200.00')
-    expect(cards[1]).toContain('可提现余额')
-    expect(cards[1]).toContain('¥800.25')
-    expect(cards[1]).toContain('待提现 ¥100.00')
-    expect(cards[2]).toContain('进行中接单')
-    expect(cards[2]).toContain('2')
-    expect(cards[2]).toContain('已完成 3 单')
-    expect(cards[3]).toContain('已接取需求')
-    expect(cards[3]).toContain('累计交付 2 个版本')
+    const items = stripItems(wrapper)
+    expect(items).toHaveLength(5)
+    expect(items[0]).toContain('今日入账')
+    expect(items[0]).toContain('¥200.00')
     // 今日收入环比由后端给值，0 也要出标签（这里 baseWallet 给的是 0）
-    expect(cards[0]).toContain('0.0%')
+    expect(items[0]).toContain('0.0%')
+    expect(items[1]).toContain('累计收入')
+    expect(items[1]).toContain('¥1200.50')
+    expect(items[2]).toContain('进行中接单')
+    expect(items[2]).toContain('2')
+    expect(items[3]).toContain('已接取需求')
+    expect(items[3]).toContain('2')
+    expect(items[4]).toContain('累计交付')
+    expect(items[4]).toContain('2 个版本')
 
-    expect(wrapper.findAll('.dev-home__stat').map((card) => card.attributes('href')))
-      .toEqual(['/dev-wallet', '/dev-wallet', '/dev-my-requirements', '/dev-wallet-releases'])
+    // 可提现余额走资金卡：金色大数 + 待提现/累计收入两个标签
+    expect(wrapper.text()).toContain('当前可提现')
+    expect(wrapper.text()).toContain('¥800.25')
+    expect(wrapper.text()).toContain('待提现 ¥100.00')
+
+    // 两个跳转入口仍是真链接，「立即充值」是就地拉起弹窗的按钮
+    const actions = wrapper.findAll('.dev-home__button')
+    expect(actions).toHaveLength(3)
+    expect(actions[0]?.attributes('href')).toBe('/dev-wallet')
+    expect(actions[1]?.attributes('href')).toBe('/dev-wallet-releases')
+    expect(actions[2]?.element.tagName).toBe('BUTTON')
     wrapper.unmount()
   })
 
@@ -272,8 +281,8 @@ describe('开发总览的演示数据开关', () => {
     expect(mocks.resources).not.toHaveBeenCalled()
 
     expect(wrapper.find('.dev-home__mock-hint').text()).toContain('演示数据')
-    expect(statCards(wrapper)[0]).toContain('¥38600.00')
-    expect(statCards(wrapper)[3]).toContain('累计交付 10 个版本')
+    expect(stripItems(wrapper)[1]).toContain('¥38600.00')
+    expect(stripItems(wrapper)[4]).toContain('10 个版本')
 
     // 5 条已接取需求单 + 3 条绑定了资源的交付记录，两个空态都不再出现
     expect(wrapper.findAll('.dev-home__row')).toHaveLength(8)
