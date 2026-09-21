@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { WarningFilled } from '@element-plus/icons-vue'
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
 import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@/api/devOrderDeposit'
@@ -8,11 +9,19 @@ import { getDevWalletOverview, type DevWalletIncomeItem, type DevWalletOverview 
 import { listMcResources, type McResourcePayload } from '@/api/mcResources'
 import { listMyRequirements, type RequirementItem } from '@/api/devRequirements'
 import { useToast } from '@/composables/useToast'
+import {
+  DEMO_DEV_HOME_DEPOSIT,
+  DEMO_DEV_HOME_REQUIREMENTS,
+  DEMO_DEV_HOME_RESOURCES,
+  DEMO_DEV_HOME_WALLET,
+  devHomeMockEnabled,
+} from '@/shared/devHomeMock'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
+const route = useRoute()
 const { showToast } = useToast()
 
 const loading = ref(false)
@@ -20,6 +29,9 @@ const overview = ref<DevWalletOverview | null>(null)
 const deposit = ref<DevOrderDepositStatus | null>(null)
 const requirements = ref<RequirementItem[]>([])
 const resources = ref<McResourcePayload[]>([])
+
+/** 演示数据开关：开着时整页不读接口，只用于本地预览布局。 */
+const mockEnabled = devHomeMockEnabled(route.query.mock === '1')
 
 // 总览页只做汇总：列表最多展示 5 条，完整明细留在「我的接单」与「交付记录」页。
 const OVERVIEW_LIST_LIMIT = 5
@@ -111,6 +123,15 @@ async function loadPage() {
     return
   }
 
+  // 演示数据只铺总览页的展示层，不参与任何写操作
+  if (mockEnabled) {
+    overview.value = DEMO_DEV_HOME_WALLET
+    deposit.value = DEMO_DEV_HOME_DEPOSIT
+    requirements.value = DEMO_DEV_HOME_REQUIREMENTS
+    resources.value = DEMO_DEV_HOME_RESOURCES
+    return
+  }
+
   loading.value = true
   try {
     const [wallet, depositStatus, myRequirements, resourceList] = await Promise.all([
@@ -134,6 +155,11 @@ async function loadPage() {
 
 <template>
   <main class="portal-page dev-home">
+    <p v-if="mockEnabled" class="dev-home__mock-hint" role="note">
+      演示数据：本页未读取后端接口，仅用于预览布局。去掉地址上的 <code>?mock=1</code>，
+      或清掉 <code>VITE_DEV_HOME_MOCK</code> 后重启 dev server，即恢复真实数据。
+    </p>
+
     <section class="portal-page__stats" :class="{ 'dev-home__stats--loading': loading }">
       <RouterLink v-for="card in statCards" :key="card.label" class="portal-page__stat-card dev-home__stat"
         :to="{ name: card.target }">
@@ -177,7 +203,6 @@ async function loadPage() {
           </ul>
           <p v-else class="portal-page__empty portal-page__empty--stacked">
             <strong>暂无已接取需求</strong>
-            <span>去需求大厅接单后会显示在这里。</span>
           </p>
         </section>
 
@@ -198,7 +223,6 @@ async function loadPage() {
           </ul>
           <p v-else class="portal-page__empty portal-page__empty--stacked">
             <strong>暂无交付记录</strong>
-            <span>绑定资源项目并发布版本后会显示在这里。</span>
           </p>
         </section>
       </div>
@@ -217,10 +241,6 @@ async function loadPage() {
             <li class="portal-page__timeline-item">
               <span>冻结</span>
               <strong>{{ money(deposit?.frozen_cny) }}</strong>
-            </li>
-            <li class="portal-page__timeline-item">
-              <span>累计已缴</span>
-              <strong>{{ money(deposit?.total_paid_cny) }}</strong>
             </li>
           </ul>
         </section>
@@ -248,6 +268,26 @@ async function loadPage() {
 </template>
 
 <style scoped>
+/* 演示数据提示条：与保证金警示条区分开，用中性蓝而不是警示色 */
+.dev-home__mock-hint {
+  margin: 0;
+  padding: 10px 16px;
+  border: 1px dashed rgba(37, 99, 235, 0.35);
+  border-radius: 14px;
+  background: rgba(37, 99, 235, 0.06);
+  color: #1d4ed8;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dev-home__mock-hint code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(37, 99, 235, 0.12);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
 /* 加载中把统计数字压暗，避免把「还没拿到数据」误读成真实的 0 */
 .dev-home__stats--loading {
   opacity: 0.55;
@@ -363,6 +403,9 @@ async function loadPage() {
 }
 
 .dev-home__row-main {
+  /* 标题与「编号 · 更新时间」要分两行，否则会黏成一句话（列表项本身是 column，这里只是复原） */
+  display: grid;
+  gap: 2px;
   min-width: 0;
 }
 

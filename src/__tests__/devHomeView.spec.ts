@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/stores/auth'
 import DevHomeView from '@/views/DevHomeView.vue'
 
@@ -110,12 +110,12 @@ beforeEach(() => {
   ])
 })
 
-async function render() {
+async function render(query: Record<string, string> = {}) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: ROUTE_NAMES.map((name) => ({ name, path: `/${name}`, component: { template: '<div />' } })),
   })
-  await router.push({ name: 'dev-home' })
+  await router.push({ name: 'dev-home', query })
   const wrapper = mount(DevHomeView, { global: { plugins: [router] } })
   await flushPromises()
   return { wrapper, router }
@@ -221,6 +221,64 @@ describe('developer workbench overview', () => {
     expect(wrapper.text()).toContain('暂无交付记录')
     expect(wrapper.text()).toContain('暂无收入记录')
     expect(wrapper.findAll('.dev-home__row')).toHaveLength(0)
+    wrapper.unmount()
+  })
+
+  it('空态只留主标题，不再补引导说明', async () => {
+    mocks.requirements.mockResolvedValue([])
+    mocks.wallet.mockResolvedValue({ ...baseWallet, recent_income: [] })
+    const { wrapper } = await render()
+
+    // 两个面板的空态各自只剩一行主标题，没有额外的 <span> 说明
+    const empties = wrapper.findAll('.portal-page__panel .portal-page__empty')
+    expect(empties).toHaveLength(2)
+    for (const empty of empties) {
+      expect(empty.findAll('span')).toHaveLength(0)
+      expect(empty.findAll('strong')).toHaveLength(1)
+    }
+    expect(wrapper.text()).not.toContain('去需求大厅接单后会显示在这里')
+    expect(wrapper.text()).not.toContain('绑定资源项目并发布版本后会显示在这里')
+    wrapper.unmount()
+  })
+})
+
+describe('开发总览的演示数据开关', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('非 dev 模式即使开关打开也走真实接口', async () => {
+    vi.stubEnv('MODE', 'production')
+    vi.stubEnv('VITE_DEV_HOME_MOCK', 'true')
+
+    const { wrapper } = await render({ mock: '1' })
+    expect(mocks.requirements).toHaveBeenCalledWith('test-token')
+    expect(wrapper.find('.dev-home__mock-hint').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('dev 模式带 ?mock=1 时铺演示数据且不请求任何接口', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('VITE_DEV_HOME_MOCK', 'false')
+
+    const { wrapper } = await render({ mock: '1' })
+    expect(mocks.wallet).not.toHaveBeenCalled()
+    expect(mocks.deposit).not.toHaveBeenCalled()
+    expect(mocks.requirements).not.toHaveBeenCalled()
+    expect(mocks.resources).not.toHaveBeenCalled()
+
+    expect(wrapper.find('.dev-home__mock-hint').text()).toContain('演示数据')
+    expect(statCards(wrapper)[0]).toContain('¥38600.00')
+    expect(statCards(wrapper)[3]).toContain('累计交付 10 个版本')
+
+    // 5 条已接取需求单 + 3 条绑定了资源的交付记录，两个空态都不再出现
+    expect(wrapper.findAll('.dev-home__row')).toHaveLength(8)
+    expect(wrapper.text()).toContain('跨境电商订单同步插件定制')
+    expect(wrapper.text()).toContain('企业微信审批流连接器')
+    expect(wrapper.text()).not.toContain('暂无已接取需求')
+    expect(wrapper.text()).not.toContain('暂无交付记录')
+    // 演示保证金是足的，不该出现阻断接单的警示条
+    expect(wrapper.find('.dev-home__alert').exists()).toBe(false)
     wrapper.unmount()
   })
 })
