@@ -36,13 +36,6 @@
 }
 
 /* ============================================
-   工作台页面 - 头部卡片
-   ============================================ */
-.user-workbench__head {
-  min-height: 56px !important;
-}
-
-/* ============================================
    响应式调整 - 移动端 (≤900px)
    ============================================ */
 @media (max-width: 900px) {
@@ -157,10 +150,6 @@
   }
 
   .catalog-nav-row--root-top {
-    min-height: 46px !important;
-  }
-
-  .user-workbench__head {
     min-height: 46px !important;
   }
 }

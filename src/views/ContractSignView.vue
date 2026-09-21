@@ -12,13 +12,10 @@ import {
     type ContractDetail,
 } from '@/api/contracts'
 import { useAuthStore } from '@/stores/auth'
-import { useWorkbenchSubtitle } from '@/composables/useWorkbenchSubtitle'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-// 工作台标题栏的二级标题：让「合同详情」后面跟上具体合同名（如「合同详情/开发者入驻协议」）。
-const workbenchSubtitle = useWorkbenchSubtitle()
 
 const requirementId = String(route.query.requirement_id ?? '')
 const isWorkbenchSignature = computed(() => route.name === 'workbench-signature-detail')
@@ -265,7 +262,6 @@ async function loadContract() {
     } finally {
         loading.value = false
     }
-    workbenchSubtitle.value = isWorkbenchSignature.value ? (contract.value?.title ?? '') : ''
 }
 
 function continueAfterDeveloperAgreement() {
@@ -383,16 +379,14 @@ onMounted(async () => {
 
 onUnmounted(() => {
     stopStatusPolling()
-    // 离开详情页时清掉标题栏二级标题，避免残留在别的页面。
-    workbenchSubtitle.value = ''
 })
 </script>
 
 <template>
     <main class="page-shell" :class="{ 'page-shell--workbench': isWorkbenchSignature }">
         <section class="panel">
-            <!-- 工作台签署详情使用外层工作台标题栏（合同详情/合同名 + 返回），页内不再重复标题与返回。 -->
-            <header v-if="!isWorkbenchSignature" class="panel-head">
+            <!-- 工作台外壳不再铺页面标题栏，签署页自己出示标题与返回（两种入口同一套页头） -->
+            <header class="panel-head">
                 <div class="panel-head__title">
                     <h2>{{ isDeveloperAgreement ? '开发者入驻协议' : '需求服务合同' }}</h2>
                     <p v-if="canSignContract" class="lead">请核对实名认证身份后完成签署。</p>

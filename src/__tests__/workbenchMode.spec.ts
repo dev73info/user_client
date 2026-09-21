@@ -166,17 +166,23 @@ describe('workbench mode switch', () => {
     user.wrapper.unmount()
   })
 
-  it('返回按钮放在移动端顶部标题栏内，自带页头的页面不显示', async () => {
-    // 没有自带页头的页面：移动端返回按钮与侧边栏同排，内容区不再重复一条标题头
+  it('外壳不再铺页面标题栏，返回只在移动端顶部栏里给一颗', async () => {
+    // 普通页面：桌面端没有外壳标题栏，移动端顶部栏里有「返回」
     const wallet = await render('dev-wallet')
+    expect(wallet.wrapper.find('.user-workbench__head').exists()).toBe(false)
     const back = wallet.wrapper.find('.user-workbench__mobile-bar .user-workbench__mobile-back')
     expect(back.exists()).toBe(true)
     expect(back.text()).toContain('返回')
-    expect(wallet.wrapper.find('.user-workbench__head .user-workbench__mobile-back').exists()).toBe(false)
     wallet.wrapper.unmount()
 
-    // 自带页头的页面外壳不再叠「标题 + 返回」：总览有问候卡，资源列表有卡内「资源列表」标题
-    for (const name of ['workbench', 'dev-home', 'dev-resource-list']) {
+    // 资源列表也按普通页面处理：页名由卡内「资源列表」标题出示，返回照给
+    const list = await render('dev-resource-list')
+    expect(list.wrapper.find('.user-workbench__head').exists()).toBe(false)
+    expect(list.wrapper.find('.user-workbench__mobile-back').exists()).toBe(true)
+    list.wrapper.unmount()
+
+    // 落地页与页内自带返回的页面不给这颗按钮
+    for (const name of ['workbench', 'dev-home']) {
       const { wrapper } = await render(name)
       expect(wrapper.find('.user-workbench__head').exists()).toBe(false)
       expect(wrapper.find('.user-workbench__mobile-back').exists()).toBe(false)

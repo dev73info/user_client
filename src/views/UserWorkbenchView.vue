@@ -10,7 +10,6 @@ import { getMyRealnameVerification } from '@/api/realname'
 import { isActiveRequirement } from '@/shared/requirementStatus'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
-import { useWorkbenchSubtitle } from '@/composables/useWorkbenchSubtitle'
 
 type WorkbenchRouteName = string
 
@@ -36,7 +35,6 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const { showToast } = useToast()
-const workbenchSubtitle = useWorkbenchSubtitle()
 
 const conversations = ref<RequirementConversation[]>([])
 const conversationLoading = ref(false)
@@ -193,17 +191,14 @@ const isMessageDetailPage = computed(() => {
   const requirementId = route.query.requirement_id
   return isMessagesRoute.value && typeof requirementId === 'string' && requirementId.trim().length > 0
 })
-const isMergedHeaderPage = computed(() =>
-  route.name === 'dev-resource-homepage-edit'
-  || route.name === 'dev-requirement-detail'
-  // 开发者工作台总览自带问候卡当页头，再叠一条「标题 + 返回」是两层标题
-  || route.name === 'dev-home'
-  // 资源列表第一屏就是「资源总数」统计条，卡内标题写着「资源列表」，
-  // 外壳再报一次「资源管理/资源列表」同样是两层标题
-  || route.name === 'dev-resource-list',
-)
-const showWorkbenchHeader = computed(
-  () => !isWorkbenchOverview.value && !isMessageDetailPage.value && !isMergedHeaderPage.value,
+// 外壳不再给每个页面铺一条「标题 + 返回」：页面名由各页自己出示（页头或页内卡片标题），
+// 认路靠侧边栏。移动端顶部栏只留一颗「返回」，落地页与页内自带返回的页面不给。
+const showWorkbenchMobileBack = computed(
+  () => !isWorkbenchOverview.value
+    && !isMessageDetailPage.value
+    && route.name !== 'dev-home'
+    && route.name !== 'dev-resource-homepage-edit'
+    && route.name !== 'dev-requirement-detail',
 )
 
 // 工作台模式跟随路由：命中 devArea 路由时侧边栏整体换成开发者菜单，回到用户端页面即自动切回。
@@ -776,18 +771,11 @@ async function scrollToHash() {
           <strong>{{ isDevWorkbenchMode ? '开发者工作台' : '工作台' }}</strong>
           <span>{{ currentTitle }}</span>
         </div>
-        <!-- 移动端返回按钮：与「菜单」同排在标题栏右侧，内容区不再重复标题与返回 -->
-        <button v-if="showWorkbenchHeader" class="user-workbench__mobile-back" type="button" @click="goBack">
+        <!-- 外壳不再铺页面标题栏，返回只在移动端顶部栏里给一颗（落地页与页内自带返回的页面不给） -->
+        <button v-if="showWorkbenchMobileBack" class="user-workbench__mobile-back" type="button" @click="goBack">
           返回
         </button>
       </div>
-
-      <header v-if="showWorkbenchHeader" class="user-workbench__head">
-        <div class="user-workbench__head-copy">
-          <h1>{{ workbenchSubtitle ? `${currentTitle}/${workbenchSubtitle}` : currentTitle }}</h1>
-        </div>
-        <a class="user-workbench__dev-link" href="#" @click.prevent="goBack">返回</a>
-      </header>
 
       <div class="user-workbench__content">
         <RouterView />
@@ -806,8 +794,7 @@ async function scrollToHash() {
   margin: 12px auto 0;
 }
 
-.user-workbench__aside,
-.user-workbench__head {
+.user-workbench__aside {
   border: 1px solid rgba(224, 232, 255, 0.96);
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 14px 34px rgba(76, 103, 172, 0.08);
@@ -1332,56 +1319,6 @@ async function scrollToHash() {
   gap: 12px;
 }
 
-.user-workbench__head {
-  position: sticky;
-  /* 与侧边栏同一套偏移：写死 98px 会让它在长页面被 sticky 往下推 7px、短页面推不动，
-     于是和侧边栏一起在长短页面之间上下跳。 */
-  top: var(--portal-header-footprint, 98px);
-  z-index: 1;
-  align-self: start;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  min-height: 56px;
-  padding: 12px 16px;
-  border-radius: 16px;
-  background: #fff;
-}
-
-.user-workbench__head-copy {
-  min-width: 0;
-  display: grid;
-  align-items: baseline;
-}
-
-.user-workbench__head h1 {
-  margin: 0;
-}
-
-.user-workbench__head h1 {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #0f172a;
-  font-size: 22px;
-  line-height: 1.2;
-}
-
-.user-workbench__dev-link {
-  flex: 0 0 auto;
-  align-self: center;
-  padding: 8px 12px;
-  border: 1px solid rgba(209, 220, 243, 0.95);
-  border-radius: 9px;
-  background: #fff;
-  color: #0f172a;
-  text-decoration: none;
-  font-size: 12px;
-  font-weight: 800;
-}
-
 .user-workbench__content {
   min-width: 0;
   /* 与侧边栏底部留白（sticky aside 顶部 98 + max-height 100vh-120 => 底部 22px）保持一致 */
@@ -1610,11 +1547,6 @@ async function scrollToHash() {
     padding: 0 11px;
   }
 
-  /* 移动端页面标题与返回已并入顶部标题栏，内容区不再重复渲染标题头 */
-  .user-workbench__head {
-    display: none;
-  }
-
   .user-workbench__mobile-bar {
     position: sticky;
     top: 8px;
@@ -1675,7 +1607,7 @@ async function scrollToHash() {
     font-weight: 800;
   }
 
-  /* 消息页不再隐藏侧边栏、标题头、顶部栏：顶部栏被 unified-top-card.css 用 !important 强制保留，
+  /* 消息页不再隐藏侧边栏与顶部栏：顶部栏被 unified-top-card.css 用 !important 强制保留，
      若只隐藏侧边栏，「菜单」按钮点开就只剩遮罩、抽屉不出现（移动端曾出现的白屏+遮罩 bug）。 */
   .user-workbench--messages {
     margin-top: 0;
@@ -1688,18 +1620,8 @@ async function scrollToHash() {
     margin-top: 10px;
   }
 
-  .user-workbench__aside,
-  .user-workbench__head {
+  .user-workbench__aside {
     border-radius: 18px;
-  }
-
-  .user-workbench__head {
-    min-height: 50px;
-    padding: 10px 12px;
-  }
-
-  .user-workbench__head h1 {
-    font-size: 19px;
   }
 
   .user-workbench__brand {
@@ -1718,11 +1640,6 @@ async function scrollToHash() {
   .user-workbench__menu-link small,
   .user-workbench__submenu-link small {
     display: none;
-  }
-
-  .user-workbench__dev-link {
-    align-self: center;
-    text-align: center;
   }
 }
 </style>
