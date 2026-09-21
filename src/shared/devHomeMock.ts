@@ -203,6 +203,17 @@ export const DEMO_DEV_HOME_WALLET: DevWalletOverview = {
   ],
 }
 
+/**
+ * 近 7 天到账金额（最早 → 今天），只给总览页的收入曲线用。
+ *
+ * 后端没有时间序列接口，真实模式只能把 `recent_income`（接口最多返回 5 笔）
+ * 按到账日归集；演示模式给一条完整序列，这样曲线的样子在预览时看得出来。
+ * 序列刻意与 `DEMO_DEV_HOME_WALLET` 自洽：最后一位等于 `today_income_cny`，
+ * 倒数第二位等于由「今日收入 + 较昨日涨幅」倒推出来的昨日收入，
+ * 否则同一屏上「今日收入 / 较昨日」会和曲线互相打架。
+ */
+export const DEMO_DEV_HOME_DAILY_INCOME: number[] = [420, 680, 960, 1320, 540, 1138, 1280]
+
 export const DEMO_DEV_HOME_DEPOSIT: DevOrderDepositStatus = {
   username: 'dev_flow_03562487',
   role: 'dev',

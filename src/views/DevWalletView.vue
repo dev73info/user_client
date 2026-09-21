@@ -523,7 +523,6 @@ async function submitDepositWithdrawal() {
                 :disabled="!autoWithdrawReady" :before-change="beforeAutoWithdrawChange" aria-label="自动提现" />
             </div>
             <div class="wallet-payout__path">
-              <span class="wallet-payout__title">手动提现</span>
               <el-button class="wallet-hero__button wallet-hero__button--primary" type="primary"
                 :disabled="!canSubmitWithdrawal" @click="openWithdrawDialog">
                 <el-icon>

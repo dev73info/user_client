@@ -1149,7 +1149,7 @@ async function submitBinding() {
     gap: 10px;
     padding-top: 14px;
     border-top: 1px solid rgba(148, 163, 184, 0.14);
-    background: linear-gradient(180deg, rgba(255, 251, 244, 0.72), rgba(255, 251, 244, 0.98));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.98));
 }
 
 .dev-requirement-detail__empty :deep(.el-card__body) {

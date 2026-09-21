@@ -4,17 +4,22 @@
     'IBM Plex Sans', 'PingFang SC', 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', sans-serif;
   color: #0f172a;
-  background: #edf3f5;
-  --dev-bg: #edf3f5;
-  --dev-surface: rgba(255, 251, 244, 0.88);
-  --dev-surface-strong: #fffaf2;
-  --dev-ink: #111827;
-  --dev-muted: #6b7280;
-  --dev-line: rgba(17, 24, 39, 0.1);
+  background: #f1f4fb;
+  /* 开发者体系色板：冷白底。
+     底 / 卡片 / 描边 / 阴影全部去掉暖调（原来是米白卡 + 暖灰阴影），换成纯白卡 +
+     偏蓝灰描边 + 带蓝调的阴影，与工作台外壳（顶栏、侧边栏用的那套冷色）对齐。
+     三个强调色保持原样：进行中=蓝、已完成=青、金额与提示=金。它们同时被 dev-*.css 与
+     各开发者页面里上百处硬编码 rgba 引用，换色相会让那些地方对不上；语义也仍是这三支。 */
+  --dev-bg: #f1f4fb;
+  --dev-surface: rgba(255, 255, 255, 0.96);
+  --dev-surface-strong: #ffffff;
+  --dev-ink: #0f172a;
+  --dev-muted: #64748b;
+  --dev-line: rgba(203, 213, 225, 0.66);
   --dev-blue: #1f4ad1;
   --dev-cyan: #2aa6a4;
   --dev-gold: #b9812b;
-  --dev-shadow: 0 24px 50px rgba(38, 36, 30, 0.08);
+  --dev-shadow: 0 20px 44px rgba(71, 85, 105, 0.1);
   --dev-scrollbar-thumb: linear-gradient(180deg, rgba(31, 74, 209, 0.62), rgba(42, 166, 164, 0.72));
   --dev-scrollbar-thumb-hover: linear-gradient(
     180deg,
@@ -37,9 +42,9 @@ body,
 body {
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(31, 74, 209, 0.14), transparent 28%),
-    radial-gradient(circle at 80% 20%, rgba(42, 166, 164, 0.12), transparent 24%),
-    radial-gradient(circle at bottom right, rgba(185, 129, 43, 0.1), transparent 22%), var(--dev-bg);
+    radial-gradient(circle at top left, rgba(31, 74, 209, 0.13), transparent 28%),
+    radial-gradient(circle at 80% 20%, rgba(99, 132, 255, 0.1), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(42, 166, 164, 0.08), transparent 22%), var(--dev-bg);
 }
 
 a {
@@ -322,13 +327,13 @@ a {
   gap: 20px;
   padding: 24px 28px;
   border-radius: 24px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  background: linear-gradient(135deg, rgba(255, 250, 242, 0.92), rgba(255, 255, 255, 0.76));
+  border: 1px solid rgba(203, 213, 225, 0.6);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 255, 0.8));
   box-shadow: var(--dev-shadow);
 }
 
 .dev-panel-banner--light {
-  background: linear-gradient(135deg, rgba(255, 247, 235, 0.9), rgba(250, 252, 255, 0.78));
+  background: linear-gradient(135deg, rgba(244, 247, 255, 0.94), rgba(255, 255, 255, 0.8));
 }
 
 .dev-panel-banner__eyebrow {
