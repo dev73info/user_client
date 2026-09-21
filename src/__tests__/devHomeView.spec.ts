@@ -127,9 +127,12 @@ type Wrapper = Awaited<ReturnType<typeof render>>['wrapper']
 const statCards = (wrapper: Wrapper) =>
   wrapper.findAll('.dev-home__stat').map((card) => card.text())
 
-/** 收入分析下沿的四个读数（待提现 / 已提现 / 今日收入 / 累计订单）。 */
+/** 合并后的资金卡只剩提现口径的两个读数（待提现 / 已提现）。 */
 const facts = (wrapper: Wrapper) =>
   wrapper.findAll('.dev-home__fact').map((fact) => fact.text())
+
+/** 数某个口径在文本里出现几次：合并后的资金卡要求同一笔钱只报一次。 */
+const occurrences = (text: string, keyword: string) => text.split(keyword).length - 1
 
 /** 造一条只关心状态的最小接单，用来验证统计卡的分档口径。 */
 function requirementWithStatus(id: number, status: string) {
@@ -149,7 +152,7 @@ function requirementWithStatus(id: number, status: string) {
 }
 
 describe('developer workbench overview', () => {
-  it('把四个接口的汇总值渲染成四格统计卡与两张资金卡', async () => {
+  it('把四个接口的汇总值渲染成四格统计卡与一张资金卡', async () => {
     const { wrapper } = await render()
     expect(mocks.wallet).toHaveBeenCalledWith('test-token')
     expect(mocks.deposit).toHaveBeenCalledWith('test-token')
@@ -168,19 +171,17 @@ describe('developer workbench overview', () => {
     expect(cards[3]).toContain('累计收入')
     expect(cards[3]).toContain('¥1200.50')
 
-    // 资金状态：金色大数走余额口径，提现按钮就贴在它右侧
+    // 资金卡：金色大数走余额口径，提现按钮就贴在它右侧
     expect(wrapper.text()).toContain('可提现余额')
     expect(wrapper.text()).toContain('¥800.25')
     const withdrawAction = wrapper.find('.dev-home__money-action')
     expect(withdrawAction.attributes('href')).toBe('/dev-wallet')
     expect(withdrawAction.text()).toContain('提现')
 
-    // 收入分析下沿四个读数：提现口径一对、收入口径一对
+    // 提现口径只剩两个读数，收入口径的读数已经挪到大数位与曲线上
     expect(facts(wrapper)).toEqual([
       '待提现¥100.00',
       '已提现¥300.00',
-      '今日收入¥200.00',
-      '累计订单3',
     ])
 
     // 「立即充值」仍是就地拉起弹窗的按钮，不做跳转
@@ -254,20 +255,34 @@ describe('developer workbench overview', () => {
     wrapper.unmount()
   })
 
-  it('资金状态给出可提现与待提现的占比，保证金单独一块', async () => {
+  it('收入、提现与保证金合并成一张资金卡，同一笔钱不再重复报数', async () => {
     const { wrapper } = await render()
-    // 可提现占比 800.25 / 900.25 ≈ 89%，剩下 11% 是待提现
-    const track = wrapper.find('.dev-home__track')
-    expect(track.attributes('aria-valuenow')).toBe('89')
-    expect(wrapper.find('.dev-home__money-legend').text()).toContain('可提现')
-    expect(wrapper.find('.dev-home__money-legend').text()).toContain('89%')
-    expect(wrapper.find('.dev-home__money-legend').text()).toContain('待提现')
-    expect(wrapper.find('.dev-home__money-legend').text()).toContain('11%')
+    // 合并前是「收入分析」+「资金状态」两张卡，现在右栏只有一张
+    const card = wrapper.find('.dev-home__aside .dev-home__panel')
+    expect(wrapper.findAll('.dev-home__aside .dev-home__panel')).toHaveLength(1)
 
-    expect(wrapper.text()).toContain('可用保证金')
-    expect(wrapper.text()).toContain('¥380.00')
-    expect(wrapper.text()).toContain('冻结 ¥120.00')
-    expect(wrapper.text()).toContain('累计充值 ¥500.00')
+    // 收入段：今日收入占大数位，环比跟在旁边，曲线单独挂在「近 7 天到账」标签下
+    const incomeHead = wrapper.find('.dev-home__income-head')
+    expect(incomeHead.text()).toContain('今日收入')
+    expect(incomeHead.text()).toContain('¥200.00')
+    expect(wrapper.find('.dev-home__group-label').text()).toContain('近 7 天到账')
+
+    // 每个口径在整张卡里只出现一次：累计收入归顶部四格统计卡，
+    // 「可提现 / 待提现」的比例条与图例说的还是这两个数，已删
+    const cardText = card.text()
+    expect(occurrences(cardText, '今日收入')).toBe(1)
+    expect(occurrences(cardText, '可提现')).toBe(1)
+    expect(occurrences(cardText, '待提现')).toBe(1)
+    expect(cardText).not.toContain('总收入')
+    expect(cardText).not.toContain('累计订单')
+    expect(wrapper.find('.dev-home__track').exists()).toBe(false)
+    expect(wrapper.find('.dev-home__money-legend').exists()).toBe(false)
+
+    // 保证金仍是同一张卡的下沿一段
+    expect(cardText).toContain('可用保证金')
+    expect(cardText).toContain('¥380.00')
+    expect(cardText).toContain('冻结 ¥120.00')
+    expect(cardText).toContain('累计充值 ¥500.00')
     wrapper.unmount()
   })
 

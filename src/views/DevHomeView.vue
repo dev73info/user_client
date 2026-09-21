@@ -6,7 +6,6 @@ import {
   Money,
   Promotion,
   Tickets,
-  TrendCharts,
   Wallet,
   WarningFilled,
 } from '@element-plus/icons-vue'
@@ -142,24 +141,6 @@ const activeDeliveryTab = ref<DeliveryTabKey>('all')
 /** 保证金不足时直接在总览页充值，不走跳转：与收益钱包页共用同一个充值弹窗 */
 const rechargeDialog = ref<InstanceType<typeof DevDepositRechargeDialog> | null>(null)
 
-const displayName = computed(() => auth.username || '开发者')
-
-/** 问候语按本机时间分档，只影响一句话，不参与任何数据口径。 */
-const greeting = computed(() => {
-  const hour = new Date().getHours()
-  if (hour < 6) {
-    return '凌晨好'
-  }
-  if (hour < 12) {
-    return '早上好'
-  }
-  if (hour < 18) {
-    return '下午好'
-  }
-
-  return '晚上好'
-})
-
 const recentIncome = computed<DevWalletIncomeItem[]>(() => overview.value?.recent_income ?? [])
 
 const resourceTitleMap = computed(
@@ -291,22 +272,10 @@ const deliveryRows = computed<DevHomeDeliveryRow[]>(() =>
     }),
 )
 
-/** 资金状态：可提现与待提现两根，比例条只表达这两者之间的占比。 */
+/** 提现口径：可提现与待提现两笔金额，各报一次就够了（原先还有一条只换算成百分比的比例条，已删）。 */
 const withdrawable = computed(() => overview.value?.withdrawable_balance_cny ?? 0)
 const pendingWithdraw = computed(() => overview.value?.pending_withdraw_cny ?? 0)
 const paidWithdraw = computed(() => overview.value?.paid_withdraw_cny ?? 0)
-
-const withdrawTotal = computed(() => withdrawable.value + pendingWithdraw.value)
-
-const withdrawablePercent = computed(() => {
-  if (withdrawTotal.value <= 0) {
-    return 0
-  }
-
-  return Math.min(100, Math.max(0, Math.round((withdrawable.value / withdrawTotal.value) * 100)))
-})
-
-const pendingWithdrawPercent = computed(() => (withdrawTotal.value > 0 ? 100 - withdrawablePercent.value : 0))
 
 /** 未缴保证金或可用余额不足时后端会关掉绑定开关，两种情况共用同一条提示。 */
 const depositInsufficient = computed(() => (deposit.value ? !deposit.value.can_bind_requirement : false))
@@ -492,33 +461,6 @@ async function loadPage() {
       或清掉 <code>VITE_DEV_HOME_MOCK</code> 后重启 dev server，即恢复真实数据。
     </p>
 
-    <section v-if="depositInsufficient" class="dev-home__alert" role="alert">
-      <span class="dev-home__alert-icon" aria-hidden="true">
-        <el-icon>
-          <WarningFilled />
-        </el-icon>
-      </span>
-      <div class="dev-home__alert-copy">
-        <strong>保证金不足，暂不可接单</strong>
-        <p>当前可用保证金 {{ money(deposit?.available_cny) }}，补齐后才能绑定资源项目。</p>
-      </div>
-      <button class="dev-home__button dev-home__button--gold dev-home__alert-action" type="button"
-        @click="rechargeDialog?.open()">
-        立即充值
-      </button>
-    </section>
-
-    <!-- 问候卡：只出现在总览页，代替了别处那条「标题 + 返回」的页头 -->
-    <section class="dev-home__hero">
-      <div class="dev-home__hero-copy">
-        <h1 class="dev-home__hero-title">{{ greeting }}，{{ displayName }}</h1>
-        <p class="dev-home__hero-desc">今天也要加油，创造更多价值！</p>
-      </div>
-      <span class="dev-home__hero-mark" aria-hidden="true">
-        <span>73</span>
-      </span>
-    </section>
-
     <!-- 四格统计卡：都是接单状态分档的读数，点进去是对应明细页 -->
     <section class="dev-home__stats" aria-label="接单与收入概览">
       <RouterLink v-for="card in statCards" :key="card.label" class="dev-home__stat" :to="card.to">
@@ -535,6 +477,23 @@ async function loadPage() {
           </el-icon>
         </span>
       </RouterLink>
+    </section>
+
+    <!-- 保证金警示条：摆在四格读数之后——先看当天读数，再看为什么还不能接单 -->
+    <section v-if="depositInsufficient" class="dev-home__alert" role="alert">
+      <span class="dev-home__alert-icon" aria-hidden="true">
+        <el-icon>
+          <WarningFilled />
+        </el-icon>
+      </span>
+      <div class="dev-home__alert-copy">
+        <strong>保证金不足，暂不可接单</strong>
+        <p>当前可用保证金 {{ money(deposit?.available_cny) }}，补齐后才能绑定资源项目。</p>
+      </div>
+      <button class="dev-home__button dev-home__button--gold dev-home__alert-action" type="button"
+        @click="rechargeDialog?.open()">
+        立即充值
+      </button>
     </section>
 
     <section class="dev-home__layout">
@@ -641,21 +600,25 @@ async function loadPage() {
       </div>
 
       <aside class="dev-home__aside">
+        <!-- 收入、提现、保证金本来分装在两张卡里：「待提现」在一张里报金额、在另一张里报占比，
+             「可提现」又被大数与比例条各说一遍。合并成一张「资金概览」，同一笔钱全页只出现一次。 -->
         <section class="dev-surface-card dev-home__panel">
           <header class="dev-home__panel-head">
-            <h2 class="dev-section-title">收入分析</h2>
-            <span class="dev-home__panel-tag">近 7 天</span>
+            <h2 class="dev-section-title">资金概览</h2>
           </header>
 
+          <!-- 「今日收入」是这一栏唯一带「今天」口径的读数，环比就跟在它旁边 -->
           <div class="dev-home__income-head">
-            <span class="dev-home__income-label">总收入</span>
-            <strong class="dev-home__income-value">{{ money(overview?.total_income_cny) }}</strong>
+            <span class="dev-home__income-label">今日收入</span>
+            <strong class="dev-home__income-value">{{ money(overview?.today_income_cny) }}</strong>
             <span v-if="changeRateText" class="dev-home__trend"
               :class="changeRate != null && changeRate < 0 ? 'dev-home__trend--down' : ''"
               :title="'今日到账较昨日的环比'">
               {{ changeRateText }} 较昨日
             </span>
           </div>
+
+          <p class="dev-home__group-label">近 7 天到账</p>
 
           <div class="dev-home__chart" :title="chartCaption">
             <span v-if="hasIncomeData" class="dev-home__chart-peak" :style="{ left: peakLabelLeft }">
@@ -688,70 +651,14 @@ async function loadPage() {
 
           <p v-if="!hasIncomeData" class="dev-home__chart-empty">近 7 天没有到账记录</p>
 
-          <!-- 四个读数两行两列：提现口径一对、收入口径一对，图标区分，避免整屏都是纯数字 -->
-          <dl class="dev-home__facts">
-            <div class="dev-home__fact">
-              <span class="dev-home__fact-icon dev-home__fact-icon--gold" aria-hidden="true">
-                <el-icon>
-                  <Clock />
-                </el-icon>
-              </span>
-              <div class="dev-home__fact-copy">
-                <dt>待提现</dt>
-                <dd>{{ money(pendingWithdraw) }}</dd>
-              </div>
-            </div>
-
-            <div class="dev-home__fact">
-              <span class="dev-home__fact-icon dev-home__fact-icon--cyan" aria-hidden="true">
-                <el-icon>
-                  <CircleCheck />
-                </el-icon>
-              </span>
-              <div class="dev-home__fact-copy">
-                <dt>已提现</dt>
-                <dd>{{ money(paidWithdraw) }}</dd>
-              </div>
-            </div>
-
-            <div class="dev-home__fact">
-              <span class="dev-home__fact-icon" aria-hidden="true">
-                <el-icon>
-                  <TrendCharts />
-                </el-icon>
-              </span>
-              <div class="dev-home__fact-copy">
-                <dt>今日收入</dt>
-                <dd>{{ money(overview?.today_income_cny) }}</dd>
-              </div>
-            </div>
-
-            <div class="dev-home__fact">
-              <span class="dev-home__fact-icon" aria-hidden="true">
-                <el-icon>
-                  <Tickets />
-                </el-icon>
-              </span>
-              <div class="dev-home__fact-copy">
-                <dt>累计订单</dt>
-                <dd>{{ overview?.total_completed_orders ?? 0 }}</dd>
-              </div>
-            </div>
-          </dl>
-        </section>
-
-        <section class="dev-surface-card dev-home__panel">
-          <header class="dev-home__panel-head">
-            <h2 class="dev-section-title">资金状态</h2>
-          </header>
-
+          <!-- 提现口径：大数只报可提现余额，另两笔金额各报一次（原先还得先读比例条再读图例） -->
           <div class="dev-home__money">
             <div class="dev-home__money-head">
               <span class="dev-home__money-figure">
                 <span class="dev-home__money-label">可提现余额</span>
                 <strong class="dev-home__money-value">{{ money(withdrawable) }}</strong>
               </span>
-              <!-- 提现按钮就贴在余额右侧：这张卡的主操作只有一个，不必再排一行页脚 -->
+              <!-- 提现按钮就贴在余额右侧：这一段的主操作只有一个，不必再排一行页脚 -->
               <RouterLink class="dev-home__button dev-home__button--primary dev-home__money-action"
                 :to="{ name: 'dev-wallet' }">
                 <el-icon>
@@ -761,29 +668,32 @@ async function loadPage() {
               </RouterLink>
             </div>
 
-            <!-- 比例条只表达「可提现 / 待提现」两根之间的占比，具体金额在下方图例里 -->
-            <div class="dev-home__track" role="progressbar" aria-label="可提现与待提现占比"
-              :aria-valuenow="withdrawablePercent" aria-valuemin="0" aria-valuemax="100">
-              <span class="dev-home__track-segment dev-home__track-segment--blue"
-                :style="{ width: `${withdrawablePercent}%` }" />
-              <span class="dev-home__track-segment dev-home__track-segment--gold"
-                :style="{ width: `${pendingWithdrawPercent}%` }" />
-            </div>
+            <!-- 两个读数并成一行：提现口径只有这两笔，收入口径的读数已经在上面（今日收入、曲线） -->
+            <dl class="dev-home__facts">
+              <div class="dev-home__fact">
+                <span class="dev-home__fact-icon dev-home__fact-icon--gold" aria-hidden="true">
+                  <el-icon>
+                    <Clock />
+                  </el-icon>
+                </span>
+                <div class="dev-home__fact-copy">
+                  <dt>待提现</dt>
+                  <dd>{{ money(pendingWithdraw) }}</dd>
+                </div>
+              </div>
 
-            <!-- 图例只报占比：两笔金额在本卡上方的大数与右栏「收入分析」里各出现一次，
-                 再抄一遍会把 140px 宽的格子撑到换行 -->
-            <ul class="dev-home__money-legend">
-              <li>
-                <i class="dev-home__dot dev-home__dot--blue" aria-hidden="true" />
-                <span>可提现</span>
-                <strong>{{ withdrawablePercent }}%</strong>
-              </li>
-              <li>
-                <i class="dev-home__dot dev-home__dot--gold" aria-hidden="true" />
-                <span>待提现</span>
-                <strong>{{ pendingWithdrawPercent }}%</strong>
-              </li>
-            </ul>
+              <div class="dev-home__fact">
+                <span class="dev-home__fact-icon dev-home__fact-icon--cyan" aria-hidden="true">
+                  <el-icon>
+                    <CircleCheck />
+                  </el-icon>
+                </span>
+                <div class="dev-home__fact-copy">
+                  <dt>已提现</dt>
+                  <dd>{{ money(paidWithdraw) }}</dd>
+                </div>
+              </div>
+            </dl>
           </div>
 
           <div class="dev-home__deposit">
@@ -813,7 +723,7 @@ async function loadPage() {
 </template>
 
 <style scoped>
-/* 本页只用开发者体系令牌（--dev-*）：问候卡 → 四格统计 → 左列表右资金卡。
+/* 本页只用开发者体系令牌（--dev-*）：四格统计 → 左列表右资金卡。
    口径与颜色沿用收益钱包那一套，见 doc/设计规范.md 第一节。 */
 
 /* 收益钱包的页面节奏是 20px，dev-page 默认 24px，这里跟钱包对齐 */
@@ -822,13 +732,11 @@ async function loadPage() {
 }
 
 /* 加载中压暗数据区，避免把「还没拿到数据」误读成真实的 0 */
-.dev-home--loading .dev-home__hero,
 .dev-home--loading .dev-home__stats,
 .dev-home--loading .dev-home__panel {
   opacity: 0.6;
 }
 
-.dev-home__hero,
 .dev-home__stats,
 .dev-home__panel {
   transition: opacity 0.2s ease;
@@ -900,59 +808,6 @@ async function loadPage() {
   color: var(--dev-muted);
   font-size: 13px;
   line-height: 1.6;
-}
-
-/* 问候卡：浅蓝渐变 + 右侧水印字标，替代了别处那条「标题 + 返回」的页头 */
-.dev-home__hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 22px 26px;
-  border: 1px solid rgba(191, 219, 254, 0.7);
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(226, 236, 255, 0.98), rgba(240, 246, 255, 0.92));
-  box-shadow: var(--dev-shadow);
-  overflow: hidden;
-}
-
-.dev-home__hero-copy {
-  min-width: 0;
-  display: grid;
-  gap: 6px;
-}
-
-.dev-home__hero-title {
-  margin: 0;
-  color: var(--dev-ink);
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-}
-
-.dev-home__hero-desc {
-  margin: 0;
-  color: var(--dev-muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-/* 水印字标：纯装饰，缺资源图时也不空一块 */
-.dev-home__hero-mark {
-  display: inline-grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 78px;
-  height: 78px;
-  border-radius: 22px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(219, 234, 254, 0.9));
-  box-shadow: 0 12px 26px rgba(31, 74, 209, 0.12);
-  color: var(--dev-blue);
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  transform: rotate(-6deg);
 }
 
 /* 四格统计卡：图标 + 口径数字 + 箭头，整卡可点 */
@@ -1078,13 +933,11 @@ async function loadPage() {
   margin-bottom: 14px;
 }
 
-.dev-home__panel-tag {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(31, 74, 209, 0.1);
-  color: var(--dev-blue);
-  font-size: 12px;
-  font-weight: 700;
+/* 卡片内的小节标签：右栏把收入 / 提现 / 保证金并成一张卡后，用它给各段起头 */
+.dev-home__group-label {
+  margin: 14px 0 0;
+  color: var(--dev-muted);
+  font-size: 13px;
 }
 
 /* 列表内的筛选标签：右侧「查看全部」占住头行末尾，所以这组标签跟着标题走 */
@@ -1363,7 +1216,7 @@ async function loadPage() {
   font-variant-numeric: tabular-nums;
 }
 
-/* 收入分析：大数 + 环比 + 折线 + 两根图例 + 底部两个读数 */
+/* 收入：今日收入大数 + 环比 + 近 7 天折线（累计收入留给页面顶部的四格统计卡） */
 .dev-home__income-head {
   display: flex;
   align-items: baseline;
@@ -1402,7 +1255,7 @@ async function loadPage() {
 
 .dev-home__chart {
   position: relative;
-  margin-top: 14px;
+  margin-top: 10px;
 }
 
 .dev-home__chart-svg {
@@ -1476,7 +1329,7 @@ async function loadPage() {
   line-height: 1.6;
 }
 
-/* 收入分析下沿的四个读数：两行两列，图标 + 标签 + 数字 */
+/* 读数格：两列一行，图标 + 标签 + 数字。合并后只剩提现口径的两个读数 */
 .dev-home__facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1537,23 +1390,14 @@ async function loadPage() {
   overflow-wrap: anywhere;
 }
 
-.dev-home__dot {
-  display: inline-block;
-  flex: 0 0 auto;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--dev-blue);
-}
-
-.dev-home__dot--gold {
-  background: var(--dev-gold);
-}
-
-/* 资金状态：可提现大数（右侧贴提现按钮）+ 比例条 + 图例，下面是保证金 */
+/* 提现：可提现大数（右侧贴提现按钮）+ 两个口径读数，再往下是保证金。
+   原先那条「可提现 / 待提现」比例条与图例只把这两个数换成百分比又说了一遍，已删。 */
 .dev-home__money {
   display: grid;
   gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--dev-line);
 }
 
 .dev-home__money-head {
@@ -1586,61 +1430,6 @@ async function loadPage() {
   letter-spacing: -0.02em;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
-}
-
-.dev-home__track {
-  display: flex;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.22);
-  overflow: hidden;
-}
-
-.dev-home__track-segment {
-  display: block;
-  height: 100%;
-  transition: width 0.3s ease;
-}
-
-.dev-home__track-segment--blue {
-  background: var(--dev-blue);
-}
-
-.dev-home__track-segment--gold {
-  background: var(--dev-gold);
-}
-
-/* 两组占比并成一行，与上方比例条的左右顺序一致 */
-.dev-home__money-legend {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 14px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.dev-home__money-legend li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  color: var(--dev-muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* 标签不折行：卡片最窄时一列只剩 140px 上下，「可提现」被拆成两行会顶高整行 */
-.dev-home__money-legend li>span {
-  white-space: nowrap;
-}
-
-/* 占比贴右，「可提现 85% / 待提现 15%」两列的小数点对齐才好扫 */
-.dev-home__money-legend strong {
-  margin-left: auto;
-  color: var(--dev-ink);
-  font-size: 12px;
-  font-weight: 800;
 }
 
 .dev-home__deposit {
@@ -1782,28 +1571,12 @@ async function loadPage() {
   /* 触屏档：统计卡与列表行都撑满一列，可点目标不小于 44px */
   .dev-home__stats,
   .dev-home__deliveries,
-  .dev-home__facts,
-  .dev-home__money-legend {
+  .dev-home__facts {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .dev-home__stat {
     min-height: 64px;
-  }
-
-  .dev-home__hero {
-    padding: 18px;
-  }
-
-  .dev-home__hero-title {
-    font-size: 19px;
-  }
-
-  .dev-home__hero-mark {
-    width: 58px;
-    height: 58px;
-    border-radius: 16px;
-    font-size: 22px;
   }
 
   .dev-home__panel {
