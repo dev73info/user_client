@@ -197,7 +197,10 @@ const isMergedHeaderPage = computed(() =>
   route.name === 'dev-resource-homepage-edit'
   || route.name === 'dev-requirement-detail'
   // 开发者工作台总览自带问候卡当页头，再叠一条「标题 + 返回」是两层标题
-  || route.name === 'dev-home',
+  || route.name === 'dev-home'
+  // 资源列表第一屏就是「资源总数」统计条，卡内标题写着「资源列表」，
+  // 外壳再报一次「资源管理/资源列表」同样是两层标题
+  || route.name === 'dev-resource-list',
 )
 const showWorkbenchHeader = computed(
   () => !isWorkbenchOverview.value && !isMessageDetailPage.value && !isMergedHeaderPage.value,

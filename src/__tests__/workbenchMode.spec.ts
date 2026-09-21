@@ -166,18 +166,22 @@ describe('workbench mode switch', () => {
     user.wrapper.unmount()
   })
 
-  it('返回按钮放在移动端顶部标题栏内，总览页不显示', async () => {
-    const dev = await render('dev-resource-list')
-    const back = dev.wrapper.find('.user-workbench__mobile-bar .user-workbench__mobile-back')
+  it('返回按钮放在移动端顶部标题栏内，自带页头的页面不显示', async () => {
+    // 没有自带页头的页面：移动端返回按钮与侧边栏同排，内容区不再重复一条标题头
+    const wallet = await render('dev-wallet')
+    const back = wallet.wrapper.find('.user-workbench__mobile-bar .user-workbench__mobile-back')
     expect(back.exists()).toBe(true)
     expect(back.text()).toContain('返回')
-    // 内容区不再重复渲染标题头（由 CSS 在移动端隐藏，此处确认返回按钮不在其中）
-    expect(dev.wrapper.find('.user-workbench__head .user-workbench__mobile-back').exists()).toBe(false)
-    dev.wrapper.unmount()
+    expect(wallet.wrapper.find('.user-workbench__head .user-workbench__mobile-back').exists()).toBe(false)
+    wallet.wrapper.unmount()
 
-    const overview = await render('workbench')
-    expect(overview.wrapper.find('.user-workbench__mobile-bar .user-workbench__mobile-back').exists()).toBe(false)
-    overview.wrapper.unmount()
+    // 自带页头的页面外壳不再叠「标题 + 返回」：总览有问候卡，资源列表有卡内「资源列表」标题
+    for (const name of ['workbench', 'dev-home', 'dev-resource-list']) {
+      const { wrapper } = await render(name)
+      expect(wrapper.find('.user-workbench__head').exists()).toBe(false)
+      expect(wrapper.find('.user-workbench__mobile-back').exists()).toBe(false)
+      wrapper.unmount()
+    }
   })
 
   it('点切换工作台在两种模式之间来回跳转', async () => {
