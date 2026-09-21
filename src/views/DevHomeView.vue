@@ -23,12 +23,10 @@ import { useAuthStore } from '@/stores/auth'
 /** 页面只用开发者体系的三个强调色，灰色留给终止态，不引入第五种颜色。 */
 type DevHomeTone = 'blue' | 'gold' | 'cyan' | 'muted'
 
-/** 汇总条上的一格：与收益钱包的 dev-meta-strip 同一份结构与读数口径。 */
+/** 汇总条上的一格：与收益钱包的 dev-meta-strip 同一份结构。 */
 type DevHomeMetaItem = {
   label: string
   value: string
-  /** 今日收入环比；后端没给值时不出这个标签 */
-  tag: { text: string; type: 'success' | 'danger' } | null
 }
 
 const auth = useAuthStore()
@@ -75,10 +73,6 @@ const deliveryRows = computed(() =>
     }),
 )
 
-const deliveryVersionCount = computed(() =>
-  requirements.value.reduce((total, item) => total + (item.bound_resource_version_count ?? 0), 0),
-)
-
 const recentIncome = computed<DevWalletIncomeItem[]>(() => overview.value?.recent_income ?? [])
 
 /** 未缴保证金或可用余额不足时后端会关掉绑定开关，两种情况共用同一条提示。 */
@@ -95,23 +89,39 @@ const depositAvailablePercent = computed(() => {
   return Math.min(100, Math.max(0, Math.round((available / total) * 100)))
 })
 
-/** 今日收入环比：涨绿跌红，后端没给值时不出这个标签。 */
-const todayRateTag = computed(() => {
-  const rate = overview.value?.today_income_change_rate
-  if (rate == null) {
-    return null
-  }
+/**
+ * 接单状态分档：进行中 = 已接单且还没结单，从「待付定金」一路到「待分账」。
+ * 已终止的两档（`rejected` / `cancelled`）不算，`completed` 归已完成。
+ */
+const ACTIVE_PROJECT_STATUSES: ReadonlyArray<RequirementItem['status']> = [
+  'pending_deposit',
+  'deposit_paid',
+  'in_development',
+  'pending_final',
+  'pending_settlement',
+]
 
-  return { text: rateText(rate), type: rate >= 0 ? ('success' as const) : ('danger' as const) }
-})
+/** 进行中项目：所有未结单的接单，是「待交付」的上位口径。 */
+const activeProjectCount = computed(
+  () => requirements.value.filter((item) => ACTIVE_PROJECT_STATUSES.includes(item.status)).length,
+)
 
-/** 汇总条的五格读数：金额在左，计数在后，最后一格补上交付版本总量。 */
+/** 待交付：已交出成果、等需求方验收付尾款（状态 `pending_final`）。 */
+const pendingDeliveryCount = computed(
+  () => requirements.value.filter((item) => item.status === 'pending_final').length,
+)
+
+/** 已完成项目：只算已结单（状态 `completed`），待分账仍在进行中那一档里。 */
+const completedProjectCount = computed(
+  () => requirements.value.filter((item) => item.status === 'completed').length,
+)
+
+/** 汇总条的四格读数：三格按接单状态分档，收入固定取后端给的累计到账金额。 */
 const metaItems = computed<DevHomeMetaItem[]>(() => [
-  { label: '今日入账', value: money(overview.value?.today_income_cny), tag: todayRateTag.value },
-  { label: '累计收入', value: money(overview.value?.total_income_cny), tag: null },
-  { label: '进行中接单', value: String(overview.value?.active_requirement_count ?? 0), tag: null },
-  { label: '已接取需求', value: String(requirements.value.length), tag: null },
-  { label: '累计交付', value: `${deliveryVersionCount.value} 个版本`, tag: null },
+  { label: '进行中项目', value: String(activeProjectCount.value) },
+  { label: '已完成项目', value: String(completedProjectCount.value) },
+  { label: '待交付', value: String(pendingDeliveryCount.value) },
+  { label: '累计收入', value: money(overview.value?.total_income_cny) },
 ])
 
 /** 需求状态 → 色调：进行中蓝、等待付款金、已完成青，终止态灰。 */
@@ -141,15 +151,6 @@ function statusTone(status: string): DevHomeTone {
 
 function statusChipClass(status: string) {
   return CHIP_TONES[statusTone(status)]
-}
-
-function rateText(value: number | null) {
-  if (value == null) {
-    return '0.0%'
-  }
-
-  const prefix = value > 0 ? '+' : ''
-  return `${prefix}${value.toFixed(1)}%`
 }
 
 /** 保证金不足时直接在总览页充值，不走跳转：与收益钱包页共用同一个充值弹窗 */
@@ -234,9 +235,6 @@ async function loadPage() {
         <div class="dev-meta-strip__item">
           <span class="dev-meta-strip__label">{{ item.label }}</span>
           <span class="dev-meta-strip__value">{{ item.value }}</span>
-          <em v-if="item.tag" class="dev-home__strip-tag" :class="`dev-home__strip-tag--${item.tag.type}`">
-            {{ item.tag.text }}
-          </em>
         </div>
         <div v-if="index < metaItems.length - 1" class="dev-meta-strip__divider" aria-hidden="true" />
       </template>
@@ -485,26 +483,6 @@ async function loadPage() {
   color: var(--dev-muted);
   font-size: 13px;
   line-height: 1.6;
-}
-
-/* 今日收入环比：只在这里出现，用体系里的青（涨）与红（跌）两支色 */
-.dev-home__strip-tag {
-  padding: 1px 6px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.dev-home__strip-tag--success {
-  background: rgba(42, 166, 164, 0.12);
-  color: #1f7a78;
-}
-
-.dev-home__strip-tag--danger {
-  background: rgba(190, 60, 60, 0.12);
-  color: #9f3030;
 }
 
 /* 左栏是两条长列表，右栏是三张资金卡；窄屏并成一栏 */

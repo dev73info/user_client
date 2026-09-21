@@ -121,9 +121,26 @@ async function render(query: Record<string, string> = {}) {
   return { wrapper, router }
 }
 
-/** 汇总条读数：五格分别是今日入账、累计收入、进行中接单、已接取需求、累计交付。 */
+/** 汇总条读数：四格分别是进行中项目、已完成项目、待交付、累计收入。 */
 const stripItems = (wrapper: Awaited<ReturnType<typeof render>>['wrapper']) =>
   wrapper.findAll('.dev-meta-strip__item').map((item) => item.text())
+
+/** 造一条只关心状态的最小接单，用来验证汇总条的分档口径。 */
+function requirementWithStatus(id: number, status: string) {
+  return {
+    id,
+    requirement_id: `REQ-${id}`,
+    bound_resource_id: null,
+    bound_resource_version_count: null,
+    created_time: '2026-09-01 09:00:00',
+    creator: 'alice',
+    title: `接单 ${id}`,
+    budget: 1000,
+    payment_mode: 'platform_guarantee',
+    status,
+    updated_at: '2026-09-12 10:00:00',
+  }
+}
 
 describe('developer workbench overview', () => {
   it('把四个接口的汇总值渲染成顶部汇总条与两张资金卡', async () => {
@@ -134,19 +151,16 @@ describe('developer workbench overview', () => {
     expect(mocks.resources).toHaveBeenCalledWith('test-token')
 
     const items = stripItems(wrapper)
-    expect(items).toHaveLength(5)
-    expect(items[0]).toContain('今日入账')
-    expect(items[0]).toContain('¥200.00')
-    // 今日收入环比由后端给值，0 也要出标签（这里 baseWallet 给的是 0）
-    expect(items[0]).toContain('0.0%')
-    expect(items[1]).toContain('累计收入')
-    expect(items[1]).toContain('¥1200.50')
-    expect(items[2]).toContain('进行中接单')
-    expect(items[2]).toContain('2')
-    expect(items[3]).toContain('已接取需求')
-    expect(items[3]).toContain('2')
-    expect(items[4]).toContain('累计交付')
-    expect(items[4]).toContain('2 个版本')
+    expect(items).toHaveLength(4)
+    expect(items[0]).toContain('进行中项目')
+    // REQ-1 开发中算进行中，REQ-2 已完成不算
+    expect(items[0]).toContain('1')
+    expect(items[1]).toContain('已完成项目')
+    expect(items[1]).toContain('1')
+    expect(items[2]).toContain('待交付')
+    expect(items[2]).toContain('0')
+    expect(items[3]).toContain('累计收入')
+    expect(items[3]).toContain('¥1200.50')
 
     // 可提现余额走资金卡：金色大数 + 待提现/累计收入两个标签
     expect(wrapper.text()).toContain('当前可提现')
@@ -159,6 +173,31 @@ describe('developer workbench overview', () => {
     expect(actions[0]?.attributes('href')).toBe('/dev-wallet')
     expect(actions[1]?.attributes('href')).toBe('/dev-wallet-releases')
     expect(actions[2]?.element.tagName).toBe('BUTTON')
+    wrapper.unmount()
+  })
+
+  it('汇总条按接单状态分档：进行中=未结单，待交付=待付尾款，已完成=已结单', async () => {
+    mocks.requirements.mockResolvedValue([
+      requirementWithStatus(1, 'pending_deposit'),
+      requirementWithStatus(2, 'deposit_paid'),
+      requirementWithStatus(3, 'in_development'),
+      requirementWithStatus(4, 'pending_final'),
+      requirementWithStatus(5, 'pending_settlement'),
+      requirementWithStatus(6, 'completed'),
+      requirementWithStatus(7, 'cancelled'),
+    ])
+    const { wrapper } = await render()
+    const items = stripItems(wrapper)
+
+    // 进行中项目 = 未结单的五档（待付定金 / 待开发 / 开发中 / 待付尾款 / 待分账）
+    expect(items[0]).toContain('进行中项目')
+    expect(items[0]).toContain('5')
+    expect(items[1]).toContain('已完成项目')
+    expect(items[1]).toContain('1')
+    expect(items[2]).toContain('待交付')
+    expect(items[2]).toContain('1')
+    expect(items[3]).toContain('累计收入')
+    expect(items[3]).toContain('¥1200.50')
     wrapper.unmount()
   })
 
@@ -281,8 +320,11 @@ describe('开发总览的演示数据开关', () => {
     expect(mocks.resources).not.toHaveBeenCalled()
 
     expect(wrapper.find('.dev-home__mock-hint').text()).toContain('演示数据')
-    expect(stripItems(wrapper)[1]).toContain('¥38600.00')
-    expect(stripItems(wrapper)[4]).toContain('10 个版本')
+    // 演示数据里的 5 条接单：2 条已完成、1 条待付尾款、3 条未结单
+    expect(stripItems(wrapper)[0]).toContain('3')
+    expect(stripItems(wrapper)[1]).toContain('2')
+    expect(stripItems(wrapper)[2]).toContain('1')
+    expect(stripItems(wrapper)[3]).toContain('¥38600.00')
 
     // 5 条已接取需求单 + 3 条绑定了资源的交付记录，两个空态都不再出现
     expect(wrapper.findAll('.dev-home__row')).toHaveLength(8)
