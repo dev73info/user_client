@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+// 顶部读数条的刷新按钮与卡片头的图标都要显式 import：
+// 模板里直接写 <Refresh /> / <Plus /> 而没 import 时，Vue 会把它们当未知元素渲染成空的
+// <refresh> / <plus>，按钮还在、图标空白，与其余菜单页的按钮不是一个样子。
+import { EditPen, Plus, Refresh } from '@element-plus/icons-vue'
 
 import {
   getTeamDetail,
@@ -51,6 +55,18 @@ const myRole = computed(() => {
   return team.value.members.find((m) => m.username === auth.username) ?? null
 })
 const canManageTeam = computed(() => isOwner.value || isAdmin.value)
+
+/* 成员角色文案与 .dev-stack-item__title / __meta 一起用：
+   角色只作为次级信息出现，配色只走 --dev-muted，不再给管理员/所有者单独上紫与橙——
+   开发者体系里只有蓝（进行中）、青（已完成）、金（金额与提示）三支强调色，
+   角色不在其中，多出来的两支色相是这一页与其余菜单页最明显的色差来源。 */
+function roleLabel(role: string): string {
+  if (role === 'owner') return '所有者'
+  if (role === 'admin') return '管理员'
+  return '成员'
+}
+
+const myRoleLabel = computed(() => (myRole.value ? roleLabel(myRole.value.role) : '—'))
 
 async function loadTeam() {
   const token = auth.token?.trim()
@@ -237,502 +253,330 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="page-shell team-detail-page">
-    <section v-if="loading" class="team-detail-page__empty">
-      <p>加载中...</p>
-    </section>
+  <div class="dev-page dev-team-detail">
+    <!-- 顶部读数条：与其余菜单页同一条形态（读数在左、刷新在右）。
+         这一页原来直接从一块裸的 hero 区块开始，没有读数横条，切菜单时整页骨架都换了。 -->
+    <div class="dev-meta-strip" v-loading="loading">
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">团队成员</span>
+        <span class="dev-meta-strip__value">{{ team?.members.length ?? 0 }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">我的角色</span>
+        <span class="dev-meta-strip__value">{{ myRoleLabel }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">所有者</span>
+        <span class="dev-meta-strip__value">{{ team?.owner_username || '—' }}</span>
+      </div>
+      <div class="dev-meta-strip__item dev-meta-strip__action">
+        <el-button class="dev-toolbar__icon-btn" aria-label="刷新团队详情" @click="loadTeam">
+          <el-icon>
+            <Refresh />
+          </el-icon>
+        </el-button>
+      </div>
+    </div>
 
-    <template v-else-if="team">
-      <section class="team-detail-hero">
-        <div class="team-detail-hero__avatar">
-          <img v-if="team.avatar_url" :src="apiUrl(team.avatar_url)" :alt="team.name" />
-          <span v-else>{{ team.name.charAt(0).toUpperCase() }}</span>
-          <input ref="avatarFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif"
-            class="team-detail-hero__avatar-input" @change="handleAvatarFileChange" />
-          <button v-if="canManageTeam" type="button" class="team-detail-hero__avatar-edit"
-            :disabled="avatarUploading" @click="triggerAvatarSelect">
-            {{ avatarUploading ? '上传中...' : '更换头像' }}
-          </button>
+    <p v-if="loading" class="dev-empty-state">团队加载中…</p>
+    <p v-else-if="!team" class="dev-empty-state">团队不存在，或你已不在该团队中</p>
+
+    <template v-else>
+      <!-- 团队资料：卡片头报名字与简介，头像与编辑表单在卡片体内 -->
+      <section class="dev-surface-card">
+        <div class="dev-card-head">
+          <div class="dev-card-head__title-block">
+            <h3 class="dev-section-title">{{ team.name }}</h3>
+            <p class="dev-section-desc">{{ team.description || '暂无团队简介' }}</p>
+            <p class="dev-team-detail__meta">
+              {{ team.members.length }} 名成员 · 所有者 {{ team.owner_username }}
+            </p>
+          </div>
+          <div class="dev-card-head__actions">
+            <button v-if="isOwner && !editingName" type="button" class="dev-btn dev-btn--ghost"
+              @click="startEdit">
+              <el-icon>
+                <EditPen />
+              </el-icon>
+              <span>编辑资料</span>
+            </button>
+            <button v-if="isOwner && !editingName" type="button" class="dev-btn dev-btn--danger"
+              @click="handleDelete">
+              解散团队
+            </button>
+            <button v-else-if="myRole && myRole.role !== 'owner' && !editingName" type="button"
+              class="dev-btn dev-btn--danger" @click="handleLeave">
+              退出团队
+            </button>
+          </div>
         </div>
-        <div class="team-detail-hero__info">
-          <template v-if="editingName">
-            <div class="team-detail-hero__edit">
-              <input v-model="editName" type="text" maxlength="64" class="team-detail-hero__edit-name"
-                @keydown.enter="saveEdit" />
-              <textarea v-model="editDesc" rows="2" maxlength="200" class="team-detail-hero__edit-desc"
-                placeholder="团队简介（可选）"></textarea>
-              <div class="team-detail-hero__edit-actions">
-                <button type="button" class="team-detail-hero__save-btn" :disabled="saving" @click="saveEdit">
-                  {{ saving ? '保存中...' : '保存' }}
-                </button>
-                <button type="button" class="team-detail-hero__cancel-btn" @click="editingName = false">
-                  取消
-                </button>
-              </div>
+
+        <div class="dev-team-detail__profile">
+          <div class="dev-team-detail__avatar">
+            <img v-if="team.avatar_url" :src="apiUrl(team.avatar_url)" :alt="team.name" />
+            <span v-else>{{ team.name.charAt(0).toUpperCase() }}</span>
+            <input ref="avatarFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif"
+              class="dev-team-detail__avatar-input" @change="handleAvatarFileChange" />
+            <button v-if="canManageTeam" type="button" class="dev-team-detail__avatar-edit"
+              :disabled="avatarUploading" @click="triggerAvatarSelect">
+              {{ avatarUploading ? '上传中...' : '更换头像' }}
+            </button>
+          </div>
+
+          <el-form v-if="editingName" label-position="top" class="dev-team-detail__form">
+            <el-form-item label="团队名称" required>
+              <el-input v-model="editName" maxlength="64" placeholder="输入团队名称" />
+            </el-form-item>
+            <el-form-item label="团队简介">
+              <el-input v-model="editDesc" type="textarea" :rows="3" maxlength="200" show-word-limit
+                placeholder="简单描述团队的目的（可选）" />
+            </el-form-item>
+            <div class="dev-team-detail__form-actions">
+              <button type="button" class="dev-btn dev-btn--primary" :disabled="saving" @click="saveEdit">
+                {{ saving ? '保存中...' : '保存' }}
+              </button>
+              <button type="button" class="dev-btn dev-btn--ghost" @click="editingName = false">
+                取消
+              </button>
             </div>
-          </template>
-          <template v-else>
-            <h1>{{ team.name }}</h1>
-            <p v-if="team.description">{{ team.description }}</p>
-            <div class="team-detail-hero__meta">
-              <span>{{ team.members.length }} 名成员</span>
-              <span>所有者 {{ team.owner_username }}</span>
-            </div>
-          </template>
-        </div>
-        <div class="team-detail-hero__actions">
-          <button v-if="isOwner && !editingName" type="button" class="team-detail-hero__action-btn" @click="startEdit">
-            编辑
-          </button>
-          <button v-if="isOwner && !editingName" type="button"
-            class="team-detail-hero__action-btn team-detail-hero__action-btn--danger" @click="handleDelete">
-            解散团队
-          </button>
-          <button v-if="myRole && myRole.role !== 'owner' && !editingName" type="button"
-            class="team-detail-hero__action-btn team-detail-hero__action-btn--danger" @click="handleLeave">
-            退出团队
-          </button>
+          </el-form>
+
+          <p v-else class="dev-team-detail__hint">
+            团队共享资源项目；成员与权限在下方列表里管理。
+          </p>
         </div>
       </section>
 
-      <section class="team-detail-members">
-        <div class="team-detail-members__head">
-          <h2>成员 ({{ team.members.length }})</h2>
-          <button v-if="isAdmin && !showInviteInput" type="button" class="team-detail-members__invite-btn"
-            @click="showInviteInput = true">
-            + 邀请成员
-          </button>
+      <!-- 成员列表：与「我的团队」的列表项同一形态（.dev-stack-list / .dev-stack-item） -->
+      <section class="dev-surface-card">
+        <div class="dev-card-head">
+          <div class="dev-card-head__title-block">
+            <h3 class="dev-section-title">成员</h3>
+            <p class="dev-section-desc">所有者与管理员可以邀请成员、调整角色或移除成员。</p>
+          </div>
+          <div class="dev-card-head__actions">
+            <button v-if="isAdmin && !showInviteInput" type="button" class="dev-btn dev-btn--primary"
+              @click="showInviteInput = true">
+              <el-icon>
+                <Plus />
+              </el-icon>
+              <span>邀请成员</span>
+            </button>
+          </div>
         </div>
 
-        <div v-if="showInviteInput" class="team-detail-members__invite-row">
-          <input v-model="inviteUsername" type="text" placeholder="输入用户名" maxlength="64"
-            @keydown.enter="handleInvite" />
-          <button type="button" :disabled="inviting" @click="handleInvite">
-            {{ inviting ? '邀请中...' : '发送邀请' }}
-          </button>
-          <button type="button" class="team-detail-members__cancel-btn" @click="showInviteInput = false">
-            取消
-          </button>
+        <div v-if="showInviteInput" class="dev-toolbar dev-team-detail__invite">
+          <el-input v-model="inviteUsername" class="dev-toolbar__search" maxlength="64"
+            placeholder="输入用户名" aria-label="要邀请的用户名" @keyup.enter="handleInvite" />
+          <div class="dev-toolbar__actions">
+            <el-button class="dev-toolbar__primary" type="primary" :loading="inviting" @click="handleInvite">
+              发送邀请
+            </el-button>
+            <el-button class="dev-toolbar__ghost" @click="showInviteInput = false">取消</el-button>
+          </div>
         </div>
 
-        <div class="team-detail-members__list">
-          <div v-for="member in team.members" :key="member.username" class="team-detail-members__item">
-            <div class="team-detail-members__item-avatar" @click="goMemberProfile(member.username)">
-              <img v-if="member.avatar_url" :src="apiUrl(member.avatar_url)" :alt="member.username" />
-              <span v-else>{{ member.username.charAt(0).toUpperCase() }}</span>
-            </div>
-            <div class="team-detail-members__item-body">
-              <strong @click="goMemberProfile(member.username)">{{ member.username }}</strong>
-              <span :class="{ admin: member.role === 'admin', owner: member.role === 'owner' }">
-                {{ member.role === 'owner' ? '所有者' : member.role === 'admin' ? '管理员' : '成员' }}
+        <ul class="dev-stack-list">
+          <li v-for="member in team.members" :key="member.username" class="dev-stack-item">
+            <div class="dev-team-detail__member-main">
+              <span class="dev-team-detail__member-avatar" role="button" tabindex="0"
+                :aria-label="`查看 ${member.username} 的主页`" @click="goMemberProfile(member.username)"
+                @keydown.enter="goMemberProfile(member.username)">
+                <img v-if="member.avatar_url" :src="apiUrl(member.avatar_url)" :alt="member.username" />
+                <span v-else>{{ member.username.charAt(0).toUpperCase() }}</span>
               </span>
+              <div class="dev-team-detail__member-body">
+                <button type="button" class="dev-team-detail__member-name"
+                  @click="goMemberProfile(member.username)">
+                  {{ member.username }}
+                </button>
+                <div class="dev-stack-item__meta">{{ roleLabel(member.role) }}</div>
+              </div>
             </div>
-            <div v-if="isOwner && member.role !== 'owner'" class="team-detail-members__item-actions">
-              <button type="button" class="owner" @click="handleTransferOwner(member)">设为所有者</button>
-              <button type="button" @click="handleRoleToggle(member)">
+
+            <div v-if="isOwner && member.role !== 'owner'" class="dev-team-detail__member-actions">
+              <button type="button" class="dev-btn dev-btn--ghost" @click="handleTransferOwner(member)">
+                设为所有者
+              </button>
+              <button type="button" class="dev-btn dev-btn--ghost" @click="handleRoleToggle(member)">
                 {{ member.role === 'admin' ? '降为成员' : '升为管理' }}
               </button>
-              <button type="button" class="danger" :disabled="removingUsername === member.username"
-                @click="handleRemove(member)">
+              <button type="button" class="dev-btn dev-btn--danger"
+                :disabled="removingUsername === member.username" @click="handleRemove(member)">
                 {{ removingUsername === member.username ? '移除中...' : '移除' }}
               </button>
             </div>
-          </div>
-        </div>
+          </li>
+        </ul>
       </section>
     </template>
-  </main>
+  </div>
 </template>
 
 <style scoped>
-.team-detail-page {
-  display: grid;
-  gap: 20px;
-  width: min(1280px, calc(100% - 24px));
-  margin: 0 auto;
+/* 本页原先自带一套视觉（16px 圆角的 #fff 卡 + #e5e7eb 描边、靛蓝渐变主按钮 #2563eb→#4f8cff、
+   #8b5cf6 管理员紫、#f59e0b 所有者橙、999px 头像圆），与开发者工作台其余菜单页不是一个体系。
+   现在全部改为统一层：容器 .dev-page、顶部读数条 .dev-meta-strip、卡片 .dev-surface-card、
+   卡片头 .dev-card-head、列表 .dev-stack-list / .dev-stack-item、按钮 .dev-btn*。
+   这里只保留本页特有的排版与头像圆。 */
+.dev-team-detail__meta {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--dev-muted);
 }
 
-.team-detail-page__empty {
-  padding: 64px 24px;
-  text-align: center;
-  color: #64748b;
-}
-
-.team-detail-hero {
+.dev-team-detail__profile {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 20px;
   flex-wrap: wrap;
-  padding: 24px;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  background: #fff;
 }
 
-.team-detail-hero__avatar {
+.dev-team-detail__avatar {
   position: relative;
-  width: 88px;
-  height: 88px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #eef2ff, #dbeafe);
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 88px;
+  height: 88px;
+  flex: 0 0 88px;
+  overflow: hidden;
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-inner);
+  background: var(--wb-accent-soft);
+  color: var(--dev-blue);
   font-size: 34px;
   font-weight: 700;
-  color: #2563eb;
-  overflow: hidden;
-  flex-shrink: 0;
 }
 
-.team-detail-hero__avatar img {
+.dev-team-detail__avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.team-detail-hero__avatar-input {
+.dev-team-detail__avatar-input {
   display: none;
 }
 
-.team-detail-hero__avatar-edit {
+/* 头像上的「更换头像」压在图片下沿，用墨色半透明底保证在任意头像上都读得清 */
+.dev-team-detail__avatar-edit {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
   padding: 4px 0;
   border: 0;
-  background: rgba(15, 23, 42, 0.55);
-  color: #fff;
+  background: color-mix(in srgb, var(--dev-ink) 62%, transparent);
+  color: var(--dev-surface-strong);
+  font: inherit;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
 }
 
-.team-detail-hero__avatar-edit:disabled {
+.dev-team-detail__avatar-edit:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
-.team-detail-hero__info {
-  flex: 1;
+.dev-team-detail__form {
+  flex: 1 1 320px;
   min-width: 0;
 }
 
-.team-detail-hero__info h1 {
-  margin: 0 0 6px;
-  font-size: 22px;
-  color: #0f172a;
-  word-break: break-all;
-}
-
-.team-detail-hero__info>p {
-  margin: 0 0 10px;
-  color: #64748b;
-  font-size: 14px;
-}
-
-.team-detail-hero__meta {
+.dev-team-detail__form-actions {
   display: flex;
-  gap: 12px;
-  font-size: 13px;
-  color: #94a3b8;
-}
-
-.team-detail-hero__actions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.team-detail-hero__action-btn {
-  padding: 8px 16px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  background: #fff;
-  color: #334155;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.team-detail-hero__action-btn:hover {
-  background: #f8fafc;
-}
-
-.team-detail-hero__action-btn--danger {
-  color: #ef4444;
-  border-color: #fecaca;
-}
-
-.team-detail-hero__action-btn--danger:hover {
-  background: #fef2f2;
-}
-
-.team-detail-hero__edit {
-  display: grid;
+  align-items: center;
   gap: 10px;
 }
 
-.team-detail-hero__edit-name {
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font: inherit;
-  font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
-  outline: none;
-}
-
-.team-detail-hero__edit-name:focus {
-  border-color: #4f8cff;
-}
-
-.team-detail-hero__edit-desc {
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font: inherit;
-  font-size: 14px;
-  color: #0f172a;
-  outline: none;
-  resize: vertical;
-}
-
-.team-detail-hero__edit-desc:focus {
-  border-color: #4f8cff;
-}
-
-.team-detail-hero__edit-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.team-detail-hero__save-btn {
-  padding: 8px 18px;
-  border: 0;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.team-detail-hero__save-btn:disabled {
-  opacity: 0.6;
-}
-
-.team-detail-hero__cancel-btn {
-  padding: 8px 18px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #fff;
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.team-detail-members {
-  padding: 24px;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  background: #fff;
-}
-
-.team-detail-members__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.team-detail-members__head h2 {
-  margin: 0;
-  font-size: 16px;
-  color: #0f172a;
-}
-
-.team-detail-members__invite-btn {
-  padding: 7px 16px;
-  border: 0;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.team-detail-members__invite-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding: 12px;
-  border-radius: 10px;
-  background: #f8fafc;
-  flex-wrap: wrap;
-}
-
-.team-detail-members__invite-row input {
-  flex: 1;
+.dev-team-detail__hint {
+  flex: 1 1 320px;
   min-width: 0;
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font: inherit;
-  font-size: 14px;
-  outline: none;
-}
-
-.team-detail-members__invite-row input:focus {
-  border-color: #4f8cff;
-}
-
-.team-detail-members__invite-row button {
-  padding: 8px 16px;
-  border: 0;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
-  color: #fff;
+  margin: 0;
+  padding-top: 6px;
   font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
+  line-height: 1.7;
+  color: var(--dev-muted);
 }
 
-.team-detail-members__invite-row button:disabled {
-  opacity: 0.6;
+/* 邀请行复用 .dev-toolbar：输入框走 .dev-toolbar__search，按钮走 __primary / __ghost，
+   与其余页面的筛选行同高同圆角；这里只把输入框基宽从 240px 放宽到 280px。 */
+.dev-team-detail__invite .dev-toolbar__search {
+  flex: 1 1 280px;
+  max-width: none;
 }
 
-.team-detail-members__cancel-btn {
-  padding: 8px 16px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #fff !important;
-  color: #64748b !important;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.team-detail-members__list {
-  display: grid;
-  gap: 8px;
-}
-
-.team-detail-members__item {
+.dev-team-detail__member-main {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid #f1f5f9;
-  background: #fafbfc;
+  min-width: 0;
 }
 
-.team-detail-members__item-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #6366f1, #818cf8);
-  color: #fff;
+.dev-team-detail__member-avatar {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
-  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   overflow: hidden;
+  border-radius: 999px;
+  background: var(--wb-accent-soft);
+  color: var(--dev-blue);
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
 }
 
-.team-detail-members__item-avatar img {
+.dev-team-detail__member-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.team-detail-members__item-body {
-  flex: 1;
+.dev-team-detail__member-body {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
 }
 
-.team-detail-members__item-body strong {
-  font-size: 14px;
-  color: #0f172a;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.dev-team-detail__member-name {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dev-ink);
   cursor: pointer;
+  text-align: left;
 }
 
-.team-detail-members__item-body strong:hover {
-  color: #2563eb;
+.dev-team-detail__member-name:hover {
+  color: var(--dev-blue);
 }
 
-.team-detail-members__item-body span {
-  font-size: 12px;
-  color: #94a3b8;
-  font-weight: 600;
-}
-
-.team-detail-members__item-body span.admin {
-  color: #8b5cf6;
-}
-
-.team-detail-members__item-body span.owner {
-  color: #f59e0b;
-}
-
-.team-detail-members__item-actions {
+.dev-team-detail__member-actions {
   display: flex;
-  gap: 6px;
-  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
-.team-detail-members__item-actions button {
-  padding: 5px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: #fff;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
+@media (max-width: 780px) {
+  .dev-team-detail__member-actions {
+    flex-wrap: wrap;
+  }
 }
 
-.team-detail-members__item-actions button:hover:not(:disabled) {
-  background: #f8fafc;
-}
-
-.team-detail-members__item-actions button.owner {
-  border-color: #fcd34d;
-  color: #b45309;
-}
-
-.team-detail-members__item-actions button.owner:hover:not(:disabled) {
-  background: #fffbeb;
-  color: #b45309;
-  border-color: #fcd34d;
-}
-
-.team-detail-members__item-actions button.danger:hover:not(:disabled) {
-  background: #fef2f2;
-  color: #dc2626;
-  border-color: #fecaca;
-}
-
-.team-detail-members__item-actions button:disabled {
-  opacity: 0.6;
+@media (max-width: 640px) {
+  .dev-team-detail__member-actions .dev-btn {
+    flex: 1 1 0;
+    min-height: 44px;
+    height: auto;
+  }
 }
 </style>

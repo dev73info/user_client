@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { Refresh, RefreshLeft, Search, UploadFilled } from '@element-plus/icons-vue'
 
 import {
   listMyInvoices,
@@ -7,6 +8,7 @@ import {
   uploadInvoiceDocument,
   type InvoiceRecord,
 } from '@/api/invoices'
+import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
@@ -17,6 +19,56 @@ const loading = ref(false)
 const invoices = ref<InvoiceRecord[]>([])
 const selectedFileByInvoice = reactive<Record<number, File | undefined>>({})
 const uploadingInvoiceId = ref<number | null>(null)
+const keyword = ref('')
+const statusFilter = ref<'all' | InvoiceRecord['status']>('all')
+
+/** 状态筛选做成胶囊组：档位少、要能一眼看出当前选中项，与我的签署、我的收藏同一套做法。 */
+const STATUS_FILTERS: Array<{ key: 'all' | InvoiceRecord['status']; label: string }> = [
+  { key: 'all', label: '全部' },
+  { key: 'requested', label: '待处理' },
+  { key: 'under_review', label: '审核中' },
+  { key: 'approved', label: '已通过' },
+  { key: 'rejected', label: '需补充材料' },
+]
+
+const stats = computed(() => ({
+  total: invoices.value.length,
+  pending: invoices.value.filter((item) => item.status === 'requested' || item.status === 'under_review').length,
+  approved: invoices.value.filter((item) => item.status === 'approved').length,
+}))
+
+function statusCount(status: 'all' | InvoiceRecord['status']) {
+  return status === 'all' ? invoices.value.length : invoices.value.filter((item) => item.status === status).length
+}
+
+const filteredInvoices = computed(() => {
+  const search = keyword.value.trim().toLocaleLowerCase()
+  return invoices.value.filter((invoice) => {
+    const matchesStatus = statusFilter.value === 'all' || invoice.status === statusFilter.value
+    const matchesSearch = !search || [invoice.invoiceNo, invoice.requirementId, invoice.invoiceTitle]
+      .some((field) => field?.toLocaleLowerCase().includes(search))
+    return matchesStatus && matchesSearch
+  })
+})
+
+const hasActiveFilters = computed(() => keyword.value.trim() !== '' || statusFilter.value !== 'all')
+
+/* 一次取回全部发票、筛选在前端做，所以是客户端分页（与其余菜单页同一套页码口径）。 */
+const {
+  page,
+  pageSize,
+  total: filteredTotal,
+  paged: pagedInvoices,
+  resetPage,
+} = useClientPagination(filteredInvoices)
+
+/* 筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空列表。 */
+watch([keyword, statusFilter], resetPage)
+
+function resetFilters() {
+  keyword.value = ''
+  statusFilter.value = 'all'
+}
 
 onMounted(() => {
   auth.hydrate()
@@ -32,8 +84,14 @@ function statusLabel(status: InvoiceRecord['status']) {
   }[status]
 }
 
-function statusClass(status: InvoiceRecord['status']) {
-  return `invoice-status--${status}`
+/** 状态徽标沿用统一层的「浅底 + 深字」，不要再各写一套饱和色。 */
+function statusBadgeClass(status: InvoiceRecord['status']) {
+  return {
+    requested: 'wb-badge--warning',
+    under_review: 'wb-badge--accent',
+    approved: 'wb-badge--success',
+    rejected: 'wb-badge--danger',
+  }[status]
 }
 
 function roleLabel(role: InvoiceRecord['invoiceRole']) {
@@ -62,17 +120,31 @@ async function loadData() {
   }
 }
 
-function selectInvoiceFile(invoiceId: number, event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (file) {
+/* 文件选择用「一个隐藏 input + 行上的 ghost 按钮」：native input 的默认外观与统一层的控件不同档，
+   每行各挂一个又要点名 ref。记下这一行是哪张发票，选完文件按 id 回填即可。 */
+const hiddenFileInput = ref<HTMLInputElement | null>(null)
+const pickingInvoiceId = ref<number | null>(null)
+
+function pickInvoiceFile(invoiceId: number) {
+  pickingInvoiceId.value = invoiceId
+  hiddenFileInput.value?.click()
+}
+
+function selectInvoiceFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const invoiceId = pickingInvoiceId.value
+  const file = input.files?.[0]
+  if (file && invoiceId !== null) {
     selectedFileByInvoice[invoiceId] = file
   }
+  // 清空 value，否则同一张发票连选两次同一个文件不会触发 change
+  input.value = ''
 }
 
 async function uploadDocument(invoice: InvoiceRecord) {
   const file = selectedFileByInvoice[invoice.id]
   if (!file) {
-    showToast('请选择发票文件', 'warning')
+    pickInvoiceFile(invoice.id)
     return
   }
   uploadingInvoiceId.value = invoice.id
@@ -86,6 +158,11 @@ async function uploadDocument(invoice: InvoiceRecord) {
   } finally {
     uploadingInvoiceId.value = null
   }
+}
+
+function uploadButtonLabel(invoice: InvoiceRecord) {
+  if (uploadingInvoiceId.value === invoice.id) return '上传中…'
+  return selectedFileByInvoice[invoice.id] ? '上传发票' : '选择文件'
 }
 
 async function openDocument(invoice: InvoiceRecord) {
@@ -110,219 +187,126 @@ async function openDocument(invoice: InvoiceRecord) {
 </script>
 
 <template>
-  <main class="invoice-center">
-    <div class="invoice-center__toolbar">
-      <p class="invoice-center__desc">
-        发票台账：开票申请在需求的操作栏发起，这里统一查看进度、上传与下载发票文件。
-      </p>
-      <button class="invoice-center__refresh" type="button" :disabled="loading" @click="loadData">
-        {{ loading ? '加载中...' : '刷新' }}
-      </button>
+  <main class="page-shell custom-page-shell profile-page invoice-center-page" :aria-busy="loading">
+    <!-- 顶部读数条：读数在左，页面级刷新固定在右上角 __action 槽 -->
+    <div class="wb-strip" aria-label="发票概览">
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">全部记录</span>
+        <span class="wb-strip__value">{{ loading ? '—' : stats.total }}</span>
+      </div>
+      <div class="wb-strip__divider" />
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">处理中</span>
+        <span class="wb-strip__value">{{ loading ? '—' : stats.pending }}</span>
+      </div>
+      <div class="wb-strip__divider" />
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">已通过</span>
+        <span class="wb-strip__value">{{ loading ? '—' : stats.approved }}</span>
+      </div>
+      <div class="wb-strip__item wb-strip__action">
+        <el-button class="wb-toolbar__icon-btn" :loading="loading" aria-label="刷新发票记录" @click="loadData">
+          <el-icon><Refresh /></el-icon>
+        </el-button>
+      </div>
     </div>
 
-    <section class="invoice-list-panel">
-      <div class="invoice-list-panel__head">
-        <div>
-          <span class="invoice-panel__kicker">TRACEABLE LEDGER</span>
-          <h2>我的发票记录</h2>
+    <section class="wallet-section">
+      <div class="wb-card-head">
+        <div class="wb-card-head__title-block">
+          <h3 class="wb-card-head__title">我的发票记录</h3>
+          <p class="wb-card-head__desc">
+            开票申请在需求的操作栏发起，这里统一查看进度、上传与下载发票文件。
+          </p>
         </div>
-        <span class="invoice-list-panel__count">{{ invoices.length }} 条</span>
       </div>
-      <div v-if="invoices.length === 0" class="invoice-empty">暂无发票记录</div>
-      <div v-else class="invoice-list">
-        <article v-for="invoice in invoices" :key="invoice.id" class="invoice-row">
-          <div class="invoice-row__main">
-            <strong>{{ invoice.invoiceNo }}</strong>
-            <span>{{ roleLabel(invoice.invoiceRole) }} · {{ invoice.requirementId }} · {{ invoice.invoiceTitle }}</span>
-            <small>金额 ¥{{ invoice.amountCny }} · {{ invoice.invoiceRole === 'developer' ? developerTypeLabel(invoice.developerType) : '客户服务费' }}</small>
-          </div>
-          <div class="invoice-row__side">
-            <span class="invoice-status" :class="statusClass(invoice.status)">{{ statusLabel(invoice.status) }}</span>
-            <button v-if="invoice.documentUrl" type="button" @click="openDocument(invoice)">查看文件</button>
-            <template v-if="invoice.invoiceRole === 'developer' && invoice.status !== 'approved'">
-              <input type="file" accept="application/pdf,image/png,image/jpeg,image/webp" @change="selectInvoiceFile(invoice.id, $event)" />
-              <button type="button" :disabled="uploadingInvoiceId === invoice.id" @click="uploadDocument(invoice)">
-                {{ uploadingInvoiceId === invoice.id ? '上传中...' : '上传发票' }}
-              </button>
-            </template>
-            <small v-if="invoice.reviewNote" class="invoice-row__note">{{ invoice.reviewNote }}</small>
-          </div>
-        </article>
+
+      <div v-if="invoices.length || hasActiveFilters" class="wb-toolbar">
+        <div class="wb-chip-group" role="group" aria-label="按状态筛选">
+          <button v-for="option in STATUS_FILTERS" :key="option.key" type="button" class="wb-chip wb-chip--button"
+            :class="{ 'is-active': statusFilter === option.key }" :aria-pressed="statusFilter === option.key"
+            @click="statusFilter = option.key">
+            {{ option.label }}<span class="wb-chip__count">{{ statusCount(option.key) }}</span>
+          </button>
+        </div>
+        <el-input v-model="keyword" class="wb-toolbar__search" clearable
+          placeholder="搜索发票号、需求编号或发票标题" aria-label="搜索发票">
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <div class="wb-toolbar__actions">
+          <span v-if="hasActiveFilters" class="wb-toolbar__hint">
+            筛选出 {{ filteredTotal }} / {{ invoices.length }} 条
+          </span>
+          <el-button v-if="hasActiveFilters" class="wb-toolbar__ghost" @click="resetFilters">
+            <el-icon><RefreshLeft /></el-icon><span>重置</span>
+          </el-button>
+        </div>
       </div>
+
+      <p v-if="loading && !invoices.length" class="wb-empty" role="status">正在加载发票记录…</p>
+      <div v-else-if="!filteredInvoices.length" class="wb-empty">
+        <span class="wb-empty__title">{{ invoices.length ? '没有符合条件的发票' : '还没有发票记录' }}</span>
+        <template v-if="invoices.length">
+          换个状态或关键字再试一次。
+          <div class="wb-empty__actions">
+            <el-button class="wb-toolbar__ghost" @click="resetFilters">
+              <el-icon><RefreshLeft /></el-icon><span>清除筛选</span>
+            </el-button>
+          </div>
+        </template>
+        <template v-else>发票申请在对应需求的操作栏里发起，提交后会在这里出现。</template>
+      </div>
+      <template v-else>
+        <input ref="hiddenFileInput" class="invoice-center__file" type="file"
+          accept="application/pdf,image/png,image/jpeg,image/webp" aria-hidden="true" tabindex="-1"
+          @change="selectInvoiceFile" />
+        <ul class="wb-list" aria-label="我的发票记录">
+          <li v-for="invoice in pagedInvoices" :key="invoice.id" class="wb-item">
+            <div class="wb-item__main">
+              <span class="wb-item__title">{{ invoice.invoiceNo }}</span>
+              <span class="wb-item__meta">
+                {{ roleLabel(invoice.invoiceRole) }} · 需求 {{ invoice.requirementId }} · {{ invoice.invoiceTitle }}
+              </span>
+              <span class="wb-item__meta">
+                金额 ¥{{ invoice.amountCny }} ·
+                {{ invoice.invoiceRole === 'developer' ? developerTypeLabel(invoice.developerType) : '客户服务费' }}
+              </span>
+              <span v-if="invoice.reviewNote" class="wb-item__meta">审核说明：{{ invoice.reviewNote }}</span>
+            </div>
+            <div class="wb-item__side">
+              <span class="wb-badge" :class="statusBadgeClass(invoice.status)">{{ statusLabel(invoice.status) }}</span>
+              <el-button v-if="invoice.documentUrl" class="wb-toolbar__ghost" @click="openDocument(invoice)">
+                <span>查看文件</span>
+              </el-button>
+              <el-button v-if="invoice.invoiceRole === 'developer' && invoice.status !== 'approved'"
+                class="wb-toolbar__ghost" :loading="uploadingInvoiceId === invoice.id"
+                :disabled="uploadingInvoiceId !== null && uploadingInvoiceId !== invoice.id"
+                @click="selectedFileByInvoice[invoice.id] ? uploadDocument(invoice) : pickInvoiceFile(invoice.id)">
+                <el-icon><UploadFilled /></el-icon><span>{{ uploadButtonLabel(invoice) }}</span>
+              </el-button>
+            </div>
+          </li>
+        </ul>
+        <div class="wb-pager">
+          <div class="wb-pager__count">
+            <span>共 {{ filteredTotal }} 条记录</span>
+            <el-select v-model="pageSize" class="wb-pager__size" aria-label="每页记录数">
+              <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+            </el-select>
+          </div>
+          <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+            :pager-count="5" layout="prev, pager, next" background aria-label="发票记录分页" />
+        </div>
+      </template>
     </section>
   </main>
 </template>
 
 <style scoped>
-.invoice-center {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 20px 20px 40px;
-  color: #172033;
-}
-
-.invoice-center__toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.invoice-center__desc {
-  margin: 0;
-  color: #667085;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.invoice-center__refresh {
-  flex-shrink: 0;
-}
-
-.invoice-center__refresh,
-.invoice-row__side button {
-  border: 0;
-  border-radius: 8px;
-  padding: 9px 14px;
-  background: #247f7d;
-  color: #fff;
-  cursor: pointer;
-}
-
-.invoice-center__refresh:disabled,
-.invoice-row__side button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.invoice-panel__kicker {
-  color: #247f7d;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-}
-
-.invoice-list-panel h2 {
-  margin: 4px 0 0;
-}
-
-/* 记录面板计数 */
-.invoice-list-panel__count {
-  color: #667085;
-  font-size: 13px;
-}
-
-.invoice-list-panel {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #fff;
-  padding: 18px;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
-}
-
-.invoice-list-panel__head,
-.invoice-row,
-.invoice-row__side {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.invoice-empty {
-  padding: 30px 0 16px;
-  text-align: center;
-  color: #667085;
-  font-size: 14px;
-}
-
-.invoice-list {
-  display: grid;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.invoice-row {
-  padding: 12px 0;
-  border-top: 1px solid #eef0f3;
-  align-items: center;
-}
-
-.invoice-row__main {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.invoice-row__main strong {
-  font-size: 14px;
-  color: #172033;
-}
-
-.invoice-row__main span,
-.invoice-row__main small,
-.invoice-row__note {
-  color: #667085;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.invoice-row__main span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.invoice-row__side {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  max-width: 420px;
-}
-
-.invoice-row__side input[type='file'] {
-  max-width: 210px;
-  font-size: 12px;
-}
-
-.invoice-status {
-  border-radius: 999px;
-  padding: 4px 9px;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.invoice-status--requested {
-  background: #fff4d6;
-  color: #9a6700;
-}
-
-.invoice-status--under_review {
-  background: #e6f4f4;
-  color: #247f7d;
-}
-
-.invoice-status--approved {
-  background: #e5f7ec;
-  color: #247a46;
-}
-
-.invoice-status--rejected {
-  background: #fdecec;
-  color: #b42318;
-}
-
-@media (max-width: 760px) {
-  .invoice-center__toolbar,
-  .invoice-list-panel__head,
-  .invoice-row {
-    display: grid;
-  }
-
-  .invoice-row__side {
-    justify-content: flex-start;
-    max-width: none;
-  }
+/* 版式全部走统一层（.wb-strip / .wb-card-head / .wb-toolbar / .wb-list / .wb-pager / .wb-empty /
+   .wb-badge），本页不再自带色板与圆角：原来这里的青色 #247f7d、青色状态底、1180px 容器宽度
+   都是这一页独有的，换成统一层后与其余菜单页一致。 */
+.invoice-center__file {
+  display: none;
 }
 </style>

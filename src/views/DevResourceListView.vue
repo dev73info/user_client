@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowDown, Plus } from '@element-plus/icons-vue'
+import { ArrowDown, Plus, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
 
 import { apiUrl } from '@/api/http'
 import {
@@ -17,6 +17,7 @@ import {
   type McResourcePayload,
 } from '@/api/mcResources'
 import { useToast } from '@/composables/useToast'
+import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { useResourceVersionDraft } from '@/composables/useResourceVersionDraft'
 import {
@@ -58,8 +59,53 @@ const emptyText = computed(() => {
     return '资源列表加载中'
   }
 
-  return '当前还没有资源记录'
+  return hasActiveFilters.value ? '没有符合筛选条件的资源' : '当前还没有资源记录'
 })
+
+// 搜索与状态筛选都在前端做：这一页的数据源本身就一次取回全部资源，
+// 与需求大厅（服务端分页查询）不同，所以没有「查询」按钮，输入即过滤。
+const filters = reactive({
+  keyword: '',
+  visibility: '',
+})
+
+const hasActiveFilters = computed(
+  () => Boolean(filters.keyword.trim()) || Boolean(filters.visibility),
+)
+
+const filteredResources = computed(() => {
+  const keyword = filters.keyword.trim().toLowerCase()
+
+  return resources.value.filter((item) => {
+    if (filters.visibility && item.visibility !== filters.visibility) {
+      return false
+    }
+
+    if (!keyword) {
+      return true
+    }
+
+    return [item.title, item.author, item.description, resourceTagSummary(item)].some((value) =>
+      (value ?? '').toLowerCase().includes(keyword),
+    )
+  })
+})
+
+function resetFilters() {
+  filters.keyword = ''
+  filters.visibility = ''
+}
+
+/* 分页与其余菜单页同构（需求大厅、收益钱包、团队资源、交付记录都带表尾分页器）。
+   本页数据源一次取回全部资源，所以这里是客户端切片，不走服务端页码。
+   筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空表。 */
+const { page, pageSize, total: filteredTotal, paged } = useClientPagination(filteredResources)
+
+function resetPage() {
+  page.value = 1
+}
+
+watch(filters, resetPage)
 
 const totalCount = computed(() => resources.value.length)
 const publishedCount = computed(
@@ -368,22 +414,66 @@ async function setResourcePrivate(resource: McResourcePayload) {
         <span class="dev-meta-strip__label">私有</span>
         <span class="dev-meta-strip__value">{{ draftCount }}</span>
       </div>
+      <div class="dev-meta-strip__item dev-meta-strip__action">
+        <el-button class="dev-toolbar__icon-btn" aria-label="刷新资源列表" @click="loadResources">
+          <el-icon>
+            <Refresh />
+          </el-icon>
+        </el-button>
+      </div>
     </div>
 
     <el-card shadow="never" class="dev-surface-card">
-      <div class="dev-upload-section__head">
-        <section>
+      <div class="dev-card-head">
+        <div class="dev-card-head__title-block">
           <h3 class="dev-section-title">资源列表</h3>
-        </section>
-        <RouterLink class="dev-resource-list__create-btn" :to="{ path: '/workbench/developer/resources/plugins-init' }">
-          <el-icon>
-            <Plus />
-          </el-icon>
-          <span>发布资源</span>
-        </RouterLink>
+          <p class="dev-section-desc">管理已创建资源、主页与版本，发布新资源从右上角进入。</p>
+        </div>
+        <div class="dev-card-head__actions">
+          <RouterLink class="dev-btn dev-btn--primary"
+            :to="{ path: '/workbench/developer/resources/plugins-init' }">
+            <el-icon>
+              <Plus />
+            </el-icon>
+            <span>发布资源</span>
+          </RouterLink>
+        </div>
       </div>
 
-      <el-table :data="resources" stripe v-loading="isLoading" class="dev-resource-table" :empty-text="emptyText">
+      <div class="dev-toolbar">
+        <el-select v-model="filters.visibility" clearable placeholder="资源状态"
+          class="dev-toolbar__field" aria-label="按资源状态筛选">
+          <el-option label="已公开" value="published" />
+          <el-option label="审核中" value="review" />
+          <el-option label="私有" value="draft" />
+        </el-select>
+
+        <el-input v-model="filters.keyword" clearable placeholder="搜索资源标题、作者或标签"
+          class="dev-toolbar__search">
+          <template #prefix>
+            <el-icon>
+              <Search />
+            </el-icon>
+          </template>
+        </el-input>
+
+        <div class="dev-toolbar__actions">
+          <span v-if="hasActiveFilters" class="dev-toolbar__hint">
+            筛选出 {{ filteredResources.length }} / {{ totalCount }} 个
+          </span>
+          <el-button class="dev-toolbar__ghost" @click="resetFilters">
+            <el-icon>
+              <RefreshLeft />
+            </el-icon>
+            <span>重置</span>
+          </el-button>
+        </div>
+      </div>
+
+      <el-table :data="paged" stripe v-loading="isLoading" class="dev-table dev-resource-table">
+        <template #empty>
+          <p class="dev-empty-state">{{ emptyText }}</p>
+        </template>
         <el-table-column label="资源" min-width="160">
           <template #default="scope">
             <div class="dev-resource-table__title-cell">
@@ -418,9 +508,9 @@ async function setResourcePrivate(resource: McResourcePayload) {
         <el-table-column label="操作" min-width="120" fixed="right">
           <template #default="scope">
             <el-dropdown trigger="click" popper-class="dev-resource-action-menu" @command="handleResourceCommand">
-              <el-button type="primary" plain class="dev-resource-table__action-button">
+              <el-button type="primary" plain class="dev-table__action dev-action--soft">
                 <span>更多</span>
-                <el-icon class="dev-resource-table__action-caret">
+                <el-icon class="dev-action-caret">
                   <ArrowDown />
                 </el-icon>
               </el-button>
@@ -450,9 +540,20 @@ async function setResourcePrivate(resource: McResourcePayload) {
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="dev-pager">
+        <div class="dev-pager__count">
+          <span>共 {{ filteredTotal }} 条</span>
+          <el-select v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
+            <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+          </el-select>
+        </div>
+        <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal" :pager-count="5"
+          layout="prev, pager, next" background aria-label="资源列表分页" />
+      </div>
     </el-card>
 
-    <el-dialog v-model="publishDialogVisible" width="520px"
+    <el-dialog v-model="publishDialogVisible" width="520px" align-center class="dev-dialog"
       :title="selectedResource ? `发布版本 · ${selectedResource.title}` : '发布版本'">
       <el-form label-position="top" class="dev-version-form">
         <el-form-item label="版本号" required>

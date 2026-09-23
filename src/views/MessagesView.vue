@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Refresh, Search } from '@element-plus/icons-vue'
+import { Refresh, RefreshLeft, Search, WarningFilled } from '@element-plus/icons-vue'
 
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import {
@@ -49,6 +49,12 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const { showToast } = useToast()
+
+// 本页被三个入口共用：用户工作台、开发者工作台、独立 /messages。
+// 开发者工作台模式下骨架与其余菜单页完全一致——顶部读数条带页面级刷新、卡片头只留标题与
+// 实时状态、搜索与筛选同处一行、列表行走 .dev-stack-item。门户模式保持原来的版式不动，
+// 两套结构各自渲染，不再用一段 .user-workbench--dev 覆盖把门户的 DOM「近似」成开发者外观。
+const isDevWorkbench = computed(() => route.matched.some((record) => Boolean(record.meta.devArea)))
 
 const loading = ref(false)
 const conversations = ref<RequirementConversation[]>([])
@@ -324,13 +330,69 @@ function emptyDescription() {
   return '当需求被开发者接取后，你可以在消息中心继续沟通需求细节。'
 }
 
+/** 工具栏右侧的「筛选出 N / M 条」只在搜索或筛选生效时出现，与其余菜单页同一口径 */
+const hasActiveThreadFilters = computed(
+  () => searchKeyword.value.trim() !== '' || activeFilter.value !== 'all',
+)
+
+/** 行内状态胶囊取统一层的配色档：待处理=金、进行中=蓝、已结清=青、已关闭=中性灰 */
+function toneChipClass(tone: ThreadTone) {
+  if (tone === 'attention') {
+    return 'dev-chip--warm'
+  }
+  if (tone === 'done') {
+    return 'dev-chip--cyan'
+  }
+  if (tone === 'closed') {
+    return 'dev-chip--muted'
+  }
+  return ''
+}
+
+/** 实时同步状态胶囊：已连接或连接中=青，重连中=金，未连接=中性灰 */
+const realtimeChipClass = computed(() => {
+  if (realtimeStatus.value === 'connected' || realtimeStatus.value === 'connecting') {
+    return 'dev-chip--cyan'
+  }
+  if (realtimeStatus.value === 'error') {
+    return 'dev-chip--warm'
+  }
+  return 'dev-chip--muted'
+})
+
+/** 用户工作台侧的行内状态徽标（.wb-badge）：与上面的 dev-chip 档位一一对应，浅底 + 深字 */
+function toneBadgeClass(tone: ThreadTone) {
+  if (tone === 'attention') {
+    return 'wb-badge wb-badge--warning'
+  }
+  if (tone === 'done') {
+    return 'wb-badge wb-badge--success'
+  }
+  if (tone === 'closed') {
+    return 'wb-badge'
+  }
+  return 'wb-badge wb-badge--accent'
+}
+
+/** 用户工作台侧的实时同步状态徽标：已连接或连接中=绿，重连中=红，未连接=中性灰 */
+const realtimeBadgeClass = computed(() => {
+  if (realtimeStatus.value === 'connected' || realtimeStatus.value === 'connecting') {
+    return 'wb-badge--success'
+  }
+  if (realtimeStatus.value === 'error') {
+    return 'wb-badge--danger'
+  }
+  return ''
+})
+
+function resetThreadFilters() {
+  searchKeyword.value = ''
+  activeFilter.value = 'all'
+}
+
 function showThread(item: MessageThread) {
   activeRequirementId.value = item.requirementId
   activeTitle.value = item.title
-}
-
-function clearSearch() {
-  searchKeyword.value = ''
 }
 
 function openThread(item: MessageThread) {
@@ -513,63 +575,202 @@ watch(
 </script>
 
 <template>
-  <main class="page-shell custom-page-shell messages-page">
-    <section v-if="!activeRequirementId" class="messages-summary" aria-label="消息概览">
-      <article class="messages-summary__item">
-        <strong>{{ activeConversations.length }}</strong>
-        <span>已开启会话</span>
-      </article>
-      <article class="messages-summary__item">
-        <strong>{{ pendingThreads.length }}</strong>
-        <span>待同步会话</span>
-      </article>
-      <article class="messages-summary__item">
-        <strong>{{ recentConversationCount }}</strong>
-        <span>近 7 天更新</span>
-      </article>
+  <main :class="isDevWorkbench ? 'dev-page' : 'page-shell custom-page-shell profile-page messages-page'">
+    <!-- 顶部读数条：两侧都是「一条读数横条」，只是各自落在自己的统一层上
+         （开发者侧 .dev-meta-strip / 用户工作台侧 .wb-strip），读数在左、页面级刷新固定在最右侧 __action 槽。
+         刷新在整个页面只留一个入口，卡片头不再重复给一颗。 -->
+    <div v-if="isDevWorkbench && !activeRequirementId" class="dev-meta-strip" aria-label="消息概览">
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">已开启会话</span>
+        <span class="dev-meta-strip__value">{{ activeConversations.length }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">待同步会话</span>
+        <span class="dev-meta-strip__value">{{ pendingThreads.length }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">近 7 天更新</span>
+        <span class="dev-meta-strip__value">{{ recentConversationCount }}</span>
+      </div>
+      <div class="dev-meta-strip__item dev-meta-strip__action">
+        <el-button class="dev-toolbar__icon-btn" aria-label="刷新消息" title="刷新消息" :loading="loading"
+          @click="loadMessages(true)">
+          <el-icon>
+            <Refresh />
+          </el-icon>
+        </el-button>
+      </div>
+    </div>
+
+    <section v-else-if="!activeRequirementId" class="wb-strip" aria-label="消息概览">
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">已开启会话</span>
+        <span class="wb-strip__value">{{ activeConversations.length }}</span>
+      </div>
+      <div class="wb-strip__divider" />
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">待同步会话</span>
+        <span class="wb-strip__value">{{ pendingThreads.length }}</span>
+      </div>
+      <div class="wb-strip__divider" />
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">近 7 天更新</span>
+        <span class="wb-strip__value">{{ recentConversationCount }}</span>
+      </div>
+      <div class="wb-strip__item wb-strip__action">
+        <el-button class="wb-toolbar__icon-btn" aria-label="刷新消息" title="刷新消息" :loading="loading"
+          @click="loadMessages(true)">
+          <el-icon>
+            <Refresh />
+          </el-icon>
+        </el-button>
+      </div>
     </section>
 
     <RequirementConversationModal v-if="activeRequirementId" display-mode="inline" :visible="true" :token="auth.token"
       :current-username="auth.username" :requirement-id="activeRequirementId" :title="activeTitle"
       @updated="applyConversationDetail" @close="closeConversation" />
 
-    <section v-else class="messages-panel">
-      <header class="messages-search-bar">
-        <form class="messages-search mobile-search-form" aria-label="搜索消息" @submit.prevent>
-          <el-icon class="mobile-search-icon">
-            <Search />
+    <!-- 开发者工作台：提示条 + 内容卡，与其余菜单页同一形态（读数条 → 提示条 → 内容卡） -->
+    <template v-else-if="isDevWorkbench">
+      <div v-for="item in pendingHistoryVotes" :key="`history-vote-${item.id}`" class="dev-notice">
+        <span class="dev-notice__icon">
+          <el-icon>
+            <WarningFilled />
           </el-icon>
-          <input v-model="searchKeyword" type="search" inputmode="search" enterkeyhint="search" autocomplete="off"
-            spellcheck="false" placeholder="搜索需求标题、编号、对方或消息..." @keydown.esc="clearSearch" />
-          <button v-if="searchKeyword.trim()" type="button" class="messages-search__clear" aria-label="清空搜索关键词"
-            title="清空搜索" @click="clearSearch">
-            ×
-          </button>
-        </form>
-      </header>
-
-      <header class="messages-panel__header">
-        <div>
-          <h2>会话列表</h2>
+        </span>
+        <div class="dev-notice__copy">
+          <strong>{{ item.requirement_title || item.requirement_id }}</strong>
+          <p>
+            {{ item.requirement_id }} · 前任开发者 {{ item.previous_developer }}；现任开发者 {{ item.current_developer }}
+            申请查看前任开发者 {{ item.previous_developer }} 负责期间的沟通记录。你和对方都同意后，这段记录才会向现任开发者公开；任何一方拒绝则维持隐藏。
+          </p>
         </div>
-        <div class="messages-panel__tools">
-          <span v-if="auth.token" class="messages-live-state" :class="`messages-live-state--${realtimeStatus}`"
-            :title="realtimeError">
-            {{ realtimeStatusLabel }}
-          </span>
-          <button class="ghost small messages-refresh" type="button" :disabled="loading" aria-label="刷新消息"
-            title="刷新消息" @click="loadMessages(true)">
-            <el-icon>
-              <Refresh />
-            </el-icon>
+        <div class="dev-notice__action">
+          <button class="dev-btn dev-btn--ghost" type="button" :disabled="historyVotingId !== null"
+            @click="respondHistoryDisclosure(item, 'rejected')">
+            拒绝
           </button>
-          <el-select v-model="activeFilter" class="messages-filter" aria-label="消息筛选">
+          <button class="dev-btn dev-btn--primary" type="button" :disabled="historyVotingId !== null"
+            @click="respondHistoryDisclosure(item, 'approved')">
+            同意公开
+          </button>
+        </div>
+      </div>
+
+      <section class="dev-surface-card">
+        <div class="dev-card-head">
+          <div class="dev-card-head__title-block">
+            <h3 class="dev-section-title">会话列表</h3>
+            <p class="dev-section-desc">按需求逐条沟通，搜索与筛选即时生效。</p>
+          </div>
+          <div class="dev-card-head__actions">
+            <span class="dev-chip" :class="realtimeChipClass" :title="realtimeError">{{ realtimeStatusLabel }}</span>
+          </div>
+        </div>
+
+        <div class="dev-toolbar">
+          <el-select v-model="activeFilter" class="dev-toolbar__field" aria-label="消息筛选">
             <el-option label="全部" value="all" />
             <el-option label="已开启" value="active" />
             <el-option label="待同步" value="pending" />
           </el-select>
+          <el-input v-model="searchKeyword" clearable class="dev-toolbar__search" placeholder="搜索需求编号、标题、对方或消息"
+            aria-label="搜索消息">
+            <template #prefix>
+              <el-icon>
+                <Search />
+              </el-icon>
+            </template>
+          </el-input>
+          <div class="dev-toolbar__actions">
+            <span v-if="hasActiveThreadFilters" class="dev-toolbar__hint">
+              筛选出 {{ filteredThreads.length }} / {{ allThreads.length }} 条
+            </span>
+            <el-button class="dev-toolbar__ghost" @click="resetThreadFilters">
+              <el-icon>
+                <RefreshLeft />
+              </el-icon>
+              <span>重置</span>
+            </el-button>
+          </div>
         </div>
-      </header>
+
+        <p v-if="loading" class="dev-empty-state">消息加载中…</p>
+
+        <div v-else-if="filteredThreads.length === 0" class="dev-empty-state">
+          <strong class="dev-messages__empty-title">{{ emptyTitle() }}</strong>
+          <p class="dev-messages__empty-desc">{{ emptyDescription() }}</p>
+          <div v-if="hasActiveThreadFilters" class="dev-list-actions dev-messages__empty-actions">
+            <button class="dev-btn dev-btn--ghost" type="button" @click="resetThreadFilters">清空筛选</button>
+          </div>
+        </div>
+
+        <ul v-else class="dev-stack-list">
+          <li v-for="item in filteredThreads" :key="item.key" class="dev-stack-item dev-messages__thread"
+            :class="{ 'dev-messages__thread--pending': item.kind === 'pending' }" role="button" tabindex="0"
+            @click="openThread(item)" @keydown.enter.prevent="openThread(item)">
+            <div class="dev-messages__thread-main">
+              <div class="dev-messages__thread-head">
+                <strong class="dev-stack-item__title dev-messages__thread-title">{{ item.title }}</strong>
+                <span class="dev-chip" :class="toneChipClass(item.tone)">{{ item.statusLabel }}</span>
+              </div>
+              <div class="dev-stack-item__meta dev-messages__thread-sub">
+                {{ item.requirementId }} · {{ item.modeLabel }}
+              </div>
+              <p class="dev-messages__thread-desc">{{ item.description }}</p>
+            </div>
+            <div class="dev-messages__thread-side">
+              <span>{{ item.partnerLabel }}</span>
+              <time>{{ item.lastLabel }}</time>
+            </div>
+            <span class="dev-btn dev-btn--primary dev-messages__thread-action">{{ item.actionLabel }}</span>
+          </li>
+        </ul>
+      </section>
+    </template>
+
+    <section v-else class="wallet-section messages-panel">
+      <div class="wb-card-head">
+        <div class="wb-card-head__title-block">
+          <h3 class="wb-card-head__title">会话列表</h3>
+          <p class="wb-card-head__desc">按需求逐条沟通，搜索与筛选即时生效。</p>
+        </div>
+        <div class="wb-card-head__actions">
+          <span v-if="auth.token" class="wb-badge" :class="realtimeBadgeClass" :title="realtimeError">
+            {{ realtimeStatusLabel }}
+          </span>
+        </div>
+      </div>
+
+      <div class="wb-toolbar">
+        <el-select v-model="activeFilter" class="wb-toolbar__field" aria-label="消息筛选">
+          <el-option label="全部" value="all" />
+          <el-option label="已开启" value="active" />
+          <el-option label="待同步" value="pending" />
+        </el-select>
+        <el-input v-model="searchKeyword" clearable class="wb-toolbar__search"
+          placeholder="搜索需求标题、编号、对方或消息" aria-label="搜索消息">
+          <template #prefix>
+            <el-icon>
+              <Search />
+            </el-icon>
+          </template>
+        </el-input>
+        <div class="wb-toolbar__actions">
+          <span v-if="hasActiveThreadFilters" class="wb-toolbar__hint">
+            筛选出 {{ filteredThreads.length }} / {{ allThreads.length }} 条
+          </span>
+          <el-button v-if="hasActiveThreadFilters" class="wb-toolbar__ghost" @click="resetThreadFilters">
+            <el-icon>
+              <RefreshLeft />
+            </el-icon>
+            <span>重置</span>
+          </el-button>
+        </div>
+      </div>
 
       <section v-if="pendingHistoryVotes.length" class="messages-disclosure-panel"
         aria-label="待我确认的历史沟通公开申请">
@@ -582,372 +783,67 @@ watch(
             </p>
           </div>
           <div class="messages-disclosure__actions">
-            <button type="button" class="ghost small" :disabled="historyVotingId !== null"
+            <el-button class="wb-toolbar__ghost" :disabled="historyVotingId !== null"
               @click="respondHistoryDisclosure(item, 'approved')">
               同意公开
-            </button>
-            <button type="button" class="ghost small" :disabled="historyVotingId !== null"
+            </el-button>
+            <el-button class="wb-toolbar__ghost" :disabled="historyVotingId !== null"
               @click="respondHistoryDisclosure(item, 'rejected')">
               拒绝
-            </button>
+            </el-button>
           </div>
         </article>
       </section>
 
-      <div v-if="loading" class="messages-state">消息加载中...</div>
-      <div v-else-if="filteredThreads.length === 0 && pendingHistoryVotes.length === 0" class="messages-empty">
-        <strong>{{ emptyTitle() }}</strong>
-        <p>{{ emptyDescription() }}</p>
-        <button v-if="searchKeyword.trim()" class="ghost small" type="button" @click="clearSearch">
-          清空搜索
-        </button>
-        <button v-if="activeFilter !== 'all'" class="ghost small" type="button" @click="activeFilter = 'all'">
-          查看全部
-        </button>
+      <p v-if="loading" class="wb-empty" role="status">消息加载中…</p>
+      <div v-else-if="filteredThreads.length === 0 && pendingHistoryVotes.length === 0" class="wb-empty">
+        <span class="wb-empty__title">{{ emptyTitle() }}</span>
+        {{ emptyDescription() }}
+        <div v-if="hasActiveThreadFilters" class="wb-empty__actions">
+          <el-button class="wb-toolbar__ghost" @click="resetThreadFilters">
+            <el-icon>
+              <RefreshLeft />
+            </el-icon>
+            <span>清除筛选</span>
+          </el-button>
+        </div>
       </div>
-      <div v-else class="messages-thread-list">
-        <button v-for="item in filteredThreads" :key="item.key" type="button" class="messages-thread"
-          :class="[`messages-thread--${item.tone}`, { 'messages-thread--pending': item.kind === 'pending' }]"
-          @click="openThread(item)">
-          <span class="messages-thread__main">
-            <span class="messages-thread__head">
-              <strong>{{ item.title }}</strong>
-              <span class="messages-thread__status">{{ item.statusLabel }}</span>
-            </span>
-            <small class="messages-thread__sub">
-              <span class="messages-thread__code">{{ item.requirementId }}</span>
-              <span class="messages-thread__mode">{{ item.modeLabel }}</span>
-            </small>
-            <span class="messages-thread__desc">{{ item.description }}</span>
-          </span>
-          <span class="messages-thread__meta">
-            <span>{{ item.partnerLabel }}</span>
-            <time>{{ item.lastLabel }}</time>
-          </span>
-          <span class="messages-thread__action">{{ item.actionLabel }}</span>
-        </button>
-      </div>
+      <ul v-else class="wb-list" aria-label="会话列表">
+        <li v-for="item in filteredThreads" :key="item.key" class="wb-item wb-item--clickable messages-thread-row"
+          role="button" tabindex="0" @click="openThread(item)" @keydown.enter.prevent="openThread(item)">
+          <div class="wb-item__main">
+            <strong class="wb-item__title">{{ item.title }}</strong>
+            <span class="wb-item__meta">{{ item.requirementId }} · {{ item.modeLabel }}</span>
+            <span class="wb-item__meta">{{ item.description }}</span>
+          </div>
+          <div class="wb-item__side">
+            <span :class="toneBadgeClass(item.tone)">{{ item.statusLabel }}</span>
+            <span class="wb-item__meta">{{ item.partnerLabel }} · {{ item.lastLabel }}</span>
+            <el-button class="wb-toolbar__primary" @click.stop="openThread(item)">
+              {{ item.actionLabel }}
+            </el-button>
+          </div>
+        </li>
+      </ul>
     </section>
 
   </main>
 </template>
 
 <style scoped>
-.messages-page {
-  display: grid;
-  align-content: start;
-  gap: 12px;
-  min-height: 0;
-}
+/* 版式全部走统一层，本页不再自带一套：
+   - 用户工作台侧用 portal-workbench.css 的 .wb-*（读数条 / 卡头 / 工具栏 / 列表 / 空态 / 徽标），
+     与「我的需求」「我的签署」「我的收藏」等页同一套结构与配色；
+   - 开发者工作台侧用 dev-base.css 的 .dev-*（读数条 → 提示条 → 内容卡 → 工具栏 → .dev-stack-list）。
+   只剩统一层里没有的两件事留在本页：待我确认的历史沟通公开申请提示条（.messages-disclosure*），
+   以及开发者侧会话行的三列排布（.dev-messages__thread*，见文件末尾）。 */
 
-.messages-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.messages-search-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.messages-search.mobile-search-form {
-  display: inline-flex;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
-  gap: 9px;
-  min-height: 38px;
-  padding: 0 10px 0 12px;
-  border-radius: 999px !important;
-  border: 1px solid rgba(203, 213, 225, 0.86);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
-  color: #64748b;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    color 160ms ease;
-}
-
-.messages-search.mobile-search-form:hover,
-.messages-search.mobile-search-form:focus-within {
-  border-color: rgba(147, 197, 253, 0.96);
-  background: #fff;
-}
-
-.messages-search .mobile-search-icon {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  font-size: 18px;
-  color: #64748b;
-  transition: color 160ms ease;
-}
-
-.messages-search.mobile-search-form:hover .mobile-search-icon,
-.messages-search.mobile-search-form:focus-within .mobile-search-icon {
-  color: #2563eb;
-}
-
-.messages-search input {
-  flex: 1;
-  min-width: 0;
-  height: 40px;
-  border: 0;
-  outline: 0;
-  appearance: none;
-  background: transparent;
-  caret-color: #2563eb;
-  color: #0f172a;
-  font: inherit;
-  font-size: 14px;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-}
-
-.messages-search input::placeholder {
-  color: #94a3b8;
-  font-weight: 500;
-}
-
-.messages-search input::-webkit-search-cancel-button,
-.messages-search input::-webkit-search-decoration {
-  appearance: none;
-  display: none;
-}
-
-.messages-search__clear {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(226, 232, 240, 0.72);
-  color: #64748b;
-  cursor: pointer;
-  font: inherit;
-  font-size: 18px;
-  line-height: 1;
-}
-
-.messages-search__clear:hover {
-  background: rgba(219, 234, 254, 0.92);
-  color: #1d4ed8;
-}
-
-.messages-search--detail {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-}
-
-.messages-back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 0;
-  background: transparent;
-  color: #2563eb;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  padding: 0;
-}
-
-.messages-back-btn__icon {
-  font-size: 20px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.messages-back-btn__text {
-  display: none;
-}
-
-.messages-detail-title {
-  overflow: hidden;
-  color: #0f172a;
-  font-size: 14px;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.messages-summary__item,
-.messages-panel {
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 8px 20px rgba(76, 103, 172, 0.06);
-}
-
-.messages-summary__item {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 14px;
-}
-
-.messages-summary__item strong {
-  flex: 0 0 auto;
-  color: #0f172a;
-  font-size: 24px;
-  line-height: 1;
-}
-
-.messages-summary__item span {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.messages-panel {
-  padding: 16px;
-  border-radius: 16px;
-}
-
-.messages-panel__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.messages-panel__header h2,
-.messages-panel__header p {
-  margin: 0;
-}
-
-.messages-panel__header h2 {
-  color: #0f172a;
-  font-size: 18px;
-}
-
-.messages-panel__header p {
-  margin-top: 4px;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.messages-panel__tools {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.messages-live-state {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid rgba(203, 213, 225, 0.9);
-  border-radius: 999px;
-  background: #ffffff;
-  color: #475569;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.messages-live-state::before {
-  content: '';
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: #94a3b8;
-}
-
-.messages-live-state--connected::before {
-  background: #16a34a;
-}
-
-.messages-live-state--connecting::before {
-  background: #2563eb;
-}
-
-.messages-live-state--error::before {
-  background: #d97706;
-}
-
-/* 图标按钮：覆盖 shell.css 里 button.ghost.small 的 padding，做成正方形 */
-.messages-page button.messages-refresh {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 35px;
-  height: 35px;
-  padding: 0;
-  font-size: 16px;
-}
-
-.messages-filter {
-  flex: 0 0 auto;
-  width: 118px;
-}
-
-.messages-filter :deep(.el-select__wrapper) {
-  min-height: 35px;
-  padding: 0 10px;
-  border: 1px solid rgba(209, 220, 243, 0.95);
-  border-radius: 10px;
-  background: #ffffff;
-  box-shadow: 0 8px 20px rgba(76, 103, 172, 0.06);
-  color: #0f172a;
-  font-weight: 700;
-}
-
-.messages-filter :deep(.el-select__wrapper:hover),
-.messages-filter :deep(.el-select__wrapper.is-focused) {
-  border-color: rgba(125, 155, 225, 0.92);
-  box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
-}
-
-.messages-state,
-.messages-empty {
-  display: grid;
-  place-items: center;
-  min-height: 148px;
-  border: 1px dashed rgba(204, 214, 237, 0.98);
-  border-radius: 14px;
-  background: rgba(248, 251, 255, 0.8);
-  color: #64748b;
-  text-align: center;
-}
-
-.messages-empty {
-  gap: 10px;
-  padding: 24px;
-}
-
-.messages-empty strong {
-  color: #0f172a;
-  font-size: 17px;
-}
-
-.messages-empty p {
-  max-width: 460px;
-  margin: 0;
-  color: #64748b;
-  line-height: 1.7;
-}
-
-.messages-thread-list {
-  display: grid;
-  gap: 8px;
-}
-
-/* 待我确认的历史沟通公开申请：会话列表上方一条待办 */
+/* 待我确认的历史沟通公开申请：会话列表上方一条待办，配色取统一层的「提醒」档。
+   这一页两侧共用同一个提示条，因此颜色取的是**两侧都定义**的令牌：
+   --dev-* 与 --wb-* 挂在 :root 上，而 --profile-* 只挂在 .profile-page 内，
+   开发者工作台那一支的根元素是 .dev-page，读不到 --profile-*，
+   原来靠 var(--profile-warning-soft, rgba(...)) 兜底——兜底值本身就是裸 rgba，
+   等于同一块提示条在两侧落成两支金色。统一改挂 --dev-gold，两侧同一支色。 */
 .messages-disclosure-panel {
   display: grid;
   gap: 8px;
@@ -961,9 +857,9 @@ watch(
   justify-content: space-between;
   gap: 10px 14px;
   padding: 12px 14px;
-  border: 1px solid rgba(222, 189, 120, 0.5);
-  border-radius: 14px;
-  background: #fffaf0;
+  border: 1px solid color-mix(in srgb, var(--dev-gold) 32%, transparent);
+  border-radius: var(--wb-radius-item);
+  background: color-mix(in srgb, var(--dev-gold) 10%, transparent);
 }
 
 .messages-disclosure__main {
@@ -973,18 +869,18 @@ watch(
 }
 
 .messages-disclosure__main strong {
-  color: #0f172a;
+  color: var(--dev-ink);
   font-size: 14px;
 }
 
 .messages-disclosure__main small {
-  color: #92400e;
+  color: var(--dev-gold);
   font-size: 12px;
 }
 
 .messages-disclosure__main p {
   margin: 0;
-  color: #64748b;
+  color: var(--dev-muted);
   font-size: 12.5px;
   line-height: 1.6;
 }
@@ -995,498 +891,119 @@ watch(
   gap: 8px;
 }
 
-/* 会话行：左边缘一条状态色条，中间三行（标题 + 状态胶囊 / 编号·模式 / 最新动静），
-   右边一列对方·时间（带竖分隔线）与主操作胶囊。整行按行块垂直居中。
-   色条与状态胶囊按状态分四档（待处理 / 进行中 / 已结单 / 已关闭），扫一眼就知道这一行落在哪一档。
-   不放头像：那 44px 只够放一枚发布者首字牌，不承载信息，去掉后省下的宽度全给标题那一列。
-   状态胶囊跟在标题后面同一行，也不自占一列——空出一列等于把省下来的宽度又吃掉。 */
-.messages-thread {
-  /* 无色调时的兜底：色条 / 胶囊底色与字色 / 常态与悬停底色 */
-  --thread-rail: rgba(224, 232, 255, 0.96);
-  --thread-status-soft: rgba(245, 158, 11, 0.14);
-  --thread-status-ink: #92400e;
-  --thread-surface: #ffffff;
-  --thread-surface-hover: linear-gradient(90deg, rgba(79, 140, 255, 0.08), rgba(255, 255, 255, 0) 54%), #f8fbff;
-  position: relative;
-  z-index: 0;
-  width: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) auto;
+@media (max-width: 640px) {
+  .messages-disclosure {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* 触屏档：两个动作平分整行，触摸目标 ≥44px */
+  .messages-disclosure__actions .el-button {
+    flex: 1;
+    min-height: 44px;
+  }
+}
+
+/* ===== 开发者工作台模式的会话行 =====
+   本页三个入口共用，开发者工作台那一支的骨架、工具栏、列表与空态直接用 dev-base.css 的 .dev-*
+   类名（读数条 → 提示条 → 内容卡 → 工具栏 → .dev-stack-list/.dev-stack-item），不再维护一份
+   「近似」统一层的覆盖。下面只留会话行特有、统一层没有的两件事：整行可点，以及行内三列排布。 */
+.dev-messages__thread {
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  border-radius: 16px;
-  background: var(--thread-surface);
-  color: inherit;
-  text-align: left;
   cursor: pointer;
-  overflow: hidden;
-  box-shadow: 0 6px 16px rgba(76, 103, 172, 0.05);
   transition:
-    border-color 180ms ease,
-    box-shadow 200ms ease,
-    transform 200ms ease;
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
-/* 左边缘 4px 状态色条：做成伪元素而不是 border，悬停加宽时才不会顶动行内布局 */
-.messages-thread::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: var(--thread-rail);
-  transition: width 180ms ease;
+.dev-messages__thread:hover,
+.dev-messages__thread:focus-visible {
+  border-color: var(--wb-accent-line);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--dev-ink) 10%, transparent);
 }
 
-/* 四档状态色：与 profile.css 的状态色同一族（待处理=琥珀、进行中=蓝、已结单=绿、已关闭=灰） */
-.messages-thread--attention {
-  --thread-rail: #efae2f;
-}
-
-.messages-thread--active {
-  --thread-rail: #5b8def;
-  --thread-status-soft: rgba(79, 140, 255, 0.14);
-  --thread-status-ink: #1d4ed8;
-}
-
-.messages-thread--done {
-  --thread-rail: #34c17a;
-  --thread-status-soft: rgba(34, 197, 94, 0.12);
-  --thread-status-ink: #166534;
-}
-
-.messages-thread--closed {
-  --thread-rail: rgba(148, 163, 184, 0.72);
-  --thread-status-soft: rgba(148, 163, 184, 0.2);
-  --thread-status-ink: #475569;
-}
-
-/* 悬停只换整圈描边与底色，色条保持自己的颜色——否则鼠标一过状态色就没了 */
-.messages-thread:hover,
-.messages-thread:focus-visible {
-  z-index: 1;
-  border-color: rgba(125, 155, 225, 0.92);
-  background: var(--thread-surface-hover);
-  box-shadow: 0 16px 30px rgba(76, 103, 172, 0.13);
-  transform: translateY(-1px);
-}
-
-.messages-thread:hover::before,
-.messages-thread:focus-visible::before {
-  width: 6px;
-}
-
-/* 键盘走到这一行时给个环，别让焦点只能靠 hover 才看得见 */
-.messages-thread:focus-visible {
-  outline: 2px solid rgba(47, 104, 255, 0.5);
+/* 整行是一个按钮（键盘也能打开会话），焦点环不能只靠 hover 才看得见 */
+.dev-messages__thread:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--wb-accent) 50%, transparent);
   outline-offset: 2px;
 }
 
-/* 会话待开启：整行铺一层暖底，把它和已有会话区分开 */
-.messages-thread--pending {
-  --thread-surface: #fffaf0;
-  --thread-surface-hover: linear-gradient(90deg, rgba(245, 158, 11, 0.12), rgba(255, 255, 255, 0) 54%), #fff6e6;
+/* 会话待开启（本地还没拿到会话记录）：整行铺一层金，与统一层「金额与需要留意的提示」同一支 */
+.dev-messages__thread--pending {
+  background: color-mix(in srgb, var(--dev-gold) 6%, transparent);
 }
 
-/* 首行：标题 + 状态胶囊。标题 flex: 0 1 auto 让位给胶囊，太长时走省略号；
-   胶囊 flex: 0 0 auto，永远不会被标题压扁或截断。 */
-.messages-thread__head {
+.dev-messages__thread-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 标题与状态胶囊同一行：标题让位给胶囊，过长走省略号（min-width: 0 是 flex 里省略号生效的前提） */
+.dev-messages__thread-head {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
 }
 
-.messages-thread__status,
-.messages-thread__action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-/* 状态胶囊：软底 + 深字，字色也用在前面那颗小圆点上，与左边缘色条呼应。
-   宽度按内容走（状态名最多四个字），不再撑满一列。 */
-.messages-thread__status {
-  flex: 0 0 auto;
-  gap: 5px;
-  padding: 5px 8px;
-  background: var(--thread-status-soft);
-  color: var(--thread-status-ink);
-  line-height: 16px;
-}
-
-.messages-thread__status::before {
-  content: '';
-  flex: 0 0 auto;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: currentColor;
-}
-
-.messages-thread__main {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.messages-thread__main strong {
-  /* 与状态胶囊同一行：标题让位给胶囊，长了走省略号（min-width: 0 是 flex 里省略号生效的前提） */
-  flex: 0 1 auto;
+.dev-messages__thread-title {
   min-width: 0;
   overflow: hidden;
-  color: #0f172a;
-  font-size: 16px;
-  line-height: 26px;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: color 180ms ease;
 }
 
-.messages-thread:hover .messages-thread__main strong,
-.messages-thread:focus-visible .messages-thread__main strong {
-  color: #1d4ed8;
-}
-
-/* 第二行：编号加等宽数字，模式做成一枚小标签。编号是拿来对的，模式是扫一眼要认出来的，
-   两者权重本来不该一样，拆开之后整行只多一枚灰标签，不会抢标题。 */
-.messages-thread__sub {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  color: #64748b;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.messages-thread__code {
-  min-width: 0;
-  overflow: hidden;
+.dev-messages__thread-sub {
   font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.messages-thread__main span.messages-thread__mode {
-  flex: 0 0 auto;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.18);
-  color: #475569;
-  font-size: 11px;
-  line-height: 16px;
-}
-
-/* 第三行只留一行：最新消息长短不一，放开换行会让整列行高参差，
-   对不齐的列表比截断一段预览更难扫 */
-.messages-thread__desc {
+/* 最新消息只留一行：长短不一会让整列行高参差，对不齐比截断更难扫 */
+.dev-messages__thread-desc {
+  margin: 6px 0 0;
   overflow: hidden;
-  color: #64748b;
-  font-size: 12px;
-  line-height: 18px;
+  color: var(--dev-muted);
+  font-size: 13px;
+  line-height: 1.6;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* 右侧元信息：一条竖分隔线把「谁 / 什么时候」和会话内容分开，与主操作胶囊一起构成行尾。
-   分隔线要按住整行高度（align-self: stretch）才像一条线，只裹住两行文字会像漂着的短杠。
-   两行文字都用默认的 stretch 填满这一列（靠 text-align 右对齐），不用 justify-items: end——
-   那是按内容宽度摆放，nowrap 的文字会溢出列宽压到标题上，省略号也不会生效。 */
-.messages-thread__meta {
+/* 行尾：对方与时间右对齐，宽度取「交付记录」__side 的同一档 */
+.dev-messages__thread-side {
   display: grid;
-  align-self: stretch;
   align-content: center;
+  flex: 0 0 auto;
   gap: 4px;
-  min-width: 0;
-  padding-left: 16px;
-  border-left: 1px solid rgba(226, 232, 240, 0.9);
-  color: #64748b;
+  min-width: 132px;
+  color: var(--dev-muted);
   font-size: 12px;
-  line-height: 18px;
+  line-height: 1.5;
   text-align: right;
-  transition: border-color 180ms ease;
 }
 
-.messages-thread:hover .messages-thread__meta,
-.messages-thread:focus-visible .messages-thread__meta {
-  border-left-color: rgba(125, 155, 225, 0.6);
-}
-
-.messages-thread__meta span,
-.messages-thread__meta time {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 时间戳比对方名更轻：对方名是「这行跟谁有关」，时间只是排序依据 */
-.messages-thread__meta time {
-  color: #94a3b8;
+.dev-messages__thread-side time {
   font-variant-numeric: tabular-nums;
 }
 
-/* 主操作留在整行的垂直中线上：左中两列是一整块内容，操作胶囊跟着行首会显得被顶在上边。
-   整行都可点，这枚胶囊是行里唯一的「按钮」，鼠标进来时填实成主色并推出箭头，指向更明确。 */
-.messages-thread__action {
-  gap: 4px;
-  padding: 8px 13px;
-  background: rgba(219, 234, 254, 0.9);
-  color: #1d4ed8;
-  transition:
-    background-color 160ms ease,
-    color 160ms ease,
-    box-shadow 160ms ease;
+/* 行内主操作：高度与圆角由 .dev-stack-item .dev-btn 的 32px 档给，这里只留与行尾的间距 */
+.dev-messages__thread-action {
+  flex: 0 0 auto;
+  margin-left: 4px;
 }
 
-/* 箭头只在行尾做一个指向动作，悬停时往右推 2px */
-.messages-thread__action::after {
-  content: '›';
+.dev-messages__empty-title {
+  display: block;
+  color: var(--dev-ink);
   font-size: 15px;
-  line-height: 1;
-  transition: transform 180ms ease;
 }
 
-.messages-thread:hover .messages-thread__action,
-.messages-thread:focus-visible .messages-thread__action {
-  /* 用纯色而不是渐变：background-color 能过渡，渐变只会硬切 */
-  background: #3f7cff;
-  color: #ffffff;
-  box-shadow: 0 6px 14px rgba(47, 104, 255, 0.28);
+.dev-messages__empty-desc {
+  margin: 6px 0 0;
+  color: var(--dev-muted);
 }
 
-.messages-thread:hover .messages-thread__action::after,
-.messages-thread:focus-visible .messages-thread__action::after {
-  transform: translateX(2px);
-}
-
-.messages-page button.ghost.small {
-  border-color: rgba(209, 220, 243, 0.95);
-  background: #ffffff;
-  color: #0f172a;
-  box-shadow: 0 8px 20px rgba(76, 103, 172, 0.06);
-}
-
-.messages-page button.ghost:hover:not(:disabled) {
-  background: #f8fbff;
-  border-color: rgba(125, 155, 225, 0.92);
-  box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
-}
-
-@media (max-width: 900px) {
-  .messages-page {
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    gap: 10px;
-  }
-
-  .messages-search-bar {
-    position: sticky !important;
-    top: 8px !important;
-    z-index: 12 !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 10px !important;
-    width: calc(100% - 16px) !important;
-    margin: 8px 8px 12px !important;
-    height: auto !important;
-    min-height: 66px !important;
-    padding: 12px !important;
-    border: 1px solid rgba(224, 232, 255, 0.96) !important;
-    border-radius: 16px !important;
-    background: rgba(255, 255, 255, 0.94) !important;
-    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08) !important;
-  }
-
-  .messages-search {
-    height: auto !important;
-    min-height: 38px !important;
-  }
-
-  .messages-summary {
-    display: none;
-  }
-
-  .messages-panel {
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .messages-panel__header {
-    display: none;
-  }
-
-  .messages-state,
-  .messages-empty {
-    min-height: calc(100vh - 140px);
-    border-radius: 18px;
-  }
-
-  .messages-disclosure-panel {
-    width: calc(100% - 16px);
-    margin: 0 8px 10px;
-  }
-
-  .messages-disclosure {
-    flex-direction: column;
-    align-items: stretch;
-    border-radius: 16px;
-  }
-
-  /* 移动端触摸目标 ≥44px */
-  .messages-disclosure__actions button {
-    flex: 1;
-    min-height: 44px;
-  }
-
-  .messages-thread-list {
-    gap: 0;
-    overflow: hidden;
-    border: 1px solid rgba(224, 232, 255, 0.88);
-    border-radius: 18px;
-    background: #ffffff;
-    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
-  }
-
-  /* 整列连成一体，卡片拆成列表项，只留分隔线；左侧状态色条保留，状态色到小屏也别丢 */
-  .messages-thread {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: 'main meta';
-    align-items: start;
-    gap: 2px 10px;
-    min-height: 74px;
-    padding: 12px 12px 12px 10px;
-    border: 0;
-    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-    border-radius: 0;
-    box-shadow: none;
-  }
-
-  .messages-thread:last-child {
-    border-bottom: 0;
-  }
-
-  /* 小屏不抬起也不加阴影：整列已经是一个整体，抬起一行会把它从列表里摘出去 */
-  .messages-thread:hover,
-  .messages-thread:focus-visible {
-    transform: none;
-    box-shadow: none;
-  }
-
-  .messages-thread__main {
-    grid-area: main;
-    gap: 4px;
-  }
-
-  /* 胶囊与标题同一行；小屏标题本来就长，挤不下时让胶囊落到第二行，
-     而不是把标题压成一两个词（换行发生在收缩之前，所以标题先拿满整行宽度） */
-  .messages-thread__head {
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .messages-thread__main strong {
-    font-size: 15px;
-    line-height: 20px;
-  }
-
-  /* 小屏只留标题 + 最新动静：编号与模式挤进来会把标题压成一两个词 */
-  .messages-thread__sub {
-    display: none;
-  }
-
-  .messages-thread__desc {
-    font-size: 13px;
-    line-height: 18px;
-  }
-
-  .messages-thread__meta {
-    grid-area: meta;
-    align-self: start;
-    /* 时间那格最长是「12/31 23:59 · 平台」这种串，仍会压到标题列，小屏给它封顶，
-       长了就走省略号。这里写死 px 而不是百分比：百分比 max-width
-       与 auto 列的宽度互相依赖，会让列宽算错。 */
-    min-width: 0;
-    max-width: 96px;
-    padding-left: 0;
-    border-left: 0;
-  }
-
-  .messages-thread__meta span {
-    display: none;
-  }
-
-  .messages-thread__meta time {
-    font-size: 12px;
-    line-height: 1.2;
-  }
-
-  /* 胶囊跟在标题后面（.messages-thread__head 里的第二个孩子），窄屏字号与内线都收一点，
-     状态色与桌面端同一套变量 */
-  .messages-thread__status {
-    padding: 2px 8px;
-    font-size: 10px;
-    line-height: 1.4;
-  }
-
-  .messages-thread__action {
-    display: none;
-  }
-}
-
-/* 桌面端：搜索框与「会话列表」标题同排——标题 | 搜索 | 工具条。
-   宽度不够时工具条换到下一行，保证搜索框仍有可用宽度。
-   放在样式表末尾，避免被上方的基础规则（.messages-panel__header 的 display: flex）覆盖 */
-@media (min-width: 901px) {
-  .messages-panel {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    column-gap: 12px;
-    row-gap: 12px;
-  }
-
-  /* 拆掉 header 自身的盒子，让标题与工具条直接参与上面的弹性布局 */
-  .messages-panel__header {
-    display: contents;
-  }
-
-  .messages-panel__header > div:first-child {
-    order: 1;
-  }
-
-  .messages-search-bar {
-    order: 2;
-    flex: 1 1 260px;
-    max-width: 480px;
-    margin-bottom: 0;
-  }
-
-  .messages-panel__tools {
-    order: 3;
-    margin-left: auto;
-  }
-
-  .messages-state,
-  .messages-empty,
-  .messages-thread-list {
-    order: 4;
-    flex: 0 0 100%;
-  }
-
-  /* 待我确认的申请排在会话列表之上（同一 order，靠 DOM 顺序） */
-  .messages-disclosure-panel {
-    order: 4;
-    flex: 0 0 100%;
-  }
+.dev-messages__empty-actions {
+  justify-content: center;
+  margin-top: 14px;
 }
 </style>

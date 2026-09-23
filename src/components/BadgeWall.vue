@@ -24,6 +24,12 @@ const props = withDefaults(
 
 const auth = useAuthStore()
 const { showToast } = useToast()
+
+/* 读数条上的「已获得 / 已佩戴徽章」由本组件上报，页面那边不重复打接口（与 InvitePanel 的 stats 同理）。
+   刷新走页面读数条上的按钮，这里不自带刷新按钮。 */
+const emit = defineEmits<{
+    (event: 'stats', acquired: number, total: number, equipped: number): void
+}>()
 const allBadges = ref<BadgeDefinition[]>([])
 const earnedBadges = ref<UserBadge[]>([])
 const loading = ref(false)
@@ -108,8 +114,13 @@ async function loadBadges() {
         showToast(error instanceof Error ? error.message : '加载徽章失败', 'error')
     } finally {
         loading.value = false
+        // 放在 finally：接口失败也要把读数条上的占位符收掉，否则页面永远停在「—」
+        emit('stats', acquiredCount.value, allBadges.value.length, equippedCount.value)
     }
 }
+
+/* 页面顶部的读数条由 InviteView 渲染，刷新按钮挂在它上面，这里把重载方法暴露出去。 */
+defineExpose({ reload: loadBadges })
 
 watch(
     () => [props.username, auth.token],
@@ -126,13 +137,16 @@ onMounted(() => {
 
 <template>
     <section class="badge-wall" aria-label="徽章墙">
-        <header class="badge-wall__head">
-            <div>
-                <h2>{{ username ? `${username} 的徽章` : '我的徽章墙' }}</h2>
-                <p>{{ acquiredCount }} / {{ allBadges.length }}</p>
-                <p v-if="isOwn">已佩戴 {{ equippedCount }} 个徽章</p>
+        <header class="wb-card-head">
+            <div class="wb-card-head__title-block">
+                <h3 class="wb-card-head__title">{{ username ? `${username} 的徽章` : '我的徽章墙' }}</h3>
+                <p class="wb-card-head__desc">
+                    已获得 {{ acquiredCount }} / {{ allBadges.length }} 个徽章<template v-if="isOwn">，已佩戴 {{ equippedCount }} 个</template>
+                </p>
             </div>
-            <span v-if="loading" class="badge-wall__loading">同步中</span>
+            <div v-if="loading" class="wb-card-head__actions">
+                <span class="wb-badge">同步中</span>
+            </div>
         </header>
 
         <div class="badge-wall__groups">
@@ -171,78 +185,54 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* 版式走工作台统一层（.wb-card-head / .wb-badge，尺寸与强调色取 --wb-* 令牌），
+   本组件只保留徽章格子的排布。原来这里自带一套 10px 字、6px/4px 圆角与 #2563eb / #94a3b8 的色板，
+   卡头 24px 标题、徽章格 6px 圆角，与相邻卡片的 18px 标题、12px 圆角不是同一档，
+   同一页里两块内容像是拼起来的。 */
 .badge-wall {
     display: grid;
-    gap: 8px;
+    gap: 14px;
 }
 
-.badge-wall__head {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    align-items: center;
-}
-
-.badge-wall__head h2,
 .badge-wall__group h3 {
     margin: 0;
-    color: #0f172a;
-}
-
-.badge-wall__head h2 {
-    font-size: 24px;
-    line-height: 1.25;
-}
-
-.badge-wall__head p {
-    margin: 3px 0 0;
-    color: #64748b;
-    font-size: 10px;
-    font-weight: 800;
-}
-
-.badge-wall__loading {
-    color: #2563eb;
-    font-size: 10px;
-    font-weight: 800;
+    color: var(--profile-text-sub, #64748b);
+    font-size: 12px;
+    font-weight: 700;
 }
 
 .badge-wall__groups,
 .badge-wall__group {
     display: grid;
-    gap: 6px;
-}
-
-.badge-wall__group h3 {
-    font-size: 12px;
+    gap: 8px;
 }
 
 .badge-wall__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, 72px);
-    gap: 6px;
+    grid-template-columns: repeat(auto-fill, 88px);
+    gap: 10px;
     justify-content: start;
 }
 
 .badge-wall__badge {
     display: grid;
-    gap: 3px;
-    padding: 8px;
-    border: 1px solid rgba(226, 232, 240, 0.96);
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.88);
-    color: #94a3b8;
+    gap: 4px;
+    padding: 10px;
+    border: 1px solid var(--wb-line);
+    border-radius: var(--wb-radius-item);
+    background: var(--profile-card-bg-strong, #ffffff);
+    color: var(--profile-text-soft, #8a94a6);
     filter: grayscale(1);
     min-width: 0;
     min-height: 0;
-    width: 72px;
+    width: 88px;
     overflow: hidden;
 }
 
 .badge-wall__badge.acquired {
-    border-color: rgba(96, 165, 250, 0.52);
-    background: linear-gradient(180deg, rgba(239, 246, 255, 0.98), rgba(255, 255, 255, 0.96));
-    color: #0f172a;
+    border-color: var(--wb-accent-line);
+    background: linear-gradient(180deg, var(--wb-accent-soft), rgba(255, 255, 255, 0.96));
+    color: var(--profile-text-main, #0f172a);
     filter: none;
 }
 
@@ -251,40 +241,40 @@ onMounted(() => {
 }
 
 .badge-wall__badge.interactable:hover {
-    border-color: rgba(59, 130, 246, 0.7);
+    border-color: var(--wb-accent);
 }
 
 .badge-wall__badge.equipped {
-    border-color: rgba(37, 99, 235, 0.8);
-    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25) inset;
+    border-color: var(--wb-accent);
+    box-shadow: 0 0 0 1px var(--wb-accent-soft) inset;
 }
 
 .badge-wall__equip-state {
     margin-top: 2px;
-    padding: 2px 4px;
-    border-radius: 4px;
-    background: rgba(226, 232, 240, 0.9);
-    color: #475569;
-    font-size: 9px;
-    font-weight: 800;
-    line-height: 1.2;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--profile-text-sub, #64748b);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.35;
     text-align: center;
 }
 
 .badge-wall__equip-state.is-on {
-    background: rgba(37, 99, 235, 0.14);
-    color: #1d4ed8;
+    background: var(--wb-accent-soft);
+    color: var(--wb-accent);
 }
 
 .badge-wall__hint {
-    margin: 8px 0 0;
-    color: #64748b;
-    font-size: 10px;
+    margin: 0;
+    color: var(--profile-text-sub, #64748b);
+    font-size: 12px;
     line-height: 1.5;
 }
 
 .badge-wall__icon {
-    font-size: 14px;
+    font-size: 16px;
 }
 
 .badge-wall__icon-img {
@@ -294,7 +284,7 @@ onMounted(() => {
 }
 
 .badge-wall__badge strong {
-    font-size: 10px;
+    font-size: 12px;
 }
 
 .badge-wall__badge p {
@@ -308,18 +298,22 @@ onMounted(() => {
 .badge-wall__badge p,
 .badge-wall__badge small {
     margin: 0;
-    font-size: 10px;
+    font-size: 11px;
     line-height: 1.4;
 }
 
 .badge-wall__badge small {
-    color: #64748b;
-    font-weight: 800;
+    color: var(--profile-text-sub, #64748b);
+    font-weight: 700;
 }
 
 @media (max-width: 640px) {
     .badge-wall__grid {
-        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+    }
+
+    .badge-wall__badge {
+        width: auto;
     }
 }
 </style>

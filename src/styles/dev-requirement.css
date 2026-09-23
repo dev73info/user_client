@@ -1,90 +1,7 @@
-.dev-requirement-hall__filters {
-  display: grid;
-  grid-template-columns: minmax(120px, 150px) minmax(92px, 116px) minmax(220px, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.dev-requirement-hall__field,
-.dev-requirement-hall__search {
-  width: 100%;
-}
-
-.dev-requirement-hall__field--small {
-  max-width: 120px;
-}
-
-.dev-requirement-hall__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.dev-requirement-hall__filter-button.el-button {
-  min-width: 76px;
-  min-height: 38px;
-  height: 38px;
-  padding: 0 12px;
-  border-radius: 10px;
-  font-weight: 800;
-  line-height: 1;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
-}
-
-.dev-requirement-hall__filter-button.el-button > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.dev-requirement-hall__filter-button.el-button .el-icon {
-  font-size: 16px;
-}
-
-.dev-requirement-hall__filter-button--ghost.el-button {
-  border-color: rgba(148, 163, 184, 0.3);
-  background: rgba(255, 255, 255, 0.88);
-  color: #475569;
-  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.04);
-}
-
-.dev-requirement-hall__filter-button--ghost.el-button:hover,
-.dev-requirement-hall__filter-button--ghost.el-button:focus-visible {
-  border-color: rgba(42, 166, 164, 0.28);
-  background: rgba(42, 166, 164, 0.08);
-  color: #247f7d;
-  box-shadow: 0 10px 20px rgba(42, 166, 164, 0.08);
-}
-
-.dev-requirement-hall__filter-button--primary.el-button {
-  border-color: #247f7d;
-  background: #247f7d;
-  color: #fff;
-  box-shadow: 0 10px 22px rgba(42, 166, 164, 0.16);
-}
-
-.dev-requirement-hall__filter-button--primary.el-button:hover,
-.dev-requirement-hall__filter-button--primary.el-button:focus-visible {
-  border-color: #1f6f6d;
-  background: #1f6f6d;
-  color: #fff;
-  box-shadow: 0 12px 24px rgba(42, 166, 164, 0.2);
-}
-
-.dev-requirement-hall__filter-button.el-button:hover:not(.is-disabled),
-.dev-requirement-hall__filter-button.el-button:focus-visible:not(.is-disabled) {
-  transform: translateY(-1px);
-}
-
-.dev-requirement-hall__filter-button.el-button.is-loading {
-  transform: none;
-}
+/* 需求大厅的搜索/筛选/刷新工具栏曾在这里单独实现一套（.dev-requirement-hall__filters /
+   __field / __search / __actions / __filter-button），与资源、交付记录等页各写一份，
+   规格还互不相同（这里是 38px 高 + 青绿悬停，别处是 36px + 主色悬停）。
+   模板已改用 dev-base.css 里的 .dev-toolbar，这段随之删除。 */
 
 .dev-requirement-hall__title-cell {
   display: grid;
@@ -99,32 +16,22 @@
   color: var(--dev-blue);
 }
 
+/* 需求表格单元格的主/次文字与其余菜单页表格同档：14px 加粗 + 12px 弱字，
+   与 dev-base.css 的 .dev-table__strong / .dev-table__sub 一致（原来是 15 / 13）。 */
 .dev-requirement-hall__title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--dev-ink);
 }
 
 .dev-requirement-hall__desc {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--dev-muted);
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
-.dev-requirement-hall__footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin-top: 12px;
-}
-
-.dev-requirement-hall__bind-button {
-  min-width: 92px;
-  border-radius: 999px;
-  font-weight: 700;
-}
-
+/* 行内操作按钮的规格统一在 dev-base.css 的 .dev-table__action（原来这里是胶囊 999px，
+   与资源列表的 10px 方角按钮不是一套）。 */
 .dev-requirement-hall__dialog-copy {
   margin-bottom: 12px;
 }
@@ -178,8 +85,8 @@
   padding: 16px;
   margin-bottom: 14px;
   border-radius: 18px;
-  border: 1px solid rgba(245, 158, 11, 0.26);
-  background: linear-gradient(180deg, rgba(255, 251, 235, 0.96), rgba(254, 243, 199, 0.82));
+  border: 1px solid rgba(185, 129, 43, 0.26);
+  background: linear-gradient(180deg, rgba(255, 251, 235, 0.96), rgba(248, 242, 234, 0.86));
 }
 
 .dev-requirement-hall__confirm-head {
@@ -190,20 +97,23 @@
   flex-wrap: wrap;
 }
 
+/* 二次确认的警示文字取体系里的金（--dev-gold，「金额与需要留意的提示」那一支），
+   原来是 Tailwind 的琥珀三兄弟 var(--dev-gold) / var(--dev-gold) / var(--dev-gold)，与 .dev-notice、.dev-chip--warm
+   的金不是同一个值，同一页会出现两种警示黄。 */
 .dev-requirement-hall__confirm-title {
   font-size: 14px;
   font-weight: 800;
-  color: #9a3412;
+  color: var(--dev-gold);
 }
 
 .dev-requirement-hall__confirm-meta {
   font-size: 12px;
-  color: #c2410c;
+  color: var(--dev-gold);
 }
 
 .dev-requirement-hall__confirm-text {
   margin: 0;
-  color: #7c2d12;
+  color: var(--dev-ink);
   line-height: 1.7;
 }
 
@@ -224,7 +134,7 @@
 
 .dev-requirement-hall__mode-button {
   appearance: none;
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  border: 1px solid var(--dev-line);
   background: rgba(255, 255, 255, 0.82);
   color: var(--dev-ink);
   border-radius: 16px;
@@ -261,7 +171,7 @@
   padding: 14px 16px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.58);
-  border: 1px solid rgba(17, 24, 39, 0.06);
+  border: 1px solid var(--dev-line);
 }
 
 .dev-requirement-hall__catalog-block {
@@ -286,7 +196,7 @@
   appearance: none;
   border: 1px solid rgba(31, 74, 209, 0.12);
   background: rgba(255, 255, 255, 0.9);
-  color: rgba(17, 24, 39, 0.78);
+  color: var(--dev-ink-soft);
   border-radius: 999px;
   padding: 8px 14px;
   font: inherit;
@@ -319,7 +229,7 @@
   row-gap: 6px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(17, 24, 39, 0.06);
+  border: 1px solid var(--dev-line);
   background: rgba(255, 255, 255, 0.6);
 }
 
@@ -345,7 +255,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.3;
   color: var(--dev-muted);
 }
@@ -357,10 +267,10 @@
   min-width: 34px;
   padding: 3px 7px;
   border-radius: 999px;
-  background: rgba(17, 24, 39, 0.05);
-  font-size: 10px;
+  background: rgba(148, 163, 184, 0.16);
+  font-size: 11px;
   font-weight: 700;
-  color: rgba(17, 24, 39, 0.62);
+  color: var(--dev-muted);
 }
 
 .dev-requirement-hall__tag-group-selected {

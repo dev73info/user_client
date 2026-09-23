@@ -1,20 +1,23 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Document, EditPen, Refresh, Search, View } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
 import { listMyContracts, type MyContractSummary } from '@/api/contracts'
+import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { getSignatureState, signatureStateLabels, type SignatureState } from '@/utils/contractSignatures'
 
 const auth = useAuthStore()
+const router = useRouter()
 const contracts = ref<MyContractSummary[]>([])
 const loading = ref(false)
 const error = ref('')
 const keyword = ref('')
 const selectedState = ref<'all' | SignatureState>('all')
-const page = ref(1)
-const pageSize = 10
 let requestId = 0
 
+/* 状态筛选用胶囊组（统一层 .wb-chip）：选项少、要能一眼看出当前选中项，选中项还要报出条数。
+   作废是终态，走中性档 wb-chip--muted，不跟其余状态抢强调色。 */
 const states: { value: 'all' | SignatureState; label: string }[] = [
   { value: 'all', label: '全部' },
   { value: 'pending', label: '待我签署' },
@@ -22,11 +25,22 @@ const states: { value: 'all' | SignatureState; label: string }[] = [
   { value: 'signed', label: '已完成' },
   { value: 'void', label: '已作废' },
 ]
+
+function countOf(state: SignatureState) {
+  return contracts.value.filter((item) => getSignatureState(item, auth.username) === state).length
+}
+
 const summaries = computed(() => states.map((state) => ({
   ...state,
-  count: state.value === 'all' ? contracts.value.length
-    : contracts.value.filter((item) => getSignatureState(item, auth.username) === state.value).length,
+  count: state.value === 'all' ? contracts.value.length : countOf(state.value),
 })))
+
+/* 读数在加载中与失败时不报数：contracts 在重新加载时会被清空，
+   直接显示 0 会被读成「一份合同都没有」。 */
+function stripValue(count: number) {
+  return loading.value || error.value ? '—' : String(count)
+}
+
 const filteredContracts = computed(() => {
   const search = keyword.value.trim().toLocaleLowerCase()
   return contracts.value.filter((item) => {
@@ -36,17 +50,33 @@ const filteredContracts = computed(() => {
     return matchesState && matchesSearch
   })
 })
-const visibleContracts = computed(() => filteredContracts.value.slice((page.value - 1) * pageSize, page.value * pageSize))
 
-watch([keyword, selectedState], () => { page.value = 1 })
+const hasActiveFilters = computed(() => keyword.value.trim() !== '' || selectedState.value !== 'all')
+
+/* 一次取回全部合同、筛选在前端做，所以这里用客户端分页（与其余菜单页同一套页码与每页条数口径）。 */
+const {
+  page,
+  pageSize,
+  total: filteredTotal,
+  paged: pagedContracts,
+  resetPage,
+} = useClientPagination(filteredContracts)
+
+/* 筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空列表。 */
+watch([keyword, selectedState], resetPage)
 watch(() => auth.token, () => { void loadContracts() }, { immediate: true })
+
+function resetFilters() {
+  keyword.value = ''
+  selectedState.value = 'all'
+}
 
 async function loadContracts() {
   const currentRequest = ++requestId
   const token = auth.token
   contracts.value = []
   error.value = ''
-  page.value = 1
+  resetPage()
   loading.value = Boolean(token)
   if (!token) return
   try {
@@ -65,135 +95,154 @@ function roleLabel(item: MyContractSummary) {
   return item.party_a_username === auth.username ? '甲方' : '乙方'
 }
 
+function stateOf(item: MyContractSummary) {
+  return getSignatureState(item, auth.username)
+}
+
+/* 状态标签走统一层（.wb-badge）：浅底 + 深字，终止态用中性档。 */
+function badgeClass(item: MyContractSummary) {
+  const state = stateOf(item)
+  if (state === 'pending') return 'wb-badge--warning'
+  if (state === 'waiting') return 'wb-badge--accent'
+  if (state === 'signed') return 'wb-badge--success'
+  return ''
+}
+
 function detailLocation(item: MyContractSummary) {
   return { name: 'workbench-signature-detail', params: { contractId: item.id } }
+}
+
+function openDetail(item: MyContractSummary) {
+  void router.push(detailLocation(item))
 }
 </script>
 
 <template>
-  <main class="signatures" :aria-busy="loading">
-    <div class="signatures__toolbar">
-      <label class="signatures__search">
-        <el-icon><Search /></el-icon>
-        <input v-model="keyword" type="search" aria-label="搜索合同" placeholder="搜索合同名称、编号或签约方" />
-      </label>
-      <button class="signatures__refresh" type="button" :disabled="loading" @click="loadContracts">
-        <el-icon :class="{ 'is-loading': loading }"><Refresh /></el-icon>
-        {{ loading ? '刷新中' : '刷新' }}
-      </button>
-    </div>
-
-    <div class="signatures__filters" role="group" aria-label="签署状态">
-      <button v-for="state in summaries" :key="state.value" type="button"
-        :class="{ active: selectedState === state.value }" :aria-pressed="selectedState === state.value"
-        @click="selectedState = state.value">
-        {{ state.label }}<span>{{ loading || error ? '-' : state.count }}</span>
-      </button>
-    </div>
-
-    <div v-if="loading" class="signatures__empty" role="status">正在加载签署记录...</div>
-    <div v-else-if="error" class="signatures__empty signatures__empty--error" role="alert">
-      <p>{{ error }}</p>
-      <button type="button" class="signatures__refresh" @click="loadContracts"><el-icon><Refresh /></el-icon>重新加载</button>
-    </div>
-    <div v-else-if="!filteredContracts.length" class="signatures__empty" role="status">
-      <el-icon class="signatures__empty-icon"><Document /></el-icon>
-      <p>{{ contracts.length ? '没有符合条件的签署记录' : '暂无签署记录' }}</p>
-      <button v-if="keyword || selectedState !== 'all'" type="button" class="signatures__clear"
-        @click="keyword = ''; selectedState = 'all'">清除筛选</button>
-    </div>
-    <template v-else>
-      <div class="signatures__table" role="table" aria-label="我的签署合同">
-        <div class="signatures__table-head" role="row">
-          <span role="columnheader">合同信息</span><span role="columnheader">签约方</span>
-          <span role="columnheader">签署状态</span><span role="columnheader">操作</span>
-        </div>
-        <article v-for="item in visibleContracts" :key="item.id" class="signatures__row" role="row">
-          <div class="signatures__contract" role="cell">
-            <RouterLink class="signatures__title" :to="detailLocation(item)">{{ item.title }}</RouterLink>
-            <span class="signatures__number">{{ item.contract_no }}</span>
-            <span class="signatures__date">{{ item.created_at }} 创建</span>
-          </div>
-          <div class="signatures__parties" role="cell">
-            <span>甲方 · {{ item.party_a_name || item.party_a_username || '未指定' }}</span>
-            <span>乙方 · {{ item.party_b_name || item.party_b_username || '未指定' }}</span>
-            <small>我的身份：{{ roleLabel(item) }}</small>
-          </div>
-          <div class="signatures__status" role="cell">
-            <span class="signatures__badge" :class="`signatures__badge--${getSignatureState(item, auth.username)}`">
-              {{ signatureStateLabels[getSignatureState(item, auth.username)] }}
-            </span>
-          </div>
-          <div class="signatures__action" role="cell">
-            <RouterLink :to="detailLocation(item)" :class="{ 'signatures__sign': getSignatureState(item, auth.username) === 'pending' }">
-              <el-icon><EditPen v-if="getSignatureState(item, auth.username) === 'pending'" /><View v-else /></el-icon>
-              {{ getSignatureState(item, auth.username) === 'pending' ? '去签署' : '查看详情' }}
-            </RouterLink>
-          </div>
-        </article>
+  <main class="page-shell custom-page-shell profile-page signatures" :aria-busy="loading">
+    <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
+    <div class="wb-strip" aria-label="签署概览">
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">合同总数</span>
+        <span class="wb-strip__value">{{ stripValue(contracts.length) }}</span>
       </div>
-      <footer class="signatures__footer">
-        <span>共 {{ filteredContracts.length }} 份合同</span>
-        <el-pagination v-if="filteredContracts.length > pageSize" v-model:current-page="page"
-          :page-size="pageSize" :total="filteredContracts.length" :pager-count="5" layout="prev, pager, next" small />
-      </footer>
-    </template>
+      <div class="wb-strip__divider" />
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">待我签署</span>
+        <span class="wb-strip__value">{{ stripValue(countOf('pending')) }}</span>
+      </div>
+      <div class="wb-strip__divider" />
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">等待他方</span>
+        <span class="wb-strip__value">{{ stripValue(countOf('waiting')) }}</span>
+      </div>
+      <div class="wb-strip__divider" />
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">已完成</span>
+        <span class="wb-strip__value">{{ stripValue(countOf('signed')) }}</span>
+      </div>
+      <div class="wb-strip__item wb-strip__action">
+        <el-button class="wb-toolbar__icon-btn" :loading="loading" aria-label="刷新签署记录" @click="loadContracts">
+          <el-icon><Refresh /></el-icon>
+        </el-button>
+      </div>
+    </div>
+
+    <section class="wallet-section">
+      <div class="wb-card-head">
+        <div class="wb-card-head__title-block">
+          <h3 class="wb-card-head__title">我的签署</h3>
+          <p class="wb-card-head__desc">按下状态筛选合同，或按合同名称、编号与签约方搜索。</p>
+        </div>
+      </div>
+
+      <div class="wb-toolbar">
+        <div class="wb-chip-group" role="group" aria-label="签署状态">
+          <button v-for="state in summaries" :key="state.value" type="button" class="wb-chip wb-chip--button"
+            :class="{ 'is-active': selectedState === state.value, 'wb-chip--muted': state.value === 'void' }"
+            :aria-pressed="selectedState === state.value" @click="selectedState = state.value">
+            {{ state.label }}<span class="wb-chip__count">{{ loading || error ? '—' : state.count }}</span>
+          </button>
+        </div>
+        <el-input v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索合同名称、编号或签约方"
+          aria-label="搜索合同">
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <div class="wb-toolbar__actions">
+          <span v-if="hasActiveFilters" class="wb-toolbar__hint">筛选出 {{ filteredTotal }} / {{ contracts.length }} 份</span>
+          <el-button v-if="hasActiveFilters" class="wb-toolbar__ghost" @click="resetFilters">
+            <el-icon><RefreshLeft /></el-icon><span>重置</span>
+          </el-button>
+        </div>
+      </div>
+
+      <p v-if="loading" class="wb-empty" role="status">正在加载签署记录…</p>
+      <div v-else-if="error" class="wb-empty" role="alert">
+        <span class="wb-empty__title">加载签署记录失败</span>{{ error }}
+        <div class="wb-empty__actions">
+          <el-button class="wb-toolbar__ghost" @click="loadContracts">
+            <el-icon><Refresh /></el-icon><span>重新加载</span>
+          </el-button>
+        </div>
+      </div>
+      <div v-else-if="!filteredContracts.length" class="wb-empty" role="status">
+        <span class="wb-empty__title">{{ contracts.length ? '没有符合条件的签署记录' : '暂无签署记录' }}</span>
+        <template v-if="contracts.length">
+          换个状态或关键字再试一次。
+          <div class="wb-empty__actions">
+            <el-button class="wb-toolbar__ghost" @click="resetFilters">
+              <el-icon><RefreshLeft /></el-icon><span>清除筛选</span>
+            </el-button>
+          </div>
+        </template>
+        <template v-else>需求进入签约环节后，这里会出现待你签署的合同。</template>
+      </div>
+      <template v-else>
+        <ul class="wb-list" aria-label="我的签署合同">
+          <li v-for="item in pagedContracts" :key="item.id" class="wb-item">
+            <div class="wb-item__main">
+              <RouterLink class="wb-item__title signatures__title" :to="detailLocation(item)">{{ item.title }}</RouterLink>
+              <span class="wb-item__meta">{{ item.contract_no || '暂无合同编号' }} · {{ item.created_at }} 创建</span>
+              <span class="wb-item__meta">
+                甲方 · {{ item.party_a_name || item.party_a_username || '未指定' }}
+                　乙方 · {{ item.party_b_name || item.party_b_username || '未指定' }}
+                · 我的身份：{{ roleLabel(item) }}
+              </span>
+            </div>
+            <div class="wb-item__side">
+              <span class="wb-badge" :class="badgeClass(item)">{{ signatureStateLabels[stateOf(item)] }}</span>
+              <el-button :class="stateOf(item) === 'pending' ? 'wb-toolbar__primary' : 'wb-toolbar__ghost'"
+                @click="openDetail(item)">
+                {{ stateOf(item) === 'pending' ? '去签署' : '查看详情' }}
+              </el-button>
+            </div>
+          </li>
+        </ul>
+        <div class="wb-pager">
+          <div class="wb-pager__count">
+            <span>共 {{ filteredTotal }} 份合同</span>
+            <el-select v-model="pageSize" class="wb-pager__size" aria-label="每页合同数">
+              <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+            </el-select>
+          </div>
+          <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+            :pager-count="5" layout="prev, pager, next" background aria-label="签署记录分页" />
+        </div>
+      </template>
+    </section>
   </main>
 </template>
 
 <style scoped>
-.signatures {
-  --signature-accent: #247f7d;
-  --signature-text: #172033;
-  --signature-muted: #667085;
-  --signature-border: #e5e9ef;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 20px 20px 40px;
-  color: var(--signature-text);
-  letter-spacing: 0;
+/* 版式全部走统一层（.wb-strip / .wb-card-head / .wb-toolbar / .wb-list / .wb-pager），
+   本页只保留标题链接的悬停色，不再自带一套青色板与自绘控件。 */
+.signatures__title:hover {
+  color: var(--profile-accent);
 }
-.signatures__toolbar { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
-.signatures__search { display: flex; align-items: center; gap: 10px; width: 380px; min-width: 0; padding: 0 12px; border: 1px solid var(--signature-border); border-radius: 6px; background: #fff; color: var(--signature-muted); }
-.signatures__search:focus-within { border-color: var(--signature-accent); }
-.signatures__search input { width: 100%; min-width: 0; height: 38px; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13px; }
-.signatures__refresh { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 16px; border: 0; border-radius: 6px; background: var(--signature-accent); color: white; font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
-.signatures__refresh:disabled { cursor: wait; opacity: .6; }
-.signatures__filters { display: flex; flex-wrap: wrap; gap: 4px 20px; border-bottom: 1px solid var(--signature-border); }
-.signatures__filters button { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 0; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--signature-muted); font: inherit; font-size: 13px; cursor: pointer; }
-.signatures__filters button.active { color: var(--signature-accent); border-bottom-color: var(--signature-accent); font-weight: 700; }
-.signatures__filters button span { min-width: 24px; padding: 2px 5px; border-radius: 4px; background: #f0f3f5; font-size: 11px; font-variant-numeric: tabular-nums; }
-.signatures__table-head, .signatures__row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.2fr) 100px 96px; gap: 20px; align-items: center; }
-.signatures__table-head { padding: 14px 16px; color: var(--signature-muted); font-size: 12px; background: #f7f9fa; }
-.signatures__row { padding: 22px 16px; border-bottom: 1px solid var(--signature-border); background: #fff; }
-.signatures__contract, .signatures__parties { display: grid; gap: 7px; min-width: 0; overflow-wrap: anywhere; }
-.signatures__title { color: var(--signature-text); font-size: 14px; font-weight: 700; line-height: 1.6; text-decoration: none; }
-.signatures__title:hover { color: var(--signature-accent); }
-.signatures__number, .signatures__date, .signatures__parties small { font-size: 12px; color: var(--signature-muted); }
-.signatures__parties { font-size: 13px; line-height: 1.5; }
-.signatures__badge { display: inline-flex; padding: 5px 9px; border-radius: 4px; font-size: 12px; color: #667085; background: #f0f3f5; }
-.signatures__badge--pending { color: #946719; background: #fff4d6; }
-.signatures__badge--waiting { color: #247f7d; background: #e6f4f4; }
-.signatures__badge--signed { color: #23824a; background: #e5f7ec; }
-.signatures__badge--void { color: #a34b4b; background: #fdecec; }
-.signatures__action a { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 34px; color: var(--signature-accent); text-decoration: none; font-size: 13px; white-space: nowrap; }
-.signatures__action a.signatures__sign { padding: 0 10px; background: #e6f4f4; border-radius: 5px; font-weight: 600; }
-.signatures__empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 280px; padding: 32px; color: var(--signature-muted); font-size: 14px; text-align: center; overflow-wrap: anywhere; }
-.signatures__empty p { margin: 0; }
-.signatures__empty--error { color: #b54747; }
-.signatures__empty-icon { font-size: 40px; color: #9aafb6; }
-.signatures__clear { background: none; border: 0; color: var(--signature-accent); cursor: pointer; font: inherit; }
-.signatures__footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding-top: 20px; font-size: 12px; color: var(--signature-muted); }
-.signatures :deep(.el-pagination) { --el-color-primary: var(--signature-accent); }
-.signatures button:focus-visible, .signatures a:focus-visible { outline: 2px solid var(--signature-accent); outline-offset: 3px; }
-@media (max-width: 700px) {
-  .signatures { padding: 16px 12px 28px; }
-  .signatures__toolbar { gap: 10px; margin-bottom: 12px; }
-  .signatures__search { flex: 1; }
-  .signatures__filters { gap: 0 16px; }
-  .signatures__table-head { display: none; }
-  .signatures__row { grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding: 20px 0; background: transparent; }
-  .signatures__contract, .signatures__parties { grid-column: 1 / -1; }
-  .signatures__action { justify-self: end; }
+
+@media (max-width: 640px) {
+  .wb-item .el-button {
+    min-height: 36px;
+    height: 36px;
+  }
 }
 </style>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { DataAnalysis, Refresh } from '@element-plus/icons-vue'
+import { Refresh } from '@element-plus/icons-vue'
 
 import { getBadges, getInviteLeaderboard, type BadgeDefinition, type InviteLeaderboardEntry } from '@/api/invite'
 import { useAuthStore } from '@/stores/auth'
@@ -50,165 +50,70 @@ onMounted(() => {
 
 <template>
     <section class="invite-leaderboard" aria-label="邀请排行榜">
-        <header class="invite-leaderboard__head">
-            <div>
-                <h2>邀请排行榜</h2>
-                <p v-if="myRank">我的排名：第 {{ myRank.rank }} 名 · {{ myRank.count }} 人</p>
-                <p v-else>本周期暂无排名</p>
+        <div class="wb-card-head">
+            <div class="wb-card-head__title-block">
+                <h3 class="wb-card-head__title">邀请排行榜</h3>
+                <p class="wb-card-head__desc">
+                    按成功邀请的人数排名，可在周榜与总榜之间切换。
+                    <template v-if="myRank">我的排名：第 {{ myRank.rank }} 名 · {{ myRank.count }} 人。</template>
+                    <template v-else>本周期暂无我的排名。</template>
+                </p>
             </div>
-            <div class="invite-leaderboard__actions">
-                <div class="invite-leaderboard__tabs" role="tablist" aria-label="排行榜周期">
-                    <button type="button" :class="{ active: period === 'weekly' }"
+            <div class="wb-card-head__actions">
+                <!-- 周期只有两档，且要一眼看出当前选中项：用统一层的胶囊组，不再自造一套 tab -->
+                <div class="wb-chip-group" role="group" aria-label="排行榜周期">
+                    <button type="button" class="wb-chip wb-chip--button"
+                        :class="{ 'is-active': period === 'weekly' }" :aria-pressed="period === 'weekly'"
                         @click="loadLeaderboard('weekly')">周榜</button>
-                    <button type="button" :class="{ active: period === 'alltime' }"
+                    <button type="button" class="wb-chip wb-chip--button"
+                        :class="{ 'is-active': period === 'alltime' }" :aria-pressed="period === 'alltime'"
                         @click="loadLeaderboard('alltime')">总榜</button>
                 </div>
-                <button class="invite-leaderboard__icon-btn" type="button" :disabled="loading"
-                    @click="loadLeaderboard()" aria-label="刷新排行榜">
+                <el-button class="wb-toolbar__icon-btn" :loading="loading" aria-label="刷新排行榜"
+                    @click="loadLeaderboard()">
                     <el-icon>
                         <Refresh />
                     </el-icon>
-                </button>
-            </div>
-        </header>
-
-        <div class="invite-leaderboard__list">
-            <article v-for="entry in entries" :key="entry.username" class="invite-leaderboard__row">
-                <span class="invite-leaderboard__rank">{{ entry.rank }}</span>
-                <span class="invite-leaderboard__avatar">{{ Array.from(entry.username)[0] ?? '用' }}</span>
-                <div class="invite-leaderboard__user">
-                    <strong>{{ entry.username }}</strong>
-                    <small>{{ entry.badges.map(badgeLabel).join(' / ') || '暂无邀请徽章' }}</small>
-                </div>
-                <span class="invite-leaderboard__count">{{ entry.count }} 人</span>
-            </article>
-            <div v-if="!loading && entries.length === 0" class="invite-leaderboard__empty">
-                <el-icon>
-                    <DataAnalysis />
-                </el-icon>
-                <span>暂无排行数据</span>
+                </el-button>
             </div>
         </div>
+
+        <p v-if="loading && entries.length === 0" class="wb-empty" role="status">正在加载排行榜…</p>
+        <div v-else-if="entries.length === 0" class="wb-empty">
+            <span class="wb-empty__title">暂无排行数据</span>
+            换一个周期看看，或等本期数据更新后再来。
+        </div>
+        <ul v-else class="wb-list" aria-label="邀请排行榜">
+            <li v-for="entry in entries" :key="entry.username" class="wb-item">
+                <span class="wb-badge invite-leaderboard__rank">第 {{ entry.rank }} 名</span>
+                <span class="wb-avatar">{{ Array.from(entry.username)[0] ?? '用' }}</span>
+                <div class="wb-item__main invite-leaderboard__user">
+                    <span class="wb-item__title">{{ entry.username }}</span>
+                    <span class="wb-item__meta">{{ entry.badges.map(badgeLabel).join(' / ') || '暂无邀请徽章' }}</span>
+                </div>
+                <div class="wb-item__side">
+                    <span class="invite-leaderboard__count">{{ entry.count }} 人</span>
+                </div>
+            </li>
+        </ul>
     </section>
 </template>
 
 <style scoped>
-.invite-leaderboard {
-    display: grid;
-    gap: 14px;
-}
-
-.invite-leaderboard__head,
-.invite-leaderboard__actions,
-.invite-leaderboard__row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.invite-leaderboard__head {
-    justify-content: space-between;
-}
-
-.invite-leaderboard__head h2 {
-    margin: 0;
-    color: #0f172a;
-    font-size: 22px;
-}
-
-.invite-leaderboard__head p,
-.invite-leaderboard__user small {
-    margin: 4px 0 0;
-    color: #64748b;
-    font-size: 12px;
-    line-height: 1.45;
-}
-
-.invite-leaderboard__tabs {
-    display: inline-flex;
-    padding: 3px;
-    border: 1px solid rgba(191, 219, 254, 0.8);
-    border-radius: 8px;
-    background: #eff6ff;
-}
-
-.invite-leaderboard__tabs button,
-.invite-leaderboard__icon-btn {
-    border: 0;
-    font: inherit;
-    cursor: pointer;
-}
-
-.invite-leaderboard__tabs button {
-    min-height: 30px;
-    padding: 0 11px;
-    border-radius: 6px;
-    background: transparent;
-    color: #2563eb;
-    font-size: 13px;
-    font-weight: 800;
-}
-
-.invite-leaderboard__tabs button.active {
-    background: #2563eb;
-    color: #fff;
-}
-
-.invite-leaderboard__icon-btn {
-    display: inline-grid;
-    place-items: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    background: #f8fafc;
-    color: #2563eb;
-}
-
-.invite-leaderboard__list {
-    display: grid;
-    gap: 8px;
-}
-
-.invite-leaderboard__row {
-    min-height: 68px;
-    padding: 10px 12px;
-    border: 1px solid rgba(226, 232, 240, 0.96);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.9);
-}
-
-.invite-leaderboard__rank,
-.invite-leaderboard__avatar {
-    display: inline-grid;
-    place-items: center;
+/* 版式走统一层（.wb-card-head / .wb-chip-group / .wb-list / .wb-item / .wb-badge / .wb-empty / .wb-avatar），
+   本页只留「排名徽标不参与伸缩」「用户名与徽章不折行」「人数读数」三件事。
+   原来这里是一整套自己的蓝（#2563eb / #dbeafe / #1d4ed8）、8px 圆角、
+   38bdf8→86efac 的渐变头像，与同一页里已经走统一层的邀请记录卡不是同一种外观。 */
+.invite-leaderboard__rank {
     flex: 0 0 auto;
 }
 
-.invite-leaderboard__rank {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background: #dbeafe;
-    color: #1d4ed8;
-    font-weight: 900;
-}
-
-.invite-leaderboard__avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #38bdf8, #86efac);
-    color: #fff;
-    font-weight: 900;
-}
-
 .invite-leaderboard__user {
-    min-width: 0;
     flex: 1;
 }
 
-.invite-leaderboard__user strong,
-.invite-leaderboard__user small {
+.invite-leaderboard__user .wb-item__title,
+.invite-leaderboard__user .wb-item__meta {
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -216,24 +121,10 @@ onMounted(() => {
 }
 
 .invite-leaderboard__count {
-    color: #0f172a;
-    font-weight: 900;
+    color: var(--profile-text-main);
+    font-size: 15px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
     white-space: nowrap;
-}
-
-.invite-leaderboard__empty {
-    min-height: 90px;
-    display: grid;
-    place-items: center;
-    gap: 6px;
-    color: #94a3b8;
-    font-weight: 800;
-}
-
-@media (max-width: 640px) {
-    .invite-leaderboard__head {
-        align-items: flex-start;
-        flex-direction: column;
-    }
 }
 </style>

@@ -1,6 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+// 图标必须显式 import 才会被解析：顶部读数条的刷新、卡片头的「创建团队」、
+// 团队卡的默认头像（<UserFilled />）以及工具条里的搜索/重置。
+// 模板里写了标签却没 import 时，Vue 会把它当未知元素渲染成空标签——按钮和头像框都在、里面是空的，
+// 与其余菜单页同一颗图标不是一个样子。
+import { Plus, Refresh, RefreshLeft, Search, UserFilled } from '@element-plus/icons-vue'
 
 import {
   acceptInvitation,
@@ -35,6 +40,51 @@ const processingInvitationId = ref<number | null>(null)
 const sortedTeams = computed(() =>
   [...teams.value].sort((a, b) => b.team_id - a.team_id),
 )
+
+/** 顶部信息条的「我创建的」：所有者就是当前账号的团队数。 */
+const ownedCount = computed(
+  () => teams.value.filter((team) => team.owner_username === auth.username).length,
+)
+
+// 列表工具条：与其余菜单页同一套（筛选即时生效 + 搜索 + 重置）。
+// 取值用空串表示「不筛选」，与 dev-resource-list / dev-release-page 的 filters 写法一致。
+const filters = reactive({
+  keyword: '',
+  scope: '',
+})
+
+const hasActiveFilters = computed(() => Boolean(filters.keyword.trim()) || Boolean(filters.scope))
+
+const filteredTeams = computed(() => {
+  const keyword = filters.keyword.trim().toLowerCase()
+
+  return sortedTeams.value.filter((team) => {
+    const isOwner = team.owner_username === auth.username
+
+    if (filters.scope === 'owned' && !isOwner) {
+      return false
+    }
+
+    if (filters.scope === 'joined' && isOwner) {
+      return false
+    }
+
+    if (!keyword) {
+      return true
+    }
+
+    return [team.name, team.description].some((value) => (value ?? '').toLowerCase().includes(keyword))
+  })
+})
+
+function resetFilters() {
+  filters.keyword = ''
+  filters.scope = ''
+}
+
+async function reloadAll() {
+  await Promise.all([loadTeams(), loadInvitations()])
+}
 
 async function loadTeams() {
   loading.value = true
@@ -183,534 +233,244 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="teams-page">
-    <section class="teams-page__card">
-      <header class="teams-page__head">
-        <div>
-          <h1>我的团队</h1>
-          <p v-if="teams.length">共 {{ teams.length }} 个团队</p>
-          <p v-else>查看和管理你的团队</p>
+  <div class="dev-page dev-teams">
+    <div class="dev-meta-strip">
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">我的团队</span>
+        <span class="dev-meta-strip__value">{{ teams.length }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">我创建的</span>
+        <span class="dev-meta-strip__value">{{ ownedCount }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">待处理邀请</span>
+        <span class="dev-meta-strip__value">{{ invitations.length }}</span>
+      </div>
+      <div class="dev-meta-strip__item dev-meta-strip__action">
+        <el-button class="dev-toolbar__icon-btn" aria-label="刷新团队与邀请" :loading="loading || invitationsLoading"
+          @click="reloadAll">
+          <el-icon>
+            <Refresh />
+          </el-icon>
+        </el-button>
+      </div>
+    </div>
+
+    <section v-if="invitations.length" class="dev-surface-card dev-teams__invitations">
+      <div class="dev-card-head">
+        <div class="dev-card-head__title-block">
+          <h3 class="dev-section-title">收到的邀请</h3>
+          <p class="dev-section-desc">{{ invitations.length }} 条待处理，接受后即加入该团队。</p>
         </div>
-        <button class="teams-page__create-btn" type="button" @click="showCreateModal = true">
-          + 创建团队
-        </button>
-      </header>
+      </div>
 
-      <section v-if="invitations.length" class="teams-page__invitations">
-        <div class="teams-page__invitations-head">
-          <h2>收到的邀请</h2>
-          <span>{{ invitations.length }} 条待处理</span>
-        </div>
-        <ul class="teams-page__invitation-list">
-          <li v-for="inv in invitations" :key="inv.id" class="teams-page__invitation-item">
-            <div class="teams-page__invitation-info">
-              <strong>{{ inv.team_name }}</strong>
-              <span>由 {{ inv.inviter_username }} 邀请 · {{ formatInvitationTime(inv.created_at) }}</span>
-            </div>
-            <div class="teams-page__invitation-actions">
-              <button class="teams-page__invitation-btn teams-page__invitation-btn--accept" type="button"
-                :disabled="processingInvitationId === inv.id" @click="handleAcceptInvitation(inv)">
-                {{ processingInvitationId === inv.id ? '处理中...' : '接受' }}
-              </button>
-              <button class="teams-page__invitation-btn teams-page__invitation-btn--reject" type="button"
-                :disabled="processingInvitationId === inv.id" @click="handleRejectInvitation(inv)">
-                拒绝
-              </button>
-            </div>
-          </li>
-        </ul>
-      </section>
-
-      <section v-if="loading" class="teams-page__empty">
-        <p>加载中...</p>
-      </section>
-
-      <section v-else-if="sortedTeams.length === 0" class="teams-page__empty">
-        <div class="teams-page__empty-icon" aria-hidden="true">
-          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="24" cy="23" r="9" fill="#DBEAFE" stroke="#93C5FD" stroke-width="3" />
-            <circle cx="43" cy="26" r="7" fill="#DBEAFE" stroke="#93C5FD" stroke-width="3" />
-            <path d="M9 49c0-7 7-11 15-11s15 4 15 11" fill="#EFF6FF" stroke="#93C5FD" stroke-width="3" stroke-linecap="round" />
-            <path d="M41 49c0-6 5-9 11-9 5 0 9 3 9 9" fill="#EFF6FF" stroke="#93C5FD" stroke-width="3" stroke-linecap="round" />
-          </svg>
-        </div>
-        <h2>还没有团队</h2>
-        <p>创建或加入一个团队，与伙伴一起协作</p>
-      </section>
-
-      <section v-else class="teams-list">
-        <article v-for="team in sortedTeams" :key="team.team_id" class="team-card" @click="goDetail(team.team_id)">
-          <div class="team-card__avatar">
-            <img v-if="team.avatar_url" :src="apiUrl(team.avatar_url)" :alt="team.name" />
-            <svg v-else class="team-card__avatar-icon" viewBox="0 0 64 64" fill="none"
-              xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <circle cx="24" cy="23" r="9" fill="#C7D2FE" stroke="#818CF8" stroke-width="3" />
-              <circle cx="43" cy="26" r="7" fill="#C7D2FE" stroke="#818CF8" stroke-width="3" />
-              <path d="M9 49c0-7 7-11 15-11s15 4 15 11" fill="#E0E7FF" stroke="#818CF8" stroke-width="3" stroke-linecap="round" />
-              <path d="M41 49c0-6 5-9 11-9 5 0 9 3 9 9" fill="#E0E7FF" stroke="#818CF8" stroke-width="3" stroke-linecap="round" />
-            </svg>
-          </div>
-          <div class="team-card__body">
-            <h3>{{ team.name }}</h3>
-            <p v-if="team.description">{{ team.description }}</p>
-            <div class="team-card__meta">
-              <span>{{ team.member_count }} 名成员</span>
-              <span>所有者 {{ team.owner_username }}</span>
+      <ul class="dev-stack-list">
+        <li v-for="inv in invitations" :key="inv.id" class="dev-stack-item">
+          <div>
+            <div class="dev-stack-item__title">{{ inv.team_name }}</div>
+            <div class="dev-stack-item__meta">
+              由 {{ inv.inviter_username }} 邀请 · {{ formatInvitationTime(inv.created_at) }}
             </div>
           </div>
-          <div class="team-card__actions" @click.stop>
-            <button v-if="team.owner_username === auth.username"
-              class="team-card__action-btn team-card__action-btn--danger" type="button"
+          <div class="dev-teams__item-actions">
+            <button class="dev-btn dev-btn--ghost" type="button" :disabled="processingInvitationId === inv.id"
+              @click="handleRejectInvitation(inv)">
+              拒绝
+            </button>
+            <button class="dev-btn dev-btn--primary" type="button" :disabled="processingInvitationId === inv.id"
+              @click="handleAcceptInvitation(inv)">
+              {{ processingInvitationId === inv.id ? '处理中...' : '接受' }}
+            </button>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <el-card shadow="never" class="dev-surface-card">
+      <div class="dev-card-head">
+        <div class="dev-card-head__title-block">
+          <h3 class="dev-section-title">我的团队</h3>
+          <p class="dev-section-desc">团队共享资源项目，成员与权限在团队详情里管理。</p>
+        </div>
+        <div class="dev-card-head__actions">
+          <button class="dev-btn dev-btn--primary" type="button" @click="showCreateModal = true">
+            <el-icon>
+              <Plus />
+            </el-icon>
+            <span>创建团队</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 列表工具条：与其余菜单页同一条（筛选项 + 搜索 + 重置都在同一行，
+           筛选即时生效，所以不另给「查询」按钮）。 -->
+      <div class="dev-toolbar">
+        <el-select v-model="filters.scope" clearable placeholder="团队归属" class="dev-toolbar__field"
+          aria-label="按团队归属筛选">
+          <el-option label="我创建的" value="owned" />
+          <el-option label="我加入的" value="joined" />
+        </el-select>
+
+        <el-input v-model="filters.keyword" clearable placeholder="搜索团队名称或简介" class="dev-toolbar__search">
+          <template #prefix>
+            <el-icon>
+              <Search />
+            </el-icon>
+          </template>
+        </el-input>
+
+        <div class="dev-toolbar__actions">
+          <span v-if="hasActiveFilters" class="dev-toolbar__hint">
+            筛选出 {{ filteredTeams.length }} / {{ teams.length }} 个
+          </span>
+          <el-button class="dev-toolbar__ghost" @click="resetFilters">
+            <el-icon>
+              <RefreshLeft />
+            </el-icon>
+            <span>重置</span>
+          </el-button>
+        </div>
+      </div>
+
+      <div v-if="loading" class="dev-empty-state">团队加载中</div>
+
+      <div v-else-if="teams.length === 0" class="dev-empty-state">
+        还没有团队，创建或加入一个团队后即可与伙伴协作
+      </div>
+
+      <div v-else-if="filteredTeams.length === 0" class="dev-empty-state">
+        当前筛选下没有团队，换个条件或点「重置」再看看
+      </div>
+
+      <div v-else class="dev-stack-list">
+        <article v-for="team in filteredTeams" :key="team.team_id" class="dev-stack-item dev-teams__card"
+          @click="goDetail(team.team_id)">
+          <div class="dev-teams__card-main">
+            <span class="dev-teams__avatar">
+              <img v-if="team.avatar_url" :src="apiUrl(team.avatar_url)" :alt="team.name" />
+              <el-icon v-else>
+                <UserFilled />
+              </el-icon>
+            </span>
+            <div class="dev-teams__card-body">
+              <div class="dev-stack-item__title">{{ team.name }}</div>
+              <div class="dev-stack-item__meta">{{ team.description || '暂无团队简介' }}</div>
+              <div class="dev-teams__card-meta">
+                <span>{{ team.member_count }} 名成员</span>
+                <span>所有者 {{ team.owner_username }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="dev-teams__item-actions" @click.stop>
+            <button v-if="team.owner_username === auth.username" class="dev-btn dev-btn--danger" type="button"
               :disabled="deletingId === team.team_id" @click="handleDelete(team)">
               {{ deletingId === team.team_id ? '解散中...' : '解散' }}
             </button>
-            <button v-else class="team-card__action-btn" type="button" :disabled="deletingId === team.team_id"
+            <button v-else class="dev-btn dev-btn--ghost" type="button" :disabled="deletingId === team.team_id"
               @click="handleLeave(team)">
               {{ deletingId === team.team_id ? '退出中...' : '退出' }}
             </button>
           </div>
         </article>
-      </section>
-    </section>
-
-    <Teleport to="body">
-      <div v-if="showCreateModal" class="teams-modal-backdrop" @click.self="showCreateModal = false">
-        <div class="teams-modal">
-          <h2>创建团队</h2>
-          <label class="teams-modal__field">
-            <span>团队名称 <em>*</em></span>
-            <input v-model="createName" type="text" maxlength="64" placeholder="输入团队名称" @keydown.enter="handleCreate" />
-          </label>
-          <label class="teams-modal__field">
-            <span>团队简介</span>
-            <textarea v-model="createDesc" rows="3" maxlength="200" placeholder="简单描述团队的目的（可选）"></textarea>
-          </label>
-          <div class="teams-modal__actions">
-            <button class="teams-modal__btn teams-modal__btn--ghost" type="button"
-              @click="showCreateModal = false">取消</button>
-            <button class="teams-modal__btn teams-modal__btn--primary" type="button" :disabled="creating"
-              @click="handleCreate">
-              {{ creating ? '创建中...' : '创建' }}
-            </button>
-          </div>
-        </div>
       </div>
-    </Teleport>
-  </main>
+    </el-card>
+
+    <el-dialog v-model="showCreateModal" title="创建团队" width="520px" align-center class="dev-dialog"
+      :close-on-click-modal="!creating">
+      <el-form label-position="top">
+        <el-form-item label="团队名称" required>
+          <el-input v-model="createName" maxlength="64" placeholder="输入团队名称"
+            @keyup.enter="handleCreate" />
+        </el-form-item>
+        <el-form-item label="团队简介">
+          <el-input v-model="createDesc" type="textarea" :rows="3" maxlength="200" show-word-limit
+            placeholder="简单描述团队的目的（可选）" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button :disabled="creating" @click="showCreateModal = false">取消</el-button>
+        <el-button type="primary" :loading="creating" @click="handleCreate">创建</el-button>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
 <style scoped>
-.teams-page {
-  margin: 0;
-  padding: 0;
-}
-
-.teams-page__card {
-  display: grid;
-  gap: 24px;
-  padding: 14px;
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 14px 34px rgba(76, 103, 172, 0.08);
-}
-
-.teams-page__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.teams-page__head h1 {
-  margin: 0 0 4px;
-  font-size: 22px;
-  color: #0f172a;
-}
-
-.teams-page__head p {
-  margin: 0;
-  color: #64748b;
-  font-size: 14px;
-}
-
-.teams-page__invitations {
-  display: grid;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid #dbeafe;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #f8faff, #eef2ff);
-}
-
-.teams-page__invitations-head {
+/* 本页原先自带一套视觉（渐变主按钮 #2563eb→#4f8cff、22px 圆角、手写弹窗与 #e5e7eb 描边），
+   与开发者工作台其余菜单页不是一个体系。现在改为统一层：顶部信息条 .dev-meta-strip、
+   卡片头 .dev-card-head、列表项 .dev-stack-item、按钮 .dev-btn*、弹窗 el-dialog。
+   这里只保留本页特有的排版。 */
+.dev-teams__item-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
-.teams-page__invitations-head h2 {
-  margin: 0;
-  font-size: 16px;
-  color: #0f172a;
+.dev-teams__card {
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
-.teams-page__invitations-head span {
-  font-size: 12px;
-  color: #64748b;
+.dev-teams__card:hover {
+  border-color: var(--wb-accent-line);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--dev-ink) 10%, transparent);
 }
 
-.teams-page__invitation-list {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.teams-page__invitation-item {
+.dev-teams__card-main {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #fff;
-  flex-wrap: wrap;
-}
-
-.teams-page__invitation-info {
-  display: grid;
-  gap: 4px;
+  gap: 14px;
   min-width: 0;
 }
 
-.teams-page__invitation-info strong {
-  font-size: 14px;
-  color: #0f172a;
+.dev-teams__card-body {
+  min-width: 0;
 }
 
-.teams-page__invitation-info span {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.teams-page__invitation-actions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.teams-page__invitation-btn {
-  padding: 6px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.16s ease;
-}
-
-.teams-page__invitation-btn--accept {
-  background: #2563eb;
-  color: #fff;
-}
-
-.teams-page__invitation-btn--accept:hover:not(:disabled) {
-  background: #1d4ed8;
-}
-
-.teams-page__invitation-btn--reject {
-  background: #fff;
-  color: #64748b;
-  border-color: #e5e7eb;
-}
-
-.teams-page__invitation-btn--reject:hover:not(:disabled) {
-  color: #ef4444;
-  border-color: #fecaca;
-}
-
-.teams-page__invitation-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.teams-page__create-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 18px;
-  border: 0;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: box-shadow 160ms ease, transform 160ms ease;
-  white-space: nowrap;
-}
-
-.teams-page__create-btn:hover {
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.24);
-  transform: translateY(-1px);
-}
-
-.teams-page__empty {
-  display: grid;
-  place-items: center;
-  gap: 12px;
-  padding: 64px 24px;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  background: #fff;
-  text-align: center;
-}
-
-.teams-page__empty-icon {
-  width: 72px;
-  height: 72px;
-  color: #93c5fd;
-}
-
-.teams-page__empty-icon svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.teams-page__empty h2 {
-  margin: 0;
-  font-size: 18px;
-  color: #0f172a;
-}
-
-.teams-page__empty p {
-  margin: 0;
-  color: #64748b;
-  font-size: 14px;
-}
-
-.teams-list {
-  display: grid;
-  gap: 12px;
-}
-
-.team-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  border-radius: 16px;
-  background: #fff;
-  cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
-}
-
-.team-card:hover {
-  border-color: rgba(147, 197, 253, 0.6);
-  box-shadow: 0 4px 16px rgba(76, 103, 172, 0.06);
-}
-
-.team-card__avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #eef2ff, #dbeafe);
+.dev-teams__avatar {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: var(--dev-radius-inner);
+  background: var(--wb-accent-soft);
+  color: var(--dev-blue);
+  font-size: 22px;
   overflow: hidden;
 }
 
-.team-card__avatar img {
+.dev-teams__avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.team-card__avatar-icon {
-  width: 70%;
-  height: 70%;
-}
-
-.team-card__body {
-  flex: 1;
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-}
-
-.team-card__body h3 {
-  margin: 0;
-  font-size: 16px;
-  color: #0f172a;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.team-card__body p {
-  margin: 0;
-  font-size: 13px;
-  color: #64748b;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.team-card__meta {
+.dev-teams__card-meta {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 6px;
   font-size: 12px;
-  color: #94a3b8;
-  margin-top: 2px;
+  color: var(--dev-muted);
 }
 
-.team-card__actions {
-  flex-shrink: 0;
-  display: flex;
-  gap: 8px;
-}
+@media (max-width: 640px) {
+  .dev-teams__card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
 
-.team-card__action-btn {
-  padding: 6px 14px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #fff;
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
-}
-
-.team-card__action-btn:hover:not(:disabled) {
-  background: #f8fafc;
-  color: #334155;
-}
-
-.team-card__action-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.team-card__action-btn--danger:hover:not(:disabled) {
-  background: #fef2f2;
-  color: #dc2626;
-  border-color: #fecaca;
-}
-
-.teams-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: rgba(15, 23, 42, 0.3);
-  backdrop-filter: blur(4px);
-}
-
-.teams-modal {
-  width: min(480px, calc(100% - 48px));
-  padding: 28px;
-  border-radius: 20px;
-  background: #fff;
-  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.15);
-  display: grid;
-  gap: 20px;
-}
-
-.teams-modal h2 {
-  margin: 0;
-  font-size: 18px;
-  color: #0f172a;
-}
-
-.teams-modal__field {
-  display: grid;
-  gap: 6px;
-}
-
-.teams-modal__field span {
-  font-size: 13px;
-  font-weight: 700;
-  color: #334155;
-}
-
-.teams-modal__field em {
-  font-style: normal;
-  color: #ef4444;
-}
-
-.teams-modal__field input,
-.teams-modal__field textarea {
-  width: 100%;
-  padding: 10px 14px;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
-  font: inherit;
-  font-size: 14px;
-  color: #0f172a;
-  outline: none;
-  transition: border-color 160ms ease;
-  box-sizing: border-box;
-}
-
-.teams-modal__field input:focus,
-.teams-modal__field textarea:focus {
-  border-color: #4f8cff;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
-}
-
-.teams-modal__field textarea {
-  resize: vertical;
-  min-height: 60px;
-}
-
-.teams-modal__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.teams-modal__btn {
-  padding: 10px 22px;
-  border: 0;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 120ms ease, opacity 120ms ease;
-}
-
-.teams-modal__btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.teams-modal__btn--primary {
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
-  color: #fff;
-}
-
-.teams-modal__btn--ghost {
-  background: #f1f5f9;
-  color: #475569;
-}
-
-.teams-modal__btn--ghost:hover {
-  background: #e2e8f0;
+  .dev-teams__item-actions .dev-btn {
+    flex: 1 1 0;
+    min-height: 44px;
+    height: auto;
+  }
 }
 </style>

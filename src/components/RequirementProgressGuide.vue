@@ -196,20 +196,20 @@ const hasPendingUnbind = computed(() => props.requirement.pending_unbind_request
 .req-progress__title {
   font-size: 13px;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--dev-ink);
   margin-right: 8px;
 }
 
 .req-progress__id {
   font-size: 11px;
-  color: #94a3b8;
+  color: var(--dev-muted);
 }
 
 .req-progress__badge {
   flex-shrink: 0;
   font-size: 11px;
   font-weight: 700;
-  color: #b45309;
+  color: var(--dev-gold);
   background: rgba(185, 129, 43, 0.12);
   border-radius: 999px;
   padding: 3px 10px;
@@ -243,22 +243,22 @@ const hasPendingUnbind = computed(() => props.requirement.pending_unbind_request
   justify-content: center;
   font-size: 12px;
   font-weight: 700;
-  background: #e2e8f0;
-  color: #64748b;
+  background: var(--dev-line);
+  color: var(--dev-muted);
   border: 2px solid transparent;
   transition: all 0.2s ease;
   z-index: 1;
 }
 
 .req-progress__step.is-done .req-progress__dot {
-  background: #2aa6a4;
+  background: var(--dev-cyan);
   color: #fff;
 }
 
 .req-progress__step.is-current .req-progress__dot {
   background: #fff;
-  color: #247f7d;
-  border-color: #2aa6a4;
+  color: var(--dev-cyan);
+  border-color: var(--dev-cyan);
   box-shadow: 0 0 0 4px rgba(42, 166, 164, 0.14);
 }
 
@@ -271,17 +271,17 @@ const hasPendingUnbind = computed(() => props.requirement.pending_unbind_request
 .req-progress__step-title {
   font-size: 12px;
   font-weight: 700;
-  color: #475569;
+  color: var(--dev-ink-soft);
 }
 
 .req-progress__step.is-done .req-progress__step-title,
 .req-progress__step.is-current .req-progress__step-title {
-  color: #1f2937;
+  color: var(--dev-ink);
 }
 
 .req-progress__step-desc {
-  font-size: 10px;
-  color: #94a3b8;
+  font-size: 11px;
+  color: var(--dev-muted);
   line-height: 1.4;
 }
 
@@ -291,12 +291,12 @@ const hasPendingUnbind = computed(() => props.requirement.pending_unbind_request
   left: calc(50% + 16px);
   right: calc(-50% + 16px);
   height: 2px;
-  background: #e2e8f0;
+  background: var(--dev-line);
 }
 
 .req-progress__step.is-done .req-progress__connector,
 .req-progress__step.is-current .req-progress__connector {
-  background: #2aa6a4;
+  background: var(--dev-cyan);
 }
 
 @media (max-width: 720px) {

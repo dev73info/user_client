@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { RefreshLeft, Search } from '@element-plus/icons-vue'
+import { Refresh, RefreshLeft, Search, WarningFilled } from '@element-plus/icons-vue'
 
 import {
   getProcessedTagTree,
@@ -20,6 +20,7 @@ import {
   listRequirementHall,
   type RequirementItem,
 } from '@/api/devRequirements'
+import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -85,7 +86,8 @@ const emptyText = computed(() => {
 
   return '当前没有可接的待关联需求'
 })
-const currentPageCount = computed(() => rows.value.length)
+/* 本页走服务端分页，条数口径只有 total 一处；
+   原先还留着一个「当前页行数」的 computed，改服务端分页后没人再用，已删。 */
 const selfManagedCount = computed(
   () => rows.value.filter((item) => isSelfManagedRequirement(item)).length,
 )
@@ -351,13 +353,59 @@ async function applyFilters() {
   await loadRequirements()
 }
 
+/* 关键字搜索与其余菜单页一致：输入即生效，不再挂「查询」按钮。
+   这一页走服务端分页查询，逐次按键都发请求会打满接口，所以关键字加 300ms 防抖；
+   两个下拉改一次发一次，本来就不会连发。
+   `appliedKeyword` 记最后一次真正发起请求的关键字，用来吃掉「重置」清空关键字时的重复请求。 */
+let appliedKeyword = filters.keyword
+let keywordTimer: ReturnType<typeof setTimeout> | null = null
+
+function cancelPendingKeywordSearch() {
+  if (keywordTimer) {
+    clearTimeout(keywordTimer)
+    keywordTimer = null
+  }
+}
+
+function searchNow() {
+  cancelPendingKeywordSearch()
+  appliedKeyword = filters.keyword
+  void applyFilters()
+}
+
+watch(
+  () => filters.keyword,
+  (value) => {
+    if (value === appliedKeyword) {
+      return
+    }
+    cancelPendingKeywordSearch()
+    keywordTimer = setTimeout(() => {
+      keywordTimer = null
+      appliedKeyword = filters.keyword
+      void applyFilters()
+    }, 300)
+  },
+)
+
+onBeforeUnmount(cancelPendingKeywordSearch)
+
 async function resetFilters() {
+  // 先撤掉待发的防抖请求，并让 watcher 认为清空后的关键字已经生效，
+  // 否则「重置」会发两次（本次立即 + 300ms 后那次）。
+  cancelPendingKeywordSearch()
   filters.keyword = ''
+  appliedKeyword = ''
   filters.sortBy = 'updated_at'
   filters.sortOrder = 'desc'
   page.value = 1
   pageSize.value = 10
   await loadRequirements()
+}
+
+function handlePageSizeChange() {
+  page.value = 1
+  void loadRequirements()
 }
 
 function openBindDialog(requirement: RequirementItem) {
@@ -626,62 +674,93 @@ function resetInitForm() {
         <span class="dev-meta-strip__value">{{ availableDepositText }}</span>
       </div>
       <div class="dev-meta-strip__item dev-meta-strip__action">
-        <el-button type="primary" size="small" @click="goToOrderDeposit">去缴纳保证金</el-button>
+        <el-button class="dev-toolbar__primary" type="primary" @click="goToOrderDeposit">去缴纳保证金</el-button>
+        <el-button class="dev-toolbar__icon-btn" aria-label="刷新需求列表" @click="loadRequirements">
+          <el-icon>
+            <Refresh />
+          </el-icon>
+        </el-button>
       </div>
     </div>
 
-    <el-alert v-if="!developerAgreementSigned" title="尚未签署《开发者入驻协议》：可接取无电签约定需求；接取电签担保需求或缴纳保证金前需先签署协议" type="warning" show-icon :closable="false"
-      class="dev-requirement-hall__deposit-alert">
-      <template #default>
-        <el-button type="primary" size="small" @click="goSignDeveloperAgreement()">去签署协议</el-button>
-      </template>
-    </el-alert>
+    <!-- 未签协议 / 接单资格两条提示：与总览页的保证金提示共用统一层的 .dev-notice
+         （金色 + 图标徽标 + 文案 + 右侧动作），不再用 Element 的 el-alert。 -->
+    <div v-if="!developerAgreementSigned" class="dev-notice" role="alert">
+      <span class="dev-notice__icon" aria-hidden="true">
+        <el-icon>
+          <WarningFilled />
+        </el-icon>
+      </span>
+      <div class="dev-notice__copy">
+        <strong>尚未签署《开发者入驻协议》</strong>
+        <p>可接取无电签约定需求；接取电签担保需求或缴纳保证金前需先签署协议。</p>
+      </div>
+      <div class="dev-notice__action">
+        <el-button class="dev-toolbar__primary" type="primary" @click="goSignDeveloperAgreement()">去签署协议</el-button>
+      </div>
+    </div>
 
-    <el-alert v-if="!canTakeOrders" title="无电签约定需求可继续关联；历史电签担保需求需要满足保证金规则" type="warning" show-icon :closable="false"
-      class="dev-requirement-hall__deposit-alert">
-      <template #default>
-        <div class="dev-requirement-hall__deposit-copy">
-          <span v-if="depositStatus?.frozen_cny">当前已冻结：{{ frozenDepositText }}</span>
-          <span v-if="depositStatus?.latest_order">最近订单状态：{{ depositStatus.latest_order.status }}</span>
-        </div>
-      </template>
-    </el-alert>
+    <div v-if="!canTakeOrders" class="dev-notice" role="status">
+      <span class="dev-notice__icon" aria-hidden="true">
+        <el-icon>
+          <WarningFilled />
+        </el-icon>
+      </span>
+      <div class="dev-notice__copy">
+        <p>无电签约定需求可继续关联；历史电签担保需求需要满足保证金规则。</p>
+        <p v-if="depositStatus?.frozen_cny">当前已冻结：{{ frozenDepositText }}</p>
+        <p v-if="depositStatus?.latest_order">最近订单状态：{{ depositStatus.latest_order.status }}</p>
+      </div>
+    </div>
 
     <el-card shadow="never" class="dev-surface-card">
-      <div class="dev-requirement-hall__filters">
-        <el-select v-model="filters.sortBy" placeholder="排序字段" class="dev-requirement-hall__field"
-          @change="applyFilters">
+      <div class="dev-card-head">
+        <div class="dev-card-head__title-block">
+          <h3 class="dev-section-title">可接需求</h3>
+          <p class="dev-section-desc">浏览平台上的可接需求并关联开发资源，排序与筛选即时生效。</p>
+        </div>
+      </div>
+
+      <div class="dev-toolbar">
+        <el-select v-model="filters.sortBy" placeholder="排序字段" class="dev-toolbar__field" @change="applyFilters">
           <el-option v-for="item in sortOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
 
         <el-select v-model="filters.sortOrder" placeholder="排序方向"
-          class="dev-requirement-hall__field dev-requirement-hall__field--small" @change="applyFilters">
+          class="dev-toolbar__field dev-toolbar__field--small" @change="applyFilters">
           <el-option label="降序" value="desc" />
           <el-option label="升序" value="asc" />
         </el-select>
 
-        <el-input v-model="filters.keyword" clearable placeholder="搜索需求编号、标题或描述" class="dev-requirement-hall__search"
-          @keyup.enter="applyFilters" />
-
-        <div class="dev-requirement-hall__actions">
-          <el-button class="dev-requirement-hall__filter-button dev-requirement-hall__filter-button--ghost"
-            type="primary" :loading="loading" @click="applyFilters">
-            <el-icon v-if="!loading">
+        <el-input v-model="filters.keyword" clearable placeholder="搜索需求编号、标题或描述" class="dev-toolbar__search"
+          @keyup.enter="searchNow">
+          <template #prefix>
+            <el-icon>
               <Search />
             </el-icon>
-          </el-button>
-          <el-button class="dev-requirement-hall__filter-button dev-requirement-hall__filter-button--ghost"
-            @click="resetFilters">
+          </template>
+        </el-input>
+
+        <!-- 筛选与其余菜单页同构：只有「重置」，输入／切换即时生效，没有「查询」按钮。
+             条数只在表尾分页器里报一次，工具栏不再重复一行「共 N 条」。 -->
+        <div class="dev-toolbar__actions">
+          <el-button class="dev-toolbar__ghost" @click="resetFilters">
             <el-icon>
               <RefreshLeft />
             </el-icon>
+            <span>重置</span>
           </el-button>
         </div>
       </div>
 
-      <el-table :data="rows" stripe v-loading="loading" class="dev-release-table dev-requirement-hall__table"
-        :empty-text="emptyText">
-        <el-table-column label="需求" min-width="300">
+      <el-table :data="rows" stripe v-loading="loading" class="dev-table dev-requirement-hall__table">
+        <template #empty>
+          <p class="dev-empty-state">{{ emptyText }}</p>
+        </template>
+        <!-- 列宽合计必须留在卡片可用宽度以内（桌面端 1440 宽时约 965px）。
+             原来这七列是 300+116+92+112+96+136+130 = 982px，刚好越界十几像素，
+             表格因此横向滚动，「操作」列（fixed="right"）压掉「最近更新」的尾巴。 -->
+        <el-table-column label="需求" min-width="260">
           <template #default="scope">
             <div class="dev-requirement-hall__title-cell">
               <div class="dev-requirement-hall__requirement-id">{{ scope.row.requirement_id }}</div>
@@ -692,13 +771,13 @@ function resetInitForm() {
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="creator" label="发起人" width="116" show-overflow-tooltip />
-        <el-table-column label="预算" width="92">
+        <el-table-column prop="creator" label="发起人" width="110" show-overflow-tooltip />
+        <el-table-column label="预算" width="88">
           <template #default="scope">
             <span>{{ formatMoney(scope.row.budget) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="发布方式" width="112">
+        <el-table-column label="发布方式" width="108">
           <template #default="scope">
             <el-tag :type="isSelfManagedRequirement(scope.row) ? 'info' : 'warning'" effect="plain">
               {{ paymentModeLabel(scope.row) }}
@@ -712,19 +791,32 @@ function resetInitForm() {
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="updated_at" label="最近更新" width="136" show-overflow-tooltip />
-        <el-table-column label="操作" width="130" fixed="right">
+        <el-table-column prop="updated_at" label="最近更新" width="132" show-overflow-tooltip />
+        <el-table-column label="操作" width="118" fixed="right">
           <template #default="scope">
-            <el-button type="primary" plain class="dev-requirement-hall__bind-button"
+            <el-button type="primary" plain class="dev-table__action dev-action--soft"
               @click="openBindDialog(scope.row)">
               {{ bindButtonLabel(scope.row) }}
             </el-button>
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- 表尾走统一层的 .dev-pager（与钱包记录同一形态）。
+           本页走服务端分页，此前只取第 1 页 10 条且不给翻页入口，第 2 页起的数据在界面上不可达。 -->
+      <div class="dev-pager">
+        <div class="dev-pager__count">
+          <span>共 {{ total }} 条</span>
+          <el-select v-model="pageSize" aria-label="每页条数" class="dev-pager__size" @change="handlePageSizeChange">
+            <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+          </el-select>
+        </div>
+        <el-pagination v-model:current-page="page" :page-size="pageSize" :total="total" :pager-count="5"
+          layout="prev, pager, next" background aria-label="需求列表分页" @current-change="loadRequirements" />
+      </div>
     </el-card>
 
-    <el-dialog v-model="bindDialogVisible" width="720px"
+    <el-dialog v-model="bindDialogVisible" width="720px" align-center class="dev-dialog"
       :title="selectedRequirement ? `关联需求 · ${selectedRequirement.title}` : '关联需求'">
       <div class="dev-requirement-hall__dialog-copy">
         <p class="dev-section-desc">
@@ -810,7 +902,7 @@ function resetInitForm() {
             <section v-if="rootTabs.length > 0" class="dev-requirement-hall__catalog-block">
               <div class="dev-requirement-hall__catalog-head">
                 <span class="dev-filter-label">一级分类</span>
-                <el-button text size="small" :loading="initTagsLoading" @click="loadTagTree">刷新标签</el-button>
+                <el-button text :icon="Refresh" :loading="initTagsLoading" @click="loadTagTree">刷新标签</el-button>
               </div>
               <div class="dev-requirement-hall__catalog-chips">
                 <button v-for="root in rootTabs" :key="root.key" type="button"

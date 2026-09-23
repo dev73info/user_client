@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Back, Refresh, WarningFilled } from '@element-plus/icons-vue'
 
 import { getDevAccessStatus } from '@/api/auth'
 import {
@@ -623,24 +624,49 @@ async function submitBinding() {
 
 <template>
     <div class="dev-page dev-requirement-detail" v-loading="loading">
-        <div class="dev-requirement-detail__toolbar">
-            <div v-if="requirement" class="dev-requirement-detail__toolbar-meta">
-                <span>{{ requirement.requirement_id }}</span>
-                <span>{{ statusToLabel(requirement.status) }}</span>
+        <!-- 顶部读数条：与其余页同一条形态（读数在左、页面级操作在右，刷新固定在 __action 槽）。
+             这一页原来只有一条只放两个灰字的 __toolbar，没有读数条，
+             返回入口还是另做的青色胶囊按钮，与别页的 .dev-btn 不是一个体系。 -->
+        <div class="dev-meta-strip">
+            <template v-if="requirement">
+                <div class="dev-meta-strip__item">
+                    <span class="dev-meta-strip__label">需求编号</span>
+                    <span class="dev-meta-strip__value">{{ requirement.requirement_id }}</span>
+                </div>
+                <div class="dev-meta-strip__divider" />
+                <div class="dev-meta-strip__item">
+                    <span class="dev-meta-strip__label">状态</span>
+                    <span class="dev-meta-strip__value">{{ statusToLabel(requirement.status) }}</span>
+                </div>
+                <div class="dev-meta-strip__divider" />
+                <div class="dev-meta-strip__item">
+                    <span class="dev-meta-strip__label">结算方式</span>
+                    <span class="dev-meta-strip__value">{{ paymentLabel(requirement) }}</span>
+                </div>
+            </template>
+            <div class="dev-meta-strip__item dev-meta-strip__action">
+                <button type="button" class="dev-btn dev-btn--ghost" @click="goBack">
+                    <el-icon>
+                        <Back />
+                    </el-icon>
+                    <span>返回需求大厅</span>
+                </button>
+                <el-button class="dev-toolbar__icon-btn" aria-label="刷新需求详情" @click="loadPage">
+                    <el-icon>
+                        <Refresh />
+                    </el-icon>
+                </el-button>
             </div>
         </div>
 
         <div v-if="requirement" class="dev-requirement-detail__layout">
             <section class="dev-requirement-detail__left">
                 <el-card shadow="never" class="dev-surface-card dev-requirement-detail__requirement-card">
-                    <div class="dev-requirement-detail__head">
-                        <div>
-                            <span class="dev-requirement-detail__id">{{ requirement.requirement_id }}</span>
-                            <h2>{{ requirement.title }}</h2>
+                    <div class="dev-card-head">
+                        <div class="dev-card-head__title-block">
+                            <span class="dev-filter-label">{{ requirement.requirement_id }}</span>
+                            <h2 class="dev-section-title">{{ requirement.title }}</h2>
                         </div>
-                        <el-tag :type="isSelfManagedRequirement(requirement) ? 'info' : 'warning'" effect="plain">
-                            {{ paymentLabel(requirement) }}
-                        </el-tag>
                     </div>
 
                     <div class="dev-requirement-detail__stats">
@@ -673,26 +699,37 @@ async function submitBinding() {
             <aside class="dev-requirement-detail__right">
                 <el-card shadow="never" class="dev-surface-card dev-requirement-detail__binding-card"
                     v-loading="resourcesLoading || depositLoading">
-                    <div class="dev-requirement-detail__binding-head">
-                        <div>
-                            <span class="dev-requirement-detail__binding-eyebrow">接取需求</span>
-                            <h3>配置关联资源</h3>
+                    <div class="dev-card-head">
+                        <div class="dev-card-head__title-block">
+                            <span class="dev-filter-label">接取需求</span>
+                            <h3 class="dev-section-title">配置关联资源</h3>
                         </div>
-                        <span class="dev-requirement-detail__binding-status">
-                            {{ bindingMode === 'existing' ? '已有资源' : '新资源' }}
-                        </span>
+                        <div class="dev-card-head__actions">
+                            <span class="dev-chip">{{ bindingMode === 'existing' ? '已有资源' : '新资源' }}</span>
+                        </div>
                     </div>
 
-                    <div v-if="bindingBlockReason" class="dev-requirement-detail__block-note">
-                        <span>{{ bindingBlockReason }}</span>
-                        <el-button v-if="agreementBlocked" type="primary" plain size="small"
-                            @click="goSignDeveloperAgreement">
-                            去签署协议
-                        </el-button>
-                        <el-button v-else-if="requirement && requiresDepositGate(requirement)" type="primary" plain
-                            size="small" @click="goToOrderDeposit">
-                            去缴纳保证金
-                        </el-button>
+                    <!-- 阻塞提示走统一层的金色提示条（与总览页、需求大厅同一种形状与配色），
+                         原来是自己写的橙色块 + 两颗 Element 的 plain small 蓝按钮。 -->
+                    <div v-if="bindingBlockReason" class="dev-notice" role="alert">
+                        <span class="dev-notice__icon" aria-hidden="true">
+                            <el-icon>
+                                <WarningFilled />
+                            </el-icon>
+                        </span>
+                        <div class="dev-notice__copy">
+                            <p>{{ bindingBlockReason }}</p>
+                        </div>
+                        <div class="dev-notice__action">
+                            <button v-if="agreementBlocked" type="button" class="dev-btn dev-btn--gold"
+                                @click="goSignDeveloperAgreement">
+                                去签署协议
+                            </button>
+                            <button v-else-if="requirement && requiresDepositGate(requirement)" type="button"
+                                class="dev-btn dev-btn--gold" @click="goToOrderDeposit">
+                                去缴纳保证金
+                            </button>
+                        </div>
                     </div>
 
                     <el-form label-position="top">
@@ -780,7 +817,7 @@ async function submitBinding() {
                                 <section v-if="rootTabs.length > 0" class="dev-requirement-hall__catalog-block">
                                     <div class="dev-requirement-hall__catalog-head">
                                         <span class="dev-filter-label">一级分类</span>
-                                        <el-button text size="small" :loading="initTagsLoading" @click="loadTagTree">
+                                        <el-button text :icon="Refresh" :loading="initTagsLoading" @click="loadTagTree">
                                             刷新标签
                                         </el-button>
                                     </div>
@@ -877,9 +914,9 @@ async function submitBinding() {
                     </p>
 
                     <div class="dev-requirement-detail__actions">
-                        <el-button @click="goBack">取消</el-button>
-                        <el-button type="primary" :loading="binding" :disabled="!canSubmitBinding"
-                            @click="submitBinding">
+                        <el-button class="dev-toolbar__ghost" @click="goBack">取消</el-button>
+                        <el-button class="dev-toolbar__primary" type="primary" :loading="binding"
+                            :disabled="!canSubmitBinding" @click="submitBinding">
                             {{ bindingMode === 'existing' ? '确认关联' : '初始化并关联' }}
                         </el-button>
                     </div>
@@ -889,7 +926,7 @@ async function submitBinding() {
 
         <el-card v-else-if="!loading" shadow="never" class="dev-surface-card dev-requirement-detail__empty">
             <p class="dev-empty-state">当前需求不存在或已不可接取。</p>
-            <el-button class="dev-requirement-detail__back" plain @click="goBack">返回需求大厅</el-button>
+            <el-button class="dev-toolbar__ghost" @click="goBack">返回需求大厅</el-button>
         </el-card>
     </div>
 </template>
@@ -903,53 +940,10 @@ async function submitBinding() {
     min-width: 0;
 }
 
-.dev-requirement-detail__toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.dev-requirement-detail__back.el-button {
-    border-radius: 999px;
-    font-weight: 800;
-    --el-button-text-color: #247f7d;
-    --el-button-bg-color: rgba(255, 255, 255, 0.88);
-    --el-button-border-color: rgba(42, 166, 164, 0.32);
-    --el-button-hover-text-color: #fff;
-    --el-button-hover-bg-color: #247f7d;
-    --el-button-hover-border-color: #247f7d;
-    --el-button-active-text-color: #fff;
-    --el-button-active-bg-color: #1f6f6d;
-    --el-button-active-border-color: #1f6f6d;
-    color: #247f7d;
-    box-shadow: 0 8px 18px rgba(42, 166, 164, 0.1);
-    transition:
-        color 160ms ease,
-        background-color 160ms ease,
-        border-color 160ms ease,
-        box-shadow 160ms ease,
-        transform 160ms ease;
-}
-
-.dev-requirement-detail__back.el-button:hover,
-.dev-requirement-detail__back.el-button:focus-visible {
-    color: #fff;
-    border-color: #247f7d;
-    background-color: #247f7d;
-    box-shadow: 0 10px 22px rgba(42, 166, 164, 0.18);
-    transform: translateY(-1px);
-}
-
-.dev-requirement-detail__toolbar-meta {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 8px;
-    color: var(--dev-muted);
-    font-size: 12px;
-    font-weight: 700;
-}
+/* 本页原来自带一条 __toolbar（只放两个灰字）、一颗青色 999px 胶囊返回按钮，
+   以及 __binding-head / __head / __block-note 这一套自家结构；现在统一走
+   .dev-meta-strip / .dev-card-head / .dev-chip / .dev-notice / .dev-btn，
+   相关规则随之删除，这里只保留本页特有的排版。 */
 
 .dev-requirement-detail__layout {
     --requirement-detail-panel-height: clamp(500px, calc(100dvh - 190px), 780px);
@@ -998,75 +992,21 @@ async function submitBinding() {
     min-width: 0;
 }
 
-.dev-requirement-detail__binding-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    padding-bottom: 2px;
-}
-
-.dev-requirement-detail__binding-head h3 {
-    margin: 4px 0 0;
-    color: var(--dev-ink);
-    font-size: 18px;
-    line-height: 1.25;
-}
-
-.dev-requirement-detail__binding-eyebrow {
-    color: var(--dev-blue);
-    font-size: 12px;
-    font-weight: 800;
-}
-
-.dev-requirement-detail__binding-status {
-    flex: 0 0 auto;
-    display: inline-flex;
-    align-items: center;
-    min-height: 28px;
-    padding: 0 10px;
-    border-radius: 999px;
-    background: rgba(31, 74, 209, 0.09);
-    color: var(--dev-blue);
-    font-size: 12px;
-    font-weight: 800;
-}
-
-.dev-requirement-detail__head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.dev-requirement-detail__head h2 {
-    margin: 6px 0 0;
-    color: var(--dev-ink);
-    font-size: 22px;
-    line-height: 1.35;
-}
-
-.dev-requirement-detail__id {
-    color: var(--dev-blue);
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-}
-
 .dev-requirement-detail__stats {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
 }
 
+/* 内嵌读数块：半径与描边走统一层的内嵌档（--dev-radius-inner / --dev-line） */
 .dev-requirement-detail__stat {
     display: grid;
     gap: 6px;
     min-width: 0;
     padding: 12px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.72);
-    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+    border-radius: var(--dev-radius-inner);
+    background: var(--dev-surface-strong);
+    border: 1px solid var(--dev-line);
 }
 
 .dev-requirement-detail__stat span {
@@ -1090,9 +1030,9 @@ async function submitBinding() {
 
 .dev-requirement-detail__rich {
     padding: 14px 16px;
-    border: 1px solid rgba(148, 163, 184, 0.14);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid var(--dev-line);
+    border-radius: var(--dev-radius-inner);
+    background: var(--dev-surface);
     color: var(--dev-ink);
     font-size: 14px;
     font-weight: 600;
@@ -1122,22 +1062,7 @@ async function submitBinding() {
     max-width: 100%;
     height: auto;
     margin: 10px 0;
-    border-radius: 12px;
-}
-
-.dev-requirement-detail__block-note {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 14px;
-    border-radius: 14px;
-    border: 1px solid rgba(245, 158, 11, 0.28);
-    background: rgba(255, 251, 235, 0.92);
-    color: #9a3412;
-    font-size: 13px;
-    font-weight: 800;
-    line-height: 1.6;
+    border-radius: var(--dev-radius-inner);
 }
 
 .dev-requirement-detail__actions {
@@ -1148,8 +1073,8 @@ async function submitBinding() {
     justify-content: flex-end;
     gap: 10px;
     padding-top: 14px;
-    border-top: 1px solid rgba(148, 163, 184, 0.14);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.98));
+    border-top: 1px solid var(--dev-line);
+    background: linear-gradient(180deg, var(--dev-surface), var(--dev-surface-strong));
 }
 
 .dev-requirement-detail__empty :deep(.el-card__body) {
@@ -1217,16 +1142,10 @@ async function submitBinding() {
 
 @media (max-width: 720px) {
 
-    .dev-requirement-detail__toolbar,
     .dev-requirement-detail__actions,
-    .dev-requirement-detail__empty :deep(.el-card__body),
-    .dev-requirement-detail__block-note {
+    .dev-requirement-detail__empty :deep(.el-card__body) {
         align-items: stretch;
         flex-direction: column;
-    }
-
-    .dev-requirement-detail__toolbar-meta {
-        justify-content: flex-start;
     }
 
     .dev-requirement-detail__stats,

@@ -1,7 +1,7 @@
 /* === 个人中心：钱包、需求单、优惠券 === */
 
 .profile-page {
-  --profile-card-bg: rgba(255, 255, 255, 0.94);
+  --profile-card-bg: rgba(255, 255, 255, 0.96);
   --profile-card-bg-strong: #ffffff;
   --profile-card-border: rgba(224, 232, 255, 0.96);
   --profile-card-shadow: 0 14px 34px rgba(76, 103, 172, 0.08);
@@ -77,13 +77,18 @@
   font-size: 14px;
 }
 
+/* 工作台面板。用户工作台那一列（我的需求、我的签署、发票中心、我的背包、我的收藏、我的邀请、
+   消息中心、工单中心、账户与优惠券）的每一块内容都用它，是这些页面的「卡片」。
+   规格与开发者侧的 .dev-surface-card 取齐：24px 圆角、冷灰描边、同一支阴影——
+   顶部读数条（.wb-strip，见 portal-workbench.css）与它上下相接，两块的圆角、描边、阴影必须一样，
+   否则同一页里会出现两张「同一种卡片长得不一样」。 */
 .wallet-section {
   margin-top: 0;
   padding: 24px;
-  border: 1px solid var(--profile-card-border);
-  border-radius: 22px;
+  border: 1px solid var(--wb-line, rgba(203, 213, 225, 0.66));
+  border-radius: var(--wb-radius-card, 24px);
   background: var(--profile-card-bg);
-  box-shadow: var(--profile-card-shadow);
+  box-shadow: var(--wb-shadow, 0 20px 44px rgba(71, 85, 105, 0.1));
 }
 
 .wallet-header {

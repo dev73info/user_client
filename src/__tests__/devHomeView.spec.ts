@@ -123,9 +123,12 @@ async function render(query: Record<string, string> = {}) {
 
 type Wrapper = Awaited<ReturnType<typeof render>>['wrapper']
 
-/** 四格统计卡：读数是「标签 + 数字」两行，取整卡的 text 就够断言。 */
+/** 顶部读数条里的四格读数：读数是「标签 + 数字」，取整格的 text 就够断言。
+    末格是刷新按钮所在的 __action 槽，不是读数，要排除掉。 */
 const statCards = (wrapper: Wrapper) =>
-  wrapper.findAll('.dev-home__stat').map((card) => card.text())
+  wrapper
+    .findAll('.dev-meta-strip__item:not(.dev-meta-strip__action)')
+    .map((item) => item.text())
 
 /** 合并后的资金卡只剩提现口径的两个读数（待提现 / 已提现）。 */
 const facts = (wrapper: Wrapper) =>
@@ -152,7 +155,7 @@ function requirementWithStatus(id: number, status: string) {
 }
 
 describe('developer workbench overview', () => {
-  it('把四个接口的汇总值渲染成四格统计卡与一张资金卡', async () => {
+  it('把四个接口的汇总值渲染成顶部读数条与一张资金卡', async () => {
     const { wrapper } = await render()
     expect(mocks.wallet).toHaveBeenCalledWith('test-token')
     expect(mocks.deposit).toHaveBeenCalledWith('test-token')
@@ -189,7 +192,7 @@ describe('developer workbench overview', () => {
     wrapper.unmount()
   })
 
-  it('统计卡按接单状态分档：进行中=未结单，待交付=待付尾款，已完成=已结单', async () => {
+  it('读数条按接单状态分档：进行中=未结单，待交付=待付尾款，已完成=已结单', async () => {
     mocks.requirements.mockResolvedValue([
       requirementWithStatus(1, 'pending_deposit'),
       requirementWithStatus(2, 'deposit_paid'),
@@ -288,14 +291,14 @@ describe('developer workbench overview', () => {
 
   it('保证金不足时给出提示，够用时不出提示', async () => {
     const ok = await render()
-    expect(ok.wrapper.find('.dev-home__alert').exists()).toBe(false)
+    expect(ok.wrapper.find('.dev-notice').exists()).toBe(false)
     // 够用时卡片里给一个正向状态，不必靠「没有警示条」反推
     expect(ok.wrapper.find('.dev-home__deposit-head .dev-chip').text()).toBe('可接单')
     ok.wrapper.unmount()
 
     mocks.deposit.mockResolvedValue({ ...depositReady, has_paid_deposit: false, can_bind_requirement: false })
     const blocked = await render()
-    const alert = blocked.wrapper.find('.dev-home__alert')
+    const alert = blocked.wrapper.find('.dev-notice')
     expect(alert.exists()).toBe(true)
     expect(alert.text()).toContain('保证金不足，暂不可接单')
     expect(alert.attributes('role')).toBe('alert')
@@ -308,7 +311,7 @@ describe('developer workbench overview', () => {
   it('充值按钮就地拉起充值弹窗，不再跳转收益钱包', async () => {
     mocks.deposit.mockResolvedValue({ ...depositReady, has_paid_deposit: false, can_bind_requirement: false })
     const { wrapper } = await render()
-    const action = wrapper.find('.dev-home__alert-action')
+    const action = wrapper.find('.dev-notice__action .dev-btn')
     expect(action.element.tagName).toBe('BUTTON')
     expect(wrapper.find('.dev-recharge-dialog').exists()).toBe(false)
 
@@ -390,7 +393,7 @@ describe('开发总览的演示数据开关', () => {
     expect(wrapper.text()).not.toContain('当前筛选下没有项目')
     expect(wrapper.text()).not.toContain('当前筛选下没有交付记录')
     // 演示保证金是足的，不该出现阻断接单的警示条
-    expect(wrapper.find('.dev-home__alert').exists()).toBe(false)
+    expect(wrapper.find('.dev-notice').exists()).toBe(false)
     wrapper.unmount()
   })
 })

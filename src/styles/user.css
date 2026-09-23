@@ -7,6 +7,7 @@
 @import './resource-catalog.css';
 @import './rich-code-copy.css';
 @import './rich-text-code.css';
+@import './portal-workbench.css';
 
 /* 用户名渐变展示：由积分商城「权限」类商品兑换开启 */
 .username-gradient {

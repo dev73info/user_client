@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ArrowDown, Plus, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
 
 import { apiUrl } from '@/api/http'
 import {
@@ -13,6 +13,7 @@ import {
 } from '@/api/mcResources'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { useToast } from '@/composables/useToast'
+import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { useResourceVersionDraft } from '@/composables/useResourceVersionDraft'
 import {
@@ -51,8 +52,63 @@ const emptyText = computed(() => {
   if (isLoading.value) {
     return '资源列表加载中'
   }
-  return '当前还没有团队资源记录'
+  return hasActiveFilters.value ? '没有符合筛选条件的团队资源' : '当前还没有团队资源记录'
 })
+
+// 与「资源项目」页同一套搜索与状态筛选口径：数据源一次取回全部，输入即过滤。
+const filters = reactive({
+  keyword: '',
+  visibility: '',
+})
+
+const hasActiveFilters = computed(
+  () => Boolean(filters.keyword.trim()) || Boolean(filters.visibility),
+)
+
+const filteredResources = computed(() => {
+  const keyword = filters.keyword.trim().toLowerCase()
+
+  return resources.value.filter((item) => {
+    if (filters.visibility && item.visibility !== filters.visibility) {
+      return false
+    }
+
+    if (!keyword) {
+      return true
+    }
+
+    return [item.title, item.author, item.description, resourceTagSummary(item)].some((value) =>
+      (value ?? '').toLowerCase().includes(keyword),
+    )
+  })
+})
+
+/** 顶部读数条的口径与「资源项目」页一致：同一份数据按 visibility 分档。 */
+const publishedCount = computed(
+  () => resources.value.filter((item) => item.visibility === 'published').length,
+)
+const reviewCount = computed(
+  () => resources.value.filter((item) => item.visibility === 'review').length,
+)
+const draftCount = computed(
+  () => resources.value.filter((item) => item.visibility === 'draft').length,
+)
+
+function resetFilters() {
+  filters.keyword = ''
+  filters.visibility = ''
+}
+
+/* 分页与其余菜单页同构（需求大厅、收益钱包、资源项目、交付记录都带表尾分页器）。
+   本页数据源一次取回全部，所以这里是客户端切片，不走服务端页码。
+   筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空表。 */
+const { page, pageSize, total: filteredTotal, paged } = useClientPagination(filteredResources)
+
+function resetPage() {
+  page.value = 1
+}
+
+watch(filters, resetPage)
 
 onMounted(async () => {
   auth.hydrate()
@@ -288,17 +344,85 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
 
 <template>
   <div class="dev-page dev-page--resource-list">
+    <div class="dev-meta-strip" v-loading="isLoading">
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">团队资源</span>
+        <span class="dev-meta-strip__value">{{ resources.length }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">公开</span>
+        <span class="dev-meta-strip__value">{{ publishedCount }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">审核中</span>
+        <span class="dev-meta-strip__value">{{ reviewCount }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">私有</span>
+        <span class="dev-meta-strip__value">{{ draftCount }}</span>
+      </div>
+      <div class="dev-meta-strip__item dev-meta-strip__action">
+        <el-button class="dev-toolbar__icon-btn" aria-label="刷新团队资源" @click="loadResources">
+          <el-icon>
+            <Refresh />
+          </el-icon>
+        </el-button>
+      </div>
+    </div>
+
     <el-card shadow="never" class="dev-surface-card">
-      <div class="dev-upload-section__head">
-        <section>
+      <div class="dev-card-head">
+        <div class="dev-card-head__title-block">
           <h3 class="dev-section-title">团队资源项目</h3>
-        </section>
-        <button class="dev-resource-list__create-btn" type="button" @click="goCreate">
-          + 新建资源
-        </button>
+          <p class="dev-section-desc">团队共享的资源项目，个人资源项目见「资源项目」页。</p>
+        </div>
+        <div class="dev-card-head__actions">
+          <button class="dev-btn dev-btn--primary" type="button" @click="goCreate">
+            <el-icon>
+              <Plus />
+            </el-icon>
+            <span>新建资源</span>
+          </button>
+        </div>
       </div>
 
-      <el-table :data="resources" stripe v-loading="isLoading" class="dev-resource-table" :empty-text="emptyText">
+      <div class="dev-toolbar">
+        <el-select v-model="filters.visibility" clearable placeholder="资源状态"
+          class="dev-toolbar__field" aria-label="按资源状态筛选">
+          <el-option label="已公开" value="published" />
+          <el-option label="审核中" value="review" />
+          <el-option label="私有" value="draft" />
+        </el-select>
+
+        <el-input v-model="filters.keyword" clearable placeholder="搜索资源标题、作者或标签"
+          class="dev-toolbar__search">
+          <template #prefix>
+            <el-icon>
+              <Search />
+            </el-icon>
+          </template>
+        </el-input>
+
+        <div class="dev-toolbar__actions">
+          <span v-if="hasActiveFilters" class="dev-toolbar__hint">
+            筛选出 {{ filteredResources.length }} / {{ resources.length }} 个
+          </span>
+          <el-button class="dev-toolbar__ghost" @click="resetFilters">
+            <el-icon>
+              <RefreshLeft />
+            </el-icon>
+            <span>重置</span>
+          </el-button>
+        </div>
+      </div>
+
+      <el-table :data="paged" stripe v-loading="isLoading" class="dev-table dev-resource-table">
+        <template #empty>
+          <p class="dev-empty-state">{{ emptyText }}</p>
+        </template>
         <el-table-column label="资源" min-width="160">
           <template #default="scope">
             <div class="dev-resource-table__title-cell">
@@ -331,9 +455,9 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
         <el-table-column label="操作" min-width="120" fixed="right">
           <template #default="scope">
             <el-dropdown trigger="click" popper-class="dev-resource-action-menu" @command="handleResourceCommand">
-              <el-button type="primary" plain class="dev-resource-table__action-button">
+              <el-button type="primary" plain class="dev-table__action dev-action--soft">
                 <span>更多</span>
-                <el-icon class="dev-resource-table__action-caret">
+                <el-icon class="dev-action-caret">
                   <ArrowDown />
                 </el-icon>
               </el-button>
@@ -364,7 +488,18 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
         </el-table-column>
       </el-table>
 
-      <el-dialog v-model="publishDialogVisible" width="520px"
+      <div class="dev-pager">
+        <div class="dev-pager__count">
+          <span>共 {{ filteredTotal }} 条</span>
+          <el-select v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
+            <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+          </el-select>
+        </div>
+        <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal" :pager-count="5"
+          layout="prev, pager, next" background aria-label="团队资源分页" />
+      </div>
+
+      <el-dialog v-model="publishDialogVisible" width="520px" align-center class="dev-dialog"
         :title="selectedResource ? `发布版本 · ${selectedResource.title}` : '发布版本'">
         <el-form label-position="top" class="dev-version-form">
           <el-form-item label="版本号" required>

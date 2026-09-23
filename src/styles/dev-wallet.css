@@ -1,11 +1,4 @@
 /* 钱包模块样式 */
-.dev-wallet-page {
-  gap: 20px;
-}
-
-.dev-meta-strip__tag {
-  margin-left: 2px;
-}
 
 /* 主余额卡片区 */
 .wallet-hero {
@@ -17,21 +10,6 @@
 .wallet-hero__card {
   display: flex;
   flex-direction: column;
-}
-
-.wallet-hero__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.wallet-hero__section-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--dev-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .wallet-hero__body {
@@ -74,17 +52,8 @@
   color: var(--dev-muted);
 }
 
-.wallet-hero__amount {
-  font-size: 36px;
-  font-weight: 800;
-  color: var(--dev-gold);
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-
-.wallet-hero__amount--dim {
-  color: var(--dev-muted);
-}
+/* 金额大数：走统一层的 .dev-figure（30px / 800 / 金）与 .dev-figure--muted（不可提时压弱），
+   本页原来自带 .wallet-hero__amount 的 36px，与总览页同一组读数差一个字号，已删。 */
 
 .wallet-hero__tags {
   display: flex;
@@ -98,90 +67,19 @@
   flex-wrap: wrap;
   gap: 12px;
   padding-top: 16px;
-  border-top: 1px solid var(--dev-border, #f0f0f0);
+  border-top: 1px solid var(--dev-line);
 }
 
-.wallet-hero__button.el-button {
-  min-height: 44px;
-  height: 44px;
-  padding: 0 18px;
-  border-radius: 10px;
-  font-weight: 800;
-  line-height: 1;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    color 160ms ease,
-    opacity 160ms ease,
-    transform 160ms ease;
-}
-
-.wallet-hero__button.el-button span {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.wallet-hero__button.el-button .el-icon {
-  font-size: 16px;
-}
-
-.wallet-hero__button--primary.el-button {
-  min-width: 132px;
-  border-color: var(--dev-blue);
-  background: var(--dev-blue);
-  color: #fff;
-  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.18);
-}
-
-.wallet-hero__button--primary.el-button:hover:not(.is-disabled),
-.wallet-hero__button--primary.el-button:focus-visible:not(.is-disabled) {
-  border-color: #173aaa;
-  background: #173aaa;
-  color: #fff;
-  box-shadow: 0 12px 24px rgba(31, 74, 209, 0.22);
-  transform: translateY(-1px);
-}
-
-.wallet-hero__button--ghost.el-button {
-  min-width: 88px;
-  border-color: rgba(148, 163, 184, 0.3);
-  background: rgba(255, 255, 255, 0.9);
-  color: #475569;
-  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.04);
-}
-
-.wallet-hero__button--ghost.el-button:hover,
-.wallet-hero__button--ghost.el-button:focus-visible {
-  border-color: rgba(31, 74, 209, 0.24);
-  background: rgba(31, 74, 209, 0.07);
-  color: var(--dev-blue);
-  box-shadow: 0 10px 20px rgba(31, 74, 209, 0.08);
-  transform: translateY(-1px);
-}
-
-.wallet-hero__button.el-button.is-disabled,
-.wallet-hero__button.el-button.is-disabled:hover,
-.wallet-hero__button.el-button.is-disabled:focus-visible {
-  border-color: rgba(148, 163, 184, 0.22);
-  background: #e5edf5;
-  color: #7c8da3;
-  box-shadow: none;
-  opacity: 1;
-  transform: none;
-}
-
-.wallet-hero__button.el-button.is-loading {
-  transform: none;
-}
+/* 卡片里的页面级操作按钮走统一层的 .dev-toolbar__primary / __ghost（36px、10px 圆角、
+   --dev-blue 主色），本页原来自带一套 .wallet-hero__button（44px 高、800 字重、
+   var(--el-color-primary-dark-2) 悬停、ghost 变体自带 var(--dev-ink-soft) 文字），是同一页里第三种按钮规格，已删除。 */
 
 /* 接单收入的两条提现路径：手动提现（开发者发起）与自动提现（平台财务每日批量出款） */
 .wallet-payout {
   display: grid;
   gap: 14px;
   padding-top: 16px;
-  border-top: 1px solid var(--dev-border, #f0f0f0);
+  border-top: 1px solid var(--dev-line);
 }
 
 /* 两条路径并成一行，说明折到行下方：比各占一行省一半高度，窄屏自动换行成两行 */
@@ -231,15 +129,17 @@
   flex-shrink: 0;
 }
 
+/* 出款通道未就绪的提示：配色改用体系里的金（= 需要开发者先处理的提示那一支），
+   原来是 rgba(185, 129, 43, 0.08) / var(--dev-gold) / var(--dev-gold) 这一套橙，与页内其它提示是两个色。 */
 .wallet-payout__alert {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border: 1px solid rgba(245, 158, 11, 0.24);
-  border-radius: 10px;
-  background: #fff7ed;
-  color: #b45309;
+  border: 1px solid rgba(185, 129, 43, 0.24);
+  border-radius: var(--dev-radius-control);
+  background: rgba(185, 129, 43, 0.08);
+  color: var(--dev-gold);
   font-size: 12px;
   line-height: 1.6;
 }
@@ -249,12 +149,7 @@
   padding: 0;
 }
 
-/* 提现弹窗 */
-.dev-wallet-withdraw__balance {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--dev-gold);
-}
+/* 提现弹窗里的余额大数走统一层 .dev-figure--sm（原来是本页的 22px 字号） */
 
 .dev-wallet-withdraw__note {
   margin-top: 6px;
@@ -269,9 +164,14 @@
   gap: 12px;
   width: 100%;
   font-size: 14px;
-  color: #334155;
+  color: var(--dev-ink-soft);
 }
 
+/* 充值弹窗（DevDepositRechargeDialog）：与其余开发者端弹窗同一套令牌。
+   下面这一段的色值原来自带一套——var(--dev-ink) / var(--dev-ink-soft) / rgba(248, 250, 252, 0.9) 的中性灰、
+   微信档的 emerald 绿、限额提示的 amber 橙、主按钮悬停的 var(--el-color-primary-dark-2) 深蓝，
+   与体系里的 --dev-ink / --dev-ink-soft / --dev-muted、--dev-cyan、--dev-gold、--dev-blue
+   都不是同一个值。现在只写令牌。 */
 .dev-recharge-dialog.el-dialog {
   max-width: calc(100vw - 32px);
   padding: 0;
@@ -286,7 +186,7 @@
 }
 
 .dev-recharge-dialog .el-dialog__title {
-  color: #111827;
+  color: var(--dev-ink);
   font-size: 20px;
   font-weight: 600;
   line-height: 1.35;
@@ -304,7 +204,7 @@
 }
 
 .dev-recharge-dialog .el-dialog__headerbtn:hover {
-  background: rgba(15, 23, 42, 0.06);
+  background: rgba(31, 74, 209, 0.08);
 }
 
 .dev-recharge-dialog .el-dialog__body {
@@ -319,8 +219,8 @@
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 24px;
-  background: #fff;
-  border-top: 1px solid rgba(226, 232, 240, 0.82);
+  background: var(--dev-surface-strong);
+  border-top: 1px solid var(--dev-line);
 }
 
 .dev-recharge-dialog__form {
@@ -347,15 +247,16 @@
 
 .dev-recharge-dialog__channels .el-radio-button {
   min-width: 0;
-  --el-radio-button-checked-bg-color: #edf7ff;
-  --el-radio-button-checked-text-color: #1677c8;
-  --el-radio-button-checked-border-color: #1677c8;
+  --el-radio-button-checked-bg-color: var(--el-color-primary-light-9);
+  --el-radio-button-checked-text-color: var(--dev-blue);
+  --el-radio-button-checked-border-color: var(--dev-blue);
 }
 
+/* 微信通道的选中态取体系里的青（= 成功/已完成那一支），原来是 emerald var(--dev-cyan) */
 .dev-recharge-dialog__channels .dev-recharge-dialog__channel--wechat {
-  --el-radio-button-checked-bg-color: #edf9f1;
-  --el-radio-button-checked-text-color: #21894e;
-  --el-radio-button-checked-border-color: #21894e;
+  --el-radio-button-checked-bg-color: rgba(42, 166, 164, 0.12);
+  --el-radio-button-checked-text-color: var(--dev-cyan);
+  --el-radio-button-checked-border-color: var(--dev-cyan);
 }
 
 .dev-recharge-dialog__channels .el-radio-button .el-radio-button__inner {
@@ -366,7 +267,7 @@
   width: 100%;
   min-height: 48px;
   padding: 12px;
-  border: 1px solid #dce3eb;
+  border: 1px solid var(--dev-line);
   border-radius: 6px;
   box-shadow: none;
   font-size: 14px;
@@ -401,7 +302,7 @@
 
 .dev-recharge-dialog__form .el-form-item__label {
   margin-bottom: 10px;
-  color: #334155;
+  color: var(--dev-ink-soft);
   font-size: 14px;
   font-weight: 800;
 }
@@ -414,13 +315,13 @@
 
 .dev-recharge-dialog__amount-input .el-input__wrapper {
   min-height: 48px;
-  background: #f8fafc;
+  background: rgba(241, 244, 251, 0.9);
   border-radius: 10px;
-  box-shadow: 0 0 0 1px rgba(203, 213, 225, 0.9) inset;
+  box-shadow: 0 0 0 1px var(--dev-line) inset;
 }
 
 .dev-recharge-dialog__amount-input .el-input__inner {
-  color: #334155;
+  color: var(--dev-ink-soft);
   font-size: 16px;
   font-weight: 700;
 }
@@ -428,9 +329,9 @@
 .dev-recharge-dialog__amount-input .el-input-number__decrease,
 .dev-recharge-dialog__amount-input .el-input-number__increase {
   width: 48px;
-  border-color: rgba(203, 213, 225, 0.9);
-  background: #f8fafc;
-  color: #64748b;
+  border-color: var(--dev-line);
+  background: rgba(241, 244, 251, 0.9);
+  color: var(--dev-muted);
 }
 
 .dev-recharge-dialog__amount-input .el-input-number__decrease {
@@ -458,13 +359,13 @@
 
 .dev-recharge-dialog__notes .dev-wallet-withdraw__note {
   margin: 0;
-  color: #64748b;
+  color: var(--dev-muted);
   font-size: 13px;
   line-height: 1.6;
 }
 
 .dev-recharge-dialog__notes strong {
-  color: #334155;
+  color: var(--dev-ink-soft);
   font-weight: 800;
 }
 
@@ -472,20 +373,20 @@
   width: 100%;
   margin-top: 14px;
   padding: 12px 14px;
-  border: 1px solid rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(185, 129, 43, 0.24);
   border-radius: 10px;
-  background: #fff7ed;
+  background: rgba(185, 129, 43, 0.08);
 }
 
 .dev-recharge-dialog__limit-alert .el-alert__title {
-  color: #b45309;
+  color: var(--dev-gold);
   font-size: 13px;
   font-weight: 800;
   line-height: 1.55;
 }
 
 .dev-recharge-dialog__limit-alert .el-alert__icon {
-  color: #f59e0b;
+  color: var(--dev-gold);
 }
 
 .dev-recharge-dialog__button.el-button {
@@ -514,10 +415,12 @@
   font-size: 16px;
 }
 
+/* 取消（次要）动作：白底冷描边，与统一层的 .dev-toolbar__ghost 同口径，
+   原来是裸 #fff / var(--dev-ink-soft) + 暖灰描边 */
 .dev-recharge-dialog__button--ghost.el-button {
-  border-color: rgba(148, 163, 184, 0.32);
-  background: #fff;
-  color: #475569;
+  border-color: var(--dev-line);
+  background: var(--dev-surface-strong);
+  color: var(--dev-ink-soft);
 }
 
 .dev-recharge-dialog__button--ghost.el-button:hover,
@@ -529,19 +432,21 @@
   transform: translateY(-1px);
 }
 
+/* 次要出款动作（微信/支付宝档）取体系里的青（= 完成/公开那一支），
+   原来是 emerald rgba(42, 166, 164, 0.08) / var(--dev-cyan) / rgba(42, 166, 164, 0.1) 一套绿，与页内其它提示不是同一个色系 */
 .dev-recharge-dialog__button--secondary.el-button {
-  border-color: rgba(16, 185, 129, 0.22);
-  background: #ecfdf5;
-  color: #047857;
-  box-shadow: 0 10px 20px rgba(16, 185, 129, 0.08);
+  border-color: rgba(42, 166, 164, 0.24);
+  background: rgba(42, 166, 164, 0.1);
+  color: var(--dev-cyan);
+  box-shadow: 0 10px 20px rgba(42, 166, 164, 0.08);
 }
 
 .dev-recharge-dialog__button--secondary.el-button:hover,
 .dev-recharge-dialog__button--secondary.el-button:focus-visible {
-  border-color: rgba(16, 185, 129, 0.34);
-  background: #dff9ed;
-  color: #047857;
-  box-shadow: 0 12px 24px rgba(16, 185, 129, 0.12);
+  border-color: rgba(42, 166, 164, 0.36);
+  background: rgba(42, 166, 164, 0.16);
+  color: var(--dev-cyan);
+  box-shadow: 0 12px 24px rgba(42, 166, 164, 0.12);
   transform: translateY(-1px);
 }
 
@@ -552,10 +457,12 @@
   box-shadow: 0 10px 22px rgba(31, 74, 209, 0.18);
 }
 
+/* 悬停不提亮底色，只加投影（与 .dev-toolbar__primary 同一口径），
+   原来是压到 var(--el-color-primary-dark-2) 的深蓝，同一页会出现两种主色蓝 */
 .dev-recharge-dialog__button--primary.el-button:hover,
 .dev-recharge-dialog__button--primary.el-button:focus-visible {
-  border-color: #173aaa;
-  background: #173aaa;
+  border-color: var(--dev-blue);
+  background: var(--dev-blue);
   color: #fff;
   box-shadow: 0 12px 24px rgba(31, 74, 209, 0.22);
   transform: translateY(-1px);
@@ -608,7 +515,7 @@
 .pay-amount-banner {
   width: 100%;
   padding: 10px 16px;
-  background: var(--el-color-primary-light-9, #ecf5ff);
+  background: var(--el-color-primary-light-9, rgba(31, 74, 209, 0.08));
   border-radius: 8px;
   font-size: 14px;
   color: var(--dev-muted);

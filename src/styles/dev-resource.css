@@ -2,248 +2,14 @@
   --dev-resource-aspect-ratio: 1.618 / 1;
 }
 
-.dev-platform-switch {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
-  gap: 12px;
-  width: min(100%, 420px);
-}
+/* 资源模块曾经自带三套平行视觉，现在都已并入统一层，这里不再保留：
+   - .dev-platform-switch / .dev-platform-card（22px 圆角 + 悬停上浮的平台选择卡）；
+   - .dev-card-grid / .dev-task-card / .dev-resource-grid / .dev-resource-card（22px 圆角、
+     暖白渐变底的旧卡片，其中 .dev-task-card 的底是 rgba(255, 249, 240, .9) 的暖色）；
+   - .dev-upload-dropzone（占位虚框，已被 ResourceIconPicker / .dev-icon-upload 取代）；
+   - .dev-filter-panel / .dev-publish-specs / .dev-publish-spec（未接线的空壳）。
+   卡片一律 .dev-surface-card，卡片头 .dev-card-head，列表项 .dev-stack-item，见 dev-base.css。 */
 
-.dev-platform-card {
-  appearance: none;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 18px 18px;
-  border-radius: 22px;
-  border: 1px solid rgba(31, 74, 209, 0.12);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
-  cursor: pointer;
-  text-align: left;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease,
-    background 0.2s ease;
-}
-
-.dev-platform-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 18px 30px rgba(71, 85, 105, 0.12);
-}
-
-.dev-platform-card.is-active {
-  border-color: rgba(31, 74, 209, 0.34);
-  background: linear-gradient(135deg, rgba(31, 74, 209, 0.16), rgba(255, 255, 255, 0.94));
-  box-shadow: 0 22px 34px rgba(31, 74, 209, 0.14);
-}
-
-.dev-platform-card--cyan.is-active {
-  border-color: rgba(42, 166, 164, 0.34);
-  background: linear-gradient(135deg, rgba(42, 166, 164, 0.16), rgba(255, 255, 255, 0.94));
-  box-shadow: 0 22px 34px rgba(42, 166, 164, 0.14);
-}
-
-.dev-platform-card__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
-  background: rgba(31, 74, 209, 0.1);
-  font-size: 24px;
-  flex-shrink: 0;
-}
-
-.dev-platform-card--cyan .dev-platform-card__icon {
-  background: rgba(42, 166, 164, 0.12);
-}
-
-.dev-platform-card__content {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.dev-platform-card__title {
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--dev-ink);
-}
-
-.dev-platform-card__meta {
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--dev-muted);
-}
-
-.dev-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(31, 74, 209, 0.16);
-  background: rgba(31, 74, 209, 0.08);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--dev-blue);
-}
-
-.dev-card-grid {
-  margin: 0;
-}
-
-.dev-task-card {
-  height: 100%;
-  border-radius: 22px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 249, 240, 0.9));
-  box-shadow: var(--dev-shadow);
-}
-
-.dev-task-card .el-card__body {
-  display: grid;
-  gap: 16px;
-}
-
-.dev-task-card__head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.dev-task-card__id {
-  font-size: 12px;
-  color: #8a8f98;
-}
-
-.dev-task-card__title {
-  margin-top: 6px;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--dev-ink);
-}
-
-.dev-task-card__summary {
-  margin: 0;
-  min-height: 66px;
-  color: #475569;
-  line-height: 1.7;
-}
-
-.dev-task-card__foot {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.dev-task-card__owner {
-  font-size: 13px;
-  color: var(--dev-muted);
-}
-
-.dev-release-table {
-  --el-table-border-color: rgba(17, 24, 39, 0.08);
-  --el-table-header-bg-color: rgba(255, 248, 238, 0.96);
-  --el-table-tr-bg-color: transparent;
-  --el-fill-color-blank: transparent;
-}
-
-.dev-resource-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
-}
-
-.dev-resource-card {
-  height: 100%;
-  border-radius: 22px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(250, 252, 255, 0.88));
-  box-shadow: var(--dev-shadow);
-}
-
-.dev-resource-card .el-card__body {
-  display: grid;
-  gap: 14px;
-}
-
-.dev-resource-card__top {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
-
-.dev-resource-card__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(31, 74, 209, 0.16), rgba(42, 166, 164, 0.18));
-  font-size: 24px;
-}
-
-.dev-resource-card__eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dev-blue);
-}
-
-.dev-resource-card__title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--dev-ink);
-}
-
-.dev-resource-card__desc {
-  margin: 0;
-  color: var(--dev-muted);
-  line-height: 1.8;
-}
-
-.dev-resource-card__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.dev-resource-card__footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-
-.dev-resource-card__metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  font-size: 13px;
-  color: var(--dev-muted);
-}
-
-.dev-filter-panel {
-  display: grid;
-  gap: 18px;
-}
-
-.dev-publish-specs {
-  display: grid;
-  gap: 18px;
-  margin-top: 18px;
-}
-
-.dev-publish-spec {
-  display: grid;
-  gap: 10px;
-}
 
 .dev-upload-layout {
   display: grid;
@@ -254,41 +20,13 @@
 .dev-upload-side {
   display: grid;
   gap: 24px;
+  align-content: start;
 }
 
-.dev-upload-section__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
-.dev-resource-list__create-btn {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 0 14px;
-  border-radius: 10px;
-  background: #409eff;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 700;
-  text-decoration: none;
-  transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
-}
-
-.dev-resource-list__create-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(64, 158, 255, 0.24);
-  opacity: 1;
-}
-
-.dev-resource-list__create-btn .el-icon {
-  font-size: 15px;
-}
+/* 卡片头统一在 dev-base.css 的 .dev-card-head（原来这里叫 .dev-upload-section__head，
+   是上传模块的名字却给列表页共用）；卡片头的主按钮统一走 .dev-btn--primary，
+   原来这里有一个 .dev-resource-list__create-btn，用的是 Element 默认蓝 #409eff，
+   与体系主色 --dev-blue 是两个蓝。两者都已删除。 */
 
 .dev-upload-form .el-form-item {
   margin-bottom: 0;
@@ -313,40 +51,6 @@
   gap: 12px;
 }
 
-.dev-upload-grid--four {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.dev-upload-dropzone {
-  display: grid;
-  place-items: center;
-  min-height: 180px;
-  padding: 22px;
-  border-radius: 22px;
-  border: 1px dashed rgba(31, 74, 209, 0.22);
-  background: linear-gradient(180deg, rgba(31, 74, 209, 0.05), rgba(255, 255, 255, 0.72));
-  text-align: center;
-}
-
-.dev-upload-dropzone__icon {
-  font-size: 28px;
-}
-
-.dev-upload-dropzone__title {
-  margin-top: 10px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--dev-ink);
-}
-
-.dev-upload-dropzone__meta {
-  margin-top: 8px;
-  max-width: 280px;
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--dev-muted);
-}
-
 .dev-upload-actions {
   display: flex;
   justify-content: flex-end;
@@ -356,32 +60,16 @@
 
 .dev-page--publish .dev-upload-actions--split {
   padding-top: 18px;
-  border-top: 1px solid rgba(17, 24, 39, 0.08);
+  border-top: 1px solid var(--dev-line);
 }
 
-.dev-page--publish {
-  gap: 18px;
-}
-
-.dev-page--publish .dev-upload-layout,
-.dev-page--publish .dev-upload-side {
-  gap: 18px;
-}
-
-.dev-page--publish .dev-upload-side {
-  align-content: start;
-}
-
-.dev-page--publish .dev-surface-card {
-  border-radius: 20px;
-}
+/* 发布类页面（创建资源 / 编辑资源主页）不另立一套节奏：页面间距、卡片圆角、
+   卡片内边距、小节标题字号都与其余菜单页一致（见 dev-base.css 的 .dev-page / .dev-surface-card /
+   .dev-section-title）。原来这里把间距压到 18px、卡片圆角压到 20px、卡片内边距压到 18px、
+   小节标题压到 16px，于是同一张「基础信息」卡片在创建资源页与需求详情页长得不一样。 */
 
 .dev-page--publish .dev-upload-combined-card {
   height: 100%;
-}
-
-.dev-page--publish .dev-surface-card .el-card__body {
-  padding: 18px;
 }
 
 .dev-page--publish .dev-upload-combined-card .el-card__body {
@@ -394,7 +82,6 @@
   gap: 14px;
 }
 
-.dev-page--publish .dev-upload-section__copy,
 .dev-page--publish .dev-tag-group-card__copy,
 .dev-page--publish .dev-preview-card__copy {
   min-width: 0;
@@ -403,26 +90,7 @@
 .dev-page--publish .dev-upload-block--split {
   margin-top: 18px;
   padding-top: 18px;
-  border-top: 1px solid rgba(17, 24, 39, 0.08);
-}
-
-.dev-page--publish .dev-upload-section__head {
-  gap: 12px;
-  margin-bottom: 0;
-}
-
-.dev-page--publish .dev-section-title {
-  font-size: 16px;
-}
-
-.dev-page--publish .dev-section-desc {
-  margin-top: 4px;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.dev-page--publish .dev-upload-grid {
-  gap: 14px;
+  border-top: 1px solid var(--dev-line);
 }
 
 .dev-page--publish .dev-upload-grid--two {
@@ -443,14 +111,15 @@
   min-width: 0;
 }
 
+/* 图标上传块走内嵌块那一档圆角（原来是 14px，不在 24/12/10 这三个令牌里） */
 .dev-page--publish .dev-icon-upload {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 40px;
+  min-height: var(--dev-control-height);
   padding: 10px;
-  border: 1px solid rgba(31, 74, 209, 0.08);
-  border-radius: 14px;
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-inner);
   background: rgba(248, 251, 255, 0.72);
 }
 
@@ -507,7 +176,7 @@
   justify-content: center;
   gap: 6px;
   appearance: none;
-  border: 1px solid rgba(17, 24, 39, 0.12);
+  border: 1px solid var(--dev-line);
   background: rgba(255, 255, 255, 0.88);
   color: var(--dev-ink);
   border-radius: 12px;
@@ -573,7 +242,7 @@
   height: 40px;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  border: 1px solid var(--dev-line);
   background: rgba(255, 255, 255, 0.82);
 }
 
@@ -596,7 +265,7 @@
   gap: 14px;
   padding: 14px;
   border-radius: 18px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  border: 1px solid var(--dev-line);
   background: rgba(255, 255, 255, 0.9);
 }
 
@@ -648,15 +317,32 @@
   scrollbar-width: thin;
 }
 
+/* 表单控件跟统一层的控件档对齐：--dev-control-height 高、--dev-radius-control 圆角、
+   --dev-line 描边。原来是硬编码 40px 高，且没覆盖 Element 的 4px 圆角与 #dcdfe6 描边，
+   于是同一个开发者端里「列表页的搜索框」与「发布页的输入框」是两种高度、两种圆角、两种描边。 */
 .dev-page--publish .el-input__wrapper,
 .dev-page--publish .el-select__wrapper {
-  min-height: 40px;
-  height: 40px;
+  min-height: var(--dev-control-height);
+  height: var(--dev-control-height);
+  border-radius: var(--dev-radius-control);
+  background: var(--dev-surface-strong);
+  box-shadow: 0 0 0 1px var(--dev-line) inset;
+}
+
+.dev-page--publish .el-input__wrapper:hover,
+.dev-page--publish .el-select__wrapper:hover,
+.dev-page--publish .el-select__wrapper.is-hovering {
+  box-shadow: 0 0 0 1px rgba(31, 74, 209, 0.32) inset;
+}
+
+.dev-page--publish .el-input__wrapper.is-focus,
+.dev-page--publish .el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--dev-blue) inset;
 }
 
 .dev-page--publish .el-input__inner,
 .dev-page--publish .el-select__placeholder {
-  line-height: 40px;
+  line-height: var(--dev-control-height);
 }
 
 .dev-page--publish .dev-team-select-native {
@@ -670,8 +356,8 @@
 }
 
 .dev-page--publish .dev-team-select-native__control .el-select__wrapper {
-  min-height: 40px;
-  height: 40px;
+  min-height: var(--dev-control-height);
+  height: var(--dev-control-height);
 }
 
 .dev-page--publish .dev-team-select-native__control .el-select__placeholder {
@@ -679,8 +365,8 @@
   top: auto !important;
   transform: none !important;
   /* 占位符应用浅灰色，选中项由 .el-select__selected-item 负责深色 */
-  color: var(--el-text-color-placeholder, #a8abb2);
-  line-height: 40px;
+  color: var(--el-text-color-placeholder);
+  line-height: var(--dev-control-height);
   z-index: 1;
 }
 
@@ -689,14 +375,14 @@
 }
 
 .dev-page--publish .dev-team-select-native__control .el-select__selected-item {
-  color: #0f172a;
-  line-height: 40px;
+  color: var(--dev-ink);
+  line-height: var(--dev-control-height);
 }
 
 .dev-team-select-empty {
   padding: 24px 16px;
   text-align: center;
-  color: #94a3b8;
+  color: var(--dev-muted);
   font-size: 13px;
   font-weight: 500;
 }
@@ -830,10 +516,10 @@
   min-width: 34px;
   padding: 3px 7px;
   border-radius: 999px;
-  background: rgba(17, 24, 39, 0.05);
+  background: rgba(148, 163, 184, 0.12);
   font-size: 10px;
   font-weight: 700;
-  color: rgba(17, 24, 39, 0.62);
+  color: var(--dev-muted);
 }
 
 .dev-page--publish .dev-tag-group-row__selected {
@@ -880,7 +566,7 @@
 
 .dev-tag-group-panel::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(17, 24, 39, 0.18);
+  background: rgba(100, 116, 139, 0.32);
 }
 
 .dev-page--publish .dev-preview-card {
@@ -897,8 +583,8 @@
   justify-content: space-between;
   min-height: 76px;
   padding: 14px 16px;
-  border: 1px solid rgba(31, 74, 209, 0.12);
-  border-radius: 18px;
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-inner);
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.9));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
 }
@@ -920,7 +606,7 @@
   white-space: nowrap;
   font-size: 13px;
   font-weight: 700;
-  color: rgba(17, 24, 39, 0.62);
+  color: var(--dev-ink-soft);
 }
 
 .dev-page--publish .dev-upload-actions--split.is-ready .dev-submit-summary__status {
@@ -942,19 +628,22 @@
   gap: 10px;
 }
 
+/* 页脚两个 CTA 与工具栏按钮同规格：--dev-control-height 高、--dev-radius-control 圆角。
+   禁用态原来是 #dbe5ef / #7890a8 一套冷灰，与体系里的 --dev-muted 不是一个灰。 */
 .dev-page--publish .dev-upload-actions--split .el-button {
   flex: 0 0 auto;
   min-width: 154px;
-  height: 40px;
-  border-radius: 10px;
+  min-height: var(--dev-control-height);
+  height: var(--dev-control-height);
+  border-radius: var(--dev-radius-control);
   font-weight: 700;
 }
 
 .dev-page--publish .dev-upload-actions--split .el-button.is-disabled {
   opacity: 1;
-  border-color: rgba(148, 163, 184, 0.28);
-  background: #dbe5ef;
-  color: #7890a8;
+  border-color: var(--dev-line);
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--dev-muted);
 }
 
 .dev-page--publish .dev-list--spaced {
@@ -982,7 +671,7 @@
   appearance: none;
   border: 1px solid rgba(31, 74, 209, 0.12);
   background: rgba(255, 255, 255, 0.9);
-  color: rgba(17, 24, 39, 0.78);
+  color: var(--dev-ink-soft);
   border-radius: 999px;
   padding: 8px 14px;
   font: inherit;
@@ -1005,7 +694,7 @@
 
 .dev-page--publish .dev-catalog-chip.active {
   border-color: rgba(31, 74, 209, 0.4);
-  background: #eaf0ff;
+  background: rgba(31, 74, 209, 0.08);
   color: var(--dev-blue);
 }
 
@@ -1041,7 +730,7 @@
 .dev-page--publish .dev-root-switch--catalog {
   padding: 0 0 14px;
   border: 0;
-  border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+  border-bottom: 1px solid var(--dev-line);
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -1130,7 +819,7 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.16);
   border: 1px solid rgba(255, 255, 255, 0.22);
-  color: #f8fbff;
+  color: #fff;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0;
@@ -1195,7 +884,7 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
-  color: #0f172a;
+  color: var(--dev-ink);
   font-size: 18px;
   font-weight: 800;
   line-height: 1.35;
@@ -1208,7 +897,7 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
-  color: #64748b;
+  color: var(--dev-muted);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -1230,7 +919,7 @@
   padding: 5px 11px;
   border-radius: 999px;
   background: rgba(241, 245, 249, 0.96);
-  color: #334155;
+  color: var(--dev-ink-soft);
   font-size: 13px;
   font-weight: 800;
   line-height: 1.2;
@@ -1247,8 +936,8 @@
   min-height: 30px;
   padding: 5px 12px;
   border-radius: 999px;
-  background: rgba(219, 234, 254, 0.94);
-  color: #2563eb;
+  background: rgba(31, 74, 209, 0.08);
+  color: var(--dev-blue);
   font-size: 13px;
   font-weight: 800;
 }
@@ -1260,11 +949,11 @@
   gap: 10px;
   margin-top: auto;
   padding-top: 10px;
-  border-top: 1px solid rgba(226, 232, 240, 0.92);
+  border-top: 1px solid var(--dev-line);
 }
 
 .dev-page--publish .dev-preview-card__footer span {
-  color: #94a3b8;
+  color: var(--dev-muted);
   font-size: 12px;
   line-height: 1.4;
 }
@@ -1292,15 +981,11 @@
   border-radius: 12px;
   object-fit: cover;
   flex-shrink: 0;
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  border: 1px solid var(--dev-line);
 }
 
-.dev-resource-table__title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--dev-ink);
-}
-
+/* 单元格主/次文字的规格在 dev-base.css 的 .dev-table__strong / .dev-table__sub。
+   这里只留资源表格特有的「图标 + 标题 + 附带信息」排布。 */
 .dev-resource-table__meta,
 .dev-resource-table__tags {
   margin-top: 4px;
@@ -1314,66 +999,10 @@
   overflow: visible;
 }
 
-.dev-resource-table__action-button.el-button {
-  --el-button-text-color: var(--dev-blue);
-  --el-button-bg-color: rgba(255, 255, 255, 0.86);
-  --el-button-border-color: rgba(31, 74, 209, 0.18);
-  --el-button-hover-text-color: var(--dev-blue);
-  --el-button-hover-bg-color: rgba(31, 74, 209, 0.08);
-  --el-button-hover-border-color: rgba(31, 74, 209, 0.34);
-  --el-button-active-text-color: #fff;
-  --el-button-active-bg-color: var(--dev-blue);
-  --el-button-active-border-color: var(--dev-blue);
-  min-width: 96px;
-  min-height: 34px;
-  height: 34px;
-  padding: 0 12px;
-  border-radius: 10px;
-  color: var(--dev-blue);
-  box-shadow: 0 8px 18px rgba(31, 74, 209, 0.08);
-  font-weight: 800;
-}
-
-.dev-resource-table__action-button.el-button:hover,
-.dev-resource-table__action-button.el-button:focus-visible {
-  border-color: rgba(31, 74, 209, 0.34);
-  background: rgba(31, 74, 209, 0.08);
-  color: var(--dev-blue);
-  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.12);
-}
-
-.dev-resource-table__action-button.el-button[aria-expanded='true'] {
-  border-color: rgba(31, 74, 209, 0.72);
-  background: var(--dev-blue);
-  color: #fff;
-  box-shadow: 0 12px 24px rgba(31, 74, 209, 0.18);
-}
-
-.dev-resource-table__action-button.el-button > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.dev-resource-table__action-button .el-icon {
-  font-size: 15px;
-}
-
-.dev-resource-table__action-caret {
-  margin-left: 2px;
-  font-size: 13px;
-  transition: transform 160ms ease;
-}
-
-.dev-resource-table__action-button.el-button[aria-expanded='true']
-  .dev-resource-table__action-caret {
-  transform: rotate(180deg);
-}
-
 .dev-resource-action-menu.el-popper {
   z-index: 2600 !important;
   overflow: visible;
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  border: 1px solid var(--dev-line);
   border-radius: 12px;
   box-shadow: 0 18px 36px rgba(71, 85, 105, 0.16);
 }
@@ -1447,7 +1076,7 @@
 }
 
 .dev-icon-dialog-modal .el-dialog__title {
-  color: #0f172a;
+  color: var(--dev-ink);
   font-size: 20px;
   font-weight: 800;
 }
@@ -1461,7 +1090,7 @@
 }
 
 .dev-icon-dialog-modal .el-dialog__headerbtn:hover {
-  background: #eff6ff;
+  background: rgba(31, 74, 209, 0.08);
 }
 
 .dev-icon-dialog-modal .el-dialog__body {
@@ -1549,13 +1178,13 @@
 }
 
 .dev-icon-dialog__actions .el-button--primary {
-  border-color: #2563eb;
-  background: #2563eb;
+  border-color: var(--dev-blue);
+  background: var(--dev-blue);
 }
 
 .dev-icon-dialog__actions .el-button--primary:hover {
-  border-color: #1d4ed8;
-  background: #1d4ed8;
+  border-color: var(--el-color-primary-dark-2);
+  background: var(--el-color-primary-dark-2);
 }
 
 .dev-icon-editor {

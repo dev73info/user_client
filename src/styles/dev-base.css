@@ -15,6 +15,9 @@
   --dev-surface-strong: #ffffff;
   --dev-ink: #0f172a;
   --dev-muted: #64748b;
+  /* 弱化正文色：次要按钮文字、表格里的次级信息用。比 --dev-muted 深一档，
+     比 --dev-ink 浅一档；原来在 .dev-toolbar__ghost 等处直接写 #475569。 */
+  --dev-ink-soft: #475569;
   --dev-line: rgba(203, 213, 225, 0.66);
   --dev-blue: #1f4ad1;
   --dev-cyan: #2aa6a4;
@@ -26,6 +29,14 @@
     rgba(31, 74, 209, 0.82),
     rgba(42, 166, 164, 0.88)
   );
+  /* 尺寸口径：卡片一档、内嵌块一档、控件一档。开发者端只用这三个圆角值 + 胶囊，
+     控件高度也统一到 --dev-control-height，避免同样角色的输入框/选择器/按钮各页不同高。
+     原来这里没有尺寸令牌，各页各写自己的 px，是「同一种控件长得不一样」的根源。
+     --dev-radius-inner 用于卡片里的列表项、回执块这类内嵌容器（文档里的 12px 档）。 */
+  --dev-radius-card: 24px;
+  --dev-radius-inner: 12px;
+  --dev-radius-control: 10px;
+  --dev-control-height: 36px;
 }
 
 * {
@@ -51,24 +62,96 @@ a {
   color: inherit;
 }
 
+/* === Element Plus 主色映射（只作用于开发者工作台，不写全局 :root 覆盖）===
+   Element Plus 默认主色是 #409eff，与开发者体系的主色 #1f4ad1 是两个蓝，
+   同一页里「查询」按钮（改写 --el-*）与 `type="primary"` 按钮会呈现两种蓝；
+   同理，Element 默认的绿 #67c23a / 橙 #e6a23c 与体系里的青（已完成）、金（金额与提示）也对不上。
+   这里把 Element 的调色板在开发者工作台范围内一次映射到 --dev-* 令牌，
+   含各项 light-N / dark-2 派生值（Element 的 plain 标签、hover 底色都取这些派生值，
+   只改基色会留下绿/橙的残影）。
+
+   作用域：.user-workbench--dev 是工作台外壳在开发者模式下的根类（见 UserWorkbenchView.vue），
+   页面内所有 Element 组件都在它下面。弹窗由 Element teleport 到 body，落在作用域外，
+   所以开发者页的弹窗额外挂 .dev-dialog，见各页 el-dialog 的 class。 */
+.user-workbench--dev,
+.dev-dialog {
+  --el-color-primary: var(--dev-blue);
+  --el-color-primary-light-3: #6280df;
+  --el-color-primary-light-5: #8fa5e8;
+  --el-color-primary-light-7: #bcc9f1;
+  --el-color-primary-light-8: #d2dbf6;
+  --el-color-primary-light-9: #e8edfa;
+  --el-color-primary-dark-2: #193ba7;
+
+  /* 成功=青（体系里的「已完成」），警示=金（「金额与提示」） */
+  --el-color-success: var(--dev-cyan);
+  --el-color-success-light-3: #6ac1bf;
+  --el-color-success-light-5: #95d2d2;
+  --el-color-success-light-7: #bfe4e4;
+  --el-color-success-light-8: #d4eded;
+  --el-color-success-light-9: #eaf6f6;
+  --el-color-success-dark-2: #228583;
+
+  --el-color-warning: var(--dev-gold);
+  --el-color-warning-light-3: #cea76b;
+  --el-color-warning-light-5: #dcc095;
+  --el-color-warning-light-7: #ead9bf;
+  --el-color-warning-light-8: #f1e6d5;
+  --el-color-warning-light-9: #f8f2ea;
+  --el-color-warning-dark-2: #946722;
+
+  /* 中性灰跟着 --dev-muted 走，避免出现第二套灰 */
+  --el-color-info: var(--dev-muted);
+  --el-color-info-light-3: #93a0b1;
+  --el-color-info-light-5: #b1bac5;
+  --el-color-info-light-7: #d0d5dc;
+  --el-color-info-light-8: #dfe3e8;
+  --el-color-info-light-9: #eff1f3;
+  --el-color-info-dark-2: #525e71;
+
+  /* danger 保持 Element 的语义红：开发者体系没有红色令牌，
+     且红在这里只用于「终止合作/解散/删除」这类破坏性操作，不需要跟强调色统一。 */
+
+  /* 文字与描边令牌：上面只改了「强调色」，Element 的灰阶仍然走它自己的默认值，
+     于是同一张卡片里出现两套墨色与两套灰——el-card 组件自带 color: var(--el-text-color-primary)
+     会把卡内所有继承文字染成 #303133（开发者体系的墨色是 #0f172a），
+     表单标签与输入文字取 #606266、占位符取 #a8abb2、带描边按钮的边取 #dcdfe6，
+     与 .dev-section-title / .dev-table__strong 用的 --dev-ink 肉眼可见地不是同一个颜色；
+     我的接单页有 235 个元素落在 #303133 上，是最明显的一处。
+     这里把灰阶一次性映射到体系令牌：墨色/次级正文/弱化说明/占位符/描边/填充。
+     映射后各页不必再逐处写 color，Element 组件自然与手写元素同色。 */
+  --el-text-color-primary: var(--dev-ink);
+  --el-text-color-regular: var(--dev-ink-soft);
+  --el-text-color-secondary: var(--dev-muted);
+  /* 占位符比 --dev-muted 再浅一档：它要与已填内容区分开，压到同一个灰就没有层次了 */
+  --el-text-color-placeholder: #94a3b8;
+  --el-text-color-disabled: #cbd5e1;
+
+  --el-border-color: var(--dev-line);
+  --el-border-color-light: var(--dev-line);
+  --el-border-color-lighter: rgba(203, 213, 225, 0.42);
+  --el-border-color-extra-light: rgba(203, 213, 225, 0.28);
+  --el-border-color-hover: rgba(31, 74, 209, 0.32);
+  --el-border-color-darker: #94a3b8;
+
+  --el-fill-color-blank: var(--dev-surface-strong);
+  --el-bg-color: var(--dev-surface-strong);
+  --el-bg-color-overlay: var(--dev-surface-strong);
+  --el-fill-color-light: rgba(241, 244, 251, 0.62);
+  --el-fill-color-lighter: rgba(241, 244, 251, 0.42);
+
+  /* 补上被 resource-core.css 的 `body { color: var(--text-main) }`（#172033）盖掉的墨色：
+     那张表是「免费资源」门户页的遗留样式，全局加载后连开发者页面的正文底色一起改了，
+     于是「令牌写 --dev-ink 的元素是 #0f172a、继承来的文字是 #172033」两种墨色并存。
+     这里在开发体系的作用域上显式声明一次，弹窗 teleport 到 body 之外同样要带上。 */
+  color: var(--dev-ink);
+}
+
 .dev-page {
   display: grid;
   gap: 24px;
   width: min(1120px, 100%);
   margin: 0 auto;
-}
-
-.dev-grid {
-  display: grid;
-  gap: 24px;
-}
-
-.dev-grid--three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.dev-grid--two {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .dev-section-title {
@@ -87,7 +170,7 @@ a {
 
 .dev-surface-card {
   border: 1px solid var(--dev-line);
-  border-radius: 24px;
+  border-radius: var(--dev-radius-card);
   background: var(--dev-surface);
   box-shadow: var(--dev-shadow);
 }
@@ -96,86 +179,240 @@ a {
   padding: 24px;
 }
 
-.dev-surface-card--soft {
-  backdrop-filter: blur(16px);
+/* 直接落在 <section> 上的 .dev-surface-card 不是 el-card，拿不到上面那条 .el-card__body
+   的内边距，各页于是自己写一个 padding（总览页 20px、其余 24px），同一形态的卡片内边距不一致。
+   这里给非 el-card 的面板补上与 el-card 相同的 24px，页面不必再写。 */
+.dev-surface-card:not(.el-card) {
+  padding: 24px;
 }
 
-.dev-stat {
-  display: grid;
+/* === 开发者页统一卡片头 ===
+   所有列表/表单卡片的标题行都走这一套：左边标题与说明，右边操作按钮。
+   这段布局原来叫 .dev-upload-section__head（名字属于上传模块），列表页也拿去用，
+   于是同一个东西两个名字、各页自己写间距。现在统一为 .dev-card-head，
+   窄屏换行规则见 dev-responsive.css。 */
+.dev-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.dev-card-head__title-block {
+  min-width: 0;
+}
+
+.dev-card-head__actions {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  flex: 0 0 auto;
 }
 
-.dev-stat--compact {
-  min-height: 136px;
-  align-content: start;
-}
-
-.dev-stat__label {
+/* === 原生按钮 / 链接按钮 ===
+   工具栏以外的卡片头、空态里放的是 RouterLink 或原生 <button>，不是 el-button，
+   拿不到 .dev-toolbar__primary / __ghost 的规格。这两个变体与它们同高同圆角同配色，
+   保证「同一个动作，无论在工具栏还是卡片头，长得一样」。 */
+.dev-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--dev-control-height);
+  height: var(--dev-control-height);
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--dev-radius-control);
+  font: inherit;
   font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    box-shadow 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.dev-btn .el-icon {
+  font-size: 15px;
+}
+
+.dev-btn--primary {
+  background: var(--dev-blue);
+  border-color: var(--dev-blue);
+  color: #fff;
+}
+
+.dev-btn--primary:hover,
+.dev-btn--primary:focus-visible {
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.22);
+}
+
+.dev-btn--ghost {
+  background: var(--dev-surface-strong);
+  border-color: var(--dev-line);
+  color: var(--dev-ink-soft);
+}
+
+.dev-btn--ghost:hover,
+.dev-btn--ghost:focus-visible {
+  border-color: rgba(31, 74, 209, 0.32);
+  background: rgba(31, 74, 209, 0.08);
+  color: var(--dev-blue);
+  box-shadow: 0 8px 18px rgba(31, 74, 209, 0.1);
+}
+
+/* 金色变体：给「金额与提示」这一类动作用（保证金不足时的充值、金色读数旁的按钮）。
+   悬停与 --primary 同口径——只加一层投影，不提亮底色。 */
+.dev-btn--gold {
+  background: var(--dev-gold);
+  border-color: var(--dev-gold);
+  color: #fff;
+}
+
+.dev-btn--gold:hover,
+.dev-btn--gold:focus-visible {
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(185, 129, 43, 0.24);
+}
+
+.dev-btn--danger {
+  background: var(--dev-surface-strong);
+  border-color: rgba(220, 38, 38, 0.32);
+  color: #dc2626;
+}
+
+.dev-btn--danger:hover,
+.dev-btn--danger:focus-visible {
+  border-color: rgba(220, 38, 38, 0.5);
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+  box-shadow: 0 8px 18px rgba(220, 38, 38, 0.1);
+}
+
+.dev-btn:disabled,
+.dev-btn[aria-disabled='true'] {
+  opacity: 0.56;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* === 金额大数 ===
+   同一笔钱在两个页面必须长一样。总览页的「资金概览」与收益钱包页的「接单收入 / 保证金余额」
+   报的是同一组读数（可提现余额、可用保证金），原来却是 30px 与 36px 两种字号、
+   金色与墨色两种颜色，切菜单时会看到数字「跳」一下。
+   现在统一走这两个类：金（设计规范里「金额与提示」那一支）+ 30px + 800 字重；
+   内嵌块里的次级金额用 --sm 一档。计数与金额都必须带 tabular-nums。 */
+.dev-figure {
+  color: var(--dev-gold);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-figure--sm {
+  font-size: 24px;
+  letter-spacing: -0.01em;
+}
+
+/* 不可提 / 不满足条件的金额：压成弱字，尺寸与其他大数保持一致 */
+.dev-figure--muted {
   color: var(--dev-muted);
 }
 
-.dev-stat__value {
-  font-size: 32px;
-  line-height: 1;
-  font-weight: 700;
+/* 读数是信息、不是可操作的金额时（总览页的「今日收入」、保证金段里的「可用保证金」）用墨色。
+   尺寸与金色大数同一档，同一栏里就不会出现第三种字号——这才是切菜单时数字「跳一下」的根源。 */
+.dev-figure--ink {
   color: var(--dev-ink);
 }
 
-.dev-stat__accent {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dev-blue);
-}
+/* === 开发者页统一顶部卡片（顶部信息条）===
+   开发者端所有菜单页的「顶部卡片」都用它，规格与 .dev-surface-card 同一套
+   （同底、同描边、同圆角、同阴影），区别只是它是横向排布的指标栏，不是内容面板。
+   原来它是 10px 圆角 + var(--dev-border) 兜底的暖灰描边，摆在下方的卡片上方像另一个体系。
 
-.dev-stat__hint {
-  font-size: 12px;
-  color: #8a8f98;
-}
+   位置约定：每个菜单页的第一个元素就是这条横条，读数（__item）在左，页面级操作在右
+   （__action 槽）。刷新按钮固定在 __action 里，不要再挪进卡片工具栏——同一页有多张卡片时
+   说不清刷新该挂哪一张，各页也会各写一个位置。筛选相关的「重置」才留在 .dev-toolbar 里。
 
-/* 数据概览横条（与收益钱包一致） */
+   ------------------------------------------------------------------
+   一个菜单页从上到下的固定骨架（各页只填内容，不再各自发明结构）：
+
+     1. .dev-meta-strip        顶部读数条：读数 + 右侧一枚刷新图标按钮
+     2. .dev-surface-card      内容卡片（24px 圆角 / 24px 内边距 / 同底同描边）
+          .dev-card-head      卡片头：标题 18px + 说明 + 右侧动作（主按钮、链接）
+          .dev-toolbar        工具栏：左「筛选」+ 中「搜索」+ 右「重置」
+          <列表体>             .dev-table 表格 或 .dev-stack-list 卡片列表
+          .dev-pager          表尾：共 N 条 + 每页条数 + 翻页
+     3. .dev-notice / .dev-dialog 提示条与弹窗按需
+
+   工具栏内部的三段位置也是固定的，全端只有这一种排法：
+     · 筛选：下拉用 .dev-toolbar__field（150px），胶囊组用 .dev-chip-group；
+             胶囊组属于「筛选」，放工具栏里，不要放进卡片头（卡片头右侧只放动作）。
+     · 搜索：.dev-toolbar__search（≤340px），必须带 Search 图标前缀且 clearable。
+     · 动作：.dev-toolbar__actions 靠右，里面先 .dev-toolbar__hint（筛选出 N / M 条，
+             仅在确实收窄了结果时出现），再 .dev-toolbar__ghost 的重置按钮。
+             重置一律常驻可用（本页没有筛选条件可清时也不置灰），别页都不置灰。
+   ------------------------------------------------------------------ */
 .dev-meta-strip {
   display: flex;
   align-items: center;
-  gap: 0;
-  padding: 12px 20px;
-  background: var(--dev-surface, #fff);
-  border: 1px solid var(--dev-border, #e8e8e8);
-  border-radius: 10px;
   flex-wrap: wrap;
-  row-gap: 10px;
+  gap: 16px;
+  padding: 12px 24px;
+  background: var(--dev-surface);
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-card);
+  box-shadow: var(--dev-shadow);
 }
 
 .dev-meta-strip__item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 20px;
+  gap: 8px;
+  min-width: 0;
 }
 
 .dev-meta-strip__item.dev-meta-strip__action {
   margin-left: auto;
-  padding: 0;
+}
+
+/* 操作槽里可能有两个按钮（页面级 CTA + 刷新），共用这一个槽位，靠 gap 分开；
+   各写一个 __action 会让两条 auto 外边距平分剩余空间，把按钮拉到两端。 */
+.dev-meta-strip__action {
+  gap: 10px;
 }
 
 .dev-meta-strip__item.dev-meta-strip__action:first-child {
   margin-left: 0;
 }
 
-/* 让操作按钮高度与其余文本内容一致，避免横条被撑高 */
-.dev-meta-strip__action .el-button--small {
-  height: 20px;
-  line-height: 1;
-  padding: 0 12px;
+/* 顶条里的图标按钮（刷新）：保持正方形，不继承文字按钮的左右内边距 */
+.dev-meta-strip__action .dev-toolbar__icon-btn.el-button {
+  padding: 0;
+}
+
+/* 横条里的按钮与工具栏按钮同高同圆角，不再单独压成 20px 高的小按钮 */
+.dev-meta-strip__action .el-button {
+  min-height: var(--dev-control-height);
+  height: var(--dev-control-height);
+  padding: 0 16px;
+  border-radius: var(--dev-radius-control);
 }
 
 .dev-meta-strip__divider {
   width: 1px;
-  height: 18px;
-  background: var(--dev-border, #e8e8e8);
-  flex-shrink: 0;
+  height: 20px;
+  background: var(--dev-line);
+  flex: 0 0 1px;
 }
 
 .dev-meta-strip__label {
@@ -185,235 +422,288 @@ a {
 }
 
 .dev-meta-strip__value {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--dev-ink);
   white-space: nowrap;
 }
 
-.dev-hero {
+/* 读数后面跟的小标签（收益钱包的「今日入账」环比）：与读数同一行、贴着读数右侧。
+   原来定义在 dev-wallet.css，但它修饰的是这条共享横条，与 .dev-meta-strip 放一起。 */
+.dev-meta-strip__tag {
+  margin-left: 2px;
+}
+
+/* === 开发者页统一提示条 ===
+   顶部读数条下方那条「需要开发者先处理」的横幅（保证金不足、未签入驻协议、接单资格异常）。
+   原来总览页自己写一套金色渐变横幅（自带 16px 圆角 + 图标徽标 + 金色按钮），
+   需求大厅用 Element 的 el-alert + 一个 size="small" 的蓝色按钮，
+   同一件事两套形状、两种按钮尺寸与两种配色。现在统一为这一处：
+   金色（= --dev-gold，「金额与需要留意的提示」那一支）、图标徽标 + 文案 + 右侧动作。
+
+   结构：.dev-notice > __icon + __copy(strong/p) + __action */
+.dev-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border: 1px solid rgba(185, 129, 43, 0.28);
+  border-radius: var(--dev-radius-card);
+  background: linear-gradient(135deg, rgba(255, 252, 246, 0.98), rgba(255, 245, 230, 0.92));
+  box-shadow: var(--dev-shadow);
+}
+
+.dev-notice__icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--dev-radius-control);
+  background: rgba(185, 129, 43, 0.14);
+  color: var(--dev-gold);
+  font-size: 18px;
+}
+
+/* 无标题、只有一行说明的提示条（需求大厅的资格提示）：文案占满剩余宽度即可 */
+.dev-notice__copy {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.8fr);
-  gap: 24px;
-  overflow: hidden;
-  padding: 28px;
-  border-radius: 28px;
-  background: linear-gradient(
-    135deg,
-    rgba(17, 24, 39, 0.96) 0%,
-    rgba(31, 74, 209, 0.92) 55%,
-    rgba(42, 166, 164, 0.9) 100%
-  );
-  color: #f8fafc;
-  box-shadow: 0 28px 60px rgba(25, 42, 92, 0.22);
+  flex: 1 1 240px;
+  gap: 4px;
+  min-width: 0;
 }
 
-.dev-hero__content {
-  position: relative;
-  z-index: 1;
+.dev-notice__copy strong {
+  color: var(--dev-ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
-.dev-hero__eyebrow {
+.dev-notice__copy p {
+  margin: 0;
+  color: var(--dev-muted);
   font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(226, 232, 240, 0.88);
+  line-height: 1.6;
 }
 
-.dev-hero__title {
-  margin: 10px 0 0;
-  font-size: 30px;
-  line-height: 1.2;
+.dev-notice__action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+/* 提示条里的动作按钮与工具栏按钮同规格：Element 的 size="small"（24px 高）
+   在这种整幅横幅里显得比文案还轻，同一页两个横幅的小按钮高度也不一致。 */
+.dev-notice__action .el-button {
+  min-height: var(--dev-control-height);
+  height: var(--dev-control-height);
+  padding: 0 16px;
+  border-radius: var(--dev-radius-control);
   font-weight: 700;
 }
 
-.dev-hero__desc {
-  margin: 12px 0 0;
-  max-width: 720px;
-  font-size: 14px;
-  line-height: 1.8;
-  color: rgba(226, 232, 240, 0.92);
-}
-
-.dev-hero__stack {
-  display: grid;
-  gap: 14px;
-}
-
-.dev-pulse-card {
-  display: grid;
-  gap: 8px;
-  padding: 18px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(18px);
-}
-
-.dev-pulse-card[data-tone='gold'] {
-  background: rgba(185, 129, 43, 0.16);
-}
-
-.dev-pulse-card[data-tone='green'] {
-  background: rgba(42, 166, 164, 0.16);
-}
-
-.dev-pulse-card__title {
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.76);
-}
-
-.dev-pulse-card__value {
-  font-size: 28px;
-  line-height: 1;
-}
-
-.dev-pulse-card__meta {
-  font-size: 13px;
-  line-height: 1.6;
-  color: rgba(241, 245, 249, 0.86);
-}
-
-.dev-list {
-  display: grid;
-  gap: 14px;
-}
-
+/* 卡片内「标题与内容块」之间的固定间距：原来叫 .dev-list--spaced（挂在已删除的 .dev-list 上），
+   现在只作单条工具类保留，预览卡等紧跟小标题的内容块用它。 */
 .dev-list--spaced {
   margin-top: 18px;
 }
 
-.dev-list-item {
+/* === 开发者页统一工具栏 ===
+   搜索结果/筛选/刷新这三种控件，全开发者端只认这一套类名：
+   .dev-toolbar 是容器（左侧搜索与筛选，右侧操作靠 margin-left: auto 推到行尾），
+   .dev-toolbar__search 是关键字输入、.dev-toolbar__field 是下拉筛选、
+   .dev-toolbar__actions 放刷新/重置/查询按钮。
+   控件本身走下面那段「同尺寸」改写：输入框、选择器、按钮一律 --dev-control-height 高、
+   --dev-radius-control 圆角、--dev-line 描边，各页不用再自己写 px。 */
+.dev-toolbar {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.58);
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
-.dev-list-item__eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dev-blue);
+.dev-toolbar__search {
+  flex: 1 1 240px;
+  min-width: 0;
+  max-width: 340px;
 }
 
-.dev-list-item__title {
-  margin-top: 6px;
-  font-weight: 600;
-  color: var(--dev-ink);
+/* 下拉筛选的宽度必须写死成 flex 基宽，不能只写 min-width：
+   Element Plus 的 .el-select 自带 width: 100%，而 .dev-toolbar__field 是直接挂在 el-select
+   根节点上的，`flex: 0 0 auto` 会让 flex-basis 回落到 width，于是每个筛选各占一整行、
+   工具栏被撑成竖排。用 flex 简写给出确定基宽即可，宽度属性同时失效，两者不再打架。 */
+.dev-toolbar__field {
+  flex: 0 0 150px;
+  min-width: 0;
 }
 
-.dev-list-item__meta {
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--dev-muted);
+.dev-toolbar__field--small {
+  flex: 0 0 112px;
 }
 
-.dev-timeline {
-  margin-top: 18px;
+/* 「筛选」是胶囊组时（总览页两张列表、钱包记录页的记录切换）：组本身不伸缩，
+   窄到摆不下时整组换行，而不是把胶囊挤成两行。 */
+.dev-toolbar .dev-chip-group {
+  flex: 0 0 auto;
 }
 
-.dev-panel-banner {
+.dev-toolbar__actions {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 20px;
-  padding: 24px 28px;
-  border-radius: 24px;
-  border: 1px solid rgba(203, 213, 225, 0.6);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 255, 0.8));
-  box-shadow: var(--dev-shadow);
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
-.dev-panel-banner--light {
-  background: linear-gradient(135deg, rgba(244, 247, 255, 0.94), rgba(255, 255, 255, 0.8));
-}
-
-.dev-panel-banner__eyebrow {
+/* 计数、口径说明之类的弱文字，跟在工具栏或标题旁边 */
+.dev-toolbar__hint {
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dev-muted);
+}
+
+/* 窄栏里的工具栏：工单中心是「左列表 + 右详情」的主从布局，左栏只有 300 多像素，
+   一行摆不下「筛选 150 + 筛选 150 + 搜索 340 + 重置」（原来靠换行兜底，收成三行、
+   高 128px，和其它页 36px 的单行工具栏完全两个样子）。加这个修饰类后固定两行：
+   第一行「筛选 + 右侧重置」，第二行搜索占满。段序与宽栏一致（还是筛选 → 搜索 → 动作），
+   用的类名也还是 .dev-toolbar__field / __search / __actions，没有第二套控件规格。 */
+.dev-toolbar--stacked .dev-toolbar__field {
+  flex: 1 1 100px;
+}
+
+.dev-toolbar--stacked .dev-toolbar__search {
+  flex: 1 1 100%;
+  max-width: none;
+}
+
+/* 工具栏内控件同尺寸：输入框 / 选择器 / 按钮 */
+.dev-toolbar,
+.dev-meta-strip {
+  --el-component-size: var(--dev-control-height);
+}
+
+.dev-toolbar .el-input__wrapper,
+.dev-toolbar .el-select__wrapper,
+.dev-toolbar .el-button {
+  min-height: var(--dev-control-height);
+  height: var(--dev-control-height);
+  border-radius: var(--dev-radius-control);
+}
+
+/* 工具栏里可能放没有 __primary / __ghost / __icon-btn 修饰类的裸 el-button
+   （比如分页、行内小动作），字号也跟进来，免得工具栏里出现第三种按钮字号 */
+.dev-toolbar .el-button {
+  font-size: 13px;
+}
+
+/* 下面三个按钮变体脱离 .dev-toolbar 也能用（卡片头、弹窗页脚、空态里），
+   尺寸与颜色规格跟工具栏内完全一致，不要因为换了位置再写一套。
+   字号统一 13px：这里是 el-button，不写就吃 Element 默认的 14px，而卡片头常用的
+   .dev-btn 是 13px、工具栏内输入框与选择器也是 13px，同一个动作换个位置就大一号。
+   两个体系都落到 13px，与工具栏内的输入框同档。 */
+.dev-toolbar__primary.el-button,
+.dev-toolbar__ghost.el-button,
+.dev-toolbar__icon-btn.el-button {
+  min-height: var(--dev-control-height);
+  height: var(--dev-control-height);
+  border-radius: var(--dev-radius-control);
+  font-size: 13px;
+}
+
+/* 带图标的次要按钮：图标与文字同一行、间距 6px（重置/导出一类） */
+.dev-toolbar__primary.el-button > span,
+.dev-toolbar__ghost.el-button > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dev-toolbar .el-input__wrapper,
+.dev-toolbar .el-select__wrapper {
+  padding: 0 12px;
+  background: var(--dev-surface-strong);
+  box-shadow: 0 0 0 1px var(--dev-line) inset;
+  transition: box-shadow 160ms ease;
+}
+
+.dev-toolbar .el-input__wrapper:hover,
+.dev-toolbar .el-select__wrapper:hover,
+.dev-toolbar .el-select__wrapper.is-hovering {
+  box-shadow: 0 0 0 1px rgba(31, 74, 209, 0.32) inset;
+}
+
+.dev-toolbar .el-input__wrapper.is-focus,
+.dev-toolbar .el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--dev-blue) inset;
+}
+
+.dev-toolbar .el-input__inner,
+.dev-toolbar .el-select__placeholder,
+.dev-toolbar .el-select__selected-item {
+  font-size: 13px;
+}
+
+/* 图标按钮：正方形，与输入框等高，常态灰字冷底，悬停转主色 */
+.dev-toolbar__icon-btn.el-button {
+  width: var(--dev-control-height);
+  padding: 0;
+  --el-button-text-color: var(--dev-muted);
+  --el-button-bg-color: var(--dev-surface-strong);
+  --el-button-border-color: var(--dev-line);
+  --el-button-hover-text-color: var(--dev-blue);
+  --el-button-hover-bg-color: rgba(31, 74, 209, 0.08);
+  --el-button-hover-border-color: rgba(31, 74, 209, 0.32);
+  --el-button-active-text-color: var(--dev-blue);
+  --el-button-active-bg-color: rgba(31, 74, 209, 0.12);
+  --el-button-active-border-color: rgba(31, 74, 209, 0.32);
+}
+
+/* 次要按钮（重置、导出之类）：同高同圆角，白底冷描边 */
+.dev-toolbar__ghost.el-button {
+  padding: 0 14px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dev-blue);
+  --el-button-text-color: var(--dev-ink-soft);
+  --el-button-bg-color: var(--dev-surface-strong);
+  --el-button-border-color: var(--dev-line);
+  --el-button-hover-text-color: var(--dev-blue);
+  --el-button-hover-bg-color: rgba(31, 74, 209, 0.08);
+  --el-button-hover-border-color: rgba(31, 74, 209, 0.32);
+  --el-button-active-text-color: #fff;
+  --el-button-active-bg-color: var(--dev-blue);
+  --el-button-active-border-color: var(--dev-blue);
 }
 
-.dev-panel-banner__title {
-  margin: 8px 0 0;
-  font-size: 28px;
-  line-height: 1.2;
-  color: var(--dev-ink);
+/* 主按钮（查询、新建之类）：整站主色 --dev-blue，不要再出现 Element 默认的 #409eff。
+   悬停不提亮底色，只加一层投影，避免同一页面出现两种蓝。 */
+.dev-toolbar__primary.el-button {
+  padding: 0 16px;
+  font-weight: 700;
+  --el-button-text-color: #fff;
+  --el-button-bg-color: var(--dev-blue);
+  --el-button-border-color: var(--dev-blue);
+  --el-button-hover-text-color: #fff;
+  --el-button-hover-bg-color: var(--dev-blue);
+  --el-button-hover-border-color: var(--dev-blue);
+  --el-button-active-text-color: #fff;
+  --el-button-active-bg-color: var(--dev-blue);
+  --el-button-active-border-color: var(--dev-blue);
 }
 
-.dev-panel-banner__desc {
-  margin: 12px 0 0;
-  max-width: 680px;
-  font-size: 14px;
-  line-height: 1.8;
-  color: var(--dev-muted);
+.dev-toolbar__primary.el-button:hover,
+.dev-toolbar__primary.el-button:focus-visible {
+  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.22);
 }
 
-.dev-panel-banner__meta {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.dev-panel-banner__inline-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 18px;
-}
-
-.dev-meta-list {
-  display: grid;
-  gap: 12px;
-}
-
-.dev-meta-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  color: var(--dev-muted);
-}
-
-.dev-meta-row strong {
-  color: var(--dev-ink);
-}
-
-.dev-filter-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.dev-filter-toolbar--footer {
-  align-items: center;
-}
-
-.dev-filter-block {
-  display: grid;
-  gap: 10px;
-}
-
-.dev-filter-block--inline {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.dev-toolbar__ghost.el-button:hover,
+.dev-toolbar__ghost.el-button:focus-visible,
+.dev-toolbar__icon-btn.el-button:hover,
+.dev-toolbar__icon-btn.el-button:focus-visible {
+  box-shadow: 0 8px 18px rgba(31, 74, 209, 0.1);
 }
 
 .dev-filter-label {
@@ -424,79 +714,348 @@ a {
   color: var(--dev-blue);
 }
 
-.dev-filter-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
+/* === 胶囊标签 / 胶囊筛选按钮 ===
+   .dev-chip 原来定义在 dev-resource.css（资源模块）里，但总览页、需求大厅、交付记录都在用，
+   属于「共享组件住在某个模块文件里」。它与下面三个变体一起收在这里，只留一处。
+   变体：--button（可点选，配 .is-active）、--warm（金）、--cyan（青）。
 
-.dev-filter-tag {
-  appearance: none;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--dev-ink);
+   尺寸口径：所有胶囊一律 28px 高、12px 字号、999px 圆角。
+   原来基础档写的是 padding: 8px 12px（高度跟着父级行高走），于是同一枚胶囊在总览页 27px、
+   在消息中心（行高更大的卡片头里）35px，横向并排时会一高一低。改成定高后三种场合一致。
+
+   字重口径：一律 700。基础档原来写 600，于是同一枚状态胶囊「消息中心用 .dev-chip 是 600、
+   交付记录用 el-tag 是 700、总览页的筛选胶囊 .dev-chip--button 又是 700」，
+   同尺寸同配色的胶囊换个页面字就细一档。这里跟着多数档位统一到 700。 */
+.dev-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
   border-radius: 999px;
-  padding: 8px 12px;
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.dev-filter-tag.is-active,
-.dev-chip--button.is-active {
-  background: rgba(31, 74, 209, 0.12);
-  border-color: rgba(31, 74, 209, 0.2);
+  border: 1px solid rgba(31, 74, 209, 0.16);
+  background: rgba(31, 74, 209, 0.08);
+  font-size: 12px;
+  font-weight: 700;
   color: var(--dev-blue);
 }
 
-.dev-filter-search {
+/* 一组胶囊筛选（列表的状态切换）：总览页两处列表、钱包的记录切换都用它，
+   不要再各写一套 .dev-xxx__tab / el-tabs。 */
+.dev-chip-group {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  min-width: min(100%, 320px);
-  padding: 0 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  background: rgba(255, 255, 255, 0.78);
+  gap: 6px;
 }
 
-.dev-filter-search input {
-  width: 100%;
-  height: 44px;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--dev-ink);
+/* 筛选胶囊的三种态与门户侧 .wb-chip--button 逐一对应（未选中=主色浅底主色字、
+   悬停=描边加深、选中=实心主色白字）。
+   原来这里是「未选中中性灰、选中主色浅底」：同一组筛选胶囊在开发者模式是灰底、切到用户模式
+   变成浅蓝底、选中项还会从浅蓝块变成实心蓝块，等于同一控件换模式就换一套配色。
+   中性灰这一档仍然保留，但只给 .dev-chip--muted（终止态、未关联这类没有筛选语义的状态标签）。 */
+.dev-chip--button {
+  appearance: none;
+  min-height: 28px;
+  padding: 0 12px;
+  border-color: rgba(31, 74, 209, 0.16);
+  background: rgba(31, 74, 209, 0.08);
+  color: var(--dev-blue);
   font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
 }
 
-.dev-filter-search__icon {
+.dev-chip--button:hover {
+  border-color: rgba(31, 74, 209, 0.32);
+}
+
+.dev-chip--button.is-active {
+  background: var(--dev-blue);
+  border-color: var(--dev-blue);
+  color: #fff;
+}
+
+.dev-chip--button:focus-visible {
+  outline: 2px solid var(--dev-blue);
+  outline-offset: 2px;
+}
+
+/* === 开发者页统一表格皮肤 ===
+   所有列表页的 el-table 都加上 .dev-table，皮肤只在下面这一处定义。
+   表头底色是冷灰蓝（--dev-bg 的淡色），不是原来的暖奶油 rgba(255,248,238,.96)；
+   分隔线用 --dev-line，行悬停与斑马纹都取主色的极淡底。 */
+.dev-table {
+  --el-table-border-color: var(--dev-line);
+  --el-table-header-bg-color: rgba(241, 244, 251, 0.9);
+  --el-table-header-text-color: var(--dev-muted);
+  --el-table-text-color: var(--dev-ink);
+  --el-table-row-hover-bg-color: rgba(31, 74, 209, 0.05);
+  --el-table-tr-bg-color: transparent;
+  --el-fill-color-blank: transparent;
+  --el-fill-color-lighter: rgba(241, 244, 251, 0.62);
+  font-size: 13px;
+}
+
+/* 表尾那条默认的横向分隔线不要，表格靠自己的行描边收边 */
+.dev-table .el-table__inner-wrapper::before {
+  display: none;
+}
+
+/* 表格空态：表格页一律用 <template #empty> 放一个 .dev-empty-state，
+   与卡片里的空态（总览页、我的团队、我的接单）同一形态；
+   原来表格页走 :empty-text 的裸灰字，同一件事在同一页里就有两种样子
+   （交付记录页第一张卡是虚线框、第二张卡的表格里是灰字）。
+   空槽默认只占一半宽度，这里放宽到整行，免得虚线框被挤成窄条。 */
+.dev-table .el-table__empty-block {
+  min-height: 112px;
+}
+
+.dev-table .el-table__empty-text {
+  width: 100%;
+  padding: 0 12px;
+  color: var(--dev-muted);
+  font-size: 13px;
+}
+
+.dev-table .el-table__empty-text .dev-empty-state {
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.dev-table th.el-table__cell {
+  height: 44px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.dev-table td.el-table__cell {
+  padding: 12px 0;
+}
+
+.dev-table .el-table__cell .cell {
+  padding: 0 12px;
+}
+
+/* 单元格里的主/次要文字：主信息 14px 加粗，次要信息 12px 弱字。
+   这两个值是全部菜单页表格的统一口径——资源列表、团队资源、交付记录、需求大厅、
+   钱包记录的行内文字都走它们，不要在各页另写一套字号（原来是 13/12、14/12、15/13 三种）。 */
+.dev-table__strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dev-ink);
+}
+
+.dev-table__sub {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
   color: var(--dev-muted);
 }
 
-.dev-filter-reset {
-  appearance: none;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--dev-ink);
-  border-radius: 999px;
-  padding: 10px 14px;
-  font: inherit;
+/* 表格里的行内按钮：比工具栏按钮矮一档，避免表格被按钮撑高 */
+.dev-table .el-button {
+  min-height: 32px;
+  height: 32px;
+  border-radius: var(--dev-radius-control);
+  font-weight: 700;
+}
+
+/* 表格行内的操作按钮：统一最小宽度与方角，
+   原来是需求大厅胶囊 999px、资源列表 10px + 重投影，同行按钮宽窄与形状都不一致。
+   这里只管尺寸，底色由 .dev-action--soft / .dev-action--soft-danger 给。 */
+.dev-table__action.el-button {
+  min-width: 92px;
+  font-weight: 700;
+}
+
+/* === 开发者页统一「行内软按钮」===
+   表格行内与卡片行内的次要操作按钮是同一个东西，只认这一组类名：
+   .dev-action--soft 是主色档（查看版本 / 关联需求 / 会话 / 售后 / 提交交付版本），
+   .dev-action--soft-danger 是破坏性档（终止合作 / 申请解除），与 .dev-btn--danger 同一支红。
+   两档都是白底 + 细描边 + 同色文字，下拉展开时转同色实底。
+
+   为什么不能直接用 `type="primary" plain`：Element 的 plain 变体把底色取成
+   --el-color-primary-light-9（#e8edfa 的蓝灰底）配 light-5 描边，而表格行按钮要的是
+   白底 + 主色描边；两处摆在同一页会看到「表格里的按钮是白底、卡片里的按钮是蓝底」。
+   同理 danger 的 plain 会取成 Element 的粉底三件套（#fef0f0 / #fde2e2 / #fab6b6），
+   与 .dev-btn--danger 的白底红描边不是一套，禁用态更是一片粉。
+   所以配色在这里一次写死，各页只挂类名，不再挑 Element 的 color 档位。
+
+   尺寸不在这里：表格行交给 .dev-table 的 32px 档、卡片行交给 .dev-list-actions 的 32px 档，
+   同一张表格／同一张卡片里不该有两种行内按钮高度。 */
+.dev-action--soft.el-button {
+  --el-button-text-color: var(--dev-blue);
+  --el-button-bg-color: rgba(255, 255, 255, 0.86);
+  --el-button-border-color: rgba(31, 74, 209, 0.18);
+  --el-button-hover-text-color: var(--dev-blue);
+  --el-button-hover-bg-color: rgba(31, 74, 209, 0.08);
+  --el-button-hover-border-color: rgba(31, 74, 209, 0.34);
+  --el-button-active-text-color: #fff;
+  --el-button-active-bg-color: var(--dev-blue);
+  --el-button-active-border-color: var(--dev-blue);
+  padding: 0 12px;
+  border-radius: var(--dev-radius-control);
+  color: var(--dev-blue);
+  box-shadow: 0 8px 18px rgba(31, 74, 209, 0.08);
+}
+
+.dev-action--soft.el-button:hover,
+.dev-action--soft.el-button:focus-visible {
+  border-color: rgba(31, 74, 209, 0.34);
+  background: rgba(31, 74, 209, 0.08);
+  color: var(--dev-blue);
+  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.12);
+}
+
+/* 下拉菜单打开时按钮进选中态（aria-expanded 由 el-dropdown 写在触发元素上） */
+.dev-action--soft.el-button[aria-expanded='true'] {
+  border-color: rgba(31, 74, 209, 0.72);
+  background: var(--dev-blue);
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(31, 74, 209, 0.18);
+}
+
+.dev-action--soft.el-button > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dev-action--soft .el-icon {
+  font-size: 15px;
+}
+
+.dev-action-caret {
+  margin-left: 2px;
   font-size: 13px;
-  cursor: pointer;
+  transition: transform 160ms ease;
 }
 
-.dev-chip--button {
-  appearance: none;
-  cursor: pointer;
+.dev-action--soft.el-button[aria-expanded='true'] .dev-action-caret {
+  transform: rotate(180deg);
 }
 
+/* 破坏性档：与 .dev-btn--danger 同一支红（白底 + 红描边 + 红字），
+   禁用态也压成中性弱字，不要退回 Element 的粉底。 */
+.dev-action--soft-danger.el-button {
+  --el-button-text-color: #dc2626;
+  --el-button-bg-color: var(--dev-surface-strong);
+  --el-button-border-color: rgba(220, 38, 38, 0.32);
+  --el-button-hover-text-color: #dc2626;
+  --el-button-hover-bg-color: rgba(220, 38, 38, 0.08);
+  --el-button-hover-border-color: rgba(220, 38, 38, 0.5);
+  --el-button-active-text-color: #fff;
+  --el-button-active-bg-color: #dc2626;
+  --el-button-active-border-color: #dc2626;
+  --el-button-disabled-text-color: var(--dev-muted);
+  --el-button-disabled-bg-color: var(--dev-surface-strong);
+  --el-button-disabled-border-color: var(--dev-line);
+  padding: 0 12px;
+  border-radius: var(--dev-radius-control);
+  color: #dc2626;
+}
+
+.dev-action--soft-danger.el-button:hover,
+.dev-action--soft-danger.el-button:focus-visible {
+  border-color: rgba(220, 38, 38, 0.5);
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+  box-shadow: 0 8px 18px rgba(220, 38, 38, 0.1);
+}
+
+.dev-action--soft-danger.el-button.is-disabled,
+.dev-action--soft-danger.el-button.is-disabled:hover {
+  border-color: var(--dev-line);
+  background: var(--dev-surface-strong);
+  color: var(--dev-muted);
+  box-shadow: none;
+}
+
+/* === 开发者页统一表尾 ===
+   列表页脚：左边「共 N 条」与每页条数，右边分页器。钱包与提现记录两页原来各写一份，
+   其中一份还靠父页面的 :deep 才生效；统一到这里，字体、间距、每页条数宽度都只有一处。 */
+.dev-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--dev-muted);
+}
+
+.dev-pager__count {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dev-pager__size {
+  width: 116px;
+}
+
+/* 每页条数下拉与工具栏控件同尺寸：Element 默认是 32px 高 / 4px 圆角，
+   与工具栏里的 --dev-control-height / --dev-radius-control 对不上，
+   同一页会出现「搜索框 36px、每页条数 32px」两种控件高度。 */
+.dev-pager {
+  --el-component-size: var(--dev-control-height);
+}
+
+.dev-pager__size .el-select__wrapper {
+  min-height: var(--dev-control-height);
+  height: var(--dev-control-height);
+  padding: 0 12px;
+  border-radius: var(--dev-radius-control);
+  background: var(--dev-surface-strong);
+  box-shadow: 0 0 0 1px var(--dev-line) inset;
+}
+
+.dev-pager__size .el-select__wrapper:hover,
+.dev-pager__size .el-select__wrapper.is-hovering {
+  box-shadow: 0 0 0 1px rgba(31, 74, 209, 0.32) inset;
+}
+
+.dev-pager__size .el-select__placeholder,
+.dev-pager__size .el-select__selected-item {
+  font-size: 13px;
+}
+
+/* 分页器自身的按钮与页码：Element 默认 2px 圆角，并到控件档。
+   底色同样要换：背景按钮取 Element 默认的 #f5f7fa（暖灰），禁用态的翻页按钮因此
+   与体系里的冷灰蓝（--dev-bg / --dev-line）不是一支；只在需求大厅与收益钱包出现，
+   正好是最容易看出「这一页的灰和别的页不一样」的位置。 */
+.dev-pager .el-pagination button,
+.dev-pager .el-pager li {
+  border-radius: var(--dev-radius-control);
+}
+
+.dev-pager .el-pagination {
+  --el-pagination-font-size: 13px;
+  --el-pagination-button-color: var(--dev-ink-soft);
+  --el-pagination-button-bg-color: rgba(241, 244, 251, 0.9);
+  --el-pagination-button-disabled-bg-color: rgba(241, 244, 251, 0.62);
+  --el-pagination-button-disabled-color: #94a3b8;
+  --el-pagination-hover-color: var(--dev-blue);
+}
+
+/* 卡片/表格里的空态：字号显式写 13px，不靠继承。
+   表格页由 .dev-table .el-table__empty-text 给到 13px，但工单中心的空态是卡片里的
+   裸 div，没有那层兜底，会落到根字号的 16px——同一个「还没有记录」在两页两种大小。 */
 .dev-empty-state {
   margin: 0;
   padding: 24px;
-  border-radius: 20px;
-  border: 1px dashed rgba(17, 24, 39, 0.14);
+  font-size: 13px;
+  border-radius: var(--dev-radius-inner);
+  border: 1px dashed var(--dev-line);
   background: rgba(255, 255, 255, 0.56);
   text-align: center;
   color: var(--dev-muted);
@@ -514,9 +1073,128 @@ a {
   color: var(--dev-cyan);
 }
 
+/* 中性档：终止态与「未选择 / 未关联」这类无强调语义的标签。总览页原先自带一个
+   .dev-home__chip--muted，别的页又各自写一遍，收进统一层只留这一处。 */
+.dev-chip--muted {
+  border-color: var(--dev-line);
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--dev-muted);
+}
+
+/* 破坏性状态（已驳回 / 已终止）：红只用于这一档，与 .dev-btn--danger 同一支红。 */
+.dev-chip--danger {
+  border-color: rgba(220, 38, 38, 0.2);
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+}
+
+/* === Element 的 el-tag 收进同一套胶囊口径 ===
+   开发者页原来并存两套状态标签：筛选切换用 .dev-chip（胶囊 999px / 28px 高 / 12px 700 /
+   主色浅底），状态展示用 Element 的 el-tag（直角 4px / 24px 高 / 12px 400 / plain 的浅色描边 +
+   白底或透明底）。收益钱包页最明显——同一条顶部读数条里，「满足提现条件」是胶囊、
+   旁边的「已提现 ¥0.00」是直角描边块，同一支青也是两种深浅。
+
+   这里按设计规范「状态标签一律浅底 + 深字」把 el-tag 一次映射到 .dev-chip 的形状与配色，
+   20 多处 el-tag 不必逐页改写。两点细节：
+   1. Element 把尺寸与配色都声明在 el-tag 元素自身（--el-tag-border-radius / --el-tag-bg-color
+      等），所以必须写在标签元素上、且选择器权重不低于 .el-tag--plain.el-tag--warning 那一档，
+      靠父层作用域继承是覆盖不掉的；这里统一用 .el-tag.el-tag--{type} 三档权重。
+   2. el-tag 的 size="small"（20px）由 .el-tag--small 给出，权重低一档，一并被这里的 28px 收掉，
+      各页不用再逐个删除 size 属性。 */
+.dev-page .el-tag,
+.dev-dialog .el-tag {
+  --el-tag-border-radius: 999px;
+  --el-tag-font-size: 12px;
+  --el-tag-bg-color: rgba(31, 74, 209, 0.08);
+  --el-tag-border-color: rgba(31, 74, 209, 0.16);
+  --el-tag-text-color: var(--dev-blue);
+  --el-tag-hover-color: var(--dev-blue);
+  height: 28px;
+  padding: 0 12px;
+  font-weight: 700;
+}
+
+/* 进行中 / 主色档 */
+.dev-page .el-tag.el-tag--primary,
+.dev-dialog .el-tag.el-tag--primary {
+  --el-tag-bg-color: rgba(31, 74, 209, 0.08);
+  --el-tag-border-color: rgba(31, 74, 209, 0.16);
+  --el-tag-text-color: var(--dev-blue);
+  --el-tag-hover-color: var(--dev-blue);
+}
+
+/* 已完成档：青 */
+.dev-page .el-tag.el-tag--success,
+.dev-dialog .el-tag.el-tag--success {
+  --el-tag-bg-color: rgba(42, 166, 164, 0.1);
+  --el-tag-border-color: rgba(42, 166, 164, 0.16);
+  --el-tag-text-color: var(--dev-cyan);
+  --el-tag-hover-color: var(--dev-cyan);
+}
+
+/* 需留意 / 金额档：金 */
+.dev-page .el-tag.el-tag--warning,
+.dev-dialog .el-tag.el-tag--warning {
+  --el-tag-bg-color: rgba(185, 129, 43, 0.1);
+  --el-tag-border-color: rgba(185, 129, 43, 0.16);
+  --el-tag-text-color: var(--dev-gold);
+  --el-tag-hover-color: var(--dev-gold);
+}
+
+/* 中性档：未选择 / 未关联 / 已结束 */
+.dev-page .el-tag.el-tag--info,
+.dev-dialog .el-tag.el-tag--info {
+  --el-tag-bg-color: rgba(148, 163, 184, 0.12);
+  --el-tag-border-color: var(--dev-line);
+  --el-tag-text-color: var(--dev-muted);
+  --el-tag-hover-color: var(--dev-muted);
+}
+
+/* 破坏性档：与 .dev-chip--danger / .dev-btn--danger 同一支红 */
+.dev-page .el-tag.el-tag--danger,
+.dev-page .el-tag.el-tag--error,
+.dev-dialog .el-tag.el-tag--danger,
+.dev-dialog .el-tag.el-tag--error {
+  --el-tag-bg-color: rgba(220, 38, 38, 0.08);
+  --el-tag-border-color: rgba(220, 38, 38, 0.2);
+  --el-tag-text-color: #dc2626;
+  --el-tag-hover-color: #dc2626;
+}
+
+/* === 卡片列表里的一行操作按钮 ===
+   表格行内的按钮规格在 .dev-table 里（32px），卡片行内是它的等价物：
+   「我的接单」的需求卡片、「我的团队」的邀请行都用这一组类名包按钮，
+   不再各自给 el-button 写 size="small"（24px）或引一个 dev-btn（36px），
+   同一页出现两种行内按钮高度。 */
+.dev-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 尺寸（32px 档）由这里给；底色与描边交给 .dev-action--soft / .dev-action--soft-danger，
+   与表格行内按钮共用同一份配色，卡片行与表格行不会各是各的。 */
+.dev-list-actions .el-button,
+.dev-list-actions .dev-btn,
+.dev-stack-item .el-button,
+.dev-stack-item .dev-btn {
+  min-height: 32px;
+  height: 32px;
+  border-radius: var(--dev-radius-control);
+  font-weight: 700;
+}
+
 .dev-stack-list {
   display: grid;
   gap: 14px;
+  /* 列表容器复位。这个类落在 <ul> 上（交付记录、消息中心），也落在 <div> 上（我的团队），
+     <ul> 默认带 margin、40px 左内边距和圆点，会把卡片式列表整体右移 40px，
+     与上方的卡片头、工具栏对不齐——同一形态的列表在有的页齐、有的页偏。
+     我的团队、团队详情原来各自补过一份相同的 margin/padding/list-style，已并入这里。 */
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .dev-stack-item {
@@ -524,9 +1202,9 @@ a {
   justify-content: space-between;
   gap: 16px;
   padding: 16px 18px;
-  border-radius: 18px;
+  border-radius: var(--dev-radius-inner);
   background: rgba(255, 255, 255, 0.58);
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  border: 1px solid var(--dev-line);
 }
 
 .dev-stack-item__title {
@@ -534,6 +1212,9 @@ a {
   font-weight: 700;
   color: var(--dev-ink);
 }
+
+/* 行内操作按钮的规格（32px 档）定义在上面 .dev-list-actions 那一处，
+   卡片式列表（.dev-stack-item）与需求卡片（.dev-list-actions）共用同一份，不在这里重复。 */
 
 .dev-stack-item__meta {
   margin-top: 6px;
@@ -554,54 +1235,4 @@ a {
   color: var(--dev-blue);
 }
 
-.dev-stack-item__value {
-  margin-top: 8px;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--dev-ink);
-}
-
-.dev-compliance-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px 18px;
-  width: fit-content;
-  max-width: 100%;
-  margin-inline: auto;
-  padding: 10px 18px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.6;
-}
-
-.dev-compliance-footer p {
-  margin: 0;
-}
-
-.dev-compliance-footer a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.dev-compliance-footer a:hover {
-  color: #60a5fa;
-  text-decoration: underline;
-}
-
-.dev-public-security-beian-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.dev-public-security-beian-icon {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 14px;
-  object-fit: contain;
-}
 

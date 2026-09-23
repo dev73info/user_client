@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Wallet, WarningFilled } from '@element-plus/icons-vue'
+import { Refresh, Search, Wallet, WarningFilled } from '@element-plus/icons-vue'
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
 import DevWithdrawalRecordsView from './DevWithdrawalRecordsView.vue'
 
@@ -26,6 +26,7 @@ import {
   type DevOrderDepositWithdrawalSummary,
 } from '@/api/devOrderDeposit'
 import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
+import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
@@ -35,6 +36,13 @@ const { showToast } = useToast()
 
 const loading = ref(false)
 const activeRecordTab = ref<'deposit' | 'income'>('deposit')
+
+/** 钱包记录的两段：与总览页、需求大厅的筛选一样用统一层的胶囊按钮，不再用 el-tabs */
+const RECORD_TABS: ReadonlyArray<{ key: 'deposit' | 'income'; label: string }> = [
+  { key: 'deposit', label: '保证金退回' },
+  { key: 'income', label: '收入记录' },
+]
+
 const withdrawDialogVisible = ref(false)
 const submittingWithdrawal = ref(false)
 /** 保证金充值弹窗：表单与下单都由子组件承载，这里只留一个调用句柄 */
@@ -60,18 +68,36 @@ const withdrawForm = reactive<CreateDevWithdrawalRequest>({
 const depositLoading = ref(false)
 const depositStatus = ref<DevOrderDepositStatus | null>(null)
 const depositWithdrawalSummary = ref<DevOrderDepositWithdrawalSummary | null>(null)
-const depositRecordPage = ref(1)
-const depositRecordPageSize = ref(10)
 const depositRecords = computed(() => depositWithdrawalSummary.value?.withdrawals ?? [])
-const depositRecordPageCount = computed(() => Math.max(1, Math.ceil(depositRecords.value.length / depositRecordPageSize.value)))
-const pagedDepositRecords = computed(() => depositRecords.value.slice(
-  (depositRecordPage.value - 1) * depositRecordPageSize.value,
-  depositRecordPage.value * depositRecordPageSize.value,
-))
-watch(depositRecordPageSize, () => { depositRecordPage.value = 1 })
-watch(depositRecordPageCount, (count) => {
-  depositRecordPage.value = Math.min(depositRecordPage.value, count)
+/* 钱包记录的关键字筛选：与其它列表页的工具栏搜索同口径——只过滤已经加载回来的记录，
+   不发新请求。保证金退回与收入记录两段共用这一个关键字（在子组件上按 prop 传入）。 */
+const recordKeyword = ref('')
+
+const filteredDepositRecords = computed(() => {
+  const keyword = recordKeyword.value.trim().toLowerCase()
+  if (!keyword) {
+    return depositRecords.value
+  }
+  return depositRecords.value.filter((record) =>
+    [
+      record.withdrawal_id,
+      depositReturnStatusText(record.status),
+      record.review_note ?? '',
+      record.paid_reference ?? '',
+      record.payout_failure_message ?? '',
+      money(record.amount_cny),
+    ].some((field) => field.toLowerCase().includes(keyword)),
+  )
 })
+
+/* 分页走共享的 useClientPagination：页码越界回退、每页条数档位与「资源列表 / 团队资源 / 交付记录」
+   完全一致，不再在本页手写 slice 与 Math.min 回退。 */
+const {
+  page: depositRecordPage,
+  pageSize: depositRecordPageSize,
+  total: depositRecordTotal,
+  paged: pagedDepositRecords,
+} = useClientPagination(filteredDepositRecords)
 const creditInfo = ref<DevCreditSelf | null>(null)
 const depositWithdrawDialogVisible = ref(false)
 const submittingDepositWithdrawal = ref(false)
@@ -205,6 +231,10 @@ function rateText(value?: number | null) {
 
   const prefix = value > 0 ? '+' : ''
   return `${prefix}${value.toFixed(1)}%`
+}
+
+async function reloadWallet() {
+  await Promise.all([loadWallet(), loadDeposit()])
 }
 
 async function loadWallet() {
@@ -394,6 +424,13 @@ function depositReturnStatusText(status: string) {
   return labels[status] ?? status
 }
 
+/* 工具栏的「重置」：清掉关键字并把记录段切回默认的保证金退回。
+   与其它列表页一致，常驻可用、不置灰。 */
+function resetRecordFilters() {
+  recordKeyword.value = ''
+  activeRecordTab.value = 'deposit'
+}
+
 function resetDepositWithdrawForm() {
   depositWithdrawForm.amount_cny = 0
   depositWithdrawForm.channel = 'adapay'
@@ -468,7 +505,7 @@ async function submitDepositWithdrawal() {
       <div class="dev-meta-strip__item">
         <span class="dev-meta-strip__label">今日入账</span>
         <span class="dev-meta-strip__value">{{ money(overview?.today_income_cny) }}</span>
-        <el-tag size="small" :type="(overview?.today_income_change_rate ?? 0) >= 0 ? 'success' : 'danger'"
+        <el-tag :type="(overview?.today_income_change_rate ?? 0) >= 0 ? 'success' : 'danger'"
           effect="plain" class="dev-meta-strip__tag">
           {{ rateText(overview?.today_income_change_rate) }}
         </el-tag>
@@ -483,29 +520,40 @@ async function submitDepositWithdrawal() {
         <span class="dev-meta-strip__label">活跃需求</span>
         <span class="dev-meta-strip__value">{{ overview?.active_requirement_count ?? 0 }}</span>
       </div>
+      <div class="dev-meta-strip__item dev-meta-strip__action">
+        <el-button class="dev-toolbar__icon-btn" aria-label="刷新钱包数据" @click="reloadWallet">
+          <el-icon>
+            <Refresh />
+          </el-icon>
+        </el-button>
+      </div>
     </div>
 
     <!-- 主余额卡片 -->
     <div class="wallet-hero">
       <!-- 接单收入 -->
       <el-card shadow="never" class="dev-surface-card wallet-hero__card">
-        <div class="wallet-hero__header">
-          <span class="wallet-hero__section-label">接单收入</span>
-          <el-tag size="small" effect="plain" type="info">已提现 {{ money(overview?.paid_withdraw_cny) }}</el-tag>
+        <div class="dev-card-head">
+          <div class="dev-card-head__title-block">
+            <h3 class="dev-section-title">接单收入</h3>
+          </div>
+          <div class="dev-card-head__actions">
+            <el-tag effect="plain" type="info">已提现 {{ money(overview?.paid_withdraw_cny) }}</el-tag>
+          </div>
         </div>
         <div class="wallet-hero__body wallet-hero__body--split">
           <div class="wallet-hero__balance">
             <div class="wallet-hero__main">
               <span class="wallet-hero__label">可提现余额</span>
-              <span class="wallet-hero__amount" :class="{ 'wallet-hero__amount--dim': !canWithdraw }">
+              <span class="dev-figure" :class="{ 'dev-figure--muted': !canWithdraw }">
                 {{ money(overview?.withdrawable_balance_cny) }}
               </span>
             </div>
             <div class="wallet-hero__tags">
-              <el-tag v-if="(overview?.pending_withdraw_cny ?? 0) > 0" size="small" type="warning" effect="plain">
+              <el-tag v-if="(overview?.pending_withdraw_cny ?? 0) > 0" type="warning" effect="plain">
                 提现处理中 {{ money(overview?.pending_withdraw_cny) }}
               </el-tag>
-              <el-tag size="small" effect="plain" :type="canWithdraw ? 'success' : 'info'">
+              <el-tag effect="plain" :type="canWithdraw ? 'success' : 'info'">
                 {{ canWithdraw ? '满足提现条件' : '不满足提现条件' }}
               </el-tag>
             </div>
@@ -523,8 +571,8 @@ async function submitDepositWithdrawal() {
                 :disabled="!autoWithdrawReady" :before-change="beforeAutoWithdrawChange" aria-label="自动提现" />
             </div>
             <div class="wallet-payout__path">
-              <el-button class="wallet-hero__button wallet-hero__button--primary" type="primary"
-                :disabled="!canSubmitWithdrawal" @click="openWithdrawDialog">
+              <el-button class="dev-toolbar__primary" type="primary" :disabled="!canSubmitWithdrawal"
+                @click="openWithdrawDialog">
                 <el-icon>
                   <Wallet />
                 </el-icon>
@@ -544,46 +592,50 @@ async function submitDepositWithdrawal() {
 
       <!-- 保证金余额 -->
       <el-card shadow="never" class="dev-surface-card wallet-hero__card">
-        <div class="wallet-hero__header">
-          <span class="wallet-hero__section-label">保证金余额</span>
-          <el-tag size="small" effect="plain" type="info">充值总额 {{ money(depositTotalPaid) }}</el-tag>
+        <div class="dev-card-head">
+          <div class="dev-card-head__title-block">
+            <h3 class="dev-section-title">保证金余额</h3>
+          </div>
+          <div class="dev-card-head__actions">
+            <el-tag effect="plain" type="info">充值总额 {{ money(depositTotalPaid) }}</el-tag>
+          </div>
         </div>
         <div class="wallet-hero__body">
           <div class="wallet-hero__main">
             <span class="wallet-hero__label">可提现保证金</span>
-            <span class="wallet-hero__amount" :class="{ 'wallet-hero__amount--dim': !canWithdrawDeposit }">
+            <span class="dev-figure" :class="{ 'dev-figure--muted': !canWithdrawDeposit }">
               {{ money(depositWithdrawable) }}
             </span>
           </div>
           <div class="wallet-hero__tags">
-            <el-tag v-if="(depositStatus?.frozen_cny ?? 0) > 0" size="small" type="warning" effect="plain">
+            <el-tag v-if="(depositStatus?.frozen_cny ?? 0) > 0" type="warning" effect="plain">
               冻结中 {{ money(depositStatus?.frozen_cny) }}
             </el-tag>
-            <el-tag v-if="(depositStatus?.pending_refund_cny ?? 0) > 0" size="small" type="warning" effect="plain">
+            <el-tag v-if="(depositStatus?.pending_refund_cny ?? 0) > 0" type="warning" effect="plain">
               退款处理中 {{ money(depositStatus?.pending_refund_cny) }}
             </el-tag>
-            <el-tag v-if="(depositWithdrawalSummary?.pending_withdraw_cny ?? 0) > 0" size="small" type="warning"
+            <el-tag v-if="(depositWithdrawalSummary?.pending_withdraw_cny ?? 0) > 0" type="warning"
               effect="plain">
               处理中 {{ money(depositWithdrawalSummary?.pending_withdraw_cny) }}
             </el-tag>
-            <el-tag size="small" effect="plain" :type="canWithdrawDeposit ? 'success' : 'info'">
+            <el-tag effect="plain" :type="canWithdrawDeposit ? 'success' : 'info'">
               {{ canWithdrawDeposit ? '满足提现条件' : '不满足提现条件' }}
             </el-tag>
-            <el-tag v-if="creditInfo && creditInfo.enforce_deposit_limit" size="small" type="primary" effect="plain">
+            <el-tag v-if="creditInfo && creditInfo.enforce_deposit_limit" type="primary" effect="plain">
               信用 {{ creditInfo.credit_score.toFixed(2) }} · 剩余可充
               {{ money(creditInfo.remaining_deposit_cap_cny) }}
             </el-tag>
           </div>
         </div>
         <div class="wallet-hero__footer">
-          <el-button class="wallet-hero__button wallet-hero__button--primary" type="primary"
-            :disabled="!canWithdrawDeposit" :loading="depositLoading" @click="openDepositWithdrawDialog">
+          <el-button class="dev-toolbar__primary" type="primary" :disabled="!canWithdrawDeposit"
+            :loading="depositLoading" @click="openDepositWithdrawDialog">
             <el-icon v-if="!depositLoading">
               <Wallet />
             </el-icon>
             <span>提现保证金</span>
           </el-button>
-          <el-button class="wallet-hero__button wallet-hero__button--ghost" plain @click="openRechargeDialog">
+          <el-button class="dev-toolbar__ghost" plain @click="openRechargeDialog">
             <el-icon><Wallet /></el-icon>
             <span>充值</span>
           </el-button>
@@ -591,20 +643,53 @@ async function submitDepositWithdrawal() {
       </el-card>
     </div>
 
-    <section class="wallet-records" aria-label="钱包记录">
-      <div class="dev-upload-section__head">
-        <h3 class="dev-section-title">钱包记录</h3>
+    <section class="dev-surface-card wallet-records" aria-label="钱包记录">
+      <div class="dev-card-head">
+        <div class="dev-card-head__title-block">
+          <h3 class="dev-section-title">钱包记录</h3>
+          <p class="dev-section-desc">保证金退回与收入/提现明细，分页与每页条数在表尾统一。</p>
+        </div>
       </div>
-      <el-tabs v-model="activeRecordTab">
-        <el-tab-pane label="保证金退回" name="deposit">
-      <el-table class="wallet-records__table" :data="pagedDepositRecords" row-key="withdrawal_id" stripe v-loading="depositLoading" :empty-text="depositLoading ? '加载中' : '暂无保证金退回记录'">
+      <div class="dev-toolbar">
+        <div class="dev-chip-group" role="tablist" aria-label="钱包记录切换">
+          <button v-for="tab in RECORD_TABS" :key="tab.key" class="dev-chip dev-chip--button" type="button" role="tab"
+            :aria-selected="activeRecordTab === tab.key" :class="{ 'is-active': activeRecordTab === tab.key }"
+            @click="activeRecordTab = tab.key">
+            {{ tab.label }}
+          </button>
+        </div>
+
+        <el-input v-model="recordKeyword" class="dev-toolbar__search" clearable
+          placeholder="搜索单号、状态或处理备注">
+          <template #prefix>
+            <el-icon>
+              <Search />
+            </el-icon>
+          </template>
+        </el-input>
+
+        <div class="dev-toolbar__actions">
+          <el-button class="dev-toolbar__ghost" plain @click="resetRecordFilters">
+            <el-icon>
+              <Refresh />
+            </el-icon>
+            <span>重置</span>
+          </el-button>
+        </div>
+      </div>
+
+      <el-table v-if="activeRecordTab === 'deposit'" class="dev-table wallet-records__table"
+        :data="pagedDepositRecords" row-key="withdrawal_id" stripe v-loading="depositLoading">
+        <template #empty>
+          <p class="dev-empty-state">{{ depositLoading ? '加载中' : '暂无保证金退回记录' }}</p>
+        </template>
         <el-table-column prop="withdrawal_id" label="申请单号" min-width="180" show-overflow-tooltip />
         <el-table-column label="金额" width="120" align="right">
           <template #default="scope"><span class="wallet-records__amount">{{ money(scope.row.amount_cny) }}</span></template>
         </el-table-column>
         <el-table-column label="状态" width="140">
           <template #default="scope">
-            <el-tag size="small" effect="light" :type="scope.row.status === 'paid' ? 'success' : scope.row.status === 'payout_failed' || scope.row.status === 'rejected' ? 'danger' : 'warning'">
+            <el-tag effect="plain" :type="scope.row.status === 'paid' ? 'success' : scope.row.status === 'payout_failed' || scope.row.status === 'rejected' ? 'danger' : 'warning'">
               {{ depositReturnStatusText(scope.row.status) }}
             </el-tag>
           </template>
@@ -614,27 +699,25 @@ async function submitDepositWithdrawal() {
         </el-table-column>
         <el-table-column prop="created_at" label="申请时间" min-width="180" />
       </el-table>
-      <div class="wallet-records__footer">
-        <div class="wallet-records__count">
-          <span>共 {{ depositRecords.length }} 条</span>
-          <el-select v-model="depositRecordPageSize" aria-label="每页记录数" class="wallet-records__page-size">
-            <el-option v-for="size in [10, 20, 50]" :key="size" :label="`${size} 条/页`" :value="size" />
+      <div v-if="activeRecordTab === 'deposit'" class="dev-pager">
+        <div class="dev-pager__count">
+          <span>共 {{ depositRecordTotal }} 条</span>
+          <el-select v-model="depositRecordPageSize" aria-label="每页记录数" class="dev-pager__size">
+            <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
           </el-select>
         </div>
-        <el-pagination v-model:current-page="depositRecordPage" :page-size="depositRecordPageSize" :total="depositRecords.length" :pager-count="5" layout="prev, pager, next" background aria-label="保证金退回记录分页" />
+        <el-pagination v-model:current-page="depositRecordPage" :page-size="depositRecordPageSize" :total="depositRecordTotal" :pager-count="5" layout="prev, pager, next" background aria-label="保证金退回记录分页" />
       </div>
-        </el-tab-pane>
-        <el-tab-pane label="收入记录" name="income" lazy>
-          <DevWithdrawalRecordsView v-if="activeRecordTab === 'income'" :income="recentIncome" />
-        </el-tab-pane>
-      </el-tabs>
+
+      <DevWithdrawalRecordsView v-if="activeRecordTab === 'income'" :income="recentIncome"
+        :keyword="recordKeyword" />
     </section>
 
     <!-- 收入提现弹窗（手动提现路径）：收款账户固定为账号中心绑定的收款银行卡 -->
-    <el-dialog v-model="withdrawDialogVisible" title="申请提现" width="520px">
+    <el-dialog v-model="withdrawDialogVisible" title="申请提现" width="520px" align-center class="dev-dialog">
       <el-form label-position="top">
         <el-form-item label="可提现余额">
-          <div class="dev-wallet-withdraw__balance">
+          <div class="dev-figure dev-figure--sm">
             {{ money(overview?.withdrawable_balance_cny) }}
           </div>
         </el-form-item>
@@ -664,10 +747,10 @@ async function submitDepositWithdrawal() {
     </el-dialog>
 
     <!-- 保证金提现弹窗 -->
-    <el-dialog v-model="depositWithdrawDialogVisible" title="保证金提现" width="520px">
+    <el-dialog v-model="depositWithdrawDialogVisible" title="保证金提现" width="520px" align-center class="dev-dialog">
       <el-form label-position="top">
         <el-form-item label="可提现保证金">
-          <div class="dev-wallet-withdraw__balance">{{ money(depositWithdrawable) }}</div>
+          <div class="dev-figure dev-figure--sm">{{ money(depositWithdrawable) }}</div>
         </el-form-item>
         <el-form-item label="提现金额" required>
           <el-input-number v-model="depositWithdrawForm.amount_cny" :min="withdrawalMinAmount" :max="withdrawalMaxAmount" :precision="2" :step="0.01"
@@ -697,68 +780,22 @@ async function submitDepositWithdrawal() {
 </template>
 
 <style scoped>
+/* 表格走 dev-base.css 的 .dev-table，表尾走 .dev-pager（这两处原来在页内用 :deep 改写，
+   还顺手改了子组件 DevWithdrawalRecordsView 里的同名元素）。这里只留本页特有样式。 */
+/* 钱包记录与其余菜单页的列表同构：一张 .dev-surface-card（同底/同描边/同圆角/同阴影，
+   内边距 24px 由统一层给）。原来它是页面上的一条裸区块——标题与表格直接压在页面背景上，
+   只靠一条顶部分隔线开头，与资源列表、交付记录那种「标题 + 工具栏 + 列表都在卡片里」
+   不是一种结构，切菜单时整页的骨架会变。 */
 .wallet-records {
   min-width: 0;
-  padding-top: 20px;
-  border-top: 1px solid var(--el-border-color-lighter);
 }
 
-.wallet-records :deep(.el-tabs__item) {
-  font-weight: 600;
-  height: 48px;
-}
-
-.wallet-records :deep(.wallet-records__table) {
-  width: 100%;
-  max-width: 100%;
-  --el-table-header-bg-color: var(--el-fill-color-light);
-  --el-table-header-text-color: var(--el-text-color-regular);
-  --el-table-row-hover-bg-color: var(--el-color-primary-light-9);
-}
-
-.wallet-records :deep(.wallet-records__table .el-table__cell) {
-  padding: 12px 0;
-  font-variant-numeric: tabular-nums;
-}
+/* 记录切换与关键字搜索一起走统一层的 .dev-toolbar（筛选 → 搜索 → 右侧动作），
+   间距由工具栏自己给，本页不再补 margin。 */
 
 .wallet-records__amount {
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.wallet-records :deep(.wallet-records__footer),
-.wallet-records :deep(.wallet-records__count) {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.wallet-records :deep(.wallet-records__footer) {
-  justify-content: space-between;
-  padding: 16px 0;
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
-}
-
-.wallet-records :deep(.wallet-records__page-size) {
-  width: 116px;
-}
-
-@media (max-width: 600px) {
-  .wallet-records :deep(.wallet-records__footer) {
-    justify-content: center;
-  }
-
-  .wallet-records :deep(.wallet-records__count) {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .wallet-records :deep(.el-pagination) {
-    --el-pagination-button-width: 28px;
-    --el-pagination-button-height: 28px;
-    gap: 2px;
-  }
+  font-weight: 700;
+  color: var(--dev-ink);
+  font-variant-numeric: tabular-nums;
 }
 </style>

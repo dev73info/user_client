@@ -99,18 +99,30 @@ async function retryAccessCheck() {
       </p>
 
       <div class="dev-no-access__actions">
-        <el-button v-if="!realnameApproved" type="primary" @click="goRealname">去实名认证</el-button>
-        <el-button v-if="realnameApproved" type="primary" @click="goBecomeDeveloper">
+        <!-- 主操作走统一层的 .dev-toolbar__primary、其余走 .dev-toolbar__ghost：
+             原来两个次要按钮挂的是 Element 的 plain 变体（浅蓝底 + 浅蓝描边），
+             与统一层「白底 + 主色描边」的次要按钮不是一套。 -->
+        <el-button v-if="!realnameApproved" class="dev-toolbar__primary" @click="goRealname">
+          去实名认证
+        </el-button>
+        <el-button v-if="realnameApproved" class="dev-toolbar__primary" @click="goBecomeDeveloper">
           申请开发者权限
         </el-button>
-        <el-button plain @click="backToLogin">退出当前账号</el-button>
-        <el-button plain :loading="retrying" @click="retryAccessCheck">重试权限校验</el-button>
+        <el-button class="dev-toolbar__ghost" @click="backToLogin">退出当前账号</el-button>
+        <el-button class="dev-toolbar__ghost" :loading="retrying" @click="retryAccessCheck">
+          重试权限校验
+        </el-button>
       </div>
     </section>
   </main>
 </template>
 
 <style scoped>
+/* 这一页是「没有开发者权限」的落地面，不在侧边栏菜单里，形态上刻意与菜单页不同（居中单卡而不是读数条 + 列表）。
+   但配色必须与开发者工作台同源：原来标题写的是 #10233f、强调色写的是 #1a73e8、正文写的是 #516173，
+   三支都是别处没有的颜色，与侧边栏顶栏的 #1f4ad1 摆在一起能看出是两个网站。
+   这里统一取 dev-base.css 的令牌，字号也收到与 .dev-card-head__title 同一档附近，
+   避免这一页的标题比菜单页大出三倍。 */
 .dev-no-access {
   min-height: 100%;
   display: grid;
@@ -121,20 +133,20 @@ async function retryAccessCheck() {
 .dev-no-access__panel {
   width: min(720px, 100%);
   padding: 36px;
-  border-radius: 28px;
+  border-radius: var(--dev-radius-card);
   background:
-    radial-gradient(circle at top right, rgba(26, 115, 232, 0.12), transparent 36%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 251, 0.98));
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+    radial-gradient(circle at top right, var(--wb-accent-soft), transparent 36%),
+    linear-gradient(180deg, var(--dev-surface-strong), var(--dev-bg));
+  border: 1px solid var(--dev-line);
+  box-shadow: var(--dev-shadow);
 }
 
 .dev-no-access__eyebrow {
   display: inline-flex;
   padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(26, 115, 232, 0.1);
-  color: #1a73e8;
+  background: var(--wb-accent-soft);
+  color: var(--dev-blue);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -143,16 +155,16 @@ async function retryAccessCheck() {
 
 .dev-no-access__title {
   margin: 18px 0 12px;
-  font-size: clamp(28px, 4vw, 42px);
-  line-height: 1.1;
-  color: #10233f;
+  font-size: clamp(24px, 3.2vw, 32px);
+  line-height: 1.2;
+  color: var(--dev-ink);
 }
 
 .dev-no-access__desc {
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.8;
-  color: #516173;
+  color: var(--dev-ink-soft);
 }
 
 .dev-no-access__actions {
@@ -169,7 +181,7 @@ async function retryAccessCheck() {
 
   .dev-no-access__panel {
     padding: 24px;
-    border-radius: 22px;
+    border-radius: var(--dev-radius-card);
   }
 
   .dev-no-access__actions {

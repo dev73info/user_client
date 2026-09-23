@@ -1,50 +1,60 @@
 @media (max-width: 900px) {
-  .dev-hero,
-  .dev-panel-banner {
-    grid-template-columns: 1fr;
-  }
-
-  .dev-platform-switch {
-    width: 100%;
-    grid-template-columns: 1fr;
-  }
-
-  .dev-grid--three,
-  .dev-grid--two,
-  .dev-resource-grid,
   .dev-upload-layout,
   .dev-upload-grid--two,
   .dev-upload-grid--three,
-  .dev-upload-grid--tag-groups,
-  .dev-upload-grid--four {
+  .dev-upload-grid--tag-groups {
     grid-template-columns: 1fr;
   }
 
-  .dev-filter-toolbar,
-  .dev-filter-toolbar--footer,
-  .dev-resource-card__footer,
-  .dev-requirement-hall__footer,
-  .dev-upload-section__head,
-  .dev-upload-actions {
+  /* 统一顶部信息条：窄屏改两列网格，标签与数值不再被挤到一行里断开 */
+  .dev-meta-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+    gap: 12px 16px;
+  }
+
+  .dev-meta-strip__divider {
+    display: none;
+  }
+
+  .dev-meta-strip__item.dev-meta-strip__action {
+    margin-left: 0;
+  }
+
+  /* 统一工具栏：搜索独占一行（order: -1），筛选与操作换到下一行 */
+  .dev-toolbar {
+    align-items: stretch;
+  }
+
+  .dev-toolbar__search {
+    flex: 1 1 100%;
+    max-width: none;
+    order: -1;
+  }
+
+  .dev-toolbar__field {
+    flex: 1 1 132px;
+  }
+
+  .dev-toolbar__actions {
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
+
+  /* 统一卡片头：标题与右侧操作上下排 */
+  .dev-card-head {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .dev-requirement-hall__filters {
-    grid-template-columns: 1fr 1fr;
+  .dev-card-head__actions {
+    justify-content: flex-end;
   }
 
-  .dev-requirement-hall__review-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .dev-requirement-hall__actions {
-    grid-column: 1 / -1;
-    justify-content: stretch;
-  }
-
-  .dev-requirement-hall__actions .el-button {
-    flex: 1 1 0;
+  .dev-upload-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .dev-page--publish .dev-icon-upload:not(.dev-icon-upload--square) {
@@ -81,12 +91,12 @@
     margin-left: 0 !important;
   }
 
-  .dev-page--publish .dev-upload-block--split > .dev-upload-section__head {
+  .dev-page--publish .dev-upload-block--split > .dev-card-head {
     flex-direction: row;
     align-items: center;
   }
 
-  .dev-page--publish .dev-upload-block--split > .dev-upload-section__head .el-button {
+  .dev-page--publish .dev-upload-block--split > .dev-card-head .el-button {
     flex: 0 0 auto;
     width: auto;
   }
@@ -154,17 +164,17 @@
     min-width: 0;
     text-align: left;
   }
-
-  .dev-requirement-hall__filters {
-    grid-template-columns: 1fr;
-  }
-
 }
 
 @media (max-width: 720px) {
-  .dev-panel-banner,
-  .dev-hero,
   .dev-surface-card .el-card__body {
+    padding: 20px;
+  }
+
+  /* 面板形态的卡片（<section class="dev-surface-card">）不是 el-card，拿不到上面那条
+     .el-card__body 的内边距。总览页的面板、钱包页的记录块都是这一类，
+     这里补上与 el-card 同档的内边距，两种卡片在窄屏收窄到同一个值。 */
+  .dev-surface-card:not(.el-card) {
     padding: 20px;
   }
 
@@ -181,28 +191,17 @@
     flex: 1 1 0;
     min-width: 0;
   }
-
-  .dev-panel-banner__title,
-  .dev-hero__title {
-    font-size: 26px;
-  }
 }
 
 /* Tighten common page layouts on narrow screens */
 @media (max-width: 640px) {
-  .dev-surface-card .el-card__body,
-  .dev-panel-banner,
-  .dev-hero {
+  .dev-surface-card .el-card__body {
     padding: 16px;
   }
 
-  .dev-panel-banner {
-    border-radius: 18px;
-  }
-
-  .dev-panel-banner__title,
-  .dev-hero__title {
-    font-size: 22px;
+  /* 面板形态的卡片同上：与 el-card 同档收窄 */
+  .dev-surface-card:not(.el-card) {
+    padding: 16px;
   }
 
   /* Allow horizontal scrolling for wide tables rather than overflow clipping */
@@ -213,6 +212,97 @@
   .el-table__body-wrapper {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* 统一顶部信息条：单列，标签与数值左右对齐 */
+  .dev-meta-strip {
+    grid-template-columns: 1fr;
+    padding: 14px 16px;
+  }
+
+  .dev-meta-strip__item {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  /* 统一工具栏：筛选控件各占一整行，按钮撑到触屏最小目标 44px */
+  .dev-toolbar__field {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  /* 窄栏工具栏（工单中心的主从布局）在桌面端用 100px 基宽把筛选挤在一行，
+     到了触屏档要跟着上面那条一起占满整行，否则两枚筛选项仍是并排的半宽控件
+     （实测 119px），与其它页满行排布对不上。这条的选择器权重更高，必须写在这里覆盖。 */
+  .dev-toolbar--stacked .dev-toolbar__field {
+    flex: 1 1 100%;
+  }
+
+  .dev-toolbar__actions {
+    gap: 8px;
+  }
+
+  .dev-toolbar__actions .el-button {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+    height: 44px;
+  }
+
+  .dev-toolbar__icon-btn.el-button {
+    flex: 0 0 44px;
+    width: 44px;
+  }
+
+  /* 筛选胶囊到触屏档加高一档（28px → 36px）：门户侧 .wb-chip--button 在同一断点也是 36px，
+     两边同断点必须同高，否则同一个状态筛选组换一次模式就矮掉 8px、指头点起来还不一样大。 */
+  .dev-chip--button {
+    min-height: 36px;
+  }
+
+  /* 统一卡片头：操作按钮撑满一行 */
+  .dev-card-head__actions {
+    flex-wrap: wrap;
+  }
+
+  .dev-card-head__actions .dev-btn,
+  .dev-card-head__actions .el-button {
+    flex: 1 1 140px;
+    min-height: 44px;
+    height: auto;
+  }
+
+  /* 统一提示条：窄屏收窄内边距，动作按钮转到下一行并撑到触屏最小目标 */
+  .dev-notice {
+    padding: 14px 16px;
+  }
+
+  .dev-notice__action {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+
+  .dev-notice__action .dev-btn,
+  .dev-notice__action .el-button {
+    flex: 1 1 140px;
+    min-height: 44px;
+    height: auto;
+  }
+
+  /* 统一表尾：计数与分页各占一行居中 */
+  .dev-pager {
+    justify-content: center;
+  }
+
+  .dev-pager__count {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .dev-pager .el-pagination {
+    --el-pagination-button-width: 32px;
+    --el-pagination-button-height: 32px;
+    gap: 2px;
   }
 
   /* Full-width form controls */
@@ -235,12 +325,6 @@
   .el-message-box {
     width: 88vw !important;
     max-width: 88vw;
-  }
-
-  /* Buttons inside rows wrap naturally */
-  .dev-filter-toolbar .el-button,
-  .dev-filter-toolbar--footer .el-button {
-    width: 100%;
   }
 }
 

@@ -221,6 +221,11 @@ function isMessagesRouteName(name: unknown) {
 const isMessagesRoute = computed(() => isMessagesRouteName(route.name))
 const messagesRouteName = computed(() => (isDevWorkbenchMode.value ? 'dev-messages' : 'workbench-messages'))
 
+// 工单中心与消息中心同一套办法：两种工作台各有一条路由，开发者端那条带 devArea，
+// 侧边栏的高亮与链接都跟着当前模式走，点进去不会把菜单切回用户工作台。
+const ticketsRouteName = computed(() => (isDevWorkbenchMode.value ? 'dev-tickets' : 'workbench-tickets'))
+const ticketsMenuItem = computed<WorkbenchMenuItem>(() => ({ ...ticketsItem, name: ticketsRouteName.value }))
+
 watch(
   [() => auth.token, () => route.fullPath],
   async ([token], [previousToken], onCleanup) => {
@@ -468,7 +473,7 @@ function findActiveItem() {
     return null
   }
 
-  return [...allMenuGroups.value.flatMap((group) => group.items), ticketsItem]
+  return [...allMenuGroups.value.flatMap((group) => group.items), ticketsMenuItem.value]
     .find((item) => isMenuItemActive(item)) ?? null
 }
 
@@ -577,6 +582,7 @@ async function scrollToHash() {
 
 <template>
   <main class="user-workbench" :class="{
+    'user-workbench--dev': isDevWorkbenchMode,
     'user-workbench--messages': isMessagesRoute,
     'user-workbench--mobile-menu-open': mobileMenuOpen,
   }" @touchstart.passive="handleWorkbenchTouchStart" @touchend.passive="handleWorkbenchTouchEnd"
@@ -741,7 +747,7 @@ async function scrollToHash() {
             <section
               class="user-workbench__menu-group user-workbench__menu-group--standalone">
               <RouterLink class="user-workbench__menu-link user-workbench__menu-link--root"
-                :class="{ active: isMenuItemActive(ticketsItem) }" :to="menuItemTo(ticketsItem)"
+                :class="{ active: isMenuItemActive(ticketsMenuItem) }" :to="menuItemTo(ticketsMenuItem)"
                 @click="closeMobileMenu">
                 <span class="user-workbench__menu-icon">
                   <el-icon>
@@ -1331,6 +1337,8 @@ async function scrollToHash() {
   align-content: start;
   margin: 0;
   padding: 0;
+  /* 纵向节奏与开发者侧的 .dev-page 对齐：两侧页面在同一个外壳里，行距不能一宽一窄 */
+  gap: 24px;
 }
 
 .user-workbench__content :deep(.portal-page) {
@@ -1343,29 +1351,24 @@ async function scrollToHash() {
   padding: 0;
 }
 
-.user-workbench__content :deep(.wallet-section),
-.user-workbench__content :deep(.messages-panel),
-.user-workbench__content :deep(.messages-summary__item),
-.user-workbench__content :deep(.portal-page__panel),
-.user-workbench__content :deep(.portal-page__stat-card) {
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 12px 26px rgba(76, 103, 172, 0.08);
-}
+/* 面板外观（描边 / 底色 / 阴影）与内边距、圆角都归页面自己的统一层管：
+   - 用户工作台侧 .wallet-section 见 profile.css（24px 内边距 / 22px 圆角），读数条是 22px，两者对齐；
+   - 开发者侧 .dev-surface-card 见 dev-base.css。
+   外壳曾经把工作台里的面板一律压成 18px 圆角 + 18px 内边距，于是「顶部读数条 22px 圆角、下面的面板 18px」，
+   面板里的标题也不再与读数左对齐；同一套页面从别的入口进来又换一种外观。
+   现在外壳只负责把页面根节点收进内容列，不再改写卡片几何。 */
 
-.user-workbench__content :deep(.wallet-section),
+/* 还没换成 .wallet-section 的旧门户页仍用 .portal-page__panel，由外壳补同一档几何值 */
 .user-workbench__content :deep(.portal-page__panel) {
-  padding: 18px;
-  border-radius: 18px;
+  padding: 24px;
+  border-radius: 22px;
 }
 
-.user-workbench__content :deep(.portal-page__stats),
-.user-workbench__content :deep(.messages-summary) {
+.user-workbench__content :deep(.portal-page__stats) {
   gap: 12px;
 }
 
-.user-workbench__content :deep(.portal-page__stat-card),
-.user-workbench__content :deep(.messages-summary__item) {
+.user-workbench__content :deep(.portal-page__stat-card) {
   padding: 16px;
   border-radius: 16px;
 }
@@ -1386,81 +1389,14 @@ async function scrollToHash() {
   margin: 0;
 }
 
+/* 开发者页在两种模式下是同一套外观：.dev-page / .dev-grid / .dev-surface-card 的间距、
+   圆角、内边距与阴影都由 dev-base.css 统一规定，外壳不再用 :deep 改写它们。
+   外壳曾经把卡片压成 18px 圆角 + 14px 内边距、栅格间距压成 16px，
+   结果是「顶部读数条 24px 圆角、下面的卡片 18px」，标题左右也不再与读数对齐；
+   而且同一页从 /dev 旧入口进来时又是 24px，同一套页面出现两种外观。 */
 .user-workbench__content :deep(.dev-page) {
   width: 100%;
   margin: 0;
-  gap: 16px;
-}
-
-.user-workbench__content :deep(.dev-grid) {
-  gap: 16px;
-}
-
-.user-workbench__content :deep(.dev-surface-card) {
-  border-radius: 18px;
-  box-shadow: 0 12px 26px rgba(76, 103, 172, 0.08);
-}
-
-.user-workbench__content :deep(.dev-surface-card .el-card__body) {
-  padding: 14px;
-}
-
-.user-workbench__content :deep(.dev-stat--compact) {
-  min-height: 74px;
-}
-
-.user-workbench__content :deep(.dev-stat) {
-  gap: 5px;
-}
-
-.user-workbench__content :deep(.dev-stat__value) {
-  font-size: 28px;
-}
-
-.user-workbench__content :deep(.dev-stat__hint) {
-  font-size: 13px;
-  line-height: 1.35;
-}
-
-.user-workbench__content :deep(.messages-page) {
-  width: 100%;
-  min-height: 0;
-  display: grid;
-  align-content: start;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-}
-
-@media (max-width: 900px) {
-  .user-workbench__content :deep(.messages-page) {
-    width: 100%;
-    min-height: 0;
-    display: grid;
-    align-content: start;
-    gap: 10px;
-    margin: 0;
-    padding: 0;
-  }
-
-  /* 移动端搜索框仍是页首吸附的卡片；桌面端已并入「会话列表」标题行，不要卡片外观 */
-  .user-workbench__content :deep(.messages-search) {
-    position: sticky !important;
-    top: 8px !important;
-    z-index: 12 !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 10px !important;
-    width: calc(100% - 16px) !important;
-    margin: 8px 8px 12px !important;
-    height: 50px !important;
-    min-height: 50px !important;
-    padding: 0 12px !important;
-    border: 1px solid rgba(224, 232, 255, 0.96) !important;
-    border-radius: 16px !important;
-    background: rgba(255, 255, 255, 0.94) !important;
-    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08) !important;
-  }
 }
 
 @media (max-width: 900px) {

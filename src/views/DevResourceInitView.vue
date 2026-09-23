@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Close, Folder, MagicStick, Refresh, UploadFilled } from '@element-plus/icons-vue'
+import { MagicStick, Refresh } from '@element-plus/icons-vue'
 
 import {
   createMcResource,
   updateMcResourceHomepage,
   uploadMcResourceCover,
-  type McResourcePayload,
   type CreateMcResourceTagSelection,
 } from '@/api/mcResources'
 import {
@@ -77,7 +76,6 @@ const selectedGroupsSummary = computed(() =>
     }))
     .filter((group) => group.names.length > 0),
 )
-const previewTags = computed(() => selectedGroupsSummary.value.flatMap((group) => group.names))
 const teamOptions = computed(() =>
   myTeams.value.map((team) => ({
     value: String(team.team_id),
@@ -245,11 +243,6 @@ function openEntry(entryKey: string) {
   currentEntryKey.value = entryKey
 }
 
-function selectedNamesForGroup(group: McPublishTagGroup): string[] {
-  const selectedIds = new Set(selectedTagIdsByGroup[group.group_id] ?? [])
-  return group.items.filter((item) => selectedIds.has(item.id)).map((item) => item.name)
-}
-
 function buildTagSelections(): CreateMcResourceTagSelection[] {
   return platformTagGroups.value
     .map((group) => ({
@@ -358,12 +351,38 @@ async function submitResource(mode: 'private' | 'public') {
 
 <template>
   <div class="dev-page dev-page--publish">
+    <!-- 顶部读数条：与其余菜单页同一条形态（读数在左、页面级操作在右）。
+         这一页原来直接从表单卡片开始，没有读数条；「刷新标签」也藏在标签卡片的卡片头里，
+         同一个动作在别的页都在顶条右侧，这里挪上来后全模块只剩一个位置。 -->
+    <div class="dev-meta-strip">
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">根节点</span>
+        <span class="dev-meta-strip__value">{{ currentRootLabel }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">二级节点</span>
+        <span class="dev-meta-strip__value">{{ currentEntryLabel }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">已选标签</span>
+        <span class="dev-meta-strip__value">{{ selectedTagCount }}</span>
+      </div>
+      <div class="dev-meta-strip__item dev-meta-strip__action">
+        <el-button class="dev-toolbar__icon-btn" aria-label="刷新标签" :loading="isLoadingTags" @click="loadTagTree">
+          <el-icon>
+            <Refresh />
+          </el-icon>
+        </el-button>
+      </div>
+    </div>
 
     <div class="dev-upload-layout">
       <el-card shadow="never" class="dev-surface-card dev-upload-combined-card">
         <section class="dev-upload-block">
-          <header class="dev-upload-section__head">
-            <section class="dev-upload-section__copy">
+          <header class="dev-card-head">
+            <section class="dev-card-head__title-block">
               <h3 class="dev-section-title">基础信息</h3>
             </section>
           </header>
@@ -442,11 +461,10 @@ async function submitResource(mode: 'private' | 'public') {
         </section>
 
         <section class="dev-upload-block dev-upload-block--split">
-          <header class="dev-upload-section__head">
-            <section class="dev-upload-section__copy">
+          <header class="dev-card-head">
+            <section class="dev-card-head__title-block">
               <h3 class="dev-section-title">标签归类</h3>
             </section>
-            <el-button text :icon="Refresh" :loading="isLoadingTags" @click="loadTagTree">刷新标签</el-button>
           </header>
 
           <div class="dev-catalog-section">

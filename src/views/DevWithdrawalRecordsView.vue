@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import {
   getDevWithdrawalSummary,
@@ -7,11 +7,12 @@ import {
   type DevWithdrawalSummary,
   type DevWalletIncomeItem,
 } from '@/api/devWallet'
+import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
-const props = defineProps<{ income: DevWalletIncomeItem[] }>()
+const props = defineProps<{ income: DevWalletIncomeItem[]; keyword?: string }>()
 const { showToast } = useToast()
 
 const loading = ref(false)
@@ -46,12 +47,28 @@ const records = computed(() => [
     time: record.created_at,
   })),
 ].sort((first, second) => second.time.localeCompare(first.time)))
-const page = ref(1)
-const pageSize = ref(10)
-const pageCount = computed(() => Math.max(1, Math.ceil(records.value.length / pageSize.value)))
-const pagedRecords = computed(() => records.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value))
-watch(pageSize, () => { page.value = 1 })
-watch(pageCount, (count) => { page.value = Math.min(page.value, count) })
+
+/* 关键字由父级的统一工具栏传入（与其它列表页的搜索同口径），只过滤已加载的记录。 */
+const filteredRecords = computed(() => {
+  const keyword = (props.keyword ?? '').trim().toLowerCase()
+  if (!keyword) {
+    return records.value
+  }
+  return records.value.filter((record) =>
+    [record.id, record.detail, record.account, record.status, record.note, record.reference, record.time].some(
+      (field) => String(field ?? '').toLowerCase().includes(keyword),
+    ),
+  )
+})
+
+/* 分页走共享的 useClientPagination：与「资源列表 / 团队资源 / 交付记录 / 保证金退回」
+   同一套页码与每页条数口径，不再在本页手写 slice 与 Math.min 回退。 */
+const {
+  page,
+  pageSize,
+  total: recordTotal,
+  paged: pagedRecords,
+} = useClientPagination(filteredRecords)
 
 onMounted(async () => {
   auth.hydrate()
@@ -119,52 +136,52 @@ async function loadWithdrawals() {
 
 <template>
   <div class="income-records" aria-label="收入记录">
-
-    <div>
-
-      <el-table class="wallet-records__table" :data="pagedRecords" row-key="key" stripe v-loading="loading" :empty-text="loading ? '记录加载中' : '暂无收入或提现记录'">
-        <el-table-column label="类型" width="90">
-          <template #default="scope">
-            <el-tag :type="scope.row.kind === 'income' ? 'success' : 'info'" effect="plain">{{ scope.row.kind === 'income' ? '收入' : '提现' }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="id" label="单号" min-width="180" show-overflow-tooltip />
-        <el-table-column label="金额" width="140" align="right">
-          <template #default="scope">
-            <span class="dev-withdraw-table__amount" :class="{ 'dev-withdraw-table__amount--income': scope.row.kind === 'income' }">{{ money(scope.row.amount) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="来源 / 收款账户" min-width="240" show-overflow-tooltip>
-          <template #default="scope">
-            <div class="dev-withdraw-table__title">{{ scope.row.detail }}</div>
-            <div class="dev-wallet-table__meta">{{ scope.row.account }}</div>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="120">
-          <template #default="scope">
-            <el-tag :type="scope.row.tag" effect="plain">{{
-              scope.row.status
-              }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="note" label="处理备注" min-width="220" show-overflow-tooltip />
-        <el-table-column prop="reference" label="交易参考号" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="time" label="时间" min-width="180" />
-      </el-table>
-      <div class="wallet-records__footer">
-        <div class="wallet-records__count">
-          <span>共 {{ records.length }} 条</span>
-          <el-select v-model="pageSize" aria-label="收入记录每页条数" class="wallet-records__page-size">
-            <el-option v-for="size in [10, 20, 50]" :key="size" :label="`${size} 条/页`" :value="size" />
-          </el-select>
-        </div>
-        <el-pagination v-model:current-page="page" :page-size="pageSize" :total="records.length" :pager-count="5" layout="prev, pager, next" background aria-label="收入记录分页" />
+    <el-table class="dev-table wallet-records__table" :data="pagedRecords" row-key="key" stripe v-loading="loading">
+      <template #empty>
+        <p class="dev-empty-state">{{ loading ? '记录加载中' : '暂无收入或提现记录' }}</p>
+      </template>
+      <el-table-column label="类型" width="90">
+        <template #default="scope">
+          <el-tag :type="scope.row.kind === 'income' ? 'success' : 'info'" effect="plain">{{ scope.row.kind === 'income' ? '收入' : '提现' }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="id" label="单号" min-width="180" show-overflow-tooltip />
+      <el-table-column label="金额" width="140" align="right">
+        <template #default="scope">
+          <span class="dev-withdraw-table__amount" :class="{ 'dev-withdraw-table__amount--income': scope.row.kind === 'income' }">{{ money(scope.row.amount) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="来源 / 收款账户" min-width="240" show-overflow-tooltip>
+        <template #default="scope">
+          <div class="dev-table__strong">{{ scope.row.detail }}</div>
+          <div class="dev-table__sub">{{ scope.row.account }}</div>
+        </template>
+      </el-table-column>
+      <el-table-column label="状态" width="120">
+        <template #default="scope">
+          <el-tag :type="scope.row.tag" effect="plain">{{
+            scope.row.status
+            }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="note" label="处理备注" min-width="220" show-overflow-tooltip />
+      <el-table-column prop="reference" label="交易参考号" min-width="180" show-overflow-tooltip />
+      <el-table-column prop="time" label="时间" min-width="180" />
+    </el-table>
+    <div class="dev-pager">
+      <div class="dev-pager__count">
+        <span>共 {{ recordTotal }} 条</span>
+        <el-select v-model="pageSize" aria-label="收入记录每页条数" class="dev-pager__size">
+          <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+        </el-select>
       </div>
+      <el-pagination v-model:current-page="page" :page-size="pageSize" :total="recordTotal" :pager-count="5" layout="prev, pager, next" background aria-label="收入记录分页" />
     </div>
   </div>
 </template>
 
 <style scoped>
+/* 表格与表尾都走统一层（.dev-table / .dev-pager），本页只保留金额与来源的排版。 */
 .income-records {
   width: 100%;
   max-width: 100%;
@@ -173,15 +190,11 @@ async function loadWithdrawals() {
 
 .dev-withdraw-table__amount {
   font-weight: 700;
-  color: var(--el-text-color-primary);
+  color: var(--dev-ink);
+  font-variant-numeric: tabular-nums;
 }
 
 .dev-withdraw-table__amount--income {
-  color: var(--el-color-success);
-}
-
-.dev-withdraw-table__title {
-  font-weight: 700;
-  color: var(--dev-ink);
+  color: var(--dev-cyan);
 }
 </style>

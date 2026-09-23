@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, reactive, ref } from 'vue'
-import { onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { apiUrl, HttpError } from '@/api/http'
@@ -15,9 +15,10 @@ import {
   updateMcResourceVersion,
 } from '@/api/mcResources'
 import { useToast } from '@/composables/useToast'
+import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
-import { ArrowDown, Plus } from '@element-plus/icons-vue'
+import { ArrowDown, Plus, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 
@@ -57,6 +58,46 @@ const editVersionForm = reactive({
 })
 
 const deleteVersionTarget = ref<McResourceVersionPayload | null>(null)
+
+/** 关键字搜索：版本号、备注正文或文件名任一命中即可，与资源列表的口径一致。 */
+const filters = reactive({
+  keyword: '',
+})
+
+const deletePendingCount = computed(
+  () => versionRows.value.filter((version) => version.delete_request_status === 'pending').length,
+)
+
+const filteredVersions = computed(() => {
+  const keyword = filters.keyword.trim().toLowerCase()
+  if (!keyword) {
+    return versionRows.value
+  }
+
+  return versionRows.value.filter((version) =>
+    [
+      version.version,
+      // 备注是富文本，先去掉标签再参与匹配，否则搜「p」会把所有版本都命中
+      (version.note ?? '').replace(/<[^>]*>/g, ' '),
+      versionFileName(version),
+    ].some((field) => field.toLowerCase().includes(keyword)),
+  )
+})
+
+const hasActiveFilters = computed(() => filters.keyword.trim() !== '')
+
+function resetFilters() {
+  filters.keyword = ''
+}
+
+/* 分页与其余菜单页同构（资源项目、团队资源、交付记录、收益钱包、需求大厅都带表尾分页器）。
+   版本一次取回全部、搜索在前端做，所以这里是客户端切片，不走服务端页码。 */
+const { page, pageSize, total: filteredTotal, paged: pagedVersions } = useClientPagination(filteredVersions)
+
+/* 搜索一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空表。 */
+watch(() => filters.keyword, () => {
+  page.value = 1
+})
 
 onMounted(async () => {
   auth.hydrate()
@@ -346,17 +387,69 @@ async function removeVersion() {
 
 <template>
   <div class="dev-page dev-page--resource-versions">
+    <div class="dev-meta-strip" v-loading="loading">
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">版本总数</span>
+        <span class="dev-meta-strip__value">{{ versionRows.length }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">关联需求</span>
+        <span class="dev-meta-strip__value">{{ resource?.requirement_id || '未关联' }}</span>
+      </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">删除审核中</span>
+        <span class="dev-meta-strip__value">{{ deletePendingCount }}</span>
+      </div>
+      <div class="dev-meta-strip__item dev-meta-strip__action">
+        <el-button class="dev-toolbar__icon-btn" aria-label="刷新版本列表" @click="reloadVersions">
+          <el-icon>
+            <Refresh />
+          </el-icon>
+        </el-button>
+      </div>
+    </div>
+
     <section class="dev-resource-versions__layout" v-loading="loading">
       <el-card shadow="never" class="dev-surface-card">
-          <div class="dev-upload-section__head dev-resource-versions__list-head">
-            <section>
-              <h3 class="dev-section-title">版本列表</h3>
-              <p class="dev-section-desc">查看历史版本，支持下载、编辑版本说明和删除版本。</p>
-            </section>
-            <el-button type="primary" :icon="Plus" @click="openCreateVersionDialog">发布版本</el-button>
+        <div class="dev-card-head">
+          <div class="dev-card-head__title-block">
+            <h3 class="dev-section-title">版本列表</h3>
+            <p class="dev-section-desc">查看历史版本，支持下载、编辑版本说明和删除版本。</p>
           </div>
+          <div class="dev-card-head__actions">
+            <el-button class="dev-toolbar__primary" type="primary" :icon="Plus"
+              @click="openCreateVersionDialog">发布版本</el-button>
+          </div>
+        </div>
 
-        <el-table :data="versionRows" stripe v-loading="versionsLoading" empty-text="当前还没有版本记录">
+        <div class="dev-toolbar">
+          <el-input v-model="filters.keyword" clearable placeholder="搜索版本号、备注或文件名" class="dev-toolbar__search">
+            <template #prefix>
+              <el-icon>
+                <Search />
+              </el-icon>
+            </template>
+          </el-input>
+
+          <div class="dev-toolbar__actions">
+            <span v-if="hasActiveFilters" class="dev-toolbar__hint">
+              筛选出 {{ filteredVersions.length }} / {{ versionRows.length }} 条
+            </span>
+            <el-button class="dev-toolbar__ghost" @click="resetFilters">
+              <el-icon>
+                <RefreshLeft />
+              </el-icon>
+              <span>重置</span>
+            </el-button>
+          </div>
+        </div>
+
+        <el-table :data="pagedVersions" stripe v-loading="versionsLoading" class="dev-table">
+          <template #empty>
+            <p class="dev-empty-state">{{ hasActiveFilters ? '没有匹配的版本' : '当前还没有版本记录' }}</p>
+          </template>
           <el-table-column prop="version" label="版本号" min-width="140" />
           <el-table-column label="资源文件" min-width="220" show-overflow-tooltip>
             <template #default="scope">
@@ -379,8 +472,11 @@ async function removeVersion() {
           <el-table-column label="操作" width="120">
             <template #default="scope">
               <el-dropdown trigger="click" @command="(cmd: string) => handleVersionAction(cmd, scope.row)">
-                <el-button link type="primary">
-                  更多<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                <el-button type="primary" plain class="dev-table__action dev-action--soft">
+                  <span>更多</span>
+                  <el-icon class="dev-action-caret">
+                    <ArrowDown />
+                  </el-icon>
                 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
@@ -395,11 +491,22 @@ async function removeVersion() {
             </template>
           </el-table-column>
         </el-table>
+
+        <div class="dev-pager">
+          <div class="dev-pager__count">
+            <span>共 {{ filteredTotal }} 条</span>
+            <el-select v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
+              <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+            </el-select>
+          </div>
+          <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+            :pager-count="5" layout="prev, pager, next" background aria-label="版本列表分页" />
+        </div>
       </el-card>
     </section>
 
     <el-dialog v-model="createVersionDialogVisible" title="发布版本" width="720px" align-center
-      :close-on-click-modal="!publishing">
+      class="dev-dialog" :close-on-click-modal="!publishing">
       <el-form label-position="top" class="dev-version-form">
         <el-form-item label="版本号" required>
           <el-input v-model="createForm.version" maxlength="80" placeholder="例如：1.20.1-2.0.0" />
@@ -423,7 +530,7 @@ async function removeVersion() {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="editVersionDialogVisible" width="720px" align-center
+    <el-dialog v-model="editVersionDialogVisible" width="720px" align-center class="dev-dialog"
       :title="editingVersion ? `编辑版本 · ${editingVersion.version}` : '编辑版本'">
       <el-form label-position="top" class="dev-version-form">
         <el-form-item label="版本号" required>
@@ -455,7 +562,7 @@ async function removeVersion() {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="deleteVersionDialogVisible" width="520px"
+    <el-dialog v-model="deleteVersionDialogVisible" width="520px" align-center class="dev-dialog"
       :title="deleteVersionTarget ? `删除版本 · ${deleteVersionTarget.version}` : '删除版本'" @close="closeDeleteVersionDialog">
       <div class="dev-version-delete-dialog">
         <p>
@@ -476,26 +583,15 @@ async function removeVersion() {
 </template>
 
 <style scoped>
+/* 卡片头走 dev-base.css 的 .dev-card-head，表格走 .dev-table（这两处原来是页内自己写的
+   .dev-resource-versions__list-head 与无皮肤的 el-table）。这里只留本页特有样式。 */
 .dev-resource-versions__layout {
   display: grid;
   gap: 20px;
 }
 
-.dev-resource-versions__list-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.dev-resource-versions__create-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
 .dev-version-link {
-  color: var(--el-color-primary);
+  color: var(--dev-blue);
   text-decoration: none;
 }
 
@@ -510,7 +606,7 @@ async function removeVersion() {
   line-clamp: 2;
   overflow: hidden;
   word-break: break-word;
-  color: var(--text-main);
+  color: var(--dev-ink);
 }
 
 .dev-version-note p {

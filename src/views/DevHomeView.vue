@@ -5,12 +5,12 @@ import {
   Clock,
   Money,
   Promotion,
-  Tickets,
+  Refresh,
   Wallet,
   WarningFilled,
 } from '@element-plus/icons-vue'
-import { computed, onMounted, ref, type Component } from 'vue'
-import { useRoute, type RouteLocationRaw } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
 import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@/api/devOrderDeposit'
@@ -47,12 +47,10 @@ const OVERVIEW_LIST_LIMIT = 5
 /** 交付记录排成三列卡片，正好铺满一行；多出来的条数交给「查看全部」去「交付记录」页看。 */
 const DELIVERY_GRID_LIMIT = 3
 
-/** 四格统计卡：图标 + 口径数字 + 跳到明细页的箭头。 */
+/** 顶部读数条的一格：口径数字，与其他菜单页的顶条同形（读左、刷新右）。 */
 type DevHomeStatCard = {
   label: string
   value: string
-  icon: Component
-  to: RouteLocationRaw
 }
 
 /** 进行中项目列表的一行：状态、预算与流程进度都来自同一条接单。 */
@@ -110,12 +108,12 @@ const STATUS_TONES: Record<string, DevHomeTone> = {
   completed: 'cyan',
 }
 
-/** 状态标签沿用统一口径：浅底 + 深字，底色交给 .dev-chip 系列与本地 muted 变体。 */
+/** 状态标签沿用统一口径：浅底 + 深字，四档底色全部取统一层的 .dev-chip 系列。 */
 const CHIP_TONES: Record<DevHomeTone, string> = {
   blue: '',
   gold: 'dev-chip--warm',
   cyan: 'dev-chip--cyan',
-  muted: 'dev-home__chip--muted',
+  muted: 'dev-chip--muted',
 }
 
 type ProjectTabKey = 'all' | 'active' | 'pending' | 'completed'
@@ -177,26 +175,18 @@ const statCards = computed<DevHomeStatCard[]>(() => [
   {
     label: '进行中项目',
     value: String(activeProjectCount.value),
-    icon: Tickets,
-    to: { name: 'dev-my-requirements' },
   },
   {
     label: '已完成项目',
     value: String(completedProjectCount.value),
-    icon: CircleCheck,
-    to: { name: 'dev-my-requirements' },
   },
   {
     label: '待交付',
     value: String(pendingDeliveryCount.value),
-    icon: Clock,
-    to: { name: 'dev-my-requirements' },
   },
   {
     label: '累计收入',
     value: money(overview.value?.total_income_cny),
-    icon: Wallet,
-    to: { name: 'dev-wallet' },
   },
 ])
 
@@ -321,7 +311,7 @@ function dayKey(date: Date): string {
 
 /**
  * 后端没有时间序列接口：演示模式用自带序列，真实模式把最近到账记录按到账日归集。
- * 真实模式下接口最多只返回 5 笔，所以这条曲线是「最近到账的分布」，不是完整流水。
+ * 真实模式下接口最多只返回 100 笔，所以这条曲线是「最近到账的分布」，不是完整流水。
  */
 const incomeBuckets = computed<DevHomeIncomeBucket[]>(() => {
   const today = new Date()
@@ -409,7 +399,7 @@ const peakLabelLeft = computed(() => {
 })
 
 const chartCaption = computed(() =>
-  mockEnabled ? '演示数据：近 7 天完整序列' : '按最近到账记录绘制（接口最多返回 5 笔）',
+  mockEnabled ? '演示数据：近 7 天完整序列' : '按最近到账记录绘制（最多取最近 100 笔）',
 )
 
 onMounted(() => {
@@ -472,60 +462,74 @@ async function loadPage() {
       或清掉 <code>VITE_DEV_HOME_MOCK</code> 后重启 dev server，即恢复真实数据。
     </p>
 
-    <!-- 四格统计卡：都是接单状态分档的读数，点进去是对应明细页 -->
-    <section class="dev-home__stats" aria-label="接单与收入概览">
-      <RouterLink v-for="card in statCards" :key="card.label" class="dev-home__stat" :to="card.to">
-        <span class="dev-home__stat-inner">
-          <span class="dev-home__stat-icon" aria-hidden="true">
-            <el-icon>
-              <component :is="card.icon" />
-            </el-icon>
-          </span>
-          <span class="dev-home__stat-label">{{ card.label }}</span>
-          <strong class="dev-home__stat-value">{{ card.value }}</strong>
-          <el-icon class="dev-home__stat-arrow" aria-hidden="true">
-            <ArrowRight />
+    <!-- 顶部读数条：与其余菜单页同一条形态（读数在左、刷新在右）。
+         四格可点卡片已并入横条：读数对应的明细页在侧边栏和下方列表里都有入口，
+         不必在这一层再挂四条跳转。 -->
+    <div class="dev-meta-strip" aria-label="接单与收入概览" v-loading="loading">
+      <template v-for="(item, index) in statCards" :key="item.label">
+        <div v-if="index > 0" class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">{{ item.label }}</span>
+          <span class="dev-meta-strip__value">{{ item.value }}</span>
+        </div>
+      </template>
+      <div class="dev-meta-strip__item dev-meta-strip__action">
+        <el-button class="dev-toolbar__icon-btn" aria-label="刷新概览" @click="loadPage">
+          <el-icon>
+            <Refresh />
           </el-icon>
-        </span>
-      </RouterLink>
-    </section>
+        </el-button>
+      </div>
+    </div>
 
-    <!-- 保证金警示条：摆在四格读数之后——先看当天读数，再看为什么还不能接单 -->
-    <section v-if="depositInsufficient" class="dev-home__alert" role="alert">
-      <span class="dev-home__alert-icon" aria-hidden="true">
+    <!-- 保证金警示条：摆在四格读数之后——先看当天读数，再看为什么还不能接单。
+         形状与配色走统一层的 .dev-notice（金色 + 图标徽标 + 文案 + 右侧动作），
+         与需求大厅的资格提示同一种横幅。 -->
+    <section v-if="depositInsufficient" class="dev-notice" role="alert">
+      <span class="dev-notice__icon" aria-hidden="true">
         <el-icon>
           <WarningFilled />
         </el-icon>
       </span>
-      <div class="dev-home__alert-copy">
+      <div class="dev-notice__copy">
         <strong>保证金不足，暂不可接单</strong>
         <p>当前可用保证金 {{ money(deposit?.available_cny) }}，补齐后才能绑定资源项目。</p>
       </div>
-      <button class="dev-home__button dev-home__button--gold dev-home__alert-action" type="button"
-        @click="rechargeDialog?.open()">
-        立即充值
-      </button>
+      <div class="dev-notice__action">
+        <button class="dev-btn dev-btn--gold" type="button" @click="rechargeDialog?.open()">
+          立即充值
+        </button>
+      </div>
     </section>
 
     <section class="dev-home__layout">
       <div class="dev-home__main">
         <section class="dev-surface-card dev-home__panel">
-          <header class="dev-home__panel-head">
-            <h2 class="dev-section-title">进行中项目</h2>
-            <div class="dev-home__tabs" role="tablist" aria-label="进行中项目筛选">
-              <button v-for="tab in PROJECT_TABS" :key="tab.key" class="dev-home__tab" type="button" role="tab"
-                :aria-selected="activeProjectTab === tab.key" :class="{ 'is-active': activeProjectTab === tab.key }"
-                @click="activeProjectTab = tab.key">
+          <div class="dev-card-head">
+            <div class="dev-card-head__title-block">
+              <h3 class="dev-section-title">进行中项目</h3>
+            </div>
+            <div class="dev-card-head__actions">
+              <RouterLink class="dev-home__more" :to="{ name: 'dev-my-requirements' }">
+                <span>查看全部</span>
+                <el-icon>
+                  <ArrowRight />
+                </el-icon>
+              </RouterLink>
+            </div>
+          </div>
+
+          <!-- 状态胶囊是「筛选」，与其它菜单页一致放在卡片头下方的 .dev-toolbar 里，
+               卡片头右侧只留「查看全部」这个动作 -->
+          <div class="dev-toolbar">
+            <div class="dev-chip-group dev-home__tabs" role="tablist" aria-label="进行中项目筛选">
+              <button v-for="tab in PROJECT_TABS" :key="tab.key" class="dev-chip dev-chip--button" type="button"
+                role="tab" :aria-selected="activeProjectTab === tab.key"
+                :class="{ 'is-active': activeProjectTab === tab.key }" @click="activeProjectTab = tab.key">
                 {{ tab.label }}
               </button>
             </div>
-            <RouterLink class="dev-home__more" :to="{ name: 'dev-my-requirements' }">
-              <span>查看全部</span>
-              <el-icon>
-                <ArrowRight />
-              </el-icon>
-            </RouterLink>
-          </header>
+          </div>
 
           <ul v-if="projectRows.length" class="dev-home__projects">
             <li v-for="row in projectRows" :key="row.requirementId" class="dev-home__project">
@@ -561,22 +565,29 @@ async function loadPage() {
         </section>
 
         <section class="dev-surface-card dev-home__panel">
-          <header class="dev-home__panel-head">
-            <h2 class="dev-section-title">最近交付</h2>
-            <div class="dev-home__tabs" role="tablist" aria-label="最近交付筛选">
-              <button v-for="tab in DELIVERY_TABS" :key="tab.key" class="dev-home__tab" type="button" role="tab"
-                :aria-selected="activeDeliveryTab === tab.key"
+          <div class="dev-card-head">
+            <div class="dev-card-head__title-block">
+              <h3 class="dev-section-title">最近交付</h3>
+            </div>
+            <div class="dev-card-head__actions">
+              <RouterLink class="dev-home__more" :to="{ name: 'dev-wallet-releases' }">
+                <span>查看全部</span>
+                <el-icon>
+                  <ArrowRight />
+                </el-icon>
+              </RouterLink>
+            </div>
+          </div>
+
+          <div class="dev-toolbar">
+            <div class="dev-chip-group dev-home__tabs" role="tablist" aria-label="最近交付筛选">
+              <button v-for="tab in DELIVERY_TABS" :key="tab.key" class="dev-chip dev-chip--button" type="button"
+                role="tab" :aria-selected="activeDeliveryTab === tab.key"
                 :class="{ 'is-active': activeDeliveryTab === tab.key }" @click="activeDeliveryTab = tab.key">
                 {{ tab.label }}
               </button>
             </div>
-            <RouterLink class="dev-home__more" :to="{ name: 'dev-wallet-releases' }">
-              <span>查看全部</span>
-              <el-icon>
-                <ArrowRight />
-              </el-icon>
-            </RouterLink>
-          </header>
+          </div>
 
           <ul v-if="deliveryRows.length" class="dev-home__deliveries">
             <li v-for="row in deliveryRows" :key="row.requirementId" class="dev-home__delivery">
@@ -614,14 +625,16 @@ async function loadPage() {
         <!-- 收入、提现、保证金本来分装在两张卡里：「待提现」在一张里报金额、在另一张里报占比，
              「可提现」又被大数与比例条各说一遍。合并成一张「资金概览」，同一笔钱全页只出现一次。 -->
         <section class="dev-surface-card dev-home__panel">
-          <header class="dev-home__panel-head">
-            <h2 class="dev-section-title">资金概览</h2>
-          </header>
+          <div class="dev-card-head">
+            <div class="dev-card-head__title-block">
+              <h3 class="dev-section-title">资金概览</h3>
+            </div>
+          </div>
 
           <!-- 「今日收入」是这一栏唯一带「今天」口径的读数，环比就跟在它旁边 -->
           <div class="dev-home__income-head">
             <span class="dev-home__income-label">今日收入</span>
-            <strong class="dev-home__income-value">{{ money(overview?.today_income_cny) }}</strong>
+            <strong class="dev-figure dev-figure--ink">{{ money(overview?.today_income_cny) }}</strong>
             <span v-if="changeRateText" class="dev-home__trend"
               :class="changeRate != null && changeRate < 0 ? 'dev-home__trend--down' : ''"
               :title="'今日到账较昨日的环比'">
@@ -667,10 +680,10 @@ async function loadPage() {
             <div class="dev-home__money-head">
               <span class="dev-home__money-figure">
                 <span class="dev-home__money-label">可提现余额</span>
-                <strong class="dev-home__money-value">{{ money(withdrawable) }}</strong>
+                <strong class="dev-figure">{{ money(withdrawable) }}</strong>
               </span>
               <!-- 提现按钮就贴在余额右侧：这一段的主操作只有一个，不必再排一行页脚 -->
-              <RouterLink class="dev-home__button dev-home__button--primary dev-home__money-action"
+              <RouterLink class="dev-btn dev-btn--primary dev-home__money-action"
                 :to="{ name: 'dev-wallet' }">
                 <el-icon>
                   <Wallet />
@@ -718,8 +731,8 @@ async function loadPage() {
             </div>
 
             <div class="dev-home__deposit-figure">
-              <strong class="dev-home__deposit-value">{{ money(deposit?.available_cny) }}</strong>
-              <button class="dev-home__button dev-home__button--ghost dev-home__deposit-action" type="button"
+              <strong class="dev-figure dev-figure--sm dev-figure--ink">{{ money(deposit?.available_cny) }}</strong>
+              <button class="dev-btn dev-btn--ghost dev-home__deposit-action" type="button"
                 @click="rechargeDialog?.open()">
                 <el-icon>
                   <Money />
@@ -743,21 +756,13 @@ async function loadPage() {
 </template>
 
 <style scoped>
-/* 本页只用开发者体系令牌（--dev-*）：四格统计 → 左列表右资金卡。
+/* 本页只用开发者体系令牌（--dev-*）：顶部读数条 → 左列表右资金卡。
    口径与颜色沿用收益钱包那一套，见 doc/设计规范.md 第一节。 */
-
-/* 收益钱包的页面节奏是 20px，dev-page 默认 24px，这里跟钱包对齐 */
-.dev-home {
-  gap: 20px;
-}
-
 /* 加载中压暗数据区，避免把「还没拿到数据」误读成真实的 0 */
-.dev-home--loading .dev-home__stats,
 .dev-home--loading .dev-home__panel {
   opacity: 0.6;
 }
 
-.dev-home__stats,
 .dev-home__panel {
   transition: opacity 0.2s ease;
 }
@@ -766,9 +771,9 @@ async function loadPage() {
 .dev-home__mock-hint {
   margin: 0;
   padding: 10px 16px;
-  border: 1px dashed rgba(148, 163, 184, 0.4);
-  border-radius: 12px;
-  background: rgba(244, 247, 255, 0.72);
+  border: 1px dashed var(--dev-line);
+  border-radius: var(--dev-radius-inner);
+  background: var(--dev-bg);
   color: var(--dev-muted);
   font-size: 13px;
   line-height: 1.6;
@@ -777,155 +782,16 @@ async function loadPage() {
 .dev-home__mock-hint code {
   padding: 1px 6px;
   border-radius: 8px;
-  background: rgba(31, 74, 209, 0.1);
+  background: var(--wb-accent-soft);
   color: var(--dev-blue);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
 }
 
-/* 保证金不足会直接阻断接单，用开发者体系的金色（与 .dev-chip--warm 同一支色） */
-.dev-home__alert {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 20px;
-  border: 1px solid rgba(185, 129, 43, 0.28);
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(255, 252, 246, 0.98), rgba(255, 245, 230, 0.92));
-  box-shadow: var(--dev-shadow);
-}
-
-.dev-home__alert-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: rgba(185, 129, 43, 0.14);
-  color: var(--dev-gold);
-  font-size: 18px;
-}
-
-.dev-home__alert-copy {
-  display: grid;
-  flex: 1 1 240px;
-  gap: 4px;
-  min-width: 0;
-}
-
-.dev-home__alert-copy strong {
-  color: var(--dev-ink);
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.4;
-}
-
-.dev-home__alert-copy p {
-  margin: 0;
-  color: var(--dev-muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
+/* 保证金不足的提示条已改用统一层的 .dev-notice（金色 + 图标徽标 + 文案 + 右侧动作），
+   本页不再自带这一套。 */
 
 /* 四格统计卡：图标 + 口径数字 + 箭头，整卡可点 */
-.dev-home__stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.dev-home__stat {
-  /* 卡片自称容器：读数按卡片自身宽度决定字号与换行，见文件末尾那两条 @container。
-     容器查询改不了容器元素自身，所以真正那一行 flex 是内层的 .dev-home__stat-inner。 */
-  container-type: inline-size;
-  display: block;
-  min-height: 74px;
-  padding: 14px 16px;
-  border: 1px solid var(--dev-line);
-  border-radius: 14px;
-  background: var(--dev-surface);
-  box-shadow: var(--dev-shadow);
-  color: inherit;
-  text-decoration: none;
-  transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
-}
-
-.dev-home__stat:hover,
-.dev-home__stat:focus-visible {
-  border-color: rgba(31, 74, 209, 0.28);
-  box-shadow: 0 18px 36px rgba(31, 74, 209, 0.12);
-  transform: translateY(-1px);
-}
-
-.dev-home__stat:focus-visible {
-  outline: 2px solid var(--dev-blue);
-  outline-offset: 2px;
-}
-
-/* 统计卡里唯一的一行：图标 / 标签+读数 / 箭头；卡片放不下时在下面那条 @container 里折行 */
-/* 统计卡内部：图标与箭头各占满两行，中间一列上行标签、下行读数（与参考图一致）。
-   窄卡片换行时只动读数那一格，图标与标签始终留在同一行。 */
-.dev-home__stat-inner {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas:
-    'icon label arrow'
-    'icon value arrow';
-  align-items: center;
-  column-gap: 12px;
-  row-gap: 4px;
-}
-
-.dev-home__stat-icon {
-  grid-area: icon;
-  display: inline-grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: rgba(31, 74, 209, 0.1);
-  color: var(--dev-blue);
-  font-size: 18px;
-}
-
-.dev-home__stat-label {
-  grid-area: label;
-  align-self: end;
-  color: var(--dev-muted);
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.dev-home__stat-value {
-  grid-area: value;
-  align-self: start;
-  color: var(--dev-ink);
-  /* 9cqi 跟着卡片宽度缩：窄卡片里不会再出现「¥3860 / 0.00」这种从数字中间折开的两行 */
-  font-size: clamp(15px, 9cqi, 22px);
-  font-weight: 800;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.dev-home__stat-arrow {
-  grid-area: arrow;
-  color: rgba(148, 163, 184, 0.9);
-  font-size: 14px;
-  transition: transform 160ms ease;
-}
-
-.dev-home__stat:hover .dev-home__stat-arrow {
-  transform: translateX(2px);
-}
-
 /* 左栏是两条列表，右栏是两张资金卡；窄屏并成一栏 */
 .dev-home__layout {
   display: grid;
@@ -941,17 +807,8 @@ async function loadPage() {
   align-content: start;
 }
 
-.dev-home__panel {
-  padding: 20px;
-}
-
-.dev-home__panel-head {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 14px;
-}
+/* 卡片内边距由统一层给（桌面 24px、≤720px 20px、≤640px 16px），见 dev-base.css
+   与 dev-responsive.css 的 .dev-surface-card:not(.el-card)，本页不再单独写。 */
 
 /* 卡片内的小节标签：右栏把收入 / 提现 / 保证金并成一张卡后，用它给各段起头 */
 .dev-home__group-label {
@@ -960,51 +817,16 @@ async function loadPage() {
   font-size: 13px;
 }
 
-/* 列表内的筛选标签：右侧「查看全部」占住头行末尾，所以这组标签跟着标题走 */
+/* 列表内的筛选标签走统一层的 .dev-toolbar + .dev-chip-group / .dev-chip--button，
+   位置与其它菜单页一致（卡片头下方），卡片头右侧只留「查看全部」这个动作 */
 .dev-home__tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.dev-home__tab {
-  min-height: 28px;
-  padding: 0 12px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.12);
-  color: var(--dev-muted);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease;
-}
-
-.dev-home__tab:hover {
-  background: rgba(31, 74, 209, 0.1);
-  color: var(--dev-blue);
-}
-
-.dev-home__tab.is-active {
-  border-color: rgba(31, 74, 209, 0.2);
-  background: rgba(31, 74, 209, 0.12);
-  color: var(--dev-blue);
-}
-
-.dev-home__tab:focus-visible {
-  outline: 2px solid var(--dev-blue);
-  outline-offset: 2px;
+  margin: 0;
 }
 
 .dev-home__more {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  margin-left: auto;
   color: var(--dev-blue);
   font-size: 13px;
   font-weight: 700;
@@ -1078,8 +900,8 @@ async function loadPage() {
 }
 
 .dev-home__delivery:hover {
-  border-color: rgba(42, 166, 164, 0.36);
-  box-shadow: 0 12px 24px rgba(42, 166, 164, 0.1);
+  border-color: color-mix(in srgb, var(--dev-cyan) 36%, transparent);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--dev-cyan) 10%, transparent);
 }
 
 /* 项目行不再带图标：每行的图标都相同、不承载信息，去掉后标题能与面板标题左对齐。
@@ -1091,7 +913,7 @@ async function loadPage() {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: rgba(42, 166, 164, 0.12);
+  background: color-mix(in srgb, var(--dev-cyan) 12%, transparent);
   color: var(--dev-cyan);
   font-size: 16px;
 }
@@ -1134,16 +956,12 @@ async function loadPage() {
   overflow-wrap: anywhere;
 }
 
-/* 行内标签比 .dev-chip 默认形态矮一档，避免把行撑高 */
+/* 行内标签比 .dev-chip 默认形态矮一档，避免把行撑高。
+   中性档（终止态、「未关联」这类无强调语义的标签）不再自带变体，
+   统一用统一层的 .dev-chip--muted，免得同一档颜色在总览页与其它页各有一份。 */
 .dev-home__chip {
   flex: 0 0 auto;
   padding: 4px 10px;
-}
-
-.dev-home__chip--muted {
-  border-color: var(--dev-line);
-  background: rgba(255, 255, 255, 0.7);
-  color: var(--dev-muted);
 }
 
 .dev-home__project-meta,
@@ -1174,7 +992,7 @@ async function loadPage() {
   display: block;
   height: 6px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.22);
+  background: color-mix(in srgb, var(--dev-muted) 22%, transparent);
   overflow: hidden;
 }
 
@@ -1195,7 +1013,7 @@ async function loadPage() {
 }
 
 .dev-home__progress-fill--muted {
-  background: rgba(148, 163, 184, 0.7);
+  background: color-mix(in srgb, var(--dev-muted) 70%, transparent);
 }
 
 .dev-home__progress-text {
@@ -1249,19 +1067,10 @@ async function loadPage() {
   font-size: 13px;
 }
 
-.dev-home__income-value {
-  color: var(--dev-ink);
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-
 .dev-home__trend {
   padding: 3px 8px;
   border-radius: 999px;
-  background: rgba(42, 166, 164, 0.12);
+  background: color-mix(in srgb, var(--dev-cyan) 12%, transparent);
   color: var(--dev-cyan);
   font-size: 12px;
   font-weight: 700;
@@ -1269,7 +1078,7 @@ async function loadPage() {
 }
 
 .dev-home__trend--down {
-  background: rgba(185, 129, 43, 0.12);
+  background: color-mix(in srgb, var(--dev-gold) 12%, transparent);
   color: var(--dev-gold);
 }
 
@@ -1325,7 +1134,7 @@ async function loadPage() {
   padding: 3px 8px;
   border-radius: 999px;
   background: var(--dev-blue);
-  color: #ffffff;
+  color: var(--dev-surface-strong);
   font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -1373,18 +1182,18 @@ async function loadPage() {
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: rgba(31, 74, 209, 0.1);
+  background: var(--wb-accent-soft);
   color: var(--dev-blue);
   font-size: 16px;
 }
 
 .dev-home__fact-icon--gold {
-  background: rgba(185, 129, 43, 0.14);
+  background: color-mix(in srgb, var(--dev-gold) 14%, transparent);
   color: var(--dev-gold);
 }
 
 .dev-home__fact-icon--cyan {
-  background: rgba(42, 166, 164, 0.14);
+  background: color-mix(in srgb, var(--dev-cyan) 14%, transparent);
   color: var(--dev-cyan);
 }
 
@@ -1443,15 +1252,6 @@ async function loadPage() {
   font-size: 13px;
 }
 
-.dev-home__money-value {
-  color: var(--dev-gold);
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-
 /* 保证金：这一栏三段里唯一带操作、也是唯一会阻断接单的一段。
    前两段（收入、提现）已经各有一条 hairline 起头，第三段再来一条只是「又一段」；
    改用浅蓝内嵌块把它从卡片里拎出来，底色取自主色 --dev-blue。 */
@@ -1460,9 +1260,9 @@ async function loadPage() {
   gap: 10px;
   margin-top: 16px;
   padding: 14px;
-  border: 1px solid rgba(31, 74, 209, 0.14);
-  border-radius: 12px;
-  background: rgba(31, 74, 209, 0.045);
+  border: 1px solid var(--wb-accent-line);
+  border-radius: var(--dev-radius-inner);
+  background: var(--wb-accent-soft);
 }
 
 /* 首行：标签在左、接单状态在右。状态才用胶囊；原先「冻结 / 累计充值」两笔读数也用胶囊装，
@@ -1484,15 +1284,6 @@ async function loadPage() {
   gap: 10px;
 }
 
-.dev-home__deposit-value {
-  color: var(--dev-ink);
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-
 /* 冻结与累计充值并成一行脚注：它们只在充值那一下才需要看，各占一枚胶囊会把这一段撑成三行 */
 .dev-home__deposit-meta {
   display: flex;
@@ -1509,105 +1300,21 @@ async function loadPage() {
 .dev-home__deposit-meta span + span::before {
   content: '·';
   margin-right: 6px;
-  color: rgba(148, 163, 184, 0.8);
+  color: var(--dev-muted);
 }
 
+/* 按钮：本页原先自带一套 .dev-home__button（圆角 10px、42px 高、悬停压深底色，
+   并把 #173aaa / #96661f / #475569 写死）。现已并入统一层 .dev-btn / --primary /
+   --gold / --ghost，见 src/styles/dev-base.css，这里只留本页的排布钩子。 */
+.dev-home__money-action,
 .dev-home__deposit-action {
   flex: 0 0 auto;
 }
 
-/* 按钮：链接与 <button> 共用一套外观，圆角与钱包页的主按钮一致 */
-.dev-home__button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 42px;
-  padding: 0 18px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 1;
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
-}
-
-.dev-home__button .el-icon {
-  font-size: 16px;
-}
-
-.dev-home__button--primary {
-  min-width: 112px;
-  border-color: var(--dev-blue);
-  background: var(--dev-blue);
-  color: #ffffff;
-  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.18);
-}
-
-.dev-home__button--primary:hover,
-.dev-home__button--primary:focus-visible {
-  border-color: #173aaa;
-  background: #173aaa;
-  color: #ffffff;
-  box-shadow: 0 12px 24px rgba(31, 74, 209, 0.22);
-  transform: translateY(-1px);
-}
-
-.dev-home__button--gold {
-  border-color: var(--dev-gold);
-  background: var(--dev-gold);
-  color: #ffffff;
-  box-shadow: 0 10px 22px rgba(185, 129, 43, 0.2);
-}
-
-.dev-home__button--gold:hover,
-.dev-home__button--gold:focus-visible {
-  border-color: #96661f;
-  background: #96661f;
-  box-shadow: 0 12px 24px rgba(185, 129, 43, 0.26);
-  transform: translateY(-1px);
-}
-
-.dev-home__button--ghost {
-  min-width: 118px;
-  border-color: var(--dev-line);
-  background: rgba(255, 255, 255, 0.9);
-  color: #475569;
-  box-shadow: 0 8px 18px rgba(71, 85, 105, 0.06);
-}
-
-.dev-home__button--ghost:hover,
-.dev-home__button--ghost:focus-visible {
-  border-color: rgba(31, 74, 209, 0.24);
-  background: rgba(31, 74, 209, 0.07);
-  color: var(--dev-blue);
-  box-shadow: 0 10px 20px rgba(31, 74, 209, 0.08);
-  transform: translateY(-1px);
-}
-
-.dev-home__button:focus-visible {
-  outline: 2px solid var(--dev-blue);
-  outline-offset: 2px;
-}
-
-/* 980：双栏并一栏；四格统计降到两格，交付卡片三列降两列 */
+/* 980：双栏并一栏；交付卡片三列降两列 */
 @media (max-width: 980px) {
   .dev-home__layout {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .dev-home__stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .dev-home__deliveries {
@@ -1616,30 +1323,14 @@ async function loadPage() {
 }
 
 @media (max-width: 640px) {
-  /* 触屏档：统计卡与列表行都撑满一列，可点目标不小于 44px */
-  .dev-home__stats,
+  /* 触屏档：列表行撑满一列，可点目标不小于 44px */
   .dev-home__deliveries,
   .dev-home__facts {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .dev-home__stat {
-    min-height: 64px;
-  }
-
-  .dev-home__panel {
-    padding: 16px;
-  }
-
-  /* 标签组换行占满一行后，「查看全部」仍然贴在右边 */
-  .dev-home__tabs {
-    order: 3;
-    width: 100%;
-  }
-
-  .dev-home__tab {
-    min-height: 32px;
-  }
+  /* 筛选胶囊在触屏档的高度由统一层给（dev-responsive.css 的 36px，与门户侧 .wb-chip--button 同档），
+     总览页原来在这里自己写 32px，于是同一组筛选胶囊在总览页 32px、在需求大厅 36px。 */
 
   .dev-home__more {
     min-height: 44px;
@@ -1656,39 +1347,23 @@ async function loadPage() {
     gap: 10px;
   }
 
-  .dev-home__income-value,
-  .dev-home__money-value {
-    font-size: 26px;
-  }
+  /* 触屏档不再单独压字号：统一层的 30px 在窄屏卡片里放得下（实测读数区最宽 342px 不溢出），
+     单压总览页会让同一笔钱在总览与收益钱包两页大小不一，切菜单时数字会跳。 */
 
   /* 内嵌块跟着卡片一起收窄，否则卡片 16px 内边距下这块只剩一层薄框 */
   .dev-home__deposit {
     padding: 12px;
   }
 
-  /* 触屏档按钮撑满整行并抬到 44px：42px 的可点面积不达标，见设计规范第六节 */
-  .dev-home__button,
-  .dev-home__deposit-action {
+  /* 触屏档按钮撑满整行并抬到 44px：36px 的可点面积不达标，见设计规范第六节 */
+  .dev-home__money-action,
+  .dev-home__deposit-action,
+  .dev-notice__action .dev-btn {
     flex: 1 1 100%;
     min-width: 0;
     min-height: 44px;
-  }
-
-  .dev-home__alert-action {
-    flex: 1 1 100%;
+    height: 44px;
   }
 }
 
-/* 窄卡片换行：侧边栏还在占位、四格又没并成两列的那一段，单张统计卡会被挤到 170px 上下，
-   「图标 + 标签 + 读数 + 箭头」一行摆不下（读数只剩 60px 出头，长金额会从中间折开）。
-   这里只把读数挪到第二行并独占整宽，图标与标签仍留在第一行。
-   查询的是卡片自身的宽度（容器是 .dev-home__stat，被查的是它内层的 .dev-home__stat-inner），
-   所以不必为这一段再补一个视口断点。 */
-@container (max-width: 190px) {
-  .dev-home__stat-inner {
-    grid-template-areas:
-      'icon label arrow'
-      'value value value';
-  }
-}
 </style>

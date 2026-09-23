@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElConfigProvider } from 'element-plus'
+import { Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn.mjs'
 
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
@@ -18,6 +19,7 @@ import {
   type PointsTransferMeta,
 } from '@/api/points'
 import { HttpError } from '@/api/http'
+import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
@@ -27,6 +29,9 @@ const auth = useAuthStore()
 const logs = ref<UserPointsLog[]>([])
 const loading = ref(false)
 const error = ref('')
+/** 读数条用的余额：与日志分开存，日志只翻当前页、余额是全量口径。 */
+const pointsBalance = ref(0)
+const refreshing = ref(false)
 const perks = ref<UserPerk[]>([])
 const perkSaving = ref('')
 const commentWarnings = ref<CommentWarning[]>([])
@@ -41,7 +46,12 @@ const transferTo = ref('')
 const transferAmount = ref<number | null>(null)
 const transferNote = ref('')
 const transferSaving = ref(false)
+const transferLoading = ref(false)
 const transfers = ref<PointsTransfer[]>([])
+
+// 打赏记录的筛选：记录是一次全量取回（上限 50 条），所以筛选与分页都在前端做。
+const transferKeyword = ref('')
+const transferScope = ref<'all' | 'sent' | 'received'>('all')
 
 const feeRate = computed(() => transferMeta.value?.fee_rate ?? 0)
 const transferFee = computed(() => {
@@ -74,9 +84,60 @@ const amountCoupons = computed(() =>
 const discountCoupons = computed(() =>
   coupons.value.filter((item) => item.discount_type === 'percent'),
 )
+/** 读数条口径：可用券不含已核销的，与「可用券」在账户页的说法一致。 */
+const usableCoupons = computed(() => coupons.value.filter((item) => item.status !== 'used'))
+const ownedPerkCount = computed(() => perks.value.filter((item) => item.owned).length)
+const equippedPerkCount = computed(() => perks.value.filter((item) => item.equipped).length)
 
-function deltaTagType(delta: number) {
-  return delta > 0 ? 'success' : 'danger'
+const transferScopes = computed(() => [
+  { value: 'all' as const, label: '全部', count: transfers.value.length },
+  {
+    value: 'sent' as const,
+    label: '我打赏的',
+    count: transfers.value.filter((item) => item.from_username === auth.username).length,
+  },
+  {
+    value: 'received' as const,
+    label: '我收到的',
+    count: transfers.value.filter((item) => item.to_username === auth.username).length,
+  },
+])
+
+const filteredTransfers = computed(() => {
+  const search = transferKeyword.value.trim().toLocaleLowerCase()
+  return transfers.value.filter((item) => {
+    const matchesScope =
+      transferScope.value === 'all'
+      || (transferScope.value === 'sent'
+        ? item.from_username === auth.username
+        : item.to_username === auth.username)
+    const matchesSearch =
+      !search
+      || [item.from_username, item.to_username, item.note ?? ''].some((value) =>
+        value.toLocaleLowerCase().includes(search),
+      )
+    return matchesScope && matchesSearch
+  })
+})
+
+const transferFiltersActive = computed(
+  () => transferKeyword.value.trim() !== '' || transferScope.value !== 'all',
+)
+
+const {
+  page: transferPage,
+  pageSize: transferPageSize,
+  total: transferTotal,
+  paged: pagedTransfers,
+  resetPage: resetTransferPage,
+} = useClientPagination(filteredTransfers)
+
+// 筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空列表。
+watch([transferKeyword, transferScope], resetTransferPage)
+
+function resetTransferFilters() {
+  transferKeyword.value = ''
+  transferScope.value = 'all'
 }
 
 async function loadPoints(page = logPage.value, pageSize = logPageSize.value) {
@@ -96,6 +157,7 @@ async function loadPoints(page = logPage.value, pageSize = logPageSize.value) {
     }
 
     logs.value = data.logs
+    pointsBalance.value = data.points_balance
     logTotal.value = total
     logPage.value = data.logs_page ?? page
     logPageSize.value = data.logs_page_size ?? pageSize
@@ -106,6 +168,16 @@ async function loadPoints(page = logPage.value, pageSize = logPageSize.value) {
     error.value = err instanceof HttpError ? err.message : '加载积分失败'
   } finally {
     loading.value = false
+  }
+}
+
+/** 读数条的刷新：只刷读数条报的那几项（余额、权益、券包），日志有自己的分页与刷新口径。 */
+async function refreshOverview() {
+  refreshing.value = true
+  try {
+    await Promise.all([loadPoints(), loadCoupons()])
+  } finally {
+    refreshing.value = false
   }
 }
 
@@ -138,10 +210,13 @@ async function loadTransferMeta() {
 
 async function loadTransfers() {
   if (!auth.token) return
+  transferLoading.value = true
   try {
     transfers.value = await listMyTransfers(auth.token)
   } catch (err) {
     showToast(err instanceof Error ? err.message : '加载打赏记录失败', 'error')
+  } finally {
+    transferLoading.value = false
   }
 }
 
@@ -262,8 +337,6 @@ async function togglePerk(code: string, value: boolean | string | number) {
   }
 }
 
-
-
 function formatRange(item: CouponItem) {
   if (!item.starts_at && !item.ends_at) {
     return '永久有效'
@@ -336,406 +409,396 @@ onMounted(async () => {
 
 <template>
   <ElConfigProvider :locale="zhCn">
-    <div class="points-page profile-page">
-    <p v-if="error" class="points-error">{{ error }}</p>
+    <main class="page-shell custom-page-shell profile-page points-page" :aria-busy="loading">
+      <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
+      <div class="wb-strip" aria-label="背包概览">
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">积分余额</span>
+          <span class="wb-strip__value">{{ loading ? '—' : pointsBalance }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">可用优惠券</span>
+          <span class="wb-strip__value">{{ couponLoading ? '—' : usableCoupons.length }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">已解锁权益</span>
+          <span class="wb-strip__value">{{ loading ? '—' : ownedPerkCount }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">已佩戴权益</span>
+          <span class="wb-strip__value">{{ loading ? '—' : equippedPerkCount }}</span>
+        </div>
+        <div class="wb-strip__item wb-strip__action">
+          <el-button class="wb-toolbar__icon-btn" :loading="refreshing" aria-label="刷新背包数据"
+            @click="refreshOverview">
+            <el-icon><Refresh /></el-icon>
+          </el-button>
+        </div>
+      </div>
 
-    <div class="points-page__layout">
-      <div class="points-page__main-column">
-        <section class="wallet-section points-section points-section--transfer">
-          <div class="wallet-header">
-            <div>
-              <h3>积分打赏</h3>
-              <small class="requirement-note">向你认可的用户打赏积分，平台按 {{ feeRate }}% 收取手续费（接收方到账 {{ 100 - feeRate }}%）。</small>
-            </div>
+      <section class="wallet-section points-section points-section--transfer">
+        <div class="wb-card-head">
+          <div class="wb-card-head__title-block">
+            <h3 class="wb-card-head__title">积分打赏</h3>
+            <p class="wb-card-head__desc">
+              向你认可的用户打赏积分，平台按 {{ feeRate }}% 收取手续费（接收方到账 {{ 100 - feeRate }}%）。
+            </p>
           </div>
-          <div class="transfer-form">
-            <el-input v-model="transferTo" placeholder="接收方用户名" clearable />
-            <el-input-number v-model="transferAmount" :min="1" :precision="0" placeholder="打赏金额"
-              style="width: 100%" />
-            <el-input v-model="transferNote" placeholder="附言（可选）" clearable />
-            <div v-if="transferAmount && transferAmount > 0" class="transfer-preview">
-              接收方到账 <strong>{{ transferReceived }}</strong> 积分 · 手续费 <strong>{{ transferFee }}</strong> 积分
-            </div>
-            <el-button type="primary" :loading="transferSaving" @click="submitTransfer">打赏</el-button>
+        </div>
+        <div class="transfer-form">
+          <el-input v-model="transferTo" placeholder="接收方用户名" clearable aria-label="接收方用户名" />
+          <el-input-number v-model="transferAmount" :min="1" :precision="0" placeholder="打赏金额"
+            class="transfer-form__amount" />
+          <el-input v-model="transferNote" placeholder="附言（可选）" clearable aria-label="打赏附言" />
+          <p v-if="transferAmount && transferAmount > 0" class="transfer-preview">
+            接收方到账 <strong>{{ transferReceived }}</strong> 积分 · 手续费 <strong>{{ transferFee }}</strong> 积分
+          </p>
+          <div class="transfer-form__submit">
+            <el-button class="wb-toolbar__primary" :loading="transferSaving" @click="submitTransfer">打赏</el-button>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section class="wallet-section points-section points-section--transfers">
-          <div class="wallet-header">
-            <div>
-              <h3>打赏记录</h3>
-              <small class="requirement-note">最近打赏与收款记录。</small>
-            </div>
+      <section class="wallet-section points-section points-section--transfers">
+        <div class="wb-card-head">
+          <div class="wb-card-head__title-block">
+            <h3 class="wb-card-head__title">打赏记录</h3>
+            <p class="wb-card-head__desc">按收支方向筛选，或按对方用户名与附言搜索。</p>
           </div>
-          <div v-if="transfers.length" class="transfer-list">
-            <article v-for="t in transfers" :key="t.id" class="transfer-item">
-              <div class="transfer-item__main">
-                <span>
-                  <strong>{{ t.from_username === auth.username ? '我' : t.from_username }}</strong>
-                  <span class="requirement-note"> → </span>
-                  <strong>{{ t.to_username === auth.username ? '我' : t.to_username }}</strong>
+        </div>
+
+        <div class="wb-toolbar">
+          <div class="wb-chip-group" role="group" aria-label="打赏方向">
+            <button v-for="scope in transferScopes" :key="scope.value" type="button"
+              class="wb-chip wb-chip--button" :class="{ 'is-active': transferScope === scope.value }"
+              :aria-pressed="transferScope === scope.value" @click="transferScope = scope.value">
+              {{ scope.label }}<span class="wb-chip__count">{{ scope.count }}</span>
+            </button>
+          </div>
+          <el-input v-model="transferKeyword" class="wb-toolbar__search" clearable placeholder="搜索用户名或附言"
+            aria-label="搜索打赏记录">
+            <template #prefix><el-icon><Search /></el-icon></template>
+          </el-input>
+          <div class="wb-toolbar__actions">
+            <span v-if="transferFiltersActive" class="wb-toolbar__hint">
+              筛选出 {{ transferTotal }} / {{ transfers.length }} 条
+            </span>
+            <el-button v-if="transferFiltersActive" class="wb-toolbar__ghost" @click="resetTransferFilters">
+              <el-icon><RefreshLeft /></el-icon><span>重置</span>
+            </el-button>
+          </div>
+        </div>
+
+        <p v-if="transferLoading" class="wb-empty" role="status">正在加载打赏记录…</p>
+        <div v-else-if="!filteredTransfers.length" class="wb-empty" role="status">
+          <span class="wb-empty__title">{{ transfers.length ? '没有符合条件的打赏记录' : '暂无打赏记录' }}</span>
+          <template v-if="transfers.length">换个方向或关键字再试一次。</template>
+          <template v-else>在积分打赏里送出一份心意后，记录会出现在这里。</template>
+        </div>
+        <template v-else>
+          <ul class="wb-list" aria-label="打赏记录">
+            <li v-for="t in pagedTransfers" :key="t.id" class="wb-item">
+              <div class="wb-item__main">
+                <span class="wb-item__title">
+                  {{ t.from_username === auth.username ? '我' : t.from_username }}
+                  <span aria-hidden="true">→</span>
+                  {{ t.to_username === auth.username ? '我' : t.to_username }}
                 </span>
-                <span
-                  :class="['transfer-item__amount', t.to_username === auth.username ? 'transfer-in' : 'transfer-out']">
+                <span class="wb-item__meta">
+                  {{ t.created_at }}{{ t.fee > 0 ? ` · 手续费 ${t.fee}` : '' }}{{ t.note ? ` · ${t.note}` : '' }}
+                </span>
+              </div>
+              <div class="wb-item__side">
+                <span class="wb-badge" :class="{ 'wb-badge--success': t.to_username === auth.username }">
                   {{ t.to_username === auth.username ? '+' : '-' }}{{ t.to_username === auth.username ? t.received : t.amount }}
                 </span>
               </div>
-              <small class="requirement-note">
-                {{ t.created_at }}{{ t.fee > 0 ? ' · 手续费 ' + t.fee : '' }}{{ t.note ? ' · ' + t.note : '' }}
-              </small>
-            </article>
-          </div>
-          <p v-else class="empty">暂无打赏记录</p>
-        </section>
-      </div>
-
-      <aside class="points-page__side-column">
-        <section class="wallet-section points-section points-section--perks">
-          <div class="wallet-header">
-            <div>
-              <h3>我的权益</h3>
-              <small class="requirement-note">管理已解锁的积分商城权益。</small>
-            </div>
-          </div>
-          <div v-if="displayedPerks.length" class="perk-list">
-            <div v-for="perk in displayedPerks" :key="perk.perk_code" class="perk-item">
-              <div class="perk-item__info">
-                <strong>{{ perkTitle(perk.perk_code) }}</strong>
-                <small class="requirement-note">{{ perkExpireText(perk) }}</small>
-              </div>
-              <el-switch :model-value="perk.equipped" :disabled="perkSaving === perk.perk_code"
-                :loading="perkSaving === perk.perk_code" @change="togglePerk(perk.perk_code, $event)" />
-            </div>
-          </div>
-          <p v-if="!displayedPerks.length && !hasUsernameAppearance" class="empty">尚未解锁，可在积分商城兑换相应权益后开启。</p>
-
-          <div v-if="hasUsernameAppearance" class="appearance-panel">
-            <strong>用户名颜色设置</strong>
-            <small class="requirement-note">渐变与特定颜色为两个独立权益，二者只能使用一种。</small>
-            <el-radio-group v-model="appearanceMode">
-              <el-radio value="gradient" :disabled="!gradientPerk">渐变</el-radio>
-              <el-radio value="color" :disabled="colorPerks.length === 0">特定颜色</el-radio>
-            </el-radio-group>
-            <div v-if="appearanceMode === 'color'" class="appearance-color-row">
-              <el-select v-model="selectedColor" placeholder="选择颜色" style="min-width: 200px">
-                <el-option v-for="p in colorPerks" :key="p.perk_code" :value="p.perk_code">
-                  <span class="perk-color" :style="{ background: perkCodeHex(p.perk_code) }"></span>
-                  {{ perkTitle(p.perk_code) }}
-                </el-option>
+            </li>
+          </ul>
+          <div class="wb-pager">
+            <div class="wb-pager__count">
+              <span>共 {{ transferTotal }} 条记录</span>
+              <el-select v-model="transferPageSize" class="wb-pager__size" aria-label="每页打赏记录数">
+                <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
               </el-select>
             </div>
-            <el-button type="primary" :loading="appearanceSaving" @click="saveAppearance">保存</el-button>
+            <el-pagination v-model:current-page="transferPage" :page-size="transferPageSize"
+              :total="transferTotal" :pager-count="5" layout="prev, pager, next" background
+              aria-label="打赏记录分页" />
           </div>
-        </section>
+        </template>
+      </section>
 
-        <section class="wallet-section points-section points-section--coupons">
-          <div class="wallet-header">
-            <div>
-              <h3>优惠券</h3>
-              <small class="requirement-note">点击券卡复制券码。</small>
-            </div>
-            <button class="ghost small" type="button" :disabled="couponLoading" @click="loadCoupons">
-              {{ couponLoading ? '刷新中...' : '刷新券包' }}
-            </button>
+      <section class="wallet-section points-section points-section--perks">
+        <div class="wb-card-head">
+          <div class="wb-card-head__title-block">
+            <h3 class="wb-card-head__title">我的权益</h3>
+            <p class="wb-card-head__desc">管理已解锁的积分商城权益，佩戴后立即生效。</p>
           </div>
-          <div class="points-coupon-groups">
-            <div class="points-coupon-group">
-              <div class="points-subhead"><strong>满减优惠券</strong><span>{{ amountCoupons.length }}</span></div>
-              <div v-if="amountCoupons.length === 0" class="empty">暂无</div>
-              <div v-else class="coupon-items account-coupon-grid">
-                <button v-for="item in amountCoupons" :key="item.code" type="button" class="coupon-item"
-                  @click="copyCouponCode(item.code)">
-                  <div class="coupon-head">
-                    <strong>{{ item.code }}</strong>
-                    <span class="coupon-status" :class="item.status">{{ item.status === 'used' ? '已使用' : '可用' }}</span>
-                  </div>
-                  <small>{{ item.name }}</small>
-                  <p>{{ formatDiscount(item) }}</p>
-                  <p class="coupon-meta">
-                    门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
-                  </p>
-                </button>
+        </div>
+
+        <ul v-if="displayedPerks.length" class="wb-list" aria-label="我的权益">
+          <li v-for="perk in displayedPerks" :key="perk.perk_code" class="wb-item">
+            <div class="wb-item__main">
+              <span class="wb-item__title">{{ perkTitle(perk.perk_code) }}</span>
+              <span class="wb-item__meta">{{ perkExpireText(perk) }}</span>
+            </div>
+            <div class="wb-item__side">
+              <span class="wb-badge" :class="{ 'wb-badge--success': perk.equipped }">
+                {{ perk.equipped ? '已佩戴' : '未佩戴' }}
+              </span>
+              <el-switch :model-value="perk.equipped" :disabled="perkSaving === perk.perk_code"
+                :loading="perkSaving === perk.perk_code" aria-label="佩戴权益"
+                @change="togglePerk(perk.perk_code, $event)" />
+            </div>
+          </li>
+        </ul>
+
+        <div v-if="!displayedPerks.length && !hasUsernameAppearance" class="wb-empty" role="status">
+          <span class="wb-empty__title">还没有解锁任何权益</span>
+          可在积分商城兑换相应权益后开启。
+        </div>
+
+        <div v-if="hasUsernameAppearance" class="appearance-panel">
+          <div class="appearance-panel__head">
+            <strong>用户名颜色设置</strong>
+            <small>渐变与特定颜色为两个独立权益，二者只能使用一种。</small>
+          </div>
+          <el-radio-group v-model="appearanceMode">
+            <el-radio value="gradient" :disabled="!gradientPerk">渐变</el-radio>
+            <el-radio value="color" :disabled="colorPerks.length === 0">特定颜色</el-radio>
+          </el-radio-group>
+          <div v-if="appearanceMode === 'color'" class="appearance-color-row">
+            <el-select v-model="selectedColor" placeholder="选择颜色" aria-label="选择用户名颜色">
+              <el-option v-for="p in colorPerks" :key="p.perk_code" :value="p.perk_code">
+                <span class="perk-color" :style="{ background: perkCodeHex(p.perk_code) }"></span>
+                {{ perkTitle(p.perk_code) }}
+              </el-option>
+            </el-select>
+          </div>
+          <div class="appearance-panel__submit">
+            <el-button class="wb-toolbar__primary" :loading="appearanceSaving" @click="saveAppearance">保存</el-button>
+          </div>
+        </div>
+      </section>
+
+      <section class="wallet-section points-section points-section--coupons">
+        <div class="wb-card-head">
+          <div class="wb-card-head__title-block">
+            <h3 class="wb-card-head__title">优惠券</h3>
+            <p class="wb-card-head__desc">点击券卡复制券码，下单时填入即可使用。</p>
+          </div>
+          <div class="wb-card-head__actions">
+            <el-button class="wb-toolbar__ghost" :loading="couponLoading" @click="loadCoupons">
+              <el-icon><Refresh /></el-icon><span>刷新券包</span>
+            </el-button>
+          </div>
+        </div>
+
+        <div class="coupon-groups">
+          <div class="coupon-group">
+            <div class="coupon-group__head">
+              <strong>满减优惠券</strong>
+              <span class="wb-badge">{{ amountCoupons.length }}</span>
+            </div>
+            <p v-if="amountCoupons.length === 0" class="wb-empty" role="status">暂无满减优惠券</p>
+            <div v-else class="coupon-items">
+              <button v-for="item in amountCoupons" :key="item.code" type="button" class="coupon-item"
+                @click="copyCouponCode(item.code)">
+                <div class="coupon-item__head">
+                  <strong>{{ item.code }}</strong>
+                  <span class="wb-badge" :class="{ 'wb-badge--success': item.status !== 'used' }">
+                    {{ item.status === 'used' ? '已使用' : '可用' }}
+                  </span>
+                </div>
+                <small>{{ item.name }}</small>
+                <p>{{ formatDiscount(item) }}</p>
+                <p class="coupon-item__meta">
+                  门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
+                </p>
+              </button>
+            </div>
+          </div>
+
+          <div class="coupon-group">
+            <div class="coupon-group__head">
+              <strong>折扣优惠券</strong>
+              <span class="wb-badge">{{ discountCoupons.length }}</span>
+            </div>
+            <p v-if="discountCoupons.length === 0" class="wb-empty" role="status">暂无折扣优惠券</p>
+            <div v-else class="coupon-items">
+              <button v-for="item in discountCoupons" :key="item.code" type="button" class="coupon-item"
+                @click="copyCouponCode(item.code)">
+                <div class="coupon-item__head">
+                  <strong>{{ item.code }}</strong>
+                  <span class="wb-badge" :class="{ 'wb-badge--success': item.status !== 'used' }">
+                    {{ item.status === 'used' ? '已使用' : '可用' }}
+                  </span>
+                </div>
+                <small>{{ item.name }}</small>
+                <p>{{ formatDiscount(item) }}</p>
+                <p class="coupon-item__meta">
+                  门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
+                </p>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="wallet-section points-section points-section--warnings">
+        <div class="wb-card-head">
+          <div class="wb-card-head__title-block">
+            <h3 class="wb-card-head__title">评论警告</h3>
+            <p class="wb-card-head__desc">管理员不会修改原评论，违规内容会保留记录并说明原因。</p>
+          </div>
+        </div>
+
+        <ul v-if="commentWarnings.length" class="wb-list" aria-label="评论警告">
+          <li v-for="warning in commentWarnings" :key="warning.id" class="wb-item">
+            <div class="wb-item__main">
+              <span class="wb-item__meta">{{ warning.created_at }} · {{ warning.operator }}</span>
+              <span class="wb-item__meta">原评论：{{ warning.comment_snapshot }}</span>
+              <span class="wb-item__title">警告原因：{{ warning.reason }}</span>
+            </div>
+          </li>
+        </ul>
+        <p v-else class="wb-empty" role="status">暂无评论警告</p>
+      </section>
+
+      <section class="wallet-section points-section points-section--logs">
+        <div class="wb-card-head">
+          <div class="wb-card-head__title-block">
+            <h3 class="wb-card-head__title">积分明细</h3>
+            <p class="wb-card-head__desc">
+              每笔积分变动的流水，按时间倒序；这一列走服务端分页，所以不提供关键字筛选。
+            </p>
+          </div>
+        </div>
+
+        <p v-if="loading" class="wb-empty" role="status">正在加载积分明细…</p>
+        <div v-else-if="error" class="wb-empty" role="alert">
+          <span class="wb-empty__title">加载积分明细失败</span>{{ error }}
+          <div class="wb-empty__actions">
+            <el-button class="wb-toolbar__ghost" @click="loadPoints()">
+              <el-icon><Refresh /></el-icon><span>重新加载</span>
+            </el-button>
+          </div>
+        </div>
+        <p v-else-if="!logs.length" class="wb-empty" role="status">
+          <span class="wb-empty__title">暂无积分明细</span>
+          签到、打赏与兑换产生的积分变动都会记在这里。
+        </p>
+        <template v-else>
+          <ul class="wb-list" aria-label="积分明细">
+            <li v-for="row in pagedLogs" :key="row.id" class="wb-item">
+              <div class="wb-item__main">
+                <span class="wb-item__title">{{ row.reason || '积分变动' }}</span>
+                <span class="wb-item__meta">{{ row.created_at }} · 变动后余额 {{ row.balance_after }}</span>
               </div>
-            </div>
-            <div class="points-coupon-group">
-              <div class="points-subhead"><strong>折扣优惠券</strong><span>{{ discountCoupons.length }}</span></div>
-              <div v-if="discountCoupons.length === 0" class="empty">暂无</div>
-              <div v-else class="coupon-items account-coupon-grid">
-                <button v-for="item in discountCoupons" :key="item.code" type="button" class="coupon-item"
-                  @click="copyCouponCode(item.code)">
-                  <div class="coupon-head">
-                    <strong>{{ item.code }}</strong>
-                    <span class="coupon-status" :class="item.status">{{ item.status === 'used' ? '已使用' : '可用' }}</span>
-                  </div>
-                  <small>{{ item.name }}</small>
-                  <p>{{ formatDiscount(item) }}</p>
-                  <p class="coupon-meta">
-                    门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
-                  </p>
-                </button>
+              <div class="wb-item__side">
+                <span class="wb-badge" :class="row.delta > 0 ? 'wb-badge--success' : 'wb-badge--danger'">
+                  {{ row.delta > 0 ? '+' : '' }}{{ row.delta }}
+                </span>
               </div>
+            </li>
+          </ul>
+          <div class="wb-pager">
+            <div class="wb-pager__count">
+              <span>共 {{ logTotal }} 条明细</span>
+              <el-select :model-value="logPageSize" class="wb-pager__size" aria-label="每页明细数"
+                @change="handleLogPageSizeChange">
+                <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+              </el-select>
             </div>
+            <el-pagination :current-page="logPage" :page-size="logPageSize" :total="logTotal"
+              :pager-count="5" layout="prev, pager, next" background aria-label="积分明细分页"
+              @current-change="handleLogPageChange" />
           </div>
-        </section>
-
-        <section class="wallet-section points-section points-section--warnings">
-          <div class="wallet-header">
-            <div>
-              <h3>评论警告</h3>
-              <small class="requirement-note">管理员不会修改原评论，违规内容会保留记录并说明原因。</small>
-            </div>
-          </div>
-          <div v-if="commentWarnings.length" class="warning-list">
-            <article v-for="warning in commentWarnings" :key="warning.id" class="warning-item">
-              <small>{{ warning.created_at }} · {{ warning.operator }}</small>
-              <p>原评论：{{ warning.comment_snapshot }}</p>
-              <strong>警告原因：{{ warning.reason }}</strong>
-            </article>
-          </div>
-          <p v-else class="empty">暂无评论警告</p>
-        </section>
-      </aside>
-    </div>
-
-    <div class="points-log">
-      <div class="points-log__head">
-        <h3>积分明细</h3>
-        <el-button :loading="loading" size="small" plain @click="loadPoints">刷新</el-button>
-      </div>
-
-      <el-table v-if="logs.length" :data="pagedLogs" stripe max-height="420">
-        <el-table-column label="时间" prop="created_at" width="180" />
-        <el-table-column label="变动" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag :type="deltaTagType(row.delta)" size="small">{{ row.delta > 0 ? '+' : '' }}{{ row.delta }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="变动后" prop="balance_after" width="120" align="center" />
-        <el-table-column label="原因" prop="reason" min-width="200" show-overflow-tooltip />
-      </el-table>
-
-      <el-pagination
-        v-if="logs.length"
-        v-model:current-page="logPage"
-        v-model:page-size="logPageSize"
-        :page-sizes="[10, 20, 50]"
-        :total="logTotal"
-        layout="total, sizes, prev, pager, next"
-        background
-        class="points-log__pagination"
-        @current-change="handleLogPageChange"
-        @size-change="handleLogPageSizeChange"
-      />
-
-      <el-empty v-else-if="!loading" description="暂无积分明细" />
-    </div>
-    </div>
+        </template>
+      </section>
+    </main>
   </ElConfigProvider>
 </template>
 
 <style scoped>
-.points-page.profile-page {
-  --profile-card-bg: rgba(255, 255, 253, 0.97);
-  --profile-card-bg-strong: #fffefa;
-  --profile-card-border: rgba(213, 227, 222, 0.98);
-  --profile-card-shadow: 0 16px 34px rgba(35, 72, 69, 0.08);
-  --profile-text-main: #203039;
-  --profile-text-sub: #627477;
-  --profile-text-soft: #94a4a3;
-  --profile-accent: #0f766e;
-  --profile-accent-soft: rgba(15, 118, 110, 0.12);
-  --profile-success-soft: rgba(39, 122, 87, 0.12);
-  --profile-success-border: rgba(119, 190, 153, 0.9);
-  --profile-success-text: #277a57;
-  --profile-warning-soft: rgba(217, 119, 6, 0.13);
-  --profile-warning-text: #a76017;
-  --profile-danger-soft: rgba(180, 72, 63, 0.12);
-  --profile-danger-text: #b4483f;
-  --points-teal: #0f766e;
-  --points-teal-dark: #0b5f59;
-  --points-teal-soft: #e8f3f0;
-  --points-line: #d5e3de;
-}
+/* 版式走统一层（.wb-strip / .wb-card-head / .wb-toolbar / .wb-list / .wb-pager / .wb-empty / .wb-badge），
+   本页只留「打赏表单」与「券卡网格」这两块统一层没有提供的布局。
+   配色全部取令牌：这一页原来把 --profile-* 覆盖成一整套青绿（#0f766e / #d5e3de），
+   于是同一套菜单在别的页是冷蓝、到这里变成青色，切页像换站。 */
 
 .points-page {
-  max-width: 100%;
-  min-height: calc(100vh - 185px);
-  background: linear-gradient(180deg, rgba(232, 243, 239, 0.46), rgba(246, 248, 251, 0) 560px);
+  align-content: start;
 }
 
-.points-page__layout {
+/* === 打赏表单 === */
+.transfer-form {
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(300px, 0.82fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(140px, 0.6fr);
+  gap: 12px;
   align-items: start;
 }
 
-.points-page__main-column,
-.points-page__side-column {
-  display: grid;
-  gap: 16px;
-  min-width: 0;
+/* 表单项与工具栏控件同高同圆角：统一层的控件规格只作用于 .wb-toolbar 与 .wb-pager，
+   这里的表单不在那些容器里，否则会出现「工具栏 36px 的输入框」与「表单 32px 的输入框」两种高度。 */
+.transfer-form :deep(.el-input__wrapper),
+.transfer-form :deep(.el-input-number),
+.transfer-form :deep(.el-select__wrapper) {
+  min-height: var(--wb-control-height);
+  height: var(--wb-control-height);
+  border-radius: var(--wb-radius-control);
 }
 
-.points-page__layout .wallet-section {
-  min-width: 0;
-  margin-top: 0;
-  border-color: var(--points-line);
-  background: var(--profile-card-bg);
-  box-shadow: var(--profile-card-shadow);
+.transfer-form__amount :deep(.el-input__wrapper) {
+  width: 100%;
 }
 
-.points-page > .points-log {
-  margin-top: 16px;
-  border-color: var(--points-line);
-  background: var(--profile-card-bg);
-  box-shadow: var(--profile-card-shadow);
-}
-
-.points-section .wallet-header {
-  align-items: flex-start;
-  margin-bottom: 18px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(213, 227, 222, 0.78);
-}
-
-.points-section .wallet-header h3 {
-  position: relative;
-  padding-left: 13px;
-  color: var(--profile-text-main);
-  font-size: 18px;
-  letter-spacing: 0.01em;
-}
-
-.points-section .wallet-header h3::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 3px;
-  bottom: 3px;
-  width: 4px;
-  border-radius: 999px;
-  background: var(--section-accent, var(--points-teal));
-}
-
-.points-section--transfer {
-  --section-accent: var(--points-teal);
-}
-
-.points-section--transfers {
-  --section-accent: #c08457;
-}
-
-.points-section--perks {
-  --section-accent: #d97706;
-}
-
-.points-section--coupons {
-  --section-accent: var(--points-teal);
-}
-
-.points-section--warnings {
-  --section-accent: #b4483f;
-}
-
-.points-page :deep(.el-button--primary) {
-  --el-button-bg-color: var(--points-teal);
-  --el-button-border-color: var(--points-teal);
-  --el-button-hover-bg-color: var(--points-teal-dark);
-  --el-button-hover-border-color: var(--points-teal-dark);
-  --el-button-active-bg-color: #084c48;
-  --el-button-active-border-color: #084c48;
-  border-radius: 10px;
-  box-shadow: 0 8px 16px rgba(15, 118, 110, 0.16);
-  font-weight: 700;
-}
-
-.points-page :deep(.el-input__wrapper),
-.points-page :deep(.el-select__wrapper) {
-  border-radius: 10px;
-  background: var(--profile-card-bg-strong);
-  box-shadow: 0 0 0 1px var(--points-line) inset;
-}
-
-.points-page :deep(.el-input__wrapper:hover),
-.points-page :deep(.el-select__wrapper:hover) {
-  box-shadow: 0 0 0 1px rgba(15, 118, 110, 0.5) inset;
-}
-
-.points-page :deep(.el-input__wrapper:focus-within),
-.points-page :deep(.el-select__wrapper.is-focused) {
-  box-shadow: 0 0 0 1px var(--points-teal) inset, 0 0 0 3px rgba(15, 118, 110, 0.12) !important;
-}
-
-.points-page :deep(.el-input__inner::placeholder) {
-  color: var(--profile-text-soft);
-}
-
-.points-page :deep(.el-input-number__decrease),
-.points-page :deep(.el-input-number__increase) {
-  background: #f3f8f6;
-  color: var(--profile-text-sub);
-}
-
-.points-page :deep(.el-input-number__decrease:hover),
-.points-page :deep(.el-input-number__increase:hover) {
-  background: var(--points-teal-soft);
-  color: var(--points-teal);
-}
-
-.points-page button.ghost.small {
-  border-color: var(--points-line);
-  border-radius: 9px;
-  background: var(--profile-card-bg-strong);
-  color: var(--points-teal-dark);
-  box-shadow: 0 6px 14px rgba(35, 72, 69, 0.06);
-  font-weight: 700;
-}
-
-.points-page button.ghost.small:hover:not(:disabled) {
-  border-color: rgba(15, 118, 110, 0.5);
-  background: var(--points-teal-soft);
-  color: var(--points-teal-dark);
-}
-
-.points-section--transfer .transfer-form {
-  grid-template-columns: minmax(0, 1fr) minmax(140px, 0.55fr);
-  align-items: start;
-}
-
-.points-section--transfer .transfer-form > .el-input:first-child,
-.points-section--transfer .transfer-preview,
-.points-section--transfer .transfer-form > .el-button {
+.transfer-form > .el-input:first-child,
+.transfer-form > .transfer-preview,
+.transfer-form > .transfer-form__submit {
   grid-column: 1 / -1;
 }
 
-.points-section--transfer .transfer-form > .el-input-number {
-  grid-column: 1;
+.transfer-form > .transfer-form__submit {
+  display: flex;
+  justify-content: flex-end;
 }
 
-.points-section--transfer .transfer-form > .el-input:nth-child(3) {
-  grid-column: 2;
+.transfer-preview {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--wb-accent-line);
+  border-radius: var(--wb-radius-item);
+  background: var(--wb-accent-soft);
+  color: var(--wb-ink-soft);
+  font-size: 13px;
 }
 
-.points-section--transfer .transfer-form > .el-button {
-  justify-self: end;
-  min-width: 120px;
+.transfer-preview strong {
+  color: var(--wb-accent);
+  font-variant-numeric: tabular-nums;
 }
 
-.points-coupon-groups {
+/* === 券卡网格 ===
+   券卡是「点一下就复制券码」的整块可点区，不是列表行，所以保留网格；
+   但描边、圆角、悬停与状态标签都取统一层那一套。 */
+.coupon-groups {
   display: grid;
   gap: 12px;
 }
 
-.points-coupon-group {
+.coupon-group {
   min-width: 0;
   padding: 12px;
-  border: 1px solid rgba(224, 232, 255, 0.9);
-  border-radius: 14px;
-  background: rgba(248, 251, 255, 0.72);
+  border: 1px solid var(--wb-line);
+  border-radius: var(--wb-radius-item);
+  background: var(--profile-card-bg);
 }
 
-.points-subhead {
+.coupon-group__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -745,252 +808,124 @@ onMounted(async () => {
   font-size: 13px;
 }
 
-.points-subhead span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 24px;
-  height: 22px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: var(--profile-accent-soft);
-  color: var(--profile-accent);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.points-coupon-group .account-coupon-grid {
-  grid-template-columns: 1fr;
+.coupon-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 8px;
 }
 
-.points-coupon-group .coupon-item {
-  min-width: 0;
-  padding: 12px;
-}
-
-@media (max-width: 820px) {
-  .points-page__layout {
-    grid-template-columns: 1fr;
-  }
-
-  .points-section--transfer .transfer-form {
-    grid-template-columns: 1fr;
-  }
-
-  .points-section--transfer .transfer-form > .el-input-number,
-  .points-section--transfer .transfer-form > .el-input:nth-child(3) {
-    grid-column: 1;
-  }
-}
-
-.points-error {
-  color: #f56c6c;
-  margin-bottom: 16px;
-}
-.points-log {
-  margin-top: 16px;
-  padding: 18px 18px 6px;
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 12px 26px rgba(76, 103, 172, 0.08);
-  overflow: hidden;
-}
-.points-log__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-.points-log__head h3 {
-  position: relative;
-  margin: 0;
-  padding-left: 12px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
-}
-.points-log__head h3::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 16px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, #3a7afe, #6d5dfc);
-}
-.points-log :deep(.el-table th.el-table__cell) {
-  background: #f5f7fa;
-  color: #334155;
-  font-weight: 700;
-}
-.points-log :deep(.el-table__row) {
-  transition: background-color 0.2s ease;
-}
-.points-log__pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 14px;
-  padding-bottom: 12px;
-}
-
-.points-page .wallet-section {
-  margin-top: 16px;
-}
-
-.account-coupon-grid {
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-}
-
-.perk-list {
-  display: grid;
-  gap: 10px;
-}
-.perk-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 16px;
-  border: 1px solid var(--profile-card-border);
-  border-radius: 14px;
-  background: rgba(248, 251, 255, 0.8);
-}
-.perk-item__info {
+.coupon-item {
   display: grid;
   gap: 4px;
   min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--wb-line);
+  border-radius: var(--wb-radius-item);
+  background: var(--profile-card-bg-strong);
+  color: var(--profile-text-sub);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
-.perk-item__info strong {
+
+.coupon-item:hover,
+.coupon-item:focus-visible {
+  border-color: var(--wb-accent-line);
+  box-shadow: var(--wb-shadow);
+}
+
+.coupon-item__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.coupon-item__head strong {
   color: var(--profile-text-main);
   font-size: 14px;
 }
-.perk-color {
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+
+.coupon-item p {
+  margin: 0;
+  color: var(--profile-text-main);
+  font-size: 13px;
+  font-weight: 700;
 }
+
+.coupon-item__meta {
+  color: var(--profile-text-sub) !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  line-height: 1.6;
+}
+
+/* === 用户名颜色设置 === */
 .appearance-panel {
   display: grid;
   gap: 10px;
   margin-top: 12px;
   padding: 14px 16px;
-  border: 1px solid var(--profile-card-border);
-  border-radius: 14px;
-  background: rgba(248, 251, 255, 0.8);
+  border: 1px solid var(--wb-line);
+  border-radius: var(--wb-radius-item);
+  background: var(--profile-card-bg);
 }
+
+.appearance-panel__head {
+  display: grid;
+  gap: 4px;
+}
+
+.appearance-panel__head strong {
+  color: var(--profile-text-main);
+  font-size: 14px;
+}
+
+.appearance-panel__head small {
+  color: var(--profile-text-sub);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .appearance-color-row {
   display: inline-flex;
   align-items: center;
   gap: 10px;
 }
 
-.transfer-form {
-  display: grid;
-  gap: 12px;
-}
-.transfer-form :deep(.el-input-number) {
-  width: 100%;
-}
-.transfer-preview {
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: var(--points-teal-soft);
-  border: 1px dashed rgba(15, 118, 110, 0.34);
-  color: #466562;
-  font-size: 13px;
-}
-.transfer-preview strong {
-  color: var(--points-teal-dark);
+.appearance-color-row .el-select {
+  min-width: 200px;
 }
 
-.transfer-list {
-  display: grid;
-  gap: 10px;
-}
-.transfer-item {
-  padding: 14px 16px;
-  border: 1px solid var(--points-line);
-  border-radius: 14px;
-  background: #f7faf8;
-}
-.transfer-item__main {
+.appearance-panel__submit {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 4px;
-}
-.transfer-item__main strong {
-  color: var(--profile-text-main);
-  font-size: 14px;
-}
-.transfer-item__amount {
-  font-weight: 700;
-  font-size: 14px;
-}
-.transfer-in {
-  color: #16a34a;
-}
-.transfer-out {
-  color: #b4483f;
+  justify-content: flex-end;
 }
 
-.points-coupon-group {
-  border-color: rgba(213, 227, 222, 0.96);
-  background: rgba(244, 249, 247, 0.82);
+.perk-color {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  border: 1px solid var(--wb-line);
+  border-radius: 4px;
+  vertical-align: -2px;
 }
 
-.points-subhead span {
-  border: 1px solid rgba(15, 118, 110, 0.16);
-  background: var(--points-teal-soft);
-  color: var(--points-teal-dark);
+/* 明细里「原因 + 时间」两行贴紧：统一层的 __meta 行距按普通行给，这里行数多、收紧一点 */
+.points-section--logs .wb-item__main {
+  gap: 2px;
 }
 
-.points-coupon-group .coupon-item {
-  border-color: var(--points-line);
-  background: var(--profile-card-bg-strong);
-  box-shadow: 0 5px 12px rgba(35, 72, 69, 0.04);
-}
+@media (max-width: 900px) {
+  .transfer-form {
+    grid-template-columns: 1fr;
+  }
 
-.points-coupon-group .coupon-item:hover {
-  border-color: rgba(15, 118, 110, 0.52);
-  background: #fbfffd;
-  box-shadow: 0 10px 20px rgba(35, 72, 69, 0.1);
-  transform: translateY(-2px);
-}
-
-.points-page .empty {
-  border-color: rgba(191, 212, 204, 0.95);
-  background: rgba(244, 249, 247, 0.84);
-}
-
-.points-log {
-  border-color: var(--points-line);
-  background: var(--profile-card-bg);
-  box-shadow: var(--profile-card-shadow);
-}
-
-.points-log__head h3 {
-  color: var(--profile-text-main);
-}
-
-.points-log__head h3::before {
-  background: var(--points-teal);
-}
-
-.points-log :deep(.el-table th.el-table__cell) {
-  background: #edf5f2;
-  color: #36534f;
-}
-
-.points-log :deep(.el-table tr:hover > td.el-table__cell) {
-  background: #f4faf8;
+  .transfer-form > .el-input-number,
+  .transfer-form > .el-input:nth-child(3) {
+    grid-column: 1;
+  }
 }
 </style>

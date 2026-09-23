@@ -217,6 +217,18 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
       devArea: true,
     },
   },
+  // 工单中心同理：开发者侧边栏也有这一条，带 devArea 才不会把侧边栏切回用户菜单，
+  // 页面自身也据此走开发者体系的读数条与卡片（见 TicketCenterView 的 isDevWorkbench）。
+  {
+    path: 'developer/tickets',
+    name: 'dev-tickets',
+    component: () => import('@/views/TicketCenterView.vue'),
+    meta: {
+      title: '工单中心',
+      description: '提交问题与查看客服回复。',
+      devArea: true,
+    },
+  },
   {
     path: 'developer/realname',
     redirect: { name: 'workbench-realname' },

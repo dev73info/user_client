@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowRight, ChatDotRound, Star } from '@element-plus/icons-vue'
+import { ArrowRight, ChatDotRound, Refresh, RefreshLeft, Search, Star } from '@element-plus/icons-vue'
 
 import { listFavoriteCommunityPosts, type CommunityPost } from '@/api/community'
+import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
@@ -13,11 +14,58 @@ const auth = useAuthStore()
 const { showToast } = useToast()
 const posts = ref<CommunityPost[]>([])
 const loading = ref(false)
+const keyword = ref('')
+const selectedTag = ref('all')
+
+/* 标签筛选取自己收藏过的帖子：收藏量本来就不大，没必要再为标签多打一个接口。
+   按出现次数从多到少排，只留前 8 个，否则标签一多工具栏会被撑成好几行。 */
+const tagFilters = computed(() => {
+  const counter = new Map<string, number>()
+  for (const post of posts.value) {
+    for (const tag of post.tags ?? []) {
+      counter.set(tag.name, (counter.get(tag.name) ?? 0) + 1)
+    }
+  }
+  return [...counter.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], 'zh-CN'))
+    .slice(0, 8)
+    .map(([name, count]) => ({ name, count }))
+})
+
+const filteredPosts = computed(() => {
+  const search = keyword.value.trim().toLocaleLowerCase()
+  return posts.value.filter((post) => {
+    const matchesTag = selectedTag.value === 'all' || (post.tags ?? []).some((tag) => tag.name === selectedTag.value)
+    const matchesSearch = !search || [post.title, post.author, preview(post.content_html),
+      ...(post.tags ?? []).map((tag) => tag.name)].some((field) => field?.toLocaleLowerCase().includes(search))
+    return matchesTag && matchesSearch
+  })
+})
+
+const hasActiveFilters = computed(() => keyword.value.trim() !== '' || selectedTag.value !== 'all')
+
+/* 一次取回全部收藏、筛选在前端做，所以这里是客户端分页（与其余菜单页同一套页码与每页条数口径）。 */
+const {
+  page,
+  pageSize,
+  total: filteredTotal,
+  paged: pagedPosts,
+  resetPage,
+} = useClientPagination(filteredPosts)
+
+/* 筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空列表。 */
+watch([keyword, selectedTag], resetPage)
+
+function resetFilters() {
+  keyword.value = ''
+  selectedTag.value = 'all'
+}
 
 async function loadFavorites() {
   auth.hydrate()
   if (!auth.token.trim()) return
   loading.value = true
+  resetPage()
   try {
     posts.value = await listFavoriteCommunityPosts(auth.token)
   } catch (error) {
@@ -41,272 +89,137 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="favorites-page">
-    <div class="favorites-page__intro">
-      <div>
-        <p class="favorites-page__eyebrow">COMMUNITY</p>
-        <h2>我的收藏</h2>
-        <p>把值得回看的讨论，放在一个顺手找到的地方。</p>
+  <main class="page-shell custom-page-shell profile-page my-favorites-page" :aria-busy="loading">
+    <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
+    <div class="wb-strip" aria-label="收藏概览">
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">收藏帖子</span>
+        <span class="wb-strip__value">{{ loading ? '—' : posts.length }}</span>
       </div>
-      <div class="favorites-page__actions">
-        <span class="favorites-page__count">{{ posts.length }} 篇帖子</span>
-        <el-button type="primary" plain @click="router.push({ name: 'community' })">
-          <span>浏览社区</span>
-          <el-icon><ArrowRight /></el-icon>
+      <div class="wb-strip__divider" />
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">涉及标签</span>
+        <span class="wb-strip__value">{{ loading ? '—' : tagFilters.length }}</span>
+      </div>
+      <div class="wb-strip__item wb-strip__action">
+        <el-button class="wb-toolbar__icon-btn" :loading="loading" aria-label="刷新收藏列表" @click="loadFavorites">
+          <el-icon><Refresh /></el-icon>
         </el-button>
       </div>
     </div>
 
-    <div v-loading="loading" class="favorites-page__list">
-      <button v-for="post in posts" :key="post.id" class="favorite-post" type="button" @click="openPost(post)">
-        <div class="favorite-post__topline">
-          <span class="favorite-post__author">{{ post.author }}</span>
-          <time>{{ post.published_at }}</time>
+    <section class="wallet-section">
+      <div class="wb-card-head">
+        <div class="wb-card-head__title-block">
+          <h3 class="wb-card-head__title">我的收藏</h3>
+          <p class="wb-card-head__desc">把值得回看的讨论放在一个顺手找到的地方，按标签筛选或搜索标题、作者。</p>
         </div>
-        <h3>{{ post.title }}</h3>
-        <p class="favorite-post__preview">{{ preview(post.content_html) || '这篇帖子暂未添加正文摘要。' }}</p>
-        <div class="favorite-post__footer">
-          <span v-for="tag in post.tags" :key="tag.id" class="favorite-post__tag">{{ tag.name }}</span>
-          <span class="favorite-post__metrics">
-            <span><Star /> {{ post.like_count }}</span>
-            <span><ChatDotRound /> {{ post.comment_count }}</span>
-          </span>
+        <div class="wb-card-head__actions">
+          <el-button class="wb-toolbar__primary" @click="router.push({ name: 'community' })">
+            <el-icon><ArrowRight /></el-icon><span>浏览社区</span>
+          </el-button>
         </div>
-      </button>
-
-      <div v-if="!loading && posts.length === 0" class="favorites-empty">
-        <div class="favorites-empty__icon"><Star /></div>
-        <h3>还没有收藏帖子</h3>
-        <p>在社区里看到值得回看的内容，点亮收藏，之后就能在这里找到。</p>
-        <el-button type="primary" @click="router.push({ name: 'community' })">去社区逛逛</el-button>
       </div>
-    </div>
-  </section>
+
+      <div v-if="posts.length || hasActiveFilters" class="wb-toolbar">
+        <div v-if="tagFilters.length" class="wb-chip-group" role="group" aria-label="按标签筛选">
+          <button type="button" class="wb-chip wb-chip--button" :class="{ 'is-active': selectedTag === 'all' }"
+            :aria-pressed="selectedTag === 'all'" @click="selectedTag = 'all'">
+            全部<span class="wb-chip__count">{{ posts.length }}</span>
+          </button>
+          <button v-for="tag in tagFilters" :key="tag.name" type="button" class="wb-chip wb-chip--button"
+            :class="{ 'is-active': selectedTag === tag.name }" :aria-pressed="selectedTag === tag.name"
+            @click="selectedTag = tag.name">
+            {{ tag.name }}<span class="wb-chip__count">{{ tag.count }}</span>
+          </button>
+        </div>
+        <el-input v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索标题、作者或标签"
+          aria-label="搜索收藏">
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <div class="wb-toolbar__actions">
+          <span v-if="hasActiveFilters" class="wb-toolbar__hint">筛选出 {{ filteredTotal }} / {{ posts.length }} 篇</span>
+          <el-button v-if="hasActiveFilters" class="wb-toolbar__ghost" @click="resetFilters">
+            <el-icon><RefreshLeft /></el-icon><span>重置</span>
+          </el-button>
+        </div>
+      </div>
+
+      <p v-if="loading && !posts.length" class="wb-empty" role="status">正在加载收藏…</p>
+      <div v-else-if="!filteredPosts.length" class="wb-empty">
+        <span class="wb-empty__title">{{ posts.length ? '没有符合条件的收藏' : '还没有收藏帖子' }}</span>
+        <template v-if="posts.length">
+          换个标签或关键字再试一次。
+          <div class="wb-empty__actions">
+            <el-button class="wb-toolbar__ghost" @click="resetFilters">
+              <el-icon><RefreshLeft /></el-icon><span>清除筛选</span>
+            </el-button>
+          </div>
+        </template>
+        <template v-else>在社区里看到值得回看的内容，点亮收藏，之后就能在这里找到。</template>
+      </div>
+      <template v-else>
+        <ul class="wb-list" aria-label="我收藏的帖子">
+          <li v-for="post in pagedPosts" :key="post.id" class="wb-item wb-item--clickable" @click="openPost(post)">
+            <div class="wb-item__main">
+              <RouterLink class="wb-item__title favorites__title"
+                :to="{ name: 'community-post', params: { postId: post.id } }">{{ post.title }}</RouterLink>
+              <span class="wb-item__meta">{{ post.author }} · {{ post.published_at }}</span>
+              <span class="wb-item__meta favorites__preview">
+                {{ preview(post.content_html) || '这篇帖子暂未添加正文摘要。' }}
+              </span>
+            </div>
+            <div class="wb-item__side">
+              <span v-for="tag in post.tags" :key="tag.id" class="wb-badge">{{ tag.name }}</span>
+              <span class="favorites__metrics">
+                <span><el-icon><Star /></el-icon>{{ post.like_count }}</span>
+                <span><el-icon><ChatDotRound /></el-icon>{{ post.comment_count }}</span>
+              </span>
+            </div>
+          </li>
+        </ul>
+        <div class="wb-pager">
+          <div class="wb-pager__count">
+            <span>共 {{ filteredTotal }} 篇帖子</span>
+            <el-select v-model="pageSize" class="wb-pager__size" aria-label="每页帖子数">
+              <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+            </el-select>
+          </div>
+          <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+            :pager-count="5" layout="prev, pager, next" background aria-label="收藏分页" />
+        </div>
+      </template>
+    </section>
+  </main>
 </template>
 
 <style scoped>
-.favorites-page {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  min-height: calc(100vh - 140px);
-  /* 占满内容区最大宽度，与其他工作台面板一致 */
-  padding: 8px 0 0;
+/* 版式走统一层（.wb-strip / .wb-card-head / .wb-toolbar / .wb-list / .wb-pager），
+   本页只保留摘要的行数限制与点赞/评论读数。 */
+.favorites__preview {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
-.favorites-page__intro {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 24px 28px 26px;
-  border: 1px solid rgb(224 232 255 / 96%);
-  border-radius: 18px;
-  background: linear-gradient(135deg, #eef4ff 0%, #f7faff 55%, #ffffff 100%);
-  box-shadow: 0 12px 26px rgb(76 103 172 / 8%);
+.favorites__title:hover {
+  color: var(--profile-accent);
 }
 
-.favorites-page__eyebrow {
-  margin: 0 0 8px;
-  color: #4f8cff;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-}
-
-.favorites-page h2 {
-  margin: 0;
-  color: var(--el-text-color-primary);
-  font-size: 28px;
-}
-
-.favorites-page__intro p:last-child {
-  margin: 8px 0 0;
-  color: var(--el-text-color-secondary);
-}
-
-.favorites-page__actions {
-  display: flex;
+.favorites__metrics {
+  display: inline-flex;
   align-items: center;
-  gap: 16px;
-}
-
-.favorites-page__count {
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.favorites-page__actions .el-icon {
-  margin-left: 5px;
-}
-
-.favorites-page__list {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 220px;
-  padding-top: 20px;
-}
-
-.favorite-post {
-  display: block;
-  width: 100%;
-  margin: 0 0 12px;
-  padding: 21px 24px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-  background: rgb(255 255 255 / 86%);
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-.favorite-post:hover {
-  border-color: #9fbdff;
-  box-shadow: 0 8px 22px rgb(28 37 54 / 8%);
-  transform: translateY(-2px);
-}
-
-.favorite-post:focus-visible {
-  outline: 2px solid var(--el-color-primary);
-  outline-offset: 3px;
-}
-
-.favorite-post__topline,
-.favorite-post__footer,
-.favorite-post__metrics,
-.favorite-post__metrics span {
-  display: flex;
-  align-items: center;
-}
-
-.favorite-post__topline,
-.favorite-post__footer {
-  justify-content: space-between;
   gap: 12px;
-}
-
-.favorite-post__author {
-  color: var(--el-color-primary);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.favorite-post time {
-  color: var(--el-text-color-secondary);
+  color: var(--profile-text-sub);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
-.favorite-post h3 {
-  margin: 10px 0 8px;
-  color: var(--el-text-color-primary);
-  font-size: 19px;
-  letter-spacing: 0;
-}
-
-.favorite-post__preview {
-  margin: 0;
-  color: var(--el-text-color-secondary);
-  line-height: 1.7;
-}
-
-.favorite-post__footer {
-  margin-top: 16px;
-}
-
-.favorite-post__tag {
-  margin-right: 6px;
-  padding: 3px 8px;
-  border-radius: 4px;
-  background: var(--el-fill-color-light);
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-}
-
-.favorite-post__metrics {
-  gap: 14px;
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-}
-
-.favorite-post__metrics span {
-  gap: 4px;
-}
-
-.favorite-post__metrics svg {
-  width: 14px;
-  height: 14px;
-}
-
-.favorites-empty {
-  display: flex;
+.favorites__metrics span {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 28px 24px 36px;
-  border: 1px dashed rgb(79 140 255 / 42%);
-  border-radius: 18px;
-  background: linear-gradient(145deg, rgb(238 244 255 / 92%), rgb(248 250 252 / 92%));
-  text-align: center;
-}
-
-.favorites-empty__icon {
-  display: grid;
-  width: 58px;
-  height: 58px;
-  place-items: center;
-  border-radius: 50%;
-  background: #e3edff;
-  color: #4f8cff;
-}
-
-.favorites-empty__icon svg {
-  width: 28px;
-  height: 28px;
-}
-
-.favorites-empty h3 {
-  margin: 18px 0 8px;
-  color: var(--el-text-color-primary);
-  font-size: 19px;
-}
-
-.favorites-empty p {
-  max-width: 360px;
-  margin: 0 0 20px;
-  color: var(--el-text-color-secondary);
-  line-height: 1.7;
-}
-
-@media (max-width: 640px) {
-  .favorites-page {
-    padding: 0 12px 32px;
-  }
-
-  .favorites-page__intro {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 16px;
-    padding: 20px;
-  }
-
-  .favorites-page__actions {
-    justify-content: space-between;
-    width: 100%;
-  }
-
-  .favorite-post {
-    padding: 16px;
-  }
-
-  .favorite-post__footer {
-    align-items: flex-start;
-    flex-direction: column;
-  }
+  gap: 4px;
 }
 </style>

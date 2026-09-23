@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Close, Refresh } from '@element-plus/icons-vue'
+import { ArrowDown, Close, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
 
 import PublishModal from '@/components/PublishModal.vue'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
@@ -68,6 +68,7 @@ import {
   type RequirementStatus,
 } from '@/api/requirements'
 import { getDepositRatio } from '@/api/settings'
+import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useResourceDownload } from '@/composables/useResourceDownload'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -289,23 +290,113 @@ const detailRequirementAcceptanceHtml = computed(
     '当前需求暂未补充验收标准。',
 )
 
+/** 需求状态在这一页归到三个档位，第四档「其它」兜住落不进前三档的状态
+    （已驳回、已取消、定金已付待开发、待分账）。顶部读数条与状态筛选胶囊共用这一个定义：
+    两边各写一遍的话，同一批需求会算出两个数字。 */
+type RequirementBucket = 'pending' | 'active' | 'completed'
+
+function bucketOf(status: RequirementStatus): RequirementBucket | 'other' {
+  if (status === 'pending_review' || status === 'pending_deposit') return 'pending'
+  if (status === 'in_development' || status === 'pending_final') return 'active'
+  if (status === 'completed') return 'completed'
+  return 'other'
+}
+
+function countBucket(bucket: RequirementBucket) {
+  return myRequirements.value.filter((item) => bucketOf(item.status) === bucket).length
+}
+
 const requirementStats = computed(() => ({
   total: myRequirements.value.length,
-  active: myRequirements.value.filter(
-    (item) => item.status === 'in_development' || item.status === 'pending_final',
-  ).length,
-  pending: myRequirements.value.filter(
-    (item) => item.status === 'pending_review' || item.status === 'pending_deposit',
-  ).length,
-  completed: myRequirements.value.filter(
-    (item) => item.status === 'completed',
-  ).length,
+  active: countBucket('active'),
+  pending: countBucket('pending'),
+  completed: countBucket('completed'),
 }))
+
+/* 状态筛选用胶囊组（统一层 .wb-chip）：档位少、要能一眼看出当前选中项，还要报出条数。 */
+type RequirementFilterKey = 'all' | RequirementBucket | 'other'
+
+const states: { value: RequirementFilterKey; label: string }[] = [
+  { value: 'all', label: '全部' },
+  { value: 'pending', label: '待审核 / 付定金' },
+  { value: 'active', label: '开发中 / 付尾款' },
+  { value: 'completed', label: '可评价 / 已完成' },
+  { value: 'other', label: '其它状态' },
+]
+
+const keyword = ref('')
+const selectedState = ref<RequirementFilterKey>('all')
+
+const summaries = computed(() =>
+  states.map((state) => ({
+    ...state,
+    count:
+      state.value === 'all'
+        ? myRequirements.value.length
+        : myRequirements.value.filter((item) => bucketOf(item.status) === state.value).length,
+  })),
+)
+
+/* 读数在加载中不报数：重新加载会先清空列表，直接显示 0 会被读成「一条需求都没有」。 */
+function stripValue(count: number) {
+  return requirementLoading.value ? '—' : String(count)
+}
+
+const filteredRequirements = computed(() => {
+  const search = keyword.value.trim().toLocaleLowerCase()
+  return myRequirements.value.filter((item) => {
+    const matchesState = selectedState.value === 'all' || bucketOf(item.status) === selectedState.value
+    const matchesSearch =
+      !search ||
+      [item.title, item.requirement_id, item.creator].some((value) =>
+        value?.toLocaleLowerCase().includes(search),
+      )
+    return matchesState && matchesSearch
+  })
+})
+
+const hasActiveFilters = computed(
+  () => keyword.value.trim() !== '' || selectedState.value !== 'all',
+)
+
+/* 一次取回全部需求单、筛选在前端做，所以用客户端分页（与其余菜单页同一套每页条数口径）。 */
+const {
+  page,
+  pageSize,
+  total: filteredTotal,
+  paged: pagedRequirements,
+  resetPage,
+} = useClientPagination(filteredRequirements)
+
+/* 筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空列表。 */
+watch([keyword, selectedState], resetPage)
+
+function resetFilters() {
+  keyword.value = ''
+  selectedState.value = 'all'
+}
 
 /** 刷新按钮只有一个图标，加载态与说明都靠 aria-label / title 承载。 */
 const refreshButtonLabel = computed(() =>
   requirementLoading.value || conversationLoading.value ? '刷新中...' : '刷新',
 )
+
+/** 状态徽标的语义档：与统一层 .wb-badge 的四档（成功 / 警示 / 危险 / 主色）一一对应。
+    此前全表只有一支琥珀胶囊，已完成与已驳回看起来是一回事，扫列表时看不出轻重。 */
+function statusBadgeClass(item: RequirementItem) {
+  if (isWaitingContractSign(item) || isUnbinding(item)) return 'wb-badge--warning'
+  if (item.status === 'completed') return 'wb-badge--success'
+  if (item.status === 'rejected' || item.status === 'cancelled') return 'wb-badge--danger'
+  if (
+    item.status === 'deposit_paid' ||
+    item.status === 'in_development' ||
+    item.status === 'pending_final' ||
+    item.status === 'pending_settlement'
+  ) {
+    return 'wb-badge--accent'
+  }
+  return 'wb-badge--warning'
+}
 
 function formatRequirementStatus(status: RequirementStatus) {
   return requirementStatusLabel(status)
@@ -2343,51 +2434,86 @@ watch(
 
 <template>
   <main class="page-shell custom-page-shell profile-page my-requirements-page">
-    <section class="wallet-section my-requirements-summary">
-      <div class="my-requirements-summary__grid">
-        <article>
-          <span>全部需求</span>
-          <strong>{{ requirementStats.total }}</strong>
-        </article>
-        <article>
-          <span>待审核/付定金</span>
-          <strong>{{ requirementStats.pending }}</strong>
-        </article>
-        <article>
-          <span>开发中/付尾款</span>
-          <strong>{{ requirementStats.active }}</strong>
-        </article>
-        <article>
-          <span>可评价/已完成</span>
-          <strong>{{ requirementStats.completed }}</strong>
-        </article>
+    <!-- 顶部读数条：四格读数在最左，页面级刷新固定在右上角，与其余菜单页同一套形状 -->
+    <div class="wb-strip" aria-label="需求概览">
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">全部需求</span>
+        <span class="wb-strip__value">{{ stripValue(requirementStats.total) }}</span>
       </div>
-    </section>
+      <div class="wb-strip__divider" />
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">待审核/付定金</span>
+        <span class="wb-strip__value">{{ stripValue(requirementStats.pending) }}</span>
+      </div>
+      <div class="wb-strip__divider" />
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">开发中/付尾款</span>
+        <span class="wb-strip__value">{{ stripValue(requirementStats.active) }}</span>
+      </div>
+      <div class="wb-strip__divider" />
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">可评价/已完成</span>
+        <span class="wb-strip__value">{{ stripValue(requirementStats.completed) }}</span>
+      </div>
+      <div class="wb-strip__item wb-strip__action">
+        <el-button class="wb-toolbar__primary" @click="openPublishModal">发布新需求</el-button>
+        <el-button class="wb-toolbar__icon-btn" :loading="requirementLoading || conversationLoading"
+          :aria-label="refreshButtonLabel" :title="refreshButtonLabel" @click="refreshMyRequirements">
+          <el-icon><Refresh /></el-icon>
+        </el-button>
+      </div>
+    </div>
 
     <section class="wallet-section">
-      <div class="wallet-header">
-        <div>
-          <h3 class="portal-page__eyebrow">需求列表</h3>
-        </div>
-        <div class="my-requirements-header__actions">
-          <button class="ghost small my-requirements-refresh" type="button"
-            :disabled="requirementLoading || conversationLoading" :aria-label="refreshButtonLabel"
-            :title="refreshButtonLabel" @click="refreshMyRequirements">
-            <el-icon :class="{ 'is-spinning': requirementLoading || conversationLoading }">
-              <Refresh />
-            </el-icon>
-          </button>
-          <button class="ghost small" type="button" @click="openPublishModal">发布新需求</button>
+      <div class="wb-card-head">
+        <div class="wb-card-head__title-block">
+          <h3 class="wb-card-head__title">需求列表</h3>
+          <p class="wb-card-head__desc">按下状态筛选需求单，或按需求标题、编号与发布人搜索。</p>
         </div>
       </div>
 
-      <div v-if="myRequirements.length === 0" class="empty">
-        {{ requirementLoading ? '需求单加载中...' : '你还没有提交过需求单，点击右上角「发布新需求」即可创建你的第一个需求。' }}
+      <div class="wb-toolbar">
+        <div class="wb-chip-group" role="group" aria-label="需求状态">
+          <button v-for="state in summaries" :key="state.value" type="button" class="wb-chip wb-chip--button"
+            :class="{ 'is-active': selectedState === state.value, 'wb-chip--muted': state.value === 'other' }"
+            :aria-pressed="selectedState === state.value" @click="selectedState = state.value">
+            {{ state.label }}<span class="wb-chip__count">{{ requirementLoading ? '—' : state.count }}</span>
+          </button>
+        </div>
+        <el-input v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索需求标题、编号或发布人"
+          aria-label="搜索需求">
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <div class="wb-toolbar__actions">
+          <span v-if="hasActiveFilters" class="wb-toolbar__hint">
+            筛选出 {{ filteredTotal }} / {{ myRequirements.length }} 条
+          </span>
+          <el-button class="wb-toolbar__ghost" @click="resetFilters">
+            <el-icon><RefreshLeft /></el-icon><span>重置</span>
+          </el-button>
+        </div>
       </div>
-      <ul v-else class="requirement-list">
-        <template v-for="item in myRequirements" :key="item.requirement_id">
-          <li class="requirement-row" :class="{
-            clickable:
+
+      <p v-if="requirementLoading && myRequirements.length === 0" class="wb-empty" role="status">需求单加载中…</p>
+      <div v-else-if="!filteredRequirements.length" class="wb-empty" role="status">
+        <span class="wb-empty__title">
+          {{ myRequirements.length ? '没有符合条件的需求单' : '还没有提交过需求单' }}
+        </span>
+        <template v-if="myRequirements.length">
+          换个状态或关键字再试一次。
+          <div class="wb-empty__actions">
+            <el-button class="wb-toolbar__ghost" @click="resetFilters">
+              <el-icon><RefreshLeft /></el-icon><span>清除筛选</span>
+            </el-button>
+          </div>
+        </template>
+        <template v-else>点击右上角「发布新需求」即可创建你的第一个需求。</template>
+      </div>
+      <template v-else>
+      <ul class="wb-list requirement-list">
+        <template v-for="item in pagedRequirements" :key="item.requirement_id">
+          <li class="requirement-row wb-item" :class="{
+            'wb-item--clickable':
               hasPendingDeveloperUnbindRequest(item) ||
               hasPendingResourceVersionDeleteReview(item) ||
               canPay(item.status, item) ||
@@ -2396,12 +2522,12 @@ watch(
             expanded: isVersionDeleteReviewExpanded(item),
           }" @click="handleRequirementAction(item)">
             <div class="requirement-card-body">
-              <div class="requirement-main">
-                <div class="requirement-title">
+              <div class="requirement-main wb-item__main">
+                <div class="requirement-title wb-item__title">
                   <strong>{{ item.title }}</strong>
                   <span>{{ item.requirement_id }}</span>
                 </div>
-                <div class="requirement-details">
+                <div class="requirement-details wb-item__meta">
                 <small class="requirement-note">{{ paymentModeLabel(item) }} · {{ paymentModeHint(item) }}</small>
                 <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
                   formatResourceVisibility(item)
@@ -2443,11 +2569,8 @@ watch(
                 <small v-if="settlementHint(item)" class="requirement-note">{{ settlementHint(item) }}</small>
                 </div>
               </div>
-              <aside class="requirement-summary" aria-label="需求摘要">
-                <span class="requirement-status" :class="{
-                  'requirement-status--contract': isWaitingContractSign(item),
-                  'requirement-status--unbind': isUnbinding(item),
-                }">
+              <aside class="requirement-summary wb-item__side" aria-label="需求摘要">
+                <span class="wb-badge" :class="statusBadgeClass(item)">
                   {{ formatRequirementDisplayStatus(item) }}
                 </span>
                 <div class="requirement-budget">
@@ -2601,6 +2724,18 @@ watch(
           </li>
         </template>
       </ul>
+
+      <div class="wb-pager">
+        <div class="wb-pager__count">
+          <span>共 {{ filteredTotal }} 条需求单</span>
+          <el-select v-model="pageSize" class="wb-pager__size" aria-label="每页需求单数">
+            <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+          </el-select>
+        </div>
+        <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+          :pager-count="5" layout="prev, pager, next" background aria-label="需求单分页" />
+      </div>
+      </template>
     </section>
 
     <PublishModal ref="publishModalRef" :visible="publishVisible" v-model:publishTitle="publishTitle"

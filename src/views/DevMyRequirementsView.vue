@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { ArrowDown, ArrowUp, ChatDotRound } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowUp, ChatDotRound, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
 
 import {
   getAdapayBreachCase,
@@ -39,6 +39,7 @@ import {
   type ContractSigningStatus,
 } from '@/api/contracts'
 import { useToast } from '@/composables/useToast'
+import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
 import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
@@ -146,7 +147,61 @@ function canWithdrawBreachCase(item: AdapayBreachCase | null) {
   )
 }
 
-const emptyText = computed(() => (loading.value ? '我的需求单加载中' : '当前账号还没有已关联需求'))
+const emptyText = computed(() => {
+  if (loading.value) {
+    return '我的需求单加载中'
+  }
+
+  return hasActiveFilters.value ? '没有符合筛选条件的需求单' : '当前账号还没有已关联需求'
+})
+
+// 搜索与状态筛选都在前端做：这一页的数据源本来就是把当前开发者的需求单一次取回。
+const filters = reactive({
+  keyword: '',
+  status: '',
+})
+
+const hasActiveFilters = computed(
+  () => Boolean(filters.keyword.trim()) || Boolean(filters.status),
+)
+
+// 「待签合同」是 signingStatusMap 推出来的中间态，不是 RequirementItem.status 的取值，
+// 单独给它一个 key，否则筛不到。
+function statusKey(item: RequirementItem): string {
+  return isWaitingContractSign(item) ? 'contract_pending' : item.status
+}
+
+const filteredRows = computed(() => {
+  const keyword = filters.keyword.trim().toLowerCase()
+
+  return rows.value.filter((item) => {
+    if (filters.status && statusKey(item) !== filters.status) {
+      return false
+    }
+
+    if (!keyword) {
+      return true
+    }
+
+    return [item.requirement_id, item.title, item.description ?? ''].some((value) =>
+      value.toLowerCase().includes(keyword),
+    )
+  })
+})
+
+function resetFilters() {
+  filters.keyword = ''
+  filters.status = ''
+}
+
+/* 分页与其余菜单页同构（资源项目、团队资源、交付记录、收益钱包、需求大厅都带表尾分页器）。
+   需求单一次取回全部、筛选在前端做，所以这里是客户端切片，不走服务端页码。 */
+const { page, pageSize, total: filteredTotal, paged: pagedRows } = useClientPagination(filteredRows)
+
+/* 筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空列表。 */
+watch([() => filters.keyword, () => filters.status], () => {
+  page.value = 1
+})
 const boundCount = computed(() => rows.value.filter((item) => item.bound_resource_id != null).length)
 const activeCount = computed(() => rows.value.filter((item) => item.status === 'in_development').length)
 
@@ -859,12 +914,62 @@ async function loadRequirementConversations() {
         <span class="dev-meta-strip__label">开发中</span>
         <span class="dev-meta-strip__value">{{ activeCount }}</span>
       </div>
+      <div class="dev-meta-strip__item dev-meta-strip__action">
+        <el-button class="dev-toolbar__icon-btn" aria-label="刷新接单列表" @click="loadMyRequirements">
+          <el-icon>
+            <Refresh />
+          </el-icon>
+        </el-button>
+      </div>
     </div>
 
-    <el-card shadow="never" class="dev-surface-card dev-my-requirements-card">
-      <div class="dev-my-requirements-list" v-loading="loading">
-        <div v-if="rows.length === 0" class="dev-my-requirements-empty">{{ emptyText }}</div>
-        <article v-for="item in rows" :key="item.requirement_id" class="dev-requirement-card">
+    <el-card shadow="never" class="dev-surface-card">
+      <div class="dev-card-head">
+        <div class="dev-card-head__title-block">
+          <h3 class="dev-section-title">需求单列表</h3>
+          <p class="dev-section-desc">已关联的需求单及其签署与交付进度，搜索与状态筛选即时生效。</p>
+        </div>
+      </div>
+
+      <div class="dev-toolbar">
+        <el-select v-model="filters.status" clearable placeholder="需求状态" class="dev-toolbar__field"
+          aria-label="按需求状态筛选">
+          <el-option label="待签合同" value="contract_pending" />
+          <el-option label="待缴定金" value="pending_deposit" />
+          <el-option label="开发中" value="in_development" />
+          <el-option label="待付尾款" value="pending_final" />
+          <el-option label="待分账" value="pending_settlement" />
+          <el-option label="已完成" value="completed" />
+          <el-option label="已取消" value="cancelled" />
+        </el-select>
+
+        <el-input v-model="filters.keyword" clearable placeholder="搜索需求编号、标题或描述"
+          class="dev-toolbar__search">
+          <template #prefix>
+            <el-icon>
+              <Search />
+            </el-icon>
+          </template>
+        </el-input>
+
+        <div class="dev-toolbar__actions">
+          <span v-if="hasActiveFilters" class="dev-toolbar__hint">
+            筛选出 {{ filteredRows.length }} / {{ rows.length }} 条
+          </span>
+          <el-button class="dev-toolbar__ghost" @click="resetFilters">
+            <el-icon>
+              <RefreshLeft />
+            </el-icon>
+            <span>重置</span>
+          </el-button>
+        </div>
+      </div>
+
+      <!-- 列表容器走统一层的 .dev-stack-list：它给的就是「卡片式列表」的 14px 行距，
+           本页原来自己写 16px，与交付记录、我的团队的卡片列表差 2px，切页面时行距会跳一下。 -->
+      <div class="dev-stack-list" v-loading="loading">
+        <div v-if="filteredRows.length === 0" class="dev-empty-state">{{ emptyText }}</div>
+        <article v-for="item in pagedRows" :key="item.requirement_id" class="dev-requirement-card">
           <header class="dev-requirement-card__head">
             <div class="dev-requirement-card__title-block">
               <span class="dev-requirement-hall__requirement-id">{{ item.requirement_id }}</span>
@@ -946,50 +1051,71 @@ async function loadRequirementConversations() {
                 {{ unbindRequestHint(item) }}
               </span>
             </div>
-            <div class="dev-requirement-card__buttons">
-              <el-button v-if="canSubmitDeliveryVersion(item)" type="primary" plain size="small"
+            <!-- 行内操作按钮走统一层的 .dev-list-actions（32px 高 / 10px 圆角），
+                 与资源列表、交付记录、我的团队的行内按钮同一规格。
+                 这里原先是本页自写的 .dev-requirement-card__buttons + 逐个 size="small"
+                 （Element 的 24px 小号），同一张卡里按钮比顶部工具栏矮一档。 -->
+            <div class="dev-list-actions">
+              <!-- 行内按钮的上色走统一层的 .dev-action--soft / .dev-action--soft-danger：
+                   原来挂的是裸 `type="primary" plain` / `type="danger" plain`，
+                   Element 的 plain 变体给的是浅蓝底（#e8edfa）与粉底三件套，
+                   与表格行里的白底 + 主色描边不是一套，禁用态的「终止合作」更是一片粉。 -->
+              <el-button v-if="canSubmitDeliveryVersion(item)" type="primary" plain
+                class="dev-action--soft"
                 title="交付物以绑定资源项目的新版本提交" @click="openDeliveryDialog(item)">
                 提交交付版本
               </el-button>
-              <el-button v-if="canOpenAfterSales(item)" type="primary" plain size="small"
+              <el-button v-if="canOpenAfterSales(item)" type="primary" plain class="dev-action--soft"
                 @click="openAfterSalesModal(item)">
                 售后
               </el-button>
-              <el-button v-if="canReportBreach(item)" type="danger" plain size="small"
+              <el-button v-if="canReportBreach(item)" type="danger" plain class="dev-action--soft-danger"
                 @click="openBreachReport(item)">
                 终止合作
               </el-button>
-              <el-button v-else-if="awaitingDepositDeadline(item)" type="danger" plain size="small" disabled
+              <el-button v-else-if="awaitingDepositDeadline(item)" type="danger" plain
+                class="dev-action--soft-danger" disabled
                 title="定金未缴，暂不能发起终止合作；逾期未缴定金将由系统自动终止合作并释放接单保证金">
                 终止合作
               </el-button>
-              <el-button v-if="canCreateRequirementContract(item)" type="primary" size="small"
+              <el-button v-if="canCreateRequirementContract(item)" type="primary"
                 :loading="contractCreatingId === item.requirement_id"
                 @click="createRequirementContractAction(item)">
                 发起合同
               </el-button>
-              <el-button v-if="canOpenContractSign(item)" size="small" @click="handleContractButtonClick(item)">
+              <el-button v-if="canOpenContractSign(item)" @click="handleContractButtonClick(item)">
                 {{ contractButtonLabel(item) }}
               </el-button>
-              <el-button type="primary" plain size="small" class="dev-requirement-card__conversation"
+              <el-button type="primary" plain class="dev-action--soft dev-requirement-card__conversation"
                 @click="openConversation(item)">
                 <el-icon><ChatDotRound /></el-icon>
                 <span>会话</span>
               </el-button>
-              <el-button size="small" @click="openInvoiceDialog(item)">
+              <el-button @click="openInvoiceDialog(item)">
                 开票
               </el-button>
-              <el-button v-if="hasPendingCreatorUnbindRequest(item)" type="warning" size="small"
+              <el-button v-if="hasPendingCreatorUnbindRequest(item)" type="warning"
                 @click="openUnbindRespond(item)">处理解除申请</el-button>
-              <el-button v-else-if="canRequestUnbind(item)" type="danger" plain size="small"
+              <el-button v-else-if="canRequestUnbind(item)" type="danger" plain class="dev-action--soft-danger"
                 @click="openUnbindRequest(item)">申请解除</el-button>
             </div>
           </footer>
         </article>
       </div>
+
+      <div class="dev-pager">
+        <div class="dev-pager__count">
+          <span>共 {{ filteredTotal }} 条</span>
+          <el-select v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
+            <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+          </el-select>
+        </div>
+        <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+          :pager-count="5" layout="prev, pager, next" background aria-label="需求单列表分页" />
+      </div>
     </el-card>
 
-    <el-dialog v-model="unbindVisible" title="申请解除需求绑定" width="480px"
+    <el-dialog v-model="unbindVisible" title="申请解除需求绑定" width="480px" align-center class="dev-dialog"
       :close-on-click-modal="false" :close-on-press-escape="false" @close="closeUnbindRequest">
       <div class="unbind-dialog-body">
         <p class="unbind-dialog-tip">
@@ -1004,7 +1130,7 @@ async function loadRequirementConversations() {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="unbindRespondVisible" title="需求方申请解除绑定" width="480px"
+    <el-dialog v-model="unbindRespondVisible" title="需求方申请解除绑定" width="480px" align-center class="dev-dialog"
       :close-on-click-modal="false" :close-on-press-escape="false" @close="closeUnbindRespond">
       <div class="unbind-dialog-body">
         <p class="unbind-dialog-tip">需求方申请解除绑定，请确认是否同意。</p>
@@ -1027,7 +1153,7 @@ async function loadRequirementConversations() {
     <DeliverySubmitDialog v-model:visible="deliveryDialogVisible" :token="auth.token"
       :bound-resource-id="deliveryRequirement?.bound_resource_id ?? null" @submitted="handleDeliverySubmitted" />
 
-    <el-dialog v-model="breachVisible" :title="breachDialogTitle()" width="520px"
+    <el-dialog v-model="breachVisible" :title="breachDialogTitle()" width="520px" align-center class="dev-dialog"
       :close-on-click-modal="false" :close-on-press-escape="false" @close="closeBreachReport">
       <div class="delivery-dialog-body">
         <p class="unbind-dialog-tip">
@@ -1167,35 +1293,19 @@ async function loadRequirementConversations() {
 </template>
 
 <style scoped>
-.dev-my-requirements-card {
-  overflow: hidden;
-}
-
-.dev-my-requirements-list {
-  display: grid;
-  gap: 16px;
-}
-
-.dev-my-requirements-empty {
-  padding: 40px 16px;
-  text-align: center;
-  color: var(--dev-muted);
-  font-size: 14px;
-}
-
 .dev-requirement-card {
   display: grid;
   gap: 14px;
   padding: 18px 20px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  border-radius: 18px;
-  background: #ffffff;
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-inner);
+  background: var(--dev-surface-strong);
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .dev-requirement-card:hover {
-  border-color: rgba(42, 166, 164, 0.28);
-  box-shadow: 0 12px 26px rgba(17, 24, 39, 0.06);
+  border-color: var(--wb-accent-line);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--dev-ink) 10%, transparent);
 }
 
 .dev-requirement-card__head {
@@ -1211,12 +1321,17 @@ async function loadRequirementConversations() {
   min-width: 0;
 }
 
+/* 卡片式列表的行标题取统一层的 .dev-stack-item__title 档位（16px），
+   原来是 17px，比同一页的其他行标题大一档 */
 .dev-requirement-card__title-block .dev-requirement-hall__title {
-  font-size: 17px;
+  font-size: 16px;
 }
 
+/* 卡片里的描述是正文，取 13px（与 .dev-stack-item__meta 同档）；
+   表格单元格里的描述用 .dev-requirement-hall__desc 的 12px 弱字 */
 .dev-requirement-card__description {
   margin: 0;
+  font-size: 13px;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -1238,21 +1353,21 @@ async function loadRequirementConversations() {
 .dev-requirement-card__description :deep(blockquote) {
   margin: 8px 0;
   padding-left: 12px;
-  border-left: 3px solid rgba(42, 166, 164, 0.35);
+  border-left: 3px solid var(--wb-accent-line);
   color: var(--dev-ink);
 }
 
 .dev-requirement-card__description :deep(hr) {
   margin: 12px 0;
   border: 0;
-  border-top: 1px solid rgba(17, 24, 39, 0.12);
+  border-top: 1px solid var(--dev-line);
 }
 
 .dev-requirement-card__description :deep(pre) {
   overflow-x: auto;
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(17, 24, 39, 0.06);
+  background: var(--dev-bg);
   white-space: pre;
 }
 
@@ -1269,18 +1384,21 @@ async function loadRequirementConversations() {
   padding: 0;
   border: 0;
   background: transparent;
-  color: #247f7d;
+  color: var(--dev-blue);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
 }
 
 .dev-requirement-card__description-toggle:hover {
-  color: #1f6f6d;
+  color: var(--dev-blue);
+  text-decoration: underline;
 }
 
+/* 会话按钮的圆角与字重都走统一层的 .dev-action--soft（10px 方角），
+   这里不再把它单独扭成胶囊——同一排的「签署合同 / 终止合作 / 开票」都是方角，
+   只有这一颗是 999px 时整排按钮横竖不齐（见 dev-base.css 的行内软按钮一节）。 */
 .dev-requirement-card__conversation {
-  border-radius: 999px;
   font-weight: 700;
 }
 
@@ -1296,8 +1414,8 @@ async function loadRequirementConversations() {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   padding: 12px 0;
-  border-top: 1px dashed rgba(17, 24, 39, 0.08);
-  border-bottom: 1px dashed rgba(17, 24, 39, 0.08);
+  border-top: 1px dashed var(--dev-line);
+  border-bottom: 1px dashed var(--dev-line);
 }
 
 .dev-requirement-card__meta-item {
@@ -1325,6 +1443,8 @@ async function loadRequirementConversations() {
   gap: 6px;
 }
 
+/* 配色统一：这里原先混用了青绿 #4caf81、琥珀 #b45309、Element 灰 #909399/#c0c4cc/#303133、
+   暖黄 rgba(251,191,36)，与开发者体系的蓝/青/金三支强调色都对不上，一律换成令牌。 */
 .dev-requirement-card__actions {
   display: flex;
   justify-content: space-between;
@@ -1333,7 +1453,7 @@ async function loadRequirementConversations() {
   flex-wrap: wrap;
   margin-top: 0;
   padding: 12px 0 0;
-  border-top: 1px dashed rgba(17, 24, 39, 0.08);
+  border-top: 1px dashed var(--dev-line);
   background: transparent;
   text-align: left;
 }
@@ -1341,14 +1461,11 @@ async function loadRequirementConversations() {
 .dev-requirement-card__unbind-hint {
   font-size: 12px;
   font-weight: 700;
-  color: #b45309;
+  color: var(--dev-gold);
 }
 
-.dev-requirement-card__buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
+/* 行内操作按钮的容器与规格都走统一层的 .dev-list-actions（见 dev-base.css），
+   本页不再自己写一份 flex 布局，否则按钮高度会退回 Element 的默认档。 */
 
 .signing-status-bar {
   display: flex;
@@ -1362,29 +1479,29 @@ async function loadRequirementConversations() {
 .signing-step {
   font-size: 11px;
   padding: 2px 6px;
-  border-radius: 10px;
+  border-radius: 999px;
   white-space: nowrap;
 }
 
 .signing-step.done {
-  background: rgba(76, 175, 129, 0.15);
-  color: #4caf81;
-  font-weight: 600;
+  background: color-mix(in srgb, var(--dev-cyan) 14%, transparent);
+  color: var(--dev-cyan);
+  font-weight: 700;
 }
 
 .signing-step.pending {
-  background: rgba(0, 0, 0, 0.06);
-  color: #909399;
+  background: color-mix(in srgb, var(--dev-muted) 16%, transparent);
+  color: var(--dev-muted);
 }
 
 .signing-arrow {
-  color: #c0c4cc;
+  color: var(--dev-muted);
   font-size: 12px;
 }
 
 .signing-start-hint {
   margin-top: 4px;
-  color: #b45309;
+  color: var(--dev-gold);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -1397,14 +1514,14 @@ async function loadRequirementConversations() {
 
 .unbind-dialog-tip {
   margin: 0;
-  color: #b45309;
+  color: var(--dev-gold);
   font-size: 13px;
   line-height: 1.6;
 }
 
 .unbind-dialog-line {
   margin: 0;
-  color: #303133;
+  color: var(--dev-ink);
   font-size: 13px;
   line-height: 1.6;
   overflow-wrap: anywhere;
@@ -1417,9 +1534,9 @@ async function loadRequirementConversations() {
 
 .delivery-dialog-body .unbind-dialog-tip {
   padding: 8px 10px;
-  border: 1px solid rgba(251, 191, 36, 0.32);
-  border-radius: 10px;
-  background: rgba(254, 243, 199, 0.48);
+  border: 1px solid color-mix(in srgb, var(--dev-gold) 28%, transparent);
+  border-radius: var(--dev-radius-control);
+  background: color-mix(in srgb, var(--dev-gold) 10%, transparent);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -1429,9 +1546,9 @@ async function loadRequirementConversations() {
   display: grid;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid rgba(191, 219, 254, 0.9);
-  border-radius: 12px;
-  background: rgba(239, 246, 255, 0.72);
+  border: 1px solid var(--wb-accent-line);
+  border-radius: var(--dev-radius-control);
+  background: var(--wb-accent-soft);
 }
 
 .breach-decision .unbind-dialog-line {
