@@ -44,6 +44,23 @@ describe('conversation status cards', () => {
     expect(developer?.downloadDelivery).toBe(false)
   })
 
+  it('keeps the acceptance entry on the delivered version card while the step is still open', () => {
+    const card = meta('delivery_submitted', 'customer', 'in_development')
+    expect(card?.acceptanceAction).toBe(true)
+    // 下载入口与验收入口互不影响：产物一直能下，验收入口按阶段出现或消失。
+    expect(card?.downloadDelivery).toBe(true)
+
+    // 到了待付尾款，这一步已经做完，该做的是付尾款（工具条上有），卡片不再挂验收入口——
+    // 而且在待付尾款上提交「验收不通过」后端也会拒掉，入口留着只会点出一个报错。
+    expect(meta('delivery_submitted', 'customer', 'pending_final')?.acceptanceAction).toBe(false)
+    // 更靠后（结单前后）的历史卡片同样不挂，下载入口则保留。
+    expect(meta('delivery_submitted', 'customer', 'pending_settlement')?.acceptanceAction).toBe(false)
+    expect(meta('delivery_submitted', 'customer', 'completed')?.acceptanceAction).toBe(false)
+    expect(meta('delivery_submitted', 'customer', 'deposit_paid')?.acceptanceAction).toBe(false)
+    // 交付是开发者自己提交的，这张卡片对开发者只是通知。
+    expect(meta('delivery_submitted', 'developer', 'in_development')?.acceptanceAction).toBe(false)
+  })
+
   it('treats the paid-but-unsettled card as a notification without a dead-end list jump', () => {
     // 尾款缴清只是进入「待分账」，还要等渠道分账，双方在这段时间都没有可执行的动作。
     expect(meta('final_paid', 'customer', 'pending_settlement')?.actionLabel).toBeUndefined()

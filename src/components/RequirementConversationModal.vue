@@ -60,6 +60,8 @@ const draftInputRef = ref<HTMLTextAreaElement | null>(null)
 const attachmentInputRef = ref<HTMLInputElement | null>(null)
 const attachmentDraft = ref<ConversationAttachmentDraft | null>(null)
 const messageListRef = ref<HTMLElement | null>(null)
+/** 底部工具条：卡片上的「验收」按钮要向它问「现在能不能验收」，并借它打开验收弹窗。 */
+const actionsRef = ref<InstanceType<typeof RequirementConversationActions> | null>(null)
 const realtimeStatus = ref<RealtimeStatus>('idle')
 const realtimeError = ref('')
 const historyRequesting = ref(false)
@@ -933,11 +935,21 @@ function handleBackdropClick() {
                 <p class="conversation-card__desc">{{ row.card.description }}</p>
                 <div class="conversation-card__foot">
                   <time :title="row.createdAt">{{ formatMessageClock(row.createdAt) }}</time>
-                  <el-button v-if="row.card.actionLabel" class="conversation-card__action" type="primary" size="small"
-                    :loading="downloadLoading && row.card.downloadDelivery"
-                    @click="runCardAction(row.card, row.message)">
-                    {{ row.card.actionLabel }}
-                  </el-button>
+                  <div class="conversation-card__actions">
+                    <el-button v-if="row.card.actionLabel" class="conversation-card__action" type="primary" size="small"
+                      :loading="downloadLoading && row.card.downloadDelivery"
+                      @click="runCardAction(row.card, row.message)">
+                      {{ row.card.actionLabel }}
+                    </el-button>
+                    <!-- 验收按钮摆在「下载交付产物」之后：这张卡片说的就是「请验收后支付尾款」，
+                         顺手就能做。能不能验收仍由工具条裁定（自管模式、合同未签、没有交付版本
+                         都不给），弹窗也归它管，避免两处各写一套条件。 -->
+                    <el-button v-if="row.card.acceptanceAction && actionsRef?.canAcceptDelivery"
+                      class="conversation-card__action" type="primary" size="small"
+                      @click="actionsRef?.openAcceptanceDialog()">
+                      验收
+                    </el-button>
+                  </div>
                 </div>
               </article>
               <article v-else-if="row.message" class="conversation-message"
@@ -1000,8 +1012,8 @@ function handleBackdropClick() {
           <p v-if="conversationClosed" class="conversation-modal__closed-tip">会话已关闭</p>
           <div class="conversation-modal__composer-main">
             <div class="conversation-modal__tools">
-              <RequirementConversationActions v-if="viewerRole" :token="token" :requirement-id="requirementId"
-                :role="viewerRole" @changed="loadConversation" />
+              <RequirementConversationActions v-if="viewerRole" ref="actionsRef" :token="token"
+                :requirement-id="requirementId" :role="viewerRole" @changed="loadConversation" />
               <button class="conversation-modal__tool-btn" :class="{ 'is-active': emojiPanelOpen }" type="button"
                 :disabled="sending || loading || conversationClosed" aria-label="选择表情" title="选择表情"
                 @click="toggleEmojiPanel">
@@ -2667,6 +2679,19 @@ function handleBackdropClick() {
 .conversation-card__foot time {
   color: #94a3b8;
   font-size: 11.5px;
+}
+
+/* 卡片脚上的按钮组：时间在左、按钮在右，按钮之间的间距交给 gap，
+   免得两个 el-button 相邻时又叠一层 Element Plus 默认的 margin-left。 */
+.conversation-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.conversation-card__actions .el-button + .el-button {
+  margin-left: 0;
 }
 
 .conversation-card .conversation-card__action {

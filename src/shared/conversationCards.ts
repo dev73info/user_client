@@ -16,6 +16,14 @@ export type ConversationCardMeta = {
   asignPreview?: boolean
   /** 下载交付产物：按卡片上的版本号取绑定资源项目的交付版本文件，不再走 to 跳转。 */
   downloadDelivery?: boolean
+  /**
+   * 这张卡片当前还该不该给「验收」入口（需求方视角）。
+   *
+   * 只说「卡片所在的这一步还是验收那一步」，不看合同、绑定资源与版本数这些实际条件——
+   * 那些由会话工具条按需求当前状态裁定，渲染时两者取交集，所以这里放宽也只会少给按钮，
+   * 不会给出一个点下去必然报错的入口。
+   */
+  acceptanceAction?: boolean
 }
 
 export type ConversationCardRole = 'customer' | 'developer'
@@ -77,9 +85,14 @@ export function conversationCardMeta(
         title: '收到交付版本',
         description: '开发者已提交交付版本，请验收后支付尾款。',
         // 交付是开发者自己提交的，这张卡片对开发者只是通知，不给按钮；
-        // 需求方这边直接给交付产物的下载入口（不跳页）。
+        // 需求方这边直接给交付产物的下载入口（不跳页），并在同一行给出「验收」：
+        // 卡片说的就是「请验收后支付尾款」，入口放这儿比只留在底部工具条里更顺路。
+        // 只在「开发中」给验收入口：交付产物的下载一直保留，但验收通过后卡片所在的那一步
+        // 已经做完（该做的是付尾款，工具条的入口在），待付尾款上再点验收还会被后端拒掉
+        // 不通过的结论，历史卡片不该留这样一个入口。
         actionLabel: role === 'developer' ? undefined : '下载交付产物',
         downloadDelivery: role !== 'developer',
+        acceptanceAction: role === 'customer' && requirementStatus === 'in_development',
       }
     case 'acceptance_passed':
       return {

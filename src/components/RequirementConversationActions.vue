@@ -892,6 +892,13 @@ function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
   if (party === 'mutual') return '双方协商一致（无责退出）'
   return '开发者违约'
 }
+
+/**
+ * 给会话容器用的两个入口。会话卡片（「收到交付版本」那张）也要挂「验收」按钮，
+ * 但能不能验收、以及验收弹窗归谁管，都以工具条这份判断为准——卡片那边只负责把入口
+ * 摆在卡片上。两处共用同一个 computed 与同一个弹窗，条件不会各写一套而走偏。
+ */
+defineExpose({ canAcceptDelivery, openAcceptanceDialog })
 </script>
 
 <template>
