@@ -4,13 +4,18 @@ import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import type { AfterSalesCase, AfterSalesCaseList } from '@/api/afterSales'
 
 /** 售后窗口关闭后不该再渲染发起表单：填完必然被后端 409 拒绝，等于死入口。 */
-const mocks = vi.hoisted(() => ({ list: vi.fn(), open: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  list: vi.fn(),
+  open: vi.fn(),
+  respond: vi.fn(),
+  withdraw: vi.fn(),
+}))
 
 vi.mock('@/api/afterSales', () => ({
   listMyAfterSalesCases: mocks.list,
   openAfterSalesCase: mocks.open,
-  respondAfterSalesCase: vi.fn(),
-  withdrawAfterSalesCase: vi.fn(),
+  respondAfterSalesCase: mocks.respond,
+  withdrawAfterSalesCase: mocks.withdraw,
 }))
 vi.mock('@/composables/useToast', () => ({ useToast: () => ({ showToast: vi.fn() }) }))
 
@@ -58,21 +63,38 @@ const openCase: AfterSalesCase = {
 
 let wrapper: VueWrapper | undefined
 
-async function open(payload: Partial<AfterSalesCaseList> = {}) {
+async function open(
+  payload: Partial<AfterSalesCaseList> = {},
+  propOverrides: Partial<typeof baseProps> = {},
+) {
   mocks.list.mockResolvedValue({
     items: [],
     windowOpen: true,
     windowClosesAt: '2026-10-04 00:13:13',
     ...payload,
   } satisfies AfterSalesCaseList)
-  wrapper = mount(AfterSalesModal, { props: { ...baseProps, visible: false } })
+  wrapper = mount(AfterSalesModal, { props: { ...baseProps, ...propOverrides, visible: false } })
   await wrapper.setProps({ visible: true })
   await flushPromises()
 }
 
+/** 按状态造一个案件：默认的 `openCase` 是需求方发起的待表态案件。 */
+function caseWith(status: AfterSalesCase['status'], overrides: Partial<AfterSalesCase> = {}) {
+  return { ...openCase, status, ...overrides } satisfies AfterSalesCase
+}
+
+const button = (text: string) =>
+  wrapper!.findAll('button').find((item) => item.text().includes(text))
+
+async function clickButton(text: string) {
+  const target = button(text)
+  expect(target, `按钮「${text}」应该存在`).toBeDefined()
+  await target!.trigger('click')
+  await flushPromises()
+}
+
 const hasForm = () => wrapper!.find('.after-sales-modal textarea').exists()
-const submitButton = () =>
-  wrapper!.findAll('button').find((button) => button.text().includes('提交售后申请'))
+const submitButton = () => button('提交售后申请')
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -117,5 +139,79 @@ describe('售后弹窗的窗口守卫', () => {
     expect(wrapper!.text()).toContain('AFTERSALES_1')
     expect(wrapper!.text()).not.toContain('不再受理新的售后申请')
     expect(hasForm()).toBe(false)
+  })
+})
+
+describe('售后弹窗的表态与落实确认', () => {
+  /** 开发者视角：案件由需求方发起，他只能表态。 */
+  const developerProps = { canOpenCase: false, currentUsername: 'dev_flow' }
+
+  beforeEach(() => {
+    mocks.respond.mockResolvedValue(caseWith('processing'))
+    mocks.withdraw.mockResolvedValue(caseWith('withdrawn'))
+  })
+
+  it('对方表态：接受与不接受各按对应动作提交', async () => {
+    const counterpartyView = { viewerRole: 'developer' as const }
+    await open({ items: [caseWith('submitted', counterpartyView)] }, developerProps)
+    await clickButton('接受诉求')
+    expect(mocks.respond).toHaveBeenCalledWith('token', openCase.id, 'accept')
+
+    await open({ items: [caseWith('submitted', counterpartyView)] }, developerProps)
+    await clickButton('不接受，转平台裁决')
+    expect(mocks.respond).toHaveBeenLastCalledWith('token', openCase.id, 'reject')
+  })
+
+  it('已经表过态的一方不再拿到表态按钮，改为平台裁决说明', async () => {
+    await open(
+      {
+        items: [
+          caseWith('support_reviewing', {
+            viewerRole: 'developer',
+            developerDecision: 'reject',
+          }),
+        ],
+      },
+      developerProps,
+    )
+    expect(button('接受诉求')).toBeUndefined()
+    expect(button('不接受，转平台裁决')).toBeUndefined()
+    expect(wrapper!.text()).toContain('已提交平台裁决')
+  })
+
+  it('发起人视角不出现表态按钮，只保留撤回入口', async () => {
+    await open({ items: [caseWith('support_reviewing')] })
+    expect(button('接受诉求')).toBeUndefined()
+    expect(button('不接受，转平台裁决')).toBeUndefined()
+    expect(button('撤回申请')).toBeDefined()
+  })
+
+  it('「待确认落实」状态下发起人拿到确认落实入口，提交 complete', async () => {
+    mocks.respond.mockResolvedValue(caseWith('succeeded'))
+    await open({ items: [caseWith('agreed')] })
+    expect(wrapper!.text()).toContain('待确认落实')
+    await clickButton('确认已落实')
+    expect(mocks.respond).toHaveBeenCalledWith('token', openCase.id, 'complete')
+  })
+
+  it('「待确认落实」状态下发起人仍可撤回申请', async () => {
+    await open({ items: [caseWith('agreed')] })
+    await clickButton('撤回申请')
+    expect(mocks.withdraw).toHaveBeenCalledWith('token', openCase.id)
+  })
+
+  it('「待确认落实」状态下对方不再有表态按钮，只有等待说明', async () => {
+    await open({ items: [caseWith('agreed', { viewerRole: 'developer' })] }, developerProps)
+    expect(button('接受诉求')).toBeUndefined()
+    expect(button('不接受，转平台裁决')).toBeUndefined()
+    expect(button('确认已落实')).toBeUndefined()
+    expect(wrapper!.text()).toContain('双方已就诉求达成一致')
+  })
+
+  it('资金执行中的案件只展示进度，不再给任何表态入口', async () => {
+    await open({ items: [caseWith('processing', { viewerRole: 'developer' })] }, developerProps)
+    expect(button('接受诉求')).toBeUndefined()
+    expect(button('撤回申请')).toBeUndefined()
+    expect(wrapper!.text()).toContain('资金正在执行')
   })
 })

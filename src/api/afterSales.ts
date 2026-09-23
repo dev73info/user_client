@@ -9,17 +9,17 @@ export type AfterSalesStatus =
   | 'negotiating'
   | 'support_reviewing'
   | 'processing'
+  | 'agreed'
   | 'manual_required'
   | 'succeeded'
   | 'rejected'
   | 'withdrawn'
-  | 'manual_required'
 
 /** 案件里的身份：需求方（甲方）/ 开发者（乙方）。 */
 export type AfterSalesPartyRole = 'customer' | 'developer'
 
-/** 表态动作：接受对方诉求 / 不接受并交平台裁决。 */
-export type AfterSalesRespondAction = 'accept' | 'reject'
+/** 表态动作：接受对方诉求 / 不接受并交平台裁决 / 发起人确认诉求已落实。 */
+export type AfterSalesRespondAction = 'accept' | 'reject' | 'complete'
 
 export type AfterSalesCase = {
   id: number
@@ -114,7 +114,11 @@ export async function getAfterSalesCase(token: string, caseId: number): Promise<
   )
 }
 
-/** 对售后诉求表态：接受 → 双方一致；不接受 → 转平台裁决。 */
+/**
+ * 对售后诉求表态：`accept` 接受 → 有资金动作的诉求（要求退款且带额度）当场按诉求退款，
+ * 其余转「待确认落实」等发起人确认；`reject` 不接受 → 转平台裁决；
+ * `complete` 是发起人确认诉求已落实（仅「待确认落实」状态与发起人本人可用）。
+ */
 export async function respondAfterSalesCase(
   token: string,
   caseId: number,

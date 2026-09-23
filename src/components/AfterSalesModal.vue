@@ -108,6 +108,32 @@ function actionAllowed(status: AfterSalesCase['status']) {
   return ['submitted', 'negotiating', 'support_reviewing'].includes(status)
 }
 
+/** 本方在这次案件里的表态：发起人走撤回 / 确认落实，不写表态列。 */
+const myDecision = computed(() => {
+  const row = currentCase.value
+  if (!row) {
+    return null
+  }
+  return row.viewerRole === 'customer' ? row.customerDecision : row.developerDecision
+})
+
+/**
+ * 能不能表态：案件处于可表态状态，且本方还没有表态过。
+ * 后端每方只收一次表态（`*_decision IS NULL`），已经表过态的按钮留着只会点出 409。
+ */
+const canRespond = computed(() => {
+  const row = currentCase.value
+  if (!row || row.viewerRole === null || row.viewerRole === row.openerRole) {
+    return false
+  }
+  return actionAllowed(row.status) && myDecision.value === null
+})
+
+/** 发起人撤回：`agreed`（对方已接受诉求、等确认落实）也放行，不想再追究就可以收口。 */
+function withdrawAllowed(status: AfterSalesCase['status']) {
+  return actionAllowed(status) || status === 'agreed'
+}
+
 function statusText(status: AfterSalesCase['status']) {
   switch (status) {
     case 'submitted':
@@ -118,6 +144,9 @@ function statusText(status: AfterSalesCase['status']) {
       return '平台裁决中'
     case 'processing':
       return '平台处理中'
+    case 'agreed':
+      // 对方接受了诉求，但没有可直接执行的资金动作（返工 / 赔偿 / 额度为 0），等发起人确认落实。
+      return '待确认落实'
     case 'manual_required':
       // 渠道扣划失败或超时无人处理后的兜底状态，等客服人工介入。
       return '需人工处理'
@@ -198,14 +227,25 @@ async function respond(item: AfterSalesCase, action: AfterSalesRespondAction) {
   }
   respondingId.value = item.id
   try {
-    await respondAfterSalesCase(props.token, item.id, action)
-    showToast(action === 'accept' ? '已接受对方诉求' : '已提交，等待平台裁决', 'success')
+    const updated = await respondAfterSalesCase(props.token, item.id, action)
+    showToast(respondToast(action, updated), 'success')
     await refresh()
   } catch (err) {
     showToast(err instanceof Error ? err.message : '提交售后表态失败', 'error')
   } finally {
     respondingId.value = null
   }
+}
+
+/** 表态结果提示：接受分「当场退款」与「等发起人确认落实」两种去处，别用同一句话糊过去。 */
+function respondToast(action: AfterSalesRespondAction, updated: AfterSalesCase) {
+  if (action === 'reject') {
+    return '已提交，等待平台裁决'
+  }
+  if (action === 'complete') {
+    return '已确认诉求落实，案件结案'
+  }
+  return updated.status === 'agreed' ? '已接受对方诉求，等对方确认落实' : '已接受对方诉求，平台开始执行'
 }
 
 async function withdraw(item: AfterSalesCase) {
@@ -281,12 +321,19 @@ watch(
         <p v-if="currentCase.status === 'processing'" class="tip">
           平台裁决已落地，资金正在执行，完成后自动结案。
         </p>
+        <p v-else-if="currentCase.status === 'support_reviewing'" class="tip">
+          已提交平台裁决，等待客服给出责任方与金额认定；裁决落地后由平台执行尾款退还 /
+          保证金赔付并结案。此期间发起人仍可撤回申请，但资金一旦开始执行就只能等落地。
+        </p>
+        <p v-else-if="currentCase.status === 'agreed'" class="tip">
+          双方已就诉求达成一致，这条诉求没有需要平台执行的钱（返工 / 赔偿 / 未填退款额度），
+          落实完成后由发起人点「确认已落实」结案；一直不确认会在售后窗口关闭后转人工客服。
+        </p>
         <p v-else-if="currentCase.status === 'manual_required'" class="tip">
           资金执行遇到问题，已转人工客服处理，请留意会话消息。
         </p>
 
-        <div v-else-if="actionAllowed(currentCase.status) && currentCase.openedBy !== currentUsername"
-          class="actions">
+        <div v-if="canRespond" class="actions">
           <button class="ghost danger-plain" type="button" :disabled="respondingId === currentCase.id"
             @click="respond(currentCase, 'reject')">
             不接受，转平台裁决
@@ -296,8 +343,12 @@ watch(
             {{ respondingId === currentCase.id ? '提交中...' : '接受诉求' }}
           </button>
         </div>
-        <div v-else-if="actionAllowed(currentCase.status) && currentCase.openedBy === currentUsername"
+        <div v-else-if="currentCase.openedBy === currentUsername && withdrawAllowed(currentCase.status)"
           class="actions">
+          <button v-if="currentCase.status === 'agreed'" class="ghost primary" type="button"
+            :disabled="respondingId === currentCase.id" @click="respond(currentCase, 'complete')">
+            {{ respondingId === currentCase.id ? '提交中...' : '确认已落实' }}
+          </button>
           <button class="ghost danger-plain" type="button" :disabled="withdrawingId === currentCase.id"
             @click="withdraw(currentCase)">
             {{ withdrawingId === currentCase.id ? '撤回中...' : '撤回申请' }}
@@ -329,8 +380,9 @@ watch(
         </label>
 
         <p class="tip">
-          售后只在结单后的售后窗口内受理。提交后对方会在需求会话里收到通知：对方接受即按诉求执行；
-          不接受由平台裁决——原路退还已付尾款，并从开发者仍冻结的接单保证金扣划赔付。
+          售后只在结单后的售后窗口内受理。提交后对方会在需求会话里收到通知：对方接受即按诉求执行
+          ——要求退款且填了额度时当场原路退还已付尾款，其余诉求（返工 / 赔偿）由你确认落实后结案；
+          不接受则由平台裁决——原路退还已付尾款，并从开发者仍冻结的接单保证金扣划赔付。
         </p>
       </template>
 
