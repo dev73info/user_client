@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
-import type { AfterSalesCase, AfterSalesCaseList } from '@/api/afterSales'
+import type {
+  AfterSalesCase,
+  AfterSalesCaseDetail,
+  AfterSalesCaseList,
+  AfterSalesNegotiation,
+} from '@/api/afterSales'
 
 /** 售后窗口关闭后不该再渲染发起表单：填完必然被后端 409 拒绝，等于死入口。 */
 const mocks = vi.hoisted(() => ({
@@ -9,6 +14,10 @@ const mocks = vi.hoisted(() => ({
   open: vi.fn(),
   respond: vi.fn(),
   withdraw: vi.fn(),
+  detail: vi.fn(),
+  propose: vi.fn(),
+  respondProposal: vi.fn(),
+  toast: vi.fn(),
 }))
 
 vi.mock('@/api/afterSales', () => ({
@@ -16,8 +25,11 @@ vi.mock('@/api/afterSales', () => ({
   openAfterSalesCase: mocks.open,
   respondAfterSalesCase: mocks.respond,
   withdrawAfterSalesCase: mocks.withdraw,
+  getAfterSalesCase: mocks.detail,
+  proposeAfterSalesNegotiation: mocks.propose,
+  respondAfterSalesNegotiation: mocks.respondProposal,
 }))
-vi.mock('@/composables/useToast', () => ({ useToast: () => ({ showToast: vi.fn() }) }))
+vi.mock('@/composables/useToast', () => ({ useToast: () => ({ showToast: mocks.toast }) }))
 
 const baseProps = {
   token: 'token',
@@ -63,9 +75,41 @@ const openCase: AfterSalesCase = {
 
 let wrapper: VueWrapper | undefined
 
+/** 详情接口的默认返回：没有协商记录、已缴尾款 30 元（还价额度的上限）。 */
+const detailBase: AfterSalesCaseDetail = {
+  ...openCase,
+  customerUsername: 'client_flow',
+  developerUsername: 'dev_flow',
+  frozenDepositFen: 20000,
+  frozenDepositCny: '200.00',
+  finalPaidFen: 3000,
+  finalPaidCny: '30.00',
+  negotiations: [],
+  pendingNegotiation: null,
+}
+
+/** 造一条协商记录：默认是需求方提出的待表态提议。 */
+function negotiationWith(overrides: Partial<AfterSalesNegotiation> = {}): AfterSalesNegotiation {
+  return {
+    id: 7,
+    caseId: openCase.id,
+    initiatedBy: 'customer',
+    refundAmountFen: 2000,
+    refundAmountCny: '20.00',
+    note: '返工了一半，希望退 20 元',
+    status: 'pending',
+    respondedBy: null,
+    responseNote: null,
+    createdAt: '2026-09-19 00:20:00',
+    respondedAt: null,
+    ...overrides,
+  }
+}
+
 async function open(
   payload: Partial<AfterSalesCaseList> = {},
   propOverrides: Partial<typeof baseProps> = {},
+  detail: Partial<AfterSalesCaseDetail> = {},
 ) {
   mocks.list.mockResolvedValue({
     items: [],
@@ -73,6 +117,8 @@ async function open(
     windowClosesAt: '2026-10-04 00:13:13',
     ...payload,
   } satisfies AfterSalesCaseList)
+  // 详情接口只在有在办案件时被调用；默认给一份「无协商记录」的详情，各用例只覆盖需要的字段。
+  mocks.detail.mockResolvedValue({ ...detailBase, ...detail } satisfies AfterSalesCaseDetail)
   wrapper = mount(AfterSalesModal, { props: { ...baseProps, ...propOverrides, visible: false } })
   await wrapper.setProps({ visible: true })
   await flushPromises()
@@ -213,5 +259,120 @@ describe('售后弹窗的表态与落实确认', () => {
     expect(button('接受诉求')).toBeUndefined()
     expect(button('撤回申请')).toBeUndefined()
     expect(wrapper!.text()).toContain('资金正在执行')
+  })
+})
+
+describe('售后弹窗的还价协商', () => {
+  /** 开发者视角：既能对诉求表态，也能就退款额度还价。 */
+  const developerProps = { canOpenCase: false, currentUsername: 'dev_flow' }
+  const developerView = { viewerRole: 'developer' as const }
+
+  beforeEach(() => {
+    mocks.propose.mockResolvedValue(caseWith('negotiating'))
+    mocks.respondProposal.mockResolvedValue(caseWith('processing'))
+    mocks.respond.mockResolvedValue(caseWith('processing'))
+    mocks.withdraw.mockResolvedValue(caseWith('withdrawn'))
+  })
+
+  it('对方提的还价：展示额度与说明，同意 / 拒绝各按对应动作提交', async () => {
+    const pending = negotiationWith()
+    await open({ items: [caseWith('negotiating', developerView)] }, developerProps, {
+      negotiations: [pending],
+      pendingNegotiation: pending,
+    })
+    expect(wrapper!.text()).toContain('当前还价提议')
+    expect(wrapper!.text()).toContain('返工了一半，希望退 20 元')
+
+    await clickButton('接受提议')
+    expect(mocks.respondProposal).toHaveBeenCalledWith('token', openCase.id, 'accept')
+
+    await open({ items: [caseWith('negotiating', developerView)] }, developerProps, {
+      negotiations: [pending],
+      pendingNegotiation: pending,
+    })
+    await clickButton('拒绝提议')
+    expect(mocks.respondProposal).toHaveBeenLastCalledWith('token', openCase.id, 'reject')
+  })
+
+  it('自己提的还价：入口是「改我的还价」，不给自己同意自己的按钮', async () => {
+    const pending = negotiationWith({ initiatedBy: 'developer', refundAmountFen: 1500 })
+    await open({ items: [caseWith('negotiating', developerView)] }, developerProps, {
+      negotiations: [pending],
+      pendingNegotiation: pending,
+    })
+    expect(button('接受提议')).toBeUndefined()
+    expect(button('拒绝提议')).toBeUndefined()
+    expect(button('改我的还价')).toBeDefined()
+  })
+
+  it('展开还价表单预填自己的额度，提交时按分提交额度与说明', async () => {
+    const pending = negotiationWith({ initiatedBy: 'developer', refundAmountFen: 1500 })
+    await open({ items: [caseWith('negotiating', developerView)] }, developerProps, {
+      negotiations: [pending],
+      pendingNegotiation: pending,
+    })
+    await clickButton('改我的还价')
+    const amount = wrapper!.find('.after-sales-modal__field input')
+    expect((amount.element as HTMLInputElement).value).toBe('15.00')
+
+    await amount.setValue('18.5')
+    await wrapper!.find('.after-sales-modal__field textarea').setValue('最多退 18.5')
+    await clickButton('提交还价')
+    expect(mocks.propose).toHaveBeenCalledWith('token', openCase.id, 1850, '最多退 18.5')
+  })
+
+  it('还价额度超过已缴尾款时本方先拦下，不发请求', async () => {
+    await open({ items: [caseWith('submitted', developerView)] }, developerProps)
+    await clickButton('提一个还价')
+    await wrapper!.find('.after-sales-modal__field input').setValue('31')
+    await clickButton('提交还价')
+
+    expect(mocks.propose).not.toHaveBeenCalled()
+    expect(mocks.toast).toHaveBeenCalledWith('还价额度不能超过已缴尾款 30.00 元', 'warning')
+  })
+
+  it('对方手里有未决提议时不给本方重提入口，避免必然 409', async () => {
+    const pending = negotiationWith()
+    await open({ items: [caseWith('negotiating', developerView)] }, developerProps, {
+      negotiations: [pending],
+      pendingNegotiation: pending,
+    })
+    expect(button('提一个还价')).toBeUndefined()
+    expect(button('改我的还价')).toBeUndefined()
+  })
+
+  it('资金执行中不再给还价入口（钱已经在动）', async () => {
+    await open({ items: [caseWith('processing', developerView)] }, developerProps)
+    expect(button('提一个还价')).toBeUndefined()
+  })
+
+  it('协商记录按轮次展示提议方、额度与表态去向', async () => {
+    await open({ items: [caseWith('submitted', developerView)] }, developerProps, {
+      negotiations: [
+        negotiationWith({
+          id: 9,
+          status: 'accepted',
+          respondedBy: 'dev_flow',
+          responseNote: '接受，退款就行',
+        }),
+        negotiationWith({
+          id: 8,
+          initiatedBy: 'developer',
+          refundAmountFen: 1000,
+          refundAmountCny: '10.00',
+          status: 'rejected',
+          respondedBy: 'client_flow',
+          responseNote: '太少',
+        }),
+      ],
+      pendingNegotiation: null,
+    })
+    const text = wrapper!.text()
+    expect(text).toContain('协商记录')
+    expect(text).toContain('共 2 条')
+    expect(text).toContain('对方（需求方）提出还价 20.00 元')
+    expect(text).toContain('已达成一致：接受，退款就行')
+    expect(text).toContain('我方（开发者）提出还价 10.00 元')
+    expect(text).toContain('未达成：太少')
   })
 })
