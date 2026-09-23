@@ -10,6 +10,7 @@ export type AfterSalesStatus =
   | 'support_reviewing'
   | 'processing'
   | 'agreed'
+  | 'rework_pending'
   | 'manual_required'
   | 'succeeded'
   | 'rejected'
@@ -18,8 +19,11 @@ export type AfterSalesStatus =
 /** 案件里的身份：需求方（甲方）/ 开发者（乙方）。 */
 export type AfterSalesPartyRole = 'customer' | 'developer'
 
-/** 表态动作：接受对方诉求 / 不接受并交平台裁决 / 发起人确认诉求已落实。 */
-export type AfterSalesRespondAction = 'accept' | 'reject' | 'complete'
+/**
+ * 表态动作：接受对方诉求 / 不接受并交平台裁决 / 发起人确认诉求已落实 /
+ * 发起人报返工未落实（仅返工中可用，转平台裁决）。
+ */
+export type AfterSalesRespondAction = 'accept' | 'reject' | 'complete' | 'unfulfilled'
 
 /** 协商提议的动作：同意提议（按提议额度执行）/ 拒绝提议（作废，可改额度重提）。 */
 export type AfterSalesNegotiationAction = 'accept' | 'reject'
@@ -33,6 +37,9 @@ export type AfterSalesNegotiation = {
   /** 提议愿意原路退还的尾款额度（分）。 */
   refundAmountFen: number
   refundAmountCny: string
+  /** 提议愿意从开发者接单保证金扣划赔付给需求方的额度（分）。 */
+  compensationAmountFen: number
+  compensationAmountCny: string
   note: string
   /** `pending` 待对方表态 / `accepted` 对方已同意 / `rejected` 已拒绝或已作废。 */
   status: 'pending' | 'accepted' | 'rejected'
@@ -82,10 +89,10 @@ export type AfterSalesCase = {
 export type AfterSalesCaseDetail = AfterSalesCase & {
   customerUsername: string
   developerUsername: string
-  /** 结单后仍冻结的接单保证金（分）：赔付上限，赔付只能由平台裁决给出。 */
+  /** 结单后仍冻结的接单保证金（分）：赔付上限，也是还价里赔付额度的上限。 */
   frozenDepositFen: number
   frozenDepositCny: string
-  /** 已缴尾款（分）：原路退款上限，也是协商还价的额度上限。 */
+  /** 已缴尾款（分）：原路退款上限，也是还价里退款额度的上限。 */
   finalPaidFen: number
   finalPaidCny: string
   /** 协商记录（最新在前）。 */
@@ -102,7 +109,7 @@ export type AfterSalesCaseList = {
   windowClosesAt: string | null
 }
 
-/** 发起售后申请；`claimAmountFen` 是诉求额度（分），只有退款型诉求才该大于 0。 */
+/** 发起售后申请；`claimAmountFen` 是诉求额度（分），四类诉求都能填，只作为平台裁决的参考。 */
 export async function openAfterSalesCase(
   token: string,
   requirementId: string,
@@ -159,13 +166,15 @@ export async function getAfterSalesCase(
 }
 
 /**
- * 就退款额度发起协商提议（还价）：需求方提 = 下调自己的诉求额度，开发者提 = 还价。
+ * 就退款与赔付额度发起协商提议（还价）：需求方提 = 下调自己的诉求额度，开发者提 = 还价。
+ * 两个额度一起谈，对方接受即按这两个数执行结案；赔付掏的是开发者自己的保证金，上限是冻结余额。
  * 同一方再次发起即视为改主意（旧提议作废），对方持有的未决提议顶不掉（返回 409）。
  */
 export async function proposeAfterSalesNegotiation(
   token: string,
   caseId: number,
   refundAmountFen: number,
+  compensationAmountFen = 0,
   note = '',
 ): Promise<AfterSalesCase> {
   return requestJson<AfterSalesCase>(
@@ -177,14 +186,18 @@ export async function proposeAfterSalesNegotiation(
         ...authHeader(token),
       },
       // 后端 `ProposeAfterSalesNegotiationRequest` 未做 camelCase 重命名，字段名逐字对应。
-      body: JSON.stringify({ refund_amount_fen: refundAmountFen, note }),
+      body: JSON.stringify({
+        refund_amount_fen: refundAmountFen,
+        compensation_amount_fen: compensationAmountFen,
+        note,
+      }),
     },
     '提交协商提议失败',
   )
 }
 
 /**
- * 对协商提议表态：`accept` 同意 → 按提议额度原路退还尾款结案（额度为 0 时转「待确认落实」）；
+ * 对协商提议表态：`accept` 同意 → 按提议的两个额度执行结案（都是 0 时转「待确认落实」）；
  * `reject` 拒绝 → 提议作废，双方可改额度重新提议。
  */
 export async function respondAfterSalesNegotiation(
@@ -209,8 +222,9 @@ export async function respondAfterSalesNegotiation(
 
 /**
  * 对售后诉求表态：`accept` 接受 → 有资金动作的诉求（要求退款且带额度）当场按诉求退款，
- * 其余转「待确认落实」等发起人确认；`reject` 不接受 → 转平台裁决；
- * `complete` 是发起人确认诉求已落实（仅「待确认落实」状态与发起人本人可用）。
+ * 其余转「待确认落实」（要求返工则转「返工中」）等发起人收口；`reject` 不接受 → 转平台裁决；
+ * `complete` 是发起人确认诉求已落实（「待确认落实」与「返工中」都可用，发起人本人）；
+ * `unfulfilled` 是发起人报返工未落实（仅「返工中」可用），转平台裁决。
  */
 export async function respondAfterSalesCase(
   token: string,

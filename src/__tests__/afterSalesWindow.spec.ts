@@ -88,7 +88,7 @@ const detailBase: AfterSalesCaseDetail = {
   pendingNegotiation: null,
 }
 
-/** 造一条协商记录：默认是需求方提出的待表态提议。 */
+/** 造一条协商记录：默认是需求方提出的待表态提议，只谈退款、不涉及赔付。 */
 function negotiationWith(overrides: Partial<AfterSalesNegotiation> = {}): AfterSalesNegotiation {
   return {
     id: 7,
@@ -96,6 +96,8 @@ function negotiationWith(overrides: Partial<AfterSalesNegotiation> = {}): AfterS
     initiatedBy: 'customer',
     refundAmountFen: 2000,
     refundAmountCny: '20.00',
+    compensationAmountFen: 0,
+    compensationAmountCny: '0.00',
     note: '返工了一半，希望退 20 元',
     status: 'pending',
     respondedBy: null,
@@ -305,7 +307,7 @@ describe('售后弹窗的还价协商', () => {
     expect(button('改我的还价')).toBeDefined()
   })
 
-  it('展开还价表单预填自己的额度，提交时按分提交额度与说明', async () => {
+  it('展开还价表单预填自己的额度，提交时按分提交两个额度与说明', async () => {
     const pending = negotiationWith({ initiatedBy: 'developer', refundAmountFen: 1500 })
     await open({ items: [caseWith('negotiating', developerView)] }, developerProps, {
       negotiations: [pending],
@@ -318,7 +320,7 @@ describe('售后弹窗的还价协商', () => {
     await amount.setValue('18.5')
     await wrapper!.find('.after-sales-modal__field textarea').setValue('最多退 18.5')
     await clickButton('提交还价')
-    expect(mocks.propose).toHaveBeenCalledWith('token', openCase.id, 1850, '最多退 18.5')
+    expect(mocks.propose).toHaveBeenCalledWith('token', openCase.id, 1850, 0, '最多退 18.5')
   })
 
   it('还价额度超过已缴尾款时本方先拦下，不发请求', async () => {
@@ -328,7 +330,44 @@ describe('售后弹窗的还价协商', () => {
     await clickButton('提交还价')
 
     expect(mocks.propose).not.toHaveBeenCalled()
-    expect(mocks.toast).toHaveBeenCalledWith('还价额度不能超过已缴尾款 30.00 元', 'warning')
+    expect(mocks.toast).toHaveBeenCalledWith('退还尾款不能超过已缴尾款 30.00 元', 'warning')
+  })
+
+  it('还价带保证金赔付：预填自己的赔付额度并按两个额度一起提交', async () => {
+    const pending = negotiationWith({
+      initiatedBy: 'developer',
+      refundAmountFen: 1000,
+      refundAmountCny: '10.00',
+      compensationAmountFen: 5000,
+      compensationAmountCny: '50.00',
+    })
+    await open({ items: [caseWith('negotiating', developerView)] }, developerProps, {
+      negotiations: [pending],
+      pendingNegotiation: pending,
+    })
+    await clickButton('改我的还价')
+    const inputs = wrapper!.findAll('.after-sales-modal__field input')
+    expect(inputs).toHaveLength(2)
+    const [refundInput, compensationInput] = inputs
+    expect((refundInput!.element as HTMLInputElement).value).toBe('10.00')
+    expect((compensationInput!.element as HTMLInputElement).value).toBe('50.00')
+
+    await refundInput!.setValue('12')
+    await compensationInput!.setValue('60')
+    await wrapper!.find('.after-sales-modal__field textarea').setValue('退 12 元 + 赔 60 元')
+    await clickButton('提交还价')
+    expect(mocks.propose).toHaveBeenCalledWith('token', openCase.id, 1200, 6000, '退 12 元 + 赔 60 元')
+  })
+
+  it('还价里的赔付额度超过冻结保证金时本方先拦下，不发请求', async () => {
+    await open({ items: [caseWith('submitted', developerView)] }, developerProps)
+    await clickButton('提一个还价')
+    // 冻结保证金 200 元：赔付填 201 元必被后端拒，这里先拦。
+    await wrapper!.findAll('.after-sales-modal__field input')[1]!.setValue('201')
+    await clickButton('提交还价')
+
+    expect(mocks.propose).not.toHaveBeenCalled()
+    expect(mocks.toast).toHaveBeenCalledWith('保证金赔付不能超过仍冻结的 200.00 元', 'warning')
   })
 
   it('对方手里有未决提议时不给本方重提入口，避免必然 409', async () => {
@@ -370,9 +409,65 @@ describe('售后弹窗的还价协商', () => {
     const text = wrapper!.text()
     expect(text).toContain('协商记录')
     expect(text).toContain('共 2 条')
-    expect(text).toContain('对方（需求方）提出还价 20.00 元')
+    expect(text).toContain('对方（需求方）提出还价：退还尾款 20.00 元')
     expect(text).toContain('已达成一致：接受，退款就行')
-    expect(text).toContain('我方（开发者）提出还价 10.00 元')
+    expect(text).toContain('我方（开发者）提出还价：退还尾款 10.00 元')
     expect(text).toContain('未达成：太少')
+  })
+})
+
+describe('售后弹窗的返工中状态', () => {
+  /** 开发者视角：案件由需求方发起，返工中他没有可点的动作。 */
+  const developerProps = { canOpenCase: false, currentUsername: 'dev_flow' }
+  const developerView = { viewerRole: 'developer' as const }
+
+  beforeEach(() => {
+    mocks.respond.mockResolvedValue(caseWith('support_reviewing'))
+    mocks.withdraw.mockResolvedValue(caseWith('withdrawn'))
+  })
+
+  it('返工中由发起人验收：可确认已落实，也可报未落实转平台裁决', async () => {
+    await open({ items: [caseWith('rework_pending')] })
+    expect(wrapper!.text()).toContain('返工中')
+    expect(button('确认已落实')).toBeDefined()
+    expect(button('未落实，申请平台介入')).toBeDefined()
+
+    await clickButton('未落实，申请平台介入')
+    expect(mocks.respond).toHaveBeenCalledWith('token', openCase.id, 'unfulfilled')
+  })
+
+  it('返工中发起人仍可撤回申请', async () => {
+    await open({ items: [caseWith('rework_pending')] })
+    await clickButton('撤回申请')
+    expect(mocks.withdraw).toHaveBeenCalledWith('token', openCase.id)
+  })
+
+  it('返工中不给对方任何入口：案子在等发起人验收，也不允许再还价', async () => {
+    await open({ items: [caseWith('rework_pending', developerView)] }, developerProps)
+    expect(button('确认已落实')).toBeUndefined()
+    expect(button('未落实，申请平台介入')).toBeUndefined()
+    expect(button('接受诉求')).toBeUndefined()
+    expect(button('提一个还价')).toBeUndefined()
+    expect(wrapper!.text()).toContain('对方已接受返工要求')
+  })
+
+  it('「待确认落实」的赔偿诉求上不发未落实：没有可验收的中间产物', async () => {
+    await open({ items: [caseWith('agreed', { kind: 'compensation', viewerRole: 'customer' })] })
+    expect(button('确认已落实')).toBeDefined()
+    expect(button('未落实，申请平台介入')).toBeUndefined()
+  })
+})
+
+describe('售后弹窗的诉求额度', () => {
+  it('四类诉求都能填诉求额度，文案跟着诉求类型走', async () => {
+    await open()
+    expect(wrapper!.text()).toContain('返工不成时希望退还的尾款（元）')
+    expect(wrapper!.text()).toContain('作为平台裁决的参考')
+
+    await clickButton('要求赔偿')
+    expect(wrapper!.text()).toContain('希望赔偿的金额（元）')
+
+    await clickButton('其它问题')
+    expect(wrapper!.text()).toContain('希望平台处理的金额（元）')
   })
 })

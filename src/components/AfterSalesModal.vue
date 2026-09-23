@@ -45,7 +45,7 @@ const { showToast } = useToast()
 /** 终态案件不再有可执行动作，只作为历史记录展示。 */
 const CLOSED_STATUSES = ['succeeded', 'rejected', 'withdrawn']
 
-/** 售后诉求类型（取值与后端 `kind` 一致，`refund` 才需要填退款额度）。 */
+/** 售后诉求类型（取值与后端 `kind` 一致，四类都能填诉求额度）。 */
 const KIND_OPTIONS: ReadonlyArray<{ value: AfterSalesKind; label: string }> = [
   { value: 'refund', label: '要求退款' },
   { value: 'compensation', label: '要求赔偿' },
@@ -67,6 +67,7 @@ const caseDetail = ref<AfterSalesCaseDetail | null>(null)
 /** 协商提议表单是否展开（提还价 / 改我的还价）。 */
 const proposalOpen = ref(false)
 const proposalAmount = ref<string | number>('')
+const proposalCompensation = ref<string | number>('')
 const proposalNote = ref('')
 const proposing = ref(false)
 const proposalRespondingId = ref<number | null>(null)
@@ -101,8 +102,33 @@ const closedCases = computed(() =>
   cases.value.filter((row) => CLOSED_STATUSES.includes(row.status)),
 )
 
-/** 诉求额度只在退款型诉求下有意义（后端也只在 `refund` 时按额度默认退款）。 */
-const claimAmountVisible = computed(() => kind.value === 'refund')
+/**
+ * 诉求额度的文案按诉求类型给。
+ *
+ * 四类诉求都能填这个额度——它只是发起人的主张，平台裁决时作参考（执行上限由「已缴尾款」与
+ * 「仍冻结的接单保证金」两个池子决定，见裁决弹窗）。文案要跟着类型走，否则「要求返工」下
+ * 顶着「希望退还的尾款」会让人以为在填返工费。
+ */
+const CLAIM_AMOUNT_FIELDS: Record<AfterSalesKind, { label: string; placeholder: string }> = {
+  refund: {
+    label: '希望退还的尾款（元）',
+    placeholder: '留空按平台裁决，不得超过已付尾款',
+  },
+  compensation: {
+    label: '希望赔偿的金额（元）',
+    placeholder: '留空按平台裁决，不得超过开发者仍冻结的保证金',
+  },
+  repair: {
+    label: '返工不成时希望退还的尾款（元）',
+    placeholder: '选填；返工做到了就不涉及退钱',
+  },
+  other: {
+    label: '希望平台处理的金额（元）',
+    placeholder: '选填，供平台裁决参考',
+  },
+}
+
+const claimAmountField = computed(() => CLAIM_AMOUNT_FIELDS[kind.value])
 
 /** 有请求在途时不允许关窗，避免资金动作的结果无从收口。 */
 const busy = computed(
@@ -126,6 +152,15 @@ const claimAmountFen = computed(() => {
 /** 还价额度分：同样非法或非正数按 0（0 元也能提，表示「只希望返工、不涉及退钱」）。 */
 const proposalAmountFen = computed(() => {
   const parsed = Number(proposalAmount.value)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 0
+  }
+  return Math.round(parsed * 100)
+})
+
+/** 还价里的赔付额度分：同样非法或非正数按 0（不主张赔付，只谈退款）。 */
+const proposalCompensationFen = computed(() => {
+  const parsed = Number(proposalCompensation.value)
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return 0
   }
@@ -167,14 +202,24 @@ const negotiations = computed(() => caseDetail.value?.negotiations ?? [])
 /** 已缴尾款（分）：还价额度的上限，也是「退款只能从这个池子出」的直观依据。 */
 const finalPaidFen = computed(() => caseDetail.value?.finalPaidFen ?? 0)
 
+/** 仍冻结的接单保证金（分）：还价里赔付额度的上限。 */
+const frozenDepositFen = computed(() => caseDetail.value?.frozenDepositFen ?? 0)
+
+/** 有可赔付的冻结保证金时才显示赔付额度输入：为 0 时填了也一定被后端拒。 */
+const canProposeCompensation = computed(() => Boolean(caseDetail.value && frozenDepositFen.value > 0))
+
 /** 还价额度的上限提示：拿不到详情时（未缴尾款口径未知）退化为通用措辞。 */
 const proposalLimitTip = computed(() => {
   if (!caseDetail.value) {
     return '还价额度不得超过本需求已缴尾款（正在读取上限…）'
   }
-  return finalPaidFen.value > 0
-    ? `还价额度不得超过已缴尾款 ${caseDetail.value.finalPaidCny} 元（退款只能从这笔钱里出），填 0 表示只要求返工、不涉及退钱`
-    : '本需求没有已缴尾款，还价额度只能是 0（例如约定返工、不涉及退钱）'
+  const refundTip =
+    finalPaidFen.value > 0
+      ? `退还尾款不得超过已缴尾款 ${caseDetail.value.finalPaidCny} 元（退款只能从这笔钱里出）`
+      : '本需求没有已缴尾款，退还尾款只能是 0（例如约定返工、不涉及退钱）'
+  return canProposeCompensation.value
+    ? `${refundTip}；保证金赔付不得超过仍冻结的 ${caseDetail.value.frozenDepositCny} 元（从开发者自己的保证金里出，谈成即视为开发者认责）`
+    : refundTip
 })
 
 /** 是不是自己提的未决提议：是的话按钮是「改我的还价」而不是「接受 / 拒绝」。 */
@@ -221,9 +266,9 @@ const isOpener = computed(
   () => Boolean(currentCase.value && currentCase.value.openedBy === props.currentUsername),
 )
 
-/** 发起人撤回：`agreed`（对方已接受诉求、等确认落实）也放行，不想再追究就可以收口。 */
+/** 发起人撤回：`agreed`（等确认落实）与 `rework_pending`（返工中）也放行，不想再追究就收口。 */
 function withdrawAllowed(status: AfterSalesCase['status']) {
-  return actionAllowed(status) || status === 'agreed'
+  return actionAllowed(status) || status === 'agreed' || status === 'rework_pending'
 }
 
 const canWithdraw = computed(() => {
@@ -231,8 +276,20 @@ const canWithdraw = computed(() => {
   return Boolean(row && isOpener.value && withdrawAllowed(row.status))
 })
 
-/** 发起人确认诉求已落实（只有 `agreed` 的案件在等这一步）。 */
-const canComplete = computed(() => Boolean(isOpener.value && currentCase.value?.status === 'agreed'))
+/** 发起人确认诉求已落实：`agreed`（赔偿 / 其它 / 额度为 0 的退款）与 `rework_pending`（返工）都在等这一步。 */
+const canComplete = computed(() =>
+  Boolean(isOpener.value && ['agreed', 'rework_pending'].includes(currentCase.value?.status ?? '')),
+)
+
+/**
+ * 发起人报返工未落实：只有返工中能用，点了转平台裁决（客服可动用退款与赔付两个渠道）。
+ *
+ * 这是返工单独开 `rework_pending` 的意义所在——`agreed` 上只有「确认已落实」一条路，
+ * 对方答应了没做到时，发起人除了撤回重开没有别的说法。
+ */
+const canReportUnfulfilled = computed(() =>
+  Boolean(isOpener.value && currentCase.value?.status === 'rework_pending'),
+)
 
 /** 协商记录里的表态去向。 */
 function negotiationStatusText(status: AfterSalesNegotiation['status']) {
@@ -260,6 +317,22 @@ function proposalPartyText(row: AfterSalesNegotiation) {
   return `${who}（${side}）`
 }
 
+/** 提议的两个额度拼成一句话：只写有金额的那一维，都谈才不会漏看赔付。 */
+function proposalAmountText(row: AfterSalesNegotiation | null) {
+  if (!row) {
+    return ''
+  }
+  const parts: string[] = []
+  if (row.refundAmountFen > 0) {
+    parts.push(`退还尾款 ${row.refundAmountCny} 元`)
+  }
+  if (row.compensationAmountFen > 0) {
+    parts.push(`保证金赔付 ${row.compensationAmountCny} 元`)
+  }
+  // 两个额度都是 0：这是一条「不要钱、只要对方做事」的提议（例如返工）。
+  return parts.length > 0 ? parts.join(' + ') : '不动资金'
+}
+
 function statusText(status: AfterSalesCase['status']) {
   switch (status) {
     case 'submitted':
@@ -271,8 +344,11 @@ function statusText(status: AfterSalesCase['status']) {
     case 'processing':
       return '平台处理中'
     case 'agreed':
-      // 对方接受了诉求，但没有可直接执行的资金动作（返工 / 赔偿 / 额度为 0），等发起人确认落实。
+      // 对方接受了诉求，但没有可直接执行的资金动作（赔偿 / 其它 / 额度为 0 的退款），等发起人确认落实。
       return '待确认落实'
+    case 'rework_pending':
+      // 对方接受了返工要求，等发起人验收；发起人可点「确认已落实」或「未落实，申请平台介入」。
+      return '返工中'
     case 'manual_required':
       // 渠道扣划失败或超时无人处理后的兜底状态，等客服人工介入。
       return '需人工处理'
@@ -297,6 +373,9 @@ function decisionText(decision: AfterSalesCase['customerDecision']) {
   }
   if (decision === 'reject') {
     return '不接受，转平台裁决'
+  }
+  if (decision === 'unfulfilled') {
+    return '返工未落实，已申请平台介入'
   }
   return '未表态'
 }
@@ -382,7 +461,7 @@ async function respond(item: AfterSalesCase, action: AfterSalesRespondAction) {
   }
 }
 
-/** 表态结果提示：接受分「当场退款」与「等发起人确认落实」两种去处，别用同一句话糊过去。 */
+/** 表态结果提示：接受分「当场退款」与「等发起人收口」两种去处，别用同一句话糊过去。 */
 function respondToast(action: AfterSalesRespondAction, updated: AfterSalesCase) {
   if (action === 'reject') {
     return '已提交，等待平台裁决'
@@ -390,13 +469,24 @@ function respondToast(action: AfterSalesRespondAction, updated: AfterSalesCase) 
   if (action === 'complete') {
     return '已确认诉求落实，案件结案'
   }
+  if (action === 'unfulfilled') {
+    return '已提交，案件转平台裁决'
+  }
+  if (updated.status === 'rework_pending') {
+    return '已接受返工要求，等对方确认返工完成'
+  }
   return updated.status === 'agreed' ? '已接受对方诉求，等对方确认落实' : '已接受对方诉求，平台开始执行'
 }
 
-/** 展开还价表单：自己已有未决提议时预填那条的额度与说明，方便在既有方案上改。 */
+/** 展开还价表单：自己已有未决提议时预填那条的两个额度与说明，方便在既有方案上改。 */
 function openProposal() {
   const pending = pendingNegotiation.value
-  proposalAmount.value = pending ? (pending.refundAmountFen / 100).toFixed(2) : ''
+  proposalAmount.value =
+    pending && pending.refundAmountFen > 0 ? (pending.refundAmountFen / 100).toFixed(2) : ''
+  proposalCompensation.value =
+    pending && pending.compensationAmountFen > 0
+      ? (pending.compensationAmountFen / 100).toFixed(2)
+      : ''
   proposalNote.value = pending ? pending.note : ''
   proposalOpen.value = true
 }
@@ -416,10 +506,17 @@ async function proposeNegotiation() {
   if (!props.token || !row) {
     return
   }
-  // 上限先在本方拦一次：后端也会拒（409），但让用户在提交前就知道差在哪儿更省事。
+  // 两个上限先在本方拦一次：后端也会拒（400），但让用户在提交前就知道差在哪儿更省事。
   if (proposalAmountFen.value > finalPaidFen.value) {
     showToast(
-      `还价额度不能超过已缴尾款 ${caseDetail.value?.finalPaidCny ?? '0.00'} 元`,
+      `退还尾款不能超过已缴尾款 ${caseDetail.value?.finalPaidCny ?? '0.00'} 元`,
+      'warning',
+    )
+    return
+  }
+  if (proposalCompensationFen.value > frozenDepositFen.value) {
+    showToast(
+      `保证金赔付不能超过仍冻结的 ${caseDetail.value?.frozenDepositCny ?? '0.00'} 元`,
       'warning',
     )
     return
@@ -430,6 +527,7 @@ async function proposeNegotiation() {
       props.token,
       row.id,
       proposalAmountFen.value,
+      proposalCompensationFen.value,
       proposalNote.value.trim(),
     )
     showToast('还价已提交，等对方表态', 'success')
@@ -442,7 +540,7 @@ async function proposeNegotiation() {
   }
 }
 
-/** 对未决提议表态：同意即按提议额度原路退款（额度为 0 时转「待确认落实」），拒绝则作废可重提。 */
+/** 对未决提议表态：同意即按提议的两个额度执行结案（都是 0 时转「待确认落实」），拒绝则作废可重提。 */
 async function respondProposal(action: AfterSalesNegotiationAction) {
   const row = currentCase.value
   if (!props.token || !row) {
@@ -461,14 +559,17 @@ async function respondProposal(action: AfterSalesNegotiationAction) {
   }
 }
 
-/** 协商表态结果提示：同意分「按提议额度退款」与「转待确认落实」两种去处，同诉求表态的取舍。 */
+/** 协商表态结果提示：同意分「按提议额度执行」「转待确认落实」与「转返工中」几种去处，同诉求表态的取舍。 */
 function proposalToast(action: AfterSalesNegotiationAction, updated: AfterSalesCase) {
   if (action === 'reject') {
     return '已拒绝提议，双方可改额度重提'
   }
+  if (updated.status === 'rework_pending') {
+    return '已接受提议，等对方确认返工完成'
+  }
   return updated.status === 'agreed'
     ? '已接受提议，等对方确认落实'
-    : '已接受提议，平台按提议额度原路退还已缴尾款'
+    : '已接受提议，平台按提议额度退还尾款 / 扣划保证金赔付'
 }
 
 async function withdraw(item: AfterSalesCase) {
@@ -508,6 +609,7 @@ watch(
     caseDetail.value = null
     proposalOpen.value = false
     proposalAmount.value = ''
+    proposalCompensation.value = ''
     proposalNote.value = ''
     windowOpen.value = null
     windowClosesAt.value = null
@@ -550,22 +652,27 @@ watch(
         </p>
         <p v-else-if="currentCase.status === 'support_reviewing'" class="tip">
           已提交平台裁决，等待客服给出责任方与金额认定；裁决落地后由平台执行尾款退还 /
-          保证金赔付并结案。此期间发起人仍可撤回申请、双方也仍可就退款额度提还价（谈成即按还价额度结案），
-          但资金一旦开始执行就只能等落地。
+          保证金赔付并结案。此期间发起人仍可撤回申请、双方也仍可就退款与赔付额度提还价
+          （谈成即按还价额度结案），但资金一旦开始执行就只能等落地。
         </p>
         <p v-else-if="currentCase.status === 'agreed'" class="tip">
-          双方已就诉求达成一致，这条诉求没有需要平台执行的钱（返工 / 赔偿 / 未填退款额度），
+          双方已就诉求达成一致，这条诉求没有需要平台执行的钱（赔偿 / 其它 / 未填退款额度），
           落实完成后由发起人点「确认已落实」结案；一直不确认会在售后窗口关闭后转人工客服。
+        </p>
+        <p v-else-if="currentCase.status === 'rework_pending'" class="tip">
+          对方已接受返工要求，返工完成后由发起人点「确认已落实」结案。若对方没有落实，
+          发起人可点「未落实，申请平台介入」转客服裁决（届时可动用尾款退还与保证金赔付两个渠道）；
+          一直不确认会在售后窗口关闭后转人工客服。
         </p>
         <p v-else-if="currentCase.status === 'manual_required'" class="tip">
           资金执行遇到问题，已转人工客服处理，请留意会话消息。
         </p>
 
-        <!-- 未决还价提议：先处理它——同意即按提议额度原路退款结案，拒绝后可改额度重提。 -->
+        <!-- 未决还价提议：先处理它——同意即按提议的两个额度执行结案，拒绝后可改额度重提。 -->
         <div v-if="pendingNegotiation" class="after-sales-modal__proposal">
           <div class="after-sales-modal__proposal-head">
             <strong>当前还价提议</strong>
-            <span>{{ pendingNegotiation.refundAmountCny }} 元</span>
+            <span>{{ proposalAmountText(pendingNegotiation) }}</span>
           </div>
           <p>{{ proposalPartyText(pendingNegotiation) }}提出：{{ pendingNegotiation.note || '（未填说明）' }}</p>
           <small>{{ formatCnDateTime(pendingNegotiation.createdAt) }} 提出，等对方表态</small>
@@ -578,7 +685,7 @@ watch(
           <button class="ghost primary" type="button" :disabled="busy" @click="respondProposal('accept')">
             {{ proposalRespondingId === currentCase.id
               ? '提交中...'
-              : `接受提议，退 ${pendingNegotiation?.refundAmountCny} 元` }}
+              : `接受提议，${proposalAmountText(pendingNegotiation)}` }}
           </button>
         </div>
         <div v-else-if="canRespond && !pendingNegotiation" class="actions">
@@ -592,6 +699,10 @@ watch(
           </button>
         </div>
         <div v-else-if="canComplete" class="actions">
+          <button v-if="canReportUnfulfilled" class="ghost danger-plain" type="button"
+            :disabled="respondingId === currentCase.id" @click="respond(currentCase, 'unfulfilled')">
+            {{ respondingId === currentCase.id ? '提交中...' : '未落实，申请平台介入' }}
+          </button>
           <button class="ghost primary" type="button" :disabled="respondingId === currentCase.id"
             @click="respond(currentCase, 'complete')">
             {{ respondingId === currentCase.id ? '提交中...' : '确认已落实' }}
@@ -616,6 +727,14 @@ watch(
               placeholder="填 0 表示只要求 / 只同意返工，不涉及退钱" />
             <small class="after-sales-modal__limit">{{ proposalLimitTip }}</small>
           </label>
+          <label v-if="canProposeCompensation" class="pay-line after-sales-modal__field">
+            <strong>我愿意从保证金赔付给对方（元）</strong>
+            <input v-model="proposalCompensation" type="number" min="0" step="0.01" inputmode="decimal"
+              placeholder="留空为 0；赔付从你的接单保证金扣划，谈成即视为你认责" />
+            <small class="after-sales-modal__limit">
+              上限是仍冻结的 {{ caseDetail?.frozenDepositCny }} 元；赔付大于 0 时责任方记为开发者。
+            </small>
+          </label>
           <label class="pay-line after-sales-modal__field">
             <strong>还价说明</strong>
             <textarea v-model="proposalNote" rows="3" maxlength="1000"
@@ -637,7 +756,7 @@ watch(
           <ul class="after-sales-modal__records">
             <li v-for="row in negotiations" :key="row.id">
               <div class="after-sales-modal__record-head">
-                <strong>{{ proposalPartyText(row) }}提出还价 {{ row.refundAmountCny }} 元</strong>
+                <strong>{{ proposalPartyText(row) }}提出还价：{{ proposalAmountText(row) }}</strong>
                 <time>{{ formatCnDateTime(row.createdAt) }}</time>
               </div>
               <p>{{ row.note || '（未填说明）' }}</p>
@@ -658,10 +777,13 @@ watch(
           </div>
         </div>
 
-        <label v-if="claimAmountVisible" class="pay-line after-sales-modal__field">
-          <strong>希望退还的尾款（元）</strong>
+        <label class="pay-line after-sales-modal__field">
+          <strong>{{ claimAmountField.label }}</strong>
           <input v-model="claimAmount" type="number" min="0" step="0.01" inputmode="decimal"
-            placeholder="留空按平台裁决，不得超过已付尾款" />
+            :placeholder="claimAmountField.placeholder" />
+          <small class="after-sales-modal__limit">
+            选填，作为平台裁决的参考，实际金额由双方协商或平台认定。
+          </small>
         </label>
 
         <label class="pay-line after-sales-modal__field">
@@ -672,8 +794,10 @@ watch(
 
         <p class="tip">
           售后只在结单后的售后窗口内受理。提交后对方会在需求会话里收到通知：对方接受即按诉求执行
-          ——要求退款且填了额度时当场原路退还已付尾款，其余诉求（返工 / 赔偿）由你确认落实后结案；
-          不接受则由平台裁决——原路退还已付尾款，并从开发者仍冻结的接单保证金扣划赔付。
+          ——要求退款且填了额度时当场原路退还已付尾款，要求返工则转入「返工中」等你验收，
+          其余诉求（赔偿 / 其它）等你确认落实后结案；不接受则由平台裁决——原路退还已付尾款，
+          并从开发者仍冻结的接单保证金扣划赔付。返工中若对方没做到，你可以点「未落实，申请平台介入」
+          转客服裁决。诉求额度四类诉求都能填，只是你方主张，供平台裁决参考。
         </p>
       </template>
 
@@ -684,8 +808,9 @@ watch(
       <template v-else>
         <p class="tip">
           售后由需求方（甲方）发起，你这边用于查看诉求并表态：接受即按诉求执行，不接受由平台裁决。
-          对诉求额度不认可时也可以直接提一个还价——对方接受即按还价额度原路退还尾款并结案，
-          拒绝则提议作废，可以改额度再提。
+          对诉求额度不认可时也可以直接提一个还价——对方接受即按还价的退款 + 保证金赔付两个额度执行结案，
+          拒绝则提议作废，可以改额度再提。需求方点了「确认已落实」即结案；返工类诉求若你认为已做到、
+          对方却报「未落实」，案件会转客服裁决。
           结单后如需反映其它问题，请走工单中心联系平台。
         </p>
       </template>
