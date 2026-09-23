@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
+import AcceptanceDialog from '@/components/AcceptanceDialog.vue'
 import DepositModal from '@/components/DepositModal.vue'
 import {
   createAdapayPayment,
@@ -13,6 +14,7 @@ import {
   respondAdapayBreachNegotiation,
   submitAdapayBreachDecision,
   withdrawAdapayBreach,
+  type AdapayAcceptanceResult,
   type AdapayBreachCase,
   type AdapayBreachDecisionValue,
   type AdapayBreachVerdictParty,
@@ -107,6 +109,7 @@ const payLoading = ref(false)
 const depositPolicyAccepted = ref(false)
 
 const deliveryVisible = ref(false)
+const acceptanceVisible = ref(false)
 
 const unbindVisible = ref(false)
 const unbindReason = ref('')
@@ -169,13 +172,36 @@ const canPayFinal = computed(
     contractSigned.value &&
     status.value === 'pending_final',
 )
+/**
+ * 无担保模式的「确认完成」：没有合同也没有尾款，确认即结单。
+ *
+ * 担保模式不能走这里：它的验收与尾款是两个动作，分别由「验收」和「支付尾款」承担。
+ * 后端 `request-final-payment` 在担保模式下除状态外还要求已存在一条「验收通过」留档，
+ * 而验收通过本身就会把状态推到 `pending_final`——所以在 `in_development` 上放一个调该接口
+ * 的入口必然被拒（曾经就是这样：按钮写着「确认验收并支付尾款」，点下去只报
+ * `only in-development requirements may request final payment`）。
+ */
 const canRequestFinal = computed(
   () =>
     !isDeveloper.value &&
+    isSelfManaged.value &&
     hasBoundResource.value &&
     status.value === 'in_development' &&
+    publishedVersionCount.value > 0,
+)
+/**
+ * 担保模式的验收入口：开发中与待付尾款都能提交，与「我的需求」页的 `canOpenAcceptance` 同口径。
+ *
+ * 验收可反复提交——不通过只留档并通知开发者整改，状态不前推；到待付尾款后仍可追加留档。
+ */
+const canAcceptDelivery = computed(
+  () =>
+    !isDeveloper.value &&
+    !isSelfManaged.value &&
+    contractSigned.value &&
+    hasBoundResource.value &&
     publishedVersionCount.value > 0 &&
-    (isSelfManaged.value || contractSigned.value),
+    (status.value === 'in_development' || status.value === 'pending_final'),
 )
 const canDeliver = computed(
   () =>
@@ -370,9 +396,18 @@ const chips = computed<ActionChip[]>(() => {
   if (canRequestFinal.value) {
     list.push({
       key: 'request-final',
-      label: isSelfManaged.value ? '确认完成' : '确认验收并支付尾款',
+      label: '确认完成',
       tone: 'primary',
       run: () => void requestFinalPayment(),
+    })
+  }
+  if (canAcceptDelivery.value) {
+    list.push({
+      key: 'acceptance',
+      label: '验收',
+      // 待付尾款时当前该做的是「支付尾款」，验收退成次要入口；开发中则验收正是那一步。
+      tone: canPayFinal.value ? 'default' : 'primary',
+      run: openAcceptanceDialog,
     })
   }
   if (canDeliver.value) {
@@ -547,6 +582,32 @@ async function submitPayment() {
     showToast(error instanceof Error ? error.message : '支付失败', 'error')
   } finally {
     payLoading.value = false
+  }
+}
+
+function openAcceptanceDialog() {
+  if (!requirement.value) {
+    return
+  }
+
+  acceptanceVisible.value = true
+}
+
+function closeAcceptanceDialog() {
+  acceptanceVisible.value = false
+}
+
+/**
+ * 验收提交成功后的收尾：刷新动作栏，让按钮组跟着新状态走。
+ *
+ * 验收通过会把需求推到「待付尾款」，此时该出现的是「支付尾款」；与「我的需求」页一致，
+ * 顺手把支付弹窗打开，用户不必再回列表找入口。
+ */
+async function handleAcceptanceSubmitted(result: AdapayAcceptanceResult) {
+  await loadActions()
+  emit('changed')
+  if (result === 'passed' && canPayFinal.value) {
+    openPayDialog()
   }
 }
 
@@ -853,6 +914,10 @@ function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
 
   <DeliverySubmitDialog v-model:visible="deliveryVisible" :token="token"
     :bound-resource-id="requirement?.bound_resource_id ?? null" @submitted="handleDeliverySubmitted" />
+
+  <AcceptanceDialog :visible="acceptanceVisible" :token="token"
+    :requirement-id="requirement?.requirement_id ?? ''" :requirement-title="requirement?.title ?? ''"
+    @close="closeAcceptanceDialog" @submitted="handleAcceptanceSubmitted" />
 
   <el-dialog v-model="unbindVisible" :title="canRespondUnbind ? '处理解除申请' : '申请解除需求'" width="480px"
     append-to-body>

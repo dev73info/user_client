@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AcceptanceDialog: typeof import('./src/components/AcceptanceDialog.vue')['default']
     AfterSalesModal: typeof import('./src/components/AfterSalesModal.vue')['default']
     AppToast: typeof import('./src/components/AppToast.vue')['default']
     AuthModal: typeof import('./src/components/AuthModal.vue')['default']
@@ -46,8 +47,6 @@ declare module 'vue' {
     ElSwitch: typeof import('element-plus/es')['ElSwitch']
     ElTable: typeof import('element-plus/es')['ElTable']
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
-    ElTabPane: typeof import('element-plus/es')['ElTabPane']
-    ElTabs: typeof import('element-plus/es')['ElTabs']
     ElTag: typeof import('element-plus/es')['ElTag']
     HomeHeroSection: typeof import('./src/components/home/HomeHeroSection.vue')['default']
     InviteLeaderboard: typeof import('./src/components/InviteLeaderboard.vue')['default']
