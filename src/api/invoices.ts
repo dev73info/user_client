@@ -54,6 +54,29 @@ export type InvoiceRecord = {
 }
 
 /**
+ * 发票**买方**（需求方 / 甲方）的开票主体资料，由后端按实名主体折算好。
+ *
+ * 两张票（平台服务费票、开发者收入票）都是开给同一个需求方的，所以乙方申请时拿到的也是这份
+ * 需求方资料——「发票开给谁」不因为谁来申请而改变。弹窗据此自动带出抬头 / 税号 / 接收邮箱。
+ */
+export type InvoiceBuyerSubject = {
+  /** 买方用户名（需求方 / 甲方）。 */
+  username: string
+  /** 实名类型：`IDENTITY_CARD` / `ENTERPRISE` / `SOLE_PROPRIETOR` / `RESIDENCE_HK_MC` / `RESIDENCE_TAIWAN`；未实名时为空串。 */
+  authType: string
+  /** 实名状态：`approved` / `pending` / `rejected`；未提交过实名时为空串。 */
+  realnameStatus: string
+  /** 是否企业 / 个体工商户：决定抬头取公司全称还是实名姓名、以及税号是否必填。 */
+  isOrganization: boolean
+  /** 可按主体自动填的抬头；实名未通过时为空串，留给用户手填。 */
+  title: string
+  /** 企业 / 个体户的统一社会信用代码；个人为空串。 */
+  taxNumber: string
+  /** 买方的账户主邮箱，作为「接收邮箱」的默认值。 */
+  email: string
+}
+
+/**
  * 一个需求的可开票汇总。
  *
  * 开票按需求合并：一张票覆盖整个需求，金额由后端按该需求已成功分账的结算单算出——平台票取
@@ -64,6 +87,8 @@ export type InvoiceableSummary = {
   requirementId: string
   customer: string
   developer: string
+  /** 买方的开票主体资料：抬头 / 税号 / 接收邮箱按它自动带出，两个视角共用一份。 */
+  buyer: InvoiceBuyerSubject
   /** 已成功分账的实付合计（平台服务费 + 开发者税前收入，未扣售后赔付）。 */
   settledAmountFen: number
   settledAmountCny: string

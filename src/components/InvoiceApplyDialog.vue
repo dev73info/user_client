@@ -8,8 +8,6 @@ import {
   type InvoiceableSummary,
   type InvoiceRecord,
 } from '@/api/invoices'
-import { getMyRealnameVerification, type UserRealnameVerification } from '@/api/realname'
-import { getProfile } from '@/api/settings'
 import { useToast } from '@/composables/useToast'
 
 /** 开票主体：平台服务费票由平台开给需求方，开发者收入票由乙方开给需求方。 */
@@ -60,7 +58,7 @@ const COPY: Record<'customer' | 'developer', {
     kicker: 'DEVELOPER / INVOICE',
     title: '获取开发者发票',
     issuer: '开发者发票',
-    hint: '开发者收入发票由乙方开具，抬头为企业或个体工商户时需填写税号；发票文件上传后需求方可在发票中心下载。',
+    hint: '开发者收入发票由乙方开具给需求方：抬头与税号按需求方实名主体带出，需求方为企业或个体工商户时税号必填；发票文件上传后需求方可在发票中心下载。',
     amountNote: '开发者收入（定金 + 尾款合并开票）',
     submitText: '提交开发者发票申请',
   },
@@ -130,53 +128,47 @@ function invoiceStatusLabel(status: InvoiceRecord['status']) {
   }[status]
 }
 
-// 开票信息预填：抬头/税号取自实名认证主体，邮箱取自账户资料。
-const realname = ref<UserRealnameVerification | null>(null)
-const accountEmail = ref('')
-const prefillLoaded = ref(false)
-let prefillRequest: Promise<void> | null = null
+/**
+ * 开票信息预填：抬头 / 税号 / 接收邮箱**统一按买方（需求方）的实名主体**来。
+ *
+ * 两张票都是开给同一个需求方的，所以乙方打开弹窗时带出的也是需求方的资料，而不是乙方自己的
+ * 公司名——「发票开给谁」不因为谁来申请而改变。这份主体由后端随汇总一起给出（见
+ * `InvoiceBuyerSubject`），前端不再单独去查实名与账户资料，两个视角只有一处口径。
+ */
+const buyer = computed(() => summary.value?.buyer ?? null)
 
-// 仅已通过认证的实名记录可用于开票，审核中或未认证时不做预填。
-const approvedRealname = computed(() =>
-  realname.value?.status === 'approved' ? realname.value : null,
-)
+/** 买方在本视角下的称呼：需求方看自己，乙方看客户。文案里拼它，好让乙方一眼看出带出的是谁。 */
+const buyerPrefix = computed(() => (props.role === 'customer' ? '' : '需求方'))
 
-const isOrganizationRealname = computed(() => {
-  const authType = approvedRealname.value?.auth_type
-  return authType === 'ENTERPRISE' || authType === 'SOLE_PROPRIETOR'
-})
+/** 买方是否企业 / 个体工商户：抬头取公司全称，且这一侧的税号必填。 */
+const isOrganizationBuyer = computed(() => buyer.value?.isOrganization ?? false)
 
-/** 企业 / 个体工商户申请时必须给税号：开发者票的这一项由后端强制校验，前端先挡一道。 */
+/** 企业 / 个体工商户买方申请时必须给税号：开发者票的这一项由后端强制校验，前端先挡一道。 */
 const isTaxNumberRequired = computed(() =>
-  isOrganizationRealname.value && openSides.value.includes('developer'),
+  isOrganizationBuyer.value && openSides.value.includes('developer'),
 )
 
-// 企业/个体户用公司全称，个人用实名姓名。
-const prefillTitle = computed(() => {
-  const record = approvedRealname.value
-  if (!record) {
+// 企业/个体户用公司全称，个人用实名姓名；实名未通过时后端给空串，这里就留给用户手填。
+const prefillTitle = computed(() => buyer.value?.title ?? '')
+const prefillTaxNumber = computed(() => buyer.value?.taxNumber ?? '')
+
+/** 预填情况的说明：带出来了就说来源，没带出来是因为实名没过，提示手填。 */
+const prefillHint = computed(() => {
+  if (buyer.value?.title) {
+    return props.role === 'customer'
+      ? '抬头与税号已按本人实名主体自动填写，可修改。'
+      : '抬头与税号已按需求方（客户）实名主体自动填写，可修改。'
+  }
+  if (!buyer.value) {
     return ''
   }
-  return isOrganizationRealname.value
-    ? record.company_name?.trim() ?? ''
-    : record.real_name?.trim() ?? ''
+  return buyer.value.realnameStatus === 'pending'
+    ? `${buyerPrefix.value}实名认证审核中，抬头与税号需手动填写。`
+    : `${buyerPrefix.value}未完成实名认证，抬头与税号需手动填写。`
 })
 
-// 税号（统一社会信用代码）仅企业/个体户有值，与后端校验保持一致。
-const prefillTaxNumber = computed(() =>
-  isOrganizationRealname.value
-    ? approvedRealname.value?.unified_social_credit_code?.trim() ?? ''
-    : '',
-)
-
-const prefillNotice = computed(() => {
-  if (!prefillLoaded.value || approvedRealname.value) {
-    return ''
-  }
-  return realname.value?.status === 'pending'
-    ? '实名认证审核中，抬头与税号需手动填写。'
-    : '未完成实名认证，抬头与税号需手动填写。'
-})
+/** 预填没成功时才需要用户注意，用警示样式；自动带出只是说明，用弱化样式。 */
+const prefillNeedsAttention = computed(() => !buyer.value?.title && !!buyer.value)
 
 /** 只填充空字段，绝不覆盖用户输入或已保存的草稿。必须在 restoreDraft 之后调用。 */
 function applyPrefill() {
@@ -186,8 +178,8 @@ function applyPrefill() {
   if (!form.taxNumber.trim() && prefillTaxNumber.value) {
     form.taxNumber = prefillTaxNumber.value
   }
-  if (!form.recipientEmail.trim() && accountEmail.value) {
-    form.recipientEmail = accountEmail.value
+  if (!form.recipientEmail.trim() && buyer.value?.email) {
+    form.recipientEmail = buyer.value.email
   }
 }
 
@@ -196,38 +188,9 @@ function invoiceTitleNotice(title: string) {
   const expected = prefillTitle.value
   const trimmed = title.trim()
   if (expected && trimmed && trimmed !== expected) {
-    return `发票抬头与实名主体「${expected}」不一致，请确认无误`
+    return `发票抬头与${buyerPrefix.value}实名主体「${expected}」不一致，请确认无误`
   }
   return ''
-}
-
-async function ensureInvoicePrefill(): Promise<void> {
-  if (prefillLoaded.value || !props.token) {
-    return
-  }
-  if (prefillRequest) {
-    return prefillRequest
-  }
-  prefillRequest = (async () => {
-    // 预填属于增强能力，任一接口失败都静默降级，不阻塞开票申请。
-    const [realnameResult, profileResult] = await Promise.allSettled([
-      getMyRealnameVerification(props.token),
-      getProfile(props.token),
-    ])
-    if (realnameResult.status === 'fulfilled') {
-      realname.value = realnameResult.value
-    }
-    if (profileResult.status === 'fulfilled') {
-      accountEmail.value = profileResult.value.email?.trim() ?? ''
-    }
-    prefillLoaded.value = true
-    if (props.visible) {
-      applyPrefill()
-    }
-  })().finally(() => {
-    prefillRequest = null
-  })
-  return prefillRequest
 }
 
 function restoreDraft() {
@@ -256,7 +219,7 @@ function saveDraft() {
   showToast('草稿已保存', 'success')
 }
 
-/** 拉取本需求的合并开票汇总：金额由后端按已成功分账的结算单算出。 */
+/** 拉取本需求的合并开票汇总：金额由后端按已成功分账的结算单算出，买方主体也随它一起回来。 */
 async function ensureSummary() {
   if (summaryLoading.value || !props.token || !props.requirementId) {
     return
@@ -264,6 +227,8 @@ async function ensureSummary() {
   summaryLoading.value = true
   try {
     summary.value = await getInvoiceSummary(props.token, props.requirementId)
+    // 拿到买方主体就补齐还空着的字段：只填空字段，用户已经手填或草稿里存过的都不动。
+    applyPrefill()
   } catch (error) {
     summary.value = null
     showToast(error instanceof Error ? error.message : '加载可开票金额失败', 'error')
@@ -319,7 +284,7 @@ async function submit() {
     return
   }
   if (isTaxNumberRequired.value && !form.taxNumber.trim()) {
-    showToast('实名主体为企业或个体工商户，请填写税号', 'warning')
+    showToast(`${buyerPrefix.value}实名主体为企业或个体工商户，请填写税号`, 'warning')
     return
   }
   const notice = invoiceTitleNotice(form.invoiceTitle)
@@ -349,10 +314,10 @@ watch(
   () => props.visible,
   (open) => {
     if (open) {
+      // 先恢复草稿再用已缓存的汇总补空字段；汇总回来后会再补一次（见 `ensureSummary`）。
       restoreDraft()
       applyPrefill()
       void ensureSummary()
-      void ensureInvoicePrefill()
       document.addEventListener('keydown', handleKeydown)
     } else {
       document.removeEventListener('keydown', handleKeydown)
@@ -380,7 +345,10 @@ onUnmounted(() => {
         </div>
 
         <p class="invoice-panel__hint">{{ copy.hint }}</p>
-        <p v-if="prefillNotice" class="invoice-panel__notice">{{ prefillNotice }}</p>
+        <p v-if="prefillHint"
+          :class="prefillNeedsAttention ? 'invoice-panel__notice' : 'invoice-panel__prefill'">
+          {{ prefillHint }}
+        </p>
 
         <div class="invoice-amount" aria-live="polite">
           <span class="invoice-amount__label">可开票金额</span>
@@ -421,7 +389,8 @@ onUnmounted(() => {
         </label>
         <label>
           税号
-          <input v-model="form.taxNumber" type="text" maxlength="64" placeholder="企业或个体工商户必填" />
+          <input v-model="form.taxNumber" type="text" maxlength="64"
+            :placeholder="isOrganizationBuyer ? '企业或个体工商户必填' : '个人开票可不填'" />
         </label>
         <label>
           接收邮箱（可选）
@@ -487,6 +456,14 @@ onUnmounted(() => {
   border-radius: 8px;
   background: #fffaeb;
   color: #9a6700;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* 自动预填的说明：只是交代抬头/税号从哪来，不抢警示色的注意力。 */
+.invoice-panel__prefill {
+  margin: 0;
+  color: #667085;
   font-size: 12px;
   line-height: 1.6;
 }

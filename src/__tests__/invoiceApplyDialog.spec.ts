@@ -3,21 +3,34 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
-import type { InvoiceableSummary, InvoiceRecord } from '@/api/invoices'
+import type { InvoiceableSummary, InvoiceBuyerSubject, InvoiceRecord } from '@/api/invoices'
 
 const mocks = vi.hoisted(() => ({
   summary: vi.fn(),
   apply: vi.fn(),
-  realname: vi.fn(),
-  profile: vi.fn(),
 }))
 
 vi.mock('@/api/invoices', () => ({
   getInvoiceSummary: mocks.summary,
   applyInvoices: mocks.apply,
 }))
-vi.mock('@/api/realname', () => ({ getMyRealnameVerification: mocks.realname }))
-vi.mock('@/api/settings', () => ({ getProfile: mocks.profile }))
+
+/**
+ * 买方（需求方）的开票主体：抬头 / 税号 / 邮箱都由后端按实名主体折算好随汇总返回。
+ * 默认给个人主体（樊波），企业主体在需要的用例里覆盖。
+ */
+function buyer(overrides: Partial<InvoiceBuyerSubject> = {}): InvoiceBuyerSubject {
+  return {
+    username: 'alice',
+    authType: 'IDENTITY_CARD',
+    realnameStatus: 'approved',
+    isOrganization: false,
+    title: '樊波',
+    taxNumber: '',
+    email: 'client@example.com',
+    ...overrides,
+  }
+}
 
 /**
  * 合并申请后的汇总：一次申请按需求开出「平台服务费票 + 开发者收入票」，
@@ -28,6 +41,7 @@ function summary(overrides: Partial<InvoiceableSummary> = {}): InvoiceableSummar
     requirementId: 'REQ-1',
     customer: 'alice',
     developer: 'bob',
+    buyer: buyer(),
     settledAmountFen: 100000,
     settledAmountCny: '1000.00',
     platformFeeFen: 20000,
@@ -94,9 +108,6 @@ beforeEach(() => {
     platformInvoice: invoiceRecord(),
     developerInvoice: invoiceRecord({ id: 2, invoiceRole: 'developer', amountCny: '800.00' }),
   })
-  // 未完成实名：不做抬头预填，断言只看用户输入。
-  mocks.realname.mockResolvedValue({ status: 'pending' })
-  mocks.profile.mockResolvedValue({})
 })
 
 async function render(role: 'customer' | 'developer') {
@@ -106,6 +117,25 @@ async function render(role: 'customer' | 'developer') {
   })
   await flushPromises()
   return wrapper
+}
+
+type DialogWrapper = Awaited<ReturnType<typeof render>>
+
+function inputValue(wrapper: DialogWrapper, selector: string): string {
+  return (wrapper.find(selector).element as HTMLInputElement).value
+}
+
+/** 三个输入框按 maxlength 定位：抬头 200、税号 64、邮箱 254。 */
+function titleInput(wrapper: DialogWrapper): string {
+  return inputValue(wrapper, 'input[maxlength="200"]')
+}
+
+function taxInput(wrapper: DialogWrapper): string {
+  return inputValue(wrapper, 'input[maxlength="64"]')
+}
+
+function emailInput(wrapper: DialogWrapper): string {
+  return inputValue(wrapper, 'input[maxlength="254"]')
 }
 
 describe('InvoiceApplyDialog', () => {
@@ -201,21 +231,92 @@ describe('InvoiceApplyDialog', () => {
     wrapper.unmount()
   })
 
-  it('企业实名主体申请时缺税号先被挡下：开发者票的税号由后端强制校验', async () => {
-    mocks.realname.mockResolvedValue({
-      status: 'approved',
-      auth_type: 'ENTERPRISE',
-      company_name: '某某科技有限公司',
-      unified_social_credit_code: '',
-    })
+  it('企业买方申请时缺税号先被挡下：开发者票的税号由后端强制校验', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        // 企业买方：抬头按公司全称带出，税号没得带就留给用户手填。
+        buyer: buyer({
+          authType: 'ENTERPRISE',
+          isOrganization: true,
+          title: '某某科技有限公司',
+          taxNumber: '',
+        }),
+      }),
+    )
     const wrapper = await render('customer')
 
-    // 抬头按实名主体预填，税号没得填就没得填。
     expect((wrapper.find('input[type="text"]').element as HTMLInputElement).value).toBe('某某科技有限公司')
     await wrapper.find('.invoice-panel__submit').trigger('click')
     await flushPromises()
 
     expect(mocks.apply).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+  })
+
+  it('需求方视角按本人实名主体预填抬头 / 税号 / 邮箱', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        buyer: buyer({
+          authType: 'SOLE_PROPRIETOR',
+          isOrganization: true,
+          title: '彝良柒叁信息经营部',
+          taxNumber: '92530628MAKA0U1Y96',
+          email: 'client@example.com',
+        }),
+      }),
+    )
+    const wrapper = await render('customer')
+
+    // 个体工商户：抬头取主体名称、税号取统一社会信用代码、邮箱取账户主邮箱。
+    expect(titleInput(wrapper)).toBe('彝良柒叁信息经营部')
+    expect(taxInput(wrapper)).toBe('92530628MAKA0U1Y96')
+    expect(emailInput(wrapper)).toBe('client@example.com')
+    expect(wrapper.text()).toContain('抬头与税号已按本人实名主体自动填写')
+
+    wrapper.unmount()
+  })
+
+  it('乙方视角按需求方（客户）主体预填：带出的是买方，不是开发者自己', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        developerInvoiceFen: 70000,
+        developerInvoiceCny: '700.00',
+        invoiceableTotalFen: 70000,
+        invoiceableTotalCny: '700.00',
+        // 开发者自己是企业（彝良柒叁信息有限责任公司），但发票的买方是需求方樊波。
+        buyer: buyer({ username: 'alice', title: '樊波', taxNumber: '', email: 'client@example.com' }),
+      }),
+    )
+    const wrapper = await render('developer')
+
+    expect(titleInput(wrapper)).toBe('樊波')
+    expect(taxInput(wrapper)).toBe('')
+    expect(emailInput(wrapper)).toBe('client@example.com')
+    expect(wrapper.text()).toContain('抬头与税号已按需求方（客户）实名主体自动填写')
+    // 个人买方不需要税号，占位文案也跟着账户类型走。
+    expect(wrapper.find('input[maxlength="64"]').attributes('placeholder')).toBe('个人开票可不填')
+
+    wrapper.unmount()
+  })
+
+  it('需求方未完成实名认证时不给预填，提示手动填写', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        buyer: buyer({
+          authType: 'ENTERPRISE',
+          realnameStatus: 'pending',
+          isOrganization: true,
+          title: '',
+          taxNumber: '',
+          email: '',
+        }),
+      }),
+    )
+    const wrapper = await render('developer')
+
+    expect(titleInput(wrapper)).toBe('')
+    expect(wrapper.text()).toContain('需求方实名认证审核中，抬头与税号需手动填写。')
 
     wrapper.unmount()
   })
