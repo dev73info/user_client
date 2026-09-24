@@ -508,6 +508,37 @@ onUnmounted(() => {
   line-height: 1.6;
 }
 
+/* 可开票金额：合并开票后它是弹窗里唯一的主角，单独一块摆出来，
+   下面两行小字分别是「这笔钱是什么」与「本需求结算合计的拆解」。 */
+.invoice-amount {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #f8fafc;
+}
+
+.invoice-amount__label {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.invoice-amount__value {
+  color: #172033;
+  font-size: 24px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.invoice-amount__note {
+  color: #98a2b3;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .invoice-panel__submit {
   border: 0;
   border-radius: 8px;
