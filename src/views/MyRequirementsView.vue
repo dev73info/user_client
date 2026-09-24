@@ -146,7 +146,7 @@ const afterSalesTarget = ref<RequirementItem | null>(null)
 const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const conversationLoading = ref(false)
-/** 开票：申请入口在每条需求的操作栏，弹窗内再切换平台开具 / 开发者开具。 */
+/** 获取发票：入口在每条需求的操作栏，弹窗内再切换获取发票 / 获取开发者发票。 */
 const invoiceDialogVisible = ref(false)
 const invoiceRequirement = ref<RequirementItem | null>(null)
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
@@ -2189,7 +2189,7 @@ function moreRowActions(item: RequirementItem): RequirementRowAction[] {
   if (canComment(item.status) && item.comment_rating != null && !canCancel(item)) {
     entries.push({ key: 'comment', label: '修改评价' })
   }
-  entries.push({ key: 'invoice', label: '开票' })
+  entries.push({ key: 'invoice', label: '获取发票' })
   if (canRequestUnbindAsCreator(item)) {
     entries.push({ key: 'unbind-request', label: '申请解除绑定' })
   }

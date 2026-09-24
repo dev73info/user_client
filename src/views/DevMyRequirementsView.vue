@@ -55,7 +55,7 @@ const contractCreatingId = ref('')
 const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const conversationLoading = ref(false)
-/** 开票：乙方开的是开发者发票，入口与需求方共用同一个弹窗（弹窗按身份自动选边）。 */
+/** 获取发票：乙方获取的是开发者发票，入口与需求方共用同一个弹窗（弹窗按身份自动选边）。 */
 const invoiceDialogVisible = ref(false)
 const invoiceRequirement = ref<RequirementItem | null>(null)
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
@@ -1092,7 +1092,7 @@ async function loadRequirementConversations() {
                 <span>会话</span>
               </el-button>
               <el-button @click="openInvoiceDialog(item)">
-                开票
+                获取发票
               </el-button>
               <el-button v-if="hasPendingCreatorUnbindRequest(item)" type="warning"
                 @click="openUnbindRespond(item)">处理解除申请</el-button>
@@ -1396,7 +1396,7 @@ async function loadRequirementConversations() {
 }
 
 /* 会话按钮的圆角与字重都走统一层的 .dev-action--soft（10px 方角），
-   这里不再把它单独扭成胶囊——同一排的「签署合同 / 终止合作 / 开票」都是方角，
+   这里不再把它单独扭成胶囊——同一排的「签署合同 / 终止合作 / 获取发票」都是方角，
    只有这一颗是 999px 时整排按钮横竖不齐（见 dev-base.css 的行内软按钮一节）。 */
 .dev-requirement-card__conversation {
   font-weight: 700;

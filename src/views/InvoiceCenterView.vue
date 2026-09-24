@@ -216,7 +216,7 @@ async function openDocument(invoice: InvoiceRecord) {
         <div class="wb-card-head__title-block">
           <h3 class="wb-card-head__title">我的发票记录</h3>
           <p class="wb-card-head__desc">
-            开票申请在需求的操作栏发起，这里统一查看进度、上传与下载发票文件。
+            获取发票的入口在需求的操作栏，这里统一查看进度、上传与下载发票文件。
           </p>
         </div>
       </div>
@@ -254,7 +254,7 @@ async function openDocument(invoice: InvoiceRecord) {
             </el-button>
           </div>
         </template>
-        <template v-else>发票申请在对应需求的操作栏里发起，提交后会在这里出现。</template>
+        <template v-else>获取发票的入口在对应需求的操作栏里，提交后会在这里出现。</template>
       </div>
       <template v-else>
         <input ref="hiddenFileInput" class="invoice-center__file" type="file"

@@ -4,10 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
 import { useAuthStore } from '@/stores/auth'
-import type { InvoicePaymentOption } from '@/api/invoices'
+import type { InvoiceableSummary, InvoiceRecord } from '@/api/invoices'
 
 const mocks = vi.hoisted(() => ({
-  options: vi.fn(),
+  summary: vi.fn(),
   platform: vi.fn(),
   developer: vi.fn(),
   realname: vi.fn(),
@@ -15,41 +15,67 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/api/invoices', () => ({
-  listInvoicePaymentOptions: mocks.options,
+  getInvoiceSummary: mocks.summary,
   requestPlatformInvoice: mocks.platform,
   requestDeveloperInvoice: mocks.developer,
 }))
 vi.mock('@/api/realname', () => ({ getMyRealnameVerification: mocks.realname }))
 vi.mock('@/api/settings', () => ({ getProfile: mocks.profile }))
 
-function option(paymentId: string, requirementId: string): InvoicePaymentOption {
+/** 合并开票后的汇总：一张票覆盖整个需求，两侧金额由后端按已成功分账的结算单算出。 */
+function summary(overrides: Partial<InvoiceableSummary> = {}): InvoiceableSummary {
   return {
-    paymentId,
-    requirementId,
-    milestone: 'deposit',
-    amountFen: 100000,
-    amountCny: '1000.00',
-    payer: 'alice',
+    requirementId: 'REQ-1',
+    customer: 'alice',
     developer: 'bob',
+    settledAmountFen: 100000,
+    settledAmountCny: '1000.00',
     platformFeeFen: 20000,
     platformFeeCny: '200.00',
     developerGrossAmountFen: 80000,
     developerGrossAmountCny: '800.00',
+    pendingRefundFen: 0,
+    pendingRefundCny: '0.00',
+    platformInvoice: null,
+    developerInvoice: null,
+    ...overrides,
   }
 }
 
-// 需求 REQ-1 有定金 / 尾款两个已结算节点，REQ-2 是别的需求，不该出现在 REQ-1 的弹窗里。
-const OPTIONS: InvoicePaymentOption[] = [
-  option('PAY-1', 'REQ-1'),
-  option('PAY-2', 'REQ-1'),
-  option('PAY-9', 'REQ-2'),
-]
+function invoiceRecord(overrides: Partial<InvoiceRecord> = {}): InvoiceRecord {
+  return {
+    id: 1,
+    invoiceNo: 'INV-PLATFORM-1',
+    paymentId: null,
+    contractId: 1,
+    requirementId: 'REQ-1',
+    invoiceRole: 'platform',
+    applicantUsername: 'alice',
+    customerUsername: 'alice',
+    developerUsername: 'bob',
+    issuerName: '平台',
+    developerType: 'personal',
+    invoiceTitle: '某某科技有限公司',
+    taxNumber: '',
+    recipientEmail: '',
+    amountFen: 20000,
+    amountCny: '200.00',
+    documentUrl: null,
+    status: 'requested',
+    reviewNote: null,
+    reviewedBy: null,
+    reviewedAt: null,
+    createdAt: '2026-09-24 14:00:00',
+    updatedAt: '2026-09-24 14:00:00',
+    ...overrides,
+  }
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
   setActivePinia(createPinia())
   localStorage.clear()
-  mocks.options.mockResolvedValue(OPTIONS)
+  mocks.summary.mockResolvedValue(summary())
   // 未完成实名：不做抬头预填，断言只看用户输入。
   mocks.realname.mockResolvedValue({ status: 'pending' })
   mocks.profile.mockResolvedValue({})
@@ -68,81 +94,118 @@ async function render(role: 'customer' | 'developer', username: string) {
 }
 
 describe('InvoiceApplyDialog', () => {
-  it('需求方进入时选中平台开具，开发者一侧置灰并给出原因', async () => {
+  it('需求方默认获取平台发票，两侧都能切：平台票 ¥200、开发者票 ¥800', async () => {
     const wrapper = await render('customer', 'alice')
-    const tabs = wrapper.findAll('.invoice-side-switch__btn')
-    const platformTab = tabs[0]!
-    const developerTab = tabs[1]!
 
-    expect(platformTab.attributes('aria-checked')).toBe('true')
-    expect(platformTab.attributes('disabled')).toBeUndefined()
-    expect(developerTab.attributes('aria-checked')).toBe('false')
-    expect(developerTab.attributes('disabled')).toBeDefined()
-    expect(developerTab.attributes('title')).toContain('开发者发票由乙方申请')
-    expect(wrapper.find('.invoice-panel__notice').text()).toContain('开发者发票由乙方申请')
+    expect(wrapper.findAll('.invoice-side-switch__btn')[0]!.attributes('aria-checked')).toBe('true')
+    expect(wrapper.findAll('.invoice-side-switch__btn')[1]!.attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('.invoice-amount__value').text()).toBe('¥200.00')
+    expect(wrapper.find('.invoice-panel__submit').text()).toBe('提交平台发票申请')
+
+    await wrapper.findAll('.invoice-side-switch__btn')[1]!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAll('.invoice-side-switch__btn')[1]!.attributes('aria-checked')).toBe('true')
+    expect(wrapper.find('.invoice-amount__value').text()).toBe('¥800.00')
+    expect(wrapper.find('.invoice-panel__submit').text()).toBe('提交开发者发票申请')
 
     wrapper.unmount()
   })
 
-  it('支付节点只列当前需求的记录', async () => {
-    const wrapper = await render('customer', 'alice')
-    await wrapper.find('.invoice-payment__trigger').trigger('click')
-
-    const options = wrapper.findAll('.invoice-payment__option')
-
-    expect(options).toHaveLength(2)
-    expect(options.map((item) => item.attributes('aria-selected'))).toEqual(['false', 'false'])
-    expect(options[0]!.text()).toContain('REQ-1')
-    expect(options[0]!.text()).toContain('可开票 ¥200.00')
-    expect(wrapper.text()).not.toContain('REQ-2')
-
-    wrapper.unmount()
-  })
-
-  it('选中支付节点后回填到触发器并收起列表', async () => {
-    const wrapper = await render('customer', 'alice')
-    await wrapper.find('.invoice-payment__trigger').trigger('click')
-    await wrapper.findAll('.invoice-payment__option')[0]!.trigger('click')
-
-    expect(wrapper.find('.invoice-payment__menu').exists()).toBe(false)
-    expect(wrapper.find('.invoice-payment__trigger').text()).toContain('定金')
-    expect(wrapper.find('.invoice-payment__trigger').text()).toContain('可开票 ¥200.00')
-
-    wrapper.unmount()
-  })
-
-  it('开发者进入时选中开发者开具，平台一侧置灰', async () => {
+  it('开发者进入时默认开发者一侧，平台一侧置灰', async () => {
     const wrapper = await render('developer', 'bob')
     const tabs = wrapper.findAll('.invoice-side-switch__btn')
     const platformTab = tabs[0]!
     const developerTab = tabs[1]!
 
     expect(platformTab.attributes('disabled')).toBeDefined()
-    expect(platformTab.attributes('title')).toContain('平台服务费发票由付款方申请')
+    expect(platformTab.attributes('title')).toContain('平台发票由付款方获取')
     expect(developerTab.attributes('aria-checked')).toBe('true')
-    expect(wrapper.find('.invoice-panel__notice').text()).toContain('平台服务费发票由付款方申请')
+    expect(wrapper.find('.invoice-amount__value').text()).toBe('¥800.00')
+    expect(wrapper.find('.invoice-panel__notice').text()).toContain('平台发票由付款方获取')
 
     wrapper.unmount()
   })
 
-  it('提交平台开票申请时带上所选支付节点与抬头', async () => {
-    mocks.platform.mockResolvedValue({ id: 1 })
+  it('未结案的退款诉求只做提示，不改票面金额', async () => {
+    mocks.summary.mockResolvedValue(summary({ pendingRefundFen: 50000, pendingRefundCny: '500.00' }))
     const wrapper = await render('customer', 'alice')
 
-    await wrapper.find('.invoice-payment__trigger').trigger('click')
-    await wrapper.findAll('.invoice-payment__option')[1]!.trigger('click')
+    expect(wrapper.text()).toContain('本需求有未结案的退款诉求 ¥500.00')
+    // 尾款分账出账后退不动，票面仍按已成功分账的净额算。
+    expect(wrapper.find('.invoice-amount__value').text()).toBe('¥200.00')
+
+    wrapper.unmount()
+  })
+
+  it('提交平台发票申请只带需求编号与抬头', async () => {
+    mocks.platform.mockResolvedValue(invoiceRecord())
+    const wrapper = await render('customer', 'alice')
+
     await wrapper.find('input[type="text"]').setValue('某某科技有限公司')
     await wrapper.find('.invoice-panel__submit').trigger('click')
     await flushPromises()
 
     expect(mocks.platform).toHaveBeenCalledWith('test-token', {
-      payment_id: 'PAY-2',
+      requirement_id: 'REQ-1',
       invoice_title: '某某科技有限公司',
       tax_number: '',
       recipient_email: '',
     })
     expect(wrapper.emitted('submitted')).toBeTruthy()
     expect(wrapper.emitted('update:visible')).toEqual([[false]])
+
+    wrapper.unmount()
+  })
+
+  it('需求方索取开发者发票走开发者接口', async () => {
+    mocks.developer.mockResolvedValue(invoiceRecord({ invoiceRole: 'developer' }))
+    const wrapper = await render('customer', 'alice')
+
+    await wrapper.findAll('.invoice-side-switch__btn')[1]!.trigger('click')
+    await wrapper.find('input[type="text"]').setValue('某某科技有限公司')
+    await wrapper.find('.invoice-panel__submit').trigger('click')
+    await flushPromises()
+
+    expect(mocks.developer).toHaveBeenCalledWith('test-token', {
+      requirement_id: 'REQ-1',
+      invoice_title: '某某科技有限公司',
+      tax_number: '',
+      recipient_email: '',
+    })
+    expect(mocks.platform).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+  })
+
+  it('已开过发票时挡住重复提交', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({ platformInvoice: invoiceRecord({ status: 'under_review' }) }),
+    )
+    const wrapper = await render('customer', 'alice')
+
+    expect(wrapper.find('.invoice-panel__submit').attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('该发票已提交（审核中 · 票面 ¥200.00）')
+
+    wrapper.unmount()
+  })
+
+  it('没有已结算金额时既不给金额也不给提交', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        settledAmountFen: 0,
+        settledAmountCny: '0.00',
+        platformFeeFen: 0,
+        platformFeeCny: '0.00',
+        developerGrossAmountFen: 0,
+        developerGrossAmountCny: '0.00',
+      }),
+    )
+    const wrapper = await render('customer', 'alice')
+
+    expect(wrapper.find('.invoice-amount__value').text()).toBe('¥0.00')
+    expect(wrapper.find('.invoice-panel__submit').attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('本需求暂无可开票的已结算金额')
 
     wrapper.unmount()
   })
