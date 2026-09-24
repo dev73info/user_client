@@ -78,6 +78,11 @@ function invoiceRecord(overrides: Partial<InvoiceRecord> = {}): InvoiceRecord {
     invoiceTitle: '某某科技有限公司',
     taxNumber: '',
     recipientEmail: '',
+    invoiceKind: 'ordinary',
+    buyerAddress: '',
+    buyerPhone: '',
+    buyerBankName: '',
+    buyerBankAccount: '',
     amountFen: 20000,
     amountCny: '200.00',
     documentUrl: null,
@@ -121,21 +126,42 @@ async function render(role: 'customer' | 'developer') {
 
 type DialogWrapper = Awaited<ReturnType<typeof render>>
 
-function inputValue(wrapper: DialogWrapper, selector: string): string {
-  return (wrapper.find(selector).element as HTMLInputElement).value
+function inputValue(wrapper: DialogWrapper, name: string): string {
+  return (wrapper.find(`input[name="${name}"]`).element as HTMLInputElement).value
 }
 
-/** 三个输入框按 maxlength 定位：抬头 200、税号 64、邮箱 254。 */
+/** 三个主字段与四个专票资料字段都按 name 定位，不靠 maxlength（专票地址的 200 与抬头重了）。 */
 function titleInput(wrapper: DialogWrapper): string {
-  return inputValue(wrapper, 'input[maxlength="200"]')
+  return inputValue(wrapper, 'invoice_title')
 }
 
 function taxInput(wrapper: DialogWrapper): string {
-  return inputValue(wrapper, 'input[maxlength="64"]')
+  return inputValue(wrapper, 'tax_number')
 }
 
 function emailInput(wrapper: DialogWrapper): string {
-  return inputValue(wrapper, 'input[maxlength="254"]')
+  return inputValue(wrapper, 'recipient_email')
+}
+
+/** 专票资料是否展示在弹窗里（四个输入框齐全才算）。 */
+function hasSpecialFields(wrapper: DialogWrapper): boolean {
+  return ['buyer_address', 'buyer_phone', 'buyer_bank_name', 'buyer_bank_account'].every(
+    (name) => wrapper.find(`input[name="${name}"]`).exists(),
+  )
+}
+
+/** 勾选票种：`ordinary` / `special`。 */
+async function selectKind(wrapper: DialogWrapper, kind: 'ordinary' | 'special') {
+  const option = wrapper.find<HTMLInputElement>(`input[name="invoice-kind"][value="${kind}"]`)
+  await option.setValue(true)
+}
+
+/** 填满专票需要的四项购买方资料。 */
+async function fillSpecialFields(wrapper: DialogWrapper) {
+  await wrapper.find('input[name="buyer_address"]').setValue('云南省昭通市彝良县海子镇中沟村大坪组14号')
+  await wrapper.find('input[name="buyer_phone"]').setValue('0870-8888888')
+  await wrapper.find('input[name="buyer_bank_name"]').setValue('中国工商银行彝良县支行')
+  await wrapper.find('input[name="buyer_bank_account"]').setValue('1234567890123456789')
 }
 
 describe('InvoiceApplyDialog', () => {
@@ -224,6 +250,12 @@ describe('InvoiceApplyDialog', () => {
       invoice_title: '某某科技有限公司',
       tax_number: '',
       recipient_email: 'billing@example.com',
+      // 默认普票：不带专票资料，四项一律空串。
+      invoice_kind: 'ordinary',
+      buyer_address: '',
+      buyer_phone: '',
+      buyer_bank_name: '',
+      buyer_bank_account: '',
     })
     expect(wrapper.emitted('submitted')).toBeTruthy()
     expect(wrapper.emitted('update:visible')).toEqual([[false]])
@@ -434,6 +466,102 @@ describe('InvoiceApplyDialog', () => {
     expect(wrapper.find('.invoice-amount__value').text()).toBe('¥0.00')
     expect(wrapper.find('.invoice-panel__submit').attributes('disabled')).toBeDefined()
     expect(wrapper.text()).toContain('本需求暂无可开票金额')
+
+    wrapper.unmount()
+  })
+
+  it('个人买方没有专票选项：专票不得开给消费者个人', async () => {
+    const wrapper = await render('customer')
+
+    expect(wrapper.find('input[name="invoice-kind"][value="special"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('个人主体只能开具增值税普通发票')
+
+    wrapper.unmount()
+  })
+
+  it('企业买方可以选专票：四项资料没填齐先被挡下，填齐后按专票提交', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        buyer: buyer({
+          authType: 'ENTERPRISE',
+          isOrganization: true,
+          title: '某某科技有限公司',
+          taxNumber: '91530628MAKA0U1Y96',
+        }),
+      }),
+    )
+    const wrapper = await render('customer')
+
+    // 还没选专票时，四项购买方资料不出现。
+    expect(hasSpecialFields(wrapper)).toBe(false)
+    await selectKind(wrapper, 'special')
+    expect(hasSpecialFields(wrapper)).toBe(true)
+
+    await wrapper.find('.invoice-panel__submit').trigger('click')
+    await flushPromises()
+    expect(mocks.apply).not.toHaveBeenCalled()
+
+    await fillSpecialFields(wrapper)
+    await wrapper.find('.invoice-panel__submit').trigger('click')
+    await flushPromises()
+
+    expect(mocks.apply).toHaveBeenCalledWith('test-token', {
+      requirement_id: 'REQ-1',
+      invoice_title: '某某科技有限公司',
+      tax_number: '91530628MAKA0U1Y96',
+      recipient_email: 'client@example.com',
+      invoice_kind: 'special',
+      buyer_address: '云南省昭通市彝良县海子镇中沟村大坪组14号',
+      buyer_phone: '0870-8888888',
+      buyer_bank_name: '中国工商银行彝良县支行',
+      buyer_bank_account: '1234567890123456789',
+    })
+
+    wrapper.unmount()
+  })
+
+  it('专票改回普票后不把专票资料提交上去', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        buyer: buyer({
+          authType: 'ENTERPRISE',
+          isOrganization: true,
+          title: '某某科技有限公司',
+          taxNumber: '91530628MAKA0U1Y96',
+        }),
+      }),
+    )
+    const wrapper = await render('customer')
+
+    await selectKind(wrapper, 'special')
+    await fillSpecialFields(wrapper)
+    await selectKind(wrapper, 'ordinary')
+    await wrapper.find('.invoice-panel__submit').trigger('click')
+    await flushPromises()
+
+    const payload = mocks.apply.mock.calls[0]?.[1] as Record<string, string>
+    expect(payload.invoice_kind).toBe('ordinary')
+    expect(payload.buyer_address).toBe('')
+    expect(payload.buyer_bank_account).toBe('')
+
+    wrapper.unmount()
+  })
+
+  it('已提交的专票在进度行里点名票种', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        platformInvoice: invoiceRecord({
+          status: 'under_review',
+          invoiceKind: 'special',
+          buyerAddress: '云南省昭通市彝良县海子镇中沟村大坪组14号',
+        }),
+        invoiceableTotalFen: 70000,
+        invoiceableTotalCny: '700.00',
+      }),
+    )
+    const wrapper = await render('customer')
+
+    expect(wrapper.text()).toContain('平台服务费发票已提交（增值税专用发票 · 审核中 · 票面 ¥200.00）')
 
     wrapper.unmount()
   })

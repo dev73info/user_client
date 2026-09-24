@@ -4,6 +4,11 @@ export type InvoiceRole = 'platform' | 'developer'
 export type InvoiceStatus = 'requested' | 'under_review' | 'approved' | 'rejected' | 'reversed'
 /** `blue` 蓝票（正常开具）/ `red` 红票（红冲生成，金额存正数，负数语义由本字段表达）。 */
 export type InvoiceDocumentKind = 'blue' | 'red'
+/**
+ * 票种：`ordinary` 增值税普通发票（默认，个人 / 个体户 / 企业都适用）、
+ * `special` 增值税专用发票（只对能抵扣的企业、个体工商户客户开具，且开票资料必须齐全）。
+ */
+export type InvoiceKind = 'ordinary' | 'special'
 
 export type InvoiceRecord = {
   id: number
@@ -21,6 +26,13 @@ export type InvoiceRecord = {
   invoiceTitle: string
   taxNumber: string
   recipientEmail: string
+  /** 票种：`ordinary` 增值税普通发票 / `special` 增值税专用发票。 */
+  invoiceKind: InvoiceKind
+  /** 专票的购买方开票资料（普票为空串）：地址、电话、开户行、银行账号。 */
+  buyerAddress: string
+  buyerPhone: string
+  buyerBankName: string
+  buyerBankAccount: string
   amountFen: number
   amountCny: string
   documentUrl?: string | null
@@ -145,6 +157,13 @@ export type InvoiceRequestPayload = {
   invoice_title: string
   tax_number?: string
   recipient_email?: string
+  /** 票种；不传按普票处理。 */
+  invoice_kind?: InvoiceKind
+  /** 专票的购买方开票资料；普票留空即可。 */
+  buyer_address?: string
+  buyer_phone?: string
+  buyer_bank_name?: string
+  buyer_bank_account?: string
 }
 
 /** 一次开票申请的结果：两侧各自的发票记录，某一侧不可开或无需再开时为 `null`。 */

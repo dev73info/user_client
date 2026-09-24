@@ -299,6 +299,8 @@ async function openDocument(invoice: InvoiceRecord) {
             <div class="wb-item__main">
               <span class="wb-item__title">
                 {{ invoice.invoiceNo }}
+                <span v-if="invoice.invoiceKind === 'special'"
+                  class="invoice-center__kind invoice-center__kind--special">增值税专用发票</span>
                 <span v-if="invoice.documentKind === 'red'" class="invoice-center__kind">红字发票</span>
               </span>
               <span class="wb-item__meta">
@@ -307,6 +309,11 @@ async function openDocument(invoice: InvoiceRecord) {
               <span class="wb-item__meta">
                 金额 {{ displayAmount(invoice) }} ·
                 {{ invoice.invoiceRole === 'developer' ? developerTypeLabel(invoice.developerType) : '客户服务费' }}
+              </span>
+              <!-- 专票的购买方四项资料：开发者要照这四项在电子税务局开票，直接摊在列表里省得再要一遍。 -->
+              <span v-if="invoice.invoiceKind === 'special'" class="wb-item__meta">
+                专票购买方资料：{{ invoice.buyerAddress }} · {{ invoice.buyerPhone }} ·
+                {{ invoice.buyerBankName }} · {{ invoice.buyerBankAccount }}
               </span>
               <span v-if="invoice.documentKind === 'red' && invoice.reversalOfId" class="wb-item__meta">
                 冲销原票 #{{ invoice.reversalOfId }}{{ invoice.reversalReason ? ` · ${invoice.reversalReason}` : '' }}
@@ -364,7 +371,8 @@ async function openDocument(invoice: InvoiceRecord) {
   display: none;
 }
 
-/* 红字发票的标注：一枚浅红底小签，跟发票号同行，不抢状态徽标的位置。 */
+/* 票种与票性的标注：一枚小签，跟发票号同行，不抢状态徽标的位置。
+   红字发票用浅红底；增值税专用发票用主色底，客户一眼能认出自己申请的是哪一种。 */
 .invoice-center__kind {
   display: inline-flex;
   align-items: center;
@@ -376,5 +384,10 @@ async function openDocument(invoice: InvoiceRecord) {
   font-size: 11px;
   font-weight: 700;
   vertical-align: middle;
+}
+
+.invoice-center__kind--special {
+  background: var(--profile-accent-soft, rgba(79, 140, 255, 0.12));
+  color: var(--profile-accent, #4f8cff);
 }
 </style>
