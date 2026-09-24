@@ -371,6 +371,36 @@ function statusText(status: AfterSalesCase['status']) {
   }
 }
 
+/**
+ * 在办案件的一句话状态说明：先说清「现在到哪一步、你要做什么」。
+ *
+ * 待对方表态、协商中这类不需要解释的状态不给文案，省掉一行噪音。
+ */
+const STATUS_TIPS: Partial<Record<AfterSalesCase['status'], string>> = {
+  processing: '平台裁决已落地，资金正在执行，完成后自动结案。',
+  support_reviewing: '已提交平台裁决，等待客服认定责任方与金额。',
+  agreed: '双方已就诉求达成一致，落实后由发起人点「确认已落实」结案。',
+  rework_pending: '对方已接受返工要求，返工完成后由发起人点「确认已落实」结案。',
+}
+
+/** 折进折叠区的流程分支细节：只给确实有分支可说的状态，避免点开是空盒子。 */
+const STATUS_DETAILS: Partial<Record<AfterSalesCase['status'], string>> = {
+  support_reviewing:
+    '客服给出责任方与金额认定后，由平台执行尾款退还 / 保证金赔付并结案。这期间发起人仍可撤回申请，双方也仍可就退款与赔付额度提还价（谈成即按还价额度结案）；资金一旦开始执行就只能等落地。',
+  agreed:
+    '这条诉求没有需要平台执行的钱（赔偿 / 其它 / 未填退款额度的退款），落实完成后由发起人确认结案；一直不确认会在售后窗口关闭后转人工客服。',
+  rework_pending:
+    '若对方没有落实，发起人可点「未落实，申请平台介入」转客服裁决，届时可动用尾款退还与保证金赔付两个渠道；一直不确认会在售后窗口关闭后转人工客服。',
+}
+
+const statusTip = computed(() =>
+  currentCase.value ? (STATUS_TIPS[currentCase.value.status] ?? null) : null,
+)
+
+const statusDetail = computed(() =>
+  currentCase.value ? (STATUS_DETAILS[currentCase.value.status] ?? null) : null,
+)
+
 function kindText(value: AfterSalesKind) {
   return KIND_OPTIONS.find((option) => option.value === value)?.label ?? '其它问题'
 }
@@ -630,48 +660,47 @@ watch(
   <div v-if="visible" class="modal-wrap" @click.self="close">
     <section class="pay-modal after-sales-modal" aria-label="售后弹窗">
       <h3>售后</h3>
-      <p class="pay-line"><strong>需求标题：</strong>{{ requirementTitle }}</p>
-      <p class="pay-line"><strong>需求编号：</strong>{{ requirementId }}</p>
+      <p class="after-sales-modal__subject">
+        <strong>{{ requirementTitle }}</strong>
+        <span>{{ requirementId }}</span>
+      </p>
 
       <p v-if="casesLoading" class="after-sales-modal__empty">正在加载售后案件…</p>
 
       <template v-else-if="currentCase">
-        <p class="pay-line"><strong>案件编号：</strong>{{ currentCase.caseNo }}</p>
-        <p class="pay-line"><strong>当前状态：</strong>{{ statusText(currentCase.status) }}</p>
-        <p class="pay-line"><strong>发起人：</strong>{{ currentCase.openedBy }}</p>
-        <p class="pay-line"><strong>诉求类型：</strong>{{ kindText(currentCase.kind) }}</p>
-        <p class="pay-line"><strong>诉求额度：</strong>{{ currentCase.claimAmountCny }} 元</p>
-        <p class="pay-line"><strong>诉求说明：</strong>{{ currentCase.description }}</p>
-        <p class="pay-line">
-          <strong>需求方表态：</strong>{{ decisionText(currentCase.customerDecision) }}
+        <dl class="after-sales-modal__facts">
+          <div class="is-wide"><dt>案件编号</dt><dd>{{ currentCase.caseNo }}</dd></div>
+          <div><dt>当前状态</dt><dd>{{ statusText(currentCase.status) }}</dd></div>
+          <div><dt>发起人</dt><dd>{{ currentCase.openedBy }}</dd></div>
+          <div><dt>诉求类型</dt><dd>{{ kindText(currentCase.kind) }}</dd></div>
+          <div><dt>诉求额度</dt><dd>{{ currentCase.claimAmountCny }} 元</dd></div>
+          <div class="is-wide"><dt>诉求说明</dt><dd>{{ currentCase.description }}</dd></div>
+          <div><dt>需求方表态</dt><dd>{{ decisionText(currentCase.customerDecision) }}</dd></div>
+          <div><dt>开发者表态</dt><dd>{{ decisionText(currentCase.developerDecision) }}</dd></div>
+          <div v-if="currentCase.resolutionNote" class="is-wide">
+            <dt>处理说明</dt>
+            <dd>{{ currentCase.resolutionNote }}</dd>
+          </div>
+          <div v-if="currentCase.refundAmountFen || currentCase.compensationAmountFen" class="is-wide">
+            <dt>已执行资金</dt>
+            <dd>
+              退还尾款 {{ currentCase.refundAmountCny }} 元 / 保证金赔付
+              {{ currentCase.compensationAmountCny }} 元
+            </dd>
+          </div>
+        </dl>
+
+        <!-- 状态说明只留一句「现在到哪一步、要做什么」，分支细节收进折叠区，避免整段文字糊住按钮。 -->
+        <p v-if="statusTip" class="tip">{{ statusTip }}</p>
+        <p v-else-if="currentCase.status === 'manual_required'" class="tip">
+          资金执行遇到问题，已转人工客服处理；催办请走
+          <RouterLink :to="ticketCenterRoute">工单中心</RouterLink>。
         </p>
-        <p class="pay-line">
-          <strong>开发者表态：</strong>{{ decisionText(currentCase.developerDecision) }}
-        </p>
-        <p v-if="currentCase.resolutionNote" class="pay-line">
-          <strong>处理说明：</strong>{{ currentCase.resolutionNote }}
-        </p>
-        <p v-if="currentCase.refundAmountFen || currentCase.compensationAmountFen" class="pay-line">
-          <strong>已执行资金：</strong>
-          退还尾款 {{ currentCase.refundAmountCny }} 元 / 保证金赔付 {{ currentCase.compensationAmountCny }} 元
-        </p>
-        <p v-if="currentCase.status === 'processing'" class="tip">
-          平台裁决已落地，资金正在执行，完成后自动结案。
-        </p>
-        <p v-else-if="currentCase.status === 'support_reviewing'" class="tip">
-          已提交平台裁决，等待客服给出责任方与金额认定；裁决落地后由平台执行尾款退还 /
-          保证金赔付并结案。此期间发起人仍可撤回申请、双方也仍可就退款与赔付额度提还价
-          （谈成即按还价额度结案），但资金一旦开始执行就只能等落地。
-        </p>
-        <p v-else-if="currentCase.status === 'agreed'" class="tip">
-          双方已就诉求达成一致，这条诉求没有需要平台执行的钱（赔偿 / 其它 / 未填退款额度），
-          落实完成后由发起人点「确认已落实」结案；一直不确认会在售后窗口关闭后转人工客服。
-        </p>
-        <p v-else-if="currentCase.status === 'rework_pending'" class="tip">
-          对方已接受返工要求，返工完成后由发起人点「确认已落实」结案。若对方没有落实，
-          发起人可点「未落实，申请平台介入」转客服裁决（届时可动用尾款退还与保证金赔付两个渠道）；
-          一直不确认会在售后窗口关闭后转人工客服。
-        </p>
+        <details v-if="statusDetail" class="after-sales-modal__rules">
+          <summary>点开看流程细节</summary>
+          <p>{{ statusDetail }}</p>
+        </details>
+
         <p v-else-if="currentCase.status === 'manual_required'" class="tip">
           资金执行遇到问题，已转人工客服处理。客服会尽快跟进，进展会同步到需求会话里；
           催办请走
@@ -802,13 +831,25 @@ watch(
             placeholder="请写明时间、问题现象、与对方沟通的结果和你的诉求"></textarea>
         </label>
 
-        <p class="tip">
-          售后只在结单后的售后窗口内受理。提交后对方会在需求会话里收到通知：对方接受即按诉求执行
-          ——要求退款且填了额度时当场原路退还已付尾款，要求返工则转入「返工中」等你验收，
-          其余诉求（赔偿 / 其它）等你确认落实后结案；不接受则由平台裁决——原路退还已付尾款，
-          并从开发者仍冻结的接单保证金扣划赔付。返工中若对方没做到，你可以点「未落实，申请平台介入」
-          转客服裁决。诉求额度四类诉求都能填，只是你方主张，供平台裁决参考。
+        <!-- 规则不摊在表单里：只留一句话说清「提交后会发生什么」，分支细节收进折叠区。 -->
+        <p class="after-sales-modal__lead">
+          提交后对方会在需求会话里收到通知：接受即按你的诉求执行，不接受则由平台裁决。
         </p>
+        <details class="after-sales-modal__rules">
+          <summary>点开看售后规则</summary>
+          <ul>
+            <li>售后只在结单后的售后窗口内受理。</li>
+            <li>要求退款且填了额度：对方接受后当场原路退还你已付的尾款。</li>
+            <li>
+              要求返工：对方接受后转入「返工中」等你验收；对方没做到，可点「未落实，申请平台介入」转客服裁决。
+            </li>
+            <li>要求赔偿 / 其它问题：对方接受后，等你点「确认已落实」结案。</li>
+            <li>
+              对方不接受：由平台裁决，原路退还已付尾款，并从开发者仍冻结的接单保证金扣划赔付。
+            </li>
+            <li>诉求额度四类都能填，只是你方主张，供平台裁决参考。</li>
+          </ul>
+        </details>
       </template>
 
       <p v-else-if="canOpenCase && windowClosed" class="tip">
@@ -817,19 +858,28 @@ watch(
 
       <template v-else>
         <p class="tip">
-          售后由需求方（甲方）发起，你这边用于查看诉求并表态：接受即按诉求执行，不接受由平台裁决。
-          对诉求额度不认可时也可以直接提一个还价——对方接受即按还价的退款 + 保证金赔付两个额度执行结案，
-          拒绝则提议作废，可以改额度再提。需求方点了「确认已落实」即结案；返工类诉求若你认为已做到、
-          对方却报「未落实」，案件会转客服裁决。
-          结单后如需反映其它问题，请走工单中心联系平台。
+          售后由需求方（甲方）发起，你这边只用于查看诉求并表态：接受即按诉求执行，不接受由平台裁决。
         </p>
+        <details class="after-sales-modal__rules">
+          <summary>点开看你能做什么</summary>
+          <ul>
+            <li>
+              不认可诉求额度时可以直接提一个还价；对方接受即按还价的「退还尾款 + 保证金赔付」两个额度执行结案，
+              拒绝则提议作废，可以改额度再提。
+            </li>
+            <li>
+              需求方点了「确认已落实」即结案；返工类诉求若你认为已做到、对方却报「未落实」，案件会转客服裁决。
+            </li>
+            <li>结单后如需反映其它问题，请走工单中心联系平台。</li>
+          </ul>
+        </details>
       </template>
 
-      <div v-if="closedCases.length" class="after-sales-modal__history">
-        <div class="after-sales-modal__history-head">
+      <details v-if="closedCases.length" class="after-sales-modal__history">
+        <summary class="after-sales-modal__summary">
           <strong>历史售后案件</strong>
           <span>共 {{ closedCases.length }} 条</span>
-        </div>
+        </summary>
         <ul class="after-sales-modal__records">
           <li v-for="row in closedCases" :key="row.id">
             <div class="after-sales-modal__record-head">
@@ -840,7 +890,7 @@ watch(
             <small v-if="row.resolutionNote">{{ row.resolutionNote }}</small>
           </li>
         </ul>
-      </div>
+      </details>
 
       <div class="actions">
         <button class="ghost" type="button" :disabled="busy" @click="close">关闭</button>
@@ -859,6 +909,120 @@ watch(
   width: min(600px, 100%);
   max-height: calc(100vh - 36px);
   overflow-y: auto;
+}
+
+/* 需求标题与编号并成一行：它们是背景信息，不值得占两行正文位置。 */
+.pay-modal .after-sales-modal__subject {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 0 0 14px;
+}
+
+.pay-modal .after-sales-modal__subject strong {
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.pay-modal .after-sales-modal__subject span {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 案件事实排成两列：字段一眼扫完，不再是一串「标签：值」的长行。 */
+.pay-modal .after-sales-modal__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.pay-modal .after-sales-modal__facts > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pay-modal .after-sales-modal__facts > div.is-wide {
+  grid-column: 1 / -1;
+}
+
+.pay-modal .after-sales-modal__facts dt {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pay-modal .after-sales-modal__facts dd {
+  margin: 0;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* 表单下的那句提示：不加底色，就一行灰字，别把眼睛从按钮上拽走。 */
+.pay-modal .after-sales-modal__lead {
+  margin: 14px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* 规则与流程细节默认折起来，需要时再点开。 */
+.pay-modal .after-sales-modal__rules {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.pay-modal .after-sales-modal__rules > summary {
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pay-modal .after-sales-modal__rules ul {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.pay-modal .after-sales-modal__rules p {
+  margin: 10px 0 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* 历史案件默认折起来：动辄几十条，摊开只会把当前要处理的事顶出屏幕。 */
+.pay-modal .after-sales-modal__summary {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pay-modal .after-sales-modal__summary span {
+  margin-left: 8px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .pay-modal .after-sales-modal__field {
@@ -1036,6 +1200,11 @@ watch(
 }
 
 @media (max-width: 640px) {
+  /* 窄屏上事实列表退回单列：两列会把「标签 + 值」挤成竖排字。 */
+  .pay-modal .after-sales-modal__facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .pay-modal .after-sales-modal__records {
     max-height: none;
   }
