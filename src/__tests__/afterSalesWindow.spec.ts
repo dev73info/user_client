@@ -39,7 +39,6 @@ const openCase: AfterSalesCase = {
   requirementStatus: 'completed',
   openedBy: 'client_flow',
   openerRole: 'customer',
-  roundSeq: 1,
   kind: 'refund',
   description: '交付的首页在手机上仍然错位',
   status: 'submitted',

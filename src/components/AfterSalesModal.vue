@@ -86,23 +86,23 @@ const windowClosedTip = computed(() =>
 )
 
 /**
- * 当前需求正在办理的售后案件（一个需求只有一条案件，在办的那轮就挂在它上面）。
+ * 当前需求正在办理的售后案件（一个需求只有一条案件，收口前就挂在它上面）。
  */
 const currentCase = computed(() =>
   cases.value.find((row) => !CLOSED_STATUSES.includes(row.status)),
 )
 
 /**
- * 已经收口的当前轮（撤回 / 驳回 / 结案）：案件只有一条，所以它就是「上一轮」的结果。
+ * 已经收口的案件（撤回 / 驳回 / 结案）：案件只有一条，所以它就是「上次售后」的结果。
  *
- * 更早的轮次是平台侧的留痕（管理端 / 客服端按轮次查），双方视图不再堆历史案件列表——
- * 需求方与开发者只看得到最近这一轮的结论，再次提交会复用同一条案件开下一轮。
+ * 售后不记录轮次：再次提交会复用同一条案件，上一次的诉求与结论被这次的覆盖，
+ * 平台侧也查不到历史诉求，所以这里只展示「上次售后」这一条结论，不堆历史列表。
  */
 const lastClosedCase = computed(() =>
   cases.value.find((row) => CLOSED_STATUSES.includes(row.status)),
 )
 
-/** 上一轮收口的展示时间：优先用后端给的结案时间，兜底用最后更新时间。 */
+/** 上次售后收口的展示时间：优先用后端给的结案时间，兜底用最后更新时间。 */
 const lastClosedAt = computed(() => {
   const row = lastClosedCase.value
   return row ? row.resolvedAt || row.updatedAt : ''
@@ -485,8 +485,8 @@ watch(
 
       <template v-else>
         <!-- 上一次售后的结论：案件只有一条，收口后的这一条就是上次的结果，双方都看得到。
-             更早的轮次收在平台侧（管理端 / 客服端按轮次查），双方视图不出历史案件列表，
-             否则同一需求的每一次售后都会在这里堆成一条「历史售后案件」。 -->
+             售后不记录轮次，再次提交会复用同一条案件并覆盖上次的诉求，平台侧也查不到历史，
+             因此这里只出这一条结论，不堆历史列表，否则每次售后都会堆成一条「历史售后案件」。 -->
         <dl v-if="lastClosedCase" class="after-sales-modal__facts">
           <div>
             <dt>上次售后</dt>
@@ -511,7 +511,7 @@ watch(
 
         <template v-if="canSubmitCase">
           <p v-if="lastClosedCase" class="tip">
-            还有问题就继续提交：新诉求会接着这条案件处理，上一次的诉求与结论仍留在平台侧可查。
+            还有问题就继续提交：新诉求会接着这条案件处理，上一次的诉求与结论会被这次提交覆盖。
           </p>
 
           <label class="after-sales-modal__field">
