@@ -28,9 +28,14 @@ describe('conversation status cards', () => {
     expect(meta('acceptance_passed', 'customer', 'pending_final')?.actionLabel).toBe('去支付尾款')
   })
 
-  it('keeps the delivery entry to the developer only', () => {
-    expect(meta('deposit_paid', 'developer', 'deposit_paid')?.actionLabel).toBe('去交付')
-    expect(meta('deposit_paid', 'customer', 'deposit_paid')?.actionLabel).toBeUndefined()
+  it('keeps the delivery entry to the developer only while that step is open', () => {
+    expect(meta('deposit_paid', 'developer', 'in_development')?.actionLabel).toBe('去交付')
+    expect(meta('deposit_paid', 'customer', 'in_development')?.actionLabel).toBeUndefined()
+    // 交付入口只在需求卡片上真的有「提交交付版本」的阶段给：待开发时资源或合同还没就绪，
+    // 待分账与结单后交付早已做完，这两种情况下再挂「去交付」，点进去都只有一个没有该按钮的列表。
+    expect(meta('deposit_paid', 'developer', 'deposit_paid')?.actionLabel).toBeUndefined()
+    expect(meta('deposit_paid', 'developer', 'pending_settlement')?.actionLabel).toBeUndefined()
+    expect(meta('deposit_paid', 'developer', 'completed')?.actionLabel).toBeUndefined()
   })
 
   it('turns the delivered version card into a download for the customer', () => {
@@ -81,6 +86,20 @@ describe('conversation status cards', () => {
     // 需求方验收不通过后，整改与重新交付是开发者的动作。
     expect(meta('acceptance_rejected', 'developer', 'in_development')?.actionLabel).toBe('去交付')
     expect(meta('acceptance_rejected', 'customer', 'in_development')?.actionLabel).toBeUndefined()
+    // 与「定金已缴纳」同口径：交付这一步做完之后，历史卡片不再挂「去交付」。
+    expect(meta('acceptance_rejected', 'developer', 'pending_settlement')?.actionLabel).toBeUndefined()
+    expect(meta('acceptance_rejected', 'developer', 'completed')?.actionLabel).toBeUndefined()
+  })
+
+  it('drops the final-payment button once the final payment is paid', () => {
+    // 尾款还在等需求方缴时才给入口。
+    expect(meta('acceptance_passed', 'customer', 'pending_final')?.actionLabel).toBe('去支付尾款')
+    // 缴清即转「待分账」，之后结单——这两步需求方都没有尾款可付，历史卡片上留着按钮
+    // 只会把人送回一个已经没有该入口的需求列表。
+    expect(meta('acceptance_passed', 'customer', 'pending_settlement')?.actionLabel).toBeUndefined()
+    expect(meta('acceptance_passed', 'customer', 'completed')?.actionLabel).toBeUndefined()
+    // 需求状态还没取到时按「不在待付尾款」处理：宁可不给按钮，也不给一个可能重复支付的入口。
+    expect(meta('acceptance_passed', 'customer', null)?.actionLabel).toBeUndefined()
   })
 
   it('ignores unknown event codes', () => {

@@ -28,6 +28,29 @@ export type ConversationCardMeta = {
 
 export type ConversationCardRole = 'customer' | 'developer'
 
+/**
+ * 「交付」这一步还开着的需求状态：开发中与待付尾款，阶段性判定与工具条 `canDeliver` 一致。
+ *
+ * 工具条另需「已绑定资源项目 + 已发布版本」，卡片看不到那两个条件，只按阶段裁定：
+ * 真正的交集由工具条兜底，所以这里放宽只会少给按钮，不会给出一个点下去必然报错的入口。
+ * 门控的意义在历史卡片上——待分账与结单时交付早已做完，卡片再挂「去交付」，
+ * 点进去只会落在一个没有该入口的页面上。
+ */
+const DELIVERABLE_STATUSES: readonly string[] = ['in_development', 'pending_final']
+/**
+ * 尾款还在等需求方缴的状态。
+ *
+ * 尾款一缴清，需求立刻转「待分账」（`pending_settlement`），渠道分账完成后才结单，
+ * 这两步里需求方都没有可付的尾款——历史卡片再挂「去支付尾款」只会把人送回一个
+ * 已经没有该入口的需求列表，甚至重复发起一笔已完成的支付。
+ */
+const FINAL_PAYABLE_STATUSES: readonly string[] = ['pending_final']
+
+/** 需求当前是否落在给定的一组状态里；状态还没取到时按「不在」处理，宁可不给按钮。 */
+function statusIn(status: string | null, allowed: readonly string[]): boolean {
+  return status != null && allowed.includes(status)
+}
+
 export function conversationCardMeta(
   actionType: string,
   requirementId: string,
@@ -87,7 +110,12 @@ export function conversationCardMeta(
         title: '定金已缴纳',
         description: '需求方已缴纳定金，需求进入开发阶段。',
         // 交付是开发者的动作，需求方这边没有可执行入口，只保留卡片本身。
-        actionLabel: role === 'developer' ? '去交付' : undefined,
+        // 只在交付那一步给：需求结单或已进入待分账后，这张历史卡片上的「去交付」
+        // 只会把人送到一个没有交付入口的页面。
+        actionLabel:
+          role === 'developer' && statusIn(requirementStatus, DELIVERABLE_STATUSES)
+            ? '去交付'
+            : undefined,
         to: requirementListRoute,
       }
     case 'delivery_submitted':
@@ -109,15 +137,24 @@ export function conversationCardMeta(
         title: '验收已通过',
         description: '需求方已验收通过，等待支付尾款。',
         // 付尾款是需求方的动作，开发者这边只是通知，不给按钮。
-        actionLabel: role === 'developer' ? undefined : '去支付尾款',
+        // 只在「待付尾款」这一步给：尾款缴清即转「待分账」，这一步已经做完，
+        // 再挂按钮只会把人送回一个没有尾款可付的需求列表。
+        actionLabel:
+          role !== 'developer' && statusIn(requirementStatus, FINAL_PAYABLE_STATUSES)
+            ? '去支付尾款'
+            : undefined,
         to: requirementListRoute,
       }
     case 'acceptance_rejected':
       return {
         title: '验收未通过',
         description: '需求方验收未通过，开发者整改后可重新提交验收。',
-        // 整改与重新交付都是开发者的动作，需求方这边只是通知，不给按钮。
-        actionLabel: role === 'developer' ? '去交付' : undefined,
+        // 整改与重新交付都是开发者的动作，需求方这边只是通知，不给按钮；
+        // 与「定金已缴纳」同口径，交付入口只在交付那一步给，结单后的历史卡片不再挂。
+        actionLabel:
+          role === 'developer' && statusIn(requirementStatus, DELIVERABLE_STATUSES)
+            ? '去交付'
+            : undefined,
         to: requirementListRoute,
       }
     case 'final_paid':
