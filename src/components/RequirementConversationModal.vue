@@ -936,9 +936,18 @@ function handleBackdropClick() {
                 <div class="conversation-card__foot">
                   <time :title="row.createdAt">{{ formatMessageClock(row.createdAt) }}</time>
                   <div class="conversation-card__actions">
-                    <el-button v-if="row.card.actionLabel" class="conversation-card__action" type="primary" size="small"
+                    <el-button v-if="row.card.actionLabel && !row.card.deliveryAction"
+                      class="conversation-card__action" type="primary" size="small"
                       :loading="downloadLoading && row.card.downloadDelivery"
                       @click="runCardAction(row.card, row.message)">
+                      {{ row.card.actionLabel }}
+                    </el-button>
+                    <!-- 「去交付」不跳需求列表：交付弹窗就挂在同一条会话底部的工具条上，
+                         按下去原地打开它。能不能交付仍由工具条裁定（没绑资源项目、阶段不对都不给），
+                         条件不够时这张卡片就不摆按钮，不给出点了没反应的入口。 -->
+                    <el-button v-else-if="row.card.deliveryAction && actionsRef?.canDeliver"
+                      class="conversation-card__action" type="primary" size="small"
+                      @click="actionsRef?.openDeliveryDialog()">
                       {{ row.card.actionLabel }}
                     </el-button>
                     <!-- 验收按钮摆在「下载交付产物」之后：这张卡片说的就是「请验收后支付尾款」，

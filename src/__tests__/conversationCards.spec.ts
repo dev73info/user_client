@@ -28,23 +28,33 @@ describe('conversation status cards', () => {
     expect(meta('acceptance_passed', 'customer', 'pending_final')?.actionLabel).toBe('去支付尾款')
   })
 
-  it('keeps the delivery entry to the developer only while that step is open', () => {
-    expect(meta('deposit_paid', 'developer', 'in_development')?.actionLabel).toBe('去交付')
+  it('opens the delivery dialog in place instead of sending the developer to the list', () => {
+    const card = meta('deposit_paid', 'developer', 'in_development')
+    expect(card?.actionLabel).toBe('去交付')
+    // 「去交付」不跳页：交付弹窗就挂在同一条会话底部的工具条上，按下去原地打开它。
+    expect(card?.deliveryAction).toBe(true)
+    expect(card?.to).toBeUndefined()
+
     expect(meta('deposit_paid', 'customer', 'in_development')?.actionLabel).toBeUndefined()
+    expect(meta('deposit_paid', 'customer', 'in_development')?.deliveryAction).toBe(false)
     // 交付入口只在需求卡片上真的有「提交交付版本」的阶段给：待开发时资源或合同还没就绪，
-    // 待分账与结单后交付早已做完，这两种情况下再挂「去交付」，点进去都只有一个没有该按钮的列表。
+    // 待分账与结单后交付早已做完，这两种情况下再挂「去交付」都只能点出一个空弹窗。
     expect(meta('deposit_paid', 'developer', 'deposit_paid')?.actionLabel).toBeUndefined()
-    expect(meta('deposit_paid', 'developer', 'pending_settlement')?.actionLabel).toBeUndefined()
-    expect(meta('deposit_paid', 'developer', 'completed')?.actionLabel).toBeUndefined()
+    expect(meta('deposit_paid', 'developer', 'pending_settlement')?.deliveryAction).toBe(false)
+    expect(meta('deposit_paid', 'developer', 'completed')?.deliveryAction).toBe(false)
   })
 
   it('turns the delivered version card into a download for the customer', () => {
     const customer = meta('delivery_submitted', 'customer', 'in_development')
     expect(customer?.actionLabel).toBe('下载交付产物')
     expect(customer?.downloadDelivery).toBe(true)
+    expect(customer?.title).toBe('收到交付版本')
 
-    // 交付是开发者自己提交的，这张卡片对开发者只是通知，没有可做的动作。
+    // 交付是开发者自己提交的，这张卡片对开发者只是回执：文案要按开发者视角写，
+    // 「收到交付版本」在乙方眼里会像是别人交给了他；按钮也不给。
     const developer = meta('delivery_submitted', 'developer', 'in_development')
+    expect(developer?.title).toBe('已提交交付版本')
+    expect(developer?.description).toContain('你已提交')
     expect(developer?.actionLabel).toBeUndefined()
     expect(developer?.downloadDelivery).toBe(false)
   })
@@ -83,8 +93,11 @@ describe('conversation status cards', () => {
   })
 
   it('sends the developer back to delivery after a rejected acceptance', () => {
-    // 需求方验收不通过后，整改与重新交付是开发者的动作。
-    expect(meta('acceptance_rejected', 'developer', 'in_development')?.actionLabel).toBe('去交付')
+    // 需求方验收不通过后，整改与重新交付是开发者的动作，同样是原地打开交付弹窗不跳页。
+    const card = meta('acceptance_rejected', 'developer', 'in_development')
+    expect(card?.actionLabel).toBe('去交付')
+    expect(card?.deliveryAction).toBe(true)
+    expect(card?.to).toBeUndefined()
     expect(meta('acceptance_rejected', 'customer', 'in_development')?.actionLabel).toBeUndefined()
     // 与「定金已缴纳」同口径：交付这一步做完之后，历史卡片不再挂「去交付」。
     expect(meta('acceptance_rejected', 'developer', 'pending_settlement')?.actionLabel).toBeUndefined()

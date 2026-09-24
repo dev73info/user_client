@@ -17,6 +17,14 @@ export type ConversationCardMeta = {
   /** 下载交付产物：按卡片上的版本号取绑定资源项目的交付版本文件，不再走 to 跳转。 */
   downloadDelivery?: boolean
   /**
+   * 这张卡片当前还该不该给「交付」入口（开发者视角），点了原地打开交付弹窗，不跳页。
+   *
+   * 与 `to` 的区别就在这儿：交付弹窗一直挂在会话底部的工具条上，「去交付」把它打开即可，
+   * 把人送回需求列表再自己找入口是白跑一趟。能不能交付仍由工具条裁定（没绑资源项目、
+   * 阶段不对都不给），卡片只负责把入口摆出来。
+   */
+  deliveryAction?: boolean
+  /**
    * 这张卡片当前还该不该给「验收」入口（需求方视角）。
    *
    * 只说「卡片所在的这一步还是验收那一步」，不看合同、绑定资源与版本数这些实际条件——
@@ -34,7 +42,7 @@ export type ConversationCardRole = 'customer' | 'developer'
  * 工具条另需「已绑定资源项目 + 已发布版本」，卡片看不到那两个条件，只按阶段裁定：
  * 真正的交集由工具条兜底，所以这里放宽只会少给按钮，不会给出一个点下去必然报错的入口。
  * 门控的意义在历史卡片上——待分账与结单时交付早已做完，卡片再挂「去交付」，
- * 点进去只会落在一个没有该入口的页面上。
+ * 点开也只会落到一个没有交付入口的页面上。
  */
 const DELIVERABLE_STATUSES: readonly string[] = ['in_development', 'pending_final']
 /**
@@ -75,6 +83,9 @@ export function conversationCardMeta(
     actionLabel: '去工单中心催办',
     to: ticketCenterRoute,
   }
+  // 交付那一步还开着（开发者视角）：卡片上的「去交付」原地打开交付弹窗，不跳页。
+  const canDeliverFromCard =
+    role === 'developer' && statusIn(requirementStatus, DELIVERABLE_STATUSES)
 
   switch (actionType) {
     // 合同在爱签侧，点按钮就是去看爱签那份合同（未签署时爱签页面里也能直接签），
@@ -110,19 +121,23 @@ export function conversationCardMeta(
         title: '定金已缴纳',
         description: '需求方已缴纳定金，需求进入开发阶段。',
         // 交付是开发者的动作，需求方这边没有可执行入口，只保留卡片本身。
-        // 只在交付那一步给：需求结单或已进入待分账后，这张历史卡片上的「去交付」
-        // 只会把人送到一个没有交付入口的页面。
-        actionLabel:
-          role === 'developer' && statusIn(requirementStatus, DELIVERABLE_STATUSES)
-            ? '去交付'
-            : undefined,
-        to: requirementListRoute,
+        // 开发者这边的「去交付」不再跳需求列表：交付弹窗就在同一条会话的底部工具条上，
+        // 按下去原地打开它。只在交付那一步给——待分账与结单后交付早已做完，
+        // 这时候再挂按钮也只会是一个点了没反应的死入口。
+        actionLabel: canDeliverFromCard ? '去交付' : undefined,
+        deliveryAction: canDeliverFromCard,
+        to: canDeliverFromCard ? undefined : requirementListRoute,
       }
     case 'delivery_submitted':
       return {
-        title: '收到交付版本',
-        description: '开发者已提交交付版本，请验收后支付尾款。',
-        // 交付是开发者自己提交的，这张卡片对开发者只是通知，不给按钮；
+        // 同一张卡片两个视角各说各话：需求方是「收到了什么」，开发者是自己刚做完的那一步，
+        // 对开发者写成「收到交付版本」会像是别人交给了他。
+        title: role === 'developer' ? '已提交交付版本' : '收到交付版本',
+        description:
+          role === 'developer'
+            ? '你已提交交付版本，等待需求方验收；验收通过后需求进入待付尾款。'
+            : '开发者已提交交付版本，请验收后支付尾款。',
+        // 交付是开发者自己提交的，这张卡片对开发者只是回执，不给按钮；
         // 需求方这边直接给交付产物的下载入口（不跳页），并在同一行给出「验收」：
         // 卡片说的就是「请验收后支付尾款」，入口放这儿比只留在底部工具条里更顺路。
         // 只在「开发中」给验收入口：交付产物的下载一直保留，但验收通过后卡片所在的那一步
@@ -150,12 +165,11 @@ export function conversationCardMeta(
         title: '验收未通过',
         description: '需求方验收未通过，开发者整改后可重新提交验收。',
         // 整改与重新交付都是开发者的动作，需求方这边只是通知，不给按钮；
-        // 与「定金已缴纳」同口径，交付入口只在交付那一步给，结单后的历史卡片不再挂。
-        actionLabel:
-          role === 'developer' && statusIn(requirementStatus, DELIVERABLE_STATUSES)
-            ? '去交付'
-            : undefined,
-        to: requirementListRoute,
+        // 与「定金已缴纳」同口径：交付入口只在交付那一步给，且原地打开交付弹窗不跳页，
+        // 结单后的历史卡片不再挂。
+        actionLabel: canDeliverFromCard ? '去交付' : undefined,
+        deliveryAction: canDeliverFromCard,
+        to: canDeliverFromCard ? undefined : requirementListRoute,
       }
     case 'final_paid':
       return {
