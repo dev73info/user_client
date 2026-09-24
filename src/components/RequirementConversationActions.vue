@@ -16,7 +16,13 @@ import {
   type AdapayBreachCase,
   type AdapayBreachDecisionValue,
   type AdapayBreachVerdictParty,
+  type AdapayBusinessPayChannel,
 } from '@/api/adapay'
+import {
+  getUnionPaymentAuthorizeUrl,
+  isUnionPaymentAuthorizationRequired,
+  isWechatPaymentAuthorizationRequired,
+} from '@/api/auth'
 import {
   createRequirementContract,
   fetchAsignRequirementPreviewUrl,
@@ -105,6 +111,8 @@ const actingKey = ref('')
 const payVisible = ref(false)
 const payLoading = ref(false)
 const depositPolicyAccepted = ref(false)
+/** 支付弹窗里选中的渠道：与「我的需求」页同一份取值，弹窗关掉即重置回支付宝。 */
+const payChannel = ref<AdapayBusinessPayChannel>('alipay')
 
 const deliveryVisible = ref(false)
 const acceptanceVisible = ref(false)
@@ -485,7 +493,15 @@ async function openContract() {
 
 function openPayDialog() {
   depositPolicyAccepted.value = false
+  payChannel.value = 'alipay'
   payVisible.value = true
+}
+
+function updatePayChannel(channel: AdapayBusinessPayChannel) {
+  if (payChannel.value === channel) {
+    return
+  }
+  payChannel.value = channel
 }
 
 async function submitPayment() {
@@ -504,6 +520,7 @@ async function submitPayment() {
   }
 
   const stageLabel = payStage.value === 'final' ? '尾款' : '定金'
+  const channel = payChannel.value
   const clientPlatform = getAdapayClientPlatform()
   payLoading.value = true
   try {
@@ -511,7 +528,7 @@ async function submitPayment() {
       props.token,
       item.requirement_id,
       payStage.value,
-      'alipay',
+      channel,
       clientPlatform,
     )
     payVisible.value = false
@@ -521,13 +538,51 @@ async function submitPayment() {
       query: buildAdapayPaymentQuery({
         paymentId: created.paymentId,
         requirementId: created.requirementId,
-        channel: 'alipay',
+        channel,
         clientPlatform,
         amountCny: created.amountCny,
         qrContent: created.payUrl,
       }),
     })
   } catch (error) {
+    // 微信 / 云闪付要先在支付页拿授权（未绑定 open_id 时渠道会拒单）。
+    // 与「我的需求」页同一套兜底：微信直接跳支付页的意图模式，由支付页在微信内
+    // 静默授权后自动下单；云闪付只支持移动端，PC 上提示换一种支付方式。
+    if (isWechatPaymentAuthorizationRequired(error)) {
+      payVisible.value = false
+      await router.push({
+        name: 'payment',
+        query: buildAdapayPaymentQuery({
+          requirementId: item.requirement_id,
+          milestone: payStage.value,
+          channel: 'wechat',
+          clientPlatform,
+          amountCny: payAmount.value,
+          intent: true,
+        }),
+      })
+      return
+    }
+    if (isUnionPaymentAuthorizationRequired(error)) {
+      if (clientPlatform !== 'mobile') {
+        showToast('云闪付授权仅适用于移动端，请重新选择支付方式', 'warning')
+        return
+      }
+      try {
+        const authorization = await getUnionPaymentAuthorizeUrl(props.token, window.location.href)
+        if (!authorization.url.trim()) {
+          throw new Error('云闪付授权地址为空')
+        }
+        window.location.assign(authorization.url)
+        return
+      } catch (authorizationError) {
+        showToast(
+          authorizationError instanceof Error ? authorizationError.message : '发起云闪付授权失败',
+          'error',
+        )
+        return
+      }
+    }
     showToast(error instanceof Error ? error.message : '支付失败', 'error')
   } finally {
     payLoading.value = false
@@ -771,11 +826,12 @@ function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
 }
 
 /**
- * 给会话容器用的两个入口。会话卡片（「收到交付版本」那张）也要挂「验收」按钮，
- * 但能不能验收、以及验收弹窗归谁管，都以工具条这份判断为准——卡片那边只负责把入口
- * 摆在卡片上。两处共用同一个 computed 与同一个弹窗，条件不会各写一套而走偏。
+ * 给会话容器用的四个入口。会话卡片（「收到交付版本」那张）也要挂「验收」按钮，
+ * 「定金已缴纳 / 验收未通过」两张卡片还要挂「去交付」，但能不能做、以及弹窗归谁管，
+ * 都以工具条这份判断为准——卡片那边只负责把入口摆在卡片上。两处共用同一组 computed
+ * 与同一组弹窗，条件不会各写一套而走偏。
  */
-defineExpose({ canAcceptDelivery, openAcceptanceDialog })
+defineExpose({ canAcceptDelivery, openAcceptanceDialog, canDeliver, openDeliveryDialog })
 </script>
 
 <template>
@@ -790,11 +846,12 @@ defineExpose({ canAcceptDelivery, openAcceptanceDialog })
   <DepositModal v-if="payVisible && requirement" :visible="payVisible"
     :deposit-requirement="{ title: requirement.title, id: requirement.requirement_id, budget: requirement.budget }"
     :formatted-budget="formatBudget(requirement.budget)"
-    :payment-stage-label="payStage === 'final' ? '尾款' : '定金'" deposit-channel="alipay"
+    :payment-stage-label="payStage === 'final' ? '尾款' : '定金'" :deposit-channel="payChannel"
     :is-final-payment="payStage === 'final'" :is-escrow-payment="true"
     :deposit-ratio-percent="depositRatioPercent" :coupon-final-amount="payAmount" :deposit-loading="payLoading"
     :deposit-policy-accepted="depositPolicyAccepted" :contract-signing-status="signing" @close="payVisible = false"
-    @submit="submitPayment" @update:depositPolicyAccepted="depositPolicyAccepted = $event" />
+    @submit="submitPayment" @update:depositChannel="updatePayChannel"
+    @update:depositPolicyAccepted="depositPolicyAccepted = $event" />
 
   <DeliverySubmitDialog v-model:visible="deliveryVisible" :token="token"
     :bound-resource-id="requirement?.bound_resource_id ?? null" @submitted="handleDeliverySubmitted" />

@@ -79,6 +79,12 @@ function updateDepositPolicyAccepted(value: boolean) {
             <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
             支付宝
           </button>
+          <button type="button" class="payment-option"
+            :class="{ active: depositChannel === 'wechat', 'payment-option--wechat': depositChannel === 'wechat' }"
+            @click="updateChannel('wechat')">
+            <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="微信" />
+            微信
+          </button>
         </div>
       </div>
       <p v-if="!isFinalPayment" class="deposit-line"><strong>定金占比：</strong>{{ depositRatioPercent.toFixed(2) }}%
