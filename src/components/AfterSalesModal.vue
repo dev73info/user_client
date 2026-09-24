@@ -479,19 +479,14 @@ watch(
         <!-- 状态说明只留一句「现在到哪一步、要做什么」，分支细节收进折叠区，避免整段文字糊住按钮。 -->
         <p v-if="statusTip" class="tip">{{ statusTip }}</p>
         <p v-else-if="currentCase.status === 'manual_required'" class="tip">
-          资金执行遇到问题，已转人工客服处理；催办请走
+          资金执行遇到问题，已转人工客服处理。客服会尽快跟进，进展会同步到需求会话里；
+          催办请走
           <RouterLink :to="ticketCenterRoute">工单中心</RouterLink>。
         </p>
         <details v-if="statusDetail" class="after-sales-modal__rules">
           <summary>点开看流程细节</summary>
           <p>{{ statusDetail }}</p>
         </details>
-
-        <p v-else-if="currentCase.status === 'manual_required'" class="tip">
-          资金执行遇到问题，已转人工客服处理。客服会尽快跟进，进展会同步到需求会话里；
-          催办请走
-          <RouterLink :to="ticketCenterRoute">工单中心</RouterLink>。
-        </p>
 
         <div v-if="canRespond" class="actions">
           <button class="ghost danger-plain" type="button" :disabled="respondingId === currentCase.id"
