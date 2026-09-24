@@ -111,19 +111,15 @@ function canReapply(invoice: InvoiceRecord) {
 }
 
 /* 重新申请复用需求页那支开票弹窗：原票已被红冲，后端判重已放开，这里直接把用户送回去开新票，
-   不另做一套只弹提示的空按钮。 */
+   不另做一套只弹提示的空按钮。弹窗按需求合并申请，自己算出这次还能开哪几张票，不必告诉它
+   用户点的是哪一行。 */
 const applyVisible = ref(false)
 const applyRequirementId = ref('')
 const applyRole = ref<'customer' | 'developer'>('customer')
-const applyInitialSide = ref<InvoiceRecord['invoiceRole'] | undefined>(undefined)
 
 function openReapply(invoice: InvoiceRecord) {
-  const isCustomer = invoice.customerUsername === auth.username
   applyRequirementId.value = invoice.requirementId
-  applyRole.value = isCustomer ? 'customer' : 'developer'
-  // 平台票只有需求方能申请，非需求方点进来时不要预选到被禁用的一侧，交给弹窗按身份取默认值。
-  applyInitialSide.value =
-    invoice.invoiceRole === 'platform' && !isCustomer ? undefined : invoice.invoiceRole
+  applyRole.value = invoice.customerUsername === auth.username ? 'customer' : 'developer'
   applyVisible.value = true
 }
 
@@ -354,10 +350,9 @@ async function openDocument(invoice: InvoiceRecord) {
       </template>
     </section>
 
-    <!-- 原票被红冲后从这里重新申请：复用需求页那支开票弹窗，默认落在被红冲的那一侧。 -->
+    <!-- 原票被红冲后从这里重新申请：复用需求页那支开票弹窗，它按需求算出这次能重开哪几张票。 -->
     <InvoiceApplyDialog v-model:visible="applyVisible" :token="auth.token"
-      :requirement-id="applyRequirementId" :role="applyRole" :initial-side="applyInitialSide"
-      @submitted="loadData" />
+      :requirement-id="applyRequirementId" :role="applyRole" @submitted="loadData" />
   </main>
 </template>
 

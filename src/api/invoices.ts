@@ -56,9 +56,9 @@ export type InvoiceRecord = {
 /**
  * 一个需求的可开票汇总。
  *
- * 合并开票后弹窗不再让用户挑支付节点：一张票覆盖整个需求，金额由后端按该需求已成功分账的
- * 结算单算出——平台票取服务费、开发者票取开发者税前收入扣掉售后退还/赔付客户、以及尚未结案
- * 的退款诉求之后的净额，两张票加起来就是客户为这个需求实际支付的净额。
+ * 开票按需求合并：一张票覆盖整个需求，金额由后端按该需求已成功分账的结算单算出——平台票取
+ * 服务费、开发者票取开发者税前收入扣掉售后退还/赔付客户、以及尚未结案的退款诉求之后的净额，
+ * 两张票加起来就是客户为这个需求实际支付的净额。申请也合并成一次动作（`applyInvoices`）。
  */
 export type InvoiceableSummary = {
   requirementId: string
@@ -77,6 +77,15 @@ export type InvoiceableSummary = {
   /** 开发者票面 = 开发者税前收入 − 已退还 / 赔付客户的金额 − 未结案的退款诉求。 */
   developerInvoiceFen: number
   developerInvoiceCny: string
+  /**
+   * 本次申请能开出的**合计**票面：尚未申请的各开票主体应开票金额之和。
+   *
+   * 需求方（付款方）两侧都拿得到，所以是「平台服务费票 + 开发者收入票」之和；乙方只有自己那一
+   * 侧，合计就是开发者票面。已申请（含审核中、已通过）的一侧不计入——那一侧已经开过了；被红冲
+   * 的一侧会重新计入，因为它可以重开。这就是弹窗上「可开票金额」显示的那个数。
+   */
+  invoiceableTotalFen: number
+  invoiceableTotalCny: string
   /**
    * 该需求尚未结案的退款诉求金额。
    *
@@ -113,32 +122,33 @@ export type InvoiceRequestPayload = {
   recipient_email?: string
 }
 
-export async function requestPlatformInvoice(
-  token: string,
-  payload: InvoiceRequestPayload,
-): Promise<InvoiceRecord> {
-  return requestJson<InvoiceRecord>('/invoices/platform', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeader(token),
-    },
-    body: JSON.stringify(payload),
-  }, '获取平台发票失败')
+/** 一次开票申请的结果：两侧各自的发票记录，某一侧不可开或无需再开时为 `null`。 */
+export type AppliedInvoices = {
+  /** 平台服务费票。乙方申请时恒为 `null`——这张票只有付款方（需求方）能申请。 */
+  platformInvoice: InvoiceRecord | null
+  /** 开发者收入票。需求方索取、乙方自行开具都在这一次申请里落地。 */
+  developerInvoice: InvoiceRecord | null
 }
 
-export async function requestDeveloperInvoice(
+/**
+ * 提交开票申请：一次动作把该需求能开的票都开出来。
+ *
+ * 需求方拿「平台服务费票 + 开发者收入票」两张，乙方只拿自己那张开发者收入票；两张共用同一份
+ * 抬头 / 税号 / 邮箱。某一侧没有可开金额或已经开过时后端会跳过它（已开过的原票照样回放），
+ * 两侧都没有可开的记录才报错。
+ */
+export async function applyInvoices(
   token: string,
   payload: InvoiceRequestPayload,
-): Promise<InvoiceRecord> {
-  return requestJson<InvoiceRecord>('/invoices/developer', {
+): Promise<AppliedInvoices> {
+  return requestJson<AppliedInvoices>('/invoices/apply', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...authHeader(token),
     },
     body: JSON.stringify(payload),
-  }, '获取开发者发票失败')
+  }, '提交开票申请失败')
 }
 
 export async function uploadInvoiceDocument(

@@ -55,7 +55,7 @@ const contractCreatingId = ref('')
 const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const conversationLoading = ref(false)
-/** 获取发票：乙方获取的是开发者发票，入口与需求方共用同一个弹窗（弹窗按身份自动选边）。 */
+/** 获取发票：乙方获取的是开发者发票，入口与需求方共用同一个弹窗（弹窗按身份决定开出哪些票）。 */
 const invoiceDialogVisible = ref(false)
 const invoiceRequirement = ref<RequirementItem | null>(null)
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})

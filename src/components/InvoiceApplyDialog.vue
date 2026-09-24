@@ -2,18 +2,17 @@
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 
 import {
+  applyInvoices,
   getInvoiceSummary,
-  requestDeveloperInvoice,
-  requestPlatformInvoice,
+  type AppliedInvoices,
   type InvoiceableSummary,
   type InvoiceRecord,
 } from '@/api/invoices'
 import { getMyRealnameVerification, type UserRealnameVerification } from '@/api/realname'
 import { getProfile } from '@/api/settings'
-import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
-/** 开票主体：平台服务费发票由需求方获取，开发者收入发票由乙方开具、需求方也能索取。 */
+/** 开票主体：平台服务费票由平台开给需求方，开发者收入票由乙方开给需求方。 */
 type InvoiceSide = 'platform' | 'developer'
 
 type InvoiceForm = {
@@ -26,15 +25,8 @@ const props = defineProps<{
   visible: boolean
   token: string
   requirementId: string
-  /** 当前用户在本需求中的身份，决定默认选中哪一侧开票主体。 */
+  /** 当前用户在本需求中的身份：需求方一次开出两张票，乙方只拿自己那张开发者收入票。 */
   role: 'customer' | 'developer'
-  /**
-   * 打开时预选的开票主体。不传时按 `role` 取默认值。
-   *
-   * 发票中心在「原票被红冲后重新申请」时用它落到被红冲的那一侧：那张票是哪一侧的就该重开哪一侧。
-   * 与 `role` 冲突时（平台票只有需求方能申请）调用方负责不传，这里不做兜底判断。
-   */
-  initialSide?: InvoiceSide
 }>()
 
 const emit = defineEmits<{
@@ -42,120 +34,90 @@ const emit = defineEmits<{
   submitted: []
 }>()
 
-const auth = useAuthStore()
 const { showToast } = useToast()
 
-// 草稿按开票主体分开存，跨刷新保留（key 与迁移前一致，旧草稿仍能读到）。
-const DRAFT_KEYS: Record<InvoiceSide, string> = {
-  platform: 'invoice_platform_draft_v1',
-  developer: 'invoice_developer_draft_v1',
-}
+// 申请合并成一次动作、抬头只剩一份，草稿也跟着只剩一份。
+const DRAFT_KEY = 'invoice_apply_draft_v1'
 
-const SIDE_TABS: { value: InvoiceSide; label: string }[] = [
-  { value: 'platform', label: '获取发票' },
-  { value: 'developer', label: '获取开发者发票' },
-]
-
-const SIDE_COPY: Record<
-  InvoiceSide,
-  {
-    kicker: string
-    title: string
-    issuer: string
-    hint: string
-    amountLabel: string
-    amountNote: string
-    titlePlaceholder: string
-    taxLabel: string
-    taxPlaceholder: string
-    emailPlaceholder: string
-    submitText: string
-  }
-> = {
-  platform: {
-    kicker: 'CUSTOMER / PLATFORM',
+/** 两侧共用的抬头 / 税号 / 邮箱分别对应哪种票、由谁开具。 */
+const COPY: Record<'customer' | 'developer', {
+  kicker: string
+  title: string
+  issuer: string
+  hint: string
+  amountNote: string
+  submitText: string
+}> = {
+  customer: {
+    kicker: 'CUSTOMER / INVOICE',
     title: '获取发票',
-    issuer: '平台发票',
-    hint: '开票金额以平台服务费结算记录为准，不包含开发者收入。',
-    amountLabel: '可开票金额',
-    amountNote: '平台服务费（定金 + 尾款合并开票）',
-    titlePlaceholder: '个人姓名或单位名称',
-    taxLabel: '税号（可选）',
-    taxPlaceholder: '单位纳税人识别号',
-    emailPlaceholder: '用于接收开票文件',
-    submitText: '提交平台发票申请',
+    issuer: '平台票 + 开发者票',
+    hint: '一次申请把本需求能开的票都开出来：平台服务费票由平台开具，开发者收入票由乙方开具，两张票共用这份抬头。',
+    amountNote: '本次申请可开出的合计（平台服务费票 + 开发者收入票）',
+    submitText: '提交开票申请',
   },
   developer: {
-    kicker: 'CUSTOMER / DEVELOPER',
+    kicker: 'DEVELOPER / INVOICE',
     title: '获取开发者发票',
     issuer: '开发者发票',
-    hint: '开发者收入发票由乙方开具；抬头为企业或个体工商户时需填写税号。',
-    amountLabel: '可开票金额',
+    hint: '开发者收入发票由乙方开具，抬头为企业或个体工商户时需填写税号；发票文件上传后需求方可在发票中心下载。',
     amountNote: '开发者收入（定金 + 尾款合并开票）',
-    titlePlaceholder: '个人姓名、个体户或企业名称',
-    taxLabel: '税号',
-    taxPlaceholder: '企业或个体工商户必填',
-    emailPlaceholder: '用于保留开票联系信息',
     submitText: '提交开发者发票申请',
   },
 }
 
-const side = ref<InvoiceSide>('platform')
 const submitting = ref(false)
 const summaryLoading = ref(false)
 const summary = ref<InvoiceableSummary | null>(null)
+const form = reactive<InvoiceForm>({ invoiceTitle: '', taxNumber: '', recipientEmail: '' })
 
-const forms = reactive<Record<InvoiceSide, InvoiceForm>>({
-  platform: { invoiceTitle: '', taxNumber: '', recipientEmail: '' },
-  developer: { invoiceTitle: '', taxNumber: '', recipientEmail: '' },
-})
-
-const form = computed(() => forms[side.value])
-const copy = computed(() => SIDE_COPY[side.value])
-const otherBlockedReason = computed(() =>
-  side.value === 'platform' ? blockedReason('developer') : blockedReason('platform'),
-)
-
-/** 当前这一侧已存在的发票记录：已提交过就只展示进度，不再重复申请。 */
-const activeInvoice = computed<InvoiceRecord | null>(() =>
-  side.value === 'platform'
-    ? summary.value?.platformInvoice ?? null
-    : summary.value?.developerInvoice ?? null,
-)
-
-/** 当前这一侧的可开票金额：平台票取服务费，开发者票取扣掉售后退款 / 赔付与未结案诉求后的净额。 */
-const activeAmountFen = computed(() => {
-  if (!summary.value) {
-    return 0
-  }
-  return side.value === 'platform'
-    ? summary.value.platformFeeFen
-    : summary.value.developerInvoiceFen
-})
-
-const activeAmountCny = computed(() =>
-  side.value === 'platform'
-    ? summary.value?.platformFeeCny ?? '0.00'
-    : summary.value?.developerInvoiceCny ?? '0.00',
-)
+const copy = computed(() => COPY[props.role])
 
 /**
- * 原票开具之后实际发生的净额又变了（售后退款 / 赔付成立）：票面要红冲后按新净额重开。
+ * 可开票金额：本次申请能开出的合计票面。
  *
- * 判定以后端为准（`reversalRequired`）：还没结案的退还诉求不算数——钱还在平台兜着、诉求也可能
- * 判不成立，此时不动已经开出去的票；退还真正成立之后后端才会把它标成待红冲。
- *
- * 红冲由财务端执行——财务端把这张票列为「待红冲」，冲完这里就不再返回原票，
- * 用户随即可以按新净额重新申请，所以这里只做告知，不提供任何改写入口。
+ * 需求方是「平台服务费票 + 开发者收入票」，乙方只有自己那一侧；已经开过（含审核中、已通过）的
+ * 一侧不计入，被红冲的一侧会重新计入——所以两票都提交完之后这里会变成 0，也就提交不了第二次。
  */
-const invoiceAmountStale = computed(() => Boolean(activeInvoice.value?.reversalRequired))
+const amountFen = computed(() => summary.value?.invoiceableTotalFen ?? 0)
+const amountCny = computed(() => summary.value?.invoiceableTotalCny ?? '0.00')
 
-/** 平台发票只有付款方能获取；开发者一侧双方都能获取：乙方开具、需求方索取。 */
-function blockedReason(target: InvoiceSide) {
-  if (target === 'platform' && props.role !== 'customer') {
-    return '你不是本需求的需求方，平台发票由付款方获取'
+/** 已经存在的发票记录：已提交过的一侧只展示进度，不重复申请。 */
+const existingInvoices = computed<{ side: InvoiceSide; invoice: InvoiceRecord }[]>(() => {
+  const records: { side: InvoiceSide; invoice: InvoiceRecord }[] = []
+  if (summary.value?.platformInvoice) {
+    records.push({ side: 'platform', invoice: summary.value.platformInvoice })
   }
-  return ''
+  if (summary.value?.developerInvoice) {
+    records.push({ side: 'developer', invoice: summary.value.developerInvoice })
+  }
+  return records
+})
+
+/** 需要红冲的记录：票面与已实际发生的净额不一致（售后退款 / 赔付已成立）。 */
+const staleInvoices = computed(() => existingInvoices.value.filter((item) => item.invoice.reversalRequired))
+
+/**
+ * 本次申请会开出哪几张票。判定与后端一致（见 `apply_invoices`）：某一侧已经开过、或没有可开
+ * 金额，就不在这次申请里；平台服务费票只有需求方能申请。
+ */
+const openSides = computed<InvoiceSide[]>(() => {
+  const sides: InvoiceSide[] = []
+  if (
+    props.role === 'customer'
+    && !summary.value?.platformInvoice
+    && (summary.value?.platformFeeFen ?? 0) > 0
+  ) {
+    sides.push('platform')
+  }
+  if (!summary.value?.developerInvoice && (summary.value?.developerInvoiceFen ?? 0) > 0) {
+    sides.push('developer')
+  }
+  return sides
+})
+
+function invoiceSideLabel(side: InvoiceSide) {
+  return side === 'platform' ? '平台服务费发票' : '开发者服务收入发票'
 }
 
 function invoiceStatusLabel(status: InvoiceRecord['status']) {
@@ -184,6 +146,11 @@ const isOrganizationRealname = computed(() => {
   return authType === 'ENTERPRISE' || authType === 'SOLE_PROPRIETOR'
 })
 
+/** 企业 / 个体工商户申请时必须给税号：开发者票的这一项由后端强制校验，前端先挡一道。 */
+const isTaxNumberRequired = computed(() =>
+  isOrganizationRealname.value && openSides.value.includes('developer'),
+)
+
 // 企业/个体户用公司全称，个人用实名姓名。
 const prefillTitle = computed(() => {
   const record = approvedRealname.value
@@ -211,22 +178,16 @@ const prefillNotice = computed(() => {
     : '未完成实名认证，抬头与税号需手动填写。'
 })
 
-/**
- * 只填充空字段，绝不覆盖用户输入或已保存的草稿。
- * 必须在 restoreDraft 之后调用，否则会冲掉上次手动填写的内容。
- */
+/** 只填充空字段，绝不覆盖用户输入或已保存的草稿。必须在 restoreDraft 之后调用。 */
 function applyPrefill() {
-  for (const target of ['platform', 'developer'] as InvoiceSide[]) {
-    const targetForm = forms[target]
-    if (!targetForm.invoiceTitle.trim() && prefillTitle.value) {
-      targetForm.invoiceTitle = prefillTitle.value
-    }
-    if (!targetForm.taxNumber.trim() && prefillTaxNumber.value) {
-      targetForm.taxNumber = prefillTaxNumber.value
-    }
-    if (!targetForm.recipientEmail.trim() && accountEmail.value) {
-      targetForm.recipientEmail = accountEmail.value
-    }
+  if (!form.invoiceTitle.trim() && prefillTitle.value) {
+    form.invoiceTitle = prefillTitle.value
+  }
+  if (!form.taxNumber.trim() && prefillTaxNumber.value) {
+    form.taxNumber = prefillTaxNumber.value
+  }
+  if (!form.recipientEmail.trim() && accountEmail.value) {
+    form.recipientEmail = accountEmail.value
   }
 }
 
@@ -269,34 +230,29 @@ async function ensureInvoicePrefill(): Promise<void> {
   return prefillRequest
 }
 
-function restoreDraft(target: InvoiceSide) {
-  const raw = localStorage.getItem(DRAFT_KEYS[target])
+function restoreDraft() {
+  const raw = localStorage.getItem(DRAFT_KEY)
   if (!raw) {
     return
   }
   try {
     const draft = JSON.parse(raw) as Partial<InvoiceForm>
-    const targetForm = forms[target]
-    if (!targetForm.invoiceTitle.trim()) {
-      targetForm.invoiceTitle = draft.invoiceTitle ?? ''
+    if (!form.invoiceTitle.trim()) {
+      form.invoiceTitle = draft.invoiceTitle ?? ''
     }
-    if (!targetForm.taxNumber.trim()) {
-      targetForm.taxNumber = draft.taxNumber ?? ''
+    if (!form.taxNumber.trim()) {
+      form.taxNumber = draft.taxNumber ?? ''
     }
-    if (!targetForm.recipientEmail.trim()) {
-      targetForm.recipientEmail = draft.recipientEmail ?? ''
+    if (!form.recipientEmail.trim()) {
+      form.recipientEmail = draft.recipientEmail ?? ''
     }
   } catch {
-    localStorage.removeItem(DRAFT_KEYS[target])
+    localStorage.removeItem(DRAFT_KEY)
   }
 }
 
-function persistDraft(target: InvoiceSide) {
-  localStorage.setItem(DRAFT_KEYS[target], JSON.stringify(forms[target]))
-}
-
 function saveDraft() {
-  persistDraft(side.value)
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(form))
   showToast('草稿已保存', 'success')
 }
 
@@ -316,18 +272,8 @@ async function ensureSummary() {
   }
 }
 
-function switchSide(target: InvoiceSide) {
-  if (blockedReason(target)) {
-    return
-  }
-  persistDraft(side.value)
-  side.value = target
-  restoreDraft(target)
-  applyPrefill()
-}
-
 function close() {
-  persistDraft(side.value)
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(form))
   emit('update:visible', false)
 }
 
@@ -337,45 +283,63 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
+/** 本次申请真正新建了哪几张票：申请前没有、响应里有，才算新建（已开过的原票会被回放）。 */
+function createdSides(applied: AppliedInvoices): InvoiceSide[] {
+  const sides: InvoiceSide[] = []
+  if (applied.platformInvoice && !summary.value?.platformInvoice) {
+    sides.push('platform')
+  }
+  if (applied.developerInvoice && !summary.value?.developerInvoice) {
+    sides.push('developer')
+  }
+  return sides
+}
+
+function createdToast(sides: InvoiceSide[]) {
+  if (sides.length > 1) {
+    return '平台发票与开发者发票申请已提交，到发票中心可查看进度'
+  }
+  if (sides[0] === 'platform') {
+    return '平台发票申请已提交，到发票中心可查看进度'
+  }
+  if (sides[0] === 'developer') {
+    return '开发者发票申请已提交，乙方上传发票文件后可在发票中心下载'
+  }
+  // 两侧都只是回放（并发下来别人刚申请过）：不谎报新建，只提示进度已经在这里了。
+  return '本需求的开票申请已提交，到发票中心可查看进度'
+}
+
 async function submit() {
-  if (!form.value.invoiceTitle.trim()) {
+  if (!form.invoiceTitle.trim()) {
     showToast('请填写发票抬头', 'warning')
     return
   }
-  if (activeInvoice.value) {
-    showToast('该发票已提交，请到发票中心查看进度', 'warning')
-    return
-  }
-  if (!summary.value || activeAmountFen.value <= 0) {
+  if (amountFen.value <= 0) {
     showToast('本需求暂无可开票的已结算金额', 'warning')
     return
   }
-  const currentSide = side.value
-  const notice = invoiceTitleNotice(form.value.invoiceTitle)
+  if (isTaxNumberRequired.value && !form.taxNumber.trim()) {
+    showToast('实名主体为企业或个体工商户，请填写税号', 'warning')
+    return
+  }
+  const notice = invoiceTitleNotice(form.invoiceTitle)
   submitting.value = true
   try {
-    const payload = {
+    const applied = await applyInvoices(props.token, {
       requirement_id: props.requirementId,
-      invoice_title: form.value.invoiceTitle.trim(),
-      tax_number: form.value.taxNumber.trim(),
-      recipient_email: form.value.recipientEmail.trim(),
-    }
-    if (currentSide === 'platform') {
-      await requestPlatformInvoice(props.token, payload)
-    } else {
-      await requestDeveloperInvoice(props.token, payload)
-    }
-    forms[currentSide] = { invoiceTitle: '', taxNumber: '', recipientEmail: '' }
-    localStorage.removeItem(DRAFT_KEYS[currentSide])
+      invoice_title: form.invoiceTitle.trim(),
+      tax_number: form.taxNumber.trim(),
+      recipient_email: form.recipientEmail.trim(),
+    })
+    form.invoiceTitle = ''
+    form.taxNumber = ''
+    form.recipientEmail = ''
+    localStorage.removeItem(DRAFT_KEY)
     emit('update:visible', false)
     emit('submitted')
-    const done =
-      currentSide === 'platform'
-        ? '平台发票申请已提交'
-        : '开发者发票申请已提交，乙方上传发票文件后可在发票中心下载'
-    showToast(notice || done, notice ? 'warning' : 'success')
+    showToast(notice || createdToast(createdSides(applied)), notice ? 'warning' : 'success')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '获取发票失败', 'error')
+    showToast(error instanceof Error ? error.message : '提交开票申请失败', 'error')
   } finally {
     submitting.value = false
   }
@@ -385,8 +349,7 @@ watch(
   () => props.visible,
   (open) => {
     if (open) {
-      side.value = props.initialSide ?? (props.role === 'developer' ? 'developer' : 'platform')
-      restoreDraft(side.value)
+      restoreDraft()
       applyPrefill()
       void ensureSummary()
       void ensureInvoicePrefill()
@@ -416,32 +379,24 @@ onUnmounted(() => {
           <button class="invoice-modal__close" type="button" aria-label="关闭" @click="close">×</button>
         </div>
 
-        <div class="invoice-side-switch" role="radiogroup" aria-label="选择获取哪一侧的发票">
-          <button v-for="item in SIDE_TABS" :key="item.value" type="button" role="radio"
-            class="invoice-side-switch__btn" :class="{ 'is-active': side === item.value }"
-            :aria-checked="side === item.value" :disabled="Boolean(blockedReason(item.value))"
-            :title="blockedReason(item.value) || undefined" @click="switchSide(item.value)">
-            {{ item.label }}
-          </button>
-        </div>
-        <p v-if="otherBlockedReason" class="invoice-panel__notice">{{ otherBlockedReason }}</p>
-
         <p class="invoice-panel__hint">{{ copy.hint }}</p>
         <p v-if="prefillNotice" class="invoice-panel__notice">{{ prefillNotice }}</p>
 
         <div class="invoice-amount" aria-live="polite">
-          <span class="invoice-amount__label">{{ copy.amountLabel }}</span>
+          <span class="invoice-amount__label">可开票金额</span>
           <strong class="invoice-amount__value">
-            {{ summaryLoading ? '加载中…' : `¥${activeAmountCny}` }}
+            {{ summaryLoading ? '加载中…' : `¥${amountCny}` }}
           </strong>
           <small class="invoice-amount__note">{{ copy.amountNote }}</small>
           <small v-if="summary" class="invoice-amount__note">
             本需求已成功结算合计 ¥{{ summary.settledAmountCny }}（平台服务费 ¥{{ summary.platformFeeCny }} +
             开发者收入 ¥{{ summary.developerGrossAmountCny }}）
           </small>
+          <small v-if="summary && openSides.length > 1" class="invoice-amount__note">
+            本次申请一次开出两张：平台服务费票 ¥{{ summary.platformFeeCny }} + 开发者收入票 ¥{{ summary.developerInvoiceCny }}
+          </small>
           <small v-if="summary && summary.developerPayoutFen > 0" class="invoice-amount__note">
-            其中开发者已退还 / 赔付客户 ¥{{ summary.developerPayoutCny }}，开发者票按净额
-            ¥{{ summary.developerInvoiceCny }} 开具；平台服务费未退，平台票不受影响。
+            其中开发者已退还 / 赔付客户 ¥{{ summary.developerPayoutCny }}，开发者票按净额 ¥{{ summary.developerInvoiceCny }} 开具；平台服务费未退，平台票不受影响。
           </small>
         </div>
         <p v-if="summary && summary.pendingRefundFen > 0" class="invoice-panel__notice">
@@ -449,34 +404,34 @@ onUnmounted(() => {
           开发者票已按扣除这笔诉求后的净额 ¥{{ summary.developerInvoiceCny }} 计算——钱还没退出去，
           不能算进已经发生的销售额。诉求判不成立或撤回时，差额再补开；平台服务费不随退款减免。
         </p>
-        <p v-if="activeInvoice" class="invoice-panel__notice">
-          该发票已提交（{{ invoiceStatusLabel(activeInvoice.status) }} · 票面 ¥{{ activeInvoice.amountCny }}），
-          到发票中心可查看进度与发票文件。
+        <p v-for="item in existingInvoices" :key="item.invoice.id" class="invoice-panel__notice">
+          {{ invoiceSideLabel(item.side) }}已提交（{{ invoiceStatusLabel(item.invoice.status) }} · 票面 ¥{{ item.invoice.amountCny }}），到发票中心可查看进度与发票文件。
         </p>
-        <p v-if="activeInvoice && invoiceAmountStale" class="invoice-panel__notice">
-          原票开具后本需求实际发生的净额变了（售后退款 / 赔付已成立）：这张票需要红冲后重开。
-          财务端已列为「待红冲」，红冲完成后这里就能按最新净额重新申请，无需另行申请改写。
+        <p v-for="item in staleInvoices" :key="`stale-${item.invoice.id}`" class="invoice-panel__notice">
+          原票开具后本需求实际发生的净额变了（售后退款 / 赔付已成立）：{{ invoiceSideLabel(item.side) }}
+          需要红冲后重开。财务端已列为「待红冲」，红冲完成后这里就能按最新净额重新申请，无需另行申请改写。
         </p>
-        <p v-else-if="!summaryLoading && summary && activeAmountFen <= 0" class="invoice-panel__hint">
-          本需求暂无可开票金额（分账结算成功后才会有；未结案的退款诉求也会先扣掉这部分）。
+        <p v-if="!summaryLoading && summary && amountFen <= 0" class="invoice-panel__hint">
+          本需求暂无可开票金额：要么还没有成功分账的结算（未结案的退款诉求会先扣掉这部分），
+          要么能开的票都已经提交过了。
         </p>
         <label>
           发票抬头
-          <input v-model="form.invoiceTitle" type="text" maxlength="200" :placeholder="copy.titlePlaceholder" />
+          <input v-model="form.invoiceTitle" type="text" maxlength="200" placeholder="个人姓名、个体户或企业名称" />
         </label>
         <label>
-          {{ copy.taxLabel }}
-          <input v-model="form.taxNumber" type="text" maxlength="64" :placeholder="copy.taxPlaceholder" />
+          税号
+          <input v-model="form.taxNumber" type="text" maxlength="64" placeholder="企业或个体工商户必填" />
         </label>
         <label>
           接收邮箱（可选）
-          <input v-model="form.recipientEmail" type="email" maxlength="254" :placeholder="copy.emailPlaceholder" />
+          <input v-model="form.recipientEmail" type="email" maxlength="254" placeholder="用于接收开票文件" />
         </label>
 
         <div class="invoice-modal__actions">
           <button class="invoice-modal__draft" type="button" @click="saveDraft">保存草稿</button>
           <button class="invoice-panel__submit" type="button"
-            :disabled="submitting || Boolean(activeInvoice) || activeAmountFen <= 0" @click="submit">
+            :disabled="submitting || amountFen <= 0" @click="submit">
             {{ submitting ? '提交中...' : copy.submitText }}
           </button>
         </div>
@@ -536,8 +491,8 @@ onUnmounted(() => {
   line-height: 1.6;
 }
 
-/* 可开票金额：合并开票后它是弹窗里唯一的主角，单独一块摆出来，
-   下面两行小字分别是「这笔钱是什么」与「本需求结算合计的拆解」。 */
+/* 可开票金额：申请合并成一次动作后它是弹窗里唯一的主角，单独一块摆出来，
+   下面几行小字分别是「这笔钱要开成哪几张票」与「本需求结算合计的拆解」。 */
 .invoice-amount {
   display: grid;
   gap: 4px;
@@ -579,40 +534,6 @@ onUnmounted(() => {
 .invoice-panel__submit:disabled {
   cursor: not-allowed;
   opacity: 0.55;
-}
-
-/* 开票主体切换：两端共用同一个弹窗，只能选当前身份能获取的一侧 */
-.invoice-side-switch {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding: 4px;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  background: #f8fafc;
-}
-
-.invoice-side-switch__btn {
-  min-height: 40px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: #475467;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.invoice-side-switch__btn.is-active {
-  background: #fff;
-  color: #247f7d;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
-}
-
-.invoice-side-switch__btn:disabled {
-  color: #98a2b3;
-  cursor: not-allowed;
 }
 
 .invoice-panel label {

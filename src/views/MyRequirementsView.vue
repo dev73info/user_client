@@ -146,7 +146,7 @@ const afterSalesTarget = ref<RequirementItem | null>(null)
 const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const conversationLoading = ref(false)
-/** 获取发票：入口在每条需求的操作栏，弹窗内再切换获取发票 / 获取开发者发票。 */
+/** 获取发票：入口在每条需求的操作栏，弹窗内一次申请开出本需求能开的全部发票。 */
 const invoiceDialogVisible = ref(false)
 const invoiceRequirement = ref<RequirementItem | null>(null)
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
