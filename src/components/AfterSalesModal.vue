@@ -101,14 +101,28 @@ const windowClosedTip = computed(() =>
     : '本需求的售后窗口已关闭，不再受理新的售后申请。如需反映其它问题，请走工单中心联系平台。',
 )
 
-/** 当前需求正在办理的售后案件（同一需求同时只允许一条在办案件）。 */
+/**
+ * 当前需求正在办理的售后案件（一个需求只有一条案件，在办的那轮就挂在它上面）。
+ */
 const currentCase = computed(() =>
   cases.value.find((row) => !CLOSED_STATUSES.includes(row.status)),
 )
 
-const closedCases = computed(() =>
-  cases.value.filter((row) => CLOSED_STATUSES.includes(row.status)),
+/**
+ * 已经收口的当前轮（撤回 / 驳回 / 结案）：案件只有一条，所以它就是「上一轮」的结果。
+ *
+ * 更早的轮次是平台侧的留痕（管理端 / 客服端按轮次查），双方视图不再堆历史案件列表——
+ * 需求方与开发者只看得到最近这一轮的结论，再次提交会复用同一条案件开下一轮。
+ */
+const lastClosedCase = computed(() =>
+  cases.value.find((row) => CLOSED_STATUSES.includes(row.status)),
 )
+
+/** 上一轮收口的展示时间：优先用后端给的结案时间，兜底用最后更新时间。 */
+const lastClosedAt = computed(() => {
+  const row = lastClosedCase.value
+  return row ? row.resolvedAt || row.updatedAt : ''
+})
 
 /**
  * 诉求额度的文案按诉求类型给。
@@ -671,6 +685,7 @@ watch(
         <dl class="after-sales-modal__facts">
           <div class="is-wide"><dt>案件编号</dt><dd>{{ currentCase.caseNo }}</dd></div>
           <div><dt>当前状态</dt><dd>{{ statusText(currentCase.status) }}</dd></div>
+          <div><dt>轮次</dt><dd>第 {{ currentCase.roundSeq }} 轮</dd></div>
           <div><dt>发起人</dt><dd>{{ currentCase.openedBy }}</dd></div>
           <div><dt>诉求类型</dt><dd>{{ kindText(currentCase.kind) }}</dd></div>
           <div><dt>诉求额度</dt><dd>{{ currentCase.claimAmountCny }} 元</dd></div>
@@ -805,90 +820,83 @@ watch(
         </div>
       </template>
 
-      <template v-else-if="canSubmitCase">
-        <label class="after-sales-modal__field">
-          <strong>诉求类型</strong>
-          <el-select v-model="kind" class="after-sales-modal__select" aria-label="诉求类型">
-            <el-option v-for="option in KIND_OPTIONS" :key="option.value" :label="option.label"
-              :value="option.value" />
-          </el-select>
-        </label>
-
-        <label class="pay-line after-sales-modal__field">
-          <strong>{{ claimAmountField.label }}</strong>
-          <input v-model="claimAmount" type="number" min="0" step="0.01" inputmode="decimal"
-            :placeholder="claimAmountField.placeholder" />
-          <small class="after-sales-modal__limit">
-            选填，作为平台裁决的参考，实际金额由双方协商或平台认定。
-          </small>
-        </label>
-
-        <label class="pay-line after-sales-modal__field">
-          <strong>问题描述</strong>
-          <textarea v-model="description" rows="5" maxlength="2000"
-            placeholder="请写明时间、问题现象、与对方沟通的结果和你的诉求"></textarea>
-        </label>
-
-        <!-- 规则不摊在表单里：只留一句话说清「提交后会发生什么」，分支细节收进折叠区。 -->
-        <p class="after-sales-modal__lead">
-          提交后对方会在需求会话里收到通知：接受即按你的诉求执行，不接受则由平台裁决。
-        </p>
-        <details class="after-sales-modal__rules">
-          <summary>点开看售后规则</summary>
-          <ul>
-            <li>售后只在结单后的售后窗口内受理。</li>
-            <li>要求退款且填了额度：对方接受后当场原路退还你已付的尾款。</li>
-            <li>
-              要求返工：对方接受后转入「返工中」等你验收；对方没做到，可点「未落实，申请平台介入」转客服裁决。
-            </li>
-            <li>要求赔偿 / 其它问题：对方接受后，等你点「确认已落实」结案。</li>
-            <li>
-              对方不接受：由平台裁决，原路退还已付尾款，并从开发者仍冻结的接单保证金扣划赔付。
-            </li>
-            <li>诉求额度四类都能填，只是你方主张，供平台裁决参考。</li>
-          </ul>
-        </details>
-      </template>
-
-      <p v-else-if="canOpenCase && windowClosed" class="tip">
-        {{ windowClosedTip }}
-      </p>
-
       <template v-else>
-        <p class="tip">
-          售后由需求方（甲方）发起，你这边只用于查看诉求并表态：接受即按诉求执行，不接受由平台裁决。
-        </p>
-        <details class="after-sales-modal__rules">
-          <summary>点开看你能做什么</summary>
-          <ul>
-            <li>
-              不认可诉求额度时可以直接提一个还价；对方接受即按还价的「退还尾款 + 保证金赔付」两个额度执行结案，
-              拒绝则提议作废，可以改额度再提。
-            </li>
-            <li>
-              需求方点了「确认已落实」即结案；返工类诉求若你认为已做到、对方却报「未落实」，案件会转客服裁决。
-            </li>
-            <li>结单后如需反映其它问题，请走工单中心联系平台。</li>
-          </ul>
-        </details>
-      </template>
+        <!-- 上一轮的结论：案件只有一条，收口后的这一条就是「上一轮」的结果，双方都看得到。
+             更早的轮次收在平台侧（管理端 / 客服端按轮次查），双方视图不出历史案件列表，
+             否则同一需求的每一轮都会在这里堆成一条「历史售后案件」。 -->
+        <dl v-if="lastClosedCase" class="after-sales-modal__facts">
+          <div>
+            <dt>上一轮</dt>
+            <dd>第 {{ lastClosedCase.roundSeq }} 轮 · {{ statusText(lastClosedCase.status) }}</dd>
+          </div>
+          <div><dt>收口时间</dt><dd>{{ lastClosedAt ? formatCnDateTime(lastClosedAt) : '—' }}</dd></div>
+          <div><dt>诉求类型</dt><dd>{{ kindText(lastClosedCase.kind) }}</dd></div>
+          <div><dt>诉求额度</dt><dd>{{ lastClosedCase.claimAmountCny }} 元</dd></div>
+          <div class="is-wide"><dt>诉求说明</dt><dd>{{ lastClosedCase.description }}</dd></div>
+          <div v-if="lastClosedCase.resolutionNote" class="is-wide">
+            <dt>处理说明</dt>
+            <dd>{{ lastClosedCase.resolutionNote }}</dd>
+          </div>
+          <div v-if="lastClosedCase.refundAmountFen || lastClosedCase.compensationAmountFen" class="is-wide">
+            <dt>已执行资金</dt>
+            <dd>
+              退还尾款 {{ lastClosedCase.refundAmountCny }} 元 / 保证金赔付
+              {{ lastClosedCase.compensationAmountCny }} 元
+            </dd>
+          </div>
+        </dl>
 
-      <details v-if="closedCases.length" class="after-sales-modal__history">
-        <summary class="after-sales-modal__summary">
-          <strong>历史售后案件</strong>
-          <span>共 {{ closedCases.length }} 条</span>
-        </summary>
-        <ul class="after-sales-modal__records">
-          <li v-for="row in closedCases" :key="row.id">
-            <div class="after-sales-modal__record-head">
-              <strong>{{ statusText(row.status) }}</strong>
-              <time>{{ formatCnDateTime(row.createdAt) }}</time>
-            </div>
-            <p>{{ kindText(row.kind) }}：{{ row.description }}</p>
-            <small v-if="row.resolutionNote">{{ row.resolutionNote }}</small>
-          </li>
-        </ul>
-      </details>
+        <template v-if="canSubmitCase">
+          <p v-if="lastClosedCase" class="tip">
+            还有问题就继续提交：会接着这条案件开启第 {{ lastClosedCase.roundSeq + 1 }} 轮售后，
+            上一轮的诉求与结论仍然留在平台侧可查。
+          </p>
+
+          <label class="after-sales-modal__field">
+            <strong>诉求类型</strong>
+            <el-select v-model="kind" class="after-sales-modal__select" popper-class="after-sales-kind-popper"
+              aria-label="诉求类型">
+              <el-option v-for="option in KIND_OPTIONS" :key="option.value" :label="option.label"
+                :value="option.value" />
+            </el-select>
+          </label>
+
+          <label class="pay-line after-sales-modal__field">
+            <strong>{{ claimAmountField.label }}</strong>
+            <input v-model="claimAmount" type="number" min="0" step="0.01" inputmode="decimal"
+              :placeholder="claimAmountField.placeholder" />
+          </label>
+
+          <label class="pay-line after-sales-modal__field">
+            <strong>问题描述</strong>
+            <textarea v-model="description" rows="5" maxlength="2000"
+              placeholder="请写明时间、问题现象、与对方沟通的结果和你的诉求"></textarea>
+          </label>
+        </template>
+
+        <p v-else-if="canOpenCase && windowClosed" class="tip">
+          {{ windowClosedTip }}
+        </p>
+
+        <template v-else>
+          <p class="tip">
+            售后由需求方（甲方）发起，你这边只用于查看诉求并表态：接受即按诉求执行，不接受由平台裁决。
+          </p>
+          <details class="after-sales-modal__rules">
+            <summary>点开看你能做什么</summary>
+            <ul>
+              <li>
+                不认可诉求额度时可以直接提一个还价；对方接受即按还价的「退还尾款 + 保证金赔付」两个额度执行结案，
+                拒绝则提议作废，可以改额度再提。
+              </li>
+              <li>
+                需求方点了「确认已落实」即结案；返工类诉求若你认为已做到、对方却报「未落实」，案件会转客服裁决。
+              </li>
+              <li>结单后如需反映其它问题，请走工单中心联系平台。</li>
+            </ul>
+          </details>
+        </template>
+      </template>
 
       <div class="actions">
         <button class="ghost" type="button" :disabled="busy" @click="close">关闭</button>
@@ -967,14 +975,6 @@ watch(
   overflow-wrap: anywhere;
 }
 
-/* 表单下的那句提示：不加底色，就一行灰字，别把眼睛从按钮上拽走。 */
-.pay-modal .after-sales-modal__lead {
-  margin: 14px 0 0;
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
 /* 规则与流程细节默认折起来，需要时再点开。 */
 .pay-modal .after-sales-modal__rules {
   margin-top: 14px;
@@ -1036,12 +1036,16 @@ watch(
   font-weight: 700;
 }
 
-/* 诉求类型下拉与同弹窗的输入框同高同圆角：Element 默认的 32px / 4px 会比旁边的输入框矮一截。 */
+/* 诉求类型下拉与同弹窗的输入框同高同圆角：Element 默认的 32px / 4px 会比旁边的输入框矮一截。
+   浮层另见文件末尾不带 scoped 的样式块。 */
 .pay-modal .after-sales-modal__select {
   width: 100%;
 }
 
 .pay-modal .after-sales-modal__select :deep(.el-select__wrapper) {
+  /* 收起状态下 Element 用 --el-input-text-color 给已选中的值上色，改变量比压选择器更稳 */
+  --el-input-text-color: #0f172a;
+
   min-height: 44px;
   padding: 0 12px;
   border-radius: 12px;
@@ -1050,19 +1054,26 @@ watch(
   font-size: 14px;
 }
 
+/* 浮层展开时 Element 会给已选中的值补一个 is-transparent（`!hasModelValue || expanded`），
+   并把那段文字按占位灰（--el-text-color-placeholder）渲染——见 el-select.css 的
+   `.el-select__placeholder.is-transparent`。于是同一段文字「收起时正文色、展开瞬间变灰」，
+   字段看着像没填，光靠上面的 --el-input-text-color 压不住。这个下拉永远有值
+   （默认「要求返工」，不可清空），所以直接压回正文色。 */
+.pay-modal .after-sales-modal__select :deep(.el-select__placeholder) {
+  color: #0f172a;
+}
+
 .pay-modal .after-sales-modal__select :deep(.el-select__wrapper:hover),
 .pay-modal .after-sales-modal__select :deep(.el-select__wrapper.is-hovering) {
   box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.42) inset;
 }
 
+/* 聚焦态与同弹窗的输入框一致：一圈描边 + 一层淡蓝光晕 */
 .pay-modal .after-sales-modal__select :deep(.el-select__wrapper.is-focused) {
   background: #ffffff;
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.58) inset;
-}
-
-.pay-modal .after-sales-modal__select :deep(.el-select__selected-item) {
-  color: #0f172a;
-  font-weight: 700;
+  box-shadow:
+    0 0 0 1px rgba(37, 99, 235, 0.58) inset,
+    0 0 0 4px rgba(37, 99, 235, 0.1);
 }
 
 .pay-modal .after-sales-modal__field input {
@@ -1208,5 +1219,57 @@ watch(
   .pay-modal .after-sales-modal__records {
     max-height: none;
   }
+}
+</style>
+
+<style>
+/* 诉求类型下拉的浮层：Element 会把它 teleport 到 body 上，scoped 样式够不到，
+   所以单独放一个不带 scoped 的块。默认那套是 4px 方角 + 系统灰描边的白面板，
+   跟这个弹窗的圆角卡片不是一套，这里整体对齐弹窗自己面板的圆角、描边与投影。 */
+.after-sales-kind-popper.el-popper {
+  padding: 6px !important;
+  border: 1px solid rgba(226, 232, 240, 0.95) !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  box-shadow: 0 18px 44px rgba(90, 120, 180, 0.16) !important;
+}
+
+.after-sales-kind-popper .el-select-dropdown,
+.after-sales-kind-popper .el-select-dropdown__list {
+  padding: 0;
+  border-radius: 12px;
+}
+
+.after-sales-kind-popper .el-select-dropdown__item {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  color: #334155;
+  font-size: 14px;
+  line-height: 40px;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+/* 触屏档把选项行抬到 44px：列表项 / 菜单项的触摸目标不小于 44px 是移动端硬要求
+   （见 doc/设计规范.md）。 */
+@media (max-width: 640px) {
+  .after-sales-kind-popper .el-select-dropdown__item {
+    height: 44px;
+    line-height: 44px;
+  }
+}
+
+.after-sales-kind-popper .el-select-dropdown__item.is-hovering {
+  background: rgba(239, 246, 255, 0.96);
+  color: #1d4ed8;
+}
+
+/* 当前选中的类型留一个常驻底色，一眼能看出现在是哪一类 */
+.after-sales-kind-popper .el-select-dropdown__item.is-selected {
+  background: rgba(239, 246, 255, 0.96);
+  color: #1d4ed8;
+  font-weight: 700;
 }
 </style>

@@ -48,6 +48,7 @@ const openCase: AfterSalesCase = {
   requirementStatus: 'completed',
   openedBy: 'client_flow',
   openerRole: 'customer',
+  roundSeq: 1,
   kind: 'refund',
   description: '交付的首页在手机上仍然错位',
   status: 'submitted',
@@ -94,6 +95,7 @@ function negotiationWith(overrides: Partial<AfterSalesNegotiation> = {}): AfterS
   return {
     id: 7,
     caseId: openCase.id,
+    roundSeq: 1,
     initiatedBy: 'customer',
     refundAmountFen: 2000,
     refundAmountCny: '20.00',
@@ -462,17 +464,23 @@ describe('售后弹窗的返工中状态', () => {
 /** 诉求类型下拉（Element Plus 的选择器），四类诉求的取值与后端 `kind` 一致。 */
 const kindSelect = () => wrapper!.findComponent(ElSelect)
 
+/** 诉求额度输入框：文案（label）与提示（placeholder）都跟着诉求类型走。 */
+const amountInput = () => wrapper!.find('input[type="number"]')
+
 describe('售后弹窗的诉求额度', () => {
   it('四类诉求都能填诉求额度，文案跟着诉求类型走', async () => {
     await open()
     expect(wrapper!.text()).toContain('返工不成时希望退还的尾款（元）')
-    expect(wrapper!.text()).toContain('作为平台裁决的参考')
+    // 额度的提示挂在输入框的 placeholder 上（文本框里的灰字，`text()` 取不到）。
+    expect(amountInput().attributes('placeholder')).toBe('选填；返工做到了就不涉及退钱')
 
     await kindSelect().setValue('compensation')
     expect(wrapper!.text()).toContain('希望赔偿的金额（元）')
+    expect(amountInput().attributes('placeholder')).toBe('留空按平台裁决，不得超过开发者仍冻结的保证金')
 
     await kindSelect().setValue('other')
     expect(wrapper!.text()).toContain('希望平台处理的金额（元）')
+    expect(amountInput().attributes('placeholder')).toBe('选填，供平台裁决参考')
   })
 
   it('诉求类型是下拉选择，四类诉求各占一个选项', async () => {

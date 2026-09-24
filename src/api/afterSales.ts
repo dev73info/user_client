@@ -32,6 +32,8 @@ export type AfterSalesNegotiationAction = 'accept' | 'reject'
 export type AfterSalesNegotiation = {
   id: number
   caseId: number
+  /** 这条提议属于第几轮（案件详情只下发当前轮的）。 */
+  roundSeq: number
   /** 提议方身份：需求方 / 开发者。 */
   initiatedBy: AfterSalesPartyRole
   /** 提议愿意原路退还的尾款额度（分）。 */
@@ -57,6 +59,8 @@ export type AfterSalesCase = {
   requirementStatus: string
   openedBy: string
   openerRole: AfterSalesPartyRole
+  /** 当前轮次序号，从 1 开始：一个需求只有一条案件，再次发起是这条案件的第 N 轮。 */
+  roundSeq: number
   kind: AfterSalesKind
   description: string
   status: AfterSalesStatus
