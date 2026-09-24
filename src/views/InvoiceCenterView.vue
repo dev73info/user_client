@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Refresh, RefreshLeft, Search, UploadFilled } from '@element-plus/icons-vue'
 
+import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
 import {
   listMyInvoices,
   downloadInvoiceDocument,
@@ -29,12 +30,14 @@ const STATUS_FILTERS: Array<{ key: 'all' | InvoiceRecord['status']; label: strin
   { key: 'under_review', label: '审核中' },
   { key: 'approved', label: '已通过' },
   { key: 'rejected', label: '需补充材料' },
+  { key: 'reversed', label: '已红冲' },
 ]
 
 const stats = computed(() => ({
   total: invoices.value.length,
   pending: invoices.value.filter((item) => item.status === 'requested' || item.status === 'under_review').length,
   approved: invoices.value.filter((item) => item.status === 'approved').length,
+  reversed: invoices.value.filter((item) => item.status === 'reversed' || item.documentKind === 'red').length,
 }))
 
 function statusCount(status: 'all' | InvoiceRecord['status']) {
@@ -81,6 +84,7 @@ function statusLabel(status: InvoiceRecord['status']) {
     under_review: '审核中',
     approved: '已通过',
     rejected: '需补充材料',
+    reversed: '已红冲',
   }[status]
 }
 
@@ -91,7 +95,36 @@ function statusBadgeClass(status: InvoiceRecord['status']) {
     under_review: 'wb-badge--accent',
     approved: 'wb-badge--success',
     rejected: 'wb-badge--danger',
+    // 已红冲是终态、不再需要动作，用 .wb-badge 的默认灰底（不加修饰类）。
+    reversed: '',
   }[status]
+}
+
+/** 红字发票按负数列示：它是一条冲销凭证，和原蓝票加总才是净开票额。 */
+function displayAmount(invoice: InvoiceRecord) {
+  return `${invoice.documentKind === 'red' ? '-' : ''}¥${invoice.amountCny}`
+}
+
+/** 该需求、该开票主体能否重新申请：原票被红冲后同需求同主体可以再开一张新蓝票。 */
+function canReapply(invoice: InvoiceRecord) {
+  return invoice.documentKind === 'blue' && invoice.status === 'reversed'
+}
+
+/* 重新申请复用需求页那支开票弹窗：原票已被红冲，后端判重已放开，这里直接把用户送回去开新票，
+   不另做一套只弹提示的空按钮。 */
+const applyVisible = ref(false)
+const applyRequirementId = ref('')
+const applyRole = ref<'customer' | 'developer'>('customer')
+const applyInitialSide = ref<InvoiceRecord['invoiceRole'] | undefined>(undefined)
+
+function openReapply(invoice: InvoiceRecord) {
+  const isCustomer = invoice.customerUsername === auth.username
+  applyRequirementId.value = invoice.requirementId
+  applyRole.value = isCustomer ? 'customer' : 'developer'
+  // 平台票只有需求方能申请，非需求方点进来时不要预选到被禁用的一侧，交给弹窗按身份取默认值。
+  applyInitialSide.value =
+    invoice.invoiceRole === 'platform' && !isCustomer ? undefined : invoice.invoiceRole
+  applyVisible.value = true
 }
 
 function roleLabel(role: InvoiceRecord['invoiceRole']) {
@@ -204,6 +237,11 @@ async function openDocument(invoice: InvoiceRecord) {
         <span class="wb-strip__label">已通过</span>
         <span class="wb-strip__value">{{ loading ? '—' : stats.approved }}</span>
       </div>
+      <div class="wb-strip__divider" />
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">已红冲</span>
+        <span class="wb-strip__value">{{ loading ? '—' : stats.reversed }}</span>
+      </div>
       <div class="wb-strip__item wb-strip__action">
         <el-button class="wb-toolbar__icon-btn" :loading="loading" aria-label="刷新发票记录" @click="loadData">
           <el-icon><Refresh /></el-icon>
@@ -263,13 +301,25 @@ async function openDocument(invoice: InvoiceRecord) {
         <ul class="wb-list" aria-label="我的发票记录">
           <li v-for="invoice in pagedInvoices" :key="invoice.id" class="wb-item">
             <div class="wb-item__main">
-              <span class="wb-item__title">{{ invoice.invoiceNo }}</span>
+              <span class="wb-item__title">
+                {{ invoice.invoiceNo }}
+                <span v-if="invoice.documentKind === 'red'" class="invoice-center__kind">红字发票</span>
+              </span>
               <span class="wb-item__meta">
                 {{ roleLabel(invoice.invoiceRole) }} · 需求 {{ invoice.requirementId }} · {{ invoice.invoiceTitle }}
               </span>
               <span class="wb-item__meta">
-                金额 ¥{{ invoice.amountCny }} ·
+                金额 {{ displayAmount(invoice) }} ·
                 {{ invoice.invoiceRole === 'developer' ? developerTypeLabel(invoice.developerType) : '客户服务费' }}
+              </span>
+              <span v-if="invoice.documentKind === 'red' && invoice.reversalOfId" class="wb-item__meta">
+                冲销原票 #{{ invoice.reversalOfId }}{{ invoice.reversalReason ? ` · ${invoice.reversalReason}` : '' }}
+              </span>
+              <span v-else-if="invoice.status === 'reversed'" class="wb-item__meta">
+                红冲原因：{{ invoice.reversalReason || '未记录' }} · 当前应开 ¥{{ (invoice.currentInvoiceableFen / 100).toFixed(2) }}
+              </span>
+              <span v-else-if="invoice.reversalRequired" class="wb-item__meta">
+                本需求可开票净额已变为 ¥{{ (invoice.currentInvoiceableFen / 100).toFixed(2) }}，财务端会先红冲原票
               </span>
               <span v-if="invoice.reviewNote" class="wb-item__meta">审核说明：{{ invoice.reviewNote }}</span>
             </div>
@@ -278,7 +328,11 @@ async function openDocument(invoice: InvoiceRecord) {
               <el-button v-if="invoice.documentUrl" class="wb-toolbar__ghost" @click="openDocument(invoice)">
                 <span>查看文件</span>
               </el-button>
-              <el-button v-if="invoice.invoiceRole === 'developer' && invoice.status !== 'approved'"
+              <el-button v-if="canReapply(invoice)" class="wb-toolbar__ghost" @click="openReapply(invoice)">
+                <span>重新申请</span>
+              </el-button>
+              <el-button v-if="invoice.invoiceRole === 'developer' && invoice.documentKind === 'blue'
+                && invoice.status !== 'approved' && invoice.status !== 'reversed'"
                 class="wb-toolbar__ghost" :loading="uploadingInvoiceId === invoice.id"
                 :disabled="uploadingInvoiceId !== null && uploadingInvoiceId !== invoice.id"
                 @click="selectedFileByInvoice[invoice.id] ? uploadDocument(invoice) : pickInvoiceFile(invoice.id)">
@@ -299,6 +353,11 @@ async function openDocument(invoice: InvoiceRecord) {
         </div>
       </template>
     </section>
+
+    <!-- 原票被红冲后从这里重新申请：复用需求页那支开票弹窗，默认落在被红冲的那一侧。 -->
+    <InvoiceApplyDialog v-model:visible="applyVisible" :token="auth.token"
+      :requirement-id="applyRequirementId" :role="applyRole" :initial-side="applyInitialSide"
+      @submitted="loadData" />
   </main>
 </template>
 
@@ -308,5 +367,19 @@ async function openDocument(invoice: InvoiceRecord) {
    都是这一页独有的，换成统一层后与其余菜单页一致。 */
 .invoice-center__file {
   display: none;
+}
+
+/* 红字发票的标注：一枚浅红底小签，跟发票号同行，不抢状态徽标的位置。 */
+.invoice-center__kind {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--profile-danger-text, #b42318);
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
 }
 </style>

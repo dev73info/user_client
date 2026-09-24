@@ -34,6 +34,10 @@ function summary(overrides: Partial<InvoiceableSummary> = {}): InvoiceableSummar
     platformFeeCny: '200.00',
     developerGrossAmountFen: 80000,
     developerGrossAmountCny: '800.00',
+    developerPayoutFen: 0,
+    developerPayoutCny: '0.00',
+    developerInvoiceFen: 80000,
+    developerInvoiceCny: '800.00',
     pendingRefundFen: 0,
     pendingRefundCny: '0.00',
     platformInvoice: null,
@@ -67,6 +71,14 @@ function invoiceRecord(overrides: Partial<InvoiceRecord> = {}): InvoiceRecord {
     reviewedAt: null,
     createdAt: '2026-09-24 14:00:00',
     updatedAt: '2026-09-24 14:00:00',
+    documentKind: 'blue',
+    reversalOfId: null,
+    reversalReason: null,
+    reversedAt: null,
+    reversedBy: null,
+    currentInvoiceableFen: 20000,
+    reversalSuggestionFen: 0,
+    reversalRequired: false,
     ...overrides,
   }
 }
@@ -132,8 +144,57 @@ describe('InvoiceApplyDialog', () => {
     const wrapper = await render('customer', 'alice')
 
     expect(wrapper.text()).toContain('本需求有未结案的退款诉求 ¥500.00')
-    // 尾款分账出账后退不动，票面仍按已成功分账的净额算。
+    // 诉求还没裁决，票面必须等于已经发生的销售额，不能预先扣减。
     expect(wrapper.find('.invoice-amount__value').text()).toBe('¥200.00')
+
+    wrapper.unmount()
+  })
+
+  it('售后已赔付客户时开发者票按净额开，平台票不受影响', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        developerPayoutFen: 50000,
+        developerPayoutCny: '500.00',
+        developerInvoiceFen: 30000,
+        developerInvoiceCny: '300.00',
+      }),
+    )
+    const wrapper = await render('customer', 'alice')
+
+    // 钱是从开发者侧退的，平台服务费没退。
+    expect(wrapper.find('.invoice-amount__value').text()).toBe('¥200.00')
+
+    await wrapper.findAll('.invoice-side-switch__btn')[1]!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.invoice-amount__value').text()).toBe('¥300.00')
+    expect(wrapper.text()).toContain('其中开发者已退还 / 赔付客户 ¥500.00')
+
+    wrapper.unmount()
+  })
+
+  it('原票开具后净额又变小，提示需红冲后按新净额重开', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        developerPayoutFen: 50000,
+        developerPayoutCny: '500.00',
+        developerInvoiceFen: 30000,
+        developerInvoiceCny: '300.00',
+        developerInvoice: invoiceRecord({
+          invoiceRole: 'developer',
+          amountFen: 80000,
+          amountCny: '800.00',
+          status: 'approved',
+        }),
+      }),
+    )
+    const wrapper = await render('customer', 'alice')
+
+    await wrapper.findAll('.invoice-side-switch__btn')[1]!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('这张票需要红冲后按新净额重开')
+    expect(wrapper.find('.invoice-panel__submit').attributes('disabled')).toBeDefined()
 
     wrapper.unmount()
   })
@@ -199,6 +260,8 @@ describe('InvoiceApplyDialog', () => {
         platformFeeCny: '0.00',
         developerGrossAmountFen: 0,
         developerGrossAmountCny: '0.00',
+        developerInvoiceFen: 0,
+        developerInvoiceCny: '0.00',
       }),
     )
     const wrapper = await render('customer', 'alice')

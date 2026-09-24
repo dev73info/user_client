@@ -28,6 +28,13 @@ const props = defineProps<{
   requirementId: string
   /** 当前用户在本需求中的身份，决定默认选中哪一侧开票主体。 */
   role: 'customer' | 'developer'
+  /**
+   * 打开时预选的开票主体。不传时按 `role` 取默认值。
+   *
+   * 发票中心在「原票被红冲后重新申请」时用它落到被红冲的那一侧：那张票是哪一侧的就该重开哪一侧。
+   * 与 `role` 冲突时（平台票只有需求方能申请）调用方负责不传，这里不做兜底判断。
+   */
+  initialSide?: InvoiceSide
 }>()
 
 const emit = defineEmits<{
@@ -116,20 +123,29 @@ const activeInvoice = computed<InvoiceRecord | null>(() =>
     : summary.value?.developerInvoice ?? null,
 )
 
-/** 当前这一侧的可开票金额：平台票取服务费，开发者票取开发者税前收入。 */
+/** 当前这一侧的可开票金额：平台票取服务费，开发者票取扣掉售后退款/赔付后的净额。 */
 const activeAmountFen = computed(() => {
   if (!summary.value) {
     return 0
   }
   return side.value === 'platform'
     ? summary.value.platformFeeFen
-    : summary.value.developerGrossAmountFen
+    : summary.value.developerInvoiceFen
 })
 
 const activeAmountCny = computed(() =>
   side.value === 'platform'
     ? summary.value?.platformFeeCny ?? '0.00'
-    : summary.value?.developerGrossAmountCny ?? '0.00',
+    : summary.value?.developerInvoiceCny ?? '0.00',
+)
+
+/**
+ * 原票开具之后净额又变了（售后退款 / 赔付成立）：票面要红冲后按新净额重开。
+ * 红冲由财务端执行——财务端把这张票列为「待红冲」，冲完这里就不再返回原票，
+ * 用户随即可以按新净额重新申请，所以这里只做告知，不提供任何改写入口。
+ */
+const invoiceAmountStale = computed(
+  () => Boolean(activeInvoice.value) && activeInvoice.value?.amountFen !== activeAmountFen.value,
 )
 
 /** 平台发票只有付款方能获取；开发者一侧双方都能获取：乙方开具、需求方索取。 */
@@ -146,6 +162,7 @@ function invoiceStatusLabel(status: InvoiceRecord['status']) {
     under_review: '审核中',
     approved: '已通过',
     rejected: '需补充材料',
+    reversed: '已红冲',
   }[status]
 }
 
@@ -366,7 +383,7 @@ watch(
   () => props.visible,
   (open) => {
     if (open) {
-      side.value = props.role === 'developer' ? 'developer' : 'platform'
+      side.value = props.initialSide ?? (props.role === 'developer' ? 'developer' : 'platform')
       restoreDraft(side.value)
       applyPrefill()
       void ensureSummary()
@@ -420,14 +437,23 @@ onUnmounted(() => {
             本需求已成功结算合计 ¥{{ summary.settledAmountCny }}（平台服务费 ¥{{ summary.platformFeeCny }} +
             开发者收入 ¥{{ summary.developerGrossAmountCny }}）
           </small>
+          <small v-if="summary && summary.developerPayoutFen > 0" class="invoice-amount__note">
+            其中开发者已退还 / 赔付客户 ¥{{ summary.developerPayoutCny }}，开发者票按净额
+            ¥{{ summary.developerInvoiceCny }} 开具；平台服务费未退，平台票不受影响。
+          </small>
         </div>
         <p v-if="summary && summary.pendingRefundFen > 0" class="invoice-panel__notice">
           本需求有未结案的退款诉求 ¥{{ summary.pendingRefundCny }}（尾款分账出账后退不动，已转平台人工处理）：
-          票面金额按已成功分账的净额计算、未扣除这部分，诉求结案后发票需红冲重开。
+          票面金额按已成功分账的净额计算、未扣除这部分——诉求还没裁决，票面必须等于已经发生的销售额；
+          诉求真的成立之后再按新的净额红冲重开。
         </p>
         <p v-if="activeInvoice" class="invoice-panel__notice">
           该发票已提交（{{ invoiceStatusLabel(activeInvoice.status) }} · 票面 ¥{{ activeInvoice.amountCny }}），
           到发票中心可查看进度与发票文件。
+        </p>
+        <p v-if="activeInvoice && invoiceAmountStale" class="invoice-panel__notice">
+          原票开具后本需求的可开票净额已变为 ¥{{ activeAmountCny }}（售后退款 / 赔付已成立）：
+          这张票需要红冲后按新净额重开。财务端已列为「待红冲」，红冲完成后这里就能重新申请，无需另行申请改写。
         </p>
         <p v-else-if="!summaryLoading && summary && activeAmountFen <= 0" class="invoice-panel__hint">
           本需求暂无可开票的已结算金额（分账结算成功后才会出现）。
