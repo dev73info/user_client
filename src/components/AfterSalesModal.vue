@@ -417,7 +417,6 @@ watch(
         <dl class="after-sales-modal__facts">
           <div class="is-wide"><dt>案件编号</dt><dd>{{ currentCase.caseNo }}</dd></div>
           <div><dt>当前状态</dt><dd>{{ statusText(currentCase.status) }}</dd></div>
-          <div><dt>轮次</dt><dd>第 {{ currentCase.roundSeq }} 轮</dd></div>
           <div><dt>发起人</dt><dd>{{ currentCase.openedBy }}</dd></div>
           <div><dt>诉求类型</dt><dd>{{ kindText(currentCase.kind) }}</dd></div>
           <div><dt>诉求额度</dt><dd>{{ currentCase.claimAmountCny }} 元</dd></div>
@@ -485,13 +484,13 @@ watch(
       </template>
 
       <template v-else>
-        <!-- 上一轮的结论：案件只有一条，收口后的这一条就是「上一轮」的结果，双方都看得到。
+        <!-- 上一次售后的结论：案件只有一条，收口后的这一条就是上次的结果，双方都看得到。
              更早的轮次收在平台侧（管理端 / 客服端按轮次查），双方视图不出历史案件列表，
-             否则同一需求的每一轮都会在这里堆成一条「历史售后案件」。 -->
+             否则同一需求的每一次售后都会在这里堆成一条「历史售后案件」。 -->
         <dl v-if="lastClosedCase" class="after-sales-modal__facts">
           <div>
-            <dt>上一轮</dt>
-            <dd>第 {{ lastClosedCase.roundSeq }} 轮 · {{ statusText(lastClosedCase.status) }}</dd>
+            <dt>上次售后</dt>
+            <dd>{{ statusText(lastClosedCase.status) }}</dd>
           </div>
           <div><dt>收口时间</dt><dd>{{ lastClosedAt ? formatCnDateTime(lastClosedAt) : '—' }}</dd></div>
           <div><dt>诉求类型</dt><dd>{{ kindText(lastClosedCase.kind) }}</dd></div>
@@ -512,8 +511,7 @@ watch(
 
         <template v-if="canSubmitCase">
           <p v-if="lastClosedCase" class="tip">
-            还有问题就继续提交：会接着这条案件开启第 {{ lastClosedCase.roundSeq + 1 }} 轮售后，
-            上一轮的诉求与结论仍然留在平台侧可查。
+            还有问题就继续提交：新诉求会接着这条案件处理，上一次的诉求与结论仍留在平台侧可查。
           </p>
 
           <label class="after-sales-modal__field">
