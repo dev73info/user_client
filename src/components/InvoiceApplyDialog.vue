@@ -123,7 +123,7 @@ const activeInvoice = computed<InvoiceRecord | null>(() =>
     : summary.value?.developerInvoice ?? null,
 )
 
-/** 当前这一侧的可开票金额：平台票取服务费，开发者票取扣掉售后退款/赔付后的净额。 */
+/** 当前这一侧的可开票金额：平台票取服务费，开发者票取扣掉售后退款 / 赔付与未结案诉求后的净额。 */
 const activeAmountFen = computed(() => {
   if (!summary.value) {
     return 0
@@ -140,13 +140,15 @@ const activeAmountCny = computed(() =>
 )
 
 /**
- * 原票开具之后净额又变了（售后退款 / 赔付成立）：票面要红冲后按新净额重开。
+ * 原票开具之后实际发生的净额又变了（售后退款 / 赔付成立）：票面要红冲后按新净额重开。
+ *
+ * 判定以后端为准（`reversalRequired`）：还没结案的退还诉求不算数——钱还在平台兜着、诉求也可能
+ * 判不成立，此时不动已经开出去的票；退还真正成立之后后端才会把它标成待红冲。
+ *
  * 红冲由财务端执行——财务端把这张票列为「待红冲」，冲完这里就不再返回原票，
  * 用户随即可以按新净额重新申请，所以这里只做告知，不提供任何改写入口。
  */
-const invoiceAmountStale = computed(
-  () => Boolean(activeInvoice.value) && activeInvoice.value?.amountFen !== activeAmountFen.value,
-)
+const invoiceAmountStale = computed(() => Boolean(activeInvoice.value?.reversalRequired))
 
 /** 平台发票只有付款方能获取；开发者一侧双方都能获取：乙方开具、需求方索取。 */
 function blockedReason(target: InvoiceSide) {
@@ -443,20 +445,20 @@ onUnmounted(() => {
           </small>
         </div>
         <p v-if="summary && summary.pendingRefundFen > 0" class="invoice-panel__notice">
-          本需求有未结案的退款诉求 ¥{{ summary.pendingRefundCny }}（尾款分账出账后退不动，已转平台人工处理）：
-          票面金额按已成功分账的净额计算、未扣除这部分——诉求还没裁决，票面必须等于已经发生的销售额；
-          诉求真的成立之后再按新的净额红冲重开。
+          本需求有未结案的退款诉求 ¥{{ summary.pendingRefundCny }}（退还还没走完）：
+          开发者票已按扣除这笔诉求后的净额 ¥{{ summary.developerInvoiceCny }} 计算——钱还没退出去，
+          不能算进已经发生的销售额。诉求判不成立或撤回时，差额再补开；平台服务费不随退款减免。
         </p>
         <p v-if="activeInvoice" class="invoice-panel__notice">
           该发票已提交（{{ invoiceStatusLabel(activeInvoice.status) }} · 票面 ¥{{ activeInvoice.amountCny }}），
           到发票中心可查看进度与发票文件。
         </p>
         <p v-if="activeInvoice && invoiceAmountStale" class="invoice-panel__notice">
-          原票开具后本需求的可开票净额已变为 ¥{{ activeAmountCny }}（售后退款 / 赔付已成立）：
-          这张票需要红冲后按新净额重开。财务端已列为「待红冲」，红冲完成后这里就能重新申请，无需另行申请改写。
+          原票开具后本需求实际发生的净额变了（售后退款 / 赔付已成立）：这张票需要红冲后重开。
+          财务端已列为「待红冲」，红冲完成后这里就能按最新净额重新申请，无需另行申请改写。
         </p>
         <p v-else-if="!summaryLoading && summary && activeAmountFen <= 0" class="invoice-panel__hint">
-          本需求暂无可开票的已结算金额（分账结算成功后才会出现）。
+          本需求暂无可开票金额（分账结算成功后才会有；未结案的退款诉求也会先扣掉这部分）。
         </p>
         <label>
           发票抬头

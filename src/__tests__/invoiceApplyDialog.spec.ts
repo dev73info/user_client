@@ -139,13 +139,27 @@ describe('InvoiceApplyDialog', () => {
     wrapper.unmount()
   })
 
-  it('未结案的退款诉求只做提示，不改票面金额', async () => {
-    mocks.summary.mockResolvedValue(summary({ pendingRefundFen: 50000, pendingRefundCny: '500.00' }))
+  it('未结案的退款诉求从开发者票面里扣掉，平台票不受影响', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        pendingRefundFen: 50000,
+        pendingRefundCny: '500.00',
+        developerInvoiceFen: 30000,
+        developerInvoiceCny: '300.00',
+      }),
+    )
     const wrapper = await render('customer', 'alice')
 
     expect(wrapper.text()).toContain('本需求有未结案的退款诉求 ¥500.00')
-    // 诉求还没裁决，票面必须等于已经发生的销售额，不能预先扣减。
+    expect(wrapper.text()).toContain('平台服务费不随退款减免')
+    // 平台服务费没有退。
     expect(wrapper.find('.invoice-amount__value').text()).toBe('¥200.00')
+
+    await wrapper.findAll('.invoice-side-switch__btn')[1]!.trigger('click')
+    await flushPromises()
+
+    // 钱还没退出去，但退还 / 分账没走完，不能算进已经发生的销售额。
+    expect(wrapper.find('.invoice-amount__value').text()).toBe('¥300.00')
 
     wrapper.unmount()
   })
@@ -185,6 +199,8 @@ describe('InvoiceApplyDialog', () => {
           amountFen: 80000,
           amountCny: '800.00',
           status: 'approved',
+          reversalRequired: true,
+          reversalSuggestionFen: 50000,
         }),
       }),
     )
@@ -193,8 +209,36 @@ describe('InvoiceApplyDialog', () => {
     await wrapper.findAll('.invoice-side-switch__btn')[1]!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('这张票需要红冲后按新净额重开')
+    expect(wrapper.text()).toContain('这张票需要红冲后重开')
     expect(wrapper.find('.invoice-panel__submit').attributes('disabled')).toBeDefined()
+
+    wrapper.unmount()
+  })
+
+  it('未结案的退款诉求不触发红冲：钱没退出去就不动已开的票', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        pendingRefundFen: 50000,
+        pendingRefundCny: '500.00',
+        developerInvoiceFen: 30000,
+        developerInvoiceCny: '300.00',
+        developerInvoice: invoiceRecord({
+          invoiceRole: 'developer',
+          amountFen: 80000,
+          amountCny: '800.00',
+          status: 'approved',
+          reversalRequired: false,
+          reversalSuggestionFen: 0,
+        }),
+      }),
+    )
+    const wrapper = await render('customer', 'alice')
+
+    await wrapper.findAll('.invoice-side-switch__btn')[1]!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('本需求有未结案的退款诉求 ¥500.00')
+    expect(wrapper.text()).not.toContain('这张票需要红冲后重开')
 
     wrapper.unmount()
   })
@@ -268,7 +312,7 @@ describe('InvoiceApplyDialog', () => {
 
     expect(wrapper.find('.invoice-amount__value').text()).toBe('¥0.00')
     expect(wrapper.find('.invoice-panel__submit').attributes('disabled')).toBeDefined()
-    expect(wrapper.text()).toContain('本需求暂无可开票的已结算金额')
+    expect(wrapper.text()).toContain('本需求暂无可开票金额')
 
     wrapper.unmount()
   })
