@@ -41,6 +41,14 @@ const { showToast } = useToast()
 /** 终态案件不再有可执行动作，只作为历史记录展示。 */
 const CLOSED_STATUSES = ['succeeded', 'rejected', 'withdrawn']
 
+/**
+ * 有结论的收口状态：只有「结案」与「驳回」是平台或双方给出的结论。
+ *
+ * 撤回不算结论——它是发起人自己收手，既不产生责任认定也没有资金动作，
+ * 把它的诉求字段摆成一张「上次售后」的结论表，只会让人以为平台对此有过说法。
+ */
+const CONCLUDED_STATUSES = ['succeeded', 'rejected']
+
 /** 售后诉求类型（取值与后端 `kind` 一致，四类都能填诉求额度）。 */
 const KIND_OPTIONS: ReadonlyArray<{ value: AfterSalesKind; label: string }> = [
   { value: 'refund', label: '要求退款' },
@@ -94,18 +102,20 @@ const currentCase = computed(() =>
 )
 
 /**
- * 已经收口的案件（撤回 / 驳回 / 结案）：案件只有一条，所以它就是「上次售后」的结果。
+ * 已经拿到结论的收口案件（结案 / 驳回）：案件只有一条，所以它就是「上次售后」的结果。
  *
  * 售后不记录轮次：再次提交会复用同一条案件，上一次的诉求与结论被这次的覆盖，
  * 平台侧也查不到历史诉求，所以这里只展示「上次售后」这一条结论，不堆历史列表。
+ *
+ * 撤回不进这块：撤回只是发起人自己收手，没有责任认定也没有资金执行，不是「结论」。
  */
-const lastClosedCase = computed(() =>
-  cases.value.find((row) => CLOSED_STATUSES.includes(row.status)),
+const lastConcludedCase = computed(() =>
+  cases.value.find((row) => CONCLUDED_STATUSES.includes(row.status)),
 )
 
 /** 上次售后收口的展示时间：优先用后端给的结案时间，兜底用最后更新时间。 */
-const lastClosedAt = computed(() => {
-  const row = lastClosedCase.value
+const lastConcludedAt = computed(() => {
+  const row = lastConcludedCase.value
   return row ? row.resolvedAt || row.updatedAt : ''
 })
 
@@ -494,34 +504,31 @@ watch(
       <template v-else>
         <!-- 上一次售后的结论：案件只有一条，收口后的这一条就是上次的结果，双方都看得到。
              售后不记录轮次，再次提交会复用同一条案件并覆盖上次的诉求，平台侧也查不到历史，
-             因此这里只出这一条结论，不堆历史列表，否则每次售后都会堆成一条「历史售后案件」。 -->
-        <dl v-if="lastClosedCase" class="after-sales-modal__facts">
+             因此这里只出这一条结论，不堆历史列表，否则每次售后都会堆成一条「历史售后案件」。
+             「已撤回」不进这块：那是发起人自己收手，没有结论可摆。 -->
+        <dl v-if="lastConcludedCase" class="after-sales-modal__facts">
           <div>
             <dt>上次售后</dt>
-            <dd>{{ statusText(lastClosedCase.status) }}</dd>
+            <dd>{{ statusText(lastConcludedCase.status) }}</dd>
           </div>
-          <div><dt>收口时间</dt><dd>{{ lastClosedAt ? formatCnDateTime(lastClosedAt) : '—' }}</dd></div>
-          <div><dt>诉求类型</dt><dd>{{ kindText(lastClosedCase.kind) }}</dd></div>
-          <div><dt>诉求额度</dt><dd>{{ lastClosedCase.claimAmountCny }} 元</dd></div>
-          <div class="is-wide"><dt>诉求说明</dt><dd>{{ lastClosedCase.description }}</dd></div>
-          <div v-if="lastClosedCase.resolutionNote" class="is-wide">
+          <div><dt>收口时间</dt><dd>{{ lastConcludedAt ? formatCnDateTime(lastConcludedAt) : '—' }}</dd></div>
+          <div><dt>诉求类型</dt><dd>{{ kindText(lastConcludedCase.kind) }}</dd></div>
+          <div><dt>诉求额度</dt><dd>{{ lastConcludedCase.claimAmountCny }} 元</dd></div>
+          <div class="is-wide"><dt>诉求说明</dt><dd>{{ lastConcludedCase.description }}</dd></div>
+          <div v-if="lastConcludedCase.resolutionNote" class="is-wide">
             <dt>处理说明</dt>
-            <dd>{{ lastClosedCase.resolutionNote }}</dd>
+            <dd>{{ lastConcludedCase.resolutionNote }}</dd>
           </div>
-          <div v-if="lastClosedCase.refundAmountFen || lastClosedCase.compensationAmountFen" class="is-wide">
+          <div v-if="lastConcludedCase.refundAmountFen || lastConcludedCase.compensationAmountFen" class="is-wide">
             <dt>已执行资金</dt>
             <dd>
-              退还尾款 {{ lastClosedCase.refundAmountCny }} 元 / 保证金赔付
-              {{ lastClosedCase.compensationAmountCny }} 元
+              退还尾款 {{ lastConcludedCase.refundAmountCny }} 元 / 保证金赔付
+              {{ lastConcludedCase.compensationAmountCny }} 元
             </dd>
           </div>
         </dl>
 
         <template v-if="canSubmitCase">
-          <p v-if="lastClosedCase" class="tip">
-            还有问题就继续提交：新诉求会接着这条案件处理，上一次的诉求与结论会被这次提交覆盖。
-          </p>
-
           <label class="after-sales-modal__field">
             <strong>诉求类型</strong>
             <el-select v-model="kind" class="after-sales-modal__select" popper-class="after-sales-kind-popper"
