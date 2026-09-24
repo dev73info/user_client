@@ -3,10 +3,14 @@ import { authHeader, requestJson } from '@/api/http'
 /** 售后诉求类型：要求退款 / 要求赔偿 / 要求返工 / 其它。 */
 export type AfterSalesKind = 'refund' | 'compensation' | 'repair' | 'other'
 
-/** 售后案件状态。`manual_required` 是渠道扣划失败或超时无人处理后的兜底状态。 */
+/**
+ * 售后案件状态。`manual_required` 是渠道扣划失败或超时无人处理后的兜底状态。
+ *
+ * 双方只能「接受诉求」或「不接受转平台裁决」，因此没有「协商中」这类中间态；
+ * 历史值 `negotiating` 已随还价机制下线一并从后端状态约束里摘掉。
+ */
 export type AfterSalesStatus =
   | 'submitted'
-  | 'negotiating'
   | 'support_reviewing'
   | 'processing'
   | 'agreed'
@@ -24,32 +28,6 @@ export type AfterSalesPartyRole = 'customer' | 'developer'
  * 发起人报返工未落实（仅返工中可用，转平台裁决）。
  */
 export type AfterSalesRespondAction = 'accept' | 'reject' | 'complete' | 'unfulfilled'
-
-/** 协商提议的动作：同意提议（按提议额度执行）/ 拒绝提议（作废，可改额度重提）。 */
-export type AfterSalesNegotiationAction = 'accept' | 'reject'
-
-/** 一条协商提议（售后版的还价记录）。 */
-export type AfterSalesNegotiation = {
-  id: number
-  caseId: number
-  /** 这条提议属于第几轮（案件详情只下发当前轮的）。 */
-  roundSeq: number
-  /** 提议方身份：需求方 / 开发者。 */
-  initiatedBy: AfterSalesPartyRole
-  /** 提议愿意原路退还的尾款额度（分）。 */
-  refundAmountFen: number
-  refundAmountCny: string
-  /** 提议愿意从开发者接单保证金扣划赔付给需求方的额度（分）。 */
-  compensationAmountFen: number
-  compensationAmountCny: string
-  note: string
-  /** `pending` 待对方表态 / `accepted` 对方已同意 / `rejected` 已拒绝或已作废。 */
-  status: 'pending' | 'accepted' | 'rejected'
-  respondedBy: string | null
-  responseNote: string | null
-  createdAt: string
-  respondedAt: string | null
-}
 
 export type AfterSalesCase = {
   id: number
@@ -89,20 +67,16 @@ export type AfterSalesCase = {
   viewerRole: AfterSalesPartyRole | null
 }
 
-/** 案件详情：案件本身 + 双方用户名 + 两个资金上限 + 协商记录。 */
+/** 案件详情：案件本身 + 双方用户名 + 两个资金上限。 */
 export type AfterSalesCaseDetail = AfterSalesCase & {
   customerUsername: string
   developerUsername: string
-  /** 结单后仍冻结的接单保证金（分）：赔付上限，也是还价里赔付额度的上限。 */
+  /** 结单后仍冻结的接单保证金（分）：赔付上限。 */
   frozenDepositFen: number
   frozenDepositCny: string
-  /** 已缴尾款（分）：原路退款上限，也是还价里退款额度的上限。 */
+  /** 已缴尾款（分）：原路退款上限。 */
   finalPaidFen: number
   finalPaidCny: string
-  /** 协商记录（最新在前）。 */
-  negotiations: AfterSalesNegotiation[]
-  /** 当前未决提议；没有时为 null。 */
-  pendingNegotiation: AfterSalesNegotiation | null
 }
 
 export type AfterSalesCaseList = {
@@ -153,8 +127,8 @@ export async function listMyAfterSalesCases(
 }
 
 /**
- * 加载售后案件详情：比列表多出双方用户名、两个资金上限（冻结保证金 / 已缴尾款）
- * 与协商记录，售后弹窗据此渲染还价的额度上限与历史。
+ * 加载售后案件详情：比列表多出双方用户名与两个资金上限（冻结保证金 / 已缴尾款），
+ * 平台侧裁决据此判断退款与赔付各有多少可动。
  */
 export async function getAfterSalesCase(
   token: string,
@@ -166,61 +140,6 @@ export async function getAfterSalesCase(
       headers: authHeader(token),
     },
     '加载售后案件详情失败',
-  )
-}
-
-/**
- * 就退款与赔付额度发起协商提议（还价）：需求方提 = 下调自己的诉求额度，开发者提 = 还价。
- * 两个额度一起谈，对方接受即按这两个数执行结案；赔付掏的是开发者自己的保证金，上限是冻结余额。
- * 同一方再次发起即视为改主意（旧提议作废），对方持有的未决提议顶不掉（返回 409）。
- */
-export async function proposeAfterSalesNegotiation(
-  token: string,
-  caseId: number,
-  refundAmountFen: number,
-  compensationAmountFen = 0,
-  note = '',
-): Promise<AfterSalesCase> {
-  return requestJson<AfterSalesCase>(
-    `/after-sales/cases/${caseId}/negotiation`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader(token),
-      },
-      // 后端 `ProposeAfterSalesNegotiationRequest` 未做 camelCase 重命名，字段名逐字对应。
-      body: JSON.stringify({
-        refund_amount_fen: refundAmountFen,
-        compensation_amount_fen: compensationAmountFen,
-        note,
-      }),
-    },
-    '提交协商提议失败',
-  )
-}
-
-/**
- * 对协商提议表态：`accept` 同意 → 按提议的两个额度执行结案（都是 0 时转「待确认落实」）；
- * `reject` 拒绝 → 提议作废，双方可改额度重新提议。
- */
-export async function respondAfterSalesNegotiation(
-  token: string,
-  caseId: number,
-  action: AfterSalesNegotiationAction,
-  note = '',
-): Promise<AfterSalesCase> {
-  return requestJson<AfterSalesCase>(
-    `/after-sales/cases/${caseId}/negotiation/respond`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader(token),
-      },
-      body: JSON.stringify({ action, note }),
-    },
-    '提交协商表态失败',
   )
 }
 

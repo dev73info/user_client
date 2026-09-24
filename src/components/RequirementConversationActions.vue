@@ -8,10 +8,8 @@ import {
   createAdapayPayment,
   getAdapayBreachCase,
   getAdapayClientPlatform,
-  proposeAdapayBreachNegotiation,
   reportAdapayBreach,
   requestAdapayPlatformReview,
-  respondAdapayBreachNegotiation,
   submitAdapayBreachDecision,
   withdrawAdapayBreach,
   type AdapayAcceptanceResult,
@@ -122,11 +120,6 @@ const breachDecisionNote = ref('')
 const breachRejectPanel = ref(false)
 const breachSubmitting = ref(false)
 const breachActing = ref(false)
-
-const negotiationDepositYuan = ref('')
-const negotiationFinalYuan = ref('')
-const negotiationNote = ref('')
-const negotiationActing = ref(false)
 
 const isDeveloper = computed(() => props.role === 'developer')
 const isSelfManaged = computed(() => requirement.value?.payment_mode === 'self_managed')
@@ -272,53 +265,6 @@ const canWithdrawBreach = computed(
     activeBreachCase.value.reportedBy === auth.username,
 )
 
-/** 可以协商的案件状态：与后端一致的「案件存活」集合（资金开始执行或结案后不再协商）。 */
-const NEGOTIATION_OPEN_STATUSES = ['submitted', 'ai_reviewing', 'ai_judged', 'support_reviewing']
-
-/** 待对方表态的协商提议；为空表示还没有未决提议，可以发起。 */
-const pendingNegotiation = computed(() => {
-  const negotiation = activeBreachCase.value?.negotiation
-  return negotiation?.status === 'pending' ? negotiation : null
-})
-
-/** 可以发起协商：案件在协商窗口内，且没有「对方发起的」未决提议——我自己那条可以改额度重提
- *  （后端会把旧提议就地作废），对方持有的未决提议顶不掉，只能先表态。 */
-const canProposeNegotiation = computed(
-  () =>
-    activeBreachCase.value != null &&
-    NEGOTIATION_OPEN_STATUSES.includes(activeBreachCase.value.status) &&
-    (pendingNegotiation.value == null || pendingNegotiation.value.initiatedBy === props.role),
-)
-/** 承诺方是对方：未决提议由对方发起时才轮到我同意 / 拒绝（自己不能替对方拍板）。
- * 还要确认案件仍在协商窗口内：资金已开跑（`processing` / `manual_required`）或已结案后，
- * 后端 `breach_case_is_negotiable` 一律拒绝表态，只看未决提议会渲染出必然 409 的按钮。 */
-const canRespondNegotiation = computed(
-  () =>
-    activeBreachCase.value != null &&
-    NEGOTIATION_OPEN_STATUSES.includes(activeBreachCase.value.status) &&
-    pendingNegotiation.value != null &&
-    pendingNegotiation.value.initiatedBy !== props.role,
-)
-/** 尾款只有缴过才退得出来：`pending_final` 是「待付尾款」，此时尾款额度只能是 0（后端同样会拒绝）。 */
-const finalRefundable = computed(() => status.value === 'completed')
-const negotiationDepositCapYuan = computed(() => (activeBreachCase.value?.depositAmountFen ?? 0) / 100)
-const negotiationFinalCapYuan = computed(() => {
-  const item = requirement.value
-  return item && finalRefundable.value
-    ? calculateFinalPaymentAmount(item, depositRatioPercent.value)
-    : 0
-})
-
-const negotiationHint = computed(() => {
-  const pending = pendingNegotiation.value
-  if (!pending) {
-    return ''
-  }
-  return pending.initiatedBy === props.role
-    ? '协商提议已提交，等待对方同意或拒绝；改额度可直接重新发起'
-    : '对方已发起协商终止合作，同意后即按该额度退款结案'
-})
-
 const payStage = computed<'deposit' | 'final'>(() =>
   status.value === 'pending_final' ? 'final' : 'deposit',
 )
@@ -427,9 +373,6 @@ const chips = computed<ActionChip[]>(() => {
   if (canUseBreach.value) {
     list.push({ key: 'breach', label: '终止合作', tone: 'danger', run: () => void openBreachDialog() })
   }
-  // 协商终止不另设入口：`canProposeNegotiation` / `canRespondNegotiation` 成立的前提是存在存活案件，
-  // 而存活案件本身就已经让上面的「终止合作」成立，两个 chip 会打开同一个弹窗。协商状态与
-  // 提议 / 同意 / 拒绝都在弹窗内展示（弹窗已是协商优先），所以这里再放一个入口纯属重复。
   return list
 })
 
@@ -722,78 +665,6 @@ async function openBreachDialog() {
   if (item) {
     breachCase.value = await getAdapayBreachCase(props.token, item.requirement_id).catch(() => null)
   }
-  resetNegotiationForm()
-}
-
-/** 协商表单默认「全额退还甲方」，与后端缺省口径一致；我自己那条未决提议按原额度回填，
- *  免得改主意重提时顺手把额度改成默认的全额。费用上限随案件与需求状态变化。 */
-function resetNegotiationForm() {
-  const mine = pendingNegotiation.value?.initiatedBy === props.role ? pendingNegotiation.value : null
-  negotiationDepositYuan.value = String(
-    mine ? mine.depositRefundAmountFen / 100 : negotiationDepositCapYuan.value,
-  )
-  negotiationFinalYuan.value = String(
-    mine ? mine.finalRefundAmountFen / 100 : negotiationFinalCapYuan.value,
-  )
-  negotiationNote.value = mine ? mine.note : ''
-}
-
-async function submitNegotiationPropose() {
-  const current = activeBreachCase.value
-  if (!current) {
-    return
-  }
-
-  const depositYuan = Number(negotiationDepositYuan.value)
-  const finalYuan = Number(negotiationFinalYuan.value)
-  if (!Number.isFinite(depositYuan) || depositYuan < 0 || depositYuan > negotiationDepositCapYuan.value) {
-    showToast(`定金退还金额需在 0 ~ ¥${negotiationDepositCapYuan.value} 之间`, 'warning')
-    return
-  }
-  if (!Number.isFinite(finalYuan) || finalYuan < 0 || finalYuan > negotiationFinalCapYuan.value) {
-    showToast(
-      finalRefundable.value
-        ? `尾款退还金额需在 0 ~ ¥${negotiationFinalCapYuan.value} 之间`
-        : '尾款尚未缴纳，尾款退还金额只能填 0',
-      'warning',
-    )
-    return
-  }
-  negotiationActing.value = true
-  try {
-    breachCase.value = await proposeAdapayBreachNegotiation(
-      props.token,
-      current.id,
-      Math.round(depositYuan * 100),
-      Math.round(finalYuan * 100),
-      negotiationNote.value.trim(),
-    )
-    resetNegotiationForm()
-    showToast('协商提议已提交，等待对方确认', 'success')
-    emit('changed')
-  } catch (error) {
-    showToast(error instanceof Error ? error.message : '发起协商失败', 'error')
-  } finally {
-    negotiationActing.value = false
-  }
-}
-
-async function submitNegotiationRespond(action: 'approve' | 'reject') {
-  const current = activeBreachCase.value
-  if (!current) {
-    return
-  }
-
-  negotiationActing.value = true
-  try {
-    breachCase.value = await respondAdapayBreachNegotiation(props.token, current.id, action)
-    showToast(action === 'approve' ? '已同意协商，平台将按该额度退款结案' : '已拒绝协商', 'success')
-    emit('changed')
-  } catch (error) {
-    showToast(error instanceof Error ? error.message : '处理协商提议失败', 'error')
-  } finally {
-    negotiationActing.value = false
-  }
 }
 
 async function submitBreachReport() {
@@ -811,7 +682,7 @@ async function submitBreachReport() {
   breachSubmitting.value = true
   try {
     breachCase.value = await reportAdapayBreach(props.token, item.requirement_id, reason)
-    showToast('终止合作申请已提交，请先与对方协商', 'success')
+    showToast('终止合作申请已提交，平台将进入责任判定', 'success')
     breachVisible.value = false
     emit('changed')
   } catch (error) {
@@ -988,44 +859,6 @@ defineExpose({ canAcceptDelivery, openAcceptanceDialog })
           activeBreachCase.refundAmountCny }} · 赔付 ¥{{ activeBreachCase.compensationAmountCny }}
       </p>
 
-      <template v-if="canProposeNegotiation || canRespondNegotiation || activeBreachCase.negotiation">
-        <p class="conversation-actions__line"><strong>协商终止合作：</strong>双方谈定定金与尾款的退还额度，谈成即按该额度退款结案，不必等平台判定</p>
-        <template v-if="activeBreachCase.negotiation">
-          <p class="conversation-actions__line">
-            <strong>{{ activeBreachCase.negotiation.initiatedBy === role ? '我方' : '对方' }}提议：</strong>
-            定金退还 ¥{{ activeBreachCase.negotiation.depositRefundAmountCny }} · 尾款退还 ¥{{
-              activeBreachCase.negotiation.finalRefundAmountCny }}
-          </p>
-          <p v-if="activeBreachCase.negotiation.note" class="conversation-actions__line">
-            <strong>提议说明：</strong>{{ activeBreachCase.negotiation.note }}
-          </p>
-          <p v-if="activeBreachCase.negotiation.respondedAt" class="conversation-actions__line">
-            <strong>处理结果：</strong>{{ activeBreachCase.negotiation.status === 'accepted' ? '已同意' : '已拒绝' }}
-            （{{ formatCnDateTime(activeBreachCase.negotiation.respondedAt) }}）{{
-              activeBreachCase.negotiation.responseNote ? ` · ${activeBreachCase.negotiation.responseNote}` : '' }}
-          </p>
-        </template>
-        <p v-if="negotiationHint" class="conversation-actions__tip">{{ negotiationHint }}</p>
-        <template v-if="canProposeNegotiation">
-          <label class="conversation-actions__field">
-            <span>定金退还金额（元，上限 ¥{{ negotiationDepositCapYuan }}）</span>
-            <input v-model="negotiationDepositYuan" type="number" min="0" :max="negotiationDepositCapYuan"
-              step="0.01" inputmode="decimal" />
-          </label>
-          <label class="conversation-actions__field">
-            <span>尾款退还金额（元，上限 ¥{{ negotiationFinalCapYuan }}）</span>
-            <input v-model="negotiationFinalYuan" type="number" min="0" :max="negotiationFinalCapYuan" step="0.01"
-              inputmode="decimal" :disabled="!finalRefundable" />
-          </label>
-          <p v-if="!finalRefundable" class="conversation-actions__tip">尾款尚未缴纳，尾款退还金额只能为 0</p>
-          <label class="conversation-actions__field">
-            <span>说明（选填，供平台人工判定参考）</span>
-            <textarea v-model="negotiationNote" rows="2" maxlength="1000"
-              placeholder="可留空。写明额度依据；内容双方与平台客服均可见"></textarea>
-          </label>
-        </template>
-      </template>
-
       <template v-if="canDecideBreach">
         <p class="conversation-actions__tip">
           双方都接受 AI 判定后平台才会执行退款／赔付；任一方不接受或逾期未全部表态，案件转客服人工判定。
@@ -1038,8 +871,8 @@ defineExpose({ canAcceptDelivery, openAcceptanceDialog })
       </template>
       <p v-else-if="activeBreachCase.status === 'submitted' || activeBreachCase.status === 'ai_reviewing'"
         class="conversation-actions__tip">
-        双方先自行协商；协商不成由任一方申请平台介入，平台按 AI 判定 + 客服人工审核认定责任方，
-        AI 判定完成后由双方各自选择是否接受。
+        平台按 AI 判定 + 客服人工审核认定责任方，AI 判定完成后由双方各自选择是否接受；
+        任一方不接受或逾期未全部表态，案件转客服人工判定。
       </p>
     </template>
 
@@ -1077,10 +910,9 @@ defineExpose({ canAcceptDelivery, openAcceptanceDialog })
           placeholder="请描述合作终止的事实、时间与相关证据说明"></textarea>
       </label>
       <p class="conversation-actions__tip">
-        提交后案件进入「协商中」：双方先在案件内协商定金与尾款的退还额度，谈成即直接退款结案。
-        协商不成再由任一方申请平台介入，平台会核对合同、支付、交付与沟通记录，由审核智能体
-        依据需求会话与材料判定责任方，客服人工复核后按结论执行退款／赔付并解除需求绑定。
-        恶意申报会影响账号信用。
+        提交后平台会核对合同、支付、交付与沟通记录，由审核智能体依据需求会话与材料判定责任方，
+        客服人工复核后按结论执行退款／赔付并解除需求绑定；判定结果需双方在案件内表态，
+        任一方不接受或逾期未全部表态即转客服人工判定。恶意申报会影响账号信用。
       </p>
     </template>
 
@@ -1089,12 +921,6 @@ defineExpose({ canAcceptDelivery, openAcceptanceDialog })
       <template v-if="activeBreachCase">
         <el-button v-if="canWithdrawBreach" :loading="breachActing" @click="submitBreachWithdraw">撤回申请</el-button>
         <el-button v-if="canRequestPlatformReview" :loading="breachActing" @click="submitPlatformReview">申请平台介入</el-button>
-        <template v-if="canRespondNegotiation">
-          <el-button :loading="negotiationActing" @click="submitNegotiationRespond('reject')">拒绝协商</el-button>
-          <el-button type="primary" :loading="negotiationActing" @click="submitNegotiationRespond('approve')">同意协商</el-button>
-        </template>
-        <el-button v-else-if="canProposeNegotiation" type="primary" plain :loading="negotiationActing"
-          @click="submitNegotiationPropose">发起协商</el-button>
         <template v-if="canDecideBreach">
           <template v-if="breachRejectPanel">
             <el-button :loading="breachActing" @click="breachRejectPanel = false">取消</el-button>
