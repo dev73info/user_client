@@ -232,6 +232,21 @@ describe('售后弹窗的表态与落实确认', () => {
     expect(button('撤回申请')).toBeUndefined()
     expect(wrapper!.text()).toContain('资金正在执行')
   })
+
+  it('双方一致的资金执行按「双方达成一致」说，不写成平台裁决', async () => {
+    // 对方点「接受诉求」即当场按诉求额度退款，责任方记 `mutual`：平台只是照约定走渠道退款，
+    // 没有任何裁决动作，文案不能让人以为平台介入过。
+    await open({
+      items: [caseWith('processing', { liableParty: 'mutual', developerDecision: 'accept' })],
+    })
+    expect(wrapper!.text()).toContain('资金执行中')
+    expect(wrapper!.text()).toContain('双方已达成一致')
+    expect(wrapper!.text()).not.toContain('平台裁决')
+
+    // 平台裁决（认定责任方）走同一条资金链路，但说法要说成裁决。
+    await open({ items: [caseWith('processing', { liableParty: 'developer' })] })
+    expect(wrapper!.text()).toContain('平台裁决已落地')
+  })
 })
 
 describe('售后弹窗的返工中状态', () => {

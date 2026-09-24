@@ -228,7 +228,9 @@ function statusText(status: AfterSalesCase['status']) {
     case 'support_reviewing':
       return '平台裁决中'
     case 'processing':
-      return '平台处理中'
+      // 与平台侧（管理端 / 客服端）同口径：`processing` 指的是资金执行中，不是「平台在审」。
+      // 双方一致与平台裁决走的是同一条资金链路，责任方在 `liableParty` 上（`mutual` = 双方一致）。
+      return '资金执行中'
     case 'agreed':
       // 对方接受了诉求，但没有可直接执行的资金动作（赔偿 / 其它 / 额度为 0 的退款），等发起人确认落实。
       return '待确认落实'
@@ -253,12 +255,25 @@ function statusText(status: AfterSalesCase['status']) {
  * 在办案件的一句话状态说明：先说清「现在到哪一步、你要做什么」。
  *
  * 待对方表态这类不需要解释的状态不给文案，省掉一行噪音。
+ * `processing` 不在这张表里：它的说法要看责任方（见 [`processingTip`]）。
  */
 const STATUS_TIPS: Partial<Record<AfterSalesCase['status'], string>> = {
-  processing: '平台裁决已落地，资金正在执行，完成后自动结案。',
   support_reviewing: '已提交平台裁决，等待客服认定责任方与金额。',
   agreed: '双方已就诉求达成一致，落实后由发起人点「确认已落实」结案。',
   rework_pending: '对方已接受返工要求，返工完成后由发起人点「确认已落实」结案。',
+}
+
+/**
+ * 资金执行中的说明分两种来路，不能混成一句。
+ *
+ * `liable_party = 'mutual'` 是双方在案件里自己谈成的（对方点了「接受诉求」），平台没做过任何
+ * 裁决，只是照约定把尾款走渠道退回——写成「平台裁决已落地」会让人以为平台介入过，明明两边
+ * 已经谈好了。只有客服认定（`customer` / `developer`）才是真的裁决。
+ */
+function processingTip(liableParty: AfterSalesCase['liableParty']) {
+  return liableParty === 'mutual'
+    ? '双方已达成一致，退款正在原路退回（渠道退款有等待期），到账后自动结案。'
+    : '平台裁决已落地，资金正在执行，完成后自动结案。'
 }
 
 /** 折进折叠区的流程分支细节：只给确实有分支可说的状态，避免点开是空盒子。 */
@@ -271,9 +286,16 @@ const STATUS_DETAILS: Partial<Record<AfterSalesCase['status'], string>> = {
     '若对方没有落实，发起人可点「未落实，申请平台介入」转客服裁决，届时可动用尾款退还与保证金赔付两个渠道；一直不确认会在售后窗口关闭后转人工客服。',
 }
 
-const statusTip = computed(() =>
-  currentCase.value ? (STATUS_TIPS[currentCase.value.status] ?? null) : null,
-)
+const statusTip = computed(() => {
+  const row = currentCase.value
+  if (!row) {
+    return null
+  }
+  if (row.status === 'processing') {
+    return processingTip(row.liableParty)
+  }
+  return STATUS_TIPS[row.status] ?? null
+})
 
 const statusDetail = computed(() =>
   currentCase.value ? (STATUS_DETAILS[currentCase.value.status] ?? null) : null,

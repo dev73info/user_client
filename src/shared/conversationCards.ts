@@ -301,14 +301,16 @@ export function conversationCardMeta(
         description: '请等待平台判定，裁决结论与资金动账都会同步到案件与这里。',
       }
     case 'after_sales_case_funds_processing':
+      // 这张卡片同一事件码有两种来路：双方一致（对方点了「接受诉求」）与平台裁决。卡片没有载荷，
+      // 只说资金的去向与进度——写成「裁决已认定」会把双方谈成的案子说成平台介入。
       return {
-        title: '售后裁决已认定',
+        title: '售后资金处理中',
         description: '退款与赔付正在处理中（渠道退款有等待期），完成后会再有一条结案通知。',
       }
     case 'after_sales_case_resolved':
       return {
         title: '售后案件已结案',
-        description: '资金已按认定处理完成：尾款原路退还需求方，赔付从开发者保证金扣划。',
+        description: '资金已处理完成：尾款原路退还需求方，赔付从开发者保证金扣划。',
       }
     case 'after_sales_case_rejected':
       return {
