@@ -17,6 +17,7 @@ import {
   respondAfterSalesCase,
   withdrawAfterSalesCase,
   type AfterSalesCase,
+  type AfterSalesDecision,
   type AfterSalesKind,
   type AfterSalesRespondAction,
 } from '@/api/afterSales'
@@ -156,7 +157,10 @@ function actionAllowed(status: AfterSalesCase['status']) {
   return ['submitted', 'support_reviewing'].includes(status)
 }
 
-/** 本方在这次案件里的表态：发起人走撤回 / 确认落实，不写表态列。 */
+/**
+ * 本方在这次案件里的表态：发起人走撤回 / 确认落实；他那一列在发起时已被写成 `opened`
+ * （诉求即表态），所以这里不会是 null 只对本方是发起人时成立。
+ */
 const myDecision = computed(() => {
   const row = currentCase.value
   if (!row) {
@@ -269,7 +273,11 @@ function kindText(value: AfterSalesKind) {
   return KIND_OPTIONS.find((option) => option.value === value)?.label ?? '其它问题'
 }
 
-function decisionText(decision: AfterSalesCase['customerDecision']) {
+function decisionText(decision: AfterSalesDecision | null) {
+  if (decision === 'opened') {
+    // 发起人发起时就已经表态了：诉求本身就是他的立场，因此不会显示成「未表态」。
+    return '已发起诉求'
+  }
   if (decision === 'accept') {
     return '接受诉求'
   }

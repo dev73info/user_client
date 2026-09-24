@@ -29,6 +29,15 @@ export type AfterSalesPartyRole = 'customer' | 'developer'
  */
 export type AfterSalesRespondAction = 'accept' | 'reject' | 'complete' | 'unfulfilled'
 
+/**
+ * 一方在案件里的表态。`opened` 是发起人自己的表态——他发起时就已经表态了，
+ * 诉求本身就是他的立场，所以后端在发起时把这一列写成 `opened`（时间即发起时间），
+ * 面板上不会出现「发起人未表态」这种自相矛盾的读法。
+ *
+ * 与 [`AfterSalesRespondAction`] 不是同一套取值：`complete`（确认已落实）只用于结案，不落表态列。
+ */
+export type AfterSalesDecision = 'opened' | 'accept' | 'reject' | 'unfulfilled'
+
 export type AfterSalesCase = {
   id: number
   caseNo: string
@@ -53,9 +62,11 @@ export type AfterSalesCase = {
   resolvedBy: string | null
   resolvedAt: string | null
   decisionDeadlineAt: string | null
-  customerDecision: AfterSalesRespondAction | null
+  /** 需求方表态：发起人本人时是 `opened`（发起诉求即表态），其余是对诉求的答复。 */
+  customerDecision: AfterSalesDecision | null
   customerDecidedAt: string | null
-  developerDecision: AfterSalesRespondAction | null
+  /** 开发者表态，同 `customerDecision`。 */
+  developerDecision: AfterSalesDecision | null
   developerDecidedAt: string | null
   createdAt: string
   updatedAt: string
