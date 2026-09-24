@@ -806,15 +806,13 @@ watch(
       </template>
 
       <template v-else-if="canSubmitCase">
-        <div class="after-sales-modal__field">
+        <label class="after-sales-modal__field">
           <strong>诉求类型</strong>
-          <div class="after-sales-modal__kinds" role="group" aria-label="诉求类型">
-            <button v-for="option in KIND_OPTIONS" :key="option.value" type="button" class="after-sales-modal__kind"
-              :class="{ 'is-active': kind === option.value }" @click="kind = option.value">
-              {{ option.label }}
-            </button>
-          </div>
-        </div>
+          <el-select v-model="kind" class="after-sales-modal__select" aria-label="诉求类型">
+            <el-option v-for="option in KIND_OPTIONS" :key="option.value" :label="option.label"
+              :value="option.value" />
+          </el-select>
+        </label>
 
         <label class="pay-line after-sales-modal__field">
           <strong>{{ claimAmountField.label }}</strong>
@@ -1038,31 +1036,33 @@ watch(
   font-weight: 700;
 }
 
-.pay-modal .after-sales-modal__kinds {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 8px;
+/* 诉求类型下拉与同弹窗的输入框同高同圆角：Element 默认的 32px / 4px 会比旁边的输入框矮一截。 */
+.pay-modal .after-sales-modal__select {
+  width: 100%;
 }
 
-.pay-modal .after-sales-modal__kind {
+.pay-modal .after-sales-modal__select :deep(.el-select__wrapper) {
   min-height: 44px;
-  border: 1px solid rgba(209, 220, 243, 0.95);
+  padding: 0 12px;
   border-radius: 12px;
-  background: #ffffff;
-  color: #334155;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    background-color 160ms ease,
-    color 160ms ease;
+  background: rgba(248, 250, 252, 0.92);
+  box-shadow: 0 0 0 1px rgba(198, 210, 236, 0.9) inset;
+  font-size: 14px;
 }
 
-.pay-modal .after-sales-modal__kind.is-active {
-  border-color: rgba(37, 99, 235, 0.62);
-  background: rgba(239, 246, 255, 0.96);
-  color: #1d4ed8;
+.pay-modal .after-sales-modal__select :deep(.el-select__wrapper:hover),
+.pay-modal .after-sales-modal__select :deep(.el-select__wrapper.is-hovering) {
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.42) inset;
+}
+
+.pay-modal .after-sales-modal__select :deep(.el-select__wrapper.is-focused) {
+  background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.58) inset;
+}
+
+.pay-modal .after-sales-modal__select :deep(.el-select__selected-item) {
+  color: #0f172a;
+  font-weight: 700;
 }
 
 .pay-modal .after-sales-modal__field input {

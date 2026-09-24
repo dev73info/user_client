@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { ElOption, ElSelect } from 'element-plus'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import type {
   AfterSalesCase,
@@ -458,16 +459,29 @@ describe('售后弹窗的返工中状态', () => {
   })
 })
 
+/** 诉求类型下拉（Element Plus 的选择器），四类诉求的取值与后端 `kind` 一致。 */
+const kindSelect = () => wrapper!.findComponent(ElSelect)
+
 describe('售后弹窗的诉求额度', () => {
   it('四类诉求都能填诉求额度，文案跟着诉求类型走', async () => {
     await open()
     expect(wrapper!.text()).toContain('返工不成时希望退还的尾款（元）')
     expect(wrapper!.text()).toContain('作为平台裁决的参考')
 
-    await clickButton('要求赔偿')
+    await kindSelect().setValue('compensation')
     expect(wrapper!.text()).toContain('希望赔偿的金额（元）')
 
-    await clickButton('其它问题')
+    await kindSelect().setValue('other')
     expect(wrapper!.text()).toContain('希望平台处理的金额（元）')
+  })
+
+  it('诉求类型是下拉选择，四类诉求各占一个选项', async () => {
+    await open()
+    expect(kindSelect().exists()).toBe(true)
+
+    const labels = kindSelect()
+      .findAllComponents(ElOption)
+      .map((option) => option.props('label'))
+    expect(labels).toEqual(['要求退款', '要求赔偿', '要求返工', '其它问题'])
   })
 })
