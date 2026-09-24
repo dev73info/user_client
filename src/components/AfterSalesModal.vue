@@ -10,6 +10,7 @@
  * 比大小，真正的判定仍在服务层。
  */
 import { computed, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import {
   getAfterSalesCase,
   listMyAfterSalesCases,
@@ -64,6 +65,13 @@ const withdrawingId = ref<number | null>(null)
 
 /** 在办案件的详情：协商记录与两个资金上限只在详情里下发，列表接口没有。 */
 const caseDetail = ref<AfterSalesCaseDetail | null>(null)
+/**
+ * 转人工后的催办出口：需求方与开发者各有一套工单中心。
+ * `canOpenCase` 正好区分两者（只有甲方能发起售后，也就只有甲方走需求方路由）。
+ */
+const ticketCenterRoute = computed(() =>
+  props.canOpenCase ? { name: 'workbench-tickets' } : { name: 'dev-tickets' },
+)
 /** 协商提议表单是否展开（提还价 / 改我的还价）。 */
 const proposalOpen = ref(false)
 const proposalAmount = ref<string | number>('')
@@ -665,7 +673,9 @@ watch(
           一直不确认会在售后窗口关闭后转人工客服。
         </p>
         <p v-else-if="currentCase.status === 'manual_required'" class="tip">
-          资金执行遇到问题，已转人工客服处理，请留意会话消息。
+          资金执行遇到问题，已转人工客服处理。客服会尽快跟进，进展会同步到需求会话里；
+          催办请走
+          <RouterLink :to="ticketCenterRoute">工单中心</RouterLink>。
         </p>
 
         <!-- 未决还价提议：先处理它——同意即按提议的两个额度执行结案，拒绝后可改额度重提。 -->

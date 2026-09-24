@@ -86,4 +86,61 @@ describe('conversation status cards', () => {
   it('ignores unknown event codes', () => {
     expect(meta('whatever', 'customer', 'deposit_paid')).toBeNull()
   })
+
+  it('has copy for every negotiation event code the backend writes', () => {
+    // 后端 `system_card_text` 认识的每个事件码都必须在这里有文案：漏一个，会话里那条
+    // 卡片就会渲染成空白（界面还承诺过「对方会在会话里收到通知」）。
+    const codes = [
+      // 协商解除（自管模式）
+      'unbind_request_submitted',
+      'unbind_request_approved',
+      'unbind_request_rejected',
+      'unbind_request_auto_rejected',
+      'unbind_request_expired',
+      // 终止合作
+      'breach_case_negotiation_proposed',
+      'breach_case_negotiation_rejected',
+      'breach_case_ai_reviewing',
+      // 售后
+      'after_sales_case_opened',
+      'after_sales_case_negotiation_proposed',
+      'after_sales_case_negotiation_rejected',
+      'after_sales_case_agreed',
+      'after_sales_case_rework_accepted',
+      'after_sales_case_rework_unfulfilled',
+      'after_sales_case_support_reviewing',
+      'after_sales_case_funds_processing',
+      'after_sales_case_resolved',
+      'after_sales_case_rejected',
+      'after_sales_case_withdrawn',
+      'after_sales_case_manual_required',
+    ]
+    for (const code of codes) {
+      const card = meta(code, 'customer', 'completed')
+      expect(card, `事件码 ${code} 缺少卡片文案`).not.toBeNull()
+      expect(card?.title.length).toBeGreaterThan(0)
+      expect(card?.description.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('sends both peers to their own ticket center after a case goes manual', () => {
+    // 「客服会尽快跟进」不给出口就只是空承诺：两类案件卡片都要把人送到工单中心，
+    // 且需求方与开发者各自的路由不同。
+    for (const code of ['breach_case_manual_required', 'after_sales_case_manual_required']) {
+      expect(meta(code, 'customer', 'completed')?.to).toEqual({ name: 'workbench-tickets' })
+      expect(meta(code, 'developer', 'completed')?.to).toEqual({ name: 'dev-tickets' })
+    }
+  })
+
+  it('keeps the negotiation progress cards free of dead-end buttons', () => {
+    // 案件详情都在需求卡片的弹窗里，这些卡片再给按钮只是空跳转回自己已经在的页面。
+    for (const code of [
+      'unbind_request_submitted',
+      'breach_case_negotiation_proposed',
+      'after_sales_case_negotiation_proposed',
+      'after_sales_case_support_reviewing',
+    ]) {
+      expect(meta(code, 'customer', 'completed')?.actionLabel).toBeUndefined()
+    }
+  })
 })

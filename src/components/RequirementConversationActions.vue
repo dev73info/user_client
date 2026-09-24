@@ -289,9 +289,15 @@ const canProposeNegotiation = computed(
     NEGOTIATION_OPEN_STATUSES.includes(activeBreachCase.value.status) &&
     (pendingNegotiation.value == null || pendingNegotiation.value.initiatedBy === props.role),
 )
-/** 承诺方是对方：未决提议由对方发起时才轮到我同意 / 拒绝（自己不能替对方拍板）。 */
+/** 承诺方是对方：未决提议由对方发起时才轮到我同意 / 拒绝（自己不能替对方拍板）。
+ * 还要确认案件仍在协商窗口内：资金已开跑（`processing` / `manual_required`）或已结案后，
+ * 后端 `breach_case_is_negotiable` 一律拒绝表态，只看未决提议会渲染出必然 409 的按钮。 */
 const canRespondNegotiation = computed(
-  () => pendingNegotiation.value != null && pendingNegotiation.value.initiatedBy !== props.role,
+  () =>
+    activeBreachCase.value != null &&
+    NEGOTIATION_OPEN_STATUSES.includes(activeBreachCase.value.status) &&
+    pendingNegotiation.value != null &&
+    pendingNegotiation.value.initiatedBy !== props.role,
 )
 /** 尾款只有缴过才退得出来：`pending_final` 是「待付尾款」，此时尾款额度只能是 0（后端同样会拒绝）。 */
 const finalRefundable = computed(() => status.value === 'completed')

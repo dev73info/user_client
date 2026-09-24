@@ -42,6 +42,16 @@ export function conversationCardMeta(
     name: 'contract-sign',
     query: { requirement_id: requirementId, from: role === 'developer' ? 'dev' : 'user' },
   }
+  // 转人工后的催办出口：客服工单中心，需求方与开发者各有一套路由。
+  // 「客服会尽快跟进」这类卡片不给出口就只是空承诺，用户只能干等。
+  const ticketCenterRoute: RouteLocationRaw =
+    role === 'developer' ? { name: 'dev-tickets' } : { name: 'workbench-tickets' }
+  // 案件类卡片（违约、售后）的详情都在需求卡片的弹窗里，没有可一键执行的资金动作，
+  // 常规流转一律不给按钮，避免空跳转；只有「已转人工」给工单中心这个真实出口。
+  const ticketFollowUp = {
+    actionLabel: '去工单中心催办',
+    to: ticketCenterRoute,
+  }
 
   switch (actionType) {
     // 合同在爱签侧，点按钮就是去看爱签那份合同（未签署时爱签页面里也能直接签），
@@ -130,6 +140,35 @@ export function conversationCardMeta(
         actionLabel: '去需求大厅',
         to: role === 'developer' ? { name: 'dev-requirement-hall' } : requirementListRoute,
       }
+    // 协商解除（自管模式）：这条通道全程不动资金，双方唯一能看到「对方有没有处理」
+    // 的地方就是会话，因此申请、同意、拒绝、自动驳回与超时作废都各有卡片。
+    // 全部不给按钮：申请与表态都在需求卡片的弹窗里，这里再给入口只是空跳转。
+    case 'unbind_request_submitted':
+      return {
+        title: '解除绑定申请已提交',
+        description:
+          '等待对方确认。对方同意后需求回到待接单；长时间未处理则申请自动作废，需求按原约定继续。',
+      }
+    case 'unbind_request_approved':
+      return {
+        title: '双方已同意解除绑定',
+        description: '需求已回到待接单状态，双方仍可在会话里沟通。',
+      }
+    case 'unbind_request_rejected':
+      return {
+        title: '解除绑定申请未获同意',
+        description: '需求按原约定继续履行。确有需要可在状态窗口内重新发起一笔申请。',
+      }
+    case 'unbind_request_auto_rejected':
+      return {
+        title: '解除绑定申请已自动驳回',
+        description: '担保模式不支持协商解除，退出请走「终止合作」（违约申报）。',
+      }
+    case 'unbind_request_expired':
+      return {
+        title: '解除绑定申请已自动作废',
+        description: '对方长时间未处理，需求按原约定继续。确需解除可重新发起申请。',
+      }
     // 违约案件进展（AD-5）：后端在案件每一步流转时都写一条卡片，这里给出对应中文。
     // 案件详情（责任方、退款与赔付金额、协商记录）都在需求卡片的违约弹窗里，
     // 没有可一键执行的资金动作，所以全部不给按钮，避免空跳转。
@@ -167,6 +206,88 @@ export function conversationCardMeta(
       return {
         title: '违约案件需人工处理',
         description: '资金处理未能自动完成，客服会尽快跟进并在案件内同步进展。',
+        ...ticketFollowUp,
+      }
+    // 协商还价与「申请平台介入」此前不写卡片，对方不提就没人在会话里说一声。
+    // 与案件其它卡片同口径：详情在弹窗里，不给按钮。
+    case 'breach_case_negotiation_proposed':
+      return {
+        title: '对方已发起终止合作协商',
+        description:
+          '请在案件内表态是否接受该退款额度。不接受可改额度重新提议，或申请平台介入判定。',
+      }
+    case 'breach_case_negotiation_rejected':
+      return {
+        title: '协商提议未获同意',
+        description: '双方可改额度重新提议，或由任一方申请平台介入判定责任方。',
+      }
+    case 'breach_case_ai_reviewing':
+      return {
+        title: '已申请平台介入',
+        description: '平台将依据会话记录与交付材料判定责任方，判定结论会同步到案件与这里。',
+      }
+    // 售后案件进展：售后此前完全不写卡片，界面却承诺「对方会在会话里收到通知」。
+    // 每一步流转都有卡片，双方不必点进弹窗才知道进展。
+    case 'after_sales_case_opened':
+      return {
+        title: '售后申请已提交',
+        description: '诉求与诉求金额都在需求卡片的售后弹窗里，等待对方接受或不接受。',
+      }
+    case 'after_sales_case_negotiation_proposed':
+      return {
+        title: '对方已发起售后协商',
+        description: '请在售后弹窗里表态是否接受该方案。不接受可改额度重新提议。',
+      }
+    case 'after_sales_case_negotiation_rejected':
+      return {
+        title: '售后协商提议未获同意',
+        description: '双方可改额度重新提议，或由任一方按原诉求表态、交平台裁决。',
+      }
+    case 'after_sales_case_agreed':
+      return {
+        title: '对方已接受诉求',
+        description: '等待发起人确认落实后结案；发起人也可上报未落实转平台裁决。',
+      }
+    case 'after_sales_case_rework_accepted':
+      return {
+        title: '对方已接受返工诉求',
+        description: '返工完成后由发起人验收：确认落实即结案，未落实则转平台裁决。',
+      }
+    case 'after_sales_case_rework_unfulfilled':
+      return {
+        title: '返工未落实',
+        description: '售后案件已转平台裁决，判定结论会同步到案件与这里。',
+      }
+    case 'after_sales_case_support_reviewing':
+      return {
+        title: '售后案件已转客服裁决',
+        description: '请等待平台判定，裁决结论与资金动账都会同步到案件与这里。',
+      }
+    case 'after_sales_case_funds_processing':
+      return {
+        title: '售后裁决已认定',
+        description: '退款与赔付正在处理中（渠道退款有等待期），完成后会再有一条结案通知。',
+      }
+    case 'after_sales_case_resolved':
+      return {
+        title: '售后案件已结案',
+        description: '资金已按认定处理完成：尾款原路退还需求方，赔付从开发者保证金扣划。',
+      }
+    case 'after_sales_case_rejected':
+      return {
+        title: '售后申请未获支持',
+        description: '平台未支持本次售后诉求，案件已关闭。',
+      }
+    case 'after_sales_case_withdrawn':
+      return {
+        title: '售后申请已撤回',
+        description: '发起人已撤回本次申请，案件已关闭；窗口内仍可重新发起。',
+      }
+    case 'after_sales_case_manual_required':
+      return {
+        title: '售后案件需人工处理',
+        description: '资金处理未能自动完成，客服会尽快跟进并在案件内同步进展。',
+        ...ticketFollowUp,
       }
     default:
       return null
