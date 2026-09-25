@@ -593,4 +593,22 @@ describe('InvoiceApplyDialog', () => {
 
     wrapper.unmount()
   })
+
+  it('乙方看不到需求方的平台服务费票进度，只看自己那张收入票', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        platformInvoice: invoiceRecord({ status: 'under_review' }),
+        developerInvoice: invoiceRecord({ id: 2, invoiceRole: 'developer', status: 'requested', amountCny: '800.00' }),
+        invoiceableTotalFen: 0,
+        invoiceableTotalCny: '0.00',
+      }),
+    )
+    const wrapper = await render('developer')
+
+    // 平台服务费是需求方付给平台的，那张票与乙方无关：进度行里只留乙方自己的收入票
+    expect(wrapper.text()).not.toContain('平台服务费发票已提交')
+    expect(wrapper.text()).toContain('开发者服务收入发票已提交（待处理 · 票面 ¥800.00）')
+
+    wrapper.unmount()
+  })
 })

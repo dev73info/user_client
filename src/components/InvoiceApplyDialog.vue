@@ -97,10 +97,15 @@ const copy = computed(() => COPY[props.role])
 const amountFen = computed(() => summary.value?.invoiceableTotalFen ?? 0)
 const amountCny = computed(() => summary.value?.invoiceableTotalCny ?? '0.00')
 
-/** 已经存在的发票记录：已提交过的一侧只展示进度，不重复申请。 */
+/**
+ * 已经存在的发票记录：已提交过的一侧只展示进度，不重复申请。
+ *
+ * 平台服务费票只对需求方展示：票是平台开给他的（买方与接收人都是他），乙方那份汇总里后端
+ * 也不会回这张票（见 `invoiceable_summary`），这里再按角色挡一道，避免哪个入口漏了过滤。
+ */
 const existingInvoices = computed<{ side: InvoiceSide; invoice: InvoiceRecord }[]>(() => {
   const records: { side: InvoiceSide; invoice: InvoiceRecord }[] = []
-  if (summary.value?.platformInvoice) {
+  if (props.role === 'customer' && summary.value?.platformInvoice) {
     records.push({ side: 'platform', invoice: summary.value.platformInvoice })
   }
   if (summary.value?.developerInvoice) {
