@@ -47,7 +47,7 @@ async function render(component: typeof MySignaturesView | typeof UserWorkbenchV
   const names = ['workbench', 'workbench-requirements', 'workbench-account',
     'workbench-invoices', 'workbench-points', 'workbench-favorites', 'workbench-invite', 'workbench-teams',
     'workbench-team-resources', 'workbench-tickets', 'dev-resource-list', 'dev-requirement-hall',
-    'dev-my-requirements', 'dev-wallet', 'dev-wallet-releases']
+    'dev-my-requirements', 'dev-wallet']
   const router = createRouter({ history: createMemoryHistory(), routes: [
     ...names.map((name) => ({ name, path: `/${name}`, component: { template: '<div />' } })),
     { name: 'workbench-signatures', path: '/workbench/signatures', component: MySignaturesView },
@@ -138,8 +138,10 @@ describe('signature detail', () => {
     expect(mocks.developerAgreement).not.toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('workbench-signature-detail')
     // 已签署的合同不在本地铺正文，改为「查看合同」跳爱签预览页。
+    // 这个入口挂在合同信息块右侧（`f1e00cc` 从底部操作栏挪过去的）：底部那条操作栏只放
+    // 签署动作，已签署的合同在那里没有可做的事。
     expect(wrapper.find('.contract-content').exists()).toBe(false)
-    expect(wrapper.find('.contract-actions').text()).toContain('查看合同')
+    expect(wrapper.find('.contract-meta .btn-primary').text()).toContain('查看合同')
     expect(wrapper.text()).not.toContain('签署完成，成为开发者')
     wrapper.unmount()
   })
@@ -147,22 +149,25 @@ describe('signature detail', () => {
     mocks.detail.mockResolvedValue({ ...base, status: 'signed', content: '正文', content_sha256: 'abc', signing_logs: [] })
     mocks.preview.mockResolvedValue('')
     const { wrapper } = await render(ContractSignView, true)
-    await wrapper.find('.contract-actions .btn-primary').trigger('click')
+    await wrapper.find('.contract-meta .btn-primary').trigger('click')
     await flushPromises()
     expect(mocks.preview).toHaveBeenCalledWith('test-token', 1)
     expect(wrapper.find('.contract-content').text()).toBe('正文')
     expect(wrapper.text()).toContain('爱签暂未提供该合同的查看页')
     wrapper.unmount()
   })
-  it('keeps signing disabled until the user accepts with verified identity', async () => {
+  it('keeps signing enabled once identity is verified, whatever the notice checkbox says', async () => {
     mocks.detail.mockResolvedValue({ ...base, content: '正文', content_sha256: 'abc', party_a_real_name: 'Alice', party_a_id_card_no_masked: '****1234', signing_logs: [] })
     mocks.initiate.mockRejectedValue(new Error('签署服务暂不可用'))
     const { wrapper } = await render(ContractSignView, true)
-    expect(wrapper.find('.btn-primary').attributes('disabled')).toBeDefined()
+    // 实名信息齐全、当前不在签署中，就应当能点：那个勾选框是「短信通知签署」（是否给签署人发短信），
+    // 不是同意条款，拿它置灰按钮会把不发短信的人挡在门外。
+    expect(wrapper.find('.contract-actions .btn-primary').attributes('disabled')).toBeUndefined()
     await wrapper.find('input[type="checkbox"]').setValue(true)
-    await wrapper.find('.btn-primary').trigger('click')
+    await wrapper.find('.contract-actions .btn-primary').trigger('click')
     await flushPromises()
-    expect(mocks.initiate).toHaveBeenCalledWith('test-token', 1)
+    // 勾了短信通知就按通知走（第三个入参），停在页面上等轮询，不跳爱签签署页。
+    expect(mocks.initiate).toHaveBeenCalledWith('test-token', 1, true)
     expect(wrapper.text()).toContain('签署服务暂不可用')
     wrapper.unmount()
   })

@@ -968,7 +968,7 @@ watch(
   white-space: nowrap;
 }
 
-/* 行尾：对方与时间右对齐，宽度取「交付记录」__side 的同一档 */
+/* 行尾：对方与时间右对齐，宽度固定成 132px 这一档，行与行的对齐线才齐 */
 .dev-messages__thread-side {
   display: grid;
   align-content: center;

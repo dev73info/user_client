@@ -35,7 +35,7 @@ vi.mock('@/api/devCredit', async (importOriginal) => ({
   getDevCreditSelf: mocks.credit,
 }))
 
-const ROUTE_NAMES = ['dev-home', 'dev-wallet', 'dev-wallet-releases', 'dev-my-requirements', 'dev-requirement-hall', 'dev-resource-list']
+const ROUTE_NAMES = ['dev-home', 'dev-wallet', 'dev-my-requirements', 'dev-requirement-hall', 'dev-resource-list']
 
 const baseWallet = {
   total_income_cny: 1200.5,
@@ -224,7 +224,7 @@ describe('developer workbench overview', () => {
     wrapper.unmount()
   })
 
-  it('按更新时间倒序列出已接取需求单，只有绑定资源的需求单进交付记录', async () => {
+  it('按更新时间倒序列出已接取需求单，只有绑定资源的需求单进最近交付', async () => {
     const { wrapper } = await render()
     const rows = wrapper.findAll('.dev-home__project')
     // REQ-2 已完成但未终止，仍在总览列表里（终止态才从列表里剔除）
@@ -236,7 +236,7 @@ describe('developer workbench overview', () => {
     expect(rows[1]?.text()).toContain('爬虫小工具')
     expect(rows[1]?.text()).toContain('已完成')
 
-    // 交付记录排成卡片：取资源标题与版本数，行内金额取该单的到账尾款；
+    // 最近交付排成卡片：取资源标题与版本数，行内金额取该单的到账尾款；
     // 未绑定资源的需求单不出现
     const deliveries = wrapper.findAll('.dev-home__delivery')
     expect(deliveries).toHaveLength(1)

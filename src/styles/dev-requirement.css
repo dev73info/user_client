@@ -1,5 +1,5 @@
 /* 需求大厅的搜索/筛选/刷新工具栏曾在这里单独实现一套（.dev-requirement-hall__filters /
-   __field / __search / __actions / __filter-button），与资源、交付记录等页各写一份，
+   __field / __search / __actions / __filter-button），与资源、我的接单等页各写一份，
    规格还互不相同（这里是 38px 高 + 青绿悬停，别处是 36px + 主色悬停）。
    模板已改用 dev-base.css 里的 .dev-toolbar，这段随之删除。 */
 

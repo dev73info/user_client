@@ -1522,7 +1522,7 @@ onBeforeUnmount(() => {
             <RouterLink :to="{ name: 'dev-plugins' }">资源初始化</RouterLink>
             <RouterLink :to="{ name: 'dev-requirement-hall' }">需求大厅</RouterLink>
             <RouterLink :to="{ name: 'dev-wallet' }">收益钱包</RouterLink>
-            <RouterLink :to="{ name: 'dev-wallet-releases' }">交付记录</RouterLink>
+            <RouterLink :to="{ name: 'dev-my-requirements' }">我的接单</RouterLink>
           </div>
         </section>
       </aside>

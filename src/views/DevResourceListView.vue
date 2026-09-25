@@ -96,7 +96,7 @@ function resetFilters() {
   filters.visibility = ''
 }
 
-/* 分页与其余菜单页同构（需求大厅、收益钱包、团队资源、交付记录都带表尾分页器）。
+/* 分页与其余菜单页同构（需求大厅、收益钱包、团队资源、我的接单都带表尾分页器）。
    本页数据源一次取回全部资源，所以这里是客户端切片，不走服务端页码。
    筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空表。 */
 const { page, pageSize, total: filteredTotal, paged } = useClientPagination(filteredResources)

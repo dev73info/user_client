@@ -118,7 +118,7 @@ const hasActiveFilter = computed(
     searchKeyword.value.trim() !== '',
 )
 
-/* 分页与其余菜单页同构（资源项目、需求大厅、团队资源、交付记录、版本列表都带表尾分页器）。
+/* 分页与其余菜单页同构（资源项目、需求大厅、团队资源、版本列表都带表尾分页器）。
    本页工单一次取回全部、筛选在前端做，所以这里是客户端切片，不走服务端页码。 */
 const { page, pageSize, total: filteredTotal, paged: pagedTickets } = useClientPagination(visibleTickets)
 
@@ -160,7 +160,7 @@ function formatStatus(status: TicketStatus) {
 }
 
 /* 开发者侧的状态标签走统一层的胶囊（.dev-chip 及其变体），
-   与需求大厅、我的接单、交付记录的状态标签同一套；用户工作台侧走 .wb-badge（浅底 + 深字）。 */
+   与需求大厅、我的接单的状态标签同一套；用户工作台侧走 .wb-badge（浅底 + 深字）。 */
 function statusChipClass(status: TicketStatus) {
   if (status === 'open') {
     return 'dev-chip dev-chip--warm'
@@ -543,7 +543,7 @@ onMounted(async () => {
           </template>
         </button>
 
-        <!-- 表尾分页器：与资源项目、需求大厅、团队资源、交付记录同一枚，两侧都挂在各自的统一层上。 -->
+        <!-- 表尾分页器：与资源项目、需求大厅、团队资源同一枚，两侧都挂在各自的统一层上。 -->
         <div v-if="isDevWorkbench" class="dev-pager">
           <div class="dev-pager__count">
             <span>共 {{ filteredTotal }} 条</span>

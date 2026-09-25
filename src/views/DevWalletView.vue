@@ -81,7 +81,7 @@ const filteredDepositRecords = computed(() => {
   )
 })
 
-/* 分页走共享的 useClientPagination：页码越界回退、每页条数档位与「资源列表 / 团队资源 / 交付记录」
+/* 分页走共享的 useClientPagination：页码越界回退、每页条数档位与「资源列表 / 团队资源 / 我的接单」
    完全一致，不再在本页手写 slice 与 Math.min 回退。 */
 const {
   page: depositRecordPage,
@@ -678,7 +678,7 @@ async function submitDepositWithdrawal() {
    还顺手改了子组件 DevWithdrawalRecordsView 里的同名元素）。这里只留本页特有样式。 */
 /* 钱包记录与其余菜单页的列表同构：一张 .dev-surface-card（同底/同描边/同圆角/同阴影，
    内边距 24px 由统一层给）。原来它是页面上的一条裸区块——标题与表格直接压在页面背景上，
-   只靠一条顶部分隔线开头，与资源列表、交付记录那种「标题 + 工具栏 + 列表都在卡片里」
+   只靠一条顶部分隔线开头，与资源列表、我的接单那种「标题 + 工具栏 + 列表都在卡片里」
    不是一种结构，切菜单时整页的骨架会变。 */
 .wallet-records {
   min-width: 0;

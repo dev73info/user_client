@@ -47,7 +47,7 @@ const ownedCount = computed(
 )
 
 // 列表工具条：与其余菜单页同一套（筛选即时生效 + 搜索 + 重置）。
-// 取值用空串表示「不筛选」，与 dev-resource-list / dev-release-page 的 filters 写法一致。
+// 取值用空串表示「不筛选」，与 dev-resource-list / dev-my-requirements 的 filters 写法一致。
 const filters = reactive({
   keyword: '',
   scope: '',

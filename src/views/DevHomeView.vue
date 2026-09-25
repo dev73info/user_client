@@ -42,10 +42,10 @@ import { useAuthStore } from '@/stores/auth'
 /** 页面只用开发者体系的三个强调色，灰色留给终止态，不引入第五种颜色。 */
 type DevHomeTone = 'blue' | 'gold' | 'cyan' | 'muted'
 
-/** 总览页只做汇总：列表最多展示 5 条，完整明细留在「我的接单」与「交付记录」页。 */
+/** 总览页只做汇总：列表最多展示 5 条，完整明细留在「我的接单」页。 */
 const OVERVIEW_LIST_LIMIT = 5
 
-/** 交付记录排成三列卡片，正好铺满一行；多出来的条数交给「查看全部」去「交付记录」页看。 */
+/** 最近交付排成三列卡片，正好铺满一行；多出来的条数交给「查看全部」去「我的接单」看。 */
 const DELIVERY_GRID_LIMIT = 3
 
 /** 顶部读数条的一格：口径数字，与其他菜单页的顶条同形（读左、刷新右）。 */
@@ -230,7 +230,7 @@ const projectRows = computed<DevHomeProjectRow[]>(() => {
     }))
 })
 
-/** 交付 = 绑定资源项目的资源版本，所以交付记录按「已绑定资源的需求单」汇总。 */
+/** 交付 = 绑定资源项目的资源版本，所以最近交付按「已绑定资源的需求单」汇总。 */
 const deliveryRows = computed<DevHomeDeliveryRow[]>(() =>
   [...requirements.value]
     .filter((item) => item.bound_resource_id != null)
@@ -424,7 +424,7 @@ function statusChipClass(status: string) {
 
 /**
  * 提现成功后的回刷：只重取钱包读数（可提现 / 待提现 / 已提现与近 7 天曲线），
- * 不整页重拉——进行中项目、交付记录与保证金都不受这次提现影响。
+ * 不整页重拉——进行中项目、最近交付与保证金都不受这次提现影响。
  */
 async function reloadWallet() {
   if (!auth.token || mockEnabled) {
@@ -590,7 +590,7 @@ async function loadPage() {
               <h3 class="dev-section-title">最近交付</h3>
             </div>
             <div class="dev-card-head__actions">
-              <RouterLink class="dev-home__more" :to="{ name: 'dev-wallet-releases' }">
+              <RouterLink class="dev-home__more" :to="{ name: 'dev-my-requirements' }">
                 <span>查看全部</span>
                 <el-icon>
                   <ArrowRight />
@@ -899,7 +899,7 @@ async function loadPage() {
   border-bottom: 0;
 }
 
-/* 交付记录是三列卡片而不是行列表：一张卡只讲一次交付，
+/* 最近交付是三列卡片而不是行列表：一张卡只讲一次交付，
    行列表在这里信息密度过低（右侧大片留白），见设计规范第五节。 */
 .dev-home__deliveries {
   display: grid;

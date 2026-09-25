@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Box, ChatDotRound, Close, Compass, Connection, DataAnalysis, Files, Grid, Menu as MenuIcon, Promotion, Service, Switch as SwitchIcon, Tickets, UserFilled, Wallet } from '@element-plus/icons-vue'
+import { ArrowDown, Box, ChatDotRound, Close, Compass, Connection, DataAnalysis, Files, Grid, Menu as MenuIcon, Service, Switch as SwitchIcon, Tickets, UserFilled, Wallet } from '@element-plus/icons-vue'
 
 import { listRequirementConversations, type RequirementConversation } from '@/api/conversations'
 import { listMyRequirements } from '@/api/devRequirements'
@@ -66,7 +66,7 @@ const ticketsItem: WorkbenchMenuItem = {
 
 // 开发者工作台菜单：侧边栏切到开发者模式时展示（此前是底部「开发者工作台」折叠组的内容）。
 // 版式与用户菜单的一级条目一致（图标 + 加粗标题），切换模式时侧边栏只有文字在变。
-// 一级条目不再分小标题，按开发者每天的动线从上往下排：总览 → 资源 → 接单 → 交付；
+// 一级条目不再分小标题，按开发者每天的动线从上往下排：总览 → 资源 → 接单（交付与到账也在这一页）；
 // 与钱有关的两条（收益钱包、我的发票）收进下面的「财务中心」折叠组，
 // 团队服务那一段也不顶小标题，靠折叠组的分组头自己报名字。
 const devWorkbenchItems: DevWorkbenchItem[] = [
@@ -84,8 +84,13 @@ const devWorkbenchItems: DevWorkbenchItem[] = [
     icon: Files,
   },
   { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求', icon: Compass },
-  { label: '我的接单', name: 'dev-my-requirements', description: '查看已关联需求和会话', icon: Tickets },
-  { label: '交付记录', name: 'dev-wallet-releases', description: '查看资源交付与收入', icon: Promotion },
+  {
+    // 「交付记录」已并进这一页：交付物与到账长在需求单卡片上，菜单不再单列一条。
+    label: '我的接单',
+    name: 'dev-my-requirements',
+    description: '查看已关联需求、交付与到账',
+    icon: Tickets,
+  },
 ]
 
 // 财务中心：只跟钱有关的两条收成一组的折叠组。收益钱包原先是开发者菜单的一级条目，

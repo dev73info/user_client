@@ -19,14 +19,13 @@ const USER_ROUTE_NAMES = ['workbench', 'workbench-requirements', 'workbench-acco
   'workbench-signatures', 'workbench-invoices', 'workbench-points', 'workbench-favorites', 'workbench-invite',
   'workbench-tickets', 'workbench-messages']
 const DEV_ROUTE_NAMES = ['dev-home', 'dev-resource-list', 'dev-requirement-hall', 'dev-my-requirements', 'dev-wallet',
-  'dev-wallet-releases', 'workbench-teams', 'workbench-team-detail', 'workbench-team-resources', 'dev-messages',
+  'workbench-teams', 'workbench-team-detail', 'workbench-team-resources', 'dev-messages',
   'dev-tickets', 'dev-invoices']
 
 // 开发者路由的路径不都是 /workbench/developer/<name>：钱包按业务词分了分段路径，「我的发票」也是。
-// 侧边栏链接断言看的是真实 href，所以这两处按生产路径（router/dev.ts）登记，其余沿用默认规则。
+// 侧边栏链接断言看的是真实 href，所以这里按生产路径（router/dev.ts）登记，其余沿用默认规则。
 const DEV_ROUTE_PATHS: Record<string, string> = {
   'dev-wallet': '/workbench/developer/wallet/overview',
-  'dev-wallet-releases': '/workbench/developer/wallet/releases',
   'dev-invoices': '/workbench/developer/invoices',
 }
 
@@ -111,11 +110,11 @@ describe('workbench mode switch', () => {
     expect(text).not.toContain('需求协作')
     expect(text).not.toContain('账户服务')
     // 与用户菜单同一套一级条目版式（带图标的一级菜单），切换模式时侧边栏只有文字变化；
-    // 条目按动线排：先总览与资源，再接单、钱包与交付
+    // 条目按动线排：先总览与资源，再接单（交付与到账并进了这一页，菜单不再单列一条）
     const devLinks = wrapper.findAll('.user-workbench__menu > .user-workbench__menu-link--root')
     expect(devLinks[0]?.find('.user-workbench__menu-icon').exists()).toBe(true)
     expect(devLinks.map((link) => link.text()))
-      .toEqual(['工作台总览', '资源项目', '需求大厅', '我的接单', '交付记录'])
+      .toEqual(['工作台总览', '资源项目', '需求大厅', '我的接单'])
     // 财务中心与团队服务是折叠组（分组头自带组名），消息中心夹在分组之间
     expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text()))
       .toEqual(['财务中心', '团队服务', '消息中心'])

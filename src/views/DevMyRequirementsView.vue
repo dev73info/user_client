@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { ArrowDown, ArrowUp, ChatDotRound, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowUp, ChatDotRound, Refresh, RefreshLeft, Search, View } from '@element-plus/icons-vue'
 
 import {
   getAdapayBreachCase,
@@ -33,6 +33,21 @@ import {
   type RequirementItem,
 } from '@/api/devRequirements'
 import {
+  listMcResources,
+  listMcResourceVersions,
+  type McResourcePayload,
+  type McResourceVersionPayload,
+} from '@/api/mcResources'
+import { getDevWalletOverview, type DevWalletIncomeItem } from '@/api/devWallet'
+import {
+  buildDevOrderRows,
+  deliveryVersionLine,
+  latestReceiptAt,
+  receiptTotal,
+  timeValue,
+  type DevOrderRow,
+} from '@/shared/devDelivery'
+import {
   createRequirementContract,
   fetchAsignRequirementPreviewUrl,
   fetchDevContractSigningStatus,
@@ -52,6 +67,13 @@ const { showToast } = useToast()
 
 const loading = ref(false)
 const rows = ref<RequirementItem[]>([])
+
+/* 交付与到账的数据：与需求单一起拼成本页的行。
+   交付侧来自「资源项目」（资源 + 资源版本），到账侧来自「收益钱包」的入账回执——
+   与钱包「收入记录」同一个接口，不另算一份，免得两处金额对不上。 */
+const resources = ref<McResourcePayload[]>([])
+const versionsByResource = ref<Map<number, McResourceVersionPayload[]>>(new Map())
+const income = ref<DevWalletIncomeItem[]>([])
 const signingStatusMap = ref<Record<string, ContractSigningStatus | null>>({})
 const contractCreatingId = ref('')
 const conversationVisible = ref(false)
@@ -66,6 +88,38 @@ const requirementConversationMap = ref<Record<string, RequirementConversation>>(
 const descriptionOverflowMap = ref<Record<string, boolean>>({})
 const expandedRequirements = ref<Record<string, boolean>>({})
 const descriptionEls = ref<Record<string, HTMLElement>>({})
+
+/**
+ * 列表里的一行：交付与到账先按需求归并（见 `shared/devDelivery.ts`），再把需求单本身贴回来。
+ *
+ * `item` 为空的两种行都不是需求单、也不出签署与操作栏：
+ * 有资源版本却没被任何需求单绑定的资源，以及到账归属的需求已解绑的那一笔。
+ */
+type MyOrderRow = DevOrderRow & { item: RequirementItem | null }
+
+const requirementById = computed(
+  () => new Map(rows.value.map((item) => [item.requirement_id, item])),
+)
+const resourceById = computed(() => new Map(resources.value.map((item) => [item.id, item])))
+
+const mergedRows = computed<MyOrderRow[]>(() =>
+  buildDevOrderRows(rows.value, resources.value, versionsByResource.value, income.value).map(
+    (row) => ({
+      ...row,
+      item: row.requirementId ? requirementById.value.get(row.requirementId) ?? null : null,
+    }),
+  ),
+)
+
+/* 回款详情弹窗：行上只留合计与笔数，点开才把逐笔到账摊开。
+   这里存的是行标识而不是行快照：弹窗开着时点顶部刷新，下面仍从最新的数据里重新找同一行，
+   不会留下一份过期的金额。 */
+const receiptDialogVisible = ref(false)
+const activeReceiptKey = ref<string | null>(null)
+
+const activeReceiptRow = computed(
+  () => mergedRows.value.find((row) => row.key === activeReceiptKey.value) ?? null,
+)
 
 const unbindVisible = ref(false)
 const unbindRequirement = ref<RequirementItem | null>(null)
@@ -153,13 +207,13 @@ function canWithdrawBreachCase(item: AdapayBreachCase | null) {
 
 const emptyText = computed(() => {
   if (loading.value) {
-    return '我的需求单加载中'
+    return '接单、交付与到账加载中'
   }
 
-  return hasActiveFilters.value ? '没有符合筛选条件的需求单' : '当前账号还没有已关联需求'
+  return hasActiveFilters.value ? '没有符合筛选条件的记录' : '当前账号还没有已关联需求'
 })
 
-// 搜索与状态筛选都在前端做：这一页的数据源本来就是把当前开发者的需求单一次取回。
+// 搜索与状态筛选都在前端做：这一页的数据源本来就是把当前开发者的需求单与交付、到账一次取回。
 const filters = reactive({
   keyword: '',
   status: '',
@@ -175,11 +229,30 @@ function statusKey(item: RequirementItem): string {
   return isWaitingContractSign(item) ? 'contract_pending' : item.status
 }
 
+/** 行的状态档位：补充行（未关联需求）单独一档，需求单行沿用需求状态与「待签合同」的中间态。 */
+function rowStatusKey(row: MyOrderRow): string {
+  return row.item ? statusKey(row.item) : 'unlinked'
+}
+
+/* 搜索覆盖需求与交付／回款两侧的标识：开发者核对一笔到账时，
+   手里多数只有其中任意一个标识，全给上才不用先猜是哪个字段。 */
+function rowKeywordValues(row: MyOrderRow): string[] {
+  return [
+    row.requirementId ?? '',
+    row.item?.title ?? row.title ?? '',
+    row.item?.description ?? '',
+    row.delivery?.resourceTitle ?? '',
+    row.delivery?.latestVersion ?? '',
+    rowCustomer(row) ?? '',
+    row.receipts.map((receipt) => receipt.paymentId).join(' '),
+  ]
+}
+
 const filteredRows = computed(() => {
   const keyword = filters.keyword.trim().toLowerCase()
 
-  return rows.value.filter((item) => {
-    if (filters.status && statusKey(item) !== filters.status) {
+  return mergedRows.value.filter((row) => {
+    if (filters.status && rowStatusKey(row) !== filters.status) {
       return false
     }
 
@@ -187,9 +260,7 @@ const filteredRows = computed(() => {
       return true
     }
 
-    return [item.requirement_id, item.title, item.description ?? ''].some((value) =>
-      value.toLowerCase().includes(keyword),
-    )
+    return rowKeywordValues(row).some((value) => value.toLowerCase().includes(keyword))
   })
 })
 
@@ -198,7 +269,7 @@ function resetFilters() {
   filters.status = ''
 }
 
-/* 分页与其余菜单页同构（资源项目、团队资源、交付记录、收益钱包、需求大厅都带表尾分页器）。
+/* 分页与其余菜单页同构（资源项目、团队资源、收益钱包、需求大厅都带表尾分页器）。
    需求单一次取回全部、筛选在前端做，所以这里是客户端切片，不走服务端页码。 */
 const { page, pageSize, total: filteredTotal, paged: pagedRows } = useClientPagination(filteredRows)
 
@@ -208,6 +279,10 @@ watch([() => filters.keyword, () => filters.status], () => {
 })
 const boundCount = computed(() => rows.value.filter((item) => item.bound_resource_id != null).length)
 const activeCount = computed(() => rows.value.filter((item) => item.status === 'in_development').length)
+/** 累计到账：所有行上到账合计的和，与「收益钱包」的入账口径同源，不另算一份。 */
+const incomeTotal = computed(() =>
+  mergedRows.value.reduce((total, row) => total + receiptTotal(row.receipts), 0),
+)
 
 onMounted(async () => {
   auth.hydrate()
@@ -220,15 +295,33 @@ async function loadMyRequirements() {
     return
   }
 
+  const token = auth.token
   loading.value = true
   try {
-    rows.value = await listMyRequirements(auth.token)
+    /* 资源与钱包是补充数据：任一失败不该把需求单列表一起清空，
+       所以各自兜底成空值，只提示少了哪一块。 */
+    const [myRequirements, resourceResult, walletResult] = await Promise.all([
+      listMyRequirements(token),
+      settle(listMcResources(token), [] as McResourcePayload[], '加载资源列表失败'),
+      settle(getDevWalletOverview(token), null, '加载钱包失败'),
+    ])
+
+    rows.value = myRequirements
+    resources.value = resourceResult.value
+    income.value = walletResult.value?.recent_income ?? []
+    versionsByResource.value = await loadResourceVersions(token, resourceResult.value)
+
+    const supplementaryError = resourceResult.error ?? walletResult.error
+    if (supplementaryError) {
+      showToast(`${supplementaryError}，交付与到账暂不完整`, 'warning')
+    }
+
     // 无担保模式（self_managed）不需要合同，无需查询合同签署状态
     const guaranteedRows = rows.value.filter((item) => item.payment_mode !== 'self_managed')
     const [statusEntries] = await Promise.all([
       Promise.allSettled(
         guaranteedRows.map((item) =>
-          fetchDevContractSigningStatus(auth.token!, item.requirement_id).then((s) => ({ id: item.requirement_id, s })),
+          fetchDevContractSigningStatus(token, item.requirement_id).then((s) => ({ id: item.requirement_id, s })),
         ),
       ),
       loadRequirementConversations(),
@@ -249,6 +342,37 @@ async function loadMyRequirements() {
   } finally {
     loading.value = false
   }
+}
+
+/** 补充数据的兜底：失败时退到默认值、把错误文案带回去提示，不让整页跟着空掉。 */
+async function settle<T>(request: Promise<T>, fallback: T, fallbackMessage: string) {
+  try {
+    return { value: await request, error: null as string | null }
+  } catch (error) {
+    return {
+      value: fallback,
+      error: error instanceof Error ? error.message : fallbackMessage,
+    }
+  }
+}
+
+/* 版本按资源逐个取（后端没有批量接口）。取不到的那个资源按「没有版本」处理，
+   只有它这一行的交付物留空，其余照常显示。 */
+async function loadResourceVersions(token: string, list: McResourcePayload[]) {
+  const entries = await Promise.allSettled(
+    list.map(async (resource) => ({
+      resourceId: resource.id,
+      versions: await listMcResourceVersions(token, resource.id),
+    })),
+  )
+
+  const map = new Map<number, McResourceVersionPayload[]>()
+  for (const entry of entries) {
+    if (entry.status === 'fulfilled') {
+      map.set(entry.value.resourceId, entry.value.versions)
+    }
+  }
+  return map
 }
 
 /**
@@ -288,6 +412,11 @@ function formatMoney(value?: number | null): string {
   }
 
   return `¥${value}`
+}
+
+/** 到账金额：与收益钱包同一口径（两位小数），行上是合计、弹窗里是逐笔。 */
+function receiptMoney(value: number): string {
+  return `¥${value.toFixed(2)}`
 }
 
 function statusLabel(status: RequirementItem['status']): string {
@@ -358,17 +487,97 @@ function displayStatusType(item: RequirementItem): 'info' | 'success' | 'warning
   return isWaitingContractSign(item) ? 'warning' : statusType(item.status)
 }
 
-function resourceVisibilityLabel(item: RequirementItem): string {
-  if (item.bound_resource_id == null) {
-    return '未关联资源'
-  }
+/* === 合并后的行：交付物与到账 ===
+   交付物与到账原先是「交付记录」页的两列，现在长在需求单卡片上，
+   行上的取数、文案与占位口径都只留这一处（见 `shared/devDelivery.ts`）。 */
 
-  if (item.resource_visibility === 'public') {
-    return '资源已公开'
-  }
-
-  return item.resource_visibility === 'review' ? '资源审核中' : '资源私有中'
+/** 行抬头：需求单行取需求标题，补充行取钱包回执里的标题或资源名。 */
+function rowTitle(row: MyOrderRow): string {
+  return row.item?.title ?? row.title ?? row.delivery?.resourceTitle ?? '未关联需求'
 }
+
+/** 委托方：需求单行取需求方，补充行取钱包回执里的客户名。 */
+function rowCustomer(row: MyOrderRow): string | null {
+  return row.item?.creator ?? row.customer
+}
+
+/** 最近更新：需求单行看需求的更新时间，补充行看最近一次到账或交付。 */
+function rowUpdatedAt(row: MyOrderRow): string {
+  if (row.item) {
+    return row.item.updated_at
+  }
+
+  return latestReceiptAt(row.receipts) ?? row.delivery?.latestVersionAt ?? '—'
+}
+
+function rowStatusLabel(row: MyOrderRow): string {
+  if (row.item) {
+    return displayStatusLabel(row.item)
+  }
+
+  // 补充行的两档来源不同：只有交付说明这份资源还没被需求单绑定，只有到账说明需求已经解绑。
+  return row.delivery ? '交付未绑定需求' : '需求已解绑'
+}
+
+function rowStatusType(row: MyOrderRow): 'info' | 'success' | 'warning' | 'danger' {
+  return row.item ? displayStatusType(row.item) : 'info'
+}
+
+/** 交付物标题：有版本时用交付行，没有版本时回落到需求绑定的资源，没绑定才是「未关联资源」。 */
+function deliveryTitle(row: MyOrderRow): string {
+  if (row.delivery) {
+    return row.delivery.resourceTitle
+  }
+
+  const resourceId = row.item?.bound_resource_id
+  if (resourceId != null) {
+    return resourceById.value.get(resourceId)?.title ?? '资源已不在列表'
+  }
+
+  return '未关联资源'
+}
+
+/** 交付物副行：平台 · 最新版本 · 版本总数 · 资源状态；没有版本时说清原因，不留一行空白。 */
+function deliveryLine(row: MyOrderRow): string {
+  return row.delivery ? deliveryVersionLine(row.delivery) : '暂无交付版本'
+}
+
+/** 到账合计：没有到账给占位符；笔数只在多笔时说，否则一个合计对不上看到的逐笔流水。 */
+function receiptAmountText(row: MyOrderRow): string {
+  return row.receipts.length > 0 ? receiptMoney(receiptTotal(row.receipts)) : '—'
+}
+
+function receiptMetaText(row: MyOrderRow): string {
+  const latest = latestReceiptAt(row.receipts)
+  if (!latest) {
+    return '暂无到账'
+  }
+
+  const counted = row.receipts.length > 1 ? `共 ${row.receipts.length} 笔 · ` : ''
+  return `${counted}最近 ${formatCnDateTime(latest)}`
+}
+
+/** 打开回款详情：只记行标识，弹窗里从最新的数据里重新取这一行，不存快照。 */
+function openReceiptDialog(row: MyOrderRow) {
+  activeReceiptKey.value = row.key
+  receiptDialogVisible.value = true
+}
+
+/* 弹窗里的逐笔按到账时间正序排：托管模式下定金先分账、尾款后分账，
+   顺着时间读下来才是「第 1 笔 / 第 2 笔」应有的顺序（与列表里最近一笔在最上面相反）。 */
+const activeReceipts = computed(() =>
+  [...(activeReceiptRow.value?.receipts ?? [])].sort(
+    (left, right) => timeValue(left.paidAt) - timeValue(right.paidAt),
+  ),
+)
+
+const activeReceiptTotal = computed(() => receiptTotal(activeReceipts.value))
+
+const receiptDialogTitle = computed(() =>
+  activeReceiptRow.value?.requirementId
+    ? `回款详情 · ${activeReceiptRow.value.requirementId}`
+    : '回款详情',
+)
 
 function openConversation(item: RequirementItem) {
   conversationRequirement.value = item
@@ -483,10 +692,6 @@ function settlementHint(item: RequirementItem): string {
     return '需求已结单，接单保证金在售后窗口结束且无未结售后案件后释放'
   }
   return ''
-}
-
-function resourceVersionCount(item: RequirementItem) {
-  return item.bound_resource_version_count ?? 0
 }
 
 // 方案 B：交付物就是绑定资源项目的资源版本，直接复用资源项目版本接口。
@@ -956,6 +1161,11 @@ async function loadRequirementConversations() {
         <span class="dev-meta-strip__label">开发中</span>
         <span class="dev-meta-strip__value">{{ activeCount }}</span>
       </div>
+      <div class="dev-meta-strip__divider" />
+      <div class="dev-meta-strip__item">
+        <span class="dev-meta-strip__label">累计到账</span>
+        <span class="dev-meta-strip__value">{{ receiptMoney(incomeTotal) }}</span>
+      </div>
       <div class="dev-meta-strip__item dev-meta-strip__action">
         <el-button class="dev-toolbar__icon-btn" aria-label="刷新接单列表" @click="loadMyRequirements">
           <el-icon>
@@ -968,8 +1178,10 @@ async function loadRequirementConversations() {
     <el-card shadow="never" class="dev-surface-card">
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
-          <h3 class="dev-section-title">需求单列表</h3>
-          <p class="dev-section-desc">已关联的需求单及其签署与交付进度，搜索与状态筛选即时生效。</p>
+          <h3 class="dev-section-title">接单与交付</h3>
+          <p class="dev-section-desc">
+            一行一个需求单：卡内除了签署与操作，还带着交付物与到账金额。未绑定需求的交付、以及需求已解绑的到账单独成行，搜索与状态筛选即时生效。
+          </p>
         </div>
       </div>
 
@@ -983,9 +1195,10 @@ async function loadRequirementConversations() {
           <el-option label="待分账" value="pending_settlement" />
           <el-option label="已完成" value="completed" />
           <el-option label="已取消" value="cancelled" />
+          <el-option label="未关联需求" value="unlinked" />
         </el-select>
 
-        <el-input v-model="filters.keyword" clearable placeholder="搜索需求编号、标题或描述"
+        <el-input v-model="filters.keyword" clearable placeholder="搜索需求编号、标题、资源、版本或流水号"
           class="dev-toolbar__search">
           <template #prefix>
             <el-icon>
@@ -996,7 +1209,7 @@ async function loadRequirementConversations() {
 
         <div class="dev-toolbar__actions">
           <span v-if="hasActiveFilters" class="dev-toolbar__hint">
-            筛选出 {{ filteredRows.length }} / {{ rows.length }} 条
+            筛选出 {{ filteredRows.length }} / {{ mergedRows.length }} 条
           </span>
           <el-button class="dev-toolbar__ghost" @click="resetFilters">
             <el-icon>
@@ -1008,93 +1221,124 @@ async function loadRequirementConversations() {
       </div>
 
       <!-- 列表容器走统一层的 .dev-stack-list：它给的就是「卡片式列表」的 14px 行距，
-           本页原来自己写 16px，与交付记录、我的团队的卡片列表差 2px，切页面时行距会跳一下。 -->
+           与资源项目、我的团队的卡片列表差同一档。
+           一行一个需求单：交付物与到账长在同一张卡上（原「交付记录」页的两列），
+           没被任何需求单绑定的交付、以及需求已解绑的到账，同样成行但不出签署与操作栏。 -->
       <div class="dev-stack-list" v-loading="loading">
         <div v-if="filteredRows.length === 0" class="dev-empty-state">{{ emptyText }}</div>
-        <article v-for="item in pagedRows" :key="item.requirement_id" class="dev-requirement-card">
+        <article v-for="row in pagedRows" :key="row.key" class="dev-requirement-card">
           <header class="dev-requirement-card__head">
             <div class="dev-requirement-card__title-block">
-              <span class="dev-requirement-hall__requirement-id">{{ item.requirement_id }}</span>
-              <h3 class="dev-requirement-hall__title">{{ item.title }}</h3>
-              <article class="dev-requirement-hall__desc dev-requirement-card__description"
-                :class="{ 'is-collapsed': !isDescriptionExpanded(item) }"
-                :ref="(el) => setDescriptionRef(el as HTMLElement | null, item)"
-                v-html="requirementFieldHtml(item.description)"></article>
-              <button v-if="isDescriptionExpanded(item) || descriptionOverflow(item)" type="button"
-                class="dev-requirement-card__description-toggle" @click="toggleDescription(item)">
+              <span class="dev-requirement-hall__requirement-id">{{ row.requirementId ?? '未关联需求' }}</span>
+              <h3 class="dev-requirement-hall__title">{{ rowTitle(row) }}</h3>
+              <article v-if="row.item" class="dev-requirement-hall__desc dev-requirement-card__description"
+                :class="{ 'is-collapsed': !isDescriptionExpanded(row.item) }"
+                :ref="(el) => setDescriptionRef(el as HTMLElement | null, row.item!)"
+                v-html="requirementFieldHtml(row.item.description)"></article>
+              <p v-else class="dev-requirement-card__description">
+                {{
+                  row.delivery
+                    ? '这份交付还没有绑定需求单，交付物与版本在「资源项目 → 版本管理」里维护。'
+                    : '这条到账所属的需求已解除绑定，需求单列表里已经查不到它。'
+                }}
+              </p>
+              <button v-if="row.item && (isDescriptionExpanded(row.item) || descriptionOverflow(row.item))"
+                type="button" class="dev-requirement-card__description-toggle"
+                @click="toggleDescription(row.item)">
                 <el-icon>
-                  <ArrowUp v-if="isDescriptionExpanded(item)" />
+                  <ArrowUp v-if="isDescriptionExpanded(row.item)" />
                   <ArrowDown v-else />
                 </el-icon>
-                <span>{{ isDescriptionExpanded(item) ? '收起' : '展开' }}</span>
+                <span>{{ isDescriptionExpanded(row.item) ? '收起' : '展开' }}</span>
               </button>
             </div>
             <div class="dev-requirement-card__tags">
-              <el-tag :type="displayStatusType(item)" effect="plain">{{ displayStatusLabel(item) }}</el-tag>
-              <el-tag :type="item.payment_mode === 'self_managed' ? 'info' : 'warning'" effect="plain">
-                {{ paymentModeLabel(item) }}
+              <el-tag :type="rowStatusType(row)" effect="plain">{{ rowStatusLabel(row) }}</el-tag>
+              <el-tag v-if="row.item" :type="row.item.payment_mode === 'self_managed' ? 'info' : 'warning'"
+                effect="plain">
+                {{ paymentModeLabel(row.item) }}
               </el-tag>
             </div>
           </header>
 
           <div class="dev-requirement-card__meta">
-            <span class="dev-requirement-card__meta-item">
+            <span v-if="row.item" class="dev-requirement-card__meta-item">
               <label>预算</label>
-              <strong>{{ formatMoney(item.budget) }}</strong>
+              <strong>{{ formatMoney(row.item.budget) }}</strong>
             </span>
             <span class="dev-requirement-card__meta-item">
-              <label>资源关联</label>
-              <strong>{{ resourceVisibilityLabel(item) }}</strong>
+              <label>委托方</label>
+              <strong>{{ rowCustomer(row) || '—' }}</strong>
             </span>
             <span class="dev-requirement-card__meta-item">
               <label>最近更新</label>
-              <strong>{{ item.updated_at }}</strong>
+              <strong>{{ rowUpdatedAt(row) }}</strong>
             </span>
-            <span class="dev-requirement-card__meta-item">
+            <span v-if="row.item" class="dev-requirement-card__meta-item">
               <label>会话</label>
-              <strong>{{ conversationLoading ? '加载中' : conversationStatusLabel(item) }}</strong>
-            </span>
-            <span v-if="item.bound_resource_id != null" class="dev-requirement-card__meta-item">
-              <label>资源版本</label>
-              <strong>{{ resourceVersionCount(item) }} 版</strong>
+              <strong>{{ conversationLoading ? '加载中' : conversationStatusLabel(row.item) }}</strong>
             </span>
           </div>
 
-          <div class="dev-requirement-card__progress">
-            <RequirementProgressGuide :requirement="item" :payment-mode="item.payment_mode" view="dev"
-              :contract-status="signingStatusMap[item.requirement_id]" />
+          <!-- 交付物与到账：原「交付记录」页的两列，现在与需求单同卡。
+               到账是多笔时行上只放合计与笔数，逐笔摊开在「查看回款详情」弹窗里。 -->
+          <div class="dev-requirement-card__delivery">
+            <div class="dev-delivery-cell">
+              <label>交付物</label>
+              <strong>{{ deliveryTitle(row) }}</strong>
+              <span class="dev-delivery-cell__line">{{ deliveryLine(row) }}</span>
+            </div>
+            <div class="dev-delivery-cell">
+              <label>到账</label>
+              <strong class="dev-delivery-cell__amount">{{ receiptAmountText(row) }}</strong>
+              <span class="dev-delivery-cell__line">{{ receiptMetaText(row) }}</span>
+              <button v-if="row.receipts.length > 0" type="button"
+                class="dev-requirement-card__receipt-toggle" @click="openReceiptDialog(row)">
+                <el-icon><View /></el-icon>
+                <span>查看回款详情</span>
+              </button>
+            </div>
           </div>
 
-          <div v-if="settlementHint(item)" class="signing-start-hint">{{ settlementHint(item) }}</div>
+          <div v-if="row.item" class="dev-requirement-card__progress">
+            <RequirementProgressGuide :requirement="row.item" :payment-mode="row.item.payment_mode" view="dev"
+              :contract-status="signingStatusMap[row.item.requirement_id]" />
+          </div>
 
-          <div v-if="item.payment_mode !== 'self_managed'" class="dev-requirement-card__signing">
+          <div v-if="row.item && settlementHint(row.item)" class="signing-start-hint">{{ settlementHint(row.item) }}
+          </div>
+
+          <div v-if="row.item && row.item.payment_mode !== 'self_managed'" class="dev-requirement-card__signing">
             <div class="signing-status-bar">
               <span class="signing-step"
-                :class="signingStatusMap[item.requirement_id]?.has_contract ? 'done' : 'pending'">
+                :class="signingStatusMap[row.item.requirement_id]?.has_contract ? 'done' : 'pending'">
                 协议已创建
               </span>
               <span class="signing-arrow">›</span>
               <span class="signing-step"
-                :class="signingStatusMap[item.requirement_id]?.party_b_signed ? 'done' : 'pending'">
+                :class="signingStatusMap[row.item.requirement_id]?.party_b_signed ? 'done' : 'pending'">
                 乙方已签
               </span>
               <span class="signing-arrow">›</span>
               <span class="signing-step"
-                :class="signingStatusMap[item.requirement_id]?.party_a_signed ? 'done' : 'pending'">
+                :class="signingStatusMap[row.item.requirement_id]?.party_a_signed ? 'done' : 'pending'">
                 甲方已签
               </span>
             </div>
-            <div v-if="contractStartHint(item)" class="signing-start-hint">{{ contractStartHint(item) }}</div>
+            <div v-if="contractStartHint(row.item)" class="signing-start-hint">{{ contractStartHint(row.item) }}</div>
           </div>
 
-          <footer class="dev-requirement-card__actions">
+          <!-- 签署与操作栏只给需求单行：补充行（未关联需求的交付／到账）没有可执行的接单动作。
+               行内事件处理器拿不到 v-if 的类型收窄，所以这一段的处理函数参数带 `!`。 -->
+          <footer v-if="row.item" class="dev-requirement-card__actions">
             <div class="dev-requirement-card__unbind">
-              <span v-if="item.pending_unbind_request?.status === 'pending'" class="dev-requirement-card__unbind-hint">
-                {{ unbindRequestHint(item) }}
+              <span v-if="row.item.pending_unbind_request?.status === 'pending'"
+                class="dev-requirement-card__unbind-hint">
+                {{ unbindRequestHint(row.item) }}
               </span>
             </div>
             <!-- 行内操作按钮走统一层的 .dev-list-actions（32px 高 / 10px 圆角），
-                 与资源列表、交付记录、我的团队的行内按钮同一规格。
+                 与资源列表、我的团队的行内按钮同一规格。
                  这里原先是本页自写的 .dev-requirement-card__buttons + 逐个 size="small"
                  （Element 的 24px 小号），同一张卡里按钮比顶部工具栏矮一档。 -->
             <div class="dev-list-actions">
@@ -1102,45 +1346,44 @@ async function loadRequirementConversations() {
                    原来挂的是裸 `type="primary" plain` / `type="danger" plain`，
                    Element 的 plain 变体给的是浅蓝底（#e8edfa）与粉底三件套，
                    与表格行里的白底 + 主色描边不是一套，禁用态的「终止合作」更是一片粉。 -->
-              <el-button v-if="canSubmitDeliveryVersion(item)" type="primary" plain
-                class="dev-action--soft"
-                title="交付物以绑定资源项目的新版本提交" @click="openDeliveryDialog(item)">
+              <el-button v-if="canSubmitDeliveryVersion(row.item)" type="primary" plain class="dev-action--soft"
+                title="交付物以绑定资源项目的新版本提交" @click="openDeliveryDialog(row.item!)">
                 提交交付版本
               </el-button>
-              <el-button v-if="canOpenAfterSales(item)" type="primary" plain class="dev-action--soft"
-                @click="openAfterSalesModal(item)">
+              <el-button v-if="canOpenAfterSales(row.item)" type="primary" plain class="dev-action--soft"
+                @click="openAfterSalesModal(row.item!)">
                 售后
               </el-button>
-              <el-button v-if="canReportBreach(item)" type="danger" plain class="dev-action--soft-danger"
-                @click="openBreachReport(item)">
+              <el-button v-if="canReportBreach(row.item)" type="danger" plain class="dev-action--soft-danger"
+                @click="openBreachReport(row.item!)">
                 终止合作
               </el-button>
-              <el-button v-else-if="awaitingDepositDeadline(item)" type="danger" plain
+              <el-button v-else-if="awaitingDepositDeadline(row.item)" type="danger" plain
                 class="dev-action--soft-danger" disabled
                 title="定金未缴，暂不能发起终止合作；逾期未缴定金将由系统自动终止合作并释放接单保证金">
                 终止合作
               </el-button>
-              <el-button v-if="canCreateRequirementContract(item)" type="primary"
-                :loading="contractCreatingId === item.requirement_id"
-                @click="createRequirementContractAction(item)">
+              <el-button v-if="canCreateRequirementContract(row.item)" type="primary"
+                :loading="contractCreatingId === row.item.requirement_id"
+                @click="createRequirementContractAction(row.item!)">
                 发起合同
               </el-button>
-              <el-button v-if="canOpenContractSign(item)" @click="handleContractButtonClick(item)">
-                {{ contractButtonLabel(item) }}
+              <el-button v-if="canOpenContractSign(row.item)" @click="handleContractButtonClick(row.item!)">
+                {{ contractButtonLabel(row.item) }}
               </el-button>
               <el-button type="primary" plain class="dev-action--soft dev-requirement-card__conversation"
-                @click="openConversation(item)">
+                @click="openConversation(row.item!)">
                 <el-icon><ChatDotRound /></el-icon>
                 <span>会话</span>
               </el-button>
-              <el-button :disabled="!invoiceEntryFor(item).enabled"
-                :title="invoiceEntryFor(item).reason || undefined" @click="openInvoiceDialog(item)">
+              <el-button :disabled="!invoiceEntryFor(row.item).enabled"
+                :title="invoiceEntryFor(row.item).reason || undefined" @click="openInvoiceDialog(row.item!)">
                 获取发票
               </el-button>
-              <el-button v-if="hasPendingCreatorUnbindRequest(item)" type="warning"
-                @click="openUnbindRespond(item)">处理解除申请</el-button>
-              <el-button v-else-if="canRequestUnbind(item)" type="danger" plain class="dev-action--soft-danger"
-                @click="openUnbindRequest(item)">申请解除</el-button>
+              <el-button v-if="hasPendingCreatorUnbindRequest(row.item)" type="warning"
+                @click="openUnbindRespond(row.item!)">处理解除申请</el-button>
+              <el-button v-else-if="canRequestUnbind(row.item)" type="danger" plain class="dev-action--soft-danger"
+                @click="openUnbindRequest(row.item!)">申请解除</el-button>
             </div>
           </footer>
         </article>
@@ -1154,9 +1397,62 @@ async function loadRequirementConversations() {
           </el-select>
         </div>
         <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-          :pager-count="5" layout="prev, pager, next" background aria-label="需求单列表分页" />
+          :pager-count="5" layout="prev, pager, next" background aria-label="接单与交付列表分页" />
       </div>
     </el-card>
+
+    <!-- 回款详情弹窗：卡上只放合计与笔数，逐笔到这里摊开。
+         金额、时间、流水号都来自同一份钱包回执（与「收益钱包 → 收入记录」同一个接口），
+         不在这里另算，避免两处对不上。 -->
+    <el-dialog v-model="receiptDialogVisible" :title="receiptDialogTitle" width="560px" align-center
+      class="dev-dialog">
+      <div v-if="activeReceiptRow" class="dev-receipt-detail">
+        <div class="dev-receipt-detail__head">
+          <div class="dev-receipt-detail__title">{{ rowTitle(activeReceiptRow) }}</div>
+          <div class="dev-receipt-detail__meta">
+            <span>{{ activeReceiptRow.requirementId ?? '未关联需求' }}</span>
+            <span>委托方 {{ rowCustomer(activeReceiptRow) || '—' }}</span>
+            <el-tag :type="rowStatusType(activeReceiptRow)" effect="plain">
+              {{ rowStatusLabel(activeReceiptRow) }}
+            </el-tag>
+          </div>
+        </div>
+
+        <div class="dev-receipt-detail__total">
+          <span class="dev-receipt-detail__total-label">
+            累计到账 · 共 {{ activeReceipts.length }} 笔
+          </span>
+          <span class="dev-figure dev-figure--sm">{{ receiptMoney(activeReceiptTotal) }}</span>
+        </div>
+
+        <ul class="dev-receipt-detail__list">
+          <li v-for="(receipt, index) in activeReceipts" :key="receipt.paymentId" class="dev-receipt-detail__item">
+            <div class="dev-receipt-detail__item-head">
+              <span class="dev-receipt-detail__item-index">第 {{ index + 1 }} 笔</span>
+              <span class="dev-receipt-detail__item-amount">{{ receiptMoney(receipt.amount) }}</span>
+            </div>
+            <div class="dev-receipt-detail__facts">
+              <div class="dev-receipt-detail__fact">
+                <span class="dev-receipt-detail__fact-label">到账时间</span>
+                <span class="dev-receipt-detail__fact-value">{{ formatCnDateTime(receipt.paidAt) }}</span>
+              </div>
+              <div class="dev-receipt-detail__fact">
+                <span class="dev-receipt-detail__fact-label">支付流水号</span>
+                <span class="dev-receipt-detail__fact-value">{{ receipt.paymentId }}</span>
+              </div>
+            </div>
+          </li>
+        </ul>
+
+        <p class="dev-receipt-detail__note">
+          托管模式下定金与尾款各分账一次，同一需求会有两笔到账，金额按分账净额逐笔列出。
+        </p>
+      </div>
+
+      <template #footer>
+        <el-button class="dev-toolbar__ghost" @click="receiptDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="unbindVisible" title="申请解除需求绑定" width="480px" align-center class="dev-dialog"
       :close-on-click-modal="false" :close-on-press-escape="false" @close="closeUnbindRequest">
@@ -1480,6 +1776,72 @@ async function loadRequirementConversations() {
   overflow-wrap: anywhere;
 }
 
+/* === 交付物与到账（合并自「交付记录」页） ===
+   两格并排：左边是交付的资源与版本，右边是到账合计、笔数与最近一笔时间。
+   窄屏收成一列（见本页 720px 的媒体查询）。 */
+.dev-requirement-card__delivery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dev-delivery-cell {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-inner);
+  background: var(--dev-bg);
+}
+
+.dev-delivery-cell label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dev-muted);
+}
+
+.dev-delivery-cell strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dev-ink);
+  overflow-wrap: anywhere;
+}
+
+/* 到账金额用金色：与收益钱包的入账、回款详情里的逐笔金额同一支。
+   选择器带 `strong` 是为了压过上面那条（同权重、写在后面）。 */
+strong.dev-delivery-cell__amount {
+  color: var(--dev-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-delivery-cell__line {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dev-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+/* 查看回款详情：与描述「展开 / 收起」同一支文字按钮，不挤进行内操作栏 */
+.dev-requirement-card__receipt-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: start;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dev-blue);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dev-requirement-card__receipt-toggle:hover {
+  text-decoration: underline;
+}
+
 .dev-requirement-card__signing {
   display: flex;
   flex-direction: column;
@@ -1606,6 +1968,120 @@ async function loadRequirementConversations() {
   gap: 8px;
 }
 
+/* === 回款详情弹窗（从「交付记录」页搬来） ===
+   弹窗由 Element teleport 到 body，配色令牌靠 .dev-dialog（见 dev-base.css），
+   排版是本页特有的。整块分三层：需求抬头 → 累计到账读数 → 逐笔清单。 */
+.dev-receipt-detail {
+  display: grid;
+  gap: 18px;
+}
+
+.dev-receipt-detail__title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--dev-ink);
+  overflow-wrap: anywhere;
+}
+
+.dev-receipt-detail__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--dev-muted);
+}
+
+/* 累计到账：读数取统一层的 .dev-figure--sm（金色大数），
+   这里只把它和左侧说明排成一行、压一条分隔线与下面的清单分开。 */
+.dev-receipt-detail__total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--dev-line);
+}
+
+.dev-receipt-detail__total-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dev-ink-soft);
+}
+
+.dev-receipt-detail__list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 一笔到账一块：白底细描边的内嵌容器，圆角取 --dev-radius-inner（卡片内嵌块那一档） */
+.dev-receipt-detail__item {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-inner);
+  background: var(--dev-surface-strong);
+}
+
+.dev-receipt-detail__item-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dev-receipt-detail__item-index {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--dev-muted);
+}
+
+/* 单笔金额同样用金色（与累计读数、钱包里的入账金额同一支） */
+.dev-receipt-detail__item-amount {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--dev-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 流水号是长串，窄屏必须能断行，否则会把弹窗顶宽 */
+.dev-receipt-detail__facts {
+  display: grid;
+  gap: 6px;
+}
+
+.dev-receipt-detail__fact {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.dev-receipt-detail__fact-label {
+  flex: 0 0 76px;
+  color: var(--dev-muted);
+}
+
+.dev-receipt-detail__fact-value {
+  min-width: 0;
+  color: var(--dev-ink-soft);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.dev-receipt-detail__note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--dev-muted);
+}
+
 @media (max-width: 720px) {
   .dev-requirement-card__head {
     flex-direction: column;
@@ -1613,6 +2089,11 @@ async function loadRequirementConversations() {
 
   .dev-requirement-card__meta {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* 交付与到账并排两格在窄屏会各剩不到 150px，读不出资源标题与流水时间，收成一列 */
+  .dev-requirement-card__delivery {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .breach-decision__actions :deep(.el-button) {

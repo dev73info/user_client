@@ -35,7 +35,7 @@ function daysAgo(days: number, hour: number, minute: number): string {
 
 const DEMO_CREATOR = 'client_flow_03562487'
 
-/** 资源列表只有标题会渲染进交付记录，其余字段按 `McResourcePayload` 补齐默认值。 */
+/** 资源列表只有标题会渲染进最近交付，其余字段按 `McResourcePayload` 补齐默认值。 */
 function demoResource(id: number, title: string): McResourcePayload {
   return {
     id,

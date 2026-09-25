@@ -61,12 +61,13 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    // 「交付记录」已并进「我的接单」：路径与名称都留着，老书签落到合并后的那一页。
     path: 'developer/wallet/releases',
     name: 'dev-wallet-releases',
-    component: () => import('@/views/DevReleasesView.vue'),
+    redirect: { name: 'dev-my-requirements' },
     meta: {
       title: '钱包 / 交付记录',
-      description: '查看资源版本交付与收入记录。',
+      description: '已并入「我的接单」，这条路径只作为老链接的入口。',
       devArea: true,
       requiresDevAccess: true,
     },
@@ -183,7 +184,7 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/DevMyRequirementsView.vue'),
     meta: {
       title: '需求大厅 / 我的需求单',
-      description: '查看已关联需求、签署状态和沟通会话。',
+      description: '查看已关联需求的签署与操作、交付物与到账，以及沟通会话。',
       devArea: true,
       requiresDevAccess: true,
       requiresRealname: true,
@@ -282,8 +283,9 @@ export const devRoutes: RouteRecordRaw[] = [
     redirect: redirectToDevWorkbench('dev-wallet'),
   },
   {
+    // 交付记录已并入「我的接单」，老链接直接落到那里。
     path: '/dev/wallet/releases',
-    redirect: redirectToDevWorkbench('dev-wallet-releases'),
+    redirect: redirectToDevWorkbench('dev-my-requirements'),
   },
   {
     path: '/dev/wallet/withdrawals',
