@@ -96,22 +96,25 @@ export function invoiceReviewNote(invoice: InvoiceActionFacts): string {
  *    上传，买方只负责索取与下载；`upload_invoice_document` 同样要求 `developer_username`
  *    就是操作者，且只能传蓝票（见 `backend_73info/src/modules/invoice/service.rs`）。
  *
- * 已开具（`approved`）与被红冲（`reversed`）的蓝票都不再接收文件：按显示状态判定，开发者收入票
- * 只要文件已在就不再给上传入口（后端也拒绝对已开具的票换文件），红票只能由财务端补传红字文件。
+ * 已开具（`approved`）的蓝票照样给上传入口，因为**乙方换的是文件，不是票**：票号、金额、抬头都
+ * 不变，上回传错文件或不清晰时就地重传即可，不必走「财务端红冲 → 重新申请」那条重开链路
+ * （后端 `upload_invoice_document` 也只对乙方本人放开已开具的票换文件）。界面上要能看出这是替换
+ * 而不是第一次上传，所以按钮文案见 `InvoiceCenterView` 的 `uploadButtonLabel`。
+ *
+ * 被红冲（`reversed`）的蓝票与红票都不再接收文件：前者是终态、任何一方都改不了，后者（红字发票）
+ * 只能由平台财务端补传红字文件。
  */
 export function canUploadInvoiceDocument(
   invoice: InvoiceActionFacts,
   viewer: string,
   perspective: InvoicePerspective,
 ): boolean {
-  const status = invoiceDisplayStatus(invoice)
   return (
     perspective === 'developer'
     && invoice.documentKind === 'blue'
     && invoice.invoiceRole === 'developer'
     && invoice.developerUsername === viewer
-    && status !== 'approved'
-    && status !== 'reversed'
+    && invoiceDisplayStatus(invoice) !== 'reversed'
   )
 }
 

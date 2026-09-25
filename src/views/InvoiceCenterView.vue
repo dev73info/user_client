@@ -34,7 +34,7 @@ const perspective = computed<'customer' | 'developer'>(
 /* 卡头说明也按视角写：客户工作台说的是我收到的票，不提「上传」，那是乙方那一侧的动作。 */
 const cardDescription = computed(() => (
   perspective.value === 'developer'
-    ? '你在各需求里以乙方身份开给客户的收入票：上传发票文件后即视为已开具，客户可下载。'
+    ? '你在各需求里以乙方身份开给客户的收入票：上传发票文件后即视为已开具，客户可下载；传错了可以重新上传替换。'
     : '你申请开出的票都列在这里：平台服务费票，以及乙方开给你的收入票，开好后可在此查看与下载。'
 ))
 
@@ -159,7 +159,7 @@ function reviewNote(invoice: InvoiceRecord) {
   return invoiceReviewNote(invoice)
 }
 
-/** 上传入口只属于「开发者工作台」里我作为乙方的那张票（两道条件见共享层）。 */
+/** 上传入口只属于「开发者工作台」里我作为乙方的那张票；已开具的票也能重新上传替换（见共享层）。 */
 function canUploadDocument(invoice: InvoiceRecord) {
   return canUploadInvoiceDocument(invoice, auth.username, perspective.value)
 }
@@ -239,10 +239,14 @@ async function uploadDocument(invoice: InvoiceRecord) {
   }
   uploadingInvoiceId.value = invoice.id
   try {
+    const replacing = Boolean(invoice.documentUrl)
     const updated = await uploadInvoiceDocument(auth.token, invoice.id, file)
     allInvoices.value = allInvoices.value.map((item) => (item.id === updated.id ? updated : item))
     delete selectedFileByInvoice[invoice.id]
-    showToast('发票文件已上传，客户可下载了', 'success')
+    showToast(
+      replacing ? '发票文件已替换，客户下载到的就是这一份' : '发票文件已上传，客户可下载了',
+      'success',
+    )
   } catch (error) {
     showToast(error instanceof Error ? error.message : '上传发票文件失败', 'error')
   } finally {
@@ -250,9 +254,15 @@ async function uploadDocument(invoice: InvoiceRecord) {
   }
 }
 
+/**
+ * 按钮文案随「有没有文件、有没有选好新文件」变，两步走：
+ * - 第一次上传是「选择文件 → 上传发票」；
+ * - 已经开具过的票是「重新上传发票 → 确认替换」，一眼看出这是换掉原来那份，不是再传一份上去。
+ */
 function uploadButtonLabel(invoice: InvoiceRecord) {
   if (uploadingInvoiceId.value === invoice.id) return '上传中…'
-  return selectedFileByInvoice[invoice.id] ? '上传发票' : '选择文件'
+  if (!selectedFileByInvoice[invoice.id]) return invoice.documentUrl ? '重新上传发票' : '选择文件'
+  return invoice.documentUrl ? '确认替换' : '上传发票'
 }
 
 async function openDocument(invoice: InvoiceRecord) {

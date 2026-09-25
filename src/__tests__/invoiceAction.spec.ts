@@ -119,10 +119,18 @@ describe('开发者收入票的上传入口只归乙方', () => {
     }
   })
 
-  it('文件已在就不再给上传入口：开发者收入票上传即视为已开具，换文件是后端拒绝的动作', () => {
-    expect(canUploadInvoiceDocument(facts({ status: 'approved', documentUrl: DOCUMENT }), DEVELOPER, 'developer')).toBe(false)
-    // 旧版本留下的 `under_review` 同样不再当成「可以再传一次」的理由。
-    expect(canUploadInvoiceDocument(facts({ status: 'under_review', documentUrl: DOCUMENT }), DEVELOPER, 'developer')).toBe(false)
+  it('文件已在也能重新上传替换：开发者收入票允许乙方换文件，票号与金额都不变', () => {
+    expect(canUploadInvoiceDocument(facts({ status: 'approved', documentUrl: DOCUMENT }), DEVELOPER, 'developer')).toBe(true)
+    // 旧版本留下的 `under_review` 同理：这张票真实的两个状态只看文件在不在。
+    expect(canUploadInvoiceDocument(facts({ status: 'under_review', documentUrl: DOCUMENT }), DEVELOPER, 'developer')).toBe(true)
+  })
+
+  it('客户工作台里文件已在也不给入口：买方只负责索取与下载，换文件是乙方的事', () => {
+    expect(canUploadInvoiceDocument(facts({ status: 'approved', documentUrl: DOCUMENT }), DEVELOPER, 'customer')).toBe(false)
+    expect(canUploadInvoiceDocument(facts({ status: 'approved', documentUrl: DOCUMENT }), CUSTOMER, 'customer')).toBe(false)
+  })
+
+  it('被红冲的原票与红票都不给上传入口：终态票改不了文件，红票由财务端补传', () => {
     expect(canUploadInvoiceDocument(facts({ status: 'reversed', documentUrl: DOCUMENT }), DEVELOPER, 'developer')).toBe(false)
     expect(canUploadInvoiceDocument(facts({ documentKind: 'red', documentUrl: DOCUMENT }), DEVELOPER, 'developer')).toBe(false)
   })
