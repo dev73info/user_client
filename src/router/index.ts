@@ -192,7 +192,7 @@ const router = createRouter({
           component: () => import('@/views/InvoiceCenterView.vue'),
           meta: {
             title: '发票中心',
-            description: '获取发票、上传开发者发票',
+            description: '获取发票、查看与下载发票',
           },
         },
         {

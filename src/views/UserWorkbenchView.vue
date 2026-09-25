@@ -97,7 +97,7 @@ const financeMenuGroup: WorkbenchMenuGroup = {
   icon: Wallet,
   items: [
     { label: '收益钱包', name: 'dev-wallet', description: '查看余额与保证金信息' },
-    { label: '发票中心', name: 'dev-invoices', description: '获取发票、上传开发者发票' },
+    { label: '发票中心', name: 'dev-invoices', description: '查看与上传开发者发票' },
   ],
 }
 
@@ -135,7 +135,7 @@ const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
     items: [
       { label: '账户详情', name: 'workbench-account', description: '管理账户' },
       ...(realnameApproved.value ? [{ label: '我的签署', name: 'workbench-signatures', description: '查看合同与签署进度', activeNames: ['workbench-signature-detail'] }] : []),
-        { label: '发票中心', name: 'workbench-invoices', description: '获取发票、上传开发者发票' },
+        { label: '发票中心', name: 'workbench-invoices', description: '获取发票、查看与下载' },
       { label: '我的背包', name: 'workbench-points', description: '查看积分余额与明细' },
       { label: '我的收藏', name: 'workbench-favorites', description: '查看收藏的社区帖子' },
       {

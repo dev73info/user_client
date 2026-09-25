@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Refresh, RefreshLeft, Search, UploadFilled } from '@element-plus/icons-vue'
 
 import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
@@ -10,16 +11,38 @@ import {
   type InvoiceRecord,
 } from '@/api/invoices'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
+import { canUploadInvoiceDocument, invoiceWaitingHint } from '@/shared/invoiceAction'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
 const auth = useAuthStore()
 const { showToast } = useToast()
+const route = useRoute()
+
+/**
+ * 这一页站在哪一侧看票：跟着工作台走，不跟着「我在某张票里是谁」走。
+ *
+ * 发票中心两端各有一个入口——「客户工作台 → 账户服务 → 发票中心」（`/workbench/invoices`）与
+ * 「开发者工作台 → 财务中心 → 发票中心」（`/workbench/developer/invoices`，路由带 devArea）。
+ * 同一份列表在客户工作台里是买方视角（查看、下载），在开发者工作台里是乙方视角（查看、上传）；
+ * 判定与文案都由此决定，见 `@/shared/invoiceAction`。
+ */
+const perspective = computed<'customer' | 'developer'>(
+  () => (route.matched.some((record) => Boolean(record.meta.devArea)) ? 'developer' : 'customer'),
+)
+
+/* 卡头说明也按视角写：客户工作台不提「上传」，那是乙方那一侧的动作。 */
+const cardDescription = computed(() => (
+  perspective.value === 'developer'
+    ? '你在各需求里以乙方身份开给客户的收入票：上传发票文件后由平台审核，通过后客户可下载。'
+    : '各需求操作栏里申请开出的票都列在这里：平台服务费票与乙方收入票，开好后可在此查看与下载。'
+))
 
 const loading = ref(false)
 const invoices = ref<InvoiceRecord[]>([])
 const selectedFileByInvoice = reactive<Record<number, File | undefined>>({})
 const uploadingInvoiceId = ref<number | null>(null)
+const downloadingInvoiceId = ref<number | null>(null)
 const keyword = ref('')
 const statusFilter = ref<'all' | InvoiceRecord['status']>('all')
 
@@ -110,6 +133,16 @@ function canReapply(invoice: InvoiceRecord) {
   return invoice.documentKind === 'blue' && invoice.status === 'reversed'
 }
 
+/** 上传入口只属于「开发者工作台」里我作为乙方的那张票（两道条件见共享层）。 */
+function canUploadDocument(invoice: InvoiceRecord) {
+  return canUploadInvoiceDocument(invoice, auth.username, perspective.value)
+}
+
+/** 这张票现在等谁（等自己才给按钮）：把责任方摊在行上，免得「待处理」被当成在等当前用户。 */
+function waitingHint(invoice: InvoiceRecord) {
+  return invoiceWaitingHint(invoice, auth.username, perspective.value)
+}
+
 /* 重新申请复用需求页那支开票弹窗：原票已被红冲，后端判重已放开，这里直接把用户送回去开新票，
    不另做一套只弹提示的空按钮。弹窗按需求合并申请，自己算出这次还能开哪几张票，不必告诉它
    用户点的是哪一行。 */
@@ -119,6 +152,8 @@ const applyRole = ref<'customer' | 'developer'>('customer')
 
 function openReapply(invoice: InvoiceRecord) {
   applyRequirementId.value = invoice.requirementId
+  // 弹窗按「我在这笔需求里是哪一方」发起，而不是按当前工作台：后端 `apply_invoices` 也是按操作者
+  // 是买方还是乙方来判，弹窗的文案与可开金额必须跟真正会开出的票对得上。
   applyRole.value = invoice.customerUsername === auth.username ? 'customer' : 'developer'
   applyVisible.value = true
 }
@@ -210,7 +245,45 @@ async function openDocument(invoice: InvoiceRecord) {
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
   } catch (error) {
     popup?.close()
+    showToast(error instanceof Error ? error.message : '查看发票文件失败', 'error')
+  }
+}
+
+/* 下载与查看走同一个接口取文件，区别只在拿到 blob 之后怎么用：查看是开一个新页签给浏览器预览，
+   下载是落成一个文件。两个动作在两种工作台下都给（都是只读操作），与上传入口的判定无关。 */
+const DOCUMENT_EXTENSIONS: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+}
+
+/** 落盘文件名：票号 + 抬头，便于财务与需求方按台账对号；抬头里的路径字符换掉。 */
+function documentFileName(invoice: InvoiceRecord, mimeType: string) {
+  const extension = DOCUMENT_EXTENSIONS[mimeType] ?? 'bin'
+  const title = invoice.invoiceTitle.replace(/[\\/:*?"<>|]/g, '-').slice(0, 60)
+  return `${invoice.invoiceNo}-${title || '发票'}.${extension}`
+}
+
+async function saveDocument(invoice: InvoiceRecord) {
+  if (!invoice.documentUrl) {
+    return
+  }
+  downloadingInvoiceId.value = invoice.id
+  try {
+    const blob = await downloadInvoiceDocument(auth.token, invoice.id)
+    const objectUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = objectUrl
+    link.download = documentFileName(invoice, blob.type)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
+  } catch (error) {
     showToast(error instanceof Error ? error.message : '下载发票文件失败', 'error')
+  } finally {
+    downloadingInvoiceId.value = null
   }
 }
 </script>
@@ -249,9 +322,7 @@ async function openDocument(invoice: InvoiceRecord) {
       <div class="wb-card-head">
         <div class="wb-card-head__title-block">
           <h3 class="wb-card-head__title">我的发票记录</h3>
-          <p class="wb-card-head__desc">
-            获取发票的入口在需求的操作栏，这里统一查看进度、上传与下载发票文件。
-          </p>
+          <p class="wb-card-head__desc">{{ cardDescription }}</p>
         </div>
       </div>
 
@@ -310,6 +381,9 @@ async function openDocument(invoice: InvoiceRecord) {
                 金额 {{ displayAmount(invoice) }} ·
                 {{ invoice.invoiceRole === 'developer' ? developerTypeLabel(invoice.developerType) : '客户服务费' }}
               </span>
+              <!-- 等待中的票要说清在等谁：状态词只说明走到哪一步，责任方才是用户真正想知道的。
+                   开发者收入票在需求方这里就是「等乙方开」，平台票在谁那里都是「等平台财务开」。 -->
+              <span v-if="waitingHint(invoice)" class="wb-item__meta">{{ waitingHint(invoice) }}</span>
               <!-- 专票的购买方四项资料：开发者要照这四项在电子税务局开票，直接摊在列表里省得再要一遍。 -->
               <span v-if="invoice.invoiceKind === 'special'" class="wb-item__meta">
                 专票购买方资料：{{ invoice.buyerAddress }} · {{ invoice.buyerPhone }} ·
@@ -329,14 +403,17 @@ async function openDocument(invoice: InvoiceRecord) {
             <div class="wb-item__side">
               <span class="wb-badge" :class="statusBadgeClass(invoice.status)">{{ statusLabel(invoice.status) }}</span>
               <el-button v-if="invoice.documentUrl" class="wb-toolbar__ghost" @click="openDocument(invoice)">
-                <span>查看文件</span>
+                <span>查看发票</span>
+              </el-button>
+              <el-button v-if="invoice.documentUrl" class="wb-toolbar__ghost"
+                :loading="downloadingInvoiceId === invoice.id" @click="saveDocument(invoice)">
+                <span>下载发票</span>
               </el-button>
               <el-button v-if="canReapply(invoice)" class="wb-toolbar__ghost" @click="openReapply(invoice)">
                 <span>重新申请</span>
               </el-button>
-              <el-button v-if="invoice.invoiceRole === 'developer' && invoice.documentKind === 'blue'
-                && invoice.status !== 'approved' && invoice.status !== 'reversed'"
-                class="wb-toolbar__ghost" :loading="uploadingInvoiceId === invoice.id"
+              <el-button v-if="canUploadDocument(invoice)" class="wb-toolbar__ghost"
+                :loading="uploadingInvoiceId === invoice.id"
                 :disabled="uploadingInvoiceId !== null && uploadingInvoiceId !== invoice.id"
                 @click="selectedFileByInvoice[invoice.id] ? uploadDocument(invoice) : pickInvoiceFile(invoice.id)">
                 <el-icon><UploadFilled /></el-icon><span>{{ uploadButtonLabel(invoice) }}</span>
