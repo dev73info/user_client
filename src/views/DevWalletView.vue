@@ -465,14 +465,14 @@ async function submitDepositWithdrawal() {
             <el-tag effect="plain" type="info">已提现 {{ money(overview?.paid_withdraw_cny) }}</el-tag>
           </div>
         </div>
-        <div class="wallet-hero__body wallet-hero__body--split">
-          <div class="wallet-hero__balance">
-            <div class="wallet-hero__main">
-              <span class="wallet-hero__label">可提现余额</span>
-              <span class="dev-figure" :class="{ 'dev-figure--muted': !canWithdraw }">
-                {{ money(overview?.withdrawable_balance_cny) }}
-              </span>
-            </div>
+        <div class="wallet-hero__body">
+          <div class="wallet-hero__main">
+            <span class="dev-figure" :class="{ 'dev-figure--muted': !canWithdraw }">
+              {{ money(overview?.withdrawable_balance_cny) }}
+            </span>
+          </div>
+          <!-- 状态标签与 T+1 说明同处一行：标签靠左，说明贴右边界。说明文字由后端下发 -->
+          <div class="wallet-hero__meta">
             <div class="wallet-hero__tags">
               <el-tag v-if="(overview?.pending_withdraw_cny ?? 0) > 0" type="warning" effect="plain">
                 提现处理中 {{ money(overview?.pending_withdraw_cny) }}
@@ -481,9 +481,8 @@ async function submitDepositWithdrawal() {
                 {{ canWithdraw ? '满足提现条件' : '不满足提现条件' }}
               </el-tag>
             </div>
+            <p class="wallet-hero__note">{{ payoutScheduleNote }}</p>
           </div>
-          <!-- T+1 到账与免手续费的说明由后端下发，排在余额右侧（即已提现标签下方） -->
-          <p class="wallet-hero__note">{{ payoutScheduleNote }}</p>
         </div>
 
         <!-- 自动提现与手动提现是并存的两条出款路径：并成一行展示，说明折到行下方 -->
@@ -526,7 +525,6 @@ async function submitDepositWithdrawal() {
         </div>
         <div class="wallet-hero__body">
           <div class="wallet-hero__main">
-            <span class="wallet-hero__label">可提现保证金</span>
             <span class="dev-figure" :class="{ 'dev-figure--muted': !canWithdrawDeposit }">
               {{ money(depositWithdrawable) }}
             </span>
@@ -571,7 +569,6 @@ async function submitDepositWithdrawal() {
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
           <h3 class="dev-section-title">钱包记录</h3>
-          <p class="dev-section-desc">保证金退回与收入/提现明细，分页与每页条数在表尾统一。</p>
         </div>
       </div>
       <div class="dev-toolbar">

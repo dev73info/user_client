@@ -1,6 +1,12 @@
 /* 钱包模块样式 */
 
 /* 主余额卡片区 */
+/* 钱包这两张卡内容少，卡头（标题 + 右上标签）到余额大数之间沿用全局 18px 会空一截，
+   这里收一半。全局 .dev-card-head 的 18px 下边距定义在 dev-base.css，不动它。 */
+.wallet-hero__card .dev-card-head {
+  margin-bottom: 9px;
+}
+
 .wallet-hero {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -17,23 +23,19 @@
   margin-bottom: 20px;
 }
 
-/* 接单收入卡片：余额居左，T+1 说明居右（正好落在「已提现」标签下方）。
-   两项都给了明确基准宽度，卡片变窄时说明会自动换到下一行铺满，
-   避免大号金额被挤成溢出。 */
-.wallet-hero__body--split {
+/* 接单收入卡片：状态标签与 T+1 说明并排一行。
+   标签靠左；说明用 margin-left:auto 贴右边界（与卡片头部「已提现」标签同一条右边界）。
+   两者都允许换行，卡片变窄时说明折到下一行仍保持右对齐。 */
+.wallet-hero__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  align-items: center;
+  gap: 6px 12px;
 }
 
-.wallet-hero__balance {
-  flex: 1 1 220px;
-}
-
-/* T+1 到账与免手续费的说明：排在余额右侧并右对齐，与上方「已提现」标签同一条右边界 */
+/* T+1 到账与免手续费的说明：与状态标签同一行，右对齐 */
 .wallet-hero__note {
-  flex: 1 1 200px;
-  margin: 0;
+  margin: 0 0 0 auto;
   font-size: 12px;
   line-height: 1.7;
   color: var(--dev-muted);
@@ -43,14 +45,11 @@
 .wallet-hero__main {
   display: flex;
   flex-direction: column;
-  gap: 4px;
   margin-bottom: 12px;
 }
 
-.wallet-hero__label {
-  font-size: 13px;
-  color: var(--dev-muted);
-}
+/* 「可提现余额」「可提现保证金」两个小标题已删：卡片头上已有「接单收入」「保证金余额」，
+   这里只留大数。原来那两条 13px 的 __label 规则随之移除。 */
 
 /* 金额大数：走统一层的 .dev-figure（30px / 800 / 金）与 .dev-figure--muted（不可提时压弱），
    本页原来自带 .wallet-hero__amount 的 36px，与总览页同一组读数差一个字号，已删。 */
