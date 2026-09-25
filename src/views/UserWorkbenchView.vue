@@ -66,7 +66,8 @@ const ticketsItem: WorkbenchMenuItem = {
 
 // 开发者工作台菜单：侧边栏切到开发者模式时展示（此前是底部「开发者工作台」折叠组的内容）。
 // 版式与用户菜单的一级条目一致（图标 + 加粗标题），切换模式时侧边栏只有文字在变。
-// 一级条目不再分小标题，按开发者每天的动线从上往下排：总览 → 资源 → 接单 → 钱包 → 交付；
+// 一级条目不再分小标题，按开发者每天的动线从上往下排：总览 → 资源 → 接单 → 交付；
+// 与钱有关的两条（收益钱包、发票中心）收进下面的「财务中心」折叠组，
 // 团队服务那一段也不顶小标题，靠折叠组的分组头自己报名字。
 const devWorkbenchItems: DevWorkbenchItem[] = [
   {
@@ -84,9 +85,21 @@ const devWorkbenchItems: DevWorkbenchItem[] = [
   },
   { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求', icon: Compass },
   { label: '我的接单', name: 'dev-my-requirements', description: '查看已关联需求和会话', icon: Tickets },
-  { label: '收益钱包', name: 'dev-wallet', description: '查看余额与保证金信息', icon: Wallet },
   { label: '交付记录', name: 'dev-wallet-releases', description: '查看资源交付与收入', icon: Promotion },
 ]
+
+// 财务中心：只跟钱有关的两条收成一组的折叠组。收益钱包原先是开发者菜单的一级条目，
+// 发票中心原挂在用户模式的「账户服务」下——同一件钱的事被分在了两处，这里合并成一组。
+// 开发者模式下渲染，用户模式看不到；用户模式的账户服务里仍保留「发票中心」那一条。
+const financeMenuGroup: WorkbenchMenuGroup = {
+  key: 'finance',
+  label: '财务中心',
+  icon: Wallet,
+  items: [
+    { label: '收益钱包', name: 'dev-wallet', description: '查看余额与保证金信息' },
+    { label: '发票中心', name: 'dev-invoices', description: '获取发票、上传开发者发票' },
+  ],
+}
 
 // 团队服务已整体移入开发者工作台：用户模式下不出现，开发者模式下按原来的折叠组版式展示。
 // 组内条目叫「团队资源」：开发者侧边栏另有一条自己的「资源项目」，重名会让两条菜单分不清。
@@ -100,9 +113,9 @@ const teamMenuGroup: WorkbenchMenuGroup = {
   ],
 }
 
-// 分组头已经写着组名，因此这两类分组不再额外顶一行灰色小标题：
-// 账户服务靠分组头识别；团队服务靠分组头识别，再加一行会把「团队服务」写两遍。
-const GROUPS_WITHOUT_SECTION_LABEL = ['account', 'team']
+// 分组头已经写着组名，因此这几类分组不再额外顶一行灰色小标题：
+// 账户服务、团队服务、财务中心都靠分组头识别，再加一行会把组名写成两遍。
+const GROUPS_WITHOUT_SECTION_LABEL = ['account', 'team', 'finance']
 
 const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
   {
@@ -206,11 +219,13 @@ const isDevWorkbenchMode = computed(
   () => route.matched.some((record) => Boolean(record.meta.devArea)),
 )
 
-// 全部菜单分组：团队服务只在开发者模式下渲染，但两种模式都要能解析当前页归属的条目。
-const allMenuGroups = computed<WorkbenchMenuGroup[]>(() => [...menuGroups.value, teamMenuGroup])
+// 全部菜单分组：财务中心与团队服务只在开发者模式下渲染，但两种模式都要能解析当前页归属的条目。
+const allMenuGroups = computed<WorkbenchMenuGroup[]>(() => [...menuGroups.value, financeMenuGroup, teamMenuGroup])
 
-// 开发者模式下侧边栏不渲染用户菜单分组，只保留团队服务。
-const visibleMenuGroups = computed(() => (isDevWorkbenchMode.value ? [teamMenuGroup] : menuGroups.value))
+// 开发者模式下侧边栏不渲染用户菜单分组，只保留财务中心与团队服务。
+const visibleMenuGroups = computed(() =>
+  isDevWorkbenchMode.value ? [financeMenuGroup, teamMenuGroup] : menuGroups.value,
+)
 
 // 消息中心在两种工作台各有一条路由（开发者端走 devArea 路由，点进去不会切回用户工作台），
 // 页面内的高亮、会话链接与「查看全部消息」都跟着当前所处的那条走。
@@ -220,6 +235,16 @@ function isMessagesRouteName(name: unknown) {
 }
 const isMessagesRoute = computed(() => isMessagesRouteName(route.name))
 const messagesRouteName = computed(() => (isDevWorkbenchMode.value ? 'dev-messages' : 'workbench-messages'))
+
+/**
+ * 消息中心夹在分组之间、两端各只渲染一次，插在哪个位置两种工作台不一样：
+ * 用户工作台插在第一个分组之后（需求协作与账户服务之间）；
+ * 开发者工作台插在最后一个分组之后（团队服务之下、工单中心之上）。
+ * 开发者侧多出「财务中心」一组后，仍按原来那一档排，不落到两组中间。
+ */
+const messagesAnchorIndex = computed(() =>
+  isDevWorkbenchMode.value ? Math.max(visibleMenuGroups.value.length - 1, 0) : 0,
+)
 
 // 工单中心与消息中心同一套办法：两种工作台各有一条路由，开发者端那条带 devArea，
 // 侧边栏的高亮与链接都跟着当前模式走，点进去不会把菜单切回用户工作台。
@@ -705,7 +730,7 @@ async function scrollToHash() {
               </section>
 
               <!-- 消息中心已从「需求协作」里提出来做一级条目（原来嵌在需求协作的子菜单里），两种工作台各一份 -->
-              <section v-if="index === 0" class="user-workbench__menu-group"
+              <section v-if="index === messagesAnchorIndex" class="user-workbench__menu-group"
                 :class="{ active: isMessageMenuActive(), open: isMessageMenuOpen() }">
                 <button class="user-workbench__menu-group-head" type="button" :aria-expanded="isMessageMenuOpen()"
                   @click="toggleMessageCenter">

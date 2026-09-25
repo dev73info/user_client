@@ -82,6 +82,19 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
       requiresDevAccess: true,
     },
   },
+  // 发票中心同样是「两端共用一页」：用户端的入口留在用户区（账户服务 → 发票中心），
+  // 这里是开发者工作台财务中心里的入口，带 devArea 才不会把侧边栏切回用户菜单。
+  {
+    path: 'developer/invoices',
+    name: 'dev-invoices',
+    component: () => import('@/views/InvoiceCenterView.vue'),
+    meta: {
+      title: '发票中心',
+      description: '获取发票、上传开发者发票。',
+      devArea: true,
+      requiresDevAccess: true,
+    },
+  },
   {
     path: 'developer/resources',
     redirect: { name: 'dev-plugins' },

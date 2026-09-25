@@ -20,7 +20,15 @@ const USER_ROUTE_NAMES = ['workbench', 'workbench-requirements', 'workbench-acco
   'workbench-tickets', 'workbench-messages']
 const DEV_ROUTE_NAMES = ['dev-home', 'dev-resource-list', 'dev-requirement-hall', 'dev-my-requirements', 'dev-wallet',
   'dev-wallet-releases', 'workbench-teams', 'workbench-team-detail', 'workbench-team-resources', 'dev-messages',
-  'dev-tickets']
+  'dev-tickets', 'dev-invoices']
+
+// 开发者路由的路径不都是 /workbench/developer/<name>：钱包按业务词分了分段路径，发票中心也是。
+// 侧边栏链接断言看的是真实 href，所以这两处按生产路径（router/dev.ts）登记，其余沿用默认规则。
+const DEV_ROUTE_PATHS: Record<string, string> = {
+  'dev-wallet': '/workbench/developer/wallet/overview',
+  'dev-wallet-releases': '/workbench/developer/wallet/releases',
+  'dev-invoices': '/workbench/developer/invoices',
+}
 
 const routes: RouteRecordRaw[] = [
   // 侧边栏底部的品牌卡指向门户首页，测试路由里也要有这一条，否则 RouterLink 解析不到目标
@@ -29,7 +37,10 @@ const routes: RouteRecordRaw[] = [
     name, path: `/workbench/${name}`, component: { template: '<div />' },
   })),
   ...DEV_ROUTE_NAMES.map((name): RouteRecordRaw => ({
-    name, path: `/workbench/developer/${name}`, component: { template: '<div />' }, meta: { devArea: true },
+    name,
+    path: DEV_ROUTE_PATHS[name] ?? `/workbench/developer/${name}`,
+    component: { template: '<div />' },
+    meta: { devArea: true },
   })),
 ]
 
@@ -104,10 +115,23 @@ describe('workbench mode switch', () => {
     const devLinks = wrapper.findAll('.user-workbench__menu > .user-workbench__menu-link--root')
     expect(devLinks[0]?.find('.user-workbench__menu-icon').exists()).toBe(true)
     expect(devLinks.map((link) => link.text()))
-      .toEqual(['工作台总览', '资源项目', '需求大厅', '我的接单', '收益钱包', '交付记录'])
-    // 协作与支持段：团队服务与消息中心是折叠组（分组头自带组名），工单中心是一级条目
+      .toEqual(['工作台总览', '资源项目', '需求大厅', '我的接单', '交付记录'])
+    // 财务中心与团队服务是折叠组（分组头自带组名），消息中心夹在分组之间
     expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text()))
-      .toEqual(['团队服务', '消息中心'])
+      .toEqual(['财务中心', '团队服务', '消息中心'])
+    // 与钱有关的两条收进财务中心：收益钱包原是一级条目，发票中心原挂在用户模式的账户服务下
+    const finance = wrapper.findAll('.user-workbench__menu-group')
+      .find((group) => group.find('.user-workbench__menu-group-head').text().includes('财务中心'))!
+    expect(finance.findAll('.user-workbench__submenu-link').map((link) => link.text()))
+      .toEqual(['收益钱包', '发票中心'])
+    expect(finance.findAll('.user-workbench__submenu-link')[0]?.attributes('href'))
+      .toBe('/workbench/developer/wallet/overview')
+    expect(finance.findAll('.user-workbench__submenu-link')[1]?.attributes('href'))
+      .toBe('/workbench/developer/invoices')
+    // 财务中心在开发者模式下才出现，用户模式的账户服务里仍保留一条发票中心
+    expect(text).not.toContain('账户服务')
+    // 「财务中心」只出现一次：折叠组的分组头自己写着组名，上方不再顶小标题
+    expect(text.match(/财务中心/g)).toHaveLength(1)
     // 「团队服务」只出现一次：折叠组的分组头自己写着组名，上方不再顶小标题
     expect(text.match(/团队服务/g)).toHaveLength(1)
     expect(text).toContain('我的团队')
@@ -141,11 +165,13 @@ describe('workbench mode switch', () => {
     // 团队页面带 devArea，落在页面上时侧边栏仍是开发者菜单
     expect(wrapper.find('.user-workbench__brand-title').text()).toBe('开发者工作台')
     expect(sidebar(wrapper)).not.toContain('需求协作')
-    const head = wrapper.find('.user-workbench__menu-group-head')
+    // 开发者侧边栏第一个分组头是「财务中心」，团队服务排在它后面，按组名取那一个
+    const head = wrapper.findAll('.user-workbench__menu-group-head')
+      .find((item) => item.text().includes('团队服务'))!
     expect(head.text()).toContain('团队服务')
     // 当前页在该组内，进页时分组自动展开
     expect(head.attributes('aria-expanded')).toBe('true')
-    expect(wrapper.find('.user-workbench__menu-group-head strong').text()).toBe('团队服务')
+    expect(head.find('strong').text()).toBe('团队服务')
     wrapper.unmount()
   })
 
