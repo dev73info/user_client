@@ -13,6 +13,8 @@ const props = defineProps<{
     bound_resource_id?: number | null
     bound_resource_version_count?: number | null
     pending_unbind_request?: { status: string; initiator: string } | null
+    /** 排队中分账里最晚的计划分账时间（东八区 `YYYY-MM-DD HH24:MI:SS`），由后端给出。 */
+    settlement_available_at?: string | null
   }
   paymentMode: 'self_managed' | 'platform_guarantee'
   contractStatus?: ContractSigningStatus | null
@@ -61,6 +63,37 @@ const creatorSteps = computed<Step[]>(() => {
   return titles.map((item, index) => ({ ...item, rank: index }))
 })
 
+/**
+ * 结算倒计时（天）：只在「尾款已缴、等渠道分账」这一段有意义。
+ *
+ * 计划分账时间由后端给出（`settlement_available_at`，取自 `adapay_escrow_settlement.available_at`），
+ * 天数在这里换算——等待期是后台可改的配置，前端不猜天数，配置一改也不会算错。
+ * 时间串与全站其它 `_at` 字段同口径（东八区），按本地时间解析，与 `formatCnDateTime` 一致。
+ */
+const settlementDaysLeft = computed(() => {
+  if (props.requirement.status !== 'pending_settlement') {
+    return null
+  }
+  const availableAt = props.requirement.settlement_available_at
+  if (!availableAt) {
+    return null
+  }
+  const target = new Date(availableAt).getTime()
+  if (Number.isNaN(target)) {
+    return null
+  }
+  return Math.ceil((target - Date.now()) / 86_400_000)
+})
+
+/** 「结算」这一步的副标题：排队中给倒计时，其余情况仍是这一步要做什么。 */
+const settlementStepDesc = computed(() => {
+  const days = settlementDaysLeft.value
+  if (days == null) {
+    return '完成结算与评价'
+  }
+  return days > 0 ? `还有 ${days} 天完成结算` : '等待渠道分账完成'
+})
+
 // 开发者视角
 const devSteps = computed<Step[]>(() => {
   const stepDefinitions: StepDefinition[] = [
@@ -78,7 +111,7 @@ const devSteps = computed<Step[]>(() => {
   stepDefinitions.push(
     { key: 'develop', title: '开发', desc: '开发并发布资源版本' },
     { key: 'final', title: '交付', desc: '交付成果等待验收' },
-    { key: 'done', title: '结算', desc: '完成结算与评价' },
+    { key: 'done', title: '结算', desc: settlementStepDesc.value },
   )
 
   return stepDefinitions.map((item, index) => ({ ...item, rank: index }))
@@ -147,14 +180,8 @@ const hasPendingUnbind = computed(() => props.requirement.pending_unbind_request
 </script>
 
 <template>
+  <!-- 进度条只画步骤：需求和需求编号由外层需求卡片自己展示，这里再重复一遍纯属占地方。 -->
   <div class="req-progress" :class="{ 'req-progress--unbind': hasPendingUnbind }">
-    <div class="req-progress__head">
-      <div>
-        <strong class="req-progress__title">{{ requirement.title }}</strong>
-        <span class="req-progress__id">{{ requirement.requirement_id }}</span>
-      </div>
-      <span v-if="hasPendingUnbind" class="req-progress__badge">解除申请处理中</span>
-    </div>
     <ol class="req-progress__steps">
       <li v-for="(step, index) in steps" :key="step.key" class="req-progress__step"
         :class="{
@@ -183,36 +210,6 @@ const hasPendingUnbind = computed(() => props.requirement.pending_unbind_request
 .req-progress--unbind {
   border-color: rgba(185, 129, 43, 0.4);
   background: rgba(255, 251, 244, 0.88);
-}
-
-.req-progress__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.req-progress__title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--dev-ink);
-  margin-right: 8px;
-}
-
-.req-progress__id {
-  font-size: 11px;
-  color: var(--dev-muted);
-}
-
-.req-progress__badge {
-  flex-shrink: 0;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--dev-gold);
-  background: rgba(185, 129, 43, 0.12);
-  border-radius: 999px;
-  padding: 3px 10px;
 }
 
 .req-progress__steps {

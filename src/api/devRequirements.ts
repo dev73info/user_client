@@ -30,6 +30,8 @@ export type RequirementItem = {
   status: RequirementStatus
   updated_at: string
   pending_unbind_request?: UnbindRequirementResponse | null
+  /** 排队中分账里最晚的计划分账时间（东八区），没有排队分账时为空；前端据此算结算倒计时。 */
+  settlement_available_at?: string | null
 }
 
 export type UnbindRequirementResponse = {

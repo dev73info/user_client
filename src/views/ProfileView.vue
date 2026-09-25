@@ -2231,10 +2231,6 @@ onBeforeUnmount(() => {
   background: rgba(248, 251, 255, 0.78);
 }
 
-.overview-requirement-progress :deep(.req-progress__head) {
-  display: none;
-}
-
 .overview-requirement-list li.clickable {
   cursor: pointer;
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;

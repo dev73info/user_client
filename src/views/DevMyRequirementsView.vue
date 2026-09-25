@@ -1143,9 +1143,6 @@ async function loadRequirementConversations() {
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
           <h3 class="dev-section-title">接单与交付</h3>
-          <p class="dev-section-desc">
-            一行一个需求单：卡内除了签署与操作，还带着交付物与到账金额。未绑定需求的交付、以及需求已解绑的到账单独成行，搜索与状态筛选即时生效。
-          </p>
         </div>
       </div>
 

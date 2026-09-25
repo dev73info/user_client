@@ -294,20 +294,16 @@ const payAmount = computed(() => {
     : calculateFinalDepositAmount(item, depositRatioPercent.value)
 })
 
-const unbindHint = computed(() => {
-  if (pendingUnbindRequest.value && !canRespondUnbind.value) {
-    return `${pendingUnbindRequest.value.initiator === 'creator' ? '需求方' : '开发者'}已提交解除申请，等待对方处理`
-  }
-  if (!unbindBlockedByPaymentMode.value) {
-    return ''
-  }
-  // 担保模式的退出入口只有「终止合作」，而案件必须挂在一张已完成的定金支付单上（定金未缴时
-  // 建不了案）；这段死角由缴款期限到期后的系统兜底终止，不能把用户指去「终止合作」。
-  if (!canUseBreach.value) {
-    return '担保模式不支持协商解除；请先完成签约与定金支付，逾期未缴定金将由系统自动终止合作并释放接单保证金'
-  }
-  return '担保模式不支持协商解除；如需结束合作请使用「终止合作」'
-})
+/**
+ * 输入框上方只留「对方有一条待处理的解除申请」这一条实时状态。
+ * 担保模式没有协商解除出口这句话原先也挂在输入区，但退出走「终止合作」是需求卡片上的操作，
+ * 在这里重复解释只占地方；已完成 / 已取消这类终态需求上它还是错的，因此整段不再展示。
+ */
+const unbindHint = computed(() =>
+  pendingUnbindRequest.value && !canRespondUnbind.value
+    ? `${pendingUnbindRequest.value.initiator === 'creator' ? '需求方' : '开发者'}已提交解除申请，等待对方处理`
+    : '',
+)
 
 const breachDialogTitle = computed(() => {
   if (activeBreachCase.value) {
