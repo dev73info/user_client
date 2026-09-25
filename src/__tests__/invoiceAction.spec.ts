@@ -2,20 +2,26 @@ import { describe, expect, it } from 'vitest'
 
 import {
   canUploadInvoiceDocument,
+  invoiceDisplayStatus,
   invoiceInWorkbench,
+  invoiceReviewNote,
   invoiceWaitingHint,
   type InvoiceActionFacts,
 } from '@/shared/invoiceAction'
 
-/** 判定只用五个字段：票的开票主体、票性、状态，以及这笔需求的两方是谁。 */
+/** 判定只用这几个字段：票的开票主体、票性、状态、文件，以及这笔需求的两方是谁。 */
 const CUSTOMER = 'alice'
 const DEVELOPER = 'bob'
+/** 已上传的发票文件路径，只用来表达「文件在」。 */
+const DOCUMENT = '/uploads/invoices/20/document.pdf'
 
 function facts(overrides: Partial<InvoiceActionFacts> = {}): InvoiceActionFacts {
   return {
     invoiceRole: 'developer',
     documentKind: 'blue',
     status: 'requested',
+    documentUrl: null,
+    reviewNote: null,
     developerUsername: DEVELOPER,
     customerUsername: CUSTOMER,
     ...overrides,
@@ -43,6 +49,49 @@ describe('每个工作台的发票中心只看自己那一侧的票', () => {
   })
 })
 
+describe('开发者收入票只有两个真实状态：文件在 = 已开具，文件不在 = 待乙方开具', () => {
+  it('乙方还没传文件：待处理', () => {
+    expect(invoiceDisplayStatus(facts())).toBe('requested')
+  })
+
+  it('文件已上传：已开具，不再等任何人', () => {
+    expect(invoiceDisplayStatus(facts({ documentUrl: DOCUMENT }))).toBe('approved')
+  })
+
+  it('旧版本留下的「审核中 / 需补充材料」归一到这两个状态，不再挂出平台并不执行的流程', () => {
+    // 实测反馈：开发者收入票上那个「审核中」标签没有用——平台不管这张票。
+    expect(invoiceDisplayStatus(facts({ status: 'under_review' }))).toBe('requested')
+    expect(invoiceDisplayStatus(facts({ status: 'under_review', documentUrl: DOCUMENT }))).toBe('approved')
+    expect(invoiceDisplayStatus(facts({ status: 'rejected', documentUrl: DOCUMENT }))).toBe('approved')
+  })
+
+  it('平台服务费票照读状态列：那张票的审核流是平台财务自己在走', () => {
+    expect(invoiceDisplayStatus(facts({ invoiceRole: 'platform', status: 'under_review' }))).toBe('under_review')
+    expect(invoiceDisplayStatus(facts({ invoiceRole: 'platform', status: 'rejected' }))).toBe('rejected')
+    expect(invoiceDisplayStatus(facts({ invoiceRole: 'platform', status: 'approved' }))).toBe('approved')
+  })
+
+  it('被红冲的原票与红票都照读原状态：红冲是平台侧的账务动作，与谁传了文件无关', () => {
+    expect(invoiceDisplayStatus(facts({ status: 'reversed', documentUrl: DOCUMENT }))).toBe('reversed')
+    expect(invoiceDisplayStatus(facts({ documentKind: 'red', status: 'approved', documentUrl: DOCUMENT }))).toBe('approved')
+  })
+})
+
+describe('开发者收入票上没有审核说明这一行', () => {
+  it('票上带着旧版本的审核说明也不显示：平台没审过这张票', () => {
+    expect(invoiceReviewNote(facts({ reviewNote: '抬头与税号不符' }))).toBe('')
+    expect(invoiceReviewNote(facts({ status: 'rejected', reviewNote: '抬头与税号不符' }))).toBe('')
+  })
+
+  it('平台服务费票照常显示财务写的说明', () => {
+    expect(invoiceReviewNote(facts({ invoiceRole: 'platform', reviewNote: '抬头与税号不符' }))).toBe('抬头与税号不符')
+  })
+
+  it('没有说明时返回空串', () => {
+    expect(invoiceReviewNote(facts({ invoiceRole: 'platform' }))).toBe('')
+  })
+})
+
 describe('开发者收入票的上传入口只归乙方', () => {
   it('客户工作台里没有上传入口：这里这张票只是我收到的票，只能查看与下载', () => {
     // 同一个账号可能既是买方又是乙方（在另一笔需求里）；当前这一页的按钮只看工作台那一侧，
@@ -59,7 +108,7 @@ describe('开发者收入票的上传入口只归乙方', () => {
     expect(canUploadInvoiceDocument(facts(), CUSTOMER, 'developer')).toBe(false)
   })
 
-  it('需补充材料时乙方仍可重传', () => {
+  it('需补充材料时乙方仍可重传：旧状态按显示状态归一后仍是「等待乙方开」', () => {
     expect(canUploadInvoiceDocument(facts({ status: 'rejected' }), DEVELOPER, 'developer')).toBe(true)
   })
 
@@ -70,10 +119,12 @@ describe('开发者收入票的上传入口只归乙方', () => {
     }
   })
 
-  it('已通过、已红冲与红票都不再接收文件', () => {
-    expect(canUploadInvoiceDocument(facts({ status: 'approved' }), DEVELOPER, 'developer')).toBe(false)
-    expect(canUploadInvoiceDocument(facts({ status: 'reversed' }), DEVELOPER, 'developer')).toBe(false)
-    expect(canUploadInvoiceDocument(facts({ documentKind: 'red' }), DEVELOPER, 'developer')).toBe(false)
+  it('文件已在就不再给上传入口：开发者收入票上传即视为已开具，换文件是后端拒绝的动作', () => {
+    expect(canUploadInvoiceDocument(facts({ status: 'approved', documentUrl: DOCUMENT }), DEVELOPER, 'developer')).toBe(false)
+    // 旧版本留下的 `under_review` 同样不再当成「可以再传一次」的理由。
+    expect(canUploadInvoiceDocument(facts({ status: 'under_review', documentUrl: DOCUMENT }), DEVELOPER, 'developer')).toBe(false)
+    expect(canUploadInvoiceDocument(facts({ status: 'reversed', documentUrl: DOCUMENT }), DEVELOPER, 'developer')).toBe(false)
+    expect(canUploadInvoiceDocument(facts({ documentKind: 'red', documentUrl: DOCUMENT }), DEVELOPER, 'developer')).toBe(false)
   })
 })
 
@@ -86,15 +137,15 @@ describe('等待中的票要说清在等谁', () => {
   })
 
   it('开发者工作台看到开发者票：等自己上传', () => {
-    expect(invoiceWaitingHint(facts(), DEVELOPER, 'developer')).toBe('由你开具：上传发票文件后由平台审核')
+    expect(invoiceWaitingHint(facts(), DEVELOPER, 'developer')).toBe(
+      '由你开具：上传发票文件后即视为已开具，客户可下载',
+    )
   })
 
   it('开发者工作台里看到的是别人开的票：不写「由你开具」，因为没有上传入口', () => {
     // 一个账号可能在这笔需求里是买方、在另一笔里是乙方，两边看到的是同一份列表；
     // 别家乙方开的票在这页上只能查看与下载，说成「由你开具」就是错误的引导。
-    expect(invoiceWaitingHint(facts(), CUSTOMER, 'developer')).toBe(
-      '由乙方开具：乙方上传发票文件、平台审核通过后可在此下载',
-    )
+    expect(invoiceWaitingHint(facts(), CUSTOMER, 'developer')).toBe('由乙方开具：乙方上传发票文件后可在此下载')
   })
 
   it('平台服务费票在开发者工作台里是等平台财务开', () => {
@@ -110,8 +161,10 @@ describe('等待中的票要说清在等谁', () => {
   })
 
   it('已开具、已红冲与红票都没有可等的事', () => {
-    expect(invoiceWaitingHint(facts({ status: 'approved' }), DEVELOPER, 'developer')).toBe('')
-    expect(invoiceWaitingHint(facts({ status: 'reversed' }), DEVELOPER, 'developer')).toBe('')
-    expect(invoiceWaitingHint(facts({ documentKind: 'red' }), DEVELOPER, 'developer')).toBe('')
+    expect(invoiceWaitingHint(facts({ status: 'approved', documentUrl: DOCUMENT }), DEVELOPER, 'developer')).toBe('')
+    expect(invoiceWaitingHint(facts({ status: 'reversed', documentUrl: DOCUMENT }), DEVELOPER, 'developer')).toBe('')
+    expect(invoiceWaitingHint(facts({ documentKind: 'red', documentUrl: DOCUMENT }), DEVELOPER, 'developer')).toBe('')
+    // 旧版本的 `under_review` 也不再让行上出现一句「由你开具」——文件已在，没有事要等。
+    expect(invoiceWaitingHint(facts({ status: 'under_review', documentUrl: DOCUMENT }), DEVELOPER, 'developer')).toBe('')
   })
 })

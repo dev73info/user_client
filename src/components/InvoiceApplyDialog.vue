@@ -144,7 +144,7 @@ function invoiceStatusLabel(status: InvoiceRecord['status']) {
   return {
     requested: '待处理',
     under_review: '审核中',
-    approved: '已通过',
+    approved: '已开具',
     rejected: '需补充材料',
     reversed: '已红冲',
   }[status]

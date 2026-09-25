@@ -386,7 +386,7 @@ describe('InvoiceApplyDialog', () => {
     expect(wrapper.find('.invoice-amount__value').text()).toBe('¥0.00')
     expect(wrapper.find('.invoice-panel__submit').attributes('disabled')).toBeDefined()
     expect(wrapper.text()).toContain('平台服务费发票已提交（审核中 · 票面 ¥200.00）')
-    expect(wrapper.text()).toContain('开发者服务收入发票已提交（已通过 · 票面 ¥700.00）')
+    expect(wrapper.text()).toContain('开发者服务收入发票已提交（已开具 · 票面 ¥700.00）')
     expect(wrapper.text()).toContain('本需求暂无可开票金额')
 
     wrapper.unmount()

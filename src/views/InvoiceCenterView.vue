@@ -11,7 +11,7 @@ import {
   type InvoiceRecord,
 } from '@/api/invoices'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
-import { canUploadInvoiceDocument, invoiceInWorkbench, invoiceWaitingHint } from '@/shared/invoiceAction'
+import { canUploadInvoiceDocument, invoiceDisplayStatus, invoiceInWorkbench, invoiceReviewNote, invoiceWaitingHint } from '@/shared/invoiceAction'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
@@ -34,7 +34,7 @@ const perspective = computed<'customer' | 'developer'>(
 /* 卡头说明也按视角写：客户工作台说的是我收到的票，不提「上传」，那是乙方那一侧的动作。 */
 const cardDescription = computed(() => (
   perspective.value === 'developer'
-    ? '你在各需求里以乙方身份开给客户的收入票：上传发票文件后由平台审核，通过后客户可下载。'
+    ? '你在各需求里以乙方身份开给客户的收入票：上传发票文件后即视为已开具，客户可下载。'
     : '你申请开出的票都列在这里：平台服务费票，以及乙方开给你的收入票，开好后可在此查看与下载。'
 ))
 
@@ -55,31 +55,43 @@ const downloadingInvoiceId = ref<number | null>(null)
 const keyword = ref('')
 const statusFilter = ref<'all' | InvoiceRecord['status']>('all')
 
-/** 状态筛选做成胶囊组：档位少、要能一眼看出当前选中项，与我的签署、我的收藏同一套做法。 */
+/**
+ * 状态筛选做成胶囊组：档位少、要能一眼看出当前选中项，与我的签署、我的收藏同一套做法。
+ *
+ * 筛选与读数都按**显示状态**分档（`invoiceDisplayStatus`），不是照读接口给的状态列。
+ * 「审核中 / 需补充材料」只属于平台服务费票的审核流：开发者收入票由乙方上传即视为已开具，
+ * 平台不审这张票，旧版本留在库里的 `under_review` 不该在这页变成一个平台并不执行的流程
+ * （见 `backend_73info/src/modules/invoice/service.rs`）。
+ */
 const STATUS_FILTERS: Array<{ key: 'all' | InvoiceRecord['status']; label: string }> = [
   { key: 'all', label: '全部' },
   { key: 'requested', label: '待处理' },
   { key: 'under_review', label: '审核中' },
-  { key: 'approved', label: '已通过' },
+  { key: 'approved', label: '已开具' },
   { key: 'rejected', label: '需补充材料' },
   { key: 'reversed', label: '已红冲' },
 ]
 
 const stats = computed(() => ({
   total: invoices.value.length,
-  pending: invoices.value.filter((item) => item.status === 'requested' || item.status === 'under_review').length,
-  approved: invoices.value.filter((item) => item.status === 'approved').length,
-  reversed: invoices.value.filter((item) => item.status === 'reversed' || item.documentKind === 'red').length,
+  pending: invoices.value.filter((item) => {
+    const status = invoiceDisplayStatus(item)
+    return status === 'requested' || status === 'under_review'
+  }).length,
+  approved: invoices.value.filter((item) => invoiceDisplayStatus(item) === 'approved').length,
+  reversed: invoices.value.filter((item) => invoiceDisplayStatus(item) === 'reversed' || item.documentKind === 'red').length,
 }))
 
 function statusCount(status: 'all' | InvoiceRecord['status']) {
-  return status === 'all' ? invoices.value.length : invoices.value.filter((item) => item.status === status).length
+  return status === 'all'
+    ? invoices.value.length
+    : invoices.value.filter((item) => invoiceDisplayStatus(item) === status).length
 }
 
 const filteredInvoices = computed(() => {
   const search = keyword.value.trim().toLocaleLowerCase()
   return invoices.value.filter((invoice) => {
-    const matchesStatus = statusFilter.value === 'all' || invoice.status === statusFilter.value
+    const matchesStatus = statusFilter.value === 'all' || invoiceDisplayStatus(invoice) === statusFilter.value
     const matchesSearch = !search || [invoice.invoiceNo, invoice.requirementId, invoice.invoiceTitle]
       .some((field) => field?.toLocaleLowerCase().includes(search))
     return matchesStatus && matchesSearch
@@ -114,7 +126,7 @@ function statusLabel(status: InvoiceRecord['status']) {
   return {
     requested: '待处理',
     under_review: '审核中',
-    approved: '已通过',
+    approved: '已开具',
     rejected: '需补充材料',
     reversed: '已红冲',
   }[status]
@@ -139,7 +151,12 @@ function displayAmount(invoice: InvoiceRecord) {
 
 /** 该需求、该开票主体能否重新申请：原票被红冲后同需求同主体可以再开一张新蓝票。 */
 function canReapply(invoice: InvoiceRecord) {
-  return invoice.documentKind === 'blue' && invoice.status === 'reversed'
+  return invoice.documentKind === 'blue' && invoiceDisplayStatus(invoice) === 'reversed'
+}
+
+/** 行上的「审核说明」；开发者收入票没有审核这一步，它上面任何说明都不显示（见共享层）。 */
+function reviewNote(invoice: InvoiceRecord) {
+  return invoiceReviewNote(invoice)
 }
 
 /** 上传入口只属于「开发者工作台」里我作为乙方的那张票（两道条件见共享层）。 */
@@ -225,7 +242,7 @@ async function uploadDocument(invoice: InvoiceRecord) {
     const updated = await uploadInvoiceDocument(auth.token, invoice.id, file)
     allInvoices.value = allInvoices.value.map((item) => (item.id === updated.id ? updated : item))
     delete selectedFileByInvoice[invoice.id]
-    showToast('发票文件已上传，等待平台审核', 'success')
+    showToast('发票文件已上传，客户可下载了', 'success')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '上传发票文件失败', 'error')
   } finally {
@@ -312,7 +329,7 @@ async function saveDocument(invoice: InvoiceRecord) {
       </div>
       <div class="wb-strip__divider" />
       <div class="wb-strip__item">
-        <span class="wb-strip__label">已通过</span>
+        <span class="wb-strip__label">已开具</span>
         <span class="wb-strip__value">{{ loading ? '—' : stats.approved }}</span>
       </div>
       <div class="wb-strip__divider" />
@@ -404,13 +421,17 @@ async function saveDocument(invoice: InvoiceRecord) {
               <span v-else-if="invoice.status === 'reversed'" class="wb-item__meta">
                 红冲原因：{{ invoice.reversalReason || '未记录' }} · 当前应开 ¥{{ (invoice.currentInvoiceableFen / 100).toFixed(2) }}
               </span>
-              <span v-else-if="invoice.reversalRequired" class="wb-item__meta">
+              <!-- 只有**多开**（建议冲减额为正）才轮得到红冲：票面比实际发生的净额大，财务先红冲再让
+                   用户重开。建议冲减额为负是「票开少了、需补开」，与红冲是两回事——它的口径本来
+                   就只扣已真正退出去的钱，开票当时在途的退款诉求不算数（见 `reversalSuggestionFen`
+                   的注释），拿它去说「财务端会先红冲原票」既吓人又不成立。 -->
+              <span v-else-if="invoice.reversalRequired && invoice.reversalSuggestionFen > 0" class="wb-item__meta">
                 本需求可开票净额已变为 ¥{{ (invoice.currentInvoiceableFen / 100).toFixed(2) }}，财务端会先红冲原票
               </span>
-              <span v-if="invoice.reviewNote" class="wb-item__meta">审核说明：{{ invoice.reviewNote }}</span>
+              <span v-if="reviewNote(invoice)" class="wb-item__meta">审核说明：{{ reviewNote(invoice) }}</span>
             </div>
             <div class="wb-item__side">
-              <span class="wb-badge" :class="statusBadgeClass(invoice.status)">{{ statusLabel(invoice.status) }}</span>
+              <span class="wb-badge" :class="statusBadgeClass(invoiceDisplayStatus(invoice))">{{ statusLabel(invoiceDisplayStatus(invoice)) }}</span>
               <el-button v-if="invoice.documentUrl" class="wb-toolbar__ghost" @click="openDocument(invoice)">
                 <span>查看发票</span>
               </el-button>

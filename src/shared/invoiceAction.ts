@@ -7,7 +7,8 @@ import type { InvoiceRecord } from '@/api/invoices'
  */
 export type InvoiceActionFacts = Pick<
   InvoiceRecord,
-  'invoiceRole' | 'documentKind' | 'status' | 'developerUsername' | 'customerUsername'
+  'invoiceRole' | 'documentKind' | 'status' | 'documentUrl' | 'reviewNote'
+  | 'developerUsername' | 'customerUsername'
 >
 
 /**
@@ -48,6 +49,41 @@ export function invoiceInWorkbench(
 }
 
 /**
+ * 这张票在这一页上按什么状态显示：状态徽标、状态筛选与顶部读数都以它为准。
+ *
+ * 开发者收入票**没有平台审核这一步**——乙方上传发票文件即视为已开具（见
+ * `backend_73info/src/modules/invoice/service.rs` 的 `upload_invoice_document`），它真实的状态只有
+ * 两个：文件在 = 已开具，文件不在 = 待乙方开具。但 `status` 这一列是与平台服务费票的审核流共用的，
+ * 旧版本上传时会把它写成 `under_review`，于是行上挂出一个平台并不执行的「审核中」（实测反馈：
+ * 这个标签没有用，平台不管这张票）。这里按票的性质归一，别让历史值决定用户看到什么；后端也在
+ * 启动时把存量票归一到这两个状态（见 `db/schema_postgres/commercial_compliance.sql`）。
+ *
+ * 红票是红冲那一刻就已生效的凭证，原蓝票被红冲后是终态，两者都照读原状态——它们是平台侧的账务
+ * 动作，与「谁上传了文件」无关。
+ */
+export function invoiceDisplayStatus(invoice: InvoiceActionFacts): InvoiceRecord['status'] {
+  if (
+    invoice.invoiceRole !== 'developer'
+    || invoice.documentKind === 'red'
+    || invoice.status === 'reversed'
+  ) {
+    return invoice.status
+  }
+  return invoice.documentUrl ? 'approved' : 'requested'
+}
+
+/**
+ * 行上「审核说明」要显示的文本；不该显示时返回空串。
+ *
+ * 审核只发生在平台服务费票上：那张票由平台财务自己开具、自己确认，说明写的是财务的处理意见。
+ * 开发者收入票由乙方上传即视为已开具，平台不审这张票，票上任何说明都是旧版本遗留的，显示出来
+ * 只会让人以为平台在管这件事。
+ */
+export function invoiceReviewNote(invoice: InvoiceActionFacts): string {
+  return invoice.invoiceRole === 'developer' ? '' : invoice.reviewNote ?? ''
+}
+
+/**
  * 当前这一页要不要给这张票显示上传入口。
  *
  * 两道条件缺一不可：
@@ -60,21 +96,22 @@ export function invoiceInWorkbench(
  *    上传，买方只负责索取与下载；`upload_invoice_document` 同样要求 `developer_username`
  *    就是操作者，且只能传蓝票（见 `backend_73info/src/modules/invoice/service.rs`）。
  *
- * 已通过（`approved`）与被红冲（`reversed`）的蓝票都不再接收文件：前者是终态，后者只能补传红字
- * 发票文件，那件事只有财务端做得了。
+ * 已开具（`approved`）与被红冲（`reversed`）的蓝票都不再接收文件：按显示状态判定，开发者收入票
+ * 只要文件已在就不再给上传入口（后端也拒绝对已开具的票换文件），红票只能由财务端补传红字文件。
  */
 export function canUploadInvoiceDocument(
   invoice: InvoiceActionFacts,
   viewer: string,
   perspective: InvoicePerspective,
 ): boolean {
+  const status = invoiceDisplayStatus(invoice)
   return (
     perspective === 'developer'
     && invoice.documentKind === 'blue'
     && invoice.invoiceRole === 'developer'
     && invoice.developerUsername === viewer
-    && invoice.status !== 'approved'
-    && invoice.status !== 'reversed'
+    && status !== 'approved'
+    && status !== 'reversed'
   )
 }
 
@@ -91,7 +128,8 @@ export function canUploadInvoiceDocument(
  * 同样不给，说明也就不能写「由你开具」。
  *
  * 红票是已经生效的冲销凭证，不参与等待；已开具（`approved`）与被红冲（`reversed`）的行也无事
- * 可等。需补充材料（`rejected`）时这一行与「审核说明」相邻，正好说清是谁要补。
+ * 可等（按显示状态判定：开发者收入票文件一传上来就已开具，不再等任何人）。需补充材料
+ * （`rejected`）时这一行与「审核说明」相邻，正好说清是谁要补。
  */
 export function invoiceWaitingHint(
   invoice: InvoiceActionFacts,
@@ -104,13 +142,14 @@ export function invoiceWaitingHint(
   if (invoice.documentKind === 'red') {
     return ''
   }
-  if (invoice.status === 'approved' || invoice.status === 'reversed') {
+  const status = invoiceDisplayStatus(invoice)
+  if (status === 'approved' || status === 'reversed') {
     return ''
   }
   if (invoice.invoiceRole === 'platform') {
     return '由平台开具：平台财务开票并上传后，可在此下载'
   }
   return invoice.developerUsername === viewer
-    ? '由你开具：上传发票文件后由平台审核'
-    : '由乙方开具：乙方上传发票文件、平台审核通过后可在此下载'
+    ? '由你开具：上传发票文件后即视为已开具，客户可下载'
+    : '由乙方开具：乙方上传发票文件后可在此下载'
 }
