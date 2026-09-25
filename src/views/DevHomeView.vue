@@ -13,6 +13,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
+import DevWithdrawalDialog from '@/components/DevWithdrawalDialog.vue'
 import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@/api/devOrderDeposit'
 import {
   getDevWalletOverview,
@@ -138,6 +139,9 @@ const activeDeliveryTab = ref<DeliveryTabKey>('all')
 
 /** 保证金不足时直接在总览页充值，不走跳转：与收益钱包页共用同一个充值弹窗 */
 const rechargeDialog = ref<InstanceType<typeof DevDepositRechargeDialog> | null>(null)
+
+/** 提现同样就地开窗：余额、通道状态与提交都在弹窗内完成，只有提交成功后才回刷本页读数 */
+const withdrawDialog = ref<InstanceType<typeof DevWithdrawalDialog> | null>(null)
 
 const recentIncome = computed<DevWalletIncomeItem[]>(() => overview.value?.recent_income ?? [])
 
@@ -418,6 +422,22 @@ function statusChipClass(status: string) {
   return CHIP_TONES[STATUS_TONES[status] ?? 'blue']
 }
 
+/**
+ * 提现成功后的回刷：只重取钱包读数（可提现 / 待提现 / 已提现与近 7 天曲线），
+ * 不整页重拉——进行中项目、交付记录与保证金都不受这次提现影响。
+ */
+async function reloadWallet() {
+  if (!auth.token || mockEnabled) {
+    return
+  }
+
+  try {
+    overview.value = await getDevWalletOverview(auth.token)
+  } catch {
+    // 读数没刷上不影响「提现已提交」这个结论，下次刷新会补上
+  }
+}
+
 async function loadPage() {
   auth.hydrate()
   if (!auth.token) {
@@ -682,14 +702,15 @@ async function loadPage() {
                 <span class="dev-home__money-label">可提现余额</span>
                 <strong class="dev-figure">{{ money(withdrawable) }}</strong>
               </span>
-              <!-- 提现按钮就贴在余额右侧：这一段的主操作只有一个，不必再排一行页脚 -->
-              <RouterLink class="dev-btn dev-btn--primary dev-home__money-action"
-                :to="{ name: 'dev-wallet' }">
+              <!-- 提现按钮就贴在余额右侧：这一段的主操作只有一个，不必再排一行页脚。
+                   点了就地拉起提现弹窗（与收益钱包页共用同一个），不再跳到钱包页。 -->
+              <button class="dev-btn dev-btn--primary dev-home__money-action" type="button"
+                @click="withdrawDialog?.open()">
                 <el-icon>
                   <Wallet />
                 </el-icon>
                 <span>提现</span>
-              </RouterLink>
+              </button>
             </div>
 
             <!-- 两个读数并成一行：提现口径只有这两笔，收入口径的读数已经在上面（今日收入、曲线） -->
@@ -752,6 +773,9 @@ async function loadPage() {
 
     <!-- 保证金充值弹窗：与收益钱包页共用同一组件 -->
     <DevDepositRechargeDialog ref="rechargeDialog" />
+
+    <!-- 收入提现弹窗：提交成功后只回刷钱包读数，其余三块与本页的提现无关 -->
+    <DevWithdrawalDialog ref="withdrawDialog" @submitted="reloadWallet" />
   </div>
 </template>
 

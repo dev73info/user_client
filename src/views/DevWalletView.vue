@@ -3,14 +3,13 @@ import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Refresh, Search, Wallet, WarningFilled } from '@element-plus/icons-vue'
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
+import DevWithdrawalDialog from '@/components/DevWithdrawalDialog.vue'
 import DevWithdrawalRecordsView from './DevWithdrawalRecordsView.vue'
 
 import {
-  createDevWithdrawalRequest,
   getDevWalletOverview,
   getDevWithdrawalSetting,
   updateDevWithdrawalSetting,
-  type CreateDevWithdrawalRequest,
   type DevWithdrawalLimits,
   type DevWithdrawalSetting,
   type DevWalletIncomeItem,
@@ -43,10 +42,10 @@ const RECORD_TABS: ReadonlyArray<{ key: 'deposit' | 'income'; label: string }> =
   { key: 'income', label: '收入记录' },
 ]
 
-const withdrawDialogVisible = ref(false)
-const submittingWithdrawal = ref(false)
 /** 保证金充值弹窗：表单与下单都由子组件承载，这里只留一个调用句柄 */
 const rechargeDialog = ref<InstanceType<typeof DevDepositRechargeDialog> | null>(null)
+/** 收入提现弹窗：余额与通道状态由子组件自己拉，这里只留调用句柄 */
+const withdrawDialog = ref<InstanceType<typeof DevWithdrawalDialog> | null>(null)
 const overview = ref<DevWalletOverview | null>(null)
 const withdrawalLimits = ref<DevWithdrawalLimits | null>(null)
 /**
@@ -55,14 +54,6 @@ const withdrawalLimits = ref<DevWithdrawalLimits | null>(null)
  */
 const withdrawalSetting = ref<DevWithdrawalSetting | null>(null)
 const autoWithdrawSaving = ref(false)
-const withdrawForm = reactive<CreateDevWithdrawalRequest>({
-  amount_cny: 0,
-  // 接单收入统一经 Adapay 出款到开发者绑定的收款银行卡，收款信息由服务端补全。
-  channel: 'adapay',
-  account_name: '',
-  account_no: '',
-  note: '',
-})
 
 // 保证金状态
 const depositLoading = ref(false)
@@ -176,11 +167,6 @@ const payoutScheduleNote = computed(
 const canSubmitWithdrawal = computed(() => canWithdraw.value && payoutChannelUsable.value)
 /** 自动提现开关：通道不可用时禁用（已开启的开关要允许关闭） */
 const autoWithdrawReady = computed(() => payoutChannelUsable.value || autoWithdrawEnabled.value)
-
-/** 手动提现的收款账户：固定为账号中心绑定的 Adapay 收款银行卡 */
-const payoutAccountLabel = computed(() =>
-  payoutChannelReady.value ? '账号中心绑定的收款银行卡' : '尚未绑定收款银行卡',
-)
 
 const depositWithdrawable = computed(
   () => depositWithdrawalSummary.value?.withdrawable_balance_cny ?? 0,
@@ -335,71 +321,9 @@ function goBindSettlementAccount() {
   void router.push({ name: 'workbench-account', query: { settle: '1' } })
 }
 
+/** 收入提现弹窗：余额、通道状态与提交都在子组件内完成，提交成功后回刷本页读数 */
 function openWithdrawDialog() {
-  if (!canWithdraw.value) {
-    showToast('当前可提现余额不足，暂时无法发起提现', 'warning')
-    return
-  }
-  if (!payoutChannelUsable.value) {
-    showToast(payoutChannelMessage.value || '出款通道暂未就绪，暂时无法发起提现', 'warning')
-    return
-  }
-
-  withdrawDialogVisible.value = true
-}
-
-function resetWithdrawForm() {
-  withdrawForm.amount_cny = 0
-  withdrawForm.channel = 'adapay'
-  withdrawForm.account_name = ''
-  withdrawForm.account_no = ''
-  withdrawForm.note = ''
-}
-
-async function submitWithdrawal() {
-  if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
-    return
-  }
-
-  const payload: CreateDevWithdrawalRequest = {
-    amount_cny: normalizeCnyAmount(Number(withdrawForm.amount_cny)),
-    channel: withdrawForm.channel,
-    account_name: withdrawForm.account_name.trim(),
-    account_no: withdrawForm.account_no.trim(),
-    note: withdrawForm.note?.trim() || null,
-  }
-
-  const validationMessage = validateDevWithdrawalRequest(
-    payload,
-    overview.value?.withdrawable_balance_cny,
-    withdrawalLimits.value,
-  )
-  if (validationMessage) {
-    showToast(validationMessage, 'warning')
-    return
-  }
-
-  submittingWithdrawal.value = true
-  try {
-    const record = await createDevWithdrawalRequest(auth.token, payload)
-    // 出款提交后由 Adapay 处理：可能已出款、也可能仍在处理中（T+1 到账）或失败待补发
-    if (record.status === 'paid') {
-      showToast('提现已提交，平台已完成出款', 'success')
-    } else if (record.status === 'payout_failed') {
-      showToast(record.payout_failure_message || '出款未完成，平台会安排补发', 'warning')
-    } else {
-      showToast('提现已提交，Adapay 出款一般 T+1 到账', 'success')
-    }
-    withdrawDialogVisible.value = false
-    resetWithdrawForm()
-    await loadWallet()
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '提交提现申请失败'
-    showToast(message, 'error')
-  } finally {
-    submittingWithdrawal.value = false
-  }
+  void withdrawDialog.value?.open()
 }
 
 /** 打开保证金充值弹窗：签约前置校验与信用额度查询都在子组件内完成 */
@@ -713,38 +637,8 @@ async function submitDepositWithdrawal() {
         :keyword="recordKeyword" />
     </section>
 
-    <!-- 收入提现弹窗（手动提现路径）：收款账户固定为账号中心绑定的收款银行卡 -->
-    <el-dialog v-model="withdrawDialogVisible" title="申请提现" width="520px" align-center class="dev-dialog">
-      <el-form label-position="top">
-        <el-form-item label="可提现余额">
-          <div class="dev-figure dev-figure--sm">
-            {{ money(overview?.withdrawable_balance_cny) }}
-          </div>
-        </el-form-item>
-        <el-form-item label="提现金额" required>
-          <el-input-number v-model="withdrawForm.amount_cny" :min="withdrawalMinAmount" :max="withdrawalMaxAmount" :precision="2" :step="0.01" placeholder="提现金额"
-            style="width: 100%" />
-          <div class="dev-wallet-withdraw__note">可提现 {{ money(withdrawalMinAmount) }} 至 {{ money(withdrawalMaxAmount) }}，最多保留两位小数，不能超过可提现余额。</div>
-        </el-form-item>
-        <el-form-item label="收款账户">
-          <div class="dev-wallet-withdraw__account">
-            <span>{{ payoutAccountLabel }}</span>
-            <el-button link type="primary" @click="goBindSettlementAccount">
-              {{ payoutChannelReady ? '更换银行卡' : '去绑定' }}
-            </el-button>
-          </div>
-          <div class="dev-wallet-withdraw__note">{{ payoutScheduleNote }}</div>
-        </el-form-item>
-        <el-form-item label="申请备注">
-          <el-input v-model="withdrawForm.note" type="textarea" :rows="3" :maxlength="withdrawalLimits?.note_max_len ?? 200" show-word-limit
-            placeholder="可选" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="withdrawDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submittingWithdrawal" @click="submitWithdrawal">确认提现</el-button>
-      </template>
-    </el-dialog>
+    <!-- 收入提现弹窗：与工作台总览的「提现」按钮共用同一组件 -->
+    <DevWithdrawalDialog ref="withdrawDialog" @submitted="loadWallet" />
 
     <!-- 保证金提现弹窗 -->
     <el-dialog v-model="depositWithdrawDialogVisible" title="保证金提现" width="520px" align-center class="dev-dialog">

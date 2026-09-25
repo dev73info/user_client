@@ -7,6 +7,8 @@ import DevHomeView from '@/views/DevHomeView.vue'
 
 const mocks = vi.hoisted(() => ({
   wallet: vi.fn(),
+  withdrawalSetting: vi.fn(),
+  createWithdrawal: vi.fn(),
   deposit: vi.fn(),
   requirements: vi.fn(),
   resources: vi.fn(),
@@ -14,7 +16,12 @@ const mocks = vi.hoisted(() => ({
   credit: vi.fn(),
 }))
 
-vi.mock('@/api/devWallet', () => ({ getDevWalletOverview: mocks.wallet }))
+vi.mock('@/api/devWallet', () => ({
+  getDevWalletOverview: mocks.wallet,
+  getDevWithdrawalSetting: mocks.withdrawalSetting,
+  createDevWithdrawalRequest: mocks.createWithdrawal,
+  validateDevWithdrawalRequest: () => null,
+}))
 vi.mock('@/api/devOrderDeposit', () => ({ getDevOrderDepositStatus: mocks.deposit }))
 vi.mock('@/api/devRequirements', () => ({ listMyRequirements: mocks.requirements }))
 vi.mock('@/api/mcResources', () => ({ listMcResources: mocks.resources }))
@@ -174,11 +181,11 @@ describe('developer workbench overview', () => {
     expect(cards[3]).toContain('累计收入')
     expect(cards[3]).toContain('¥1200.50')
 
-    // 资金卡：金色大数走余额口径，提现按钮就贴在它右侧
+    // 资金卡：金色大数走余额口径，提现按钮就贴在它右侧，且是就地开窗的按钮（不做跳转）
     expect(wrapper.text()).toContain('可提现余额')
     expect(wrapper.text()).toContain('¥800.25')
     const withdrawAction = wrapper.find('.dev-home__money-action')
-    expect(withdrawAction.attributes('href')).toBe('/dev-wallet')
+    expect(withdrawAction.element.tagName).toBe('BUTTON')
     expect(withdrawAction.text()).toContain('提现')
 
     // 提现口径只剩两个读数，收入口径的读数已经挪到大数位与曲线上
@@ -319,6 +326,27 @@ describe('developer workbench overview', () => {
     await flushPromises()
     expect(mocks.devAccess).toHaveBeenCalledWith('test-token')
     expect(wrapper.find('.dev-recharge-dialog').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('提现按钮就地拉起提现弹窗，不再跳转收益钱包', async () => {
+    mocks.withdrawalSetting.mockResolvedValue({
+      auto_withdraw_enabled: false,
+      payout_channel_ready: true,
+      payout_schedule_note: 'T+1 到账，免手续费',
+    })
+    const { wrapper } = await render()
+    const action = wrapper.find('.dev-home__money-action')
+    expect(action.element.tagName).toBe('BUTTON')
+    expect(wrapper.find('.dev-dialog').exists()).toBe(false)
+
+    await action.trigger('click')
+    await flushPromises()
+    // 弹窗自己拉一次余额与通道状态：用此刻的服务端数据做前置校验
+    expect(mocks.wallet).toHaveBeenCalledTimes(2)
+    expect(mocks.withdrawalSetting).toHaveBeenCalledWith('test-token')
+    expect(wrapper.find('.dev-dialog.el-dialog').exists()).toBe(true)
+    expect(wrapper.text()).toContain('申请提现')
     wrapper.unmount()
   })
 
