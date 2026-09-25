@@ -23,6 +23,7 @@ import {
 } from '@/api/resources'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { getMyRealnameVerification } from '@/api/realname'
+import { getInvoiceSummary } from '@/api/invoices'
 import {
   listRequirementConversations,
   type RequirementConversation,
@@ -47,6 +48,7 @@ import {
   type AdapayPaymentResponse,
 } from '@/api/adapay'
 import { breachStatusLabel } from '@/shared/breachStatus'
+import { invoiceEntryState, type InvoiceSummaryMap } from '@/shared/invoiceAvailability'
 import {
   cancelRequirement as cancelRequirementApi,
   commentRequirement as commentRequirementApi,
@@ -149,6 +151,13 @@ const conversationLoading = ref(false)
 /** 获取发票：入口在每条需求的操作栏，弹窗内一次申请开出本需求能开的全部发票。 */
 const invoiceDialogVisible = ref(false)
 const invoiceRequirement = ref<RequirementItem | null>(null)
+/**
+ * 每条需求的可开票汇总，只用来决定「更多」里的「获取发票」灰不灰。
+ *
+ * 拿不到（还没回来 / 那次请求失败）时不写值，`invoiceEntryState` 会当作可点：开不出票的原因
+ * 由弹窗里的汇总说明，入口不该因为一次预取失败就显得像丢了。
+ */
+const invoiceSummaryMap = ref<InvoiceSummaryMap>({})
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
 const expandedVersionDeleteReviewRequirementId = ref<string | null>(null)
 const versionDeleteRejectTargetId = ref<number | null>(null)
@@ -1881,6 +1890,8 @@ async function loadMyRequirements() {
     // 上限的真正解法是服务端分页 + 批量状态接口，等 `/requirement/mine` 支持分页再做。
     myRequirements.value = rows
     syncRouteRequirementDetail()
+    // 不 await：菜单灰不灰不影响列表先画出来，汇总回来再补上禁用态。
+    void loadInvoiceSummaries(myRequirements.value)
     await loadContractSigningStatuses(myRequirements.value)
     await loadResourceVersions(myRequirements.value)
     if (
@@ -1955,6 +1966,38 @@ async function loadContractSigningStatuses(items: RequirementItem[]) {
     }
   }
   contractSigningStatusMap.value = map
+}
+
+/**
+ * 拉取「获取发票」的可点性依据：只查担保模式，无担保模式压根没有资金流（由 `invoiceEntryState`
+ * 直接判死，不必发请求）。
+ *
+ * ponytail: 与上面的合同签署状态一样是按条请求，菜单灰不灰要等它回来才知道；上限的真正解法同样
+ * 是服务端分页 + 批量汇总接口，等 `/invoices/summary` 支持一次问多条再做。
+ */
+async function loadInvoiceSummaries(items: RequirementItem[]) {
+  if (!auth.token || items.length === 0) {
+    invoiceSummaryMap.value = {}
+    return
+  }
+
+  const guaranteedItems = items.filter((item) => item.payment_mode !== 'self_managed')
+
+  const entries = await Promise.allSettled(
+    guaranteedItems.map((item) =>
+      getInvoiceSummary(auth.token, item.requirement_id).then((summary) => ({
+        requirementId: item.requirement_id,
+        summary,
+      })),
+    ),
+  )
+  const map: InvoiceSummaryMap = {}
+  for (const entry of entries) {
+    if (entry.status === 'fulfilled') {
+      map[entry.value.requirementId] = entry.value.summary
+    }
+  }
+  invoiceSummaryMap.value = map
 }
 
 async function submitRequirementPayment() {
@@ -2189,7 +2232,13 @@ function moreRowActions(item: RequirementItem): RequirementRowAction[] {
   if (canComment(item.status) && item.comment_rating != null && !canCancel(item)) {
     entries.push({ key: 'comment', label: '修改评价' })
   }
-  entries.push({ key: 'invoice', label: '获取发票' })
+  // 开不出票时不留一个点了才报错的入口：置灰并把原因挂在 title 上（灰项不可点，原因只能靠悬浮）。
+  const invoiceState = invoiceEntryState(item.payment_mode, invoiceSummaryMap.value[item.requirement_id])
+  entries.push(
+    invoiceState.enabled
+      ? { key: 'invoice', label: '获取发票' }
+      : { key: 'invoice', label: '获取发票', disabled: true, title: invoiceState.reason },
+  )
   if (canRequestUnbindAsCreator(item)) {
     entries.push({ key: 'unbind-request', label: '申请解除绑定' })
   }

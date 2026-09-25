@@ -42,6 +42,8 @@ import { useToast } from '@/composables/useToast'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
+import { invoiceEntryState, type InvoiceSummaryMap } from '@/shared/invoiceAvailability'
+import { getInvoiceSummary } from '@/api/invoices'
 import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 
 const auth = useAuthStore()
@@ -58,6 +60,8 @@ const conversationLoading = ref(false)
 /** 获取发票：乙方获取的是开发者发票，入口与需求方共用同一个弹窗（弹窗按身份决定开出哪些票）。 */
 const invoiceDialogVisible = ref(false)
 const invoiceRequirement = ref<RequirementItem | null>(null)
+/** 每条需求的可开票汇总，只用来决定「获取发票」灰不灰；拿不到时不写值，入口保持可点。 */
+const invoiceSummaryMap = ref<InvoiceSummaryMap>({})
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
 const descriptionOverflowMap = ref<Record<string, boolean>>({})
 const expandedRequirements = ref<Record<string, boolean>>({})
@@ -236,6 +240,8 @@ async function loadMyRequirements() {
       }
     }
     signingStatusMap.value = map
+    // 不 await：菜单灰不灰不影响列表先画出来，汇总回来再补上禁用态。
+    void loadInvoiceSummaries(rows.value)
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载已关联需求失败'
     showToast(message, 'error')
@@ -243,6 +249,37 @@ async function loadMyRequirements() {
   } finally {
     loading.value = false
   }
+}
+
+/**
+ * 拉取「获取发票」的可点性依据：只查担保模式，无担保模式没有资金流（`invoiceEntryState` 直接判死）。
+ *
+ * ponytail: 与合同签署状态一样是按条请求，菜单灰不灰要等它回来才知道；上限的真正解法同样是
+ * 服务端分页 + 批量汇总接口，等 `/invoices/summary` 支持一次问多条再做。
+ */
+async function loadInvoiceSummaries(items: RequirementItem[]) {
+  if (!auth.token || items.length === 0) {
+    invoiceSummaryMap.value = {}
+    return
+  }
+
+  const guaranteedItems = items.filter((item) => item.payment_mode !== 'self_managed')
+
+  const entries = await Promise.allSettled(
+    guaranteedItems.map((item) =>
+      getInvoiceSummary(auth.token, item.requirement_id).then((summary) => ({
+        requirementId: item.requirement_id,
+        summary,
+      })),
+    ),
+  )
+  const map: InvoiceSummaryMap = {}
+  for (const entry of entries) {
+    if (entry.status === 'fulfilled') {
+      map[entry.value.requirementId] = entry.value.summary
+    }
+  }
+  invoiceSummaryMap.value = map
 }
 
 function formatMoney(value?: number | null): string {
@@ -341,6 +378,11 @@ function openConversation(item: RequirementItem) {
 function openInvoiceDialog(item: RequirementItem) {
   invoiceRequirement.value = item
   invoiceDialogVisible.value = true
+}
+
+/** 「获取发票」的可点性：开不出票就置灰，原因挂在 title 上（灰按钮点不动，只能靠悬浮看原因）。 */
+function invoiceEntryFor(item: RequirementItem) {
+  return invoiceEntryState(item.payment_mode, invoiceSummaryMap.value[item.requirement_id])
 }
 
 function closeConversation() {
@@ -1091,7 +1133,8 @@ async function loadRequirementConversations() {
                 <el-icon><ChatDotRound /></el-icon>
                 <span>会话</span>
               </el-button>
-              <el-button @click="openInvoiceDialog(item)">
+              <el-button :disabled="!invoiceEntryFor(item).enabled"
+                :title="invoiceEntryFor(item).reason || undefined" @click="openInvoiceDialog(item)">
                 获取发票
               </el-button>
               <el-button v-if="hasPendingCreatorUnbindRequest(item)" type="warning"
