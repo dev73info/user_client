@@ -305,6 +305,8 @@ describe('InvoiceApplyDialog', () => {
     expect(taxInput(wrapper)).toBe('92530628MAKA0U1Y96')
     expect(emailInput(wrapper)).toBe('client@example.com')
     expect(wrapper.text()).toContain('抬头与税号已按本人实名主体自动填写')
+    // 个体户是企业组织形式，但专票只给企业主体，这里不该出现专票选项。
+    expect(wrapper.find('input[name="invoice-kind"][value="special"]').exists()).toBe(false)
 
     wrapper.unmount()
   })
@@ -470,11 +472,37 @@ describe('InvoiceApplyDialog', () => {
     wrapper.unmount()
   })
 
-  it('个人买方没有专票选项：专票不得开给消费者个人', async () => {
+  it('个人买方没有专票选项：专用发票只对企业主体开具', async () => {
     const wrapper = await render('customer')
 
     expect(wrapper.find('input[name="invoice-kind"][value="special"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('个人主体只能开具增值税普通发票')
+    expect(wrapper.text()).toContain('专用发票只对企业主体开具，个人与个体工商户只能开普通发票。')
+
+    wrapper.unmount()
+  })
+
+  it('个体工商户买方也没有专票选项：专票只给企业主体', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        buyer: buyer({
+          authType: 'SOLE_PROPRIETOR',
+          isOrganization: true,
+          title: '彝良柒叁信息经营部',
+          taxNumber: '92530628MAKA0U1Y96',
+        }),
+      }),
+    )
+    const wrapper = await render('customer')
+
+    expect(wrapper.find('input[name="invoice-kind"][value="special"]').exists()).toBe(false)
+    // 普票照样按企业 / 个体户的口径要税号。
+    expect(wrapper.find('input[name="tax_number"]').attributes('placeholder')).toBe('企业或个体工商户必填')
+
+    await wrapper.find('.invoice-panel__submit').trigger('click')
+    await flushPromises()
+
+    const payload = mocks.apply.mock.calls[0]?.[1] as Record<string, string>
+    expect(payload.invoice_kind).toBe('ordinary')
 
     wrapper.unmount()
   })
@@ -561,7 +589,7 @@ describe('InvoiceApplyDialog', () => {
     )
     const wrapper = await render('customer')
 
-    expect(wrapper.text()).toContain('平台服务费发票已提交（增值税专用发票 · 审核中 · 票面 ¥200.00）')
+    expect(wrapper.text()).toContain('平台服务费发票已提交（专用发票 · 审核中 · 票面 ¥200.00）')
 
     wrapper.unmount()
   })

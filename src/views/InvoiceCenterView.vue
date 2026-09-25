@@ -300,7 +300,7 @@ async function openDocument(invoice: InvoiceRecord) {
               <span class="wb-item__title">
                 {{ invoice.invoiceNo }}
                 <span v-if="invoice.invoiceKind === 'special'"
-                  class="invoice-center__kind invoice-center__kind--special">增值税专用发票</span>
+                  class="invoice-center__kind invoice-center__kind--special">专用发票</span>
                 <span v-if="invoice.documentKind === 'red'" class="invoice-center__kind">红字发票</span>
               </span>
               <span class="wb-item__meta">
@@ -372,7 +372,7 @@ async function openDocument(invoice: InvoiceRecord) {
 }
 
 /* 票种与票性的标注：一枚小签，跟发票号同行，不抢状态徽标的位置。
-   红字发票用浅红底；增值税专用发票用主色底，客户一眼能认出自己申请的是哪一种。 */
+   红字发票用浅红底；专用发票用主色底，客户一眼能认出自己申请的是哪一种。 */
 .invoice-center__kind {
   display: inline-flex;
   align-items: center;

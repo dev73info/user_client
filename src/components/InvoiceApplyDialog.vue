@@ -18,7 +18,7 @@ type InvoiceForm = {
   invoiceTitle: string
   taxNumber: string
   recipientEmail: string
-  /** 票种：默认普票，只有企业 / 个体工商户买方才能改成专票。 */
+  /** 票种：默认普票，只有企业主体买方才能改成专票。 */
   invoiceKind: InvoiceKind
   /** 专票的购买方四项资料（普票时不提交）。 */
   buyerAddress: string
@@ -152,7 +152,7 @@ function invoiceStatusLabel(status: InvoiceRecord['status']) {
  * 值得在进度里留个痕，也方便对着票面看清这次申请的是哪一种。
  */
 function kindNoticePrefix(kind: InvoiceKind) {
-  return kind === 'special' ? '增值税专用发票 · ' : ''
+  return kind === 'special' ? '专用发票 · ' : ''
 }
 
 /**
@@ -173,15 +173,18 @@ const isOrganizationBuyer = computed(() => buyer.value?.isOrganization ?? false)
 /** 企业 / 个体工商户买方必须给税号：普票与专票都一样，前端先挡一道，后端同样会拒。 */
 const isTaxNumberRequired = computed(() => isOrganizationBuyer.value)
 
-/**
- * 能不能开专票：只有企业 / 个体工商户买方可以。
- *
- * 个人（含港澳台居住证）买方只能开普票——增值税专用发票不得开给消费者个人，后端也会拒；
- * 买方实名还没通过时 `isOrganization` 为 false，这时也不给专票入口，免得提交后被驳回。
- */
-const isSpecialAvailable = computed(() => isOrganizationBuyer.value)
+/** 企业主体（实名类型 `ENTERPRISE`）：唯一能申请专用发票的买方。 */
+const ENTERPRISE_AUTH_TYPE = 'ENTERPRISE'
 
-/** 本次申请是不是专票：个人买方即使草稿里存着专票，也按普票提交。 */
+/**
+ * 能不能开专票：只有**企业主体**可以。
+ *
+ * 个人买方没有税号，开不了专票；个体工商户虽是企业组织形式，但平台口径是专票只给企业申请。
+ * 买方实名还没通过时 `authType` 是空串，这时也不给专票入口，免得提交后被后端驳回。
+ */
+const isSpecialAvailable = computed(() => buyer.value?.authType === ENTERPRISE_AUTH_TYPE)
+
+/** 本次申请是不是专票：非企业买方即使草稿里存着专票，也按普票提交。 */
 const isSpecialInvoice = computed(
   () => form.invoiceKind === 'special' && isSpecialAvailable.value,
 )
@@ -235,7 +238,7 @@ function applyPrefill() {
   if (!form.recipientEmail.trim() && buyer.value?.email) {
     form.recipientEmail = buyer.value.email
   }
-  // 买方主体一确定就把开不出来的票种归回普票：草稿里可能存着专票，而个人主体只能开普票。
+  // 买方主体一确定就把开不出来的票种归回普票：草稿里可能存着专票，而非企业主体只能开普票。
   // 只在拿到买方资料后判断——资料还没回来时不能替用户改票种（那时 `isSpecialAvailable` 是 false）。
   if (buyer.value && !isSpecialAvailable.value && form.invoiceKind === 'special') {
     form.invoiceKind = 'ordinary'
@@ -270,7 +273,7 @@ function restoreDraft() {
     }
     // 票种与专票资料同样只填空：旧草稿没有这几个字段，读出来是 undefined，按默认值兜底。
     // 这里不判「能不能开专票」——草稿恢复时买方主体可能还没回来，等 `applyPrefill` 拿到买方
-    // 资料后再把个人主体的专票归回普票。
+    // 资料后再把非企业主体的专票归回普票。
     if (draft.invoiceKind === 'special') {
       form.invoiceKind = 'special'
     }
@@ -360,7 +363,7 @@ async function submit() {
   // 专票的资料要求比后端那份「缺项报错」更早生效：这里缺哪几项就直接说哪几项。
   const missingSpecial = missingSpecialFields()
   if (missingSpecial.length > 0) {
-    showToast(`增值税专用发票需要填写：${missingSpecial.join('、')}`, 'warning')
+    showToast(`专用发票需要填写：${missingSpecial.join('、')}`, 'warning')
     return
   }
   const notice = invoiceTitleNotice(form.invoiceTitle)
@@ -489,7 +492,7 @@ onUnmounted(() => {
           <label class="invoice-kind__option" :class="{ 'is-active': !isSpecialInvoice }">
             <input v-model="form.invoiceKind" type="radio" name="invoice-kind" value="ordinary" />
             <span>
-              <strong>增值税普通发票</strong>
+              <strong>普通发票</strong>
               <small>默认票种，个人、个体工商户与企业都能开具</small>
             </span>
           </label>
@@ -497,18 +500,18 @@ onUnmounted(() => {
             :class="{ 'is-active': isSpecialInvoice }">
             <input v-model="form.invoiceKind" type="radio" name="invoice-kind" value="special" />
             <span>
-              <strong>增值税专用发票</strong>
-              <small>仅企业 / 个体工商户可开，需补齐购买方开票资料，可用于抵扣</small>
+              <strong>专用发票</strong>
+              <small>仅企业可开，需补齐购买方开票资料，可用于抵扣</small>
             </span>
           </label>
           <p v-if="!isSpecialAvailable && buyer" class="invoice-panel__prefill">
-            {{ buyerPrefix }}个人主体只能开具增值税普通发票；需要专用发票时，请先用企业 / 个体工商户主体完成实名认证。
+            专用发票只对企业主体开具，个人与个体工商户只能开普通发票。
           </p>
         </fieldset>
 
         <template v-if="isSpecialInvoice">
           <p class="invoice-panel__notice">
-            增值税专用发票需要购买方开票资料齐全：名称与纳税人识别号用上方填写的抬头与税号，请照营业执照与开户信息补齐下面四项。
+            专用发票需要购买方开票资料齐全：名称与纳税人识别号用上方填写的抬头与税号，请照营业执照与开户信息补齐下面四项。
           </p>
           <label>
             注册地址
@@ -652,7 +655,7 @@ onUnmounted(() => {
   font-weight: 700;
 }
 
-/* 票种：两个卡片式单选项。专票只在买方是企业 / 个体户时出现，所以这里是「一到两张卡片」。
+/* 票种：两个卡片式单选项。专票只在买方是企业主体时出现，所以这里是「一张或两张卡片」。
    选择器带 `.invoice-panel` 前缀：`display` 之类要压过上面通用的 `.invoice-panel label`。 */
 .invoice-panel .invoice-kind {
   display: grid;
