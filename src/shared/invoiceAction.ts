@@ -1,13 +1,13 @@
 import type { InvoiceRecord } from '@/api/invoices'
 
 /**
- * 判定「这张票现在等谁、这里给不给上传按钮」只需要这几个字段。
+ * 判定「这张票归哪个工作台、现在等谁、这里给不给上传按钮」只需要这几个字段。
  *
  * 收窄成结构类型，调用方与测试都不必造一份完整发票记录（与 `invoiceAvailability.ts` 同一做法）。
  */
 export type InvoiceActionFacts = Pick<
   InvoiceRecord,
-  'invoiceRole' | 'documentKind' | 'status' | 'developerUsername'
+  'invoiceRole' | 'documentKind' | 'status' | 'developerUsername' | 'customerUsername'
 >
 
 /**
@@ -21,6 +21,31 @@ export type InvoiceActionFacts = Pick<
  * 但当前这一页给的按钮只能属于它自己那一侧的职责。
  */
 export type InvoicePerspective = 'customer' | 'developer'
+
+/**
+ * 这张票属不属于当前这个工作台；不属于就整行都不在这页出现。
+ *
+ * 列表接口一次把两端共用的票都返回（`list_my_invoices`：`customer_username = 我` 或
+ * `developer_username = 我且是开发者收入票`），但两个工作台的发票中心是两件事，还要按当前
+ * 工作台再分一次：
+ *
+ * - **客户工作台**只留我作为买方（`customer_username`）的票：平台服务费票，以及乙方开给我的
+ *   收入票——两张都是我实际能收到的票，动作只有查看与下载。
+ * - **开发者工作台**只留我作为乙方要开的收入票。平台服务费票不算乙方的票（它的 `developer_username`
+ *   也会填成需求里的那个乙方，光看这个字段会把平台票误收进来），所以必须同时判 `invoice_role`。
+ *
+ * 这道过滤是必须的：不过滤时开发者切到客户工作台会看到自己要上传的那张票，买方切到开发者工作台
+ * 会看到平台开给自己的票，两边都在看另一侧的清单，却又都不给对应的按钮。
+ */
+export function invoiceInWorkbench(
+  invoice: InvoiceActionFacts,
+  viewer: string,
+  perspective: InvoicePerspective,
+): boolean {
+  return perspective === 'developer'
+    ? invoice.invoiceRole === 'developer' && invoice.developerUsername === viewer
+    : invoice.customerUsername === viewer
+}
 
 /**
  * 当前这一页要不要给这张票显示上传入口。
@@ -54,16 +79,16 @@ export function canUploadInvoiceDocument(
 }
 
 /**
- * 「这张票现在等谁」的一句话说明；不需要等待时返回空串。
+ * 「这张票现在等谁」的一句话说明；不该显示或不需要等待时返回空串。
  *
- * 发票中心是需求方与乙方共用的一页，同一张票在两侧的责任方不同：「待处理 / 审核中」这些状态词
- * 只说明票走到哪一步，不说明该谁动手，而行的右侧只有责任方才看得到操作按钮。等待中的行必须写清
- * 在等谁，否则需求方会把「待处理」当成在等自己——平台服务费票尤其如此（它由平台财务开具，用户
- * 侧谁都点不动）。
+ * 这一行只属于**开发者工作台**。同一份列表两端共用，但客户工作台里我作为买方能做的事只有查看与
+ * 下载，票在谁手上不影响这些操作，责任方那句话在这里是纯噪音（实测反馈：客户工作台不需要这行）；
+ * 单测锁住客户工作台返回空串。
  *
- * 措辞跟着视角走：客户工作台里不该出现「由你开具，请你上传」，那是乙方工作台才成立的说法。
- * 在开发者工作台里还要再分一次「这张票的乙方是不是我」——两端共用一个列表，开发者工作台里也会
- * 出现别人开给客户的收入票（我在那笔需求里只是买方），此时上传按钮同样不给，说明也就不能写「由你开具」。
+ * 开发者工作台里则必须写清在等谁：「待处理 / 审核中」这些状态词只说明票走到哪一步，不说明该谁
+ * 动手，而行的右侧只有责任方才看得到操作按钮。这里再分一次「这张票的乙方是不是我」——两端共用
+ * 一个列表，开发者工作台里也会出现别人开给客户的收入票（我在那笔需求里只是买方），此时上传按钮
+ * 同样不给，说明也就不能写「由你开具」。
  *
  * 红票是已经生效的冲销凭证，不参与等待；已开具（`approved`）与被红冲（`reversed`）的行也无事
  * 可等。需补充材料（`rejected`）时这一行与「审核说明」相邻，正好说清是谁要补。
@@ -73,6 +98,9 @@ export function invoiceWaitingHint(
   viewer: string,
   perspective: InvoicePerspective,
 ): string {
+  if (perspective === 'customer') {
+    return ''
+  }
   if (invoice.documentKind === 'red') {
     return ''
   }
@@ -82,7 +110,7 @@ export function invoiceWaitingHint(
   if (invoice.invoiceRole === 'platform') {
     return '由平台开具：平台财务开票并上传后，可在此下载'
   }
-  return perspective === 'developer' && invoice.developerUsername === viewer
+  return invoice.developerUsername === viewer
     ? '由你开具：上传发票文件后由平台审核'
     : '由乙方开具：乙方上传发票文件、平台审核通过后可在此下载'
 }

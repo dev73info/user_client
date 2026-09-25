@@ -11,7 +11,7 @@ import {
   type InvoiceRecord,
 } from '@/api/invoices'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
-import { canUploadInvoiceDocument, invoiceWaitingHint } from '@/shared/invoiceAction'
+import { canUploadInvoiceDocument, invoiceInWorkbench, invoiceWaitingHint } from '@/shared/invoiceAction'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
@@ -24,22 +24,31 @@ const route = useRoute()
  *
  * 发票中心两端各有一个入口——「客户工作台 → 账户服务 → 发票中心」（`/workbench/invoices`）与
  * 「开发者工作台 → 财务中心 → 发票中心」（`/workbench/developer/invoices`，路由带 devArea）。
- * 同一份列表在客户工作台里是买方视角（查看、下载），在开发者工作台里是乙方视角（查看、上传）；
- * 判定与文案都由此决定，见 `@/shared/invoiceAction`。
+ * 列表接口一次把两端共用的票都返回，这里按当前工作台分：客户工作台只看我作为买方的票（查看、
+ * 下载），开发者工作台只看我作为乙方的收入票（查看、上传）。判定与文案都见 `@/shared/invoiceAction`。
  */
 const perspective = computed<'customer' | 'developer'>(
   () => (route.matched.some((record) => Boolean(record.meta.devArea)) ? 'developer' : 'customer'),
 )
 
-/* 卡头说明也按视角写：客户工作台不提「上传」，那是乙方那一侧的动作。 */
+/* 卡头说明也按视角写：客户工作台说的是我收到的票，不提「上传」，那是乙方那一侧的动作。 */
 const cardDescription = computed(() => (
   perspective.value === 'developer'
     ? '你在各需求里以乙方身份开给客户的收入票：上传发票文件后由平台审核，通过后客户可下载。'
-    : '各需求操作栏里申请开出的票都列在这里：平台服务费票与乙方收入票，开好后可在此查看与下载。'
+    : '你申请开出的票都列在这里：平台服务费票，以及乙方开给你的收入票，开好后可在此查看与下载。'
 ))
 
 const loading = ref(false)
-const invoices = ref<InvoiceRecord[]>([])
+/** 接口返回的原始列表：两端共用的票都在里面，按工作台分过之后才是这一页要显示的。 */
+const allInvoices = ref<InvoiceRecord[]>([])
+
+/**
+ * 这一页要显示的票：跟着当前工作台走，另一侧的票整行都不出现（判定见 `@/shared/invoiceAction`）。
+ * 读数条、筛选、分页都以它为基数，所以过滤后「全部记录」就是这一侧的票数。
+ */
+const invoices = computed(() => allInvoices.value.filter(
+  (invoice) => invoiceInWorkbench(invoice, auth.username, perspective.value),
+))
 const selectedFileByInvoice = reactive<Record<number, File | undefined>>({})
 const uploadingInvoiceId = ref<number | null>(null)
 const downloadingInvoiceId = ref<number | null>(null)
@@ -176,7 +185,7 @@ async function loadData() {
   }
   loading.value = true
   try {
-    invoices.value = await listMyInvoices(auth.token)
+    allInvoices.value = await listMyInvoices(auth.token)
   } catch (error) {
     showToast(error instanceof Error ? error.message : '加载发票数据失败', 'error')
   } finally {
@@ -214,7 +223,7 @@ async function uploadDocument(invoice: InvoiceRecord) {
   uploadingInvoiceId.value = invoice.id
   try {
     const updated = await uploadInvoiceDocument(auth.token, invoice.id, file)
-    invoices.value = invoices.value.map((item) => (item.id === updated.id ? updated : item))
+    allInvoices.value = allInvoices.value.map((item) => (item.id === updated.id ? updated : item))
     delete selectedFileByInvoice[invoice.id]
     showToast('发票文件已上传，等待平台审核', 'success')
   } catch (error) {

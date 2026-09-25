@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import {
   canUploadInvoiceDocument,
+  invoiceInWorkbench,
   invoiceWaitingHint,
   type InvoiceActionFacts,
 } from '@/shared/invoiceAction'
 
-/** 判定只用四个字段：票的开票主体、票性、状态与乙方是谁。 */
+/** 判定只用五个字段：票的开票主体、票性、状态，以及这笔需求的两方是谁。 */
 const CUSTOMER = 'alice'
 const DEVELOPER = 'bob'
 
@@ -16,9 +17,31 @@ function facts(overrides: Partial<InvoiceActionFacts> = {}): InvoiceActionFacts 
     documentKind: 'blue',
     status: 'requested',
     developerUsername: DEVELOPER,
+    customerUsername: CUSTOMER,
     ...overrides,
   }
 }
+
+describe('每个工作台的发票中心只看自己那一侧的票', () => {
+  it('客户工作台留的是我作为买方的票：平台服务费票与乙方开给我的收入票', () => {
+    expect(invoiceInWorkbench(facts(), CUSTOMER, 'customer')).toBe(true)
+    expect(invoiceInWorkbench(facts({ invoiceRole: 'platform' }), CUSTOMER, 'customer')).toBe(true)
+  })
+
+  it('开发者在客户工作台看不到自己要开的票：那是开发者工作台的清单', () => {
+    expect(invoiceInWorkbench(facts(), DEVELOPER, 'customer')).toBe(false)
+  })
+
+  it('开发者工作台留的是我作为乙方的收入票', () => {
+    expect(invoiceInWorkbench(facts(), DEVELOPER, 'developer')).toBe(true)
+    expect(invoiceInWorkbench(facts(), CUSTOMER, 'developer')).toBe(false)
+  })
+
+  it('平台服务费票不算乙方的票：它的 developer_username 也填需求里的那个乙方', () => {
+    // 只按 developerUsername 判会把平台票收进开发者工作台，必须同时判票的开票主体。
+    expect(invoiceInWorkbench(facts({ invoiceRole: 'platform' }), DEVELOPER, 'developer')).toBe(false)
+  })
+})
 
 describe('开发者收入票的上传入口只归乙方', () => {
   it('客户工作台里没有上传入口：这里这张票只是我收到的票，只能查看与下载', () => {
@@ -55,13 +78,11 @@ describe('开发者收入票的上传入口只归乙方', () => {
 })
 
 describe('等待中的票要说清在等谁', () => {
-  it('客户工作台看到开发者票：等乙方开，不是等他自己', () => {
-    expect(invoiceWaitingHint(facts(), DEVELOPER, 'customer')).toBe(
-      '由乙方开具：乙方上传发票文件、平台审核通过后可在此下载',
-    )
-    expect(invoiceWaitingHint(facts(), CUSTOMER, 'customer')).toBe(
-      '由乙方开具：乙方上传发票文件、平台审核通过后可在此下载',
-    )
+  it('客户工作台整行都不给这行说明：那里只有查看与下载，票在谁手上不影响买方', () => {
+    expect(invoiceWaitingHint(facts(), DEVELOPER, 'customer')).toBe('')
+    expect(invoiceWaitingHint(facts(), CUSTOMER, 'customer')).toBe('')
+    expect(invoiceWaitingHint(facts({ invoiceRole: 'platform' }), CUSTOMER, 'customer')).toBe('')
+    expect(invoiceWaitingHint(facts({ status: 'rejected' }), CUSTOMER, 'customer')).toBe('')
   })
 
   it('开发者工作台看到开发者票：等自己上传', () => {
@@ -76,23 +97,21 @@ describe('等待中的票要说清在等谁', () => {
     )
   })
 
-  it('平台服务费票在哪个工作台都是等平台财务开', () => {
-    for (const perspective of ['customer', 'developer'] as const) {
-      for (const viewer of [CUSTOMER, DEVELOPER]) {
-        expect(invoiceWaitingHint(facts({ invoiceRole: 'platform' }), viewer, perspective)).toBe(
-          '由平台开具：平台财务开票并上传后，可在此下载',
-        )
-      }
+  it('平台服务费票在开发者工作台里是等平台财务开', () => {
+    for (const viewer of [CUSTOMER, DEVELOPER]) {
+      expect(invoiceWaitingHint(facts({ invoiceRole: 'platform' }), viewer, 'developer')).toBe(
+        '由平台开具：平台财务开票并上传后，可在此下载',
+      )
     }
   })
 
-  it('需补充材料时同样说明责任方，与「审核说明」一起看', () => {
-    expect(invoiceWaitingHint(facts({ status: 'rejected' }), CUSTOMER, 'customer')).toContain('由乙方开具')
+  it('需补充材料时在开发者工作台说清责任方，与「审核说明」一起看', () => {
+    expect(invoiceWaitingHint(facts({ status: 'rejected' }), DEVELOPER, 'developer')).toContain('由你开具')
   })
 
   it('已开具、已红冲与红票都没有可等的事', () => {
-    expect(invoiceWaitingHint(facts({ status: 'approved' }), CUSTOMER, 'customer')).toBe('')
+    expect(invoiceWaitingHint(facts({ status: 'approved' }), DEVELOPER, 'developer')).toBe('')
     expect(invoiceWaitingHint(facts({ status: 'reversed' }), DEVELOPER, 'developer')).toBe('')
-    expect(invoiceWaitingHint(facts({ documentKind: 'red' }), CUSTOMER, 'customer')).toBe('')
+    expect(invoiceWaitingHint(facts({ documentKind: 'red' }), DEVELOPER, 'developer')).toBe('')
   })
 })
