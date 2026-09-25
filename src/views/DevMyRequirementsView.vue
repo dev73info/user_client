@@ -77,9 +77,12 @@ const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const conversationLoading = ref(false)
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
-const descriptionOverflowMap = ref<Record<string, boolean>>({})
-const expandedRequirements = ref<Record<string, boolean>>({})
-const descriptionEls = ref<Record<string, HTMLElement>>({})
+/* 需求说明（需求描述 + 验收标准）的折叠状态，三份都按 requirement_id 归键：
+   `briefEls` 存这一段 DOM 用来量高度，`briefOverflowMap` 记该不该出「展开」，
+   `expandedBriefs` 记用户展开过没有。 */
+const briefOverflowMap = ref<Record<string, boolean>>({})
+const expandedBriefs = ref<Record<string, boolean>>({})
+const briefEls = ref<Record<string, HTMLElement>>({})
 
 /**
  * 列表里的一行：交付与到账先按需求归并（见 `shared/devDelivery.ts`），再把需求单本身贴回来。
@@ -422,8 +425,9 @@ function paymentModeLabel(item: RequirementItem): string {
   return item.payment_mode === 'self_managed' ? '无电签约定' : '电签担保'
 }
 
-function requirementFieldHtml(value?: string | null): string {
-  return sanitizeRequirementRichText(value ?? '') || '当前需求暂未补充详细描述。'
+/** 需求正文类字段的富文本：净化后渲染；字段为空时给一句占位，免得卡片上只剩一个空白块。 */
+function requirementFieldHtml(value?: string | null, fallback = '当前需求暂未补充详细描述。'): string {
+  return sanitizeRequirementRichText(value ?? '') || fallback
 }
 
 function statusType(status: RequirementItem['status']): 'info' | 'success' | 'warning' | 'danger' {
@@ -566,38 +570,39 @@ function conversationStatusLabel(item: RequirementItem) {
   return conversation.last_message_at ? `最近：${conversation.last_message_at}` : '暂无消息'
 }
 
-function isDescriptionExpanded(item: RequirementItem) {
-  return Boolean(expandedRequirements.value[item.requirement_id])
+function isBriefExpanded(item: RequirementItem) {
+  return Boolean(expandedBriefs.value[item.requirement_id])
 }
 
-function descriptionOverflow(item: RequirementItem) {
-  return Boolean(descriptionOverflowMap.value[item.requirement_id])
+function briefOverflow(item: RequirementItem) {
+  return Boolean(briefOverflowMap.value[item.requirement_id])
 }
 
-function toggleDescription(item: RequirementItem) {
-  expandedRequirements.value = {
-    ...expandedRequirements.value,
-    [item.requirement_id]: !isDescriptionExpanded(item),
+function toggleBrief(item: RequirementItem) {
+  expandedBriefs.value = {
+    ...expandedBriefs.value,
+    [item.requirement_id]: !isBriefExpanded(item),
   }
 }
 
-function setDescriptionRef(el: HTMLElement | null, item: RequirementItem) {
+/** 量这一段需求说明有没有被折叠截掉：溢出才出「展开」，不溢出就不给一个点了没反应的按钮。 */
+function setBriefRef(el: HTMLElement | null, item: RequirementItem) {
   if (!el) {
-    delete descriptionEls.value[item.requirement_id]
+    delete briefEls.value[item.requirement_id]
     return
   }
 
-  descriptionEls.value[item.requirement_id] = el
+  briefEls.value[item.requirement_id] = el
   void nextTick(() => {
-    const target = descriptionEls.value[item.requirement_id]
+    const target = briefEls.value[item.requirement_id]
     if (!target) {
       return
     }
 
     const overflows = target.scrollHeight > target.clientHeight + 2
-    if (overflows !== Boolean(descriptionOverflowMap.value[item.requirement_id])) {
-      descriptionOverflowMap.value = {
-        ...descriptionOverflowMap.value,
+    if (overflows !== Boolean(briefOverflowMap.value[item.requirement_id])) {
+      briefOverflowMap.value = {
+        ...briefOverflowMap.value,
         [item.requirement_id]: overflows,
       }
     }
@@ -1180,10 +1185,20 @@ async function loadRequirementConversations() {
             <div class="dev-requirement-card__title-block">
               <span class="dev-requirement-hall__requirement-id">{{ row.requirementId ?? '未关联需求' }}</span>
               <h3 class="dev-requirement-hall__title">{{ rowTitle(row) }}</h3>
-              <article v-if="row.item" class="dev-requirement-hall__desc dev-requirement-card__description"
-                :class="{ 'is-collapsed': !isDescriptionExpanded(row.item) }"
-                :ref="(el) => setDescriptionRef(el as HTMLElement | null, row.item!)"
-                v-html="requirementFieldHtml(row.item.description)"></article>
+              <!-- 需求说明：需求描述与验收标准合成一块折叠区，一个「展开 / 收起」管两段。
+                   两段各挂一个折叠按钮的话，卡片高度会被两段正文各撑一次，一屏放不下两条单。
+                   量高度挂在整块上（见 `setBriefRef`），所以描述很长时收起来也能一眼看出还有下文。 -->
+              <div v-if="row.item" class="dev-requirement-card__brief"
+                :class="{ 'is-collapsed': !isBriefExpanded(row.item) }"
+                :ref="(el) => setBriefRef(el as HTMLElement | null, row.item!)">
+                <article class="dev-requirement-hall__desc dev-requirement-card__description"
+                  v-html="requirementFieldHtml(row.item.description)"></article>
+                <section class="dev-requirement-card__acceptance">
+                  <span class="dev-requirement-card__field-label">验收标准</span>
+                  <article class="dev-requirement-hall__desc dev-requirement-card__description"
+                    v-html="requirementFieldHtml(row.item.acceptance_criteria, '当前需求暂未补充验收标准。')"></article>
+                </section>
+              </div>
               <p v-else class="dev-requirement-card__description">
                 {{
                   row.delivery
@@ -1191,14 +1206,14 @@ async function loadRequirementConversations() {
                     : '这条到账所属的需求已解除绑定，需求单列表里已经查不到它。'
                 }}
               </p>
-              <button v-if="row.item && (isDescriptionExpanded(row.item) || descriptionOverflow(row.item))"
+              <button v-if="row.item && (isBriefExpanded(row.item) || briefOverflow(row.item))"
                 type="button" class="dev-requirement-card__description-toggle"
-                @click="toggleDescription(row.item)">
+                @click="toggleBrief(row.item)">
                 <el-icon>
-                  <ArrowUp v-if="isDescriptionExpanded(row.item)" />
+                  <ArrowUp v-if="isBriefExpanded(row.item)" />
                   <ArrowDown v-else />
                 </el-icon>
-                <span>{{ isDescriptionExpanded(row.item) ? '收起' : '展开' }}</span>
+                <span>{{ isBriefExpanded(row.item) ? '收起' : '展开' }}</span>
               </button>
             </div>
             <div class="dev-requirement-card__tags">
@@ -1608,6 +1623,26 @@ async function loadRequirementConversations() {
   font-size: 16px;
 }
 
+/* 需求说明折叠区：需求描述一段、验收标准一段，两段都是正文（13px），
+   一个 max-height 管两段（`.is-collapsed`），量高度也量在这一块上。 */
+.dev-requirement-card__brief {
+  display: grid;
+  gap: 8px;
+}
+
+.dev-requirement-card__acceptance {
+  display: grid;
+  gap: 4px;
+}
+
+/* 段标题走卡片里既有的小标签口径（与 .dev-requirement-card__meta-item label 同档 11px）：
+   验收标准是另一件事，不能和上面的需求描述糊成一段。 */
+.dev-requirement-card__field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dev-muted);
+}
+
 /* 卡片里的描述是正文，取 13px（与 .dev-stack-item__meta 同档）；
    表格单元格里的描述用 .dev-requirement-hall__desc 的 12px 弱字 */
 .dev-requirement-card__description {
@@ -1652,8 +1687,10 @@ async function loadRequirementConversations() {
   white-space: pre;
 }
 
-.dev-requirement-card__description.is-collapsed {
-  max-height: 84px;
+/* 折叠高度：要能露出「需求描述」的头几行，加上「验收标准」这个小标签——
+   收起来时用户得看得出下面还有一段验收标准，不然会以为卡片上只有描述。 */
+.dev-requirement-card__brief.is-collapsed {
+  max-height: 120px;
   overflow: hidden;
 }
 
