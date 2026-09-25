@@ -12,10 +12,10 @@ describe('「获取发票」入口的可点性', () => {
     expect(invoiceEntryState('platform_guarantee', facts(20000, 100000))).toEqual({ enabled: true, reason: '' })
   })
 
-  it('已成功分账但能开的票都申请过：置灰并说明去发票中心看进度', () => {
+  it('已成功分账但能开的票都申请过：置灰并说明去「我的发票」看进度', () => {
     expect(invoiceEntryState('platform_guarantee', facts(0, 100000))).toEqual({
       enabled: false,
-      reason: '本需求能开的发票都已申请过，到发票中心可查看进度',
+      reason: '本需求能开的发票都已申请过，到「我的发票」可查看进度',
     })
   })
 

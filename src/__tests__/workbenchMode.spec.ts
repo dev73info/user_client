@@ -22,7 +22,7 @@ const DEV_ROUTE_NAMES = ['dev-home', 'dev-resource-list', 'dev-requirement-hall'
   'dev-wallet-releases', 'workbench-teams', 'workbench-team-detail', 'workbench-team-resources', 'dev-messages',
   'dev-tickets', 'dev-invoices']
 
-// 开发者路由的路径不都是 /workbench/developer/<name>：钱包按业务词分了分段路径，发票中心也是。
+// 开发者路由的路径不都是 /workbench/developer/<name>：钱包按业务词分了分段路径，「我的发票」也是。
 // 侧边栏链接断言看的是真实 href，所以这两处按生产路径（router/dev.ts）登记，其余沿用默认规则。
 const DEV_ROUTE_PATHS: Record<string, string> = {
   'dev-wallet': '/workbench/developer/wallet/overview',
@@ -119,16 +119,16 @@ describe('workbench mode switch', () => {
     // 财务中心与团队服务是折叠组（分组头自带组名），消息中心夹在分组之间
     expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text()))
       .toEqual(['财务中心', '团队服务', '消息中心'])
-    // 与钱有关的两条收进财务中心：收益钱包原是一级条目，发票中心原挂在用户模式的账户服务下
+    // 与钱有关的两条收进财务中心：收益钱包原是一级条目，「我的发票」原挂在用户模式的账户服务下
     const finance = wrapper.findAll('.user-workbench__menu-group')
       .find((group) => group.find('.user-workbench__menu-group-head').text().includes('财务中心'))!
     expect(finance.findAll('.user-workbench__submenu-link').map((link) => link.text()))
-      .toEqual(['收益钱包', '发票中心'])
+      .toEqual(['收益钱包', '我的发票'])
     expect(finance.findAll('.user-workbench__submenu-link')[0]?.attributes('href'))
       .toBe('/workbench/developer/wallet/overview')
     expect(finance.findAll('.user-workbench__submenu-link')[1]?.attributes('href'))
       .toBe('/workbench/developer/invoices')
-    // 财务中心在开发者模式下才出现，用户模式的账户服务里仍保留一条发票中心
+    // 财务中心在开发者模式下才出现，用户模式的账户服务里仍保留一条「我的发票」
     expect(text).not.toContain('账户服务')
     // 「财务中心」只出现一次：折叠组的分组头自己写着组名，上方不再顶小标题
     expect(text.match(/财务中心/g)).toHaveLength(1)

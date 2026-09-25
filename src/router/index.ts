@@ -191,7 +191,7 @@ const router = createRouter({
           name: 'workbench-invoices',
           component: () => import('@/views/InvoiceCenterView.vue'),
           meta: {
-            title: '发票中心',
+            title: '我的发票',
             description: '获取发票、查看与下载发票',
           },
         },
@@ -199,13 +199,13 @@ const router = createRouter({
           path: 'signatures',
           name: 'workbench-signatures',
           component: () => import('@/views/MySignaturesView.vue'),
-          meta: { title: '我的签署', requiresRealname: true },
+          meta: { title: '我的合同', requiresRealname: true },
         },
         {
           path: 'signatures/:contractId(\\d+)',
           name: 'workbench-signature-detail',
           component: () => import('@/views/ContractSignView.vue'),
-          meta: { title: '我的签署 / 合同详情', requiresRealname: true },
+          meta: { title: '我的合同 / 合同详情', requiresRealname: true },
         },
         {
           path: 'account',

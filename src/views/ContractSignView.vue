@@ -174,7 +174,7 @@ const signerIdentityReady = computed(() => {
 const canSubmitSign = computed(
     () => canSignContract.value && signerIdentityReady.value && !signing.value,
 )
-// 开发者入驻协议签署完成后的引导按钮；工作台签署详情已有「返回我的签署」入口，不在此重复展示。
+// 开发者入驻协议签署完成后的引导按钮；工作台签署详情已有「返回我的合同」入口，不在此重复展示。
 const showBecomeDeveloper = computed(
     () => !isWorkbenchSignature.value && isDeveloperAgreement.value && contract.value?.status === 'signed',
 )

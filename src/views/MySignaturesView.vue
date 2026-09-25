@@ -150,7 +150,7 @@ function openDetail(item: MyContractSummary) {
     <section class="wallet-section">
       <div class="wb-card-head">
         <div class="wb-card-head__title-block">
-          <h3 class="wb-card-head__title">我的签署</h3>
+          <h3 class="wb-card-head__title">我的合同</h3>
           <p class="wb-card-head__desc">按下状态筛选合同，或按合同名称、编号与签约方搜索。</p>
         </div>
       </div>
@@ -197,7 +197,7 @@ function openDetail(item: MyContractSummary) {
         <template v-else>需求进入签约环节后，这里会出现待你签署的合同。</template>
       </div>
       <template v-else>
-        <ul class="wb-list" aria-label="我的签署合同">
+        <ul class="wb-list" aria-label="我的合同列表">
           <li v-for="item in pagedContracts" :key="item.id" class="wb-item">
             <div class="wb-item__main">
               <RouterLink class="wb-item__title signatures__title" :to="detailLocation(item)">{{ item.title }}</RouterLink>

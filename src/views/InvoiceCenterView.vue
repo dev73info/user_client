@@ -22,8 +22,8 @@ const route = useRoute()
 /**
  * 这一页站在哪一侧看票：跟着工作台走，不跟着「我在某张票里是谁」走。
  *
- * 发票中心两端各有一个入口——「客户工作台 → 账户服务 → 发票中心」（`/workbench/invoices`）与
- * 「开发者工作台 → 财务中心 → 发票中心」（`/workbench/developer/invoices`，路由带 devArea）。
+ * 「我的发票」两端各有一个入口——「客户工作台 → 账户服务 → 我的发票」（`/workbench/invoices`）与
+ * 「开发者工作台 → 财务中心 → 我的发票」（`/workbench/developer/invoices`，路由带 devArea）。
  * 列表接口一次把两端共用的票都返回，这里按当前工作台分：客户工作台只看我作为买方的票（查看、
  * 下载），开发者工作台只看我作为乙方的收入票（查看、上传）。判定与文案都见 `@/shared/invoiceAction`。
  */
@@ -56,7 +56,7 @@ const keyword = ref('')
 const statusFilter = ref<'all' | InvoiceRecord['status']>('all')
 
 /**
- * 状态筛选做成胶囊组：档位少、要能一眼看出当前选中项，与我的签署、我的收藏同一套做法。
+ * 状态筛选做成胶囊组：档位少、要能一眼看出当前选中项，与我的合同、我的收藏同一套做法。
  *
  * 筛选与读数都按**显示状态**分档（`invoiceDisplayStatus`），不是照读接口给的状态列。
  * 「审核中 / 需补充材料」只属于平台服务费票的审核流：开发者收入票由乙方上传即视为已开具，
@@ -357,7 +357,7 @@ async function saveDocument(invoice: InvoiceRecord) {
     <section class="wallet-section">
       <div class="wb-card-head">
         <div class="wb-card-head__title-block">
-          <h3 class="wb-card-head__title">我的发票记录</h3>
+          <h3 class="wb-card-head__title">我的发票</h3>
           <p class="wb-card-head__desc">{{ cardDescription }}</p>
         </div>
       </div>

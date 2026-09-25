@@ -47,5 +47,5 @@ export function invoiceEntryState(
     return { enabled: false, reason: '本需求还没有成功分账的结算，分账完成后才能开票' }
   }
 
-  return { enabled: false, reason: '本需求能开的发票都已申请过，到发票中心可查看进度' }
+  return { enabled: false, reason: '本需求能开的发票都已申请过，到「我的发票」可查看进度' }
 }

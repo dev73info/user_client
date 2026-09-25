@@ -28,7 +28,7 @@ function facts(overrides: Partial<InvoiceActionFacts> = {}): InvoiceActionFacts 
   }
 }
 
-describe('每个工作台的发票中心只看自己那一侧的票', () => {
+describe('每个工作台的「我的发票」只看自己那一侧的票', () => {
   it('客户工作台留的是我作为买方的票：平台服务费票与乙方开给我的收入票', () => {
     expect(invoiceInWorkbench(facts(), CUSTOMER, 'customer')).toBe(true)
     expect(invoiceInWorkbench(facts({ invoiceRole: 'platform' }), CUSTOMER, 'customer')).toBe(true)

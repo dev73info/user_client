@@ -43,7 +43,7 @@ export type MyContractSummary = Pick<ContractDetail,
 
 export function listMyContracts(token: string): Promise<MyContractSummary[]> {
   return requestJson<MyContractSummary[]>('/contracts/mine',
-    { headers: authHeader(token) }, '获取我的签署失败')
+    { headers: authHeader(token) }, '获取我的合同失败')
 }
 
 export function fetchMyContract(token: string, contractId: number): Promise<ContractDetail> {

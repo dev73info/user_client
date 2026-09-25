@@ -66,7 +66,7 @@ const COPY: Record<'customer' | 'developer', {
     kicker: 'DEVELOPER / INVOICE',
     title: '获取开发者发票',
     issuer: '开发者发票',
-    hint: '开发者收入发票由乙方开具给需求方：抬头与税号按需求方实名主体带出，需求方为企业或个体工商户时税号必填；发票文件上传后需求方可在发票中心下载。',
+    hint: '开发者收入发票由乙方开具给需求方：抬头与税号按需求方实名主体带出，需求方为企业或个体工商户时税号必填；发票文件上传后需求方可在「我的发票」下载。',
     amountNote: '开发者收入（定金 + 尾款合并开票）',
     submitText: '提交开发者发票申请',
   },
@@ -340,16 +340,16 @@ function createdSides(applied: AppliedInvoices): InvoiceSide[] {
 
 function createdToast(sides: InvoiceSide[]) {
   if (sides.length > 1) {
-    return '平台发票与开发者发票申请已提交，到发票中心可查看进度'
+    return '平台发票与开发者发票申请已提交，到「我的发票」可查看进度'
   }
   if (sides[0] === 'platform') {
-    return '平台发票申请已提交，到发票中心可查看进度'
+    return '平台发票申请已提交，到「我的发票」可查看进度'
   }
   if (sides[0] === 'developer') {
-    return '开发者发票申请已提交，乙方上传发票文件后可在发票中心下载'
+    return '开发者发票申请已提交，乙方上传发票文件后可在「我的发票」下载'
   }
   // 两侧都只是回放（并发下来别人刚申请过）：不谎报新建，只提示进度已经在这里了。
-  return '本需求的开票申请已提交，到发票中心可查看进度'
+  return '本需求的开票申请已提交，到「我的发票」可查看进度'
 }
 
 async function submit() {
@@ -468,7 +468,7 @@ onUnmounted(() => {
           不能算进已经发生的销售额。诉求判不成立或撤回时，差额再补开；平台服务费不随退款减免。
         </p>
         <p v-for="item in existingInvoices" :key="item.invoice.id" class="invoice-panel__notice">
-          {{ invoiceSideLabel(item.side) }}已提交（{{ kindNoticePrefix(item.invoice.invoiceKind) }}{{ invoiceStatusLabel(item.invoice.status) }} · 票面 ¥{{ item.invoice.amountCny }}），到发票中心可查看进度与发票文件。
+          {{ invoiceSideLabel(item.side) }}已提交（{{ kindNoticePrefix(item.invoice.invoiceKind) }}{{ invoiceStatusLabel(item.invoice.status) }} · 票面 ¥{{ item.invoice.amountCny }}），到「我的发票」可查看进度与发票文件。
         </p>
         <p v-for="item in staleInvoices" :key="`stale-${item.invoice.id}`" class="invoice-panel__notice">
           原票开具后本需求实际发生的净额变了（售后退款 / 赔付已成立）：{{ invoiceSideLabel(item.side) }}

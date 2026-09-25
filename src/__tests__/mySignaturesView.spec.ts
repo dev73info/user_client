@@ -114,7 +114,7 @@ describe('realname-gated menu', () => {
   it.each(['pending', 'rejected'])('hides the menu for %s verification', async (status) => {
     mocks.realname.mockResolvedValue({ status })
     const { wrapper } = await render(UserWorkbenchView)
-    expect(wrapper.text()).not.toContain('我的签署')
+    expect(wrapper.text()).not.toContain('我的合同')
     wrapper.unmount()
   })
   it('shows and expands the menu after approval, including direct detail entry', async () => {
@@ -125,7 +125,7 @@ describe('realname-gated menu', () => {
     expect(link.classes()).toContain('active')
     useAuthStore().token = ''
     await flushPromises()
-    expect(wrapper.text()).not.toContain('我的签署')
+    expect(wrapper.text()).not.toContain('我的合同')
     wrapper.unmount()
   })
 })

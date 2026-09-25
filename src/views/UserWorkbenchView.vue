@@ -67,7 +67,7 @@ const ticketsItem: WorkbenchMenuItem = {
 // 开发者工作台菜单：侧边栏切到开发者模式时展示（此前是底部「开发者工作台」折叠组的内容）。
 // 版式与用户菜单的一级条目一致（图标 + 加粗标题），切换模式时侧边栏只有文字在变。
 // 一级条目不再分小标题，按开发者每天的动线从上往下排：总览 → 资源 → 接单 → 交付；
-// 与钱有关的两条（收益钱包、发票中心）收进下面的「财务中心」折叠组，
+// 与钱有关的两条（收益钱包、我的发票）收进下面的「财务中心」折叠组，
 // 团队服务那一段也不顶小标题，靠折叠组的分组头自己报名字。
 const devWorkbenchItems: DevWorkbenchItem[] = [
   {
@@ -89,15 +89,15 @@ const devWorkbenchItems: DevWorkbenchItem[] = [
 ]
 
 // 财务中心：只跟钱有关的两条收成一组的折叠组。收益钱包原先是开发者菜单的一级条目，
-// 发票中心原挂在用户模式的「账户服务」下——同一件钱的事被分在了两处，这里合并成一组。
-// 开发者模式下渲染，用户模式看不到；用户模式的账户服务里仍保留「发票中心」那一条。
+// 发票页原挂在用户模式的「账户服务」下——同一件钱的事被分在了两处，这里合并成一组。
+// 开发者模式下渲染，用户模式看不到；用户模式的账户服务里仍保留「我的发票」那一条。
 const financeMenuGroup: WorkbenchMenuGroup = {
   key: 'finance',
   label: '财务中心',
   icon: Wallet,
   items: [
     { label: '收益钱包', name: 'dev-wallet', description: '查看余额与保证金信息' },
-    { label: '发票中心', name: 'dev-invoices', description: '查看与上传开发者发票' },
+    { label: '我的发票', name: 'dev-invoices', description: '查看与上传开发者发票' },
   ],
 }
 
@@ -134,8 +134,8 @@ const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
     icon: Box,
     items: [
       { label: '账户详情', name: 'workbench-account', description: '管理账户' },
-      ...(realnameApproved.value ? [{ label: '我的签署', name: 'workbench-signatures', description: '查看合同与签署进度', activeNames: ['workbench-signature-detail'] }] : []),
-        { label: '发票中心', name: 'workbench-invoices', description: '获取发票、查看与下载' },
+      ...(realnameApproved.value ? [{ label: '我的合同', name: 'workbench-signatures', description: '查看合同与签署进度', activeNames: ['workbench-signature-detail'] }] : []),
+        { label: '我的发票', name: 'workbench-invoices', description: '获取发票、查看与下载' },
       { label: '我的背包', name: 'workbench-points', description: '查看积分余额与明细' },
       { label: '我的收藏', name: 'workbench-favorites', description: '查看收藏的社区帖子' },
       {
