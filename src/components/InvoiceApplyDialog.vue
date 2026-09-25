@@ -152,7 +152,7 @@ function invoiceStatusLabel(status: InvoiceRecord['status']) {
  * 值得在进度里留个痕，也方便对着票面看清这次申请的是哪一种。
  */
 function kindNoticePrefix(kind: InvoiceKind) {
-  return kind === 'special' ? '专用发票 · ' : ''
+  return kind === 'special' ? '增值税专用发票 · ' : ''
 }
 
 /**
@@ -363,7 +363,7 @@ async function submit() {
   // 专票的资料要求比后端那份「缺项报错」更早生效：这里缺哪几项就直接说哪几项。
   const missingSpecial = missingSpecialFields()
   if (missingSpecial.length > 0) {
-    showToast(`专用发票需要填写：${missingSpecial.join('、')}`, 'warning')
+    showToast(`增值税专用发票需要填写：${missingSpecial.join('、')}`, 'warning')
     return
   }
   const notice = invoiceTitleNotice(form.invoiceTitle)
@@ -500,18 +500,18 @@ onUnmounted(() => {
             :class="{ 'is-active': isSpecialInvoice }">
             <input v-model="form.invoiceKind" type="radio" name="invoice-kind" value="special" />
             <span>
-              <strong>专用发票</strong>
+              <strong>增值税专用发票</strong>
               <small>仅企业可开，需补齐购买方开票资料，可用于抵扣</small>
             </span>
           </label>
           <p v-if="!isSpecialAvailable && buyer" class="invoice-panel__prefill">
-            专用发票只对企业主体开具，个人与个体工商户只能开普通发票。
+            增值税专用发票只对企业主体开具，个人与个体工商户只能开普通发票。
           </p>
         </fieldset>
 
         <template v-if="isSpecialInvoice">
           <p class="invoice-panel__notice">
-            专用发票需要购买方开票资料齐全：名称与纳税人识别号用上方填写的抬头与税号，请照营业执照与开户信息补齐下面四项。
+            增值税专用发票需要购买方开票资料齐全：名称与纳税人识别号用上方填写的抬头与税号，请照营业执照与开户信息补齐下面四项。
           </p>
           <label>
             注册地址

@@ -472,11 +472,11 @@ describe('InvoiceApplyDialog', () => {
     wrapper.unmount()
   })
 
-  it('个人买方没有专票选项：专用发票只对企业主体开具', async () => {
+  it('个人买方没有专票选项：增值税专用发票只对企业主体开具', async () => {
     const wrapper = await render('customer')
 
     expect(wrapper.find('input[name="invoice-kind"][value="special"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('专用发票只对企业主体开具，个人与个体工商户只能开普通发票。')
+    expect(wrapper.text()).toContain('增值税专用发票只对企业主体开具，个人与个体工商户只能开普通发票。')
 
     wrapper.unmount()
   })
@@ -589,7 +589,7 @@ describe('InvoiceApplyDialog', () => {
     )
     const wrapper = await render('customer')
 
-    expect(wrapper.text()).toContain('平台服务费发票已提交（专用发票 · 审核中 · 票面 ¥200.00）')
+    expect(wrapper.text()).toContain('平台服务费发票已提交（增值税专用发票 · 审核中 · 票面 ¥200.00）')
 
     wrapper.unmount()
   })
