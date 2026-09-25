@@ -154,7 +154,7 @@ describe('交付与到账的归并行', () => {
     expect(rows[0]?.receipts).toEqual([])
   })
 
-  it('没被任何需求单绑定的资源交付单独成行', () => {
+  it('没被任何需求单绑定的资源交付不成行', () => {
     const rows = buildDevOrderRows(
       [requirement({ requirement_id: 'REQ-1', bound_resource_id: 7 })],
       [resource({ id: 7, title: '被绑定的插件' }), resource({ id: 11, title: '独立插件' })],
@@ -165,12 +165,9 @@ describe('交付与到账的归并行', () => {
       [],
     )
 
-    expect(rows.map((row) => row.key)).toEqual([devRowKey('REQ-1'), devRowKey(null, 11)])
-    const detached = rows[1]!
-    expect(detached.requirementId).toBeNull()
-    expect(detached.delivery?.resourceTitle).toBe('独立插件')
-    expect(detached.receipts).toEqual([])
-    // 被需求单绑定的资源不重复成行
+    // 没绑定过需求单的资源不是订单，不进接单列表；它的交付物在「资源项目 → 版本管理」里
+    expect(rows.map((row) => row.key)).toEqual([devRowKey('REQ-1')])
+    expect(rows.some((row) => row.delivery?.resourceTitle === '独立插件')).toBe(false)
     expect(rows.filter((row) => row.delivery?.resourceTitle === '被绑定的插件')).toHaveLength(1)
   })
 
@@ -202,7 +199,8 @@ describe('交付与到账的归并行', () => {
       [income({ payment_id: 'p9', requirement_id: 'REQ-9' })],
     )
 
-    // 需求单接口给的就是更新时间倒序，这里不再重排；补充行（未绑定的交付、已解绑的到账）跟在后头
-    expect(rows.map((row) => row.requirementId)).toEqual(['REQ-B', 'REQ-A', null, 'REQ-9'])
+    // 需求单接口给的就是更新时间倒序，这里不再重排；补充行（已解绑的到账）跟在后头。
+    // 这份数据里资源 11 有版本却没被任何需求单绑定，按新口径不成行，列表里只剩两条需求单加一条到账。
+    expect(rows.map((row) => row.requirementId)).toEqual(['REQ-B', 'REQ-A', 'REQ-9'])
   })
 })

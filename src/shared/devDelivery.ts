@@ -12,12 +12,12 @@ import type { DevWalletIncomeItem } from '@/api/devWallet'
  * 同一笔钱会在多行重复出现。所以这里统一归到**需求单**这一层：交付取最新版本加版本总数，
  * 到账取合计与笔数，逐笔明细摊在回款详情弹窗里。
  *
- * 行的来源以需求单为主：已关联的需求单**全部**成行（哪怕还没有交付、还没有到账，
- * 待签合同与待缴定金的需求单也在列表里），交付与到账再贴上去；剩下两类补成「未关联需求」行，
- * 免得交付或到账凭空消失：
+ * 行的来源是需求单：已关联的需求单**全部**成行（哪怕还没有交付、还没有到账，
+ * 待签合同与待缴定金的需求单也在列表里），交付与到账再贴上去。
  *
- * - 有资源版本、但没被任何需求单绑定的资源；
- * - 到账归属的需求已解绑、不在当前需求单列表里的。
+ * 有资源版本、但没有任何需求单绑定的资源**不成行**：它不是订单，交付物与版本在
+ * 「资源项目 → 版本管理」里维护，混进接单列表只会把真订单挤下去。
+ * 唯一的补充行是「到账归属的需求已解绑」，免得钱凭空消失。
  *
  * 判定与文案只写在这一处，合并后的视图与它的单测共用。
  */
@@ -40,10 +40,12 @@ export type DevDelivery = {
   versionCount: number
 }
 
-/** 列表里的一行：`requirementId` 为空表示这行不是需求单（未关联需求的资源交付）。 */
+/**
+ * 列表里的一行。`requirementId` 一定有值：需求单行来自需求单，补充行来自到账回执带的需求编号。
+ */
 export type DevOrderRow = {
   key: string
-  requirementId: string | null
+  requirementId: string
   delivery: DevDelivery | null
   receipts: DevReceipt[]
   /** 需求已解绑的补充行：抬头与委托方取自钱包回执，需求单列表里已经找不到它了 */
@@ -51,9 +53,9 @@ export type DevOrderRow = {
   customer: string | null
 }
 
-/** 行标识：认需求编号的行与认资源编号的行不会互相覆盖。 */
-export function devRowKey(requirementId: string | null, resourceId?: number): string {
-  return requirementId ? `requirement:${requirementId}` : `resource:${resourceId}`
+/** 行标识：一份需求一行，不重复。 */
+export function devRowKey(requirementId: string): string {
+  return `requirement:${requirementId}`
 }
 
 /* 时间串有 `YYYY-MM-DD HH:mm:ss` 与资源版本接口两种格式，解析不出来时按 0 处理：
@@ -128,7 +130,7 @@ function deliveryOf(
 }
 
 /**
- * 建整份列表：需求单行（按传入顺序，更新时间倒序）在前，未关联的补充行在后。
+ * 建整份列表：需求单行（按传入顺序，更新时间倒序）在前，已解绑到账的补充行在后。
  *
  * `versionsByResource` 是「资源编号 → 该资源的全部版本」，由调用方一次取回
  * （见 `DevMyRequirementsView` 的交付数据加载）。
@@ -141,17 +143,12 @@ export function buildDevOrderRows(
 ): DevOrderRow[] {
   const resourceById = new Map(resources.map((item) => [item.id, item]))
   const receiptsByRequirement = groupReceipts(income)
-  const boundResourceIds = new Set<number>()
   const rows: DevOrderRow[] = []
 
   for (const requirement of requirements) {
     const resource = requirement.bound_resource_id != null
       ? resourceById.get(requirement.bound_resource_id)
       : undefined
-    if (resource) {
-      boundResourceIds.add(resource.id)
-    }
-
     const versions = resource ? versionsByResource.get(resource.id) ?? [] : []
     const group = receiptsByRequirement.get(requirement.requirement_id)
 
@@ -161,22 +158,6 @@ export function buildDevOrderRows(
       // 绑定资源一个版本都没有时不算交付：行上仍由视图写「暂无交付版本」
       delivery: resource && versions.length > 0 ? deliveryOf(resource, versions) : null,
       receipts: group?.receipts ?? [],
-      title: null,
-      customer: null,
-    })
-  }
-
-  for (const resource of resources) {
-    const versions = versionsByResource.get(resource.id) ?? []
-    if (versions.length === 0 || boundResourceIds.has(resource.id)) {
-      continue
-    }
-
-    rows.push({
-      key: devRowKey(null, resource.id),
-      requirementId: null,
-      delivery: deliveryOf(resource, versions),
-      receipts: [],
       title: null,
       customer: null,
     })

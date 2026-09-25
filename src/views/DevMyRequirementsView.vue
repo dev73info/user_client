@@ -454,9 +454,9 @@ function displayStatusType(item: RequirementItem): 'info' | 'success' | 'warning
    交付物与到账原先是「交付记录」页的两列，现在长在需求单卡片上，
    行上的取数、文案与占位口径都只留这一处（见 `shared/devDelivery.ts`）。 */
 
-/** 行抬头：需求单行取需求标题，补充行取钱包回执里的标题或资源名。 */
+/** 行抬头：需求单行取需求标题，补充行取钱包回执里的标题。 */
 function rowTitle(row: MyOrderRow): string {
-  return row.item?.title ?? row.title ?? row.delivery?.resourceTitle ?? '未关联需求'
+  return row.item?.title ?? row.title ?? '未关联需求'
 }
 
 /** 委托方：需求单行取需求方，补充行取钱包回执里的客户名。 */
@@ -478,8 +478,8 @@ function rowStatusLabel(row: MyOrderRow): string {
     return displayStatusLabel(row.item)
   }
 
-  // 补充行的两档来源不同：只有交付说明这份资源还没被需求单绑定，只有到账说明需求已经解绑。
-  return row.delivery ? '交付未绑定需求' : '需求已解绑'
+  // 补充行只剩「需求已解绑」这一类：没绑定需求单的交付不成行（见 shared/devDelivery.ts）。
+  return '需求已解绑'
 }
 
 function rowStatusType(row: MyOrderRow): 'info' | 'success' | 'warning' | 'danger' {
@@ -1156,7 +1156,7 @@ async function loadRequirementConversations() {
           <el-option label="待分账" value="pending_settlement" />
           <el-option label="已完成" value="completed" />
           <el-option label="已取消" value="cancelled" />
-          <el-option label="未关联需求" value="unlinked" />
+          <el-option label="需求已解绑" value="unlinked" />
         </el-select>
 
         <el-input v-model="filters.keyword" clearable placeholder="搜索需求编号、标题、资源、版本或流水号"
@@ -1190,7 +1190,7 @@ async function loadRequirementConversations() {
         <article v-for="row in pagedRows" :key="row.key" class="dev-requirement-card">
           <header class="dev-requirement-card__head">
             <div class="dev-requirement-card__title-block">
-              <span class="dev-requirement-hall__requirement-id">{{ row.requirementId ?? '未关联需求' }}</span>
+              <span class="dev-requirement-hall__requirement-id">{{ row.requirementId }}</span>
               <h3 class="dev-requirement-hall__title">{{ rowTitle(row) }}</h3>
               <!-- 需求说明：需求描述与验收标准各一段，收起时**各段各截头几行**（见样式里的 .is-collapsed），
                    一个「展开 / 收起」管两段——各挂一个折叠按钮的话，同一块正文会有两个开关。 -->
@@ -1211,11 +1211,7 @@ async function loadRequirementConversations() {
                 </section>
               </div>
               <p v-else class="dev-requirement-card__description">
-                {{
-                  row.delivery
-                    ? '这份交付还没有绑定需求单，交付物与版本在「资源项目 → 版本管理」里维护。'
-                    : '这条到账所属的需求已解除绑定，需求单列表里已经查不到它。'
-                }}
+                这条到账所属的需求已解除绑定，需求单列表里已经查不到它。
               </p>
               <button v-if="row.item && (isBriefExpanded(row.item) || briefOverflow(row.item))"
                 type="button" class="dev-requirement-card__description-toggle"
@@ -1381,7 +1377,7 @@ async function loadRequirementConversations() {
         <div class="dev-receipt-detail__head">
           <div class="dev-receipt-detail__title">{{ rowTitle(activeReceiptRow) }}</div>
           <div class="dev-receipt-detail__meta">
-            <span>{{ activeReceiptRow.requirementId ?? '未关联需求' }}</span>
+            <span>{{ activeReceiptRow.requirementId }}</span>
             <span>委托方 {{ rowCustomer(activeReceiptRow) || '—' }}</span>
             <el-tag :type="rowStatusType(activeReceiptRow)" effect="plain">
               {{ rowStatusLabel(activeReceiptRow) }}
