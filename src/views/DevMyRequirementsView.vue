@@ -17,7 +17,6 @@ import {
 } from '@/api/adapay'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import DeliverySubmitDialog from '@/components/DeliverySubmitDialog.vue'
-import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import { breachStatusLabel } from '@/shared/breachStatus'
@@ -57,8 +56,6 @@ import { useToast } from '@/composables/useToast'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
-import { invoiceEntryState, type InvoiceSummaryMap } from '@/shared/invoiceAvailability'
-import { getInvoiceSummary } from '@/api/invoices'
 import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 
 const auth = useAuthStore()
@@ -79,11 +76,6 @@ const contractCreatingId = ref('')
 const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const conversationLoading = ref(false)
-/** 获取发票：乙方获取的是开发者发票，入口与需求方共用同一个弹窗（弹窗按身份决定开出哪些票）。 */
-const invoiceDialogVisible = ref(false)
-const invoiceRequirement = ref<RequirementItem | null>(null)
-/** 每条需求的可开票汇总，只用来决定「获取发票」灰不灰；拿不到时不写值，入口保持可点。 */
-const invoiceSummaryMap = ref<InvoiceSummaryMap>({})
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
 const descriptionOverflowMap = ref<Record<string, boolean>>({})
 const expandedRequirements = ref<Record<string, boolean>>({})
@@ -333,8 +325,6 @@ async function loadMyRequirements() {
       }
     }
     signingStatusMap.value = map
-    // 不 await：菜单灰不灰不影响列表先画出来，汇总回来再补上禁用态。
-    void loadInvoiceSummaries(rows.value)
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载已关联需求失败'
     showToast(message, 'error')
@@ -373,37 +363,6 @@ async function loadResourceVersions(token: string, list: McResourcePayload[]) {
     }
   }
   return map
-}
-
-/**
- * 拉取「获取发票」的可点性依据：只查担保模式，无担保模式没有资金流（`invoiceEntryState` 直接判死）。
- *
- * ponytail: 与合同签署状态一样是按条请求，菜单灰不灰要等它回来才知道；上限的真正解法同样是
- * 服务端分页 + 批量汇总接口，等 `/invoices/summary` 支持一次问多条再做。
- */
-async function loadInvoiceSummaries(items: RequirementItem[]) {
-  if (!auth.token || items.length === 0) {
-    invoiceSummaryMap.value = {}
-    return
-  }
-
-  const guaranteedItems = items.filter((item) => item.payment_mode !== 'self_managed')
-
-  const entries = await Promise.allSettled(
-    guaranteedItems.map((item) =>
-      getInvoiceSummary(auth.token, item.requirement_id).then((summary) => ({
-        requirementId: item.requirement_id,
-        summary,
-      })),
-    ),
-  )
-  const map: InvoiceSummaryMap = {}
-  for (const entry of entries) {
-    if (entry.status === 'fulfilled') {
-      map[entry.value.requirementId] = entry.value.summary
-    }
-  }
-  invoiceSummaryMap.value = map
 }
 
 function formatMoney(value?: number | null): string {
@@ -582,16 +541,6 @@ const receiptDialogTitle = computed(() =>
 function openConversation(item: RequirementItem) {
   conversationRequirement.value = item
   conversationVisible.value = true
-}
-
-function openInvoiceDialog(item: RequirementItem) {
-  invoiceRequirement.value = item
-  invoiceDialogVisible.value = true
-}
-
-/** 「获取发票」的可点性：开不出票就置灰，原因挂在 title 上（灰按钮点不动，只能靠悬浮看原因）。 */
-function invoiceEntryFor(item: RequirementItem) {
-  return invoiceEntryState(item.payment_mode, invoiceSummaryMap.value[item.requirement_id])
 }
 
 function closeConversation() {
@@ -1376,10 +1325,6 @@ async function loadRequirementConversations() {
                 <el-icon><ChatDotRound /></el-icon>
                 <span>会话</span>
               </el-button>
-              <el-button :disabled="!invoiceEntryFor(row.item).enabled"
-                :title="invoiceEntryFor(row.item).reason || undefined" @click="openInvoiceDialog(row.item!)">
-                获取发票
-              </el-button>
               <el-button v-if="hasPendingCreatorUnbindRequest(row.item)" type="warning"
                 @click="openUnbindRespond(row.item!)">处理解除申请</el-button>
               <el-button v-else-if="canRequestUnbind(row.item)" type="danger" plain class="dev-action--soft-danger"
@@ -1625,9 +1570,6 @@ async function loadRequirementConversations() {
     <RequirementConversationModal :visible="conversationVisible" api-mode="dev" :token="auth.token"
       :current-username="auth.username" :requirement-id="conversationRequirement?.requirement_id ?? ''"
       :title="conversationRequirement?.title" @updated="applyConversationDetail" @close="closeConversation" />
-
-    <InvoiceApplyDialog v-model:visible="invoiceDialogVisible" :token="auth.token"
-      :requirement-id="invoiceRequirement?.requirement_id ?? ''" role="developer" @submitted="loadMyRequirements" />
   </div>
 </template>
 
@@ -1735,7 +1677,7 @@ async function loadRequirementConversations() {
 }
 
 /* 会话按钮的圆角与字重都走统一层的 .dev-action--soft（10px 方角），
-   这里不再把它单独扭成胶囊——同一排的「签署合同 / 终止合作 / 获取发票」都是方角，
+   这里不再把它单独扭成胶囊——同一排的「签署合同 / 终止合作 / 申请解除」都是方角，
    只有这一颗是 999px 时整排按钮横竖不齐（见 dev-base.css 的行内软按钮一节）。 */
 .dev-requirement-card__conversation {
   font-weight: 700;
