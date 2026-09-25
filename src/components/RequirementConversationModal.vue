@@ -936,7 +936,15 @@ function handleBackdropClick() {
                 <div class="conversation-card__foot">
                   <time :title="row.createdAt">{{ formatMessageClock(row.createdAt) }}</time>
                   <div class="conversation-card__actions">
-                    <el-button v-if="row.card.actionLabel && !row.card.deliveryAction"
+                    <!-- 「去支付定金 / 去支付尾款」不跳需求列表：支付弹窗就在同一条会话底部
+                         的工具条上，按下去原地打开它。能不能付仍由工具条裁定（自管模式、
+                         合同未签、阶段不对都不给），条件不够时这张卡片就不摆按钮。 -->
+                    <el-button v-if="row.card.paymentAction && actionsRef?.canPay"
+                      class="conversation-card__action" type="primary" size="small"
+                      @click="actionsRef?.openPayDialog()">
+                      {{ row.card.actionLabel }}
+                    </el-button>
+                    <el-button v-else-if="row.card.actionLabel && !row.card.deliveryAction && !row.card.paymentAction"
                       class="conversation-card__action" type="primary" size="small"
                       :loading="downloadLoading && row.card.downloadDelivery"
                       @click="runCardAction(row.card, row.message)">

@@ -3,7 +3,8 @@ import type { RouteLocationRaw } from 'vue-router'
 /**
  * 需求会话里的状态变化卡片：后端写入 message_type='card' 的消息，
  * action_type 为事件码，前端在这里统一决定标题、说明、按钮文案与跳转目标。
- * 卡片只负责把人送到能做事的页面（支付类动作仍需先创建支付单），不做一键操作。
+ * 卡片自己能做的动作（交付、验收、支付定金 / 尾款）都在同一条会话的底部工具条上，
+ * 有原地的弹窗就把人交给它，只有真的在别处才能做的事（签约、工单中心）才跳页。
  */
 export type ConversationCardMeta = {
   title: string
@@ -32,6 +33,15 @@ export type ConversationCardMeta = {
    * 不会给出一个点下去必然报错的入口。
    */
   acceptanceAction?: boolean
+  /**
+   * 这张卡片当前还该不该给「支付」入口（需求方视角）：定金或尾款按需求当前状态判断，
+   * 点了原地打开支付弹窗，不跳页。
+   *
+   * 与 `to` 的区别同 `deliveryAction`：支付弹窗一直挂在会话底部的工具条上，「去支付定金 /
+   * 去支付尾款」把它打开即可，把人送回需求列表再自己找入口是白跑一趟。能不能付仍由工具条
+   * 裁定（自管模式、合同未签、阶段不对都不给），卡片只负责把入口摆出来。
+   */
+  paymentAction?: boolean
 }
 
 export type ConversationCardRole = 'customer' | 'developer'
@@ -53,6 +63,14 @@ const DELIVERABLE_STATUSES: readonly string[] = ['in_development', 'pending_fina
  * 已经没有该入口的需求列表，甚至重复发起一笔已完成的支付。
  */
 const FINAL_PAYABLE_STATUSES: readonly string[] = ['pending_final']
+
+/**
+ * 定金还在等需求方缴的状态。
+ *
+ * 与 `FINAL_PAYABLE_STATUSES` 分开列：两张卡片各管自己那一步——「合同已签署完成」上的
+ * 「去支付定金」到了待付尾款就不该再出现（那一步早做完了），反之亦然。
+ */
+const DEPOSIT_PAYABLE_STATUSES: readonly string[] = ['pending_deposit']
 
 /** 需求当前是否落在给定的一组状态里；状态还没取到时按「不在」处理，宁可不给按钮。 */
 function statusIn(status: string | null, allowed: readonly string[]): boolean {
@@ -86,6 +104,10 @@ export function conversationCardMeta(
   // 交付那一步还开着（开发者视角）：卡片上的「去交付」原地打开交付弹窗，不跳页。
   const canDeliverFromCard =
     role === 'developer' && statusIn(requirementStatus, DELIVERABLE_STATUSES)
+  // 缴款那一步还开着（需求方视角）：卡片上的「去支付定金 / 去支付尾款」原地打开支付弹窗，
+  // 同样不跳页。定金与尾款各看各的状态——「合同已签署完成」那张只在待缴定金时给按钮。
+  const canPayDeposit = role !== 'developer' && statusIn(requirementStatus, DEPOSIT_PAYABLE_STATUSES)
+  const canPayFinal = role !== 'developer' && statusIn(requirementStatus, FINAL_PAYABLE_STATUSES)
 
   switch (actionType) {
     // 合同在爱签侧，点按钮就是去看爱签那份合同（未签署时爱签页面里也能直接签），
@@ -111,10 +133,10 @@ export function conversationCardMeta(
         title: '合同已签署完成',
         description: '《需求开发合同》双方已签署，等待需求方支付定金。',
         // 付定金是需求方的动作，开发者这边只是通知；定金缴清后这张历史卡片也不再给按钮，
-        // 否则点进去只会重复发起一笔已完成的支付。
-        actionLabel:
-          role !== 'developer' && requirementStatus === 'pending_deposit' ? '去支付定金' : undefined,
-        to: requirementListRoute,
+        // 否则点进去只会重复发起一笔已完成的支付。按下去原地打开支付弹窗，不跳需求列表。
+        actionLabel: canPayDeposit ? '去支付定金' : undefined,
+        paymentAction: canPayDeposit,
+        to: canPayDeposit ? undefined : requirementListRoute,
       }
     case 'deposit_paid':
       return {
@@ -153,12 +175,10 @@ export function conversationCardMeta(
         description: '需求方已验收通过，等待支付尾款。',
         // 付尾款是需求方的动作，开发者这边只是通知，不给按钮。
         // 只在「待付尾款」这一步给：尾款缴清即转「待分账」，这一步已经做完，
-        // 再挂按钮只会把人送回一个没有尾款可付的需求列表。
-        actionLabel:
-          role !== 'developer' && statusIn(requirementStatus, FINAL_PAYABLE_STATUSES)
-            ? '去支付尾款'
-            : undefined,
-        to: requirementListRoute,
+        // 再挂按钮只会把人送回一个没有尾款可付的需求列表。按下去原地打开支付弹窗，不跳页。
+        actionLabel: canPayFinal ? '去支付尾款' : undefined,
+        paymentAction: canPayFinal,
+        to: canPayFinal ? undefined : requirementListRoute,
       }
     case 'acceptance_rejected':
       return {

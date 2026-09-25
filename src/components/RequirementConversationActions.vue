@@ -174,6 +174,14 @@ const canPayFinal = computed(
     status.value === 'pending_final',
 )
 /**
+ * 当前是否有可缴的款（定金或尾款）。
+ *
+ * 与上面两个分开：工具条按阶段分开给「支付定金 / 支付尾款」两枚 chip，而会话卡片只需要知道
+ * 「现在有没有款可缴」——卡片自己已经按需求状态决定按钮写「去支付定金」还是「去支付尾款」，
+ * 弹窗打开后按阶段算该付的金额。两个条件都从这里过，卡片与工具条不会各写一套而走偏。
+ */
+const canPay = computed(() => canPayDeposit.value || canPayFinal.value)
+/**
  * 无担保模式的「确认完成」：没有合同也没有尾款，确认即结单。
  *
  * 担保模式不能走这里：它的验收与尾款是两个动作，分别由「验收」和「支付尾款」承担。
@@ -826,12 +834,19 @@ function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
 }
 
 /**
- * 给会话容器用的四个入口。会话卡片（「收到交付版本」那张）也要挂「验收」按钮，
- * 「定金已缴纳 / 验收未通过」两张卡片还要挂「去交付」，但能不能做、以及弹窗归谁管，
- * 都以工具条这份判断为准——卡片那边只负责把入口摆在卡片上。两处共用同一组 computed
- * 与同一组弹窗，条件不会各写一套而走偏。
+ * 给会话容器用的入口。会话卡片（「合同已签署完成」「验收已通过」「收到交付版本」等）也要
+ * 挂「去支付定金 / 去支付尾款」「验收」「去交付」，但能不能做、以及弹窗归谁管，都以工具条
+ * 这份判断为准——卡片那边只负责把入口摆在卡片上。两处共用同一组 computed 与同一组弹窗，
+ * 条件不会各写一套而走偏。
  */
-defineExpose({ canAcceptDelivery, openAcceptanceDialog, canDeliver, openDeliveryDialog })
+defineExpose({
+  canAcceptDelivery,
+  openAcceptanceDialog,
+  canDeliver,
+  openDeliveryDialog,
+  canPay,
+  openPayDialog,
+})
 </script>
 
 <template>
