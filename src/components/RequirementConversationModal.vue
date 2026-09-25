@@ -243,7 +243,7 @@ const timelineItems = computed<ConversationTimelineItem[]>(() => {
 
     const mine = isMine(message)
     // 平台写入的状态变化卡片：左对齐，与对面的聊天气泡同侧；未知事件码退化成普通消息，避免丢信息。
-    // 需要需求当前状态，历史卡片的按钮才不会停在已经过去的步骤上（如定金缴完还挂着「去支付定金」）。
+    // 需要需求当前状态，历史卡片的按钮才不会停在已经过去的步骤上（如定金缴完还挂着「支付定金」）。
     const card =
       message.message_type === 'card'
         ? conversationCardMeta(
@@ -936,7 +936,7 @@ function handleBackdropClick() {
                 <div class="conversation-card__foot">
                   <time :title="row.createdAt">{{ formatMessageClock(row.createdAt) }}</time>
                   <div class="conversation-card__actions">
-                    <!-- 「去支付定金 / 去支付尾款」不跳需求列表：支付弹窗就在同一条会话底部
+                    <!-- 「支付定金 / 支付尾款」不跳需求列表：支付弹窗就在同一条会话底部
                          的工具条上，按下去原地打开它。能不能付仍由工具条裁定（自管模式、
                          合同未签、阶段不对都不给），条件不够时这张卡片就不摆按钮。 -->
                     <el-button v-if="row.card.paymentAction && actionsRef?.canPay"

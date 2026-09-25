@@ -37,8 +37,8 @@ export type ConversationCardMeta = {
    * 这张卡片当前还该不该给「支付」入口（需求方视角）：定金或尾款按需求当前状态判断，
    * 点了原地打开支付弹窗，不跳页。
    *
-   * 与 `to` 的区别同 `deliveryAction`：支付弹窗一直挂在会话底部的工具条上，「去支付定金 /
-   * 去支付尾款」把它打开即可，把人送回需求列表再自己找入口是白跑一趟。能不能付仍由工具条
+   * 与 `to` 的区别同 `deliveryAction`：支付弹窗一直挂在会话底部的工具条上，「支付定金 /
+   * 支付尾款」把它打开即可，把人送回需求列表再自己找入口是白跑一趟。能不能付仍由工具条
    * 裁定（自管模式、合同未签、阶段不对都不给），卡片只负责把入口摆出来。
    */
   paymentAction?: boolean
@@ -59,7 +59,7 @@ const DELIVERABLE_STATUSES: readonly string[] = ['in_development', 'pending_fina
  * 尾款还在等需求方缴的状态。
  *
  * 尾款一缴清，需求立刻转「待分账」（`pending_settlement`），渠道分账完成后才结单，
- * 这两步里需求方都没有可付的尾款——历史卡片再挂「去支付尾款」只会把人送回一个
+ * 这两步里需求方都没有可付的尾款——历史卡片再挂「支付尾款」只会把人送回一个
  * 已经没有该入口的需求列表，甚至重复发起一笔已完成的支付。
  */
 const FINAL_PAYABLE_STATUSES: readonly string[] = ['pending_final']
@@ -68,7 +68,7 @@ const FINAL_PAYABLE_STATUSES: readonly string[] = ['pending_final']
  * 定金还在等需求方缴的状态。
  *
  * 与 `FINAL_PAYABLE_STATUSES` 分开列：两张卡片各管自己那一步——「合同已签署完成」上的
- * 「去支付定金」到了待付尾款就不该再出现（那一步早做完了），反之亦然。
+ * 「支付定金」到了待付尾款就不该再出现（那一步早做完了），反之亦然。
  */
 const DEPOSIT_PAYABLE_STATUSES: readonly string[] = ['pending_deposit']
 
@@ -104,7 +104,7 @@ export function conversationCardMeta(
   // 交付那一步还开着（开发者视角）：卡片上的「去交付」原地打开交付弹窗，不跳页。
   const canDeliverFromCard =
     role === 'developer' && statusIn(requirementStatus, DELIVERABLE_STATUSES)
-  // 缴款那一步还开着（需求方视角）：卡片上的「去支付定金 / 去支付尾款」原地打开支付弹窗，
+  // 缴款那一步还开着（需求方视角）：卡片上的「支付定金 / 支付尾款」原地打开支付弹窗，
   // 同样不跳页。定金与尾款各看各的状态——「合同已签署完成」那张只在待缴定金时给按钮。
   const canPayDeposit = role !== 'developer' && statusIn(requirementStatus, DEPOSIT_PAYABLE_STATUSES)
   const canPayFinal = role !== 'developer' && statusIn(requirementStatus, FINAL_PAYABLE_STATUSES)
@@ -134,7 +134,7 @@ export function conversationCardMeta(
         description: '《需求开发合同》双方已签署，等待需求方支付定金。',
         // 付定金是需求方的动作，开发者这边只是通知；定金缴清后这张历史卡片也不再给按钮，
         // 否则点进去只会重复发起一笔已完成的支付。按下去原地打开支付弹窗，不跳需求列表。
-        actionLabel: canPayDeposit ? '去支付定金' : undefined,
+        actionLabel: canPayDeposit ? '支付定金' : undefined,
         paymentAction: canPayDeposit,
         to: canPayDeposit ? undefined : requirementListRoute,
       }
@@ -176,7 +176,7 @@ export function conversationCardMeta(
         // 付尾款是需求方的动作，开发者这边只是通知，不给按钮。
         // 只在「待付尾款」这一步给：尾款缴清即转「待分账」，这一步已经做完，
         // 再挂按钮只会把人送回一个没有尾款可付的需求列表。按下去原地打开支付弹窗，不跳页。
-        actionLabel: canPayFinal ? '去支付尾款' : undefined,
+        actionLabel: canPayFinal ? '支付尾款' : undefined,
         paymentAction: canPayFinal,
         to: canPayFinal ? undefined : requirementListRoute,
       }

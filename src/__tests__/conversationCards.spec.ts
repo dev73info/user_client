@@ -20,20 +20,20 @@ describe('conversation status cards', () => {
 
   it('drops the deposit button once the deposit is paid', () => {
     const card = meta('contract_signed', 'customer', 'pending_deposit')
-    expect(card?.actionLabel).toBe('去支付定金')
-    // 「去支付定金」不跳页：支付弹窗就挂在同一条会话底部的工具条上，按下去原地打开它。
+    expect(card?.actionLabel).toBe('支付定金')
+    // 「支付定金」不跳页：支付弹窗就挂在同一条会话底部的工具条上，按下去原地打开它。
     expect(card?.paymentAction).toBe(true)
     expect(card?.to).toBeUndefined()
     expect(meta('contract_signed', 'customer', 'deposit_paid')?.actionLabel).toBeUndefined()
     expect(meta('contract_signed', 'customer', 'in_development')?.actionLabel).toBeUndefined()
     expect(meta('contract_signed', 'customer', 'deposit_paid')?.paymentAction).toBe(false)
-    // 定金那一步做完了就不给：到了待付尾款该付的是尾款，「去支付定金」再出现只会付错款。
+    // 定金那一步做完了就不给：到了待付尾款该付的是尾款，「支付定金」再出现只会付错款。
     expect(meta('contract_signed', 'customer', 'pending_final')?.paymentAction).toBe(false)
     // 开发者在合同签署完成 / 验收通过这两步都没有可做的动作，卡片只作通知。
     expect(meta('contract_signed', 'developer', 'in_development')?.actionLabel).toBeUndefined()
     expect(meta('acceptance_passed', 'developer', 'pending_final')?.actionLabel).toBeUndefined()
     expect(meta('acceptance_passed', 'developer', 'pending_final')?.paymentAction).toBe(false)
-    expect(meta('acceptance_passed', 'customer', 'pending_final')?.actionLabel).toBe('去支付尾款')
+    expect(meta('acceptance_passed', 'customer', 'pending_final')?.actionLabel).toBe('支付尾款')
   })
 
   it('opens the delivery dialog in place instead of sending the developer to the list', () => {
@@ -115,7 +115,7 @@ describe('conversation status cards', () => {
   it('drops the final-payment button once the final payment is paid', () => {
     // 尾款还在等需求方缴时才给入口，且按下去原地打开支付弹窗，不跳页。
     const card = meta('acceptance_passed', 'customer', 'pending_final')
-    expect(card?.actionLabel).toBe('去支付尾款')
+    expect(card?.actionLabel).toBe('支付尾款')
     expect(card?.paymentAction).toBe(true)
     expect(card?.to).toBeUndefined()
     // 缴清即转「待分账」，之后结单——这两步需求方都没有尾款可付，历史卡片上留着按钮
