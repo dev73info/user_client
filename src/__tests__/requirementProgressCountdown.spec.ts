@@ -25,7 +25,6 @@ function mountProgress(requirement: Record<string, unknown>) {
         requirement_id: '2026-1790295512639',
         title: '测试需求',
         status: 'completed',
-        payment_mode: 'platform_guarantee',
         ...requirement,
       },
       paymentMode: 'platform_guarantee',
