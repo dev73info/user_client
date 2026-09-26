@@ -1462,7 +1462,6 @@ onBeforeUnmount(() => {
       </div>
       <div v-if="recentRequirements.length === 0" class="overview-empty-state">
         <strong>暂无需求单</strong>
-        <span>发布定制需求后，进度会在这里汇总。</span>
       </div>
       <ul v-else class="overview-requirement-list">
         <li v-for="item in recentRequirements" :key="item.requirement_id" class="clickable" role="button" tabindex="0"
@@ -1497,7 +1496,6 @@ onBeforeUnmount(() => {
         </div>
         <div v-if="recentConversationCards.length === 0" class="overview-empty-state">
           <strong>暂无可用会话</strong>
-          <span>需求绑定资源后，会话入口会显示在这里。</span>
         </div>
         <div v-else class="conversation-card-list">
           <button v-for="item in recentConversationCards" :key="item.requirement_id" type="button"

@@ -195,13 +195,6 @@ function emptyTitle() {
   return '暂无系统通知'
 }
 
-function emptyDescription() {
-  if (keyword.value.trim() || kindFilter.value !== 'all') {
-    return '换个类别或关键字再试一次。'
-  }
-  return '平台公告、评论警告与需要你确认的公开申请都会出现在这里。'
-}
-
 onMounted(() => {
   void loadNotifications()
 })
@@ -289,7 +282,6 @@ onMounted(() => {
         <div class="dev-card-head">
           <div class="dev-card-head__title-block">
             <h3 class="dev-section-title">系统通知</h3>
-            <p class="dev-section-desc">平台公告、评论警告与需要你确认的公开申请，按时间倒序。</p>
           </div>
         </div>
 
@@ -325,7 +317,6 @@ onMounted(() => {
         <p v-if="loading && !cards.length" class="dev-empty-state">系统通知加载中…</p>
         <div v-else-if="!filteredCards.length" class="dev-empty-state">
           <strong>{{ emptyTitle() }}</strong>
-          <p>{{ emptyDescription() }}</p>
           <div v-if="filtersActive" class="dev-list-actions">
             <button class="dev-btn dev-btn--ghost" type="button" @click="resetFilters">清空筛选</button>
           </div>
@@ -384,7 +375,6 @@ onMounted(() => {
       <div class="wb-card-head">
         <div class="wb-card-head__title-block">
           <h3 class="wb-card-head__title">系统通知</h3>
-          <p class="wb-card-head__desc">平台公告、评论警告与需要你确认的公开申请，按时间倒序。</p>
         </div>
       </div>
 
@@ -425,7 +415,6 @@ onMounted(() => {
       <p v-if="loading && !cards.length" class="wb-empty" role="status">系统通知加载中…</p>
       <div v-else-if="!filteredCards.length" class="wb-empty">
         <span class="wb-empty__title">{{ emptyTitle() }}</span>
-        {{ emptyDescription() }}
         <div v-if="filtersActive" class="wb-empty__actions">
           <el-button class="wb-toolbar__ghost" @click="resetFilters">
             <el-icon>

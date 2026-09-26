@@ -417,7 +417,6 @@ onMounted(async () => {
         <div v-if="isDevWorkbench" class="dev-card-head">
           <div class="dev-card-head__title-block">
             <h3 class="dev-section-title">工单列表</h3>
-            <p class="dev-section-desc">按状态与优先级筛选，选中一张工单查看消息记录并继续回复。</p>
           </div>
           <div class="dev-card-head__actions">
             <button class="dev-btn dev-btn--primary" type="button" @click="openCompose">
@@ -431,7 +430,6 @@ onMounted(async () => {
         <div v-else class="wb-card-head">
           <div class="wb-card-head__title-block">
             <h3 class="wb-card-head__title">工单列表</h3>
-            <p class="wb-card-head__desc">按状态与优先级筛选，选中一张工单查看消息记录并继续回复。</p>
           </div>
           <div class="wb-card-head__actions">
             <el-button class="wb-toolbar__primary" @click="openCompose">

@@ -469,7 +469,6 @@ watch(
 
       <div v-if="filteredCards.length === 0" class="portal-resource-browser__empty">
         <strong>当前筛选下还没有公开资源</strong>
-        <span>可以清空筛选看看其他分区；如果你有插件、汉化、模板或教程，也欢迎在内测期投稿。</span>
       </div>
     </section>
   </section>

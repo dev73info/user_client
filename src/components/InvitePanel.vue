@@ -143,9 +143,6 @@ defineExpose({ reload: loadInvite })
         <div class="wb-card-head">
             <div class="wb-card-head__title-block">
                 <h3 class="wb-card-head__title">我的邀请</h3>
-                <p class="wb-card-head__desc">
-                    把邀请码或邀请链接发给好友，好友注册后即计入邀请记录，并解锁对应的邀请徽章。
-                </p>
             </div>
             <div class="wb-card-head__actions">
                 <el-button class="wb-toolbar__primary" @click="copyText(inviteCode?.code || '', '邀请码')"
@@ -202,7 +199,6 @@ defineExpose({ reload: loadInvite })
         <p v-if="loading && !invitees.length" class="wb-empty" role="status">正在加载邀请记录…</p>
         <div v-else-if="!filteredInvitees.length" class="wb-empty">
             <span class="wb-empty__title">{{ invitees.length ? '没有匹配的邀请记录' : '暂无邀请记录' }}</span>
-            {{ invitees.length ? '换个时间档或关键字再试一次。' : '把邀请码或邀请链接发给好友，对方注册后就会出现在这里。' }}
         </div>
         <template v-else>
             <ul class="wb-list" aria-label="邀请记录">

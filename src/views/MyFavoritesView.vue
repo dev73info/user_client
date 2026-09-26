@@ -112,7 +112,6 @@ onMounted(() => {
       <div class="wb-card-head">
         <div class="wb-card-head__title-block">
           <h3 class="wb-card-head__title">我的收藏</h3>
-          <p class="wb-card-head__desc">把值得回看的讨论放在一个顺手找到的地方，按标签筛选或搜索标题、作者。</p>
         </div>
         <div class="wb-card-head__actions">
           <el-button class="wb-toolbar__primary" @click="router.push({ name: 'community' })">
@@ -149,7 +148,6 @@ onMounted(() => {
       <div v-else-if="!filteredPosts.length" class="wb-empty">
         <span class="wb-empty__title">{{ posts.length ? '没有符合条件的收藏' : '还没有收藏帖子' }}</span>
         <template v-if="posts.length">
-          换个标签或关键字再试一次。
           <div class="wb-empty__actions">
             <el-button class="wb-toolbar__ghost" @click="resetFilters">
               <el-icon><RefreshLeft /></el-icon><span>清除筛选</span>

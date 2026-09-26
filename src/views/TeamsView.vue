@@ -293,7 +293,6 @@ onMounted(() => {
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
           <h3 class="dev-section-title">我的团队</h3>
-          <p class="dev-section-desc">团队共享资源项目，成员与权限在团队详情里管理。</p>
         </div>
         <div class="dev-card-head__actions">
           <button class="dev-btn dev-btn--primary" type="button" @click="showCreateModal = true">

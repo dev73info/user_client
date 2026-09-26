@@ -54,7 +54,6 @@ onMounted(() => {
             <div class="wb-card-head__title-block">
                 <h3 class="wb-card-head__title">邀请排行榜</h3>
                 <p class="wb-card-head__desc">
-                    按成功邀请的人数排名，可在周榜与总榜之间切换。
                     <template v-if="myRank">我的排名：第 {{ myRank.rank }} 名 · {{ myRank.count }} 人。</template>
                     <template v-else>本周期暂无我的排名。</template>
                 </p>
@@ -81,7 +80,6 @@ onMounted(() => {
         <p v-if="loading && entries.length === 0" class="wb-empty" role="status">正在加载排行榜…</p>
         <div v-else-if="entries.length === 0" class="wb-empty">
             <span class="wb-empty__title">暂无排行数据</span>
-            换一个周期看看，或等本期数据更新后再来。
         </div>
         <ul v-else class="wb-list" aria-label="邀请排行榜">
             <li v-for="entry in entries" :key="entry.username" class="wb-item">

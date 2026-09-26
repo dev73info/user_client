@@ -416,7 +416,6 @@ async function removeVersion() {
         <div class="dev-card-head">
           <div class="dev-card-head__title-block">
             <h3 class="dev-section-title">版本列表</h3>
-            <p class="dev-section-desc">查看历史版本，支持下载、编辑版本说明和删除版本。</p>
           </div>
           <div class="dev-card-head__actions">
             <el-button class="dev-toolbar__primary" type="primary" :icon="Plus"

@@ -427,7 +427,6 @@ async function setResourcePrivate(resource: McResourcePayload) {
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
           <h3 class="dev-section-title">资源列表</h3>
-          <p class="dev-section-desc">管理已创建资源、主页与版本，发布新资源从右上角进入。</p>
         </div>
         <div class="dev-card-head__actions">
           <RouterLink class="dev-btn dev-btn--primary"

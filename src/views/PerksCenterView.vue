@@ -164,7 +164,6 @@ onMounted(() => {
         <div class="wb-card-head">
           <div class="wb-card-head__title-block">
             <h3 class="wb-card-head__title">我的权益</h3>
-            <p class="wb-card-head__desc">管理已解锁的积分商城权益，佩戴后立即生效。权益在积分商城兑换后出现在这里。</p>
           </div>
         </div>
 
@@ -179,7 +178,6 @@ onMounted(() => {
         </div>
         <p v-else-if="!displayedPerks.length && !hasUsernameAppearance" class="wb-empty" role="status">
           <span class="wb-empty__title">还没有解锁任何权益</span>
-          可在积分商城兑换相应权益后开启。
         </p>
         <ul v-if="displayedPerks.length" class="wb-list" aria-label="我的权益">
           <li v-for="perk in displayedPerks" :key="perk.perk_code" class="wb-item">

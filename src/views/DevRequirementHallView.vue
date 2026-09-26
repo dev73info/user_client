@@ -717,7 +717,6 @@ function resetInitForm() {
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
           <h3 class="dev-section-title">可接需求</h3>
-          <p class="dev-section-desc">浏览平台上的可接需求并关联开发资源，排序与筛选即时生效。</p>
         </div>
       </div>
 

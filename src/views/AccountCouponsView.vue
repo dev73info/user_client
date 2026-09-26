@@ -2278,7 +2278,6 @@ onBeforeUnmount(() => {
     <section class="wallet-section account-settings-section">
       <div class="realname-form__head">
         <h3>账号与安全</h3>
-        <p class="entry-card__subtitle">登录凭证与第三方绑定</p>
       </div>
       <div v-for="group in accountEntryGroups" :key="group.title" class="entry-group">
         <p class="entry-group__title">{{ group.title }}</p>
@@ -2579,7 +2578,6 @@ onBeforeUnmount(() => {
         <el-card shadow="never" class="realname-card asign-account-card">
           <div class="realname-form__head">
             <h3>认证管理</h3>
-            <p class="entry-card__subtitle">实名主体、收款结算与电子签约账户都在这里</p>
           </div>
           <div v-for="group in realnameEntryGroups" :key="group.title" class="entry-group">
             <p class="entry-group__title">{{ group.title }}</p>
@@ -3426,14 +3424,6 @@ onBeforeUnmount(() => {
 }
 
 /* ── 账户入口：分组 + 行（「认证管理」「账号与安全」两张卡共用） ── */
-.entry-card__subtitle {
-  flex: 1 0 100%;
-  margin: 2px 0 0;
-  color: var(--profile-text-sub);
-  font-size: 13px;
-  font-weight: 400;
-}
-
 .entry-group {
   display: grid;
   gap: 10px;

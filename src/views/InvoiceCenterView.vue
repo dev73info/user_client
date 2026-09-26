@@ -31,13 +31,6 @@ const perspective = computed<'customer' | 'developer'>(
   () => (route.matched.some((record) => Boolean(record.meta.devArea)) ? 'developer' : 'customer'),
 )
 
-/* 卡头说明也按视角写：客户工作台说的是我收到的票，不提「上传」，那是乙方那一侧的动作。 */
-const cardDescription = computed(() => (
-  perspective.value === 'developer'
-    ? '你在各需求里以乙方身份开给客户的收入票：上传发票文件后即视为已开具，客户可下载；传错了可以重新上传替换。'
-    : '你申请开出的票都列在这里：平台服务费票，以及乙方开给你的收入票，开好后可在此查看与下载。'
-))
-
 const loading = ref(false)
 /** 接口返回的原始列表：两端共用的票都在里面，按工作台分过之后才是这一页要显示的。 */
 const allInvoices = ref<InvoiceRecord[]>([])
@@ -358,7 +351,6 @@ async function saveDocument(invoice: InvoiceRecord) {
       <div class="wb-card-head">
         <div class="wb-card-head__title-block">
           <h3 class="wb-card-head__title">我的发票</h3>
-          <p class="wb-card-head__desc">{{ cardDescription }}</p>
         </div>
       </div>
 
@@ -388,7 +380,6 @@ async function saveDocument(invoice: InvoiceRecord) {
       <div v-else-if="!filteredInvoices.length" class="wb-empty">
         <span class="wb-empty__title">{{ invoices.length ? '没有符合条件的发票' : '还没有发票记录' }}</span>
         <template v-if="invoices.length">
-          换个状态或关键字再试一次。
           <div class="wb-empty__actions">
             <el-button class="wb-toolbar__ghost" @click="resetFilters">
               <el-icon><RefreshLeft /></el-icon><span>清除筛选</span>

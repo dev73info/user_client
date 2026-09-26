@@ -151,7 +151,6 @@ function openDetail(item: MyContractSummary) {
       <div class="wb-card-head">
         <div class="wb-card-head__title-block">
           <h3 class="wb-card-head__title">我的合同</h3>
-          <p class="wb-card-head__desc">按下状态筛选合同，或按合同名称、编号与签约方搜索。</p>
         </div>
       </div>
 
@@ -187,7 +186,6 @@ function openDetail(item: MyContractSummary) {
       <div v-else-if="!filteredContracts.length" class="wb-empty" role="status">
         <span class="wb-empty__title">{{ contracts.length ? '没有符合条件的签署记录' : '暂无签署记录' }}</span>
         <template v-if="contracts.length">
-          换个状态或关键字再试一次。
           <div class="wb-empty__actions">
             <el-button class="wb-toolbar__ghost" @click="resetFilters">
               <el-icon><RefreshLeft /></el-icon><span>清除筛选</span>

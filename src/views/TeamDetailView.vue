@@ -342,10 +342,6 @@ onMounted(() => {
               </button>
             </div>
           </el-form>
-
-          <p v-else class="dev-team-detail__hint">
-            团队共享资源项目；成员与权限在下方列表里管理。
-          </p>
         </div>
       </section>
 
@@ -354,7 +350,6 @@ onMounted(() => {
         <div class="dev-card-head">
           <div class="dev-card-head__title-block">
             <h3 class="dev-section-title">成员</h3>
-            <p class="dev-section-desc">所有者与管理员可以邀请成员、调整角色或移除成员。</p>
           </div>
           <div class="dev-card-head__actions">
             <button v-if="isAdmin && !showInviteInput" type="button" class="dev-btn dev-btn--primary"
@@ -491,16 +486,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.dev-team-detail__hint {
-  flex: 1 1 320px;
-  min-width: 0;
-  margin: 0;
-  padding-top: 6px;
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--dev-muted);
 }
 
 /* 邀请行复用 .dev-toolbar：输入框走 .dev-toolbar__search，按钮走 __primary / __ghost，

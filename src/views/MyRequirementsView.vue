@@ -2480,7 +2480,6 @@ watch(
       <div class="wb-card-head">
         <div class="wb-card-head__title-block">
           <h3 class="wb-card-head__title">需求列表</h3>
-          <p class="wb-card-head__desc">按下状态筛选需求单，或按需求标题、编号与发布人搜索。</p>
         </div>
       </div>
 
@@ -2512,7 +2511,6 @@ watch(
           {{ myRequirements.length ? '没有符合条件的需求单' : '还没有提交过需求单' }}
         </span>
         <template v-if="myRequirements.length">
-          换个状态或关键字再试一次。
           <div class="wb-empty__actions">
             <el-button class="wb-toolbar__ghost" @click="resetFilters">
               <el-icon><RefreshLeft /></el-icon><span>清除筛选</span>

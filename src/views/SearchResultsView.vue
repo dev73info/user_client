@@ -463,11 +463,6 @@ function communityStatusLabel(status: CommunityPostStatus): string {
 
         <section v-else-if="resultCount === 0" class="portal-page__empty portal-page__empty--stacked">
             <strong>{{ keyword ? '没有找到匹配结果' : '还没有输入搜索关键词' }}</strong>
-            <span>{{
-                keyword
-                    ? '换个关键词，或切换搜索范围再试。'
-                    : '可以在顶部搜索栏输入资源名称、需求标题或编号。'
-                }}</span>
         </section>
 
         <template v-else>

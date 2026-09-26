@@ -152,9 +152,6 @@ const pageStatus = computed(() => {
   return `第 ${currentPage.value} 页 · ${start}-${end} 条`
 })
 const emptyTitle = computed(() => (hasActiveFilters.value ? '没有匹配的帖子' : '暂无帖子'))
-const emptyDescription = computed(() =>
-  hasActiveFilters.value ? '换个关键词或标签再试试。' : '成为第一位发布内容的人。',
-)
 const canEditSelectedPost = computed(() =>
   Boolean(auth.isAuthed && selectedPost.value && selectedPost.value.author === auth.username),
 )
@@ -1162,7 +1159,6 @@ async function toggleCommentLike(comment: CommunityComment) {
         <div v-if="loading" class="community-empty">社区内容加载中</div>
         <div v-else-if="posts.length === 0" class="community-empty">
           <strong>{{ emptyTitle }}</strong>
-          <span>{{ emptyDescription }}</span>
         </div>
         <div v-else class="community-post-list">
           <article v-for="post in posts" :key="post.id" class="community-post-card"
@@ -1475,7 +1471,6 @@ async function toggleCommentLike(comment: CommunityComment) {
 
         <section v-else class="community-panel community-empty">
           <strong>选择一篇帖子查看详情</strong>
-          <span>也可以直接发布新的社区内容。</span>
         </section>
       </aside>
     </section>

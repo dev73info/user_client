@@ -317,19 +317,6 @@ function emptyTitle() {
   return '暂无消息'
 }
 
-function emptyDescription() {
-  if (searchKeyword.value.trim()) {
-    return '换个关键词，或清空搜索后查看全部消息。'
-  }
-  if (activeFilter.value === 'active') {
-    return '需求被开发者接取后，会自动出现在这里。'
-  }
-  if (activeFilter.value === 'pending') {
-    return '当前可沟通的需求都已经同步为会话。'
-  }
-  return '当需求被开发者接取后，你可以在消息中心继续沟通需求细节。'
-}
-
 /** 工具栏右侧的「筛选出 N / M 条」只在搜索或筛选生效时出现，与其余菜单页同一口径 */
 const hasActiveThreadFilters = computed(
   () => searchKeyword.value.trim() !== '' || activeFilter.value !== 'all',
@@ -664,7 +651,6 @@ watch(
         <div class="dev-card-head">
           <div class="dev-card-head__title-block">
             <h3 class="dev-section-title">会话列表</h3>
-            <p class="dev-section-desc">按需求逐条沟通，搜索与筛选即时生效。</p>
           </div>
           <div class="dev-card-head__actions">
             <span class="dev-chip" :class="realtimeChipClass" :title="realtimeError">{{ realtimeStatusLabel }}</span>
@@ -702,7 +688,6 @@ watch(
 
         <div v-else-if="filteredThreads.length === 0" class="dev-empty-state">
           <strong class="dev-messages__empty-title">{{ emptyTitle() }}</strong>
-          <p class="dev-messages__empty-desc">{{ emptyDescription() }}</p>
           <div v-if="hasActiveThreadFilters" class="dev-list-actions dev-messages__empty-actions">
             <button class="dev-btn dev-btn--ghost" type="button" @click="resetThreadFilters">清空筛选</button>
           </div>
@@ -736,7 +721,6 @@ watch(
       <div class="wb-card-head">
         <div class="wb-card-head__title-block">
           <h3 class="wb-card-head__title">会话列表</h3>
-          <p class="wb-card-head__desc">按需求逐条沟通，搜索与筛选即时生效。</p>
         </div>
         <div class="wb-card-head__actions">
           <span v-if="auth.token" class="wb-badge" :class="realtimeBadgeClass" :title="realtimeError">
@@ -798,7 +782,6 @@ watch(
       <p v-if="loading" class="wb-empty" role="status">消息加载中…</p>
       <div v-else-if="filteredThreads.length === 0 && pendingHistoryVotes.length === 0" class="wb-empty">
         <span class="wb-empty__title">{{ emptyTitle() }}</span>
-        {{ emptyDescription() }}
         <div v-if="hasActiveThreadFilters" class="wb-empty__actions">
           <el-button class="wb-toolbar__ghost" @click="resetThreadFilters">
             <el-icon>
@@ -995,11 +978,6 @@ watch(
   display: block;
   color: var(--dev-ink);
   font-size: 15px;
-}
-
-.dev-messages__empty-desc {
-  margin: 6px 0 0;
-  color: var(--dev-muted);
 }
 
 .dev-messages__empty-actions {

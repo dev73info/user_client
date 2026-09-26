@@ -288,7 +288,6 @@ onMounted(async () => {
         <div class="wb-card-head">
           <div class="wb-card-head__title-block">
             <h3 class="wb-card-head__title">打赏记录</h3>
-            <p class="wb-card-head__desc">按收支方向筛选，或按对方用户名与附言搜索。</p>
           </div>
         </div>
 
@@ -317,8 +316,6 @@ onMounted(async () => {
         <p v-if="transferLoading" class="wb-empty" role="status">正在加载打赏记录…</p>
         <div v-else-if="!filteredTransfers.length" class="wb-empty" role="status">
           <span class="wb-empty__title">{{ transfers.length ? '没有符合条件的打赏记录' : '暂无打赏记录' }}</span>
-          <template v-if="transfers.length">换个方向或关键字再试一次。</template>
-          <template v-else>在积分打赏里送出一份心意后，记录会出现在这里。</template>
         </div>
         <template v-else>
           <ul class="wb-list" aria-label="打赏记录">
@@ -375,7 +372,6 @@ onMounted(async () => {
         </div>
         <p v-else-if="!logs.length" class="wb-empty" role="status">
           <span class="wb-empty__title">暂无积分明细</span>
-          签到、打赏与兑换产生的积分变动都会记在这里。
         </p>
         <template v-else>
           <ul class="wb-list" aria-label="积分明细">

@@ -122,14 +122,12 @@ onMounted(() => {
         <div class="wb-card-head">
           <div class="wb-card-head__title-block">
             <h3 class="wb-card-head__title">优惠券</h3>
-            <p class="wb-card-head__desc">点击券卡复制券码，下单时填入即可使用；已核销的券仍会显示在这里，带「已使用」标记。</p>
           </div>
         </div>
 
         <p v-if="loading" class="wb-empty" role="status">正在加载券包…</p>
         <p v-else-if="!coupons.length" class="wb-empty" role="status">
           <span class="wb-empty__title">暂无优惠券</span>
-          在优惠券领取页或平台活动中领到的券会出现在这里。
         </p>
         <div v-else class="coupon-groups">
           <div class="coupon-group">

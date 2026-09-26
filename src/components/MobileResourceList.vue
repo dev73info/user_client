@@ -504,7 +504,6 @@ watch(
 
             <div v-if="filteredItems.length === 0" class="mobile-empty">
                 <strong>当前筛选下暂无资源</strong>
-                <span>清空筛选可查看其他分区；也欢迎投稿插件、汉化、模板或教程。</span>
             </div>
             <button v-else-if="visibleItems.length < filteredItems.length" class="load-more" type="button"
                 @click="loadMore">

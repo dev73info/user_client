@@ -377,7 +377,6 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
           <h3 class="dev-section-title">团队资源项目</h3>
-          <p class="dev-section-desc">团队共享的资源项目，个人资源项目见「资源项目」页。</p>
         </div>
         <div class="dev-card-head__actions">
           <button class="dev-btn dev-btn--primary" type="button" @click="goCreate">
