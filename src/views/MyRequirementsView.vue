@@ -2539,46 +2539,49 @@ watch(
                   <strong>{{ item.title }}</strong>
                   <span>{{ item.requirement_id }}</span>
                 </div>
-                <div class="requirement-details wb-item__meta">
-                <small class="requirement-note">{{ paymentModeLabel(item) }} · {{ paymentModeHint(item) }}</small>
-                <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
-                  formatResourceVisibility(item)
-                  }}</small>
-                <small v-if="hasBoundResource(item)" class="requirement-note">交付版本：{{ publishedVersionCount(item) }}
-                  版{{ latestDeliveryVersionLabel(item) }}</small>
-                <small v-if="contractStatusHint(item)" class="requirement-note">{{
-                  contractStatusHint(item)
-                  }}</small>
-                <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">
-                  <strong>待审核删除版本：</strong>
-                  <span class="pending-review-pill">
-                    {{ pendingResourceVersionDeleteRequests(item).length }} 个待审核
-                  </span>
-                  <span class="pending-review-count">共 {{ pendingResourceVersionDeleteRequests(item).length }} 个</span>
-                </small>
-                <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">{{
-                  resourceVersionDeleteReviewHint(item)
-                  }}</small>
-                <small v-if="hasPendingResourceVersionDeleteReview(item)"
-                  class="requirement-note">点击当前需求行，可在下方展开审核卡片。</small>
-                <small v-else-if="
-                  hasBoundResource(item) &&
-                  item.resource_version_delete_request_status === 'rejected' &&
-                  item.resource_version_delete_review_note
-                " class="requirement-note">{{ resourceVersionDeleteReviewHint(item) }}</small>
-                <small v-if="item.status === 'rejected' && item.review_note" class="requirement-note">驳回原因：{{
-                  item.review_note }}</small>
-                <small v-if="hasPendingDeveloperUnbindRequest(item)" class="requirement-note">
-                  <strong>开发者申请解除绑定：</strong>{{ item.pending_unbind_request?.reason }}
-                </small>
-                <small v-if="hasPendingDeveloperUnbindRequest(item)" class="requirement-note">
-                  点击当前需求行，可同意解除（需求重新挂回大厅）或拒绝解除。
-                </small>
-                <small v-if="hasPendingUnbindRequest(item) && !hasPendingDeveloperUnbindRequest(item)"
-                  class="requirement-note">
-                  已提交解除申请，等待开发者确认。
-                </small>
-                <small v-if="settlementHint(item)" class="requirement-note">{{ settlementHint(item) }}</small>
+                <div class="requirement-details">
+                  <small class="requirement-note">{{ paymentModeLabel(item) }} · {{ paymentModeHint(item) }}</small>
+                  <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
+                    formatResourceVisibility(item)
+                    }}</small>
+                  <small v-if="hasBoundResource(item)" class="requirement-note">交付版本：{{
+                    publishedVersionCount(item) }} 版{{ latestDeliveryVersionLabel(item) }}</small>
+                  <small v-if="contractStatusHint(item)" class="requirement-note">{{
+                    contractStatusHint(item)
+                    }}</small>
+                  <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">
+                    <strong>待审核删除版本：</strong>
+                    <span class="pending-review-pill">
+                      {{ pendingResourceVersionDeleteRequests(item).length }} 个待审核
+                    </span>
+                    <span class="pending-review-count">共 {{ pendingResourceVersionDeleteRequests(item).length }} 个</span>
+                  </small>
+                  <small v-if="hasPendingResourceVersionDeleteReview(item)"
+                    class="requirement-note requirement-note--block">{{
+                      resourceVersionDeleteReviewHint(item)
+                      }}</small>
+                  <small v-if="hasPendingResourceVersionDeleteReview(item)"
+                    class="requirement-note">点击当前需求行，可在下方展开审核卡片。</small>
+                  <small v-else-if="
+                    hasBoundResource(item) &&
+                    item.resource_version_delete_request_status === 'rejected' &&
+                    item.resource_version_delete_review_note
+                  " class="requirement-note requirement-note--block">{{ resourceVersionDeleteReviewHint(item) }}</small>
+                  <small v-if="item.status === 'rejected' && item.review_note"
+                    class="requirement-note requirement-note--block">驳回原因：{{ item.review_note }}</small>
+                  <small v-if="hasPendingDeveloperUnbindRequest(item)"
+                    class="requirement-note requirement-note--block">
+                    <strong>开发者申请解除绑定：</strong>{{ item.pending_unbind_request?.reason }}
+                  </small>
+                  <small v-if="hasPendingDeveloperUnbindRequest(item)" class="requirement-note">
+                    点击当前需求行，可同意解除（需求重新挂回大厅）或拒绝解除。
+                  </small>
+                  <small v-if="hasPendingUnbindRequest(item) && !hasPendingDeveloperUnbindRequest(item)"
+                    class="requirement-note">
+                    已提交解除申请，等待开发者确认。
+                  </small>
+                  <small v-if="settlementHint(item)"
+                    class="requirement-note requirement-note--block">{{ settlementHint(item) }}</small>
                 </div>
               </div>
               <aside class="requirement-summary wb-item__side" aria-label="需求摘要">
@@ -3768,11 +3771,6 @@ watch(
 @media (max-width: 980px) {
   .my-requirements-summary__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .requirement-row {
-    grid-template-columns: minmax(0, 1fr);
-    align-items: stretch;
   }
 }
 
