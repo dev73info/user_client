@@ -203,6 +203,7 @@ components:
 - **Label caps（11px / 500 / `letter-spacing: 0.08em`）**：大写英文角标与标签。不要再低于 11px。
 - **Numeric**：金额与计数必须加 `font-variant-numeric: tabular-nums`，否则刷新时数字会跳动（`App.vue`、`InvoiceApplyDialog.vue` 有先例）。
 - **Code**：富文本代码块用 `'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace`。
+- **副标题非必要不用**：标题下不再顶一行装饰性副标题或灰字说明，只有承载必要信息（状态、倒计时、口径、必填提示）时才保留。
 
 **关于 Web 字体的现状（务必知道）**：代码里声明了三套字体栈，但仓库里**没有任何 `@font-face`，也没有字体 CDN 引用**，所以声明的 `Space Grotesk` / `IBM Plex Sans` 一个都不会加载，实际渲染成操作系统默认无衬线字体（Windows 上通常是微软雅黑）。
 
@@ -321,6 +322,7 @@ import './styles/dev.css'              // 4. 开发者侧（内含 5 个 @import
 - **Do** 富文本走 DOMPurify + 后端 ammonia 双重净化，URL 过白名单。
 - **Don't** 新建第三套令牌，或把页面级 `--profile-*` / `--signature-accent` / `--points-teal` 当全局用。
 - **Don't** 引入本文没登记的新的颜色值、圆角值或字号（尤其 10px 以下、20px 以上）。
+- **Don't** 给标题配装饰性副标题（标题下再顶一行灰字说明）；副标题只承载必要信息（状态、倒计时、口径、必填提示）。
 - **Don't** 新增媒体查询断点，只用 980 / 900 / 780 / 640。
 - **Don't** 写全局 Element Plus 主题覆盖，走局部 `--el-*`。
 - **Don't** 把开发者侧写回暖白底——那套暖调已经移除。
