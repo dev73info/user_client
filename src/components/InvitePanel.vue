@@ -141,14 +141,8 @@ defineExpose({ reload: loadInvite })
 <template>
     <section class="invite-panel" aria-label="邀请面板" :aria-busy="loading">
         <div class="wb-card-head">
-            <div class="wb-card-head__title-block">
-                <h3 class="wb-card-head__title">我的邀请</h3>
-            </div>
+            <h3 class="wb-card-head__title">我的邀请</h3>
             <div class="wb-card-head__actions">
-                <el-button class="wb-toolbar__primary" @click="copyText(inviteCode?.code || '', '邀请码')"
-                    :disabled="!inviteCode">
-                    <span>复制邀请码</span>
-                </el-button>
                 <RouterLink class="wb-btn wb-btn--ghost"
                     :to="{ name: 'workbench-invite-leaderboard' }">
                     查看排行榜
@@ -156,21 +150,14 @@ defineExpose({ reload: loadInvite })
             </div>
         </div>
 
-        <div class="wb-item invite-panel__code">
-            <div class="wb-item__main">
-                <span class="wb-item__meta">邀请码</span>
-                <span class="wb-item__title invite-panel__code-value">{{ inviteCode?.code || '--------' }}</span>
-            </div>
-            <div class="wb-item__side">
-                <el-button class="wb-toolbar__icon-btn" :disabled="!inviteCode" aria-label="复制邀请码"
-                    @click="copyText(inviteCode?.code || '', '邀请码')">
-                    <el-icon><Document /></el-icon>
-                </el-button>
-            </div>
-        </div>
-
-        <div class="wb-toolbar">
-            <span class="wb-strip__label">邀请方式</span>
+        <div class="invite-panel__code">
+            <span class="invite-panel__code-label">邀请码</span>
+            <span class="invite-panel__code-value">{{ inviteCode?.code || '--------' }}</span>
+            <el-button class="wb-toolbar__icon-btn invite-panel__code-copy" :disabled="!inviteCode"
+                title="复制邀请码" aria-label="复制邀请码"
+                @click="copyText(inviteCode?.code || '', '邀请码')">
+                <el-icon><Document /></el-icon>
+            </el-button>
             <ShareCardGenerator share-type="invite" />
         </div>
 
@@ -228,14 +215,44 @@ defineExpose({ reload: loadInvite })
 
 <style scoped>
 /* 版式走统一层（.wb-card-head / .wb-toolbar / .wb-list / .wb-item / .wb-empty），
-   本页只保留邀请码的字号与头像圆点。原来这里的 #2563eb / #eff6ff 与 8px 圆角都是这一族
+   本页只保留邀请码那一条横条与头像圆点。原来这里的 #2563eb / #eff6ff 与 8px 圆角都是这一族
    组件自己的色板，已并入统一层的 --wb-*；「查看排行榜」原来给自己写了一段链接按钮样式，
-   现在用统一层的 .wb-btn--ghost（与 .dev-btn--ghost 同规格）。 */
+   现在用统一层的 .wb-btn--ghost（与 .dev-btn--ghost 同规格）。
+
+   邀请码原来是 92px 高的一块（13px 标签 + 28px 大字、16/18 内距），下面再跟一行
+   「邀请方式 分享」，首屏被这两行占掉约 150px。现在合成一条 58px 的横条：标签与邀请码在左，
+   复制与分享这一对动作贴在右端；复制只留一处（原来卡头是文字按钮、条内是图标按钮，
+   同一个动作两个入口），卡头只留「查看排行榜」。 */
+.invite-panel__code {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    border: 1px solid var(--wb-line);
+    border-radius: var(--wb-radius-item);
+    background: rgba(255, 255, 255, 0.58);
+}
+
+.invite-panel__code-label {
+    color: var(--profile-text-sub, #64748b);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
 .invite-panel__code-value {
-    font-size: 28px;
-    line-height: 1.1;
+    color: var(--profile-text-main, #0f172a);
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.2;
     letter-spacing: 0.04em;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* 复制推开空档，让它与分享一起贴在右端（与列表行的动作位置一致），横条本身不因此变高 */
+.invite-panel__code-copy {
+    margin-left: auto;
 }
 
 .invite-panel__invitee {
@@ -245,8 +262,25 @@ defineExpose({ reload: loadInvite })
 }
 
 @media (max-width: 640px) {
+    /* 触屏档：整条与两个动作都至少 44px（复制按钮的高度由统一层给到 44px，
+       分享自带的 36px 高写在自己组件里，这里按同一条约定抬齐） */
+    .invite-panel__code {
+        min-height: 44px;
+        padding: 8px 12px;
+        gap: 10px;
+    }
+
     .invite-panel__code-value {
-        font-size: 22px;
+        font-size: 18px;
+    }
+
+    .invite-panel__code :deep(.share-card-generator__start) {
+        min-height: 44px;
+    }
+
+    /* 卡头只剩「查看排行榜」一个动作，统一层的两端对齐会把孤零零的按钮顶到左边 */
+    .invite-panel .wb-card-head__actions {
+        justify-content: flex-end;
     }
 }
 </style>
