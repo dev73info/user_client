@@ -785,6 +785,17 @@ a {
   outline-offset: 2px;
 }
 
+/* 胶囊里的计数（筛选胶囊上那一枚数字）：与门户侧 .wb-chip__count 同一档——
+   等宽数字、略淡，跟着胶囊自身的前景色走，选中态变白字时也自动跟着变。
+   门户侧的 .wb-chip 自带 gap，开发者侧的 .dev-chip 没有（它还要兜住状态标签），
+   所以这里补一个左间距，不要反过来给 .dev-chip 加 gap——那会把「图标 + 文字」的胶囊也撑开。 */
+.dev-chip__count {
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
 /* === 开发者页统一表格皮肤 ===
    所有列表页的 el-table 都加上 .dev-table，皮肤只在下面这一处定义。
    表头底色是冷灰蓝（--dev-bg 的淡色），不是原来的暖奶油 rgba(255,248,238,.96)；

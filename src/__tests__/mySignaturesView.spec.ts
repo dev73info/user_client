@@ -45,7 +45,8 @@ beforeEach(() => {
 
 async function render(component: typeof MySignaturesView | typeof UserWorkbenchView | typeof ContractSignView, detail = false) {
   const names = ['workbench', 'workbench-requirements', 'workbench-account',
-    'workbench-invoices', 'workbench-points', 'workbench-favorites', 'workbench-invite', 'workbench-teams',
+    'workbench-invoices', 'workbench-points', 'workbench-perks', 'workbench-coupons',
+    'workbench-badges', 'workbench-notifications', 'workbench-favorites', 'workbench-invite', 'workbench-teams',
     'workbench-team-resources', 'workbench-tickets', 'dev-resource-list', 'dev-requirement-hall',
     'dev-my-requirements', 'dev-wallet']
   const router = createRouter({ history: createMemoryHistory(), routes: [

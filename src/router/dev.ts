@@ -245,6 +245,18 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
       devArea: true,
     },
   },
+  // 系统通知与消息中心、工单中心同一办法：用户工作台与开发者工作台共用同一个页面，
+  // 各挂一条路由；开发者这条带 devArea，点进去侧边栏不会切回用户菜单。
+  {
+    path: 'developer/notifications',
+    name: 'dev-notifications',
+    component: () => import('@/views/NotificationCenterView.vue'),
+    meta: {
+      title: '系统通知',
+      description: '平台公告、评论警告与待确认事项。',
+      devArea: true,
+    },
+  },
   {
     path: 'developer/realname',
     redirect: { name: 'workbench-realname' },

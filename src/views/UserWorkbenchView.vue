@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Box, ChatDotRound, Close, Compass, Connection, DataAnalysis, Files, Grid, Menu as MenuIcon, Service, Switch as SwitchIcon, Tickets, UserFilled, Wallet } from '@element-plus/icons-vue'
+import { ArrowDown, Bell, Box, ChatDotRound, Close, Compass, Connection, DataAnalysis, Files, Grid, Menu as MenuIcon, Service, Suitcase, Switch as SwitchIcon, Tickets, UserFilled, Wallet } from '@element-plus/icons-vue'
 
 import { listRequirementConversations, type RequirementConversation } from '@/api/conversations'
 import { listMyRequirements } from '@/api/devRequirements'
@@ -64,6 +64,13 @@ const ticketsItem: WorkbenchMenuItem = {
   description: '提交问题与查看回复',
 }
 
+// 「系统通知」与工单中心同一档：夹在分组之外的底部一级条目里，两种工作台各有一条路由。
+const notificationsItem: WorkbenchMenuItem = {
+  label: '系统通知',
+  name: 'workbench-notifications',
+  description: '平台公告、评论警告与待确认的公开申请',
+}
+
 // 开发者工作台菜单：侧边栏切到开发者模式时展示（此前是底部「开发者工作台」折叠组的内容）。
 // 版式与用户菜单的一级条目一致（图标 + 加粗标题），切换模式时侧边栏只有文字在变。
 // 一级条目不再分小标题，按开发者每天的动线从上往下排：总览 → 资源 → 接单（交付与到账也在这一页）；
@@ -119,8 +126,8 @@ const teamMenuGroup: WorkbenchMenuGroup = {
 }
 
 // 分组头已经写着组名，因此这几类分组不再额外顶一行灰色小标题：
-// 账户服务、团队服务、财务中心都靠分组头识别，再加一行会把组名写成两遍。
-const GROUPS_WITHOUT_SECTION_LABEL = ['account', 'team', 'finance']
+// 账户服务、我的背包、团队服务、财务中心都靠分组头识别，再加一行会把组名写成两遍。
+const GROUPS_WITHOUT_SECTION_LABEL = ['account', 'inventory', 'team', 'finance']
 
 const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
   {
@@ -141,13 +148,30 @@ const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
       { label: '账户详情', name: 'workbench-account', description: '管理账户' },
       ...(realnameApproved.value ? [{ label: '我的合同', name: 'workbench-signatures', description: '查看合同与签署进度', activeNames: ['workbench-signature-detail'] }] : []),
         { label: '我的发票', name: 'workbench-invoices', description: '获取发票、查看与下载' },
-      { label: '我的背包', name: 'workbench-points', description: '查看积分余额与明细' },
       { label: '我的收藏', name: 'workbench-favorites', description: '查看收藏的社区帖子' },
       {
         label: '我的邀请',
         name: 'workbench-invite',
         description: '邀请好友得徽章，查看排行榜',
         activeNames: ['workbench-invite-leaderboard'],
+      },
+    ],
+  },
+  {
+    // 「我的背包」原先挂在「账户服务」下一条。积分、权益、券包、徽章是同一类东西
+    // （攒下来的、换回来的、戴在身上的），与账户资料、合同、发票这些「办事」的条目不是一回事，
+    // 四页也各是一页完整功能，收在一层折叠里会被当成账户设置的一部分。这里提出来单独成组。
+    key: 'inventory',
+    label: '我的背包',
+    icon: Suitcase,
+    items: [
+      { label: '积分中心', name: 'workbench-points', description: '查看积分余额、打赏与明细' },
+      { label: '权益中心', name: 'workbench-perks', description: '管理已解锁的权益与用户名颜色' },
+      { label: '优惠券中心', name: 'workbench-coupons', description: '查看券包并复制券码' },
+      {
+        label: '我的徽章墙',
+        name: 'workbench-badges',
+        description: '查看与佩戴获得的徽章',
       },
     ],
   },
@@ -255,6 +279,15 @@ const messagesAnchorIndex = computed(() =>
 // 侧边栏的高亮与链接都跟着当前模式走，点进去不会把菜单切回用户工作台。
 const ticketsRouteName = computed(() => (isDevWorkbenchMode.value ? 'dev-tickets' : 'workbench-tickets'))
 const ticketsMenuItem = computed<WorkbenchMenuItem>(() => ({ ...ticketsItem, name: ticketsRouteName.value }))
+
+// 「系统通知」同理：两端共用同一个页面，各挂一条自己的路由（见 router/dev.ts 的 dev-notifications）。
+const notificationsRouteName = computed(() =>
+  isDevWorkbenchMode.value ? 'dev-notifications' : 'workbench-notifications',
+)
+const notificationsMenuItem = computed<WorkbenchMenuItem>(() => ({
+  ...notificationsItem,
+  name: notificationsRouteName.value,
+}))
 
 watch(
   [() => auth.token, () => route.fullPath],
@@ -503,7 +536,7 @@ function findActiveItem() {
     return null
   }
 
-  return [...allMenuGroups.value.flatMap((group) => group.items), ticketsMenuItem.value]
+  return [...allMenuGroups.value.flatMap((group) => group.items), notificationsMenuItem.value, ticketsMenuItem.value]
     .find((item) => isMenuItemActive(item)) ?? null
 }
 
@@ -776,6 +809,20 @@ async function scrollToHash() {
 
             <section
               class="user-workbench__menu-group user-workbench__menu-group--standalone">
+              <!-- 「系统通知」与工单中心同属底部这一档：都不进上面几个分组，
+                   两种工作台各有一条自己的路由（开发者端 dev-notifications 带 devArea） -->
+              <RouterLink class="user-workbench__menu-link user-workbench__menu-link--root"
+                :class="{ active: isMenuItemActive(notificationsMenuItem) }"
+                :to="menuItemTo(notificationsMenuItem)" @click="closeMobileMenu">
+                <span class="user-workbench__menu-icon">
+                  <el-icon>
+                    <Bell />
+                  </el-icon>
+                </span>
+                <span>
+                  <strong>{{ notificationsItem.label }}</strong>
+                </span>
+              </RouterLink>
               <RouterLink class="user-workbench__menu-link user-workbench__menu-link--root"
                 :class="{ active: isMenuItemActive(ticketsMenuItem) }" :to="menuItemTo(ticketsMenuItem)"
                 @click="closeMobileMenu">

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { Document, Search } from '@element-plus/icons-vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { Document, RefreshLeft, Search } from '@element-plus/icons-vue'
 
 import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 import { getMyInviteCode, getMyInviteStats, type InviteCodeResponse, type InviteStatsResponse } from '@/api/invite'
+import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
@@ -17,18 +18,74 @@ const inviteCode = ref<InviteCodeResponse | null>(null)
 const stats = ref<InviteStatsResponse | null>(null)
 const loading = ref(false)
 const keyword = ref('')
+/** 加入时间档：邀请记录是一次全量取回，筛选与分页都在前端做（与我的合同、我的发票同一套口径）。 */
+const joinedScope = ref<'all' | 'week' | 'month'>('all')
 const invitees = computed(() => stats.value?.invitees ?? [])
+
+/**
+ * 加入时间距今天数；解析不出来时返回 null。
+ *
+ * null 的记录在任何时间档下都保留：时间字段异常不该让一条邀请记录从列表里消失，
+ * 在「全部」里看得到、换个档却看不到，会被当成数据丢了。
+ */
+function joinedDaysAgo(value: string): number | null {
+    const time = new Date(value).getTime()
+    if (Number.isNaN(time)) {
+        return null
+    }
+    return (Date.now() - time) / (24 * 60 * 60 * 1000)
+}
+
+/** 加入时间在近 N 天内（三个档位与列表过滤共用它，避免两处各写一遍天数）。 */
+function isWithinDays(invitee: { joined_at: string }, days: number): boolean {
+    const value = joinedDaysAgo(invitee.joined_at)
+    return value == null || value <= days
+}
+
+/** 当前选中的时间档是否收下这条记录：「全部」不筛。 */
+function matchesJoinedScope(invitee: { joined_at: string }): boolean {
+    if (joinedScope.value === 'all') {
+        return true
+    }
+    return isWithinDays(invitee, joinedScope.value === 'week' ? 7 : 30)
+}
+
+const scopeOptions = computed(() => [
+    { value: 'all' as const, label: '全部', count: invitees.value.length },
+    { value: 'week' as const, label: '近 7 天', count: invitees.value.filter((invitee) => isWithinDays(invitee, 7)).length },
+    { value: 'month' as const, label: '近 30 天', count: invitees.value.filter((invitee) => isWithinDays(invitee, 30)).length },
+])
 
 const filteredInvitees = computed(() => {
     const search = keyword.value.trim().toLocaleLowerCase()
-    if (!search) return invitees.value
-    return invitees.value.filter((invitee) => invitee.username.toLocaleLowerCase().includes(search))
+    return invitees.value.filter((invitee) => {
+        if (!matchesJoinedScope(invitee)) {
+            return false
+        }
+        if (!search) {
+            return true
+        }
+        return invitee.username.toLocaleLowerCase().includes(search)
+    })
 })
 
-const hasActiveFilters = computed(() => keyword.value.trim() !== '')
+const hasActiveFilters = computed(() => keyword.value.trim() !== '' || joinedScope.value !== 'all')
+
+/* 分页与其余菜单页同构（我的合同、我的发票、我的收藏都用这一套表尾分页器）。 */
+const {
+    page,
+    pageSize,
+    total: filteredTotal,
+    paged: pagedInvitees,
+    resetPage,
+} = useClientPagination(filteredInvitees)
+
+// 筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空列表。
+watch([keyword, joinedScope], resetPage)
 
 function resetFilters() {
     keyword.value = ''
+    joinedScope.value = 'all'
 }
 
 function joinedAt(value: string) {
@@ -121,16 +178,23 @@ defineExpose({ reload: loadInvite })
         </div>
 
         <div v-if="invitees.length || hasActiveFilters" class="wb-toolbar">
+            <div class="wb-chip-group" role="group" aria-label="加入时间">
+                <button v-for="scope in scopeOptions" :key="scope.value" type="button"
+                    class="wb-chip wb-chip--button" :class="{ 'is-active': joinedScope === scope.value }"
+                    :aria-pressed="joinedScope === scope.value" @click="joinedScope = scope.value">
+                    {{ scope.label }}<span class="wb-chip__count">{{ scope.count }}</span>
+                </button>
+            </div>
             <el-input v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索被邀请的用户名"
                 aria-label="搜索邀请记录">
                 <template #prefix><el-icon><Search /></el-icon></template>
             </el-input>
             <div class="wb-toolbar__actions">
                 <span v-if="hasActiveFilters" class="wb-toolbar__hint">
-                    筛选出 {{ filteredInvitees.length }} / {{ invitees.length }} 人
+                    筛选出 {{ filteredTotal }} / {{ invitees.length }} 人
                 </span>
                 <el-button v-if="hasActiveFilters" class="wb-toolbar__ghost" @click="resetFilters">
-                    <span>重置</span>
+                    <el-icon><RefreshLeft /></el-icon><span>重置</span>
                 </el-button>
             </div>
         </div>
@@ -138,19 +202,31 @@ defineExpose({ reload: loadInvite })
         <p v-if="loading && !invitees.length" class="wb-empty" role="status">正在加载邀请记录…</p>
         <div v-else-if="!filteredInvitees.length" class="wb-empty">
             <span class="wb-empty__title">{{ invitees.length ? '没有匹配的邀请记录' : '暂无邀请记录' }}</span>
-            {{ invitees.length ? '换个关键字再试一次。' : '把邀请码或邀请链接发给好友，对方注册后就会出现在这里。' }}
+            {{ invitees.length ? '换个时间档或关键字再试一次。' : '把邀请码或邀请链接发给好友，对方注册后就会出现在这里。' }}
         </div>
-        <ul v-else class="wb-list" aria-label="最近邀请">
-            <li v-for="invitee in filteredInvitees" :key="invitee.username" class="wb-item">
-                <div class="wb-item__main invite-panel__invitee">
-                    <span class="wb-avatar">{{ Array.from(invitee.username)[0] ?? '用' }}</span>
-                    <span class="wb-item__title">{{ invitee.username }}</span>
+        <template v-else>
+            <ul class="wb-list" aria-label="邀请记录">
+                <li v-for="invitee in pagedInvitees" :key="invitee.username" class="wb-item">
+                    <div class="wb-item__main invite-panel__invitee">
+                        <span class="wb-avatar">{{ Array.from(invitee.username)[0] ?? '用' }}</span>
+                        <span class="wb-item__title">{{ invitee.username }}</span>
+                    </div>
+                    <div class="wb-item__side">
+                        <span class="wb-item__meta">{{ joinedAt(invitee.joined_at) }} 加入</span>
+                    </div>
+                </li>
+            </ul>
+            <div class="wb-pager">
+                <div class="wb-pager__count">
+                    <span>共 {{ filteredTotal }} 条</span>
+                    <el-select v-model="pageSize" class="wb-pager__size" aria-label="每页邀请记录数">
+                        <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+                    </el-select>
                 </div>
-                <div class="wb-item__side">
-                    <span class="wb-item__meta">{{ joinedAt(invitee.joined_at) }} 加入</span>
-                </div>
-            </li>
-        </ul>
+                <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+                    :pager-count="5" layout="prev, pager, next" background aria-label="邀请记录分页" />
+            </div>
+        </template>
     </section>
 </template>
 

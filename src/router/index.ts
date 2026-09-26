@@ -110,7 +110,7 @@ const router = createRouter({
     {
       path: '/badges',
       name: 'badges',
-      redirect: { name: 'workbench-invite', hash: '#badges' },
+      redirect: { name: 'workbench-badges' },
     },
     {
       path: '/user/:username/badges',
@@ -217,12 +217,32 @@ const router = createRouter({
           },
         },
         {
+          // 「我的背包」下的四页：积分中心（余额、打赏、明细）、权益中心、优惠券中心、我的徽章墙。
+          // 路径 workbench/points 沿用原「我的背包」那一条，老书签仍然落到积分中心。
           path: 'points',
           name: 'workbench-points',
-          component: () => import('@/views/PointsView.vue'),
+          component: () => import('@/views/PointsCenterView.vue'),
           meta: {
-            title: '我的背包',
-            description: '查看积分余额与明细',
+            title: '积分中心',
+            description: '查看积分余额、打赏与明细',
+          },
+        },
+        {
+          path: 'perks',
+          name: 'workbench-perks',
+          component: () => import('@/views/PerksCenterView.vue'),
+          meta: {
+            title: '权益中心',
+            description: '管理已解锁的权益与用户名颜色',
+          },
+        },
+        {
+          path: 'coupons',
+          name: 'workbench-coupons',
+          component: () => import('@/views/CouponCenterView.vue'),
+          meta: {
+            title: '优惠券中心',
+            description: '查看券包并复制券码',
           },
         },
         {
@@ -250,7 +270,7 @@ const router = createRouter({
           component: () => import('@/views/InviteView.vue'),
           meta: {
             title: '我的邀请',
-            description: '邀请码、统计与徽章',
+            description: '邀请码、邀请记录与排行榜',
           },
         },
         {
@@ -263,9 +283,25 @@ const router = createRouter({
           },
         },
         {
+          // 徽章墙从「我的邀请」页底搬出来独立成页：邀请记录与徽章是两件事，读数条口径也不同。
           path: 'badges',
           name: 'workbench-badges',
-          redirect: { name: 'workbench-invite', hash: '#badges' },
+          component: () => import('@/views/BadgeCenterView.vue'),
+          meta: {
+            title: '我的徽章墙',
+            description: '查看与佩戴获得的徽章',
+          },
+        },
+        {
+          // 系统通知：三类系统消息（评论警告、历史沟通公开申请、平台公告）聚合展示。
+          // 开发者工作台另有 dev-notifications（见 router/dev.ts），同一个页面、各自一条路由。
+          path: 'notifications',
+          name: 'workbench-notifications',
+          component: () => import('@/views/NotificationCenterView.vue'),
+          meta: {
+            title: '系统通知',
+            description: '平台公告、评论警告与待确认事项',
+          },
         },
         {
           path: 'messages',

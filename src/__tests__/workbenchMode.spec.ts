@@ -14,13 +14,14 @@ vi.mock('@/api/devRequirements', () => ({ listMyRequirements: vi.fn().mockResolv
 // 开发者页面在 router/dev.ts 里都带 devArea 标记，侧边栏据此把整条菜单换成开发者菜单。
 // 团队服务已整体移入开发者工作台，这三个页面同样是 devArea 路由，不再属于用户菜单。
 // 消息中心与工单中心两端共用同一套页面，但各自一条路由：开发者端走 dev-messages / dev-tickets，
-// 点进去不会切回用户工作台，页面也据此走开发者体系的外观。
+// 点进去不会切回用户工作台，页面也据此走开发者体系的外观。系统通知与两者同一办法。
 const USER_ROUTE_NAMES = ['workbench', 'workbench-requirements', 'workbench-account',
-  'workbench-signatures', 'workbench-invoices', 'workbench-points', 'workbench-favorites', 'workbench-invite',
-  'workbench-tickets', 'workbench-messages']
+  'workbench-signatures', 'workbench-invoices', 'workbench-points', 'workbench-perks',
+  'workbench-coupons', 'workbench-badges', 'workbench-favorites', 'workbench-invite',
+  'workbench-tickets', 'workbench-messages', 'workbench-notifications']
 const DEV_ROUTE_NAMES = ['dev-home', 'dev-resource-list', 'dev-requirement-hall', 'dev-my-requirements', 'dev-wallet',
   'workbench-teams', 'workbench-team-detail', 'workbench-team-resources', 'dev-messages',
-  'dev-tickets', 'dev-invoices']
+  'dev-tickets', 'dev-invoices', 'dev-notifications']
 
 // 开发者路由的路径不都是 /workbench/developer/<name>：钱包按业务词分了分段路径，「我的发票」也是。
 // 侧边栏链接断言看的是真实 href，所以这里按生产路径（router/dev.ts）登记，其余沿用默认规则。
@@ -92,11 +93,27 @@ describe('workbench mode switch', () => {
     expect(sidebar(wrapper)).not.toContain('我的需求')
     expect(
       wrapper.findAll('.user-workbench__menu .user-workbench__menu-link--root').map((link) => link.text()),
-    ).toEqual(['工作台总览', '需求协作', '工单中心'])
-    // 消息中心是一级条目：排在「需求协作」之后、「账户服务」之前，不再嵌在需求协作的子菜单里
+    ).toEqual(['工作台总览', '需求协作', '系统通知', '工单中心'])
+    // 消息中心是一级条目：排在「需求协作」之后、「账户服务」之前，不再嵌在需求协作的子菜单里。
+    // 「我的背包」从「账户服务」里提出来，自己一个分组排在它后面。
     expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text()))
-      .toEqual(['消息中心', '账户服务'])
+      .toEqual(['消息中心', '账户服务', '我的背包'])
     expect(wrapper.find('.user-workbench__submenu .user-workbench__menu-group-head').exists()).toBe(false)
+
+    // 「我的背包」是独立分组：组内四页都在，账户服务里不再留这一条。
+    // 只剩一个页面的分组（「需求协作」）没有分组头，先挑出有分组头的那些。
+    const groups = wrapper.findAll('.user-workbench__menu-group')
+      .filter((group) => group.find('.user-workbench__menu-group-head').exists())
+    const accountGroup = groups.find((group) => group.find('.user-workbench__menu-group-head').text().includes('账户服务'))!
+    const inventoryGroup = groups.find((group) => group.find('.user-workbench__menu-group-head').text().includes('我的背包'))!
+    expect(accountGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()))
+      .toEqual(['账户详情', '我的合同', '我的发票', '我的收藏', '我的邀请'])
+    expect(inventoryGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()))
+      .toEqual(['积分中心', '权益中心', '优惠券中心', '我的徽章墙'])
+    expect(inventoryGroup.findAll('.user-workbench__submenu-link')[0]?.attributes('href'))
+      .toBe('/workbench/workbench-points')
+    expect(inventoryGroup.findAll('.user-workbench__submenu-link')[3]?.attributes('href'))
+      .toBe('/workbench/workbench-badges')
     wrapper.unmount()
   })
 
@@ -137,6 +154,8 @@ describe('workbench mode switch', () => {
     expect(text).toContain('团队资源')
     // 工单中心两种模式都保留：开发者工作台同样要能直接进工单
     expect(text).toContain('工单中心')
+    // 系统通知与工单中心同一档，两种工作台都有这一条
+    expect(text).toContain('系统通知')
     expect(wrapper.find('.user-workbench__mode-switch').attributes('aria-label')).toBe('回到用户工作台')
     expect(wrapper.find('.user-workbench__brand-title').text()).toBe('开发者工作台')
     wrapper.unmount()
@@ -208,6 +227,25 @@ describe('workbench mode switch', () => {
     await ticketsLink(user.wrapper).trigger('click')
     await flushPromises()
     expect(user.router.currentRoute.value.name).toBe('workbench-tickets')
+    expect(user.wrapper.find('.user-workbench__brand-title').text()).toBe('工作台')
+    user.wrapper.unmount()
+  })
+
+  it('系统通知在两种工作台各走各的路由：开发者端不切回用户菜单', async () => {
+    const notificationsLink = (w: Awaited<ReturnType<typeof render>>['wrapper']) =>
+      w.findAll('.user-workbench__menu-link--root').find((link) => link.text().includes('系统通知'))!
+
+    const dev = await render('dev-resource-list')
+    await notificationsLink(dev.wrapper).trigger('click')
+    await flushPromises()
+    expect(dev.router.currentRoute.value.name).toBe('dev-notifications')
+    expect(dev.wrapper.find('.user-workbench__brand-title').text()).toBe('开发者工作台')
+    dev.wrapper.unmount()
+
+    const user = await render('workbench')
+    await notificationsLink(user.wrapper).trigger('click')
+    await flushPromises()
+    expect(user.router.currentRoute.value.name).toBe('workbench-notifications')
     expect(user.wrapper.find('.user-workbench__brand-title').text()).toBe('工作台')
     user.wrapper.unmount()
   })
