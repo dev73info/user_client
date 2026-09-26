@@ -22,7 +22,11 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { createMyAdapaySettlementAccount, getMyAdapayMember } from '@/api/adapay'
+import {
+  changeMyAdapaySettlementAccount,
+  createMyAdapaySettlementAccount,
+  getMyAdapayMember,
+} from '@/api/adapay'
 import { HttpError, apiUrl } from '@/api/http'
 import {
   closeAccount,
@@ -128,7 +132,11 @@ const consentFileInput = ref<HTMLInputElement | null>(null)
 const businessLicenseUploading = ref(false)
 const businessLicenseFileInput = ref<HTMLInputElement | null>(null)
 const current = ref<UserRealnameVerification | null>(null)
-const adapayMember = ref<{ onboardingStatus: string; settleAccountId?: string | null } | null>(null)
+const adapayMember = ref<{
+  onboardingStatus: string
+  memberType?: string | null
+  settleAccountId?: string | null
+} | null>(null)
 const reviewerAvatarLoadFailed = ref(false)
 const faceidAuthUrl = ref('')
 const faceidQrDataUrl = ref('')
@@ -1271,6 +1279,8 @@ async function handleModifyMobileThree() {
 const settleDialogVisible = ref(false)
 const settleSaving = ref(false)
 const settleLoading = ref(false)
+/** 已绑定时是否进入「更换银行卡」表单；未绑定时表单直接展示，不依赖它 */
+const settleEditing = ref(false)
 const settleForm = reactive({
   card_id: '',
   bank_code: '',
@@ -1279,10 +1289,42 @@ const settleForm = reactive({
   bank_acct_type: '2',
 })
 
+/** 是否已绑定结算账户（决定提交时走「绑定」还是「更换」接口） */
+const settleBound = computed(() => Boolean(adapayMember.value?.settleAccountId))
+
+/** 当前实名主体对应的收款账户主体：企业 / 个体工商户走对公账户，其余按个人身份证。 */
+const settleExpectedMemberType = computed(() => (assignEnterprise.value ? 'enterprise' : 'personal'))
+
+/**
+ * 已绑定的收款账户是否还挂在旧主体上。
+ *
+ * 实名主体变更（个人 ↔ 企业）后，渠道侧会员与结算账户不会自动跟着换：旧账户挂在旧主体名下，
+ * 既改不了也重建不了。此时更换会按当前主体重新开通收款账户，界面必须先说清楚，
+ * 否则用户提交后才在渠道侧碰壁。
+ */
+const settleSubjectMismatch = computed(
+  () =>
+    Boolean(adapayMember.value?.memberType) &&
+    adapayMember.value?.memberType !== settleExpectedMemberType.value,
+)
+
+/** 企业主体的收款账户只能是对公账户，持证人固定取实名主体，因此不给用户改。 */
+const settleCorporateLocked = computed(() => assignEnterprise.value)
+
 const settleCities = computed(() => getSettlementCities(settleForm.prov_code))
 
 function changeSettleProvince() {
   settleForm.area_code = settleCities.value.length === 1 ? settleCities.value[0]!.value : ''
+}
+
+/** 清空银行卡表单，避免上次未提交的输入（尤其是更换时取消）残留到下一次打开 */
+function resetSettleForm() {
+  settleForm.card_id = ''
+  settleForm.bank_code = ''
+  settleForm.prov_code = ''
+  settleForm.area_code = ''
+  // 账户类型跟着实名主体走：企业主体只能绑对公账户，个人主体默认个人卡。
+  settleForm.bank_acct_type = settleCorporateLocked.value ? '1' : '2'
 }
 
 const settleStatusText = computed(() => {
@@ -1302,18 +1344,38 @@ const settleStatusTagType = computed<'success' | 'warning' | 'danger' | 'info'>(
   return 'info'
 })
 
-async function openSettleDialog() {
-  settleDialogVisible.value = true
-  settleLoading.value = true
+/** 重新拉取 Adapay 会员状态；失败时置空，让界面退化为「未绑定」而不是继续显示旧卡 */
+async function refreshAdapayMember() {
+  if (!auth.token) return
   try {
-    if (auth.token) {
-      adapayMember.value = await getMyAdapayMember(auth.token)
-    }
+    adapayMember.value = await getMyAdapayMember(auth.token)
   } catch {
     adapayMember.value = null
+  }
+}
+
+async function openSettleDialog() {
+  settleDialogVisible.value = true
+  settleEditing.value = false
+  resetSettleForm()
+  settleLoading.value = true
+  try {
+    await refreshAdapayMember()
   } finally {
     settleLoading.value = false
   }
+}
+
+/** 已绑定时由只读态切换到更换表单 */
+function startSettleChange() {
+  resetSettleForm()
+  settleEditing.value = true
+}
+
+/** 放弃更换，回到只读态 */
+function cancelSettleChange() {
+  resetSettleForm()
+  settleEditing.value = false
 }
 
 async function saveSettleAccount() {
@@ -1325,14 +1387,27 @@ async function saveSettleAccount() {
     showToast(err instanceof Error ? err.message : '请检查银行卡信息', 'warning')
     return
   }
+  // 提交前定一次语义：更换会先解绑旧卡，失败时界面要按真实状态回落
+  const changing = settleBound.value
   settleSaving.value = true
   try {
-    const member = await createMyAdapaySettlementAccount(auth.token, payload)
+    const member = changing
+      ? await changeMyAdapaySettlementAccount(auth.token, payload)
+      : await createMyAdapaySettlementAccount(auth.token, payload)
     adapayMember.value = member
-    showToast('结算账户已设置', 'success')
+    showToast(changing ? '收款银行卡已更换' : '结算账户已设置', 'success')
     settleDialogVisible.value = false
+    settleEditing.value = false
+    resetSettleForm()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '设置结算账户失败', 'error')
+    showToast(
+      err instanceof Error ? err.message : changing ? '更换收款银行卡失败' : '设置结算账户失败',
+      'error',
+    )
+    // 更换是「先解绑再重建」，失败可能停在已解绑的中间态，刷新后按真实状态展示
+    if (changing) {
+      await refreshAdapayMember()
+    }
   } finally {
     settleSaving.value = false
   }
@@ -2555,16 +2630,35 @@ onBeforeUnmount(() => {
               </div>
               <div class="settle-dialog__status-item">
                 <span>结算账户</span>
-                <strong>{{ adapayMember?.settleAccountId ? '已设置' : '未设置' }}</strong>
+                <strong>{{ settleBound ? '已设置' : '未设置' }}</strong>
               </div>
             </div>
+
+            <!-- 已绑定且未进入更换：只读态，给一个明确的更换入口 -->
+            <div v-if="settleBound && !settleEditing" class="settle-dialog__bound">
+              <p class="settle-dialog__hint">
+                当前已是可收款状态。更换银行卡时，平台会先解绑原卡再绑定新卡；新卡的持卡人姓名与证件号必须与实名认证信息一致，否则绑定会被渠道拒绝。
+              </p>
+              <el-button type="primary" plain @click="startSettleChange">
+                更换收款银行卡
+              </el-button>
+            </div>
+
             <el-form
-              v-if="!adapayMember?.settleAccountId"
+              v-else
               label-width="96px"
               class="settle-form"
               :disabled="settleSaving || settleLoading"
               @submit.prevent="saveSettleAccount"
             >
+              <el-alert
+                v-if="settleBound"
+                class="settle-form__alert"
+                type="warning"
+                :closable="false"
+                show-icon
+                title="确认提交后原银行卡会立即解绑，再绑定新卡；解绑与绑定之间暂时无法分账。"
+              />
               <el-form-item label="银行卡号" required>
                 <el-input v-model="settleForm.card_id" inputmode="numeric" placeholder="请输入收款银行卡号" />
               </el-form-item>
@@ -2620,8 +2714,11 @@ onBeforeUnmount(() => {
                 </el-select>
               </el-form-item>
               <el-form-item>
+                <el-button v-if="settleBound" :disabled="settleSaving" @click="cancelSettleChange">
+                  取消
+                </el-button>
                 <el-button type="primary" native-type="submit" :loading="settleSaving">
-                  {{ settleSaving ? '保存中...' : '保存结算账户' }}
+                  {{ settleSaving ? '保存中...' : settleBound ? '确认更换' : '保存结算账户' }}
                 </el-button>
               </el-form-item>
             </el-form>
@@ -4284,6 +4381,24 @@ onBeforeUnmount(() => {
 }
 
 .settle-form :deep(.el-form-item) {
+  margin-bottom: 14px;
+}
+
+/* 已绑定结算账户时的只读态：说明 + 更换入口 */
+.settle-dialog__bound {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+.settle-dialog__hint {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.settle-form__alert {
   margin-bottom: 14px;
 }
 </style>
