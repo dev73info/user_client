@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElConfigProvider } from 'element-plus'
-import { Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
+import { Promotion, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn.mjs'
 
 import {
@@ -19,7 +19,7 @@ import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPag
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
-/* 「我的背包 → 积分中心」：余额读数、积分打赏、积分记录（打赏记录 / 积分明细两段切换）。
+/* 「我的背包 → 积分中心」：余额读数、积分记录（打赏记录 / 积分明细两段切换）、积分打赏弹窗。
    权益（佩戴与用户名颜色）已拆到「权益中心」、券包已拆到「优惠券中心」、评论警告已移到「系统通知」，
    这一页不再一屏铺四件事。 */
 
@@ -42,6 +42,8 @@ const transferNote = ref('')
 const transferSaving = ref(false)
 const transferLoading = ref(false)
 const transfers = ref<PointsTransfer[]>([])
+/** 打赏表单收在弹窗里：入口是「积分记录」卡头右侧那颗主按钮。 */
+const transferDialogVisible = ref(false)
 
 // 打赏记录的筛选：记录是一次全量取回（上限 50 条），所以筛选与分页都在前端做。
 const transferKeyword = ref('')
@@ -220,15 +222,23 @@ async function submitTransfer() {
       note: transferNote.value.trim() || undefined,
     })
     showToast('打赏成功', 'success')
-    transferTo.value = ''
-    transferAmount.value = null
-    transferNote.value = ''
+    transferDialogVisible.value = false
+    resetTransferForm()
+    // 打完赏最想看到的是刚发生的那条，直接切到打赏记录那一段
+    activeRecordTab.value = 'transfers'
     await Promise.all([loadPoints(), loadTransfers()])
   } catch (err) {
     showToast(err instanceof Error ? err.message : '打赏失败', 'error')
   } finally {
     transferSaving.value = false
   }
+}
+
+/** 关闭弹窗即清空：下次打开是一张干净的表单，不会带上一次没提交完的接收方与金额。 */
+function resetTransferForm() {
+  transferTo.value = ''
+  transferAmount.value = null
+  transferNote.value = ''
 }
 
 onMounted(async () => {
@@ -268,30 +278,17 @@ onMounted(async () => {
         </div>
       </div>
 
-      <section class="wallet-section points-section points-section--transfer">
-        <div class="wb-card-head">
-          <div class="wb-card-head__title-block">
-            <h3 class="wb-card-head__title">积分打赏</h3>
-          </div>
-        </div>
-        <div class="transfer-form">
-          <el-input v-model="transferTo" placeholder="接收方用户名" clearable aria-label="接收方用户名" />
-          <el-input-number v-model="transferAmount" :min="1" :precision="0" placeholder="打赏金额"
-            class="transfer-form__amount" />
-          <el-input v-model="transferNote" placeholder="附言（可选）" clearable aria-label="打赏附言" />
-          <p v-if="transferAmount && transferAmount > 0" class="transfer-preview">
-            接收方到账 <strong>{{ transferReceived }}</strong> 积分 · 手续费 <strong>{{ transferFee }}</strong> 积分
-          </p>
-          <div class="transfer-form__submit">
-            <el-button class="wb-toolbar__primary" :loading="transferSaving" @click="submitTransfer">打赏</el-button>
-          </div>
-        </div>
-      </section>
-
+      <!-- 打赏表单不再常驻占一屏：入口在「积分记录」卡头右侧，表单收进弹窗（见文件末尾）。
+           这一页因此只留读数条与记录卡片两块。 -->
       <section class="wallet-section points-section points-section--records">
         <div class="wb-card-head">
           <div class="wb-card-head__title-block">
             <h3 class="wb-card-head__title">积分记录</h3>
+          </div>
+          <div class="wb-card-head__actions">
+            <el-button class="wb-toolbar__primary" @click="transferDialogVisible = true">
+              <el-icon><Promotion /></el-icon><span>积分打赏</span>
+            </el-button>
           </div>
         </div>
 
@@ -417,29 +414,56 @@ onMounted(async () => {
           </template>
         </div>
       </section>
+
+      <!-- 打赏弹窗会被 Element teleport 到 body，落在 .profile-page 之外，
+           必须自己挂统一层的 wb-dialog，否则弹窗里的 Element 主色退回默认蓝。 -->
+      <el-dialog v-model="transferDialogVisible" title="积分打赏" width="520px" align-center
+        class="wb-dialog points-transfer-dialog" @closed="resetTransferForm">
+        <div class="transfer-form">
+          <el-input v-model="transferTo" placeholder="接收方用户名" clearable aria-label="接收方用户名" />
+          <el-input-number v-model="transferAmount" :min="1" :precision="0" placeholder="打赏金额"
+            class="transfer-form__amount" aria-label="打赏金额" />
+          <el-input v-model="transferNote" placeholder="附言（可选）" clearable aria-label="打赏附言" />
+          <p v-if="transferAmount && transferAmount > 0" class="transfer-preview">
+            接收方到账 <strong>{{ transferReceived }}</strong> 积分 · 手续费 <strong>{{ transferFee }}</strong> 积分
+          </p>
+        </div>
+
+        <template #footer>
+          <el-button class="wb-toolbar__primary" :loading="transferSaving" @click="submitTransfer">打赏</el-button>
+        </template>
+      </el-dialog>
     </main>
   </ElConfigProvider>
 </template>
 
 <style scoped>
 /* 版式走统一层（.wb-strip / .wb-card-head / .wb-toolbar / .wb-chip / .wb-list / .wb-pager / .wb-empty / .wb-badge），
-   本页只留「打赏表单」与「记录区两段筛选」这两块统一层没有提供的布局。
+   本页只留「打赏弹窗里的表单」与「记录区两段筛选」这两块统一层没有提供的布局。
    原「我的背包」页把积分、权益、券包、评论警告四件事铺在一屏，拆页后各页只留自己那几块。 */
 
 .points-page {
   align-content: start;
 }
 
-/* === 打赏表单 === */
+/* === 打赏弹窗 ===
+   弹窗圆角并到统一层：Element 默认 4px，与本页 24px 的卡片、10px 的控件都不在同一档。
+   只给这一页的弹窗，不动 .wb-dialog 本身（别的页面也在用它）。 */
+:global(.points-transfer-dialog.el-dialog) {
+  border-radius: var(--wb-radius-item);
+}
+
+/* 表单搬进 520px 宽的弹窗后，两列栅格按弹窗内的可用宽度写：
+   第一行接收方占满，第二行金额与附言各半。 */
 .transfer-form {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(140px, 0.6fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   align-items: start;
 }
 
-/* 表单项与工具栏控件同高同圆角：统一层的控件规格只作用于 .wb-toolbar 与 .wb-pager，
-   这里的表单不在那些容器里，否则会出现「工具栏 36px 的输入框」与「表单 32px 的输入框」两种高度。 */
+/* 表单项与统一层控件同高同圆角：.wb-dialog 只映射了配色与圆角，没给控件高度，
+   不补这一段会出现「36px 的主按钮」配「32px 的输入框」。 */
 .transfer-form :deep(.el-input__wrapper),
 .transfer-form :deep(.el-input-number),
 .transfer-form :deep(.el-select__wrapper) {
@@ -448,19 +472,14 @@ onMounted(async () => {
   border-radius: var(--wb-radius-control);
 }
 
-.transfer-form__amount :deep(.el-input__wrapper) {
+/* el-input-number 默认宽 150px，在栅格列里要显式撑满，否则宽度留一半空 */
+.transfer-form__amount {
   width: 100%;
 }
 
 .transfer-form > .el-input:first-child,
-.transfer-form > .transfer-preview,
-.transfer-form > .transfer-form__submit {
+.transfer-form > .transfer-preview {
   grid-column: 1 / -1;
-}
-
-.transfer-form > .transfer-form__submit {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .transfer-preview {
@@ -491,18 +510,18 @@ onMounted(async () => {
   border-left: 1px solid var(--wb-line);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 640px) {
+  /* 弹窗在 640px 以下被 dev-responsive.css 收成 92vw，两列会挤成两个窄条，改单列 */
   .transfer-form {
     grid-template-columns: 1fr;
   }
 
-  .transfer-form > .el-input-number,
-  .transfer-form > .el-input:nth-child(3) {
-    grid-column: 1;
+  /* 卡头在窄屏改纵向，统一层的 __actions 给的是 space-between；
+     这里只有一个入口按钮，会因此贴到左边，与「入口靠右」的定位不符 */
+  .points-section--records .wb-card-head__actions {
+    justify-content: flex-end;
   }
-}
 
-@media (max-width: 640px) {
   .points-records__scopes {
     padding-left: 0;
     border-left: 0;
