@@ -30,6 +30,10 @@ export type UserRealnameVerification = {
   reviewed_at?: string | null
   created_at: string
   updated_at: string
+  /** 爱签实名认证流水号：仅走爱签核身的主体才有，用于「重新实名认证」。 */
+  asign_serial_no?: string | null
+  /** 是否处于「主体变更」：本行正在替换一份已通过的主体，撤回即取消变更、还原原主体。 */
+  changing_subject?: boolean
 }
 
 export type SubmitRealnameVerificationPayload = {
@@ -125,6 +129,8 @@ export async function completeWechatFaceidVerification(
 
 export type WithdrawRealnameVerificationResponse = {
   withdrawn: boolean
+  /** 本次撤回是「取消主体变更」：账号已还原成变更前那份实名主体，而不是回到未提交。 */
+  restored: boolean
 }
 
 export async function withdrawMyRealnameVerification(

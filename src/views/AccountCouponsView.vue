@@ -1,7 +1,25 @@
 <script setup lang="ts">
-import { ArrowRight, Promotion, RefreshRight } from '@element-plus/icons-vue'
+import {
+  ArrowRight,
+  Bell,
+  Connection,
+  CreditCard,
+  Iphone,
+  Key,
+  Lock,
+  Message,
+  OfficeBuilding,
+  Postcard,
+  Promotion,
+  RefreshLeft,
+  RefreshRight,
+  SwitchButton,
+  User,
+  Warning,
+} from '@element-plus/icons-vue'
 import QRCode from 'qrcode'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import type { Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { createMyAdapaySettlementAccount, getMyAdapayMember } from '@/api/adapay'
@@ -45,8 +63,10 @@ import {
 import {
   modifyCompanyInfo,
   modifyMobileByCode,
+  modifyMobileThree,
   modifySignPassword,
   modifyUserName,
+  reAuthUser,
   resetSignPassword,
   sendVerifyCode,
   startModSignPassword,
@@ -117,7 +137,8 @@ const faceidBizToken = ref('')
 const faceidBizId = ref('')
 const faceidDialogVisible = ref(false)
 const withdrawing = ref(false)
-const enterpriseConfirmVisible = ref(false)
+// 已通过认证后，只有进入「变更主体」模式才解锁表单，用新主体重新认证一遍。
+const realnameChangeMode = ref(false)
 const FACEID_POLL_INTERVAL_MS = 10_000
 
 const isMobile = ref(false)
@@ -190,7 +211,34 @@ const assignEnterprise = computed(
   () => current.value?.auth_type === 'ENTERPRISE' || current.value?.auth_type === 'SOLE_PROPRIETOR',
 )
 const realnameRejected = computed(() => current.value?.status === 'rejected')
-const realnameLocked = computed(() => current.value?.status === 'pending' || realnameApproved.value)
+// 已通过且已点「变更主体」：表单解锁，填的是新主体。
+const realnameChanging = computed(() => realnameApproved.value && realnameChangeMode.value)
+const realnameLocked = computed(
+  () =>
+    current.value?.status === 'pending' || (realnameApproved.value && !realnameChangeMode.value),
+)
+const realnamePending = computed(() => current.value?.status === 'pending')
+// 本行带着上一份主体的快照：撤回在这个状态下是「取消主体变更、还原原主体」，
+// 而不是把账号退回「未提交」。
+const realnameChangeBacked = computed(() => Boolean(current.value?.changing_subject))
+// 有东西可撤：认证/审核中，或主体变更被驳回后仍可撤回还原成原主体。
+const realnameCanWithdraw = computed(
+  () => realnamePending.value || (realnameRejected.value && realnameChangeBacked.value),
+)
+// 当前生效主体的一句话描述，用于「变更实名主体」提示用户换掉的是哪一份资料。
+const currentSubjectLabel = computed(() => {
+  const record = current.value
+  if (!record) return ''
+  if (record.auth_type === 'ENTERPRISE') return `企业 ${record.company_name ?? ''}`.trim()
+  if (record.auth_type === 'SOLE_PROPRIETOR') {
+    return `个体工商户 ${record.company_name ?? ''}`.trim()
+  }
+  if (record.auth_type === 'IDENTITY_CARD') {
+    const idNo = record.id_card_no_masked ?? ''
+    return `个人 ${record.real_name ?? ''}${idNo ? `（${idNo}）` : ''}`.trim()
+  }
+  return `个人 ${record.real_name ?? ''}`.trim()
+})
 const identityCardRequiredMissing = computed(
   () =>
     identityCardSelected.value &&
@@ -262,6 +310,7 @@ const idCardPlaceholder = computed(() => {
 })
 
 const submitButtonText = computed(() => {
+  if (realnameChanging.value) return '提交变更，重新认证'
   if (realnameApproved.value) return '已通过认证'
   if (realnameLocked.value && identityCardSelected.value) return '认证处理中'
   if (identityCardSelected.value) return current.value ? '重新发起实名认证' : '实名认证'
@@ -269,7 +318,43 @@ const submitButtonText = computed(() => {
   return '已提交，不能修改'
 })
 
+/// 清空实名主体字段，回到「可以填新主体」的空表单（证件类型 radio 不动）。
+function resetRealnameSubjectFields() {
+  form.idCardType = 1
+  form.realName = ''
+  form.idCardNo = ''
+  form.mobile = ''
+  form.companyName = ''
+  form.unifiedSocialCreditCode = ''
+  form.businessLicenseNo = ''
+  form.businessLicenseFile = ''
+  form.operatorName = ''
+  form.operatorIdCardNo = ''
+  form.guardianConsent = false
+  form.guardianConsentFile = ''
+}
+
+/// 进入「变更实名主体」：解锁表单并用空表单让用户填新主体，提交后由后端快照原主体，
+/// 认证通过前可撤回（撤回即取消变更、还原原来那份主体）。
+function startRealnameChange() {
+  realnameChangeMode.value = true
+  resetRealnameSubjectFields()
+  faceidDialogVisible.value = false
+  realnameDialogVisible.value = true
+}
+
+/// 放弃「变更实名主体」草稿：什么都没提交，直接回到只读状态。
+function cancelRealnameChange() {
+  realnameChangeMode.value = false
+  if (current.value) {
+    patchForm(current.value)
+  }
+  realnameDialogVisible.value = false
+}
+
 function patchForm(record: UserRealnameVerification) {
+  // 服务端数据一落地，表单就不再是「变更主体」草稿态（变更已提交或已取消）。
+  realnameChangeMode.value = false
   form.authType = record.auth_type
   form.realName = record.real_name ?? ''
   form.idCardNo = ''
@@ -529,7 +614,7 @@ async function startWechatFaceid() {
     return
   }
 
-  if (realnameApproved.value) {
+  if (realnameApproved.value && !realnameChanging.value) {
     showToast('实名认证已通过，无需重复核身', 'success')
     return
   }
@@ -783,6 +868,13 @@ watch(faceidAuthUrl, (url) => {
   }
 })
 
+// 关掉「提交认证信息」弹窗即放弃变更草稿：没提交过的变更，下次打开不该还是解锁态。
+watch(realnameDialogVisible, (visible) => {
+  if (!visible) {
+    realnameChangeMode.value = false
+  }
+})
+
 async function handleWithdraw() {
   auth.hydrate()
   if (!auth.token.trim()) {
@@ -792,24 +884,24 @@ async function handleWithdraw() {
 
   withdrawing.value = true
   try {
-    await withdrawMyRealnameVerification(auth.token)
+    const result = await withdrawMyRealnameVerification(auth.token)
     clearFaceidChallenge()
+    if (result.restored) {
+      // 取消主体变更：后端已把账号还原成变更前那份主体，这里只需刷新回「已通过」。
+      const record = await getMyRealnameVerification(auth.token)
+      current.value = record
+      reviewerAvatarLoadFailed.value = false
+      patchForm(record)
+      faceidDialogVisible.value = false
+      realnameDialogVisible.value = true
+      showToast('已取消主体变更，账号还原为变更前的实名主体', 'success')
+      return
+    }
     current.value = null
     reviewerAvatarLoadFailed.value = false
     // 重置表单回到「未提交」的可编辑状态
     form.authType = 'IDENTITY_CARD'
-    form.idCardType = 1
-    form.realName = ''
-    form.idCardNo = ''
-    form.mobile = ''
-    form.companyName = ''
-    form.unifiedSocialCreditCode = ''
-    form.businessLicenseNo = ''
-    form.businessLicenseFile = ''
-    form.operatorName = ''
-    form.operatorIdCardNo = ''
-    form.guardianConsent = false
-    form.guardianConsentFile = ''
+    resetRealnameSubjectFields()
     faceidDialogVisible.value = false
     realnameDialogVisible.value = true
     showToast('已撤回实名认证，可重新提交', 'success')
@@ -820,87 +912,359 @@ async function handleWithdraw() {
   }
 }
 
-/// 切换到企业认证：删除原有个人的实名认证，回到未提交，再打开企业认证表单引导填写。
-async function startEnterpriseCertification() {
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    showToast('登录状态已失效，请重新登录', 'error')
+// ── 账户入口：两张卡片共用同一套「分组 + 行」结构 ────────────────
+type AccountEntryStatus = { text: string; type: 'success' | 'warning' | 'danger' | 'info' }
+type AccountEntry = {
+  key: string
+  title: string
+  desc: string
+  icon: Component
+  status?: AccountEntryStatus
+  danger?: boolean
+  loading?: boolean
+}
+type AccountEntryGroup = { title: string; entries: AccountEntry[] }
+
+/// 实名认证入口的文案：按当前状态说清点进去能做什么，别让「审核中」还写着「开始认证」。
+const realnameEntryCopy = computed(() => {
+  const status = current.value?.status
+  if (status === 'pending') {
+    return { title: '查看认证进度', desc: '认证审核中，可查看进度或撤回本次申请' }
+  }
+  if (status === 'rejected') {
+    return {
+      title: '重新提交认证',
+      desc: current.value?.review_note || '上次认证未通过，请核对信息后重新提交',
+    }
+  }
+  if (status === 'approved') {
+    return { title: '查看认证信息', desc: `当前主体：${currentSubjectLabel.value}` }
+  }
+  return { title: '开始认证', desc: '提交真实身份信息，通过后可签署合同' }
+})
+
+/// 「认证管理」卡片：实名认证 / 收款与结算 / 电子签约账户三组入口。
+const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
+  const identity: AccountEntry[] = [
+    {
+      key: 'realname',
+      title: realnameEntryCopy.value.title,
+      desc: realnameEntryCopy.value.desc,
+      icon: Postcard,
+      status: { text: `实名认证：${statusText.value}`, type: statusType.value },
+    },
+  ]
+  if (realnamePending.value) {
+    identity.push({
+      key: 'faceid',
+      title: '继续人脸核身',
+      desc: '扫码完成人脸核验，也可在这里查询核验结果',
+      icon: Promotion,
+      loading: faceidRestoring.value,
+    })
+  }
+  if (realnameCanWithdraw.value) {
+    identity.push({
+      key: 'withdraw',
+      title: realnameChangeBacked.value ? '取消变更，还原原主体' : '撤回认证',
+      desc: '撤回后可重新填写主体信息',
+      icon: RefreshLeft,
+      danger: true,
+      loading: withdrawing.value,
+    })
+  }
+  if (realnameApproved.value) {
+    identity.push({
+      key: 'changeSubject',
+      title: '变更认证主体',
+      desc: '个人 / 企业 / 个体工商户之间切换，需重新认证',
+      icon: SwitchButton,
+    })
+    if (current.value?.asign_serial_no) {
+      identity.push({
+        key: 'reauth',
+        title: '重新实名认证',
+        desc: '爱签核验失效时，按原主体重新发起核验',
+        icon: RefreshRight,
+        loading: reAuthLoading.value,
+      })
+    }
+  }
+
+  const settle: AccountEntry[] = [
+    {
+      key: 'settle',
+      title: '结算账户',
+      desc: adapayMember.value?.settleAccountId
+        ? '收款银行卡已绑定，可查看或更换'
+        : '绑定收款银行卡后，合同款才能结算到账',
+      icon: CreditCard,
+      status: { text: `收款认证：${settleStatusText.value}`, type: settleStatusTagType.value },
+    },
+  ]
+
+  const sign: AccountEntry[] = [
+    { key: 'mobile', title: '绑定手机号', desc: '接收签署短信的手机号，可改绑', icon: Iphone },
+    { key: 'signPwd', title: '签约密码', desc: '签署合同时校验，可修改或重设', icon: Key },
+    assignEnterprise.value
+      ? {
+          key: 'company',
+          title: '企业信息',
+          desc: '变更企业名称会自动重新生成印章',
+          icon: OfficeBuilding,
+        }
+      : {
+          key: 'personal',
+          title: '个人信息',
+          desc: '变更姓名需要三要素或四要素校验',
+          icon: User,
+        },
+  ]
+
+  return [
+    { title: '实名认证', entries: identity },
+    { title: '收款与结算', entries: settle },
+    { title: '电子签约账户', entries: sign },
+  ]
+})
+
+/// 「账号与安全」卡片：登录凭证 / 第三方账号 / 危险操作三组入口。
+const accountEntryGroups = computed<AccountEntryGroup[]>(() => {
+  const providerEntry = (provider: 'github' | 'gitee' | 'qq'): AccountEntry => {
+    const bound = isProviderBound(provider)
+    return {
+      key: `bind:${provider}`,
+      title: providerLabel(provider),
+      desc: bound ? '已绑定，点击可解除绑定' : '绑定后可扫码快捷登录',
+      icon: Connection,
+      status: { text: bound ? '已绑定' : '未绑定', type: bound ? 'success' : 'info' },
+      loading: providerBindingLoading.value,
+    }
+  }
+
+  return [
+    {
+      title: '登录凭证',
+      entries: [
+        {
+          key: 'email',
+          title: '修改邮箱',
+          desc: profileEmail.value ? `当前邮箱：${profileEmail.value}` : '用于接收验证码与通知',
+          icon: Message,
+        },
+        { key: 'password', title: '修改密码', desc: '修改后其它设备需重新登录', icon: Lock },
+        {
+          key: 'username',
+          title: '修改用户名',
+          desc: '用户名同时是登录名，修改后请用新用户名登录',
+          icon: User,
+        },
+        {
+          key: 'twoFactor',
+          title: '两步验证',
+          desc: '登录时额外校验一次邮箱验证码',
+          icon: Bell,
+          status: {
+            text: twoFactorEnabled.value ? '已开启' : '未开启',
+            type: twoFactorEnabled.value ? 'success' : 'info',
+          },
+        },
+      ],
+    },
+    {
+      title: '第三方账号',
+      entries: [
+        {
+          key: 'bind:wechat',
+          title: '微信',
+          desc: wechatBound.value ? '已绑定，点击可解除绑定' : '绑定后可扫码快捷登录',
+          icon: Connection,
+          status: {
+            text: wechatBound.value ? '已绑定' : '未绑定',
+            type: wechatBound.value ? 'success' : 'info',
+          },
+          loading: wechatBindingLoading.value,
+        },
+        providerEntry('github'),
+        providerEntry('gitee'),
+        providerEntry('qq'),
+      ],
+    },
+    {
+      title: '危险操作',
+      entries: [
+        {
+          key: 'close',
+          title: '注销账号',
+          desc: '注销后账号与数据不可恢复',
+          icon: Warning,
+          danger: true,
+        },
+      ],
+    },
+  ]
+})
+
+/// 统一入口分发：模板只渲染，动作都在这里对号入座。
+function openAccountEntry(key: string) {
+  switch (key) {
+    case 'realname':
+      realnameDialogVisible.value = true
+      return
+    case 'faceid':
+      void continueFaceid()
+      return
+    case 'withdraw':
+      void handleWithdraw()
+      return
+    case 'changeSubject':
+      startRealnameChange()
+      return
+    case 'reauth':
+      void handleReAuthUser()
+      return
+    case 'settle':
+      void openSettleDialog()
+      return
+    case 'mobile':
+      openMobileDialog()
+      return
+    case 'signPwd':
+      openSignPasswordDialog()
+      return
+    case 'company':
+    case 'personal':
+      asignDialogKind.value = key
+      asignDialogVisible.value = true
+      return
+    case 'email':
+      emailDialogVisible.value = true
+      return
+    case 'password':
+      passwordDialogVisible.value = true
+      return
+    case 'username':
+      usernameDialogVisible.value = true
+      return
+    case 'twoFactor':
+      twoFactorDialogVisible.value = true
+      return
+    case 'close':
+      openAccountCloseDialog()
+      return
+  }
+
+  if (key.startsWith('bind:')) {
+    const provider = key.slice('bind:'.length)
+    if (provider === 'wechat') {
+      void handleWechatBinding()
+    } else if (provider === 'github' || provider === 'gitee' || provider === 'qq') {
+      void handleProviderBinding(provider)
+    }
+  }
+}
+
+/// 审核中继续人脸核身：先找回刷新后丢失的爱签核身链接，再打开核身弹窗。
+async function continueFaceid() {
+  if (!faceidAuthUrl.value) {
+    await restoreFaceidChallengeIfNeeded()
+  }
+  if (!faceidAuthUrl.value) {
+    showToast('暂时拿不到人脸核身链接，可撤回本次认证后重新提交', 'warning')
+    return
+  }
+  faceidDialogVisible.value = true
+}
+
+/// 重新实名认证：用库里存的爱签认证流水号，请爱签按原主体重新发起核验。
+async function handleReAuthUser() {
+  if (!requireToken()) return
+  const serialNo = current.value?.asign_serial_no?.trim()
+  if (!serialNo) {
+    showToast('当前主体没有爱签认证流水号，请改用「变更认证主体」', 'warning')
     return
   }
 
-  enterpriseConfirmVisible.value = false
-  withdrawing.value = true
+  reAuthLoading.value = true
   try {
-    // 若已有实名认证（含已通过），先删除，回到未提交
-    if (current.value) {
-      await withdrawMyRealnameVerification(auth.token)
+    const res = await reAuthUser(auth.token, { serialNo })
+    const target = res.data
+    if (typeof target === 'string' && /^https?:\/\//i.test(target)) {
+      window.open(target, '_blank', 'noopener,noreferrer')
+      showToast('已打开爱签重新认证页面', 'success')
+    } else {
+      showToast('已发起重新认证，请按爱签提示完成核验', 'success')
     }
-    clearFaceidChallenge()
-    current.value = null
-    reviewerAvatarLoadFailed.value = false
-    // 重置表单并切换到企业认证
-    form.authType = 'ENTERPRISE'
-    form.idCardType = 1
-    form.realName = ''
-    form.idCardNo = ''
-    form.mobile = ''
-    form.companyName = ''
-    form.unifiedSocialCreditCode = ''
-    form.businessLicenseNo = ''
-    form.businessLicenseFile = ''
-    form.operatorName = ''
-    form.operatorIdCardNo = ''
-    form.guardianConsent = false
-    form.guardianConsentFile = ''
-    faceidDialogVisible.value = false
-    realnameDialogVisible.value = true
-    showToast('已切换为企业认证，请填写企业认证信息', 'success')
+    await loadCurrentRealname()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '切换到企业认证失败', 'error')
+    showToast(err instanceof Error ? err.message : '重新实名认证失败', 'error')
   } finally {
-    withdrawing.value = false
+    reAuthLoading.value = false
   }
 }
 
 // ── 爱签账户管理（为电子签署准备） ──────────────────────────────
 const asignDialogVisible = ref(false)
 const asignDialogKind = ref('')
-const asignEntries = computed(() => {
-  const entries: { key: string; title: string }[] = [
-    { key: 'mobileByCode', title: '修改绑定手机号（验证码方式）' },
-    { key: 'signPwd', title: '修改签约密码' },
-    { key: 'startSignPwd', title: '初始化签约密码' },
-    { key: 'resetSignPwd', title: '重置签约密码' },
-  ]
-  if (assignEnterprise.value) {
-    entries.push({ key: 'company', title: '修改企业信息' })
-  } else {
-    entries.push({ key: 'personal', title: '修改个人信息' })
-  }
-  entries.push({ key: 'enterprise', title: '主体变更' })
-  return entries
-})
+// 「绑定手机号」弹窗里的方式：验证码 / 运营商三要素
+const asignMobileMethod = ref<'code' | 'three'>('code')
+// 「签约密码」弹窗里的路径：记得原密码 / 忘记原密码 / 首次设置
+const signPwdMethod = ref<'modify' | 'reset' | 'page'>('modify')
+const reAuthLoading = ref(false)
+
+const ASIGN_DIALOG_TITLES: Record<string, string> = {
+  mobile: '绑定手机号',
+  signPwd: '签约密码',
+  company: '企业信息',
+  personal: '个人信息',
+}
 const asignDialogTitle = computed(
-  () => asignEntries.value.find((e) => e.key === asignDialogKind.value)?.title ?? '爱签账户管理',
+  () => ASIGN_DIALOG_TITLES[asignDialogKind.value] ?? '爱签账户管理',
 )
 
-function openAsignDialog(key: string) {
-  // 初始化签约密码无表单，直接打开爱签设置页面，无需再弹窗。
-  if (key === 'startSignPwd') {
-    void handleStartModSignPassword()
-    return
-  }
-  // 企业认证：若已有个人认证，先弹窗确认，再删除并引导填写企业认证。
-  if (key === 'enterprise') {
-    if (current.value) {
-      enterpriseConfirmVisible.value = true
-    } else {
-      void startEnterpriseCertification()
-    }
-    return
-  }
-  asignDialogKind.value = key
+/// 绑定手机号：默认验证码方式，可切到运营商三要素。
+function openMobileDialog() {
+  asignMobileMethod.value = 'code'
+  asignDialogKind.value = 'mobile'
   asignDialogVisible.value = true
+}
+
+/// 签约密码：默认「我记得原密码」，可切到忘记重设或去爱签页面首次设置。
+function openSignPasswordDialog() {
+  signPwdMethod.value = 'modify'
+  asignDialogKind.value = 'signPwd'
+  asignDialogVisible.value = true
+}
+
+async function handleModifyMobileThree() {
+  if (!requireToken()) return
+  if (
+    !asign.mobileThree.name.trim() ||
+    !asign.mobileThree.idCard.trim() ||
+    !asign.mobileThree.mobile.trim()
+  ) {
+    showToast('请填写姓名、身份证号与新手机号', 'warning')
+    return
+  }
+  asignLoading.mobileThree = true
+  try {
+    const res = await modifyMobileThree(auth.token, {
+      name: asign.mobileThree.name.trim(),
+      idCard: asign.mobileThree.idCard.trim(),
+      mobile: asign.mobileThree.mobile.trim(),
+    })
+    if (res.success) {
+      showToast('手机号已修改', 'success')
+      asign.mobileThree.name = ''
+      asign.mobileThree.idCard = ''
+      asign.mobileThree.mobile = ''
+      asignDialogVisible.value = false
+    }
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '修改手机号失败', 'error')
+  } finally {
+    asignLoading.mobileThree = false
+  }
 }
 
 // ── Adapay 结算账户 ──────────────────────────────────────────
@@ -976,6 +1340,7 @@ async function saveSettleAccount() {
 
 const asign = reactive({
   mobileByCode: { mobile: '', code: '', ctoken: '' },
+  mobileThree: { name: '', idCard: '', mobile: '' },
   modifyPwd: { oldSignPwd: '', signPwd: '' },
   resetPwd: { signPwd: '' },
   company: { companyName: '', legalName: '', legalIdCard: '' },
@@ -984,6 +1349,7 @@ const asign = reactive({
 const asignLoading = reactive({
   sendCode: false,
   mobileByCode: false,
+  mobileThree: false,
   signPwd: false,
   startSignPwd: false,
   resetSignPwd: false,
@@ -1836,65 +2202,40 @@ onBeforeUnmount(() => {
 
     <section class="wallet-section account-settings-section">
       <div class="realname-form__head">
-        <h3>认证管理</h3>
+        <h3>账号与安全</h3>
+        <p class="entry-card__subtitle">登录凭证与第三方绑定</p>
       </div>
-      <div class="asign-account-card__entries">
-        <el-button class="account-entry" type="button" @click="emailDialogVisible = true">
-          <span>修改邮箱</span>
-          <el-icon class="account-entry__arrow"><ArrowRight /></el-icon>
-        </el-button>
-        <el-button class="account-entry" type="button" @click="passwordDialogVisible = true">
-          <span>修改密码</span>
-          <el-icon class="account-entry__arrow"><ArrowRight /></el-icon>
-        </el-button>
-        <el-button class="account-entry" type="button" @click="usernameDialogVisible = true">
-          <span>修改用户名</span>
-          <el-icon class="account-entry__arrow"><ArrowRight /></el-icon>
-        </el-button>
-        <el-button class="account-entry" type="button" @click="twoFactorDialogVisible = true">
-          <span>两步验证</span>
-          <el-icon class="account-entry__arrow"><ArrowRight /></el-icon>
-        </el-button>
-        <el-button
-          class="account-entry"
-          type="button"
-          :loading="wechatBindingLoading"
-          @click="handleWechatBinding"
-        >
-          <span>{{ wechatBound ? '解除绑定微信' : '绑定微信' }}</span>
-          <el-icon class="account-entry__arrow"><ArrowRight /></el-icon>
-        </el-button>
-        <el-button
-          class="account-entry"
-          type="button"
-          :loading="providerBindingLoading"
-          @click="handleProviderBinding('github')"
-        >
-          <span>{{ isProviderBound('github') ? '解除绑定Github' : '绑定Github' }}</span>
-          <el-icon class="account-entry__arrow"><ArrowRight /></el-icon>
-        </el-button>
-        <el-button
-          class="account-entry"
-          type="button"
-          :loading="providerBindingLoading"
-          @click="handleProviderBinding('gitee')"
-        >
-          <span>{{ isProviderBound('gitee') ? '解除绑定Gitee' : '绑定Gitee' }}</span>
-          <el-icon class="account-entry__arrow"><ArrowRight /></el-icon>
-        </el-button>
-        <el-button
-          class="account-entry"
-          type="button"
-          :loading="providerBindingLoading"
-          @click="handleProviderBinding('qq')"
-        >
-          <span>{{ isProviderBound('qq') ? '解除绑定QQ' : '绑定QQ' }}</span>
-          <el-icon class="account-entry__arrow"><ArrowRight /></el-icon>
-        </el-button>
-        <el-button class="account-entry account-entry--danger" type="button" @click="openAccountCloseDialog">
-          <span>注销账号</span>
-          <el-icon class="account-entry__arrow"><ArrowRight /></el-icon>
-        </el-button>
+      <div v-for="group in accountEntryGroups" :key="group.title" class="entry-group">
+        <p class="entry-group__title">{{ group.title }}</p>
+        <div class="entry-grid">
+          <el-button
+            v-for="entry in group.entries"
+            :key="entry.key"
+            class="entry-row"
+            :class="{ 'entry-row--danger': entry.danger }"
+            type="button"
+            :loading="Boolean(entry.loading)"
+            @click="openAccountEntry(entry.key)"
+          >
+            <span class="entry-row__icon">
+              <el-icon><component :is="entry.icon" /></el-icon>
+            </span>
+            <span class="entry-row__copy">
+              <span class="entry-row__title">{{ entry.title }}</span>
+              <small class="entry-row__desc">{{ entry.desc }}</small>
+            </span>
+            <el-tag
+              v-if="entry.status"
+              :type="entry.status.type"
+              size="small"
+              round
+              class="entry-row__status"
+            >
+              {{ entry.status.text }}
+            </el-tag>
+            <el-icon class="entry-row__arrow"><ArrowRight /></el-icon>
+          </el-button>
+        </div>
       </div>
     </section>
 
@@ -1912,6 +2253,27 @@ onBeforeUnmount(() => {
               >实名认证：{{ statusText }}</el-tag
             >
           </div>
+
+          <el-alert
+            v-if="realnameChanging"
+            type="warning"
+            :closable="false"
+            show-icon
+            title="变更实名主体"
+          >
+            当前生效主体：{{ currentSubjectLabel }}。请填写新主体，提交后需重新完成认证；
+            认证通过前账号实名状态为「认证中」，期间可撤回并还原为原主体。
+          </el-alert>
+
+          <el-alert
+            v-else-if="realnamePending && realnameChangeBacked"
+            type="info"
+            :closable="false"
+            show-icon
+            title="主体变更认证中"
+          >
+            认证通过前账号实名状态为「认证中」，可点下方「取消变更，还原原主体」回到变更前的实名主体。
+          </el-alert>
 
           <el-form label-position="top" class="realname-form" @submit.prevent>
             <el-form-item label="证件类型">
@@ -2107,6 +2469,23 @@ onBeforeUnmount(() => {
 
             <div class="realname-form__actions">
               <el-button
+                v-if="realnameCanWithdraw"
+                type="danger"
+                plain
+                :loading="withdrawing"
+                @click="handleWithdraw"
+              >
+                {{ realnameChangeBacked ? '取消变更，还原原主体' : '撤回认证' }}
+              </el-button>
+              <el-button
+                v-if="realnameChanging"
+                plain
+                :disabled="submitting || faceidStarting"
+                @click="cancelRealnameChange"
+              >
+                放弃变更
+              </el-button>
+              <el-button
                 type="primary"
                 class="realname-submit-btn"
                 :loading="submitting || faceidStarting"
@@ -2125,26 +2504,39 @@ onBeforeUnmount(() => {
         <el-card shadow="never" class="realname-card asign-account-card">
           <div class="realname-form__head">
             <h3>认证管理</h3>
+            <p class="entry-card__subtitle">实名主体、收款结算与电子签约账户都在这里</p>
           </div>
-          <div class="asign-account-card__entries">
-            <el-button class="asign-entry" @click="realnameDialogVisible = true">
-              <span>开始认证</span>
-              <el-icon class="asign-entry__arrow"><ArrowRight /></el-icon>
-            </el-button>
-            <el-button class="asign-entry" @click="openSettleDialog">
-              <span>结算账户</span>
-              <el-icon class="asign-entry__arrow"><ArrowRight /></el-icon>
-            </el-button>
-            <el-button
-              v-for="entry in asignEntries"
-              :key="entry.key"
-              class="asign-entry"
-              :loading="entry.key === 'startSignPwd' ? asignLoading.startSignPwd : false"
-              @click="openAsignDialog(entry.key)"
-            >
-              <span>{{ entry.title }}</span>
-              <el-icon class="asign-entry__arrow"><ArrowRight /></el-icon>
-            </el-button>
+          <div v-for="group in realnameEntryGroups" :key="group.title" class="entry-group">
+            <p class="entry-group__title">{{ group.title }}</p>
+            <div class="entry-grid">
+              <el-button
+                v-for="entry in group.entries"
+                :key="entry.key"
+                class="entry-row"
+                :class="{ 'entry-row--danger': entry.danger }"
+                type="button"
+                :loading="Boolean(entry.loading)"
+                @click="openAccountEntry(entry.key)"
+              >
+                <span class="entry-row__icon">
+                  <el-icon><component :is="entry.icon" /></el-icon>
+                </span>
+                <span class="entry-row__copy">
+                  <span class="entry-row__title">{{ entry.title }}</span>
+                  <small class="entry-row__desc">{{ entry.desc }}</small>
+                </span>
+                <el-tag
+                  v-if="entry.status"
+                  :type="entry.status.type"
+                  size="small"
+                  round
+                  class="entry-row__status"
+                >
+                  {{ entry.status.text }}
+                </el-tag>
+                <el-icon class="entry-row__arrow"><ArrowRight /></el-icon>
+              </el-button>
+            </div>
           </div>
         </el-card>
 
@@ -2243,6 +2635,7 @@ onBeforeUnmount(() => {
             <li>大陆居民身份证支持即时人脸核验。</li>
             <li>企业认证需平台人工审核，请耐心等待。</li>
             <li>审核通过后可用于合同签署。</li>
+            <li>已通过的主体如需更换，可在「认证管理」里点「变更实名主体」重新认证。</li>
           </ul>
         </el-card>
 
@@ -2296,9 +2689,9 @@ onBeforeUnmount(() => {
             </el-button>
           </div>
           <div class="realname-faceid-panel__actions">
-            <el-button type="danger" plain :loading="withdrawing" @click="handleWithdraw"
-              >撤回认证</el-button
-            >
+            <el-button type="danger" plain :loading="withdrawing" @click="handleWithdraw">
+              {{ realnameChangeBacked ? '取消变更，还原原主体' : '撤回认证' }}
+            </el-button>
             <el-button
               type="primary"
               class="realname-submit-btn"
@@ -2325,60 +2718,148 @@ onBeforeUnmount(() => {
           :close-on-click-modal="true"
           align-center
         >
-          <template v-if="asignDialogKind === 'mobileByCode'">
-            <p class="asign-hint">通过短信验证码更换爱签账户绑定的手机号，需先获取验证码。</p>
-            <div class="asign-row">
-              <el-input v-model="asign.mobileByCode.mobile" placeholder="新手机号" />
-              <el-button plain :loading="asignLoading.sendCode" @click="handleSendVerifyCode"
-                >发送验证码</el-button
+          <template v-if="asignDialogKind === 'mobile'">
+            <p class="asign-hint">换绑后，合同签署短信会发到新手机号。选择一种校验方式：</p>
+            <div class="asign-method-grid">
+              <button
+                class="asign-method"
+                :class="{ active: asignMobileMethod === 'code' }"
+                type="button"
+                @click="asignMobileMethod = 'code'"
               >
+                <span class="asign-method__name">短信验证码</span>
+                <small class="asign-method__desc">新手机号能收短信，验证后生效</small>
+              </button>
+              <button
+                class="asign-method"
+                :class="{ active: asignMobileMethod === 'three' }"
+                type="button"
+                @click="asignMobileMethod = 'three'"
+              >
+                <span class="asign-method__name">运营商三要素</span>
+                <small class="asign-method__desc">姓名 + 身份证号 + 新手机号，收不到短信时用</small>
+              </button>
             </div>
-            <div class="asign-row">
-              <el-input v-model="asign.mobileByCode.code" placeholder="短信验证码" />
+
+            <template v-if="asignMobileMethod === 'code'">
+              <div class="asign-row">
+                <el-input v-model="asign.mobileByCode.mobile" placeholder="新手机号" />
+                <el-button plain :loading="asignLoading.sendCode" @click="handleSendVerifyCode"
+                  >发送验证码</el-button
+                >
+              </div>
+              <div class="asign-row">
+                <el-input v-model="asign.mobileByCode.code" placeholder="短信验证码" />
+                <el-button
+                  type="primary"
+                  :loading="asignLoading.mobileByCode"
+                  @click="handleModifyMobileByCode"
+                  >确认修改</el-button
+                >
+              </div>
+            </template>
+
+            <template v-else>
+              <div class="asign-row">
+                <el-input v-model="asign.mobileThree.name" placeholder="姓名（与实名一致）" />
+              </div>
+              <div class="asign-row">
+                <el-input v-model="asign.mobileThree.idCard" placeholder="身份证号" />
+              </div>
+              <div class="asign-row">
+                <el-input v-model="asign.mobileThree.mobile" placeholder="新手机号" />
+              </div>
               <el-button
                 type="primary"
-                :loading="asignLoading.mobileByCode"
-                @click="handleModifyMobileByCode"
+                :loading="asignLoading.mobileThree"
+                @click="handleModifyMobileThree"
                 >确认修改</el-button
               >
-            </div>
+            </template>
           </template>
 
           <template v-else-if="asignDialogKind === 'signPwd'">
-            <p class="asign-hint">需提供旧签约密码，用于修改爱签账户签约密码。</p>
-            <div class="asign-row">
-              <el-input
-                v-model="asign.modifyPwd.oldSignPwd"
-                type="password"
-                placeholder="旧签约密码"
-              />
+            <p class="asign-hint">签约密码用于签署合同时校验身份。选择适合你的方式：</p>
+            <div class="asign-method-grid">
+              <button
+                class="asign-method"
+                :class="{ active: signPwdMethod === 'modify' }"
+                type="button"
+                @click="signPwdMethod = 'modify'"
+              >
+                <span class="asign-method__name">我记得原密码</span>
+                <small class="asign-method__desc">输入原密码与新密码完成修改</small>
+              </button>
+              <button
+                class="asign-method"
+                :class="{ active: signPwdMethod === 'reset' }"
+                type="button"
+                @click="signPwdMethod = 'reset'"
+              >
+                <span class="asign-method__name">忘记原密码</span>
+                <small class="asign-method__desc">直接设置新密码，立即生效</small>
+              </button>
+              <button
+                class="asign-method"
+                :class="{ active: signPwdMethod === 'page' }"
+                type="button"
+                @click="signPwdMethod = 'page'"
+              >
+                <span class="asign-method__name">首次设置</span>
+                <small class="asign-method__desc">还没设过密码，去爱签页面设置（需手机核验）</small>
+              </button>
             </div>
-            <div class="asign-row">
-              <el-input
-                v-model="asign.modifyPwd.signPwd"
-                type="password"
-                placeholder="新签约密码"
-              />
-            </div>
-            <el-button
-              type="primary"
-              :loading="asignLoading.signPwd"
-              @click="handleModifySignPassword"
-              >确认修改</el-button
-            >
-          </template>
 
-          <template v-else-if="asignDialogKind === 'resetSignPwd'">
-            <p class="asign-hint">忘记原签约密码时使用，设置后立即生效。</p>
-            <div class="asign-row">
-              <el-input v-model="asign.resetPwd.signPwd" type="password" placeholder="新签约密码" />
-            </div>
-            <el-button
-              type="primary"
-              :loading="asignLoading.resetSignPwd"
-              @click="handleResetSignPassword"
-              >确认重置</el-button
-            >
+            <template v-if="signPwdMethod === 'modify'">
+              <div class="asign-row">
+                <el-input
+                  v-model="asign.modifyPwd.oldSignPwd"
+                  type="password"
+                  placeholder="原签约密码"
+                />
+              </div>
+              <div class="asign-row">
+                <el-input
+                  v-model="asign.modifyPwd.signPwd"
+                  type="password"
+                  placeholder="新签约密码"
+                />
+              </div>
+              <el-button
+                type="primary"
+                :loading="asignLoading.signPwd"
+                @click="handleModifySignPassword"
+                >确认修改</el-button
+              >
+            </template>
+
+            <template v-else-if="signPwdMethod === 'reset'">
+              <div class="asign-row">
+                <el-input
+                  v-model="asign.resetPwd.signPwd"
+                  type="password"
+                  placeholder="新签约密码"
+                />
+              </div>
+              <el-button
+                type="primary"
+                :loading="asignLoading.resetSignPwd"
+                @click="handleResetSignPassword"
+                >确认重置</el-button
+              >
+            </template>
+
+            <template v-else>
+              <p class="asign-hint">
+                点击下方按钮会跳转到爱签页面，按页面提示用手机核验后设置新密码。
+              </p>
+              <el-button
+                type="primary"
+                :loading="asignLoading.startSignPwd"
+                @click="handleStartModSignPassword"
+                >去爱签页面设置</el-button
+              >
+            </template>
           </template>
 
           <template v-else-if="asignDialogKind === 'company'">
@@ -2421,23 +2902,6 @@ onBeforeUnmount(() => {
               >确认修改</el-button
             >
           </template>
-        </el-dialog>
-
-        <el-dialog
-          v-model="enterpriseConfirmVisible"
-          title="切换为企业认证"
-          class="asign-dialog"
-          width="480px"
-          :close-on-click-modal="false"
-          align-center
-        >
-          <p class="asign-hint">切换为企业认证后，当前个人实名认证将失效并被删除。是否继续？</p>
-          <div class="asign-confirm__actions">
-            <el-button @click="enterpriseConfirmVisible = false">取消</el-button>
-            <el-button type="primary" :loading="withdrawing" @click="startEnterpriseCertification"
-              >继续</el-button
-            >
-          </div>
         </el-dialog>
       </div>
     </section>
@@ -2864,79 +3328,148 @@ onBeforeUnmount(() => {
   grid-column: 1 / -1;
 }
 
-.account-entries-card {
-  grid-column: 1 / -1;
-  display: grid;
-  gap: 14px;
-  align-content: start;
+/* ── 账户入口：分组 + 行（「认证管理」「账号与安全」两张卡共用） ── */
+.entry-card__subtitle {
+  flex: 1 0 100%;
+  margin: 2px 0 0;
+  color: var(--profile-text-sub);
+  font-size: 13px;
+  font-weight: 400;
 }
 
-.account-entries {
+.entry-group {
+  display: grid;
+  gap: 10px;
+}
+
+.realname-form__head + .entry-group {
+  margin-top: 12px;
+}
+
+.entry-group + .entry-group {
+  margin-top: 18px;
+}
+
+.entry-group__title {
+  margin: 0;
+  color: var(--profile-text-sub);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.entry-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
-.account-entry.el-button {
+.entry-row.el-button {
   width: 100%;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0;
-  padding: 14px 16px;
   height: auto;
+  min-height: 56px;
+  margin: 0;
+  padding: 12px 14px;
+  justify-content: flex-start;
+  gap: 12px;
   border-radius: 12px;
-  border: 1px solid rgba(226, 232, 240, 0.92);
+  border: 1px solid var(--profile-card-border);
   background: rgba(248, 250, 252, 0.92);
-  color: #0f172a;
-  font-weight: 600;
+  color: var(--profile-text-main);
   text-align: left;
+  white-space: normal;
 }
 
-.account-entry.el-button:hover {
-  border-color: rgba(96, 165, 250, 0.55);
-  background: rgba(239, 246, 255, 0.96);
-  color: #1d4ed8;
+.entry-row.el-button:hover {
+  border-color: var(--profile-accent);
+  background: var(--profile-accent-soft);
+  color: var(--profile-text-main);
 }
 
-.account-entry--danger.el-button {
-  grid-column: 1 / -1;
-  border-color: rgba(252, 165, 165, 0.72);
-  background: rgba(254, 242, 242, 0.94);
-  color: #b91c1c;
-}
-
-.account-entry--danger.el-button:hover {
-  border-color: rgba(248, 113, 113, 0.82);
-  background: rgba(254, 226, 226, 0.98);
-  color: #991b1b;
-}
-
-.account-entry.el-button.is-disabled {
-  background: rgba(241, 245, 249, 0.8);
-  border-color: rgba(226, 232, 240, 0.8);
-  color: #94a3b8;
-  cursor: not-allowed;
-}
-
-.account-entry.el-button.is-disabled:hover {
-  background: rgba(241, 245, 249, 0.8);
-  border-color: rgba(226, 232, 240, 0.8);
-  color: #94a3b8;
-}
-
-.account-entry.el-button.is-disabled .account-entry__arrow {
-  color: #cbd5e1;
-  transform: none;
-}
-
-.account-entry__arrow {
-  color: #94a3b8;
+.entry-row__icon {
+  display: inline-flex;
   flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--profile-accent-soft);
+  color: var(--profile-accent);
+  font-size: 15px;
+}
+
+.entry-row__copy {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 2px;
+  min-width: 0;
+}
+
+.entry-row__title {
+  color: var(--profile-text-main);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.entry-row__desc {
+  color: var(--profile-text-sub);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.entry-row__status {
+  flex: 0 0 auto;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.entry-row__arrow {
+  flex: 0 0 auto;
+  color: var(--profile-text-soft);
   transition: transform 0.2s ease;
 }
 
-.account-entry.el-button:hover .account-entry__arrow {
+.entry-row.el-button:hover .entry-row__arrow {
+  color: var(--profile-accent);
   transform: translateX(3px);
+}
+
+.entry-row--danger.el-button {
+  grid-column: 1 / -1;
+  border-color: rgba(252, 165, 165, 0.72);
+  background: var(--profile-danger-soft);
+  color: var(--profile-danger-text);
+}
+
+.entry-row--danger.el-button:hover {
+  border-color: rgba(248, 113, 113, 0.82);
+  color: var(--profile-danger-text);
+}
+
+.entry-row--danger.el-button .entry-row__icon {
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--profile-danger-text);
+}
+
+.entry-row--danger.el-button .entry-row__title,
+.entry-row--danger.el-button .entry-row__desc {
+  color: var(--profile-danger-text);
+}
+
+.entry-row.el-button.is-disabled,
+.entry-row.el-button.is-disabled:hover {
+  border-color: var(--profile-card-border);
+  background: rgba(241, 245, 249, 0.8);
+  color: var(--profile-text-soft);
+}
+
+.entry-row.el-button.is-disabled .entry-row__title,
+.entry-row.el-button.is-disabled .entry-row__desc,
+.entry-row.el-button.is-disabled .entry-row__arrow {
+  color: var(--profile-text-soft);
+  transform: none;
 }
 
 .account-security-head {
@@ -3163,10 +3696,6 @@ onBeforeUnmount(() => {
 
   .account-coupons-summary__grid strong {
     white-space: normal;
-  }
-
-  .account-entries {
-    grid-template-columns: 1fr;
   }
 
   .account-password-row--send,
@@ -3599,52 +4128,21 @@ onBeforeUnmount(() => {
   background: linear-gradient(135deg, #1d4ed8, #3b82f6);
 }
 
-@media (max-width: 720px) {
-  :deep(.realname-card .el-card__body) {
-    padding: 16px;
-  }
-
-  .asign-account-card__entries {
+@media (max-width: 780px) {
+  .entry-grid {
     grid-template-columns: 1fr;
   }
 }
 
-.asign-account-card__entries {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 14px;
-}
+@media (max-width: 640px) {
+  :deep(.realname-card .el-card__body) {
+    padding: 16px;
+  }
 
-.asign-entry.el-button {
-  width: 100%;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0;
-  padding: 14px 16px;
-  height: auto;
-  border-radius: 12px;
-  border: 1px solid rgba(226, 232, 240, 0.92);
-  background: rgba(248, 250, 252, 0.92);
-  color: #0f172a;
-  font-weight: 600;
-  text-align: left;
-}
-
-.asign-entry.el-button:hover {
-  border-color: rgba(96, 165, 250, 0.55);
-  background: rgba(239, 246, 255, 0.96);
-  color: #1d4ed8;
-}
-
-.asign-entry__arrow {
-  color: #94a3b8;
-  flex: 0 0 auto;
-  transition: transform 0.2s ease;
-}
-
-.asign-entry.el-button:hover .asign-entry__arrow {
-  transform: translateX(3px);
+  .entry-row.el-button {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
 }
 
 :global(.asign-dialog.el-dialog) {
@@ -3689,11 +4187,48 @@ onBeforeUnmount(() => {
   background: linear-gradient(135deg, #1d4ed8, #3b82f6);
 }
 
-.asign-confirm__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 18px;
+/* ── 弹窗内的方式选择（绑定手机号 / 签约密码） ── */
+.asign-method-grid {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.asign-method {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.92);
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.asign-method:hover {
+  border-color: rgba(96, 165, 250, 0.55);
+  background: rgba(239, 246, 255, 0.96);
+}
+
+.asign-method.active {
+  border-color: rgba(37, 99, 235, 0.82);
+  background: rgba(219, 234, 254, 0.72);
+}
+
+.asign-method__name {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.asign-method__desc {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .asign-row {
