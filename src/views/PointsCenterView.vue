@@ -265,9 +265,6 @@ onMounted(async () => {
         <div class="wb-card-head">
           <div class="wb-card-head__title-block">
             <h3 class="wb-card-head__title">积分打赏</h3>
-            <p class="wb-card-head__desc">
-              向你认可的用户打赏积分，平台按 {{ feeRate }}% 收取手续费（接收方到账 {{ 100 - feeRate }}%）。
-            </p>
           </div>
         </div>
         <div class="transfer-form">
@@ -355,9 +352,6 @@ onMounted(async () => {
         <div class="wb-card-head">
           <div class="wb-card-head__title-block">
             <h3 class="wb-card-head__title">积分明细</h3>
-            <p class="wb-card-head__desc">
-              每笔积分变动的流水，按时间倒序；这一列走服务端分页，所以不提供关键字筛选。
-            </p>
           </div>
         </div>
 
