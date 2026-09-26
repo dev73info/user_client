@@ -14,7 +14,6 @@ const agreement = ref<UserServiceAgreement | null>(null)
 const loading = ref(true)
 
 const staticTitle = '用户服务协议'
-const staticLead = '欢迎使用柒叁信息 73Info 平台。请在注册或使用服务前完整阅读并理解本协议。'
 
 function detectClientPlatform(): string {
   if (typeof navigator === 'undefined') return 'web'
@@ -85,7 +84,6 @@ function splitLines(content: string): { text: string; isHeading: boolean }[] {
             <header class="panel-head">
                 <div>
                     <h2>{{ agreement?.title || staticTitle }}</h2>
-                    <p class="lead">{{ staticLead }}</p>
                 </div>
                 <button class="top-back" type="button" @click="goBack">返回</button>
             </header>

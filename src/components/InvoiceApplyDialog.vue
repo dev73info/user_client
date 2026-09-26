@@ -47,7 +47,6 @@ const DRAFT_KEY = 'invoice_apply_draft_v1'
 
 /** 两侧共用的抬头 / 税号 / 邮箱分别对应哪种票、由谁开具。 */
 const COPY: Record<'customer' | 'developer', {
-  kicker: string
   title: string
   issuer: string
   hint: string
@@ -55,7 +54,6 @@ const COPY: Record<'customer' | 'developer', {
   submitText: string
 }> = {
   customer: {
-    kicker: 'CUSTOMER / INVOICE',
     title: '获取发票',
     issuer: '平台票 + 开发者票',
     hint: '一次申请把本需求能开的票都开出来：平台服务费票由平台开具，开发者收入票由乙方开具，两张票共用这份抬头。',
@@ -63,7 +61,6 @@ const COPY: Record<'customer' | 'developer', {
     submitText: '提交开票申请',
   },
   developer: {
-    kicker: 'DEVELOPER / INVOICE',
     title: '获取开发者发票',
     issuer: '开发者发票',
     hint: '开发者收入发票由乙方开具给需求方：抬头与税号按需求方实名主体带出，需求方为企业或个体工商户时税号必填；发票文件上传后需求方可在「我的发票」下载。',
@@ -432,7 +429,6 @@ onUnmounted(() => {
       <article class="invoice-panel invoice-modal" role="dialog" aria-modal="true" :aria-label="copy.title">
         <div class="invoice-panel__head invoice-modal__head">
           <div>
-            <span class="invoice-panel__kicker">{{ copy.kicker }}</span>
             <h2>{{ copy.title }}</h2>
           </div>
           <strong>{{ copy.issuer }}</strong>
@@ -564,13 +560,6 @@ onUnmounted(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-}
-
-.invoice-panel__kicker {
-  color: #247f7d;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
 }
 
 .invoice-panel h2 {

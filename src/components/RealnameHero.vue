@@ -100,7 +100,6 @@ onMounted(async () => {
 <template>
   <section class="realname-hero" :class="`realname-hero--${statusType}`">
     <div class="realname-hero__copy">
-      <p class="realname-hero__eyebrow">Identity Verification</p>
       <h1 class="realname-hero__title">实名认证</h1>
       <p class="realname-hero__desc">{{ heroDesc }}</p>
       <div class="realname-hero__tag">
@@ -145,15 +144,6 @@ onMounted(async () => {
   display: grid;
   gap: 12px;
   align-content: center;
-}
-
-.realname-hero__eyebrow {
-  margin: 0;
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .realname-hero__title {

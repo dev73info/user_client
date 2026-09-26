@@ -454,7 +454,6 @@ async function loadHallData(page = hallPage.value) {
       <section class="portal-page__panel" v-loading="loading">
         <div class="portal-page__section-header">
           <div>
-            <p class="portal-page__eyebrow">需求大厅</p>
             <h2>发现并接取合作机会</h2>
           </div>
           <div class="portal-page__header-actions requirement-hall__header-actions">

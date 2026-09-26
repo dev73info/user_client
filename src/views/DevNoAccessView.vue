@@ -92,7 +92,6 @@ async function retryAccessCheck() {
 <template>
   <main class="dev-no-access">
     <section class="dev-no-access__panel">
-      <span class="dev-no-access__eyebrow">Access Required</span>
       <h1 class="dev-no-access__title">{{ displayName }} 还没有开发者权限</h1>
       <p class="dev-no-access__desc">
         {{ accessMessage }}
@@ -139,18 +138,6 @@ async function retryAccessCheck() {
     linear-gradient(180deg, var(--dev-surface-strong), var(--dev-bg));
   border: 1px solid var(--dev-line);
   box-shadow: var(--dev-shadow);
-}
-
-.dev-no-access__eyebrow {
-  display: inline-flex;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: var(--wb-accent-soft);
-  color: var(--dev-blue);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .dev-no-access__title {

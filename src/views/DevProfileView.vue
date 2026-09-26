@@ -503,7 +503,6 @@ async function removeBackground() {
     <section class="dev-profile__resources">
       <div class="dev-profile__section-heading">
         <div>
-          <p class="dev-profile__section-kicker">精选作品</p>
           <h2 class="dev-profile__section-title">公开资源</h2>
         </div>
         <span class="dev-profile__section-count">{{ stats.resourceCount }} 个项目</span>
@@ -605,7 +604,6 @@ async function removeBackground() {
       <section class="dev-profile-modal__panel" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
         <header class="dev-profile-modal__header">
           <div>
-            <p class="dev-profile-modal__eyebrow">个人主页</p>
             <h2 id="profile-modal-title">编辑简介</h2>
           </div>
           <button class="dev-profile-modal__close" type="button" aria-label="关闭" @click="profileDialogVisible = false">
@@ -1024,14 +1022,6 @@ async function removeBackground() {
   border-bottom: 1px solid #eef2f7;
 }
 
-.dev-profile-modal__eyebrow {
-  margin: 0 0 4px;
-  color: #2563eb;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
 .dev-profile-modal__header h2 {
   margin: 0;
   color: #0f172a;
@@ -1222,15 +1212,6 @@ async function removeBackground() {
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 14px;
-}
-
-.dev-profile__section-kicker {
-  margin: 0 0 3px;
-  color: #2563eb;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .dev-profile__section-count {

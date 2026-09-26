@@ -19,7 +19,6 @@ function goBack() {
             <header class="panel-head">
                 <div>
                     <h2>支付与退款说明</h2>
-                    <p class="lead">了解支付流程和退款政策，保障您的交易权益。</p>
                 </div>
                 <button class="top-back" type="button" @click="goBack">返回</button>
             </header>

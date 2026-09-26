@@ -1103,9 +1103,6 @@ async function toggleCommentLike(comment: CommunityComment) {
     <section class="community-board">
       <section class="community-stream">
         <div class="community-hero">
-          <div>
-            <p class="portal-page__eyebrow">社区内容</p>
-          </div>
           <div class="community-hero__actions">
             <button class="community-hero__button community-hero__button--ghost" type="button" :disabled="loading"
               @click="loadCommunityData">
@@ -1212,7 +1209,6 @@ async function toggleCommentLike(comment: CommunityComment) {
         <section v-if="composerVisible" ref="composerPanelRef" class="community-panel community-composer">
           <div class="community-panel__head">
             <div>
-              <p class="portal-page__eyebrow">{{ editingPost ? '编辑帖子' : '发布帖子' }}</p>
               <h3>{{ editingPost ? '更新社区内容' : '写一篇新帖子' }}</h3>
             </div>
             <el-button class="community-panel-action" plain @click="closeComposer">
@@ -1557,7 +1553,7 @@ async function toggleCommentLike(comment: CommunityComment) {
 .community-hero {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   margin-bottom: 12px;
   padding: 0 0 14px;
@@ -1733,7 +1729,6 @@ async function toggleCommentLike(comment: CommunityComment) {
   margin: 0 0 0 auto;
 }
 
-.community-hero p,
 .community-detail__header p,
 .community-post-card p,
 .community-post-card__meta,
@@ -1742,12 +1737,6 @@ async function toggleCommentLike(comment: CommunityComment) {
 .community-comment-item time {
   color: #64748b;
   line-height: 1.7;
-}
-
-.community-hero p {
-  max-width: 320px;
-  margin: 6px 0 0;
-  font-size: 14px;
 }
 
 .community-hero__actions,
@@ -2834,10 +2823,6 @@ async function toggleCommentLike(comment: CommunityComment) {
 
   .community-page-button {
     flex: 1 1 126px;
-  }
-
-  .community-hero p {
-    max-width: none;
   }
 }
 </style>

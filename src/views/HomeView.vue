@@ -1904,7 +1904,6 @@ async function submitPublishRequirement() {
                   <span>资源与需求</span><span class="portal-title-accent">协作</span
                   ><span>平台</span>
                 </h1>
-                <p class="portal-hero__lead">你要的资源免费拿，你想做的事找人做</p>
 
                 <div v-if="heroSignals.length" class="portal-signal-list">
                   <span
@@ -2348,12 +2347,11 @@ async function submitPublishRequirement() {
                 <h2>内测里程碑</h2>
               </div>
             </div>
-            <p class="portal-milestone__intro">
-              {{ isDeveloperAccount ? '优秀的开发者，有着优秀作品' : '成为种子开发者，抢先占位。' }}
+            <div class="portal-milestone__intro">
               <button class="portal-milestone__cta" type="button" @click="openResourceInit">
                 {{ isDeveloperAccount ? '发布资源 →' : '立即入驻 →' }}
               </button>
-            </p>
+            </div>
             <div class="portal-stats-grid">
               <article
                 v-for="(stat, index) in platformStats"

@@ -435,7 +435,6 @@ function communityStatusLabel(status: CommunityPostStatus): string {
         <section class="portal-page__panel portal-search-page__hero">
             <div class="portal-page__section-header portal-search-page__header">
                 <div>
-                    <p class="portal-page__eyebrow">全站搜索</p>
                     <h2>{{ keyword ? `“${keyword}” 的搜索结果` : '输入关键词开始搜索' }}</h2>
                     <p class="portal-search-page__summary">{{ resultSummary }}</p>
                 </div>
@@ -469,7 +468,6 @@ function communityStatusLabel(status: CommunityPostStatus): string {
             <section v-if="filteredResources.length" class="portal-page__panel portal-search-page__section">
                 <div class="portal-page__section-header">
                     <div>
-                        <p class="portal-page__eyebrow">公开资源</p>
                         <h2>资源项目</h2>
                     </div>
                     <span class="portal-page__loading-chip">{{ filteredResources.length }} 条</span>
@@ -511,7 +509,6 @@ function communityStatusLabel(status: CommunityPostStatus): string {
             <section v-if="filteredRequirements.length" class="portal-page__panel portal-search-page__section">
                 <div class="portal-page__section-header">
                     <div>
-                        <p class="portal-page__eyebrow">需求大厅</p>
                         <h2>需求项目</h2>
                     </div>
                     <span class="portal-page__loading-chip">{{ filteredRequirements.length }} 条</span>
@@ -543,7 +540,6 @@ function communityStatusLabel(status: CommunityPostStatus): string {
             <section v-if="filteredCommunityPosts.length" class="portal-page__panel portal-search-page__section">
                 <div class="portal-page__section-header">
                     <div>
-                        <p class="portal-page__eyebrow">社区内容</p>
                         <h2>社区帖子</h2>
                     </div>
                     <span class="portal-page__loading-chip">{{ filteredCommunityPosts.length }} 条</span>

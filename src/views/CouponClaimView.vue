@@ -121,7 +121,6 @@ onMounted(() => {
 <template>
   <section class="claim-page">
     <div class="claim-page__panel">
-      <p class="claim-page__eyebrow">73Info Activity</p>
       <h1>活动福利领取</h1>
       <p class="claim-page__lead">
         邮件里的活动链接会把券发到当前登录账号的背包。账号绑定邮箱必须和收件邮箱一致。
@@ -224,14 +223,6 @@ onMounted(() => {
   background: rgba(6, 18, 34, 0.86);
   box-shadow: 0 24px 90px rgba(0, 0, 0, 0.34);
   color: #f4f7ff;
-}
-
-.claim-page__eyebrow {
-  margin: 0 0 14px;
-  color: #8fc5ff;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-size: 12px;
 }
 
 .claim-page h1 {

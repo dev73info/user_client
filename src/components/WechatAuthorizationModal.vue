@@ -110,7 +110,6 @@ onBeforeUnmount(() => {
       <section class="auth-modal wechat-authorization-modal" aria-label="微信授权">
         <header class="wechat-authorization-modal__head">
           <div>
-            <p class="wechat-authorization-modal__eyebrow">PC 端微信支付</p>
             <h3>微信授权</h3>
           </div>
           <button class="wechat-authorization-modal__close" type="button" aria-label="关闭微信授权"
@@ -156,12 +155,6 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 16px;
   text-align: left;
-}
-
-.wechat-authorization-modal__eyebrow {
-  margin: 0 0 4px;
-  color: #64748b;
-  font-size: 12px;
 }
 
 .wechat-authorization-modal__head h3 {

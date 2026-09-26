@@ -1456,7 +1456,7 @@ onBeforeUnmount(() => {
     <section class="overview-focus-panel">
       <div class="overview-section-head">
         <div>
-          <p class="overview-eyebrow">需求进度</p>
+          <h2>需求进度</h2>
         </div>
         <RouterLink class="overview-link" :to="{ name: 'workbench-requirements' }">查看需求单</RouterLink>
       </div>
@@ -1487,7 +1487,6 @@ onBeforeUnmount(() => {
       <section class="overview-panel overview-panel--main overview-panel--messages">
         <div class="overview-section-head">
           <div>
-            <p class="overview-eyebrow">沟通会话</p>
             <h2>最近沟通</h2>
           </div>
           <div class="overview-inline-actions">
@@ -1512,7 +1511,6 @@ onBeforeUnmount(() => {
         <section class="overview-panel">
           <div class="overview-section-head overview-section-head--compact">
             <div>
-              <p class="overview-eyebrow">开发者工作</p>
               <h2>快捷入口</h2>
             </div>
           </div>
@@ -2004,25 +2002,18 @@ onBeforeUnmount(() => {
   line-height: 1.1;
 }
 
-.overview-hero__head p:not(.overview-eyebrow) {
+.overview-hero__head p {
   margin: 10px 0 0;
   color: #64748b;
   font-size: 18px;
   line-height: 1.5;
 }
 
-.overview-hero__main p:not(.overview-eyebrow) {
+.overview-hero__main p {
   margin: 0;
   max-width: 680px;
   color: #64748b;
   line-height: 1.7;
-}
-
-.overview-eyebrow {
-  margin: 0;
-  color: #4f8cff;
-  font-size: 12px;
-  font-weight: 800;
 }
 
 .overview-hero__chips,

@@ -2675,7 +2675,6 @@ watch(
               <div class="requirement-review-card__header">
                 <div>
                   <h4>版本删除审核</h4>
-                  <p>每个待删除版本单独一张卡片，直接在对应卡片上审核。</p>
                 </div>
                 <button class="ghost small" type="button" @click.stop="closeVersionDeleteReviewCard">
                   收起
@@ -3754,16 +3753,6 @@ watch(
 
 .pay-modal .breach-modal__decision .actions {
   margin-top: 12px;
-}
-
-.wallet-header h3.portal-page__eyebrow {
-  margin: 0;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  line-height: 1.7;
 }
 
 @media (max-width: 980px) {

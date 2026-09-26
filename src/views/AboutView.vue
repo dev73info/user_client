@@ -132,12 +132,7 @@ onBeforeUnmount(() => {
     <section class="about-hero">
       <div class="about-hero__glow" aria-hidden="true"></div>
       <div class="about-hero__inner">
-        <span class="about-hero__eyebrow">73INFO · 柒叁信息</span>
         <h1 class="about-hero__title">资源与需求<br />协作平台</h1>
-        <p class="about-hero__lead">
-          做资源的把作品放上来，有需求的把单子发出来。<br />
-          两边在同一个地方，作品和需求就能对得上。
-        </p>
         <div class="about-hero__actions">
           <button type="button" class="about-hero__btn about-hero__btn--primary" @click="goRequirementHall">
             去需求大厅
@@ -154,7 +149,6 @@ onBeforeUnmount(() => {
     <section class="about-section">
       <div class="about-section__head" data-reveal>
         <h2>这个平台能做什么</h2>
-        <p>就三件事，不绕弯子</p>
       </div>
       <div class="about-highlights">
         <div v-for="(item, idx) in highlights" :key="item.title" class="about-highlight" :data-reveal="`h${idx}`">
@@ -178,7 +172,6 @@ onBeforeUnmount(() => {
     <!-- ===== 4. 给创作者 / 给需求方 ===== -->
     <section class="about-split">
       <div class="about-split__col" data-reveal>
-        <span class="about-split__kicker">FOR CREATORS</span>
         <h2>如果你是做资源的</h2>
         <ul class="about-point-list">
           <li v-for="item in forCreators" :key="item.title">
@@ -188,7 +181,6 @@ onBeforeUnmount(() => {
         </ul>
       </div>
       <div class="about-split__col" data-reveal>
-        <span class="about-split__kicker">FOR CLIENTS</span>
         <h2>如果你有需求要找人做</h2>
         <ul class="about-point-list">
           <li v-for="item in forClients" :key="item.title">
@@ -312,18 +304,6 @@ onBeforeUnmount(() => {
   max-width: 640px;
 }
 
-.about-hero__eyebrow {
-  display: inline-block;
-  padding: 5px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #bae6fd;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-}
-
 .about-hero__title {
   margin: 22px 0 16px;
   font-size: clamp(36px, 5.6vw, 54px);
@@ -331,13 +311,6 @@ onBeforeUnmount(() => {
   font-weight: 900;
   letter-spacing: -0.01em;
   color: #fff;
-}
-
-.about-hero__lead {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.95;
-  color: rgba(226, 232, 240, 0.94);
 }
 
 .about-hero__actions {
@@ -405,12 +378,6 @@ onBeforeUnmount(() => {
   font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.01em;
-}
-
-.about-section__head p {
-  margin: 6px 0 0;
-  font-size: 14px;
-  color: #64748b;
 }
 
 /* ===== 2. 三件事 ===== */
@@ -511,15 +478,6 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(219, 229, 247, 0.9);
   box-shadow: 0 12px 32px rgba(148, 163, 184, 0.08);
-}
-
-.about-split__kicker {
-  display: inline-block;
-  margin-bottom: 12px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  color: #2563eb;
 }
 
 .about-split__col h2 {

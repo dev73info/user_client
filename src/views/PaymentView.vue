@@ -856,11 +856,7 @@ onUnmounted(() => {
     <section class="panel">
       <header class="panel-head">
         <div>
-          <p class="eyebrow">73Info</p>
           <h2>{{ paymentResultVisible ? '支付结果' : isWechatMobilePayment ? '微信支付' : isAlipayMobilePayment ? '支付宝支付' : isUnionMobilePayment ? '云闪付' : '扫码支付' }}</h2>
-          <p v-if="!paymentResultVisible" class="lead">
-            {{ isWechatMobilePayment ? '微信支付' : isAlipayMobilePayment ? '支付宝支付' : isUnionMobilePayment ? '云闪付支付' : '订单付款' }}
-          </p>
         </div>
         <button class="top-back" @click="goBack">返回</button>
       </header>
