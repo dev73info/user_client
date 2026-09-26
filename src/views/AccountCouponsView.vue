@@ -1003,11 +1003,17 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
     {
       key: 'settle',
       title: '结算账户',
-      desc: adapayMember.value?.settleAccountId
-        ? '收款银行卡已绑定，可查看或更换'
-        : '绑定收款银行卡后，合同款才能结算到账',
+      desc: settleSubjectMismatch.value
+        ? settleMaterialMissing.value
+          ? '实名资料缺营业执照，补齐企业资料后才能重新绑定收款账户'
+          : '实名主体已变更，原银行卡需按新主体重新绑定'
+        : adapayMember.value?.settleAccountId
+          ? '收款银行卡已绑定，可查看或更换'
+          : '绑定收款银行卡后，合同款才能结算到账',
       icon: CreditCard,
-      status: { text: `收款认证：${settleStatusText.value}`, type: settleStatusTagType.value },
+      status: settleSubjectMismatch.value
+        ? { text: '收款账户：待重绑', type: 'warning' }
+        : { text: `收款认证：${settleStatusText.value}`, type: settleStatusTagType.value },
     },
   ]
 
@@ -1310,6 +1316,34 @@ const settleSubjectMismatch = computed(
 
 /** 企业主体的收款账户只能是对公账户，持证人固定取实名主体，因此不给用户改。 */
 const settleCorporateLocked = computed(() => assignEnterprise.value)
+
+/** 弹窗状态块里的结算账户口径：主体变更后旧卡不再可用，说「待重新绑定」而不是「已设置」。 */
+const settleAccountLabel = computed(() => {
+  if (!settleBound.value) return '未设置'
+  return settleSubjectMismatch.value ? '待重新绑定' : '已设置'
+})
+
+/** 当前实名主体的中文口径，用于把「这张卡为什么不能继续用」讲清楚。 */
+const settleSubjectLabel = computed(() =>
+  settleCorporateLocked.value ? '企业 / 个体工商户' : '个人',
+)
+
+/**
+ * 企业主体按新主体重建收款账户前，渠道侧要求实名资料里带营业执照文件
+ * （`create_corp_member` 是带附件的上传接口）。缺了营业执照时重绑一定会失败，
+ * 必须先回「变更认证主体」补资料，所以这里提前拦在界面层，别让用户白填一次表单。
+ */
+const settleMaterialMissing = computed(
+  () => settleCorporateLocked.value && !current.value?.business_license_file?.trim(),
+)
+
+/** 缺企业资料时不去重绑，直接关掉弹窗并打开实名表单让用户补营业执照。 */
+function goFixSettleMaterial() {
+  settleDialogVisible.value = false
+  settleEditing.value = false
+  realnameDialogVisible.value = true
+  startRealnameChange()
+}
 
 const settleCities = computed(() => getSettlementCities(settleForm.prov_code))
 
@@ -2628,17 +2662,67 @@ onBeforeUnmount(() => {
               </div>
               <div class="settle-dialog__status-item">
                 <span>结算账户</span>
-                <strong>{{ settleBound ? '已设置' : '未设置' }}</strong>
+                <strong>{{ settleAccountLabel }}</strong>
               </div>
             </div>
+
+            <!-- 实名主体变更后旧卡不能再收款：先把原因说清楚，再给「按新主体重新绑定」的动作 -->
+            <el-alert
+              v-if="settleSubjectMismatch"
+              class="settle-dialog__alert"
+              type="warning"
+              :closable="false"
+              show-icon
+              :title="
+                settleMaterialMissing
+                  ? '企业实名资料缺少营业执照，收款账户暂时无法按新主体重建'
+                  : '实名主体已变更，原银行卡需要按新主体重新绑定'
+              "
+            >
+              <p class="settle-dialog__alert-text">
+                合同款只会结算到与当前实名主体一致的收款账户，变更前绑定的卡渠道不会再用。
+                <template v-if="settleMaterialMissing">
+                  按新主体重建收款账户要读实名资料里的营业执照，当前企业实名没有；先补齐资料并重新提交企业认证，通过后再回来绑定{{ settleCorporateLocked ? '对公账户' : '银行卡' }}。
+                </template>
+                <template v-else>
+                  请按「{{ settleSubjectLabel }}」重新绑定银行卡{{
+                    settleCorporateLocked ? '；企业主体需要对公账户' : ''
+                  }}。
+                </template>
+              </p>
+              <!-- 只读态自己带一个同样的入口，这里不再重复 -->
+              <el-button
+                v-if="settleMaterialMissing && (!settleBound || settleEditing)"
+                class="settle-dialog__alert-action"
+                type="primary"
+                size="small"
+                @click="goFixSettleMaterial"
+              >
+                去「变更认证主体」补营业执照
+              </el-button>
+            </el-alert>
 
             <!-- 已绑定且未进入更换：只读态，给一个明确的更换入口 -->
             <div v-if="settleBound && !settleEditing" class="settle-dialog__bound">
               <p class="settle-dialog__hint">
-                当前已是可收款状态。更换银行卡时，平台会先解绑原卡再绑定新卡；新卡的持卡人姓名与证件号必须与实名认证信息一致，否则绑定会被渠道拒绝。
+                <template v-if="settleMaterialMissing">
+                  现在提交更换一定失败：渠道按新主体重建收款账户时要读实名资料里的营业执照，
+                  而当前企业实名没有营业执照。请先补齐资料并重新提交企业认证。
+                </template>
+                <template v-else>
+                  当前已是可收款状态。更换银行卡时，平台会先解绑原卡再绑定新卡；新卡的持卡人姓名与证件号必须与实名认证信息一致，否则绑定会被渠道拒绝。
+                </template>
               </p>
-              <el-button type="primary" plain @click="startSettleChange">
-                更换收款银行卡
+              <el-button
+                v-if="settleMaterialMissing"
+                type="primary"
+                plain
+                @click="goFixSettleMaterial"
+              >
+                去「变更认证主体」补营业执照
+              </el-button>
+              <el-button v-else type="primary" plain @click="startSettleChange">
+                {{ settleSubjectMismatch ? '按当前主体重新绑定' : '更换收款银行卡' }}
               </el-button>
             </div>
 
@@ -4379,6 +4463,23 @@ onBeforeUnmount(() => {
   display: grid;
   gap: 12px;
   justify-items: start;
+}
+
+/* 实名主体变更提示：间距交给弹窗自身的 gap，不再叠 margin */
+.settle-dialog__alert {
+  margin: 0;
+}
+
+.settle-dialog__alert-text {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* 缺企业资料时的指路按钮：跟在说明文字后面，与正文留出呼吸 */
+.settle-dialog__alert-action {
+  margin-top: 10px;
 }
 
 .settle-dialog__hint {
