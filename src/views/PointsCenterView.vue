@@ -19,7 +19,7 @@ import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPag
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
-/* 「我的背包 → 积分中心」：余额读数、积分打赏、打赏记录、积分明细。
+/* 「我的背包 → 积分中心」：余额读数、积分打赏、积分记录（打赏记录 / 积分明细两段切换）。
    权益（佩戴与用户名颜色）已拆到「权益中心」、券包已拆到「优惠券中心」、评论警告已移到「系统通知」，
    这一页不再一屏铺四件事。 */
 
@@ -46,6 +46,13 @@ const transfers = ref<PointsTransfer[]>([])
 // 打赏记录的筛选：记录是一次全量取回（上限 50 条），所以筛选与分页都在前端做。
 const transferKeyword = ref('')
 const transferScope = ref<'all' | 'sent' | 'received'>('all')
+
+/** 记录区两段：打赏记录与积分明细。与开发者钱包、需求大厅的筛选一样用统一层的胶囊按钮，不用 el-tabs。 */
+const RECORD_TABS: ReadonlyArray<{ key: 'transfers' | 'logs'; label: string }> = [
+  { key: 'transfers', label: '打赏记录' },
+  { key: 'logs', label: '积分明细' },
+]
+const activeRecordTab = ref<'transfers' | 'logs'>('transfers')
 
 const feeRate = computed(() => transferMeta.value?.fee_rate ?? 0)
 const transferFee = computed(() => {
@@ -281,127 +288,142 @@ onMounted(async () => {
         </div>
       </section>
 
-      <section class="wallet-section points-section points-section--transfers">
+      <section class="wallet-section points-section points-section--records">
         <div class="wb-card-head">
           <div class="wb-card-head__title-block">
-            <h3 class="wb-card-head__title">打赏记录</h3>
+            <h3 class="wb-card-head__title">积分记录</h3>
           </div>
         </div>
 
+        <!-- 打赏记录与积分明细是同一份数据的两个视角（一笔打赏两边各记一次），
+             合成一张卡片用胶囊切换，省掉一个卡头与一层留白。
+             两段各有自己的筛选与分页，切 tab 只切显示、不重新请求。 -->
         <div class="wb-toolbar">
-          <div class="wb-chip-group" role="group" aria-label="打赏方向">
-            <button v-for="scope in transferScopes" :key="scope.value" type="button"
-              class="wb-chip wb-chip--button" :class="{ 'is-active': transferScope === scope.value }"
-              :aria-pressed="transferScope === scope.value" @click="transferScope = scope.value">
-              {{ scope.label }}<span class="wb-chip__count">{{ scope.count }}</span>
+          <div class="wb-chip-group" role="tablist" aria-label="积分记录切换">
+            <button v-for="tab in RECORD_TABS" :id="`points-records-tab-${tab.key}`" :key="tab.key" type="button"
+              class="wb-chip wb-chip--button" role="tab" :aria-selected="activeRecordTab === tab.key"
+              :aria-controls="`points-records-panel-${tab.key}`" :class="{ 'is-active': activeRecordTab === tab.key }"
+              @click="activeRecordTab = tab.key">
+              {{ tab.label }}
             </button>
           </div>
-          <el-input v-model="transferKeyword" class="wb-toolbar__search" clearable placeholder="搜索用户名或附言"
-            aria-label="搜索打赏记录">
-            <template #prefix><el-icon><Search /></el-icon></template>
-          </el-input>
-          <div class="wb-toolbar__actions">
-            <span v-if="transferFiltersActive" class="wb-toolbar__hint">
-              筛选出 {{ transferTotal }} / {{ transfers.length }} 条
-            </span>
-            <el-button v-if="transferFiltersActive" class="wb-toolbar__ghost" @click="resetTransferFilters">
-              <el-icon><RefreshLeft /></el-icon><span>重置</span>
-            </el-button>
-          </div>
-        </div>
 
-        <p v-if="transferLoading" class="wb-empty" role="status">正在加载打赏记录…</p>
-        <div v-else-if="!filteredTransfers.length" class="wb-empty" role="status">
-          <span class="wb-empty__title">{{ transfers.length ? '没有符合条件的打赏记录' : '暂无打赏记录' }}</span>
-        </div>
-        <template v-else>
-          <ul class="wb-list" aria-label="打赏记录">
-            <li v-for="t in pagedTransfers" :key="t.id" class="wb-item">
-              <div class="wb-item__main">
-                <span class="wb-item__title">
-                  {{ t.from_username === auth.username ? '我' : t.from_username }}
-                  <span aria-hidden="true">→</span>
-                  {{ t.to_username === auth.username ? '我' : t.to_username }}
-                </span>
-                <span class="wb-item__meta">
-                  {{ t.created_at }}{{ t.fee > 0 ? ` · 手续费 ${t.fee}` : '' }}{{ t.note ? ` · ${t.note}` : '' }}
-                </span>
-              </div>
-              <div class="wb-item__side">
-                <span class="wb-badge" :class="{ 'wb-badge--success': t.to_username === auth.username }">
-                  {{ t.to_username === auth.username ? '+' : '-' }}{{ t.to_username === auth.username ? t.received : t.amount }}
-                </span>
-              </div>
-            </li>
-          </ul>
-          <div class="wb-pager">
-            <div class="wb-pager__count">
-              <span>共 {{ transferTotal }} 条记录</span>
-              <el-select v-model="transferPageSize" class="wb-pager__size" aria-label="每页打赏记录数">
-                <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-              </el-select>
+          <!-- 打赏段的二级筛选：方向、搜索、重置。积分明细没有筛选项，切到它时这一组整块不渲染 -->
+          <template v-if="activeRecordTab === 'transfers'">
+            <div class="wb-chip-group points-records__scopes" role="group" aria-label="打赏方向">
+              <button v-for="scope in transferScopes" :key="scope.value" type="button"
+                class="wb-chip wb-chip--button" :class="{ 'is-active': transferScope === scope.value }"
+                :aria-pressed="transferScope === scope.value" @click="transferScope = scope.value">
+                {{ scope.label }}<span class="wb-chip__count">{{ scope.count }}</span>
+              </button>
             </div>
-            <el-pagination v-model:current-page="transferPage" :page-size="transferPageSize"
-              :total="transferTotal" :pager-count="5" layout="prev, pager, next" background
-              aria-label="打赏记录分页" />
-          </div>
-        </template>
-      </section>
-
-      <section class="wallet-section points-section points-section--logs">
-        <div class="wb-card-head">
-          <div class="wb-card-head__title-block">
-            <h3 class="wb-card-head__title">积分明细</h3>
-          </div>
-        </div>
-
-        <p v-if="loading" class="wb-empty" role="status">正在加载积分明细…</p>
-        <div v-else-if="error" class="wb-empty" role="alert">
-          <span class="wb-empty__title">加载积分明细失败</span>{{ error }}
-          <div class="wb-empty__actions">
-            <el-button class="wb-toolbar__ghost" @click="loadPoints()">
-              <el-icon><Refresh /></el-icon><span>重新加载</span>
-            </el-button>
-          </div>
-        </div>
-        <p v-else-if="!logs.length" class="wb-empty" role="status">
-          <span class="wb-empty__title">暂无积分明细</span>
-        </p>
-        <template v-else>
-          <ul class="wb-list" aria-label="积分明细">
-            <li v-for="row in pagedLogs" :key="row.id" class="wb-item">
-              <div class="wb-item__main">
-                <span class="wb-item__title">{{ row.reason || '积分变动' }}</span>
-                <span class="wb-item__meta">{{ row.created_at }} · 变动后余额 {{ row.balance_after }}</span>
-              </div>
-              <div class="wb-item__side">
-                <span class="wb-badge" :class="row.delta > 0 ? 'wb-badge--success' : 'wb-badge--danger'">
-                  {{ row.delta > 0 ? '+' : '' }}{{ row.delta }}
-                </span>
-              </div>
-            </li>
-          </ul>
-          <div class="wb-pager">
-            <div class="wb-pager__count">
-              <span>共 {{ logTotal }} 条明细</span>
-              <el-select :model-value="logPageSize" class="wb-pager__size" aria-label="每页明细数"
-                @change="handleLogPageSizeChange">
-                <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-              </el-select>
+            <el-input v-model="transferKeyword" class="wb-toolbar__search" clearable placeholder="搜索用户名或附言"
+              aria-label="搜索打赏记录">
+              <template #prefix><el-icon><Search /></el-icon></template>
+            </el-input>
+            <div class="wb-toolbar__actions">
+              <span v-if="transferFiltersActive" class="wb-toolbar__hint">
+                筛选出 {{ transferTotal }} / {{ transfers.length }} 条
+              </span>
+              <el-button v-if="transferFiltersActive" class="wb-toolbar__ghost" @click="resetTransferFilters">
+                <el-icon><RefreshLeft /></el-icon><span>重置</span>
+              </el-button>
             </div>
-            <el-pagination :current-page="logPage" :page-size="logPageSize" :total="logTotal"
-              :pager-count="5" layout="prev, pager, next" background aria-label="积分明细分页"
-              @current-change="handleLogPageChange" />
-          </div>
-        </template>
+          </template>
+        </div>
+
+        <div :id="`points-records-panel-${activeRecordTab}`"
+          class="points-records__panel" :class="`points-records__panel--${activeRecordTab}`" role="tabpanel"
+          :aria-labelledby="`points-records-tab-${activeRecordTab}`">
+          <template v-if="activeRecordTab === 'transfers'">
+            <p v-if="transferLoading" class="wb-empty" role="status">正在加载打赏记录…</p>
+            <div v-else-if="!filteredTransfers.length" class="wb-empty" role="status">
+              <span class="wb-empty__title">{{ transfers.length ? '没有符合条件的打赏记录' : '暂无打赏记录' }}</span>
+            </div>
+            <template v-else>
+              <ul class="wb-list" aria-label="打赏记录">
+                <li v-for="t in pagedTransfers" :key="t.id" class="wb-item">
+                  <div class="wb-item__main">
+                    <span class="wb-item__title">
+                      {{ t.from_username === auth.username ? '我' : t.from_username }}
+                      <span aria-hidden="true">→</span>
+                      {{ t.to_username === auth.username ? '我' : t.to_username }}
+                    </span>
+                    <span class="wb-item__meta">
+                      {{ t.created_at }}{{ t.fee > 0 ? ` · 手续费 ${t.fee}` : '' }}{{ t.note ? ` · ${t.note}` : '' }}
+                    </span>
+                  </div>
+                  <div class="wb-item__side">
+                    <span class="wb-badge" :class="{ 'wb-badge--success': t.to_username === auth.username }">
+                      {{ t.to_username === auth.username ? '+' : '-' }}{{ t.to_username === auth.username ? t.received : t.amount }}
+                    </span>
+                  </div>
+                </li>
+              </ul>
+              <div class="wb-pager">
+                <div class="wb-pager__count">
+                  <span>共 {{ transferTotal }} 条记录</span>
+                  <el-select v-model="transferPageSize" class="wb-pager__size" aria-label="每页打赏记录数">
+                    <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+                  </el-select>
+                </div>
+                <el-pagination v-model:current-page="transferPage" :page-size="transferPageSize"
+                  :total="transferTotal" :pager-count="5" layout="prev, pager, next" background
+                  aria-label="打赏记录分页" />
+              </div>
+            </template>
+          </template>
+
+          <template v-else>
+            <p v-if="loading" class="wb-empty" role="status">正在加载积分明细…</p>
+            <div v-else-if="error" class="wb-empty" role="alert">
+              <span class="wb-empty__title">加载积分明细失败</span>{{ error }}
+              <div class="wb-empty__actions">
+                <el-button class="wb-toolbar__ghost" @click="loadPoints()">
+                  <el-icon><Refresh /></el-icon><span>重新加载</span>
+                </el-button>
+              </div>
+            </div>
+            <p v-else-if="!logs.length" class="wb-empty" role="status">
+              <span class="wb-empty__title">暂无积分明细</span>
+            </p>
+            <template v-else>
+              <ul class="wb-list" aria-label="积分明细">
+                <li v-for="row in pagedLogs" :key="row.id" class="wb-item">
+                  <div class="wb-item__main">
+                    <span class="wb-item__title">{{ row.reason || '积分变动' }}</span>
+                    <span class="wb-item__meta">{{ row.created_at }} · 变动后余额 {{ row.balance_after }}</span>
+                  </div>
+                  <div class="wb-item__side">
+                    <span class="wb-badge" :class="row.delta > 0 ? 'wb-badge--success' : 'wb-badge--danger'">
+                      {{ row.delta > 0 ? '+' : '' }}{{ row.delta }}
+                    </span>
+                  </div>
+                </li>
+              </ul>
+              <div class="wb-pager">
+                <div class="wb-pager__count">
+                  <span>共 {{ logTotal }} 条明细</span>
+                  <el-select :model-value="logPageSize" class="wb-pager__size" aria-label="每页明细数"
+                    @change="handleLogPageSizeChange">
+                    <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+                  </el-select>
+                </div>
+                <el-pagination :current-page="logPage" :page-size="logPageSize" :total="logTotal"
+                  :pager-count="5" layout="prev, pager, next" background aria-label="积分明细分页"
+                  @current-change="handleLogPageChange" />
+              </div>
+            </template>
+          </template>
+        </div>
       </section>
     </main>
   </ElConfigProvider>
 </template>
 
 <style scoped>
-/* 版式走统一层（.wb-strip / .wb-card-head / .wb-toolbar / .wb-list / .wb-pager / .wb-empty / .wb-badge），
-   本页只留「打赏表单」这一块统一层没有提供的布局。
+/* 版式走统一层（.wb-strip / .wb-card-head / .wb-toolbar / .wb-chip / .wb-list / .wb-pager / .wb-empty / .wb-badge），
+   本页只留「打赏表单」与「记录区两段筛选」这两块统一层没有提供的布局。
    原「我的背包」页把积分、权益、券包、评论警告四件事铺在一屏，拆页后各页只留自己那几块。 */
 
 .points-page {
@@ -456,9 +478,17 @@ onMounted(async () => {
   font-variant-numeric: tabular-nums;
 }
 
-/* 明细里「原因 + 时间」两行贴紧：统一层的 __meta 行距按普通行给，这里行数多、收紧一点 */
-.points-section--logs .wb-item__main {
+/* 明细里「原因 + 时间」两行贴紧：统一层的 __meta 行距按普通行给，这里行数多、收紧一点。
+   打赏段的行保持统一层默认间距，它只有两行且标题里带箭头，再压就看不清是两段了。 */
+.points-records__panel--logs .wb-item__main {
   gap: 2px;
+}
+
+/* 二级筛选（打赏方向）与上方的 tab 胶囊用一条竖线分开：两组胶囊挨在一起时，
+   容易误读成同一级的四个选项。窄屏两组各自折行，竖线就失去意义，直接去掉。 */
+.points-records__scopes {
+  padding-left: 12px;
+  border-left: 1px solid var(--wb-line);
 }
 
 @media (max-width: 900px) {
@@ -469,6 +499,13 @@ onMounted(async () => {
   .transfer-form > .el-input-number,
   .transfer-form > .el-input:nth-child(3) {
     grid-column: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .points-records__scopes {
+    padding-left: 0;
+    border-left: 0;
   }
 }
 </style>
