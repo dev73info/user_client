@@ -79,6 +79,7 @@ import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import RealnameHero from '@/components/RealnameHero.vue'
 import WechatBindQrModal from '@/components/WechatBindQrModal.vue'
+import { missingEnterpriseOnboardingLabels } from '@/shared/realnameMaterials'
 import {
   getSettlementCities,
   prepareSettlementAccount,
@@ -136,6 +137,8 @@ const adapayMember = ref<{
   onboardingStatus: string
   memberType?: string | null
   settleAccountId?: string | null
+  /** 渠道最近一次拒绝的原话，用来告诉用户下一步该补什么。 */
+  providerError?: string | null
 } | null>(null)
 const reviewerAvatarLoadFailed = ref(false)
 const faceidAuthUrl = ref('')
@@ -177,7 +180,17 @@ const form = reactive({
   guardianConsent: false,
   guardianConsentFile: '',
   businessLicenseFile: '',
+  // 企业进件资料：支付渠道创建企业会员（对公收款账户）时逐项必填，企业 / 个体工商户主体要收齐。
+  companyProvCode: '',
+  companyAreaCode: '',
+  companyAddress: '',
+  businessScope: '',
+  businessLicenseExpiresOn: '',
+  legalCertExpiresOn: '',
 })
+
+/** 营业执照长期有效时渠道要的固定截止日（`YYYYMMDD`），与后端同一口径。 */
+const LONG_TERM_DATE = '20991231'
 
 const redirectTarget = computed(() => {
   const raw = typeof route.query.redirect_to === 'string' ? route.query.redirect_to.trim() : ''
@@ -260,8 +273,24 @@ const enterpriseRequiredMissing = computed(
       !form.operatorName.trim() ||
       !form.operatorIdCardNo.trim() ||
       !form.mobile.trim() ||
-      !form.businessLicenseFile.trim()),
+      !form.businessLicenseFile.trim() ||
+      // 企业进件资料：缺任一项，渠道都会拒绝创建企业会员，之后连对公收款账户都开不了
+      !form.companyProvCode.trim() ||
+      !form.companyAreaCode.trim() ||
+      !form.companyAddress.trim() ||
+      !form.businessScope.trim() ||
+      !form.businessLicenseExpiresOn.trim() ||
+      !form.legalCertExpiresOn.trim()),
 )
+
+/** 企业所在省下面的城市选项；省份未选时为空。 */
+const enterpriseCities = computed(() => getSettlementCities(form.companyProvCode))
+
+/** 换省份时清掉不属于该省的城市；只有一个城市（直辖市）时直接选中。 */
+function changeEnterpriseProvince() {
+  const cities = enterpriseCities.value
+  form.companyAreaCode = cities.length === 1 ? (cities[0]?.value ?? '') : ''
+}
 const minorGuardianRequiredMissing = computed(
   () => isMinor14To18.value && (!form.guardianConsent || !form.guardianConsentFile.trim()),
 )
@@ -340,6 +369,12 @@ function resetRealnameSubjectFields() {
   form.operatorIdCardNo = ''
   form.guardianConsent = false
   form.guardianConsentFile = ''
+  form.companyProvCode = ''
+  form.companyAreaCode = ''
+  form.companyAddress = ''
+  form.businessScope = ''
+  form.businessLicenseExpiresOn = ''
+  form.legalCertExpiresOn = ''
 }
 
 /// 进入「变更实名主体」：解锁表单并用空表单让用户填新主体，提交后由后端快照原主体，
@@ -375,6 +410,12 @@ function patchForm(record: UserRealnameVerification) {
   form.operatorIdCardNo = ''
   form.guardianConsent = record.guardian_consent ?? false
   form.guardianConsentFile = record.guardian_consent_file ?? ''
+  form.companyProvCode = record.company_prov_code ?? ''
+  form.companyAreaCode = record.company_area_code ?? ''
+  form.companyAddress = record.company_address ?? ''
+  form.businessScope = record.business_scope ?? ''
+  form.businessLicenseExpiresOn = record.business_license_expires_on ?? ''
+  form.legalCertExpiresOn = record.legal_cert_expires_on ?? ''
 }
 
 async function tryRestoreBusinessPage(record?: UserRealnameVerification | null) {
@@ -400,6 +441,16 @@ function validate() {
     if (!form.operatorIdCardNo.trim()) return '请填写经办人身份证号'
     if (!isValidMobile(form.mobile)) return '请填写正确的手机号'
     if (!form.businessLicenseFile.trim()) return '请上传营业执照'
+    // 企业进件资料：这些是开通对公收款账户的前置，缺失时认证能通过但钱收不到
+    if (!form.companyProvCode.trim()) return '请选择企业所在省份'
+    if (!/^\d{4}$/.test(form.companyProvCode.trim())) return '企业所在省份编码不正确'
+    if (!enterpriseCities.value.some((city) => city.value === form.companyAreaCode)) {
+      return '请选择企业所在城市'
+    }
+    if (!form.companyAddress.trim()) return '请填写企业注册地址'
+    if (!form.businessScope.trim()) return '请填写企业经营范围'
+    if (!/^\d{8}$/.test(form.businessLicenseExpiresOn.trim())) return '请选择营业执照有效期'
+    if (!/^\d{8}$/.test(form.legalCertExpiresOn.trim())) return '请选择法人证件有效期'
     return ''
   }
 
@@ -437,6 +488,15 @@ function buildPayload(): SubmitRealnameVerificationPayload {
     payload.business_license_file = form.businessLicenseFile.trim()
   if (form.operatorName.trim()) payload.operator_name = form.operatorName.trim()
   if (form.operatorIdCardNo.trim()) payload.operator_id_card_no = form.operatorIdCardNo.trim()
+  // 企业进件资料只在企业 / 个体工商户主体下传；换成个人时后端会把它们清空
+  if (businessSelected.value) {
+    payload.company_prov_code = form.companyProvCode.trim()
+    payload.company_area_code = form.companyAreaCode.trim()
+    payload.company_address = form.companyAddress.trim()
+    payload.business_scope = form.businessScope.trim()
+    payload.business_license_expires_on = form.businessLicenseExpiresOn.trim()
+    payload.legal_cert_expires_on = form.legalCertExpiresOn.trim()
+  }
   // 只有 14~18 周岁的未成年人才需要监护人同意；成年人无需传
   if (isMinor14To18.value) {
     payload.guardian_consent = form.guardianConsent
@@ -703,6 +763,12 @@ async function startEnterpriseAsign() {
       operator_id_card_no: form.operatorIdCardNo.trim(),
       mobile: form.mobile.trim(),
       business_license_file: form.businessLicenseFile.trim(),
+      company_prov_code: form.companyProvCode.trim(),
+      company_area_code: form.companyAreaCode.trim(),
+      company_address: form.companyAddress.trim(),
+      business_scope: form.businessScope.trim(),
+      business_license_expires_on: form.businessLicenseExpiresOn.trim(),
+      legal_cert_expires_on: form.legalCertExpiresOn.trim(),
     }
     const result = await startCompanyAsignIdentify(auth.token, payload)
     faceidAuthUrl.value = result.auth_url
@@ -1005,7 +1071,7 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
       title: '结算账户',
       desc: settleSubjectMismatch.value
         ? settleMaterialMissing.value
-          ? '实名资料缺营业执照，补齐企业资料后才能重新绑定收款账户'
+          ? `实名资料缺${settleMaterialMissingText.value}，补齐后才能重新绑定收款账户`
           : '实名主体已变更，原银行卡需按新主体重新绑定'
         : adapayMember.value?.settleAccountId
           ? '收款银行卡已绑定，可查看或更换'
@@ -1299,7 +1365,9 @@ const settleForm = reactive({
 const settleBound = computed(() => Boolean(adapayMember.value?.settleAccountId))
 
 /** 当前实名主体对应的收款账户主体：企业 / 个体工商户走对公账户，其余按个人身份证。 */
-const settleExpectedMemberType = computed(() => (assignEnterprise.value ? 'enterprise' : 'personal'))
+const settleExpectedMemberType = computed(() =>
+  assignEnterprise.value ? 'enterprise' : 'personal',
+)
 
 /**
  * 已绑定的收款账户是否还挂在旧主体上。
@@ -1329,15 +1397,40 @@ const settleSubjectLabel = computed(() =>
 )
 
 /**
- * 企业主体按新主体重建收款账户前，渠道侧要求实名资料里带营业执照文件
- * （`create_corp_member` 是带附件的上传接口）。缺了营业执照时重绑一定会失败，
- * 必须先回「变更认证主体」补资料，所以这里提前拦在界面层，别让用户白填一次表单。
+ * 企业主体按新主体重建收款账户前，渠道侧要求实名资料里的企业进件资料齐备。
+ *
+ * 渠道创建企业会员（对公收款账户）时逐项校验营业执照文件、企业所在省市、注册地址、
+ * 经营范围、营业执照有效期、法人证件有效期，缺任一项整条对公收款通道都开不了。
+ * 缺资料时重绑一定会被渠道拒绝，必须先回「变更认证主体」补资料，所以这里提前拦在界面层，
+ * 别让用户白填一次表单。
  */
-const settleMaterialMissing = computed(
-  () => settleCorporateLocked.value && !current.value?.business_license_file?.trim(),
-)
+const settleMaterialMissing = computed(() => {
+  if (!settleCorporateLocked.value) return false
+  return settleMaterialMissingLabels.value.length > 0
+})
 
-/** 缺企业资料时不去重绑，直接关掉弹窗并打开实名表单让用户补营业执照。 */
+/** 企业进件资料缺了哪几项，用于把「缺什么」直接说给用户，而不是一句笼统的「资料不全」。 */
+const settleMaterialMissingLabels = computed(() => missingEnterpriseOnboardingLabels(current.value))
+
+/** 缺资料的清单文本，拼进提示语里。 */
+const settleMaterialMissingText = computed(() => settleMaterialMissingLabels.value.join('、'))
+
+/**
+ * 渠道侧最近一次拒绝的原话。
+ *
+ * 只报状态（「未认证 / 未通过」）时，用户不知道该改什么；渠道原话（如
+ * 「prov_code 不能为空」）是唯一能对上号的线索，所以在弹窗里原样给出来。
+ * 已经开通且卡还在时不再提旧伤——那是一次翻篇的失败；换卡失败导致卡被解绑时
+ * 状态仍停在 `active`，这时候原因必须留着，否则用户看到的是「已认证 + 未设置」而无从下手。
+ */
+const settleProviderError = computed(() => {
+  const member = adapayMember.value
+  const error = (member?.providerError ?? '').trim()
+  if (!error) return ''
+  return member?.onboardingStatus === 'active' && member.settleAccountId ? '' : error
+})
+
+/** 缺企业资料时不去重绑，直接关掉弹窗并打开实名表单让用户补企业进件资料。 */
 function goFixSettleMaterial() {
   settleDialogVisible.value = false
   settleEditing.value = false
@@ -2469,6 +2562,105 @@ onBeforeUnmount(() => {
                   :disabled="realnameLocked"
                 />
               </el-form-item>
+              <!-- 以下六项是支付渠道创建企业会员（对公收款账户）的必填进件资料：
+                   缺任意一项，认证能过但对公收款账户开不了，所以在这里收齐 -->
+              <el-form-item
+                :label="`${soleProprietorSelected ? '个体户' : '企业'}所在省市`"
+                required
+              >
+                <div class="realname-region-row">
+                  <el-select
+                    v-model="form.companyProvCode"
+                    filterable
+                    clearable
+                    placeholder="选择省份"
+                    :disabled="realnameLocked"
+                    @change="changeEnterpriseProvince"
+                  >
+                    <el-option
+                      v-for="province in settlementProvinces"
+                      :key="province.value"
+                      :label="province.title"
+                      :value="province.value"
+                    />
+                  </el-select>
+                  <el-select
+                    v-model="form.companyAreaCode"
+                    filterable
+                    clearable
+                    :disabled="realnameLocked || !form.companyProvCode"
+                    :placeholder="form.companyProvCode ? '选择城市' : '请先选省份'"
+                  >
+                    <el-option
+                      v-for="city in enterpriseCities"
+                      :key="city.value"
+                      :label="city.title"
+                      :value="city.value"
+                    />
+                  </el-select>
+                </div>
+              </el-form-item>
+              <el-form-item
+                :label="`${soleProprietorSelected ? '个体户' : '企业'}注册地址`"
+                required
+              >
+                <el-input
+                  v-model="form.companyAddress"
+                  maxlength="200"
+                  placeholder="按营业执照填写注册地址"
+                  :disabled="realnameLocked"
+                />
+              </el-form-item>
+              <el-form-item label="经营范围" required>
+                <el-input
+                  v-model="form.businessScope"
+                  maxlength="200"
+                  type="textarea"
+                  :rows="2"
+                  placeholder="按营业执照填写经营范围"
+                  :disabled="realnameLocked"
+                />
+              </el-form-item>
+              <el-form-item label="营业执照有效期" required>
+                <div class="realname-date-row">
+                  <el-date-picker
+                    v-model="form.businessLicenseExpiresOn"
+                    type="date"
+                    value-format="YYYYMMDD"
+                    format="YYYY-MM-DD"
+                    placeholder="选择有效期截止日"
+                    :disabled="realnameLocked"
+                  />
+                  <el-button
+                    link
+                    type="primary"
+                    :disabled="realnameLocked"
+                    @click="form.businessLicenseExpiresOn = LONG_TERM_DATE"
+                  >
+                    长期有效
+                  </el-button>
+                </div>
+              </el-form-item>
+              <el-form-item label="法人证件有效期" required>
+                <div class="realname-date-row">
+                  <el-date-picker
+                    v-model="form.legalCertExpiresOn"
+                    type="date"
+                    value-format="YYYYMMDD"
+                    format="YYYY-MM-DD"
+                    placeholder="选择证件有效期截止日"
+                    :disabled="realnameLocked"
+                  />
+                  <el-button
+                    link
+                    type="primary"
+                    :disabled="realnameLocked"
+                    @click="form.legalCertExpiresOn = LONG_TERM_DATE"
+                  >
+                    长期有效
+                  </el-button>
+                </div>
+              </el-form-item>
               <el-form-item>
                 <el-alert
                   type="info"
@@ -2666,6 +2858,16 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
+            <!-- 渠道原话：会员停在「待认证 / 未通过」时，这是唯一能对上号的线索 -->
+            <el-alert
+              v-if="settleProviderError"
+              class="settle-dialog__alert"
+              type="warning"
+              :closable="false"
+              show-icon
+              :title="settleProviderError"
+            />
+
             <!-- 实名主体变更后旧卡不能再收款：先把原因说清楚，再给「按新主体重新绑定」的动作 -->
             <el-alert
               v-if="settleSubjectMismatch"
@@ -2675,14 +2877,18 @@ onBeforeUnmount(() => {
               show-icon
               :title="
                 settleMaterialMissing
-                  ? '企业实名资料缺少营业执照，收款账户暂时无法按新主体重建'
+                  ? `企业实名资料缺少${settleMaterialMissingText}，收款账户暂时无法按新主体重建`
                   : '实名主体已变更，原银行卡需要按新主体重新绑定'
               "
             >
               <p class="settle-dialog__alert-text">
                 合同款只会结算到与当前实名主体一致的收款账户，变更前绑定的卡渠道不会再用。
                 <template v-if="settleMaterialMissing">
-                  按新主体重建收款账户要读实名资料里的营业执照，当前企业实名没有；先补齐资料并重新提交企业认证，通过后再回来绑定{{ settleCorporateLocked ? '对公账户' : '银行卡' }}。
+                  按新主体重建收款账户要读实名资料里的{{
+                    settleMaterialMissingText
+                  }}，当前企业实名没有；先补齐资料并重新提交企业认证，通过后再回来绑定{{
+                    settleCorporateLocked ? '对公账户' : '银行卡'
+                  }}。
                 </template>
                 <template v-else>
                   请按「{{ settleSubjectLabel }}」重新绑定银行卡{{
@@ -2698,7 +2904,7 @@ onBeforeUnmount(() => {
                 size="small"
                 @click="goFixSettleMaterial"
               >
-                去「变更认证主体」补营业执照
+                去「变更认证主体」补齐企业资料
               </el-button>
             </el-alert>
 
@@ -2706,8 +2912,9 @@ onBeforeUnmount(() => {
             <div v-if="settleBound && !settleEditing" class="settle-dialog__bound">
               <p class="settle-dialog__hint">
                 <template v-if="settleMaterialMissing">
-                  现在提交更换一定失败：渠道按新主体重建收款账户时要读实名资料里的营业执照，
-                  而当前企业实名没有营业执照。请先补齐资料并重新提交企业认证。
+                  现在提交更换一定失败：渠道按新主体重建收款账户时要读实名资料里的{{
+                    settleMaterialMissingText
+                  }}， 而当前企业实名资料不全。请先补齐资料并重新提交企业认证。
                 </template>
                 <template v-else>
                   当前已是可收款状态。更换银行卡时，平台会先解绑原卡再绑定新卡；新卡的持卡人姓名与证件号必须与实名认证信息一致，否则绑定会被渠道拒绝。
@@ -2719,7 +2926,7 @@ onBeforeUnmount(() => {
                 plain
                 @click="goFixSettleMaterial"
               >
-                去「变更认证主体」补营业执照
+                去「变更认证主体」补齐企业资料
               </el-button>
               <el-button v-else type="primary" plain @click="startSettleChange">
                 {{ settleSubjectMismatch ? '按当前主体重新绑定' : '更换收款银行卡' }}
@@ -2742,7 +2949,11 @@ onBeforeUnmount(() => {
                 title="确认提交后原银行卡会立即解绑，再绑定新卡；解绑与绑定之间暂时无法分账。"
               />
               <el-form-item label="银行卡号" required>
-                <el-input v-model="settleForm.card_id" inputmode="numeric" placeholder="请输入收款银行卡号" />
+                <el-input
+                  v-model="settleForm.card_id"
+                  inputmode="numeric"
+                  placeholder="请输入收款银行卡号"
+                />
               </el-form-item>
               <el-form-item label="开户银行" required>
                 <el-select-v2
@@ -4053,6 +4264,26 @@ onBeforeUnmount(() => {
 }
 
 .realname-form {
+  min-width: 0;
+}
+
+/* 企业进件资料：省市两个下拉并排一行，日期与「长期有效」并排一行 */
+.realname-region-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.realname-date-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.realname-date-row :deep(.el-date-editor) {
+  flex: 1 1 auto;
   min-width: 0;
 }
 

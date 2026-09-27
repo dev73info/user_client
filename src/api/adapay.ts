@@ -323,6 +323,8 @@ export type AdapayMemberStatus = {
   settleAccountId?: string | null
   onboardingStatus: string
   providerStatus?: string | null
+  /** 最近一次入驻 / 绑卡失败时渠道的原话，用于告诉用户「为什么没开通、接下来该补什么」。 */
+  providerError?: string | null
   settlementReady: boolean
 }
 

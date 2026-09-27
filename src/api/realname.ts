@@ -22,6 +22,16 @@ export type UserRealnameVerification = {
   business_license_file?: string | null
   operator_name?: string | null
   operator_id_card_no_masked?: string | null
+  /**
+   * 企业进件资料：支付渠道创建企业会员（对公收款账户）时逐项必填，
+   * 缺任意一项整条对公收款通道都开不了，所以企业主体提交实名时就要收齐。
+   */
+  company_prov_code?: string | null
+  company_area_code?: string | null
+  company_address?: string | null
+  business_scope?: string | null
+  business_license_expires_on?: string | null
+  legal_cert_expires_on?: string | null
   guardian_consent?: boolean | null
   guardian_consent_file?: string | null
   review_note?: string | null
@@ -47,6 +57,15 @@ export type SubmitRealnameVerificationPayload = {
   business_license_file?: string | null
   operator_name?: string | null
   operator_id_card_no?: string | null
+  /** 企业进件资料：企业 / 个体工商户主体必填（渠道逐项校验），个人主体不传。 */
+  company_prov_code?: string | null
+  company_area_code?: string | null
+  company_address?: string | null
+  business_scope?: string | null
+  /** 营业执照有效期截止日，`YYYYMMDD`，长期填 20991231。 */
+  business_license_expires_on?: string | null
+  /** 法人证件有效期截止日，`YYYYMMDD`，长期填 20991231。 */
+  legal_cert_expires_on?: string | null
   guardian_consent?: boolean | null
   guardian_consent_file?: string | null
 }
@@ -194,6 +213,15 @@ export type StartCompanyIdentifyPayload = {
   operator_id_card_no: string
   mobile: string
   business_license_file: string
+  /** 企业所在省份 / 城市（渠道省市编码表，非国标行政区划码），企业进件必填。 */
+  company_prov_code: string
+  company_area_code: string
+  company_address: string
+  business_scope: string
+  /** 营业执照有效期截止日，`YYYYMMDD`，长期填 20991231。 */
+  business_license_expires_on: string
+  /** 法人证件有效期截止日，`YYYYMMDD`，长期填 20991231。 */
+  legal_cert_expires_on: string
 }
 
 export type StartCompanyIdentifyResponse = {
