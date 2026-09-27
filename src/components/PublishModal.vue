@@ -3,12 +3,14 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import type { PropType } from "vue";
 import { ArrowDown } from "@element-plus/icons-vue";
 
+import RequirementAgentPanel from "@/components/RequirementAgentPanel.vue";
 import RichTextEditor from "@/components/RichTextEditor.vue";
 import {
   loadAdapayAvailability,
   platformGuaranteeLoaded,
   platformGuaranteeReady,
 } from "@/shared/adapayAvailability";
+import type { RequirementDraftFormValues } from "@/shared/requirementDraft";
 import { acceptanceTemplates, type AcceptanceTemplate } from "@/utils/acceptanceTemplates";
 import { requirementRichTextHasMeaningfulContent } from "@/utils/requirementRichText";
 import { sanitizeRichHtml } from "@/utils/sanitizeHtml";
@@ -71,6 +73,36 @@ function updatePaymentMode(value: "platform_guarantee" | "self_managed") {
   }
 
   emit("update:publishPaymentMode", value);
+}
+
+// ===== AI 需求助手 =====
+// 「跟 AI 聊着填」：在弹窗内以二级层承载对话面板，聊出的草稿回填到下面这五个字段，
+// 最终仍由用户点原来的「确认发布」创建需求（本组件不直接建需求）。
+const agentMode = ref(false);
+
+function toggleAgentPanel() {
+  agentMode.value = !agentMode.value;
+}
+
+/** 回填草稿：只覆盖草稿里有内容的字段，避免把用户手填的内容抹成空 */
+function applyAgentDraft(values: RequirementDraftFormValues) {
+  const title = values.title.trim();
+  if (title) {
+    emit("update:publishTitle", title);
+  }
+  if (values.description.trim()) {
+    emit("update:publishDescription", values.description);
+  }
+  if (values.budget.trim()) {
+    emit("update:publishBudget", values.budget);
+  }
+  if (values.acceptance.trim()) {
+    emit("update:publishAcceptance", values.acceptance);
+  }
+  updatePaymentMode(values.paymentMode);
+
+  agentMode.value = false;
+  emit("notify", "已把整理好的需求填入表单，确认无误后点「确认发布」", "success");
 }
 
 // ===== 验收标准模板 =====
@@ -158,13 +190,14 @@ function confirmAcceptanceTemplate() {
   }
 }
 
-// 弹窗关闭时收起模板菜单与覆盖确认，避免下次打开残留
+// 弹窗关闭时收起模板菜单与覆盖确认，避免下次打开残留；AI 面板也回到表单视图
 watch(
   () => props.visible,
   (visible) => {
     if (!visible) {
       closeAcceptanceTemplateMenu();
       pendingAcceptanceTemplate.value = null;
+      agentMode.value = false;
     }
   }
 );
@@ -379,9 +412,17 @@ watch(
       <section class="auth-modal publish-modal" :aria-label="`${modalTitle}弹窗`">
         <header class="publish-modal__head">
           <h3>{{ modalTitle }}</h3>
+          <button v-if="!agentMode" type="button" class="publish-agent__trigger"
+            title="跟 AI 聊着填：用自然语言说清需求，AI 帮你整理成表单内容" @click="toggleAgentPanel">
+            <span>跟 AI 聊着填</span>
+          </button>
         </header>
 
-        <div class="publish-modal__body">
+        <div v-if="agentMode" class="publish-modal__agent">
+          <RequirementAgentPanel @close="toggleAgentPanel" @filled="applyAgentDraft" @notify="forwardNotify" />
+        </div>
+
+        <div v-else class="publish-modal__body">
           <label>
             需求标题 *
             <input :value="publishTitle" type="text" maxlength="60" placeholder="例如：企业官网改版、小程序开发" required
@@ -442,7 +483,7 @@ watch(
           </div>
         </div>
 
-        <div class="auth-modal-actions publish-modal__actions">
+        <div v-if="!agentMode" class="auth-modal-actions publish-modal__actions">
           <button class="auth-btn ghost" type="button" @click="emit('close')">
             取消
           </button>
@@ -451,7 +492,7 @@ watch(
           </button>
         </div>
 
-        <footer v-if="draftEnabled" class="publish-modal__draft-hint">
+        <footer v-if="draftEnabled && !agentMode" class="publish-modal__draft-hint">
           <span>内容将自动保存为草稿</span>
         </footer>
       </section>
@@ -501,6 +542,10 @@ watch(
 }
 
 .publish-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   flex: 0 0 auto;
   padding: 18px 22px 14px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.76);
@@ -509,9 +554,48 @@ watch(
 
 .publish-modal__head h3 {
   margin: 0;
+  min-width: 0;
   color: #0f172a;
   font-size: 20px;
   line-height: 1.2;
+}
+
+/* 「跟 AI 聊着填」入口：沿用验收标准模板按钮的浅底描边口径 */
+.publish-agent__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 4px 11px;
+  border: 1px solid rgba(37, 99, 235, 0.34);
+  border-radius: 9px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.publish-agent__trigger:hover,
+.publish-agent__trigger:focus-visible {
+  border-color: rgba(37, 99, 235, 0.7);
+  background: #dbeafe;
+  color: #1e40af;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+/* AI 对话二级层：占满弹窗剩余高度，滚动交给面板内部的对话区 / 草稿区 */
+.publish-modal__agent {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: min(62vh, 560px);
+  overflow: hidden;
 }
 
 .publish-modal__body {
@@ -869,6 +953,7 @@ watch(
   }
 
   .publish-modal__head {
+    flex-wrap: wrap;
     padding: 16px 16px 12px;
   }
 
