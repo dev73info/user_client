@@ -2422,18 +2422,20 @@ onBeforeUnmount(() => {
               <el-icon><component :is="entry.icon" /></el-icon>
             </span>
             <span class="entry-row__copy">
-              <span class="entry-row__title">{{ entry.title }}</span>
+              <span class="entry-row__head">
+                <span class="entry-row__title">{{ entry.title }}</span>
+                <el-tag
+                  v-if="entry.status"
+                  :type="entry.status.type"
+                  size="small"
+                  round
+                  class="entry-row__status"
+                >
+                  {{ entry.status.text }}
+                </el-tag>
+              </span>
               <small class="entry-row__desc">{{ entry.desc }}</small>
             </span>
-            <el-tag
-              v-if="entry.status"
-              :type="entry.status.type"
-              size="small"
-              round
-              class="entry-row__status"
-            >
-              {{ entry.status.text }}
-            </el-tag>
             <el-icon class="entry-row__arrow"><ArrowRight /></el-icon>
           </el-button>
         </div>
@@ -2821,18 +2823,20 @@ onBeforeUnmount(() => {
                   <el-icon><component :is="entry.icon" /></el-icon>
                 </span>
                 <span class="entry-row__copy">
-                  <span class="entry-row__title">{{ entry.title }}</span>
+                  <span class="entry-row__head">
+                    <span class="entry-row__title">{{ entry.title }}</span>
+                    <el-tag
+                      v-if="entry.status"
+                      :type="entry.status.type"
+                      size="small"
+                      round
+                      class="entry-row__status"
+                    >
+                      {{ entry.status.text }}
+                    </el-tag>
+                  </span>
                   <small class="entry-row__desc">{{ entry.desc }}</small>
                 </span>
-                <el-tag
-                  v-if="entry.status"
-                  :type="entry.status.type"
-                  size="small"
-                  round
-                  class="entry-row__status"
-                >
-                  {{ entry.status.text }}
-                </el-tag>
                 <el-icon class="entry-row__arrow"><ArrowRight /></el-icon>
               </el-button>
             </div>
@@ -3746,6 +3750,12 @@ onBeforeUnmount(() => {
   gap: 10px;
 }
 
+/* 组内入口数为奇数时，最后一行会只剩左半格、右边空一片；让它整行铺满，
+   与「危险操作」那种整行入口保持一致，两张卡里都不再出现空格子 */
+.entry-grid > .entry-row.el-button:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .entry-row.el-button {
   width: 100%;
   height: auto;
@@ -3753,13 +3763,21 @@ onBeforeUnmount(() => {
   margin: 0;
   padding: 12px 14px;
   justify-content: flex-start;
-  gap: 12px;
   border-radius: 12px;
   border: 1px solid var(--profile-card-border);
   background: rgba(248, 250, 252, 0.92);
   color: var(--profile-text-main);
   text-align: left;
   white-space: normal;
+}
+
+/* el-button 会把插槽包进一层按内容宽度收缩的内联 flex，于是右侧的状态标签与箭头
+   随文案长短左右浮动、两列各行都对齐不上；让这层撑满整行，标签与箭头统一贴行尾 */
+.entry-row.el-button :deep(> span) {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
 }
 
 .entry-row.el-button:hover {
@@ -3788,10 +3806,26 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
+/* 标题行：入口名 + 状态标签。标签占的是这一行的行尾，下面那行描述就独占整列宽度，
+   不会再被标签挤到折行，各行高度因此能保持一致 */
+.entry-row__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* 行高锁在标题那一行，标签比它高出的部分溢出、不撑高整行 */
+  height: 1em;
+  min-width: 0;
+}
+
 .entry-row__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
   color: var(--profile-text-main);
   font-size: 14px;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .entry-row__desc {
@@ -3803,6 +3837,7 @@ onBeforeUnmount(() => {
 
 .entry-row__status {
   flex: 0 0 auto;
+  margin-left: auto;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -4193,7 +4228,8 @@ onBeforeUnmount(() => {
 }
 
 :deep(.realname-card.el-card) {
-  border-radius: 18px;
+  /* 与上方「账号与安全」那张卡同款外形，两张卡竖排时才像一对 */
+  border-radius: 24px;
   border: 1px solid rgba(198, 210, 236, 0.72);
   background: rgba(255, 255, 255, 0.84);
   backdrop-filter: blur(18px);
@@ -4202,7 +4238,8 @@ onBeforeUnmount(() => {
 }
 
 :deep(.realname-card .el-card__body) {
-  padding: 20px;
+  /* 24px 与 .wallet-section 的内边距对齐，两张卡的文案左右边缘才落在同一条线上 */
+  padding: 24px;
 }
 
 .realname-metrics {
