@@ -141,7 +141,7 @@ function applyDetail(detail: RequirementAgentConversationDetail) {
   void scrollToBottom()
 }
 
-/** 载入最近一条未发布的会话，接着上次聊，避免每次进来都从零开始 */
+/** 载入最近一条「AI 梳理中」的会话，接着上次聊，避免每次进来都从零开始 */
 async function loadExistingConversation() {
   if (!auth.token) {
     initializing.value = false
@@ -150,7 +150,9 @@ async function loadExistingConversation() {
 
   try {
     const list = await listMyRequirementAgentConversations(auth.token)
-    const current = list.find((item) => item.status !== 'published') ?? null
+    // 只接回 AI 仍在应答的会话。已转人工 / 已结束 / 已发布的会话不再自动挂回：
+    // 那几种状态下输入框是禁用的，若自动挂回，用户既问不了 AI，也起不了新会话。
+    const current = list.find((item) => item.status === 'ai_active') ?? null
     if (!current) {
       return
     }
