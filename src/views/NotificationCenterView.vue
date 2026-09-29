@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
 
 import { listCommunityPosts, listMyCommentWarnings, type CommentWarning, type CommunityPost } from '@/api/community'
+import { listMyAfterSalesCases, type AfterSalesCase } from '@/api/afterSales'
 import {
   listConversationHistoryDisclosures,
   respondConversationHistoryDisclosure,
@@ -22,8 +23,8 @@ import {
 } from '@/shared/notifications'
 import { useAuthStore } from '@/stores/auth'
 
-/* 「系统通知」：评论警告、历史沟通公开申请、平台公告三类系统消息，统一成同一种消息卡片。
-   两类数据要登录（评论警告、公开申请），公告是公开接口，所以三支请求并行发、各自结算：
+/* 「系统通知」：评论警告、历史沟通公开申请、售后案件、平台公告四类系统消息，统一成同一种消息卡片。
+   三类数据要登录（评论警告、公开申请、售后案件），公告是公开接口，所以四支请求并行发、各自结算：
    某一支挂了只提示那一类，其余照常显示——一类接口抖动不该让整页变空。
 
    两个工作台共用这一页（用户端 workbench-notifications / 开发者端 dev-notifications），
@@ -43,6 +44,7 @@ const ANNOUNCEMENT_LIMIT = 50
 const loading = ref(false)
 const warnings = ref<CommentWarning[]>([])
 const disclosures = ref<ConversationHistoryDisclosure[]>([])
+const afterSales = ref<AfterSalesCase[]>([])
 const announcements = ref<CommunityPost[]>([])
 const warningError = ref('')
 const kindFilter = ref<'all' | NotificationKind>('all')
@@ -55,6 +57,7 @@ const kindFilters = computed<Array<{ value: 'all' | NotificationKind; label: str
     { value: 'all' as const, label: '全部', count: cards.value.length },
     { value: 'comment-warning' as const, label: NOTIFICATION_KIND_LABELS['comment-warning'], count: counts['comment-warning'] },
     { value: 'history-disclosure' as const, label: NOTIFICATION_KIND_LABELS['history-disclosure'], count: counts['history-disclosure'] },
+    { value: 'after-sales' as const, label: NOTIFICATION_KIND_LABELS['after-sales'], count: counts['after-sales'] },
     { value: 'announcement' as const, label: NOTIFICATION_KIND_LABELS.announcement, count: counts.announcement },
   ]
 })
@@ -63,6 +66,7 @@ const cards = computed<NotificationCard[]>(() =>
   buildNotificationCards({
     warnings: warnings.value,
     disclosures: disclosures.value,
+    afterSales: afterSales.value,
     announcements: announcements.value,
     username: auth.username,
   }),
@@ -95,17 +99,23 @@ async function loadNotifications(showSuccess = false) {
   if (!auth.token.trim()) {
     warnings.value = []
     disclosures.value = []
+    afterSales.value = []
   }
 
   loading.value = true
   warningError.value = ''
-  // 公告是公开接口，未登录也能取；另两支需要令牌，未登录时直接跳过，避免明知会 401 还发一次。
+  // 公告是公开接口，未登录也能取；另三支需要令牌，未登录时直接跳过，避免明知会 401 还发一次。
   const authed = Boolean(auth.token.trim())
-  const [warningsResult, disclosuresResult, announcementsResult] = await Promise.allSettled([
-    authed ? listMyCommentWarnings(auth.token) : Promise.resolve<CommentWarning[]>([]),
-    authed ? listConversationHistoryDisclosures(auth.token) : Promise.resolve<ConversationHistoryDisclosure[]>([]),
-    listCommunityPosts({ tag: '公告', limit: ANNOUNCEMENT_LIMIT, offset: 0 }),
-  ])
+  const [warningsResult, disclosuresResult, afterSalesResult, announcementsResult] =
+    await Promise.allSettled([
+      authed ? listMyCommentWarnings(auth.token) : Promise.resolve<CommentWarning[]>([]),
+      authed ? listConversationHistoryDisclosures(auth.token) : Promise.resolve<ConversationHistoryDisclosure[]>([]),
+      // 案件列表接口回的是分页包（items + 售后窗口状态），这里只要案件本身。
+      authed
+        ? listMyAfterSalesCases(auth.token).then((page) => page.items)
+        : Promise.resolve<AfterSalesCase[]>([]),
+      listCommunityPosts({ tag: '公告', limit: ANNOUNCEMENT_LIMIT, offset: 0 }),
+    ])
 
   if (warningsResult.status === 'fulfilled') {
     warnings.value = warningsResult.value
@@ -118,6 +128,15 @@ async function loadNotifications(showSuccess = false) {
   } else {
     showToast(
       disclosuresResult.reason instanceof Error ? disclosuresResult.reason.message : '加载公开申请失败',
+      'error',
+    )
+  }
+
+  if (afterSalesResult.status === 'fulfilled') {
+    afterSales.value = afterSalesResult.value
+  } else {
+    showToast(
+      afterSalesResult.reason instanceof Error ? afterSalesResult.reason.message : '加载售后案件失败',
       'error',
     )
   }

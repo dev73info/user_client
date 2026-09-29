@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { AfterSalesCase } from '@/api/afterSales'
 import type { CommentWarning, CommunityPost } from '@/api/community'
 import type { ConversationHistoryDisclosure } from '@/api/conversations'
 import {
@@ -76,26 +77,87 @@ function disclosure(overrides: Partial<ConversationHistoryDisclosure> = {}): Con
   }
 }
 
+function afterSalesCase(overrides: Partial<AfterSalesCase> = {}): AfterSalesCase {
+  return {
+    id: 5,
+    caseNo: 'AFTERSALES_1_abc',
+    requirementId: 'REQ-1',
+    requirementTitle: '企业官网改版',
+    requirementStatus: 'completed',
+    openedBy: 'cust',
+    openerRole: 'customer',
+    kind: 'refund',
+    description: '交付物未满足验收标准，协商不成。',
+    status: 'support_reviewing',
+    liableParty: null,
+    claimAmountFen: 1000,
+    claimAmountCny: '10.00',
+    refundAmountFen: 0,
+    refundAmountCny: '0.00',
+    compensationAmountFen: 0,
+    compensationAmountCny: '0.00',
+    providerRefundId: null,
+    providerDepositConfirmId: null,
+    resolutionNote: null,
+    resolvedBy: null,
+    resolvedAt: null,
+    decisionDeadlineAt: '2026-04-03T09:00:00+08:00',
+    customerDecision: 'opened',
+    customerDecidedAt: '2026-04-01T09:00:00+08:00',
+    developerDecision: 'reject',
+    developerDecidedAt: '2026-04-01T10:00:00+08:00',
+    createdAt: '2026-04-01T09:00:00+08:00',
+    updatedAt: '2026-04-01T10:00:00+08:00',
+    windowClosesAt: '2026-04-16T09:00:00+08:00',
+    viewerRole: 'customer',
+    ...overrides,
+  }
+}
+
 const kinds = (cards: NotificationCard[]) => cards.map((card) => card.kind)
 const keys = (cards: NotificationCard[]) => cards.map((card) => card.key)
 
 describe('system notification aggregation', () => {
-  it('三类来源合成一张列表并按时间倒序', () => {
+  it('四类来源合成一张列表并按时间倒序', () => {
     const cards = buildNotificationCards({
       warnings: [warning()],
       announcements: [post()],
       disclosures: [disclosure()],
+      afterSales: [afterSalesCase()],
       username: 'dev_old',
     })
 
-    // 三类时间格式都不一样（公告与警告是后端口径的 `YYYY-MM-DD HH:MM:SS`，公开申请带时区），
-    // 聚合层统一解析后再排序：三月 → 二月 → 一月
-    expect(kinds(cards)).toEqual(['history-disclosure', 'announcement', 'comment-warning'])
-    // 跨类别唯一的键：三类 id 都从 1 开始，只拼 id 会撞在一起
-    expect(keys(cards)).toEqual(['history-disclosure-3', 'announcement-7', 'comment-warning-1'])
-    expect(cards[0]?.kindLabel).toBe('公开申请')
-    expect(cards[1]?.kindLabel).toBe('平台公告')
-    expect(cards[2]?.kindLabel).toBe('评论警告')
+    // 四类时间格式不一样（公告与警告是后端口径的 `YYYY-MM-DD HH:MM:SS`，公开申请与售后案件带时区），
+    // 聚合层统一解析后再排序：四月 → 三月 → 二月 → 一月
+    expect(kinds(cards)).toEqual(['after-sales', 'history-disclosure', 'announcement', 'comment-warning'])
+    // 跨类别唯一的键：四类 id 都从 1 开始，只拼 id 会撞在一起
+    expect(keys(cards)).toEqual(['after-sales-5', 'history-disclosure-3', 'announcement-7', 'comment-warning-1'])
+    expect(cards[0]?.kindLabel).toBe('售后案件')
+    expect(cards[1]?.kindLabel).toBe('公开申请')
+    expect(cards[2]?.kindLabel).toBe('平台公告')
+    expect(cards[3]?.kindLabel).toBe('评论警告')
+  })
+
+  it('售后案件卡片只读：标题取需求名，正文写清诉求额度与当前状态', () => {
+    const [card] = buildNotificationCards({ afterSales: [afterSalesCase()], username: 'cust' })
+
+    expect(card?.title).toBe('企业官网改版')
+    expect(card?.body).toEqual([
+      'AFTERSALES_1_abc · 需求 REQ-1',
+      '诉求：要求退款（诉求额度 10.00 元） · 当前状态：平台裁决中',
+    ])
+    expect(card?.meta).toBe('2026-04-01T09:00:00+08:00 由 cust 发起')
+    // 发起、表态、撤回都在需求列表的售后弹窗里做，通知卡片不带动作
+    expect(card?.canVote).toBe(false)
+    expect(card?.postId).toBeUndefined()
+  })
+
+  it('售后案件没有填诉求额度时不显示额度括号', () => {
+    const [card] = buildNotificationCards({
+      afterSales: [afterSalesCase({ kind: 'repair', claimAmountFen: 0 })],
+      username: 'cust',
+    })
+    expect(card?.body[1]).toBe('诉求：要求返工 · 当前状态：平台裁决中')
   })
 
   it('时间解析不出来时排在最后——格式异常的旧通知不该被顶到最上面', () => {
@@ -195,6 +257,7 @@ describe('notification filtering and counts', () => {
     warnings: [warning()],
     announcements: [post()],
     disclosures: [disclosure()],
+    afterSales: [afterSalesCase()],
     username: 'dev_old',
   })
 
@@ -212,7 +275,12 @@ describe('notification filtering and counts', () => {
   })
 
   it('读数条与筛选胶囊的计数取自同一处', () => {
-    expect(countByKind(cards)).toEqual({ 'comment-warning': 1, 'history-disclosure': 1, announcement: 1 })
+    expect(countByKind(cards)).toEqual({
+      'comment-warning': 1,
+      'history-disclosure': 1,
+      'after-sales': 1,
+      announcement: 1,
+    })
     // 「待我确认」只数还在等我投票的公开申请
     expect(pendingVoteCount(cards)).toBe(1)
     expect(pendingVoteCount(buildNotificationCards({ disclosures: [disclosure()], username: 'dev_new' }))).toBe(0)

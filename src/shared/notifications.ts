@@ -1,30 +1,38 @@
 import type { CommentWarning, CommunityPost } from '@/api/community'
 import type { ConversationHistoryDisclosure } from '@/api/conversations'
+import type { AfterSalesCase } from '@/api/afterSales'
+import { afterSalesKindLabel, afterSalesStatusLabel } from '@/shared/afterSalesStatus'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 
 /**
  * 「系统通知」页的聚合层。
  *
- * 这一页把三类通知合成同一种卡片：评论警告（社区/资源评论被管理员警告）、
- * 历史沟通公开申请（前任开发者负责期间的沟通记录要不要公开）、平台公告（官方活动与广播）。
- * 三者的后端接口、字段、可做的动作都不一样，页面上却要是同一种卡片，
- * 所以差异全部收在这里，页面只负责渲染与调用动作：
+ * 这一页把四类通知合成同一种卡片：评论警告（社区/资源评论被管理员警告）、
+ * 历史沟通公开申请（前任开发者负责期间的沟通记录要不要公开）、售后案件（我给出去或收到的那条
+ * 售后现在走到哪一步）、平台公告（官方活动与广播）。四者的后端接口、字段、可做的动作都不一样，
+ * 页面上却要是同一种卡片，所以差异全部收在这里，页面只负责渲染与调用动作：
  *
  * | 来源 | 接口 | 卡片可做的动作 |
  * | --- | --- | --- |
  * | 评论警告 | `/community/comment-warnings` | 无（只读，说明原因） |
  * | 历史沟通公开申请 | `/conversation/history-disclosures` | 同意公开 / 拒绝（两票制，轮到自己才能投） |
+ * | 售后案件 | `/after-sales/cases` | 无（只读，发起与表态都在需求列表的售后弹窗里做） |
  * | 平台公告 | `/community/posts?tag=公告` | 无（点卡片进社区帖） |
  *
  * 后端没有通知表，也没有已读/未读字段，所以这里不产生任何状态，只做映射与排序。
  */
 
-export type NotificationKind = 'comment-warning' | 'history-disclosure' | 'announcement'
+export type NotificationKind =
+  | 'comment-warning'
+  | 'history-disclosure'
+  | 'after-sales'
+  | 'announcement'
 
 /** 卡片上的类别标签，与筛选胶囊一一对应。 */
 export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
   'comment-warning': '评论警告',
   'history-disclosure': '公开申请',
+  'after-sales': '售后案件',
   announcement: '平台公告',
 }
 
@@ -59,21 +67,23 @@ export type NotificationCard = {
 export type NotificationSources = {
   warnings?: CommentWarning[]
   disclosures?: ConversationHistoryDisclosure[]
+  afterSales?: AfterSalesCase[]
   announcements?: CommunityPost[]
   /** 当前登录用户名：判定公开申请里我是哪一方、是否轮到我投票 */
   username: string
 }
 
 /**
- * 把三类来源合成一张按时间倒序的通知列表。
+ * 把四类来源合成一张按时间倒序的通知列表。
  *
- * 时间格式三类都不一样（评论警告与帖子是 `YYYY-MM-DD HH:MM:SS`，公开申请带时区），
+ * 时间格式各类都不一样（评论警告与帖子是 `YYYY-MM-DD HH:MM:SS`，公开申请与售后案件带时区），
  * 解析失败的排在最后而不是排到最前——解析不出来当成「很早」，不要因为格式异常把一条旧通知顶到最上面。
  */
 export function buildNotificationCards(sources: NotificationSources): NotificationCard[] {
   const cards = [
     ...(sources.warnings ?? []).map(buildCommentWarningCard),
     ...(sources.disclosures ?? []).map((item) => buildHistoryDisclosureCard(item, sources.username)),
+    ...(sources.afterSales ?? []).map(buildAfterSalesCard),
     ...(sources.announcements ?? []).map(buildAnnouncementCard),
   ]
 
@@ -177,6 +187,37 @@ function historyDisclosureVoteHint(
   return `${developer} · ${customer}`
 }
 
+/**
+ * 售后案件卡片：只读。
+ *
+ * 为什么要进通知页：案件状态的每一次变化都只落在需求会话里的一张卡片上，而结单之后双方本来就
+ * 不太会再去盯需求列表——会话未读是个角标，很容易被忽略过去。这里给它第二个可见面。
+ *
+ * 卡片不带动作：发起、接受/不接受、撤回都在需求列表的售后弹窗里做，这里再摆一套按钮就是
+ * 两份规则；与评论警告同一取舍（只读，说明现状）。
+ */
+function buildAfterSalesCard(row: AfterSalesCase): NotificationCard {
+  const claim =
+    row.claimAmountFen > 0
+      ? `${afterSalesKindLabel(row.kind)}（诉求额度 ${row.claimAmountCny} 元）`
+      : afterSalesKindLabel(row.kind)
+  return {
+    key: `after-sales-${row.id}`,
+    kind: 'after-sales',
+    kindLabel: NOTIFICATION_KIND_LABELS['after-sales'],
+    title: row.requirementTitle || row.requirementId,
+    body: [
+      `${row.caseNo} · 需求 ${row.requirementId}`,
+      `诉求：${claim} · 当前状态：${afterSalesStatusLabel(row.status)}`,
+    ],
+    // 时间与发起人放在弱信息行：卡片右上角只摆这两项，正文留给「这条售后在等谁做什么」。
+    meta: `${row.createdAt} 由 ${row.openedBy} 发起`,
+    createdAt: row.createdAt,
+    sortTime: parseNoticeTime(row.createdAt),
+    canVote: false,
+  }
+}
+
 function buildAnnouncementCard(post: CommunityPost): NotificationCard {
   return {
     key: `announcement-${post.id}`,
@@ -206,6 +247,7 @@ export function countByKind(cards: NotificationCard[]): Record<NotificationKind,
   return {
     'comment-warning': cards.filter((card) => card.kind === 'comment-warning').length,
     'history-disclosure': cards.filter((card) => card.kind === 'history-disclosure').length,
+    'after-sales': cards.filter((card) => card.kind === 'after-sales').length,
     announcement: cards.filter((card) => card.kind === 'announcement').length,
   }
 }
