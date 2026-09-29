@@ -803,9 +803,6 @@ watch(
           <div class="wb-item__side">
             <span :class="toneBadgeClass(item.tone)">{{ item.statusLabel }}</span>
             <span class="wb-item__meta">{{ item.partnerLabel }} · {{ item.lastLabel }}</span>
-            <el-button class="wb-toolbar__primary" @click.stop="openThread(item)">
-              {{ item.actionLabel }}
-            </el-button>
           </div>
         </li>
       </ul>
