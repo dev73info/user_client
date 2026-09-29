@@ -5,6 +5,7 @@ import { Close, Connection } from '@element-plus/icons-vue'
 
 import { listCommunityPosts, type CommunityPost, type CommunityPostStatus } from '@/api/community'
 import { apiUrl } from '@/api/http'
+import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
 import {
     getWorkbenchRequirementHallItem,
@@ -520,7 +521,7 @@ function communityStatusLabel(status: CommunityPostStatus): string {
                         @click="openRequirement(requirement)" @keydown.enter="openRequirement(requirement)"
                         @keydown.space.prevent="openRequirement(requirement)">
                         <div class="portal-page__card-topline">
-                            <span class="portal-page__chip">{{ paymentTag(requirement) }}</span>
+                            <PaymentModeChip :mode="requirement.payment_mode" />
                             <span class="portal-page__meta">{{ statusToLabel(requirement.status) }}</span>
                         </div>
                         <h3>{{ requirement.title }}</h3>
@@ -576,7 +577,7 @@ function communityStatusLabel(status: CommunityPostStatus): string {
             <section class="portal-search-detail" :aria-label="`${selectedRequirement.title}详情`">
                 <header class="portal-search-detail__head">
                     <div>
-                        <span class="portal-page__chip">{{ paymentTag(selectedRequirement) }}</span>
+                        <PaymentModeChip :mode="selectedRequirement.payment_mode" />
                         <h3>{{ selectedRequirement.title }}</h3>
                         <p>
                             {{ selectedRequirement.requirement_id }} ·

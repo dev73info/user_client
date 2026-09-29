@@ -17,6 +17,7 @@ import {
 } from '@/api/adapay'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import DeliverySubmitDialog from '@/components/DeliverySubmitDialog.vue'
+import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import { breachStatusLabel } from '@/shared/breachStatus'
@@ -445,10 +446,6 @@ function isWaitingContractSign(item: RequirementItem): boolean {
 
 function displayStatusLabel(item: RequirementItem): string {
   return isWaitingContractSign(item) ? '待签合同' : statusLabel(item.status)
-}
-
-function paymentModeLabel(item: RequirementItem): string {
-  return item.payment_mode === 'self_managed' ? '无电签约定' : '电签担保'
 }
 
 /** 需求正文类字段的富文本：净化后渲染；字段为空时给一句占位，免得卡片上只剩一个空白块。 */
@@ -1251,11 +1248,10 @@ async function loadRequirementConversations() {
             </div>
             <div class="dev-requirement-card__tags">
               <!-- 状态标签已去掉：卡内的流程进度条（RequirementProgressGuide）已经写明走到哪一步，
-                   卡片头再顶一枚「开发中 / 待付尾款」是同一条信息的第二遍。 -->
-              <el-tag v-if="row.item" :type="row.item.payment_mode === 'self_managed' ? 'info' : 'warning'"
-                effect="plain">
-                {{ paymentModeLabel(row.item) }}
-              </el-tag>
+                   卡片头再顶一枚「开发中 / 待付尾款」是同一条信息的第二遍。
+                   发布方式走全站共用的 .pay-mode-chip（见 PaymentModeChip），
+                   与需求大厅、我的需求、搜索结果同一枚胶囊。 -->
+              <PaymentModeChip v-if="row.item" :mode="row.item.payment_mode" />
             </div>
           </header>
 

@@ -7,6 +7,7 @@ import PublishModal from '@/components/PublishModal.vue'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import AcceptanceDialog from '@/components/AcceptanceDialog.vue'
 import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
+import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
 import {
@@ -439,10 +440,6 @@ function isSelfManagedRequirement(item: RequirementItem) {
 
 function isAdapayRequirement(item: RequirementItem) {
   return item.payment_mode === 'platform_guarantee'
-}
-
-function paymentModeLabel(item: RequirementItem) {
-  return isSelfManagedRequirement(item) ? '无电签约定' : '电签担保'
 }
 
 function formatRequirementTime(value: string) {
@@ -2458,12 +2455,10 @@ watch(
                   <span>{{ item.requirement_id }}</span>
                 </div>
                 <div class="requirement-details">
-                  <!-- 短事实走标签：发布方式用门户通用层的 .portal-page__pay-chip（与需求大厅卡片同一份定义，
+                  <!-- 短事实走标签：发布方式用全站共用的 .pay-mode-chip（见 PaymentModeChip，与需求大厅卡片同一枚胶囊，
                        底色按发布方式分档），其余走统一层 .wb-badge（浅底 + 深字：绿 = 已公开、琥珀 = 有待审核项）；
                        散文式的说明仍用 .requirement-note 独占一行。 -->
-                  <span class="portal-page__pay-chip" :class="`portal-page__pay-chip--${item.payment_mode}`">{{
-                    paymentModeLabel(item)
-                    }}</span>
+                  <PaymentModeChip :mode="item.payment_mode" />
                   <span v-if="hasBoundResource(item)" class="wb-badge wb-badge--success">{{
                     formatResourceVisibility(item)
                     }}</span>

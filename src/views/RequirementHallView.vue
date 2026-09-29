@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Close, Connection, Plus, Refresh } from '@element-plus/icons-vue'
 
 import PublishModal from '@/components/PublishModal.vue'
+import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 import { HttpError } from '@/api/http'
 import { getMyRealnameVerification } from '@/api/realname'
@@ -510,10 +511,7 @@ async function loadHallData(page = hallPage.value) {
             @click="openRequirementDetail(card)" @keydown.enter="openRequirementDetail(card)"
             @keydown.space.prevent="openRequirementDetail(card)">
             <div class="portal-page__card-topline">
-              <span
-                class="portal-page__pay-chip"
-                :class="`portal-page__pay-chip--${card.payment_mode}`"
-              >{{ paymentTag(card) }} · {{ statusToLabel(card.status) }}</span>
+              <PaymentModeChip :mode="card.payment_mode">{{ statusToLabel(card.status) }}</PaymentModeChip>
             </div>
             <h2>{{ card.title }}</h2>
             <p>{{ requirementRichTextPreview(card.description, '当前需求暂未补充详细描述。') }}</p>
@@ -603,10 +601,7 @@ async function loadHallData(page = hallPage.value) {
       <section class="requirement-hall-detail" :aria-label="`${selectedRequirement.title}详情`">
         <header class="requirement-hall-detail__head">
           <div>
-            <span
-              class="portal-page__pay-chip"
-              :class="`portal-page__pay-chip--${selectedRequirement.payment_mode}`"
-            >{{ paymentTag(selectedRequirement) }}</span>
+            <PaymentModeChip :mode="selectedRequirement.payment_mode" />
             <h3>{{ selectedRequirement.title }}</h3>
             <p>
               {{ selectedRequirement.requirement_id }} ·

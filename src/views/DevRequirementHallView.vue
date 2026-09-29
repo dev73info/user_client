@@ -20,6 +20,7 @@ import {
   listRequirementHall,
   type RequirementItem,
 } from '@/api/devRequirements'
+import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -115,10 +116,6 @@ function isBudgetWithinCap(budget?: number | null) {
 
 function isSelfManagedRequirement(requirement: RequirementItem) {
   return requirement.payment_mode === 'self_managed'
-}
-
-function paymentModeLabel(requirement: RequirementItem) {
-  return isSelfManagedRequirement(requirement) ? '无电签约定' : '电签担保'
 }
 
 function statusLabel(requirement: RequirementItem) {
@@ -778,9 +775,7 @@ function resetInitForm() {
         </el-table-column>
         <el-table-column label="发布方式" width="108">
           <template #default="scope">
-            <el-tag :type="isSelfManagedRequirement(scope.row) ? 'info' : 'warning'" effect="plain">
-              {{ paymentModeLabel(scope.row) }}
-            </el-tag>
+            <PaymentModeChip :mode="scope.row.payment_mode" />
           </template>
         </el-table-column>
         <el-table-column label="状态" width="96">
