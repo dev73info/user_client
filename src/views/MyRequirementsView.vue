@@ -2537,19 +2537,21 @@ watch(
                   <span>{{ item.requirement_id }}</span>
                 </div>
                 <div class="requirement-details">
-                  <small class="requirement-note">{{ paymentModeNote(item) }}</small>
-                  <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
+                  <!-- 短事实走统一层状态标签 .wb-badge（浅底 + 深字）：底色分档沿用
+                       「中性 = 无强调语义的事实、绿 = 已公开、琥珀 = 有待审核项」的口径，
+                       散文式的说明仍用 .requirement-note 独占一行。 -->
+                  <span class="wb-badge">{{ paymentModeNote(item) }}</span>
+                  <span v-if="hasBoundResource(item)" class="wb-badge wb-badge--success">{{
                     formatResourceVisibility(item)
-                    }}</small>
-                  <small v-if="hasBoundResource(item)" class="requirement-note">交付 {{
-                    publishedVersionCount(item) }} 版{{ latestDeliveryVersionLabel(item) }}</small>
+                    }}</span>
+                  <span v-if="hasBoundResource(item)" class="wb-badge">交付 {{
+                    publishedVersionCount(item) }} 版{{ latestDeliveryVersionLabel(item) }}</span>
                   <small v-if="contractStatusHint(item)" class="requirement-note">{{
                     contractStatusHint(item)
                     }}</small>
-                  <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">
-                    <span class="pending-review-pill">待审核</span>
-                    开发者申请删除 {{ pendingResourceVersionDeleteRequests(item).length }} 个版本
-                  </small>
+                  <span v-if="hasPendingResourceVersionDeleteReview(item)" class="wb-badge wb-badge--warning">
+                    待审核 · 开发者申请删除 {{ pendingResourceVersionDeleteRequests(item).length }} 个版本
+                  </span>
                   <small v-else-if="
                     hasBoundResource(item) &&
                     item.resource_version_delete_request_status === 'rejected' &&
@@ -3311,17 +3313,6 @@ watch(
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.pending-review-pill {
-  display: inline-flex;
-  align-items: center;
-  margin-right: 6px;
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: rgba(255, 214, 102, 0.22);
-  color: #8a5a00;
-  font-weight: 700;
 }
 
 .my-requirement-detail-wrap {

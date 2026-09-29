@@ -199,12 +199,10 @@
   margin: 0;
 }
 
-.requirement-details .requirement-resource-visibility {
-  margin: 0;
-}
-
 /* 变长文案（审核说明 / 驳回原因 / 解绑理由 / 结算提示）独占一行：
-   和短事实混排会把整行 meta 拉成一句读不通的长句。 */
+   和短事实混排会把整行 meta 拉成一句读不通的长句。
+   短事实（发布方式 / 资源可见性 / 交付版本 / 待审核项）走统一层的 .wb-badge 标签，
+   不再在本文件里自带色板——原来那枚绿色 .requirement-resource-visibility 已并入 .wb-badge--success。 */
 .requirement-details .requirement-note--block {
   flex: 1 1 100%;
 }
@@ -215,17 +213,6 @@
   font-size: 12px;
   line-height: 1.5;
   word-break: break-word;
-}
-
-.requirement-resource-visibility {
-  display: inline-block;
-  width: fit-content;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(220, 252, 231, 0.9);
-  color: #166534;
-  font-size: 12px;
-  line-height: 1.4;
 }
 
 .requirement-status {
