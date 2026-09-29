@@ -22,6 +22,7 @@ import {
 } from '@/api/devRequirements'
 import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
+import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -116,10 +117,6 @@ function isBudgetWithinCap(budget?: number | null) {
 
 function isSelfManagedRequirement(requirement: RequirementItem) {
   return requirement.payment_mode === 'self_managed'
-}
-
-function statusLabel(requirement: RequirementItem) {
-  return requirement.status === 'pending_deposit' ? '待接单/签约' : '待开发'
 }
 
 function requiresDepositGate(requirement: RequirementItem) {
@@ -780,8 +777,16 @@ function resetInitForm() {
         </el-table-column>
         <el-table-column label="状态" width="96">
           <template #default="scope">
+            <!-- 状态走全站统一口径（requirementStatusLabel）：待付定金 / 待开发。
+                 这里原来自己写成「待接单/签约」，有两处不对：
+                 1) 大厅的入口条件就是「未被接单」（后端过滤 status IN (pending_deposit, deposit_paid)
+                    且没有生效中的资源绑定），所以「待接单」是整张表的属性，不是某一行的状态；
+                    而「签约」只有接了单、生成合同之后才会出现，对未接单的行是提前叙说。
+                 2) 无电签约定（self_managed）根本没有合同，那一档永远不会有签约这一步。
+                 另一处错位：真正已付定金、接了就能开工的 deposit_paid 原来只写「待开发」，
+                 倒是还没付定金的 pending_deposit 抢了「待接单」的说法。 -->
             <el-tag :type="scope.row.status === 'pending_deposit' ? 'warning' : 'success'" effect="plain">
-              {{ statusLabel(scope.row) }}
+              {{ requirementStatusLabel(scope.row.status) }}
             </el-tag>
           </template>
         </el-table-column>
