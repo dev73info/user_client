@@ -4,6 +4,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import { installGlobalFetchLoadingTracker } from './composables/useGlobalLoadingScreen'
+import { installMockFetch } from './mock/index'
 import 'element-plus/dist/index.css'
 import './styles/user.css'
 import './styles/unified-top-card.css'
@@ -41,6 +42,9 @@ if (import.meta.env.DEV) {
   }
 }
 
+// mock 必须比全局加载进度条更早装上：进度条会把当时的 fetch 当作「原始 fetch」包一层，
+// 装反了就会变成两层拦截，加载计数错乱。详见 src/mock/index.ts。
+installMockFetch()
 installGlobalFetchLoadingTracker()
 
 const app = createApp(App)

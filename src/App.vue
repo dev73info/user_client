@@ -8,6 +8,7 @@ import AppToast from '@/components/AppToast.vue'
 import PortalTopNav from '@/components/PortalTopNav.vue'
 import PortalMobileDock from '@/components/PortalMobileDock.vue'
 import SupportChatWidget from '@/components/SupportChatWidget.vue'
+import MockIdentitySwitcher from '@/mock/MockIdentitySwitcher.vue'
 import { useToast } from '@/composables/useToast'
 import { AUTH_UNAUTHORIZED_EVENT, type AuthUnauthorizedEventDetail } from '@/shared/api/authEvents'
 const auth = useAuthStore()
@@ -170,6 +171,9 @@ onBeforeUnmount(() => {
 
     <!-- 在线客服浮窗：仅登录用户可见 -->
     <SupportChatWidget v-if="auth.isAuthed" />
+
+    <!-- mock 身份切换器：只在 pnpm dev 且开了 mock 时渲染，详见 src/mock/ -->
+    <MockIdentitySwitcher />
 
     <!-- 全局资源下载进度浮层：切换路由不中断下载，浮层持续展示进度 -->
     <Transition name="download-pop">
