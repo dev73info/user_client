@@ -245,12 +245,14 @@ function lastMessageLabel(item: RequirementConversation) {
     return '暂无消息'
   }
 
+  // 最后发言只报「我 / 对方 / 系统」：对方的名字已经写在上一行（partnerLabel），
+  // 再写一遍账号名不只是重复，还会把右列撑到半行宽。
   const sender =
     item.last_message_by === auth.username
       ? '我'
       : item.last_message_by === 'platform'
         ? '系统'
-        : item.last_message_by || '对方'
+        : '对方'
   return `${formatMessageTime(item.last_message_at)} · ${sender}`
 }
 
@@ -798,11 +800,12 @@ watch(
           <div class="wb-item__main">
             <strong class="wb-item__title">{{ item.title }}</strong>
             <span class="wb-item__meta">{{ item.requirementId }} · {{ item.modeLabel }}</span>
-            <span class="wb-item__meta">{{ item.description }}</span>
+            <span class="wb-item__meta messages-thread-row__preview">{{ item.description }}</span>
           </div>
           <div class="wb-item__side">
             <span :class="toneBadgeClass(item.tone)">{{ item.statusLabel }}</span>
-            <span class="wb-item__meta">{{ item.partnerLabel }} · {{ item.lastLabel }}</span>
+            <span class="wb-item__meta messages-thread-row__partner">{{ item.partnerLabel }}</span>
+            <span class="wb-item__meta messages-thread-row__time">{{ item.lastLabel }}</span>
           </div>
         </li>
       </ul>
@@ -882,6 +885,53 @@ watch(
   .messages-disclosure__actions .el-button {
     flex: 1;
     min-height: 44px;
+  }
+}
+
+/* ===== 门户工作台模式的会话行 =====
+   与开发者侧同一形态：左列吃满剩余宽度，右列竖排（状态 → 对方 → 时间）。
+   原来右列是一整条横排的 flex，状态、对方、时间挤成一行，长度顶到行宽一半
+   （实测 965px 的行里占 473px），把左边的标题与最近消息压成窄栏；
+   现在右列只占「最长的一方名」那点宽度，状态胶囊与时间也各成一条竖线，几行之间对得齐。 */
+.messages-thread-row .wb-item__main {
+  flex: 1 1 auto;
+}
+
+.messages-thread-row .wb-item__side {
+  display: grid;
+  align-content: center;
+  justify-items: end;
+  gap: 2px;
+  min-width: 150px;
+  text-align: right;
+}
+
+/* 时间行用等宽数字：几行并排时时间不会左右跳 */
+.messages-thread-row__time {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 标题、对方与最近一条消息都压成一行：长短不一会让整列行高参差，扫起来对不齐
+   （与开发者侧会话行同一口径） */
+.messages-thread-row .wb-item__title,
+.messages-thread-row__partner,
+.messages-thread-row__preview {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  /* 触屏档：统一层已经把行竖排、把右列改成左对齐（portal-workbench.css 的 .wb-item/.wb-item__side），
+     这里跟着退回它那套横排一行，不要留着桌面那套「右对齐竖排」把行撑高 */
+  .messages-thread-row .wb-item__side {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 10px;
+    min-width: 0;
+    text-align: left;
   }
 }
 
