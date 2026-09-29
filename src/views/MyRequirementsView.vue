@@ -456,10 +456,15 @@ function paymentModeLabel(item: RequirementItem) {
   return isSelfManagedRequirement(item) ? '无电签约定' : '电签担保'
 }
 
-function paymentModeHint(item: RequirementItem) {
-  return isSelfManagedRequirement(item)
-    ? '付款由双方另行约定'
-    : '按平台定金与尾款流程推进'
+/**
+ * 发布方式与它的口径。
+ *
+ * 担保模式不再跟着一行「按平台定金与尾款流程推进」：这句话不承载新信息（卡片的流程条、
+ * 状态与金额都已经说明了流程），属于设计规范里说的装饰性灰字；无担保模式反过来要点明
+ * 「付款不走平台」，那句是必要口径，必须留。
+ */
+function paymentModeNote(item: RequirementItem) {
+  return isSelfManagedRequirement(item) ? '无电签约定 · 付款由双方另行约定' : '电签担保'
 }
 
 function formatRequirementTime(value: string) {
@@ -507,9 +512,10 @@ function deliveryVersionsFor(item: RequirementItem) {
   return resourceVersionsMap.value[item.requirement_id] ?? []
 }
 
+/** 交付版本摘要。只报版本数与最新版本号：到货时间在需求详情里看，卡片上再挂一串时间只是噪音。 */
 function latestDeliveryVersionLabel(item: RequirementItem) {
   const latest = deliveryVersionsFor(item)[0]
-  return latest ? `（最新 ${latest.version} · ${latest.created_at}）` : ''
+  return latest ? `（最新 ${latest.version}）` : ''
 }
 
 function deliveryVersionNoteText(note?: string | null) {
@@ -564,10 +570,10 @@ function cancelConfirmHint(item: RequirementItem) {
 /** 待分账 / 结单后的提示：尾款缴清到渠道分账之间有等待期，结单后还有售后窗口。 */
 function settlementHint(item: RequirementItem): string {
   if (item.status === 'pending_settlement') {
-    return '尾款已缴纳，正在等待渠道分账（通常 7 天）；分账完成后正式结单并开放售后入口。'
+    return '尾款已缴，渠道分账中（通常 7 天），完成后结单并开放售后。'
   }
   if (item.status === 'completed') {
-    return '需求已结单，接单保证金在售后窗口结束且无未结售后案件后释放。'
+    return '已结单。接单保证金在售后窗口结束且无未结售后案件后释放。'
   }
   return ''
 }
@@ -946,19 +952,16 @@ function pendingResourceVersionTitle(item?: RequirementPendingResourceVersionDel
   return `版本号 ${pendingResourceVersionLabel(item)}`
 }
 
-function resourceVersionDeleteReviewHint(item: RequirementItem) {
-  if (hasPendingResourceVersionDeleteReview(item)) {
-    return `开发者申请删除 ${pendingResourceVersionDeleteRequests(item).length} 个版本，点右侧「审核版本删除」可逐个审核。`
-  }
-
-  if (
-    item.resource_version_delete_request_status === 'rejected' &&
-    item.resource_version_delete_review_note
-  ) {
-    return `你上次拒绝删除版本：${item.resource_version_delete_review_note}`
-  }
-
-  return ''
+/**
+ * 拒绝过版本删除时回显理由。
+ *
+ * 待审核状态改由行内那枚「待审核」胶囊 + 右侧按钮表达，不再用一整行散文说「点哪里可以审核」，
+ * 所以这里只负责拒绝理由（散文文案独占一行，见 .requirement-note--block）。
+ */
+function versionDeleteRejectNote(item: RequirementItem) {
+  return item.resource_version_delete_review_note
+    ? `你上次拒绝删除版本：${item.resource_version_delete_review_note}`
+    : ''
 }
 
 function formatResourceVisibility(item: RequirementItem) {
@@ -2534,33 +2537,24 @@ watch(
                   <span>{{ item.requirement_id }}</span>
                 </div>
                 <div class="requirement-details">
-                  <small class="requirement-note">{{ paymentModeLabel(item) }} · {{ paymentModeHint(item) }}</small>
+                  <small class="requirement-note">{{ paymentModeNote(item) }}</small>
                   <small v-if="hasBoundResource(item)" class="requirement-resource-visibility">{{
                     formatResourceVisibility(item)
                     }}</small>
-                  <small v-if="hasBoundResource(item)" class="requirement-note">交付版本：{{
+                  <small v-if="hasBoundResource(item)" class="requirement-note">交付 {{
                     publishedVersionCount(item) }} 版{{ latestDeliveryVersionLabel(item) }}</small>
                   <small v-if="contractStatusHint(item)" class="requirement-note">{{
                     contractStatusHint(item)
                     }}</small>
                   <small v-if="hasPendingResourceVersionDeleteReview(item)" class="requirement-note">
-                    <strong>待审核删除版本：</strong>
-                    <span class="pending-review-pill">
-                      {{ pendingResourceVersionDeleteRequests(item).length }} 个待审核
-                    </span>
-                    <span class="pending-review-count">共 {{ pendingResourceVersionDeleteRequests(item).length }} 个</span>
+                    <span class="pending-review-pill">待审核</span>
+                    开发者申请删除 {{ pendingResourceVersionDeleteRequests(item).length }} 个版本
                   </small>
-                  <small v-if="hasPendingResourceVersionDeleteReview(item)"
-                    class="requirement-note requirement-note--block">{{
-                      resourceVersionDeleteReviewHint(item)
-                      }}</small>
-                  <small v-if="hasPendingResourceVersionDeleteReview(item)"
-                    class="requirement-note">点右侧「审核版本删除」可在下方展开审核卡片。</small>
                   <small v-else-if="
                     hasBoundResource(item) &&
                     item.resource_version_delete_request_status === 'rejected' &&
                     item.resource_version_delete_review_note
-                  " class="requirement-note requirement-note--block">{{ resourceVersionDeleteReviewHint(item) }}</small>
+                  " class="requirement-note requirement-note--block">{{ versionDeleteRejectNote(item) }}</small>
                   <small v-if="item.status === 'rejected' && item.review_note"
                     class="requirement-note requirement-note--block">驳回原因：{{ item.review_note }}</small>
                   <small v-if="hasPendingDeveloperUnbindRequest(item)"
@@ -2568,7 +2562,7 @@ watch(
                     <strong>开发者申请解除绑定：</strong>{{ item.pending_unbind_request?.reason }}
                   </small>
                   <small v-if="hasPendingDeveloperUnbindRequest(item)" class="requirement-note">
-                    点右侧「处理解除申请」，可选择同意解除（需求重新挂回大厅）或拒绝解除。
+                    同意解除后需求重新挂回大厅。
                   </small>
                   <small v-if="hasPendingUnbindRequest(item) && !hasPendingDeveloperUnbindRequest(item)"
                     class="requirement-note">
@@ -3322,17 +3316,12 @@ watch(
 .pending-review-pill {
   display: inline-flex;
   align-items: center;
-  margin-left: 6px;
+  margin-right: 6px;
   padding: 2px 10px;
   border-radius: 999px;
   background: rgba(255, 214, 102, 0.22);
   color: #8a5a00;
   font-weight: 700;
-}
-
-.pending-review-count {
-  margin-left: 8px;
-  color: #7b8798;
 }
 
 .my-requirement-detail-wrap {
