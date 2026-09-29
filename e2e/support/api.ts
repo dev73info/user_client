@@ -58,8 +58,13 @@ export type SettlementRow = {
   contractId?: number | null
   requirementId: string
   milestone: 'deposit' | 'final' | string
+  amountFen?: number
   amountCny: string
+  platformFeeFen?: number
   platformFeeCny?: string
+  developerGrossAmountFen?: number
+  developerGrossAmountCny?: string
+  developerNetAmountFen?: number
   developerNetAmountCny?: string
   status: string
   availableAt?: string | null
@@ -658,4 +663,191 @@ export function getAdapayMember(
   token: string,
 ): Promise<AdapayMemberAccount> {
   return getJson<AdapayMemberAccount>(request, '/api/adapay/me', token)
+}
+
+// ---------------------------------------------------------------- 发票流
+
+/** 开票主体：平台服务费票与开发者收入票分两侧，各自金额与状态独立。 */
+export type InvoiceRole = 'platform' | 'developer'
+
+/** 开票申请落地后的一张发票（`GET /api/invoices/mine`、`POST /api/invoices/apply`）。 */
+export type InvoiceRecord = {
+  id: number
+  invoiceNo: string
+  /** 合并开票后一张票覆盖整个需求，因此通常是 null；历史按支付单开的旧票才有值。 */
+  paymentId: string | null
+  contractId: number
+  requirementId: string
+  invoiceRole: InvoiceRole
+  applicantUsername: string
+  customerUsername: string
+  developerUsername: string
+  invoiceTitle: string
+  taxNumber: string
+  recipientEmail: string
+  amountFen: number
+  amountCny: string
+  status: 'requested' | 'under_review' | 'approved' | 'rejected' | 'reversed' | string
+  documentKind: 'blue' | 'red' | string
+  createdAt: string
+}
+
+/**
+ * 一个需求的可开票汇总（`GET /api/invoices/summary?requirement_id=...`）。
+ *
+ * 金额口径：`platformFeeFen` 是平台服务费票的票面，`developerGrossAmountFen` 是开发者票的票面
+ * （开发者税前全额，不是净得）。两者之和 = 客户为该需求实际支付的净额。
+ */
+export type InvoiceableSummary = {
+  requirementId: string
+  customer: string
+  developer: string
+  /** 买方的开票主体资料（抬头 / 税号 / 邮箱），按实名主体由后端折算好，开票申请直接用它。 */
+  buyer: {
+    username: string
+    authType: string
+    realnameStatus: string
+    isOrganization: boolean
+    title: string
+    taxNumber: string
+    email: string
+  }
+  settledAmountFen: number
+  platformFeeFen: number
+  developerGrossAmountFen: number
+  developerPayoutFen: number
+  developerInvoiceFen: number
+  invoiceableTotalFen: number
+  pendingRefundFen: number
+  platformInvoice: InvoiceRecord | null
+  developerInvoice: InvoiceRecord | null
+}
+
+/** 可开票汇总（发票流对账的入口：金额全部从这里取，不自己算）。 */
+export function getInvoiceSummary(
+  request: APIRequestContext,
+  token: string,
+  requirementId: string,
+): Promise<InvoiceableSummary> {
+  const query = new URLSearchParams({ requirement_id: requirementId })
+  return getJson<InvoiceableSummary>(
+    request,
+    `/api/invoices/summary?${query.toString()}`,
+    token,
+  )
+}
+
+export type InvoiceRequestPayload = {
+  requirement_id: string
+  invoice_title: string
+  tax_number?: string
+  recipient_email?: string
+  invoice_kind?: 'ordinary' | 'special'
+}
+
+/**
+ * 提交开票申请（`POST /api/invoices/apply`）。
+ *
+ * 一次动作把该需求能开的票都开出来：需求方拿平台服务费票 + 开发者收入票两张，
+ * 乙方只拿自己那张。某一侧没有可开金额或已经开过时后端会跳过它（返回 null）。
+ */
+export function applyInvoices(
+  request: APIRequestContext,
+  token: string,
+  payload: InvoiceRequestPayload,
+): Promise<{ platformInvoice: InvoiceRecord | null; developerInvoice: InvoiceRecord | null }> {
+  return postJson(request, '/api/invoices/apply', payload, token)
+}
+
+/** 我的发票记录（`GET /api/invoices/mine`）。 */
+export function listMyInvoices(
+  request: APIRequestContext,
+  token: string,
+): Promise<InvoiceRecord[]> {
+  return getJson<InvoiceRecord[]>(request, '/api/invoices/mine', token)
+}
+
+// ---------------------------------------------------------------- 会话消息
+
+/**
+ * 需求会话里的一条消息（`GET /api/conversations/requirement/{id}`）。
+ *
+ * `message_type` 区分双方手发的文本（`text`）与平台写入的状态卡片（`card`）——
+ * 流程推进（接单、签约、定金到账、交付、验收、结单）都会由平台写成卡片，
+ * 所以卡片本身就是一条可断言的流程留痕。
+ */
+export type ConversationMessage = {
+  conversation_id: string
+  sender: string
+  sender_role: 'customer' | 'developer' | 'platform' | string
+  content: string
+  message_type?: string | null
+  action_type?: string | null
+  action_ref?: string | null
+  created_at: string
+}
+
+export type RequirementConversation = {
+  conversation_id: string
+  requirement_id: string
+  customer: string
+  developer?: string | null
+}
+
+export type RequirementConversationDetail = {
+  conversation: RequirementConversation
+  messages: ConversationMessage[]
+}
+
+/** 按需求取会话详情（只有参与方拿得到，接单前开发者不是参与方）。 */
+export function getRequirementConversation(
+  request: APIRequestContext,
+  token: string,
+  requirementId: string,
+): Promise<RequirementConversationDetail> {
+  return getJson<RequirementConversationDetail>(
+    request,
+    `/api/conversations/requirement/${encodeURIComponent(requirementId)}`,
+    token,
+  )
+}
+
+/** 在会话里发一条文本消息（`POST /api/conversations/{id}/messages`），返回刷新后的详情。 */
+export function sendConversationMessage(
+  request: APIRequestContext,
+  token: string,
+  conversationId: string,
+  content: string,
+): Promise<RequirementConversationDetail> {
+  return postJson(
+    request,
+    `/api/conversations/${encodeURIComponent(conversationId)}/messages`,
+    { content },
+    token,
+  )
+}
+
+/** 等某条消息真的落库可见（发送接口返回的就是最新详情，这里用于跨身份复核）。 */
+export async function waitForConversationMessage(
+  request: APIRequestContext,
+  token: string,
+  requirementId: string,
+  predicate: (message: ConversationMessage) => boolean,
+  describeWait: string,
+  timeoutMs = STEP_TIMEOUT_MS,
+  intervalMs = 2000,
+): Promise<{ detail: RequirementConversationDetail; message: ConversationMessage }> {
+  const deadline = Date.now() + timeoutMs
+  let latest: RequirementConversationDetail | null = null
+  while (Date.now() < deadline) {
+    latest = await getRequirementConversation(request, token, requirementId)
+    const found = latest.messages.find(predicate)
+    if (found) return { detail: latest, message: found }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs))
+  }
+  throw new Error(
+    `需求 ${requirementId} 的会话在 ${timeoutMs}ms 内没有出现${describeWait}，`
+      + `当前 ${latest?.messages.length ?? 0} 条消息：`
+      + `${JSON.stringify((latest?.messages ?? []).map((item) => `${item.sender_role}:${item.content}`))}`,
+  )
 }

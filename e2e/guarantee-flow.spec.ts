@@ -3,7 +3,12 @@
  *
  * 用三个真实浏览器身份跑完全程：
  *   需求方 5173 发布需求 → 平台运营 5174 审核 → 开发者 5175 接单
- *   → 签《需求开发合同》 → 需求方缴定金 → 开发者交付 → 需求方验收 → 缴尾款 → 分账结单
+ *   → 双方在需求会话里互发消息 → 签《需求开发合同》 → 需求方缴定金 → 开发者交付
+ *   → 需求方验收 → 缴尾款 → 分账结单 → 需求方申请开票
+ *
+ * 覆盖四流：合同流（`contract`）、资金流（`adapay_escrow_payment` / `adapay_escrow_settlement`）、
+ * 交付流（绑定资源项目的版本）、发票流（`invoice_record`），外加会话消息
+ * （`requirement_conversation_message`：双方手发文本 + 平台状态卡片）。
  *
  * 状态机口径以 `RequirementProgressGuide.vue` 与后端 `requirement/service.rs` 为准：
  *   pending_review → pending_deposit → deposit_paid → in_development
@@ -47,7 +52,8 @@
  *
  * ## 数据影响
  *
- * 用例会在本地库里留下真实数据：一条需求、一份合同、两条支付单与两条分账记录，
+ * 用例会在本地库里留下真实数据：一条需求、一份合同、两条支付单、两条分账记录、
+ * 两张发票记录，以及一条需求会话（含双方手发消息与平台写入的状态卡片），
  * 并占用一个私有资源项目（绑定后不可重复绑定）。每次运行生成带时间戳的新需求标题。
  * 定金一旦支付无法回滚。
  *
@@ -92,11 +98,17 @@ import { expect, test, type APIRequestContext, type Locator } from '@playwright/
 
 import { gotoFresh, openAdmin, openClient, openDeveloper, type Actor } from './support/actors'
 import {
+  applyInvoices,
   findRequirementByTitle,
+  getInvoiceSummary,
   getRequirement,
   getRequirementContract,
+  getRequirementConversation,
+  listMyInvoices,
+  sendConversationMessage,
   signContractLocally,
   waitForContractSigned,
+  waitForConversationMessage,
   waitForDeliveryVersion,
   waitForRequirement,
   waitForRequirementStatus,
@@ -189,7 +201,7 @@ async function closeActorQuietly(actor: Actor | undefined) {
 }
 
 test.describe('担保模式四流', () => {
-  test('发布 → 审核 → 接单 → 签署 → 定金 → 交付 → 验收 → 尾款 → 分账结单', async ({
+  test('发布 → 审核 → 接单 → 会话 → 签署 → 定金 → 交付 → 验收 → 尾款 → 分账结单 → 开票', async ({
     browser,
     request,
   }) => {
@@ -319,6 +331,66 @@ test.describe('担保模式四流', () => {
           (item) => Boolean(item.developer),
           '绑定到开发者',
         )
+      })
+
+      // ------------------------------------------------------------ 会话消息
+      await test.step('需求方与开发者在需求会话里互发消息', async () => {
+        // 会话在接单时建立，参与方就是需求方与开发者（接单前开发者不是参与方，取不到会话）。
+        let conversationId = ''
+        await expect
+          .poll(
+            async () => {
+              const detail = await getRequirementConversation(
+                request,
+                pre.client,
+                requirementId,
+              ).catch(() => null)
+              conversationId = detail?.conversation.conversation_id ?? ''
+              return conversationId
+            },
+            { message: '接单之后没有建立需求会话', timeout: STEP_TIMEOUT_MS },
+          )
+          .toBeTruthy()
+
+        const clientText = `E2E 需求方消息 ${Date.now()}`
+        await sendConversationMessage(request, pre.client, conversationId, clientText)
+
+        // 换成开发者身份独立复核：能看到同一条消息，且发送方身份区分得开。
+        const { message: seenByDeveloper } = await waitForConversationMessage(
+          request,
+          pre.developer,
+          requirementId,
+          (item) => item.content === clientText,
+          '需求方发出的消息',
+        )
+        expect(seenByDeveloper.sender_role, '需求方消息的 sender_role').toBe('customer')
+        expect(seenByDeveloper.sender, '需求方消息的 sender').toBe(CLIENT_ACCOUNT.username)
+        expect(seenByDeveloper.message_type, '双方手发的是文本消息').toBe('text')
+
+        const developerText = `E2E 开发者消息 ${Date.now()}`
+        const afterReply = await sendConversationMessage(
+          request,
+          pre.developer,
+          conversationId,
+          developerText,
+        )
+        const reply = afterReply.messages.find((item) => item.content === developerText)
+        expect(reply, '开发者回复应当出现在发送接口返回的会话详情里').toBeTruthy()
+        expect(reply?.sender_role, '开发者消息的 sender_role').toBe('developer')
+        expect(reply?.sender, '开发者消息的 sender').toBe(DEVELOPER_ACCOUNT.username)
+
+        // 再回需求方侧核一次，确认两个身份看到的是同一条会话。
+        const seenByClient = await waitForConversationMessage(
+          request,
+          pre.client,
+          requirementId,
+          (item) => item.content === developerText,
+          '开发者回复的消息',
+        )
+        expect(
+          seenByClient.detail.conversation.conversation_id,
+          '两个身份看到的应当是同一条会话',
+        ).toBe(conversationId)
       })
 
       // ------------------------------------------------------------ 发起合同
@@ -491,6 +563,93 @@ test.describe('担保模式四流', () => {
         // 资金流：定金（20%）+ 尾款（80%）恰好等于预算。
         const total = settlements.reduce((sum, row) => sum + Number(row.amountCny), 0)
         expect(total, '两条分账金额之和应当等于合同总价').toBeCloseTo(BUDGET_CNY, 2)
+
+        // 金额守恒（与数据库 CHECK 同一口径）：平台服务费 + 开发者税前收入 = 客户实付。
+        const budgetFen = Math.round(BUDGET_CNY * 100)
+        const platformFeeFen = settlements.reduce(
+          (sum, row) => sum + Number(row.platformFeeFen ?? 0),
+          0,
+        )
+        const developerGrossFen = settlements.reduce(
+          (sum, row) => sum + Number(row.developerGrossAmountFen ?? 0),
+          0,
+        )
+        const developerNetFen = settlements.reduce(
+          (sum, row) => sum + Number(row.developerNetAmountFen ?? 0),
+          0,
+        )
+        expect(
+          platformFeeFen + developerGrossFen,
+          '平台服务费 + 开发者税前收入应当等于合同总价',
+        ).toBe(budgetFen)
+        expect(developerGrossFen, '开发者税前收入不应当低于净得').toBeGreaterThanOrEqual(
+          developerNetFen,
+        )
+
+        // ---------------------------------------------------------- 发票流
+        // 开票时序：发票流只能在资金流走完之后开始，所以上面两步必须先成立。
+        const summary = await getInvoiceSummary(request, pre.client, requirementId)
+        expect(
+          summary.platformFeeFen,
+          '可开票汇总的平台服务费应当等于两条分账之和',
+        ).toBe(platformFeeFen)
+        expect(
+          summary.developerGrossAmountFen,
+          '可开票汇总的开发者税前收入应当等于两条分账之和',
+        ).toBe(developerGrossFen)
+        expect(summary.platformInvoice, '开票之前不应当已经有平台票').toBeNull()
+        expect(summary.developerInvoice, '开票之前不应当已经有开发者票').toBeNull()
+
+        const applied = await applyInvoices(request, pre.client, {
+          requirement_id: requirementId,
+          invoice_title: summary.buyer.title,
+          tax_number: summary.buyer.taxNumber,
+          recipient_email: summary.buyer.email,
+        })
+        expect(applied.platformInvoice, '需求方应当能开出平台服务费票').not.toBeNull()
+        expect(applied.developerInvoice, '需求方应当能开出开发者收入票').not.toBeNull()
+        expect(applied.platformInvoice?.invoiceRole, '平台票的 invoice_role').toBe('platform')
+        expect(applied.developerInvoice?.invoiceRole, '开发者票的 invoice_role').toBe('developer')
+        expect(applied.platformInvoice?.amountFen, '平台票票面应当等于平台服务费').toBe(
+          platformFeeFen,
+        )
+        expect(applied.developerInvoice?.amountFen, '开发者票票面应当等于开发者税前收入').toBe(
+          developerGrossFen,
+        )
+        expect(applied.platformInvoice?.requirementId, '两张票都要挂在同一条需求上').toBe(
+          requirementId,
+        )
+
+        const myInvoices = await listMyInvoices(request, pre.client)
+        const invoiceIds = new Set(myInvoices.map((row) => row.id))
+        expect(
+          invoiceIds.has(applied.platformInvoice?.id ?? -1)
+            && invoiceIds.has(applied.developerInvoice?.id ?? -1),
+          '两张票都应当出现在「我的发票」里',
+        ).toBeTruthy()
+
+        // ---------------------------------------------------------- 会话流
+        // 平台把每一步流转写成会话卡片，卡片本身就是流程留痕，可用来反向核对四流。
+        const conversation = await getRequirementConversation(request, pre.client, requirementId)
+        const cardTypes = conversation.messages
+          .filter((item) => item.message_type === 'card')
+          .map((item) => item.action_type ?? '')
+        for (const expectedCard of [
+          'contract_signed',
+          'deposit_paid',
+          'delivery_submitted',
+          'acceptance_passed',
+          'final_paid',
+        ]) {
+          expect(
+            cardTypes,
+            `会话卡片应当覆盖流程节点 ${expectedCard}，实际卡片：${JSON.stringify(cardTypes)}`,
+          ).toContain(expectedCard)
+        }
+        expect(
+          conversation.messages.some((item) => item.message_type === 'text'),
+          '会话里应当同时保留双方手发的文本消息',
+        ).toBeTruthy()
       })
     } finally {
       // 关上下文要设上限：实测断言失败后 `context.close()` 会一直卡着，

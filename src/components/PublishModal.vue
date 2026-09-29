@@ -386,6 +386,21 @@ onMounted(() => {
   document.addEventListener("keydown", handleAcceptanceTemplateKeydown);
 });
 
+// 每次打开弹窗再确认一次可用性。
+//
+// 组件实例在首页就是挂载状态（`visible` 只是内层 v-if），`onMounted` 那一次请求往往
+// 赶在自动登录落地之前，问到的是匿名身份的结果；那个结果不会被缓存
+// （见 `shared/adapayAvailability.ts`），但要有人再问一次才会被纠正——
+// 少了这一步，「电签担保」在整个页面会话里都不会出现。
+watch(
+  () => props.visible,
+  (visible) => {
+    if (visible && props.allowPlatformGuarantee === undefined) {
+      void loadAdapayAvailability();
+    }
+  },
+);
+
 onBeforeUnmount(() => {
   document.removeEventListener("pointerdown", handleAcceptanceTemplatePointerDown, true);
   document.removeEventListener("keydown", handleAcceptanceTemplateKeydown);

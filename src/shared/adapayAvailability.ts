@@ -42,11 +42,16 @@ export function loadAdapayAvailability(force = false): Promise<void> {
 
   const auth = useAuthStore()
   auth.hydrate()
-  pending = getAdapayAvailability(auth.token || undefined)
+  const token = auth.token || undefined
+  pending = getAdapayAvailability(token)
     .then((availability) => {
       const allowed = availability.escrowAllowed ?? availability.paymentReady
       platformGuaranteeAllowed.value = allowed === true
-      loaded.value = true
+      // 没带令牌时问的是匿名身份。灰度期间 `escrowAllowed` 是按登录用户判的，
+      // 而发布弹窗在首页就是挂载状态（`visible` 只是内层 v-if），挂载时往往还没登录完，
+      // 这一问必然答「不可用」。把它当结论缓存下来，登录后就再也不会重问，
+      // 「电签担保」整个页面会话都不出现——所以匿名答案不落缓存，留给下次带令牌的调用纠正。
+      loaded.value = Boolean(token)
     })
     .catch(() => {
       // 接口异常时保持不可用，避免展示一个提交必然失败的选项。
