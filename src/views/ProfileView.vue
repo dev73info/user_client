@@ -466,7 +466,8 @@ async function refreshProfileData() {
   showToast('资料已刷新', 'success')
 }
 
-/** 需求详情浮层已去掉：这里只跳到「我的需求」列表，需求正文现在直接显示在列表行里。 */
+/** 需求详情浮层已去掉：需求正文在需求详情里看（会话标题栏的「需求详情」抽屉、开发者需求详情页），
+    这里只跳到「我的需求」列表。 */
 function handleRequirementAction(item: RequirementItem) {
   void router.push({ name: 'workbench-requirements' })
 }

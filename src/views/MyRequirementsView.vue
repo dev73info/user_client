@@ -492,14 +492,6 @@ function latestDeliveryVersionLabel(item: RequirementItem) {
   return latest ? `（最新 ${latest.version}）` : ''
 }
 
-/**
- * 富文本字段在列表行里只展示纯文本：列表不做富文本排版，也就不需要 v-html。
- * （原详情浮层用 sanitize + v-html 展示正文，浮层去掉后正文改在行内读。）
- */
-function requirementPlainText(value?: string | null) {
-  return requirementRichTextPlainText(value ?? '').trim()
-}
-
 function deliveryVersionNoteText(note?: string | null) {
   return requirementRichTextPlainText(note ?? '')
 }
@@ -2488,10 +2480,6 @@ watch(
                     item.resource_version_delete_request_status === 'rejected' &&
                     item.resource_version_delete_review_note
                   " class="requirement-note requirement-note--block">{{ versionDeleteRejectNote(item) }}</small>
-                  <small v-if="requirementPlainText(item.description)"
-                    class="requirement-note requirement-note--block">需求描述：{{ requirementPlainText(item.description) }}</small>
-                  <small v-if="requirementPlainText(item.acceptance_criteria)"
-                    class="requirement-note requirement-note--block">验收标准：{{ requirementPlainText(item.acceptance_criteria) }}</small>
                   <small v-if="item.status === 'rejected' && item.review_note"
                     class="requirement-note requirement-note--block">驳回原因：{{ item.review_note }}</small>
                   <small v-if="hasPendingDeveloperUnbindRequest(item)"
