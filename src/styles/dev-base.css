@@ -395,9 +395,18 @@ a {
   margin-left: 0;
 }
 
-/* 顶条里的图标按钮（刷新）：保持正方形，不继承文字按钮的左右内边距 */
+/* 顶条里的图标按钮（刷新）：保持正方形，不继承文字按钮的左右内边距，
+   也不画方框——顶条本身就是白底，白底 + 描边等于在一排读数右边多出一个空框。
+   悬停/聚焦仍有底色与外投影（.dev-toolbar__icon-btn.el-button:hover / :focus-visible），
+   可点性不丢；边框三态一并置透明，免得悬停时又冒出一条边。
+   作用域留在顶条上而不写进基类：这个类目前只出现在 .dev-meta-strip__action
+   （十几个开发者页面的顶条），基类那一份留着方框——同一颗按钮日后放进卡片工具栏时，
+   四周都是带框控件，框就是它的边界。 */
 .dev-meta-strip__action .dev-toolbar__icon-btn.el-button {
   padding: 0;
+  --el-button-border-color: transparent;
+  --el-button-hover-border-color: transparent;
+  --el-button-active-border-color: transparent;
 }
 
 /* 横条里的按钮与工具栏按钮同高同圆角，不再单独压成 20px 高的小按钮 */
