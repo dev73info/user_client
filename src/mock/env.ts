@@ -52,6 +52,12 @@ export function mockSupported(): boolean {
   return import.meta.env.MODE === 'development'
 }
 
+/** 地址上是否明确要求开 mock（用于「在 build 里加 ?mock=1 却不生效」时给出提示）。 */
+export function mockRequestedInUrl(): boolean {
+  const param = readSearchParam(MOCK_QUERY_KEY).toLowerCase()
+  return param === '1' || param === 'true'
+}
+
 /** mock 是否处于开启状态。 */
 export function mockEnabled(): boolean {
   if (!mockSupported()) {

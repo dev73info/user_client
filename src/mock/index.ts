@@ -14,7 +14,7 @@ import { normalizeBackendPath } from '@/shared/api/url'
 import { clearPersistedAuthProfile } from '@/shared/auth/session'
 import { AUTH_TOKEN_STORAGE_KEY } from '@/shared/auth/storage'
 
-import { forgetMockEnabled, mockDelay, mockEnabled, mockSupported } from './env'
+import { forgetMockEnabled, mockDelay, mockEnabled, mockRequestedInUrl, mockSupported } from './env'
 import {
   MOCK_IDENTITIES,
   MOCK_IDENTITY_PROFILES,
@@ -37,7 +37,6 @@ import { clearUncoveredEndpoints, recordUncovered, uncoveredEndpoints } from './
 import { installMockWebSocket } from './websocket'
 
 const DEBUG_HANDLE = '__mock'
-const SEEDED_IDENTITY_KEY = 'mock_seeded_identity_73hub'
 
 export type MockDebugApi = {
   readonly enabled: boolean
@@ -69,25 +68,27 @@ function runtime(): MockableRuntime {
  * （见 `.cursor/rules/dev-servers.mdc`）。mock 直接按身份发一个假令牌写进 localStorage，
  * 于是没有 `.env.local` 也能直接进两个工作台。
  *
- * 用户主动登出后（令牌被清空）不再补写，这样才能试出未登录状态；
- * 换身份时标记不匹配，会补写新身份的令牌。
+ * 判定很简单：localStorage 里已经是「当前身份的 mock 令牌」就什么都不做，
+ * 其余情况（没有令牌、是真实后端的令牌、是另一个身份的令牌）一律换成当前身份的。
+ * 之前这里还额外记了一个「已经发过令牌」的标记用来尊重手动登出，结果踩了坑：
+ * 只要有一次页面在 mock 没生效的状态下加载过（自动登录失败会清掉令牌），
+ * 之后即使 mock 生效也永远补不回登录态，页面就一直停在未登录。
+ * 想测未登录状态：在面板里点「退出当前账号」后不要刷新页面即可。
  */
 function prepareMockSession(identity: MockIdentity): void {
   if (typeof localStorage === 'undefined') {
     return
   }
 
-  const seeded = localStorage.getItem(SEEDED_IDENTITY_KEY)
   const existing = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ?? ''
   const subject = existing ? parseMockToken(existing) : null
 
-  if (seeded === identity && (existing === '' || subject?.identity === identity)) {
+  if (subject?.identity === identity) {
     return
   }
 
   localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, createMockToken(identity))
   clearPersistedAuthProfile()
-  localStorage.setItem(SEEDED_IDENTITY_KEY, identity)
 }
 
 /* ------------------------------------------------------------------ 请求解析 */
@@ -264,6 +265,11 @@ function toMockRequest(described: DescribedRequest): MockRequest {
 
 export function installMockFetch(): void {
   if (!mockSupported()) {
+    // 生产构建（pnpm build / preview）里写 ?mock=1 不会有任何效果，
+    // 明确说一句，免得以为是「开关开了但不生效」而去翻代码。
+    if (mockRequestedInUrl()) {
+      console.warn('[mock] 当前不是 vite dev 模式，mock 不会生效（mock 只在 pnpm dev 下可用）')
+    }
     return
   }
 
@@ -316,6 +322,13 @@ export function installMockFetch(): void {
 
   // 客服长连接没法用 fetch 拦截，单独换成空壳实现（只拦 /api 下的 ws，放行 Vite 的 HMR）。
   installMockWebSocket()
+
+  // 留一行启动日志：页面出问题时先看控制台有没有这行，就能区分
+  // 「mock 没生效（请求打到了真实后端）」与「mock 生效了但某个接口没实现」。
+  console.info(
+    `[mock] 已启用：所有 /api 请求由假后端接管，当前身份「${currentMockProfile().label}」。` +
+      '左上角浮标可切换身份；关闭方式见 user-client/doc/开发指南.md 第七节。',
+  )
 }
 
 export function isMockInstalled(): boolean {
@@ -355,9 +368,10 @@ export function disableMock(): void {
 
   if (typeof localStorage !== 'undefined') {
     localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
-    localStorage.removeItem(SEEDED_IDENTITY_KEY)
     clearPersistedAuthProfile()
   }
+
+  console.info('[mock] 已关闭，刷新后回到真实后端（需要 8080 上跑着后端）')
 
   if (typeof window !== 'undefined') {
     window.location.reload()
