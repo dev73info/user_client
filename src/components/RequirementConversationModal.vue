@@ -26,6 +26,14 @@ import type {
 import { fetchAsignRequirementPreviewUrl } from '@/api/contracts'
 import { apiUrl } from '@/api/http'
 import { listRequirements } from '@/api/requirements'
+import { listMyRequirements } from '@/api/devRequirements'
+import {
+  formatCnDateTime,
+  formatCny,
+  requirementPaymentModeLabel,
+} from '@/shared/requirementDisplay'
+import { requirementStatusLabel } from '@/shared/requirementStatus'
+import { requirementRichTextPlainText } from '@/utils/requirementRichText'
 import { listPublicMcResourceVersions } from '@/api/resources'
 import RequirementConversationActions from '@/components/RequirementConversationActions.vue'
 import { useToast } from '@/composables/useToast'
@@ -839,33 +847,117 @@ function closeModal() {
   if (sending.value) {
     return
   }
+  detailDrawerOpen.value = false
   emit('close')
 }
 
+/* ---------------------------------------------------------------- 需求详情抽屉 */
+
 /**
- * 从会话直接看这条需求的详情。
+ * 抽屉只读这几个字段。
  *
- * 开发者工作台有独立的需求详情页；用户端没有，需求正文（描述 / 验收标准）现在直接显示在
- * 「我的需求」列表行里，所以用户端只是回到那个列表。
- * 覆盖形态下的弹窗不关掉会挡住目标页面，所以先收起会话；内嵌在消息中心的那种形态不用收。
+ * 用户端（api/requirements）与开发者侧（api/devRequirements）各有一份 `RequirementItem`，
+ * 字段与必填性略有差异；这里收敛成本地形状，免得把两边类型搅成一个 union 再往下传。
  */
-function openRequirementDetail() {
-  const requirementId = props.requirementId.trim()
-  if (!requirementId) {
-    return
-  }
-
-  if (!isInline.value) {
-    closeModal()
-  }
-
-  if (props.apiMode === 'dev') {
-    void router.push({ name: 'dev-requirement-detail', params: { requirementId } })
-    return
-  }
-
-  void router.push({ name: 'workbench-requirements' })
+type DrawerRequirement = {
+  requirement_id: string
+  title: string
+  payment_mode: string
+  status: string
+  budget?: number | null
+  created_time?: string
+  updated_at: string
+  creator?: string
+  developer?: string | null
+  description?: string | null
+  acceptance_criteria?: string | null
 }
+
+const detailDrawerOpen = ref(false)
+const detailDrawerLoading = ref(false)
+const detailDrawerRequirement = ref<DrawerRequirement | null>(null)
+
+/**
+ * 需求详情抽屉：从右侧划出、覆盖在会话之上，不打断会话上下文。
+ *
+ * 数据按需自取，做法与 downloadDeliveryArtifact 一致（拉一次「我的需求」列表再按编号取那一条）：
+ * 这样四个调用方都不必额外传 prop，也不依赖会话接口多返回字段；开发者侧对应 /dev/requirements/mine。
+ */
+async function toggleDetailDrawer() {
+  if (detailDrawerOpen.value) {
+    detailDrawerOpen.value = false
+    return
+  }
+
+  detailDrawerOpen.value = true
+
+  const requirementId = props.requirementId.trim()
+  if (!requirementId || !props.token || detailDrawerLoading.value) {
+    return
+  }
+  // 已经取过同一条就直接用缓存；换了需求则重新取。
+  if (detailDrawerRequirement.value?.requirement_id === requirementId) {
+    return
+  }
+
+  detailDrawerLoading.value = true
+  try {
+    const rows =
+      props.apiMode === 'dev'
+        ? await listMyRequirements(props.token)
+        : await listRequirements(props.token)
+    const found = rows.find((row) => row.requirement_id === requirementId)
+    detailDrawerRequirement.value = found
+      ? {
+        requirement_id: found.requirement_id,
+        title: found.title,
+        payment_mode: found.payment_mode,
+        status: found.status,
+        budget: found.budget ?? null,
+        created_time: found.created_time,
+        updated_at: found.updated_at,
+        creator: found.creator,
+        // 开发者侧那份 RequirementItem 没有 developer 字段（那侧自己就是开发者），退回当前登录名
+        developer:
+          'developer' in found
+            ? (found.developer ?? null)
+            : (props.currentUsername?.trim() || null),
+        description: found.description ?? null,
+        acceptance_criteria: found.acceptance_criteria ?? null,
+      }
+      : null
+  } catch {
+    detailDrawerRequirement.value = null
+  } finally {
+    detailDrawerLoading.value = false
+  }
+}
+
+const detailDrawerFields = computed(() => {
+  const item = detailDrawerRequirement.value
+  if (!item) {
+    return []
+  }
+
+  return [
+    { label: '编号', value: item.requirement_id },
+    { label: '发布方式', value: requirementPaymentModeLabel(item.payment_mode) },
+    { label: '状态', value: requirementStatusLabel(item.status) },
+    { label: '预算', value: formatCny(item.budget) },
+    { label: '创建', value: item.created_time ? formatCnDateTime(item.created_time) : '时间未知' },
+    { label: '更新', value: formatCnDateTime(item.updated_at) },
+    { label: '需求方', value: item.creator ?? '—' },
+    { label: '开发者', value: item.developer ?? '待接单' },
+  ]
+})
+
+const detailDrawerDescription = computed(() =>
+  requirementRichTextPlainText(detailDrawerRequirement.value?.description ?? '').trim(),
+)
+
+const detailDrawerAcceptance = computed(() =>
+  requirementRichTextPlainText(detailDrawerRequirement.value?.acceptance_criteria ?? '').trim(),
+)
 
 function handleBackdropClick() {
   if (!isInline.value) {
@@ -902,8 +994,8 @@ function handleBackdropClick() {
           </div>
 
           <div class="conversation-modal__header-actions">
-            <button class="conversation-modal__icon-btn" type="button" aria-label="查看需求单详情"
-              title="查看需求单详情" @click="openRequirementDetail">
+            <button class="conversation-modal__icon-btn" type="button" :class="{ 'is-active': detailDrawerOpen }"
+              :aria-expanded="detailDrawerOpen" aria-label="需求详情" title="需求详情" @click="toggleDetailDrawer">
               <el-icon>
                 <Document />
               </el-icon>
@@ -1124,6 +1216,44 @@ function handleBackdropClick() {
             </el-icon>
           </button>
         </footer>
+
+        <!-- 需求详情抽屉：从右侧划出、盖在会话之上，不跳页也不打断会话上下文；
+             数据按需自取（见 toggleDetailDrawer） -->
+        <div v-if="detailDrawerOpen" class="conversation-drawer__backdrop" @click="detailDrawerOpen = false"></div>
+        <aside v-if="detailDrawerOpen" class="conversation-drawer" aria-label="需求详情">
+          <header class="conversation-drawer__head">
+            <h4>需求详情</h4>
+            <button class="conversation-modal__icon-btn" type="button" aria-label="收起需求详情" title="收起需求详情"
+              @click="detailDrawerOpen = false">
+              <el-icon>
+                <Close />
+              </el-icon>
+            </button>
+          </header>
+
+          <p v-if="detailDrawerLoading" class="conversation-drawer__hint" role="status">需求详情加载中…</p>
+          <p v-else-if="!detailDrawerRequirement" class="conversation-drawer__hint">未能加载这条需求的详情。</p>
+          <template v-else>
+            <h5 class="conversation-drawer__title">{{ detailDrawerRequirement.title }}</h5>
+
+            <dl class="conversation-drawer__meta">
+              <div v-for="field in detailDrawerFields" :key="field.label">
+                <dt>{{ field.label }}</dt>
+                <dd>{{ field.value }}</dd>
+              </div>
+            </dl>
+
+            <section class="conversation-drawer__block">
+              <h6>需求描述</h6>
+              <p>{{ detailDrawerDescription || '当前需求暂未补充详细描述。' }}</p>
+            </section>
+
+            <section class="conversation-drawer__block">
+              <h6>验收标准</h6>
+              <p>{{ detailDrawerAcceptance || '当前需求暂未补充验收标准。' }}</p>
+            </section>
+          </template>
+        </aside>
       </section>
     </div>
   </Teleport>
@@ -2933,5 +3063,106 @@ function handleBackdropClick() {
   .conversation-history-notice__segments em {
     margin-left: 0;
   }
+}
+/* 需求详情抽屉：从右侧划出、盖在会话之上。定位用 fixed——内嵌形态（消息中心）下
+   也要贴着视口右侧划出，不能依赖外层容器的定位。 */
+.conversation-drawer__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.28);
+}
+
+.conversation-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(380px, 100%);
+  padding: 16px 18px 20px;
+  overflow-y: auto;
+  border-left: 1px solid rgba(213, 226, 244, 0.98);
+  background: #ffffff;
+  box-shadow: -12px 0 28px rgba(30, 58, 107, 0.12);
+}
+
+.conversation-drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.conversation-drawer__head h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.conversation-drawer__title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.conversation-drawer__hint {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.conversation-drawer__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.conversation-drawer__meta div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.conversation-drawer__meta dt {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.conversation-drawer__meta dd {
+  margin: 0;
+  color: #0f172a;
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.conversation-drawer__block {
+  display: grid;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.conversation-drawer__block h6 {
+  margin: 0;
+  color: #475569;
+  font-size: 12px;
+}
+
+.conversation-drawer__block p {
+  margin: 0;
+  color: #0f172a;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.conversation-modal__header-actions .conversation-modal__icon-btn.is-active {
+  border-color: rgba(79, 140, 255, 0.9);
+  color: #1f4ad1;
 }
 </style>
