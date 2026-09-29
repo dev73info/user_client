@@ -154,7 +154,8 @@ const currentStepKey = computed(() => {
     case 'pending_final':
       return view.value === 'dev' ? 'final' : 'develop'
     // 待分账已过「开发与验收」，只剩渠道分账没落地：停在最后一个阶段（结单/结算）的进行中态。
-    // ponytail: 不新增独立阶段，避免改动两套步骤列表与 rank 计算；页面上的状态标签已写明「待分账」。
+    // ponytail: 不新增独立阶段，避免改动两套步骤列表与 rank 计算；这一步的副标题会写「还有 N 天完成结算 /
+    // 等待渠道分账完成」，需求方那侧另有状态徽标写明「待分账」。
     case 'pending_settlement':
       return 'done'
     case 'completed':

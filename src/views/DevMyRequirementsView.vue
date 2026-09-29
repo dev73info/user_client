@@ -1250,7 +1250,8 @@ async function loadRequirementConversations() {
               </button>
             </div>
             <div class="dev-requirement-card__tags">
-              <el-tag :type="rowStatusType(row)" effect="plain">{{ rowStatusLabel(row) }}</el-tag>
+              <!-- 状态标签已去掉：卡内的流程进度条（RequirementProgressGuide）已经写明走到哪一步，
+                   卡片头再顶一枚「开发中 / 待付尾款」是同一条信息的第二遍。 -->
               <el-tag v-if="row.item" :type="row.item.payment_mode === 'self_managed' ? 'info' : 'warning'"
                 effect="plain">
                 {{ paymentModeLabel(row.item) }}
