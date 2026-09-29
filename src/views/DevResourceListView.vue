@@ -515,7 +515,7 @@ async function setResourcePrivate(resource: McResourcePayload) {
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item :command="{ action: 'view', resource: scope.row }">查看前台页面</el-dropdown-item>
+                  <el-dropdown-item :command="{ action: 'view', resource: scope.row }">资源主页</el-dropdown-item>
                   <el-dropdown-item :command="{ action: 'publish', resource: scope.row }">发布版本</el-dropdown-item>
                   <el-dropdown-item v-if="scope.row.visibility === 'draft'" :disabled="Boolean(scope.row.requirement_id) ||
                     requestingReviewResourceId === scope.row.id
