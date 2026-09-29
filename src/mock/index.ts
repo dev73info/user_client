@@ -14,7 +14,15 @@ import { normalizeBackendPath } from '@/shared/api/url'
 import { clearPersistedAuthProfile } from '@/shared/auth/session'
 import { AUTH_TOKEN_STORAGE_KEY } from '@/shared/auth/storage'
 
-import { forgetMockEnabled, mockDelay, mockEnabled, mockRequestedInUrl, mockSupported } from './env'
+import {
+  MOCK_IDENTITY_QUERY_KEY,
+  MOCK_QUERY_KEY,
+  forgetMockEnabled,
+  mockDelay,
+  mockEnabled,
+  mockRequestedInUrl,
+  mockSupported,
+} from './env'
 import {
   MOCK_IDENTITIES,
   MOCK_IDENTITY_PROFILES,
@@ -278,8 +286,15 @@ export function installMockFetch(): void {
     return
   }
 
-  const identity = currentMockIdentity()
-  prepareMockSession(identity)
+  // mock 关着就什么都不做：不装 fetch / WebSocket 替身，不写假令牌，也不打「已启用」日志。
+  // 以前这里是无条件安装的，于是「关掉 mock」会留下三处副作用：假令牌把真实登录态冲掉
+  // （刷新后必 401 并弹出登录框）、客服长连接被换成空壳、控制台照样打印「已启用」把人误导回去。
+  // 需要开的时候整页刷新重跑 main.ts 会再进来一次，不存在「装早了」的问题。
+  if (!mockEnabled()) {
+    return
+  }
+
+  prepareMockSession(currentMockIdentity())
 
   const realFetch = target.fetch.bind(globalThis)
 
@@ -337,20 +352,24 @@ export function isMockInstalled(): boolean {
 
 /* ------------------------------------------------------------------ 给界面用的操作 */
 
-/** 换身份：写进 localStorage 后整页刷新（登录态、路由守卫、首屏请求都围绕角色展开，重载最干净）。 */
-export function switchMockIdentity(identity?: MockIdentity): void {
-  const next = identity ?? currentMockIdentity()
-  setMockIdentity(next)
+/**
+ * 从地址上摘掉指定参数（保留 hash 与其他参数），再整页刷新。
+ *
+ * 地址参数在 `mockEnabled()` 里优先级最高，不摘掉的话「刷新回来又被参数开回去」，
+ * 表现为按钮点了没用。切换身份要去掉 `?mockAs`，关闭 mock 要去掉 `?mock`。
+ */
+function reloadWithoutSearchParams(names: readonly string[]): void {
+  const search = new URLSearchParams(window.location.search)
+  let touched = false
 
-  if (typeof window === 'undefined') {
-    return
+  for (const name of names) {
+    if (search.has(name)) {
+      search.delete(name)
+      touched = true
+    }
   }
 
-  // 地址上的 ?mockAs=dev 优先级高于 localStorage，不清掉的话点切换器会「切不动」
-  // （写完 localStorage 一刷新又被参数覆盖回去）。
-  const search = new URLSearchParams(window.location.search)
-  if (search.has('mockAs')) {
-    search.delete('mockAs')
+  if (touched) {
     const query = search.toString()
     window.history.replaceState(
       {},
@@ -362,6 +381,20 @@ export function switchMockIdentity(identity?: MockIdentity): void {
   window.location.reload()
 }
 
+/** 换身份：写进 localStorage 后整页刷新（登录态、路由守卫、首屏请求都围绕角色展开，重载最干净）。 */
+export function switchMockIdentity(identity?: MockIdentity): void {
+  const next = identity ?? currentMockIdentity()
+  setMockIdentity(next)
+
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  // 地址上的 ?mockAs=dev 优先级高于 localStorage，不清掉的话点切换器会「切不动」
+  // （写完 localStorage 一刷新又被参数覆盖回去）。
+  reloadWithoutSearchParams([MOCK_IDENTITY_QUERY_KEY])
+}
+
 /** 关掉 mock，回到真实后端（需要真实后端在 8080 上跑着）。 */
 export function disableMock(): void {
   forgetMockEnabled()
@@ -371,10 +404,11 @@ export function disableMock(): void {
     clearPersistedAuthProfile()
   }
 
-  console.info('[mock] 已关闭，刷新后回到真实后端（需要 8080 上跑着后端）')
+  console.info('[mock] 已关闭，刷新后回到真实后端（需要 8080 上跑着后端，会自动重新登录）')
 
   if (typeof window !== 'undefined') {
-    window.location.reload()
+    // 连同地址上的 ?mock=1 一起摘掉，否则刷新回来又被参数打开，看起来像「关不掉」。
+    reloadWithoutSearchParams([MOCK_QUERY_KEY])
   }
 }
 

@@ -47,7 +47,7 @@ const AGREEMENT_CONTENT = [
   '二、担保模式：需求方缴纳定金与尾款，平台按约定比例分账给开发者。',
   '三、无担保模式：平台只提供信息与沟通能力，不参与资金流转。',
   '',
-  '关闭 mock（请求地址去掉 ?mock=1，或清掉 sessionStorage 里的 mock 标记）即可看到真实协议。',
+  '关闭 mock（地址上加 ?mock=0，或点左上角面板里的「关闭 mock」）即可看到真实协议。',
 ].join('\n')
 
 const routes: MockRoute[] = [
