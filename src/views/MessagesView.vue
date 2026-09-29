@@ -377,17 +377,6 @@ function toneBadgeClass(tone: ThreadTone) {
   return 'wb-badge wb-badge--accent'
 }
 
-/** 用户工作台侧的实时同步状态徽标：已连接或连接中=绿，重连中=红，未连接=中性灰 */
-const realtimeBadgeClass = computed(() => {
-  if (realtimeStatus.value === 'connected' || realtimeStatus.value === 'connecting') {
-    return 'wb-badge--success'
-  }
-  if (realtimeStatus.value === 'error') {
-    return 'wb-badge--danger'
-  }
-  return ''
-})
-
 function resetThreadFilters() {
   searchKeyword.value = ''
   activeFilter.value = 'all'
@@ -750,11 +739,6 @@ watch(
       <div class="wb-card-head">
         <div class="wb-card-head__title-block">
           <h3 class="wb-card-head__title">会话列表</h3>
-        </div>
-        <div class="wb-card-head__actions">
-          <span v-if="auth.token" class="wb-badge" :class="realtimeBadgeClass" :title="realtimeError">
-            {{ realtimeStatusLabel }}
-          </span>
         </div>
       </div>
 
