@@ -10,7 +10,7 @@ import {
   WarningFilled,
 } from '@element-plus/icons-vue'
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
 import DevWithdrawalDialog from '@/components/DevWithdrawalDialog.vue'
@@ -85,6 +85,7 @@ type DevHomeIncomeBucket = {
 
 const auth = useAuthStore()
 const route = useRoute()
+const router = useRouter()
 const { showToast } = useToast()
 
 const loading = ref(false)
@@ -423,6 +424,18 @@ function statusChipClass(status: string) {
 }
 
 /**
+ * 总览页的进行中项目与最近交付都只做汇总，完整明细（需求单、交付版本、到账回执）在「我的接单」页。
+ * 点进去时带上需求编号：那页把它灌进搜索框，落地就停在这一单上，不用再自己找。
+ */
+function openMyOrder(requirementId: string) {
+  if (!requirementId) {
+    return
+  }
+
+  void router.push({ name: 'dev-my-requirements', query: { requirement_id: requirementId } })
+}
+
+/**
  * 提现成功后的回刷：只重取钱包读数（可提现 / 待提现 / 已提现与近 7 天曲线），
  * 不整页重拉——进行中项目、最近交付与保证金都不受这次提现影响。
  */
@@ -552,7 +565,10 @@ async function loadPage() {
           </div>
 
           <ul v-if="projectRows.length" class="dev-home__projects">
-            <li v-for="row in projectRows" :key="row.requirementId" class="dev-home__project">
+            <li v-for="row in projectRows" :key="row.requirementId" class="dev-home__project" role="button" tabindex="0"
+              :aria-label="`查看「${row.title}」的接单与交付`" @click="openMyOrder(row.requirementId)"
+              @keydown.enter.prevent="openMyOrder(row.requirementId)"
+              @keydown.space.prevent="openMyOrder(row.requirementId)">
               <div class="dev-home__project-top">
                 <strong class="dev-home__project-title">{{ row.title }}</strong>
                 <span class="dev-chip dev-home__chip" :class="statusChipClass(row.status)">
@@ -610,7 +626,10 @@ async function loadPage() {
           </div>
 
           <ul v-if="deliveryRows.length" class="dev-home__deliveries">
-            <li v-for="row in deliveryRows" :key="row.requirementId" class="dev-home__delivery">
+            <li v-for="row in deliveryRows" :key="row.requirementId" class="dev-home__delivery" role="button" tabindex="0"
+              :aria-label="`查看「${row.resourceTitle}」的交付与到账`" @click="openMyOrder(row.requirementId)"
+              @keydown.enter.prevent="openMyOrder(row.requirementId)"
+              @keydown.space.prevent="openMyOrder(row.requirementId)">
               <div class="dev-home__delivery-top">
                 <span class="dev-home__delivery-icon" aria-hidden="true">
                   <el-icon>
@@ -882,25 +901,42 @@ async function loadPage() {
 
 /* 每条项目只占两行：标题 + 状态，以及「编号 · 预算 · 更新时间」+ 进度。
    原来还有一列装饰性图标和一行独立数字——图标每行都相同、不承载信息，
-   数字另起一行则白占一行高度；合并后单条约 63px（原 119px），一屏能多放近一倍。 */
+   数字另起一行则白占一行高度；合并后单条约 63px（原 119px），一屏能多放近一倍。
+   整行可点（跳到「我的接单」并定位这一单），所以左右各留出内边距给 hover 底色，
+   再用负外边距把文字拉回与卡片头对齐的位置。 */
 .dev-home__project {
   display: grid;
   gap: 5px;
-  padding: 11px 0;
+  margin: 0 -10px;
+  padding: 11px 10px;
   border-bottom: 1px solid var(--dev-line);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.dev-home__project:hover {
+  background: color-mix(in srgb, var(--dev-blue) 5%, transparent);
+}
+
+.dev-home__project:focus-visible,
+.dev-home__delivery:focus-visible {
+  outline: 2px solid var(--dev-blue);
+  outline-offset: 2px;
 }
 
 .dev-home__project:first-child {
-  padding-top: 4px;
+  padding-top: 6px;
 }
 
 .dev-home__project:last-child {
-  padding-bottom: 0;
+  padding-bottom: 6px;
   border-bottom: 0;
 }
 
 /* 最近交付是三列卡片而不是行列表：一张卡只讲一次交付，
-   行列表在这里信息密度过低（右侧大片留白），见设计规范第五节。 */
+   行列表在这里信息密度过低（右侧大片留白），见设计规范第五节。
+   整卡可点（跳到「我的接单」并定位这一单），hover 与 focus 的反馈见下。 */
 .dev-home__deliveries {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -918,6 +954,7 @@ async function loadPage() {
   border: 1px solid var(--dev-line);
   border-radius: 12px;
   background: var(--dev-surface-strong);
+  cursor: pointer;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease;
