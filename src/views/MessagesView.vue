@@ -18,6 +18,7 @@ import {
   type RequirementItem,
   type RequirementStatus,
 } from '@/api/requirements'
+import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
@@ -126,6 +127,19 @@ const filteredThreads = computed(() => {
   }
   return allThreads.value.filter(matchesKeyword)
 })
+
+/* 表尾分页：会话一次取回全部、筛选与搜索都在前端做，所以这里是客户端切片（与资源项目、
+   我的接单同一套）。换筛选或关键词要回第 1 页，否则会停在一个已经不存在的页码上。 */
+const {
+  page,
+  pageSize,
+  total: filteredTotal,
+  paged: pagedThreads,
+  resetPage,
+} = useClientPagination(filteredThreads)
+
+watch([activeFilter, searchKeyword], resetPage)
+
 const recentConversationCount = computed(() =>
   activeConversations.value.filter((item) => isRecent(item.last_message_at ?? item.updated_at)).length,
 )
@@ -697,7 +711,7 @@ watch(
         </div>
 
         <ul v-else class="dev-stack-list">
-          <li v-for="item in filteredThreads" :key="item.key" class="dev-stack-item dev-messages__thread"
+          <li v-for="item in pagedThreads" :key="item.key" class="dev-stack-item dev-messages__thread"
             :class="{ 'dev-messages__thread--pending': item.kind === 'pending' }" role="button" tabindex="0"
             @click="openThread(item)" @keydown.enter.prevent="openThread(item)">
             <div class="dev-messages__thread-main">
@@ -717,6 +731,18 @@ watch(
             <span class="dev-btn dev-btn--primary dev-messages__thread-action">{{ item.actionLabel }}</span>
           </li>
         </ul>
+
+        <!-- 表尾走统一层的 .dev-pager（与我的接单、收益钱包、需求大厅同一形态） -->
+        <div v-if="!loading && filteredTotal > 0" class="dev-pager">
+          <div class="dev-pager__count">
+            <span>共 {{ filteredTotal }} 条会话</span>
+            <el-select v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
+              <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+            </el-select>
+          </div>
+          <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+            :pager-count="5" layout="prev, pager, next" background aria-label="会话分页" />
+        </div>
       </section>
     </template>
 
@@ -795,7 +821,7 @@ watch(
         </div>
       </div>
       <ul v-else class="wb-list" aria-label="会话列表">
-        <li v-for="item in filteredThreads" :key="item.key" class="wb-item wb-item--clickable messages-thread-row"
+        <li v-for="item in pagedThreads" :key="item.key" class="wb-item wb-item--clickable messages-thread-row"
           role="button" tabindex="0" @click="openThread(item)" @keydown.enter.prevent="openThread(item)">
           <div class="wb-item__main">
             <strong class="wb-item__title">{{ item.title }}</strong>
@@ -809,6 +835,18 @@ watch(
           </div>
         </li>
       </ul>
+
+      <!-- 表尾走统一层的 .wb-pager（与我的需求、我的收藏、工单中心同一形态） -->
+      <div v-if="!loading && filteredTotal > 0" class="wb-pager">
+        <div class="wb-pager__count">
+          <span>共 {{ filteredTotal }} 条会话</span>
+          <el-select v-model="pageSize" class="wb-pager__size" aria-label="每页会话数">
+            <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+          </el-select>
+        </div>
+        <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+          :pager-count="5" layout="prev, pager, next" background aria-label="会话分页" />
+      </div>
     </section>
 
   </main>
