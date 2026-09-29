@@ -617,8 +617,9 @@ watch(
     </section>
 
     <RequirementConversationModal v-if="activeRequirementId" display-mode="inline" :visible="true" :token="auth.token"
-      :current-username="auth.username" :requirement-id="activeRequirementId" :title="activeTitle"
-      @updated="applyConversationDetail" @close="closeConversation" />
+      :api-mode="isDevWorkbench ? 'dev' : 'user'" :current-username="auth.username"
+      :requirement-id="activeRequirementId" :title="activeTitle" @updated="applyConversationDetail"
+      @close="closeConversation" />
 
     <!-- 开发者工作台：提示条 + 内容卡，与其余菜单页同一形态（读数条 → 提示条 → 内容卡） -->
     <template v-else-if="isDevWorkbench">

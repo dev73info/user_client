@@ -33,7 +33,7 @@ import {
   requirementPaymentModeLabel,
 } from '@/shared/requirementDisplay'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
-import { requirementRichTextPlainText } from '@/utils/requirementRichText'
+import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 import { listPublicMcResourceVersions } from '@/api/resources'
 import RequirementConversationActions from '@/components/RequirementConversationActions.vue'
 import { useToast } from '@/composables/useToast'
@@ -877,6 +877,23 @@ const detailDrawerOpen = ref(false)
 const detailDrawerLoading = ref(false)
 const detailDrawerRequirement = ref<DrawerRequirement | null>(null)
 
+/** 抽屉只做速览，完整页面（合同、资源、交付等操作）仍然在原来的页面里，链接文案跟着调用方走。 */
+const detailDrawerPageLabel = computed(() =>
+  props.apiMode === 'dev' ? '打开需求详情页' : '在「我的需求」中查看',
+)
+
+function closeDetailDrawer() {
+  detailDrawerOpen.value = false
+}
+
+// 换了需求就收起抽屉，否则会停在上一笔单据的速览上（内嵌形态里切会话不会重建组件）。
+watch(
+  () => props.requirementId,
+  () => {
+    detailDrawerOpen.value = false
+  },
+)
+
 /**
  * 需求详情抽屉：从右侧划出、覆盖在会话之上，不打断会话上下文。
  *
@@ -885,7 +902,7 @@ const detailDrawerRequirement = ref<DrawerRequirement | null>(null)
  */
 async function toggleDetailDrawer() {
   if (detailDrawerOpen.value) {
-    detailDrawerOpen.value = false
+    closeDetailDrawer()
     return
   }
 
@@ -933,6 +950,30 @@ async function toggleDetailDrawer() {
   }
 }
 
+/**
+ * 从抽屉跳到完整页面。
+ *
+ * 覆盖形态下弹窗不收起会挡住目标页面，所以先收抽屉、再收会话；内嵌在消息中心的那种形态只收抽屉。
+ */
+function openRequirementPage() {
+  const requirementId = props.requirementId.trim()
+  if (!requirementId) {
+    return
+  }
+
+  closeDetailDrawer()
+  if (!isInline.value) {
+    closeModal()
+  }
+
+  if (props.apiMode === 'dev') {
+    void router.push({ name: 'dev-requirement-detail', params: { requirementId } })
+    return
+  }
+
+  void router.push({ name: 'workbench-requirements' })
+}
+
 const detailDrawerFields = computed(() => {
   const item = detailDrawerRequirement.value
   if (!item) {
@@ -951,12 +992,18 @@ const detailDrawerFields = computed(() => {
   ]
 })
 
-const detailDrawerDescription = computed(() =>
-  requirementRichTextPlainText(detailDrawerRequirement.value?.description ?? '').trim(),
+/* 需求描述与验收标准是富文本，按站内既有口径走 sanitize + v-html（后端还有一道 ammonia），
+   不要退化成纯文本——那样段落与列表会被拍平成一行。 */
+const detailDrawerDescription = computed(
+  () =>
+    sanitizeRequirementRichText(detailDrawerRequirement.value?.description ?? '') ||
+    '当前需求暂未补充详细描述。',
 )
 
-const detailDrawerAcceptance = computed(() =>
-  requirementRichTextPlainText(detailDrawerRequirement.value?.acceptance_criteria ?? '').trim(),
+const detailDrawerAcceptance = computed(
+  () =>
+    sanitizeRequirementRichText(detailDrawerRequirement.value?.acceptance_criteria ?? '') ||
+    '当前需求暂未补充验收标准。',
 )
 
 function handleBackdropClick() {
@@ -1218,42 +1265,60 @@ function handleBackdropClick() {
         </footer>
 
         <!-- 需求详情抽屉：从右侧划出、盖在会话之上，不跳页也不打断会话上下文；
-             数据按需自取（见 toggleDetailDrawer） -->
-        <div v-if="detailDrawerOpen" class="conversation-drawer__backdrop" @click="detailDrawerOpen = false"></div>
-        <aside v-if="detailDrawerOpen" class="conversation-drawer" aria-label="需求详情">
-          <header class="conversation-drawer__head">
-            <h4>需求详情</h4>
-            <button class="conversation-modal__icon-btn" type="button" aria-label="收起需求详情" title="收起需求详情"
-              @click="detailDrawerOpen = false">
-              <el-icon>
-                <Close />
-              </el-icon>
-            </button>
-          </header>
+             数据按需自取（见 toggleDetailDrawer）。
 
-          <p v-if="detailDrawerLoading" class="conversation-drawer__hint" role="status">需求详情加载中…</p>
-          <p v-else-if="!detailDrawerRequirement" class="conversation-drawer__hint">未能加载这条需求的详情。</p>
-          <template v-else>
-            <h5 class="conversation-drawer__title">{{ detailDrawerRequirement.title }}</h5>
+             Teleport 到 body：内嵌形态（消息中心）下消息页自己在一个层叠上下文里，
+             留在原地的话抽屉的 z-index 再高也压不过站点的吸顶导航（40）与底部坞（60），
+             移动端会出现「抽屉顶栏和底栏被盖住」。与验收弹窗同一处理（见 AcceptanceDialog）。 -->
+        <Teleport to="body">
+          <Transition name="conversation-drawer">
+            <div v-if="detailDrawerOpen" class="conversation-drawer-layer">
+              <div class="conversation-drawer__backdrop" @click="closeDetailDrawer"></div>
+              <aside class="conversation-drawer" aria-label="需求详情">
+                <header class="conversation-drawer__head">
+                  <h4>需求详情</h4>
+                  <button class="conversation-modal__icon-btn" type="button" aria-label="收起需求详情" title="收起需求详情"
+                    @click="closeDetailDrawer">
+                    <el-icon>
+                      <Close />
+                    </el-icon>
+                  </button>
+                </header>
 
-            <dl class="conversation-drawer__meta">
-              <div v-for="field in detailDrawerFields" :key="field.label">
-                <dt>{{ field.label }}</dt>
-                <dd>{{ field.value }}</dd>
-              </div>
-            </dl>
+                <div class="conversation-drawer__body">
+                  <p v-if="detailDrawerLoading" class="conversation-drawer__hint" role="status">需求详情加载中…</p>
+                  <p v-else-if="!detailDrawerRequirement" class="conversation-drawer__hint">未能加载这条需求的详情。</p>
+                  <template v-else>
+                    <h5 class="conversation-drawer__title">{{ detailDrawerRequirement.title }}</h5>
 
-            <section class="conversation-drawer__block">
-              <h6>需求描述</h6>
-              <p>{{ detailDrawerDescription || '当前需求暂未补充详细描述。' }}</p>
-            </section>
+                    <dl class="conversation-drawer__meta">
+                      <div v-for="field in detailDrawerFields" :key="field.label">
+                        <dt>{{ field.label }}</dt>
+                        <dd>{{ field.value }}</dd>
+                      </div>
+                    </dl>
 
-            <section class="conversation-drawer__block">
-              <h6>验收标准</h6>
-              <p>{{ detailDrawerAcceptance || '当前需求暂未补充验收标准。' }}</p>
-            </section>
-          </template>
-        </aside>
+                    <section class="conversation-drawer__block">
+                      <h6>需求描述</h6>
+                      <article class="conversation-drawer__rich" v-html="detailDrawerDescription"></article>
+                    </section>
+
+                    <section class="conversation-drawer__block">
+                      <h6>验收标准</h6>
+                      <article class="conversation-drawer__rich" v-html="detailDrawerAcceptance"></article>
+                    </section>
+                  </template>
+                </div>
+
+                <footer class="conversation-drawer__foot">
+                  <button class="conversation-drawer__page-link" type="button" @click="openRequirementPage">
+                    {{ detailDrawerPageLabel }}
+                  </button>
+                </footer>
+              </aside>
+            </div>
+          </Transition>
+        </Teleport>
       </section>
     </div>
   </Teleport>
@@ -3065,40 +3130,81 @@ function handleBackdropClick() {
   }
 }
 /* 需求详情抽屉：从右侧划出、盖在会话之上。定位用 fixed——内嵌形态（消息中心）下
-   也要贴着视口右侧划出，不能依赖外层容器的定位。 */
-.conversation-drawer__backdrop {
+   也要贴着视口右侧划出，不能依赖外层容器的定位；抽屉整棵 Teleport 到 body（见模板注释），
+   所以这里的层级是相对站点外壳算的：
+   压过会话弹窗（130）、个人中心浮层（120）、吸顶导航（40）与移动端底部坞（60），
+   但仍要留在验收弹窗（1400）这些从会话里点开的弹窗之下。 */
+.conversation-drawer-layer {
   position: fixed;
+  inset: 0;
+  z-index: 200;
+}
+
+.conversation-drawer__backdrop {
+  position: absolute;
   inset: 0;
   background: rgba(15, 23, 42, 0.28);
 }
 
 .conversation-drawer {
-  position: fixed;
+  position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
   width: min(380px, 100%);
-  padding: 16px 18px 20px;
-  overflow-y: auto;
   border-left: 1px solid rgba(213, 226, 244, 0.98);
   background: #ffffff;
   box-shadow: -12px 0 28px rgba(30, 58, 107, 0.12);
 }
 
+/* 划出：遮罩淡入 + 面板从右侧推入。过渡类落在 layer 上，面板靠后代选择器跟着动。 */
+.conversation-drawer-enter-active,
+.conversation-drawer-leave-active {
+  transition: opacity 200ms ease;
+}
+
+.conversation-drawer-enter-active .conversation-drawer,
+.conversation-drawer-leave-active .conversation-drawer {
+  transition: transform 220ms ease;
+}
+
+.conversation-drawer-enter-from,
+.conversation-drawer-leave-to {
+  opacity: 0;
+}
+
+.conversation-drawer-enter-from .conversation-drawer,
+.conversation-drawer-leave-to .conversation-drawer {
+  transform: translateX(100%);
+}
+
 .conversation-drawer__head {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  padding: 14px 14px 12px 18px;
+  border-bottom: 1px solid rgba(216, 228, 244, 0.95);
 }
 
 .conversation-drawer__head h4 {
   margin: 0;
   color: #0f172a;
   font-size: 15px;
+}
+
+.conversation-drawer__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 14px 18px 18px;
 }
 
 .conversation-drawer__title {
@@ -3152,13 +3258,107 @@ function handleBackdropClick() {
   font-size: 12px;
 }
 
-.conversation-drawer__block p {
-  margin: 0;
-  color: #0f172a;
+.conversation-drawer__rich {
+  color: #334155;
   font-size: 13px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.conversation-drawer__rich :deep(*:not(a)) {
+  color: inherit;
+}
+
+.conversation-drawer__rich :deep(strong),
+.conversation-drawer__rich :deep(b) {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.conversation-drawer__rich :deep(p),
+.conversation-drawer__rich :deep(ul),
+.conversation-drawer__rich :deep(ol),
+.conversation-drawer__rich :deep(blockquote) {
+  margin: 0 0 10px;
+}
+
+.conversation-drawer__rich :deep(ul),
+.conversation-drawer__rich :deep(ol) {
+  padding-left: 20px;
+}
+
+.conversation-drawer__rich :deep(a) {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.conversation-drawer__rich :deep(pre) {
+  overflow-x: auto;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.conversation-drawer__rich :deep(.rich-editor-media) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border-radius: 12px;
+}
+
+.conversation-drawer__rich :deep(.rich-editor-attachment) {
+  display: inline-flex;
+  max-width: 100%;
+  margin: 8px 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(191, 219, 254, 0.96);
+  border-radius: 10px;
+  background: rgba(239, 246, 255, 0.9);
+  color: #1d4ed8;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.conversation-drawer__foot {
+  flex: 0 0 auto;
+  padding: 12px 18px max(16px, env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(216, 228, 244, 0.95);
+}
+
+.conversation-drawer__page-link {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1d4ed8;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.conversation-drawer__page-link:hover {
+  border-color: rgba(79, 140, 255, 0.44);
+  background: #eef6ff;
+}
+
+@media (max-width: 640px) {
+  .conversation-drawer {
+    width: 100%;
+  }
+
+  .conversation-drawer__meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 移动端触摸目标 ≥44px */
+  .conversation-drawer__page-link {
+    min-height: 44px;
+  }
 }
 
 .conversation-modal__header-actions .conversation-modal__icon-btn.is-active {
