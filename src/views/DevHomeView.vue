@@ -393,15 +393,78 @@ const peakIndex = computed(() =>
 
 const peakLabel = computed(() => money(incomeBuckets.value[peakIndex.value]?.value))
 
-const peakLabelLeft = computed(() => {
+/** 悬停读数胶囊在两端翻边的阈值（百分比）：胶囊比「最高一天」那颗宽，居中会溢出去。 */
+const TIP_EDGE_PERCENT = 16
+
+/** 把第 index 天的横向位置换算成百分比；贴边时拉回画布内（「最高一天」那颗读数用）。 */
+function bucketLeftPercent(index: number): string {
   const lastIndex = incomeBuckets.value.length - 1
   if (lastIndex <= 0) {
     return '50%'
   }
 
-  const percent = (peakIndex.value / lastIndex) * 100
+  const percent = (index / lastIndex) * 100
   return `${Math.min(88, Math.max(12, percent)).toFixed(1)}%`
+}
+
+const peakLabelLeft = computed(() => bucketLeftPercent(peakIndex.value))
+
+/**
+ * 鼠标悬停（或键盘聚焦）的那一天：曲线本身只是一条线，不悬停看不出每天各到账多少，
+ * 所以每一天铺一条命中带，指上去就在它头顶报「日期 · 金额」，并把圆点放大、画一条竖线。
+ * 没有命中带时只有最高一天那颗读数。
+ */
+const hoveredBucketIndex = ref<number | null>(null)
+
+const hoveredBucket = computed(() => {
+  const index = hoveredBucketIndex.value
+  if (index == null) {
+    return null
+  }
+
+  const bucket = incomeBuckets.value[index]
+  const point = chartGeometry.value.points[index]
+  const lastIndex = chartGeometry.value.points.length - 1
+  if (!bucket || !point || lastIndex <= 0) {
+    return null
+  }
+
+  const percent = (point.x / CHART_WIDTH) * 100
+  // 头顶读数：始终以当天那个点为锚，贴到两端时把胶囊翻到点的内侧，免得被卡片裁掉
+  // （它比「最高一天」那颗蓝胶囊宽，居中摆在最左/最右会溢出去）。竖线不参与收边，
+  // 永远画在当天那个点上，两者不共用同一个横坐标。
+  const tipTransform =
+    percent <= TIP_EDGE_PERCENT
+      ? 'translateX(0)'
+      : percent >= 100 - TIP_EDGE_PERCENT
+        ? 'translateX(-100%)'
+        : 'translateX(-50%)'
+
+  return {
+    label: bucket.label,
+    value: bucket.value,
+    tipLeft: `${percent.toFixed(2)}%`,
+    tipTransform,
+    guideLeft: `${percent.toFixed(2)}%`,
+    // 竖线从该点画到基线：点与基线都在 104px 高的画布里，直接换算成百分比给高度
+    top: `${((point.y / CHART_HEIGHT) * 100).toFixed(1)}%`,
+    height: `${(((chartGeometry.value.baseline - point.y) / CHART_HEIGHT) * 100).toFixed(1)}%`,
+  }
 })
+
+/** 命中带的左右边界：以当天那个点为中心、各占与邻点间距的一半，最外侧两条各自收在画布边上。 */function bucketHitStyle(index: number): Record<string, string> {
+  const lastIndex = chartGeometry.value.points.length - 1
+  if (lastIndex <= 0) {
+    return { left: '0%', right: '0%' }
+  }
+
+  const center = (chartGeometry.value.points[index]!.x / CHART_WIDTH) * 100
+  const half = 100 / lastIndex / 2
+  return {
+    left: `${Math.max(0, center - half).toFixed(2)}%`,
+    right: `${Math.max(0, 100 - center - half).toFixed(2)}%`,
+  }
+}
 
 const chartCaption = computed(() =>
   mockEnabled ? '演示数据：近 7 天完整序列' : '按最近到账记录绘制（最多取最近 100 笔）',
@@ -684,9 +747,17 @@ async function loadPage() {
           <p class="dev-home__group-label">近 7 天到账</p>
 
           <div class="dev-home__chart" :title="chartCaption">
-            <span v-if="hasIncomeData" class="dev-home__chart-peak" :style="{ left: peakLabelLeft }">
+            <!-- 悬停时头顶换成那一天自己的读数（两颗都挂在同一个位置，同时出现会叠在一起） -->
+            <span v-if="hoveredBucket" class="dev-home__chart-tip"
+              :style="{ left: hoveredBucket.tipLeft, transform: hoveredBucket.tipTransform }">
+              {{ hoveredBucket.label }} · {{ money(hoveredBucket.value) }}
+            </span>
+            <span v-else-if="hasIncomeData" class="dev-home__chart-peak" :style="{ left: peakLabelLeft }">
               {{ peakLabel }}
             </span>
+
+            <span v-if="hoveredBucket" class="dev-home__chart-guide"
+              :style="{ left: hoveredBucket.guideLeft, top: hoveredBucket.top, height: hoveredBucket.height }" />
 
             <svg class="dev-home__chart-svg" :viewBox="`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`"
               preserveAspectRatio="none" role="img" :aria-label="`近 7 天到账金额，最高一天 ${peakLabel}`">
@@ -702,10 +773,21 @@ async function loadPage() {
                 <path class="dev-home__chart-area" :d="chartGeometry.area" fill="url(#devHomeIncomeFill)" />
                 <path class="dev-home__chart-line" :d="chartGeometry.line" vector-effect="non-scaling-stroke" />
                 <circle v-for="(point, index) in chartGeometry.points" :key="point.label" class="dev-home__chart-dot"
-                  :class="{ 'is-peak': index === peakIndex }" :cx="point.x" :cy="point.y"
-                  :r="index === peakIndex ? 3.5 : 2" vector-effect="non-scaling-stroke" />
+                  :class="{ 'is-peak': index === peakIndex, 'is-active': index === hoveredBucketIndex }"
+                  :cx="point.x" :cy="point.y"
+                  :r="index === hoveredBucketIndex ? 4 : index === peakIndex ? 3.5 : 2"
+                  vector-effect="non-scaling-stroke" />
               </template>
             </svg>
+
+            <!-- 每天一条命中带：指到哪一天就在头顶报那一天的金额，键盘 Tab 也能逐天读 -->
+            <div v-if="hasIncomeData" class="dev-home__chart-hits">
+              <button v-for="(point, index) in chartGeometry.points" :key="point.label" type="button"
+                class="dev-home__chart-hit" :style="bucketHitStyle(index)"
+                :aria-label="`${point.label} 到账 ${money(point.value)}`" @mouseenter="hoveredBucketIndex = index"
+                @mouseleave="hoveredBucketIndex = null" @focus="hoveredBucketIndex = index"
+                @blur="hoveredBucketIndex = null" />
+            </div>
 
             <div class="dev-home__chart-axis-labels" aria-hidden="true">
               <span v-for="bucket in incomeBuckets" :key="bucket.label">{{ bucket.label }}</span>
@@ -1188,6 +1270,58 @@ async function loadPage() {
   fill: var(--dev-blue);
 }
 
+.dev-home__chart-dot.is-active {
+  fill: var(--dev-blue);
+  stroke-width: 2.5;
+}
+
+/* 悬停读数：深底白字的胶囊，与「最高一天」那颗蓝胶囊区分开——蓝的是这一周的峰值，
+   深色的是鼠标底下那一天的当日读数。横向位置与两端翻边由模板内联给（见 hoveredBucket）。 */
+.dev-home__chart-tip {
+  position: absolute;
+  top: 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--dev-ink);
+  color: var(--dev-surface-strong);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* 从当天那个点到基线的竖线：指着哪一天，一眼能看出对应的是曲线上的哪个点 */
+.dev-home__chart-guide {
+  position: absolute;
+  width: 1px;
+  background: color-mix(in srgb, var(--dev-blue) 38%, transparent);
+  pointer-events: none;
+}
+
+/* 命中带：铺满整个图（含下面的日期），指到哪一格就报哪一天；它盖在 SVG 之上，
+   所以曲线上的圆点不各挂一次监听，焦点与悬停都集中在这七颗按钮上。 */
+.dev-home__chart-hits {
+  position: absolute;
+  inset: 0;
+}
+
+.dev-home__chart-hit {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.dev-home__chart-hit:focus-visible {
+  outline: 2px solid var(--dev-blue);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
 .dev-home__chart-peak {
   position: absolute;
   top: 0;
@@ -1200,6 +1334,7 @@ async function loadPage() {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  pointer-events: none;
 }
 
 .dev-home__chart-axis-labels {
