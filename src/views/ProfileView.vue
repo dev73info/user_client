@@ -466,8 +466,9 @@ async function refreshProfileData() {
   showToast('资料已刷新', 'success')
 }
 
+/** 需求详情浮层已去掉：这里只跳到「我的需求」列表，需求正文现在直接显示在列表行里。 */
 function handleRequirementAction(item: RequirementItem) {
-  void router.push({ name: 'workbench-requirements', query: { view: item.requirement_id } })
+  void router.push({ name: 'workbench-requirements' })
 }
 
 function starFill(index: number) {

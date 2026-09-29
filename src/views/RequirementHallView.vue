@@ -511,8 +511,8 @@ async function loadHallData(page = hallPage.value) {
             @keydown.space.prevent="openRequirementDetail(card)">
             <div class="portal-page__card-topline">
               <span
-                class="requirement-hall__pay-chip"
-                :class="`requirement-hall__pay-chip--${card.payment_mode}`"
+                class="portal-page__pay-chip"
+                :class="`portal-page__pay-chip--${card.payment_mode}`"
               >{{ paymentTag(card) }} · {{ statusToLabel(card.status) }}</span>
             </div>
             <h2>{{ card.title }}</h2>
@@ -604,8 +604,8 @@ async function loadHallData(page = hallPage.value) {
         <header class="requirement-hall-detail__head">
           <div>
             <span
-              class="requirement-hall__pay-chip"
-              :class="`requirement-hall__pay-chip--${selectedRequirement.payment_mode}`"
+              class="portal-page__pay-chip"
+              :class="`portal-page__pay-chip--${selectedRequirement.payment_mode}`"
             >{{ paymentTag(selectedRequirement) }}</span>
             <h3>{{ selectedRequirement.title }}</h3>
             <p>
@@ -802,27 +802,6 @@ async function loadHallData(page = hallPage.value) {
   display: flex;
   justify-content: center;
   margin-top: 16px;
-}
-
-.requirement-hall__pay-chip {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  padding: 5px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.requirement-hall__pay-chip--self_managed {
-  background: rgba(253, 230, 138, 0.55);
-  color: #92400e;
-}
-
-.requirement-hall__pay-chip--platform_guarantee {
-  background: rgba(187, 247, 208, 0.6);
-  color: #166534;
 }
 
 .requirement-hall__card {

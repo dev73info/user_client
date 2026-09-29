@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Close, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
+import { ArrowDown, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
 
 import PublishModal from '@/components/PublishModal.vue'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
@@ -14,7 +14,7 @@ import {
   isUnionPaymentAuthorizationRequired,
   isWechatPaymentAuthorizationRequired,
 } from '@/api/auth'
-import { HttpError, apiUrl } from '@/api/http'
+import { HttpError } from '@/api/http'
 import {
   downloadPublicMcResourceVersionFile,
   extractResourceFileNameFromUrl,
@@ -81,7 +81,6 @@ import {
 import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
 import {
   requirementRichTextPlainText,
-  sanitizeRequirementRichText,
   validateRequirementRichText,
 } from '@/utils/requirementRichText'
 
@@ -95,7 +94,6 @@ const requirementLoading = ref(false)
 const myRequirements = ref<RequirementItem[]>([])
 const payVisible = ref(false)
 const payRequirement = ref<RequirementItem | null>(null)
-const detailRequirement = ref<RequirementItem | null>(null)
 const payChannel = ref<AdapayBusinessPayChannel>('alipay')
 const payLoading = ref(false)
 type PaymentState = {
@@ -136,6 +134,8 @@ const editLoading = ref(false)
 const requirementSubscriptionLoadingId = ref<string | null>(null)
 const resourceVisibilityLoadingId = ref<string | null>(null)
 const resourceDownloadingId = ref<number | null>(null)
+/** 行内「下载」先弹版本选择：让用户自己挑要哪一版，而不是一律给最新版 */
+const downloadPickerRequirement = ref<RequirementItem | null>(null)
 const resourceVersionDeleteReviewLoadingId = ref<string | null>(null)
 const finalPaymentConfirmVisible = ref(false)
 const finalPaymentConfirmTarget = ref<RequirementItem | null>(null)
@@ -280,17 +280,6 @@ function syncPublishModalFromRoute(value: unknown) {
     publishVisible.value = true
   }
 }
-
-const detailRequirementDescriptionHtml = computed(
-  () =>
-    sanitizeRequirementRichText(detailRequirement.value?.description ?? '') ||
-    '当前需求暂未补充详细描述。',
-)
-const detailRequirementAcceptanceHtml = computed(
-  () =>
-    sanitizeRequirementRichText(detailRequirement.value?.acceptance_criteria ?? '') ||
-    '当前需求暂未补充验收标准。',
-)
 
 /** 需求状态在这一页归到三个档位，第四档「其它」兜住落不进前三档的状态
     （已驳回、已取消、定金已付待开发、待分账）。顶部读数条与状态筛选胶囊共用这一个定义：
@@ -456,17 +445,6 @@ function paymentModeLabel(item: RequirementItem) {
   return isSelfManagedRequirement(item) ? '无电签约定' : '电签担保'
 }
 
-/**
- * 发布方式与它的口径。
- *
- * 担保模式不再跟着一行「按平台定金与尾款流程推进」：这句话不承载新信息（卡片的流程条、
- * 状态与金额都已经说明了流程），属于设计规范里说的装饰性灰字；无担保模式反过来要点明
- * 「付款不走平台」，那句是必要口径，必须留。
- */
-function paymentModeNote(item: RequirementItem) {
-  return isSelfManagedRequirement(item) ? '无电签约定 · 付款由双方另行约定' : '电签担保'
-}
-
 function formatRequirementTime(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
@@ -478,10 +456,6 @@ function formatRequirementTime(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   })
-}
-
-function formatRequirementCreatedTime(item: RequirementItem) {
-  return item.created_time?.trim() ? formatRequirementTime(item.created_time) : '时间未知'
 }
 
 function formatBudget(value?: number | null) {
@@ -518,12 +492,16 @@ function latestDeliveryVersionLabel(item: RequirementItem) {
   return latest ? `（最新 ${latest.version}）` : ''
 }
 
-function deliveryVersionNoteText(note?: string | null) {
-  return requirementRichTextPlainText(note ?? '')
+/**
+ * 富文本字段在列表行里只展示纯文本：列表不做富文本排版，也就不需要 v-html。
+ * （原详情浮层用 sanitize + v-html 展示正文，浮层去掉后正文改在行内读。）
+ */
+function requirementPlainText(value?: string | null) {
+  return requirementRichTextPlainText(value ?? '').trim()
 }
 
-function deliveryVersionDownloadUrl(version: PublicMcResourceVersionItem) {
-  return apiUrl(version.resource)
+function deliveryVersionNoteText(note?: string | null) {
+  return requirementRichTextPlainText(note ?? '')
 }
 
 function canRequestFinalPayment(item: RequirementItem) {
@@ -900,14 +878,6 @@ function applyConversationDetail(payload: RequirementConversationDetail) {
   }
 }
 
-function conversationForRequirement(item: RequirementItem) {
-  return requirementConversationMap.value[item.requirement_id] ?? null
-}
-
-function conversationButtonLabel(item: RequirementItem) {
-  return conversationForRequirement(item)?.last_message_at ? '查看沟通' : '沟通'
-}
-
 async function loadRequirementConversations() {
   if (!auth.token.trim()) {
     requirementConversationMap.value = {}
@@ -967,7 +937,7 @@ function versionDeleteRejectNote(item: RequirementItem) {
 function formatResourceVisibility(item: RequirementItem) {
   const visibility = currentResourceVisibility(item)
   if (visibility === 'public') {
-    return '资源已公开'
+    return '公开'
   }
 
   return visibility === 'review' ? '审核中' : '私有'
@@ -1038,14 +1008,29 @@ function openBoundResourceHomepage(item: RequirementItem) {
 }
 
 /** 下载绑定资源的最新已发布版本；版本列表在 loadResourceVersions 里已加载，不再单独发请求。 */
-async function downloadBoundResource(item: RequirementItem) {
-  if (!hasBoundResource(item) || !auth.token) {
+/** 行内「下载」：先弹版本选择（版本列表与详情面板共用 deliveryVersionsFor）。 */
+function openDownloadPicker(item: RequirementItem) {
+  if (!hasBoundResource(item)) {
     return
   }
 
-  const latest = deliveryVersionsFor(item)[0]
-  if (!latest) {
+  if (!deliveryVersionsFor(item).length) {
     showToast('开发者还没有发布可下载的版本', 'info')
+    return
+  }
+
+  downloadPickerRequirement.value = item
+}
+
+function closeDownloadPicker() {
+  downloadPickerRequirement.value = null
+}
+
+async function downloadRequirementVersion(
+  item: RequirementItem,
+  version: PublicMcResourceVersionItem,
+) {
+  if (!hasBoundResource(item) || !auth.token) {
     return
   }
 
@@ -1054,8 +1039,8 @@ async function downloadBoundResource(item: RequirementItem) {
   try {
     await triggerDownload(
       (onProgress) =>
-        downloadPublicMcResourceVersionFile(resourceId, latest.id, auth.token?.trim() || null, onProgress),
-      extractResourceFileNameFromUrl(latest.resource, `resource-${resourceId}-v${latest.id}`),
+        downloadPublicMcResourceVersionFile(resourceId, version.id, auth.token?.trim() || null, onProgress),
+      extractResourceFileNameFromUrl(version.resource, `resource-${resourceId}-${version.version}`),
     )
   } catch (err) {
     showToast(err instanceof Error ? err.message : '下载资源失败', 'warning')
@@ -1096,7 +1081,6 @@ function openPayModal(item: RequirementItem) {
   if (!canPay(item.status, item)) {
     return
   }
-  openRequirementDetail(item)
   payRequirement.value = item
   payChannel.value = 'alipay'
   currentPayment.value = null
@@ -1109,47 +1093,6 @@ function updatePayChannel(channel: AdapayBusinessPayChannel) {
   }
   payChannel.value = channel
   currentPayment.value = null
-}
-
-function openRequirementDetail(item: RequirementItem) {
-  detailRequirement.value = item
-  if (routeRequirementViewId() !== item.requirement_id) {
-    void router.replace({ query: { ...route.query, view: item.requirement_id } })
-  }
-}
-
-function closeRequirementDetail() {
-  closePayModal()
-  detailRequirement.value = null
-  if (routeRequirementViewId()) {
-    const nextQuery = { ...route.query }
-    delete nextQuery.view
-    void router.replace({ query: nextQuery })
-  }
-}
-
-function routeRequirementViewId() {
-  const value = route.query.view
-  if (Array.isArray(value)) {
-    return value[0]?.trim() ?? ''
-  }
-  return typeof value === 'string' ? value.trim() : ''
-}
-
-function syncRouteRequirementDetail() {
-  const requirementId = routeRequirementViewId()
-  if (!requirementId) {
-    detailRequirement.value = null
-    return
-  }
-
-  const target = myRequirements.value.find((item) => item.requirement_id === requirementId)
-  if (target) {
-    detailRequirement.value = target
-    if (payRequirement.value && payRequirement.value.requirement_id !== target.requirement_id) {
-      closePayModal()
-    }
-  }
 }
 
 /** 无担保模式的「确认完成」入口：担保模式的验收与尾款走 accept / pay，不再经过这里。 */
@@ -1448,12 +1391,6 @@ function openRequirementEditModal(item: RequirementItem) {
   editAcceptance.value = item.acceptance_criteria ?? ''
   editPaymentMode.value = item.payment_mode
   editVisible.value = true
-}
-
-/** 详情面板里直接改完重提：先收起详情（?view= 也会一并清掉），再打开编辑弹窗。 */
-function resubmitFromDetail(item: RequirementItem) {
-  closeRequirementDetail()
-  openRequirementEditModal(item)
 }
 
 function publishRedirectTarget() {
@@ -1899,7 +1836,6 @@ async function loadMyRequirements() {
     // ponytail: 请求数随需求数线性增长（N 条 ≈ 2N 个请求），需求很多时页面会变慢；
     // 上限的真正解法是服务端分页 + 批量状态接口，等 `/requirement/mine` 支持分页再做。
     myRequirements.value = rows
-    syncRouteRequirementDetail()
     // 不 await：菜单灰不灰不影响列表先画出来，汇总回来再补上禁用态。
     void loadInvoiceSummaries(myRequirements.value)
     await loadContractSigningStatuses(myRequirements.value)
@@ -2202,7 +2138,7 @@ function primaryRowAction(item: RequirementItem): RequirementRowAction | null {
   }
 
   if (canResubmit(item.status)) {
-    return { key: 'resubmit', label: '重新编辑' }
+    return { key: 'resubmit', label: '编辑' }
   }
 
   // 「取消需求」与「支付 / 验收 / 评价」在原来的 v-if 链里就是互斥的，这里保持同样的优先级。
@@ -2237,7 +2173,7 @@ function moreRowActions(item: RequirementItem): RequirementRowAction[] {
     entries.push({ key: 'contract-view', label: '查看合同' })
   }
   if (hasBoundResource(item)) {
-    entries.push({ key: 'homepage', label: '查看交付资源主页' })
+    entries.push({ key: 'homepage', label: '资源主页' })
   }
   if (canComment(item.status) && item.comment_rating != null && !canCancel(item)) {
     entries.push({ key: 'comment', label: '修改评价' })
@@ -2301,7 +2237,7 @@ function runRowAction(item: RequirementItem, key: RequirementRowActionKey) {
       openCommentModal(item)
       return
     case 'download':
-      void downloadBoundResource(item)
+      openDownloadPicker(item)
       return
     case 'conversation':
       openConversation(item)
@@ -2440,13 +2376,6 @@ watch(
   },
   { immediate: true },
 )
-
-watch(
-  () => route.query.view,
-  () => {
-    syncRouteRequirementDetail()
-  },
-)
 </script>
 
 <template>
@@ -2537,10 +2466,12 @@ watch(
                   <span>{{ item.requirement_id }}</span>
                 </div>
                 <div class="requirement-details">
-                  <!-- 短事实走统一层状态标签 .wb-badge（浅底 + 深字）：底色分档沿用
-                       「中性 = 无强调语义的事实、绿 = 已公开、琥珀 = 有待审核项」的口径，
+                  <!-- 短事实走标签：发布方式用门户通用层的 .portal-page__pay-chip（与需求大厅卡片同一份定义，
+                       底色按发布方式分档），其余走统一层 .wb-badge（浅底 + 深字：绿 = 已公开、琥珀 = 有待审核项）；
                        散文式的说明仍用 .requirement-note 独占一行。 -->
-                  <span class="wb-badge">{{ paymentModeNote(item) }}</span>
+                  <span class="portal-page__pay-chip" :class="`portal-page__pay-chip--${item.payment_mode}`">{{
+                    paymentModeLabel(item)
+                    }}</span>
                   <span v-if="hasBoundResource(item)" class="wb-badge wb-badge--success">{{
                     formatResourceVisibility(item)
                     }}</span>
@@ -2557,6 +2488,10 @@ watch(
                     item.resource_version_delete_request_status === 'rejected' &&
                     item.resource_version_delete_review_note
                   " class="requirement-note requirement-note--block">{{ versionDeleteRejectNote(item) }}</small>
+                  <small v-if="requirementPlainText(item.description)"
+                    class="requirement-note requirement-note--block">需求描述：{{ requirementPlainText(item.description) }}</small>
+                  <small v-if="requirementPlainText(item.acceptance_criteria)"
+                    class="requirement-note requirement-note--block">验收标准：{{ requirementPlainText(item.acceptance_criteria) }}</small>
                   <small v-if="item.status === 'rejected' && item.review_note"
                     class="requirement-note requirement-note--block">驳回原因：{{ item.review_note }}</small>
                   <small v-if="hasPendingDeveloperUnbindRequest(item)"
@@ -2625,14 +2560,14 @@ watch(
                 </button>
                 <button v-if="hasBoundResource(item)" class="ghost small action-quiet" type="button"
                   @click.stop="runRowAction(item, 'conversation')">
-                  {{ conversationButtonLabel(item) }}
+                  会话
                 </button>
-                <!-- 版本删除审核没有别的入口（整行点击现在归会话），所以这里给它一个按钮，
+                <!-- 版本删除审核没有别的入口（整行点击归会话），所以这里给它一个按钮，
                      与下方展开的审核卡片成对出现。 -->
                 <button v-if="hasPendingResourceVersionDeleteReview(item)" class="ghost small action-emphasis"
                   type="button" :aria-expanded="isVersionDeleteReviewExpanded(item)"
                   @click.stop="toggleVersionDeleteReviewCard(item)">
-                  {{ isVersionDeleteReviewExpanded(item) ? '收起审核' : '审核版本删除' }}
+                  {{ isVersionDeleteReviewExpanded(item) ? '收起审核' : '审核资源' }}
                 </button>
                 <button v-if="canOpenAfterSales(item)" class="ghost small action-emphasis" type="button"
                   @click.stop="runRowAction(item, 'after-sales')">
@@ -2772,153 +2707,67 @@ watch(
     <InvoiceApplyDialog v-model:visible="invoiceDialogVisible" :token="auth.token"
       :requirement-id="invoiceRequirement?.requirement_id ?? ''" role="customer" @submitted="loadMyRequirements" />
 
-    <Teleport to="body">
-      <div v-if="detailRequirement" class="my-requirement-detail-wrap" @click.self="closeRequirementDetail">
-        <section class="my-requirement-detail" :aria-label="`${detailRequirement.title}详情`">
-          <header class="my-requirement-detail__head">
-            <div>
-              <h3>{{ detailRequirement.title }}</h3>
+    <!-- 支付弹窗：原来内嵌在需求详情浮层里，浮层去掉后单独成一个弹窗，
+         外壳沿用这页其他确认弹窗的 .pay-modal（尾款确认、取消确认同一套）。 -->
+    <div v-if="payVisible && payRequirement" class="modal-wrap" @click.self="closePayModal">
+      <section class="pay-modal" aria-label="需求支付">
+        <h3>支付{{ payStageLabel }}</h3>
+        <p class="pay-line"><strong>需求标题：</strong>{{ payRequirement.title }}</p>
+        <p class="pay-line"><strong>需求编号：</strong>{{ payRequirement.requirement_id }}</p>
+        <p class="pay-line">
+          <strong>本次应付：</strong>{{ formatBudget(payAmount) }}
+          <span v-if="!isFinalPayment"> · 定金占比 {{ depositRatioPercent.toFixed(2) }}%</span>
+        </p>
+        <p class="tip">{{ currentPayment ? '订单已创建，点下列按钮查询支付结果' : '选择支付方式，付款后回来确认' }}</p>
+
+        <div class="payment-options" role="radiogroup" aria-label="支付方式选择">
+          <button type="button" class="payment-option"
+            :class="{ active: payChannel === 'alipay', 'payment-option--alipay': payChannel === 'alipay' }"
+            @click="updatePayChannel('alipay')">
+            <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
+            支付宝
+          </button>
+          <button type="button" class="payment-option"
+            :class="{ active: payChannel === 'wechat', 'payment-option--wechat': payChannel === 'wechat' }"
+            @click="updatePayChannel('wechat')">
+            <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="微信" />
+            微信
+          </button>
+        </div>
+
+        <div class="actions">
+          <button class="ghost" type="button" @click="closePayModal">取消</button>
+          <button class="ghost primary" type="button" :disabled="payLoading" @click="submitRequirementPayment">
+            {{ payLoading ? '处理中...' : currentPayment ? '查询支付结果' : `支付${payStageLabel}` }}
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="downloadPickerRequirement" class="modal-wrap" @click.self="closeDownloadPicker">
+      <section class="pay-modal" aria-label="选择下载版本">
+        <h3>选择要下载的版本</h3>
+        <p class="pay-line"><strong>需求标题：</strong>{{ downloadPickerRequirement.title }}</p>
+        <ul class="download-picker">
+          <li v-for="version in deliveryVersionsFor(downloadPickerRequirement)" :key="version.id"
+            class="download-picker__item">
+            <div class="download-picker__meta">
+              <strong>{{ version.version }}</strong>
+              <small>{{ version.created_at }}</small>
+              <p v-if="deliveryVersionNoteText(version.note)">{{ deliveryVersionNoteText(version.note) }}</p>
             </div>
-            <button class="my-requirement-detail__close" type="button" aria-label="关闭详情"
-              @click="closeRequirementDetail">
-              <el-icon>
-                <Close />
-              </el-icon>
+            <button class="ghost small" type="button"
+              :disabled="resourceDownloadingId === downloadPickerRequirement.bound_resource_id"
+              @click="downloadRequirementVersion(downloadPickerRequirement, version)">
+              {{ resourceDownloadingId === downloadPickerRequirement.bound_resource_id ? '准备中...' : '下载' }}
             </button>
-          </header>
-
-          <div class="my-requirement-detail__meta">
-            <span>编号：{{ detailRequirement.requirement_id }}</span>
-            <span>发布方式：{{ paymentModeLabel(detailRequirement) }}</span>
-            <span>状态：{{ formatRequirementDisplayStatus(detailRequirement) }}</span>
-            <span>创建：{{ formatRequirementCreatedTime(detailRequirement) }}</span>
-            <span>更新：{{ formatRequirementTime(detailRequirement.updated_at) }}</span>
-            <span v-if="detailRequirement.developer" class="my-requirement-detail__meta--developer">
-              开发者：{{ detailRequirement.developer }}
-            </span>
-          </div>
-
-          <section class="my-requirement-detail__review-panel">
-            <div class="my-requirement-detail__review-item">
-              <span class="my-requirement-detail__review-label">需求描述</span>
-              <article
-                class="my-requirement-detail__review-value my-requirement-detail__review-value--multiline my-requirement-detail__rich"
-                v-html="detailRequirementDescriptionHtml"></article>
-            </div>
-
-            <div class="my-requirement-detail__review-grid">
-              <div class="my-requirement-detail__review-item">
-                <span class="my-requirement-detail__review-label">预算</span>
-                <div class="my-requirement-detail__review-value">
-                  {{ formatBudget(detailRequirement.budget) }}
-                </div>
-              </div>
-
-              <div class="my-requirement-detail__review-item">
-                <span class="my-requirement-detail__review-label">验收标准</span>
-                <article
-                  class="my-requirement-detail__review-value my-requirement-detail__review-value--multiline my-requirement-detail__rich"
-                  v-html="detailRequirementAcceptanceHtml"></article>
-              </div>
-            </div>
-          </section>
-
-          <section v-if="hasBoundResource(detailRequirement)" class="my-requirement-detail__review-panel"
-            aria-label="交付版本">
-            <div class="my-requirement-detail__review-item">
-              <span class="my-requirement-detail__review-label">交付版本</span>
-              <p v-if="deliveryVersionsFor(detailRequirement).length === 0"
-                class="my-requirement-detail__review-value">
-                开发者还没有提交交付版本，绑定资源项目发布新版本后会自动出现在这里。
-              </p>
-              <ul v-else class="my-requirement-detail__version-list">
-                <li v-for="version in deliveryVersionsFor(detailRequirement)" :key="version.id">
-                  <div class="my-requirement-detail__version-head">
-                    <strong>{{ version.version }}</strong>
-                    <time>{{ version.created_at }}</time>
-                  </div>
-                  <p v-if="deliveryVersionNoteText(version.note)" class="my-requirement-detail__version-note">
-                    {{ deliveryVersionNoteText(version.note) }}
-                  </p>
-                  <a class="my-requirement-detail__version-link" :href="deliveryVersionDownloadUrl(version)"
-                    target="_blank" rel="noopener noreferrer">下载交付文件</a>
-                </li>
-              </ul>
-            </div>
-          </section>
-
-          <section v-if="payVisible && payRequirement" class="my-requirement-detail__payment-panel"
-            aria-label="需求支付">
-            <div class="my-requirement-detail__payment-head">
-              <div>
-                <span class="my-requirement-detail__payment-label">支付{{ payStageLabel }}</span>
-                <strong>本次应付 {{ formatBudget(payAmount) }}</strong>
-              </div>
-              <span class="my-requirement-detail__payment-status">
-                {{ currentPayment ? '待确认' : '待支付' }}
-              </span>
-            </div>
-
-            <div class="my-requirement-detail__payment-summary">
-              <span v-if="!isFinalPayment">定金占比：{{ depositRatioPercent.toFixed(2) }}%</span>
-              <span>支付方式：{{ payChannelLabel }}</span>
-            </div>
-
-            <div class="my-requirement-detail__payment-channel">
-              <strong>支付方式</strong>
-              <div class="payment-options" role="radiogroup" aria-label="支付方式选择">
-                <button type="button" class="payment-option"
-                  :class="{ active: payChannel === 'alipay', 'payment-option--alipay': payChannel === 'alipay' }"
-                  @click="updatePayChannel('alipay')">
-                  <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
-                  支付宝
-                </button>
-                <button type="button" class="payment-option"
-                  :class="{ active: payChannel === 'wechat', 'payment-option--wechat': payChannel === 'wechat' }"
-                  @click="updatePayChannel('wechat')">
-                  <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="微信" />
-                  微信
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <div class="my-requirement-detail__actions">
-            <template v-if="payVisible && payRequirement">
-              <button class="my-requirement-detail__secondary" type="button" @click="closePayModal">
-                取消支付
-              </button>
-              <button class="my-requirement-detail__primary" type="button" :disabled="payLoading"
-                @click="submitRequirementPayment">
-                {{ payLoading ? '处理中...' : currentPayment ? '查询支付结果' : `支付${payStageLabel}` }}
-              </button>
-            </template>
-            <template v-else>
-              <button v-if="canResubmit(detailRequirement.status)" class="my-requirement-detail__primary" type="button"
-                @click="resubmitFromDetail(detailRequirement)">
-                重新编辑并提交审核
-              </button>
-              <button v-else-if="canOpenAfterSales(detailRequirement)" class="my-requirement-detail__primary"
-                type="button" @click="openAfterSalesModal(detailRequirement)">
-                售后
-              </button>
-              <button v-else-if="canPay(detailRequirement.status, detailRequirement)"
-                class="my-requirement-detail__primary" type="button"
-                @click="openPayModal(detailRequirement)">
-                支付{{ detailRequirement.status === 'pending_final' ? '尾款' : '定金' }}
-              </button>
-              <button v-else-if="canOpenAcceptance(detailRequirement)" class="my-requirement-detail__primary"
-                type="button" @click="openAcceptanceModal(detailRequirement)">
-                验收
-              </button>
-              <button class="my-requirement-detail__secondary" type="button" @click="closeRequirementDetail">
-                关闭
-              </button>
-            </template>
-          </div>
-        </section>
-      </div>
-    </Teleport>
+          </li>
+        </ul>
+        <div class="actions">
+          <button class="ghost" type="button" @click="closeDownloadPicker">关闭</button>
+        </div>
+      </section>
+    </div>
 
     <div v-if="finalPaymentConfirmVisible && finalPaymentConfirmTarget" class="modal-wrap"
       @click.self="closeFinalPaymentConfirm">
@@ -3305,6 +3154,46 @@ watch(
    flex-basis 会被 width 顶掉，细节见 portal-workbench.css 里 .wb-toolbar__field 的注释。 */
 .wb-toolbar__field--requirement-state {
   flex: 0 1 190px;
+}
+
+/* 版本选择弹窗：一行一个版本，右侧下载按钮；版本说明用弱字色 */
+.download-picker {
+  display: grid;
+  gap: 10px;
+  max-height: 320px;
+  margin: 12px 0 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.download-picker__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(198, 210, 236, 0.72);
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.download-picker__meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.download-picker__meta strong {
+  font-size: 13px;
+}
+
+.download-picker__meta small,
+.download-picker__meta p {
+  margin: 0;
+  color: var(--profile-text-sub, #64748b);
+  font-size: 12px;
+  word-break: break-word;
 }
 
 .requirement-list {

@@ -6,6 +6,7 @@ import {
   Bell,
   ChatDotRound,
   Close,
+  Document,
   MagicStick,
   Paperclip,
   Picture,
@@ -841,6 +842,31 @@ function closeModal() {
   emit('close')
 }
 
+/**
+ * 从会话直接看这条需求的详情。
+ *
+ * 开发者工作台有独立的需求详情页；用户端没有，需求正文（描述 / 验收标准）现在直接显示在
+ * 「我的需求」列表行里，所以用户端只是回到那个列表。
+ * 覆盖形态下的弹窗不关掉会挡住目标页面，所以先收起会话；内嵌在消息中心的那种形态不用收。
+ */
+function openRequirementDetail() {
+  const requirementId = props.requirementId.trim()
+  if (!requirementId) {
+    return
+  }
+
+  if (!isInline.value) {
+    closeModal()
+  }
+
+  if (props.apiMode === 'dev') {
+    void router.push({ name: 'dev-requirement-detail', params: { requirementId } })
+    return
+  }
+
+  void router.push({ name: 'workbench-requirements' })
+}
+
 function handleBackdropClick() {
   if (!isInline.value) {
     closeModal()
@@ -876,6 +902,12 @@ function handleBackdropClick() {
           </div>
 
           <div class="conversation-modal__header-actions">
+            <button class="conversation-modal__icon-btn" type="button" aria-label="查看需求单详情"
+              title="查看需求单详情" @click="openRequirementDetail">
+              <el-icon>
+                <Document />
+              </el-icon>
+            </button>
             <button class="conversation-modal__icon-btn" type="button" :disabled="loading" aria-label="刷新会话"
               title="刷新会话" @click="loadConversation">
               <el-icon :class="{ 'conversation-modal__spin': loading }">

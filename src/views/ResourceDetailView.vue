@@ -357,7 +357,7 @@ function backToPlatform() {
   const rootSlug = currentRootSlug.value || fallbackRootSlug
   const entrySlug = currentEntrySlug.value || fallbackEntrySlug
 
-  // 资源没有分类标签时（例如从需求行的「查看交付资源主页」直达过来），
+  // 资源没有分类标签时（例如从需求行菜单的「资源主页」直达过来），
   // 分类段会是空字符串，push 带分类参数的路由会抛 `Missing required param "rootSlug"`，
   // 这种情况退回免费资源列表，那里本来就不需要分类参数。
   if (!rootSlug || !entrySlug) {

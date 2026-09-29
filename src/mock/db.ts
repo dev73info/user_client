@@ -85,7 +85,7 @@ type RequirementSeed = {
   finalPaid: boolean
   /** 平台审核意见（被驳回时填） */
   reviewNote?: string | null
-  /** 开发者申请删除的版本（演示「需求方审核版本删除」这条待办） */
+  /** 开发者申请删除的版本（演示「需求方审核资源」这条待办） */
   pendingVersionDelete?: { versionId: number; version: string; daysAgo: number }
 }
 
@@ -117,7 +117,7 @@ const REQUIREMENT_SEEDS: RequirementSeed[] = [
     updatedDaysAgo: 0,
     depositPaid: true,
     finalPaid: false,
-    // 让需求方侧有一条「审核版本删除」的待办，演示入口：卡片右侧「审核版本删除」按钮
+    // 让需求方侧有一条「审核资源」的待办，演示入口：卡片右侧「审核资源」按钮
     pendingVersionDelete: { versionId: 3, version: 'v1.2.0', daysAgo: 1 },
   },
   {
