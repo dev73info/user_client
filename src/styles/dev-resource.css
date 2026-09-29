@@ -1015,8 +1015,11 @@
   margin-bottom: 4px;
 }
 
+/* 菜单宽度贴合内容：这张表的操作菜单最长就是「版本管理」四个字（约 52px 加左右各 10px 内边距），
+   168px 下右边空出一大片，整枚菜单还比「更多」按钮宽出一倍以上，看着像没对齐。
+   112px 下最长的那条两侧各余 30px 左右，是这一套菜单正常的松紧。 */
 .dev-resource-action-menu .el-dropdown-menu {
-  min-width: 168px;
+  min-width: 112px;
   padding: 6px;
 }
 
