@@ -51,6 +51,7 @@ function buildConversation(request: MockRequest, code: string): RequirementConve
     developer: requirement.developer,
     status: requirement.status === 'completed' || requirement.status === 'cancelled' ? 'closed' : 'open',
     requirement_status: requirement.status,
+    unread_count: unreadCountOf(request, code),
     last_message_at: messages[messages.length - 1]?.created_at ?? requirement.updated_at,
     last_message_by: messages[messages.length - 1]?.sender ?? null,
     last_message_content: messages[messages.length - 1]?.content ?? null,
@@ -61,6 +62,29 @@ function buildConversation(request: MockRequest, code: string): RequirementConve
     history_segments: [],
     history_disclosures: [],
   }
+}
+
+/**
+ * 已读位置：mock 里按「身份 + 会话」记最后已读的消息 id，打开会话（`POST /read`）时推到最新一条。
+ *
+ * 未读口径与真实后端一致：别人发的、且在已读位置之后的消息数。
+ * 这里不预置已读位置（真实后端首次上线会把存量会话视为已读），
+ * 于是演示数据一进来就能看到未读角标，标记已读后又立刻归零。
+ */
+const readStore = new Map<string, number>()
+
+function readKey(request: MockRequest, code: string): string {
+  return `${request.identity}:${conversationIdOf(code)}`
+}
+
+function currentUsername(request: MockRequest, code: string): string {
+  return request.identity === 'dev' ? DEV_USERNAME : (findRequirement(code)?.creator ?? '')
+}
+
+function unreadCountOf(request: MockRequest, code: string): number {
+  const lastRead = readStore.get(readKey(request, code)) ?? 0
+  const mine = currentUsername(request, code)
+  return messagesOf(code).filter((message) => message.sender !== mine && message.id > lastRead).length
 }
 
 /* ------------------------------------------------------------------ 消息存储 */
@@ -262,6 +286,17 @@ const routes: MockRoute[] = [
     handler: (request, params) => {
       const detail = detailOf(request, params.requirementId ?? '')
       return detail ? jsonResponse(detail) : textResponse('会话不存在', 404)
+    },
+  },
+  {
+    method: 'POST',
+    path: '/conversations/:conversationId/read',
+    note: '标记已读：把这一侧的已读位置推到最新一条消息',
+    handler: (request, params) => {
+      const code = String(params.conversationId ?? '').replace(/^CONV-/, '')
+      const lastRead = messagesOf(code).reduce((max, message) => Math.max(max, message.id), 0)
+      readStore.set(readKey(request, code), lastRead)
+      return jsonResponse({ last_read_message_id: lastRead })
     },
   },
   {

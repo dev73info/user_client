@@ -52,6 +52,8 @@ export type RequirementConversation = {
   developer: string
   status: 'open' | 'closed'
   requirement_status: string
+  /** 查看者在这一侧未读的消息数（后端按「最后已读位置」现算），角标与列表小标都用它。 */
+  unread_count: number
   last_message_at?: string | null
   last_message_by?: string | null
   last_message_content?: string | null
@@ -87,6 +89,11 @@ export type RequirementConversationMessage = {
 export type RequirementConversationDetail = {
   conversation: RequirementConversation
   messages: RequirementConversationMessage[]
+}
+
+/** 标记已读的返回：推进到的最后已读消息 id。 */
+export type MarkConversationReadResponse = {
+  last_read_message_id: number
 }
 
 export type RequirementConversationEventCallbacks = {
@@ -211,6 +218,25 @@ export function createConversationApi(http: ConversationHttpClient) {
     )
   }
 
+  /**
+   * 把某条会话标记为已读：后端把查看者一侧的「最后已读消息 id」推到最新一条。
+   *
+   * 只清自己那一侧，对方的未读不受影响；非参与方会被后端 403 挡掉。
+   */
+  async function markRequirementConversationRead(
+    token: string,
+    conversationId: string,
+  ): Promise<MarkConversationReadResponse> {
+    return http.requestJson<MarkConversationReadResponse>(
+      `/conversations/${encodeURIComponent(conversationId)}/read`,
+      {
+        method: 'POST',
+        headers: { ...http.authHeader(token) },
+      },
+      '标记会话已读失败',
+    )
+  }
+
   function subscribeRequirementConversationEvents(
     token: string,
     callbacks: RequirementConversationEventCallbacks,
@@ -241,6 +267,7 @@ export function createConversationApi(http: ConversationHttpClient) {
     requestRequirementHistoryDisclosure,
     listConversationHistoryDisclosures,
     respondConversationHistoryDisclosure,
+    markRequirementConversationRead,
     subscribeRequirementConversationEvents,
   }
 }

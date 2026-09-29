@@ -33,6 +33,7 @@ import {
   requirementPaymentModeLabel,
 } from '@/shared/requirementDisplay'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
+import { dispatchConversationRead } from '@/shared/conversationEvents'
 import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 import { listPublicMcResourceVersions } from '@/api/resources'
 import RequirementConversationActions from '@/components/RequirementConversationActions.vue'
@@ -76,6 +77,8 @@ const realtimeError = ref('')
 const historyRequesting = ref(false)
 const historyVotingId = ref<number | null>(null)
 let stopRealtimeEvents: (() => void) | null = null
+/** 已成功上报过已读的最大消息 id：同一个位置不重复请求（见 reportConversationRead）。 */
+const lastReportedReadId = ref(0)
 
 type RealtimeStatus = 'idle' | 'connecting' | 'connected' | 'error'
 
@@ -103,6 +106,7 @@ type ConversationApi = {
   sendRequirementConversationMessage: typeof userConversationApi.sendRequirementConversationMessage
   requestRequirementHistoryDisclosure: typeof userConversationApi.requestRequirementHistoryDisclosure
   respondConversationHistoryDisclosure: typeof userConversationApi.respondConversationHistoryDisclosure
+  markRequirementConversationRead: typeof userConversationApi.markRequirementConversationRead
   subscribeRequirementConversationEvents: typeof userConversationApi.subscribeRequirementConversationEvents
 }
 
@@ -289,6 +293,8 @@ watch(
   () => [props.visible, props.token, props.requirementId, props.apiMode] as const,
   ([visible]) => {
     stopRealtime()
+    // 换了需求就重新开始报到已读：上一个会话报过的消息 id 与本会话无关
+    lastReportedReadId.value = 0
     if (visible) {
       void loadConversation()
       startRealtime()
@@ -392,6 +398,7 @@ async function loadConversation() {
       props.requirementId,
     )
     emit('updated', detail.value)
+    void reportConversationRead()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '加载会话失败'
     detail.value = null
@@ -402,6 +409,33 @@ async function loadConversation() {
   // 可滚动高度，此时赋值 scrollTop 会被浏览器夹回 0，数据回来后就停在时间线最上面，
   // 最新的卡片（如结单）要手动往下滚才看得见。
   await scrollToBottom()
+}
+
+/**
+ * 上报已读：打开会话、断线补拉、以及实时收到新消息之后各报一次。
+ *
+ * 报的是「我这侧的已读位置」，所以用已成功上报过的最大消息 id 去重——同一个位置不重复请求，
+ * 只有收到更新的消息时才再报一次。成败都不打扰用户：失败时下次进会话或下一条消息会再报，
+ * 且「未读角标」始终以服务端为准，报失败不会把角标算少。
+ */
+async function reportConversationRead() {
+  const item = conversation.value
+  const newest = messages.value[messages.value.length - 1]
+  if (!props.token || !item || !newest || newest.id <= lastReportedReadId.value) {
+    return
+  }
+
+  try {
+    await conversationApi.value.markRequirementConversationRead(props.token, item.conversation_id)
+    lastReportedReadId.value = newest.id
+    // 角标挂在工作台外壳、会话列表挂在这一页上，两者都不在父子链上，只能广播
+    dispatchConversationRead({
+      conversationId: item.conversation_id,
+      requirementId: item.requirement_id,
+    })
+  } catch {
+    // 上报失败不打扰用户：下次打开会话或下一条消息会再报一次
+  }
 }
 
 /**
@@ -421,6 +455,7 @@ async function syncAfterRealtimeReconnect() {
     )
     detail.value = next
     emit('updated', next)
+    void reportConversationRead()
     await scrollToBottom()
   } catch {
     // 补拉失败不打扰用户：下一次重连或手动刷新会再试
@@ -434,6 +469,7 @@ function applyRealtimeDetail(payload: RequirementConversationDetail) {
 
   detail.value = payload
   emit('updated', payload)
+  void reportConversationRead()
   void scrollToBottom()
 }
 

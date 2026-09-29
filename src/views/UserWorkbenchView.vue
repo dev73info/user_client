@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch, type Component } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowDown, Bell, Box, ChatDotRound, Close, Compass, Connection, DataAnalysis, Files, Grid, Menu as MenuIcon, Service, Suitcase, Switch as SwitchIcon, Tickets, UserFilled, Wallet } from '@element-plus/icons-vue'
 
 import { listRequirementConversations, type RequirementConversation } from '@/api/conversations'
+import { CONVERSATION_READ_EVENT } from '@/shared/conversationEvents'
 import { listMyRequirements } from '@/api/devRequirements'
 import { listUserInvitations } from '@/api/team'
 import { getMyRealnameVerification } from '@/api/realname'
@@ -188,15 +189,18 @@ const visibleConversations = computed(() => sortedConversations.value.slice(0, 3
 const hiddenConversationCount = computed(() => Math.max(sortedConversations.value.length - visibleConversations.value.length, 0))
 
 /**
- * 消息中心角标：最后一条不是我发的、且会话仍然打开的，就是要我回复的。
- * 后端没有「未读」字段，所以这里表达的是「待我回复」，不是「未读消息数」。
+ * 消息中心角标：未读消息总数。
+ *
+ * 后端按「双方各自最后已读的消息 id」算出每条会话里查看者未读的消息数（`unread_count`），
+ * 这里求和。以前没有已读状态，角标只能拿「最后一条不是我发的且会话仍开着」的会话条数顶替，
+ * 那种口径既不区分我是否已经看过，数的也不是消息。
  */
-const messagesAwaitingReplyCount = computed(
-  () =>
-    conversations.value.filter(
-      (item) => item.status === 'open' && Boolean(item.last_message_by) && item.last_message_by !== auth.username,
-    ).length,
+const unreadMessageCount = computed(() =>
+  conversations.value.reduce((total, item) => total + (item.unread_count ?? 0), 0),
 )
+
+/** 角标读数：超过 99 收成 99+，免得把菜单标题挤走 */
+const unreadBadgeText = computed(() => (unreadMessageCount.value > 99 ? '99+' : String(unreadMessageCount.value)))
 
 const activeConversation = computed(() => {
   const requirementId = route.query.requirement_id
@@ -353,6 +357,18 @@ watch(
     }
   },
 )
+
+/**
+ * 会话被打开并标记已读后会广播一次（见 shared/conversationEvents）：会话本身在
+ * `RequirementConversationModal` 里打开，与这个外壳没有父子关系，所以只能靠事件通知。
+ * 这里重取一次列表，未读角标与子菜单里的未读小标随即对齐服务端。
+ */
+function handleConversationRead() {
+  void loadConversations(true)
+}
+
+onMounted(() => window.addEventListener(CONVERSATION_READ_EVENT, handleConversationRead))
+onBeforeUnmount(() => window.removeEventListener(CONVERSATION_READ_EVENT, handleConversationRead))
 
 function menuItemTo(item: WorkbenchMenuItem) {
   return {
@@ -779,8 +795,8 @@ async function scrollToHash() {
                   </span>
                   <span class="user-workbench__menu-label">
                     <strong>消息中心</strong>
-                    <span v-if="messagesAwaitingReplyCount > 0" class="user-workbench__menu-badge"
-                      title="待我回复的会话">{{ messagesAwaitingReplyCount }}</span>
+                    <span v-if="unreadMessageCount > 0" class="user-workbench__menu-badge"
+                      :title="`${unreadMessageCount} 条未读消息`">{{ unreadBadgeText }}</span>
                   </span>
                   <el-icon class="user-workbench__menu-arrow">
                     <ArrowDown />
@@ -792,7 +808,11 @@ async function scrollToHash() {
                     <RouterLink v-for="item in visibleConversations" :key="item.conversation_id"
                       class="user-workbench__submenu-link user-workbench__conversation-link"
                       :class="{ active: isConversationActive(item) }" :to="conversationTo(item)" @click="closeMobileMenu">
-                      <span>{{ item.requirement_title || item.requirement_id }}</span>
+                      <span class="user-workbench__conversation-title">
+                        {{ item.requirement_title || item.requirement_id }}
+                        <em v-if="item.unread_count > 0" class="user-workbench__conversation-unread"
+                          :title="`${item.unread_count} 条未读消息`">{{ item.unread_count > 99 ? '99+' : item.unread_count }}</em>
+                      </span>
                       <small>{{ partnerLabel(item) }} · {{ conversationMeta(item) }}</small>
                     </RouterLink>
                     <button v-if="hiddenConversationCount > 0" class="user-workbench__submenu-more" type="button"
@@ -1229,6 +1249,29 @@ async function scrollToHash() {
 
 .user-workbench__submenu-link:hover {
   transform: translateX(2px);
+}
+
+/* 子菜单里的会话行：标题左侧的未读小标（数字，胶囊），会话被打开标记已读后由事件刷新消失 */
+.user-workbench__conversation-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.user-workbench__conversation-unread {
+  flex: 0 0 auto;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e5484d;
+  color: #ffffff;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+  text-align: center;
 }
 
 .user-workbench__submenu-link:hover,

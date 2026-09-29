@@ -20,6 +20,7 @@ import {
 } from '@/api/requirements'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useToast } from '@/composables/useToast'
+import { CONVERSATION_READ_EVENT } from '@/shared/conversationEvents'
 import { useAuthStore } from '@/stores/auth'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 
@@ -41,6 +42,8 @@ type MessageThread = {
   lastLabel: string
   description: string
   actionLabel: string
+  /** 查看者未读的消息数（后端口径，见 shared/conversations 的 unread_count）。 */
+  unreadCount: number
   sortTime: number
 }
 
@@ -299,6 +302,7 @@ function buildConversationThread(item: RequirementConversation): MessageThread {
     lastLabel: lastMessageLabel(item),
     description: latestMessagePreview(item),
     actionLabel: item.last_message_at ? '查看沟通' : '开始沟通',
+    unreadCount: item.unread_count ?? 0,
     sortTime: parseTime(item.last_message_at ?? item.updated_at ?? item.created_at),
   }
 }
@@ -316,6 +320,7 @@ function buildPendingThread(item: RequirementItem): MessageThread {
     lastLabel: '打开后创建沟通会话',
     description: '需求已接取但本地尚未拿到会话记录，打开后会自动同步。',
     actionLabel: '开启会话',
+    unreadCount: 0,
     sortTime: parseTime(item.updated_at),
   }
 }
@@ -421,8 +426,24 @@ function closeConversation() {
   void router.push({ name: currentMessagesRouteName.value })
 }
 
-function applyConversationDetail(payload: RequirementConversationDetail) {
-  const nextConversation = payload.conversation
+/**
+ * 会话标记已读后广播过来（见 shared/conversationEvents）：把这一行的未读数就地清零。
+ *
+ * 不重取整个列表：用户刚看完的那条会话必然是这一行，别的行没变；
+ * 工作台外壳那份角标会自己重取（它要和子菜单一起刷新）。
+ */
+function handleConversationRead(event: Event) {
+  const detail = (event as CustomEvent<{ conversationId?: string }>).detail
+  if (!detail?.conversationId) {
+    return
+  }
+
+  conversations.value = conversations.value.map((item) =>
+    item.conversation_id === detail.conversationId ? { ...item, unread_count: 0 } : item,
+  )
+}
+
+function applyConversationDetail(payload: RequirementConversationDetail) {  const nextConversation = payload.conversation
   const index = conversations.value.findIndex((item) => item.requirement_id === nextConversation.requirement_id)
   if (index >= 0) {
     conversations.value = conversations.value.map((item, itemIndex) => (itemIndex === index ? nextConversation : item))
@@ -543,11 +564,13 @@ async function loadMessages(showSuccess = false) {
 }
 
 onMounted(async () => {
+  window.addEventListener(CONVERSATION_READ_EVENT, handleConversationRead)
   await loadMessages()
   connectRealtime()
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener(CONVERSATION_READ_EVENT, handleConversationRead)
   disconnectRealtime()
 })
 
@@ -706,6 +729,8 @@ watch(
             <div class="dev-messages__thread-main">
               <div class="dev-messages__thread-head">
                 <strong class="dev-stack-item__title dev-messages__thread-title">{{ item.title }}</strong>
+                <span v-if="item.unreadCount > 0" class="dev-messages__thread-unread"
+                  :title="`${item.unreadCount} 条未读消息`">{{ item.unreadCount > 99 ? '99+' : item.unreadCount }}</span>
                 <span class="dev-chip" :class="toneChipClass(item.tone)">{{ item.statusLabel }}</span>
               </div>
               <div class="dev-stack-item__meta dev-messages__thread-sub">
@@ -808,7 +833,11 @@ watch(
         <li v-for="item in pagedThreads" :key="item.key" class="wb-item wb-item--clickable messages-thread-row"
           role="button" tabindex="0" @click="openThread(item)" @keydown.enter.prevent="openThread(item)">
           <div class="wb-item__main">
-            <strong class="wb-item__title">{{ item.title }}</strong>
+            <span class="messages-thread-row__head">
+              <strong class="wb-item__title">{{ item.title }}</strong>
+              <em v-if="item.unreadCount > 0" class="messages-thread-row__unread"
+                :title="`${item.unreadCount} 条未读消息`">{{ item.unreadCount > 99 ? '99+' : item.unreadCount }}</em>
+            </span>
             <span class="wb-item__meta">{{ item.requirementId }} · {{ item.modeLabel }}</span>
             <span class="wb-item__meta messages-thread-row__preview">{{ item.description }}</span>
           </div>
@@ -917,6 +946,30 @@ watch(
    现在右列只占「最长的一方名」那点宽度，状态胶囊与时间也各成一条竖线，几行之间对得齐。 */
 .messages-thread-row .wb-item__main {
   flex: 1 1 auto;
+}
+
+/* 标题行：标题 + 未读小标（未读消息数，胶囊）。打开会话标记已读后由事件清零。 */
+.messages-thread-row__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.messages-thread-row__unread,
+.dev-messages__thread-unread {
+  flex: 0 0 auto;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #e5484d;
+  color: #ffffff;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  text-align: center;
 }
 
 .messages-thread-row .wb-item__side {

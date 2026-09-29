@@ -6,6 +6,7 @@ export type {
   ConversationHistoryDisclosure,
   ConversationHistoryDisclosureBrief,
   ConversationHistorySegment,
+  MarkConversationReadResponse,
   RequirementConversation,
   RequirementConversationDetail,
   RequirementConversationEventCallbacks,
@@ -19,5 +20,6 @@ export const {
   requestRequirementHistoryDisclosure,
   listConversationHistoryDisclosures,
   respondConversationHistoryDisclosure,
+  markRequirementConversationRead,
   subscribeRequirementConversationEvents,
 } = createConversationApi({ apiUrl, authHeader, requestJson })
