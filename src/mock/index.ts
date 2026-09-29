@@ -72,9 +72,8 @@ function runtime(): MockableRuntime {
 /**
  * 给当前身份准备好登录态。
  *
- * 为什么需要这一步：真实登录要账号密码，而开发者测试账号的明文口令在本机没有留存
- * （见 `.cursor/rules/dev-servers.mdc`）。mock 直接按身份发一个假令牌写进 localStorage，
- * 于是没有 `.env.local` 也能直接进两个工作台。
+ * 为什么需要这一步：mock 不校验账号密码，直接按身份发一个假令牌写进 localStorage，
+ * 于是没有 `.env.local` 也能直接进两个工作台，也让需求方/开发者两侧可以同时在线。
  *
  * 判定很简单：localStorage 里已经是「当前身份的 mock 令牌」就什么都不做，
  * 其余情况（没有令牌、是真实后端的令牌、是另一个身份的令牌）一律换成当前身份的。

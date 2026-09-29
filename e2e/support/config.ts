@@ -31,13 +31,13 @@ export const ADMIN_USERNAME_HINT = 'admin'
 /** 需求方账号：与 `user-client/.env.local` 一致。 */
 export const CLIENT_ACCOUNT = {
   username: 'client_flow_03562487',
-  password: 'Test@1234',
+  password: 'Test@123456',
 }
 
-/** 开发者账号：`dev-servers` 规则里说明本机没留存口令，已在本地把它重设成与需求方相同的值。 */
+/** 开发者账号：与全站开发账号统一口令一致，见 `.cursor/rules/dev-accounts.mdc`。 */
 export const DEVELOPER_ACCOUNT = {
   username: 'dev_flow_03562487',
-  password: 'Test@1234',
+  password: 'Test@123456',
 }
 
 /**
