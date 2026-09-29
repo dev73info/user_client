@@ -315,14 +315,15 @@ const requirementStats = computed(() => ({
   completed: countBucket('completed'),
 }))
 
-/* 状态筛选用胶囊组（统一层 .wb-chip）：档位少、要能一眼看出当前选中项，还要报出条数。 */
+/* 状态筛选走下拉（统一层 .wb-toolbar__field + el-select）：档位与顶部读数条同口径，
+   条数直接写进选项文案里。几档合计在上面读数条已经报过一遍，所以收起时只显示当前口径也不丢信息。 */
 type RequirementFilterKey = 'all' | RequirementBucket | 'other'
 
 const states: { value: RequirementFilterKey; label: string }[] = [
   { value: 'all', label: '全部' },
-  { value: 'pending', label: '待审核 / 付定金' },
-  { value: 'active', label: '开发中 / 付尾款' },
-  { value: 'completed', label: '可评价 / 已完成' },
+  { value: 'pending', label: '待审核/付定金' },
+  { value: 'active', label: '开发中/付尾款' },
+  { value: 'completed', label: '可评价/已完成' },
   { value: 'other', label: '其它状态' },
 ]
 
@@ -330,13 +331,19 @@ const keyword = ref('')
 const selectedState = ref<RequirementFilterKey>('all')
 
 const summaries = computed(() =>
-  states.map((state) => ({
-    ...state,
-    count:
+  states.map((state) => {
+    const count =
       state.value === 'all'
         ? myRequirements.value.length
-        : myRequirements.value.filter((item) => bucketOf(item.status) === state.value).length,
-  })),
+        : myRequirements.value.filter((item) => bucketOf(item.status) === state.value).length
+
+    return {
+      ...state,
+      count,
+      /* 加载中不报数（理由同 stripValue），选项文案退回不带条数的档位名。 */
+      optionLabel: requirementLoading.value ? state.label : `${state.label}（${count}）`,
+    }
+  }),
 )
 
 /* 读数在加载中不报数：重新加载会先清空列表，直接显示 0 会被读成「一条需求都没有」。 */
@@ -2484,13 +2491,10 @@ watch(
       </div>
 
       <div class="wb-toolbar">
-        <div class="wb-chip-group" role="group" aria-label="需求状态">
-          <button v-for="state in summaries" :key="state.value" type="button" class="wb-chip wb-chip--button"
-            :class="{ 'is-active': selectedState === state.value, 'wb-chip--muted': state.value === 'other' }"
-            :aria-pressed="selectedState === state.value" @click="selectedState = state.value">
-            {{ state.label }}<span class="wb-chip__count">{{ requirementLoading ? '—' : state.count }}</span>
-          </button>
-        </div>
+        <el-select v-model="selectedState" class="wb-toolbar__field wb-toolbar__field--requirement-state"
+          aria-label="需求状态">
+          <el-option v-for="state in summaries" :key="state.value" :value="state.value" :label="state.optionLabel" />
+        </el-select>
         <el-input v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索需求标题、编号或发布人"
           aria-label="搜索需求">
           <template #prefix><el-icon><Search /></el-icon></template>
@@ -3298,6 +3302,13 @@ watch(
   to {
     transform: rotate(360deg);
   }
+}
+
+/* 状态下拉要放开「待审核/付定金（12）」这种带条数的档位名，比统一层默认的 150px 宽一点；
+   宽度必须写成 flex 基宽而不是 width——Element 的 .el-select 自带 width: 100%，
+   flex-basis 会被 width 顶掉，细节见 portal-workbench.css 里 .wb-toolbar__field 的注释。 */
+.wb-toolbar__field--requirement-state {
+  flex: 0 1 190px;
 }
 
 .requirement-list {
