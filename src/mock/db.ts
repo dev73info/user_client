@@ -85,6 +85,8 @@ type RequirementSeed = {
   finalPaid: boolean
   /** 平台审核意见（被驳回时填） */
   reviewNote?: string | null
+  /** 开发者申请删除的版本（演示「需求方审核版本删除」这条待办） */
+  pendingVersionDelete?: { versionId: number; version: string; daysAgo: number }
 }
 
 /**
@@ -115,6 +117,8 @@ const REQUIREMENT_SEEDS: RequirementSeed[] = [
     updatedDaysAgo: 0,
     depositPaid: true,
     finalPaid: false,
+    // 让需求方侧有一条「审核版本删除」的待办，演示入口：卡片右侧「审核版本删除」按钮
+    pendingVersionDelete: { versionId: 3, version: 'v1.2.0', daysAgo: 1 },
   },
   {
     id: 2,
@@ -282,6 +286,16 @@ function buildRequirement(seed: RequirementSeed): RequirementItem {
     updated_at: datetime(-seed.updatedDaysAgo, 15, 30),
     developer: seed.developer,
     pending_unbind_request: null,
+    pending_resource_version_delete_requests: seed.pendingVersionDelete
+      ? [
+        {
+          version_id: seed.pendingVersionDelete.versionId,
+          version: seed.pendingVersionDelete.version,
+          requested_at: datetime(-seed.pendingVersionDelete.daysAgo, 10, 30),
+        },
+      ]
+      : null,
+    resource_version_delete_request_status: seed.pendingVersionDelete ? 'pending' : null,
     settlement_available_at:
       seed.status === 'pending_settlement' ? datetime(7, 12, 0) : null,
   }

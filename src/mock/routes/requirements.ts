@@ -12,11 +12,14 @@ import {
   DEV_USERNAME,
   bindRequirementRecord,
   createRequirementRecord,
+  datetime,
   devWallet,
   findRequirement,
+  mcResourceVersions,
   requirements,
   seedOfRequirement,
   settledIncome,
+  versionsOf,
 } from '../db'
 import { defineRouteTable, type MockRequest, type MockRoute } from '../router'
 import { jsonResponse, noContentResponse, readInt, readString } from '../response'
@@ -101,7 +104,6 @@ function buildOverview(items: RequirementItem[]): RequirementOverviewResp {
     }
     return total + (item.budget ?? 0)
   }, 0)
-  const completed = items.filter((item) => item.status === 'completed').length
 
   return {
     developer_count: new Set(items.map((item) => item.developer).filter(Boolean)).size,
@@ -290,10 +292,44 @@ const routes: MockRoute[] = [
   {
     method: 'POST',
     path: '/requirements/:id/resource-delete-review',
-    note: '审核开发者提交的资源版本删除申请',
-    handler: (_request, params) => {
+    note: '审核开发者提交的资源版本删除申请：同意则删版本并同步版本数，拒绝则记下理由',
+    handler: (request, params) => {
       const requirement = findRequirement(params.id ?? '')
-      return jsonResponse(requirement ?? { message: '需求不存在' })
+      if (!requirement) {
+        return jsonResponse({ message: '需求不存在' }, 404)
+      }
+
+      const body = (request.body ?? {}) as {
+        version_id?: number
+        action?: 'approve' | 'reject'
+        note?: string
+      }
+      const versionId = Number(body.version_id)
+      const pending = requirement.pending_resource_version_delete_requests ?? []
+
+      requirement.pending_resource_version_delete_requests = pending.filter(
+        (item) => item.version_id !== versionId,
+      )
+      requirement.resource_version_delete_reviewed_at = datetime(0, 16, 0)
+      requirement.updated_at = datetime(0, 16, 0)
+
+      if (body.action === 'approve') {
+        requirement.resource_version_delete_request_status = null
+        requirement.resource_version_delete_review_note = null
+
+        const index = mcResourceVersions.findIndex((item) => item.id === versionId)
+        if (index >= 0) {
+          mcResourceVersions.splice(index, 1)
+        }
+        if (requirement.bound_resource_id != null) {
+          requirement.bound_resource_version_count = versionsOf(requirement.bound_resource_id).length
+        }
+      } else {
+        requirement.resource_version_delete_request_status = 'rejected'
+        requirement.resource_version_delete_review_note = body.note?.trim() || '演示数据：暂不删除该版本'
+      }
+
+      return jsonResponse(requirement)
     },
   },
   {

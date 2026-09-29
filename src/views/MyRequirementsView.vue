@@ -948,7 +948,7 @@ function pendingResourceVersionTitle(item?: RequirementPendingResourceVersionDel
 
 function resourceVersionDeleteReviewHint(item: RequirementItem) {
   if (hasPendingResourceVersionDeleteReview(item)) {
-    return `开发者申请删除 ${pendingResourceVersionDeleteRequests(item).length} 个版本，点击当前需求行后可逐个审核。`
+    return `开发者申请删除 ${pendingResourceVersionDeleteRequests(item).length} 个版本，点右侧「审核版本删除」可逐个审核。`
   }
 
   if (
@@ -2334,24 +2334,19 @@ function runMoreRowAction(item: RequirementItem, key: string) {
   runRowAction(item, key as RequirementRowActionKey)
 }
 
-function handleRequirementAction(item: RequirementItem) {
-  if (hasPendingDeveloperUnbindRequest(item)) {
-    openUnbindRespond(item)
-    return
-  }
-
-  if (hasPendingResourceVersionDeleteReview(item)) {
-    toggleVersionDeleteReviewCard(item)
-    return
-  }
-
-  if (canPay(item.status, item)) {
-    openPayModal(item)
-  } else if (canResubmit(item.status)) {
-    openRequirementEditModal(item)
-  } else if (canComment(item.status)) {
-    openCommentModal(item)
-  }
+/**
+ * 整行点击统一打开这条需求的会话：跳到消息中心并带上 `requirement_id`，
+ * 由 MessagesView 按这个 query 选中对应会话（见 MessagesView 的 openThreadFromRoute）。
+ *
+ * 之所以不再做「点行执行当前最该做的动作」：动作入口在行内按钮与「更多」菜单里都有，
+ * 整行留给最常用的一件事——看沟通记录；未关联开发者的需求在消息中心会落到「待沟通」分组，
+ * 所以不会出现跳过去什么都没有的死角。
+ */
+function openRequirementConversationPage(item: RequirementItem) {
+  void router.push({
+    name: 'workbench-messages',
+    query: { requirement_id: item.requirement_id },
+  })
 }
 
 function isVersionDeleteReviewExpanded(item: RequirementItem) {
@@ -2526,15 +2521,12 @@ watch(
       <template v-else>
       <ul class="wb-list requirement-list">
         <template v-for="item in pagedRequirements" :key="item.requirement_id">
-          <li class="requirement-row wb-item" :class="{
-            'wb-item--clickable':
-              hasPendingDeveloperUnbindRequest(item) ||
-              hasPendingResourceVersionDeleteReview(item) ||
-              canPay(item.status, item) ||
-              canComment(item.status) ||
-              canResubmit(item.status),
-            expanded: isVersionDeleteReviewExpanded(item),
-          }" @click="handleRequirementAction(item)">
+          <li class="requirement-row wb-item wb-item--clickable"
+            :class="{ expanded: isVersionDeleteReviewExpanded(item) }"
+            :aria-label="`打开「${item.title}」的沟通记录`" tabindex="0"
+            @click="openRequirementConversationPage(item)"
+            @keydown.enter.prevent="openRequirementConversationPage(item)"
+            @keydown.space.prevent="openRequirementConversationPage(item)">
             <div class="requirement-card-body">
               <div class="requirement-main wb-item__main">
                 <div class="requirement-title wb-item__title">
@@ -2563,7 +2555,7 @@ watch(
                       resourceVersionDeleteReviewHint(item)
                       }}</small>
                   <small v-if="hasPendingResourceVersionDeleteReview(item)"
-                    class="requirement-note">点击当前需求行，可在下方展开审核卡片。</small>
+                    class="requirement-note">点右侧「审核版本删除」可在下方展开审核卡片。</small>
                   <small v-else-if="
                     hasBoundResource(item) &&
                     item.resource_version_delete_request_status === 'rejected' &&
@@ -2576,7 +2568,7 @@ watch(
                     <strong>开发者申请解除绑定：</strong>{{ item.pending_unbind_request?.reason }}
                   </small>
                   <small v-if="hasPendingDeveloperUnbindRequest(item)" class="requirement-note">
-                    点击当前需求行，可同意解除（需求重新挂回大厅）或拒绝解除。
+                    点右侧「处理解除申请」，可选择同意解除（需求重新挂回大厅）或拒绝解除。
                   </small>
                   <small v-if="hasPendingUnbindRequest(item) && !hasPendingDeveloperUnbindRequest(item)"
                     class="requirement-note">
@@ -2639,6 +2631,13 @@ watch(
                   @click.stop="runRowAction(item, 'conversation')">
                   {{ conversationButtonLabel(item) }}
                 </button>
+                <!-- 版本删除审核没有别的入口（整行点击现在归会话），所以这里给它一个按钮，
+                     与下方展开的审核卡片成对出现。 -->
+                <button v-if="hasPendingResourceVersionDeleteReview(item)" class="ghost small action-emphasis"
+                  type="button" :aria-expanded="isVersionDeleteReviewExpanded(item)"
+                  @click.stop="toggleVersionDeleteReviewCard(item)">
+                  {{ isVersionDeleteReviewExpanded(item) ? '收起审核' : '审核版本删除' }}
+                </button>
                 <button v-if="canOpenAfterSales(item)" class="ghost small action-emphasis" type="button"
                   @click.stop="runRowAction(item, 'after-sales')">
                   售后
@@ -2674,7 +2673,8 @@ watch(
             </div>
           </li>
 
-          <li v-if="isVersionDeleteReviewExpanded(item)" class="requirement-review-card-row">
+          <li v-if="isVersionDeleteReviewExpanded(item) && pendingResourceVersionDeleteRequests(item).length"
+            class="requirement-review-card-row">
             <section class="requirement-review-card" @click.stop>
               <div class="requirement-review-card__header">
                 <div>
