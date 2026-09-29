@@ -747,7 +747,12 @@ function resetInitForm() {
         </div>
       </div>
 
-      <el-table :data="rows" stripe v-loading="loading" class="dev-table dev-requirement-hall__table">
+      <!-- border 只为打开「拖拽列宽」：Element 的拖拽逻辑里写着 `if (!props.border) return`
+           （见 element-plus 的 table-header/event-helper），所以无框皮肤也必须加这个属性，
+           再由 .dev-table.el-table--border 的样式把 border 带来的竖线与外框关掉。
+           窄窗口下列宽合计超过卡片时表格本来就会横向滚动（见 dev-responsive.css 的说明），
+           现在用户至少可以把列拖窄，自己把表格收进卡片宽度。 -->
+      <el-table :data="rows" stripe border v-loading="loading" class="dev-table dev-requirement-hall__table">
         <template #empty>
           <p class="dev-empty-state">{{ emptyText }}</p>
         </template>
@@ -757,7 +762,7 @@ function resetInitForm() {
              现在固定六列 110+88+108+112+132+118 = 668px，需求列（min-width 260）
              吃掉剩下的约 297px。状态列由 96 放宽到 112：96px 装不下「待付定金」那枚标签
              （单元格内容需要 110px），标签会被截成「待付定金…」。 -->
-        <el-table-column label="需求" min-width="260">
+        <el-table-column label="需求" min-width="260" resizable>
           <template #default="scope">
             <div class="dev-requirement-hall__title-cell">
               <div class="dev-requirement-hall__requirement-id">{{ scope.row.requirement_id }}</div>
@@ -768,18 +773,18 @@ function resetInitForm() {
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="creator" label="发起人" width="110" show-overflow-tooltip />
-        <el-table-column label="预算" width="88">
+        <el-table-column prop="creator" label="发起人" width="110" resizable show-overflow-tooltip />
+        <el-table-column label="预算" width="88" resizable>
           <template #default="scope">
             <span>{{ formatMoney(scope.row.budget) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="发布方式" width="108">
+        <el-table-column label="发布方式" width="108" resizable>
           <template #default="scope">
             <PaymentModeChip :mode="scope.row.payment_mode" />
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="112">
+        <el-table-column label="状态" width="112" resizable>
           <template #default="scope">
             <!-- 状态走全站统一口径（requirementStatusLabel）：待付定金 / 待开发。
                  这里原来自己写成「待接单/签约」，有两处不对：
@@ -797,10 +802,10 @@ function resetInitForm() {
         <!-- 最近更新只报到分钟（工作台总览的「更新于」也是这个格式）：后端给的是
              「2026-09-28 15:30:00」，19 个字符要 144px，132px 的列会被截成
              「2026-09-28 15:…」；掐掉秒之后 107px 就够，也不再需要省略号。 -->
-        <el-table-column label="最近更新" width="132" show-overflow-tooltip>
+        <el-table-column label="最近更新" width="132" resizable show-overflow-tooltip>
           <template #default="scope">{{ formatCnDateTime(scope.row.updated_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="118" fixed="right">
+        <el-table-column label="操作" width="118" fixed="right" resizable>
           <template #default="scope">
             <el-button type="primary" plain class="dev-table__action dev-action--soft"
               @click="openBindDialog(scope.row)">
