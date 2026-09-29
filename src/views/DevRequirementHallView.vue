@@ -22,6 +22,7 @@ import {
 } from '@/api/devRequirements'
 import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
+import { formatCnDateTime } from '@/shared/requirementDisplay'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -752,7 +753,10 @@ function resetInitForm() {
         </template>
         <!-- 列宽合计必须留在卡片可用宽度以内（桌面端 1440 宽时约 965px）。
              原来这七列是 300+116+92+112+96+136+130 = 982px，刚好越界十几像素，
-             表格因此横向滚动，「操作」列（fixed="right"）压掉「最近更新」的尾巴。 -->
+             表格因此横向滚动，「操作」列（fixed="right"）压掉「最近更新」的尾巴。
+             现在固定六列 110+88+108+112+132+118 = 668px，需求列（min-width 260）
+             吃掉剩下的约 297px。状态列由 96 放宽到 112：96px 装不下「待付定金」那枚标签
+             （单元格内容需要 110px），标签会被截成「待付定金…」。 -->
         <el-table-column label="需求" min-width="260">
           <template #default="scope">
             <div class="dev-requirement-hall__title-cell">
@@ -775,7 +779,7 @@ function resetInitForm() {
             <PaymentModeChip :mode="scope.row.payment_mode" />
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="96">
+        <el-table-column label="状态" width="112">
           <template #default="scope">
             <!-- 状态走全站统一口径（requirementStatusLabel）：待付定金 / 待开发。
                  这里原来自己写成「待接单/签约」，有两处不对：
@@ -790,7 +794,12 @@ function resetInitForm() {
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="updated_at" label="最近更新" width="132" show-overflow-tooltip />
+        <!-- 最近更新只报到分钟（工作台总览的「更新于」也是这个格式）：后端给的是
+             「2026-09-28 15:30:00」，19 个字符要 144px，132px 的列会被截成
+             「2026-09-28 15:…」；掐掉秒之后 107px 就够，也不再需要省略号。 -->
+        <el-table-column label="最近更新" width="132" show-overflow-tooltip>
+          <template #default="scope">{{ formatCnDateTime(scope.row.updated_at) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="118" fixed="right">
           <template #default="scope">
             <el-button type="primary" plain class="dev-table__action dev-action--soft"
