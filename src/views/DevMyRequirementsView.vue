@@ -21,6 +21,8 @@ import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import { breachStatusLabel } from '@/shared/breachStatus'
+import { afterSalesBadgeText, isAwaitingViewerAction } from '@/shared/afterSalesStatus'
+import { listMyAfterSalesCases } from '@/api/afterSales'
 import {
   listRequirementConversations,
   type RequirementConversation,
@@ -309,7 +311,47 @@ const incomeTotal = computed(() =>
 onMounted(async () => {
   auth.hydrate()
   await loadMyRequirements()
+  // 角标是锦上添花，不 await：列表先画出来，待办数回来再补上。
+  void loadAfterSalesPending()
 })
+
+/**
+ * 售后待办：按需求统计「在等我动作」的案件数，给行内「售后」入口挂角标。
+ *
+ * 一次 `GET /api/after-sales/cases` 就能拿到我参与的全部案件，不用逐条需求发请求
+ * （与列表页其它按条发起的查询不同，这里刻意只打一次）。
+ */
+const afterSalesPending = ref<Record<string, number>>({})
+
+function afterSalesPendingCount(requirementId: string) {
+  return afterSalesPending.value[requirementId] ?? 0
+}
+
+/** 角标读数；没有待办时返回空串，模板里据此决定是否渲染角标。 */
+function afterSalesBadgeFor(requirementId: string) {
+  const count = afterSalesPendingCount(requirementId)
+  return count > 0 ? afterSalesBadgeText(count) : ''
+}
+
+async function loadAfterSalesPending() {
+  if (!auth.token) {
+    afterSalesPending.value = {}
+    return
+  }
+  try {
+    const list = await listMyAfterSalesCases(auth.token)
+    const counts: Record<string, number> = {}
+    for (const item of list.items) {
+      if (isAwaitingViewerAction(item)) {
+        counts[item.requirementId] = (counts[item.requirementId] ?? 0) + 1
+      }
+    }
+    afterSalesPending.value = counts
+  } catch {
+    // 拉不到就当没有待办：不弹错、不阻塞列表，角标本身不该成为页面的故障点。
+    afterSalesPending.value = {}
+  }
+}
 
 async function loadMyRequirements() {
   if (!auth.token) {
@@ -1345,8 +1387,12 @@ async function loadRequirementConversations() {
                 提交交付版本
               </el-button>
               <el-button v-if="canOpenAfterSales(row.item)" type="primary" plain class="dev-action--soft"
+                :class="{ 'has-todo-badge': afterSalesBadgeFor(row.item.requirement_id) }"
                 @click="openAfterSalesModal(row.item!)">
                 售后
+                <span v-if="afterSalesBadgeFor(row.item.requirement_id)" class="todo-badge"
+                  :title="`有 ${afterSalesPendingCount(row.item.requirement_id)} 条售后待你处理`">{{
+                    afterSalesBadgeFor(row.item.requirement_id) }}</span>
               </el-button>
               <el-button v-if="canReportBreach(row.item)" type="danger" plain class="dev-action--soft-danger"
                 @click="openBreachReport(row.item!)">

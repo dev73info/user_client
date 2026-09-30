@@ -9,6 +9,34 @@
 @import './rich-text-code.css';
 @import './portal-workbench.css';
 
+/* 待办角标：挂在「售后」这类需要本人动作的行内入口按钮右上角（客户侧我的需求 / 开发者侧我的接单共用）。
+   读数的视觉口径与工作台菜单角标一致：红底 #ef4444、白字、11px、胶囊、读数 99+ 封顶
+   （读数换算见 shared/afterSalesStatus.ts 的 afterSalesBadgeText）。
+   宿主按钮要自己加 .has-todo-badge 声明定位上下文——Element 的 el-button 自带 position: relative，
+   但客户侧的 .ghost 按钮没有，两处都显式带上，免得角标跑到底层定位祖先上去。 */
+.has-todo-badge {
+  position: relative;
+}
+
+.todo-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  /* 角标只是提示，点击要落到按钮本身 */
+  pointer-events: none;
+}
+
 /* 用户名渐变展示：由积分商城「权限」类商品兑换开启 */
 .username-gradient {
   background: linear-gradient(90deg, #ff7e5f 0%, #feb47b 25%, #6d5dfc 50%, #feb47b 75%, #ff7e5f 100%);

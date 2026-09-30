@@ -25,6 +25,8 @@ import {
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { getMyRealnameVerification } from '@/api/realname'
 import { getInvoiceSummary } from '@/api/invoices'
+import { listMyAfterSalesCases } from '@/api/afterSales'
+import { afterSalesBadgeText, isAwaitingViewerAction } from '@/shared/afterSalesStatus'
 import {
   listRequirementConversations,
   type RequirementConversation,
@@ -2327,9 +2329,49 @@ function setRating(event: MouseEvent, index: number) {
   commentRating.value = clickedInLeftHalf ? index - 0.5 : index
 }
 
+/**
+ * 售后待办：按需求统计「在等我动作」的案件数，给行内「售后」入口挂角标。
+ *
+ * 一次 `GET /api/after-sales/cases` 就能拿到我参与的全部案件（含 `viewerRole`），不用逐条需求发请求。
+ * 待办口径见 `shared/afterSalesStatus.ts` 的 `isAwaitingViewerAction`。
+ */
+const afterSalesPending = ref<Record<string, number>>({})
+
+function afterSalesPendingCount(requirementId: string) {
+  return afterSalesPending.value[requirementId] ?? 0
+}
+
+/** 角标读数；没有待办时返回空串，模板里据此决定是否渲染角标。 */
+function afterSalesBadgeFor(requirementId: string) {
+  const count = afterSalesPendingCount(requirementId)
+  return count > 0 ? afterSalesBadgeText(count) : ''
+}
+
+async function loadAfterSalesPending() {
+  if (!auth.token) {
+    afterSalesPending.value = {}
+    return
+  }
+  try {
+    const list = await listMyAfterSalesCases(auth.token)
+    const counts: Record<string, number> = {}
+    for (const item of list.items) {
+      if (isAwaitingViewerAction(item)) {
+        counts[item.requirementId] = (counts[item.requirementId] ?? 0) + 1
+      }
+    }
+    afterSalesPending.value = counts
+  } catch {
+    // 拉不到就当没有待办：不弹错、不阻塞列表，角标本身不该成为页面的故障点。
+    afterSalesPending.value = {}
+  }
+}
+
 onMounted(async () => {
   auth.hydrate()
   await Promise.all([loadMyRequirements(), loadRequirementConversations(), loadDepositRatio()])
+  // 角标是锦上添花，不 await：列表先画出来，待办数回来再补上。
+  void loadAfterSalesPending()
 
   const oauthResult = typeof route.query.wechat_oauth === 'string' ? route.query.wechat_oauth : ''
   const oauthError =
@@ -2552,9 +2594,13 @@ watch(
                   @click.stop="toggleVersionDeleteReviewCard(item)">
                   {{ isVersionDeleteReviewExpanded(item) ? '收起审核' : '审核资源' }}
                 </button>
-                <button v-if="canOpenAfterSales(item)" class="ghost small action-emphasis" type="button"
+                <button v-if="canOpenAfterSales(item)" class="ghost small action-emphasis"
+                  :class="{ 'has-todo-badge': afterSalesBadgeFor(item.requirement_id) }" type="button"
                   @click.stop="runRowAction(item, 'after-sales')">
                   售后
+                  <span v-if="afterSalesBadgeFor(item.requirement_id)" class="todo-badge"
+                    :title="`有 ${afterSalesPendingCount(item.requirement_id)} 条售后待你处理`">{{
+                      afterSalesBadgeFor(item.requirement_id) }}</span>
                 </button>
 
                 <el-dropdown v-if="moreRowActions(item).length" trigger="click"
