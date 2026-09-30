@@ -59,6 +59,9 @@ importers:
       tags-wasm:
         specifier: link:../tags-wasm/pkg
         version: link:../tags-wasm/pkg
+      ui_73info:
+        specifier: link:../ui_73info
+        version: link:../ui_73info
       vue:
         specifier: ^3.5.31
         version: 3.5.32(typescript@6.0.2)

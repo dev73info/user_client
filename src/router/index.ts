@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
+import { applyTheme } from 'ui_73info'
 import { useAuthStore } from '@/stores/auth'
 import { getMyRealnameVerification } from '@/api/realname'
 import { HttpError } from '@/api/http'
@@ -419,6 +420,14 @@ router.beforeEach(async (to, from, next) => {
 
   const isDeveloperRoute =
     to.path.startsWith('/dev') || to.matched.some((record) => Boolean(record.meta.devArea))
+
+  // ui_73info 的主题跟着「这套页面属于哪套视觉体系」走：开发者工作台是 dev、其余是门户
+  // （两套体系的划分见 doc/设计规范.md 第一节；判据直接复用上一行，不另立一条规则）。
+  //
+  // 放在路由守卫里而不是各页面自己调：主题是写在 `<html>` 上的属性，一个页面写错会连累
+  // 它下面的所有 `T*` 组件。放在这里还有一个好处——它比页面渲染早，切路由时不会先看到
+  // 前一页的主题闪一下。
+  applyTheme(isDeveloperRoute ? 'dev' : 'portal')
 
   if (isDeveloperRoute) {
     return next()

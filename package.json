@@ -37,6 +37,7 @@
     "pinia": "^3.0.4",
     "qrcode": "^1.5.4",
     "tags-wasm": "link:../tags-wasm/pkg",
+    "ui_73info": "link:../ui_73info",
     "vue": "^3.5.31",
     "vue-advanced-cropper": "^2.8.9",
     "vue-router": "^4.3.9"

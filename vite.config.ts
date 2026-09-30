@@ -90,6 +90,12 @@ export default defineConfig({
             return 'element-plus'
           }
 
+          // 自研组件库单独成块。它发的是源码、被 link 进来（真实路径在 node_modules 之外），
+          // 不在这里挑出来就会落进下面的 vendor 兜底，与第三方库混在一起。
+          if (normalizedId.includes('/ui_73info/')) {
+            return 'ui-73info'
+          }
+
           if (normalizedId.includes('@tiptap/')) {
             return 'tiptap'
           }
@@ -161,6 +167,9 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['tags-wasm'],
+    // 两个都是发源码的 link 依赖（一个 Rust→WASM，一个 .vue 源码）。
+    // 预打包会把它们当第三方包处理：ui_73info 是 .vue 源码，预打包后宿主的 HMR 就跨不过去，
+    // 改组件得重启 dev server 才生效——那正是「发源码」想避开的事。
+    exclude: ['tags-wasm', 'ui_73info'],
   },
 })
