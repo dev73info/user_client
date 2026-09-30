@@ -2921,6 +2921,7 @@ function handleBackdropClick() {
 
 /* 状态变化卡片：靠哪一侧看这一步是谁做的（会话里的气泡也是这套左右口径）——
    我方发起靠右、对方发起靠左、纯平台通知（结单、客服裁决、超时兜底）居中。
+   居中那一类见下面的 `--system`：它不摆卡片外框，只留一行居中的系统说明。
    卡片宽度小于消息列，auto 外边距才能在剩余空间里把它推到对应一侧。 */
 .conversation-card {
   display: grid;
@@ -2941,9 +2942,32 @@ function handleBackdropClick() {
   margin-left: auto;
 }
 
+/* 平台通知（居中那一类）不摆卡片：去掉边框、底色与圆角，只留居中说明，读起来是
+   「系统在播报进度」，而不是某一方发来的一张卡片。带按钮的通知（去需求大厅、
+   去工单中心催办）按钮跟着文字一起居中，不因为去掉外框丢掉出口。 */
 .conversation-card--system {
+  width: min(520px, 100%);
   margin-right: auto;
   margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  justify-items: center;
+  text-align: center;
+}
+
+.conversation-card--system .conversation-card__head {
+  justify-content: center;
+  color: #64748b;
+}
+
+.conversation-card--system .conversation-card__desc {
+  color: #94a3b8;
+}
+
+.conversation-card--system .conversation-card__foot {
+  justify-content: center;
 }
 
 .conversation-card__head {
@@ -3003,6 +3027,12 @@ function handleBackdropClick() {
        满宽铺开会让「我方发起 / 对方发起 / 平台通知」三种摆法长得一模一样。 */
     width: calc(100% - 34px);
     padding: 10px 12px;
+  }
+
+  /* 平台通知没有卡片外框，也就不需要对侧空档：文字居中本身就是它的位置。 */
+  .conversation-card--system {
+    width: 100%;
+    padding: 0;
   }
 
   /* 移动端触摸目标 ≥44px */
