@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Close, Connection } from '@element-plus/icons-vue'
+import { TIcon } from 'ui_73info'
 
 import { listCommunityPosts, type CommunityPost, type CommunityPostStatus } from '@/api/community'
 import { apiUrl } from '@/api/http'
@@ -586,9 +587,9 @@ function communityStatusLabel(status: CommunityPostStatus): string {
                     </div>
                     <button class="portal-search-detail__close" type="button" aria-label="关闭详情"
                         @click="closeRequirementDetail">
-                        <el-icon>
+                        <TIcon>
                             <Close />
-                        </el-icon>
+                        </TIcon>
                     </button>
                 </header>
 
@@ -633,9 +634,9 @@ function communityStatusLabel(status: CommunityPostStatus): string {
                 <div v-if="auth.isAuthed && !isSelectedRequirementOwnedByCurrentUser" class="portal-search-detail__actions">
                     <button class="portal-search-detail__bind" type="button"
                         @click="openRequirementWorkbench(selectedRequirement)">
-                        <el-icon>
+                        <TIcon>
                             <Connection />
-                        </el-icon>
+                        </TIcon>
                         <span>前往工作台接取需求</span>
                     </button>
                 </div>

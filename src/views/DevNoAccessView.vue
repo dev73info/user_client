@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { TButton } from 'ui_73info'
 
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -98,19 +99,20 @@ async function retryAccessCheck() {
       </p>
 
       <div class="dev-no-access__actions">
-        <!-- 主操作走统一层的 .dev-toolbar__primary、其余走 .dev-toolbar__ghost：
+        <!-- 形状不再走 .dev-toolbar__primary / .dev-toolbar__ghost，改由 TButton 的
+             variant + tone 表达：主操作是实心强调色，次要操作是默认的描边形态。
              原来两个次要按钮挂的是 Element 的 plain 变体（浅蓝底 + 浅蓝描边），
              与统一层「白底 + 主色描边」的次要按钮不是一套。 -->
-        <el-button v-if="!realnameApproved" class="dev-toolbar__primary" @click="goRealname">
+        <TButton v-if="!realnameApproved" variant="solid" tone="accent" @click="goRealname">
           去实名认证
-        </el-button>
-        <el-button v-if="realnameApproved" class="dev-toolbar__primary" @click="goBecomeDeveloper">
+        </TButton>
+        <TButton v-if="realnameApproved" variant="solid" tone="accent" @click="goBecomeDeveloper">
           申请开发者权限
-        </el-button>
-        <el-button class="dev-toolbar__ghost" @click="backToLogin">退出当前账号</el-button>
-        <el-button class="dev-toolbar__ghost" :loading="retrying" @click="retryAccessCheck">
+        </TButton>
+        <TButton @click="backToLogin">退出当前账号</TButton>
+        <TButton :loading="retrying" @click="retryAccessCheck">
           重试权限校验
-        </el-button>
+        </TButton>
       </div>
     </section>
   </main>

@@ -1,16 +1,22 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElConfigProvider } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
-import zhCn from 'element-plus/es/locale/lang/zh-cn.mjs'
+import { TButton, TIcon } from 'ui_73info'
 
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
 /* 「我的背包 → 优惠券中心」：券包按满减 / 折扣分两组，点券卡复制券码。
-   券码是下单时手工填的（见结算页），所以这里不做「去使用」按钮，只把码放到剪贴板。 */
+   券码是下单时手工填的（见结算页），所以这里不做「去使用」按钮，只把码放到剪贴板。
+
+   本页已迁到 ui_73info：那颗刷新按钮从 `el-button` + `.wb-toolbar__icon-btn`
+   （一串只对 el-button 生效的 `--el-button-*` 赋值）换成 `TButton icon-only`，
+   形状与颜色因此由库接管，不再吃 portal-workbench.css 里那段。
+   同时**去掉了 `ElConfigProvider` 包装**：本页模板里已经没有 Element 组件，
+   也没有依赖 Element 语言包的子组件（它不渲染任何子组件），留着只会多一条
+   `element-plus` 的 import。 */
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -93,94 +99,92 @@ onMounted(() => {
 </script>
 
 <template>
-  <ElConfigProvider :locale="zhCn">
-    <main class="page-shell custom-page-shell profile-page coupons-page" :aria-busy="loading">
-      <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
-      <div class="wb-strip" aria-label="优惠券概览">
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">可用优惠券</span>
-          <span class="wb-strip__value">{{ loading ? '—' : usableCoupons.length }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">满减券</span>
-          <span class="wb-strip__value">{{ loading ? '—' : amountCoupons.length }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">折扣券</span>
-          <span class="wb-strip__value">{{ loading ? '—' : discountCoupons.length }}</span>
-        </div>
-        <div class="wb-strip__item wb-strip__action">
-          <el-button class="wb-toolbar__icon-btn" :loading="loading" aria-label="刷新券包" @click="loadCoupons">
-            <el-icon><Refresh /></el-icon>
-          </el-button>
+  <main class="page-shell custom-page-shell profile-page coupons-page" :aria-busy="loading">
+    <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
+    <div class="wb-strip" aria-label="优惠券概览">
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">可用优惠券</span>
+        <span class="wb-strip__value">{{ loading ? '—' : usableCoupons.length }}</span>
+      </div>
+      <div class="wb-strip__divider" />
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">满减券</span>
+        <span class="wb-strip__value">{{ loading ? '—' : amountCoupons.length }}</span>
+      </div>
+      <div class="wb-strip__divider" />
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">折扣券</span>
+        <span class="wb-strip__value">{{ loading ? '—' : discountCoupons.length }}</span>
+      </div>
+      <div class="wb-strip__item wb-strip__action">
+        <TButton icon-only :loading="loading" aria-label="刷新券包" @click="loadCoupons">
+          <TIcon><Refresh /></TIcon>
+        </TButton>
+      </div>
+    </div>
+
+    <section class="wallet-section coupons-section">
+      <div class="wb-card-head">
+        <div class="wb-card-head__title-block">
+          <h3 class="wb-card-head__title">优惠券</h3>
         </div>
       </div>
 
-      <section class="wallet-section coupons-section">
-        <div class="wb-card-head">
-          <div class="wb-card-head__title-block">
-            <h3 class="wb-card-head__title">优惠券</h3>
+      <p v-if="loading" class="wb-empty" role="status">正在加载券包…</p>
+      <p v-else-if="!coupons.length" class="wb-empty" role="status">
+        <span class="wb-empty__title">暂无优惠券</span>
+      </p>
+      <div v-else class="coupon-groups">
+        <div class="coupon-group">
+          <div class="coupon-group__head">
+            <strong>满减优惠券</strong>
+            <span class="wb-badge">{{ amountCoupons.length }}</span>
+          </div>
+          <p v-if="amountCoupons.length === 0" class="wb-empty" role="status">暂无满减优惠券</p>
+          <div v-else class="coupon-items">
+            <button v-for="item in amountCoupons" :key="item.code" type="button" class="coupon-item"
+              @click="copyCouponCode(item.code)">
+              <div class="coupon-item__head">
+                <strong>{{ item.code }}</strong>
+                <span class="wb-badge" :class="{ 'wb-badge--success': item.status !== 'used' }">
+                  {{ item.status === 'used' ? '已使用' : '可用' }}
+                </span>
+              </div>
+              <small>{{ item.name }}</small>
+              <p>{{ formatDiscount(item) }}</p>
+              <p class="coupon-item__meta">
+                门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
+              </p>
+            </button>
           </div>
         </div>
 
-        <p v-if="loading" class="wb-empty" role="status">正在加载券包…</p>
-        <p v-else-if="!coupons.length" class="wb-empty" role="status">
-          <span class="wb-empty__title">暂无优惠券</span>
-        </p>
-        <div v-else class="coupon-groups">
-          <div class="coupon-group">
-            <div class="coupon-group__head">
-              <strong>满减优惠券</strong>
-              <span class="wb-badge">{{ amountCoupons.length }}</span>
-            </div>
-            <p v-if="amountCoupons.length === 0" class="wb-empty" role="status">暂无满减优惠券</p>
-            <div v-else class="coupon-items">
-              <button v-for="item in amountCoupons" :key="item.code" type="button" class="coupon-item"
-                @click="copyCouponCode(item.code)">
-                <div class="coupon-item__head">
-                  <strong>{{ item.code }}</strong>
-                  <span class="wb-badge" :class="{ 'wb-badge--success': item.status !== 'used' }">
-                    {{ item.status === 'used' ? '已使用' : '可用' }}
-                  </span>
-                </div>
-                <small>{{ item.name }}</small>
-                <p>{{ formatDiscount(item) }}</p>
-                <p class="coupon-item__meta">
-                  门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
-                </p>
-              </button>
-            </div>
+        <div class="coupon-group">
+          <div class="coupon-group__head">
+            <strong>折扣优惠券</strong>
+            <span class="wb-badge">{{ discountCoupons.length }}</span>
           </div>
-
-          <div class="coupon-group">
-            <div class="coupon-group__head">
-              <strong>折扣优惠券</strong>
-              <span class="wb-badge">{{ discountCoupons.length }}</span>
-            </div>
-            <p v-if="discountCoupons.length === 0" class="wb-empty" role="status">暂无折扣优惠券</p>
-            <div v-else class="coupon-items">
-              <button v-for="item in discountCoupons" :key="item.code" type="button" class="coupon-item"
-                @click="copyCouponCode(item.code)">
-                <div class="coupon-item__head">
-                  <strong>{{ item.code }}</strong>
-                  <span class="wb-badge" :class="{ 'wb-badge--success': item.status !== 'used' }">
-                    {{ item.status === 'used' ? '已使用' : '可用' }}
-                  </span>
-                </div>
-                <small>{{ item.name }}</small>
-                <p>{{ formatDiscount(item) }}</p>
-                <p class="coupon-item__meta">
-                  门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
-                </p>
-              </button>
-            </div>
+          <p v-if="discountCoupons.length === 0" class="wb-empty" role="status">暂无折扣优惠券</p>
+          <div v-else class="coupon-items">
+            <button v-for="item in discountCoupons" :key="item.code" type="button" class="coupon-item"
+              @click="copyCouponCode(item.code)">
+              <div class="coupon-item__head">
+                <strong>{{ item.code }}</strong>
+                <span class="wb-badge" :class="{ 'wb-badge--success': item.status !== 'used' }">
+                  {{ item.status === 'used' ? '已使用' : '可用' }}
+                </span>
+              </div>
+              <small>{{ item.name }}</small>
+              <p>{{ formatDiscount(item) }}</p>
+              <p class="coupon-item__meta">
+                门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
+              </p>
+            </button>
           </div>
         </div>
-      </section>
-    </main>
-  </ElConfigProvider>
+      </div>
+    </section>
+  </main>
 </template>
 
 <style scoped>

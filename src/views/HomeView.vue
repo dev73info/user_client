@@ -5,6 +5,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, Files, Finished, Money, User } from '@element-plus/icons-vue'
+import { TIcon } from 'ui_73info'
 
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -2038,9 +2039,9 @@ async function submitPublishRequirement() {
                 <p>{{ panel.summary }}</p>
                 <span class="portal-inline-action">
                   {{ panel.action }}
-                  <el-icon>
+                  <TIcon>
                     <ArrowRight />
-                  </el-icon>
+                  </TIcon>
                 </span>
               </div>
             </article>

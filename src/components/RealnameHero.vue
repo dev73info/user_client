@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import type { Tone } from 'ui_73info'
+import { TTag } from 'ui_73info'
 
 import { getMyAdapayMember } from '@/api/adapay'
 import { getMyRealnameVerification, type UserRealnameVerification } from '@/api/realname'
@@ -29,7 +31,10 @@ const statusText = computed(() => {
   return '已驳回'
 })
 
-const statusType = computed<'info' | 'warning' | 'success' | 'danger'>(() => {
+/* 状态色的语义直接沿用 Tone：success / warning / danger / info 四个值与 el-tag 的
+   `type` 同名同义，所以换 TTag 时只需要把 `:type` 改成 `:tone`，取值不动。
+   这个值同时用作根元素的修饰类（realname-hero--{tone}），改名会连带改类名，所以保持原值。 */
+const statusType = computed<Tone>(() => {
   const status = current.value?.status
   if (!status) return 'info'
   if (status === 'approved') return 'success'
@@ -103,7 +108,7 @@ onMounted(async () => {
       <h1 class="realname-hero__title">实名认证</h1>
       <p class="realname-hero__desc">{{ heroDesc }}</p>
       <div class="realname-hero__tag">
-        <el-tag :type="statusType" round>实名认证：{{ statusText }}</el-tag>
+        <TTag :tone="statusType">实名认证：{{ statusText }}</TTag>
       </div>
     </div>
     <div class="realname-hero__metrics">
@@ -130,13 +135,15 @@ onMounted(async () => {
   gap: 24px;
   padding: 20px 24px;
   border-radius: 26px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
+  border: 1px solid var(--73-border);
+  /* 两团装饰性光晕没有对应的语义令牌（不是表面色也不是状态色），按原样保留；
+     最底层那张半透明白卡走 --73-surface。 */
   background:
     radial-gradient(circle at top left, rgba(84, 124, 255, 0.16), transparent 30%),
     radial-gradient(circle at bottom right, rgba(100, 213, 255, 0.12), transparent 26%),
-    rgba(255, 255, 255, 0.84);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 18px 42px rgba(76, 103, 172, 0.12);
+    var(--73-surface);
+  backdrop-filter: blur(var(--73-glass-blur));
+  box-shadow: var(--73-shadow-card);
   align-items: center;
 }
 
@@ -149,12 +156,12 @@ onMounted(async () => {
 .realname-hero__title {
   margin: 0;
   font-size: 28px;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .realname-hero__desc {
   margin: 0;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 14px;
   line-height: 1.7;
 }
@@ -173,18 +180,18 @@ onMounted(async () => {
   display: grid;
   gap: 4px;
   padding: 11px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(226, 232, 240, 0.92);
-  background: rgba(248, 250, 252, 0.92);
+  border-radius: var(--73-radius-inner);
+  border: 1px solid var(--73-border);
+  background: var(--73-bg-soft);
 }
 
 .realname-metrics__item span {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
 }
 
 .realname-metrics__item strong {
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 14px;
 }
 

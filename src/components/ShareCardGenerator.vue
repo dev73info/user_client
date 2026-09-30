@@ -2,6 +2,7 @@
 import { nextTick, ref, watch } from 'vue'
 import QRCode from 'qrcode'
 import { Close, Document, Link, Picture, Refresh, Share } from '@element-plus/icons-vue'
+import { TIcon } from 'ui_73info'
 
 import { generateShareCard, type GenerateShareCardPayload, type ShareCardData } from '@/api/invite'
 import { useAuthStore } from '@/stores/auth'
@@ -245,9 +246,9 @@ watch(
     <section class="share-card-generator" aria-label="分享卡片">
         <button class="share-card-generator__start" type="button" :disabled="loading" :aria-busy="loading"
             @click="loadCard">
-            <el-icon>
+            <TIcon>
                 <Share />
-            </el-icon>
+            </TIcon>
             <span>{{ props.label }}</span>
         </button>
 
@@ -259,14 +260,14 @@ watch(
                         <h2>分享预览</h2>
                         <div class="share-card-generator__actions">
                             <button type="button" :disabled="loading" @click="loadCard" aria-label="重新生成分享卡">
-                                <el-icon>
+                                <TIcon>
                                     <Refresh />
-                                </el-icon>
+                                </TIcon>
                             </button>
                             <button type="button" @click="closePreview" aria-label="收起分享卡预览">
-                                <el-icon>
+                                <TIcon>
                                     <Close />
-                                </el-icon>
+                                </TIcon>
                             </button>
                         </div>
                     </header>
@@ -276,21 +277,21 @@ watch(
                     <canvas v-show="cardData" ref="canvasRef" class="share-card-generator__canvas" />
                     <footer class="share-card-generator__footer">
                         <button type="button" :disabled="!cardData" @click="copyLink" aria-label="复制分享链接">
-                            <el-icon>
+                            <TIcon>
                                 <Link />
-                            </el-icon>
+                            </TIcon>
                             <span>链接</span>
                         </button>
                         <button type="button" :disabled="!cardData" @click="copyImage" aria-label="复制分享卡">
-                            <el-icon>
+                            <TIcon>
                                 <Document />
-                            </el-icon>
+                            </TIcon>
                             <span>复制</span>
                         </button>
                         <button type="button" :disabled="!cardData" @click="downloadImage" aria-label="下载分享卡">
-                            <el-icon>
+                            <TIcon>
                                 <Picture />
-                            </el-icon>
+                            </TIcon>
                             <span>下载</span>
                         </button>
                     </footer>

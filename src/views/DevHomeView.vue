@@ -11,6 +11,7 @@ import {
 } from '@element-plus/icons-vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { TButton, TIcon } from 'ui_73info'
 
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
 import DevWithdrawalDialog from '@/components/DevWithdrawalDialog.vue'
@@ -570,11 +571,11 @@ async function loadPage() {
         </div>
       </template>
       <div class="dev-meta-strip__item dev-meta-strip__action">
-        <el-button class="dev-toolbar__icon-btn" aria-label="刷新概览" @click="loadPage">
-          <el-icon>
+        <TButton icon-only aria-label="刷新概览" @click="loadPage">
+          <TIcon>
             <Refresh />
-          </el-icon>
-        </el-button>
+          </TIcon>
+        </TButton>
       </div>
     </div>
 
@@ -583,9 +584,9 @@ async function loadPage() {
          与需求大厅的资格提示同一种横幅。 -->
     <section v-if="depositInsufficient" class="dev-notice" role="alert">
       <span class="dev-notice__icon" aria-hidden="true">
-        <el-icon>
+        <TIcon>
           <WarningFilled />
-        </el-icon>
+        </TIcon>
       </span>
       <div class="dev-notice__copy">
         <strong>保证金不足，暂不可接单</strong>
@@ -608,9 +609,9 @@ async function loadPage() {
             <div class="dev-card-head__actions">
               <RouterLink class="dev-home__more" :to="{ name: 'dev-my-requirements' }">
                 <span>查看全部</span>
-                <el-icon>
+                <TIcon>
                   <ArrowRight />
-                </el-icon>
+                </TIcon>
               </RouterLink>
             </div>
           </div>
@@ -671,9 +672,9 @@ async function loadPage() {
             <div class="dev-card-head__actions">
               <RouterLink class="dev-home__more" :to="{ name: 'dev-my-requirements' }">
                 <span>查看全部</span>
-                <el-icon>
+                <TIcon>
                   <ArrowRight />
-                </el-icon>
+                </TIcon>
               </RouterLink>
             </div>
           </div>
@@ -695,15 +696,15 @@ async function loadPage() {
               @keydown.space.prevent="openMyOrder(row.requirementId)">
               <div class="dev-home__delivery-top">
                 <span class="dev-home__delivery-icon" aria-hidden="true">
-                  <el-icon>
+                  <TIcon>
                     <Promotion />
-                  </el-icon>
+                  </TIcon>
                 </span>
                 <strong class="dev-home__delivery-title">{{ row.resourceTitle }}</strong>
                 <!-- 交付过的打勾：卡片只看一行，没有勾就得逐字读版本数才知道交付没交付 -->
-                <el-icon v-if="row.delivered" class="dev-home__delivery-check" aria-hidden="true">
+                <TIcon v-if="row.delivered" class="dev-home__delivery-check">
                   <CircleCheck />
-                </el-icon>
+                </TIcon>
               </div>
 
               <p class="dev-home__delivery-meta">{{ row.requirementId }}</p>
@@ -807,9 +808,9 @@ async function loadPage() {
                    点了就地拉起提现弹窗（与收益钱包页共用同一个），不再跳到钱包页。 -->
               <button class="dev-btn dev-btn--primary dev-home__money-action" type="button"
                 @click="withdrawDialog?.open()">
-                <el-icon>
+                <TIcon>
                   <Wallet />
-                </el-icon>
+                </TIcon>
                 <span>提现</span>
               </button>
             </div>
@@ -818,9 +819,9 @@ async function loadPage() {
             <dl class="dev-home__facts">
               <div class="dev-home__fact">
                 <span class="dev-home__fact-icon dev-home__fact-icon--gold" aria-hidden="true">
-                  <el-icon>
+                  <TIcon>
                     <Clock />
-                  </el-icon>
+                  </TIcon>
                 </span>
                 <div class="dev-home__fact-copy">
                   <dt>待提现</dt>
@@ -830,9 +831,9 @@ async function loadPage() {
 
               <div class="dev-home__fact">
                 <span class="dev-home__fact-icon dev-home__fact-icon--cyan" aria-hidden="true">
-                  <el-icon>
+                  <TIcon>
                     <CircleCheck />
-                  </el-icon>
+                  </TIcon>
                 </span>
                 <div class="dev-home__fact-copy">
                   <dt>已提现</dt>
@@ -856,9 +857,9 @@ async function loadPage() {
               <strong class="dev-figure dev-figure--sm dev-figure--ink">{{ money(deposit?.available_cny) }}</strong>
               <button class="dev-btn dev-btn--ghost dev-home__deposit-action" type="button"
                 @click="rechargeDialog?.open()">
-                <el-icon>
+                <TIcon>
                   <Money />
-                </el-icon>
+                </TIcon>
                 <span>立即充值</span>
               </button>
             </div>
@@ -959,11 +960,11 @@ async function loadPage() {
   white-space: nowrap;
 }
 
-.dev-home__more .el-icon {
+.dev-home__more .t73-icon {
   transition: transform 0.2s ease;
 }
 
-.dev-home__more:hover .el-icon {
+.dev-home__more:hover .t73-icon {
   transform: translateX(2px);
 }
 

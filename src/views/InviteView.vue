@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
+import { TButton, TIcon } from 'ui_73info'
 
 import InvitePanel from '@/components/InvitePanel.vue'
 
@@ -38,9 +39,9 @@ async function refreshAll() {
         <span class="wb-strip__value">{{ invitedCount == null ? '—' : invitedCount }}</span>
       </div>
       <div class="wb-strip__item wb-strip__action">
-        <el-button class="wb-toolbar__icon-btn" :loading="refreshing" aria-label="刷新邀请数据" @click="refreshAll">
-          <el-icon><Refresh /></el-icon>
-        </el-button>
+        <TButton icon-only :loading="refreshing" aria-label="刷新邀请数据" @click="refreshAll">
+          <TIcon><Refresh /></TIcon>
+        </TButton>
       </div>
     </div>
 

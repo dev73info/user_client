@@ -238,7 +238,9 @@ a {
     color 160ms ease;
 }
 
-.dev-btn .el-icon {
+/* `.el-icon` 那一支留给还没迁移的页面；`.t73-icon` 是同一处规格的新写法 */
+.dev-btn .el-icon,
+.dev-btn .t73-icon {
   font-size: 15px;
 }
 
@@ -969,7 +971,9 @@ a {
   gap: 6px;
 }
 
-.dev-action--soft .el-icon {
+/* `.el-icon` 那一支留给还没迁移的页面；`.t73-icon` 是同一处规格的新写法 */
+.dev-action--soft .el-icon,
+.dev-action--soft .t73-icon {
   font-size: 15px;
 }
 

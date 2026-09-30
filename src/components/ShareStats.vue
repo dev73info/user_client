@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { DataAnalysis, Refresh } from '@element-plus/icons-vue'
+import { TIcon } from 'ui_73info'
 
 import { getShareStats, type ShareRecord } from '@/api/invite'
 import { useAuthStore } from '@/stores/auth'
@@ -83,9 +84,9 @@ onMounted(() => {
         <header class="share-stats__head">
             <h2>分享数据</h2>
             <button type="button" :disabled="loading" @click="loadStats" aria-label="刷新分享数据">
-                <el-icon>
+                <TIcon>
                     <Refresh />
-                </el-icon>
+                </TIcon>
             </button>
         </header>
 
@@ -112,9 +113,9 @@ onMounted(() => {
                 <span>{{ record.visits }} / {{ record.registrations }}</span>
             </article>
             <div v-if="!loading && mergedRecords.length === 0" class="share-stats__empty">
-                <el-icon>
+                <TIcon>
                     <DataAnalysis />
-                </el-icon>
+                </TIcon>
                 <span>暂无分享记录</span>
             </div>
         </div>
@@ -136,19 +137,19 @@ onMounted(() => {
 
 .share-stats__head h2 {
     margin: 0;
-    color: #0f172a;
+    color: var(--73-ink);
     font-size: 22px;
 }
 
 .share-stats__head button {
     display: inline-grid;
     place-items: center;
-    width: 36px;
-    height: 36px;
+    width: var(--73-control-height);
+    height: var(--73-control-height);
     border: 0;
-    border-radius: 8px;
-    background: #eff6ff;
-    color: #2563eb;
+    border-radius: var(--73-radius-sm);
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
     cursor: pointer;
 }
 
@@ -160,9 +161,9 @@ onMounted(() => {
 
 .share-stats__metrics article,
 .share-stats__records article {
-    border: 1px solid rgba(226, 232, 240, 0.96);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-sm);
+    background: var(--73-surface);
 }
 
 .share-stats__metrics article {
@@ -173,12 +174,12 @@ onMounted(() => {
 
 .share-stats__metrics span,
 .share-stats__records small {
-    color: #64748b;
+    color: var(--73-ink-muted);
     font-size: 12px;
 }
 
 .share-stats__metrics strong {
-    color: #0f172a;
+    color: var(--73-ink);
     font-size: 22px;
 }
 
@@ -202,7 +203,7 @@ onMounted(() => {
 }
 
 .share-stats__records span {
-    color: #1d4ed8;
+    color: var(--73-accent);
     font-weight: 900;
     white-space: nowrap;
 }
@@ -212,7 +213,7 @@ onMounted(() => {
     display: grid;
     place-items: center;
     gap: 6px;
-    color: #94a3b8;
+    color: var(--73-ink-placeholder);
     font-weight: 800;
 }
 </style>

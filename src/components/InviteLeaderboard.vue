@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
+import { TButton, TIcon } from 'ui_73info'
 
 import { getBadges, getInviteLeaderboard, type BadgeDefinition, type InviteLeaderboardEntry } from '@/api/invite'
 import { useAuthStore } from '@/stores/auth'
@@ -68,12 +69,12 @@ onMounted(() => {
                         :class="{ 'is-active': period === 'alltime' }" :aria-pressed="period === 'alltime'"
                         @click="loadLeaderboard('alltime')">总榜</button>
                 </div>
-                <el-button class="wb-toolbar__icon-btn" :loading="loading" aria-label="刷新排行榜"
+                <TButton icon-only :loading="loading" aria-label="刷新排行榜"
                     @click="loadLeaderboard()">
-                    <el-icon>
+                    <TIcon>
                         <Refresh />
-                    </el-icon>
-                </el-button>
+                    </TIcon>
+                </TButton>
             </div>
         </div>
 

@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Bell, Close, Search } from '@element-plus/icons-vue'
+import { TIcon } from 'ui_73info'
 
 import { useAuthStore } from '@/stores/auth'
 import { buildDevPortalUrl } from '@/config/runtime'
@@ -587,9 +588,9 @@ function finishSearchComposition(event: CompositionEvent) {
         </div>
         <div class="portal-search-field" @mouseenter="searchInputHovered = true"
           @mouseleave="searchInputHovered = false">
-          <el-icon>
+          <TIcon>
             <Search />
-          </el-icon>
+          </TIcon>
           <input v-model="searchQuery" type="search" inputmode="search" enterkeyhint="search" autocomplete="off"
             spellcheck="false" aria-label="顶部搜索" :placeholder="searchPlaceholder" @input="updateSearchDraftState"
             @compositionstart="startSearchComposition" @compositionupdate="updateSearchDraftState"
@@ -598,9 +599,9 @@ function finishSearchComposition(event: CompositionEvent) {
           <button class="portal-search-clear" :class="{ 'is-visible': Boolean(searchQuery) }" type="button"
             aria-label="清空搜索" :aria-hidden="!searchQuery" :disabled="!searchQuery" :tabindex="searchQuery ? 0 : -1"
             @click="clearSearch">
-            <el-icon>
+            <TIcon>
               <Close />
-            </el-icon>
+            </TIcon>
           </button>
         </div>
       </form>
@@ -611,9 +612,9 @@ function finishSearchComposition(event: CompositionEvent) {
           'is-menu-open': subscriptionMenuOpen,
         }" type="button" :aria-label="bellTitle" :aria-pressed="hasActiveSubscription" :title="bellTitle"
           @click="handleBellClick" @contextmenu.prevent="openSubscriptionMenu">
-          <el-icon>
+          <TIcon>
             <Bell />
-          </el-icon>
+          </TIcon>
         </button>
 
         <section v-if="subscriptionMenuOpen" class="portal-subscription-menu" role="menu" aria-label="消息订阅设置"
@@ -988,21 +989,21 @@ function finishSearchComposition(event: CompositionEvent) {
   align-self: stretch;
 }
 
-.portal-search-field>.el-icon {
+.portal-search-field>.t73-icon {
   flex: 0 0 auto;
   width: 18px;
   height: 18px;
   font-size: 18px;
-  color: #64748b;
+  color: var(--73-ink-muted);
   transition: color 160ms ease;
 }
 
-.portal-search:hover .portal-search-field>.el-icon,
-.portal-search:focus-within .portal-search-field>.el-icon,
-.portal-search.is-input-focused .portal-search-field>.el-icon,
-.portal-search.is-input-hovered .portal-search-field>.el-icon,
-.portal-search.is-filled .portal-search-field>.el-icon {
-  color: #2563eb;
+.portal-search:hover .portal-search-field>.t73-icon,
+.portal-search:focus-within .portal-search-field>.t73-icon,
+.portal-search.is-input-focused .portal-search-field>.t73-icon,
+.portal-search.is-input-hovered .portal-search-field>.t73-icon,
+.portal-search.is-filled .portal-search-field>.t73-icon {
+  color: var(--73-accent);
 }
 
 .portal-search input {

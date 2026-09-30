@@ -13,6 +13,7 @@ import {
   Position,
   Refresh,
 } from '@element-plus/icons-vue'
+import { TButton, TIcon } from 'ui_73info'
 
 import * as userConversationApi from '@/api/conversations'
 import * as devConversationApi from '@/api/conversations'
@@ -1064,9 +1065,9 @@ function handleBackdropClick() {
         <header class="conversation-modal__header">
           <button class="conversation-modal__icon-btn conversation-modal__back" type="button"
             :aria-label="closeActionLabel" :title="closeActionLabel" @click="closeModal">
-            <el-icon>
+            <TIcon>
               <ArrowLeft />
-            </el-icon>
+            </TIcon>
           </button>
 
           <div class="conversation-modal__avatar" aria-hidden="true">{{ peerInitial }}</div>
@@ -1089,15 +1090,15 @@ function handleBackdropClick() {
           <div class="conversation-modal__header-actions">
             <button class="conversation-modal__icon-btn" type="button" :class="{ 'is-active': detailDrawerOpen }"
               :aria-expanded="detailDrawerOpen" aria-label="需求详情" title="需求详情" @click="toggleDetailDrawer">
-              <el-icon>
+              <TIcon>
                 <Document />
-              </el-icon>
+              </TIcon>
             </button>
             <button class="conversation-modal__icon-btn" type="button" :disabled="loading" aria-label="刷新会话"
               title="刷新会话" @click="loadConversation">
-              <el-icon :class="{ 'conversation-modal__spin': loading }">
+              <TIcon :spin="loading">
                 <Refresh />
-              </el-icon>
+              </TIcon>
             </button>
           </div>
         </header>
@@ -1124,9 +1125,9 @@ function handleBackdropClick() {
             </p>
           </div>
           <div v-if="loading" class="conversation-modal__empty">
-            <el-icon>
+            <TIcon>
               <ChatDotRound />
-            </el-icon>
+            </TIcon>
             <span>会话加载中...</span>
           </div>
           <div v-else-if="errorMessage" class="conversation-modal__empty conversation-modal__empty--error">
@@ -1134,9 +1135,9 @@ function handleBackdropClick() {
             <button type="button" @click="loadConversation">重试</button>
           </div>
           <div v-else-if="messages.length === 0" class="conversation-modal__empty">
-            <el-icon>
+            <TIcon>
               <ChatDotRound />
-            </el-icon>
+            </TIcon>
             <span>{{ hiddenHistorySegments.length ? '此前的沟通记录未公开，暂时没有可查看的消息' : '暂无消息' }}</span>
           </div>
           <template v-else>
@@ -1145,9 +1146,9 @@ function handleBackdropClick() {
               <article v-else-if="row.kind === 'card' && row.card" class="conversation-card"
                 :class="`conversation-card--${row.cardSide ?? 'system'}`">
                 <div class="conversation-card__head">
-                  <el-icon class="conversation-card__icon">
+                  <TIcon class="conversation-card__icon">
                     <Bell />
-                  </el-icon>
+                  </TIcon>
                   <strong>{{ row.card.title }}</strong>
                 </div>
                 <p class="conversation-card__desc">{{ row.card.description }}</p>
@@ -1157,33 +1158,33 @@ function handleBackdropClick() {
                     <!-- 「支付定金 / 支付尾款」不跳需求列表：支付弹窗就在同一条会话底部
                          的工具条上，按下去原地打开它。能不能付仍由工具条裁定（自管模式、
                          合同未签、阶段不对都不给），条件不够时这张卡片就不摆按钮。 -->
-                    <el-button v-if="row.card.paymentAction && actionsRef?.canPay"
-                      class="conversation-card__action" type="primary" size="small"
+                    <TButton v-if="row.card.paymentAction && actionsRef?.canPay"
+                      class="conversation-card__action" variant="solid" tone="accent" size="sm"
                       @click="actionsRef?.openPayDialog()">
                       {{ row.card.actionLabel }}
-                    </el-button>
-                    <el-button v-else-if="row.card.actionLabel && !row.card.deliveryAction && !row.card.paymentAction"
-                      class="conversation-card__action" type="primary" size="small"
+                    </TButton>
+                    <TButton v-else-if="row.card.actionLabel && !row.card.deliveryAction && !row.card.paymentAction"
+                      class="conversation-card__action" variant="solid" tone="accent" size="sm"
                       :loading="downloadLoading && row.card.downloadDelivery"
                       @click="runCardAction(row.card, row.message)">
                       {{ row.card.actionLabel }}
-                    </el-button>
+                    </TButton>
                     <!-- 「去交付」不跳需求列表：交付弹窗就挂在同一条会话底部的工具条上，
                          按下去原地打开它。能不能交付仍由工具条裁定（没绑资源项目、阶段不对都不给），
                          条件不够时这张卡片就不摆按钮，不给出点了没反应的入口。 -->
-                    <el-button v-else-if="row.card.deliveryAction && actionsRef?.canDeliver"
-                      class="conversation-card__action" type="primary" size="small"
+                    <TButton v-else-if="row.card.deliveryAction && actionsRef?.canDeliver"
+                      class="conversation-card__action" variant="solid" tone="accent" size="sm"
                       @click="actionsRef?.openDeliveryDialog()">
                       {{ row.card.actionLabel }}
-                    </el-button>
+                    </TButton>
                     <!-- 验收按钮摆在「下载交付产物」之后：这张卡片说的就是「请验收后支付尾款」，
                          顺手就能做。能不能验收仍由工具条裁定（自管模式、合同未签、没有交付版本
                          都不给），弹窗也归它管，避免两处各写一套条件。 -->
-                    <el-button v-if="row.card.acceptanceAction && actionsRef?.canAcceptDelivery"
-                      class="conversation-card__action" type="primary" size="small"
+                    <TButton v-if="row.card.acceptanceAction && actionsRef?.canAcceptDelivery"
+                      class="conversation-card__action" variant="solid" tone="accent" size="sm"
                       @click="actionsRef?.openAcceptanceDialog()">
                       验收
-                    </el-button>
+                    </TButton>
                   </div>
                 </div>
               </article>
@@ -1204,9 +1205,9 @@ function handleBackdropClick() {
                       <img v-if="isImageAttachment(row.message)" :src="messageAttachmentUrl(row.message)"
                         :alt="messageAttachmentLabel(row.message)" />
                       <span v-else class="conversation-message__attachment-file">
-                        <el-icon>
+                        <TIcon>
                           <Picture />
-                        </el-icon>
+                        </TIcon>
                       </span>
                     </a>
                     <div class="conversation-message__attachment-meta">
@@ -1252,16 +1253,16 @@ function handleBackdropClick() {
               <button class="conversation-modal__tool-btn" :class="{ 'is-active': emojiPanelOpen }" type="button"
                 :disabled="sending || loading || conversationClosed" aria-label="选择表情" title="选择表情"
                 @click="toggleEmojiPanel">
-                <el-icon>
+                <TIcon>
                   <MagicStick />
-                </el-icon>
+                </TIcon>
               </button>
               <button class="conversation-modal__tool-btn" type="button"
                 :disabled="sending || loading || conversationClosed" aria-label="添加截图附件" title="添加截图附件"
                 @click="openAttachmentPicker">
-                <el-icon>
+                <TIcon>
                   <Paperclip />
-                </el-icon>
+                </TIcon>
               </button>
               <input ref="attachmentInputRef" class="conversation-modal__attachment-native" type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif" @change="handleAttachmentFileChange" />
@@ -1284,9 +1285,9 @@ function handleBackdropClick() {
               </div>
               <button class="conversation-modal__attachment-remove" type="button" aria-label="移除附件" title="移除附件"
                 @click="clearAttachmentDraft">
-                <el-icon>
+                <TIcon>
                   <Close />
-                </el-icon>
+                </TIcon>
               </button>
             </div>
 
@@ -1305,9 +1306,9 @@ function handleBackdropClick() {
           </div>
           <button class="conversation-modal__send-btn" type="button" :disabled="!canSend" aria-label="发送消息" title="发送消息"
             @click="submitMessage">
-            <el-icon>
+            <TIcon>
               <Position />
-            </el-icon>
+            </TIcon>
           </button>
         </footer>
 
@@ -1326,9 +1327,9 @@ function handleBackdropClick() {
                   <h4>需求详情</h4>
                   <button class="conversation-modal__icon-btn" type="button" aria-label="收起需求详情" title="收起需求详情"
                     @click="closeDetailDrawer">
-                    <el-icon>
+                    <TIcon>
                       <Close />
-                    </el-icon>
+                    </TIcon>
                   </button>
                 </header>
 
@@ -1813,10 +1814,6 @@ function handleBackdropClick() {
   opacity: 0.55;
 }
 
-.conversation-modal__spin {
-  animation: conversation-spin 900ms linear infinite;
-}
-
 .conversation-modal__messages {
   flex: 1 1 auto;
   min-height: 0;
@@ -1861,8 +1858,8 @@ function handleBackdropClick() {
   text-align: center;
 }
 
-.conversation-modal__empty .el-icon {
-  color: #4f8cff;
+.conversation-modal__empty .t73-icon {
+  color: var(--73-accent);
   font-size: 30px;
 }
 
@@ -2014,16 +2011,6 @@ function handleBackdropClick() {
   background: #cbd5e1;
   box-shadow: none;
   opacity: 0.8;
-}
-
-@keyframes conversation-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 @media (max-width: 640px) {
@@ -3004,17 +2991,14 @@ function handleBackdropClick() {
   font-size: 11.5px;
 }
 
-/* 卡片脚上的按钮组：时间在左、按钮在右，按钮之间的间距交给 gap，
-   免得两个 el-button 相邻时又叠一层 Element Plus 默认的 margin-left。 */
+/* 卡片脚上的按钮组：时间在左、按钮在右，按钮之间的间距交给 gap。
+   相邻间距原来还要清掉 Element Plus 给两个 el-button 叠的那层 margin-left，
+   换成 TButton 之后组件本身不产生外边距，那条规则随之删掉。 */
 .conversation-card__actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-}
-
-.conversation-card__actions .el-button + .el-button {
-  margin-left: 0;
 }
 
 .conversation-card .conversation-card__action {

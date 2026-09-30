@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Aim, Check, Close } from '@element-plus/icons-vue'
+import { TIcon } from 'ui_73info'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PublishModal from '@/components/PublishModal.vue'
@@ -1573,23 +1574,23 @@ onBeforeUnmount(() => {
               <div class="profile-avatar-crop-actions">
                 <button class="ghost small profile-avatar-crop-action profile-avatar-crop-action--utility" type="button"
                   :disabled="profileAvatarUploading || !profileAvatarCropImage" @click="resetProfileAvatarCropFrame">
-                  <el-icon aria-hidden="true">
+                  <TIcon>
                     <Aim />
-                  </el-icon>
+                  </TIcon>
                   <span>居中</span>
                 </button>
                 <button class="ghost small profile-avatar-crop-action profile-avatar-crop-action--cancel" type="button"
                   :disabled="profileAvatarUploading" @click="closeProfileAvatarCrop">
-                  <el-icon aria-hidden="true">
+                  <TIcon>
                     <Close />
-                  </el-icon>
+                  </TIcon>
                   <span>取消</span>
                 </button>
                 <button class="ghost small profile-avatar-crop-action profile-avatar-crop-action--primary" type="button"
                   :disabled="profileAvatarUploading || !profileAvatarCropImage" @click="submitProfileAvatarCrop">
-                  <el-icon v-if="!profileAvatarUploading" aria-hidden="true">
+                  <TIcon v-if="!profileAvatarUploading">
                     <Check />
-                  </el-icon>
+                  </TIcon>
                   {{ profileAvatarUploading ? '上传中...' : '保存头像' }}
                 </button>
               </div>
@@ -1942,7 +1943,7 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-.profile-avatar-crop-action .el-icon {
+.profile-avatar-crop-action .t73-icon {
   flex: 0 0 auto;
   font-size: 15px;
 }

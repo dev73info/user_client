@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { ArrowLeft, Refresh } from '@element-plus/icons-vue'
+import { TIcon } from 'ui_73info'
 import { useRoute, useRouter } from 'vue-router'
 import {
     fetchAsignContractPreviewUrl,
@@ -392,7 +393,7 @@ onUnmounted(() => {
                     <p v-if="canSignContract" class="lead">请核对实名认证身份后完成签署。</p>
                 </div>
                 <button type="button" class="btn-secondary panel-head__back" @click="goBack">
-                    <el-icon><ArrowLeft /></el-icon>返回
+                    <TIcon><ArrowLeft /></TIcon>返回
                 </button>
             </header>
 
@@ -400,8 +401,8 @@ onUnmounted(() => {
 
             <div v-else-if="!contract" class="status-msg">
                 <p :role="error ? 'alert' : 'status'">{{ error || '暂无可签署的合同' }}</p>
-                <button type="button" class="btn-secondary" @click="loadContract"><el-icon><Refresh /></el-icon>重新加载</button>
-                <button class="btn-secondary" @click="goBack"><el-icon><ArrowLeft /></el-icon>返回</button>
+                <button type="button" class="btn-secondary" @click="loadContract"><TIcon><Refresh /></TIcon>重新加载</button>
+                <button class="btn-secondary" @click="goBack"><TIcon><ArrowLeft /></TIcon>返回</button>
             </div>
 
             <template v-else>

@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { PropType } from "vue";
 import { ArrowDown } from "@element-plus/icons-vue";
+import { TIcon } from "ui_73info";
 
 import RequirementAgentPanel from "@/components/RequirementAgentPanel.vue";
 import RichTextEditor from "@/components/RichTextEditor.vue";
@@ -462,9 +463,9 @@ watch(
                   :aria-expanded="acceptanceTemplateMenuOpen ? 'true' : 'false'"
                   @click="toggleAcceptanceTemplateMenu">
                   <span>模板</span>
-                  <el-icon class="publish-template__caret" aria-hidden="true">
+                  <TIcon class="publish-template__caret">
                     <ArrowDown />
-                  </el-icon>
+                  </TIcon>
                 </button>
                 <div v-if="acceptanceTemplateMenuOpen" class="publish-template__menu" role="menu"
                   aria-label="验收标准模板">
