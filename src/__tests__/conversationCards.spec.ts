@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { conversationCardMeta } from '@/shared/conversationCards'
+import { conversationCardMeta, conversationCardSide } from '@/shared/conversationCards'
 
 const meta = (
   actionType: string,
@@ -188,5 +188,24 @@ describe('conversation status cards', () => {
     ]) {
       expect(meta(code, 'customer', 'completed')?.actionLabel).toBeUndefined()
     }
+  })
+})
+
+describe('conversation card sides', () => {
+  it('puts the card on the side of whoever did the step', () => {
+    // 卡片靠哪一侧看发起方：我这一方做的靠右，对方做的靠左——同一张卡片在两个视角互为镜像。
+    expect(conversationCardSide('customer', 'customer')).toBe('mine')
+    expect(conversationCardSide('customer', 'developer')).toBe('other')
+    expect(conversationCardSide('developer', 'developer')).toBe('mine')
+    expect(conversationCardSide('developer', 'customer')).toBe('other')
+  })
+
+  it('centers platform notices instead of guessing a side', () => {
+    // 纯平台通知（结单、客服裁决、超时兜底）没有发起方，居中。
+    expect(conversationCardSide(null, 'customer')).toBe('system')
+    expect(conversationCardSide(undefined, 'developer')).toBe('system')
+    // 查看者身份也认不出时（历史卡片先于换人，双方对不上）同样居中：摆错侧会被读成
+    // 「这一步是对方做的」或「是我做的」，比居中更容易误读。
+    expect(conversationCardSide('customer', null)).toBe('system')
   })
 })

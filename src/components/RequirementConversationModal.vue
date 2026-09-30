@@ -40,7 +40,9 @@ import RequirementConversationActions from '@/components/RequirementConversation
 import { useToast } from '@/composables/useToast'
 import {
   conversationCardMeta,
+  conversationCardSide,
   type ConversationCardMeta,
+  type ConversationCardSide,
 } from '@/shared/conversationCards'
 
 const props = defineProps<{
@@ -98,6 +100,8 @@ type ConversationTimelineItem = {
   mine?: boolean
   showAvatar?: boolean
   card?: ConversationCardMeta
+  /** 卡片靠哪一侧：我方靠右、对方靠左、平台通知居中（见 conversationCardSide）。 */
+  cardSide?: ConversationCardSide
   createdAt?: string
 }
 
@@ -255,7 +259,9 @@ const timelineItems = computed<ConversationTimelineItem[]>(() => {
     }
 
     const mine = isMine(message)
-    // 平台写入的状态变化卡片：左对齐，与对面的聊天气泡同侧；未知事件码退化成普通消息，避免丢信息。
+    // 平台写入的状态变化卡片：靠哪一侧由后端记下的发起方决定——这一步是我做的靠我这边、
+    // 对方做的靠对方那边，纯平台通知（结单、客服裁决、超时兜底）居中。
+    // 未知事件码退化成普通消息，避免丢信息。
     // 需要需求当前状态，历史卡片的按钮才不会停在已经过去的步骤上（如定金缴完还挂着「支付定金」）。
     const card =
       message.message_type === 'card'
@@ -271,6 +277,7 @@ const timelineItems = computed<ConversationTimelineItem[]>(() => {
         key: `card-${message.id}`,
         kind: 'card',
         card,
+        cardSide: conversationCardSide(message.actor_role, viewerRole.value),
         message,
         createdAt: message.created_at,
       })
@@ -1135,7 +1142,8 @@ function handleBackdropClick() {
           <template v-else>
             <template v-for="row in timelineItems" :key="row.key">
               <div v-if="row.kind === 'date'" class="conversation-date-pill">{{ row.label }}</div>
-              <article v-else-if="row.kind === 'card' && row.card" class="conversation-card">
+              <article v-else-if="row.kind === 'card' && row.card" class="conversation-card"
+                :class="`conversation-card--${row.cardSide ?? 'system'}`">
                 <div class="conversation-card__head">
                   <el-icon class="conversation-card__icon">
                     <Bell />
@@ -2911,7 +2919,9 @@ function handleBackdropClick() {
   width: min(280px, 64vw);
 }
 
-/* 状态变化卡片：与聊天气泡同侧左对齐，不挤在会话中间 */
+/* 状态变化卡片：靠哪一侧看这一步是谁做的（会话里的气泡也是这套左右口径）——
+   我方发起靠右、对方发起靠左、纯平台通知（结单、客服裁决、超时兜底）居中。
+   卡片宽度小于消息列，auto 外边距才能在剩余空间里把它推到对应一侧。 */
 .conversation-card {
   display: grid;
   gap: 6px;
@@ -2921,6 +2931,19 @@ function handleBackdropClick() {
   border: 1px solid rgba(37, 99, 235, 0.22);
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(239, 246, 255, 0.96), rgba(255, 255, 255, 0.98));
+}
+
+.conversation-card--other {
+  margin-right: auto;
+}
+
+.conversation-card--mine {
+  margin-left: auto;
+}
+
+.conversation-card--system {
+  margin-right: auto;
+  margin-left: auto;
 }
 
 .conversation-card__head {
@@ -2976,7 +2999,9 @@ function handleBackdropClick() {
 
 @media (max-width: 640px) {
   .conversation-card {
-    width: 100%;
+    /* 手机上也要看得出卡片靠哪一侧：留出与气泡同一量级的对侧空档，
+       满宽铺开会让「我方发起 / 对方发起 / 平台通知」三种摆法长得一模一样。 */
+    width: calc(100% - 34px);
     padding: 10px 12px;
   }
 

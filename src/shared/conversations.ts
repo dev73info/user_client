@@ -83,6 +83,11 @@ export type RequirementConversationMessage = {
   action_type?: string | null
   /** 卡片关联标识：合同编号 / 交付版本号 / 解绑原因等。 */
   action_ref?: string | null
+  /**
+   * 卡片动作的发起方（仅卡片消息有值）：'customer' / 'developer' 表示这一步是需求方或
+   * 开发者做的，平台系统卡片为 null。会话里据此把卡片摆到「谁发起靠谁」那一侧。
+   */
+  actor_role?: 'customer' | 'developer' | null
   created_at: string
 }
 
