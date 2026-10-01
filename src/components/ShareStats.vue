@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { DataAnalysis, Refresh } from '@element-plus/icons-vue'
-import { TIcon } from 'ui_73info'
+import { TIcon, DataAnalysis, Refresh } from 'ui_73info'
 
 import { getShareStats, type ShareRecord } from '@/api/invite'
 import { useAuthStore } from '@/stores/auth'

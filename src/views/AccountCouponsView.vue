@@ -1,27 +1,8 @@
 <script setup lang="ts">
-import {
-  ArrowRight,
-  Bell,
-  Connection,
-  CreditCard,
-  Iphone,
-  Key,
-  Lock,
-  Message,
-  OfficeBuilding,
-  Postcard,
-  Promotion,
-  RefreshLeft,
-  RefreshRight,
-  SwitchButton,
-  User,
-  Warning,
-} from '@element-plus/icons-vue'
 import QRCode from 'qrcode'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-
 import {
   changeMyAdapaySettlementAccount,
   createMyAdapaySettlementAccount,
@@ -86,6 +67,40 @@ import {
   settlementBanks,
   settlementProvinces,
 } from '@/utils/settlementAccount'
+import {
+  TAlert,
+  TButton,
+  TCard,
+  TCheckbox,
+  TDatePicker,
+  TDialog,
+  TForm,
+  TFormItem,
+  TIcon,
+  TInput,
+  TLoading,
+  TOption,
+  TRadio,
+  TRadioGroup,
+  TSelect,
+  TTag,
+  ArrowRight,
+  Bell,
+  Connection,
+  CreditCard,
+  Iphone,
+  Key,
+  Lock,
+  Message,
+  OfficeBuilding,
+  Postcard,
+  Promotion,
+  RefreshLeft,
+  RefreshRight,
+  SwitchButton,
+  User,
+  Warning,
+} from 'ui_73info'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -213,7 +228,7 @@ const statusText = computed(() => {
   return '已驳回'
 })
 
-const statusType = computed<'info' | 'warning' | 'success' | 'danger'>(() => {
+const statusTone = computed<'info' | 'warning' | 'success' | 'danger'>(() => {
   const status = current.value?.status
   if (!status) return 'info'
   if (status === 'approved') return 'success'
@@ -987,7 +1002,9 @@ async function handleWithdraw() {
 }
 
 // ── 账户入口：两张卡片共用同一套「分组 + 行」结构 ────────────────
-type AccountEntryStatus = { text: string; type: 'success' | 'warning' | 'danger' | 'info' }
+/// 标签语气。`ui_73info` 的 `TTag` 收的是语义 `tone`，与 Element 的 `type` 同词；
+/// 这里的取值正好都在 `Tone` 里，所以字段名跟着改成 `tone`，模板写 `:tone`。
+type AccountEntryStatus = { text: string; tone: 'success' | 'warning' | 'danger' | 'info' }
 type AccountEntry = {
   key: string
   title: string
@@ -1025,7 +1042,7 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
       title: realnameEntryCopy.value.title,
       desc: realnameEntryCopy.value.desc,
       icon: Postcard,
-      status: { text: `实名认证：${statusText.value}`, type: statusType.value },
+      status: { text: `实名认证：${statusText.value}`, tone: statusTone.value },
     },
   ]
   if (realnamePending.value) {
@@ -1078,8 +1095,8 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
           : '绑定收款银行卡后，合同款才能结算到账',
       icon: CreditCard,
       status: settleSubjectMismatch.value
-        ? { text: '收款账户：待重绑', type: 'warning' }
-        : { text: `收款认证：${settleStatusText.value}`, type: settleStatusTagType.value },
+        ? { text: '收款账户：待重绑', tone: 'warning' }
+        : { text: `收款认证：${settleStatusText.value}`, tone: settleStatusTone.value },
     },
   ]
 
@@ -1117,7 +1134,7 @@ const accountEntryGroups = computed<AccountEntryGroup[]>(() => {
       title: providerLabel(provider),
       desc: bound ? '已绑定，点击可解除绑定' : '绑定后可扫码快捷登录',
       icon: Connection,
-      status: { text: bound ? '已绑定' : '未绑定', type: bound ? 'success' : 'info' },
+      status: { text: bound ? '已绑定' : '未绑定', tone: bound ? 'success' : 'info' },
       loading: providerBindingLoading.value,
     }
   }
@@ -1146,7 +1163,7 @@ const accountEntryGroups = computed<AccountEntryGroup[]>(() => {
           icon: Bell,
           status: {
             text: twoFactorEnabled.value ? '已开启' : '未开启',
-            type: twoFactorEnabled.value ? 'success' : 'info',
+            tone: twoFactorEnabled.value ? 'success' : 'info',
           },
         },
       ],
@@ -1161,7 +1178,7 @@ const accountEntryGroups = computed<AccountEntryGroup[]>(() => {
           icon: Connection,
           status: {
             text: wechatBound.value ? '已绑定' : '未绑定',
-            type: wechatBound.value ? 'success' : 'info',
+            tone: wechatBound.value ? 'success' : 'info',
           },
           loading: wechatBindingLoading.value,
         },
@@ -1463,7 +1480,7 @@ const settleStatusText = computed(() => {
   return '未认证'
 })
 
-const settleStatusTagType = computed<'success' | 'warning' | 'danger' | 'info'>(() => {
+const settleStatusTone = computed<'success' | 'warning' | 'danger' | 'info'>(() => {
   const status = adapayMember.value?.onboardingStatus
   if (status === 'active') return 'success'
   if (status === 'under_review' || status === 'pending') return 'warning'
@@ -2409,113 +2426,105 @@ onBeforeUnmount(() => {
       <div v-for="group in accountEntryGroups" :key="group.title" class="entry-group">
         <p class="entry-group__title">{{ group.title }}</p>
         <div class="entry-grid">
-          <el-button
+          <TButton
             v-for="entry in group.entries"
             :key="entry.key"
             class="entry-row"
             :class="{ 'entry-row--danger': entry.danger }"
-            type="button"
             :loading="Boolean(entry.loading)"
             @click="openAccountEntry(entry.key)"
           >
             <span class="entry-row__icon">
-              <el-icon><component :is="entry.icon" /></el-icon>
+              <TIcon><component :is="entry.icon" /></TIcon>
             </span>
             <span class="entry-row__copy">
-              <span class="entry-row__head">
-                <span class="entry-row__title">{{ entry.title }}</span>
-                <el-tag
-                  v-if="entry.status"
-                  :type="entry.status.type"
-                  size="small"
-                  round
-                  class="entry-row__status"
-                >
-                  {{ entry.status.text }}
-                </el-tag>
-              </span>
+              <span class="entry-row__title">{{ entry.title }}</span>
               <small class="entry-row__desc">{{ entry.desc }}</small>
+              <TTag
+                v-if="entry.status"
+                :tone="entry.status.tone"
+                size="sm"
+                class="entry-row__status"
+              >
+                {{ entry.status.text }}
+              </TTag>
             </span>
-            <el-icon class="entry-row__arrow"><ArrowRight /></el-icon>
-          </el-button>
+            <TIcon class="entry-row__arrow"><ArrowRight /></TIcon>
+          </TButton>
         </div>
       </div>
     </section>
 
     <section id="account-realname" class="account-realname-section">
       <div class="realname-page-shell">
-        <el-dialog
-          v-model="realnameDialogVisible"
+        <TDialog
+          v-model:open="realnameDialogVisible"
           title="提交认证信息"
           class="realname-dialog"
           width="620px"
-          :close-on-click-modal="true"
         >
           <div class="realname-form__head">
-            <el-tag :type="statusType" class="realname-form-status-tag" round
-              >实名认证：{{ statusText }}</el-tag
+            <TTag :tone="statusTone" class="realname-form-status-tag"
+              >实名认证：{{ statusText }}</TTag
             >
           </div>
 
-          <el-alert
+          <TAlert
             v-if="realnameChanging"
-            type="warning"
+            tone="warning"
             :closable="false"
             show-icon
             title="变更实名主体"
           >
             当前生效主体：{{ currentSubjectLabel }}。请填写新主体，提交后需重新完成认证；
             认证通过前账号实名状态为「认证中」，期间可撤回并还原为原主体。
-          </el-alert>
+          </TAlert>
 
-          <el-alert
+          <TAlert
             v-else-if="realnamePending && realnameChangeBacked"
-            type="info"
+            tone="info"
             :closable="false"
             show-icon
             title="主体变更认证中"
           >
             认证通过前账号实名状态为「认证中」，可点下方「取消变更，还原原主体」回到变更前的实名主体。
-          </el-alert>
+          </TAlert>
 
-          <el-form label-position="top" class="realname-form" @submit.prevent>
-            <el-form-item label="证件类型">
-              <el-radio-group v-model="form.authType" :disabled="realnameLocked">
-                <el-radio value="IDENTITY_CARD">个人</el-radio>
-                <el-radio value="ENTERPRISE">企业认证</el-radio>
-                <el-radio value="SOLE_PROPRIETOR">个体工商户</el-radio>
-              </el-radio-group>
-            </el-form-item>
+          <TForm label-position="top" class="realname-form" @submit.prevent>
+            <TFormItem label="证件类型">
+              <TRadioGroup v-model="form.authType" :disabled="realnameLocked">
+                <TRadio value="IDENTITY_CARD">个人</TRadio>
+                <TRadio value="ENTERPRISE">企业认证</TRadio>
+                <TRadio value="SOLE_PROPRIETOR">个体工商户</TRadio>
+              </TRadioGroup>
+            </TFormItem>
 
             <template v-if="businessSelected">
-              <el-form-item
-                :label="soleProprietorSelected ? '个体工商户名称' : '企业名称'"
-                required
-              >
-                <el-input
+              <TFormItem :label="soleProprietorSelected ? '个体工商户名称' : '企业名称'" required>
+                <TInput
                   v-model="form.companyName"
-                  maxlength="120"
+                  :maxlength="120"
                   placeholder="请输入企业名称"
                   :disabled="realnameLocked"
                 />
-              </el-form-item>
-              <el-form-item label="统一社会信用代码" required>
-                <el-input
+              </TFormItem>
+              <TFormItem label="统一社会信用代码" required>
+                <TInput
                   v-model="form.unifiedSocialCreditCode"
-                  maxlength="64"
+                  :maxlength="64"
                   placeholder="请输入统一社会信用代码"
                   :disabled="realnameLocked"
                 />
-              </el-form-item>
-              <el-form-item label="营业执照号">
-                <el-input
+              </TFormItem>
+              <TFormItem label="营业执照号">
+                <TInput
                   v-model="form.businessLicenseNo"
-                  maxlength="64"
+                  :maxlength="64"
                   placeholder="请输入营业执照号（可选）"
                   :disabled="realnameLocked"
                 />
-              </el-form-item>
-              <el-form-item label="营业执照文件" required>
+              </TFormItem>
+              <TFormItem label="营业执照文件" required>
                 <div class="realname-consent-upload">
                   <input
                     ref="businessLicenseFileInput"
@@ -2524,14 +2533,14 @@ onBeforeUnmount(() => {
                     accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf"
                     @change="handleBusinessLicenseFileChange"
                   />
-                  <el-button
-                    plain
+                  <TButton
+                    variant="outline"
                     :loading="businessLicenseUploading"
                     :disabled="realnameLocked"
                     @click="openBusinessLicensePicker"
                   >
                     选择文件上传
-                  </el-button>
+                  </TButton>
                   <span v-if="form.businessLicenseFile" class="realname-consent-upload__name">
                     已上传：{{ form.businessLicenseFile.split('/').pop() || '营业执照' }}
                   </span>
@@ -2539,39 +2548,36 @@ onBeforeUnmount(() => {
                     请上传营业执照扫描件或照片（图片或 PDF，10MB 以内）
                   </span>
                 </div>
-              </el-form-item>
-              <el-form-item label="经办人姓名" required>
-                <el-input
+              </TFormItem>
+              <TFormItem label="经办人姓名" required>
+                <TInput
                   v-model="form.operatorName"
-                  maxlength="120"
+                  :maxlength="120"
                   placeholder="请输入经办人姓名"
                   :disabled="realnameLocked"
                 />
-              </el-form-item>
-              <el-form-item label="经办人身份证号" required>
-                <el-input
+              </TFormItem>
+              <TFormItem label="经办人身份证号" required>
+                <TInput
                   v-model="form.operatorIdCardNo"
-                  maxlength="64"
+                  :maxlength="64"
                   placeholder="请输入经办人身份证号"
                   :disabled="realnameLocked"
                 />
-              </el-form-item>
-              <el-form-item label="手机号" required>
-                <el-input
+              </TFormItem>
+              <TFormItem label="手机号" required>
+                <TInput
                   v-model="form.mobile"
-                  maxlength="11"
+                  :maxlength="11"
                   placeholder="请输入经办人手机号（用于电子签署）"
                   :disabled="realnameLocked"
                 />
-              </el-form-item>
+              </TFormItem>
               <!-- 以下六项是支付渠道创建企业会员（对公收款账户）的必填进件资料：
                    缺任意一项，认证能过但对公收款账户开不了，所以在这里收齐 -->
-              <el-form-item
-                :label="`${soleProprietorSelected ? '个体户' : '企业'}所在省市`"
-                required
-              >
+              <TFormItem :label="`${soleProprietorSelected ? '个体户' : '企业'}所在省市`" required>
                 <div class="realname-region-row">
-                  <el-select
+                  <TSelect
                     v-model="form.companyProvCode"
                     filterable
                     clearable
@@ -2579,53 +2585,50 @@ onBeforeUnmount(() => {
                     :disabled="realnameLocked"
                     @change="changeEnterpriseProvince"
                   >
-                    <el-option
+                    <TOption
                       v-for="province in settlementProvinces"
                       :key="province.value"
                       :label="province.title"
                       :value="province.value"
                     />
-                  </el-select>
-                  <el-select
+                  </TSelect>
+                  <TSelect
                     v-model="form.companyAreaCode"
                     filterable
                     clearable
                     :disabled="realnameLocked || !form.companyProvCode"
                     :placeholder="form.companyProvCode ? '选择城市' : '请先选省份'"
                   >
-                    <el-option
+                    <TOption
                       v-for="city in enterpriseCities"
                       :key="city.value"
                       :label="city.title"
                       :value="city.value"
                     />
-                  </el-select>
+                  </TSelect>
                 </div>
-              </el-form-item>
-              <el-form-item
-                :label="`${soleProprietorSelected ? '个体户' : '企业'}注册地址`"
-                required
-              >
-                <el-input
+              </TFormItem>
+              <TFormItem :label="`${soleProprietorSelected ? '个体户' : '企业'}注册地址`" required>
+                <TInput
                   v-model="form.companyAddress"
-                  maxlength="200"
+                  :maxlength="200"
                   placeholder="按营业执照填写注册地址"
                   :disabled="realnameLocked"
                 />
-              </el-form-item>
-              <el-form-item label="经营范围" required>
-                <el-input
+              </TFormItem>
+              <TFormItem label="经营范围" required>
+                <TInput
                   v-model="form.businessScope"
-                  maxlength="200"
+                  :maxlength="200"
                   type="textarea"
                   :rows="2"
                   placeholder="按营业执照填写经营范围"
                   :disabled="realnameLocked"
                 />
-              </el-form-item>
-              <el-form-item label="营业执照有效期" required>
+              </TFormItem>
+              <TFormItem label="营业执照有效期" required>
                 <div class="realname-date-row">
-                  <el-date-picker
+                  <TDatePicker
                     v-model="form.businessLicenseExpiresOn"
                     type="date"
                     value-format="YYYYMMDD"
@@ -2633,19 +2636,19 @@ onBeforeUnmount(() => {
                     placeholder="选择有效期截止日"
                     :disabled="realnameLocked"
                   />
-                  <el-button
-                    link
-                    type="primary"
+                  <TButton
+                    variant="text"
+                    tone="accent"
                     :disabled="realnameLocked"
                     @click="form.businessLicenseExpiresOn = LONG_TERM_DATE"
                   >
                     长期有效
-                  </el-button>
+                  </TButton>
                 </div>
-              </el-form-item>
-              <el-form-item label="法人证件有效期" required>
+              </TFormItem>
+              <TFormItem label="法人证件有效期" required>
                 <div class="realname-date-row">
-                  <el-date-picker
+                  <TDatePicker
                     v-model="form.legalCertExpiresOn"
                     type="date"
                     value-format="YYYYMMDD"
@@ -2653,80 +2656,76 @@ onBeforeUnmount(() => {
                     placeholder="选择证件有效期截止日"
                     :disabled="realnameLocked"
                   />
-                  <el-button
-                    link
-                    type="primary"
+                  <TButton
+                    variant="text"
+                    tone="accent"
                     :disabled="realnameLocked"
                     @click="form.legalCertExpiresOn = LONG_TERM_DATE"
                   >
                     长期有效
-                  </el-button>
+                  </TButton>
                 </div>
-              </el-form-item>
-              <el-form-item>
-                <el-alert
-                  type="info"
+              </TFormItem>
+              <TFormItem>
+                <TAlert
+                  tone="info"
                   :closable="false"
                   show-icon
                   title="企业认证信息提交后将由平台审核，审核通过后可用于合同签署。"
                 />
-              </el-form-item>
+              </TFormItem>
             </template>
 
             <template v-else>
-              <el-form-item label="证件类型">
-                <el-select v-model="form.idCardType" :disabled="realnameLocked" style="width: 100%">
-                  <el-option label="居民身份证" :value="1" />
-                  <el-option label="台湾居民来往大陆通行证" :value="2" disabled />
-                  <el-option label="港澳居民来往内地通行证" :value="3" disabled />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="姓名" required>
-                <el-input
+              <TFormItem label="证件类型">
+                <TSelect v-model="form.idCardType" :disabled="realnameLocked" style="width: 100%">
+                  <TOption label="居民身份证" :value="1" />
+                  <TOption label="台湾居民来往大陆通行证" :value="2" disabled />
+                  <TOption label="港澳居民来往内地通行证" :value="3" disabled />
+                </TSelect>
+              </TFormItem>
+              <TFormItem label="姓名" required>
+                <TInput
                   v-model="form.realName"
-                  maxlength="120"
+                  :maxlength="120"
                   placeholder="请输入真实姓名"
                   :disabled="realnameLocked"
                 />
-              </el-form-item>
-              <el-form-item label="证件号" required>
-                <el-input
+              </TFormItem>
+              <TFormItem label="证件号" required>
+                <TInput
                   v-model="form.idCardNo"
-                  maxlength="64"
+                  :maxlength="64"
                   :placeholder="idCardPlaceholder"
                   :disabled="realnameLocked"
                 />
-              </el-form-item>
-              <el-form-item label="手机号" required>
-                <el-input
+              </TFormItem>
+              <TFormItem label="手机号" required>
+                <TInput
                   v-model="form.mobile"
-                  maxlength="11"
+                  :maxlength="11"
                   placeholder="请输入本人手机号（用于电子签署）"
                   :disabled="realnameLocked"
                 />
-              </el-form-item>
+              </TFormItem>
             </template>
 
-            <el-form-item v-if="isUnder14">
-              <el-alert
-                type="error"
+            <TFormItem v-if="isUnder14">
+              <TAlert
+                tone="danger"
                 :closable="false"
                 show-icon
                 title="未满 14 周岁的未成年人不能进行实名认证"
               />
-            </el-form-item>
+            </TFormItem>
 
-            <el-form-item v-if="isMinor14To18">
-              <el-checkbox v-model="form.guardianConsent" :disabled="realnameLocked">
+            <TFormItem v-if="isMinor14To18">
+              <TCheckbox v-model="form.guardianConsent" :disabled="realnameLocked">
                 我已取得监护人同意
-              </el-checkbox>
-            </el-form-item>
+              </TCheckbox>
+            </TFormItem>
 
-            <el-form-item
-              v-if="isMinor14To18 && form.guardianConsent"
-              label="监护人同意书"
-              required
-            >
+            <TFormItem v-if="isMinor14To18 && form.guardianConsent" label="监护人同意书" required>
               <div class="realname-consent-upload">
                 <input
                   ref="consentFileInput"
@@ -2735,14 +2734,14 @@ onBeforeUnmount(() => {
                   accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf"
                   @change="handleConsentFileChange"
                 />
-                <el-button
-                  plain
+                <TButton
+                  variant="outline"
                   :loading="consentUploading"
                   :disabled="realnameLocked"
                   @click="openConsentPicker"
                 >
                   选择文件上传
-                </el-button>
+                </TButton>
                 <span v-if="form.guardianConsentFile" class="realname-consent-upload__name">
                   已上传：{{ form.guardianConsentFile.split('/').pop() || '同意书' }}
                 </span>
@@ -2758,103 +2757,99 @@ onBeforeUnmount(() => {
                   下载监护人同意书模板
                 </a>
               </div>
-            </el-form-item>
+            </TFormItem>
 
-            <el-form-item v-if="isAdult">
-              <el-alert
-                type="info"
+            <TFormItem v-if="isAdult">
+              <TAlert
+                tone="info"
                 :closable="false"
                 show-icon
                 title="您已年满 18 周岁，无需上传监护人同意书"
               />
-            </el-form-item>
+            </TFormItem>
 
             <div class="realname-form__actions">
-              <el-button
+              <TButton
+                variant="outline"
+                tone="danger"
                 v-if="realnameCanWithdraw"
-                type="danger"
-                plain
                 :loading="withdrawing"
                 @click="handleWithdraw"
               >
                 {{ realnameChangeBacked ? '取消变更，还原原主体' : '撤回认证' }}
-              </el-button>
-              <el-button
+              </TButton>
+              <TButton
+                variant="outline"
                 v-if="realnameChanging"
-                plain
                 :disabled="submitting || faceidStarting"
                 @click="cancelRealnameChange"
               >
                 放弃变更
-              </el-button>
-              <el-button
-                type="primary"
+              </TButton>
+              <TButton
+                variant="solid"
+                tone="accent"
                 class="realname-submit-btn"
                 :loading="submitting || faceidStarting"
                 :disabled="submitDisabled"
                 @click="submitRealname"
               >
-                <el-icon v-if="identityCardSelected">
+                <TIcon v-if="identityCardSelected">
                   <Promotion />
-                </el-icon>
+                </TIcon>
                 {{ submitButtonText }}
-              </el-button>
+              </TButton>
             </div>
-          </el-form>
-        </el-dialog>
+          </TForm>
+        </TDialog>
 
-        <el-card shadow="never" class="realname-card asign-account-card">
+        <TCard class="realname-card asign-account-card">
           <div class="realname-form__head">
             <h3>认证管理</h3>
           </div>
           <div v-for="group in realnameEntryGroups" :key="group.title" class="entry-group">
             <p class="entry-group__title">{{ group.title }}</p>
             <div class="entry-grid">
-              <el-button
+              <TButton
                 v-for="entry in group.entries"
                 :key="entry.key"
                 class="entry-row"
                 :class="{ 'entry-row--danger': entry.danger }"
-                type="button"
                 :loading="Boolean(entry.loading)"
                 @click="openAccountEntry(entry.key)"
               >
                 <span class="entry-row__icon">
-                  <el-icon><component :is="entry.icon" /></el-icon>
+                  <TIcon><component :is="entry.icon" /></TIcon>
                 </span>
                 <span class="entry-row__copy">
-                  <span class="entry-row__head">
-                    <span class="entry-row__title">{{ entry.title }}</span>
-                    <el-tag
-                      v-if="entry.status"
-                      :type="entry.status.type"
-                      size="small"
-                      round
-                      class="entry-row__status"
-                    >
-                      {{ entry.status.text }}
-                    </el-tag>
-                  </span>
+                  <span class="entry-row__title">{{ entry.title }}</span>
                   <small class="entry-row__desc">{{ entry.desc }}</small>
+                  <TTag
+                    v-if="entry.status"
+                    :tone="entry.status.tone"
+                    size="sm"
+                    class="entry-row__status"
+                  >
+                    {{ entry.status.text }}
+                  </TTag>
                 </span>
-                <el-icon class="entry-row__arrow"><ArrowRight /></el-icon>
-              </el-button>
+                <TIcon class="entry-row__arrow"><ArrowRight /></TIcon>
+              </TButton>
             </div>
           </div>
-        </el-card>
+        </TCard>
 
-        <el-dialog
-          v-model="settleDialogVisible"
+        <TDialog
+          v-model:open="settleDialogVisible"
           title="收款银行卡"
           class="realname-dialog"
           width="520px"
-          :close-on-click-modal="true"
         >
-          <div v-loading="settleLoading" class="settle-dialog">
+          <TLoading tag="div" :loading="settleLoading" class="settle-dialog">
             <div class="settle-dialog__status">
               <div class="settle-dialog__status-item">
                 <span>收款认证</span>
-                <el-tag :type="settleStatusTagType" round>{{ settleStatusText }}</el-tag>
+                <TTag :tone="settleStatusTone">{{ settleStatusText }}</TTag>
               </div>
               <div class="settle-dialog__status-item">
                 <span>结算账户</span>
@@ -2863,20 +2858,20 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- 渠道原话：会员停在「待认证 / 未通过」时，这是唯一能对上号的线索 -->
-            <el-alert
+            <TAlert
               v-if="settleProviderError"
               class="settle-dialog__alert"
-              type="warning"
+              tone="warning"
               :closable="false"
               show-icon
               :title="settleProviderError"
             />
 
             <!-- 实名主体变更后旧卡不能再收款：先把原因说清楚，再给「按新主体重新绑定」的动作 -->
-            <el-alert
+            <TAlert
               v-if="settleSubjectMismatch"
               class="settle-dialog__alert"
-              type="warning"
+              tone="warning"
               :closable="false"
               show-icon
               :title="
@@ -2901,16 +2896,17 @@ onBeforeUnmount(() => {
                 </template>
               </p>
               <!-- 只读态自己带一个同样的入口，这里不再重复 -->
-              <el-button
+              <TButton
+                variant="solid"
+                tone="accent"
                 v-if="settleMaterialMissing && (!settleBound || settleEditing)"
                 class="settle-dialog__alert-action"
-                type="primary"
-                size="small"
+                size="sm"
                 @click="goFixSettleMaterial"
               >
                 去「变更认证主体」补齐企业资料
-              </el-button>
-            </el-alert>
+              </TButton>
+            </TAlert>
 
             <!-- 已绑定且未进入更换：只读态，给一个明确的更换入口 -->
             <div v-if="settleBound && !settleEditing" class="settle-dialog__bound">
@@ -2924,43 +2920,44 @@ onBeforeUnmount(() => {
                   当前已是可收款状态。更换银行卡时，平台会先解绑原卡再绑定新卡；新卡的持卡人姓名与证件号必须与实名认证信息一致，否则绑定会被渠道拒绝。
                 </template>
               </p>
-              <el-button
+              <TButton
+                variant="outline"
+                tone="accent"
                 v-if="settleMaterialMissing"
-                type="primary"
-                plain
                 @click="goFixSettleMaterial"
               >
                 去「变更认证主体」补齐企业资料
-              </el-button>
-              <el-button v-else type="primary" plain @click="startSettleChange">
+              </TButton>
+              <TButton variant="outline" tone="accent" v-else @click="startSettleChange">
                 {{ settleSubjectMismatch ? '按当前主体重新绑定' : '更换收款银行卡' }}
-              </el-button>
+              </TButton>
             </div>
 
-            <el-form
+            <TForm
+              label-position="left"
               v-else
               label-width="96px"
               class="settle-form"
               :disabled="settleSaving || settleLoading"
               @submit.prevent="saveSettleAccount"
             >
-              <el-alert
+              <TAlert
                 v-if="settleBound"
                 class="settle-form__alert"
-                type="warning"
+                tone="warning"
                 :closable="false"
                 show-icon
                 title="确认提交后原银行卡会立即解绑，再绑定新卡；解绑与绑定之间暂时无法分账。"
               />
-              <el-form-item label="银行卡号" required>
-                <el-input
+              <TFormItem label="银行卡号" required>
+                <TInput
                   v-model="settleForm.card_id"
                   inputmode="numeric"
                   placeholder="请输入收款银行卡号"
                 />
-              </el-form-item>
-              <el-form-item label="开户银行" required>
-                <el-select-v2
+              </TFormItem>
+              <TFormItem label="开户银行" required>
+                <TSelect
                   v-model="settleForm.bank_code"
                   :options="settlementBanks"
                   filterable
@@ -2969,9 +2966,9 @@ onBeforeUnmount(() => {
                   no-match-text="未找到该银行"
                   style="width: 100%"
                 />
-              </el-form-item>
-              <el-form-item label="开户省份" required>
-                <el-select
+              </TFormItem>
+              <TFormItem label="开户省份" required>
+                <TSelect
                   v-model="settleForm.prov_code"
                   filterable
                   clearable
@@ -2979,16 +2976,16 @@ onBeforeUnmount(() => {
                   style="width: 100%"
                   @change="changeSettleProvince"
                 >
-                  <el-option
+                  <TOption
                     v-for="province in settlementProvinces"
                     :key="province.value"
                     :label="province.title"
                     :value="province.value"
                   />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="开户城市" required>
-                <el-select
+                </TSelect>
+              </TFormItem>
+              <TFormItem label="开户城市" required>
+                <TSelect
                   v-model="settleForm.area_code"
                   filterable
                   clearable
@@ -2996,33 +2993,33 @@ onBeforeUnmount(() => {
                   :placeholder="settleForm.prov_code ? '选择开户银行所在城市' : '请先选择开户省份'"
                   style="width: 100%"
                 >
-                  <el-option
+                  <TOption
                     v-for="city in settleCities"
                     :key="city.value"
                     :label="city.title"
                     :value="city.value"
                   />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="账户类型">
-                <el-select v-model="settleForm.bank_acct_type" style="width: 100%">
-                  <el-option label="个人银行卡" value="2" />
-                  <el-option label="企业对公账户" value="1" />
-                </el-select>
-              </el-form-item>
-              <el-form-item>
-                <el-button v-if="settleBound" :disabled="settleSaving" @click="cancelSettleChange">
+                </TSelect>
+              </TFormItem>
+              <TFormItem label="账户类型">
+                <TSelect v-model="settleForm.bank_acct_type" style="width: 100%">
+                  <TOption label="个人银行卡" value="2" />
+                  <TOption label="企业对公账户" value="1" />
+                </TSelect>
+              </TFormItem>
+              <TFormItem>
+                <TButton v-if="settleBound" :disabled="settleSaving" @click="cancelSettleChange">
                   取消
-                </el-button>
-                <el-button type="primary" native-type="submit" :loading="settleSaving">
+                </TButton>
+                <TButton type="submit" variant="solid" tone="accent" :loading="settleSaving">
                   {{ settleSaving ? '保存中...' : settleBound ? '确认更换' : '保存结算账户' }}
-                </el-button>
-              </el-form-item>
-            </el-form>
-          </div>
-        </el-dialog>
+                </TButton>
+              </TFormItem>
+            </TForm>
+          </TLoading>
+        </TDialog>
 
-        <el-card shadow="never" class="realname-card realname-guide-card">
+        <TCard class="realname-card realname-guide-card">
           <h3>认证说明</h3>
           <ul class="realname-guide-card__list">
             <li>认证信息仅用于资质核验，请务必真实有效。</li>
@@ -3031,14 +3028,14 @@ onBeforeUnmount(() => {
             <li>审核通过后可用于合同签署。</li>
             <li>已通过的主体如需更换，可在「认证管理」里点「变更实名主体」重新认证。</li>
           </ul>
-        </el-card>
+        </TCard>
 
-        <el-dialog
-          v-model="faceidDialogVisible"
+        <TDialog
+          v-model:open="faceidDialogVisible"
           :title="enterpriseSelected ? '企业认证' : '人脸核身认证'"
           class="realname-faceid-dialog"
           width="480px"
-          :close-on-click-modal="false"
+          :mask-closable="false"
         >
           <div class="realname-faceid-panel__main">
             <div class="realname-faceid-panel__copy">
@@ -3075,42 +3072,41 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div class="realname-faceid-panel__actions">
-            <el-button class="realname-plain-btn" @click="openWechatFaceidPage">
-              <el-icon>
+            <TButton class="realname-plain-btn" @click="openWechatFaceidPage">
+              <TIcon>
                 <Promotion />
-              </el-icon>
+              </TIcon>
               {{ isMobile ? '打开认证页面完成核身' : '打开认证页面' }}
-            </el-button>
+            </TButton>
           </div>
           <div class="realname-faceid-panel__actions">
-            <el-button type="danger" plain :loading="withdrawing" @click="handleWithdraw">
+            <TButton variant="outline" tone="danger" :loading="withdrawing" @click="handleWithdraw">
               {{ realnameChangeBacked ? '取消变更，还原原主体' : '撤回认证' }}
-            </el-button>
-            <el-button
-              type="primary"
+            </TButton>
+            <TButton
+              variant="solid"
+              tone="accent"
               class="realname-submit-btn"
               :loading="faceidChecking"
               @click="checkWechatFaceidResult()"
             >
-              <el-icon>
+              <TIcon>
                 <RefreshRight />
-              </el-icon>
+              </TIcon>
               查询结果
-            </el-button>
+            </TButton>
           </div>
           <p class="realname-faceid-panel__hint">
             实名认证需本人完成，二维码有效期约 120
             分钟。若已完成核身，可点击「查询结果」刷新认证状态。
           </p>
-        </el-dialog>
+        </TDialog>
 
-        <el-dialog
-          v-model="asignDialogVisible"
+        <TDialog
+          v-model:open="asignDialogVisible"
           :title="asignDialogTitle"
           class="asign-dialog"
           width="520px"
-          :close-on-click-modal="true"
-          align-center
         >
           <template v-if="asignDialogKind === 'mobile'">
             <p class="asign-hint">换绑后，合同签署短信会发到新手机号。选择一种校验方式：</p>
@@ -3137,37 +3133,42 @@ onBeforeUnmount(() => {
 
             <template v-if="asignMobileMethod === 'code'">
               <div class="asign-row">
-                <el-input v-model="asign.mobileByCode.mobile" placeholder="新手机号" />
-                <el-button plain :loading="asignLoading.sendCode" @click="handleSendVerifyCode"
-                  >发送验证码</el-button
+                <TInput v-model="asign.mobileByCode.mobile" placeholder="新手机号" />
+                <TButton
+                  variant="outline"
+                  :loading="asignLoading.sendCode"
+                  @click="handleSendVerifyCode"
+                  >发送验证码</TButton
                 >
               </div>
               <div class="asign-row">
-                <el-input v-model="asign.mobileByCode.code" placeholder="短信验证码" />
-                <el-button
-                  type="primary"
+                <TInput v-model="asign.mobileByCode.code" placeholder="短信验证码" />
+                <TButton
+                  variant="solid"
+                  tone="accent"
                   :loading="asignLoading.mobileByCode"
                   @click="handleModifyMobileByCode"
-                  >确认修改</el-button
+                  >确认修改</TButton
                 >
               </div>
             </template>
 
             <template v-else>
               <div class="asign-row">
-                <el-input v-model="asign.mobileThree.name" placeholder="姓名（与实名一致）" />
+                <TInput v-model="asign.mobileThree.name" placeholder="姓名（与实名一致）" />
               </div>
               <div class="asign-row">
-                <el-input v-model="asign.mobileThree.idCard" placeholder="身份证号" />
+                <TInput v-model="asign.mobileThree.idCard" placeholder="身份证号" />
               </div>
               <div class="asign-row">
-                <el-input v-model="asign.mobileThree.mobile" placeholder="新手机号" />
+                <TInput v-model="asign.mobileThree.mobile" placeholder="新手机号" />
               </div>
-              <el-button
-                type="primary"
+              <TButton
+                variant="solid"
+                tone="accent"
                 :loading="asignLoading.mobileThree"
                 @click="handleModifyMobileThree"
-                >确认修改</el-button
+                >确认修改</TButton
               >
             </template>
           </template>
@@ -3206,40 +3207,38 @@ onBeforeUnmount(() => {
 
             <template v-if="signPwdMethod === 'modify'">
               <div class="asign-row">
-                <el-input
+                <TInput
                   v-model="asign.modifyPwd.oldSignPwd"
                   type="password"
                   placeholder="原签约密码"
                 />
               </div>
               <div class="asign-row">
-                <el-input
+                <TInput
                   v-model="asign.modifyPwd.signPwd"
                   type="password"
                   placeholder="新签约密码"
                 />
               </div>
-              <el-button
-                type="primary"
+              <TButton
+                variant="solid"
+                tone="accent"
                 :loading="asignLoading.signPwd"
                 @click="handleModifySignPassword"
-                >确认修改</el-button
+                >确认修改</TButton
               >
             </template>
 
             <template v-else-if="signPwdMethod === 'reset'">
               <div class="asign-row">
-                <el-input
-                  v-model="asign.resetPwd.signPwd"
-                  type="password"
-                  placeholder="新签约密码"
-                />
+                <TInput v-model="asign.resetPwd.signPwd" type="password" placeholder="新签约密码" />
               </div>
-              <el-button
-                type="primary"
+              <TButton
+                variant="solid"
+                tone="accent"
                 :loading="asignLoading.resetSignPwd"
                 @click="handleResetSignPassword"
-                >确认重置</el-button
+                >确认重置</TButton
               >
             </template>
 
@@ -3247,11 +3246,12 @@ onBeforeUnmount(() => {
               <p class="asign-hint">
                 点击下方按钮会跳转到爱签页面，按页面提示用手机核验后设置新密码。
               </p>
-              <el-button
-                type="primary"
+              <TButton
+                variant="solid"
+                tone="accent"
                 :loading="asignLoading.startSignPwd"
                 @click="handleStartModSignPassword"
-                >去爱签页面设置</el-button
+                >去爱签页面设置</TButton
               >
             </template>
           </template>
@@ -3259,53 +3259,57 @@ onBeforeUnmount(() => {
           <template v-else-if="asignDialogKind === 'company'">
             <p class="asign-hint">修改企业名称将自动生成新印章，法人信息请配合身份证号填写。</p>
             <div class="asign-row">
-              <el-input v-model="asign.company.companyName" placeholder="新企业名称（可选）" />
+              <TInput v-model="asign.company.companyName" placeholder="新企业名称（可选）" />
             </div>
             <div class="asign-row">
-              <el-input v-model="asign.company.legalName" placeholder="法人姓名（可选）" />
+              <TInput v-model="asign.company.legalName" placeholder="法人姓名（可选）" />
             </div>
             <div class="asign-row">
-              <el-input v-model="asign.company.legalIdCard" placeholder="法人身份证号（可选）" />
+              <TInput v-model="asign.company.legalIdCard" placeholder="法人身份证号（可选）" />
             </div>
-            <el-button
-              type="primary"
+            <TButton
+              variant="solid"
+              tone="accent"
               :loading="asignLoading.company"
               @click="handleModifyCompanyInfo"
-              >确认修改</el-button
+              >确认修改</TButton
             >
           </template>
 
           <template v-else-if="asignDialogKind === 'personal'">
             <p class="asign-hint">通过运营商三要素或银行卡四要素校验本人信息后更新资质。</p>
             <div class="asign-row">
-              <el-input v-model="asign.personal.personalName" placeholder="姓名" />
+              <TInput v-model="asign.personal.personalName" placeholder="姓名" />
             </div>
             <div class="asign-row">
-              <el-radio-group v-model="asign.personal.identifyType">
-                <el-radio :value="2">运营商三要素</el-radio>
-                <el-radio :value="3">银行卡四要素</el-radio>
-              </el-radio-group>
+              <TRadioGroup v-model="asign.personal.identifyType">
+                <TRadio :value="2">运营商三要素</TRadio>
+                <TRadio :value="3">银行卡四要素</TRadio>
+              </TRadioGroup>
             </div>
             <div v-if="asign.personal.identifyType === 2" class="asign-row">
-              <el-input v-model="asign.personal.mobile" placeholder="手机号" />
+              <TInput v-model="asign.personal.mobile" placeholder="手机号" />
             </div>
             <div v-if="asign.personal.identifyType === 3" class="asign-row">
-              <el-input v-model="asign.personal.bankCard" placeholder="银联卡号" />
+              <TInput v-model="asign.personal.bankCard" placeholder="银联卡号" />
             </div>
-            <el-button type="primary" :loading="asignLoading.personal" @click="handleModifyUserName"
-              >确认修改</el-button
+            <TButton
+              variant="solid"
+              tone="accent"
+              :loading="asignLoading.personal"
+              @click="handleModifyUserName"
+              >确认修改</TButton
             >
           </template>
-        </el-dialog>
+        </TDialog>
       </div>
     </section>
 
-    <el-dialog
-      v-model="emailDialogVisible"
+    <TDialog
+      v-model:open="emailDialogVisible"
       title="修改邮箱"
       class="account-dialog"
       width="480px"
-      :close-on-click-modal="true"
     >
       <div class="dialog-form">
         <div class="profile-update-row">
@@ -3342,14 +3346,13 @@ onBeforeUnmount(() => {
           </button>
         </div>
       </div>
-    </el-dialog>
+    </TDialog>
 
-    <el-dialog
-      v-model="passwordDialogVisible"
+    <TDialog
+      v-model:open="passwordDialogVisible"
       title="修改密码"
       class="account-dialog"
       width="480px"
-      :close-on-click-modal="true"
     >
       <div class="dialog-form">
         <div class="profile-update-row account-password-row account-password-row--send">
@@ -3394,14 +3397,13 @@ onBeforeUnmount(() => {
           </button>
         </div>
       </div>
-    </el-dialog>
+    </TDialog>
 
-    <el-dialog
-      v-model="usernameDialogVisible"
+    <TDialog
+      v-model:open="usernameDialogVisible"
       title="修改用户名"
       class="account-dialog"
       width="480px"
-      :close-on-click-modal="true"
     >
       <div class="dialog-form">
         <div class="profile-update-row">
@@ -3421,14 +3423,13 @@ onBeforeUnmount(() => {
           </button>
         </div>
       </div>
-    </el-dialog>
+    </TDialog>
 
-    <el-dialog
-      v-model="twoFactorDialogVisible"
+    <TDialog
+      v-model:open="twoFactorDialogVisible"
       title="两步验证"
       class="account-dialog"
       width="480px"
-      :close-on-click-modal="true"
     >
       <div class="dialog-form">
         <div class="account-2fa-methods">
@@ -3449,7 +3450,7 @@ onBeforeUnmount(() => {
           >
             <span class="account-2fa-method__name">手机号验证码</span>
             <small class="account-2fa-method__desc">通过绑定手机号接收验证码</small>
-            <el-tag size="small" type="info" class="account-2fa-method__tag">暂不支持</el-tag>
+            <TTag size="sm" tone="info" class="account-2fa-method__tag">暂不支持</TTag>
           </button>
         </div>
 
@@ -3501,22 +3502,20 @@ onBeforeUnmount(() => {
         </template>
 
         <div v-else class="account-2fa-unsupported">
-          <el-tag type="info" round>手机号两步验证暂不支持，请使用邮箱验证码</el-tag>
+          <TTag tone="info">手机号两步验证暂不支持，请使用邮箱验证码</TTag>
         </div>
       </div>
-    </el-dialog>
+    </TDialog>
 
-    <el-dialog
-      v-model="accountCloseDialogVisible"
+    <TDialog
+      v-model:open="accountCloseDialogVisible"
       title="注销账号"
       class="account-dialog account-close-dialog"
       width="480px"
-      :close-on-click-modal="true"
-      align-center
     >
       <div class="dialog-form account-close-form">
-        <el-alert
-          type="warning"
+        <TAlert
+          tone="warning"
           :closable="false"
           show-icon
           title="注销后将无法登录当前账号"
@@ -3525,7 +3524,7 @@ onBeforeUnmount(() => {
         <label class="account-close-confirm-label" for="account-close-confirmation">
           请输入“注销账号”确认
         </label>
-        <el-input
+        <TInput
           id="account-close-confirmation"
           v-model="accountCloseConfirmation"
           placeholder="注销账号"
@@ -3533,20 +3532,21 @@ onBeforeUnmount(() => {
           autocomplete="off"
         />
         <div class="account-close-actions">
-          <el-button :disabled="accountClosing" @click="accountCloseDialogVisible = false">
+          <TButton :disabled="accountClosing" @click="accountCloseDialogVisible = false">
             取消
-          </el-button>
-          <el-button
-            type="danger"
+          </TButton>
+          <TButton
+            variant="solid"
+            tone="danger"
             :loading="accountClosing"
             :disabled="!accountCloseReady"
             @click="handleCloseAccount"
           >
             确认注销
-          </el-button>
+          </TButton>
         </div>
       </div>
-    </el-dialog>
+    </TDialog>
 
     <WechatBindQrModal
       :visible="wechatBindQr.visible"
@@ -3750,75 +3750,42 @@ onBeforeUnmount(() => {
   gap: 10px;
 }
 
-/* 组内入口数为奇数时，最后一行会只剩左半格、右边空一片；让它整行铺满，
-   与「危险操作」那种整行入口保持一致，两张卡里都不再出现空格子 */
-.entry-grid > .entry-row.el-button:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
-}
-
-.entry-row.el-button {
-  width: 100%;
-  height: auto;
-  min-height: 56px;
-  margin: 0;
-  padding: 12px 14px;
-  justify-content: flex-start;
-  border-radius: 12px;
-  border: 1px solid var(--profile-card-border);
-  background: rgba(248, 250, 252, 0.92);
-  color: var(--profile-text-main);
-  text-align: left;
-  white-space: normal;
-}
-
-/* el-button 会把插槽包进一层按内容宽度收缩的内联 flex，于是右侧的状态标签与箭头
-   随文案长短左右浮动、两列各行都对齐不上；让这层撑满整行，标签与箭头统一贴行尾 */
-.entry-row.el-button :deep(> span) {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: center;
-  min-width: 0;
-}
-
-.entry-row.el-button:hover {
-  border-color: var(--profile-accent);
-  background: var(--profile-accent-soft);
-  color: var(--profile-text-main);
-}
-
 .entry-row__icon {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  /* 40px 底衬配 20px 图标：底衬要跟两行文案（14px 标题 + 12px 描述 ≈ 40px）站得住，
+     36px/18px 时图标看着缩在角落、整行发空 */
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  /* 图标与文案之间的横向间距，标题与副标题共用同一列、因此两者到图标的距离一致。
+     用 margin 而不是父层 gap：TButton 会给标签、图标、箭头各包一层 span，
+     gap 会同时给箭头也加一份，白白吃掉文案宽度。值与右侧 .entry-row__status 的 margin-right 对齐，一行左右两处留白同宽 */
+  margin-right: 12px;
   background: var(--profile-accent-soft);
   color: var(--profile-accent);
-  font-size: 15px;
+  font-size: 20px;
 }
 
+/* 文案区：标题与描述占左列，状态标签独占右列；标签列只在有标签时才有宽度，
+   没有标签的行（列宽 0）不因此少掉一个像素。
+   两行必须显式写出来：没有显式行时 grid-row 的 -1 会退化到第一行，
+   跨行失效、标签又贴回标题线上 */
 .entry-row__copy {
   display: grid;
   flex: 1 1 auto;
-  gap: 2px;
-  min-width: 0;
-}
-
-/* 标题行：入口名 + 状态标签。标签占的是这一行的行尾，下面那行描述就独占整列宽度，
-   不会再被标签挤到折行，各行高度因此能保持一致 */
-.entry-row__head {
-  display: flex;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
   align-items: center;
-  gap: 8px;
-  /* 行高锁在标题那一行，标签比它高出的部分溢出、不撑高整行 */
-  height: 1em;
+  row-gap: 2px;
   min-width: 0;
 }
 
 .entry-row__title {
-  flex: 0 1 auto;
+  grid-column: 1;
+  grid-row: 1;
   min-width: 0;
   overflow: hidden;
   color: var(--profile-text-main);
@@ -3829,15 +3796,27 @@ onBeforeUnmount(() => {
 }
 
 .entry-row__desc {
+  grid-column: 1;
+  grid-row: 2;
   color: var(--profile-text-sub);
   font-size: 12px;
   font-weight: 400;
   line-height: 1.5;
 }
 
+/* 状态标签：跨标题与描述两行、在整块文案里垂直居中，于是它和图标、箭头共用一条中线；
+   胶囊内部的文案再显式居中一次（水平 + 垂直），不依赖 TTag 自身的对齐实现。
+   左边与文案留 12px、右边与箭头留 12px——既不贴标题、也不顶到箭头上，且与
+   .entry-row__icon 的 margin-right 同宽。这两份间距写在标签自己的 margin 上，
+   没有标签的行（标签列宽 0）不会被它吃掉宽度 */
 .entry-row__status {
-  flex: 0 0 auto;
-  margin-left: auto;
+  grid-column: 2;
+  grid-row: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 12px;
+  margin-right: 12px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -3845,48 +3824,8 @@ onBeforeUnmount(() => {
 .entry-row__arrow {
   flex: 0 0 auto;
   color: var(--profile-text-soft);
+  font-size: 16px;
   transition: transform 0.2s ease;
-}
-
-.entry-row.el-button:hover .entry-row__arrow {
-  color: var(--profile-accent);
-  transform: translateX(3px);
-}
-
-.entry-row--danger.el-button {
-  grid-column: 1 / -1;
-  border-color: rgba(252, 165, 165, 0.72);
-  background: var(--profile-danger-soft);
-  color: var(--profile-danger-text);
-}
-
-.entry-row--danger.el-button:hover {
-  border-color: rgba(248, 113, 113, 0.82);
-  color: var(--profile-danger-text);
-}
-
-.entry-row--danger.el-button .entry-row__icon {
-  background: rgba(255, 255, 255, 0.7);
-  color: var(--profile-danger-text);
-}
-
-.entry-row--danger.el-button .entry-row__title,
-.entry-row--danger.el-button .entry-row__desc {
-  color: var(--profile-danger-text);
-}
-
-.entry-row.el-button.is-disabled,
-.entry-row.el-button.is-disabled:hover {
-  border-color: var(--profile-card-border);
-  background: rgba(241, 245, 249, 0.8);
-  color: var(--profile-text-soft);
-}
-
-.entry-row.el-button.is-disabled .entry-row__title,
-.entry-row.el-button.is-disabled .entry-row__desc,
-.entry-row.el-button.is-disabled .entry-row__arrow {
-  color: var(--profile-text-soft);
-  transform: none;
 }
 
 .account-security-head {
@@ -4146,25 +4085,6 @@ onBeforeUnmount(() => {
   gap: 12px;
 }
 
-:global(.account-dialog.el-dialog) {
-  border-radius: 18px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
-}
-
-:global(.el-overlay-dialog:has(> .account-dialog)) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-:global(.account-dialog .el-dialog__title) {
-  font-weight: 800;
-  color: #0f172a;
-}
-
 .account-close-form {
   gap: 16px;
 }
@@ -4184,10 +4104,6 @@ onBeforeUnmount(() => {
 .realname-page-shell {
   min-height: calc(100vh - 120px);
   gap: 26px;
-}
-
-.realname-guide-card :deep(.el-card__body) {
-  padding: 18px 20px;
 }
 
 .realname-guide-card {
@@ -4225,21 +4141,6 @@ onBeforeUnmount(() => {
   height: 7px;
   border-radius: 50%;
   background: linear-gradient(135deg, #2563eb, #4f8cff);
-}
-
-:deep(.realname-card.el-card) {
-  /* 与上方「账号与安全」那张卡同款外形，两张卡竖排时才像一对 */
-  border-radius: 24px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  background: rgba(255, 255, 255, 0.84);
-  backdrop-filter: blur(18px);
-  color: #0f172a;
-  box-shadow: 0 18px 42px rgba(76, 103, 172, 0.12);
-}
-
-:deep(.realname-card .el-card__body) {
-  /* 24px 与 .wallet-section 的内边距对齐，两张卡的文案左右边缘才落在同一条线上 */
-  padding: 24px;
 }
 
 .realname-metrics {
@@ -4317,33 +4218,6 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   width: 100%;
-}
-
-.realname-date-row :deep(.el-date-editor) {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-:global(.realname-dialog.el-dialog) {
-  border-radius: 18px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  background: rgba(255, 255, 255, 0.94);
-  color: #0f172a;
-  box-shadow: 0 18px 42px rgba(76, 103, 172, 0.18);
-}
-
-:global(.realname-dialog .el-dialog__header) {
-  padding: 20px 20px 0;
-}
-
-:global(.realname-dialog .el-dialog__title) {
-  font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-:global(.realname-dialog .el-dialog__body) {
-  padding: 12px 20px 20px;
 }
 
 :global(.realname-dialog .realname-form-status-tag) {
@@ -4483,90 +4357,6 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
 }
 
-:global(.realname-faceid-dialog.el-dialog) {
-  border-radius: 18px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  background: rgba(255, 255, 255, 0.94);
-  color: #0f172a;
-  box-shadow: 0 18px 42px rgba(76, 103, 172, 0.18);
-}
-
-:global(.realname-faceid-dialog .el-dialog__header) {
-  padding: 20px 20px 0;
-}
-
-:global(.realname-faceid-dialog .el-dialog__title) {
-  font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-:global(.realname-faceid-dialog .el-dialog__body) {
-  padding: 12px 20px 20px;
-  display: grid;
-  gap: 14px;
-  text-align: center;
-}
-
-:deep(.realname-form .el-form-item__label) {
-  color: #475569;
-  font-weight: 600;
-}
-
-:deep(.realname-form .el-radio) {
-  color: #0f172a;
-}
-
-:deep(.realname-form .el-radio__label) {
-  color: #0f172a;
-}
-
-:deep(.realname-form .el-input__wrapper) {
-  background: rgba(248, 250, 252, 0.96);
-  box-shadow: inset 0 0 0 1px rgba(198, 210, 236, 0.72);
-}
-
-:deep(.realname-form .el-input__inner) {
-  color: #0f172a;
-}
-
-:deep(.realname-form .el-input__inner::placeholder) {
-  color: #94a3b8;
-}
-
-:deep(.realname-form .el-input__wrapper.is-focus) {
-  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.8);
-}
-
-:deep(.realname-plain-btn.el-button) {
-  border-color: rgba(198, 210, 236, 0.82);
-  color: #1d4ed8;
-  background: rgba(239, 246, 255, 0.92);
-}
-
-:deep(.realname-plain-btn.el-button:hover) {
-  border-color: rgba(96, 165, 250, 0.72);
-  background: rgba(219, 234, 254, 0.96);
-  color: #1d4ed8;
-}
-
-:deep(.realname-submit-btn.el-button--primary) {
-  border-color: rgba(37, 99, 235, 0.82);
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
-  color: #fff;
-  font-weight: 700;
-}
-
-:deep(.realname-submit-btn.el-button .el-icon),
-:deep(.realname-plain-btn.el-button .el-icon) {
-  margin-right: 6px;
-}
-
-:deep(.realname-submit-btn.el-button--primary:hover) {
-  border-color: rgba(37, 99, 235, 0.95);
-  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
-}
-
 @media (max-width: 780px) {
   .entry-grid {
     grid-template-columns: 1fr;
@@ -4574,56 +4364,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
-  :deep(.realname-card .el-card__body) {
-    padding: 16px;
-  }
-
-  .entry-row.el-button {
-    min-height: 44px;
-    padding: 10px 12px;
-  }
-}
-
-:global(.asign-dialog.el-dialog) {
-  border-radius: 18px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  background: rgba(255, 255, 255, 0.94);
-  color: #0f172a;
-  box-shadow: 0 18px 42px rgba(76, 103, 172, 0.18);
-}
-
-:global(.asign-dialog .el-dialog__header) {
-  padding: 20px 20px 0;
-}
-
-:global(.asign-dialog .el-dialog__title) {
-  font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-:global(.asign-dialog .el-dialog__body) {
-  padding: 12px 20px 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-}
-
-:global(.asign-dialog .el-dialog__body > .el-button) {
-  align-self: flex-end;
-  margin-top: 4px;
-}
-
-:global(.asign-dialog .el-button--primary) {
-  border-color: rgba(37, 99, 235, 0.82);
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
-  color: #fff;
-  font-weight: 700;
-}
-
-:global(.asign-dialog .el-button--primary:hover) {
-  border-color: rgba(37, 99, 235, 0.95);
-  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
 }
 
 /* ── 弹窗内的方式选择（绑定手机号 / 签约密码） ── */
@@ -4681,10 +4421,6 @@ onBeforeUnmount(() => {
   margin-bottom: 0;
 }
 
-.asign-row .el-input {
-  flex: 1;
-}
-
 .asign-hint {
   color: #64748b;
   font-size: 12px;
@@ -4720,10 +4456,6 @@ onBeforeUnmount(() => {
 .settle-dialog__status-item strong {
   color: #0f172a;
   font-size: 14px;
-}
-
-.settle-form :deep(.el-form-item) {
-  margin-bottom: 14px;
 }
 
 /* 已绑定结算账户时的只读态：说明 + 更换入口 */

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { ArrowLeft, Refresh } from '@element-plus/icons-vue'
-import { TIcon } from 'ui_73info'
+import { TIcon, ArrowLeft, Refresh } from 'ui_73info'
 import { useRoute, useRouter } from 'vue-router'
 import {
     fetchAsignContractPreviewUrl,

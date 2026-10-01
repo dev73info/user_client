@@ -1,11 +1,23 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
 import { listMyContracts, type MyContractSummary } from '@/api/contracts'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { getSignatureState, signatureStateLabels, type SignatureState } from '@/utils/contractSignatures'
+
+
+import {
+  TButton,
+  TIcon,
+  TInput,
+  TOption,
+  TPagination,
+  TSelect,
+  Refresh,
+  RefreshLeft,
+  Search,
+} from 'ui_73info'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -141,9 +153,9 @@ function openDetail(item: MyContractSummary) {
         <span class="wb-strip__value">{{ stripValue(countOf('signed')) }}</span>
       </div>
       <div class="wb-strip__item wb-strip__action">
-        <el-button class="wb-toolbar__icon-btn" :loading="loading" aria-label="刷新签署记录" @click="loadContracts">
-          <el-icon><Refresh /></el-icon>
-        </el-button>
+        <TButton icon-only :loading="loading" aria-label="刷新签署记录" @click="loadContracts">
+          <TIcon><Refresh /></TIcon>
+        </TButton>
       </div>
     </div>
 
@@ -162,15 +174,15 @@ function openDetail(item: MyContractSummary) {
             {{ state.label }}<span class="wb-chip__count">{{ loading || error ? '—' : state.count }}</span>
           </button>
         </div>
-        <el-input v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索合同名称、编号或签约方"
+        <TInput v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索合同名称、编号或签约方"
           aria-label="搜索合同">
-          <template #prefix><el-icon><Search /></el-icon></template>
-        </el-input>
+          <template #prefix><TIcon><Search /></TIcon></template>
+        </TInput>
         <div class="wb-toolbar__actions">
           <span v-if="hasActiveFilters" class="wb-toolbar__hint">筛选出 {{ filteredTotal }} / {{ contracts.length }} 份</span>
-          <el-button v-if="hasActiveFilters" class="wb-toolbar__ghost" @click="resetFilters">
-            <el-icon><RefreshLeft /></el-icon><span>重置</span>
-          </el-button>
+          <TButton variant="outline" v-if="hasActiveFilters" @click="resetFilters">
+            <TIcon><RefreshLeft /></TIcon><span>重置</span>
+          </TButton>
         </div>
       </div>
 
@@ -178,18 +190,18 @@ function openDetail(item: MyContractSummary) {
       <div v-else-if="error" class="wb-empty" role="alert">
         <span class="wb-empty__title">加载签署记录失败</span>{{ error }}
         <div class="wb-empty__actions">
-          <el-button class="wb-toolbar__ghost" @click="loadContracts">
-            <el-icon><Refresh /></el-icon><span>重新加载</span>
-          </el-button>
+          <TButton variant="outline" @click="loadContracts">
+            <TIcon><Refresh /></TIcon><span>重新加载</span>
+          </TButton>
         </div>
       </div>
       <div v-else-if="!filteredContracts.length" class="wb-empty" role="status">
         <span class="wb-empty__title">{{ contracts.length ? '没有符合条件的签署记录' : '暂无签署记录' }}</span>
         <template v-if="contracts.length">
           <div class="wb-empty__actions">
-            <el-button class="wb-toolbar__ghost" @click="resetFilters">
-              <el-icon><RefreshLeft /></el-icon><span>清除筛选</span>
-            </el-button>
+            <TButton variant="outline" @click="resetFilters">
+              <TIcon><RefreshLeft /></TIcon><span>清除筛选</span>
+            </TButton>
           </div>
         </template>
         <template v-else>需求进入签约环节后，这里会出现待你签署的合同。</template>
@@ -208,22 +220,22 @@ function openDetail(item: MyContractSummary) {
             </div>
             <div class="wb-item__side">
               <span class="wb-badge" :class="badgeClass(item)">{{ signatureStateLabels[stateOf(item)] }}</span>
-              <el-button :class="stateOf(item) === 'pending' ? 'wb-toolbar__primary' : 'wb-toolbar__ghost'"
+              <TButton :class="stateOf(item) === 'pending' ? 'wb-toolbar__primary' : 'wb-toolbar__ghost'"
                 @click="openDetail(item)">
                 {{ stateOf(item) === 'pending' ? '去签署' : '查看详情' }}
-              </el-button>
+              </TButton>
             </div>
           </li>
         </ul>
         <div class="wb-pager">
           <div class="wb-pager__count">
             <span>共 {{ filteredTotal }} 份合同</span>
-            <el-select v-model="pageSize" class="wb-pager__size" aria-label="每页合同数">
-              <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-            </el-select>
+            <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页合同数">
+              <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+            </TSelect>
           </div>
-          <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-            :pager-count="5" layout="prev, pager, next" background aria-label="签署记录分页" />
+          <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+            :pager-count="5" background aria-label="签署记录分页" />
         </div>
       </template>
     </section>
@@ -238,9 +250,5 @@ function openDetail(item: MyContractSummary) {
 }
 
 @media (max-width: 640px) {
-  .wb-item .el-button {
-    min-height: 36px;
-    height: 36px;
-  }
 }
 </style>

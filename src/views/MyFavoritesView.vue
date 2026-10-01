@@ -1,13 +1,27 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowRight, ChatDotRound, Refresh, RefreshLeft, Search, Star } from '@element-plus/icons-vue'
-
 import { listFavoriteCommunityPosts, type CommunityPost } from '@/api/community'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
+
+
+import {
+  TButton,
+  TIcon,
+  TInput,
+  TOption,
+  TPagination,
+  TSelect,
+  ArrowRight,
+  ChatDotRound,
+  Refresh,
+  RefreshLeft,
+  Search,
+  Star,
+} from 'ui_73info'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -102,9 +116,9 @@ onMounted(() => {
         <span class="wb-strip__value">{{ loading ? '—' : tagFilters.length }}</span>
       </div>
       <div class="wb-strip__item wb-strip__action">
-        <el-button class="wb-toolbar__icon-btn" :loading="loading" aria-label="刷新收藏列表" @click="loadFavorites">
-          <el-icon><Refresh /></el-icon>
-        </el-button>
+        <TButton icon-only :loading="loading" aria-label="刷新收藏列表" @click="loadFavorites">
+          <TIcon><Refresh /></TIcon>
+        </TButton>
       </div>
     </div>
 
@@ -114,9 +128,9 @@ onMounted(() => {
           <h3 class="wb-card-head__title">我的收藏</h3>
         </div>
         <div class="wb-card-head__actions">
-          <el-button class="wb-toolbar__primary" @click="router.push({ name: 'community' })">
-            <el-icon><ArrowRight /></el-icon><span>浏览社区</span>
-          </el-button>
+          <TButton variant="solid" tone="accent" @click="router.push({ name: 'community' })">
+            <TIcon><ArrowRight /></TIcon><span>浏览社区</span>
+          </TButton>
         </div>
       </div>
 
@@ -132,15 +146,15 @@ onMounted(() => {
             {{ tag.name }}<span class="wb-chip__count">{{ tag.count }}</span>
           </button>
         </div>
-        <el-input v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索标题、作者或标签"
+        <TInput v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索标题、作者或标签"
           aria-label="搜索收藏">
-          <template #prefix><el-icon><Search /></el-icon></template>
-        </el-input>
+          <template #prefix><TIcon><Search /></TIcon></template>
+        </TInput>
         <div class="wb-toolbar__actions">
           <span v-if="hasActiveFilters" class="wb-toolbar__hint">筛选出 {{ filteredTotal }} / {{ posts.length }} 篇</span>
-          <el-button v-if="hasActiveFilters" class="wb-toolbar__ghost" @click="resetFilters">
-            <el-icon><RefreshLeft /></el-icon><span>重置</span>
-          </el-button>
+          <TButton variant="outline" v-if="hasActiveFilters" @click="resetFilters">
+            <TIcon><RefreshLeft /></TIcon><span>重置</span>
+          </TButton>
         </div>
       </div>
 
@@ -149,9 +163,9 @@ onMounted(() => {
         <span class="wb-empty__title">{{ posts.length ? '没有符合条件的收藏' : '还没有收藏帖子' }}</span>
         <template v-if="posts.length">
           <div class="wb-empty__actions">
-            <el-button class="wb-toolbar__ghost" @click="resetFilters">
-              <el-icon><RefreshLeft /></el-icon><span>清除筛选</span>
-            </el-button>
+            <TButton variant="outline" @click="resetFilters">
+              <TIcon><RefreshLeft /></TIcon><span>清除筛选</span>
+            </TButton>
           </div>
         </template>
         <template v-else>在社区里看到值得回看的内容，点亮收藏，之后就能在这里找到。</template>
@@ -170,8 +184,8 @@ onMounted(() => {
             <div class="wb-item__side">
               <span v-for="tag in post.tags" :key="tag.id" class="wb-badge">{{ tag.name }}</span>
               <span class="favorites__metrics">
-                <span><el-icon><Star /></el-icon>{{ post.like_count }}</span>
-                <span><el-icon><ChatDotRound /></el-icon>{{ post.comment_count }}</span>
+                <span><TIcon><Star /></TIcon>{{ post.like_count }}</span>
+                <span><TIcon><ChatDotRound /></TIcon>{{ post.comment_count }}</span>
               </span>
             </div>
           </li>
@@ -179,12 +193,12 @@ onMounted(() => {
         <div class="wb-pager">
           <div class="wb-pager__count">
             <span>共 {{ filteredTotal }} 篇帖子</span>
-            <el-select v-model="pageSize" class="wb-pager__size" aria-label="每页帖子数">
-              <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-            </el-select>
+            <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页帖子数">
+              <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+            </TSelect>
           </div>
-          <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-            :pager-count="5" layout="prev, pager, next" background aria-label="收藏分页" />
+          <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+            :pager-count="5" background aria-label="收藏分页" />
         </div>
       </template>
     </section>

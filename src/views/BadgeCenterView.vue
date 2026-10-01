@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ElConfigProvider } from 'element-plus'
-import { Refresh } from '@element-plus/icons-vue'
-import zhCn from 'element-plus/es/locale/lang/zh-cn.mjs'
-import { TButton, TIcon } from 'ui_73info'
+import { TButton, TIcon, Refresh } from 'ui_73info'
 
 import BadgeWall from '@/components/BadgeWall.vue'
 
@@ -24,8 +21,9 @@ import BadgeWall from '@/components/BadgeWall.vue'
       两套主题下的主色都是 #1f4ad1（`--wb-accent` 与门户 `--73-accent` 同值），所以这里
       只是「要不要在悬停时上色」的取舍，不是取错色。
 
-   本页下方渲染的 BadgeWall 里已经没有 Element 组件，但外层仍留着 ElConfigProvider：
-   它的作用域覆盖子组件，而 BadgeWall 将来加一个弹窗之类就会用到它的中文语言包。 */
+   本页原先外层还套着 ElConfigProvider（给子组件注入中文语言包）。按 ui_73info 的
+   口径去掉：本库的固定文案是中文硬编码，没有 locale 层；BadgeWall 里也已没有
+   Element 组件，留着它只会让 element-plus 这个依赖在本页继续挂着一个引用。 */
 
 const badgeWallRef = ref<InstanceType<typeof BadgeWall> | null>(null)
 const badgeStats = ref<{ acquired: number; total: number; equipped: number } | null>(null)
@@ -46,7 +44,6 @@ async function reload() {
 </script>
 
 <template>
-  <ElConfigProvider :locale="zhCn">
     <main class="page-shell custom-page-shell profile-page badges-center-page">
       <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
       <div class="wb-strip" aria-label="徽章概览">
@@ -77,7 +74,6 @@ async function reload() {
         <BadgeWall ref="badgeWallRef" @stats="applyBadgeStats" />
       </section>
     </main>
-  </ElConfigProvider>
 </template>
 
 <style scoped>

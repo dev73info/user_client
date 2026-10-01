@@ -4,8 +4,7 @@ import '@/styles/home.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowRight, Files, Finished, Money, User } from '@element-plus/icons-vue'
-import { TIcon } from 'ui_73info'
+import { TIcon, ArrowRight, Files, Finished, Money, User } from 'ui_73info'
 
 import { useAuthStore } from '@/stores/auth'
 import {

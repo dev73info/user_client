@@ -156,7 +156,7 @@ components:
 # 73Info 用户端 DESIGN.md
 
 > **本文是什么**：按 [DESIGN.md 格式规范](https://github.com/google-labs-code/design.md) 写的、给 AI 代理读的**视觉身份**文件。上面 frontmatter 里的令牌是**规范性取值**，正文负责解释怎么用。
-> **与 [设计规范.md](设计规范.md) 的分工**：本文管「长什么样」（令牌、视觉口径、禁令）；`设计规范.md` 管「怎么落到代码」（样式文件与加载顺序、Element Plus 的接入方式、交付自检清单）。
+> **与 [设计规范.md](设计规范.md) 的分工**：本文管「长什么样」（令牌、视觉口径、禁令）；`设计规范.md` 管「怎么落到代码」（样式文件与加载顺序、组件库 `ui_73info` 的接入方式、交付自检清单）。
 > **两处色值必须一致。** 改配色时两个文件一起改。令牌值以 `src/` 下的 CSS 为准。
 > 章节标题沿用规范规定的英文名（`## Colors` 等）以便工具识别，正文一律中文。
 > **lint 预期**：`npx @google/design.md lint` 应为 **0 error**。`orphaned-tokens` 警告是预期内的——这里登记的是一整份色板（含首页统计色、流程状态色、开发者强调色等**页面级**用法），而规范的组件属性只覆盖 `backgroundColor` / `textColor` / `rounded` / `padding` / `size` 等少数几项，**没有边框与阴影属性**，所以描边色、分隔色与页面级色必然显示成「未被组件引用」。不要为了让这个警告消失去编造组件。
@@ -287,25 +287,23 @@ components:
 | 表格 / 数字列 | 金额与计数加 `font-variant-numeric: tabular-nums` |
 | 移动端导航坞 | 复用 `PortalMobileDock.vue`，贴底并带安全区内边距 |
 
-### Element Plus 怎么接的（易踩坑）
+### 组件库怎么接的（易踩坑）
 
-`vite.config.ts` 用 `unplugin-vue-components` + `ElementPlusResolver` 按需引入，且 `importStyle: false`（样式由 `main.ts` 手动整包引入）。图标库是 `@element-plus/icons-vue`。
+**UI 层是自研组件库 [`ui_73info`](../../ui_73info/doc/架构.md)，Element Plus 已经全站移除。**
+`vite.config.ts` 现在只剩 `unplugin-vue-components` 的 `Components()`（默认只扫本项目
+`src/components`），库组件按需具名导入；库以 `link:` 引源码，所以 `resolve.dedupe: ['vue']`
+与 `tsconfig.app.json` 里 `vue` 的 paths 必须成对存在（否则出现两套 `Ref` 类型与两套响应式系统）。
 
-**Element Plus 的主色没有被全局覆盖，仍是默认的 `#409eff`。** 工作台里看到的蓝/青按钮，是各页面在局部改写 `--el-*` 变量实现的：
-
-```css
-/* src/styles/dev-resource.css */
-.el-button { --el-button-text-color: var(--dev-blue); --el-button-active-bg-color: var(--dev-blue); }
-```
-
-要改某一处 Element Plus 组件的外观，**照这个套路在对应页面或样式文件里改写 `--el-*`**，不要去写全局主题覆盖——目前没有那一层。
+**组件只认 `--73-*` 令牌，prop 是语义而不是颜色**（`tone="success"` / `variant="solid"`）。
+要改某处组件外观先用 prop；prop 表达不了的再改页面自己那层的令牌。
+**不要覆写 `.t73-*` 内部实现。** 接入细节见 [设计规范.md](设计规范.md) 第二节。
 
 ### 样式加载顺序
 
 `src/main.ts` 的导入顺序**就是**覆盖顺序，越靠后越优先：
 
 ```ts
-import 'element-plus/dist/index.css'   // 1. 组件库底座
+import 'ui_73info/styles.css'          // 1. 组件库的令牌与底座
 import './styles/user.css'             // 2. 门户侧（内含 9 个 @import）
 import './styles/unified-top-card.css' // 3. 统一顶部卡片
 import './styles/dev.css'              // 4. 开发者侧（内含 5 个 @import）
@@ -324,6 +322,6 @@ import './styles/dev.css'              // 4. 开发者侧（内含 5 个 @import
 - **Don't** 引入本文没登记的新的颜色值、圆角值或字号（尤其 10px 以下、20px 以上）。
 - **Don't** 给标题配装饰性副标题（标题下再顶一行灰字说明）；副标题只承载必要信息（状态、倒计时、口径、必填提示）。
 - **Don't** 新增媒体查询断点，只用 980 / 900 / 780 / 640。
-- **Don't** 写全局 Element Plus 主题覆盖，走局部 `--el-*`。
+- **Don't** 覆写 `.t73-*` 内部实现，或给库组件写 `--dev-*` 覆盖（那些变量已无组件在读）；先看组件的 prop。
 - **Don't** 把开发者侧写回暖白底——那套暖调已经移除。
 - **Don't** 因为「代码里声明了 Space Grotesk」就以为它在生效。

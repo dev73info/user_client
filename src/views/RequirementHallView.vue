@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Close, Connection, Plus, Refresh } from '@element-plus/icons-vue'
-
 import PublishModal from '@/components/PublishModal.vue'
 import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
@@ -18,7 +16,6 @@ import {
   type RequirementPaymentMode,
   type RequirementStatus,
 } from '@/api/requirements'
-
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
@@ -33,6 +30,7 @@ import {
   validateRequirementRichText,
 } from '@/utils/requirementRichText'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
+import { TIcon, TPagination, TLoading, Close, Connection, Plus, Refresh } from 'ui_73info'
 
 const router = useRouter()
 const route = useRoute()
@@ -452,7 +450,7 @@ async function loadHallData(page = hallPage.value) {
 <template>
   <main class="portal-page portal-page--nav">
     <section class="portal-page__content">
-      <section class="portal-page__panel" v-loading="loading">
+      <TLoading tag="section" class="portal-page__panel" :loading="loading">
         <div class="portal-page__section-header">
           <div>
             <h2>发现并接取合作机会</h2>
@@ -460,16 +458,20 @@ async function loadHallData(page = hallPage.value) {
           <div class="portal-page__header-actions requirement-hall__header-actions">
             <span v-if="overviewLoading" class="portal-page__loading-chip">同步中</span>
             <button class="requirement-hall__publish-btn" type="button" @click="openPublishModal">
-              <el-icon>
+              <TIcon>
                 <Plus />
-              </el-icon>
+              </TIcon>
               <span>发布需求</span>
             </button>
-            <button class="requirement-hall__refresh-btn" type="button" :disabled="loading || overviewLoading"
-              @click="loadHallData()">
-              <el-icon>
+            <button
+              class="requirement-hall__refresh-btn"
+              type="button"
+              :disabled="loading || overviewLoading"
+              @click="loadHallData()"
+            >
+              <TIcon>
                 <Refresh />
-              </el-icon>
+              </TIcon>
               <span>刷新</span>
             </button>
           </div>
@@ -485,18 +487,27 @@ async function loadHallData(page = hallPage.value) {
               aria-label="清空搜索"
               @click="resetKeyword"
             >
-              <el-icon>
+              <TIcon>
                 <Close />
-              </el-icon>
+              </TIcon>
             </button>
           </div>
-          <button class="portal-page__secondary" type="button" :disabled="!keyword.trim()" @click="resetKeyword">
+          <button
+            class="portal-page__secondary"
+            type="button"
+            :disabled="!keyword.trim()"
+            @click="resetKeyword"
+          >
             清空
           </button>
         </div>
 
         <div v-if="loading" class="portal-page__card-grid requirement-hall__grid">
-          <article v-for="item in 4" :key="item" class="portal-page__card portal-page__resource-skeleton">
+          <article
+            v-for="item in 4"
+            :key="item"
+            class="portal-page__card portal-page__resource-skeleton"
+          >
             <span class="portal-page__skeleton-chip"></span>
             <span class="portal-page__skeleton-title"></span>
             <span class="portal-page__skeleton-line portal-page__skeleton-line--wide"></span>
@@ -505,13 +516,24 @@ async function loadHallData(page = hallPage.value) {
           </article>
         </div>
 
-        <div v-else-if="filteredRequirements.length" class="portal-page__card-grid requirement-hall__grid">
-          <article v-for="card in filteredRequirements" :key="card.requirement_id"
-            class="portal-page__card requirement-hall__card" role="button" tabindex="0"
-            @click="openRequirementDetail(card)" @keydown.enter="openRequirementDetail(card)"
-            @keydown.space.prevent="openRequirementDetail(card)">
+        <div
+          v-else-if="filteredRequirements.length"
+          class="portal-page__card-grid requirement-hall__grid"
+        >
+          <article
+            v-for="card in filteredRequirements"
+            :key="card.requirement_id"
+            class="portal-page__card requirement-hall__card"
+            role="button"
+            tabindex="0"
+            @click="openRequirementDetail(card)"
+            @keydown.enter="openRequirementDetail(card)"
+            @keydown.space.prevent="openRequirementDetail(card)"
+          >
             <div class="portal-page__card-topline">
-              <PaymentModeChip :mode="card.payment_mode">{{ statusToLabel(card.status) }}</PaymentModeChip>
+              <PaymentModeChip :mode="card.payment_mode">{{
+                statusToLabel(card.status)
+              }}</PaymentModeChip>
             </div>
             <h2>{{ card.title }}</h2>
             <p>{{ requirementRichTextPreview(card.description, '当前需求暂未补充详细描述。') }}</p>
@@ -536,21 +558,25 @@ async function loadHallData(page = hallPage.value) {
 
         <div v-else class="portal-page__empty portal-page__empty--stacked">
           <strong>{{ keyword.trim() ? '没有匹配的需求' : '当前没有可展示的需求' }}</strong>
-          <button v-if="keyword.trim()" class="portal-page__secondary" type="button" @click="resetKeyword">
+          <button
+            v-if="keyword.trim()"
+            class="portal-page__secondary"
+            type="button"
+            @click="resetKeyword"
+          >
             清空筛选
           </button>
         </div>
 
-        <el-pagination
+        <TPagination
           v-if="!loading && filteredRequirements.length"
           class="requirement-hall__pager"
-          layout="prev, pager, next"
           :current-page="hallPage"
           :page-size="HALL_PAGE_SIZE"
           :total="hallTotal"
           @current-change="loadHallData"
         />
-      </section>
+      </TLoading>
 
       <aside class="portal-page__aside">
         <section class="portal-page__aside-card requirement-hall__overview-card">
@@ -558,8 +584,11 @@ async function loadHallData(page = hallPage.value) {
             <h3>大厅概览</h3>
           </div>
           <ul class="portal-page__timeline requirement-hall__stats">
-            <li v-for="item in hallStats" :key="item.label"
-              class="portal-page__timeline-item requirement-hall__stat-item">
+            <li
+              v-for="item in hallStats"
+              :key="item.label"
+              class="portal-page__timeline-item requirement-hall__stat-item"
+            >
               <div class="requirement-hall__stat-main">
                 <span>{{ item.label }}</span>
                 <strong>{{ item.value }}</strong>
@@ -573,11 +602,15 @@ async function loadHallData(page = hallPage.value) {
             <h3>最近交付</h3>
           </div>
           <ul v-if="recentDeals.length" class="portal-page__list requirement-hall__deal-list">
-            <li v-for="deal in recentDeals" :key="deal.payment_id"
-              class="portal-page__list-item requirement-hall__deal-item">
+            <li
+              v-for="deal in recentDeals"
+              :key="deal.payment_id"
+              class="portal-page__list-item requirement-hall__deal-item"
+            >
               <strong>{{ deal.title }}</strong>
-              <span class="portal-page__meta">{{ formatMoney(deal.amount_cny) }} · {{ formatTimeLabel(deal.paid_at)
-              }}</span>
+              <span class="portal-page__meta"
+                >{{ formatMoney(deal.amount_cny) }} · {{ formatTimeLabel(deal.paid_at) }}</span
+              >
               <p v-if="deal.comment_text">{{ deal.comment_text }}</p>
             </li>
           </ul>
@@ -589,15 +622,27 @@ async function loadHallData(page = hallPage.value) {
     </section>
   </main>
 
-  <PublishModal ref="publishModalRef" :visible="publishVisible" v-model:publishTitle="publishTitle"
-    v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
-    v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
+  <PublishModal
+    ref="publishModalRef"
+    :visible="publishVisible"
+    v-model:publishTitle="publishTitle"
+    v-model:publishDescription="publishDescription"
+    v-model:publishBudget="publishBudget"
+    v-model:publishAcceptance="publishAcceptance"
+    v-model:publishPaymentMode="publishPaymentMode"
     :publishLoading="publishLoading"
-    :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="showToast"
-    @submit="submitPublishRequirement" />
+    :draft-scope="auth.isAuthed ? auth.username : 'default'"
+    @close="closePublishModal"
+    @notify="showToast"
+    @submit="submitPublishRequirement"
+  />
 
   <Teleport to="body">
-    <div v-if="selectedRequirement" class="requirement-hall-detail-wrap" @click.self="closeRequirementDetail">
+    <div
+      v-if="selectedRequirement"
+      class="requirement-hall-detail-wrap"
+      @click.self="closeRequirementDetail"
+    >
       <section class="requirement-hall-detail" :aria-label="`${selectedRequirement.title}详情`">
         <header class="requirement-hall-detail__head">
           <div>
@@ -608,11 +653,15 @@ async function loadHallData(page = hallPage.value) {
               {{ statusToLabel(selectedRequirement.status) }}
             </p>
           </div>
-          <button class="requirement-hall-detail__close" type="button" aria-label="关闭详情"
-            @click="closeRequirementDetail">
-            <el-icon>
+          <button
+            class="requirement-hall-detail__close"
+            type="button"
+            aria-label="关闭详情"
+            @click="closeRequirementDetail"
+          >
+            <TIcon>
               <Close />
-            </el-icon>
+            </TIcon>
           </button>
         </header>
 
@@ -634,7 +683,8 @@ async function loadHallData(page = hallPage.value) {
             <span class="requirement-hall-detail__review-label">需求描述</span>
             <article
               class="requirement-hall-detail__review-value requirement-hall-detail__review-value--multiline requirement-hall-detail__rich"
-              v-html="selectedRequirementDescriptionHtml"></article>
+              v-html="selectedRequirementDescriptionHtml"
+            ></article>
           </div>
 
           <div class="requirement-hall-detail__review-grid">
@@ -649,17 +699,24 @@ async function loadHallData(page = hallPage.value) {
               <span class="requirement-hall-detail__review-label">验收标准</span>
               <article
                 class="requirement-hall-detail__review-value requirement-hall-detail__review-value--multiline requirement-hall-detail__rich"
-                v-html="selectedRequirementAcceptanceHtml"></article>
+                v-html="selectedRequirementAcceptanceHtml"
+              ></article>
             </div>
           </div>
         </section>
 
-        <div v-if="auth.isAuthed && !isSelectedRequirementOwnedByCurrentUser" class="requirement-hall-detail__actions">
-          <button class="requirement-hall-detail__bind" type="button"
-            @click="openRequirementWorkbench(selectedRequirement)">
-            <el-icon>
+        <div
+          v-if="auth.isAuthed && !isSelectedRequirementOwnedByCurrentUser"
+          class="requirement-hall-detail__actions"
+        >
+          <button
+            class="requirement-hall-detail__bind"
+            type="button"
+            @click="openRequirementWorkbench(selectedRequirement)"
+          >
+            <TIcon>
               <Connection />
-            </el-icon>
+            </TIcon>
             <span>前往工作台接取需求</span>
           </button>
         </div>
@@ -961,7 +1018,8 @@ async function loadHallData(page = hallPage.value) {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   background: rgba(15, 23, 42, 0.28);
   backdrop-filter: blur(5px);
 }

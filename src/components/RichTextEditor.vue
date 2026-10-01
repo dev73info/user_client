@@ -9,16 +9,7 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { TableRow } from '@tiptap/extension-table-row'
 import Underline from '@tiptap/extension-underline'
-import { ElMessageBox } from 'element-plus'
 import { common, createLowlight } from 'lowlight'
-import {
-    ArrowDown,
-    Brush,
-    Link as LinkIcon,
-    RefreshLeft,
-    RefreshRight,
-} from '@element-plus/icons-vue'
-
 import { renderMarkdownToRichHtml, sanitizeRichHtml, sanitizeRichHtmlForEditing } from '@/utils/sanitizeHtml'
 import {
     hasMeaningfulRichEditorContent,
@@ -34,6 +25,19 @@ import {
     RichEditorVideo,
 } from '@/utils/richEditorMedia'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
+
+
+import {
+  TButton,
+  TDialog,
+  TIcon,
+  TInput,
+  ArrowDown,
+  Brush,
+  Link as LinkIcon,
+  RefreshLeft,
+  RefreshRight,
+} from 'ui_73info'
 
 type ToolbarAction = 'bold' | 'italic' | 'underline' | 'bullet' | 'ordered' | 'blockquote' | 'code'
 type InsertAction = 'attachment' | 'image' | 'video'
@@ -945,17 +949,38 @@ function insertAttachment(href: string, label = '') {
     }
 }
 
-async function promptValue(message: string, title: string, defaultValue = ''): Promise<string | null> {
-    try {
-        const { value } = await ElMessageBox.prompt(message, title, {
-            inputValue: defaultValue,
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
-        })
-        return value
-    } catch {
-        return null
-    }
+/* ---------------------------------------------------------------------------
+   单行输入弹窗（替代 ElMessageBox.prompt）
+   ---------------------------------------------------------------------------
+   ui_73info 的 TMessageBox 只有 confirm / alert，没有带输入框的 prompt
+   （见 ui_73info/doc/架构.md 第八节），所以这里用库的 TDialog + TInput 就地搭一个。
+
+   语义与原 prompt 保持一致：确定交出输入值，取消 / Esc / 点遮罩交出 null。
+   三条出口都走 settlePrompt，它先把 resolve 取走再置空，所以重复触发是安全的
+   ——与库内 TMessageBox 的 finish() 同一个理由。
+   --------------------------------------------------------------------------- */
+
+const promptOpen = ref(false)
+const promptTitle = ref('')
+const promptMessage = ref('')
+const promptInput = ref('')
+let promptResolve: ((value: string | null) => void) | null = null
+
+function promptValue(message: string, title: string, defaultValue = ''): Promise<string | null> {
+    promptMessage.value = message
+    promptTitle.value = title
+    promptInput.value = defaultValue
+    promptOpen.value = true
+    return new Promise<string | null>((resolve) => {
+        promptResolve = resolve
+    })
+}
+
+function settlePrompt(value: string | null) {
+    const resolve = promptResolve
+    promptResolve = null
+    promptOpen.value = false
+    resolve?.(value)
 }
 
 async function promptInsertImage() {
@@ -1055,9 +1080,9 @@ defineExpose({
                         @click="toggleToolbarDropdown('heading')" @keydown.down.prevent="openDropdown = 'heading'"
                         @keydown.escape.stop.prevent="closeToolbarDropdown">
                         <span>{{ currentHeadingLabel() }}</span>
-                        <el-icon class="rich-text-editor__dropdown-caret" aria-hidden="true">
+                        <TIcon class="rich-text-editor__dropdown-caret" aria-hidden="true">
                             <ArrowDown />
-                        </el-icon>
+                        </TIcon>
                     </button>
                     <div v-if="openDropdown === 'heading'" class="rich-text-editor__dropdown-menu" role="menu">
                         <button v-for="item in headingOptions" :key="item.label"
@@ -1093,9 +1118,9 @@ defineExpose({
                         @keydown.down.prevent="openDropdown = 'codeLanguage'"
                         @keydown.escape.stop.prevent="closeToolbarDropdown">
                         <span>{{ currentCodeLanguageLabel() }}</span>
-                        <el-icon class="rich-text-editor__dropdown-caret" aria-hidden="true">
+                        <TIcon class="rich-text-editor__dropdown-caret" aria-hidden="true">
                             <ArrowDown />
-                        </el-icon>
+                        </TIcon>
                     </button>
                     <div v-if="openDropdown === 'codeLanguage'"
                         class="rich-text-editor__dropdown-menu rich-text-editor__dropdown-menu--code-language"
@@ -1112,9 +1137,9 @@ defineExpose({
 
                 <button class="rich-text-editor__tool" :class="{ 'is-active': editor?.isActive('link') }" type="button"
                     title="插入链接" aria-label="插入链接" @click="toggleLink">
-                    <el-icon aria-hidden="true">
+                    <TIcon aria-hidden="true">
                         <LinkIcon />
-                    </el-icon>
+                    </TIcon>
                     <span class="rich-text-editor__tool-text">链接</span>
                 </button>
 
@@ -1124,9 +1149,9 @@ defineExpose({
                         @click="toggleToolbarDropdown('insert')" @keydown.down.prevent="openDropdown = 'insert'"
                         @keydown.escape.stop.prevent="closeToolbarDropdown">
                         <span>插入</span>
-                        <el-icon class="rich-text-editor__dropdown-caret" aria-hidden="true">
+                        <TIcon class="rich-text-editor__dropdown-caret" aria-hidden="true">
                             <ArrowDown />
-                        </el-icon>
+                        </TIcon>
                     </button>
                     <div v-if="openDropdown === 'insert'" class="rich-text-editor__dropdown-menu" role="menu">
                         <button v-for="item in insertOptions" :key="item.action"
@@ -1138,22 +1163,22 @@ defineExpose({
                 </div>
                 <button class="rich-text-editor__tool" type="button" title="撤销" aria-label="撤销"
                     :disabled="!canRunHistoryAction('undo')" @click="runHistoryAction('undo')">
-                    <el-icon aria-hidden="true">
+                    <TIcon aria-hidden="true">
                         <RefreshLeft />
-                    </el-icon>
+                    </TIcon>
                 </button>
                 <button class="rich-text-editor__tool" type="button" title="重做" aria-label="重做"
                     :disabled="!canRunHistoryAction('redo')" @click="runHistoryAction('redo')">
-                    <el-icon aria-hidden="true">
+                    <TIcon aria-hidden="true">
                         <RefreshRight />
-                    </el-icon>
+                    </TIcon>
                 </button>
 
                 <button class="rich-text-editor__tool rich-text-editor__tool--clear" type="button" title="清除格式"
                     aria-label="清除格式" @click="clearFormatting">
-                    <el-icon aria-hidden="true">
+                    <TIcon aria-hidden="true">
                         <Brush />
-                    </el-icon>
+                    </TIcon>
                     <span class="rich-text-editor__tool-text">清除</span>
                 </button>
             </div>
@@ -1162,6 +1187,19 @@ defineExpose({
         <div class="rich-text-editor__body">
             <EditorContent v-if="editor" :editor="editor" />
         </div>
+
+        <!-- 单行输入弹窗：接替 ElMessageBox.prompt，做法见脚本里 promptValue 上方的注释 -->
+        <TDialog :open="promptOpen" :title="promptTitle" :width="420" @update:open="settlePrompt(null)"
+            @close="settlePrompt(null)">
+            <label class="rich-text-editor__prompt-field">
+                <span class="rich-text-editor__prompt-label">{{ promptMessage }}</span>
+                <TInput v-model="promptInput" autofocus @enter="settlePrompt(promptInput)" />
+            </label>
+            <template #footer>
+                <TButton variant="outline" @click="settlePrompt(null)">取消</TButton>
+                <TButton variant="solid" tone="accent" @click="settlePrompt(promptInput)">确定</TButton>
+            </template>
+        </TDialog>
     </div>
 </template>
 
@@ -1393,7 +1431,7 @@ defineExpose({
     box-shadow: none;
 }
 
-.rich-text-editor__tool :deep(.el-icon) {
+.rich-text-editor__tool :deep(.t73-icon) {
     font-size: 15px;
 }
 
@@ -1424,6 +1462,17 @@ defineExpose({
 .rich-text-editor__tool:not(:has(.rich-text-editor__tool-text)) {
     width: 34px;
     padding: 0;
+}
+
+.rich-text-editor__prompt-field {
+    display: grid;
+    gap: 8px;
+}
+
+.rich-text-editor__prompt-label {
+    color: var(--73-ink-soft);
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .rich-text-editor__body {

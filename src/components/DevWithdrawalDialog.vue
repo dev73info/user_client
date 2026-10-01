@@ -25,6 +25,8 @@ import {
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
+
+import { TButton, TDialog, TForm, TFormItem, TInput, TInputNumber } from 'ui_73info'
 const auth = useAuthStore()
 const router = useRouter()
 const { showToast } = useToast()
@@ -178,35 +180,35 @@ defineExpose({ open })
 
 <template>
   <!-- 收入提现：收款账户固定为账号中心绑定的收款银行卡，前端只采集金额与备注 -->
-  <el-dialog v-model="visible" title="申请提现" width="520px" align-center class="dev-dialog">
-    <el-form label-position="top">
-      <el-form-item label="可提现余额">
+  <TDialog v-model:open="visible" title="申请提现" width="520px" class="dev-dialog">
+    <TForm label-position="top">
+      <TFormItem label="可提现余额">
         <div class="dev-figure dev-figure--sm">{{ money(withdrawable) }}</div>
-      </el-form-item>
-      <el-form-item label="提现金额" required>
-        <el-input-number v-model="form.amount_cny" :min="MIN_AMOUNT_CNY" :max="withdrawable"
+      </TFormItem>
+      <TFormItem label="提现金额" required>
+        <TInputNumber v-model="form.amount_cny" :min="MIN_AMOUNT_CNY" :max="withdrawable"
           :precision="2" :step="0.01" placeholder="提现金额" style="width: 100%" />
         <div class="dev-wallet-withdraw__note">
           最多 {{ money(withdrawable) }}，保留两位小数，不能超过可提现余额。
         </div>
-      </el-form-item>
-      <el-form-item label="收款账户">
+      </TFormItem>
+      <TFormItem label="收款账户">
         <div class="dev-wallet-withdraw__account">
           <span>{{ payoutAccountLabel }}</span>
-          <el-button link type="primary" @click="goBindSettlementAccount">
+          <TButton variant="text" tone="accent" @click="goBindSettlementAccount">
             {{ payoutChannelReady ? '更换银行卡' : '去绑定' }}
-          </el-button>
+          </TButton>
         </div>
         <div class="dev-wallet-withdraw__note">{{ payoutScheduleNote }}</div>
-      </el-form-item>
-      <el-form-item label="申请备注">
-        <el-input v-model="form.note" type="textarea" :rows="3" :maxlength="NOTE_MAX_LEN" show-word-limit
+      </TFormItem>
+      <TFormItem label="申请备注">
+        <TInput show-count v-model="form.note" type="textarea" :rows="3" :maxlength="NOTE_MAX_LEN"
           placeholder="可选" />
-      </el-form-item>
-    </el-form>
+      </TFormItem>
+    </TForm>
     <template #footer>
-      <el-button @click="visible = false">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="submit">确认提现</el-button>
+      <TButton @click="visible = false">取消</TButton>
+      <TButton variant="solid" tone="accent" :loading="submitting" @click="submit">确认提现</TButton>
     </template>
-  </el-dialog>
+  </TDialog>
 </template>

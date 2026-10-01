@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Refresh, RefreshLeft, Search, WarningFilled } from '@element-plus/icons-vue'
-
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import {
   listConversationHistoryDisclosures,
@@ -23,6 +21,20 @@ import { useToast } from '@/composables/useToast'
 import { CONVERSATION_READ_EVENT } from '@/shared/conversationEvents'
 import { useAuthStore } from '@/stores/auth'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
+
+
+import {
+  TButton,
+  TIcon,
+  TInput,
+  TOption,
+  TPagination,
+  TSelect,
+  Refresh,
+  RefreshLeft,
+  Search,
+  WarningFilled,
+} from 'ui_73info'
 
 type MessageFilter = 'all' | 'active' | 'pending'
 
@@ -610,12 +622,12 @@ watch(
         <span class="dev-meta-strip__value">{{ recentConversationCount }}</span>
       </div>
       <div class="dev-meta-strip__item dev-meta-strip__action">
-        <el-button class="dev-toolbar__icon-btn" aria-label="刷新消息" title="刷新消息" :loading="loading"
+        <TButton icon-only aria-label="刷新消息" title="刷新消息" :loading="loading"
           @click="loadMessages(true)">
-          <el-icon>
+          <TIcon>
             <Refresh />
-          </el-icon>
-        </el-button>
+          </TIcon>
+        </TButton>
       </div>
     </div>
 
@@ -635,12 +647,12 @@ watch(
         <span class="wb-strip__value">{{ recentConversationCount }}</span>
       </div>
       <div class="wb-strip__item wb-strip__action">
-        <el-button class="wb-toolbar__icon-btn" aria-label="刷新消息" title="刷新消息" :loading="loading"
+        <TButton icon-only aria-label="刷新消息" title="刷新消息" :loading="loading"
           @click="loadMessages(true)">
-          <el-icon>
+          <TIcon>
             <Refresh />
-          </el-icon>
-        </el-button>
+          </TIcon>
+        </TButton>
       </div>
     </section>
 
@@ -653,9 +665,9 @@ watch(
     <template v-else-if="isDevWorkbench">
       <div v-for="item in pendingHistoryVotes" :key="`history-vote-${item.id}`" class="dev-notice">
         <span class="dev-notice__icon">
-          <el-icon>
+          <TIcon>
             <WarningFilled />
-          </el-icon>
+          </TIcon>
         </span>
         <div class="dev-notice__copy">
           <strong>{{ item.requirement_title || item.requirement_id }}</strong>
@@ -687,29 +699,29 @@ watch(
         </div>
 
         <div class="dev-toolbar">
-          <el-select v-model="activeFilter" class="dev-toolbar__field" aria-label="消息筛选">
-            <el-option label="全部" value="all" />
-            <el-option label="已开启" value="active" />
-            <el-option label="待同步" value="pending" />
-          </el-select>
-          <el-input v-model="searchKeyword" clearable class="dev-toolbar__search" placeholder="搜索需求编号、标题、对方或消息"
+          <TSelect v-model="activeFilter" class="dev-toolbar__field" aria-label="消息筛选">
+            <TOption label="全部" value="all" />
+            <TOption label="已开启" value="active" />
+            <TOption label="待同步" value="pending" />
+          </TSelect>
+          <TInput v-model="searchKeyword" clearable class="dev-toolbar__search" placeholder="搜索需求编号、标题、对方或消息"
             aria-label="搜索消息">
             <template #prefix>
-              <el-icon>
+              <TIcon>
                 <Search />
-              </el-icon>
+              </TIcon>
             </template>
-          </el-input>
+          </TInput>
           <div class="dev-toolbar__actions">
             <span v-if="hasActiveThreadFilters" class="dev-toolbar__hint">
               筛选出 {{ filteredThreads.length }} / {{ allThreads.length }} 条
             </span>
-            <el-button class="dev-toolbar__ghost" @click="resetThreadFilters">
-              <el-icon>
+            <TButton variant="outline" @click="resetThreadFilters">
+              <TIcon>
                 <RefreshLeft />
-              </el-icon>
+              </TIcon>
               <span>重置</span>
-            </el-button>
+            </TButton>
           </div>
         </div>
 
@@ -750,12 +762,12 @@ watch(
         <div v-if="!loading && filteredTotal > 0" class="dev-pager">
           <div class="dev-pager__count">
             <span>共 {{ filteredTotal }} 条会话</span>
-            <el-select v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
-              <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-            </el-select>
+            <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
+              <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+            </TSelect>
           </div>
-          <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-            :pager-count="5" layout="prev, pager, next" background aria-label="会话分页" />
+          <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+            :pager-count="5" background aria-label="会话分页" />
         </div>
       </section>
     </template>
@@ -768,29 +780,29 @@ watch(
       </div>
 
       <div class="wb-toolbar">
-        <el-select v-model="activeFilter" class="wb-toolbar__field" aria-label="消息筛选">
-          <el-option label="全部" value="all" />
-          <el-option label="已开启" value="active" />
-          <el-option label="待同步" value="pending" />
-        </el-select>
-        <el-input v-model="searchKeyword" clearable class="wb-toolbar__search"
+        <TSelect v-model="activeFilter" class="wb-toolbar__field" aria-label="消息筛选">
+          <TOption label="全部" value="all" />
+          <TOption label="已开启" value="active" />
+          <TOption label="待同步" value="pending" />
+        </TSelect>
+        <TInput v-model="searchKeyword" clearable class="wb-toolbar__search"
           placeholder="搜索需求标题、编号、对方或消息" aria-label="搜索消息">
           <template #prefix>
-            <el-icon>
+            <TIcon>
               <Search />
-            </el-icon>
+            </TIcon>
           </template>
-        </el-input>
+        </TInput>
         <div class="wb-toolbar__actions">
           <span v-if="hasActiveThreadFilters" class="wb-toolbar__hint">
             筛选出 {{ filteredThreads.length }} / {{ allThreads.length }} 条
           </span>
-          <el-button v-if="hasActiveThreadFilters" class="wb-toolbar__ghost" @click="resetThreadFilters">
-            <el-icon>
+          <TButton variant="outline" v-if="hasActiveThreadFilters" @click="resetThreadFilters">
+            <TIcon>
               <RefreshLeft />
-            </el-icon>
+            </TIcon>
             <span>重置</span>
-          </el-button>
+          </TButton>
         </div>
       </div>
 
@@ -805,14 +817,14 @@ watch(
             </p>
           </div>
           <div class="messages-disclosure__actions">
-            <el-button class="wb-toolbar__ghost" :disabled="historyVotingId !== null"
+            <TButton variant="outline" :disabled="historyVotingId !== null"
               @click="respondHistoryDisclosure(item, 'approved')">
               同意公开
-            </el-button>
-            <el-button class="wb-toolbar__ghost" :disabled="historyVotingId !== null"
+            </TButton>
+            <TButton variant="outline" :disabled="historyVotingId !== null"
               @click="respondHistoryDisclosure(item, 'rejected')">
               拒绝
-            </el-button>
+            </TButton>
           </div>
         </article>
       </section>
@@ -821,12 +833,12 @@ watch(
       <div v-else-if="filteredThreads.length === 0 && pendingHistoryVotes.length === 0" class="wb-empty">
         <span class="wb-empty__title">{{ emptyTitle() }}</span>
         <div v-if="hasActiveThreadFilters" class="wb-empty__actions">
-          <el-button class="wb-toolbar__ghost" @click="resetThreadFilters">
-            <el-icon>
+          <TButton variant="outline" @click="resetThreadFilters">
+            <TIcon>
               <RefreshLeft />
-            </el-icon>
+            </TIcon>
             <span>清除筛选</span>
-          </el-button>
+          </TButton>
         </div>
       </div>
       <ul v-else class="wb-list" aria-label="会话列表">
@@ -853,12 +865,12 @@ watch(
       <div v-if="!loading && filteredTotal > 0" class="wb-pager">
         <div class="wb-pager__count">
           <span>共 {{ filteredTotal }} 条会话</span>
-          <el-select v-model="pageSize" class="wb-pager__size" aria-label="每页会话数">
-            <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-          </el-select>
+          <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页会话数">
+            <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+          </TSelect>
         </div>
-        <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-          :pager-count="5" layout="prev, pager, next" background aria-label="会话分页" />
+        <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+          :pager-count="5" background aria-label="会话分页" />
       </div>
     </section>
 
@@ -930,12 +942,6 @@ watch(
   .messages-disclosure {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  /* 触屏档：两个动作平分整行，触摸目标 ≥44px */
-  .messages-disclosure__actions .el-button {
-    flex: 1;
-    min-height: 44px;
   }
 }
 

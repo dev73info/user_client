@@ -35,6 +35,7 @@ import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
+import { TLoading } from 'ui_73info'
 
 type CommentGate = {
   title: string
@@ -721,7 +722,7 @@ watch(
 
 <template>
   <main class="portal-page resource-detail-page">
-    <section class="resource-detail-page__panel" v-loading="loading">
+    <TLoading tag="section" class="resource-detail-page__panel" :loading="loading">
       <template v-if="resource">
         <section class="resource-detail-page__lead">
           <div class="resource-detail-page__left-stack">
@@ -894,7 +895,7 @@ watch(
               </form>
             </section>
 
-            <div class="resource-detail-page__comment-list" v-loading="commentsLoading">
+            <TLoading tag="div" class="resource-detail-page__comment-list" :loading="commentsLoading">
               <article v-for="comment in comments" :key="comment.id" class="resource-detail-page__comment-item"
                 :class="{ mine: auth.username && comment.commenter === auth.username }">
                 <div class="resource-detail-page__comment-avatar">
@@ -911,11 +912,11 @@ watch(
               <p v-if="!commentsLoading && comments.length === 0" class="resource-detail-page__paragraph">
                 暂时还没有评论。
               </p>
-            </div>
+            </TLoading>
           </article>
         </section>
       </template>
-    </section>
+    </TLoading>
   </main>
 </template>
 

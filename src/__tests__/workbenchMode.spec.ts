@@ -47,11 +47,9 @@ const routes: RouteRecordRaw[] = [
 async function render(name: string) {
   const router = createRouter({ history: createMemoryHistory(), routes })
   await router.push({ name })
-  const wrapper = mount(UserWorkbenchView, { global: { plugins: [router], stubs: {
-    ElIcon: { template: '<i><slot /></i>' },
-    ElScrollbar: { template: '<div><slot /></div>' },
-    RouterView: true,
-  } } })
+  const wrapper = mount(UserWorkbenchView, {
+    global: { plugins: [router], stubs: { RouterView: true } },
+  })
   await flushPromises()
   return { wrapper, router }
 }

@@ -5,11 +5,12 @@ import App from './App.vue'
 import router from './router'
 import { installGlobalFetchLoadingTracker } from './composables/useGlobalLoadingScreen'
 import { installMockFetch } from './mock/index'
-import 'element-plus/dist/index.css'
 // ui_73info 的令牌与样式底座。放在页面样式**之前**：令牌要早于消费它的样式生效
 // （见 ui_73info 的 styles/index.css 顶部）。它只定义 `--73-*` 与 `.t73` 类名空间，
-// 不碰 Element 的 `--el-*`，也不碰各端自己的 `--dev-*` / `--portal-*` / `--profile-*`，
-// 所以引进来不会改动任何还没迁移的页面。迁移期的 alias.css（旧变量名桥接）本次**没有引**，
+// 不碰各端自己的 `--dev-*` / `--portal-*` / `--profile-*`。
+//
+// 原来在这之前引的 `element-plus/dist/index.css` 已随组件库一起移除：整站已迁到
+// ui_73info，`--el-*` 不再有供给方。迁移期的 alias.css（旧变量名桥接）仍然**没有引**，
 // 理由见 ui_73info/doc/架构.md 第三节。
 import 'ui_73info/styles.css'
 import './styles/user.css'

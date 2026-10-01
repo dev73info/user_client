@@ -18,6 +18,8 @@ import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
+
+import { TAlert, TButton, TDialog, TForm, TFormItem, TInputNumber, TRadioButton, TRadioGroup } from 'ui_73info'
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
@@ -145,10 +147,10 @@ defineExpose({ open })
 </script>
 
 <template>
-  <el-dialog v-model="visible" title="保证金充值" width="520px" class="dev-recharge-dialog" align-center>
-    <el-form class="dev-recharge-dialog__form" label-position="top">
-      <el-form-item label="充值金额（元）" required>
-        <el-input-number v-model="amount" class="dev-recharge-dialog__amount-input" :min="0.01"
+  <TDialog v-model:open="visible" title="保证金充值" width="520px" class="dev-recharge-dialog">
+    <TForm class="dev-recharge-dialog__form" label-position="top">
+      <TFormItem label="充值金额（元）" required>
+        <TInputNumber v-model="amount" class="dev-recharge-dialog__amount-input" :min="0.01"
           :precision="2" :step="0.01" />
         <div class="dev-recharge-dialog__notes">
           <div class="dev-wallet-withdraw__note">充值后保证金余额增加，可用于解锁接单资格。</div>
@@ -159,29 +161,29 @@ defineExpose({ open })
             折算），还可充 <strong>{{ money(creditInfo.remaining_deposit_cap_cny) }}</strong>。
           </div>
         </div>
-        <el-alert v-if="
+        <TAlert v-if="
           creditInfo &&
           creditInfo.enforce_deposit_limit &&
           amount > creditInfo.remaining_deposit_cap_cny
-        " class="dev-recharge-dialog__limit-alert" type="warning" :closable="false" show-icon
+        " class="dev-recharge-dialog__limit-alert" tone="warning" :closable="false" show-icon
           title="充值金额超过当前信用允许的额度，提交将被拒绝。请联系管理员提升信用，或下调充值金额。" />
-      </el-form-item>
-      <el-form-item label="支付方式" required>
-        <el-radio-group v-model="channel" class="dev-recharge-dialog__channels">
-          <el-radio-button value="alipay" class="dev-recharge-dialog__channel--alipay">
+      </TFormItem>
+      <TFormItem label="支付方式" required>
+        <TRadioGroup v-model="channel" class="dev-recharge-dialog__channels">
+          <TRadioButton value="alipay" class="dev-recharge-dialog__channel--alipay">
             <img src="/icons/alipay.png" class="dev-recharge-dialog__channel-icon" width="22" height="22" alt="" />
             <span>支付宝</span>
-          </el-radio-button>
-          <el-radio-button value="wechat" class="dev-recharge-dialog__channel--wechat">
+          </TRadioButton>
+          <TRadioButton value="wechat" class="dev-recharge-dialog__channel--wechat">
             <img src="/icons/wechat-pay.png" class="dev-recharge-dialog__channel-icon" width="22" height="22" alt="" />
             <span>微信</span>
-          </el-radio-button>
-        </el-radio-group>
-      </el-form-item>
-    </el-form>
+          </TRadioButton>
+        </TRadioGroup>
+      </TFormItem>
+    </TForm>
     <template #footer>
-      <el-button class="dev-recharge-dialog__action" @click="visible = false">取消</el-button>
-      <el-button class="dev-recharge-dialog__action" type="primary" :loading="submitting" @click="startRecharge">充值</el-button>
+      <TButton class="dev-recharge-dialog__action" @click="visible = false">取消</TButton>
+      <TButton variant="solid" tone="accent" class="dev-recharge-dialog__action" :loading="submitting" @click="startRecharge">充值</TButton>
     </template>
-  </el-dialog>
+  </TDialog>
 </template>

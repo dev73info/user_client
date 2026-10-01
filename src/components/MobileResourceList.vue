@@ -1,14 +1,4 @@
 <script setup lang="ts">
-import {
-    ArrowDown,
-    Box,
-    Close,
-    CollectionTag,
-    Grid,
-    Menu as MenuIcon,
-    Monitor,
-    Search,
-} from '@element-plus/icons-vue'
 import { computed, onMounted, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -26,6 +16,22 @@ import {
 import { useTagTreeStore } from '@/stores/tagTree'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+
+
+import {
+  TDropdown,
+  TDropdownItem,
+  TDropdownMenu,
+  TIcon,
+  ArrowDown,
+  Box,
+  Close,
+  CollectionTag,
+  Grid,
+  Menu as MenuIcon,
+  Monitor,
+  Search,
+} from 'ui_73info'
 
 type MobileCard = {
     id: number
@@ -372,9 +378,9 @@ watch(
                         <strong>筛选</strong>
                     </div>
                     <button class="mobile-menu-drawer-close" type="button" aria-label="关闭筛选菜单" @click="closeMenu">
-                        <el-icon>
+                        <TIcon>
                             <Close />
-                        </el-icon>
+                        </TIcon>
                     </button>
                 </header>
 
@@ -450,37 +456,37 @@ watch(
 
         <header class="mobile-resource-header">
             <button class="mobile-resource-menu-btn" type="button" aria-label="打开筛选菜单" @click="openMenu">
-                <el-icon>
+                <TIcon>
                     <MenuIcon />
-                </el-icon>
+                </TIcon>
                 <span>筛选</span>
             </button>
             <form class="mobile-search-form" @submit.prevent>
-                <el-icon class="mobile-search-icon">
+                <TIcon class="mobile-search-icon">
                     <Search />
-                </el-icon>
+                </TIcon>
                 <input v-model="keyword" class="mobile-search-input" type="search" placeholder="搜索公开资源..." />
             </form>
             <div>
-                <el-dropdown trigger="click" popper-class="mobile-sort-dropdown" placement="bottom-end"
-                    :offset="[-6, 4]" @command="(cmd: string) => (sortMode = cmd as 'latest' | 'like')">
+                <TDropdown trigger="click" placement="bottom-end"
+                    @command="(cmd) => (sortMode = cmd as 'latest' | 'like')">
                     <button class="mobile-sort-btn" type="button">
-                        <el-icon>
+                        <TIcon>
                             <ArrowDown />
-                        </el-icon>
+                        </TIcon>
                         <span>{{ sortMode === 'like' ? '点赞' : '最新' }}</span>
                     </button>
                     <template #dropdown>
-                        <el-dropdown-menu>
-                            <el-dropdown-item command="latest" :class="{ 'is-active': sortMode === 'latest' }">
+                        <TDropdownMenu>
+                            <TDropdownItem command="latest" :class="{ 'is-active': sortMode === 'latest' }">
                                 最新
-                            </el-dropdown-item>
-                            <el-dropdown-item command="like" :class="{ 'is-active': sortMode === 'like' }">
+                            </TDropdownItem>
+                            <TDropdownItem command="like" :class="{ 'is-active': sortMode === 'like' }">
                                 点赞
-                            </el-dropdown-item>
-                        </el-dropdown-menu>
+                            </TDropdownItem>
+                        </TDropdownMenu>
                     </template>
-                </el-dropdown>
+                </TDropdown>
             </div>
         </header>
 
@@ -561,10 +567,6 @@ watch(
     font-weight: 800;
 }
 
-.mobile-resource-menu-btn .el-icon {
-    font-size: 16px;
-}
-
 .mobile-search-form {
     display: inline-flex;
     align-items: center;
@@ -619,10 +621,6 @@ watch(
     font-size: 13px;
     font-weight: 800;
     fill: #1d4ed8;
-}
-
-.mobile-sort-btn .el-icon {
-    font-size: 16px;
 }
 
 .mobile-search-input {
@@ -735,10 +733,6 @@ watch(
     border-radius: 11px;
     background: rgba(239, 246, 255, 0.94);
     color: #1d4ed8;
-}
-
-.mobile-menu-drawer-close .el-icon {
-    font-size: 16px;
 }
 
 @keyframes mobile-resource-backdrop-in {
@@ -1215,34 +1209,5 @@ watch(
     padding: 4px !important;
     min-width: 0 !important;
     width: auto !important;
-}
-
-.mobile-sort-dropdown .el-scrollbar__view {
-    width: auto !important;
-}
-
-.mobile-sort-dropdown .el-dropdown-menu {
-    padding: 4px 0 !important;
-}
-
-.mobile-sort-dropdown .el-dropdown-menu__item {
-    border-radius: 10px;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: 700;
-    color: #334155;
-    transition:
-        background 200ms ease,
-        color 200ms ease;
-}
-
-.mobile-sort-dropdown .el-dropdown-menu__item:hover {
-    background: #eff6ff;
-    color: #1d4ed8;
-}
-
-.mobile-sort-dropdown .el-dropdown-menu__item.is-active {
-    background: linear-gradient(135deg, #2563eb, #4f8cff);
-    color: #fff;
 }
 </style>

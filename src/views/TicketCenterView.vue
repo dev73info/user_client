@@ -2,8 +2,6 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 // 顶部读数条的刷新按钮图标 + 工具栏「搜索 / 重置」与卡片头「提交新工单」的图标（与其余开发者菜单页同一套）
-import { Plus, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
-
 import {
   closeTicket,
   createTicket,
@@ -19,6 +17,23 @@ import {
 import { useToast } from '@/composables/useToast'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
+
+
+import {
+  TButton,
+  TDialog,
+  TForm,
+  TFormItem,
+  TIcon,
+  TInput,
+  TOption,
+  TPagination,
+  TSelect,
+  Plus,
+  Refresh,
+  RefreshLeft,
+  Search,
+} from 'ui_73info'
 
 const auth = useAuthStore()
 const loading = ref(false)
@@ -376,12 +391,12 @@ onMounted(async () => {
         <span class="dev-meta-strip__value">{{ ticketStats.resolved }}</span>
       </div>
       <div class="dev-meta-strip__item dev-meta-strip__action">
-        <el-button class="dev-toolbar__icon-btn" aria-label="刷新工单" :loading="loading"
+        <TButton icon-only aria-label="刷新工单" :loading="loading"
           @click="loadTicketsAndKeepSelection()">
-          <el-icon>
+          <TIcon>
             <Refresh />
-          </el-icon>
-        </el-button>
+          </TIcon>
+        </TButton>
       </div>
     </section>
 
@@ -401,12 +416,12 @@ onMounted(async () => {
         <span class="wb-strip__value">{{ ticketStats.resolved }}</span>
       </div>
       <div class="wb-strip__item wb-strip__action">
-        <el-button class="wb-toolbar__icon-btn" aria-label="刷新工单" :loading="loading"
+        <TButton icon-only aria-label="刷新工单" :loading="loading"
           @click="loadTicketsAndKeepSelection()">
-          <el-icon>
+          <TIcon>
             <Refresh />
-          </el-icon>
-        </el-button>
+          </TIcon>
+        </TButton>
       </div>
     </section>
 
@@ -420,9 +435,9 @@ onMounted(async () => {
           </div>
           <div class="dev-card-head__actions">
             <button class="dev-btn dev-btn--primary" type="button" @click="openCompose">
-              <el-icon>
+              <TIcon>
                 <Plus />
-              </el-icon>
+              </TIcon>
               <span>提交新工单</span>
             </button>
           </div>
@@ -432,12 +447,12 @@ onMounted(async () => {
             <h3 class="wb-card-head__title">工单列表</h3>
           </div>
           <div class="wb-card-head__actions">
-            <el-button class="wb-toolbar__primary" @click="openCompose">
-              <el-icon>
+            <TButton variant="solid" tone="accent" @click="openCompose">
+              <TIcon>
                 <Plus />
-              </el-icon>
+              </TIcon>
               <span>提交新工单</span>
-            </el-button>
+            </TButton>
           </div>
         </div>
 
@@ -447,56 +462,56 @@ onMounted(async () => {
              段序与宽栏一致，控件规格也还是统一层那一套（dev-base.css / portal-workbench.css），
              原来靠裸 flex-wrap 兜底会折成三行、高 128px，与其它页 36px 的单行工具栏差得远。 -->
         <div v-if="isDevWorkbench" class="dev-toolbar dev-toolbar--stacked">
-          <el-select v-model="statusFilter" class="dev-toolbar__field" aria-label="按状态筛选">
-            <el-option v-for="option in statusOptions" :key="option.value" :label="option.label"
+          <TSelect v-model="statusFilter" class="dev-toolbar__field" aria-label="按状态筛选">
+            <TOption v-for="option in statusOptions" :key="option.value" :label="option.label"
               :value="option.value" />
-          </el-select>
-          <el-select v-model="priorityFilter" class="dev-toolbar__field" aria-label="按优先级筛选">
-            <el-option v-for="option in priorityFilterOptions" :key="option.value" :label="option.label"
+          </TSelect>
+          <TSelect v-model="priorityFilter" class="dev-toolbar__field" aria-label="按优先级筛选">
+            <TOption v-for="option in priorityFilterOptions" :key="option.value" :label="option.label"
               :value="option.value" />
-          </el-select>
-          <el-input v-model="searchKeyword" class="dev-toolbar__search" clearable placeholder="搜索工单标题、编号或分类">
+          </TSelect>
+          <TInput v-model="searchKeyword" class="dev-toolbar__search" clearable placeholder="搜索工单标题、编号或分类">
             <template #prefix>
-              <el-icon>
+              <TIcon>
                 <Search />
-              </el-icon>
+              </TIcon>
             </template>
-          </el-input>
+          </TInput>
           <div class="dev-toolbar__actions">
             <span v-if="hasActiveFilter" class="dev-toolbar__hint">筛选出 {{ filteredTotal }} 条</span>
-            <el-button class="dev-toolbar__ghost" @click="resetFilters">
-              <el-icon>
+            <TButton variant="outline" @click="resetFilters">
+              <TIcon>
                 <RefreshLeft />
-              </el-icon>
+              </TIcon>
               <span>重置</span>
-            </el-button>
+            </TButton>
           </div>
         </div>
 
         <div v-else class="wb-toolbar wb-toolbar--stacked">
-          <el-select v-model="statusFilter" class="wb-toolbar__field" aria-label="按状态筛选">
-            <el-option v-for="option in statusOptions" :key="option.value" :label="option.label"
+          <TSelect v-model="statusFilter" class="wb-toolbar__field" aria-label="按状态筛选">
+            <TOption v-for="option in statusOptions" :key="option.value" :label="option.label"
               :value="option.value" />
-          </el-select>
-          <el-select v-model="priorityFilter" class="wb-toolbar__field" aria-label="按优先级筛选">
-            <el-option v-for="option in priorityFilterOptions" :key="option.value" :label="option.label"
+          </TSelect>
+          <TSelect v-model="priorityFilter" class="wb-toolbar__field" aria-label="按优先级筛选">
+            <TOption v-for="option in priorityFilterOptions" :key="option.value" :label="option.label"
               :value="option.value" />
-          </el-select>
-          <el-input v-model="searchKeyword" class="wb-toolbar__search" clearable placeholder="搜索工单标题、编号或分类">
+          </TSelect>
+          <TInput v-model="searchKeyword" class="wb-toolbar__search" clearable placeholder="搜索工单标题、编号或分类">
             <template #prefix>
-              <el-icon>
+              <TIcon>
                 <Search />
-              </el-icon>
+              </TIcon>
             </template>
-          </el-input>
+          </TInput>
           <div class="wb-toolbar__actions">
             <span v-if="hasActiveFilter" class="wb-toolbar__hint">筛选出 {{ filteredTotal }} 条</span>
-            <el-button class="wb-toolbar__ghost" @click="resetFilters">
-              <el-icon>
+            <TButton variant="outline" @click="resetFilters">
+              <TIcon>
                 <RefreshLeft />
-              </el-icon>
+              </TIcon>
               <span>重置</span>
-            </el-button>
+            </TButton>
           </div>
         </div>
 
@@ -545,23 +560,23 @@ onMounted(async () => {
         <div v-if="isDevWorkbench" class="dev-pager">
           <div class="dev-pager__count">
             <span>共 {{ filteredTotal }} 条</span>
-            <el-select v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
-              <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-            </el-select>
+            <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
+              <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+            </TSelect>
           </div>
-          <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-            :pager-count="5" layout="prev, pager, next" background aria-label="工单列表分页" />
+          <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+            :pager-count="5" background aria-label="工单列表分页" />
         </div>
 
         <div v-else class="wb-pager">
           <div class="wb-pager__count">
             <span>共 {{ filteredTotal }} 条</span>
-            <el-select v-model="pageSize" aria-label="每页条数" class="wb-pager__size">
-              <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-            </el-select>
+            <TSelect v-model="pageSize" aria-label="每页条数" class="wb-pager__size">
+              <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+            </TSelect>
           </div>
-          <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-            :pager-count="5" layout="prev, pager, next" background aria-label="工单列表分页" />
+          <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+            :pager-count="5" background aria-label="工单列表分页" />
         </div>
       </aside>
 
@@ -585,10 +600,10 @@ onMounted(async () => {
                 :disabled="closing" @click="submitClose">
                 {{ closing ? '关闭中...' : '关闭工单' }}
               </button>
-              <el-button v-else-if="selectedTicket.status !== 'closed'" class="wb-toolbar__ghost" :disabled="closing"
+              <TButton variant="outline" v-else-if="selectedTicket.status !== 'closed'" :disabled="closing"
                 @click="submitClose">
                 {{ closing ? '关闭中...' : '关闭工单' }}
-              </el-button>
+              </TButton>
             </div>
           </header>
 
@@ -612,17 +627,17 @@ onMounted(async () => {
           </div>
 
           <div v-if="selectedTicket.status !== 'closed'" class="ticket-reply-box">
-            <!-- 回复框同样用 Element 的输入组件与统一层按钮，
+            <!-- 回复框同样用 TInput 与统一层的 TButton，
                  否则这里会留下第三种输入框（18px 圆角、蓝色 4px 焦点环）与一枚渐变主按钮。 -->
-            <el-input v-model="replyContent" type="textarea" :rows="2"
+            <TInput v-model="replyContent" type="textarea" :rows="2"
               placeholder="补充新的现象、截图说明或你的确认结果。"
               @keydown.enter.exact.prevent="replyContent.trim() && submitReply()" />
-            <el-button v-if="isDevWorkbench" class="dev-toolbar__primary" :loading="replying" @click="submitReply">
+            <TButton variant="solid" tone="accent" v-if="isDevWorkbench" :loading="replying" @click="submitReply">
               发送回复
-            </el-button>
-            <el-button v-else class="wb-toolbar__primary" :loading="replying" @click="submitReply">
+            </TButton>
+            <TButton variant="solid" tone="accent" v-else :loading="replying" @click="submitReply">
               发送回复
-            </el-button>
+            </TButton>
           </div>
         </div>
 
@@ -634,44 +649,44 @@ onMounted(async () => {
       </section>
     </section>
 
-    <!-- 弹窗会被 Element teleport 到 body，落在两侧工作台的根元素之外，
+    <!-- 弹窗会被 TDialog teleport 到 body，落在两侧工作台的根元素之外，
          所以必须自己挂统一层的弹窗类（开发者侧 dev-dialog、用户工作台侧 wb-dialog），
-         否则弹窗里的 Element 主色退回默认蓝，与页面内的按钮不是一个颜色。 -->
-    <el-dialog v-model="composeOpen" title="提交新工单" width="720px"
+         否则弹窗里的主色退回库的默认档，与页面内的按钮不是一个颜色。 -->
+    <TDialog v-model:open="composeOpen" title="提交新工单" width="720px"
       :class="isDevWorkbench ? 'dev-dialog' : 'wb-dialog'">
-      <!-- 表单控件一律用 Element 的输入组件：裸 input / select / textarea 拿不到统一层的
+      <!-- 表单控件一律用组件库的 TInput / TSelect：裸 input / select / textarea 拿不到统一层的
            控件规格（36px 高、10px 圆角）与令牌配色，同一页里会长出两套输入框；
-           优先级原先是自绘下拉，改回 el-select，选项文案照旧。 -->
-      <el-form class="compose-grid" label-position="top" @submit.prevent>
-        <el-form-item label="工单标题">
-          <el-input v-model="newSubject" placeholder="例如：尾款支付后资源仍不可见" />
-        </el-form-item>
-        <el-form-item label="工单分类">
-          <el-input v-model="newCategory" placeholder="例如：支付 / 资源 / 账号" />
-        </el-form-item>
-        <el-form-item label="优先级">
-          <el-select v-model="newPriority" aria-label="优先级">
-            <el-option v-for="option in priorityOptions" :key="option.value" :label="option.label"
+           优先级原先是自绘下拉，现已改用 TSelect，选项文案照旧。 -->
+      <TForm class="compose-grid" label-position="top" @submit.prevent>
+        <TFormItem label="工单标题">
+          <TInput v-model="newSubject" placeholder="例如：尾款支付后资源仍不可见" />
+        </TFormItem>
+        <TFormItem label="工单分类">
+          <TInput v-model="newCategory" placeholder="例如：支付 / 资源 / 账号" />
+        </TFormItem>
+        <TFormItem label="优先级">
+          <TSelect v-model="newPriority" aria-label="优先级">
+            <TOption v-for="option in priorityOptions" :key="option.value" :label="option.label"
               :value="option.value" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="问题描述" class="compose-grid__span">
-          <el-input v-model="newContent" type="textarea" :rows="5"
+          </TSelect>
+        </TFormItem>
+        <TFormItem label="问题描述" class="compose-grid__span">
+          <TInput v-model="newContent" type="textarea" :rows="5"
             placeholder="请描述你遇到的问题、已尝试的操作，以及希望得到的处理结果。" />
-        </el-form-item>
-      </el-form>
+        </TFormItem>
+      </TForm>
 
       <template #footer>
         <div class="compose-actions">
-          <el-button v-if="isDevWorkbench" class="dev-toolbar__primary" :loading="creating" @click="submitCreate">
+          <TButton variant="solid" tone="accent" v-if="isDevWorkbench" :loading="creating" @click="submitCreate">
             提交工单
-          </el-button>
-          <el-button v-else class="wb-toolbar__primary" :loading="creating" @click="submitCreate">
+          </TButton>
+          <TButton variant="solid" tone="accent" v-else :loading="creating" @click="submitCreate">
             提交工单
-          </el-button>
+          </TButton>
         </div>
       </template>
-    </el-dialog>
+    </TDialog>
   </main>
 </template>
 
@@ -690,7 +705,7 @@ onMounted(async () => {
   flex-direction: column;
 }
 
-/* 弹窗表单：三列栅格排版留在本页，控件外观全部交给 Element 与统一层令牌 */
+/* 弹窗表单：三列栅格排版留在本页，控件外观全部交给组件库与统一层令牌 */
 .compose-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -698,15 +713,11 @@ onMounted(async () => {
   margin-top: 18px;
 }
 
-.compose-grid :deep(.el-form-item) {
-  margin-bottom: 0;
-}
-
 .compose-grid__span {
   grid-column: 1 / -1;
 }
 
-/* 优先级下拉已改回 el-select（见模板），自绘下拉的整套样式一并删掉，
+/* 优先级下拉走 TSelect（见模板），自绘下拉的整套样式一并删掉，
    不要留死代码：它带着自己的 16px 圆角、浅蓝焦点环与四个优先级裸色。 */
 
 .compose-actions {
@@ -934,7 +945,7 @@ onMounted(async () => {
   text-align: left;
 }
 
-/* 回复框：输入控件已换成 el-input（外面那层 .el-textarea 自带统一层的 36px 控件规格
+/* 回复框：输入控件是 TInput（它自己按 --73-control-height 给出 36px 控件规格
    与令牌配色），这里只管一行排布。 */
 .ticket-reply-box {
   display: flex;
@@ -942,11 +953,6 @@ onMounted(async () => {
   align-items: flex-end;
   border-top: 1px solid var(--dev-line);
   padding-top: 14px;
-}
-
-.ticket-reply-box :deep(.el-textarea) {
-  flex: 1 1 auto;
-  min-width: 0;
 }
 
 .ticket-detail-header h2 {

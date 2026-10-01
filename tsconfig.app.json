@@ -7,8 +7,16 @@
     "noUncheckedIndexedAccess": true,
 
     // Path mapping for cleaner imports.
+    //
+    // `vue` 这一条是**依赖收敛**，不是别名：`ui_73info` 是发源码被 link 进来的，
+    // 它自己的 `node_modules` 里也装了一份 vue（供本库的 playground 与 type-check 用）。
+    // 不钉住的话，库里的 `.vue` 会解析到它自己那份，宿主解析到另一份，
+    // 同一个程序里就出现两个 `Component` / `Ref` 类型——图标、`as` 这类
+    // 跨包传组件的用法会全部报「两个同名类型不相关」。
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "vue": ["./node_modules/vue"],
+      "vue/*": ["./node_modules/vue/*"]
     },
 
     // `vue-tsc --build` produces a .tsbuildinfo file for incremental type-checking.

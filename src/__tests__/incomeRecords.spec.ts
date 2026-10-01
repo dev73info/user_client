@@ -23,14 +23,14 @@ it('combines income and withdrawals in time order with a shared pager', async ()
     global: {
       config: { warnHandler: () => {} },
       stubs: {
-        ElTable: { name: 'ElTable', props: ['data'], template: '<div />' },
-        ElPagination: { name: 'ElPagination', props: ['total', 'currentPage'], template: '<div />' },
+        TTable: { name: 'TTable', props: ['data'], template: '<div />' },
+        TPagination: { name: 'TPagination', props: ['total', 'currentPage'], template: '<div />' },
       },
     },
   })
   await flushPromises()
-  const table = wrapper.findComponent({ name: 'ElTable' })
-  const pager = wrapper.findComponent({ name: 'ElPagination' })
+  const table = wrapper.findComponent({ name: 'TTable' })
+  const pager = wrapper.findComponent({ name: 'TPagination' })
   expect(pager.props('total')).toBe(11)
   expect(table.props('data')).toHaveLength(10)
   expect(table.props('data')[0]).toMatchObject({ kind: 'income', id: 'payment-1', amount: 5, status: '已入账' })

@@ -39,7 +39,7 @@ const forClients = [
   { title: '有事有据可查', desc: '沟通记录、签署记录、交付记录都在，真有问题也不至于空口无凭。' },
 ]
 
-/* ---- 滚动渐入（监听实际滚动容器，兼容 el-scrollbar） ---- */
+/* ---- 滚动渐入（监听实际滚动容器，即 TScrollbar 的 wrap） ---- */
 let revealEls: Element[] = []
 let scrollCleanup: (() => void) | null = null
 
@@ -80,10 +80,10 @@ function setupReveal(): void {
     return
   }
 
-  // 找到实际的滚动容器：优先 el-scrollbar 的 wrap，否则用 window
+  // 找到实际的滚动容器：门户外壳的滚动在 TScrollbar 的 wrap 上，找不到才退回 window
   const wrap =
-    document.querySelector('.el-scrollbar__wrap') ??
-    document.querySelector('.app-scrollbar .el-scrollbar__wrap')
+    document.querySelector('.app-scrollbar .t73-scrollbar__wrap') ??
+    document.querySelector('.t73-scrollbar__wrap')
 
   const onScroll = () => revealCheck()
   if (wrap) {

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Plus } from '@element-plus/icons-vue'
-
 import { useToast } from '@/composables/useToast'
+
+
+import { TButton, TDialog, TIcon, Plus } from 'ui_73info'
 
 /**
  * 资源图标选择器：正方形触发区 + 裁剪弹窗（拖动调整位置、滚轮缩放，应用后裁成 1200×742 的 PNG）。
@@ -235,11 +236,11 @@ async function confirmCrop() {
 <template>
   <div class="dev-icon-upload dev-icon-upload--square" @click="openDialog">
     <img v-if="preview" :src="preview" alt="图标预览" class="dev-icon-upload__square-image" />
-    <el-icon v-else class="dev-icon-upload__square-plus"><Plus /></el-icon>
+    <TIcon v-else class="dev-icon-upload__square-plus"><Plus /></TIcon>
   </div>
 
-  <el-dialog v-model="dialogVisible" class="dev-icon-dialog-modal" title="上传图标" width="400px" align-center
-    :close-on-click-modal="false" :destroy-on-close="false">
+  <TDialog v-model:open="dialogVisible" class="dev-icon-dialog-modal" title="上传图标" width="400px"
+    :mask-closable="false">
     <div class="dev-icon-dialog">
       <input ref="inputRef" class="dev-icon-upload__native" type="file"
         accept="image/png,image/jpeg,image/webp,image/gif" @change="handleFileChange" />
@@ -262,17 +263,17 @@ async function confirmCrop() {
         </div>
 
         <div class="dev-icon-dialog__actions">
-          <el-button @click="resetCrop">重置位置</el-button>
+          <TButton @click="resetCrop">重置位置</TButton>
           <div class="dev-icon-dialog__actions-main">
-            <el-button type="danger" plain @click="removeIcon">移除</el-button>
-            <el-button type="primary" @click="confirmCrop">应用</el-button>
+            <TButton variant="outline" tone="danger" @click="removeIcon">移除</TButton>
+            <TButton variant="solid" tone="accent" @click="confirmCrop">应用</TButton>
           </div>
         </div>
       </template>
 
       <template v-else>
         <div class="dev-icon-dialog__preview" @click="triggerFileSelect">
-          <el-icon class="dev-icon-dialog__plus"><Plus /></el-icon>
+          <TIcon class="dev-icon-dialog__plus"><Plus /></TIcon>
           <span>点击选择图标</span>
         </div>
 
@@ -284,10 +285,10 @@ async function confirmCrop() {
         <!-- 已有图标（编辑场景回填）时提供清除入口，不必先选一张新图 -->
         <div v-if="preview" class="dev-icon-dialog__actions">
           <div class="dev-icon-dialog__actions-main">
-            <el-button type="danger" plain @click="removeIcon">移除</el-button>
+            <TButton variant="outline" tone="danger" @click="removeIcon">移除</TButton>
           </div>
         </div>
       </template>
     </div>
-  </el-dialog>
+  </TDialog>
 </template>

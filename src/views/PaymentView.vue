@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import QRCode from 'qrcode'
-import { CircleCheck, Clock } from '@element-plus/icons-vue'
+import { CircleCheck, Clock } from 'ui_73info'
 
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'

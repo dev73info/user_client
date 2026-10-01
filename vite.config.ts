@@ -6,9 +6,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import wasm from 'vite-plugin-wasm'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
-import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 const proxyTarget = 'http://127.0.0.1:8080'
 const proxyPaths = [
@@ -41,12 +39,11 @@ export default defineConfig({
       template: { transformAssetUrls: { includeAbsolute: false } },
     }),
     wasm(),
-    AutoImport({
-      resolvers: [ElementPlusResolver({ importStyle: false })],
-    }),
-    Components({
-      resolvers: [ElementPlusResolver({ importStyle: false })],
-    }),
+    // 组件的按需注册，只覆盖本项目的 `src/components`（插件的默认 dirs）。
+    // 原来挂在 `AutoImport` 与这里的 `ElementPlusResolver` 已随 element-plus 一起移除：
+    // 那两个解析器唯一的作用是按需引入 El* 组件与 `ElMessage` 这类命令式 API，
+    // 站内已经没有用武之地（`ElMessage` / `ElMessageBox` 已换成 ui_73info 的 TMessage / TMessageBox）。
+    Components(),
     {
       name: 'copy-spa-fallback-htaccess',
       closeBundle() {
@@ -81,13 +78,6 @@ export default defineConfig({
 
           if (normalizedId.includes('pinia')) {
             return 'pinia'
-          }
-
-          if (
-            normalizedId.includes('element-plus') ||
-            normalizedId.includes('@element-plus/icons-vue')
-          ) {
-            return 'element-plus'
           }
 
           // 自研组件库单独成块。它发的是源码、被 link 进来（真实路径在 node_modules 之外），
@@ -165,6 +155,12 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
+    // `ui_73info` 是 link 进来的源码，它自己的 node_modules 里也装了一份 vue
+    // （供本库的 playground 与 type-check 用）。不收敛的话，库里那些 `import { ref } from 'vue'`
+    // 会解析到另一份 vue，运行时就真的有两套响应式系统：`provide/inject` 对不上、
+    // `instanceof` 判不过、`getCurrentInstance()` 在库里拿不到宿主实例。
+    // 类型侧对应 `tsconfig.app.json` 里 `"vue"` 那条 paths，两处必须一起改。
+    dedupe: ['vue'],
   },
   optimizeDeps: {
     // 两个都是发源码的 link 依赖（一个 Rust→WASM，一个 .vue 源码）。

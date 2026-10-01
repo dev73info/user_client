@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-
 import { apiUrl } from '@/api/http'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
 import { getUserBadges, getBadges, type BadgeDefinition, type UserBadge } from '@/api/invite'
@@ -19,7 +18,7 @@ import {
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import BadgeDisplay from '@/components/BadgeDisplay.vue'
-
+import { TButton, TDialog, TLoading } from 'ui_73info'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
@@ -428,7 +427,7 @@ async function removeBackground() {
 </script>
 
 <template>
-  <main class="dev-profile" v-loading="loading">
+  <TLoading tag="main" class="dev-profile" :loading="loading">
     <!-- 头部 -->
     <section class="dev-profile__head" :class="{ 'has-bg': !!backgroundUrl }">
       <video
@@ -462,8 +461,13 @@ async function removeBackground() {
         </span>
       </div>
       <div class="dev-profile__head-content">
-        <h1 class="dev-profile__name" :class="{ 'username-gradient': profileGradient && !profileColor }"
-          :style="profileColor ? { color: profileColor } : {}">{{ username }}</h1>
+        <h1
+          class="dev-profile__name"
+          :class="{ 'username-gradient': profileGradient && !profileColor }"
+          :style="profileColor ? { color: profileColor } : {}"
+        >
+          {{ username }}
+        </h1>
         <p v-if="profileDescription" class="dev-profile__description">{{ profileDescription }}</p>
         <p class="dev-profile__badge-line" v-if="wornBadges.length > 0">
           <BadgeDisplay :badges="wornBadges" :limit="4" />
@@ -531,17 +535,14 @@ async function removeBackground() {
               loading="lazy"
               @error="onCoverError(resource)"
             />
-            <span
-              v-else
-              class="dev-profile__resource-cover dev-profile__resource-cover--text"
-            >
+            <span v-else class="dev-profile__resource-cover dev-profile__resource-cover--text">
               {{ resource.title.slice(0, 1).toUpperCase() }}
             </span>
           </div>
           <div class="dev-profile__resource-body">
             <h3 class="dev-profile__resource-title">{{ resource.title }}</h3>
             <p class="dev-profile__resource-desc">
-              {{ resource.description || "暂无简介" }}
+              {{ resource.description || '暂无简介' }}
             </p>
             <div class="dev-profile__resource-meta">
               <span>{{ resource.platform }}</span>
@@ -553,82 +554,161 @@ async function removeBackground() {
     </section>
 
     <!-- 设置主页背景 -->
-    <el-dialog v-model="backgroundDialogVisible" class="dev-profile__background-dialog"
-      :title="backgroundMode === 'dynamic' ? '设置动态背景' : '设置静态背景'" width="480px" align-center
-      :close-on-click-modal="false" @closed="resetBackgroundDialog">
+    <TDialog
+      v-model:open="backgroundDialogVisible"
+      class="dev-profile__background-dialog"
+      :title="backgroundMode === 'dynamic' ? '设置动态背景' : '设置静态背景'"
+      width="480px"
+      :mask-closable="false"
+      @closed="resetBackgroundDialog"
+    >
       <div class="dev-profile__bg-upload">
-        <input ref="backgroundInput" class="dev-profile__bg-input" type="file"
-          :accept="backgroundMode === 'dynamic'
-            ? 'video/mp4,video/webm,image/gif,image/webp'
-            : 'image/png,image/jpeg,image/webp,image/gif'"
-          @change="onBackgroundFileChange" />
-        <div v-if="backgroundPreview" class="dev-profile__crop"
+        <input
+          ref="backgroundInput"
+          class="dev-profile__bg-input"
+          type="file"
+          :accept="
+            backgroundMode === 'dynamic'
+              ? 'video/mp4,video/webm,image/gif,image/webp'
+              : 'image/png,image/jpeg,image/webp,image/gif'
+          "
+          @change="onBackgroundFileChange"
+        />
+        <div
+          v-if="backgroundPreview"
+          class="dev-profile__crop"
           @wheel.prevent="onCropWheel"
           @dragstart.prevent
           @pointerdown="onCropPointerDown"
           @pointermove="onCropPointerMove"
           @pointerup="onCropPointerUp"
-          @pointercancel="onCropPointerUp">
-          <video v-if="isVideoBackgroundPreview" :src="backgroundPreview"
-            class="dev-profile__crop-media dev-profile__bg-video" :style="cropMediaStyle"
-            autoplay loop muted playsinline></video>
-          <img v-else :src="backgroundPreview" alt="背景预览" class="dev-profile__crop-media"
-            :style="cropMediaStyle" draggable="false" />
+          @pointercancel="onCropPointerUp"
+        >
+          <video
+            v-if="isVideoBackgroundPreview"
+            :src="backgroundPreview"
+            class="dev-profile__crop-media dev-profile__bg-video"
+            :style="cropMediaStyle"
+            autoplay
+            loop
+            muted
+            playsinline
+          ></video>
+          <img
+            v-else
+            :src="backgroundPreview"
+            alt="背景预览"
+            class="dev-profile__crop-media"
+            :style="cropMediaStyle"
+            draggable="false"
+          />
           <span class="dev-profile__crop-hint">拖动调整位置 · 滚轮缩放</span>
-          <button type="button" class="dev-profile__crop-reselect" @pointerdown.stop @click="backgroundInput?.click()">重新选择</button>
+          <button
+            type="button"
+            class="dev-profile__crop-reselect"
+            @pointerdown.stop
+            @click="backgroundInput?.click()"
+          >
+            重新选择
+          </button>
         </div>
         <button v-else type="button" class="dev-profile__bg-pick" @click="backgroundInput?.click()">
           <span class="dev-profile__bg-pick-icon">＋</span>
-          <span class="dev-profile__bg-pick-text">选择{{ backgroundMode === 'dynamic' ? '动态背景' : '背景图片' }}</span>
+          <span class="dev-profile__bg-pick-text"
+            >选择{{ backgroundMode === 'dynamic' ? '动态背景' : '背景图片' }}</span
+          >
         </button>
         <p class="dev-profile__bg-tip">
-          {{ backgroundMode === 'dynamic'
-            ? '支持 MP4 / WebM 视频，或 GIF / WEBP 动图，最大 50MB'
-            : '支持 PNG / JPG / WEBP / GIF，最大 5MB' }}
+          {{
+            backgroundMode === 'dynamic'
+              ? '支持 MP4 / WebM 视频，或 GIF / WEBP 动图，最大 50MB'
+              : '支持 PNG / JPG / WEBP / GIF，最大 5MB'
+          }}
         </p>
       </div>
       <template #footer>
         <div class="dev-profile__background-dialog-actions">
-          <el-button v-if="backgroundUrl" class="dev-profile__background-dialog-remove" type="danger" text
-            :loading="backgroundRemoving" @click="removeBackground">移除背景</el-button>
+          <TButton
+            variant="text"
+            tone="danger"
+            v-if="backgroundUrl"
+            class="dev-profile__background-dialog-remove"
+            :loading="backgroundRemoving"
+            @click="removeBackground"
+            >移除背景</TButton
+          >
           <div class="dev-profile__background-dialog-actions-main">
-            <el-button @click="backgroundDialogVisible = false">取消</el-button>
-            <el-button type="primary" :disabled="!backgroundFile || backgroundUploading || backgroundRemoving"
-              :loading="backgroundUploading" @click="submitBackgroundUpload">保存</el-button>
+            <TButton @click="backgroundDialogVisible = false">取消</TButton>
+            <TButton
+              variant="solid"
+              tone="accent"
+              :disabled="!backgroundFile || backgroundUploading || backgroundRemoving"
+              :loading="backgroundUploading"
+              @click="submitBackgroundUpload"
+              >保存</TButton
+            >
           </div>
         </div>
       </template>
-    </el-dialog>
+    </TDialog>
 
-    <div v-if="profileDialogVisible" class="dev-profile-modal" @click.self="profileDialogVisible = false">
-      <section class="dev-profile-modal__panel" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
+    <div
+      v-if="profileDialogVisible"
+      class="dev-profile-modal"
+      @click.self="profileDialogVisible = false"
+    >
+      <section
+        class="dev-profile-modal__panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="profile-modal-title"
+      >
         <header class="dev-profile-modal__header">
           <div>
             <h2 id="profile-modal-title">编辑简介</h2>
           </div>
-          <button class="dev-profile-modal__close" type="button" aria-label="关闭" @click="profileDialogVisible = false">
+          <button
+            class="dev-profile-modal__close"
+            type="button"
+            aria-label="关闭"
+            @click="profileDialogVisible = false"
+          >
             ×
           </button>
         </header>
         <div class="dev-profile-modal__body">
           <label class="dev-profile-modal__label" for="profile-description-input">个人简介</label>
           <div class="dev-profile-modal__field">
-            <textarea id="profile-description-input" v-model="profileDescriptionDraft" maxlength="300" rows="5"
-              placeholder="介绍一下自己、擅长的平台或作品方向" />
+            <textarea
+              id="profile-description-input"
+              v-model="profileDescriptionDraft"
+              maxlength="300"
+              rows="5"
+              placeholder="介绍一下自己、擅长的平台或作品方向"
+            />
             <span>{{ profileDescriptionDraft.length }} / 300</span>
           </div>
         </div>
         <footer class="dev-profile-modal__actions">
-          <button class="dev-profile-modal__button dev-profile-modal__button--ghost" type="button"
-            @click="profileDialogVisible = false">取消</button>
-          <button class="dev-profile-modal__button dev-profile-modal__button--primary" type="button"
-            :disabled="profileSaving" @click="saveProfile">
+          <button
+            class="dev-profile-modal__button dev-profile-modal__button--ghost"
+            type="button"
+            @click="profileDialogVisible = false"
+          >
+            取消
+          </button>
+          <button
+            class="dev-profile-modal__button dev-profile-modal__button--primary"
+            type="button"
+            :disabled="profileSaving"
+            @click="saveProfile"
+          >
             {{ profileSaving ? '保存中...' : '保存简介' }}
           </button>
         </footer>
       </section>
     </div>
-  </main>
+  </TLoading>
 </template>
 
 <style>
@@ -731,7 +811,9 @@ async function removeBackground() {
   color: #2563eb;
   font-size: 13px;
   cursor: pointer;
-  transition: background 0.18s ease, color 0.18s ease;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
 }
 
 .dev-profile__bg-btn:hover {
@@ -762,7 +844,9 @@ async function removeBackground() {
   gap: 6px;
   cursor: pointer;
   overflow: hidden;
-  transition: border-color 0.18s ease, background 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease;
 }
 
 .dev-profile__bg-pick:hover {
@@ -868,42 +952,6 @@ async function removeBackground() {
   box-shadow: 0 20px 48px rgba(30, 64, 175, 0.16);
 }
 
-.dev-profile__background-dialog .el-dialog__header {
-  margin: 0;
-  padding: 22px 24px 14px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.82);
-}
-
-.dev-profile__background-dialog .el-dialog__title {
-  color: #0f172a;
-  font-size: 20px;
-  font-weight: 800;
-}
-
-.dev-profile__background-dialog .el-dialog__headerbtn {
-  top: 18px;
-  right: 18px;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-}
-
-.dev-profile__background-dialog .el-dialog__headerbtn:hover {
-  background: #eff6ff;
-}
-
-.dev-profile__background-dialog .el-dialog__body {
-  padding: 20px 24px 10px;
-}
-
-.dev-profile__background-dialog .el-dialog__footer {
-  margin-top: 0;
-  padding: 14px 24px 20px;
-  border-top: 1px solid rgba(226, 232, 240, 0.72);
-  background: #fff;
-  text-align: initial;
-}
-
 .dev-profile__background-dialog-actions {
   display: flex;
   align-items: center;
@@ -916,23 +964,6 @@ async function removeBackground() {
   align-items: center;
   gap: 10px;
   margin-left: auto;
-}
-
-.dev-profile__background-dialog .el-button {
-  min-width: 84px;
-  height: 38px;
-  border-radius: 9px;
-  font-weight: 700;
-}
-
-.dev-profile__background-dialog .el-button--primary {
-  border-color: #2563eb;
-  background: #2563eb;
-}
-
-.dev-profile__background-dialog .el-button--primary:hover {
-  border-color: #1d4ed8;
-  background: #1d4ed8;
 }
 
 .dev-profile__background-dialog-remove {
@@ -958,7 +989,9 @@ async function removeBackground() {
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.16), 0 8px 18px rgba(37, 99, 235, 0.16);
+  box-shadow:
+    0 0 0 4px rgba(59, 130, 246, 0.16),
+    0 8px 18px rgba(37, 99, 235, 0.16);
   display: block;
 }
 
@@ -970,7 +1003,9 @@ async function removeBackground() {
   color: #fff;
   font-size: 28px;
   font-weight: 700;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.16), 0 8px 18px rgba(37, 99, 235, 0.16);
+  box-shadow:
+    0 0 0 4px rgba(59, 130, 246, 0.16),
+    0 8px 18px rgba(37, 99, 235, 0.16);
 }
 
 .dev-profile__head-content {
@@ -1039,7 +1074,9 @@ async function removeBackground() {
   font-size: 25px;
   line-height: 1;
   cursor: pointer;
-  transition: background 0.18s ease, color 0.18s ease;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
 }
 
 .dev-profile-modal__close:hover {
@@ -1077,7 +1114,10 @@ async function removeBackground() {
   font-size: 14px;
   line-height: 1.7;
   resize: vertical;
-  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .dev-profile-modal__field textarea:focus {
@@ -1113,7 +1153,10 @@ async function removeBackground() {
   background: rgba(248, 250, 252, 0.7);
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .dev-profile-modal__button--ghost {
@@ -1170,7 +1213,10 @@ async function removeBackground() {
   text-align: center;
   display: grid;
   gap: 4px;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
 }
 
 .dev-profile__stat::before {
@@ -1245,7 +1291,10 @@ async function removeBackground() {
   background: rgba(255, 255, 255, 0.94);
   overflow: hidden;
   cursor: pointer;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
 }
 
 .dev-profile__resource-card:hover,
@@ -1354,100 +1403,13 @@ async function removeBackground() {
     width: calc(100% - 32px) !important;
   }
 
-
-.dev-profile__edit-dialog {
-  overflow: hidden;
-  padding: 0;
-  border: 1px solid rgba(191, 219, 254, 0.72);
-  border-radius: 18px;
-  box-shadow: 0 20px 48px rgba(30, 64, 175, 0.16);
-}
-
-.dev-profile__edit-dialog .el-dialog__header {
-  margin: 0;
-  padding: 22px 24px 14px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.82);
-}
-
-.dev-profile__edit-dialog .el-dialog__title {
-  color: #0f172a;
-  font-size: 20px;
-  font-weight: 800;
-}
-
-.dev-profile__edit-dialog .el-dialog__headerbtn {
-  top: 18px;
-  right: 18px;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-}
-
-.dev-profile__edit-dialog .el-dialog__headerbtn:hover {
-  background: #eff6ff;
-}
-
-.dev-profile__edit-dialog .el-dialog__body {
-  padding: 22px 24px 8px;
-}
-
-.dev-profile__edit-dialog .el-form-item {
-  margin-bottom: 0;
-}
-
-.dev-profile__edit-dialog .el-form-item__label {
-  padding-bottom: 8px;
-  color: #334155;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.dev-profile__edit-dialog .el-textarea__inner {
-  min-height: 132px !important;
-  padding: 12px 14px;
-  border: 1px solid #dbe4f0;
-  border-radius: 12px;
-  background: #f8fafc;
-  color: #0f172a;
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1.7;
-  resize: vertical;
-  box-shadow: none;
-  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
-}
-
-.dev-profile__edit-dialog .el-textarea__inner:focus {
-  border-color: #60a5fa;
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16);
-}
-
-.dev-profile__edit-dialog .el-dialog__footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 16px 24px 20px;
-  border-top: 1px solid rgba(226, 232, 240, 0.72);
-  background: #fff;
-}
-
-.dev-profile__edit-dialog .el-button {
-  min-width: 84px;
-  height: 38px;
-  border-radius: 9px;
-  font-weight: 700;
-}
-
-.dev-profile__edit-dialog .el-button--primary {
-  border-color: #2563eb;
-  background: #2563eb;
-}
-
-.dev-profile__edit-dialog .el-button--primary:hover {
-  border-color: #1d4ed8;
-  background: #1d4ed8;
-}
+  .dev-profile__edit-dialog {
+    overflow: hidden;
+    padding: 0;
+    border: 1px solid rgba(191, 219, 254, 0.72);
+    border-radius: 18px;
+    box-shadow: 0 20px 48px rgba(30, 64, 175, 0.16);
+  }
   .dev-profile__resource-grid {
     grid-template-columns: 1fr;
   }

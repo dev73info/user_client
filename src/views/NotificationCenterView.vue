@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
-
 import { listCommunityPosts, listMyCommentWarnings, type CommentWarning, type CommunityPost } from '@/api/community'
 import { listMyAfterSalesCases, type AfterSalesCase } from '@/api/afterSales'
 import {
@@ -22,6 +20,19 @@ import {
   type NotificationKind,
 } from '@/shared/notifications'
 import { useAuthStore } from '@/stores/auth'
+
+
+import {
+  TButton,
+  TIcon,
+  TInput,
+  TOption,
+  TPagination,
+  TSelect,
+  Refresh,
+  RefreshLeft,
+  Search,
+} from 'ui_73info'
 
 /* 「系统通知」：评论警告、历史沟通公开申请、售后案件、平台公告四类系统消息，统一成同一种消息卡片。
    三类数据要登录（评论警告、公开申请、售后案件），公告是公开接口，所以四支请求并行发、各自结算：
@@ -245,12 +256,12 @@ onMounted(() => {
         <span class="dev-meta-strip__value">{{ countByKind(cards).announcement }}</span>
       </div>
       <div class="dev-meta-strip__item dev-meta-strip__action">
-        <el-button class="dev-toolbar__icon-btn" aria-label="刷新系统通知" title="刷新系统通知" :loading="loading"
+        <TButton icon-only aria-label="刷新系统通知" title="刷新系统通知" :loading="loading"
           @click="loadNotifications(true)">
-          <el-icon>
+          <TIcon>
             <Refresh />
-          </el-icon>
-        </el-button>
+          </TIcon>
+        </TButton>
       </div>
     </section>
 
@@ -275,12 +286,12 @@ onMounted(() => {
         <span class="wb-strip__value">{{ countByKind(cards).announcement }}</span>
       </div>
       <div class="wb-strip__item wb-strip__action">
-        <el-button class="wb-toolbar__icon-btn" aria-label="刷新系统通知" title="刷新系统通知" :loading="loading"
+        <TButton icon-only aria-label="刷新系统通知" title="刷新系统通知" :loading="loading"
           @click="loadNotifications(true)">
-          <el-icon>
+          <TIcon>
             <Refresh />
-          </el-icon>
-        </el-button>
+          </TIcon>
+        </TButton>
       </div>
     </section>
 
@@ -312,24 +323,24 @@ onMounted(() => {
               {{ option.label }}<span class="dev-chip__count">{{ option.count }}</span>
             </button>
           </div>
-          <el-input v-model="keyword" clearable class="dev-toolbar__search" placeholder="搜索标题或内容"
+          <TInput v-model="keyword" clearable class="dev-toolbar__search" placeholder="搜索标题或内容"
             aria-label="搜索系统通知">
             <template #prefix>
-              <el-icon>
+              <TIcon>
                 <Search />
-              </el-icon>
+              </TIcon>
             </template>
-          </el-input>
+          </TInput>
           <div class="dev-toolbar__actions">
             <span v-if="filtersActive" class="dev-toolbar__hint">
               筛选出 {{ filteredTotal }} / {{ cards.length }} 条
             </span>
-            <el-button v-if="filtersActive" class="dev-toolbar__ghost" @click="resetFilters">
-              <el-icon>
+            <TButton variant="outline" v-if="filtersActive" @click="resetFilters">
+              <TIcon>
                 <RefreshLeft />
-              </el-icon>
+              </TIcon>
               <span>重置</span>
-            </el-button>
+            </TButton>
           </div>
         </div>
 
@@ -379,12 +390,12 @@ onMounted(() => {
           <div class="dev-pager">
             <div class="dev-pager__count">
               <span>共 {{ filteredTotal }} 条</span>
-              <el-select v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
-                <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-              </el-select>
+              <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
+                <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+              </TSelect>
             </div>
-            <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-              :pager-count="5" layout="prev, pager, next" background aria-label="系统通知分页" />
+            <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+              :pager-count="5" background aria-label="系统通知分页" />
           </div>
         </template>
       </section>
@@ -399,7 +410,7 @@ onMounted(() => {
 
       <div v-if="warningError" class="notifications-warning" role="alert">
         <span>评论警告加载失败：{{ warningError }}</span>
-        <el-button class="wb-toolbar__ghost" @click="loadNotifications()">重试</el-button>
+        <TButton variant="outline" @click="loadNotifications()">重试</TButton>
       </div>
 
       <div v-if="cards.length || filtersActive" class="wb-toolbar">
@@ -410,24 +421,24 @@ onMounted(() => {
             {{ option.label }}<span class="wb-chip__count">{{ option.count }}</span>
           </button>
         </div>
-        <el-input v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索标题或内容"
+        <TInput v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索标题或内容"
           aria-label="搜索系统通知">
           <template #prefix>
-            <el-icon>
+            <TIcon>
               <Search />
-            </el-icon>
+            </TIcon>
           </template>
-        </el-input>
+        </TInput>
         <div class="wb-toolbar__actions">
           <span v-if="filtersActive" class="wb-toolbar__hint">
             筛选出 {{ filteredTotal }} / {{ cards.length }} 条
           </span>
-          <el-button v-if="filtersActive" class="wb-toolbar__ghost" @click="resetFilters">
-            <el-icon>
+          <TButton variant="outline" v-if="filtersActive" @click="resetFilters">
+            <TIcon>
               <RefreshLeft />
-            </el-icon>
+            </TIcon>
             <span>重置</span>
-          </el-button>
+          </TButton>
         </div>
       </div>
 
@@ -435,12 +446,12 @@ onMounted(() => {
       <div v-else-if="!filteredCards.length" class="wb-empty">
         <span class="wb-empty__title">{{ emptyTitle() }}</span>
         <div v-if="filtersActive" class="wb-empty__actions">
-          <el-button class="wb-toolbar__ghost" @click="resetFilters">
-            <el-icon>
+          <TButton variant="outline" @click="resetFilters">
+            <TIcon>
               <RefreshLeft />
-            </el-icon>
+            </TIcon>
             <span>清空筛选</span>
-          </el-button>
+          </TButton>
         </div>
       </div>
       <template v-else>
@@ -461,31 +472,31 @@ onMounted(() => {
               <span :class="kindBadgeClass(card.kind)">{{ card.kindLabel }}</span>
               <span class="wb-item__meta">{{ card.meta }}</span>
               <div v-if="card.canVote" class="notifications-card__actions">
-                <el-button class="wb-toolbar__ghost" :disabled="votingId !== null"
+                <TButton variant="outline" :disabled="votingId !== null"
                   @click.stop="vote(card, 'rejected')">
                   拒绝
-                </el-button>
-                <el-button class="wb-toolbar__primary" :disabled="votingId !== null"
+                </TButton>
+                <TButton variant="solid" tone="accent" :disabled="votingId !== null"
                   @click.stop="vote(card, 'approved')">
                   同意公开
-                </el-button>
+                </TButton>
               </div>
-              <el-button v-else-if="card.postId != null" class="wb-toolbar__ghost"
+              <TButton variant="outline" v-else-if="card.postId != null"
                 @click.stop="openAnnouncement(card)">
                 查看公告
-              </el-button>
+              </TButton>
             </div>
           </li>
         </ul>
         <div class="wb-pager">
           <div class="wb-pager__count">
             <span>共 {{ filteredTotal }} 条</span>
-            <el-select v-model="pageSize" class="wb-pager__size" aria-label="每页条数">
-              <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-            </el-select>
+            <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页条数">
+              <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+            </TSelect>
           </div>
-          <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-            :pager-count="5" layout="prev, pager, next" background aria-label="系统通知分页" />
+          <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+            :pager-count="5" background aria-label="系统通知分页" />
         </div>
       </template>
     </section>
@@ -586,8 +597,6 @@ onMounted(() => {
     align-items: stretch;
     text-align: left;
   }
-
-  .notifications-card__actions .el-button,
   .notifications-card__actions .dev-btn {
     flex: 1;
     min-height: 44px;

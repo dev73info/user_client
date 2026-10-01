@@ -62,83 +62,11 @@ a {
   color: inherit;
 }
 
-/* === Element Plus 主色映射（只作用于开发者工作台，不写全局 :root 覆盖）===
-   Element Plus 默认主色是 #409eff，与开发者体系的主色 #1f4ad1 是两个蓝，
-   同一页里「查询」按钮（改写 --el-*）与 `type="primary"` 按钮会呈现两种蓝；
-   同理，Element 默认的绿 #67c23a / 橙 #e6a23c 与体系里的青（已完成）、金（金额与提示）也对不上。
-   这里把 Element 的调色板在开发者工作台范围内一次映射到 --dev-* 令牌，
-   含各项 light-N / dark-2 派生值（Element 的 plain 标签、hover 底色都取这些派生值，
-   只改基色会留下绿/橙的残影）。
-
-   作用域：.user-workbench--dev 是工作台外壳在开发者模式下的根类（见 UserWorkbenchView.vue），
-   页面内所有 Element 组件都在它下面。弹窗由 Element teleport 到 body，落在作用域外，
-   所以开发者页的弹窗额外挂 .dev-dialog，见各页 el-dialog 的 class。 */
+/* 开发者体系的作用域根：`.user-workbench--dev` 是工作台外壳在开发者模式下的根类
+   （见 UserWorkbenchView.vue），页面里的元素都在它下面；弹窗会被 teleport 到 body，
+   落在这个根之外，所以开发者页的弹窗自己挂 .dev-dialog（见各页 TDialog 的 class）。 */
 .user-workbench--dev,
 .dev-dialog {
-  --el-color-primary: var(--dev-blue);
-  --el-color-primary-light-3: #6280df;
-  --el-color-primary-light-5: #8fa5e8;
-  --el-color-primary-light-7: #bcc9f1;
-  --el-color-primary-light-8: #d2dbf6;
-  --el-color-primary-light-9: #e8edfa;
-  --el-color-primary-dark-2: #193ba7;
-
-  /* 成功=青（体系里的「已完成」），警示=金（「金额与提示」） */
-  --el-color-success: var(--dev-cyan);
-  --el-color-success-light-3: #6ac1bf;
-  --el-color-success-light-5: #95d2d2;
-  --el-color-success-light-7: #bfe4e4;
-  --el-color-success-light-8: #d4eded;
-  --el-color-success-light-9: #eaf6f6;
-  --el-color-success-dark-2: #228583;
-
-  --el-color-warning: var(--dev-gold);
-  --el-color-warning-light-3: #cea76b;
-  --el-color-warning-light-5: #dcc095;
-  --el-color-warning-light-7: #ead9bf;
-  --el-color-warning-light-8: #f1e6d5;
-  --el-color-warning-light-9: #f8f2ea;
-  --el-color-warning-dark-2: #946722;
-
-  /* 中性灰跟着 --dev-muted 走，避免出现第二套灰 */
-  --el-color-info: var(--dev-muted);
-  --el-color-info-light-3: #93a0b1;
-  --el-color-info-light-5: #b1bac5;
-  --el-color-info-light-7: #d0d5dc;
-  --el-color-info-light-8: #dfe3e8;
-  --el-color-info-light-9: #eff1f3;
-  --el-color-info-dark-2: #525e71;
-
-  /* danger 保持 Element 的语义红：开发者体系没有红色令牌，
-     且红在这里只用于「终止合作/解散/删除」这类破坏性操作，不需要跟强调色统一。 */
-
-  /* 文字与描边令牌：上面只改了「强调色」，Element 的灰阶仍然走它自己的默认值，
-     于是同一张卡片里出现两套墨色与两套灰——el-card 组件自带 color: var(--el-text-color-primary)
-     会把卡内所有继承文字染成 #303133（开发者体系的墨色是 #0f172a），
-     表单标签与输入文字取 #606266、占位符取 #a8abb2、带描边按钮的边取 #dcdfe6，
-     与 .dev-section-title / .dev-table__strong 用的 --dev-ink 肉眼可见地不是同一个颜色；
-     我的接单页有 235 个元素落在 #303133 上，是最明显的一处。
-     这里把灰阶一次性映射到体系令牌：墨色/次级正文/弱化说明/占位符/描边/填充。
-     映射后各页不必再逐处写 color，Element 组件自然与手写元素同色。 */
-  --el-text-color-primary: var(--dev-ink);
-  --el-text-color-regular: var(--dev-ink-soft);
-  --el-text-color-secondary: var(--dev-muted);
-  /* 占位符比 --dev-muted 再浅一档：它要与已填内容区分开，压到同一个灰就没有层次了 */
-  --el-text-color-placeholder: #94a3b8;
-  --el-text-color-disabled: #cbd5e1;
-
-  --el-border-color: var(--dev-line);
-  --el-border-color-light: var(--dev-line);
-  --el-border-color-lighter: rgba(203, 213, 225, 0.42);
-  --el-border-color-extra-light: rgba(203, 213, 225, 0.28);
-  --el-border-color-hover: rgba(31, 74, 209, 0.32);
-  --el-border-color-darker: #94a3b8;
-
-  --el-fill-color-blank: var(--dev-surface-strong);
-  --el-bg-color: var(--dev-surface-strong);
-  --el-bg-color-overlay: var(--dev-surface-strong);
-  --el-fill-color-light: rgba(241, 244, 251, 0.62);
-  --el-fill-color-lighter: rgba(241, 244, 251, 0.42);
 
   /* 补上被 resource-core.css 的 `body { color: var(--text-main) }`（#172033）盖掉的墨色：
      那张表是「免费资源」门户页的遗留样式，全局加载后连开发者页面的正文底色一起改了，
@@ -175,13 +103,16 @@ a {
   box-shadow: var(--dev-shadow);
 }
 
-.dev-surface-card .el-card__body {
-  padding: 24px;
-}
+/* 面板形态的卡片：直接落在 <section> 上的 .dev-surface-card 自己不带内边距，各页于是各写一个
+   padding（总览页 20px、其余 24px），同一形态的卡片内边距不一致，这里统一收成一档。
+   挂这个类的还有 `<TCard class="dev-surface-card">`：TCard 按 `padded`（默认开）本来也给 24px，
+   与本条落在同一个元素的同一个属性上、值相同，不叠加；窄屏那两档收窄见 dev-responsive.css。
 
-/* 直接落在 <section> 上的 .dev-surface-card 不是 el-card，拿不到上面那条 .el-card__body
-   的内边距，各页于是自己写一个 padding（总览页 20px、其余 24px），同一形态的卡片内边距不一致。
-   这里给非 el-card 的面板补上与 el-card 相同的 24px，页面不必再写。 */
+   选择器里的 `:not(.el-card)` 是 Element 时代的残留（那时靠它排除 el-card，因为内边距在
+   `.el-card__body` 上）。现在没有任何元素带 `el-card`，这条等价于 `.dev-surface-card`；
+   但别顺手把 `:not()` 删成 `.dev-surface-card`：dev-responsive.css 的两档收窄写的是同一个
+   选择器，删掉特异性会从 (0,2,0) 掉到 (0,1,0)，与 TCard 自己的 `.t73-card--padded` 同档，
+   窄屏谁生效就交给样式表顺序了。 */
 .dev-surface-card:not(.el-card) {
   padding: 24px;
 }
@@ -211,9 +142,9 @@ a {
 }
 
 /* === 原生按钮 / 链接按钮 ===
-   工具栏以外的卡片头、空态里放的是 RouterLink 或原生 <button>，不是 el-button，
-   拿不到 .dev-toolbar__primary / __ghost 的规格。这两个变体与它们同高同圆角同配色，
-   保证「同一个动作，无论在工具栏还是卡片头，长得一样」。 */
+   工具栏以外的卡片头、空态里放的是 RouterLink 或原生 <button>，不是 TButton，
+   拿不到 .dev-toolbar__primary / __ghost 的规格（那两个变体挂在 TButton 上）。
+   这两个变体与它们同高同圆角同配色，保证「同一个动作，无论在工具栏还是卡片头，长得一样」。 */
 .dev-btn {
   display: inline-flex;
   align-items: center;
@@ -237,9 +168,7 @@ a {
     border-color 160ms ease,
     color 160ms ease;
 }
-
-/* `.el-icon` 那一支留给还没迁移的页面；`.t73-icon` 是同一处规格的新写法 */
-.dev-btn .el-icon,
+/* 按钮里的图标：尺寸跟着按钮字号走（TIcon 默认 1em），这一档定成 15px */
 .dev-btn .t73-icon {
   font-size: 15px;
 }
@@ -397,28 +326,6 @@ a {
   margin-left: 0;
 }
 
-/* 顶条里的图标按钮（刷新）：保持正方形，不继承文字按钮的左右内边距，
-   也不画方框——顶条本身就是白底，白底 + 描边等于在一排读数右边多出一个空框。
-   悬停/聚焦仍有底色与外投影（.dev-toolbar__icon-btn.el-button:hover / :focus-visible），
-   可点性不丢；边框三态一并置透明，免得悬停时又冒出一条边。
-   作用域留在顶条上而不写进基类：这个类目前只出现在 .dev-meta-strip__action
-   （十几个开发者页面的顶条），基类那一份留着方框——同一颗按钮日后放进卡片工具栏时，
-   四周都是带框控件，框就是它的边界。 */
-.dev-meta-strip__action .dev-toolbar__icon-btn.el-button {
-  padding: 0;
-  --el-button-border-color: transparent;
-  --el-button-hover-border-color: transparent;
-  --el-button-active-border-color: transparent;
-}
-
-/* 横条里的按钮与工具栏按钮同高同圆角，不再单独压成 20px 高的小按钮 */
-.dev-meta-strip__action .el-button {
-  min-height: var(--dev-control-height);
-  height: var(--dev-control-height);
-  padding: 0 16px;
-  border-radius: var(--dev-radius-control);
-}
-
 .dev-meta-strip__divider {
   width: 1px;
   height: 20px;
@@ -508,16 +415,6 @@ a {
   margin-left: auto;
 }
 
-/* 提示条里的动作按钮与工具栏按钮同规格：Element 的 size="small"（24px 高）
-   在这种整幅横幅里显得比文案还轻，同一页两个横幅的小按钮高度也不一致。 */
-.dev-notice__action .el-button {
-  min-height: var(--dev-control-height);
-  height: var(--dev-control-height);
-  padding: 0 16px;
-  border-radius: var(--dev-radius-control);
-  font-weight: 700;
-}
-
 /* 卡片内「标题与内容块」之间的固定间距：原来叫 .dev-list--spaced（挂在已删除的 .dev-list 上），
    现在只作单条工具类保留，预览卡等紧跟小标题的内容块用它。 */
 .dev-list--spaced {
@@ -546,8 +443,8 @@ a {
 }
 
 /* 下拉筛选的宽度必须写死成 flex 基宽，不能只写 min-width：
-   Element Plus 的 .el-select 自带 width: 100%，而 .dev-toolbar__field 是直接挂在 el-select
-   根节点上的，`flex: 0 0 auto` 会让 flex-basis 回落到 width，于是每个筛选各占一整行、
+   TSelect 自带 width: 100%，而 .dev-toolbar__field 是直接挂在 TSelect 根节点上的，
+   `flex: 0 0 auto` 会让 flex-basis 回落到 width，于是每个筛选各占一整行、
    工具栏被撑成竖排。用 flex 简写给出确定基宽即可，宽度属性同时失效，两者不再打架。 */
 .dev-toolbar__field {
   flex: 0 0 150px;
@@ -590,131 +487,6 @@ a {
 .dev-toolbar--stacked .dev-toolbar__search {
   flex: 1 1 100%;
   max-width: none;
-}
-
-/* 工具栏内控件同尺寸：输入框 / 选择器 / 按钮 */
-.dev-toolbar,
-.dev-meta-strip {
-  --el-component-size: var(--dev-control-height);
-}
-
-.dev-toolbar .el-input__wrapper,
-.dev-toolbar .el-select__wrapper,
-.dev-toolbar .el-button {
-  min-height: var(--dev-control-height);
-  height: var(--dev-control-height);
-  border-radius: var(--dev-radius-control);
-}
-
-/* 工具栏里可能放没有 __primary / __ghost / __icon-btn 修饰类的裸 el-button
-   （比如分页、行内小动作），字号也跟进来，免得工具栏里出现第三种按钮字号 */
-.dev-toolbar .el-button {
-  font-size: 13px;
-}
-
-/* 下面三个按钮变体脱离 .dev-toolbar 也能用（卡片头、弹窗页脚、空态里），
-   尺寸与颜色规格跟工具栏内完全一致，不要因为换了位置再写一套。
-   字号统一 13px：这里是 el-button，不写就吃 Element 默认的 14px，而卡片头常用的
-   .dev-btn 是 13px、工具栏内输入框与选择器也是 13px，同一个动作换个位置就大一号。
-   两个体系都落到 13px，与工具栏内的输入框同档。 */
-.dev-toolbar__primary.el-button,
-.dev-toolbar__ghost.el-button,
-.dev-toolbar__icon-btn.el-button {
-  min-height: var(--dev-control-height);
-  height: var(--dev-control-height);
-  border-radius: var(--dev-radius-control);
-  font-size: 13px;
-}
-
-/* 带图标的次要按钮：图标与文字同一行、间距 6px（重置/导出一类） */
-.dev-toolbar__primary.el-button > span,
-.dev-toolbar__ghost.el-button > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.dev-toolbar .el-input__wrapper,
-.dev-toolbar .el-select__wrapper {
-  padding: 0 12px;
-  background: var(--dev-surface-strong);
-  box-shadow: 0 0 0 1px var(--dev-line) inset;
-  transition: box-shadow 160ms ease;
-}
-
-.dev-toolbar .el-input__wrapper:hover,
-.dev-toolbar .el-select__wrapper:hover,
-.dev-toolbar .el-select__wrapper.is-hovering {
-  box-shadow: 0 0 0 1px rgba(31, 74, 209, 0.32) inset;
-}
-
-.dev-toolbar .el-input__wrapper.is-focus,
-.dev-toolbar .el-select__wrapper.is-focused {
-  box-shadow: 0 0 0 1px var(--dev-blue) inset;
-}
-
-.dev-toolbar .el-input__inner,
-.dev-toolbar .el-select__placeholder,
-.dev-toolbar .el-select__selected-item {
-  font-size: 13px;
-}
-
-/* 图标按钮：正方形，与输入框等高，常态灰字冷底，悬停转主色 */
-.dev-toolbar__icon-btn.el-button {
-  width: var(--dev-control-height);
-  padding: 0;
-  --el-button-text-color: var(--dev-muted);
-  --el-button-bg-color: var(--dev-surface-strong);
-  --el-button-border-color: var(--dev-line);
-  --el-button-hover-text-color: var(--dev-blue);
-  --el-button-hover-bg-color: rgba(31, 74, 209, 0.08);
-  --el-button-hover-border-color: rgba(31, 74, 209, 0.32);
-  --el-button-active-text-color: var(--dev-blue);
-  --el-button-active-bg-color: rgba(31, 74, 209, 0.12);
-  --el-button-active-border-color: rgba(31, 74, 209, 0.32);
-}
-
-/* 次要按钮（重置、导出之类）：同高同圆角，白底冷描边 */
-.dev-toolbar__ghost.el-button {
-  padding: 0 14px;
-  font-weight: 700;
-  --el-button-text-color: var(--dev-ink-soft);
-  --el-button-bg-color: var(--dev-surface-strong);
-  --el-button-border-color: var(--dev-line);
-  --el-button-hover-text-color: var(--dev-blue);
-  --el-button-hover-bg-color: rgba(31, 74, 209, 0.08);
-  --el-button-hover-border-color: rgba(31, 74, 209, 0.32);
-  --el-button-active-text-color: #fff;
-  --el-button-active-bg-color: var(--dev-blue);
-  --el-button-active-border-color: var(--dev-blue);
-}
-
-/* 主按钮（查询、新建之类）：整站主色 --dev-blue，不要再出现 Element 默认的 #409eff。
-   悬停不提亮底色，只加一层投影，避免同一页面出现两种蓝。 */
-.dev-toolbar__primary.el-button {
-  padding: 0 16px;
-  font-weight: 700;
-  --el-button-text-color: #fff;
-  --el-button-bg-color: var(--dev-blue);
-  --el-button-border-color: var(--dev-blue);
-  --el-button-hover-text-color: #fff;
-  --el-button-hover-bg-color: var(--dev-blue);
-  --el-button-hover-border-color: var(--dev-blue);
-  --el-button-active-text-color: #fff;
-  --el-button-active-bg-color: var(--dev-blue);
-  --el-button-active-border-color: var(--dev-blue);
-}
-
-.dev-toolbar__primary.el-button:hover,
-.dev-toolbar__primary.el-button:focus-visible {
-  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.22);
-}
-
-.dev-toolbar__ghost.el-button:hover,
-.dev-toolbar__ghost.el-button:focus-visible,
-.dev-toolbar__icon-btn.el-button:hover,
-.dev-toolbar__icon-btn.el-button:focus-visible {
-  box-shadow: 0 8px 18px rgba(31, 74, 209, 0.1);
 }
 
 .dev-filter-label {
@@ -808,83 +580,12 @@ a {
 }
 
 /* === 开发者页统一表格皮肤 ===
-   所有列表页的 el-table 都加上 .dev-table，皮肤只在下面这一处定义。
-   表头底色是冷灰蓝（--dev-bg 的淡色），不是原来的暖奶油 rgba(255,248,238,.96)；
-   分隔线用 --dev-line，行悬停与斑马纹都取主色的极淡底。 */
-.dev-table {
-  --el-table-border-color: var(--dev-line);
-  /* 下面这几个底色一律写成「合成后的不透明值」，不要用半透明：
-     Element 的固定列（fixed="right"）是靠 `background: inherit` 从行上取底色的，
-     行底色用 rgba 时，横向滚动过来的单元格会从固定列底下透出来——
-     表头的 rgba(241,244,251,.9)、行悬停的 rgba(31,74,209,.05)、
-     斑马纹的 rgba(241,244,251,.62) 都有这个毛病，而 .el-table--striped 的行正好是最后这档。
-     下面给了「压在白卡（--dev-surface）上」的合成值，肉眼看与半透明时一样：
-     斑马纹 0.62×#f1f4fb + 0.38×#fff、悬停 0.05×#1f4ad1 + 0.95×#fff、表头 0.9×#f1f4fb + 0.1×#fff。 */
-  --el-table-header-bg-color: #f2f5fb;
-  --el-table-header-text-color: var(--dev-muted);
-  --el-table-text-color: var(--dev-ink);
-  --el-table-row-hover-bg-color: #f4f6fd;
-  --el-table-tr-bg-color: var(--dev-surface-strong);
-  --el-fill-color-blank: transparent;
-  --el-fill-color-lighter: #f6f8fd;
-  font-size: 13px;
-}
-
-/* 表尾那条默认的横向分隔线不要，表格靠自己的行描边收边 */
-.dev-table .el-table__inner-wrapper::before {
-  display: none;
-}
-
-/* 表格空态：表格页一律用 <template #empty> 放一个 .dev-empty-state，
-   与卡片里的空态（总览页、我的团队、我的接单）同一形态；
-   原来表格页走 :empty-text 的裸灰字，同一页里卡片与表格两种空态长得不一样。
-   空槽默认只占一半宽度，这里放宽到整行，免得虚线框被挤成窄条。 */
-.dev-table .el-table__empty-block {
-  min-height: 112px;
-}
-
-.dev-table .el-table__empty-text {
-  width: 100%;
-  padding: 0 12px;
-  color: var(--dev-muted);
-  font-size: 13px;
-}
-
-.dev-table .el-table__empty-text .dev-empty-state {
-  max-width: 100%;
-  margin: 0 auto;
-}
-
-.dev-table th.el-table__cell {
-  height: 44px;
-  padding: 0;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.dev-table td.el-table__cell {
-  padding: 12px 0;
-}
-
-.dev-table .el-table__cell .cell {
-  padding: 0 12px;
-}
-
-/* 固定列（操作列）自动跟着行底色走（Element 给固定列的是 `background: inherit`），
-   所以只要上面那些底色都是不透明的，横向滚动时就不会有内容透出来。 */
-
-/* 打开列宽拖拽必须给 el-table 加 border（Element 的拖拽逻辑里有 `if (!props.border) return`），
-   但这一套皮肤是无线框的，所以把 border 带来的竖线与左右外框再关掉，
-   只留它打开的能力。拖动时的竖线由 .el-table__column-resize-proxy 自己画，不在这里。 */
-.dev-table.el-table--border .el-table__cell {
-  border-right: 0;
-}
-
-.dev-table.el-table--border::before,
-.dev-table.el-table--border::after {
-  display: none;
-}
+   表头底色、分隔线、行悬停、斑马纹、单元格内边距这些已收进组件库的 TTable
+   （ui_73info 的 `--73-table-*` 令牌，取值按本文件与 `.dev-table` 并存的登记值定：
+   表头是冷灰蓝、不是原来的暖奶油 rgba(255,248,238,.96)；斑马纹与行悬停都取主色的极淡底，
+   且一律是「合成后的不透明值」——固定列靠 `background: inherit` 从行上取底色，
+   半透明会让横向滚动过来的单元格从固定列底下透出来）。
+   列表页仍然给 TTable 挂 .dev-table，它是页面级覆盖的钩子，本节不再重复一份皮肤。 */
 
 /* 单元格里的主/次要文字：主信息 14px 加粗，次要信息 12px 弱字。
    这两个值是全部菜单页表格的统一口径——资源列表、团队资源、我的接单、需求大厅、
@@ -901,78 +602,7 @@ a {
   line-height: 1.5;
   color: var(--dev-muted);
 }
-
-/* 表格里的行内按钮：比工具栏按钮矮一档，避免表格被按钮撑高 */
-.dev-table .el-button {
-  min-height: 32px;
-  height: 32px;
-  border-radius: var(--dev-radius-control);
-  font-weight: 700;
-}
-
-/* 表格行内的操作按钮：统一最小宽度与方角，
-   原来是需求大厅胶囊 999px、资源列表 10px + 重投影，同行按钮宽窄与形状都不一致。
-   这里只管尺寸，底色由 .dev-action--soft / .dev-action--soft-danger 给。 */
-.dev-table__action.el-button {
-  min-width: 92px;
-  font-weight: 700;
-}
-
-/* === 开发者页统一「行内软按钮」===
-   表格行内与卡片行内的次要操作按钮是同一个东西，只认这一组类名：
-   .dev-action--soft 是主色档（查看版本 / 关联需求 / 会话 / 售后 / 提交交付版本），
-   .dev-action--soft-danger 是破坏性档（终止合作 / 申请解除），与 .dev-btn--danger 同一支红。
-   两档都是白底 + 细描边 + 同色文字，下拉展开时转同色实底。
-
-   为什么不能直接用 `type="primary" plain`：Element 的 plain 变体把底色取成
-   --el-color-primary-light-9（#e8edfa 的蓝灰底）配 light-5 描边，而表格行按钮要的是
-   白底 + 主色描边；两处摆在同一页会看到「表格里的按钮是白底、卡片里的按钮是蓝底」。
-   同理 danger 的 plain 会取成 Element 的粉底三件套（#fef0f0 / #fde2e2 / #fab6b6），
-   与 .dev-btn--danger 的白底红描边不是一套，禁用态更是一片粉。
-   所以配色在这里一次写死，各页只挂类名，不再挑 Element 的 color 档位。
-
-   尺寸不在这里：表格行交给 .dev-table 的 32px 档、卡片行交给 .dev-list-actions 的 32px 档，
-   同一张表格／同一张卡片里不该有两种行内按钮高度。 */
-.dev-action--soft.el-button {
-  --el-button-text-color: var(--dev-blue);
-  --el-button-bg-color: rgba(255, 255, 255, 0.86);
-  --el-button-border-color: rgba(31, 74, 209, 0.18);
-  --el-button-hover-text-color: var(--dev-blue);
-  --el-button-hover-bg-color: rgba(31, 74, 209, 0.08);
-  --el-button-hover-border-color: rgba(31, 74, 209, 0.34);
-  --el-button-active-text-color: #fff;
-  --el-button-active-bg-color: var(--dev-blue);
-  --el-button-active-border-color: var(--dev-blue);
-  padding: 0 12px;
-  border-radius: var(--dev-radius-control);
-  color: var(--dev-blue);
-  box-shadow: 0 8px 18px rgba(31, 74, 209, 0.08);
-}
-
-.dev-action--soft.el-button:hover,
-.dev-action--soft.el-button:focus-visible {
-  border-color: rgba(31, 74, 209, 0.34);
-  background: rgba(31, 74, 209, 0.08);
-  color: var(--dev-blue);
-  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.12);
-}
-
-/* 下拉菜单打开时按钮进选中态（aria-expanded 由 el-dropdown 写在触发元素上） */
-.dev-action--soft.el-button[aria-expanded='true'] {
-  border-color: rgba(31, 74, 209, 0.72);
-  background: var(--dev-blue);
-  color: #fff;
-  box-shadow: 0 12px 24px rgba(31, 74, 209, 0.18);
-}
-
-.dev-action--soft.el-button > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* `.el-icon` 那一支留给还没迁移的页面；`.t73-icon` 是同一处规格的新写法 */
-.dev-action--soft .el-icon,
+/* 行内操作按钮里的图标：与 .dev-btn 同档 15px */
 .dev-action--soft .t73-icon {
   font-size: 15px;
 }
@@ -981,46 +611,6 @@ a {
   margin-left: 2px;
   font-size: 13px;
   transition: transform 160ms ease;
-}
-
-.dev-action--soft.el-button[aria-expanded='true'] .dev-action-caret {
-  transform: rotate(180deg);
-}
-
-/* 破坏性档：与 .dev-btn--danger 同一支红（白底 + 红描边 + 红字），
-   禁用态也压成中性弱字，不要退回 Element 的粉底。 */
-.dev-action--soft-danger.el-button {
-  --el-button-text-color: #dc2626;
-  --el-button-bg-color: var(--dev-surface-strong);
-  --el-button-border-color: rgba(220, 38, 38, 0.32);
-  --el-button-hover-text-color: #dc2626;
-  --el-button-hover-bg-color: rgba(220, 38, 38, 0.08);
-  --el-button-hover-border-color: rgba(220, 38, 38, 0.5);
-  --el-button-active-text-color: #fff;
-  --el-button-active-bg-color: #dc2626;
-  --el-button-active-border-color: #dc2626;
-  --el-button-disabled-text-color: var(--dev-muted);
-  --el-button-disabled-bg-color: var(--dev-surface-strong);
-  --el-button-disabled-border-color: var(--dev-line);
-  padding: 0 12px;
-  border-radius: var(--dev-radius-control);
-  color: #dc2626;
-}
-
-.dev-action--soft-danger.el-button:hover,
-.dev-action--soft-danger.el-button:focus-visible {
-  border-color: rgba(220, 38, 38, 0.5);
-  background: rgba(220, 38, 38, 0.08);
-  color: #dc2626;
-  box-shadow: 0 8px 18px rgba(220, 38, 38, 0.1);
-}
-
-.dev-action--soft-danger.el-button.is-disabled,
-.dev-action--soft-danger.el-button.is-disabled:hover {
-  border-color: var(--dev-line);
-  background: var(--dev-surface-strong);
-  color: var(--dev-muted);
-  box-shadow: none;
 }
 
 /* === 开发者页统一表尾 ===
@@ -1048,53 +638,9 @@ a {
   width: 116px;
 }
 
-/* 每页条数下拉与工具栏控件同尺寸：Element 默认是 32px 高 / 4px 圆角，
-   与工具栏里的 --dev-control-height / --dev-radius-control 对不上，
-   同一页会出现「搜索框 36px、每页条数 32px」两种控件高度。 */
-.dev-pager {
-  --el-component-size: var(--dev-control-height);
-}
-
-.dev-pager__size .el-select__wrapper {
-  min-height: var(--dev-control-height);
-  height: var(--dev-control-height);
-  padding: 0 12px;
-  border-radius: var(--dev-radius-control);
-  background: var(--dev-surface-strong);
-  box-shadow: 0 0 0 1px var(--dev-line) inset;
-}
-
-.dev-pager__size .el-select__wrapper:hover,
-.dev-pager__size .el-select__wrapper.is-hovering {
-  box-shadow: 0 0 0 1px rgba(31, 74, 209, 0.32) inset;
-}
-
-.dev-pager__size .el-select__placeholder,
-.dev-pager__size .el-select__selected-item {
-  font-size: 13px;
-}
-
-/* 分页器自身的按钮与页码：Element 默认 2px 圆角，并到控件档。
-   底色同样要换：背景按钮取 Element 默认的 #f5f7fa（暖灰），禁用态的翻页按钮因此
-   与体系里的冷灰蓝（--dev-bg / --dev-line）不是一支；只在需求大厅与收益钱包出现，
-   正好是最容易看出「这一页的灰和别的页不一样」的位置。 */
-.dev-pager .el-pagination button,
-.dev-pager .el-pager li {
-  border-radius: var(--dev-radius-control);
-}
-
-.dev-pager .el-pagination {
-  --el-pagination-font-size: 13px;
-  --el-pagination-button-color: var(--dev-ink-soft);
-  --el-pagination-button-bg-color: rgba(241, 244, 251, 0.9);
-  --el-pagination-button-disabled-bg-color: rgba(241, 244, 251, 0.62);
-  --el-pagination-button-disabled-color: #94a3b8;
-  --el-pagination-hover-color: var(--dev-blue);
-}
-
 /* 卡片/表格里的空态：字号显式写 13px，不靠继承。
-   表格页由 .dev-table .el-table__empty-text 给到 13px，但工单中心的空态是卡片里的
-   裸 div，没有那层兜底，会落到根字号的 16px——同一个「还没有记录」在两页两种大小。 */
+   工单中心的空态是卡片里的裸 div，不写就会落到根字号的 16px，
+   同一个「还没有记录」在两页两种大小。 */
 .dev-empty-state {
   margin: 0;
   padding: 24px;
@@ -1133,79 +679,6 @@ a {
   color: #dc2626;
 }
 
-/* === Element 的 el-tag 收进同一套胶囊口径 ===
-   开发者页原来并存两套状态标签：筛选切换用 .dev-chip（胶囊 999px / 28px 高 / 12px 700 /
-   主色浅底），状态展示用 Element 的 el-tag（直角 4px / 24px 高 / 12px 400 / plain 的浅色描边 +
-   白底或透明底）。收益钱包页最明显——同一条顶部读数条里，「满足提现条件」是胶囊、
-   旁边的「已提现 ¥0.00」是直角描边块，同一支青也是两种深浅。
-
-   这里按设计规范「状态标签一律浅底 + 深字」把 el-tag 一次映射到 .dev-chip 的形状与配色，
-   20 多处 el-tag 不必逐页改写。两点细节：
-   1. Element 把尺寸与配色都声明在 el-tag 元素自身（--el-tag-border-radius / --el-tag-bg-color
-      等），所以必须写在标签元素上、且选择器权重不低于 .el-tag--plain.el-tag--warning 那一档，
-      靠父层作用域继承是覆盖不掉的；这里统一用 .el-tag.el-tag--{type} 三档权重。
-   2. el-tag 的 size="small"（20px）由 .el-tag--small 给出，权重低一档，一并被这里的 28px 收掉，
-      各页不用再逐个删除 size 属性。 */
-.dev-page .el-tag,
-.dev-dialog .el-tag {
-  --el-tag-border-radius: 999px;
-  --el-tag-font-size: 12px;
-  --el-tag-bg-color: rgba(31, 74, 209, 0.08);
-  --el-tag-border-color: rgba(31, 74, 209, 0.16);
-  --el-tag-text-color: var(--dev-blue);
-  --el-tag-hover-color: var(--dev-blue);
-  height: 28px;
-  padding: 0 12px;
-  font-weight: 700;
-}
-
-/* 进行中 / 主色档 */
-.dev-page .el-tag.el-tag--primary,
-.dev-dialog .el-tag.el-tag--primary {
-  --el-tag-bg-color: rgba(31, 74, 209, 0.08);
-  --el-tag-border-color: rgba(31, 74, 209, 0.16);
-  --el-tag-text-color: var(--dev-blue);
-  --el-tag-hover-color: var(--dev-blue);
-}
-
-/* 已完成档：青 */
-.dev-page .el-tag.el-tag--success,
-.dev-dialog .el-tag.el-tag--success {
-  --el-tag-bg-color: rgba(42, 166, 164, 0.1);
-  --el-tag-border-color: rgba(42, 166, 164, 0.16);
-  --el-tag-text-color: var(--dev-cyan);
-  --el-tag-hover-color: var(--dev-cyan);
-}
-
-/* 需留意 / 金额档：金 */
-.dev-page .el-tag.el-tag--warning,
-.dev-dialog .el-tag.el-tag--warning {
-  --el-tag-bg-color: rgba(185, 129, 43, 0.1);
-  --el-tag-border-color: rgba(185, 129, 43, 0.16);
-  --el-tag-text-color: var(--dev-gold);
-  --el-tag-hover-color: var(--dev-gold);
-}
-
-/* 中性档：未选择 / 未关联 / 已结束 */
-.dev-page .el-tag.el-tag--info,
-.dev-dialog .el-tag.el-tag--info {
-  --el-tag-bg-color: rgba(148, 163, 184, 0.12);
-  --el-tag-border-color: var(--dev-line);
-  --el-tag-text-color: var(--dev-muted);
-  --el-tag-hover-color: var(--dev-muted);
-}
-
-/* 破坏性档：与 .dev-chip--danger / .dev-btn--danger 同一支红 */
-.dev-page .el-tag.el-tag--danger,
-.dev-page .el-tag.el-tag--error,
-.dev-dialog .el-tag.el-tag--danger,
-.dev-dialog .el-tag.el-tag--error {
-  --el-tag-bg-color: rgba(220, 38, 38, 0.08);
-  --el-tag-border-color: rgba(220, 38, 38, 0.2);
-  --el-tag-text-color: #dc2626;
-  --el-tag-hover-color: #dc2626;
-}
-
 /* === 卡片列表里的一行操作按钮 ===
    表格行内的按钮规格在 .dev-table 里（32px），卡片行内是它的等价物：
    「我的接单」的需求卡片、「我的团队」的邀请行都用这一组类名包按钮，
@@ -1217,12 +690,9 @@ a {
   align-items: center;
   gap: 8px;
 }
-
 /* 尺寸（32px 档）由这里给；底色与描边交给 .dev-action--soft / .dev-action--soft-danger，
    与表格行内按钮共用同一份配色，卡片行与表格行不会各是各的。 */
-.dev-list-actions .el-button,
 .dev-list-actions .dev-btn,
-.dev-stack-item .el-button,
 .dev-stack-item .dev-btn {
   min-height: 32px;
   height: 32px;

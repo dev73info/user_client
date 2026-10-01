@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-
-import { ArrowDown, ArrowUp, ChatDotRound, Refresh, RefreshLeft, Search, View } from '@element-plus/icons-vue'
-
 import {
   getAdapayBreachCase,
   reportAdapayBreach,
@@ -60,6 +57,29 @@ import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPag
 import { useAuthStore } from '@/stores/auth'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
 import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
+import {
+  TButton,
+  TCard,
+  TDescriptions,
+  TDescriptionsItem,
+  TDialog,
+  TForm,
+  TFormItem,
+  TIcon,
+  TInput,
+  TLoading,
+  TOption,
+  TPagination,
+  TSelect,
+  TTag,
+  ArrowDown,
+  ArrowUp,
+  ChatDotRound,
+  Refresh,
+  RefreshLeft,
+  Search,
+  View,
+} from 'ui_73info'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -1174,7 +1194,6 @@ async function loadRequirementConversations() {
 
 <template>
   <div class="dev-page dev-page--my-requirements">
-
     <div class="dev-meta-strip">
       <div class="dev-meta-strip__item">
         <span class="dev-meta-strip__label">总需求单</span>
@@ -1196,15 +1215,15 @@ async function loadRequirementConversations() {
         <span class="dev-meta-strip__value">{{ receiptMoney(incomeTotal) }}</span>
       </div>
       <div class="dev-meta-strip__item dev-meta-strip__action">
-        <el-button class="dev-toolbar__icon-btn" aria-label="刷新接单列表" @click="loadMyRequirements">
-          <el-icon>
+        <TButton icon-only aria-label="刷新接单列表" @click="loadMyRequirements">
+          <TIcon>
             <Refresh />
-          </el-icon>
-        </el-button>
+          </TIcon>
+        </TButton>
       </div>
     </div>
 
-    <el-card shadow="never" class="dev-surface-card">
+    <TCard class="dev-surface-card">
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
           <h3 class="dev-section-title">接单与交付</h3>
@@ -1212,37 +1231,46 @@ async function loadRequirementConversations() {
       </div>
 
       <div class="dev-toolbar">
-        <el-select v-model="filters.status" clearable placeholder="需求状态" class="dev-toolbar__field"
-          aria-label="按需求状态筛选">
-          <el-option label="待签合同" value="contract_pending" />
-          <el-option label="待缴定金" value="pending_deposit" />
-          <el-option label="开发中" value="in_development" />
-          <el-option label="待付尾款" value="pending_final" />
-          <el-option label="待分账" value="pending_settlement" />
-          <el-option label="已完成" value="completed" />
-          <el-option label="已取消" value="cancelled" />
-          <el-option label="需求已解绑" value="unlinked" />
-        </el-select>
+        <TSelect
+          v-model="filters.status"
+          clearable
+          placeholder="需求状态"
+          class="dev-toolbar__field"
+          aria-label="按需求状态筛选"
+        >
+          <TOption label="待签合同" value="contract_pending" />
+          <TOption label="待缴定金" value="pending_deposit" />
+          <TOption label="开发中" value="in_development" />
+          <TOption label="待付尾款" value="pending_final" />
+          <TOption label="待分账" value="pending_settlement" />
+          <TOption label="已完成" value="completed" />
+          <TOption label="已取消" value="cancelled" />
+          <TOption label="需求已解绑" value="unlinked" />
+        </TSelect>
 
-        <el-input v-model="filters.keyword" clearable placeholder="搜索需求编号、标题、资源、版本或流水号"
-          class="dev-toolbar__search">
+        <TInput
+          v-model="filters.keyword"
+          clearable
+          placeholder="搜索需求编号、标题、资源、版本或流水号"
+          class="dev-toolbar__search"
+        >
           <template #prefix>
-            <el-icon>
+            <TIcon>
               <Search />
-            </el-icon>
+            </TIcon>
           </template>
-        </el-input>
+        </TInput>
 
         <div class="dev-toolbar__actions">
           <span v-if="hasActiveFilters" class="dev-toolbar__hint">
             筛选出 {{ filteredRows.length }} / {{ mergedRows.length }} 条
           </span>
-          <el-button class="dev-toolbar__ghost" @click="resetFilters">
-            <el-icon>
+          <TButton variant="outline" @click="resetFilters">
+            <TIcon>
               <RefreshLeft />
-            </el-icon>
+            </TIcon>
             <span>重置</span>
-          </el-button>
+          </TButton>
         </div>
       </div>
 
@@ -1250,7 +1278,7 @@ async function loadRequirementConversations() {
            与资源项目、我的团队的卡片列表差同一档。
            一行一个需求单：交付物与到账长在同一张卡上（原「交付记录」页的两列），
            没被任何需求单绑定的交付、以及需求已解绑的到账，同样成行但不出签署与操作栏。 -->
-      <div class="dev-stack-list" v-loading="loading">
+      <TLoading tag="div" class="dev-stack-list" :loading="loading">
         <div v-if="filteredRows.length === 0" class="dev-empty-state">{{ emptyText }}</div>
         <article v-for="row in pagedRows" :key="row.key" class="dev-requirement-card">
           <header class="dev-requirement-card__head">
@@ -1259,32 +1287,45 @@ async function loadRequirementConversations() {
               <h3 class="dev-requirement-hall__title">{{ rowTitle(row) }}</h3>
               <!-- 需求说明：需求描述与验收标准各一段，收起时**各段各截头几行**（见样式里的 .is-collapsed），
                    一个「展开 / 收起」管两段——各挂一个折叠按钮的话，同一块正文会有两个开关。 -->
-              <div v-if="row.item" class="dev-requirement-card__brief"
+              <div
+                v-if="row.item"
+                class="dev-requirement-card__brief"
                 :class="{ 'is-collapsed': !isBriefExpanded(row.item) }"
-                :ref="(el) => setBriefRef(el as HTMLElement | null, row.item!)">
+                :ref="(el) => setBriefRef(el as HTMLElement | null, row.item!)"
+              >
                 <section class="dev-requirement-card__field">
                   <span class="dev-requirement-card__field-label">需求描述</span>
                   <article
                     class="dev-requirement-hall__desc dev-requirement-card__description dev-requirement-card__field-body"
-                    v-html="requirementFieldHtml(row.item.description)"></article>
+                    v-html="requirementFieldHtml(row.item.description)"
+                  ></article>
                 </section>
                 <section class="dev-requirement-card__field">
                   <span class="dev-requirement-card__field-label">验收标准</span>
                   <article
                     class="dev-requirement-hall__desc dev-requirement-card__description dev-requirement-card__field-body"
-                    v-html="requirementFieldHtml(row.item.acceptance_criteria, '当前需求暂未补充验收标准。')"></article>
+                    v-html="
+                      requirementFieldHtml(
+                        row.item.acceptance_criteria,
+                        '当前需求暂未补充验收标准。',
+                      )
+                    "
+                  ></article>
                 </section>
               </div>
               <p v-else class="dev-requirement-card__description">
                 这条到账所属的需求已解除绑定，需求单列表里已经查不到它。
               </p>
-              <button v-if="row.item && (isBriefExpanded(row.item) || briefOverflow(row.item))"
-                type="button" class="dev-requirement-card__description-toggle"
-                @click="toggleBrief(row.item)">
-                <el-icon>
+              <button
+                v-if="row.item && (isBriefExpanded(row.item) || briefOverflow(row.item))"
+                type="button"
+                class="dev-requirement-card__description-toggle"
+                @click="toggleBrief(row.item)"
+              >
+                <TIcon>
                   <ArrowUp v-if="isBriefExpanded(row.item)" />
                   <ArrowDown v-else />
-                </el-icon>
+                </TIcon>
                 <span>{{ isBriefExpanded(row.item) ? '收起' : '展开' }}</span>
               </button>
             </div>
@@ -1312,7 +1353,9 @@ async function loadRequirementConversations() {
             </span>
             <span v-if="row.item" class="dev-requirement-card__meta-item">
               <label>会话</label>
-              <strong>{{ conversationLoading ? '加载中' : conversationStatusLabel(row.item) }}</strong>
+              <strong>{{
+                conversationLoading ? '加载中' : conversationStatusLabel(row.item)
+              }}</strong>
             </span>
           </div>
 
@@ -1328,48 +1371,76 @@ async function loadRequirementConversations() {
               <label>到账</label>
               <strong class="dev-delivery-cell__amount">{{ receiptAmountText(row) }}</strong>
               <span class="dev-delivery-cell__line">{{ receiptMetaText(row) }}</span>
-              <button v-if="row.receipts.length > 0" type="button"
-                class="dev-requirement-card__receipt-toggle" @click="openReceiptDialog(row)">
-                <el-icon><View /></el-icon>
+              <button
+                v-if="row.receipts.length > 0"
+                type="button"
+                class="dev-requirement-card__receipt-toggle"
+                @click="openReceiptDialog(row)"
+              >
+                <TIcon><View /></TIcon>
                 <span>查看回款详情</span>
               </button>
             </div>
           </div>
 
           <div v-if="row.item" class="dev-requirement-card__progress">
-            <RequirementProgressGuide :requirement="row.item" :payment-mode="row.item.payment_mode" view="dev"
-              :contract-status="signingStatusMap[row.item.requirement_id]" />
+            <RequirementProgressGuide
+              :requirement="row.item"
+              :payment-mode="row.item.payment_mode"
+              view="dev"
+              :contract-status="signingStatusMap[row.item.requirement_id]"
+            />
           </div>
 
-          <div v-if="row.item && settlementHint(row.item)" class="signing-start-hint">{{ settlementHint(row.item) }}
+          <div v-if="row.item && settlementHint(row.item)" class="signing-start-hint">
+            {{ settlementHint(row.item) }}
           </div>
 
-          <div v-if="row.item && row.item.payment_mode !== 'self_managed'" class="dev-requirement-card__signing">
+          <div
+            v-if="row.item && row.item.payment_mode !== 'self_managed'"
+            class="dev-requirement-card__signing"
+          >
             <div class="signing-status-bar">
-              <span class="signing-step"
-                :class="signingStatusMap[row.item.requirement_id]?.has_contract ? 'done' : 'pending'">
+              <span
+                class="signing-step"
+                :class="
+                  signingStatusMap[row.item.requirement_id]?.has_contract ? 'done' : 'pending'
+                "
+              >
                 协议已创建
               </span>
               <span class="signing-arrow">›</span>
-              <span class="signing-step"
-                :class="signingStatusMap[row.item.requirement_id]?.party_b_signed ? 'done' : 'pending'">
+              <span
+                class="signing-step"
+                :class="
+                  signingStatusMap[row.item.requirement_id]?.party_b_signed ? 'done' : 'pending'
+                "
+              >
                 乙方已签
               </span>
               <span class="signing-arrow">›</span>
-              <span class="signing-step"
-                :class="signingStatusMap[row.item.requirement_id]?.party_a_signed ? 'done' : 'pending'">
+              <span
+                class="signing-step"
+                :class="
+                  signingStatusMap[row.item.requirement_id]?.party_a_signed ? 'done' : 'pending'
+                "
+              >
                 甲方已签
               </span>
             </div>
-            <div v-if="contractStartHint(row.item)" class="signing-start-hint">{{ contractStartHint(row.item) }}</div>
+            <div v-if="contractStartHint(row.item)" class="signing-start-hint">
+              {{ contractStartHint(row.item) }}
+            </div>
           </div>
 
           <!-- 签署与操作栏只给需求单行：补充行（未关联需求的交付／到账）没有可执行的接单动作。
                行内事件处理器拿不到 v-if 的类型收窄，所以这一段的处理函数参数带 `!`。 -->
           <footer v-if="row.item" class="dev-requirement-card__actions">
             <div class="dev-requirement-card__unbind">
-              <span v-if="row.item.pending_unbind_request?.status === 'pending'"
-                class="dev-requirement-card__unbind-hint">
+              <span
+                v-if="row.item.pending_unbind_request?.status === 'pending'"
+                class="dev-requirement-card__unbind-hint"
+              >
                 {{ unbindRequestHint(row.item) }}
               </span>
             </div>
@@ -1382,75 +1453,131 @@ async function loadRequirementConversations() {
                    原来挂的是裸 `type="primary" plain` / `type="danger" plain`，
                    Element 的 plain 变体给的是浅蓝底（#e8edfa）与粉底三件套，
                    与表格行里的白底 + 主色描边不是一套，禁用态的「终止合作」更是一片粉。 -->
-              <el-button v-if="canSubmitDeliveryVersion(row.item)" type="primary" plain class="dev-action--soft"
-                title="交付物以绑定资源项目的新版本提交" @click="openDeliveryDialog(row.item!)">
+              <TButton
+                variant="outline"
+                tone="accent"
+                v-if="canSubmitDeliveryVersion(row.item)"
+                title="交付物以绑定资源项目的新版本提交"
+                @click="openDeliveryDialog(row.item!)"
+              >
                 提交交付版本
-              </el-button>
-              <el-button v-if="canOpenAfterSales(row.item)" type="primary" plain class="dev-action--soft"
+              </TButton>
+              <TButton
+                variant="outline"
+                tone="accent"
+                v-if="canOpenAfterSales(row.item)"
                 :class="{ 'has-todo-badge': afterSalesBadgeFor(row.item.requirement_id) }"
-                @click="openAfterSalesModal(row.item!)">
+                @click="openAfterSalesModal(row.item!)"
+              >
                 售后
-                <span v-if="afterSalesBadgeFor(row.item.requirement_id)" class="todo-badge"
-                  :title="`有 ${afterSalesPendingCount(row.item.requirement_id)} 条售后待你处理`">{{
-                    afterSalesBadgeFor(row.item.requirement_id) }}</span>
-              </el-button>
-              <el-button v-if="canReportBreach(row.item)" type="danger" plain class="dev-action--soft-danger"
-                @click="openBreachReport(row.item!)">
+                <span
+                  v-if="afterSalesBadgeFor(row.item.requirement_id)"
+                  class="todo-badge"
+                  :title="`有 ${afterSalesPendingCount(row.item.requirement_id)} 条售后待你处理`"
+                  >{{ afterSalesBadgeFor(row.item.requirement_id) }}</span
+                >
+              </TButton>
+              <TButton
+                variant="outline"
+                tone="danger"
+                v-if="canReportBreach(row.item)"
+                @click="openBreachReport(row.item!)"
+              >
                 终止合作
-              </el-button>
-              <el-button v-else-if="awaitingDepositDeadline(row.item)" type="danger" plain
-                class="dev-action--soft-danger" disabled
-                title="定金未缴，暂不能发起终止合作；逾期未缴定金将由系统自动终止合作并释放接单保证金">
+              </TButton>
+              <TButton
+                variant="outline"
+                tone="danger"
+                v-else-if="awaitingDepositDeadline(row.item)"
+                disabled
+                title="定金未缴，暂不能发起终止合作；逾期未缴定金将由系统自动终止合作并释放接单保证金"
+              >
                 终止合作
-              </el-button>
-              <el-button v-if="canCreateRequirementContract(row.item)" type="primary"
+              </TButton>
+              <TButton
+                variant="solid"
+                tone="accent"
+                v-if="canCreateRequirementContract(row.item)"
                 :loading="contractCreatingId === row.item.requirement_id"
-                @click="createRequirementContractAction(row.item!)">
+                @click="createRequirementContractAction(row.item!)"
+              >
                 发起合同
-              </el-button>
-              <el-button v-if="canOpenContractSign(row.item)" @click="handleContractButtonClick(row.item!)">
+              </TButton>
+              <TButton
+                v-if="canOpenContractSign(row.item)"
+                @click="handleContractButtonClick(row.item!)"
+              >
                 {{ contractButtonLabel(row.item) }}
-              </el-button>
-              <el-button type="primary" plain class="dev-action--soft dev-requirement-card__conversation"
-                @click="openConversation(row.item!)">
-                <el-icon><ChatDotRound /></el-icon>
+              </TButton>
+              <TButton
+                variant="outline"
+                tone="accent"
+                class="dev-action--soft dev-requirement-card__conversation"
+                @click="openConversation(row.item!)"
+              >
+                <TIcon><ChatDotRound /></TIcon>
                 <span>会话</span>
-              </el-button>
-              <el-button v-if="hasPendingCreatorUnbindRequest(row.item)" type="warning"
-                @click="openUnbindRespond(row.item!)">处理解除申请</el-button>
-              <el-button v-else-if="canRequestUnbind(row.item)" type="danger" plain class="dev-action--soft-danger"
-                @click="openUnbindRequest(row.item!)">申请解除</el-button>
+              </TButton>
+              <TButton
+                variant="solid"
+                tone="warning"
+                v-if="hasPendingCreatorUnbindRequest(row.item)"
+                @click="openUnbindRespond(row.item!)"
+                >处理解除申请</TButton
+              >
+              <TButton
+                variant="outline"
+                tone="danger"
+                v-else-if="canRequestUnbind(row.item)"
+                @click="openUnbindRequest(row.item!)"
+                >申请解除</TButton
+              >
             </div>
           </footer>
         </article>
-      </div>
+      </TLoading>
 
       <div class="dev-pager">
         <div class="dev-pager__count">
           <span>共 {{ filteredTotal }} 条</span>
-          <el-select v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
-            <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-          </el-select>
+          <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
+            <TOption
+              v-for="size in LIST_PAGE_SIZES"
+              :key="size"
+              :label="`${size} 条/页`"
+              :value="size"
+            />
+          </TSelect>
         </div>
-        <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-          :pager-count="5" layout="prev, pager, next" background aria-label="接单与交付列表分页" />
+        <TPagination
+          v-model:current-page="page"
+          :page-size="pageSize"
+          :total="filteredTotal"
+          :pager-count="5"
+          background
+          aria-label="接单与交付列表分页"
+        />
       </div>
-    </el-card>
+    </TCard>
 
     <!-- 回款详情弹窗：卡上只放合计与笔数，逐笔到这里摊开。
          金额、时间、流水号都来自同一份钱包回执（与「收益钱包 → 收入记录」同一个接口），
          不在这里另算，避免两处对不上。 -->
-    <el-dialog v-model="receiptDialogVisible" :title="receiptDialogTitle" width="560px" align-center
-      class="dev-dialog">
+    <TDialog
+      v-model:open="receiptDialogVisible"
+      :title="receiptDialogTitle"
+      width="560px"
+      class="dev-dialog"
+    >
       <div v-if="activeReceiptRow" class="dev-receipt-detail">
         <div class="dev-receipt-detail__head">
           <div class="dev-receipt-detail__title">{{ rowTitle(activeReceiptRow) }}</div>
           <div class="dev-receipt-detail__meta">
             <span>{{ activeReceiptRow.requirementId }}</span>
             <span>委托方 {{ rowCustomer(activeReceiptRow) || '—' }}</span>
-            <el-tag :type="rowStatusType(activeReceiptRow)" effect="plain">
+            <TTag variant="outline" :tone="rowStatusType(activeReceiptRow)">
               {{ rowStatusLabel(activeReceiptRow) }}
-            </el-tag>
+            </TTag>
           </div>
         </div>
 
@@ -1462,15 +1589,23 @@ async function loadRequirementConversations() {
         </div>
 
         <ul class="dev-receipt-detail__list">
-          <li v-for="(receipt, index) in activeReceipts" :key="receipt.paymentId" class="dev-receipt-detail__item">
+          <li
+            v-for="(receipt, index) in activeReceipts"
+            :key="receipt.paymentId"
+            class="dev-receipt-detail__item"
+          >
             <div class="dev-receipt-detail__item-head">
               <span class="dev-receipt-detail__item-index">第 {{ index + 1 }} 笔</span>
-              <span class="dev-receipt-detail__item-amount">{{ receiptMoney(receipt.amount) }}</span>
+              <span class="dev-receipt-detail__item-amount">{{
+                receiptMoney(receipt.amount)
+              }}</span>
             </div>
             <div class="dev-receipt-detail__facts">
               <div class="dev-receipt-detail__fact">
                 <span class="dev-receipt-detail__fact-label">到账时间</span>
-                <span class="dev-receipt-detail__fact-value">{{ formatCnDateTime(receipt.paidAt) }}</span>
+                <span class="dev-receipt-detail__fact-value">{{
+                  formatCnDateTime(receipt.paidAt)
+                }}</span>
               </div>
               <div class="dev-receipt-detail__fact">
                 <span class="dev-receipt-detail__fact-label">支付流水号</span>
@@ -1486,27 +1621,49 @@ async function loadRequirementConversations() {
       </div>
 
       <template #footer>
-        <el-button class="dev-toolbar__ghost" @click="receiptDialogVisible = false">关闭</el-button>
+        <TButton variant="outline" @click="receiptDialogVisible = false">关闭</TButton>
       </template>
-    </el-dialog>
+    </TDialog>
 
-    <el-dialog v-model="unbindVisible" title="申请解除需求绑定" width="480px" align-center class="dev-dialog"
-      :close-on-click-modal="false" :close-on-press-escape="false" @close="closeUnbindRequest">
+    <TDialog
+      v-model:open="unbindVisible"
+      title="申请解除需求绑定"
+      width="480px"
+      class="dev-dialog"
+      :mask-closable="false"
+      :escape-closable="false"
+      @close="closeUnbindRequest"
+    >
       <div class="unbind-dialog-body">
         <p class="unbind-dialog-tip">
           解除后需求将重新挂回大厅，等待其他开发者承接。此操作需要需求方确认，请填写真实原因。
         </p>
-        <el-input v-model="unbindReason" type="textarea" :rows="4" maxlength="1000" show-word-limit
-          placeholder="请说明无法继续完成的原因，例如：与需求方沟通后确认技术方案无法实现" />
+        <TInput
+          show-count
+          v-model="unbindReason"
+          type="textarea"
+          :rows="4"
+          :maxlength="1000"
+          placeholder="请说明无法继续完成的原因，例如：与需求方沟通后确认技术方案无法实现"
+        />
       </div>
       <template #footer>
-        <el-button :disabled="unbindLoading" @click="closeUnbindRequest">取消</el-button>
-        <el-button type="danger" :loading="unbindLoading" @click="submitUnbindRequest">提交申请</el-button>
+        <TButton :disabled="unbindLoading" @click="closeUnbindRequest">取消</TButton>
+        <TButton variant="solid" tone="danger" :loading="unbindLoading" @click="submitUnbindRequest"
+          >提交申请</TButton
+        >
       </template>
-    </el-dialog>
+    </TDialog>
 
-    <el-dialog v-model="unbindRespondVisible" title="需求方申请解除绑定" width="480px" align-center class="dev-dialog"
-      :close-on-click-modal="false" :close-on-press-escape="false" @close="closeUnbindRespond">
+    <TDialog
+      v-model:open="unbindRespondVisible"
+      title="需求方申请解除绑定"
+      width="480px"
+      class="dev-dialog"
+      :mask-closable="false"
+      :escape-closable="false"
+      @close="closeUnbindRespond"
+    >
       <div class="unbind-dialog-body">
         <p class="unbind-dialog-tip">需求方申请解除绑定，请确认是否同意。</p>
         <p class="unbind-dialog-line">
@@ -1517,19 +1674,40 @@ async function loadRequirementConversations() {
         </p>
       </div>
       <template #footer>
-        <el-button :disabled="unbindRespondLoading" @click="closeUnbindRespond">取消</el-button>
-        <el-button type="danger" :disabled="unbindRespondLoading"
-          @click="submitUnbindRespond('reject')">拒绝解除</el-button>
-        <el-button type="primary" :loading="unbindRespondLoading"
-          @click="submitUnbindRespond('approve')">同意解除</el-button>
+        <TButton :disabled="unbindRespondLoading" @click="closeUnbindRespond">取消</TButton>
+        <TButton
+          variant="solid"
+          tone="danger"
+          :disabled="unbindRespondLoading"
+          @click="submitUnbindRespond('reject')"
+          >拒绝解除</TButton
+        >
+        <TButton
+          variant="solid"
+          tone="accent"
+          :loading="unbindRespondLoading"
+          @click="submitUnbindRespond('approve')"
+          >同意解除</TButton
+        >
       </template>
-    </el-dialog>
+    </TDialog>
 
-    <DeliverySubmitDialog v-model:visible="deliveryDialogVisible" :token="auth.token"
-      :bound-resource-id="deliveryRequirement?.bound_resource_id ?? null" @submitted="handleDeliverySubmitted" />
+    <DeliverySubmitDialog
+      v-model:visible="deliveryDialogVisible"
+      :token="auth.token"
+      :bound-resource-id="deliveryRequirement?.bound_resource_id ?? null"
+      @submitted="handleDeliverySubmitted"
+    />
 
-    <el-dialog v-model="breachVisible" :title="breachDialogTitle()" width="520px" align-center class="dev-dialog"
-      :close-on-click-modal="false" :close-on-press-escape="false" @close="closeBreachReport">
+    <TDialog
+      v-model:open="breachVisible"
+      :title="breachDialogTitle()"
+      width="520px"
+      class="dev-dialog"
+      :mask-closable="false"
+      :escape-closable="false"
+      @close="closeBreachReport"
+    >
       <div class="delivery-dialog-body">
         <p class="unbind-dialog-tip">
           提交后案件进入「协商中」：双方先在案件内协商定金与尾款的退还额度，谈成即直接退款结案。
@@ -1537,73 +1715,115 @@ async function loadRequirementConversations() {
         </p>
         <p v-if="breachCaseLoading" class="unbind-dialog-tip">正在加载终止合作案件…</p>
         <template v-else-if="breachCase && !breachNewRound">
-          <el-descriptions :column="1" border size="small">
-            <el-descriptions-item label="案件编号">{{ breachCase.caseNo }}</el-descriptions-item>
-            <el-descriptions-item label="当前状态">
+          <TDescriptions :column="1" border size="sm">
+            <TDescriptionsItem label="案件编号">{{ breachCase.caseNo }}</TDescriptionsItem>
+            <TDescriptionsItem label="当前状态">
               {{ breachStatusLabel(breachCase.status) }}
-            </el-descriptions-item>
-            <el-descriptions-item v-if="breachCase.status === 'withdrawn'" label="申请人">
+            </TDescriptionsItem>
+            <TDescriptionsItem v-if="breachCase.status === 'withdrawn'" label="申请人">
               {{ breachWithdrawnByMe ? '我方' : '对方' }}
-            </el-descriptions-item>
-            <el-descriptions-item v-if="breachCase.status === 'withdrawn' && breachCase.resolvedAt" label="撤回时间">
+            </TDescriptionsItem>
+            <TDescriptionsItem
+              v-if="breachCase.status === 'withdrawn' && breachCase.resolvedAt"
+              label="撤回时间"
+            >
               {{ formatCnDateTime(breachCase.resolvedAt) }}
-            </el-descriptions-item>
-            <el-descriptions-item v-if="breachCase.liableParty" label="责任认定">
+            </TDescriptionsItem>
+            <TDescriptionsItem v-if="breachCase.liableParty" label="责任认定">
               {{ breachLiablePartyLabel(breachCase.liableParty) }}
-            </el-descriptions-item>
-            <el-descriptions-item label="申请理由">{{ breachCase.reason }}</el-descriptions-item>
-            <el-descriptions-item v-if="breachCase.aiJudgedAt || breachCase.aiReasoning" label="AI 判定">
-              {{ breachCase.aiLiableParty ? breachLiablePartyLabel(breachCase.aiLiableParty) : '无法判定，已转客服人工判定' }}
-            </el-descriptions-item>
-            <el-descriptions-item v-if="breachCase.aiJudgedAt" label="判定时间">
+            </TDescriptionsItem>
+            <TDescriptionsItem label="申请理由">{{ breachCase.reason }}</TDescriptionsItem>
+            <TDescriptionsItem
+              v-if="breachCase.aiJudgedAt || breachCase.aiReasoning"
+              label="AI 判定"
+            >
+              {{
+                breachCase.aiLiableParty
+                  ? breachLiablePartyLabel(breachCase.aiLiableParty)
+                  : '无法判定，已转客服人工判定'
+              }}
+            </TDescriptionsItem>
+            <TDescriptionsItem v-if="breachCase.aiJudgedAt" label="判定时间">
               {{ formatCnDateTime(breachCase.aiJudgedAt) }}
-            </el-descriptions-item>
-            <el-descriptions-item v-if="breachCase.aiReasoning" label="判定理由">
+            </TDescriptionsItem>
+            <TDescriptionsItem v-if="breachCase.aiReasoning" label="判定理由">
               {{ breachCase.aiReasoning }}
-            </el-descriptions-item>
-            <el-descriptions-item v-if="breachCase.decisionDeadlineAt" label="表态截止">
+            </TDescriptionsItem>
+            <TDescriptionsItem v-if="breachCase.decisionDeadlineAt" label="表态截止">
               {{ formatCnDateTime(breachCase.decisionDeadlineAt) }}
-            </el-descriptions-item>
-            <el-descriptions-item v-if="showBreachDecisions(breachCase)" label="我方表态">
+            </TDescriptionsItem>
+            <TDescriptionsItem v-if="showBreachDecisions(breachCase)" label="我方表态">
               {{ breachDecisionText(breachCase.developerDecision) }}
-            </el-descriptions-item>
-            <el-descriptions-item v-if="showBreachDecisions(breachCase)" label="对方表态">
+            </TDescriptionsItem>
+            <TDescriptionsItem v-if="showBreachDecisions(breachCase)" label="对方表态">
               {{ breachDecisionText(breachCase.customerDecision) }}
-            </el-descriptions-item>
-            <el-descriptions-item label="资金处理">
-              定金 ¥{{ breachCase.depositAmountCny }} · 已退尾款 ¥{{ breachCase.refundAmountCny }} · 赔付 ¥{{ breachCase.compensationAmountCny }}<template v-if="breachCase.extraCompensationFen > 0"> · 额外赔偿 ¥{{ breachCase.extraCompensationCny }}</template>
-            </el-descriptions-item>
-            <el-descriptions-item v-if="breachCase.verdictSource" label="判定来源">
+            </TDescriptionsItem>
+            <TDescriptionsItem label="资金处理">
+              定金 ¥{{ breachCase.depositAmountCny }} · 已退尾款 ¥{{ breachCase.refundAmountCny }} ·
+              赔付 ¥{{ breachCase.compensationAmountCny
+              }}<template v-if="breachCase.extraCompensationFen > 0">
+                · 额外赔偿 ¥{{ breachCase.extraCompensationCny }}</template
+              >
+            </TDescriptionsItem>
+            <TDescriptionsItem v-if="breachCase.verdictSource" label="判定来源">
               {{ breachVerdictSourceText(breachCase.verdictSource) }}
-            </el-descriptions-item>
-            <el-descriptions-item v-if="breachCase.resolutionNote" label="处理说明">
+            </TDescriptionsItem>
+            <TDescriptionsItem v-if="breachCase.resolutionNote" label="处理说明">
               {{ breachCase.resolutionNote }}
-            </el-descriptions-item>
-          </el-descriptions>
+            </TDescriptionsItem>
+          </TDescriptions>
 
           <div v-if="canDecideBreachCase(breachCase)" class="breach-decision">
             <p class="unbind-dialog-line">
-              请选择是否接受 AI 判定：双方都接受后平台才会执行退款／赔付；任一方不接受或逾期未全部表态，案件转客服人工判定。
+              请选择是否接受 AI
+              判定：双方都接受后平台才会执行退款／赔付；任一方不接受或逾期未全部表态，案件转客服人工判定。
             </p>
-            <el-input v-if="breachRejectPanel" v-model="breachDecisionNote" type="textarea" :rows="3" maxlength="1000"
-              show-word-limit placeholder="可选：说明不接受该判定的理由，便于客服人工复核" />
+            <TInput
+              show-count
+              v-if="breachRejectPanel"
+              v-model="breachDecisionNote"
+              type="textarea"
+              :rows="3"
+              :maxlength="1000"
+              placeholder="可选：说明不接受该判定的理由，便于客服人工复核"
+            />
             <div class="breach-decision__actions">
               <template v-if="breachRejectPanel">
-                <el-button :disabled="breachDecisionLoading" @click="cancelBreachRejectPanel">取消</el-button>
-                <el-button type="danger" :loading="breachDecisionLoading"
-                  @click="submitBreachDecision('rejected')">确认不接受</el-button>
+                <TButton :disabled="breachDecisionLoading" @click="cancelBreachRejectPanel"
+                  >取消</TButton
+                >
+                <TButton
+                  variant="solid"
+                  tone="danger"
+                  :loading="breachDecisionLoading"
+                  @click="submitBreachDecision('rejected')"
+                  >确认不接受</TButton
+                >
               </template>
               <template v-else>
-                <el-button type="danger" plain :disabled="breachDecisionLoading"
-                  @click="openBreachRejectPanel">不接受</el-button>
-                <el-button type="primary" :loading="breachDecisionLoading"
-                  @click="submitBreachDecision('accepted')">接受判定</el-button>
+                <TButton
+                  variant="outline"
+                  tone="danger"
+                  :disabled="breachDecisionLoading"
+                  @click="openBreachRejectPanel"
+                  >不接受</TButton
+                >
+                <TButton
+                  variant="solid"
+                  tone="accent"
+                  :loading="breachDecisionLoading"
+                  @click="submitBreachDecision('accepted')"
+                  >接受判定</TButton
+                >
               </template>
             </div>
           </div>
-          <p v-else-if="breachCase.status === 'submitted' || breachCase.status === 'ai_reviewing'"
-            class="unbind-dialog-tip">
-            双方先自行协商：谈成即按协商额度退款结案；协商不成由任一方申请平台介入，平台按 AI 判定 + 客服人工审核认定责任方，判定完成后由双方各自选择是否接受。
+          <p
+            v-else-if="breachCase.status === 'submitted' || breachCase.status === 'ai_reviewing'"
+            class="unbind-dialog-tip"
+          >
+            双方先自行协商：谈成即按协商额度退款结案；协商不成由任一方申请平台介入，平台按 AI 判定 +
+            客服人工审核认定责任方，判定完成后由双方各自选择是否接受。
           </p>
 
           <div v-if="breachWithdrawConfirm" class="breach-decision">
@@ -1611,42 +1831,88 @@ async function loadRequirementConversations() {
               确认撤回本次终止合作申请？撤回后本次申请结束，如仍有争议可在同一需求上重新发起；撤回不会触发任何退款或赔付。
             </p>
             <div class="breach-decision__actions">
-              <el-button :disabled="breachWithdrawLoading" @click="cancelBreachWithdrawConfirm">再想想</el-button>
-              <el-button type="danger" :loading="breachWithdrawLoading" @click="submitBreachWithdraw">确认撤回申请</el-button>
+              <TButton :disabled="breachWithdrawLoading" @click="cancelBreachWithdrawConfirm"
+                >再想想</TButton
+              >
+              <TButton
+                variant="solid"
+                tone="danger"
+                :loading="breachWithdrawLoading"
+                @click="submitBreachWithdraw"
+                >确认撤回申请</TButton
+              >
             </div>
           </div>
         </template>
-        <el-form v-else label-position="top">
+        <TForm v-else label-position="top">
           <p v-if="breachNewRound" class="unbind-dialog-tip">{{ breachRoundHint() }}</p>
-          <el-form-item label="事实与依据" required>
-            <el-input v-model="breachReason" type="textarea" :rows="6" maxlength="2000" show-word-limit
-              placeholder="请填写时间、已交付内容、沟通记录和希望平台核查的事实" />
-          </el-form-item>
-        </el-form>
+          <TFormItem label="事实与依据" required>
+            <TInput
+              show-count
+              v-model="breachReason"
+              type="textarea"
+              :rows="6"
+              :maxlength="2000"
+              placeholder="请填写时间、已交付内容、沟通记录和希望平台核查的事实"
+            />
+          </TFormItem>
+        </TForm>
       </div>
       <template #footer>
-        <el-button :disabled="platformReviewLoading || breachLoading || breachDecisionLoading || breachWithdrawLoading"
-          @click="closeBreachReport">
+        <TButton
+          :disabled="
+            platformReviewLoading || breachLoading || breachDecisionLoading || breachWithdrawLoading
+          "
+          @click="closeBreachReport"
+        >
           {{ breachCase && !breachNewRound ? '关闭' : '取消' }}
-        </el-button>
-        <el-button v-if="canWithdrawBreachCase(breachCase) && !breachWithdrawConfirm" type="danger" plain
+        </TButton>
+        <TButton
+          variant="outline"
+          tone="danger"
+          v-if="canWithdrawBreachCase(breachCase) && !breachWithdrawConfirm"
           :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-          @click="openBreachWithdrawConfirm">撤回申请</el-button>
-        <el-button v-else-if="breachCase?.status === 'withdrawn' && !breachNewRound" type="primary"
+          @click="openBreachWithdrawConfirm"
+          >撤回申请</TButton
+        >
+        <TButton
+          variant="solid"
+          tone="accent"
+          v-else-if="breachCase?.status === 'withdrawn' && !breachNewRound"
           :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-          @click="reopenBreachReport">{{ breachWithdrawnByMe ? '重新发起' : '提交终止合作申请' }}</el-button>
-        <el-button
-          v-else-if="(breachCase?.status === 'rejected' || breachCase?.status === 'succeeded') && !breachNewRound"
-          type="primary" :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-          @click="reopenBreachReport">发起新的终止合作</el-button>
-        <el-button v-if="canRequestPlatformReview(breachCase)" type="primary" plain
-          :loading="platformReviewLoading" @click="submitPlatformReview">申请平台介入</el-button>
-        <el-button v-else-if="!breachCase || breachNewRound" type="primary" :loading="breachLoading"
-          @click="submitBreachReport">
+          @click="reopenBreachReport"
+          >{{ breachWithdrawnByMe ? '重新发起' : '提交终止合作申请' }}</TButton
+        >
+        <TButton
+          variant="solid"
+          tone="accent"
+          v-else-if="
+            (breachCase?.status === 'rejected' || breachCase?.status === 'succeeded') &&
+            !breachNewRound
+          "
+          :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
+          @click="reopenBreachReport"
+          >发起新的终止合作</TButton
+        >
+        <TButton
+          variant="outline"
+          tone="accent"
+          v-if="canRequestPlatformReview(breachCase)"
+          :loading="platformReviewLoading"
+          @click="submitPlatformReview"
+          >申请平台介入</TButton
+        >
+        <TButton
+          variant="solid"
+          tone="accent"
+          v-else-if="!breachCase || breachNewRound"
+          :loading="breachLoading"
+          @click="submitBreachReport"
+        >
           {{ breachSubmitLabel() }}
-        </el-button>
+        </TButton>
       </template>
-    </el-dialog>
+    </TDialog>
 
     <AfterSalesModal
       :visible="afterSalesVisible"
@@ -1658,9 +1924,16 @@ async function loadRequirementConversations() {
       @close="closeAfterSalesModal"
     />
 
-    <RequirementConversationModal :visible="conversationVisible" api-mode="dev" :token="auth.token"
-      :current-username="auth.username" :requirement-id="conversationRequirement?.requirement_id ?? ''"
-      :title="conversationRequirement?.title" @updated="applyConversationDetail" @close="closeConversation" />
+    <RequirementConversationModal
+      :visible="conversationVisible"
+      api-mode="dev"
+      :token="auth.token"
+      :current-username="auth.username"
+      :requirement-id="conversationRequirement?.requirement_id ?? ''"
+      :title="conversationRequirement?.title"
+      @updated="applyConversationDetail"
+      @close="closeConversation"
+    />
   </div>
 </template>
 
@@ -1677,7 +1950,9 @@ async function loadRequirementConversations() {
   border: 1px solid var(--dev-line);
   border-radius: var(--dev-radius-inner);
   background: var(--dev-surface-strong);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .dev-requirement-card:hover {
@@ -2052,7 +2327,7 @@ strong.dev-delivery-cell__amount {
 }
 
 /* 行内操作按钮的容器与规格都走统一层的 .dev-list-actions（见 dev-base.css），
-   本页不再自己写一份 flex 布局，否则按钮高度会退回 Element 的默认档。 */
+   本页不再自己写一份 flex 布局，否则按钮高度会退回按钮自己的默认档。 */
 
 .signing-status-bar {
   display: flex;
@@ -2151,7 +2426,7 @@ strong.dev-delivery-cell__amount {
 }
 
 /* === 回款详情弹窗（从「交付记录」页搬来） ===
-   弹窗由 Element teleport 到 body，配色令牌靠 .dev-dialog（见 dev-base.css），
+   弹窗由 TDialog teleport 到 body，配色令牌靠 .dev-dialog（见 dev-base.css），
    排版是本页特有的。整块分三层：需求抬头 → 累计到账读数 → 逐笔清单。 */
 .dev-receipt-detail {
   display: grid;
@@ -2276,12 +2551,6 @@ strong.dev-delivery-cell__amount {
   /* 交付与到账并排两格在窄屏会各剩不到 150px，读不出资源标题与流水时间，收成一列 */
   .dev-requirement-card__delivery {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .breach-decision__actions :deep(.el-button) {
-    flex: 1 1 140px;
-    min-height: 44px;
-    margin-left: 0;
   }
 }
 </style>

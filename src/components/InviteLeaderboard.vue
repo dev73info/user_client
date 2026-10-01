@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Refresh } from '@element-plus/icons-vue'
-import { TButton, TIcon } from 'ui_73info'
+import { TButton, TIcon, Refresh } from 'ui_73info'
 
 import { getBadges, getInviteLeaderboard, type BadgeDefinition, type InviteLeaderboardEntry } from '@/api/invite'
 import { useAuthStore } from '@/stores/auth'

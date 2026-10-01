@@ -1,12 +1,23 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { Document, RefreshLeft, Search } from '@element-plus/icons-vue'
-
 import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 import { getMyInviteCode, getMyInviteStats, type InviteCodeResponse, type InviteStatsResponse } from '@/api/invite'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+
+
+import {
+  TButton,
+  TIcon,
+  TInput,
+  TOption,
+  TPagination,
+  TSelect,
+  Document,
+  RefreshLeft,
+  Search,
+} from 'ui_73info'
 
 /* 读数条上的「已成功邀请」由本组件上报：数据在这里加载，页面那边不重复打接口。
    刷新走页面的读数条，这里不再自带刷新按钮。 */
@@ -153,11 +164,11 @@ defineExpose({ reload: loadInvite })
         <div class="invite-panel__code">
             <span class="invite-panel__code-label">邀请码</span>
             <span class="invite-panel__code-value">{{ inviteCode?.code || '--------' }}</span>
-            <el-button class="wb-toolbar__icon-btn invite-panel__code-copy" :disabled="!inviteCode"
+            <TButton icon-only class="wb-toolbar__icon-btn invite-panel__code-copy" :disabled="!inviteCode"
                 title="复制邀请码" aria-label="复制邀请码"
                 @click="copyText(inviteCode?.code || '', '邀请码')">
-                <el-icon><Document /></el-icon>
-            </el-button>
+                <TIcon><Document /></TIcon>
+            </TButton>
             <ShareCardGenerator share-type="invite" />
         </div>
 
@@ -169,17 +180,17 @@ defineExpose({ reload: loadInvite })
                     {{ scope.label }}<span class="wb-chip__count">{{ scope.count }}</span>
                 </button>
             </div>
-            <el-input v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索被邀请的用户名"
+            <TInput v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索被邀请的用户名"
                 aria-label="搜索邀请记录">
-                <template #prefix><el-icon><Search /></el-icon></template>
-            </el-input>
+                <template #prefix><TIcon><Search /></TIcon></template>
+            </TInput>
             <div class="wb-toolbar__actions">
                 <span v-if="hasActiveFilters" class="wb-toolbar__hint">
                     筛选出 {{ filteredTotal }} / {{ invitees.length }} 人
                 </span>
-                <el-button v-if="hasActiveFilters" class="wb-toolbar__ghost" @click="resetFilters">
-                    <el-icon><RefreshLeft /></el-icon><span>重置</span>
-                </el-button>
+                <TButton variant="outline" v-if="hasActiveFilters" @click="resetFilters">
+                    <TIcon><RefreshLeft /></TIcon><span>重置</span>
+                </TButton>
             </div>
         </div>
 
@@ -202,12 +213,12 @@ defineExpose({ reload: loadInvite })
             <div class="wb-pager">
                 <div class="wb-pager__count">
                     <span>共 {{ filteredTotal }} 条</span>
-                    <el-select v-model="pageSize" class="wb-pager__size" aria-label="每页邀请记录数">
-                        <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-                    </el-select>
+                    <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页邀请记录数">
+                        <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+                    </TSelect>
                 </div>
-                <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-                    :pager-count="5" layout="prev, pager, next" background aria-label="邀请记录分页" />
+                <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+                    :pager-count="5" background aria-label="邀请记录分页" />
             </div>
         </template>
     </section>

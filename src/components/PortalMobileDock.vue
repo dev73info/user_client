@@ -26,7 +26,7 @@ function isWorkbenchActive() {
 
 async function scrollPortalTop() {
     await nextTick();
-    const wrap = document.querySelector<HTMLElement>(".app-scrollbar .el-scrollbar__wrap");
+    const wrap = document.querySelector<HTMLElement>(".app-scrollbar .t73-scrollbar__wrap");
     if (wrap) {
         wrap.scrollTo({ top: 0, behavior: "smooth" });
         return;

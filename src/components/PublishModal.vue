@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { PropType } from "vue";
-import { ArrowDown } from "@element-plus/icons-vue";
-import { TIcon } from "ui_73info";
+import { TIcon, ArrowDown } from 'ui_73info'
 
 import RequirementAgentPanel from "@/components/RequirementAgentPanel.vue";
 import RichTextEditor from "@/components/RichTextEditor.vue";

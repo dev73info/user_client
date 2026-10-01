@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Bell, Close, Search } from '@element-plus/icons-vue'
-import { TIcon } from 'ui_73info'
+import { TIcon, Bell, Close, Search } from 'ui_73info'
 
 import { useAuthStore } from '@/stores/auth'
 import { buildDevPortalUrl } from '@/config/runtime'

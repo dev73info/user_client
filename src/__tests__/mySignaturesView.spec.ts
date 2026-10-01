@@ -55,11 +55,9 @@ async function render(component: typeof MySignaturesView | typeof UserWorkbenchV
     { name: 'workbench-signature-detail', path: '/workbench/signatures/:contractId', component: ContractSignView },
   ] })
   await router.push(detail ? '/workbench/signatures/1' : '/workbench/signatures')
-  const wrapper = mount(component, { global: { plugins: [router], stubs: {
-    ElIcon: { template: '<i><slot /></i>' },
-    ElScrollbar: { template: '<div><slot /></div>' },
-    ElPagination: true, RouterView: true,
-  } } })
+  const wrapper = mount(component, {
+    global: { plugins: [router], stubs: { RouterView: true } },
+  })
   await flushPromises()
   return { wrapper, router }
 }

@@ -2,13 +2,6 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  Back,
-  Check,
-  Refresh,
-  View,
-} from '@element-plus/icons-vue'
-
 import { apiUrl, HttpError } from '@/api/http'
 import {
   getMcResource,
@@ -33,6 +26,21 @@ import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
+import {
+  TButton,
+  TCard,
+  TForm,
+  TFormItem,
+  TIcon,
+  TInput,
+  TLoading,
+  TOption,
+  TSelect,
+  Back,
+  Check,
+  Refresh,
+  View,
+} from 'ui_73info'
 
 type RichTextEditorInstance = InstanceType<typeof RichTextEditor>
 
@@ -509,23 +517,39 @@ onMounted(async () => {
         <span class="dev-meta-strip__value">{{ resourceAuthorLabel }}</span>
       </div>
       <div class="dev-meta-strip__item dev-meta-strip__action">
-        <el-button class="dev-toolbar__ghost" :icon="Back" @click="goBack">返回列表</el-button>
-        <el-button v-if="resource" class="dev-toolbar__ghost" tag="a" :href="userClientPreviewUrl" target="_blank"
-          rel="noopener noreferrer" :icon="View">打开用户端</el-button>
-        <el-button class="dev-toolbar__primary" type="primary" :icon="Check" :loading="saving" @click="saveHomepage">
+        <TButton variant="outline" @click="goBack"
+          ><template #prefix
+            ><TIcon><Back /></TIcon></template
+          >返回列表</TButton
+        >
+        <TButton
+          variant="outline"
+          v-if="resource"
+          as="a"
+          :href="userClientPreviewUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          ><template #prefix
+            ><TIcon><View /></TIcon></template
+          >打开用户端</TButton
+        >
+        <TButton variant="solid" tone="accent" :loading="saving" @click="saveHomepage"
+          ><template #prefix
+            ><TIcon><Check /></TIcon
+          ></template>
           保存主页
-        </el-button>
-        <el-button class="dev-toolbar__icon-btn" aria-label="刷新标签" :loading="isLoadingTags" @click="loadTagTree">
-          <el-icon>
+        </TButton>
+        <TButton icon-only aria-label="刷新标签" :loading="isLoadingTags" @click="loadTagTree">
+          <TIcon>
             <Refresh />
-          </el-icon>
-        </el-button>
+          </TIcon>
+        </TButton>
       </div>
     </div>
 
-    <section class="dev-resource-homepage-editor__layout" v-loading="loading">
+    <TLoading tag="section" class="dev-resource-homepage-editor__layout" :loading="loading">
       <div class="dev-resource-homepage-editor__forms">
-        <el-card shadow="never" class="dev-surface-card dev-upload-combined-card">
+        <TCard class="dev-surface-card dev-upload-combined-card">
           <section class="dev-upload-block">
             <header class="dev-card-head">
               <section class="dev-card-head__title-block">
@@ -533,70 +557,118 @@ onMounted(async () => {
               </section>
             </header>
 
-            <el-form label-position="top" class="dev-upload-form">
+            <TForm label-position="top" class="dev-upload-form">
               <div class="dev-upload-grid dev-upload-grid--three">
-                <el-form-item label="资源标题" required>
-                  <el-input v-model="form.title" maxlength="120" show-word-limit placeholder="输入资源标题" />
-                </el-form-item>
+                <TFormItem label="资源标题" required>
+                  <TInput
+                    show-count
+                    v-model="form.title"
+                    :maxlength="120"
+                    placeholder="输入资源标题"
+                  />
+                </TFormItem>
 
-                <el-form-item label="归属类型" required>
-                  <el-select v-model="form.ownershipType">
-                    <el-option label="个人项目" value="individual" />
-                    <el-option label="团队项目" value="team" :disabled="!hasJoinedTeam" />
-                  </el-select>
-                </el-form-item>
+                <TFormItem label="归属类型" required>
+                  <TSelect v-model="form.ownershipType">
+                    <TOption label="个人项目" value="individual" />
+                    <TOption label="团队项目" value="team" :disabled="!hasJoinedTeam" />
+                  </TSelect>
+                </TFormItem>
 
-                <el-form-item label="类型">
-                  <el-select v-model="form.originType" style="width: 100%">
-                    <el-option label="原创" value="original" />
-                    <el-option label="转载" value="repost" />
-                  </el-select>
-                </el-form-item>
+                <TFormItem label="类型">
+                  <TSelect v-model="form.originType" style="width: 100%">
+                    <TOption label="原创" value="original" />
+                    <TOption label="转载" value="repost" />
+                  </TSelect>
+                </TFormItem>
 
-                <el-form-item label="图标文件">
-                  <ResourceIconPicker :model-value="coverPreview" @update:model-value="handleCoverPreviewChange"
-                    v-model:file="selectedCoverFile" />
-                </el-form-item>
+                <TFormItem label="图标文件">
+                  <ResourceIconPicker
+                    :model-value="coverPreview"
+                    @update:model-value="handleCoverPreviewChange"
+                    v-model:file="selectedCoverFile"
+                  />
+                </TFormItem>
 
-                <el-form-item label="资源简介" required class="dev-resource-homepage-editor__form-span">
-                  <el-input v-model="form.description" type="textarea" :rows="4" maxlength="500" show-word-limit
+                <TFormItem
+                  label="资源简介"
+                  required
+                  class="dev-resource-homepage-editor__form-span"
+                >
+                  <TInput
+                    show-count
+                    v-model="form.description"
+                    type="textarea"
+                    :rows="4"
+                    :maxlength="500"
                     placeholder="用一段简洁说明告诉用户这是什么资源、适合谁、解决什么问题"
-                    @input="autoGeneratedDescription = false" />
-                </el-form-item>
+                    @input="autoGeneratedDescription = false"
+                  />
+                </TFormItem>
 
-                <el-form-item v-show="form.ownershipType === 'team'" label="所属团队" required
-                  class="dev-resource-homepage-editor__form-span">
+                <TFormItem
+                  v-show="form.ownershipType === 'team'"
+                  label="所属团队"
+                  required
+                  class="dev-resource-homepage-editor__form-span"
+                >
                   <div class="dev-team-select-native">
-                    <el-select v-model="form.teamId" placeholder="请选择团队" class="dev-team-select-native__control"
-                      popper-append-to-body>
-                      <el-option v-for="team in teamOptions" :key="team.value" :label="team.label"
-                        :value="team.value" />
+                    <TSelect
+                      v-model="form.teamId"
+                      placeholder="请选择团队"
+                      class="dev-team-select-native__control"
+                    >
+                      <TOption
+                        v-for="team in teamOptions"
+                        :key="team.value"
+                        :label="team.label"
+                        :value="team.value"
+                      />
                       <template #empty>
                         <div class="dev-team-select-empty">
                           <p v-if="myTeams.length === 0">您还没有加入任何团队</p>
                           <p v-else>未找到匹配的团队</p>
                         </div>
                       </template>
-                    </el-select>
+                    </TSelect>
                   </div>
-                </el-form-item>
+                </TFormItem>
 
                 <template v-if="form.originType === 'repost'">
-                  <el-form-item label="原作者">
-                    <el-input v-model="form.originAuthor" maxlength="80" placeholder="原始资源的作者" />
-                  </el-form-item>
-                  <el-form-item label="原始出处链接" required>
-                    <el-input v-model="form.originUrl" maxlength="500" placeholder="原始出处 URL，例如原贴/来源页" />
-                  </el-form-item>
-                  <el-form-item label="来源站点">
-                    <el-input v-model="form.originOrg" maxlength="80" placeholder="例如：苦力怕论坛、CurseForge" />
-                  </el-form-item>
-                  <el-form-item label="转载说明 / 授权" class="dev-resource-homepage-editor__form-span">
-                    <el-input v-model="form.originNote" maxlength="500" placeholder="授权情况、转载说明等（可选）" />
-                  </el-form-item>
+                  <TFormItem label="原作者">
+                    <TInput
+                      v-model="form.originAuthor"
+                      :maxlength="80"
+                      placeholder="原始资源的作者"
+                    />
+                  </TFormItem>
+                  <TFormItem label="原始出处链接" required>
+                    <TInput
+                      v-model="form.originUrl"
+                      :maxlength="500"
+                      placeholder="原始出处 URL，例如原贴/来源页"
+                    />
+                  </TFormItem>
+                  <TFormItem label="来源站点">
+                    <TInput
+                      v-model="form.originOrg"
+                      :maxlength="80"
+                      placeholder="例如：苦力怕论坛、CurseForge"
+                    />
+                  </TFormItem>
+                  <TFormItem
+                    label="转载说明 / 授权"
+                    class="dev-resource-homepage-editor__form-span"
+                  >
+                    <TInput
+                      v-model="form.originNote"
+                      :maxlength="500"
+                      placeholder="授权情况、转载说明等（可选）"
+                    />
+                  </TFormItem>
                 </template>
               </div>
-            </el-form>
+            </TForm>
           </section>
 
           <section class="dev-upload-block dev-upload-block--split">
@@ -613,9 +685,14 @@ onMounted(async () => {
                   <span class="dev-root-switch__meta">当前：{{ currentRootLabel }}</span>
                 </div>
                 <div class="dev-root-switch__chips">
-                  <button v-for="root in rootTabs" :key="root.key" class="dev-catalog-chip"
-                    :class="{ active: root.key === currentRootKey }" type="button"
-                    @click="openRoot(root.key, root.first_entry_key)">
+                  <button
+                    v-for="root in rootTabs"
+                    :key="root.key"
+                    class="dev-catalog-chip"
+                    :class="{ active: root.key === currentRootKey }"
+                    type="button"
+                    @click="openRoot(root.key, root.first_entry_key)"
+                  >
                     {{ root.label }}
                   </button>
                 </div>
@@ -628,35 +705,60 @@ onMounted(async () => {
                     <span class="dev-catalog-nav__meta">当前：{{ currentEntryLabel }}</span>
                   </div>
                   <div class="dev-catalog-nav__chips dev-catalog-nav__chips--scroll">
-                    <button v-for="entry in entryTabs" :key="entry.key"
+                    <button
+                      v-for="entry in entryTabs"
+                      :key="entry.key"
                       class="dev-catalog-chip dev-catalog-chip--secondary"
-                      :class="{ active: entry.key === currentEntryKey }" type="button"
-                      @click="openEntry(entry.key)">
+                      :class="{ active: entry.key === currentEntryKey }"
+                      type="button"
+                      @click="openEntry(entry.key)"
+                    >
                       {{ entry.group_name }}
                     </button>
                   </div>
                 </div>
               </section>
 
-              <div v-if="platformTagGroups.length > 0"
-                class="dev-tag-group-panel dev-upload-grid dev-upload-grid--tag-groups">
-                <section v-for="group in platformTagGroups" :key="group.key" class="dev-tag-group-row">
+              <div
+                v-if="platformTagGroups.length > 0"
+                class="dev-tag-group-panel dev-upload-grid dev-upload-grid--tag-groups"
+              >
+                <section
+                  v-for="group in platformTagGroups"
+                  :key="group.key"
+                  class="dev-tag-group-row"
+                >
                   <header class="dev-tag-group-row__head">
                     <section class="dev-tag-group-row__copy">
                       <h4 class="dev-tag-group-row__title">{{ group.group_name }}</h4>
                       <p class="dev-tag-group-row__path" :title="group.label">{{ group.label }}</p>
                     </section>
-                    <span class="dev-tag-group-row__count">{{ (selectedTagIdsByGroup[group.group_id] ?? []).length }}/{{ group.items.length }}</span>
+                    <span class="dev-tag-group-row__count"
+                      >{{ (selectedTagIdsByGroup[group.group_id] ?? []).length }}/{{
+                        group.items.length
+                      }}</span
+                    >
                   </header>
-                  <el-form-item class="dev-tag-group-row__field">
-                    <el-select v-model="selectedTagIdsByGroup[group.group_id]" multiple filterable
-                      placeholder="选择一个或多个标签">
-                      <el-option v-for="item in group.items" :key="item.id" :label="item.name" :value="item.id" />
-                    </el-select>
-                  </el-form-item>
+                  <TFormItem class="dev-tag-group-row__field">
+                    <TSelect
+                      v-model="selectedTagIdsByGroup[group.group_id]"
+                      multiple
+                      filterable
+                      placeholder="选择一个或多个标签"
+                    >
+                      <TOption
+                        v-for="item in group.items"
+                        :key="item.id"
+                        :label="item.name"
+                        :value="item.id"
+                      />
+                    </TSelect>
+                  </TFormItem>
                 </section>
               </div>
-              <p v-else class="dev-empty-state">当前二级节点尚未配置完整标签组，请先在管理端补齐标签树。</p>
+              <p v-else class="dev-empty-state">
+                当前二级节点尚未配置完整标签组，请先在管理端补齐标签树。
+              </p>
             </div>
           </section>
 
@@ -666,20 +768,31 @@ onMounted(async () => {
                 <h3 class="dev-section-title">页面内容</h3>
               </section>
             </header>
-            <RichTextEditor ref="richTextEditorRef" :model-value="richEditorContent"
-              min-height="clamp(320px, 42vh, 480px)" @update:model-value="handleRichEditorUpdate" @notify="showToast" />
+            <RichTextEditor
+              ref="richTextEditorRef"
+              :model-value="richEditorContent"
+              min-height="clamp(320px, 42vh, 480px)"
+              @update:model-value="handleRichEditorUpdate"
+              @notify="showToast"
+            />
           </section>
-        </el-card>
+        </TCard>
       </div>
 
       <aside class="dev-upload-side">
-        <el-card shadow="never" class="dev-surface-card dev-surface-card--sticky">
+        <TCard class="dev-surface-card dev-surface-card--sticky">
           <h3 class="dev-section-title">预览摘要</h3>
           <article class="dev-preview-card dev-list--spaced">
             <div class="dev-preview-card__cover">
-              <img v-if="coverPreview" :src="coverPreview" alt="资源图标"
-                class="dev-preview-card__cover-img" />
-              <span v-else class="dev-preview-card__cover-text">{{ (heroTitle || '资源').slice(0, 1).toUpperCase() }}</span>
+              <img
+                v-if="coverPreview"
+                :src="coverPreview"
+                alt="资源图标"
+                class="dev-preview-card__cover-img"
+              />
+              <span v-else class="dev-preview-card__cover-text">{{
+                (heroTitle || '资源').slice(0, 1).toUpperCase()
+              }}</span>
               <span class="dev-preview-card__badge">{{ resourcePlatformLabel }}</span>
               <div class="dev-preview-card__screen dev-preview-card__screen--primary"></div>
               <div class="dev-preview-card__screen dev-preview-card__screen--secondary"></div>
@@ -698,10 +811,9 @@ onMounted(async () => {
               </div>
             </div>
           </article>
-        </el-card>
-
+        </TCard>
       </aside>
-    </section>
+    </TLoading>
   </div>
 </template>
 

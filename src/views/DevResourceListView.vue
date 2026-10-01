@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowDown, Plus, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
-
 import { apiUrl } from '@/api/http'
 import {
   getProcessedTagTree,
@@ -28,6 +26,31 @@ import {
   resourceVisibilityLabel,
   resourceVisibilityTagType,
 } from '@/shared/resourcePresentation'
+
+
+import {
+  TButton,
+  TCard,
+  TDialog,
+  TDropdown,
+  TDropdownItem,
+  TDropdownMenu,
+  TForm,
+  TFormItem,
+  TIcon,
+  TInput,
+  TOption,
+  TPagination,
+  TSelect,
+  TTable,
+  TTableColumn,
+  TTag,
+  ArrowDown,
+  Plus,
+  Refresh,
+  RefreshLeft,
+  Search,
+} from 'ui_73info'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -415,15 +438,15 @@ async function setResourcePrivate(resource: McResourcePayload) {
         <span class="dev-meta-strip__value">{{ draftCount }}</span>
       </div>
       <div class="dev-meta-strip__item dev-meta-strip__action">
-        <el-button class="dev-toolbar__icon-btn" aria-label="刷新资源列表" @click="loadResources">
-          <el-icon>
+        <TButton icon-only aria-label="刷新资源列表" @click="loadResources">
+          <TIcon>
             <Refresh />
-          </el-icon>
-        </el-button>
+          </TIcon>
+        </TButton>
       </div>
     </div>
 
-    <el-card shadow="never" class="dev-surface-card">
+    <TCard class="dev-surface-card">
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
           <h3 class="dev-section-title">资源列表</h3>
@@ -431,49 +454,49 @@ async function setResourcePrivate(resource: McResourcePayload) {
         <div class="dev-card-head__actions">
           <RouterLink class="dev-btn dev-btn--primary"
             :to="{ path: '/workbench/developer/resources/plugins-init' }">
-            <el-icon>
+            <TIcon>
               <Plus />
-            </el-icon>
+            </TIcon>
             <span>发布资源</span>
           </RouterLink>
         </div>
       </div>
 
       <div class="dev-toolbar">
-        <el-select v-model="filters.visibility" clearable placeholder="资源状态"
+        <TSelect v-model="filters.visibility" clearable placeholder="资源状态"
           class="dev-toolbar__field" aria-label="按资源状态筛选">
-          <el-option label="已公开" value="published" />
-          <el-option label="审核中" value="review" />
-          <el-option label="私有" value="draft" />
-        </el-select>
+          <TOption label="已公开" value="published" />
+          <TOption label="审核中" value="review" />
+          <TOption label="私有" value="draft" />
+        </TSelect>
 
-        <el-input v-model="filters.keyword" clearable placeholder="搜索资源标题、作者或标签"
+        <TInput v-model="filters.keyword" clearable placeholder="搜索资源标题、作者或标签"
           class="dev-toolbar__search">
           <template #prefix>
-            <el-icon>
+            <TIcon>
               <Search />
-            </el-icon>
+            </TIcon>
           </template>
-        </el-input>
+        </TInput>
 
         <div class="dev-toolbar__actions">
           <span v-if="hasActiveFilters" class="dev-toolbar__hint">
             筛选出 {{ filteredResources.length }} / {{ totalCount }} 个
           </span>
-          <el-button class="dev-toolbar__ghost" @click="resetFilters">
-            <el-icon>
+          <TButton variant="outline" @click="resetFilters">
+            <TIcon>
               <RefreshLeft />
-            </el-icon>
+            </TIcon>
             <span>重置</span>
-          </el-button>
+          </TButton>
         </div>
       </div>
 
-      <el-table :data="paged" stripe v-loading="isLoading" class="dev-table dev-resource-table">
+      <TTable :loading="isLoading" :data="paged" stripe class="dev-table dev-resource-table">
         <template #empty>
           <p class="dev-empty-state">{{ emptyText }}</p>
         </template>
-        <el-table-column label="资源" min-width="160">
+        <TTableColumn label="资源" min-width="160">
           <template #default="scope">
             <div class="dev-resource-table__title-cell">
               <img v-if="scope.row.cover_url" :src="resourceCoverUrl(scope.row, apiUrl)" alt="资源图标"
@@ -488,99 +511,99 @@ async function setResourcePrivate(resource: McResourcePayload) {
               </div>
             </div>
           </template>
-        </el-table-column>
-        <el-table-column label="标签" min-width="120">
+        </TTableColumn>
+        <TTableColumn label="标签" min-width="120">
           <template #default="scope">
             <span class="dev-resource-table__tags">{{
               resourceTagSummary(scope.row) || '未附带标签'
               }}</span>
           </template>
-        </el-table-column>
-        <el-table-column label="状态" min-width="110">
+        </TTableColumn>
+        <TTableColumn label="状态" min-width="110">
           <template #default="scope">
-            <el-tag :type="resourceVisibilityTagType(scope.row.visibility)" effect="plain">
+            <TTag variant="outline" :tone="resourceVisibilityTagType(scope.row.visibility)">
               {{ resourceVisibilityLabel(scope.row.visibility) }}
-            </el-tag>
+            </TTag>
           </template>
-        </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" min-width="150" />
-        <el-table-column label="操作" min-width="120" fixed="right">
+        </TTableColumn>
+        <TTableColumn prop="created_at" label="创建时间" min-width="150" />
+        <TTableColumn label="操作" min-width="120" fixed="right">
           <template #default="scope">
-            <el-dropdown trigger="click" popper-class="dev-resource-action-menu" @command="handleResourceCommand">
-              <el-button type="primary" plain class="dev-table__action dev-action--soft">
+            <TDropdown trigger="click"
+              @command="(cmd) => handleResourceCommand(cmd as { action: string; resource: McResourcePayload })">
+              <TButton variant="outline" tone="accent">
                 <span>更多</span>
-                <el-icon class="dev-action-caret">
+                <TIcon class="dev-action-caret">
                   <ArrowDown />
-                </el-icon>
-              </el-button>
+                </TIcon>
+              </TButton>
               <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item :command="{ action: 'view', resource: scope.row }">资源主页</el-dropdown-item>
-                  <el-dropdown-item :command="{ action: 'publish', resource: scope.row }">发布版本</el-dropdown-item>
-                  <el-dropdown-item v-if="scope.row.visibility === 'draft'" :disabled="Boolean(scope.row.requirement_id) ||
+                <TDropdownMenu>
+                  <TDropdownItem :command="{ action: 'view', resource: scope.row }">资源主页</TDropdownItem>
+                  <TDropdownItem :command="{ action: 'publish', resource: scope.row }">发布版本</TDropdownItem>
+                  <TDropdownItem v-if="scope.row.visibility === 'draft'" :disabled="Boolean(scope.row.requirement_id) ||
                     requestingReviewResourceId === scope.row.id
                     " :command="{ action: 'request-review', resource: scope.row }">
                     {{ requestingReviewResourceId === scope.row.id ? '提交中...' : '申请公开' }}
-                  </el-dropdown-item>
-                  <el-dropdown-item v-if="scope.row.visibility === 'published'"
+                  </TDropdownItem>
+                  <TDropdownItem v-if="scope.row.visibility === 'published'"
                     :disabled="settingPrivateResourceId === scope.row.id"
                     :command="{ action: 'set-private', resource: scope.row }">
                     {{ settingPrivateResourceId === scope.row.id ? '设置中...' : '设为私有' }}
-                  </el-dropdown-item>
-                  <el-dropdown-item :command="{ action: 'versions', resource: scope.row }">版本管理</el-dropdown-item>
-                  <el-dropdown-item :command="{ action: 'edit', resource: scope.row }">编辑主页</el-dropdown-item>
-                  <el-dropdown-item :command="{ action: 'delete', resource: scope.row }"
+                  </TDropdownItem>
+                  <TDropdownItem :command="{ action: 'versions', resource: scope.row }">版本管理</TDropdownItem>
+                  <TDropdownItem :command="{ action: 'edit', resource: scope.row }">编辑主页</TDropdownItem>
+                  <TDropdownItem :command="{ action: 'delete', resource: scope.row }"
                     :disabled="!canDeleteResource(scope.row) || deletingResourceId === scope.row.id">
                     {{ deletingResourceId === scope.row.id ? '删除中...' : '删除' }}
-                  </el-dropdown-item>
-                </el-dropdown-menu>
+                  </TDropdownItem>
+                </TDropdownMenu>
               </template>
-            </el-dropdown>
+            </TDropdown>
           </template>
-        </el-table-column>
-      </el-table>
+        </TTableColumn>
+      </TTable>
 
       <div class="dev-pager">
         <div class="dev-pager__count">
           <span>共 {{ filteredTotal }} 条</span>
-          <el-select v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
-            <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-          </el-select>
+          <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
+            <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+          </TSelect>
         </div>
-        <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal" :pager-count="5"
-          layout="prev, pager, next" background aria-label="资源列表分页" />
+        <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal" :pager-count="5" background aria-label="资源列表分页" />
       </div>
-    </el-card>
+    </TCard>
 
-    <el-dialog v-model="publishDialogVisible" width="520px" align-center class="dev-dialog"
+    <TDialog v-model:open="publishDialogVisible" width="520px" class="dev-dialog"
       :title="selectedResource ? `发布版本 · ${selectedResource.title}` : '发布版本'">
-      <el-form label-position="top" class="dev-version-form">
-        <el-form-item label="版本号" required>
-          <el-input v-model="versionForm.version" maxlength="80" placeholder="例如：1.20.1-2.0.0" />
-        </el-form-item>
-        <el-form-item label="资源文件" required>
+      <TForm label-position="top" class="dev-version-form">
+        <TFormItem label="版本号" required>
+          <TInput v-model="versionForm.version"  :maxlength="80" placeholder="例如：1.20.1-2.0.0" />
+        </TFormItem>
+        <TFormItem label="资源文件" required>
           <div class="dev-version-file-picker">
             <input ref="versionFileInput" type="file" class="dev-version-file-picker__input"
               @change="handleVersionFileChange" />
-            <el-button @click="triggerVersionFileSelect">选择文件</el-button>
+            <TButton @click="triggerVersionFileSelect">选择文件</TButton>
             <span class="dev-version-file-picker__name">{{
               selectedVersionFileName || '未选择文件'
               }}</span>
           </div>
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="versionForm.note" type="textarea" :rows="4" maxlength="1000" show-word-limit
+        </TFormItem>
+        <TFormItem label="备注">
+          <TInput show-count v-model="versionForm.note" type="textarea" :rows="4"  :maxlength="1000"
             placeholder="记录本次新版本说明、兼容性变化或补充信息" />
-        </el-form-item>
-      </el-form>
+        </TFormItem>
+      </TForm>
 
       <template #footer>
-        <el-button @click="publishDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="publishingResourceId === selectedResource?.id" @click="submitVersion">
+        <TButton @click="publishDialogVisible = false">取消</TButton>
+        <TButton variant="solid" tone="accent" :loading="publishingResourceId === selectedResource?.id" @click="submitVersion">
           发布版本
-        </el-button>
+        </TButton>
       </template>
-    </el-dialog>
+    </TDialog>
   </div>
 </template>
 
@@ -589,7 +612,7 @@ async function setResourcePrivate(resource: McResourcePayload) {
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--el-color-primary);
+  color: var(--dev-blue);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -597,6 +620,6 @@ async function setResourcePrivate(resource: McResourcePayload) {
 }
 
 .dev-resource-table__title-link:hover {
-  color: var(--el-color-primary-light-3);
+  color: #6280df;
 }
 </style>

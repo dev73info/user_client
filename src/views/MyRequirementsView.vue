@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
-
 import PublishModal from '@/components/PublishModal.vue'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import AcceptanceDialog from '@/components/AcceptanceDialog.vue'
@@ -86,6 +84,23 @@ import {
   requirementRichTextPlainText,
   validateRequirementRichText,
 } from '@/utils/requirementRichText'
+
+
+import {
+  TButton,
+  TDropdown,
+  TDropdownItem,
+  TDropdownMenu,
+  TIcon,
+  TInput,
+  TOption,
+  TPagination,
+  TSelect,
+  ArrowDown,
+  Refresh,
+  RefreshLeft,
+  Search,
+} from 'ui_73info'
 
 const router = useRouter()
 const route = useRoute()
@@ -2433,11 +2448,11 @@ watch(
         <span class="wb-strip__value">{{ stripValue(requirementStats.completed) }}</span>
       </div>
       <div class="wb-strip__item wb-strip__action">
-        <el-button class="wb-toolbar__primary" @click="openPublishModal">发布新需求</el-button>
-        <el-button class="wb-toolbar__icon-btn" :loading="requirementLoading || conversationLoading"
+        <TButton variant="solid" tone="accent" @click="openPublishModal">发布新需求</TButton>
+        <TButton icon-only :loading="requirementLoading || conversationLoading"
           :aria-label="refreshButtonLabel" :title="refreshButtonLabel" @click="refreshMyRequirements">
-          <el-icon><Refresh /></el-icon>
-        </el-button>
+          <TIcon><Refresh /></TIcon>
+        </TButton>
       </div>
     </div>
 
@@ -2449,21 +2464,21 @@ watch(
       </div>
 
       <div class="wb-toolbar">
-        <el-select v-model="selectedState" class="wb-toolbar__field wb-toolbar__field--requirement-state"
+        <TSelect v-model="selectedState" class="wb-toolbar__field wb-toolbar__field--requirement-state"
           aria-label="需求状态">
-          <el-option v-for="state in summaries" :key="state.value" :value="state.value" :label="state.optionLabel" />
-        </el-select>
-        <el-input v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索需求标题、编号或发布人"
+          <TOption v-for="state in summaries" :key="state.value" :value="state.value" :label="state.optionLabel" />
+        </TSelect>
+        <TInput v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索需求标题、编号或发布人"
           aria-label="搜索需求">
-          <template #prefix><el-icon><Search /></el-icon></template>
-        </el-input>
+          <template #prefix><TIcon><Search /></TIcon></template>
+        </TInput>
         <div class="wb-toolbar__actions">
           <span v-if="hasActiveFilters" class="wb-toolbar__hint">
             筛选出 {{ filteredTotal }} / {{ myRequirements.length }} 条
           </span>
-          <el-button class="wb-toolbar__ghost" @click="resetFilters">
-            <el-icon><RefreshLeft /></el-icon><span>重置</span>
-          </el-button>
+          <TButton variant="outline" @click="resetFilters">
+            <TIcon><RefreshLeft /></TIcon><span>重置</span>
+          </TButton>
         </div>
       </div>
 
@@ -2474,9 +2489,9 @@ watch(
         </span>
         <template v-if="myRequirements.length">
           <div class="wb-empty__actions">
-            <el-button class="wb-toolbar__ghost" @click="resetFilters">
-              <el-icon><RefreshLeft /></el-icon><span>清除筛选</span>
-            </el-button>
+            <TButton variant="outline" @click="resetFilters">
+              <TIcon><RefreshLeft /></TIcon><span>清除筛选</span>
+            </TButton>
           </div>
         </template>
         <template v-else>点击右上角「发布新需求」即可创建你的第一个需求。</template>
@@ -2603,26 +2618,25 @@ watch(
                       afterSalesBadgeFor(item.requirement_id) }}</span>
                 </button>
 
-                <el-dropdown v-if="moreRowActions(item).length" trigger="click"
-                  popper-class="requirement-action-menu"
-                  @command="(key: string) => runMoreRowAction(item, key)">
+                <TDropdown v-if="moreRowActions(item).length" trigger="click"
+                  @command="(key) => runMoreRowAction(item, String(key))">
                   <button class="ghost small requirement-actions__more" type="button" aria-haspopup="menu"
                     title="更多操作" @click.stop>
                     更多
-                    <el-icon>
+                    <TIcon>
                       <ArrowDown />
-                    </el-icon>
+                    </TIcon>
                   </button>
                   <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item v-for="entry in moreRowActions(item)" :key="entry.key" :command="entry.key"
+                    <TDropdownMenu>
+                      <TDropdownItem v-for="entry in moreRowActions(item)" :key="entry.key" :command="entry.key"
                         :disabled="entry.disabled" :title="entry.title"
                         :class="{ 'is-danger': entry.danger }">
                         {{ entry.label }}
-                      </el-dropdown-item>
-                    </el-dropdown-menu>
+                      </TDropdownItem>
+                    </TDropdownMenu>
                   </template>
-                </el-dropdown>
+                </TDropdown>
 
                 <button v-if="primaryRowAction(item)" class="ghost small action-primary" type="button"
                   :disabled="primaryRowAction(item)?.disabled"
@@ -2704,12 +2718,12 @@ watch(
       <div class="wb-pager">
         <div class="wb-pager__count">
           <span>共 {{ filteredTotal }} 条需求单</span>
-          <el-select v-model="pageSize" class="wb-pager__size" aria-label="每页需求单数">
-            <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-          </el-select>
+          <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页需求单数">
+            <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+          </TSelect>
         </div>
-        <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-          :pager-count="5" layout="prev, pager, next" background aria-label="需求单分页" />
+        <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+          :pager-count="5" background aria-label="需求单分页" />
       </div>
       </template>
     </section>
@@ -3164,14 +3178,6 @@ watch(
   padding: 0;
 }
 
-.my-requirements-refresh .el-icon {
-  font-size: 16px;
-}
-
-.my-requirements-refresh .el-icon.is-spinning {
-  animation: my-requirements-spin 900ms linear infinite;
-}
-
 @keyframes my-requirements-spin {
   to {
     transform: rotate(360deg);
@@ -3179,7 +3185,7 @@ watch(
 }
 
 /* 状态下拉要放开「待审核/付定金（12）」这种带条数的档位名，比统一层默认的 150px 宽一点；
-   宽度必须写成 flex 基宽而不是 width——Element 的 .el-select 自带 width: 100%，
+   宽度必须写成 flex 基宽而不是 width——TSelect 自带 width: 100%，
    flex-basis 会被 width 顶掉，细节见 portal-workbench.css 里 .wb-toolbar__field 的注释。 */
 .wb-toolbar__field--requirement-state {
   flex: 0 1 190px;

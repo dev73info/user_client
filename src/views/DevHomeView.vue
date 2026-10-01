@@ -1,5 +1,10 @@
 <script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
+  TButton,
+  TIcon,
+  TLoading,
   ArrowRight,
   CircleCheck,
   Clock,
@@ -8,10 +13,7 @@ import {
   Refresh,
   Wallet,
   WarningFilled,
-} from '@element-plus/icons-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { TButton, TIcon } from 'ui_73info'
+} from 'ui_73info'
 
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
 import DevWithdrawalDialog from '@/components/DevWithdrawalDialog.vue'
@@ -562,7 +564,7 @@ async function loadPage() {
     <!-- 顶部读数条：与其余菜单页同一条形态（读数在左、刷新在右）。
          四格可点卡片已并入横条：读数对应的明细页在侧边栏和下方列表里都有入口，
          不必在这一层再挂四条跳转。 -->
-    <div class="dev-meta-strip" aria-label="接单与收入概览" v-loading="loading">
+    <TLoading tag="div" class="dev-meta-strip" aria-label="接单与收入概览" :loading="loading">
       <template v-for="(item, index) in statCards" :key="item.label">
         <div v-if="index > 0" class="dev-meta-strip__divider" />
         <div class="dev-meta-strip__item">
@@ -577,7 +579,7 @@ async function loadPage() {
           </TIcon>
         </TButton>
       </div>
-    </div>
+    </TLoading>
 
     <!-- 保证金警示条：摆在四格读数之后——先看当天读数，再看为什么还不能接单。
          形状与配色走统一层的 .dev-notice（金色 + 图标徽标 + 文案 + 右侧动作），

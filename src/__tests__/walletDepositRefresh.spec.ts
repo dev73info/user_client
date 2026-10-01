@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   summary: vi.fn(),
   status: vi.fn(),
   toast: vi.fn(),
+  setting: vi.fn(),
 }))
 
 vi.mock('vue-router', () => ({
@@ -22,18 +23,26 @@ vi.mock('@/api/devOrderDeposit', async (importOriginal) => ({
 vi.mock('@/api/devWallet', async (importOriginal) => ({
   ...await importOriginal<typeof import('@/api/devWallet')>(),
   getDevWalletOverview: vi.fn().mockResolvedValue({ recent_income: [] }),
+  updateDevWithdrawalSetting: mocks.setting,
 }))
 vi.mock('@/api/devCredit', () => ({ getDevCreditSelf: vi.fn().mockResolvedValue(null) }))
 
 function mountWallet() {
   return shallowMount(DevWalletView, { global: {
     config: { warnHandler: () => {} },
+    // 开关在 TCard 里：桩默认不渲染默认插槽，不打开就找不到页面里的元素
+    renderStubDefaultSlot: true,
     stubs: {
-      ElTabs: { template: '<div><slot /></div>' },
-      ElTabPane: { template: '<div><slot /></div>' },
-      ElTable: { name: 'ElTable', props: ['data'], template: '<div />' },
-      ElPagination: { name: 'ElPagination', props: ['currentPage', 'pageSize', 'total'], template: '<div />' },
-      ElSelect: { name: 'ElSelect', props: ['modelValue'], template: '<div />' },
+      TTable: { name: 'TTable', props: ['data'], template: '<div />' },
+      TPagination: { name: 'TPagination', props: ['currentPage', 'pageSize', 'total'], template: '<div />' },
+      TSelect: { name: 'TSelect', props: ['modelValue'], template: '<div />' },
+      // 开关按真实用法点击触发，缺了 @update:model-value 绑定时点不动，这条用例就红
+      TSwitch: {
+        name: 'TSwitch',
+        props: ['modelValue', 'loading', 'disabled'],
+        emits: ['update:modelValue'],
+        template: `<button class="auto-withdraw-switch" @click="$emit('update:modelValue', !modelValue)" />`,
+      },
     },
   } })
 }
@@ -150,14 +159,14 @@ describe('wallet deposit status refresh', () => {
     mocks.summary.mockResolvedValue({ withdrawals: records })
     const wrapper = mountWallet()
     await flushPromises()
-    const table = wrapper.findAllComponents({ name: 'ElTable' })[0]!
-    const pagination = wrapper.findComponent({ name: 'ElPagination' })
+    const table = wrapper.findAllComponents({ name: 'TTable' })[0]!
+    const pagination = wrapper.findComponent({ name: 'TPagination' })
     expect(table.props('data')).toEqual(records.slice(0, 10))
     expect(pagination.props('total')).toBe(23)
     pagination.vm.$emit('update:current-page', 3)
     await flushPromises()
     expect(table.props('data')).toEqual(records.slice(20))
-    wrapper.findComponent({ name: 'ElSelect' }).vm.$emit('update:modelValue', 20)
+    wrapper.findComponent({ name: 'TSelect' }).vm.$emit('update:modelValue', 20)
     await flushPromises()
     expect(pagination.props('currentPage')).toBe(1)
     expect(table.props('data')).toEqual(records.slice(0, 20))
@@ -176,6 +185,43 @@ describe('wallet deposit status refresh', () => {
     expect(pagination.props('currentPage')).toBe(1)
     expect(pagination.props('total')).toBe(0)
     expect(table.props('data')).toEqual([])
+    wrapper.unmount()
+  })
+
+  it('toggles auto-withdraw through the server instead of flipping the switch locally', async () => {
+    let confirmSetting: (setting: unknown) => void = () => {}
+    mocks.setting.mockReturnValue(new Promise((resolve) => { confirmSetting = resolve }))
+    mocks.summary.mockResolvedValue({ withdrawals: [] })
+    const wrapper = mountWallet()
+    await flushPromises()
+
+    await wrapper.get('.auto-withdraw-switch').trigger('click')
+    await flushPromises()
+    expect(mocks.setting).toHaveBeenCalledExactlyOnceWith('test-token', true)
+    // 等后端确认期间开关只进 loading，状态不动，避免连点
+    expect(walletState(wrapper).autoWithdrawSaving).toBe(true)
+
+    confirmSetting({ auto_withdraw_enabled: true, payout_channel_ready: true })
+    await flushPromises()
+    expect(walletState(wrapper).autoWithdrawSaving).toBe(false)
+    expect((walletState(wrapper).withdrawalSetting as { auto_withdraw_enabled: boolean })
+      .auto_withdraw_enabled).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('keeps the switch in place and reports the reason when the server refuses', async () => {
+    mocks.setting.mockRejectedValue(new Error('出款通道未就绪'))
+    mocks.summary.mockResolvedValue({ withdrawals: [] })
+    const wrapper = mountWallet()
+    await flushPromises()
+
+    await wrapper.get('.auto-withdraw-switch').trigger('click')
+    await flushPromises()
+
+    expect(mocks.toast).toHaveBeenCalledWith('出款通道未就绪', 'error')
+    expect(walletState(wrapper).autoWithdrawSaving).toBe(false)
+    // 服务端拒绝时开关不翻转：状态只由 withdrawalSetting 推导
+    expect(walletState(wrapper).withdrawalSetting).toBeNull()
     wrapper.unmount()
   })
 })

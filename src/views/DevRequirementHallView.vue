@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Refresh, RefreshLeft, Search, WarningFilled } from '@element-plus/icons-vue'
-
 import {
   getProcessedTagTree,
   invalidateTagTreeCache,
@@ -30,6 +28,28 @@ import {
   requirementRichTextPreview,
   sanitizeRequirementRichText,
 } from '@/utils/requirementRichText'
+
+
+import {
+  TButton,
+  TCard,
+  TCheckbox,
+  TDialog,
+  TForm,
+  TFormItem,
+  TIcon,
+  TInput,
+  TOption,
+  TPagination,
+  TSelect,
+  TTable,
+  TTableColumn,
+  TTag,
+  Refresh,
+  RefreshLeft,
+  Search,
+  WarningFilled,
+} from 'ui_73info'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -669,12 +689,12 @@ function resetInitForm() {
         <span class="dev-meta-strip__value">{{ availableDepositText }}</span>
       </div>
       <div class="dev-meta-strip__item dev-meta-strip__action">
-        <el-button class="dev-toolbar__primary" type="primary" @click="goToOrderDeposit">去缴纳保证金</el-button>
-        <el-button class="dev-toolbar__icon-btn" aria-label="刷新需求列表" @click="loadRequirements">
-          <el-icon>
+        <TButton variant="solid" tone="accent" @click="goToOrderDeposit">去缴纳保证金</TButton>
+        <TButton icon-only aria-label="刷新需求列表" @click="loadRequirements">
+          <TIcon>
             <Refresh />
-          </el-icon>
-        </el-button>
+          </TIcon>
+        </TButton>
       </div>
     </div>
 
@@ -682,24 +702,24 @@ function resetInitForm() {
          （金色 + 图标徽标 + 文案 + 右侧动作），不再用 Element 的 el-alert。 -->
     <div v-if="!developerAgreementSigned" class="dev-notice" role="alert">
       <span class="dev-notice__icon" aria-hidden="true">
-        <el-icon>
+        <TIcon>
           <WarningFilled />
-        </el-icon>
+        </TIcon>
       </span>
       <div class="dev-notice__copy">
         <strong>尚未签署《开发者入驻协议》</strong>
         <p>可接取无电签约定需求；接取电签担保需求或缴纳保证金前需先签署协议。</p>
       </div>
       <div class="dev-notice__action">
-        <el-button class="dev-toolbar__primary" type="primary" @click="goSignDeveloperAgreement()">去签署协议</el-button>
+        <TButton variant="solid" tone="accent" @click="goSignDeveloperAgreement()">去签署协议</TButton>
       </div>
     </div>
 
     <div v-if="!canTakeOrders" class="dev-notice" role="status">
       <span class="dev-notice__icon" aria-hidden="true">
-        <el-icon>
+        <TIcon>
           <WarningFilled />
-        </el-icon>
+        </TIcon>
       </span>
       <div class="dev-notice__copy">
         <p>无电签约定需求可继续关联；历史电签担保需求需要满足保证金规则。</p>
@@ -708,7 +728,7 @@ function resetInitForm() {
       </div>
     </div>
 
-    <el-card shadow="never" class="dev-surface-card">
+    <TCard class="dev-surface-card">
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
           <h3 class="dev-section-title">可接需求</h3>
@@ -716,43 +736,42 @@ function resetInitForm() {
       </div>
 
       <div class="dev-toolbar">
-        <el-select v-model="filters.sortBy" placeholder="排序字段" class="dev-toolbar__field" @change="applyFilters">
-          <el-option v-for="item in sortOptions" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
+        <TSelect v-model="filters.sortBy" placeholder="排序字段" class="dev-toolbar__field" @change="applyFilters">
+          <TOption v-for="item in sortOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </TSelect>
 
-        <el-select v-model="filters.sortOrder" placeholder="排序方向"
+        <TSelect v-model="filters.sortOrder" placeholder="排序方向"
           class="dev-toolbar__field dev-toolbar__field--small" @change="applyFilters">
-          <el-option label="降序" value="desc" />
-          <el-option label="升序" value="asc" />
-        </el-select>
+          <TOption label="降序" value="desc" />
+          <TOption label="升序" value="asc" />
+        </TSelect>
 
-        <el-input v-model="filters.keyword" clearable placeholder="搜索需求编号、标题或描述" class="dev-toolbar__search"
+        <TInput v-model="filters.keyword" clearable placeholder="搜索需求编号、标题或描述" class="dev-toolbar__search"
           @keyup.enter="searchNow">
           <template #prefix>
-            <el-icon>
+            <TIcon>
               <Search />
-            </el-icon>
+            </TIcon>
           </template>
-        </el-input>
+        </TInput>
 
         <!-- 筛选与其余菜单页同构：只有「重置」，输入／切换即时生效，没有「查询」按钮。
              条数只在表尾分页器里报一次，工具栏不再重复一行「共 N 条」。 -->
         <div class="dev-toolbar__actions">
-          <el-button class="dev-toolbar__ghost" @click="resetFilters">
-            <el-icon>
+          <TButton variant="outline" @click="resetFilters">
+            <TIcon>
               <RefreshLeft />
-            </el-icon>
+            </TIcon>
             <span>重置</span>
-          </el-button>
+          </TButton>
         </div>
       </div>
 
-      <!-- border 只为打开「拖拽列宽」：Element 的拖拽逻辑里写着 `if (!props.border) return`
-           （见 element-plus 的 table-header/event-helper），所以无框皮肤也必须加这个属性，
-           再由 .dev-table.el-table--border 的样式把 border 带来的竖线与外框关掉。
+      <!-- 列宽可拖：表头右边缘的拖拽手柄由 TTableColumn 的 `resizable` 打开，与边框无关
+           （TTable 的 `border` 是画竖线的皮肤开关，本页要的是无框表格，所以不给）。
            窄窗口下列宽合计超过卡片时表格本来就会横向滚动（见 dev-responsive.css 的说明），
            现在用户至少可以把列拖窄，自己把表格收进卡片宽度。 -->
-      <el-table :data="rows" stripe border v-loading="loading" class="dev-table dev-requirement-hall__table">
+      <TTable :loading="loading" :data="rows" stripe class="dev-table dev-requirement-hall__table">
         <template #empty>
           <p class="dev-empty-state">{{ emptyText }}</p>
         </template>
@@ -762,7 +781,7 @@ function resetInitForm() {
              现在固定六列 110+88+108+112+132+118 = 668px，需求列（min-width 260）
              吃掉剩下的约 297px。状态列由 96 放宽到 112：96px 装不下「待付定金」那枚标签
              （单元格内容需要 110px），标签会被截成「待付定金…」。 -->
-        <el-table-column label="需求" min-width="260" resizable>
+        <TTableColumn label="需求" min-width="260" resizable>
           <template #default="scope">
             <div class="dev-requirement-hall__title-cell">
               <div class="dev-requirement-hall__requirement-id">{{ scope.row.requirement_id }}</div>
@@ -772,19 +791,19 @@ function resetInitForm() {
               </div>
             </div>
           </template>
-        </el-table-column>
-        <el-table-column prop="creator" label="发起人" width="110" resizable show-overflow-tooltip />
-        <el-table-column label="预算" width="88" resizable>
+        </TTableColumn>
+        <TTableColumn prop="creator" label="发起人" width="110" resizable show-overflow-tooltip />
+        <TTableColumn label="预算" width="88" resizable>
           <template #default="scope">
             <span>{{ formatMoney(scope.row.budget) }}</span>
           </template>
-        </el-table-column>
-        <el-table-column label="发布方式" width="108" resizable>
+        </TTableColumn>
+        <TTableColumn label="发布方式" width="108" resizable>
           <template #default="scope">
             <PaymentModeChip :mode="scope.row.payment_mode" />
           </template>
-        </el-table-column>
-        <el-table-column label="状态" width="112" resizable>
+        </TTableColumn>
+        <TTableColumn label="状态" width="112" resizable>
           <template #default="scope">
             <!-- 状态走全站统一口径（requirementStatusLabel）：待付定金 / 待开发。
                  这里原来自己写成「待接单/签约」，有两处不对：
@@ -794,42 +813,41 @@ function resetInitForm() {
                  2) 无电签约定（self_managed）根本没有合同，那一档永远不会有签约这一步。
                  另一处错位：真正已付定金、接了就能开工的 deposit_paid 原来只写「待开发」，
                  倒是还没付定金的 pending_deposit 抢了「待接单」的说法。 -->
-            <el-tag :type="scope.row.status === 'pending_deposit' ? 'warning' : 'success'" effect="plain">
+            <TTag variant="outline" :tone="scope.row.status === 'pending_deposit' ? 'warning' : 'success'">
               {{ requirementStatusLabel(scope.row.status) }}
-            </el-tag>
+            </TTag>
           </template>
-        </el-table-column>
+        </TTableColumn>
         <!-- 最近更新只报到分钟（工作台总览的「更新于」也是这个格式）：后端给的是
              「2026-09-28 15:30:00」，19 个字符要 144px，132px 的列会被截成
              「2026-09-28 15:…」；掐掉秒之后 107px 就够，也不再需要省略号。 -->
-        <el-table-column label="最近更新" width="132" resizable show-overflow-tooltip>
+        <TTableColumn label="最近更新" width="132" resizable show-overflow-tooltip>
           <template #default="scope">{{ formatCnDateTime(scope.row.updated_at) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="118" fixed="right" resizable>
+        </TTableColumn>
+        <TTableColumn label="操作" width="118" fixed="right" resizable>
           <template #default="scope">
-            <el-button type="primary" plain class="dev-table__action dev-action--soft"
+            <TButton variant="outline" tone="accent"
               @click="openBindDialog(scope.row)">
               {{ bindButtonLabel(scope.row) }}
-            </el-button>
+            </TButton>
           </template>
-        </el-table-column>
-      </el-table>
+        </TTableColumn>
+      </TTable>
 
       <!-- 表尾走统一层的 .dev-pager（与钱包记录同一形态）。
            本页走服务端分页，此前只取第 1 页 10 条且不给翻页入口，第 2 页起的数据在界面上不可达。 -->
       <div class="dev-pager">
         <div class="dev-pager__count">
           <span>共 {{ total }} 条</span>
-          <el-select v-model="pageSize" aria-label="每页条数" class="dev-pager__size" @change="handlePageSizeChange">
-            <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-          </el-select>
+          <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size" @change="handlePageSizeChange">
+            <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+          </TSelect>
         </div>
-        <el-pagination v-model:current-page="page" :page-size="pageSize" :total="total" :pager-count="5"
-          layout="prev, pager, next" background aria-label="需求列表分页" @current-change="loadRequirements" />
+        <TPagination v-model:current-page="page" :page-size="pageSize" :total="total" :pager-count="5" background aria-label="需求列表分页" @current-change="loadRequirements" />
       </div>
-    </el-card>
+    </TCard>
 
-    <el-dialog v-model="bindDialogVisible" width="720px" align-center class="dev-dialog"
+    <TDialog v-model:open="bindDialogVisible" width="720px" class="dev-dialog"
       :title="selectedRequirement ? `关联需求 · ${selectedRequirement.title}` : '关联需求'">
       <div class="dev-requirement-hall__dialog-copy">
         <p class="dev-section-desc">
@@ -864,8 +882,8 @@ function resetInitForm() {
         </div>
       </section>
 
-      <el-form label-position="top">
-        <el-form-item label="关联方式" required>
+      <TForm label-position="top">
+        <TFormItem label="关联方式" required>
           <div class="dev-requirement-hall__mode-switch">
             <button type="button" class="dev-requirement-hall__mode-button"
               :class="{ 'is-active': bindingMode === 'existing' }" @click="handleBindingModeChange('existing')">
@@ -876,16 +894,16 @@ function resetInitForm() {
               初始化新资源项目
             </button>
           </div>
-        </el-form-item>
+        </TFormItem>
 
         <template v-if="bindingMode === 'existing'">
-          <el-form-item label="选择开发项目" required>
-            <el-select v-model="bindForm.resourceId" placeholder="请选择一个未绑定且保持私有的开发项目"
+          <TFormItem label="选择开发项目" required>
+            <TSelect v-model="bindForm.resourceId" placeholder="请选择一个未绑定且保持私有的开发项目"
               class="dev-requirement-hall__dialog-field" @change="handleResourceChange">
-              <el-option v-for="item in availableResourceOptions" :key="item.id" :label="projectOptionLabel(item)"
+              <TOption v-for="item in availableResourceOptions" :key="item.id" :label="projectOptionLabel(item)"
                 :value="item.id" />
-            </el-select>
-          </el-form-item>
+            </TSelect>
+          </TFormItem>
 
           <p v-if="availableResourceOptions.length === 0" class="dev-empty-state dev-requirement-hall__dialog-empty">
             当前没有可直接绑定的私有资源项目。你可以切换到“初始化新资源项目”，先创建一个私有项目后再继续关联。
@@ -901,21 +919,21 @@ function resetInitForm() {
             </div>
 
             <div class="dev-upload-grid dev-upload-grid--two">
-              <el-form-item label="资源标题" required>
-                <el-input v-model="initForm.title" maxlength="200" show-word-limit
+              <TFormItem label="资源标题" required>
+                <TInput show-count v-model="initForm.title"  :maxlength="200"
                   placeholder="例如 Better Combat Reloaded" @input="handleInitFieldChange" />
-              </el-form-item>
+              </TFormItem>
 
-              <el-form-item label="作者名称" required>
-                <el-input v-model="initForm.author" maxlength="100" placeholder="默认使用当前开发者账号"
+              <TFormItem label="作者名称" required>
+                <TInput v-model="initForm.author"  :maxlength="100" placeholder="默认使用当前开发者账号"
                   @input="handleInitFieldChange" />
-              </el-form-item>
+              </TFormItem>
             </div>
 
             <section v-if="rootTabs.length > 0" class="dev-requirement-hall__catalog-block">
               <div class="dev-requirement-hall__catalog-head">
                 <span class="dev-filter-label">一级分类</span>
-                <el-button text :icon="Refresh" :loading="initTagsLoading" @click="loadTagTree">刷新标签</el-button>
+                <TButton variant="text" :loading="initTagsLoading" @click="loadTagTree"><template #prefix><TIcon><Refresh /></TIcon></template>刷新标签</TButton>
               </div>
               <div class="dev-requirement-hall__catalog-chips">
                 <button v-for="root in rootTabs" :key="root.key" type="button"
@@ -961,10 +979,10 @@ function resetInitForm() {
                   <span v-else class="dev-requirement-hall__tag-group-empty">尚未选择标签</span>
                 </div>
 
-                <el-select v-model="selectedTagIdsByGroup[group.group_id]" multiple filterable placeholder="选择一个或多个标签"
+                <TSelect v-model="selectedTagIdsByGroup[group.group_id]" multiple filterable placeholder="选择一个或多个标签"
                   class="dev-requirement-hall__dialog-field" @change="handleInitFieldChange">
-                  <el-option v-for="item in group.items" :key="item.id" :label="item.name" :value="item.id" />
-                </el-select>
+                  <TOption v-for="item in group.items" :key="item.id" :label="item.name" :value="item.id" />
+                </TSelect>
               </section>
             </div>
 
@@ -974,12 +992,12 @@ function resetInitForm() {
           </section>
         </template>
 
-        <el-form-item required>
-          <el-checkbox v-model="reviewConfirmed" @change="handleReviewChange">
+        <TFormItem required>
+          <TCheckbox v-model="reviewConfirmed" @change="handleReviewChange">
             我已详细阅读需求标题、需求描述、预算、验收标准，并确认当前资源方案适合关联此需求
-          </el-checkbox>
-        </el-form-item>
-      </el-form>
+          </TCheckbox>
+        </TFormItem>
+      </TForm>
 
       <section v-if="selectedRequirement && (bindingMode === 'new' || selectedResource)"
         class="dev-requirement-hall__confirm-panel">
@@ -992,9 +1010,9 @@ function resetInitForm() {
             confirmResourceLabel
           }}”。请确认资源能力、预算范围与验收标准均已匹配。
         </p>
-        <el-checkbox v-model="finalConfirmed" :disabled="!reviewConfirmed">
+        <TCheckbox v-model="finalConfirmed" :disabled="!reviewConfirmed">
           我确认本次关联无误，允许将该需求正式绑定到当前资源方案
-        </el-checkbox>
+        </TCheckbox>
       </section>
 
       <p v-if="bindingMode === 'existing' && availableResourceOptions.length === 0"
@@ -1007,8 +1025,8 @@ function resetInitForm() {
       </p>
 
       <template #footer>
-        <el-button @click="bindDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="binding" :disabled="bindingMode === 'existing'
+        <TButton @click="bindDialogVisible = false">取消</TButton>
+        <TButton variant="solid" tone="accent" :loading="binding" :disabled="bindingMode === 'existing'
           ? !availableResourceOptions.length ||
           !reviewConfirmed ||
           !finalConfirmed ||
@@ -1016,9 +1034,9 @@ function resetInitForm() {
           : !reviewConfirmed || !finalConfirmed || !canCreateResource
           " @click="submitBinding">
           {{ bindingMode === 'existing' ? '确认关联' : '初始化并关联' }}
-        </el-button>
+        </TButton>
       </template>
-    </el-dialog>
+    </TDialog>
   </div>
 </template>
 

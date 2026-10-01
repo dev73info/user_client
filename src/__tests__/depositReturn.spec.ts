@@ -16,8 +16,13 @@ describe('deposit return validation', () => {
     expect(validateReturn()).toBeNull()
   })
 
-  it('keeps recipient validation for income withdrawals', () => {
-    expect(validateDevWithdrawalRequest(payload, 100)).not.toBeNull()
+  // 收益提现的出款账户由服务端按开发者已绑定的 Adapay 收款账户补全，前端不再采集收款信息，
+  // 因此留空也不拦；金额、余额与备注仍照常校验。
+  it('does not ask for recipient details for income withdrawals', () => {
+    expect(validateDevWithdrawalRequest(payload, 100)).toBeNull()
+    expect(validateDevWithdrawalRequest({ ...payload, channel: 'wechat' }, 100)).toBeNull()
+    expect(validateDevWithdrawalRequest({ ...payload, amount_cny: 0 }, 100)).not.toBeNull()
+    expect(validateDevWithdrawalRequest(payload, 9)).not.toBeNull()
   })
 
   it('checks amount, balance and notes without recipient details', () => {

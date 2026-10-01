@@ -2,6 +2,8 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  TButton,
+  TIcon,
   ArrowLeft,
   Bell,
   ChatDotRound,
@@ -12,8 +14,7 @@ import {
   Picture,
   Position,
   Refresh,
-} from '@element-plus/icons-vue'
-import { TButton, TIcon } from 'ui_73info'
+} from 'ui_73info'
 
 import * as userConversationApi from '@/api/conversations'
 import * as devConversationApi from '@/api/conversations'

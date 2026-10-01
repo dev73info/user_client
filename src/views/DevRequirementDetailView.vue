@@ -1,30 +1,43 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Back, Refresh, WarningFilled } from '@element-plus/icons-vue'
-
 import { getDevAccessStatus } from '@/api/auth'
 import {
-    getProcessedTagTree,
-    invalidateTagTreeCache,
-    type McProcessedTagTree,
-    type McPublishTagGroup,
-    type McTagCatalogEntry,
-    type McTagCatalogRoot,
+  getProcessedTagTree,
+  invalidateTagTreeCache,
+  type McProcessedTagTree,
+  type McPublishTagGroup,
+  type McTagCatalogEntry,
+  type McTagCatalogRoot,
 } from '@/api/resourceTags'
 import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
 import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@/api/devOrderDeposit'
 import { createMcResource, listMcResources, type McResourcePayload } from '@/api/mcResources'
 import {
-    bindRequirementProject,
-    getRequirementHallItem,
-    type RequirementItem,
-    type RequirementPaymentMode,
-    type RequirementStatus,
+  bindRequirementProject,
+  getRequirementHallItem,
+  type RequirementItem,
+  type RequirementPaymentMode,
+  type RequirementStatus,
 } from '@/api/devRequirements'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
+import {
+  TButton,
+  TCard,
+  TCheckbox,
+  TForm,
+  TFormItem,
+  TIcon,
+  TInput,
+  TLoading,
+  TOption,
+  TSelect,
+  Back,
+  Refresh,
+  WarningFilled,
+} from 'ui_73info'
 
 const route = useRoute()
 const router = useRouter()
@@ -623,321 +636,427 @@ async function submitBinding() {
 </script>
 
 <template>
-    <div class="dev-page dev-requirement-detail" v-loading="loading">
-        <!-- 顶部读数条：与其余页同一条形态（读数在左、页面级操作在右，刷新固定在 __action 槽）。
+  <TLoading tag="div" class="dev-page dev-requirement-detail" :loading="loading">
+    <!-- 顶部读数条：与其余页同一条形态（读数在左、页面级操作在右，刷新固定在 __action 槽）。
              这一页原来只有一条只放两个灰字的 __toolbar，没有读数条，
              返回入口还是另做的青色胶囊按钮，与别页的 .dev-btn 不是一个体系。 -->
-        <div class="dev-meta-strip">
-            <template v-if="requirement">
-                <div class="dev-meta-strip__item">
-                    <span class="dev-meta-strip__label">需求编号</span>
-                    <span class="dev-meta-strip__value">{{ requirement.requirement_id }}</span>
-                </div>
-                <div class="dev-meta-strip__divider" />
-                <div class="dev-meta-strip__item">
-                    <span class="dev-meta-strip__label">状态</span>
-                    <span class="dev-meta-strip__value">{{ statusToLabel(requirement.status) }}</span>
-                </div>
-                <div class="dev-meta-strip__divider" />
-                <div class="dev-meta-strip__item">
-                    <span class="dev-meta-strip__label">结算方式</span>
-                    <span class="dev-meta-strip__value">{{ paymentLabel(requirement) }}</span>
-                </div>
-            </template>
-            <div class="dev-meta-strip__item dev-meta-strip__action">
-                <button type="button" class="dev-btn dev-btn--ghost" @click="goBack">
-                    <el-icon>
-                        <Back />
-                    </el-icon>
-                    <span>返回需求大厅</span>
-                </button>
-                <el-button class="dev-toolbar__icon-btn" aria-label="刷新需求详情" @click="loadPage">
-                    <el-icon>
-                        <Refresh />
-                    </el-icon>
-                </el-button>
-            </div>
+    <div class="dev-meta-strip">
+      <template v-if="requirement">
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">需求编号</span>
+          <span class="dev-meta-strip__value">{{ requirement.requirement_id }}</span>
         </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">状态</span>
+          <span class="dev-meta-strip__value">{{ statusToLabel(requirement.status) }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">结算方式</span>
+          <span class="dev-meta-strip__value">{{ paymentLabel(requirement) }}</span>
+        </div>
+      </template>
+      <div class="dev-meta-strip__item dev-meta-strip__action">
+        <button type="button" class="dev-btn dev-btn--ghost" @click="goBack">
+          <TIcon>
+            <Back />
+          </TIcon>
+          <span>返回需求大厅</span>
+        </button>
+        <TButton icon-only aria-label="刷新需求详情" @click="loadPage">
+          <TIcon>
+            <Refresh />
+          </TIcon>
+        </TButton>
+      </div>
+    </div>
 
-        <div v-if="requirement" class="dev-requirement-detail__layout">
-            <section class="dev-requirement-detail__left">
-                <el-card shadow="never" class="dev-surface-card dev-requirement-detail__requirement-card">
-                    <div class="dev-card-head">
-                        <div class="dev-card-head__title-block">
-                            <span class="dev-filter-label">{{ requirement.requirement_id }}</span>
-                            <h2 class="dev-section-title">{{ requirement.title }}</h2>
-                        </div>
+    <div v-if="requirement" class="dev-requirement-detail__layout">
+      <section class="dev-requirement-detail__left">
+        <TCard class="dev-surface-card dev-requirement-detail__requirement-card">
+          <div class="dev-card-head">
+            <div class="dev-card-head__title-block">
+              <span class="dev-filter-label">{{ requirement.requirement_id }}</span>
+              <h2 class="dev-section-title">{{ requirement.title }}</h2>
+            </div>
+          </div>
+
+          <div class="dev-requirement-detail__stats">
+            <div class="dev-requirement-detail__stat">
+              <span>预算</span>
+              <strong>{{ formatMoney(requirement.budget) }}</strong>
+            </div>
+            <div class="dev-requirement-detail__stat">
+              <span>发起人</span>
+              <strong>{{ requirement.creator }}</strong>
+            </div>
+            <div class="dev-requirement-detail__stat">
+              <span>最近更新</span>
+              <strong>{{ formatTimeLabel(requirement.updated_at) }}</strong>
+            </div>
+          </div>
+
+          <section class="dev-requirement-detail__section">
+            <span class="dev-requirement-hall__review-label">需求描述</span>
+            <article
+              class="dev-requirement-detail__rich"
+              v-html="requirementDescriptionHtml"
+            ></article>
+          </section>
+
+          <section class="dev-requirement-detail__section">
+            <span class="dev-requirement-hall__review-label">验收标准</span>
+            <article
+              class="dev-requirement-detail__rich"
+              v-html="requirementAcceptanceHtml"
+            ></article>
+          </section>
+        </TCard>
+      </section>
+
+      <aside class="dev-requirement-detail__right">
+        <TLoading :loading="resourcesLoading || depositLoading">
+          <TCard class="dev-surface-card dev-requirement-detail__binding-card">
+            <div class="dev-card-head">
+              <div class="dev-card-head__title-block">
+                <span class="dev-filter-label">接取需求</span>
+                <h3 class="dev-section-title">配置关联资源</h3>
+              </div>
+              <div class="dev-card-head__actions">
+                <span class="dev-chip">{{
+                  bindingMode === 'existing' ? '已有资源' : '新资源'
+                }}</span>
+              </div>
+            </div>
+
+            <!-- 阻塞提示走统一层的金色提示条（与总览页、需求大厅同一种形状与配色），
+                             原来是自己写的橙色块 + 两颗 Element 的 plain small 蓝按钮。 -->
+            <div v-if="bindingBlockReason" class="dev-notice" role="alert">
+              <span class="dev-notice__icon" aria-hidden="true">
+                <TIcon>
+                  <WarningFilled />
+                </TIcon>
+              </span>
+              <div class="dev-notice__copy">
+                <p>{{ bindingBlockReason }}</p>
+              </div>
+              <div class="dev-notice__action">
+                <button
+                  v-if="agreementBlocked"
+                  type="button"
+                  class="dev-btn dev-btn--gold"
+                  @click="goSignDeveloperAgreement"
+                >
+                  去签署协议
+                </button>
+                <button
+                  v-else-if="requirement && requiresDepositGate(requirement)"
+                  type="button"
+                  class="dev-btn dev-btn--gold"
+                  @click="goToOrderDeposit"
+                >
+                  去缴纳保证金
+                </button>
+              </div>
+            </div>
+
+            <TForm label-position="top">
+              <TFormItem label="关联方式" required>
+                <div class="dev-requirement-hall__mode-switch">
+                  <button
+                    type="button"
+                    class="dev-requirement-hall__mode-button"
+                    :class="{ 'is-active': bindingMode === 'existing' }"
+                    @click="handleBindingModeChange('existing')"
+                  >
+                    关联已有资源项目
+                  </button>
+                  <button
+                    type="button"
+                    class="dev-requirement-hall__mode-button"
+                    :class="{ 'is-active': bindingMode === 'new' }"
+                    @click="handleBindingModeChange('new')"
+                  >
+                    初始化新资源项目
+                  </button>
+                </div>
+              </TFormItem>
+
+              <template v-if="bindingMode === 'existing'">
+                <TFormItem label="选择开发项目" required>
+                  <TSelect
+                    v-model="bindForm.resourceId"
+                    filterable
+                    placeholder="请选择一个未绑定且保持私有的开发项目"
+                    class="dev-requirement-hall__dialog-field"
+                    @change="handleResourceChange"
+                  >
+                    <TOption
+                      v-for="item in availableResourceOptions"
+                      :key="item.id"
+                      :label="projectOptionLabel(item)"
+                      :value="item.id"
+                    />
+                  </TSelect>
+                </TFormItem>
+
+                <p
+                  v-if="availableResourceOptions.length === 0"
+                  class="dev-empty-state dev-requirement-hall__dialog-empty"
+                >
+                  当前没有可直接绑定的私有资源项目。你可以切换到“初始化新资源项目”，先创建一个私有项目后再继续关联。
+                </p>
+                <p
+                  v-else-if="hasPendingBindableResources"
+                  class="dev-empty-state dev-requirement-hall__dialog-empty"
+                >
+                  只有私有且未绑定的资源才能关联需求；已提交审核或已公开的资源不可在此绑定。
+                </p>
+              </template>
+
+              <template v-else>
+                <section class="dev-requirement-hall__init-panel">
+                  <div class="dev-requirement-hall__init-copy">
+                    <p class="dev-section-desc">
+                      如果当前没有合适的资源项目，可以先初始化一个新的私有资源。创建完成后会直接用于本次需求关联。
+                    </p>
+                  </div>
+
+                  <div class="dev-upload-grid dev-upload-grid--two">
+                    <TFormItem label="资源标题" required>
+                      <TInput
+                        show-count
+                        v-model="initForm.title"
+                        :maxlength="200"
+                        placeholder="例如 Better Combat Reloaded"
+                        @input="handleInitFieldChange"
+                      />
+                    </TFormItem>
+
+                    <TFormItem label="作者名称" required>
+                      <TInput
+                        v-model="initForm.author"
+                        :maxlength="100"
+                        placeholder="默认使用当前开发者账号"
+                        @input="handleInitFieldChange"
+                      />
+                    </TFormItem>
+
+                    <TFormItem label="类型">
+                      <TSelect
+                        v-model="initForm.originType"
+                        style="width: 100%"
+                        @change="handleInitFieldChange"
+                      >
+                        <TOption label="原创" value="original" />
+                        <TOption label="转载" value="repost" />
+                      </TSelect>
+                    </TFormItem>
+
+                    <template v-if="initForm.originType === 'repost'">
+                      <TFormItem label="原作者">
+                        <TInput
+                          v-model="initForm.originAuthor"
+                          :maxlength="80"
+                          placeholder="原始资源的作者"
+                          @input="handleInitFieldChange"
+                        />
+                      </TFormItem>
+                      <TFormItem label="原始出处链接" required>
+                        <TInput
+                          v-model="initForm.originUrl"
+                          :maxlength="500"
+                          placeholder="原始出处 URL，例如原贴/来源页"
+                          @input="handleInitFieldChange"
+                        />
+                      </TFormItem>
+                      <TFormItem label="来源站点">
+                        <TInput
+                          v-model="initForm.originOrg"
+                          :maxlength="80"
+                          placeholder="例如：苦力怕论坛、CurseForge"
+                          @input="handleInitFieldChange"
+                        />
+                      </TFormItem>
+                      <TFormItem label="转载说明 / 授权">
+                        <TInput
+                          v-model="initForm.originNote"
+                          :maxlength="500"
+                          placeholder="授权情况、转载说明等（可选）"
+                          @input="handleInitFieldChange"
+                        />
+                      </TFormItem>
+                    </template>
+                  </div>
+
+                  <section v-if="rootTabs.length > 0" class="dev-requirement-hall__catalog-block">
+                    <div class="dev-requirement-hall__catalog-head">
+                      <span class="dev-filter-label">一级分类</span>
+                      <TButton variant="text" :loading="initTagsLoading" @click="loadTagTree"
+                        ><template #prefix
+                          ><TIcon><Refresh /></TIcon
+                        ></template>
+                        刷新标签
+                      </TButton>
                     </div>
-
-                    <div class="dev-requirement-detail__stats">
-                        <div class="dev-requirement-detail__stat">
-                            <span>预算</span>
-                            <strong>{{ formatMoney(requirement.budget) }}</strong>
-                        </div>
-                        <div class="dev-requirement-detail__stat">
-                            <span>发起人</span>
-                            <strong>{{ requirement.creator }}</strong>
-                        </div>
-                        <div class="dev-requirement-detail__stat">
-                            <span>最近更新</span>
-                            <strong>{{ formatTimeLabel(requirement.updated_at) }}</strong>
-                        </div>
+                    <div class="dev-requirement-hall__catalog-chips">
+                      <button
+                        v-for="root in rootTabs"
+                        :key="root.key"
+                        type="button"
+                        class="dev-requirement-hall__catalog-chip"
+                        :class="{ 'is-active': root.key === currentRootKey }"
+                        @click="openRoot(root.key, root.first_entry_key)"
+                      >
+                        {{ root.label }}
+                      </button>
                     </div>
+                  </section>
 
-                    <section class="dev-requirement-detail__section">
-                        <span class="dev-requirement-hall__review-label">需求描述</span>
-                        <article class="dev-requirement-detail__rich" v-html="requirementDescriptionHtml"></article>
-                    </section>
+                  <section v-if="entryTabs.length > 0" class="dev-requirement-hall__catalog-block">
+                    <div class="dev-requirement-hall__catalog-head">
+                      <span class="dev-filter-label">二级分类</span>
+                      <span class="dev-section-desc">当前：{{ currentEntryLabel }}</span>
+                    </div>
+                    <div class="dev-requirement-hall__catalog-chips">
+                      <button
+                        v-for="entry in entryTabs"
+                        :key="entry.key"
+                        type="button"
+                        class="dev-requirement-hall__catalog-chip dev-requirement-hall__catalog-chip--secondary"
+                        :class="{ 'is-active': entry.key === currentEntryKey }"
+                        @click="openEntry(entry.key)"
+                      >
+                        {{ entry.group_name }}
+                      </button>
+                    </div>
+                  </section>
 
-                    <section class="dev-requirement-detail__section">
-                        <span class="dev-requirement-hall__review-label">验收标准</span>
-                        <article class="dev-requirement-detail__rich" v-html="requirementAcceptanceHtml"></article>
+                  <div v-if="platformTagGroups.length > 0" class="dev-requirement-hall__tag-groups">
+                    <section
+                      v-for="group in platformTagGroups"
+                      :key="group.key"
+                      class="dev-requirement-hall__tag-group"
+                    >
+                      <div class="dev-requirement-hall__tag-group-head">
+                        <div>
+                          <h4 class="dev-requirement-hall__tag-group-title">
+                            {{ group.group_name }}
+                          </h4>
+                          <p class="dev-requirement-hall__tag-group-path">{{ group.label }}</p>
+                        </div>
+                        <span class="dev-requirement-hall__tag-group-count">
+                          {{ (selectedTagIdsByGroup[group.group_id] ?? []).length }}/{{
+                            group.items.length
+                          }}
+                        </span>
+                      </div>
+
+                      <div class="dev-requirement-hall__tag-group-selected">
+                        <template v-if="selectedNamesForGroup(group).length > 0">
+                          <span
+                            v-for="name in selectedNamesForGroup(group)"
+                            :key="`${group.key}:${name}`"
+                            class="dev-chip dev-chip--cyan"
+                          >
+                            {{ name }}
+                          </span>
+                        </template>
+                        <span v-else class="dev-requirement-hall__tag-group-empty"
+                          >尚未选择标签</span
+                        >
+                      </div>
+
+                      <TSelect
+                        v-model="selectedTagIdsByGroup[group.group_id]"
+                        multiple
+                        filterable
+                        placeholder="选择一个或多个标签"
+                        class="dev-requirement-hall__dialog-field"
+                        @change="handleInitFieldChange"
+                      >
+                        <TOption
+                          v-for="item in group.items"
+                          :key="item.id"
+                          :label="item.name"
+                          :value="item.id"
+                        />
+                      </TSelect>
                     </section>
-                </el-card>
+                  </div>
+
+                  <p v-else class="dev-empty-state dev-requirement-hall__dialog-empty">
+                    当前分类下暂无可初始化资源的标签数据，请切换分类或刷新标签后重试。
+                  </p>
+                </section>
+              </template>
+
+              <TFormItem required>
+                <TCheckbox v-model="reviewConfirmed" @change="handleReviewChange">
+                  我已详细阅读需求标题、需求描述、预算、验收标准，并确认当前资源方案适合关联此需求
+                </TCheckbox>
+              </TFormItem>
+            </TForm>
+
+            <section
+              v-if="requirement && (bindingMode === 'new' || selectedResource)"
+              class="dev-requirement-hall__confirm-panel"
+            >
+              <div class="dev-requirement-hall__confirm-head">
+                <span class="dev-requirement-hall__confirm-title">二次确认</span>
+                <span class="dev-requirement-hall__confirm-meta"
+                  >需求将进入开发中且不可重复绑定</span
+                >
+              </div>
+              <p class="dev-requirement-hall__confirm-text">
+                当前将关联需求“{{ requirement.title }}”到资源“{{
+                  confirmResourceLabel
+                }}”。请确认资源能力、预算范围与验收标准均已匹配。
+              </p>
+              <TCheckbox v-model="finalConfirmed" :disabled="!reviewConfirmed">
+                我确认本次关联无误，允许将该需求正式绑定到当前资源方案
+              </TCheckbox>
             </section>
 
-            <aside class="dev-requirement-detail__right">
-                <el-card shadow="never" class="dev-surface-card dev-requirement-detail__binding-card"
-                    v-loading="resourcesLoading || depositLoading">
-                    <div class="dev-card-head">
-                        <div class="dev-card-head__title-block">
-                            <span class="dev-filter-label">接取需求</span>
-                            <h3 class="dev-section-title">配置关联资源</h3>
-                        </div>
-                        <div class="dev-card-head__actions">
-                            <span class="dev-chip">{{ bindingMode === 'existing' ? '已有资源' : '新资源' }}</span>
-                        </div>
-                    </div>
+            <p
+              v-if="bindingMode === 'new' && createBlockReason"
+              class="dev-empty-state dev-requirement-hall__dialog-empty"
+            >
+              {{ createBlockReason }}
+            </p>
 
-                    <!-- 阻塞提示走统一层的金色提示条（与总览页、需求大厅同一种形状与配色），
-                         原来是自己写的橙色块 + 两颗 Element 的 plain small 蓝按钮。 -->
-                    <div v-if="bindingBlockReason" class="dev-notice" role="alert">
-                        <span class="dev-notice__icon" aria-hidden="true">
-                            <el-icon>
-                                <WarningFilled />
-                            </el-icon>
-                        </span>
-                        <div class="dev-notice__copy">
-                            <p>{{ bindingBlockReason }}</p>
-                        </div>
-                        <div class="dev-notice__action">
-                            <button v-if="agreementBlocked" type="button" class="dev-btn dev-btn--gold"
-                                @click="goSignDeveloperAgreement">
-                                去签署协议
-                            </button>
-                            <button v-else-if="requirement && requiresDepositGate(requirement)" type="button"
-                                class="dev-btn dev-btn--gold" @click="goToOrderDeposit">
-                                去缴纳保证金
-                            </button>
-                        </div>
-                    </div>
-
-                    <el-form label-position="top">
-                        <el-form-item label="关联方式" required>
-                            <div class="dev-requirement-hall__mode-switch">
-                                <button type="button" class="dev-requirement-hall__mode-button"
-                                    :class="{ 'is-active': bindingMode === 'existing' }"
-                                    @click="handleBindingModeChange('existing')">
-                                    关联已有资源项目
-                                </button>
-                                <button type="button" class="dev-requirement-hall__mode-button"
-                                    :class="{ 'is-active': bindingMode === 'new' }"
-                                    @click="handleBindingModeChange('new')">
-                                    初始化新资源项目
-                                </button>
-                            </div>
-                        </el-form-item>
-
-                        <template v-if="bindingMode === 'existing'">
-                            <el-form-item label="选择开发项目" required>
-                                <el-select v-model="bindForm.resourceId" filterable placeholder="请选择一个未绑定且保持私有的开发项目"
-                                    class="dev-requirement-hall__dialog-field" @change="handleResourceChange">
-                                    <el-option v-for="item in availableResourceOptions" :key="item.id"
-                                        :label="projectOptionLabel(item)" :value="item.id" />
-                                </el-select>
-                            </el-form-item>
-
-                            <p v-if="availableResourceOptions.length === 0"
-                                class="dev-empty-state dev-requirement-hall__dialog-empty">
-                                当前没有可直接绑定的私有资源项目。你可以切换到“初始化新资源项目”，先创建一个私有项目后再继续关联。
-                            </p>
-                            <p v-else-if="hasPendingBindableResources"
-                                class="dev-empty-state dev-requirement-hall__dialog-empty">
-                                只有私有且未绑定的资源才能关联需求；已提交审核或已公开的资源不可在此绑定。
-                            </p>
-                        </template>
-
-                        <template v-else>
-                            <section class="dev-requirement-hall__init-panel">
-                                <div class="dev-requirement-hall__init-copy">
-                                    <p class="dev-section-desc">
-                                        如果当前没有合适的资源项目，可以先初始化一个新的私有资源。创建完成后会直接用于本次需求关联。
-                                    </p>
-                                </div>
-
-                                <div class="dev-upload-grid dev-upload-grid--two">
-                                    <el-form-item label="资源标题" required>
-                                        <el-input v-model="initForm.title" maxlength="200" show-word-limit
-                                            placeholder="例如 Better Combat Reloaded" @input="handleInitFieldChange" />
-                                    </el-form-item>
-
-                                    <el-form-item label="作者名称" required>
-                                        <el-input v-model="initForm.author" maxlength="100" placeholder="默认使用当前开发者账号"
-                                            @input="handleInitFieldChange" />
-                                    </el-form-item>
-
-                                    <el-form-item label="类型">
-                                        <el-select v-model="initForm.originType" style="width: 100%"
-                                            @change="handleInitFieldChange">
-                                            <el-option label="原创" value="original" />
-                                            <el-option label="转载" value="repost" />
-                                        </el-select>
-                                    </el-form-item>
-
-                                    <template v-if="initForm.originType === 'repost'">
-                                        <el-form-item label="原作者">
-                                            <el-input v-model="initForm.originAuthor" maxlength="80"
-                                                placeholder="原始资源的作者" @input="handleInitFieldChange" />
-                                        </el-form-item>
-                                        <el-form-item label="原始出处链接" required>
-                                            <el-input v-model="initForm.originUrl" maxlength="500"
-                                                placeholder="原始出处 URL，例如原贴/来源页" @input="handleInitFieldChange" />
-                                        </el-form-item>
-                                        <el-form-item label="来源站点">
-                                            <el-input v-model="initForm.originOrg" maxlength="80"
-                                                placeholder="例如：苦力怕论坛、CurseForge" @input="handleInitFieldChange" />
-                                        </el-form-item>
-                                        <el-form-item label="转载说明 / 授权">
-                                            <el-input v-model="initForm.originNote" maxlength="500"
-                                                placeholder="授权情况、转载说明等（可选）" @input="handleInitFieldChange" />
-                                        </el-form-item>
-                                    </template>
-                                </div>
-
-                                <section v-if="rootTabs.length > 0" class="dev-requirement-hall__catalog-block">
-                                    <div class="dev-requirement-hall__catalog-head">
-                                        <span class="dev-filter-label">一级分类</span>
-                                        <el-button text :icon="Refresh" :loading="initTagsLoading" @click="loadTagTree">
-                                            刷新标签
-                                        </el-button>
-                                    </div>
-                                    <div class="dev-requirement-hall__catalog-chips">
-                                        <button v-for="root in rootTabs" :key="root.key" type="button"
-                                            class="dev-requirement-hall__catalog-chip"
-                                            :class="{ 'is-active': root.key === currentRootKey }"
-                                            @click="openRoot(root.key, root.first_entry_key)">
-                                            {{ root.label }}
-                                        </button>
-                                    </div>
-                                </section>
-
-                                <section v-if="entryTabs.length > 0" class="dev-requirement-hall__catalog-block">
-                                    <div class="dev-requirement-hall__catalog-head">
-                                        <span class="dev-filter-label">二级分类</span>
-                                        <span class="dev-section-desc">当前：{{ currentEntryLabel }}</span>
-                                    </div>
-                                    <div class="dev-requirement-hall__catalog-chips">
-                                        <button v-for="entry in entryTabs" :key="entry.key" type="button"
-                                            class="dev-requirement-hall__catalog-chip dev-requirement-hall__catalog-chip--secondary"
-                                            :class="{ 'is-active': entry.key === currentEntryKey }"
-                                            @click="openEntry(entry.key)">
-                                            {{ entry.group_name }}
-                                        </button>
-                                    </div>
-                                </section>
-
-                                <div v-if="platformTagGroups.length > 0" class="dev-requirement-hall__tag-groups">
-                                    <section v-for="group in platformTagGroups" :key="group.key"
-                                        class="dev-requirement-hall__tag-group">
-                                        <div class="dev-requirement-hall__tag-group-head">
-                                            <div>
-                                                <h4 class="dev-requirement-hall__tag-group-title">
-                                                    {{ group.group_name }}
-                                                </h4>
-                                                <p class="dev-requirement-hall__tag-group-path">{{ group.label }}</p>
-                                            </div>
-                                            <span class="dev-requirement-hall__tag-group-count">
-                                                {{ (selectedTagIdsByGroup[group.group_id] ?? []).length }}/{{
-                                                    group.items.length }}
-                                            </span>
-                                        </div>
-
-                                        <div class="dev-requirement-hall__tag-group-selected">
-                                            <template v-if="selectedNamesForGroup(group).length > 0">
-                                                <span v-for="name in selectedNamesForGroup(group)"
-                                                    :key="`${group.key}:${name}`" class="dev-chip dev-chip--cyan">
-                                                    {{ name }}
-                                                </span>
-                                            </template>
-                                            <span v-else class="dev-requirement-hall__tag-group-empty">尚未选择标签</span>
-                                        </div>
-
-                                        <el-select v-model="selectedTagIdsByGroup[group.group_id]" multiple filterable
-                                            placeholder="选择一个或多个标签" class="dev-requirement-hall__dialog-field"
-                                            @change="handleInitFieldChange">
-                                            <el-option v-for="item in group.items" :key="item.id" :label="item.name"
-                                                :value="item.id" />
-                                        </el-select>
-                                    </section>
-                                </div>
-
-                                <p v-else class="dev-empty-state dev-requirement-hall__dialog-empty">
-                                    当前分类下暂无可初始化资源的标签数据，请切换分类或刷新标签后重试。
-                                </p>
-                            </section>
-                        </template>
-
-                        <el-form-item required>
-                            <el-checkbox v-model="reviewConfirmed" @change="handleReviewChange">
-                                我已详细阅读需求标题、需求描述、预算、验收标准，并确认当前资源方案适合关联此需求
-                            </el-checkbox>
-                        </el-form-item>
-                    </el-form>
-
-                    <section v-if="requirement && (bindingMode === 'new' || selectedResource)"
-                        class="dev-requirement-hall__confirm-panel">
-                        <div class="dev-requirement-hall__confirm-head">
-                            <span class="dev-requirement-hall__confirm-title">二次确认</span>
-                            <span class="dev-requirement-hall__confirm-meta">需求将进入开发中且不可重复绑定</span>
-                        </div>
-                        <p class="dev-requirement-hall__confirm-text">
-                            当前将关联需求“{{ requirement.title }}”到资源“{{ confirmResourceLabel }}”。请确认资源能力、预算范围与验收标准均已匹配。
-                        </p>
-                        <el-checkbox v-model="finalConfirmed" :disabled="!reviewConfirmed">
-                            我确认本次关联无误，允许将该需求正式绑定到当前资源方案
-                        </el-checkbox>
-                    </section>
-
-                    <p v-if="bindingMode === 'new' && createBlockReason"
-                        class="dev-empty-state dev-requirement-hall__dialog-empty">
-                        {{ createBlockReason }}
-                    </p>
-
-                    <div class="dev-requirement-detail__actions">
-                        <el-button class="dev-toolbar__ghost" @click="goBack">取消</el-button>
-                        <el-button class="dev-toolbar__primary" type="primary" :loading="binding"
-                            :disabled="!canSubmitBinding" @click="submitBinding">
-                            {{ bindingMode === 'existing' ? '确认关联' : '初始化并关联' }}
-                        </el-button>
-                    </div>
-                </el-card>
-            </aside>
-        </div>
-
-        <el-card v-else-if="!loading" shadow="never" class="dev-surface-card dev-requirement-detail__empty">
-            <p class="dev-empty-state">当前需求不存在或已不可接取。</p>
-            <el-button class="dev-toolbar__ghost" @click="goBack">返回需求大厅</el-button>
-        </el-card>
+            <div class="dev-requirement-detail__actions">
+              <TButton variant="outline" @click="goBack">取消</TButton>
+              <TButton
+                variant="solid"
+                tone="accent"
+                :loading="binding"
+                :disabled="!canSubmitBinding"
+                @click="submitBinding"
+              >
+                {{ bindingMode === 'existing' ? '确认关联' : '初始化并关联' }}
+              </TButton>
+            </div>
+          </TCard>
+        </TLoading>
+      </aside>
     </div>
+
+    <TCard v-else-if="!loading" class="dev-surface-card dev-requirement-detail__empty">
+      <p class="dev-empty-state">当前需求不存在或已不可接取。</p>
+      <TButton variant="outline" @click="goBack">返回需求大厅</TButton>
+    </TCard>
+  </TLoading>
 </template>
 
 <style scoped>
 .dev-requirement-detail {
-    container-type: inline-size;
-    display: grid;
-    gap: 16px;
-    width: 100%;
-    min-width: 0;
+  container-type: inline-size;
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
 }
 
 /* 本页原来自带一条 __toolbar（只放两个灰字）、一颗青色 999px 胶囊返回按钮，
@@ -946,211 +1065,185 @@ async function submitBinding() {
    相关规则随之删除，这里只保留本页特有的排版。 */
 
 .dev-requirement-detail__layout {
-    --requirement-detail-panel-height: clamp(500px, calc(100dvh - 190px), 780px);
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-    align-items: stretch;
-    min-width: 0;
+  --requirement-detail-panel-height: clamp(500px, calc(100dvh - 190px), 780px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+  min-width: 0;
 }
 
 .dev-requirement-detail__left,
 .dev-requirement-detail__right {
-    display: grid;
-    min-width: 0;
-    min-height: 0;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
 }
 
 .dev-requirement-detail__requirement-card,
 .dev-requirement-detail__binding-card {
-    position: sticky;
-    top: 14px;
-    height: var(--requirement-detail-panel-height);
-    min-width: 0;
-    min-height: 0;
-    overflow: auto;
-    overscroll-behavior: contain;
+  position: sticky;
+  top: 14px;
+  height: var(--requirement-detail-panel-height);
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .dev-requirement-detail__binding-card {
-    container-type: inline-size;
-}
-
-.dev-requirement-detail__requirement-card :deep(.el-card__body),
-.dev-requirement-detail__binding-card :deep(.el-card__body) {
-    display: grid;
-    gap: 16px;
-    min-width: 0;
-    min-height: 100%;
-}
-
-.dev-requirement-detail__binding-card :deep(.el-form),
-.dev-requirement-detail__binding-card :deep(.el-form-item),
-.dev-requirement-detail__binding-card :deep(.el-input),
-.dev-requirement-detail__binding-card :deep(.el-select) {
-    max-width: 100%;
-    min-width: 0;
+  container-type: inline-size;
 }
 
 .dev-requirement-detail__stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
 /* 内嵌读数块：半径与描边走统一层的内嵌档（--dev-radius-inner / --dev-line） */
 .dev-requirement-detail__stat {
-    display: grid;
-    gap: 6px;
-    min-width: 0;
-    padding: 12px;
-    border-radius: var(--dev-radius-inner);
-    background: var(--dev-surface-strong);
-    border: 1px solid var(--dev-line);
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: var(--dev-radius-inner);
+  background: var(--dev-surface-strong);
+  border: 1px solid var(--dev-line);
 }
 
 .dev-requirement-detail__stat span {
-    color: var(--dev-muted);
-    font-size: 11px;
-    font-weight: 800;
+  color: var(--dev-muted);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .dev-requirement-detail__stat strong {
-    min-width: 0;
-    overflow-wrap: anywhere;
-    color: var(--dev-ink);
-    font-size: 14px;
-    line-height: 1.45;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--dev-ink);
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .dev-requirement-detail__section {
-    display: grid;
-    gap: 8px;
+  display: grid;
+  gap: 8px;
 }
 
 .dev-requirement-detail__rich {
-    padding: 14px 16px;
-    border: 1px solid var(--dev-line);
-    border-radius: var(--dev-radius-inner);
-    background: var(--dev-surface);
-    color: var(--dev-ink);
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.75;
-    overflow-wrap: anywhere;
-    white-space: pre-wrap;
+  padding: 14px 16px;
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-inner);
+  background: var(--dev-surface);
+  color: var(--dev-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .dev-requirement-detail__rich :deep(p),
 .dev-requirement-detail__rich :deep(ul),
 .dev-requirement-detail__rich :deep(ol),
 .dev-requirement-detail__rich :deep(blockquote) {
-    margin: 0 0 10px;
+  margin: 0 0 10px;
 }
 
 .dev-requirement-detail__rich :deep(ul),
 .dev-requirement-detail__rich :deep(ol) {
-    padding-left: 20px;
+  padding-left: 20px;
 }
 
 .dev-requirement-detail__rich :deep(a) {
-    color: var(--dev-blue);
+  color: var(--dev-blue);
 }
 
 .dev-requirement-detail__rich :deep(.rich-editor-media) {
-    display: block;
-    max-width: 100%;
-    height: auto;
-    margin: 10px 0;
-    border-radius: var(--dev-radius-inner);
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border-radius: var(--dev-radius-inner);
 }
 
 .dev-requirement-detail__actions {
-    position: sticky;
-    bottom: -1px;
-    z-index: 1;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    padding-top: 14px;
-    border-top: 1px solid var(--dev-line);
-    background: linear-gradient(180deg, var(--dev-surface), var(--dev-surface-strong));
-}
-
-.dev-requirement-detail__empty :deep(.el-card__body) {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
+  position: sticky;
+  bottom: -1px;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--dev-line);
+  background: linear-gradient(180deg, var(--dev-surface), var(--dev-surface-strong));
 }
 
 @container (max-width: 960px) {
-    .dev-requirement-detail__layout {
-        grid-template-columns: 1fr;
-    }
+  .dev-requirement-detail__layout {
+    grid-template-columns: 1fr;
+  }
 
-    .dev-requirement-detail__requirement-card,
-    .dev-requirement-detail__binding-card {
-        position: static;
-        height: auto;
-        max-height: none;
-        overflow: visible;
-    }
+  .dev-requirement-detail__requirement-card,
+  .dev-requirement-detail__binding-card {
+    position: static;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
 
-    .dev-requirement-detail__actions {
-        position: static;
-    }
+  .dev-requirement-detail__actions {
+    position: static;
+  }
 }
 
 @container (max-width: 520px) {
+  .dev-upload-grid--two,
+  .dev-requirement-detail__stats,
+  .dev-requirement-hall__mode-switch {
+    grid-template-columns: 1fr;
+  }
 
-    .dev-upload-grid--two,
-    .dev-requirement-detail__stats,
-    .dev-requirement-hall__mode-switch {
-        grid-template-columns: 1fr;
-    }
+  .dev-requirement-hall__tag-group {
+    grid-template-columns: 1fr;
+  }
 
-    .dev-requirement-hall__tag-group {
-        grid-template-columns: 1fr;
-    }
-
-    .dev-requirement-hall__tag-group-head,
-    .dev-requirement-hall__tag-group-selected,
-    .dev-requirement-hall__tag-group .dev-requirement-hall__dialog-field {
-        grid-column: 1;
-        grid-row: auto;
-    }
+  .dev-requirement-hall__tag-group-head,
+  .dev-requirement-hall__tag-group-selected,
+  .dev-requirement-hall__tag-group .dev-requirement-hall__dialog-field {
+    grid-column: 1;
+    grid-row: auto;
+  }
 }
 
 @media (max-width: 900px) {
-    .dev-requirement-detail__layout {
-        grid-template-columns: 1fr;
-    }
+  .dev-requirement-detail__layout {
+    grid-template-columns: 1fr;
+  }
 
-    .dev-requirement-detail__requirement-card,
-    .dev-requirement-detail__binding-card {
-        position: static;
-        height: auto;
-        max-height: none;
-        overflow: visible;
-    }
+  .dev-requirement-detail__requirement-card,
+  .dev-requirement-detail__binding-card {
+    position: static;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
 
-    .dev-requirement-detail__actions {
-        position: static;
-    }
+  .dev-requirement-detail__actions {
+    position: static;
+  }
 }
 
 @media (max-width: 720px) {
+  .dev-requirement-detail__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
 
-    .dev-requirement-detail__actions,
-    .dev-requirement-detail__empty :deep(.el-card__body) {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .dev-requirement-detail__stats,
-    .dev-requirement-hall__mode-switch {
-        grid-template-columns: 1fr;
-    }
+  .dev-requirement-detail__stats,
+  .dev-requirement-hall__mode-switch {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

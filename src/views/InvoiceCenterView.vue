@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Refresh, RefreshLeft, Search, UploadFilled } from '@element-plus/icons-vue'
-
 import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
 import {
   listMyInvoices,
@@ -14,6 +12,20 @@ import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPag
 import { canUploadInvoiceDocument, invoiceDisplayStatus, invoiceInWorkbench, invoiceReviewNote, invoiceWaitingHint } from '@/shared/invoiceAction'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+
+
+import {
+  TButton,
+  TIcon,
+  TInput,
+  TOption,
+  TPagination,
+  TSelect,
+  Refresh,
+  RefreshLeft,
+  Search,
+  UploadFilled,
+} from 'ui_73info'
 
 const auth = useAuthStore()
 const { showToast } = useToast()
@@ -341,9 +353,9 @@ async function saveDocument(invoice: InvoiceRecord) {
         <span class="wb-strip__value">{{ loading ? '—' : stats.reversed }}</span>
       </div>
       <div class="wb-strip__item wb-strip__action">
-        <el-button class="wb-toolbar__icon-btn" :loading="loading" aria-label="刷新发票记录" @click="loadData">
-          <el-icon><Refresh /></el-icon>
-        </el-button>
+        <TButton icon-only :loading="loading" aria-label="刷新发票记录" @click="loadData">
+          <TIcon><Refresh /></TIcon>
+        </TButton>
       </div>
     </div>
 
@@ -362,17 +374,17 @@ async function saveDocument(invoice: InvoiceRecord) {
             {{ option.label }}<span class="wb-chip__count">{{ statusCount(option.key) }}</span>
           </button>
         </div>
-        <el-input v-model="keyword" class="wb-toolbar__search" clearable
+        <TInput v-model="keyword" class="wb-toolbar__search" clearable
           placeholder="搜索发票号、需求编号或发票标题" aria-label="搜索发票">
-          <template #prefix><el-icon><Search /></el-icon></template>
-        </el-input>
+          <template #prefix><TIcon><Search /></TIcon></template>
+        </TInput>
         <div class="wb-toolbar__actions">
           <span v-if="hasActiveFilters" class="wb-toolbar__hint">
             筛选出 {{ filteredTotal }} / {{ invoices.length }} 条
           </span>
-          <el-button v-if="hasActiveFilters" class="wb-toolbar__ghost" @click="resetFilters">
-            <el-icon><RefreshLeft /></el-icon><span>重置</span>
-          </el-button>
+          <TButton variant="outline" v-if="hasActiveFilters" @click="resetFilters">
+            <TIcon><RefreshLeft /></TIcon><span>重置</span>
+          </TButton>
         </div>
       </div>
 
@@ -381,9 +393,9 @@ async function saveDocument(invoice: InvoiceRecord) {
         <span class="wb-empty__title">{{ invoices.length ? '没有符合条件的发票' : '还没有发票记录' }}</span>
         <template v-if="invoices.length">
           <div class="wb-empty__actions">
-            <el-button class="wb-toolbar__ghost" @click="resetFilters">
-              <el-icon><RefreshLeft /></el-icon><span>清除筛选</span>
-            </el-button>
+            <TButton variant="outline" @click="resetFilters">
+              <TIcon><RefreshLeft /></TIcon><span>清除筛选</span>
+            </TButton>
           </div>
         </template>
         <template v-else>获取发票的入口在对应需求的操作栏里，提交后会在这里出现。</template>
@@ -433,34 +445,34 @@ async function saveDocument(invoice: InvoiceRecord) {
             </div>
             <div class="wb-item__side">
               <span class="wb-badge" :class="statusBadgeClass(invoiceDisplayStatus(invoice))">{{ statusLabel(invoiceDisplayStatus(invoice)) }}</span>
-              <el-button v-if="invoice.documentUrl" class="wb-toolbar__ghost" @click="openDocument(invoice)">
+              <TButton variant="outline" v-if="invoice.documentUrl" @click="openDocument(invoice)">
                 <span>查看发票</span>
-              </el-button>
-              <el-button v-if="invoice.documentUrl" class="wb-toolbar__ghost"
+              </TButton>
+              <TButton variant="outline" v-if="invoice.documentUrl"
                 :loading="downloadingInvoiceId === invoice.id" @click="saveDocument(invoice)">
                 <span>下载发票</span>
-              </el-button>
-              <el-button v-if="canReapply(invoice)" class="wb-toolbar__ghost" @click="openReapply(invoice)">
+              </TButton>
+              <TButton variant="outline" v-if="canReapply(invoice)" @click="openReapply(invoice)">
                 <span>重新申请</span>
-              </el-button>
-              <el-button v-if="canUploadDocument(invoice)" class="wb-toolbar__ghost"
+              </TButton>
+              <TButton variant="outline" v-if="canUploadDocument(invoice)"
                 :loading="uploadingInvoiceId === invoice.id"
                 :disabled="uploadingInvoiceId !== null && uploadingInvoiceId !== invoice.id"
                 @click="selectedFileByInvoice[invoice.id] ? uploadDocument(invoice) : pickInvoiceFile(invoice.id)">
-                <el-icon><UploadFilled /></el-icon><span>{{ uploadButtonLabel(invoice) }}</span>
-              </el-button>
+                <TIcon><UploadFilled /></TIcon><span>{{ uploadButtonLabel(invoice) }}</span>
+              </TButton>
             </div>
           </li>
         </ul>
         <div class="wb-pager">
           <div class="wb-pager__count">
             <span>共 {{ filteredTotal }} 条记录</span>
-            <el-select v-model="pageSize" class="wb-pager__size" aria-label="每页记录数">
-              <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-            </el-select>
+            <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页记录数">
+              <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+            </TSelect>
           </div>
-          <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-            :pager-count="5" layout="prev, pager, next" background aria-label="发票记录分页" />
+          <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+            :pager-count="5" background aria-label="发票记录分页" />
         </div>
       </template>
     </section>

@@ -9,6 +9,7 @@ import PortalTopNav from '@/components/PortalTopNav.vue'
 import PortalMobileDock from '@/components/PortalMobileDock.vue'
 import SupportChatWidget from '@/components/SupportChatWidget.vue'
 import MockIdentitySwitcher from '@/mock/MockIdentitySwitcher.vue'
+import { TScrollbar } from 'ui_73info'
 import { useToast } from '@/composables/useToast'
 import { AUTH_UNAUTHORIZED_EVENT, type AuthUnauthorizedEventDetail } from '@/shared/api/authEvents'
 const auth = useAuthStore()
@@ -115,7 +116,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="app-shell">
     <div class="app-content">
-      <el-scrollbar class="app-scrollbar">
+      <TScrollbar class="app-scrollbar">
         <div class="app-view-container" :class="{ 'app-view-container--no-footer': !showSiteFooter }">
           <PortalTopNav :class="['app-top-nav', { 'app-top-nav--home': route.name === 'home' }]" />
           <RouterView v-slot="{ Component }">
@@ -164,7 +165,7 @@ onBeforeUnmount(() => {
             </footer>
           </div>
         </div>
-      </el-scrollbar>
+      </TScrollbar>
       <PortalMobileDock />
     </div>
     <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
@@ -371,18 +372,20 @@ html::-webkit-scrollbar-thumb:hover {
   }
 }
 
-/* el-scrollbar 滑块样式 */
-.app-scrollbar .el-scrollbar__bar.is-vertical .el-scrollbar__thumb {
+/* 外壳滚动条（TScrollbar）的滑块样式。
+   Element 的 `.el-scrollbar__bar.is-vertical` 换成了库的 `.t73-scrollbar__bar--vertical`，
+   滑块本身仍按门户侧的渐变画，保持与迁移前一致。 */
+.app-scrollbar .t73-scrollbar__bar--vertical {
+  width: 4px;
+  right: 0;
+}
+
+.app-scrollbar .t73-scrollbar__bar--vertical .t73-scrollbar__thumb {
   background: linear-gradient(180deg, rgba(56, 189, 248, 0.7), rgba(149, 213, 178, 0.8));
   border-radius: 999px;
 }
 
-.app-scrollbar .el-scrollbar__bar.is-vertical .el-scrollbar__thumb:hover {
+.app-scrollbar .t73-scrollbar__bar--vertical .t73-scrollbar__thumb:hover {
   background: linear-gradient(180deg, rgba(125, 211, 252, 0.9), rgba(149, 213, 178, 1));
-}
-
-.app-scrollbar .el-scrollbar__bar.is-vertical {
-  width: 4px;
-  right: 0;
 }
 </style>

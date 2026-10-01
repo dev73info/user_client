@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
 import QRCode from 'qrcode'
-import { Close, Document, Link, Picture, Refresh, Share } from '@element-plus/icons-vue'
-import { TIcon } from 'ui_73info'
+import { TIcon, Close, Document, Link, Picture, Refresh, Share } from 'ui_73info'
 
 import { generateShareCard, type GenerateShareCardPayload, type ShareCardData } from '@/api/invite'
 import { useAuthStore } from '@/stores/auth'

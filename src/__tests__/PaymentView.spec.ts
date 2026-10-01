@@ -29,7 +29,8 @@ vi.mock('@/api/adapay', () => ({
   getAdapayPayment: mocks.getRequirement,
   getAdapayClientPlatform: () => 'pc',
 }))
-vi.mock('@/api/auth', () => ({
+vi.mock('@/api/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api/auth')>()),
   getWechatPaymentAuthorizationStatus: mocks.authorized,
   getWechatPaymentAuthorizeUrl: mocks.authorize,
 }))

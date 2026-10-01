@@ -1,14 +1,25 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Close, Document, UploadFilled } from '@element-plus/icons-vue'
-
 import {
   createMcResourceVersion,
   listMcResourceVersions,
   type McResourceVersionPayload,
 } from '@/api/mcResources'
 import { useToast } from '@/composables/useToast'
+
+
+import {
+  TButton,
+  TDialog,
+  TForm,
+  TFormItem,
+  TIcon,
+  TInput,
+  Close,
+  Document,
+  UploadFilled,
+} from 'ui_73info'
 
 /**
  * 提交交付版本弹窗：交付即给需求绑定的资源项目发一个新版本。
@@ -164,19 +175,19 @@ async function submit() {
 </script>
 
 <template>
-  <el-dialog v-model="visible" title="提交交付版本" width="520px" append-to-body
-    style="--el-dialog-padding-primary: 12px" :close-on-click-modal="false" :close-on-press-escape="false">
+  <TDialog v-model:open="visible" title="提交交付版本" width="520px" :mask-closable="false"
+    :escape-closable="false">
     <div class="delivery-dialog-body">
       <p class="delivery-dialog__tip">交付物会保存为绑定资源项目的新版本，验收前至少提交一版。</p>
-      <el-form label-position="top" class="delivery-dialog-form">
-        <el-form-item label="版本号" required>
-          <el-input v-model="version" maxlength="80" placeholder="例如：1.0.0、首版功能交付" />
-        </el-form-item>
-        <el-form-item label="交付说明">
-          <el-input v-model="note" type="textarea" :rows="2" maxlength="1000" show-word-limit
+      <TForm label-position="top" class="delivery-dialog-form">
+        <TFormItem label="版本号" required>
+          <TInput v-model="version"  :maxlength="80" placeholder="例如：1.0.0、首版功能交付" />
+        </TFormItem>
+        <TFormItem label="交付说明">
+          <TInput show-count v-model="note" type="textarea" :rows="2"  :maxlength="1000"
             placeholder="已完成的功能、使用方式和已知限制（会作为版本备注）" />
-        </el-form-item>
-        <el-form-item label="交付文件" required>
+        </TFormItem>
+        <TFormItem label="交付文件" required>
           <div class="delivery-artifact-field">
             <input ref="artifactInput" class="delivery-artifact-field__native" type="file"
               @change="handleArtifactChange" />
@@ -184,9 +195,9 @@ async function submit() {
             <div v-if="!artifact" class="delivery-artifact-field__dropzone" role="button" tabindex="0"
               @click="chooseArtifact" @keydown.enter.prevent="chooseArtifact" @keydown.space.prevent="chooseArtifact">
               <span class="delivery-artifact-field__icon" aria-hidden="true">
-                <el-icon>
+                <TIcon>
                   <UploadFilled />
-                </el-icon>
+                </TIcon>
               </span>
               <span class="delivery-artifact-field__copy">
                 <strong>点击选择交付文件</strong>
@@ -196,23 +207,23 @@ async function submit() {
 
             <div v-else class="delivery-artifact-field__file">
               <span class="delivery-artifact-field__icon delivery-artifact-field__icon--file" aria-hidden="true">
-                <el-icon>
+                <TIcon>
                   <Document />
-                </el-icon>
+                </TIcon>
               </span>
               <span class="delivery-artifact-field__copy">
                 <strong :title="artifact.name">{{ artifact.name }}</strong>
                 <small>{{ formatBytes(artifact.size) }} · 提交后可在资源项目版本页管理</small>
               </span>
               <button type="button" class="delivery-artifact-field__remove" title="移除文件" @click="clearArtifact">
-                <el-icon>
+                <TIcon>
                   <Close />
-                </el-icon>
+                </TIcon>
               </button>
             </div>
           </div>
-        </el-form-item>
-      </el-form>
+        </TFormItem>
+      </TForm>
 
       <div class="delivery-existing">
         <span class="delivery-existing__label">已有交付版本</span>
@@ -224,10 +235,10 @@ async function submit() {
       </div>
     </div>
     <template #footer>
-      <el-button :disabled="submitting" @click="requestClose">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="submit">提交交付版本</el-button>
+      <TButton :disabled="submitting" @click="requestClose">取消</TButton>
+      <TButton variant="solid" tone="accent" :loading="submitting" @click="submit">提交交付版本</TButton>
     </template>
-  </el-dialog>
+  </TDialog>
 </template>
 
 <style scoped>
@@ -247,11 +258,12 @@ async function submit() {
   line-height: 1.5;
 }
 
-.delivery-dialog-form :deep(.el-form-item) {
+/* TFormItem 默认下边距 18px，这张表单更紧凑，收到 12px */
+.delivery-dialog-form :deep(.t73-form-item) {
   margin-bottom: 12px;
 }
 
-.delivery-dialog-form :deep(.el-form-item:last-child) {
+.delivery-dialog-form :deep(.t73-form-item:last-child) {
   margin-bottom: 0;
 }
 

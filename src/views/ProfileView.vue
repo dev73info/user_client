@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { Aim, Check, Close } from '@element-plus/icons-vue'
-import { TIcon } from 'ui_73info'
+import { TIcon, Aim, Check, Close } from 'ui_73info'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PublishModal from '@/components/PublishModal.vue'

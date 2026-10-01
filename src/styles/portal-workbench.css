@@ -49,115 +49,12 @@
   --wb-shadow: 0 20px 44px rgba(71, 85, 105, 0.1);
 }
 
-/* === Element Plus 令牌映射（只作用于工作台这一层，不写全局 :root 覆盖）===
-   与 dev-base.css 的 `.user-workbench--dev, .dev-dialog` 逐项对应，只是色值取门户侧的语义：
-   开发者侧「已完成」是青、「金额与提示」是金；门户侧的状态色由 profile.css 定义，
-   成功是绿、警示是琥珀、危险是红。两边的主色同为 #1f4ad1。
-
-   为什么需要这一段：Element Plus 的默认主色是 #409eff，与本层主色 #1f4ad1 是两个蓝。
-   本文件上面只把 .wb-toolbar__primary 这类**本层自带的按钮**改写成 --wb-accent，
-   面上仍留着大量 `type="primary"` 的 Element 组件（打赏、保存、去认证、表单提交……），
-   它们拿到的是 Element 的默认蓝，于是同一页里「工具栏的主按钮」与「表单里的主按钮」两种蓝；
-   `type="success" / "warning"` 的标签与按钮又是 Element 默认的 #67c23a / #e6a23c，
-   与 .wb-badge--success / --warning 的绿与琥珀也不是同一支。
-   这里把 Element 的调色板在 .profile-page（用户工作台各页的根元素）范围内一次映射到本层令牌，
-   含各项 light-N / dark-2 派生值——Element 的 plain 标签底色、hover 底色都取这些派生值，
-   只改基色会留下默认色的残影。
-
-   作用域说明：弹窗会被 Element teleport 到 body，落在 .profile-page 之外，
-   所以工作台页的弹窗要额外挂 .wb-dialog（与开发者侧的 .dev-dialog 同理）。
+/* 用户工作台的作用域根：`.profile-page` 是工作台各页的根元素，弹窗会被 teleport 到
+   body、落在它之外，所以工作台页的弹窗自己挂 .wb-dialog（与开发者侧的 .dev-dialog 同理）。
    .profile-page 只出现在用户工作台各页，开发者侧（.user-workbench--dev 下的 .dev-page）不受影响。 */
 .profile-page,
 .wb-dialog {
-  --el-color-primary: var(--wb-accent);
-  --el-color-primary-light-3: #6280df;
-  --el-color-primary-light-5: #8fa5e8;
-  --el-color-primary-light-7: #bcc9f1;
-  --el-color-primary-light-8: #d2dbf6;
-  --el-color-primary-light-9: #e8edfa;
-  --el-color-primary-dark-2: #193ba7;
-
-  /* 成功=profile.css 的绿（浅底 + 深字那一组的深字），派生值按同一色相向白/黑插值 */
-  --el-color-success: var(--profile-success-text, #166534);
-  --el-color-success-light-3: #5c9371;
-  --el-color-success-light-5: #8bb29a;
-  --el-color-success-light-7: #b9d1c2;
-  --el-color-success-light-8: #d0e0d6;
-  --el-color-success-light-9: #e8f0eb;
-  --el-color-success-dark-2: #125129;
-
-  /* 警示=琥珀 */
-  --el-color-warning: var(--profile-warning-text, #92400e);
-  --el-color-warning-light-3: #b37956;
-  --el-color-warning-light-5: #c8a087;
-  --el-color-warning-light-7: #dec6b7;
-  --el-color-warning-light-8: #e9d9cf;
-  --el-color-warning-light-9: #f4ece7;
-  --el-color-warning-dark-2: #75330b;
-
-  /* 危险=红：门户侧的红有语义（驳回、终止、销毁类操作），保持红 */
-  --el-color-danger: var(--profile-danger-text, #b42318);
-  --el-color-danger-light-3: #ca655d;
-  --el-color-danger-light-5: #d9918c;
-  --el-color-danger-light-7: #e8bdb9;
-  --el-color-danger-light-8: #f0d4d1;
-  --el-color-danger-light-9: #f7e9e8;
-  --el-color-danger-dark-2: #901c13;
-  --el-color-error: var(--profile-danger-text, #b42318);
-  --el-color-error-light-3: #ca655d;
-  --el-color-error-light-5: #d9918c;
-  --el-color-error-light-7: #e8bdb9;
-  --el-color-error-light-8: #f0d4d1;
-  --el-color-error-light-9: #f7e9e8;
-  --el-color-error-dark-2: #901c13;
-
-  /* 中性灰跟着 --profile-text-sub 走，避免出现第二套灰 */
-  --el-color-info: var(--profile-text-sub, #64748b);
-  --el-color-info-light-3: #929eae;
-  --el-color-info-light-5: #b1b9c5;
-  --el-color-info-light-7: #d0d5dc;
-  --el-color-info-light-8: #e0e5e8;
-  --el-color-info-light-9: #eff1f3;
-  --el-color-info-dark-2: #505d6f;
-
-  /* 文字与描边令牌：上面只改了强调色，Element 的灰阶还走它自己的默认值，
-     于是同一张卡里出现两套墨色与两套灰——el-card / el-form 组件自带
-     color: var(--el-text-color-primary) 会把卡内继承文字染成 #303133，
-     标签与输入文字取 #606266、占位符取 #a8abb2、带描边按钮的边取 #dcdfe6，
-     与 .wb-item__title / .wb-card-head__title 用的 --profile-text-main 肉眼可见地不是同一个颜色。
-     这里把灰阶一次性映射到本层的墨色/次级/弱化/占位符/描边/填充。 */
-  --el-text-color-primary: var(--profile-text-main, #0f172a);
-  --el-text-color-regular: var(--wb-ink-soft);
-  --el-text-color-secondary: var(--profile-text-sub, #64748b);
-  --el-text-color-placeholder: var(--profile-text-soft, #8a94a6);
-  --el-text-color-disabled: #cbd5e1;
-
-  --el-border-color: var(--wb-line);
-  --el-border-color-light: var(--wb-line);
-  --el-border-color-lighter: rgba(203, 213, 225, 0.42);
-  --el-border-color-extra-light: rgba(203, 213, 225, 0.28);
-  --el-border-color-hover: var(--wb-accent-line);
-  --el-border-color-darker: #94a3b8;
-
-  --el-fill-color-blank: var(--profile-card-bg-strong, #ffffff);
-  --el-bg-color: var(--profile-card-bg-strong, #ffffff);
-  --el-bg-color-overlay: var(--profile-card-bg-strong, #ffffff);
-  --el-fill-color-light: rgba(241, 244, 251, 0.62);
-  --el-fill-color-lighter: rgba(241, 244, 251, 0.42);
-
   color: var(--profile-text-main, #0f172a);
-}
-
-/* Element 的圆角也要并到本层的三档上来：默认 4px 会让「统一层里 10px 的输入框」
-   与「页面里 type="primary" 的 4px 按钮」在同一行里对不上。
-   只给控件档，卡片（弹窗、抽屉）各页自己声明。 */
-.profile-page .el-button,
-.wb-dialog .el-button,
-.profile-page .el-input__wrapper,
-.profile-page .el-textarea__inner,
-.wb-dialog .el-input__wrapper,
-.wb-dialog .el-textarea__inner {
-  border-radius: var(--wb-radius-control);
 }
 
 /* === 顶部读数条 ===
@@ -225,23 +122,6 @@
   margin-left: 0;
 }
 
-/* 读数条里的按钮与工具栏同高同圆角，不再出现「横条里 20px 高的小按钮」 */
-.wb-strip__action .el-button {
-  min-height: var(--wb-control-height);
-  height: var(--wb-control-height);
-  padding: 0 16px;
-  border-radius: var(--wb-radius-control);
-}
-
-/* 图标按钮（刷新）保持正方形，不继承文字按钮的左右内边距 */
-.wb-strip__action .wb-toolbar__icon-btn.el-button {
-  padding: 0;
-}
-
-.wb-strip {
-  --el-component-size: var(--wb-control-height);
-}
-
 /* === 卡头 ===
    面板（.wallet-section）里的第一行：左边标题 + 说明，右边动作。
    结构同 .dev-card-head：.wb-card-head > .wb-card-head__title-block(> h3 + p) + .wb-card-head__actions */
@@ -300,8 +180,8 @@
   max-width: 340px;
 }
 
-/* 下拉筛选的宽度要写成 flex 基宽，不能只写 min-width：Element 的 .el-select 自带 width: 100%，
-   而 __field 直接挂在 el-select 根节点上，`flex: 0 0 auto` 会让 flex-basis 回落到 width，
+/* 下拉筛选的宽度要写成 flex 基宽，不能只写 min-width：TSelect 自带 width: 100%，
+   而 __field 直接挂在 TSelect 根节点上，`flex: 0 0 auto` 会让 flex-basis 回落到 width，
    于是每个筛选各占一整行、工具栏被撑成竖排。 */
 .wb-toolbar__field {
   flex: 0 0 150px;
@@ -353,125 +233,9 @@
   justify-content: flex-end;
 }
 
-.wb-toolbar .el-input__wrapper,
-.wb-toolbar .el-select__wrapper,
-.wb-toolbar .el-button {
-  min-height: var(--wb-control-height);
-  height: var(--wb-control-height);
-  border-radius: var(--wb-radius-control);
-}
-
-.wb-toolbar .el-button {
-  font-size: 13px;
-}
-
-/* 三个按钮变体脱离 .wb-toolbar 也能用（卡头、弹窗页脚、空态里），规格与工具栏内一致。
-   字号统一 13px：el-button 不写就吃 Element 默认的 14px，而工具栏内输入框是 13px，
-   同一个动作换个位置会大一号。 */
-.wb-toolbar__primary.el-button,
-.wb-toolbar__ghost.el-button,
-.wb-toolbar__icon-btn.el-button {
-  min-height: var(--wb-control-height);
-  height: var(--wb-control-height);
-  border-radius: var(--wb-radius-control);
-  font-size: 13px;
-}
-
-/* 带图标的次要按钮：图标与文字同一行、间距 6px */
-.wb-toolbar__primary.el-button > span,
-.wb-toolbar__ghost.el-button > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.wb-toolbar .el-input__wrapper,
-.wb-toolbar .el-select__wrapper {
-  padding: 0 12px;
-  background: var(--profile-card-bg-strong, #ffffff);
-  box-shadow: 0 0 0 1px var(--wb-line) inset;
-  transition: box-shadow 160ms ease;
-}
-
-.wb-toolbar .el-input__wrapper:hover,
-.wb-toolbar .el-select__wrapper:hover,
-.wb-toolbar .el-select__wrapper.is-hovering {
-  box-shadow: 0 0 0 1px var(--wb-accent-line) inset;
-}
-
-.wb-toolbar .el-input__wrapper.is-focus,
-.wb-toolbar .el-select__wrapper.is-focused {
-  box-shadow: 0 0 0 1px var(--wb-accent) inset;
-}
-
-.wb-toolbar .el-input__inner,
-.wb-toolbar .el-select__placeholder,
-.wb-toolbar .el-select__selected-item {
-  font-size: 13px;
-  color: var(--profile-text-main, #0f172a);
-}
-
-/* 图标按钮（刷新）：正方形、白底冷描边，悬停换成本层主色 */
-.wb-toolbar__icon-btn.el-button {
-  width: var(--wb-control-height);
-  padding: 0;
-  --el-button-text-color: var(--profile-text-sub, #64748b);
-  --el-button-bg-color: var(--profile-card-bg-strong, #ffffff);
-  --el-button-border-color: var(--wb-line);
-  --el-button-hover-text-color: var(--wb-accent);
-  --el-button-hover-bg-color: var(--wb-accent-soft);
-  --el-button-hover-border-color: var(--wb-accent-line);
-  --el-button-active-text-color: var(--wb-accent);
-  --el-button-active-bg-color: var(--wb-accent-soft);
-  --el-button-active-border-color: var(--wb-accent-line);
-}
-
-/* 次要按钮（重置、清空筛选）：同高同圆角，白底冷描边 */
-.wb-toolbar__ghost.el-button {
-  padding: 0 14px;
-  font-weight: 700;
-  --el-button-text-color: var(--wb-ink-soft);
-  --el-button-bg-color: var(--profile-card-bg-strong, #ffffff);
-  --el-button-border-color: var(--wb-line);
-  --el-button-hover-text-color: var(--wb-accent);
-  --el-button-hover-bg-color: var(--wb-accent-soft);
-  --el-button-hover-border-color: var(--wb-accent-line);
-  --el-button-active-text-color: #ffffff;
-  --el-button-active-bg-color: var(--wb-accent);
-  --el-button-active-border-color: var(--wb-accent);
-}
-
-/* 主按钮（发布、新建、去签署之类）：整层同一个蓝，不要再出现 Element 默认的 #409eff，
-   也不要各页自己写青色或绿色 */
-.wb-toolbar__primary.el-button {
-  padding: 0 16px;
-  font-weight: 700;
-  --el-button-text-color: #ffffff;
-  --el-button-bg-color: var(--wb-accent);
-  --el-button-border-color: var(--wb-accent);
-  --el-button-hover-text-color: #ffffff;
-  --el-button-hover-bg-color: var(--wb-accent);
-  --el-button-hover-border-color: var(--wb-accent);
-  --el-button-active-text-color: #ffffff;
-  --el-button-active-bg-color: var(--wb-accent);
-  --el-button-active-border-color: var(--wb-accent);
-}
-
-.wb-toolbar__primary.el-button:hover,
-.wb-toolbar__primary.el-button:focus-visible {
-  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.22);
-}
-
-.wb-toolbar__ghost.el-button:hover,
-.wb-toolbar__ghost.el-button:focus-visible,
-.wb-toolbar__icon-btn.el-button:hover,
-.wb-toolbar__icon-btn.el-button:focus-visible {
-  box-shadow: 0 8px 18px rgba(31, 74, 209, 0.1);
-}
-
 /* === 原生按钮 / 链接按钮 ===
-   卡头、空态、页面里放的是 RouterLink 或原生 <button>，不是 el-button，
-   拿不到上面那两个变体的规格（--el-button-* 只对 el-button 生效）。
+   卡头、空态、页面里放的是 RouterLink 或原生 <button>，不是 TButton，
+   拿不到上面那两个变体的规格（那两个变体的类挂在 TButton 上）。
    这两个变体与它们同高同圆角同配色，保证「同一个动作，无论在工具栏还是卡片头，长得一样」。
    对应开发者侧的 .dev-btn / .dev-btn--primary / .dev-btn--ghost。
    原来每页各自写一段「让链接看起来像按钮」的样式（每段都带自己的一套颜色与圆角），
@@ -498,10 +262,6 @@
     background-color 160ms ease,
     border-color 160ms ease,
     color 160ms ease;
-}
-
-.wb-btn .el-icon {
-  font-size: 15px;
 }
 
 .wb-btn--primary {
@@ -703,11 +463,9 @@
   background: var(--wb-accent-soft);
   box-shadow: 0 0 0 1px var(--wb-accent) inset;
 }
-
 /* 列表行内嵌按钮矮一档（32px）：行本身的圆角是 12px、内边距 16px 18px，
-   36px 的按钮在行里显得比行还重。开发者侧同一层级由 .dev-stack-item .el-button 定成 32px，
+   36px 的按钮在行里显得比行还重。开发者侧同一层级由 .dev-stack-item .dev-btn 定成 32px，
    消息中心这一页在两种模式下渲染同一行，两边必须同高——否则切一次模式行尾按钮就长高 4px。 */
-.wb-item .el-button,
 .wb-item .wb-btn {
   min-height: 32px;
   height: 32px;
@@ -717,7 +475,7 @@
 
 /* === 分页 ===
    列表页表尾：左边「共 N 条 + 每页条数」，右边页码。
-   结构同 .dev-pager：.wb-pager > .wb-pager__count(> span + 每页条数) + el-pagination */
+   结构同 .dev-pager：.wb-pager > .wb-pager__count(> span + 每页条数) + TPagination */
 .wb-pager {
   display: flex;
   align-items: center;
@@ -736,51 +494,8 @@
   gap: 12px;
 }
 
-/* 每页条数下拉与工具栏控件同尺寸：Element 默认 32px 高 / 4px 圆角，
-   与工具栏里的 36px / 10px 对不上，同一页会出现两种控件高度。 */
-.wb-pager {
-  --el-component-size: var(--wb-control-height);
-}
-
 .wb-pager__size {
   width: 116px;
-}
-
-.wb-pager__size .el-select__wrapper {
-  min-height: var(--wb-control-height);
-  height: var(--wb-control-height);
-  padding: 0 12px;
-  border-radius: var(--wb-radius-control);
-  background: var(--profile-card-bg-strong, #ffffff);
-  box-shadow: 0 0 0 1px var(--wb-line) inset;
-}
-
-.wb-pager__size .el-select__wrapper:hover,
-.wb-pager__size .el-select__wrapper.is-hovering {
-  box-shadow: 0 0 0 1px var(--wb-accent-line) inset;
-}
-
-.wb-pager__size .el-select__placeholder,
-.wb-pager__size .el-select__selected-item {
-  font-size: 13px;
-}
-
-/* 分页器按钮与页码：Element 默认 2px 圆角，并到控件档；
-   选中页取本列强调色，不落到 Element 默认的 #409eff */
-.wb-pager .el-pagination {
-  --el-pagination-font-size: 13px;
-  --el-pagination-button-color: var(--wb-ink-soft);
-  --el-pagination-button-bg-color: rgba(241, 244, 251, 0.9);
-  --el-pagination-button-disabled-bg-color: rgba(241, 244, 251, 0.62);
-  --el-pagination-button-disabled-color: #94a3b8;
-  --el-pagination-hover-color: var(--wb-accent);
-  --el-color-primary: var(--wb-accent);
-}
-
-.wb-pager .el-pagination button,
-.wb-pager .el-pager li {
-  border-radius: var(--wb-radius-control);
-  font-size: 13px;
 }
 
 /* === 空态 ===
@@ -887,19 +602,10 @@
   .wb-card-head__actions {
     justify-content: space-between;
   }
-
   /* 触屏档：按钮与整行可点区域至少 44px */
-  .wb-strip__action .el-button,
-  .wb-toolbar__primary.el-button,
-  .wb-toolbar__ghost.el-button,
-  .wb-toolbar__icon-btn.el-button,
   .wb-btn {
     min-height: 44px;
     height: 44px;
-  }
-
-  .wb-toolbar__icon-btn.el-button {
-    width: 44px;
   }
 
   .wb-toolbar__actions {

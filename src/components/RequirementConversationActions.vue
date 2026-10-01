@@ -57,6 +57,8 @@ import {
 import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
 import { breachStatusLabel } from '@/shared/breachStatus'
 
+
+import { TButton, TDialog } from 'ui_73info'
 type ViewerRole = 'customer' | 'developer'
 
 /** 会话中当前用户在需求上的身份：甲方（需求方）/ 乙方（开发者）。 */
@@ -871,8 +873,7 @@ defineExpose({
     :requirement-id="requirement?.requirement_id ?? ''" :requirement-title="requirement?.title ?? ''"
     @close="closeAcceptanceDialog" @submitted="handleAcceptanceSubmitted" />
 
-  <el-dialog v-model="unbindVisible" :title="canRespondUnbind ? '处理解除申请' : '申请解除需求'" width="480px"
-    append-to-body>
+  <TDialog v-model:open="unbindVisible" :title="canRespondUnbind ? '处理解除申请' : '申请解除需求'" width="480px">
     <p class="conversation-actions__meta">{{ requirement?.title }} · {{ requirementId }}</p>
     <template v-if="canRespondUnbind">
       <p class="conversation-actions__tip">
@@ -892,17 +893,17 @@ defineExpose({
     </template>
     <template #footer>
       <template v-if="canRespondUnbind">
-        <el-button :loading="unbindSubmitting" @click="submitUnbindRespond('reject')">拒绝解除</el-button>
-        <el-button type="primary" :loading="unbindSubmitting" @click="submitUnbindRespond('approve')">同意解除</el-button>
+        <TButton :loading="unbindSubmitting" @click="submitUnbindRespond('reject')">拒绝解除</TButton>
+        <TButton variant="solid" tone="accent" :loading="unbindSubmitting" @click="submitUnbindRespond('approve')">同意解除</TButton>
       </template>
       <template v-else>
-        <el-button @click="unbindVisible = false">取消</el-button>
-        <el-button type="danger" :loading="unbindSubmitting" @click="submitUnbindRequest">提交解除申请</el-button>
+        <TButton @click="unbindVisible = false">取消</TButton>
+        <TButton variant="solid" tone="danger" :loading="unbindSubmitting" @click="submitUnbindRequest">提交解除申请</TButton>
       </template>
     </template>
-  </el-dialog>
+  </TDialog>
 
-  <el-dialog v-model="breachVisible" :title="breachDialogTitle" width="560px" append-to-body>
+  <TDialog v-model:open="breachVisible" :title="breachDialogTitle" width="560px">
     <p class="conversation-actions__meta">{{ requirement?.title }} · {{ requirementId }}</p>
 
     <template v-if="activeBreachCase">
@@ -985,26 +986,26 @@ defineExpose({
     </template>
 
     <template #footer>
-      <el-button @click="breachVisible = false">关闭</el-button>
+      <TButton @click="breachVisible = false">关闭</TButton>
       <template v-if="activeBreachCase">
-        <el-button v-if="canWithdrawBreach" :loading="breachActing" @click="submitBreachWithdraw">撤回申请</el-button>
-        <el-button v-if="canRequestPlatformReview" :loading="breachActing" @click="submitPlatformReview">申请平台介入</el-button>
+        <TButton v-if="canWithdrawBreach" :loading="breachActing" @click="submitBreachWithdraw">撤回申请</TButton>
+        <TButton v-if="canRequestPlatformReview" :loading="breachActing" @click="submitPlatformReview">申请平台介入</TButton>
         <template v-if="canDecideBreach">
           <template v-if="breachRejectPanel">
-            <el-button :loading="breachActing" @click="breachRejectPanel = false">取消</el-button>
-            <el-button type="danger" :loading="breachActing" @click="submitBreachDecision('rejected')">确认不接受</el-button>
+            <TButton :loading="breachActing" @click="breachRejectPanel = false">取消</TButton>
+            <TButton variant="solid" tone="danger" :loading="breachActing" @click="submitBreachDecision('rejected')">确认不接受</TButton>
           </template>
           <template v-else>
-            <el-button type="danger" plain :loading="breachActing" @click="breachRejectPanel = true">不接受</el-button>
-            <el-button type="primary" :loading="breachActing" @click="submitBreachDecision('accepted')">接受判定</el-button>
+            <TButton variant="outline" tone="danger" :loading="breachActing" @click="breachRejectPanel = true">不接受</TButton>
+            <TButton variant="solid" tone="accent" :loading="breachActing" @click="submitBreachDecision('accepted')">接受判定</TButton>
           </template>
         </template>
       </template>
-      <el-button v-else type="danger" :loading="breachSubmitting" @click="submitBreachReport">
+      <TButton variant="solid" tone="danger" v-else :loading="breachSubmitting" @click="submitBreachReport">
         {{ settledBreachCase ? '发起新一轮终止合作' : breachWithdrawnByMe ? '重新发起' : '提交终止合作申请' }}
-      </el-button>
+      </TButton>
     </template>
-  </el-dialog>
+  </TDialog>
 </template>
 
 <style scoped>

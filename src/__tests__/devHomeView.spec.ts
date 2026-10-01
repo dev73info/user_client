@@ -123,7 +123,7 @@ async function render(query: Record<string, string> = {}) {
     routes: ROUTE_NAMES.map((name) => ({ name, path: `/${name}`, component: { template: '<div />' } })),
   })
   await router.push({ name: 'dev-home', query })
-  const wrapper = mount(DevHomeView, { global: { plugins: [router] } })
+  const wrapper = mount(DevHomeView, { global: { plugins: [router], stubs: { teleport: true } } })
   await flushPromises()
   return { wrapper, router }
 }
@@ -345,7 +345,7 @@ describe('developer workbench overview', () => {
     // 弹窗自己拉一次余额与通道状态：用此刻的服务端数据做前置校验
     expect(mocks.wallet).toHaveBeenCalledTimes(2)
     expect(mocks.withdrawalSetting).toHaveBeenCalledWith('test-token')
-    expect(wrapper.find('.dev-dialog.el-dialog').exists()).toBe(true)
+    expect(wrapper.find('.dev-dialog.t73-dialog').exists()).toBe(true)
     expect(wrapper.text()).toContain('申请提现')
     wrapper.unmount()
   })

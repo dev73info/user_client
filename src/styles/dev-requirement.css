@@ -297,11 +297,6 @@
   grid-column: 2;
 }
 
-.dev-requirement-hall__tag-group .el-select__wrapper {
-  min-height: 34px;
-  border-radius: 10px;
-}
-
 @media (max-width: 720px) {
   .dev-requirement-hall__mode-switch,
   .dev-requirement-hall__tag-group {

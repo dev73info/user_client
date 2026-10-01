@@ -2,7 +2,6 @@
 import { nextTick, reactive, ref } from 'vue'
 import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-
 import { apiUrl, HttpError } from '@/api/http'
 import { extractResourceFileNameFromUrl, with73Extension } from '@/api/resources'
 import {
@@ -18,9 +17,32 @@ import { useToast } from '@/composables/useToast'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
-import { ArrowDown, Plus, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
+import {
+  TButton,
+  TCard,
+  TDialog,
+  TDropdown,
+  TDropdownItem,
+  TDropdownMenu,
+  TForm,
+  TFormItem,
+  TIcon,
+  TInput,
+  TLoading,
+  TOption,
+  TPagination,
+  TSelect,
+  TTable,
+  TTableColumn,
+  type SelectModelValue,
+  ArrowDown,
+  Plus,
+  Refresh,
+  RefreshLeft,
+  Search,
+} from 'ui_73info'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -193,8 +215,10 @@ function openCreateVersionDialog() {
   createVersionDialogVisible.value = true
 }
 
-function onEditVersionChange(value: string) {
-  const found = versionRows.value.find((v) => v.version === value)
+/* `TSelect` 的 `change` 是宽联合，这里只需单值，收紧一次再用。 */
+function onEditVersionChange(value: SelectModelValue) {
+  const version = String(value)
+  const found = versionRows.value.find((v) => v.version === version)
   if (!found) return
   editVersionForm.note = found.note || ''
   editNoteEditor.value?.setContent(found.note || '<p></p>', false)
@@ -382,12 +406,11 @@ async function removeVersion() {
     deletingVersionId.value = null
   }
 }
-
 </script>
 
 <template>
   <div class="dev-page dev-page--resource-versions">
-    <div class="dev-meta-strip" v-loading="loading">
+    <TLoading tag="div" class="dev-meta-strip" :loading="loading">
       <div class="dev-meta-strip__item">
         <span class="dev-meta-strip__label">版本总数</span>
         <span class="dev-meta-strip__value">{{ versionRows.length }}</span>
@@ -403,181 +426,277 @@ async function removeVersion() {
         <span class="dev-meta-strip__value">{{ deletePendingCount }}</span>
       </div>
       <div class="dev-meta-strip__item dev-meta-strip__action">
-        <el-button class="dev-toolbar__icon-btn" aria-label="刷新版本列表" @click="reloadVersions">
-          <el-icon>
+        <TButton icon-only aria-label="刷新版本列表" @click="reloadVersions">
+          <TIcon>
             <Refresh />
-          </el-icon>
-        </el-button>
+          </TIcon>
+        </TButton>
       </div>
-    </div>
+    </TLoading>
 
-    <section class="dev-resource-versions__layout" v-loading="loading">
-      <el-card shadow="never" class="dev-surface-card">
+    <TLoading tag="section" class="dev-resource-versions__layout" :loading="loading">
+      <TCard class="dev-surface-card">
         <div class="dev-card-head">
           <div class="dev-card-head__title-block">
             <h3 class="dev-section-title">版本列表</h3>
           </div>
           <div class="dev-card-head__actions">
-            <el-button class="dev-toolbar__primary" type="primary" :icon="Plus"
-              @click="openCreateVersionDialog">发布版本</el-button>
+            <TButton variant="solid" tone="accent" @click="openCreateVersionDialog"
+              ><template #prefix
+                ><TIcon><Plus /></TIcon></template
+              >发布版本</TButton
+            >
           </div>
         </div>
 
         <div class="dev-toolbar">
-          <el-input v-model="filters.keyword" clearable placeholder="搜索版本号、备注或文件名" class="dev-toolbar__search">
+          <TInput
+            v-model="filters.keyword"
+            clearable
+            placeholder="搜索版本号、备注或文件名"
+            class="dev-toolbar__search"
+          >
             <template #prefix>
-              <el-icon>
+              <TIcon>
                 <Search />
-              </el-icon>
+              </TIcon>
             </template>
-          </el-input>
+          </TInput>
 
           <div class="dev-toolbar__actions">
             <span v-if="hasActiveFilters" class="dev-toolbar__hint">
               筛选出 {{ filteredVersions.length }} / {{ versionRows.length }} 条
             </span>
-            <el-button class="dev-toolbar__ghost" @click="resetFilters">
-              <el-icon>
+            <TButton variant="outline" @click="resetFilters">
+              <TIcon>
                 <RefreshLeft />
-              </el-icon>
+              </TIcon>
               <span>重置</span>
-            </el-button>
+            </TButton>
           </div>
         </div>
 
-        <el-table :data="pagedVersions" stripe v-loading="versionsLoading" class="dev-table">
+        <TTable :loading="versionsLoading" :data="pagedVersions" stripe class="dev-table">
           <template #empty>
-            <p class="dev-empty-state">{{ hasActiveFilters ? '没有匹配的版本' : '当前还没有版本记录' }}</p>
+            <p class="dev-empty-state">
+              {{ hasActiveFilters ? '没有匹配的版本' : '当前还没有版本记录' }}
+            </p>
           </template>
-          <el-table-column prop="version" label="版本号" min-width="140" />
-          <el-table-column label="资源文件" min-width="220" show-overflow-tooltip>
+          <TTableColumn prop="version" label="版本号" min-width="140" />
+          <TTableColumn label="资源文件" min-width="220" show-overflow-tooltip>
             <template #default="scope">
-              <a :href="versionDownloadUrl(scope.row)" target="_blank" rel="noopener noreferrer"
-                class="dev-version-link">
+              <a
+                :href="versionDownloadUrl(scope.row)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="dev-version-link"
+              >
                 {{ versionFileName(scope.row) }}
               </a>
             </template>
-          </el-table-column>
-          <el-table-column label="备注" min-width="180" show-overflow-tooltip>
+          </TTableColumn>
+          <TTableColumn label="备注" min-width="180" show-overflow-tooltip>
             <template #default="scope">
-              <span class="dev-version-note" v-html="scope.row.note ? sanitizeRichHtml(scope.row.note) : '无'"></span>
+              <span
+                class="dev-version-note"
+                v-html="scope.row.note ? sanitizeRichHtml(scope.row.note) : '无'"
+              ></span>
             </template>
-          </el-table-column>
-          <el-table-column label="发布时间" min-width="180">
+          </TTableColumn>
+          <TTableColumn label="发布时间" min-width="180">
             <template #default="scope">
               {{ formatCreatedAt(scope.row.created_at) }}
             </template>
-          </el-table-column>
-          <el-table-column label="操作" width="120">
+          </TTableColumn>
+          <TTableColumn label="操作" width="120">
             <template #default="scope">
-              <el-dropdown trigger="click" @command="(cmd: string) => handleVersionAction(cmd, scope.row)">
-                <el-button type="primary" plain class="dev-table__action dev-action--soft">
+              <TDropdown
+                trigger="click"
+                @command="(cmd) => handleVersionAction(String(cmd), scope.row)"
+              >
+                <TButton variant="outline" tone="accent">
                   <span>更多</span>
-                  <el-icon class="dev-action-caret">
+                  <TIcon class="dev-action-caret">
                     <ArrowDown />
-                  </el-icon>
-                </el-button>
+                  </TIcon>
+                </TButton>
                 <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="download">下载</el-dropdown-item>
-                    <el-dropdown-item command="edit">编辑</el-dropdown-item>
-                    <el-dropdown-item command="delete" :disabled="scope.row.delete_request_status === 'pending'">
+                  <TDropdownMenu>
+                    <TDropdownItem command="download">下载</TDropdownItem>
+                    <TDropdownItem command="edit">编辑</TDropdownItem>
+                    <TDropdownItem
+                      command="delete"
+                      :disabled="scope.row.delete_request_status === 'pending'"
+                    >
                       {{ scope.row.delete_request_status === 'pending' ? '删除审核中' : '删除' }}
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
+                    </TDropdownItem>
+                  </TDropdownMenu>
                 </template>
-              </el-dropdown>
+              </TDropdown>
             </template>
-          </el-table-column>
-        </el-table>
+          </TTableColumn>
+        </TTable>
 
         <div class="dev-pager">
           <div class="dev-pager__count">
             <span>共 {{ filteredTotal }} 条</span>
-            <el-select v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
-              <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-            </el-select>
+            <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
+              <TOption
+                v-for="size in LIST_PAGE_SIZES"
+                :key="size"
+                :label="`${size} 条/页`"
+                :value="size"
+              />
+            </TSelect>
           </div>
-          <el-pagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-            :pager-count="5" layout="prev, pager, next" background aria-label="版本列表分页" />
+          <TPagination
+            v-model:current-page="page"
+            :page-size="pageSize"
+            :total="filteredTotal"
+            :pager-count="5"
+            background
+            aria-label="版本列表分页"
+          />
         </div>
-      </el-card>
-    </section>
+      </TCard>
+    </TLoading>
 
-    <el-dialog v-model="createVersionDialogVisible" title="发布版本" width="720px" align-center
-      class="dev-dialog" :close-on-click-modal="!publishing">
-      <el-form label-position="top" class="dev-version-form">
-        <el-form-item label="版本号" required>
-          <el-input v-model="createForm.version" maxlength="80" placeholder="例如：1.20.1-2.0.0" />
-        </el-form-item>
-        <el-form-item label="资源文件" required>
+    <TDialog
+      v-model:open="createVersionDialogVisible"
+      title="发布版本"
+      width="720px"
+      class="dev-dialog"
+      :mask-closable="!publishing"
+    >
+      <TForm label-position="top" class="dev-version-form">
+        <TFormItem label="版本号" required>
+          <TInput v-model="createForm.version" :maxlength="80" placeholder="例如：1.20.1-2.0.0" />
+        </TFormItem>
+        <TFormItem label="资源文件" required>
           <div class="dev-version-file-picker">
-            <input ref="versionFileInput" type="file" class="dev-version-file-picker__input"
-              @change="handleVersionFileChange" />
-            <el-button @click="triggerVersionFileSelect">选择文件</el-button>
-            <span class="dev-version-file-picker__name">{{ selectedVersionFileName || '未选择文件' }}</span>
+            <input
+              ref="versionFileInput"
+              type="file"
+              class="dev-version-file-picker__input"
+              @change="handleVersionFileChange"
+            />
+            <TButton @click="triggerVersionFileSelect">选择文件</TButton>
+            <span class="dev-version-file-picker__name">{{
+              selectedVersionFileName || '未选择文件'
+            }}</span>
           </div>
-        </el-form-item>
-        <el-form-item label="备注">
-          <RichTextEditor ref="createNoteEditor" :model-value="createForm.note" min-height="clamp(120px, 18vh, 160px)"
-            max-height="clamp(200px, 30vh, 280px)" @update:model-value="createForm.note = $event" />
-        </el-form-item>
-      </el-form>
+        </TFormItem>
+        <TFormItem label="备注">
+          <RichTextEditor
+            ref="createNoteEditor"
+            :model-value="createForm.note"
+            min-height="clamp(120px, 18vh, 160px)"
+            max-height="clamp(200px, 30vh, 280px)"
+            @update:model-value="createForm.note = $event"
+          />
+        </TFormItem>
+      </TForm>
       <template #footer>
-        <el-button @click="resetCreateForm">清空</el-button>
-        <el-button type="primary" :loading="publishing" @click="submitVersion">发布版本</el-button>
+        <TButton @click="resetCreateForm">清空</TButton>
+        <TButton variant="solid" tone="accent" :loading="publishing" @click="submitVersion"
+          >发布版本</TButton
+        >
       </template>
-    </el-dialog>
+    </TDialog>
 
-    <el-dialog v-model="editVersionDialogVisible" width="720px" align-center class="dev-dialog"
-      :title="editingVersion ? `编辑版本 · ${editingVersion.version}` : '编辑版本'">
-      <el-form label-position="top" class="dev-version-form">
-        <el-form-item label="版本号" required>
-          <el-select v-model="editVersionForm.version" filterable allow-create default-first-option
-            placeholder="输入或选择历史版本号" style="width: 100%" @change="onEditVersionChange">
-            <el-option v-for="v in versionRows" :key="v.id" :label="v.version" :value="v.version" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="资源文件">
+    <TDialog
+      v-model:open="editVersionDialogVisible"
+      width="720px"
+      class="dev-dialog"
+      :title="editingVersion ? `编辑版本 · ${editingVersion.version}` : '编辑版本'"
+    >
+      <TForm label-position="top" class="dev-version-form">
+        <TFormItem label="版本号" required>
+          <TSelect
+            v-model="editVersionForm.version"
+            filterable
+            placeholder="输入或选择历史版本号"
+            style="width: 100%"
+            @change="onEditVersionChange"
+          >
+            <TOption v-for="v in versionRows" :key="v.id" :label="v.version" :value="v.version" />
+          </TSelect>
+        </TFormItem>
+        <TFormItem label="资源文件">
           <div class="dev-version-file-picker">
-            <input ref="editVersionFileInput" type="file" class="dev-version-file-picker__input"
-              @change="handleEditVersionFileChange" />
-            <el-button @click="triggerEditVersionFileSelect">更换文件</el-button>
+            <input
+              ref="editVersionFileInput"
+              type="file"
+              class="dev-version-file-picker__input"
+              @change="handleEditVersionFileChange"
+            />
+            <TButton @click="triggerEditVersionFileSelect">更换文件</TButton>
             <span class="dev-version-file-picker__name">
-              {{ editSelectedFileName || (editingVersion ? versionFileName(editingVersion) : '未选择文件') }}
+              {{
+                editSelectedFileName ||
+                (editingVersion ? versionFileName(editingVersion) : '未选择文件')
+              }}
             </span>
           </div>
-        </el-form-item>
-        <el-form-item label="备注">
-          <RichTextEditor ref="editNoteEditor" :model-value="editVersionForm.note" min-height="clamp(120px, 18vh, 160px)"
-            max-height="clamp(200px, 30vh, 280px)" @update:model-value="editVersionForm.note = $event" />
-        </el-form-item>
-      </el-form>
+        </TFormItem>
+        <TFormItem label="备注">
+          <RichTextEditor
+            ref="editNoteEditor"
+            :model-value="editVersionForm.note"
+            min-height="clamp(120px, 18vh, 160px)"
+            max-height="clamp(200px, 30vh, 280px)"
+            @update:model-value="editVersionForm.note = $event"
+          />
+        </TFormItem>
+      </TForm>
 
       <template #footer>
-        <el-button @click="editVersionDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="savingVersionId === editingVersion?.id"
-          @click="submitVersionEdit">保存</el-button>
+        <TButton @click="editVersionDialogVisible = false">取消</TButton>
+        <TButton
+          variant="solid"
+          tone="accent"
+          :loading="savingVersionId === editingVersion?.id"
+          @click="submitVersionEdit"
+          >保存</TButton
+        >
       </template>
-    </el-dialog>
+    </TDialog>
 
-    <el-dialog v-model="deleteVersionDialogVisible" width="520px" align-center class="dev-dialog"
-      :title="deleteVersionTarget ? `删除版本 · ${deleteVersionTarget.version}` : '删除版本'" @close="closeDeleteVersionDialog">
+    <TDialog
+      v-model:open="deleteVersionDialogVisible"
+      width="520px"
+      class="dev-dialog"
+      :title="deleteVersionTarget ? `删除版本 · ${deleteVersionTarget.version}` : '删除版本'"
+      @close="closeDeleteVersionDialog"
+    >
       <div class="dev-version-delete-dialog">
         <p>
-          {{ resource?.requirement_id ? '提交后需要需求发起人在用户端审核，同意后该版本才会真正删除。' : '删除后该版本文件将被永久移除，且无法恢复。' }}
+          {{
+            resource?.requirement_id
+              ? '提交后需要需求发起人在用户端审核，同意后该版本才会真正删除。'
+              : '删除后该版本文件将被永久移除，且无法恢复。'
+          }}
         </p>
         <p v-if="deleteVersionTarget"><strong>版本号：</strong>{{ deleteVersionTarget.version }}</p>
-        <p v-if="deleteVersionTarget"><strong>资源文件：</strong>{{ versionFileName(deleteVersionTarget) }}</p>
+        <p v-if="deleteVersionTarget">
+          <strong>资源文件：</strong>{{ versionFileName(deleteVersionTarget) }}
+        </p>
       </div>
 
       <template #footer>
-        <el-button :disabled="deletingVersionId != null" @click="closeDeleteVersionDialog">取消</el-button>
-        <el-button type="danger" :loading="deletingVersionId === deleteVersionTarget?.id" @click="removeVersion">
+        <TButton :disabled="deletingVersionId != null" @click="closeDeleteVersionDialog"
+          >取消</TButton
+        >
+        <TButton
+          variant="solid"
+          tone="danger"
+          :loading="deletingVersionId === deleteVersionTarget?.id"
+          @click="removeVersion"
+        >
           {{ resource?.requirement_id ? '确认提交删除审核' : '确认删除版本' }}
-        </el-button>
+        </TButton>
       </template>
-    </el-dialog>
+    </TDialog>
   </div>
 </template>
 
@@ -615,13 +734,4 @@ async function removeVersion() {
 .dev-version-note p + p {
   margin-top: 4px;
 }
-
-.dev-page--resource-versions :deep(.el-dialog__footer) {
-  margin-top: 0;
-  padding: 16px 0 0;
-  border-top: none;
-  background: none;
-  text-align: right;
-}
-
 </style>

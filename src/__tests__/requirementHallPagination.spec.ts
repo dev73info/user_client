@@ -61,11 +61,13 @@ function mountHall() {
   return shallowMount(RequirementHallView, {
     global: {
       config: { warnHandler: () => {} },
-      directives: { loading: {} },
+      // 分页器外面套着 TLoading（原来是 v-loading 指令）：TLoading 也是浅渲染的桩，
+      // 不打开默认插槽就渲染不进 TPagination，`.pager-next` 会找不到。
+      renderStubDefaultSlot: true,
       stubs: {
-        ElIcon: { template: '<span><slot /></span>' },
-        ElPagination: {
-          name: 'ElPagination',
+        TIcon: { template: '<span><slot /></span>' },
+        TPagination: {
+          name: 'TPagination',
           props: ['currentPage', 'pageSize', 'total'],
           emits: ['current-change'],
           template: `<button class="pager-next" @click="$emit('current-change', 2)" />`,

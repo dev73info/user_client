@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { MagicStick, Refresh } from '@element-plus/icons-vue'
-
 import {
   createMcResource,
   updateMcResourceHomepage,
@@ -21,6 +19,20 @@ import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { listMyTeams, type TeamResponse } from '@/api/team'
 import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
+
+
+import {
+  TButton,
+  TCard,
+  TForm,
+  TFormItem,
+  TIcon,
+  TInput,
+  TOption,
+  TSelect,
+  MagicStick,
+  Refresh,
+} from 'ui_73info'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -370,16 +382,16 @@ async function submitResource(mode: 'private' | 'public') {
         <span class="dev-meta-strip__value">{{ selectedTagCount }}</span>
       </div>
       <div class="dev-meta-strip__item dev-meta-strip__action">
-        <el-button class="dev-toolbar__icon-btn" aria-label="刷新标签" :loading="isLoadingTags" @click="loadTagTree">
-          <el-icon>
+        <TButton icon-only aria-label="刷新标签" :loading="isLoadingTags" @click="loadTagTree">
+          <TIcon>
             <Refresh />
-          </el-icon>
-        </el-button>
+          </TIcon>
+        </TButton>
       </div>
     </div>
 
     <div class="dev-upload-layout">
-      <el-card shadow="never" class="dev-surface-card dev-upload-combined-card">
+      <TCard class="dev-surface-card dev-upload-combined-card">
         <section class="dev-upload-block">
           <header class="dev-card-head">
             <section class="dev-card-head__title-block">
@@ -387,77 +399,73 @@ async function submitResource(mode: 'private' | 'public') {
             </section>
           </header>
 
-          <el-form label-position="top" class="dev-upload-form">
+          <TForm label-position="top" class="dev-upload-form">
             <div class="dev-upload-grid dev-upload-grid--three">
-              <el-form-item label="资源标题" required>
-                <el-input v-model="form.title" maxlength="200" show-word-limit
+              <TFormItem label="资源标题" required>
+                <TInput show-count v-model="form.title"  :maxlength="200"
                   placeholder="例如：Better Combat Reloaded" />
-              </el-form-item>
+              </TFormItem>
 
-              <el-form-item label="归属类型" required>
-                <el-select v-model="form.ownershipType">
-                  <el-option label="个人项目" value="individual" />
-                  <el-option
+              <TFormItem label="归属类型" required>
+                <TSelect v-model="form.ownershipType">
+                  <TOption label="个人项目" value="individual" />
+                  <TOption
                     label="团队项目"
                     value="team"
-                    :disabled="!hasJoinedTeam"
-                  />
-                </el-select>
-              </el-form-item>
+                    :disabled="!hasJoinedTeam" />
+                </TSelect>
+              </TFormItem>
 
-              <el-form-item v-show="form.ownershipType === 'team'" label="所属团队" required>
+              <TFormItem v-show="form.ownershipType === 'team'" label="所属团队" required>
                 <div class="dev-team-select-native">
-                  <el-select
+                  <TSelect
                     v-model="form.teamId"
                     placeholder="请选择团队"
-                    class="dev-team-select-native__control"
-                    popper-append-to-body
-                  >
-                    <el-option
+                    class="dev-team-select-native__control">
+                    <TOption
                       v-for="team in teamOptions"
                       :key="team.value"
                       :label="team.label"
-                      :value="team.value"
-                    />
+                      :value="team.value" />
                     <template #empty>
                       <div class="dev-team-select-empty">
                         <p v-if="myTeams.length === 0">您还没有加入任何团队</p>
                         <p v-else>未找到匹配的团队</p>
                       </div>
                     </template>
-                  </el-select>
+                  </TSelect>
 
                 </div>
-              </el-form-item>
+              </TFormItem>
 
-              <el-form-item label="类型">
-                <el-select v-model="form.originType" style="width: 100%">
-                  <el-option label="原创" value="original" />
-                  <el-option label="转载" value="repost" />
-                </el-select>
-              </el-form-item>
+              <TFormItem label="类型">
+                <TSelect v-model="form.originType" style="width: 100%">
+                  <TOption label="原创" value="original" />
+                  <TOption label="转载" value="repost" />
+                </TSelect>
+              </TFormItem>
 
               <template v-if="form.originType === 'repost'">
-                <el-form-item label="原作者">
-                  <el-input v-model="form.originAuthor" maxlength="80" placeholder="原始资源的作者" />
-                </el-form-item>
-                <el-form-item label="原始出处链接" required>
-                  <el-input v-model="form.originUrl" maxlength="500" placeholder="原始出处 URL，例如原贴/来源页" />
-                </el-form-item>
-                <el-form-item label="来源站点">
-                  <el-input v-model="form.originOrg" maxlength="80" placeholder="例如：苦力怕论坛、CurseForge" />
-                </el-form-item>
-                <el-form-item label="转载说明 / 授权">
-                  <el-input v-model="form.originNote" maxlength="500" placeholder="授权情况、转载说明等（可选）" />
-                </el-form-item>
+                <TFormItem label="原作者">
+                  <TInput v-model="form.originAuthor"  :maxlength="80" placeholder="原始资源的作者" />
+                </TFormItem>
+                <TFormItem label="原始出处链接" required>
+                  <TInput v-model="form.originUrl"  :maxlength="500" placeholder="原始出处 URL，例如原贴/来源页" />
+                </TFormItem>
+                <TFormItem label="来源站点">
+                  <TInput v-model="form.originOrg"  :maxlength="80" placeholder="例如：苦力怕论坛、CurseForge" />
+                </TFormItem>
+                <TFormItem label="转载说明 / 授权">
+                  <TInput v-model="form.originNote"  :maxlength="500" placeholder="授权情况、转载说明等（可选）" />
+                </TFormItem>
               </template>
 
-              <el-form-item label="图标文件">
+              <TFormItem label="图标文件">
                 <ResourceIconPicker v-model="form.coverUrl" v-model:file="selectedIconFile" />
-              </el-form-item>
+              </TFormItem>
 
             </div>
-          </el-form>
+          </TForm>
         </section>
 
         <section class="dev-upload-block dev-upload-block--split">
@@ -509,11 +517,11 @@ async function submitResource(mode: 'private' | 'public') {
                     []).length }}/{{ group.items.length }}</span>
                 </header>
 
-                <el-form-item class="dev-tag-group-row__field">
-                  <el-select v-model="selectedTagIdsByGroup[group.group_id]" multiple filterable placeholder="选择一个或多个标签">
-                    <el-option v-for="item in group.items" :key="item.id" :label="item.name" :value="item.id" />
-                  </el-select>
-                </el-form-item>
+                <TFormItem class="dev-tag-group-row__field">
+                  <TSelect v-model="selectedTagIdsByGroup[group.group_id]" multiple filterable placeholder="选择一个或多个标签">
+                    <TOption v-for="item in group.items" :key="item.id" :label="item.name" :value="item.id" />
+                  </TSelect>
+                </TFormItem>
               </section>
             </div>
 
@@ -529,20 +537,20 @@ async function submitResource(mode: 'private' | 'public') {
               个标签</span>
           </section>
           <div class="dev-upload-actions__buttons">
-            <el-button type="primary" :icon="MagicStick" :disabled="!canSubmit" :loading="submitting"
-              @click="submitResource('private')">
+            <TButton variant="solid" tone="accent" :disabled="!canSubmit" :loading="submitting"
+              @click="submitResource('private')"><template #prefix><TIcon><MagicStick /></TIcon></template>
               创建私有项目
-            </el-button>
-            <el-button type="success" :icon="MagicStick" :disabled="!canSubmit" :loading="submitting"
-              @click="submitResource('public')">
+            </TButton>
+            <TButton variant="solid" tone="success" :disabled="!canSubmit" :loading="submitting"
+              @click="submitResource('public')"><template #prefix><TIcon><MagicStick /></TIcon></template>
               发布公开项目
-            </el-button>
+            </TButton>
           </div>
         </footer>
-      </el-card>
+      </TCard>
 
       <aside class="dev-upload-side">
-        <el-card shadow="never" class="dev-surface-card dev-surface-card--sticky">
+        <TCard class="dev-surface-card dev-surface-card--sticky">
 
           <article class="dev-preview-card dev-list--spaced">
             <div class="dev-preview-card__cover">
@@ -571,7 +579,7 @@ async function submitResource(mode: 'private' | 'public') {
               </div>
             </div>
           </article>
-        </el-card>
+        </TCard>
       </aside>
     </div>
   </div>

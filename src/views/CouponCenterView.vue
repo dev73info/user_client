@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Refresh } from '@element-plus/icons-vue'
-import { TButton, TIcon } from 'ui_73info'
+import { TButton, TIcon, Refresh } from 'ui_73info'
 
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import { useToast } from '@/composables/useToast'

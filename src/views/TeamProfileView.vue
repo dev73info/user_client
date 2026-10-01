@@ -6,6 +6,7 @@ import { apiUrl, requestJson } from '@/api/http'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { useToast } from '@/composables/useToast'
+import { TLoading } from 'ui_73info'
 
 interface TeamPublicProfile {
   team_id: number
@@ -89,7 +90,7 @@ function openResource(resource: PublicMcResourceItem) {
 </script>
 
 <template>
-  <main class="team-profile" v-loading="loading">
+  <TLoading tag="main" class="team-profile" :loading="loading">
     <!-- 头部 -->
     <section class="team-profile__head">
       <div class="team-profile__avatar-wrap">
@@ -165,7 +166,7 @@ function openResource(resource: PublicMcResourceItem) {
         </article>
       </div>
     </section>
-  </main>
+  </TLoading>
 </template>
 
 <style scoped>

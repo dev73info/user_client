@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Close, Connection } from '@element-plus/icons-vue'
-import { TIcon } from 'ui_73info'
+import { TIcon, Close, Connection } from 'ui_73info'
 
 import { listCommunityPosts, type CommunityPost, type CommunityPostStatus } from '@/api/community'
 import { apiUrl } from '@/api/http'

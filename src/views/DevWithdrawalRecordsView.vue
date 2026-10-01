@@ -11,6 +11,8 @@ import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPag
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
+
+import { TOption, TPagination, TSelect, TTable, TTableColumn, TTag } from 'ui_73info'
 const auth = useAuthStore()
 const props = defineProps<{ income: DevWalletIncomeItem[]; keyword?: string }>()
 const { showToast } = useToast()
@@ -136,46 +138,46 @@ async function loadWithdrawals() {
 
 <template>
   <div class="income-records" aria-label="收入记录">
-    <el-table class="dev-table wallet-records__table" :data="pagedRecords" row-key="key" stripe v-loading="loading">
+    <TTable :loading="loading" class="dev-table wallet-records__table" :data="pagedRecords" row-key="key" stripe>
       <template #empty>
         <p class="dev-empty-state">{{ loading ? '记录加载中' : '暂无收入或提现记录' }}</p>
       </template>
-      <el-table-column label="类型" width="90">
+      <TTableColumn label="类型" width="90">
         <template #default="scope">
-          <el-tag :type="scope.row.kind === 'income' ? 'success' : 'info'" effect="plain">{{ scope.row.kind === 'income' ? '收入' : '提现' }}</el-tag>
+          <TTag variant="outline" :tone="scope.row.kind === 'income' ? 'success' : 'info'">{{ scope.row.kind === 'income' ? '收入' : '提现' }}</TTag>
         </template>
-      </el-table-column>
-      <el-table-column prop="id" label="单号" min-width="180" show-overflow-tooltip />
-      <el-table-column label="金额" width="140" align="right">
+      </TTableColumn>
+      <TTableColumn prop="id" label="单号" min-width="180" show-overflow-tooltip />
+      <TTableColumn label="金额" width="140" align="right">
         <template #default="scope">
           <span class="dev-withdraw-table__amount" :class="{ 'dev-withdraw-table__amount--income': scope.row.kind === 'income' }">{{ money(scope.row.amount) }}</span>
         </template>
-      </el-table-column>
-      <el-table-column label="来源 / 收款账户" min-width="240" show-overflow-tooltip>
+      </TTableColumn>
+      <TTableColumn label="来源 / 收款账户" min-width="240" show-overflow-tooltip>
         <template #default="scope">
           <div class="dev-table__strong">{{ scope.row.detail }}</div>
           <div class="dev-table__sub">{{ scope.row.account }}</div>
         </template>
-      </el-table-column>
-      <el-table-column label="状态" width="120">
+      </TTableColumn>
+      <TTableColumn label="状态" width="120">
         <template #default="scope">
-          <el-tag :type="scope.row.tag" effect="plain">{{
+          <TTag variant="outline" :tone="scope.row.tag">{{
             scope.row.status
-            }}</el-tag>
+            }}</TTag>
         </template>
-      </el-table-column>
-      <el-table-column prop="note" label="处理备注" min-width="220" show-overflow-tooltip />
-      <el-table-column prop="reference" label="交易参考号" min-width="180" show-overflow-tooltip />
-      <el-table-column prop="time" label="时间" min-width="180" />
-    </el-table>
+      </TTableColumn>
+      <TTableColumn prop="note" label="处理备注" min-width="220" show-overflow-tooltip />
+      <TTableColumn prop="reference" label="交易参考号" min-width="180" show-overflow-tooltip />
+      <TTableColumn prop="time" label="时间" min-width="180" />
+    </TTable>
     <div class="dev-pager">
       <div class="dev-pager__count">
         <span>共 {{ recordTotal }} 条</span>
-        <el-select v-model="pageSize" aria-label="收入记录每页条数" class="dev-pager__size">
-          <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-        </el-select>
+        <TSelect v-model="pageSize" aria-label="收入记录每页条数" class="dev-pager__size">
+          <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+        </TSelect>
       </div>
-      <el-pagination v-model:current-page="page" :page-size="pageSize" :total="recordTotal" :pager-count="5" layout="prev, pager, next" background aria-label="收入记录分页" />
+      <TPagination v-model:current-page="page" :page-size="pageSize" :total="recordTotal" :pager-count="5" background aria-label="收入记录分页" />
     </div>
   </div>
 </template>

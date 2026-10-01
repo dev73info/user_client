@@ -4,8 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 // 顶部读数条的刷新按钮与卡片头的图标都要显式 import：
 // 模板里直接写 <Refresh /> / <Plus /> 而没 import 时，Vue 会把它们当未知元素渲染成空的
 // <refresh> / <plus>，按钮还在、图标空白，与其余菜单页的按钮不是一个样子。
-import { EditPen, Plus, Refresh } from '@element-plus/icons-vue'
-import { TButton, TForm, TFormItem, TIcon, TInput } from 'ui_73info'
+import { TButton, TForm, TFormItem, TIcon, TInput, TLoading, EditPen, Plus, Refresh } from 'ui_73info'
 
 import {
   getTeamDetail,
@@ -264,7 +263,7 @@ onMounted(() => {
   <div class="dev-page dev-team-detail">
     <!-- 顶部读数条：与其余菜单页同一条形态（读数在左、刷新在右）。
          这一页原来直接从一块裸的 hero 区块开始，没有读数横条，切菜单时整页骨架都换了。 -->
-    <div class="dev-meta-strip" v-loading="loading">
+    <TLoading tag="div" class="dev-meta-strip" :loading="loading">
       <div class="dev-meta-strip__item">
         <span class="dev-meta-strip__label">团队成员</span>
         <span class="dev-meta-strip__value">{{ team?.members.length ?? 0 }}</span>
@@ -284,7 +283,7 @@ onMounted(() => {
           <TIcon><Refresh /></TIcon>
         </TButton>
       </div>
-    </div>
+    </TLoading>
 
     <p v-if="loading" class="dev-empty-state">团队加载中…</p>
     <p v-else-if="!team" class="dev-empty-state">团队不存在，或你已不在该团队中</p>
@@ -301,19 +300,31 @@ onMounted(() => {
             </p>
           </div>
           <div class="dev-card-head__actions">
-            <button v-if="isOwner && !editingName" type="button" class="dev-btn dev-btn--ghost"
-              @click="startEdit">
+            <button
+              v-if="isOwner && !editingName"
+              type="button"
+              class="dev-btn dev-btn--ghost"
+              @click="startEdit"
+            >
               <TIcon>
                 <EditPen />
               </TIcon>
               <span>编辑资料</span>
             </button>
-            <button v-if="isOwner && !editingName" type="button" class="dev-btn dev-btn--danger"
-              @click="handleDelete">
+            <button
+              v-if="isOwner && !editingName"
+              type="button"
+              class="dev-btn dev-btn--danger"
+              @click="handleDelete"
+            >
               解散团队
             </button>
-            <button v-else-if="myRole && myRole.role !== 'owner' && !editingName" type="button"
-              class="dev-btn dev-btn--danger" @click="handleLeave">
+            <button
+              v-else-if="myRole && myRole.role !== 'owner' && !editingName"
+              type="button"
+              class="dev-btn dev-btn--danger"
+              @click="handleLeave"
+            >
               退出团队
             </button>
           </div>
@@ -323,10 +334,20 @@ onMounted(() => {
           <div class="dev-team-detail__avatar">
             <img v-if="team.avatar_url" :src="apiUrl(team.avatar_url)" :alt="team.name" />
             <span v-else>{{ team.name.charAt(0).toUpperCase() }}</span>
-            <input ref="avatarFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif"
-              class="dev-team-detail__avatar-input" @change="handleAvatarFileChange" />
-            <button v-if="canManageTeam" type="button" class="dev-team-detail__avatar-edit"
-              :disabled="avatarUploading" @click="triggerAvatarSelect">
+            <input
+              ref="avatarFileInput"
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              class="dev-team-detail__avatar-input"
+              @change="handleAvatarFileChange"
+            />
+            <button
+              v-if="canManageTeam"
+              type="button"
+              class="dev-team-detail__avatar-edit"
+              :disabled="avatarUploading"
+              @click="triggerAvatarSelect"
+            >
               {{ avatarUploading ? '上传中...' : '更换头像' }}
             </button>
           </div>
@@ -336,11 +357,22 @@ onMounted(() => {
               <TInput v-model="editForm.name" :maxlength="64" placeholder="输入团队名称" />
             </TFormItem>
             <TFormItem label="团队简介">
-              <TInput v-model="editForm.description" type="textarea" :rows="3" :maxlength="200"
-                show-count placeholder="简单描述团队的目的（可选）" />
+              <TInput
+                v-model="editForm.description"
+                type="textarea"
+                :rows="3"
+                :maxlength="200"
+                show-count
+                placeholder="简单描述团队的目的（可选）"
+              />
             </TFormItem>
             <div class="dev-team-detail__form-actions">
-              <button type="button" class="dev-btn dev-btn--primary" :disabled="saving" @click="saveEdit">
+              <button
+                type="button"
+                class="dev-btn dev-btn--primary"
+                :disabled="saving"
+                @click="saveEdit"
+              >
                 {{ saving ? '保存中...' : '保存' }}
               </button>
               <button type="button" class="dev-btn dev-btn--ghost" @click="editingName = false">
@@ -358,8 +390,12 @@ onMounted(() => {
             <h3 class="dev-section-title">成员</h3>
           </div>
           <div class="dev-card-head__actions">
-            <button v-if="isAdmin && !showInviteInput" type="button" class="dev-btn dev-btn--primary"
-              @click="showInviteInput = true">
+            <button
+              v-if="isAdmin && !showInviteInput"
+              type="button"
+              class="dev-btn dev-btn--primary"
+              @click="showInviteInput = true"
+            >
               <TIcon>
                 <Plus />
               </TIcon>
@@ -369,8 +405,14 @@ onMounted(() => {
         </div>
 
         <div v-if="showInviteInput" class="dev-toolbar dev-team-detail__invite">
-          <TInput v-model="inviteUsername" class="dev-toolbar__search" :maxlength="64"
-            placeholder="输入用户名" aria-label="要邀请的用户名" @enter="handleInvite" />
+          <TInput
+            v-model="inviteUsername"
+            class="dev-toolbar__search"
+            :maxlength="64"
+            placeholder="输入用户名"
+            aria-label="要邀请的用户名"
+            @enter="handleInvite"
+          />
           <div class="dev-toolbar__actions">
             <TButton variant="solid" tone="accent" :loading="inviting" @click="handleInvite">
               发送邀请
@@ -382,15 +424,27 @@ onMounted(() => {
         <ul class="dev-stack-list">
           <li v-for="member in team.members" :key="member.username" class="dev-stack-item">
             <div class="dev-team-detail__member-main">
-              <span class="dev-team-detail__member-avatar" role="button" tabindex="0"
-                :aria-label="`查看 ${member.username} 的主页`" @click="goMemberProfile(member.username)"
-                @keydown.enter="goMemberProfile(member.username)">
-                <img v-if="member.avatar_url" :src="apiUrl(member.avatar_url)" :alt="member.username" />
+              <span
+                class="dev-team-detail__member-avatar"
+                role="button"
+                tabindex="0"
+                :aria-label="`查看 ${member.username} 的主页`"
+                @click="goMemberProfile(member.username)"
+                @keydown.enter="goMemberProfile(member.username)"
+              >
+                <img
+                  v-if="member.avatar_url"
+                  :src="apiUrl(member.avatar_url)"
+                  :alt="member.username"
+                />
                 <span v-else>{{ member.username.charAt(0).toUpperCase() }}</span>
               </span>
               <div class="dev-team-detail__member-body">
-                <button type="button" class="dev-team-detail__member-name"
-                  @click="goMemberProfile(member.username)">
+                <button
+                  type="button"
+                  class="dev-team-detail__member-name"
+                  @click="goMemberProfile(member.username)"
+                >
                   {{ member.username }}
                 </button>
                 <div class="dev-stack-item__meta">{{ roleLabel(member.role) }}</div>
@@ -398,14 +452,26 @@ onMounted(() => {
             </div>
 
             <div v-if="isOwner && member.role !== 'owner'" class="dev-team-detail__member-actions">
-              <button type="button" class="dev-btn dev-btn--ghost" @click="handleTransferOwner(member)">
+              <button
+                type="button"
+                class="dev-btn dev-btn--ghost"
+                @click="handleTransferOwner(member)"
+              >
                 设为所有者
               </button>
-              <button type="button" class="dev-btn dev-btn--ghost" @click="handleRoleToggle(member)">
+              <button
+                type="button"
+                class="dev-btn dev-btn--ghost"
+                @click="handleRoleToggle(member)"
+              >
                 {{ member.role === 'admin' ? '降为成员' : '升为管理' }}
               </button>
-              <button type="button" class="dev-btn dev-btn--danger"
-                :disabled="removingUsername === member.username" @click="handleRemove(member)">
+              <button
+                type="button"
+                class="dev-btn dev-btn--danger"
+                :disabled="removingUsername === member.username"
+                @click="handleRemove(member)"
+              >
                 {{ removingUsername === member.username ? '移除中...' : '移除' }}
               </button>
             </div>

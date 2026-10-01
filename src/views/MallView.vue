@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 
 import {
   listMallProducts,
@@ -14,6 +13,8 @@ import { getMyPoints } from '@/api/points'
 import { HttpError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 
+
+import { TButton, TEmpty, TMessage, TTable, TTableColumn, TTag } from 'ui_73info'
 const router = useRouter()
 const auth = useAuthStore()
 
@@ -74,7 +75,7 @@ async function loadAll() {
     products.value = prods
     orders.value = ords
   } catch (err) {
-    ElMessage.error(err instanceof HttpError ? err.message : '加载积分商城失败')
+    TMessage.error(err instanceof HttpError ? err.message : '加载积分商城失败')
   } finally {
     loading.value = false
   }
@@ -82,7 +83,7 @@ async function loadAll() {
 
 async function redeem(product: PointsProduct) {
   if (isOwned(product)) {
-    ElMessage.info('你已永久拥有该权益，无需重复兑换')
+    TMessage.info('你已永久拥有该权益，无需重复兑换')
     return
   }
 
@@ -92,11 +93,11 @@ async function redeem(product: PointsProduct) {
   redeemingId.value = product.id
   try {
     await redeemMallProduct(auth.token, product.id)
-    ElMessage.success('兑换成功')
+    TMessage.success('兑换成功')
     await loadAll()
   } catch (err) {
     const message = err instanceof HttpError ? err.message : ''
-    ElMessage.error(message === 'you already own this perk' ? '你已永久拥有该权益，无需重复兑换' : message || '兑换失败')
+    TMessage.error(message === 'you already own this perk' ? '你已永久拥有该权益，无需重复兑换' : message || '兑换失败')
   } finally {
     redeemingId.value = null
   }
@@ -135,30 +136,30 @@ onMounted(async () => {
             </div>
             <h4>{{ product.name }}</h4>
             <p class="mall-card__duration">有效期：{{ durationLabel(product.duration_days) }} · 库存：{{ product.stock }}</p>
-            <el-button type="primary" :disabled="isOwned(product) || balance < product.points_cost || product.stock <= 0"
+            <TButton variant="solid" tone="accent" :disabled="isOwned(product) || balance < product.points_cost || product.stock <= 0"
               :loading="redeemingId === product.id" style="width: 100%" @click="redeem(product)">
               {{ isOwned(product) ? '已拥有' : product.stock <= 0 ? '已售罄' : balance < product.points_cost ? '积分不足' : '立即兑换' }}
-            </el-button>
+            </TButton>
           </div>
         </div>
       </div>
-      <el-empty v-else-if="!loading" description="商城暂无可兑换内容" />
+      <TEmpty v-else-if="!loading" description="商城暂无可兑换内容" />
     </div>
 
     <div class="mall-orders">
       <h3>我的兑换</h3>
-      <el-table v-if="orders.length" :data="orders" stripe>
-        <el-table-column prop="product_name" label="商品" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="points_cost" label="积分" width="90" align="center" />
-        <el-table-column label="状态" width="100" align="center">
+      <TTable v-if="orders.length" :data="orders" stripe>
+        <TTableColumn prop="product_name" label="商品" min-width="180" show-overflow-tooltip />
+        <TTableColumn prop="points_cost" label="积分" width="90" align="center" />
+        <TTableColumn label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="orderStatusTagType(row.status)" size="small">{{ orderStatusLabel(row.status) }}</el-tag>
+            <TTag :tone="orderStatusTagType(row.status)" size="sm">{{ orderStatusLabel(row.status) }}</TTag>
           </template>
-        </el-table-column>
-        <el-table-column prop="handle_note" label="备注" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="created_at" label="时间" width="180" />
-      </el-table>
-      <el-empty v-else-if="!loading" description="暂无兑换记录" />
+        </TTableColumn>
+        <TTableColumn prop="handle_note" label="备注" min-width="140" show-overflow-tooltip />
+        <TTableColumn prop="created_at" label="时间" width="180" />
+      </TTable>
+      <TEmpty v-else-if="!loading" description="暂无兑换记录" />
     </div>
   </div>
 </template>

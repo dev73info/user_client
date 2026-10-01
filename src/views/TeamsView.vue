@@ -5,8 +5,6 @@ import { useRouter } from 'vue-router'
 // 团队卡的默认头像（<UserFilled />）以及工具条里的搜索/重置。
 // 模板里写了标签却没 import 时，Vue 会把它当未知元素渲染成空标签——按钮和头像框都在、里面是空的，
 // 与其余菜单页同一颗图标不是一个样子。
-import { Plus, Refresh, RefreshLeft, Search, UserFilled } from '@element-plus/icons-vue'
-
 import {
   acceptInvitation,
   createTeam,
@@ -21,6 +19,24 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { apiUrl } from '@/api/http'
+
+
+import {
+  TButton,
+  TCard,
+  TDialog,
+  TForm,
+  TFormItem,
+  TIcon,
+  TInput,
+  TOption,
+  TSelect,
+  Plus,
+  Refresh,
+  RefreshLeft,
+  Search,
+  UserFilled,
+} from 'ui_73info'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -250,12 +266,12 @@ onMounted(() => {
         <span class="dev-meta-strip__value">{{ invitations.length }}</span>
       </div>
       <div class="dev-meta-strip__item dev-meta-strip__action">
-        <el-button class="dev-toolbar__icon-btn" aria-label="刷新团队与邀请" :loading="loading || invitationsLoading"
+        <TButton icon-only aria-label="刷新团队与邀请" :loading="loading || invitationsLoading"
           @click="reloadAll">
-          <el-icon>
+          <TIcon>
             <Refresh />
-          </el-icon>
-        </el-button>
+          </TIcon>
+        </TButton>
       </div>
     </div>
 
@@ -289,16 +305,16 @@ onMounted(() => {
       </ul>
     </section>
 
-    <el-card shadow="never" class="dev-surface-card">
+    <TCard class="dev-surface-card">
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
           <h3 class="dev-section-title">我的团队</h3>
         </div>
         <div class="dev-card-head__actions">
           <button class="dev-btn dev-btn--primary" type="button" @click="showCreateModal = true">
-            <el-icon>
+            <TIcon>
               <Plus />
-            </el-icon>
+            </TIcon>
             <span>创建团队</span>
           </button>
         </div>
@@ -307,30 +323,30 @@ onMounted(() => {
       <!-- 列表工具条：与其余菜单页同一条（筛选项 + 搜索 + 重置都在同一行，
            筛选即时生效，所以不另给「查询」按钮）。 -->
       <div class="dev-toolbar">
-        <el-select v-model="filters.scope" clearable placeholder="团队归属" class="dev-toolbar__field"
+        <TSelect v-model="filters.scope" clearable placeholder="团队归属" class="dev-toolbar__field"
           aria-label="按团队归属筛选">
-          <el-option label="我创建的" value="owned" />
-          <el-option label="我加入的" value="joined" />
-        </el-select>
+          <TOption label="我创建的" value="owned" />
+          <TOption label="我加入的" value="joined" />
+        </TSelect>
 
-        <el-input v-model="filters.keyword" clearable placeholder="搜索团队名称或简介" class="dev-toolbar__search">
+        <TInput v-model="filters.keyword" clearable placeholder="搜索团队名称或简介" class="dev-toolbar__search">
           <template #prefix>
-            <el-icon>
+            <TIcon>
               <Search />
-            </el-icon>
+            </TIcon>
           </template>
-        </el-input>
+        </TInput>
 
         <div class="dev-toolbar__actions">
           <span v-if="hasActiveFilters" class="dev-toolbar__hint">
             筛选出 {{ filteredTeams.length }} / {{ teams.length }} 个
           </span>
-          <el-button class="dev-toolbar__ghost" @click="resetFilters">
-            <el-icon>
+          <TButton variant="outline" @click="resetFilters">
+            <TIcon>
               <RefreshLeft />
-            </el-icon>
+            </TIcon>
             <span>重置</span>
-          </el-button>
+          </TButton>
         </div>
       </div>
 
@@ -350,9 +366,9 @@ onMounted(() => {
           <div class="dev-teams__card-main">
             <span class="dev-teams__avatar">
               <img v-if="team.avatar_url" :src="apiUrl(team.avatar_url)" :alt="team.name" />
-              <el-icon v-else>
+              <TIcon v-else>
                 <UserFilled />
-              </el-icon>
+              </TIcon>
             </span>
             <div class="dev-teams__card-body">
               <div class="dev-stack-item__title">{{ team.name }}</div>
@@ -375,32 +391,32 @@ onMounted(() => {
           </div>
         </article>
       </div>
-    </el-card>
+    </TCard>
 
-    <el-dialog v-model="showCreateModal" title="创建团队" width="520px" align-center class="dev-dialog"
-      :close-on-click-modal="!creating">
-      <el-form label-position="top">
-        <el-form-item label="团队名称" required>
-          <el-input v-model="createName" maxlength="64" placeholder="输入团队名称"
+    <TDialog v-model:open="showCreateModal" title="创建团队" width="520px" class="dev-dialog"
+      :mask-closable="!creating">
+      <TForm label-position="top">
+        <TFormItem label="团队名称" required>
+          <TInput v-model="createName"  :maxlength="64" placeholder="输入团队名称"
             @keyup.enter="handleCreate" />
-        </el-form-item>
-        <el-form-item label="团队简介">
-          <el-input v-model="createDesc" type="textarea" :rows="3" maxlength="200" show-word-limit
+        </TFormItem>
+        <TFormItem label="团队简介">
+          <TInput show-count v-model="createDesc" type="textarea" :rows="3"  :maxlength="200"
             placeholder="简单描述团队的目的（可选）" />
-        </el-form-item>
-      </el-form>
+        </TFormItem>
+      </TForm>
       <template #footer>
-        <el-button :disabled="creating" @click="showCreateModal = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="handleCreate">创建</el-button>
+        <TButton :disabled="creating" @click="showCreateModal = false">取消</TButton>
+        <TButton variant="solid" tone="accent" :loading="creating" @click="handleCreate">创建</TButton>
       </template>
-    </el-dialog>
+    </TDialog>
   </div>
 </template>
 
 <style scoped>
 /* 本页原先自带一套视觉（渐变主按钮 #2563eb→#4f8cff、22px 圆角、手写弹窗与 #e5e7eb 描边），
    与开发者工作台其余菜单页不是一个体系。现在改为统一层：顶部信息条 .dev-meta-strip、
-   卡片头 .dev-card-head、列表项 .dev-stack-item、按钮 .dev-btn*、弹窗 el-dialog。
+   卡片头 .dev-card-head、列表项 .dev-stack-item、按钮 .dev-btn*、弹窗 TDialog。
    这里只保留本页特有的排版。 */
 .dev-teams__item-actions {
   display: flex;

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { ElOption, ElSelect } from 'element-plus'
+import { TOption, TSelect } from 'ui_73info'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import type { AfterSalesCase, AfterSalesCaseDetail, AfterSalesCaseList } from '@/api/afterSales'
 
@@ -290,8 +290,8 @@ describe('售后弹窗的返工中状态', () => {
   })
 })
 
-/** 诉求类型下拉（Element Plus 的选择器），四类诉求的取值与后端 `kind` 一致。 */
-const kindSelect = () => wrapper!.findComponent(ElSelect)
+/** 诉求类型下拉（ui_73info 的选择器），四类诉求的取值与后端 `kind` 一致。 */
+const kindSelect = () => wrapper!.findComponent(TSelect)
 
 /** 诉求额度输入框：文案（label）与提示（placeholder）都跟着诉求类型走。 */
 const amountInput = () => wrapper!.find('input[type="number"]')
@@ -317,7 +317,7 @@ describe('售后弹窗的诉求额度', () => {
     expect(kindSelect().exists()).toBe(true)
 
     const labels = kindSelect()
-      .findAllComponents(ElOption)
+      .findAllComponents(TOption)
       .map((option) => option.props('label'))
     expect(labels).toEqual(['要求退款', '要求赔偿', '要求返工', '其它问题'])
   })

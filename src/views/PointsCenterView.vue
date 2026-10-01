@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElConfigProvider } from 'element-plus'
-import { Promotion, Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
-import zhCn from 'element-plus/es/locale/lang/zh-cn.mjs'
-
 import {
   getMyPoints,
   transferPoints,
@@ -18,6 +14,23 @@ import { HttpError } from '@/api/http'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+
+
+import {
+  TButton,
+  TDialog,
+  TIcon,
+  TInput,
+  TInputNumber,
+  TOption,
+  TPagination,
+  TSelect,
+  type SelectModelValue,
+  Promotion,
+  Refresh,
+  RefreshLeft,
+  Search,
+} from 'ui_73info'
 
 /* 「我的背包 → 积分中心」：余额读数、积分记录（打赏记录 / 积分明细两段切换）、积分打赏弹窗。
    权益（佩戴与用户名颜色）已拆到「权益中心」、券包已拆到「优惠券中心」、评论警告已移到「系统通知」，
@@ -175,7 +188,10 @@ function handleLogPageChange(page: number) {
   void loadPoints(page, logPageSize.value)
 }
 
-function handleLogPageSizeChange(pageSize: number) {
+/* `TSelect` 的 `change` 是宽联合（单选一个值、多选一个数组），这里只需单值，
+   所以收紧一次再写回。下面几处 `@change` 同理。 */
+function handleLogPageSizeChange(value: SelectModelValue) {
+  const pageSize = Number(value)
   logPage.value = 1
   logPageSize.value = pageSize
   void loadPoints(1, pageSize)
@@ -252,8 +268,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <ElConfigProvider :locale="zhCn">
-    <main class="page-shell custom-page-shell profile-page points-page" :aria-busy="loading">
+  <main class="page-shell custom-page-shell profile-page points-page" :aria-busy="loading">
       <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
       <div class="wb-strip" aria-label="积分概览">
         <div class="wb-strip__item">
@@ -271,10 +286,10 @@ onMounted(async () => {
           <span class="wb-strip__value">{{ loading ? '—' : logTotal }}</span>
         </div>
         <div class="wb-strip__item wb-strip__action">
-          <el-button class="wb-toolbar__icon-btn" :loading="refreshing" aria-label="刷新积分数据"
+          <TButton icon-only :loading="refreshing" aria-label="刷新积分数据"
             @click="refreshOverview">
-            <el-icon><Refresh /></el-icon>
-          </el-button>
+            <TIcon><Refresh /></TIcon>
+          </TButton>
         </div>
       </div>
 
@@ -286,9 +301,9 @@ onMounted(async () => {
             <h3 class="wb-card-head__title">积分记录</h3>
           </div>
           <div class="wb-card-head__actions">
-            <el-button class="wb-toolbar__primary" @click="transferDialogVisible = true">
-              <el-icon><Promotion /></el-icon><span>积分打赏</span>
-            </el-button>
+            <TButton variant="solid" tone="accent" @click="transferDialogVisible = true">
+              <TIcon><Promotion /></TIcon><span>积分打赏</span>
+            </TButton>
           </div>
         </div>
 
@@ -314,17 +329,17 @@ onMounted(async () => {
                 {{ scope.label }}<span class="wb-chip__count">{{ scope.count }}</span>
               </button>
             </div>
-            <el-input v-model="transferKeyword" class="wb-toolbar__search" clearable placeholder="搜索用户名或附言"
+            <TInput v-model="transferKeyword" class="wb-toolbar__search" clearable placeholder="搜索用户名或附言"
               aria-label="搜索打赏记录">
-              <template #prefix><el-icon><Search /></el-icon></template>
-            </el-input>
+              <template #prefix><TIcon><Search /></TIcon></template>
+            </TInput>
             <div class="wb-toolbar__actions">
               <span v-if="transferFiltersActive" class="wb-toolbar__hint">
                 筛选出 {{ transferTotal }} / {{ transfers.length }} 条
               </span>
-              <el-button v-if="transferFiltersActive" class="wb-toolbar__ghost" @click="resetTransferFilters">
-                <el-icon><RefreshLeft /></el-icon><span>重置</span>
-              </el-button>
+              <TButton variant="outline" v-if="transferFiltersActive" @click="resetTransferFilters">
+                <TIcon><RefreshLeft /></TIcon><span>重置</span>
+              </TButton>
             </div>
           </template>
         </div>
@@ -360,12 +375,12 @@ onMounted(async () => {
               <div class="wb-pager">
                 <div class="wb-pager__count">
                   <span>共 {{ transferTotal }} 条记录</span>
-                  <el-select v-model="transferPageSize" class="wb-pager__size" aria-label="每页打赏记录数">
-                    <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-                  </el-select>
+                  <TSelect v-model="transferPageSize" class="wb-pager__size" aria-label="每页打赏记录数">
+                    <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+                  </TSelect>
                 </div>
-                <el-pagination v-model:current-page="transferPage" :page-size="transferPageSize"
-                  :total="transferTotal" :pager-count="5" layout="prev, pager, next" background
+                <TPagination v-model:current-page="transferPage" :page-size="transferPageSize"
+                  :total="transferTotal" :pager-count="5" background
                   aria-label="打赏记录分页" />
               </div>
             </template>
@@ -376,9 +391,9 @@ onMounted(async () => {
             <div v-else-if="error" class="wb-empty" role="alert">
               <span class="wb-empty__title">加载积分明细失败</span>{{ error }}
               <div class="wb-empty__actions">
-                <el-button class="wb-toolbar__ghost" @click="loadPoints()">
-                  <el-icon><Refresh /></el-icon><span>重新加载</span>
-                </el-button>
+                <TButton variant="outline" @click="loadPoints()">
+                  <TIcon><Refresh /></TIcon><span>重新加载</span>
+                </TButton>
               </div>
             </div>
             <p v-else-if="!logs.length" class="wb-empty" role="status">
@@ -401,13 +416,13 @@ onMounted(async () => {
               <div class="wb-pager">
                 <div class="wb-pager__count">
                   <span>共 {{ logTotal }} 条明细</span>
-                  <el-select :model-value="logPageSize" class="wb-pager__size" aria-label="每页明细数"
+                  <TSelect :model-value="logPageSize" class="wb-pager__size" aria-label="每页明细数"
                     @change="handleLogPageSizeChange">
-                    <el-option v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-                  </el-select>
+                    <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+                  </TSelect>
                 </div>
-                <el-pagination :current-page="logPage" :page-size="logPageSize" :total="logTotal"
-                  :pager-count="5" layout="prev, pager, next" background aria-label="积分明细分页"
+                <TPagination :current-page="logPage" :page-size="logPageSize" :total="logTotal"
+                  :pager-count="5" background aria-label="积分明细分页"
                   @current-change="handleLogPageChange" />
               </div>
             </template>
@@ -415,26 +430,25 @@ onMounted(async () => {
         </div>
       </section>
 
-      <!-- 打赏弹窗会被 Element teleport 到 body，落在 .profile-page 之外，
-           必须自己挂统一层的 wb-dialog，否则弹窗里的 Element 主色退回默认蓝。 -->
-      <el-dialog v-model="transferDialogVisible" title="积分打赏" width="520px" align-center
+      <!-- 打赏弹窗会被 TDialog teleport 到 body，落在 .profile-page 之外，
+           必须自己挂统一层的 wb-dialog，否则弹窗里的主色退回库的默认档。 -->
+      <TDialog v-model:open="transferDialogVisible" title="积分打赏" width="520px"
         class="wb-dialog points-transfer-dialog" @closed="resetTransferForm">
         <div class="transfer-form">
-          <el-input v-model="transferTo" placeholder="接收方用户名" clearable aria-label="接收方用户名" />
-          <el-input-number v-model="transferAmount" :min="1" :precision="0" placeholder="打赏金额"
+          <TInput v-model="transferTo" placeholder="接收方用户名" clearable aria-label="接收方用户名" />
+          <TInputNumber v-model="transferAmount" :min="1" :precision="0" placeholder="打赏金额"
             class="transfer-form__amount" aria-label="打赏金额" />
-          <el-input v-model="transferNote" placeholder="附言（可选）" clearable aria-label="打赏附言" />
+          <TInput v-model="transferNote" placeholder="附言（可选）" clearable aria-label="打赏附言" />
           <p v-if="transferAmount && transferAmount > 0" class="transfer-preview">
             接收方到账 <strong>{{ transferReceived }}</strong> 积分 · 手续费 <strong>{{ transferFee }}</strong> 积分
           </p>
         </div>
 
         <template #footer>
-          <el-button class="wb-toolbar__primary" :loading="transferSaving" @click="submitTransfer">打赏</el-button>
+          <TButton variant="solid" tone="accent" :loading="transferSaving" @click="submitTransfer">打赏</TButton>
         </template>
-      </el-dialog>
+      </TDialog>
     </main>
-  </ElConfigProvider>
 </template>
 
 <style scoped>
@@ -446,13 +460,6 @@ onMounted(async () => {
   align-content: start;
 }
 
-/* === 打赏弹窗 ===
-   弹窗圆角并到统一层：Element 默认 4px，与本页 24px 的卡片、10px 的控件都不在同一档。
-   只给这一页的弹窗，不动 .wb-dialog 本身（别的页面也在用它）。 */
-:global(.points-transfer-dialog.el-dialog) {
-  border-radius: var(--wb-radius-item);
-}
-
 /* 表单搬进 520px 宽的弹窗后，两列栅格按弹窗内的可用宽度写：
    第一行接收方占满，第二行金额与附言各半。 */
 .transfer-form {
@@ -462,22 +469,6 @@ onMounted(async () => {
   align-items: start;
 }
 
-/* 表单项与统一层控件同高同圆角：.wb-dialog 只映射了配色与圆角，没给控件高度，
-   不补这一段会出现「36px 的主按钮」配「32px 的输入框」。 */
-.transfer-form :deep(.el-input__wrapper),
-.transfer-form :deep(.el-input-number),
-.transfer-form :deep(.el-select__wrapper) {
-  min-height: var(--wb-control-height);
-  height: var(--wb-control-height);
-  border-radius: var(--wb-radius-control);
-}
-
-/* el-input-number 默认宽 150px，在栅格列里要显式撑满，否则宽度留一半空 */
-.transfer-form__amount {
-  width: 100%;
-}
-
-.transfer-form > .el-input:first-child,
 .transfer-form > .transfer-preview {
   grid-column: 1 / -1;
 }

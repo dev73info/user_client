@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Refresh } from '@element-plus/icons-vue'
 import {
   TButton,
   TIcon,
@@ -12,6 +11,7 @@ import {
   TSwitch,
   type SelectModelValue,
   type SelectValue,
+  Refresh,
 } from 'ui_73info'
 
 import { getMyPoints, setPerkEquipped, type UserPerk } from '@/api/points'

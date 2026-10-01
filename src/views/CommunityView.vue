@@ -1,19 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  ArrowLeft,
-  ArrowRight,
-  ChatDotRound,
-  Close,
-  EditPen,
-  Plus,
-  Refresh,
-  Search,
-  Star,
-  Top,
-} from '@element-plus/icons-vue'
-
 import { HttpError, apiUrl } from '@/api/http'
 import {
   acceptBountyAnswer,
@@ -45,6 +32,31 @@ import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { sanitizeRichHtml, sanitizeRichHtmlForEditing } from '@/utils/sanitizeHtml'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
+
+
+import {
+  TButton,
+  TDropdown,
+  TDropdownItem,
+  TDropdownMenu,
+  TForm,
+  TFormItem,
+  TIcon,
+  TInput,
+  TInputNumber,
+  TOption,
+  TSelect,
+  ArrowLeft,
+  ArrowRight,
+  ChatDotRound,
+  Close,
+  EditPen,
+  Plus,
+  Refresh,
+  Search,
+  Star,
+  Top,
+} from 'ui_73info'
 
 const route = useRoute()
 const router = useRouter()
@@ -247,12 +259,12 @@ function updateFloatingComposerActions() {
 }
 
 function updateScrollTopVisibility() {
-  const scrollWrap = document.querySelector<HTMLElement>('.app-scrollbar .el-scrollbar__wrap')
+  const scrollWrap = document.querySelector<HTMLElement>('.app-scrollbar .t73-scrollbar__wrap')
   showScrollTop.value = Boolean(scrollWrap && scrollWrap.scrollTop > 240)
 }
 
 function scrollToTop() {
-  const scrollWrap = document.querySelector<HTMLElement>('.app-scrollbar .el-scrollbar__wrap')
+  const scrollWrap = document.querySelector<HTMLElement>('.app-scrollbar .t73-scrollbar__wrap')
   if (scrollWrap) {
     scrollWrap.scrollTo({ top: 0, behavior: 'smooth' })
     return
@@ -1106,16 +1118,16 @@ async function toggleCommentLike(comment: CommunityComment) {
           <div class="community-hero__actions">
             <button class="community-hero__button community-hero__button--ghost" type="button" :disabled="loading"
               @click="loadCommunityData">
-              <el-icon :class="{ 'is-spinning': loading }">
+              <TIcon :class="{ 'is-spinning': loading }">
                 <Refresh />
-              </el-icon>
+              </TIcon>
               <span>{{ loading ? '刷新中' : '刷新' }}</span>
             </button>
             <button class="community-hero__button community-hero__button--primary" type="button"
               @click="openCreateComposer">
-              <el-icon>
+              <TIcon>
                 <Plus />
-              </el-icon>
+              </TIcon>
               <span>发布帖子</span>
             </button>
           </div>
@@ -1123,22 +1135,22 @@ async function toggleCommentLike(comment: CommunityComment) {
 
         <form class="community-search-bar" @submit.prevent="applySearch">
           <div class="community-search-field">
-            <el-icon>
+            <TIcon>
               <Search />
-            </el-icon>
+            </TIcon>
             <input v-model="searchDraft" type="text" inputmode="search" enterkeyhint="search" aria-label="搜索社区帖子"
               placeholder="搜索标题、作者、正文或标签" />
             <button v-if="searchDraft || searchKeyword" class="community-search-clear" type="button" aria-label="清空搜索"
               @click="clearSearch">
-              <el-icon>
+              <TIcon>
                 <Close />
-              </el-icon>
+              </TIcon>
             </button>
           </div>
           <button class="community-search-submit" type="submit" :disabled="loading">
-            <el-icon>
+            <TIcon>
               <Search />
-            </el-icon>
+            </TIcon>
             <span>搜索</span>
           </button>
         </form>
@@ -1190,17 +1202,17 @@ async function toggleCommentLike(comment: CommunityComment) {
 
         <div v-if="!loading && (posts.length > 0 || currentPage > 1)" class="community-pagination">
           <button class="community-page-button" type="button" :disabled="currentPage <= 1" @click="goToPreviousPage">
-            <el-icon>
+            <TIcon>
               <ArrowLeft />
-            </el-icon>
+            </TIcon>
             <span>上一页</span>
           </button>
           <span class="community-page-status">{{ pageStatus }}</span>
           <button class="community-page-button" type="button" :disabled="!hasNextPage" @click="goToNextPage">
             <span>下一页</span>
-            <el-icon>
+            <TIcon>
               <ArrowRight />
-            </el-icon>
+            </TIcon>
           </button>
         </div>
       </section>
@@ -1211,52 +1223,52 @@ async function toggleCommentLike(comment: CommunityComment) {
             <div>
               <h3>{{ editingPost ? '更新社区内容' : '写一篇新帖子' }}</h3>
             </div>
-            <el-button class="community-panel-action" plain @click="closeComposer">
+            <TButton variant="outline" class="community-panel-action" @click="closeComposer">
               <span>取消</span>
-            </el-button>
+            </TButton>
           </div>
 
-          <el-form label-position="top" class="community-form">
-            <el-form-item label="标题" class="community-form-item--full">
-              <el-input v-model="postForm.title" maxlength="80" show-word-limit placeholder="写一个清楚的标题" />
-            </el-form-item>
-            <el-form-item label="标签">
-              <el-select v-model="postForm.tag_names" multiple filterable allow-create default-first-option
+          <TForm label-position="top" class="community-form">
+            <TFormItem label="标题" class="community-form-item--full">
+              <TInput show-count v-model="postForm.title"  :maxlength="80" placeholder="写一个清楚的标题" />
+            </TFormItem>
+            <TFormItem label="标签">
+              <TSelect v-model="postForm.tag_names" multiple filterable
                 placeholder="选择或输入标签">
-                <el-option v-for="tag in tagOptions" :key="tag" :label="tag" :value="tag" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="类型">
-              <el-select v-model="postForm.origin_type" style="width: 160px">
-                <el-option label="原创" value="original" />
-                <el-option label="转载" value="repost" />
-              </el-select>
-            </el-form-item>
-            <el-form-item v-if="!editingPost" label="悬赏积分" class="community-form-item--full">
+                <TOption v-for="tag in tagOptions" :key="tag" :label="tag" :value="tag" />
+              </TSelect>
+            </TFormItem>
+            <TFormItem label="类型">
+              <TSelect v-model="postForm.origin_type" style="width: 160px">
+                <TOption label="原创" value="original" />
+                <TOption label="转载" value="repost" />
+              </TSelect>
+            </TFormItem>
+            <TFormItem v-if="!editingPost" label="悬赏积分" class="community-form-item--full">
               <div class="community-bounty-field">
-                <el-input-number v-model="postForm.bounty_points" :min="0" :max="10000" :step="10"
+                <TInputNumber v-model="postForm.bounty_points" :min="0" :max="10000" :step="10"
                   :precision="0" />
                 <span class="community-bounty-field__unit">积分</span>
               </div>
               <div class="community-form__hint">
                 设置悬赏后，被采纳的回答可获得对应积分；发布时扣除，未采纳可取消退回。
               </div>
-            </el-form-item>
+            </TFormItem>
             <template v-if="postForm.origin_type === 'repost'">
-              <el-form-item label="原作者">
-                <el-input v-model="postForm.origin_author" maxlength="80" placeholder="原始内容的作者" />
-              </el-form-item>
-              <el-form-item label="原始出处链接" required>
-                <el-input v-model="postForm.origin_url" maxlength="500" placeholder="转载内容的原始出处 URL" />
-              </el-form-item>
-              <el-form-item label="来源站点">
-                <el-input v-model="postForm.origin_org" maxlength="80" placeholder="例如：苦力怕论坛、CurseForge" />
-              </el-form-item>
-              <el-form-item label="转载说明 / 授权">
-                <el-input v-model="postForm.origin_note" maxlength="500" placeholder="授权情况、转载说明等（可选）" />
-              </el-form-item>
+              <TFormItem label="原作者">
+                <TInput v-model="postForm.origin_author"  :maxlength="80" placeholder="原始内容的作者" />
+              </TFormItem>
+              <TFormItem label="原始出处链接" required>
+                <TInput v-model="postForm.origin_url"  :maxlength="500" placeholder="转载内容的原始出处 URL" />
+              </TFormItem>
+              <TFormItem label="来源站点">
+                <TInput v-model="postForm.origin_org"  :maxlength="80" placeholder="例如：苦力怕论坛、CurseForge" />
+              </TFormItem>
+              <TFormItem label="转载说明 / 授权">
+                <TInput v-model="postForm.origin_note"  :maxlength="500" placeholder="授权情况、转载说明等（可选）" />
+              </TFormItem>
             </template>
-          </el-form>
+          </TForm>
 
           <RichTextEditor v-model="postForm.content_html" :floating-toolbar-top="86" @notify="showToast" />
 
@@ -1264,10 +1276,10 @@ async function toggleCommentLike(comment: CommunityComment) {
             :style="composerActionsShellStyle">
             <div ref="composerActionsRef" class="community-composer__actions"
               :class="{ 'is-floating': composerActionsFloating }" :style="composerActionsFloatingStyle">
-              <el-button class="community-submit-button community-composer__actions" type="primary"
+              <TButton variant="solid" tone="accent" class="community-submit-button community-composer__actions"
                 :loading="savingPost" @click="submitPost">
                 {{ editingPost ? '保存修改' : '发布帖子' }}
-              </el-button>
+              </TButton>
             </div>
           </div>
         </section>
@@ -1290,13 +1302,13 @@ async function toggleCommentLike(comment: CommunityComment) {
                     <span v-if="activeBoostLabels.length" class="community-boost-badge">{{ activeBoostLabels.join(' · ') }}</span>
                   </h2>
                 </div>
-                <el-button v-if="canEditSelectedPost" class="community-panel-action" plain
+                <TButton variant="outline" v-if="canEditSelectedPost" class="community-panel-action"
                   @click="openEditComposer(selectedPost)">
-                  <el-icon>
+                  <TIcon>
                     <EditPen />
-                  </el-icon>
+                  </TIcon>
                   <span>编辑</span>
-                </el-button>
+                </TButton>
               </div>
               <div class="community-detail__meta">
                 <div class="community-detail__author">
@@ -1323,49 +1335,50 @@ async function toggleCommentLike(comment: CommunityComment) {
           </article>
 
           <div class="community-actions">
-            <el-button class="community-like-button" :class="{ 'is-liked': selectedPost.liked_by_me }"
-              :type="selectedPost.liked_by_me ? 'primary' : 'default'" :disabled="!selectedPostPublished"
+            <TButton class="community-like-button" :class="{ 'is-liked': selectedPost.liked_by_me }"
+              :tone="selectedPost.liked_by_me ? 'accent' : 'neutral'" :disabled="!selectedPostPublished"
               @click="toggleLike(selectedPost)">
-              <el-icon>
+              <TIcon>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
                     stroke-width="2"
                     d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3m0 11V10l4-8a3 3 0 0 1 3 3v4h5.4a2 2 0 0 1 2 2.3l-1.2 8A2 2 0 0 1 18.2 21H7Z" />
                 </svg>
-              </el-icon>
+              </TIcon>
               <span>{{ selectedPost.liked_by_me ? '已点赞' : '点赞' }}</span>
               <strong>{{ selectedPost.like_count }}</strong>
-            </el-button>
-            <el-button class="community-favorite-button" :class="{ 'is-favorited': selectedPost.favorited_by_me }"
-              :type="selectedPost.favorited_by_me ? 'warning' : 'default'"
+            </TButton>
+            <TButton class="community-favorite-button" :class="{ 'is-favorited': selectedPost.favorited_by_me }"
+              :tone="selectedPost.favorited_by_me ? 'warning' : 'neutral'"
               :disabled="!selectedPostPublished || favoriteLoading" @click="toggleFavorite(selectedPost)">
-              <el-icon><Star /></el-icon>
+              <TIcon><Star /></TIcon>
               <span>{{ selectedPost.favorited_by_me ? '已收藏' : '收藏' }}</span>
-            </el-button>
-            <el-button v-if="canCancelBounty" class="community-bounty-cancel-button" type="warning" plain
+            </TButton>
+            <TButton variant="outline" tone="warning" v-if="canCancelBounty" class="community-bounty-cancel-button"
               @click="cancelBountyHandler">
               取消悬赏
-            </el-button>
-            <el-dropdown v-if="canBoostSelectedPost" trigger="click" @command="handleBoost">
-              <el-button class="community-boost-button" type="primary" plain :loading="boostingKind !== null">
-                <el-icon><Top /></el-icon>
+            </TButton>
+            <TDropdown v-if="canBoostSelectedPost" trigger="click"
+              @command="(cmd) => handleBoost(cmd as PostBoostKind)">
+              <TButton variant="outline" tone="accent" class="community-boost-button" :loading="boostingKind !== null">
+                <TIcon><Top /></TIcon>
                 <span>推广</span>
-              </el-button>
+              </TButton>
               <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item v-for="option in BOOST_OPTIONS" :key="option.kind"
+                <TDropdownMenu>
+                  <TDropdownItem v-for="option in BOOST_OPTIONS" :key="option.kind"
                     :command="option.kind" :disabled="boostingKind !== null">
                     {{ option.label }} · {{ option.cost }} 积分
-                  </el-dropdown-item>
-                </el-dropdown-menu>
+                  </TDropdownItem>
+                </TDropdownMenu>
               </template>
-            </el-dropdown>
+            </TDropdown>
             <ShareCardGenerator v-if="auth.isAuthed && selectedPostShareTargetId" share-type="community_post"
               :target-id="selectedPostShareTargetId" />
             <span class="community-action-stat">
-              <el-icon>
+              <TIcon>
                 <ChatDotRound />
-              </el-icon>
+              </TIcon>
               {{ selectedPost.comment_count }} 条评论
             </span>
           </div>
@@ -1383,12 +1396,12 @@ async function toggleCommentLike(comment: CommunityComment) {
               帖子公开后可点赞和评论。
             </div>
             <div v-else-if="!replyingTo" class="community-comment-box">
-              <el-input v-model="commentDraft" type="textarea" :rows="3" maxlength="800" show-word-limit
+              <TInput show-count v-model="commentDraft" type="textarea" :rows="3"  :maxlength="800"
                 placeholder="说点具体的想法或补充" />
-              <el-button class="community-submit-button community-comment-submit" type="primary"
+              <TButton variant="solid" tone="accent" class="community-submit-button community-comment-submit"
                 :loading="sendingComment" @click="submitComment">
                 发表评论
-              </el-button>
+              </TButton>
             </div>
 
             <div v-if="!commentsLoading && comments.length === 0" class="community-empty community-empty--compact">
@@ -1447,12 +1460,11 @@ async function toggleCommentLike(comment: CommunityComment) {
                         取消回复
                       </button>
                     </div>
-                    <el-input v-model="commentDraft" type="textarea" :rows="3" maxlength="800"
-                      show-word-limit :placeholder="`回复 ${comment.commenter}：`" />
-                    <el-button class="community-submit-button community-comment-submit" type="primary"
+                    <TInput show-count v-model="commentDraft" type="textarea" :rows="3"  :maxlength="800" :placeholder="`回复 ${comment.commenter}：`" />
+                    <TButton variant="solid" tone="accent" class="community-submit-button community-comment-submit"
                       :loading="sendingComment" @click="submitComment">
                       发表评论
-                    </el-button>
+                    </TButton>
                   </div>
                 </div>
                 </li>
@@ -1473,9 +1485,9 @@ async function toggleCommentLike(comment: CommunityComment) {
 
     <button v-if="showScrollTop" class="community-scroll-top" type="button" aria-label="回到顶部"
       title="回到顶部" @click="scrollToTop">
-      <el-icon>
+      <TIcon>
         <Top />
-      </el-icon>
+      </TIcon>
     </button>
   </main>
 </template>
@@ -1512,10 +1524,6 @@ async function toggleCommentLike(comment: CommunityComment) {
   background: #eff6ff;
   box-shadow: 0 12px 26px rgba(37, 99, 235, 0.22);
   transform: translateY(-2px);
-}
-
-.community-scroll-top .el-icon {
-  font-size: 18px;
 }
 
 .community-stream,
@@ -1669,10 +1677,6 @@ async function toggleCommentLike(comment: CommunityComment) {
   gap: 8px;
   width: 100%;
 }
-.community-bounty-field .el-input-number {
-  width: 160px;
-  flex: none;
-}
 .community-bounty-field__unit {
   font-size: 13px;
   color: #64748b;
@@ -1685,8 +1689,9 @@ async function toggleCommentLike(comment: CommunityComment) {
   line-height: 1.6;
 }
 .community-comment-item.is-accepted {
-  border-color: var(--el-color-warning) !important;
-  background: var(--el-color-warning-light-9);
+  /* 采纳标记的琥珀色：与下面「已采纳」角标（#b45309 / #fef3c7）同一支色相 */
+  border-color: #e6a23c !important;
+  background: #fdf6ec;
 }
 .community-comment-item__accepted {
   display: inline-flex;
@@ -1807,14 +1812,6 @@ async function toggleCommentLike(comment: CommunityComment) {
 .community-hero__button:disabled {
   cursor: not-allowed;
   opacity: 0.62;
-}
-
-.community-hero__button .el-icon {
-  font-size: 15px;
-}
-
-.community-hero__button .el-icon.is-spinning {
-  animation: community-spin 900ms linear infinite;
 }
 
 @keyframes community-spin {
@@ -2163,72 +2160,6 @@ async function toggleCommentLike(comment: CommunityComment) {
   align-items: flex-start;
 }
 
-.community-panel-action.el-button,
-.community-submit-button.el-button {
-  min-height: 34px;
-  height: 34px;
-  padding: 0 13px;
-  border-radius: 9px;
-  font-weight: 800;
-  line-height: 1;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
-}
-
-.community-panel-action.el-button {
-  border-color: rgba(191, 219, 254, 0.96);
-  background: rgba(248, 250, 252, 0.96);
-  color: #2563eb;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.06);
-}
-
-.community-panel-action.el-button:hover,
-.community-panel-action.el-button:focus-visible {
-  border-color: rgba(37, 99, 235, 0.4);
-  background: rgba(239, 246, 255, 0.98);
-  color: #1d4ed8;
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.1);
-  transform: translateY(-1px);
-}
-
-.community-submit-button.el-button {
-  min-height: 36px;
-  height: 36px;
-  padding: 0 16px;
-  border-color: rgba(37, 99, 235, 0.88);
-  background: #2563eb;
-  color: #fff;
-  box-shadow: 0 9px 20px rgba(37, 99, 235, 0.18);
-}
-
-.community-submit-button.el-button:hover,
-.community-submit-button.el-button:focus-visible {
-  border-color: #1d4ed8;
-  background: #1d4ed8;
-  color: #fff;
-  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
-  transform: translateY(-1px);
-}
-
-.community-submit-button.el-button.is-loading {
-  transform: none;
-}
-
-.community-panel-action.el-button :deep(span),
-.community-submit-button.el-button :deep(span) {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.community-panel-action.el-button :deep(.el-icon) {
-  font-size: 14px;
-}
-
 .community-detail__header h2 {
   margin: 12px 0 8px;
   font-size: clamp(22px, 2vw, 28px);
@@ -2241,22 +2172,8 @@ async function toggleCommentLike(comment: CommunityComment) {
   gap: 0 14px;
 }
 
-.community-form :deep(.el-form-item) {
-  margin-bottom: 14px;
-}
-
 .community-form-item--full {
   grid-column: 1 / -1;
-}
-
-.community-form :deep(.el-form-item__label) {
-  font-size: 13px;
-  font-weight: 600;
-  color: #334155;
-}
-
-.community-form :deep(.el-select) {
-  width: 100%;
 }
 
 .community-composer__actions-shell {
@@ -2364,43 +2281,6 @@ async function toggleCommentLike(comment: CommunityComment) {
   background: rgba(248, 250, 252, 0.72);
 }
 
-.community-like-button.el-button {
-  min-width: 108px;
-  height: 36px;
-  padding: 0 14px;
-  border: 1px solid rgba(37, 99, 235, 0.28);
-  border-radius: 999px;
-  background: #fff;
-  color: #1d4ed8;
-  font-weight: 800;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
-}
-
-.community-like-button.el-button:hover,
-.community-like-button.el-button:focus-visible {
-  border-color: rgba(37, 99, 235, 0.5);
-  background: rgba(239, 246, 255, 0.96);
-  color: #1d4ed8;
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.14);
-}
-
-.community-like-button.el-button.is-liked {
-  border-color: transparent;
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
-  color: #fff;
-  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
-}
-
-.community-like-button.el-button :deep(span) {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.community-like-button :deep(.el-icon) {
-  font-size: 15px;
-}
-
 .community-like-button strong {
   display: inline-grid;
   min-width: 20px;
@@ -2419,27 +2299,6 @@ async function toggleCommentLike(comment: CommunityComment) {
   color: #fff;
 }
 
-.community-favorite-button.el-button {
-  min-height: 36px;
-  border-color: rgba(226, 232, 240, 0.96);
-  border-radius: 999px;
-  background: #fff;
-  color: #475569;
-  font-weight: 800;
-}
-
-.community-favorite-button.el-button:hover,
-.community-favorite-button.el-button:focus-visible,
-.community-favorite-button.el-button.is-favorited {
-  border-color: rgba(245, 158, 11, 0.45);
-  background: #fffbeb;
-  color: #d97706;
-}
-
-.community-favorite-button :deep(.el-icon) {
-  margin-right: 5px;
-}
-
 .community-action-stat {
   display: inline-flex;
   align-items: center;
@@ -2451,11 +2310,6 @@ async function toggleCommentLike(comment: CommunityComment) {
   color: #475569;
   font-size: 13px;
   font-weight: 800;
-}
-
-.community-action-stat .el-icon {
-  color: #2563eb;
-  font-size: 15px;
 }
 
 .community-comments {
@@ -2578,10 +2432,6 @@ async function toggleCommentLike(comment: CommunityComment) {
 
 .community-inline-reply-box .community-comment-submit {
   justify-self: end;
-}
-
-.community-comment-box .el-button {
-  justify-self: flex-end;
 }
 
 .community-comment-list {

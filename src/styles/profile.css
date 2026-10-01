@@ -383,60 +383,6 @@
   color: var(--profile-text-sub);
 }
 
-/* 「更多」菜单的弹层挂在 body 上（el-dropdown 的 popper 会 teleport），
-   所以这份样式必须写在全局样式文件里，scoped 样式够不到。
-   层级不用这里指定：Element Plus 给 popper 打的是行内 z-index（2000 起），
-   已经高于页面顶栏，也低于 modal.css 里弹窗的 3000。 */
-.requirement-action-menu.el-popper {
-  border: 1px solid var(--profile-card-border);
-  border-radius: 12px;
-  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
-}
-
-.requirement-action-menu.el-popper[data-popper-placement^='bottom'] {
-  margin-top: 4px;
-}
-
-.requirement-action-menu.el-popper[data-popper-placement^='top'] {
-  margin-bottom: 4px;
-}
-
-.requirement-action-menu .el-dropdown-menu {
-  min-width: 180px;
-  padding: 6px;
-}
-
-.requirement-action-menu .el-dropdown-menu__item {
-  min-height: 36px;
-  padding: 0 10px;
-  border-radius: 8px;
-  color: var(--profile-text-main);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.requirement-action-menu .el-dropdown-menu__item:not(.is-disabled):focus,
-.requirement-action-menu .el-dropdown-menu__item:not(.is-disabled):hover {
-  background: var(--profile-accent-soft);
-  color: #1d4ed8;
-}
-
-.requirement-action-menu .el-dropdown-menu__item.is-disabled {
-  color: rgba(100, 116, 139, 0.55);
-}
-
-/* 菜单里的危险动作（终止合作 / 取消需求）单独上红字，与普通跳转区分。 */
-.requirement-action-menu .el-dropdown-menu__item.is-danger:not(.is-disabled) {
-  color: var(--profile-danger-text);
-}
-
-.requirement-action-menu .el-dropdown-menu__item.is-danger:not(.is-disabled):focus,
-.requirement-action-menu .el-dropdown-menu__item.is-danger:not(.is-disabled):hover {
-  background: rgba(254, 242, 242, 0.96);
-  color: var(--profile-danger-text);
-}
-
 /* 需求单操作区四层：开关芯片 → 行内常用动作 → 更多菜单 → 唯一主操作。
    action-quiet     只做跳转的（会话），无边框无底色
    action-emphasis  需要看见的次要动作（下载 / 售后），白底蓝字带描边
@@ -564,10 +510,6 @@
 
   .requirement-toggle[aria-pressed='true'] .requirement-toggle__track::after {
     transform: translateX(14px);
-  }
-
-  .requirement-action-menu .el-dropdown-menu__item {
-    min-height: 44px;
   }
 }
 

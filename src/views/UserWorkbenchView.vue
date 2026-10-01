@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowDown, Bell, Box, ChatDotRound, Close, Compass, Connection, DataAnalysis, Files, Grid, Menu as MenuIcon, Service, Suitcase, Switch as SwitchIcon, Tickets, UserFilled, Wallet } from '@element-plus/icons-vue'
-
 import { listRequirementConversations, type RequirementConversation } from '@/api/conversations'
 import { CONVERSATION_READ_EVENT } from '@/shared/conversationEvents'
 import { listMyRequirements } from '@/api/devRequirements'
@@ -11,6 +9,29 @@ import { getMyRealnameVerification } from '@/api/realname'
 import { isActiveRequirement } from '@/shared/requirementStatus'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+
+
+import {
+  TIcon,
+  TScrollbar,
+  ArrowDown,
+  Bell,
+  Box,
+  ChatDotRound,
+  Close,
+  Compass,
+  Connection,
+  DataAnalysis,
+  Files,
+  Grid,
+  Menu as MenuIcon,
+  Service,
+  Suitcase,
+  Switch as SwitchIcon,
+  Tickets,
+  UserFilled,
+  Wallet,
+} from 'ui_73info'
 
 type WorkbenchRouteName = string
 
@@ -670,14 +691,14 @@ async function scrollToHash() {
       @click="closeMobileMenu" />
 
     <aside class="user-workbench__aside" aria-label="统一工作台菜单">
-      <el-scrollbar class="app-scrollbar user-workbench__aside-scrollbar" max-height="calc(100vh - var(--portal-header-footprint, 98px) - 22px)">
+      <TScrollbar class="app-scrollbar user-workbench__aside-scrollbar" max-height="calc(100vh - var(--portal-header-footprint, 98px) - 22px)">
         <div class="user-workbench__aside-inner">
           <div class="user-workbench__brand">
             <!-- 开发者模式在标题前挂一个工作台字标；用户模式不挂，标题仍是纯文字 -->
             <span v-if="isDevWorkbenchMode" class="user-workbench__brand-mark" aria-hidden="true">
-              <el-icon>
+              <TIcon>
                 <Grid />
-              </el-icon>
+              </TIcon>
             </span>
             <!-- 侧边栏标题用普通标题样式（原版是有浅蓝底的药丸标签），模式切换按钮靠右 -->
             <strong class="user-workbench__brand-title">{{ isDevWorkbenchMode ? '开发者工作台' : '工作台' }}</strong>
@@ -686,15 +707,15 @@ async function scrollToHash() {
               :class="{ 'user-workbench__mode-switch--icon': isDevWorkbenchMode }"
               :title="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'"
               :aria-label="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'" @click="switchWorkbenchMode">
-              <el-icon>
+              <TIcon>
                 <SwitchIcon />
-              </el-icon>
+              </TIcon>
               <span v-if="!isDevWorkbenchMode">切换工作台</span>
             </button>
             <button class="user-workbench__drawer-close" type="button" aria-label="关闭工作台菜单" @click="closeMobileMenu">
-              <el-icon>
+              <TIcon>
                 <Close />
-              </el-icon>
+              </TIcon>
             </button>
           </div>
 
@@ -708,9 +729,9 @@ async function scrollToHash() {
                   'user-workbench__menu-link--badged': Boolean(menuItemBadge(item)),
                 }" :to="menuItemTo(item)" @click="closeMobileMenu">
                 <span class="user-workbench__menu-icon">
-                  <el-icon>
+                  <TIcon>
                     <component :is="item.icon" />
-                  </el-icon>
+                  </TIcon>
                 </span>
                 <span>
                   <strong>{{ item.label }}</strong>
@@ -724,9 +745,9 @@ async function scrollToHash() {
             <RouterLink v-if="!isDevWorkbenchMode" class="user-workbench__menu-link user-workbench__menu-link--root"
               :class="{ active: isOverviewActive() }" :to="menuItemTo(overviewItem)" @click="closeMobileMenu">
               <span class="user-workbench__menu-icon">
-                <el-icon>
+                <TIcon>
                   <DataAnalysis />
-                </el-icon>
+                </TIcon>
               </span>
               <span>
                 <strong>{{ overviewItem.label }}</strong>
@@ -740,9 +761,9 @@ async function scrollToHash() {
                   class="user-workbench__menu-link user-workbench__menu-link--root"
                   :class="{ active: isMenuItemActive(item) }" :to="menuItemTo(item)" @click="closeMobileMenu">
                   <span class="user-workbench__menu-icon">
-                    <el-icon>
+                    <TIcon>
                       <component :is="group.icon" />
-                    </el-icon>
+                    </TIcon>
                   </span>
                   <span>
                     <strong>{{ group.label }}</strong>
@@ -760,14 +781,14 @@ async function scrollToHash() {
                 <button class="user-workbench__menu-group-head" type="button" :aria-expanded="isGroupOpen(group)"
                   @click="toggleGroup(group)">
                   <span class="user-workbench__menu-icon">
-                    <el-icon>
+                    <TIcon>
                       <component :is="group.icon" />
-                    </el-icon>
+                    </TIcon>
                   </span>
                   <strong>{{ group.label }}</strong>
-                  <el-icon class="user-workbench__menu-arrow">
+                  <TIcon class="user-workbench__menu-arrow">
                     <ArrowDown />
-                  </el-icon>
+                  </TIcon>
                 </button>
 
                 <Transition name="workbench-submenu">
@@ -789,18 +810,18 @@ async function scrollToHash() {
                 <button class="user-workbench__menu-group-head" type="button" :aria-expanded="isMessageMenuOpen()"
                   @click="toggleMessageCenter">
                   <span class="user-workbench__menu-icon">
-                    <el-icon>
+                    <TIcon>
                       <ChatDotRound />
-                    </el-icon>
+                    </TIcon>
                   </span>
                   <span class="user-workbench__menu-label">
                     <strong>消息中心</strong>
                     <span v-if="unreadMessageCount > 0" class="user-workbench__menu-badge"
                       :title="`${unreadMessageCount} 条未读消息`">{{ unreadBadgeText }}</span>
                   </span>
-                  <el-icon class="user-workbench__menu-arrow">
+                  <TIcon class="user-workbench__menu-arrow">
                     <ArrowDown />
-                  </el-icon>
+                  </TIcon>
                 </button>
 
                 <Transition name="workbench-submenu">
@@ -835,9 +856,9 @@ async function scrollToHash() {
                 :class="{ active: isMenuItemActive(notificationsMenuItem) }"
                 :to="menuItemTo(notificationsMenuItem)" @click="closeMobileMenu">
                 <span class="user-workbench__menu-icon">
-                  <el-icon>
+                  <TIcon>
                     <Bell />
-                  </el-icon>
+                  </TIcon>
                 </span>
                 <span>
                   <strong>{{ notificationsItem.label }}</strong>
@@ -847,9 +868,9 @@ async function scrollToHash() {
                 :class="{ active: isMenuItemActive(ticketsMenuItem) }" :to="menuItemTo(ticketsMenuItem)"
                 @click="closeMobileMenu">
                 <span class="user-workbench__menu-icon">
-                  <el-icon>
+                  <TIcon>
                     <Service />
-                  </el-icon>
+                  </TIcon>
                 </span>
                 <span>
                   <strong>{{ ticketsItem.label }}</strong>
@@ -859,15 +880,15 @@ async function scrollToHash() {
           </nav>
 
         </div>
-      </el-scrollbar>
+      </TScrollbar>
     </aside>
 
     <section class="user-workbench__main">
       <div class="user-workbench__mobile-bar">
         <button class="user-workbench__mobile-menu-btn" type="button" aria-label="打开工作台菜单" @click="openMobileMenu">
-          <el-icon>
+          <TIcon>
             <MenuIcon />
-          </el-icon>
+          </TIcon>
           <span>菜单</span>
         </button>
         <div>
@@ -925,16 +946,16 @@ async function scrollToHash() {
   padding: 16px;
 }
 
-.user-workbench__aside-scrollbar :deep(.el-scrollbar__bar) {
+.user-workbench__aside-scrollbar :deep(.t73-scrollbar__bar) {
   display: none;
 }
 
-.user-workbench__aside-scrollbar :deep(.el-scrollbar__wrap) {
+.user-workbench__aside-scrollbar :deep(.t73-scrollbar__wrap) {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
-.user-workbench__aside-scrollbar :deep(.el-scrollbar__wrap::-webkit-scrollbar) {
+.user-workbench__aside-scrollbar :deep(.t73-scrollbar__wrap::-webkit-scrollbar) {
   display: none;
   width: 0;
   height: 0;
