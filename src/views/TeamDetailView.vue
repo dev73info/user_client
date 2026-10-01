@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 // 顶部读数条的刷新按钮与卡片头的图标都要显式 import：
 // 模板里直接写 <Refresh /> / <Plus /> 而没 import 时，Vue 会把它们当未知元素渲染成空的
 // <refresh> / <plus>，按钮还在、图标空白，与其余菜单页的按钮不是一个样子。
 import { EditPen, Plus, Refresh } from '@element-plus/icons-vue'
+import { TButton, TForm, TFormItem, TIcon, TInput } from 'ui_73info'
 
 import {
   getTeamDetail,
@@ -35,8 +36,15 @@ const inviteUsername = ref('')
 const showInviteInput = ref(false)
 const removingUsername = ref<string | null>(null)
 const editingName = ref(false)
-const editName = ref('')
-const editDesc = ref('')
+/**
+ * 编辑表单的模型对象。
+ *
+ * 原来这里是两个独立的 `editName` / `editDesc` ref，改用 `TForm` 后要收成一个对象：
+ * `TFormItem` 靠 `prop` 从 `TForm` 的 `model` 上取值校验，没有模型对象就没有字段可校验。
+ * 这一页的两个字段目前不挂规则（只标「团队名称」必填星号），但模型对象是 `TForm` 的
+ * 必填参数，与其传一个只读的投影，不如让表单直接持有它要校验的那份数据。
+ */
+const editForm = reactive({ name: '', description: '' })
 const saving = ref(false)
 const avatarUploading = ref(false)
 const avatarFileInput = ref<HTMLInputElement | null>(null)
@@ -186,13 +194,13 @@ async function handleDelete() {
 
 function startEdit() {
   if (!team.value) return
-  editName.value = team.value.name
-  editDesc.value = team.value.description
+  editForm.name = team.value.name
+  editForm.description = team.value.description
   editingName.value = true
 }
 
 async function saveEdit() {
-  if (!editName.value.trim()) {
+  if (!editForm.name.trim()) {
     showToast('团队名称不能为空', 'warning')
     return
   }
@@ -201,8 +209,8 @@ async function saveEdit() {
   saving.value = true
   try {
     const updated = await updateTeam(token, teamId.value, {
-      name: editName.value.trim(),
-      description: editDesc.value.trim(),
+      name: editForm.name.trim(),
+      description: editForm.description.trim(),
     })
     if (team.value) {
       team.value.name = updated.name
@@ -272,11 +280,9 @@ onMounted(() => {
         <span class="dev-meta-strip__value">{{ team?.owner_username || '—' }}</span>
       </div>
       <div class="dev-meta-strip__item dev-meta-strip__action">
-        <el-button class="dev-toolbar__icon-btn" aria-label="刷新团队详情" @click="loadTeam">
-          <el-icon>
-            <Refresh />
-          </el-icon>
-        </el-button>
+        <TButton icon-only aria-label="刷新团队详情" @click="loadTeam">
+          <TIcon><Refresh /></TIcon>
+        </TButton>
       </div>
     </div>
 
@@ -297,9 +303,9 @@ onMounted(() => {
           <div class="dev-card-head__actions">
             <button v-if="isOwner && !editingName" type="button" class="dev-btn dev-btn--ghost"
               @click="startEdit">
-              <el-icon>
+              <TIcon>
                 <EditPen />
-              </el-icon>
+              </TIcon>
               <span>编辑资料</span>
             </button>
             <button v-if="isOwner && !editingName" type="button" class="dev-btn dev-btn--danger"
@@ -325,14 +331,14 @@ onMounted(() => {
             </button>
           </div>
 
-          <el-form v-if="editingName" label-position="top" class="dev-team-detail__form">
-            <el-form-item label="团队名称" required>
-              <el-input v-model="editName" maxlength="64" placeholder="输入团队名称" />
-            </el-form-item>
-            <el-form-item label="团队简介">
-              <el-input v-model="editDesc" type="textarea" :rows="3" maxlength="200" show-word-limit
-                placeholder="简单描述团队的目的（可选）" />
-            </el-form-item>
+          <TForm v-if="editingName" :model="editForm" class="dev-team-detail__form">
+            <TFormItem label="团队名称" required>
+              <TInput v-model="editForm.name" :maxlength="64" placeholder="输入团队名称" />
+            </TFormItem>
+            <TFormItem label="团队简介">
+              <TInput v-model="editForm.description" type="textarea" :rows="3" :maxlength="200"
+                show-count placeholder="简单描述团队的目的（可选）" />
+            </TFormItem>
             <div class="dev-team-detail__form-actions">
               <button type="button" class="dev-btn dev-btn--primary" :disabled="saving" @click="saveEdit">
                 {{ saving ? '保存中...' : '保存' }}
@@ -341,7 +347,7 @@ onMounted(() => {
                 取消
               </button>
             </div>
-          </el-form>
+          </TForm>
         </div>
       </section>
 
@@ -354,22 +360,22 @@ onMounted(() => {
           <div class="dev-card-head__actions">
             <button v-if="isAdmin && !showInviteInput" type="button" class="dev-btn dev-btn--primary"
               @click="showInviteInput = true">
-              <el-icon>
+              <TIcon>
                 <Plus />
-              </el-icon>
+              </TIcon>
               <span>邀请成员</span>
             </button>
           </div>
         </div>
 
         <div v-if="showInviteInput" class="dev-toolbar dev-team-detail__invite">
-          <el-input v-model="inviteUsername" class="dev-toolbar__search" maxlength="64"
-            placeholder="输入用户名" aria-label="要邀请的用户名" @keyup.enter="handleInvite" />
+          <TInput v-model="inviteUsername" class="dev-toolbar__search" :maxlength="64"
+            placeholder="输入用户名" aria-label="要邀请的用户名" @enter="handleInvite" />
           <div class="dev-toolbar__actions">
-            <el-button class="dev-toolbar__primary" type="primary" :loading="inviting" @click="handleInvite">
+            <TButton variant="solid" tone="accent" :loading="inviting" @click="handleInvite">
               发送邀请
-            </el-button>
-            <el-button class="dev-toolbar__ghost" @click="showInviteInput = false">取消</el-button>
+            </TButton>
+            <TButton @click="showInviteInput = false">取消</TButton>
           </div>
         </div>
 
@@ -488,8 +494,12 @@ onMounted(() => {
   gap: 10px;
 }
 
-/* 邀请行复用 .dev-toolbar：输入框走 .dev-toolbar__search，按钮走 __primary / __ghost，
-   与其余页面的筛选行同高同圆角；这里只把输入框基宽从 240px 放宽到 280px。 */
+/* 邀请行复用 .dev-toolbar：输入框走 .dev-toolbar__search，按钮走 TButton 的
+   `variant="solid" tone="accent"` / 默认 outline。同高（36px）同圆角（10px）由
+   TButton 与 TInput 自己按 `--73-control-height` / `--73-radius-control` 给出，
+   与其余页面的筛选行本来就一致；这里只把输入框基宽从 240px 放宽到 280px。
+   （原来按钮上挂的 `.dev-toolbar__primary` / `__ghost` 只见效于 `.el-button`，
+   换成 TButton 后已失效，故一并去掉。） */
 .dev-team-detail__invite .dev-toolbar__search {
   flex: 1 1 280px;
   max-width: none;

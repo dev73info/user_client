@@ -1,9 +1,18 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElConfigProvider } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
-import zhCn from 'element-plus/es/locale/lang/zh-cn.mjs'
+import {
+  TButton,
+  TIcon,
+  TOption,
+  TRadio,
+  TRadioGroup,
+  TSelect,
+  TSwitch,
+  type SelectModelValue,
+  type SelectValue,
+} from 'ui_73info'
 
 import { getMyPoints, setPerkEquipped, type UserPerk } from '@/api/points'
 import { HttpError } from '@/api/http'
@@ -25,6 +34,22 @@ const perkSaving = ref('')
 const appearanceSaving = ref(false)
 const appearanceMode = ref<'gradient' | 'color'>('gradient')
 const selectedColor = ref('')
+
+/**
+ * 单选组与颜色下拉的回填。
+ *
+ * `TRadioGroup` / `TSelect` 的 `update:modelValue` 都是宽联合（库里一个组件同时承担单选、
+ * 多选与布尔，见 ui_73info 的 `SelectValue`），而本页这两个状态分别是二值联合与纯字符串。
+ * 在回填这一处各收一次，比把状态放宽再在每个用到它的地方（`saveAppearance` 里要与
+ * `'gradient'` 比较、`selectedColor` 要直接当 `perk_code` 传给接口）反向断言更省事。
+ */
+function onAppearanceModeChange(value: SelectValue) {
+  appearanceMode.value = value as 'gradient' | 'color'
+}
+
+function onColorChange(value: SelectModelValue) {
+  selectedColor.value = value as string
+}
 
 const ownedPerkCount = computed(() => perks.value.filter((item) => item.owned).length)
 const equippedPerkCount = computed(() => perks.value.filter((item) => item.equipped).length)
@@ -140,86 +165,85 @@ onMounted(() => {
 </script>
 
 <template>
-  <ElConfigProvider :locale="zhCn">
-    <main class="page-shell custom-page-shell profile-page perks-page" :aria-busy="loading">
-      <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
-      <div class="wb-strip" aria-label="权益概览">
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">已解锁权益</span>
-          <span class="wb-strip__value">{{ loading || error ? '—' : ownedPerkCount }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">已佩戴权益</span>
-          <span class="wb-strip__value">{{ loading || error ? '—' : equippedPerkCount }}</span>
-        </div>
-        <div class="wb-strip__item wb-strip__action">
-          <el-button class="wb-toolbar__icon-btn" :loading="loading" aria-label="刷新权益" @click="loadPerks">
-            <el-icon><Refresh /></el-icon>
-          </el-button>
+  <main class="page-shell custom-page-shell profile-page perks-page" :aria-busy="loading">
+    <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
+    <div class="wb-strip" aria-label="权益概览">
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">已解锁权益</span>
+        <span class="wb-strip__value">{{ loading || error ? '—' : ownedPerkCount }}</span>
+      </div>
+      <div class="wb-strip__divider" />
+      <div class="wb-strip__item">
+        <span class="wb-strip__label">已佩戴权益</span>
+        <span class="wb-strip__value">{{ loading || error ? '—' : equippedPerkCount }}</span>
+      </div>
+      <div class="wb-strip__item wb-strip__action">
+        <TButton icon-only :loading="loading" aria-label="刷新权益" @click="loadPerks">
+          <TIcon><Refresh /></TIcon>
+        </TButton>
+      </div>
+    </div>
+
+    <section class="wallet-section perks-section">
+      <div class="wb-card-head">
+        <div class="wb-card-head__title-block">
+          <h3 class="wb-card-head__title">我的权益</h3>
         </div>
       </div>
 
-      <section class="wallet-section perks-section">
-        <div class="wb-card-head">
-          <div class="wb-card-head__title-block">
-            <h3 class="wb-card-head__title">我的权益</h3>
-          </div>
+      <p v-if="loading" class="wb-empty" role="status">正在加载权益…</p>
+      <div v-else-if="error" class="wb-empty" role="alert">
+        <span class="wb-empty__title">加载权益失败</span>{{ error }}
+        <div class="wb-empty__actions">
+          <TButton @click="loadPerks">
+            <TIcon><Refresh /></TIcon><span>重新加载</span>
+          </TButton>
         </div>
+      </div>
+      <p v-else-if="!displayedPerks.length && !hasUsernameAppearance" class="wb-empty" role="status">
+        <span class="wb-empty__title">还没有解锁任何权益</span>
+      </p>
+      <ul v-if="displayedPerks.length" class="wb-list" aria-label="我的权益">
+        <li v-for="perk in displayedPerks" :key="perk.perk_code" class="wb-item">
+          <div class="wb-item__main">
+            <span class="wb-item__title">{{ perkTitle(perk.perk_code) }}</span>
+            <span class="wb-item__meta">{{ perkExpireText(perk) }}</span>
+          </div>
+          <div class="wb-item__side">
+            <span class="wb-badge" :class="{ 'wb-badge--success': perk.equipped }">
+              {{ perk.equipped ? '已佩戴' : '未佩戴' }}
+            </span>
+            <TSwitch :model-value="perk.equipped" :disabled="perkSaving === perk.perk_code"
+              :loading="perkSaving === perk.perk_code" aria-label="佩戴权益"
+              @change="togglePerk(perk.perk_code, $event)" />
+          </div>
+        </li>
+      </ul>
 
-        <p v-if="loading" class="wb-empty" role="status">正在加载权益…</p>
-        <div v-else-if="error" class="wb-empty" role="alert">
-          <span class="wb-empty__title">加载权益失败</span>{{ error }}
-          <div class="wb-empty__actions">
-            <el-button class="wb-toolbar__ghost" @click="loadPerks">
-              <el-icon><Refresh /></el-icon><span>重新加载</span>
-            </el-button>
-          </div>
+      <div v-if="hasUsernameAppearance" class="appearance-panel">
+        <div class="appearance-panel__head">
+          <strong>用户名颜色设置</strong>
+          <small>渐变与特定颜色为两个独立权益，二者只能使用一种。</small>
         </div>
-        <p v-else-if="!displayedPerks.length && !hasUsernameAppearance" class="wb-empty" role="status">
-          <span class="wb-empty__title">还没有解锁任何权益</span>
-        </p>
-        <ul v-if="displayedPerks.length" class="wb-list" aria-label="我的权益">
-          <li v-for="perk in displayedPerks" :key="perk.perk_code" class="wb-item">
-            <div class="wb-item__main">
-              <span class="wb-item__title">{{ perkTitle(perk.perk_code) }}</span>
-              <span class="wb-item__meta">{{ perkExpireText(perk) }}</span>
-            </div>
-            <div class="wb-item__side">
-              <span class="wb-badge" :class="{ 'wb-badge--success': perk.equipped }">
-                {{ perk.equipped ? '已佩戴' : '未佩戴' }}
-              </span>
-              <el-switch :model-value="perk.equipped" :disabled="perkSaving === perk.perk_code"
-                :loading="perkSaving === perk.perk_code" aria-label="佩戴权益"
-                @change="togglePerk(perk.perk_code, $event)" />
-            </div>
-          </li>
-        </ul>
-
-        <div v-if="hasUsernameAppearance" class="appearance-panel">
-          <div class="appearance-panel__head">
-            <strong>用户名颜色设置</strong>
-            <small>渐变与特定颜色为两个独立权益，二者只能使用一种。</small>
-          </div>
-          <el-radio-group v-model="appearanceMode">
-            <el-radio value="gradient" :disabled="!gradientPerk">渐变</el-radio>
-            <el-radio value="color" :disabled="colorPerks.length === 0">特定颜色</el-radio>
-          </el-radio-group>
-          <div v-if="appearanceMode === 'color'" class="appearance-color-row">
-            <el-select v-model="selectedColor" placeholder="选择颜色" aria-label="选择用户名颜色">
-              <el-option v-for="p in colorPerks" :key="p.perk_code" :value="p.perk_code">
-                <span class="perk-color" :style="{ background: perkCodeHex(p.perk_code) }"></span>
-                {{ perkTitle(p.perk_code) }}
-              </el-option>
-            </el-select>
-          </div>
-          <div class="appearance-panel__submit">
-            <el-button class="wb-toolbar__primary" :loading="appearanceSaving" @click="saveAppearance">保存</el-button>
-          </div>
+        <TRadioGroup :model-value="appearanceMode" @update:model-value="onAppearanceModeChange">
+          <TRadio value="gradient" :disabled="!gradientPerk">渐变</TRadio>
+          <TRadio value="color" :disabled="colorPerks.length === 0">特定颜色</TRadio>
+        </TRadioGroup>
+        <div v-if="appearanceMode === 'color'" class="appearance-color-row">
+          <TSelect :model-value="selectedColor" placeholder="选择颜色" aria-label="选择用户名颜色"
+            @update:model-value="onColorChange">
+            <TOption v-for="p in colorPerks" :key="p.perk_code" :value="p.perk_code">
+              <span class="perk-color" :style="{ background: perkCodeHex(p.perk_code) }"></span>
+              {{ perkTitle(p.perk_code) }}
+            </TOption>
+          </TSelect>
         </div>
-      </section>
-    </main>
-  </ElConfigProvider>
+        <div class="appearance-panel__submit">
+          <TButton variant="solid" tone="accent" :loading="appearanceSaving" @click="saveAppearance">保存</TButton>
+        </div>
+      </div>
+    </section>
+  </main>
 </template>
 
 <style scoped>
@@ -262,7 +286,9 @@ onMounted(() => {
   gap: 10px;
 }
 
-.appearance-color-row .el-select {
+/* 颜色下拉给一个下限宽度：行内是 `inline-flex`，TSelect 自己带 `width: 100%`，
+   不设下限时它会缩到内容宽度，与旁边的单选组贴着显得很窄（原来是压 `.el-select`）。 */
+.appearance-color-row .t73-select {
   min-width: 200px;
 }
 

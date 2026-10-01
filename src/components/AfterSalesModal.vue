@@ -21,6 +21,7 @@ import {
   type AfterSalesKind,
   type AfterSalesRespondAction,
 } from '@/api/afterSales'
+import { TOption, TSelect, type SelectModelValue } from 'ui_73info'
 import { useToast } from '@/composables/useToast'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
 
@@ -65,6 +66,18 @@ const cases = ref<AfterSalesCase[]>([])
 const casesLoading = ref(false)
 const respondingId = ref<number | null>(null)
 const withdrawingId = ref<number | null>(null)
+
+/**
+ * 诉求类型下拉的回填。
+ *
+ * `TSelect` 的 `update:modelValue` 是宽联合（`SelectValue | SelectValue[]`），因为它一个组件
+ * 同时承担单选与多选；而 `kind` 是四值联合，下游还要拿它索引 `CLAIM_AMOUNT_FIELDS` 并传给
+ * `openAfterSalesCase`。在这里收一次比把 `kind` 放宽、再在每个用到它的地方反向断言更省事：
+ * 选项表就是这四类，下拉里选不出别的值。
+ */
+function onKindChange(value: SelectModelValue) {
+  kind.value = value as AfterSalesKind
+}
 
 /**
  * 转人工后的催办出口：需求方与开发者各有一套工单中心。
@@ -548,11 +561,19 @@ watch(
         <template v-if="canSubmitCase">
           <label class="after-sales-modal__field">
             <strong>诉求类型</strong>
-            <el-select v-model="kind" class="after-sales-modal__select" popper-class="after-sales-kind-popper"
-              aria-label="诉求类型">
-              <el-option v-for="option in KIND_OPTIONS" :key="option.value" :label="option.label"
-                :value="option.value" />
-            </el-select>
+            <TSelect
+              :model-value="kind"
+              class="after-sales-modal__select"
+              aria-label="诉求类型"
+              @update:model-value="onKindChange"
+            >
+              <TOption
+                v-for="option in KIND_OPTIONS"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+              />
+            </TSelect>
           </label>
 
           <label class="pay-line after-sales-modal__field">
@@ -730,44 +751,12 @@ watch(
   font-weight: 700;
 }
 
-/* 诉求类型下拉与同弹窗的输入框同高同圆角：Element 默认的 32px / 4px 会比旁边的输入框矮一截。
-   浮层另见文件末尾不带 scoped 的样式块。 */
+/* 诉求类型下拉铺满字段宽度。
+   高度、圆角、描边、悬浮与聚焦态都交给 TSelect 自己的令牌：它默认就是 44px 高、12px 圆角、
+   聚焦一圈主色描边 + 淡蓝光晕，与同弹窗的原生输入框本来就是同一口径，不必再覆盖。
+   展开时的浮层也由 TSelect 自带（不再需要 `popper-class` 与那份 teleport 到 body 的样式）。 */
 .pay-modal .after-sales-modal__select {
   width: 100%;
-}
-
-.pay-modal .after-sales-modal__select :deep(.el-select__wrapper) {
-  /* 收起状态下 Element 用 --el-input-text-color 给已选中的值上色，改变量比压选择器更稳 */
-  --el-input-text-color: #0f172a;
-
-  min-height: 44px;
-  padding: 0 12px;
-  border-radius: 12px;
-  background: rgba(248, 250, 252, 0.92);
-  box-shadow: 0 0 0 1px rgba(198, 210, 236, 0.9) inset;
-  font-size: 14px;
-}
-
-/* 浮层展开时 Element 会给已选中的值补一个 is-transparent（`!hasModelValue || expanded`），
-   并把那段文字按占位灰（--el-text-color-placeholder）渲染——见 el-select.css 的
-   `.el-select__placeholder.is-transparent`。于是同一段文字「收起时正文色、展开瞬间变灰」，
-   字段看着像没填，光靠上面的 --el-input-text-color 压不住。这个下拉永远有值
-   （默认「要求返工」，不可清空），所以直接压回正文色。 */
-.pay-modal .after-sales-modal__select :deep(.el-select__placeholder) {
-  color: #0f172a;
-}
-
-.pay-modal .after-sales-modal__select :deep(.el-select__wrapper:hover),
-.pay-modal .after-sales-modal__select :deep(.el-select__wrapper.is-hovering) {
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.42) inset;
-}
-
-/* 聚焦态与同弹窗的输入框一致：一圈描边 + 一层淡蓝光晕 */
-.pay-modal .after-sales-modal__select :deep(.el-select__wrapper.is-focused) {
-  background: #ffffff;
-  box-shadow:
-    0 0 0 1px rgba(37, 99, 235, 0.58) inset,
-    0 0 0 4px rgba(37, 99, 235, 0.1);
 }
 
 .pay-modal .after-sales-modal__field input {
@@ -800,57 +789,5 @@ watch(
   .pay-modal .after-sales-modal__facts {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-</style>
-
-<style>
-/* 诉求类型下拉的浮层：Element 会把它 teleport 到 body 上，scoped 样式够不到，
-   所以单独放一个不带 scoped 的块。默认那套是 4px 方角 + 系统灰描边的白面板，
-   跟这个弹窗的圆角卡片不是一套，这里整体对齐弹窗自己面板的圆角、描边与投影。 */
-.after-sales-kind-popper.el-popper {
-  padding: 6px !important;
-  border: 1px solid rgba(226, 232, 240, 0.95) !important;
-  border-radius: 14px !important;
-  background: #ffffff !important;
-  box-shadow: 0 18px 44px rgba(90, 120, 180, 0.16) !important;
-}
-
-.after-sales-kind-popper .el-select-dropdown,
-.after-sales-kind-popper .el-select-dropdown__list {
-  padding: 0;
-  border-radius: 12px;
-}
-
-.after-sales-kind-popper .el-select-dropdown__item {
-  height: 40px;
-  padding: 0 12px;
-  border-radius: 10px;
-  color: #334155;
-  font-size: 14px;
-  line-height: 40px;
-  transition:
-    background-color 160ms ease,
-    color 160ms ease;
-}
-
-/* 触屏档把选项行抬到 44px：列表项 / 菜单项的触摸目标不小于 44px 是移动端硬要求
-   （见 doc/设计规范.md）。 */
-@media (max-width: 640px) {
-  .after-sales-kind-popper .el-select-dropdown__item {
-    height: 44px;
-    line-height: 44px;
-  }
-}
-
-.after-sales-kind-popper .el-select-dropdown__item.is-hovering {
-  background: rgba(239, 246, 255, 0.96);
-  color: #1d4ed8;
-}
-
-/* 当前选中的类型留一个常驻底色，一眼能看出现在是哪一类 */
-.after-sales-kind-popper .el-select-dropdown__item.is-selected {
-  background: rgba(239, 246, 255, 0.96);
-  color: #1d4ed8;
-  font-weight: 700;
 }
 </style>
