@@ -564,7 +564,6 @@ function settlementHint(item: RequirementItem): string {
 
 function canRequestUnbindAsCreator(item: RequirementItem) {
   return (
-    item.payment_mode === 'self_managed' &&
     hasBoundResource(item) &&
     (item.status === 'in_development' ||
       item.status === 'deposit_paid' ||
@@ -573,13 +572,39 @@ function canRequestUnbindAsCreator(item: RequirementItem) {
   )
 }
 
+/**
+ * 解除绑定的后果按支付模式分档，要在点下「同意」之前说清楚。
+ * 担保模式在未结单阶段也能协商解除：同意即退定金、作废合同、解冻开发者的接单保证金（无责退出，
+ * 双方都不担违约金）；自管模式没有合同也没有定金，只解除绑定。
+ */
+function unbindConsequenceText(item: RequirementItem | null) {
+  if (!item || item.payment_mode === 'self_managed') {
+    return '解除后双方绑定关系结束，需求重新挂回大厅等待其他开发者承接。'
+  }
+  const depositPaid = item.status === 'deposit_paid' || item.status === 'in_development'
+  return depositPaid
+    ? '担保模式下同意解除会作废合同，你已缴的定金全额原路退还，开发者的接单保证金解冻；无责退出，双方都不担违约金。'
+    : '担保模式下同意解除会作废合同，开发者的接单保证金解冻；无责退出，双方都不担违约金。'
+}
+
+/** 列表里那行提示要短：一句话交代「同意之后钱和绑定各去哪」。 */
+function unbindConsequenceNote(item: RequirementItem) {
+  return item.payment_mode === 'self_managed'
+    ? '同意解除后需求重新挂回大厅。'
+    : '同意解除后合同作废、定金原路退还，需求重新挂回大厅。'
+}
+
 function canReportBreach(item: RequirementItem) {
   // 待分账（尾款已缴、分账在排队）也允许终止合作：等待期内的违约由后端取消排队中的分账。
   return item.payment_mode !== 'self_managed' &&
     ['deposit_paid', 'in_development', 'pending_final', 'pending_settlement'].includes(item.status)
 }
 
-/** 担保模式接单后未缴定金：解绑入口一律关闭、终止合作又要求有一张已完成的定金支付单，出口只剩缴款期限到期后由系统自动终止合作。 */
+/**
+ * 担保模式接单后未缴定金：这里要挡的是「终止合作」（违约申报要求已有一张完成态的定金支付单），
+ * 而不是解绑——这段时间的退出出口是「申请解除绑定」（见 canRequestUnbindAsCreator），
+ * 兜底才是缴款期限到期后由系统自动终止合作。
+ */
 function awaitingDepositDeadline(item: RequirementItem) {
   return item.status === 'pending_deposit' && item.payment_mode !== 'self_managed'
 }
@@ -2202,7 +2227,7 @@ function moreRowActions(item: RequirementItem): RequirementRowAction[] {
       label: '终止合作',
       danger: true,
       disabled: true,
-      title: '定金未缴，暂不能发起终止合作；逾期未缴定金将由系统自动终止合作并释放接单保证金',
+      title: '终止合作要求定金已缴；此时要退出请用「申请解除绑定」，逾期未缴定金则由系统自动终止合作并释放接单保证金',
     })
   }
   if (canCancel(item)) {
@@ -2539,7 +2564,7 @@ watch(
                     <strong>开发者申请解除绑定：</strong>{{ item.pending_unbind_request?.reason }}
                   </small>
                   <small v-if="hasPendingDeveloperUnbindRequest(item)" class="requirement-note">
-                    同意解除后需求重新挂回大厅。
+                    {{ unbindConsequenceNote(item) }}
                   </small>
                   <small v-if="hasPendingUnbindRequest(item) && !hasPendingDeveloperUnbindRequest(item)"
                     class="requirement-note">
@@ -2592,7 +2617,10 @@ watch(
                 </button>
               </div>
 
-              <div class="requirement-actions__list">
+              <!-- 行内控件各自处理自己的点击与回车，在容器这一层就拦住，别再冒泡到整行的「打开沟通页」。
+                   注意「更多」那个按钮上不能再挂 @click.stop：TDropdown 的触发监听挂在自己的外层
+                   span 上（el-dropdown 当时是挂在触发元素自身），在按钮处截断冒泡等于菜单永远打不开。 -->
+              <div class="requirement-actions__list" @click.stop @keydown.stop>
                 <button v-if="hasBoundResource(item)" class="ghost small action-emphasis" type="button"
                   :disabled="resourceDownloadingId === item.bound_resource_id"
                   @click.stop="runRowAction(item, 'download')">
@@ -2621,7 +2649,7 @@ watch(
                 <TDropdown v-if="moreRowActions(item).length" trigger="click"
                   @command="(key) => runMoreRowAction(item, String(key))">
                   <button class="ghost small requirement-actions__more" type="button" aria-haspopup="menu"
-                    title="更多操作" @click.stop>
+                    title="更多操作">
                     更多
                     <TIcon>
                       <ArrowDown />
@@ -2849,6 +2877,7 @@ watch(
           <strong>申请原因：</strong>{{ unbindRespondRequirement.pending_unbind_request?.reason }}
         </p>
         <p class="tip">同意解除后，需求将重新挂回需求大厅，供其他开发者承接；如拒绝，当前绑定关系保持不变。</p>
+        <p class="tip">{{ unbindConsequenceText(unbindRespondRequirement) }}</p>
 
         <div class="actions">
           <button class="ghost" type="button" :disabled="unbindRespondLoading" @click="closeUnbindRespond">
@@ -2879,7 +2908,7 @@ watch(
           <textarea v-model="unbindRequestReason" rows="4" maxlength="1000"
             placeholder="请说明申请解除绑定的原因，例如：项目安排调整，不再需要继续开发"></textarea>
         </label>
-        <p class="tip">解除申请提交后需开发者确认；同意后需求将重新挂回大厅。</p>
+        <p class="tip">解除申请提交后需开发者确认。{{ unbindConsequenceText(unbindRequestRequirement) }}</p>
 
         <div class="actions">
           <button class="ghost" type="button" :disabled="unbindRequestLoading" @click="closeUnbindRequest">

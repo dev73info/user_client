@@ -792,7 +792,11 @@ function closeAfterSalesModal() {
   afterSalesTarget.value = null
 }
 
-/** 担保模式接单后未缴定金：解绑入口一律关闭、终止合作又要求有一张已完成的定金支付单，出口只剩缴款期限到期后由系统自动终止合作。 */
+/**
+ * 担保模式接单后未缴定金：这里要挡的是「终止合作」（违约申报要求已有一张完成态的定金支付单），
+ * 而不是解绑——这段时间的退出出口是「申请解除绑定」（见 canRequestUnbind），
+ * 兜底才是缴款期限到期后由系统自动终止合作。
+ */
 function awaitingDepositDeadline(item: RequirementItem) {
   return item.status === 'pending_deposit' && item.payment_mode !== 'self_managed'
 }
@@ -1058,12 +1062,26 @@ async function createRequirementContractAction(item: RequirementItem) {
 
 function canRequestUnbind(item: RequirementItem) {
   return (
-    item.payment_mode === 'self_managed' &&
     (item.status === 'in_development' ||
       item.status === 'deposit_paid' ||
       item.status === 'pending_deposit') &&
     !item.pending_unbind_request
   )
+}
+
+/**
+ * 解除绑定的后果按支付模式分档，要在点下「同意」之前说清楚。
+ * 担保模式在未结单阶段也能协商解除：同意即退定金、作废合同、解冻接单保证金（无责退出）；
+ * 自管模式没有合同也没有定金，只解除绑定。
+ */
+function unbindConsequenceText(item: RequirementItem | null) {
+  if (!item || item.payment_mode === 'self_managed') {
+    return '解除后双方绑定关系结束，需求重新挂回大厅等待其他开发者承接。'
+  }
+  const depositPaid = item.status === 'deposit_paid' || item.status === 'in_development'
+  return depositPaid
+    ? '担保模式下同意解除会作废合同，需求方已缴的定金全额原路退还，你的接单保证金解冻；无责退出，双方都不担违约金。'
+    : '担保模式下同意解除会作废合同，你的接单保证金解冻；无责退出，双方都不担违约金。'
 }
 
 function unbindRequestHint(item: RequirementItem) {
@@ -1490,7 +1508,7 @@ async function loadRequirementConversations() {
                 tone="danger"
                 v-else-if="awaitingDepositDeadline(row.item)"
                 disabled
-                title="定金未缴，暂不能发起终止合作；逾期未缴定金将由系统自动终止合作并释放接单保证金"
+                title="终止合作要求定金已缴；此时要退出请用「申请解除绑定」，逾期未缴定金则由系统自动终止合作并释放接单保证金"
               >
                 终止合作
               </TButton>
@@ -1636,7 +1654,7 @@ async function loadRequirementConversations() {
     >
       <div class="unbind-dialog-body">
         <p class="unbind-dialog-tip">
-          解除后需求将重新挂回大厅，等待其他开发者承接。此操作需要需求方确认，请填写真实原因。
+          此操作需要需求方确认，请填写真实原因。{{ unbindConsequenceText(unbindRequirement) }}
         </p>
         <TInput
           show-count
@@ -1666,6 +1684,7 @@ async function loadRequirementConversations() {
     >
       <div class="unbind-dialog-body">
         <p class="unbind-dialog-tip">需求方申请解除绑定，请确认是否同意。</p>
+        <p class="unbind-dialog-tip">{{ unbindConsequenceText(unbindRespondRequirement) }}</p>
         <p class="unbind-dialog-line">
           <strong>需求编号：</strong>{{ unbindRespondRequirement?.requirement_id }}
         </p>

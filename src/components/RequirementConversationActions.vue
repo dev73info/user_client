@@ -148,8 +148,6 @@ const pendingUnbindRequest = computed(() =>
     ? requirement.value.pending_unbind_request
     : null,
 )
-/** 担保模式的退出入口只有「终止合作」：解绑申请对担保模式一律拒绝（后端同样会拒绝）。 */
-const unbindBlockedByPaymentMode = computed(() => !isSelfManaged.value)
 
 const canCreateContract = computed(
   () =>
@@ -226,8 +224,7 @@ const canRequestUnbind = computed(
     (status.value === 'pending_deposit' ||
       status.value === 'deposit_paid' ||
       status.value === 'in_development') &&
-    !pendingUnbindRequest.value &&
-    !unbindBlockedByPaymentMode.value,
+    !pendingUnbindRequest.value,
 )
 const canRespondUnbind = computed(
   () => pendingUnbindRequest.value?.initiator === (isDeveloper.value ? 'creator' : 'developer'),
@@ -298,13 +295,23 @@ const payAmount = computed(() => {
 
 /**
  * 输入框上方只留「对方有一条待处理的解除申请」这一条实时状态。
- * 担保模式没有协商解除出口这句话原先也挂在输入区，但退出走「终止合作」是需求卡片上的操作，
- * 在这里重复解释只占地方；已完成 / 已取消这类终态需求上它还是错的，因此整段不再展示。
+ * 协商解除在未结单阶段对两种支付模式都开放，入口在需求卡片与工具栏上，
+ * 不必在输入区重复解释；已完成 / 已取消这类终态需求上解释反而是错的，因此整段不展示。
  */
 const unbindHint = computed(() =>
   pendingUnbindRequest.value && !canRespondUnbind.value
     ? `${pendingUnbindRequest.value.initiator === 'creator' ? '需求方' : '开发者'}已提交解除申请，等待对方处理`
     : '',
+)
+
+/**
+ * 解除的后果按支付模式分档，必须在点下「同意」之前说清楚：
+ * 担保模式同意即退定金、作废合同、解冻接单保证金（无责退出），自管模式没有合同也没有定金。
+ */
+const unbindConsequence = computed(() =>
+  isSelfManaged.value
+    ? '解除后双方绑定关系结束，需求重新挂回大厅等待其他开发者承接。'
+    : '担保模式下同意解除会作废合同，已缴定金全额原路退还需求方，开发者接单保证金解冻；无责退出，双方都不担违约金。',
 )
 
 const breachDialogTitle = computed(() => {
@@ -879,13 +886,14 @@ defineExpose({
       <p class="conversation-actions__tip">
         对方申请解除绑定，原因：{{ pendingUnbindRequest?.reason || '未填写' }}
       </p>
+      <p class="conversation-actions__tip">{{ unbindConsequence }}</p>
       <label class="conversation-actions__field">
         <span>处理说明（可选）</span>
         <textarea v-model="unbindRespondNote" rows="3" maxlength="500" placeholder="同意或拒绝的说明"></textarea>
       </label>
     </template>
     <template v-else>
-      <p class="conversation-actions__tip">解除后双方绑定关系结束，已缴纳的定金按合同约定与违约规则处理。</p>
+      <p class="conversation-actions__tip">提交后等待对方确认。{{ unbindConsequence }}</p>
       <label class="conversation-actions__field">
         <span>解除原因</span>
         <textarea v-model="unbindReason" rows="4" maxlength="500" placeholder="请说明解除原因"></textarea>

@@ -137,7 +137,7 @@ describe('conversation status cards', () => {
     // 后端 `system_card_text` 认识的每个事件码都必须在这里有文案：漏一个，会话里那条
     // 卡片就会渲染成空白（界面还承诺过「对方会在会话里收到通知」）。
     const codes = [
-      // 协商解除（自管模式）
+      // 协商解除（担保与自管两种模式共用）
       'unbind_request_submitted',
       'unbind_request_approved',
       'unbind_request_rejected',
@@ -169,12 +169,14 @@ describe('conversation status cards', () => {
     }
   })
 
-  it('sends both peers to their own ticket center after a case goes manual', () => {
-    // 「客服会尽快跟进」不给出口就只是空承诺：两类案件卡片都要把人送到工单中心，
-    // 且需求方与开发者各自的路由不同。
+  it('labels a manual case without pushing the user into a ticket to chase it', () => {
+    // 客服本来就在跟进，卡片再挂「去工单中心催办」是把平台的跟进变成用户的开单，
+    // 平添客服工作量：两侧都只留说明，不给按钮也不给跳转。
     for (const code of ['breach_case_manual_required', 'after_sales_case_manual_required']) {
-      expect(meta(code, 'customer', 'completed')?.to).toEqual({ name: 'workbench-tickets' })
-      expect(meta(code, 'developer', 'completed')?.to).toEqual({ name: 'dev-tickets' })
+      expect(meta(code, 'customer', 'completed')?.actionLabel).toBeUndefined()
+      expect(meta(code, 'customer', 'completed')?.to).toBeUndefined()
+      expect(meta(code, 'developer', 'completed')?.actionLabel).toBeUndefined()
+      expect(meta(code, 'developer', 'completed')?.to).toBeUndefined()
     }
   })
 

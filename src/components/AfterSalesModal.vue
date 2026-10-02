@@ -10,7 +10,6 @@
  * 比大小，真正的判定仍在服务层。
  */
 import { computed, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
 import {
   listMyAfterSalesCases,
   openAfterSalesCase,
@@ -79,13 +78,6 @@ function onKindChange(value: SelectModelValue) {
   kind.value = value as AfterSalesKind
 }
 
-/**
- * 转人工后的催办出口：需求方与开发者各有一套工单中心。
- * `canOpenCase` 正好区分两者（只有甲方能发起售后，也就只有甲方走需求方路由）。
- */
-const ticketCenterRoute = computed(() =>
-  props.canOpenCase ? { name: 'workbench-tickets' } : { name: 'dev-tickets' },
-)
 /** 售后窗口是否还开着（服务端判定）；窗口状态未知时为 null。 */
 const windowOpen = ref<boolean | null>(null)
 /** 售后窗口关闭时间，用于在窗口已关闭时告知需求方。 */
@@ -492,9 +484,7 @@ watch(
         <!-- 状态说明只留一句「现在到哪一步、要做什么」，分支细节收进折叠区，避免整段文字糊住按钮。 -->
         <p v-if="statusTip" class="tip">{{ statusTip }}</p>
         <p v-else-if="currentCase.status === 'manual_required'" class="tip">
-          资金执行遇到问题，已转人工客服处理。客服会尽快跟进，进展会同步到需求会话里；
-          催办请走
-          <RouterLink :to="ticketCenterRoute">工单中心</RouterLink>。
+          资金执行遇到问题，已转人工客服处理。客服会尽快跟进，进展会同步到需求会话里。
         </p>
         <details v-if="statusDetail" class="after-sales-modal__rules">
           <summary>点开看流程细节</summary>

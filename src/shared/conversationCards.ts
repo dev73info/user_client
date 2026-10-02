@@ -4,7 +4,7 @@ import type { RouteLocationRaw } from 'vue-router'
  * 需求会话里的状态变化卡片：后端写入 message_type='card' 的消息，
  * action_type 为事件码，前端在这里统一决定标题、说明、按钮文案与跳转目标。
  * 卡片自己能做的动作（交付、验收、支付定金 / 尾款）都在同一条会话的底部工具条上，
- * 有原地的弹窗就把人交给它，只有真的在别处才能做的事（签约、工单中心）才跳页。
+ * 有原地的弹窗就把人交给它，只有真的在别处才能做的事（签约、需求大厅）才跳页。
  */
 export type ConversationCardMeta = {
   title: string
@@ -115,16 +115,6 @@ export function conversationCardMeta(
     name: 'contract-sign',
     query: { requirement_id: requirementId, from: role === 'developer' ? 'dev' : 'user' },
   }
-  // 转人工后的催办出口：客服工单中心，需求方与开发者各有一套路由。
-  // 「客服会尽快跟进」这类卡片不给出口就只是空承诺，用户只能干等。
-  const ticketCenterRoute: RouteLocationRaw =
-    role === 'developer' ? { name: 'dev-tickets' } : { name: 'workbench-tickets' }
-  // 案件类卡片（违约、售后）的详情都在需求卡片的弹窗里，没有可一键执行的资金动作，
-  // 常规流转一律不给按钮，避免空跳转；只有「已转人工」给工单中心这个真实出口。
-  const ticketFollowUp = {
-    actionLabel: '去工单中心催办',
-    to: ticketCenterRoute,
-  }
   // 交付那一步还开着（开发者视角）：卡片上的「去交付」原地打开交付弹窗，不跳页。
   const canDeliverFromCard =
     role === 'developer' && statusIn(requirementStatus, DELIVERABLE_STATUSES)
@@ -133,6 +123,9 @@ export function conversationCardMeta(
   const canPayDeposit = role !== 'developer' && statusIn(requirementStatus, DEPOSIT_PAYABLE_STATUSES)
   const canPayFinal = role !== 'developer' && statusIn(requirementStatus, FINAL_PAYABLE_STATUSES)
 
+  // 案件类卡片（违约、售后）的详情都在需求卡片的弹窗里，没有可一键执行的资金动作，
+  // 常规流转一律不给按钮，避免空跳转。转人工那两张也不给催办出口：客服本来就在跟进，
+  // 把「催办」做成一张工单只是把平台的跟进变成用户的开单，平添客服工作量。
   switch (actionType) {
     // 合同在爱签侧，点按钮就是去看爱签那份合同（未签署时爱签页面里也能直接签），
     // 所以文案与需求列表页的「查看合同」一致；爱签侧还没发起签署（取不到预览链接）时回退站内签约页。
@@ -235,19 +228,20 @@ export function conversationCardMeta(
         actionLabel: '去需求大厅',
         to: role === 'developer' ? { name: 'dev-requirement-hall' } : requirementListRoute,
       }
-    // 协商解除（自管模式）：这条通道全程不动资金，双方唯一能看到「对方有没有处理」
-    // 的地方就是会话，因此申请、同意、拒绝、自动驳回与超时作废都各有卡片。
+    // 协商解除：担保与自管两种模式共用这几条卡片码。卡片只交代「谁提了、对方处理了没有」，
+    // 资金口径（担保模式同意即退定金、作废合同）在需求卡片的弹窗里讲，这里不重复细节。
     // 全部不给按钮：申请与表态都在需求卡片的弹窗里，这里再给入口只是空跳转。
     case 'unbind_request_submitted':
       return {
         title: '解除绑定申请已提交',
         description:
-          '等待对方确认。对方同意后需求回到待接单；长时间未处理则申请自动作废，需求按原约定继续。',
+          '等待对方确认。对方同意后需求回到待接单，担保模式下同时作废合同、已缴定金全额原路退还；长时间未处理则申请自动作废，需求按原约定继续。',
       }
     case 'unbind_request_approved':
       return {
         title: '双方已同意解除绑定',
-        description: '需求已回到待接单状态，双方仍可在会话里沟通。',
+        description:
+          '需求已回到待接单状态，担保模式下同时作废合同、已缴定金全额原路退还，双方仍可在会话里沟通。',
       }
     case 'unbind_request_rejected':
       return {
@@ -257,7 +251,8 @@ export function conversationCardMeta(
     case 'unbind_request_auto_rejected':
       return {
         title: '解除绑定申请已自动驳回',
-        description: '担保模式不支持协商解除，退出请走「终止合作」（违约申报）。',
+        description:
+          '按当时「担保模式不支持协商解除」的规则被自动驳回；该规则已取消，现在双方都可直接申请解除。',
       }
     case 'unbind_request_expired':
       return {
@@ -301,7 +296,6 @@ export function conversationCardMeta(
       return {
         title: '违约案件需人工处理',
         description: '资金处理未能自动完成，客服会尽快跟进并在案件内同步进展。',
-        ...ticketFollowUp,
       }
     // 协商还价与「申请平台介入」此前不写卡片，对方不提就没人在会话里说一声。
     // 与案件其它卡片同口径：详情在弹窗里，不给按钮。
@@ -384,7 +378,6 @@ export function conversationCardMeta(
       return {
         title: '售后案件需人工处理',
         description: '资金处理未能自动完成，客服会尽快跟进并在案件内同步进展。',
-        ...ticketFollowUp,
       }
     default:
       return null
