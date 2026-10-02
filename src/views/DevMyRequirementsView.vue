@@ -770,7 +770,9 @@ function canReportBreach(item: RequirementItem) {
   return item.payment_mode !== 'self_managed' &&
     // 待分账（尾款已缴、分账排队中）仍在等待期内，此时终止合作会把排队分账置为 cancelled，
     // 与后端一样留出这条出口。
-    ['deposit_paid', 'in_development', 'pending_final', 'pending_settlement'].includes(item.status)
+    // 待接单（`pending_deposit`）含「已签约未缴定金」：甲方拒缴定金同样是违约，可以申报，
+    // 那种案件没有支付单、只作责任认定；尚未签合同时后端按无生效合同拒掉。
+    ['pending_deposit', 'deposit_paid', 'in_development', 'pending_final', 'pending_settlement'].includes(item.status)
 }
 
 /** 售后入口：结单后打开 `AfterSalesModal`。开发者是乙方，只查看案件与表态，不能发起。 */
@@ -790,15 +792,6 @@ function openAfterSalesModal(item: RequirementItem) {
 function closeAfterSalesModal() {
   afterSalesVisible.value = false
   afterSalesTarget.value = null
-}
-
-/**
- * 担保模式接单后未缴定金：这里要挡的是「终止合作」（违约申报要求已有一张完成态的定金支付单），
- * 而不是解绑——这段时间的退出出口是「申请解除绑定」（见 canRequestUnbind），
- * 兜底才是缴款期限到期后由系统自动终止合作。
- */
-function awaitingDepositDeadline(item: RequirementItem) {
-  return item.status === 'pending_deposit' && item.payment_mode !== 'self_managed'
 }
 
 async function openBreachReport(item: RequirementItem) {
@@ -1500,15 +1493,6 @@ async function loadRequirementConversations() {
                 tone="danger"
                 v-if="canReportBreach(row.item)"
                 @click="openBreachReport(row.item!)"
-              >
-                终止合作
-              </TButton>
-              <TButton
-                variant="outline"
-                tone="danger"
-                v-else-if="awaitingDepositDeadline(row.item)"
-                disabled
-                title="终止合作要求定金已缴；此时要退出请用「申请解除绑定」，逾期未缴定金则由系统自动终止合作并释放接单保证金"
               >
                 终止合作
               </TButton>

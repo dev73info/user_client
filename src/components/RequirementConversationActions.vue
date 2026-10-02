@@ -241,6 +241,9 @@ const canUseBreach = computed(
       (status.value === 'deposit_paid' ||
         status.value === 'in_development' ||
         status.value === 'pending_final' ||
+        // 已签约未缴定金：甲方拒缴定金同样是违约，可以在这一阶段申报——那种案件没有支付单，
+        // 只作责任认定，不动钱。合同还没生效时没有可裁决的对象，入口不给。
+        (status.value === 'pending_deposit' && contractSigned.value) ||
         // 待分账时尾款已缴、排队分账尚未执行，终止合作仍能取消排队（与需求卡片同口径）。
         status.value === 'pending_settlement')),
 )

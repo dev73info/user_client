@@ -596,17 +596,10 @@ function unbindConsequenceNote(item: RequirementItem) {
 
 function canReportBreach(item: RequirementItem) {
   // 待分账（尾款已缴、分账在排队）也允许终止合作：等待期内的违约由后端取消排队中的分账。
+  // 待接单（`pending_deposit`）里含「已签约未缴定金」：甲方拒缴定金同样是违约，可以申报，
+  // 那种案件没有支付单、只作责任认定；尚未签合同时后端按「无生效合同」拒掉。
   return item.payment_mode !== 'self_managed' &&
-    ['deposit_paid', 'in_development', 'pending_final', 'pending_settlement'].includes(item.status)
-}
-
-/**
- * 担保模式接单后未缴定金：这里要挡的是「终止合作」（违约申报要求已有一张完成态的定金支付单），
- * 而不是解绑——这段时间的退出出口是「申请解除绑定」（见 canRequestUnbindAsCreator），
- * 兜底才是缴款期限到期后由系统自动终止合作。
- */
-function awaitingDepositDeadline(item: RequirementItem) {
-  return item.status === 'pending_deposit' && item.payment_mode !== 'self_managed'
+    ['pending_deposit', 'deposit_paid', 'in_development', 'pending_final', 'pending_settlement'].includes(item.status)
 }
 
 async function openBreachReport(item: RequirementItem) {
@@ -2221,14 +2214,6 @@ function moreRowActions(item: RequirementItem): RequirementRowAction[] {
   }
   if (canReportBreach(item)) {
     entries.push({ key: 'breach', label: '终止合作', danger: true })
-  } else if (awaitingDepositDeadline(item)) {
-    entries.push({
-      key: 'breach',
-      label: '终止合作',
-      danger: true,
-      disabled: true,
-      title: '终止合作要求定金已缴；此时要退出请用「申请解除绑定」，逾期未缴定金则由系统自动终止合作并释放接单保证金',
-    })
   }
   if (canCancel(item)) {
     entries.push({ key: 'cancel', label: '取消需求', danger: true })
