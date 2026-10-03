@@ -414,8 +414,9 @@ function statusBadgeClass(item: RequirementItem) {
   return 'wb-badge--warning'
 }
 
-function formatRequirementStatus(status: RequirementStatus) {
-  return requirementStatusLabel(status)
+/** 状态文案走全站统一口径；`deposit_paid` 一码两义，拿到支付模式就传进去（见 `requirementStatusLabel`）。 */
+function formatRequirementStatus(status: RequirementStatus, paymentMode?: RequirementPaymentMode) {
+  return requirementStatusLabel(status, paymentMode)
 }
 
 function isWaitingContractSign(item: RequirementItem) {
@@ -448,7 +449,7 @@ function formatRequirementDisplayStatus(item: RequirementItem) {
     }
     return '待付定金'
   }
-  return isWaitingContractSign(item) ? '待签合同' : formatRequirementStatus(item.status)
+  return isWaitingContractSign(item) ? '待签合同' : formatRequirementStatus(item.status, item.payment_mode)
 }
 
 function isSelfManagedRequirement(item: RequirementItem) {
@@ -531,24 +532,26 @@ function canResubmit(status: RequirementStatus) {
 }
 
 function canCancel(item: RequirementItem) {
-  // 与后端一致：无活跃接单（开发者还没接单）且处于可取消状态；
-  // 已产生资金/违约记录的会转为「已取消」终态。
-  // 自管模式过审即「待开发者接单」（deposit_paid），没有合同也没有定金，同样允许撤回。
+  // 与后端一致（P10）：担保模式停在「已缴定金」时，取消会把托管定金全额原路退还并顺带解绑，
+  // 所以这一档不再要求「没有被接单」；其余档位仍是「未接单 + 处于可取消状态」。
+  // 自管模式过审即「待开发者接单」（deposit_paid），同样允许撤回。
+  if (item.status === 'deposit_paid') {
+    return true
+  }
   return (
     !hasBoundResource(item) &&
     (item.status === 'pending_review' ||
       item.status === 'rejected' ||
-      item.status === 'pending_deposit' ||
-      (isSelfManagedRequirement(item) && item.status === 'deposit_paid'))
+      item.status === 'pending_deposit')
   )
 }
 
-/** 取消确认文案：过审进过大厅的需求保留为「已取消」终态（可以改完重新提交审核），纯审核阶段的才真删除。 */
+/** 取消确认文案：取消一律保留为「已取消」终态（P9 之后不再物理删除），可以改完重新提交审核。 */
 function cancelConfirmHint(item: RequirementItem) {
-  if (item.status === 'pending_deposit' || item.status === 'deposit_paid') {
-    return '取消后该需求单保留为「已取消」，可以重新编辑后再提交审核。仅未被开发者接取的需求可以取消。'
+  if (item.status === 'deposit_paid' && !isSelfManagedRequirement(item)) {
+    return '取消后该需求单保留为「已取消」，托管定金将全额原路退还；开发者已占用的资源会随之释放。'
   }
-  return '取消后该需求单将被删除且无法恢复。仅未被开发者接取的需求可以取消。'
+  return '取消后该需求单保留为「已取消」，可以重新编辑后再提交审核。'
 }
 
 /** 待分账 / 结单后的提示：尾款缴清到渠道分账之间有等待期，结单后还有售后窗口。 */
@@ -1304,8 +1307,9 @@ async function confirmFinalPaymentRequest() {
 /**
  * 担保模式的验收入口：开发中与待付尾款都能提交。
  *
- * 验收可重复提交——不通过只留档并通知开发者整改，需求留在开发中；
- * 已到待付尾款后仍可追加验收记录（后端同样放行这两个状态）。
+ * 验收可重复提交——不通过会留档并通知开发者整改：「开发中」留在原状态；
+ * 「待付尾款」会退回「开发中」并挡住宿尾款（后端 `accept_delivery` 的 rolling_back 分支），
+ * 开发者整改后重新验收通过才谈尾款。
  */
 function canOpenAcceptance(item: RequirementItem) {
   if (isSelfManagedRequirement(item) || !isRequirementContractSigned(item)) {
@@ -1343,7 +1347,7 @@ function closeAcceptanceModal() {
  * 验收提交成功后的收尾：先把列表刷成新状态，再按结论决定要不要接着走尾款。
  *
  * 验收通过会把需求推到「待付尾款」，这里顺手打开支付弹窗，用户不用再回列表找入口；
- * 不通过时状态不前推，只留档并通知开发者整改。
+ * 不通过时只留档并通知开发者整改（「待付尾款」上打回会把需求退回开发中，挡住宿尾款）。
  */
 async function handleAcceptanceSubmitted(result: AdapayAcceptanceResult) {
   // 组件先派发 `submitted` 再派发 `close`，且派发是同步的：

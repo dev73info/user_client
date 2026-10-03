@@ -16,6 +16,7 @@
 
 import type { McResourcePayload, McResourceVersionPayload } from '@/api/mcResources'
 import type { ContractDetail } from '@/api/contracts'
+import { CONTRACT_STATUS } from '@/shared/contracts'
 import type { RequirementItem, RequirementPaymentMode, RequirementStatus } from '@/api/requirements'
 import type { DevWalletOverview, DevWithdrawalRecord } from '@/api/devWallet'
 import type { DevOrderDepositStatus } from '@/api/devOrderDeposit'
@@ -330,7 +331,7 @@ export function finalAmountOf(requirement: RequirementItem): number {
 
 function buildContract(
   seed: RequirementSeed,
-  status: string,
+  status: number,
   partyASigned: boolean,
   partyBSigned: boolean,
 ): ContractDetail {
@@ -380,7 +381,7 @@ function buildContract(
         contract_title: `需求开发合同 · ${seed.title}`,
         action: 'create',
         from_status: null,
-        to_status: 'draft',
+        to_status: CONTRACT_STATUS.awaiting,
         operator: CLIENT_USERNAME,
         signer_party: null,
         signer_real_name: null,
@@ -400,8 +401,10 @@ function buildContract(
             contract_no: `HT-${seed.code.replace('REQ-', '')}-${seed.id}`,
             contract_title: `需求开发合同 · ${seed.title}`,
             action: 'sign',
-            from_status: 'pending_party_b',
-            to_status: 'pending_party_a',
+            // 两个「待某方签署」已合并为「签约中 1」：乙方先签，前后状态同码，
+            // 轮到谁签改由 party_a_signed_at / party_b_signed_at 推导。
+            from_status: CONTRACT_STATUS.signing,
+            to_status: CONTRACT_STATUS.signing,
             operator: DEV_USERNAME,
             signer_party: 'party_b',
             signer_real_name: DEV_NICKNAME,
@@ -423,8 +426,8 @@ function buildContract(
             contract_no: `HT-${seed.code.replace('REQ-', '')}-${seed.id}`,
             contract_title: `需求开发合同 · ${seed.title}`,
             action: 'sign',
-            from_status: 'pending_party_a',
-            to_status: 'signed',
+            from_status: CONTRACT_STATUS.signing,
+            to_status: CONTRACT_STATUS.signed,
             operator: CLIENT_USERNAME,
             signer_party: 'party_a',
             signer_real_name: CLIENT_NICKNAME,
@@ -447,12 +450,12 @@ function buildContract(
  * 需求单状态与合同状态必须对得上：待付定金 = 合同已签完；开发中及以后 = 合同已签完。
  */
 export const contracts: ContractDetail[] = [
-  buildContract(REQUIREMENT_SEEDS.find((s) => s.id === 1)!, 'signed', true, true),
-  buildContract(REQUIREMENT_SEEDS.find((s) => s.id === 2)!, 'signed', true, true),
-  buildContract(REQUIREMENT_SEEDS.find((s) => s.id === 3)!, 'signed', true, true),
-  buildContract(REQUIREMENT_SEEDS.find((s) => s.id === 4)!, 'signed', true, true),
-  // 待付定金：乙方（开发者）已签，等甲方（需求方）签
-  buildContract(REQUIREMENT_SEEDS.find((s) => s.id === 6)!, 'pending_party_a', false, true),
+  buildContract(REQUIREMENT_SEEDS.find((s) => s.id === 1)!, CONTRACT_STATUS.signed, true, true),
+  buildContract(REQUIREMENT_SEEDS.find((s) => s.id === 2)!, CONTRACT_STATUS.signed, true, true),
+  buildContract(REQUIREMENT_SEEDS.find((s) => s.id === 3)!, CONTRACT_STATUS.signed, true, true),
+  buildContract(REQUIREMENT_SEEDS.find((s) => s.id === 4)!, CONTRACT_STATUS.signed, true, true),
+  // 待付定金：乙方（开发者）已签，等甲方（需求方）签（签约中 1）
+  buildContract(REQUIREMENT_SEEDS.find((s) => s.id === 6)!, CONTRACT_STATUS.signing, false, true),
 ]
 
 export function contractOfRequirement(code: string): ContractDetail | undefined {
@@ -938,7 +941,7 @@ export function bindRequirementRecord(code: string, resourceId: number): Require
   }
 
   if (!contractOfRequirement(code) && requirement.payment_mode === 'platform_guarantee' && seed) {
-    contracts.push(buildContract(seed, 'pending_party_b', false, false))
+    contracts.push(buildContract(seed, CONTRACT_STATUS.signing, false, false))
   }
 
   return requirement

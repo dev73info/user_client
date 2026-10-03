@@ -88,7 +88,7 @@ const filteredRequirements = computed(() => {
       item.title,
       requirementRichTextPreview(item.description, ''),
       paymentModeLabel(item.payment_mode),
-      statusToLabel(item.status),
+      statusToLabel(item.status, item.payment_mode),
     ]
       .join(' ')
       .toLowerCase()
@@ -154,8 +154,9 @@ onBeforeUnmount(() => {
   resetSeoMeta()
 })
 
-function statusToLabel(status: RequirementStatus): string {
-  return requirementStatusLabel(status)
+/** 状态文案走全站统一口径；`deposit_paid` 一码两义，拿到支付模式就传进去（见 `requirementStatusLabel`）。 */
+function statusToLabel(status: RequirementStatus, paymentMode?: RequirementPaymentMode): string {
+  return requirementStatusLabel(status, paymentMode)
 }
 
 function paymentTag(item: PublicRequirementSpotlightItem): string {
@@ -532,7 +533,7 @@ async function loadHallData(page = hallPage.value) {
           >
             <div class="portal-page__card-topline">
               <PaymentModeChip :mode="card.payment_mode">{{
-                statusToLabel(card.status)
+                statusToLabel(card.status, card.payment_mode)
               }}</PaymentModeChip>
             </div>
             <h2>{{ card.title }}</h2>
@@ -650,7 +651,7 @@ async function loadHallData(page = hallPage.value) {
             <h3>{{ selectedRequirement.title }}</h3>
             <p>
               {{ selectedRequirement.requirement_id }} ·
-              {{ statusToLabel(selectedRequirement.status) }}
+              {{ statusToLabel(selectedRequirement.status, selectedRequirement.payment_mode) }}
             </p>
           </div>
           <button
@@ -668,7 +669,7 @@ async function loadHallData(page = hallPage.value) {
         <div class="requirement-hall-detail__meta">
           <span>编号：{{ selectedRequirement.requirement_id }}</span>
           <span>发布方式：{{ paymentTag(selectedRequirement) }}</span>
-          <span>状态：{{ statusToLabel(selectedRequirement.status) }}</span>
+          <span>状态：{{ statusToLabel(selectedRequirement.status, selectedRequirement.payment_mode) }}</span>
           <span>更新：{{ formatTimeLabel(selectedRequirement.updated_at) }}</span>
           <span>创建：{{ formatTimeLabel(selectedRequirement.created_at) }}</span>
         </div>

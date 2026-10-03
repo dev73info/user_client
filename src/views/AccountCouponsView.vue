@@ -3723,6 +3723,35 @@ onBeforeUnmount(() => {
 }
 
 /* ── 账户入口：分组 + 行（「认证管理」「账号与安全」两张卡共用） ── */
+
+/* TButton 的基础样式是固定 36px 高 + 左右 16px 内边距；这里的行内是 40px 图标底衬 + 两行文案，
+   36px 会让图标上下顶出边框（实测内容高 37px > 内容框 34px）。账户入口行必须放开高度：
+   高度自适应 + 上下 8px，内容 40px 时整行 58px，图标与描边之间留出呼吸位。 */
+.entry-row {
+  height: auto;
+  min-height: 56px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  /* TButton 默认 justify-content: center，会把「图标 + 文案 + 箭头」整块居中
+     （实测左边空出 56px）；入口行要从左往右排。 */
+  justify-content: flex-start;
+  text-align: left;
+}
+
+/* TButton 把 slot 包在 .t73-button__label 里，而它是 flex: 0 1 auto——只包住内容宽，
+   于是整块被按钮居中。这里让它撑满整行、并从头排，文案区（flex: 1）再吃掉剩余宽度，
+   箭头就落到最右。min-width: 0 是长文案能收省略号的前提。 */
+.entry-row :deep(.t73-button__label) {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+/* 双保险：即使文案区没吃满，箭头也贴右 */
+.entry-row__arrow {
+  margin-left: auto;
+}
+
 .entry-group {
   display: grid;
   gap: 10px;
@@ -3798,10 +3827,16 @@ onBeforeUnmount(() => {
 .entry-row__desc {
   grid-column: 1;
   grid-row: 2;
+  /* 描述是单行副标题：长文本（企业主体名等）必须自己收口，
+     否则会溢出到右列状态标签下面（实测 245px 的格子放 279px 文案）。 */
+  min-width: 0;
+  overflow: hidden;
   color: var(--profile-text-sub);
   font-size: 12px;
   font-weight: 400;
   line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 状态标签：跨标题与描述两行、在整块文案里垂直居中，于是它和图标、箭头共用一条中线；

@@ -35,6 +35,9 @@ function buyer(overrides: Partial<InvoiceBuyerSubject> = {}): InvoiceBuyerSubjec
 /**
  * 合并申请后的汇总：一次申请按需求开出「平台服务费票 + 开发者收入票」，
  * 金额由后端按已成功分账的结算单算出；`invoiceableTotalFen` 是本次申请能开出的合计。
+ *
+ * 默认给「已结单、闸门放行」（`invoiceAvailable: true`），既有用例的金额口径不变；
+ * 未结单的闸门用例自己覆盖这两个字段。
  */
 function summary(overrides: Partial<InvoiceableSummary> = {}): InvoiceableSummary {
   return {
@@ -54,6 +57,8 @@ function summary(overrides: Partial<InvoiceableSummary> = {}): InvoiceableSummar
     developerInvoiceCny: '800.00',
     invoiceableTotalFen: 100000,
     invoiceableTotalCny: '1000.00',
+    invoiceAvailable: true,
+    requirementStatus: 'completed',
     pendingRefundFen: 0,
     pendingRefundCny: '0.00',
     platformInvoice: null,
@@ -608,6 +613,42 @@ describe('InvoiceApplyDialog', () => {
     // 平台服务费是需求方付给平台的，那张票与乙方无关：进度行里只留乙方自己的收入票
     expect(wrapper.text()).not.toContain('平台服务费发票已提交')
     expect(wrapper.text()).toContain('开发者服务收入发票已提交（待处理 · 票面 ¥800.00）')
+
+    wrapper.unmount()
+  })
+
+  it('需求未结单时不给金额：闸门说明写明结单后才能开票与当前状态', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        invoiceAvailable: false,
+        requirementStatus: 'in_development',
+        invoiceableTotalFen: 0,
+        invoiceableTotalCny: '0.00',
+      }),
+    )
+    const wrapper = await render('customer')
+
+    expect(wrapper.find('.invoice-amount__value').text()).toBe('¥0.00')
+    expect(wrapper.find('.invoice-panel__submit').attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('需求结单后才能申请开票（当前：开发中）')
+    // 闸门说明与旧的「暂无可开票金额」互斥，不叠着说两句。
+    expect(wrapper.text()).not.toContain('本需求暂无可开票金额')
+
+    wrapper.unmount()
+  })
+
+  it('未结单且停在 deposit_paid：弹窗拿不到支付模式，状态按「已付定金 / 待开发」两种含义写出来', async () => {
+    mocks.summary.mockResolvedValue(
+      summary({
+        invoiceAvailable: false,
+        requirementStatus: 'deposit_paid',
+        invoiceableTotalFen: 0,
+        invoiceableTotalCny: '0.00',
+      }),
+    )
+    const wrapper = await render('customer')
+
+    expect(wrapper.text()).toContain('需求结单后才能申请开票（当前：已付定金 / 待开发）')
 
     wrapper.unmount()
   })

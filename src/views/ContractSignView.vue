@@ -11,6 +11,7 @@ import {
     syncAsignSignStatus,
     type ContractDetail,
 } from '@/api/contracts'
+import { CONTRACT_STATUS, contractStatusLabel } from '@/shared/contracts'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -101,15 +102,18 @@ function stopStatusPolling() {
 async function pollStatusOnce() {
     if (signing.value || loading.value || !contract.value) return
     const item = contract.value
-    if (item.status === 'signed' || item.status === 'void' || item.status === 'draft') {
+    // 只有「签约中 1」还需要向爱签同步；已签约 2 与其余终态（3/4/6/7）、未发起 0 都停轮询。
+    if (item.status !== CONTRACT_STATUS.signing) {
         stopStatusPolling()
         return
     }
     try {
         const updated = await syncAsignSignStatus(auth.token, item.id)
         contract.value = updated
-        if (updated.status === 'signed') {
+        if (updated.status !== CONTRACT_STATUS.signing) {
             stopStatusPolling()
+        }
+        if (updated.status === CONTRACT_STATUS.signed) {
             continueAfterDeveloperAgreement()
         }
     } catch {
@@ -148,17 +152,25 @@ const currentParty = computed<'party_a' | 'party_b' | null>(() => {
 })
 const canSignContract = computed(() => {
     if (!contract.value || !currentParty.value) return false
-    if (!['pending_party_a', 'pending_party_b'].includes(contract.value.status)) return false
-    return currentParty.value === 'party_a'
-        ? !contract.value.party_a_signed_at
-        : !contract.value.party_b_signed_at
+    // 只有「签约中 1」可签：0 未发起 / 2 已签约 / 3 过期 / 4 拒签 / 6 作废 / 7 撤销都不能签。
+    if (contract.value.status !== CONTRACT_STATUS.signing) return false
+    if (currentParty.value === 'party_a') {
+        if (contract.value.party_a_signed_at) return false
+        // 签署顺序门：需求开发合同乙方（开发者）先签、甲方（需求方）后签，
+        // 甲方必须等 `party_b_signed_at` 落库后才放行；甲方是平台的协议没有 requirement_id，不受此限。
+        return !contract.value.requirement_id || Boolean(contract.value.party_b_signed_at)
+    }
+    return !contract.value.party_b_signed_at
 })
 // 从需求列表 / 需求会话的「查看合同」进来时，页面同样要能看清是谁在什么时候签的。
 // 只有在本人还需要签署时才收起这些区块，保持签署流程页只聚焦签署动作。
 const showSignatureFacts = computed(() => isWorkbenchSignature.value || !canSignContract.value)
 const waitingMessage = computed(() => {
-    if (!contract.value || contract.value.status === 'signed') return ''
+    // 只有「签约中 1」才有「等对方」这回事；终态与未发起都不再提示。
+    if (!contract.value || contract.value.status !== CONTRACT_STATUS.signing) return ''
     if (currentParty.value === 'party_a') {
+        // 乙方先签：乙方没签时甲方等的是开发者，签完才轮到甲方。
+        if (!contract.value.party_b_signed_at) return '等待开发者完成签署'
         return contract.value.party_a_signed_at ? '等待开发者完成签署' : '等待您完成客户签署'
     }
     if (currentParty.value === 'party_b') {
@@ -176,7 +188,7 @@ const canSubmitSign = computed(
 )
 // 开发者入驻协议签署完成后的引导按钮；工作台签署详情已有「返回我的合同」入口，不在此重复展示。
 const showBecomeDeveloper = computed(
-    () => !isWorkbenchSignature.value && isDeveloperAgreement.value && contract.value?.status === 'signed',
+    () => !isWorkbenchSignature.value && isDeveloperAgreement.value && contract.value?.status === CONTRACT_STATUS.signed,
 )
 
 function displayText(value: string | null | undefined, fallback: string): string {
@@ -215,15 +227,24 @@ function partyDisplay(party: ContractParty): PartyDisplay | null {
     }
 }
 
-function statusLabel(status: string): string {
-    const labels: Record<string, string> = {
-        draft: '草稿',
-        pending_party_a: '待甲方签署',
-        pending_party_b: '待乙方签署',
-        signed: '已签署',
-        void: '已作废',
-    }
-    return labels[status] ?? status
+/**
+ * 状态 chip 的语义色 token。
+ *
+ * 数字状态码不进 CSS 类名（`.contract-status-chip--1` 这种名字既读不懂又不好加档），
+ * 样式里只认这些语义档；未知码回退到最中性的 `waiting` 档。
+ */
+const CONTRACT_STATUS_TONES: Record<number, string> = {
+    [CONTRACT_STATUS.awaiting]: 'waiting',
+    [CONTRACT_STATUS.signing]: 'signing',
+    [CONTRACT_STATUS.signed]: 'signed',
+    [CONTRACT_STATUS.expired]: 'expired',
+    [CONTRACT_STATUS.rejected]: 'rejected',
+    [CONTRACT_STATUS.voided]: 'void',
+    [CONTRACT_STATUS.revoked]: 'revoked',
+}
+
+function contractStatusTone(status: number): string {
+    return CONTRACT_STATUS_TONES[status] ?? 'waiting'
 }
 
 async function loadContract() {
@@ -241,7 +262,7 @@ async function loadContract() {
         // 用户从爱签签署页返回本页时，若已在爱签完成签署，这里会把本地合同更新为已签署。
         // 若同步后仍未签署，则启动轮询持续同步，直到爱签侧完成或合同变为已签署。
         const item = contract.value
-        if (item && !['signed', 'void', 'draft'].includes(item.status)) {
+        if (item && item.status === CONTRACT_STATUS.signing) {
             const hasInitiated = (item.signing_logs ?? []).some(
                 (log) => log.action === 'asign_sign_initiated',
             )
@@ -251,7 +272,7 @@ async function loadContract() {
                 } catch {
                     // 同步失败不阻断页面展示，保留已加载状态。
                 }
-                if (contract.value && contract.value.status !== 'signed') {
+                if (contract.value?.status === CONTRACT_STATUS.signing) {
                     startStatusPolling()
                 }
             }
@@ -265,7 +286,7 @@ async function loadContract() {
 }
 
 function continueAfterDeveloperAgreement() {
-    if (isWorkbenchSignature.value || !isDeveloperAgreement.value || contract.value?.status !== 'signed') {
+    if (isWorkbenchSignature.value || !isDeveloperAgreement.value || contract.value?.status !== CONTRACT_STATUS.signed) {
         return
     }
 
@@ -410,19 +431,20 @@ onUnmounted(() => {
                         <p><strong>合同编号：</strong>{{ contract.contract_no }}</p>
                         <p><strong>合同标题：</strong>{{ contract.title }}</p>
                         <p><strong>签署状态：</strong><span class="contract-status-chip"
-                                :class="`contract-status-chip--${contract.status}`">{{ statusLabel(contract.status)
+                                :class="`contract-status-chip--${contractStatusTone(contract.status)}`">{{
+                                contractStatusLabel(contract.status)
                                 }}</span></p>
                         <p><strong>合同指纹：</strong><span class="hash-text">{{ contract.content_sha256 }}</span></p>
                         <!-- CT-2：平台作废不联动爱签（爱签 OpenAPI 没有作废/撤回接口），
                              用户可能在渠道侧仍看到这份合同，必须在页面上讲清楚边界。 -->
-                        <p v-if="contract.status === 'void'" class="void-hint">
+                        <p v-if="contract.status === CONTRACT_STATUS.voided" class="void-hint">
                             <strong>本合同已由平台作废。</strong>
                             平台作废只影响本站：爱签渠道侧的合同不会同步撤回，请不要再在爱签侧签署这份合同；
                             如已签署，请联系客服处理。
                         </p>
                     </div>
-                    <!-- 已签署的合同正文以爱签那份为准，「查看合同」跳爱签预览页。 -->
-                    <button v-if="contract.status === 'signed'" class="btn-primary" @click="viewContract">
+                    <!-- 已签约的合同正文以爱签那份为准，「查看合同」跳爱签预览页。 -->
+                    <button v-if="contract.status === CONTRACT_STATUS.signed" class="btn-primary" @click="viewContract">
                         查看合同
                     </button>
                 </div>
@@ -441,7 +463,7 @@ onUnmounted(() => {
                     </section>
                     <!-- 已签署的合同正文以爱签那份为准，由「查看合同」入口跳过去；
                          只有爱签取不到预览链接时才回退展示本地正文。 -->
-                    <details v-if="showSignatureFacts && (contract.status !== 'signed' || localDocumentFallback)"
+                    <details v-if="showSignatureFacts && (contract.status !== CONTRACT_STATUS.signed || localDocumentFallback)"
                         class="signature-document" open>
                         <summary>合同正文</summary>
                         <div class="contract-content">{{ contract.content }}</div>
@@ -646,8 +668,7 @@ onUnmounted(() => {
     font-weight: 750;
 }
 
-.contract-status-chip--pending_party_a,
-.contract-status-chip--pending_party_b {
+.contract-status-chip--signing {
     border-color: #fed7aa;
     background: #fff7ed;
     color: #c2410c;

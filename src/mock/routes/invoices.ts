@@ -128,6 +128,11 @@ function buildSummary(requirementId: string): InvoiceableSummary | null {
   const pendingPlatform = platformInvoice ? 0 : platformFee
   const pendingDeveloper = developerInvoice ? 0 : developerGross
 
+  /* 结单闸门与后端同规则：需求已结单（completed）才放行开票，未结单时后端还会把可开票合计置 0。
+     这里照做，否则 mock 下会出现「可开票金额 > 0 但入口已置灰」的自相矛盾。 */
+  const invoiceAvailable = requirement.status === 'completed'
+  const pendingTotal = invoiceAvailable ? pendingPlatform + pendingDeveloper : 0
+
   return {
     requirementId,
     customer: CLIENT_USERNAME,
@@ -151,8 +156,10 @@ function buildSummary(requirementId: string): InvoiceableSummary | null {
     developerPayoutCny: '0.00',
     developerInvoiceFen: fenOf(developerGross),
     developerInvoiceCny: developerGross.toFixed(2),
-    invoiceableTotalFen: fenOf(pendingPlatform + pendingDeveloper),
-    invoiceableTotalCny: (pendingPlatform + pendingDeveloper).toFixed(2),
+    invoiceableTotalFen: fenOf(pendingTotal),
+    invoiceableTotalCny: pendingTotal.toFixed(2),
+    invoiceAvailable,
+    requirementStatus: requirement.status,
     pendingRefundFen: 0,
     pendingRefundCny: '0.00',
     platformInvoice: platformInvoice ?? null,
@@ -189,6 +196,12 @@ const routes: MockRoute[] = [
 
       if (!requirement) {
         return textResponse('需求不存在', 404)
+      }
+
+      // 与后端同口径的结单闸门（P13 / BUG-016）：没结单一律拒绝，免得 mock 下能造出
+      // 真实环境开不出的票，让前端按错误前提调试。
+      if (requirement.status !== 'completed') {
+        return textResponse('需求结单后才能申请开票', 409)
       }
 
       const created: InvoiceRecord[] = []

@@ -28,7 +28,7 @@
  *
  * ## 签署这一步为什么默认走接口
  *
- * 担保合同创建后是 `pending_party_b`——**乙方（开发者）先签，甲方（需求方）后签**。
+ * 担保合同创建后是「签约中 1」——**乙方（开发者）先签，甲方（需求方）后签**。
  * 但 `ContractSignView.vue` 现在只剩一条路：调 `asign-sign` 拿签署链接，然后
  * `window.location.href` 跳到爱签 `prev.asign.cn`。**平台自带的在线签署入口已从 UI 摘除**，
  * 而爱签那条路的短信验证码在本机不可自动化（实测该 app_id 下万能码 `111111`、`123456`
@@ -36,7 +36,7 @@
  *
  * 所以默认 `E2E_SIGN_MODE=local`：用后端仍然保留的 `POST /api/contract/{id}/sign` 按
  * 「手写签名 + 实名身份」落库。写入的是同一张合同、同两个签署字段、同一套状态流转
- * （`pending_party_b → pending_party_a → signed`），差别只在签名页由谁渲染。
+ * （「签约中 1」→「已签约 2」），差别只在签名页由谁渲染。
  * 合同入口本身（需求方点「发起合同」）仍然走 UI，没有被跳过。
  *
  * 要验爱签真实签署时用 `E2E_SIGN_MODE=asign`，并且必须**有头**跑，且需要人工在爱签
@@ -414,12 +414,12 @@ test.describe('担保模式四流', () => {
         })
         await createContract.click()
 
-        // 担保合同固定以 pending_party_b 出生：乙方（开发者）先签。
+        // 担保合同发起后即「签约中 1」：乙方（开发者）先签。
         const contract = await waitForRequirementContract(
           request,
           pre.client,
           requirementId,
-          'pending_party_b',
+          1,
         )
         expect(contract.contract_no, '合同应当有合同编号').toBeTruthy()
       })
@@ -429,8 +429,8 @@ test.describe('担保模式四流', () => {
         const contract = await getRequirementContract(request, pre.client, requirementId)
 
         if (SIGN_MODE === 'local') {
-          // 顺序不能颠倒：`sign_contract_by_user` 只在 pending_party_b 放行乙方、
-          // pending_party_a 放行甲方。
+          // 顺序不能颠倒：`sign_contract_by_user` 只放行「签约中 1」的合同，
+          // 且需求开发合同里甲方还要等 `party_b_signed_at` 落库才放行（乙方先签、甲方后签）。
           await signContractLocally(request, pre.developer, contract.id)
           await signContractLocally(request, pre.client, contract.id)
         } else {
@@ -556,7 +556,7 @@ test.describe('担保模式四流', () => {
 
         // 合同流：双方已签且签署时间落库。
         const contract = await getRequirementContract(request, pre.client, requirementId)
-        expect(contract.status, '结单后合同应当是已签署').toBe('signed')
+        expect(contract.status, '结单后合同应当是已签约 2').toBe(2)
         expect(contract.party_a_signed_at, '甲方签署时间应当落库').toBeTruthy()
         expect(contract.party_b_signed_at, '乙方签署时间应当落库').toBeTruthy()
 
@@ -665,12 +665,12 @@ test.describe('担保模式四流', () => {
   })
 })
 
-/** 等合同落到目标状态（合同是异步落库，创建完立刻查会查不到）。 */
+/** 等合同落到目标状态（合同是异步落库，创建完立刻查会查不到；整数状态见 `CONTRACT_STATUS`）。 */
 async function waitForRequirementContract(
   request: APIRequestContext,
   token: string,
   requirementId: string,
-  expected: string,
+  expected: number,
   timeoutMs = STEP_TIMEOUT_MS,
 ): Promise<RequirementContract> {
   const deadline = Date.now() + timeoutMs

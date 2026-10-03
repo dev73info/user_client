@@ -225,7 +225,7 @@ const projectRows = computed<DevHomeProjectRow[]>(() => {
       requirementId: item.requirement_id,
       title: item.title,
       status: item.status,
-      statusLabel: requirementStatusLabel(item.status),
+      statusLabel: requirementStatusLabel(item.status, item.payment_mode),
       tone: STATUS_TONES[item.status] ?? 'blue',
       createdAt: item.created_time,
       updatedAt: item.updated_at,

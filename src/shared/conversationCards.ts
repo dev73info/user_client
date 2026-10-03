@@ -179,12 +179,28 @@ export function conversationCardMeta(
         // 交付是开发者自己提交的，这张卡片对开发者只是回执，不给按钮；
         // 需求方这边直接给交付产物的下载入口（不跳页），并在同一行给出「验收」：
         // 卡片说的就是「请验收后支付尾款」，入口放这儿比只留在底部工具条里更顺路。
-        // 只在「开发中」给验收入口：交付产物的下载一直保留，但验收通过后卡片所在的那一步
-        // 已经做完（该做的是付尾款，工具条的入口在），待付尾款上再点验收还会被后端拒掉
-        // 不通过的结论，历史卡片不该留这样一个入口。
+        // 交付那一步在「开发中」与「待付尾款」都还开着：待付尾款上打回验收会把需求退回开发中、
+        // 同时挡住宿尾款（后端 `accept_delivery` 的 rolling_back 分支），所以这里不能再藏，
+        // 否则尾款阶段发现问题时，卡片上唯一的按钮是「支付尾款」。
+        // 交付产物的下载一直保留；待分账与结单后交付早已做完，历史卡片不再挂验收入口。
         actionLabel: role === 'developer' ? undefined : '下载交付产物',
         downloadDelivery: role !== 'developer',
-        acceptanceAction: role === 'customer' && requirementStatus === 'in_development',
+        acceptanceAction: role === 'customer' && statusIn(requirementStatus, DELIVERABLE_STATUSES),
+      }
+    // 结单（completed）后开发者仍可发布版本（售后返工），但验收动作在后端此时一律被拒
+    // （`accept_delivery` 只认 in_development / pending_final），所以这张卡片不能再说
+    // 「等待验收」——需求方点不出验收动作，卡片就是一句兑现不了的承诺。
+    // 后端给的文案已写明「需求已结单，如需返工、退款或赔付请通过售后发起」，这里照抄口径，
+    // 只保留产物下载（版本确实发布了，是这张卡片上唯一真实可做的动作）。
+    case 'delivery_submitted_after_completed':
+      return {
+        title: role === 'developer' ? '已提交结单后的新版本' : '收到结单后的新版本',
+        description:
+          role === 'developer'
+            ? '你已提交新版本，需求此前已结单，本次交付不再走验收；如需返工、退款或赔付，请通过「售后」发起。'
+            : '开发者已提交新版本，需求此前已结单，本次交付不再走验收；如需返工、退款或赔付，请通过「售后」发起。',
+        actionLabel: role === 'developer' ? undefined : '下载交付产物',
+        downloadDelivery: role !== 'developer',
       }
     case 'acceptance_passed':
       return {

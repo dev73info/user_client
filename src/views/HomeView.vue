@@ -385,7 +385,7 @@ const portalNotices = computed<PortalNotice[]>(() => {
     notices.push({
       title: `需求：${publicRequirementSpotlights.value[0].title}`,
       date: formatTimeLabel(publicRequirementSpotlights.value[0].updated_at),
-      tag: statusToLabel(publicRequirementSpotlights.value[0].status),
+      tag: statusToLabel(publicRequirementSpotlights.value[0].status, publicRequirementSpotlights.value[0].payment_mode),
       to: { name: 'requirement-hall' },
     })
   }
@@ -1036,8 +1036,9 @@ async function runBackgroundAutoRefresh() {
   }
 }
 
-function statusToLabel(status: RequirementStatus): string {
-  return requirementStatusLabel(status)
+/** 状态文案走全站统一口径；`deposit_paid` 一码两义，拿到支付模式就传进去（见 `requirementStatusLabel`）。 */
+function statusToLabel(status: RequirementStatus, paymentMode?: RequirementPaymentMode): string {
+  return requirementStatusLabel(status, paymentMode)
 }
 
 function formatMoney(budget?: number | null) {
@@ -1300,7 +1301,7 @@ async function loadPendingRequirements(silent = false) {
         id: item.requirement_id,
         title: item.title,
         status: item.status,
-        statusLabel: statusToLabel(item.status),
+        statusLabel: statusToLabel(item.status, item.payment_mode),
         updatedAtLabel: formatTimeLabel(item.updated_at),
         description: item.description,
         acceptanceCriteria: item.acceptance_criteria,
@@ -1512,12 +1513,17 @@ async function submitDepositPayment() {
   depositLoading.value = true
   try {
     if (!depositPayment.value) {
+      // 定金可带券（P6 / BUG-025）：金额券与折扣券互斥，取了哪张就传哪张；尾款不接券。
+      const couponCode = currentStage === '定金'
+        ? (amountCouponCode.value || discountCouponCode.value || undefined)
+        : undefined
       const adapayPayment: AdapayPaymentResponse = await createAdapayPayment(
         auth.token,
         depositRequirement.value.id,
         currentStage === '定金' ? 'deposit' : 'final',
         channel,
         clientPlatform,
+        couponCode,
       )
       depositPayment.value = {
         payment_id: adapayPayment.paymentId,

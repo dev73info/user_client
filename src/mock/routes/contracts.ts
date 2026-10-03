@@ -6,7 +6,7 @@
  */
 
 import type { ContractDetail, MyContractSummary } from '@/api/contracts'
-import type { ContractSigningStatus } from '@/shared/contracts'
+import { CONTRACT_STATUS, type ContractSigningStatus } from '@/shared/contracts'
 
 import { CLIENT_USERNAME, DEV_USERNAME, contractOfRequirement, contracts } from '../db'
 import { defineRouteTable, type MockRequest, type MockRoute } from '../router'
@@ -79,7 +79,7 @@ function developerAgreement(): ContractDetail {
       '关闭 mock 即可看到真实协议文本。',
     ].join('\n'),
     content_sha256: 'mock-agreement-sha256',
-    status: 'signed',
+    status: CONTRACT_STATUS.signed,
     party_a_name: '柒参信息（平台）',
     party_a_username: 'admin',
     party_a_account_email: 'fanbo@73info.cn',
@@ -149,7 +149,7 @@ const routes: MockRoute[] = [
   {
     method: 'POST',
     path: '/contracts/:contractId/sign',
-    note: '签署合同：按当前身份写自己那一方的签署时间，双方签完转 signed',
+    note: '签署合同：按当前身份写自己那一方的签署时间，双方签完转「已签约 2」',
     handler: (request, params) => {
       const contract = contracts.find((item) => String(item.id) === params.contractId)
       if (!contract) {
@@ -167,12 +167,11 @@ const routes: MockRoute[] = [
         contract.party_a_signature_sha256 = 'mock-signature-a'
       }
 
+      // 「签约中 1」覆盖「等待某一方签署」：双方都签完才转「已签约 2」。
       contract.status =
         contract.party_a_signed_at && contract.party_b_signed_at
-          ? 'signed'
-          : contract.party_a_signed_at
-            ? 'pending_party_b'
-            : 'pending_party_a'
+          ? CONTRACT_STATUS.signed
+          : CONTRACT_STATUS.signing
       contract.updated_at = signedAt
 
       return jsonResponse(contract)

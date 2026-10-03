@@ -11,6 +11,7 @@ import {
     getWorkbenchRequirementHallItem,
     listPublicRequirementSpotlights,
     type PublicRequirementSpotlightItem,
+    type RequirementPaymentMode,
     type RequirementStatus,
 } from '@/api/requirements'
 import {
@@ -252,7 +253,7 @@ function buildRequirementSearchText(requirement: PublicRequirementSpotlightItem)
         requirementRichTextPreview(requirement.description, ''),
         requirementRichTextPreview(requirement.acceptance_criteria, ''),
         paymentModeLabel(requirement.payment_mode),
-        statusToLabel(requirement.status),
+        statusToLabel(requirement.status, requirement.payment_mode),
     ]
         .join(' ')
         .toLowerCase()
@@ -416,8 +417,9 @@ function paymentTag(requirement: PublicRequirementSpotlightItem): string {
     return paymentModeLabel(requirement.payment_mode)
 }
 
-function statusToLabel(status: RequirementStatus): string {
-    return requirementStatusLabel(status)
+/** 状态文案走全站统一口径；`deposit_paid` 一码两义，拿到支付模式就传进去（见 `requirementStatusLabel`）。 */
+function statusToLabel(status: RequirementStatus, paymentMode?: RequirementPaymentMode): string {
+    return requirementStatusLabel(status, paymentMode)
 }
 
 function communityStatusLabel(status: CommunityPostStatus): string {
@@ -522,7 +524,7 @@ function communityStatusLabel(status: CommunityPostStatus): string {
                         @keydown.space.prevent="openRequirement(requirement)">
                         <div class="portal-page__card-topline">
                             <PaymentModeChip :mode="requirement.payment_mode" />
-                            <span class="portal-page__meta">{{ statusToLabel(requirement.status) }}</span>
+                            <span class="portal-page__meta">{{ statusToLabel(requirement.status, requirement.payment_mode) }}</span>
                         </div>
                         <h3>{{ requirement.title }}</h3>
                         <p>{{ requirementDescription(requirement) }}</p>
@@ -581,7 +583,7 @@ function communityStatusLabel(status: CommunityPostStatus): string {
                         <h3>{{ selectedRequirement.title }}</h3>
                         <p>
                             {{ selectedRequirement.requirement_id }} ·
-                            {{ statusToLabel(selectedRequirement.status) }}
+                            {{ statusToLabel(selectedRequirement.status, selectedRequirement.payment_mode) }}
                         </p>
                     </div>
                     <button class="portal-search-detail__close" type="button" aria-label="关闭详情"
@@ -595,7 +597,7 @@ function communityStatusLabel(status: CommunityPostStatus): string {
                 <div class="portal-search-detail__meta">
                     <span>编号：{{ selectedRequirement.requirement_id }}</span>
                     <span>发布方式：{{ paymentTag(selectedRequirement) }}</span>
-                    <span>状态：{{ statusToLabel(selectedRequirement.status) }}</span>
+                    <span>状态：{{ statusToLabel(selectedRequirement.status, selectedRequirement.payment_mode) }}</span>
                     <span>更新：{{ formatTimeLabel(selectedRequirement.updated_at) }}</span>
                     <span>创建：{{ formatTimeLabel(selectedRequirement.created_at) }}</span>
                 </div>

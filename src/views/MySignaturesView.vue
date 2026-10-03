@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { listMyContracts, type MyContractSummary } from '@/api/contracts'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
+import { CONTRACT_STATUS, contractStatusLabel } from '@/shared/contracts'
 import { getSignatureState, signatureStateLabels, type SignatureState } from '@/utils/contractSignatures'
 
 
@@ -29,6 +30,8 @@ const selectedState = ref<'all' | SignatureState>('all')
 let requestId = 0
 
 /* 状态筛选用胶囊组（统一层 .wb-chip）：选项少、要能一眼看出当前选中项，选中项还要报出条数。
+   筛的是**签名态**（我方要不要签），不是合同状态码：整数状态里没有对应语义，
+   过期 / 拒签 / 撤销 这类合同只在「全部」里出现，列表徽标按合同状态显示。
    作废是终态，走中性档 wb-chip--muted，不跟其余状态抢强调色。 */
 const states: { value: 'all' | SignatureState; label: string }[] = [
   { value: 'all', label: '全部' },
@@ -109,6 +112,16 @@ function roleLabel(item: MyContractSummary) {
 
 function stateOf(item: MyContractSummary) {
   return getSignatureState(item, auth.username)
+}
+
+/* 列表徽标：签名态认不出「过期 / 拒签 / 撤销」这几种新增状态（都会落到 unavailable），
+   这时直接显示合同状态，免得一律写成「暂不可签署」。 */
+function badgeLabel(item: MyContractSummary) {
+  const state = stateOf(item)
+  if (state === 'unavailable' && item.status !== CONTRACT_STATUS.awaiting) {
+    return contractStatusLabel(item.status)
+  }
+  return signatureStateLabels[state]
 }
 
 /* 状态标签走统一层（.wb-badge）：浅底 + 深字，终止态用中性档。 */
@@ -219,7 +232,7 @@ function openDetail(item: MyContractSummary) {
               </span>
             </div>
             <div class="wb-item__side">
-              <span class="wb-badge" :class="badgeClass(item)">{{ signatureStateLabels[stateOf(item)] }}</span>
+              <span class="wb-badge" :class="badgeClass(item)">{{ badgeLabel(item) }}</span>
               <TButton :class="stateOf(item) === 'pending' ? 'wb-toolbar__primary' : 'wb-toolbar__ghost'"
                 @click="openDetail(item)">
                 {{ stateOf(item) === 'pending' ? '去签署' : '查看详情' }}

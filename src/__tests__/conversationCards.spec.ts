@@ -73,15 +73,33 @@ describe('conversation status cards', () => {
     // 下载入口与验收入口互不影响：产物一直能下，验收入口按阶段出现或消失。
     expect(card?.downloadDelivery).toBe(true)
 
-    // 到了待付尾款，这一步已经做完，该做的是付尾款（工具条上有），卡片不再挂验收入口——
-    // 而且在待付尾款上提交「验收不通过」后端也会拒掉，入口留着只会点出一个报错。
-    expect(meta('delivery_submitted', 'customer', 'pending_final')?.acceptanceAction).toBe(false)
-    // 更靠后（结单前后）的历史卡片同样不挂，下载入口则保留。
+    // 到了待付尾款这一步，验收入口仍然保留：此时打回会把需求退回「开发中」并挡住宿尾款，
+    // 正是「尾款阶段才发现交付问题」的唯一轻出口（付尾款入口在工具条与 acceptance_passed 卡片上）。
+    expect(meta('delivery_submitted', 'customer', 'pending_final')?.acceptanceAction).toBe(true)
+    // 更靠后（待分账 / 结单）的历史卡片不挂，下载入口则保留。
     expect(meta('delivery_submitted', 'customer', 'pending_settlement')?.acceptanceAction).toBe(false)
     expect(meta('delivery_submitted', 'customer', 'completed')?.acceptanceAction).toBe(false)
     expect(meta('delivery_submitted', 'customer', 'deposit_paid')?.acceptanceAction).toBe(false)
     // 交付是开发者自己提交的，这张卡片对开发者只是通知。
     expect(meta('delivery_submitted', 'developer', 'in_development')?.acceptanceAction).toBe(false)
+  })
+
+  it('treats the post-completion delivery card as a notification with the after-sales exit', () => {
+    // 结单（completed）后发布版本（售后返工）：验收动作在后端一律被拒，这张卡片不能再走
+    // 「等待验收」那套——不给验收入口，文案写明需求已结单并把出口指向售后。
+    const customer = meta('delivery_submitted_after_completed', 'customer', 'completed')
+    expect(customer).not.toBeNull()
+    // 不给验收入口：结单后后端 `accept_delivery` 一律 409，摆出来就是一个必然报错的按钮。
+    expect(customer?.acceptanceAction).toBeUndefined()
+    expect(customer?.description).toContain('售后')
+    // 产物下载保留：版本确实发布了，这是这张卡片上唯一真实可做的动作。
+    expect(customer?.actionLabel).toBe('下载交付产物')
+    expect(customer?.downloadDelivery).toBe(true)
+
+    const developer = meta('delivery_submitted_after_completed', 'developer', 'completed')
+    expect(developer?.title).toContain('已提交')
+    expect(developer?.actionLabel).toBeUndefined()
+    expect(developer?.downloadDelivery).toBe(false)
   })
 
   it('treats the paid-but-unsettled card as a notification without a dead-end list jump', () => {
@@ -137,6 +155,9 @@ describe('conversation status cards', () => {
     // 后端 `system_card_text` 认识的每个事件码都必须在这里有文案：漏一个，会话里那条
     // 卡片就会渲染成空白（界面还承诺过「对方会在会话里收到通知」）。
     const codes = [
+      // 结单后发布版本（售后返工）：文案已由后端给出，前端也必须认这个码，
+      // 否则它会退化成一条普通消息，卡片语义（结单 / 售后出口）就丢了。
+      'delivery_submitted_after_completed',
       // 协商解除（担保与自管两种模式共用）
       'unbind_request_submitted',
       'unbind_request_approved',

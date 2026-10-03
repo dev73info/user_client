@@ -11,7 +11,8 @@ export type ContractDetail = {
   title: string
   content: string
   content_sha256: string
-  status: string
+  /** 整数合同状态（值域见 `CONTRACT_STATUS`，没有 5）。 */
+  status: number
   party_a_name: string
   party_a_username: string | null
   party_a_account_email?: string | null
@@ -57,8 +58,9 @@ export type SigningLogItem = {
   contract_no: string
   contract_title: string
   action: string
-  from_status?: string | null
-  to_status?: string | null
+  /** 签署前后的整数状态（值域同 `CONTRACT_STATUS`）；无变更时可为 null。 */
+  from_status?: number | null
+  to_status?: number | null
   operator: string
   signer_party?: string | null
   signer_real_name?: string | null
@@ -79,7 +81,8 @@ export type SignContractInitiateResponse = {
   contract_id: number
   contract_no: string
   sign_url: string | null
-  status: string
+  /** 发起签署后的整数合同状态。 */
+  status: number
 }
 
 export async function fetchContractSigningStatus(
@@ -183,7 +186,7 @@ export async function createRequirementContract(
  *
  * 场景：用户已在爱签页面完成签署，但爱签回调可能延迟/丢失
  * （本地开发环境回调发到生产域名，本地收不到），导致本地合同仍停留在
- * pending。前端在签约页加载/轮询时调用本接口，主动向爱签查询签署状态，
+ * 「签约中 1」。前端在签约页加载/轮询时调用本接口，主动向爱签查询签署状态，
  * 若爱签侧已完成则更新本地合同为已签署。
  */
 export async function syncAsignSignStatus(

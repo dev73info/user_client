@@ -10,6 +10,7 @@ import {
   type InvoiceRecord,
 } from '@/api/invoices'
 import { useToast } from '@/composables/useToast'
+import { requirementStatusLabel } from '@/shared/requirementStatus'
 
 /** 开票主体：平台服务费票由平台开给需求方，开发者收入票由乙方开给需求方。 */
 type InvoiceSide = 'platform' | 'developer'
@@ -93,6 +94,21 @@ const copy = computed(() => COPY[props.role])
  */
 const amountFen = computed(() => summary.value?.invoiceableTotalFen ?? 0)
 const amountCny = computed(() => summary.value?.invoiceableTotalCny ?? '0.00')
+
+/**
+ * 结单闸门说明：需求未结单时后端不放行开票（可开票金额也已置 0），这里把原因说清楚。
+ *
+ * 弹窗拿不到该需求的支付模式，状态文案按统一口径的「未知模式回退」处理（`deposit_paid` 会写成
+ * 「已付定金 / 待开发」）。响应里没带 `invoiceAvailable`（旧后端）时返回空串，不凭空拦人。
+ */
+const invoiceGateNotice = computed(() => {
+  const item = summary.value
+  if (!item || item.invoiceAvailable !== false) {
+    return ''
+  }
+  const statusLabel = item.requirementStatus ? requirementStatusLabel(item.requirementStatus) : '状态未知'
+  return `需求结单后才能申请开票（当前：${statusLabel}）——尾款分账在结单时才会走完，结单后这里会显示可开票金额。`
+})
 
 /**
  * 已经存在的发票记录：已提交过的一侧只展示进度，不重复申请。
@@ -463,6 +479,10 @@ onUnmounted(() => {
           开发者票已按扣除这笔诉求后的净额 ¥{{ summary.developerInvoiceCny }} 计算——钱还没退出去，
           不能算进已经发生的销售额。诉求判不成立或撤回时，差额再补开；平台服务费不随退款减免。
         </p>
+        <!-- 未结单的闸门说明：比下面那条「暂无可开票金额」更具体，两条互斥，不叠着说。 -->
+        <p v-if="invoiceGateNotice" class="invoice-panel__notice">
+          {{ invoiceGateNotice }}
+        </p>
         <p v-for="item in existingInvoices" :key="item.invoice.id" class="invoice-panel__notice">
           {{ invoiceSideLabel(item.side) }}已提交（{{ kindNoticePrefix(item.invoice.invoiceKind) }}{{ invoiceStatusLabel(item.invoice.status) }} · 票面 ¥{{ item.invoice.amountCny }}），到「我的发票」可查看进度与发票文件。
         </p>
@@ -470,7 +490,8 @@ onUnmounted(() => {
           原票开具后本需求实际发生的净额变了（售后退款 / 赔付已成立）：{{ invoiceSideLabel(item.side) }}
           需要红冲后重开。财务端已列为「待红冲」，红冲完成后这里就能按最新净额重新申请，无需另行申请改写。
         </p>
-        <p v-if="!summaryLoading && summary && amountFen <= 0" class="invoice-panel__hint">
+        <!-- 未结单的原因上面那条已经写明，这条不再重复，只管「已分账但票都开过 / 还没分账」两种情况。 -->
+        <p v-if="!summaryLoading && summary && amountFen <= 0 && !invoiceGateNotice" class="invoice-panel__hint">
           本需求暂无可开票金额：要么还没有成功分账的结算（未结案的退款诉求会先扣掉这部分），
           要么能开的票都已经提交过了。
         </p>

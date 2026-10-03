@@ -22,6 +22,7 @@ import {
 } from '@/api/devRequirements'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 import {
   TButton,
@@ -263,12 +264,22 @@ watch(
     { immediate: true },
 )
 
-function statusToLabel(status: RequirementStatus): string {
-    const mapping: Record<RequirementStatus, string> = {
+/**
+ * 本页的状态文案简表。
+ *
+ * `deposit_paid` 一码两义，不在表里写死：电签担保（`platform_guarantee`）是「定金已进托管、等合同
+ * 签署完成」的过渡态，写「已付定金」；无电签约定（`self_managed`）没有合同也没有定金，审核通过
+ * 即待开发者接单，写「待开发」。拿不到支付模式时两种含义都写出来——口径见 `shared/requirementStatus.ts`。
+ */
+function statusToLabel(status: RequirementStatus, paymentMode?: RequirementPaymentMode): string {
+    if (status === 'deposit_paid') {
+        return requirementStatusLabel(status, paymentMode)
+    }
+
+    const mapping: Record<Exclude<RequirementStatus, 'deposit_paid'>, string> = {
         pending_review: '待审核',
         rejected: '已拒绝',
         pending_deposit: '待接单/签约',
-        deposit_paid: '待开发',
         in_development: '开发中',
         pending_final: '待付尾款',
         pending_settlement: '待分账',
@@ -649,7 +660,7 @@ async function submitBinding() {
         <div class="dev-meta-strip__divider" />
         <div class="dev-meta-strip__item">
           <span class="dev-meta-strip__label">状态</span>
-          <span class="dev-meta-strip__value">{{ statusToLabel(requirement.status) }}</span>
+          <span class="dev-meta-strip__value">{{ statusToLabel(requirement.status, requirement.payment_mode) }}</span>
         </div>
         <div class="dev-meta-strip__divider" />
         <div class="dev-meta-strip__item">

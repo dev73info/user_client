@@ -37,7 +37,8 @@ export type SigningStatus = {
   party_a_signed?: boolean
   party_b_signed?: boolean
   party_c_signed?: boolean
-  status?: string | null
+  /** 整数合同状态（0/1/2/3/4/6/7，没有 5）。 */
+  status?: number | null
 }
 
 /** 需求下的合同（`GET /api/contract/requirement/{requirement_id}/my-contract`）。 */
@@ -45,7 +46,8 @@ export type RequirementContract = {
   id: number
   contract_no: string
   title: string
-  status: string
+  /** 整数合同状态（0/1/2/3/4/6/7，没有 5）。 */
+  status: number
   requirement_id?: string | null
   party_a_signed_at?: string | null
   party_b_signed_at?: string | null
@@ -474,7 +476,7 @@ export function initiateAsignSign(
   token: string,
   contractId: number,
   notice = false,
-): Promise<{ contract_id: number; contract_no: string; sign_url?: string | null; status: string }> {
+): Promise<{ contract_id: number; contract_no: string; sign_url?: string | null; status: number }> {
   return postJson(
     request,
     `/api/contract/${contractId}/asign-sign`,
@@ -519,7 +521,7 @@ export function signContractLocally(
 export async function getDeveloperAgreement(
   request: APIRequestContext,
   token: string,
-): Promise<{ id: number; status: string; contract_no: string }> {
+): Promise<{ id: number; status: number; contract_no: string }> {
   return getJson(request, '/api/contract/developer-agreement', token)
 }
 
@@ -553,28 +555,30 @@ export function isBindableResource(resource: McResource): boolean {
 export function listMyContracts(
   request: APIRequestContext,
   token: string,
-): Promise<Array<{ id: number; title: string; status: string; contract_no: string }>> {
+): Promise<Array<{ id: number; title: string; status: number; contract_no: string }>> {
   return getJson(request, '/api/contract/mine', token)
 }
 
-/** 等《开发者入驻协议》之类的合同落到目标状态。 */
+/** 等《开发者入驻协议》之类的合同落到目标状态（整数状态，0/1/2/3/4/6/7，没有 5）。 */
 export async function waitForContractStatus(
   request: APIRequestContext,
   token: string,
   contractId: number,
-  expected: string,
+  expected: number,
   timeoutMs = 5 * 60 * 1000,
   intervalMs = 4000,
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs
-  let latest = ''
+  let latest: number | null = null
   while (Date.now() < deadline) {
     const found = (await listMyContracts(request, token)).find((row) => row.id === contractId)
-    latest = found?.status ?? '未找到'
+    latest = found?.status ?? null
     if (latest === expected) return
     await new Promise((resolve) => setTimeout(resolve, intervalMs))
   }
-  throw new Error(`合同 ${contractId} 在 ${timeoutMs}ms 内没有进入 ${expected}，当前是 ${latest}`)
+  throw new Error(
+    `合同 ${contractId} 在 ${timeoutMs}ms 内没有进入 ${expected}，当前是 ${latest ?? '未找到'}`,
+  )
 }
 
 // ---------------------------------------------------------------- 支付与分账

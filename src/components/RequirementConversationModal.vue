@@ -27,7 +27,7 @@ import type {
 } from '@/api/conversations'
 import { fetchAsignRequirementPreviewUrl } from '@/api/contracts'
 import { apiUrl } from '@/api/http'
-import { listRequirements } from '@/api/requirements'
+import { listRequirements, type RequirementPaymentMode } from '@/api/requirements'
 import { listMyRequirements } from '@/api/devRequirements'
 import {
   formatCnDateTime,
@@ -907,7 +907,8 @@ function closeModal() {
 type DrawerRequirement = {
   requirement_id: string
   title: string
-  payment_mode: string
+  /** 只用来消歧 `deposit_paid` 的文案（一码两义），取值与两侧 `RequirementItem` 一致。 */
+  payment_mode: RequirementPaymentMode
   status: string
   budget?: number | null
   created_time?: string
@@ -1028,7 +1029,7 @@ const detailDrawerFields = computed(() => {
   return [
     { label: '编号', value: item.requirement_id },
     { label: '发布方式', value: requirementPaymentModeLabel(item.payment_mode) },
-    { label: '状态', value: requirementStatusLabel(item.status) },
+    { label: '状态', value: requirementStatusLabel(item.status, item.payment_mode) },
     { label: '预算', value: formatCny(item.budget) },
     { label: '创建', value: item.created_time ? formatCnDateTime(item.created_time) : '时间未知' },
     { label: '更新', value: formatCnDateTime(item.updated_at) },

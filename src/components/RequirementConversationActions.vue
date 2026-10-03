@@ -201,7 +201,9 @@ const canRequestFinal = computed(
 /**
  * 担保模式的验收入口：开发中与待付尾款都能提交，与「我的需求」页的 `canOpenAcceptance` 同口径。
  *
- * 验收可反复提交——不通过只留档并通知开发者整改，状态不前推；到待付尾款后仍可追加留档。
+ * 验收可反复提交——不通过会留档并通知开发者整改：「开发中」留在原状态；
+ * 「待付尾款」会退回「开发中」并挡住宿尾款（后端 `accept_delivery` 的 rolling_back 分支），
+ * 所以要给到待付尾款这一步。
  */
 const canAcceptDelivery = computed(
   () =>

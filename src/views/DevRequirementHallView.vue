@@ -805,7 +805,7 @@ function resetInitForm() {
         </TTableColumn>
         <TTableColumn label="状态" width="112" resizable>
           <template #default="scope">
-            <!-- 状态走全站统一口径（requirementStatusLabel）：待付定金 / 待开发。
+            <!-- 状态走全站统一口径（requirementStatusLabel）：待付定金 / 已付定金（担保）· 待开发（自管）。
                  这里原来自己写成「待接单/签约」，有两处不对：
                  1) 大厅的入口条件就是「未被接单」（后端过滤 status IN (pending_deposit, deposit_paid)
                     且没有生效中的资源绑定），所以「待接单」是整张表的属性，不是某一行的状态；
@@ -814,7 +814,7 @@ function resetInitForm() {
                  另一处错位：真正已付定金、接了就能开工的 deposit_paid 原来只写「待开发」，
                  倒是还没付定金的 pending_deposit 抢了「待接单」的说法。 -->
             <TTag variant="outline" :tone="scope.row.status === 'pending_deposit' ? 'warning' : 'success'">
-              {{ requirementStatusLabel(scope.row.status) }}
+              {{ requirementStatusLabel(scope.row.status, scope.row.payment_mode) }}
             </TTag>
           </template>
         </TTableColumn>

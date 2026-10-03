@@ -202,8 +202,9 @@ const recentConversationCards = computed(() =>
     .slice(0, 3),
 )
 
-function formatRequirementStatus(status: RequirementStatus) {
-  return requirementStatusLabel(status)
+/** 状态文案走全站统一口径；`deposit_paid` 一码两义，拿到支付模式就传进去（见 `requirementStatusLabel`）。 */
+function formatRequirementStatus(status: RequirementStatus, paymentMode?: RequirementPaymentMode) {
+  return requirementStatusLabel(status, paymentMode)
 }
 
 function isSelfManagedRequirement(item: RequirementItem) {
@@ -220,7 +221,7 @@ function paymentModeLabel(item: RequirementItem) {
 
 function formatRequirementDisplayStatus(item: RequirementItem) {
   if (isSelfManagedRequirement(item) || item.status !== 'pending_deposit') {
-    return formatRequirementStatus(item.status)
+    return formatRequirementStatus(item.status, item.payment_mode)
   }
   if (item.bound_resource_id == null) {
     return '待开发者接单'

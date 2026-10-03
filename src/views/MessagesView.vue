@@ -14,6 +14,7 @@ import {
 import {
   listRequirements,
   type RequirementItem,
+  type RequirementPaymentMode,
   type RequirementStatus,
 } from '@/api/requirements'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
@@ -195,8 +196,9 @@ function hasBoundResource(item: RequirementItem) {
   return item.bound_resource_id != null
 }
 
-function formatRequirementStatus(status: RequirementStatus) {
-  return requirementStatusLabel(status)
+/** 状态文案走全站统一口径；`deposit_paid` 一码两义，拿到支付模式就传进去（见 `requirementStatusLabel`）。 */
+function formatRequirementStatus(status: RequirementStatus, paymentMode?: RequirementPaymentMode) {
+  return requirementStatusLabel(status, paymentMode)
 }
 
 /** 需求状态归成四档色调：待用户动手 / 进行中 / 已结单 / 已关闭。
@@ -300,7 +302,7 @@ function latestMessagePreview(item: RequirementConversation) {
 function buildConversationThread(item: RequirementConversation): MessageThread {
   const requirement = requirementById.value[item.requirement_id]
   // 需求数据缺失时退回会话自身的状态：沟通中算进行中，已关闭算已关闭。
-  const statusLabel = requirement ? formatRequirementStatus(requirement.status) : item.status === 'open' ? '沟通中' : '已关闭'
+  const statusLabel = requirement ? formatRequirementStatus(requirement.status, requirement.payment_mode) : item.status === 'open' ? '沟通中' : '已关闭'
   const tone: ThreadTone = requirement ? threadToneOf(requirement.status) : item.status === 'open' ? 'active' : 'closed'
   return {
     key: `conversation-${item.conversation_id}`,
@@ -325,7 +327,7 @@ function buildPendingThread(item: RequirementItem): MessageThread {
     kind: 'pending',
     requirementId: item.requirement_id,
     title: item.title,
-    statusLabel: formatRequirementStatus(item.status),
+    statusLabel: formatRequirementStatus(item.status, item.payment_mode),
     tone: threadToneOf(item.status),
     modeLabel: formatPaymentMode(item),
     partnerLabel: '会话待开启',

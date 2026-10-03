@@ -19,6 +19,7 @@ import RequirementConversationModal from '@/components/RequirementConversationMo
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import { breachStatusLabel } from '@/shared/breachStatus'
 import { afterSalesBadgeText, isAwaitingViewerAction } from '@/shared/afterSalesStatus'
+import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { listMyAfterSalesCases } from '@/api/afterSales'
 import {
   listRequirementConversations,
@@ -30,6 +31,7 @@ import {
   requestUnbindRequirement,
   respondUnbindRequirement,
   type RequirementItem,
+  type RequirementPaymentMode,
 } from '@/api/devRequirements'
 import {
   listMcResources,
@@ -470,7 +472,14 @@ function receiptMoney(value: number): string {
   return `¥${value.toFixed(2)}`
 }
 
-function statusLabel(status: RequirementItem['status']): string {
+/**
+ * 本页的状态文案表。
+ *
+ * `deposit_paid` 一码两义，不写死：电签担保（`platform_guarantee`）是「定金已进托管、等合同签署
+ * 完成」的过渡态，写「已付定金」；无电签约定（`self_managed`）没有合同也没有定金，审核通过即待
+ * 开发者接单，写「待开发」。拿不到支付模式时两种含义都写出来——口径见 `shared/requirementStatus.ts`。
+ */
+function statusLabel(status: RequirementItem['status'], paymentMode?: RequirementPaymentMode): string {
   switch (status) {
     case 'pending_review':
       return '待审核'
@@ -479,7 +488,7 @@ function statusLabel(status: RequirementItem['status']): string {
     case 'pending_deposit':
       return '待签合同'
     case 'deposit_paid':
-      return '待开发'
+      return requirementStatusLabel(status, paymentMode)
     case 'in_development':
       return '开发中'
     case 'pending_final':
@@ -507,7 +516,7 @@ function isWaitingContractSign(item: RequirementItem): boolean {
 }
 
 function displayStatusLabel(item: RequirementItem): string {
-  return isWaitingContractSign(item) ? '待签合同' : statusLabel(item.status)
+  return isWaitingContractSign(item) ? '待签合同' : statusLabel(item.status, item.payment_mode)
 }
 
 /** 需求正文类字段的富文本：净化后渲染；字段为空时给一句占位，免得卡片上只剩一个空白块。 */

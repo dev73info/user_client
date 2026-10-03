@@ -118,10 +118,16 @@ export async function createAdapayPayment(
   milestone: AdapayMilestone,
   payChannel: AdapayBusinessPayChannel,
   clientPlatform: AdapayClientPlatform = getAdapayClientPlatform(),
+  /**
+   * 优惠券码（P6 / BUG-025）：只有定金接券——折扣由**平台服务费**承担，开发者净额按合同快照不变，
+   * 折扣上限 = 该笔定金的平台服务费（超出会被后端拒）。尾款传了也会被后端忽略。
+   */
+  couponCode?: string | null,
 ): Promise<AdapayPaymentResponse> {
   const path = milestone === 'deposit'
     ? `/adapay/requirements/${encodeURIComponent(requirementId)}/deposit`
     : `/adapay/requirements/${encodeURIComponent(requirementId)}/final`
+  const normalizedCoupon = couponCode?.trim()
 
   return requestJson<AdapayPaymentResponse>(
     path,
@@ -134,6 +140,7 @@ export async function createAdapayPayment(
       body: JSON.stringify({
         pay_channel: payChannel === 'wechat' ? 'wx_pub' : payChannel === 'union' ? 'union' : 'alipay',
         client_platform: clientPlatform,
+        ...(normalizedCoupon && milestone === 'deposit' ? { coupon_code: normalizedCoupon } : {}),
       }),
     },
     `创建 Adapay${milestone === 'deposit' ? '定金' : '尾款'}订单失败`,

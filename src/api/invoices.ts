@@ -124,6 +124,16 @@ export type InvoiceableSummary = {
   invoiceableTotalFen: number
   invoiceableTotalCny: string
   /**
+   * **开票闸门**：需求已结单（`completed`）才为 true。
+   *
+   * 未结单时分账还没走完，后端会把 `invoiceableTotalFen` 一并置 0——所以「可开票金额」显示 ¥0.00、
+   * 提交按钮也被 `amountFen <= 0` 挡住。这个字段只是让前端把原因说清楚：入口置灰 + 提示当前状态，
+   * 而不是让用户点开弹窗对着 ¥0.00 猜。
+   */
+  invoiceAvailable: boolean
+  /** 该需求当前状态码（`RequirementStatus`），用于拼「需求结单后才能申请开票（当前：…）」的提示。 */
+  requirementStatus: string
+  /**
    * 该需求尚未结案的退款诉求金额。
    *
    * 这笔钱**已经**从上面的 `developerInvoiceFen` 里扣掉：退还 / 分账还没走完，钱还在平台兜着，

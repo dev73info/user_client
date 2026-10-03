@@ -7,6 +7,7 @@ import MySignaturesView from '@/views/MySignaturesView.vue'
 import UserWorkbenchView from '@/views/UserWorkbenchView.vue'
 import ContractSignView from '@/views/ContractSignView.vue'
 import type { MyContractSummary } from '@/api/contracts'
+import { CONTRACT_STATUS } from '@/shared/contracts'
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(), realname: vi.fn(), detail: vi.fn(), developerAgreement: vi.fn(), sync: vi.fn(),
@@ -23,7 +24,7 @@ vi.mock('@/api/conversations', () => ({ listRequirementConversations: vi.fn().mo
 vi.mock('@/api/team', () => ({ listUserInvitations: vi.fn().mockResolvedValue([]) }))
 
 const base: MyContractSummary = {
-  id: 1, contract_no: 'HT-001', title: '网站服务合同', template_name: 'service', status: 'pending_party_a',
+  id: 1, contract_no: 'HT-001', title: '网站服务合同', template_name: 'service', status: CONTRACT_STATUS.signing,
   party_a_name: '甲方公司', party_a_username: 'alice', party_a_signed_at: null,
   party_b_name: '乙方公司', party_b_username: 'bob', party_b_signed_at: null,
   created_at: '2026-09-09 10:00:00',
@@ -39,7 +40,7 @@ beforeEach(() => {
   vi.spyOn(auth, 'hydrate').mockImplementation(() => {})
   vi.spyOn(auth, 'initializeSession').mockResolvedValue({ username: 'alice', role: 'user' })
   mocks.realname.mockResolvedValue({ status: 'approved' })
-  mocks.list.mockResolvedValue([base, { ...base, id: 2, contract_no: 'HT-002', title: '已完成合同', status: 'signed' }])
+  mocks.list.mockResolvedValue([base, { ...base, id: 2, contract_no: 'HT-002', title: '已完成合同', status: CONTRACT_STATUS.signed }])
   mocks.detail.mockResolvedValue({ ...base, content: '合同正文内容', content_sha256: 'abc', signing_logs: [] })
 })
 
@@ -73,6 +74,7 @@ describe('my signatures list', () => {
   })
   it('filters by search and status and can clear empty filters', async () => {
     const { wrapper } = await render(MySignaturesView)
+    // 胶囊组筛的是签名态（不是合同状态码）：下标 0 全部、1 待我签署、2 等待他方、3 已完成。
     await wrapper.findAll('.wb-chip-group button')[3]!.trigger('click')
     expect(wrapper.findAll('.wb-item')).toHaveLength(1)
     expect(wrapper.find('.wb-item').text()).toContain('已完成合同')
@@ -80,6 +82,21 @@ describe('my signatures list', () => {
     expect(wrapper.text()).toContain('没有符合条件')
     await wrapper.find('.wb-empty__actions button').trigger('click')
     expect(wrapper.findAll('.wb-item')).toHaveLength(2)
+    wrapper.unmount()
+  })
+  it('labels contracts whose state has no signature meaning with the contract status', async () => {
+    // 过期（3）/ 拒签（4）/ 撤销（7）在签名态里都落 unavailable，徽标要显示合同状态本身，
+    // 不能一律写成「暂不可签署」。
+    mocks.list.mockResolvedValueOnce([
+      { ...base, id: 11, contract_no: 'HT-011', status: CONTRACT_STATUS.expired },
+      { ...base, id: 12, contract_no: 'HT-012', status: CONTRACT_STATUS.rejected },
+      { ...base, id: 13, contract_no: 'HT-013', status: CONTRACT_STATUS.revoked },
+    ])
+    const { wrapper } = await render(MySignaturesView)
+    // 它们不在任何一个签名态胶囊里，只能在「全部」下看到。
+    expect(wrapper.findAll('.wb-item')).toHaveLength(3)
+    const badges = wrapper.findAll('.wb-badge').map((badge) => badge.text())
+    expect(badges).toEqual(['过期', '拒签', '撤销'])
     wrapper.unmount()
   })
   it('shows errors separately from empty results and retries', async () => {
@@ -131,7 +148,7 @@ describe('realname-gated menu', () => {
 
 describe('signature detail', () => {
   it('loads the exact contract without creating a developer agreement', async () => {
-    mocks.detail.mockResolvedValue({ ...base, template_name: 'developer_agreement', status: 'signed', content: '正文', content_sha256: 'abc', signing_logs: [] })
+    mocks.detail.mockResolvedValue({ ...base, template_name: 'developer_agreement', status: CONTRACT_STATUS.signed, content: '正文', content_sha256: 'abc', signing_logs: [] })
     const { wrapper, router } = await render(ContractSignView, true)
     expect(mocks.detail).toHaveBeenCalledWith('test-token', 1)
     expect(mocks.developerAgreement).not.toHaveBeenCalled()
@@ -145,7 +162,7 @@ describe('signature detail', () => {
     wrapper.unmount()
   })
   it('falls back to the local body when asign has no preview for the signed contract', async () => {
-    mocks.detail.mockResolvedValue({ ...base, status: 'signed', content: '正文', content_sha256: 'abc', signing_logs: [] })
+    mocks.detail.mockResolvedValue({ ...base, status: CONTRACT_STATUS.signed, content: '正文', content_sha256: 'abc', signing_logs: [] })
     mocks.preview.mockResolvedValue('')
     const { wrapper } = await render(ContractSignView, true)
     await wrapper.find('.contract-meta .btn-primary').trigger('click')
@@ -168,6 +185,17 @@ describe('signature detail', () => {
     // 勾了短信通知就按通知走（第三个入参），停在页面上等轮询，不跳爱签签署页。
     expect(mocks.initiate).toHaveBeenCalledWith('test-token', 1, true)
     expect(wrapper.text()).toContain('签署服务暂不可用')
+    wrapper.unmount()
+  })
+  it('keeps party A blocked until the developer has signed the requirement contract', async () => {
+    mocks.detail.mockResolvedValue({
+      ...base, requirement_id: 'REQ-001', content: '正文', content_sha256: 'abc',
+      party_a_real_name: 'Alice', party_a_id_card_no_masked: '****1234', signing_logs: [],
+    })
+    const { wrapper } = await render(ContractSignView, true)
+    // 需求开发合同乙方（开发者）先签：乙方还没签，甲方这边没有签署入口，只提示在等谁。
+    expect(wrapper.find('.contract-actions .btn-primary').exists()).toBe(false)
+    expect(wrapper.text()).toContain('等待开发者完成签署')
     wrapper.unmount()
   })
 })
