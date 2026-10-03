@@ -96,6 +96,8 @@ function afterSalesCase(overrides: Partial<AfterSalesCase> = {}): AfterSalesCase
     refundAmountCny: '0.00',
     compensationAmountFen: 0,
     compensationAmountCny: '0.00',
+    shortfallFen: 0,
+    shortfallCny: '0.00',
     providerRefundId: null,
     providerDepositConfirmId: null,
     resolutionNote: null,

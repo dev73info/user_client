@@ -480,6 +480,17 @@ watch(
               {{ currentCase.compensationAmountCny }} 元
             </dd>
           </div>
+          <!-- 超额诉求被保证金上限截断时把差额直接摆出来：否则「实赔 200」看起来像「诉求 500 全赔了」。
+               条件里带 `compensationAmountFen > 0`：裁决还没落地（或本案没动钱）时只是「诉求未决」，
+               不是「赔付被截断」，那时不该报差额。 -->
+          <div v-if="currentCase.compensationAmountFen > 0 && currentCase.shortfallFen > 0" class="is-wide">
+            <dt>赔付差额</dt>
+            <dd>
+              诉求 {{ currentCase.claimAmountCny }} 元，受仍冻结的接单保证金限制，实赔
+              {{ currentCase.compensationAmountCny }} 元，差额
+              <strong>{{ currentCase.shortfallCny }} 元</strong>
+            </dd>
+          </div>
         </dl>
 
         <!-- 状态说明只留一句「现在到哪一步、要做什么」，分支细节收进折叠区，避免整段文字糊住按钮。 -->
@@ -545,6 +556,17 @@ watch(
             <dd>
               退还尾款 {{ lastConcludedCase.refundAmountCny }} 元 / 保证金赔付
               {{ lastConcludedCase.compensationAmountCny }} 元
+            </dd>
+          </div>
+          <div
+            v-if="lastConcludedCase.compensationAmountFen > 0 && lastConcludedCase.shortfallFen > 0"
+            class="is-wide"
+          >
+            <dt>赔付差额</dt>
+            <dd>
+              诉求 {{ lastConcludedCase.claimAmountCny }} 元，受仍冻结的接单保证金限制，实赔
+              {{ lastConcludedCase.compensationAmountCny }} 元，差额
+              <strong>{{ lastConcludedCase.shortfallCny }} 元</strong>
             </dd>
           </div>
         </dl>

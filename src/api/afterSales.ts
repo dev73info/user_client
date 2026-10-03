@@ -56,6 +56,14 @@ export type AfterSalesCase = {
   refundAmountCny: string
   compensationAmountFen: number
   compensationAmountCny: string
+  /**
+   * 赔付缺口（分）：诉求额度里因为「仍冻结的接单保证金」不够而没能赔出去的那部分。
+   *
+   * 只在「要求赔偿」型诉求上可能大于 0；冻结上限本身是正确口径（不能超额赔付），
+   * 这个字段的作用是把差额直接摆出来，避免把「实赔 200」读成「诉求 500 已全赔」。
+   */
+  shortfallFen: number
+  shortfallCny: string
   providerRefundId: string | null
   providerDepositConfirmId: string | null
   resolutionNote: string | null
