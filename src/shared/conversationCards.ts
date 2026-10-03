@@ -297,6 +297,20 @@ export function conversationCardMeta(
         title: '违约案件需人工处理',
         description: '资金处理未能自动完成，客服会尽快跟进并在案件内同步进展。',
       }
+    // 「需人工处理」之后的两个事件码：后台滞留提醒与客服人工结案。停在人工处理这一段时
+    // 案件不再有自动动作，会话里不补卡片，双方的感受就是「点了申报之后再没下文」。
+    // 提醒不写死「几天」：阈值是后端常量，文案写死天数后常量一改就在说假话。
+    case 'breach_case_manual_required_reminder':
+      return {
+        title: '违约案件仍在人工处理中',
+        description:
+          '案件转人工后仍未收口，客服会尽快处理并在案件内同步结论；双方的接单保证金在此期间继续冻结。',
+      }
+    case 'breach_case_manual_closed':
+      return {
+        title: '违约案件已由客服人工结案',
+        description: '本次终止合作案件已由客服人工处理完毕，结论与资金口径见案件详情与需求卡片。',
+      }
     // 协商还价与「申请平台介入」此前不写卡片，对方不提就没人在会话里说一声。
     // 与案件其它卡片同口径：详情在弹窗里，不给按钮。
     case 'breach_case_negotiation_proposed':

@@ -147,6 +147,9 @@ describe('conversation status cards', () => {
       'breach_case_negotiation_proposed',
       'breach_case_negotiation_rejected',
       'breach_case_ai_reviewing',
+      // 终止合作「人工处理」那一段：后台滞留提醒与客服人工结案
+      'breach_case_manual_required_reminder',
+      'breach_case_manual_closed',
       // 售后
       'after_sales_case_opened',
       'after_sales_case_negotiation_proposed',
@@ -172,7 +175,13 @@ describe('conversation status cards', () => {
   it('labels a manual case without pushing the user into a ticket to chase it', () => {
     // 客服本来就在跟进，卡片再挂「去工单中心催办」是把平台的跟进变成用户的开单，
     // 平添客服工作量：两侧都只留说明，不给按钮也不给跳转。
-    for (const code of ['breach_case_manual_required', 'after_sales_case_manual_required']) {
+    // 「仍在人工处理中」与「已由客服人工结案」两张同口径：都是通知，没有可执行入口。
+    for (const code of [
+      'breach_case_manual_required',
+      'breach_case_manual_required_reminder',
+      'breach_case_manual_closed',
+      'after_sales_case_manual_required',
+    ]) {
       expect(meta(code, 'customer', 'completed')?.actionLabel).toBeUndefined()
       expect(meta(code, 'customer', 'completed')?.to).toBeUndefined()
       expect(meta(code, 'developer', 'completed')?.actionLabel).toBeUndefined()
