@@ -336,7 +336,12 @@ const breachDialogTitle = computed(() => {
 const breachRoundHint = computed(() => {
   const settled = settledBreachCase.value
   if (settled) {
-    return `上一轮案件已${settled.status === 'succeeded' ? '结案' : '驳回'}，结论不能翻案；下面提交的是新一轮申请，会新建一条案件，只针对结案之后新发生的事实。`
+    // 结案（`succeeded`）会按「结案即自动解除」作废合同、把需求退回大厅：同一需求上已经没有
+    // 可裁决的合同，新一轮不是「再提一条新案件」而是「重新接单并签约」（BUG-038）。
+    // 驳回不动合同，结论不能翻案，但需求仍在履约中，可以就新发生的事实再申报。
+    return settled.status === 'succeeded'
+      ? '上一轮案件已结案，需求已退回大厅、原合同已作废；需重新接单并签约后才能再次发起终止合作。'
+      : '上一轮案件已驳回，结论不能翻案；下面提交的是新一轮申请，会新建一条案件，只针对驳回之后新发生的事实。'
   }
   if (withdrawnBreachCase.value) {
     return breachWithdrawnByMe.value
@@ -1014,7 +1019,14 @@ defineExpose({
           </template>
         </template>
       </template>
-      <TButton variant="solid" tone="danger" v-else :loading="breachSubmitting" @click="submitBreachReport">
+      <TButton
+        variant="solid"
+        tone="danger"
+        v-else
+        :loading="breachSubmitting"
+        :disabled="Boolean(settledBreachCase) && !hasContract"
+        @click="submitBreachReport"
+      >
         {{ settledBreachCase ? '发起新一轮终止合作' : breachWithdrawnByMe ? '重新发起' : '提交终止合作申请' }}
       </TButton>
     </template>

@@ -780,8 +780,11 @@ function canReportBreach(item: RequirementItem) {
     // 待分账（尾款已缴、分账排队中）仍在等待期内，此时终止合作会把排队分账置为 cancelled，
     // 与后端一样留出这条出口。
     // 待接单（`pending_deposit`）含「已签约未缴定金」：甲方拒缴定金同样是违约，可以申报，
-    // 那种案件没有支付单、只作责任认定；尚未签合同时后端按无生效合同拒掉。
-    ['pending_deposit', 'deposit_paid', 'in_development', 'pending_final', 'pending_settlement'].includes(item.status)
+    // 那种案件没有支付单、只作责任认定；尚未签合同时后端按无生效合同拒掉——结案回滚把需求
+    // 打回待接单、合同同时作废，也正落在这条上（BUG-038）。
+    ['pending_deposit', 'deposit_paid', 'in_development', 'pending_final', 'pending_settlement'].includes(item.status) &&
+    (item.status !== 'pending_deposit' ||
+      Boolean(signingStatusMap.value[item.requirement_id]?.has_contract))
 }
 
 /** 售后入口：结单后打开 `AfterSalesModal`。开发者是乙方，只查看案件与表态，不能发起。 */
@@ -902,6 +905,19 @@ const breachWithdrawnByMe = computed(
 )
 
 /**
+ * 无生效合同时不能再发起一轮（BUG-038）：结案（`succeeded`）会作废合同、把需求退回大厅，
+ * 此时后端会按「无生效担保合同」直接拒收，界面上不该留一个点了才报错的按钮。
+ * 判据用签约状态（后端已把作废合同排除在 `has_contract` 之外），与需求卡片的入口同一口径。
+ */
+const breachCanStartNewRound = computed(() => {
+  const item = breachRequirement.value
+  if (item == null || item.payment_mode === 'self_managed') {
+    return false
+  }
+  return Boolean(signingStatusMap.value[item.requirement_id]?.has_contract)
+})
+
+/**
  * 撤回后再次申请沿用同一条案件（后端复用该行、案件编号不变），只有驳回 / 结案才会新建案件。
  * 标题与提交按钮都按这个口径措辞，避免出现「标题写新一轮、提示写沿用同一条」的自相矛盾。
  */
@@ -933,7 +949,12 @@ function breachRoundHint() {
       ? '上一轮由你撤回，本次提交沿用同一条案件（案件编号不变），申请人与理由以本次提交为准，双方继续跟踪这一条。'
       : '上一轮由对方申请后撤回，本次提交沿用同一条案件（案件编号不变），按你本次提交的事实与依据重新判定。'
   }
-  return `上一轮案件已${item.status === 'succeeded' ? '结案' : '驳回'}，结论不能翻案；本次提交会新建一条案件，只针对结案之后新发生的事实。`
+  // 结案（`succeeded`）按「结案即自动解除」作废合同、把需求退回大厅：同一需求上已经没有可裁决
+  // 的合同，所以不是「再提一条新案件」而是「重新接单并签约」（BUG-038）。
+  if (item.status === 'succeeded') {
+    return '上一轮案件已结案，需求已退回大厅、原合同已作废；需重新接单并签约后才能再次发起终止合作。'
+  }
+  return '上一轮案件已驳回，结论不能翻案；本次提交会新建一条案件，只针对驳回之后新发生的事实。'
 }
 
 function openBreachRejectPanel() {
@@ -1784,6 +1805,17 @@ async function loadRequirementConversations() {
               {{ breachCase.resolutionNote }}
             </TDescriptionsItem>
           </TDescriptions>
+          <!-- 上一轮结案会把合同作废、需求退回大厅：这时没有生效合同可依，按钮不给，
+               但必须把「为什么不能再发起、要做什么」写清楚（BUG-038）。 -->
+          <p
+            v-if="
+              (breachCase.status === 'succeeded' || breachCase.status === 'rejected') &&
+              !breachCanStartNewRound
+            "
+            class="unbind-dialog-tip"
+          >
+            {{ breachRoundHint() }}
+          </p>
 
           <div v-if="canDecideBreachCase(breachCase)" class="breach-decision">
             <p class="unbind-dialog-line">
@@ -1900,7 +1932,8 @@ async function loadRequirementConversations() {
           tone="accent"
           v-else-if="
             (breachCase?.status === 'rejected' || breachCase?.status === 'succeeded') &&
-            !breachNewRound
+            !breachNewRound &&
+            breachCanStartNewRound
           "
           :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
           @click="reopenBreachReport"
