@@ -205,7 +205,7 @@ test.describe('担保模式四流', () => {
     browser,
     request,
   }) => {
-    // 全流程跨三个身份、两次外部跳转与一次分账扫描，给足整体超时（入口上限在 playwright.config.ts）。
+    // 全流程跨三个身份、两次外部跳转与一次同步分账，给足整体超时（入口上限在 playwright.config.ts）。
     test.setTimeout(FLOW_TEST_TIMEOUT_MS)
 
     let client: Actor | undefined
@@ -533,7 +533,7 @@ test.describe('担保模式四流', () => {
 
       // ------------------------------------------------------------ 分账结单
       await test.step('等待分账结单并核对四流一致', async () => {
-        // 等待期 0 天、扫描间隔 10s；尾款到账后 confirm_final_split 也会同步推一次。
+        // 等待期 0 天；尾款到账后由支付回调同步调用 confirm_final_split 结单。
         const completed = await waitForRequirementStatus(
           request,
           pre.client,

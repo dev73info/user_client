@@ -23,7 +23,7 @@ const browserChannel = process.env.E2E_BROWSER_CHANNEL?.trim()
 
 export default defineConfig({
   testDir: './e2e',
-  /* 整条流程跨三个身份、两次外部跳转与一次分账扫描，直接给足上限。
+  /* 整条流程跨三个身份、两次外部跳转与一次同步分账（等待期 0 时由支付回调提交），直接给足上限。
      `test.setTimeout()` 在测试体内改的是记录值，runner 的截止时刻仍按这里配置的算，
      所以入口上限只能写在这里，不能靠用例自己放宽。 */
   timeout: FLOW_TEST_TIMEOUT_MS,
