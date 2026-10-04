@@ -186,6 +186,8 @@ describe('conversation status cards', () => {
       'after_sales_case_manual_required',
       // 售后「人工处理」那一段的后台滞留提醒（BUG-046）
       'after_sales_case_manual_required_reminder',
+      // 需求方单方取消（已缴定金档）：与「绑定解除、回到待接单」的结局不同（BUG-050）
+      'requirement_cancelled',
     ]
     for (const code of codes) {
       const card = meta(code, 'customer', 'completed')
@@ -205,6 +207,8 @@ describe('conversation status cards', () => {
       'breach_case_manual_closed',
       'after_sales_case_manual_required',
       'after_sales_case_manual_required_reminder',
+      // 需求方单方取消：只说明结局，不给入口（需求已不在大厅里，BUG-050）
+      'requirement_cancelled',
     ]) {
       expect(meta(code, 'customer', 'completed')?.actionLabel).toBeUndefined()
       expect(meta(code, 'customer', 'completed')?.to).toBeUndefined()

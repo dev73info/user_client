@@ -244,6 +244,14 @@ export function conversationCardMeta(
         actionLabel: '去需求大厅',
         to: role === 'developer' ? { name: 'dev-requirement-hall' } : requirementListRoute,
       }
+    // 需求方单方取消（已缴定金档）：结局是需求被取消，与上面的「回到待接单」不是一回事，
+    // 后端为此单列了事件码（BUG-050）。不给按钮——这笔需求已经不在大厅里了。
+    case 'requirement_cancelled':
+      return {
+        title: '需求已被需求方取消',
+        description:
+          '需求方取消了这笔需求：已缴定金原路退还，绑定关系已解除、接单保证金冻结已释放。这段会话保留为只读。',
+      }
     // 协商解除：担保与自管两种模式共用这几条卡片码。卡片只交代「谁提了、对方处理了没有」，
     // 资金口径（担保模式同意即退定金、作废合同）在需求卡片的弹窗里讲，这里不重复细节。
     // 全部不给按钮：申请与表态都在需求卡片的弹窗里，这里再给入口只是空跳转。

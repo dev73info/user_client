@@ -187,6 +187,8 @@ const resourceVersionsMap = ref<Record<string, PublicMcResourceVersionItem[]>>({
 const unbindRespondVisible = ref(false)
 const unbindRespondRequirement = ref<RequirementItem | null>(null)
 const unbindRespondLoading = ref(false)
+/** 处理解除申请时的回执说明（可选，会留在平台记录里给申请方看）。 */
+const unbindRespondNote = ref('')
 const unbindRequestVisible = ref(false)
 const unbindRequestRequirement = ref<RequirementItem | null>(null)
 const unbindRequestReason = ref('')
@@ -582,7 +584,8 @@ function canRequestUnbindAsCreator(item: RequirementItem) {
     (item.status === 'in_development' ||
       item.status === 'deposit_paid' ||
       item.status === 'pending_deposit') &&
-    !item.pending_unbind_request
+    // 只看「有没有待处理的申请」：这个字段下发的是最近一次申请（可能已被回执过，见 BUG-048）。
+    item.pending_unbind_request?.status !== 'pending'
   )
 }
 
@@ -1175,6 +1178,22 @@ function hasPendingUnbindRequest(item: RequirementItem) {
   return item.pending_unbind_request?.status === 'pending'
 }
 
+/**
+ * 解除申请已有回执时的提示（含对方的回执说明）。
+ *
+ * 申请方要靠它看到「开发者是同意还是拒绝、为什么」——回执说明只留在平台记录里不够，
+ * 得让当事人看得到（BUG-048）。待处理时返回空串，由上面的「等待确认」分支负责。
+ */
+function unbindOutcomeNote(item: RequirementItem) {
+  const request = item.pending_unbind_request
+  if (!request || request.status === 'pending') {
+    return ''
+  }
+  const outcome = request.status === 'approved' ? '解除申请已通过，需求已重新挂回大厅' : '解除申请已被拒绝'
+  const note = request.response_note?.trim()
+  return note ? `${outcome}；开发者说明：${note}` : outcome
+}
+
 function hasPendingDeveloperUnbindRequest(item: RequirementItem) {
   return (
     item.pending_unbind_request?.status === 'pending' &&
@@ -1187,6 +1206,7 @@ function openUnbindRespond(item: RequirementItem) {
     return
   }
   unbindRespondRequirement.value = item
+  unbindRespondNote.value = ''
   unbindRespondVisible.value = true
 }
 
@@ -1196,6 +1216,7 @@ function closeUnbindRespond() {
   }
   unbindRespondVisible.value = false
   unbindRespondRequirement.value = null
+  unbindRespondNote.value = ''
 }
 
 async function submitUnbindRespond(action: 'approve' | 'reject') {
@@ -1206,10 +1227,16 @@ async function submitUnbindRespond(action: 'approve' | 'reject') {
 
   unbindRespondLoading.value = true
   try {
-    await respondUnbindRequirementApi(auth.token, item.requirement_id, action)
+    await respondUnbindRequirementApi(
+      auth.token,
+      item.requirement_id,
+      action,
+      unbindRespondNote.value.trim() || undefined,
+    )
     showToast(action === 'approve' ? '已同意解除，需求已重新挂回大厅' : '已拒绝解除申请', 'success')
     unbindRespondVisible.value = false
     unbindRespondRequirement.value = null
+    unbindRespondNote.value = ''
     await loadMyRequirements()
   } catch (err) {
     showToast(err instanceof Error ? err.message : '处理解除申请失败', 'error')
@@ -2577,6 +2604,11 @@ watch(
                     class="requirement-note">
                     已提交解除申请，等待开发者确认。
                   </small>
+                  <!-- 申请已经有回执（同意/拒绝）时，把对方的说明也显示出来：解除的理由与回执
+                       都是双方要留存的东西，不能只在弹窗里出现（BUG-048）。 -->
+                  <small v-if="unbindOutcomeNote(item)" class="requirement-note requirement-note--block">
+                    {{ unbindOutcomeNote(item) }}
+                  </small>
                   <small v-if="settlementHint(item)"
                     class="requirement-note requirement-note--block">{{ settlementHint(item) }}</small>
                 </div>
@@ -2883,6 +2915,11 @@ watch(
         <p class="pay-line">
           <strong>申请原因：</strong>{{ unbindRespondRequirement.pending_unbind_request?.reason }}
         </p>
+        <label class="pay-line" style="display:flex;flex-direction:column;gap:6px;">
+          <strong>回执说明</strong>
+          <textarea v-model="unbindRespondNote" rows="3" maxlength="500"
+            placeholder="可选：说明你同意或拒绝的原因，会附在解除记录里给开发者看到"></textarea>
+        </label>
         <p class="tip">同意解除后，需求将重新挂回需求大厅，供其他开发者承接；如拒绝，当前绑定关系保持不变。</p>
         <p class="tip">{{ unbindConsequenceText(unbindRespondRequirement) }}</p>
 
