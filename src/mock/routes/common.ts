@@ -57,8 +57,11 @@ function realnameRecord(): UserRealnameVerification {
     auth_type: 'IDENTITY_CARD',
     status: 'approved',
     real_name: profile.nickname.replace(/^柒参演示·/, ''),
+    // 与真实后端一致：本人可见的证件号 / 手机号（企业认证回填经办人用），另附脱敏值
+    id_card_no: profile.id === 'dev' ? '110101199206185678' : '330601199206181234',
     id_card_no_masked: profile.id === 'dev' ? '1101**********5678' : '3306**********1234',
     birthday: '1992-06-18',
+    mobile: profile.phone,
     mobile_masked: `${profile.phone.slice(0, 3)}****${profile.phone.slice(-4)}`,
     company_name: null,
     unified_social_credit_code: null,

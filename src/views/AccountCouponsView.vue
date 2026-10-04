@@ -308,6 +308,49 @@ const enterpriseRequiredMissing = computed(
 const enterpriseCities = computed(() => getSettlementCities(form.companyProvCode))
 
 /** 换省份时清掉不属于该省的城市；只有一个城市（直辖市）时直接选中。 */
+/**
+ * 从营业执照地址里认领渠道省市编码。
+ *
+ * 渠道省市表的名称是「云南省」「昭通市」这种全称，营业执照地址（"云南省昭通市彝良县…"）
+ * 通常包含它们；省份名去掉「省/市/自治区」后缀再比一次，兼容「广西壮族自治区」这类写法。
+ * 认不出就返回空，交给用户自己选。
+ */
+function matchRegionFromAddress(address: string): { prov?: string; area?: string } {
+  const text = address.replace(/\s/g, '')
+  if (!text) return {}
+  const stripSuffix = (title: string) => title.replace(/(省|市|自治区|壮族自治区|回族自治区|维吾尔自治区)$/, '')
+  const pickLongest = <T extends { title: string }>(items: T[]) =>
+    [...items]
+      .filter((item) => text.includes(item.title) || text.includes(stripSuffix(item.title)))
+      .sort((a, b) => b.title.length - a.title.length)[0]
+  const province = pickLongest(settlementProvinces)
+  if (!province) return {}
+  const city = pickLongest(province.cities ?? [])
+  return { prov: province.value, area: city?.value }
+}
+
+/**
+ * 用**本人的实名资料**回填「经办人」三项。
+ *
+ * 企业认证的经办人就是发起认证的本人，平台已经存过他的姓名 / 证件号 / 手机号，
+ * 没必要让人再输一遍。只填空字段，不覆盖用户已经填过的内容。
+ */
+function applyOwnRealnamePrefill(): void {
+  const record = current.value
+  if (!record) return
+  if (!form.operatorName.trim() && record.real_name) form.operatorName = record.real_name
+  if (!form.operatorIdCardNo.trim() && record.id_card_no) form.operatorIdCardNo = record.id_card_no
+  if (!form.mobile.trim() && record.mobile) form.mobile = record.mobile
+}
+
+/// 切到企业 / 个体户时带上本人经办人信息（只在字段为空时补）。
+watch(
+  () => form.authType,
+  (next, previous) => {
+    if (next !== previous) applyOwnRealnamePrefill()
+  },
+)
+
 function changeEnterpriseProvince() {
   const cities = enterpriseCities.value
   form.companyAreaCode = cities.length === 1 ? (cities[0]?.value ?? '') : ''
@@ -403,6 +446,7 @@ function resetRealnameSubjectFields() {
 function startRealnameChange() {
   realnameChangeMode.value = true
   resetRealnameSubjectFields()
+  applyOwnRealnamePrefill()
   faceidDialogVisible.value = false
   realnameDialogVisible.value = true
 }
@@ -640,11 +684,19 @@ async function autoFillFromBusinessLicense(businessLicenseFile: string) {
     apply(ocr.company_address, (next) => (form.companyAddress = clip(next, MAX_COMPANY_ADDRESS_LEN)))
     apply(ocr.business_scope, (next) => (form.businessScope = clip(next, MAX_BUSINESS_SCOPE_LEN)))
     apply(ocr.business_license_expires_on, (next) => (form.businessLicenseExpiresOn = next))
+    // 地址拿到了就把「企业所在省市」按渠道省市表认领填好（认不出则留给用户选）
+    const region = matchRegionFromAddress(form.companyAddress)
+    if (region.prov) {
+      form.companyProvCode = region.prov
+      form.companyAreaCode = region.area ?? ''
+    }
+    const notes = [
+      truncated ? `经营范围超过 ${MAX_BUSINESS_SCOPE_LEN} 字，已截断` : '',
+      region.prov ? '已按地址填好所在省市' : '',
+    ].filter(Boolean)
     if (filled > 0) {
       showToast(
-        truncated
-          ? `已按营业执照自动填入企业信息（经营范围超过 ${MAX_BUSINESS_SCOPE_LEN} 字，已截断，请核对）`
-          : '已按营业执照自动填入企业信息，请核对',
+        `已按营业执照自动填入企业信息${notes.length ? `（${notes.join('；')}）` : ''}，请核对`,
         truncated ? 'warning' : 'success',
       )
     } else {

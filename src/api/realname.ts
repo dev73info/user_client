@@ -13,9 +13,13 @@ export type UserRealnameVerification = {
   auth_type: RealnameAuthType
   status: UserRealnameStatus
   real_name?: string | null
+  /** 本人证件号（**仅本人可见**，管理端接口会清空）：企业认证回填「经办人身份证号」用 */
+  id_card_no?: string | null
   id_card_no_masked?: string | null
   birthday?: string | null
   mobile_masked?: string | null
+  /** 本人手机号（**仅本人可见**）：企业认证回填「经办人手机号」用 */
+  mobile?: string | null
   company_name?: string | null
   unified_social_credit_code?: string | null
   business_license_no?: string | null
