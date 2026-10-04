@@ -2419,12 +2419,6 @@ onBeforeUnmount(() => {
           class="realname-dialog"
           width="620px"
         >
-          <div class="realname-form__head">
-            <TTag :tone="statusTone" class="realname-form-status-tag"
-              >实名认证：{{ statusText }}</TTag
-            >
-          </div>
-
           <TAlert
             v-if="realnamePending && realnameChangeBacked"
             tone="info"
@@ -2972,7 +2966,6 @@ onBeforeUnmount(() => {
           :title="enterpriseSelected ? '企业认证' : '人脸核身认证'"
           class="realname-faceid-dialog"
           width="480px"
-          :mask-closable="false"
         >
           <div class="realname-faceid-panel__main">
             <div class="realname-faceid-panel__copy">
@@ -4093,10 +4086,6 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   width: 100%;
-}
-
-:global(.realname-dialog .realname-form-status-tag) {
-  margin-bottom: 14px;
 }
 
 .realname-form__actions {
