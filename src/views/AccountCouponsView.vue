@@ -1080,6 +1080,8 @@ type AccountEntry = {
   status?: AccountEntryStatus
   danger?: boolean
   loading?: boolean
+  /** 审核期间不放开入口：点了只给原因，不打开登记弹窗（视觉上也是禁用态）。 */
+  locked?: boolean
 }
 type AccountEntryGroup = { title: string; entries: AccountEntry[] }
 
@@ -1188,6 +1190,9 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
             ? '收款银行卡已绑定，可查看或更换'
             : '绑定收款银行卡后，合同款才能结算到账',
       icon: CreditCard,
+      // 渠道会员还在审核时**不放开入口**：这时候点进去也绑不上，
+      // 只会撞渠道的 member_not_exists，徒增一次失败与一次限流。
+      locked: settleUnderReview.value,
       // 标签直接反映「收款银行卡有没有绑」：这才是用户关心的「能不能收款」。
       // （此前是「收款认证：已认证」，读的是渠道会员 onboardingStatus，未绑卡也显示绿色，
       //   会把人误导成「已能收款」，2026-10-04 改回绑卡口径。）
@@ -1311,6 +1316,10 @@ function openAccountEntry(key: string) {
       startRealnameChange()
       return
     case 'settle':
+      if (settleUnderReview.value) {
+        showToast('企业收款账户正在渠道审核中，审核通过后即可绑定对公账户', 'warning')
+        return
+      }
       void openSettleDialog()
       return
     case 'closeSettle':
@@ -2451,7 +2460,8 @@ onBeforeUnmount(() => {
             v-for="entry in group.entries"
             :key="entry.key"
             class="entry-row"
-            :class="{ 'entry-row--danger': entry.danger }"
+            :class="{ 'entry-row--danger': entry.danger, 'entry-row--locked': entry.locked }"
+            :aria-disabled="entry.locked ? 'true' : undefined"
             :loading="Boolean(entry.loading)"
             @click="openAccountEntry(entry.key)"
           >
@@ -2829,7 +2839,8 @@ onBeforeUnmount(() => {
                 v-for="entry in group.entries"
                 :key="entry.key"
                 class="entry-row"
-                :class="{ 'entry-row--danger': entry.danger }"
+                :class="{ 'entry-row--danger': entry.danger, 'entry-row--locked': entry.locked }"
+            :aria-disabled="entry.locked ? 'true' : undefined"
                 :loading="Boolean(entry.loading)"
                 @click="openAccountEntry(entry.key)"
               >
@@ -3614,6 +3625,12 @@ onBeforeUnmount(() => {
 /* TButton 的基础样式是固定 36px 高 + 左右 16px 内边距；这里的行内是 40px 图标底衬 + 两行文案，
    36px 会让图标上下顶出边框（实测内容高 37px > 内容框 34px）。账户入口行必须放开高度：
    高度自适应 + 上下 8px，内容 40px 时整行 58px，图标与描边之间留出呼吸位。 */
+/* 审核期间不放开的入口：看着就是不能点，但点了会告诉你为什么（不是死链接）。 */
+.entry-row--locked {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
 .entry-row {
   height: auto;
   min-height: 56px;
