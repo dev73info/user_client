@@ -2867,40 +2867,42 @@ onBeforeUnmount(() => {
                   style="width: 100%"
                 />
               </TFormItem>
-              <TFormItem label="开户省份" required>
-                <TSelect
-                  v-model="settleForm.prov_code"
-                  filterable
-                  clearable
-                  placeholder="选择开户银行所在省份"
-                  style="width: 100%"
-                  @change="changeSettleProvince"
-                >
-                  <TOption
-                    v-for="province in settlementProvinces"
-                    :key="province.value"
-                    :label="province.title"
-                    :value="province.value"
-                  />
-                </TSelect>
-              </TFormItem>
-              <TFormItem label="开户城市" required>
-                <TSelect
-                  v-model="settleForm.area_code"
-                  filterable
-                  clearable
-                  :disabled="!settleForm.prov_code"
-                  :placeholder="settleForm.prov_code ? '选择开户银行所在城市' : '请先选择开户省份'"
-                  style="width: 100%"
-                >
-                  <TOption
-                    v-for="city in settleCities"
-                    :key="city.value"
-                    :label="city.title"
-                    :value="city.value"
-                  />
-                </TSelect>
-              </TFormItem>
+              <div class="settle-form__pair">
+                <TFormItem label="开户省份" required>
+                  <TSelect
+                    v-model="settleForm.prov_code"
+                    filterable
+                    clearable
+                    placeholder="选择开户银行所在省份"
+                    style="width: 100%"
+                    @change="changeSettleProvince"
+                  >
+                    <TOption
+                      v-for="province in settlementProvinces"
+                      :key="province.value"
+                      :label="province.title"
+                      :value="province.value"
+                    />
+                  </TSelect>
+                </TFormItem>
+                <TFormItem label="开户城市" required>
+                  <TSelect
+                    v-model="settleForm.area_code"
+                    filterable
+                    clearable
+                    :disabled="!settleForm.prov_code"
+                    :placeholder="settleForm.prov_code ? '选择开户银行所在城市' : '请先选择开户省份'"
+                    style="width: 100%"
+                  >
+                    <TOption
+                      v-for="city in settleCities"
+                      :key="city.value"
+                      :label="city.title"
+                      :value="city.value"
+                    />
+                  </TSelect>
+                </TFormItem>
+              </div>
               <TFormItem label="账户类型">
                 <TSelect v-model="settleForm.bank_acct_type" style="width: 100%">
                   <TOption label="个人银行卡" value="2" />
@@ -4262,6 +4264,19 @@ onBeforeUnmount(() => {
 }
 
 /* 表单底部动作条：取消 + 确认（主操作）靠右，两者留 12px 间距 */
+/* 开户省份 + 开户城市并成一行；窄屏（弹窗变全宽）时再拆回上下两行 */
+.settle-form__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 460px) {
+  .settle-form__pair {
+    grid-template-columns: 1fr;
+  }
+}
+
 .settle-form__actions {
   display: flex;
   justify-content: flex-end;
