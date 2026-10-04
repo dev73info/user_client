@@ -1538,7 +1538,7 @@ const asign = reactive({
   mobileThree: { name: '', idCard: '', mobile: '' },
   legalPerson: { name: '', idCard: '' },
   company: { companyName: '', legalName: '', legalIdCard: '' },
-  personal: { personalName: '' },
+  personal: { personalName: '', mobile: '' },
 })
 const asignLoading = reactive({
   sendCode: false,
@@ -1663,13 +1663,22 @@ async function handleModifyUserName() {
     showToast('请填写姓名', 'warning')
     return
   }
+  if (!asign.personal.mobile.trim()) {
+    showToast('请填写本人手机号（用于运营商三要素核验）', 'warning')
+    return
+  }
   asignLoading.personal = true
   try {
-    // 只传姓名：核验方式与凭证（实名手机号）由后端补齐，前端不再让用户选
-    const res = await modifyUserName(auth.token, { name: asign.personal.personalName.trim() })
+    // 核验方式固定三要素；手机号用用户本次输入的（不再让他选四要素）
+    const res = await modifyUserName(auth.token, {
+      name: asign.personal.personalName.trim(),
+      identifyType: 2,
+      mobile: asign.personal.mobile.trim(),
+    })
     if (res.success) {
       showToast('姓名已修改', 'success')
       asign.personal.personalName = ''
+      asign.personal.mobile = ''
     }
   } catch (err) {
     showToast(err instanceof Error ? err.message : '修改姓名失败', 'error')
@@ -2497,7 +2506,11 @@ onBeforeUnmount(() => {
                 <TInput
                   v-model="form.mobile"
                   :maxlength="11"
-                  placeholder="请输入经办人手机号（用于电子签署）"
+                  :placeholder="
+                    current?.mobile_masked
+                      ? `请输入经办人手机号（当前 ${current.mobile_masked}）`
+                      : '请输入经办人手机号（用于电子签署）'
+                  "
                   :disabled="realnameLocked"
                 />
               </TFormItem>
@@ -2632,7 +2645,11 @@ onBeforeUnmount(() => {
                 <TInput
                   v-model="form.mobile"
                   :maxlength="11"
-                  placeholder="请输入本人手机号（用于电子签署）"
+                  :placeholder="
+                    current?.mobile_masked
+                      ? `请输入本人手机号（当前 ${current.mobile_masked}）`
+                      : '请输入本人手机号（用于电子签署）'
+                  "
                   :disabled="realnameLocked"
                 />
               </TFormItem>
@@ -3092,12 +3109,20 @@ onBeforeUnmount(() => {
           </template>
 
           <template v-else-if="asignDialogKind === 'personal'">
-            <p class="asign-hint">
-              只修改爱签签署侧登记的姓名（平台实名信息不受影响）。为避免改成他人姓名，
-              提交后会用你实名的手机号（{{ current?.mobile_masked ?? '—' }}）做一次运营商三要素核验。
-            </p>
             <div class="asign-row">
               <TInput v-model="asign.personal.personalName" placeholder="新姓名" />
+            </div>
+            <div class="asign-row">
+              <TInput
+                v-model="asign.personal.mobile"
+                inputmode="numeric"
+                :maxlength="11"
+                :placeholder="
+                  current?.mobile_masked
+                    ? `请输入本人手机号（当前 ${current.mobile_masked}）`
+                    : '请输入本人手机号'
+                "
+              />
             </div>
             <TButton
               variant="solid"
