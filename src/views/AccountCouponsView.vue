@@ -7,6 +7,8 @@ import {
   changeMyAdapaySettlementAccount,
   createMyAdapaySettlementAccount,
   getMyAdapayMember,
+  getMySettlementAccountSnapshot,
+  type MySettlementAccountSnapshot,
 } from '@/api/adapay'
 import { HttpError, apiUrl } from '@/api/http'
 import {
@@ -1373,8 +1375,14 @@ async function handleModifyMobileThree() {
 const settleDialogVisible = ref(false)
 const settleSaving = ref(false)
 const settleLoading = ref(false)
-/** 已绑定时是否进入「更换银行卡」表单；未绑定时表单直接展示，不依赖它 */
-const settleEditing = ref(false)
+/**
+ * 当前已绑卡的**脱敏**明细（后端从渠道会员对象现取）。
+ *
+ * 只用于两件事：回填开户行/省市区/账户类型，以及把「正在换哪张卡」显示清楚。
+ * 卡号是渠道给的脱敏形态（`621483207******5`），**不能**回填进输入框——提交必须给完整卡号，
+ * 而完整卡号后端也没有（渠道只回脱敏形态、平台不落库）。
+ */
+const settleSnapshot = ref<MySettlementAccountSnapshot | null>(null)
 const settleForm = reactive({
   card_id: '',
   bank_code: '',
@@ -1455,7 +1463,6 @@ const settleProviderError = computed(() => {
 /** 缺企业资料时不去重绑，直接关掉弹窗并打开实名表单让用户补企业进件资料。 */
 function goFixSettleMaterial() {
   settleDialogVisible.value = false
-  settleEditing.value = false
   realnameDialogVisible.value = true
   startRealnameChange()
 }
@@ -1486,28 +1493,59 @@ async function refreshAdapayMember() {
   }
 }
 
+/**
+ * 拉取已绑卡的脱敏明细并回填表单。
+ *
+ * 只回填**能提交出去**的字段（开户行 / 省 / 市 / 账户类型）：这些码与前端字典同源，
+ * 选中后就是渠道认的值。卡号例外——渠道只回脱敏形态，提交又必须给完整卡号，
+ * 所以卡号留空让用户输入，脱敏卡号只作为「当前是哪张卡」的提示显示。
+ */
+async function loadSettleSnapshot() {
+  settleSnapshot.value = null
+  if (!auth.token || !settleBound.value) return
+  try {
+    const snapshot = await getMySettlementAccountSnapshot(auth.token)
+    settleSnapshot.value = snapshot
+    if (snapshot.bankCode) settleForm.bank_code = snapshot.bankCode
+    if (snapshot.provCode) settleForm.prov_code = snapshot.provCode
+    if (snapshot.areaCode) settleForm.area_code = snapshot.areaCode
+    if (snapshot.bankAcctType === '1' || snapshot.bankAcctType === '2') {
+      settleForm.bank_acct_type = snapshot.bankAcctType
+    }
+  } catch {
+    // 拿不到明细不影响换卡：表单已按实名主体给了默认账户类型，用户自己填即可
+    settleSnapshot.value = null
+  }
+}
+
+/** 当前已绑卡的脱敏提示（卡号 · 持卡人 · 开户行），让用户确认自己在换哪张卡。 */
+const settleBoundCardHint = computed(() => {
+  const snapshot = settleSnapshot.value
+  if (!snapshot?.bound) return ''
+  return [snapshot.cardIdMasked, snapshot.cardName, snapshot.bankName]
+    .map((value) => (value ?? '').trim())
+    .filter((value) => value.length > 0)
+    .join(' · ')
+})
+
+/** 打开弹窗即进入表单：已绑卡时回填脱敏明细，未绑卡时按实名主体给默认值 */
 async function openSettleDialog() {
   settleDialogVisible.value = true
-  settleEditing.value = false
   resetSettleForm()
   settleLoading.value = true
   try {
     await refreshAdapayMember()
+    await loadSettleSnapshot()
   } finally {
     settleLoading.value = false
   }
 }
 
-/** 已绑定时由只读态切换到更换表单 */
-function startSettleChange() {
+/** 关掉弹窗（取消更换 / 未绑定时放弃填写），顺手清掉未提交的输入 */
+function closeSettleDialog() {
+  settleDialogVisible.value = false
   resetSettleForm()
-  settleEditing.value = true
-}
-
-/** 放弃更换，回到只读态 */
-function cancelSettleChange() {
-  resetSettleForm()
-  settleEditing.value = false
+  settleSnapshot.value = null
 }
 
 async function saveSettleAccount() {
@@ -1529,8 +1567,8 @@ async function saveSettleAccount() {
     adapayMember.value = member
     showToast(changing ? '收款银行卡已更换' : '结算账户已设置', 'success')
     settleDialogVisible.value = false
-    settleEditing.value = false
     resetSettleForm()
+    settleSnapshot.value = null
   } catch (err) {
     showToast(
       err instanceof Error ? err.message : changing ? '更换收款银行卡失败' : '设置结算账户失败',
@@ -2879,11 +2917,12 @@ onBeforeUnmount(() => {
                   }}。
                 </template>
               </p>
-              <!-- 只读态自己带一个同样的入口，这里不再重复 -->
+              <!-- 表单常驻：不再先给一屏只读态再点「更换」才进表单（2026-10-04 改）；
+                   已绑卡时把渠道返回的脱敏明细回填进来，用户只改要改的字段 -->
               <TButton
                 variant="solid"
                 tone="accent"
-                v-if="settleMaterialMissing && (!settleBound || settleEditing)"
+                v-if="settleMaterialMissing"
                 class="settle-dialog__alert-action"
                 size="sm"
                 @click="goFixSettleMaterial"
@@ -2892,34 +2931,8 @@ onBeforeUnmount(() => {
               </TButton>
             </TAlert>
 
-            <!-- 已绑定且未进入更换：只读态，给一个明确的更换入口 -->
-            <div v-if="settleBound && !settleEditing" class="settle-dialog__bound">
-              <p class="settle-dialog__hint">
-                <template v-if="settleMaterialMissing">
-                  现在提交更换一定失败：渠道按新主体重建收款账户时要读实名资料里的{{
-                    settleMaterialMissingText
-                  }}， 而当前企业实名资料不全。请先补齐资料并重新提交企业认证。
-                </template>
-                <template v-else>
-                  当前已是可收款状态。更换银行卡时，平台会先解绑原卡再绑定新卡；新卡的持卡人姓名与证件号必须与实名认证信息一致，否则绑定会被渠道拒绝。
-                </template>
-              </p>
-              <TButton
-                variant="outline"
-                tone="accent"
-                v-if="settleMaterialMissing"
-                @click="goFixSettleMaterial"
-              >
-                去「变更认证主体」补齐企业资料
-              </TButton>
-              <TButton variant="outline" tone="accent" v-else @click="startSettleChange">
-                {{ settleSubjectMismatch ? '按当前主体重新绑定' : '更换收款银行卡' }}
-              </TButton>
-            </div>
-
             <TForm
               label-position="left"
-              v-else
               label-width="96px"
               class="settle-form"
               :disabled="settleSaving || settleLoading"
@@ -2933,11 +2946,19 @@ onBeforeUnmount(() => {
                 show-icon
                 title="确认提交后原银行卡会立即解绑，再绑定新卡；解绑与绑定之间暂时无法分账。"
               />
+              <!-- 已绑卡：把渠道给的脱敏明细显示出来，让用户确认换的是哪张卡；
+                   卡号不回填（渠道只给脱敏形态，提交需要完整卡号，只能重新输入） -->
+              <p v-if="settleBoundCardHint" class="settle-form__current">
+                当前银行卡：<strong>{{ settleBoundCardHint }}</strong>
+                <span v-if="settleSubjectMismatch">（已不适用于当前实名主体，需重新绑定）</span>
+              </p>
               <TFormItem label="银行卡号" required>
                 <TInput
                   v-model="settleForm.card_id"
                   inputmode="numeric"
-                  placeholder="请输入收款银行卡号"
+                  :placeholder="
+                    settleBound ? '请输入收款银行卡号（不支持直接改卡，需整卡重填）' : '请输入收款银行卡号'
+                  "
                 />
               </TFormItem>
               <TFormItem label="开户银行" required>
@@ -2992,9 +3013,7 @@ onBeforeUnmount(() => {
                 </TSelect>
               </TFormItem>
               <TFormItem>
-                <TButton v-if="settleBound" :disabled="settleSaving" @click="cancelSettleChange">
-                  取消
-                </TButton>
+                <TButton :disabled="settleSaving" @click="closeSettleDialog">取消</TButton>
                 <TButton type="submit" variant="solid" tone="accent" :loading="settleSaving">
                   {{ settleSaving ? '保存中...' : settleBound ? '确认更换' : '保存结算账户' }}
                 </TButton>
@@ -4478,12 +4497,6 @@ onBeforeUnmount(() => {
 }
 
 /* 已绑定结算账户时的只读态：说明 + 更换入口 */
-.settle-dialog__bound {
-  display: grid;
-  gap: 12px;
-  justify-items: start;
-}
-
 /* 实名主体变更提示：间距交给弹窗自身的 gap，不再叠 margin */
 .settle-dialog__alert {
   margin: 0;
@@ -4501,11 +4514,21 @@ onBeforeUnmount(() => {
   margin-top: 10px;
 }
 
-.settle-dialog__hint {
-  margin: 0;
-  color: #64748b;
-  font-size: 12px;
+.settle-form__current {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  background: rgba(248, 250, 252, 0.92);
+  color: #475569;
+  font-size: 13px;
   line-height: 1.6;
+  word-break: break-all;
+}
+
+.settle-form__current strong {
+  color: #0f172a;
+  font-weight: 600;
 }
 
 .settle-form__alert {

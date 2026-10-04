@@ -356,6 +356,40 @@ export type MySettlementAccountPayload = {
   bank_name?: string
 }
 
+/**
+ * 已绑定结算账户的**脱敏**快照，用于「收款银行卡」弹窗回填。
+ *
+ * 数据由后端从渠道会员对象现取，卡号/证件号/手机号在渠道侧就已经是脱敏形态
+ * （如 `621483207******5`）；渠道不可用时只有 `bound` + `settleAccountId`，
+ * 其余字段缺省，调用方要按「拿不到明细」处理。
+ */
+export type MySettlementAccountSnapshot = {
+  bound: boolean
+  settleAccountId?: string
+  cardIdMasked?: string
+  cardName?: string
+  bankCode?: string
+  bankName?: string
+  provCode?: string
+  areaCode?: string
+  bankAcctType?: string
+  channel?: string
+}
+
+export async function getMySettlementAccountSnapshot(
+  token: string,
+): Promise<MySettlementAccountSnapshot> {
+  return requestJson<MySettlementAccountSnapshot>(
+    '/adapay/me/settle-account',
+    {
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '加载收款银行卡信息失败',
+  )
+}
+
 export async function createMyAdapaySettlementAccount(
   token: string,
   payload: MySettlementAccountPayload,
