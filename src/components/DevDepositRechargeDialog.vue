@@ -12,7 +12,11 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { createAdapayDeveloperDepositPayment, getAdapayClientPlatform } from '@/api/adapay'
+import {
+  createAdapayDeveloperDepositPayment,
+  getAdapayClientPlatform,
+  getMyAdapayMember,
+} from '@/api/adapay'
 import { getDevAccessStatus } from '@/api/auth'
 import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
 import { useToast } from '@/composables/useToast'
@@ -37,12 +41,47 @@ async function open(): Promise<void> {
   if (!(await ensureDeveloperAgreement())) {
     return
   }
+  if (!(await ensureSettlementAccount())) {
+    return
+  }
   amount.value = 100
   creditInfo.value = null
   if (auth.token) {
     creditInfo.value = await getDevCreditSelf(auth.token).catch(() => null)
   }
   visible.value = true
+}
+
+/**
+ * 保证金缴纳还要求结算账户可用（后端同样会拦）。
+ *
+ * 渠道侧会员没生效时连支付单都建不出来，所以先在客户端拦一次并给出出口；
+ * 「没配」与「渠道还在审核」要分开说，否则用户不知道是该去绑卡还是只能等。
+ */
+async function ensureSettlementAccount(): Promise<boolean> {
+  if (!auth.token) {
+    showToast('登录状态已失效，请重新登录', 'error')
+    return false
+  }
+  try {
+    const member = await getMyAdapayMember(auth.token)
+    if (member.settlementReady) {
+      return true
+    }
+    const underReview =
+      member.onboardingStatus === 'under_review' || member.onboardingStatus === 'pending'
+    showToast(
+      underReview
+        ? '企业收款账户正在渠道审核中，审核通过后即可缴纳保证金'
+        : '请先绑定收款银行卡（结算账户）后再缴纳保证金',
+      'warning',
+    )
+    void router.push({ name: 'workbench-account' })
+    return false
+  } catch {
+    // 状态查询失败时不阻断，交由后端缴纳接口兜底拦截
+    return true
+  }
 }
 
 function goSignDeveloperAgreement(): void {
