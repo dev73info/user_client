@@ -117,11 +117,11 @@ onMounted(async () => {
         <strong>{{ authTypeLabel }}</strong>
       </div>
       <div class="realname-metrics__item">
-        <span>爱签认证</span>
+        <span>实名认证</span>
         <strong>{{ asignAuthText }}</strong>
       </div>
       <div class="realname-metrics__item">
-        <span>Adapay认证</span>
+        <span>结算账户</span>
         <strong>{{ adapayStatusText }}</strong>
       </div>
     </div>
