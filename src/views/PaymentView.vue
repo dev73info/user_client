@@ -110,7 +110,7 @@ let countdownTimer: ReturnType<typeof setInterval> | null = null
 let wechatBridgeListener: (() => void) | null = null
 const PAYMENT_POLL_INTERVAL_MS = 8_000
 
-// 支付成功页自动返回工作台的倒计时（原来是一个「返回工作台」按钮）。
+// 支付成功页自动返回的倒计时（原来是一个「返回工作台」按钮）。
 const REDIRECT_SECONDS = 3
 const redirectCountdown = ref(REDIRECT_SECONDS)
 let redirectTimer: ReturnType<typeof setInterval> | null = null
@@ -123,7 +123,7 @@ function stopRedirectCountdown() {
 }
 
 /**
- * 支付成功后 3 秒自动回工作台。
+ * 支付成功后 3 秒自动「返回」（与顶部「返回」按钮同一个动作：`router.back()`）。
  *
  * 只在 `paid` 为真时启动：「正在确认支付结果」与「微信已返回支付成功」两个态下到账尚未确认
  * （或以后者电脑端订单为准），自动把用户带走会让他看不到后续结果。
@@ -135,7 +135,7 @@ function startRedirectCountdown() {
     redirectCountdown.value -= 1
     if (redirectCountdown.value <= 0) {
       stopRedirectCountdown()
-      void router.push({ name: 'workbench-requirements' })
+      goBack()
     }
   }, 1000)
 }
@@ -915,7 +915,7 @@ onUnmounted(() => {
         <p v-if="confirmationError" class="payment-launch-panel__error">{{ confirmationError }}</p>
         <button v-if="!paid && !isPaymentHandoff" class="payment-launch-panel__button" type="button"
           :disabled="confirming" @click="confirmPayment">{{ confirming ? '查询中...' : '查询支付结果' }}</button>
-        <p v-if="paid" class="payment-result__countdown">{{ redirectCountdown }} 秒后自动返回工作台…</p>
+        <p v-if="paid" class="payment-result__countdown">{{ redirectCountdown }} 秒后自动返回…</p>
       </div>
 
       <div v-else-if="hasOrder" class="pay-layout">

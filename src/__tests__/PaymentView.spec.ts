@@ -6,7 +6,8 @@ import { isWechatPaymentHandoff } from '@/utils/wechatPayment'
 
 const mocks = vi.hoisted(() => ({
   create: vi.fn(), get: vi.fn(), createRequirement: vi.fn(), getRequirement: vi.fn(),
-  replace: vi.fn(), push: vi.fn(), qr: vi.fn(), invoke: vi.fn(), authorize: vi.fn(), authorized: vi.fn(),
+  replace: vi.fn(), push: vi.fn(), back: vi.fn(), qr: vi.fn(), invoke: vi.fn(),
+  authorize: vi.fn(), authorized: vi.fn(),
 }))
 const route = reactive({ query: {} as Record<string, string> })
 const auth = reactive({ token: '', isAuthed: false, hydrate: vi.fn() })
@@ -15,7 +16,7 @@ vi.mock('@/composables/useToast', () => ({ useToast: () => ({ showToast: vi.fn()
 vi.mock('vue-router', () => ({
   useRoute: () => route,
   useRouter: () => ({
-    replace: mocks.replace, back: vi.fn(), push: mocks.push,
+    replace: mocks.replace, back: mocks.back, push: mocks.push,
     resolve: ({ query }: { query: Record<string, string> }) => ({
       href: `/payment?${new URLSearchParams(Object.entries(query).filter(([, value]) => value !== undefined))}`,
     }),
@@ -116,7 +117,7 @@ describe('PaymentView WeChat cross-device flow', () => {
     expect(wrapper.find('.qr-code').exists()).toBe(false)
   })
 
-  it('counts down 3 seconds on the paid page and returns to the workbench automatically', async () => {
+  it('counts down 3 seconds on the paid page and goes back automatically', async () => {
     vi.useFakeTimers()
     try {
       route.query = { ...handoff, payment_handoff: '0', client_platform: 'pc' }
@@ -125,12 +126,14 @@ describe('PaymentView WeChat cross-device flow', () => {
       // 假定时器下不能用 flushPromises（它靠真实 setTimeout 兑现），用推进 0ms 代替。
       await vi.advanceTimersByTimeAsync(0)
       expect(wrapper.text()).toContain('平台已确认收款')
-      expect(wrapper.text()).toContain('3 秒后自动返回工作台')
+      expect(wrapper.text()).toContain('3 秒后自动返回…')
       // 原来这里是个「返回工作台」按钮，现在只靠倒计时，按钮不该再出现。
       expect(wrapper.find('.payment-result .top-back').exists()).toBe(false)
 
       await vi.advanceTimersByTimeAsync(3000)
-      expect(mocks.push).toHaveBeenCalledWith({ name: 'workbench-requirements' })
+      // 自动返回 = 顶部「返回」按钮同一个动作，不再跳到工作台。
+      expect(mocks.back).toHaveBeenCalledTimes(1)
+      expect(mocks.push).not.toHaveBeenCalled()
     } finally {
       vi.useRealTimers()
     }
