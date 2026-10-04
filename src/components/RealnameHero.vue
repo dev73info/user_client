@@ -11,11 +11,13 @@ const auth = useAuthStore()
 
 const props = defineProps<{
   verification?: UserRealnameVerification | null
-  adapayMember?: { onboardingStatus: string } | null
+  adapayMember?: { onboardingStatus: string; settleAccountId?: string | null } | null
 }>()
 
 const localVerification = ref<UserRealnameVerification | null>(null)
-const localAdapayMember = ref<{ onboardingStatus: string } | null>(null)
+const localAdapayMember = ref<{ onboardingStatus: string; settleAccountId?: string | null } | null>(
+  null,
+)
 const current = computed(() =>
   props.verification === undefined ? localVerification.value : props.verification,
 )
@@ -60,13 +62,15 @@ const asignAuthText = computed(() => {
   return '未认证'
 })
 
-const adapayStatusText = computed(() => {
-  const status = adapayMember.value?.onboardingStatus
-  if (status === 'active') return '已认证'
-  if (status === 'under_review') return '审核中'
-  if (status === 'pending') return '待认证'
-  if (status === 'failed') return '未通过'
-  return '未认证'
+/**
+ * 「结算账户」指标：直接回答**收款银行卡绑没绑**。
+ *
+ * 不用渠道会员的 `onboardingStatus`（那是「会员认证」状态，未绑卡时同样可能是
+ * `active`→已认证，会误导成「已能收款」）；口径与账号页那个标签保持一致。
+ */
+const settleAccountText = computed(() => {
+  const id = adapayMember.value?.settleAccountId
+  return id && id.trim() ? '已设置' : '未设置'
 })
 
 const heroDesc = computed(() => {
@@ -122,7 +126,7 @@ onMounted(async () => {
       </div>
       <div class="realname-metrics__item">
         <span>结算账户</span>
-        <strong>{{ adapayStatusText }}</strong>
+        <strong>{{ settleAccountText }}</strong>
       </div>
     </div>
   </section>
