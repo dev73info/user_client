@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { MyContractSummary } from '@/api/contracts'
 import { CONTRACT_STATUS } from '@/shared/contracts'
-import { getSignatureState } from '@/utils/contractSignatures'
+import { getSignatureState, contractWaitingMessage } from '@/utils/contractSignatures'
 
 const contract: MyContractSummary = {
   id: 1, contract_no: 'HT-001', title: 'Service contract', template_name: 'Service',
@@ -42,5 +42,32 @@ describe('personal signing state', () => {
   it('does not offer signing to outsiders or an empty account', () => {
     expect(getSignatureState(contract, 'other')).toBe('unavailable')
     expect(getSignatureState(contract, '')).toBe('unavailable')
+  })
+})
+
+describe('waiting message', () => {
+  it('tells the unsigned party to sign, and the signed one to wait', () => {
+    expect(contractWaitingMessage(contract, 'bob')).toBe('等待您完成开发者签署')
+    const mineSigned = { ...contract, party_b_signed_at: '2026-09-09 10:00:00' }
+    expect(contractWaitingMessage(mineSigned, 'bob')).toBe('等待客户完成签署')
+    // 乙方先签：乙方没签时甲方等开发者，签完轮到甲方自己。
+    expect(contractWaitingMessage(contract, 'alice')).toBe('等待开发者完成签署')
+    expect(contractWaitingMessage(mineSigned, 'alice')).toBe('等待您完成客户签署')
+  })
+  it('says it is syncing when both sides signed while the status is still signing', () => {
+    // 双方签署时间都落库、状态还停在「签约中」= 页面正在轮询等爱签回同步。
+    const bothSigned = {
+      ...contract,
+      party_a_signed_at: '2026-09-09 10:00:00',
+      party_b_signed_at: '2026-09-09 10:01:00',
+    }
+    expect(contractWaitingMessage(bothSigned, 'alice')).toBe('正在同步签署状态')
+    expect(contractWaitingMessage(bothSigned, 'bob')).toBe('正在同步签署状态')
+  })
+  it('stays silent for terminal states and for outsiders', () => {
+    expect(contractWaitingMessage({ ...contract, status: CONTRACT_STATUS.signed }, 'alice')).toBe('')
+    expect(contractWaitingMessage({ ...contract, status: CONTRACT_STATUS.voided }, 'bob')).toBe('')
+    expect(contractWaitingMessage(contract, 'other')).toBe('')
+    expect(contractWaitingMessage(contract, '')).toBe('')
   })
 })

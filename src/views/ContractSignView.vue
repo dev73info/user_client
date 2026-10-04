@@ -12,6 +12,7 @@ import {
     type ContractDetail,
 } from '@/api/contracts'
 import { CONTRACT_STATUS, contractStatusLabel } from '@/shared/contracts'
+import { contractWaitingMessage } from '@/utils/contractSignatures'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -165,19 +166,11 @@ const canSignContract = computed(() => {
 // 从需求列表 / 需求会话的「查看合同」进来时，页面同样要能看清是谁在什么时候签的。
 // 只有在本人还需要签署时才收起这些区块，保持签署流程页只聚焦签署动作。
 const showSignatureFacts = computed(() => isWorkbenchSignature.value || !canSignContract.value)
-const waitingMessage = computed(() => {
-    // 只有「签约中 1」才有「等对方」这回事；终态与未发起都不再提示。
-    if (!contract.value || contract.value.status !== CONTRACT_STATUS.signing) return ''
-    if (currentParty.value === 'party_a') {
-        // 乙方先签：乙方没签时甲方等的是开发者，签完才轮到甲方。
-        if (!contract.value.party_b_signed_at) return '等待开发者完成签署'
-        return contract.value.party_a_signed_at ? '等待开发者完成签署' : '等待您完成客户签署'
-    }
-    if (currentParty.value === 'party_b') {
-        return contract.value.party_b_signed_at ? '等待客户完成签署' : '等待您完成开发者签署'
-    }
-    return ''
-})
+// 「在等谁签」与「在等渠道同步」的文案判定收在 utils 里，便于单测覆盖（含两人都已签、
+// 本地仍停在「签约中」的同步窗口）。
+const waitingMessage = computed(() =>
+    contract.value ? contractWaitingMessage(contract.value, auth.username) : '',
+)
 const currentSigner = computed(() => (currentParty.value ? partyDisplay(currentParty.value) : null))
 const signerIdentityReady = computed(() => {
     const signer = currentSigner.value
