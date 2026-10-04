@@ -36,6 +36,7 @@ import {
   getMyRealnameVerification,
   resumeAsignIdentify,
   resumeCompanyAsignIdentify,
+  ocrBusinessLicense,
   startAsignIdentify,
   startCompanyAsignIdentify,
   submitMyRealnameVerification,
@@ -143,6 +144,8 @@ const faceidRestoring = ref(false)
 const consentUploading = ref(false)
 const consentFileInput = ref<HTMLInputElement | null>(null)
 const businessLicenseUploading = ref(false)
+/** 营业执照 OCR 进行中（辅助填写，不挡提交）。 */
+const businessLicenseOcrLoading = ref(false)
 const businessLicenseFileInput = ref<HTMLInputElement | null>(null)
 const current = ref<UserRealnameVerification | null>(null)
 const adapayMember = ref<{
@@ -595,6 +598,42 @@ function openBusinessLicensePicker() {
   businessLicenseFileInput.value?.click()
 }
 
+/**
+ * 用营业执照 OCR 结果回填企业信息（**辅助填写**，失败只提示、不阻断）。
+ *
+ * 只回填它能确定的几项：企业名称、统一社会信用代码、注册地址、
+ * 经营范围、营业执照有效期；法人姓名表单里没有这个输入项，不回填。
+ * 用户上传的就是他自己的证照，所以直接覆盖已有值并提示核对；识别不出来就保持原样。
+ */
+async function autoFillFromBusinessLicense(businessLicenseFile: string) {
+  if (!businessLicenseFile.trim()) return
+  businessLicenseOcrLoading.value = true
+  try {
+    const ocr = await ocrBusinessLicense(auth.token, businessLicenseFile)
+    let filled = 0
+    const apply = (value: string | null, assign: (next: string) => void) => {
+      if (value && value.trim()) {
+        assign(value.trim())
+        filled += 1
+      }
+    }
+    apply(ocr.company_name, (next) => (form.companyName = next))
+    apply(ocr.unified_social_credit_code, (next) => (form.unifiedSocialCreditCode = next))
+    apply(ocr.company_address, (next) => (form.companyAddress = next))
+    apply(ocr.business_scope, (next) => (form.businessScope = next))
+    apply(ocr.business_license_expires_on, (next) => (form.businessLicenseExpiresOn = next))
+    if (filled > 0) {
+      showToast('已按营业执照自动填入企业信息，请核对', 'success')
+    } else {
+      showToast('营业执照未识别出可用信息，请手工填写', 'warning')
+    }
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '营业执照识别失败，请手工填写', 'warning')
+  } finally {
+    businessLicenseOcrLoading.value = false
+  }
+}
+
 async function handleBusinessLicenseFileChange(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -618,6 +657,8 @@ async function handleBusinessLicenseFileChange(event: Event) {
     const result = await uploadBusinessLicenseFile(auth.token, file)
     form.businessLicenseFile = result.business_license_file
     showToast('营业执照已上传', 'success')
+    // 上传成功后顺手让后端 OCR 识别一次，把企业信息回填；失败不影响上传结果。
+    await autoFillFromBusinessLicense(result.business_license_file)
   } catch (error) {
     showToast(error instanceof Error ? error.message : '上传营业执照失败', 'error')
   } finally {
@@ -2414,7 +2455,10 @@ onBeforeUnmount(() => {
                   >
                     选择文件上传
                   </TButton>
-                  <span v-if="form.businessLicenseFile" class="realname-consent-upload__name">
+                  <span v-if="businessLicenseOcrLoading" class="realname-consent-upload__hint">
+                    正在识别营业执照，自动填写企业信息…
+                  </span>
+                  <span v-else-if="form.businessLicenseFile" class="realname-consent-upload__name">
                     已上传：{{ form.businessLicenseFile.split('/').pop() || '营业执照' }}
                   </span>
                   <span v-else class="realname-consent-upload__hint">

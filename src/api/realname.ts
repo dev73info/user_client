@@ -329,3 +329,35 @@ export async function uploadBusinessLicenseFile(
     '上传营业执照失败',
   )
 }
+
+/** 营业执照 OCR 识别结果：只包含可回填表单的白名单字段。 */
+export type BusinessLicenseOcrResult = {
+  company_name: string | null
+  unified_social_credit_code: string | null
+  company_address: string | null
+  business_scope: string | null
+  legal_person: string | null
+  /** 有效期截止 `YYYYMMDD`（「长期」已由后端归一为 20991231） */
+  business_license_expires_on: string | null
+}
+
+/**
+ * 让后端 OCR 识别刚上传的营业执照，用于**辅助填写**企业信息。
+ *
+ * 失败（图片不清晰、PDF、渠道异常）会抛错，调用方应提示手工填写即可，不要阻断提交流程。
+ * 响应里不含渠道流水号：后端只回白名单字段。
+ */
+export async function ocrBusinessLicense(
+  token: string,
+  businessLicenseFile: string,
+): Promise<BusinessLicenseOcrResult> {
+  return requestJson<BusinessLicenseOcrResult>(
+    '/realname/business-license-ocr',
+    {
+      method: 'POST',
+      headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ business_license_file: businessLicenseFile }),
+    },
+    '营业执照识别失败',
+  )
+}
