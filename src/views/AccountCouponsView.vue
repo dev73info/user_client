@@ -2476,7 +2476,7 @@ onBeforeUnmount(() => {
             认证通过前账号实名状态为「认证中」，可点下方「取消变更，还原原主体」回到变更前的实名主体。
           </TAlert>
 
-          <TForm label-position="top" class="realname-form" @submit.prevent>
+          <TForm label-position="top" class="realname-form">
             <TFormItem label="证件类型">
               <TRadioGroup v-model="form.authType" :disabled="realnameLocked">
                 <TRadio value="IDENTITY_CARD">个人</TRadio>
@@ -2921,7 +2921,7 @@ onBeforeUnmount(() => {
               label-width="96px"
               class="settle-form"
               :disabled="settleSaving || settleLoading"
-              @submit.prevent="saveSettleAccount"
+              @submit="saveSettleAccount"
             >
               <TAlert
                 v-if="settleBound"

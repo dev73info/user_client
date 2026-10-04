@@ -657,7 +657,7 @@ onMounted(async () => {
       <!-- 表单控件一律用组件库的 TInput / TSelect：裸 input / select / textarea 拿不到统一层的
            控件规格（36px 高、10px 圆角）与令牌配色，同一页里会长出两套输入框；
            优先级原先是自绘下拉，现已改用 TSelect，选项文案照旧。 -->
-      <TForm class="compose-grid" label-position="top" @submit.prevent>
+      <TForm class="compose-grid" label-position="top">
         <TFormItem label="工单标题">
           <TInput v-model="newSubject" placeholder="例如：尾款支付后资源仍不可见" />
         </TFormItem>
