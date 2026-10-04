@@ -1415,12 +1415,6 @@ const settleSubjectMismatch = computed(
 /** 企业主体的收款账户只能是对公账户，持证人固定取实名主体，因此不给用户改。 */
 const settleCorporateLocked = computed(() => assignEnterprise.value)
 
-/** 弹窗状态块里的结算账户口径：主体变更后旧卡不再可用，说「待重新绑定」而不是「已设置」。 */
-const settleAccountLabel = computed(() => {
-  if (!settleBound.value) return '未设置'
-  return settleSubjectMismatch.value ? '待重新绑定' : '已设置'
-})
-
 /** 当前实名主体的中文口径，用于把「这张卡为什么不能继续用」讲清楚。 */
 const settleSubjectLabel = computed(() =>
   settleCorporateLocked.value ? '企业 / 个体工商户' : '个人',
@@ -2869,13 +2863,6 @@ onBeforeUnmount(() => {
           width="520px"
         >
           <TLoading tag="div" :loading="settleLoading" class="settle-dialog">
-            <div class="settle-dialog__status">
-              <div class="settle-dialog__status-item">
-                <span>结算账户</span>
-                <strong>{{ settleAccountLabel }}</strong>
-              </div>
-            </div>
-
             <!-- 渠道原话：会员停在「待认证 / 未通过」时，这是唯一能对上号的线索 -->
             <TAlert
               v-if="settleProviderError"
@@ -4448,31 +4435,6 @@ onBeforeUnmount(() => {
 .settle-dialog {
   display: grid;
   gap: 16px;
-}
-
-.settle-dialog__status {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  border: 1px solid rgba(226, 232, 240, 0.92);
-  background: rgba(248, 250, 252, 0.92);
-}
-
-.settle-dialog__status-item {
-  display: grid;
-  gap: 4px;
-}
-
-.settle-dialog__status-item span {
-  color: #64748b;
-  font-size: 12px;
-}
-
-.settle-dialog__status-item strong {
-  color: #0f172a;
-  font-size: 14px;
 }
 
 /* 已绑定结算账户时的只读态：说明 + 更换入口 */
