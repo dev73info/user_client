@@ -1518,6 +1518,13 @@ async function loadSettleSnapshot() {
   }
 }
 
+/** 卡号输入框的提示：已绑卡时直接显示渠道给的脱敏卡号，让用户一眼看清当前是哪张卡 */
+const settleCardPlaceholder = computed(() => {
+  if (!settleBound.value) return '请输入收款银行卡号'
+  const masked = (settleSnapshot.value?.cardIdMasked ?? '').trim()
+  return masked ? `当前 ${masked}（更换请整卡重填）` : '请输入收款银行卡号（需整卡重填）'
+})
+
 /** 当前已绑卡的脱敏提示（卡号 · 持卡人 · 开户行），让用户确认自己在换哪张卡。 */
 const settleBoundCardHint = computed(() => {
   const snapshot = settleSnapshot.value
@@ -2953,13 +2960,7 @@ onBeforeUnmount(() => {
                 <span v-if="settleSubjectMismatch">（已不适用于当前实名主体，需重新绑定）</span>
               </p>
               <TFormItem label="银行卡号" required>
-                <TInput
-                  v-model="settleForm.card_id"
-                  inputmode="numeric"
-                  :placeholder="
-                    settleBound ? '请输入收款银行卡号（不支持直接改卡，需整卡重填）' : '请输入收款银行卡号'
-                  "
-                />
+                <TInput v-model="settleForm.card_id" inputmode="numeric" :placeholder="settleCardPlaceholder" />
               </TFormItem>
               <TFormItem label="开户银行" required>
                 <TSelect
