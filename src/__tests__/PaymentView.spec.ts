@@ -6,7 +6,7 @@ import { isWechatPaymentHandoff } from '@/utils/wechatPayment'
 
 const mocks = vi.hoisted(() => ({
   create: vi.fn(), get: vi.fn(), createRequirement: vi.fn(), getRequirement: vi.fn(),
-  replace: vi.fn(), qr: vi.fn(), invoke: vi.fn(), authorize: vi.fn(), authorized: vi.fn(),
+  replace: vi.fn(), push: vi.fn(), qr: vi.fn(), invoke: vi.fn(), authorize: vi.fn(), authorized: vi.fn(),
 }))
 const route = reactive({ query: {} as Record<string, string> })
 const auth = reactive({ token: '', isAuthed: false, hydrate: vi.fn() })
@@ -15,7 +15,7 @@ vi.mock('@/composables/useToast', () => ({ useToast: () => ({ showToast: vi.fn()
 vi.mock('vue-router', () => ({
   useRoute: () => route,
   useRouter: () => ({
-    replace: mocks.replace, back: vi.fn(), push: vi.fn(),
+    replace: mocks.replace, back: vi.fn(), push: mocks.push,
     resolve: ({ query }: { query: Record<string, string> }) => ({
       href: `/payment?${new URLSearchParams(Object.entries(query).filter(([, value]) => value !== undefined))}`,
     }),
@@ -114,6 +114,26 @@ describe('PaymentView WeChat cross-device flow', () => {
     await flushPromises()
     expect(wrapper.get('[role="status"]').text()).toContain('平台已确认收款')
     expect(wrapper.find('.qr-code').exists()).toBe(false)
+  })
+
+  it('counts down 3 seconds on the paid page and returns to the workbench automatically', async () => {
+    vi.useFakeTimers()
+    try {
+      route.query = { ...handoff, payment_handoff: '0', client_platform: 'pc' }
+      mocks.get.mockResolvedValue({ ...payment, status: 'paid' })
+      wrapper = mount(PaymentView)
+      // 假定时器下不能用 flushPromises（它靠真实 setTimeout 兑现），用推进 0ms 代替。
+      await vi.advanceTimersByTimeAsync(0)
+      expect(wrapper.text()).toContain('平台已确认收款')
+      expect(wrapper.text()).toContain('3 秒后自动返回工作台')
+      // 原来这里是个「返回工作台」按钮，现在只靠倒计时，按钮不该再出现。
+      expect(wrapper.find('.payment-result .top-back').exists()).toBe(false)
+
+      await vi.advanceTimersByTimeAsync(3000)
+      expect(mocks.push).toHaveBeenCalledWith({ name: 'workbench-requirements' })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('never reopens WeChat for an already paid developer deposit on mobile', async () => {

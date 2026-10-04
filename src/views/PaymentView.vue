@@ -110,6 +110,36 @@ let countdownTimer: ReturnType<typeof setInterval> | null = null
 let wechatBridgeListener: (() => void) | null = null
 const PAYMENT_POLL_INTERVAL_MS = 8_000
 
+// 支付成功页自动返回工作台的倒计时（原来是一个「返回工作台」按钮）。
+const REDIRECT_SECONDS = 3
+const redirectCountdown = ref(REDIRECT_SECONDS)
+let redirectTimer: ReturnType<typeof setInterval> | null = null
+
+function stopRedirectCountdown() {
+  if (redirectTimer !== null) {
+    clearInterval(redirectTimer)
+    redirectTimer = null
+  }
+}
+
+/**
+ * 支付成功后 3 秒自动回工作台。
+ *
+ * 只在 `paid` 为真时启动：「正在确认支付结果」与「微信已返回支付成功」两个态下到账尚未确认
+ * （或以后者电脑端订单为准），自动把用户带走会让他看不到后续结果。
+ */
+function startRedirectCountdown() {
+  stopRedirectCountdown()
+  redirectCountdown.value = REDIRECT_SECONDS
+  redirectTimer = setInterval(() => {
+    redirectCountdown.value -= 1
+    if (redirectCountdown.value <= 0) {
+      stopRedirectCountdown()
+      void router.push({ name: 'workbench-requirements' })
+    }
+  }, 1000)
+}
+
 const isAlipayPage = computed(() => paymentChannel.value === 'alipay' && !isAdapayPayment.value)
 const isWechatPayment = computed(() => isAdapayPayment.value && paymentChannel.value === 'wechat')
 const isWechatMobilePayment = computed(
@@ -815,6 +845,19 @@ onMounted(() => {
   document.addEventListener('visibilitychange', refreshPaymentOnReturn)
   window.addEventListener('focus', refreshPaymentOnReturn)
 
+  // 支付成功即开始倒计时；`paid` 可能在本页轮询后才变真，所以用 watch 而不是挂在 mounted。
+  watch(
+    paid,
+    (value) => {
+      if (value) {
+        startRedirectCountdown()
+      } else {
+        stopRedirectCountdown()
+      }
+    },
+    { immediate: true },
+  )
+
   countdownTimer = setInterval(() => {
     nowTick.value = Date.now()
   }, 1000)
@@ -839,6 +882,7 @@ onUnmounted(() => {
     clearInterval(pollTimer)
     pollTimer = null
   }
+  stopRedirectCountdown()
   if (wechatBridgeListener) {
     document.removeEventListener('WeixinJSBridgeReady', wechatBridgeListener)
     wechatBridgeListener = null
@@ -871,7 +915,7 @@ onUnmounted(() => {
         <p v-if="confirmationError" class="payment-launch-panel__error">{{ confirmationError }}</p>
         <button v-if="!paid && !isPaymentHandoff" class="payment-launch-panel__button" type="button"
           :disabled="confirming" @click="confirmPayment">{{ confirming ? '查询中...' : '查询支付结果' }}</button>
-        <button v-if="!isPaymentHandoff" class="top-back" type="button" @click="router.push({ name: 'workbench-requirements' })">返回工作台</button>
+        <p v-if="paid" class="payment-result__countdown">{{ redirectCountdown }} 秒后自动返回工作台…</p>
       </div>
 
       <div v-else-if="hasOrder" class="pay-layout">
@@ -1015,5 +1059,11 @@ onUnmounted(() => {
 
 .payment-result__icon--success {
   color: #16804a;
+}
+
+/* 自动返回倒计时：弱化处理，别和「支付成功」抢注意力 */
+.payment-result__countdown {
+  color: #64748b;
+  font-size: 13px;
 }
 </style>
