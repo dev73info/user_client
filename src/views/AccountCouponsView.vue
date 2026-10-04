@@ -258,7 +258,7 @@ const realnameChangeBacked = computed(() => Boolean(current.value?.changing_subj
 const realnameCanWithdraw = computed(
   () => realnamePending.value || (realnameRejected.value && realnameChangeBacked.value),
 )
-// 当前生效主体的一句话描述，用于「变更实名主体」提示用户换掉的是哪一份资料。
+// 当前生效主体的一句话描述，用于「变更认证类型」提示用户换掉的是哪一份资料。
 const currentSubjectLabel = computed(() => {
   const record = current.value
   if (!record) return ''
@@ -389,7 +389,7 @@ function resetRealnameSubjectFields() {
   form.legalCertExpiresOn = ''
 }
 
-/// 进入「变更实名主体」：解锁表单并用空表单让用户填新主体，提交后由后端快照原主体，
+/// 进入「变更认证类型」：解锁表单并用空表单让用户填新主体，提交后由后端快照原主体，
 /// 认证通过前可撤回（撤回即取消变更、还原原来那份主体）。
 function startRealnameChange() {
   realnameChangeMode.value = true
@@ -398,7 +398,7 @@ function startRealnameChange() {
   realnameDialogVisible.value = true
 }
 
-/// 放弃「变更实名主体」草稿：什么都没提交，直接回到只读状态。
+/// 放弃「变更认证类型」草稿：什么都没提交，直接回到只读状态。
 function cancelRealnameChange() {
   realnameChangeMode.value = false
   if (current.value) {
@@ -2410,18 +2410,7 @@ onBeforeUnmount(() => {
           </div>
 
           <TAlert
-            v-if="realnameChanging"
-            tone="warning"
-            :closable="false"
-            show-icon
-            title="变更实名主体"
-          >
-            当前生效主体：{{ currentSubjectLabel }}。请填写新主体，提交后需重新完成认证；
-            认证通过前账号实名状态为「认证中」，期间可撤回并还原为原主体。
-          </TAlert>
-
-          <TAlert
-            v-else-if="realnamePending && realnameChangeBacked"
+            v-if="realnamePending && realnameChangeBacked"
             tone="info"
             :closable="false"
             show-icon
@@ -2955,7 +2944,7 @@ onBeforeUnmount(() => {
             <li>大陆居民身份证支持即时人脸核验。</li>
             <li>企业认证需平台人工审核，请耐心等待。</li>
             <li>审核通过后可用于合同签署。</li>
-            <li>已通过的主体如需更换，可在「认证管理」里点「变更实名主体」重新认证。</li>
+            <li>已通过的主体如需更换，可在「认证管理」里点「变更认证类型」重新认证。</li>
           </ul>
         </TCard>
 
