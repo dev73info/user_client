@@ -1094,9 +1094,12 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
           ? '收款银行卡已绑定，可查看或更换'
           : '绑定收款银行卡后，合同款才能结算到账',
       icon: CreditCard,
+      // 不再显示「收款认证：已认证」：它只反映渠道会员状态（onboardingStatus），
+      // 与实际能不能收款无关（未绑卡时照样是 active），容易被读成「已能收款」。
+      // 收款能力看同一行描述里的「结算账户」即可；主体变更需要重绑时才提示。
       status: settleSubjectMismatch.value
         ? { text: '收款账户：待重绑', tone: 'warning' }
-        : { text: `收款认证：${settleStatusText.value}`, tone: settleStatusTone.value },
+        : undefined,
     },
   ]
 
@@ -1470,23 +1473,6 @@ function resetSettleForm() {
   // 账户类型跟着实名主体走：企业主体只能绑对公账户，个人主体默认个人卡。
   settleForm.bank_acct_type = settleCorporateLocked.value ? '1' : '2'
 }
-
-const settleStatusText = computed(() => {
-  const status = adapayMember.value?.onboardingStatus
-  if (status === 'active') return '已认证'
-  if (status === 'under_review') return '审核中'
-  if (status === 'pending') return '待认证'
-  if (status === 'failed') return '未通过'
-  return '未认证'
-})
-
-const settleStatusTone = computed<'success' | 'warning' | 'danger' | 'info'>(() => {
-  const status = adapayMember.value?.onboardingStatus
-  if (status === 'active') return 'success'
-  if (status === 'under_review' || status === 'pending') return 'warning'
-  if (status === 'failed') return 'danger'
-  return 'info'
-})
 
 /** 重新拉取 Adapay 会员状态；失败时置空，让界面退化为「未绑定」而不是继续显示旧卡 */
 async function refreshAdapayMember() {
@@ -2847,10 +2833,6 @@ onBeforeUnmount(() => {
         >
           <TLoading tag="div" :loading="settleLoading" class="settle-dialog">
             <div class="settle-dialog__status">
-              <div class="settle-dialog__status-item">
-                <span>收款认证</span>
-                <TTag :tone="settleStatusTone">{{ settleStatusText }}</TTag>
-              </div>
               <div class="settle-dialog__status-item">
                 <span>结算账户</span>
                 <strong>{{ settleAccountLabel }}</strong>
