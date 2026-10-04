@@ -204,6 +204,15 @@ const form = reactive({
 /** 营业执照长期有效时渠道要的固定截止日（`YYYYMMDD`），与后端同一口径。 */
 const LONG_TERM_DATE = '20991231'
 
+/**
+ * 渠道（Adapay 企业开户）对进件资料的长度上限：`business_scope` 200 字符、`address` 256 字符。
+ *
+ * 营业执照上的经营范围动辄两三百字，OCR 直接回填必然超限，所以回填时按这里截断并把
+ * 「已截断」如实告诉用户，让他自己确认要不要精简。
+ */
+const MAX_BUSINESS_SCOPE_LEN = 200
+const MAX_COMPANY_ADDRESS_LEN = 200
+
 const redirectTarget = computed(() => {
   const raw = typeof route.query.redirect_to === 'string' ? route.query.redirect_to.trim() : ''
   if (!raw || raw === '/realname') {
@@ -461,6 +470,9 @@ function validate() {
     }
     if (!form.companyAddress.trim()) return '请填写企业注册地址'
     if (!form.businessScope.trim()) return '请填写企业经营范围'
+    if (form.businessScope.trim().length > MAX_BUSINESS_SCOPE_LEN) {
+      return `经营范围不能超过 ${MAX_BUSINESS_SCOPE_LEN} 字（渠道限制），请精简后再提交`
+    }
     if (!/^\d{8}$/.test(form.businessLicenseExpiresOn.trim())) return '请选择营业执照有效期'
     if (!/^\d{8}$/.test(form.legalCertExpiresOn.trim())) return '请选择法人证件有效期'
     return ''
@@ -619,11 +631,22 @@ async function autoFillFromBusinessLicense(businessLicenseFile: string) {
     }
     apply(ocr.company_name, (next) => (form.companyName = next))
     apply(ocr.unified_social_credit_code, (next) => (form.unifiedSocialCreditCode = next))
-    apply(ocr.company_address, (next) => (form.companyAddress = next))
-    apply(ocr.business_scope, (next) => (form.businessScope = next))
+    let truncated = false
+    const clip = (value: string, max: number) => {
+      if (value.length <= max) return value
+      truncated = true
+      return value.slice(0, max)
+    }
+    apply(ocr.company_address, (next) => (form.companyAddress = clip(next, MAX_COMPANY_ADDRESS_LEN)))
+    apply(ocr.business_scope, (next) => (form.businessScope = clip(next, MAX_BUSINESS_SCOPE_LEN)))
     apply(ocr.business_license_expires_on, (next) => (form.businessLicenseExpiresOn = next))
     if (filled > 0) {
-      showToast('已按营业执照自动填入企业信息，请核对', 'success')
+      showToast(
+        truncated
+          ? `已按营业执照自动填入企业信息（经营范围超过 ${MAX_BUSINESS_SCOPE_LEN} 字，已截断，请核对）`
+          : '已按营业执照自动填入企业信息，请核对',
+        truncated ? 'warning' : 'success',
+      )
     } else {
       showToast('营业执照未识别出可用信息，请手工填写', 'warning')
     }
@@ -826,6 +849,8 @@ async function checkWechatFaceidResult(options: FaceidCheckOptions = {}) {
   if (!options.background) {
     faceidChecking.value = true
   }
+  // 记下调用前的状态：只有「本次真的从处理中变成已通过」才值得弹提示。
+  const previousStatus = current.value?.status ?? null
   try {
     const updated = await completeAsignIdentify(auth.token)
     if (options.background && updated.status === 'rejected') {
@@ -837,11 +862,17 @@ async function checkWechatFaceidResult(options: FaceidCheckOptions = {}) {
     patchForm(updated)
     if (updated.status === 'approved') {
       clearFaceidChallenge()
-      showToast('爱签实名认证已通过', 'success')
+      // 静默轮询（进页面、回跳、后台定时）每次都弹会变成噪音：只在状态真的发生转变、
+      // 且不是静默调用时提示。
+      if (previousStatus === 'pending' && !options.silent) {
+        showToast('爱签实名认证已通过', 'success')
+      }
       await tryRestoreBusinessPage(updated)
     } else if (updated.status === 'rejected') {
       clearFaceidChallenge()
-      showToast(updated.review_note || '爱签实名认证未通过', 'error')
+      if (previousStatus === 'pending') {
+        showToast(updated.review_note || '爱签实名认证未通过', 'error')
+      }
     } else if (!options.silent) {
       // 认证结果仍为处理中（pending）：如实提示，避免误导为「已更新」
       if (faceidAuthUrl.value) {
