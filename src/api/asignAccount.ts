@@ -10,9 +10,6 @@ export type SendVerifyCodePayload = { mobile: string }
 
 export type ModifyMobileByCodePayload = { mobile: string; code: string; ctoken: string }
 
-/** 修改绑定手机号（运营商三要素校验），无需短信验证码。 */
-export type ModifyMobileThreePayload = { name: string; idCard: string; mobile: string }
-
 export type ModifyCompanyInfoPayload = {
   companyName?: string
   name?: string
@@ -58,15 +55,6 @@ export async function modifyMobileByCode(token: string, payload: ModifyMobileByC
   return post<void>(
     token,
     '/realname/asign-account/modify-mobile-by-code',
-    payload,
-    '修改手机号失败',
-  )
-}
-
-export async function modifyMobileThree(token: string, payload: ModifyMobileThreePayload) {
-  return post<void>(
-    token,
-    '/realname/asign-account/modify-mobile-three',
     payload,
     '修改手机号失败',
   )

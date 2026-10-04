@@ -50,7 +50,6 @@ import {
 import {
   modifyCompanyInfo,
   modifyMobileByCode,
-  modifyMobileThree,
   modifyUserName,
   sendVerifyCode,
 } from '@/api/asignAccount'
@@ -1279,8 +1278,6 @@ async function continueFaceid() {
 // ── 爱签账户管理（为电子签署准备） ──────────────────────────────
 const asignDialogVisible = ref(false)
 const asignDialogKind = ref('')
-// 「绑定手机号」弹窗里的方式：验证码 / 运营商三要素
-const asignMobileMethod = ref<'code' | 'three'>('code')
 
 const ASIGN_DIALOG_TITLES: Record<string, string> = {
   mobile: '修改手机号',
@@ -1292,42 +1289,10 @@ const asignDialogTitle = computed(
   () => ASIGN_DIALOG_TITLES[asignDialogKind.value] ?? '爱签账户管理',
 )
 
-/// 绑定手机号：默认验证码方式，可切到运营商三要素。
+/// 修改手机号：只保留短信验证码方式（运营商三要素那条路 2026-10-04 已删）。
 function openMobileDialog() {
-  asignMobileMethod.value = 'code'
   asignDialogKind.value = 'mobile'
   asignDialogVisible.value = true
-}
-
-async function handleModifyMobileThree() {
-  if (!requireToken()) return
-  if (
-    !asign.mobileThree.name.trim() ||
-    !asign.mobileThree.idCard.trim() ||
-    !asign.mobileThree.mobile.trim()
-  ) {
-    showToast('请填写姓名、身份证号与新手机号', 'warning')
-    return
-  }
-  asignLoading.mobileThree = true
-  try {
-    const res = await modifyMobileThree(auth.token, {
-      name: asign.mobileThree.name.trim(),
-      idCard: asign.mobileThree.idCard.trim(),
-      mobile: asign.mobileThree.mobile.trim(),
-    })
-    if (res.success) {
-      showToast('手机号已修改', 'success')
-      asign.mobileThree.name = ''
-      asign.mobileThree.idCard = ''
-      asign.mobileThree.mobile = ''
-      asignDialogVisible.value = false
-    }
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '修改手机号失败', 'error')
-  } finally {
-    asignLoading.mobileThree = false
-  }
 }
 
 // ── Adapay 结算账户 ──────────────────────────────────────────
@@ -1535,7 +1500,6 @@ async function saveSettleAccount() {
 
 const asign = reactive({
   mobileByCode: { mobile: '', code: '', ctoken: '' },
-  mobileThree: { name: '', idCard: '', mobile: '' },
   legalPerson: { name: '', idCard: '' },
   company: { companyName: '', legalName: '', legalIdCard: '' },
   personal: { personalName: '', mobile: '' },
@@ -1543,7 +1507,6 @@ const asign = reactive({
 const asignLoading = reactive({
   sendCode: false,
   mobileByCode: false,
-  mobileThree: false,
   legalPerson: false,
   company: false,
   personal: false,
@@ -3006,68 +2969,26 @@ onBeforeUnmount(() => {
           width="520px"
         >
           <template v-if="asignDialogKind === 'mobile'">
-            <p class="asign-hint">换绑后，合同签署短信会发到新手机号。选择一种校验方式：</p>
-            <div class="asign-method-grid">
-              <button
-                class="asign-method"
-                :class="{ active: asignMobileMethod === 'code' }"
-                type="button"
-                @click="asignMobileMethod = 'code'"
+            <p class="asign-hint">换绑后，合同签署短信会发到新手机号。</p>
+            <div class="asign-row">
+              <TInput v-model="asign.mobileByCode.mobile" placeholder="新手机号" />
+              <TButton
+                variant="outline"
+                :loading="asignLoading.sendCode"
+                @click="handleSendVerifyCode"
+                >发送验证码</TButton
               >
-                <span class="asign-method__name">短信验证码</span>
-                <small class="asign-method__desc">新手机号能收短信，验证后生效</small>
-              </button>
-              <button
-                class="asign-method"
-                :class="{ active: asignMobileMethod === 'three' }"
-                type="button"
-                @click="asignMobileMethod = 'three'"
-              >
-                <span class="asign-method__name">运营商三要素</span>
-                <small class="asign-method__desc">姓名 + 身份证号 + 新手机号，收不到短信时用</small>
-              </button>
             </div>
-
-            <template v-if="asignMobileMethod === 'code'">
-              <div class="asign-row">
-                <TInput v-model="asign.mobileByCode.mobile" placeholder="新手机号" />
-                <TButton
-                  variant="outline"
-                  :loading="asignLoading.sendCode"
-                  @click="handleSendVerifyCode"
-                  >发送验证码</TButton
-                >
-              </div>
-              <div class="asign-row">
-                <TInput v-model="asign.mobileByCode.code" placeholder="短信验证码" />
-                <TButton
-                  variant="solid"
-                  tone="accent"
-                  :loading="asignLoading.mobileByCode"
-                  @click="handleModifyMobileByCode"
-                  >确认修改</TButton
-                >
-              </div>
-            </template>
-
-            <template v-else>
-              <div class="asign-row">
-                <TInput v-model="asign.mobileThree.name" placeholder="姓名（与实名一致）" />
-              </div>
-              <div class="asign-row">
-                <TInput v-model="asign.mobileThree.idCard" placeholder="身份证号" />
-              </div>
-              <div class="asign-row">
-                <TInput v-model="asign.mobileThree.mobile" placeholder="新手机号" />
-              </div>
+            <div class="asign-row">
+              <TInput v-model="asign.mobileByCode.code" placeholder="短信验证码" />
               <TButton
                 variant="solid"
                 tone="accent"
-                :loading="asignLoading.mobileThree"
-                @click="handleModifyMobileThree"
+                :loading="asignLoading.mobileByCode"
+                @click="handleModifyMobileByCode"
                 >确认修改</TButton
               >
-            </template>
+            </div>
           </template>
 
 
@@ -4230,50 +4151,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
-}
-
-/* ── 弹窗内的方式选择（绑定手机号） ── */
-.asign-method-grid {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.asign-method {
-  display: grid;
-  gap: 2px;
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid rgba(226, 232, 240, 0.92);
-  border-radius: 12px;
-  background: rgba(248, 250, 252, 0.92);
-  color: #0f172a;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color 0.2s ease,
-    background 0.2s ease;
-}
-
-.asign-method:hover {
-  border-color: rgba(96, 165, 250, 0.55);
-  background: rgba(239, 246, 255, 0.96);
-}
-
-.asign-method.active {
-  border-color: rgba(37, 99, 235, 0.82);
-  background: rgba(219, 234, 254, 0.72);
-}
-
-.asign-method__name {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.asign-method__desc {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.5;
 }
 
 .asign-row {
