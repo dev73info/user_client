@@ -415,6 +415,27 @@ export async function createMyAdapaySettlementAccount(
  * 因此这个请求可能失败在「已解绑、未重建」的中间态上；调用方失败后应重新查询
  * `getMyAdapayMember` 确认真实绑定状态。
  */
+/**
+ * 注销（解绑）已绑定的结算账户。
+ *
+ * 破坏性动作：注销后合同款与分账都进不来，要收款必须重新绑定银行卡。
+ * 后端会先打渠道删除接口，成功后才清空本地绑定；渠道拒绝时本地保持原样并抛错。
+ */
+export async function closeMyAdapaySettlementAccount(
+  token: string,
+): Promise<AdapayMemberStatus> {
+  return requestJson<AdapayMemberStatus>(
+    '/adapay/me/settle-account/close',
+    {
+      method: 'POST',
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '注销结算账户失败',
+  )
+}
+
 export async function changeMyAdapaySettlementAccount(
   token: string,
   payload: MySettlementAccountPayload,
