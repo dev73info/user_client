@@ -155,9 +155,6 @@ const adapayMember = ref<{
 const reviewerAvatarLoadFailed = ref(false)
 const faceidAuthUrl = ref('')
 const faceidQrDataUrl = ref('')
-const faceidOrderNo = ref('')
-const faceidBizToken = ref('')
-const faceidBizId = ref('')
 const faceidDialogVisible = ref(false)
 const withdrawing = ref(false)
 // 已通过认证后，只有进入「变更主体」模式才解锁表单，用新主体重新认证一遍。
@@ -520,27 +517,6 @@ function buildPayload(): SubmitRealnameVerificationPayload {
   return payload
 }
 
-function routeStringValue(value: unknown) {
-  if (typeof value === 'string') return value.trim()
-  if (Array.isArray(value) && typeof value[0] === 'string') return value[0].trim()
-  return ''
-}
-
-function faceidReturnPayload(): { serial_no?: string; order_no?: string; biz_id?: string } {
-  const serialNo =
-    routeStringValue(route.query.serial_no) ||
-    routeStringValue(route.query.serialNo) ||
-    routeStringValue(route.query.order_no) ||
-    routeStringValue(route.query.orderNo)
-  const bizId = routeStringValue(route.query.biz_id) || routeStringValue(route.query.bizId)
-
-  return {
-    serial_no: serialNo || undefined,
-    order_no: serialNo || undefined,
-    biz_id: bizId || undefined,
-  }
-}
-
 async function renderFaceidQrCode(url: string) {
   faceidQrDataUrl.value = await QRCode.toDataURL(url, {
     width: 220,
@@ -568,7 +544,7 @@ function startFaceidAutoPolling() {
   }
 
   faceidPollTimer = window.setInterval(() => {
-    void checkWechatFaceidResult({}, { background: true, silent: true })
+    void checkWechatFaceidResult({ background: true, silent: true })
   }, FACEID_POLL_INTERVAL_MS)
 }
 
@@ -576,9 +552,6 @@ function clearFaceidChallenge() {
   stopFaceidAutoPolling()
   faceidAuthUrl.value = ''
   faceidQrDataUrl.value = ''
-  faceidOrderNo.value = ''
-  faceidBizToken.value = ''
-  faceidBizId.value = ''
 }
 
 function openWechatFaceidPage() {
@@ -732,9 +705,6 @@ async function startWechatFaceid() {
       return
     }
     faceidAuthUrl.value = result.auth_url
-    faceidOrderNo.value = result.serial_no ?? ''
-    faceidBizToken.value = result.serial_no ?? ''
-    faceidBizId.value = result.biz_id ?? ''
     await renderFaceidQrCode(result.auth_url)
     // 重新加载当前实名状态（后端已创建 pending 记录）
     const record = await getMyRealnameVerification(auth.token)
@@ -784,9 +754,6 @@ async function startEnterpriseAsign() {
     }
     const result = await startCompanyAsignIdentify(auth.token, payload)
     faceidAuthUrl.value = result.auth_url
-    faceidOrderNo.value = result.serial_no ?? ''
-    faceidBizToken.value = result.serial_no ?? ''
-    faceidBizId.value = result.biz_id ?? ''
     await renderFaceidQrCode(result.auth_url)
     const record = await getMyRealnameVerification(auth.token)
     current.value = record
@@ -800,10 +767,7 @@ async function startEnterpriseAsign() {
   }
 }
 
-async function checkWechatFaceidResult(
-  payload: { serial_no?: string; order_no?: string; biz_id?: string } = {},
-  options: FaceidCheckOptions = {},
-) {
+async function checkWechatFaceidResult(options: FaceidCheckOptions = {}) {
   if (faceidCheckInFlight) {
     return
   }
@@ -817,18 +781,12 @@ async function checkWechatFaceidResult(
     return
   }
 
-  const queryPayload = {
-    biz_id: payload.biz_id || faceidBizId.value || undefined,
-    serial_no: payload.serial_no || faceidOrderNo.value || undefined,
-    order_no: payload.order_no || faceidOrderNo.value || undefined,
-  }
-
   faceidCheckInFlight = true
   if (!options.background) {
     faceidChecking.value = true
   }
   try {
-    const updated = await completeAsignIdentify(auth.token, queryPayload)
+    const updated = await completeAsignIdentify(auth.token)
     if (options.background && updated.status === 'rejected') {
       return
     }
@@ -879,9 +837,6 @@ async function resumeFaceid() {
       return
     }
     faceidAuthUrl.value = result.auth_url
-    faceidOrderNo.value = result.serial_no ?? ''
-    faceidBizToken.value = result.serial_no ?? ''
-    faceidBizId.value = result.biz_id ?? ''
     await renderFaceidQrCode(result.auth_url)
     showToast('认证二维码已恢复，请继续完成人脸核身', 'success')
   } catch (err) {
@@ -905,16 +860,10 @@ async function restoreFaceidChallengeIfNeeded() {
   // 个人：仅大陆身份证（走爱签扫码人脸核身）
   if (!identityCardSelected.value) return
 
-  const queryPayload = {
-    biz_id: faceidBizId.value || undefined,
-    serial_no: faceidOrderNo.value || undefined,
-    order_no: faceidOrderNo.value || undefined,
-  }
-  if (queryPayload.serial_no || queryPayload.biz_id) {
-    await checkWechatFaceidResult(queryPayload, { silent: true })
-    // 查询后状态可能已更新（通过/驳回），此时无需再续发
-    if (current.value?.status !== 'pending' || faceidAuthUrl.value) return
-  }
+  // 流水号在后端，这里直接静默问一次结果；没有进行中的记录会静默失败，不影响续发。
+  await checkWechatFaceidResult({ silent: true })
+  // 查询后状态可能已更新（通过/驳回），此时无需再续发
+  if (current.value?.status !== 'pending' || faceidAuthUrl.value) return
 
   await resumeFaceid()
 }
@@ -930,9 +879,6 @@ async function resumeEnterpriseFaceid() {
   try {
     const result = await resumeCompanyAsignIdentify(auth.token)
     faceidAuthUrl.value = result.auth_url
-    faceidOrderNo.value = result.serial_no ?? ''
-    faceidBizToken.value = result.serial_no ?? ''
-    faceidBizId.value = result.biz_id ?? ''
     await renderFaceidQrCode(result.auth_url)
     showToast('企业认证二维码已恢复，请继续完成认证', 'success')
   } catch (err) {
@@ -2338,10 +2284,8 @@ onMounted(async () => {
     delete nextQuery.settle
     void router.replace({ query: nextQuery })
   }
-  const payload = faceidReturnPayload()
-  if (payload.serial_no || payload.order_no || payload.biz_id) {
-    await checkWechatFaceidResult(payload)
-  }
+  // 回跳后问一次结果：流水号由后端从库里取，前端不再持有任何渠道凭证。
+  await checkWechatFaceidResult({ silent: true })
   // 刷新后尝试恢复丢失的爱签二维码（若仍未完成人脸核身）
   await restoreFaceidChallengeIfNeeded()
 })

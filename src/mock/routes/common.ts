@@ -80,7 +80,6 @@ function realnameRecord(): UserRealnameVerification {
     reviewed_at: nowText(),
     created_at: nowText(),
     updated_at: nowText(),
-    asign_serial_no: 'MOCK-ASIGN-SERIAL',
     changing_subject: false,
   }
 }
@@ -367,7 +366,6 @@ const routes: MockRoute[] = [
     handler: () =>
       jsonResponse({
         auth_url: '',
-        serial_no: 'MOCK-ASIGN-SERIAL',
         biz_id: 'MOCK-ASIGN-BIZ',
         manual_review: false,
       }),
@@ -379,7 +377,6 @@ const routes: MockRoute[] = [
     handler: () =>
       jsonResponse({
         auth_url: '',
-        serial_no: 'MOCK-ASIGN-COMPANY-SERIAL',
         biz_id: 'MOCK-ASIGN-COMPANY-BIZ',
       }),
   },
@@ -390,7 +387,6 @@ const routes: MockRoute[] = [
     handler: () =>
       jsonResponse({
         auth_url: '',
-        serial_no: 'MOCK-ASIGN-SERIAL',
         biz_id: 'MOCK-ASIGN-BIZ',
         manual_review: false,
       }),
@@ -402,7 +398,6 @@ const routes: MockRoute[] = [
     handler: () =>
       jsonResponse({
         auth_url: '',
-        serial_no: 'MOCK-ASIGN-COMPANY-SERIAL',
         biz_id: 'MOCK-ASIGN-COMPANY-BIZ',
       }),
   },

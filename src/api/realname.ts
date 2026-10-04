@@ -41,7 +41,6 @@ export type UserRealnameVerification = {
   created_at: string
   updated_at: string
   /** 爱签实名认证流水号：仅走爱签核身的主体才有，用于「重新实名认证」。 */
-  asign_serial_no?: string | null
   /** 是否处于「主体变更」：本行正在替换一份已通过的主体，撤回即取消变更、还原原主体。 */
   changing_subject?: boolean
 }
@@ -175,18 +174,10 @@ export type StartAsignIdentifyPayload = {
 
 export type StartAsignIdentifyResponse = {
   auth_url: string
-  serial_no?: string | null
   /** 业务 ID，用于查询人脸活体认证结果 */
   biz_id?: string | null
   /** 是否为人工审核（非大陆身份证个人证件，爱签不提供实名认证服务时） */
   manual_review?: boolean
-}
-
-export type CompleteAsignIdentifyPayload = {
-  serial_no?: string | null
-  order_no?: string | null
-  /** 业务 ID（发起认证时返回） */
-  biz_id?: string | null
 }
 
 export async function startAsignIdentify(
@@ -226,7 +217,6 @@ export type StartCompanyIdentifyPayload = {
 
 export type StartCompanyIdentifyResponse = {
   auth_url: string
-  serial_no?: string | null
   /** 业务 ID（发起认证时返回） */
   biz_id?: string | null
 }
@@ -272,10 +262,13 @@ export async function resumeCompanyAsignIdentify(
   )
 }
 
-export async function completeAsignIdentify(
-  token: string,
-  payload: CompleteAsignIdentifyPayload,
-): Promise<UserRealnameVerification> {
+/**
+ * 查询爱签实名认证结果。
+ *
+ * 不需要任何凭证：实名认证流水号在「发起认证」时就已由后端落库，
+ * 前端（以及浏览器历史里的回跳 URL）全程拿不到它。
+ */
+export async function completeAsignIdentify(token: string): Promise<UserRealnameVerification> {
   return requestJson<UserRealnameVerification>(
     '/realname/asign/result',
     {
@@ -283,7 +276,7 @@ export async function completeAsignIdentify(
       headers: authHeaders(token, {
         'Content-Type': 'application/json',
       }),
-      body: JSON.stringify(payload),
+      body: JSON.stringify({}),
     },
     '查询爱签实名认证结果失败',
   )
