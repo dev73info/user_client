@@ -3823,9 +3823,14 @@ onBeforeUnmount(() => {
 
 .account-2fa-methods {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* 同上：允许两列收缩，窄弹窗里不让卡片把容器顶宽 */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
   margin-bottom: 16px;
+}
+
+.account-2fa-methods > * {
+  min-width: 0;
 }
 
 .account-2fa-method {
@@ -4064,9 +4069,15 @@ onBeforeUnmount(() => {
 /* 企业进件资料：省市两个下拉并排一行，日期与「长期有效」并排一行 */
 .realname-region-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* 与 .settle-form__pair 同理：列与子项都必须允许收缩到比内容窄，
+     否则 TSelect 的最小宽度会把整张表单顶得比弹窗还宽、右侧被裁 */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
   width: 100%;
+}
+
+.realname-region-row > * {
+  min-width: 0;
 }
 
 .realname-date-row {
@@ -4263,24 +4274,36 @@ onBeforeUnmount(() => {
   margin-top: 10px;
 }
 
-/* 表单底部动作条：取消 + 确认（主操作）靠右，两者留 12px 间距 */
-/* 开户省份 + 开户城市并成一行；窄屏（弹窗变全宽）时再拆回上下两行 */
+/* 开户省份 + 开户城市并成一行；窄屏（弹窗变全宽）时再拆回上下两行。
+   两列都用 minmax(0, 1fr) 且子项 min-width: 0 —— grid 子项默认 min-width: auto，
+   下拉框的最小宽度会把整张表单顶得比弹窗还宽，右侧（含按钮）被裁掉。 */
 .settle-form__pair {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
+}
+
+.settle-form__pair > * {
+  min-width: 0;
+}
+
+/* TForm 本身是弹窗 body 的 flex 子项，同样要允许收缩到比内容窄 */
+.settle-form {
+  min-width: 0;
 }
 
 @media (max-width: 460px) {
   .settle-form__pair {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
+/* 表单底部动作条：取消 + 确认（主操作）靠右，两者留 12px 间距 */
 .settle-form__actions {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 </style>
