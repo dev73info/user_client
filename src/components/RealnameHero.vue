@@ -11,13 +11,19 @@ const auth = useAuthStore()
 
 const props = defineProps<{
   verification?: UserRealnameVerification | null
-  adapayMember?: { onboardingStatus: string; settleAccountId?: string | null } | null
+  adapayMember?: {
+    onboardingStatus: string
+    settleAccountId?: string | null
+    providerError?: string | null
+  } | null
 }>()
 
 const localVerification = ref<UserRealnameVerification | null>(null)
-const localAdapayMember = ref<{ onboardingStatus: string; settleAccountId?: string | null } | null>(
-  null,
-)
+const localAdapayMember = ref<{
+  onboardingStatus: string
+  settleAccountId?: string | null
+  providerError?: string | null
+} | null>(null)
 const current = computed(() =>
   props.verification === undefined ? localVerification.value : props.verification,
 )
@@ -69,13 +75,28 @@ const asignAuthText = computed(() => {
  * `active`→已认证，会误导成「已能收款」）；口径与账号页那个标签保持一致。
  */
 const settleAccountText = computed(() => {
+  if (settleUnderReview.value) return '审核中'
   const id = adapayMember.value?.settleAccountId
   return id && id.trim() ? '已设置' : '未设置'
 })
 
+/**
+ * 渠道会员是否还在审核中。
+ *
+ * 企业会员开通对公收款要走渠道审核，这期间**实名认证早已通过**、但结算账户绑不上，
+ * 所以这一格如实写「审核中」——写成「未设置」会让用户以为要自己再点一次绑定，
+ * 而实际是渠道还没放行。
+ */
+const settleUnderReview = computed(() => {
+  const status = adapayMember.value?.onboardingStatus
+  return status === 'under_review' || status === 'pending'
+})
+
 const heroDesc = computed(() => {
   if (current.value?.status === 'approved') {
-    return '已完成实名认证，信息核验通过，可正常使用合同签署等权益。'
+    return settleUnderReview.value
+      ? '已完成实名认证，信息核验通过，可正常使用合同签署等权益。企业收款账户正在渠道审核中，审核通过后即可绑定对公账户。'
+      : '已完成实名认证，信息核验通过，可正常使用合同签署等权益。'
   }
   if (current.value?.status === 'pending') return '实名认证审核中，请耐心等待平台核验结果。'
   if (current.value?.status === 'rejected') return '实名认证未通过，请核对证件信息后重新提交。'
@@ -113,6 +134,7 @@ onMounted(async () => {
       <p class="realname-hero__desc">{{ heroDesc }}</p>
       <div class="realname-hero__tag">
         <TTag :tone="statusType">实名认证：{{ statusText }}</TTag>
+        <TTag v-if="settleUnderReview" tone="warning">企业收款账户：渠道审核中</TTag>
       </div>
     </div>
     <div class="realname-hero__metrics">
@@ -172,6 +194,10 @@ onMounted(async () => {
 
 .realname-hero__tag {
   margin-top: 2px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .realname-hero__metrics {

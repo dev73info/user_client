@@ -1178,22 +1178,27 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
     {
       key: 'settle',
       title: '结算账户',
-      desc: settleSubjectMismatch.value
-        ? settleMaterialMissing.value
-          ? `实名资料缺${settleMaterialMissingText.value}，补齐后才能重新绑定收款账户`
-          : '实名主体已变更，原银行卡需按新主体重新绑定'
-        : adapayMember.value?.settleAccountId
-          ? '收款银行卡已绑定，可查看或更换'
-          : '绑定收款银行卡后，合同款才能结算到账',
+      desc: settleUnderReview.value
+        ? '企业收款账户正在渠道审核中，审核通过后即可绑定对公账户'
+        : settleSubjectMismatch.value
+          ? settleMaterialMissing.value
+            ? `实名资料缺${settleMaterialMissingText.value}，补齐后才能重新绑定收款账户`
+            : '实名主体已变更，原银行卡需按新主体重新绑定'
+          : adapayMember.value?.settleAccountId
+            ? '收款银行卡已绑定，可查看或更换'
+            : '绑定收款银行卡后，合同款才能结算到账',
       icon: CreditCard,
       // 标签直接反映「收款银行卡有没有绑」：这才是用户关心的「能不能收款」。
       // （此前是「收款认证：已认证」，读的是渠道会员 onboardingStatus，未绑卡也显示绿色，
       //   会把人误导成「已能收款」，2026-10-04 改回绑卡口径。）
-      status: settleSubjectMismatch.value
-        ? { text: '收款账户：待重绑', tone: 'warning' }
-        : Boolean(adapayMember.value?.settleAccountId)
-          ? { text: '结算账户：已设置', tone: 'success' }
-          : { text: '结算账户：未设置', tone: 'info' },
+      // 渠道会员还在审核时就别报「未设置」（那会让人以为要自己再绑一次），而是如实写审核中。
+      status: settleUnderReview.value
+        ? { text: '结算账户：渠道审核中', tone: 'warning' }
+        : settleSubjectMismatch.value
+          ? { text: '收款账户：待重绑', tone: 'warning' }
+          : Boolean(adapayMember.value?.settleAccountId)
+            ? { text: '结算账户：已设置', tone: 'success' }
+            : { text: '结算账户：未设置', tone: 'info' },
     },
   ]
   // 注销只在已绑卡时有意义；属破坏性动作，用 danger 标记。
@@ -1458,6 +1463,14 @@ const settleMaterialMissingText = computed(() => settleMaterialMissingLabels.val
  * 已经开通且卡还在时不再提旧伤——那是一次翻篇的失败；换卡失败导致卡被解绑时
  * 状态仍停在 `active`，这时候原因必须留着，否则用户看到的是「已认证 + 未设置」而无从下手。
  */
+/**
+ * 渠道会员是否还在审核中（企业会员开通要走渠道审核，这期间绑不了对公账户）。
+ */
+const settleUnderReview = computed(() => {
+  const status = adapayMember.value?.onboardingStatus
+  return status === 'under_review' || status === 'pending'
+})
+
 const settleProviderError = computed(() => {
   const member = adapayMember.value
   const error = (member?.providerError ?? '').trim()
