@@ -108,7 +108,7 @@ export async function runPreflight(request: APIRequestContext): Promise<Prefligh
     developerMember.settlementReady,
     `开发者账号 ${DEVELOPER_ACCOUNT.username} 的 Adapay 结算账户未就绪`
       + `（onboardingStatus=${developerMember.onboardingStatus}，settleAccountId=${developerMember.settleAccountId ?? '空'}）：`
-      + '担保模式合同的乙方签署要求结算账户 active 且已绑卡，先在 admin_client /console/users/adapay 处理。',
+      + '担保模式合同的乙方签署要求结算账户 active 且已绑卡，先在 admin_client /console/users/realname 处理。',
   ).toBeTruthy()
 
   // 需求方实名：`POST /api/requirement/` 要求需求方实名通过。
