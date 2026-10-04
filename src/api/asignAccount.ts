@@ -20,9 +20,15 @@ export type ModifyCompanyInfoPayload = {
   idCardType?: number
 }
 
+/**
+ * 修改爱签签署侧登记的姓名。
+ *
+ * 核验方式与凭证由后端补齐（缺省按「运营商三要素 + 实名手机号」），
+ * 用户端不再自选三要素/四要素，所以这三个字段都是可选的。
+ */
 export type ModifyUserNamePayload = {
   name: string
-  identifyType: number
+  identifyType?: number
   mobile?: string
   bankCard?: string
 }

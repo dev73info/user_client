@@ -1091,8 +1091,8 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
           }
         : {
             key: 'personal',
-            title: '修改个人信息',
-            desc: '变更姓名需要三要素或四要素校验',
+            title: '修改姓名',
+            desc: '修正爱签签署侧登记的姓名，需过一次三要素核验',
             icon: User,
           },
     )
@@ -1286,7 +1286,7 @@ const ASIGN_DIALOG_TITLES: Record<string, string> = {
   mobile: '修改手机号',
   legalPerson: '修改法人',
   company: '企业信息',
-  personal: '个人信息',
+  personal: '修改姓名',
 }
 const asignDialogTitle = computed(
   () => ASIGN_DIALOG_TITLES[asignDialogKind.value] ?? '爱签账户管理',
@@ -1538,7 +1538,7 @@ const asign = reactive({
   mobileThree: { name: '', idCard: '', mobile: '' },
   legalPerson: { name: '', idCard: '' },
   company: { companyName: '', legalName: '', legalIdCard: '' },
-  personal: { personalName: '', identifyType: 2, mobile: '', bankCard: '' },
+  personal: { personalName: '' },
 })
 const asignLoading = reactive({
   sendCode: false,
@@ -1663,27 +1663,16 @@ async function handleModifyUserName() {
     showToast('请填写姓名', 'warning')
     return
   }
-  if (asign.personal.identifyType === 2 && !asign.personal.mobile.trim()) {
-    showToast('请填写手机号', 'warning')
-    return
-  }
-  if (asign.personal.identifyType === 3 && !asign.personal.bankCard.trim()) {
-    showToast('请填写银联卡号', 'warning')
-    return
-  }
   asignLoading.personal = true
   try {
-    const res = await modifyUserName(auth.token, {
-      name: asign.personal.personalName.trim(),
-      identifyType: asign.personal.identifyType,
-      mobile: asign.personal.identifyType === 2 ? asign.personal.mobile.trim() : undefined,
-      bankCard: asign.personal.identifyType === 3 ? asign.personal.bankCard.trim() : undefined,
-    })
+    // 只传姓名：核验方式与凭证（实名手机号）由后端补齐，前端不再让用户选
+    const res = await modifyUserName(auth.token, { name: asign.personal.personalName.trim() })
     if (res.success) {
-      showToast('个人信息已修改', 'success')
+      showToast('姓名已修改', 'success')
+      asign.personal.personalName = ''
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '修改个人信息失败', 'error')
+    showToast(err instanceof Error ? err.message : '修改姓名失败', 'error')
   } finally {
     asignLoading.personal = false
   }
@@ -3103,21 +3092,12 @@ onBeforeUnmount(() => {
           </template>
 
           <template v-else-if="asignDialogKind === 'personal'">
-            <p class="asign-hint">通过运营商三要素或银行卡四要素校验本人信息后更新资质。</p>
+            <p class="asign-hint">
+              只修改爱签签署侧登记的姓名（平台实名信息不受影响）。为避免改成他人姓名，
+              提交后会用你实名的手机号（{{ current?.mobile_masked ?? '—' }}）做一次运营商三要素核验。
+            </p>
             <div class="asign-row">
-              <TInput v-model="asign.personal.personalName" placeholder="姓名" />
-            </div>
-            <div class="asign-row">
-              <TRadioGroup v-model="asign.personal.identifyType">
-                <TRadio :value="2">运营商三要素</TRadio>
-                <TRadio :value="3">银行卡四要素</TRadio>
-              </TRadioGroup>
-            </div>
-            <div v-if="asign.personal.identifyType === 2" class="asign-row">
-              <TInput v-model="asign.personal.mobile" placeholder="手机号" />
-            </div>
-            <div v-if="asign.personal.identifyType === 3" class="asign-row">
-              <TInput v-model="asign.personal.bankCard" placeholder="银联卡号" />
+              <TInput v-model="asign.personal.personalName" placeholder="新姓名" />
             </div>
             <TButton
               variant="solid"
