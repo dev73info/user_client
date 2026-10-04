@@ -409,6 +409,16 @@ export function conversationCardMeta(
         title: '售后案件需人工处理',
         description: '资金处理未能自动完成，客服会尽快跟进并在案件内同步进展。',
       }
+    // 滞留提醒（BUG-046）：`manual_required` 之后案件不再有自动动作，会话里没有新卡片，
+    // 双方的感受就是「转人工之后没下文」，而该需求的接单保证金冻结一直占着。与违约侧的
+    // `breach_case_manual_required_reminder` 同一口径：只说明进展，不给按钮也不给跳转。
+    // 提醒不写死「几天」：阈值是后端常量，文案写死天数后常量一改就在说假话。
+    case 'after_sales_case_manual_required_reminder':
+      return {
+        title: '售后案件仍在人工处理中',
+        description:
+          '案件转人工后仍未收口，客服会尽快处理并在案件内同步结论；该需求的接单保证金在此期间继续冻结。',
+      }
     default:
       return null
   }
