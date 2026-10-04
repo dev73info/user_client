@@ -3078,16 +3078,14 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div class="realname-faceid-panel__actions">
+            <TButton variant="outline" tone="danger" :loading="withdrawing" @click="handleWithdraw">
+              {{ realnameChangeBacked ? '取消变更，还原原主体' : '撤回认证' }}
+            </TButton>
             <TButton class="realname-plain-btn" @click="openWechatFaceidPage">
               <TIcon>
                 <Promotion />
               </TIcon>
               {{ isMobile ? '打开认证页面完成核身' : '打开认证页面' }}
-            </TButton>
-          </div>
-          <div class="realname-faceid-panel__actions">
-            <TButton variant="outline" tone="danger" :loading="withdrawing" @click="handleWithdraw">
-              {{ realnameChangeBacked ? '取消变更，还原原主体' : '撤回认证' }}
             </TButton>
             <TButton
               variant="solid"
@@ -4224,9 +4222,11 @@ onBeforeUnmount(() => {
   background: linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(248, 250, 252, 0.92));
 }
 
+/* 人脸核身面板：全部走本端令牌（原来这里写死了一批裸色值），
+   二维码是唯一例外——必须是真白底 + 黑模块，套主题色手机会扫不出来。 */
 .realname-faceid-panel__main {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   justify-items: center;
   text-align: center;
 }
@@ -4237,70 +4237,105 @@ onBeforeUnmount(() => {
 }
 
 .realname-faceid-panel__copy strong {
-  color: #0f172a;
-  font-size: 16px;
+  color: var(--73-ink);
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .realname-faceid-panel__copy span {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 13px;
 }
 
 .realname-faceid-panel__qr {
-  width: 148px;
-  height: 148px;
-  padding: 8px;
-  border-radius: 14px;
-  border: 1px solid rgba(198, 210, 236, 0.78);
+  width: 156px;
+  height: 156px;
+  padding: 10px;
+  border-radius: var(--73-radius-inner);
+  border: 1px solid var(--73-border);
   background: #fff;
-  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.12);
+  box-shadow: var(--73-shadow-card);
 }
 
+/* 三步指引：序号做成徽标，别让「1.」挂在正文外面（原来用 list-style: decimal 会那样） */
 .realname-faceid-panel__steps {
-  margin: 2px 0 0;
-  padding: 0 0 0 20px;
+  margin: 0;
+  padding: 0;
+  width: 100%;
   display: grid;
-  gap: 6px;
+  gap: 8px;
+  list-style: none;
+  counter-reset: faceid-step;
   text-align: left;
-  color: #475569;
+}
+
+.realname-faceid-panel__steps li {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  color: var(--73-ink-soft);
   font-size: 13px;
   line-height: 1.6;
 }
 
-.realname-faceid-panel__steps li {
-  list-style: decimal;
+.realname-faceid-panel__steps li::before {
+  counter-increment: faceid-step;
+  content: counter(faceid-step);
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: var(--73-radius-pill);
+  border: 1px solid var(--73-border);
+  background: var(--73-surface-strong);
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  line-height: 1;
 }
 
 .realname-faceid-panel__steps strong {
-  color: #0f172a;
+  color: var(--73-ink);
+  font-weight: 600;
 }
 
 .realname-faceid-panel__mobile-tip {
   display: grid;
   gap: 6px;
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 13px;
   line-height: 1.6;
 }
 
 .realname-faceid-panel__mobile-sub {
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 .realname-faceid-panel__hint {
-  margin: 0;
-  color: #94a3b8;
+  margin: 0 auto;
+  max-width: 34em;
+  color: var(--73-ink-muted);
   font-size: 12px;
-  line-height: 1.6;
+  line-height: 1.7;
   text-align: center;
 }
 
+/* 三个动作排一行：次要/危险在左、主操作「查询结果」在最右（中文弹窗惯例）。 */
 .realname-faceid-panel__actions {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+/* 触屏档：撑满并给足 44px 触摸目标（设计规范对 <640px 的硬要求） */
+@media (max-width: 640px) {
+  .realname-faceid-panel__actions > * {
+    flex: 1 1 100%;
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 780px) {
