@@ -51,12 +51,9 @@ import {
   modifyCompanyInfo,
   modifyMobileByCode,
   modifyMobileThree,
-  modifySignPassword,
   modifyUserName,
   reAuthUser,
-  resetSignPassword,
   sendVerifyCode,
-  startModSignPassword,
 } from '@/api/asignAccount'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -91,7 +88,6 @@ import {
   Connection,
   CreditCard,
   Iphone,
-  Key,
   Lock,
   Message,
   OfficeBuilding,
@@ -1109,7 +1105,6 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
 
   const sign: AccountEntry[] = [
     { key: 'mobile', title: '绑定手机号', desc: '接收签署短信的手机号，可改绑', icon: Iphone },
-    { key: 'signPwd', title: '签约密码', desc: '签署合同时校验，可修改或重设', icon: Key },
     assignEnterprise.value
       ? {
           key: 'company',
@@ -1233,9 +1228,6 @@ function openAccountEntry(key: string) {
     case 'mobile':
       openMobileDialog()
       return
-    case 'signPwd':
-      openSignPasswordDialog()
-      return
     case 'company':
     case 'personal':
       asignDialogKind.value = key
@@ -1312,13 +1304,10 @@ const asignDialogVisible = ref(false)
 const asignDialogKind = ref('')
 // 「绑定手机号」弹窗里的方式：验证码 / 运营商三要素
 const asignMobileMethod = ref<'code' | 'three'>('code')
-// 「签约密码」弹窗里的路径：记得原密码 / 忘记原密码 / 首次设置
-const signPwdMethod = ref<'modify' | 'reset' | 'page'>('modify')
 const reAuthLoading = ref(false)
 
 const ASIGN_DIALOG_TITLES: Record<string, string> = {
   mobile: '绑定手机号',
-  signPwd: '签约密码',
   company: '企业信息',
   personal: '个人信息',
 }
@@ -1330,13 +1319,6 @@ const asignDialogTitle = computed(
 function openMobileDialog() {
   asignMobileMethod.value = 'code'
   asignDialogKind.value = 'mobile'
-  asignDialogVisible.value = true
-}
-
-/// 签约密码：默认「我记得原密码」，可切到忘记重设或去爱签页面首次设置。
-function openSignPasswordDialog() {
-  signPwdMethod.value = 'modify'
-  asignDialogKind.value = 'signPwd'
   asignDialogVisible.value = true
 }
 
@@ -1577,8 +1559,6 @@ async function saveSettleAccount() {
 const asign = reactive({
   mobileByCode: { mobile: '', code: '', ctoken: '' },
   mobileThree: { name: '', idCard: '', mobile: '' },
-  modifyPwd: { oldSignPwd: '', signPwd: '' },
-  resetPwd: { signPwd: '' },
   company: { companyName: '', legalName: '', legalIdCard: '' },
   personal: { personalName: '', identifyType: 2, mobile: '', bankCard: '' },
 })
@@ -1586,9 +1566,6 @@ const asignLoading = reactive({
   sendCode: false,
   mobileByCode: false,
   mobileThree: false,
-  signPwd: false,
-  startSignPwd: false,
-  resetSignPwd: false,
   company: false,
   personal: false,
 })
@@ -1649,65 +1626,6 @@ async function handleModifyMobileByCode() {
     showToast(err instanceof Error ? err.message : '修改手机号失败', 'error')
   } finally {
     asignLoading.mobileByCode = false
-  }
-}
-
-async function handleModifySignPassword() {
-  if (!requireToken()) return
-  if (!asign.modifyPwd.oldSignPwd.trim() || !asign.modifyPwd.signPwd.trim()) {
-    showToast('请填写旧密码和新密码', 'warning')
-    return
-  }
-  asignLoading.signPwd = true
-  try {
-    const res = await modifySignPassword(auth.token, {
-      oldSignPwd: asign.modifyPwd.oldSignPwd.trim(),
-      signPwd: asign.modifyPwd.signPwd.trim(),
-    })
-    if (res.success) {
-      showToast('签约密码已修改', 'success')
-    }
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '修改签约密码失败', 'error')
-  } finally {
-    asignLoading.signPwd = false
-  }
-}
-
-async function handleStartModSignPassword() {
-  if (!requireToken()) return
-  asignLoading.startSignPwd = true
-  try {
-    const res = await startModSignPassword(auth.token, {})
-    if (res.success && res.data?.signUrl) {
-      window.open(res.data.signUrl, '_blank', 'noopener,noreferrer')
-      showToast('已打开签约密码修改页面', 'success')
-    } else {
-      showToast('初始化成功，请在爱签页面完成设置', 'success')
-    }
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '初始化签约密码失败', 'error')
-  } finally {
-    asignLoading.startSignPwd = false
-  }
-}
-
-async function handleResetSignPassword() {
-  if (!requireToken()) return
-  if (!asign.resetPwd.signPwd.trim()) {
-    showToast('请填写新签约密码', 'warning')
-    return
-  }
-  asignLoading.resetSignPwd = true
-  try {
-    const res = await resetSignPassword(auth.token, { signPwd: asign.resetPwd.signPwd.trim() })
-    if (res.success) {
-      showToast('签约密码已重置', 'success')
-    }
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '重置签约密码失败', 'error')
-  } finally {
-    asignLoading.resetSignPwd = false
   }
 }
 
@@ -3142,88 +3060,6 @@ onBeforeUnmount(() => {
             </template>
           </template>
 
-          <template v-else-if="asignDialogKind === 'signPwd'">
-            <p class="asign-hint">签约密码用于签署合同时校验身份。选择适合你的方式：</p>
-            <div class="asign-method-grid">
-              <button
-                class="asign-method"
-                :class="{ active: signPwdMethod === 'modify' }"
-                type="button"
-                @click="signPwdMethod = 'modify'"
-              >
-                <span class="asign-method__name">我记得原密码</span>
-                <small class="asign-method__desc">输入原密码与新密码完成修改</small>
-              </button>
-              <button
-                class="asign-method"
-                :class="{ active: signPwdMethod === 'reset' }"
-                type="button"
-                @click="signPwdMethod = 'reset'"
-              >
-                <span class="asign-method__name">忘记原密码</span>
-                <small class="asign-method__desc">直接设置新密码，立即生效</small>
-              </button>
-              <button
-                class="asign-method"
-                :class="{ active: signPwdMethod === 'page' }"
-                type="button"
-                @click="signPwdMethod = 'page'"
-              >
-                <span class="asign-method__name">首次设置</span>
-                <small class="asign-method__desc">还没设过密码，去爱签页面设置（需手机核验）</small>
-              </button>
-            </div>
-
-            <template v-if="signPwdMethod === 'modify'">
-              <div class="asign-row">
-                <TInput
-                  v-model="asign.modifyPwd.oldSignPwd"
-                  type="password"
-                  placeholder="原签约密码"
-                />
-              </div>
-              <div class="asign-row">
-                <TInput
-                  v-model="asign.modifyPwd.signPwd"
-                  type="password"
-                  placeholder="新签约密码"
-                />
-              </div>
-              <TButton
-                variant="solid"
-                tone="accent"
-                :loading="asignLoading.signPwd"
-                @click="handleModifySignPassword"
-                >确认修改</TButton
-              >
-            </template>
-
-            <template v-else-if="signPwdMethod === 'reset'">
-              <div class="asign-row">
-                <TInput v-model="asign.resetPwd.signPwd" type="password" placeholder="新签约密码" />
-              </div>
-              <TButton
-                variant="solid"
-                tone="accent"
-                :loading="asignLoading.resetSignPwd"
-                @click="handleResetSignPassword"
-                >确认重置</TButton
-              >
-            </template>
-
-            <template v-else>
-              <p class="asign-hint">
-                点击下方按钮会跳转到爱签页面，按页面提示用手机核验后设置新密码。
-              </p>
-              <TButton
-                variant="solid"
-                tone="accent"
-                :loading="asignLoading.startSignPwd"
-                @click="handleStartModSignPassword"
-                >去爱签页面设置</TButton
-              >
-            </template>
-          </template>
 
           <template v-else-if="asignDialogKind === 'company'">
             <p class="asign-hint">修改企业名称将自动生成新印章，法人信息请配合身份证号填写。</p>
@@ -4370,7 +4206,7 @@ onBeforeUnmount(() => {
 @media (max-width: 640px) {
 }
 
-/* ── 弹窗内的方式选择（绑定手机号 / 签约密码） ── */
+/* ── 弹窗内的方式选择（绑定手机号） ── */
 .asign-method-grid {
   display: grid;
   gap: 8px;

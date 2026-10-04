@@ -13,12 +13,6 @@ export type ModifyMobileByCodePayload = { mobile: string; code: string; ctoken: 
 /** 修改绑定手机号（运营商三要素校验），无需短信验证码。 */
 export type ModifyMobileThreePayload = { name: string; idCard: string; mobile: string }
 
-export type ModifySignPasswordPayload = { oldSignPwd: string; signPwd: string }
-
-export type StartModSignPasswordPayload = { isNotice?: number; isShowResult?: number }
-
-export type ResetSignPasswordPayload = { signPwd: string }
-
 export type ModifyCompanyInfoPayload = {
   companyName?: string
   name?: string
@@ -71,33 +65,6 @@ export async function modifyMobileThree(token: string, payload: ModifyMobileThre
     '/realname/asign-account/modify-mobile-three',
     payload,
     '修改手机号失败',
-  )
-}
-
-export async function modifySignPassword(token: string, payload: ModifySignPasswordPayload) {
-  return post<void>(
-    token,
-    '/realname/asign-account/modify-sign-password',
-    payload,
-    '修改签约密码失败',
-  )
-}
-
-export async function startModSignPassword(token: string, payload: StartModSignPasswordPayload) {
-  return post<{ mobile?: string; account?: string; signUrl?: string; partnerId?: number }>(
-    token,
-    '/realname/asign-account/start-mod-sign-password',
-    payload,
-    '初始化签约密码失败',
-  )
-}
-
-export async function resetSignPassword(token: string, payload: ResetSignPasswordPayload) {
-  return post<void>(
-    token,
-    '/realname/asign-account/reset-sign-password',
-    payload,
-    '重置签约密码失败',
   )
 }
 
