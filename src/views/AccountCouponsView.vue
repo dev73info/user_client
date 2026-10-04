@@ -1525,16 +1525,6 @@ const settleCardPlaceholder = computed(() => {
   return masked ? `当前 ${masked}（更换请整卡重填）` : '请输入收款银行卡号（需整卡重填）'
 })
 
-/** 当前已绑卡的脱敏提示（卡号 · 持卡人 · 开户行），让用户确认自己在换哪张卡。 */
-const settleBoundCardHint = computed(() => {
-  const snapshot = settleSnapshot.value
-  if (!snapshot?.bound) return ''
-  return [snapshot.cardIdMasked, snapshot.cardName, snapshot.bankName]
-    .map((value) => (value ?? '').trim())
-    .filter((value) => value.length > 0)
-    .join(' · ')
-})
-
 /** 打开弹窗即进入表单：已绑卡时回填脱敏明细，未绑卡时按实名主体给默认值 */
 async function openSettleDialog() {
   settleDialogVisible.value = true
@@ -2945,20 +2935,6 @@ onBeforeUnmount(() => {
               :disabled="settleSaving || settleLoading"
               @submit="saveSettleAccount"
             >
-              <TAlert
-                v-if="settleBound"
-                class="settle-form__alert"
-                tone="warning"
-                :closable="false"
-                show-icon
-                title="确认提交后原银行卡会立即解绑，再绑定新卡；解绑与绑定之间暂时无法分账。"
-              />
-              <!-- 已绑卡：把渠道给的脱敏明细显示出来，让用户确认换的是哪张卡；
-                   卡号不回填（渠道只给脱敏形态，提交需要完整卡号，只能重新输入） -->
-              <p v-if="settleBoundCardHint" class="settle-form__current">
-                当前银行卡：<strong>{{ settleBoundCardHint }}</strong>
-                <span v-if="settleSubjectMismatch">（已不适用于当前实名主体，需重新绑定）</span>
-              </p>
               <TFormItem label="银行卡号" required>
                 <TInput v-model="settleForm.card_id" inputmode="numeric" :placeholder="settleCardPlaceholder" />
               </TFormItem>
@@ -4523,26 +4499,5 @@ onBeforeUnmount(() => {
   justify-content: flex-end;
   align-items: center;
   gap: 12px;
-}
-
-.settle-form__current {
-  margin: 0 0 14px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(226, 232, 240, 0.92);
-  background: rgba(248, 250, 252, 0.92);
-  color: #475569;
-  font-size: 13px;
-  line-height: 1.6;
-  word-break: break-all;
-}
-
-.settle-form__current strong {
-  color: #0f172a;
-  font-weight: 600;
-}
-
-.settle-form__alert {
-  margin-bottom: 14px;
 }
 </style>
