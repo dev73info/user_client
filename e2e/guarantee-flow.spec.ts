@@ -58,8 +58,8 @@
  * 定金一旦支付无法回滚。
  *
  * **每次运行还会冻结 50 元开发者接单保证金**（= 需求预算 `BUDGET_CNY`，接单时冻结），
- * 且这笔冻结不会因为需求结单就释放——释放时机是**售后窗口结束**
- * （`after_sales::release_due_after_sales_deposits`，`release_reason = after_sales_window_closed`）。
+ * 且这笔冻结不会因为需求结单就释放——**售后窗口结束也不会自动释放**
+ * （平台已无后台扫描任务；`release_reason = after_sales_window_closed` 现在只有人工入口能触发）。
  * 实测连跑 8 次后，`GET /api/payment/freeze-details` 里 8 条冻结的 `requirement_status`
  * 全是 `completed` 而 `is_active` 仍为 `true`，`total_active_deposit_frozen_cny` 累积到 400 元，
  * 开发者的 `available_cny` 归零；此后 preflight 会直接在 `can_bind_requirement` /
