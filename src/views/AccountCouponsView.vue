@@ -3013,10 +3013,12 @@ onBeforeUnmount(() => {
                 </TSelect>
               </TFormItem>
               <TFormItem>
-                <TButton :disabled="settleSaving" @click="closeSettleDialog">取消</TButton>
-                <TButton type="submit" variant="solid" tone="accent" :loading="settleSaving">
-                  {{ settleSaving ? '保存中...' : settleBound ? '确认更换' : '保存结算账户' }}
-                </TButton>
+                <div class="settle-form__actions">
+                  <TButton :disabled="settleSaving" @click="closeSettleDialog">取消</TButton>
+                  <TButton type="submit" variant="solid" tone="accent" :loading="settleSaving">
+                    {{ settleSaving ? '保存中...' : settleBound ? '确认更换' : '保存结算账户' }}
+                  </TButton>
+                </div>
               </TFormItem>
             </TForm>
           </TLoading>
@@ -4512,6 +4514,14 @@ onBeforeUnmount(() => {
 /* 缺企业资料时的指路按钮：跟在说明文字后面，与正文留出呼吸 */
 .settle-dialog__alert-action {
   margin-top: 10px;
+}
+
+/* 表单底部动作条：取消 + 确认（主操作）靠右，两者留 12px 间距 */
+.settle-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
 }
 
 .settle-form__current {
