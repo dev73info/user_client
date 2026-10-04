@@ -27,8 +27,6 @@ export type ModifyUserNamePayload = {
   bankCard?: string
 }
 
-export type ReAuthUserPayload = { serialNo: string; contactName?: string; contactIdCard?: string }
-
 function post<T>(token: string, path: string, payload: unknown, fallback: string) {
   return requestJson<AsignAccountResponse<T>>(
     path,
@@ -86,11 +84,3 @@ export async function modifyUserName(token: string, payload: ModifyUserNamePaylo
   )
 }
 
-export async function reAuthUser(token: string, payload: ReAuthUserPayload) {
-  return post<string | null>(
-    token,
-    '/realname/asign-account/re-auth-user',
-    payload,
-    '用户重新认证失败',
-  )
-}

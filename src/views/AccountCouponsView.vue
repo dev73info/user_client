@@ -52,7 +52,6 @@ import {
   modifyMobileByCode,
   modifyMobileThree,
   modifyUserName,
-  reAuthUser,
   sendVerifyCode,
 } from '@/api/asignAccount'
 import { useToast } from '@/composables/useToast'
@@ -1032,7 +1031,8 @@ const realnameEntryCopy = computed(() => {
   return { title: '开始认证', desc: '提交真实身份信息，通过后可签署合同' }
 })
 
-/// 「认证管理」卡片：实名认证 / 收款与结算 / 电子签约账户三组入口。
+/// 「认证管理」卡片：实名认证（按认证类型给不同入口） / 收款与结算 两组。
+/// 认证类型对应的入口集合见下方 `identity` 的注释。
 const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
   const identity: AccountEntry[] = [
     {
@@ -1062,22 +1062,46 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
       loading: withdrawing.value,
     })
   }
+  // 已通过认证后的可维护入口：按认证类型给不同集合（2026-10-04 起把原「电子签约账户」
+  // 那组并进来，避免同一件事分散在两个分组里）
+  //   个人：修改手机号、修改个人信息、变更认证类型
+  //   企业 / 个体工商户：修改法人、修改手机号、修改企业信息、变更认证类型
   if (realnameApproved.value) {
+    if (assignEnterprise.value) {
+      identity.push({
+        key: 'legalPerson',
+        title: '修改法人',
+        desc: '变更企业法人姓名与身份证号，需重新核验',
+        icon: User,
+      })
+    }
+    identity.push({
+      key: 'mobile',
+      title: '修改手机号（验证码方式）',
+      desc: '接收签署短信的手机号，用短信验证码改绑',
+      icon: Iphone,
+    })
+    identity.push(
+      assignEnterprise.value
+        ? {
+            key: 'company',
+            title: '修改企业信息',
+            desc: '变更企业名称会自动重新生成印章',
+            icon: OfficeBuilding,
+          }
+        : {
+            key: 'personal',
+            title: '修改个人信息',
+            desc: '变更姓名需要三要素或四要素校验',
+            icon: User,
+          },
+    )
     identity.push({
       key: 'changeSubject',
-      title: '变更认证主体',
+      title: '变更认证类型',
       desc: '个人 / 企业 / 个体工商户之间切换，需重新认证',
       icon: SwitchButton,
     })
-    if (current.value?.asign_serial_no) {
-      identity.push({
-        key: 'reauth',
-        title: '重新实名认证',
-        desc: '爱签核验失效时，按原主体重新发起核验',
-        icon: RefreshRight,
-        loading: reAuthLoading.value,
-      })
-    }
   }
 
   const settle: AccountEntry[] = [
@@ -1103,27 +1127,9 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
     },
   ]
 
-  const sign: AccountEntry[] = [
-    { key: 'mobile', title: '绑定手机号', desc: '接收签署短信的手机号，可改绑', icon: Iphone },
-    assignEnterprise.value
-      ? {
-          key: 'company',
-          title: '企业信息',
-          desc: '变更企业名称会自动重新生成印章',
-          icon: OfficeBuilding,
-        }
-      : {
-          key: 'personal',
-          title: '个人信息',
-          desc: '变更姓名需要三要素或四要素校验',
-          icon: User,
-        },
-  ]
-
   return [
     { title: '实名认证', entries: identity },
     { title: '收款与结算', entries: settle },
-    { title: '电子签约账户', entries: sign },
   ]
 })
 
@@ -1219,15 +1225,13 @@ function openAccountEntry(key: string) {
     case 'changeSubject':
       startRealnameChange()
       return
-    case 'reauth':
-      void handleReAuthUser()
-      return
     case 'settle':
       void openSettleDialog()
       return
     case 'mobile':
       openMobileDialog()
       return
+    case 'legalPerson':
     case 'company':
     case 'personal':
       asignDialogKind.value = key
@@ -1272,42 +1276,15 @@ async function continueFaceid() {
   faceidDialogVisible.value = true
 }
 
-/// 重新实名认证：用库里存的爱签认证流水号，请爱签按原主体重新发起核验。
-async function handleReAuthUser() {
-  if (!requireToken()) return
-  const serialNo = current.value?.asign_serial_no?.trim()
-  if (!serialNo) {
-    showToast('当前主体没有爱签认证流水号，请改用「变更认证主体」', 'warning')
-    return
-  }
-
-  reAuthLoading.value = true
-  try {
-    const res = await reAuthUser(auth.token, { serialNo })
-    const target = res.data
-    if (typeof target === 'string' && /^https?:\/\//i.test(target)) {
-      window.open(target, '_blank', 'noopener,noreferrer')
-      showToast('已打开爱签重新认证页面', 'success')
-    } else {
-      showToast('已发起重新认证，请按爱签提示完成核验', 'success')
-    }
-    await loadCurrentRealname()
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '重新实名认证失败', 'error')
-  } finally {
-    reAuthLoading.value = false
-  }
-}
-
 // ── 爱签账户管理（为电子签署准备） ──────────────────────────────
 const asignDialogVisible = ref(false)
 const asignDialogKind = ref('')
 // 「绑定手机号」弹窗里的方式：验证码 / 运营商三要素
 const asignMobileMethod = ref<'code' | 'three'>('code')
-const reAuthLoading = ref(false)
 
 const ASIGN_DIALOG_TITLES: Record<string, string> = {
-  mobile: '绑定手机号',
+  mobile: '修改手机号',
+  legalPerson: '修改法人',
   company: '企业信息',
   personal: '个人信息',
 }
@@ -1407,7 +1384,7 @@ const settleSubjectLabel = computed(() =>
  *
  * 渠道创建企业会员（对公收款账户）时逐项校验营业执照文件、企业所在省市、注册地址、
  * 经营范围、营业执照有效期、法人证件有效期，缺任一项整条对公收款通道都开不了。
- * 缺资料时重绑一定会被渠道拒绝，必须先回「变更认证主体」补资料，所以这里提前拦在界面层，
+ * 缺资料时重绑一定会被渠道拒绝，必须先回「变更认证类型」补资料，所以这里提前拦在界面层，
  * 别让用户白填一次表单。
  */
 const settleMaterialMissing = computed(() => {
@@ -1559,6 +1536,7 @@ async function saveSettleAccount() {
 const asign = reactive({
   mobileByCode: { mobile: '', code: '', ctoken: '' },
   mobileThree: { name: '', idCard: '', mobile: '' },
+  legalPerson: { name: '', idCard: '' },
   company: { companyName: '', legalName: '', legalIdCard: '' },
   personal: { personalName: '', identifyType: 2, mobile: '', bankCard: '' },
 })
@@ -1566,6 +1544,7 @@ const asignLoading = reactive({
   sendCode: false,
   mobileByCode: false,
   mobileThree: false,
+  legalPerson: false,
   company: false,
   personal: false,
 })
@@ -1626,6 +1605,31 @@ async function handleModifyMobileByCode() {
     showToast(err instanceof Error ? err.message : '修改手机号失败', 'error')
   } finally {
     asignLoading.mobileByCode = false
+  }
+}
+
+/// 修改法人：爱签侧与「修改企业信息」同接口（`/user/modifyCompanyInfo`），
+/// 只是这时法人三要素必须齐全（姓名 + 身份证号 + 证件类型 1=身份证）。
+async function handleModifyLegalPerson() {
+  if (!requireToken()) return
+  if (!asign.legalPerson.name.trim() || !asign.legalPerson.idCard.trim()) {
+    showToast('请填写法人姓名与身份证号', 'warning')
+    return
+  }
+  asignLoading.legalPerson = true
+  try {
+    const res = await modifyCompanyInfo(auth.token, {
+      name: asign.legalPerson.name.trim(),
+      idCard: asign.legalPerson.idCard.trim(),
+      idCardType: 1,
+    })
+    if (res.success) {
+      showToast('法人信息已修改', 'success')
+    }
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '修改法人失败', 'error')
+  } finally {
+    asignLoading.legalPerson = false
   }
 }
 
@@ -2829,7 +2833,7 @@ onBeforeUnmount(() => {
                 size="sm"
                 @click="goFixSettleMaterial"
               >
-                去「变更认证主体」补齐企业资料
+                去「变更认证类型」补齐企业资料
               </TButton>
             </TAlert>
 
@@ -3060,6 +3064,23 @@ onBeforeUnmount(() => {
             </template>
           </template>
 
+
+          <template v-else-if="asignDialogKind === 'legalPerson'">
+            <p class="asign-hint">变更法人需重新核验：请填写新法人的姓名与身份证号。</p>
+            <div class="asign-row">
+              <TInput v-model="asign.legalPerson.name" placeholder="法人姓名" />
+            </div>
+            <div class="asign-row">
+              <TInput v-model="asign.legalPerson.idCard" placeholder="法人身份证号" />
+            </div>
+            <TButton
+              variant="solid"
+              tone="accent"
+              :loading="asignLoading.legalPerson"
+              @click="handleModifyLegalPerson"
+              >确认修改</TButton
+            >
+          </template>
 
           <template v-else-if="asignDialogKind === 'company'">
             <p class="asign-hint">修改企业名称将自动生成新印章，法人信息请配合身份证号填写。</p>
