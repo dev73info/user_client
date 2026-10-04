@@ -1094,12 +1094,14 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
           ? '收款银行卡已绑定，可查看或更换'
           : '绑定收款银行卡后，合同款才能结算到账',
       icon: CreditCard,
-      // 不再显示「收款认证：已认证」：它只反映渠道会员状态（onboardingStatus），
-      // 与实际能不能收款无关（未绑卡时照样是 active），容易被读成「已能收款」。
-      // 收款能力看同一行描述里的「结算账户」即可；主体变更需要重绑时才提示。
+      // 标签直接反映「收款银行卡有没有绑」：这才是用户关心的「能不能收款」。
+      // （此前是「收款认证：已认证」，读的是渠道会员 onboardingStatus，未绑卡也显示绿色，
+      //   会把人误导成「已能收款」，2026-10-04 改回绑卡口径。）
       status: settleSubjectMismatch.value
         ? { text: '收款账户：待重绑', tone: 'warning' }
-        : undefined,
+        : Boolean(adapayMember.value?.settleAccountId)
+          ? { text: '结算账户：已设置', tone: 'success' }
+          : { text: '结算账户：未设置', tone: 'info' },
     },
   ]
 
