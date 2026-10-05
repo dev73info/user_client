@@ -134,16 +134,24 @@ const records = computed<FundRecord[]>(() => {
     })
     // 售后按原分账份额收回的那部分单独成行：钱往哪走了看得见，也不用回头改历史收入行。
     if (record.refund_developer_cny > 0) {
+      // 这一行的金额是**从开发者这里收回的份额**，不是客户实收：结单后的退款由渠道按原分账
+      // 份额从各方收回去，平台会按自己的服务费承担一部分（实测：客户申请 199.00，
+      // 开发者份额 160.00 = 128.00 + 32.00，余下 39.00 由平台出）。两个数摆在一起，
+      // 免得 128.00 / 32.00 被读成「客户只退了 160」。
+      const shareNote =
+        record.requirement_refund_cny > record.refund_developer_cny
+          ? `本次退款客户实收 ${money(record.requirement_refund_cny)}（含平台按服务费承担的部分），此处只记从开发者收回的份额`
+          : '售后退款按原分账份额从开发者收回'
       merged.push({
         key: `income_reversal:${record.payment_id}`,
         kind: 'income_reversal',
         id: record.payment_id,
         amount: record.refund_developer_cny,
-        detail: `退款冲减 · ${record.title}`,
+        detail: `退款冲减（开发者份额）· ${record.title}`,
         account: `${record.requirement_id} · ${record.customer}`,
         status: '已冲减',
         tag: 'danger',
-        note: '售后退款按原分账份额收回',
+        note: shareNote,
         reference: record.payment_id,
         time: record.refunded_at ?? record.paid_at,
       })

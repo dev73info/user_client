@@ -33,6 +33,7 @@ it('merges deposit recharge, deposit withdrawal, income and income withdrawal in
       payment_id: 'payment-1', requirement_id: 'requirement-1', title: 'Delivery',
       customer: 'Customer', gross_amount_cny: 5, refund_developer_cny: 0, amount_cny: 5,
       paid_at: '2026-09-08 13:00:00', requirement_status: 'completed', refunded_at: null,
+      requirement_refund_cny: 0,
     }] },
     global: {
       config: { warnHandler: () => {} },

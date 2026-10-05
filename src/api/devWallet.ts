@@ -15,6 +15,13 @@ export type DevWalletIncomeItem = {
   requirement_status: string
   /** 收回发生的时间；未发生退款时为 null。 */
   refunded_at: string | null
+  /**
+   * 该需求**累计退还给客户**多少（含平台按服务费承担的部分）。
+   *
+   * 与 `refund_developer_cny` 不是一回事：那个是「从开发者这里收回的份额」，
+   * 这个是「客户实收」。已结单需求的退款通常两者不相等，界面上要分开说。
+   */
+  requirement_refund_cny: number
 }
 
 export type DevWalletOverview = {

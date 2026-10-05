@@ -184,6 +184,7 @@ export const DEMO_DEV_HOME_WALLET: DevWalletOverview = {
       paid_at: daysAgo(6, 16, 35),
       requirement_status: 'completed',
       refunded_at: null,
+      requirement_refund_cny: 0,
     },
     {
       payment_id: 'PAY-DEMO-0005',
@@ -196,6 +197,7 @@ export const DEMO_DEV_HOME_WALLET: DevWalletOverview = {
       paid_at: daysAgo(9, 14, 25),
       requirement_status: 'completed',
       refunded_at: null,
+      requirement_refund_cny: 0,
     },
     {
       payment_id: 'PAY-DEMO-0003',
@@ -208,6 +210,7 @@ export const DEMO_DEV_HOME_WALLET: DevWalletOverview = {
       paid_at: daysAgo(21, 11, 0),
       requirement_status: 'completed',
       refunded_at: null,
+      requirement_refund_cny: 0,
     },
   ],
 }
