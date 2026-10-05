@@ -187,15 +187,20 @@ describe('signature detail', () => {
     expect(wrapper.text()).toContain('签署服务暂不可用')
     wrapper.unmount()
   })
-  it('keeps party A blocked until the developer has signed the requirement contract', async () => {
+  it('lets party A sign the requirement contract before the developer has signed', async () => {
     mocks.detail.mockResolvedValue({
       ...base, requirement_id: 'REQ-001', content: '正文', content_sha256: 'abc',
       party_a_real_name: 'Alice', party_a_id_card_no_masked: '****1234', signing_logs: [],
     })
     const { wrapper } = await render(ContractSignView, true)
-    // 需求开发合同乙方（开发者）先签：乙方还没签，甲方这边没有签署入口，只提示在等谁。
-    expect(wrapper.find('.contract-actions .btn-primary').exists()).toBe(false)
-    expect(wrapper.text()).toContain('等待开发者完成签署')
+    // 甲乙双方各自独立签署、不设先后（爱签侧同样是无序签约）：乙方还没签，甲方这边就该有签署入口，
+    // 只提示「等待您完成客户签署」。此前这里要求甲方等乙方先签，而乙方在爱签签完后本地不落
+    // party_b_signed_at，甲方永远签不了——合同也就永远走不到「已签约」。
+    expect(wrapper.find('.contract-actions .btn-primary').exists()).toBe(true)
+    // 实名信息齐全就能点（未签署 + 非签署中 = 可提交）。
+    expect(wrapper.find('.contract-actions .btn-primary').attributes('disabled')).toBeUndefined()
+    // 不再出现「等待开发者完成签署」——那是顺序门还在时给甲方的文案。
+    expect(wrapper.text()).not.toContain('等待开发者完成签署')
     wrapper.unmount()
   })
 })

@@ -155,13 +155,11 @@ const canSignContract = computed(() => {
     if (!contract.value || !currentParty.value) return false
     // 只有「签约中 1」可签：0 未发起 / 2 已签约 / 3 过期 / 4 拒签 / 6 作废 / 7 撤销都不能签。
     if (contract.value.status !== CONTRACT_STATUS.signing) return false
-    if (currentParty.value === 'party_a') {
-        if (contract.value.party_a_signed_at) return false
-        // 签署顺序门：需求开发合同乙方（开发者）先签、甲方（需求方）后签，
-        // 甲方必须等 `party_b_signed_at` 落库后才放行；甲方是平台的协议没有 requirement_id，不受此限。
-        return !contract.value.requirement_id || Boolean(contract.value.party_b_signed_at)
-    }
-    return !contract.value.party_b_signed_at
+    // 双方各自独立签署，不设先后顺序（爱签侧同样是无序签约 signOrder=1）：
+    // 谁还没签谁就能签，双方都签完后由爱签同步置为「已签约 2」。
+    return currentParty.value === 'party_a'
+        ? !contract.value.party_a_signed_at
+        : !contract.value.party_b_signed_at
 })
 // 从需求列表 / 需求会话的「查看合同」进来时，页面同样要能看清是谁在什么时候签的。
 // 只有在本人还需要签署时才收起这些区块，保持签署流程页只聚焦签署动作。

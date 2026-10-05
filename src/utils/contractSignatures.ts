@@ -13,20 +13,19 @@ export const signatureStateLabels: Record<SignatureState, string> = {
 
 /**
  * 「当前该谁签」不再由状态编码，而由签署时间推导：
- * 需求开发合同固定**乙方（开发者）先签、甲方（需求方）后签**，
- * 只有「签约中 1」可签，其余状态（0/2/3/4/6/7）都不能签。
+ * 需求开发合同的甲乙双方**各自独立签署、不设先后**（2026-10-05 起），
+ * 只有「签约中 1」可签——自己还没签就是「待我签署」，自己签完（连着平台那份）就是「等待他方」。
  */
 export function getSignatureState(contract: MyContractSummary, username: string): SignatureState {
   if (contract.status === CONTRACT_STATUS.voided) return 'void'
   if (contract.status === CONTRACT_STATUS.signed) return 'signed'
   if (contract.status !== CONTRACT_STATUS.signing) return 'unavailable'
   if (!username) return 'unavailable'
+  // 不看对方签没签：曾经有过一道「甲方必须等 party_b_signed_at 落库」的顺序门，它在真实爱签链路
+  // 上会死锁（乙方在爱签签完后本地不落该时间戳，甲方永远等不到放行），且与「双方各自独立签署」的
+  // 口径冲突。这里只判自己：没签 = 待我签署，签了 = 等对方或等渠道同步。
   if (contract.party_a_username === username) {
-    if (contract.party_a_signed_at) return 'waiting'
-    // 需求开发合同乙方先签：乙方没签之前，甲方只能等（与后端签署顺序门一致）。
-    // 甲方是平台的协议（没有 requirement_id，如入驻协议由平台盖章）不受此限。
-    if (contract.requirement_id && !contract.party_b_signed_at) return 'waiting'
-    return 'pending'
+    return contract.party_a_signed_at ? 'waiting' : 'pending'
   }
   if (contract.party_b_username === username) {
     return contract.party_b_signed_at ? 'waiting' : 'pending'
@@ -60,9 +59,8 @@ export function contractWaitingMessage(
   const partyBSigned = Boolean(contract.party_b_signed_at)
   if (partyASigned && partyBSigned) return '正在同步签署状态'
   if (isPartyA) {
-    // 乙方先签：乙方没签时甲方等的是开发者，签完才轮到甲方。
-    if (!partyBSigned) return '等待开发者完成签署'
-    return '等待您完成客户签署'
+    // 双方各自独立签署、不设先后：甲方自己没签就提示甲方签，签完才等开发者。
+    return partyASigned ? '等待开发者完成签署' : '等待您完成客户签署'
   }
   return partyBSigned ? '等待客户完成签署' : '等待您完成开发者签署'
 }

@@ -9,7 +9,7 @@ const contract: MyContractSummary = {
   party_b_name: 'Bob', party_b_username: 'bob', party_b_signed_at: null, created_at: '2026-09-09 10:00:00',
 }
 
-/** 需求开发合同（带 requirement_id）：甲方要等乙方先签。 */
+/** 需求开发合同（带 requirement_id）：甲乙双方各自独立签署，不设先后。 */
 const requirementContract: MyContractSummary = { ...contract, requirement_id: 'REQ-001' }
 
 describe('personal signing state', () => {
@@ -17,12 +17,17 @@ describe('personal signing state', () => {
     expect(getSignatureState(contract, 'alice')).toBe('pending')
     expect(getSignatureState(contract, 'bob')).toBe('pending')
   })
-  it('keeps party A waiting until party B has signed the requirement contract', () => {
-    expect(getSignatureState(requirementContract, 'alice')).toBe('waiting')
+  it('lets party A sign the requirement contract before party B does', () => {
+    // 曾经甲方要等 party_b_signed_at 落库才能签，而乙方在爱签签完后本地并不落这个时间戳——甲方于是
+    // 永远等不到放行，双方互相等待。现在两人谁先签都可以，各看自己那一个签名时间。
+    expect(getSignatureState(requirementContract, 'alice')).toBe('pending')
     expect(getSignatureState(requirementContract, 'bob')).toBe('pending')
     const partyBSigned = { ...requirementContract, party_b_signed_at: '2026-09-09 10:00:00' }
     expect(getSignatureState(partyBSigned, 'alice')).toBe('pending')
     expect(getSignatureState(partyBSigned, 'bob')).toBe('waiting')
+    const partyASigned = { ...requirementContract, party_a_signed_at: '2026-09-09 10:00:00' }
+    expect(getSignatureState(partyASigned, 'alice')).toBe('waiting')
+    expect(getSignatureState(partyASigned, 'bob')).toBe('pending')
   })
   it('shows waiting after my signature, including waiting for the platform', () => {
     const signed = { ...contract, party_a_signed_at: '2026-09-09', party_b_signed_at: '2026-09-09' }
@@ -50,8 +55,11 @@ describe('waiting message', () => {
     expect(contractWaitingMessage(contract, 'bob')).toBe('等待您完成开发者签署')
     const mineSigned = { ...contract, party_b_signed_at: '2026-09-09 10:00:00' }
     expect(contractWaitingMessage(mineSigned, 'bob')).toBe('等待客户完成签署')
-    // 乙方先签：乙方没签时甲方等开发者，签完轮到甲方自己。
-    expect(contractWaitingMessage(contract, 'alice')).toBe('等待开发者完成签署')
+    // 不设签署顺序：谁没签就提示谁签，双方都签完后交给状态同步。
+    expect(contractWaitingMessage(contract, 'alice')).toBe('等待您完成客户签署')
+    expect(
+      contractWaitingMessage({ ...contract, party_a_signed_at: '2026-09-09 10:00:00' }, 'alice'),
+    ).toBe('等待开发者完成签署')
     expect(contractWaitingMessage(mineSigned, 'alice')).toBe('等待您完成客户签署')
   })
   it('says it is syncing when both sides signed while the status is still signing', () => {
