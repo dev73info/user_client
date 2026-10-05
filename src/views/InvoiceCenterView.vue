@@ -10,6 +10,14 @@ import {
 } from '@/api/invoices'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { canUploadInvoiceDocument, invoiceDisplayStatus, invoiceInWorkbench, invoiceReviewNote, invoiceWaitingHint } from '@/shared/invoiceAction'
+import {
+  groupInvoicesByRequirement,
+  invoiceGroupHasPending,
+  invoiceGroupMatchesKeyword,
+  invoiceGroupMatchesStatus,
+  invoiceGroupTotalFen,
+  type InvoiceGroup,
+} from '@/shared/invoiceGroups'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
@@ -49,11 +57,27 @@ const allInvoices = ref<InvoiceRecord[]>([])
 
 /**
  * 这一页要显示的票：跟着当前工作台走，另一侧的票整行都不出现（判定见 `@/shared/invoiceAction`）。
- * 读数条、筛选、分页都以它为基数，所以过滤后「全部记录」就是这一侧的票数。
  */
 const invoices = computed(() => allInvoices.value.filter(
   (invoice) => invoiceInWorkbench(invoice, auth.username, perspective.value),
 ))
+
+/**
+ * 这一屏的卡里装的是**完整的**发票记录。
+ *
+ * `InvoiceGroup` 的默认参数只是判定用的最小字段集（`InvoiceGroupFacts`，方便单测造数据），页面要读
+ * 票号、专票资料、红冲信息这些完整字段，所以这里显式指名 `InvoiceRecord`。
+ */
+type InvoiceCard = InvoiceGroup<InvoiceRecord>
+
+/**
+ * 列表行：**一个需求一张卡**（判定与理由见 `@/shared/invoiceGroups`）。
+ *
+ * 一次开票申请为同一需求开出两张票——平台服务费票 + 开发者收入票，两张的抬头、买方都是同一份；
+ * 按票平铺时同一个需求会占两行几乎一样的记录。收成一张卡后，卡头只写两票共用的抬头与金额合计，
+ * 卡内逐票成行，金额 / 状态 / 动作仍各自独立。需求号与票号不在界面上展示（挂在 title 上、搜索照旧）。
+ */
+const groups = computed(() => groupInvoicesByRequirement(invoices.value))
 const selectedFileByInvoice = reactive<Record<number, File | undefined>>({})
 const uploadingInvoiceId = ref<number | null>(null)
 const downloadingInvoiceId = ref<number | null>(null)
@@ -77,42 +101,49 @@ const STATUS_FILTERS: Array<{ key: 'all' | InvoiceRecord['status']; label: strin
   { key: 'reversed', label: '已红冲' },
 ]
 
+/**
+ * 顶部读数：**按需求计**（一张卡 = 一条记录），卡内任一票处在这一档就算进去。
+ *
+ * 同一需求的票可以处在不同状态（平台票已开具、开发者票还等着上传），因此各档读数之和可能大于
+ * 「全部记录」——这是按需求计的必然结果，不是重复计算（见 `@/shared/invoiceGroups`）。
+ */
 const stats = computed(() => ({
-  total: invoices.value.length,
-  pending: invoices.value.filter((item) => {
-    const status = invoiceDisplayStatus(item)
-    return status === 'requested' || status === 'under_review'
-  }).length,
-  approved: invoices.value.filter((item) => invoiceDisplayStatus(item) === 'approved').length,
-  reversed: invoices.value.filter((item) => invoiceDisplayStatus(item) === 'reversed' || item.documentKind === 'red').length,
+  total: groups.value.length,
+  pending: groups.value.filter(invoiceGroupHasPending).length,
+  approved: groups.value.filter((group) => invoiceGroupMatchesStatus(group, 'approved')).length,
+  reversed: groups.value.filter((group) => invoiceGroupMatchesStatus(group, 'reversed')).length,
 }))
 
 function statusCount(status: 'all' | InvoiceRecord['status']) {
   return status === 'all'
-    ? invoices.value.length
-    : invoices.value.filter((item) => invoiceDisplayStatus(item) === status).length
+    ? groups.value.length
+    : groups.value.filter((group) => invoiceGroupMatchesStatus(group, status)).length
 }
 
-const filteredInvoices = computed(() => {
-  const search = keyword.value.trim().toLocaleLowerCase()
-  return invoices.value.filter((invoice) => {
-    const matchesStatus = statusFilter.value === 'all' || invoiceDisplayStatus(invoice) === statusFilter.value
-    const matchesSearch = !search || [invoice.invoiceNo, invoice.requirementId, invoice.invoiceTitle]
-      .some((field) => field?.toLocaleLowerCase().includes(search))
-    return matchesStatus && matchesSearch
-  })
-})
+/** 筛选也按卡走：卡内任一票命中状态、且需求号 / 抬头 / 任一张票号命中关键词，这张卡就留下。 */
+const filteredGroups = computed(() => groups.value.filter((group) => {
+  const matchesStatus = statusFilter.value === 'all' || invoiceGroupMatchesStatus(group, statusFilter.value)
+  return matchesStatus && invoiceGroupMatchesKeyword(group, keyword.value)
+}))
 
 const hasActiveFilters = computed(() => keyword.value.trim() !== '' || statusFilter.value !== 'all')
 
-/* 一次取回全部发票、筛选在前端做，所以是客户端分页（与其余菜单页同一套页码口径）。 */
+/* 一次取回全部发票、筛选在前端做，所以是客户端分页（与其余菜单页同一套页码口径）。
+   页码翻的是**卡**：一张卡 = 一个需求，不会被分页切开。 */
 const {
   page,
   pageSize,
   total: filteredTotal,
-  paged: pagedInvoices,
+  paged: pagedGroups,
   resetPage,
-} = useClientPagination(filteredInvoices)
+} = useClientPagination(filteredGroups)
+
+/**
+ * 筛选后这一屏的票数合计：条数按需求计（一张卡 = 一条记录），票数单列在表尾，好让人看清两档读数的
+ * 差——「全部记录 1」下面跟着两张票是正常的，不是少显示了一条。
+ */
+const filteredTicketTotal = computed(() =>
+  filteredGroups.value.reduce((sum, group) => sum + group.invoices.length, 0))
 
 /* 筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空列表。 */
 watch([keyword, statusFilter], resetPage)
@@ -154,9 +185,20 @@ function displayAmount(invoice: InvoiceRecord) {
   return `${invoice.documentKind === 'red' ? '-' : ''}¥${invoice.amountCny}`
 }
 
+/** 卡头金额合计：同组里蓝票为正、红票为负，红冲后这一组会净减到实际开出去的净额。 */
+function groupAmountLabel(group: InvoiceCard) {
+  const fen = invoiceGroupTotalFen(group)
+  return fen < 0 ? `-¥${(Math.abs(fen) / 100).toFixed(2)}` : `¥${(fen / 100).toFixed(2)}`
+}
+
 /** 该需求、该开票主体能否重新申请：原票被红冲后同需求同主体可以再开一张新蓝票。 */
 function canReapply(invoice: InvoiceRecord) {
   return invoice.documentKind === 'blue' && invoiceDisplayStatus(invoice) === 'reversed'
+}
+
+/** 这张卡里有没有票能重开（原票已被红冲）：卡头据此给「重新申请」。 */
+function canReapplyGroup(group: InvoiceCard) {
+  return group.invoices.some(canReapply)
 }
 
 /** 行上的「审核说明」；开发者收入票没有审核这一步，它上面任何说明都不显示（见共享层）。 */
@@ -175,17 +217,20 @@ function waitingHint(invoice: InvoiceRecord) {
 }
 
 /* 重新申请复用需求页那支开票弹窗：原票已被红冲，后端判重已放开，这里直接把用户送回去开新票，
-   不另做一套只弹提示的空按钮。弹窗按需求合并申请，自己算出这次还能开哪几张票，不必告诉它
-   用户点的是哪一行。 */
+   不另做一套只弹提示的空按钮。弹窗按需求合并申请，自己算出这次还能开哪几张票，所以按钮挂在
+   **卡头**而不是逐票上——重新申请本来就是需求级动作，一次把该需求能开的票都开出来。 */
 const applyVisible = ref(false)
 const applyRequirementId = ref('')
 const applyRole = ref<'customer' | 'developer'>('customer')
 
-function openReapply(invoice: InvoiceRecord) {
-  applyRequirementId.value = invoice.requirementId
+function openReapply(group: InvoiceCard) {
+  applyRequirementId.value = group.requirementId
   // 弹窗按「我在这笔需求里是哪一方」发起，而不是按当前工作台：后端 `apply_invoices` 也是按操作者
-  // 是买方还是乙方来判，弹窗的文案与可开金额必须跟真正会开出的票对得上。
-  applyRole.value = invoice.customerUsername === auth.username ? 'customer' : 'developer'
+  // 是买方还是乙方来判，弹窗的文案与可开金额必须跟真正会开出的票对得上。同一张卡里的票，买方与
+  // 乙方都是同一对，任取一张都得到同一个身份。
+  applyRole.value = group.invoices.some((invoice) => invoice.customerUsername === auth.username)
+    ? 'customer'
+    : 'developer'
   applyVisible.value = true
 }
 
@@ -366,7 +411,7 @@ async function saveDocument(invoice: InvoiceRecord) {
         </div>
       </div>
 
-      <div v-if="invoices.length || hasActiveFilters" class="wb-toolbar">
+      <div v-if="groups.length || hasActiveFilters" class="wb-toolbar">
         <div class="wb-chip-group" role="group" aria-label="按状态筛选">
           <button v-for="option in STATUS_FILTERS" :key="option.key" type="button" class="wb-chip wb-chip--button"
             :class="{ 'is-active': statusFilter === option.key }" :aria-pressed="statusFilter === option.key"
@@ -380,7 +425,7 @@ async function saveDocument(invoice: InvoiceRecord) {
         </TInput>
         <div class="wb-toolbar__actions">
           <span v-if="hasActiveFilters" class="wb-toolbar__hint">
-            筛选出 {{ filteredTotal }} / {{ invoices.length }} 条
+            筛选出 {{ filteredTotal }} / {{ groups.length }} 条
           </span>
           <TButton variant="outline" v-if="hasActiveFilters" @click="resetFilters">
             <TIcon><RefreshLeft /></TIcon><span>重置</span>
@@ -388,10 +433,10 @@ async function saveDocument(invoice: InvoiceRecord) {
         </div>
       </div>
 
-      <p v-if="loading && !invoices.length" class="wb-empty" role="status">正在加载发票记录…</p>
-      <div v-else-if="!filteredInvoices.length" class="wb-empty">
-        <span class="wb-empty__title">{{ invoices.length ? '没有符合条件的发票' : '还没有发票记录' }}</span>
-        <template v-if="invoices.length">
+      <p v-if="loading && !groups.length" class="wb-empty" role="status">正在加载发票记录…</p>
+      <div v-else-if="!filteredGroups.length" class="wb-empty">
+        <span class="wb-empty__title">{{ groups.length ? '没有符合条件的发票' : '还没有发票记录' }}</span>
+        <template v-if="groups.length">
           <div class="wb-empty__actions">
             <TButton variant="outline" @click="resetFilters">
               <TIcon><RefreshLeft /></TIcon><span>清除筛选</span>
@@ -404,69 +449,91 @@ async function saveDocument(invoice: InvoiceRecord) {
         <input ref="hiddenFileInput" class="invoice-center__file" type="file"
           accept="application/pdf,image/png,image/jpeg,image/webp" aria-hidden="true" tabindex="-1"
           @change="selectInvoiceFile" />
+        <!-- 一个需求一张卡：卡头只写几票共用的抬头与金额合计，卡内逐票成行。同一笔需求的两张票
+             （平台服务费票 + 开发者收入票）在合并前会占两行几乎一样的记录。
+             需求号与票号都不在界面上展示（长串编号是噪音）：需求号挂在卡片的 title 上、票号挂在
+             票行的 title 上，鼠标悬停时仍能看到，搜索也照旧按它们匹配。 -->
         <ul class="wb-list" aria-label="我的发票记录">
-          <li v-for="invoice in pagedInvoices" :key="invoice.id" class="wb-item">
-            <div class="wb-item__main">
-              <span class="wb-item__title">
-                {{ invoice.invoiceNo }}
-                <span v-if="invoice.invoiceKind === 'special'"
-                  class="invoice-center__kind invoice-center__kind--special">专用发票</span>
-                <span v-if="invoice.documentKind === 'red'" class="invoice-center__kind">红字发票</span>
-              </span>
-              <span class="wb-item__meta">
-                {{ roleLabel(invoice.invoiceRole) }} · 需求 {{ invoice.requirementId }} · {{ invoice.invoiceTitle }}
-              </span>
-              <span class="wb-item__meta">
-                金额 {{ displayAmount(invoice) }} ·
-                {{ invoice.invoiceRole === 'developer' ? developerTypeLabel(invoice.developerType) : '客户服务费' }}
-              </span>
-              <!-- 等待中的票要说清在等谁：状态词只说明走到哪一步，责任方才是用户真正想知道的。
-                   开发者收入票在需求方这里就是「等乙方开」，平台票在谁那里都是「等平台财务开」。 -->
-              <span v-if="waitingHint(invoice)" class="wb-item__meta">{{ waitingHint(invoice) }}</span>
-              <!-- 专票的购买方四项资料：开发者要照这四项在电子税务局开票，直接摊在列表里省得再要一遍。 -->
-              <span v-if="invoice.invoiceKind === 'special'" class="wb-item__meta">
-                专票购买方资料：{{ invoice.buyerAddress }} · {{ invoice.buyerPhone }} ·
-                {{ invoice.buyerBankName }} · {{ invoice.buyerBankAccount }}
-              </span>
-              <span v-if="invoice.documentKind === 'red' && invoice.reversalOfId" class="wb-item__meta">
-                冲销原票 #{{ invoice.reversalOfId }}{{ invoice.reversalReason ? ` · ${invoice.reversalReason}` : '' }}
-              </span>
-              <span v-else-if="invoice.status === 'reversed'" class="wb-item__meta">
-                红冲原因：{{ invoice.reversalReason || '未记录' }} · 当前应开 ¥{{ (invoice.currentInvoiceableFen / 100).toFixed(2) }}
-              </span>
-              <!-- 只有**多开**（建议冲减额为正）才轮得到红冲：票面比实际发生的净额大，财务先红冲再让
-                   用户重开。建议冲减额为负是「票开少了、需补开」，与红冲是两回事——它的口径本来
-                   就只扣已真正退出去的钱，开票当时在途的退款诉求不算数（见 `reversalSuggestionFen`
-                   的注释），拿它去说「财务端会先红冲原票」既吓人又不成立。 -->
-              <span v-else-if="invoice.reversalRequired && invoice.reversalSuggestionFen > 0" class="wb-item__meta">
-                本需求可开票净额已变为 ¥{{ (invoice.currentInvoiceableFen / 100).toFixed(2) }}，财务端会先红冲原票
-              </span>
-              <span v-if="reviewNote(invoice)" class="wb-item__meta">审核说明：{{ reviewNote(invoice) }}</span>
+          <li v-for="group in pagedGroups" :key="group.requirementId" class="wb-item invoice-center__group"
+            :title="`需求 ${group.requirementId}`">
+            <div class="invoice-center__group-head">
+              <div class="wb-item__main">
+                <span class="wb-item__title">{{ group.invoiceTitle }}</span>
+                <span class="wb-item__meta">金额合计 {{ groupAmountLabel(group) }}</span>
+              </div>
+              <div class="wb-item__side">
+                <!-- 重新申请是需求级动作（弹窗一次把该需求能开的票都开出来），所以按钮在卡头，
+                     不逐票重复——同一笔需求的两张票都红冲时，逐票给按钮会出现两个同样的入口。 -->
+                <TButton variant="outline" v-if="canReapplyGroup(group)" @click="openReapply(group)">
+                  <span>重新申请</span>
+                </TButton>
+              </div>
             </div>
-            <div class="wb-item__side">
-              <span class="wb-badge" :class="statusBadgeClass(invoiceDisplayStatus(invoice))">{{ statusLabel(invoiceDisplayStatus(invoice)) }}</span>
-              <TButton variant="outline" v-if="invoice.documentUrl" @click="openDocument(invoice)">
-                <span>查看发票</span>
-              </TButton>
-              <TButton variant="outline" v-if="invoice.documentUrl"
-                :loading="downloadingInvoiceId === invoice.id" @click="saveDocument(invoice)">
-                <span>下载发票</span>
-              </TButton>
-              <TButton variant="outline" v-if="canReapply(invoice)" @click="openReapply(invoice)">
-                <span>重新申请</span>
-              </TButton>
-              <TButton variant="outline" v-if="canUploadDocument(invoice)"
-                :loading="uploadingInvoiceId === invoice.id"
-                :disabled="uploadingInvoiceId !== null && uploadingInvoiceId !== invoice.id"
-                @click="selectedFileByInvoice[invoice.id] ? uploadDocument(invoice) : pickInvoiceFile(invoice.id)">
-                <TIcon><UploadFilled /></TIcon><span>{{ uploadButtonLabel(invoice) }}</span>
-              </TButton>
-            </div>
+            <ul class="invoice-center__tickets">
+              <li v-for="invoice in group.invoices" :key="invoice.id" class="invoice-center__ticket"
+                :title="invoice.invoiceNo">
+                <div class="wb-item__main">
+                  <span class="wb-item__meta">
+                    <!-- 票种与票性标注跟在行首，替代原来的票号标题位：它们是客户与财务都要认的信息，
+                         而票号本身不展示（见上）。 -->
+                    <span v-if="invoice.invoiceKind === 'special'"
+                      class="invoice-center__kind invoice-center__kind--special">专用发票</span>
+                    <span v-if="invoice.documentKind === 'red'" class="invoice-center__kind">红字发票</span>
+                    {{ roleLabel(invoice.invoiceRole) }} · 金额 {{ displayAmount(invoice) }} ·
+                    {{ invoice.invoiceRole === 'developer' ? developerTypeLabel(invoice.developerType) : '客户服务费' }}
+                  </span>
+                  <!-- 抬头正常是同组共用的（一次申请一起开出来的两张票）；红冲后换了抬头重开时，
+                       卡头显示的是最新那份，与它不同的票在这里自己标出来。 -->
+                  <span v-if="invoice.invoiceTitle !== group.invoiceTitle" class="wb-item__meta">
+                    本票抬头：{{ invoice.invoiceTitle }}
+                  </span>
+                  <!-- 等待中的票要说清在等谁：状态词只说明走到哪一步，责任方才是用户真正想知道的。
+                       开发者收入票在需求方这里就是「等乙方开」，平台票在谁那里都是「等平台财务开」。 -->
+                  <span v-if="waitingHint(invoice)" class="wb-item__meta">{{ waitingHint(invoice) }}</span>
+                  <!-- 专票的购买方四项资料：开发者要照这四项在电子税务局开票，直接摊在列表里省得再要一遍。 -->
+                  <span v-if="invoice.invoiceKind === 'special'" class="wb-item__meta">
+                    专票购买方资料：{{ invoice.buyerAddress }} · {{ invoice.buyerPhone }} ·
+                    {{ invoice.buyerBankName }} · {{ invoice.buyerBankAccount }}
+                  </span>
+                  <span v-if="invoice.documentKind === 'red' && invoice.reversalOfId" class="wb-item__meta">
+                    冲销原票 #{{ invoice.reversalOfId }}{{ invoice.reversalReason ? ` · ${invoice.reversalReason}` : '' }}
+                  </span>
+                  <span v-else-if="invoice.status === 'reversed'" class="wb-item__meta">
+                    红冲原因：{{ invoice.reversalReason || '未记录' }} · 当前应开 ¥{{ (invoice.currentInvoiceableFen / 100).toFixed(2) }}
+                  </span>
+                  <!-- 只有**多开**（建议冲减额为正）才轮得到红冲：票面比实际发生的净额大，财务先红冲再让
+                       用户重开。建议冲减额为负是「票开少了、需补开」，与红冲是两回事——它的口径本来
+                       就只扣已真正退出去的钱，开票当时在途的退款诉求不算数（见 `reversalSuggestionFen`
+                       的注释），拿它去说「财务端会先红冲原票」既吓人又不成立。 -->
+                  <span v-else-if="invoice.reversalRequired && invoice.reversalSuggestionFen > 0" class="wb-item__meta">
+                    本需求可开票净额已变为 ¥{{ (invoice.currentInvoiceableFen / 100).toFixed(2) }}，财务端会先红冲原票
+                  </span>
+                  <span v-if="reviewNote(invoice)" class="wb-item__meta">审核说明：{{ reviewNote(invoice) }}</span>
+                </div>
+                <div class="wb-item__side">
+                  <span class="wb-badge" :class="statusBadgeClass(invoiceDisplayStatus(invoice))">{{ statusLabel(invoiceDisplayStatus(invoice)) }}</span>
+                  <TButton variant="outline" v-if="invoice.documentUrl" @click="openDocument(invoice)">
+                    <span>查看发票</span>
+                  </TButton>
+                  <TButton variant="outline" v-if="invoice.documentUrl"
+                    :loading="downloadingInvoiceId === invoice.id" @click="saveDocument(invoice)">
+                    <span>下载发票</span>
+                  </TButton>
+                  <TButton variant="outline" v-if="canUploadDocument(invoice)"
+                    :loading="uploadingInvoiceId === invoice.id"
+                    :disabled="uploadingInvoiceId !== null && uploadingInvoiceId !== invoice.id"
+                    @click="selectedFileByInvoice[invoice.id] ? uploadDocument(invoice) : pickInvoiceFile(invoice.id)">
+                    <TIcon><UploadFilled /></TIcon><span>{{ uploadButtonLabel(invoice) }}</span>
+                  </TButton>
+                </div>
+              </li>
+            </ul>
           </li>
         </ul>
         <div class="wb-pager">
           <div class="wb-pager__count">
-            <span>共 {{ filteredTotal }} 条记录</span>
+            <!-- 一张卡 = 一个需求 = 一条记录；票数另说，因为同一条记录里通常有两张票。 -->
+            <span>共 {{ filteredTotal }} 条记录 · {{ filteredTicketTotal }} 张票</span>
             <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页记录数">
               <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
             </TSelect>
@@ -491,12 +558,12 @@ async function saveDocument(invoice: InvoiceRecord) {
   display: none;
 }
 
-/* 票种与票性的标注：一枚小签，跟发票号同行，不抢状态徽标的位置。
+/* 票种与票性的标注：一枚小签，跟在票行的行首（票号不再展示，它来领这一行）。
    红字发票用浅红底；专用发票用主色底，客户一眼能认出自己申请的是哪一种。 */
 .invoice-center__kind {
   display: inline-flex;
   align-items: center;
-  margin-left: 6px;
+  margin-right: 6px;
   padding: 1px 6px;
   border-radius: 4px;
   background: rgba(239, 68, 68, 0.12);
@@ -509,5 +576,57 @@ async function saveDocument(invoice: InvoiceRecord) {
 .invoice-center__kind--special {
   background: var(--profile-accent-soft, rgba(79, 140, 255, 0.12));
   color: var(--profile-accent, #4f8cff);
+}
+
+/* === 一个需求一张卡 ===
+   卡片的描边 / 圆角 / 底色仍由统一层 .wb-item（12px 圆角 / 16px 18px 内边距 / 一条描边）提供，
+   这里只把内部排版从「左信息 + 右操作」一行改成竖排：卡头一行（需求号 + 抬头 + 票数 + 金额合计，
+   右侧是需求级的「重新申请」），下面逐票成行。
+   （此前同一需求的两张票各占一行 .wb-item，两行的需求号、抬头、买方完全一样，看起来像重复记录。） */
+.invoice-center__group {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+/* 卡头：正文占满剩余宽度，卡级动作按内容宽度贴右（与「我的需求」的行内摘要同一套排版）。 */
+.invoice-center__group-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* 逐票子行只靠一条极浅的分隔线分开，不再各围一圈描边：卡里再套一层卡片，看起来又会像两条独立
+   记录——而同一需求的票已经合成一张卡了。 */
+.invoice-center__tickets {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--wb-line);
+  list-style: none;
+}
+
+.invoice-center__ticket {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+}
+
+.invoice-center__ticket + .invoice-center__ticket {
+  border-top: 1px dashed var(--wb-line);
+}
+
+/* 触屏档：卡头与子行都改竖排（统一层在这一档已把 .wb-item__side 改成左对齐）。 */
+@media (max-width: 640px) {
+  .invoice-center__group-head,
+  .invoice-center__ticket {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
 }
 </style>
