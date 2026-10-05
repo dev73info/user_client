@@ -5,9 +5,16 @@ export type DevWalletIncomeItem = {
   requirement_id: string
   title: string
   customer: string
+  /** 该里程碑分账**到账**多少（历史事实，不因后来的售后退款改写）。 */
+  gross_amount_cny: number
+  /** 售后按原分账份额从开发者处**收回**多少；未发生退款时为 0。 */
+  refund_developer_cny: number
+  /** 开发者**实际留下**多少 = `gross_amount_cny - refund_developer_cny`（可提现口径）。 */
   amount_cny: number
   paid_at: string
   requirement_status: string
+  /** 收回发生的时间；未发生退款时为 null。 */
+  refunded_at: string | null
 }
 
 export type DevWalletOverview = {

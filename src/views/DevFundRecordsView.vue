@@ -38,7 +38,7 @@ import { useAuthStore } from '@/stores/auth'
 import { TOption, TPagination, TSelect, TTable, TTableColumn, TTag } from 'ui_73info'
 
 /** 四类资金动作：类型标签 + 金额着色 + 那一行的说明怎么拼。 */
-type FundRecordKind = 'deposit_recharge' | 'deposit_withdrawal' | 'income' | 'income_withdrawal'
+type FundRecordKind = 'deposit_recharge' | 'deposit_withdrawal' | 'income' | 'income_reversal' | 'income_withdrawal'
 
 type FundRecord = {
   key: string
@@ -58,6 +58,7 @@ const KIND_LABELS: Record<FundRecordKind, string> = {
   deposit_recharge: '保证金充值',
   deposit_withdrawal: '保证金提现',
   income: '收入',
+  income_reversal: '退款冲减',
   income_withdrawal: '收入提现',
 }
 
@@ -116,11 +117,13 @@ const records = computed<FundRecord[]>(() => {
   }
 
   for (const record of props.income) {
+    // 「收入」行永远记**到账**了多少。此前这里取的是净额，一次售后退款就把那一行改写成
+    // ¥0.00——既看不出这笔钱到过账，也和「累计收入」对不上。
     merged.push({
       key: `income:${record.payment_id}`,
       kind: 'income',
       id: record.payment_id,
-      amount: record.amount_cny,
+      amount: record.gross_amount_cny,
       detail: record.title,
       account: `${record.requirement_id} · ${record.customer}`,
       status: '已入账',
@@ -129,6 +132,22 @@ const records = computed<FundRecord[]>(() => {
       reference: record.payment_id,
       time: record.paid_at,
     })
+    // 售后按原分账份额收回的那部分单独成行：钱往哪走了看得见，也不用回头改历史收入行。
+    if (record.refund_developer_cny > 0) {
+      merged.push({
+        key: `income_reversal:${record.payment_id}`,
+        kind: 'income_reversal',
+        id: record.payment_id,
+        amount: record.refund_developer_cny,
+        detail: `退款冲减 · ${record.title}`,
+        account: `${record.requirement_id} · ${record.customer}`,
+        status: '已冲减',
+        tag: 'danger',
+        note: '售后退款按原分账份额收回',
+        reference: record.payment_id,
+        time: record.refunded_at ?? record.paid_at,
+      })
+    }
   }
 
   for (const record of incomeWithdrawals.value) {

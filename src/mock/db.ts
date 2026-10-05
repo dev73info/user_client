@@ -539,9 +539,12 @@ export const settledIncome = REQUIREMENT_SEEDS.filter((seed) => seed.finalPaid).
     requirement_id: seed.code,
     title: seed.title,
     customer: CLIENT_USERNAME,
+    gross_amount_cny: amount,
+    refund_developer_cny: 0,
     amount_cny: amount,
     paid_at: datetime(-seed.updatedDaysAgo, 16, 10),
     requirement_status: seed.status,
+    refunded_at: null,
   }
 })
 

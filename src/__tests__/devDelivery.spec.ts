@@ -79,9 +79,12 @@ function income(
   return {
     title: '需求单',
     customer: 'alice',
+    gross_amount_cny: 100,
+    refund_developer_cny: 0,
     amount_cny: 100,
     paid_at: '2026-09-10 12:00:00',
     requirement_status: 'completed',
+    refunded_at: null,
     ...part,
   }
 }
