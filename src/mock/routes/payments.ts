@@ -227,6 +227,15 @@ const routes: MockRoute[] = [
   },
   {
     method: 'GET',
+    path: '/dev/payments/developer-order-deposit/orders',
+    note: '保证金充值记录（「资金明细」里的「保证金充值」那一段；演示数据只有最近一笔）',
+    handler: () =>
+      jsonResponse(
+        devOrderDeposit.latest_order ? [devOrderDeposit.latest_order] : [],
+      ),
+  },
+  {
+    method: 'GET',
     path: '/dev/payments/developer-order-deposit/withdrawals',
     note: '保证金提现记录（演示数据里没有保证金退回记录，返回空列表）',
     handler: () =>

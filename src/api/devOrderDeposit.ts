@@ -80,6 +80,22 @@ export async function getDevOrderDepositWithdrawalSummary(token: string): Promis
   )
 }
 
+/**
+ * 列出自己的保证金充值记录（**已支付**的订单，最新在前）。
+ *
+ * 钱包总览只下发 `latest_order`（够说明「最近一次充值」），「资金明细」要把保证金充值与提现、
+ * 接单收入、收入提现放在一张表里，所以需要这份历史。
+ */
+export async function getDevOrderDepositOrders(token: string): Promise<DevOrderDepositOrderSummary[]> {
+  return requestJson<DevOrderDepositOrderSummary[]>(
+    '/dev/payments/developer-order-deposit/orders',
+    {
+      headers: authHeaders(token),
+    },
+    '加载保证金充值记录失败',
+  )
+}
+
 export async function createDevOrderDepositWithdrawalRequest(
   token: string,
   payload: CreateDevOrderDepositWithdrawalRequest,

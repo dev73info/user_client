@@ -152,42 +152,6 @@ describe('wallet deposit status refresh', () => {
     wrapper.unmount()
   })
 
-  it('paginates records, resets on page size change and clamps after refresh', async () => {
-    const records = Array.from({ length: 23 }, (_, index) => ({
-      withdrawal_id: `withdrawal-${index}`, status: 'paid', amount_cny: 1,
-    }))
-    mocks.summary.mockResolvedValue({ withdrawals: records })
-    const wrapper = mountWallet()
-    await flushPromises()
-    const table = wrapper.findAllComponents({ name: 'TTable' })[0]!
-    const pagination = wrapper.findComponent({ name: 'TPagination' })
-    expect(table.props('data')).toEqual(records.slice(0, 10))
-    expect(pagination.props('total')).toBe(23)
-    pagination.vm.$emit('update:current-page', 3)
-    await flushPromises()
-    expect(table.props('data')).toEqual(records.slice(20))
-    wrapper.findComponent({ name: 'TSelect' }).vm.$emit('update:modelValue', 20)
-    await flushPromises()
-    expect(pagination.props('currentPage')).toBe(1)
-    expect(table.props('data')).toEqual(records.slice(0, 20))
-    pagination.vm.$emit('update:current-page', 2)
-    await flushPromises()
-    mocks.summary.mockResolvedValue({ withdrawals: records.slice(0, 2) })
-    await vi.advanceTimersByTimeAsync(3000)
-    window.dispatchEvent(new Event('focus'))
-    await flushPromises()
-    expect(pagination.props('currentPage')).toBe(1)
-    expect(table.props('data')).toEqual(records.slice(0, 2))
-    mocks.summary.mockResolvedValue({ withdrawals: [] })
-    await vi.advanceTimersByTimeAsync(3000)
-    window.dispatchEvent(new Event('focus'))
-    await flushPromises()
-    expect(pagination.props('currentPage')).toBe(1)
-    expect(pagination.props('total')).toBe(0)
-    expect(table.props('data')).toEqual([])
-    wrapper.unmount()
-  })
-
   it('toggles auto-withdraw through the server instead of flipping the switch locally', async () => {
     let confirmSetting: (setting: unknown) => void = () => {}
     mocks.setting.mockReturnValue(new Promise((resolve) => { confirmSetting = resolve }))

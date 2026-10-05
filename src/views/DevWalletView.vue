@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
 import DevWithdrawalDialog from '@/components/DevWithdrawalDialog.vue'
-import DevWithdrawalRecordsView from './DevWithdrawalRecordsView.vue'
+import DevFundRecordsView from './DevFundRecordsView.vue'
 import {
   getDevWalletOverview,
   getDevWithdrawalSetting,
@@ -23,7 +23,6 @@ import {
   type DevOrderDepositWithdrawalSummary,
 } from '@/api/devOrderDeposit'
 import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
-import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -36,12 +35,7 @@ import {
   TInput,
   TInputNumber,
   TLoading,
-  TOption,
-  TPagination,
-  TSelect,
   TSwitch,
-  TTable,
-  TTableColumn,
   TTag,
   Refresh,
   Search,
@@ -54,13 +48,6 @@ const router = useRouter()
 const { showToast } = useToast()
 
 const loading = ref(false)
-const activeRecordTab = ref<'deposit' | 'income'>('deposit')
-
-/** 钱包记录的两段：与总览页、需求大厅的筛选一样用统一层的胶囊按钮，不再用 el-tabs */
-const RECORD_TABS: ReadonlyArray<{ key: 'deposit' | 'income'; label: string }> = [
-  { key: 'deposit', label: '保证金退回' },
-  { key: 'income', label: '收入记录' },
-]
 
 /** 保证金充值弹窗：表单与下单都由子组件承载，这里只留一个调用句柄 */
 const rechargeDialog = ref<InstanceType<typeof DevDepositRechargeDialog> | null>(null)
@@ -79,36 +66,10 @@ const autoWithdrawSaving = ref(false)
 const depositLoading = ref(false)
 const depositStatus = ref<DevOrderDepositStatus | null>(null)
 const depositWithdrawalSummary = ref<DevOrderDepositWithdrawalSummary | null>(null)
-const depositRecords = computed(() => depositWithdrawalSummary.value?.withdrawals ?? [])
-/* 钱包记录的关键字筛选：与其它列表页的工具栏搜索同口径——只过滤已经加载回来的记录，
-   不发新请求。保证金退回与收入记录两段共用这一个关键字（在子组件上按 prop 传入）。 */
+/* 「资金明细」的关键字筛选：与其它列表页的工具栏搜索同口径——只过滤已经加载回来的记录，
+   不发新请求。四类记录共用这一个关键字（在子组件上按 prop 传入）。 */
 const recordKeyword = ref('')
 
-const filteredDepositRecords = computed(() => {
-  const keyword = recordKeyword.value.trim().toLowerCase()
-  if (!keyword) {
-    return depositRecords.value
-  }
-  return depositRecords.value.filter((record) =>
-    [
-      record.withdrawal_id,
-      depositReturnStatusText(record.status),
-      record.review_note ?? '',
-      record.paid_reference ?? '',
-      record.payout_failure_message ?? '',
-      money(record.amount_cny),
-    ].some((field) => field.toLowerCase().includes(keyword)),
-  )
-})
-
-/* 分页走共享的 useClientPagination：页码越界回退、每页条数档位与「资源列表 / 团队资源 / 我的接单」
-   完全一致，不再在本页手写 slice 与 Math.min 回退。 */
-const {
-  page: depositRecordPage,
-  pageSize: depositRecordPageSize,
-  total: depositRecordTotal,
-  paged: pagedDepositRecords,
-} = useClientPagination(filteredDepositRecords)
 const creditInfo = ref<DevCreditSelf | null>(null)
 const depositWithdrawDialogVisible = ref(false)
 const submittingDepositWithdrawal = ref(false)
@@ -358,19 +319,10 @@ function openDepositWithdrawDialog() {
   depositWithdrawDialogVisible.value = true
 }
 
-function depositReturnStatusText(status: string) {
-  const labels: Record<string, string> = {
-    pending_review: '待审核', approved: '待退回', payout_processing: '退回处理中',
-    payout_failed: '退回需处理', rejected: '已驳回', paid: '已退回',
-  }
-  return labels[status] ?? status
-}
-
-/* 工具栏的「重置」：清掉关键字并把记录段切回默认的保证金退回。
+/* 工具栏的「重置」：清掉关键字即可（四类记录共用这一个筛选）。
    与其它列表页一致，常驻可用、不置灰。 */
 function resetRecordFilters() {
   recordKeyword.value = ''
-  activeRecordTab.value = 'deposit'
 }
 
 function resetDepositWithdrawForm() {
@@ -622,33 +574,18 @@ async function submitDepositWithdrawal() {
       </TCard>
     </div>
 
-    <section class="dev-surface-card wallet-records" aria-label="钱包记录">
+    <section class="dev-surface-card wallet-records" aria-label="资金明细">
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
-          <h3 class="dev-section-title">钱包记录</h3>
+          <h3 class="dev-section-title">资金明细</h3>
         </div>
       </div>
       <div class="dev-toolbar">
-        <div class="dev-chip-group" role="tablist" aria-label="钱包记录切换">
-          <button
-            v-for="tab in RECORD_TABS"
-            :key="tab.key"
-            class="dev-chip dev-chip--button"
-            type="button"
-            role="tab"
-            :aria-selected="activeRecordTab === tab.key"
-            :class="{ 'is-active': activeRecordTab === tab.key }"
-            @click="activeRecordTab = tab.key"
-          >
-            {{ tab.label }}
-          </button>
-        </div>
-
         <TInput
           v-model="recordKeyword"
           class="dev-toolbar__search"
           clearable
-          placeholder="搜索单号、状态或处理备注"
+          placeholder="搜索单号、类型、状态或处理备注"
         >
           <template #prefix>
             <TIcon>
@@ -667,75 +604,8 @@ async function submitDepositWithdrawal() {
         </div>
       </div>
 
-      <TTable
-        :loading="depositLoading"
-        v-if="activeRecordTab === 'deposit'"
-        class="dev-table wallet-records__table"
-        :data="pagedDepositRecords"
-        row-key="withdrawal_id"
-        stripe
-      >
-        <template #empty>
-          <p class="dev-empty-state">{{ depositLoading ? '加载中' : '暂无保证金退回记录' }}</p>
-        </template>
-        <TTableColumn prop="withdrawal_id" label="申请单号" min-width="180" show-overflow-tooltip />
-        <TTableColumn label="金额" width="120" align="right">
-          <template #default="scope"
-            ><span class="wallet-records__amount">{{ money(scope.row.amount_cny) }}</span></template
-          >
-        </TTableColumn>
-        <TTableColumn label="状态" width="140">
-          <template #default="scope">
-            <TTag
-              variant="outline"
-              :tone="
-                scope.row.status === 'paid'
-                  ? 'success'
-                  : scope.row.status === 'payout_failed' || scope.row.status === 'rejected'
-                    ? 'danger'
-                    : 'warning'
-              "
-            >
-              {{ depositReturnStatusText(scope.row.status) }}
-            </TTag>
-          </template>
-        </TTableColumn>
-        <TTableColumn label="处理结果" min-width="260" show-overflow-tooltip>
-          <template #default="scope">{{
-            scope.row.status === 'paid'
-              ? scope.row.review_note || scope.row.paid_reference || '已退回'
-              : scope.row.payout_failure_message || scope.row.review_note || '-'
-          }}</template>
-        </TTableColumn>
-        <TTableColumn prop="created_at" label="申请时间" min-width="180" />
-      </TTable>
-      <div v-if="activeRecordTab === 'deposit'" class="dev-pager">
-        <div class="dev-pager__count">
-          <span>共 {{ depositRecordTotal }} 条</span>
-          <TSelect v-model="depositRecordPageSize" aria-label="每页记录数" class="dev-pager__size">
-            <TOption
-              v-for="size in LIST_PAGE_SIZES"
-              :key="size"
-              :label="`${size} 条/页`"
-              :value="size"
-            />
-          </TSelect>
-        </div>
-        <TPagination
-          v-model:current-page="depositRecordPage"
-          :page-size="depositRecordPageSize"
-          :total="depositRecordTotal"
-          :pager-count="5"
-          background
-          aria-label="保证金退回记录分页"
-        />
-      </div>
-
-      <DevWithdrawalRecordsView
-        v-if="activeRecordTab === 'income'"
-        :income="recentIncome"
-        :keyword="recordKeyword"
-      />
+      <!-- 资金明细：保证金充值 / 保证金提现 / 收入 / 收入提现四类合成一段（子组件里按时间倒序拼） -->
+      <DevFundRecordsView :income="recentIncome" :keyword="recordKeyword" />
     </section>
 
     <!-- 收入提现弹窗：与工作台总览的「提现」按钮共用同一组件 -->
@@ -803,7 +673,7 @@ async function submitDepositWithdrawal() {
 
 <style scoped>
 /* 表格走 dev-base.css 的 .dev-table，表尾走 .dev-pager（这两处原来在页内用 :deep 改写，
-   还顺手改了子组件 DevWithdrawalRecordsView 里的同名元素）。这里只留本页特有样式。 */
+   还顺手改了子组件 DevFundRecordsView 里的同名元素）。这里只留本页特有样式。 */
 /* 钱包记录与其余菜单页的列表同构：一张 .dev-surface-card（同底/同描边/同圆角/同阴影，
    内边距 24px 由统一层给）。原来它是页面上的一条裸区块——标题与表格直接压在页面背景上，
    只靠一条顶部分隔线开头，与资源列表、我的接单那种「标题 + 工具栏 + 列表都在卡片里」
