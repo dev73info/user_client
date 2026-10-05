@@ -86,7 +86,9 @@ function afterSalesCase(overrides: Partial<AfterSalesCase> = {}): AfterSalesCase
     requirementStatus: 'completed',
     openedBy: 'cust',
     openerRole: 'customer',
-    kind: 'refund',
+    expectsMoney: true,
+    expectsRework: false,
+    requiresRework: false,
     description: '交付物未满足验收标准，协商不成。',
     status: 'support_reviewing',
     liableParty: null,
@@ -146,7 +148,7 @@ describe('system notification aggregation', () => {
     expect(card?.title).toBe('企业官网改版')
     expect(card?.body).toEqual([
       'AFTERSALES_1_abc · 需求 REQ-1',
-      '诉求：要求退款（诉求额度 10.00 元） · 当前状态：平台裁决中',
+      '诉求：要钱（主张金额 10.00 元） · 当前状态：平台裁决中',
     ])
     expect(card?.meta).toBe('2026-04-01T09:00:00+08:00 由 cust 发起')
     // 发起、表态、撤回都在需求列表的售后弹窗里做，通知卡片不带动作
@@ -154,12 +156,12 @@ describe('system notification aggregation', () => {
     expect(card?.postId).toBeUndefined()
   })
 
-  it('售后案件没有填诉求额度时不显示额度括号', () => {
+  it('售后案件没有主张金额时不显示额度括号', () => {
     const [card] = buildNotificationCards({
-      afterSales: [afterSalesCase({ kind: 'repair', claimAmountFen: 0 })],
+      afterSales: [afterSalesCase({ expectsMoney: false, expectsRework: true, claimAmountFen: 0 })],
       username: 'cust',
     })
-    expect(card?.body[1]).toBe('诉求：要求返工 · 当前状态：平台裁决中')
+    expect(card?.body[1]).toBe('诉求：要返工 · 当前状态：平台裁决中')
   })
 
   it('时间解析不出来时排在最后——格式异常的旧通知不该被顶到最上面', () => {

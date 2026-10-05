@@ -1,7 +1,13 @@
 import { authHeader, requestJson } from '@/api/http'
 
-/** 售后诉求类型：要求退款 / 要求赔偿 / 要求返工 / 其它。 */
-export type AfterSalesKind = 'refund' | 'compensation' | 'repair' | 'other'
+/**
+ * 售后诉求的**期望**：要一笔钱回来（`expectsMoney`）/ 要对方返工或补交付（`expectsRework`）。
+ *
+ * 发起人只说期望，不说资金来源——钱是从他自己付过的部分原路退，还是从开发者的接单保证金扣划赔付，
+ * 由平台认定（`liableParty` + 两个金额）决定。2026-10-05 之前这里是四值的 `kind`
+ * （要求退款 / 要求赔偿 / 要求返工 / 其它），它把「期望」「钱从谁的池子出」「怎么执行」三件事
+ * 挤在一个字段里：客户无法判断自己属于哪一类，而「返工 + 退钱」这种最常见的表达也填不出来。
+ */
 
 /**
  * 售后案件状态。`manual_required` 是渠道扣划失败或超时无人处理后的兜底状态。
@@ -46,7 +52,12 @@ export type AfterSalesCase = {
   requirementStatus: string
   openedBy: string
   openerRole: AfterSalesPartyRole
-  kind: AfterSalesKind
+  /** 发起人的期望：要一笔钱回来（退 / 赔由认定结果决定）。 */
+  expectsMoney: boolean
+  /** 发起人的期望：要对方返工 / 补交付。可与 `expectsMoney` 同时为真。 */
+  expectsRework: boolean
+  /** 认定出来的动作项：本次裁决要求对方返工，等发起人验收后才结案（可与金额并存）。 */
+  requiresRework: boolean
   description: string
   status: AfterSalesStatus
   liableParty: AfterSalesPartyRole | 'mutual' | null
@@ -57,10 +68,11 @@ export type AfterSalesCase = {
   compensationAmountFen: number
   compensationAmountCny: string
   /**
-   * 赔付缺口（分）：诉求额度里因为「仍冻结的接单保证金」不够而没能赔出去的那部分。
+   * 诉求缺口（分）：主张的金额里因为两个上限而没能执行出去的那部分。
    *
-   * 只在「要求赔偿」型诉求上可能大于 0；冻结上限本身是正确口径（不能超额赔付），
-   * 这个字段的作用是把差额直接摆出来，避免把「实赔 200」读成「诉求 500 已全赔」。
+   * 只在「要钱」的诉求上可能大于 0；上限本身是正确口径（退款不超过已付未退的部分、赔付不超过
+   * 开发者押在平台的钱），这个字段的作用是把差额直接摆出来，避免把「实赔 200」读成
+   * 「诉求 500 已全赔」。
    */
   shortfallFen: number
   shortfallCny: string
@@ -91,7 +103,7 @@ export type AfterSalesCaseDetail = AfterSalesCase & {
   /** 结单后仍冻结的接单保证金（分）：赔付上限。 */
   frozenDepositFen: number
   frozenDepositCny: string
-  /** 已缴尾款（分）：原路退款上限。 */
+  /** 已缴尾款（分）：退款额度上限。 */
   finalPaidFen: number
   finalPaidCny: string
 }
@@ -104,11 +116,17 @@ export type AfterSalesCaseList = {
   windowClosesAt: string | null
 }
 
-/** 发起售后申请；`claimAmountFen` 是诉求额度（分），四类诉求都能填，只作为平台裁决的参考。 */
+/**
+ * 发起售后申请。
+ *
+ * `claimAmountFen` 是主张的金额（分）：只有 `expectsMoney` 时有意义，作为平台认定的参考。
+ * 没要钱却填了额度会被后端拒收（主张与期望打架）。两个期望都关掉 = 只反馈问题（不动钱）。
+ */
 export async function openAfterSalesCase(
   token: string,
   requirementId: string,
-  kind: AfterSalesKind,
+  expectsMoney: boolean,
+  expectsRework: boolean,
   description: string,
   claimAmountFen = 0,
 ): Promise<AfterSalesCase> {
@@ -121,8 +139,13 @@ export async function openAfterSalesCase(
         ...authHeader(token),
       },
       // 后端 `OpenAfterSalesCaseRequest` 未做 camelCase 重命名，字段名与之逐字对应；
-      // 写成 claimAmountFen 会被 serde 静默忽略成 0，退款型诉求就退不出钱了。
-      body: JSON.stringify({ kind, description, claim_amount_fen: claimAmountFen }),
+      // 写成 claimAmountFen 会被 serde 静默忽略成 0，要钱的诉求就退不出钱了。
+      body: JSON.stringify({
+        expects_money: expectsMoney,
+        expects_rework: expectsRework,
+        description,
+        claim_amount_fen: claimAmountFen,
+      }),
     },
     '发起售后申请失败',
   )

@@ -2,9 +2,15 @@
 /**
  * 售后弹窗（结单后的唯一业务入口）。
  *
- * 需求方与开发者共用：发起售后只放行需求方（甲方）——资金出口只有「原路退还需求方尾款」
- * 与「从开发者保证金扣划赔付需求方」两个方向，开发者发起没有能落地的诉求，因此开发者侧
- * 只保留案件查看与「接受 / 不接受」表态（由调用方用 `canOpenCase` 关掉发起表单）。
+ * 需求方与开发者共用，两侧看到的是**同一件事的两面**：
+ *   - 需求方（甲方）发起诉求：只说**期望**——要一笔钱回来 / 要对方返工 / 两者都要 / 只反馈问题。
+ *     钱从哪出（他自己付过的部分原路退，还是从开发者的接单保证金扣划赔付）由平台认定，他不用挑，
+ *     也挑不了；
+ *   - 开发者（乙方）只有「接受诉求」或「不接受，转平台裁决」两个动作（由调用方用 `canOpenCase`
+ *     关掉发起表单）：资金出口只通向需求方，他自己立案没有能落地的诉求。
+ * 售后只在**结单之后**开放，而结单的触发点就是尾款分账成功，所以退款面对的是「钱已分账出账」这个
+ * 常态：渠道支持按原分账份额退款（退款对象 + `div_members`），退款照常原路退回；退不动（分账在途、
+ * 渠道拒）时转人工，不会去动开发者的接单保证金。
  * 入口守卫里还包含售后窗口：窗口状态由服务端在案件列表响应里给出（`windowOpen`），
  * 窗口关闭后不再渲染发起表单，避免用户填完表单一律被后端 409 拒绝；前端不自己拿时间戳
  * 比大小，真正的判定仍在服务层。
@@ -17,11 +23,10 @@ import {
   withdrawAfterSalesCase,
   type AfterSalesCase,
   type AfterSalesDecision,
-  type AfterSalesKind,
   type AfterSalesRespondAction,
 } from '@/api/afterSales'
-import { TOption, TSelect, type SelectModelValue } from 'ui_73info'
 import { useToast } from '@/composables/useToast'
+import { afterSalesExpectationLabel } from '@/shared/afterSalesStatus'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
 
 const props = defineProps<{
@@ -49,15 +54,16 @@ const CLOSED_STATUSES = ['succeeded', 'rejected', 'withdrawn']
  */
 const CONCLUDED_STATUSES = ['succeeded', 'rejected']
 
-/** 售后诉求类型（取值与后端 `kind` 一致，四类都能填诉求额度）。 */
-const KIND_OPTIONS: ReadonlyArray<{ value: AfterSalesKind; label: string }> = [
-  { value: 'refund', label: '要求退款' },
-  { value: 'compensation', label: '要求赔偿' },
-  { value: 'repair', label: '要求返工' },
-  { value: 'other', label: '其它问题' },
-]
-
-const kind = ref<AfterSalesKind>('repair')
+/**
+ * 诉求 = 两个**期望**，不是四类资金通道：
+ *   - 要一笔钱回来（`expectsMoney`）：退还是赔由平台认定，发起人不用挑资金来源；
+ *   - 要对方返工 / 补交付（`expectsRework`）：动作项，可以与要钱并存（「先返工，做不到再退钱」）。
+ *
+ * 两个都关掉 = 只反馈问题（不动钱、不要求返工）。四值的「要求退款 / 要求赔偿 / 返工 / 其它」于
+ * 2026-10-05 拆成这两项：原来那个字段同时编码了「期望什么」「钱从谁的池子出」「怎么执行」。
+ */
+const expectsMoney = ref(true)
+const expectsRework = ref(false)
 const description = ref('')
 const claimAmount = ref<string | number>('')
 const submitting = ref(false)
@@ -65,18 +71,6 @@ const cases = ref<AfterSalesCase[]>([])
 const casesLoading = ref(false)
 const respondingId = ref<number | null>(null)
 const withdrawingId = ref<number | null>(null)
-
-/**
- * 诉求类型下拉的回填。
- *
- * `TSelect` 的 `update:modelValue` 是宽联合（`SelectValue | SelectValue[]`），因为它一个组件
- * 同时承担单选与多选；而 `kind` 是四值联合，下游还要拿它索引 `CLAIM_AMOUNT_FIELDS` 并传给
- * `openAfterSalesCase`。在这里收一次比把 `kind` 放宽、再在每个用到它的地方反向断言更省事：
- * 选项表就是这四类，下拉里选不出别的值。
- */
-function onKindChange(value: SelectModelValue) {
-  kind.value = value as AfterSalesKind
-}
 
 /** 售后窗口是否还开着（服务端判定）；窗口状态未知时为 null。 */
 const windowOpen = ref<boolean | null>(null)
@@ -125,32 +119,18 @@ const lastConcludedAt = computed(() => {
 })
 
 /**
- * 诉求额度的文案按诉求类型给。
+ * 主张金额的文案：它只是发起人的**主张**，平台认定时作参考（实际能执行多少由「客户已付且未退的
+ * 部分」与「仍冻结的接单保证金」两个上限决定）。
  *
- * 四类诉求都能填这个额度——它只是发起人的主张，平台裁决时作参考（执行上限由「已缴尾款」与
- * 「仍冻结的接单保证金」两个池子决定，见裁决弹窗）。文案要跟着类型走，否则「要求返工」下
- * 顶着「希望退还的尾款」会让人以为在填返工费。
+ * 文案里不出现「尾款」「保证金」这些池子名——「钱从哪出」是平台认定的事，发起人只需要说
+ * 「我希望拿回多少」。留空表示由平台认定（按诉求与上限给）。
  */
-const CLAIM_AMOUNT_FIELDS: Record<AfterSalesKind, { label: string; placeholder: string }> = {
-  refund: {
-    label: '希望退还的尾款（元）',
-    placeholder: '留空按平台裁决，不得超过已付尾款',
-  },
-  compensation: {
-    label: '希望赔偿的金额（元）',
-    placeholder: '留空按平台裁决，不得超过开发者仍冻结的保证金',
-  },
-  repair: {
-    label: '返工不成时希望退还的尾款（元）',
-    placeholder: '选填；返工做到了就不涉及退钱',
-  },
-  other: {
-    label: '希望平台处理的金额（元）',
-    placeholder: '选填，供平台裁决参考',
-  },
+const CLAIM_AMOUNT_FIELD = {
+  label: '希望拿回多少（元）',
+  placeholder: '留空由平台认定，不超过你已支付的金额',
 }
 
-const claimAmountField = computed(() => CLAIM_AMOUNT_FIELDS[kind.value])
+const claimAmountField = CLAIM_AMOUNT_FIELD
 
 /** 有请求在途时不允许关窗，避免资金动作的结果无从收口。 */
 const busy = computed(
@@ -211,7 +191,7 @@ const canWithdraw = computed(() => {
   return Boolean(row && isOpener.value && withdrawAllowed(row.status))
 })
 
-/** 发起人确认诉求已落实：`agreed`（赔偿 / 其它 / 额度为 0 的退款）与 `rework_pending`（返工）都在等这一步。 */
+/** 发起人确认诉求已落实：`agreed`（没要钱 / 或两个上限都是 0）与 `rework_pending`（返工）都在等这一步。 */
 const canComplete = computed(() =>
   Boolean(isOpener.value && ['agreed', 'rework_pending'].includes(currentCase.value?.status ?? '')),
 )
@@ -237,11 +217,11 @@ function statusText(status: AfterSalesCase['status']) {
       // 双方一致与平台裁决走的是同一条资金链路，责任方在 `liableParty` 上（`mutual` = 双方一致）。
       return '资金执行中'
     case 'agreed':
-      // 对方接受了诉求，但没有可直接执行的资金动作（返工 / 其它 / 额度为 0 的退款，
-      // 或赔偿类但保证金余额为 0），等发起人确认落实。
+      // 对方接受了诉求，但没有需要执行的资金动作（没要钱，或两个上限都是 0），等发起人确认落实。
       return '待确认落实'
     case 'rework_pending':
-      // 对方接受了返工要求，等发起人验收；发起人可点「确认已落实」或「未落实，申请平台介入」。
+      // 对方接受了返工要求，等发起人验收（若还谈了钱，钱在这之前已按认定执行完）；
+      // 发起人可点「确认已落实」或「未落实，申请平台介入」。
       return '返工中'
     case 'manual_required':
       // 渠道扣划失败或超时无人处理后的兜底状态，等客服人工介入。
@@ -266,14 +246,14 @@ function statusText(status: AfterSalesCase['status']) {
 const STATUS_TIPS: Partial<Record<AfterSalesCase['status'], string>> = {
   support_reviewing: '已提交平台裁决，等待客服认定责任方与金额。',
   agreed: '双方已就诉求达成一致，落实后由发起人点「确认已落实」结案。',
-  rework_pending: '对方已接受返工要求，返工完成后由发起人点「确认已落实」结案。',
+  rework_pending: '对方已接受返工要求（若同时谈了钱，钱已按认定执行完），返工完成后由发起人点「确认已落实」结案。',
 }
 
 /**
  * 资金执行中的说明分两种来路，不能混成一句。
  *
  * `liable_party = 'mutual'` 是双方在案件里自己谈成的（对方点了「接受诉求」），平台没做过任何
- * 裁决，只是照约定把尾款走渠道退回——写成「平台裁决已落地」会让人以为平台介入过，明明两边
+ * 裁决，只是照约定把钱退给发起人——写成「平台裁决已落地」会让人以为平台介入过，明明两边
  * 已经谈好了。只有客服认定（`customer` / `developer`）才是真的裁决。
  */
 function processingTip(liableParty: AfterSalesCase['liableParty']) {
@@ -285,9 +265,9 @@ function processingTip(liableParty: AfterSalesCase['liableParty']) {
 /** 折进折叠区的流程分支细节：只给确实有分支可说的状态，避免点开是空盒子。 */
 const STATUS_DETAILS: Partial<Record<AfterSalesCase['status'], string>> = {
   support_reviewing:
-    '客服给出责任方与金额认定后，由平台执行尾款退还 / 保证金赔付并结案。这期间发起人仍可撤回申请；资金一旦开始执行就只能等落地。',
+    '客服给出责任方与金额认定后，由平台执行尾款退还 / 保证金赔付并结案（尾款已分账时按原分账份额原路退回）。这期间发起人仍可撤回申请；资金一旦开始执行就只能等落地。',
   agreed:
-    '这条诉求没有需要平台执行的钱（赔偿 / 其它 / 未填退款额度的退款），落实完成后由发起人确认结案；一直不确认会在售后窗口关闭后转人工客服。',
+    '这条诉求没有需要平台执行的钱（没要钱，或两个上限都是 0），落实完成后由发起人确认结案；一直不确认会在售后窗口关闭后转人工客服。',
   rework_pending:
     '若对方没有落实，发起人可点「未落实，申请平台介入」转客服裁决，届时可动用尾款退还与保证金赔付两个渠道；一直不确认会在售后窗口关闭后转人工客服。',
 }
@@ -307,8 +287,34 @@ const statusDetail = computed(() =>
   currentCase.value ? (STATUS_DETAILS[currentCase.value.status] ?? null) : null,
 )
 
-function kindText(value: AfterSalesKind) {
-  return KIND_OPTIONS.find((option) => option.value === value)?.label ?? '其它问题'
+/** 分 → 「¥12.34」：差额行要拿两个金额相加，所以这里按金额分格式化一次。 */
+function moneyFromFen(fen: number) {
+  return `¥${(fen / 100).toFixed(2)}`
+}
+
+/** 案件卡上的「期望」一行：发起人想要什么（要钱 / 返工 / 两者都要 / 只是反馈）。 */
+function expectationText(row: AfterSalesCase) {
+  return afterSalesExpectationLabel({
+    expectsMoney: row.expectsMoney,
+    expectsRework: row.expectsRework,
+  })
+}
+
+/**
+ * 「已执行资金」那一行：只列**真正发生**的那一项。
+ *
+ * 退款与赔付是两条独立的资金动作（退款走渠道原路退、赔付从开发者接单保证金扣划），只发生一条时
+ * 另一项恒为 0；把 0 也摆出来会读成「一分钱都没退」。
+ */
+function executedFundsText(row: AfterSalesCase) {
+  const parts: string[] = []
+  if (row.refundAmountFen) {
+    parts.push(`退还尾款 ${row.refundAmountCny} 元`)
+  }
+  if (row.compensationAmountFen) {
+    parts.push(`保证金赔付 ${row.compensationAmountCny} 元`)
+  }
+  return parts.join(' / ')
 }
 
 function decisionText(decision: AfterSalesDecision | null) {
@@ -359,9 +365,11 @@ async function submit() {
     await openAfterSalesCase(
       props.token,
       props.requirementId,
-      kind.value,
+      expectsMoney.value,
+      expectsRework.value,
       description.value.trim(),
-      claimAmountFen.value,
+      // 没勾「要一笔钱回来」时不带金额：后端拒收「没要钱却填了额度」的诉求。
+      expectsMoney.value ? claimAmountFen.value : 0,
     )
     showToast('售后申请已提交，对方会在会话里收到通知', 'success')
     description.value = ''
@@ -390,8 +398,7 @@ async function respond(item: AfterSalesCase, action: AfterSalesRespondAction) {
   }
 }
 
-/** 表态结果提示：接受分「当场退款」与「等发起人收口」两种去处，别用同一句话糊过去。 */
-function respondToast(action: AfterSalesRespondAction, updated: AfterSalesCase) {
+/** 表态结果提示：接受分「当场退款」与「等发起人收口」两种去处，别用同一句话糊过去。 */function respondToast(action: AfterSalesRespondAction, updated: AfterSalesCase) {
   if (action === 'reject') {
     return '已提交，等待平台裁决'
   }
@@ -437,7 +444,8 @@ watch(
     if (!visible) {
       return
     }
-    kind.value = 'repair'
+    expectsMoney.value = true
+    expectsRework.value = false
     description.value = ''
     claimAmount.value = ''
     cases.value = []
@@ -464,30 +472,33 @@ watch(
           <div class="is-wide"><dt>案件编号</dt><dd>{{ currentCase.caseNo }}</dd></div>
           <div><dt>当前状态</dt><dd>{{ statusText(currentCase.status) }}</dd></div>
           <div><dt>发起人</dt><dd>{{ currentCase.openedBy }}</dd></div>
-          <div><dt>诉求类型</dt><dd>{{ kindText(currentCase.kind) }}</dd></div>
-          <div><dt>诉求额度</dt><dd>{{ currentCase.claimAmountCny }} 元</dd></div>
+          <div><dt>诉求</dt><dd>{{ expectationText(currentCase) }}</dd></div>
+          <div v-if="currentCase.expectsMoney"><dt>主张金额</dt><dd>{{ currentCase.claimAmountCny }} 元</dd></div>
           <div class="is-wide"><dt>诉求说明</dt><dd>{{ currentCase.description }}</dd></div>
           <div><dt>需求方表态</dt><dd>{{ decisionText(currentCase.customerDecision) }}</dd></div>
           <div><dt>开发者表态</dt><dd>{{ decisionText(currentCase.developerDecision) }}</dd></div>
+          <div v-if="currentCase.requiresRework" class="is-wide">
+            <dt>返工认定</dt><dd>本次认定要求对方返工 / 补交付，等发起人验收</dd>
+          </div>
           <div v-if="currentCase.resolutionNote" class="is-wide">
             <dt>处理说明</dt>
             <dd>{{ currentCase.resolutionNote }}</dd>
           </div>
           <div v-if="currentCase.refundAmountFen || currentCase.compensationAmountFen" class="is-wide">
             <dt>已执行资金</dt>
-            <dd>
-              退还尾款 {{ currentCase.refundAmountCny }} 元 / 保证金赔付
-              {{ currentCase.compensationAmountCny }} 元
-            </dd>
+            <dd>{{ executedFundsText(currentCase) }}</dd>
           </div>
-          <!-- 超额诉求被保证金上限截断时把差额直接摆出来：否则「实赔 200」看起来像「诉求 500 全赔了」。
-               条件里带 `compensationAmountFen > 0`：裁决还没落地（或本案没动钱）时只是「诉求未决」，
-               不是「赔付被截断」，那时不该报差额。 -->
-          <div v-if="currentCase.compensationAmountFen > 0 && currentCase.shortfallFen > 0" class="is-wide">
-            <dt>赔付差额</dt>
+          <!-- 诉求金额被两个上限截断时把差额直接摆出来：否则「实赔 200」看起来像「诉求 500 全赔了」。
+               条件里带「已经执行过一笔钱」：裁决还没落地（或本案没动钱）时只是「诉求未决」，
+               不是「被上限截断」，那时不该报差额。 -->
+          <div
+            v-if="(currentCase.refundAmountFen > 0 || currentCase.compensationAmountFen > 0) && currentCase.shortfallFen > 0"
+            class="is-wide"
+          >
+            <dt>诉求差额</dt>
             <dd>
-              诉求 {{ currentCase.claimAmountCny }} 元，受仍冻结的接单保证金限制，实赔
-              {{ currentCase.compensationAmountCny }} 元，差额
+              诉求 {{ currentCase.claimAmountCny }} 元，受可退部分与仍冻结的接单保证金限制，本次共执行
+              {{ moneyFromFen(currentCase.refundAmountFen + currentCase.compensationAmountFen) }} 元，差额
               <strong>{{ currentCase.shortfallCny }} 元</strong>
             </dd>
           </div>
@@ -544,8 +555,13 @@ watch(
             <dd>{{ statusText(lastConcludedCase.status) }}</dd>
           </div>
           <div><dt>收口时间</dt><dd>{{ lastConcludedAt ? formatCnDateTime(lastConcludedAt) : '—' }}</dd></div>
-          <div><dt>诉求类型</dt><dd>{{ kindText(lastConcludedCase.kind) }}</dd></div>
-          <div><dt>诉求额度</dt><dd>{{ lastConcludedCase.claimAmountCny }} 元</dd></div>
+          <div><dt>诉求</dt><dd>{{ expectationText(lastConcludedCase) }}</dd></div>
+          <div v-if="lastConcludedCase.expectsMoney">
+            <dt>主张金额</dt><dd>{{ lastConcludedCase.claimAmountCny }} 元</dd>
+          </div>
+          <div v-if="lastConcludedCase.requiresRework" class="is-wide">
+            <dt>返工认定</dt><dd>本次认定要求对方返工 / 补交付</dd>
+          </div>
           <div class="is-wide"><dt>诉求说明</dt><dd>{{ lastConcludedCase.description }}</dd></div>
           <div v-if="lastConcludedCase.resolutionNote" class="is-wide">
             <dt>处理说明</dt>
@@ -553,43 +569,44 @@ watch(
           </div>
           <div v-if="lastConcludedCase.refundAmountFen || lastConcludedCase.compensationAmountFen" class="is-wide">
             <dt>已执行资金</dt>
-            <dd>
-              退还尾款 {{ lastConcludedCase.refundAmountCny }} 元 / 保证金赔付
-              {{ lastConcludedCase.compensationAmountCny }} 元
-            </dd>
+            <dd>{{ executedFundsText(lastConcludedCase) }}</dd>
           </div>
           <div
-            v-if="lastConcludedCase.compensationAmountFen > 0 && lastConcludedCase.shortfallFen > 0"
+            v-if="(lastConcludedCase.refundAmountFen > 0 || lastConcludedCase.compensationAmountFen > 0) && lastConcludedCase.shortfallFen > 0"
             class="is-wide"
           >
-            <dt>赔付差额</dt>
+            <dt>诉求差额</dt>
             <dd>
-              诉求 {{ lastConcludedCase.claimAmountCny }} 元，受仍冻结的接单保证金限制，实赔
-              {{ lastConcludedCase.compensationAmountCny }} 元，差额
+              诉求 {{ lastConcludedCase.claimAmountCny }} 元，受可退部分与仍冻结的接单保证金限制，本次共执行
+              {{ moneyFromFen(lastConcludedCase.refundAmountFen + lastConcludedCase.compensationAmountFen) }} 元，差额
               <strong>{{ lastConcludedCase.shortfallCny }} 元</strong>
             </dd>
           </div>
         </dl>
 
         <template v-if="canSubmitCase">
-          <label class="after-sales-modal__field">
-            <strong>诉求类型</strong>
-            <TSelect
-              :model-value="kind"
-              class="after-sales-modal__select"
-              aria-label="诉求类型"
-              @update:model-value="onKindChange"
-            >
-              <TOption
-                v-for="option in KIND_OPTIONS"
-                :key="option.value"
-                :label="option.label"
-                :value="option.value"
-              />
-            </TSelect>
-          </label>
+          <fieldset class="after-sales-modal__expectations">
+            <legend>你想要什么（可多选）</legend>
+            <label class="after-sales-modal__expectation">
+              <input v-model="expectsMoney" type="checkbox" />
+              <span>
+                <strong>要一笔钱回来</strong>
+                <small>退多少、从哪儿退由平台认定：先退你自己付过的部分，不够再由平台从对方保证金里赔</small>
+              </span>
+            </label>
+            <label class="after-sales-modal__expectation">
+              <input v-model="expectsRework" type="checkbox" />
+              <span>
+                <strong>要求返工 / 补交付</strong>
+                <small>可以与「要钱」同时选：先返工，做不到再按上面的金额处理</small>
+              </span>
+            </label>
+            <p v-if="!expectsMoney && !expectsRework" class="tip">
+              两个都不选就是只反馈问题：平台会记录在案，但不会有资金动作。
+            </p>
+          </fieldset>
 
-          <label class="pay-line after-sales-modal__field">
+          <label v-if="expectsMoney" class="pay-line after-sales-modal__field">
             <strong>{{ claimAmountField.label }}</strong>
             <input v-model="claimAmount" type="number" min="0" step="0.01" inputmode="decimal"
               :placeholder="claimAmountField.placeholder" />
@@ -614,9 +631,10 @@ watch(
             <summary>点开看你能做什么</summary>
             <ul>
               <li>
-                接受即按对方诉求执行：退款型诉求退还未分账的尾款，已分账的部分改从你的接单保证金扣划；
-                赔偿型诉求按诉求额度（不超过仍冻结的保证金）从保证金扣划赔付。不认可就走「不接受，转平台裁决」，
-                由客服认定责任方与金额。
+                接受即按对方诉求执行：要钱的按主张金额执行 —— 先原路退还他付过的部分（结单后尾款
+                已分账，渠道按原分账份额退回，所以通常等于从你的分账收入里扣回），不够的部分才从你
+                仍冻结的接单保证金扣划赔付；要返工的你得真的把活补上，等他验收。
+                不认可就走「不接受，转平台裁决」，由客服认定责任方与金额。
               </li>
               <li>
                 需求方点了「确认已落实」即结案；返工类诉求若你认为已做到、对方却报「未落实」，案件会转客服裁决。
@@ -770,12 +788,66 @@ watch(
   font-weight: 700;
 }
 
-/* 诉求类型下拉铺满字段宽度。
-   高度、圆角、描边、悬浮与聚焦态都交给 TSelect 自己的令牌：它默认就是 44px 高、12px 圆角、
-   聚焦一圈主色描边 + 淡蓝光晕，与同弹窗的原生输入框本来就是同一口径，不必再覆盖。
-   展开时的浮层也由 TSelect 自带（不再需要 `popper-class` 与那份 teleport 到 body 的样式）。 */
-.pay-modal .after-sales-modal__select {
-  width: 100%;
+/* 期望多选：两个卡片式勾选项（要钱 / 要返工），可以同时选。
+   与「票种」那两个卡片同一个视觉口径，不再用下拉：选项就两个、还允许并存。 */
+.pay-modal .after-sales-modal__expectations {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.pay-modal .after-sales-modal__expectations legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pay-modal .after-sales-modal__expectation {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid rgba(198, 210, 236, 0.9);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.pay-modal .after-sales-modal__expectation:hover {
+  border-color: rgba(148, 163, 184, 0.9);
+}
+
+.pay-modal .after-sales-modal__expectation:has(input:checked) {
+  border-color: rgba(37, 99, 235, 0.5);
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.pay-modal .after-sales-modal__expectation input {
+  width: auto;
+  min-height: 0;
+  margin: 3px 0 0;
+  accent-color: #2563eb;
+}
+
+.pay-modal .after-sales-modal__expectation span {
+  display: grid;
+  gap: 2px;
+}
+
+.pay-modal .after-sales-modal__expectation strong {
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.pay-modal .after-sales-modal__expectation small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
 }
 
 .pay-modal .after-sales-modal__field input {

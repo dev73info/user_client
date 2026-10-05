@@ -1413,7 +1413,7 @@ async function handleAcceptanceSubmitted(result: AdapayAcceptanceResult) {
   }
 }
 
-/** 售后入口：只有担保模式的需求有售后（结单后仍需冻结接单保证金、且能原路退回尾款）。 */
+/** 售后入口：只有担保模式的需求有售后（结单后仍需冻结接单保证金、且尾款能原路退回）。 */
 function canOpenAfterSales(item: RequirementItem) {
   return item.status === 'completed' && !isSelfManagedRequirement(item)
 }

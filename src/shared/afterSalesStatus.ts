@@ -43,21 +43,27 @@ export function afterSalesStatusLabel(status: string | null | undefined): string
   return AFTER_SALES_STATUS_LABELS[status as AfterSalesCaseStatus] ?? status
 }
 
-/** 售后诉求类型（与后端 `kind` 一致）。 */
-export type AfterSalesKind = 'refund' | 'compensation' | 'repair' | 'other'
-
-/** 售后诉求类型文案。 */
-export const AFTER_SALES_KIND_LABELS: Record<AfterSalesKind, string> = {
-  refund: '要求退款',
-  compensation: '要求赔偿',
-  repair: '要求返工',
-  other: '其它问题',
-}
-
-/** 取诉求类型中文；未知码回退原码。 */
-export function afterSalesKindLabel(kind: string | null | undefined): string {
-  if (!kind) return '—'
-  return AFTER_SALES_KIND_LABELS[kind as AfterSalesKind] ?? kind
+/**
+ * 售后诉求的**期望**文案：发起人想要什么（要钱 / 返工 / 两者都要 / 只是反馈）。
+ *
+ * 不再是「四类诉求」——`refund` 与 `compensation` 描述的其实是资金来源（客户自己付过的钱 /
+ * 开发者的接单保证金），那是平台认定的事；`repair` 是动作项，现在可以与要钱并存。
+ * 这里只按期望组合出一个短标签，给系统通知卡与列表用。
+ */
+export function afterSalesExpectationLabel(row: {
+  expectsMoney: boolean
+  expectsRework: boolean
+}): string {
+  if (row.expectsMoney && row.expectsRework) {
+    return '要钱 + 返工'
+  }
+  if (row.expectsMoney) {
+    return '要钱'
+  }
+  if (row.expectsRework) {
+    return '要返工'
+  }
+  return '反馈问题'
 }
 
 /** 判断待办所需的最小字段（两个页面传进来的正是 `AfterSalesCase`）。 */

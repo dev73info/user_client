@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { TOption, TSelect } from 'ui_73info'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import type { AfterSalesCase, AfterSalesCaseDetail, AfterSalesCaseList } from '@/api/afterSales'
 
@@ -39,7 +38,9 @@ const openCase: AfterSalesCase = {
   requirementStatus: 'completed',
   openedBy: 'client_flow',
   openerRole: 'customer',
-  kind: 'refund',
+  expectsMoney: true,
+  expectsRework: false,
+  requiresRework: false,
   description: '交付的首页在手机上仍然错位',
   status: 'submitted',
   liableParty: null,
@@ -285,42 +286,65 @@ describe('售后弹窗的返工中状态', () => {
     expect(wrapper!.text()).toContain('对方已接受返工要求')
   })
 
-  it('「待确认落实」的赔偿诉求上不发未落实：没有可验收的中间产物', async () => {
-    await open({ items: [caseWith('agreed', { kind: 'compensation', viewerRole: 'customer' })] })
+  it('「待确认落实」的诉求上不发未落实：没有可验收的中间产物', async () => {
+    await open({ items: [caseWith('agreed', { expectsMoney: true, viewerRole: 'customer' })] })
     expect(button('确认已落实')).toBeDefined()
     expect(button('未落实，申请平台介入')).toBeUndefined()
   })
 })
 
-/** 诉求类型下拉（ui_73info 的选择器），四类诉求的取值与后端 `kind` 一致。 */
-const kindSelect = () => wrapper!.findComponent(TSelect)
-
-/** 诉求额度输入框：文案（label）与提示（placeholder）都跟着诉求类型走。 */
+/** 期望多选的第一个勾选项（要一笔钱回来）与金额输入框。 */
+const expectsMoneyBox = () => wrapper!.findAll<HTMLInputElement>('input[type="checkbox"]')[0]!
+const expectsReworkBox = () => wrapper!.findAll<HTMLInputElement>('input[type="checkbox"]')[1]!
 const amountInput = () => wrapper!.find('input[type="number"]')
 
-describe('售后弹窗的诉求额度', () => {
-  it('四类诉求都能填诉求额度，文案跟着诉求类型走', async () => {
+describe('售后弹窗的期望（要钱 / 返工 / 只反馈）', () => {
+  it('默认勾「要一笔钱回来」：给金额输入框，文案是用户口径', async () => {
     await open()
-    expect(wrapper!.text()).toContain('返工不成时希望退还的尾款（元）')
-    // 额度的提示挂在输入框的 placeholder 上（文本框里的灰字，`text()` 取不到）。
-    expect(amountInput().attributes('placeholder')).toBe('选填；返工做到了就不涉及退钱')
-
-    await kindSelect().setValue('compensation')
-    expect(wrapper!.text()).toContain('希望赔偿的金额（元）')
-    expect(amountInput().attributes('placeholder')).toBe('留空按平台裁决，不得超过开发者仍冻结的保证金')
-
-    await kindSelect().setValue('other')
-    expect(wrapper!.text()).toContain('希望平台处理的金额（元）')
-    expect(amountInput().attributes('placeholder')).toBe('选填，供平台裁决参考')
+    expect(expectsMoneyBox().element.checked).toBe(true)
+    expect(expectsReworkBox().element.checked).toBe(false)
+    expect(wrapper!.text()).toContain('希望拿回多少（元）')
+    // 提示挂在 placeholder 上（文本框里的灰字，`text()` 取不到）。
+    expect(amountInput().attributes('placeholder')).toBe('留空由平台认定，不超过你已支付的金额')
   })
 
-  it('诉求类型是下拉选择，四类诉求各占一个选项', async () => {
+  it('不勾「要钱」就不给金额输入框：没要钱却填了额度后端会拒收', async () => {
     await open()
-    expect(kindSelect().exists()).toBe(true)
+    await expectsMoneyBox().setValue(false)
+    expect(amountInput().exists()).toBe(false)
 
-    const labels = kindSelect()
-      .findAllComponents(TOption)
-      .map((option) => option.props('label'))
-    expect(labels).toEqual(['要求退款', '要求赔偿', '要求返工', '其它问题'])
+    // 勾上返工也不该把金额框带回来（两者是独立的期望）。
+    await expectsReworkBox().setValue(true)
+    expect(amountInput().exists()).toBe(false)
+  })
+
+  it('「要钱 + 返工」可以同时选：金额框照旧出现', async () => {
+    await open()
+    await expectsReworkBox().setValue(true)
+    expect(expectsMoneyBox().element.checked).toBe(true)
+    expect(amountInput().exists()).toBe(true)
+  })
+
+  it('两个都不选时说明这是「只反馈问题」', async () => {
+    await open()
+    await expectsMoneyBox().setValue(false)
+    expect(wrapper!.text()).toContain('两个都不选就是只反馈问题')
+  })
+
+  it('提交时把期望与金额一起送出去；没要钱时不带金额', async () => {
+    await open()
+    await wrapper!.find('.after-sales-modal textarea').setValue('首页在手机上错位')
+    await amountInput().setValue('12.5')
+    await clickButton('提交售后申请')
+    expect(mocks.open).toHaveBeenCalledWith('token', baseProps.requirementId, true, false, '首页在手机上错位', 1250)
+
+    vi.resetAllMocks()
+    mocks.list.mockResolvedValue({ items: [], windowOpen: true, windowClosesAt: null })
+    await open()
+    await expectsMoneyBox().setValue(false)
+    await expectsReworkBox().setValue(true)
+    await wrapper!.find('.after-sales-modal textarea').setValue('请把首页重做一遍')
+    await clickButton('提交售后申请')
+    expect(mocks.open).toHaveBeenCalledWith('token', baseProps.requirementId, false, true, '请把首页重做一遍', 0)
   })
 })

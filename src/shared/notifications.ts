@@ -1,7 +1,7 @@
 import type { CommentWarning, CommunityPost } from '@/api/community'
 import type { ConversationHistoryDisclosure } from '@/api/conversations'
 import type { AfterSalesCase } from '@/api/afterSales'
-import { afterSalesKindLabel, afterSalesStatusLabel } from '@/shared/afterSalesStatus'
+import { afterSalesExpectationLabel, afterSalesStatusLabel } from '@/shared/afterSalesStatus'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 
 /**
@@ -197,10 +197,11 @@ function historyDisclosureVoteHint(
  * 两份规则；与评论警告同一取舍（只读，说明现状）。
  */
 function buildAfterSalesCard(row: AfterSalesCase): NotificationCard {
+  const expectation = afterSalesExpectationLabel(row)
   const claim =
     row.claimAmountFen > 0
-      ? `${afterSalesKindLabel(row.kind)}（诉求额度 ${row.claimAmountCny} 元）`
-      : afterSalesKindLabel(row.kind)
+      ? `${expectation}（主张金额 ${row.claimAmountCny} 元）`
+      : expectation
   return {
     key: `after-sales-${row.id}`,
     kind: 'after-sales',
