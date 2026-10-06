@@ -224,6 +224,50 @@ export function conversationCardMeta(
         deliveryAction: canDeliverFromCard,
         to: canDeliverFromCard ? undefined : requirementListRoute,
       }
+    // 违约责任条款（按需判定，见后端 doc/违约与催告.md）：期限届满的四种后果。
+    // 它们都是「时间到了」而不是某一方按下的动作，所以卡片本身不给「推进流程」的按钮——
+    // 要么平台已按条款推进完（视为验收），要么只是提醒（逾期），当事人真正要做的事
+    // 在需求卡片上（缴费 / 交付 / 售后）。
+    case 'acceptance_deemed_passed':
+      return {
+        title: '视为验收通过',
+        description:
+          '验收催告期限届满，需求方未提出具体异议，按合同约定视为验收通过，需求进入待付尾款。',
+        actionLabel: canPayFinal ? '支付尾款' : undefined,
+        paymentAction: canPayFinal,
+      }
+    case 'delivery_overdue':
+      return {
+        title: '交付已逾期',
+        description:
+          role === 'developer'
+            ? '交付已超过合同约定期限，逾期将按约定计迟延履行违约金。'
+            : '开发者交付已超过合同约定期限，逾期将按约定计迟延履行违约金。',
+        actionLabel: canDeliverFromCard ? '去交付' : undefined,
+        deliveryAction: canDeliverFromCard,
+      }
+    case 'final_pay_overdue':
+      return {
+        title: '尾款已逾期',
+        description: '尾款已超过合同约定期限，逾期将按约定计迟延履行违约金。',
+        actionLabel: canPayFinal ? '支付尾款' : undefined,
+        paymentAction: canPayFinal,
+      }
+    case 'remediation_expired':
+      return {
+        title: '限期补救已届满',
+        description: '交付仍未合格，需求方可申请减少价款，或按合同约定申报违约。',
+        actionLabel: role === 'customer' ? '去我的需求' : undefined,
+        to: role === 'customer' ? requirementListRoute : undefined,
+      }
+    // 顺延（不可抗力 / 需求变更 / 第三方原因）：只延期限、不动钱，没有可执行的动作。
+    // 文案必须写明「已发生的逾期不因顺延而消失」，否则会被读成「顺延一下就把逾期抹了」。
+    case 'breach_deadline_extended':
+      return {
+        title: '合同期限已顺延',
+        description:
+          '因不可抗力 / 需求变更 / 第三方原因，合同期限已顺延（只延期限、不动资金）。已经发生的逾期不因顺延而消失。',
+      }
     case 'final_paid':
       return {
         title: '尾款已缴纳',
@@ -250,7 +294,7 @@ export function conversationCardMeta(
       return {
         title: '需求已被需求方取消',
         description:
-          '需求方取消了这笔需求：已缴定金原路退还，绑定关系已解除、接单保证金冻结已释放。这段会话保留为只读。',
+          '需求方取消了这笔需求：按合同约定无正当理由取消适用定金罚则，已缴定金不予退还（按客户违约规则分账给平台与开发者），绑定关系已解除、接单保证金冻结已释放。这段会话保留为只读。',
       }
     // 协商解除：担保与自管两种模式共用这几条卡片码。卡片只交代「谁提了、对方处理了没有」，
     // 资金口径（担保模式同意即退定金、作废合同）在需求卡片的弹窗里讲，这里不重复细节。

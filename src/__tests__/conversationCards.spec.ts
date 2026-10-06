@@ -188,6 +188,13 @@ describe('conversation status cards', () => {
       'after_sales_case_manual_required_reminder',
       // 需求方单方取消（已缴定金档）：与「绑定解除、回到待接单」的结局不同（BUG-050）
       'requirement_cancelled',
+      // 违约责任条款（按需判定）：期限届满的四种后果，都要有卡片文案
+      'acceptance_deemed_passed',
+      'delivery_overdue',
+      'final_pay_overdue',
+      'remediation_expired',
+      // 顺延（不可抗力 / 需求变更 / 第三方原因）：只延期限、不动钱
+      'breach_deadline_extended',
     ]
     for (const code of codes) {
       const card = meta(code, 'customer', 'completed')
