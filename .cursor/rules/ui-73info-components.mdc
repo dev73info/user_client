@@ -1,0 +1,77 @@
+---
+description: user-client 的组件库口径：Element Plus 已全量移除、ui_73info 具名导入、图标来源、主题属性、link 源码的三处联动
+globs: src/**/*.vue, src/main.ts, vite.config.ts, components.d.ts
+alwaysApply: false
+---
+
+# 组件库口径：只用 `ui_73info`，不要再引入 Element Plus
+
+## 一、Element Plus 已经整端移除
+
+**`element-plus` 不在 `package.json` 的依赖里，站内也没有任何 `<el-*>` 标签。** 全站 UI 走自研组件库 `ui_73info`。
+`vite.config.ts` 里原来的 `AutoImport` 与 `ElementPlusResolver` 已一并删除，`auto-imports.d.ts` 也不再生成了。
+
+所以：
+
+- **不要** `import { ElButton } from 'element-plus'`，**不要**写 `<el-button>`，**不要**引 `@element-plus/icons-vue`。
+- **不要** `import 'element-plus/dist/index.css'`，也**不要**引 `ui_73info/alias.css`（旧变量名桥接层，本项目全程没引过，理由见 `ui_73info/doc/架构.md` 第七节）。
+- 在旧文件里看到「替代 ElMessageBox.prompt」这类注释是**迁移留下的说明**，不是可以照抄的用法。
+
+命中的典型错误写法与改法：
+
+```ts
+// ❌ 已移除的依赖
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
+
+// ✅ 组件与图标都来自 ui_73info，图标与 @element-plus/icons-vue 同名同位
+import { TButton, TIcon, Plus } from 'ui_73info'
+```
+
+## 二、怎么引组件
+
+**一律具名按需导入**，`import { TButton, TIcon } from 'ui_73info'`：
+
+- 组件名以 `T` 开头（`TButton` / `TTable` / `TSelect` / `TDialog` / `TMessage` …），配套子组件同批导出
+  （`TTableColumn`、`TOption`、`TFormItem`、`TDropdownItem`、`TRadioButton`）。
+- **不要** `app.use(Ui73info)` 做全局注册。库提供了这个插件，但本项目不推荐：显式导入让依赖在文件顶部一眼可见。
+- 图标是**预置组件**（59 个），从 `ui_73info` 直接具名导入：`import { Promotion, Refresh, Search } from 'ui_73info'`。
+- `unplugin-vue-components` 的 `Components()` **只扫本项目的 `src/components`**，不负责 UI 库——
+  所以 `T*` 组件不会自动注册，必须显式导入。
+- `TMessage` / `TMessageBox` 是命令式函数，不在 `components` 映射里，也不该注册成组件。
+
+## 三、外观怎么调
+
+组件暴露的 **prop 是语义而不是颜色**（`tone="success"` 而不是 `tone="green"`）：
+
+1. 先用组件自己的 prop（`tone` / `variant` / `size`）表达；
+2. prop 表达不了的，改**页面自己那层**的令牌；
+3. **不要覆写 `.t73-*` 内部实现**——那是库的私有类名空间。
+
+库组件内部的规格（控件高度、控件圆角、描边、状态色、表头底色）走库的 `--73-*`，
+**不要再给库组件写 `--dev-*` / `--portal-*` 覆盖**——那些变量已经没有组件在读。真实写法见 `src/styles/dev-base.css` 顶部那段注释。
+
+## 四、主题属性由路由守卫设置
+
+`<html>` 上的 `data-73-theme` 只有 `portal` 与 `dev` 两个值，**由 `src/router/index.ts` 的 `beforeEach` 统一设置**
+（判据是既有的 `isDeveloperRoute`）。**页面自己不要写它**——它挂在 `<html>` 上，一页写错会连累其下所有 `T*` 组件。
+
+## 五、库是 `link:` 进来的源码，不是构建产物
+
+`ui_73info` 以 `link:../ui_73info` 引**源码**，且它自己的 `node_modules` 里也装了一份 vue。
+**下面三处必须一起对待，只改一处就会出问题**：
+
+| 位置 | 配置 | 不改会怎样 |
+| --- | --- | --- |
+| `vite.config.ts` | `resolve.dedupe: ['vue']` | 运行时真有两套响应式系统：`provide/inject` 对不上、`instanceof` 判不过 |
+| `vite.config.ts` | `optimizeDeps.exclude: ['ui_73info']` | 预打包后宿主的 HMR 跨不过去，改库组件要重启 dev server |
+| `tsconfig.app.json` | `paths` 里 `vue` / `vue/*` 钉到 `./node_modules/vue` | 类型侧出现两个 `Component` / `Ref`，「跨包传组件」的写法全报错 |
+
+另外 `build.rollupOptions.output.manualChunks` 里给 `'/ui_73info/'` 单独分了 `ui-73info` 块——
+它的真实路径在 `node_modules` 之外，不挑出来会落进 `vendor` 兜底。
+
+**改库源码后宿主前端 HMR 立刻生效**，不需要重建（这正是「发源码不发产物」的目的）。库本身的类型校验入口是 `ui_73info` 下的 `pnpm type-check`。
+
+## 六、生成物
+
+`components.d.ts` 由 `unplugin-vue-components` 生成，**但它入库**，所以改完组件后它出现 diff 是正常的，**不要手工编辑它**。

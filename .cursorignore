@@ -1,0 +1,37 @@
+# ── Cursor 索引排除表 ────────────────────────────────────────────────
+# 目的：只让 Cursor 索引源码，跳过依赖与构建产物。
+# 本目录 16,695 个文件中 14,298 个在 node_modules 里（86%），
+# 剪掉后索引量降到约 2,397 个文件。
+# 语法与 .gitignore 相同。
+# 工作区是多根 .code-workspace，Cursor 在每个根目录各找一份 .cursorignore，
+# 所以 5 个根目录各有一份内容相近的副本。
+# ─────────────────────────────────────────────────────────────────────
+
+# 依赖与构建产物
+node_modules/
+dist/
+dist-ssr/
+coverage/
+.vite/
+*.tsbuildinfo
+.eslintcache
+
+# Git 内部对象（二进制，对 AI 无价值）
+.git/
+
+# 日志
+logs/
+*.log
+
+# 测试产物
+test-results/
+playwright-report/
+__screenshots__/
+/cypress/videos/
+/cypress/screenshots/
+
+# 编辑器与系统文件
+.DS_Store
+.idea/
+*.suo
+*.sw?

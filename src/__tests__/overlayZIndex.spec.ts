@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { defineComponent, h, ref, type ComponentPublicInstance } from 'vue'
+import { defineComponent, h, ref } from 'vue'
 import { TDialog, TSelect } from 'ui_73info'
 
 /**
@@ -18,7 +18,11 @@ const options = Array.from({ length: 5 }, (_, index) => ({
   value: `bank-${index}`,
 }))
 
-const selectRef = ref<ComponentPublicInstance | null>(null)
+/**
+ * 下拉实例：要拿到 `TSelect` 通过 `defineExpose` 暴露的 `open()`，ref 必须按**组件实例类型**声明。
+ * 写成 `ComponentPublicInstance` 就只有公共实例成员，`open()` 不在里面（`vue-tsc` 会报 TS2339）。
+ */
+const selectRef = ref<InstanceType<typeof TSelect> | null>(null)
 
 /** 弹窗里放一个下拉：用 `h` 而不是模板字符串，避免依赖运行时的模板编译器 */
 const Host = defineComponent({
