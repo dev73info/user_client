@@ -912,12 +912,6 @@ function resetInitForm() {
 
         <template v-else>
           <section class="dev-requirement-hall__init-panel">
-            <div class="dev-requirement-hall__init-copy">
-              <p class="dev-section-desc">
-                如果当前没有合适的资源项目，可以先初始化一个新的私有资源。创建完成后会直接用于本次需求关联。
-              </p>
-            </div>
-
             <div class="dev-upload-grid dev-upload-grid--two">
               <TFormItem label="资源标题" required>
                 <TInput show-count v-model="initForm.title"  :maxlength="200"

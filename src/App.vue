@@ -42,22 +42,33 @@ async function loginWithDevelopmentAccount() {
 async function initializeAuthSession() {
   auth.hydrate()
 
+  let hasUsableSession = false
   if (auth.token) {
     try {
       await auth.initializeSession()
+      hasUsableSession = true
     } catch (error) {
       console.warn('初始化登录态失败', error)
     }
   }
 
-  if (
-    devAutoLoginCredentials?.username &&
-    devAutoLoginCredentials.password &&
-    (!auth.token || auth.username !== devAutoLoginCredentials.username)
-  ) {
-    auth.logout()
-    await loginWithDevelopmentAccount()
+  if (!devAutoLoginCredentials?.username || !devAutoLoginCredentials.password) {
+    return
   }
+
+  // 已有可用会话就不再打登录接口。开发模式的自动登录**不能**每次启动都重新登一次：
+  // 后端对同一账号的登录限流是 8 次 / 15 分（防撞库），而整页 HMR 重载、重启 dev server、
+  // 开新标签页都算一次「启动」，照旧写法十几分钟就能把额度打满，正常开发反被限流拦下。
+  if (hasUsableSession) {
+    // 会话有效但登的不是指定的开发账号（手动换过号）：这时才切回开发账号。
+    if (auth.username && auth.username !== devAutoLoginCredentials.username) {
+      auth.logout()
+      await loginWithDevelopmentAccount()
+    }
+    return
+  }
+
+  await loginWithDevelopmentAccount()
 }
 
 function currentRedirectTarget() {

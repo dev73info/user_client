@@ -72,7 +72,7 @@ async function ensureSettlementAccount(): Promise<boolean> {
       member.onboardingStatus === 'under_review' || member.onboardingStatus === 'pending'
     showToast(
       underReview
-        ? '企业收款账户正在渠道审核中，审核通过后即可缴纳保证金'
+        ? '收款账户正在渠道审核中，审核通过后即可缴纳保证金'
         : '请先绑定收款银行卡（结算账户）后再缴纳保证金',
       'warning',
     )

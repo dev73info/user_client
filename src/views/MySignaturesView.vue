@@ -242,7 +242,6 @@ function openDetail(item: MyContractSummary) {
         </ul>
         <div class="wb-pager">
           <div class="wb-pager__count">
-            <span>共 {{ filteredTotal }} 份合同</span>
             <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页合同数">
               <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
             </TSelect>

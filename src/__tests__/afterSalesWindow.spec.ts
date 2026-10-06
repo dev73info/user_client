@@ -27,6 +27,8 @@ const baseProps = {
   currentUsername: 'client_flow',
   requirementId: '2026-900000000105',
   requirementTitle: '主流程验证',
+  /** 需求预算（元）：主张金额的上限；默认给 null（不限制），上限用例各自覆盖。 */
+  requirementBudget: null as number | null,
   canOpenCase: true,
 }
 
@@ -70,15 +72,21 @@ const openCase: AfterSalesCase = {
 
 let wrapper: VueWrapper | undefined
 
-/** 详情接口的默认返回：已缴尾款 30 元、仍冻结接单保证金 200 元（两个资金上限）。 */
+/** 详情接口的默认返回：已缴尾款 30 元、仍冻结接单保证金 200 元、需求预算 200 元（赔付上限取其小）。 */
 const detailBase: AfterSalesCaseDetail = {
   ...openCase,
   customerUsername: 'client_flow',
   developerUsername: 'dev_flow',
   frozenDepositFen: 20000,
   frozenDepositCny: '200.00',
+  budgetFen: 20000,
+  budgetCny: '200.00',
+  compensationCapFen: 20000,
+  compensationCapCny: '200.00',
   finalPaidFen: 3000,
   finalPaidCny: '30.00',
+  refundablePaidFen: 3000,
+  refundablePaidCny: '30.00',
 }
 
 async function open(
@@ -151,6 +159,79 @@ describe('售后弹窗的窗口守卫', () => {
 
   it('窗口状态未知（老后端）时不拦发起表单，保留后端 409 兜底', async () => {
     await open({ windowOpen: null })
+    expect(hasForm()).toBe(true)
+    expect(submitButton()).toBeDefined()
+  })
+
+  it('动过钱的收口案件不再给发起表单，改为「联系客服重开」说明', async () => {
+    // 退过钱 / 赔过钱的结案才是终态：说明里要写清是哪一笔，用户才知道为什么不能自助发起。
+    await open({
+      windowOpen: true,
+      items: [
+        caseWith('succeeded', {
+          refundAmountFen: 2000,
+          refundAmountCny: '20.00',
+          providerRefundId: 'REF_1',
+        }),
+      ],
+    })
+    expect(hasForm()).toBe(false)
+    expect(submitButton()).toBeUndefined()
+    expect(wrapper!.text()).toContain('已有裁决结果的售后案件')
+    expect(wrapper!.text()).toContain('退还客户已付款 20.00 元')
+    expect(wrapper!.text()).toContain('联系平台客服重开')
+  })
+
+  it('认定但渠道没受理的资金不写成「已执行」：赔付留在「尚未执行」那一行', async () => {
+    // 实测形态：退款已退（有渠道单号）、赔付卡在需求方缺结算账户（案件停在需人工处理）。
+    // 案件行上两笔额度都已写好，但只有带渠道单号的那一笔算执行过。
+    await open({
+      windowOpen: true,
+      items: [
+        caseWith('manual_required', {
+          refundAmountFen: 16000,
+          refundAmountCny: '160.00',
+          providerRefundId: 'REF_160',
+          compensationAmountFen: 20000,
+          compensationAmountCny: '200.00',
+          claimAmountFen: 200000,
+          claimAmountCny: '2000.00',
+          shortfallFen: 164000,
+          shortfallCny: '1640.00',
+        }),
+      ],
+    })
+
+    const factValue = (label: string) => {
+      const row = wrapper!
+        .findAll('.after-sales-modal__facts > div')
+        .find((item) => item.find('dt').text() === label)
+      return row ? row.find('dd').text() : undefined
+    }
+
+    expect(factValue('已执行资金')).toBe('退还客户已付款 160.00 元')
+    expect(factValue('本次认定（尚未执行）')).toContain('保证金赔付 200.00 元')
+    expect(factValue('本次认定（尚未执行）')).toContain('转人工')
+    // 差额按已执行的那 160 元算，不能把没落地的 200 元也算成「已执行」。
+    expect(factValue('诉求差额')).toContain('本次共执行 ¥160.00 元')
+  })
+
+  it('没动过钱的结案仍可自助重新发起：结论里没有钱可翻，表单照旧渲染', async () => {
+    await open({ windowOpen: true, items: [caseWith('succeeded')] })
+    expect(hasForm()).toBe(true)
+    expect(submitButton()).toBeDefined()
+    expect(wrapper!.text()).toContain('上次售后')
+  })
+
+  it('已驳回的案件同样可以自助重新发起：驳回本就不执行资金', async () => {
+    await open({ windowOpen: true, items: [caseWith('rejected')] })
+    expect(hasForm()).toBe(true)
+    expect(submitButton()).toBeDefined()
+    expect(wrapper!.text()).not.toContain('联系平台客服重开')
+  })
+
+  it('已撤回的案件不算裁决结果：窗口内仍可重新发起，表单照旧渲染', async () => {
+    await open({ windowOpen: true, items: [caseWith('withdrawn')] })
     expect(hasForm()).toBe(true)
     expect(submitButton()).toBeDefined()
   })
@@ -346,5 +427,42 @@ describe('售后弹窗的期望（要钱 / 返工 / 只反馈）', () => {
     await wrapper!.find('.after-sales-modal textarea').setValue('请把首页重做一遍')
     await clickButton('提交售后申请')
     expect(mocks.open).toHaveBeenCalledWith('token', baseProps.requirementId, false, true, '请把首页重做一遍', 0)
+  })
+
+  it('给了需求预算就把上限写进提示：占位与 max 都带上这个数', async () => {
+    await open({}, { requirementBudget: 200 })
+    expect(amountInput().attributes('placeholder')).toBe(
+      '留空由平台认定；最多不超过需求预算 200.00 元',
+    )
+    expect(amountInput().attributes('max')).toBe('200')
+  })
+
+  it('主张金额超过需求预算时拦在提交前：不发请求，给中文提示', async () => {
+    await open({}, { requirementBudget: 200 })
+    await wrapper!.find('.after-sales-modal textarea').setValue('交付与验收标准不符')
+    await amountInput().setValue('2000')
+    await clickButton('提交售后申请')
+
+    expect(mocks.open).not.toHaveBeenCalled()
+    expect(mocks.toast).toHaveBeenCalledWith(
+      '主张金额不能超过需求预算 200.00 元',
+      'warning',
+    )
+  })
+
+  it('主张金额在预算之内照常提交', async () => {
+    await open({}, { requirementBudget: 200 })
+    await wrapper!.find('.after-sales-modal textarea').setValue('交付与验收标准不符')
+    await amountInput().setValue('200')
+    await clickButton('提交售后申请')
+
+    expect(mocks.open).toHaveBeenCalledWith(
+      'token',
+      baseProps.requirementId,
+      true,
+      false,
+      '交付与验收标准不符',
+      20000,
+    )
   })
 })

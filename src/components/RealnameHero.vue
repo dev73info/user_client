@@ -60,6 +60,11 @@ const authTypeLabel = computed(() => {
   return '未认证'
 })
 
+/** 当前主体是不是企业 / 个体工商户：决定抄「对公账户」还是「银行卡」的口径。 */
+const isEnterpriseSubject = computed(() =>
+  ['ENTERPRISE', 'SOLE_PROPRIETOR'].includes(current.value?.auth_type ?? ''),
+)
+
 const asignAuthText = computed(() => {
   const status = current.value?.status
   if (status === 'approved') return '已认证'
@@ -86,7 +91,8 @@ const settleAccountText = computed(() => {
  *
  * 企业会员开通对公收款要走渠道审核，这期间**实名认证早已通过**、但结算账户绑不上，
  * 所以这一格如实写「审核中」——写成「未设置」会让用户以为要自己再点一次绑定，
- * 而实际是渠道还没放行。
+ * 而实际是渠道还没放行。（企业会员自 2026-10-05 起改在「结算账户」那一步创建，
+ * 所以这条提示更常出现在个人主体上。）
  */
 const settleUnderReview = computed(() => {
   const status = adapayMember.value?.onboardingStatus
@@ -96,7 +102,9 @@ const settleUnderReview = computed(() => {
 const heroDesc = computed(() => {
   if (current.value?.status === 'approved') {
     return settleUnderReview.value
-      ? '已完成实名认证，信息核验通过，可正常使用合同签署等权益。企业收款账户正在渠道审核中，审核通过后即可绑定对公账户。'
+      ? isEnterpriseSubject.value
+        ? '已完成实名认证，信息核验通过，可正常使用合同签署等权益。企业收款账户正在渠道审核中，审核通过后即可绑定对公账户。'
+        : '已完成实名认证，信息核验通过，可正常使用合同签署等权益。收款账户正在渠道审核中，审核通过后即可绑定银行卡。'
       : '已完成实名认证，信息核验通过，可正常使用合同签署等权益。'
   }
   if (current.value?.status === 'pending') return '实名认证审核中，请耐心等待平台核验结果。'
@@ -135,7 +143,9 @@ onMounted(async () => {
       <p class="realname-hero__desc">{{ heroDesc }}</p>
       <div class="realname-hero__tag">
         <TTag :tone="statusType">实名认证：{{ statusText }}</TTag>
-        <TTag v-if="settleUnderReview" tone="warning">企业收款账户：渠道审核中</TTag>
+        <TTag v-if="settleUnderReview" tone="warning">
+          {{ isEnterpriseSubject ? '企业收款账户' : '收款账户' }}：渠道审核中
+        </TTag>
       </div>
     </div>
     <div class="realname-hero__metrics">

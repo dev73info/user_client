@@ -866,7 +866,6 @@ watch(
       <!-- 表尾走统一层的 .wb-pager（与我的需求、我的收藏、工单中心同一形态） -->
       <div v-if="!loading && filteredTotal > 0" class="wb-pager">
         <div class="wb-pager__count">
-          <span>共 {{ filteredTotal }} 条会话</span>
           <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页会话数">
             <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
           </TSelect>

@@ -96,16 +96,25 @@ export type AfterSalesCase = {
   viewerRole: AfterSalesPartyRole | null
 }
 
-/** 案件详情：案件本身 + 双方用户名 + 两个资金上限。 */
+/** 案件详情：案件本身 + 双方用户名 + 资金上限（含赔付上限）。 */
 export type AfterSalesCaseDetail = AfterSalesCase & {
   customerUsername: string
   developerUsername: string
-  /** 结单后仍冻结的接单保证金（分）：赔付上限。 */
+  /** 结单后仍冻结的接单保证金（分）：赔付上限的直接依据。 */
   frozenDepositFen: number
   frozenDepositCny: string
-  /** 已缴尾款（分）：退款额度上限。 */
+  /** 需求预算（分）：另一个赔付上限（赔付不允许超过这笔单子的价）。 */
+  budgetFen: number
+  budgetCny: string
+  /** 赔付上限（分）：冻结保证金与需求预算取小，平台侧裁决按它填。 */
+  compensationCapFen: number
+  compensationCapCny: string
+  /** 已缴尾款（分）：只作展示。 */
   finalPaidFen: number
   finalPaidCny: string
+  /** 已付且未退（定金 + 尾款，分）：原路退款上限——诉求不超过它时全部走退款，不动保证金。 */
+  refundablePaidFen: number
+  refundablePaidCny: string
 }
 
 export type AfterSalesCaseList = {

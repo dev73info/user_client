@@ -37,6 +37,14 @@ const props = defineProps<{
   requirementTitle: string
   /** 当前登录人是否是本需求的需求方（甲方）：只有甲方能发起售后。 */
   canOpenCase: boolean
+  /**
+   * 需求预算（元）：主张金额的上限。
+   *
+   * 预算就是这笔单子的价（合同总价由它快照），主张「拿回」的钱不该超过它——后端
+   * `open_case` 会以 400 拒收超预算的主张，这里先把上限摆在输入框上，别让用户填完才被拒。
+   * 拿不到（老接口/未加载完）时传 null，不限制，仍由后端兜底。
+   */
+  requirementBudget?: number | null
 }>()
 
 const emit = defineEmits<{ close: [] }>()
@@ -80,12 +88,6 @@ const windowClosesAt = ref<string | null>(null)
 /** 售后窗口已关闭：此时不再渲染发起表单——表单填完必然被后端 409 拒绝。 */
 const windowClosed = computed(() => windowOpen.value === false)
 
-/**
- * 能不能发起售后：调用方允许（需求方视角）+ 窗口还开着。
- * 窗口状态为 null（老后端或没按需求查询）时不拦，保留后端 409 兜底。
- */
-const canSubmitCase = computed(() => props.canOpenCase && !windowClosed.value)
-
 /** 窗口已关闭时的说明文案：拿得到关闭时间就说清楚，拿不到（结单时间异常）退化为通用措辞。 */
 const windowClosedTip = computed(() =>
   windowClosesAt.value
@@ -119,18 +121,63 @@ const lastConcludedAt = computed(() => {
 })
 
 /**
+ * 收口案件里「动过钱」的那种（认定过退款或赔付额度）：它是终态，需求方**不能再自助发起**
+ * ——后端会以 409「该需求已有裁决结果的售后案件」挡下，所以这里不能再渲染发起表单，
+ * 否则等于摆一个必然失败的入口。重新主张要由客服在平台侧重开案件（复用同一行，不记轮次）。
+ *
+ * 没动过钱的收口案件（只反馈问题、诉求不成立被驳回）不在这里：那类结论没有钱可翻，
+ * 需求方可以自己再来一次，后端也放行——`withdrawn` 同理（他自己收的手，本来就不算结论）。
+ *
+ * 判据必须与后端 `dispute::service::self_service_reopen_allowed` 对齐（都看认定额度，不看渠道
+ * 单号）：口径一旦分叉，前端会渲染出一个后端必然 409 的表单。
+ */
+const concludedWithFunds = computed(() => {
+  const row = lastConcludedCase.value
+  return Boolean(row && (row.refundAmountFen > 0 || row.compensationAmountFen > 0))
+})
+
+/** 已裁决且动过钱时的说明：把「为什么不能自助发起、下一步找谁」说清楚。 */
+const caseConcludedTip = computed(() => {
+  const row = lastConcludedCase.value
+  const funds = row ? executedFunds(row).join(' / ') || pendingFunds(row).join(' / ') : ''
+  return (
+    `本需求已有裁决结果的售后案件（${row ? statusText(row.status) : '已收口'}` +
+    `${funds ? `：${funds}` : ''}），需求方不能再次自助发起。` +
+    '如需重新主张，请联系平台客服重开该案件，或到工单中心提交工单。'
+  )
+})
+
+/**
+ * 能不能发起售后：调用方允许（需求方视角）+ 窗口还开着 + 没有「已裁决且执行过资金」的收口案件。
+ * 窗口 / 案件状态未知（老后端、或列表还没加载完）时不拦，保留后端 409 兜底。
+ */
+const canSubmitCase = computed(
+  () => props.canOpenCase && !windowClosed.value && !concludedWithFunds.value,
+)
+
+/** 需求预算（分）：主张金额的上限，0 表示拿不到（不限制）。 */
+const budgetFen = computed(() => {
+  const budget = props.requirementBudget
+  if (budget == null || !Number.isFinite(budget) || budget <= 0) {
+    return 0
+  }
+  return Math.round(budget * 100)
+})
+
+/**
  * 主张金额的文案：它只是发起人的**主张**，平台认定时作参考（实际能执行多少由「客户已付且未退的
  * 部分」与「仍冻结的接单保证金」两个上限决定）。
  *
  * 文案里不出现「尾款」「保证金」这些池子名——「钱从哪出」是平台认定的事，发起人只需要说
- * 「我希望拿回多少」。留空表示由平台认定（按诉求与上限给）。
+ * 「我希望拿回多少」。留空表示由平台认定（按诉求与上限给）；上限是需求预算（这笔单子的价），
+ * 后端也会以 400 拒收超预算的主张，所以这里直接把它写进占位提示。
  */
-const CLAIM_AMOUNT_FIELD = {
+const claimAmountField = computed(() => ({
   label: '希望拿回多少（元）',
-  placeholder: '留空由平台认定，不超过你已支付的金额',
-}
-
-const claimAmountField = CLAIM_AMOUNT_FIELD
+  placeholder: budgetFen.value
+    ? `留空由平台认定；最多不超过需求预算 ${(budgetFen.value / 100).toFixed(2)} 元`
+    : '留空由平台认定，不超过你已支付的金额',
+}))
 
 /** 有请求在途时不允许关窗，避免资金动作的结果无从收口。 */
 const busy = computed(
@@ -301,20 +348,52 @@ function expectationText(row: AfterSalesCase) {
 }
 
 /**
- * 「已执行资金」那一行：只列**真正发生**的那一项。
+ * 一条资金动作的落地凭据是**渠道单号**，不是案件行上的金额。
  *
- * 退款与赔付是两条独立的资金动作（退款走渠道原路退、赔付从开发者接单保证金扣划），只发生一条时
- * 另一项恒为 0；把 0 也摆出来会读成「一分钱都没退」。
+ * `refundAmountFen` / `compensationAmountFen` 是裁决**认定**的额度，`claim_for_verdict` 一认领案件
+ * 就写进去了；真的执行了才会带上 `providerRefundId`（渠道退款单号）/ `providerDepositConfirmId`
+ * （保证金扣划确认单号）。赔付腿失败会转 `manual_required`，那时额度已经写好、钱却没动过
+ * （实测：`compensation_amount_fen=20000`，而开发者的保证金冻结仍是整额、台账里没有补偿分录）。
  */
-function executedFundsText(row: AfterSalesCase) {
+function executedFunds(row: AfterSalesCase): string[] {
   const parts: string[] = []
-  if (row.refundAmountFen) {
-    parts.push(`退还尾款 ${row.refundAmountCny} 元`)
+  if (row.refundAmountFen && row.providerRefundId) {
+    // 「退还客户已付款」，不是「退还尾款」：结单后定金与尾款都能原路退，诉求不超过已付时
+    // 全走退款，所以这一笔可能是两笔渠道退款（尾款 + 定金）合起来的结果。
+    parts.push(`退还客户已付款 ${row.refundAmountCny} 元`)
   }
-  if (row.compensationAmountFen) {
+  if (row.compensationAmountFen && row.providerDepositConfirmId) {
     parts.push(`保证金赔付 ${row.compensationAmountCny} 元`)
   }
-  return parts.join(' / ')
+  return parts
+}
+
+/** 认定了但渠道还没受理的那几笔：单独说清「尚未执行」，不能混进「已执行资金」。 */
+function pendingFunds(row: AfterSalesCase): string[] {
+  const parts: string[] = []
+  if (row.refundAmountFen && !row.providerRefundId) {
+    parts.push(`退还客户已付款 ${row.refundAmountCny} 元`)
+  }
+  if (row.compensationAmountFen && !row.providerDepositConfirmId) {
+    parts.push(`保证金赔付 ${row.compensationAmountCny} 元`)
+  }
+  return parts
+}
+
+/**
+ * **已执行**的资金合计（分）：只有带渠道单号的那几笔算数。
+ *
+ * 诉求差额要拿它算，不能拿主张额度算——否则一分钱没落地的案件也会显示「本次共执行 360 元」。
+ */
+function executedFundsFen(row: AfterSalesCase): number {
+  let total = 0
+  if (row.refundAmountFen && row.providerRefundId) {
+    total += row.refundAmountFen
+  }
+  if (row.compensationAmountFen && row.providerDepositConfirmId) {
+    total += row.compensationAmountFen
+  }
+  return total
 }
 
 function decisionText(decision: AfterSalesDecision | null) {
@@ -357,6 +436,14 @@ async function submit() {
   }
   if (!description.value.trim()) {
     showToast('请先描述遇到的问题', 'warning')
+    return
+  }
+  // 主张金额不许超过需求预算（后端也会以 400 拒收）：在提交前就拦住，别让用户填完才吃一个错误提示。
+  if (expectsMoney.value && budgetFen.value > 0 && claimAmountFen.value > budgetFen.value) {
+    showToast(
+      `主张金额不能超过需求预算 ${(budgetFen.value / 100).toFixed(2)} 元`,
+      'warning',
+    )
     return
   }
 
@@ -484,21 +571,32 @@ watch(
             <dt>处理说明</dt>
             <dd>{{ currentCase.resolutionNote }}</dd>
           </div>
-          <div v-if="currentCase.refundAmountFen || currentCase.compensationAmountFen" class="is-wide">
+          <div v-if="executedFunds(currentCase).length" class="is-wide">
             <dt>已执行资金</dt>
-            <dd>{{ executedFundsText(currentCase) }}</dd>
+            <dd>{{ executedFunds(currentCase).join(' / ') }}</dd>
+          </div>
+          <!-- 认定 ≠ 执行：赔付腿失败时案件行上已经写着认定额度，钱却一分没动（实测）。
+               单独摆一行并写清「尚未执行」，别让人以为钱已经付出去了。 -->
+          <div v-if="pendingFunds(currentCase).length" class="is-wide">
+            <dt>本次认定（尚未执行）</dt>
+            <dd>
+              {{ pendingFunds(currentCase).join(' / ') }}
+              <template v-if="currentCase.status === 'manual_required'">
+                ——渠道尚未受理，案件已转人工，落地后自动结案。
+              </template>
+            </dd>
           </div>
           <!-- 诉求金额被两个上限截断时把差额直接摆出来：否则「实赔 200」看起来像「诉求 500 全赔了」。
-               条件里带「已经执行过一笔钱」：裁决还没落地（或本案没动钱）时只是「诉求未决」，
-               不是「被上限截断」，那时不该报差额。 -->
+               条件与算式都只认**已执行**的那几笔（带渠道单号）：裁决还没落地时只是「诉求未决」，
+               不是「被上限截断」；拿认定额度算会把没执行的钱也算成「已执行」。 -->
           <div
-            v-if="(currentCase.refundAmountFen > 0 || currentCase.compensationAmountFen > 0) && currentCase.shortfallFen > 0"
+            v-if="executedFundsFen(currentCase) > 0 && currentCase.shortfallFen > 0"
             class="is-wide"
           >
             <dt>诉求差额</dt>
             <dd>
-              诉求 {{ currentCase.claimAmountCny }} 元，受可退部分与仍冻结的接单保证金限制，本次共执行
-              {{ moneyFromFen(currentCase.refundAmountFen + currentCase.compensationAmountFen) }} 元，差额
+              诉求 {{ currentCase.claimAmountCny }} 元，受可退部分与赔付上限（冻结保证金与需求预算取小）限制，本次共执行
+              {{ moneyFromFen(executedFundsFen(currentCase)) }} 元，差额
               <strong>{{ currentCase.shortfallCny }} 元</strong>
             </dd>
           </div>
@@ -567,18 +665,22 @@ watch(
             <dt>处理说明</dt>
             <dd>{{ lastConcludedCase.resolutionNote }}</dd>
           </div>
-          <div v-if="lastConcludedCase.refundAmountFen || lastConcludedCase.compensationAmountFen" class="is-wide">
+          <div v-if="executedFunds(lastConcludedCase).length" class="is-wide">
             <dt>已执行资金</dt>
-            <dd>{{ executedFundsText(lastConcludedCase) }}</dd>
+            <dd>{{ executedFunds(lastConcludedCase).join(' / ') }}</dd>
+          </div>
+          <div v-if="pendingFunds(lastConcludedCase).length" class="is-wide">
+            <dt>本次认定（尚未执行）</dt>
+            <dd>{{ pendingFunds(lastConcludedCase).join(' / ') }}</dd>
           </div>
           <div
-            v-if="(lastConcludedCase.refundAmountFen > 0 || lastConcludedCase.compensationAmountFen > 0) && lastConcludedCase.shortfallFen > 0"
+            v-if="executedFundsFen(lastConcludedCase) > 0 && lastConcludedCase.shortfallFen > 0"
             class="is-wide"
           >
             <dt>诉求差额</dt>
             <dd>
-              诉求 {{ lastConcludedCase.claimAmountCny }} 元，受可退部分与仍冻结的接单保证金限制，本次共执行
-              {{ moneyFromFen(lastConcludedCase.refundAmountFen + lastConcludedCase.compensationAmountFen) }} 元，差额
+              诉求 {{ lastConcludedCase.claimAmountCny }} 元，受可退部分与赔付上限（冻结保证金与需求预算取小）限制，本次共执行
+              {{ moneyFromFen(executedFundsFen(lastConcludedCase)) }} 元，差额
               <strong>{{ lastConcludedCase.shortfallCny }} 元</strong>
             </dd>
           </div>
@@ -609,7 +711,7 @@ watch(
           <label v-if="expectsMoney" class="pay-line after-sales-modal__field">
             <strong>{{ claimAmountField.label }}</strong>
             <input v-model="claimAmount" type="number" min="0" step="0.01" inputmode="decimal"
-              :placeholder="claimAmountField.placeholder" />
+              :max="requirementBudget ?? undefined" :placeholder="claimAmountField.placeholder" />
           </label>
 
           <label class="pay-line after-sales-modal__field">
@@ -618,6 +720,10 @@ watch(
               placeholder="请写明时间、问题现象、与对方沟通的结果和你的诉求"></textarea>
           </label>
         </template>
+
+        <p v-else-if="canOpenCase && concludedWithFunds" class="tip">
+          {{ caseConcludedTip }}
+        </p>
 
         <p v-else-if="canOpenCase && windowClosed" class="tip">
           {{ windowClosedTip }}

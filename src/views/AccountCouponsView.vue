@@ -88,6 +88,7 @@ import {
   Connection,
   CreditCard,
   Iphone,
+  Link,
   Lock,
   Message,
   OfficeBuilding,
@@ -286,6 +287,24 @@ const identityCardRequiredMissing = computed(
     identityCardSelected.value &&
     (!form.realName.trim() || !form.idCardNo.trim() || !form.mobile.trim()),
 )
+/**
+ * 企业进件资料里**只由营业执照识别带出、不在表单里展示**的四项。
+ *
+ * 渠道创建企业会员时这四项逐项必填，但都能从营业执照照片识别（省市编码由识别出的注册地址
+ * 经 `matchRegionFromAddress` 映射成渠道编码），所以不再让用户手填。识别不出时用户唯一的
+ * 出路是重传一张更清晰的照片，因此校验失败必须指向「重新上传营业执照」，不能指回一个界面上
+ * 根本没有的输入框。
+ */
+const businessLicenseDerivedMissing = computed(() => {
+  if (!businessSelected.value) return []
+  const missing: string[] = []
+  if (!form.companyProvCode.trim() || !form.companyAreaCode.trim()) missing.push('企业所在省市')
+  if (!form.companyAddress.trim()) missing.push('企业注册地址')
+  if (!form.businessScope.trim()) missing.push('经营范围')
+  if (!form.businessLicenseExpiresOn.trim()) missing.push('营业执照有效期')
+  return missing
+})
+
 const enterpriseRequiredMissing = computed(
   () =>
     businessSelected.value &&
@@ -295,19 +314,51 @@ const enterpriseRequiredMissing = computed(
       !form.operatorIdCardNo.trim() ||
       !form.mobile.trim() ||
       !form.businessLicenseFile.trim() ||
-      // 企业进件资料：缺任一项，渠道都会拒绝创建企业会员，之后连对公收款账户都开不了
-      !form.companyProvCode.trim() ||
-      !form.companyAreaCode.trim() ||
-      !form.companyAddress.trim() ||
-      !form.businessScope.trim() ||
-      !form.businessLicenseExpiresOn.trim() ||
+      // 企业进件资料里有四项不在表单里（见 businessLicenseDerivedMissing）：
+      // 缺任一项渠道都会拒绝创建企业会员，之后连对公收款账户都开不了
+      businessLicenseDerivedMissing.value.length > 0 ||
       !form.legalCertExpiresOn.trim()),
 )
 
 /** 企业所在省下面的城市选项；省份未选时为空。 */
 const enterpriseCities = computed(() => getSettlementCities(form.companyProvCode))
 
-/** 换省份时清掉不属于该省的城市；只有一个城市（直辖市）时直接选中。 */
+/**
+ * 上面四项的**识别结果摘要**，替代已移除的输入框供用户核对。
+ *
+ * 不逐字列经营范围——那是几百字的正文，摘出来只会把表单淹没，所以只报字数。
+ */
+const businessLicenseDerivedSummary = computed(() => {
+  const prov = settlementProvinces.find((item) => item.value === form.companyProvCode)?.title ?? ''
+  const area = enterpriseCities.value.find((item) => item.value === form.companyAreaCode)?.title ?? ''
+  const expires =
+    form.businessLicenseExpiresOn === LONG_TERM_DATE
+      ? '营业执照长期有效'
+      : `执照有效期至 ${form.businessLicenseExpiresOn}`
+  return [
+    `${prov}${area}`,
+    form.businessScope ? `经营范围 ${form.businessScope.length} 字` : '',
+    form.businessLicenseExpiresOn ? expires : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
+})
+
+/**
+ * 上传区下方那一行的文字：识别结果 + 缺失项（有缺就附上出路）。
+ *
+ * 这四项已不在表单里，所以这一行同时承担两件事：交代「自动填好了什么」（用户要核对），
+ * 以及说明「提交按钮为什么是灰的」（缺项时）。
+ */
+const businessLicenseDerivedNote = computed(() => {
+  const summary = businessLicenseDerivedSummary.value
+  const missing = businessLicenseDerivedMissing.value
+  if (!missing.length) {
+    return summary ? `已从营业执照识别：${summary}` : ''
+  }
+  const tail = `未能识别出${missing.join('、')}，请重新上传更清晰的照片`
+  return summary ? `已从营业执照识别：${summary}；${tail}` : tail
+})
 /**
  * 从营业执照地址里认领渠道省市编码。
  *
@@ -351,10 +402,6 @@ watch(
   },
 )
 
-function changeEnterpriseProvince() {
-  const cities = enterpriseCities.value
-  form.companyAreaCode = cities.length === 1 ? (cities[0]?.value ?? '') : ''
-}
 const minorGuardianRequiredMissing = computed(
   () => isMinor14To18.value && (!form.guardianConsent || !form.guardianConsentFile.trim()),
 )
@@ -506,18 +553,17 @@ function validate() {
     if (!form.operatorIdCardNo.trim()) return '请填写经办人身份证号'
     if (!isValidMobile(form.mobile)) return '请填写正确的手机号'
     if (!form.businessLicenseFile.trim()) return '请上传营业执照'
-    // 企业进件资料：这些是开通对公收款账户的前置，缺失时认证能通过但钱收不到
-    if (!form.companyProvCode.trim()) return '请选择企业所在省份'
-    if (!/^\d{4}$/.test(form.companyProvCode.trim())) return '企业所在省份编码不正确'
-    if (!enterpriseCities.value.some((city) => city.value === form.companyAreaCode)) {
-      return '请选择企业所在城市'
+    // 企业进件资料里的四项（所在省市 / 注册地址 / 经营范围 / 执照有效期）不在表单里，
+    // 只能由营业执照识别带出：缺了就说明照片没识别全，出路是重传，而不是「去填一下」。
+    const derivedMissing = businessLicenseDerivedMissing.value
+    if (derivedMissing.length) {
+      return `未能从营业执照识别出${derivedMissing.join('、')}，请重新上传更清晰的照片`
     }
-    if (!form.companyAddress.trim()) return '请填写企业注册地址'
-    if (!form.businessScope.trim()) return '请填写企业经营范围'
+    // 识别出的经营范围会按渠道上限截断（见 autoFillFromBusinessLicense）；历史记录可能超限，
+    // 重传一次营业执照会被重新截断，所以这里的出路同样是重传。
     if (form.businessScope.trim().length > MAX_BUSINESS_SCOPE_LEN) {
-      return `经营范围不能超过 ${MAX_BUSINESS_SCOPE_LEN} 字（渠道限制），请精简后再提交`
+      return `营业执照识别出的经营范围超过 ${MAX_BUSINESS_SCOPE_LEN} 字（渠道限制），请重新上传营业执照`
     }
-    if (!/^\d{8}$/.test(form.businessLicenseExpiresOn.trim())) return '请选择营业执照有效期'
     if (!/^\d{8}$/.test(form.legalCertExpiresOn.trim())) return '请选择法人证件有效期'
     return ''
   }
@@ -659,7 +705,8 @@ function openBusinessLicensePicker() {
  *
  * 只回填它能确定的几项：企业名称、统一社会信用代码、注册地址、
  * 经营范围、营业执照有效期；法人姓名表单里没有这个输入项，不回填。
- * 用户上传的就是他自己的证照，所以直接覆盖已有值并提示核对；识别不出来就保持原样。
+ * 其中注册地址、经营范围、执照有效期（以及由注册地址映射出的企业所在省市）**不再在表单里展示**，
+ * 所以识别不出来时用户没法手填，只能重传；成功时靠表单下方的识别结果摘要供用户核对。
  */
 async function autoFillFromBusinessLicense(businessLicenseFile: string) {
   if (!businessLicenseFile.trim()) return
@@ -690,20 +737,20 @@ async function autoFillFromBusinessLicense(businessLicenseFile: string) {
       form.companyProvCode = region.prov
       form.companyAreaCode = region.area ?? ''
     }
+    // 「未认出所在省市」不在这里提醒：表单下方那条识别结果摘要会一直挂着它，提交也会被拦。
     const notes = [
-      truncated ? `经营范围超过 ${MAX_BUSINESS_SCOPE_LEN} 字，已截断` : '',
-      region.prov ? '已按地址填好所在省市' : '',
+      truncated ? `经营范围超过 ${MAX_BUSINESS_SCOPE_LEN} 字，已按渠道上限截断` : '',
     ].filter(Boolean)
     if (filled > 0) {
       showToast(
-        `已按营业执照自动填入企业信息${notes.length ? `（${notes.join('；')}）` : ''}，请核对`,
+        `已按营业执照自动填入企业信息${notes.length ? `（${notes.join('；')}）` : ''}`,
         truncated ? 'warning' : 'success',
       )
     } else {
-      showToast('营业执照未识别出可用信息，请手工填写', 'warning')
+      showToast('营业执照未识别出可用信息，请重新上传更清晰的照片', 'warning')
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '营业执照识别失败，请手工填写', 'warning')
+    showToast(err instanceof Error ? err.message : '营业执照识别失败，请重新上传更清晰的照片', 'warning')
   } finally {
     businessLicenseOcrLoading.value = false
   }
@@ -1180,30 +1227,41 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
     {
       key: 'settle',
       title: '结算账户',
-      desc: settleUnderReview.value
-        ? '企业收款账户正在渠道审核中，审核通过后即可绑定对公账户'
+      desc: settleStage.value === 'reviewing'
+        ? settleUnderReviewText.value
         : settleSubjectMismatch.value
           ? settleMaterialMissing.value
             ? `实名资料缺${settleMaterialMissingText.value}，补齐后才能重新绑定收款账户`
             : '实名主体已变更，原银行卡需按新主体重新绑定'
-          : adapayMember.value?.settleAccountId
+          : settleStage.value === 'bound'
             ? '收款银行卡已绑定，可查看或更换'
-            : '绑定收款银行卡后，合同款才能结算到账',
+            : settleStage.value === 'ready'
+              ? `认证已完成，绑定${settleAccountWord.value}后即可收取合同款`
+              : realnameApproved.value
+                ? settleProviderError.value
+                  ? '收款账户开通失败，点进去看渠道给的原因并补齐资料'
+                  : '正在自动开通收款账户，稍后刷新查看'
+                : '完成实名认证后会自动开通收款账户',
       icon: CreditCard,
       // 渠道会员还在审核时**不放开入口**：这时候点进去也绑不上，
       // 只会撞渠道的 member_not_exists，徒增一次失败与一次限流。
       locked: settleUnderReview.value,
-      // 标签直接反映「收款银行卡有没有绑」：这才是用户关心的「能不能收款」。
-      // （此前是「收款认证：已认证」，读的是渠道会员 onboardingStatus，未绑卡也显示绿色，
+      // 标签按 settleStage 的四态如实写：已绑卡才是「已设置」，会员还在渠道那边写审核中，
+      // 会员好了但没绑卡写「待绑卡」（差的是用户那一步），连会员都还没建写「待认证」。
+      // 不这么分的话，「未设置」会把「系统还没办完」和「用户还没绑卡」混成一句，
+      // 用户不知道自己该等还是该动手。
+      // （历史口径：更早是「收款认证：已认证」，读的是渠道会员状态，未绑卡也显示绿色，
       //   会把人误导成「已能收款」，2026-10-04 改回绑卡口径。）
-      // 渠道会员还在审核时就别报「未设置」（那会让人以为要自己再绑一次），而是如实写审核中。
-      status: settleUnderReview.value
-        ? { text: '结算账户：渠道审核中', tone: 'warning' }
-        : settleSubjectMismatch.value
-          ? { text: '收款账户：待重绑', tone: 'warning' }
-          : Boolean(adapayMember.value?.settleAccountId)
-            ? { text: '结算账户：已设置', tone: 'success' }
-            : { text: '结算账户：未设置', tone: 'info' },
+      status:
+        settleStage.value === 'reviewing'
+          ? { text: '收款账户：渠道审核中', tone: 'warning' }
+          : settleSubjectMismatch.value
+            ? { text: '收款账户：待重绑', tone: 'warning' }
+            : settleStage.value === 'bound'
+              ? { text: '结算账户：已设置', tone: 'success' }
+              : settleStage.value === 'ready'
+                ? { text: '收款账户：待绑卡', tone: 'warning' }
+                : { text: '收款账户：待认证', tone: 'info' },
     },
   ]
   // 注销只在已绑卡时有意义；属破坏性动作，用 danger 标记。
@@ -1317,7 +1375,7 @@ function openAccountEntry(key: string) {
       return
     case 'settle':
       if (settleUnderReview.value) {
-        showToast('企业收款账户正在渠道审核中，审核通过后即可绑定对公账户', 'warning')
+        showToast(settleUnderReviewText.value, 'warning')
         return
       }
       void openSettleDialog()
@@ -1419,6 +1477,21 @@ const settleForm = reactive({
 /** 是否已绑定结算账户（决定提交时走「绑定」还是「更换」接口） */
 const settleBound = computed(() => Boolean(adapayMember.value?.settleAccountId))
 
+/**
+ * 收款账户在渠道侧的进度：`none` / `reviewing` / `ready` / `bound`。
+ *
+ * 这四态必须分开看：「会员还没开通」与「会员开通了但没绑卡」是两件不同的事——前者是系统与
+ * 渠道还没办完（实名通过后会自动入驻），后者是用户少做了一步。以前两者都显示「未设置」，
+ * 用户不知道自己该等还是该动手。
+ */
+const settleStage = computed<'none' | 'reviewing' | 'ready' | 'bound'>(() => {
+  if (settleBound.value) return 'bound'
+  const status = adapayMember.value?.onboardingStatus
+  if (status === 'pending' || status === 'under_review') return 'reviewing'
+  if (status === 'active') return 'ready'
+  return 'none'
+})
+
 /** 当前实名主体对应的收款账户主体：企业 / 个体工商户走对公账户，其余按个人身份证。 */
 const settleExpectedMemberType = computed(() =>
   assignEnterprise.value ? 'enterprise' : 'personal',
@@ -1444,6 +1517,9 @@ const settleCorporateLocked = computed(() => assignEnterprise.value)
 const settleSubjectLabel = computed(() =>
   settleCorporateLocked.value ? '企业 / 个体工商户' : '个人',
 )
+
+/** 该主体要绑的账户类型：企业 / 个体工商户是对公账户，其余是银行卡。 */
+const settleAccountWord = computed(() => (settleCorporateLocked.value ? '对公账户' : '银行卡'))
 
 /**
  * 企业主体按新主体重建收款账户前，渠道侧要求实名资料里的企业进件资料齐备。
@@ -1479,6 +1555,18 @@ const settleUnderReview = computed(() => {
   const status = adapayMember.value?.onboardingStatus
   return status === 'under_review' || status === 'pending'
 })
+
+/**
+ * 「渠道审核中」那句提示：企业与个人绑的不是同一种账户（对公账户 vs 银行卡）。
+ *
+ * 企业会员改由本页「结算账户」这一步创建之后，两种主体都会落到同一句提示上，
+ * 不能再共用一句写死「企业…对公账户」的话。
+ */
+const settleUnderReviewText = computed(() =>
+  settleCorporateLocked.value
+    ? '企业收款账户正在渠道审核中，审核通过后即可绑定对公账户'
+    : '收款账户正在渠道审核中，审核通过后即可绑定银行卡',
+)
 
 const settleProviderError = computed(() => {
   const member = adapayMember.value
@@ -2565,6 +2653,20 @@ onBeforeUnmount(() => {
                     请上传营业执照扫描件或照片（图片或 PDF，10MB 以内）
                   </span>
                 </div>
+                <!-- 企业进件资料里有四项不在表单里，只能来自营业执照识别：把识别结果（或缺失项）
+                     挂在照片下面，既交代「自动填好了什么」，也是提交按钮被置灰时的原因。 -->
+                <p
+                  v-if="
+                    businessSelected &&
+                    form.businessLicenseFile &&
+                    !businessLicenseOcrLoading &&
+                    businessLicenseDerivedNote
+                  "
+                  class="realname-consent-upload__derived"
+                  :class="{ 'is-missing': businessLicenseDerivedMissing.length > 0 }"
+                >
+                  {{ businessLicenseDerivedNote }}
+                </p>
               </TFormItem>
               <TFormItem label="经办人姓名" required>
                 <TInput
@@ -2594,79 +2696,9 @@ onBeforeUnmount(() => {
                   :disabled="realnameLocked"
                 />
               </TFormItem>
-              <!-- 以下六项是支付渠道创建企业会员（对公收款账户）的必填进件资料：
-                   缺任意一项，认证能过但对公收款账户开不了，所以在这里收齐 -->
-              <TFormItem :label="`${soleProprietorSelected ? '个体户' : '企业'}所在省市`" required>
-                <div class="realname-region-row">
-                  <TSelect
-                    v-model="form.companyProvCode"
-                    filterable
-                    clearable
-                    placeholder="选择省份"
-                    :disabled="realnameLocked"
-                    @change="changeEnterpriseProvince"
-                  >
-                    <TOption
-                      v-for="province in settlementProvinces"
-                      :key="province.value"
-                      :label="province.title"
-                      :value="province.value"
-                    />
-                  </TSelect>
-                  <TSelect
-                    v-model="form.companyAreaCode"
-                    filterable
-                    clearable
-                    :disabled="realnameLocked || !form.companyProvCode"
-                    :placeholder="form.companyProvCode ? '选择城市' : '请先选省份'"
-                  >
-                    <TOption
-                      v-for="city in enterpriseCities"
-                      :key="city.value"
-                      :label="city.title"
-                      :value="city.value"
-                    />
-                  </TSelect>
-                </div>
-              </TFormItem>
-              <TFormItem :label="`${soleProprietorSelected ? '个体户' : '企业'}注册地址`" required>
-                <TInput
-                  v-model="form.companyAddress"
-                  :maxlength="200"
-                  placeholder="按营业执照填写注册地址"
-                  :disabled="realnameLocked"
-                />
-              </TFormItem>
-              <TFormItem label="经营范围" required>
-                <TInput
-                  v-model="form.businessScope"
-                  :maxlength="200"
-                  type="textarea"
-                  :rows="2"
-                  placeholder="按营业执照填写经营范围"
-                  :disabled="realnameLocked"
-                />
-              </TFormItem>
-              <TFormItem label="营业执照有效期" required>
-                <div class="realname-date-row">
-                  <TDatePicker
-                    v-model="form.businessLicenseExpiresOn"
-                    type="date"
-                    value-format="YYYYMMDD"
-                    format="YYYY-MM-DD"
-                    placeholder="选择有效期截止日"
-                    :disabled="realnameLocked"
-                  />
-                  <TButton
-                    variant="text"
-                    tone="accent"
-                    :disabled="realnameLocked"
-                    @click="form.businessLicenseExpiresOn = LONG_TERM_DATE"
-                  >
-                    长期有效
-                  </TButton>
-                </div>
-              </TFormItem>
+              <!-- 企业进件资料里的「所在省市 / 注册地址 / 经营范围 / 营业执照有效期」不再让用户手填：
+                   这四项都能从营业执照照片识别（省市编码由识别出的注册地址映射成渠道编码），
+                   所以这里只留上传入口，识别结果与缺失项由上传区下方那行提示给出。 -->
               <TFormItem label="法人证件有效期" required>
                 <div class="realname-date-row">
                   <TDatePicker
@@ -2924,6 +2956,32 @@ onBeforeUnmount(() => {
               </TButton>
             </TAlert>
 
+            <!-- 企业会员现在只在「结算账户」这一步创建：首次开通时如果实名里的企业进件资料
+                 不齐，渠道一定会拒，而那时已经没有「上次入驻失败」的 provider_error 可看，
+                 所以这里也提前拦一次（此前只有「换主体」那条分支会拦）。 -->
+            <TAlert
+              v-if="settleMaterialMissing && !settleSubjectMismatch"
+              class="settle-dialog__alert"
+              tone="warning"
+              :closable="false"
+              show-icon
+              :title="`企业实名资料缺少${settleMaterialMissingText}，无法开通企业收款账户`"
+            >
+              <p class="settle-dialog__alert-text">
+                渠道创建企业会员时逐项校验营业执照文件、企业所在省市、注册地址、经营范围与有效期，
+                缺任一项都会被拒；先把资料补齐并重新提交企业认证，通过后再回来绑定对公账户。
+              </p>
+              <TButton
+                variant="solid"
+                tone="accent"
+                class="settle-dialog__alert-action"
+                size="sm"
+                @click="goFixSettleMaterial"
+              >
+                去「变更认证类型」补齐企业资料
+              </TButton>
+            </TAlert>
+
             <TForm
               label-position="left"
               label-width="96px"
@@ -2991,7 +3049,15 @@ onBeforeUnmount(() => {
                 <div class="settle-form__actions">
                   <TButton :disabled="settleSaving" @click="closeSettleDialog">取消</TButton>
                   <TButton type="submit" variant="solid" tone="accent" :loading="settleSaving">
-                    {{ settleSaving ? '保存中...' : settleBound ? '确认更换' : '保存结算账户' }}
+                    {{
+                      settleSaving
+                        ? '保存中...'
+                        : settleBound
+                          ? '确认更换'
+                          : settleCorporateLocked
+                            ? '绑定对公账户'
+                            : '绑定银行卡'
+                    }}
                   </TButton>
                 </div>
               </TFormItem>
@@ -3064,9 +3130,9 @@ onBeforeUnmount(() => {
                 alt="爱签实名认证二维码"
               />
               <ol class="realname-faceid-panel__steps">
-                <li>用手机 <strong>微信 / 支付宝</strong> 扫描上方二维码</li>
-                <li>在手机端按提示完成 <strong>人脸核身</strong></li>
-                <li>认证通过后状态自动更新为「已通过」</li>
+                <li><span>用手机 <strong>微信 / 支付宝</strong> 扫描上方二维码</span></li>
+                <li><span>在手机端按提示完成 <strong>人脸核身</strong></span></li>
+                <li><span>认证通过后状态自动更新为「已通过」</span></li>
               </ol>
             </template>
 
@@ -3083,7 +3149,7 @@ onBeforeUnmount(() => {
             </TButton>
             <TButton class="realname-plain-btn" @click="openWechatFaceidPage">
               <TIcon>
-                <Promotion />
+                <Link />
               </TIcon>
               {{ isMobile ? '打开认证页面完成核身' : '打开认证页面' }}
             </TButton>
@@ -4201,6 +4267,20 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
+/* 营业执照识别结果那一行（识别出什么 / 缺了什么）：不在上传按钮那一行里，所以要自己带外边距。 */
+.realname-consent-upload__derived {
+  display: block;
+  margin: 6px 0 0;
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* 有缺项时用警示色：这一行同时是「提交按钮为什么点不了」的原因。 */
+.realname-consent-upload__derived.is-missing {
+  color: var(--73-warning);
+}
+
 .realname-consent-template {
   color: #d97706;
   font-size: 13px;
@@ -4213,20 +4293,11 @@ onBeforeUnmount(() => {
   opacity: 1;
 }
 
-.realname-faceid-panel {
-  display: grid;
-  gap: 14px;
-  padding: 16px;
-  border-radius: 16px;
-  border: 1px solid rgba(147, 197, 253, 0.55);
-  background: linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(248, 250, 252, 0.92));
-}
-
-/* 人脸核身面板：全部走本端令牌（原来这里写死了一批裸色值），
-   二维码是唯一例外——必须是真白底 + 黑模块，套主题色手机会扫不出来。 */
+/* —— 人脸核身面板：整块走本端令牌。二维码是唯一例外——必须真白底 + 黑模块，
+   套主题色手机会扫不出来。 */
 .realname-faceid-panel__main {
   display: grid;
-  gap: 16px;
+  gap: 14px;
   justify-items: center;
   text-align: center;
 }
@@ -4257,18 +4328,24 @@ onBeforeUnmount(() => {
   box-shadow: var(--73-shadow-card);
 }
 
-/* 三步指引：序号做成徽标，别让「1.」挂在正文外面（原来用 list-style: decimal 会那样） */
+/* 三步指引：序号做成徽标（原来 list-style: decimal 会把「1.」挂在居中的正文外面），
+   整块再垫一层浅底，让「怎么扫」读成一块说明，而不是漂在弹窗里。 */
 .realname-faceid-panel__steps {
   margin: 0;
-  padding: 0;
+  padding: 12px 14px;
   width: 100%;
   display: grid;
   gap: 8px;
   list-style: none;
   counter-reset: faceid-step;
   text-align: left;
+  border-radius: var(--73-radius-inner);
+  border: 1px solid var(--73-border-soft);
+  background: var(--73-bg-soft);
 }
 
+/* 徽标 + 正文两列。正文**必须包在单个元素里**：li 是 grid 容器，裸文本与 <strong>
+   会各自变成一个 grid 项、被塞进 20px 那一列，「微信 / 支付宝」就一个字一行地竖排。 */
 .realname-faceid-panel__steps li {
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr);
@@ -4279,6 +4356,11 @@ onBeforeUnmount(() => {
   line-height: 1.6;
 }
 
+.realname-faceid-panel__steps li > span {
+  display: block;
+}
+
+/* 徽标改强调色淡底 + 强调色文字：垫了浅底之后，白底描边圆点几乎看不见。 */
 .realname-faceid-panel__steps li::before {
   counter-increment: faceid-step;
   content: counter(faceid-step);
@@ -4288,10 +4370,10 @@ onBeforeUnmount(() => {
   height: 20px;
   margin-top: 1px;
   border-radius: var(--73-radius-pill);
-  border: 1px solid var(--73-border);
-  background: var(--73-surface-strong);
-  color: var(--73-ink-muted);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
   font-size: 12px;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -4312,22 +4394,31 @@ onBeforeUnmount(() => {
   color: var(--73-ink-muted);
 }
 
+/* 底部小字：与动作行之间拉一条细线，读成脚注而不是漂着的说明文字。 */
 .realname-faceid-panel__hint {
-  margin: 0 auto;
+  margin: 14px auto 0;
+  padding-top: 12px;
   max-width: 34em;
+  border-top: 1px solid var(--73-border-soft);
   color: var(--73-ink-muted);
   font-size: 12px;
   line-height: 1.7;
   text-align: center;
 }
 
-/* 三个动作排一行：次要/危险在左、主操作「查询结果」在最右（中文弹窗惯例）。 */
+/* 三个动作排一行：次要/危险在左、主操作「查询结果」在最右（中文弹窗惯例）。
+   按钮文字一律不拆行——「取消变更，还原原主体」被拦腰断成两行很难看，
+   宽度不够时宁可整颗按钮换到下一行。 */
 .realname-faceid-panel__actions {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.realname-faceid-panel__actions > * {
+  white-space: nowrap;
 }
 
 /* 触屏档：撑满并给足 44px 触摸目标（设计规范对 <640px 的硬要求） */
