@@ -3,12 +3,13 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AcceptanceDialog from '@/components/AcceptanceDialog.vue'
+import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import DepositModal from '@/components/DepositModal.vue'
 import {
   createAdapayPayment,
   getAdapayBreachCase,
   getAdapayClientPlatform,
-  reportAdapayBreach,
+  reportAdapayTermination,
   requestAdapayPlatformReview,
   submitAdapayBreachDecision,
   withdrawAdapayBreach,
@@ -84,7 +85,14 @@ type ActionRequirement = {
   pending_unbind_request?: RequirementItem['pending_unbind_request']
 }
 
-type ActionTone = 'default' | 'primary' | 'danger'
+/**
+ * chip 的三种视觉重量：
+ *   - `default`：普通入口（如「查看合同」），白底描边；
+ *   - `primary`：**当前该做的那一步**（如「支付定金」「发起合同」），实心主色；
+ *   - `accent`：值得留意、但不是人人都要走的一步（如结单后的「售后」），浅色描边突出；
+ *   - `danger`：终止类动作（如「终止合作」），红色描边。
+ */
+type ActionTone = 'default' | 'primary' | 'danger' | 'accent'
 
 type ActionChip = {
   key: string
@@ -250,6 +258,18 @@ const canUseBreach = computed(
         status.value === 'pending_settlement')),
 )
 
+/**
+ * 结单后的唯一业务入口：售后（与需求列表页的 `canOpenAfterSales` 同一口径）。
+ *
+ * 只在担保模式、需求 `completed` 时给：结单之前的问题走「终止合作」，结单之后资金已分账出账，
+ * 只有售后这一条线能退尾款、扣接单保证金；无担保模式没有托管资金，也没有可裁决的对象。
+ * 两侧都能看到这个入口（乙方要在这里表态接受或不接受），但发起只有需求方，见 `canOpenCase`。
+ */
+const canUseAfterSales = computed(() => status.value === 'completed' && !isSelfManaged.value)
+
+/** 售后弹窗的开关：案件列表、表态与发起都在 `AfterSalesModal` 里，这里只负责入口。 */
+const afterSalesVisible = ref(false)
+
 /** 已撤回 / 已驳回 / 已结案的案件不再展示明细，回到申报表单（与需求列表页一致）。 */
 const activeBreachCase = computed(() => (hasLiveBreachCase.value ? breachCase.value : null))
 /** 已结案 / 已驳回的案件：结论在表单上方只读展示，入口回到「新一轮申报」。 */
@@ -275,6 +295,24 @@ const canDecideBreach = computed(
     (isDeveloper.value
       ? activeBreachCase.value.developerDecision == null
       : activeBreachCase.value.customerDecision == null),
+)
+/**
+ * 协商阶段（解除合作的第一步）是否仍在等表态：案件在 `submitted` 且双方都没就「解除合作」表态。
+ *
+ * 表态用同一枚接口（`submitBreachDecision`）承担两段语义：协商阶段传 `accepted` = 同意解除、
+ * `rejected` = 不同意；判定阶段（`ai_judged`）传 `accepted` / `rejected` = 对 AI 判定的表态。
+ */
+const terminationNegotiating = computed(
+  () =>
+    activeBreachCase.value?.status === 'submitted' &&
+    !activeBreachCase.value.mutualAgreedAt &&
+    !activeBreachCase.value.mutualRejectedAt,
+)
+/** 能不能由本人对「解除合作」表态：当事人里**不是发起人**的那一位。 */
+const canRespondTermination = computed(
+  () =>
+    terminationNegotiating.value &&
+    activeBreachCase.value?.reportedBy !== auth.username,
 )
 const canRequestPlatformReview = computed(() => activeBreachCase.value?.status === 'submitted')
 /** 撤回是申请人的单方动作：待判定期间（还没有结论）只有本人能撤回自己的申请，与需求列表页一致。 */
@@ -321,12 +359,12 @@ const unbindConsequence = computed(() =>
 
 const breachDialogTitle = computed(() => {
   if (activeBreachCase.value) {
-    return '终止合作进展'
+    return '解除合作进展'
   }
   if (settledBreachCase.value) {
-    return '发起新的终止合作'
+    return '发起新的解除合作'
   }
-  return breachWithdrawnByMe.value ? '重新发起终止合作' : '终止合作'
+  return breachWithdrawnByMe.value ? '重新发起解除合作' : '解除合作'
 })
 
 /**
@@ -396,13 +434,14 @@ const chips = computed<ActionChip[]>(() => {
   if (canDeliver.value) {
     list.push({ key: 'deliver', label: '交付版本', tone: 'primary', run: openDeliveryDialog })
   }
-  if (canRequestUnbind.value) {
-    list.push({ key: 'unbind', label: '申请解除', tone: 'default', run: openUnbindDialog })
-  } else if (canRespondUnbind.value) {
-    list.push({ key: 'unbind', label: '处理解除申请', tone: 'primary', run: openUnbindDialog })
-  }
   if (canUseBreach.value) {
-    list.push({ key: 'breach', label: '终止合作', tone: 'danger', run: () => void openBreachDialog() })
+    list.push({ key: 'termination', label: '解除合作', tone: 'danger', run: () => void openBreachDialog() })
+  }
+  if (canUseAfterSales.value) {
+    // 用 `accent` 而不是 `primary`：实心主色是「现在该做这一步」的意思（支付定金、发起合同），
+    // 而结单后并不总有事要做——没有在办案件时它只是一个入口，占了主色会把「查看合同」压下去，
+    // 也和这一排其它入口不是一套语言。
+    list.push({ key: 'after-sales', label: '售后', tone: 'accent', run: openAfterSalesDialog })
   }
   return list
 })
@@ -733,6 +772,14 @@ async function submitUnbindRespond(action: 'approve' | 'reject') {
   }
 }
 
+/**
+ * 打开售后弹窗：案件列表、诉求与双方表态都在弹窗内，由它自己在打开时拉取（`visible` 一变就刷新），
+ * 这里不预加载——缓存一份反而会显示上一轮的结果。
+ */
+function openAfterSalesDialog() {
+  afterSalesVisible.value = true
+}
+
 async function openBreachDialog() {
   breachReason.value = ''
   breachDecisionNote.value = ''
@@ -753,18 +800,18 @@ async function submitBreachReport() {
 
   const reason = breachReason.value.trim()
   if (!reason) {
-    showToast('请填写终止合作的事实与依据', 'warning')
+    showToast('请填写解除合作的事实与依据', 'warning')
     return
   }
 
   breachSubmitting.value = true
   try {
-    breachCase.value = await reportAdapayBreach(props.token, item.requirement_id, reason)
-    showToast('终止合作申请已提交，平台将进入责任判定', 'success')
+    breachCase.value = await reportAdapayTermination(props.token, item.requirement_id, reason)
+    showToast('解除合作申请已提交，等待对方回应', 'success')
     breachVisible.value = false
     emit('changed')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交终止合作申请失败', 'error')
+    showToast(error instanceof Error ? error.message : '提交解除合作申请失败', 'error')
   } finally {
     breachSubmitting.value = false
   }
@@ -873,6 +920,12 @@ defineExpose({
   </div>
   <p v-if="unbindHint" class="conversation-actions__hint">{{ unbindHint }}</p>
 
+  <!-- 结单后的售后：入口只在担保模式且需求已完成时出现，弹窗自己负责案件列表、诉求与表态。 -->
+  <AfterSalesModal v-if="requirement" :visible="afterSalesVisible" :token="token"
+    :current-username="auth.username" :requirement-id="requirement.requirement_id"
+    :requirement-title="requirement.title" :requirement-budget="requirement.budget"
+    :can-open-case="!isDeveloper" @close="afterSalesVisible = false" />
+
   <DepositModal v-if="payVisible && requirement" :visible="payVisible"
     :deposit-requirement="{ title: requirement.title, id: requirement.requirement_id, budget: requirement.budget }"
     :formatted-budget="formatBudget(requirement.budget)"
@@ -946,6 +999,31 @@ defineExpose({
           activeBreachCase.refundAmountCny }} · 赔付 ¥{{ activeBreachCase.compensationAmountCny }}
       </p>
 
+      <!-- 协商阶段（解除合作的第一步）：对方同意即按协商一致无责退出，不同意才申请平台介入。
+           这一步不预设走向，所以当事人看到的不是「协商还是追责」的选择，而是「同意 / 不同意」。 -->
+      <template v-if="terminationNegotiating">
+        <p class="conversation-actions__tip">
+          先协商：对方同意即按协商一致处理——无责退出，定金全额原路退还需求方、无违约金、双方都不担责。
+          协商一致**协商不出赔付**（赔付只有平台判责才有依据）；对方不同意或超时未回应，任一方可申请平台介入，
+          由平台认定责任方后按责任执行。
+        </p>
+        <template v-if="canRespondTermination">
+          <label class="conversation-actions__field">
+            <span>同意或不同意的说明（可选）</span>
+            <textarea v-model="breachDecisionNote" rows="3" maxlength="1000"
+              placeholder="说明你的立场，双方与客服都会看到"></textarea>
+          </label>
+        </template>
+        <p v-else class="conversation-actions__tip">已提交申请，等待对方回应。</p>
+      </template>
+      <p v-else-if="activeBreachCase.mutualAgreedAt" class="conversation-actions__line">
+        <strong>协商结果：</strong>双方协商一致（无责退出），{{ formatCnDateTime(activeBreachCase.mutualAgreedAt) }}
+      </p>
+      <p v-else-if="activeBreachCase.mutualRejectedAt" class="conversation-actions__line">
+        <strong>协商结果：</strong>对方不同意解除合作（{{ formatCnDateTime(activeBreachCase.mutualRejectedAt) }}），
+        任一方可申请平台介入
+      </p>
+
       <template v-if="canDecideBreach">
         <p class="conversation-actions__tip">
           双方都接受 AI 判定后平台才会执行退款／赔付；任一方不接受或逾期未全部表态，案件转客服人工判定。
@@ -997,9 +1075,10 @@ defineExpose({
           placeholder="请描述合作终止的事实、时间与相关证据说明"></textarea>
       </label>
       <p class="conversation-actions__tip">
-        提交后平台会核对合同、支付、交付与沟通记录，由审核智能体依据需求会话与材料判定责任方，
-        客服人工复核后按结论执行退款／赔付并解除需求绑定；判定结果需双方在案件内表态，
-        任一方不接受或逾期未全部表态即转客服人工判定。恶意申报会影响账号信用。
+        提交后案件先进入**协商阶段**：对方同意即按协商一致处理（无责退出，定金全额原路退还需求方、
+        无违约金）；对方不同意或超时未回应，任一方可申请平台介入，由平台核对合同、支付、交付与沟通
+        记录判定责任方，客服人工复核后按结论执行退款／赔付并解除需求绑定。协商一致协商不出赔付
+        （赔付只有判责才有依据）。恶意申报会影响账号信用。
       </p>
     </template>
 
@@ -1008,6 +1087,14 @@ defineExpose({
       <template v-if="activeBreachCase">
         <TButton v-if="canWithdrawBreach" :loading="breachActing" @click="submitBreachWithdraw">撤回申请</TButton>
         <TButton v-if="canRequestPlatformReview" :loading="breachActing" @click="submitPlatformReview">申请平台介入</TButton>
+        <template v-if="canRespondTermination">
+          <TButton variant="outline" tone="danger" :loading="breachActing" @click="submitBreachDecision('rejected')">
+            不同意
+          </TButton>
+          <TButton variant="solid" tone="accent" :loading="breachActing" @click="submitBreachDecision('accepted')">
+            同意解除
+          </TButton>
+        </template>
         <template v-if="canDecideBreach">
           <template v-if="breachRejectPanel">
             <TButton :loading="breachActing" @click="breachRejectPanel = false">取消</TButton>
@@ -1094,6 +1181,19 @@ defineExpose({
 .conversation-actions .conversation-actions__chip--danger:hover:not(:disabled) {
   border-color: rgba(180, 64, 47, 0.9);
   background: #fff7f6;
+}
+
+/* 值得留意的入口（结单后的「售后」）：浅蓝描边 + 淡蓝底，与这一排的白色小胶囊同重量，
+   不抢发送按钮那一块实心主色；配色取会话本身用的那支蓝，不另起一套色。 */
+.conversation-actions .conversation-actions__chip--accent {
+  border-color: rgba(37, 99, 235, 0.38);
+  background: rgba(37, 99, 235, 0.07);
+  color: #1d4ed8;
+}
+
+.conversation-actions .conversation-actions__chip--accent:hover:not(:disabled) {
+  border-color: rgba(37, 99, 235, 0.62);
+  background: rgba(37, 99, 235, 0.12);
 }
 
 .conversation-actions__hint {

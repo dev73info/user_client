@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   getAdapayBreachCase,
-  reportAdapayBreach,
+  reportAdapayTermination,
   requestAdapayPlatformReview,
   submitAdapayBreachDecision,
   withdrawAdapayBreach,
@@ -1007,7 +1007,7 @@ async function submitBreachReport() {
   }
   breachLoading.value = true
   try {
-    breachCase.value = await reportAdapayBreach(auth.token, item.requirement_id, reason)
+    breachCase.value = await reportAdapayTermination(auth.token, item.requirement_id, reason)
     breachNewRound.value = false
     showToast('终止合作申请已提交，请先与对方协商', 'success')
   } catch (error) {
@@ -1577,18 +1577,11 @@ async function loadRequirementConversations() {
                 <span>会话</span>
               </TButton>
               <TButton
-                variant="solid"
-                tone="warning"
-                v-if="hasPendingCreatorUnbindRequest(row.item)"
-                @click="openUnbindRespond(row.item!)"
-                >处理解除申请</TButton
-              >
-              <TButton
                 variant="outline"
                 tone="danger"
-                v-else-if="canRequestUnbind(row.item)"
-                @click="openUnbindRequest(row.item!)"
-                >申请解除</TButton
+                v-if="canReportBreach(row.item)"
+                @click="openBreachReport(row.item!)"
+                >解除合作</TButton
               >
             </div>
           </footer>
@@ -2000,6 +1993,7 @@ async function loadRequirementConversations() {
       :current-username="auth.username"
       :requirement-id="afterSalesTarget?.requirement_id ?? ''"
       :requirement-title="afterSalesTarget?.title ?? ''"
+      :requirement-budget="afterSalesTarget?.budget ?? null"
       :can-open-case="false"
       @close="closeAfterSalesModal"
     />

@@ -110,6 +110,12 @@ export type AdapayBreachCase = {
   developerDecision?: AdapayBreachDecisionValue | null
   developerDecidedAt?: string | null
   verdictSource?: AdapayBreachVerdictSource | null
+  /** 协商阶段：对方**同意**解除合作的时刻，非空即表示双方协商一致（无责退出）。 */
+  mutualAgreedAt?: string | null
+  /** 协商阶段：对方**不同意**的时刻，非空即表示协商不一致（可申请平台介入）。 */
+  mutualRejectedAt?: string | null
+  /** 协商阶段的表态人。 */
+  mutualRespondedBy?: string | null
 }
 
 export async function createAdapayPayment(
@@ -237,14 +243,20 @@ export async function listAdapayAcceptances(
   )
 }
 
-/** 发起终止合作：案件建立后停在「协商中」，双方先自行协商，谈不成再申请平台介入。 */
-export async function reportAdapayBreach(
+/**
+ * 发起「解除合作」：一个入口、不预设走向。
+ *
+ * 案件先进入协商阶段（`submitted`），由对方的回应决定去哪：
+ * 对方同意即按协商一致处理（无责退出），对方不同意或超时未回应才由任一方「申请平台介入」
+ * 转入责任判定。因此这里没有「协商还是追责」的选项，也没有金额。
+ */
+export async function reportAdapayTermination(
   token: string,
   requirementId: string,
   reason: string,
 ): Promise<AdapayBreachCase> {
   return requestJson<AdapayBreachCase>(
-    `/adapay/requirements/${encodeURIComponent(requirementId)}/breach`,
+    `/requirements/${encodeURIComponent(requirementId)}/termination`,
     {
       method: 'POST',
       headers: {
@@ -253,11 +265,11 @@ export async function reportAdapayBreach(
       },
       body: JSON.stringify({ reason }),
     },
-    '提交终止合作申请失败',
+    '提交解除合作申请失败',
   )
 }
 
-/** 查询当前需求上的终止合作案件（无案件时返回 null）。 */
+/** 查询当前需求上的解除合作案件（无案件时返回 null）。 */
 export async function getAdapayBreachCase(
   token: string,
   requirementId: string,
@@ -265,7 +277,7 @@ export async function getAdapayBreachCase(
   return requestJson<AdapayBreachCase | null>(
     `/adapay/requirements/${encodeURIComponent(requirementId)}/breach-case`,
     { headers: authHeader(token) },
-    '加载终止合作案件失败',
+    '加载解除合作案件失败',
   )
 }
 

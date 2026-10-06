@@ -35,7 +35,7 @@ import {
   createAdapayPayment,
   getAdapayBreachCase,
   getAdapayPayment,
-  reportAdapayBreach,
+  reportAdapayTermination,
   requestAdapayPlatformReview,
   submitAdapayBreachDecision,
   withdrawAdapayBreach,
@@ -781,7 +781,7 @@ async function submitBreachReport() {
   }
   breachLoading.value = true
   try {
-    breachCase.value = await reportAdapayBreach(auth.token, item.requirement_id, reason)
+    breachCase.value = await reportAdapayTermination(auth.token, item.requirement_id, reason)
     breachNewRound.value = false
     showToast('终止合作申请已提交，请先与对方协商', 'success')
   } catch (error) {
@@ -2193,10 +2193,6 @@ function rowContractAction(item: RequirementItem): 'create' | 'sign' | 'view' | 
  * 返回 null 表示这一行没有待办（例如已结单且已评价），此时不画实心按钮。
  */
 function primaryRowAction(item: RequirementItem): RequirementRowAction | null {
-  if (hasPendingDeveloperUnbindRequest(item)) {
-    return { key: 'unbind-respond', label: '处理解除申请' }
-  }
-
   const contractAction = rowContractAction(item)
   if (contractAction === 'create') {
     const creating = contractCreatingId.value === item.requirement_id
@@ -2258,11 +2254,10 @@ function moreRowActions(item: RequirementItem): RequirementRowAction[] {
       ? { key: 'invoice', label: '获取发票' }
       : { key: 'invoice', label: '获取发票', disabled: true, title: invoiceState.reason },
   )
-  if (canRequestUnbindAsCreator(item)) {
-    entries.push({ key: 'unbind-request', label: '申请解除绑定' })
-  }
+  // 「解除合作」是唯一的退出入口（2026-10-06 起协商解除与终止合作合并）：进去先协商，
+  // 对方同意即无责退出、不同意才申请平台介入。
   if (canReportBreach(item)) {
-    entries.push({ key: 'breach', label: '终止合作', danger: true })
+    entries.push({ key: 'breach', label: '解除合作', danger: true })
   }
   if (canCancel(item)) {
     entries.push({ key: 'cancel', label: '取消需求', danger: true })
@@ -2784,7 +2779,6 @@ watch(
 
       <div class="wb-pager">
         <div class="wb-pager__count">
-          <span>共 {{ filteredTotal }} 条需求单</span>
           <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页需求单数">
             <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
           </TSelect>
@@ -3139,6 +3133,7 @@ watch(
       :current-username="auth.username"
       :requirement-id="afterSalesTarget?.requirement_id ?? ''"
       :requirement-title="afterSalesTarget?.title ?? ''"
+      :requirement-budget="afterSalesTarget?.budget ?? null"
       :can-open-case="true"
       @close="closeAfterSalesModal"
     />
