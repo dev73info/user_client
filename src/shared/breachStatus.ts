@@ -1,5 +1,5 @@
 /**
- * 违约案件状态枚举与中文文案。
+ * 解除合作案件状态枚举与中文文案。
  *
  * 取值与后端 `adapay_breach_case.status` 的 CHECK 约束一一对应
  * （`backend_73info/src/db/schema_postgres/commercial_compliance.sql`）。
@@ -9,7 +9,7 @@
  * 任何一端漏了状态，自检直接报红。
  */
 
-/** 违约案件状态（与后端状态机一致）。 */
+/** 解除合作案件状态（与后端状态机一致）。 */
 export type BreachCaseStatus =
   | 'submitted'
   | 'ai_reviewing'
@@ -21,7 +21,7 @@ export type BreachCaseStatus =
   | 'succeeded'
   | 'rejected'
 
-/** 违约案件状态文案（键集必须覆盖全部 `BreachCaseStatus`）。 */
+/** 解除合作案件状态文案（键集必须覆盖全部 `BreachCaseStatus`）。 */
 export const BREACH_STATUS_LABELS: Record<BreachCaseStatus, string> = {
   submitted: '协商中',
   ai_reviewing: 'AI 审核中',
@@ -34,7 +34,7 @@ export const BREACH_STATUS_LABELS: Record<BreachCaseStatus, string> = {
   rejected: '已驳回',
 }
 
-/** 取违约案件状态中文；空值给占位符，未知码回退原码便于发现漏配文案。 */
+/** 取解除合作案件状态中文；空值给占位符，未知码回退原码便于发现漏配文案。 */
 export function breachStatusLabel(status: string | null | undefined): string {
   if (!status) return '—'
   return BREACH_STATUS_LABELS[status as BreachCaseStatus] ?? status

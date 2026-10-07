@@ -89,7 +89,7 @@ type ActionRequirement = {
  * chip 的三种视觉重量：
  *   - `default`：普通入口（如「查看合同」），白底描边；
  *   - `primary`：**当前该做的那一步**（如「支付定金」「发起合同」），实心主色；
- *   - `accent`：值得留意、但不是人人都要走的一步（如结单后的「售后」），浅色描边突出；
+ *   - `accent`：值得留意、但不是人人都要走的一步（如结单后的「解除合作」），浅色描边突出；
  *   - `danger`：终止类动作（如「终止合作」），红色描边。
  */
 type ActionTone = 'default' | 'primary' | 'danger' | 'accent'
@@ -239,7 +239,7 @@ const canRequestUnbind = computed(
 const canRespondUnbind = computed(
   () => pendingUnbindRequest.value?.initiator === (isDeveloper.value ? 'creator' : 'developer'),
 )
-/** 未结束的违约案件（已撤回 / 已驳回 / 已结案不再提供入口）。 */
+/** 未结束的解除合作案件（已撤回 / 已驳回 / 已结案不再提供入口）。 */
 const hasLiveBreachCase = computed(
   () => breachCase.value != null && !BREACH_CLOSED_STATUSES.includes(breachCase.value.status),
 )
@@ -259,15 +259,15 @@ const canUseBreach = computed(
 )
 
 /**
- * 结单后的唯一业务入口：售后（与需求列表页的 `canOpenAfterSales` 同一口径）。
+ * 结单后的唯一业务入口：解除合作（与需求列表页的 `canOpenAfterSales` 同一口径）。
  *
  * 只在担保模式、需求 `completed` 时给：结单之前的问题走「终止合作」，结单之后资金已分账出账，
- * 只有售后这一条线能退尾款、扣接单保证金；无担保模式没有托管资金，也没有可裁决的对象。
+ * 只有解除合作这一条线能退尾款、扣接单保证金；无担保模式没有托管资金，也没有可裁决的对象。
  * 两侧都能看到这个入口（乙方要在这里表态接受或不接受），但发起只有需求方，见 `canOpenCase`。
  */
 const canUseAfterSales = computed(() => status.value === 'completed' && !isSelfManaged.value)
 
-/** 售后弹窗的开关：案件列表、表态与发起都在 `AfterSalesModal` 里，这里只负责入口。 */
+/** 解除合作弹窗的开关：案件列表、表态与发起都在 `AfterSalesModal` 里，这里只负责入口。 */
 const afterSalesVisible = ref(false)
 
 /** 已撤回 / 已驳回 / 已结案的案件不再展示明细，回到申报表单（与需求列表页一致）。 */
@@ -441,7 +441,7 @@ const chips = computed<ActionChip[]>(() => {
     // 用 `accent` 而不是 `primary`：实心主色是「现在该做这一步」的意思（支付定金、发起合同），
     // 而结单后并不总有事要做——没有在办案件时它只是一个入口，占了主色会把「查看合同」压下去，
     // 也和这一排其它入口不是一套语言。
-    list.push({ key: 'after-sales', label: '售后', tone: 'accent', run: openAfterSalesDialog })
+    list.push({ key: 'after-sales', label: '解除合作', tone: 'accent', run: openAfterSalesDialog })
   }
   return list
 })
@@ -773,7 +773,7 @@ async function submitUnbindRespond(action: 'approve' | 'reject') {
 }
 
 /**
- * 打开售后弹窗：案件列表、诉求与双方表态都在弹窗内，由它自己在打开时拉取（`visible` 一变就刷新），
+ * 打开解除合作弹窗：案件列表、诉求与双方表态都在弹窗内，由它自己在打开时拉取（`visible` 一变就刷新），
  * 这里不预加载——缓存一份反而会显示上一轮的结果。
  */
 function openAfterSalesDialog() {
@@ -836,7 +836,7 @@ async function submitBreachDecision(decision: AdapayBreachDecisionValue) {
     showToast(decision === 'accepted' ? '已接受 AI 判定' : '已提交不接受，案件转客服人工判定', 'success')
     emit('changed')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交违约案件表态失败', 'error')
+    showToast(error instanceof Error ? error.message : '提交解除合作案件表态失败', 'error')
   } finally {
     breachActing.value = false
   }
@@ -920,7 +920,7 @@ defineExpose({
   </div>
   <p v-if="unbindHint" class="conversation-actions__hint">{{ unbindHint }}</p>
 
-  <!-- 结单后的售后：入口只在担保模式且需求已完成时出现，弹窗自己负责案件列表、诉求与表态。 -->
+  <!-- 结单后的解除合作：入口只在担保模式且需求已完成时出现，弹窗自己负责案件列表、诉求与表态。 -->
   <AfterSalesModal v-if="requirement" :visible="afterSalesVisible" :token="token"
     :current-username="auth.username" :requirement-id="requirement.requirement_id"
     :requirement-title="requirement.title" :requirement-budget="requirement.budget"
@@ -1183,7 +1183,7 @@ defineExpose({
   background: #fff7f6;
 }
 
-/* 值得留意的入口（结单后的「售后」）：浅蓝描边 + 淡蓝底，与这一排的白色小胶囊同重量，
+/* 值得留意的入口（结单后的「解除合作」）：浅蓝描边 + 淡蓝底，与这一排的白色小胶囊同重量，
    不抢发送按钮那一块实心主色；配色取会话本身用的那支蓝，不另起一套色。 */
 .conversation-actions .conversation-actions__chip--accent {
   border-color: rgba(37, 99, 235, 0.38);

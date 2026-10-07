@@ -17,7 +17,7 @@ function caseOf(overrides: Partial<AfterSalesActionSubject> = {}): AfterSalesAct
   }
 }
 
-describe('售后待办判定 isAwaitingViewerAction', () => {
+describe('解除合作待办判定 isAwaitingViewerAction', () => {
   it('开发者在「待对方表态」且自己未表态时是待办', () => {
     expect(isAwaitingViewerAction(caseOf())).toBe(true)
     expect(isAwaitingViewerAction(caseOf({ status: 'support_reviewing' }))).toBe(true)
@@ -62,7 +62,7 @@ describe('售后待办判定 isAwaitingViewerAction', () => {
   })
 })
 
-describe('售后待办角标读数 afterSalesBadgeText', () => {
+describe('解除合作待办角标读数 afterSalesBadgeText', () => {
   it('超过 99 收成 99+，与工作台菜单角标同口径', () => {
     expect(afterSalesBadgeText(1)).toBe('1')
     expect(afterSalesBadgeText(99)).toBe('99')

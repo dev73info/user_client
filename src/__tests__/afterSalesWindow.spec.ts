@@ -3,7 +3,7 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import type { AfterSalesCase, AfterSalesCaseDetail, AfterSalesCaseList } from '@/api/afterSales'
 
-/** 售后窗口关闭后不该再渲染发起表单：填完必然被后端 409 拒绝，等于死入口。 */
+/** 解除合作窗口关闭后不该再渲染发起表单：填完必然被后端 409 拒绝，等于死入口。 */
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   open: vi.fn(),
@@ -123,7 +123,7 @@ async function clickButton(text: string) {
 }
 
 const hasForm = () => wrapper!.find('.after-sales-modal textarea').exists()
-const submitButton = () => button('提交售后申请')
+const submitButton = () => button('提交解除合作申请')
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -134,19 +134,19 @@ afterEach(() => {
   wrapper = undefined
 })
 
-describe('售后弹窗的窗口守卫', () => {
+describe('解除合作弹窗的窗口守卫', () => {
   it('窗口关闭且没有案件时不再给出发起表单，改为中文说明', async () => {
     await open({ windowOpen: false, windowClosesAt: '2026-09-18 00:13:13' })
     expect(hasForm()).toBe(false)
     expect(submitButton()).toBeUndefined()
-    expect(wrapper!.text()).toContain('售后窗口已于 09/18 00:13 关闭')
-    expect(wrapper!.text()).not.toContain('提交售后申请')
+    expect(wrapper!.text()).toContain('解除合作窗口已于 09/18 00:13 关闭')
+    expect(wrapper!.text()).not.toContain('提交解除合作申请')
   })
 
   it('窗口关闭时间缺失时退化为通用措辞，不留空白提示', async () => {
     await open({ windowOpen: false, windowClosesAt: null })
     expect(hasForm()).toBe(false)
-    expect(wrapper!.text()).toContain('本需求的售后窗口已关闭')
+    expect(wrapper!.text()).toContain('本需求的解除合作窗口已关闭')
     expect(wrapper!.text()).not.toContain('时间未知')
   })
 
@@ -154,7 +154,7 @@ describe('售后弹窗的窗口守卫', () => {
     await open({ windowOpen: true })
     expect(hasForm()).toBe(true)
     expect(submitButton()).toBeDefined()
-    expect(wrapper!.text()).not.toContain('不再受理新的售后申请')
+    expect(wrapper!.text()).not.toContain('不再受理新的解除合作申请')
   })
 
   it('窗口状态未知（老后端）时不拦发起表单，保留后端 409 兜底', async () => {
@@ -177,7 +177,7 @@ describe('售后弹窗的窗口守卫', () => {
     })
     expect(hasForm()).toBe(false)
     expect(submitButton()).toBeUndefined()
-    expect(wrapper!.text()).toContain('已有裁决结果的售后案件')
+    expect(wrapper!.text()).toContain('已有裁决结果的解除合作案件')
     expect(wrapper!.text()).toContain('退还客户已付款 20.00 元')
     expect(wrapper!.text()).toContain('联系平台客服重开')
   })
@@ -220,7 +220,7 @@ describe('售后弹窗的窗口守卫', () => {
     await open({ windowOpen: true, items: [caseWith('succeeded')] })
     expect(hasForm()).toBe(true)
     expect(submitButton()).toBeDefined()
-    expect(wrapper!.text()).toContain('上次售后')
+    expect(wrapper!.text()).toContain('上次解除合作')
   })
 
   it('已驳回的案件同样可以自助重新发起：驳回本就不执行资金', async () => {
@@ -239,12 +239,12 @@ describe('售后弹窗的窗口守卫', () => {
   it('窗口关闭但仍有在办案件时展示案件与表态，不显示关闭说明', async () => {
     await open({ windowOpen: false, items: [openCase] })
     expect(wrapper!.text()).toContain('AFTERSALES_1')
-    expect(wrapper!.text()).not.toContain('不再受理新的售后申请')
+    expect(wrapper!.text()).not.toContain('不再受理新的解除合作申请')
     expect(hasForm()).toBe(false)
   })
 })
 
-describe('售后弹窗的表态与落实确认', () => {
+describe('解除合作弹窗的表态与落实确认', () => {
   /** 开发者视角：案件由需求方发起，他只能表态。 */
   const developerProps = { canOpenCase: false, currentUsername: 'dev_flow' }
 
@@ -333,7 +333,7 @@ describe('售后弹窗的表态与落实确认', () => {
   })
 })
 
-describe('售后弹窗的返工中状态', () => {
+describe('解除合作弹窗的返工中状态', () => {
   /** 开发者视角：案件由需求方发起，返工中他没有可点的动作。 */
   const developerProps = { canOpenCase: false, currentUsername: 'dev_flow' }
   const developerView = { viewerRole: 'developer' as const }
@@ -379,7 +379,7 @@ const expectsMoneyBox = () => wrapper!.findAll<HTMLInputElement>('input[type="ch
 const expectsReworkBox = () => wrapper!.findAll<HTMLInputElement>('input[type="checkbox"]')[1]!
 const amountInput = () => wrapper!.find('input[type="number"]')
 
-describe('售后弹窗的期望（要钱 / 返工 / 只反馈）', () => {
+describe('解除合作弹窗的期望（要钱 / 返工 / 只反馈）', () => {
   it('默认勾「要一笔钱回来」：给金额输入框，文案是用户口径', async () => {
     await open()
     expect(expectsMoneyBox().element.checked).toBe(true)
@@ -416,7 +416,7 @@ describe('售后弹窗的期望（要钱 / 返工 / 只反馈）', () => {
     await open()
     await wrapper!.find('.after-sales-modal textarea').setValue('首页在手机上错位')
     await amountInput().setValue('12.5')
-    await clickButton('提交售后申请')
+    await clickButton('提交解除合作申请')
     expect(mocks.open).toHaveBeenCalledWith('token', baseProps.requirementId, true, false, '首页在手机上错位', 1250)
 
     vi.resetAllMocks()
@@ -425,7 +425,7 @@ describe('售后弹窗的期望（要钱 / 返工 / 只反馈）', () => {
     await expectsMoneyBox().setValue(false)
     await expectsReworkBox().setValue(true)
     await wrapper!.find('.after-sales-modal textarea').setValue('请把首页重做一遍')
-    await clickButton('提交售后申请')
+    await clickButton('提交解除合作申请')
     expect(mocks.open).toHaveBeenCalledWith('token', baseProps.requirementId, false, true, '请把首页重做一遍', 0)
   })
 
@@ -441,7 +441,7 @@ describe('售后弹窗的期望（要钱 / 返工 / 只反馈）', () => {
     await open({}, { requirementBudget: 200 })
     await wrapper!.find('.after-sales-modal textarea').setValue('交付与验收标准不符')
     await amountInput().setValue('2000')
-    await clickButton('提交售后申请')
+    await clickButton('提交解除合作申请')
 
     expect(mocks.open).not.toHaveBeenCalled()
     expect(mocks.toast).toHaveBeenCalledWith(
@@ -454,7 +454,7 @@ describe('售后弹窗的期望（要钱 / 返工 / 只反馈）', () => {
     await open({}, { requirementBudget: 200 })
     await wrapper!.find('.after-sales-modal textarea').setValue('交付与验收标准不符')
     await amountInput().setValue('200')
-    await clickButton('提交售后申请')
+    await clickButton('提交解除合作申请')
 
     expect(mocks.open).toHaveBeenCalledWith(
       'token',

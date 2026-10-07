@@ -85,13 +85,13 @@ describe('conversation status cards', () => {
   })
 
   it('treats the post-completion delivery card as a notification with the after-sales exit', () => {
-    // 结单（completed）后发布版本（售后返工）：验收动作在后端一律被拒，这张卡片不能再走
-    // 「等待验收」那套——不给验收入口，文案写明需求已结单并把出口指向售后。
+    // 结单（completed）后发布版本（解除合作返工）：验收动作在后端一律被拒，这张卡片不能再走
+    // 「等待验收」那套——不给验收入口，文案写明需求已结单并把出口指向解除合作。
     const customer = meta('delivery_submitted_after_completed', 'customer', 'completed')
     expect(customer).not.toBeNull()
     // 不给验收入口：结单后后端 `accept_delivery` 一律 409，摆出来就是一个必然报错的按钮。
     expect(customer?.acceptanceAction).toBeUndefined()
-    expect(customer?.description).toContain('售后')
+    expect(customer?.description).toContain('解除合作')
     // 产物下载保留：版本确实发布了，这是这张卡片上唯一真实可做的动作。
     expect(customer?.actionLabel).toBe('下载交付产物')
     expect(customer?.downloadDelivery).toBe(true)
@@ -112,8 +112,8 @@ describe('conversation status cards', () => {
   it('treats the settled card as a notification pointing at the after-sales entry', () => {
     const card = meta('requirement_settled', 'customer', 'completed')
     expect(card?.title).toBe('需求已结单')
-    expect(card?.description).toContain('售后')
-    // 售后入口就在需求卡片上，再给按钮只是空跳转回自己已经在的列表。
+    expect(card?.description).toContain('解除合作')
+    // 解除合作入口就在需求卡片上，再给按钮只是空跳转回自己已经在的列表。
     expect(card?.actionLabel).toBeUndefined()
     expect(meta('requirement_settled', 'developer', 'completed')?.actionLabel).toBeUndefined()
   })
@@ -155,8 +155,8 @@ describe('conversation status cards', () => {
     // 后端 `system_card_text` 认识的每个事件码都必须在这里有文案：漏一个，会话里那条
     // 卡片就会渲染成空白（界面还承诺过「对方会在会话里收到通知」）。
     const codes = [
-      // 结单后发布版本（售后返工）：文案已由后端给出，前端也必须认这个码，
-      // 否则它会退化成一条普通消息，卡片语义（结单 / 售后出口）就丢了。
+      // 结单后发布版本（解除合作返工）：文案已由后端给出，前端也必须认这个码，
+      // 否则它会退化成一条普通消息，卡片语义（结单 / 解除合作出口）就丢了。
       'delivery_submitted_after_completed',
       // 协商解除（担保与自管两种模式共用）
       'unbind_request_submitted',
@@ -171,7 +171,7 @@ describe('conversation status cards', () => {
       // 终止合作「人工处理」那一段：后台滞留提醒与客服人工结案
       'breach_case_manual_required_reminder',
       'breach_case_manual_closed',
-      // 售后
+      // 解除合作
       'after_sales_case_opened',
       'after_sales_case_negotiation_proposed',
       'after_sales_case_negotiation_rejected',
@@ -184,7 +184,7 @@ describe('conversation status cards', () => {
       'after_sales_case_rejected',
       'after_sales_case_withdrawn',
       'after_sales_case_manual_required',
-      // 售后「人工处理」那一段的后台滞留提醒（BUG-046）
+      // 解除合作「人工处理」那一段的后台滞留提醒（BUG-046）
       'after_sales_case_manual_required_reminder',
       // 需求方单方取消（已缴定金档）：与「绑定解除、回到待接单」的结局不同（BUG-050）
       'requirement_cancelled',

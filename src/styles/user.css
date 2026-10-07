@@ -9,7 +9,7 @@
 @import './rich-text-code.css';
 @import './portal-workbench.css';
 
-/* 待办角标：挂在「售后」这类需要本人动作的行内入口按钮右上角（客户侧我的需求 / 开发者侧我的接单共用）。
+/* 待办角标：挂在「解除合作」这类需要本人动作的行内入口按钮右上角（客户侧我的需求 / 开发者侧我的接单共用）。
    读数的视觉口径与工作台菜单角标一致：红底 #ef4444、白字、11px、胶囊、读数 99+ 封顶
    （读数换算见 shared/afterSalesStatus.ts 的 afterSalesBadgeText）。
    宿主按钮要自己加 .has-todo-badge 声明定位上下文——TButton 的根元素不带 position: relative

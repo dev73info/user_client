@@ -385,7 +385,7 @@
 
 /* 需求单操作区四层：开关芯片 → 行内常用动作 → 更多菜单 → 唯一主操作。
    action-quiet     只做跳转的（会话），无边框无底色
-   action-emphasis  需要看见的次要动作（下载 / 售后），白底蓝字带描边
+   action-emphasis  需要看见的次要动作（下载 / 解除合作），白底蓝字带描边
    action-primary   当前该做的那一步（处理解除申请 / 签署合同 / 支付 / 验收 / 去评价），实心渐变
    同一行最多一个 action-primary；其余低频与危险动作收进「更多」菜单。 */
 .profile-page .requirement-actions button.ghost {
@@ -423,7 +423,7 @@
   color: #1d4ed8;
 }
 
-/* 需要被看见的次要动作（下载 / 售后）：白底蓝字带描边，和链接式的 action-quiet 拉开层次 */
+/* 需要被看见的次要动作（下载 / 解除合作）：白底蓝字带描边，和链接式的 action-quiet 拉开层次 */
 .profile-page .requirement-actions button.ghost.action-emphasis {
   border-color: rgba(79, 140, 255, 0.32);
   background: #ffffff;

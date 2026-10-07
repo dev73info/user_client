@@ -160,7 +160,7 @@ const finalPaymentConfirmTarget = ref<RequirementItem | null>(null)
 /** 验收弹窗：担保模式的验收可重复提交，表单与历史留档都在共用组件 `AcceptanceDialog` 里。 */
 const acceptanceVisible = ref(false)
 const acceptanceTarget = ref<RequirementItem | null>(null)
-/** 售后：结单后的唯一业务入口，案件列表与表态都在 `AfterSalesModal` 里。 */
+/** 解除合作：结单后的唯一业务入口，案件列表与表态都在 `AfterSalesModal` 里。 */
 const afterSalesVisible = ref(false)
 const afterSalesTarget = ref<RequirementItem | null>(null)
 const conversationVisible = ref(false)
@@ -567,13 +567,13 @@ function cancelConfirmHint(item: RequirementItem) {
   return '取消后该需求单保留为「已取消」，可以重新编辑后再提交审核。'
 }
 
-/** 待分账 / 结单后的提示：尾款缴清到渠道分账之间有等待期，结单后还有售后窗口。 */
+/** 待分账 / 结单后的提示：尾款缴清到渠道分账之间有等待期，结单后还有解除合作窗口。 */
 function settlementHint(item: RequirementItem): string {
   if (item.status === 'pending_settlement') {
-    return '尾款已缴，渠道分账中（通常 7 天），完成后结单并开放售后。'
+    return '尾款已缴，渠道分账中（通常 7 天），完成后结单并开放解除合作。'
   }
   if (item.status === 'completed') {
-    return '已结单。接单保证金在售后窗口结束且无未结售后案件后释放。'
+    return '已结单。接单保证金在解除合作窗口结束且无未结解除合作案件后释放。'
   }
   return ''
 }
@@ -634,7 +634,7 @@ async function openBreachReport(item: RequirementItem) {
   try {
     breachCase.value = await getAdapayBreachCase(auth.token, item.requirement_id)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载违约案件失败', 'error')
+    showToast(error instanceof Error ? error.message : '加载解除合作案件失败', 'error')
   } finally {
     breachCaseLoading.value = false
   }
@@ -766,7 +766,7 @@ async function submitBreachDecision(decision: AdapayBreachDecisionValue) {
       'success',
     )
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交违约案件表态失败', 'error')
+    showToast(error instanceof Error ? error.message : '提交解除合作案件表态失败', 'error')
   } finally {
     breachDecisionLoading.value = false
   }
@@ -1413,19 +1413,19 @@ async function handleAcceptanceSubmitted(result: AdapayAcceptanceResult) {
   }
 }
 
-/** 售后入口：只有担保模式的需求有售后（结单后仍需冻结接单保证金、且尾款能原路退回）。 */
+/** 解除合作入口：只有担保模式的需求有解除合作（结单后仍需冻结接单保证金、且尾款能原路退回）。 */
 function canOpenAfterSales(item: RequirementItem) {
   return item.status === 'completed' && !isSelfManagedRequirement(item)
 }
 
-/** 售后入口：结单后打开 `AfterSalesModal`（本页是需求方视角，可发起），案件列表与表态都在弹窗内。 */
+/** 解除合作入口：结单后打开 `AfterSalesModal`（本页是需求方视角，可发起），案件列表与表态都在弹窗内。 */
 function openAfterSalesModal(item: RequirementItem) {
   if (!auth.isAuthed || !auth.token) {
     showToast('请先登录后再继续操作', 'error')
     return
   }
   if (!canOpenAfterSales(item)) {
-    showToast('只有已结单的需求可以发起售后', 'warning')
+    showToast('只有已结单的需求可以发起解除合作', 'warning')
     return
   }
 
@@ -1905,7 +1905,7 @@ async function loadMyRequirements() {
   try {
     const rows = await listRequirements(auth.token)
     // 不截断：列表页要能点进任何一条需求（此前 `slice(0, 20)` 让第 21 条起从列表消失，
-    // 连售后弹窗都进不去）。下方的合同签署状态与资源版本查询是按条发起的，
+    // 连解除合作弹窗都进不去）。下方的合同签署状态与资源版本查询是按条发起的，
     // ponytail: 请求数随需求数线性增长（N 条 ≈ 2N 个请求），需求很多时页面会变慢；
     // 上限的真正解法是服务端分页 + 批量状态接口，等 `/requirement/mine` 支持分页再做。
     myRequirements.value = rows
@@ -2144,7 +2144,7 @@ function handleWechatAuthorized() {
 }
 
 /**
- * 需求行操作区分四层展示：开关芯片（订阅 / 公开）、行内常用动作（下载 / 沟通 / 售后）、
+ * 需求行操作区分四层展示：开关芯片（订阅 / 公开）、行内常用动作（下载 / 沟通 / 解除合作）、
  * 唯一主操作、以及低频动作的「更多」菜单。
  *
  * 下面这些函数只做展示分组，能不能做仍然由既有的 canXxx / hasXxx 守卫函数决定，
@@ -2399,9 +2399,9 @@ function setRating(event: MouseEvent, index: number) {
 }
 
 /**
- * 售后待办：按需求统计「在等我动作」的案件数，给行内「售后」入口挂角标。
+ * 解除合作待办：按需求统计「在等我动作」的案件数，给行内「解除合作」入口挂角标。
  *
- * 一次 `GET /api/after-sales/cases` 就能拿到我参与的全部案件（含 `viewerRole`），不用逐条需求发请求。
+ * 一次 `GET /api/dispute/cases` 就能拿到我参与的全部案件（含 `viewerRole`），不用逐条需求发请求。
  * 待办口径见 `shared/afterSalesStatus.ts` 的 `isAwaitingViewerAction`。
  */
 const afterSalesPending = ref<Record<string, number>>({})
@@ -2674,9 +2674,9 @@ watch(
                 <button v-if="canOpenAfterSales(item)" class="ghost small action-emphasis"
                   :class="{ 'has-todo-badge': afterSalesBadgeFor(item.requirement_id) }" type="button"
                   @click.stop="runRowAction(item, 'after-sales')">
-                  售后
+                  解除合作
                   <span v-if="afterSalesBadgeFor(item.requirement_id)" class="todo-badge"
-                    :title="`有 ${afterSalesPendingCount(item.requirement_id)} 条售后待你处理`">{{
+                    :title="`有 ${afterSalesPendingCount(item.requirement_id)} 条解除合作待你处理`">{{
                       afterSalesBadgeFor(item.requirement_id) }}</span>
                 </button>
 
@@ -2983,11 +2983,11 @@ watch(
     </div>
 
     <div v-if="breachVisible && breachRequirement" class="modal-wrap" @click.self="closeBreachReport">
-      <section class="pay-modal breach-modal" aria-label="违约案件弹窗">
+      <section class="pay-modal breach-modal" aria-label="解除合作弹窗">
         <h3>{{ breachDialogTitle() }}</h3>
         <p class="pay-line"><strong>需求标题：</strong>{{ breachRequirement.title }}</p>
         <p class="pay-line"><strong>需求编号：</strong>{{ breachRequirement.requirement_id }}</p>
-        <p v-if="breachCaseLoading" class="pay-line">正在加载违约案件…</p>
+        <p v-if="breachCaseLoading" class="pay-line">正在加载解除合作案件…</p>
         <template v-else-if="breachCase && !breachNewRound">
           <p class="pay-line"><strong>案件编号：</strong>{{ breachCase.caseNo }}</p>
           <p class="pay-line"><strong>当前状态：</strong>{{ breachStatusLabel(breachCase.status) }}</p>
@@ -3725,7 +3725,7 @@ watch(
   font-weight: 700;
 }
 
-/* 违约案件：双方表态（接受 / 不接受）区块 */
+/* 解除合作案件：双方表态（接受 / 不接受）区块 */
 .pay-modal .breach-modal__decision {
   margin-top: 14px;
   padding: 12px 14px;

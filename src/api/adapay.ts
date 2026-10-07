@@ -63,7 +63,7 @@ export type AdapayAcceptanceRecord = {
   createdAt: string
 }
 
-/** 违约案件责任方：`customer` 客户（需求方）/ `developer` 开发者。 */
+/** 解除合作案件责任方：`customer` 客户（需求方）/ `developer` 开发者。 */
 export type AdapayBreachLiableParty = 'customer' | 'developer'
 /** 最终认定结论：责任方之外多一个 `mutual`（双方协商一致、无责退出），只能由客服人工认定。 */
 export type AdapayBreachVerdictParty = AdapayBreachLiableParty | 'mutual'
@@ -298,7 +298,7 @@ export async function submitAdapayBreachDecision(
       },
       body: JSON.stringify({ decision, note }),
     },
-    '提交违约案件表态失败',
+    '提交解除合作案件表态失败',
   )
 }
 

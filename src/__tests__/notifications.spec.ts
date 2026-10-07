@@ -131,18 +131,18 @@ describe('system notification aggregation', () => {
       username: 'dev_old',
     })
 
-    // 四类时间格式不一样（公告与警告是后端口径的 `YYYY-MM-DD HH:MM:SS`，公开申请与售后案件带时区），
+    // 四类时间格式不一样（公告与警告是后端口径的 `YYYY-MM-DD HH:MM:SS`，公开申请与解除合作案件带时区），
     // 聚合层统一解析后再排序：四月 → 三月 → 二月 → 一月
     expect(kinds(cards)).toEqual(['after-sales', 'history-disclosure', 'announcement', 'comment-warning'])
     // 跨类别唯一的键：四类 id 都从 1 开始，只拼 id 会撞在一起
     expect(keys(cards)).toEqual(['after-sales-5', 'history-disclosure-3', 'announcement-7', 'comment-warning-1'])
-    expect(cards[0]?.kindLabel).toBe('售后案件')
+    expect(cards[0]?.kindLabel).toBe('解除合作案件')
     expect(cards[1]?.kindLabel).toBe('公开申请')
     expect(cards[2]?.kindLabel).toBe('平台公告')
     expect(cards[3]?.kindLabel).toBe('评论警告')
   })
 
-  it('售后案件卡片只读：标题取需求名，正文写清诉求额度与当前状态', () => {
+  it('解除合作案件卡片只读：标题取需求名，正文写清诉求额度与当前状态', () => {
     const [card] = buildNotificationCards({ afterSales: [afterSalesCase()], username: 'cust' })
 
     expect(card?.title).toBe('企业官网改版')
@@ -151,12 +151,12 @@ describe('system notification aggregation', () => {
       '诉求：要钱（主张金额 10.00 元） · 当前状态：平台裁决中',
     ])
     expect(card?.meta).toBe('2026-04-01T09:00:00+08:00 由 cust 发起')
-    // 发起、表态、撤回都在需求列表的售后弹窗里做，通知卡片不带动作
+    // 发起、表态、撤回都在需求列表的解除合作弹窗里做，通知卡片不带动作
     expect(card?.canVote).toBe(false)
     expect(card?.postId).toBeUndefined()
   })
 
-  it('售后案件没有主张金额时不显示额度括号', () => {
+  it('解除合作案件没有主张金额时不显示额度括号', () => {
     const [card] = buildNotificationCards({
       afterSales: [afterSalesCase({ expectsMoney: false, expectsRework: true, claimAmountFen: 0 })],
       username: 'cust',

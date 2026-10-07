@@ -152,7 +152,7 @@ const unbindRespondLoading = ref(false)
 /** 处理解除申请时的回执说明（可选，会留在平台记录里给发起方看）。 */
 const unbindRespondNote = ref('')
 const breachVisible = ref(false)
-/** 售后：结单后的唯一业务入口，案件列表与表态都在 `AfterSalesModal` 里。 */
+/** 解除合作：结单后的唯一业务入口，案件列表与表态都在 `AfterSalesModal` 里。 */
 const afterSalesVisible = ref(false)
 const afterSalesTarget = ref<RequirementItem | null>(null)
 const deliveryDialogVisible = ref(false)
@@ -340,9 +340,9 @@ onMounted(async () => {
 })
 
 /**
- * 售后待办：按需求统计「在等我动作」的案件数，给行内「售后」入口挂角标。
+ * 解除合作待办：按需求统计「在等我动作」的案件数，给行内「解除合作」入口挂角标。
  *
- * 一次 `GET /api/after-sales/cases` 就能拿到我参与的全部案件，不用逐条需求发请求
+ * 一次 `GET /api/dispute/cases` 就能拿到我参与的全部案件，不用逐条需求发请求
  * （与列表页其它按条发起的查询不同，这里刻意只打一次）。
  */
 const afterSalesPending = ref<Record<string, number>>({})
@@ -743,13 +743,13 @@ function contractStartHint(item: RequirementItem): string {
   return '等待客户签署，双方签署完成后由需求方支付定金'
 }
 
-/** 待分账 / 结单后的提示：尾款缴清到渠道分账之间有等待期，结单后还有售后窗口。 */
+/** 待分账 / 结单后的提示：尾款缴清到渠道分账之间有等待期，结单后还有解除合作窗口。 */
 function settlementHint(item: RequirementItem): string {
   if (item.status === 'pending_settlement') {
     return '需求方已缴纳尾款，正在等待渠道分账（通常 7 天），分账完成后正式结单并结算'
   }
   if (item.status === 'completed') {
-    return '需求已结单，接单保证金在售后窗口结束且无未结售后案件后释放'
+    return '需求已结单，接单保证金在解除合作窗口结束且无未结解除合作案件后释放'
   }
   return ''
 }
@@ -789,14 +789,14 @@ function canReportBreach(item: RequirementItem) {
       Boolean(signingStatusMap.value[item.requirement_id]?.has_contract))
 }
 
-/** 售后入口：结单后打开 `AfterSalesModal`。开发者是乙方，只查看案件与表态，不能发起。 */
+/** 解除合作入口：结单后打开 `AfterSalesModal`。开发者是乙方，只查看案件与表态，不能发起。 */
 function canOpenAfterSales(item: RequirementItem) {
   return item.status === 'completed' && item.payment_mode !== 'self_managed'
 }
 
 function openAfterSalesModal(item: RequirementItem) {
   if (!canOpenAfterSales(item)) {
-    showToast('只有已结单的需求有售后入口', 'warning')
+    showToast('只有已结单的需求有解除合作入口', 'warning')
     return
   }
   afterSalesTarget.value = item
@@ -821,7 +821,7 @@ async function openBreachReport(item: RequirementItem) {
   try {
     breachCase.value = await getAdapayBreachCase(auth.token, item.requirement_id)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载违约案件失败', 'error')
+    showToast(error instanceof Error ? error.message : '加载解除合作案件失败', 'error')
   } finally {
     breachCaseLoading.value = false
   }
@@ -992,7 +992,7 @@ async function submitBreachDecision(decision: AdapayBreachDecisionValue) {
       'success',
     )
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交违约案件表态失败', 'error')
+    showToast(error instanceof Error ? error.message : '提交解除合作案件表态失败', 'error')
   } finally {
     breachDecisionLoading.value = false
   }
@@ -1536,11 +1536,11 @@ async function loadRequirementConversations() {
                 :class="{ 'has-todo-badge': afterSalesBadgeFor(row.item.requirement_id) }"
                 @click="openAfterSalesModal(row.item!)"
               >
-                售后
+                解除合作
                 <span
                   v-if="afterSalesBadgeFor(row.item.requirement_id)"
                   class="todo-badge"
-                  :title="`有 ${afterSalesPendingCount(row.item.requirement_id)} 条售后待你处理`"
+                  :title="`有 ${afterSalesPendingCount(row.item.requirement_id)} 条解除合作待你处理`"
                   >{{ afterSalesBadgeFor(row.item.requirement_id) }}</span
                 >
               </TButton>
@@ -2477,7 +2477,7 @@ strong.dev-delivery-cell__amount {
   line-height: 1.5;
 }
 
-/* 违约案件：双方表态（接受 / 不接受）区块 */
+/* 解除合作案件：双方表态（接受 / 不接受）区块 */
 .breach-decision {
   display: grid;
   gap: 10px;

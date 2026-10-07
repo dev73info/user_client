@@ -1,10 +1,10 @@
 /**
- * 售后案件状态与诉求类型的中文文案。
+ * 解除合作案件状态与诉求类型的中文文案。
  *
  * 取值与后端状态机一一对应（`backend_73info/src/modules/after_sales/service.rs`）。
  *
  * 这里只做**短标签**（「待对方表态」「平台裁决中」这种）与**待办判定**（`isAwaitingViewerAction`，
- * 给列表行的「售后」入口挂角标），给系统通知卡与列表用；
+ * 给列表行的「解除合作」入口挂角标），给系统通知卡与列表用；
  * 案件详情弹窗里另有一套更长的话术（按「现在到哪一步、你要做什么」组织），
  * 两者口径不同，不要互相抄。
  *
@@ -12,7 +12,7 @@
  * 跨仓引用要新建构建产物，代价大于收益。
  */
 
-/** 售后案件状态（与后端状态机一致）。 */
+/** 解除合作案件状态（与后端状态机一致）。 */
 export type AfterSalesCaseStatus =
   | 'submitted'
   | 'support_reviewing'
@@ -24,7 +24,7 @@ export type AfterSalesCaseStatus =
   | 'rejected'
   | 'withdrawn'
 
-/** 售后案件状态短标签（键集必须覆盖全部 `AfterSalesCaseStatus`）。 */
+/** 解除合作案件状态短标签（键集必须覆盖全部 `AfterSalesCaseStatus`）。 */
 export const AFTER_SALES_STATUS_LABELS: Record<AfterSalesCaseStatus, string> = {
   submitted: '待对方表态',
   support_reviewing: '平台裁决中',
@@ -37,14 +37,14 @@ export const AFTER_SALES_STATUS_LABELS: Record<AfterSalesCaseStatus, string> = {
   withdrawn: '已撤回',
 }
 
-/** 取售后案件状态中文；空值给占位符，未知码回退原码便于发现漏配文案。 */
+/** 取解除合作案件状态中文；空值给占位符，未知码回退原码便于发现漏配文案。 */
 export function afterSalesStatusLabel(status: string | null | undefined): string {
   if (!status) return '—'
   return AFTER_SALES_STATUS_LABELS[status as AfterSalesCaseStatus] ?? status
 }
 
 /**
- * 售后诉求的**期望**文案：发起人想要什么（要钱 / 返工 / 两者都要 / 只是反馈）。
+ * 解除合作诉求的**期望**文案：发起人想要什么（要钱 / 返工 / 两者都要 / 只是反馈）。
  *
  * 不再是「四类诉求」——`refund` 与 `compensation` 描述的其实是资金来源（客户自己付过的钱 /
  * 开发者的接单保证金），那是平台认定的事；`repair` 是动作项，现在可以与要钱并存。
@@ -76,7 +76,7 @@ export type AfterSalesActionSubject = {
 }
 
 /**
- * 案件是否**在等当前登录人动作** —— 需求列表行上的「售后」入口据此挂待办角标。
+ * 案件是否**在等当前登录人动作** —— 需求列表行上的「解除合作」入口据此挂待办角标。
  *
  * 口径直接对齐后端的动作白名单，不要凭状态名猜：
  *   - 发起人（甲方）：`agreed`（待确认落实）与 `rework_pending`（待验收）只能由发起人收口

@@ -34,8 +34,8 @@ import {
   Search,
 } from 'ui_73info'
 
-/* 「系统通知」：评论警告、历史沟通公开申请、售后案件、平台公告四类系统消息，统一成同一种消息卡片。
-   三类数据要登录（评论警告、公开申请、售后案件），公告是公开接口，所以四支请求并行发、各自结算：
+/* 「系统通知」：评论警告、历史沟通公开申请、解除合作案件、平台公告四类系统消息，统一成同一种消息卡片。
+   三类数据要登录（评论警告、公开申请、解除合作案件），公告是公开接口，所以四支请求并行发、各自结算：
    某一支挂了只提示那一类，其余照常显示——一类接口抖动不该让整页变空。
 
    两个工作台共用这一页（用户端 workbench-notifications / 开发者端 dev-notifications），
@@ -121,7 +121,7 @@ async function loadNotifications(showSuccess = false) {
     await Promise.allSettled([
       authed ? listMyCommentWarnings(auth.token) : Promise.resolve<CommentWarning[]>([]),
       authed ? listConversationHistoryDisclosures(auth.token) : Promise.resolve<ConversationHistoryDisclosure[]>([]),
-      // 案件列表接口回的是分页包（items + 售后窗口状态），这里只要案件本身。
+      // 案件列表接口回的是分页包（items + 解除合作窗口状态），这里只要案件本身。
       authed
         ? listMyAfterSalesCases(auth.token).then((page) => page.items)
         : Promise.resolve<AfterSalesCase[]>([]),
@@ -147,7 +147,7 @@ async function loadNotifications(showSuccess = false) {
     afterSales.value = afterSalesResult.value
   } else {
     showToast(
-      afterSalesResult.reason instanceof Error ? afterSalesResult.reason.message : '加载售后案件失败',
+      afterSalesResult.reason instanceof Error ? afterSalesResult.reason.message : '加载解除合作案件失败',
       'error',
     )
   }

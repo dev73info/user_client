@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 售后弹窗（结单后的唯一业务入口）。
+ * 解除合作弹窗（结单后的唯一业务入口）。
  *
  * 需求方与开发者共用，两侧看到的是**同一件事的两面**：
  *   - 需求方（甲方）发起诉求：只说**期望**——要一笔钱回来 / 要对方返工 / 两者都要 / 只反馈问题。
@@ -8,10 +8,10 @@
  *     也挑不了；
  *   - 开发者（乙方）只有「接受诉求」或「不接受，转平台裁决」两个动作（由调用方用 `canOpenCase`
  *     关掉发起表单）：资金出口只通向需求方，他自己立案没有能落地的诉求。
- * 售后只在**结单之后**开放，而结单的触发点就是尾款分账成功，所以退款面对的是「钱已分账出账」这个
+ * 解除合作只在**结单之后**开放，而结单的触发点就是尾款分账成功，所以退款面对的是「钱已分账出账」这个
  * 常态：渠道支持按原分账份额退款（退款对象 + `div_members`），退款照常原路退回；退不动（分账在途、
  * 渠道拒）时转人工，不会去动开发者的接单保证金。
- * 入口守卫里还包含售后窗口：窗口状态由服务端在案件列表响应里给出（`windowOpen`），
+ * 入口守卫里还包含解除合作窗口：窗口状态由服务端在案件列表响应里给出（`windowOpen`），
  * 窗口关闭后不再渲染发起表单，避免用户填完表单一律被后端 409 拒绝；前端不自己拿时间戳
  * 比大小，真正的判定仍在服务层。
  */
@@ -35,7 +35,7 @@ const props = defineProps<{
   currentUsername: string
   requirementId: string
   requirementTitle: string
-  /** 当前登录人是否是本需求的需求方（甲方）：只有甲方能发起售后。 */
+  /** 当前登录人是否是本需求的需求方（甲方）：只有甲方能发起解除合作。 */
   canOpenCase: boolean
   /**
    * 需求预算（元）：主张金额的上限。
@@ -58,7 +58,7 @@ const CLOSED_STATUSES = ['succeeded', 'rejected', 'withdrawn']
  * 有结论的收口状态：只有「结案」与「驳回」是平台或双方给出的结论。
  *
  * 撤回不算结论——它是发起人自己收手，既不产生责任认定也没有资金动作，
- * 把它的诉求字段摆成一张「上次售后」的结论表，只会让人以为平台对此有过说法。
+ * 把它的诉求字段摆成一张「上次解除合作」的结论表，只会让人以为平台对此有过说法。
  */
 const CONCLUDED_STATUSES = ['succeeded', 'rejected']
 
@@ -80,33 +80,33 @@ const casesLoading = ref(false)
 const respondingId = ref<number | null>(null)
 const withdrawingId = ref<number | null>(null)
 
-/** 售后窗口是否还开着（服务端判定）；窗口状态未知时为 null。 */
+/** 解除合作窗口是否还开着（服务端判定）；窗口状态未知时为 null。 */
 const windowOpen = ref<boolean | null>(null)
-/** 售后窗口关闭时间，用于在窗口已关闭时告知需求方。 */
+/** 解除合作窗口关闭时间，用于在窗口已关闭时告知需求方。 */
 const windowClosesAt = ref<string | null>(null)
 
-/** 售后窗口已关闭：此时不再渲染发起表单——表单填完必然被后端 409 拒绝。 */
+/** 解除合作窗口已关闭：此时不再渲染发起表单——表单填完必然被后端 409 拒绝。 */
 const windowClosed = computed(() => windowOpen.value === false)
 
 /** 窗口已关闭时的说明文案：拿得到关闭时间就说清楚，拿不到（结单时间异常）退化为通用措辞。 */
 const windowClosedTip = computed(() =>
   windowClosesAt.value
-    ? `售后窗口已于 ${formatCnDateTime(windowClosesAt.value)} 关闭，本需求不再受理新的售后申请。如需反映其它问题，请走工单中心联系平台。`
-    : '本需求的售后窗口已关闭，不再受理新的售后申请。如需反映其它问题，请走工单中心联系平台。',
+    ? `解除合作窗口已于 ${formatCnDateTime(windowClosesAt.value)} 关闭，本需求不再受理新的解除合作申请。如需反映其它问题，请走工单中心联系平台。`
+    : '本需求的解除合作窗口已关闭，不再受理新的解除合作申请。如需反映其它问题，请走工单中心联系平台。',
 )
 
 /**
- * 当前需求正在办理的售后案件（一个需求只有一条案件，收口前就挂在它上面）。
+ * 当前需求正在办理的解除合作案件（一个需求只有一条案件，收口前就挂在它上面）。
  */
 const currentCase = computed(() =>
   cases.value.find((row) => !CLOSED_STATUSES.includes(row.status)),
 )
 
 /**
- * 已经拿到结论的收口案件（结案 / 驳回）：案件只有一条，所以它就是「上次售后」的结果。
+ * 已经拿到结论的收口案件（结案 / 驳回）：案件只有一条，所以它就是「上次解除合作」的结果。
  *
- * 售后不记录轮次：再次提交会复用同一条案件，上一次的诉求与结论被这次的覆盖，
- * 平台侧也查不到历史诉求，所以这里只展示「上次售后」这一条结论，不堆历史列表。
+ * 解除合作不记录轮次：再次提交会复用同一条案件，上一次的诉求与结论被这次的覆盖，
+ * 平台侧也查不到历史诉求，所以这里只展示「上次解除合作」这一条结论，不堆历史列表。
  *
  * 撤回不进这块：撤回只是发起人自己收手，没有责任认定也没有资金执行，不是「结论」。
  */
@@ -114,7 +114,7 @@ const lastConcludedCase = computed(() =>
   cases.value.find((row) => CONCLUDED_STATUSES.includes(row.status)),
 )
 
-/** 上次售后收口的展示时间：优先用后端给的结案时间，兜底用最后更新时间。 */
+/** 上次解除合作收口的展示时间：优先用后端给的结案时间，兜底用最后更新时间。 */
 const lastConcludedAt = computed(() => {
   const row = lastConcludedCase.value
   return row ? row.resolvedAt || row.updatedAt : ''
@@ -122,7 +122,7 @@ const lastConcludedAt = computed(() => {
 
 /**
  * 收口案件里「动过钱」的那种（认定过退款或赔付额度）：它是终态，需求方**不能再自助发起**
- * ——后端会以 409「该需求已有裁决结果的售后案件」挡下，所以这里不能再渲染发起表单，
+ * ——后端会以 409「该需求已有裁决结果的解除合作案件」挡下，所以这里不能再渲染发起表单，
  * 否则等于摆一个必然失败的入口。重新主张要由客服在平台侧重开案件（复用同一行，不记轮次）。
  *
  * 没动过钱的收口案件（只反馈问题、诉求不成立被驳回）不在这里：那类结论没有钱可翻，
@@ -141,14 +141,14 @@ const caseConcludedTip = computed(() => {
   const row = lastConcludedCase.value
   const funds = row ? executedFunds(row).join(' / ') || pendingFunds(row).join(' / ') : ''
   return (
-    `本需求已有裁决结果的售后案件（${row ? statusText(row.status) : '已收口'}` +
+    `本需求已有裁决结果的解除合作案件（${row ? statusText(row.status) : '已收口'}` +
     `${funds ? `：${funds}` : ''}），需求方不能再次自助发起。` +
     '如需重新主张，请联系平台客服重开该案件，或到工单中心提交工单。'
   )
 })
 
 /**
- * 能不能发起售后：调用方允许（需求方视角）+ 窗口还开着 + 没有「已裁决且执行过资金」的收口案件。
+ * 能不能发起解除合作：调用方允许（需求方视角）+ 窗口还开着 + 没有「已裁决且执行过资金」的收口案件。
  * 窗口 / 案件状态未知（老后端、或列表还没加载完）时不拦，保留后端 409 兜底。
  */
 const canSubmitCase = computed(
@@ -314,9 +314,9 @@ const STATUS_DETAILS: Partial<Record<AfterSalesCase['status'], string>> = {
   support_reviewing:
     '客服给出责任方与金额认定后，由平台执行尾款退还 / 保证金赔付并结案（尾款已分账时按原分账份额原路退回）。这期间发起人仍可撤回申请；资金一旦开始执行就只能等落地。',
   agreed:
-    '这条诉求没有需要平台执行的钱（没要钱，或两个上限都是 0），落实完成后由发起人确认结案；一直不确认会在售后窗口关闭后转人工客服。',
+    '这条诉求没有需要平台执行的钱（没要钱，或两个上限都是 0），落实完成后由发起人确认结案；一直不确认会在解除合作窗口关闭后转人工客服。',
   rework_pending:
-    '若对方没有落实，发起人可点「未落实，申请平台介入」转客服裁决，届时可动用尾款退还与保证金赔付两个渠道；一直不确认会在售后窗口关闭后转人工客服。',
+    '若对方没有落实，发起人可点「未落实，申请平台介入」转客服裁决，届时可动用尾款退还与保证金赔付两个渠道；一直不确认会在解除合作窗口关闭后转人工客服。',
 }
 
 const statusTip = computed(() => {
@@ -424,7 +424,7 @@ async function refresh() {
     windowOpen.value = result.windowOpen
     windowClosesAt.value = result.windowClosesAt
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载售后案件失败', 'error')
+    showToast(err instanceof Error ? err.message : '加载解除合作案件失败', 'error')
   } finally {
     casesLoading.value = false
   }
@@ -458,12 +458,12 @@ async function submit() {
       // 没勾「要一笔钱回来」时不带金额：后端拒收「没要钱却填了额度」的诉求。
       expectsMoney.value ? claimAmountFen.value : 0,
     )
-    showToast('售后申请已提交，对方会在会话里收到通知', 'success')
+    showToast('解除合作申请已提交，对方会在会话里收到通知', 'success')
     description.value = ''
     claimAmount.value = ''
     await refresh()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发起售后申请失败', 'error')
+    showToast(err instanceof Error ? err.message : '发起解除合作申请失败', 'error')
   } finally {
     submitting.value = false
   }
@@ -479,7 +479,7 @@ async function respond(item: AfterSalesCase, action: AfterSalesRespondAction) {
     showToast(respondToast(action, updated), 'success')
     await refresh()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '提交售后表态失败', 'error')
+    showToast(err instanceof Error ? err.message : '提交解除合作案件表态失败', 'error')
   } finally {
     respondingId.value = null
   }
@@ -508,10 +508,10 @@ async function withdraw(item: AfterSalesCase) {
   withdrawingId.value = item.id
   try {
     await withdrawAfterSalesCase(props.token, item.id)
-    showToast('售后申请已撤回', 'success')
+    showToast('解除合作申请已撤回', 'success')
     await refresh()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '撤回售后申请失败', 'error')
+    showToast(err instanceof Error ? err.message : '撤回解除合作申请失败', 'error')
   } finally {
     withdrawingId.value = null
   }
@@ -545,14 +545,14 @@ watch(
 
 <template>
   <div v-if="visible" class="modal-wrap" @click.self="close">
-    <section class="pay-modal after-sales-modal" aria-label="售后弹窗">
-      <h3>售后</h3>
+    <section class="pay-modal after-sales-modal" aria-label="解除合作弹窗">
+      <h3>解除合作</h3>
       <p class="after-sales-modal__subject">
         <strong>{{ requirementTitle }}</strong>
         <span>{{ requirementId }}</span>
       </p>
 
-      <p v-if="casesLoading" class="after-sales-modal__empty">正在加载售后案件…</p>
+      <p v-if="casesLoading" class="after-sales-modal__empty">正在加载解除合作案件…</p>
 
       <template v-else-if="currentCase">
         <dl class="after-sales-modal__facts">
@@ -643,13 +643,13 @@ watch(
       </template>
 
       <template v-else>
-        <!-- 上一次售后的结论：案件只有一条，收口后的这一条就是上次的结果，双方都看得到。
-             售后不记录轮次，再次提交会复用同一条案件并覆盖上次的诉求，平台侧也查不到历史，
-             因此这里只出这一条结论，不堆历史列表，否则每次售后都会堆成一条「历史售后案件」。
+        <!-- 上一次解除合作的结论：案件只有一条，收口后的这一条就是上次的结果，双方都看得到。
+             解除合作不记录轮次，再次提交会复用同一条案件并覆盖上次的诉求，平台侧也查不到历史，
+             因此这里只出这一条结论，不堆历史列表，否则每次解除合作都会堆成一条「历史解除合作案件」。
              「已撤回」不进这块：那是发起人自己收手，没有结论可摆。 -->
         <dl v-if="lastConcludedCase" class="after-sales-modal__facts">
           <div>
-            <dt>上次售后</dt>
+            <dt>上次解除合作</dt>
             <dd>{{ statusText(lastConcludedCase.status) }}</dd>
           </div>
           <div><dt>收口时间</dt><dd>{{ lastConcludedAt ? formatCnDateTime(lastConcludedAt) : '—' }}</dd></div>
@@ -731,7 +731,7 @@ watch(
 
         <template v-else>
           <p class="tip">
-            售后由需求方（甲方）发起，你这边只用于查看诉求并表态：接受即按诉求执行，不接受由平台裁决。
+            解除合作由需求方（甲方）发起，你这边只用于查看诉求并表态：接受即按诉求执行，不接受由平台裁决。
           </p>
           <details class="after-sales-modal__rules">
             <summary>点开看你能做什么</summary>
@@ -760,7 +760,7 @@ watch(
         <button class="ghost" type="button" :disabled="busy" @click="close">关闭</button>
         <button v-if="canSubmitCase && !currentCase && !casesLoading" class="ghost primary" type="button"
           :disabled="submitting" @click="submit">
-          {{ submitting ? '提交中...' : '提交售后申请' }}
+          {{ submitting ? '提交中...' : '提交解除合作申请' }}
         </button>
       </div>
     </section>
@@ -768,7 +768,7 @@ watch(
 </template>
 
 <style scoped>
-/* 样式挂在全局的 .pay-modal 之上：这里只补售后弹窗自己的字段与记录列表。 */
+/* 样式挂在全局的 .pay-modal 之上：这里只补解除合作弹窗自己的字段与记录列表。 */
 .pay-modal.after-sales-modal {
   width: min(600px, 100%);
   max-height: calc(100vh - 36px);

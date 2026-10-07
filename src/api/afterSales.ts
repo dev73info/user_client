@@ -1,7 +1,7 @@
 import { authHeader, requestJson } from '@/api/http'
 
 /**
- * 售后诉求的**期望**：要一笔钱回来（`expectsMoney`）/ 要对方返工或补交付（`expectsRework`）。
+ * 解除合作诉求的**期望**：要一笔钱回来（`expectsMoney`）/ 要对方返工或补交付（`expectsRework`）。
  *
  * 发起人只说期望，不说资金来源——钱是从他自己付过的部分原路退，还是从开发者的接单保证金扣划赔付，
  * 由平台认定（`liableParty` + 两个金额）决定。2026-10-05 之前这里是四值的 `kind`
@@ -10,7 +10,7 @@ import { authHeader, requestJson } from '@/api/http'
  */
 
 /**
- * 售后案件状态。`manual_required` 是渠道扣划失败或超时无人处理后的兜底状态。
+ * 解除合作案件状态。`manual_required` 是渠道扣划失败或超时无人处理后的兜底状态。
  *
  * 双方只能「接受诉求」或「不接受转平台裁决」，因此没有「协商中」这类中间态；
  * 历史值 `negotiating` 已随还价机制下线一并从后端状态约束里摘掉。
@@ -90,7 +90,7 @@ export type AfterSalesCase = {
   developerDecidedAt: string | null
   createdAt: string
   updatedAt: string
-  /** 售后窗口关闭时间（结单时间 + 售后窗口天数）。 */
+  /** 解除合作窗口关闭时间（结单时间 + 解除合作窗口天数）。 */
   windowClosesAt: string | null
   /** 当前登录人在本案件里的身份；无关方为空。 */
   viewerRole: AfterSalesPartyRole | null
@@ -119,14 +119,14 @@ export type AfterSalesCaseDetail = AfterSalesCase & {
 
 export type AfterSalesCaseList = {
   items: AfterSalesCase[]
-  /** 按需求查询时：该需求是否仍在售后窗口内（服务端判定，客户端不自己比时间）；否则为 null。 */
+  /** 按需求查询时：该需求是否仍在解除合作窗口内（服务端判定，客户端不自己比时间）；否则为 null。 */
   windowOpen: boolean | null
-  /** 按需求查询时：该需求的售后窗口关闭时间；需求未结单时为 null。 */
+  /** 按需求查询时：该需求的解除合作窗口关闭时间；需求未结单时为 null。 */
   windowClosesAt: string | null
 }
 
 /**
- * 发起售后申请。
+ * 发起解除合作申请。
  *
  * `claimAmountFen` 是主张的金额（分）：只有 `expectsMoney` 时有意义，作为平台认定的参考。
  * 没要钱却填了额度会被后端拒收（主张与期望打架）。两个期望都关掉 = 只反馈问题（不动钱）。
@@ -140,7 +140,7 @@ export async function openAfterSalesCase(
   claimAmountFen = 0,
 ): Promise<AfterSalesCase> {
   return requestJson<AfterSalesCase>(
-    `/after-sales/requirements/${encodeURIComponent(requirementId)}/cases`,
+    `/dispute/requirements/${encodeURIComponent(requirementId)}/cases`,
     {
       method: 'POST',
       headers: {
@@ -156,27 +156,27 @@ export async function openAfterSalesCase(
         claim_amount_fen: claimAmountFen,
       }),
     },
-    '发起售后申请失败',
+    '发起解除合作申请失败',
   )
 }
 
-/** 查询本人参与的售后案件；传 requirementId 时只返回该需求的案件。 */
+/** 查询本人参与的解除合作案件；传 requirementId 时只返回该需求的案件。 */
 export async function listMyAfterSalesCases(
   token: string,
   requirementId?: string,
 ): Promise<AfterSalesCaseList> {
   const query = requirementId ? `?requirementId=${encodeURIComponent(requirementId)}` : ''
   return requestJson<AfterSalesCaseList>(
-    `/after-sales/cases${query}`,
+    `/dispute/cases${query}`,
     {
       headers: authHeader(token),
     },
-    '加载售后案件失败',
+    '加载解除合作案件失败',
   )
 }
 
 /**
- * 加载售后案件详情：比列表多出双方用户名与两个资金上限（冻结保证金 / 已缴尾款），
+ * 加载解除合作案件详情：比列表多出双方用户名与两个资金上限（冻结保证金 / 已缴尾款），
  * 平台侧裁决据此判断退款与赔付各有多少可动。
  */
 export async function getAfterSalesCase(
@@ -184,16 +184,16 @@ export async function getAfterSalesCase(
   caseId: number,
 ): Promise<AfterSalesCaseDetail> {
   return requestJson<AfterSalesCaseDetail>(
-    `/after-sales/cases/${caseId}`,
+    `/dispute/cases/${caseId}`,
     {
       headers: authHeader(token),
     },
-    '加载售后案件详情失败',
+    '加载解除合作案件详情失败',
   )
 }
 
 /**
- * 对售后诉求表态：`accept` 接受 → 有资金动作的诉求（要求退款且带额度）当场按诉求退款，
+ * 对解除合作诉求表态：`accept` 接受 → 有资金动作的诉求（要求退款且带额度）当场按诉求退款，
  * 其余转「待确认落实」（要求返工则转「返工中」）等发起人收口；`reject` 不接受 → 转平台裁决；
  * `complete` 是发起人确认诉求已落实（「待确认落实」与「返工中」都可用，发起人本人）；
  * `unfulfilled` 是发起人报返工未落实（仅「返工中」可用），转平台裁决。
@@ -205,7 +205,7 @@ export async function respondAfterSalesCase(
   note = '',
 ): Promise<AfterSalesCase> {
   return requestJson<AfterSalesCase>(
-    `/after-sales/cases/${caseId}/respond`,
+    `/dispute/cases/${caseId}/respond`,
     {
       method: 'POST',
       headers: {
@@ -214,21 +214,21 @@ export async function respondAfterSalesCase(
       },
       body: JSON.stringify({ action, note }),
     },
-    '提交售后表态失败',
+    '提交解除合作案件表态失败',
   )
 }
 
-/** 发起人在平台裁决前撤回售后申请。 */
+/** 发起人在平台裁决前撤回解除合作申请。 */
 export async function withdrawAfterSalesCase(
   token: string,
   caseId: number,
 ): Promise<AfterSalesCase> {
   return requestJson<AfterSalesCase>(
-    `/after-sales/cases/${caseId}/withdraw`,
+    `/dispute/cases/${caseId}/withdraw`,
     {
       method: 'POST',
       headers: authHeader(token),
     },
-    '撤回售后申请失败',
+    '撤回解除合作申请失败',
   )
 }

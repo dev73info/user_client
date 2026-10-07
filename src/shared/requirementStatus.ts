@@ -7,7 +7,7 @@ const REQUIREMENT_STATUS_LABELS: Record<string, string> = {
   pending_deposit: '待付定金',
   in_development: '开发中',
   pending_final: '待付尾款',
-  // 尾款已缴、等待渠道分账；分账成功后才转为「已完成」并开放售后入口。
+  // 尾款已缴、等待渠道分账；分账成功后才转为「已完成」并开放解除合作入口。
   pending_settlement: '待分账',
   completed: '已完成',
   cancelled: '已取消',

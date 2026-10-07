@@ -123,7 +123,7 @@ export function conversationCardMeta(
   const canPayDeposit = role !== 'developer' && statusIn(requirementStatus, DEPOSIT_PAYABLE_STATUSES)
   const canPayFinal = role !== 'developer' && statusIn(requirementStatus, FINAL_PAYABLE_STATUSES)
 
-  // 案件类卡片（违约、售后）的详情都在需求卡片的弹窗里，没有可一键执行的资金动作，
+  // 案件类卡片（解除合作）的详情都在需求卡片的弹窗里，没有可一键执行的资金动作，
   // 常规流转一律不给按钮，避免空跳转。转人工那两张也不给催办出口：客服本来就在跟进，
   // 把「催办」做成一张工单只是把平台的跟进变成用户的开单，平添客服工作量。
   switch (actionType) {
@@ -187,18 +187,18 @@ export function conversationCardMeta(
         downloadDelivery: role !== 'developer',
         acceptanceAction: role === 'customer' && statusIn(requirementStatus, DELIVERABLE_STATUSES),
       }
-    // 结单（completed）后开发者仍可发布版本（售后返工），但验收动作在后端此时一律被拒
+    // 结单（completed）后开发者仍可发布版本（解除合作返工），但验收动作在后端此时一律被拒
     // （`accept_delivery` 只认 in_development / pending_final），所以这张卡片不能再说
     // 「等待验收」——需求方点不出验收动作，卡片就是一句兑现不了的承诺。
-    // 后端给的文案已写明「需求已结单，如需返工、退款或赔付请通过售后发起」，这里照抄口径，
+    // 后端给的文案已写明「需求已结单，如需返工、退款或赔付请通过解除合作发起」，这里照抄口径，
     // 只保留产物下载（版本确实发布了，是这张卡片上唯一真实可做的动作）。
     case 'delivery_submitted_after_completed':
       return {
         title: role === 'developer' ? '已提交结单后的新版本' : '收到结单后的新版本',
         description:
           role === 'developer'
-            ? '你已提交新版本，需求此前已结单，本次交付不再走验收；如需返工、退款或赔付，请通过「售后」发起。'
-            : '开发者已提交新版本，需求此前已结单，本次交付不再走验收；如需返工、退款或赔付，请通过「售后」发起。',
+            ? '你已提交新版本，需求此前已结单，本次交付不再走验收；如需返工、退款或赔付，请通过「解除合作」发起。'
+            : '开发者已提交新版本，需求此前已结单，本次交付不再走验收；如需返工、退款或赔付，请通过「解除合作」发起。',
         actionLabel: role === 'developer' ? undefined : '下载交付产物',
         downloadDelivery: role !== 'developer',
       }
@@ -227,7 +227,7 @@ export function conversationCardMeta(
     // 违约责任条款（按需判定，见后端 doc/违约与催告.md）：期限届满的四种后果。
     // 它们都是「时间到了」而不是某一方按下的动作，所以卡片本身不给「推进流程」的按钮——
     // 要么平台已按条款推进完（视为验收），要么只是提醒（逾期），当事人真正要做的事
-    // 在需求卡片上（缴费 / 交付 / 售后）。
+    // 在需求卡片上（缴费 / 交付 / 解除合作）。
     case 'acceptance_deemed_passed':
       return {
         title: '视为验收通过',
@@ -300,8 +300,8 @@ export function conversationCardMeta(
     case 'requirement_settled':
       return {
         title: '需求已结单',
-        description: '尾款分账已完成，需求正式结单，售后入口已开放。',
-        // 与 final_paid 同口径：售后入口就在需求卡片上，这里再给按钮只是空跳转。
+        description: '尾款分账已完成，需求正式结单，解除合作入口已开放。',
+        // 与 final_paid 同口径：解除合作入口就在需求卡片上，这里再给按钮只是空跳转。
       }
     case 'binding_released':
       return {
@@ -384,12 +384,12 @@ export function conversationCardMeta(
       }
     case 'breach_case_support_reviewing':
       return {
-        title: '违约案件已转客服人工判定',
+        title: '解除合作案件已转客服人工判定',
         description: '请等待客服处理，判定结论会同步到案件与这里。',
       }
     case 'breach_case_resolved':
       return {
-        title: '违约案件已结案',
+        title: '解除合作案件已结案',
         description: '资金已按判定处理完成，需求已回到待接单状态。',
       }
     case 'breach_case_rejected':
@@ -404,7 +404,7 @@ export function conversationCardMeta(
       }
     case 'breach_case_manual_required':
       return {
-        title: '违约案件需人工处理',
+        title: '解除合作案件需人工处理',
         description: '资金处理未能自动完成，客服会尽快跟进并在案件内同步进展。',
       }
     // 「需人工处理」之后的两个事件码：后台滞留提醒与客服人工结案。停在人工处理这一段时
@@ -412,13 +412,13 @@ export function conversationCardMeta(
     // 提醒不写死「几天」：阈值是后端常量，文案写死天数后常量一改就在说假话。
     case 'breach_case_manual_required_reminder':
       return {
-        title: '违约案件仍在人工处理中',
+        title: '解除合作案件仍在人工处理中',
         description:
           '案件转人工后仍未收口，客服会尽快处理并在案件内同步结论；双方的接单保证金在此期间继续冻结。',
       }
     case 'breach_case_manual_closed':
       return {
-        title: '违约案件已由客服人工结案',
+        title: '解除合作案件已由客服人工结案',
         description: '本次终止合作案件已由客服人工处理完毕，结论与资金口径见案件详情与需求卡片。',
       }
     // 协商还价与「申请平台介入」此前不写卡片，对方不提就没人在会话里说一声。
@@ -439,21 +439,21 @@ export function conversationCardMeta(
         title: '已申请平台介入',
         description: '平台将依据会话记录与交付材料判定责任方，判定结论会同步到案件与这里。',
       }
-    // 售后案件进展：售后此前完全不写卡片，界面却承诺「对方会在会话里收到通知」。
+    // 解除合作案件进展：解除合作此前完全不写卡片，界面却承诺「对方会在会话里收到通知」。
     // 每一步流转都有卡片，双方不必点进弹窗才知道进展。
     case 'after_sales_case_opened':
       return {
-        title: '售后申请已提交',
-        description: '诉求与诉求金额都在需求卡片的售后弹窗里，等待对方接受或不接受。',
+        title: '解除合作申请已提交',
+        description: '诉求与诉求金额都在需求卡片的解除合作弹窗里，等待对方接受或不接受。',
       }
     case 'after_sales_case_negotiation_proposed':
       return {
-        title: '对方已发起售后协商',
-        description: '请在售后弹窗里表态是否接受该方案。不接受可改额度重新提议。',
+        title: '对方已发起解除合作协商',
+        description: '请在解除合作弹窗里表态是否接受该方案。不接受可改额度重新提议。',
       }
     case 'after_sales_case_negotiation_rejected':
       return {
-        title: '售后协商提议未获同意',
+        title: '解除合作协商提议未获同意',
         description: '双方可改额度重新提议，或由任一方按原诉求表态、交平台裁决。',
       }
     case 'after_sales_case_agreed':
@@ -469,38 +469,38 @@ export function conversationCardMeta(
     case 'after_sales_case_rework_unfulfilled':
       return {
         title: '返工未落实',
-        description: '售后案件已转平台裁决，判定结论会同步到案件与这里。',
+        description: '解除合作案件已转平台裁决，判定结论会同步到案件与这里。',
       }
     case 'after_sales_case_support_reviewing':
       return {
-        title: '售后案件已转客服裁决',
+        title: '解除合作案件已转客服裁决',
         description: '请等待平台判定，裁决结论与资金动账都会同步到案件与这里。',
       }
     case 'after_sales_case_funds_processing':
       // 这张卡片同一事件码有两种来路：双方一致（对方点了「接受诉求」）与平台裁决。卡片没有载荷，
       // 只说资金的去向与进度——写成「裁决已认定」会把双方谈成的案子说成平台介入。
       return {
-        title: '售后资金处理中',
+        title: '解除合作资金处理中',
         description: '退款与赔付正在处理中（渠道退款有等待期），完成后会再有一条结案通知。',
       }
     case 'after_sales_case_resolved':
       return {
-        title: '售后案件已结案',
+        title: '解除合作案件已结案',
         description: '资金已处理完成：尾款原路退还需求方，赔付从开发者保证金扣划。',
       }
     case 'after_sales_case_rejected':
       return {
-        title: '售后申请未获支持',
-        description: '平台未支持本次售后诉求，案件已关闭。',
+        title: '解除合作申请未获支持',
+        description: '平台未支持本次解除合作诉求，案件已关闭。',
       }
     case 'after_sales_case_withdrawn':
       return {
-        title: '售后申请已撤回',
+        title: '解除合作申请已撤回',
         description: '发起人已撤回本次申请，案件已关闭；窗口内仍可重新发起。',
       }
     case 'after_sales_case_manual_required':
       return {
-        title: '售后案件需人工处理',
+        title: '解除合作案件需人工处理',
         description: '资金处理未能自动完成，客服会尽快跟进并在案件内同步进展。',
       }
     // 滞留提醒（BUG-046）：`manual_required` 之后案件不再有自动动作，会话里没有新卡片，
@@ -509,7 +509,7 @@ export function conversationCardMeta(
     // 提醒不写死「几天」：阈值是后端常量，文案写死天数后常量一改就在说假话。
     case 'after_sales_case_manual_required_reminder':
       return {
-        title: '售后案件仍在人工处理中',
+        title: '解除合作案件仍在人工处理中',
         description:
           '案件转人工后仍未收口，客服会尽快处理并在案件内同步结论；该需求的接单保证金在此期间继续冻结。',
       }
