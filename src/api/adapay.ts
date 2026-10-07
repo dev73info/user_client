@@ -60,6 +60,8 @@ export type AdapayAcceptanceRecord = {
   result: AdapayAcceptanceResult
   submittedBy: string
   note: string
+  /** 提交时绑定资源的最新交付版本号；存量留档可能为空。 */
+  resourceVersion?: string | null
   createdAt: string
 }
 

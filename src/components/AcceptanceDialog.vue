@@ -157,6 +157,9 @@ async function submit() {
                 </strong>
                 <time>{{ formatCnDateTime(record.createdAt) }}</time>
               </div>
+              <p class="acceptance-modal__record-version">
+                交付版本：{{ record.resourceVersion?.trim() || '未记录' }}
+              </p>
               <p v-if="record.note">{{ record.note }}</p>
               <small>提交人：{{ record.submittedBy }}</small>
             </li>
@@ -308,6 +311,12 @@ async function submit() {
   font-size: 13px;
   line-height: 1.6;
   overflow-wrap: anywhere;
+}
+
+.pay-modal .acceptance-modal__record-version {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .pay-modal .acceptance-modal__records small {
