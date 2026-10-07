@@ -37,6 +37,7 @@ import {
 } from '@/api/devRequirements'
 import {
   listRequirements,
+  requestRequirementFinalPayCure,
   requestRequirementFinalPayment,
   type RequirementItem,
   type RequirementPaymentMode,
@@ -65,8 +66,16 @@ const props = defineProps<{
   role: ViewerRole
 }>()
 
+/** 会话卡片要跟着工具条的能力开关走；用事件推出去，父组件才能响应式更新。 */
+export type ActionCapabilities = {
+  canAcceptDelivery: boolean
+  canDeliver: boolean
+  canPay: boolean
+}
+
 const emit = defineEmits<{
   changed: []
+  capabilities: [caps: ActionCapabilities]
 }>()
 
 /** 动作栏只读需求单的这几个字段，需求方与开发者的列表结构合并成同一份。 */
@@ -216,6 +225,15 @@ const canDeliver = computed(
 /** 未结束的解除合作案件（已撤回 / 已驳回 / 已结案不再提供入口）。 */
 const hasLiveBreachCase = computed(
   () => breachCase.value != null && !BREACH_CLOSED_STATUSES.includes(breachCase.value.status),
+)
+/** 开发者在待付尾款阶段可催告付款（只通知，不动钱）。 */
+const canCureFinalPay = computed(
+  () =>
+    isDeveloper.value &&
+    !isSelfManaged.value &&
+    contractSigned.value &&
+    status.value === 'pending_final' &&
+    !hasLiveBreachCase.value,
 )
 
 const canUseBreach = computed(
@@ -367,6 +385,14 @@ const chips = computed<ActionChip[]>(() => {
   if (canPayFinal.value) {
     list.push({ key: 'pay', label: '支付尾款', tone: 'primary', run: openPayDialog })
   }
+  if (canCureFinalPay.value) {
+    list.push({
+      key: 'final-pay-cure',
+      label: '催告付款',
+      tone: 'default',
+      run: () => void cureFinalPayment(),
+    })
+  }
   if (canRequestFinal.value) {
     list.push({
       key: 'request-final',
@@ -406,6 +432,35 @@ watch(
   },
   { immediate: true },
 )
+
+/** 能力一变就通知会话容器：卡片上的「验收 / 去交付 / 支付」靠这份快照，不能只读 expose 的 computed（父组件不会跟踪子组件内部依赖）。 */
+watch(
+  [canAcceptDelivery, canDeliver, canPay],
+  () => {
+    emit('capabilities', {
+      canAcceptDelivery: canAcceptDelivery.value,
+      canDeliver: canDeliver.value,
+      canPay: canPay.value,
+    })
+  },
+  { immediate: true },
+)
+
+/**
+ * 下载交付产物时已经确认过版本列表：列表接口偶发仍给 `bound_resource_version_count = 0`，
+ * 会把「验收」卡住。用刚查到的真实版本数兜底抬一下，再触发 capabilities 重算。
+ */
+function applyPublishedVersionCount(count: number) {
+  const item = requirement.value
+  if (!item || count <= 0) {
+    return
+  }
+  const current = item.bound_resource_version_count ?? 0
+  if (count <= current) {
+    return
+  }
+  requirement.value = { ...item, bound_resource_version_count: count }
+}
 
 function toActionRequirement(row: RequirementItem | DevRequirementItem): ActionRequirement {
   return {
@@ -655,6 +710,24 @@ async function requestFinalPayment() {
   }
 }
 
+async function cureFinalPayment() {
+  const item = requirement.value
+  if (!item) {
+    return
+  }
+  actingKey.value = 'final-pay-cure'
+  try {
+    await requestRequirementFinalPayCure(props.token, item.requirement_id)
+    showToast('已催告客户支付尾款', 'success')
+    emit('changed')
+    void loadActions()
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '催告付款失败', 'error')
+  } finally {
+    actingKey.value = ''
+  }
+}
+
 function openDeliveryDialog() {
   if (!hasBoundResource.value) {
     showToast('当前需求还没有关联资源项目', 'warning')
@@ -806,6 +879,8 @@ defineExpose({
   openDeliveryDialog,
   canPay,
   openPayDialog,
+  loadActions,
+  applyPublishedVersionCount,
 })
 </script>
 

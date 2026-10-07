@@ -5,7 +5,8 @@ const meta = (
   actionType: string,
   role: 'customer' | 'developer',
   requirementStatus: string | null,
-) => conversationCardMeta(actionType, 'REQ-1', role, requirementStatus)
+  actionRef?: string | null,
+) => conversationCardMeta(actionType, 'REQ-1', role, requirementStatus, actionRef)
 
 describe('conversation status cards', () => {
   it('offers signing through asign with the in-app page as fallback', () => {
@@ -130,12 +131,32 @@ describe('conversation status cards', () => {
     expect(meta('acceptance_rejected', 'developer', 'completed')?.actionLabel).toBeUndefined()
   })
 
+  it('shows the delivery version on acceptance cards when action_ref is present', () => {
+    // 验收通过 / 不通过 / 视为通过都把当时的交付版本挂在说明里，多轮交付时能分清验的是哪一版。
+    expect(meta('acceptance_rejected', 'customer', 'in_development', '2.0.0')?.description).toContain(
+      '交付版本 2.0.0',
+    )
+    expect(meta('acceptance_passed', 'customer', 'pending_final', '1.2.0')?.description).toContain(
+      '交付版本 1.2.0',
+    )
+    expect(
+      meta('acceptance_deemed_passed', 'customer', 'pending_final', '3.0.0')?.description,
+    ).toContain('交付版本 3.0.0')
+    // 存量空卡片不硬塞「版本」字样。
+    expect(meta('acceptance_rejected', 'customer', 'in_development')?.description).not.toContain(
+      '交付版本',
+    )
+  })
+
   it('drops the final-payment button once the final payment is paid', () => {
     // 尾款还在等需求方缴时才给入口，且按下去原地打开支付弹窗，不跳页。
     const card = meta('acceptance_passed', 'customer', 'pending_final')
     expect(card?.actionLabel).toBe('支付尾款')
     expect(card?.paymentAction).toBe(true)
     expect(card?.to).toBeUndefined()
+    // 验收打回退回「开发中」时入口仍留在这张「已通过」卡片上，避免用户以为支付入口丢了。
+    expect(meta('acceptance_passed', 'customer', 'in_development')?.actionLabel).toBe('支付尾款')
+    expect(meta('acceptance_passed', 'customer', 'in_development')?.paymentAction).toBe(true)
     // 缴清即转「待分账」，之后结单——这两步需求方都没有尾款可付，历史卡片上留着按钮
     // 只会把人送回一个已经没有该入口的需求列表。
     expect(meta('acceptance_passed', 'customer', 'pending_settlement')?.actionLabel).toBeUndefined()
@@ -192,6 +213,7 @@ describe('conversation status cards', () => {
       'acceptance_deemed_passed',
       'delivery_overdue',
       'final_pay_overdue',
+      'final_pay_cure_by_developer',
       'remediation_expired',
       // 顺延（不可抗力 / 需求变更 / 第三方原因）：只延期限、不动钱
       'breach_deadline_extended',

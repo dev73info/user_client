@@ -248,6 +248,18 @@ function canRequestPlatformReview(item: AdapayBreachCase | null) {
   return item?.status === 'submitted'
 }
 
+/** 协商阶段：案件在 `submitted` 且双方都还没就「解除合作」表态。 */
+function isTerminationNegotiating(item: AdapayBreachCase | null) {
+  return (
+    item?.status === 'submitted' && !item.mutualAgreedAt && !item.mutualRejectedAt
+  )
+}
+
+/** 能不能对「解除合作」表态：当事人里不是发起人的那一位。 */
+function canRespondTermination(item: AdapayBreachCase | null) {
+  return isTerminationNegotiating(item) && item?.reportedBy !== auth.username
+}
+
 /** 只有申请人本人能在 AI 判定与客服介入之前撤回自己的申请（后端同样按状态与申请人校验）。 */
 function canWithdrawBreachCase(item: AdapayBreachCase | null) {
   return (
@@ -338,22 +350,6 @@ const states: { value: RequirementFilterKey; label: string }[] = [
 
 const keyword = ref('')
 const selectedState = ref<RequirementFilterKey>('all')
-
-const summaries = computed(() =>
-  states.map((state) => {
-    const count =
-      state.value === 'all'
-        ? myRequirements.value.length
-        : myRequirements.value.filter((item) => bucketOf(item.status) === state.value).length
-
-    return {
-      ...state,
-      count,
-      /* 加载中不报数（理由同 stripValue），选项文案退回不带条数的档位名。 */
-      optionLabel: requirementLoading.value ? state.label : `${state.label}（${count}）`,
-    }
-  }),
-)
 
 /* 读数在加载中不报数：重新加载会先清空列表，直接显示 0 会被读成「一条需求都没有」。 */
 function stripValue(count: number) {
@@ -700,20 +696,25 @@ async function submitBreachDecision(decision: AdapayBreachDecisionValue) {
   if (!current) {
     return
   }
+  const negotiating = isTerminationNegotiating(current)
   breachDecisionLoading.value = true
   try {
     breachCase.value = await submitAdapayBreachDecision(
       auth.token,
       current.id,
       decision,
-      decision === 'rejected' ? breachDecisionNote.value.trim() : '',
+      breachDecisionNote.value.trim(),
     )
     breachRejectPanel.value = false
     breachDecisionNote.value = ''
-    showToast(
-      decision === 'accepted' ? '已接受 AI 判定，等待对方表态' : '已提交不接受，案件转客服人工判定',
-      'success',
-    )
+    const toast = negotiating
+      ? decision === 'accepted'
+        ? '已同意解除合作，按协商一致处理'
+        : '已表示不同意，任一方可申请平台介入'
+      : decision === 'accepted'
+        ? '已接受 AI 判定，等待对方表态'
+        : '已提交不接受，案件转客服人工判定'
+    showToast(toast, 'success')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '提交解除合作案件表态失败', 'error')
   } finally {
@@ -2345,7 +2346,7 @@ watch(
       <div class="wb-toolbar">
         <TSelect v-model="selectedState" class="wb-toolbar__field wb-toolbar__field--requirement-state"
           aria-label="需求状态">
-          <TOption v-for="state in summaries" :key="state.value" :value="state.value" :label="state.optionLabel" />
+          <TOption v-for="state in states" :key="state.value" :value="state.value" :label="state.label" />
         </TSelect>
         <TInput v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索需求标题、编号或发布人"
           aria-label="搜索需求">
@@ -2768,6 +2769,26 @@ watch(
           </p>
           <p v-if="breachCase.resolutionNote" class="pay-line"><strong>处理说明：</strong>{{ breachCase.resolutionNote }}</p>
 
+          <!-- 协商阶段：对方同意即无责退出，不同意才申请平台介入。 -->
+          <template v-if="isTerminationNegotiating(breachCase)">
+            <p class="tip">
+              先协商：对方同意即按协商一致处理——无责退出，定金全额原路退还需求方、无违约金、不产生赔付。
+              对方不同意或超时未回应，任一方可申请平台介入。
+            </p>
+            <label v-if="canRespondTermination(breachCase)" class="pay-line breach-modal__field">
+              <strong>同意或不同意的说明</strong>
+              <textarea v-model="breachDecisionNote" rows="3" maxlength="1000"
+                placeholder="可选：说明你同意或不同意的立场，双方与客服都会看到"></textarea>
+            </label>
+            <p v-else class="tip">已提交申请，等待对方回应。</p>
+          </template>
+          <p v-else-if="breachCase.mutualAgreedAt" class="pay-line">
+            <strong>协商结果：</strong>双方协商一致（无责退出），{{ formatCnDateTime(breachCase.mutualAgreedAt) }}
+          </p>
+          <p v-else-if="breachCase.mutualRejectedAt" class="pay-line">
+            <strong>协商结果：</strong>对方不同意解除合作（{{ formatCnDateTime(breachCase.mutualRejectedAt) }}），任一方可申请平台介入
+          </p>
+
           <div v-if="canDecideBreachCase(breachCase)" class="breach-modal__decision">
             <p class="pay-line"><strong>是否接受：</strong>双方都接受 AI 判定后平台才会执行退款／赔付；任一方不接受或逾期未全部表态，案件转客服人工判定。</p>
             <label v-if="breachRejectPanel" class="pay-line breach-modal__field">
@@ -2798,8 +2819,16 @@ watch(
             </div>
           </div>
 
-          <p v-else-if="breachCase.status === 'submitted' || breachCase.status === 'ai_reviewing'" class="tip">
-            双方先自行协商：谈成即按协商额度退款结案；协商不成由任一方申请平台介入，平台按 AI 判定 + 客服人工审核认定责任方，判定完成后由双方各自选择是否接受。
+          <p
+            v-else-if="
+              !isTerminationNegotiating(breachCase) &&
+              !breachCase.mutualAgreedAt &&
+              !breachCase.mutualRejectedAt &&
+              (breachCase.status === 'submitted' || breachCase.status === 'ai_reviewing')
+            "
+            class="tip"
+          >
+            平台按 AI 判定 + 客服人工审核认定责任方，判定完成后由双方各自选择是否接受。
           </p>
 
           <div v-if="breachWithdrawConfirm" class="breach-modal__decision">
@@ -2839,6 +2868,18 @@ watch(
               @click="submitPlatformReview">
               {{ platformReviewLoading ? '提交中...' : '申请平台介入' }}
             </button>
+            <template v-if="canRespondTermination(breachCase)">
+              <button class="ghost danger-plain" type="button"
+                :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
+                @click="submitBreachDecision('rejected')">
+                {{ breachDecisionLoading ? '提交中...' : '不同意' }}
+              </button>
+              <button class="ghost primary" type="button"
+                :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
+                @click="submitBreachDecision('accepted')">
+                {{ breachDecisionLoading ? '提交中...' : '同意解除' }}
+              </button>
+            </template>
           </div>
           <!-- 上一轮结案会把合同作废、需求退回大厅：这时没有生效合同可依，按钮不给，
                但必须把「为什么不能再发起、要做什么」写清楚，不能让人对着一个结论干瞪眼（BUG-038）。 -->

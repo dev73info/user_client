@@ -208,6 +208,18 @@ function canRequestPlatformReview(item: AdapayBreachCase | null) {
   return item?.status === 'submitted'
 }
 
+/** 协商阶段：案件在 `submitted` 且双方都还没就「解除合作」表态。 */
+function isTerminationNegotiating(item: AdapayBreachCase | null) {
+  return (
+    item?.status === 'submitted' && !item.mutualAgreedAt && !item.mutualRejectedAt
+  )
+}
+
+/** 能不能对「解除合作」表态：当事人里不是发起人的那一位。 */
+function canRespondTermination(item: AdapayBreachCase | null) {
+  return isTerminationNegotiating(item) && item?.reportedBy !== auth.username
+}
+
 /** 只有申请人本人能在 AI 判定与客服介入之前撤回自己的申请（后端同样按状态与申请人校验）。 */
 function canWithdrawBreachCase(item: AdapayBreachCase | null) {
   return (
@@ -966,20 +978,25 @@ async function submitBreachDecision(decision: AdapayBreachDecisionValue) {
   if (!current) {
     return
   }
+  const negotiating = isTerminationNegotiating(current)
   breachDecisionLoading.value = true
   try {
     breachCase.value = await submitAdapayBreachDecision(
       auth.token,
       current.id,
       decision,
-      decision === 'rejected' ? breachDecisionNote.value.trim() : '',
+      breachDecisionNote.value.trim(),
     )
     breachRejectPanel.value = false
     breachDecisionNote.value = ''
-    showToast(
-      decision === 'accepted' ? '已接受 AI 判定，等待对方表态' : '已提交不接受，案件转客服人工判定',
-      'success',
-    )
+    const toast = negotiating
+      ? decision === 'accepted'
+        ? '已同意解除合作，按协商一致处理'
+        : '已表示不同意，任一方可申请平台介入'
+      : decision === 'accepted'
+        ? '已接受 AI 判定，等待对方表态'
+        : '已提交不接受，案件转客服人工判定'
+    showToast(toast, 'success')
   } catch (error) {
     showToast(error instanceof Error ? error.message : '提交解除合作案件表态失败', 'error')
   } finally {
@@ -1404,13 +1421,6 @@ async function loadRequirementConversations() {
                 <TIcon><ChatDotRound /></TIcon>
                 <span>会话</span>
               </TButton>
-              <TButton
-                variant="outline"
-                tone="danger"
-                v-if="canReportBreach(row.item)"
-                @click="openBreachReport(row.item!)"
-                >解除合作</TButton
-              >
             </div>
           </footer>
         </article>
@@ -1418,7 +1428,6 @@ async function loadRequirementConversations() {
 
       <div class="dev-pager">
         <div class="dev-pager__count">
-          <span>共 {{ filteredTotal }} 条</span>
           <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
             <TOption
               v-for="size in LIST_PAGE_SIZES"
@@ -1596,6 +1605,30 @@ async function loadRequirementConversations() {
             {{ breachRoundHint() }}
           </p>
 
+          <!-- 协商阶段：对方同意即无责退出，不同意才申请平台介入。 -->
+          <template v-if="isTerminationNegotiating(breachCase)">
+            <p class="unbind-dialog-tip">
+              先协商：对方同意即按协商一致处理——无责退出，定金全额原路退还需求方、无违约金、不产生赔付。
+              对方不同意或超时未回应，任一方可申请平台介入。
+            </p>
+            <TInput
+              v-if="canRespondTermination(breachCase)"
+              show-count
+              v-model="breachDecisionNote"
+              type="textarea"
+              :rows="3"
+              :maxlength="1000"
+              placeholder="可选：说明你同意或不同意的立场，双方与客服都会看到"
+            />
+            <p v-else class="unbind-dialog-tip">已提交申请，等待对方回应。</p>
+          </template>
+          <p v-else-if="breachCase.mutualAgreedAt" class="unbind-dialog-line">
+            协商结果：双方协商一致（无责退出），{{ formatCnDateTime(breachCase.mutualAgreedAt) }}
+          </p>
+          <p v-else-if="breachCase.mutualRejectedAt" class="unbind-dialog-line">
+            协商结果：对方不同意解除合作（{{ formatCnDateTime(breachCase.mutualRejectedAt) }}），任一方可申请平台介入
+          </p>
+
           <div v-if="canDecideBreachCase(breachCase)" class="breach-decision">
             <p class="unbind-dialog-line">
               请选择是否接受 AI
@@ -1642,11 +1675,15 @@ async function loadRequirementConversations() {
             </div>
           </div>
           <p
-            v-else-if="breachCase.status === 'submitted' || breachCase.status === 'ai_reviewing'"
+            v-else-if="
+              !isTerminationNegotiating(breachCase) &&
+              !breachCase.mutualAgreedAt &&
+              !breachCase.mutualRejectedAt &&
+              (breachCase.status === 'submitted' || breachCase.status === 'ai_reviewing')
+            "
             class="unbind-dialog-tip"
           >
-            双方先自行协商：谈成即按协商额度退款结案；协商不成由任一方申请平台介入，平台按 AI 判定 +
-            客服人工审核认定责任方，判定完成后由双方各自选择是否接受。
+            平台按 AI 判定 + 客服人工审核认定责任方，判定完成后由双方各自选择是否接受。
           </p>
 
           <div v-if="breachWithdrawConfirm" class="breach-decision">
@@ -1726,6 +1763,24 @@ async function loadRequirementConversations() {
           @click="submitPlatformReview"
           >申请平台介入</TButton
         >
+        <template v-if="canRespondTermination(breachCase)">
+          <TButton
+            variant="outline"
+            tone="danger"
+            :loading="breachDecisionLoading"
+            :disabled="platformReviewLoading || breachWithdrawLoading"
+            @click="submitBreachDecision('rejected')"
+            >不同意</TButton
+          >
+          <TButton
+            variant="solid"
+            tone="accent"
+            :loading="breachDecisionLoading"
+            :disabled="platformReviewLoading || breachWithdrawLoading"
+            @click="submitBreachDecision('accepted')"
+            >同意解除</TButton
+          >
+        </template>
         <TButton
           variant="solid"
           tone="accent"

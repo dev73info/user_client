@@ -264,6 +264,23 @@ export async function requestRequirementFinalPayment(
   )
 }
 
+/** 开发者催告客户支付尾款（只通知，不动钱）。 */
+export async function requestRequirementFinalPayCure(
+  token: string,
+  requirementId: string,
+): Promise<void> {
+  await requestJson<unknown>(
+    `/requirements/${encodeURIComponent(requirementId)}/final-pay-cure`,
+    {
+      method: 'POST',
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '催告付款失败',
+  )
+}
+
 export async function resubmitRequirement(
   token: string,
   requirementId: string,

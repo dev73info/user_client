@@ -87,6 +87,15 @@ const DELIVERABLE_STATUSES: readonly string[] = ['in_development', 'pending_fina
  * 已经没有该入口的需求列表，甚至重复发起一笔已完成的支付。
  */
 const FINAL_PAYABLE_STATUSES: readonly string[] = ['pending_final']
+/**
+ * 尾款已经付清之后的状态：历史「验收已通过」卡片上的「支付尾款」必须收起，
+ * 否则会把人送回没有尾款可付的列表，甚至重复发起支付。
+ */
+const FINAL_PAYMENT_DONE_STATUSES: readonly string[] = [
+  'pending_settlement',
+  'completed',
+  'cancelled',
+]
 
 /**
  * 定金还在等需求方缴的状态。
@@ -101,11 +110,25 @@ function statusIn(status: string | null, allowed: readonly string[]): boolean {
   return status != null && allowed.includes(status)
 }
 
+/**
+ * 验收类卡片说明末尾挂上交付版本号（来自消息 `action_ref`）。
+ * 没有版本时保持原说明，避免历史空卡片多出一句「版本：」。
+ */
+function withDeliveryVersion(description: string, actionRef?: string | null): string {
+  const version = actionRef?.trim()
+  if (!version) {
+    return description
+  }
+  return `${description}（交付版本 ${version}）`
+}
+
 export function conversationCardMeta(
   actionType: string,
   requirementId: string,
   role: ConversationCardRole | null,
   requirementStatus: string | null,
+  /** 卡片消息上的 `action_ref`：交付 / 验收类是版本号。 */
+  actionRef?: string | null,
 ): ConversationCardMeta | null {
   const requirementListRoute: RouteLocationRaw =
     role === 'developer'
@@ -122,6 +145,18 @@ export function conversationCardMeta(
   // 同样不跳页。定金与尾款各看各的状态——「合同已签署完成」那张只在待缴定金时给按钮。
   const canPayDeposit = role !== 'developer' && statusIn(requirementStatus, DEPOSIT_PAYABLE_STATUSES)
   const canPayFinal = role !== 'developer' && statusIn(requirementStatus, FINAL_PAYABLE_STATUSES)
+  /**
+   * 「验收已通过 / 视为验收通过」卡片上的支付尾款入口：尾款付清前一直挂着。
+   *
+   * 与工具条 `canPayFinal`（只认 `pending_final`）不同——验收打回会把需求退回「开发中」，
+   * 若按当前状态藏按钮，用户会觉得「支付入口又没了」。入口留在卡片上；若当时还不能付，
+   * 点下去由会话容器提示「请先重新验收通过」。
+   */
+  const canShowFinalPayOnAcceptanceCard =
+    role !== 'developer' &&
+    requirementStatus != null &&
+    !statusIn(requirementStatus, FINAL_PAYMENT_DONE_STATUSES) &&
+    (canPayFinal || statusIn(requirementStatus, ['in_development']))
 
   // 案件类卡片（解除合作）的详情都在需求卡片的弹窗里，没有可一键执行的资金动作，
   // 常规流转一律不给按钮，避免空跳转。转人工那两张也不给催办出口：客服本来就在跟进，
@@ -205,18 +240,21 @@ export function conversationCardMeta(
     case 'acceptance_passed':
       return {
         title: '验收已通过',
-        description: '需求方已验收通过，等待支付尾款。',
+        description: withDeliveryVersion('需求方已验收通过，等待支付尾款。', actionRef),
         // 付尾款是需求方的动作，开发者这边只是通知，不给按钮。
-        // 只在「待付尾款」这一步给：尾款缴清即转「待分账」，这一步已经做完，
-        // 再挂按钮只会把人送回一个没有尾款可付的需求列表。按下去原地打开支付弹窗，不跳页。
-        actionLabel: canPayFinal ? '支付尾款' : undefined,
-        paymentAction: canPayFinal,
-        to: canPayFinal ? undefined : requirementListRoute,
+        // 尾款付清前这张卡片一直挂「支付尾款」（含验收打回退回开发中的时候），
+        // 缴清进入待分账 / 结单后才收起，避免历史卡片变成重复支付的死入口。
+        actionLabel: canShowFinalPayOnAcceptanceCard ? '支付尾款' : undefined,
+        paymentAction: canShowFinalPayOnAcceptanceCard,
+        to: canShowFinalPayOnAcceptanceCard ? undefined : requirementListRoute,
       }
     case 'acceptance_rejected':
       return {
         title: '验收未通过',
-        description: '需求方验收未通过，开发者整改后可重新提交验收。',
+        description: withDeliveryVersion(
+          '需求方验收未通过，开发者整改后可重新提交验收。',
+          actionRef,
+        ),
         // 整改与重新交付都是开发者的动作，需求方这边只是通知，不给按钮；
         // 与「定金已缴纳」同口径：交付入口只在交付那一步给，且原地打开交付弹窗不跳页，
         // 结单后的历史卡片不再挂。
@@ -231,10 +269,12 @@ export function conversationCardMeta(
     case 'acceptance_deemed_passed':
       return {
         title: '视为验收通过',
-        description:
+        description: withDeliveryVersion(
           '验收催告期限届满，需求方未提出具体异议，按合同约定视为验收通过，需求进入待付尾款。',
-        actionLabel: canPayFinal ? '支付尾款' : undefined,
-        paymentAction: canPayFinal,
+          actionRef,
+        ),
+        actionLabel: canShowFinalPayOnAcceptanceCard ? '支付尾款' : undefined,
+        paymentAction: canShowFinalPayOnAcceptanceCard,
       }
     case 'delivery_overdue':
       return {
@@ -250,6 +290,16 @@ export function conversationCardMeta(
       return {
         title: '尾款已逾期',
         description: '尾款已超过合同约定期限，逾期将按约定计迟延履行违约金。',
+        actionLabel: canPayFinal ? '支付尾款' : undefined,
+        paymentAction: canPayFinal,
+      }
+    case 'final_pay_cure_by_developer':
+      return {
+        title: '开发者催告支付尾款',
+        description:
+          role === 'developer'
+            ? '你已催告需求方支付尾款。催告只是正式通知，不会自动扣款。'
+            : '开发者已催告支付尾款，请尽快按合同约定完成付款。',
         actionLabel: canPayFinal ? '支付尾款' : undefined,
         paymentAction: canPayFinal,
       }
@@ -325,7 +375,7 @@ export function conversationCardMeta(
       return {
         title: '解除合作申请已提交',
         description:
-          '等待对方回应。对方同意即按协商一致处理（无责退出：担保模式下作废合同、已缴定金全额原路退还需求方、双方都不担违约金）；对方不同意或超时未回应，任一方可申请平台介入，由平台判定责任方。',
+          '等待对方回应。对方同意即协商一致解除；不同意或超时未回应，任一方可申请平台介入。',
       }
     case 'termination_agreed':
       return {
