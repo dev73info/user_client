@@ -63,11 +63,29 @@ export type PointsProduct = {
   name: string
   points_cost: number
   stock: number
-  kind: 'permission' | 'badge'
+  kind: 'permission' | 'badge' | 'product' | 'consumable'
   payload: string | null
   enabled: boolean
   duration_days: number
   perk_code: string | null
+}
+
+/** 背包消耗卡（精选卡 / 置顶卡） */
+export type PromoCard = {
+  id: number
+  card_code: string
+  product_id: number
+  redeem_order_id: number
+  duration_days: number
+  status: 'unused' | 'used' | string
+  used_resource_id: number | null
+  used_at: string | null
+  created_at: string
+}
+
+/** 首页高赞门槛等公开配置 */
+export type ResourcePromoMeta = {
+  high_like_threshold: number
 }
 
 export type PointsRedeemOrder = {
@@ -113,6 +131,32 @@ export async function listMyRedeemOrders(token: string): Promise<PointsRedeemOrd
     { headers: authHeaders(token) },
     '加载兑换记录失败',
   )
+}
+
+export async function listMyPromoCards(
+  token: string,
+  status: 'unused' | 'used' = 'unused',
+): Promise<PromoCard[]> {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : ''
+  return requestJson<PromoCard[]>(
+    `/points/promo-cards${qs}`,
+    { headers: authHeaders(token) },
+    '加载道具卡失败',
+  )
+}
+
+export async function getResourcePromoMeta(token?: string): Promise<ResourcePromoMeta> {
+  return requestJson<ResourcePromoMeta>(
+    '/points/resource-promo-meta',
+    token ? { headers: authHeaders(token) } : {},
+    '加载资源推广配置失败',
+  )
+}
+
+export function promoCardLabel(cardCode: string): string {
+  if (cardCode === 'resource_featured_card') return '资源精选卡'
+  if (cardCode === 'resource_pin_card') return '资源置顶卡'
+  return cardCode
 }
 
 export async function setUsernameGradient(

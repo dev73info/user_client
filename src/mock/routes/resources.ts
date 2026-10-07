@@ -28,10 +28,16 @@ function publishedResources(): McResourcePayload[] {
 
 /** 公开资源多带几个门户卡片要用的字段（与后端的 public 视图对齐）。 */
 function toPublicResource(resource: McResourcePayload) {
+  const withFeatured = resource as McResourcePayload & {
+    is_featured?: boolean
+    like_count?: number
+  }
   return {
     ...resource,
     versions: versionsOf(resource.id).length,
     download_count: 12,
+    like_count: withFeatured.like_count ?? 0,
+    is_featured: Boolean(withFeatured.is_featured),
     updated_at: resource.updated_at,
   }
 }

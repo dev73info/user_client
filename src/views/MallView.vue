@@ -3,13 +3,16 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import {
+  getMyPoints,
   listMallProducts,
+  listMyPromoCards,
   listMyRedeemOrders,
+  promoCardLabel,
   redeemMallProduct,
   type PointsProduct,
   type PointsRedeemOrder,
+  type PromoCard,
 } from '@/api/points'
-import { getMyPoints } from '@/api/points'
 import { HttpError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 
@@ -21,6 +24,7 @@ const auth = useAuthStore()
 const balance = ref(0)
 const products = ref<PointsProduct[]>([])
 const orders = ref<PointsRedeemOrder[]>([])
+const promoCards = ref<PromoCard[]>([])
 const loading = ref(false)
 const redeemingId = ref<number | null>(null)
 const ownedPerks = ref<Set<string>>(new Set())
@@ -42,10 +46,17 @@ const isOwned = (product: PointsProduct) =>
 function kindLabel(kind: string) {
   if (kind === 'permission') return '权限'
   if (kind === 'badge') return '徽章'
+  if (kind === 'consumable') return '消耗卡'
   return '商品'
 }
 function durationLabel(days: number) {
   return days == null || days < 0 ? '永久' : `${days} 天`
+}
+function consumableHint(product: PointsProduct) {
+  if (product.kind !== 'consumable') return ''
+  if (product.perk_code === 'resource_featured_card') return '资源精选卡 · 使用后进入首页精选'
+  if (product.perk_code === 'resource_pin_card') return '资源置顶卡 · 提升曝光，无精选角标'
+  return '兑换后放入背包，请到我的资源使用'
 }
 function orderStatusLabel(status: string) {
   if (status === 'pending') return '待处理'
@@ -61,10 +72,11 @@ function orderStatusTagType(status: string) {
 async function loadAll() {
   loading.value = true
   try {
-    const [me, prods, ords] = await Promise.all([
+    const [me, prods, ords, cards] = await Promise.all([
       getMyPoints(auth.token),
       listMallProducts(auth.token),
       listMyRedeemOrders(auth.token),
+      listMyPromoCards(auth.token, 'unused'),
     ])
     balance.value = me.points_balance
     ownedPerks.value = new Set(
@@ -74,6 +86,7 @@ async function loadAll() {
     )
     products.value = prods
     orders.value = ords
+    promoCards.value = cards
   } catch (err) {
     TMessage.error(err instanceof HttpError ? err.message : '加载积分商城失败')
   } finally {
@@ -93,7 +106,11 @@ async function redeem(product: PointsProduct) {
   redeemingId.value = product.id
   try {
     await redeemMallProduct(auth.token, product.id)
-    TMessage.success('兑换成功')
+    if (product.kind === 'consumable') {
+      TMessage.success('已放入背包，请到我的资源使用')
+    } else {
+      TMessage.success('兑换成功')
+    }
     await loadAll()
   } catch (err) {
     const message = err instanceof HttpError ? err.message : ''
@@ -101,6 +118,12 @@ async function redeem(product: PointsProduct) {
   } finally {
     redeemingId.value = null
   }
+}
+
+function goUsePromoCards() {
+  router.push({ name: 'dev-resource-list' }).catch(() => {
+    router.push('/workbench/developer/resources/list')
+  })
 }
 
 onMounted(async () => {
@@ -136,6 +159,7 @@ onMounted(async () => {
             </div>
             <h4>{{ product.name }}</h4>
             <p class="mall-card__duration">有效期：{{ durationLabel(product.duration_days) }} · 库存：{{ product.stock }}</p>
+            <p v-if="consumableHint(product)" class="mall-card__hint">{{ consumableHint(product) }}</p>
             <TButton variant="solid" tone="accent" :disabled="isOwned(product) || balance < product.points_cost || product.stock <= 0"
               :loading="redeemingId === product.id" style="width: 100%" @click="redeem(product)">
               {{ isOwned(product) ? '已拥有' : product.stock <= 0 ? '已售罄' : balance < product.points_cost ? '积分不足' : '立即兑换' }}
@@ -144,6 +168,26 @@ onMounted(async () => {
         </div>
       </div>
       <TEmpty v-else-if="!loading" description="商城暂无可兑换内容" />
+    </div>
+
+    <div class="mall-orders">
+      <h3>我的道具卡</h3>
+      <p class="mall-promo-tip">未使用的精选卡 / 置顶卡；请到「我的资源」选定资源后使用。</p>
+      <TTable v-if="promoCards.length" :data="promoCards" stripe>
+        <TTableColumn label="道具" min-width="160">
+          <template #default="{ row }">{{ promoCardLabel(row.card_code) }}</template>
+        </TTableColumn>
+        <TTableColumn label="有效天数" width="100" align="center">
+          <template #default="{ row }">{{ row.duration_days }} 天</template>
+        </TTableColumn>
+        <TTableColumn prop="created_at" label="获得时间" width="180" />
+        <TTableColumn label="操作" width="120" align="center">
+          <template #default>
+            <TButton variant="outline" tone="accent" size="sm" @click="goUsePromoCards">去使用</TButton>
+          </template>
+        </TTableColumn>
+      </TTable>
+      <TEmpty v-else-if="!loading" description="背包暂无未使用的道具卡" />
     </div>
 
     <div class="mall-orders">
@@ -214,6 +258,13 @@ onMounted(async () => {
 .mall-orders h3 {
   font-size: 17px;
   margin: 0 0 14px;
+}
+.mall-card__hint,
+.mall-promo-tip {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
 }
 .mall-grid {
   display: grid;

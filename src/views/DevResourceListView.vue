@@ -8,12 +8,20 @@ import {
   type McProcessedTagTree,
 } from '@/api/resourceTags'
 import {
+  applyResourcePromoCard,
   createMcResourceVersion,
   deleteMcResource,
   listMcResources,
   updateMcResourceHomepage,
   type McResourcePayload,
 } from '@/api/mcResources'
+import {
+  getResourcePromoMeta,
+  listMyPromoCards,
+  promoCardLabel,
+  type PromoCard,
+} from '@/api/points'
+import { HttpError } from '@/api/http'
 import { useToast } from '@/composables/useToast'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
@@ -65,6 +73,33 @@ const deletingResourceId = ref<number | null>(null)
 const resources = ref<McResourcePayload[]>([])
 const selectedResource = ref<McResourcePayload | null>(null)
 const processedTagTree = ref<McProcessedTagTree | null>(null)
+
+const promoDialogVisible = ref(false)
+const promoTarget = ref<McResourcePayload | null>(null)
+const unusedPromoCards = ref<PromoCard[]>([])
+const selectedPromoCardId = ref<number | null>(null)
+const applyingPromo = ref(false)
+const highLikeThreshold = ref(5)
+
+function formatExposureStatus(resource: McResourcePayload): string {
+  const parts: string[] = []
+  if (resource.is_featured) {
+    parts.push(
+      resource.featured_until
+        ? `精选至 ${resource.featured_until}`
+        : '精选（永久）',
+    )
+  }
+  if (resource.is_pinned && resource.pinned_until) {
+    parts.push(`置顶至 ${resource.pinned_until}`)
+  }
+  return parts.join(' · ')
+}
+
+function isFeaturedCardDisabled(card: PromoCard, resource: McResourcePayload | null): boolean {
+  if (!resource || card.card_code !== 'resource_featured_card') return false
+  return (resource.like_count ?? 0) < highLikeThreshold.value
+}
 
 const {
   versionFileInput,
@@ -153,6 +188,80 @@ async function loadResourceRouteTree() {
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载资源目录失败'
     showToast(message, 'warning')
+  }
+}
+
+async function openPromoDialog(resource: McResourcePayload) {
+  if (!auth.token) {
+    showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+  if (resource.visibility !== 'published') {
+    showToast('只能对已发布的资源使用道具卡', 'warning')
+    return
+  }
+  promoTarget.value = resource
+  selectedPromoCardId.value = null
+  promoDialogVisible.value = true
+  try {
+    const [cards, meta] = await Promise.all([
+      listMyPromoCards(auth.token, 'unused'),
+      getResourcePromoMeta(auth.token),
+    ])
+    unusedPromoCards.value = cards
+    const threshold = Number(meta.high_like_threshold)
+    if (Number.isFinite(threshold) && threshold >= 1) {
+      highLikeThreshold.value = Math.floor(threshold)
+    }
+    const firstUsable = cards.find((card) => !isFeaturedCardDisabled(card, resource))
+    selectedPromoCardId.value = firstUsable?.id ?? cards[0]?.id ?? null
+  } catch (error) {
+    const message =
+      error instanceof HttpError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : '加载道具卡失败'
+    showToast(message, 'error')
+  }
+}
+
+async function confirmApplyPromoCard() {
+  if (!auth.token || !promoTarget.value || !selectedPromoCardId.value) {
+    showToast('请选择一张道具卡', 'warning')
+    return
+  }
+  const card = unusedPromoCards.value.find((item) => item.id === selectedPromoCardId.value)
+  if (card && isFeaturedCardDisabled(card, promoTarget.value)) {
+    showToast(
+      `点赞数不足 ${highLikeThreshold.value}，无法使用精选卡`,
+      'warning',
+    )
+    return
+  }
+  applyingPromo.value = true
+  try {
+    const updated = await applyResourcePromoCard(
+      auth.token,
+      promoTarget.value.id,
+      selectedPromoCardId.value,
+    )
+    const index = resources.value.findIndex((item) => item.id === updated.id)
+    if (index >= 0) {
+      resources.value[index] = { ...resources.value[index], ...updated }
+    }
+    promoDialogVisible.value = false
+    showToast('道具卡已使用', 'success')
+  } catch (error) {
+    const message =
+      error instanceof HttpError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : '使用道具卡失败'
+    showToast(message, 'error')
+  } finally {
+    applyingPromo.value = false
   }
 }
 
@@ -305,6 +414,11 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
 
   if (payload.action === 'set-private') {
     void setResourcePrivate(payload.resource)
+    return
+  }
+
+  if (payload.action === 'use-promo') {
+    void openPromoDialog(payload.resource)
     return
   }
 
@@ -524,6 +638,9 @@ async function setResourcePrivate(resource: McResourcePayload) {
             <TTag variant="outline" :tone="resourceVisibilityTagType(scope.row.visibility)">
               {{ resourceVisibilityLabel(scope.row.visibility) }}
             </TTag>
+            <div v-if="formatExposureStatus(scope.row)" class="dev-resource-table__exposure">
+              {{ formatExposureStatus(scope.row) }}
+            </div>
           </template>
         </TTableColumn>
         <TTableColumn prop="created_at" label="创建时间" min-width="150" />
@@ -551,6 +668,12 @@ async function setResourcePrivate(resource: McResourcePayload) {
                     :command="{ action: 'set-private', resource: scope.row }">
                     {{ settingPrivateResourceId === scope.row.id ? '设置中...' : '设为私有' }}
                   </TDropdownItem>
+                  <TDropdownItem
+                    v-if="scope.row.visibility === 'published'"
+                    :command="{ action: 'use-promo', resource: scope.row }"
+                  >
+                    使用道具
+                  </TDropdownItem>
                   <TDropdownItem :command="{ action: 'versions', resource: scope.row }">版本管理</TDropdownItem>
                   <TDropdownItem :command="{ action: 'edit', resource: scope.row }">编辑主页</TDropdownItem>
                   <TDropdownItem :command="{ action: 'delete', resource: scope.row }"
@@ -566,7 +689,6 @@ async function setResourcePrivate(resource: McResourcePayload) {
 
       <div class="dev-pager">
         <div class="dev-pager__count">
-          <span>共 {{ filteredTotal }} 条</span>
           <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
             <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
           </TSelect>
@@ -604,6 +726,47 @@ async function setResourcePrivate(resource: McResourcePayload) {
         </TButton>
       </template>
     </TDialog>
+
+    <TDialog
+      v-model:open="promoDialogVisible"
+      width="520px"
+      class="dev-dialog"
+      :title="promoTarget ? `使用道具 · ${promoTarget.title}` : '使用道具'"
+    >
+      <p class="dev-promo-tip">
+        当前点赞 {{ promoTarget?.like_count ?? 0 }}；精选卡需 ≥ {{ highLikeThreshold }}。
+      </p>
+      <TForm v-if="unusedPromoCards.length" label-position="top">
+        <TFormItem label="选择道具卡" required>
+          <TSelect v-model="selectedPromoCardId" placeholder="请选择未使用的道具卡" style="width: 100%">
+            <TOption
+              v-for="card in unusedPromoCards"
+              :key="card.id"
+              :value="card.id"
+              :disabled="isFeaturedCardDisabled(card, promoTarget)"
+              :label="`${promoCardLabel(card.card_code)} · ${card.duration_days} 天${
+                isFeaturedCardDisabled(card, promoTarget)
+                  ? `（点赞不足 ${highLikeThreshold}）`
+                  : ''
+              }`"
+            />
+          </TSelect>
+        </TFormItem>
+      </TForm>
+      <p v-else class="dev-promo-tip">背包暂无未使用的道具卡，请先到积分商城兑换。</p>
+      <template #footer>
+        <TButton @click="promoDialogVisible = false">取消</TButton>
+        <TButton
+          variant="solid"
+          tone="accent"
+          :loading="applyingPromo"
+          :disabled="!unusedPromoCards.length || !selectedPromoCardId"
+          @click="confirmApplyPromoCard"
+        >
+          确认使用
+        </TButton>
+      </template>
+    </TDialog>
   </div>
 </template>
 
@@ -621,5 +784,19 @@ async function setResourcePrivate(resource: McResourcePayload) {
 
 .dev-resource-table__title-link:hover {
   color: #6280df;
+}
+
+.dev-resource-table__exposure {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.dev-promo-tip {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
 }
 </style>

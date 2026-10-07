@@ -52,8 +52,19 @@ import { getDepositRatio } from '@/api/settings'
 import { listCommunityPosts, type CommunityPost } from '@/api/community'
 import { getResourceDetailSlug, normalizeTagName } from '@/api/resourceTags'
 import { useTagTreeStore } from '@/stores/tagTree'
-import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
-import { doCheckin, getCheckinStatus, type CheckinStatus } from '@/api/points'
+import {
+  invalidateResourceListCache,
+  likePublicMcResource,
+  listAllPublicMcResources,
+  unlikePublicMcResource,
+  type PublicMcResourceItem,
+} from '@/api/resources'
+import {
+  doCheckin,
+  getCheckinStatus,
+  getResourcePromoMeta,
+  type CheckinStatus,
+} from '@/api/points'
 import { getUserBadges, type UserBadge } from '@/api/invite'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 
@@ -126,13 +137,18 @@ type SpotlightCard = {
   title: string
   summary: string
   budget: string
-  status: string
+  /** 封面左上：平台 / 品类 */
   badge: string
+  /** 封面右上：仅精选；空字符串表示不展示 */
+  mark: string
+  markTone: '' | 'featured'
   metaSecondary: string
   authorLabel?: string
   metaTime?: string
   viewCount: number
   downloadCount: number
+  likeCount: number
+  likedByMe: boolean
   gradient?: boolean
   userColor?: string
   accent: string
@@ -143,6 +159,9 @@ type SpotlightCard = {
   originLabel?: string
   originRepost?: boolean
 }
+
+/** 首页高赞阈值：由管理端积分规则 `resource_high_like_threshold` 配置，缺省 5。 */
+const highLikeThreshold = ref(5)
 
 type DeveloperRank = {
   name: string
@@ -726,36 +745,72 @@ function spotlightCoverSrc(card: { coverUrl?: string }) {
   return card.coverUrl && !failedSpotlightCoverUrls.value.has(card.coverUrl) ? card.coverUrl : ''
 }
 
+/** 首页精选区排序：有效精选 → 有效置顶 → 点赞 → 更新时间 → id。 */
+function compareSpotlightResources(left: PublicMcResourceItem, right: PublicMcResourceItem) {
+  const featuredDelta = Number(!!right.is_featured) - Number(!!left.is_featured)
+  if (featuredDelta !== 0) {
+    return featuredDelta
+  }
+
+  const pinnedDelta = Number(!!right.is_pinned) - Number(!!left.is_pinned)
+  if (pinnedDelta !== 0) {
+    return pinnedDelta
+  }
+
+  const likeDelta = (right.like_count ?? 0) - (left.like_count ?? 0)
+  if (likeDelta !== 0) {
+    return likeDelta
+  }
+
+  const leftUpdatedAt = Date.parse(left.updated_at)
+  const rightUpdatedAt = Date.parse(right.updated_at)
+  const updatedDelta =
+    (Number.isNaN(rightUpdatedAt) ? 0 : rightUpdatedAt) -
+    (Number.isNaN(leftUpdatedAt) ? 0 : leftUpdatedAt)
+  if (updatedDelta !== 0) {
+    return updatedDelta
+  }
+
+  return right.id - left.id
+}
+
+function spotlightMarkFor(item: PublicMcResourceItem): {
+  mark: string
+  markTone: SpotlightCard['markTone']
+} {
+  // 仅有效精选出「精选」角标；置顶与纯高赞无角标。
+  if (item.is_featured) {
+    return { mark: '精选', markTone: 'featured' }
+  }
+  return { mark: '', markTone: '' }
+}
+
 const spotlightCards = computed<SpotlightCard[]>(() => {
-  const resourceCards = [...publicResources.value]
-    .sort((left, right) => {
-      const likeDelta = (right.like_count ?? 0) - (left.like_count ?? 0)
-      if (likeDelta !== 0) {
-        return likeDelta
-      }
+  const published = [...publicResources.value]
+  const threshold = highLikeThreshold.value
+  const hybrid = published.filter(
+    (item) =>
+      item.is_featured || item.is_pinned || (item.like_count ?? 0) >= threshold,
+  )
+  // 候选为空时回退到全部已发布，按同一套排序，避免首页区块空白。
+  const candidates = (hybrid.length > 0 ? hybrid : published).sort(compareSpotlightResources)
 
-      const leftUpdatedAt = Date.parse(left.updated_at)
-      const rightUpdatedAt = Date.parse(right.updated_at)
-      const updatedDelta =
-        (Number.isNaN(rightUpdatedAt) ? 0 : rightUpdatedAt) -
-        (Number.isNaN(leftUpdatedAt) ? 0 : leftUpdatedAt)
-      if (updatedDelta !== 0) {
-        return updatedDelta
-      }
-
-      return right.id - left.id
-    })
-    .map((item, index) => ({
+  return candidates.map((item, index) => {
+    const { mark, markTone } = spotlightMarkFor(item)
+    return {
       kind: 'resource' as const,
       title: item.title,
       summary: buildResourceCardSummary(item),
-      budget: summarizeResourceTags(item) || normalizeTagName(item.platform) || '公开资源',
-      status: `${item.like_count ?? 0} 赞`,
-      badge: normalizeTagName(item.platform) || '平台资源',
+      budget: spotlightVersionLabel(item),
+      badge: spotlightCategoryBadge(item),
+      mark,
+      markTone,
       authorLabel: item.author || item.creator || '匿名作者',
       metaTime: formatTimeLabel(item.updated_at),
       viewCount: item.view_count ?? 0,
       downloadCount: item.download_count ?? 0,
+      likeCount: item.like_count ?? 0,
+      likedByMe: !!item.liked_by_me,
       gradient: !!item.author_username_gradient,
       userColor: item.author_username_color || '',
       metaSecondary: `${item.author || item.creator || '匿名作者'} · ${formatTimeLabel(item.updated_at)}`,
@@ -765,13 +820,75 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
       resourceId: item.id,
       originLabel: item.origin_type === 'repost' ? '转载' : '原创',
       originRepost: item.origin_type === 'repost',
-    }))
-
-  return resourceCards
+    }
+  })
 })
 
 const SPOTLIGHT_PAGE_SIZE = 8
 const spotlightPage = ref(1)
+
+/** 作者名溢出时启用横向滚动的资源 id 集合 */
+const spotlightAuthorMarqueeIds = ref<Set<number>>(new Set())
+const spotlightAuthorObservers = new Map<number, ResizeObserver>()
+
+function isSpotlightAuthorMarquee(resourceId?: number): boolean {
+  return resourceId != null && spotlightAuthorMarqueeIds.value.has(resourceId)
+}
+
+function updateSpotlightAuthorMarquee(resourceId: number, el: HTMLElement) {
+  const track = el.querySelector('.portal-spotlight-card__author-text') as HTMLElement | null
+  if (!track) {
+    return
+  }
+  const overflowPx = track.scrollWidth - el.clientWidth
+  const overflow = overflowPx > 1
+  el.style.setProperty('--author-marquee-shift', overflow ? `${-overflowPx}px` : '0px')
+  const next = new Set(spotlightAuthorMarqueeIds.value)
+  if (overflow) {
+    next.add(resourceId)
+  } else {
+    next.delete(resourceId)
+  }
+  if (next.size !== spotlightAuthorMarqueeIds.value.size) {
+    spotlightAuthorMarqueeIds.value = next
+    return
+  }
+  for (const id of next) {
+    if (!spotlightAuthorMarqueeIds.value.has(id)) {
+      spotlightAuthorMarqueeIds.value = next
+      return
+    }
+  }
+}
+
+function bindSpotlightAuthorMarquee(el: unknown, resourceId?: number) {
+  if (resourceId == null) {
+    return
+  }
+  const prev = spotlightAuthorObservers.get(resourceId)
+  if (prev) {
+    prev.disconnect()
+    spotlightAuthorObservers.delete(resourceId)
+  }
+  if (!(el instanceof HTMLElement)) {
+    const next = new Set(spotlightAuthorMarqueeIds.value)
+    next.delete(resourceId)
+    spotlightAuthorMarqueeIds.value = next
+    return
+  }
+  const measure = () => updateSpotlightAuthorMarquee(resourceId, el)
+  measure()
+  const observer = new ResizeObserver(measure)
+  observer.observe(el)
+  spotlightAuthorObservers.set(resourceId, observer)
+}
+
+onBeforeUnmount(() => {
+  for (const observer of spotlightAuthorObservers.values()) {
+    observer.disconnect()
+  }
+  spotlightAuthorObservers.clear()
+})
 const spotlightPageCount = computed(() =>
   Math.max(1, Math.ceil(spotlightCards.value.length / SPOTLIGHT_PAGE_SIZE)),
 )
@@ -784,15 +901,21 @@ function goSpotlightPage(target: number) {
   if (target < 1 || target > spotlightPageCount.value || target === spotlightPage.value) {
     return
   }
-  // 翻页前先用当前高度撑住网格，翻页后保持两页中的较大高度，避免区块高度变化导致页面元素跳动
   const gridElement = document.querySelector<HTMLElement>('.portal-spotlight-grid')
+  // 移动端是紧凑列表，不必锁 min-height；桌面端仍撑住高度避免翻页跳动。
+  const lockMinHeight =
+    typeof window === 'undefined' || window.matchMedia('(min-width: 901px)').matches
   const previousHeight = gridElement?.offsetHeight ?? 0
-  if (gridElement && previousHeight > 0) {
+  if (lockMinHeight && gridElement && previousHeight > 0) {
     gridElement.style.minHeight = `${previousHeight}px`
   }
   spotlightPage.value = target
   void nextTick(() => {
     if (!gridElement) {
+      return
+    }
+    if (!lockMinHeight) {
+      gridElement.style.minHeight = ''
       return
     }
     const nextHeight = gridElement.offsetHeight
@@ -927,8 +1050,62 @@ watch(
   () => auth.isAuthed,
   () => {
     void loadHomeCheckin()
+    // 登录态变化后重拉公开资源，补齐 / 清空 liked_by_me。
+    void loadPublicPortalData(true)
   },
 )
+
+const spotlightLikeSubmittingIds = ref<Set<number>>(new Set())
+
+function openSpotlightLikeLogin() {
+  showToast('请先登录后再点赞', 'info')
+  openAuth('login')
+}
+
+async function toggleSpotlightLike(card: SpotlightCard, event: Event) {
+  event.stopPropagation()
+  event.preventDefault()
+
+  const resourceId = card.resourceId
+  if (resourceId == null) {
+    return
+  }
+  if (spotlightLikeSubmittingIds.value.has(resourceId)) {
+    return
+  }
+  if (!auth.isAuthed || !auth.token.trim()) {
+    openSpotlightLikeLogin()
+    return
+  }
+
+  const nextSubmitting = new Set(spotlightLikeSubmittingIds.value)
+  nextSubmitting.add(resourceId)
+  spotlightLikeSubmittingIds.value = nextSubmitting
+
+  try {
+    const state = card.likedByMe
+      ? await unlikePublicMcResource(auth.token, resourceId)
+      : await likePublicMcResource(auth.token, resourceId)
+    publicResources.value = publicResources.value.map((item) =>
+      item.id === resourceId
+        ? { ...item, liked_by_me: state.liked_by_me, like_count: state.like_count }
+        : item,
+    )
+    invalidateResourceListCache()
+    showToast(state.liked_by_me ? '已点赞' : '已取消点赞', 'success')
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 401) {
+      auth.logout()
+      openSpotlightLikeLogin()
+    } else {
+      showToast(error instanceof Error ? error.message : '点赞操作失败', 'error')
+    }
+  } finally {
+    const done = new Set(spotlightLikeSubmittingIds.value)
+    done.delete(resourceId)
+    spotlightLikeSubmittingIds.value = done
+  }
+}
 
 onMounted(() => {
   setSeoMeta({
@@ -1363,6 +1540,41 @@ function summarizeResourceTags(resource: PublicMcResourceItem): string {
   return tags.slice(0, 2).join(' / ')
 }
 
+/** 封面左上角标：优先标签路径二级品类（如 Java 版），否则回落平台名。 */
+function spotlightCategoryBadge(resource: PublicMcResourceItem): string {
+  const platform = normalizeTagName(resource.platform)
+  for (const selection of resource.tag_selections) {
+    const path = (selection.group_path ?? [])
+      .map((part) => normalizeTagName(part))
+      .filter(Boolean)
+    if (path.length >= 2 && path[1]) {
+      return path[1]
+    }
+  }
+  return platform || '平台资源'
+}
+
+/** 卡片 meta：只展示版本号（如 1.20.X），没有版本则留空。 */
+function spotlightVersionLabel(resource: PublicMcResourceItem): string {
+  for (const selection of resource.tag_selections) {
+    const groupName = normalizeTagName(selection.group_name)
+    const groupAlias = (selection.group_alias || '').trim().toLowerCase()
+    const pathLeaf = normalizeTagName(selection.group_path?.at(-1) || '')
+    const isVersionGroup =
+      groupAlias === 'version' || groupName === '版本' || pathLeaf === '版本'
+    if (!isVersionGroup) {
+      continue
+    }
+    const version = selection.tag_names
+      .map((tag) => normalizeTagName(tag))
+      .find(Boolean)
+    if (version) {
+      return version
+    }
+  }
+  return ''
+}
+
 function normalizeInlineText(value?: string | null): string {
   return value?.replace(/\s+/g, ' ').trim() ?? ''
 }
@@ -1418,16 +1630,26 @@ function resolveResourceRoute(
 }
 
 async function loadPublicPortalData(silent = false) {
-  const [resourcesResult, requirementsResult, announcementsResult] = await Promise.allSettled([
-    listAllPublicMcResources(),
-    // 首页只用最新一条需求做公告，取 1 条即可。
-    listPublicRequirementSpotlights(1, 1),
-    listCommunityPosts({ tag: '公告', limit: 5, offset: 0 }),
-  ])
+  const resourceToken = auth.isAuthed && auth.token.trim() ? auth.token : null
+  const [resourcesResult, requirementsResult, announcementsResult, promoMetaResult] =
+    await Promise.allSettled([
+      listAllPublicMcResources(resourceToken),
+      // 首页只用最新一条需求做公告，取 1 条即可。
+      listPublicRequirementSpotlights(1, 1),
+      listCommunityPosts({ tag: '公告', limit: 5, offset: 0 }),
+      getResourcePromoMeta(resourceToken ?? undefined),
+    ])
   void tagTreeStore.ensure()
 
   if (!isMounted) {
     return
+  }
+
+  if (promoMetaResult.status === 'fulfilled') {
+    const threshold = Number(promoMetaResult.value.high_like_threshold)
+    if (Number.isFinite(threshold) && threshold >= 1) {
+      highLikeThreshold.value = Math.floor(threshold)
+    }
   }
 
   if (resourcesResult.status === 'fulfilled') {
@@ -2092,7 +2314,7 @@ async function submitPublishRequirement() {
             <div class="portal-section__header">
               <div class="portal-section-title">
                 <span class="portal-section-title__icon" aria-hidden="true">★</span>
-                <h2>免费资源</h2>
+                <h2>免费精选资源</h2>
               </div>
               <button
                 class="portal-link-btn"
@@ -2126,7 +2348,16 @@ async function submitPublishRequirement() {
                   <span v-else class="portal-spotlight-card__cover-text">{{
                     card.title.slice(0, 1).toUpperCase()
                   }}</span>
-                  <span class="portal-spotlight-card__badge">{{ card.badge }}</span>
+                  <span v-if="card.badge" class="portal-spotlight-card__badge">{{
+                    card.badge
+                  }}</span>
+                  <span
+                    v-if="card.mark"
+                    class="portal-spotlight-card__mark portal-spotlight-card__mark--featured"
+                  >
+                    <span class="portal-spotlight-card__mark-dot" aria-hidden="true"></span>
+                    {{ card.mark }}
+                  </span>
                   <div
                     class="portal-spotlight-card__screen portal-spotlight-card__screen--primary"
                   ></div>
@@ -2140,9 +2371,8 @@ async function submitPublishRequirement() {
                 <div class="portal-spotlight-card__body">
                   <h3>{{ card.title }}</h3>
                   <p v-if="card.summary">{{ card.summary }}</p>
-                  <div class="portal-spotlight-card__meta-row">
+                  <div v-if="card.budget" class="portal-spotlight-card__meta-row">
                     <strong>{{ card.budget }}</strong>
-                    <span class="portal-spotlight-card__status">{{ card.status }}</span>
                   </div>
                   <div class="portal-spotlight-card__footer">
                     <div class="portal-spotlight-card__footer-main">
@@ -2165,14 +2395,73 @@ async function submitPublishRequirement() {
                           {{ card.downloadCount }}
                         </span>
                       </span>
-                      <span v-if="card.authorLabel"
-                        :class="{ 'username-gradient': card.gradient && !card.userColor }"
-                        :style="card.userColor ? { color: card.userColor } : {}">{{ card.authorLabel }}</span>
+                      <span
+                        v-if="card.authorLabel"
+                        class="portal-spotlight-card__author"
+                        :class="{
+                          'is-marquee': isSpotlightAuthorMarquee(card.resourceId),
+                          'username-gradient': card.gradient && !card.userColor,
+                        }"
+                        :style="card.userColor ? { color: card.userColor } : undefined"
+                        :title="card.authorLabel"
+                        :ref="(el) => bindSpotlightAuthorMarquee(el, card.resourceId)"
+                      >
+                        <span class="portal-spotlight-card__author-text">{{ card.authorLabel }}</span>
+                      </span>
                     </div>
                     <div class="portal-spotlight-card__footer-bottom">
-                      <span v-if="card.originLabel" class="portal-spotlight-card__origin"
-                        :class="{ 'is-repost': card.originRepost }">{{ card.originLabel }}</span>
-                      <span v-if="card.metaTime" class="portal-spotlight-card__time">{{ card.metaTime }}</span>
+                      <div class="portal-spotlight-card__footer-leading">
+                        <span
+                          v-if="card.originLabel"
+                          class="portal-spotlight-card__origin"
+                          :class="{ 'is-repost': card.originRepost }"
+                          >{{ card.originLabel }}</span
+                        >
+                        <button
+                          type="button"
+                          class="portal-spotlight-card__likes"
+                          :class="{
+                            'is-liked': card.likedByMe,
+                            'is-busy':
+                              card.resourceId != null &&
+                              spotlightLikeSubmittingIds.has(card.resourceId),
+                          }"
+                          :title="card.likedByMe ? '取消点赞' : '点赞'"
+                          :aria-pressed="card.likedByMe"
+                          :aria-label="
+                            card.likedByMe
+                              ? `已点赞 ${card.likeCount}，点击取消`
+                              : `点赞，当前 ${card.likeCount}`
+                          "
+                          :disabled="
+                            card.resourceId != null &&
+                            spotlightLikeSubmittingIds.has(card.resourceId)
+                          "
+                          @click="toggleSpotlightLike(card, $event)"
+                          @keydown.enter.stop
+                          @keydown.space.stop
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="13"
+                            height="13"
+                            :fill="card.likedByMe ? 'currentColor' : 'none'"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                            ></path>
+                          </svg>
+                          {{ card.likeCount }}
+                        </button>
+                      </div>
+                      <span v-if="card.metaTime" class="portal-spotlight-card__time">{{
+                        card.metaTime
+                      }}</span>
                     </div>
                   </div>
                 </div>

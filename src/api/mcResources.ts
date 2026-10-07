@@ -68,6 +68,14 @@ export type McResourcePayload = {
   origin_note: string | null
   created_at: string
   updated_at: string
+  like_count?: number
+  /** 有效精选（后端 query-time） */
+  is_featured?: boolean
+  featured_at?: string | null
+  featured_until?: string | null
+  /** 有效置顶（后端 query-time） */
+  is_pinned?: boolean
+  pinned_until?: string | null
 }
 
 export type CreateMcResourceVersionRequest = {
@@ -319,5 +327,25 @@ export async function uploadMcResourceCover(
       body: formData,
     },
     '上传主页图标失败',
+  )
+}
+
+/** 对我的资源使用背包中的精选/置顶卡。 */
+export async function applyResourcePromoCard(
+  token: string,
+  resourceId: number,
+  cardId: number,
+): Promise<McResourcePayload> {
+  return requestJson<McResourcePayload>(
+    `/dev/resources/resources/${resourceId}/promo-cards/apply`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify({ card_id: cardId }),
+    },
+    '使用道具卡失败',
   )
 }

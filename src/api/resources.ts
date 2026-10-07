@@ -41,6 +41,13 @@ export type PublicMcResourceItem = {
   like_count: number
   download_count: number
   view_count: number
+  /** 有效精选（后端 query-time） */
+  is_featured?: boolean
+  featured_at?: string | null
+  featured_until?: string | null
+  /** 有效置顶（后端 query-time） */
+  is_pinned?: boolean
+  pinned_until?: string | null
   creator_credit_score?: number | null
   creator_username_gradient?: boolean
   author_username_gradient?: boolean
