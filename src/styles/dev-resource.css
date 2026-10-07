@@ -38,7 +38,7 @@
 
 .dev-upload-grid--tag-groups {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
@@ -319,21 +319,24 @@
   max-height: 332px;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 2px 4px 2px 2px;
+  /* 给卡片描边/投影留一点外沿，避免贴边被滚动容器裁切 */
+  padding: 4px 6px 8px 2px;
 }
 
+/* 与需求详情绑定侧栏一致：标题在上、多选满宽，已选芯片全部换行（不用 +N） */
 .dev-page--publish .dev-tag-group-row {
   display: grid;
-  grid-template-columns: minmax(128px, 0.35fr) minmax(0, 1fr);
+  grid-template-columns: 1fr;
   align-content: start;
-  align-items: center;
-  column-gap: 12px;
-  row-gap: 6px;
-  padding: 10px 12px;
+  align-items: stretch;
+  row-gap: 8px;
+  padding: 12px;
   border: 1px solid rgba(31, 74, 209, 0.1);
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 250, 255, 0.82));
   box-shadow: 0 6px 14px rgba(31, 74, 209, 0.04);
+  /* 不可 overflow:hidden：会裁掉 TSelect 底边描边与圆角 */
+  overflow: visible;
 }
 
 .dev-page--publish .dev-tag-group-row:last-child {
@@ -343,7 +346,6 @@
 
 .dev-page--publish .dev-tag-group-row__head {
   grid-column: 1;
-  grid-row: 1 / span 2;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -381,31 +383,11 @@
   color: var(--dev-muted);
 }
 
-.dev-page--publish .dev-tag-group-row__selected {
-  grid-column: 2;
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 6px;
-  min-height: 20px;
-  padding: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-}
-
-.dev-page--publish .dev-tag-group-row__selected::-webkit-scrollbar {
-  display: none;
-}
-
-.dev-page--publish .dev-tag-group-row__placeholder {
-  align-self: center;
-  font-size: 11px;
-  color: var(--dev-muted);
-}
-
 .dev-page--publish .dev-tag-group-row__field {
-  grid-column: 2;
+  grid-column: 1;
   margin-bottom: 0;
+  min-width: 0;
+  width: 100%;
 }
 
 .dev-tag-group-panel::-webkit-scrollbar {

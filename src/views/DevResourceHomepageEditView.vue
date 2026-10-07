@@ -739,7 +739,7 @@ onMounted(async () => {
                       }}</span
                     >
                   </header>
-                  <TFormItem class="dev-tag-group-row__field">
+                  <div class="dev-tag-group-row__field">
                     <TSelect
                       v-model="selectedTagIdsByGroup[group.group_id]"
                       multiple
@@ -753,7 +753,7 @@ onMounted(async () => {
                         :value="item.id"
                       />
                     </TSelect>
-                  </TFormItem>
+                  </div>
                 </section>
               </div>
               <p v-else class="dev-empty-state">

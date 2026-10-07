@@ -517,11 +517,16 @@ async function submitResource(mode: 'private' | 'public') {
                     []).length }}/{{ group.items.length }}</span>
                 </header>
 
-                <TFormItem class="dev-tag-group-row__field">
-                  <TSelect v-model="selectedTagIdsByGroup[group.group_id]" multiple filterable placeholder="选择一个或多个标签">
+                <div class="dev-tag-group-row__field">
+                  <TSelect
+                    v-model="selectedTagIdsByGroup[group.group_id]"
+                    multiple
+                    filterable
+                    placeholder="选择一个或多个标签"
+                  >
                     <TOption v-for="item in group.items" :key="item.id" :label="item.name" :value="item.id" />
                   </TSelect>
-                </TFormItem>
+                </div>
               </section>
             </div>
 

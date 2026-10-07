@@ -21,7 +21,6 @@ import {
 import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
-import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -44,7 +43,6 @@ import {
   TSelect,
   TTable,
   TTableColumn,
-  TTag,
   Refresh,
   RefreshLeft,
   Search,
@@ -620,11 +618,6 @@ function openEntry(entryKey: string) {
   finalConfirmed.value = false
 }
 
-function selectedNamesForGroup(group: McPublishTagGroup): string[] {
-  const selectedIds = new Set(selectedTagIdsByGroup[group.group_id] ?? [])
-  return group.items.filter((item) => selectedIds.has(item.id)).map((item) => item.name)
-}
-
 function buildTagSelections() {
   return platformTagGroups.value
     .map((group) => ({
@@ -736,12 +729,23 @@ function resetInitForm() {
       </div>
 
       <div class="dev-toolbar">
-        <TSelect v-model="filters.sortBy" placeholder="排序字段" class="dev-toolbar__field" @change="applyFilters">
+        <TSelect
+          v-model="filters.sortBy"
+          placeholder="排序字段"
+          class="dev-toolbar__field"
+          aria-label="按字段排序"
+          @change="applyFilters"
+        >
           <TOption v-for="item in sortOptions" :key="item.value" :label="item.label" :value="item.value" />
         </TSelect>
 
-        <TSelect v-model="filters.sortOrder" placeholder="排序方向"
-          class="dev-toolbar__field dev-toolbar__field--small" @change="applyFilters">
+        <TSelect
+          v-model="filters.sortOrder"
+          placeholder="排序方向"
+          class="dev-toolbar__field dev-toolbar__field--small"
+          aria-label="排序方向"
+          @change="applyFilters"
+        >
           <TOption label="降序" value="desc" />
           <TOption label="升序" value="asc" />
         </TSelect>
@@ -776,11 +780,8 @@ function resetInitForm() {
           <p class="dev-empty-state">{{ emptyText }}</p>
         </template>
         <!-- 列宽合计必须留在卡片可用宽度以内（桌面端 1440 宽时约 965px）。
-             原来这七列是 300+116+92+112+96+136+130 = 982px，刚好越界十几像素，
-             表格因此横向滚动，「操作」列（fixed="right"）压掉「最近更新」的尾巴。
-             现在固定六列 110+88+108+112+132+118 = 668px，需求列（min-width 260）
-             吃掉剩下的约 297px。状态列由 96 放宽到 112：96px 装不下「待付定金」那枚标签
-             （单元格内容需要 110px），标签会被截成「待付定金…」。 -->
+             固定五列 110+88+108+132+118 = 556px，需求列（min-width 260）吃掉剩余宽度。
+             大厅入口本身就是「未被接单」，行状态对接单决策没有增量信息，故不展示状态列。 -->
         <TTableColumn label="需求" min-width="260" resizable>
           <template #default="scope">
             <div class="dev-requirement-hall__title-cell">
@@ -803,21 +804,6 @@ function resetInitForm() {
             <PaymentModeChip :mode="scope.row.payment_mode" />
           </template>
         </TTableColumn>
-        <TTableColumn label="状态" width="112" resizable>
-          <template #default="scope">
-            <!-- 状态走全站统一口径（requirementStatusLabel）：待付定金 / 已付定金（担保）· 待开发（自管）。
-                 这里原来自己写成「待接单/签约」，有两处不对：
-                 1) 大厅的入口条件就是「未被接单」（后端过滤 status IN (pending_deposit, deposit_paid)
-                    且没有生效中的资源绑定），所以「待接单」是整张表的属性，不是某一行的状态；
-                    而「签约」只有接了单、生成合同之后才会出现，对未接单的行是提前叙说。
-                 2) 无电签约定（self_managed）根本没有合同，那一档永远不会有签约这一步。
-                 另一处错位：真正已付定金、接了就能开工的 deposit_paid 原来只写「待开发」，
-                 倒是还没付定金的 pending_deposit 抢了「待接单」的说法。 -->
-            <TTag variant="outline" :tone="scope.row.status === 'pending_deposit' ? 'warning' : 'success'">
-              {{ requirementStatusLabel(scope.row.status, scope.row.payment_mode) }}
-            </TTag>
-          </template>
-        </TTableColumn>
         <!-- 最近更新只报到分钟（工作台总览的「更新于」也是这个格式）：后端给的是
              「2026-09-28 15:30:00」，19 个字符要 144px，132px 的列会被截成
              「2026-09-28 15:…」；掐掉秒之后 107px 就够，也不再需要省略号。 -->
@@ -838,7 +824,6 @@ function resetInitForm() {
            本页走服务端分页，此前只取第 1 页 10 条且不给翻页入口，第 2 页起的数据在界面上不可达。 -->
       <div class="dev-pager">
         <div class="dev-pager__count">
-          <span>共 {{ total }} 条</span>
           <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size" @change="handlePageSizeChange">
             <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
           </TSelect>
@@ -965,16 +950,14 @@ function resetInitForm() {
                     }}</span>
                 </div>
 
-                <div class="dev-requirement-hall__tag-group-selected">
-                  <template v-if="selectedNamesForGroup(group).length > 0">
-                    <span v-for="name in selectedNamesForGroup(group)" :key="`${group.key}:${name}`"
-                      class="dev-chip dev-chip--cyan">{{ name }}</span>
-                  </template>
-                  <span v-else class="dev-requirement-hall__tag-group-empty">尚未选择标签</span>
-                </div>
-
-                <TSelect v-model="selectedTagIdsByGroup[group.group_id]" multiple filterable placeholder="选择一个或多个标签"
-                  class="dev-requirement-hall__dialog-field" @change="handleInitFieldChange">
+                <TSelect
+                  v-model="selectedTagIdsByGroup[group.group_id]"
+                  multiple
+                  filterable
+                  placeholder="选择一个或多个标签"
+                  class="dev-requirement-hall__dialog-field"
+                  @change="handleInitFieldChange"
+                >
                   <TOption v-for="item in group.items" :key="item.id" :label="item.name" :value="item.id" />
                 </TSelect>
               </section>

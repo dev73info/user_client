@@ -108,16 +108,6 @@
     padding-right: 0;
   }
 
-  .dev-page--publish .dev-tag-group-row {
-    grid-template-columns: 1fr;
-  }
-
-  .dev-page--publish .dev-tag-group-row__head,
-  .dev-page--publish .dev-tag-group-row__selected,
-  .dev-page--publish .dev-tag-group-row__field {
-    grid-column: 1;
-    grid-row: auto;
-  }
 }
 
 @media (max-width: 720px) {

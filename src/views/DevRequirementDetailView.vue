@@ -513,11 +513,6 @@ function openEntry(entryKey: string) {
     finalConfirmed.value = false
 }
 
-function selectedNamesForGroup(group: McPublishTagGroup): string[] {
-    const selectedIds = new Set(selectedTagIdsByGroup[group.group_id] ?? [])
-    return group.items.filter((item) => selectedIds.has(item.id)).map((item) => item.name)
-}
-
 function buildTagSelections() {
     return platformTagGroups.value
         .map((group) => ({
@@ -958,21 +953,6 @@ async function submitBinding() {
                         </span>
                       </div>
 
-                      <div class="dev-requirement-hall__tag-group-selected">
-                        <template v-if="selectedNamesForGroup(group).length > 0">
-                          <span
-                            v-for="name in selectedNamesForGroup(group)"
-                            :key="`${group.key}:${name}`"
-                            class="dev-chip dev-chip--cyan"
-                          >
-                            {{ name }}
-                          </span>
-                        </template>
-                        <span v-else class="dev-requirement-hall__tag-group-empty"
-                          >尚未选择标签</span
-                        >
-                      </div>
-
                       <TSelect
                         v-model="selectedTagIdsByGroup[group.group_id]"
                         multiple
@@ -1210,16 +1190,6 @@ async function submitBinding() {
     grid-template-columns: 1fr;
   }
 
-  .dev-requirement-hall__tag-group {
-    grid-template-columns: 1fr;
-  }
-
-  .dev-requirement-hall__tag-group-head,
-  .dev-requirement-hall__tag-group-selected,
-  .dev-requirement-hall__tag-group .dev-requirement-hall__dialog-field {
-    grid-column: 1;
-    grid-row: auto;
-  }
 }
 
 @media (max-width: 900px) {
