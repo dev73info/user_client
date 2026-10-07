@@ -87,7 +87,6 @@ export const DEMO_DEV_HOME_REQUIREMENTS: RequirementItem[] = [
     payment_mode: 'platform_guarantee',
     status: 'in_development',
     updated_at: daysAgo(0, 9, 20),
-    pending_unbind_request: null,
   },
   {
     id: 502,
@@ -104,7 +103,6 @@ export const DEMO_DEV_HOME_REQUIREMENTS: RequirementItem[] = [
     payment_mode: 'platform_guarantee',
     status: 'pending_final',
     updated_at: daysAgo(1, 17, 45),
-    pending_unbind_request: null,
   },
   {
     id: 503,
@@ -121,7 +119,6 @@ export const DEMO_DEV_HOME_REQUIREMENTS: RequirementItem[] = [
     payment_mode: 'platform_guarantee',
     status: 'deposit_paid',
     updated_at: daysAgo(3, 11, 5),
-    pending_unbind_request: null,
   },
   {
     id: 504,
@@ -138,7 +135,6 @@ export const DEMO_DEV_HOME_REQUIREMENTS: RequirementItem[] = [
     payment_mode: 'platform_guarantee',
     status: 'completed',
     updated_at: daysAgo(6, 16, 30),
-    pending_unbind_request: null,
   },
   {
     id: 505,
@@ -155,7 +151,6 @@ export const DEMO_DEV_HOME_REQUIREMENTS: RequirementItem[] = [
     payment_mode: 'self_managed',
     status: 'completed',
     updated_at: daysAgo(9, 14, 10),
-    pending_unbind_request: null,
   },
 ]
 

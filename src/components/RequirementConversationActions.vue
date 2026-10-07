@@ -33,15 +33,11 @@ import {
 } from '@/api/contracts'
 import {
   listMyRequirements,
-  requestUnbindRequirement as requestDevUnbindRequirement,
-  respondUnbindRequirement as respondDevUnbindRequirement,
   type RequirementItem as DevRequirementItem,
 } from '@/api/devRequirements'
 import {
   listRequirements,
   requestRequirementFinalPayment,
-  requestUnbindRequirement,
-  respondUnbindRequirement,
   type RequirementItem,
   type RequirementPaymentMode,
   type RequirementStatus,
@@ -82,7 +78,6 @@ type ActionRequirement = {
   payment_mode: RequirementPaymentMode
   bound_resource_id?: number | null
   bound_resource_version_count?: number | null
-  pending_unbind_request?: RequirementItem['pending_unbind_request']
 }
 
 /**
@@ -127,11 +122,6 @@ const payChannel = ref<AdapayBusinessPayChannel>('alipay')
 const deliveryVisible = ref(false)
 const acceptanceVisible = ref(false)
 
-const unbindVisible = ref(false)
-const unbindReason = ref('')
-const unbindRespondNote = ref('')
-const unbindSubmitting = ref(false)
-
 const breachVisible = ref(false)
 const breachReason = ref('')
 const breachDecisionNote = ref('')
@@ -151,11 +141,6 @@ const myPartySigned = computed(() =>
 )
 const hasBoundResource = computed(() => requirement.value?.bound_resource_id != null)
 const publishedVersionCount = computed(() => requirement.value?.bound_resource_version_count ?? 0)
-const pendingUnbindRequest = computed(() =>
-  requirement.value?.pending_unbind_request?.status === 'pending'
-    ? requirement.value.pending_unbind_request
-    : null,
-)
 
 const canCreateContract = computed(
   () =>
@@ -227,17 +212,6 @@ const canDeliver = computed(
     isDeveloper.value &&
     hasBoundResource.value &&
     (status.value === 'in_development' || status.value === 'pending_final'),
-)
-const canRequestUnbind = computed(
-  () =>
-    (isDeveloper.value || hasBoundResource.value) &&
-    (status.value === 'pending_deposit' ||
-      status.value === 'deposit_paid' ||
-      status.value === 'in_development') &&
-    !pendingUnbindRequest.value,
-)
-const canRespondUnbind = computed(
-  () => pendingUnbindRequest.value?.initiator === (isDeveloper.value ? 'creator' : 'developer'),
 )
 /** 未结束的解除合作案件（已撤回 / 已驳回 / 已结案不再提供入口）。 */
 const hasLiveBreachCase = computed(
@@ -335,27 +309,6 @@ const payAmount = computed(() => {
     ? calculateFinalPaymentAmount(item, depositRatioPercent.value)
     : calculateFinalDepositAmount(item, depositRatioPercent.value)
 })
-
-/**
- * 输入框上方只留「对方有一条待处理的解除申请」这一条实时状态。
- * 协商解除在未结单阶段对两种支付模式都开放，入口在需求卡片与工具栏上，
- * 不必在输入区重复解释；已完成 / 已取消这类终态需求上解释反而是错的，因此整段不展示。
- */
-const unbindHint = computed(() =>
-  pendingUnbindRequest.value && !canRespondUnbind.value
-    ? `${pendingUnbindRequest.value.initiator === 'creator' ? '需求方' : '开发者'}已提交解除申请，等待对方处理`
-    : '',
-)
-
-/**
- * 解除的后果按支付模式分档，必须在点下「同意」之前说清楚：
- * 担保模式同意即退定金、作废合同、解冻接单保证金（无责退出），自管模式没有合同也没有定金。
- */
-const unbindConsequence = computed(() =>
-  isSelfManaged.value
-    ? '解除后双方绑定关系结束，需求重新挂回大厅等待其他开发者承接。'
-    : '担保模式下同意解除会作废合同，已缴定金全额原路退还需求方，开发者接单保证金解冻；无责退出，双方都不担违约金。',
-)
 
 const breachDialogTitle = computed(() => {
   if (activeBreachCase.value) {
@@ -463,7 +416,6 @@ function toActionRequirement(row: RequirementItem | DevRequirementItem): ActionR
     payment_mode: row.payment_mode,
     bound_resource_id: row.bound_resource_id,
     bound_resource_version_count: row.bound_resource_version_count,
-    pending_unbind_request: row.pending_unbind_request ?? null,
   }
 }
 
@@ -718,60 +670,6 @@ async function handleDeliverySubmitted() {
   emit('changed')
 }
 
-function openUnbindDialog() {
-  unbindReason.value = ''
-  unbindRespondNote.value = ''
-  unbindVisible.value = true
-}
-
-async function submitUnbindRequest() {
-  const item = requirement.value
-  if (!item) {
-    return
-  }
-
-  const reason = unbindReason.value.trim()
-  if (!reason) {
-    showToast('请填写解除原因', 'warning')
-    return
-  }
-
-  unbindSubmitting.value = true
-  try {
-    const request = isDeveloper.value ? requestDevUnbindRequirement : requestUnbindRequirement
-    await request(props.token, item.requirement_id, reason)
-    showToast('解除申请已提交，等待对方处理', 'success')
-    unbindVisible.value = false
-    await loadActions()
-    emit('changed')
-  } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交解除申请失败', 'error')
-  } finally {
-    unbindSubmitting.value = false
-  }
-}
-
-async function submitUnbindRespond(action: 'approve' | 'reject') {
-  const item = requirement.value
-  if (!item) {
-    return
-  }
-
-  unbindSubmitting.value = true
-  try {
-    const respond = isDeveloper.value ? respondDevUnbindRequirement : respondUnbindRequirement
-    await respond(props.token, item.requirement_id, action, unbindRespondNote.value.trim() || undefined)
-    showToast(action === 'approve' ? '已同意解除申请' : '已拒绝解除申请', 'success')
-    unbindVisible.value = false
-    await loadActions()
-    emit('changed')
-  } catch (error) {
-    showToast(error instanceof Error ? error.message : '处理解除申请失败', 'error')
-  } finally {
-    unbindSubmitting.value = false
-  }
-}
-
 /**
  * 打开解除合作弹窗：案件列表、诉求与双方表态都在弹窗内，由它自己在打开时拉取（`visible` 一变就刷新），
  * 这里不预加载——缓存一份反而会显示上一轮的结果。
@@ -918,7 +816,6 @@ defineExpose({
       {{ actingKey === chip.key ? '处理中...' : chip.label }}
     </button>
   </div>
-  <p v-if="unbindHint" class="conversation-actions__hint">{{ unbindHint }}</p>
 
   <!-- 结单后的解除合作：入口只在担保模式且需求已完成时出现，弹窗自己负责案件列表、诉求与表态。 -->
   <AfterSalesModal v-if="requirement" :visible="afterSalesVisible" :token="token"
@@ -942,37 +839,6 @@ defineExpose({
   <AcceptanceDialog :visible="acceptanceVisible" :token="token"
     :requirement-id="requirement?.requirement_id ?? ''" :requirement-title="requirement?.title ?? ''"
     @close="closeAcceptanceDialog" @submitted="handleAcceptanceSubmitted" />
-
-  <TDialog v-model:open="unbindVisible" :title="canRespondUnbind ? '处理解除申请' : '申请解除需求'" width="480px">
-    <p class="conversation-actions__meta">{{ requirement?.title }} · {{ requirementId }}</p>
-    <template v-if="canRespondUnbind">
-      <p class="conversation-actions__tip">
-        对方申请解除绑定，原因：{{ pendingUnbindRequest?.reason || '未填写' }}
-      </p>
-      <p class="conversation-actions__tip">{{ unbindConsequence }}</p>
-      <label class="conversation-actions__field">
-        <span>处理说明（可选）</span>
-        <textarea v-model="unbindRespondNote" rows="3" maxlength="500" placeholder="同意或拒绝的说明"></textarea>
-      </label>
-    </template>
-    <template v-else>
-      <p class="conversation-actions__tip">提交后等待对方确认。{{ unbindConsequence }}</p>
-      <label class="conversation-actions__field">
-        <span>解除原因</span>
-        <textarea v-model="unbindReason" rows="4" maxlength="500" placeholder="请说明解除原因"></textarea>
-      </label>
-    </template>
-    <template #footer>
-      <template v-if="canRespondUnbind">
-        <TButton :loading="unbindSubmitting" @click="submitUnbindRespond('reject')">拒绝解除</TButton>
-        <TButton variant="solid" tone="accent" :loading="unbindSubmitting" @click="submitUnbindRespond('approve')">同意解除</TButton>
-      </template>
-      <template v-else>
-        <TButton @click="unbindVisible = false">取消</TButton>
-        <TButton variant="solid" tone="danger" :loading="unbindSubmitting" @click="submitUnbindRequest">提交解除申请</TButton>
-      </template>
-    </template>
-  </TDialog>
 
   <TDialog v-model:open="breachVisible" :title="breachDialogTitle" width="560px">
     <p class="conversation-actions__meta">{{ requirement?.title }} · {{ requirementId }}</p>

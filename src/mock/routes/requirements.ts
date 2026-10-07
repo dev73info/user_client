@@ -126,21 +126,6 @@ function buildOverview(items: RequirementItem[]): RequirementOverviewResp {
   }
 }
 
-/** 解绑申请的演示数据：客户侧的待处理申请与开发者侧的发起记录共用一份。 */
-function unbindRecord(request: MockRequest, code: string, initiator: 'creator' | 'developer') {
-  return {
-    requirement_id: code,
-    status: 'pending' as const,
-    developer: DEV_USERNAME,
-    initiator,
-    reason: readString(request.query, 'reason') || '演示数据：工期与预期不一致，协商解除。',
-    created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
-    responded_by: null,
-    responded_at: null,
-    response_note: null,
-  }
-}
-
 const routes: MockRoute[] = [
   /* ---------------------------------------------------------------- 客户侧 */
   {
@@ -332,33 +317,6 @@ const routes: MockRoute[] = [
       return jsonResponse(requirement)
     },
   },
-  {
-    method: 'POST',
-    path: '/requirements/:id/unbind-request',
-    note: '需求方发起解除绑定申请',
-    handler: (request, params) =>
-      jsonResponse({
-        ...unbindRecord(request, params.id ?? '', 'creator'),
-        status: 'pending',
-      }),
-  },
-  {
-    method: 'POST',
-    path: '/requirements/:id/unbind-response',
-    note: '需求方响应解除申请',
-    handler: (request, params) => {
-      const body = (request.body ?? {}) as { action?: 'approve' | 'reject' }
-
-      return jsonResponse({
-        ...unbindRecord(request, params.id ?? '', 'developer'),
-        status: body.action === 'approve' ? 'approved' : 'rejected',
-        responded_by: CLIENT_USERNAME,
-        responded_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
-        response_note: null,
-      })
-    },
-  },
-
   /* ---------------------------------------------------------------- 开发者侧 */
   {
     method: 'GET',
@@ -403,32 +361,6 @@ const routes: MockRoute[] = [
       }
 
       return jsonResponse(requirement)
-    },
-  },
-  {
-    method: 'POST',
-    path: '/dev/requirements/:id/unbind-request',
-    note: '开发者发起解除绑定申请',
-    handler: (request, params) =>
-      jsonResponse({
-        ...unbindRecord(request, params.id ?? '', 'developer'),
-        status: 'pending',
-      }),
-  },
-  {
-    method: 'POST',
-    path: '/dev/requirements/:id/unbind-response',
-    note: '开发者响应解除申请',
-    handler: (request, params) => {
-      const body = (request.body ?? {}) as { action?: 'approve' | 'reject' }
-
-      return jsonResponse({
-        ...unbindRecord(request, params.id ?? '', 'creator'),
-        status: body.action === 'approve' ? 'approved' : 'rejected',
-        responded_by: DEV_USERNAME,
-        responded_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
-        response_note: null,
-      })
     },
   },
 ]

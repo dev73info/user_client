@@ -28,8 +28,6 @@ import {
 } from '@/api/conversations'
 import {
   listMyRequirements,
-  requestUnbindRequirement,
-  respondUnbindRequirement,
   type RequirementItem,
   type RequirementPaymentMode,
 } from '@/api/devRequirements'
@@ -142,15 +140,6 @@ const activeReceiptRow = computed(
   () => mergedRows.value.find((row) => row.key === activeReceiptKey.value) ?? null,
 )
 
-const unbindVisible = ref(false)
-const unbindRequirement = ref<RequirementItem | null>(null)
-const unbindReason = ref('')
-const unbindLoading = ref(false)
-const unbindRespondVisible = ref(false)
-const unbindRespondRequirement = ref<RequirementItem | null>(null)
-const unbindRespondLoading = ref(false)
-/** 处理解除申请时的回执说明（可选，会留在平台记录里给发起方看）。 */
-const unbindRespondNote = ref('')
 const breachVisible = ref(false)
 /** 解除合作：结单后的唯一业务入口，案件列表与表态都在 `AfterSalesModal` 里。 */
 const afterSalesVisible = ref(false)
@@ -1085,156 +1074,6 @@ async function createRequirementContractAction(item: RequirementItem) {
   }
 }
 
-function canRequestUnbind(item: RequirementItem) {
-  return (
-    (item.status === 'in_development' ||
-      item.status === 'deposit_paid' ||
-      item.status === 'pending_deposit') &&
-    // 只看「有没有待处理的申请」：这个字段下发的是最近一次申请（可能已被回执过，见 BUG-048），
-    // 按存在与否判断会让双方在申请被拒绝/同意后再也提不了。
-    item.pending_unbind_request?.status !== 'pending'
-  )
-}
-
-/**
- * 解除绑定的后果按支付模式分档，要在点下「同意」之前说清楚。
- * 担保模式在未结单阶段也能协商解除：同意即退定金、作废合同、解冻接单保证金（无责退出）；
- * 自管模式没有合同也没有定金，只解除绑定。
- */
-function unbindConsequenceText(item: RequirementItem | null) {
-  if (!item || item.payment_mode === 'self_managed') {
-    return '解除后双方绑定关系结束，需求重新挂回大厅等待其他开发者承接。'
-  }
-  const depositPaid = item.status === 'deposit_paid' || item.status === 'in_development'
-  return depositPaid
-    ? '担保模式下同意解除会作废合同，需求方已缴的定金全额原路退还，你的接单保证金解冻；无责退出，双方都不担违约金。'
-    : '担保模式下同意解除会作废合同，你的接单保证金解冻；无责退出，双方都不担违约金。'
-}
-
-function unbindRequestHint(item: RequirementItem) {
-  const request = item.pending_unbind_request
-  if (!request) {
-    return ''
-  }
-
-  if (request.status === 'pending') {
-    return request.initiator === 'creator'
-      ? '需求方申请解除，等待你确认'
-      : '已提交解除申请，等待需求方确认'
-  }
-
-  if (request.status === 'approved') {
-    return '解除申请已通过，需求已重新挂回大厅'
-  }
-
-  return '解除申请已被拒绝'
-}
-
-/**
- * 对方的回执说明（有就带上）。
- *
- * 协商解除是「一方主张、一方表态」，表态理由本身就是日后主张损失的依据，双方都要看得到
- * ——申请原因在弹窗里，回执说明贴在需求卡片的提示行上（BUG-048）。
- */
-function unbindResponseNoteText(item: RequirementItem) {
-  const note = item.pending_unbind_request?.response_note?.trim()
-  return note ? `对方说明：${note}` : ''
-}
-
-function openUnbindRequest(item: RequirementItem) {
-  if (!canRequestUnbind(item)) {
-    return
-  }
-  unbindRequirement.value = item
-  unbindReason.value = ''
-  unbindVisible.value = true
-}
-
-function closeUnbindRequest() {
-  if (unbindLoading.value) {
-    return
-  }
-  unbindVisible.value = false
-  unbindRequirement.value = null
-  unbindReason.value = ''
-}
-
-async function submitUnbindRequest() {
-  const item = unbindRequirement.value
-  if (!item) {
-    return
-  }
-
-  const reason = unbindReason.value.trim()
-  if (!reason) {
-    showToast('请填写解除绑定的原因', 'warning')
-    return
-  }
-
-  unbindLoading.value = true
-  try {
-    await requestUnbindRequirement(auth.token, item.requirement_id, reason)
-    showToast('解除申请已提交，等待需求方确认', 'success')
-    unbindVisible.value = false
-    unbindRequirement.value = null
-    unbindReason.value = ''
-    await loadMyRequirements()
-  } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交解除申请失败', 'error')
-  } finally {
-    unbindLoading.value = false
-  }
-}
-
-function hasPendingCreatorUnbindRequest(item: RequirementItem) {
-  return item.pending_unbind_request?.status === 'pending' &&
-    item.pending_unbind_request.initiator === 'creator'
-}
-
-function openUnbindRespond(item: RequirementItem) {
-  if (!hasPendingCreatorUnbindRequest(item)) {
-    return
-  }
-  unbindRespondRequirement.value = item
-  unbindRespondNote.value = ''
-  unbindRespondVisible.value = true
-}
-
-function closeUnbindRespond() {
-  if (unbindRespondLoading.value) {
-    return
-  }
-  unbindRespondVisible.value = false
-  unbindRespondRequirement.value = null
-  unbindRespondNote.value = ''
-}
-
-async function submitUnbindRespond(action: 'approve' | 'reject') {
-  const item = unbindRespondRequirement.value
-  if (!item) {
-    return
-  }
-
-  unbindRespondLoading.value = true
-  try {
-    await respondUnbindRequirement(
-      auth.token,
-      item.requirement_id,
-      action,
-      unbindRespondNote.value.trim() || undefined,
-    )
-    showToast(action === 'approve' ? '已同意解除，需求已重新挂回大厅' : '已拒绝解除申请', 'success')
-    unbindRespondVisible.value = false
-    unbindRespondRequirement.value = null
-    unbindRespondNote.value = ''
-    await loadMyRequirements()
-  } catch (error) {
-    showToast(error instanceof Error ? error.message : '处理解除申请失败', 'error')
-  } finally {
-    unbindRespondLoading.value = false
-  }
-}
-
 async function loadRequirementConversations() {
   if (!auth.token) {
     requirementConversationMap.value = {}
@@ -1500,17 +1339,6 @@ async function loadRequirementConversations() {
           <!-- 签署与操作栏只给需求单行：补充行（未关联需求的交付／到账）没有可执行的接单动作。
                行内事件处理器拿不到 v-if 的类型收窄，所以这一段的处理函数参数带 `!`。 -->
           <footer v-if="row.item" class="dev-requirement-card__actions">
-            <div class="dev-requirement-card__unbind">
-              <span
-                v-if="row.item.pending_unbind_request"
-                class="dev-requirement-card__unbind-hint"
-              >
-                {{ unbindRequestHint(row.item) }}
-                <template v-if="unbindResponseNoteText(row.item)">
-                  · {{ unbindResponseNoteText(row.item) }}
-                </template>
-              </span>
-            </div>
             <!-- 行内操作按钮走统一层的 .dev-list-actions（32px 高 / 10px 圆角），
                  与资源列表、我的团队的行内按钮同一规格。
                  这里原先是本页自写的 .dev-requirement-card__buttons + 逐个 size="small"
@@ -1673,83 +1501,6 @@ async function loadRequirementConversations() {
 
       <template #footer>
         <TButton variant="outline" @click="receiptDialogVisible = false">关闭</TButton>
-      </template>
-    </TDialog>
-
-    <TDialog
-      v-model:open="unbindVisible"
-      title="申请解除需求绑定"
-      width="480px"
-      class="dev-dialog"
-      :mask-closable="false"
-      :escape-closable="false"
-      @close="closeUnbindRequest"
-    >
-      <div class="unbind-dialog-body">
-        <p class="unbind-dialog-tip">
-          此操作需要需求方确认，请填写真实原因。{{ unbindConsequenceText(unbindRequirement) }}
-        </p>
-        <TInput
-          show-count
-          v-model="unbindReason"
-          type="textarea"
-          :rows="4"
-          :maxlength="1000"
-          placeholder="请说明无法继续完成的原因，例如：与需求方沟通后确认技术方案无法实现"
-        />
-      </div>
-      <template #footer>
-        <TButton :disabled="unbindLoading" @click="closeUnbindRequest">取消</TButton>
-        <TButton variant="solid" tone="danger" :loading="unbindLoading" @click="submitUnbindRequest"
-          >提交申请</TButton
-        >
-      </template>
-    </TDialog>
-
-    <TDialog
-      v-model:open="unbindRespondVisible"
-      title="需求方申请解除绑定"
-      width="480px"
-      class="dev-dialog"
-      :mask-closable="false"
-      :escape-closable="false"
-      @close="closeUnbindRespond"
-    >
-      <div class="unbind-dialog-body">
-        <p class="unbind-dialog-tip">需求方申请解除绑定，请确认是否同意。</p>
-        <p class="unbind-dialog-tip">{{ unbindConsequenceText(unbindRespondRequirement) }}</p>
-        <p class="unbind-dialog-line">
-          <strong>需求编号：</strong>{{ unbindRespondRequirement?.requirement_id }}
-        </p>
-        <p class="unbind-dialog-line">
-          <strong>申请原因：</strong>{{ unbindRespondRequirement?.pending_unbind_request?.reason }}
-        </p>
-        <!-- 回执说明（可选）：解除的理由与回执都留在平台记录里，发起方在需求卡片上能看到（BUG-048）。 -->
-        <TInput
-          show-count
-          v-model="unbindRespondNote"
-          type="textarea"
-          :rows="3"
-          :maxlength="500"
-          placeholder="可选：说明你同意或拒绝的原因，会附在解除记录里给需求方看到"
-        />
-      </div>
-      <template #footer>
-        <TButton :disabled="unbindRespondLoading" @click="closeUnbindRespond">取消</TButton>
-        <TButton
-          variant="solid"
-          tone="danger"
-          :disabled="unbindRespondLoading"
-          @click="submitUnbindRespond('reject')"
-          >拒绝解除</TButton
-        >
-        <TButton
-          variant="solid"
-          tone="accent"
-          :loading="unbindRespondLoading"
-          @click="submitUnbindRespond('approve')"
-          >同意解除</TButton
-        >
       </template>
     </TDialog>
 
@@ -2392,12 +2143,6 @@ strong.dev-delivery-cell__amount {
   border-top: 1px dashed var(--dev-line);
   background: transparent;
   text-align: left;
-}
-
-.dev-requirement-card__unbind-hint {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--dev-gold);
 }
 
 /* 行内操作按钮的容器与规格都走统一层的 .dev-list-actions（见 dev-base.css），

@@ -29,21 +29,8 @@ export type RequirementItem = {
   payment_mode: RequirementPaymentMode
   status: RequirementStatus
   updated_at: string
-  pending_unbind_request?: UnbindRequirementResponse | null
   /** 排队中分账里最晚的计划分账时间（东八区），没有排队分账时为空；前端据此算结算倒计时。 */
   settlement_available_at?: string | null
-}
-
-export type UnbindRequirementResponse = {
-  requirement_id: string
-  status: 'pending' | 'approved' | 'rejected'
-  developer: string
-  initiator: 'developer' | 'creator'
-  reason: string
-  created_at: string
-  responded_by?: string | null
-  responded_at?: string | null
-  response_note?: string | null
 }
 
 export type RequirementPageResp = {
@@ -152,44 +139,5 @@ export async function listMyRequirements(token: string): Promise<RequirementItem
       },
     },
     '加载我的需求单失败',
-  )
-}
-
-export async function requestUnbindRequirement(
-  token: string,
-  requirementId: string,
-  reason: string,
-): Promise<UnbindRequirementResponse> {
-  return requestJson<UnbindRequirementResponse>(
-    `/dev/requirements/${encodeURIComponent(requirementId)}/unbind-request`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader(token),
-      },
-      body: JSON.stringify({ reason }),
-    },
-    '提交解除申请失败',
-  )
-}
-
-export async function respondUnbindRequirement(
-  token: string,
-  requirementId: string,
-  action: 'approve' | 'reject',
-  note?: string,
-): Promise<UnbindRequirementResponse> {
-  return requestJson<UnbindRequirementResponse>(
-    `/dev/requirements/${encodeURIComponent(requirementId)}/unbind-response`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader(token),
-      },
-      body: JSON.stringify({ action, note: note?.trim() || undefined }),
-    },
-    '处理解除申请失败',
   )
 }

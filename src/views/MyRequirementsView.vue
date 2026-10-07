@@ -56,9 +56,7 @@ import {
   createRequirement as createRequirementApi,
   listRequirements,
   requestRequirementFinalPayment as requestRequirementFinalPaymentApi,
-  requestUnbindRequirement as requestUnbindRequirementApi,
   resubmitRequirement as resubmitRequirementApi,
-  respondUnbindRequirement as respondUnbindRequirementApi,
   reviewRequirementResourceDelete as reviewRequirementResourceDeleteApi,
   updateRequirementResourceVisibility as updateRequirementResourceVisibilityApi,
   updateRequirementSubscription as updateRequirementSubscriptionApi,
@@ -184,15 +182,6 @@ const depositRatioPercent = ref(20)
 const contractSigningStatusMap = ref<Record<string, ContractSigningStatus | null>>({})
 const contractCreatingId = ref('')
 const resourceVersionsMap = ref<Record<string, PublicMcResourceVersionItem[]>>({})
-const unbindRespondVisible = ref(false)
-const unbindRespondRequirement = ref<RequirementItem | null>(null)
-const unbindRespondLoading = ref(false)
-/** 处理解除申请时的回执说明（可选，会留在平台记录里给申请方看）。 */
-const unbindRespondNote = ref('')
-const unbindRequestVisible = ref(false)
-const unbindRequestRequirement = ref<RequirementItem | null>(null)
-const unbindRequestReason = ref('')
-const unbindRequestLoading = ref(false)
 const cancelConfirmVisible = ref(false)
 const cancelConfirmTarget = ref<RequirementItem | null>(null)
 const cancelLoading = ref(false)
@@ -413,7 +402,7 @@ const refreshButtonLabel = computed(() =>
 /** 状态徽标的语义档：与统一层 .wb-badge 的四档（成功 / 警示 / 危险 / 主色）一一对应。
     此前全表只有一支琥珀胶囊，已完成与已驳回看起来是一回事，扫列表时看不出轻重。 */
 function statusBadgeClass(item: RequirementItem) {
-  if (isWaitingContractSign(item) || isUnbinding(item)) return 'wb-badge--warning'
+  if (isWaitingContractSign(item)) return 'wb-badge--warning'
   if (item.status === 'completed') return 'wb-badge--success'
   if (item.status === 'rejected' || item.status === 'cancelled') return 'wb-badge--danger'
   if (
@@ -445,14 +434,7 @@ function isWaitingContractSign(item: RequirementItem) {
   )
 }
 
-function isUnbinding(item: RequirementItem) {
-  return item.pending_unbind_request?.status === 'pending'
-}
-
 function formatRequirementDisplayStatus(item: RequirementItem) {
-  if (isUnbinding(item)) {
-    return item.pending_unbind_request?.initiator === 'creator' ? '解除待确认' : '开发者申请解除'
-  }
   if (!isSelfManagedRequirement(item) && item.status === 'pending_deposit') {
     if (!hasBoundResource(item)) {
       return '待开发者接单'
@@ -576,39 +558,6 @@ function settlementHint(item: RequirementItem): string {
     return '已结单。接单保证金在解除合作窗口结束且无未结解除合作案件后释放。'
   }
   return ''
-}
-
-function canRequestUnbindAsCreator(item: RequirementItem) {
-  return (
-    hasBoundResource(item) &&
-    (item.status === 'in_development' ||
-      item.status === 'deposit_paid' ||
-      item.status === 'pending_deposit') &&
-    // 只看「有没有待处理的申请」：这个字段下发的是最近一次申请（可能已被回执过，见 BUG-048）。
-    item.pending_unbind_request?.status !== 'pending'
-  )
-}
-
-/**
- * 解除绑定的后果按支付模式分档，要在点下「同意」之前说清楚。
- * 担保模式在未结单阶段也能协商解除：同意即退定金、作废合同、解冻开发者的接单保证金（无责退出，
- * 双方都不担违约金）；自管模式没有合同也没有定金，只解除绑定。
- */
-function unbindConsequenceText(item: RequirementItem | null) {
-  if (!item || item.payment_mode === 'self_managed') {
-    return '解除后双方绑定关系结束，需求重新挂回大厅等待其他开发者承接。'
-  }
-  const depositPaid = item.status === 'deposit_paid' || item.status === 'in_development'
-  return depositPaid
-    ? '担保模式下同意解除会作废合同，你已缴的定金全额原路退还，开发者的接单保证金解冻；无责退出，双方都不担违约金。'
-    : '担保模式下同意解除会作废合同，开发者的接单保证金解冻；无责退出，双方都不担违约金。'
-}
-
-/** 列表里那行提示要短：一句话交代「同意之后钱和绑定各去哪」。 */
-function unbindConsequenceNote(item: RequirementItem) {
-  return item.payment_mode === 'self_managed'
-    ? '同意解除后需求重新挂回大厅。'
-    : '同意解除后合同作废、定金原路退还，需求重新挂回大厅。'
 }
 
 function canReportBreach(item: RequirementItem) {
@@ -1172,122 +1121,6 @@ async function requestFinalPayment(item: RequirementItem) {
 function closeFinalPaymentConfirm() {
   finalPaymentConfirmVisible.value = false
   finalPaymentConfirmTarget.value = null
-}
-
-function hasPendingUnbindRequest(item: RequirementItem) {
-  return item.pending_unbind_request?.status === 'pending'
-}
-
-/**
- * 解除申请已有回执时的提示（含对方的回执说明）。
- *
- * 申请方要靠它看到「开发者是同意还是拒绝、为什么」——回执说明只留在平台记录里不够，
- * 得让当事人看得到（BUG-048）。待处理时返回空串，由上面的「等待确认」分支负责。
- */
-function unbindOutcomeNote(item: RequirementItem) {
-  const request = item.pending_unbind_request
-  if (!request || request.status === 'pending') {
-    return ''
-  }
-  const outcome = request.status === 'approved' ? '解除申请已通过，需求已重新挂回大厅' : '解除申请已被拒绝'
-  const note = request.response_note?.trim()
-  return note ? `${outcome}；开发者说明：${note}` : outcome
-}
-
-function hasPendingDeveloperUnbindRequest(item: RequirementItem) {
-  return (
-    item.pending_unbind_request?.status === 'pending' &&
-    item.pending_unbind_request.initiator === 'developer'
-  )
-}
-
-function openUnbindRespond(item: RequirementItem) {
-  if (!hasPendingDeveloperUnbindRequest(item)) {
-    return
-  }
-  unbindRespondRequirement.value = item
-  unbindRespondNote.value = ''
-  unbindRespondVisible.value = true
-}
-
-function closeUnbindRespond() {
-  if (unbindRespondLoading.value) {
-    return
-  }
-  unbindRespondVisible.value = false
-  unbindRespondRequirement.value = null
-  unbindRespondNote.value = ''
-}
-
-async function submitUnbindRespond(action: 'approve' | 'reject') {
-  const item = unbindRespondRequirement.value
-  if (!item) {
-    return
-  }
-
-  unbindRespondLoading.value = true
-  try {
-    await respondUnbindRequirementApi(
-      auth.token,
-      item.requirement_id,
-      action,
-      unbindRespondNote.value.trim() || undefined,
-    )
-    showToast(action === 'approve' ? '已同意解除，需求已重新挂回大厅' : '已拒绝解除申请', 'success')
-    unbindRespondVisible.value = false
-    unbindRespondRequirement.value = null
-    unbindRespondNote.value = ''
-    await loadMyRequirements()
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '处理解除申请失败', 'error')
-  } finally {
-    unbindRespondLoading.value = false
-  }
-}
-
-function openUnbindRequest(item: RequirementItem) {
-  if (!canRequestUnbindAsCreator(item)) {
-    return
-  }
-  unbindRequestRequirement.value = item
-  unbindRequestReason.value = ''
-  unbindRequestVisible.value = true
-}
-
-function closeUnbindRequest() {
-  if (unbindRequestLoading.value) {
-    return
-  }
-  unbindRequestVisible.value = false
-  unbindRequestRequirement.value = null
-  unbindRequestReason.value = ''
-}
-
-async function submitUnbindRequest() {
-  const item = unbindRequestRequirement.value
-  if (!item) {
-    return
-  }
-
-  const reason = unbindRequestReason.value.trim()
-  if (!reason) {
-    showToast('请填写解除绑定的原因', 'warning')
-    return
-  }
-
-  unbindRequestLoading.value = true
-  try {
-    await requestUnbindRequirementApi(auth.token, item.requirement_id, reason)
-    showToast('解除申请已提交，等待开发者确认', 'success')
-    unbindRequestVisible.value = false
-    unbindRequestRequirement.value = null
-    unbindRequestReason.value = ''
-    await loadMyRequirements()
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '提交解除申请失败', 'error')
-  } finally {
-    unbindRequestLoading.value = false
-  }
 }
 
 function openCancelConfirm(item: RequirementItem) {
@@ -2151,7 +1984,6 @@ function handleWechatAuthorized() {
  * 展示层不重复实现业务判定，避免两处规则漂移。
  */
 type RequirementRowActionKey =
-  | 'unbind-respond'
   | 'contract-create'
   | 'contract-sign'
   | 'contract-view'
@@ -2165,7 +1997,6 @@ type RequirementRowActionKey =
   | 'after-sales'
   | 'homepage'
   | 'invoice'
-  | 'unbind-request'
   | 'breach'
   | 'cancel'
 
@@ -2269,9 +2100,6 @@ function moreRowActions(item: RequirementItem): RequirementRowAction[] {
 /** 行内动作与菜单项统一从这里分发到既有 handler，不新增业务逻辑。 */
 function runRowAction(item: RequirementItem, key: RequirementRowActionKey) {
   switch (key) {
-    case 'unbind-respond':
-      openUnbindRespond(item)
-      return
     case 'contract-create':
       void createRequirementContractAction(item)
       return
@@ -2310,9 +2138,6 @@ function runRowAction(item: RequirementItem, key: RequirementRowActionKey) {
       return
     case 'invoice':
       openInvoiceDialog(item)
-      return
-    case 'unbind-request':
-      openUnbindRequest(item)
       return
     case 'breach':
       void openBreachReport(item)
@@ -2588,22 +2413,6 @@ watch(
                   " class="requirement-note requirement-note--block">{{ versionDeleteRejectNote(item) }}</small>
                   <small v-if="item.status === 'rejected' && item.review_note"
                     class="requirement-note requirement-note--block">驳回原因：{{ item.review_note }}</small>
-                  <small v-if="hasPendingDeveloperUnbindRequest(item)"
-                    class="requirement-note requirement-note--block">
-                    <strong>开发者申请解除绑定：</strong>{{ item.pending_unbind_request?.reason }}
-                  </small>
-                  <small v-if="hasPendingDeveloperUnbindRequest(item)" class="requirement-note">
-                    {{ unbindConsequenceNote(item) }}
-                  </small>
-                  <small v-if="hasPendingUnbindRequest(item) && !hasPendingDeveloperUnbindRequest(item)"
-                    class="requirement-note">
-                    已提交解除申请，等待开发者确认。
-                  </small>
-                  <!-- 申请已经有回执（同意/拒绝）时，把对方的说明也显示出来：解除的理由与回执
-                       都是双方要留存的东西，不能只在弹窗里出现（BUG-048）。 -->
-                  <small v-if="unbindOutcomeNote(item)" class="requirement-note requirement-note--block">
-                    {{ unbindOutcomeNote(item) }}
-                  </small>
                   <small v-if="settlementHint(item)"
                     class="requirement-note requirement-note--block">{{ settlementHint(item) }}</small>
                 </div>
@@ -2887,74 +2696,6 @@ watch(
           <button class="ghost" type="button" @click="closeFinalPaymentConfirm">取消</button>
           <button class="ghost primary" type="button" @click="confirmFinalPaymentRequest">
             {{ finalPaymentConfirmButton }}
-          </button>
-        </div>
-      </section>
-    </div>
-
-    <div v-if="unbindRespondVisible && unbindRespondRequirement" class="modal-wrap"
-      @click.self="closeUnbindRespond">
-      <section class="pay-modal" aria-label="解除绑定申请弹窗">
-        <h3>开发者申请解除绑定</h3>
-        <p class="pay-line"><strong>需求标题：</strong>{{ unbindRespondRequirement.title }}</p>
-        <p class="pay-line">
-          <strong>需求编号：</strong>{{ unbindRespondRequirement.requirement_id }}
-        </p>
-        <p class="pay-line">
-          <strong>开发者：</strong>{{ unbindRespondRequirement.pending_unbind_request?.developer }}
-        </p>
-        <p class="pay-line">
-          <strong>申请时间：</strong>{{ unbindRespondRequirement.pending_unbind_request?.created_at }}
-        </p>
-        <p class="pay-line">
-          <strong>申请原因：</strong>{{ unbindRespondRequirement.pending_unbind_request?.reason }}
-        </p>
-        <label class="pay-line" style="display:flex;flex-direction:column;gap:6px;">
-          <strong>回执说明</strong>
-          <textarea v-model="unbindRespondNote" rows="3" maxlength="500"
-            placeholder="可选：说明你同意或拒绝的原因，会附在解除记录里给开发者看到"></textarea>
-        </label>
-        <p class="tip">同意解除后，需求将重新挂回需求大厅，供其他开发者承接；如拒绝，当前绑定关系保持不变。</p>
-        <p class="tip">{{ unbindConsequenceText(unbindRespondRequirement) }}</p>
-
-        <div class="actions">
-          <button class="ghost" type="button" :disabled="unbindRespondLoading" @click="closeUnbindRespond">
-            取消
-          </button>
-          <button class="ghost danger-plain" type="button" :disabled="unbindRespondLoading"
-            @click="submitUnbindRespond('reject')">
-            拒绝解除
-          </button>
-          <button class="ghost primary" type="button" :disabled="unbindRespondLoading"
-            @click="submitUnbindRespond('approve')">
-            {{ unbindRespondLoading ? '处理中...' : '同意解除' }}
-          </button>
-        </div>
-      </section>
-    </div>
-
-    <div v-if="unbindRequestVisible && unbindRequestRequirement" class="modal-wrap"
-      @click.self="closeUnbindRequest">
-      <section class="pay-modal" aria-label="申请解除绑定弹窗">
-        <h3>申请解除绑定</h3>
-        <p class="pay-line"><strong>需求标题：</strong>{{ unbindRequestRequirement.title }}</p>
-        <p class="pay-line">
-          <strong>需求编号：</strong>{{ unbindRequestRequirement.requirement_id }}
-        </p>
-        <label class="pay-line" style="display:flex;flex-direction:column;gap:6px;">
-          <strong>解除原因</strong>
-          <textarea v-model="unbindRequestReason" rows="4" maxlength="1000"
-            placeholder="请说明申请解除绑定的原因，例如：项目安排调整，不再需要继续开发"></textarea>
-        </label>
-        <p class="tip">解除申请提交后需开发者确认。{{ unbindConsequenceText(unbindRequestRequirement) }}</p>
-
-        <div class="actions">
-          <button class="ghost" type="button" :disabled="unbindRequestLoading" @click="closeUnbindRequest">
-            取消
-          </button>
-          <button class="ghost primary" type="button" :disabled="unbindRequestLoading"
-            @click="submitUnbindRequest">
-            {{ unbindRequestLoading ? '提交中...' : '提交申请' }}
           </button>
         </div>
       </section>

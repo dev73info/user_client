@@ -286,7 +286,6 @@ function buildRequirement(seed: RequirementSeed): RequirementItem {
     payment_mode: seed.mode,
     updated_at: datetime(-seed.updatedDaysAgo, 15, 30),
     developer: seed.developer,
-    pending_unbind_request: null,
     pending_resource_version_delete_requests: seed.pendingVersionDelete
       ? [
         {
@@ -899,7 +898,6 @@ export function createRequirementRecord(payload: {
     payment_mode: payload.payment_mode,
     updated_at: datetime(0, 10, 0),
     developer: null,
-    pending_unbind_request: null,
     settlement_available_at: null,
   }
 

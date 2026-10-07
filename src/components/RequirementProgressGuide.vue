@@ -12,7 +12,6 @@ const props = defineProps<{
     budget?: number | null
     bound_resource_id?: number | null
     bound_resource_version_count?: number | null
-    pending_unbind_request?: { status: string; initiator: string } | null
     /** 排队中分账里最晚的计划分账时间（东八区 `YYYY-MM-DD HH24:MI:SS`），由后端给出。 */
     settlement_available_at?: string | null
   }
@@ -176,13 +175,11 @@ function isStepDone(step: Step): boolean {
 function isStepCurrent(step: Step): boolean {
   return step.rank === currentRank.value
 }
-
-const hasPendingUnbind = computed(() => props.requirement.pending_unbind_request?.status === 'pending')
 </script>
 
 <template>
   <!-- 进度条只画步骤：需求和需求编号由外层需求卡片自己展示，这里再重复一遍纯属占地方。 -->
-  <div class="req-progress" :class="{ 'req-progress--unbind': hasPendingUnbind }">
+  <div class="req-progress">
     <ol class="req-progress__steps">
       <li v-for="(step, index) in steps" :key="step.key" class="req-progress__step"
         :class="{
@@ -206,11 +203,6 @@ const hasPendingUnbind = computed(() => props.requirement.pending_unbind_request
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.72);
-}
-
-.req-progress--unbind {
-  border-color: rgba(185, 129, 43, 0.4);
-  background: rgba(255, 251, 244, 0.88);
 }
 
 .req-progress__steps {
