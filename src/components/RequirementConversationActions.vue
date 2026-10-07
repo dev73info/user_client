@@ -85,7 +85,7 @@ type ActionRequirement = {
  *   - `default`：普通入口（如「查看合同」），白底描边；
  *   - `primary`：**当前该做的那一步**（如「支付定金」「发起合同」），实心主色；
  *   - `accent`：值得留意、但不是人人都要走的一步（如结单后的「解除合作」），浅色描边突出；
- *   - `danger`：终止类动作（如「终止合作」），红色描边。
+ *   - `danger`：危险类动作（如「解除合作」），红色描边。
  */
 type ActionTone = 'default' | 'primary' | 'danger' | 'accent'
 
@@ -228,14 +228,14 @@ const canUseBreach = computed(
         // 已签约未缴定金：甲方拒缴定金同样是违约，可以在这一阶段申报——那种案件没有支付单，
         // 只作责任认定，不动钱。合同还没生效时没有可裁决的对象，入口不给。
         (status.value === 'pending_deposit' && contractSigned.value) ||
-        // 待分账时尾款已缴、排队分账尚未执行，终止合作仍能取消排队（与需求卡片同口径）。
+        // 待分账时尾款已缴、排队分账尚未执行，解除合作仍能取消排队（与需求卡片同口径）。
         status.value === 'pending_settlement')),
 )
 
 /**
  * 结单后的唯一业务入口：解除合作（与需求列表页的 `canOpenAfterSales` 同一口径）。
  *
- * 只在担保模式、需求 `completed` 时给：结单之前的问题走「终止合作」，结单之后资金已分账出账，
+ * 只在担保模式、需求 `completed` 时给：结单之前的问题走「解除合作」，结单之后资金已分账出账，
  * 只有解除合作这一条线能退尾款、扣接单保证金；无担保模式没有托管资金，也没有可裁决的对象。
  * 两侧都能看到这个入口（乙方要在这里表态接受或不接受），但发起只有需求方，见 `canOpenCase`。
  */
@@ -331,7 +331,7 @@ const breachRoundHint = computed(() => {
     // 可裁决的合同，新一轮不是「再提一条新案件」而是「重新接单并签约」（BUG-038）。
     // 驳回不动合同，结论不能翻案，但需求仍在履约中，可以就新发生的事实再申报。
     return settled.status === 'succeeded'
-      ? '上一轮案件已结案，需求已退回大厅、原合同已作废；需重新接单并签约后才能再次发起终止合作。'
+      ? '上一轮案件已结案，需求已退回大厅、原合同已作废；需重新接单并签约后才能再次发起解除合作。'
       : '上一轮案件已驳回，结论不能翻案；下面提交的是新一轮申请，会新建一条案件，只针对驳回之后新发生的事实。'
   }
   if (withdrawnBreachCase.value) {
@@ -767,10 +767,10 @@ async function submitBreachWithdraw() {
   breachActing.value = true
   try {
     breachCase.value = await withdrawAdapayBreach(props.token, current.id)
-    showToast('已撤回终止合作申请，如仍有争议可重新发起', 'success')
+    showToast('已撤回解除合作申请，如仍有争议可重新发起', 'success')
     emit('changed')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '撤回终止合作申请失败', 'error')
+    showToast(error instanceof Error ? error.message : '撤回解除合作申请失败', 'error')
   } finally {
     breachActing.value = false
   }
@@ -980,7 +980,7 @@ defineExpose({
         :disabled="Boolean(settledBreachCase) && !hasContract"
         @click="submitBreachReport"
       >
-        {{ settledBreachCase ? '发起新一轮终止合作' : breachWithdrawnByMe ? '重新发起' : '提交终止合作申请' }}
+        {{ settledBreachCase ? '发起新一轮解除合作' : breachWithdrawnByMe ? '重新发起' : '提交解除合作申请' }}
       </TButton>
     </template>
   </TDialog>

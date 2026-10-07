@@ -317,7 +317,7 @@ export async function requestAdapayPlatformReview(
   )
 }
 
-/** 发起人在平台介入进程启动前自行撤回终止合作申请（撤回后同一需求可再次发起）。 */
+/** 发起人在平台介入进程启动前自行撤回解除合作申请（撤回后同一需求可再次发起）。 */
 export async function withdrawAdapayBreach(
   token: string,
   caseId: number,
@@ -328,7 +328,7 @@ export async function withdrawAdapayBreach(
       method: 'POST',
       headers: authHeader(token),
     },
-    '撤回终止合作申请失败',
+    '撤回解除合作申请失败',
   )
 }
 

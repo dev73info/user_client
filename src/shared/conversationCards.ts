@@ -294,7 +294,7 @@ export function conversationCardMeta(
       return {
         title: '尾款已缴纳',
         description: '需求方已缴纳尾款，等待渠道分账完成后正式结单。',
-        // 待分账期间双方都没有可执行的动作（等待期内终止合作走需求卡片上的入口）；
+        // 待分账期间双方都没有可执行的动作（等待期内解除合作走需求卡片上的入口）；
         // 「去我的需求」只是把人送回自己已经在的需求列表，属空跳转，故不给按钮。
       }
     case 'requirement_settled':
@@ -318,7 +318,7 @@ export function conversationCardMeta(
         description:
           '需求方取消了这笔需求：按合同约定无正当理由取消适用定金罚则，已缴定金不予退还（按客户违约规则分账给平台与开发者），绑定关系已解除、接单保证金冻结已释放。这段会话保留为只读。',
       }
-    // 解除合作（2026-10-06）：协商解除与违约申报合并成一个入口后的三条卡片。
+    // 解除合作（2026-10-06）：协商解除与判责合并成一个入口后的三条卡片。
     // 案件先进入协商阶段，对方同意即无责退出、不同意（或超时未回应）才由任一方申请平台介入。
     // 全部不给按钮：发起与表态都在需求卡片的弹窗里，这里再给入口只是空跳转。
     case 'termination_submitted':
@@ -394,13 +394,13 @@ export function conversationCardMeta(
       }
     case 'breach_case_rejected':
       return {
-        title: '违约申报未获支持',
-        description: '平台未支持本次违约申报，案件已关闭，双方合同仍按原约定继续履行。',
+        title: '解除合作申请未获支持',
+        description: '平台未支持本次解除合作申请，案件已关闭，双方合同仍按原约定继续履行。',
       }
     case 'breach_case_withdrawn':
       return {
-        title: '违约申报已撤回',
-        description: '申报人已撤回本次申报，合作按原约定继续履行。',
+        title: '解除合作申请已撤回',
+        description: '发起人已撤回本次申请，合作按原约定继续履行。',
       }
     case 'breach_case_manual_required':
       return {
@@ -419,13 +419,13 @@ export function conversationCardMeta(
     case 'breach_case_manual_closed':
       return {
         title: '解除合作案件已由客服人工结案',
-        description: '本次终止合作案件已由客服人工处理完毕，结论与资金口径见案件详情与需求卡片。',
+        description: '本次解除合作案件已由客服人工处理完毕，结论与资金口径见案件详情与需求卡片。',
       }
     // 协商还价与「申请平台介入」此前不写卡片，对方不提就没人在会话里说一声。
     // 与案件其它卡片同口径：详情在弹窗里，不给按钮。
     case 'breach_case_negotiation_proposed':
       return {
-        title: '对方已发起终止合作协商',
+        title: '对方已发起解除合作协商',
         description:
           '请在案件内表态是否接受该退款额度。不接受可改额度重新提议，或申请平台介入判定。',
       }

@@ -164,11 +164,11 @@ describe('conversation status cards', () => {
       'unbind_request_rejected',
       'unbind_request_auto_rejected',
       'unbind_request_expired',
-      // 终止合作
+      // 解除合作（履约段）
       'breach_case_negotiation_proposed',
       'breach_case_negotiation_rejected',
       'breach_case_ai_reviewing',
-      // 终止合作「人工处理」那一段：后台滞留提醒与客服人工结案
+      // 解除合作「人工处理」那一段：后台滞留提醒与客服人工结案
       'breach_case_manual_required_reminder',
       'breach_case_manual_closed',
       // 解除合作

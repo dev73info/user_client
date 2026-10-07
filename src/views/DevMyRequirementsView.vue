@@ -768,7 +768,7 @@ async function handleDeliverySubmitted() {
 
 function canReportBreach(item: RequirementItem) {
   return item.payment_mode !== 'self_managed' &&
-    // 待分账（尾款已缴、分账排队中）仍在等待期内，此时终止合作会把排队分账置为 cancelled，
+    // 待分账（尾款已缴、分账排队中）仍在等待期内，此时解除合作会把排队分账置为 cancelled，
     // 与后端一样留出这条出口。
     // 待接单（`pending_deposit`）含「已签约未缴定金」：甲方拒缴定金同样是违约，可以申报，
     // 那种案件没有支付单、只作责任认定；尚未签合同时后端按无生效合同拒掉——结案回滚把需求
@@ -872,9 +872,9 @@ async function submitBreachWithdraw() {
   try {
     breachCase.value = await withdrawAdapayBreach(auth.token, current.id)
     breachWithdrawConfirm.value = false
-    showToast('终止合作申请已撤回，如仍有争议可重新发起', 'success')
+    showToast('解除合作申请已撤回，如仍有争议可重新发起', 'success')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '撤回终止合作申请失败', 'error')
+    showToast(error instanceof Error ? error.message : '撤回解除合作申请失败', 'error')
   } finally {
     breachWithdrawLoading.value = false
   }
@@ -914,19 +914,19 @@ const breachCanStartNewRound = computed(() => {
  */
 function breachDialogTitle() {
   if (!breachNewRound.value && breachCase.value) {
-    return '终止合作进展'
+    return '解除合作进展'
   }
   if (breachCase.value?.status === 'withdrawn') {
-    return breachWithdrawnByMe.value ? '重新发起终止合作' : '终止合作'
+    return breachWithdrawnByMe.value ? '重新发起解除合作' : '解除合作'
   }
-  return breachNewRound.value ? '发起新的终止合作' : '终止合作'
+  return breachNewRound.value ? '发起新的解除合作' : '解除合作'
 }
 
 function breachSubmitLabel() {
   if (breachCase.value?.status === 'withdrawn') {
-    return breachWithdrawnByMe.value ? '重新发起' : '提交终止合作申请'
+    return breachWithdrawnByMe.value ? '重新发起' : '提交解除合作申请'
   }
-  return breachNewRound.value ? '发起新一轮终止合作' : '提交终止合作申请'
+  return breachNewRound.value ? '发起新一轮解除合作' : '提交解除合作申请'
 }
 
 /** 申请表单上方的「上一轮」说明：讲清楚结论不能翻案，以及本次提交是新建案件还是沿用同一条。 */
@@ -943,7 +943,7 @@ function breachRoundHint() {
   // 结案（`succeeded`）按「结案即自动解除」作废合同、把需求退回大厅：同一需求上已经没有可裁决
   // 的合同，所以不是「再提一条新案件」而是「重新接单并签约」（BUG-038）。
   if (item.status === 'succeeded') {
-    return '上一轮案件已结案，需求已退回大厅、原合同已作废；需重新接单并签约后才能再次发起终止合作。'
+    return '上一轮案件已结案，需求已退回大厅、原合同已作废；需重新接单并签约后才能再次发起解除合作。'
   }
   return '上一轮案件已驳回，结论不能翻案；本次提交会新建一条案件，只针对驳回之后新发生的事实。'
 }
@@ -991,16 +991,16 @@ async function submitBreachReport() {
   const item = breachRequirement.value
   const reason = breachReason.value.trim()
   if (!item || !reason) {
-    showToast('请填写终止合作的事实和相关依据', 'warning')
+    showToast('请填写解除合作的事实和相关依据', 'warning')
     return
   }
   breachLoading.value = true
   try {
     breachCase.value = await reportAdapayTermination(auth.token, item.requirement_id, reason)
     breachNewRound.value = false
-    showToast('终止合作申请已提交，请先与对方协商', 'success')
+    showToast('解除合作申请已提交，请先与对方协商', 'success')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交终止合作申请失败', 'error')
+    showToast(error instanceof Error ? error.message : '提交解除合作申请失败', 'error')
   } finally {
     breachLoading.value = false
   }
@@ -1347,7 +1347,7 @@ async function loadRequirementConversations() {
               <!-- 行内按钮的上色走统一层的 .dev-action--soft / .dev-action--soft-danger：
                    原来挂的是裸 `type="primary" plain` / `type="danger" plain`，
                    Element 的 plain 变体给的是浅蓝底（#e8edfa）与粉底三件套，
-                   与表格行里的白底 + 主色描边不是一套，禁用态的「终止合作」更是一片粉。 -->
+                   与表格行里的白底 + 主色描边不是一套，禁用态的「解除合作」更是一片粉。 -->
               <TButton
                 variant="outline"
                 tone="accent"
@@ -1378,7 +1378,7 @@ async function loadRequirementConversations() {
                 v-if="canReportBreach(row.item)"
                 @click="openBreachReport(row.item!)"
               >
-                终止合作
+                解除合作
               </TButton>
               <TButton
                 variant="solid"
@@ -1525,7 +1525,7 @@ async function loadRequirementConversations() {
           提交后案件进入「协商中」：双方先在案件内协商定金与尾款的退还额度，谈成即直接退款结案。
           协商不成再由任一方申请平台介入，平台核对合同、支付、交付与沟通记录，由审核智能体判定责任方，客服人工复核。
         </p>
-        <p v-if="breachCaseLoading" class="unbind-dialog-tip">正在加载终止合作案件…</p>
+        <p v-if="breachCaseLoading" class="unbind-dialog-tip">正在加载解除合作案件…</p>
         <template v-else-if="breachCase && !breachNewRound">
           <TDescriptions :column="1" border size="sm">
             <TDescriptionsItem label="案件编号">{{ breachCase.caseNo }}</TDescriptionsItem>
@@ -1651,7 +1651,7 @@ async function loadRequirementConversations() {
 
           <div v-if="breachWithdrawConfirm" class="breach-decision">
             <p class="unbind-dialog-line">
-              确认撤回本次终止合作申请？撤回后本次申请结束，如仍有争议可在同一需求上重新发起；撤回不会触发任何退款或赔付。
+              确认撤回本次解除合作申请？撤回后本次申请结束，如仍有争议可在同一需求上重新发起；撤回不会触发任何退款或赔付。
             </p>
             <div class="breach-decision__actions">
               <TButton :disabled="breachWithdrawLoading" @click="cancelBreachWithdrawConfirm"
@@ -1704,7 +1704,7 @@ async function loadRequirementConversations() {
           v-else-if="breachCase?.status === 'withdrawn' && !breachNewRound"
           :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
           @click="reopenBreachReport"
-          >{{ breachWithdrawnByMe ? '重新发起' : '提交终止合作申请' }}</TButton
+          >{{ breachWithdrawnByMe ? '重新发起' : '提交解除合作申请' }}</TButton
         >
         <TButton
           variant="solid"
@@ -1716,7 +1716,7 @@ async function loadRequirementConversations() {
           "
           :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
           @click="reopenBreachReport"
-          >发起新的终止合作</TButton
+          >发起新的解除合作</TButton
         >
         <TButton
           variant="outline"
@@ -2017,7 +2017,7 @@ async function loadRequirementConversations() {
 }
 
 /* 会话按钮的圆角与字重都走统一层的 .dev-action--soft（10px 方角），
-   这里不再把它单独扭成胶囊——同一排的「签署合同 / 终止合作 / 申请解除」都是方角，
+   这里不再把它单独扭成胶囊——同一排的「签署合同 / 解除合作」都是方角，
    只有这一颗是 999px 时整排按钮横竖不齐（见 dev-base.css 的行内软按钮一节）。 */
 .dev-requirement-card__conversation {
   font-weight: 700;

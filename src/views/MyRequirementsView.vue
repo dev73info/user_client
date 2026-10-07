@@ -279,19 +279,19 @@ const breachCanStartNewRound = computed(() => {
  */
 function breachDialogTitle() {
   if (!breachNewRound.value && breachCase.value) {
-    return '终止合作进展'
+    return '解除合作进展'
   }
   if (breachCase.value?.status === 'withdrawn') {
-    return breachWithdrawnByMe.value ? '重新发起终止合作' : '终止合作'
+    return breachWithdrawnByMe.value ? '重新发起解除合作' : '解除合作'
   }
-  return breachNewRound.value ? '发起新的终止合作' : '终止合作'
+  return breachNewRound.value ? '发起新的解除合作' : '解除合作'
 }
 
 function breachSubmitLabel() {
   if (breachCase.value?.status === 'withdrawn') {
-    return breachWithdrawnByMe.value ? '重新发起' : '提交终止合作申请'
+    return breachWithdrawnByMe.value ? '重新发起' : '提交解除合作申请'
   }
-  return breachNewRound.value ? '发起新一轮终止合作' : '提交终止合作申请'
+  return breachNewRound.value ? '发起新一轮解除合作' : '提交解除合作申请'
 }
 
 function syncPublishModalFromRoute(value: unknown) {
@@ -561,7 +561,7 @@ function settlementHint(item: RequirementItem): string {
 }
 
 function canReportBreach(item: RequirementItem) {
-  // 待分账（尾款已缴、分账在排队）也允许终止合作：等待期内的违约由后端取消排队中的分账。
+  // 待分账（尾款已缴、分账在排队）也允许解除合作：等待期内的违约由后端取消排队中的分账。
   // 待接单（`pending_deposit`）里含「已签约未缴定金」：甲方拒缴定金同样是违约，可以申报，
   // 那种案件没有支付单、只作责任认定；尚未签合同时后端按「无生效合同」拒掉，入口不给——
   // 结案回滚把需求打回待接单、合同同时作废，也正落在这条上（BUG-038）。
@@ -645,9 +645,9 @@ async function submitBreachWithdraw() {
   try {
     breachCase.value = await withdrawAdapayBreach(auth.token, current.id)
     breachWithdrawConfirm.value = false
-    showToast('终止合作申请已撤回，如仍有争议可重新发起', 'success')
+    showToast('解除合作申请已撤回，如仍有争议可重新发起', 'success')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '撤回终止合作申请失败', 'error')
+    showToast(error instanceof Error ? error.message : '撤回解除合作申请失败', 'error')
   } finally {
     breachWithdrawLoading.value = false
   }
@@ -677,7 +677,7 @@ function breachRoundHint() {
   // 结案（`succeeded`）会按「结案即自动解除」作废合同、把需求退回大厅：同一需求上已经没有
   // 可裁决的合同，所以不是「再提一条新案件」而是「重新接单并签约」（BUG-038）。
   if (item.status === 'succeeded') {
-    return '上一轮案件已结案，需求已退回大厅、原合同已作废；需重新接单并签约后才能再次发起终止合作。'
+    return '上一轮案件已结案，需求已退回大厅、原合同已作废；需重新接单并签约后才能再次发起解除合作。'
   }
   return '上一轮案件已驳回，结论不能翻案；本次提交会新建一条案件，只针对驳回之后新发生的事实。'
 }
@@ -725,16 +725,16 @@ async function submitBreachReport() {
   const item = breachRequirement.value
   const reason = breachReason.value.trim()
   if (!item || !reason) {
-    showToast('请填写终止合作的事实和相关依据', 'warning')
+    showToast('请填写解除合作的事实和相关依据', 'warning')
     return
   }
   breachLoading.value = true
   try {
     breachCase.value = await reportAdapayTermination(auth.token, item.requirement_id, reason)
     breachNewRound.value = false
-    showToast('终止合作申请已提交，请先与对方协商', 'success')
+    showToast('解除合作申请已提交，请先与对方协商', 'success')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交终止合作申请失败', 'error')
+    showToast(error instanceof Error ? error.message : '提交解除合作申请失败', 'error')
   } finally {
     breachLoading.value = false
   }
@@ -2085,7 +2085,7 @@ function moreRowActions(item: RequirementItem): RequirementRowAction[] {
       ? { key: 'invoice', label: '获取发票' }
       : { key: 'invoice', label: '获取发票', disabled: true, title: invoiceState.reason },
   )
-  // 「解除合作」是唯一的退出入口（2026-10-06 起协商解除与终止合作合并）：进去先协商，
+  // 「解除合作」是唯一的退出入口（2026-10-06 起两套旧出口合并）：进去先协商，
   // 对方同意即无责退出、不同意才申请平台介入。
   if (canReportBreach(item)) {
     entries.push({ key: 'breach', label: '解除合作', danger: true })
@@ -2826,13 +2826,13 @@ watch(
             <button v-if="breachCase.status === 'withdrawn'" class="ghost primary" type="button"
               :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
               @click="reopenBreachReport">
-              {{ breachWithdrawnByMe ? '重新发起' : '提交终止合作申请' }}
+              {{ breachWithdrawnByMe ? '重新发起' : '提交解除合作申请' }}
             </button>
             <button v-else-if="(breachCase.status === 'rejected' || breachCase.status === 'succeeded') && breachCanStartNewRound"
               class="ghost primary" type="button"
               :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
               @click="reopenBreachReport">
-              发起新的终止合作
+              发起新的解除合作
             </button>
             <button v-if="canRequestPlatformReview(breachCase)" class="ghost primary" type="button"
               :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
