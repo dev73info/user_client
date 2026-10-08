@@ -13,6 +13,7 @@ import { useToast } from '@/composables/useToast'
 
 import {
   TIcon,
+  TMessageBox,
   TScrollbar,
   ArrowDown,
   Bell,
@@ -28,6 +29,7 @@ import {
   Service,
   Suitcase,
   Switch as SwitchIcon,
+  SwitchButton,
   Tickets,
   UserFilled,
   Wallet,
@@ -153,10 +155,9 @@ const GROUPS_WITHOUT_SECTION_LABEL = ['account', 'inventory', 'team', 'finance']
 
 const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
   {
-    // 只剩一个页面：侧边栏按一级条目渲染成「需求协作」，
-    // 条目的 label 仍用于工作台顶部标题（进的是「我的需求」这一页）。
+    // 只剩一个页面：侧边栏按一级条目渲染成「我的需求」（组名与页名一致，省掉无意义的「需求协作」外壳）。
     key: 'collaboration',
-    label: '需求协作',
+    label: '我的需求',
     icon: Connection,
     items: [
       { label: '我的需求', name: 'workbench-requirements', description: '查看支付、交付与验收进度' },
@@ -292,7 +293,7 @@ const messagesRouteName = computed(() => (isDevWorkbenchMode.value ? 'dev-messag
 
 /**
  * 消息中心夹在分组之间、两端各只渲染一次，插在哪个位置两种工作台不一样：
- * 用户工作台插在第一个分组之后（需求协作与账户服务之间）；
+ * 用户工作台插在第一个分组之后（我的需求与账户服务之间）；
  * 开发者工作台插在最后一个分组之后（团队服务之下、工单中心之上）。
  * 开发者侧多出「财务中心」一组后，仍按原来那一档排，不落到两组中间。
  */
@@ -389,7 +390,13 @@ function handleConversationRead() {
 }
 
 onMounted(() => window.addEventListener(CONVERSATION_READ_EVENT, handleConversationRead))
-onBeforeUnmount(() => window.removeEventListener(CONVERSATION_READ_EVENT, handleConversationRead))
+onBeforeUnmount(() => {
+  window.removeEventListener(CONVERSATION_READ_EVENT, handleConversationRead)
+  if (modeSwitchSpinTimer) {
+    clearTimeout(modeSwitchSpinTimer)
+    modeSwitchSpinTimer = null
+  }
+})
 
 function menuItemTo(item: WorkbenchMenuItem) {
   return {
@@ -415,10 +422,35 @@ function goBack() {
   }
 }
 
-// 切换工作台：用户模式进开发者工作台总览，开发者模式回到用户工作台总览。
-function switchWorkbenchMode() {
+const modeSwitching = ref(false)
+const modeSwitchSpinning = ref(false)
+const workbenchModeKey = computed(() => (isDevWorkbenchMode.value ? 'dev' : 'user'))
+const workbenchBrandTitle = computed(() => (isDevWorkbenchMode.value ? '开发者工作台' : '我的工作台'))
+let modeSwitchSpinTimer: ReturnType<typeof setTimeout> | null = null
+
+// 切换工作台：立刻换路由，侧栏菜单与主内容用 out-in 交叉淡入淡出；按钮图标用 CSS 转一圈。
+async function switchWorkbenchMode() {
+  if (modeSwitching.value) return
+  const targetName = isDevWorkbenchMode.value ? overviewItem.name : 'dev-home'
+  if (route.name === targetName) return
+
   mobileMenuOpen.value = false
-  void router.push(isDevWorkbenchMode.value ? { name: overviewItem.name } : { name: 'dev-home' })
+  modeSwitching.value = true
+  modeSwitchSpinning.value = true
+  if (modeSwitchSpinTimer) {
+    clearTimeout(modeSwitchSpinTimer)
+    modeSwitchSpinTimer = null
+  }
+  try {
+    await router.push({ name: targetName })
+    await nextTick()
+  } finally {
+    modeSwitching.value = false
+    modeSwitchSpinTimer = setTimeout(() => {
+      modeSwitchSpinning.value = false
+      modeSwitchSpinTimer = null
+    }, 360)
+  }
 }
 
 function conversationTo(item: RequirementConversation) {
@@ -678,6 +710,21 @@ async function scrollToHash() {
   const target = document.getElementById(route.hash.slice(1))
   target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
+
+/** 侧栏底部「退出登录」：先确认，再与顶栏同一口径清会话并回首页。 */
+async function logout() {
+  const confirmed = await TMessageBox.confirm({
+    title: '退出登录',
+    content: '确定要退出当前账号吗？',
+    confirmText: '退出登录',
+    cancelText: '取消',
+    tone: 'danger',
+  })
+  if (!confirmed) return
+  mobileMenuOpen.value = false
+  auth.logout()
+  void router.push({ name: 'home' })
+}
 </script>
 
 <template>
@@ -685,6 +732,7 @@ async function scrollToHash() {
     'user-workbench--dev': isDevWorkbenchMode,
     'user-workbench--messages': isMessagesRoute,
     'user-workbench--mobile-menu-open': mobileMenuOpen,
+    'user-workbench--mode-switching': modeSwitching,
   }" @touchstart.passive="handleWorkbenchTouchStart" @touchend.passive="handleWorkbenchTouchEnd"
     @touchcancel.passive="touchTracking = false">
     <button v-if="mobileMenuOpen" class="user-workbench__menu-backdrop" type="button" aria-label="关闭工作台菜单"
@@ -694,23 +742,30 @@ async function scrollToHash() {
       <TScrollbar class="app-scrollbar user-workbench__aside-scrollbar" max-height="calc(100vh - var(--portal-header-footprint, 98px) - 22px)">
         <div class="user-workbench__aside-inner">
           <div class="user-workbench__brand">
-            <!-- 开发者模式在标题前挂一个工作台字标；用户模式不挂，标题仍是纯文字 -->
-            <span v-if="isDevWorkbenchMode" class="user-workbench__brand-mark" aria-hidden="true">
+            <!-- 两侧工作台同一套品牌行：字标 + 标题 + 切换按钮；用户端文案是「我的工作台」 -->
+            <span class="user-workbench__brand-mark" aria-hidden="true">
               <TIcon>
                 <Grid />
               </TIcon>
             </span>
-            <!-- 侧边栏标题用普通标题样式（原版是有浅蓝底的药丸标签），模式切换按钮靠右 -->
-            <strong class="user-workbench__brand-title">{{ isDevWorkbenchMode ? '开发者工作台' : '工作台' }}</strong>
-            <!-- 开发者模式下标题有六个字，按钮缩成图标，否则标题会被挤成「开发者…」 -->
+            <!-- 侧边栏标题用普通标题样式，模式切换按钮靠右；Transition 包在标题内部，保持品牌行直系子节点结构 -->
+            <strong class="user-workbench__brand-title">
+              <Transition name="workbench-brand-title" mode="out-in">
+                <span :key="workbenchModeKey">{{ workbenchBrandTitle }}</span>
+              </Transition>
+            </strong>
+            <!-- 两侧工作台共用同一颗「切换工作台」按钮，避免一边长文一边只剩图标 -->
             <button class="user-workbench__mode-switch" type="button"
-              :class="{ 'user-workbench__mode-switch--icon': isDevWorkbenchMode }"
+              :class="{ 'user-workbench__mode-switch--spin': modeSwitchSpinning }"
               :title="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'"
-              :aria-label="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'" @click="switchWorkbenchMode">
+              :aria-label="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'"
+              :disabled="modeSwitching"
+              :aria-busy="modeSwitching || undefined"
+              @click="switchWorkbenchMode">
               <TIcon>
                 <SwitchIcon />
               </TIcon>
-              <span v-if="!isDevWorkbenchMode">切换工作台</span>
+              <span>切换工作台</span>
             </button>
             <button class="user-workbench__drawer-close" type="button" aria-label="关闭工作台菜单" @click="closeMobileMenu">
               <TIcon>
@@ -719,7 +774,8 @@ async function scrollToHash() {
             </button>
           </div>
 
-          <nav class="user-workbench__menu">
+          <Transition name="workbench-mode" mode="out-in">
+          <nav :key="workbenchModeKey" class="user-workbench__menu">
             <template v-if="isDevWorkbenchMode">
               <!-- 开发者菜单不分小标题，一级条目直接平铺；角标给「我的接单」 -->
               <RouterLink v-for="item in devWorkbenchItems" :key="item.name"
@@ -741,7 +797,6 @@ async function scrollToHash() {
             </template>
 
             <!-- 开发者模式下整块换成开发者菜单，用户菜单不出现在侧边栏 -->
-            <p v-if="!isDevWorkbenchMode" class="user-workbench__menu-section">我的事项</p>
             <RouterLink v-if="!isDevWorkbenchMode" class="user-workbench__menu-link user-workbench__menu-link--root"
               :class="{ active: isOverviewActive() }" :to="menuItemTo(overviewItem)" @click="closeMobileMenu">
               <span class="user-workbench__menu-icon">
@@ -755,7 +810,7 @@ async function scrollToHash() {
             </RouterLink>
 
             <template v-for="(group, index) in visibleMenuGroups" :key="group.key">
-              <!-- 只剩一个页面的分组（如「需求协作」）直接渲染成一级条目，省掉一层没意义的展开 -->
+              <!-- 只剩一个页面的分组（如「我的需求」）直接渲染成一级条目，省掉一层没意义的展开 -->
               <section v-if="group.items.length === 1" class="user-workbench__menu-group">
                 <RouterLink v-for="item in group.items" :key="item.name"
                   class="user-workbench__menu-link user-workbench__menu-link--root"
@@ -804,7 +859,7 @@ async function scrollToHash() {
                 </Transition>
               </section>
 
-              <!-- 消息中心已从「需求协作」里提出来做一级条目（原来嵌在需求协作的子菜单里），两种工作台各一份 -->
+              <!-- 消息中心已从需求分组里提出来做一级条目（原来嵌在子菜单里），两种工作台各一份 -->
               <section v-if="index === messagesAnchorIndex" class="user-workbench__menu-group"
                 :class="{ active: isMessageMenuActive(), open: isMessageMenuOpen() }">
                 <button class="user-workbench__menu-group-head" type="button" :aria-expanded="isMessageMenuOpen()"
@@ -876,8 +931,23 @@ async function scrollToHash() {
                   <strong>{{ ticketsItem.label }}</strong>
                 </span>
               </RouterLink>
+              <button
+                class="user-workbench__menu-link user-workbench__menu-link--root user-workbench__menu-link--logout"
+                type="button"
+                @click="logout"
+              >
+                <span class="user-workbench__menu-icon">
+                  <TIcon>
+                    <SwitchButton />
+                  </TIcon>
+                </span>
+                <span>
+                  <strong>退出登录</strong>
+                </span>
+              </button>
             </section>
           </nav>
+          </Transition>
 
         </div>
       </TScrollbar>
@@ -892,7 +962,9 @@ async function scrollToHash() {
           <span>菜单</span>
         </button>
         <div>
-          <strong>{{ isDevWorkbenchMode ? '开发者工作台' : '工作台' }}</strong>
+          <Transition name="workbench-brand-title" mode="out-in">
+            <strong :key="workbenchModeKey">{{ workbenchBrandTitle }}</strong>
+          </Transition>
           <span>{{ currentTitle }}</span>
         </div>
         <!-- 外壳不再铺页面标题栏，返回只在移动端顶部栏里给一颗（落地页与页内自带返回的页面不给） -->
@@ -902,7 +974,11 @@ async function scrollToHash() {
       </div>
 
       <div class="user-workbench__content">
-        <RouterView />
+        <RouterView v-slot="{ Component }">
+          <Transition name="workbench-page" mode="out-in">
+            <component :is="Component" :key="workbenchModeKey" />
+          </Transition>
+        </RouterView>
       </div>
     </section>
   </main>
@@ -971,7 +1047,7 @@ async function scrollToHash() {
   border-bottom: 1px solid rgba(226, 232, 240, 0.82);
 }
 
-/* 开发者菜单的品牌字标：小方块 + 图标，与标题同排；用户模式不挂 */
+/* 品牌字标：小方块 + 图标，与标题同排；用户 / 开发者两侧共用 */
 .user-workbench__brand-mark {
   display: inline-grid;
   flex: 0 0 auto;
@@ -995,6 +1071,17 @@ async function scrollToHash() {
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.user-workbench__brand-title > span {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  color: inherit;
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
 }
 
 .user-workbench__brand span {
@@ -1098,6 +1185,31 @@ async function scrollToHash() {
 
 .user-workbench__menu-link--root {
   grid-template-columns: auto minmax(0, 1fr);
+}
+
+/* 退出登录：与其它一级条目同版式，用危险色区分动作 */
+.user-workbench__menu-link--logout {
+  color: #b42318;
+}
+
+.user-workbench__menu-link--logout .user-workbench__menu-icon {
+  background: rgba(254, 226, 226, 0.9);
+  color: #b42318;
+}
+
+.user-workbench__menu-link--logout:hover {
+  background: rgba(254, 242, 242, 0.96);
+  color: #912018;
+  box-shadow: inset 0 0 0 1px rgba(254, 202, 202, 0.72);
+}
+
+.user-workbench__menu-link--logout:hover .user-workbench__menu-icon {
+  background: rgba(254, 202, 202, 0.95);
+  color: #912018;
+}
+
+.user-workbench__menu-link--logout::before {
+  background: #b42318;
 }
 
 /* 带角标的一级条目多占一列：图标 / 标题 / 角标 */
@@ -1230,6 +1342,11 @@ async function scrollToHash() {
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    transform 180ms ease,
+    opacity 160ms ease;
 }
 
 .user-workbench__mode-switch:hover,
@@ -1238,12 +1355,82 @@ async function scrollToHash() {
   background: rgba(219, 234, 254, 0.95);
 }
 
-/* 开发者模式：按钮只留图标（两个类名是为了盖住 900px 断点里那条 padding 覆盖） */
-.user-workbench__mode-switch.user-workbench__mode-switch--icon {
-  width: 28px;
-  min-width: 28px;
-  padding: 0;
-  justify-content: center;
+.user-workbench__mode-switch:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.user-workbench__mode-switch:disabled {
+  cursor: wait;
+  opacity: 0.78;
+}
+
+.user-workbench__mode-switch--spin :deep(.t73-icon),
+.user-workbench__mode-switch--spin :deep(svg) {
+  animation: workbench-mode-spin 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes workbench-mode-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(180deg);
+  }
+}
+
+/* 品牌标题 / 字标在模式切换时轻微交叉淡入 */
+.workbench-brand-title-enter-active,
+.workbench-brand-title-leave-active {
+  transition:
+    opacity 160ms ease,
+    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.workbench-brand-title-enter-from {
+  opacity: 0;
+  transform: translateY(3px);
+}
+
+.workbench-brand-title-leave-to {
+  opacity: 0;
+  transform: translateY(-3px);
+}
+
+/* 侧栏菜单整块按模式 key 做 out-in，避免条目瞬间替换 */
+.workbench-mode-enter-active,
+.workbench-mode-leave-active {
+  transition:
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.workbench-mode-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.workbench-mode-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* 主内容区随工作台模式一起淡入淡出 */
+.workbench-page-enter-active,
+.workbench-page-leave-active {
+  transition:
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.workbench-page-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.workbench-page-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 .user-workbench__menu-group--standalone {
@@ -1408,9 +1595,21 @@ async function scrollToHash() {
   .user-workbench__submenu-link,
   .user-workbench__menu-icon,
   .user-workbench__menu-arrow,
+  .user-workbench__mode-switch,
   .workbench-submenu-enter-active,
-  .workbench-submenu-leave-active {
+  .workbench-submenu-leave-active,
+  .workbench-brand-title-enter-active,
+  .workbench-brand-title-leave-active,
+  .workbench-mode-enter-active,
+  .workbench-mode-leave-active,
+  .workbench-page-enter-active,
+  .workbench-page-leave-active {
     transition: none;
+  }
+
+  .user-workbench__mode-switch--spin :deep(.t73-icon),
+  .user-workbench__mode-switch--spin :deep(svg) {
+    animation: none;
   }
 
   .user-workbench__menu-link:hover,
@@ -1624,6 +1823,10 @@ async function scrollToHash() {
     padding: 0 11px;
   }
 
+  .user-workbench__main {
+    padding: 0 8px;
+  }
+
   .user-workbench__mobile-bar {
     position: sticky;
     top: 8px;
@@ -1631,8 +1834,8 @@ async function scrollToHash() {
     display: flex;
     align-items: center;
     gap: 10px;
-    width: calc(100% - 16px);
-    margin: 8px 8px 12px;
+    width: 100%;
+    margin: 8px 0 12px;
     height: auto;
     min-height: 66px;
     padding: 12px;

@@ -36,7 +36,6 @@ import {
   type RequirementConversationDetail,
 } from '@/api/conversations'
 import {
-  commentRequirement as commentRequirementApi,
   createRequirement as createRequirementApi,
   listRequirements,
   requestRequirementFinalPayment as requestRequirementFinalPaymentApi,
@@ -77,11 +76,6 @@ type PaymentState = {
 const currentPayment = ref<PaymentState | null>(null)
 const wechatAuthorizationVisible = ref(false)
 const wechatAuthorizationUrl = ref('')
-const commentVisible = ref(false)
-const commentRequirement = ref<RequirementItem | null>(null)
-const commentRating = ref(5)
-const commentText = ref('')
-const commentLoading = ref(false)
 const editVisible = ref(false)
 const publishVisible = ref(false)
 const editRequirement = ref<RequirementItem | null>(null)
@@ -473,29 +467,6 @@ function handleRequirementAction(item: RequirementItem) {
   void router.push({ name: 'workbench-requirements' })
 }
 
-function starFill(index: number) {
-  const rating = commentRating.value
-  if (rating >= index) {
-    return 100
-  }
-  if (rating >= index - 0.5) {
-    return 50
-  }
-  return 0
-}
-
-function starClass(index: number) {
-  const fill = starFill(index)
-  return fill === 100 ? 'full' : fill === 50 ? 'half' : ''
-}
-
-function setRating(event: MouseEvent, index: number) {
-  const target = event.currentTarget as HTMLElement
-  const rect = target.getBoundingClientRect()
-  const clickedInLeftHalf = event.clientX - rect.left < rect.width / 2
-  commentRating.value = clickedInLeftHalf ? index - 0.5 : index
-}
-
 function openProfileAvatarPicker() {
   if (profileAvatarUploading.value) {
     return
@@ -877,10 +848,6 @@ function closePayModal() {
   payVisible.value = false
 }
 
-function closeCommentModal() {
-  commentVisible.value = false
-}
-
 function forceCloseEditModal() {
   editVisible.value = false
   editRequirement.value = null
@@ -919,38 +886,6 @@ function closePublishModal() {
   }
   forceClosePublishModal()
   clearPublishModalQuery()
-}
-
-async function submitRequirementComment() {
-  if (!auth.isAuthed || !commentRequirement.value) {
-    showToast('请先登录后再发表评论', 'error')
-    return
-  }
-
-  if (commentRating.value < 1 || commentRating.value > 5) {
-    showToast('请为已完成需求打分，范围 1 到 5 分', 'error')
-    return
-  }
-
-  if (commentText.value.trim().length > 200) {
-    showToast('评论字数不能超过 200 字', 'error')
-    return
-  }
-
-  commentLoading.value = true
-  try {
-    await commentRequirementApi(auth.token, commentRequirement.value.requirement_id, {
-      rating: commentRating.value,
-      comment: commentText.value.trim(),
-    })
-    showToast('评论提交成功', 'success')
-    commentVisible.value = false
-    await loadMyRequirements()
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '评论提交失败', 'error')
-  } finally {
-    commentLoading.value = false
-  }
 }
 
 async function submitRequirementResubmit() {
@@ -1646,43 +1581,6 @@ onBeforeUnmount(() => {
       </section>
     </div>
 
-    <div v-if="commentVisible && commentRequirement" class="modal-wrap" @click.self="closeCommentModal">
-      <section class="pay-modal comment-modal" aria-label="需求评论弹窗">
-        <h3>评价需求</h3>
-        <div class="comment-modal__meta">
-          <p class="pay-line"><strong>需求标题</strong><span>{{ commentRequirement.title }}</span></p>
-          <p class="pay-line"><strong>需求编号</strong><span>{{ commentRequirement.requirement_id }}</span></p>
-        </div>
-        <div class="comment-modal__section">
-          <div class="comment-modal__section-head">
-            <strong>评分</strong>
-            <span>{{ commentRating.toFixed(1) }} 分</span>
-          </div>
-          <div class="rating-row">
-            <button v-for="star in 5" :key="star" type="button" class="rating-star" :class="starClass(star)"
-              @click="setRating($event, star)">
-              ★
-            </button>
-          </div>
-        </div>
-        <div class="comment-modal__section comment-modal__field">
-          <div class="comment-modal__section-head">
-            <strong>评论内容</strong>
-            <span>已输入 {{ commentText.length }} / 200 字</span>
-          </div>
-          <textarea class="comment-input" v-model="commentText" rows="4" maxlength="200"
-            placeholder="请输入评论，最多 200 字"></textarea>
-        </div>
-
-        <div class="actions">
-          <button class="ghost" type="button" @click="closeCommentModal">取消</button>
-          <button class="ghost primary" type="button" :disabled="commentLoading" @click="submitRequirementComment">
-            {{ commentLoading ? '提交中...' : '提交评论' }}
-          </button>
-        </div>
-      </section>
-    </div>
-
     <WechatAuthorizationModal
       :visible="wechatAuthorizationVisible"
       :authorization-url="wechatAuthorizationUrl"
@@ -2001,8 +1899,11 @@ onBeforeUnmount(() => {
 
 .overview-hero__head h1 {
   margin-top: 6px;
-  font-size: clamp(28px, 4vw, 40px);
-  line-height: 1.1;
+  overflow: hidden;
+  font-size: clamp(22px, 3.6vw, 40px);
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .overview-hero__head p {
@@ -2010,6 +1911,10 @@ onBeforeUnmount(() => {
   color: #64748b;
   font-size: 18px;
   line-height: 1.5;
+}
+
+.overview-hero__identity > div {
+  min-width: 0;
 }
 
 .overview-hero__main p {
@@ -2113,11 +2018,6 @@ onBeforeUnmount(() => {
 .overview-panel {
   padding: 20px;
   border-radius: 18px;
-}
-
-.overview-focus-panel {
-  padding: 22px;
-  background: linear-gradient(135deg, rgba(238, 244, 255, 0.88), rgba(255, 255, 255, 0.96) 58%);
 }
 
 .overview-section-head {
@@ -2387,23 +2287,93 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 760px) {
-  .overview-hero {
-    padding: 20px;
+  .profile-page.page-shell {
+    gap: 12px;
+    padding: 0 0 24px;
   }
 
-  .overview-hero__head,
+  .overview-hero {
+    gap: 14px;
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  /* 头像行保留「返回首页」靠右，避免整行拉满后动作区被拆散 */
+  .overview-hero__head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+  }
+
   .overview-hero__body {
     grid-template-columns: 1fr;
-    align-items: start;
+    align-items: stretch;
+    gap: 12px;
   }
 
-  .overview-hero__actions {
-    justify-content: flex-start;
+  .overview-hero__identity {
+    gap: 12px;
+  }
+
+  .overview-hero__head h1 {
+    margin-top: 2px;
+    font-size: 18px;
+  }
+
+  .overview-hero__head p {
+    margin-top: 4px;
+    font-size: 13px;
+  }
+
+  .overview-section-head h2 {
+    font-size: 17px;
+  }
+
+  .overview-hero__chips {
+    margin-top: 0;
+  }
+
+  .overview-hero__chips span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .overview-home-link {
+    width: auto;
+    align-self: center;
+    padding: 8px 12px;
+    white-space: nowrap;
+  }
+
+  /* 三个操作等分一排，不再出现「两颗并排 + 刷新独占一行」 */
+  .overview-hero__actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
     width: 100%;
-    text-align: center;
+  }
+
+  .overview-hero__actions .ghost.small {
+    width: 100%;
+    min-height: 40px;
+    padding: 0 8px;
+    justify-content: center;
+    font-size: 13px;
+  }
+
+  .overview-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .overview-stat-card {
+    padding: 12px 14px;
+  }
+
+  .overview-stat-card strong {
+    font-size: 22px;
   }
 
   .overview-focus-panel,
@@ -2413,13 +2383,14 @@ onBeforeUnmount(() => {
 
   .overview-section-head,
   .overview-inline-actions {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
   }
 
   .overview-inline-actions .ghost.small,
   .overview-link {
-    width: 100%;
+    width: auto;
     text-align: center;
   }
 
@@ -2439,13 +2410,15 @@ onBeforeUnmount(() => {
   }
 
   .overview-dev-links {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
 }
 
 @media (max-width: 640px) {
-  .overview-stat-grid {
-    grid-template-columns: 1fr;
+  .profile-avatar-button {
+    width: 64px;
+    height: 64px;
   }
 
   .profile-avatar-crop-body {
@@ -2459,11 +2432,20 @@ onBeforeUnmount(() => {
   .profile-avatar-crop-actions .ghost.small {
     flex: 1 1 120px;
   }
+}
 
-  .overview-hero__actions .ghost.small {
-    flex: 1 1 140px;
+@media (max-width: 380px) {
+  .overview-hero__actions {
+    grid-template-columns: 1fr 1fr;
   }
 
+  .overview-hero__actions .ghost.small:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .overview-dev-links {
+    grid-template-columns: 1fr;
+  }
 }
 
 .realname-badge {

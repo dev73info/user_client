@@ -10,6 +10,16 @@ vi.mock('@/api/realname', () => ({ getMyRealnameVerification: vi.fn().mockResolv
 vi.mock('@/api/conversations', () => ({ listRequirementConversations: vi.fn().mockResolvedValue([]) }))
 vi.mock('@/api/team', () => ({ listUserInvitations: vi.fn().mockResolvedValue([]) }))
 vi.mock('@/api/devRequirements', () => ({ listMyRequirements: vi.fn().mockResolvedValue([]) }))
+vi.mock('ui_73info', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ui_73info')>()
+  return {
+    ...actual,
+    TMessageBox: {
+      ...actual.TMessageBox,
+      confirm: vi.fn().mockResolvedValue(true),
+    },
+  }
+})
 
 // 开发者页面在 router/dev.ts 里都带 devArea 标记，侧边栏据此把整条菜单换成开发者菜单。
 // 团队服务已整体移入开发者工作台，这三个页面同样是 devArea 路由，不再属于用户菜单。
@@ -77,7 +87,8 @@ describe('workbench mode switch', () => {
     expect(modeSwitch.text()).toContain('切换工作台')
     expect(modeSwitch.attributes('aria-label')).toBe('进入开发者工作台')
     // 左侧标题是文字标题（不是药丸标签），标题内容随模式变
-    expect(wrapper.find('.user-workbench__brand > .user-workbench__brand-title').text()).toBe('工作台')
+    expect(wrapper.find('.user-workbench__brand > .user-workbench__brand-mark').exists()).toBe(true)
+    expect(wrapper.find('.user-workbench__brand > .user-workbench__brand-title').text()).toBe('我的工作台')
     expect(sidebar(wrapper)).toContain('工作台总览')
     // 开发者条目不再挤在用户侧边栏底部
     expect(sidebar(wrapper)).not.toContain('我的资源项目')
@@ -85,21 +96,21 @@ describe('workbench mode switch', () => {
     // 团队服务已搬进开发者工作台，用户侧边栏不再出现
     expect(sidebar(wrapper)).not.toContain('团队服务')
     expect(sidebar(wrapper)).not.toContain('我的团队')
-    // 「我的定制」已并入「我的需求」，需求协作只剩一个页面：整组收成一条一级条目
+    // 「我的定制」已并入「我的需求」，该组只剩一个页面：整组收成一条一级条目「我的需求」
     expect(sidebar(wrapper)).not.toContain('我的定制')
-    expect(sidebar(wrapper)).toContain('需求协作')
-    expect(sidebar(wrapper)).not.toContain('我的需求')
+    expect(sidebar(wrapper)).toContain('我的需求')
+    expect(sidebar(wrapper)).not.toContain('需求协作')
     expect(
       wrapper.findAll('.user-workbench__menu .user-workbench__menu-link--root').map((link) => link.text()),
-    ).toEqual(['工作台总览', '需求协作', '系统通知', '工单中心'])
-    // 消息中心是一级条目：排在「需求协作」之后、「账户服务」之前，不再嵌在需求协作的子菜单里。
+    ).toEqual(['工作台总览', '我的需求', '系统通知', '工单中心', '退出登录'])
+    // 消息中心是一级条目：排在「我的需求」之后、「账户服务」之前，不再嵌在需求分组的子菜单里。
     // 「我的背包」从「账户服务」里提出来，自己一个分组排在它后面。
     expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text()))
       .toEqual(['消息中心', '账户服务', '我的背包'])
     expect(wrapper.find('.user-workbench__submenu .user-workbench__menu-group-head').exists()).toBe(false)
 
     // 「我的背包」是独立分组：组内四页都在，账户服务里不再留这一条。
-    // 只剩一个页面的分组（「需求协作」）没有分组头，先挑出有分组头的那些。
+    // 只剩一个页面的分组（「我的需求」）没有分组头，先挑出有分组头的那些。
     const groups = wrapper.findAll('.user-workbench__menu-group')
       .filter((group) => group.find('.user-workbench__menu-group-head').exists())
     const accountGroup = groups.find((group) => group.find('.user-workbench__menu-group-head').text().includes('账户服务'))!
@@ -122,7 +133,6 @@ describe('workbench mode switch', () => {
     // 团队服务那一段也没有小标题，靠折叠组的分组头报名字
     expect(wrapper.findAll('.user-workbench__menu > .user-workbench__menu-section')).toHaveLength(0)
     // 用户端菜单整条换掉，不再出现
-    expect(text).not.toContain('需求协作')
     expect(text).not.toContain('账户服务')
     // 与用户菜单同一套一级条目版式（带图标的一级菜单），切换模式时侧边栏只有文字变化；
     // 条目按动线排：先总览与资源，再接单（交付与到账并进了这一页，菜单不再单列一条）
@@ -154,7 +164,12 @@ describe('workbench mode switch', () => {
     expect(text).toContain('工单中心')
     // 系统通知与工单中心同一档，两种工作台都有这一条
     expect(text).toContain('系统通知')
-    expect(wrapper.find('.user-workbench__mode-switch').attributes('aria-label')).toBe('回到用户工作台')
+    // 退出登录挂在工单中心下方，两种工作台共用
+    expect(text).toContain('退出登录')
+    const modeSwitch = wrapper.find('.user-workbench__mode-switch')
+    expect(modeSwitch.attributes('aria-label')).toBe('回到用户工作台')
+    expect(modeSwitch.text()).toContain('切换工作台')
+    expect(modeSwitch.classes()).not.toContain('user-workbench__mode-switch--icon')
     expect(wrapper.find('.user-workbench__brand-title').text()).toBe('开发者工作台')
     wrapper.unmount()
   })
@@ -206,7 +221,7 @@ describe('workbench mode switch', () => {
     await messagesHead(user.wrapper).trigger('click')
     await flushPromises()
     expect(user.router.currentRoute.value.name).toBe('workbench-messages')
-    expect(user.wrapper.find('.user-workbench__brand-title').text()).toBe('工作台')
+    expect(user.wrapper.find('.user-workbench__brand-title').text()).toBe('我的工作台')
     user.wrapper.unmount()
   })
 
@@ -225,8 +240,40 @@ describe('workbench mode switch', () => {
     await ticketsLink(user.wrapper).trigger('click')
     await flushPromises()
     expect(user.router.currentRoute.value.name).toBe('workbench-tickets')
-    expect(user.wrapper.find('.user-workbench__brand-title').text()).toBe('工作台')
+    expect(user.wrapper.find('.user-workbench__brand-title').text()).toBe('我的工作台')
     user.wrapper.unmount()
+  })
+
+  it('侧栏「退出登录」确认后清会话并回到首页', async () => {
+    const { TMessageBox } = await import('ui_73info')
+    vi.mocked(TMessageBox.confirm).mockResolvedValue(true)
+
+    const { wrapper, router } = await render('workbench')
+    const auth = useAuthStore()
+    const logoutSpy = vi.spyOn(auth, 'logout')
+    const logoutBtn = wrapper.find('.user-workbench__menu-link--logout')
+    expect(logoutBtn.exists()).toBe(true)
+    expect(logoutBtn.text()).toContain('退出登录')
+    await logoutBtn.trigger('click')
+    await flushPromises()
+    expect(TMessageBox.confirm).toHaveBeenCalled()
+    expect(logoutSpy).toHaveBeenCalledOnce()
+    expect(router.currentRoute.value.name).toBe('home')
+    wrapper.unmount()
+  })
+
+  it('侧栏「退出登录」取消确认时不退出', async () => {
+    const { TMessageBox } = await import('ui_73info')
+    vi.mocked(TMessageBox.confirm).mockResolvedValue(false)
+
+    const { wrapper, router } = await render('workbench')
+    const auth = useAuthStore()
+    const logoutSpy = vi.spyOn(auth, 'logout')
+    await wrapper.find('.user-workbench__menu-link--logout').trigger('click')
+    await flushPromises()
+    expect(logoutSpy).not.toHaveBeenCalled()
+    expect(router.currentRoute.value.name).toBe('workbench')
+    wrapper.unmount()
   })
 
   it('系统通知在两种工作台各走各的路由：开发者端不切回用户菜单', async () => {
@@ -244,7 +291,7 @@ describe('workbench mode switch', () => {
     await notificationsLink(user.wrapper).trigger('click')
     await flushPromises()
     expect(user.router.currentRoute.value.name).toBe('workbench-notifications')
-    expect(user.wrapper.find('.user-workbench__brand-title').text()).toBe('工作台')
+    expect(user.wrapper.find('.user-workbench__brand-title').text()).toBe('我的工作台')
     user.wrapper.unmount()
   })
 
