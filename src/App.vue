@@ -162,8 +162,12 @@ onBeforeUnmount(() => {
                       <span>滇公网安备53062802000023号</span>
                     </a>
                   </p>
-                  <p>增值电信业务经营许可证：滇B2-20260273</p>
-                  <p>交易功能说明：使用第三方分账系统进行交易担保于分账，资金安全有保障</p>
+                  <p>
+                    增值电信业务经营许可证：
+                    <a href="https://dxzhgl.miit.gov.cn/dxxzsp/xkz/xkzgl/resource/qiyesearch.jsp?num=%25E6%25BB%2587B2-20260273&type=xuke"
+                      target="_blank" rel="noopener noreferrer">滇B2-20260273</a>
+                  </p>
+                  <p>交易说明：第三方支付担保与分账</p>
                 </div>
                 <div class="site-footer-block">
                   <h3>服务说明</h3>
@@ -265,7 +269,14 @@ onBeforeUnmount(() => {
   }
 
   .app-view-container {
-    padding-bottom: 108px;
+    /* 底部快捷导航约 58px + 距底 8px，再留 14px 呼吸 */
+    padding-bottom: 80px;
+  }
+
+  /* 会话打开时底部快捷导航已隐藏（见 PortalMobileDock），不再给它让位，会话铺满到屏幕底边 */
+  .app-view-container:has(.conversation-modal-wrap--inline),
+  .app-view-container:has(.conversation-modal-wrap--inline) :deep(.user-workbench__content) {
+    padding-bottom: 0;
   }
 }
 

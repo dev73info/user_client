@@ -1526,8 +1526,9 @@ function finishSearchComposition(event: CompositionEvent) {
     gap: 8px;
   }
 
+  /* 移动端首页入口宫格里已有「社区交流」，顶栏不再重复放社区按钮 */
   .portal-header.app-top-nav--home .portal-search-menu {
-    display: inline-flex;
+    display: none;
   }
 
   .portal-header.app-top-nav--home .portal-search {

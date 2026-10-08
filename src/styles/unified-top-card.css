@@ -42,39 +42,54 @@
   /* 首页移动端顶部导航 - 统一规格 */
   .portal-header.app-top-nav--home {
     position: sticky !important;
-    top: 8px !important;
+    top: 0 !important;
     z-index: 12 !important;
     display: flex !important;
     align-items: center !important;
     gap: 10px !important;
-    width: calc(100% - 16px) !important;
-    margin: 8px 8px 12px !important;
+    /* 与工作台顶栏同一做法：通栏白底，不做卡片（无圆角、无阴影、无侧边框），吸顶在 top: 0 */
+    width: 100% !important;
+    margin: 0 0 8px !important;
     height: auto !important;
-    min-height: 66px !important;
-    padding: 12px !important;
-    border: 1px solid rgba(224, 232, 255, 0.96) !important;
-    border-radius: 16px !important;
-    background: rgba(255, 255, 255, 0.94) !important;
-    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08) !important;
+    min-height: 56px !important;
+    padding: 8px 12px !important;
+    border: 0 !important;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06) !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  .portal-header.app-top-nav--home .portal-search {
+    min-height: 40px !important;
   }
 
   /* 工作台移动端顶部栏 - 统一规格 */
   .user-workbench__mobile-bar {
     position: sticky !important;
-    top: 8px !important;
+    top: 0 !important;
     z-index: 12 !important;
     display: flex !important;
     align-items: center !important;
     gap: 10px !important;
-    width: calc(100% - 16px) !important;
-    margin: 8px 8px 12px !important;
+    width: calc(100% + 16px) !important;
+    margin: 0 -8px 8px !important;
     height: auto !important;
-    min-height: 66px !important;
-    padding: 12px !important;
-    border: 1px solid rgba(224, 232, 255, 0.96) !important;
-    border-radius: 16px !important;
-    background: rgba(255, 255, 255, 0.94) !important;
-    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08) !important;
+    min-height: 56px !important;
+    padding: 8px 16px !important;
+    border: 0 !important;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06) !important;
+    border-radius: 0 !important;
+    /* 通栏白底的 App 顶栏，不做卡片；吸顶在 top: 0，否则上方 8px 缝里会露出滚上来的列表 */
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  /* 顶栏塞了读数时收成一行的紧凑规格：读数本身就是一行小字，不需要 56px 的标题位高度 */
+  .user-workbench__mobile-bar.user-workbench__mobile-bar--slotted {
+    gap: 8px !important;
+    min-height: 52px !important;
+    padding: 8px 14px 8px 16px !important;
   }
 
   /* 资源页移动端顶部栏 - 统一规格 */

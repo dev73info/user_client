@@ -93,10 +93,11 @@ type ActionRequirement = {
  * chip 的三种视觉重量：
  *   - `default`：普通入口（如「查看合同」），白底描边；
  *   - `primary`：**当前该做的那一步**（如「支付定金」「发起合同」），实心主色；
- *   - `accent`：值得留意、但不是人人都要走的一步（如结单后的「解除合作」），浅色描边突出；
- *   - `danger`：危险类动作（如「解除合作」），红色描边。
+ *   - `accent`：值得留意、但不是人人都要走的一步，浅蓝描边突出；
+ *   - `warning`：会改变合作关系、需要想清楚再点的入口（结单前后的「解除合作」），橙色底与描边；
+ *   - `danger`：不可挽回的破坏性动作，红色描边。
  */
-type ActionTone = 'default' | 'primary' | 'danger' | 'accent'
+type ActionTone = 'default' | 'primary' | 'danger' | 'accent' | 'warning'
 
 type ActionChip = {
   key: string
@@ -414,13 +415,13 @@ const chips = computed<ActionChip[]>(() => {
     list.push({ key: 'deliver', label: '交付版本', tone: 'primary', run: openDeliveryDialog })
   }
   if (canUseBreach.value) {
-    list.push({ key: 'termination', label: '解除合作', tone: 'danger', run: () => void openBreachDialog() })
+    list.push({ key: 'termination', label: '解除合作', tone: 'warning', run: () => void openBreachDialog() })
   }
   if (canUseAfterSales.value) {
     // 用 `accent` 而不是 `primary`：实心主色是「现在该做这一步」的意思（支付定金、发起合同），
     // 而结单后并不总有事要做——没有在办案件时它只是一个入口，占了主色会把「查看合同」压下去，
     // 也和这一排其它入口不是一套语言。
-    list.push({ key: 'after-sales', label: '解除合作', tone: 'accent', run: openAfterSalesDialog })
+    list.push({ key: 'after-sales', label: '解除合作', tone: 'warning', run: openAfterSalesDialog })
   }
   return list
 })
@@ -1135,6 +1136,19 @@ defineExpose({
 .conversation-actions .conversation-actions__chip--accent:hover:not(:disabled) {
   border-color: rgba(37, 99, 235, 0.62);
   background: rgba(37, 99, 235, 0.12);
+}
+
+/* 解除合作：橙色警示——比蓝色更引人注意，又不像红色那样暗示「点了就毁了」；
+   字色取 orange-700，在淡橙底上对比度 ≥4.5:1 */
+.conversation-actions .conversation-actions__chip--warning {
+  border-color: rgba(234, 88, 12, 0.42);
+  background: #fff4e6;
+  color: #c2410c;
+}
+
+.conversation-actions .conversation-actions__chip--warning:hover:not(:disabled) {
+  border-color: rgba(234, 88, 12, 0.7);
+  background: #ffe8cc;
 }
 
 .conversation-actions__hint {

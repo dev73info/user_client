@@ -355,7 +355,7 @@ const heroSignals = ['免费资源共享', '需求记录留痕', '工单沟通�
 const qqBetaGroupUrl = 'https://qm.qq.com/q/AXb3VBPurC'
 const isDeveloperAccount = computed(() => auth.role === 'dev' || auth.role === 'super_admin')
 const devActionLabel = computed(() =>
-  isDeveloperAccount.value ? '开始接单' : '成为开发者',
+  isDeveloperAccount.value ? '我要接单' : '成为开发者',
 )
 
 const portalNotices = computed<PortalNotice[]>(() => {
@@ -2162,6 +2162,51 @@ async function submitPublishRequirement() {
             </div>
           </section>
 
+          <!-- 移动端入口宫格：替代主视觉里的两颗按钮与下方两张大卡片，一个图标配一行字、上下排；
+               主视觉在移动端只留作横幅（后期改轮播图） -->
+          <nav class="portal-entry-grid" aria-label="快捷入口">
+            <button type="button" class="portal-entry portal-entry--publish" @click="openPrimaryPublishAction">
+              <span class="portal-entry__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M12 16V4" />
+                  <path d="m7 9 5-5 5 5" />
+                  <path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" />
+                </svg>
+              </span>
+              <span class="portal-entry__label">{{ isDeveloperAccount ? '发布资源' : '发布需求' }}</span>
+            </button>
+            <button type="button" class="portal-entry portal-entry--take" @click="openDevWorkbench">
+              <span class="portal-entry__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="7" width="18" height="13" rx="2" />
+                  <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <path d="M3 13h18" />
+                </svg>
+              </span>
+              <span class="portal-entry__label">{{ devActionLabel }}</span>
+            </button>
+            <button type="button" class="portal-entry portal-entry--free" @click="router.push({ name: 'free-resources' })">
+              <span class="portal-entry__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="8" width="18" height="4" rx="1" />
+                  <path d="M12 8v13" />
+                  <path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" />
+                  <path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5" />
+                </svg>
+              </span>
+              <span class="portal-entry__label">免费资源</span>
+            </button>
+            <button type="button" class="portal-entry portal-entry--community" @click="router.push({ name: 'community' })">
+              <span class="portal-entry__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />
+                  <path d="M8.5 12h.01M12 12h.01M15.5 12h.01" />
+                </svg>
+              </span>
+              <span class="portal-entry__label">社区交流</span>
+            </button>
+          </nav>
+
           <section class="portal-quick-grid">
             <article
               v-for="panel in quickPanels"
@@ -2296,7 +2341,7 @@ async function submitPublishRequirement() {
                     step.icon
                   }}</span>
                   <span class="portal-step-card__body">
-                    <strong>{{ step.step }}. {{ step.title }}</strong>
+                    <strong><i class="portal-step-card__no">{{ step.step }}. </i>{{ step.title }}</strong>
                     <span>{{ step.summary }}</span>
                   </span>
                 </button>

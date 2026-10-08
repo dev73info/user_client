@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRoute, useRouter } from 'vue-router'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import {
@@ -608,55 +609,57 @@ watch(
     <!-- 顶部读数条：两侧都是「一条读数横条」，只是各自落在自己的统一层上
          （开发者侧 .dev-meta-strip / 用户工作台侧 .wb-strip），读数在左、页面级刷新固定在最右侧 __action 槽。
          刷新在整个页面只留一个入口，卡片头不再重复给一颗。 -->
-    <div v-if="isDevWorkbench && !activeRequirementId" class="dev-meta-strip" aria-label="消息概览">
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">已开启会话</span>
-        <span class="dev-meta-strip__value">{{ activeConversations.length }}</span>
+    <WorkbenchBarSlot>
+      <div v-if="isDevWorkbench && !activeRequirementId" class="dev-meta-strip" aria-label="消息概览">
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">已开启会话</span>
+          <span class="dev-meta-strip__value">{{ activeConversations.length }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">待同步会话</span>
+          <span class="dev-meta-strip__value">{{ pendingThreads.length }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">近 7 天更新</span>
+          <span class="dev-meta-strip__value">{{ recentConversationCount }}</span>
+        </div>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <TButton icon-only aria-label="刷新消息" title="刷新消息" :loading="loading"
+            @click="loadMessages(true)">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+        </div>
       </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">待同步会话</span>
-        <span class="dev-meta-strip__value">{{ pendingThreads.length }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">近 7 天更新</span>
-        <span class="dev-meta-strip__value">{{ recentConversationCount }}</span>
-      </div>
-      <div class="dev-meta-strip__item dev-meta-strip__action">
-        <TButton icon-only aria-label="刷新消息" title="刷新消息" :loading="loading"
-          @click="loadMessages(true)">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </div>
 
-    <section v-else-if="!activeRequirementId" class="wb-strip" aria-label="消息概览">
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">已开启会话</span>
-        <span class="wb-strip__value">{{ activeConversations.length }}</span>
-      </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">待同步会话</span>
-        <span class="wb-strip__value">{{ pendingThreads.length }}</span>
-      </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">近 7 天更新</span>
-        <span class="wb-strip__value">{{ recentConversationCount }}</span>
-      </div>
-      <div class="wb-strip__item wb-strip__action">
-        <TButton icon-only aria-label="刷新消息" title="刷新消息" :loading="loading"
-          @click="loadMessages(true)">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </section>
+      <section v-else-if="!activeRequirementId" class="wb-strip" aria-label="消息概览">
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">已开启会话</span>
+          <span class="wb-strip__value">{{ activeConversations.length }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">待同步会话</span>
+          <span class="wb-strip__value">{{ pendingThreads.length }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">近 7 天更新</span>
+          <span class="wb-strip__value">{{ recentConversationCount }}</span>
+        </div>
+        <div class="wb-strip__item wb-strip__action">
+          <TButton icon-only aria-label="刷新消息" title="刷新消息" :loading="loading"
+            @click="loadMessages(true)">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+        </div>
+      </section>
+    </WorkbenchBarSlot>
 
     <RequirementConversationModal v-if="activeRequirementId" display-mode="inline" :visible="true" :token="auth.token"
       :api-mode="isDevWorkbench ? 'dev' : 'user'" :current-username="auth.username"
@@ -763,7 +766,6 @@ watch(
         <!-- 表尾走统一层的 .dev-pager（与我的接单、收益钱包、需求大厅同一形态） -->
         <div v-if="!loading && filteredTotal > 0" class="dev-pager">
           <div class="dev-pager__count">
-            <span>共 {{ filteredTotal }} 条会话</span>
             <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
               <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
             </TSelect>
@@ -943,6 +945,62 @@ watch(
   .messages-disclosure {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+
+/* 页面是带 min-height 的网格：不钉住 align-content，内容不满一屏时各行会被拉高平分余量，
+   读数条就被撑成一大块空卡片（独立的 /messages 入口在手机上实测撑到 281px） */
+.messages-page {
+  align-content: start;
+}
+
+/* 独立 /messages 入口（不在工作台里，读数条留在页内）：手机上三项读数等分成三列，
+   标签在上、数字在下，刷新键贴右侧居中，与「我的需求」顶栏读数同一形态 */
+@media (max-width: 640px) {
+  /* 外层容器已留 24px 边，页面自身再留 24px，窄屏两侧白边会吃掉近四分之一宽度 */
+  .messages-page {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .messages-page > .wb-strip {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    padding: 10px 44px 10px 6px;
+  }
+
+  .messages-page > .wb-strip .wb-strip__divider {
+    display: none;
+  }
+
+  .messages-page > .wb-strip .wb-strip__item:not(.wb-strip__action) {
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .messages-page > .wb-strip .wb-strip__label {
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .messages-page > .wb-strip .wb-strip__value {
+    color: #0f172a;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .messages-page > .wb-strip .wb-strip__action {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    margin: 0;
+    transform: translateY(-50%);
   }
 }
 

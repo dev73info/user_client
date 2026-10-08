@@ -660,7 +660,7 @@ watch(
 }
 
 .mobile-menu-drawer {
-    --mobile-dock-clearance: calc(108px + env(safe-area-inset-bottom, 0px));
+    --mobile-dock-clearance: calc(80px + env(safe-area-inset-bottom, 0px));
     position: fixed;
     top: 0;
     bottom: var(--mobile-dock-clearance);

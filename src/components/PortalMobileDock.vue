@@ -20,6 +20,14 @@ function isMessagesActive() {
     return routeName.value === "messages" || routeName.value === "workbench-messages";
 }
 
+/* 会话打开时（消息页带 requirement_id）整屏留给聊天，底部快捷导航会压住输入框，不显示 */
+const isConversationOpen = computed(
+    () =>
+        ["messages", "workbench-messages", "dev-messages"].includes(routeName.value) &&
+        typeof route.query.requirement_id === "string" &&
+        route.query.requirement_id !== ""
+);
+
 function isWorkbenchActive() {
     return route.path.startsWith("/workbench") && !isMessagesActive();
 }
@@ -89,7 +97,7 @@ function goWorkbench() {
 </script>
 
 <template>
-    <nav class="portal-mobile-dock" aria-label="移动端快捷导航">
+    <nav v-if="!isConversationOpen" class="portal-mobile-dock" aria-label="移动端快捷导航">
         <button type="button" class="portal-mobile-dock__item" :class="{ active: routeName === 'home' }"
             @click="goHome">
             <span>⌂</span>
@@ -131,29 +139,30 @@ function goWorkbench() {
     position: fixed;
     left: max(10px, env(safe-area-inset-left));
     right: max(10px, env(safe-area-inset-right));
-    bottom: max(12px, env(safe-area-inset-bottom));
+    bottom: max(8px, env(safe-area-inset-bottom));
     z-index: 60;
     display: none;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 8px;
+    gap: 4px;
     max-width: 720px;
     margin: 0 auto;
-    padding: 10px;
-    border-radius: 18px;
+    padding: 5px;
+    border-radius: 16px;
     border: 1px solid rgba(198, 210, 236, 0.76);
     background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 18px 40px rgba(76, 103, 172, 0.18);
+    box-shadow: 0 10px 28px rgba(76, 103, 172, 0.16);
     backdrop-filter: blur(18px);
 }
 
 .portal-mobile-dock__item {
     display: grid;
     place-items: center;
-    gap: 4px;
+    align-content: center;
+    gap: 3px;
     min-width: 0;
-    min-height: 58px;
+    min-height: 46px;
     border: 0;
-    border-radius: 16px;
+    border-radius: 12px;
     background: transparent;
     color: #475569;
     cursor: pointer;
@@ -161,7 +170,7 @@ function goWorkbench() {
 }
 
 .portal-mobile-dock__item span {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 700;
     line-height: 1;
 }
@@ -169,8 +178,8 @@ function goWorkbench() {
 .portal-mobile-dock__icon {
     display: grid;
     place-items: center;
-    width: 20px;
-    height: 20px;
+    width: 19px;
+    height: 19px;
 }
 
 .portal-mobile-dock__icon svg {
@@ -185,12 +194,11 @@ function goWorkbench() {
 .portal-mobile-dock__item small {
     max-width: 100%;
     color: inherit;
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 700;
     line-height: 1.2;
     text-align: center;
     white-space: nowrap;
-    transform: translateY(-8px);
 }
 
 .portal-mobile-dock__item.active,
@@ -208,15 +216,13 @@ function goWorkbench() {
 }
 
 .portal-mobile-dock__item--primary span {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 600;
     line-height: 1;
-    transform: translateY(1px);
 }
 
 .portal-mobile-dock__item--primary small {
-    font-size: 14px;
-    letter-spacing: 0.01em;
+    font-size: 11px;
 }
 
 .portal-mobile-dock__item--primary:active {
@@ -234,16 +240,16 @@ function goWorkbench() {
 
 @media (max-width: 360px) {
     .portal-mobile-dock {
-        gap: 6px;
-        padding: 8px;
+        gap: 2px;
+        padding: 4px;
     }
 
     .portal-mobile-dock__item {
-        min-height: 54px;
+        min-height: 44px;
     }
 
     .portal-mobile-dock__item small {
-        font-size: 12px;
+        font-size: 10px;
     }
 }
 </style>

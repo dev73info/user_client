@@ -2989,3 +2989,390 @@
     gap: 6px;
   }
 }
+
+/* ===== 移动端入口宫格 =====
+   桌面端主视觉里有两颗按钮、下方有两张大卡片，入口已经齐了，宫格只在 ≤900px 出现；
+   移动端反过来：主视觉只当横幅（后期换轮播图），两颗按钮与两张大卡片都收起，四个入口统一进宫格。 */
+.portal-entry-grid {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .portal-hero__actions,
+  .portal-quick-grid {
+    display: none;
+  }
+
+  .portal-hero__main {
+    height: 180px;
+  }
+
+  .portal-entry-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    padding: 14px 6px 12px;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.06);
+  }
+
+  .portal-entry {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 4px 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: #1e293b;
+    font: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .portal-entry:active {
+    background: #f1f5f9;
+  }
+
+  .portal-entry:focus-visible {
+    outline: 2px solid rgba(37, 99, 235, 0.5);
+    outline-offset: 2px;
+  }
+
+  .portal-entry__icon {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+  }
+
+  .portal-entry__icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .portal-entry__label {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 四个入口各一支色：发布=主蓝、接单=靛紫、免费资源=暖橙（沿用原礼物卡的色）、社区=青绿 */
+  .portal-entry--publish .portal-entry__icon {
+    background: #e8f0ff;
+    color: #2563eb;
+  }
+
+  .portal-entry--take .portal-entry__icon {
+    background: #efeafe;
+    color: #6d28d9;
+  }
+
+  .portal-entry--free .portal-entry__icon {
+    background: #fff1e6;
+    color: #ea580c;
+  }
+
+  .portal-entry--community .portal-entry__icon {
+    background: #e6f7f1;
+    color: #0f9f6e;
+  }
+}
+
+.portal-step-card__no {
+  font-style: normal;
+}
+
+/* 移动端侧栏三张卡（内测中 / 平台公告 / 内测里程碑）：桌面端是窄侧栏里的大卡片，
+   手机上通栏铺开，同样的内容竖着叠会占掉三屏，这里全部收紧 */
+@media (max-width: 900px) {
+  .portal-card {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .portal-card--notice,
+  .portal-card--stats {
+    padding: 12px;
+  }
+
+  /* —— 内测中 + 每日签到：徽标与「加入QQ群」同一行，签到块左文右钮 —— */
+  .portal-beta-notice {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'badge btn'
+      'invite invite';
+    align-items: center;
+    gap: 8px;
+  }
+
+  .portal-beta-notice__badge {
+    grid-area: badge;
+  }
+
+  .portal-beta-notice__btn {
+    grid-area: btn;
+    justify-self: end;
+    align-self: center;
+    padding: 4px 12px;
+    border-radius: 999px;
+  }
+
+  .portal-beta-invite {
+    grid-area: invite;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title cta'
+      'text cta';
+    align-items: center;
+    gap: 2px 12px;
+    margin-top: 0;
+    padding: 10px 12px;
+  }
+
+  .portal-beta-invite__title {
+    grid-area: title;
+    font-size: 13px;
+  }
+
+  .portal-beta-invite__text {
+    grid-area: text;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .portal-beta-invite__cta,
+  .portal-checkin-card__cta {
+    grid-area: cta;
+    margin-top: 0;
+    padding: 7px 14px;
+    white-space: nowrap;
+  }
+
+  /* —— 平台公告：每条一行，标题单行省略，标签与时间并到右侧 —— */
+  .portal-card__header--notice {
+    margin-bottom: 2px;
+  }
+
+  .portal-notice-list {
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .portal-notice-item {
+    gap: 8px;
+    padding: 9px 12px;
+    border-radius: 12px;
+  }
+
+  .portal-notice-item__main {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    gap: 8px;
+    padding-left: 12px;
+  }
+
+  .portal-notice-item__main strong {
+    display: block;
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .portal-notice-item .portal-tag {
+    padding: 3px 8px;
+  }
+
+  .portal-notice-item time {
+    font-size: 11px;
+  }
+
+  /* —— 内测里程碑：两列小卡，图标在左、文字在右，去掉大块留白 —— */
+  .portal-card__header--stats {
+    margin-bottom: 0;
+  }
+
+  .portal-milestone__intro {
+    margin: 4px 0 8px;
+    padding: 6px 12px;
+  }
+
+  .portal-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 0;
+  }
+
+  .portal-stat-item {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    justify-items: stretch;
+    gap: 8px;
+    min-height: 0;
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .portal-stat-item__icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+  }
+
+  .portal-stat-item__icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .portal-stat-item__copy {
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .portal-stat-item__label {
+    gap: 4px;
+  }
+
+  .portal-stat-item__copy span {
+    font-size: 12px;
+  }
+
+  .portal-stat-item__target {
+    min-height: 16px;
+    padding: 0 6px;
+    font-size: 10px !important;
+  }
+
+  .portal-stat-item__copy strong {
+    font-size: 16px;
+  }
+
+  .portal-stat-item__note {
+    font-size: 11px;
+  }
+
+  .portal-stat-item__progress {
+    height: 4px;
+    margin-top: 0;
+  }
+}
+
+/* 移动端定制流程：五步压成一行——图标在上、步骤名在下，摘要收起（点开各步骤会跳到对应入口），
+   原来竖排五张横卡占 420px，现在一行约 90px */
+@media (max-width: 900px) {
+  .portal-section--workflow {
+    gap: 6px;
+    padding: 14px 8px 10px;
+  }
+
+  .portal-section--workflow .portal-section__header {
+    padding: 0 6px;
+  }
+
+  .portal-workflow-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+  }
+
+  .portal-step-card {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    min-height: 0;
+    padding: 6px 2px;
+    text-align: center;
+  }
+
+  .portal-step-card__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    font-size: 18px;
+    box-shadow: none;
+  }
+
+  .portal-step-card__body {
+    align-items: center;
+    max-width: 100%;
+  }
+
+  .portal-step-card__body strong {
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .portal-step-card__body span:not(.portal-step-card__no) {
+    display: none;
+  }
+
+  .portal-step-card__no {
+    display: none;
+  }
+}
+
+/* 移动端横幅：插画靠右、文字靠左，左侧叠一层白色渐隐托住文字，不再与插画互相压住；
+   标题缩小一档，三条卖点竖排（后期换轮播图时，这一层渐隐可以随图一起换掉） */
+@media (max-width: 900px) {
+  .portal-hero__main {
+    align-items: center;
+    padding: 18px 16px;
+    border-radius: 14px;
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.82) 42%, rgba(255, 255, 255, 0) 72%),
+      url('/icons/hero_r.png') right center / cover no-repeat,
+      linear-gradient(100deg, #ffffff 0%, #ecf7fc 100%);
+  }
+
+  .portal-hero__copy {
+    gap: 12px;
+  }
+
+  .portal-hero__copy h1 {
+    font-size: 26px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .portal-signal-list {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .portal-signal {
+    color: #475569;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 560px) {
+  .portal-hero__main {
+    height: 168px;
+  }
+
+  .portal-hero__copy h1 {
+    font-size: 26px;
+  }
+
+  .portal-workflow-grid {
+    display: grid;
+    flex-direction: row;
+    gap: 2px;
+  }
+}

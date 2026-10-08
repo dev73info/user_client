@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   TButton,
@@ -39,6 +39,7 @@ import { dispatchConversationRead } from '@/shared/conversationEvents'
 import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 import { listPublicMcResourceVersions } from '@/api/resources'
 import RequirementConversationActions from '@/components/RequirementConversationActions.vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useToast } from '@/composables/useToast'
 import {
   conversationCardMeta,
@@ -71,11 +72,47 @@ const attachmentError = ref('')
 const downloadLoading = ref(false)
 const emojiPanelOpen = ref(false)
 const draftInputRef = ref<HTMLTextAreaElement | null>(null)
+
+/* 输入框随内容长高，封顶 4 行后改为框内滚动；样式表里的固定高度只是单行时的起点，
+   不跟着撑高的话换行后前面的字和光标都会被裁掉。 */
+const DRAFT_MAX_LINES = 4
+function resizeDraftInput() {
+  const el = draftInputRef.value
+  if (!el) return
+  el.style.height = ''
+  const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 22
+  const maxHeight = lineHeight * DRAFT_MAX_LINES
+  const next = Math.min(el.scrollHeight, maxHeight)
+  el.style.height = `${next}px`
+  el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden'
+}
+
+watch(draft, () => nextTick(resizeDraftInput))
 const attachmentInputRef = ref<HTMLInputElement | null>(null)
 const attachmentDraft = ref<ConversationAttachmentDraft | null>(null)
 const messageListRef = ref<HTMLElement | null>(null)
 /** 底部工具条：卡片上的「验收」按钮要向它问「现在能不能验收」，并借它打开验收弹窗。 */
 const actionsRef = ref<InstanceType<typeof RequirementConversationActions> | null>(null)
+/**
+ * 工具条能力快照。不能直接在模板里读 `actionsRef?.canAcceptDelivery`：
+ * 那是子组件 expose 的 computed，父组件渲染时不会订阅它的内部依赖，
+ * 子组件 `loadActions` 跑完后卡片按钮不会自己出现；下载时碰巧触发重渲染才偶发露出来。
+ */
+const actionCaps = reactive({
+  canAcceptDelivery: false,
+  canDeliver: false,
+  canPay: false,
+})
+
+function onActionCapabilities(caps: {
+  canAcceptDelivery: boolean
+  canDeliver: boolean
+  canPay: boolean
+}) {
+  actionCaps.canAcceptDelivery = caps.canAcceptDelivery
+  actionCaps.canDeliver = caps.canDeliver
+  actionCaps.canPay = caps.canPay
+}
 const realtimeStatus = ref<RealtimeStatus>('idle')
 const realtimeError = ref('')
 const historyRequesting = ref(false)
@@ -272,6 +309,7 @@ const timelineItems = computed<ConversationTimelineItem[]>(() => {
             props.requirementId,
             viewerRole.value,
             conversation.value?.requirement_status ?? null,
+            message.action_ref,
           )
         : null
     if (card) {
@@ -314,6 +352,17 @@ watch(
   { immediate: true },
 )
 
+/** 会话详情里的需求状态变了（验收通过 → 待付尾款等），工具条要跟着刷，支付 / 验收芯片才会对上卡片。 */
+watch(
+  () => conversation.value?.requirement_status,
+  (status, previous) => {
+    if (!status || status === previous || !props.visible) {
+      return
+    }
+    void actionsRef.value?.loadActions?.()
+  },
+)
+
 onBeforeUnmount(() => {
   stopRealtime()
   clearAttachmentDraft()
@@ -338,6 +387,23 @@ async function scrollToBottom() {
  * 与需求列表页「查看合同」同一口径：合同还没在爱签侧发起签署、或爱签接口异常时，
  * 接口会报错，这里静默回退到本地签约页。
  */
+/**
+ * 卡片上的「支付定金 / 支付尾款」：能付就打开工具条弹窗；
+ * 验收打回后退回「开发中」时入口仍留在「验收已通过」卡片上，点下去说明要先重新验收通过。
+ */
+function runPaymentCardAction() {
+  if (actionCaps.canPay) {
+    actionsRef.value?.openPayDialog?.()
+    return
+  }
+  const status = conversation.value?.requirement_status
+  if (status === 'in_development') {
+    showToast('验收已打回开发中，请重新验收通过后再支付尾款', 'warning')
+    return
+  }
+  showToast('当前还不能支付，请确认合同已签署且需求处于待缴定金或待付尾款', 'warning')
+}
+
 async function runCardAction(card: ConversationCardMeta, message?: RequirementConversationMessage) {
   if (card.downloadDelivery) {
     await downloadDeliveryArtifact(message?.action_ref ?? '')
@@ -387,6 +453,9 @@ async function downloadDeliveryArtifact(versionRef: string) {
     }
 
     window.open(apiUrl(target.resource), '_blank', 'noopener')
+    // 下载已证明有交付版本：刷一遍工具条，并用刚查到的版本数兜底，让同卡「验收」立刻可点。
+    await actionsRef.value?.loadActions?.()
+    actionsRef.value?.applyPublishedVersionCount?.(versions.length)
   } catch (error) {
     showToast(error instanceof Error ? error.message : '下载交付产物失败', 'warning')
   } finally {
@@ -923,11 +992,6 @@ const detailDrawerOpen = ref(false)
 const detailDrawerLoading = ref(false)
 const detailDrawerRequirement = ref<DrawerRequirement | null>(null)
 
-/** 抽屉只做速览，完整页面（合同、资源、交付等操作）仍然在原来的页面里，链接文案跟着调用方走。 */
-const detailDrawerPageLabel = computed(() =>
-  props.apiMode === 'dev' ? '打开需求详情页' : '在「我的需求」中查看',
-)
-
 function closeDetailDrawer() {
   detailDrawerOpen.value = false
 }
@@ -996,30 +1060,6 @@ async function toggleDetailDrawer() {
   }
 }
 
-/**
- * 从抽屉跳到完整页面。
- *
- * 覆盖形态下弹窗不收起会挡住目标页面，所以先收抽屉、再收会话；内嵌在消息中心的那种形态只收抽屉。
- */
-function openRequirementPage() {
-  const requirementId = props.requirementId.trim()
-  if (!requirementId) {
-    return
-  }
-
-  closeDetailDrawer()
-  if (!isInline.value) {
-    closeModal()
-  }
-
-  if (props.apiMode === 'dev') {
-    void router.push({ name: 'dev-requirement-detail', params: { requirementId } })
-    return
-  }
-
-  void router.push({ name: 'workbench-requirements' })
-}
-
 const detailDrawerFields = computed(() => {
   const item = detailDrawerRequirement.value
   if (!item) {
@@ -1064,6 +1104,9 @@ function handleBackdropClick() {
     <div v-if="visible" class="conversation-modal-wrap" :class="{ 'conversation-modal-wrap--inline': isInline }"
       @click.self="handleBackdropClick">
       <section class="conversation-modal" aria-label="需求沟通会话">
+        <!-- 内嵌形态在移动端把会话头搬进工作台顶栏（返回 · 标题 · 对方与状态 · 详情 · 刷新），
+             省掉顶栏与会话头叠两行；桌面端与弹窗形态原地渲染 -->
+        <WorkbenchBarSlot :disabled="!isInline">
         <header class="conversation-modal__header">
           <button class="conversation-modal__icon-btn conversation-modal__back" type="button"
             :aria-label="closeActionLabel" :title="closeActionLabel" @click="closeModal">
@@ -1072,9 +1115,12 @@ function handleBackdropClick() {
             </TIcon>
           </button>
 
-          <div class="conversation-modal__avatar" aria-hidden="true">{{ peerInitial }}</div>
+          <div class="conversation-modal__avatar" aria-hidden="true" @click="toggleDetailDrawer">{{ peerInitial }}</div>
 
-          <div class="conversation-modal__identity">
+          <!-- 点头像或标题区打开需求详情（移动端顶栏里不放详情按钮，只靠这里进入） -->
+          <div class="conversation-modal__identity" role="button" tabindex="0" :aria-expanded="detailDrawerOpen"
+            title="查看需求详情" @click="toggleDetailDrawer" @keydown.enter.prevent="toggleDetailDrawer"
+            @keydown.space.prevent="toggleDetailDrawer">
             <h3>{{ conversationTitle }}</h3>
             <!-- 副信息一行：对方 · 实时状态 · 最近动静。原来「实时同步中」「最近 9/29 15:30」
                  各占一枚同色胶囊，挨在一起看着像两个并列的标签；现在合成一行浅灰正文，
@@ -1104,6 +1150,7 @@ function handleBackdropClick() {
             </button>
           </div>
         </header>
+        </WorkbenchBarSlot>
 
         <div ref="messageListRef" class="conversation-modal__messages">
           <div v-if="hiddenHistorySegments.length" class="conversation-history-notice">
@@ -1158,11 +1205,14 @@ function handleBackdropClick() {
                   <time :title="row.createdAt">{{ formatMessageClock(row.createdAt) }}</time>
                   <div class="conversation-card__actions">
                     <!-- 「支付定金 / 支付尾款」不跳需求列表：支付弹窗就在同一条会话底部
-                         的工具条上，按下去原地打开它。能不能付仍由工具条裁定（自管模式、
-                         合同未签、阶段不对都不给），条件不够时这张卡片就不摆按钮。 -->
-                    <TButton v-if="row.card.paymentAction && actionsRef?.canPay"
+                         的工具条上，按下去原地打开它。
+                         卡片侧的 `paymentAction` 已按需求当前状态裁定（待缴定金 / 待付尾款）；
+                         不再叠加 `actionCaps.canPay`——工具条加载合同签署状态偶发慢半拍时，
+                         会把「验收已通过」上该有的「支付尾款」整颗藏掉。弹窗与真正能否付
+                         仍归工具条管。 -->
+                    <TButton v-if="row.card.paymentAction"
                       class="conversation-card__action" variant="solid" tone="accent" size="sm"
-                      @click="actionsRef?.openPayDialog()">
+                      @click="runPaymentCardAction()">
                       {{ row.card.actionLabel }}
                     </TButton>
                     <TButton v-else-if="row.card.actionLabel && !row.card.deliveryAction && !row.card.paymentAction"
@@ -1174,7 +1224,7 @@ function handleBackdropClick() {
                     <!-- 「去交付」不跳需求列表：交付弹窗就挂在同一条会话底部的工具条上，
                          按下去原地打开它。能不能交付仍由工具条裁定（没绑资源项目、阶段不对都不给），
                          条件不够时这张卡片就不摆按钮，不给出点了没反应的入口。 -->
-                    <TButton v-else-if="row.card.deliveryAction && actionsRef?.canDeliver"
+                    <TButton v-else-if="row.card.deliveryAction && actionCaps.canDeliver"
                       class="conversation-card__action" variant="solid" tone="accent" size="sm"
                       @click="actionsRef?.openDeliveryDialog()">
                       {{ row.card.actionLabel }}
@@ -1182,7 +1232,7 @@ function handleBackdropClick() {
                     <!-- 验收按钮摆在「下载交付产物」之后：这张卡片说的就是「请验收后支付尾款」，
                          顺手就能做。能不能验收仍由工具条裁定（自管模式、合同未签、没有交付版本
                          都不给），弹窗也归它管，避免两处各写一套条件。 -->
-                    <TButton v-if="row.card.acceptanceAction && actionsRef?.canAcceptDelivery"
+                    <TButton v-if="row.card.acceptanceAction && actionCaps.canAcceptDelivery"
                       class="conversation-card__action" variant="solid" tone="accent" size="sm"
                       @click="actionsRef?.openAcceptanceDialog()">
                       验收
@@ -1246,29 +1296,17 @@ function handleBackdropClick() {
           </div>
         </div>
 
+        <!-- 业务入口（查看合同、解除合作、付款、交付……）放在输入底栏之外、紧贴其上方；
+             表情与附件是写消息的工具，跟输入框、发送键排在同一行 -->
+        <div v-if="viewerRole" class="conversation-modal__tools">
+          <RequirementConversationActions ref="actionsRef" :token="token"
+            :requirement-id="requirementId" :role="viewerRole" @changed="loadConversation"
+            @capabilities="onActionCapabilities" />
+        </div>
+
         <footer class="conversation-modal__composer">
           <p v-if="conversationClosed" class="conversation-modal__closed-tip">会话已关闭</p>
           <div class="conversation-modal__composer-main">
-            <div class="conversation-modal__tools">
-              <RequirementConversationActions v-if="viewerRole" ref="actionsRef" :token="token"
-                :requirement-id="requirementId" :role="viewerRole" @changed="loadConversation" />
-              <button class="conversation-modal__tool-btn" :class="{ 'is-active': emojiPanelOpen }" type="button"
-                :disabled="sending || loading || conversationClosed" aria-label="选择表情" title="选择表情"
-                @click="toggleEmojiPanel">
-                <TIcon>
-                  <MagicStick />
-                </TIcon>
-              </button>
-              <button class="conversation-modal__tool-btn" type="button"
-                :disabled="sending || loading || conversationClosed" aria-label="添加截图附件" title="添加截图附件"
-                @click="openAttachmentPicker">
-                <TIcon>
-                  <Paperclip />
-                </TIcon>
-              </button>
-              <input ref="attachmentInputRef" class="conversation-modal__attachment-native" type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif" @change="handleAttachmentFileChange" />
-            </div>
 
             <Transition name="conversation-emoji">
               <div v-if="emojiPanelOpen" class="conversation-modal__emoji-panel">
@@ -1297,21 +1335,38 @@ function handleBackdropClick() {
               {{ attachmentError }}
             </p>
 
-            <div class="conversation-modal__input-shell">
-              <textarea ref="draftInputRef" v-model="draft" maxlength="5000" placeholder="输入消息" spellcheck="false"
-                autocomplete="new-password" autocorrect="off" autocapitalize="off" aria-autocomplete="none"
-                data-ms-editor="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
-                data-lt-active="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true"
-                :disabled="conversationClosed" @keydown="handleComposerKeydown" @paste="handleComposerPaste"></textarea>
-              <span>{{ draft.trim().length }} / 5000</span>
+            <div class="conversation-modal__input-row">
+              <button class="conversation-modal__tool-btn" :class="{ 'is-active': emojiPanelOpen }" type="button"
+                :disabled="sending || loading || conversationClosed" aria-label="选择表情" title="选择表情"
+                @click="toggleEmojiPanel">
+                <TIcon>
+                  <MagicStick />
+                </TIcon>
+              </button>
+              <button class="conversation-modal__tool-btn" type="button"
+                :disabled="sending || loading || conversationClosed" aria-label="添加截图附件" title="添加截图附件"
+                @click="openAttachmentPicker">
+                <TIcon>
+                  <Paperclip />
+                </TIcon>
+              </button>
+              <input ref="attachmentInputRef" class="conversation-modal__attachment-native" type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif" @change="handleAttachmentFileChange" />
+              <div class="conversation-modal__input-shell">
+                <textarea ref="draftInputRef" v-model="draft" maxlength="5000" placeholder="输入消息" spellcheck="false"
+                  autocomplete="new-password" autocorrect="off" autocapitalize="off" aria-autocomplete="none"
+                  data-ms-editor="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
+                  data-lt-active="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true"
+                  :disabled="conversationClosed" @keydown="handleComposerKeydown" @paste="handleComposerPaste"></textarea>
+              </div>
+              <button class="conversation-modal__send-btn" type="button" :disabled="!canSend" aria-label="发送消息"
+                title="发送消息" @click="submitMessage">
+                <TIcon>
+                  <Position />
+                </TIcon>
+              </button>
             </div>
           </div>
-          <button class="conversation-modal__send-btn" type="button" :disabled="!canSend" aria-label="发送消息" title="发送消息"
-            @click="submitMessage">
-            <TIcon>
-              <Position />
-            </TIcon>
-          </button>
         </footer>
 
         <!-- 需求详情抽屉：从右侧划出、盖在会话之上，不跳页也不打断会话上下文；
@@ -1344,7 +1399,7 @@ function handleBackdropClick() {
                     <dl class="conversation-drawer__meta">
                       <div v-for="field in detailDrawerFields" :key="field.label">
                         <dt>{{ field.label }}</dt>
-                        <dd>{{ field.value }}</dd>
+                        <dd :title="field.value">{{ field.value }}</dd>
                       </div>
                     </dl>
 
@@ -1359,12 +1414,6 @@ function handleBackdropClick() {
                     </section>
                   </template>
                 </div>
-
-                <footer class="conversation-drawer__foot">
-                  <button class="conversation-drawer__page-link" type="button" @click="openRequirementPage">
-                    {{ detailDrawerPageLabel }}
-                  </button>
-                </footer>
               </aside>
             </div>
           </Transition>
@@ -3021,9 +3070,19 @@ function handleBackdropClick() {
     padding: 0;
   }
 
-  /* 移动端触摸目标 ≥44px */
+  /* 外观 32px，触摸目标靠伪元素上下各扩 6px 凑足 44px */
   .conversation-card .conversation-card__action {
-    min-height: 44px;
+    position: relative;
+    min-height: 32px;
+    padding: 0 14px;
+    border-radius: 999px;
+    font-size: 13px;
+  }
+
+  .conversation-card .conversation-card__action::after {
+    content: '';
+    position: absolute;
+    inset: -6px 0;
   }
 }
 
@@ -3296,26 +3355,34 @@ function handleBackdropClick() {
 .conversation-drawer__meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 12px;
+  gap: 10px 14px;
   margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
 }
 
 .conversation-drawer__meta div {
   display: grid;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
 }
 
 .conversation-drawer__meta dt {
-  color: #64748b;
-  font-size: 12px;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .conversation-drawer__meta dd {
   margin: 0;
+  overflow: hidden;
   color: #0f172a;
   font-size: 13px;
-  word-break: break-word;
+  font-weight: 500;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .conversation-drawer__block {
@@ -3394,48 +3461,240 @@ function handleBackdropClick() {
   text-decoration: none;
 }
 
-.conversation-drawer__foot {
-  flex: 0 0 auto;
-  padding: 12px 18px max(16px, env(safe-area-inset-bottom));
-  border-top: 1px solid rgba(216, 228, 244, 0.95);
-}
-
-.conversation-drawer__page-link {
-  width: 100%;
-  min-height: 40px;
-  padding: 0 16px;
-  border: 1px solid rgba(203, 213, 225, 0.95);
-  border-radius: 10px;
-  background: #ffffff;
-  color: #1d4ed8;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.conversation-drawer__page-link:hover {
-  border-color: rgba(79, 140, 255, 0.44);
-  background: #eef6ff;
-}
-
 @media (max-width: 640px) {
   .conversation-drawer {
     width: 100%;
-  }
-
-  .conversation-drawer__meta {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  /* 移动端触摸目标 ≥44px */
-  .conversation-drawer__page-link {
-    min-height: 44px;
   }
 }
 
 .conversation-modal__header-actions .conversation-modal__icon-btn.is-active {
   border-color: rgba(79, 140, 255, 0.9);
   color: #1f4ad1;
+}
+
+/* === 会话头搬进工作台顶栏（移动端内嵌形态）===
+   一行：返回 · 头像 · 标题/对方与状态 · 详情 · 刷新；不带卡片底色与分隔线，顶栏自己是白底。
+   带 id 的选择器压过上面各层 ≤640 规则里的竖排、按钮撑满等写法。 */
+#workbench-mobile-bar-extra .conversation-modal__header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* 顶栏里不放返回、详情、刷新：返回走系统返回 / 左侧菜单，详情点头像或标题进入，刷新靠实时同步 */
+#workbench-mobile-bar-extra .conversation-modal__back,
+#workbench-mobile-bar-extra .conversation-modal__header-actions {
+  display: none;
+}
+
+#workbench-mobile-bar-extra .conversation-modal__avatar {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#workbench-mobile-bar-extra .conversation-modal__identity {
+  cursor: pointer;
+}
+
+#workbench-mobile-bar-extra .conversation-modal__identity:focus-visible {
+  border-radius: 6px;
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* 实时状态只留彩色圆点：文字字号归零，读屏仍能读到；后面的间隔点一并去掉 */
+#workbench-mobile-bar-extra .conversation-modal__live {
+  gap: 0;
+  font-size: 0;
+}
+
+#workbench-mobile-bar-extra .conversation-modal__identity-meta > .conversation-modal__live::after {
+  content: none;
+}
+
+/* 不换行的长标题会把最小内容宽度一路往上报，撑宽工作台主区；contain 让这一块不参与外层的内容宽度计算 */
+#workbench-mobile-bar-extra .conversation-modal__identity {
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 1px;
+  contain: inline-size;
+}
+
+#workbench-mobile-bar-extra .conversation-modal__identity h3 {
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#workbench-mobile-bar-extra .conversation-modal__identity-meta {
+  flex-wrap: nowrap;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+#workbench-mobile-bar-extra .conversation-modal__peer {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+#workbench-mobile-bar-extra .conversation-modal__recent {
+  display: none;
+}
+
+/* === 输入区：上一行业务入口，下一行「表情 · 附件 · 输入框 · 发送」同一水平线 ===
+   发送键已挪进输入行，底栏不再需要给它留第二列。 */
+.conversation-modal__composer {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.conversation-modal__input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.conversation-modal__input-row .conversation-modal__input-shell {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.conversation-modal__input-row .conversation-modal__tool-btn,
+.conversation-modal__input-row .conversation-modal__send-btn {
+  flex: 0 0 auto;
+}
+
+/* 输入框可长高（高度由 resizeDraftInput 写在行内）：外壳不再钉死高度，单行时靠 min-height
+   与 align-items:center 居中；多行时胶囊圆角会变成「药丸」，改用固定圆角 */
+.conversation-modal__input-row {
+  align-items: flex-end;
+}
+
+.conversation-modal__composer .conversation-modal__input-row .conversation-modal__input-shell {
+  height: auto;
+  padding: 8px 9px 8px 15px;
+  border-radius: 20px;
+}
+
+/* textarea 自身 overflow 不可见、内边距为 0 时，光标落在首字前会被左缘裁掉：
+   左右各留 3px 给光标，外壳内边距同步减 3px，文字位置不变 */
+.conversation-modal__composer .conversation-modal__input-row .conversation-modal__input-shell textarea {
+  max-height: none;
+  padding-right: 3px;
+  padding-left: 3px;
+}
+
+/* 业务入口条：上移 20px 叠在消息区底部，底色自上而下由透明渐变到消息区底色，
+   聊天记录在按钮后面淡出而不是被一刀切断；透明的那一截不拦点击，消息区底部
+   多留同样的高度，最后一条卡片仍能完整滚出来 */
+.conversation-modal__tools {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  margin-top: -20px;
+  padding: 20px 14px 8px;
+  background: linear-gradient(180deg, rgba(237, 245, 252, 0) 0, rgba(237, 245, 252, 0.92) 20px, #edf5fc 100%);
+  pointer-events: none;
+}
+
+.conversation-modal__tools > * {
+  pointer-events: auto;
+}
+
+/* 消息区顶部同样淡出：用遮罩让最上面 24px 的内容渐隐，不另叠色块，背景怎么变都对得上；
+   滚动条隐藏，滚轮、触摸与键盘滚动不受影响 */
+.conversation-modal__messages {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 24px);
+  mask-image: linear-gradient(180deg, transparent 0, #000 24px);
+  scrollbar-width: none;
+}
+
+.conversation-modal__messages::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.conversation-modal__messages:has(+ .conversation-modal__tools),
+.conversation-modal__messages:has(~ .conversation-modal__tools) {
+  padding-bottom: 40px;
+}
+
+.conversation-modal__tools:empty {
+  display: none;
+}
+
+/* 会话通栏的断点与「会话头搬进顶栏」一致（WORKBENCH_BAR_MEDIA，≤900px）：会话头一进顶栏，
+   会话就得贴着顶栏铺满，否则 641–900px 之间会剩一张带圆角、上下留缝的卡片，顶部渐隐也会显得发虚 */
+@media (max-width: 900px) {
+  /* 会话通栏：抵掉工作台主区左右各 8px 的内边距，左右不留边、不要圆角与侧边框 */
+  .conversation-modal-wrap--inline .conversation-modal {
+    width: calc(100% + 16px);
+    max-width: none;
+    /* 会话头已搬进顶栏，会话直接贴在顶栏下：上外边距 -20px 抵掉顶栏下外边距 8px 与内容区上内边距 12px；
+       高度只扣顶栏 53px，会话打开时底部快捷导航已隐藏，不再预留 */
+    height: calc(100dvh - 54px);
+    min-height: min(440px, calc(100dvh - 54px));
+    max-height: calc(100dvh - 54px);
+    margin: -20px -8px 0;
+    border-top: 0;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .conversation-modal__composer {
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .conversation-modal__composer .conversation-modal__tool-btn {
+    width: 34px;
+    height: 34px;
+    box-shadow: none;
+  }
+
+  .conversation-modal__composer .conversation-modal__input-row .conversation-modal__input-shell {
+    padding-right: 11px;
+    padding-left: 11px;
+  }
+
+  .conversation-modal__composer .conversation-modal__input-shell {
+    min-height: 40px;
+    height: 40px;
+    padding-right: 14px;
+  }
+
+  /* 发送键与表情、附件同为 34px；输入框单行高 40px，三颗按钮底边各抬 3px，
+     单行时与输入框中线对齐，多行时仍贴着最后一行 */
+  .conversation-modal__composer .conversation-modal__send-btn {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    box-shadow: none;
+  }
+
+  .conversation-modal__input-row .conversation-modal__tool-btn,
+  .conversation-modal__input-row .conversation-modal__send-btn {
+    margin-bottom: 3px;
+  }
 }
 </style>

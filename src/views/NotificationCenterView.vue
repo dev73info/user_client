@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listCommunityPosts, listMyCommentWarnings, type CommentWarning, type CommunityPost } from '@/api/community'
 import { listMyAfterSalesCases, type AfterSalesCase } from '@/api/afterSales'
@@ -99,6 +100,22 @@ const {
 
 // 筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空列表。
 watch([kindFilter, keyword], resetPage)
+
+/* 展示顺序像会话：分页仍按「最新在前」切（第 1 页就是最近的一批），页内倒过来排，
+   最新一条落在列表最底部，并把视口滚到底，打开就看到最新的通知。 */
+const displayCards = computed(() => [...pagedCards.value].reverse())
+
+async function scrollToLatest() {
+  await nextTick()
+  const wrap = document.querySelector<HTMLElement>('.app-scrollbar .t73-scrollbar__wrap')
+  if (wrap) {
+    wrap.scrollTop = wrap.scrollHeight
+    return
+  }
+  window.scrollTo({ top: document.documentElement.scrollHeight })
+}
+
+watch(page, () => void scrollToLatest())
 
 function resetFilters() {
   kindFilter.value = 'all'
@@ -225,8 +242,9 @@ function emptyTitle() {
   return '暂无系统通知'
 }
 
-onMounted(() => {
-  void loadNotifications()
+onMounted(async () => {
+  await loadNotifications()
+  await scrollToLatest()
 })
 </script>
 
@@ -235,65 +253,67 @@ onMounted(() => {
     :aria-busy="loading">
     <!-- 顶部读数条：两侧各挂在各自的统一层上（开发者侧 .dev-meta-strip / 用户工作台侧 .wb-strip），
          读数在左、页面级刷新固定在最右的 __action 槽。 -->
-    <section v-if="isDevWorkbench" class="dev-meta-strip" aria-label="系统通知概览">
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">全部通知</span>
-        <span class="dev-meta-strip__value">{{ loading && !cards.length ? '—' : cards.length }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">待我确认</span>
-        <span class="dev-meta-strip__value">{{ pendingVotes }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">评论警告</span>
-        <span class="dev-meta-strip__value">{{ countByKind(cards)['comment-warning'] }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">平台公告</span>
-        <span class="dev-meta-strip__value">{{ countByKind(cards).announcement }}</span>
-      </div>
-      <div class="dev-meta-strip__item dev-meta-strip__action">
-        <TButton icon-only aria-label="刷新系统通知" title="刷新系统通知" :loading="loading"
-          @click="loadNotifications(true)">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </section>
+    <WorkbenchBarSlot>
+      <section v-if="isDevWorkbench" class="dev-meta-strip" aria-label="系统通知概览">
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">全部通知</span>
+          <span class="dev-meta-strip__value">{{ loading && !cards.length ? '—' : cards.length }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">待我确认</span>
+          <span class="dev-meta-strip__value">{{ pendingVotes }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">评论警告</span>
+          <span class="dev-meta-strip__value">{{ countByKind(cards)['comment-warning'] }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">平台公告</span>
+          <span class="dev-meta-strip__value">{{ countByKind(cards).announcement }}</span>
+        </div>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <TButton icon-only aria-label="刷新系统通知" title="刷新系统通知" :loading="loading"
+            @click="loadNotifications(true)">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+        </div>
+      </section>
 
-    <section v-else class="wb-strip" aria-label="系统通知概览">
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">全部通知</span>
-        <span class="wb-strip__value">{{ loading && !cards.length ? '—' : cards.length }}</span>
-      </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">待我确认</span>
-        <span class="wb-strip__value">{{ pendingVotes }}</span>
-      </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">评论警告</span>
-        <span class="wb-strip__value">{{ countByKind(cards)['comment-warning'] }}</span>
-      </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">平台公告</span>
-        <span class="wb-strip__value">{{ countByKind(cards).announcement }}</span>
-      </div>
-      <div class="wb-strip__item wb-strip__action">
-        <TButton icon-only aria-label="刷新系统通知" title="刷新系统通知" :loading="loading"
-          @click="loadNotifications(true)">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </section>
+      <section v-else class="wb-strip" aria-label="系统通知概览">
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">全部通知</span>
+          <span class="wb-strip__value">{{ loading && !cards.length ? '—' : cards.length }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">待我确认</span>
+          <span class="wb-strip__value">{{ pendingVotes }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">评论警告</span>
+          <span class="wb-strip__value">{{ countByKind(cards)['comment-warning'] }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">平台公告</span>
+          <span class="wb-strip__value">{{ countByKind(cards).announcement }}</span>
+        </div>
+        <div class="wb-strip__item wb-strip__action">
+          <TButton icon-only aria-label="刷新系统通知" title="刷新系统通知" :loading="loading"
+            @click="loadNotifications(true)">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+        </div>
+      </section>
+    </WorkbenchBarSlot>
 
     <!-- 开发者工作台：提示条 + 内容卡，与其余菜单页同一形态（读数条 → 提示条 → 内容卡） -->
     <template v-if="isDevWorkbench">
@@ -353,7 +373,7 @@ onMounted(() => {
         </div>
         <template v-else>
           <ul class="dev-stack-list" aria-label="系统通知列表">
-            <li v-for="card in pagedCards" :key="card.key" class="dev-stack-item notifications-card"
+            <li v-for="card in displayCards" :key="card.key" class="dev-stack-item notifications-card"
               :class="{ 'notifications-card--clickable': card.postId != null }"
               :role="card.postId != null ? 'button' : undefined" :tabindex="card.postId != null ? 0 : undefined"
               @click="card.postId != null && openAnnouncement(card)"
@@ -389,7 +409,6 @@ onMounted(() => {
 
           <div class="dev-pager">
             <div class="dev-pager__count">
-              <span>共 {{ filteredTotal }} 条</span>
               <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
                 <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
               </TSelect>
@@ -456,7 +475,7 @@ onMounted(() => {
       </div>
       <template v-else>
         <ul class="wb-list" aria-label="系统通知列表">
-          <li v-for="card in pagedCards" :key="card.key" class="wb-item notifications-card"
+          <li v-for="card in displayCards" :key="card.key" class="wb-item notifications-card"
             :class="{ 'wb-item--clickable': card.postId != null }"
             :role="card.postId != null ? 'button' : undefined" :tabindex="card.postId != null ? 0 : undefined"
             @click="card.postId != null && openAnnouncement(card)"
@@ -490,7 +509,6 @@ onMounted(() => {
         </ul>
         <div class="wb-pager">
           <div class="wb-pager__count">
-            <span>共 {{ filteredTotal }} 条</span>
             <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页条数">
               <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
             </TSelect>
@@ -589,6 +607,28 @@ onMounted(() => {
   background: color-mix(in srgb, var(--dev-gold) 10%, transparent);
   color: var(--profile-warning-text, #92400e);
   font-size: 13px;
+}
+
+/* 窄屏不展示类别胶囊：各类数量已在顶栏读数条里，列表只留搜索。
+   列表像会话一样贴底：面板撑满顶栏以下的一屏，搜索留在上方，通知压到底部，最新一条最靠近底边 */
+@media (max-width: 900px) {
+  .wb-chip-group,
+  .dev-chip-group {
+    display: none;
+  }
+
+  .notifications-panel {
+    display: flex;
+    flex-direction: column;
+    /* 扣掉顶栏以上 73px，以及底部给快捷导航让出的 80px + 内容区下内边距 22px（见 App.vue），
+       一屏放得下时外层不出滚动，搜索框不会被滚出去 */
+    min-height: calc(100dvh - 73px - 102px);
+  }
+
+  .notifications-panel > .wb-list,
+  .notifications-panel > .wb-empty {
+    margin-top: auto;
+  }
 }
 
 @media (max-width: 640px) {
