@@ -4109,13 +4109,28 @@ onBeforeUnmount(() => {
   gap: 10px;
 }
 
+/* 外壳与左侧工作台菜单同高（菜单高 100vh - 顶栏占位 - 22px），最后一张「认证说明」吃掉剩余高度，
+   两列底边落在同一条水平线上；只放外壳最小高度、不撑卡片的话，卡片下面会空出一截 */
 .realname-page-shell {
-  min-height: calc(100vh - 120px);
-  gap: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: calc(100vh - var(--portal-header-footprint, 98px) - 22px);
 }
 
 .realname-guide-card {
-  margin-top: 16px;
+  flex: 1 1 auto;
+}
+
+/* 窄屏菜单不再与内容并排，没有底边可对齐，卡片回到内容高度 */
+@media (max-width: 900px) {
+  .realname-page-shell {
+    min-height: 0;
+  }
+
+  .realname-guide-card {
+    flex: 0 0 auto;
+  }
 }
 
 .realname-guide-card h3 {

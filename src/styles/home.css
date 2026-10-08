@@ -2493,18 +2493,23 @@
   margin-top: auto;
 }
 
+/* 版本标签和统计行一起贴底，两处都 auto 会把剩余空间对半分，标签悬在中间 */
+.portal-spotlight-card__meta-row + .portal-spotlight-card__footer {
+  margin-top: 0;
+}
+
 .portal-spotlight-card__meta-row strong {
   display: inline-flex;
   align-items: center;
   min-width: 0;
   max-width: 100%;
-  min-height: 30px;
-  padding: 5px 11px;
+  min-height: 22px;
+  padding: 2px 9px;
   border-radius: 999px;
   background: rgba(241, 245, 249, 0.96);
-  color: #334155;
-  font-size: 13px;
-  font-weight: 800;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
   line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2610,6 +2615,8 @@
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
+  /* 描述短时卡片底部不留空洞：统计行贴卡片底边 */
+  margin-top: auto;
   padding-top: 10px;
   border-top: 1px solid rgba(226, 232, 240, 0.92);
 }

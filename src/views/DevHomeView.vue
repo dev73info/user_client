@@ -1,22 +1,35 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch, type Component } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   TButton,
   TIcon,
   TLoading,
+  ArrowDown,
   ArrowRight,
+  Box,
   CircleCheck,
   Clock,
+  Lock,
   Money,
   Promotion,
   Refresh,
+  Switch,
+  View,
   Wallet,
   WarningFilled,
 } from 'ui_73info'
 
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
 import DevWithdrawalDialog from '@/components/DevWithdrawalDialog.vue'
+import {
+  devDashboardWsUrl,
+  getDevDashboard,
+  type DevDashboardFeedKind,
+  type DevDashboardPipeline,
+  type DevDashboardSnapshot,
+} from '@/api/devDashboard'
 import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@/api/devOrderDeposit'
 import {
   getDevWalletOverview,
@@ -25,6 +38,7 @@ import {
 } from '@/api/devWallet'
 import { listMcResources, type McResourcePayload } from '@/api/mcResources'
 import { listMyRequirements, type RequirementItem } from '@/api/devRequirements'
+import { useDevDashboardSocket } from '@/composables/useDevDashboardSocket'
 import { useToast } from '@/composables/useToast'
 import {
   DEMO_DEV_HOME_DAILY_INCOME,
@@ -32,6 +46,7 @@ import {
   DEMO_DEV_HOME_REQUIREMENTS,
   DEMO_DEV_HOME_RESOURCES,
   DEMO_DEV_HOME_WALLET,
+  demoDevDashboard,
   devHomeMockEnabled,
 } from '@/shared/devHomeMock'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
@@ -96,6 +111,9 @@ const overview = ref<DevWalletOverview | null>(null)
 const deposit = ref<DevOrderDepositStatus | null>(null)
 const requirements = ref<RequirementItem[]>([])
 const resources = ref<McResourcePayload[]>([])
+
+/** 全屏看板的快照：只在全屏时经 WebSocket（或进全屏那一下的一次拉取）填充，退出全屏后保留最后一份。 */
+const dashboard = shallowRef<DevDashboardSnapshot | null>(null)
 
 /** 演示数据开关：开着时整页不读接口，只用于本地预览布局。 */
 const mockEnabled = devHomeMockEnabled(route.query.mock === '1')
@@ -178,97 +196,155 @@ const completedProjectCount = computed(
   () => requirements.value.filter((item) => item.status === 'completed').length,
 )
 
+/** 在途五档：漏斗与读数条「进行中项目」共用，顺序即流程顺序。 */
+const PIPELINE_STAGES: ReadonlyArray<Exclude<keyof DevDashboardPipeline, 'completed_this_month'>> = [
+  'pending_deposit',
+  'deposit_paid',
+  'in_development',
+  'pending_final',
+  'pending_settlement',
+]
+
+/** 全屏且已拿到快照：看板上的读数改走快照，跟着推送实时变化；非全屏仍是进页那一次拉取。 */
+const liveBoard = computed(() => (isFullscreen.value ? dashboard.value : null))
+
 /** 四格统计卡读数：三格按接单状态分档，收入固定取后端给的累计到账金额。 */
-const statCards = computed<DevHomeStatCard[]>(() => [
-  {
-    label: '进行中项目',
-    value: String(activeProjectCount.value),
-  },
-  {
-    label: '已完成项目',
-    value: String(completedProjectCount.value),
-  },
-  {
-    label: '待交付',
-    value: String(pendingDeliveryCount.value),
-  },
-  {
-    label: '累计收入',
-    value: money(overview.value?.total_income_cny),
-  },
-])
+const statCards = computed<DevHomeStatCard[]>(() => {
+  const board = liveBoard.value
+  const active = board
+    ? PIPELINE_STAGES.reduce((sum, stage) => sum + board.pipeline[stage], 0)
+    : activeProjectCount.value
+  const completed = board ? board.wallet.total_completed_orders : completedProjectCount.value
+  const pendingDelivery = board ? board.pipeline.pending_final : pendingDeliveryCount.value
+
+  return [
+    {
+      label: '进行中项目',
+      value: String(active),
+    },
+    {
+      label: '已完成项目',
+      value: String(completed),
+    },
+    {
+      label: '待交付',
+      value: String(pendingDelivery),
+    },
+    {
+      label: '累计收入',
+      value: money(overview.value?.total_income_cny),
+    },
+  ]
+})
 
 /** 终止态不进总览列表：那是已经结束的接单，留在「我的接单」里查。 */
-const openRequirements = computed(() =>
-  requirements.value.filter((item) => item.status !== 'cancelled' && item.status !== 'rejected'),
-)
+function isOpenStatus(status: string): boolean {
+  return status !== 'cancelled' && status !== 'rejected'
+}
 
+function matchesProjectTab(status: string): boolean {
+  if (activeProjectTab.value === 'active') {
+    return isActiveRequirement(status)
+  }
+  if (activeProjectTab.value === 'pending') {
+    return status === 'pending_final'
+  }
+  if (activeProjectTab.value === 'completed') {
+    return status === 'completed'
+  }
+
+  return true
+}
+
+function matchesDeliveryTab(versionCount: number): boolean {
+  if (activeDeliveryTab.value === 'delivered') {
+    return versionCount > 0
+  }
+  if (activeDeliveryTab.value === 'pending') {
+    return versionCount === 0
+  }
+
+  return true
+}
+
+/** 全屏时不受 5 条 / 3 张的限制：看板上放得下多少就列多少，列表在区域内滚动。 */
 const projectRows = computed<DevHomeProjectRow[]>(() => {
-  const filtered = openRequirements.value.filter((item) => {
-    if (activeProjectTab.value === 'active') {
-      return isActiveRequirement(item.status)
-    }
-    if (activeProjectTab.value === 'pending') {
-      return item.status === 'pending_final'
-    }
-    if (activeProjectTab.value === 'completed') {
-      return item.status === 'completed'
-    }
+  const board = liveBoard.value
+  if (board) {
+    // 快照已按「在途在前、同组按更新时间倒序」排好，保持后端顺序
+    return board.projects
+      .filter((item) => isOpenStatus(item.status) && matchesProjectTab(item.status))
+      .map((item) => ({
+        requirementId: item.requirement_id,
+        title: item.title,
+        status: item.status,
+        statusLabel: requirementStatusLabel(item.status, item.payment_mode),
+        tone: STATUS_TONES[item.status] ?? 'blue',
+        createdAt: item.updated_at,
+        updatedAt: item.updated_at,
+        budget: item.budget ?? null,
+        progress: requirementProgressPercent(item.status),
+      }))
+  }
 
-    return true
-  })
-
-  return [...filtered]
+  const sorted = requirements.value
+    .filter((item) => isOpenStatus(item.status) && matchesProjectTab(item.status))
     .sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at))
-    .slice(0, OVERVIEW_LIST_LIMIT)
-    .map((item) => ({
-      requirementId: item.requirement_id,
-      title: item.title,
-      status: item.status,
-      statusLabel: requirementStatusLabel(item.status, item.payment_mode),
-      tone: STATUS_TONES[item.status] ?? 'blue',
-      createdAt: item.created_time,
-      updatedAt: item.updated_at,
-      budget: item.budget ?? null,
-      progress: requirementProgressPercent(item.status),
-    }))
+
+  return (isFullscreen.value ? sorted : sorted.slice(0, OVERVIEW_LIST_LIMIT)).map((item) => ({
+    requirementId: item.requirement_id,
+    title: item.title,
+    status: item.status,
+    statusLabel: requirementStatusLabel(item.status, item.payment_mode),
+    tone: STATUS_TONES[item.status] ?? 'blue',
+    createdAt: item.created_time,
+    updatedAt: item.updated_at,
+    budget: item.budget ?? null,
+    progress: requirementProgressPercent(item.status),
+  }))
 })
 
 /** 交付 = 绑定资源项目的资源版本，所以最近交付按「已绑定资源的需求单」汇总。 */
-const deliveryRows = computed<DevHomeDeliveryRow[]>(() =>
-  [...requirements.value]
-    .filter((item) => item.bound_resource_id != null)
-    .filter((item) => {
-      if (activeDeliveryTab.value === 'delivered') {
-        return (item.bound_resource_version_count ?? 0) > 0
-      }
-      if (activeDeliveryTab.value === 'pending') {
-        return (item.bound_resource_version_count ?? 0) === 0
-      }
-
-      return true
-    })
-    .sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at))
-    .slice(0, DELIVERY_GRID_LIMIT)
-    .flatMap((item) => {
-      const resourceId = item.bound_resource_id
-      if (resourceId == null) {
-        return []
-      }
-
-      const versionCount = item.bound_resource_version_count ?? 0
-
-      return [{
+const deliveryRows = computed<DevHomeDeliveryRow[]>(() => {
+  const board = liveBoard.value
+  if (board) {
+    return board.deliveries
+      .filter((item) => matchesDeliveryTab(item.version_count))
+      .map((item) => ({
         requirementId: item.requirement_id,
-        requirementTitle: item.title,
-        resourceTitle: resourceTitleMap.value.get(resourceId) ?? `资源 #${resourceId}`,
-        versionCount,
-        delivered: versionCount > 0,
-        updatedAt: item.updated_at,
-        amount: incomeByRequirement.value.get(item.requirement_id) ?? null,
-      }]
-    }),
-)
+        requirementTitle: item.requirement_title,
+        resourceTitle: item.resource_title || `资源 #${item.resource_id}`,
+        versionCount: item.version_count,
+        delivered: item.version_count > 0,
+        updatedAt: item.last_delivered_at ?? '',
+        amount: item.amount_cny,
+      }))
+  }
+
+  const sorted = requirements.value
+    .filter((item) => item.bound_resource_id != null)
+    .filter((item) => matchesDeliveryTab(item.bound_resource_version_count ?? 0))
+    .sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at))
+
+  return (isFullscreen.value ? sorted : sorted.slice(0, DELIVERY_GRID_LIMIT)).flatMap((item) => {
+    const resourceId = item.bound_resource_id
+    if (resourceId == null) {
+      return []
+    }
+
+    const versionCount = item.bound_resource_version_count ?? 0
+
+    return [{
+      requirementId: item.requirement_id,
+      requirementTitle: item.title,
+      resourceTitle: resourceTitleMap.value.get(resourceId) ?? `资源 #${resourceId}`,
+      versionCount,
+      delivered: versionCount > 0,
+      updatedAt: item.updated_at,
+      amount: incomeByRequirement.value.get(item.requirement_id) ?? null,
+    }]
+  })
+})
 
 /** 提现口径：可提现与待提现两笔金额，各报一次就够了（原先还有一条只换算成百分比的比例条，已删）。 */
 const withdrawable = computed(() => overview.value?.withdrawable_balance_cny ?? 0)
@@ -304,7 +380,8 @@ const changeRateText = computed(() => {
 /** 曲线口径：近 7 天（含今天）的到账金额，最早一天在左。 */
 const CHART_BUCKETS = 7
 const CHART_WIDTH = 320
-const CHART_HEIGHT = 104
+/** 与样式里 .dev-home__chart-svg 的高度保持一致，悬停竖线按它换算百分比 */
+const CHART_HEIGHT = 132
 const CHART_PAD_X = 10
 const CHART_PAD_TOP = 16
 const CHART_PAD_BOTTOM = 10
@@ -322,6 +399,15 @@ function dayKey(date: Date): string {
  * 真实模式下接口最多只返回 100 笔，所以这条曲线是「最近到账的分布」，不是完整流水。
  */
 const incomeBuckets = computed<DevHomeIncomeBucket[]>(() => {
+  // 全屏看板改画近 30 天：快照自带完整日序列（从旧到新、无收入补 0），不再从到账明细里归集
+  const board = liveBoard.value
+  if (board && board.income_daily.length) {
+    return board.income_daily.map((item) => ({
+      label: `${item.date.slice(5, 7)}/${item.date.slice(8, 10)}`,
+      value: item.amount_cny,
+    }))
+  }
+
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -449,7 +535,7 @@ const hoveredBucket = computed(() => {
     tipLeft: `${percent.toFixed(2)}%`,
     tipTransform,
     guideLeft: `${percent.toFixed(2)}%`,
-    // 竖线从该点画到基线：点与基线都在 104px 高的画布里，直接换算成百分比给高度
+    // 竖线从该点画到基线：点与基线都在 CHART_HEIGHT 高的画布里，直接换算成百分比给高度
     top: `${((point.y / CHART_HEIGHT) * 100).toFixed(1)}%`,
     height: `${(((chartGeometry.value.baseline - point.y) / CHART_HEIGHT) * 100).toFixed(1)}%`,
   }
@@ -469,9 +555,37 @@ const hoveredBucket = computed(() => {
   }
 }
 
-const chartCaption = computed(() =>
-  mockEnabled ? '演示数据：近 7 天完整序列' : '按最近到账记录绘制（最多取最近 100 笔）',
-)
+const chartDays = computed(() => incomeBuckets.value.length)
+
+const chartCaption = computed(() => {
+  if (liveBoard.value) {
+    return `近 ${chartDays.value} 天每日到账（毛额）`
+  }
+
+  return mockEnabled ? '演示数据：近 7 天完整序列' : '按最近到账记录绘制（最多取最近 100 笔）'
+})
+
+/** 30 天的日期挤不下：每 5 天标一个，从今天往回数，保证最右端永远是今天。 */
+const AXIS_LABEL_STEP = 5
+
+const sparseAxis = computed(() => incomeBuckets.value.length > CHART_BUCKETS)
+
+const axisLabels = computed(() => {
+  const points = chartGeometry.value.points
+  const lastIndex = points.length - 1
+
+  return points.flatMap((point, index) => {
+    if ((lastIndex - index) % AXIS_LABEL_STEP !== 0) {
+      return []
+    }
+    const percent = (point.x / CHART_WIDTH) * 100
+    return [{
+      label: point.label,
+      left: `${percent.toFixed(2)}%`,
+      transform: index === lastIndex ? 'translateX(-100%)' : index === 0 ? 'translateX(0)' : 'translateX(-50%)',
+    }]
+  })
+})
 
 onMounted(() => {
   void loadPage()
@@ -552,10 +666,281 @@ async function loadPage() {
     loading.value = false
   }
 }
+
+/**
+ * 全屏看板：只把总览区（本页根节点）放进全屏，侧栏与门户顶栏不跟进来。
+ * 平板档读数条平时被搬进工作台顶栏，全屏时让它留在原地（见 WorkbenchBarSlot 的 disabled），
+ * 这样读数与退出按钮都在全屏里。iPadOS Safari 只认带 webkit 前缀的那套。
+ */
+const homeRef = ref<HTMLElement | null>(null)
+type WebkitFullscreenDocument = Document & {
+  webkitFullscreenElement?: Element | null
+  webkitExitFullscreen?: () => Promise<void> | void
+}
+type WebkitFullscreenElement = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void
+}
+
+const fullscreenSupported =
+  typeof document !== 'undefined' &&
+  Boolean(
+    document.documentElement.requestFullscreen ||
+      (document.documentElement as WebkitFullscreenElement).webkitRequestFullscreen,
+  )
+const isFullscreen = ref(false)
+
+function currentFullscreenElement(): Element | null {
+  const doc = document as WebkitFullscreenDocument
+  return doc.fullscreenElement ?? doc.webkitFullscreenElement ?? null
+}
+
+function syncFullscreenState() {
+  isFullscreen.value = currentFullscreenElement() != null
+}
+
+async function toggleFullscreen() {
+  const doc = document as WebkitFullscreenDocument
+  const root = homeRef.value as WebkitFullscreenElement | null
+  if (!root) return
+  try {
+    if (currentFullscreenElement()) {
+      await (doc.exitFullscreen ? doc.exitFullscreen() : doc.webkitExitFullscreen?.())
+    } else {
+      await (root.requestFullscreen ? root.requestFullscreen() : root.webkitRequestFullscreen?.())
+    }
+  } catch {
+    showToast('当前浏览器不允许进入全屏', 'error')
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('fullscreenchange', syncFullscreenState)
+  document.addEventListener('webkitfullscreenchange', syncFullscreenState)
+  syncFullscreenState()
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('fullscreenchange', syncFullscreenState)
+  document.removeEventListener('webkitfullscreenchange', syncFullscreenState)
+  // 全屏是为这块看板开的，离开总览页就退出，免得别的菜单页也被困在全屏里
+  if (currentFullscreenElement()) {
+    const doc = document as WebkitFullscreenDocument
+    Promise.resolve(doc.exitFullscreen ? doc.exitFullscreen() : doc.webkitExitFullscreen?.()).catch(() => {})
+  }
+})
+
+/**
+ * 实时看板：只在全屏时连 WebSocket，退出全屏 / 离开本页即断开（组件卸载时组合式函数自己收尾）。
+ * 演示模式不连，直接铺一份本地快照。
+ */
+const liveSocket = useDevDashboardSocket({
+  url: () => (auth.token ? devDashboardWsUrl(auth.token) : null),
+  onSnapshot: applyDashboard,
+})
+
+/** 动态流第一次铺满时不播入场动画，之后新插入的条目才高亮一次。 */
+const feedAnimated = ref(false)
+
+/**
+ * 同一份快照也回写钱包与保证金读数：资金卡沿用原来的绑定，数字跟着推送变；
+ * 退出全屏后总览页看到的也是最新一份，而不是进页时那次拉取的旧值。
+ */
+function applyDashboard(snapshot: DevDashboardSnapshot) {
+  const current = dashboard.value
+  // 进全屏那一下的 HTTP 拉取可能比 WebSocket 首帧晚到，旧快照不能盖掉新快照
+  if (current && snapshot.generated_at < current.generated_at) {
+    return
+  }
+
+  dashboard.value = snapshot
+  overview.value = { ...snapshot.wallet, recent_income: overview.value?.recent_income ?? [] }
+  deposit.value = {
+    username: auth.username ?? '',
+    role: 'dev',
+    paid_withdraw_cny: 0,
+    latest_order: null,
+    ...deposit.value,
+    ...snapshot.deposit,
+  }
+
+  if (!feedAnimated.value) {
+    void nextTick(() => {
+      feedAnimated.value = true
+    })
+  }
+}
+
+async function enterLiveBoard() {
+  if (mockEnabled) {
+    applyDashboard(demoDevDashboard())
+    return
+  }
+
+  liveSocket.connect()
+  if (!dashboard.value && auth.token) {
+    try {
+      applyDashboard(await getDevDashboard(auth.token))
+    } catch {
+      // 首帧由 WebSocket 推送兜底，拉取失败不打断看板
+    }
+  }
+}
+
+/** 看板上的时钟：每秒走一次，只在全屏时计时。 */
+const now = ref(Date.now())
+let clockTimer: ReturnType<typeof setInterval> | null = null
+
+function stopClock() {
+  if (clockTimer != null) {
+    clearInterval(clockTimer)
+    clockTimer = null
+  }
+}
+
+watch(isFullscreen, (on) => {
+  if (on) {
+    now.value = Date.now()
+    stopClock()
+    clockTimer = setInterval(() => {
+      now.value = Date.now()
+    }, 1000)
+    void enterLiveBoard()
+  } else {
+    stopClock()
+    liveSocket.disconnect()
+  }
+})
+
+onBeforeUnmount(stopClock)
+
+const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
+
+const clockTime = computed(() => {
+  const date = new Date(now.value)
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`
+})
+
+const clockDate = computed(() => {
+  const date = new Date(now.value)
+  return `${date.getMonth() + 1}月${date.getDate()}日 周${WEEKDAYS[date.getDay()]}`
+})
+
+/** 最后更新取快照的生成时间（服务端东八区），只显示时分秒；心跳不算更新。 */
+const lastUpdatedText = computed(() => dashboard.value?.generated_at.slice(11, 19) || '—')
+
+/** 状态灯：已连接用青（本页体系里的「正常 / 完成」色），重连中用金，已断开用灰。 */
+const connectionLamp = computed<{ tone: 'ok' | 'warn' | 'off'; label: string }>(() => {
+  if (mockEnabled) {
+    return { tone: 'off', label: '演示数据' }
+  }
+
+  switch (liveSocket.status.value) {
+    case 'open':
+      return { tone: 'ok', label: '已连接' }
+    case 'connecting':
+      return { tone: 'warn', label: '连接中' }
+    case 'reconnecting':
+      return { tone: 'warn', label: '重连中' }
+    default:
+      return { tone: 'off', label: '已断开' }
+  }
+})
+
+/** 接单漏斗：五个在途状态 + 本月完成。`deposit_paid` 拿不到单条的支付模式，按统一口径两义并写。 */
+const funnelCells = computed(() => {
+  const board = liveBoard.value
+  if (!board) {
+    return []
+  }
+
+  const stages = PIPELINE_STAGES.map((stage) => ({
+    key: stage,
+    label: requirementStatusLabel(stage),
+    value: board.pipeline[stage],
+    tone: STATUS_TONES[stage] ?? 'blue',
+  }))
+  const peak = Math.max(1, ...stages.map((stage) => stage.value))
+
+  return [
+    ...stages.map((stage) => ({ ...stage, share: stage.value / peak, done: false })),
+    {
+      key: 'completed_this_month',
+      label: '本月完成',
+      value: board.pipeline.completed_this_month,
+      tone: 'cyan' as DevHomeTone,
+      share: 1,
+      done: true,
+    },
+  ]
+})
+
+/** 动态流按 kind 配图标与颜色：到账金、交付青、状态蓝，提现 / 保证金走中性灰。 */
+const FEED_KINDS: Record<DevDashboardFeedKind, { icon: Component; tone: DevHomeTone }> = {
+  income: { icon: Money, tone: 'gold' },
+  delivery: { icon: Promotion, tone: 'cyan' },
+  status: { icon: Switch, tone: 'blue' },
+  withdrawal: { icon: Wallet, tone: 'muted' },
+  deposit: { icon: Lock, tone: 'muted' },
+}
+
+/** 动态流时间：今天只写时分，更早的带上月日。 */
+function feedTime(at: string): string {
+  const time = at.slice(11, 16)
+  return at.slice(0, 10) === dayKey(new Date(now.value)) ? time : `${at.slice(5, 10)} ${time}`
+}
+
+/** 条目没有 id：用内容拼键，同一秒的同类事件再加序号，保证新条目插入时旧条目不重绘。 */
+const feedRows = computed(() => {
+  const board = liveBoard.value
+  if (!board) {
+    return []
+  }
+
+  const seen = new Map<string, number>()
+  return board.feed.map((item) => {
+    const base = `${item.kind}|${item.at}|${item.title}|${item.requirement_id ?? ''}|${item.amount_cny ?? ''}`
+    const count = seen.get(base) ?? 0
+    seen.set(base, count + 1)
+    const kind = FEED_KINDS[item.kind] ?? FEED_KINDS.status
+    return {
+      key: `${base}#${count}`,
+      title: item.title,
+      requirementId: item.requirement_id,
+      amount: item.amount_cny,
+      time: feedTime(item.at),
+      fullTime: item.at,
+      icon: kind.icon,
+      tone: kind.tone,
+    }
+  })
+})
+
+const resourceCells = computed(() => {
+  const board = liveBoard.value
+  if (!board) {
+    return []
+  }
+
+  return [
+    { key: 'count', label: '资源数', value: board.resources.resource_count, icon: Box },
+    { key: 'downloads', label: '总下载', value: board.resources.total_downloads, icon: ArrowDown },
+    { key: 'views', label: '总浏览', value: board.resources.total_views, icon: View },
+  ]
+})
+
+/** 动态流里的冲回、扣减是负数：符号写在货币符号前面（-¥0.01），不写成 ¥-0.01。 */
+function signedMoney(value: number): string {
+  return value < 0 ? `-${money(-value)}` : money(value)
+}
+
+function formatCount(value: number): string {
+  return value.toLocaleString('zh-CN')
+}
 </script>
 
 <template>
-  <div class="dev-page dev-home" :class="{ 'dev-home--loading': loading }">
+  <div ref="homeRef" class="dev-page dev-home"
+    :class="{ 'dev-home--loading': loading, 'dev-home--fullscreen': isFullscreen }">
     <p v-if="mockEnabled" class="dev-home__mock-hint" role="note">
       演示数据：本页未读取后端接口，仅用于预览布局。去掉地址上的 <code>?mock=1</code>，
       或清掉 <code>VITE_DEV_HOME_MOCK</code> 后重启 dev server，即恢复真实数据。
@@ -564,22 +949,54 @@ async function loadPage() {
     <!-- 顶部读数条：与其余菜单页同一条形态（读数在左、刷新在右）。
          四格可点卡片已并入横条：读数对应的明细页在侧边栏和下方列表里都有入口，
          不必在这一层再挂四条跳转。 -->
-    <TLoading tag="div" class="dev-meta-strip" aria-label="接单与收入概览" :loading="loading">
-      <template v-for="(item, index) in statCards" :key="item.label">
-        <div v-if="index > 0" class="dev-meta-strip__divider" />
-        <div class="dev-meta-strip__item">
-          <span class="dev-meta-strip__label">{{ item.label }}</span>
-          <span class="dev-meta-strip__value">{{ item.value }}</span>
+    <WorkbenchBarSlot :disabled="isFullscreen">
+      <TLoading tag="div" class="dev-meta-strip" aria-label="接单与收入概览" :loading="loading">
+        <template v-if="isFullscreen">
+          <strong class="dev-home__screen-title">工作台总览</strong>
+          <!-- 看板挂在平板上常亮：时钟每秒走，状态灯与最后更新时间说明这块屏上的数字是不是活的 -->
+          <div class="dev-home__clock" aria-label="当前时间">
+            <span class="dev-home__clock-time">{{ clockTime }}</span>
+            <span class="dev-home__clock-date">{{ clockDate }}</span>
+          </div>
+          <div class="dev-home__live-state">
+            <span class="dev-home__lamp" :class="`dev-home__lamp--${connectionLamp.tone}`" role="status"
+              aria-live="polite">
+              <i class="dev-home__lamp-dot" aria-hidden="true" />
+              {{ connectionLamp.label }}
+            </span>
+            <span class="dev-home__updated" :title="dashboard?.generated_at ?? ''">更新于 {{ lastUpdatedText }}</span>
+          </div>
+          <div class="dev-meta-strip__divider dev-home__live-divider" />
+        </template>
+        <template v-for="(item, index) in statCards" :key="item.label">
+          <div v-if="index > 0" class="dev-meta-strip__divider" />
+          <div class="dev-meta-strip__item">
+            <span class="dev-meta-strip__label">{{ item.label }}</span>
+            <span class="dev-meta-strip__value">{{ item.value }}</span>
+          </div>
+        </template>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <TButton v-if="fullscreenSupported" icon-only :aria-label="isFullscreen ? '退出全屏' : '全屏查看'"
+            :title="isFullscreen ? '退出全屏' : '全屏查看'" @click="toggleFullscreen">
+            <TIcon>
+              <svg v-if="isFullscreen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+              </svg>
+            </TIcon>
+          </TButton>
+          <TButton icon-only :loading="loading" aria-label="刷新概览" @click="loadPage">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
         </div>
-      </template>
-      <div class="dev-meta-strip__item dev-meta-strip__action">
-        <TButton icon-only aria-label="刷新概览" @click="loadPage">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </TLoading>
+      </TLoading>
+    </WorkbenchBarSlot>
 
     <!-- 保证金警示条：摆在四格读数之后——先看当天读数，再看为什么还不能接单。
          形状与配色走统一层的 .dev-notice（金色 + 图标徽标 + 文案 + 右侧动作），
@@ -601,12 +1018,32 @@ async function loadPage() {
       </div>
     </section>
 
+    <!-- 接单漏斗：只在全屏看板上出现。五个在途状态按流程从左到右，最后一格是本月完成 -->
+    <section v-if="funnelCells.length" class="dev-home__funnel" aria-label="接单漏斗">
+      <div v-for="cell in funnelCells" :key="cell.key" class="dev-home__funnel-cell"
+        :class="[`dev-home__funnel-cell--${cell.tone}`, { 'is-done': cell.done }]">
+        <span class="dev-home__funnel-label">{{ cell.label }}</span>
+        <strong class="dev-home__funnel-value">{{ cell.value }}<small>单</small></strong>
+        <span class="dev-home__funnel-bar" aria-hidden="true">
+          <span :style="{ width: `${Math.round(cell.share * 100)}%` }" />
+        </span>
+      </div>
+    </section>
+
     <section class="dev-home__layout">
       <div class="dev-home__main">
         <section class="dev-surface-card dev-home__panel">
           <div class="dev-card-head">
-            <div class="dev-card-head__title-block">
+            <!-- 筛选胶囊跟在标题后面同一行：总览卡片要省纵向空间，单独一行工具栏只放四个胶囊太空 -->
+            <div class="dev-card-head__title-block dev-home__head-main">
               <h3 class="dev-section-title">进行中项目</h3>
+              <div class="dev-chip-group dev-home__tabs" role="tablist" aria-label="进行中项目筛选">
+                <button v-for="tab in PROJECT_TABS" :key="tab.key" class="dev-chip dev-chip--button" type="button"
+                  role="tab" :aria-selected="activeProjectTab === tab.key"
+                  :class="{ 'is-active': activeProjectTab === tab.key }" @click="activeProjectTab = tab.key">
+                  {{ tab.label }}
+                </button>
+              </div>
             </div>
             <div class="dev-card-head__actions">
               <RouterLink class="dev-home__more" :to="{ name: 'dev-my-requirements' }">
@@ -618,20 +1055,9 @@ async function loadPage() {
             </div>
           </div>
 
-          <!-- 状态胶囊是「筛选」，与其它菜单页一致放在卡片头下方的 .dev-toolbar 里，
-               卡片头右侧只留「查看全部」这个动作 -->
-          <div class="dev-toolbar">
-            <div class="dev-chip-group dev-home__tabs" role="tablist" aria-label="进行中项目筛选">
-              <button v-for="tab in PROJECT_TABS" :key="tab.key" class="dev-chip dev-chip--button" type="button"
-                role="tab" :aria-selected="activeProjectTab === tab.key"
-                :class="{ 'is-active': activeProjectTab === tab.key }" @click="activeProjectTab = tab.key">
-                {{ tab.label }}
-              </button>
-            </div>
-          </div>
-
           <ul v-if="projectRows.length" class="dev-home__projects">
-            <li v-for="row in projectRows" :key="row.requirementId" class="dev-home__project" role="button" tabindex="0"
+            <li v-for="row in projectRows" :key="row.requirementId" class="dev-home__project"
+              :class="`dev-home__project--${row.tone}`" role="button" tabindex="0"
               :aria-label="`查看「${row.title}」的接单与交付`" @click="openMyOrder(row.requirementId)"
               @keydown.enter.prevent="openMyOrder(row.requirementId)"
               @keydown.space.prevent="openMyOrder(row.requirementId)">
@@ -668,8 +1094,15 @@ async function loadPage() {
 
         <section class="dev-surface-card dev-home__panel">
           <div class="dev-card-head">
-            <div class="dev-card-head__title-block">
+            <div class="dev-card-head__title-block dev-home__head-main">
               <h3 class="dev-section-title">最近交付</h3>
+              <div class="dev-chip-group dev-home__tabs" role="tablist" aria-label="最近交付筛选">
+                <button v-for="tab in DELIVERY_TABS" :key="tab.key" class="dev-chip dev-chip--button" type="button"
+                  role="tab" :aria-selected="activeDeliveryTab === tab.key"
+                  :class="{ 'is-active': activeDeliveryTab === tab.key }" @click="activeDeliveryTab = tab.key">
+                  {{ tab.label }}
+                </button>
+              </div>
             </div>
             <div class="dev-card-head__actions">
               <RouterLink class="dev-home__more" :to="{ name: 'dev-my-requirements' }">
@@ -678,16 +1111,6 @@ async function loadPage() {
                   <ArrowRight />
                 </TIcon>
               </RouterLink>
-            </div>
-          </div>
-
-          <div class="dev-toolbar">
-            <div class="dev-chip-group dev-home__tabs" role="tablist" aria-label="最近交付筛选">
-              <button v-for="tab in DELIVERY_TABS" :key="tab.key" class="dev-chip dev-chip--button" type="button"
-                role="tab" :aria-selected="activeDeliveryTab === tab.key"
-                :class="{ 'is-active': activeDeliveryTab === tab.key }" @click="activeDeliveryTab = tab.key">
-                {{ tab.label }}
-              </button>
             </div>
           </div>
 
@@ -709,14 +1132,18 @@ async function loadPage() {
                 </TIcon>
               </div>
 
-              <p class="dev-home__delivery-meta">{{ row.requirementId }}</p>
+              <p class="dev-home__delivery-meta">
+                <span class="dev-home__delivery-id">{{ row.requirementId }}</span>
+                <span class="dev-home__delivery-versions">{{ row.versionCount }} 个版本</span>
+              </p>
 
+              <!-- 页脚贴卡片底边：同一排卡片标题行数不同，日期与金额也要落在同一条线上 -->
               <div class="dev-home__delivery-foot">
-                <span class="dev-home__delivery-time">{{ formatCnDateTime(row.updatedAt) }}</span>
-                <span class="dev-chip dev-chip--cyan dev-home__chip">{{ row.versionCount }} 个版本</span>
+                <span class="dev-home__delivery-time">{{ row.updatedAt ? formatCnDateTime(row.updatedAt) : '—' }}</span>
                 <strong v-if="row.amount != null" class="dev-home__delivery-amount">
                   {{ money(row.amount) }}
                 </strong>
+                <span v-else class="dev-home__delivery-amount dev-home__delivery-amount--pending">未到账</span>
               </div>
             </li>
           </ul>
@@ -729,13 +1156,15 @@ async function loadPage() {
       <aside class="dev-home__aside">
         <!-- 收入、提现、保证金本来分装在两张卡里：「待提现」在一张里报金额、在另一张里报占比，
              「可提现」又被大数与比例条各说一遍。合并成一张「资金概览」，同一笔钱全页只出现一次。 -->
-        <section class="dev-surface-card dev-home__panel">
+        <section class="dev-surface-card dev-home__panel dev-home__fund">
           <div class="dev-card-head">
             <div class="dev-card-head__title-block">
               <h3 class="dev-section-title">资金概览</h3>
             </div>
           </div>
 
+          <!-- 收入走势与余额两组：桌面上下排，平板档左右并排（见样式 641–980 档） -->
+          <div class="dev-home__fund-trend">
           <!-- 「今日收入」是这一栏唯一带「今天」口径的读数，环比就跟在它旁边 -->
           <div class="dev-home__income-head">
             <span class="dev-home__income-label">今日收入</span>
@@ -747,7 +1176,14 @@ async function loadPage() {
             </span>
           </div>
 
-          <p class="dev-home__group-label">近 7 天到账</p>
+          <div class="dev-home__trend-head">
+            <p class="dev-home__group-label">近 {{ chartDays }} 天到账</p>
+            <!-- 本月累计只在看板上出现：快照才有按自然月汇总的口径 -->
+            <p v-if="liveBoard" class="dev-home__month">
+              <span>本月累计到账</span>
+              <strong>{{ money(liveBoard.month_income_cny) }}</strong>
+            </p>
+          </div>
 
           <div class="dev-home__chart" :title="chartCaption">
             <!-- 悬停时头顶换成那一天自己的读数（两颗都挂在同一个位置，同时出现会叠在一起） -->
@@ -763,7 +1199,7 @@ async function loadPage() {
               :style="{ left: hoveredBucket.guideLeft, top: hoveredBucket.top, height: hoveredBucket.height }" />
 
             <svg class="dev-home__chart-svg" :viewBox="`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`"
-              preserveAspectRatio="none" role="img" :aria-label="`近 7 天到账金额，最高一天 ${peakLabel}`">
+              preserveAspectRatio="none" role="img" :aria-label="`近 ${chartDays} 天到账金额，最高一天 ${peakLabel}`">
               <defs>
                 <linearGradient id="devHomeIncomeFill" x1="0" y1="0" x2="0" y2="1">
                   <stop class="dev-home__chart-stop-a" offset="0%" />
@@ -792,13 +1228,20 @@ async function loadPage() {
                 @blur="hoveredBucketIndex = null" />
             </div>
 
-            <div class="dev-home__chart-axis-labels" aria-hidden="true">
+            <div v-if="sparseAxis" class="dev-home__chart-axis-labels dev-home__chart-axis-labels--sparse"
+              aria-hidden="true">
+              <span v-for="item in axisLabels" :key="item.label"
+                :style="{ left: item.left, transform: item.transform }">{{ item.label }}</span>
+            </div>
+            <div v-else class="dev-home__chart-axis-labels" aria-hidden="true">
               <span v-for="bucket in incomeBuckets" :key="bucket.label">{{ bucket.label }}</span>
             </div>
           </div>
 
-          <p v-if="!hasIncomeData" class="dev-home__chart-empty">近 7 天没有到账记录</p>
+          <p v-if="!hasIncomeData" class="dev-home__chart-empty">近 {{ chartDays }} 天没有到账记录</p>
+          </div>
 
+          <div class="dev-home__fund-balance">
           <!-- 提现口径：大数只报可提现余额，另两笔金额各报一次（原先还得先读比例条再读图例） -->
           <div class="dev-home__money">
             <div class="dev-home__money-head">
@@ -871,8 +1314,64 @@ async function loadPage() {
               <span>累计充值 {{ money(deposit?.total_paid_cny) }}</span>
             </p>
           </div>
+          </div>
         </section>
       </aside>
+
+      <!-- 看板第三栏：实时动态流 + 资源项目概况，只在全屏且拿到快照后出现 -->
+      <div v-if="liveBoard" class="dev-home__live">
+        <section class="dev-surface-card dev-home__panel dev-home__feed-panel">
+          <div class="dev-card-head">
+            <div class="dev-card-head__title-block">
+              <h3 class="dev-section-title">实时动态</h3>
+            </div>
+          </div>
+
+          <TransitionGroup v-if="feedRows.length" tag="ul" class="dev-home__feed" name="dev-home-feed"
+            :css="feedAnimated" aria-live="polite">
+            <li v-for="row in feedRows" :key="row.key" class="dev-home__feed-item">
+              <span class="dev-home__feed-icon" :class="`dev-home__feed-icon--${row.tone}`" aria-hidden="true">
+                <TIcon>
+                  <component :is="row.icon" />
+                </TIcon>
+              </span>
+              <div class="dev-home__feed-copy">
+                <strong class="dev-home__feed-title">{{ row.title }}</strong>
+                <span class="dev-home__feed-meta">
+                  <time :datetime="row.fullTime" :title="row.fullTime">{{ row.time }}</time>
+                  <template v-if="row.requirementId"> · {{ row.requirementId }}</template>
+                </span>
+              </div>
+              <strong v-if="row.amount != null" class="dev-home__feed-amount"
+                :class="`dev-home__feed-amount--${row.tone}`">
+                {{ signedMoney(row.amount) }}
+              </strong>
+            </li>
+          </TransitionGroup>
+          <p v-else class="dev-empty-state dev-home__empty">
+            <strong>暂无动态</strong>
+          </p>
+        </section>
+
+        <section class="dev-surface-card dev-home__panel dev-home__resources-panel">
+          <div class="dev-card-head">
+            <div class="dev-card-head__title-block">
+              <h3 class="dev-section-title">资源项目</h3>
+            </div>
+          </div>
+          <dl class="dev-home__resources">
+            <div v-for="cell in resourceCells" :key="cell.key" class="dev-home__resource">
+              <dt>
+                <TIcon>
+                  <component :is="cell.icon" />
+                </TIcon>
+                {{ cell.label }}
+              </dt>
+              <dd>{{ formatCount(cell.value) }}</dd>
+            </div>
+          </dl>
+        </section>
+      </div>
     </section>
 
     <!-- 保证金充值弹窗：与收益钱包页共用同一组件 -->
@@ -893,6 +1392,478 @@ async function loadPage() {
 
 .dev-home__panel {
   transition: opacity 0.2s ease;
+}
+
+/* 全屏看板：铺满屏幕、内容区可滚，两栏撑满剩余高度。
+   提现 / 充值弹窗挂在 body 上、全屏里看不见，所以全屏时把这两个操作收起，只留读数。 */
+.dev-home.dev-home--fullscreen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 20px 24px;
+  overflow-y: auto;
+  background: var(--dev-bg, #f1f4fb);
+}
+
+/* 看板三栏：列表 | 资金 | 动态与资源。整块吃掉读数条与漏斗之下的剩余高度，
+   每张卡在自己的区域里滚动，整页不出现横向滚动（1280×800 平板横屏一屏看全）。 */
+.dev-home--fullscreen .dev-home__layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.95fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: 'main aside live';
+}
+
+.dev-home--fullscreen .dev-home__main {
+  grid-area: main;
+  grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr);
+  min-height: 0;
+}
+
+.dev-home--fullscreen .dev-home__aside {
+  grid-area: aside;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+
+.dev-home--fullscreen .dev-home__fund {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.dev-home__live {
+  grid-area: live;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 16px;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* 列表卡：卡片头 + 工具栏固定，列表本体在卡内滚动 */
+.dev-home--fullscreen .dev-home__main .dev-home__panel,
+.dev-home__live .dev-home__feed-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* 项目行 hover 底色靠负外边距伸出去，滚动容器会把它算成横向溢出：
+   容器自己先向两侧借 10px 内边距，行就落回容器内 */
+.dev-home--fullscreen .dev-home__projects,
+.dev-home--fullscreen .dev-home__deliveries,
+.dev-home__feed {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0 -10px;
+  padding: 0 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.dev-home--fullscreen .dev-home__deliveries {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  padding-bottom: 2px;
+}
+
+/* 读数条在看板里：读数改成「标签在上、数字在下」，数字放大一档，远处也看得清 */
+.dev-home--fullscreen .dev-meta-strip {
+  gap: 14px 18px;
+}
+
+.dev-home--fullscreen .dev-meta-strip__item:not(.dev-meta-strip__action) {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.dev-home--fullscreen .dev-meta-strip__value {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.dev-home__clock {
+  display: grid;
+  gap: 1px;
+}
+
+.dev-home__clock-time {
+  color: var(--dev-ink);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-home__clock-date,
+.dev-home__updated {
+  color: var(--dev-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-home__live-state {
+  display: grid;
+  gap: 3px;
+}
+
+.dev-home__lamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dev-ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dev-home__lamp-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--dev-muted);
+}
+
+.dev-home__lamp--ok {
+  color: var(--dev-cyan);
+}
+
+.dev-home__lamp--ok .dev-home__lamp-dot {
+  background: var(--dev-cyan);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--dev-cyan) 45%, transparent);
+  animation: dev-home-lamp-pulse 2s ease-out infinite;
+}
+
+.dev-home__lamp--warn {
+  color: var(--dev-gold);
+}
+
+.dev-home__lamp--warn .dev-home__lamp-dot {
+  background: var(--dev-gold);
+  animation: dev-home-lamp-blink 1s ease-in-out infinite;
+}
+
+.dev-home__lamp--off {
+  color: var(--dev-muted);
+}
+
+@keyframes dev-home-lamp-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--dev-cyan) 45%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+}
+
+@keyframes dev-home-lamp-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* 漏斗：六格一排，数字是主角；底部细条按在途五档里最多的一档等比，看得出单子堆在哪一步 */
+.dev-home__funnel {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(0, 1.1fr);
+  gap: 10px;
+}
+
+.dev-home__funnel-cell {
+  --funnel-tone: var(--dev-blue);
+  position: relative;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 14px 10px;
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-inner);
+  background: var(--dev-surface-strong);
+}
+
+/* 在途五格之间的流向箭头：一个旋转的小方角，落在格与格的缝里 */
+.dev-home__funnel-cell:not(.is-done):not(:nth-last-child(2))::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -9px;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--dev-line);
+  border-right: 2px solid var(--dev-line);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.dev-home__funnel-cell--gold {
+  --funnel-tone: var(--dev-gold);
+}
+
+.dev-home__funnel-cell--cyan {
+  --funnel-tone: var(--dev-cyan);
+}
+
+.dev-home__funnel-cell.is-done {
+  border-color: color-mix(in srgb, var(--dev-cyan) 30%, transparent);
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--dev-cyan) 12%, transparent), transparent 70%),
+    var(--dev-surface-strong);
+}
+
+.dev-home__funnel-label {
+  overflow: hidden;
+  color: var(--dev-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dev-home__funnel-value {
+  color: var(--funnel-tone);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-home__funnel-value small {
+  margin-left: 3px;
+  color: var(--dev-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dev-home__funnel-bar {
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dev-muted) 16%, transparent);
+  overflow: hidden;
+}
+
+.dev-home__funnel-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--funnel-tone);
+  transition: width 0.4s ease;
+}
+
+/* 资金卡里「近 N 天到账」与「本月累计到账」同一行，标签左、累计右 */
+.dev-home__trend-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.dev-home__month {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 14px 0 0;
+  color: var(--dev-muted);
+  font-size: 12px;
+}
+
+.dev-home__month strong {
+  color: var(--dev-gold);
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 30 天横轴：只标抽稀后的几天，标签按对应点的横坐标绝对定位 */
+.dev-home__chart-axis-labels--sparse {
+  position: relative;
+  display: block;
+  height: 14px;
+}
+
+.dev-home__chart-axis-labels--sparse span {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+}
+
+/* 实时动态：图标 + 标题 / 时间 + 金额。新条目从顶部插入并闪一下底色 */
+.dev-home__feed {
+  display: grid;
+  align-content: start;
+  list-style: none;
+}
+
+.dev-home__feed-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: 0 -10px;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--dev-line);
+  border-radius: 10px;
+}
+
+.dev-home__feed-item:last-child {
+  border-bottom: 0;
+}
+
+.dev-home__feed-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--wb-accent-soft);
+  color: var(--dev-blue);
+  font-size: 15px;
+}
+
+.dev-home__feed-icon--gold {
+  background: color-mix(in srgb, var(--dev-gold) 14%, transparent);
+  color: var(--dev-gold);
+}
+
+.dev-home__feed-icon--cyan {
+  background: color-mix(in srgb, var(--dev-cyan) 14%, transparent);
+  color: var(--dev-cyan);
+}
+
+.dev-home__feed-icon--muted {
+  background: color-mix(in srgb, var(--dev-muted) 14%, transparent);
+  color: var(--dev-ink-soft);
+}
+
+.dev-home__feed-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.dev-home__feed-title {
+  overflow: hidden;
+  color: var(--dev-ink);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dev-home__feed-meta {
+  overflow: hidden;
+  color: var(--dev-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-home__feed-amount {
+  color: var(--dev-ink-soft);
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-home__feed-amount--gold {
+  color: var(--dev-gold);
+}
+
+.dev-home-feed-enter-active {
+  animation: dev-home-feed-in 1.6s ease-out;
+}
+
+.dev-home-feed-move {
+  transition: transform 0.35s ease;
+}
+
+.dev-home-feed-leave-active {
+  display: none;
+}
+
+@keyframes dev-home-feed-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+    background: color-mix(in srgb, var(--dev-blue) 14%, transparent);
+  }
+  18% {
+    opacity: 1;
+    transform: translateY(0);
+    background: color-mix(in srgb, var(--dev-blue) 14%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+/* 资源项目：三格读数一排 */
+.dev-home__resources {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.dev-home__resource {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: var(--dev-radius-inner);
+  background: var(--wb-accent-soft);
+}
+
+.dev-home__resource dt {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--dev-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.dev-home__resource dd {
+  margin: 0;
+  color: var(--dev-ink);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dev-home__lamp-dot,
+  .dev-home-feed-enter-active {
+    animation: none;
+  }
+}
+
+.dev-home--fullscreen .dev-home__money-action,
+.dev-home--fullscreen .dev-home__deposit-action,
+.dev-home--fullscreen .dev-notice__action,
+.dev-home--fullscreen .dev-home__mock-hint {
+  display: none;
+}
+
+.dev-home__screen-title {
+  margin-right: 8px;
+  color: var(--dev-ink);
+  font-size: 16px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 /* 演示数据提示条：它是本地预览用的说明，比保证金警示条更轻，用虚线中性框 */
@@ -921,11 +1892,12 @@ async function loadPage() {
 
 /* 四格统计卡：图标 + 口径数字 + 箭头，整卡可点 */
 /* 左栏是两条列表，右栏是两张资金卡；窄屏并成一栏 */
+/* 两栏等高、左栏最后一张卡吃掉剩余高度：总览是拿来「看」的，两栏底边不齐会在下方留出一块空洞 */
 .dev-home__layout {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .dev-home__main,
@@ -933,6 +1905,22 @@ async function loadPage() {
   display: grid;
   gap: 16px;
   align-content: start;
+}
+
+.dev-home__main {
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
+}
+
+.dev-home__aside {
+  align-content: stretch;
+}
+
+/* 资金卡：顶部一层很淡的主色渐变，把「看数」这一栏从左侧两张列表卡里拎出来 */
+.dev-home__panel.dev-home__fund {
+  background:
+    radial-gradient(120% 60% at 100% 0, color-mix(in srgb, var(--dev-blue) 10%, transparent), transparent 70%),
+    var(--dev-surface-strong);
 }
 
 /* 卡片内边距由统一层给（桌面 24px、≤720px 20px、≤640px 16px），见 dev-base.css
@@ -1032,13 +2020,16 @@ async function loadPage() {
 }
 
 .dev-home__delivery {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   min-width: 0;
   padding: 14px;
   border: 1px solid var(--dev-line);
   border-radius: 12px;
-  background: var(--dev-surface-strong);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--dev-cyan) 7%, transparent), transparent 55%),
+    var(--dev-surface-strong);
   cursor: pointer;
   transition:
     border-color 160ms ease,
@@ -1181,7 +2172,7 @@ async function loadPage() {
 .dev-home__delivery-amount {
   margin-left: auto;
   color: var(--dev-gold);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -1190,8 +2181,101 @@ async function loadPage() {
 .dev-home__delivery-foot {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: space-between;
   gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px dashed var(--dev-line);
+}
+
+.dev-home__delivery-amount--pending {
+  color: var(--dev-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dev-home__delivery-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.dev-home__delivery-versions {
+  flex-shrink: 0;
+}
+
+.dev-home__delivery-id,
+.dev-home__delivery-time {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dev-home__delivery-versions {
+  color: var(--dev-cyan);
+  font-weight: 700;
+}
+
+.dev-home__panel > .dev-card-head:has(.dev-home__head-main) {
+  align-items: center;
+}
+
+/* 交付卡标题最多两行，三张卡的标题区等高，下面的编号与页脚才对得齐 */
+.dev-home__delivery-title {
+  display: -webkit-box;
+  min-height: calc(14px * 1.45 * 2);
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* 卡头：标题与筛选胶囊同一行，窄了胶囊整组落到标题下面 */
+.dev-home__head-main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+/* 项目行左侧一道状态色条：一眼扫过去就分得清开发中 / 待付尾款 / 已完成，不必逐个读胶囊 */
+.dev-home__project {
+  position: relative;
+  padding-left: 16px;
+}
+
+.dev-home__project::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 4px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--dev-blue);
+}
+
+.dev-home__project:first-child::before {
+  top: 7px;
+}
+
+.dev-home__project:last-child::before {
+  bottom: 7px;
+}
+
+.dev-home__project--gold::before {
+  background: var(--dev-gold);
+}
+
+.dev-home__project--cyan::before {
+  background: var(--dev-cyan);
+}
+
+.dev-home__project--muted::before {
+  background: color-mix(in srgb, var(--dev-muted) 50%, transparent);
 }
 
 .dev-home__delivery-time {
@@ -1236,12 +2320,12 @@ async function loadPage() {
 .dev-home__chart-svg {
   display: block;
   width: 100%;
-  height: 104px;
+  height: 132px;
 }
 
 .dev-home__chart-stop-a {
   stop-color: var(--dev-blue);
-  stop-opacity: 0.24;
+  stop-opacity: 0.32;
 }
 
 .dev-home__chart-stop-b {
@@ -1519,6 +2603,40 @@ async function loadPage() {
   .dev-home__deliveries {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .dev-home__main {
+    grid-template-rows: none;
+  }
+}
+
+/* 平板档（641–980）：拿平板看实时数据时最先看到资金，所以资金卡提到列表之前，
+   卡内「收入走势 | 余额与保证金」左右并排，一屏看全，不用往下翻 */
+@media (min-width: 641px) and (max-width: 980px) {
+  .dev-home__aside {
+    order: -1;
+  }
+
+  .dev-home__fund {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  .dev-home__fund > .dev-card-head {
+    grid-column: 1 / -1;
+  }
+
+  .dev-home__fund-balance {
+    padding-left: 24px;
+    border-left: 1px solid var(--dev-line);
+  }
+
+  .dev-home__fund-balance .dev-home__money {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1562,6 +2680,100 @@ async function loadPage() {
     min-width: 0;
     min-height: 44px;
     height: 44px;
+  }
+}
+
+/* 看板竖屏档（平板竖屏 820×1180）：资金卡占满一行（卡内仍是「走势 | 余额」左右并排），
+   下面两栏：列表 | 动态与资源 */
+@media (max-width: 980px) {
+  .dev-home.dev-home--fullscreen {
+    padding: 16px 20px;
+  }
+
+  .dev-home--fullscreen .dev-home__layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      'aside aside'
+      'main live';
+  }
+
+  .dev-home--fullscreen .dev-home__main {
+    grid-template-rows: minmax(0, 1.2fr) minmax(0, 1fr);
+  }
+
+  .dev-home--fullscreen .dev-home__fund {
+    overflow: visible;
+  }
+
+  .dev-home--fullscreen .dev-home__deliveries {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 统一层在这一档把读数条改成两列网格（菜单页里读数少、一格一行）；看板上读数多，
+     两列会把它撑到四五行高。看板里改回横排：首行标题 + 时钟 + 状态，次行四格读数 + 按钮 */
+  .dev-home--fullscreen .dev-meta-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+    padding: 12px 18px;
+  }
+
+  .dev-home--fullscreen .dev-meta-strip__divider {
+    display: block;
+  }
+
+  .dev-home--fullscreen .dev-home__live-divider {
+    flex: 0 0 100%;
+    width: auto;
+    height: 1px;
+  }
+
+  .dev-home--fullscreen .dev-meta-strip__item.dev-meta-strip__action {
+    margin-left: auto;
+  }
+
+  .dev-home__funnel {
+    gap: 8px;
+  }
+
+  .dev-home__funnel-cell {
+    padding: 10px 10px 8px;
+  }
+
+  .dev-home__funnel-value {
+    font-size: 26px;
+  }
+}
+
+/* 手机档的全屏不追求一屏看全：一栏排到底、整页纵向滚动，各卡不再限高 */
+@media (max-width: 640px) {
+  .dev-home--fullscreen .dev-home__layout {
+    flex: 0 0 auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas:
+      'aside'
+      'main'
+      'live';
+  }
+
+  .dev-home--fullscreen .dev-home__main {
+    grid-template-rows: none;
+  }
+
+  .dev-home--fullscreen .dev-home__projects,
+  .dev-home--fullscreen .dev-home__deliveries,
+  .dev-home__feed {
+    overflow: visible;
+  }
+
+  .dev-home__funnel {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dev-home__funnel-cell::after {
+    display: none;
   }
 }
 
