@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   getAdapayBreachCase,
@@ -15,6 +16,7 @@ import {
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import DeliverySubmitDialog from '@/components/DeliverySubmitDialog.vue'
 import PaymentModeChip from '@/components/PaymentModeChip.vue'
+import RequirementCommentDialog from '@/components/RequirementCommentDialog.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import { breachStatusLabel } from '@/shared/breachStatus'
@@ -52,6 +54,13 @@ import {
   fetchDevContractSigningStatus,
   type ContractSigningStatus,
 } from '@/api/contracts'
+import { CONTRACT_STATUS, contractStatusLabel } from '@/shared/contracts'
+import {
+  listMyInvoices,
+  uploadInvoiceDocument,
+  type InvoiceRecord,
+} from '@/api/invoices'
+import { canUploadInvoiceDocument } from '@/shared/invoiceAction'
 import { useToast } from '@/composables/useToast'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
@@ -78,6 +87,7 @@ import {
   Refresh,
   RefreshLeft,
   Search,
+  UploadFilled,
   View,
 } from 'ui_73info'
 
@@ -100,7 +110,20 @@ const contractCreatingId = ref('')
 const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const conversationLoading = ref(false)
+const commentVisible = ref(false)
+const commentRequirement = ref<RequirementItem | null>(null)
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
+/**
+ * 我作为乙方的开发者收入票：按需求编号索引。
+ *
+ * 列表加载时一并 `listMyInvoices`，只留下 `invoiceRole === 'developer'` 且乙方是我的票。
+ * 卡片 footer 的「上传发票」据此显示——与财务中心「我的发票」同一套判定
+ * （`canUploadInvoiceDocument`）。
+ */
+const developerInvoiceByRequirement = ref<Record<string, InvoiceRecord>>({})
+const uploadingInvoiceId = ref<number | null>(null)
+const hiddenInvoiceFileInput = ref<HTMLInputElement | null>(null)
+const pickingInvoiceId = ref<number | null>(null)
 /* 需求说明（需求描述 + 验收标准）的折叠状态，三份都按 requirement_id 归键：
    `briefEls` 存这一段 DOM 用来量高度，`briefOverflowMap` 记该不该出「展开」，
    `expandedBriefs` 记用户展开过没有。 */
@@ -389,20 +412,26 @@ async function loadMyRequirements() {
   try {
     /* 资源与钱包是补充数据：任一失败不该把需求单列表一起清空，
        所以各自兜底成空值，只提示少了哪一块。 */
-    const [myRequirements, resourceResult, walletResult] = await Promise.all([
+    const [myRequirements, resourceResult, walletResult, invoiceResult] = await Promise.all([
       listMyRequirements(token),
       settle(listMcResources(token), [] as McResourcePayload[], '加载资源列表失败'),
       settle(getDevWalletOverview(token), null, '加载钱包失败'),
+      settle(listMyInvoices(token), [] as InvoiceRecord[], '加载发票记录失败'),
     ])
 
     rows.value = myRequirements
     resources.value = resourceResult.value
     income.value = walletResult.value?.recent_income ?? []
     versionsByResource.value = await loadResourceVersions(token, resourceResult.value)
+    applyDeveloperInvoices(invoiceResult.value)
 
     const supplementaryError = resourceResult.error ?? walletResult.error
     if (supplementaryError) {
       showToast(`${supplementaryError}，交付与到账暂不完整`, 'warning')
+    }
+    // 发票是补充数据：失败不打断需求列表，只提示一声（与资源 / 钱包同一口径）。
+    if (invoiceResult.error) {
+      showToast(`${invoiceResult.error}，上传发票入口暂不可用`, 'warning')
     }
 
     // 无担保模式（self_managed）不需要合同，无需查询合同签署状态
@@ -639,6 +668,88 @@ const receiptDialogTitle = computed(() =>
     : '回款详情',
 )
 
+/**
+ * 把「我作为乙方」的开发者收入票按需求编号收进映射，供卡片操作栏取用。
+ * 同一需求若有多张（历史 / 红冲后重开），后写覆盖前写——列表接口通常只回当前有效票。
+ */
+function applyDeveloperInvoices(invoices: InvoiceRecord[]) {
+  const map: Record<string, InvoiceRecord> = {}
+  for (const invoice of invoices) {
+    if (invoice.invoiceRole === 'developer' && invoice.developerUsername === auth.username) {
+      map[invoice.requirementId] = invoice
+    }
+  }
+  developerInvoiceByRequirement.value = map
+}
+
+/** 该需求是否该显示「上传发票」：有开发者收入蓝票，且共享层判定可传。 */
+function uploadableInvoiceFor(item: RequirementItem): InvoiceRecord | null {
+  const invoice = developerInvoiceByRequirement.value[item.requirement_id]
+  if (!invoice) {
+    return null
+  }
+  return canUploadInvoiceDocument(invoice, auth.username, 'developer') ? invoice : null
+}
+
+/** 模板用：0 或 1 张可上传票，避免同一行反复调 `uploadableInvoiceFor`。 */
+function uploadableInvoicesFor(item: RequirementItem): InvoiceRecord[] {
+  const invoice = uploadableInvoiceFor(item)
+  return invoice ? [invoice] : []
+}
+
+function pickInvoiceFile(invoiceId: number) {
+  pickingInvoiceId.value = invoiceId
+  hiddenInvoiceFileInput.value?.click()
+}
+
+function selectInvoiceFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const invoiceId = pickingInvoiceId.value
+  const file = input.files?.[0]
+  // 清空 value，否则同一张发票连选两次同一个文件不会触发 change
+  input.value = ''
+  if (!file || invoiceId === null) {
+    return
+  }
+  const invoice = Object.values(developerInvoiceByRequirement.value).find(
+    (item) => item.id === invoiceId,
+  )
+  if (!invoice) {
+    return
+  }
+  // 列表卡按钮固定文案「上传发票」：选完文件立刻上传，不再二次确认。
+  void uploadInvoiceDoc(invoice, file)
+}
+
+async function uploadInvoiceDoc(invoice: InvoiceRecord, file: File) {
+  uploadingInvoiceId.value = invoice.id
+  try {
+    const replacing = Boolean(invoice.documentUrl)
+    const updated = await uploadInvoiceDocument(auth.token, invoice.id, file)
+    developerInvoiceByRequirement.value = {
+      ...developerInvoiceByRequirement.value,
+      [updated.requirementId]: updated,
+    }
+    showToast(
+      replacing ? '发票文件已替换，客户下载到的就是这一份' : '发票文件已上传，客户可下载了',
+      'success',
+    )
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '上传发票文件失败', 'error')
+  } finally {
+    uploadingInvoiceId.value = null
+  }
+}
+
+/** 列表卡固定「上传发票」；上传中短暂换成「上传中…」。 */
+function invoiceUploadButtonLabel(invoice: InvoiceRecord) {
+  return uploadingInvoiceId.value === invoice.id ? '上传中…' : '上传发票'
+}
+
+function onInvoiceUploadClick(invoice: InvoiceRecord) {
+  pickInvoiceFile(invoice.id)
+}
+
 function openConversation(item: RequirementItem) {
   conversationRequirement.value = item
   conversationVisible.value = true
@@ -744,15 +855,36 @@ function contractStartHint(item: RequirementItem): string {
   return '等待客户签署，双方签署完成后由需求方支付定金'
 }
 
-/** 待分账 / 结单后的提示：尾款缴清到渠道分账之间有等待期，结单后还有解除合作窗口。 */
+/** 待分账提示：尾款缴清到渠道分账之间有等待期。结单后的保证金说明已去掉（操作区有解除合作入口）。 */
 function settlementHint(item: RequirementItem): string {
   if (item.status === 'pending_settlement') {
     return '需求方已缴纳尾款，正在等待渠道分账（通常 7 天），分账完成后正式结单并结算'
   }
-  if (item.status === 'completed') {
-    return '需求已结单，接单保证金在解除合作窗口结束且无未结解除合作案件后释放'
-  }
   return ''
+}
+
+/** 合同状态标签：优先用后端带回的 status 码；尚无合同按「等待签约」。 */
+function contractStatusBadge(item: RequirementItem): string {
+  const status = signingStatusMap.value[item.requirement_id]?.status
+  if (typeof status === 'number') {
+    return contractStatusLabel(status)
+  }
+  return contractStatusLabel(CONTRACT_STATUS.awaiting)
+}
+
+function contractStatusTone(item: RequirementItem): 'signed' | 'progress' | 'danger' | 'muted' {
+  const status = signingStatusMap.value[item.requirement_id]?.status
+  if (status === CONTRACT_STATUS.signed) return 'signed'
+  if (status === CONTRACT_STATUS.signing || status === CONTRACT_STATUS.awaiting) return 'progress'
+  if (
+    status === CONTRACT_STATUS.expired ||
+    status === CONTRACT_STATUS.rejected ||
+    status === CONTRACT_STATUS.voided ||
+    status === CONTRACT_STATUS.revoked
+  ) {
+    return 'danger'
+  }
+  return 'muted'
 }
 
 // 方案 B：交付物就是绑定资源项目的资源版本，直接复用资源项目版本接口。
@@ -807,6 +939,48 @@ function openAfterSalesModal(item: RequirementItem) {
 function closeAfterSalesModal() {
   afterSalesVisible.value = false
   afterSalesTarget.value = null
+}
+
+function canComment(item: RequirementItem) {
+  return item.status === 'completed'
+}
+
+function openCommentModal(item: RequirementItem) {
+  if (!canComment(item)) {
+    return
+  }
+  commentRequirement.value = item
+  commentVisible.value = true
+}
+
+function closeCommentModal() {
+  commentVisible.value = false
+  commentRequirement.value = null
+}
+
+async function handleCommentSubmitted() {
+  await loadMyRequirements()
+}
+
+function formatCommentSummary(rating: number, text?: string | null) {
+  const score = `${rating.toFixed(1)} 分`
+  const body = commentBodyText(text)
+  return body ? `${score} · ${body}` : score
+}
+
+/** 纯数字评语多半是脏数据（评分/信用分误写入），不当作正文展示。 */
+function commentBodyText(text?: string | null) {
+  const body = text?.trim() ?? ''
+  if (!body || /^\d+(\.\d+)?$/.test(body) || body.length < 2) {
+    return ''
+  }
+  return body
+}
+
+function starFill(rating: number, index: number): 'full' | 'half' | 'empty' {
+  if (rating >= index) return 'full'
+  if (rating >= index - 0.5) return 'half'
+  return 'empty'
 }
 
 async function openBreachReport(item: RequirementItem) {
@@ -1114,34 +1288,36 @@ async function loadRequirementConversations() {
 
 <template>
   <div class="dev-page dev-page--my-requirements">
-    <div class="dev-meta-strip">
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">总需求单</span>
-        <span class="dev-meta-strip__value">{{ rows.length }}</span>
+    <WorkbenchBarSlot>
+      <div class="dev-meta-strip">
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">总需求单</span>
+          <span class="dev-meta-strip__value">{{ rows.length }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">已关联资源</span>
+          <span class="dev-meta-strip__value">{{ boundCount }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">开发中</span>
+          <span class="dev-meta-strip__value">{{ activeCount }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">累计到账</span>
+          <span class="dev-meta-strip__value">{{ receiptMoney(incomeTotal) }}</span>
+        </div>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <TButton icon-only :loading="loading" aria-label="刷新接单列表" @click="loadMyRequirements">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+        </div>
       </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">已关联资源</span>
-        <span class="dev-meta-strip__value">{{ boundCount }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">开发中</span>
-        <span class="dev-meta-strip__value">{{ activeCount }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">累计到账</span>
-        <span class="dev-meta-strip__value">{{ receiptMoney(incomeTotal) }}</span>
-      </div>
-      <div class="dev-meta-strip__item dev-meta-strip__action">
-        <TButton icon-only aria-label="刷新接单列表" @click="loadMyRequirements">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </div>
+    </WorkbenchBarSlot>
 
     <TCard class="dev-surface-card">
       <div class="dev-card-head">
@@ -1317,35 +1493,64 @@ async function loadRequirementConversations() {
           </div>
 
           <div
+            v-if="
+              row.item &&
+              (row.item.comment_rating != null || row.item.developer_comment_rating != null)
+            "
+            class="dev-requirement-card__comments"
+          >
+            <div v-if="row.item.comment_rating != null" class="dev-rating-row">
+              <span class="dev-rating-row__label">对方评价</span>
+              <span class="dev-rating-stars" :aria-label="`${row.item.comment_rating.toFixed(1)} 分`">
+                <span
+                  v-for="n in 5"
+                  :key="`peer-${n}`"
+                  class="dev-rating-star"
+                  :class="`is-${starFill(row.item.comment_rating, n)}`"
+                  aria-hidden="true"
+                >★</span>
+              </span>
+              <strong class="dev-rating-row__score">{{ row.item.comment_rating.toFixed(1) }}</strong>
+              <span v-if="commentBodyText(row.item.comment_text)" class="dev-rating-row__text">
+                {{ commentBodyText(row.item.comment_text) }}
+              </span>
+            </div>
+            <div v-if="row.item.developer_comment_rating != null" class="dev-rating-row">
+              <span class="dev-rating-row__label">我的评价</span>
+              <span
+                class="dev-rating-stars"
+                :aria-label="`${row.item.developer_comment_rating.toFixed(1)} 分`"
+              >
+                <span
+                  v-for="n in 5"
+                  :key="`mine-${n}`"
+                  class="dev-rating-star"
+                  :class="`is-${starFill(row.item.developer_comment_rating, n)}`"
+                  aria-hidden="true"
+                >★</span>
+              </span>
+              <strong class="dev-rating-row__score">
+                {{ row.item.developer_comment_rating.toFixed(1) }}
+              </strong>
+              <span
+                v-if="commentBodyText(row.item.developer_comment_text)"
+                class="dev-rating-row__text"
+              >
+                {{ commentBodyText(row.item.developer_comment_text) }}
+              </span>
+            </div>
+          </div>
+
+          <div
             v-if="row.item && row.item.payment_mode !== 'self_managed'"
             class="dev-requirement-card__signing"
           >
             <div class="signing-status-bar">
               <span
-                class="signing-step"
-                :class="
-                  signingStatusMap[row.item.requirement_id]?.has_contract ? 'done' : 'pending'
-                "
+                class="signing-status-badge"
+                :class="`signing-status-badge--${contractStatusTone(row.item)}`"
               >
-                协议已创建
-              </span>
-              <span class="signing-arrow">›</span>
-              <span
-                class="signing-step"
-                :class="
-                  signingStatusMap[row.item.requirement_id]?.party_b_signed ? 'done' : 'pending'
-                "
-              >
-                乙方已签
-              </span>
-              <span class="signing-arrow">›</span>
-              <span
-                class="signing-step"
-                :class="
-                  signingStatusMap[row.item.requirement_id]?.party_a_signed ? 'done' : 'pending'
-                "
-              >
-                甲方已签
+                {{ contractStatusBadge(row.item) }}
               </span>
             </div>
             <div v-if="contractStartHint(row.item)" class="signing-start-hint">
@@ -1412,6 +1617,19 @@ async function loadRequirementConversations() {
               >
                 {{ contractButtonLabel(row.item) }}
               </TButton>
+              <!-- 客户已申请开发者收入票、且我是乙方可上传时显示；交互对齐 InvoiceCenterView。 -->
+              <TButton
+                v-for="invoice in uploadableInvoicesFor(row.item)"
+                :key="`invoice-upload-${invoice.id}`"
+                variant="outline"
+                tone="accent"
+                :loading="uploadingInvoiceId === invoice.id"
+                :disabled="uploadingInvoiceId !== null && uploadingInvoiceId !== invoice.id"
+                @click="onInvoiceUploadClick(invoice)"
+              >
+                <TIcon><UploadFilled /></TIcon>
+                <span>{{ invoiceUploadButtonLabel(invoice) }}</span>
+              </TButton>
               <TButton
                 variant="outline"
                 tone="accent"
@@ -1420,6 +1638,22 @@ async function loadRequirementConversations() {
               >
                 <TIcon><ChatDotRound /></TIcon>
                 <span>会话</span>
+              </TButton>
+              <TButton
+                v-if="canComment(row.item) && row.item.developer_comment_rating == null"
+                variant="solid"
+                tone="accent"
+                @click="openCommentModal(row.item!)"
+              >
+                去评价
+              </TButton>
+              <TButton
+                v-if="canComment(row.item) && row.item.developer_comment_rating != null"
+                variant="outline"
+                tone="accent"
+                @click="openCommentModal(row.item!)"
+              >
+                修改评价
               </TButton>
             </div>
           </footer>
@@ -1814,6 +2048,28 @@ async function loadRequirementConversations() {
       @updated="applyConversationDetail"
       @close="closeConversation"
     />
+
+    <RequirementCommentDialog
+      :visible="commentVisible && !!commentRequirement"
+      :token="auth.token"
+      :requirement-id="commentRequirement?.requirement_id ?? ''"
+      :title="commentRequirement?.title ?? ''"
+      :initial-rating="commentRequirement?.developer_comment_rating ?? null"
+      :initial-text="commentRequirement?.developer_comment_text ?? null"
+      @close="closeCommentModal"
+      @submitted="handleCommentSubmitted"
+    />
+
+    <!-- 隐藏 file input：行上「上传发票」共用一个，选完按 pickingInvoiceId 直接上传。 -->
+    <input
+      ref="hiddenInvoiceFileInput"
+      class="dev-requirement-card__invoice-file"
+      type="file"
+      accept="application/pdf,image/png,image/jpeg,image/webp"
+      aria-hidden="true"
+      tabindex="-1"
+      @change="selectInvoiceFile"
+    />
   </div>
 </template>
 
@@ -2078,6 +2334,11 @@ async function loadRequirementConversations() {
   font-weight: 700;
 }
 
+/* 发票上传的原生 file input：外观走行内 TButton，本节点只负责选文件。 */
+.dev-requirement-card__invoice-file {
+  display: none;
+}
+
 .dev-requirement-card__tags {
   display: flex;
   flex-wrap: wrap;
@@ -2185,6 +2446,79 @@ strong.dev-delivery-cell__amount {
   gap: 6px;
 }
 
+.dev-requirement-card__comments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dev-rating-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+  color: var(--dev-ink);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.dev-rating-row__label {
+  flex: 0 0 auto;
+  color: var(--dev-muted);
+  font-weight: 700;
+}
+
+.dev-rating-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+/* 实心 ★：ui_73info 的 Star 是空心描边，评分展示用不合适 */
+.dev-rating-star {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  color: color-mix(in srgb, var(--dev-muted) 38%, transparent);
+  font-size: 14px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.dev-rating-star.is-full {
+  color: var(--dev-gold);
+}
+
+.dev-rating-star.is-half {
+  background: linear-gradient(
+    90deg,
+    var(--dev-gold) 50%,
+    color-mix(in srgb, var(--dev-muted) 38%, transparent) 50%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.dev-rating-row__score {
+  flex: 0 0 auto;
+  color: var(--dev-ink);
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-rating-row__text {
+  flex: 1 1 12rem;
+  min-width: 0;
+  color: var(--dev-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* 配色统一：这里原先混用了青绿 #4caf81、琥珀 #b45309、Element 灰 #909399/#c0c4cc/#303133、
    暖黄 rgba(251,191,36)，与开发者体系的蓝/青/金三支强调色都对不上，一律换成令牌。 */
 .dev-requirement-card__actions {
@@ -2206,33 +2540,40 @@ strong.dev-delivery-cell__amount {
 .signing-status-bar {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   flex-wrap: wrap;
   max-width: 100%;
-  row-gap: 6px;
 }
 
-.signing-step {
-  font-size: 11px;
-  padding: 2px 6px;
+.signing-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
   border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
   white-space: nowrap;
 }
 
-.signing-step.done {
-  background: color-mix(in srgb, var(--dev-cyan) 14%, transparent);
+.signing-status-badge--signed {
+  background: color-mix(in srgb, var(--dev-cyan) 16%, transparent);
   color: var(--dev-cyan);
-  font-weight: 700;
 }
 
-.signing-step.pending {
+.signing-status-badge--progress {
+  background: color-mix(in srgb, var(--dev-blue) 14%, transparent);
+  color: var(--dev-blue);
+}
+
+.signing-status-badge--danger {
+  background: color-mix(in srgb, var(--dev-danger, #dc2626) 12%, transparent);
+  color: var(--dev-danger, #dc2626);
+}
+
+.signing-status-badge--muted {
   background: color-mix(in srgb, var(--dev-muted) 16%, transparent);
   color: var(--dev-muted);
-}
-
-.signing-arrow {
-  color: var(--dev-muted);
-  font-size: 12px;
 }
 
 .signing-start-hint {
@@ -2411,6 +2752,15 @@ strong.dev-delivery-cell__amount {
   font-size: 12px;
   line-height: 1.6;
   color: var(--dev-muted);
+}
+
+.dev-requirement-card__comments {
+  display: grid;
+  gap: 4px;
+}
+
+.dev-requirement-card__comments p {
+  margin: 0;
 }
 
 @media (max-width: 720px) {

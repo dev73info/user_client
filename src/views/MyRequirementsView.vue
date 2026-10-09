@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRoute, useRouter } from 'vue-router'
 import PublishModal from '@/components/PublishModal.vue'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import AcceptanceDialog from '@/components/AcceptanceDialog.vue'
 import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
 import PaymentModeChip from '@/components/PaymentModeChip.vue'
+import RequirementCommentDialog from '@/components/RequirementCommentDialog.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
 import {
@@ -52,7 +54,6 @@ import { breachStatusLabel } from '@/shared/breachStatus'
 import { invoiceEntryState, type InvoiceSummaryMap } from '@/shared/invoiceAvailability'
 import {
   cancelRequirement as cancelRequirementApi,
-  commentRequirement as commentRequirementApi,
   createRequirement as createRequirementApi,
   listRequirements,
   requestRequirementFinalPayment as requestRequirementFinalPaymentApi,
@@ -127,9 +128,6 @@ const wechatAuthorizationVisible = ref(false)
 const wechatAuthorizationUrl = ref('')
 const commentVisible = ref(false)
 const commentRequirement = ref<RequirementItem | null>(null)
-const commentRating = ref(5)
-const commentText = ref('')
-const commentLoading = ref(false)
 const publishVisible = ref(false)
 const publishTitle = ref('')
 const publishDescription = ref('')
@@ -313,16 +311,28 @@ function syncPublishModalFromRoute(value: unknown) {
   }
 }
 
-/** 需求状态在这一页归到三个档位，第四档「其它」兜住落不进前三档的状态
-    （已驳回、已取消、定金已付待开发、待分账）。顶部读数条与状态筛选胶囊共用这一个定义：
-    两边各写一遍的话，同一批需求会算出两个数字。 */
+/** 需求状态在这一页归到三个档位，每个状态都有归属，不留「其它」：
+    - 审核中：待审核、已驳回（驳回后改了可再提审）
+    - 开发中：待签署 / 待付定金、定金已付待开发、开发中、待付尾款（「待签署」没有独立状态，落在待付定金里）
+    - 已完成：尾款已付待分账、已完成（含可评价）、已取消（终态）
+    顶部读数条与状态筛选共用这一个定义：两边各写一遍的话，同一批需求会算出两个数字。 */
 type RequirementBucket = 'pending' | 'active' | 'completed'
 
-function bucketOf(status: RequirementStatus): RequirementBucket | 'other' {
-  if (status === 'pending_review' || status === 'pending_deposit') return 'pending'
-  if (status === 'in_development' || status === 'pending_final') return 'active'
-  if (status === 'completed') return 'completed'
-  return 'other'
+function bucketOf(status: RequirementStatus): RequirementBucket {
+  switch (status) {
+    case 'pending_review':
+    case 'rejected':
+      return 'pending'
+    case 'pending_deposit':
+    case 'deposit_paid':
+    case 'in_development':
+    case 'pending_final':
+      return 'active'
+    case 'pending_settlement':
+    case 'completed':
+    case 'cancelled':
+      return 'completed'
+  }
 }
 
 function countBucket(bucket: RequirementBucket) {
@@ -338,14 +348,13 @@ const requirementStats = computed(() => ({
 
 /* 状态筛选走下拉（统一层 .wb-toolbar__field + el-select）：档位与顶部读数条同口径，
    条数直接写进选项文案里。几档合计在上面读数条已经报过一遍，所以收起时只显示当前口径也不丢信息。 */
-type RequirementFilterKey = 'all' | RequirementBucket | 'other'
+type RequirementFilterKey = 'all' | RequirementBucket
 
 const states: { value: RequirementFilterKey; label: string }[] = [
   { value: 'all', label: '全部' },
-  { value: 'pending', label: '待审核/付定金' },
-  { value: 'active', label: '开发中/付尾款' },
-  { value: 'completed', label: '可评价/已完成' },
-  { value: 'other', label: '其它状态' },
+  { value: 'pending', label: '审核中' },
+  { value: 'active', label: '开发中' },
+  { value: 'completed', label: '已完成' },
 ]
 
 const keyword = ref('')
@@ -545,13 +554,10 @@ function cancelConfirmHint(item: RequirementItem) {
   return '取消后该需求单保留为「已取消」，可以重新编辑后再提交审核。'
 }
 
-/** 待分账 / 结单后的提示：尾款缴清到渠道分账之间有等待期，结单后还有解除合作窗口。 */
+/** 待分账提示：尾款缴清到渠道分账之间有等待期。结单后的保证金说明已去掉。 */
 function settlementHint(item: RequirementItem): string {
   if (item.status === 'pending_settlement') {
     return '尾款已缴，渠道分账中（通常 7 天），完成后结单并开放解除合作。'
-  }
-  if (item.status === 'completed') {
-    return '已结单。接单保证金在解除合作窗口结束且无未结解除合作案件后释放。'
   }
   return ''
 }
@@ -1281,9 +1287,26 @@ function openCommentModal(item: RequirementItem) {
     return
   }
   commentRequirement.value = item
-  commentRating.value = item.comment_rating ?? 5
-  commentText.value = item.comment_text ?? ''
   commentVisible.value = true
+}
+
+function closeCommentModal() {
+  commentVisible.value = false
+  commentRequirement.value = null
+}
+
+async function handleCommentSubmitted() {
+  await loadMyRequirements()
+}
+
+function formatCommentSummary(rating: number, text?: string | null) {
+  const score = `${rating.toFixed(1)} 分`
+  const body = text?.trim() ?? ''
+  // 纯数字文案多半是脏数据（评分/信用分误写入），不当作评语展示
+  if (!body || /^\d+(\.\d+)?$/.test(body) || body.length < 2) {
+    return score
+  }
+  return `${score} · ${body}`
 }
 
 function openRequirementEditModal(item: RequirementItem) {
@@ -1379,10 +1402,6 @@ async function openPublishModal() {
 
 function closePayModal() {
   payVisible.value = false
-}
-
-function closeCommentModal() {
-  commentVisible.value = false
 }
 
 function forceClosePublishModal() {
@@ -1510,38 +1529,6 @@ async function submitVersionDeleteReview(
     showToast(err instanceof Error ? err.message : '审核版本删除失败', 'error')
   } finally {
     resourceVersionDeleteReviewLoadingId.value = null
-  }
-}
-
-async function submitRequirementComment() {
-  if (!auth.isAuthed || !commentRequirement.value) {
-    showToast('请先登录后再发表评论', 'error')
-    return
-  }
-
-  if (commentRating.value < 1 || commentRating.value > 5) {
-    showToast('请为已完成需求打分，范围 1 到 5 分', 'error')
-    return
-  }
-
-  if (commentText.value.trim().length > 200) {
-    showToast('评论字数不能超过 200 字', 'error')
-    return
-  }
-
-  commentLoading.value = true
-  try {
-    await commentRequirementApi(auth.token, commentRequirement.value.requirement_id, {
-      rating: commentRating.value,
-      comment: commentText.value.trim(),
-    })
-    showToast('评论提交成功', 'success')
-    commentVisible.value = false
-    await loadMyRequirements()
-  } catch (err) {
-    showToast(err instanceof Error ? err.message : '评论提交失败', 'error')
-  } finally {
-    commentLoading.value = false
   }
 }
 
@@ -2201,29 +2188,6 @@ function closeVersionDeleteReviewCard() {
   versionDeleteRejectTargetId.value = null
 }
 
-function starFill(index: number) {
-  const rating = commentRating.value
-  if (rating >= index) {
-    return 100
-  }
-  if (rating >= index - 0.5) {
-    return 50
-  }
-  return 0
-}
-
-function starClass(index: number) {
-  const fill = starFill(index)
-  return fill === 100 ? 'full' : fill === 50 ? 'half' : ''
-}
-
-function setRating(event: MouseEvent, index: number) {
-  const target = event.currentTarget as HTMLElement
-  const rect = target.getBoundingClientRect()
-  const clickedInLeftHalf = event.clientX - rect.left < rect.width / 2
-  commentRating.value = clickedInLeftHalf ? index - 0.5 : index
-}
-
 /**
  * 解除合作待办：按需求统计「在等我动作」的案件数，给行内「解除合作」入口挂角标。
  *
@@ -2307,39 +2271,45 @@ watch(
 <template>
   <main class="page-shell custom-page-shell profile-page my-requirements-page">
     <!-- 顶部读数条：四格读数在最左，页面级刷新固定在右上角，与其余菜单页同一套形状 -->
-    <div class="wb-strip" aria-label="需求概览">
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">全部需求</span>
-        <span class="wb-strip__value">{{ stripValue(requirementStats.total) }}</span>
+    <WorkbenchBarSlot>
+      <div class="wb-strip my-requirements-strip" aria-label="需求概览">
+        <div class="wb-strip__item" title="全部需求">
+          <span class="wb-strip__label">全部</span>
+          <span class="wb-strip__value">{{ stripValue(requirementStats.total) }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item" title="审核中：待审核、已驳回">
+          <span class="wb-strip__label">审核</span>
+          <span class="wb-strip__value">{{ stripValue(requirementStats.pending) }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item" title="开发中：待签署、待付定金、开发中、待付尾款">
+          <span class="wb-strip__label">开发</span>
+          <span class="wb-strip__value">{{ stripValue(requirementStats.active) }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item" title="已完成：可评价、已完成、已取消">
+          <span class="wb-strip__label">完成</span>
+          <span class="wb-strip__value">{{ stripValue(requirementStats.completed) }}</span>
+        </div>
+        <div class="wb-strip__item wb-strip__action">
+          <TButton icon-only :loading="requirementLoading || conversationLoading"
+            :aria-label="refreshButtonLabel" :title="refreshButtonLabel" @click="refreshMyRequirements">
+            <TIcon><Refresh /></TIcon>
+          </TButton>
+        </div>
       </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">待审核/付定金</span>
-        <span class="wb-strip__value">{{ stripValue(requirementStats.pending) }}</span>
-      </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">开发中/付尾款</span>
-        <span class="wb-strip__value">{{ stripValue(requirementStats.active) }}</span>
-      </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">可评价/已完成</span>
-        <span class="wb-strip__value">{{ stripValue(requirementStats.completed) }}</span>
-      </div>
-      <div class="wb-strip__item wb-strip__action">
-        <TButton variant="solid" tone="accent" @click="openPublishModal">发布新需求</TButton>
-        <TButton icon-only :loading="requirementLoading || conversationLoading"
-          :aria-label="refreshButtonLabel" :title="refreshButtonLabel" @click="refreshMyRequirements">
-          <TIcon><Refresh /></TIcon>
-        </TButton>
-      </div>
-    </div>
+    </WorkbenchBarSlot>
 
     <section class="wallet-section">
       <div class="wb-card-head">
         <div class="wb-card-head__title-block">
           <h3 class="wb-card-head__title">需求列表</h3>
+        </div>
+        <div class="wb-card-head__actions">
+          <TButton variant="solid" tone="accent" class="my-requirements-publish--head" @click="openPublishModal">
+            发布新需求
+          </TButton>
         </div>
       </div>
 
@@ -2352,6 +2322,10 @@ watch(
           aria-label="搜索需求">
           <template #prefix><TIcon><Search /></TIcon></template>
         </TInput>
+        <TButton variant="solid" tone="accent" class="my-requirements-publish--toolbar" aria-label="发布新需求"
+          @click="openPublishModal">
+          发布
+        </TButton>
         <div class="wb-toolbar__actions">
           <span v-if="hasActiveFilters" class="wb-toolbar__hint">
             筛选出 {{ filteredTotal }} / {{ myRequirements.length }} 条
@@ -2416,6 +2390,20 @@ watch(
                     class="requirement-note requirement-note--block">驳回原因：{{ item.review_note }}</small>
                   <small v-if="settlementHint(item)"
                     class="requirement-note requirement-note--block">{{ settlementHint(item) }}</small>
+                  <small
+                    v-if="item.comment_rating != null"
+                    class="requirement-note requirement-note--block"
+                  >
+                    我的评价：{{ formatCommentSummary(item.comment_rating, item.comment_text) }}
+                  </small>
+                  <small
+                    v-if="item.developer_comment_rating != null"
+                    class="requirement-note requirement-note--block"
+                  >
+                    对方评价（开发者）：{{
+                      formatCommentSummary(item.developer_comment_rating, item.developer_comment_text)
+                    }}
+                  </small>
                 </div>
               </div>
               <aside class="requirement-summary wb-item__side" aria-label="需求摘要">
@@ -2920,46 +2908,16 @@ watch(
       @close="closeAfterSalesModal"
     />
 
-    <div v-if="commentVisible && commentRequirement" class="modal-wrap" @click.self="closeCommentModal">
-      <section class="pay-modal comment-modal" aria-label="需求评论弹窗">
-        <h3>评价需求</h3>
-        <div class="comment-modal__meta">
-          <p class="pay-line">
-            <strong>需求标题</strong><span>{{ commentRequirement.title }}</span>
-          </p>
-          <p class="pay-line">
-            <strong>需求编号</strong><span>{{ commentRequirement.requirement_id }}</span>
-          </p>
-        </div>
-        <div class="comment-modal__section">
-          <div class="comment-modal__section-head">
-            <strong>评分</strong>
-            <span>{{ commentRating.toFixed(1) }} 分</span>
-          </div>
-          <div class="rating-row">
-            <button v-for="star in 5" :key="star" type="button" class="rating-star" :class="starClass(star)"
-              @click="setRating($event, star)">
-              ★
-            </button>
-          </div>
-        </div>
-        <div class="comment-modal__section comment-modal__field">
-          <div class="comment-modal__section-head">
-            <strong>评论内容</strong>
-            <span>已输入 {{ commentText.length }} / 200 字</span>
-          </div>
-          <textarea class="comment-input" v-model="commentText" rows="4" maxlength="200"
-            placeholder="请输入评论，最多 200 字"></textarea>
-        </div>
-
-        <div class="actions">
-          <button class="ghost" type="button" @click="closeCommentModal">取消</button>
-          <button class="ghost primary" type="button" :disabled="commentLoading" @click="submitRequirementComment">
-            {{ commentLoading ? '提交中...' : '提交评论' }}
-          </button>
-        </div>
-      </section>
-    </div>
+    <RequirementCommentDialog
+      :visible="commentVisible && !!commentRequirement"
+      :token="auth.token"
+      :requirement-id="commentRequirement?.requirement_id ?? ''"
+      :title="commentRequirement?.title ?? ''"
+      :initial-rating="commentRequirement?.comment_rating ?? null"
+      :initial-text="commentRequirement?.comment_text ?? null"
+      @close="closeCommentModal"
+      @submitted="handleCommentSubmitted"
+    />
 
     <WechatAuthorizationModal
       :visible="wechatAuthorizationVisible"
@@ -3038,11 +2996,10 @@ watch(
   }
 }
 
-/* 状态下拉要放开「待审核/付定金（12）」这种带条数的档位名，比统一层默认的 150px 宽一点；
-   宽度必须写成 flex 基宽而不是 width——TSelect 自带 width: 100%，
+/* 档位名只有三个字，状态下拉收窄；宽度必须写成 flex 基宽而不是 width——TSelect 自带 width: 100%，
    flex-basis 会被 width 顶掉，细节见 portal-workbench.css 里 .wb-toolbar__field 的注释。 */
 .wb-toolbar__field--requirement-state {
-  flex: 0 1 190px;
+  flex: 0 1 140px;
 }
 
 /* 版本选择弹窗：一行一个版本，右侧下载按钮；版本说明用弱字色 */
@@ -3522,6 +3479,83 @@ watch(
 
 .pay-modal .breach-modal__decision .actions {
   margin-top: 12px;
+}
+
+/* 「发布新需求」放在「需求列表」卡头右端；手机档卡头整块收起，按钮改放搜索栏右端 */
+.my-requirements-page .wb-card-head:has(.my-requirements-publish--head) {
+  align-items: center;
+}
+
+.my-requirements-publish--toolbar {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .my-requirements-page .wb-card-head:has(.my-requirements-publish--head) {
+    display: none;
+  }
+
+  /* 操作槽只剩刷新，钉在顶栏右侧，四组读数才排得进一行 */
+  /* 四组读数均分四格，文字在上、数字在下 */
+  #workbench-mobile-bar-extra .my-requirements-strip {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    padding-right: 32px;
+  }
+
+  #workbench-mobile-bar-extra .my-requirements-strip .wb-strip__item:not(.wb-strip__action) {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  #workbench-mobile-bar-extra .my-requirements-strip .wb-strip__label {
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+
+  #workbench-mobile-bar-extra .my-requirements-strip .wb-strip__value {
+    color: #0f172a;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  #workbench-mobile-bar-extra .my-requirements-strip .wb-strip__action {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+  }
+
+  /* 搜索栏右端的小号胶囊：浅蓝底蓝字，融进白色搜索栏，不压过搜索框本身 */
+  .my-requirements-publish--toolbar,
+  .my-requirements-publish--toolbar:hover,
+  .my-requirements-publish--toolbar:focus-visible {
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 32px;
+    min-height: 32px;
+    margin-left: 4px;
+    padding: 0 16px;
+    border: 0 !important;
+    border-radius: 999px;
+    background: #eaf1ff !important;
+    box-shadow: none !important;
+    color: #1d4ed8 !important;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .my-requirements-publish--toolbar:active {
+    background: #dbe7ff !important;
+  }
 }
 
 @media (max-width: 980px) {

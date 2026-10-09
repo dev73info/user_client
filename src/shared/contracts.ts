@@ -1,5 +1,7 @@
 export type ContractSigningStatus = {
   has_contract: boolean
+  /** 最新合同状态码（0/1/2/3/4/6/7）；尚无合同时为空 */
+  status?: number | null
   party_b_signed: boolean
   party_a_signed: boolean
   party_c_signed?: boolean

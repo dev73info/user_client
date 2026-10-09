@@ -92,8 +92,14 @@ export type RequirementItem = {
   description?: string | null
   acceptance_criteria?: string | null
   review_note?: string | null
+  /** 客户侧评价（需求创建者提交） */
   comment_rating?: number | null
   comment_text?: string | null
+  commented_at?: string | null
+  /** 开发者侧评价（绑定开发者提交） */
+  developer_comment_rating?: number | null
+  developer_comment_text?: string | null
+  developer_commented_at?: string | null
   status: RequirementStatus
   budget?: number | null
   payment_mode: RequirementPaymentMode

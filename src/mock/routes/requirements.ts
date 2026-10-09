@@ -23,6 +23,7 @@ import {
 } from '../db'
 import { defineRouteTable, type MockRequest, type MockRoute } from '../router'
 import { jsonResponse, noContentResponse, readInt, readString } from '../response'
+import { parseMockToken } from '../token'
 
 /** 未接单、已过审核（待付定金）的需求才会出现在开发者需求大厅。 */
 function hallRequirements(): RequirementItem[] {
@@ -191,8 +192,36 @@ const routes: MockRoute[] = [
   {
     method: 'POST',
     path: '/requirements/:id/comment',
-    note: '需求方评价',
-    handler: () => jsonResponse({ ok: true }),
+    note: '需求方 / 开发者互评（按操作者与 creator 是否一致写两侧字段）',
+    handler: (request, params) => {
+      const requirement = findRequirement(params.id ?? '')
+      if (!requirement) {
+        return jsonResponse({ message: '需求不存在' }, 404)
+      }
+
+      const body = (request.body ?? {}) as { rating?: number; comment?: string }
+      const rating = Number(body.rating)
+      if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+        return jsonResponse({ message: '评分无效' }, 400)
+      }
+
+      const text = body.comment?.trim() || null
+      const now = datetime(0, 16, 0)
+      const username = parseMockToken(request.token)?.username ?? ''
+
+      if (username === requirement.creator) {
+        requirement.comment_rating = rating
+        requirement.comment_text = text
+        requirement.commented_at = now
+      } else {
+        requirement.developer_comment_rating = rating
+        requirement.developer_comment_text = text
+        requirement.developer_commented_at = now
+      }
+      requirement.updated_at = now
+
+      return noContentResponse()
+    },
   },
   {
     method: 'DELETE',
