@@ -108,6 +108,10 @@ const purchaseQrDataUrl = ref('')
 const purchaseError = ref('')
 const buyerPointsBalance = ref<number | null>(null)
 let purchasePollTimer: ReturnType<typeof setInterval> | null = null
+/** 切换支付渠道防抖，避免连点支付宝/微信刷出一堆订单 */
+let channelSwitchTimer: ReturnType<typeof setTimeout> | null = null
+/** 下单串行队列：同一时刻只跑一笔，避免并发抢改同一条 pending */
+let purchaseSubmitChain: Promise<void> = Promise.resolve()
 
 const tagNames = computed(
   () => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [],
@@ -167,7 +171,7 @@ const resourceSummaryText = computed(() => {
   return description.replace(prefixPattern, '').trim() || description
 })
 const visibilityLabel = computed(() =>
-  resource.value?.visibility === 'published' ? '公开展示中' : '待正式发布',
+  resource.value?.visibility === 'published' ? '公开' : '待正式发布',
 )
 const isRepost = computed(() => resource.value?.origin_type === 'repost')
 const originTypeLabel = computed(() =>
@@ -460,6 +464,35 @@ function stopPurchasePoll() {
   }
 }
 
+function clearChannelSwitchTimer() {
+  if (channelSwitchTimer !== null) {
+    clearTimeout(channelSwitchTimer)
+    channelSwitchTimer = null
+  }
+}
+
+/** 当前资源是否已有可复用的待支付码（同渠道），避免弹窗反复开关再插新单 */
+function hasReusableCashQr(channel: ResourcePayChannelUi): boolean {
+  const order = purchaseOrder.value
+  if (!order || !resource.value) {
+    return false
+  }
+  if (order.resource_id !== resource.value.id || order.status !== 'pending') {
+    return false
+  }
+  if (!purchaseQrDataUrl.value.trim()) {
+    return false
+  }
+  const orderChannel = (order.pay_channel ?? '').trim().toLowerCase()
+  if (channel === 'alipay') {
+    return orderChannel === 'alipay'
+  }
+  if (channel === 'wechat') {
+    return orderChannel === 'wx_pub' || orderChannel === 'wechat'
+  }
+  return orderChannel === channel
+}
+
 async function openPurchasePanel() {
   if (!auth.isAuthed) {
     showToast('请先登录后再购买', 'info')
@@ -473,26 +506,68 @@ async function openPurchasePanel() {
     })
     return
   }
+  clearChannelSwitchTimer()
   purchasePanelOpen.value = true
-  purchaseOrder.value = null
-  purchaseQrDataUrl.value = ''
   purchaseError.value = ''
-  purchaseChannel.value = 'alipay'
   buyerPointsBalance.value = null
   if (isPointsListing.value && auth.token?.trim()) {
+    purchaseOrder.value = null
+    purchaseQrDataUrl.value = ''
     try {
       const me = await getMyPoints(auth.token, { page: 1, page_size: 1 })
       buyerPointsBalance.value = me.points_balance
     } catch {
       buyerPointsBalance.value = null
     }
+    return
   }
+
+  // 现金购：优先复用本页已有的待支付码；没有才按默认支付宝拉一次
+  if (hasReusableCashQr(purchaseChannel.value)) {
+    if (purchaseOrder.value?.order_no) {
+      startPurchasePoll(purchaseOrder.value.order_no)
+    }
+    return
+  }
+  purchaseChannel.value = 'alipay'
+  if (hasReusableCashQr('alipay')) {
+    if (purchaseOrder.value?.order_no) {
+      startPurchasePoll(purchaseOrder.value.order_no)
+    }
+    return
+  }
+  purchaseQrDataUrl.value = ''
+  void submitPurchase()
 }
 
 function closePurchasePanel() {
+  clearChannelSwitchTimer()
   purchasePanelOpen.value = false
   purchaseError.value = ''
+  // 保留 pending 订单与二维码，下次打开同渠道可复用，少落垃圾单
   stopPurchasePoll()
+}
+
+function selectPurchaseChannel(channel: ResourcePayChannelUi) {
+  if (purchaseChannel.value === channel && (purchaseQrDataUrl.value || purchaseSubmitting.value)) {
+    return
+  }
+  purchaseChannel.value = channel
+  purchaseError.value = ''
+  stopPurchasePoll()
+  if (hasReusableCashQr(channel)) {
+    if (purchaseOrder.value?.order_no) {
+      startPurchasePoll(purchaseOrder.value.order_no)
+    }
+    return
+  }
+  purchaseQrDataUrl.value = ''
+  clearChannelSwitchTimer()
+  // 防抖：连点支付宝/微信只按最后一次真正下单
+  channelSwitchTimer = setTimeout(() => {
+    channelSwitchTimer = null
+    void submitPurchase()
+  }, 350)
 }
 
 async function refreshResourceDetail() {
@@ -587,11 +662,26 @@ async function ensureWechatPayAuthorized(token: string): Promise<boolean> {
   }
 }
 
-async function submitPurchase() {
+function submitPurchase() {
+  purchaseSubmitChain = purchaseSubmitChain
+    .catch(() => undefined)
+    .then(() => runSubmitPurchase())
+  return purchaseSubmitChain
+}
+
+async function runSubmitPurchase() {
   if (!resource.value || !auth.token?.trim()) {
     void openPurchasePanel()
     return
   }
+  // 排队执行到此时，若渠道已有可复用码则跳过，消化防抖期间的多余请求
+  if (!isPointsListing.value && hasReusableCashQr(purchaseChannel.value)) {
+    if (purchaseOrder.value?.order_no) {
+      startPurchasePoll(purchaseOrder.value.order_no)
+    }
+    return
+  }
+  const requestedChannel = purchaseChannel.value
   purchaseSubmitting.value = true
   purchaseError.value = ''
   try {
@@ -607,6 +697,10 @@ async function submitPurchase() {
       showToast('积分购买未完成，请稍后重试', 'warning')
       return
     }
+    // 排队间隙用户又切了渠道：以当前选择为准，避免为过期渠道再落单
+    if (purchaseChannel.value !== requestedChannel) {
+      return
+    }
     // 微信内：先静默授权拿 openid，再走 wx_pub JSAPI；
     // PC / 普通浏览器：直接下单，后端回本站中间页 URL 供扫码。
     if (purchaseChannel.value === 'wechat') {
@@ -615,24 +709,33 @@ async function submitPurchase() {
         return
       }
     }
+    if (purchaseChannel.value !== requestedChannel) {
+      return
+    }
     const order = await createResourcePurchase(auth.token, resource.value.id, {
       pay_channel: purchaseChannel.value,
       client_platform: getAdapayClientPlatform(),
     })
+    if (purchaseChannel.value !== requestedChannel) {
+      return
+    }
     purchaseOrder.value = order
     if (order.status === 'paid') {
       await handlePurchasePaid(order)
       return
     }
     await maybeRenderPurchaseQr(order)
-    if (order.pay_url?.trim()) {
-      showToast('请扫码完成支付', 'info')
-      startPurchasePoll(order.order_no)
-    } else {
-      showToast('订单已创建，支付完成后即可下载', 'info')
-      startPurchasePoll(order.order_no)
+    if (purchaseChannel.value !== requestedChannel) {
+      return
     }
+    if (!order.pay_url?.trim()) {
+      showToast('订单已创建，支付完成后即可下载', 'info')
+    }
+    startPurchasePoll(order.order_no)
   } catch (error) {
+    if (purchaseChannel.value !== requestedChannel) {
+      return
+    }
     const message = error instanceof Error ? error.message : '创建购买订单失败'
     if (message.includes('已购买')) {
       showToast(message, 'success')
@@ -1287,7 +1390,8 @@ watch(
               active: purchaseChannel === 'alipay',
               'payment-option--alipay': purchaseChannel === 'alipay',
             }"
-            @click="purchaseChannel = 'alipay'"
+            :disabled="purchaseSubmitting"
+            @click="selectPurchaseChannel('alipay')"
           >
             <img class="payment-option-icon" src="/icons/alipay.png" alt="" />
             支付宝
@@ -1299,7 +1403,8 @@ watch(
               active: purchaseChannel === 'wechat',
               'payment-option--wechat': purchaseChannel === 'wechat',
             }"
-            @click="purchaseChannel = 'wechat'"
+            :disabled="purchaseSubmitting"
+            @click="selectPurchaseChannel('wechat')"
           >
             <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="" />
             微信
@@ -1310,33 +1415,37 @@ watch(
           {{ purchaseError }}
         </p>
 
-        <div class="actions">
+        <div
+          v-if="!isPointsListing && (purchaseQrDataUrl || purchaseSubmitting || purchaseOrder?.order_no)"
+          class="resource-purchase-modal__qr"
+        >
+          <img
+            v-if="purchaseQrDataUrl"
+            :src="purchaseQrDataUrl"
+            alt="支付二维码"
+            width="220"
+            height="220"
+          />
+          <p v-else-if="purchaseSubmitting" class="resource-purchase-modal__order">
+            正在获取支付码…
+          </p>
+          <p v-else-if="purchaseOrder?.order_no" class="resource-purchase-modal__order">
+            订单号 {{ purchaseOrder.order_no }} · {{ purchaseOrder.status }}
+          </p>
+        </div>
+
+        <div class="actions" :class="{ 'actions--single': !isPointsListing }">
           <button class="ghost" type="button" @click="closePurchasePanel">取消</button>
           <button
+            v-if="isPointsListing"
             class="ghost primary"
             type="button"
             :disabled="purchaseSubmitting"
             @click="submitPurchase"
           >
-            {{
-              purchaseSubmitting
-                ? isPointsListing
-                  ? '兑换中...'
-                  : '下单中...'
-                : isPointsListing
-                  ? `确认兑换 ${priceLabel}`
-                  : `确认购买 ${priceLabel}`
-            }}
+            {{ purchaseSubmitting ? '兑换中...' : `确认兑换 ${priceLabel}` }}
           </button>
         </div>
-
-        <div v-if="!isPointsListing && purchaseQrDataUrl" class="resource-purchase-modal__qr">
-          <img :src="purchaseQrDataUrl" alt="支付二维码" width="220" height="220" />
-          <p>请使用对应 App 扫码完成支付；支付成功后本页会自动解锁下载。</p>
-        </div>
-        <p v-else-if="purchaseOrder?.order_no" class="resource-purchase-modal__order">
-          订单号 {{ purchaseOrder.order_no }} · {{ purchaseOrder.status }}
-        </p>
       </section>
     </div>
   </Teleport>
@@ -1439,7 +1548,6 @@ watch(
 
 .resource-detail-page__status-pill,
 .resource-detail-page__author-pill,
-.resource-detail-page__tag,
 .resource-detail-page__meta-chip {
   display: inline-flex;
   align-items: center;
@@ -1634,10 +1742,20 @@ watch(
   justify-content: flex-end;
 }
 
+.resource-purchase-modal .actions--single {
+  justify-content: stretch;
+}
+
+.resource-purchase-modal .actions--single .ghost {
+  width: 100%;
+}
+
 .resource-purchase-modal__qr {
   display: grid;
   justify-items: center;
+  align-content: center;
   gap: 10px;
+  min-height: 248px;
   padding: 14px;
   border-radius: 16px;
   border: 1px dashed rgba(148, 163, 184, 0.7);
@@ -1654,7 +1772,6 @@ watch(
   background: #fff;
 }
 
-.resource-purchase-modal__qr p,
 .resource-purchase-modal__order {
   margin: 0;
 }
@@ -1818,13 +1935,32 @@ a.resource-detail-page__repost-origin:hover {
   font-size: 15px;
 }
 
+/* 与首页精选卡 portal-spotlight-card__meta-row 同款标签 */
 .resource-detail-page__tags {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 10px;
 }
 
-.resource-detail-page__tag,
+.resource-detail-page__tag {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 22px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.96);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .resource-detail-page__meta-chip {
   color: #1d4ed8;
   background: rgba(219, 234, 254, 0.92);
