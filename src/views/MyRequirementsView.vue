@@ -54,6 +54,7 @@ import { breachStatusLabel } from '@/shared/breachStatus'
 import { invoiceEntryState, type InvoiceSummaryMap } from '@/shared/invoiceAvailability'
 import {
   cancelRequirement as cancelRequirementApi,
+  claimRequirementResource as claimRequirementResourceApi,
   createRequirement as createRequirementApi,
   listRequirements,
   requestRequirementFinalPayment as requestRequirementFinalPaymentApi,
@@ -74,6 +75,11 @@ import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
+import {
+  canClaimRequirementResource,
+  describeClaimResourceError,
+  isRequirementResourceClaimed,
+} from '@/shared/requirementResourceClaim'
 import {
   calculateFinalDepositAmount,
   calculateFinalPaymentAmount,
@@ -183,6 +189,11 @@ const resourceVersionsMap = ref<Record<string, PublicMcResourceVersionItem[]>>({
 const cancelConfirmVisible = ref(false)
 const cancelConfirmTarget = ref<RequirementItem | null>(null)
 const cancelLoading = ref(false)
+// 「转为我的资源」：确认 → 提交中 → 已转换（留一个去开发者工作台的跳转），同一个弹窗按 step 切内容。
+const claimConfirmVisible = ref(false)
+const claimConfirmTarget = ref<RequirementItem | null>(null)
+const claimLoading = ref(false)
+const claimStep = ref<'confirm' | 'done'>('confirm')
 const breachVisible = ref(false)
 const breachRequirement = ref<RequirementItem | null>(null)
 const breachReason = ref('')
@@ -1166,6 +1177,79 @@ async function submitCancelRequirement() {
   }
 }
 
+/** 入口显示条件与后端前置一致：已结单 + 有交付资源 + 未转换（判定在 shared/requirementResourceClaim.ts）。 */
+function canClaimResource(item: RequirementItem) {
+  return canClaimRequirementResource(item)
+}
+
+function isResourceClaimed(item: RequirementItem) {
+  return isRequirementResourceClaimed(item)
+}
+
+function openClaimConfirm(item: RequirementItem) {
+  if (!canClaimResource(item)) {
+    return
+  }
+  claimConfirmTarget.value = item
+  claimStep.value = 'confirm'
+  claimConfirmVisible.value = true
+}
+
+function closeClaimConfirm() {
+  if (claimLoading.value) {
+    return
+  }
+  claimConfirmVisible.value = false
+  claimConfirmTarget.value = null
+  claimStep.value = 'confirm'
+}
+
+/**
+ * 转换成功后的两件刷新：列表（卡片改成「已转为我的资源」、会话变只读）与当前用户角色
+ * （后端可能刚补了 `dev`，`/auth/refresh` 会按库里的角色重新签发，不用重新登录就能切开发者工作台）。
+ * 角色刷新失败不影响转换结果，只提示一句。
+ */
+async function submitClaimResource() {
+  const item = claimConfirmTarget.value
+  if (!item || !auth.token) {
+    return
+  }
+
+  claimLoading.value = true
+  try {
+    await claimRequirementResourceApi(auth.token, item.requirement_id)
+    showToast('已转为我的资源，可到开发者工作台「资源列表」管理', 'success')
+    claimStep.value = 'done'
+    await loadMyRequirements()
+    try {
+      await auth.fetchProfile(true)
+    } catch {
+      showToast('资源已转换，但刷新账号角色失败；若切换工作台不可用，请重新登录', 'warning')
+    }
+  } catch (err) {
+    const failure = describeClaimResourceError(err)
+    if (failure.alreadyClaimed) {
+      // 后端说已经转过：按已转换展示即可，不算失败。
+      showToast(failure.message, 'info')
+      claimConfirmVisible.value = false
+      claimConfirmTarget.value = null
+      await loadMyRequirements()
+    } else {
+      showToast(failure.message, 'error')
+    }
+  } finally {
+    claimLoading.value = false
+  }
+}
+
+/** 已转换后的跳转：进开发者工作台的资源列表（路由守卫会按刚刷新的角色放行）。 */
+function goToDevResourceList() {
+  claimConfirmVisible.value = false
+  claimConfirmTarget.value = null
+  claimStep.value = 'confirm'
+  void router.push({ name: 'dev-resource-list' })
+}
+
 async function confirmFinalPaymentRequest() {
   if (!finalPaymentConfirmTarget.value) {
     return
@@ -1987,6 +2071,7 @@ type RequirementRowActionKey =
   | 'invoice'
   | 'breach'
   | 'cancel'
+  | 'claim-resource'
 
 type RequirementRowAction = {
   key: RequirementRowActionKey
@@ -2132,6 +2217,9 @@ function runRowAction(item: RequirementItem, key: RequirementRowActionKey) {
       return
     case 'cancel':
       openCancelConfirm(item)
+      return
+    case 'claim-resource':
+      openClaimConfirm(item)
       return
     default:
       return
@@ -2375,6 +2463,10 @@ watch(
                     }}</span>
                   <span v-if="hasBoundResource(item)" class="wb-badge">交付 {{
                     publishedVersionCount(item) }} 版{{ latestDeliveryVersionLabel(item) }}</span>
+                  <!-- 已转换的不再给按钮（点了必 409），改成一枚不可点的标记；时间挂在 title 上。 -->
+                  <span v-if="isResourceClaimed(item)" class="wb-badge wb-badge--success"
+                    :title="`转换时间：${formatRequirementTime(item.resource_claimed_at ?? '')}`"
+                    data-testid="requirement-claimed-badge">已转为我的资源</span>
                   <small v-if="contractStatusHint(item)" class="requirement-note">{{
                     contractStatusHint(item)
                     }}</small>
@@ -2461,6 +2553,12 @@ watch(
                 <button v-if="hasBoundResource(item)" class="ghost small action-quiet" type="button"
                   @click.stop="runRowAction(item, 'conversation')">
                   会话
+                </button>
+                <!-- 已结单且有交付资源、尚未转换时才出现；转换后由上方的「已转为我的资源」标记接替。 -->
+                <button v-if="canClaimResource(item)" class="ghost small action-emphasis" type="button"
+                  title="把开发者交付的资源转为我自己的资源项目（不可撤销）"
+                  @click.stop="runRowAction(item, 'claim-resource')">
+                  转为我的资源
                 </button>
                 <!-- 版本删除审核没有别的入口（整行点击归会话），所以这里给它一个按钮，
                      与下方展开的审核卡片成对出现。 -->
@@ -2709,6 +2807,43 @@ watch(
             {{ cancelLoading ? '取消中...' : '确认取消' }}
           </button>
         </div>
+      </section>
+    </div>
+
+    <div v-if="claimConfirmVisible && claimConfirmTarget" class="modal-wrap" @click.self="closeClaimConfirm">
+      <section class="pay-modal" aria-label="转为我的资源弹窗">
+        <template v-if="claimStep === 'confirm'">
+          <h3>转为我的资源</h3>
+          <p class="pay-line"><strong>需求标题：</strong>{{ claimConfirmTarget.title }}</p>
+          <p class="pay-line"><strong>需求编号：</strong>{{ claimConfirmTarget.requirement_id }}</p>
+          <p v-if="claimConfirmTarget.bound_resource_title" class="pay-line">
+            <strong>交付资源：</strong>{{ claimConfirmTarget.bound_resource_title }}
+          </p>
+          <ul class="claim-notes" aria-label="转换须知">
+            <li>这一步<strong>不可撤销</strong>：资源归你所有，开发者那边不再把它当作自己的资源。</li>
+            <li>转换后这笔需求的会话将关闭，双方都不能再发言，但都仍能查看全部历史。</li>
+            <li>若你还没有开发者身份，会自动开通，以便在开发者工作台管理该资源。</li>
+          </ul>
+
+          <div class="actions">
+            <button class="ghost" type="button" :disabled="claimLoading" @click="closeClaimConfirm">
+              返回
+            </button>
+            <button class="ghost primary" type="button" :disabled="claimLoading" @click="submitClaimResource">
+              {{ claimLoading ? '转换中...' : '确认转换' }}
+            </button>
+          </div>
+        </template>
+        <template v-else>
+          <h3>已转为我的资源</h3>
+          <p class="pay-line"><strong>需求标题：</strong>{{ claimConfirmTarget.title }}</p>
+          <p class="tip">资源已归入你的名下，会话已关闭（仅供查看）。可以到开发者工作台的「资源列表」继续管理它。</p>
+
+          <div class="actions">
+            <button class="ghost" type="button" @click="closeClaimConfirm">留在这里</button>
+            <button class="ghost primary" type="button" @click="goToDevResourceList">去开发者工作台查看</button>
+          </div>
+        </template>
       </section>
     </div>
 
@@ -3479,6 +3614,26 @@ watch(
 
 .pay-modal .breach-modal__decision .actions {
   margin-top: 12px;
+}
+
+/* 「转为我的资源」确认须知：与 .pay-modal .tip 同一浅蓝底，三条分行列出 */
+.pay-modal .claim-notes {
+  margin: 14px 0 0;
+  padding: 10px 12px 10px 28px;
+  border-radius: 10px;
+  background: rgba(239, 246, 255, 0.9);
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.pay-modal .claim-notes li + li {
+  margin-top: 4px;
+}
+
+.pay-modal .claim-notes strong {
+  color: #b45309;
 }
 
 /* 「发布新需求」放在「需求列表」卡头右端；手机档卡头整块收起，按钮改放搜索栏右端 */

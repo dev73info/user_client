@@ -8,6 +8,7 @@
 import type { RequirementItem, RequirementOverviewResp } from '@/api/requirements'
 
 import {
+  CLIENT_NICKNAME,
   CLIENT_USERNAME,
   DEV_USERNAME,
   bindRequirementRecord,
@@ -16,13 +17,14 @@ import {
   devWallet,
   findRequirement,
   mcResourceVersions,
+  mcResources,
   requirements,
   seedOfRequirement,
   settledIncome,
   versionsOf,
 } from '../db'
 import { defineRouteTable, type MockRequest, type MockRoute } from '../router'
-import { jsonResponse, noContentResponse, readInt, readString } from '../response'
+import { errorResponse, jsonResponse, noContentResponse, readInt, readString } from '../response'
 import { parseMockToken } from '../token'
 
 /** 未接单、已过审核（待付定金）的需求才会出现在开发者需求大厅。 */
@@ -342,6 +344,47 @@ const routes: MockRoute[] = [
         requirement.resource_version_delete_request_status = 'rejected'
         requirement.resource_version_delete_review_note = body.note?.trim() || '演示数据：暂不删除该版本'
       }
+
+      return jsonResponse(requirement)
+    },
+  },
+  {
+    method: 'POST',
+    path: '/requirements/:id/claim-resource',
+    note: '把交付资源转为需求方自己的资源：资源换主、需求记下转换时间；前置与后端一致（已结单 / 有交付资源 / 未转换）',
+    handler: (request, params) => {
+      const requirement = findRequirement(params.id ?? '')
+      if (!requirement) {
+        return errorResponse(404, 'requirement not found')
+      }
+      const username = parseMockToken(request.token)?.username ?? ''
+      if (username !== requirement.creator) {
+        return errorResponse(403, 'forbidden')
+      }
+      if (requirement.status !== 'completed') {
+        return errorResponse(409, '需求尚未结单，暂不能转为我的资源')
+      }
+      if (requirement.resource_claimed_at) {
+        return errorResponse(409, '该交付资源已转为需求方资源')
+      }
+      if (requirement.bound_resource_id == null) {
+        return errorResponse(409, '该需求没有交付资源，无法转换')
+      }
+
+      const resource = mcResources.find((item) => item.id === requirement.bound_resource_id)
+      if (resource?.ownership_type === 'team') {
+        return errorResponse(409, '团队资源暂不支持转换')
+      }
+      if (resource) {
+        resource.creator = CLIENT_USERNAME
+        resource.author = CLIENT_NICKNAME
+      }
+
+      const now = datetime(0, 16, 0)
+      requirement.resource_claimed_at = now
+      requirement.bound_resource_author = CLIENT_USERNAME
+      requirement.updated_at = now
+      // 开发者一栏保持原开发者：他的接单记录不丢。
 
       return jsonResponse(requirement)
     },
