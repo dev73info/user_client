@@ -48,6 +48,7 @@ VITE_DEV_AUTO_LOGIN_USERNAME=dev_flow_03562487 VITE_DEV_AUTO_LOGIN_PASSWORD=Test
 
 - 端口用 **`--port` 直接传**，**不要写成 `pnpm dev -- --port 5175`**：pnpm 会把那个 `--` 原样转给 vite（实测命令行变成
   `vite "--" "--port" "5175"`），端口靠自增才凑对，不可靠。
+- **端口 ↔ 身份是硬绑定，不许串**：5173 = 需求方（`client_flow_03562487`）；**5175 = 开发者端，登录必须用开发者账号**（`dev_flow_03562487`，口令 `Test@123456`）。在 5175 上手动登录、自动登录、浏览器走查、mock 切身份，都不得改用需求方账号。
 - 5173 与 5175 是**不同 origin**，localStorage 各存各的令牌，所以同一个浏览器里两个身份可以同时在线、互不顶号，不需要无痕窗口。
 - **服务一律留在 Cursor 自己的终端里托管**（Shell 工具 + `block_until_ms: 0`），不要用 `Start-Process` / `cmd /c start` /
   `wt.exe` / `nohup` / `&` 之类撒手跑——脱离 Cursor 的进程看不到日志、停不掉，会话结束还占着端口。做法与理由见根规则 `dev-servers.mdc` 第一节。
