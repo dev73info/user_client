@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRoute } from 'vue-router'
 // 顶部读数条的刷新按钮图标 + 工具栏「搜索 / 重置」与卡片头「提交新工单」的图标（与其余开发者菜单页同一套）
 import {
@@ -375,55 +376,57 @@ onMounted(async () => {
   <main :class="isDevWorkbench ? 'dev-page ticket-page-shell' : 'page-shell custom-page-shell profile-page ticket-page-shell'">
     <!-- 顶部卡片：两侧都是「一条读数横条」，只是各自落在自己的统一层上
          （开发者侧 .dev-meta-strip / 用户工作台侧 .wb-strip），刷新固定在 __action 槽。 -->
-    <section v-if="isDevWorkbench" class="dev-meta-strip" aria-label="工单概览">
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">全部工单</span>
-        <span class="dev-meta-strip__value">{{ ticketStats.total }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">处理中</span>
-        <span class="dev-meta-strip__value">{{ ticketStats.pending }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">已完成</span>
-        <span class="dev-meta-strip__value">{{ ticketStats.resolved }}</span>
-      </div>
-      <div class="dev-meta-strip__item dev-meta-strip__action">
-        <TButton icon-only aria-label="刷新工单" :loading="loading"
-          @click="loadTicketsAndKeepSelection()">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </section>
+    <WorkbenchBarSlot>
+      <section v-if="isDevWorkbench" class="dev-meta-strip" aria-label="工单概览">
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">全部工单</span>
+          <span class="dev-meta-strip__value">{{ ticketStats.total }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">处理中</span>
+          <span class="dev-meta-strip__value">{{ ticketStats.pending }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">已完成</span>
+          <span class="dev-meta-strip__value">{{ ticketStats.resolved }}</span>
+        </div>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <TButton icon-only aria-label="刷新工单" :loading="loading"
+            @click="loadTicketsAndKeepSelection()">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+        </div>
+      </section>
 
-    <section v-else class="wb-strip" aria-label="工单概览">
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">全部工单</span>
-        <span class="wb-strip__value">{{ ticketStats.total }}</span>
-      </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">处理中</span>
-        <span class="wb-strip__value">{{ ticketStats.pending }}</span>
-      </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">已完成</span>
-        <span class="wb-strip__value">{{ ticketStats.resolved }}</span>
-      </div>
-      <div class="wb-strip__item wb-strip__action">
-        <TButton icon-only aria-label="刷新工单" :loading="loading"
-          @click="loadTicketsAndKeepSelection()">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </section>
+      <section v-else class="wb-strip" aria-label="工单概览">
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">全部工单</span>
+          <span class="wb-strip__value">{{ ticketStats.total }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">处理中</span>
+          <span class="wb-strip__value">{{ ticketStats.pending }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">已完成</span>
+          <span class="wb-strip__value">{{ ticketStats.resolved }}</span>
+        </div>
+        <div class="wb-strip__item wb-strip__action">
+          <TButton icon-only aria-label="刷新工单" :loading="loading"
+            @click="loadTicketsAndKeepSelection()">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+        </div>
+      </section>
+    </WorkbenchBarSlot>
 
     <section class="ticket-main-grid">
       <aside :class="isDevWorkbench ? 'dev-surface-card ticket-list-panel' : 'wallet-section ticket-list-panel'">
@@ -559,7 +562,6 @@ onMounted(async () => {
         <!-- 表尾分页器：与资源项目、需求大厅、团队资源同一枚，两侧都挂在各自的统一层上。 -->
         <div v-if="isDevWorkbench" class="dev-pager">
           <div class="dev-pager__count">
-            <span>共 {{ filteredTotal }} 条</span>
             <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
               <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
             </TSelect>
@@ -570,7 +572,6 @@ onMounted(async () => {
 
         <div v-else class="wb-pager">
           <div class="wb-pager__count">
-            <span>共 {{ filteredTotal }} 条</span>
             <TSelect v-model="pageSize" aria-label="每页条数" class="wb-pager__size">
               <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
             </TSelect>
@@ -580,7 +581,8 @@ onMounted(async () => {
         </div>
       </aside>
 
-      <section :class="isDevWorkbench ? 'dev-surface-card ticket-detail-panel' : 'wallet-section ticket-detail-panel'">
+      <section :class="[isDevWorkbench ? 'dev-surface-card ticket-detail-panel' : 'wallet-section ticket-detail-panel',
+        { 'is-idle': !(selectedTicket && currentDetail) }]">
         <div v-if="selectedTicket && currentDetail" class="ticket-detail-shell">
           <header class="ticket-detail-header">
             <div class="ticket-detail-header__main">
@@ -1001,6 +1003,13 @@ onMounted(async () => {
   .ticket-message__meta,
   .ticket-message__identity {
     flex-wrap: wrap;
+  }
+}
+
+/* 单栏时「左侧会展示…」这张占位卡指向的左侧并不存在 */
+@media (max-width: 640px) {
+  .ticket-detail-panel.is-idle {
+    display: none;
   }
 }
 </style>

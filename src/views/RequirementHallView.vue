@@ -114,6 +114,32 @@ const hallStats = computed(() => [
 
 const recentDeals = computed(() => overview.value?.recent_deals.slice(0, 3) ?? [])
 
+/** 最近交付只读星级：满星 / 半星 / 空星，与评价弹窗同一套 0.5 步口径。 */
+function dealStarClass(rating: number | null | undefined, index: number) {
+  if (rating == null || !Number.isFinite(rating)) {
+    return ''
+  }
+  if (rating >= index) {
+    return 'is-full'
+  }
+  if (rating >= index - 0.5) {
+    return 'is-half'
+  }
+  return ''
+}
+
+/**
+ * 侧栏评论预览：去掉「只填了数字」的脏数据（会和星级分数叠成「4.5 1」），
+ * 太短也没信息量，宁可不展示。
+ */
+function dealCommentPreview(text: string | null | undefined) {
+  const trimmed = text?.trim() ?? ''
+  if (!trimmed || /^\d+(\.\d+)?$/.test(trimmed) || trimmed.length < 2) {
+    return ''
+  }
+  return trimmed
+}
+
 watch(
   () => route.query.keyword,
   (value) => {
@@ -608,11 +634,38 @@ async function loadHallData(page = hallPage.value) {
               :key="deal.payment_id"
               class="portal-page__list-item requirement-hall__deal-item"
             >
-              <strong>{{ deal.title }}</strong>
-              <span class="portal-page__meta"
-                >{{ formatMoney(deal.amount_cny) }} · {{ formatTimeLabel(deal.paid_at) }}</span
+              <strong class="requirement-hall__deal-title">{{ deal.title }}</strong>
+              <div class="requirement-hall__deal-foot">
+                <span class="requirement-hall__deal-meta"
+                  >{{ formatMoney(deal.amount_cny) }} · {{ formatTimeLabel(deal.paid_at) }}</span
+                >
+                <div
+                  v-if="deal.comment_rating != null"
+                  class="requirement-hall__deal-rating"
+                  :aria-label="`客户评分 ${Number(deal.comment_rating).toFixed(1)} 分`"
+                >
+                  <span class="requirement-hall__deal-stars" aria-hidden="true">
+                    <span
+                      v-for="star in 5"
+                      :key="star"
+                      class="requirement-hall__deal-star"
+                      :class="dealStarClass(deal.comment_rating, star)"
+                      >★</span
+                    >
+                  </span>
+                  <strong>{{ Number(deal.comment_rating).toFixed(1) }}</strong>
+                  <span class="requirement-hall__deal-rating-unit">分</span>
+                </div>
+                <span v-else class="requirement-hall__deal-rating requirement-hall__deal-rating--empty"
+                  >暂无评分</span
+                >
+              </div>
+              <p
+                v-if="dealCommentPreview(deal.comment_text)"
+                class="requirement-hall__deal-comment"
               >
-              <p v-if="deal.comment_text">{{ deal.comment_text }}</p>
+                {{ dealCommentPreview(deal.comment_text) }}
+              </p>
             </li>
           </ul>
           <p v-else class="portal-page__empty requirement-hall__empty-delivery">
@@ -767,16 +820,12 @@ async function loadHallData(page = hallPage.value) {
   transform: translateY(-1px);
 }
 
+/* 刷新全站只留图标与文字，不出底色与描边（口径见 styles/user.css） */
 .requirement-hall__refresh-btn {
   padding: 0 12px;
-  border-color: rgba(191, 219, 254, 0.96);
-  background: rgba(239, 246, 255, 0.82);
+  border-color: transparent;
+  background: transparent;
   color: #2563eb;
-}
-
-.requirement-hall__refresh-btn:hover:not(:disabled) {
-  border-color: rgba(37, 99, 235, 0.34);
-  background: rgba(219, 234, 254, 0.92);
 }
 
 .requirement-hall__refresh-btn:disabled {
@@ -985,15 +1034,134 @@ async function loadHallData(page = hallPage.value) {
 }
 
 .requirement-hall__deal-item {
-  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .requirement-hall__deal-item:first-child {
-  padding-top: 0;
+  padding-top: 2px;
 }
 
 .requirement-hall__deal-item:last-child {
   padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.requirement-hall__deal-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.requirement-hall__deal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.requirement-hall__deal-meta {
+  min-width: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.requirement-hall__deal-rating {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 251, 235, 0.95), rgba(254, 243, 199, 0.55));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  color: #b45309;
+}
+
+.requirement-hall__deal-rating--empty {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(248, 250, 252, 0.9);
+  box-shadow: none;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.requirement-hall__deal-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  letter-spacing: -0.04em;
+}
+
+.requirement-hall__deal-star {
+  display: inline-flex;
+  width: 12px;
+  height: 12px;
+  align-items: center;
+  justify-content: center;
+  color: #e7e5e4;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.requirement-hall__deal-star.is-full {
+  color: #f59e0b;
+}
+
+.requirement-hall__deal-star.is-half {
+  color: transparent;
+  background: linear-gradient(90deg, #f59e0b 50%, #e7e5e4 50%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.requirement-hall__deal-rating > strong {
+  margin-left: 2px;
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.requirement-hall__deal-rating-unit {
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.requirement-hall__deal-comment {
+  margin: 0;
+  padding: 6px 10px;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  border-left: 2px solid rgba(148, 163, 184, 0.45);
+  border-radius: 0 10px 10px 0;
+  background: rgba(248, 250, 252, 0.9);
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 .requirement-hall__empty-delivery.portal-page__empty {

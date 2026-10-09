@@ -295,23 +295,8 @@ describe('workbench mode switch', () => {
     user.wrapper.unmount()
   })
 
-  it('外壳不再铺页面标题栏，返回只在移动端顶部栏里给一颗', async () => {
-    // 普通页面：桌面端没有外壳标题栏，移动端顶部栏里有「返回」
-    const wallet = await render('dev-wallet')
-    expect(wallet.wrapper.find('.user-workbench__head').exists()).toBe(false)
-    const back = wallet.wrapper.find('.user-workbench__mobile-bar .user-workbench__mobile-back')
-    expect(back.exists()).toBe(true)
-    expect(back.text()).toContain('返回')
-    wallet.wrapper.unmount()
-
-    // 资源列表也按普通页面处理：页名由卡内「资源列表」标题出示，返回照给
-    const list = await render('dev-resource-list')
-    expect(list.wrapper.find('.user-workbench__head').exists()).toBe(false)
-    expect(list.wrapper.find('.user-workbench__mobile-back').exists()).toBe(true)
-    list.wrapper.unmount()
-
-    // 落地页与页内自带返回的页面不给这颗按钮
-    for (const name of ['workbench', 'dev-home']) {
+  it('外壳不铺页面标题栏，移动端顶部栏也不给「返回」', async () => {
+    for (const name of ['workbench', 'dev-home', 'dev-wallet', 'dev-resource-list']) {
       const { wrapper } = await render(name)
       expect(wrapper.find('.user-workbench__head').exists()).toBe(false)
       expect(wrapper.find('.user-workbench__mobile-back').exists()).toBe(false)

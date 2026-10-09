@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, reactive, ref } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiUrl, HttpError } from '@/api/http'
@@ -410,29 +411,31 @@ async function removeVersion() {
 
 <template>
   <div class="dev-page dev-page--resource-versions">
-    <TLoading tag="div" class="dev-meta-strip" :loading="loading">
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">版本总数</span>
-        <span class="dev-meta-strip__value">{{ versionRows.length }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">关联需求</span>
-        <span class="dev-meta-strip__value">{{ resource?.requirement_id || '未关联' }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">删除审核中</span>
-        <span class="dev-meta-strip__value">{{ deletePendingCount }}</span>
-      </div>
-      <div class="dev-meta-strip__item dev-meta-strip__action">
-        <TButton icon-only aria-label="刷新版本列表" @click="reloadVersions">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </TLoading>
+    <WorkbenchBarSlot>
+      <TLoading tag="div" class="dev-meta-strip" :loading="loading">
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">版本总数</span>
+          <span class="dev-meta-strip__value">{{ versionRows.length }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">关联需求</span>
+          <span class="dev-meta-strip__value">{{ resource?.requirement_id || '未关联' }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">删除审核中</span>
+          <span class="dev-meta-strip__value">{{ deletePendingCount }}</span>
+        </div>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <TButton icon-only :loading="versionsLoading" aria-label="刷新版本列表" @click="reloadVersions">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+        </div>
+      </TLoading>
+    </WorkbenchBarSlot>
 
     <TLoading tag="section" class="dev-resource-versions__layout" :loading="loading">
       <TCard class="dev-surface-card">
@@ -539,7 +542,6 @@ async function removeVersion() {
 
         <div class="dev-pager">
           <div class="dev-pager__count">
-            <span>共 {{ filteredTotal }} 条</span>
             <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
               <TOption
                 v-for="size in LIST_PAGE_SIZES"

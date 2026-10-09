@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getDevAccessStatus } from '@/api/auth'
 import {
@@ -646,37 +647,39 @@ async function submitBinding() {
     <!-- 顶部读数条：与其余页同一条形态（读数在左、页面级操作在右，刷新固定在 __action 槽）。
              这一页原来只有一条只放两个灰字的 __toolbar，没有读数条，
              返回入口还是另做的青色胶囊按钮，与别页的 .dev-btn 不是一个体系。 -->
-    <div class="dev-meta-strip">
-      <template v-if="requirement">
-        <div class="dev-meta-strip__item">
-          <span class="dev-meta-strip__label">需求编号</span>
-          <span class="dev-meta-strip__value">{{ requirement.requirement_id }}</span>
+    <WorkbenchBarSlot>
+      <div class="dev-meta-strip">
+        <template v-if="requirement">
+          <div class="dev-meta-strip__item">
+            <span class="dev-meta-strip__label">需求编号</span>
+            <span class="dev-meta-strip__value">{{ requirement.requirement_id }}</span>
+          </div>
+          <div class="dev-meta-strip__divider" />
+          <div class="dev-meta-strip__item">
+            <span class="dev-meta-strip__label">状态</span>
+            <span class="dev-meta-strip__value">{{ statusToLabel(requirement.status, requirement.payment_mode) }}</span>
+          </div>
+          <div class="dev-meta-strip__divider" />
+          <div class="dev-meta-strip__item">
+            <span class="dev-meta-strip__label">结算方式</span>
+            <span class="dev-meta-strip__value">{{ paymentLabel(requirement) }}</span>
+          </div>
+        </template>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <button type="button" class="dev-btn dev-btn--ghost" @click="goBack">
+            <TIcon>
+              <Back />
+            </TIcon>
+            <span>返回需求大厅</span>
+          </button>
+          <TButton icon-only :loading="loading" aria-label="刷新需求详情" @click="loadPage">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
         </div>
-        <div class="dev-meta-strip__divider" />
-        <div class="dev-meta-strip__item">
-          <span class="dev-meta-strip__label">状态</span>
-          <span class="dev-meta-strip__value">{{ statusToLabel(requirement.status, requirement.payment_mode) }}</span>
-        </div>
-        <div class="dev-meta-strip__divider" />
-        <div class="dev-meta-strip__item">
-          <span class="dev-meta-strip__label">结算方式</span>
-          <span class="dev-meta-strip__value">{{ paymentLabel(requirement) }}</span>
-        </div>
-      </template>
-      <div class="dev-meta-strip__item dev-meta-strip__action">
-        <button type="button" class="dev-btn dev-btn--ghost" @click="goBack">
-          <TIcon>
-            <Back />
-          </TIcon>
-          <span>返回需求大厅</span>
-        </button>
-        <TButton icon-only aria-label="刷新需求详情" @click="loadPage">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
       </div>
-    </div>
+    </WorkbenchBarSlot>
 
     <div v-if="requirement" class="dev-requirement-detail__layout">
       <section class="dev-requirement-detail__left">

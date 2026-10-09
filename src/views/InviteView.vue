@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { TButton, TIcon, Refresh } from 'ui_73info'
 
 import InvitePanel from '@/components/InvitePanel.vue'
@@ -32,17 +33,19 @@ async function refreshAll() {
 <template>
   <main class="page-shell custom-page-shell profile-page invite-view">
     <!-- 顶部读数条：读数在左，页面级刷新固定在右上角 __action 槽 -->
-    <div class="wb-strip" aria-label="邀请概览">
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">已成功邀请</span>
-        <span class="wb-strip__value">{{ invitedCount == null ? '—' : invitedCount }}</span>
+    <WorkbenchBarSlot>
+      <div class="wb-strip" aria-label="邀请概览">
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">已成功邀请</span>
+          <span class="wb-strip__value">{{ invitedCount == null ? '—' : invitedCount }}</span>
+        </div>
+        <div class="wb-strip__item wb-strip__action">
+          <TButton icon-only :loading="refreshing" aria-label="刷新邀请数据" @click="refreshAll">
+            <TIcon><Refresh /></TIcon>
+          </TButton>
+        </div>
       </div>
-      <div class="wb-strip__item wb-strip__action">
-        <TButton icon-only :loading="refreshing" aria-label="刷新邀请数据" @click="refreshAll">
-          <TIcon><Refresh /></TIcon>
-        </TButton>
-      </div>
-    </div>
+    </WorkbenchBarSlot>
 
     <section class="wallet-section invite-view__panel">
       <InvitePanel ref="invitePanelRef" @stats="applyInviteStats" />

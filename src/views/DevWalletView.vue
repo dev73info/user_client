@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRouter } from 'vue-router'
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
 import DevWithdrawalDialog from '@/components/DevWithdrawalDialog.vue'
@@ -390,41 +391,43 @@ async function submitDepositWithdrawal() {
 <template>
   <div class="dev-page dev-wallet-page">
     <!-- 次要统计条 -->
-    <TLoading tag="div" class="dev-meta-strip" :loading="loading">
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">累计收入</span>
-        <span class="dev-meta-strip__value">{{ money(overview?.total_income_cny) }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">今日入账</span>
-        <span class="dev-meta-strip__value">{{ money(overview?.today_income_cny) }}</span>
-        <TTag
-          variant="outline"
-          :tone="(overview?.today_income_change_rate ?? 0) >= 0 ? 'success' : 'danger'"
-          class="dev-meta-strip__tag"
-        >
-          {{ rateText(overview?.today_income_change_rate) }}
-        </TTag>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">完成订单</span>
-        <span class="dev-meta-strip__value">{{ overview?.total_completed_orders ?? 0 }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">活跃需求</span>
-        <span class="dev-meta-strip__value">{{ overview?.active_requirement_count ?? 0 }}</span>
-      </div>
-      <div class="dev-meta-strip__item dev-meta-strip__action">
-        <TButton icon-only aria-label="刷新钱包数据" @click="reloadWallet">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </TLoading>
+    <WorkbenchBarSlot>
+      <TLoading tag="div" class="dev-meta-strip" :loading="loading">
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">累计收入</span>
+          <span class="dev-meta-strip__value">{{ money(overview?.total_income_cny) }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">今日入账</span>
+          <span class="dev-meta-strip__value">{{ money(overview?.today_income_cny) }}</span>
+          <TTag
+            variant="outline"
+            :tone="(overview?.today_income_change_rate ?? 0) >= 0 ? 'success' : 'danger'"
+            class="dev-meta-strip__tag"
+          >
+            {{ rateText(overview?.today_income_change_rate) }}
+          </TTag>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">完成订单</span>
+          <span class="dev-meta-strip__value">{{ overview?.total_completed_orders ?? 0 }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">活跃需求</span>
+          <span class="dev-meta-strip__value">{{ overview?.active_requirement_count ?? 0 }}</span>
+        </div>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <TButton icon-only :loading="loading || depositLoading" aria-label="刷新钱包数据" @click="reloadWallet">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+        </div>
+      </TLoading>
+    </WorkbenchBarSlot>
 
     <!-- 主余额卡片 -->
     <div class="wallet-hero">

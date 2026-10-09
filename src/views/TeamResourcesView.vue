@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRouter } from 'vue-router'
 import { apiUrl } from '@/api/http'
 import {
@@ -366,34 +367,36 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
 
 <template>
   <div class="dev-page dev-page--resource-list">
-    <TLoading tag="div" class="dev-meta-strip" :loading="isLoading">
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">团队资源</span>
-        <span class="dev-meta-strip__value">{{ resources.length }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">公开</span>
-        <span class="dev-meta-strip__value">{{ publishedCount }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">审核中</span>
-        <span class="dev-meta-strip__value">{{ reviewCount }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">私有</span>
-        <span class="dev-meta-strip__value">{{ draftCount }}</span>
-      </div>
-      <div class="dev-meta-strip__item dev-meta-strip__action">
-        <TButton icon-only aria-label="刷新团队资源" @click="loadResources">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </TLoading>
+    <WorkbenchBarSlot>
+      <TLoading tag="div" class="dev-meta-strip" :loading="isLoading">
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">团队资源</span>
+          <span class="dev-meta-strip__value">{{ resources.length }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">公开</span>
+          <span class="dev-meta-strip__value">{{ publishedCount }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">审核中</span>
+          <span class="dev-meta-strip__value">{{ reviewCount }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">私有</span>
+          <span class="dev-meta-strip__value">{{ draftCount }}</span>
+        </div>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <TButton icon-only :loading="isLoading" aria-label="刷新团队资源" @click="loadResources">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+        </div>
+      </TLoading>
+    </WorkbenchBarSlot>
 
     <TCard class="dev-surface-card">
       <div class="dev-card-head">
@@ -553,7 +556,6 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
 
       <div class="dev-pager">
         <div class="dev-pager__count">
-          <span>共 {{ filteredTotal }} 条</span>
           <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
             <TOption
               v-for="size in LIST_PAGE_SIZES"

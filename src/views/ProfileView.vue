@@ -1,10 +1,26 @@
 <script setup lang="ts">
-import { TIcon, Aim, Check, Close } from 'ui_73info'
+import {
+  TButton,
+  TIcon,
+  Aim,
+  Box,
+  Check,
+  Close,
+  Compass,
+  Document,
+  EditPen,
+  Files,
+  Refresh,
+  Suitcase,
+  Tickets,
+  Wallet,
+} from 'ui_73info'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PublishModal from '@/components/PublishModal.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
 import {
   getUnionPaymentAuthorizeUrl,
@@ -1338,7 +1354,11 @@ onBeforeUnmount(() => {
           <input ref="profileAvatarInput" class="profile-avatar-input" type="file"
             accept="image/png,image/jpeg,image/webp,image/gif" @change="handleProfileAvatarChange" />
           <div>
-            <h1>{{ auth.username || '欢迎回来' }}</h1>
+            <h1>
+              <RouterLink v-if="auth.username" class="overview-hero__name-link"
+                :to="{ name: 'dev-profile', params: { username: auth.username } }">{{ auth.username }}</RouterLink>
+              <template v-else>欢迎回来</template>
+            </h1>
             <p>{{ timeGreeting }}</p>
           </div>
         </div>
@@ -1366,6 +1386,45 @@ onBeforeUnmount(() => {
         </div>
 
       </div>
+
+      <!-- 移动端快捷入口：App 式宫格图标，顶替下方「快捷入口」面板（该面板移动端隐藏）。
+           第一行是需求方自己的事（发需求 → 看定制 → 签合同 → 开发票），
+           第二行是开发者侧（找需求 → 接单 → 做资源 → 收钱），各按做事先后排。 -->
+      <nav class="overview-hero__quick" aria-label="快捷入口">
+        <!-- 带 modal=publish 回到总览即弹出发布需求窗口（见 route.query.modal 的 watch），关闭时会清掉这个参数 -->
+        <RouterLink :to="{ name: 'workbench', query: { modal: 'publish' } }">
+          <span class="overview-hero__quick-icon"><TIcon :size="22"><EditPen /></TIcon></span>
+          <span>我有需求</span>
+        </RouterLink>
+        <RouterLink :to="{ name: 'workbench-requirements' }">
+          <span class="overview-hero__quick-icon"><TIcon :size="22"><Suitcase /></TIcon></span>
+          <span>我的定制</span>
+        </RouterLink>
+        <RouterLink :to="{ name: 'workbench-signatures' }">
+          <span class="overview-hero__quick-icon"><TIcon :size="22"><Files /></TIcon></span>
+          <span>我的合同</span>
+        </RouterLink>
+        <RouterLink :to="{ name: 'workbench-invoices' }">
+          <span class="overview-hero__quick-icon"><TIcon :size="22"><Document /></TIcon></span>
+          <span>我的发票</span>
+        </RouterLink>
+        <RouterLink :to="{ name: 'dev-requirement-hall' }">
+          <span class="overview-hero__quick-icon"><TIcon :size="22"><Compass /></TIcon></span>
+          <span>需求大厅</span>
+        </RouterLink>
+        <RouterLink :to="{ name: 'dev-my-requirements' }">
+          <span class="overview-hero__quick-icon"><TIcon :size="22"><Tickets /></TIcon></span>
+          <span>我的接单</span>
+        </RouterLink>
+        <RouterLink :to="{ name: 'dev-plugins' }">
+          <span class="overview-hero__quick-icon"><TIcon :size="22"><Box /></TIcon></span>
+          <span>资源初始化</span>
+        </RouterLink>
+        <RouterLink :to="{ name: 'dev-wallet' }">
+          <span class="overview-hero__quick-icon"><TIcon :size="22"><Wallet /></TIcon></span>
+          <span>收益钱包</span>
+        </RouterLink>
+      </nav>
     </section>
 
     <section class="overview-stat-grid" aria-label="工作台关键数据">
@@ -1390,6 +1449,35 @@ onBeforeUnmount(() => {
         <small>满减 {{ amountCoupons.length }} / 折扣 {{ discountCoupons.length }}</small>
       </RouterLink>
     </section>
+
+    <!-- 移动端把四格读数压成一行塞进工作台顶栏，页面里的四格卡片随之隐藏 -->
+    <WorkbenchBarSlot mobile-only>
+      <nav class="overview-bar-stats" aria-label="工作台关键数据">
+        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-requirements' }">
+          <span class="wb-strip__label">需求</span>
+          <span class="wb-strip__value">{{ requirementStats.total }}</span>
+        </RouterLink>
+        <div class="wb-strip__divider" />
+        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-requirements' }">
+          <span class="wb-strip__label">待处理</span>
+          <span class="wb-strip__value">{{ actionableRequirements.length }}</span>
+        </RouterLink>
+        <div class="wb-strip__divider" />
+        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-messages' }">
+          <span class="wb-strip__label">会话</span>
+          <span class="wb-strip__value">{{ availableConversationCount }}</span>
+        </RouterLink>
+        <div class="wb-strip__divider" />
+        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-account' }">
+          <span class="wb-strip__label">可用券</span>
+          <span class="wb-strip__value">{{ usableCouponCount }}</span>
+        </RouterLink>
+        <TButton icon-only :loading="loading || requirementLoading" aria-label="刷新" title="刷新"
+          @click="refreshProfileData">
+          <TIcon><Refresh /></TIcon>
+        </TButton>
+      </nav>
+    </WorkbenchBarSlot>
 
     <section class="overview-focus-panel">
       <div class="overview-section-head">
@@ -1966,6 +2054,15 @@ onBeforeUnmount(() => {
   font-weight: 800;
 }
 
+.overview-hero__name-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.overview-hero__name-link:hover {
+  color: #1d4ed8;
+}
+
 .overview-home-link:hover {
   border-color: rgba(125, 155, 225, 0.9);
   background: #f8fbff;
@@ -2271,6 +2368,67 @@ onBeforeUnmount(() => {
   line-height: 1.5;
 }
 
+/* 读数沿用菜单页顶部读数条（.wb-strip__item / __label / __value / __divider）的版式，
+   只是不带外框：外框由工作台顶栏提供 */
+.overview-bar-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+}
+
+.overview-bar-stats .wb-strip__item {
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.overview-bar-stats .t73-button {
+  flex: 0 0 auto;
+}
+/* 头像卡下方的 App 式快捷入口：只在移动端出现（见 760px 断点） */
+.overview-hero__quick {
+  display: none;
+}
+
+.overview-hero__quick a {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.overview-hero__quick a>span:last-child {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overview-hero__quick-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #2563eb;
+  box-shadow: 0 4px 10px rgba(76, 103, 172, 0.08);
+}
+
+/* 断点与工作台顶栏出现的断点一致：顶栏显示时读数在顶栏里，四格卡片收起 */
+@media (max-width: 900px) {
+  .overview-stat-grid {
+    display: none;
+  }
+}
+
 @media (max-width: 1180px) {
   .overview-stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2292,10 +2450,33 @@ onBeforeUnmount(() => {
     padding: 0 0 24px;
   }
 
+  /* 移动端总览的卡片统一一套语言：白底卡 + 18px 圆角 + 16px 内边距，
+     卡内的次级块（标签、入口区、进度条）一律 #f6f9ff 浅蓝底、无描边，强调色统一用蓝 */
   .overview-hero {
     gap: 14px;
     padding: 16px;
     border-radius: 18px;
+  }
+
+  .profile-avatar-button {
+    width: 60px;
+    height: 60px;
+    border: 3px solid #ffffff;
+    font-size: 24px;
+    box-shadow: 0 8px 18px rgba(76, 103, 172, 0.18);
+  }
+
+  .profile-avatar-button small {
+    padding: 3px 0;
+    font-size: 10px;
+  }
+
+  /* 用户名可点进个人主页：移动端补一个箭头提示 */
+  .overview-hero__name-link::after {
+    content: '›';
+    margin-left: 6px;
+    color: #94a3b8;
+    font-weight: 600;
   }
 
   /* 头像行保留「返回首页」靠右，避免整行拉满后动作区被拆散 */
@@ -2316,12 +2497,14 @@ onBeforeUnmount(() => {
   }
 
   .overview-hero__head h1 {
-    margin-top: 2px;
-    font-size: 18px;
+    margin-top: 0;
+    font-size: 19px;
+    font-weight: 800;
   }
 
   .overview-hero__head p {
     margin-top: 4px;
+    color: #64748b;
     font-size: 13px;
   }
 
@@ -2329,38 +2512,62 @@ onBeforeUnmount(() => {
     font-size: 17px;
   }
 
+  /* 邮箱与订阅状态压成一行：邮箱过长时省略，订阅状态不缩 */
   .overview-hero__chips {
+    flex-wrap: nowrap;
+    gap: 8px;
     margin-top: 0;
   }
 
   .overview-hero__chips span {
+    min-height: 26px;
     max-width: 100%;
+    padding: 4px 10px;
     overflow: hidden;
+    border-color: transparent;
+    background: #f6f9ff;
+    color: #475569;
+    font-size: 11px;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
+  .overview-hero__chips span:first-child {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .overview-hero__chips span:last-child {
+    flex: 0 0 auto;
+  }
+
+  /* 移动端底部导航已有「首页」，这里不再重复给入口 */
   .overview-home-link {
-    width: auto;
-    align-self: center;
-    padding: 8px 12px;
-    white-space: nowrap;
+    display: none;
   }
 
-  /* 三个操作等分一排，不再出现「两颗并排 + 刷新独占一行」 */
-  .overview-hero__actions {
+  /* 移动端最近沟通走底部导航「消息」与顶栏「会话」读数，总览里不再铺一块 */
+  .overview-panel--messages {
+    display: none;
+  }
+
+  /* 快捷入口改成头像卡里的四宫格图标，右侧面板整列收起 */
+  .overview-side-stack {
+    display: none;
+  }
+
+  .overview-hero__quick {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px 8px;
+    padding: 14px 4px;
+    border-radius: 12px;
+    background: #f6f9ff;
   }
 
-  .overview-hero__actions .ghost.small {
-    width: 100%;
-    min-height: 40px;
-    padding: 0 8px;
-    justify-content: center;
-    font-size: 13px;
+  /* 移动端：主页走点用户名、消息走底部导航，三颗操作整排收起 */
+  .overview-hero__actions {
+    display: none;
   }
 
   .overview-stat-grid {
@@ -2379,6 +2586,67 @@ onBeforeUnmount(() => {
   .overview-focus-panel,
   .overview-panel {
     padding: 16px;
+    border-radius: 18px;
+  }
+
+  /* 头像卡与需求进度合成一张卡：上下两半去掉相接处的圆角与描边，中间只留一条内缩分隔线。
+     阴影一并去掉——后一个兄弟的阴影会画在前一个的底色上，接缝处会露出一道灰影。 */
+  .overview-hero {
+    border-bottom: 0;
+    border-radius: 18px 18px 0 0;
+    box-shadow: none;
+  }
+
+  .overview-focus-panel {
+    position: relative;
+    margin-top: -12px;
+    border-top: 0;
+    border-radius: 0 0 18px 18px;
+    box-shadow: none;
+  }
+
+  /* 区块标题：左侧蓝色短竖条 + 15px 标题；右侧链接降为次级文字加箭头 */
+  .overview-focus-panel .overview-section-head {
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .overview-focus-panel .overview-section-head h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 0;
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .overview-focus-panel .overview-section-head h2::before {
+    content: '';
+    width: 3px;
+    height: 14px;
+    border-radius: 2px;
+    background: #2563eb;
+  }
+
+  .overview-focus-panel .overview-link {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .overview-focus-panel .overview-link::after {
+    content: '›';
+    margin-left: 4px;
+  }
+
+  .overview-focus-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 16px;
+    left: 16px;
+    height: 1px;
+    background: rgba(224, 232, 255, 0.96);
   }
 
   .overview-section-head,
@@ -2398,15 +2666,115 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr;
   }
 
+  /* 需求卡：标题与编号一块，状态 / 时间 / 金额压成一行（金额靠右加粗），进度条横排收紧 */
   .overview-requirement-list li {
-    grid-template-columns: 1fr;
-    align-items: stretch;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'meta meta meta'
+      'status time budget'
+      'progress progress progress';
+    gap: 10px 8px;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
   }
 
-  .overview-requirement-list .overview-status,
-  .overview-requirement-list small,
+  /* 需求卡不再套一层描边卡片，多条之间只用分隔线 */
+  .overview-requirement-list li + li {
+    padding-top: 14px;
+    border-top: 1px solid rgba(224, 232, 255, 0.96);
+  }
+
+  .overview-requirement-list li.clickable:hover {
+    border-color: rgba(224, 232, 255, 0.96);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .overview-requirement-list .overview-requirement-meta {
+    grid-area: meta;
+    display: grid;
+    gap: 4px;
+  }
+
+  .overview-requirement-list .overview-requirement-meta strong {
+    display: -webkit-box;
+    font-size: 15px;
+    line-height: 1.4;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .overview-requirement-list .overview-status {
+    grid-area: status;
+    min-height: 24px;
+    padding: 3px 10px;
+    font-size: 12px;
+  }
+
   .overview-requirement-list time {
-    justify-self: start;
+    grid-area: time;
+    color: #94a3b8;
+    font-size: 12px;
+  }
+
+  .overview-requirement-list small {
+    grid-area: budget;
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .overview-requirement-list .overview-requirement-progress {
+    grid-area: progress;
+    margin-top: 0;
+  }
+
+  .overview-requirement-progress :deep(.req-progress) {
+    padding: 12px 6px 10px;
+    border: 0;
+    border-radius: 12px;
+    background: #f6f9ff;
+  }
+
+  /* 组件在 720px 以下会改成竖排五行，总览里保持横排：只留圆点和步骤名，说明文字收起 */
+  .overview-requirement-progress :deep(.req-progress__steps) {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  .overview-requirement-progress :deep(.req-progress__step) {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+  }
+
+  .overview-requirement-progress :deep(.req-progress__dot) {
+    width: 22px;
+    height: 22px;
+    font-size: 11px;
+  }
+
+  .overview-requirement-progress :deep(.req-progress__step-title) {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .overview-requirement-progress :deep(.req-progress__step-desc) {
+    display: none;
+  }
+
+  .overview-requirement-progress :deep(.req-progress__connector) {
+    display: block;
+    top: 11px;
+    left: calc(50% + 14px);
+    right: calc(-50% + 14px);
   }
 
   .overview-dev-links {
@@ -2416,11 +2784,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
-  .profile-avatar-button {
-    width: 64px;
-    height: 64px;
-  }
-
   .profile-avatar-crop-body {
     grid-template-columns: 1fr;
   }
@@ -2435,14 +2798,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 380px) {
-  .overview-hero__actions {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .overview-hero__actions .ghost.small:last-child {
-    grid-column: 1 / -1;
-  }
-
   .overview-dev-links {
     grid-template-columns: 1fr;
   }

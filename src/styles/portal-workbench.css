@@ -587,6 +587,85 @@
   }
 }
 
+/* === 移动端：读数条搬进工作台顶栏 ===
+   页面用 WorkbenchBarSlot 包住 .wb-strip / .dev-meta-strip，≤900px 时整条被 Teleport 进顶栏插槽，
+   顶替顶栏标题。外框交给顶栏，这里去掉卡片样式，读数改成小字号、行内自动换行，操作槽靠右。
+   用 id 选择器压过 dev-responsive.css 在窄屏下把读数条改成两列 / 单列网格的规则。 */
+@media (max-width: 900px) {
+  #workbench-mobile-bar-extra>.wb-strip,
+  #workbench-mobile-bar-extra>.dev-meta-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  #workbench-mobile-bar-extra .wb-strip__item,
+  #workbench-mobile-bar-extra .dev-meta-strip__item {
+    justify-content: flex-start;
+    width: auto;
+    gap: 4px;
+  }
+
+  #workbench-mobile-bar-extra .wb-strip__divider,
+  #workbench-mobile-bar-extra .dev-meta-strip__divider {
+    display: none;
+  }
+
+  #workbench-mobile-bar-extra .wb-strip__label,
+  #workbench-mobile-bar-extra .dev-meta-strip__label {
+    font-size: 11px;
+  }
+
+  #workbench-mobile-bar-extra .wb-strip__value,
+  #workbench-mobile-bar-extra .dev-meta-strip__value {
+    font-size: 13px;
+  }
+
+  #workbench-mobile-bar-extra .wb-strip__item,
+  #workbench-mobile-bar-extra .dev-meta-strip__item {
+    white-space: nowrap;
+  }
+
+  #workbench-mobile-bar-extra .wb-strip__item.wb-strip__action,
+  #workbench-mobile-bar-extra .dev-meta-strip__item.dev-meta-strip__action {
+    margin-left: auto;
+    gap: 4px;
+  }
+
+  /* 顶栏里的刷新收成 28px，省出的宽度够四组读数与刷新同排 */
+  #workbench-mobile-bar-extra .wb-strip__action .t73-button--icon-only,
+  #workbench-mobile-bar-extra .dev-meta-strip__action .t73-button--icon-only {
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+  }
+
+  /* 读数后的小标签（收益钱包的环比）按 TTag 的 sm 档收小 */
+  #workbench-mobile-bar-extra .dev-meta-strip__tag,
+  #workbench-mobile-bar-extra .wb-strip__tag {
+    min-height: 20px;
+    padding: 0 6px;
+    font-size: 11px;
+  }
+
+  /* 操作槽里的页面级主按钮（发布新需求、去缴纳保证金……）在顶栏里收成小号 */
+  #workbench-mobile-bar-extra .wb-strip__action .t73-button:not(.t73-button--icon-only),
+  #workbench-mobile-bar-extra .dev-meta-strip__action .t73-button:not(.t73-button--icon-only) {
+    height: 30px;
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+}
+
 @media (max-width: 640px) {
   .wb-strip {
     padding: 12px 14px;
@@ -608,10 +687,80 @@
     height: 44px;
   }
 
+  /* 工具栏收成两行：搜索独占第一行，筛选与操作共用第二行（与 .dev-toolbar 同一口径） */
+  .wb-toolbar {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .wb-toolbar__search {
+    order: -1;
+  }
+
+  /* 窄栏形态在移动端已是整屏宽，不必再竖排，同样收成两行 */
+  .wb-toolbar--stacked {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .wb-toolbar .wb-toolbar__field,
+  .wb-toolbar .wb-toolbar__field--small {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+  }
+
   .wb-toolbar__actions {
-    margin-left: 0;
-    width: 100%;
-    justify-content: flex-end;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    margin-left: auto;
+  }
+
+  .wb-toolbar__hint {
+    white-space: nowrap;
+  }
+
+  /* 只有「搜索 + 一个筛选」的工具栏合成一行（与 .dev-toolbar 同一口径） */
+  .wb-toolbar:has(> .wb-toolbar__search):not(:has(> .wb-toolbar__field ~ .wb-toolbar__field)):not(:has(> .wb-chip-group)) .wb-toolbar__search {
+    flex: 1 1 120px;
+    width: auto;
+    max-width: none;
+    order: 0;
+  }
+
+  .wb-toolbar:has(> .wb-toolbar__search):not(:has(> .wb-toolbar__field ~ .wb-toolbar__field)):not(:has(> .wb-chip-group)) .wb-toolbar__field {
+    flex: 0 1 112px;
+    order: -1;
+  }
+
+  .wb-toolbar__actions .t73-button:has(.t73-icon + span),
+  .wb-toolbar__actions .t73-button:has(.t73-icon + span):hover,
+  .wb-toolbar__actions .t73-button:has(.t73-icon + span):focus-visible {
+    width: 36px;
+    padding: 0;
+    border-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: var(--profile-text-sub, #64748b);
+    font-size: 18px;
+  }
+
+  .wb-toolbar__actions .t73-button:has(.t73-icon + span):active {
+    background: var(--wb-accent-soft, rgba(37, 99, 235, 0.08)) !important;
+    color: var(--wb-accent, #2563eb);
+  }
+
+  .wb-toolbar__actions .t73-button:has(.t73-icon + span):disabled {
+    opacity: 0.45;
+  }
+
+  .wb-toolbar__actions .t73-button .t73-icon + span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 
   .wb-item {
@@ -629,5 +778,115 @@
 
   .wb-chip--button {
     min-height: 36px;
+  }
+}
+
+/* === 移动端 App 化列表（与开发者侧 dev-responsive.css 末段、需求大厅同一套） ===
+   用户工作台里带工具栏的列表区（.wallet-section 等）在触屏档去掉外框，列表项各自成白卡；
+   只有标题的卡头隐藏；单筛选工具栏并成一条白色搜索栏、多筛选控件各自成白色胶囊；「重置」不放；
+   空态不套框；表尾不要「每页条数」，只有一页时整个不显示。 */
+@media (max-width: 640px) {
+  .profile-page :is(.wallet-section, section):has(.wb-toolbar) {
+    min-width: 0;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .profile-page :is(.wallet-section, section):has(.wb-toolbar) .wb-card-head:not(:has(.wb-card-head__actions > *)) {
+    display: none;
+  }
+
+  .profile-page :is(.wallet-section, section):has(.wb-toolbar) .wb-card-head {
+    margin-bottom: 10px;
+    padding: 0 4px;
+  }
+
+  .profile-page .wb-toolbar .wb-toolbar__search,
+  .profile-page .wb-toolbar .wb-toolbar__field {
+    border-color: transparent !important;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+
+  .profile-page .wb-toolbar__actions .t73-button:has(> .t73-button__label > .t73-icon + span),
+  .profile-page .wb-toolbar__actions .wb-toolbar__hint,
+  .dev-surface-card .wb-toolbar__actions .wb-toolbar__hint {
+    display: none;
+  }
+
+  .profile-page .wb-toolbar:has(> .wb-toolbar__search):not(:has(> .wb-toolbar__field ~ .wb-toolbar__field)):not(:has(> .wb-chip-group)):not(:has(.wb-toolbar__actions .t73-button--solid)) {
+    flex-wrap: nowrap;
+    gap: 0;
+    padding: 3px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+
+  .profile-page .wb-toolbar:has(> .wb-toolbar__search):not(:has(> .wb-toolbar__field ~ .wb-toolbar__field)):not(:has(> .wb-chip-group)):not(:has(.wb-toolbar__actions .t73-button--solid)) > :is(.wb-toolbar__search, .wb-toolbar__field) {
+    background: transparent;
+    box-shadow: none !important;
+  }
+
+  .profile-page .wb-toolbar:has(> .wb-toolbar__search):not(:has(> .wb-toolbar__field ~ .wb-toolbar__field)):not(:has(> .wb-chip-group)):not(:has(.wb-toolbar__actions .t73-button--solid)) > .wb-toolbar__field {
+    flex: 0 0 auto;
+    width: auto;
+    padding-right: 6px;
+  }
+
+  .profile-page .wb-toolbar:has(> .wb-toolbar__field):has(> .wb-toolbar__search):not(:has(> .wb-toolbar__field ~ .wb-toolbar__field)):not(:has(> .wb-chip-group)):not(:has(.wb-toolbar__actions .t73-button--solid)) > .wb-toolbar__search {
+    position: relative;
+    flex: 1 1 0;
+  }
+
+  .profile-page .wb-toolbar:has(> .wb-toolbar__field):has(> .wb-toolbar__search):not(:has(> .wb-toolbar__field ~ .wb-toolbar__field)):not(:has(> .wb-chip-group)):not(:has(.wb-toolbar__actions .t73-button--solid)) > .wb-toolbar__search::before {
+    position: absolute;
+    top: 9px;
+    bottom: 9px;
+    left: 0;
+    width: 1px;
+    background: var(--wb-line);
+    content: '';
+  }
+
+  /* 列表项：白卡、无描边 */
+  .profile-page :is(.wallet-section, section):has(.wb-toolbar) .wb-item {
+    border-color: transparent;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+
+  /* 长单号（售后编号之类）不折行会把白卡撑出屏幕 */
+  .profile-page .wb-item__main {
+    min-width: 0;
+  }
+
+  .profile-page .wb-item__title,
+  .profile-page .wb-item__meta {
+    overflow-wrap: anywhere;
+  }
+
+  .profile-page :is(.wallet-section, section):has(.wb-toolbar) .wb-empty {
+    padding: 40px 16px;
+    border: 0;
+    background: transparent;
+  }
+
+  .profile-page .wb-pager__count {
+    display: none;
+  }
+
+  .profile-page .wb-pager {
+    justify-content: center;
+    margin-top: 14px;
+  }
+
+  .profile-page .wb-pager:not(:has(.t73-pagination__pages > li:nth-child(4))) {
+    display: none;
   }
 }

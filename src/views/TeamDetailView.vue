@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRoute, useRouter } from 'vue-router'
 // 顶部读数条的刷新按钮与卡片头的图标都要显式 import：
 // 模板里直接写 <Refresh /> / <Plus /> 而没 import 时，Vue 会把它们当未知元素渲染成空的
@@ -263,27 +264,29 @@ onMounted(() => {
   <div class="dev-page dev-team-detail">
     <!-- 顶部读数条：与其余菜单页同一条形态（读数在左、刷新在右）。
          这一页原来直接从一块裸的 hero 区块开始，没有读数横条，切菜单时整页骨架都换了。 -->
-    <TLoading tag="div" class="dev-meta-strip" :loading="loading">
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">团队成员</span>
-        <span class="dev-meta-strip__value">{{ team?.members.length ?? 0 }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">我的角色</span>
-        <span class="dev-meta-strip__value">{{ myRoleLabel }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">所有者</span>
-        <span class="dev-meta-strip__value">{{ team?.owner_username || '—' }}</span>
-      </div>
-      <div class="dev-meta-strip__item dev-meta-strip__action">
-        <TButton icon-only aria-label="刷新团队详情" @click="loadTeam">
-          <TIcon><Refresh /></TIcon>
-        </TButton>
-      </div>
-    </TLoading>
+    <WorkbenchBarSlot>
+      <TLoading tag="div" class="dev-meta-strip" :loading="loading">
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">团队成员</span>
+          <span class="dev-meta-strip__value">{{ team?.members.length ?? 0 }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">我的角色</span>
+          <span class="dev-meta-strip__value">{{ myRoleLabel }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">所有者</span>
+          <span class="dev-meta-strip__value">{{ team?.owner_username || '—' }}</span>
+        </div>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <TButton icon-only :loading="loading" aria-label="刷新团队详情" @click="loadTeam">
+            <TIcon><Refresh /></TIcon>
+          </TButton>
+        </div>
+      </TLoading>
+    </WorkbenchBarSlot>
 
     <p v-if="loading" class="dev-empty-state">团队加载中…</p>
     <p v-else-if="!team" class="dev-empty-state">团队不存在，或你已不在该团队中</p>
