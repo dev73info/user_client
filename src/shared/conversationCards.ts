@@ -119,7 +119,7 @@ function withDeliveryVersion(description: string, actionRef?: string | null): st
   if (!version) {
     return description
   }
-  return `${description}（交付版本 ${version}）`
+  return `${description.replace(/。$/, '')}（交付版本 ${version}）。`
 }
 
 export function conversationCardMeta(
@@ -167,7 +167,7 @@ export function conversationCardMeta(
     case 'contract_party_b_signed':
       return {
         title: '开发者已签署合同',
-        description: '《需求开发合同》等待需求方签署，双方签完并支付定金后进入开发。',
+        description: '等待需求方签署。',
         actionLabel: '查看合同',
         asignPreview: true,
         to: contractSignRoute,
@@ -175,7 +175,7 @@ export function conversationCardMeta(
     case 'contract_party_a_signed':
       return {
         title: '需求方已签署合同',
-        description: '《需求开发合同》等待开发者签署，双方签完并支付定金后进入开发。',
+        description: '等待开发者签署。',
         actionLabel: '查看合同',
         asignPreview: true,
         to: contractSignRoute,
@@ -183,7 +183,7 @@ export function conversationCardMeta(
     case 'contract_signed':
       return {
         title: '合同已签署完成',
-        description: '《需求开发合同》双方已签署，等待需求方支付定金。',
+        description: '等待需求方支付定金。',
         // 付定金是需求方的动作，开发者这边只是通知；定金缴清后这张历史卡片也不再给按钮，
         // 否则点进去只会重复发起一笔已完成的支付。按下去原地打开支付弹窗，不跳需求列表。
         actionLabel: canPayDeposit ? '支付定金' : undefined,
@@ -193,7 +193,7 @@ export function conversationCardMeta(
     case 'deposit_paid':
       return {
         title: '定金已缴纳',
-        description: '需求方已缴纳定金，需求进入开发阶段。',
+        description: '需求进入开发阶段。',
         // 交付是开发者的动作，需求方这边没有可执行入口，只保留卡片本身。
         // 开发者这边的「去交付」不再跳需求列表：交付弹窗就在同一条会话的底部工具条上，
         // 按下去原地打开它。只在交付那一步给——待分账与结单后交付早已做完，
@@ -209,8 +209,8 @@ export function conversationCardMeta(
         title: role === 'developer' ? '已提交交付版本' : '收到交付版本',
         description:
           role === 'developer'
-            ? '你已提交交付版本，等待需求方验收；验收通过后需求进入待付尾款。'
-            : '开发者已提交交付版本，请验收后支付尾款。',
+            ? '你已提交，等待需求方验收。'
+            : '请下载验收，通过后支付尾款。',
         // 交付是开发者自己提交的，这张卡片对开发者只是回执，不给按钮；
         // 需求方这边直接给交付产物的下载入口（不跳页），并在同一行给出「验收」：
         // 卡片说的就是「请验收后支付尾款」，入口放这儿比只留在底部工具条里更顺路。
@@ -225,22 +225,22 @@ export function conversationCardMeta(
     // 结单（completed）后开发者仍可发布版本（解除合作返工），但验收动作在后端此时一律被拒
     // （`accept_delivery` 只认 in_development / pending_final），所以这张卡片不能再说
     // 「等待验收」——需求方点不出验收动作，卡片就是一句兑现不了的承诺。
-    // 后端给的文案已写明「需求已结单，如需返工、退款或赔付请通过解除合作发起」，这里照抄口径，
-    // 只保留产物下载（版本确实发布了，是这张卡片上唯一真实可做的动作）。
+    // 口径与后端一致：结单后返工、退款或赔付走解除合作；只保留产物下载（版本确实发布了，
+    // 是这张卡片上唯一真实可做的动作）。
     case 'delivery_submitted_after_completed':
       return {
         title: role === 'developer' ? '已提交结单后的新版本' : '收到结单后的新版本',
         description:
           role === 'developer'
-            ? '你已提交新版本，需求此前已结单，本次交付不再走验收；如需返工、退款或赔付，请通过「解除合作」发起。'
-            : '开发者已提交新版本，需求此前已结单，本次交付不再走验收；如需返工、退款或赔付，请通过「解除合作」发起。',
+            ? '你已提交新版本；需求已结单，不再验收，售后走解除合作。'
+            : '需求已结单，不再验收；返工或退款请走解除合作。',
         actionLabel: role === 'developer' ? undefined : '下载交付产物',
         downloadDelivery: role !== 'developer',
       }
     case 'acceptance_passed':
       return {
         title: '验收已通过',
-        description: withDeliveryVersion('需求方已验收通过，等待支付尾款。', actionRef),
+        description: withDeliveryVersion('等待需求方支付尾款。', actionRef),
         // 付尾款是需求方的动作，开发者这边只是通知，不给按钮。
         // 尾款付清前这张卡片一直挂「支付尾款」（含验收打回退回开发中的时候），
         // 缴清进入待分账 / 结单后才收起，避免历史卡片变成重复支付的死入口。
@@ -251,10 +251,7 @@ export function conversationCardMeta(
     case 'acceptance_rejected':
       return {
         title: '验收未通过',
-        description: withDeliveryVersion(
-          '需求方验收未通过，开发者整改后可重新提交验收。',
-          actionRef,
-        ),
+        description: withDeliveryVersion('等待开发者整改后重新交付。', actionRef),
         // 整改与重新交付都是开发者的动作，需求方这边只是通知，不给按钮；
         // 与「定金已缴纳」同口径：交付入口只在交付那一步给，且原地打开交付弹窗不跳页，
         // 结单后的历史卡片不再挂。
@@ -269,27 +266,21 @@ export function conversationCardMeta(
     case 'acceptance_deemed_passed':
       return {
         title: '视为验收通过',
-        description: withDeliveryVersion(
-          '验收催告期限届满，需求方未提出具体异议，按合同约定视为验收通过，需求进入待付尾款。',
-          actionRef,
-        ),
+        description: withDeliveryVersion('验收期满无异议，按合同视为通过。', actionRef),
         actionLabel: canShowFinalPayOnAcceptanceCard ? '支付尾款' : undefined,
         paymentAction: canShowFinalPayOnAcceptanceCard,
       }
     case 'delivery_overdue':
       return {
         title: '交付已逾期',
-        description:
-          role === 'developer'
-            ? '交付已超过合同约定期限，逾期将按约定计迟延履行违约金。'
-            : '开发者交付已超过合同约定期限，逾期将按约定计迟延履行违约金。',
+        description: '已超合同期限，按约定计违约金。',
         actionLabel: canDeliverFromCard ? '去交付' : undefined,
         deliveryAction: canDeliverFromCard,
       }
     case 'final_pay_overdue':
       return {
         title: '尾款已逾期',
-        description: '尾款已超过合同约定期限，逾期将按约定计迟延履行违约金。',
+        description: '已超合同期限，按约定计违约金。',
         actionLabel: canPayFinal ? '支付尾款' : undefined,
         paymentAction: canPayFinal,
       }
@@ -298,15 +289,15 @@ export function conversationCardMeta(
         title: '开发者催告支付尾款',
         description:
           role === 'developer'
-            ? '你已催告需求方支付尾款。催告只是正式通知，不会自动扣款。'
-            : '开发者已催告支付尾款，请尽快按合同约定完成付款。',
+            ? '已正式通知需求方，不会自动扣款。'
+            : '请尽快按合同支付尾款。',
         actionLabel: canPayFinal ? '支付尾款' : undefined,
         paymentAction: canPayFinal,
       }
     case 'remediation_expired':
       return {
         title: '限期补救已届满',
-        description: '交付仍未合格，需求方可申请减少价款，或按合同约定申报违约。',
+        description: '交付仍未合格，可申请减价或申报违约。',
         actionLabel: role === 'customer' ? '去我的需求' : undefined,
         to: role === 'customer' ? requirementListRoute : undefined,
       }
@@ -315,48 +306,44 @@ export function conversationCardMeta(
     case 'breach_deadline_extended':
       return {
         title: '合同期限已顺延',
-        description:
-          '因不可抗力 / 需求变更 / 第三方原因，合同期限已顺延（只延期限、不动资金）。已经发生的逾期不因顺延而消失。',
+        description: '只延期限、不动资金；已发生的逾期仍保留。',
       }
     // 中止 / 恢复：与顺延同一条通道（只动期限、不动钱）。中止期间不判定到期，恢复时按
     // 实际停摆时长整体后移期限——所以「中止」不是免责，已发生的逾期仍然留着。
     case 'breach_deadline_suspended':
       return {
         title: '合同期限已中止计时',
-        description:
-          '因不可抗力 / 需求变更 / 第三方原因，合同期限已中止计时（中止期间不判定到期，不动资金）。恢复时按实际停摆时长顺延，已经发生的逾期不因中止而消失。',
+        description: '中止期间不判定到期；已发生的逾期仍保留。',
       }
     case 'breach_deadline_resumed':
       return {
         title: '合同期限已恢复计时',
-        description:
-          '合同期限已恢复计时，并按实际停摆时长顺延（只延期限、不动资金）。已经发生的逾期不因中止而消失。',
+        description: '按停摆时长顺延；已发生的逾期仍保留。',
       }
     // 当事人的申请入口：申请只落一张客服工单，期限的实际变更由客服执行，
     // 所以文案说「已提交申请」而不是「期限已变更」。
     case 'breach_deadline_change_requested':
       return {
         title: '已提交期限变更申请',
-        description:
-          '顺延 / 中止合同期限的申请已提交给平台客服，客服核实事由后会在需求上执行（申请本身不改期限）。',
+        description: '客服核实后执行，申请本身不改期限。',
       }
     case 'final_paid':
       return {
         title: '尾款已缴纳',
-        description: '需求方已缴纳尾款，等待渠道分账完成后正式结单。',
+        description: '分账完成后正式结单。',
         // 待分账期间双方都没有可执行的动作（等待期内解除合作走需求卡片上的入口）；
         // 「去我的需求」只是把人送回自己已经在的需求列表，属空跳转，故不给按钮。
       }
     case 'requirement_settled':
       return {
         title: '需求已结单',
-        description: '尾款分账已完成，需求正式结单，解除合作入口已开放。',
+        description: '分账已完成，解除合作入口已开放。',
         // 与 final_paid 同口径：解除合作入口就在需求卡片上，这里再给按钮只是空跳转。
       }
     case 'binding_released':
       return {
         title: '绑定已解除',
-        description: '需求已回到待接单状态。',
+        description: '需求已回到待接单。',
         actionLabel: '去需求大厅',
         to: role === 'developer' ? { name: 'dev-requirement-hall' } : requirementListRoute,
       }
@@ -365,8 +352,7 @@ export function conversationCardMeta(
     case 'requirement_cancelled':
       return {
         title: '需求已被需求方取消',
-        description:
-          '需求方取消了这笔需求：按合同约定无正当理由取消适用定金罚则，已缴定金不予退还（按客户违约规则分账给平台与开发者），绑定关系已解除、接单保证金冻结已释放。这段会话保留为只读。',
+        description: '已缴定金按定金罚则不退，绑定已解除，会话只读。',
       }
     // 解除合作（2026-10-06）：协商解除与判责合并成一个入口后的三条卡片。
     // 案件先进入协商阶段，对方同意即无责退出、不同意（或超时未回应）才由任一方申请平台介入。
@@ -374,50 +360,44 @@ export function conversationCardMeta(
     case 'termination_submitted':
       return {
         title: '解除合作申请已提交',
-        description:
-          '等待对方回应。对方同意即协商一致解除；不同意或超时未回应，任一方可申请平台介入。',
+        description: '等待对方回应；不同意可申请平台介入。',
       }
     case 'termination_agreed':
       return {
         title: '双方已同意解除合作',
-        description:
-          '按协商一致处理：需求回到待接单、合同作废、已缴款项按原路口径退还，双方都不担违约金，会话转为只读。',
+        description: '合同作废、款项原路退还，双方免责。',
       }
     case 'termination_rejected':
       return {
         title: '对方不同意解除合作',
-        description:
-          '协商不一致。任一方可申请平台介入，由平台核对合同、支付、交付与沟通记录后判定责任方并按责任执行；也可以继续履约。',
+        description: '可申请平台介入判责，或继续履约。',
       }
     // 协商解除：担保与自管两种模式共用这几条卡片码。**只用于渲染历史卡片**——2026-10-06 起
     // 这条通道并入「解除合作」案件（上面的 termination_*），事件码不再写入。
     case 'unbind_request_submitted':
       return {
         title: '解除绑定申请已提交',
-        description:
-          '等待对方确认。对方同意后需求回到待接单，担保模式下同时作废合同、已缴定金全额原路退还；长时间未处理则申请自动作废，需求按原约定继续。',
+        description: '等待对方确认。',
       }
     case 'unbind_request_approved':
       return {
         title: '双方已同意解除绑定',
-        description:
-          '需求已回到待接单状态，担保模式下同时作废合同、已缴定金全额原路退还，双方仍可在会话里沟通。',
+        description: '需求回到待接单；担保模式下定金原路退还。',
       }
     case 'unbind_request_rejected':
       return {
         title: '解除绑定申请未获同意',
-        description: '需求按原约定继续履行。确有需要可在状态窗口内重新发起一笔申请。',
+        description: '需求按原约定继续。',
       }
     case 'unbind_request_auto_rejected':
       return {
         title: '解除绑定申请已自动驳回',
-        description:
-          '按当时「担保模式不支持协商解除」的规则被自动驳回；该规则已取消，现在双方都可直接申请解除。',
+        description: '按旧规则自动驳回，现已可直接申请。',
       }
     case 'unbind_request_expired':
       return {
         title: '解除绑定申请已自动作废',
-        description: '对方长时间未处理，需求按原约定继续。确需解除可重新发起申请。',
+        description: '对方未处理，需求按原约定继续。',
       }
     // 解除合作案件进展（AD-5）：后端在案件每一步流转时都写一条卡片，这里给出对应中文。
     // 案件详情（责任方、退款与赔付金额、协商表态）都在需求卡片的解除合作弹窗里，
@@ -425,37 +405,37 @@ export function conversationCardMeta(
     case 'breach_case_submitted':
       return {
         title: '解除合作案件已立案',
-        description: '等待对方回应；对方同意即按协商一致处理，不同意或超时未回应可申请平台介入判定。',
+        description: '等待对方回应；不同意可申请平台介入。',
       }
     case 'breach_case_ai_judged':
       return {
         title: '平台已完成责任判定',
-        description: '请在案件内表态是否接受判定，双方都接受后平台才会执行退款与赔付。',
+        description: '请在案件内表态，双方接受后执行。',
       }
     case 'breach_case_support_reviewing':
       return {
         title: '解除合作案件已转客服人工判定',
-        description: '请等待客服处理，判定结论会同步到案件与这里。',
+        description: '等待客服判定。',
       }
     case 'breach_case_resolved':
       return {
         title: '解除合作案件已结案',
-        description: '资金已按判定处理完成，需求已回到待接单状态。',
+        description: '资金已处理，需求回到待接单。',
       }
     case 'breach_case_rejected':
       return {
         title: '解除合作申请未获支持',
-        description: '平台未支持本次解除合作申请，案件已关闭，双方合同仍按原约定继续履行。',
+        description: '案件已关闭，合同继续履行。',
       }
     case 'breach_case_withdrawn':
       return {
         title: '解除合作申请已撤回',
-        description: '发起人已撤回本次申请，合作按原约定继续履行。',
+        description: '合作按原约定继续。',
       }
     case 'breach_case_manual_required':
       return {
         title: '解除合作案件需人工处理',
-        description: '资金处理未能自动完成，客服会尽快跟进并在案件内同步进展。',
+        description: '资金未自动完成，客服跟进中。',
       }
     // 「需人工处理」之后的两个事件码：后台滞留提醒与客服人工结案。停在人工处理这一段时
     // 案件不再有自动动作，会话里不补卡片，双方的感受就是「点了申报之后再没下文」。
@@ -463,95 +443,93 @@ export function conversationCardMeta(
     case 'breach_case_manual_required_reminder':
       return {
         title: '解除合作案件仍在人工处理中',
-        description:
-          '案件转人工后仍未收口，客服会尽快处理并在案件内同步结论；双方的接单保证金在此期间继续冻结。',
+        description: '客服处理中，接单保证金继续冻结。',
       }
     case 'breach_case_manual_closed':
       return {
         title: '解除合作案件已由客服人工结案',
-        description: '本次解除合作案件已由客服人工处理完毕，结论与资金口径见案件详情与需求卡片。',
+        description: '结论见案件详情。',
       }
     // 协商还价与「申请平台介入」此前不写卡片，对方不提就没人在会话里说一声。
     // 与案件其它卡片同口径：详情在弹窗里，不给按钮。
     case 'breach_case_negotiation_proposed':
       return {
         title: '对方已发起解除合作协商',
-        description:
-          '请在案件内表态是否接受该退款额度。不接受可改额度重新提议，或申请平台介入判定。',
+        description: '请在案件内表态是否接受该额度。',
       }
     case 'breach_case_negotiation_rejected':
       return {
         title: '协商提议未获同意',
-        description: '双方可改额度重新提议，或由任一方申请平台介入判定责任方。',
+        description: '可改额度重新提议，或申请平台介入。',
       }
     case 'breach_case_ai_reviewing':
       return {
         title: '已申请平台介入',
-        description: '平台将依据会话记录与交付材料判定责任方，判定结论会同步到案件与这里。',
+        description: '平台将依据记录判定责任方。',
       }
     // 解除合作案件进展：解除合作此前完全不写卡片，界面却承诺「对方会在会话里收到通知」。
     // 每一步流转都有卡片，双方不必点进弹窗才知道进展。
     case 'after_sales_case_opened':
       return {
         title: '解除合作申请已提交',
-        description: '诉求与诉求金额都在需求卡片的解除合作弹窗里，等待对方接受或不接受。',
+        description: '等待对方回应。',
       }
     case 'after_sales_case_negotiation_proposed':
       return {
         title: '对方已发起解除合作协商',
-        description: '请在解除合作弹窗里表态是否接受该方案。不接受可改额度重新提议。',
+        description: '请在解除合作弹窗里表态。',
       }
     case 'after_sales_case_negotiation_rejected':
       return {
         title: '解除合作协商提议未获同意',
-        description: '双方可改额度重新提议，或由任一方按原诉求表态、交平台裁决。',
+        description: '可改额度重新提议，或交平台裁决。',
       }
     case 'after_sales_case_agreed':
       return {
         title: '对方已接受诉求',
-        description: '等待发起人确认落实后结案；发起人也可上报未落实转平台裁决。',
+        description: '等待发起人确认落实后结案。',
       }
     case 'after_sales_case_rework_accepted':
       return {
         title: '对方已接受返工诉求',
-        description: '返工完成后由发起人验收：确认落实即结案，未落实则转平台裁决。',
+        description: '返工完成后由发起人验收。',
       }
     case 'after_sales_case_rework_unfulfilled':
       return {
         title: '返工未落实',
-        description: '解除合作案件已转平台裁决，判定结论会同步到案件与这里。',
+        description: '已转平台裁决。',
       }
     case 'after_sales_case_support_reviewing':
       return {
         title: '解除合作案件已转客服裁决',
-        description: '请等待平台判定，裁决结论与资金动账都会同步到案件与这里。',
+        description: '等待平台裁决。',
       }
     case 'after_sales_case_funds_processing':
       // 这张卡片同一事件码有两种来路：双方一致（对方点了「接受诉求」）与平台裁决。卡片没有载荷，
       // 只说资金的去向与进度——写成「裁决已认定」会把双方谈成的案子说成平台介入。
       return {
         title: '解除合作资金处理中',
-        description: '退款与赔付正在处理中（渠道退款有等待期），完成后会再有一条结案通知。',
+        description: '退款与赔付处理中，完成后另行通知。',
       }
     case 'after_sales_case_resolved':
       return {
         title: '解除合作案件已结案',
-        description: '资金已处理完成：尾款原路退还需求方，赔付从开发者保证金扣划。',
+        description: '尾款原路退还，赔付从开发者保证金扣划。',
       }
     case 'after_sales_case_rejected':
       return {
         title: '解除合作申请未获支持',
-        description: '平台未支持本次解除合作诉求，案件已关闭。',
+        description: '案件已关闭。',
       }
     case 'after_sales_case_withdrawn':
       return {
         title: '解除合作申请已撤回',
-        description: '发起人已撤回本次申请，案件已关闭；窗口内仍可重新发起。',
+        description: '案件已关闭，窗口内可重新发起。',
       }
     case 'after_sales_case_manual_required':
       return {
         title: '解除合作案件需人工处理',
-        description: '资金处理未能自动完成，客服会尽快跟进并在案件内同步进展。',
+        description: '资金未自动完成，客服跟进中。',
       }
     // 滞留提醒（BUG-046）：`manual_required` 之后案件不再有自动动作，会话里没有新卡片，
     // 双方的感受就是「转人工之后没下文」，而该需求的接单保证金冻结一直占着。与违约侧的
@@ -560,8 +538,7 @@ export function conversationCardMeta(
     case 'after_sales_case_manual_required_reminder':
       return {
         title: '解除合作案件仍在人工处理中',
-        description:
-          '案件转人工后仍未收口，客服会尽快处理并在案件内同步结论；该需求的接单保证金在此期间继续冻结。',
+        description: '客服处理中，接单保证金继续冻结。',
       }
     default:
       return null
