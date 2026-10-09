@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import type { PropType } from 'vue'
+import { computed, ref, watch, type PropType } from 'vue'
+import { isQqBrowser, isWechatBrowser } from '@/shared/auth/browser'
 
 type AuthMode = 'login' | 'register' | 'reset'
+type InAppOauthProvider = 'wechat' | 'qq'
+/** 端内登录面板：一键授权 / 账号密码，互斥展示 */
+type InAppLoginPanel = 'oauth' | 'account'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -46,6 +50,71 @@ const emit = defineEmits<{
   (e: 'update:acceptTerms', value: boolean): void
 }>()
 
+/**
+ * 微信 / QQ 内打开且对应快捷登录可用时，登录态优先展示端内一键登录；
+ * 两边都匹配时优先微信（MicroMessenger 更明确）。
+ */
+const inAppOauthProvider = computed<InAppOauthProvider | null>(() => {
+  if (props.authMode !== 'login') return null
+  if (isWechatBrowser() && props.wechatLoginAvailable) return 'wechat'
+  if (isQqBrowser() && props.qqLoginAvailable) return 'qq'
+  return null
+})
+
+const preferInAppOauth = computed(() => inAppOauthProvider.value !== null)
+
+/** 端内默认一键登录；点标题旁按钮可切到账号密码，两者不同时铺开。 */
+const inAppLoginPanel = ref<InAppLoginPanel>('oauth')
+
+watch(
+  () => [props.visible, preferInAppOauth.value] as const,
+  ([visible, inApp]) => {
+    if (visible && inApp) {
+      inAppLoginPanel.value = 'oauth'
+    }
+  },
+  { immediate: true },
+)
+
+const showInAppOauthPanel = computed(
+  () => preferInAppOauth.value && inAppLoginPanel.value === 'oauth',
+)
+const showAccountPanel = computed(
+  () => !preferInAppOauth.value || inAppLoginPanel.value === 'account',
+)
+
+/** 端内一键登录时标题不再写「登录账号」，避免与主按钮、底栏「登录」叠三层「登录」。 */
+const displayTitle = computed(() => {
+  if (preferInAppOauth.value) return '欢迎登录'
+  return props.authTitle
+})
+
+const inAppPanelSwitchLabel = computed(() => {
+  if (inAppLoginPanel.value === 'oauth') return '账号登录'
+  return inAppOauthProvider.value === 'qq' ? 'QQ登录' : '一键登录'
+})
+
+function toggleInAppLoginPanel() {
+  inAppLoginPanel.value = inAppLoginPanel.value === 'oauth' ? 'account' : 'oauth'
+}
+
+// 端内已置顶一键登录时，底部「其他方式」整块收起（微信里也不再露出 QQ / GitHub）。
+const showGithubLogin = computed(
+  () => props.authMode === 'login' && props.githubLoginAvailable && !preferInAppOauth.value,
+)
+const showWechatLogin = computed(
+  () => props.authMode === 'login' && props.wechatLoginAvailable && !preferInAppOauth.value,
+)
+const showQqLogin = computed(
+  () => props.authMode === 'login' && props.qqLoginAvailable && !preferInAppOauth.value,
+)
+const showGiteeLogin = computed(
+  () => props.authMode === 'login' && props.giteeLoginAvailable && !preferInAppOauth.value,
+)
+const showOtherLoginMethods = computed(
+  () => showGithubLogin.value || showWechatLogin.value || showQqLogin.value || showGiteeLogin.value,
+)
+
 function updateUsername(event: Event) {
   emit('update:authUsername', (event.target as HTMLInputElement).value)
 }
@@ -87,15 +156,50 @@ function submitOnEnter() {
     emit('submit')
   }
 }
+
+function emitInAppOauth() {
+  if (inAppOauthProvider.value === 'wechat') {
+    emit('loginWithWechat')
+    return
+  }
+  if (inAppOauthProvider.value === 'qq') {
+    emit('loginWithQq')
+  }
+}
 </script>
 
 <template>
   <div v-if="visible" class="auth-modal-wrap" @click.self="emit('close')">
-    <section class="auth-modal" aria-label="认证弹窗">
+    <section
+      class="auth-modal"
+      :class="{
+        'auth-modal--inapp-oauth': preferInAppOauth,
+        'auth-modal--inapp-oauth-panel': showInAppOauthPanel,
+        'auth-modal--inapp-account-panel': preferInAppOauth && showAccountPanel,
+      }"
+      aria-label="认证弹窗"
+    >
       <div class="auth-modal-head">
-        <h3>{{ authTitle }}</h3>
+        <div class="auth-modal-head__row">
+          <h3>{{ displayTitle }}</h3>
+          <button
+            v-if="preferInAppOauth"
+            class="auth-inapp-panel-switch"
+            type="button"
+            :aria-label="`切换到${inAppPanelSwitchLabel}`"
+            @click="toggleInAppLoginPanel"
+          >
+            {{ inAppPanelSwitchLabel }}
+          </button>
+        </div>
 
-        <div class="auth-mode-switch" role="tablist" aria-label="认证模式切换">
+        <!-- 端内一键登录态不用三段式 Tab；注册/重置走账号面板里的轻链 -->
+        <div
+          v-if="!preferInAppOauth"
+          class="auth-mode-switch"
+          role="tablist"
+          aria-label="认证模式切换"
+        >
           <button class="auth-mode-btn" :class="{ active: authMode === 'login' }" type="button"
             :aria-pressed="authMode === 'login'" :disabled="authMode === 'login'" @click="changeMode('login')">
             登录
@@ -111,7 +215,46 @@ function submitOnEnter() {
         </div>
       </div>
 
-      <div class="auth-modal-body">
+      <!-- 端内：默认只展示一键登录；账号密码由标题旁按钮切入 -->
+      <div v-if="showInAppOauthPanel" class="auth-inapp-login" aria-label="端内一键登录">
+        <button
+          class="auth-btn auth-login-method auth-inapp-login__btn"
+          :class="inAppOauthProvider === 'wechat' ? 'auth-inapp-login__btn--wechat' : 'auth-qq-login'"
+          type="button"
+          :disabled="(inAppOauthProvider === 'wechat' ? wechatLoginLoading : qqLoginLoading) || !acceptTerms"
+          :aria-busy="inAppOauthProvider === 'wechat' ? wechatLoginLoading : qqLoginLoading"
+          :aria-label="inAppOauthProvider === 'wechat' ? '使用微信一键登录' : '使用QQ一键登录'"
+          @click="emitInAppOauth"
+        >
+          <img
+            class="auth-login-method__icon"
+            :src="inAppOauthProvider === 'wechat' ? '/icons/wechat.svg' : qqLoginIconImage"
+            alt=""
+            aria-hidden="true"
+          />
+          <span v-if="inAppOauthProvider === 'wechat'">
+            {{ wechatLoginLoading ? '跳转中...' : '微信一键登录' }}
+          </span>
+          <span v-else>
+            {{ qqLoginLoading ? '跳转中...' : 'QQ一键登录' }}
+          </span>
+        </button>
+
+        <div class="auth-agreement-row auth-agreement-row--compact">
+          <label class="checkbox-label">
+            <input class="checkbox-input" type="checkbox" :checked="acceptTerms" @change="updateAcceptTerms" />
+            <span class="auth-agreement-row__text">
+              同意
+              <router-link to="/terms">用户协议</router-link>、
+              <router-link to="/privacy">隐私政策</router-link>
+              与
+              <router-link to="/payment-refund">支付说明</router-link>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div v-if="showAccountPanel" class="auth-modal-body">
         <template v-if="authMode !== 'reset'">
           <label>
             {{ authMode === 'login' ? '用户名或邮箱' : '用户名' }}
@@ -161,8 +304,16 @@ function submitOnEnter() {
               </button>
             </div>
           </label>
-          <div class="auth-forgot-row">
+          <div class="auth-forgot-row" :class="{ 'auth-forgot-row--split': preferInAppOauth }">
             <button class="auth-link" type="button" @click="changeMode('reset')">忘记密码？</button>
+            <button
+              v-if="preferInAppOauth"
+              class="auth-link"
+              type="button"
+              @click="changeMode('register')"
+            >
+              注册
+            </button>
           </div>
         </template>
 
@@ -192,48 +343,63 @@ function submitOnEnter() {
           </label>
         </template>
 
-        <template v-if="authMode === 'register' || authMode === 'login'">
-          <div class="auth-agreement-row">
+        <!-- 账号面板协议：端内用紧凑一行；普通浏览器保留完整文案卡片 -->
+        <template v-if="(authMode === 'register' || authMode === 'login') && showAccountPanel && !showInAppOauthPanel">
+          <div
+            class="auth-agreement-row"
+            :class="{ 'auth-agreement-row--compact': preferInAppOauth }"
+          >
             <label class="checkbox-label">
               <input class="checkbox-input" type="checkbox" :checked="acceptTerms" @change="updateAcceptTerms" />
-              <span class="checkbox-text">我已阅读并同意</span>
-              <span class="agreement-links">
-                <router-link to="/terms">《用户协议》</router-link>
-                <span>、</span>
-                <router-link to="/privacy">《隐私政策》</router-link>
-                <span>和</span>
-                <router-link to="/payment-refund">《支付与退款说明》</router-link>
-              </span>
+              <template v-if="preferInAppOauth">
+                <span class="auth-agreement-row__text">
+                  同意
+                  <router-link to="/terms">用户协议</router-link>、
+                  <router-link to="/privacy">隐私政策</router-link>
+                  与
+                  <router-link to="/payment-refund">支付说明</router-link>
+                </span>
+              </template>
+              <template v-else>
+                <span class="checkbox-text">我已阅读并同意</span>
+                <span class="agreement-links">
+                  <router-link to="/terms">《用户协议》</router-link>
+                  <span>、</span>
+                  <router-link to="/privacy">《隐私政策》</router-link>
+                  <span>和</span>
+                  <router-link to="/payment-refund">《支付与退款说明》</router-link>
+                </span>
+              </template>
             </label>
           </div>
         </template>
       </div>
 
       <div
-        v-if="authMode === 'login' && (githubLoginAvailable || wechatLoginAvailable || qqLoginAvailable || giteeLoginAvailable)"
+        v-if="showOtherLoginMethods"
         class="auth-login-methods" aria-label="第三方登录方式">
         <div class="auth-login-divider">
           <span>其他方式登录</span>
         </div>
-        <button v-if="authMode === 'login' && githubLoginAvailable" class="auth-btn ghost auth-login-method"
+        <button v-if="showGithubLogin" class="auth-btn ghost auth-login-method"
           type="button"
           :disabled="githubLoginLoading || !acceptTerms" @click="emit('loginWithGithub')">
           <img class="auth-login-method__icon" src="/icons/github.svg" alt="" aria-hidden="true" />
           <span>{{ githubLoginLoading ? '跳转中...' : 'GitHub 快捷登录' }}</span>
         </button>
-        <button v-if="authMode === 'login' && wechatLoginAvailable" class="auth-btn ghost auth-login-method"
+        <button v-if="showWechatLogin" class="auth-btn ghost auth-login-method"
           type="button"
           :disabled="wechatLoginLoading || !acceptTerms" @click="emit('loginWithWechat')">
           <img class="auth-login-method__icon" src="/icons/wechat.svg" alt="" aria-hidden="true" />
           <span>{{ wechatLoginLoading ? '跳转中...' : '微信快捷登录' }}</span>
         </button>
-        <button v-if="authMode === 'login' && qqLoginAvailable"
+        <button v-if="showQqLogin"
           class="auth-btn ghost auth-login-method auth-qq-login" type="button" :aria-busy="qqLoginLoading"
           aria-label="使用QQ登录" :disabled="qqLoginLoading || !acceptTerms" @click="emit('loginWithQq')">
           <img class="auth-login-method__icon" :src="qqLoginIconImage" alt="" aria-hidden="true" />
           <span>{{ qqLoginLoading ? '跳转中...' : 'QQ快捷登录' }}</span>
         </button>
-        <button v-if="authMode === 'login' && giteeLoginAvailable"
+        <button v-if="showGiteeLogin"
           class="auth-btn ghost auth-login-method auth-gitee-login" type="button" :aria-busy="giteeLoginLoading"
           aria-label="使用Gitee登录" :disabled="giteeLoginLoading || !acceptTerms" @click="emit('loginWithGitee')">
           <img class="auth-login-method__icon" src="/icons/gitee.svg" alt="" aria-hidden="true" />
@@ -241,9 +407,15 @@ function submitOnEnter() {
         </button>
       </div>
 
-      <div class="auth-modal-actions">
+      <div class="auth-modal-actions" :class="{ 'auth-modal-actions--single': showInAppOauthPanel }">
         <button class="auth-btn ghost" type="button" @click="emit('close')">取消</button>
-        <button class="auth-btn solid" type="button" :disabled="!canSubmitAuth()" @click="emit('submit')">
+        <button
+          v-if="showAccountPanel"
+          class="auth-btn solid"
+          type="button"
+          :disabled="!canSubmitAuth()"
+          @click="emit('submit')"
+        >
           {{
             authLoading
               ? '登录中...'

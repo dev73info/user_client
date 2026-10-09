@@ -412,6 +412,221 @@
   margin-top: 16px;
 }
 
+/* 微信 / QQ 内：标题行右侧切换一键 / 账号，两套面板互斥 */
+.auth-modal-head__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.auth-modal-head__row h3 {
+  margin: 0;
+  min-width: 0;
+}
+
+.auth-inapp-panel-switch {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(191, 219, 254, 0.95);
+  border-radius: 999px;
+  background: rgba(239, 246, 255, 0.96);
+  color: #1d4ed8;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.auth-inapp-panel-switch:hover {
+  background: rgba(219, 234, 254, 0.98);
+  border-color: rgba(147, 197, 253, 0.95);
+  transform: translateY(-1px);
+}
+
+.auth-inapp-panel-switch:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.auth-inapp-login {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.auth-modal--inapp-oauth .auth-modal-head h3 {
+  font-size: 20px;
+}
+
+.auth-modal--inapp-oauth-panel .auth-modal-actions--single .auth-btn {
+  flex: 1 1 auto;
+}
+
+/* 端内协议：去掉灰底卡片，勾选 + 一行短链，少占纵向空间 */
+.auth-agreement-row--compact {
+  margin: 0;
+}
+
+.auth-agreement-row--compact .checkbox-label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+  flex-wrap: nowrap;
+}
+
+.auth-agreement-row--compact .checkbox-label .checkbox-input {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  flex: 0 0 16px;
+  margin-top: 1px;
+  border-radius: 4px;
+}
+
+.auth-agreement-row--compact .checkbox-label .checkbox-input::after {
+  width: 8px;
+  height: 8px;
+}
+
+.auth-agreement-row--compact .auth-agreement-row__text {
+  min-width: 0;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.auth-agreement-row--compact .auth-agreement-row__text a {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-agreement-row--compact .auth-agreement-row__text a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.auth-modal--inapp-oauth.auth-modal {
+  padding: 16px;
+  gap: 0;
+}
+
+.auth-modal--inapp-oauth .auth-modal-head__row {
+  margin-bottom: 12px;
+}
+
+.auth-modal--inapp-oauth .auth-modal-body {
+  padding-top: 0;
+}
+
+.auth-modal--inapp-oauth .auth-modal-body label {
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.auth-modal--inapp-oauth .auth-modal-body input:not([type='checkbox']) {
+  padding: 9px 11px;
+}
+
+.auth-modal--inapp-oauth .auth-forgot-row {
+  margin: 2px 0 8px;
+}
+
+.auth-modal--inapp-oauth .auth-agreement-row--compact {
+  margin-top: 2px;
+  margin-bottom: 0;
+}
+
+.auth-modal--inapp-oauth .auth-modal-actions {
+  margin-top: 12px;
+  gap: 8px;
+}
+
+.auth-forgot-row--split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+}
+
+.auth-inapp-login__btn {
+  width: 100%;
+  min-height: 46px;
+  border: 0;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    opacity 180ms ease;
+}
+
+.auth-inapp-login__btn--wechat {
+  border: 1px solid #07c160;
+  color: #fff;
+  background: #07c160;
+}
+
+.auth-inapp-login__btn--wechat:hover:not(:disabled) {
+  border-color: #06ad56;
+  background: #06ad56;
+  box-shadow: 0 8px 18px rgba(7, 193, 96, 0.24);
+  transform: translateY(-1px);
+}
+
+.auth-inapp-login__btn--wechat:disabled {
+  cursor: not-allowed;
+  border-color: #9ee0b8;
+  background: #9ee0b8;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.auth-inapp-login .auth-qq-login {
+  border: 1px solid #28a8df;
+  color: #fff;
+  background: #28a8df;
+}
+
+.auth-inapp-login .auth-qq-login:hover:not(:disabled) {
+  border-color: #1594c9;
+  background: #1594c9;
+  box-shadow: 0 8px 18px rgba(40, 168, 223, 0.24);
+  transform: translateY(-1px);
+}
+
+.auth-inapp-login .auth-qq-login:disabled {
+  cursor: not-allowed;
+  border-color: #b8dce9;
+  color: rgba(255, 255, 255, 0.9);
+  background: #b8dce9;
+}
+
+
 .auth-login-divider {
   display: flex;
   align-items: center;
@@ -656,14 +871,23 @@
   background: rgba(255, 196, 107, 0.08);
 }
 
+/* 必须盖过 `.auth-modal label { display: grid; width: 100% }`，否则勾选框和文案会竖着叠在一起。 */
+.auth-modal .deposit-policy-check,
 .deposit-policy-check {
+  position: relative;
   margin-top: 0;
   margin-bottom: 0;
+  width: auto;
+  max-width: 100%;
   display: flex;
+  flex-direction: row;
   align-items: flex-start;
   gap: 10px;
   cursor: pointer;
   user-select: none;
+  font-size: 14px;
+  color: inherit;
+  font-weight: inherit;
 }
 
 .deposit-policy-check__input {
