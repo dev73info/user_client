@@ -25,6 +25,20 @@ export type ResourcePurchaseOrder = {
   refunded_at: string | null
   created_at: string
   updated_at: string
+  /** 累计已退现金（分）；支持部分退后可能小于 `amount_fen` */
+  refunded_amount_fen: number
+  /** 剩余可退现金（分）= `amount_fen - refunded_amount_fen` */
+  refundable_amount_fen: number
+  /** 是否仍在「支付后 365 天」可退窗口内 */
+  within_refund_window: boolean
+  /** 下载权是否已被退款收回 */
+  entitlement_revoked: boolean
+  /** 最近一次退款的留痕（原因 / 发起方 / 操作人） */
+  refund_reason: string | null
+  /** `seller` | `admin` | `buyer` */
+  refund_initiator: string | null
+  refund_operator: string | null
+  last_refund_at: string | null
 }
 
 export type CreateResourcePurchasePayload =
@@ -105,15 +119,78 @@ export async function getMyResourcePurchase(
   )
 }
 
-/** POST /api/resources/purchases/{order_no}/refund */
-export async function refundResourcePurchase(
+/** POST /api/resources/purchases/{order_no}/refund 已按需求 Q9 关闭：买家不可自助退，接口恒 403。 */
+
+export type ListSellerResourcePurchasesQuery = {
+  status?: string
+  limit?: number
+  offset?: number
+}
+
+/**
+ * 卖家主动退款请求体。
+ *
+ * `reason` 必填（≤200 字）；`amount_fen` 省略即退「剩余可退全额」，
+ * 显式指定时须 > 0 且不超过 `refundable_amount_fen`。
+ */
+export type SellerRefundPayload = {
+  reason: string
+  amount_fen?: number
+}
+
+/** GET /api/resources/purchases/sold —— 卖家售出订单列表（仅本人售出） */
+export async function listSellerResourcePurchases(
+  token: string,
+  query: ListSellerResourcePurchasesQuery = {},
+): Promise<ResourcePurchaseOrder[]> {
+  const params = new URLSearchParams()
+  if (query.status?.trim()) {
+    params.set('status', query.status.trim())
+  }
+  if (query.limit != null) {
+    params.set('limit', String(query.limit))
+  }
+  if (query.offset != null) {
+    params.set('offset', String(query.offset))
+  }
+  const qs = params.toString()
+  return requestJson<ResourcePurchaseOrder[]>(
+    `/dev/resources/purchases/sold${qs ? `?${qs}` : ''}`,
+    { method: 'GET', headers: authHeaders(token) },
+    '加载售出订单失败',
+  )
+}
+
+/** GET /api/resources/purchases/sold/{order_no} —— 卖家售出订单详情（仅本人售出） */
+export async function getSellerResourcePurchase(
   token: string,
   orderNo: string,
 ): Promise<ResourcePurchaseOrder> {
   return requestJson<ResourcePurchaseOrder>(
-    `/dev/resources/purchases/${encodeURIComponent(orderNo)}/refund`,
-    { method: 'POST', headers: authHeaders(token) },
-    '申请退款失败',
+    `/dev/resources/purchases/sold/${encodeURIComponent(orderNo)}`,
+    { method: 'GET', headers: authHeaders(token) },
+    '加载售出订单详情失败',
+  )
+}
+
+/** POST /api/resources/purchases/{order_no}/seller-refund —— 卖家主动退款（可全额 / 部分） */
+export async function sellerRefundResourcePurchase(
+  token: string,
+  orderNo: string,
+  payload: SellerRefundPayload,
+): Promise<ResourcePurchaseOrder> {
+  const body: { reason: string; amount_fen?: number } = { reason: payload.reason.trim() }
+  if (payload.amount_fen != null) {
+    body.amount_fen = payload.amount_fen
+  }
+  return requestJson<ResourcePurchaseOrder>(
+    `/dev/resources/purchases/${encodeURIComponent(orderNo)}/seller-refund`,
+    {
+      method: 'POST',
+      headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+      body: JSON.stringify(body),
+    },
+    '发起退款失败',
   )
 }
 

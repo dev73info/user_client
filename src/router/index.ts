@@ -261,7 +261,7 @@ const router = createRouter({
           component: () => import('@/views/MyResourcePurchasesView.vue'),
           meta: {
             title: '我的已购资源',
-            description: '查看已购数字化资源，未下载可退款',
+            description: '查看已购数字化资源（退款由卖家或平台发起）',
           },
         },
         // 团队服务已并入开发者工作台（路由见 router/dev.ts 的 devWorkbenchRoutes），旧路径保留重定向

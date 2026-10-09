@@ -5,14 +5,12 @@ import { useRouter } from 'vue-router'
 
 import {
   listMyResourcePurchases,
-  refundResourcePurchase,
   type ResourcePurchaseOrder,
 } from '@/api/resourcePurchase'
 import { getResourceDetailSlug } from '@/api/resourceTags'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
-  canSelfRefund,
   formatPurchaseAmountLabel,
   resourcePurchaseStatusLabel,
 } from '@/shared/resourceSale'
@@ -28,11 +26,11 @@ const auth = useAuthStore()
 const { showToast } = useToast()
 
 const loading = ref(false)
-const refundingOrderNo = ref<string | null>(null)
 const orders = ref<ResourcePurchaseOrder[]>([])
 
 const paidCount = computed(() => orders.value.filter((item) => item.status === 'paid').length)
-const refundableCount = computed(() => orders.value.filter((item) => canSelfRefund(item)).length)
+const refundingCount = computed(() => orders.value.filter((item) => item.status === 'refunding').length)
+const refundedCount = computed(() => orders.value.filter((item) => item.status === 'refunded').length)
 
 async function loadOrders() {
   auth.hydrate()
@@ -58,28 +56,6 @@ function openResource(order: ResourcePurchaseOrder) {
   })
 }
 
-async function requestRefund(order: ResourcePurchaseOrder) {
-  if (!auth.token.trim()) {
-    return
-  }
-  if (!canSelfRefund(order)) {
-    showToast('已下载订单不可自助退款，请联系客服', 'warning')
-    return
-  }
-  refundingOrderNo.value = order.order_no
-  try {
-    const updated = await refundResourcePurchase(auth.token, order.order_no)
-    orders.value = orders.value.map((item) =>
-      item.order_no === updated.order_no ? updated : item,
-    )
-    showToast('退款已完成，下载权已收回', 'success')
-  } catch (error) {
-    showToast(error instanceof Error ? error.message : '申请退款失败', 'error')
-  } finally {
-    refundingOrderNo.value = null
-  }
-}
-
 onMounted(() => {
   void loadOrders()
 })
@@ -100,8 +76,13 @@ onMounted(() => {
         </div>
         <div class="wb-strip__divider" />
         <div class="wb-strip__item">
-          <span class="wb-strip__label">可退款</span>
-          <span class="wb-strip__value">{{ loading ? '—' : refundableCount }}</span>
+          <span class="wb-strip__label">退款中</span>
+          <span class="wb-strip__value">{{ loading ? '—' : refundingCount }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">已退款</span>
+          <span class="wb-strip__value">{{ loading ? '—' : refundedCount }}</span>
         </div>
         <div class="wb-strip__item wb-strip__action">
           <TButton icon-only :loading="loading" aria-label="刷新已购列表" @click="loadOrders">
@@ -126,7 +107,7 @@ onMounted(() => {
       <p v-if="loading && !orders.length" class="wb-empty" role="status">正在加载已购资源…</p>
       <div v-else-if="!orders.length" class="wb-empty">
         <span class="wb-empty__title">还没有购买记录</span>
-        在资源详情页购买付费资源后，订单会出现在这里；未下载前可申请退款。
+        在资源详情页购买付费资源后，订单会出现在这里。退款由卖家或平台发起，如需退款请联系卖家或客服。
       </div>
       <ul v-else class="wb-list" aria-label="已购资源订单">
         <li v-for="order in orders" :key="order.order_no" class="wb-item">
@@ -141,20 +122,15 @@ onMounted(() => {
             <span class="wb-item__meta">
               卖家 {{ order.seller }}
               <template v-if="order.first_downloaded_at"> · 已下载</template>
-              <template v-else-if="order.status === 'paid'"> · 未下载，可退款</template>
+              <template v-else-if="order.status === 'paid'"> · 未下载</template>
+              <template v-if="order.entitlement_revoked"> · 下载权已被退款收回</template>
+            </span>
+            <span v-if="order.status === 'paid'" class="wb-item__meta">
+              退款由卖家或平台发起，如需退款请联系卖家或客服。
             </span>
           </div>
           <div class="wb-item__actions">
             <TButton variant="outline" @click="openResource(order)">查看资源</TButton>
-            <TButton
-              v-if="canSelfRefund(order)"
-              variant="solid"
-              tone="accent"
-              :loading="refundingOrderNo === order.order_no"
-              @click="requestRefund(order)"
-            >
-              申请退款
-            </TButton>
           </div>
         </li>
       </ul>

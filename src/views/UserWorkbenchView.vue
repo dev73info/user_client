@@ -26,6 +26,7 @@ import {
   Files,
   Grid,
   Menu as MenuIcon,
+  Money,
   Service,
   Suitcase,
   Switch as SwitchIcon,
@@ -114,6 +115,13 @@ const devWorkbenchItems: DevWorkbenchItem[] = [
     activeNames: ['dev-resource-homepage-edit', 'dev-resource-versions'],
     icon: Files,
   },
+  {
+    // 卖家侧订单：资源项目管「卖什么」，这条管「卖出去之后怎样」。
+    label: '售出订单',
+    name: 'dev-resource-sold-purchases',
+    description: '查看卖出的资源订单并主动退款',
+    icon: Money,
+  },
   { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求', icon: Compass },
   {
     // 「交付记录」已并进这一页：交付物与到账长在需求单卡片上，菜单不再单列一条。
@@ -172,6 +180,11 @@ const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
       ...(realnameApproved.value ? [{ label: '我的合同', name: 'workbench-signatures', description: '查看合同与签署进度', activeNames: ['workbench-signature-detail'] }] : []),
         { label: '我的发票', name: 'workbench-invoices', description: '获取发票、查看与下载' },
       { label: '我的收藏', name: 'workbench-favorites', description: '查看收藏的社区帖子' },
+      {
+        label: '我的已购',
+        name: 'workbench-resource-purchases',
+        description: '已购数字资源，退款由卖家或平台发起',
+      },
       {
         label: '我的邀请',
         name: 'workbench-invite',

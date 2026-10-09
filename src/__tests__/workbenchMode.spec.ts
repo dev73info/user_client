@@ -27,9 +27,10 @@ vi.mock('ui_73info', async (importOriginal) => {
 // 点进去不会切回用户工作台，页面也据此走开发者体系的外观。系统通知与两者同一办法。
 const USER_ROUTE_NAMES = ['workbench', 'workbench-requirements', 'workbench-account',
   'workbench-signatures', 'workbench-invoices', 'workbench-points', 'workbench-perks',
-  'workbench-coupons', 'workbench-badges', 'workbench-favorites', 'workbench-invite',
-  'workbench-tickets', 'workbench-messages', 'workbench-notifications']
-const DEV_ROUTE_NAMES = ['dev-home', 'dev-resource-list', 'dev-requirement-hall', 'dev-my-requirements', 'dev-wallet',
+  'workbench-coupons', 'workbench-badges', 'workbench-favorites', 'workbench-resource-purchases',
+  'workbench-invite', 'workbench-tickets', 'workbench-messages', 'workbench-notifications']
+const DEV_ROUTE_NAMES = ['dev-home', 'dev-resource-list', 'dev-resource-sold-purchases', 'dev-requirement-hall',
+  'dev-my-requirements', 'dev-wallet',
   'workbench-teams', 'workbench-team-detail', 'workbench-team-resources', 'dev-messages',
   'dev-tickets', 'dev-invoices', 'dev-notifications']
 
@@ -38,6 +39,8 @@ const DEV_ROUTE_NAMES = ['dev-home', 'dev-resource-list', 'dev-requirement-hall'
 const DEV_ROUTE_PATHS: Record<string, string> = {
   'dev-wallet': '/workbench/developer/wallet/overview',
   'dev-invoices': '/workbench/developer/invoices',
+  'dev-resource-list': '/workbench/developer/resources/list',
+  'dev-resource-sold-purchases': '/workbench/developer/resources/sold',
 }
 
 const routes: RouteRecordRaw[] = [
@@ -116,7 +119,7 @@ describe('workbench mode switch', () => {
     const accountGroup = groups.find((group) => group.find('.user-workbench__menu-group-head').text().includes('账户服务'))!
     const inventoryGroup = groups.find((group) => group.find('.user-workbench__menu-group-head').text().includes('我的背包'))!
     expect(accountGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()))
-      .toEqual(['账户详情', '我的合同', '我的发票', '我的收藏', '我的邀请'])
+      .toEqual(['账户详情', '我的合同', '我的发票', '我的收藏', '我的已购', '我的邀请'])
     expect(inventoryGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()))
       .toEqual(['积分中心', '权益中心', '优惠券中心', '我的徽章墙'])
     expect(inventoryGroup.findAll('.user-workbench__submenu-link')[0]?.attributes('href'))
@@ -139,7 +142,7 @@ describe('workbench mode switch', () => {
     const devLinks = wrapper.findAll('.user-workbench__menu > .user-workbench__menu-link--root')
     expect(devLinks[0]?.find('.user-workbench__menu-icon').exists()).toBe(true)
     expect(devLinks.map((link) => link.text()))
-      .toEqual(['工作台总览', '资源项目', '需求大厅', '我的接单'])
+      .toEqual(['工作台总览', '资源项目', '售出订单', '需求大厅', '我的接单'])
     // 财务中心与团队服务是折叠组（分组头自带组名），消息中心夹在分组之间
     expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text()))
       .toEqual(['财务中心', '团队服务', '消息中心'])

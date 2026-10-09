@@ -4,17 +4,20 @@ import {
   canBuyerDownload,
   canDownloadResource,
   canSelfRefundPurchase,
+  canSellerRefundPurchase,
   canSwitchToPointsPrice,
   fenToYuanText,
   formatPurchaseAmountLabel,
   formatResourcePriceLabel,
   isPaidResource,
+  isPointsPurchaseOrder,
   isPointsResource,
   isPricedResource,
   isPurchaseRequiredError,
   needsPurchase,
   parsePointsPriceInput,
   parseYuanPriceInput,
+  refundInitiatorLabel,
   resourcePurchaseStatusLabel,
   toResourcePayChannel,
   yuanToFen,
@@ -111,6 +114,25 @@ describe('resourceSale', () => {
     expect(canSelfRefundPurchase({ status: 'paid', first_downloaded_at: null })).toBe(true)
     expect(canSelfRefundPurchase({ status: 'paid', first_downloaded_at: '2026-10-08' })).toBe(false)
     expect(canSelfRefundPurchase({ status: 'refunded', first_downloaded_at: null })).toBe(false)
+  })
+
+  it('seller refund gate covers cash paid orders with remaining balance', () => {
+    const base = { status: 'paid', amount_points: 0, within_refund_window: true, refundable_amount_fen: 1000 }
+    expect(canSellerRefundPurchase(base)).toBe(true)
+    // 已下载也能退：卖家通道不受买家自助退的「已下载」限制
+    expect(canSellerRefundPurchase({ ...base, first_downloaded_at: '2026-10-08' })).toBe(true)
+    // 部分退后仍有余额 → 仍可再退
+    expect(canSellerRefundPurchase({ ...base, refundable_amount_fen: 400 })).toBe(true)
+    // 退满 / 超窗口 / 非 paid / 积分单 → 不给按钮
+    expect(canSellerRefundPurchase({ ...base, refundable_amount_fen: 0 })).toBe(false)
+    expect(canSellerRefundPurchase({ ...base, within_refund_window: false })).toBe(false)
+    expect(canSellerRefundPurchase({ ...base, status: 'refunded' })).toBe(false)
+    expect(canSellerRefundPurchase({ ...base, amount_points: 80, amount_fen: 0 })).toBe(false)
+    expect(isPointsPurchaseOrder({ amount_points: 80 })).toBe(true)
+    expect(isPointsPurchaseOrder({ amount_points: 0 })).toBe(false)
+    expect(refundInitiatorLabel('seller')).toBe('卖家')
+    expect(refundInitiatorLabel('admin')).toBe('平台')
+    expect(refundInitiatorLabel(null)).toBe('未知')
   })
 
   it('maps pay channel and status labels', () => {

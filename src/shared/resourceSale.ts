@@ -207,6 +207,51 @@ export function canSelfRefundPurchase(order: ResourcePurchaseOrderLike): boolean
 /** 与 `canSelfRefundPurchase` 同义（页面侧命名）。 */
 export const canSelfRefund = canSelfRefundPurchase
 
+/** 主动退款（卖家 / 平台通道）判定需要的字段。 */
+export type SellerRefundOrderLike = ResourcePurchaseOrderLike & {
+  within_refund_window?: boolean | null
+  refundable_amount_fen?: number | null
+}
+
+/** 积分支付订单：本轮不纳入主动退款（需求 Q7），列表里不给退款按钮。 */
+export function isPointsPurchaseOrder(order: { amount_points?: number | null }): boolean {
+  return Number(order.amount_points ?? 0) > 0
+}
+
+/**
+ * 卖家 / 平台能否对该订单发起主动退款。
+ *
+ * 条件：现金单、`paid`、仍在「支付后 365 天」窗口内、且还有可退余额。
+ * 与买家自助退的关键差异是**已下载也能退**——这里刻意不看 `first_downloaded_at`。
+ * 前端只用来决定按钮是否展示，最终以后端为准。
+ */
+export function canSellerRefundPurchase(order: SellerRefundOrderLike): boolean {
+  if (order.status !== 'paid') {
+    return false
+  }
+  if (isPointsPurchaseOrder(order)) {
+    return false
+  }
+  if (order.within_refund_window === false) {
+    return false
+  }
+  return Number(order.refundable_amount_fen ?? 0) > 0
+}
+
+/** 退款发起方文案（订单留痕 `refund_initiator`）。 */
+export function refundInitiatorLabel(initiator: string | null | undefined): string {
+  switch ((initiator ?? '').trim()) {
+    case 'seller':
+      return '卖家'
+    case 'admin':
+      return '平台'
+    case 'buyer':
+      return '买家'
+    default:
+      return '未知'
+  }
+}
+
 export function resourcePurchaseStatusLabel(status: string): string {
   switch (status) {
     case 'pending':

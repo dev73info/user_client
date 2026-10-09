@@ -127,6 +127,20 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    // 卖家侧「售出订单」：与买家侧「我的已购资源」（workbench-resource-purchases）是一件事的两面，
+    // 故意取两个不会互相混淆的名字——那边是买进来的，这边是卖出去的。
+    path: 'developer/resources/sold',
+    name: 'dev-resource-sold-purchases',
+    component: () => import('@/views/DevSoldResourcePurchasesView.vue'),
+    meta: {
+      title: '资源管理 / 售出订单',
+      description: '查看卖出的付费资源订单并主动退款。',
+      devArea: true,
+      requiresDevAccess: true,
+      requiresRealname: true,
+    },
+  },
+  {
     path: 'developer/resources/:resourceId/homepage',
     name: 'dev-resource-homepage-edit',
     component: () => import('@/views/DevResourceHomepageEditView.vue'),
