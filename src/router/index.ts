@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { getMyRealnameVerification } from '@/api/realname'
 import { HttpError } from '@/api/http'
 import { devRoutes, devWorkbenchRoutes, installDevRouteGuard } from '@/router/dev'
-import { isWechatPaymentHandoff } from '@/utils/wechatPayment'
+import { isResourceWechatMiddlePage, isWechatPaymentHandoff } from '@/utils/wechatPayment'
 
 const SPA_FALLBACK_REDIRECT_PARAM = '__spa_redirect'
 
@@ -255,6 +255,15 @@ const router = createRouter({
             description: '查看收藏的社区帖子',
           },
         },
+        {
+          path: 'resource-purchases',
+          name: 'workbench-resource-purchases',
+          component: () => import('@/views/MyResourcePurchasesView.vue'),
+          meta: {
+            title: '我的已购资源',
+            description: '查看已购数字化资源，未下载可退款',
+          },
+        },
         // 团队服务已并入开发者工作台（路由见 router/dev.ts 的 devWorkbenchRoutes），旧路径保留重定向
         { path: 'teams', redirect: { name: 'workbench-teams' } },
         {
@@ -482,7 +491,10 @@ router.beforeEach(async (to, from, next) => {
     to.path.startsWith('/invite') ||
     to.name === 'profile' ||
     to.name === 'messages' ||
-    (to.name === 'payment' && !isWechatPaymentHandoff(to.query)) ||
+    // 支付页默认要登录；微信 handoff / 资源购买中间页（token 在 query）放行
+    (to.name === 'payment' &&
+      !isWechatPaymentHandoff(to.query) &&
+      !isResourceWechatMiddlePage(to.query)) ||
     to.name === 'tickets' ||
     to.name === 'contract-sign' ||
     to.name === 'realname'

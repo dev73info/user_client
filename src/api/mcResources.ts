@@ -38,6 +38,12 @@ export type CreateMcResourceRequest = {
   origin_url?: string | null
   origin_org?: string | null
   origin_note?: string | null
+  /** 售价（分）；0=免费；与 price_points 互斥 */
+  price_fen?: number | null
+  /** 积分售价；0=不走积分购；与 price_fen 互斥 */
+  price_points?: number | null
+  /** 版权声明勾选 */
+  copyright_declared?: boolean | null
 }
 
 export type McResourcePayload = {
@@ -66,6 +72,17 @@ export type McResourcePayload = {
   origin_url: string | null
   origin_org: string | null
   origin_note: string | null
+  /** 售价（分）；0=免费；与 price_points 互斥 */
+  price_fen: number
+  /** 积分售价；0=不走积分购；与 price_fen 互斥 */
+  price_points: number
+  /** 是否已勾选版权声明 */
+  copyright_declared: boolean
+  copyright_declared_at?: string | null
+  /** 曾设过现金售价：设过即不可再改积分售价（改回免费后也一样） */
+  cash_price_locked?: boolean
+  /** 当前登录买家是否已有有效已购订单（列表通常为 false） */
+  purchased_by_me?: boolean
   created_at: string
   updated_at: string
   like_count?: number
@@ -120,6 +137,12 @@ export type UpdateMcResourceHomepageRequest = {
   origin_url?: string | null
   origin_org?: string | null
   origin_note?: string | null
+  /** 售价（分）；0=免费；已发布改价不强制重新审核；与 price_points 互斥 */
+  price_fen?: number | null
+  /** 积分售价；0=不走积分购；与 price_fen 互斥 */
+  price_points?: number | null
+  /** 版权声明勾选；付费提交审核时必须为 true */
+  copyright_declared?: boolean | null
 }
 
 export async function createMcResource(

@@ -22,6 +22,26 @@ import {
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
 import {
+  createResourcePurchase,
+  getMyResourcePurchase,
+  type ResourcePurchaseOrder,
+} from '@/api/resourcePurchase'
+import { getAdapayClientPlatform } from '@/api/adapay'
+import {
+  getWechatPaymentAuthorizationStatus,
+  getWechatPaymentAuthorizeUrl,
+} from '@/api/auth'
+import {
+  formatResourcePriceLabel,
+  isPointsResource,
+  isPricedResource,
+  isPurchaseRequiredError,
+  needsPurchase as resourceNeedsPurchase,
+  type ResourcePayChannelUi,
+} from '@/shared/resourceSale'
+import { isWechatBrowser } from '@/shared/auth/browser'
+import { getMyPoints } from '@/api/points'
+import {
   getResourceDetailSlug,
   getTagRouteSlug,
   normalizeTagName,
@@ -35,6 +55,7 @@ import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
+import QRCode from 'qrcode'
 import { TLoading } from 'ui_73info'
 
 type CommentGate = {
@@ -74,6 +95,19 @@ const commentSubmitting = ref(false)
 const commentText = ref('')
 const likeSubmitting = ref(false)
 const pageContentRef = ref<HTMLElement | null>(null)
+const purchasePanelOpen = ref(false)
+const purchaseSubmitting = ref(false)
+const purchaseChannel = ref<ResourcePayChannelUi>('alipay')
+const purchaseOrder = ref<ResourcePurchaseOrder | null>(null)
+const purchaseQrDataUrl = ref('')
+/**
+ * 购买失败原因：原样透传后端返回的文案（后端 409/500 的响应体会被 requestJson 读成
+ * HttpError.message）。toast 只停留 2.6 秒，失败后用户常常看不到原因就重复下单，
+ * 所以在弹窗内再持久展示一次。
+ */
+const purchaseError = ref('')
+const buyerPointsBalance = ref<number | null>(null)
+let purchasePollTimer: ReturnType<typeof setInterval> | null = null
 
 const tagNames = computed(
   () => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [],
@@ -207,6 +241,35 @@ const resourceCoverUrl = computed(() =>
 const latestVersion = computed(() => versions.value[0] ?? null)
 const pageContentHtml = computed(() => formatHomepageContent(resource.value?.release_note || ''))
 const isPublishedResource = computed(() => resource.value?.visibility === 'published')
+const isOwner = computed(() => {
+  const creator = resource.value?.creator?.trim() ?? ''
+  const username = auth.username?.trim() ?? ''
+  return Boolean(creator && username && creator === username)
+})
+const priceLabel = computed(() =>
+  formatResourcePriceLabel(resource.value?.price_fen ?? 0, resource.value?.price_points ?? 0),
+)
+const isPointsListing = computed(() => isPointsResource(resource.value?.price_points))
+const needsPurchase = computed(() => {
+  if (!resource.value) {
+    return false
+  }
+  return resourceNeedsPurchase({
+    priceFen: resource.value.price_fen,
+    pricePoints: resource.value.price_points,
+    purchasedByMe: Boolean(resource.value.purchased_by_me),
+    isOwner: isOwner.value,
+  })
+})
+const primaryCtaLabel = computed(() => {
+  if (downloadStore.state.active) {
+    return '下载中...'
+  }
+  if (needsPurchase.value) {
+    return `购买 ${priceLabel.value}`
+  }
+  return '下载最新版本'
+})
 const commentTextLength = computed(() => Array.from(commentText.value.trim()).length)
 const commentCountLabel = computed(() =>
   comments.value.length > 0 ? `${comments.value.length} 条评论` : '暂无评论',
@@ -390,6 +453,219 @@ function formatUpdatedDate(value: string): string {
   })
 }
 
+function stopPurchasePoll() {
+  if (purchasePollTimer !== null) {
+    clearInterval(purchasePollTimer)
+    purchasePollTimer = null
+  }
+}
+
+async function openPurchasePanel() {
+  if (!auth.isAuthed) {
+    showToast('请先登录后再购买', 'info')
+    void router.push({
+      name: 'home',
+      query: {
+        modal: 'auth',
+        mode: 'login',
+        redirect_to: route.fullPath,
+      },
+    })
+    return
+  }
+  purchasePanelOpen.value = true
+  purchaseOrder.value = null
+  purchaseQrDataUrl.value = ''
+  purchaseError.value = ''
+  purchaseChannel.value = 'alipay'
+  buyerPointsBalance.value = null
+  if (isPointsListing.value && auth.token?.trim()) {
+    try {
+      const me = await getMyPoints(auth.token, { page: 1, page_size: 1 })
+      buyerPointsBalance.value = me.points_balance
+    } catch {
+      buyerPointsBalance.value = null
+    }
+  }
+}
+
+function closePurchasePanel() {
+  purchasePanelOpen.value = false
+  purchaseError.value = ''
+  stopPurchasePoll()
+}
+
+async function refreshResourceDetail() {
+  if (!resource.value) {
+    return
+  }
+  const token = auth.token?.trim() ? auth.token : null
+  resource.value = await getPublicMcResource(resource.value.id, token)
+  invalidateResourceListCache()
+}
+
+async function handlePurchasePaid(order: ResourcePurchaseOrder) {
+  stopPurchasePoll()
+  purchaseOrder.value = order
+  purchaseQrDataUrl.value = ''
+  purchaseError.value = ''
+  showToast('购买成功，可以下载了', 'success')
+  await refreshResourceDetail()
+  purchasePanelOpen.value = false
+}
+
+async function maybeRenderPurchaseQr(order: ResourcePurchaseOrder) {
+  const content = order.pay_url?.trim()
+  if (!content) {
+    purchaseQrDataUrl.value = ''
+    return
+  }
+  try {
+    purchaseQrDataUrl.value = await QRCode.toDataURL(content, {
+      width: 220,
+      margin: 1,
+    })
+  } catch {
+    purchaseQrDataUrl.value = ''
+  }
+}
+
+function startPurchasePoll(orderNo: string) {
+  stopPurchasePoll()
+  purchasePollTimer = setInterval(() => {
+    void (async () => {
+      if (!auth.token?.trim()) {
+        return
+      }
+      try {
+        const latest = await getMyResourcePurchase(auth.token, orderNo)
+        purchaseOrder.value = latest
+        if (latest.status === 'paid') {
+          await handlePurchasePaid(latest)
+        } else if (latest.status === 'failed' || latest.status === 'closed') {
+          stopPurchasePoll()
+          showToast('支付未完成，请重新发起购买', 'warning')
+        }
+      } catch {
+        /* 轮询失败不打断扫码流程 */
+      }
+    })()
+  }, 4000)
+}
+
+/**
+ * 仅微信内置浏览器需要先做静默授权拿 openid；
+ * PC / 普通浏览器：后端回本站中间页 URL 画码，手机扫码后在中间页 OAuth + JSAPI。
+ */
+async function ensureWechatPayAuthorized(token: string): Promise<boolean> {
+  if (!isWechatBrowser()) {
+    return true
+  }
+  const returnedFromOauth = route.query.wechat_oauth === 'success'
+  if (returnedFromOauth) {
+    return true
+  }
+  try {
+    const { authorized } = await getWechatPaymentAuthorizationStatus(token)
+    if (authorized) {
+      return true
+    }
+    const { url } = await getWechatPaymentAuthorizeUrl(token, window.location.href)
+    if (!url.trim()) {
+      purchaseError.value = '微信授权地址为空，请改用支付宝或稍后重试'
+      showToast(purchaseError.value, 'error')
+      return false
+    }
+    showToast('首次微信支付需先完成微信授权，正在跳转…', 'info')
+    window.location.assign(url)
+    return false
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '检查微信授权失败'
+    purchaseError.value = message
+    showToast(message, 'error')
+    return false
+  }
+}
+
+async function submitPurchase() {
+  if (!resource.value || !auth.token?.trim()) {
+    void openPurchasePanel()
+    return
+  }
+  purchaseSubmitting.value = true
+  purchaseError.value = ''
+  try {
+    if (isPointsListing.value) {
+      const order = await createResourcePurchase(auth.token, resource.value.id, {
+        pay_channel: 'points',
+      })
+      purchaseOrder.value = order
+      if (order.status === 'paid') {
+        await handlePurchasePaid(order)
+        return
+      }
+      showToast('积分购买未完成，请稍后重试', 'warning')
+      return
+    }
+    // 微信内：先静默授权拿 openid，再走 wx_pub JSAPI；
+    // PC / 普通浏览器：直接下单，后端回本站中间页 URL 供扫码。
+    if (purchaseChannel.value === 'wechat') {
+      const ok = await ensureWechatPayAuthorized(auth.token)
+      if (!ok) {
+        return
+      }
+    }
+    const order = await createResourcePurchase(auth.token, resource.value.id, {
+      pay_channel: purchaseChannel.value,
+      client_platform: getAdapayClientPlatform(),
+    })
+    purchaseOrder.value = order
+    if (order.status === 'paid') {
+      await handlePurchasePaid(order)
+      return
+    }
+    await maybeRenderPurchaseQr(order)
+    if (order.pay_url?.trim()) {
+      showToast('请扫码完成支付', 'info')
+      startPurchasePoll(order.order_no)
+    } else {
+      showToast('订单已创建，支付完成后即可下载', 'info')
+      startPurchasePoll(order.order_no)
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '创建购买订单失败'
+    if (message.includes('已购买')) {
+      showToast(message, 'success')
+      await refreshResourceDetail()
+      purchasePanelOpen.value = false
+      return
+    }
+    // 后端拒绝的具体原因（例如 409 的响应体）原样留在弹窗里，别让用户只看到一个转瞬即逝的 toast
+    purchaseError.value = message
+    showToast(message, 'error')
+  } finally {
+    purchaseSubmitting.value = false
+  }
+}
+
+function handlePrimaryCta() {
+  if (needsPurchase.value) {
+    void openPurchasePanel()
+    return
+  }
+  void openResourceFile()
+}
+
+async function handleDownloadError(error: unknown) {
+  const message = error instanceof Error ? error.message : '下载资源失败'
+  if (error instanceof HttpError && error.status === 403 && isPurchaseRequiredError(message)) {
+    showToast('请先购买该资源后再下载', 'warning')
+    void openPurchasePanel()
+    return
+  }
+  showToast(message, 'warning')
+}
+
 async function openResourceFile() {
   if (!latestVersion.value?.resource) {
     showToast('当前还没有可下载的历史版本', 'info')
@@ -399,6 +675,10 @@ async function openResourceFile() {
   const resourceId = resource.value?.id
   if (resourceId == null) {
     showToast('资源编号无效', 'warning')
+    return
+  }
+  if (needsPurchase.value) {
+    void openPurchasePanel()
     return
   }
   if (!requireDownloadLogin()) {
@@ -421,7 +701,7 @@ async function openResourceFile() {
       fileName,
     )
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '下载资源失败', 'warning')
+    await handleDownloadError(error)
   }
 }
 
@@ -429,6 +709,10 @@ async function downloadVersion(version: PublicMcResourceVersionItem) {
   const resourceId = resource.value?.id
   if (resourceId == null) {
     showToast('资源编号无效', 'warning')
+    return
+  }
+  if (needsPurchase.value) {
+    void openPurchasePanel()
     return
   }
   if (!requireDownloadLogin()) {
@@ -451,7 +735,7 @@ async function downloadVersion(version: PublicMcResourceVersionItem) {
       fileName,
     )
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '下载资源失败', 'warning')
+    await handleDownloadError(error)
   }
 }
 
@@ -684,6 +968,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  stopPurchasePoll()
   resetSeoMeta()
 })
 
@@ -736,6 +1021,12 @@ watch(
               <div class="resource-detail-page__headline-row">
                 <div class="resource-detail-page__headline-left">
                   <span class="resource-detail-page__status-pill">{{ visibilityLabel }}</span>
+                  <span
+                    class="resource-detail-page__price-pill"
+                    :class="{
+                      'is-paid': isPricedResource(resource.price_fen, resource.price_points),
+                    }"
+                  >{{ priceLabel }}</span>
                   <span class="resource-detail-page__repost-badge"
                     :class="{ 'is-repost': isRepost }">{{ originTypeLabel }}</span>
                 </div>
@@ -784,8 +1075,8 @@ watch(
             <div class="resource-detail-page__cta-row">
               <div class="resource-detail-page__primary-actions">
                 <button class="resource-detail-page__primary-btn" type="button"
-                  :disabled="downloadStore.state.active" @click="openResourceFile">
-                  {{ downloadStore.state.active ? '下载中...' : '下载最新版本' }}
+                  :disabled="downloadStore.state.active || purchaseSubmitting" @click="handlePrimaryCta">
+                  {{ primaryCtaLabel }}
                 </button>
                 <div v-if="downloadStore.state.active" class="resource-detail-page__download-progress"
                   role="progressbar" :aria-valuenow="downloadStore.state.percent" aria-valuemin="0"
@@ -811,6 +1102,7 @@ watch(
                 继续浏览
               </button>
             </div>
+
             </div>
           </div>
 
@@ -840,7 +1132,23 @@ watch(
                 <div class="resource-detail-page__version-actions">
                   <button class="resource-detail-page__version-download" type="button"
                     :disabled="downloadStore.state.active" @click="downloadVersion(version)">
-                    {{ downloadStore.state.active && downloadStore.state.fileName === with73Extension(extractResourceFileNameFromUrl(version.resource, resolveResourceDownloadFileName(resource.file_name, `resource-${resource.id}-v${version.id}`))) ? `下载中 ${downloadStore.state.percent}%` : '下载' }}
+                    {{
+                      needsPurchase
+                        ? '购买后下载'
+                        : downloadStore.state.active &&
+                            downloadStore.state.fileName ===
+                              with73Extension(
+                                extractResourceFileNameFromUrl(
+                                  version.resource,
+                                  resolveResourceDownloadFileName(
+                                    resource.file_name,
+                                    `resource-${resource.id}-v${version.id}`,
+                                  ),
+                                ),
+                              )
+                          ? `下载中 ${downloadStore.state.percent}%`
+                          : '下载'
+                    }}
                   </button>
                 </div>
               </article>
@@ -918,6 +1226,120 @@ watch(
       </template>
     </TLoading>
   </main>
+
+  <Teleport to="body">
+    <div
+      v-if="purchasePanelOpen"
+      class="modal-wrap resource-purchase-modal-wrap"
+      @click.self="closePurchasePanel"
+    >
+      <section
+        class="pay-modal resource-purchase-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="购买确认"
+      >
+        <header class="resource-purchase-modal__head">
+          <div class="resource-purchase-modal__titles">
+            <p class="resource-purchase-modal__eyebrow">数字化资源</p>
+            <h3>购买确认</h3>
+          </div>
+          <button
+            type="button"
+            class="resource-purchase-modal__close"
+            aria-label="关闭"
+            @click="closePurchasePanel"
+          >
+            ×
+          </button>
+        </header>
+
+        <p v-if="resource" class="resource-purchase-modal__subject">
+          <strong>{{ resource.title }}</strong>
+        </p>
+
+        <div class="resource-purchase-modal__amount" aria-live="polite">
+          <span>{{ isPointsListing ? '应付积分' : '应付金额' }}</span>
+          <strong>{{ priceLabel }}</strong>
+        </div>
+
+        <p v-if="isPointsListing" class="resource-purchase-modal__balance">
+          当前积分余额：
+          <strong>{{ buyerPointsBalance == null ? '加载中…' : buyerPointsBalance }}</strong>
+        </p>
+
+        <ul class="resource-purchase-modal__notes">
+          <li>本商品为数字化资源（虚拟商品），支付成功后获得下载权。</li>
+          <li v-if="isPointsListing">确认后立即扣积分并解锁下载；平台抽成后净额计入卖家积分账户。</li>
+          <li>尚未产生成功下载前可申请退款；下载成功后不支持自助退款。</li>
+        </ul>
+
+        <div
+          v-if="!isPointsListing"
+          class="payment-options"
+          role="radiogroup"
+          aria-label="支付方式选择"
+        >
+          <button
+            type="button"
+            class="payment-option"
+            :class="{
+              active: purchaseChannel === 'alipay',
+              'payment-option--alipay': purchaseChannel === 'alipay',
+            }"
+            @click="purchaseChannel = 'alipay'"
+          >
+            <img class="payment-option-icon" src="/icons/alipay.png" alt="" />
+            支付宝
+          </button>
+          <button
+            type="button"
+            class="payment-option"
+            :class="{
+              active: purchaseChannel === 'wechat',
+              'payment-option--wechat': purchaseChannel === 'wechat',
+            }"
+            @click="purchaseChannel = 'wechat'"
+          >
+            <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="" />
+            微信
+          </button>
+        </div>
+
+        <p v-if="purchaseError" class="resource-purchase-modal__error" role="alert">
+          {{ purchaseError }}
+        </p>
+
+        <div class="actions">
+          <button class="ghost" type="button" @click="closePurchasePanel">取消</button>
+          <button
+            class="ghost primary"
+            type="button"
+            :disabled="purchaseSubmitting"
+            @click="submitPurchase"
+          >
+            {{
+              purchaseSubmitting
+                ? isPointsListing
+                  ? '兑换中...'
+                  : '下单中...'
+                : isPointsListing
+                  ? `确认兑换 ${priceLabel}`
+                  : `确认购买 ${priceLabel}`
+            }}
+          </button>
+        </div>
+
+        <div v-if="!isPointsListing && purchaseQrDataUrl" class="resource-purchase-modal__qr">
+          <img :src="purchaseQrDataUrl" alt="支付二维码" width="220" height="220" />
+          <p>请使用对应 App 扫码完成支付；支付成功后本页会自动解锁下载。</p>
+        </div>
+        <p v-else-if="purchaseOrder?.order_no" class="resource-purchase-modal__order">
+          订单号 {{ purchaseOrder.order_no }} · {{ purchaseOrder.status }}
+        </p>
+      </section>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -1026,6 +1448,243 @@ watch(
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 700;
+}
+
+.resource-detail-page__price-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #166534;
+  background: rgba(220, 252, 231, 0.95);
+  border: 1px solid rgba(134, 239, 172, 0.7);
+}
+
+.resource-detail-page__price-pill.is-paid {
+  color: #9a3412;
+  background: rgba(255, 237, 213, 0.96);
+  border-color: rgba(253, 186, 116, 0.75);
+}
+
+.resource-purchase-modal-wrap {
+  z-index: 90;
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(4px);
+}
+
+.resource-purchase-modal {
+  width: min(440px, 100%);
+  display: grid;
+  gap: 16px;
+  padding: 22px 22px 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(198, 210, 236, 0.95);
+  background:
+    radial-gradient(circle at top right, rgba(191, 219, 254, 0.55), transparent 42%),
+    rgba(255, 255, 255, 0.97);
+  box-shadow: 0 22px 48px rgba(37, 66, 130, 0.18);
+}
+
+.resource-purchase-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.resource-purchase-modal__titles {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.resource-purchase-modal__eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.resource-purchase-modal__head h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.resource-purchase-modal__close {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.96);
+  color: #64748b;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.resource-purchase-modal__close:hover {
+  color: #0f172a;
+  border-color: rgba(148, 163, 184, 0.9);
+  background: #fff;
+}
+
+.resource-purchase-modal__subject {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.96);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.resource-purchase-modal__subject strong {
+  display: block;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resource-purchase-modal__amount {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(253, 186, 116, 0.55);
+  background: linear-gradient(135deg, rgba(255, 247, 237, 0.98), rgba(255, 237, 213, 0.72));
+}
+
+.resource-purchase-modal__amount span {
+  color: #9a3412;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.resource-purchase-modal__amount strong {
+  color: #9a3412;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.resource-purchase-modal__balance {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.resource-purchase-modal__balance strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.resource-purchase-modal__notes {
+  margin: 0;
+  padding: 12px 14px 12px 30px;
+  border-radius: 14px;
+  border: 1px solid rgba(191, 219, 254, 0.85);
+  background: rgba(239, 246, 255, 0.72);
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.resource-purchase-modal__notes li + li {
+  margin-top: 4px;
+}
+
+/* 失败原因：与上方说明块同构，换成告警色，长文案允许换行 */
+.resource-purchase-modal__error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(252, 165, 165, 0.85);
+  background: rgba(254, 242, 242, 0.9);
+  color: #b91c1c;
+  font-size: 13px;
+  line-height: 1.65;
+  word-break: break-word;
+}
+
+.resource-purchase-modal .payment-options {
+  margin: 0;
+}
+
+.resource-purchase-modal .actions {
+  margin-top: 2px;
+  justify-content: flex-end;
+}
+
+.resource-purchase-modal__qr {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px dashed rgba(148, 163, 184, 0.7);
+  background: rgba(248, 250, 252, 0.9);
+  text-align: center;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.resource-purchase-modal__qr img {
+  border-radius: 12px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: #fff;
+}
+
+.resource-purchase-modal__qr p,
+.resource-purchase-modal__order {
+  margin: 0;
+}
+
+.resource-purchase-modal__order {
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .resource-purchase-modal {
+    width: min(100%, 100%);
+    gap: 14px;
+    padding: 18px 16px 16px;
+    border-radius: 20px;
+  }
+
+  .resource-purchase-modal__amount strong {
+    font-size: 24px;
+  }
+
+  .resource-purchase-modal .actions {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+  }
+
+  .resource-purchase-modal .actions .ghost {
+    width: 100%;
+  }
 }
 
 .resource-detail-page__status-pill {

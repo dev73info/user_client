@@ -43,3 +43,11 @@ export function isWechatPaymentHandoff(query: Record<string, unknown>): boolean 
     typeof query.payment_id === 'string' && Boolean(query.payment_id.trim()) &&
     typeof query.qr_content === 'string' && Boolean(parseWechatPayInfo(query.qr_content))
 }
+
+/** 资源购买 PC 出码 → 手机打开的本站中间页（凭 order token，无需登录） */
+export function isResourceWechatMiddlePage(query: Record<string, unknown>): boolean {
+  const flag = query.resource_wechat
+  const orderNo = typeof query.order_no === 'string' ? query.order_no.trim() : ''
+  const token = typeof query.token === 'string' ? query.token.trim() : ''
+  return (flag === '1' || flag === 1) && Boolean(orderNo) && Boolean(token)
+}

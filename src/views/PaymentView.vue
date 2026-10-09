@@ -23,6 +23,11 @@ import {
   getWechatPaymentAuthorizeUrl,
   isWechatPaymentAuthorizationRequired,
 } from '@/api/auth'
+import {
+  completeResourceWechatJsapi,
+  getResourceWechatAuthUrl,
+  getResourceWechatStatus,
+} from '@/api/resourcePurchase'
 
 const route = useRoute()
 const router = useRouter()
@@ -70,6 +75,7 @@ const clientPlatform = computed<AdapayClientPlatform>(() => {
   return getAdapayClientPlatform()
 })
 const rawPaymentContent = computed(() =>
+  resourcePayInfoRaw.value.trim() ||
   adapayPayment.value?.payUrl?.trim() ||
   developerDepositPayment.value?.payUrl?.trim() ||
   String(route.query.qr_content ?? route.query.alipay_order_string ?? ''),
@@ -105,6 +111,48 @@ let silentAuthExpireTimer: ReturnType<typeof setTimeout> | null = null
 // 后端授权 state 有效期 10 分钟，超时后二维码失效，需要重新发起。
 const SILENT_AUTH_QR_TTL_MS = 10 * 60 * 1000
 const isPaymentHandoff = computed(() => isWechatPaymentHandoff(route.query))
+/** 资源购买 PC 出码 → 手机打开的本站中间页（BUG-010 / R008） */
+const isResourceWechat = computed(
+  () =>
+    route.query.resource_wechat === '1' &&
+    Boolean(String(route.query.order_no ?? '').trim()) &&
+    Boolean(String(route.query.token ?? '').trim()),
+)
+const resourceOrderNo = computed(() => String(route.query.order_no ?? '').trim())
+const resourceToken = computed(() => String(route.query.token ?? '').trim())
+const resourcePayInfoRaw = ref('')
+const resourceCreatingOrder = ref(false)
+const resourceFlowAttempted = ref(false)
+/** wechat-status 回填的订单详情（中间页 query 本身不含金额） */
+const resourceOrderDetail = ref<{
+  order_no: string
+  amount_fen: number
+  resource_id: number
+  status: string
+} | null>(null)
+const resourceAmountCny = computed(() => {
+  const fen = resourceOrderDetail.value?.amount_fen
+  if (typeof fen !== 'number' || !Number.isFinite(fen)) {
+    return ''
+  }
+  return (fen / 100).toFixed(2)
+})
+const displayOrderNo = computed(() =>
+  isResourceWechat.value
+    ? resourceOrderDetail.value?.order_no || resourceOrderNo.value
+    : paymentId.value || (isIntentMode.value ? '待创建' : ''),
+)
+const displayAmountCny = computed(() =>
+  isResourceWechat.value ? resourceAmountCny.value : amountCny.value,
+)
+const displayRequirementLabel = computed(() => (isResourceWechat.value ? '资源号' : '需求号'))
+const displayRequirementId = computed(() =>
+  isResourceWechat.value
+    ? resourceOrderDetail.value
+      ? String(resourceOrderDetail.value.resource_id)
+      : ''
+    : requirementId.value,
+)
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 let wechatBridgeListener: (() => void) | null = null
@@ -141,11 +189,19 @@ function startRedirectCountdown() {
 }
 
 const isAlipayPage = computed(() => paymentChannel.value === 'alipay' && !isAdapayPayment.value)
-const isWechatPayment = computed(() => isAdapayPayment.value && paymentChannel.value === 'wechat')
-const isWechatMobilePayment = computed(
-  () => isWechatPayment.value && clientPlatform.value === 'mobile',
+const isWechatPayment = computed(
+  () =>
+    isResourceWechat.value ||
+    (isAdapayPayment.value && paymentChannel.value === 'wechat'),
 )
-const isWechatPcPayment = computed(() => isWechatPayment.value && clientPlatform.value === 'pc')
+const isWechatMobilePayment = computed(
+  () =>
+    isResourceWechat.value ||
+    (isWechatPayment.value && !isResourceWechat.value && clientPlatform.value === 'mobile'),
+)
+const isWechatPcPayment = computed(
+  () => isWechatPayment.value && !isResourceWechat.value && clientPlatform.value === 'pc',
+)
 const isAlipayMobilePayment = computed(
   () => isAdapayPayment.value && paymentChannel.value === 'alipay' && clientPlatform.value === 'mobile',
 )
@@ -240,7 +296,7 @@ const qrContent = computed(() => {
   return rawPaymentContent.value
 })
 const hasOrder = computed(() => {
-  if (isIntentMode.value) {
+  if (isResourceWechat.value || isIntentMode.value) {
     return true
   }
   return paymentId.value && (isAdapayPayment.value || qrContent.value || isAlipayPage.value)
@@ -359,6 +415,168 @@ type WechatBridge = {
 
 function getWechatBridge(): WechatBridge | null {
   return (window as Window & { WeixinJSBridge?: WechatBridge }).WeixinJSBridge ?? null
+}
+
+function applyResourceOrderDetail(order: {
+  order_no: string
+  amount_fen: number
+  resource_id: number
+  status: string
+}) {
+  resourceOrderDetail.value = {
+    order_no: order.order_no,
+    amount_fen: order.amount_fen,
+    resource_id: order.resource_id,
+    status: order.status,
+  }
+}
+
+/** 授权失败时仍拉 status，避免支付信息区空白 */
+async function loadResourceWechatOrderDetail() {
+  try {
+    const status = await getResourceWechatStatus(resourceOrderNo.value, resourceToken.value)
+    applyResourceOrderDetail(status.order)
+    return status
+  } catch {
+    return null
+  }
+}
+
+/** 资源购买中间页：OAuth（若需要）→ wx_pub → 自动调起 JSAPI */
+async function runResourceWechatFlow() {
+  if (!isResourceWechat.value || paid.value || wechatSubmitted.value) {
+    return
+  }
+  if (!isWechatBrowser.value) {
+    wechatPayError.value = '请用手机微信扫码打开本页后再完成支付。'
+    void loadResourceWechatOrderDetail()
+    return
+  }
+  if (resourceCreatingOrder.value || wechatAutoAuthRedirecting.value) {
+    return
+  }
+
+  const oauthError = String(route.query.wechat_oauth_error ?? '')
+  if (oauthError) {
+    wechatAuthChecked.value = true
+    wechatPayError.value = `微信授权失败：${oauthError}`
+    // 授权失败也会挡住下单；仍拉订单详情填支付信息，避免金额/单号空白。
+    void loadResourceWechatOrderDetail()
+    return
+  }
+
+  const returnedFromOauth = route.query.wechat_oauth === 'success'
+  if (!wechatAuthChecked.value) {
+    wechatAutoAuthRedirecting.value = true
+    let authorized = returnedFromOauth
+    try {
+      const status = await getResourceWechatStatus(resourceOrderNo.value, resourceToken.value)
+      applyResourceOrderDetail(status.order)
+      if (status.order.status === 'paid') {
+        markPaymentPaid()
+        return
+      }
+      if (!returnedFromOauth) {
+        authorized = status.authorized
+      }
+      wechatAuthChecked.value = true
+      if (!authorized) {
+        const { url, authorized: already } = await getResourceWechatAuthUrl(
+          resourceOrderNo.value,
+          resourceToken.value,
+          window.location.href,
+        )
+        if (already) {
+          authorized = true
+        } else if (url.trim()) {
+          window.location.assign(url)
+          return
+        } else {
+          wechatPayError.value = '微信授权地址为空，请返回电脑重新扫码。'
+          return
+        }
+      }
+    } catch (err) {
+      wechatAuthChecked.value = true
+      wechatPayError.value = err instanceof Error ? err.message : '检查微信授权失败'
+      return
+    } finally {
+      wechatAutoAuthRedirecting.value = false
+    }
+    if (!authorized) {
+      return
+    }
+  }
+
+  if (wechatPayInfo.value) {
+    if (!wechatAutoInvoked.value) {
+      wechatAutoInvoked.value = true
+      launchWechatPayment()
+    }
+    return
+  }
+
+  if (resourceFlowAttempted.value) {
+    return
+  }
+  resourceFlowAttempted.value = true
+  resourceCreatingOrder.value = true
+  wechatPayError.value = ''
+  try {
+    const result = await completeResourceWechatJsapi(resourceOrderNo.value, resourceToken.value)
+    applyResourceOrderDetail(result.order)
+    resourcePayInfoRaw.value = result.pay_info
+    if (result.order.status === 'paid') {
+      markPaymentPaid()
+      return
+    }
+    if (!parseWechatPayInfo(result.pay_info)) {
+      wechatPayError.value = '微信支付参数无效，请返回电脑重新下单。'
+      return
+    }
+    if (!wechatAutoInvoked.value) {
+      wechatAutoInvoked.value = true
+      launchWechatPayment()
+    }
+  } catch (err) {
+    resourceFlowAttempted.value = false
+    if (isWechatPaymentAuthorizationRequired(err)) {
+      wechatAuthChecked.value = false
+      resourceFlowAttempted.value = false
+      await runResourceWechatFlow()
+      return
+    }
+    wechatPayError.value = err instanceof Error ? err.message : '创建微信支付失败，请重试。'
+  } finally {
+    resourceCreatingOrder.value = false
+  }
+}
+
+async function pollResourceWechatStatus() {
+  if (!isResourceWechat.value || paid.value) {
+    return
+  }
+  try {
+    const status = await getResourceWechatStatus(resourceOrderNo.value, resourceToken.value)
+    applyResourceOrderDetail(status.order)
+    if (status.order.status === 'paid') {
+      markPaymentPaid()
+    }
+  } catch {
+    /* 轮询失败不打断 */
+  }
+}
+
+/** 清除 URL 上的授权错误参数后重新走静默授权 */
+async function retryResourceWechatAuth() {
+  wechatPayError.value = ''
+  wechatAuthChecked.value = false
+  resourceFlowAttempted.value = false
+  const nextQuery = { ...route.query } as Record<string, string | string[] | undefined>
+  delete nextQuery.wechat_oauth_error
+  delete nextQuery.wechat_oauth
+  await router.replace({ query: nextQuery })
+  await runResourceWechatFlow()
 }
 
 // 意图模式：微信内自动静默授权（绑定 open_id）后创建 adapay wx_pub 订单。
@@ -510,6 +728,10 @@ async function checkSilentWechatAuth() {
 // 授权完成后若为意图模式则自动下单，并在微信内自动调起支付，实现「点支付 → 直接输密码付款」。
 // 授权回调会带 wechat_oauth=success，据此避免重复跳转造成死循环。
 async function runWechatFlow() {
+  if (isResourceWechat.value) {
+    await runResourceWechatFlow()
+    return
+  }
   if (isPaymentHandoff.value) {
     if (!isWechatBrowser.value) {
       wechatPayError.value = '请用手机微信打开当前页面后再发起支付。'
@@ -829,8 +1051,10 @@ watch(
     isWechatPayment.value,
     isWechatBrowser.value,
     isIntentMode.value,
+    isResourceWechat.value,
     wechatPayInfo.value,
     creatingIntentOrder.value,
+    resourceCreatingOrder.value,
     paid.value,
     adapayPayment.value?.status ?? developerDepositPayment.value?.status,
   ],
@@ -862,12 +1086,18 @@ onMounted(() => {
     nowTick.value = Date.now()
   }, 1000)
 
-  if (!isPaymentHandoff.value && !paid.value) pollTimer = setInterval(() => {
-    if (document.visibilityState !== 'visible') {
-      return
-    }
-    void confirmPayment()
-  }, PAYMENT_POLL_INTERVAL_MS)
+  if (!isPaymentHandoff.value && !paid.value) {
+    pollTimer = setInterval(() => {
+      if (document.visibilityState !== 'visible') {
+        return
+      }
+      if (isResourceWechat.value) {
+        void pollResourceWechatStatus()
+        return
+      }
+      void confirmPayment()
+    }, PAYMENT_POLL_INTERVAL_MS)
+  }
 })
 
 onUnmounted(() => {
@@ -910,8 +1140,8 @@ onUnmounted(() => {
         <Clock v-else class="payment-result__icon" aria-hidden="true" />
         <h2>{{ paid ? '支付成功' : isPaymentHandoff ? '微信已返回支付成功' : '正在确认支付结果' }}</h2>
         <p>{{ paid ? '平台已确认收款。' : isPaymentHandoff ? '平台到账状态以电脑端订单为准，请勿重复付款。' : '微信付款已完成，平台到账确认中，请勿重复付款。' }}</p>
-        <p>订单号：{{ paymentId }}</p>
-        <p v-if="amountCny">支付金额：¥{{ amountCny }}</p>
+        <p>订单号：{{ isResourceWechat ? displayOrderNo : paymentId }}</p>
+        <p v-if="displayAmountCny">支付金额：¥{{ displayAmountCny }}</p>
         <p v-if="confirmationError" class="payment-launch-panel__error">{{ confirmationError }}</p>
         <button v-if="!paid && !isPaymentHandoff" class="payment-launch-panel__button" type="button"
           :disabled="confirming" @click="confirmPayment">{{ confirming ? '查询中...' : '查询支付结果' }}</button>
@@ -925,12 +1155,39 @@ onUnmounted(() => {
           <div v-if="isWechatMobilePayment" class="payment-launch-panel">
             <p class="payment-launch-panel__title">微信支付</p>
             <p class="payment-launch-panel__tip">
-              {{ !isWechatBrowser ? '请用手机微信打开当前页面后再发起支付。' : creatingIntentOrder || (isIntentMode && !wechatPayInfo) ? '正在创建支付订单，请稍候…' : '请在微信内点击下方按钮调起支付。' }}
+              {{
+                !isWechatBrowser
+                  ? (isResourceWechat ? '请用手机微信扫码打开本页后再完成支付。' : '请用手机微信打开当前页面后再发起支付。')
+                  : wechatPayError
+                    ? '授权或下单未完成，请重试。'
+                    : creatingIntentOrder || resourceCreatingOrder || ((isIntentMode || isResourceWechat) && !wechatPayInfo)
+                      ? '正在创建支付订单，请稍候…'
+                      : '请在微信内点击下方按钮调起支付。'
+              }}
             </p>
-            <button class="payment-launch-panel__button" type="button"
-              :disabled="wechatPayLoading || creatingIntentOrder || (isIntentMode && !wechatPayInfo) || !isWechatBrowser"
-              @click="launchWechatPayment">
-              {{ wechatPayLoading ? '正在打开微信支付...' : creatingIntentOrder || (isIntentMode && !wechatPayInfo) ? '正在创建微信支付订单...' : '发起微信支付' }}
+            <button
+              v-if="isResourceWechat && wechatPayError"
+              class="payment-launch-panel__button"
+              type="button"
+              :disabled="resourceCreatingOrder || wechatAutoAuthRedirecting"
+              @click="retryResourceWechatAuth"
+            >
+              重新授权并支付
+            </button>
+            <button
+              v-else
+              class="payment-launch-panel__button"
+              type="button"
+              :disabled="wechatPayLoading || creatingIntentOrder || resourceCreatingOrder || ((isIntentMode || isResourceWechat) && !wechatPayInfo) || !isWechatBrowser"
+              @click="launchWechatPayment"
+            >
+              {{
+                wechatPayLoading
+                  ? '正在打开微信支付...'
+                  : creatingIntentOrder || resourceCreatingOrder || ((isIntentMode || isResourceWechat) && !wechatPayInfo)
+                    ? '正在创建微信支付订单...'
+                    : '发起微信支付'
+              }}
             </button>
             <p v-if="wechatPayError" class="payment-launch-panel__error">{{ wechatPayError }}</p>
           </div>
@@ -996,13 +1253,13 @@ onUnmounted(() => {
           <p class="card-title">支付信息</p>
           <div class="meta-list">
             <p>
-              <span>需求号</span><strong>{{ requirementId }}</strong>
+              <span>{{ displayRequirementLabel }}</span><strong>{{ displayRequirementId }}</strong>
             </p>
             <p>
-              <span>订单号</span><strong>{{ paymentId || (isIntentMode ? '待创建' : '') }}</strong>
+              <span>订单号</span><strong>{{ displayOrderNo }}</strong>
             </p>
             <p>
-              <span>支付金额</span><strong>¥{{ amountCny }}</strong>
+              <span>支付金额</span><strong>¥{{ displayAmountCny }}</strong>
             </p>
             <p v-if="couponCode">
               <span>优惠券</span><strong>{{ couponCode }}</strong>

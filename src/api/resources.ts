@@ -65,6 +65,15 @@ export type PublicMcResourceItem = {
   origin_url: string | null
   origin_org: string | null
   origin_note: string | null
+  /** 售价（分）；0=免费；与 price_points 互斥 */
+  price_fen: number
+  /** 积分售价；0=不走积分购；与 price_fen 互斥 */
+  price_points: number
+  /** 是否已勾选版权声明 */
+  copyright_declared: boolean
+  copyright_declared_at?: string | null
+  /** 当前登录买家是否已有有效已购订单 */
+  purchased_by_me: boolean
 }
 
 export type PublicMcResourceVersionItem = {
