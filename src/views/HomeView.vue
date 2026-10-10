@@ -136,7 +136,8 @@ type SpotlightCard = {
   kind: 'requirement' | 'resource'
   title: string
   summary: string
-  budget: string
+  /** 卡片标签：与资源详情页同款胶囊，最多 3 个 */
+  tags: string[]
   /** 封面左上：平台 / 品类 */
   badge: string
   /** 封面右上：仅精选；空字符串表示不展示 */
@@ -801,7 +802,7 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
       kind: 'resource' as const,
       title: item.title,
       summary: buildResourceCardSummary(item),
-      budget: spotlightVersionLabel(item),
+      tags: spotlightTagChips(item),
       badge: spotlightCategoryBadge(item),
       mark,
       markTone,
@@ -1554,25 +1555,15 @@ function spotlightCategoryBadge(resource: PublicMcResourceItem): string {
   return platform || '平台资源'
 }
 
-/** 卡片 meta：只展示版本号（如 1.20.X），没有版本则留空。 */
-function spotlightVersionLabel(resource: PublicMcResourceItem): string {
-  for (const selection of resource.tag_selections) {
-    const groupName = normalizeTagName(selection.group_name)
-    const groupAlias = (selection.group_alias || '').trim().toLowerCase()
-    const pathLeaf = normalizeTagName(selection.group_path?.at(-1) || '')
-    const isVersionGroup =
-      groupAlias === 'version' || groupName === '版本' || pathLeaf === '版本'
-    if (!isVersionGroup) {
-      continue
-    }
-    const version = selection.tag_names
-      .map((tag) => normalizeTagName(tag))
-      .find(Boolean)
-    if (version) {
-      return version
-    }
-  }
-  return ''
+/**
+ * 卡片 meta：与资源详情页的标签行一致，按分组顺序展示标签名胶囊（如 客户端 / 26.2.X / Forge）。
+ * 单卡最多取 3 个，超出部分不展示，避免窄卡片被标签撑高。
+ */
+function spotlightTagChips(resource: PublicMcResourceItem, limit = 3): string[] {
+  const names = resource.tag_selections.flatMap((selection) =>
+    selection.tag_names.map((tag) => normalizeTagName(tag)).filter(Boolean),
+  )
+  return Array.from(new Set(names)).slice(0, limit)
 }
 
 function normalizeInlineText(value?: string | null): string {
@@ -2416,8 +2407,8 @@ async function submitPublishRequirement() {
                 <div class="portal-spotlight-card__body">
                   <h3>{{ card.title }}</h3>
                   <p v-if="card.summary">{{ card.summary }}</p>
-                  <div v-if="card.budget" class="portal-spotlight-card__meta-row">
-                    <strong>{{ card.budget }}</strong>
+                  <div v-if="card.tags.length" class="portal-spotlight-card__meta-row">
+                    <strong v-for="tag in card.tags" :key="tag">{{ tag }}</strong>
                   </div>
                   <div class="portal-spotlight-card__footer">
                     <div class="portal-spotlight-card__footer-main">
