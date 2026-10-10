@@ -313,6 +313,27 @@ defineExpose({
   goToPage,
 })
 
+/** 全角字符（中日韩文字与全角符号）：按 1 个字号宽度估算 */
+const FULL_WIDTH_CHAR_PATTERN =
+  /[\u2e80-\u303f\u3040-\u33ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]/
+
+/** 标题显示宽度估算（单位 em）：全角按 1，半角（英文 / 数字）按 0.55。 */
+function titleEmWidth(title: string): number {
+  let width = 0
+  for (const char of title.trim()) {
+    width += FULL_WIDTH_CHAR_PATTERN.test(char) ? 1 : 0.55
+  }
+  return width
+}
+
+/**
+ * 标题字号档位：字少用大字号单行展示（占满标题行预留的两行高度），
+ * 字多则缩小字号并压到最多两行，超出部分省略。
+ */
+function titleSizeClass(title: string): string {
+  return titleEmWidth(title) > 12 ? 'is-long' : ''
+}
+
 function formatUpdatedAt(value: string): string[] {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
@@ -509,7 +530,7 @@ watch(
             <div class="portal-resource-browser__headline">
               <div class="portal-resource-browser__headline-main">
                 <div class="portal-resource-browser__title-row">
-                  <h3>{{ card.title }}</h3>
+                  <h3 :class="titleSizeClass(card.title)">{{ card.title }}</h3>
                   <span class="portal-resource-browser__updated">
                     <span v-for="part in formatUpdatedAt(card.updatedAt)" :key="part">{{ part }}</span>
                   </span>
@@ -928,14 +949,31 @@ watch(
 
 .portal-resource-browser__title-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   width: 100%;
+  /* 标题行固定预留两行高度：短标题单行居中，长标题最多两行，卡片高度不随标题长短跳动 */
+  min-height: 44px;
 }
 
 .portal-resource-browser__title-row h3 {
   min-width: 0;
+  font-size: 19px;
+  line-height: 1.25;
+}
+
+/* 长标题：缩小字号，压到最多两行，超出省略 */
+.portal-resource-browser__title-row h3.is-long {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: 16px;
+  line-height: 1.3;
 }
 
 .portal-resource-browser__title-row .portal-resource-browser__updated {

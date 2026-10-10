@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
 
 import ResourceCatalog from '@/components/ResourceCatalog.vue'
 import MobileResourceList from '@/components/MobileResourceList.vue'
@@ -37,8 +37,8 @@ const activeListingMode = computed<ResourceListingSale | null>(() => {
   return parseResourceListingSale(route.query.sale)
 })
 
-function withListingQuery(query: Record<string, unknown> = {}) {
-  const next = { ...query }
+function withListingQuery(query: LocationQueryRaw = {}): LocationQueryRaw {
+  const next: LocationQueryRaw = { ...query }
   const mode = activeListingMode.value
   if (mode) {
     next.sale = mode
