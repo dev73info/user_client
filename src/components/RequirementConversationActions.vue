@@ -522,7 +522,8 @@ async function createContract() {
   actingKey.value = 'create-contract'
   try {
     await createRequirementContract(props.token, item.requirement_id)
-    showToast('合同已发起，等待双方签署', 'success')
+    // R012：合同页多了「自定义合同附件」。不提示这句，双方会直接签平台模板，事后要改就得作废重签。
+    showToast('合同已发起；如需补充条款，可在合同页准备自定义附件，平台放行后即可签署', 'success')
     await loadActions()
     emit('changed')
   } catch (error) {
