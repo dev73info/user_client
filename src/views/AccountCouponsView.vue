@@ -60,6 +60,7 @@ import { useAuthStore } from '@/stores/auth'
 import RealnameHero from '@/components/RealnameHero.vue'
 import WechatBindQrModal from '@/components/WechatBindQrModal.vue'
 import { missingEnterpriseOnboardingLabels } from '@/shared/realnameMaterials'
+import { dispatchProfileAvatarUpdated } from '@/shared/profileEvents'
 import {
   getSettlementCities,
   prepareSettlementAccount,
@@ -2162,6 +2163,7 @@ async function handleAvatarChange(event: Event) {
       failedAvatarUrls.value = nextFailedUrls
     }
     avatarUrl.value = nextAvatarUrl
+    dispatchProfileAvatarUpdated()
     showToast('头像已更新', 'success')
   } catch (err) {
     showToast(err instanceof Error ? err.message : '上传头像失败', 'error')

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { HttpError, apiUrl } from '@/api/http'
@@ -40,6 +40,10 @@ type McCardItem = {
   author: string
   authorUsernameGradient: boolean
   authorUsernameColor: string
+  /** 与作者不是同一人时才有值 */
+  developer: string
+  developerUsernameGradient: boolean
+  developerUsernameColor: string
   description: string
   groupTags: Record<string, string[]>
   tags: string[]
@@ -159,6 +163,7 @@ function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
 
   const priceFen = item.price_fen ?? 0
   const pricePoints = item.price_points ?? 0
+  const creator = item.creator.trim()
   return {
     id: item.id,
     title: item.title,
@@ -166,6 +171,9 @@ function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
     author: item.author,
     authorUsernameGradient: !!item.author_username_gradient,
     authorUsernameColor: item.author_username_color || '',
+    developer: creator && creator !== item.author.trim() ? creator : '',
+    developerUsernameGradient: !!item.creator_username_gradient,
+    developerUsernameColor: item.creator_username_color || '',
     description: item.description,
     groupTags,
     tags: tags.length > 0 ? tags : ['未标注'],
@@ -419,9 +427,52 @@ async function loadTagTree() {
   }
 }
 
+const MARQUEE_PX_PER_SECOND = 30
+
+function measureAuthorMarquee(viewport: HTMLElement) {
+  const track = viewport.firstElementChild as HTMLElement | null
+  const overflow = track ? Math.ceil(track.scrollWidth - viewport.clientWidth) : 0
+  const scrolling = overflow > 1
+  viewport.classList.toggle('is-overflowing', scrolling)
+  viewport.style.setProperty('--marquee-shift', scrolling ? `-${overflow}px` : '0px')
+  viewport.style.setProperty('--marquee-duration', `${Math.max(3, overflow / MARQUEE_PX_PER_SECOND + 2)}s`)
+}
+
+const authorMarqueeObserver =
+  typeof ResizeObserver === 'undefined'
+    ? null
+    : new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const target = entry.target as HTMLElement
+          const viewport = target.classList.contains('portal-resource-browser__author-pill-viewport')
+            ? target
+            : target.parentElement
+          if (viewport) {
+            measureAuthorMarquee(viewport)
+          }
+        }
+      })
+
+function observeAuthorMarquee(el: Element | ComponentPublicInstance | null) {
+  if (!(el instanceof HTMLElement)) {
+    return
+  }
+  measureAuthorMarquee(el)
+  if (authorMarqueeObserver) {
+    authorMarqueeObserver.observe(el)
+    if (el.firstElementChild) {
+      authorMarqueeObserver.observe(el.firstElementChild)
+    }
+  }
+}
+
 onMounted(() => {
   auth.hydrate()
   void loadTagTree()
+})
+
+onBeforeUnmount(() => {
+  authorMarqueeObserver?.disconnect()
 })
 
 watch(
@@ -530,17 +581,30 @@ watch(
             <div class="portal-resource-browser__headline">
               <div class="portal-resource-browser__headline-main">
                 <div class="portal-resource-browser__title-row">
-                  <h3 :class="titleSizeClass(card.title)">{{ card.title }}</h3>
+                  <div class="portal-resource-browser__title-main">
+                    <h3 :class="titleSizeClass(card.title)">{{ card.title }}</h3>
+                    <p class="portal-resource-browser__author-pill">
+                      <span class="portal-resource-browser__author-pill-label">作者</span>
+                      <span :ref="observeAuthorMarquee" class="portal-resource-browser__author-pill-viewport">
+                        <span class="portal-resource-browser__author-pill-track">
+                          <span
+                            :class="{ 'username-gradient': card.authorUsernameGradient && !card.authorUsernameColor }"
+                            :style="card.authorUsernameColor ? { color: card.authorUsernameColor } : {}">{{ card.author || '未知' }}</span>
+                          <template v-if="card.developer">
+                            <span class="portal-resource-browser__author-pill-label">开发者</span>
+                            <span
+                              :class="{ 'username-gradient': card.developerUsernameGradient && !card.developerUsernameColor }"
+                              :style="card.developerUsernameColor ? { color: card.developerUsernameColor } : {}">{{ card.developer }}</span>
+                          </template>
+                        </span>
+                      </span>
+                    </p>
+                  </div>
                   <span class="portal-resource-browser__updated">
                     <span v-for="part in formatUpdatedAt(card.updatedAt)" :key="part">{{ part }}</span>
                   </span>
                 </div>
                 <div class="portal-resource-browser__author-line">
-                  <p class="portal-resource-browser__author-pill">
-                    <span class="portal-resource-browser__author-pill-label">作者 / 开发者</span><span v-if="card.author"
-                      :class="{ 'username-gradient': card.authorUsernameGradient && !card.authorUsernameColor }"
-                      :style="card.authorUsernameColor ? { color: card.authorUsernameColor } : {}">{{ card.author }}</span>
-                  </p>
                   <span
                     class="portal-resource-browser__price-badge"
                     :class="{
@@ -957,6 +1021,14 @@ watch(
   min-height: 44px;
 }
 
+.portal-resource-browser__title-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
 .portal-resource-browser__title-row h3 {
   min-width: 0;
   font-size: 19px;
@@ -996,6 +1068,50 @@ watch(
   font-size: 12px;
   font-weight: 700;
   line-height: normal;
+  max-width: 100%;
+}
+
+.portal-resource-browser__author-pill-label {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.portal-resource-browser__author-pill-viewport {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.portal-resource-browser__author-pill-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 名字放不下时左右往返滚动，--marquee-shift 由脚本按溢出宽度写入 */
+.portal-resource-browser__author-pill-viewport.is-overflowing .portal-resource-browser__author-pill-track {
+  animation: portal-author-marquee var(--marquee-duration, 6s) ease-in-out infinite alternate;
+}
+
+.portal-resource-browser__author-pill-viewport.is-overflowing:hover .portal-resource-browser__author-pill-track {
+  animation-play-state: paused;
+}
+
+@keyframes portal-author-marquee {
+  0%,
+  15% {
+    transform: translateX(0);
+  }
+  85%,
+  100% {
+    transform: translateX(var(--marquee-shift, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-resource-browser__author-pill-viewport.is-overflowing .portal-resource-browser__author-pill-track {
+    animation: none;
+  }
 }
 
 .portal-resource-browser__author-line {

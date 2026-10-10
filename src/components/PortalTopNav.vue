@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { TIcon, Bell, Close, Search } from 'ui_73info'
+import { TIcon, ArrowDown, Bell, Close, Search, UserFilled } from 'ui_73info'
 
 import { useAuthStore } from '@/stores/auth'
 import { buildDevPortalUrl } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
-import { getProfileSubscriptions, updateProfileSubscriptions } from '@/api/settings'
+import { apiUrl } from '@/api/http'
+import { getProfile, updateProfileSubscriptions } from '@/api/settings'
+import { PROFILE_AVATAR_UPDATED_EVENT } from '@/shared/profileEvents'
 
 type AuthMode = 'login' | 'register'
 type SearchScope = 'auto' | 'resources' | 'requirements' | 'community'
@@ -38,6 +40,9 @@ const lastSyncedSubscriptions = ref({
   subscribe_official_activity: false,
   subscribe_dev_hall_deposit_paid: false,
 })
+// 顶栏用户胶囊里的头像：后端 `GET /settings/profile` 的 `avatar_url`
+const userAvatarUrl = ref('')
+const userAvatarFailed = ref(false)
 const authModalVisible = computed(() => route.query.modal === 'auth')
 const searchHasInputValue = computed(
   () => Boolean(searchQuery.value.trim()) || searchDraftFilled.value,
@@ -59,6 +64,14 @@ const bellTitle = computed(() => {
 
   return allSubscriptionsEnabled.value ? '关闭全部消息订阅' : '开启全部消息订阅'
 })
+const userAvatarSrc = computed(() => {
+  const url = userAvatarUrl.value.trim()
+  if (!url || userAvatarFailed.value) {
+    return ''
+  }
+
+  return apiUrl(url)
+})
 const searchScopeOptions: Array<{ value: SearchScope; label: string }> = [
   { value: 'auto', label: '全部' },
   { value: 'resources', label: '资源' },
@@ -76,10 +89,9 @@ const searchableRouteScope: Partial<Record<string, SearchScope>> = {
   'community-post': 'community',
 }
 const searchPlaceholder = computed(() => {
-  if (searchScope.value === 'resources') return '搜索公开资源...'
   if (searchScope.value === 'requirements') return '搜索需求标题、编号...'
   if (searchScope.value === 'community') return '搜索社区帖子...'
-  return '搜索资源、需求、社区...'
+  return '搜索资源、帖子、开发者...'
 })
 const activeSearchScopeLabel = computed(
   () => searchScopeOptions.find((option) => option.value === searchScope.value)?.label ?? '全部',
@@ -153,10 +165,11 @@ watch(
   ([isAuthed, token]) => {
     if (!isAuthed || !token.trim()) {
       resetSubscriptionState()
+      resetUserAvatar()
       return
     }
 
-    void loadProfileSubscriptions()
+    void loadProfileState()
   },
   { immediate: true },
 )
@@ -183,6 +196,7 @@ onMounted(() => {
   document.addEventListener('click', closeUserMenu)
   document.addEventListener('keydown', handleSubscriptionMenuKeydown)
   document.addEventListener('keydown', handleSearchScopeMenuKeydown)
+  window.addEventListener(PROFILE_AVATAR_UPDATED_EVENT, handleProfileAvatarUpdated)
   syncHeaderFootprint()
   if (typeof ResizeObserver !== 'undefined' && headerRef.value) {
     headerObserver = new ResizeObserver(syncHeaderFootprint)
@@ -196,6 +210,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', closeUserMenu)
   document.removeEventListener('keydown', handleSubscriptionMenuKeydown)
   document.removeEventListener('keydown', handleSearchScopeMenuKeydown)
+  window.removeEventListener(PROFILE_AVATAR_UPDATED_EVENT, handleProfileAvatarUpdated)
   headerObserver?.disconnect()
   headerObserver = undefined
 })
@@ -225,17 +240,46 @@ function syncSubscriptionState(subscriptions: {
   }
 }
 
-async function loadProfileSubscriptions() {
+function resetUserAvatar() {
+  userAvatarUrl.value = ''
+  userAvatarFailed.value = false
+}
+
+function applyUserAvatar(nextAvatarUrl: string | null | undefined) {
+  userAvatarUrl.value = (nextAvatarUrl ?? '').trim()
+  userAvatarFailed.value = false
+}
+
+// 头像图片加载失败（例如服务端文件被清理）时退回默认人物剪影，避免顶栏出现裂图
+function handleUserAvatarError() {
+  userAvatarFailed.value = true
+}
+
+// 别处（个人主页 / 账号页）换过头像就重新拉一次，让顶栏跟着更新
+function handleProfileAvatarUpdated() {
+  if (!auth.isAuthed || !auth.token.trim()) {
+    return
+  }
+
+  void loadProfileState()
+}
+
+async function loadProfileState() {
   if (!auth.isAuthed || !auth.token.trim()) {
     return
   }
 
   subscriptionLoading.value = true
   try {
-    const subscriptions = await getProfileSubscriptions(auth.token)
-    syncSubscriptionState(subscriptions)
+    // `GET /settings/profile` 一次带回头像与两个订阅开关，不再单开订阅查询接口
+    const profile = await getProfile(auth.token)
+    syncSubscriptionState({
+      subscribe_official_activity: Boolean(profile.subscribe_official_activity),
+      subscribe_dev_hall_deposit_paid: Boolean(profile.subscribe_dev_hall_deposit_paid),
+    })
+    applyUserAvatar(profile.avatar_url)
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载消息订阅失败', 'error')
+    showToast(err instanceof Error ? err.message : '加载个人资料失败', 'error')
   } finally {
     subscriptionLoading.value = false
   }
@@ -288,7 +332,7 @@ function openSubscriptionMenu() {
   subscriptionMenuOpen.value = true
 
   if (!subscriptionLoading.value) {
-    void loadProfileSubscriptions()
+    void loadProfileState()
   }
 }
 
@@ -664,8 +708,19 @@ function finishSearchComposition(event: CompositionEvent) {
       </template>
       <template v-else>
         <div class="portal-user">
-          <button class="portal-user__trigger" type="button" @click="menuOpen = !menuOpen">
-            {{ auth.username || '已登录用户' }}
+          <button class="portal-user__trigger" :class="{ 'is-open': menuOpen }" type="button" aria-haspopup="menu"
+            :aria-expanded="menuOpen" :title="auth.username || '已登录用户'" @click="menuOpen = !menuOpen">
+            <span class="portal-user__avatar" :class="{ 'portal-user__avatar--image': Boolean(userAvatarSrc) }">
+              <img v-if="userAvatarSrc" class="portal-user__avatar-image" :src="userAvatarSrc" alt=""
+                @error="handleUserAvatarError" />
+              <TIcon v-else>
+                <UserFilled />
+              </TIcon>
+            </span>
+            <span class="portal-user__name">{{ auth.username || '已登录用户' }}</span>
+            <TIcon class="portal-user__caret">
+              <ArrowDown />
+            </TIcon>
           </button>
           <Transition name="portal-user-menu">
             <div v-show="menuOpen" class="portal-user__menu" :class="{ open: menuOpen }">
@@ -829,7 +884,7 @@ function finishSearchComposition(event: CompositionEvent) {
   align-items: center;
   flex: 0 1 auto;
   gap: 9px;
-  width: clamp(260px, 28vw, 360px);
+  width: clamp(220px, 22vw, 320px);
   min-width: 0;
   padding: 0 10px 0 12px;
   min-height: 42px;
@@ -1122,6 +1177,13 @@ function finishSearchComposition(event: CompositionEvent) {
   transition: 160ms ease;
 }
 
+.portal-icon-btn--subscription {
+  /* 订阅铃铛比顶栏其它圆形按钮小一号，避免在用户胶囊旁边抢视觉重心 */
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+}
+
 .portal-icon-btn--subscription:hover:not(:disabled) {
   color: #1d4ed8;
   border-color: rgba(37, 99, 235, 0.28);
@@ -1311,13 +1373,89 @@ function finishSearchComposition(event: CompositionEvent) {
 }
 
 .portal-user__trigger {
-  min-width: 124px;
-  padding: 9px 12px;
-  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  max-width: 320px;
+  padding: 5px 12px 5px 5px;
+  border-radius: 999px;
   background: rgba(239, 246, 255, 0.95);
   color: #1d4ed8;
   font-weight: 700;
   font-size: 13px;
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
+}
+
+/* 头像：优先用 `GET /settings/profile` 的 avatar_url；没有（或加载失败）时退回人物剪影 */
+.portal-user__avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  color: #2563eb;
+  box-shadow: inset 0 0 0 1px rgba(191, 219, 254, 0.9);
+}
+
+.portal-user__avatar--image {
+  overflow: hidden;
+  background: rgba(241, 245, 249, 0.96);
+}
+
+.portal-user__avatar-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.portal-user__avatar .t73-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+.portal-user__name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portal-user__caret {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  opacity: 0.72;
+  transition: transform 200ms var(--portal-nav-motion);
+}
+
+.portal-user__trigger:hover,
+.portal-user__trigger.is-open {
+  background: rgba(219, 234, 254, 0.98);
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.6);
+}
+
+.portal-user__trigger:hover .portal-user__caret,
+.portal-user__trigger.is-open .portal-user__caret {
+  opacity: 1;
+}
+
+.portal-user__trigger.is-open .portal-user__caret {
+  transform: rotate(180deg);
+}
+
+.portal-user__trigger:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.16);
+  outline-offset: 2px;
 }
 
 .portal-user__menu {
@@ -1409,11 +1547,12 @@ function finishSearchComposition(event: CompositionEvent) {
 
   .portal-nav {
     grid-area: nav;
+    gap: 6px;
     justify-content: space-between;
   }
 
   .portal-nav__link {
-    padding: 9px 10px;
+    padding: 9px 8px;
   }
 
   .portal-header__tools {
@@ -1427,12 +1566,32 @@ function finishSearchComposition(event: CompositionEvent) {
   .portal-search {
     flex: 0 1 auto;
     width: 100%;
-    max-width: 330px;
+    max-width: 300px;
     min-width: 0;
   }
 
+  /* 中窄屏更挤：用户胶囊收一号，把宽度还给搜索框 */
   .portal-user__trigger {
-    min-width: 112px;
+    gap: 7px;
+    padding: 4px 11px 4px 4px;
+    font-size: 12px;
+  }
+
+  .portal-user__avatar {
+    width: 24px;
+    height: 24px;
+  }
+
+  .portal-user__avatar .t73-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+
+  .portal-user__caret {
+    width: 12px;
+    height: 12px;
+    font-size: 12px;
   }
 }
 
@@ -1455,8 +1614,15 @@ function finishSearchComposition(event: CompositionEvent) {
   }
 
   .portal-search {
-    width: min(clamp(320px, 58vw, 620px), calc(100% - 176px));
+    width: min(clamp(300px, 52vw, 620px), calc(100% - 240px));
     max-width: none;
+  }
+
+  /* 单行放不下时（两行版式、窄屏）才允许把用户名截断，桌面端保持完整 */
+  .portal-user__name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
@@ -1605,13 +1771,24 @@ function finishSearchComposition(event: CompositionEvent) {
   }
 
   .portal-header--dev .portal-user__trigger {
+    max-width: 190px;
+    padding: 4px 10px 4px 4px;
+    font-size: 12px;
+  }
+
+  .portal-header--dev .portal-user__avatar {
+    width: 24px;
+    height: 24px;
+  }
+
+  .portal-header--dev .portal-user__name {
     min-width: 0;
-    max-width: 112px;
-    padding: 7px 10px;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 12px;
+  }
+
+  .portal-header--dev .portal-user__caret {
+    display: none;
   }
 }
 </style>
