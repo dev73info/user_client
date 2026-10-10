@@ -9,9 +9,11 @@ import {
     fetchMyRequirementContract,
     initiateAsignSign,
     syncAsignSignStatus,
+    type ContractAttachmentParty,
     type ContractDetail,
 } from '@/api/contracts'
-import { CONTRACT_STATUS, contractStatusLabel } from '@/shared/contracts'
+import { ATTACHMENT_REVIEW_STATUS, CONTRACT_STATUS, contractStatusLabel } from '@/shared/contracts'
+import ContractAttachmentPanel from '@/components/ContractAttachmentPanel.vue'
 import { contractWaitingMessage } from '@/utils/contractSignatures'
 import { useAuthStore } from '@/stores/auth'
 
@@ -174,9 +176,54 @@ const signerIdentityReady = computed(() => {
     const signer = currentSigner.value
     return Boolean(signer?.legalName && signer?.idCardNo && signer.idCardNo !== '未完成实名认证')
 })
-const canSubmitSign = computed(
-    () => canSignContract.value && signerIdentityReady.value && !signing.value,
+/** 是否存在自定义合同附件（`content_source != platform`）。 */
+const hasCustomAttachment = computed(
+    () => (contract.value?.content_source ?? 'platform') !== 'platform',
 )
+/**
+ * 附件是否已放行到**当前这一版**。
+ *
+ * 放行是「对某个具体版本」放行的：审核通过时后端把当次附件指纹记进 `attachment_approved_sha256`，
+ * 只有它与 `attachment_file_sha256` 一致才视为已放行——放行后重传/重新拟定会改指纹，旧放行自动失效。
+ * 没有自定义附件（平台生成）时不受这道闸门约束。
+ */
+const attachmentApproved = computed(() => {
+    const item = contract.value
+    if (!item || !hasCustomAttachment.value) return true
+    if (item.attachment_review_status !== ATTACHMENT_REVIEW_STATUS.approved) return false
+    return Boolean(item.attachment_file_sha256) &&
+        item.attachment_approved_sha256 === item.attachment_file_sha256
+})
+/** 附件未放行时给出的中文说明；为空表示不拦签署。 */
+const attachmentGateMessage = computed(() => {
+    if (attachmentApproved.value) return ''
+    const status = contract.value?.attachment_review_status ?? ATTACHMENT_REVIEW_STATUS.none
+    if (status === ATTACHMENT_REVIEW_STATUS.rejected) {
+        return '自定义合同附件已被平台驳回，请修改后重新提交并等待审核'
+    }
+    return '自定义合同附件待平台审核通过后才能发起签署'
+})
+/** 附件准备入口所在的需求编号：合同详情页没有 query，就从合同上取。 */
+const attachmentRequirementId = computed(
+    () => contract.value?.requirement_id?.trim() || requirementId,
+)
+/** 自定义附件只存在于需求合同上：开发者入驻协议不展示该面板。 */
+const showAttachmentPanel = computed(
+    () => !isDeveloperAgreement.value && Boolean(attachmentRequirementId.value),
+)
+const currentPartyAsAttachmentParty = computed<ContractAttachmentParty | null>(
+    () => currentParty.value,
+)
+/** 签署可用性：合同可签 + 实名齐全 + 附件已放行（平台生成的合同不受附件闸门约束）。 */
+const canSubmitSign = computed(
+    () => canSignContract.value && signerIdentityReady.value && !signing.value && attachmentApproved.value,
+)
+/** 附件变更（上传/拟定/撤回）后把页面上的合同换成后端最新那份，避免停在旧审核态。 */
+function applyUpdatedContract(updated: ContractDetail) {
+    contract.value = updated
+    successMsg.value = ''
+    error.value = ''
+}
 // 开发者入驻协议签署完成后的引导按钮；工作台签署详情已有「返回我的合同」入口，不在此重复展示。
 const showBecomeDeveloper = computed(
     () => !isWorkbenchSignature.value && isDeveloperAgreement.value && contract.value?.status === CONTRACT_STATUS.signed,
@@ -292,6 +339,11 @@ async function handleSign() {
     if (!contract.value || signing.value) return
     if (!signerIdentityReady.value) {
         error.value = '请先完成实名认证，签署身份必须包含真实姓名和身份证号'
+        return
+    }
+    // 附件闸门：自定义附件未放行（含放行后被换过）时后端也会 409，这里先拦一道并给出可操作说明。
+    if (!attachmentApproved.value) {
+        error.value = attachmentGateMessage.value || '自定义合同附件待平台审核通过后才能发起签署'
         return
     }
     signing.value = true
@@ -440,6 +492,17 @@ onUnmounted(() => {
                     </button>
                 </div>
 
+                <!-- R012：自定义合同附件。双方上传自己的合同文件或在页面内拟定条款，作为主合同的附件随卷签署；
+                     必须经平台放行后才能发起签署。开发者入驻协议没有附件，不展示。 -->
+                <ContractAttachmentPanel
+                    v-if="showAttachmentPanel"
+                    :token="auth.token"
+                    :contract="contract"
+                    :requirement-id="attachmentRequirementId"
+                    :party="currentPartyAsAttachmentParty"
+                    @updated="applyUpdatedContract"
+                />
+
                 <div v-if="successMsg" class="msg-success">{{ successMsg }}</div>
                 <div v-if="error" class="msg-error">{{ error }}</div>
 
@@ -456,7 +519,12 @@ onUnmounted(() => {
                          只有爱签取不到预览链接时才回退展示本地正文。 -->
                     <details v-if="showSignatureFacts && (contract.status !== CONTRACT_STATUS.signed || localDocumentFallback)"
                         class="signature-document" open>
-                        <summary>合同正文</summary>
+                        <summary>{{ hasCustomAttachment ? '平台主合同正文（点击查看）' : '合同正文' }}</summary>
+                        <!-- R012：带自定义附件时正文区要讲清「平台正文才是唯一被签署的主文件」，附件只是条款补充。 -->
+                        <p v-if="hasCustomAttachment" class="document-source-note">
+                            本合同正文由平台按《需求开发合同》生成，仍是唯一被签署的主文件；
+                            自定义合同附件随本合同一并签署与归档，只是条款补充。
+                        </p>
                         <div class="contract-content">{{ contract.content }}</div>
                     </details>
                 </template>
@@ -545,6 +613,8 @@ onUnmounted(() => {
 .signature-parties dd { margin: 0; display: grid; gap: 4px; }
 .signature-parties dd span { color: #667085; font-size: 12px; }
 .signature-document summary { cursor: pointer; font-weight: 600; font-size: 15px; padding: 14px 0; border-top: 1px solid #e5e9ef; }
+/* R012：正文区上方的来源说明（平台正文才是主文件，附件只是条款补充）。 */
+.document-source-note { margin: 0 0 14px; padding: 10px 12px; border-radius: 6px; background: #eef6f6; color: #3f5b59; font-size: 12.5px; line-height: 1.7; }
 .signature-history { border-top: 1px solid #e5e9ef; padding-top: 24px; }
 .signature-history ol { list-style: none; padding: 0; margin: 0; }
 .signature-history li { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 16px; padding: 12px 0; border-bottom: 1px solid #eef1f4; font-size: 13px; }

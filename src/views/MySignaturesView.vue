@@ -5,6 +5,12 @@ import { listMyContracts, type MyContractSummary } from '@/api/contracts'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { CONTRACT_STATUS, contractStatusLabel } from '@/shared/contracts'
+import {
+  ATTACHMENT_REVIEW_STATUS,
+  CONTRACT_CONTENT_SOURCE,
+  attachmentReviewStatusLabel,
+  contractContentSourceLabel,
+} from '@/shared/contracts'
 import { getSignatureState, signatureStateLabels, type SignatureState } from '@/utils/contractSignatures'
 
 
@@ -137,6 +143,22 @@ function detailLocation(item: MyContractSummary) {
   return { name: 'workbench-signature-detail', params: { contractId: item.id } }
 }
 
+/**
+ * R012：合同来源文案，列表里用来区分「平台生成 / 上传附件 / 页面拟定」三种来源。
+ *
+ * 非平台来源时一并带上附件审核态（待审核 / 已放行 / 已驳回）——只放「上传附件」字样，
+ * 看的人不知道这份附件现在卡在哪一步。字段由后端 `CONTRACT_FIELDS_SUMMARY` 透出，
+ * 后端未上线时 `content_source` 缺省即「平台生成」。
+ */
+function sourceChip(item: MyContractSummary): string {
+  const source = item.content_source ?? CONTRACT_CONTENT_SOURCE.platform
+  const label = contractContentSourceLabel(source)
+  if (source === CONTRACT_CONTENT_SOURCE.platform) {
+    return label
+  }
+  return `${label} · ${attachmentReviewStatusLabel(item.attachment_review_status ?? ATTACHMENT_REVIEW_STATUS.none)}`
+}
+
 function openDetail(item: MyContractSummary) {
   void router.push(detailLocation(item))
 }
@@ -230,6 +252,8 @@ function openDetail(item: MyContractSummary) {
                 　乙方 · {{ item.party_b_name || item.party_b_username || '未指定' }}
                 · 我的身份：{{ roleLabel(item) }}
               </span>
+              <!-- R012：区分平台生成 / 上传附件 / 页面拟定三种来源（非平台来源带附件审核态）。 -->
+              <span class="wb-item__meta wb-item__meta--source">来源：{{ sourceChip(item) }}</span>
             </div>
             <div class="wb-item__side">
               <span class="wb-badge" :class="badgeClass(item)">{{ badgeLabel(item) }}</span>
