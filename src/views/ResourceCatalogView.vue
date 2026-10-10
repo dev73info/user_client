@@ -257,6 +257,7 @@ function updateViewport() {
                 ↻ 重置筛选
               </button>
             </div>
+            <span class="catalog-nav-row__count">共 {{ pageState.totalItems }} 个资源</span>
             <div class="catalog-nav-row__pager">
               <button class="catalog-nav-row__pager-btn" type="button" :disabled="!pageState.hasPrev"
                 @click="goPrevPage">

@@ -170,7 +170,8 @@
   position: sticky;
   top: 0; /* 与主内容 sticky 区域对齐，如有全局导航可调整 */
   z-index: 10;
-  box-shadow: 0 2px 12px 0 rgba(37,99,235,0.03);
+  /* 与右侧排序条、下方筛选面板同一档投影，左栏两块卡片不再一边重一边轻 */
+  box-shadow: 0 2px 12px 0 rgba(37, 99, 235, 0.04);
   transition: box-shadow 0.2s;
 }
 
@@ -215,7 +216,12 @@
   gap: 8px;
 }
 
-.catalog-nav-row__sort-chip,
+/* 翻页是另一类操作，用一条细竖线跟排序区分开 */
+.catalog-nav-row__pager {
+  padding-left: 12px;
+  border-left: 1px solid rgba(203, 213, 225, 0.8);
+}
+
 .catalog-nav-row__reset,
 .catalog-nav-row__pager-btn {
   border: 0;
@@ -223,41 +229,93 @@
   cursor: pointer;
 }
 
+/* 排序条里三个控件（排序 chip / 重置 / 翻页）统一到 36px 高、13px 字，
+   原来分别是 37 / 41 / 35px 且圆角各异，同一行里高低不齐 */
 .catalog-nav-row__sort-chip {
-  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 16px;
   border-radius: 999px;
+  border: 1px solid transparent;
   background: rgba(239, 246, 255, 0.9);
   color: #1d4ed8;
   font-size: 13px;
   font-weight: 700;
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.catalog-nav-row__sort-chip:hover {
+  background: rgba(219, 234, 254, 0.95);
 }
 
 .catalog-nav-row__sort-chip--active {
   background: var(--primary-gradient);
   color: #fff;
-  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+}
+
+.catalog-nav-row__sort-chip--active:hover {
+  background: var(--primary-gradient);
 }
 
 .catalog-nav-row__reset {
-  padding: 10px 16px;
-  border-radius: 12px;
-  background: rgba(248, 250, 252, 0.92);
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: #fff;
   color: #475569;
+  font-size: 13px;
   font-weight: 700;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.catalog-nav-row__reset:hover {
+  border-color: rgba(37, 99, 235, 0.36);
+  background: rgba(239, 246, 255, 0.8);
+  color: #1d4ed8;
 }
 
 .catalog-nav-row__pager-btn {
-  padding: 8px 12px;
-  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid transparent;
   background: rgba(239, 246, 255, 0.9);
   color: #1d4ed8;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
+  transition:
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.catalog-nav-row__pager-btn:hover:not(:disabled) {
+  background: rgba(219, 234, 254, 0.95);
 }
 
 .catalog-nav-row__pager-btn:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+/* 结果数落在排序区与翻页区中间，顺手填掉这条 735px 工具条中间的大片空白 */
+.catalog-nav-row__count {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .catalog-nav-row__pager-text {
@@ -275,10 +333,22 @@
 .catalog-switch-panel {
   display: grid;
   gap: 16px;
+  /* 顶部根导航是页面唯一的全宽面板：内边距与圆角向页内其他卡片看齐
+     （覆盖 .portal-page__panel 的 22px / 24px，避免这一块比下面所有卡片都"胖一圈"） */
+  padding: 12px 14px;
+  border-radius: 18px;
+  /* 它和二级导航、排序条同属"导航工具条"，投影一起收成细描边那一档；
+     重投影留给右侧内容卡，页面上只剩两种层级 */
+  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.04);
 }
 
-.catalog-nav-row--root-top {
-  padding: 12px 14px;
+/* 根导航只提供一行 chip，卡片外观由外层 .catalog-switch-panel 承担，
+   不再叠一层内框（否则描边和背景各来两遍，整块高度也多出 40 多像素） */
+.catalog-switch-panel .catalog-nav-row--root-top {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .catalog-nav-stack {
@@ -329,7 +399,7 @@
   background: rgba(255, 255, 255, 0.88);
   color: #334155;
   border-radius: 999px;
-  padding: 9px 14px;
+  padding: 8px 15px;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
@@ -361,7 +431,7 @@
   align-items: center;
   gap: 8px;
   border-radius: 999px;
-  padding: 9px 14px;
+  padding: 8px 14px;
   cursor: pointer;
   border: 1px solid rgba(203, 213, 225, 0.88);
   background: rgba(255, 255, 255, 0.88);

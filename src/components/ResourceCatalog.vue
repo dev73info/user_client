@@ -548,7 +548,8 @@ watch(
           'portal-resource-browser__menu-group--open': isSectionExpanded(section.id),
           'portal-resource-browser__menu-group--active': section.selected.length > 0,
         }">
-          <button class="portal-resource-browser__menu-trigger" type="button" @click="toggleSection(section.id)" :class="{
+          <button class="portal-resource-browser__menu-trigger" type="button" @click="toggleSection(section.id)"
+            :aria-expanded="isSectionExpanded(section.id)" :class="{
             'portal-resource-browser__menu-trigger--active': section.selected.length > 0,
           }">
             <span class="portal-resource-browser__menu-title">{{ section.label }}</span>
@@ -661,8 +662,18 @@ watch(
 .portal-resource-browser__empty {
   border: 1px solid rgba(198, 210, 236, 0.72);
   background: rgba(255, 255, 255, 0.84);
-  box-shadow: 0 18px 42px rgba(76, 103, 172, 0.12);
   backdrop-filter: blur(18px);
+}
+
+/* 左栏是导航/筛选面板，用与上方二级导航同一档轻投影；
+   重投影留给右侧的内容卡，避免面板比内容卡还"浮" */
+.portal-resource-browser__filters {
+  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.04);
+}
+
+.portal-resource-browser__card,
+.portal-resource-browser__empty {
+  box-shadow: 0 18px 42px rgba(76, 103, 172, 0.12);
 }
 
 .portal-resource-browser__filters {
@@ -730,11 +741,11 @@ watch(
   z-index: 2;
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  min-height: 42px;
-  padding: 9px 10px;
+  min-height: 38px;
+  padding: 8px 10px;
   border-radius: 12px;
   border: 0;
   background: transparent;
@@ -747,6 +758,29 @@ watch(
     color 180ms ease,
     transform 180ms ease,
     box-shadow 180ms ease;
+}
+
+/* 折叠指示箭头：折叠朝下、展开朝上。
+   原来这四个分组只是一行粗体字，没有任何"可点开"的提示 */
+.portal-resource-browser__menu-trigger::after {
+  content: '';
+  justify-self: end;
+  width: 7px;
+  height: 7px;
+  margin-right: 3px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  border-radius: 1px;
+  opacity: 0.45;
+  transform: rotate(45deg) translate(-1px, -1px);
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.portal-resource-browser__menu-group--open>.portal-resource-browser__menu-trigger::after {
+  opacity: 0.9;
+  transform: rotate(-135deg) translate(-1px, -1px);
 }
 
 .portal-resource-browser__menu-trigger::before {
@@ -800,10 +834,10 @@ watch(
 
 .portal-resource-browser__submenu-link {
   width: 100%;
-  min-height: 36px;
+  min-height: 34px;
   border: 0;
-  border-radius: 12px;
-  padding: 8px 10px;
+  border-radius: 10px;
+  padding: 7px 10px;
   background: transparent;
   color: #334155;
   font: inherit;

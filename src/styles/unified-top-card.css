@@ -31,9 +31,8 @@
   min-height: 56px !important;
 }
 
-.catalog-nav-row--root-top {
-  min-height: 56px !important;
-}
+/* .catalog-nav-row--root-top 不再单独给 56px：它与外层面板是同一个卡片的两层，
+   两层各撑 56px 会把这块顶到 114px（一行 chip 只用 39px）。高度由 .catalog-switch-panel 统一兜底。 */
 
 /* ============================================
    响应式调整 - 移动端 (≤900px)
@@ -161,10 +160,6 @@
   }
 
   .catalog-switch-panel {
-    min-height: 46px !important;
-  }
-
-  .catalog-nav-row--root-top {
     min-height: 46px !important;
   }
 }
