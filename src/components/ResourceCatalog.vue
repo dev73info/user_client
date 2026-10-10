@@ -1029,7 +1029,7 @@ watch(
   display: flex;
   align-items: flex-end;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
   align-self: stretch;
   width: 100%;
@@ -1043,21 +1043,34 @@ watch(
   visibility: hidden;
 }
 
-.portal-resource-browser__tags > span,
-.portal-resource-browser__meta {
+/* 与首页精选卡 portal-spotlight-card__meta-row、资源详情页标签同款胶囊 */
+.portal-resource-browser__tags > span {
   display: inline-flex;
-  padding: 5px 10px;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 22px;
+  padding: 2px 9px;
   border-radius: 999px;
-  background: rgba(219, 234, 254, 0.92);
-  color: #1d4ed8;
+  background: rgba(241, 245, 249, 0.96);
+  color: #475569;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 「原创/转载」标签用靛蓝，与资源详情页一致 */
 .portal-resource-browser__meta {
+  display: inline-flex;
+  padding: 5px 10px;
+  border-radius: 999px;
   background: rgba(99, 102, 241, 0.14);
   color: #4f46e5;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .portal-resource-browser__meta.is-repost {
