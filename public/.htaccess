@@ -1,6 +1,6 @@
 <IfModule mod_headers.c>
   <FilesMatch "\.(html|htm)$">
-    Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'self'; frame-src 'self' https://openapi.alipay.com https://excashier.alipay.com https://unitradeprod.alipay.com; media-src 'self' blob:; img-src 'self' https: data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' https://api.73info.cn https://dev.73info.cn"
+    Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'self'; frame-src 'self' https://openapi.alipay.com https://excashier.alipay.com https://unitradeprod.alipay.com https://challenges.cloudflare.com; media-src 'self' blob:; img-src 'self' https: data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com; connect-src 'self' https://api.73info.cn https://dev.73info.cn https://challenges.cloudflare.com"
     Header always set X-Content-Type-Options "nosniff"
   </FilesMatch>
 </IfModule>
