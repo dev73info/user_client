@@ -13,9 +13,9 @@
  * - 退款成功后立即收回买家下载权；退满转 `refunded`，部分退仍是 `paid` 但下载权已收回；
  * - **积分单不纳入**，列表里不给退款按钮。
  */
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import {
   listSellerResourcePurchases,
@@ -48,7 +48,6 @@ import {
   TOption,
   TPagination,
   Refresh,
-  RefreshLeft,
   Search,
   TSelect,
   TTable,
@@ -57,10 +56,11 @@ import {
 } from 'ui_73info'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const { showToast } = useToast()
 
-/** 一次取回本页全部售出订单（后端单页上限 100 条），筛选与分页都在前端。 */
+/** 一次取回本页全部售出订单（后端单页上限 100 条），再按资源与筛选在前端收窄。 */
 const SELLER_ORDER_FETCH_LIMIT = 100
 
 const STATUS_FILTER_OPTIONS: { label: string; value: string }[] = [
@@ -80,13 +80,33 @@ const filters = reactive({
   keyword: '',
 })
 
-const paidCount = computed(() => orders.value.filter((item) => item.status === 'paid').length)
-const refundableCount = computed(() => orders.value.filter((item) => canSellerRefundPurchase(item)).length)
-const refundedCount = computed(() => orders.value.filter((item) => item.status === 'refunded').length)
+/** 从资源「更多 → 售出订单」带入；无 resourceId 时回资源列表。 */
+const resourceIdFilter = computed(() => {
+  const raw = route.query.resourceId ?? route.query.resource_id
+  const value = Array.isArray(raw) ? raw[0] : raw
+  const id = Number(value)
+  return Number.isFinite(id) && id > 0 ? Math.trunc(id) : null
+})
+
+const scopedOrders = computed(() => {
+  const resourceId = resourceIdFilter.value
+  if (resourceId == null) {
+    return []
+  }
+  return orders.value.filter((order) => order.resource_id === resourceId)
+})
+
+const paidCount = computed(() => scopedOrders.value.filter((item) => item.status === 'paid').length)
+const refundableCount = computed(() =>
+  scopedOrders.value.filter((item) => canSellerRefundPurchase(item)).length,
+)
+const refundedCount = computed(() =>
+  scopedOrders.value.filter((item) => item.status === 'refunded').length,
+)
 
 const filteredOrders = computed(() => {
   const keyword = filters.keyword.trim().toLowerCase()
-  return orders.value.filter((order) => {
+  return scopedOrders.value.filter((order) => {
     if (filters.status && order.status !== filters.status) {
       return false
     }
@@ -105,16 +125,21 @@ const hasActiveFilters = computed(() => Boolean(filters.status || filters.keywor
 const { page, pageSize, total: filteredTotal, paged, resetPage } = useClientPagination(filteredOrders)
 
 const emptyText = computed(() =>
-  orders.value.length ? '没有符合筛选条件的售出订单' : '还没有售出订单',
+  scopedOrders.value.length ? '没有符合筛选条件的售出订单' : '该资源还没有售出订单',
 )
 
-function resetFilters() {
-  filters.status = ''
-  filters.keyword = ''
-  resetPage()
+function ensureResourceScoped() {
+  if (resourceIdFilter.value != null) {
+    return true
+  }
+  void router.replace({ name: 'dev-resource-list' })
+  return false
 }
 
 async function loadOrders() {
+  if (!ensureResourceScoped()) {
+    return
+  }
   auth.hydrate()
   if (!auth.token.trim()) {
     return
@@ -145,20 +170,6 @@ function refundTraceText(order: ResourcePurchaseOrder): string {
     parts.push(`原因：${order.refund_reason}`)
   }
   return parts.join(' · ')
-}
-
-/** 行状态补充说明：已下载 / 下载权已被退款收回。 */
-function statusNoteText(order: ResourcePurchaseOrder): string {
-  if (order.entitlement_revoked && order.status === 'paid') {
-    return '下载权已收回，订单仍为已支付'
-  }
-  if (order.entitlement_revoked) {
-    return '下载权已收回'
-  }
-  if (order.first_downloaded_at) {
-    return '已下载（仍可主动退款）'
-  }
-  return ''
 }
 
 function openResource(order: ResourcePurchaseOrder) {
@@ -316,6 +327,16 @@ async function submitRefund() {
 onMounted(() => {
   void loadOrders()
 })
+
+watch(resourceIdFilter, (next, prev) => {
+  if (next === prev) {
+    return
+  }
+  filters.status = ''
+  filters.keyword = ''
+  resetPage()
+  void loadOrders()
+})
 </script>
 
 <template>
@@ -324,7 +345,7 @@ onMounted(() => {
       <div class="dev-meta-strip">
         <div class="dev-meta-strip__item">
           <span class="dev-meta-strip__label">售出订单</span>
-          <span class="dev-meta-strip__value">{{ isLoading ? '—' : orders.length }}</span>
+          <span class="dev-meta-strip__value">{{ isLoading ? '—' : scopedOrders.length }}</span>
         </div>
         <div class="dev-meta-strip__divider" />
         <div class="dev-meta-strip__item">
@@ -354,16 +375,7 @@ onMounted(() => {
     <TCard class="dev-surface-card">
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
-          <h3 class="dev-section-title">售出订单</h3>
-          <p class="sold-purchases__hint">
-            卖出付费资源后订单出现在这里。已支付且在支付后 365 天内的现金订单可主动退款（含已下载）；
-            退款成功后买家立即失去下载权，资金原路退回。积分订单不支持主动退款。
-          </p>
-        </div>
-        <div class="dev-card-head__actions">
-          <TButton variant="outline" @click="router.push({ name: 'dev-resource-list' })">
-            资源项目
-          </TButton>
+          <h3 class="dev-section-title">订单明细</h3>
         </div>
       </div>
 
@@ -380,7 +392,7 @@ onMounted(() => {
             :value="option.value" />
         </TSelect>
 
-        <TInput v-model="filters.keyword" clearable placeholder="搜索订单号、买家、资源或退款原因"
+        <TInput v-model="filters.keyword" clearable placeholder="搜索订单号、买家或退款原因"
           class="dev-toolbar__search" @input="resetPage">
           <template #prefix>
             <TIcon>
@@ -391,13 +403,10 @@ onMounted(() => {
 
         <div class="dev-toolbar__actions">
           <span v-if="hasActiveFilters" class="dev-toolbar__hint">
-            筛选出 {{ filteredOrders.length }} / {{ orders.length }} 笔
+            筛选出 {{ filteredOrders.length }} / {{ scopedOrders.length }} 笔
           </span>
-          <TButton variant="outline" @click="resetFilters">
-            <TIcon>
-              <RefreshLeft />
-            </TIcon>
-            <span>重置</span>
+          <TButton variant="outline" @click="router.push({ name: 'dev-resource-list' })">
+            返回资源项目
           </TButton>
         </div>
       </div>
@@ -422,27 +431,24 @@ onMounted(() => {
             <span class="sold-purchases__buyer">{{ scope.row.buyer }}</span>
           </template>
         </TTableColumn>
-        <TTableColumn label="金额" min-width="120">
+        <TTableColumn label="金额" min-width="128">
           <template #default="scope">
-            <span class="sold-purchases__amount">{{ formatPurchaseAmountLabel(scope.row) }}</span>
-            <div v-if="scope.row.refunded_amount_fen > 0" class="sold-purchases__meta">
-              已退 ¥{{ fenToYuanText(scope.row.refunded_amount_fen) }}
+            <div class="sold-purchases__amount-cell">
+              <span class="sold-purchases__amount">{{ formatPurchaseAmountLabel(scope.row) }}</span>
+              <span
+                v-if="scope.row.refunded_amount_fen > 0"
+                class="sold-purchases__refunded-chip"
+              >
+                已退 ¥{{ fenToYuanText(scope.row.refunded_amount_fen) }}
+              </span>
             </div>
           </template>
         </TTableColumn>
-        <TTableColumn label="状态" min-width="150">
+        <TTableColumn label="状态" min-width="120">
           <template #default="scope">
             <TTag variant="outline" :tone="scope.row.status === 'refunded' ? 'warning' : 'accent'">
               {{ resourcePurchaseStatusLabel(scope.row.status) }}
             </TTag>
-            <div v-if="statusNoteText(scope.row)" class="sold-purchases__meta">
-              {{ statusNoteText(scope.row) }}
-            </div>
-          </template>
-        </TTableColumn>
-        <TTableColumn label="是否已下载" min-width="100">
-          <template #default="scope">
-            <span>{{ scope.row.first_downloaded_at ? '已下载' : '未下载' }}</span>
           </template>
         </TTableColumn>
         <TTableColumn label="可退余额" min-width="120">
@@ -562,14 +568,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.sold-purchases__hint {
-  margin: 6px 0 0;
-  max-width: 720px;
-  color: var(--dev-ink-muted, #64748b);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
 .sold-purchases__table {
   min-width: 0;
 }
@@ -606,9 +604,32 @@ onMounted(() => {
   font-variant-numeric: tabular-nums;
 }
 
+.sold-purchases__amount-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
 .sold-purchases__amount {
   font-weight: 700;
   color: var(--dev-ink, #0f172a);
+  line-height: 1.2;
+}
+
+.sold-purchases__refunded-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--73-warning-soft, rgba(217, 119, 6, 0.12));
+  color: var(--73-warning, #b9812b);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .sold-purchases__refund-summary {

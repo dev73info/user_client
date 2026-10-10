@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRouter } from 'vue-router'
 import { apiUrl } from '@/api/http'
 import {
@@ -34,6 +35,10 @@ import {
   resourceVisibilityLabel,
   resourceVisibilityTagType,
 } from '@/shared/resourcePresentation'
+import {
+  formatResourcePriceLabel,
+  isPricedResource,
+} from '@/shared/resourceSale'
 
 
 import {
@@ -344,6 +349,13 @@ function openEditHomepagePage(resource: McResourcePayload) {
   router.push({ name: 'dev-resource-homepage-edit', params: { resourceId: resource.id } })
 }
 
+function openSoldPurchases(resource: McResourcePayload) {
+  void router.push({
+    name: 'dev-resource-sold-purchases',
+    query: { resourceId: String(resource.id) },
+  })
+}
+
 function openVersionsPage(resource: McResourcePayload) {
   router.push({ name: 'dev-resource-versions', params: { resourceId: resource.id } })
 }
@@ -360,7 +372,7 @@ async function removeResource(resource: McResourcePayload) {
   }
 
   const confirmed = window.confirm(
-    `确认删除资源 ${resource.title} 吗？该操作会同时删除其历史版本，且不可撤销。`,
+    `确认删除资源 ${resource.title} 吗？该操作会同时删除其历史版本，且不可撤销。购买订单会保留作历史记录。`,
   )
   if (!confirmed) {
     return
@@ -422,6 +434,11 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
     return
   }
 
+  if (payload.action === 'sold-orders') {
+    openSoldPurchases(payload.resource)
+    return
+  }
+
   if (
     payload.action !== 'view' &&
     payload.action !== 'publish' &&
@@ -480,6 +497,23 @@ async function requestPublicReview(resource: McResourcePayload) {
     return
   }
 
+  if (isPricedResource(resource.price_fen, resource.price_points) && resource.requirement_id) {
+    showToast('绑定定制交付的资源不可付费售卖', 'warning')
+    return
+  }
+
+  if (
+    isPricedResource(resource.price_fen, resource.price_points) &&
+    !resource.copyright_declared
+  ) {
+    showToast('付费资源须先在「编辑主页」勾选版权声明，再申请公开', 'warning')
+    router.push({
+      name: 'dev-resource-homepage-edit',
+      params: { resourceId: String(resource.id) },
+    })
+    return
+  }
+
   requestingReviewResourceId.value = resource.id
   try {
     await updateMcResourceHomepage(auth.token, resource.id, {
@@ -490,6 +524,9 @@ async function requestPublicReview(resource: McResourcePayload) {
       docs_url: resource.docs_url,
       visibility: 'review',
       release_note: resource.release_note,
+      price_fen: resource.price_fen ?? 0,
+      price_points: resource.price_points ?? 0,
+      copyright_declared: resource.copyright_declared ?? false,
     })
     showToast('公开申请已提交，等待管理员审核', 'success')
     await loadResources()
@@ -531,34 +568,36 @@ async function setResourcePrivate(resource: McResourcePayload) {
 
 <template>
   <div class="dev-page dev-page--resource-list">
-    <div class="dev-meta-strip">
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">资源总数</span>
-        <span class="dev-meta-strip__value">{{ totalCount }}</span>
+    <WorkbenchBarSlot>
+      <div class="dev-meta-strip">
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">资源总数</span>
+          <span class="dev-meta-strip__value">{{ totalCount }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">公开</span>
+          <span class="dev-meta-strip__value">{{ publishedCount }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">审核中</span>
+          <span class="dev-meta-strip__value">{{ reviewCount }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">私有</span>
+          <span class="dev-meta-strip__value">{{ draftCount }}</span>
+        </div>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <TButton icon-only :loading="isLoading" aria-label="刷新资源列表" @click="loadResources">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+        </div>
       </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">公开</span>
-        <span class="dev-meta-strip__value">{{ publishedCount }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">审核中</span>
-        <span class="dev-meta-strip__value">{{ reviewCount }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">私有</span>
-        <span class="dev-meta-strip__value">{{ draftCount }}</span>
-      </div>
-      <div class="dev-meta-strip__item dev-meta-strip__action">
-        <TButton icon-only aria-label="刷新资源列表" @click="loadResources">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </div>
+    </WorkbenchBarSlot>
 
     <TCard class="dev-surface-card">
       <div class="dev-card-head">
@@ -633,6 +672,22 @@ async function setResourcePrivate(resource: McResourcePayload) {
               }}</span>
           </template>
         </TTableColumn>
+        <TTableColumn label="售价" min-width="90">
+          <template #default="scope">
+            <TTag
+              variant="outline"
+              :tone="
+                isPricedResource(scope.row.price_fen, scope.row.price_points)
+                  ? 'accent'
+                  : 'neutral'
+              "
+            >
+              {{
+                formatResourcePriceLabel(scope.row.price_fen ?? 0, scope.row.price_points ?? 0)
+              }}
+            </TTag>
+          </template>
+        </TTableColumn>
         <TTableColumn label="状态" min-width="110">
           <template #default="scope">
             <TTag variant="outline" :tone="resourceVisibilityTagType(scope.row.visibility)">
@@ -656,7 +711,6 @@ async function setResourcePrivate(resource: McResourcePayload) {
               </TButton>
               <template #dropdown>
                 <TDropdownMenu>
-                  <TDropdownItem :command="{ action: 'view', resource: scope.row }">资源主页</TDropdownItem>
                   <TDropdownItem :command="{ action: 'publish', resource: scope.row }">发布版本</TDropdownItem>
                   <TDropdownItem v-if="scope.row.visibility === 'draft'" :disabled="Boolean(scope.row.requirement_id) ||
                     requestingReviewResourceId === scope.row.id
@@ -676,6 +730,9 @@ async function setResourcePrivate(resource: McResourcePayload) {
                   </TDropdownItem>
                   <TDropdownItem :command="{ action: 'versions', resource: scope.row }">版本管理</TDropdownItem>
                   <TDropdownItem :command="{ action: 'edit', resource: scope.row }">编辑主页</TDropdownItem>
+                  <TDropdownItem :command="{ action: 'sold-orders', resource: scope.row }">
+                    售出订单
+                  </TDropdownItem>
                   <TDropdownItem :command="{ action: 'delete', resource: scope.row }"
                     :disabled="!canDeleteResource(scope.row) || deletingResourceId === scope.row.id">
                     {{ deletingResourceId === scope.row.id ? '删除中...' : '删除' }}

@@ -16,7 +16,14 @@ import {
 import { useTagTreeStore } from '@/stores/tagTree'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
-
+import {
+  formatResourcePriceLabel,
+  isCashPaidListingResource,
+  isFreeListingResource,
+  isPointsResource,
+  isPricedResource,
+  type ResourceListingSale,
+} from '@/shared/resourceSale'
 
 import {
   TDropdown,
@@ -45,6 +52,9 @@ type MobileCard = {
     groupTags: Record<string, string[]>
     tagsText: string
     originType: 'original' | 'repost'
+    priceFen: number
+    pricePoints: number
+    priceLabel: string
 }
 
 type SectionView = McTagFilterSection & {
@@ -67,6 +77,7 @@ const props = defineProps<{
     rootSlug: string
     entrySlug: string
     groupName: string
+    listingMode?: ResourceListingSale | null
 }>()
 
 const { showToast } = useToast()
@@ -93,8 +104,16 @@ const expandedSectionIds = ref<number[]>([])
 
 const filteredItems = computed(() => {
     const query = keyword.value.trim().toLowerCase()
+    const mode = props.listingMode ?? null
 
     const data = cards.value.filter((card) => {
+        if (mode === 'free' && !isFreeListingResource(card.priceFen, card.pricePoints)) {
+            return false
+        }
+        if (mode === 'paid' && !isCashPaidListingResource(card.priceFen, card.pricePoints)) {
+            return false
+        }
+
         if (query) {
             const haystack = `${card.title} ${card.desc} ${card.author} ${card.tagsText}`.toLowerCase()
             if (!haystack.includes(query)) {
@@ -132,6 +151,8 @@ function mapResourceToCard(item: PublicMcResourceItem): MobileCard {
         item.tag_selections.map((entry) => [entry.group_name, entry.tag_names]),
     )
 
+    const priceFen = item.price_fen ?? 0
+    const pricePoints = item.price_points ?? 0
     return {
         id: item.id,
         title: item.title,
@@ -144,6 +165,9 @@ function mapResourceToCard(item: PublicMcResourceItem): MobileCard {
         groupTags,
         tagsText: item.tag_selections.flatMap((entry) => entry.tag_names).join(' '),
         originType: item.origin_type,
+        priceFen,
+        pricePoints,
+        priceLabel: formatResourcePriceLabel(priceFen, pricePoints),
     }
 }
 
@@ -230,6 +254,7 @@ function selectRoot(option: RootOption) {
             rootSlug: option.key,
             entrySlug: targetEntry,
         },
+        query: listingQuery(),
     })
 }
 
@@ -245,7 +270,13 @@ function selectEntry(entry: EntryOption) {
             rootSlug: props.rootSlug,
             entrySlug: entry.key,
         },
+        query: listingQuery(),
     })
+}
+
+function listingQuery() {
+    const mode = props.listingMode
+    return mode ? { sale: mode } : {}
 }
 
 function toggleSectionTag(sectionId: number, tag: string) {
@@ -288,6 +319,7 @@ function openResource(card: MobileCard) {
             entrySlug: props.entrySlug,
             resourceSlug: getResourceDetailSlug(card.id, card.ownerName),
         },
+        query: listingQuery(),
     })
 }
 
@@ -497,7 +529,15 @@ watch(
                     <span v-else class="card-thumb-fallback">📦</span>
                 </div>
                 <div class="card-body">
-                    <h3 class="card-title">{{ item.title }}<span class="card-repost-badge"
+                    <h3 class="card-title">{{ item.title }}
+                        <span
+                            class="card-price-badge"
+                            :class="{
+                              'is-paid': isPricedResource(item.priceFen, item.pricePoints),
+                              'is-points': isPointsResource(item.pricePoints),
+                            }"
+                        >{{ item.priceLabel }}</span>
+                        <span class="card-repost-badge"
                         :class="{ 'is-repost': item.originType === 'repost' }">{{ item.originType === 'repost' ? '转载' : '原创' }}</span></h3>
                     <p class="card-desc">{{ item.desc }}</p>
                     <div class="card-stats">
@@ -1116,6 +1156,25 @@ watch(
     -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+.card-price-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(22, 163, 74, 0.12);
+    color: #166534;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.5;
+    vertical-align: middle;
+}
+
+.card-price-badge.is-paid {
+    background: rgba(234, 88, 12, 0.14);
+    color: #9a3412;
 }
 
 .card-repost-badge {

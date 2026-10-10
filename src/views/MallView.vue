@@ -137,7 +137,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="mall-page">
+  <main class="portal-page portal-page--nav mall-page">
     <div class="mall-balance">
       <div>
         <h2>积分商城</h2>
@@ -205,30 +205,29 @@ onMounted(async () => {
       </TTable>
       <TEmpty v-else-if="!loading" description="暂无兑换记录" />
     </div>
-  </div>
+  </main>
 </template>
 
 <style scoped>
-.mall-page {
-  max-width: 900px;
-  margin: 0 auto;
+/* 左右与顶距走 .portal-page--nav（与需求大厅同口径）；区块间距靠 flex gap，避免再叠 margin */
+.mall-page.portal-page {
+  margin-top: 0;
 }
 .mall-balance {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 24px;
+  padding: 16px 20px;
   border-radius: 14px;
   background: linear-gradient(135deg, #eef4ff 0%, #f7faff 55%, #ffffff 100%);
   border: 1px solid rgba(224, 232, 255, 0.96);
   color: #0f172a;
   box-shadow: 0 12px 26px rgba(76, 103, 172, 0.08);
-  margin-bottom: 24px;
 }
 .mall-balance h2 {
-  margin: 0 0 6px;
-  font-size: 22px;
+  margin: 0;
+  font-size: 20px;
 }
 .mall-balance p {
   margin: 0;
@@ -246,13 +245,13 @@ onMounted(async () => {
   margin-bottom: 4px;
 }
 .mall-balance__num strong {
-  font-size: 40px;
+  font-size: 32px;
   line-height: 1;
   color: #4f8cff;
 }
 .mall-products,
 .mall-orders {
-  margin-bottom: 28px;
+  margin-bottom: 0;
 }
 .mall-products h3,
 .mall-orders h3 {

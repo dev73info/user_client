@@ -9,13 +9,17 @@ import {
   fenToYuanText,
   formatPurchaseAmountLabel,
   formatResourcePriceLabel,
+  isCashPaidListingResource,
+  isFreeListingResource,
   isPaidResource,
+  isPointsListingResource,
   isPointsPurchaseOrder,
   isPointsResource,
   isPricedResource,
   isPurchaseRequiredError,
   needsPurchase,
   parsePointsPriceInput,
+  parseResourceListingSale,
   parseYuanPriceInput,
   refundInitiatorLabel,
   resourcePurchaseStatusLabel,
@@ -82,6 +86,23 @@ describe('resourceSale', () => {
     expect(formatPurchaseAmountLabel({ status: 'paid', amount_fen: 0, amount_points: 80 })).toBe(
       '80 积分',
     )
+  })
+
+  it('portal listing: free hall includes points; paid / mall exclude points', () => {
+    expect(isFreeListingResource(0, 0)).toBe(true)
+    expect(isFreeListingResource(0, 50)).toBe(true)
+    expect(isFreeListingResource(100, 0)).toBe(false)
+    expect(isCashPaidListingResource(100, 0)).toBe(true)
+    expect(isCashPaidListingResource(0, 50)).toBe(false)
+    expect(isCashPaidListingResource(100, 50)).toBe(false)
+    expect(isCashPaidListingResource(0, 0)).toBe(false)
+    expect(isPointsListingResource(0, 50)).toBe(true)
+    expect(isPointsListingResource(100, 0)).toBe(false)
+    expect(isPointsListingResource(100, 50)).toBe(false)
+    expect(isPointsListingResource(0, 0)).toBe(false)
+    expect(parseResourceListingSale('paid')).toBe('paid')
+    expect(parseResourceListingSale('free')).toBe('free')
+    expect(parseResourceListingSale('all')).toBe(null)
   })
 
   it('download gate branches for cash and points', () => {

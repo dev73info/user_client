@@ -7,6 +7,7 @@ import { listMyRequirements } from '@/api/devRequirements'
 import { listUserInvitations } from '@/api/team'
 import { getMyRealnameVerification } from '@/api/realname'
 import { isActiveRequirement } from '@/shared/requirementStatus'
+import { WORKBENCH_BAR_SLOT_ID, workbenchBarSlotCount } from '@/shared/workbenchBarSlot'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
@@ -26,7 +27,6 @@ import {
   Files,
   Grid,
   Menu as MenuIcon,
-  Money,
   Service,
   Suitcase,
   Switch as SwitchIcon,
@@ -112,15 +112,13 @@ const devWorkbenchItems: DevWorkbenchItem[] = [
     label: '资源项目',
     name: 'dev-resource-list',
     description: '管理主页、版本与资源状态',
-    activeNames: ['dev-resource-homepage-edit', 'dev-resource-versions'],
+    // 售出订单从资源「更多」进入，侧栏仍高亮「资源项目」
+    activeNames: [
+      'dev-resource-homepage-edit',
+      'dev-resource-versions',
+      'dev-resource-sold-purchases',
+    ],
     icon: Files,
-  },
-  {
-    // 卖家侧订单：资源项目管「卖什么」，这条管「卖出去之后怎样」。
-    label: '售出订单',
-    name: 'dev-resource-sold-purchases',
-    description: '查看卖出的资源订单并主动退款',
-    icon: Money,
   },
   { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求', icon: Compass },
   {
@@ -265,23 +263,6 @@ const compactRouteTitle = computed(() => {
   const last = parts.length > 0 ? parts[parts.length - 1]?.trim() : ''
   return last || routeTitle.value
 })
-const isWorkbenchOverview = computed(() =>
-  route.name === overviewItem.name || route.matched.some((record) => record.name === overviewItem.name),
-)
-const isMessageDetailPage = computed(() => {
-  const requirementId = route.query.requirement_id
-  return isMessagesRoute.value && typeof requirementId === 'string' && requirementId.trim().length > 0
-})
-// 外壳不再给每个页面铺一条「标题 + 返回」：页面名由各页自己出示（页头或页内卡片标题），
-// 认路靠侧边栏。移动端顶部栏只留一颗「返回」，落地页与页内自带返回的页面不给。
-const showWorkbenchMobileBack = computed(
-  () => !isWorkbenchOverview.value
-    && !isMessageDetailPage.value
-    && route.name !== 'dev-home'
-    && route.name !== 'dev-resource-homepage-edit'
-    && route.name !== 'dev-requirement-detail',
-)
-
 // 工作台模式跟随路由：命中 devArea 路由时侧边栏整体换成开发者菜单，回到用户端页面即自动切回。
 const isDevWorkbenchMode = computed(
   () => route.matched.some((record) => Boolean(record.meta.devArea)),
@@ -425,14 +406,6 @@ function menuItemBadge(item: WorkbenchMenuItem) {
   }
 
   return ''
-}
-
-function goBack() {
-  if (window.history.length > 1) {
-    router.back()
-  } else {
-    router.push({ name: 'home' })
-  }
 }
 
 const modeSwitching = ref(false)
@@ -967,23 +940,22 @@ async function logout() {
     </aside>
 
     <section class="user-workbench__main">
-      <div class="user-workbench__mobile-bar">
+      <div class="user-workbench__mobile-bar"
+        :class="{ 'user-workbench__mobile-bar--slotted': workbenchBarSlotCount > 0 }">
         <button class="user-workbench__mobile-menu-btn" type="button" aria-label="打开工作台菜单" @click="openMobileMenu">
           <TIcon>
             <MenuIcon />
           </TIcon>
           <span>菜单</span>
         </button>
-        <div>
+        <div class="user-workbench__mobile-title">
           <Transition name="workbench-brand-title" mode="out-in">
             <strong :key="workbenchModeKey">{{ workbenchBrandTitle }}</strong>
           </Transition>
           <span>{{ currentTitle }}</span>
         </div>
-        <!-- 外壳不再铺页面标题栏，返回只在移动端顶部栏里给一颗（落地页与页内自带返回的页面不给） -->
-        <button v-if="showWorkbenchMobileBack" class="user-workbench__mobile-back" type="button" @click="goBack">
-          返回
-        </button>
+        <!-- 页面经 WorkbenchBarSlot 传进来的顶部读数（顶替标题）；没有时不占位 -->
+        <div :id="WORKBENCH_BAR_SLOT_ID" class="user-workbench__mobile-bar-extra" />
       </div>
 
       <div class="user-workbench__content">
@@ -1004,7 +976,8 @@ async function logout() {
   display: grid;
   grid-template-columns: minmax(220px, 252px) minmax(0, 1fr);
   gap: 14px;
-  margin: 12px auto 0;
+  /* 顶栏已占位，工作台贴顶栏下沿即可，不必再垫一整段空白 */
+  margin: 0 auto;
 }
 
 .user-workbench__aside {
@@ -1125,7 +1098,6 @@ async function logout() {
 
 .user-workbench__drawer-close,
 .user-workbench__mobile-menu-btn,
-.user-workbench__mobile-back,
 .user-workbench__menu-backdrop {
   border: 0;
   font: inherit;
@@ -1691,7 +1663,7 @@ async function logout() {
   margin: 0;
   padding: 0;
   /* 纵向节奏与开发者侧的 .dev-page 对齐：两侧页面在同一个外壳里，行距不能一宽一窄 */
-  gap: 24px;
+  gap: 16px;
 }
 
 .user-workbench__content :deep(.portal-page) {
@@ -1858,6 +1830,10 @@ async function logout() {
     box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
   }
 
+  .user-workbench__mobile-bar {
+    flex-wrap: wrap;
+  }
+
   .user-workbench__mobile-bar>div {
     display: grid;
     gap: 2px;
@@ -1865,6 +1841,24 @@ async function logout() {
     min-width: 0;
   }
 
+  .user-workbench__mobile-bar>.user-workbench__mobile-bar-extra {
+    display: none;
+  }
+
+  /* 页面经 WorkbenchBarSlot 塞了读数进来时，读数顶替标题，与「菜单」「返回」同排 */
+  .user-workbench__mobile-bar--slotted {
+    flex-wrap: nowrap;
+  }
+
+  .user-workbench__mobile-bar--slotted>.user-workbench__mobile-title {
+    display: none;
+  }
+
+  .user-workbench__mobile-bar--slotted>.user-workbench__mobile-bar-extra {
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
   .user-workbench__mobile-bar strong,
   .user-workbench__mobile-bar span {
     overflow: hidden;
@@ -1885,8 +1879,7 @@ async function logout() {
     line-height: 1.2;
   }
 
-  .user-workbench__mobile-menu-btn,
-  .user-workbench__mobile-back {
+  .user-workbench__mobile-menu-btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -1898,6 +1891,19 @@ async function logout() {
     color: #1d4ed8;
     font-size: 13px;
     font-weight: 800;
+  }
+
+  /* 顶栏塞了读数时，「菜单」只留图标，把宽度让给读数（按钮自带 aria-label） */
+  .user-workbench__mobile-bar--slotted .user-workbench__mobile-menu-btn {
+    justify-content: center;
+    width: 36px;
+    min-height: 36px;
+    padding: 0;
+    font-size: 18px;
+  }
+
+  .user-workbench__mobile-bar--slotted .user-workbench__mobile-menu-btn>span:not(.t73-icon) {
+    display: none;
   }
 
   /* 消息页不再隐藏侧边栏与顶部栏：顶部栏被 unified-top-card.css 用 !important 强制保留，

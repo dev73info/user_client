@@ -22,6 +22,16 @@ import { useMultiSelectTags } from '@/composables/useMultiSelectTags'
 import { useTagTreeStore } from '@/stores/tagTree'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import {
+  formatResourcePriceLabel,
+  isCashPaidListingResource,
+  isFreeListingResource,
+  isPointsResource,
+  isPricedResource,
+  type ResourceListingSale,
+} from '@/shared/resourceSale'
+
+type PriceFilter = 'all' | 'free' | 'paid'
 
 type McCardItem = {
   id: number
@@ -44,6 +54,9 @@ type McCardItem = {
   originAuthor: string | null
   originOrg: string | null
   originUrl: string | null
+  priceFen: number
+  pricePoints: number
+  priceLabel: string
 }
 
 type FilterSectionView = McTagFilterSection & {
@@ -63,6 +76,8 @@ const props = defineProps<{
   rootSlug: string
   entrySlug: string
   groupName: string
+  /** 门户入口锁定：免费厅 / 现金付费厅；空则显示厅内「全部/免费/付费」chips */
+  listingMode?: ResourceListingSale | null
 }>()
 
 const emit = defineEmits<{
@@ -82,6 +97,9 @@ const pageSize = 12
 const currentPage = ref(1)
 
 const selectedSort = ref('最新')
+const priceFilter = ref<PriceFilter>('all')
+const lockedListingMode = computed(() => props.listingMode ?? null)
+const showPriceFilterChips = computed(() => !lockedListingMode.value)
 
 const { onTagPointerDown, onTagPointerEnter, onTagPointerUp, onTagPointerCancel, onTagClick } =
   useMultiSelectTags()
@@ -139,6 +157,8 @@ function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
     ]),
   )
 
+  const priceFen = item.price_fen ?? 0
+  const pricePoints = item.price_points ?? 0
   return {
     id: item.id,
     title: item.title,
@@ -160,6 +180,9 @@ function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
     originAuthor: item.origin_author ?? null,
     originOrg: item.origin_org ?? null,
     originUrl: item.origin_url ?? null,
+    priceFen,
+    pricePoints,
+    priceLabel: formatResourcePriceLabel(priceFen, pricePoints),
   }
 }
 
@@ -174,6 +197,26 @@ function toggleFilter(list: string[], item: string) {
 
 const filteredCards = computed(() => {
   const filtered = cards.value.filter((card) => {
+    const mode = lockedListingMode.value
+    if (mode === 'free') {
+      if (!isFreeListingResource(card.priceFen, card.pricePoints)) {
+        return false
+      }
+    } else if (mode === 'paid') {
+      if (!isCashPaidListingResource(card.priceFen, card.pricePoints)) {
+        return false
+      }
+    } else if (priceFilter.value === 'free') {
+      if (!isFreeListingResource(card.priceFen, card.pricePoints)) {
+        return false
+      }
+    } else if (priceFilter.value === 'paid') {
+      // chips「付费」与门户付费厅同口径：仅现金，不含积分
+      if (!isCashPaidListingResource(card.priceFen, card.pricePoints)) {
+        return false
+      }
+    }
+
     for (const section of filterSections.value) {
       if (section.selected.length === 0) {
         continue
@@ -246,6 +289,19 @@ function resetFilters() {
     section.selected = []
   })
   selectedSort.value = '最新'
+  if (!lockedListingMode.value) {
+    priceFilter.value = 'all'
+  }
+  goToPage(1)
+}
+
+function listingQuery() {
+  const mode = lockedListingMode.value
+  return mode ? { sale: mode } : {}
+}
+
+function setPriceFilter(next: PriceFilter) {
+  priceFilter.value = next
   goToPage(1)
 }
 
@@ -277,6 +333,7 @@ function openResource(card: McCardItem) {
       entrySlug: props.entrySlug || getTagRouteSlug(props.groupName),
       resourceSlug: getResourceDetailSlug(card.id, card.ownerName),
     },
+    query: listingQuery(),
   })
 }
 
@@ -389,6 +446,31 @@ watch(
 <template>
   <section class="portal-resource-browser">
     <section class="portal-resource-browser__filters">
+      <div
+        v-if="showPriceFilterChips"
+        class="portal-resource-browser__price-filter"
+        role="group"
+        aria-label="按售价筛选"
+      >
+        <button
+          type="button"
+          class="portal-resource-browser__price-chip"
+          :class="{ active: priceFilter === 'all' }"
+          @click="setPriceFilter('all')"
+        >全部</button>
+        <button
+          type="button"
+          class="portal-resource-browser__price-chip"
+          :class="{ active: priceFilter === 'free' }"
+          @click="setPriceFilter('free')"
+        >免费</button>
+        <button
+          type="button"
+          class="portal-resource-browser__price-chip"
+          :class="{ active: priceFilter === 'paid' }"
+          @click="setPriceFilter('paid')"
+        >付费</button>
+      </div>
       <nav class="portal-resource-browser__menu" aria-label="标签筛选菜单">
         <section v-for="section in filterSections" :key="section.id" class="portal-resource-browser__menu-group" :class="{
           'portal-resource-browser__menu-group--open': isSectionExpanded(section.id),
@@ -438,6 +520,13 @@ watch(
                       :class="{ 'username-gradient': card.authorUsernameGradient && !card.authorUsernameColor }"
                       :style="card.authorUsernameColor ? { color: card.authorUsernameColor } : {}">{{ card.author }}</span>
                   </p>
+                  <span
+                    class="portal-resource-browser__price-badge"
+                    :class="{
+                      'is-paid': isPricedResource(card.priceFen, card.pricePoints),
+                      'is-points': isPointsResource(card.pricePoints),
+                    }"
+                  >{{ card.priceLabel }}</span>
                   <span class="portal-resource-browser__meta"
                     :class="{ 'is-repost': card.originType === 'repost' }">{{ card.originType === 'repost' ? '转载' : '原创' }}</span>
                 </div>
@@ -499,6 +588,45 @@ watch(
   border-radius: 18px;
   position: sticky;
   top: 86px;
+}
+
+.portal-resource-browser__price-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.portal-resource-browser__price-chip {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(198, 210, 236, 0.9);
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.portal-resource-browser__price-chip.active {
+  border-color: #2563eb;
+  color: #1d4ed8;
+  background: rgba(239, 246, 255, 0.95);
+}
+
+.portal-resource-browser__price-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #166534;
+  background: rgba(220, 252, 231, 0.95);
+}
+
+.portal-resource-browser__price-badge.is-paid {
+  color: #9a3412;
+  background: rgba(255, 237, 213, 0.96);
 }
 
 .portal-resource-browser__menu {

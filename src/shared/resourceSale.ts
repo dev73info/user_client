@@ -116,6 +116,49 @@ export function isPricedResource(
 }
 
 /**
+ * 门户「免费资源」列表：不含现金付费；真正免费与积分标价都进此厅。
+ * 积分价资源不进付费厅、也不进积分商城商品区。
+ */
+export function isFreeListingResource(
+  priceFen: number | null | undefined,
+  _pricePoints?: number | null,
+): boolean {
+  return !isPaidResource(priceFen)
+}
+
+/**
+ * 门户「付费资源」列表：仅现金标价（`price_fen > 0`），不含积分售价。
+ */
+export function isCashPaidListingResource(
+  priceFen: number | null | undefined,
+  pricePoints?: number | null,
+): boolean {
+  return isPaidResource(priceFen) && !isPointsResource(pricePoints)
+}
+
+/**
+ * 积分标价资源（`price_points > 0` 且非现金付费）。
+ * 展示归免费资源厅；付费厅与积分商城都不列这类项目。
+ */
+export function isPointsListingResource(
+  priceFen: number | null | undefined,
+  pricePoints?: number | null,
+): boolean {
+  return isPointsResource(pricePoints) && !isPaidResource(priceFen)
+}
+
+/** 门户资源目录的售价分区：写在路由 `?sale=` 上，在分类跳转间保持。 */
+export type ResourceListingSale = 'free' | 'paid'
+
+export function parseResourceListingSale(raw: unknown): ResourceListingSale | null {
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (value === 'free' || value === 'paid') {
+    return value
+  }
+  return null
+}
+
+/**
  * 列表 / 详情用的价格文案：免费 / ¥x.xx / N 积分。
  * 积分价优先于现金价（二者互斥，正常只会有一侧 > 0）。
  */

@@ -12,11 +12,41 @@ import {
 } from '@/api/resourceTags'
 import { useTagTreeStore } from '@/stores/tagTree'
 import { useToast } from '@/composables/useToast'
+import {
+  parseResourceListingSale,
+  type ResourceListingSale,
+} from '@/shared/resourceSale'
+
+const props = withDefaults(
+  defineProps<{
+    /** 门户入口锁定：免费厅 / 现金付费厅；分类路由则读 `?sale=` */
+    listingMode?: ResourceListingSale | null
+  }>(),
+  { listingMode: null },
+)
 
 const router = useRouter()
 const route = useRoute()
 const { showToast } = useToast()
 const tagTreeStore = useTagTreeStore()
+
+const activeListingMode = computed<ResourceListingSale | null>(() => {
+  if (props.listingMode === 'free' || props.listingMode === 'paid') {
+    return props.listingMode
+  }
+  return parseResourceListingSale(route.query.sale)
+})
+
+function withListingQuery(query: Record<string, unknown> = {}) {
+  const next = { ...query }
+  const mode = activeListingMode.value
+  if (mode) {
+    next.sale = mode
+  } else {
+    delete next.sale
+  }
+  return next
+}
 const rootTabs = ref<Array<{ slug: string; label: string; firstEntrySlug: string | null }>>([])
 const platformTabs = ref<McPluginPlatformEntry[]>([])
 const currentRootName = ref('')
@@ -88,7 +118,11 @@ function openPlatform(entrySlug: string) {
     return
   }
 
-  router.push({ name: 'resource-catalog', params: { rootSlug: currentRootSlug.value, entrySlug } })
+  router.push({
+    name: 'resource-catalog',
+    params: { rootSlug: currentRootSlug.value, entrySlug },
+    query: withListingQuery({ ...route.query }),
+  })
 }
 
 function openRoot(rootSlug: string, firstEntrySlug: string | null) {
@@ -99,6 +133,7 @@ function openRoot(rootSlug: string, firstEntrySlug: string | null) {
   router.push({
     name: 'resource-catalog',
     params: firstEntrySlug ? { rootSlug, entrySlug: firstEntrySlug } : { rootSlug },
+    query: withListingQuery({ ...route.query }),
   })
 }
 
@@ -145,18 +180,25 @@ async function loadPlatformTabs() {
       return
     }
 
-    if (
+    const needsCatalogRoute =
+      route.name === 'free-resources' ||
+      route.name === 'paid-resources' ||
       currentRootSlug.value !== resolvedRoot.key ||
       !platformTabs.value.some((tab) => tab.slug === currentEntrySlug.value)
-    ) {
+
+    if (needsCatalogRoute) {
       await router.replace({
         name: 'resource-catalog',
         params: { rootSlug: resolvedRoot.key, entrySlug: firstTab.slug },
-        query: route.query,
+        query: withListingQuery({ ...route.query }),
+      })
+    } else if (activeListingMode.value && route.query.sale !== activeListingMode.value) {
+      await router.replace({
+        query: withListingQuery({ ...route.query }),
       })
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载免费资源目录失败', 'warning')
+    showToast(err instanceof Error ? err.message : '加载资源目录失败', 'warning')
   }
 }
 
@@ -232,10 +274,11 @@ function updateViewport() {
 
       <section class="catalog-layout-page__browser">
         <MobileResourceList v-if="isMobile" :platform="currentPlatform" :rootSlug="currentRootSlug"
-          :entrySlug="currentEntrySlug" :groupName="currentTab?.groupName || currentEntryLabel" />
+          :entrySlug="currentEntrySlug" :groupName="currentTab?.groupName || currentEntryLabel"
+          :listing-mode="activeListingMode" />
         <ResourceCatalog v-else ref="catalogRef" :platform="currentPlatform" :rootSlug="currentRootSlug"
           :entrySlug="currentEntrySlug" :groupName="currentTab?.groupName || currentEntryLabel"
-          @page-state-change="handlePageStateChange" />
+          :listing-mode="activeListingMode" @page-state-change="handlePageStateChange" />
       </section>
     </section>
   </main>

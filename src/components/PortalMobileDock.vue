@@ -11,6 +11,11 @@ const auth = useAuthStore();
 const routeName = computed(() => String(route.name ?? ""));
 
 function isResourceActive() {
+    const sale = Array.isArray(route.query.sale) ? route.query.sale[0] : route.query.sale
+    // 底栏「免费资源」只在免费厅高亮；付费厅走顶栏入口
+    if (routeName.value === "paid-resources" || sale === "paid") {
+        return false
+    }
     return ["free-resources", "resource-catalog", "resource-detail"].includes(
         routeName.value
     );

@@ -68,6 +68,7 @@ const searchScopeOptions: Array<{ value: SearchScope; label: string }> = [
 const searchableRouteScope: Partial<Record<string, SearchScope>> = {
   search: 'auto',
   'free-resources': 'resources',
+  'paid-resources': 'resources',
   'resource-catalog': 'resources',
   'resource-detail-direct': 'resources',
   'requirement-hall': 'requirements',
@@ -88,16 +89,24 @@ const headerLinks = computed<HeaderLink[]>(() => {
   const currentName = String(route.name ?? '')
   const allowActive = !authModalVisible.value
 
+  const sale = Array.isArray(route.query.sale) ? route.query.sale[0] : route.query.sale
+  const onResourceCatalog = currentName === 'resource-catalog' || currentName === 'resource-detail'
+  const onFreeResources =
+    currentName === 'free-resources' || (onResourceCatalog && sale !== 'paid')
+  const onPaidResources =
+    currentName === 'paid-resources' || (onResourceCatalog && sale === 'paid')
+
   const links: HeaderLink[] = [
     { label: '首页', to: { name: 'home' }, active: allowActive && currentName === 'home' },
     {
       label: '免费资源',
       to: { name: 'free-resources' },
-      active:
-        allowActive &&
-        (currentName === 'free-resources' ||
-          currentName === 'resource-catalog' ||
-          currentName === 'resource-detail'),
+      active: allowActive && onFreeResources,
+    },
+    {
+      label: '付费资源',
+      to: { name: 'paid-resources' },
+      active: allowActive && onPaidResources,
     },
     {
       label: '需求大厅',
@@ -112,15 +121,16 @@ const headerLinks = computed<HeaderLink[]>(() => {
   ]
 
   if (auth.isAuthed) {
-    links.splice(3, 0, {
+    // 基础序：首页 / 免费 / 付费 / 需求大厅 / 社区 → 在「社区」前插入工作台与积分商城
+    links.splice(4, 0, {
       label: '工作台',
       to: { name: 'workbench' },
       active: allowActive && route.path.startsWith('/workbench'),
     })
-    links.splice(4, 0, {
+    links.splice(5, 0, {
       label: '积分商城',
       to: { name: 'points-mall' },
-      active: allowActive && currentName === 'points-mall' || route.path.startsWith('/points-mall'),
+      active: allowActive && (currentName === 'points-mall' || route.path.startsWith('/points-mall')),
     })
   }
 
@@ -521,7 +531,10 @@ function clearSearch() {
     return
   }
 
-  if (['free-resources', 'requirement-hall', 'community'].includes(currentName) && route.query.keyword) {
+  if (
+    ['free-resources', 'paid-resources', 'requirement-hall', 'community'].includes(currentName) &&
+    route.query.keyword
+  ) {
     const nextQuery = { ...route.query }
     delete nextQuery.keyword
     void router.replace({ query: nextQuery })

@@ -74,6 +74,11 @@ const router = createRouter({
       component: () => import('@/views/FreeResourcesView.vue'),
     },
     {
+      path: '/paid-resources',
+      name: 'paid-resources',
+      component: () => import('@/views/PaidResourcesView.vue'),
+    },
+    {
       path: '/requirement-hall',
       name: 'requirement-hall',
       component: () => import('@/views/RequirementHallView.vue'),

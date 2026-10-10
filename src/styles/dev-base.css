@@ -77,7 +77,8 @@ a {
 
 .dev-page {
   display: grid;
-  gap: 24px;
+  /* 读数条 → 内容卡、卡与卡之间：略收紧，避免菜单页顶部空一大截 */
+  gap: 16px;
   width: min(1120px, 100%);
   margin: 0 auto;
 }
@@ -298,7 +299,7 @@ a {
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
-  padding: 12px 24px;
+  padding: 10px 20px;
   background: var(--dev-surface);
   border: 1px solid var(--dev-line);
   border-radius: var(--dev-radius-card);
