@@ -422,6 +422,18 @@ const router = createRouter({
       name: 'resource-detail',
       component: () => import('@/views/ResourceDetailView.vue'),
     },
+    {
+      // 兜底路由：匹配不到任何路由的地址落到这里，渲染「页面不存在」而不是只剩页头页脚的空壳
+      // （见 任务/缺陷/BUG-009）。必须放在路由表最后：前面的 `/:rootSlug/:entrySlug?` 与
+      // `/:rootSlug/:entrySlug/:resourceSlug` 是按段数贪婪匹配的，放在它们之前会把正常页面一起吃掉。
+      //
+      // 覆盖范围只有「任何上表路由都匹配不上」的地址，主要是四段及以上的路径（例如沿用了旧式
+      // 的四段资源链接）。一至三段的未知路径仍会先被上面两条目录 / 详情路由接走。
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('@/views/NotFoundView.vue'),
+      meta: { title: '页面不存在' },
+    },
   ],
 })
 

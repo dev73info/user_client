@@ -10,6 +10,8 @@ type SeoMetaInput = {
   title: string
   description?: string
   path?: string
+  /** 标记为不收录（如 404 兜底页）：写 `noindex, follow`，避免这类页面进入搜索结果。 */
+  noindex?: boolean
 }
 
 export function setSeoMeta(input: SeoMetaInput): void {
@@ -28,6 +30,9 @@ export function setSeoMeta(input: SeoMetaInput): void {
   setMeta('property', 'og:url', url)
   setMeta('name', 'twitter:title', title)
   setMeta('name', 'twitter:description', description)
+  // 每次调用都显式写 robots：否则从 404 页跳到不自己设置 SEO 的页面时，
+  // 上一条 `noindex` 会留在 <head> 里，把正常页面也一起挡在搜索之外。
+  setMeta('name', 'robots', input.noindex ? 'noindex, follow' : 'index, follow')
   setCanonical(url)
 }
 
