@@ -79,6 +79,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
     inviteCode?: string,
     shareType?: string,
     shareTargetId?: string,
+    turnstileToken?: string,
   ): Promise<AuthRequestPayload> {
     try {
       return await deps.requestJson<AuthRequestPayload>(
@@ -99,6 +100,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
             ...(inviteCode ? { invite_code: inviteCode } : {}),
             ...(shareType ? { share_type: shareType } : {}),
             ...(shareTargetId ? { share_target_id: shareTargetId } : {}),
+            ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
           }),
         },
         '请求失败',
@@ -123,7 +125,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
     )
   }
 
-  async function sendRegisterEmailCode(email: string): Promise<void> {
+  async function sendRegisterEmailCode(email: string, turnstileToken?: string): Promise<void> {
     try {
       await deps.requestVoid(
         '/auth/send-register-email-code',
@@ -132,7 +134,10 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({
+            email,
+            ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+          }),
         },
         '发送验证码失败',
       )
@@ -144,7 +149,10 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
     }
   }
 
-  function sendResetPasswordEmailCode(email: string): Promise<void> {
+  function sendResetPasswordEmailCode(
+    email: string,
+    turnstileToken?: string,
+  ): Promise<void> {
     return deps.requestVoid(
       '/auth/send-reset-password-email-code',
       {
@@ -152,13 +160,21 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({
+          email,
+          ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+        }),
       },
       '发送验证码失败',
     )
   }
 
-  function resetPassword(email: string, password: string, emailCode: string): Promise<AuthPayload> {
+  function resetPassword(
+    email: string,
+    password: string,
+    emailCode: string,
+    turnstileToken?: string,
+  ): Promise<AuthPayload> {
     return deps.requestJson<AuthPayload>(
       '/auth/reset-password',
       {
@@ -166,7 +182,12 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, email_code: emailCode }),
+        body: JSON.stringify({
+          email,
+          password,
+          email_code: emailCode,
+          ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+        }),
       },
       '重置密码失败',
     )

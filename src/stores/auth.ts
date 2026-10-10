@@ -222,6 +222,7 @@ export const useAuthStore = defineStore('auth', () => {
     usernameInput: string,
     passwordInput: string,
     twoFactorCode?: string,
+    turnstileToken?: string,
   ): Promise<LoginResult> {
     loading.value = true
     try {
@@ -233,6 +234,10 @@ export const useAuthStore = defineStore('auth', () => {
         undefined,
         undefined,
         twoFactorCode,
+        undefined,
+        undefined,
+        undefined,
+        turnstileToken,
       )
       if (isTwoFactorRequiredPayload(payload)) {
         return {
@@ -266,22 +271,23 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function sendRegisterEmailCode(email: string) {
-    await sendRegisterEmailCodeApi(email)
+  async function sendRegisterEmailCode(email: string, turnstileToken?: string) {
+    await sendRegisterEmailCodeApi(email, turnstileToken)
   }
 
-  async function sendResetPasswordEmailCode(email: string) {
-    await sendResetPasswordEmailCodeApi(email)
+  async function sendResetPasswordEmailCode(email: string, turnstileToken?: string) {
+    await sendResetPasswordEmailCodeApi(email, turnstileToken)
   }
 
   async function resetPasswordWithEmail(
     emailInput: string,
     passwordInput: string,
     emailCodeInput: string,
+    turnstileToken?: string,
   ) {
     loading.value = true
     try {
-      const payload = await resetPassword(emailInput, passwordInput, emailCodeInput)
+      const payload = await resetPassword(emailInput, passwordInput, emailCodeInput, turnstileToken)
       applyAuthPayload(payload)
       if (!payload.username || !payload.role) {
         await initializeSession(true)
@@ -299,6 +305,7 @@ export const useAuthStore = defineStore('auth', () => {
     inviteCodeInput?: string,
     shareTypeInput?: string,
     shareTargetIdInput?: string,
+    turnstileToken?: string,
   ) {
     loading.value = true
     try {
@@ -313,6 +320,7 @@ export const useAuthStore = defineStore('auth', () => {
         inviteCodeInput?.trim() || undefined,
         shareTypeInput?.trim() || undefined,
         shareTargetIdInput?.trim() || undefined,
+        turnstileToken,
       )
       if (isTwoFactorRequiredPayload(payload)) {
         throw new Error('注册流程不需要两步验证')
