@@ -127,7 +127,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="app-shell">
     <div class="app-content">
-      <TScrollbar class="app-scrollbar">
+      <TScrollbar class="app-scrollbar app-shell-scrollbar">
         <div class="app-view-container" :class="{ 'app-view-container--no-footer': !showSiteFooter }">
           <PortalTopNav :class="['app-top-nav', { 'app-top-nav--home': route.name === 'home' }]" />
           <RouterView v-slot="{ Component }">
@@ -238,17 +238,27 @@ onBeforeUnmount(() => {
   height: 100vh;
 }
 
+/* 页脚贴底：真正滚动的是 TScrollbar 内部的 `.t73-scrollbar__wrap`（`.app-scrollbar` 自身
+   只有 100vh），所以「内容不足一屏时把页脚顶到底部」的弹性链要从 `.t73-scrollbar__view`
+   （见文件末尾非 scoped 段落）接到这里，给 body / #app 加 min-height 是够不着的。
+   容器纵向排布并吃满父级给的剩余高度，页脚再用 margin-top: auto 压到底部。 */
 .app-view-container {
   padding: 0 0 28px;
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-view-container--no-footer {
   padding-bottom: 0;
 }
 
+/* 内容不足一屏时 margin-top: auto 吃掉剩余空间，把页脚压到视口底部；
+   左右 auto 维持原来的水平居中。内容超过一屏时剩余空间为 0，
+   页脚自然落在正文之后，不遮挡、不脱离文档流。 */
 .site-footer-host {
   width: min(1280px, calc(100% - 24px));
-  margin: 0 auto;
+  margin: auto auto 0;
 }
 
 @media (max-width: 900px) {
@@ -410,5 +420,23 @@ html::-webkit-scrollbar-thumb:hover {
 
 .app-scrollbar .t73-scrollbar__bar--vertical .t73-scrollbar__thumb:hover {
   background: linear-gradient(180deg, rgba(125, 211, 252, 0.9), rgba(149, 213, 178, 1));
+}
+
+/* 页脚贴底的弹性底座。
+   门户外壳的可滚动元素是 `.t73-scrollbar__wrap`（`.app-scrollbar` 只有 100vh，wrap 靠
+   `height: 100%` 继承它），所以 100vh 的纵向弹性链要建在 wrap 的内容层上：
+   `.t73-scrollbar__view` 至少与滚动视口等高并纵向排布，它唯一的子元素
+   `.app-view-container`（scoped 段落里 `flex: 1 0 auto`）再拿下剩余高度，
+   页脚最后由 `.site-footer-host` 的 `margin-top: auto` 顶到容器底部。
+   给 body / #app 加 min-height 之所以无效，正是因为滚动不发生在它们身上。
+
+   选择器必须限定到外壳这一个实例：工作台侧栏也是 TScrollbar、也带 `app-scrollbar`
+   类（`UserWorkbenchView.vue` 的 `user-workbench__aside-scrollbar`），
+   用后代选择器会把它一起改成 flex 容器、动到侧栏排版。
+   所以这里用 `.app-shell-scrollbar`（只加在外壳上）+ 直接子代限定。 */
+.app-shell-scrollbar > .t73-scrollbar__wrap > .t73-scrollbar__view {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 </style>
