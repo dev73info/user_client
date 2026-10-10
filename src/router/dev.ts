@@ -165,6 +165,19 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    // R010 打赏：开发者主页的变现设置（档位 / 通道 / 感谢语 / 公开记录）与「收到打赏」列表。
+    path: 'developer/tips',
+    name: 'dev-tip-settings',
+    component: () => import('@/views/DevTipSettingsView.vue'),
+    meta: {
+      title: '打赏设置',
+      description: '设置打赏档位、感谢语与公开记录，并查看收到打赏。',
+      devArea: true,
+      requiresDevAccess: true,
+      requiresRealname: true,
+    },
+  },
+  {
     path: 'developer/requirements',
     redirect: { name: 'dev-requirement-hall' },
   },
@@ -336,6 +349,10 @@ export const devRoutes: RouteRecordRaw[] = [
   {
     path: '/dev/resources/:resourceId/versions',
     redirect: redirectToDevWorkbench('dev-resource-versions'),
+  },
+  {
+    path: '/dev/tips',
+    redirect: redirectToDevWorkbench('dev-tip-settings'),
   },
   {
     path: '/dev/requirements',

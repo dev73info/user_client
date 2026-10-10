@@ -18,6 +18,12 @@ import {
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import BadgeDisplay from '@/components/BadgeDisplay.vue'
+import DevTipDialog from '@/components/DevTipDialog.vue'
+import {
+  tipReceivedCashText,
+  tipReceivedPointsText,
+  tipperDisplayLabel,
+} from '@/shared/devTip'
 import { TButton, TDialog, TLoading } from 'ui_73info'
 const route = useRoute()
 const router = useRouter()
@@ -47,6 +53,57 @@ const profileGradient = computed(() => publicProfile.value?.username_gradient ??
 const profileColor = computed(() => publicProfile.value?.username_color || '')
 
 const isSelf = computed(() => !!auth.username && auth.username === username.value)
+
+// ---------------------------------------------------------------------------
+// R010 打赏：主页头部入口、「收到打赏」公开区块与打赏弹窗
+// ---------------------------------------------------------------------------
+
+/** 公开档案里的打赏块；老后端没有该字段时为 null */
+const tipBlock = computed(() => publicProfile.value?.tip ?? null)
+/** 他人 + 开发者开启 → 头部显示「打赏」；本人不显示（不能打赏自己） */
+const canTip = computed(() => !isSelf.value && Boolean(tipBlock.value?.enabled))
+/** 开发者开启公开记录时才显示「收到打赏」区块 */
+const showReceivedTips = computed(() => Boolean(tipBlock.value?.public_records))
+const receivedCashText = computed(() => tipReceivedCashText(tipBlock.value?.received_cash_fen ?? 0))
+const receivedPointsText = computed(() =>
+  tipReceivedPointsText(tipBlock.value?.received_points ?? 0),
+)
+const recentTipMessages = computed(() => tipBlock.value?.recent_messages ?? [])
+const tipDialogOpen = ref(false)
+
+function formatTipTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+  return date.toLocaleString('zh-CN')
+}
+
+/** 他人点「打赏」：未登录先要求登录，登录后回到本页 */
+function openTipDialog() {
+  if (!canTip.value) {
+    return
+  }
+  if (!auth.isAuthed || !auth.token.trim()) {
+    showToast('请先登录后再打赏', 'info')
+    void router.push({
+      name: 'home',
+      query: { modal: 'auth', mode: 'login', redirect_to: route.fullPath },
+    })
+    return
+  }
+  tipDialogOpen.value = true
+}
+
+/** 本人点「打赏设置」：进开发者工作台设置页 */
+function openTipSettings() {
+  void router.push({ name: 'dev-tip-settings' })
+}
+
+/** 打赏成功后刷新主页（累计与留言会变） */
+function onTipSuccess() {
+  void loadData()
+}
 
 function isVideoUrl(url: string): boolean {
   return /\.(mp4|webm|mov)(\?.*)?$/i.test(url)
@@ -476,10 +533,16 @@ async function removeBackground() {
           {{ userBadges.length > 0 ? '暂未佩戴徽章' : '暂未获得徽章' }}
         </p>
       </div>
-      <div v-if="isSelf" class="dev-profile__head-actions">
-        <button class="dev-profile__bg-btn" @click="editProfile">编辑简介</button>
-        <button class="dev-profile__bg-btn" @click="setBackground('static')">设置静态背景</button>
-        <button class="dev-profile__bg-btn" @click="setBackground('dynamic')">设置动态背景</button>
+      <div v-if="isSelf || canTip" class="dev-profile__head-actions">
+        <template v-if="isSelf">
+          <button class="dev-profile__bg-btn" @click="editProfile">编辑简介</button>
+          <button class="dev-profile__bg-btn" @click="setBackground('static')">设置静态背景</button>
+          <button class="dev-profile__bg-btn" @click="setBackground('dynamic')">设置动态背景</button>
+          <button class="dev-profile__bg-btn" @click="openTipSettings">打赏设置</button>
+        </template>
+        <button v-else-if="canTip" class="dev-profile__bg-btn dev-profile__bg-btn--tip" @click="openTipDialog">
+          打赏
+        </button>
       </div>
     </section>
 
@@ -501,6 +564,36 @@ async function removeBackground() {
         <strong>{{ stats.platforms }}</strong>
         <span>涉及平台</span>
       </div>
+    </section>
+
+    <!-- 收到打赏：仅开发者开启公开记录时可见 -->
+    <section v-if="showReceivedTips" class="dev-profile__tips">
+      <div class="dev-profile__section-heading">
+        <div>
+          <h2 class="dev-profile__section-title">收到打赏</h2>
+        </div>
+        <span class="dev-profile__section-count">感谢每一份支持</span>
+      </div>
+      <div class="dev-profile__tips-summary">
+        <div class="dev-profile__tips-stat">
+          <strong>{{ receivedCashText }}</strong>
+          <span>累计现金</span>
+        </div>
+        <div class="dev-profile__tips-stat">
+          <strong>{{ receivedPointsText }}</strong>
+          <span>累计积分</span>
+        </div>
+      </div>
+      <ul v-if="recentTipMessages.length" class="dev-profile__tips-list">
+        <li v-for="(tip, index) in recentTipMessages" :key="index" class="dev-profile__tips-item">
+          <div class="dev-profile__tips-meta">
+            <span class="dev-profile__tips-name">{{ tipperDisplayLabel(tip) }}</span>
+            <span class="dev-profile__tips-time">{{ formatTipTime(tip.created_at) }}</span>
+          </div>
+          <p v-if="tip.message" class="dev-profile__tips-message">{{ tip.message }}</p>
+        </li>
+      </ul>
+      <p v-else class="dev-profile__tips-empty">还没有收到留言</p>
     </section>
 
     <!-- 资源列表 -->
@@ -708,6 +801,15 @@ async function removeBackground() {
         </footer>
       </section>
     </div>
+
+    <!-- R010 打赏弹窗：他人视角选档位 / 自填、留言、匿名，现金走中间页、积分一步到位 -->
+    <DevTipDialog
+      v-model:open="tipDialogOpen"
+      :username="username"
+      :tip="tipBlock"
+      :token="auth.token"
+      @success="onTipSuccess"
+    />
   </TLoading>
 </template>
 
@@ -1363,6 +1465,97 @@ async function removeBackground() {
   font-size: 12px;
   color: #94a3b8;
   padding-top: 4px;
+}
+
+.dev-profile__bg-btn--tip {
+  border-color: rgba(245, 158, 11, 0.55);
+  color: #b45309;
+  font-weight: 700;
+}
+
+.dev-profile__bg-btn--tip:hover {
+  background: #fffbeb;
+}
+
+/* 收到打赏：累计 + 最近留言 */
+.dev-profile__tips-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.dev-profile__tips-stat {
+  display: grid;
+  gap: 4px;
+  padding: 18px 16px;
+  border: 1px solid rgba(253, 230, 138, 0.9);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 251, 235, 0.96), rgba(255, 247, 237, 0.9));
+  text-align: center;
+}
+
+.dev-profile__tips-stat strong {
+  color: #9a3412;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.dev-profile__tips-stat span {
+  color: #b45309;
+  font-size: 13px;
+}
+
+.dev-profile__tips-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dev-profile__tips-item {
+  padding: 12px 14px;
+  border: 1px solid rgba(226, 232, 240, 0.96);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.dev-profile__tips-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.dev-profile__tips-name {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dev-profile__tips-time {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.dev-profile__tips-message {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.dev-profile__tips-empty {
+  margin: 0;
+  padding: 24px 16px;
+  border: 1px dashed rgba(148, 163, 184, 0.36);
+  border-radius: 12px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
 }
 
 @media (max-width: 640px) {

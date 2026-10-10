@@ -27,6 +27,7 @@ import {
   Files,
   Grid,
   Menu as MenuIcon,
+  Money,
   Service,
   Suitcase,
   Switch as SwitchIcon,
@@ -119,6 +120,13 @@ const devWorkbenchItems: DevWorkbenchItem[] = [
       'dev-resource-sold-purchases',
     ],
     icon: Files,
+  },
+  {
+    // R010 打赏：主页打赏入口的开关、档位、感谢语与公开记录，以及「收到打赏」列表。
+    label: '打赏设置',
+    name: 'dev-tip-settings',
+    description: '设定打赏档位与查看收到打赏',
+    icon: Money,
   },
   { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求', icon: Compass },
   {
