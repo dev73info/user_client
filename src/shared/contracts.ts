@@ -1,5 +1,7 @@
 export type ContractSigningStatus = {
   has_contract: boolean
+  /** 最新合同状态码（0/1/2/3/4/6/7）；尚无合同时为空 */
+  status?: number | null
   party_b_signed: boolean
   party_a_signed: boolean
   party_c_signed?: boolean
@@ -47,4 +49,74 @@ const CONTRACT_STATUS_LABELS: Record<number, string> = {
 /** 合同状态中文标签；未知值回退 `状态 ${n}`（与后端同一口径）。 */
 export function contractStatusLabel(status: number): string {
   return CONTRACT_STATUS_LABELS[status] ?? `状态 ${status}`
+}
+
+/**
+ * 合同正文来源（与后端 `contract.content_source` 逐字一致）。
+ *
+ * - `platform`：平台按《需求开发合同》模板生成的正文，**唯一被签署的主文件**；
+ * - `uploaded_file`：当事人上传的自定义合同附件（方案 A）；
+ * - `drafted_terms`：当事人在页面内拟定、由平台渲染成的附件（方案 B）。
+ *
+ * 后两者都只是主合同的附件，资金与期限仍按需求单与平台规则执行。
+ */
+export const CONTRACT_CONTENT_SOURCE = {
+  platform: 'platform',
+  uploaded: 'uploaded_file',
+  drafted: 'drafted_terms',
+} as const
+
+export type ContractContentSource =
+  (typeof CONTRACT_CONTENT_SOURCE)[keyof typeof CONTRACT_CONTENT_SOURCE]
+
+const CONTENT_SOURCE_LABELS: Record<ContractContentSource, string> = {
+  platform: '平台生成',
+  uploaded_file: '上传附件',
+  drafted_terms: '页面拟定',
+}
+
+/** 合同来源中文标签（合同列表用来区分平台生成 / 上传附件 / 页面拟定）。 */
+export function contractContentSourceLabel(
+  source: ContractContentSource | null | undefined,
+): string {
+  if (!source) {
+    return CONTENT_SOURCE_LABELS.platform
+  }
+  return CONTENT_SOURCE_LABELS[source] ?? CONTENT_SOURCE_LABELS.platform
+}
+
+/**
+ * 自定义合同附件的平台审核态（与后端 `contract.attachment_review_status` 逐字一致）。
+ *
+ * 单独一条状态轴、**不塞进合同状态**：合同状态是整数枚举（0/1/2/3/4/6/7），
+ * 附件审核是 `none` / `pending` / `approved` / `rejected` 四态。
+ */
+export const ATTACHMENT_REVIEW_STATUS = {
+  none: 'none',
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const
+
+export type ContractAttachmentReviewStatus =
+  (typeof ATTACHMENT_REVIEW_STATUS)[keyof typeof ATTACHMENT_REVIEW_STATUS]
+
+/** 附件提交方：`party_a` 甲方（需求方）/ `party_b` 乙方（开发者）。 */
+export type ContractAttachmentParty = 'party_a' | 'party_b'
+
+const ATTACHMENT_REVIEW_LABELS: Record<ContractAttachmentReviewStatus, string> = {
+  none: '未准备',
+  pending: '待审核',
+  approved: '已放行',
+  rejected: '已驳回',
+}
+
+/** 附件审核态中文标签；缺省（无附件）按「未准备」。 */
+export function attachmentReviewStatusLabel(
+  status: ContractAttachmentReviewStatus | null | undefined,
+): string {
+  if (!status) {
+    return ATTACHMENT_REVIEW_LABELS.none
+  }
+  return ATTACHMENT_REVIEW_LABELS[status] ?? ATTACHMENT_REVIEW_LABELS.none
 }

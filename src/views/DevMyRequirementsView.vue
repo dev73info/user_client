@@ -736,7 +736,8 @@ function contractStartHint(item: RequirementItem): string {
 
   const status = signingStatusMap.value[item.requirement_id]
   if (!status?.party_b_signed && !status?.party_a_signed) {
-    return '请完成开发者签署，客户也需完成签署后才能支付定金'
+    // R012：合同页多了「自定义合同附件」；不提示这句双方会直接签平台模板，事后要改只能作废重签。
+    return '请完成开发者签署，客户也需完成签署后才能支付定金；如需补充条款可先在合同页准备自定义附件'
   }
   if (!status.party_b_signed) {
     return '等待开发者完成签署'
@@ -1080,7 +1081,8 @@ async function createRequirementContractAction(item: RequirementItem) {
   contractCreatingId.value = item.requirement_id
   try {
     await createRequirementContract(auth.token, item.requirement_id)
-    showToast('合同已发起，请完成签署', 'success')
+    // R012：发起后引导到合同页的「自定义合同附件」区；附件经平台审核放行后才能发起签署。
+    showToast('合同已发起；如需补充条款，可在合同页准备自定义附件，平台放行后即可签署', 'success')
     const status = await fetchDevContractSigningStatus(auth.token, item.requirement_id)
     signingStatusMap.value = { ...signingStatusMap.value, [item.requirement_id]: status }
     openContractSign(item)

@@ -800,7 +800,9 @@ function contractStatusHint(item: RequirementItem) {
   if (status.party_b_signed) {
     return awaitingDeposit ? '待您签署合同，签完后可支付定金' : '待您签署合同'
   }
-  return '客户和开发者均可进入双方合同签署'
+  // R012：合同页多了「自定义合同附件」。不提示这句，双方会直接签平台模板，事后要改就得作废重签。
+  // 附件只是条款补充，资金与期限仍按需求单与平台规则执行。
+  return '双方均可进入合同页签署；如需补充条款，可先上传或拟定自定义附件，经平台审核放行后再签'
 }
 
 function openContractSign(item: RequirementItem) {
@@ -855,7 +857,8 @@ async function createRequirementContractAction(item: RequirementItem) {
   contractCreatingId.value = item.requirement_id
   try {
     await createRequirementContract(auth.token, item.requirement_id)
-    showToast('合同已发起，请完成签署', 'success')
+    // R012：发起后引导到合同页的「自定义合同附件」区；附件经平台审核放行后才能发起签署。
+    showToast('合同已发起；如需补充条款，可在合同页准备自定义附件，平台放行后即可签署', 'success')
     await loadContractSigningStatuses(myRequirements.value)
     openContractSign(item)
   } catch (err) {
