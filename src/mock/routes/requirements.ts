@@ -8,6 +8,7 @@
 import type { RequirementItem, RequirementOverviewResp } from '@/api/requirements'
 
 import {
+  CLIENT_NICKNAME,
   CLIENT_USERNAME,
   DEV_USERNAME,
   bindRequirementRecord,
@@ -16,13 +17,15 @@ import {
   devWallet,
   findRequirement,
   mcResourceVersions,
+  mcResources,
   requirements,
   seedOfRequirement,
   settledIncome,
   versionsOf,
 } from '../db'
 import { defineRouteTable, type MockRequest, type MockRoute } from '../router'
-import { jsonResponse, noContentResponse, readInt, readString } from '../response'
+import { errorResponse, jsonResponse, noContentResponse, readInt, readString } from '../response'
+import { parseMockToken } from '../token'
 
 /** 未接单、已过审核（待付定金）的需求才会出现在开发者需求大厅。 */
 function hallRequirements(): RequirementItem[] {
@@ -191,8 +194,36 @@ const routes: MockRoute[] = [
   {
     method: 'POST',
     path: '/requirements/:id/comment',
-    note: '需求方评价',
-    handler: () => jsonResponse({ ok: true }),
+    note: '需求方 / 开发者互评（按操作者与 creator 是否一致写两侧字段）',
+    handler: (request, params) => {
+      const requirement = findRequirement(params.id ?? '')
+      if (!requirement) {
+        return jsonResponse({ message: '需求不存在' }, 404)
+      }
+
+      const body = (request.body ?? {}) as { rating?: number; comment?: string }
+      const rating = Number(body.rating)
+      if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+        return jsonResponse({ message: '评分无效' }, 400)
+      }
+
+      const text = body.comment?.trim() || null
+      const now = datetime(0, 16, 0)
+      const username = parseMockToken(request.token)?.username ?? ''
+
+      if (username === requirement.creator) {
+        requirement.comment_rating = rating
+        requirement.comment_text = text
+        requirement.commented_at = now
+      } else {
+        requirement.developer_comment_rating = rating
+        requirement.developer_comment_text = text
+        requirement.developer_commented_at = now
+      }
+      requirement.updated_at = now
+
+      return noContentResponse()
+    },
   },
   {
     method: 'DELETE',
@@ -313,6 +344,47 @@ const routes: MockRoute[] = [
         requirement.resource_version_delete_request_status = 'rejected'
         requirement.resource_version_delete_review_note = body.note?.trim() || '演示数据：暂不删除该版本'
       }
+
+      return jsonResponse(requirement)
+    },
+  },
+  {
+    method: 'POST',
+    path: '/requirements/:id/claim-resource',
+    note: '把交付资源转为需求方自己的资源：资源换主、需求记下转换时间；前置与后端一致（已结单 / 有交付资源 / 未转换）',
+    handler: (request, params) => {
+      const requirement = findRequirement(params.id ?? '')
+      if (!requirement) {
+        return errorResponse(404, 'requirement not found')
+      }
+      const username = parseMockToken(request.token)?.username ?? ''
+      if (username !== requirement.creator) {
+        return errorResponse(403, 'forbidden')
+      }
+      if (requirement.status !== 'completed') {
+        return errorResponse(409, '需求尚未结单，暂不能转为我的资源')
+      }
+      if (requirement.resource_claimed_at) {
+        return errorResponse(409, '该交付资源已转为需求方资源')
+      }
+      if (requirement.bound_resource_id == null) {
+        return errorResponse(409, '该需求没有交付资源，无法转换')
+      }
+
+      const resource = mcResources.find((item) => item.id === requirement.bound_resource_id)
+      if (resource?.ownership_type === 'team') {
+        return errorResponse(409, '团队资源暂不支持转换')
+      }
+      if (resource) {
+        resource.creator = CLIENT_USERNAME
+        resource.author = CLIENT_NICKNAME
+      }
+
+      const now = datetime(0, 16, 0)
+      requirement.resource_claimed_at = now
+      requirement.bound_resource_author = CLIENT_USERNAME
+      requirement.updated_at = now
+      // 开发者一栏保持原开发者：他的接单记录不丢。
 
       return jsonResponse(requirement)
     },

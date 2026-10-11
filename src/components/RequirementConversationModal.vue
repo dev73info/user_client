@@ -1305,7 +1305,10 @@ function handleBackdropClick() {
         </div>
 
         <footer class="conversation-modal__composer">
-          <p v-if="conversationClosed" class="conversation-modal__closed-tip">会话已关闭</p>
+          <!-- 需求取消、或交付资源已转为需求方资源后会话都会关闭，文案只讲共同点：仅供查看、不能再发言。 -->
+          <p v-if="conversationClosed" class="conversation-modal__closed-tip">
+            会话已关闭：这笔需求已结束，历史消息仅供查看，双方都不能再发言。
+          </p>
           <div class="conversation-modal__composer-main">
 
             <Transition name="conversation-emoji">

@@ -111,29 +111,66 @@
 }
 
 .comment-modal {
-  width: min(620px, 100%);
-  padding: 24px;
+  width: min(480px, 100%);
+  padding: 18px 18px 16px;
   background: #ffffff;
   color: #0f172a;
 }
 
+.comment-modal__head {
+  margin-bottom: 12px;
+}
+
 .comment-modal h3 {
-  margin-bottom: 16px;
-  font-size: 26px;
-  line-height: 1.15;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #0f172a;
 }
 
 .comment-modal__meta {
   display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.comment-modal__meta-row {
+  display: grid;
+  grid-template-columns: 2.5em minmax(0, 1fr);
   gap: 8px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  align-items: start;
+}
+
+.comment-modal__meta-label {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.comment-modal__meta-value {
+  min-width: 0;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.comment-modal__meta-value--mono {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #475569;
 }
 
 .comment-modal__section {
   display: grid;
-  gap: 10px;
-  margin-top: 16px;
+  gap: 8px;
+  margin-top: 14px;
 }
 
 .comment-modal__field {
@@ -145,42 +182,36 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  color: #2563eb;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.comment-modal__section-head strong {
+  font-weight: 800;
+}
+
+.comment-modal__score {
+  flex: 0 0 auto;
+  color: #b45309;
   font-size: 14px;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
-.comment-modal__section-head span {
+.comment-modal__counter {
   flex: 0 0 auto;
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 700;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
-.comment-modal .pay-line {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin: 0;
-  color: #0f172a;
-  font-size: 15px;
-  line-height: 1.65;
-}
-
-.comment-modal .pay-line strong {
-  flex: 0 0 72px;
-  color: #2563eb;
-  font-weight: 800;
-}
-
-.comment-modal .pay-line span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.comment-modal .actions {
-  justify-content: flex-start;
-  margin-top: 20px;
+.comment-modal .actions,
+.comment-modal__actions {
+  justify-content: flex-end;
+  margin-top: 16px;
+  gap: 8px;
 }
 
 .auth-mode-switch {
@@ -717,27 +748,33 @@
     padding: 14px;
   }
 
-  .comment-modal__section-head,
-  .comment-modal .pay-line {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 6px;
+  .comment-modal {
+    width: min(480px, 100%);
+    padding: 14px;
   }
 
-  .comment-modal .pay-line strong {
-    flex-basis: auto;
+  .comment-modal__actions {
+    justify-content: stretch;
   }
 
-  .comment-modal .actions .ghost {
-    flex: 1 1 140px;
+  .comment-modal__actions .ghost {
+    flex: 1 1 auto;
   }
 
   .auth-modal {
     max-height: calc(100vh - 24px);
   }
 
+  /* 窄屏仍保持三列横排；竖排会占掉半屏且与「登录」文案重复 */
   .auth-mode-switch {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 5px;
+  }
+
+  .auth-mode-btn {
+    min-height: 32px;
+    font-size: 12px;
   }
 
   .auth-modal-actions {
@@ -1216,7 +1253,7 @@
 }
 
 .comment-modal .rating-row {
-  gap: 12px;
+  gap: 4px;
   margin-top: 0;
 }
 
@@ -1240,13 +1277,14 @@
 }
 
 .comment-modal .rating-star {
-  width: 30px;
-  height: 30px;
-  border-color: transparent;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 0;
   background: transparent;
   color: #cbd5e1;
-  font-size: 26px;
+  font-size: 24px;
+  line-height: 1;
   box-shadow: none;
 }
 
@@ -1289,9 +1327,15 @@
 }
 
 .comment-modal .rating-star:hover {
-  border-color: transparent;
+  border: 0;
   background: transparent;
   box-shadow: none;
+  transform: none;
+  color: #f59e0b;
+}
+
+.comment-modal .rating-star.full:hover {
+  color: #d97706;
 }
 
 .comment-modal .rating-star.half:hover {
@@ -1320,14 +1364,15 @@
 }
 
 .comment-modal .comment-input {
-  min-height: 142px;
+  min-height: 96px;
   margin-top: 0;
   border-color: rgba(203, 213, 225, 0.95);
   background: #ffffff;
   color: #0f172a;
-  font-size: 15px;
-  line-height: 1.7;
+  font-size: 14px;
+  line-height: 1.6;
   box-shadow: none;
+  resize: vertical;
 }
 
 .comment-modal .comment-input::placeholder {
