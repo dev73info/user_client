@@ -4,10 +4,15 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const projectRoot = resolve(__dirname, '..')
-const productionEnv = readEnvFile(resolve(projectRoot, '.env.production'))
+// 站点口径必须与 canonical / sitemap 一致：sitemap 里全是 `https://73info.cn/...`，
+// 推送站点写成 www 会被百度判成 not_same_site，白推一遍。
+const productionEnv = {
+  ...readEnvFile(resolve(projectRoot, '.env.production')),
+  ...readEnvFile(resolve(projectRoot, '.env.local')),
+}
 
 const siteUrl = normalizeBaseUrl(
-  process.env.BAIDU_PUSH_SITE || productionEnv.BAIDU_PUSH_SITE || 'https://www.73info.cn',
+  process.env.BAIDU_PUSH_SITE || productionEnv.BAIDU_PUSH_SITE || 'https://73info.cn',
 )
 const token = String(process.env.BAIDU_PUSH_TOKEN || productionEnv.BAIDU_PUSH_TOKEN || '').trim()
 const endpoint = process.env.BAIDU_PUSH_ENDPOINT || 'http://data.zz.baidu.com/urls'
@@ -20,7 +25,9 @@ const urlLimit = nonNegativeInteger(process.env.BAIDU_PUSH_LIMIT, 0)
 
 async function main() {
   if (!dryRun && !token) {
-    throw new Error('[baidu] missing BAIDU_PUSH_TOKEN')
+    throw new Error(
+      '[baidu] missing BAIDU_PUSH_TOKEN（在 .env.local 里放一行 BAIDU_PUSH_TOKEN=… 即可，该文件不入库）',
+    )
   }
 
   const sitemapXml = readExistingFile(sitemapPath) || readExistingFile(fallbackSitemapPath)
@@ -30,6 +37,8 @@ async function main() {
   if (urlList.length === 0) {
     throw new Error('[baidu] no urls found in sitemap')
   }
+
+  warnOnSitemapHostMismatch(sitemapXml)
 
   if (dryRun) {
     console.log(`[baidu] dry run: would submit ${urlList.length} urls for ${siteUrl}`)
@@ -88,6 +97,34 @@ async function submitBatch(urls) {
 function buildSubmitUrl() {
   const separator = endpoint.includes('?') ? '&' : '?'
   return `${endpoint}${separator}site=${siteUrl}&token=${encodeURIComponent(token)}`
+}
+
+// sitemap 里的域名和推送站点对不上时明确告警：百度按「已验证站点」校验，
+// 域名不一致会整批返回 not_same_site（这次的坑就是 sitemap 用裸域、脚本默认 www）。
+function warnOnSitemapHostMismatch(sitemapXml) {
+  if (!sitemapXml) {
+    return
+  }
+
+  const siteHost = new URL(siteUrl).host
+  const hosts = new Set(
+    parseSitemapUrls(sitemapXml)
+      .map((url) => {
+        try {
+          return new URL(url).host
+        } catch {
+          return ''
+        }
+      })
+      .filter(Boolean),
+  )
+  const mismatched = [...hosts].filter((host) => host !== siteHost)
+
+  if (mismatched.length > 0) {
+    console.warn(
+      `[baidu] sitemap 里的域名（${mismatched.join(', ')}）与推送站点 ${siteUrl} 不一致，百度会判 not_same_site`,
+    )
+  }
 }
 
 function parseSitemapUrls(xml) {

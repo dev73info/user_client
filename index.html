@@ -98,6 +98,102 @@
         font-size: 14px;
         line-height: 1.6;
       }
+
+      /* 入口页/详情页静态快照里的真实内容区块（列表与帖子正文）：
+         爬虫与未执行 JS 的访问者靠它读到正文，正常访问时随 #app 一起被 Vue 替换掉。 */
+      .seo-fallback__section {
+        max-width: 920px;
+        margin: 0 0 34px;
+      }
+
+      .seo-fallback__section-title {
+        margin: 0 0 6px;
+        font-size: 20px;
+        font-weight: 700;
+      }
+
+      .seo-fallback__section-hint {
+        margin: 0 0 14px;
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .seo-fallback__list {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .seo-fallback__list li {
+        padding: 14px 18px;
+        background: #ffffff;
+        border: 1px solid #dbeafe;
+        border-radius: 8px;
+      }
+
+      .seo-fallback__list a {
+        color: #1d4ed8;
+        font-size: 17px;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .seo-fallback__list strong {
+        color: #14213d;
+        font-size: 17px;
+      }
+
+      .seo-fallback__list small {
+        display: block;
+        margin-top: 6px;
+        color: #64748b;
+        font-size: 13px;
+      }
+
+      .seo-fallback__list em {
+        display: block;
+        margin-top: 6px;
+        color: #475569;
+        font-size: 14px;
+        font-style: normal;
+        line-height: 1.7;
+      }
+
+      .seo-fallback__body {
+        max-width: 760px;
+        margin: 0 0 34px;
+        color: #334155;
+        font-size: 16px;
+        line-height: 1.9;
+      }
+
+      .seo-fallback__body p {
+        margin: 0 0 14px;
+      }
+
+      /* 法务页正文里的章节标题与列表 */
+      .seo-fallback__body h3 {
+        margin: 26px 0 10px;
+        color: #14213d;
+        font-size: 17px;
+        font-weight: 700;
+      }
+
+      .seo-fallback__body ul {
+        margin: 0 0 14px;
+        padding-left: 22px;
+      }
+
+      .seo-fallback__body li {
+        margin: 0 0 8px;
+      }
+
+      .seo-fallback__body a {
+        color: #1d4ed8;
+      }
     </style>
   </head>
   <body>

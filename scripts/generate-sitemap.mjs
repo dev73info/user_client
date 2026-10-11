@@ -4,10 +4,15 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import {
+  collectPublicProfiles,
   dateOnly,
   fetchPublishedPosts,
   fetchPublishedResources,
+  fetchPublicRequirementSpotlights,
+  isCashPaidListingResource,
+  isFreeListingResource,
   positiveInteger,
+  publicProfilePath,
   resourceDetailSlug,
   resolveApiBaseUrl,
   resolveSiteUrl,
@@ -23,26 +28,71 @@ const maxCommunityPosts = positiveInteger(process.env.SITEMAP_MAX_COMMUNITY_POST
 const today = new Date().toISOString().slice(0, 10)
 let sitemapFetchFailed = false
 
-const staticEntries = [
-  { path: '/', lastmod: today, changefreq: 'daily', priority: '1.0' },
-  { path: '/free-resources', lastmod: today, changefreq: 'daily', priority: '0.8' },
-  { path: '/requirement-hall', lastmod: today, changefreq: 'daily', priority: '0.8' },
-  { path: '/community', lastmod: today, changefreq: 'weekly', priority: '0.6' },
-  { path: '/about', lastmod: today, changefreq: 'monthly', priority: '0.5' },
-  { path: '/terms', lastmod: today, changefreq: 'monthly', priority: '0.4' },
-  { path: '/privacy', lastmod: today, changefreq: 'monthly', priority: '0.4' },
-  { path: '/payment-refund', lastmod: today, changefreq: 'monthly', priority: '0.4' },
-]
+// 静态入口页的 lastmod 不用「构建当天」：那样每次发布都会宣称全部入口页刚更新过，
+// 爬虫发现这个字段不可信之后会整体忽略它。列表页取该列表里最新的内容时间，
+// 关于/协议/隐私/支付退款这几页没有可推断的改动时间，索性不写 lastmod（写错比不写更糟）。
+function buildStaticEntries({ resources, posts, requirements, profiles }) {
+  const resourceDates = resources.map((item) => dateOnly(item.updated_at || item.created_at)).filter(Boolean)
+  const freeResourceDates = resources
+    .filter(isFreeListingResource)
+    .map((item) => dateOnly(item.updated_at || item.created_at))
+    .filter(Boolean)
+  const paidResourceDates = resources
+    .filter(isCashPaidListingResource)
+    .map((item) => dateOnly(item.updated_at || item.created_at))
+    .filter(Boolean)
+  const postDates = posts.map((item) => dateOnly(item.updated_at || item.published_at)).filter(Boolean)
+  const requirementDates = requirements
+    .map((item) => dateOnly(item.updated_at || item.created_at))
+    .filter(Boolean)
+  const overall = latestOf(resourceDates, postDates, requirementDates) || today
+
+  return [
+    { path: '/', lastmod: overall, changefreq: 'daily', priority: '1.0' },
+    { path: '/free-resources', lastmod: latestOf(freeResourceDates) || today, changefreq: 'daily', priority: '0.8' },
+    // 付费厅与免费厅是两个入口页：原先只列了免费厅，付费资源在站内没有任何可爬入口。
+    { path: '/paid-resources', lastmod: latestOf(paidResourceDates) || today, changefreq: 'daily', priority: '0.7' },
+    {
+      path: '/requirement-hall',
+      lastmod: latestOf(requirementDates) || today,
+      changefreq: 'daily',
+      priority: '0.8',
+    },
+    { path: '/community', lastmod: latestOf(postDates) || today, changefreq: 'weekly', priority: '0.6' },
+    { path: '/about', changefreq: 'monthly', priority: '0.5' },
+    { path: '/terms', changefreq: 'monthly', priority: '0.4' },
+    { path: '/privacy', changefreq: 'monthly', priority: '0.4' },
+    { path: '/payment-refund', changefreq: 'monthly', priority: '0.4' },
+  ]
+}
+
+// 取多组 `YYYY-MM-DD` 里的最大日期；字符串比较即可，同格式下字典序等于时间序。
+function latestOf(...groups) {
+  const dates = groups.flat().filter(Boolean)
+  return dates.length > 0 ? [...dates].sort().at(-1) : ''
+}
 
 async function main() {
-  const [resources, posts] = await Promise.all([
+  const [resources, posts, requirements] = await Promise.all([
     fetchPublishedResources(apiBaseUrl).catch((error) => handleFetchFailure('resources', error)),
     fetchPublishedPosts(apiBaseUrl, maxCommunityPosts).catch((error) =>
       handleFetchFailure('community posts', error),
     ),
+    fetchPublicRequirementSpotlights(apiBaseUrl).catch((error) =>
+      handleFetchFailure('requirement spotlight', error),
+    ),
   ])
+
+  // 公开主页与快照脚本用同一份名单：只有「自己有公开资源 / 公开帖子，或填了主页简介」的人才会进 sitemap，
+  // 否则 sitemap 会列出一批只有用户名的空页。
+  const profiles = await collectPublicProfiles(apiBaseUrl, resources, posts).catch((error) => {
+    sitemapFetchFailed = true
+    console.warn(`[sitemap] failed to fetch public profiles: ${error instanceof Error ? error.message : error}`)
+    return []
+  })
+
   const entries = [
-    ...staticEntries,
+    ...buildStaticEntries({ resources, posts, requirements }),
     ...resources.map((resource) => ({
       path: `/resources/${resourceDetailSlug(resource)}`,
       lastmod: dateOnly(resource.updated_at || resource.created_at) || today,
@@ -55,6 +105,16 @@ async function main() {
       changefreq: 'weekly',
       priority: '0.6',
     })),
+    ...profiles.map((profile) => ({
+      path: publicProfilePath(profile.username),
+      lastmod:
+        latestOf(
+          profile.resources.map((item) => dateOnly(item.updated_at || item.created_at)),
+          profile.posts.map((item) => dateOnly(item.updated_at || item.published_at)),
+        ) || today,
+      changefreq: 'weekly',
+      priority: '0.5',
+    })),
   ]
 
   if (sitemapFetchFailed && hasExistingSitemap()) {
@@ -66,7 +126,7 @@ async function main() {
   await writeFile(sitemapPath, renderSitemap(dedupeEntries(entries)), 'utf8')
 
   console.log(
-    `[sitemap] generated ${entries.length} urls (${resources.length} resources, ${posts.length} posts) -> ${sitemapPath}`,
+    `[sitemap] generated ${entries.length} urls (${resources.length} resources, ${posts.length} posts, ${profiles.length} profiles) -> ${sitemapPath}`,
   )
 }
 
@@ -87,14 +147,19 @@ function hasExistingSitemap() {
 
 function renderSitemap(entries) {
   const urls = entries
-    .map(
-      (entry) => `  <url>
-    <loc>${escapeXml(sitemapUrl(entry.path))}</loc>
-    <lastmod>${escapeXml(entry.lastmod)}</lastmod>
-    <changefreq>${escapeXml(entry.changefreq)}</changefreq>
-    <priority>${escapeXml(entry.priority)}</priority>
-  </url>`,
-    )
+    .map((entry) => {
+      const lines = [`    <loc>${escapeXml(sitemapUrl(entry.path))}</loc>`]
+
+      // 没有可靠改动时间的页面不写 lastmod：字段不准会让爬虫忽略整站的 lastmod。
+      if (entry.lastmod) {
+        lines.push(`    <lastmod>${escapeXml(entry.lastmod)}</lastmod>`)
+      }
+
+      lines.push(`    <changefreq>${escapeXml(entry.changefreq)}</changefreq>`)
+      lines.push(`    <priority>${escapeXml(entry.priority)}</priority>`)
+
+      return `  <url>\n${lines.join('\n')}\n  </url>`
+    })
     .join('\n')
 
   return `<?xml version="1.0" encoding="UTF-8"?>

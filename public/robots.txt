@@ -1,7 +1,9 @@
 User-agent: *
 Allow: /
 
-# 需要登录或承载订单参数的私有页面，避免爬虫把 SPA 空壳/登录页当成有效内容收录。
+# 需要登录或承载订单/查询参数的私有页面，避免爬虫把 SPA 空壳、登录页或参数组合当成有效内容收录。
+# 新增登录后才可见的前缀时，记得同步加到这里（后台私有路径见 src/router 的 /dev/*）。
+Disallow: /dev
 Disallow: /workbench
 Disallow: /profile
 Disallow: /messages
@@ -9,6 +11,7 @@ Disallow: /tickets
 Disallow: /realname
 Disallow: /coupon-claim
 Disallow: /contract-sign
+Disallow: /my-custom-resources
 # 用 $ 锚点避免误伤 /payment-refund（合规页需要收录）
 Disallow: /payment$
 Disallow: /payment?

@@ -10,7 +10,16 @@
   RewriteBase /
 
   RewriteRule ^index\.html$ - [L]
+
+  # 静态快照是 `<路由>.html`（/community.html、/user/<name>/profile.html），无斜杠地址先补 .html，
+  # 爬虫与直链访问才能拿到带正文的页面，而不是 SPA 外壳。
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /index.html [L]
+  RewriteCond %{REQUEST_FILENAME}.html -f
+  RewriteRule ^ %{REQUEST_URI}.html [L]
+
+  # 未命中快照的地址回落到 noindex 外壳，不要落回 /index.html（那是首页快照，会变成重复首页）。
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /spa-fallback.html [L]
 </IfModule>
