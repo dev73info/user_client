@@ -12,9 +12,16 @@ import {
     type ContractAttachmentParty,
     type ContractDetail,
 } from '@/api/contracts'
-import { ATTACHMENT_REVIEW_STATUS, CONTRACT_STATUS, contractStatusLabel } from '@/shared/contracts'
+import { ATTACHMENT_REVIEW_STATUS, CONTRACT_STATUS, contractEffectiveUntilLabel, contractStatusLabel } from '@/shared/contracts'
 import ContractAttachmentPanel from '@/components/ContractAttachmentPanel.vue'
 import { contractWaitingMessage } from '@/utils/contractSignatures'
+import { fetchRequirementDetail, type RequirementItem } from '@/api/requirements'
+import {
+    ARCHIVED_WRITE_BLOCKED_MESSAGE,
+    developmentCycleLabel,
+    isRequirementArchived,
+    requirementArchiveBanner,
+} from '@/shared/requirementArchive'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -271,9 +278,34 @@ const showAttachmentPanel = computed(
 const currentPartyAsAttachmentParty = computed<ContractAttachmentParty | null>(
     () => currentParty.value,
 )
-/** 签署可用性：合同可签 + 实名齐全 + 附件已放行（平台生成的合同不受附件闸门约束）。 */
+// R014：需求单的「合同有效期届满 → 超期锁定 / 已清除」状态。合同详情本身不带归档标记，
+// 借需求详情（`requireId`）读一次；读取即触发后端收口，返回的就是最新状态。
+const requirementArchive = ref<RequirementItem | null>(null)
+/** 已进入锁定 / 已清除：写操作一律被后端拒绝，页面据此置灰。 */
+const requirementArchived = computed(
+    () => requirementArchive.value != null && isRequirementArchived(requirementArchive.value),
+)
+/** 锁定 / 清除横幅（未归档时 title 为空串，模板据此不渲染）。 */
+const archiveBanner = computed(() =>
+    requirementArchive.value
+        ? requirementArchiveBanner(requirementArchive.value)
+        : { state: 'active' as const, title: '', description: '' },
+)
+/** 归档态下签署按钮旁的中文说明（清除态无「锁定期」可言，单独一句）。 */
+const archiveSignBlockedMessage = computed(() =>
+    archiveBanner.value.state === 'cleared'
+        ? '合同资料已清除，不能再发起签署。'
+        : ARCHIVED_WRITE_BLOCKED_MESSAGE,
+)
+/** R014：合同有效期截止（担保合同的签署完成时写入）；未签署完成给中文说明，不显示空值。 */
+const effectiveUntilLabel = computed(() =>
+    contract.value ? contractEffectiveUntilLabel(contract.value.status, contract.value.effective_until) : '',
+)
+/** R014：签约时快照的开发周期（天）；无值不渲染。 */
+const developmentCycleText = computed(() => developmentCycleLabel(contract.value?.development_cycle_days))
+/** 签署可用性：合同可签 + 实名齐全 + 附件已放行（平台生成的合同不受附件闸门约束）+ 未进入到期归档。 */
 const canSubmitSign = computed(
-    () => canSignContract.value && signerIdentityReady.value && !signing.value && attachmentApproved.value,
+    () => canSignContract.value && signerIdentityReady.value && !signing.value && attachmentApproved.value && !requirementArchived.value,
 )
 /** 附件变更（上传/拟定/撤回）后把页面上的合同换成后端最新那份，避免停在旧审核态。 */
 function applyUpdatedContract(updated: ContractDetail) {
@@ -372,6 +404,17 @@ async function loadContract() {
                 }
             }
         }
+        // R014：读一次需求详情拿「超期锁定 / 已清除」标记（读取即触发后端收口）。失败不阻断合同展示。
+        const rid = contract.value?.requirement_id?.trim() || requirementId
+        if (!isDeveloperAgreement.value && rid) {
+            try {
+                requirementArchive.value = await fetchRequirementDetail(auth.token, rid)
+            } catch {
+                requirementArchive.value = null
+            }
+        } else {
+            requirementArchive.value = null
+        }
     } catch (cause) {
         contract.value = null
         error.value = cause instanceof Error ? cause.message : '加载合同失败，请刷新重试'
@@ -413,6 +456,11 @@ function continueAfterSignCompleted() {
 
 async function handleSign() {
     if (!contract.value || signing.value) return
+    // R014：合同有效期届满进入锁定 / 已清除后，签署属写操作，后端一律拒绝；先拦一道并讲清原因。
+    if (requirementArchived.value) {
+        error.value = ARCHIVED_WRITE_BLOCKED_MESSAGE
+        return
+    }
     if (!signerIdentityReady.value) {
         error.value = '请先完成实名认证，签署身份必须包含真实姓名和身份证号'
         return
@@ -567,6 +615,11 @@ onUnmounted(() => {
                                 contractStatusLabel(contract.status)
                                 }}</span></p>
                         <p><strong>合同指纹：</strong><span class="hash-text">{{ contract.content_sha256 }}</span></p>
+                        <!-- R014：担保合同的有效期截止（＝后签方签署时间 + 开发周期）；未签署完成给中文说明，不显示空值。 -->
+                        <p v-if="!isDeveloperAgreement"><strong>有效期截止：</strong><span
+                                data-testid="contract-effective-until">{{ effectiveUntilLabel }}</span></p>
+                        <p v-if="!isDeveloperAgreement && developmentCycleText"><strong>开发周期：</strong><span
+                                data-testid="contract-development-cycle">{{ developmentCycleText }}</span></p>
                         <!-- CT-2：平台作废不联动爱签（爱签 OpenAPI 没有作废/撤回接口），
                              用户可能在渠道侧仍看到这份合同，必须在页面上讲清楚边界。 -->
                         <p v-if="contract.status === CONTRACT_STATUS.voided" class="void-hint">
@@ -580,6 +633,14 @@ onUnmounted(() => {
                         查看合同
                     </button>
                 </div>
+
+                <!-- R014：合同有效期届满进入「超期锁定 / 已清除」后的横幅。锁定态仍可下载资料、写操作置灰；
+                     清除态只剩审计台账。判定与文案来自 shared/requirementArchive，真值在后端。 -->
+                <section v-if="archiveBanner.title" class="archive-banner" :class="`archive-banner--${archiveBanner.state}`"
+                    role="status" data-testid="contract-archive-banner">
+                    <strong>{{ archiveBanner.title }}</strong>
+                    <p>{{ archiveBanner.description }}</p>
+                </section>
 
                 <!-- R012：自定义合同附件。双方上传自己的合同文件或在页面内拟定条款，作为主合同的附件随卷签署；
                      必须经平台放行后才能发起签署。开发者入驻协议没有附件，不展示。 -->
@@ -658,6 +719,9 @@ onUnmounted(() => {
                     <button v-if="canSignContract" class="btn-primary" :disabled="!canSubmitSign" @click="handleSign">
                         {{ signing ? '签署中…' : '开始签署' }}
                     </button>
+                    <span v-if="requirementArchived" class="badge-pending" data-testid="contract-archive-locked-note">
+                        {{ archiveSignBlockedMessage }}
+                    </span>
                     <span v-else-if="waitingMessage" class="badge-pending">{{ waitingMessage }}</span>
                     <button
                         v-if="showBecomeDeveloper"
@@ -1148,6 +1212,34 @@ onUnmounted(() => {
     border: 1px solid #fde68a;
     margin-bottom: 1rem;
     line-height: 1.6;
+}
+
+/* R014：合同有效期届满进入锁定 / 已清除的横幅。锁定用琥珀提醒（限时保留），清除用中性灰（终态）。 */
+.archive-banner {
+    margin: 0 0 1rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 8px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+    line-height: 1.6;
+}
+
+.archive-banner--cleared {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+.archive-banner strong {
+    display: block;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+}
+
+.archive-banner p {
+    margin: 0;
+    font-size: 0.9rem;
 }
 
 @media (max-width: 640px) {

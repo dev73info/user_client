@@ -39,6 +39,19 @@ export type RequirementItem = {
   updated_at: string
   /** 排队中分账里最晚的计划分账时间（东八区），没有排队分账时为空；前端据此算结算倒计时。 */
   settlement_available_at?: string | null
+  /**
+   * 开发周期（天，R014）：担保需求（`platform_guarantee`）创建 / 编辑时必填，
+   * 等于合同自双方签署完成到截止的有效期天数；无担保需求或未填时为 `null`。
+   */
+  development_cycle_days?: number | null
+  /** 进入「超期锁定」（合同有效期届满后的 30 天资料保留期）的时间（东八区）；从未锁定为 `null`。 */
+  archive_locked_at?: string | null
+  /** 锁定到期时间 = `archive_locked_at` + 平台配置的锁定期天数；未锁定为 `null`。 */
+  archive_lock_expires_at?: string | null
+  /** 内容被清除的时间（东八区）；非空即「已清除」终态：资料下载不可用、写操作一律拒绝。 */
+  archive_cleared_at?: string | null
+  /** 锁定期内是否该引导需求方「把交付资源转为我的资源」；由后端判定。 */
+  archive_can_claim_resource?: boolean | null
 }
 
 export type RequirementPageResp = {

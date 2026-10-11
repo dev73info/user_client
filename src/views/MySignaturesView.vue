@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 import { listMyContracts, type MyContractSummary } from '@/api/contracts'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
-import { CONTRACT_STATUS, contractStatusLabel } from '@/shared/contracts'
+import { CONTRACT_STATUS, contractEffectiveUntilLabel, contractStatusLabel } from '@/shared/contracts'
 import {
   ATTACHMENT_REVIEW_STATUS,
   CONTRACT_CONTENT_SOURCE,
@@ -157,6 +157,14 @@ function sourceChip(item: MyContractSummary): string {
   return `${label} · ${attachmentReviewStatusLabel(item.attachment_review_status ?? ATTACHMENT_REVIEW_STATUS.none)}`
 }
 
+/**
+ * R014：合同有效期截止（担保需求在双方签署完成时写入 = 后签方签署时间 + 开发周期）。
+ * 未签署完成时给「待双方签署完成后计算」这类中文说明，不显示空值；非担保合同按平台规则说明。
+ */
+function effectiveUntilLabel(item: MyContractSummary): string {
+  return contractEffectiveUntilLabel(item.status, item.effective_until)
+}
+
 function openDetail(item: MyContractSummary) {
   void router.push(detailLocation(item))
 }
@@ -266,6 +274,12 @@ function openDetail(item: MyContractSummary) {
                   <span class="wb-item__meta">我的身份：{{ roleLabel(item) }}</span>
                   <!-- R012：区分平台生成 / 上传附件 / 页面拟定三种来源（非平台来源带附件审核态）。 -->
                   <span class="wb-item__meta wb-item__meta--source">来源：{{ sourceChip(item) }}</span>
+                  <!-- R014：担保需求合同展示有效期截止（＝后签方签署时间 + 开发周期）；未签署完成给中文说明。
+                       只对需求合同渲染：平台协议（用户服务协议 / 开发者入驻协议）没有有效期，渲染会给出错误的「待计算」文案。 -->
+                  <span v-if="item.requirement_id" class="wb-item__meta wb-item__meta--effective"
+                    data-testid="contract-effective-until">
+                    有效期截止：{{ effectiveUntilLabel(item) }}
+                  </span>
                 </div>
               </div>
               <aside class="requirement-summary wb-item__side" aria-label="合同摘要">

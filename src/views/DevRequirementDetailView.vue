@@ -24,6 +24,7 @@ import {
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
+import { developmentCycleLabel, isRequirementArchived, requirementArchiveBanner } from '@/shared/requirementArchive'
 import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 import {
   TButton,
@@ -320,6 +321,18 @@ function formatTimeLabel(value?: string | null): string {
 function isSelfManagedRequirement(currentRequirement: RequirementItem) {
     return currentRequirement.payment_mode === 'self_managed'
 }
+
+/** R014：开发周期（天）文案；未填返回空串，据此不渲染该格。 */
+function developmentCycleText(currentRequirement: RequirementItem | null | undefined): string {
+    return developmentCycleLabel(currentRequirement?.development_cycle_days)
+}
+
+/** R014：合同有效期届满进入锁定 / 已清除后的横幅（未归档时 title 为空串，不渲染）。 */
+const archiveBanner = computed(() =>
+    requirement.value && isRequirementArchived(requirement.value)
+        ? requirementArchiveBanner(requirement.value)
+        : { state: 'active' as const, title: '', description: '' },
+)
 
 function paymentModeLabel(mode: RequirementPaymentMode) {
     return mode === 'self_managed' ? '无电签约定' : '电签担保'
@@ -681,6 +694,12 @@ async function submitBinding() {
       </div>
     </WorkbenchBarSlot>
 
+    <!-- R014：合同有效期届满进入锁定 / 已清除后的横幅（锁定态仍可下载历史版本、不能发新版 / 编辑 / 删除）。 -->
+    <section v-if="requirement && archiveBanner.title" class="dev-archive-banner"
+      :class="`dev-archive-banner--${archiveBanner.state}`" role="status" data-testid="dev-requirement-archive-banner">
+      <strong>{{ archiveBanner.title }}</strong>
+      <p>{{ archiveBanner.description }}</p>
+    </section>
     <div v-if="requirement" class="dev-requirement-detail__layout">
       <section class="dev-requirement-detail__left">
         <TCard class="dev-surface-card dev-requirement-detail__requirement-card">
@@ -695,6 +714,12 @@ async function submitBinding() {
             <div class="dev-requirement-detail__stat">
               <span>预算</span>
               <strong>{{ formatMoney(requirement.budget) }}</strong>
+            </div>
+            <!-- R014：开发周期（天）——担保需求合同有效期的依据；无担保 / 未填不渲染。 -->
+            <div v-if="developmentCycleText(requirement)" class="dev-requirement-detail__stat"
+              data-testid="dev-requirement-development-cycle">
+              <span>开发周期</span>
+              <strong>{{ developmentCycleText(requirement) }}</strong>
             </div>
             <div class="dev-requirement-detail__stat">
               <span>发起人</span>
@@ -1223,5 +1248,33 @@ async function submitBinding() {
   .dev-requirement-hall__mode-switch {
     grid-template-columns: 1fr;
   }
+}
+
+/* R014：合同有效期届满进入锁定 / 已清除的横幅。锁定用琥珀（限时保留），清除用中性灰（终态）。 */
+.dev-archive-banner {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+  line-height: 1.7;
+}
+
+.dev-archive-banner--cleared {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.dev-archive-banner strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.dev-archive-banner p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
 }
 </style>

@@ -112,6 +112,26 @@ export type RequirementItem = {
    * 有值即「已转为我的资源」：入口隐藏、会话已关闭、`bound_resource_author` 变成需求方本人。
    */
   resource_claimed_at?: string | null
+  /**
+   * 开发周期（天，R014）：担保需求（`payment_mode = platform_guarantee`）创建 / 编辑时必填，
+   * 等于合同自双方签署完成到截止的有效期天数；无担保需求或未填时为 `null`。
+   * 下限以平台配置为准，前端只做「正整数」的粗校验，最终以后端返回的中文提示为准。
+   */
+  development_cycle_days?: number | null
+  /**
+   * 进入「超期锁定」（合同有效期届满后的 30 天资料保留期）的时间（东八区）；从未锁定为 `null`。
+   * 见 `shared/requirementArchive.ts`，页面上据此给锁定横幅、只保留下载入口、置灰写操作。
+   */
+  archive_locked_at?: string | null
+  /** 锁定到期时间 = `archive_locked_at` + 平台配置的锁定期天数；未锁定为 `null`。 */
+  archive_lock_expires_at?: string | null
+  /** 内容被清除的时间（东八区）；非空即「已清除」终态：资料下载不可用、写操作一律拒绝。 */
+  archive_cleared_at?: string | null
+  /**
+   * 锁定期内「把交付资源转为我的资源」引导标记：已锁定且未清除、需求已结单、尚未转换、
+   * 有交付资源时为 `true`。转换能力复用 R006 的既有接口，前端据此展示引导入口。
+   */
+  archive_can_claim_resource?: boolean | null
 }
 
 export type CreateRequirementPayload = {
@@ -120,6 +140,11 @@ export type CreateRequirementPayload = {
   budget: number
   acceptance_criteria: string
   payment_mode: RequirementPaymentMode
+  /**
+   * 开发周期（天，R014）：`platform_guarantee` 时必填且不得低于平台配置的最短下限
+   * （下限由后端校验并返回中文提示）；`self_managed` 时忽略。不传 / 传 null 表示未填。
+   */
+  development_cycle_days?: number | null
 }
 
 export type CommentRequirementPayload = {
@@ -152,6 +177,29 @@ export async function listRequirements(token: string): Promise<RequirementItem[]
       },
     },
     '加载需求失败',
+  )
+}
+
+/**
+ * 按需求编号读一条需求单详情（`GET /api/requirement/{requirement_id}`）。
+ *
+ * 权限：需求创建者本人、或绑定的开发者都能读（后端 `get_requirement_detail_for_operator`）。
+ * **读取本身就是「访问触发」**：合同有效期届满的担保需求会在这一次读里被收口成
+ * 锁定 / 清除态，所以返回的 `archive_*` 字段就是最新状态。合同页（`ContractSignView`）
+ * 用它拿锁定 / 清除标记，不必再单独设计接口。
+ */
+export async function fetchRequirementDetail(
+  token: string,
+  requirementId: string,
+): Promise<RequirementItem> {
+  return requestJson<RequirementItem>(
+    `/requirements/${encodeURIComponent(requirementId)}`,
+    {
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '加载需求详情失败',
   )
 }
 

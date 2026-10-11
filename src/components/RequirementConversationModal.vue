@@ -27,7 +27,7 @@ import type {
 } from '@/api/conversations'
 import { fetchAsignRequirementPreviewUrl } from '@/api/contracts'
 import { apiUrl } from '@/api/http'
-import { listRequirements, type RequirementPaymentMode } from '@/api/requirements'
+import { fetchRequirementDetail, listRequirements, type RequirementPaymentMode } from '@/api/requirements'
 import { listMyRequirements } from '@/api/devRequirements'
 import {
   formatCnDateTime,
@@ -35,6 +35,7 @@ import {
   requirementPaymentModeLabel,
 } from '@/shared/requirementDisplay'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
+import { isRequirementArchived } from '@/shared/requirementArchive'
 import { dispatchConversationRead } from '@/shared/conversationEvents'
 import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 import { listPublicMcResourceVersions } from '@/api/resources'
@@ -183,12 +184,21 @@ const messages = computed(() => detail.value?.messages ?? [])
 const conversationClosed = computed(
   () => conversation.value?.status === 'closed',
 )
+/**
+ * R014：需求是否已进入「合同有效期届满的锁定 / 已清除」阶段。
+ *
+ * 归档后会话只读（后端也会拒写），历史消息与附件仍可看、可下载。标记从需求详情读一次
+ * （读取即触发后端收口）；读不到时不拦，与全平台旁路判定口径一致。
+ */
+const requirementArchived = ref(false)
+/** 作曲器是否被禁用：会话已关闭，或需求已进入到期归档的只读阶段。 */
+const composerLocked = computed(() => conversationClosed.value || requirementArchived.value)
 const canSend = computed(
   () =>
     (draft.value.trim().length > 0 || Boolean(attachmentDraft.value)) &&
     !sending.value &&
     !loading.value &&
-    !conversationClosed.value,
+    !composerLocked.value,
 )
 const isInline = computed(() => props.displayMode === 'inline')
 const closeActionLabel = computed(() => (isInline.value ? '返回列表' : '关闭'))
@@ -477,6 +487,13 @@ async function loadConversation() {
     )
     emit('updated', detail.value)
     void reportConversationRead()
+    // R014：读一次需求详情拿「超期锁定 / 已清除」标记（读取即触发后端收口）。失败不阻断会话。
+    try {
+      const item = await fetchRequirementDetail(props.token, props.requirementId)
+      requirementArchived.value = isRequirementArchived(item)
+    } catch {
+      requirementArchived.value = false
+    }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '加载会话失败'
     detail.value = null
@@ -660,7 +677,10 @@ function stopRealtime() {
 }
 
 async function submitMessage() {
-  if (sending.value || loading.value || conversationClosed.value) {
+  if (sending.value || loading.value || composerLocked.value) {
+    if (requirementArchived.value) {
+      showToast('合同有效期已届满，会话在资料保留期内只读：不能发消息或传附件，历史内容仍可查看与下载', 'warning')
+    }
     return
   }
 
@@ -1338,16 +1358,21 @@ function handleBackdropClick() {
               {{ attachmentError }}
             </p>
 
+            <!-- R014：合同有效期届满进入锁定 / 已清除后，会话只读；历史消息与附件仍可查看与下载。 -->
+            <p v-if="requirementArchived" class="conversation-modal__readonly-hint" role="status"
+              data-testid="conversation-archive-readonly">
+              合同有效期已届满，会话在资料保留期内只读：不能发消息或传附件，历史内容仍可查看与下载。
+            </p>
             <div class="conversation-modal__input-row">
               <button class="conversation-modal__tool-btn" :class="{ 'is-active': emojiPanelOpen }" type="button"
-                :disabled="sending || loading || conversationClosed" aria-label="选择表情" title="选择表情"
+                :disabled="sending || loading || composerLocked" aria-label="选择表情" title="选择表情"
                 @click="toggleEmojiPanel">
                 <TIcon>
                   <MagicStick />
                 </TIcon>
               </button>
               <button class="conversation-modal__tool-btn" type="button"
-                :disabled="sending || loading || conversationClosed" aria-label="添加截图附件" title="添加截图附件"
+                :disabled="sending || loading || composerLocked" aria-label="添加截图附件" title="添加截图附件"
                 @click="openAttachmentPicker">
                 <TIcon>
                   <Paperclip />
@@ -1360,7 +1385,7 @@ function handleBackdropClick() {
                   autocomplete="new-password" autocorrect="off" autocapitalize="off" aria-autocomplete="none"
                   data-ms-editor="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
                   data-lt-active="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true"
-                  :disabled="conversationClosed" @keydown="handleComposerKeydown" @paste="handleComposerPaste"></textarea>
+                  :disabled="composerLocked" @keydown="handleComposerKeydown" @paste="handleComposerPaste"></textarea>
               </div>
               <button class="conversation-modal__send-btn" type="button" :disabled="!canSend" aria-label="发送消息"
                 title="发送消息" @click="submitMessage">
@@ -3699,5 +3724,17 @@ function handleBackdropClick() {
   .conversation-modal__input-row .conversation-modal__send-btn {
     margin-bottom: 3px;
   }
+}
+
+/* R014：到期归档后会话只读的提示条。放在作曲器顶部，讲清「只读但历史可看可下载」。 */
+.conversation-modal__readonly-hint {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 12.5px;
+  line-height: 1.6;
 }
 </style>

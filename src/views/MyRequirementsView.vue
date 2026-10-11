@@ -81,6 +81,15 @@ import {
   isRequirementResourceClaimed,
 } from '@/shared/requirementResourceClaim'
 import {
+  canClaimResourceWhileLocked,
+  isRequirementArchived,
+  isRequirementCleared,
+  normalizeDevelopmentCycle,
+  requirementArchiveBanner,
+  requirementLockRemainingDays,
+  validateDevelopmentCycleInput,
+} from '@/shared/requirementArchive'
+import {
   calculateFinalDepositAmount,
   calculateFinalPaymentAmount,
 } from '@/shared/requirementPayment'
@@ -140,6 +149,8 @@ const publishDescription = ref('')
 const publishBudget = ref<string | number>('')
 const publishAcceptance = ref('')
 const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
+/** R014：开发周期（天）——担保需求必填；字符串形态与输入框一致。 */
+const publishDevelopmentCycleDays = ref<string | number>('')
 const publishLoading = ref(false)
 const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
 const editModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
@@ -150,6 +161,7 @@ const editDescription = ref('')
 const editBudget = ref<string | number>('')
 const editAcceptance = ref('')
 const editPaymentMode = ref<RequirementPaymentMode>('self_managed')
+const editDevelopmentCycleDays = ref<string | number>('')
 const editLoading = ref(false)
 const requirementSubscriptionLoadingId = ref<string | null>(null)
 const resourceVisibilityLoadingId = ref<string | null>(null)
@@ -766,6 +778,20 @@ async function submitBreachReport() {
 
 function hasBoundResource(item: RequirementItem) {
   return item.bound_resource_id != null
+}
+
+/**
+ * R014：归档（锁定 / 清除）横幅。未归档时 `title` 为空串，模板据此不渲染横幅。
+ * 判定与文案都在 `shared/requirementArchive.ts`，页面只调用。
+ */
+function archiveBanner(item: RequirementItem) {
+  return requirementArchiveBanner(item)
+}
+
+/** R014：锁定剩余天数文案（未锁定返回空串）。 */
+function lockRemainingText(item: RequirementItem) {
+  const days = requirementLockRemainingDays(item)
+  return days == null ? '' : `约剩 ${days} 天`
 }
 
 function openConversation(item: RequirementItem) {
@@ -1413,6 +1439,8 @@ function openRequirementEditModal(item: RequirementItem) {
   editBudget.value = item.budget ?? ''
   editAcceptance.value = item.acceptance_criteria ?? ''
   editPaymentMode.value = item.payment_mode
+  // R014：担保需求回填已填的开发周期；无担保需求后端给 null，输入框显示为空（该模式下也不展示）。
+  editDevelopmentCycleDays.value = item.development_cycle_days ?? ''
   editVisible.value = true
 }
 
@@ -1481,6 +1509,7 @@ function resetPublishForm() {
   publishBudget.value = ''
   publishAcceptance.value = ''
   publishPaymentMode.value = 'self_managed'
+  publishDevelopmentCycleDays.value = ''
 }
 
 async function openPublishModal() {
@@ -1516,6 +1545,7 @@ function forceCloseEditModal() {
   editVisible.value = false
   editRequirement.value = null
   editPaymentMode.value = 'self_managed'
+  editDevelopmentCycleDays.value = ''
 }
 
 function closeEditModal() {
@@ -1667,6 +1697,13 @@ async function submitRequirementResubmit() {
     return
   }
 
+  // R014：担保需求必填「开发周期（天）」，且必须是正整数；配置下限由后端校验并回中文提示。
+  const cycleError = validateDevelopmentCycleInput(editDevelopmentCycleDays.value, editPaymentMode.value)
+  if (cycleError) {
+    showToast(cycleError, 'error')
+    return
+  }
+
   editLoading.value = true
   try {
     await resubmitRequirementApi(auth.token, editRequirement.value.requirement_id, {
@@ -1675,6 +1712,7 @@ async function submitRequirementResubmit() {
       budget,
       acceptance_criteria: acceptanceValidation.value,
       payment_mode: editPaymentMode.value,
+      development_cycle_days: normalizeDevelopmentCycle(editDevelopmentCycleDays.value, editPaymentMode.value),
     })
 
     showToast('需求已重新提交，等待审核', 'success')
@@ -1730,6 +1768,13 @@ async function submitRequirementPublish() {
     return
   }
 
+  // R014：担保需求必填「开发周期（天）」，且必须是正整数；配置下限由后端校验并回中文提示。
+  const cycleError = validateDevelopmentCycleInput(publishDevelopmentCycleDays.value, publishPaymentMode.value)
+  if (cycleError) {
+    showToast(cycleError, 'error')
+    return
+  }
+
   publishLoading.value = true
   try {
     await createRequirementApi(auth.token, {
@@ -1738,6 +1783,7 @@ async function submitRequirementPublish() {
       budget,
       acceptance_criteria: acceptanceValidation.value,
       payment_mode: publishPaymentMode.value,
+      development_cycle_days: normalizeDevelopmentCycle(publishDevelopmentCycleDays.value, publishPaymentMode.value),
     })
 
     showToast('需求已发布，等待审核', 'success')
@@ -2462,6 +2508,15 @@ watch(
                   <strong>{{ item.title }}</strong>
                   <span>{{ item.requirement_id }}</span>
                 </div>
+                <!-- R014：合同有效期届满后的锁定 / 清除横幅。锁定态可下载、写操作置灰；清除态只剩审计台账。 -->
+                <div v-if="archiveBanner(item).title" class="requirement-archive-banner"
+                  :class="`requirement-archive-banner--${archiveBanner(item).state}`" role="status"
+                  data-testid="requirement-archive-banner">
+                  <strong>{{ archiveBanner(item).title }}</strong>
+                  <span v-if="lockRemainingText(item)" class="requirement-archive-banner__remaining">{{
+                    lockRemainingText(item) }}</span>
+                  <p>{{ archiveBanner(item).description }}</p>
+                </div>
                 <div class="requirement-details">
                   <!-- 短事实走标签：发布方式用全站共用的 .pay-mode-chip（见 PaymentModeChip，与需求大厅卡片同一枚胶囊，
                        底色按发布方式分档），其余走统一层 .wb-badge（浅底 + 深字：绿 = 已公开、琥珀 = 有待审核项）；
@@ -2472,6 +2527,9 @@ watch(
                     }}</span>
                   <span v-if="hasBoundResource(item)" class="wb-badge">交付 {{
                     publishedVersionCount(item) }} 版{{ latestDeliveryVersionLabel(item) }}</span>
+                  <!-- R014：开发周期（天）——担保需求合同有效期依据；无担保 / 未填不渲染。 -->
+                  <span v-if="item.development_cycle_days != null" class="wb-badge"
+                    data-testid="requirement-development-cycle">开发周期 {{ item.development_cycle_days }} 天</span>
                   <!-- 已转换的不再给按钮（点了必 409），改成一枚不可点的标记；时间挂在 title 上。 -->
                   <span v-if="isResourceClaimed(item)" class="wb-badge wb-badge--success"
                     :title="`转换时间：${formatRequirementTime(item.resource_claimed_at ?? '')}`"
@@ -2479,6 +2537,12 @@ watch(
                   <small v-if="contractStatusHint(item)" class="requirement-note">{{
                     contractStatusHint(item)
                     }}</small>
+                  <!-- R014：锁定期内的「转为我的资源」引导（复用 R006 转换入口，转换不可撤销）。 -->
+                  <small v-if="canClaimResourceWhileLocked(item)"
+                    class="requirement-note requirement-note--block" data-testid="requirement-claim-guidance">
+                    资料保留期内请尽快把交付的资源项目「转为我的资源」：转换后资源归你所有、不可撤销，
+                    保留期届满平台清除资料后，开发者侧不再控制该资源。
+                  </small>
                   <span v-if="hasPendingResourceVersionDeleteReview(item)" class="wb-badge wb-badge--warning">
                     待审核 · 开发者申请删除 {{ pendingResourceVersionDeleteRequests(item).length }} 个版本
                   </span>
@@ -2536,7 +2600,7 @@ watch(
                       : requirementSubscriptionLabel(item)
                   }}
                 </button>
-                <button v-if="canToggleRequirementResourceVisibility(item)" class="requirement-toggle" type="button"
+                <button v-if="canToggleRequirementResourceVisibility(item) && !isRequirementArchived(item)" class="requirement-toggle" type="button"
                   :aria-pressed="currentResourceVisibility(item) === 'public'"
                   :disabled="resourceVisibilityLoadingId === item.requirement_id"
                   :title="currentResourceVisibility(item) === 'review' ? '点击撤回公开审核，资源恢复为私有' : '切换关联资源的公开 / 私有'"
@@ -2554,7 +2618,7 @@ watch(
                    注意「更多」那个按钮上不能再挂 @click.stop：TDropdown 的触发监听挂在自己的外层
                    span 上（el-dropdown 当时是挂在触发元素自身），在按钮处截断冒泡等于菜单永远打不开。 -->
               <div class="requirement-actions__list" @click.stop @keydown.stop>
-                <button v-if="hasBoundResource(item)" class="ghost small action-emphasis" type="button"
+                <button v-if="hasBoundResource(item) && !isRequirementCleared(item)" class="ghost small action-emphasis" type="button"
                   :disabled="resourceDownloadingId === item.bound_resource_id"
                   @click.stop="runRowAction(item, 'download')">
                   {{ resourceDownloadingId === item.bound_resource_id ? '准备中...' : '下载' }}
@@ -2571,12 +2635,13 @@ watch(
                 </button>
                 <!-- 版本删除审核没有别的入口（整行点击归会话），所以这里给它一个按钮，
                      与下方展开的审核卡片成对出现。 -->
-                <button v-if="hasPendingResourceVersionDeleteReview(item)" class="ghost small action-emphasis"
+                <button v-if="hasPendingResourceVersionDeleteReview(item) && !isRequirementArchived(item)"
+                  class="ghost small action-emphasis"
                   type="button" :aria-expanded="isVersionDeleteReviewExpanded(item)"
                   @click.stop="toggleVersionDeleteReviewCard(item)">
                   {{ isVersionDeleteReviewExpanded(item) ? '收起审核' : '审核资源' }}
                 </button>
-                <button v-if="canOpenAfterSales(item)" class="ghost small action-emphasis"
+                <button v-if="canOpenAfterSales(item) && !isRequirementArchived(item)" class="ghost small action-emphasis"
                   :class="{ 'has-todo-badge': afterSalesBadgeFor(item.requirement_id) }" type="button"
                   @click.stop="runRowAction(item, 'after-sales')">
                   解除合作
@@ -2585,7 +2650,7 @@ watch(
                       afterSalesBadgeFor(item.requirement_id) }}</span>
                 </button>
 
-                <TDropdown v-if="moreRowActions(item).length" trigger="click"
+                <TDropdown v-if="moreRowActions(item).length && !isRequirementArchived(item)" trigger="click"
                   @command="(key) => runMoreRowAction(item, String(key))">
                   <button class="ghost small requirement-actions__more" type="button" aria-haspopup="menu"
                     title="更多操作">
@@ -2605,7 +2670,7 @@ watch(
                   </template>
                 </TDropdown>
 
-                <button v-if="primaryRowAction(item)" class="ghost small action-primary" type="button"
+                <button v-if="primaryRowAction(item) && !isRequirementArchived(item)" class="ghost small action-primary" type="button"
                   :disabled="primaryRowAction(item)?.disabled"
                   @click.stop="runRowAction(item, primaryRowAction(item)!.key)">
                   {{ primaryRowAction(item)!.label }}
@@ -2614,7 +2679,7 @@ watch(
             </div>
           </li>
 
-          <li v-if="isVersionDeleteReviewExpanded(item) && pendingResourceVersionDeleteRequests(item).length"
+          <li v-if="isVersionDeleteReviewExpanded(item) && pendingResourceVersionDeleteRequests(item).length && !isRequirementArchived(item)"
             class="requirement-review-card-row">
             <section class="requirement-review-card" @click.stop>
               <div class="requirement-review-card__header">
@@ -2697,6 +2762,7 @@ watch(
     <PublishModal ref="publishModalRef" :visible="publishVisible" v-model:publishTitle="publishTitle"
       v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
       v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
+      v-model:publishDevelopmentCycleDays="publishDevelopmentCycleDays"
       :publishLoading="publishLoading"
       :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="showToast"
       @submit="submitRequirementPublish" />
@@ -2705,6 +2771,7 @@ watch(
       loadingText="提交中..." v-model:publishTitle="editTitle" v-model:publishDescription="editDescription"
       v-model:publishBudget="editBudget" v-model:publishAcceptance="editAcceptance"
       v-model:publishPaymentMode="editPaymentMode"
+      v-model:publishDevelopmentCycleDays="editDevelopmentCycleDays"
       :publishLoading="editLoading"
       :draft-scope="editRequirement ? `edit-${editRequirement.requirement_id}` : ''" @close="closeEditModal"
       @notify="showToast" @submit="submitRequirementResubmit" />
@@ -3840,4 +3907,46 @@ watch(
     grid-template-columns: 1fr;
   }
 }
+
+/* R014：合同有效期届满后的锁定 / 清除横幅。锁定是「限时保留资料」，用琥珀提醒；
+   清除是终态，用中性灰，表示只剩审计台账。 */
+.requirement-archive-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 10px 0 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.requirement-archive-banner--cleared {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.requirement-archive-banner strong {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.requirement-archive-banner__remaining {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(146, 64, 14, 0.1);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.requirement-archive-banner p {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
 </style>

@@ -52,6 +52,30 @@ export function contractStatusLabel(status: number): string {
 }
 
 /**
+ * 合同有效期截止文案（R014，担保需求）。
+ *
+ * 后端在**双方签署完成**（`status = 2`）时写入 `effective_until`（东八区 `YYYY-MM-DD HH:mm:ss`），
+ * 值 = `max(party_a_signed_at, party_b_signed_at)` + 开发周期天。未签署完成时后端给 `null`，
+ * 这时页面写「待双方签署完成后计算」，不要显示空值。
+ *
+ * 已签署完成却没有截止时间的是**非担保合同**（`self_managed` 不建合同、也不设有效期），
+ * 按平台规则展示「不设有效期」，避免读成「还没算出来」。
+ */
+export function contractEffectiveUntilLabel(
+  status: number,
+  effectiveUntil: string | null | undefined,
+): string {
+  const value = effectiveUntil?.trim()
+  if (value) {
+    return value
+  }
+  if (status === CONTRACT_STATUS.signed) {
+    return '按平台规则不设有效期'
+  }
+  return '待双方签署完成后计算'
+}
+
+/**
  * 合同正文来源（与后端 `contract.content_source` 逐字一致）。
  *
  * - `platform`：平台按《需求开发合同》模板生成的正文，**唯一被签署的主文件**；

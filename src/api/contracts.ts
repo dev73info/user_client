@@ -84,6 +84,13 @@ export type ContractDetail = ContractAttachmentFields & {
   created_by?: string
   created_at: string
   updated_at?: string
+  /**
+   * 合同有效期截止时间（东八区 `YYYY-MM-DD HH24:MI:SS`，R014）：担保需求在双方签署完成时写入，
+   * 值 = `max(party_a_signed_at, party_b_signed_at)` + 开发周期天。非担保需求或尚未签署完成时为 `null`。
+   */
+  effective_until?: string | null
+  /** 签约时快照的开发周期（天，R014）；非担保需求或未签时为 `null`。 */
+  development_cycle_days?: number | null
   signing_logs?: SigningLogItem[]
 }
 
@@ -92,7 +99,9 @@ export type MyContractSummary = Pick<ContractDetail,
   'party_a_signed_at' | 'party_b_name' | 'party_b_username' | 'party_b_signed_at' |
   'party_c_name' | 'party_c_signed_at' | 'created_at' | 'updated_at' | 'requirement_id' |
   // 列表要能区分来源、并标出附件审核态（后端 `CONTRACT_FIELDS_SUMMARY` 一并透出这几个字段）。
-  'content_source' | 'attachment_review_status' | 'attachment_file_name' | 'attachment_file_sha256'
+  'content_source' | 'attachment_review_status' | 'attachment_file_name' | 'attachment_file_sha256' |
+  // R014：列表展示合同有效期截止（担保需求）。
+  'effective_until' | 'development_cycle_days'
 > & { template_name: string }
 
 export function listMyContracts(token: string): Promise<MyContractSummary[]> {

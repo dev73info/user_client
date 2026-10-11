@@ -30,6 +30,15 @@ const props = defineProps({
     type: String as PropType<"platform_guarantee" | "self_managed">,
     default: "self_managed",
   },
+  /**
+   * 开发周期（天，R014）：担保需求（`platform_guarantee`）必填。
+   * 传字符串或数字都行（表单里是 `<input type="number">`）；下限以后端配置为准，
+   * 这里只保证「正整数」，配置更高的下限由后端返回中文提示。
+   */
+  publishDevelopmentCycleDays: {
+    type: [String, Number] as PropType<string | number>,
+    default: "",
+  },
   allowPlatformGuarantee: { type: Boolean as PropType<boolean | undefined>, default: undefined },
   publishLoading: { type: Boolean, default: false },
   // 草稿作用域（一般传当前用户名），用于按用户隔离草稿，避免多账号共用浏览器时串数据
@@ -45,6 +54,7 @@ const emit = defineEmits<{
   (e: "update:publishBudget", value: string | number): void;
   (e: "update:publishAcceptance", value: string): void;
   (e: "update:publishPaymentMode", value: "platform_guarantee" | "self_managed"): void;
+  (e: "update:publishDevelopmentCycleDays", value: string | number): void;
 }>();
 
 function updateTitle(event: Event) {
@@ -62,6 +72,23 @@ function updateBudget(event: Event) {
 function updateAcceptance(value: string) {
   emit("update:publishAcceptance", value);
 }
+
+function updateDevelopmentCycleDays(event: Event) {
+  emit("update:publishDevelopmentCycleDays", (event.target as HTMLInputElement).value);
+}
+
+/**
+ * 是否电签担保：只有担保需求才需要填「开发周期」（R014）。
+ *
+ * 无担保需求（`self_managed`）不建合同、也没有有效期，发布 / 编辑时不显示该字段；
+ * 视图提交时同样按这个模式决定要不要带上 `development_cycle_days`。
+ */
+const isGuaranteeMode = computed(() => props.publishPaymentMode === "platform_guarantee");
+
+/** 开发周期输入区内的提示：讲清「这是合同有效期、以后端下限为准」。 */
+const developmentCycleHint = computed(() =>
+  "开发周期（天）＝合同自双方签署完成到截止的有效期；低于平台配置的最短天数会被拒绝，具体下限以后端提示为准。",
+);
 
 function forwardNotify(message: string, type?: NotifyType) {
   emit("notify", message, type);
@@ -215,6 +242,8 @@ type PublishDraft = {
   budget: string;
   acceptance: string;
   paymentMode: "platform_guarantee" | "self_managed";
+  /** 开发周期（天，R014）：担保需求必填；无担保需求不显示该字段，草稿里存空串。 */
+  developmentCycleDays: string;
   savedAt: number;
 };
 
@@ -234,7 +263,8 @@ const hasMeaningfulDraft = computed(() => {
   const description = String(props.publishDescription ?? "").trim();
   const budget = String(props.publishBudget ?? "").trim();
   const acceptance = String(props.publishAcceptance ?? "").trim();
-  return Boolean(title || description || budget || acceptance);
+  const developmentCycleDays = String(props.publishDevelopmentCycleDays ?? "").trim();
+  return Boolean(title || description || budget || acceptance || developmentCycleDays);
 });
 
 // 草稿是否已恢复过（避免组件在父组件主动重置表单时又覆盖回去）
@@ -262,6 +292,7 @@ function savePublishDraft() {
     budget: String(props.publishBudget ?? ""),
     acceptance: String(props.publishAcceptance ?? ""),
     paymentMode: props.publishPaymentMode,
+    developmentCycleDays: String(props.publishDevelopmentCycleDays ?? ""),
     savedAt: Date.now(),
   };
 
@@ -303,17 +334,20 @@ function restorePublishDraft() {
       const description = typeof parsed.description === "string" ? parsed.description : "";
       const budget = typeof parsed.budget === "string" ? parsed.budget : "";
       const acceptance = typeof parsed.acceptance === "string" ? parsed.acceptance : "";
+      const developmentCycleDays =
+        typeof parsed.developmentCycleDays === "string" ? parsed.developmentCycleDays : "";
       const paymentMode =
         parsed.paymentMode === "platform_guarantee" || parsed.paymentMode === "self_managed"
           ? parsed.paymentMode
           : "self_managed";
 
-      if (title || description || budget || acceptance) {
+      if (title || description || budget || acceptance || developmentCycleDays) {
         emit("update:publishTitle", title);
         emit("update:publishDescription", description);
         emit("update:publishBudget", budget);
         emit("update:publishAcceptance", acceptance);
         emit("update:publishPaymentMode", paymentMode);
+        emit("update:publishDevelopmentCycleDays", developmentCycleDays);
       }
     }
   } catch {
@@ -342,6 +376,7 @@ watch(
     props.publishBudget,
     props.publishAcceptance,
     props.publishPaymentMode,
+    props.publishDevelopmentCycleDays,
   ],
   () => {
     savePublishDraft();
@@ -496,6 +531,14 @@ watch(
               </button>
             </div>
           </div>
+          <!-- R014：开发周期（天）＝合同自双方签署完成到截止的有效期，担保需求必填。
+               无担保需求不显示；下限以后端配置为准，前端只保证正整数。 -->
+          <label v-if="isGuaranteeMode" class="publish-cycle-field">
+            开发周期（天） *
+            <input :value="publishDevelopmentCycleDays" type="number" min="1" step="1" inputmode="numeric"
+              placeholder="如 30" required @input="updateDevelopmentCycleDays" />
+          </label>
+          <p v-if="isGuaranteeMode" class="publish-cycle-hint">{{ developmentCycleHint }}</p>
         </div>
 
         <div v-if="!agentMode" class="auth-modal-actions publish-modal__actions">
@@ -887,6 +930,15 @@ watch(
 .publish-mode-field {
   display: grid;
   gap: 9px;
+}
+
+/* R014：开发周期输入区与提示。提示是说明性小字，不抢输入的视觉权重。 */
+.publish-cycle-hint {
+  margin: -6px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.6;
 }
 
 .publish-mode-field>span {

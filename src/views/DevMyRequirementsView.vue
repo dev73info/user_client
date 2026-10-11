@@ -22,6 +22,7 @@ import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import { breachStatusLabel } from '@/shared/breachStatus'
 import { afterSalesBadgeText, isAwaitingViewerAction } from '@/shared/afterSalesStatus'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
+import { developmentCycleLabel } from '@/shared/requirementArchive'
 import { listMyAfterSalesCases } from '@/api/afterSales'
 import {
   listRequirementConversations,
@@ -597,6 +598,11 @@ function rowUpdatedAt(row: MyOrderRow): string {
   }
 
   return latestReceiptAt(row.receipts) ?? row.delivery?.latestVersionAt ?? '—'
+}
+
+/** R014：开发周期（天）文案（担保需求合同有效期的依据）；未填返回空串，卡片据此不渲染该格。 */
+function developmentCycleText(item: RequirementItem): string {
+  return developmentCycleLabel(item.development_cycle_days)
 }
 
 function rowStatusLabel(row: MyOrderRow): string {
@@ -1440,6 +1446,12 @@ async function loadRequirementConversations() {
             <span v-if="row.item" class="dev-requirement-card__meta-item">
               <label>预算</label>
               <strong>{{ formatMoney(row.item.budget) }}</strong>
+            </span>
+            <!-- R014：开发周期（天）——担保需求合同有效期的依据；无担保 / 未填不渲染。 -->
+            <span v-if="row.item && developmentCycleText(row.item)" class="dev-requirement-card__meta-item"
+              data-testid="dev-requirement-development-cycle">
+              <label>开发周期</label>
+              <strong>{{ developmentCycleText(row.item) }}</strong>
             </span>
             <span class="dev-requirement-card__meta-item">
               <label>委托方</label>
