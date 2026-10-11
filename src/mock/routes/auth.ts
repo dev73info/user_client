@@ -119,8 +119,20 @@ const routes: MockRoute[] = [
   {
     method: 'GET',
     path: '/auth/oauth-status',
-    note: '第三方登录开关：mock 下一律关闭，登录弹窗不会给出走不通的入口',
-    handler: () => jsonResponse({ github: false, wechat: false, qq: false, gitee: false }),
+    note: '第三方登录开关：mock 打开微信/QQ，便于预览端内一键登录布局；真正授权仍走真实后端',
+    handler: () => jsonResponse({ github: false, wechat: true, qq: true, gitee: false }),
+  },
+  {
+    method: 'GET',
+    path: '/auth/wechat/login/url',
+    note: '微信端内授权入口（占位）：浏览器直接跳这里时不会被 fetch mock 拦截',
+    handler: () => jsonResponse(mockAuthorizeUrl('wechat')),
+  },
+  {
+    method: 'GET',
+    path: '/auth/qq/login/url',
+    note: 'QQ 端内授权入口（占位）',
+    handler: () => jsonResponse(mockAuthorizeUrl('qq')),
   },
   {
     method: 'GET',
@@ -186,8 +198,13 @@ const routes: MockRoute[] = [
   {
     method: 'GET',
     path: '/auth/wechat/login/qr/url',
-    note: '微信扫码登录：给一个不会被真正轮询到的占位二维码',
-    handler: () => jsonResponse({ url: '', state: 'mock-state', poll_secret: 'mock-secret' }),
+    note: '微信扫码登录：占位二维码（不会被轮询到成功）',
+    handler: () =>
+      jsonResponse({
+        url: mockAuthorizeUrl('wechat').url,
+        state: 'mock-state',
+        poll_secret: 'mock-secret',
+      }),
   },
   {
     method: 'GET',
@@ -199,7 +216,7 @@ const routes: MockRoute[] = [
     method: 'GET',
     path: '/auth/qq/login/qr/url',
     note: 'QQ 扫码登录（占位）',
-    handler: () => jsonResponse({ url: '', state: 'mock-state' }),
+    handler: () => jsonResponse({ url: mockAuthorizeUrl('qq').url, state: 'mock-state' }),
   },
   {
     method: 'GET',

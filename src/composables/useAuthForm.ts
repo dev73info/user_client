@@ -12,6 +12,7 @@ import {
   getQqLoginQrUrl,
   getWechatLoginQrUrl,
 } from '@/api/auth'
+import { isQqBrowser, isWechatBrowser } from '@/shared/auth/browser'
 
 type AuthMode = 'login' | 'register' | 'reset'
 
@@ -131,14 +132,6 @@ export function useAuthForm(mode: Ref<AuthMode>) {
 
   // PC 端扫码登录：展示二维码并轮询登录 token。
   const wechatQrLogin = reactive({ visible: false, url: '', state: '', pollSecret: '' })
-
-  function isWechatBrowser() {
-    return /MicroMessenger/i.test(navigator.userAgent)
-  }
-
-  function isQqBrowser() {
-    return /(?:QQ|MQQBrowser)/i.test(navigator.userAgent)
-  }
 
   async function loginWithWechat() {
     if (wechatLoginLoading.value || auth.loading) {
