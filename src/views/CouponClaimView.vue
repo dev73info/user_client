@@ -25,6 +25,7 @@ const {
   authPassword,
   authEmail,
   authEmailCode,
+  authTurnstileToken,
   acceptTerms,
   loginRequiresTwoFactor,
   sendCodeLoading,
@@ -182,6 +183,7 @@ onMounted(() => {
       v-model:authPassword="authPassword"
       v-model:authEmail="authEmail"
       v-model:authEmailCode="authEmailCode"
+      v-model:turnstileToken="authTurnstileToken"
       v-model:acceptTerms="acceptTerms"
       :authLoading="auth.loading"
       :loginRequiresTwoFactor="loginRequiresTwoFactor"

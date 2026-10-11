@@ -28,6 +28,10 @@ export function useAuthForm(mode: Ref<AuthMode>) {
   const authInviteCode = ref('')
   const authShareType = ref('')
   const authShareTargetId = ref('')
+  // Cloudflare Turnstile 一次性 token：由登录弹窗里的挂件抛上来，随各接口提交。
+  // Turnstile 的 token **一次性**且有时效，被后端消费后必须由挂件 reset 重新取一枚；
+  // 因此这里只在「当前这一次提交」使用，挂件在每次请求结束后会清空并重取。
+  const authTurnstileToken = ref('')
   const acceptTerms = ref(false)
   const loginRequiresTwoFactor = ref(false)
   const sendCodeLoading = ref(false)
@@ -42,6 +46,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     authInviteCode.value = ''
     authShareType.value = ''
     authShareTargetId.value = ''
+    authTurnstileToken.value = ''
     acceptTerms.value = false
     loginRequiresTwoFactor.value = false
     sendCodeLoading.value = false
@@ -295,7 +300,12 @@ export function useAuthForm(mode: Ref<AuthMode>) {
           showToast('请先输入用户名和密码', 'error')
           return
         }
-        const result = await auth.login(username, password)
+        const result = await auth.login(
+          username,
+          password,
+          undefined,
+          authTurnstileToken.value || undefined,
+        )
         if (!result.requiresTwoFactor) {
           showToast('登录成功', 'success')
           return
@@ -307,9 +317,9 @@ export function useAuthForm(mode: Ref<AuthMode>) {
           return
         }
         if (mode.value === 'register') {
-          await auth.sendRegisterEmailCode(email)
+          await auth.sendRegisterEmailCode(email, authTurnstileToken.value || undefined)
         } else {
-          await auth.sendResetPasswordEmailCode(email)
+          await auth.sendResetPasswordEmailCode(email, authTurnstileToken.value || undefined)
         }
       }
       showToast('验证码已发送，请查收邮箱', 'success')
@@ -358,6 +368,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
           username,
           password,
           loginRequiresTwoFactor.value ? twoFactorCode : undefined,
+          authTurnstileToken.value || undefined,
         )
         if (result.requiresTwoFactor) {
           loginRequiresTwoFactor.value = true
@@ -400,6 +411,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
           authInviteCode.value.trim() || undefined,
           authShareType.value.trim() || undefined,
           authShareTargetId.value.trim() || undefined,
+          authTurnstileToken.value || undefined,
         )
         showToast('注册成功', 'success')
         return true
@@ -421,6 +433,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
           authEmail.value.trim(),
           authPassword.value,
           authEmailCode.value.trim(),
+          authTurnstileToken.value || undefined,
         )
         showToast('密码已重置，已自动登录', 'success')
         return true
@@ -448,6 +461,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     authInviteCode,
     authShareType,
     authShareTargetId,
+    authTurnstileToken,
     acceptTerms,
     loginRequiresTwoFactor,
     sendCodeLoading,

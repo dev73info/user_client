@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch, type PropType } from 'vue'
 import { isQqBrowser, isWechatBrowser } from '@/shared/auth/browser'
+import TurnstileWidget from '@/components/TurnstileWidget.vue'
+import { isTurnstileEnabled, type TurnstileSurfaceAction } from '@/shared/turnstile'
 
 type AuthMode = 'login' | 'register' | 'reset'
 type InAppOauthProvider = 'wechat' | 'qq'
@@ -29,6 +31,7 @@ const props = defineProps({
   sendCodeLoading: { type: Boolean, default: false },
   sendCodeCountdown: { type: Number, default: 0 },
   authLoading: { type: Boolean, default: false },
+  turnstileToken: { type: String, default: '' },
 })
 
 const qqLoginIconImage = '/icons/qq_loge.png'
@@ -48,6 +51,7 @@ const emit = defineEmits<{
   (e: 'update:authEmailCode', value: string): void
   (e: 'update:authInviteCode', value: string): void
   (e: 'update:acceptTerms', value: boolean): void
+  (e: 'update:turnstileToken', value: string): void
 }>()
 
 /**
@@ -81,6 +85,50 @@ const showInAppOauthPanel = computed(
 )
 const showAccountPanel = computed(
   () => !preferInAppOauth.value || inAppLoginPanel.value === 'account',
+)
+
+// ── Cloudflare Turnstile 人机验证 ─────────────────────────────────────────────
+// 站点密钥来自 VITE_TURNSTILE_SITE_KEY：未配置时整块不渲染，后端也应对应关闭校验
+// （backend_73info/config/local.toml 的 [turnstile] enabled）。
+const turnstileEnabled = isTurnstileEnabled()
+const turnstileRef = ref<InstanceType<typeof TurnstileWidget> | null>(null)
+/** 换入口 / 重开弹窗时递增，用 :key 强制重建挂件，避免沿用旧动作名下已消费的 token。 */
+const turnstileNonce = ref(0)
+
+/** 动作名必须与后端 turnstile::guard 的 expected_action 一一对应。 */
+const turnstileAction = computed<TurnstileSurfaceAction>(() =>
+  props.authMode === 'reset' ? 'reset_password' : props.authMode,
+)
+
+watch(
+  () => props.authMode,
+  () => {
+    emit('update:turnstileToken', '')
+    turnstileNonce.value += 1
+  },
+)
+
+// 一次请求结束后 token 已被后端消费（Turnstile token 一次性），必须重新取一枚，
+// 否则下一次提交必然被拒。authLoading 覆盖登录 / 注册 / 重置，sendCodeLoading 覆盖发码。
+watch(
+  () => [props.authLoading, props.sendCodeLoading] as const,
+  (now, prev) => {
+    const wasBusy = Boolean(prev?.[0]) || Boolean(prev?.[1])
+    const isBusy = Boolean(now[0]) || Boolean(now[1])
+    if (wasBusy && !isBusy) {
+      turnstileRef.value?.reset()
+    }
+  },
+)
+
+watch(
+  () => props.visible,
+  (visible) => {
+    if (!visible) {
+      emit('update:turnstileToken', '')
+      turnstileNonce.value += 1
+    }
+  },
 )
 
 /** 端内一键登录时标题不再写「登录账号」，避免与主按钮、底栏「登录」叠三层「登录」。 */
@@ -373,6 +421,14 @@ function emitInAppOauth() {
             </label>
           </div>
         </template>
+
+        <TurnstileWidget
+          v-if="turnstileEnabled"
+          ref="turnstileRef"
+          :key="`${turnstileAction}-${turnstileNonce}`"
+          :action="turnstileAction"
+          @update:token="emit('update:turnstileToken', $event)"
+        />
       </div>
 
       <div

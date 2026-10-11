@@ -262,6 +262,7 @@ const {
   authInviteCode,
   authShareType,
   authShareTargetId,
+  authTurnstileToken,
   acceptTerms,
   loginRequiresTwoFactor,
   sendCodeLoading,
@@ -2888,6 +2889,7 @@ async function submitPublishRequirement() {
       v-model:authEmail="authEmail"
       v-model:authEmailCode="authEmailCode"
       v-model:authInviteCode="authInviteCode"
+      v-model:turnstileToken="authTurnstileToken"
       v-model:acceptTerms="acceptTerms"
       :authLoading="auth.loading"
       :loginRequiresTwoFactor="loginRequiresTwoFactor"
