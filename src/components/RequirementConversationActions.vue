@@ -332,6 +332,7 @@ function goBindSettlementAccount(): void {
   breachVisible.value = false
   void router.push({ name: 'workbench-account', query: { settle: '1' } })
 }
+/** 能不能由本人对「解除合作」表态：当事人里**不是发起人**的那一位。 */
 
 const payStage = computed<'deposit' | 'final'>(() =>
   status.value === 'pending_final' ? 'final' : 'deposit',

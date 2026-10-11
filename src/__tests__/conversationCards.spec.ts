@@ -243,8 +243,7 @@ describe('conversation status cards', () => {
     }
   })
 
-  it('labels a manual case without pushing the user into a ticket to chase it', () => {
-    // 客服本来就在跟进，卡片再挂「去工单中心催办」是把平台的跟进变成用户的开单，
+  it('labels a manual case without pushing the user into a ticket to chase it', () => {    // 客服本来就在跟进，卡片再挂「去工单中心催办」是把平台的跟进变成用户的开单，
     // 平添客服工作量：两侧都只留说明，不给按钮也不给跳转。
     // 「仍在人工处理中」与「已由客服人工结案」两张同口径：都是通知，没有可执行入口。
     for (const code of [
