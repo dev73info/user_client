@@ -224,6 +224,72 @@
 @media (max-width: 720px) {
   .wallet-hero {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* 窄屏卡片收紧：卡头不再按全局规则上下排，标题与右上标签同一行 */
+  .wallet-hero__card.dev-surface-card:not(.el-card) {
+    padding: 14px 16px;
+  }
+
+  .wallet-hero__card .dev-card-head {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .wallet-hero__card .dev-section-title {
+    font-size: 15px;
+  }
+
+  .wallet-hero__body {
+    margin-bottom: 12px;
+  }
+
+  .wallet-hero__main {
+    margin-bottom: 8px;
+  }
+
+  .wallet-hero__main .dev-figure {
+    font-size: 26px;
+    line-height: 1.2;
+  }
+
+  .wallet-hero__note {
+    font-size: 11px;
+  }
+
+  .wallet-payout {
+    gap: 10px;
+    padding-top: 12px;
+  }
+
+  .wallet-payout__paths {
+    flex-wrap: nowrap;
+    gap: 12px;
+  }
+
+  .wallet-payout__alert {
+    padding: 6px 10px;
+    line-height: 1.5;
+  }
+
+  .wallet-payout__alert .t73-button {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 0 4px;
+  }
+
+  .wallet-hero__footer {
+    flex-wrap: nowrap;
+    gap: 10px;
+    padding-top: 12px;
+  }
+
+  .wallet-hero__footer .t73-button {
+    flex: 1 1 0;
   }
 }
 

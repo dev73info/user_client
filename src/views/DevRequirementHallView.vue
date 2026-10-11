@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   getProcessedTagTree,
@@ -46,6 +47,7 @@ import {
   Refresh,
   RefreshLeft,
   Search,
+  Tickets,
   WarningFilled,
 } from 'ui_73info'
 
@@ -125,7 +127,6 @@ const canTakeOrders = computed(() => depositStatus.value?.can_bind_requirement ?
 const availableDepositText = computed(
   () => `¥${(depositStatus.value?.available_cny ?? 0).toFixed(2)}`,
 )
-const frozenDepositText = computed(() => `¥${(depositStatus.value?.frozen_cny ?? 0).toFixed(2)}`)
 const orderCreditCap = computed(() => {
   if (!creditInfo.value || !creditInfo.value.enforce_order_limit) return Number.POSITIVE_INFINITY
   return creditInfo.value.max_order_amount_cny
@@ -661,39 +662,44 @@ function resetInitForm() {
 
 <template>
   <div class="dev-page dev-page--requirement-hall">
-    <div class="dev-meta-strip">
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">需求单</span>
-        <span class="dev-meta-strip__value">{{ total }}</span>
+    <WorkbenchBarSlot>
+      <div class="dev-meta-strip">
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">需求单</span>
+          <span class="dev-meta-strip__value">{{ total }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">无电签</span>
+          <span class="dev-meta-strip__value">{{ selfManagedCount }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">电签</span>
+          <span class="dev-meta-strip__value">{{ guaranteeCount }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <!-- 窄屏顶栏里「去缴纳保证金」按钮让出位置，读数本身可点，直接去缴纳页 -->
+        <button type="button" class="dev-meta-strip__item hall-deposit-link" aria-label="可用保证金，去缴纳保证金"
+          @click="goToOrderDeposit">
+          <span class="dev-meta-strip__label"><span class="hall-deposit-link__prefix">可用</span>保证金</span>
+          <span class="dev-meta-strip__value">{{ availableDepositText }}</span>
+        </button>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <TButton variant="solid" tone="accent" class="hall-deposit-cta" @click="goToOrderDeposit">去缴纳保证金</TButton>
+          <TButton icon-only :loading="loading" aria-label="刷新需求列表" @click="loadRequirements">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+        </div>
       </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">无电签</span>
-        <span class="dev-meta-strip__value">{{ selfManagedCount }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">电签</span>
-        <span class="dev-meta-strip__value">{{ guaranteeCount }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">可用保证金</span>
-        <span class="dev-meta-strip__value">{{ availableDepositText }}</span>
-      </div>
-      <div class="dev-meta-strip__item dev-meta-strip__action">
-        <TButton variant="solid" tone="accent" @click="goToOrderDeposit">去缴纳保证金</TButton>
-        <TButton icon-only aria-label="刷新需求列表" @click="loadRequirements">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </div>
+    </WorkbenchBarSlot>
 
     <!-- 未签协议 / 接单资格两条提示：与总览页的保证金提示共用统一层的 .dev-notice
          （金色 + 图标徽标 + 文案 + 右侧动作），不再用 Element 的 el-alert。 -->
-    <div v-if="!developerAgreementSigned" class="dev-notice" role="alert">
+    <div v-if="!developerAgreementSigned" class="dev-notice dev-requirement-hall__agreement-notice"
+      :class="{ 'is-feed-empty': !loading && !rows.length }" role="alert">
       <span class="dev-notice__icon" aria-hidden="true">
         <TIcon>
           <WarningFilled />
@@ -701,27 +707,13 @@ function resetInitForm() {
       </span>
       <div class="dev-notice__copy">
         <strong>尚未签署《开发者入驻协议》</strong>
-        <p>可接取无电签约定需求；接取电签担保需求或缴纳保证金前需先签署协议。</p>
       </div>
       <div class="dev-notice__action">
         <TButton variant="solid" tone="accent" @click="goSignDeveloperAgreement()">去签署协议</TButton>
       </div>
     </div>
 
-    <div v-if="!canTakeOrders" class="dev-notice" role="status">
-      <span class="dev-notice__icon" aria-hidden="true">
-        <TIcon>
-          <WarningFilled />
-        </TIcon>
-      </span>
-      <div class="dev-notice__copy">
-        <p>无电签约定需求可继续关联；历史电签担保需求需要满足保证金规则。</p>
-        <p v-if="depositStatus?.frozen_cny">当前已冻结：{{ frozenDepositText }}</p>
-        <p v-if="depositStatus?.latest_order">最近订单状态：{{ depositStatus.latest_order.status }}</p>
-      </div>
-    </div>
-
-    <TCard class="dev-surface-card">
+    <TCard class="dev-surface-card dev-requirement-hall__panel">
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
           <h3 class="dev-section-title">可接需求</h3>
@@ -737,17 +729,6 @@ function resetInitForm() {
           @change="applyFilters"
         >
           <TOption v-for="item in sortOptions" :key="item.value" :label="item.label" :value="item.value" />
-        </TSelect>
-
-        <TSelect
-          v-model="filters.sortOrder"
-          placeholder="排序方向"
-          class="dev-toolbar__field dev-toolbar__field--small"
-          aria-label="排序方向"
-          @change="applyFilters"
-        >
-          <TOption label="降序" value="desc" />
-          <TOption label="升序" value="asc" />
         </TSelect>
 
         <TInput v-model="filters.keyword" clearable placeholder="搜索需求编号、标题或描述" class="dev-toolbar__search"
@@ -820,9 +801,44 @@ function resetInitForm() {
         </TTableColumn>
       </TTable>
 
+      <!-- 窄屏不铺五列表格，改成 App 式的卡片流：标题与预算一行、描述一行、发布方式与发起人一行，动作贴右 -->
+      <div class="hall-feed" :aria-busy="loading">
+        <p v-if="loading && !rows.length" class="hall-feed__state">正在加载需求…</p>
+        <div v-else-if="!rows.length" class="hall-feed__state hall-feed__state--empty">
+          <span class="hall-feed__empty-icon" aria-hidden="true"><TIcon :size="26"><Tickets /></TIcon></span>
+          <p>{{ emptyText }}</p>
+          <!-- 窄屏列表为空时，签协议提示并到空态里：说明在上、按钮在下，页顶那条随之隐藏 -->
+          <div v-if="!developerAgreementSigned" class="hall-feed__agreement">
+            <strong>尚未签署《开发者入驻协议》</strong>
+            <TButton variant="solid" tone="accent" class="hall-feed__cta" @click="goSignDeveloperAgreement()">
+              去签署协议
+            </TButton>
+          </div>
+        </div>
+        <ul v-else class="hall-feed__list" aria-label="可接需求">
+          <li v-for="row in rows" :key="row.requirement_id" class="hall-feed__item">
+            <div class="hall-feed__head">
+              <span class="hall-feed__title">{{ row.title }}</span>
+              <span class="hall-feed__budget">{{ formatMoney(row.budget) }}</span>
+            </div>
+            <p class="hall-feed__desc">{{ requirementFieldPreview(row.description, '暂无补充描述') }}</p>
+            <div class="hall-feed__foot">
+              <div class="hall-feed__meta">
+                <PaymentModeChip :mode="row.payment_mode" />
+                <span>{{ row.creator }}</span>
+                <span>{{ formatCnDateTime(row.updated_at) }}</span>
+              </div>
+              <TButton variant="solid" tone="accent" class="hall-feed__cta" @click="openBindDialog(row)">
+                {{ bindButtonLabel(row) }}
+              </TButton>
+            </div>
+          </li>
+        </ul>
+      </div>
+
       <!-- 表尾走统一层的 .dev-pager（与钱包记录同一形态）。
            本页走服务端分页，此前只取第 1 页 10 条且不给翻页入口，第 2 页起的数据在界面上不可达。 -->
-      <div class="dev-pager">
+      <div class="dev-pager" :class="{ 'dev-pager--single': total <= pageSize }">
         <div class="dev-pager__count">
           <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size" @change="handlePageSizeChange">
             <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
@@ -1018,6 +1034,269 @@ function resetInitForm() {
 </template>
 
 <style scoped>
+/* 可用保证金读数做成按钮，但宽屏外观与其它读数一致 */
+.hall-deposit-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* 读数条进了顶栏：去掉「去缴纳保证金」按钮，读数改成主色带箭头的入口 */
+#workbench-mobile-bar-extra .hall-deposit-cta {
+  display: none;
+}
+
+#workbench-mobile-bar-extra .hall-deposit-link .dev-meta-strip__value {
+  color: var(--dev-blue);
+}
+
+#workbench-mobile-bar-extra .hall-deposit-link .dev-meta-strip__value::after {
+  margin-left: 2px;
+  content: '›';
+}
+
+/* 顶栏宽度紧：标签省成「保证金」，刷新钉在右侧，读数再挤也只在左边折行 */
+#workbench-mobile-bar-extra .hall-deposit-link__prefix {
+  display: none;
+}
+
+#workbench-mobile-bar-extra .dev-meta-strip {
+  position: relative;
+  padding-right: 32px;
+}
+
+#workbench-mobile-bar-extra .dev-meta-strip__action {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+}
+
+/* 卡片流只在窄屏出现，宽屏仍是表格 */
+.hall-feed {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  /* 外层卡片去掉框与内边距：列表直接铺在页面底色上，每条需求自成一张卡，像 App 的信息流 */
+  .dev-requirement-hall__panel.dev-surface-card {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  /* 移动端不要「可接需求」小标题：顶栏读数已经说明了这是哪一页 */
+  .dev-requirement-hall__panel .dev-card-head {
+    display: none;
+  }
+
+  /* 排序、搜索、重置收进同一条白色搜索栏：一个块代替三个零散的胶囊 */
+  .dev-requirement-hall__panel .dev-toolbar {
+    flex-wrap: nowrap;
+    gap: 0;
+    margin-bottom: 12px;
+    padding: 3px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+
+  .dev-requirement-hall__panel :deep(.dev-toolbar__search),
+  .dev-requirement-hall__panel :deep(.dev-toolbar__field) {
+    border-color: transparent !important;
+    border-radius: 999px;
+    background: transparent;
+    box-shadow: none !important;
+  }
+
+  .dev-requirement-hall__panel :deep(.dev-toolbar__field) {
+    flex: 0 0 auto;
+    width: auto;
+    padding-right: 6px;
+  }
+
+  /* 排序与搜索之间一条细竖线 */
+  .dev-requirement-hall__panel :deep(.dev-toolbar__search) {
+    position: relative;
+    flex: 1 1 0;
+  }
+
+  .dev-requirement-hall__panel :deep(.dev-toolbar__search)::before {
+    position: absolute;
+    top: 9px;
+    bottom: 9px;
+    left: 0;
+    width: 1px;
+    background: var(--dev-line);
+    content: '';
+  }
+
+  /* 移动端搜索栏不放「重置」：清空靠搜索框自带的清除按钮 */
+  .dev-requirement-hall__panel .dev-toolbar__actions {
+    display: none;
+  }
+
+  .dev-requirement-hall__table {
+    display: none;
+  }
+
+  .hall-feed {
+    display: block;
+  }
+
+  /* 空态与加载态不再套白卡，直接落在页面底色上：图标 + 一行说明 */
+  .hall-feed__state {
+    margin: 0;
+    padding: 40px 16px;
+    color: var(--dev-muted);
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .hall-feed__state--empty {
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+  }
+
+  .hall-feed__state--empty p {
+    margin: 0;
+  }
+
+  .dev-requirement-hall__agreement-notice.is-feed-empty {
+    display: none;
+  }
+
+  .hall-feed__agreement {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .hall-feed__agreement strong {
+    color: var(--dev-ink);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .hall-feed__empty-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(31, 74, 209, 0.08);
+    color: var(--dev-blue);
+    font-size: 26px;
+  }
+
+  .hall-feed__list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .hall-feed__item {
+    display: grid;
+    gap: 8px;
+    padding: 14px;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+
+  .hall-feed__item:active {
+    background: #f8faff;
+  }
+
+  .hall-feed__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .hall-feed__title {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    color: var(--dev-ink);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .hall-feed__budget {
+    flex: 0 0 auto;
+    color: #e5484d;
+    font-size: 16px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hall-feed__desc {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    color: var(--dev-muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .hall-feed__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--dev-line);
+  }
+
+  .hall-feed__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    min-width: 0;
+    color: var(--dev-muted);
+    font-size: 12px;
+  }
+
+  .hall-feed__cta {
+    flex: 0 0 auto;
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 999px;
+    font-size: 13px;
+  }
+
+  /* 表尾：去掉「每页条数」，只留居中的页码 */
+  .dev-requirement-hall__panel .dev-pager__count {
+    display: none;
+  }
+
+  .dev-requirement-hall__panel .dev-pager {
+    justify-content: center;
+    margin-top: 14px;
+  }
+
+  /* 只有一页时不摆页码 */
+  .dev-requirement-hall__panel .dev-pager--single {
+    display: none;
+  }
+}
+
 .dev-requirement-hall__table :deep(.cell),
 .dev-requirement-hall__title-cell {
   min-width: 0;

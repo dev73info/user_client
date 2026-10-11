@@ -483,16 +483,16 @@ watch(
             <span>发布方式 *</span>
             <div class="publish-mode-options" :class="{ 'publish-mode-options--single': !platformGuaranteeAllowed }"
               role="radiogroup" aria-label="发布方式选择">
-              <button type="button" class="publish-mode-option"
+              <button type="button" class="publish-mode-option" role="radio"
+                :aria-checked="publishPaymentMode === 'self_managed'"
                 :class="{ active: publishPaymentMode === 'self_managed' }" @click="updatePaymentMode('self_managed')">
                 <strong>无电签约定</strong>
-                <small>平台提供协作与签署记录，付款双方另行约定</small>
               </button>
-              <button v-if="platformGuaranteeAllowed" type="button" class="publish-mode-option"
+              <button v-if="platformGuaranteeAllowed" type="button" class="publish-mode-option" role="radio"
+                :aria-checked="publishPaymentMode === 'platform_guarantee'"
                 :class="{ active: publishPaymentMode === 'platform_guarantee' }"
                 @click="updatePaymentMode('platform_guarantee')">
                 <strong>电签担保</strong>
-                <small>按平台定金与尾款规则推进</small>
               </button>
             </div>
           </div>
@@ -895,10 +895,14 @@ watch(
   font-weight: 800;
 }
 
+/* 两档只剩标题，做成一行分段选择：灰底槽 + 选中项白卡蓝字 */
 .publish-mode-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #f1f5f9;
 }
 
 .publish-mode-options--single {
@@ -906,27 +910,35 @@ watch(
 }
 
 .publish-mode-option {
-  min-height: 76px;
-  padding: 12px 13px;
-  border: 1px solid rgba(203, 213, 225, 0.86);
-  border-radius: 10px;
-  background: rgba(248, 250, 252, 0.78);
-  color: #111827;
-  text-align: left;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #475569;
+  font-size: 14px;
+  text-align: center;
   cursor: pointer;
-  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease,
-    transform 160ms ease;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 
-.publish-mode-option:hover:not(:disabled) {
-  border-color: rgba(37, 99, 235, 0.34);
-  background: rgba(239, 246, 255, 0.68);
+.publish-mode-option strong {
+  font-weight: 700;
+}
+
+.publish-mode-option:hover:not(:disabled):not(.active) {
+  color: #1d4ed8;
 }
 
 .publish-mode-option.active {
-  border-color: rgba(37, 99, 235, 0.86);
-  background: #eff6ff;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  background: #ffffff;
+  color: #1d4ed8;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1), 0 0 0 1px rgba(37, 99, 235, 0.18);
+}
+
+.publish-mode-option:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
 }
 
 .publish-mode-option strong,
@@ -943,7 +955,7 @@ watch(
 
 @media (max-width: 640px) {
   .publish-modal-wrap {
-    align-items: flex-end;
+    align-items: center;
     padding: 10px;
     padding-top: max(10px, env(safe-area-inset-top));
     padding-bottom: max(10px, env(safe-area-inset-bottom));
@@ -985,8 +997,5 @@ watch(
     min-height: 42px;
   }
 
-  .publish-mode-options {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

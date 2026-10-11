@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { TButton, TIcon, Refresh } from 'ui_73info'
 
 import BadgeWall from '@/components/BadgeWall.vue'
@@ -46,29 +47,31 @@ async function reload() {
 <template>
     <main class="page-shell custom-page-shell profile-page badges-center-page">
       <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
-      <div class="wb-strip" aria-label="徽章概览">
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">已获得徽章</span>
-          <span class="wb-strip__value">
-            {{ badgeStats ? `${badgeStats.acquired} / ${badgeStats.total}` : '—' }}
-          </span>
+      <WorkbenchBarSlot>
+        <div class="wb-strip" aria-label="徽章概览">
+          <div class="wb-strip__item">
+            <span class="wb-strip__label">已获得徽章</span>
+            <span class="wb-strip__value">
+              {{ badgeStats ? `${badgeStats.acquired} / ${badgeStats.total}` : '—' }}
+            </span>
+          </div>
+          <div class="wb-strip__divider" />
+          <div class="wb-strip__item">
+            <span class="wb-strip__label">已佩戴</span>
+            <span class="wb-strip__value">{{ badgeStats ? badgeStats.equipped : '—' }}</span>
+          </div>
+          <div class="wb-strip__item wb-strip__action">
+            <TButton
+              icon-only
+              :loading="refreshing"
+              aria-label="刷新徽章"
+              @click="reload"
+            >
+              <TIcon><Refresh /></TIcon>
+            </TButton>
+          </div>
         </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">已佩戴</span>
-          <span class="wb-strip__value">{{ badgeStats ? badgeStats.equipped : '—' }}</span>
-        </div>
-        <div class="wb-strip__item wb-strip__action">
-          <TButton
-            icon-only
-            :loading="refreshing"
-            aria-label="刷新徽章"
-            @click="reload"
-          >
-            <TIcon><Refresh /></TIcon>
-          </TButton>
-        </div>
-      </div>
+      </WorkbenchBarSlot>
 
       <section class="wallet-section">
         <BadgeWall ref="badgeWallRef" @stats="applyBadgeStats" />

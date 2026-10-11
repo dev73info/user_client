@@ -331,7 +331,6 @@ async function loadRecords() {
     </TTable>
     <div class="dev-pager">
       <div class="dev-pager__count">
-        <span>共 {{ recordTotal }} 条</span>
         <TSelect v-model="pageSize" aria-label="资金明细每页条数" class="dev-pager__size">
           <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
         </TSelect>

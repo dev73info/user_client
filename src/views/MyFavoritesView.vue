@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRouter } from 'vue-router'
 import { listFavoriteCommunityPosts, type CommunityPost } from '@/api/community'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
@@ -105,22 +106,24 @@ onMounted(() => {
 <template>
   <main class="page-shell custom-page-shell profile-page my-favorites-page" :aria-busy="loading">
     <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
-    <div class="wb-strip" aria-label="收藏概览">
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">收藏帖子</span>
-        <span class="wb-strip__value">{{ loading ? '—' : posts.length }}</span>
+    <WorkbenchBarSlot>
+      <div class="wb-strip" aria-label="收藏概览">
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">收藏帖子</span>
+          <span class="wb-strip__value">{{ loading ? '—' : posts.length }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">涉及标签</span>
+          <span class="wb-strip__value">{{ loading ? '—' : tagFilters.length }}</span>
+        </div>
+        <div class="wb-strip__item wb-strip__action">
+          <TButton icon-only :loading="loading" aria-label="刷新收藏列表" @click="loadFavorites">
+            <TIcon><Refresh /></TIcon>
+          </TButton>
+        </div>
       </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">涉及标签</span>
-        <span class="wb-strip__value">{{ loading ? '—' : tagFilters.length }}</span>
-      </div>
-      <div class="wb-strip__item wb-strip__action">
-        <TButton icon-only :loading="loading" aria-label="刷新收藏列表" @click="loadFavorites">
-          <TIcon><Refresh /></TIcon>
-        </TButton>
-      </div>
-    </div>
+    </WorkbenchBarSlot>
 
     <section class="wallet-section">
       <div class="wb-card-head">
@@ -192,7 +195,6 @@ onMounted(() => {
         </ul>
         <div class="wb-pager">
           <div class="wb-pager__count">
-            <span>共 {{ filteredTotal }} 篇帖子</span>
             <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页帖子数">
               <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
             </TSelect>

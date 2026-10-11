@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRouter } from 'vue-router'
 import {
   TButton,
@@ -167,22 +168,24 @@ onMounted(() => {
 <template>
   <main class="page-shell custom-page-shell profile-page perks-page" :aria-busy="loading">
     <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
-    <div class="wb-strip" aria-label="权益概览">
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">已解锁权益</span>
-        <span class="wb-strip__value">{{ loading || error ? '—' : ownedPerkCount }}</span>
+    <WorkbenchBarSlot>
+      <div class="wb-strip" aria-label="权益概览">
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">已解锁权益</span>
+          <span class="wb-strip__value">{{ loading || error ? '—' : ownedPerkCount }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">已佩戴权益</span>
+          <span class="wb-strip__value">{{ loading || error ? '—' : equippedPerkCount }}</span>
+        </div>
+        <div class="wb-strip__item wb-strip__action">
+          <TButton icon-only :loading="loading" aria-label="刷新权益" @click="loadPerks">
+            <TIcon><Refresh /></TIcon>
+          </TButton>
+        </div>
       </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">已佩戴权益</span>
-        <span class="wb-strip__value">{{ loading || error ? '—' : equippedPerkCount }}</span>
-      </div>
-      <div class="wb-strip__item wb-strip__action">
-        <TButton icon-only :loading="loading" aria-label="刷新权益" @click="loadPerks">
-          <TIcon><Refresh /></TIcon>
-        </TButton>
-      </div>
-    </div>
+    </WorkbenchBarSlot>
 
     <section class="wallet-section perks-section">
       <div class="wb-card-head">

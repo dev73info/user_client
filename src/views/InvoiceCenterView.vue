@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRoute } from 'vue-router'
 import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
 import {
@@ -85,7 +86,7 @@ const keyword = ref('')
 const statusFilter = ref<'all' | InvoiceRecord['status']>('all')
 
 /**
- * 状态筛选做成胶囊组：档位少、要能一眼看出当前选中项，与我的合同、我的收藏同一套做法。
+ * 状态筛选用下拉，与资源列表等菜单页同一套工具栏结构，窄屏能与搜索、重置并成一行。
  *
  * 筛选与读数都按**显示状态**分档（`invoiceDisplayStatus`），不是照读接口给的状态列。
  * 「审核中 / 需补充材料」只属于平台服务费票的审核流：开发者收入票由乙方上传即视为已开具，
@@ -114,12 +115,6 @@ const stats = computed(() => ({
   reversed: groups.value.filter((group) => invoiceGroupMatchesStatus(group, 'reversed')).length,
 }))
 
-function statusCount(status: 'all' | InvoiceRecord['status']) {
-  return status === 'all'
-    ? groups.value.length
-    : groups.value.filter((group) => invoiceGroupMatchesStatus(group, status)).length
-}
-
 /** 筛选也按卡走：卡内任一票命中状态、且需求号 / 抬头 / 任一张票号命中关键词，这张卡就留下。 */
 const filteredGroups = computed(() => groups.value.filter((group) => {
   const matchesStatus = statusFilter.value === 'all' || invoiceGroupMatchesStatus(group, statusFilter.value)
@@ -137,13 +132,6 @@ const {
   paged: pagedGroups,
   resetPage,
 } = useClientPagination(filteredGroups)
-
-/**
- * 筛选后这一屏的票数合计：条数按需求计（一张卡 = 一条记录），票数单列在表尾，好让人看清两档读数的
- * 差——「全部记录 1」下面跟着两张票是正常的，不是少显示了一条。
- */
-const filteredTicketTotal = computed(() =>
-  filteredGroups.value.reduce((sum, group) => sum + group.invoices.length, 0))
 
 /* 筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空列表。 */
 watch([keyword, statusFilter], resetPage)
@@ -377,32 +365,34 @@ async function saveDocument(invoice: InvoiceRecord) {
 <template>
   <main class="page-shell custom-page-shell profile-page invoice-center-page" :aria-busy="loading">
     <!-- 顶部读数条：读数在左，页面级刷新固定在右上角 __action 槽 -->
-    <div class="wb-strip" aria-label="发票概览">
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">全部记录</span>
-        <span class="wb-strip__value">{{ loading ? '—' : stats.total }}</span>
+    <WorkbenchBarSlot>
+      <div class="wb-strip" aria-label="发票概览">
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">全部记录</span>
+          <span class="wb-strip__value">{{ loading ? '—' : stats.total }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">处理中</span>
+          <span class="wb-strip__value">{{ loading ? '—' : stats.pending }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">已开具</span>
+          <span class="wb-strip__value">{{ loading ? '—' : stats.approved }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">已红冲</span>
+          <span class="wb-strip__value">{{ loading ? '—' : stats.reversed }}</span>
+        </div>
+        <div class="wb-strip__item wb-strip__action">
+          <TButton icon-only :loading="loading" aria-label="刷新发票记录" @click="loadData">
+            <TIcon><Refresh /></TIcon>
+          </TButton>
+        </div>
       </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">处理中</span>
-        <span class="wb-strip__value">{{ loading ? '—' : stats.pending }}</span>
-      </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">已开具</span>
-        <span class="wb-strip__value">{{ loading ? '—' : stats.approved }}</span>
-      </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">已红冲</span>
-        <span class="wb-strip__value">{{ loading ? '—' : stats.reversed }}</span>
-      </div>
-      <div class="wb-strip__item wb-strip__action">
-        <TButton icon-only :loading="loading" aria-label="刷新发票记录" @click="loadData">
-          <TIcon><Refresh /></TIcon>
-        </TButton>
-      </div>
-    </div>
+    </WorkbenchBarSlot>
 
     <section class="wallet-section">
       <div class="wb-card-head">
@@ -411,14 +401,12 @@ async function saveDocument(invoice: InvoiceRecord) {
         </div>
       </div>
 
-      <div v-if="groups.length || hasActiveFilters" class="wb-toolbar">
-        <div class="wb-chip-group" role="group" aria-label="按状态筛选">
-          <button v-for="option in STATUS_FILTERS" :key="option.key" type="button" class="wb-chip wb-chip--button"
-            :class="{ 'is-active': statusFilter === option.key }" :aria-pressed="statusFilter === option.key"
-            @click="statusFilter = option.key">
-            {{ option.label }}<span class="wb-chip__count">{{ statusCount(option.key) }}</span>
-          </button>
-        </div>
+      <!-- 工具栏常驻：没有记录时也给出状态、搜索与重置，与其余菜单页同一套结构 -->
+      <div class="wb-toolbar">
+        <TSelect v-model="statusFilter" class="wb-toolbar__field" placeholder="发票状态" aria-label="按状态筛选">
+          <TOption v-for="option in STATUS_FILTERS" :key="option.key"
+            :label="option.label" :value="option.key" />
+        </TSelect>
         <TInput v-model="keyword" class="wb-toolbar__search" clearable
           placeholder="搜索发票号、需求编号或发票标题" aria-label="搜索发票">
           <template #prefix><TIcon><Search /></TIcon></template>
@@ -427,7 +415,7 @@ async function saveDocument(invoice: InvoiceRecord) {
           <span v-if="hasActiveFilters" class="wb-toolbar__hint">
             筛选出 {{ filteredTotal }} / {{ groups.length }} 条
           </span>
-          <TButton variant="outline" v-if="hasActiveFilters" @click="resetFilters">
+          <TButton variant="outline" :disabled="!hasActiveFilters" @click="resetFilters">
             <TIcon><RefreshLeft /></TIcon><span>重置</span>
           </TButton>
         </div>
@@ -530,18 +518,16 @@ async function saveDocument(invoice: InvoiceRecord) {
             </ul>
           </li>
         </ul>
-        <div class="wb-pager">
-          <div class="wb-pager__count">
-            <!-- 一张卡 = 一个需求 = 一条记录；票数另说，因为同一条记录里通常有两张票。 -->
-            <span>共 {{ filteredTotal }} 条记录 · {{ filteredTicketTotal }} 张票</span>
-            <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页记录数">
-              <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-            </TSelect>
-          </div>
-          <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-            :pager-count="5" background aria-label="发票记录分页" />
-        </div>
       </template>
+      <div v-if="!(loading && !groups.length)" class="wb-pager">
+        <div class="wb-pager__count">
+          <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页记录数">
+            <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+          </TSelect>
+        </div>
+        <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
+          :pager-count="5" background aria-label="发票记录分页" />
+      </div>
     </section>
 
     <!-- 原票被红冲后从这里重新申请：复用需求页那支开票弹窗，它按需求算出这次能重开哪几张票。 -->

@@ -1786,15 +1786,11 @@ async function toggleCommentLike(comment: CommunityComment) {
     transform 160ms ease;
 }
 
+/* 刷新全站只留图标与文字，不出底色与描边（口径见 styles/user.css） */
 .community-hero__button--ghost {
-  border-color: rgba(191, 219, 254, 0.96);
-  background: rgba(239, 246, 255, 0.82);
+  border-color: transparent;
+  background: transparent;
   color: #2563eb;
-}
-
-.community-hero__button--ghost:hover:not(:disabled) {
-  border-color: rgba(37, 99, 235, 0.34);
-  background: rgba(219, 234, 254, 0.92);
 }
 
 .community-hero__button--primary {

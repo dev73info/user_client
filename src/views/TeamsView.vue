@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRouter } from 'vue-router'
 // 图标必须显式 import 才会被解析：顶部读数条的刷新、卡片头的「创建团队」、
 // 团队卡的默认头像（<UserFilled />）以及工具条里的搜索/重置。
@@ -250,30 +251,32 @@ onMounted(() => {
 
 <template>
   <div class="dev-page dev-teams">
-    <div class="dev-meta-strip">
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">我的团队</span>
-        <span class="dev-meta-strip__value">{{ teams.length }}</span>
+    <WorkbenchBarSlot>
+      <div class="dev-meta-strip">
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">我的团队</span>
+          <span class="dev-meta-strip__value">{{ teams.length }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">我创建的</span>
+          <span class="dev-meta-strip__value">{{ ownedCount }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">待处理邀请</span>
+          <span class="dev-meta-strip__value">{{ invitations.length }}</span>
+        </div>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <TButton icon-only aria-label="刷新团队与邀请" :loading="loading || invitationsLoading"
+            @click="reloadAll">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+        </div>
       </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">我创建的</span>
-        <span class="dev-meta-strip__value">{{ ownedCount }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">待处理邀请</span>
-        <span class="dev-meta-strip__value">{{ invitations.length }}</span>
-      </div>
-      <div class="dev-meta-strip__item dev-meta-strip__action">
-        <TButton icon-only aria-label="刷新团队与邀请" :loading="loading || invitationsLoading"
-          @click="reloadAll">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </div>
+    </WorkbenchBarSlot>
 
     <section v-if="invitations.length" class="dev-surface-card dev-teams__invitations">
       <div class="dev-card-head">

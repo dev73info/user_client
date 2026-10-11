@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRouter } from 'vue-router'
 import {
   getMyPoints,
@@ -270,28 +271,30 @@ onMounted(async () => {
 <template>
   <main class="page-shell custom-page-shell profile-page points-page" :aria-busy="loading">
       <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
-      <div class="wb-strip" aria-label="积分概览">
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">积分余额</span>
-          <span class="wb-strip__value">{{ loading ? '—' : pointsBalance }}</span>
+      <WorkbenchBarSlot>
+        <div class="wb-strip" aria-label="积分概览">
+          <div class="wb-strip__item">
+            <span class="wb-strip__label">积分余额</span>
+            <span class="wb-strip__value">{{ loading ? '—' : pointsBalance }}</span>
+          </div>
+          <div class="wb-strip__divider" />
+          <div class="wb-strip__item">
+            <span class="wb-strip__label">打赏记录</span>
+            <span class="wb-strip__value">{{ transferLoading ? '—' : transfers.length }}</span>
+          </div>
+          <div class="wb-strip__divider" />
+          <div class="wb-strip__item">
+            <span class="wb-strip__label">积分明细</span>
+            <span class="wb-strip__value">{{ loading ? '—' : logTotal }}</span>
+          </div>
+          <div class="wb-strip__item wb-strip__action">
+            <TButton icon-only :loading="refreshing" aria-label="刷新积分数据"
+              @click="refreshOverview">
+              <TIcon><Refresh /></TIcon>
+            </TButton>
+          </div>
         </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">打赏记录</span>
-          <span class="wb-strip__value">{{ transferLoading ? '—' : transfers.length }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">积分明细</span>
-          <span class="wb-strip__value">{{ loading ? '—' : logTotal }}</span>
-        </div>
-        <div class="wb-strip__item wb-strip__action">
-          <TButton icon-only :loading="refreshing" aria-label="刷新积分数据"
-            @click="refreshOverview">
-            <TIcon><Refresh /></TIcon>
-          </TButton>
-        </div>
-      </div>
+      </WorkbenchBarSlot>
 
       <!-- 打赏表单不再常驻占一屏：入口在「积分记录」卡头右侧，表单收进弹窗（见文件末尾）。
            这一页因此只留读数条与记录卡片两块。 -->
@@ -374,7 +377,6 @@ onMounted(async () => {
               </ul>
               <div class="wb-pager">
                 <div class="wb-pager__count">
-                  <span>共 {{ transferTotal }} 条记录</span>
                   <TSelect v-model="transferPageSize" class="wb-pager__size" aria-label="每页打赏记录数">
                     <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
                   </TSelect>
@@ -415,7 +417,6 @@ onMounted(async () => {
               </ul>
               <div class="wb-pager">
                 <div class="wb-pager__count">
-                  <span>共 {{ logTotal }} 条明细</span>
                   <TSelect :model-value="logPageSize" class="wb-pager__size" aria-label="每页明细数"
                     @change="handleLogPageSizeChange">
                     <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />

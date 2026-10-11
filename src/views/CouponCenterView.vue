@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRouter } from 'vue-router'
 import { TButton, TIcon, Refresh } from 'ui_73info'
 
@@ -100,27 +101,29 @@ onMounted(() => {
 <template>
   <main class="page-shell custom-page-shell profile-page coupons-page" :aria-busy="loading">
     <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
-    <div class="wb-strip" aria-label="优惠券概览">
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">可用优惠券</span>
-        <span class="wb-strip__value">{{ loading ? '—' : usableCoupons.length }}</span>
+    <WorkbenchBarSlot>
+      <div class="wb-strip" aria-label="优惠券概览">
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">可用优惠券</span>
+          <span class="wb-strip__value">{{ loading ? '—' : usableCoupons.length }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">满减券</span>
+          <span class="wb-strip__value">{{ loading ? '—' : amountCoupons.length }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">折扣券</span>
+          <span class="wb-strip__value">{{ loading ? '—' : discountCoupons.length }}</span>
+        </div>
+        <div class="wb-strip__item wb-strip__action">
+          <TButton icon-only :loading="loading" aria-label="刷新券包" @click="loadCoupons">
+            <TIcon><Refresh /></TIcon>
+          </TButton>
+        </div>
       </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">满减券</span>
-        <span class="wb-strip__value">{{ loading ? '—' : amountCoupons.length }}</span>
-      </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">折扣券</span>
-        <span class="wb-strip__value">{{ loading ? '—' : discountCoupons.length }}</span>
-      </div>
-      <div class="wb-strip__item wb-strip__action">
-        <TButton icon-only :loading="loading" aria-label="刷新券包" @click="loadCoupons">
-          <TIcon><Refresh /></TIcon>
-        </TButton>
-      </div>
-    </div>
+    </WorkbenchBarSlot>
 
     <section class="wallet-section coupons-section">
       <div class="wb-card-head">
