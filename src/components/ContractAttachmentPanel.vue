@@ -28,7 +28,6 @@ import { listRequirements } from '@/api/requirements'
 import {
   ATTACHMENT_REVIEW_STATUS,
   CONTRACT_CONTENT_SOURCE,
-  CONTRACT_STATUS,
   attachmentReviewStatusLabel,
   type ContractAttachmentParty,
 } from '@/shared/contracts'
@@ -63,15 +62,19 @@ const approved = computed(
 )
 
 /**
- * 是否已发起爱签签署。
+ * 是否已发起爱签签署（渠道合同已创建）。
  *
- * 本地没有直接透出 `asign_contract_no`，用「合同已离开等待签约 0」与签署日志里的
- * `asign_sign_initiated` 一起判定——后端真正的边界是「渠道合同已创建」，两处口径一致。
+ * 后端真正的边界是「渠道合同已创建」（`asign_contract_no` 非空，见后端
+ * `attachment_editable`），但用户端合同详情没有透出该字段；唯一可靠的替代判据是
+ * 签署日志里的 `asign_sign_initiated`——发起签署成功才会落这条日志，与「渠道合同已创建」
+ * 一一对应。
+ *
+ * ⚠️ 不要用「合同状态 ≠ 等待签约 0」判定：需求合同建单时的状态就是「签约中 1」
+ * （后端 `create_requirement_contract_by_user` 直接以 `CONTRACT_STATUS_SIGNING` 落库），
+ * 照状态判会把「还没发起签署」的合同也当成已发起，准备入口被永久锁死。
  */
-const signingInitiated = computed(
-  () =>
-    props.contract.status !== CONTRACT_STATUS.awaiting ||
-    (props.contract.signing_logs ?? []).some((log) => log.action === 'asign_sign_initiated'),
+const signingInitiated = computed(() =>
+  (props.contract.signing_logs ?? []).some((log) => log.action === 'asign_sign_initiated'),
 )
 
 /** 能否准备附件：必须是当事人，且渠道合同尚未创建（发起签署后只能作废重签）。 */

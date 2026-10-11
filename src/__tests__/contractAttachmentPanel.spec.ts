@@ -44,7 +44,9 @@ function contractOf(overrides: Partial<ContractDetail> = {}): ContractDetail {
     title: '网站服务合同',
     content: '平台生成的合同正文',
     content_sha256: 'content-sha',
-    status: CONTRACT_STATUS.awaiting,
+    // 需求合同建单时的状态就是「签约中 1」（后端直接以 CONTRACT_STATUS_SIGNING 落库），
+    // 因此「是否已发起签署」不能用状态判定，只能看签署日志里的 asign_sign_initiated。
+    status: CONTRACT_STATUS.signing,
     party_a_name: '甲方公司',
     party_a_username: 'alice',
     party_a_signed_at: null,
@@ -154,8 +156,24 @@ describe('attachment panel boundaries', () => {
     wrapper.unmount()
   })
 
-  it('locks the entry once the channel contract exists（已发起签署）', async () => {
+  it('keeps the prepare entry usable on a freshly created contract（建单即「签约中」，但尚未发起签署）', async () => {
+    // 需求合同建单时状态已是「签约中 1」但没有渠道合同，仍应能准备附件；
+    // 回归：早期按「状态 ≠ 等待签约 0」判定会把这里永久锁死。
     const wrapper = await render(contractOf({ status: CONTRACT_STATUS.signing }))
+    expect(wrapper.find('input[type="file"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('已发起签署，不能再更换附件')
+    wrapper.unmount()
+  })
+
+  it('locks the entry once the channel contract exists（已发起签署）', async () => {
+    const wrapper = await render(
+      contractOf({
+        status: CONTRACT_STATUS.signing,
+        signing_logs: [
+          { id: 1, contract_id: 1, action: 'asign_sign_initiated' },
+        ] as unknown as ContractDetail['signing_logs'],
+      }),
+    )
     expect(wrapper.text()).toContain('已发起签署，不能再更换附件')
     expect(wrapper.find('input[type="file"]').exists()).toBe(false)
     wrapper.unmount()
