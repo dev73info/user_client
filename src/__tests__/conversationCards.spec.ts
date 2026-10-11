@@ -172,6 +172,21 @@ describe('conversation status cards', () => {
     expect(meta('whatever', 'customer', 'deposit_paid')).toBeNull()
   })
 
+  it('sends the payer to bind a settlement account when a payout is stuck on it', () => {
+    // 中间态：赔付要打给需求方，需求方缺收款结算账户时钱落不下来。卡片只给需求方绑卡入口，
+    // 开发者侧无处可做——给了他只会点出去一个不相干的页面。
+    const customer = meta('breach_case_awaiting_payer_settlement', 'customer', 'in_development')
+    expect(customer?.actionLabel).toBe('去完成收款银行卡')
+    expect(customer?.to).toEqual({
+      name: 'workbench-account',
+      query: { settle: '1' },
+    })
+
+    const developer = meta('breach_case_awaiting_payer_settlement', 'developer', 'in_development')
+    expect(developer?.actionLabel).toBeUndefined()
+    expect(developer?.to).toBeUndefined()
+  })
+
   it('has copy for every negotiation event code the backend writes', () => {
     // 后端 `system_card_text` 认识的每个事件码都必须在这里有文案：漏一个，会话里那条
     // 卡片就会渲染成空白（界面还承诺过「对方会在会话里收到通知」）。
@@ -189,6 +204,8 @@ describe('conversation status cards', () => {
       'breach_case_negotiation_proposed',
       'breach_case_negotiation_rejected',
       'breach_case_ai_reviewing',
+      // 中间态：赔付待需求方补收款账户（补齐后平台自动续做）
+      'breach_case_awaiting_payer_settlement',
       // 解除合作「人工处理」那一段：后台滞留提醒与客服人工结案
       'breach_case_manual_required_reminder',
       'breach_case_manual_closed',

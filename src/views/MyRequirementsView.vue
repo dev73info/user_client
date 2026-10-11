@@ -605,6 +605,12 @@ function closeBreachReport() {
   breachWithdrawConfirm.value = false
 }
 
+/** 去账号中心补收款银行卡（结算账户）：中间态的续做靠它，绑完平台自动按现有认定赔付。 */
+function goBindSettlementAccount() {
+  breachVisible.value = false
+  void router.push({ name: 'workbench-account', query: { settle: '1' } })
+}
+
 async function submitPlatformReview() {
   if (!breachCase.value) {
     return
@@ -2771,6 +2777,21 @@ watch(
             <strong>判定来源：</strong>{{ breachVerdictSourceText(breachCase.verdictSource) }}
           </p>
           <p v-if="breachCase.resolutionNote" class="pay-line"><strong>处理说明：</strong>{{ breachCase.resolutionNote }}</p>
+
+          <!-- 中间态：赔付要打给需求方（本人），但收款结算账户还没就绪，钱落不下来。
+               案件不转人工，等绑卡完成后平台自动按现有认定续做——所以这里给一个绑卡入口。 -->
+          <template v-if="breachCase.status === 'awaiting_payer_settlement'">
+            <p class="tip">
+              赔付要打进你的渠道收款账户，但该账户还没就绪（未开通或未绑定收款银行卡），这笔钱暂时落不下来。
+              案件已停在「等待需求方补收款账户」，<strong>不转人工</strong>；绑卡成功后平台会自动按现有认定
+              续做赔付与退款，到账后可在账号中心提现。
+            </p>
+            <div class="actions">
+              <button class="ghost primary" type="button" @click="goBindSettlementAccount">
+                去完成收款银行卡
+              </button>
+            </div>
+          </template>
 
           <!-- 协商阶段：对方同意即无责退出，不同意才申请平台介入。 -->
           <template v-if="isTerminationNegotiating(breachCase)">
