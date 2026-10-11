@@ -146,6 +146,9 @@ export default defineConfig({
     },
   },
   server: {
+    // 绑 0.0.0.0：localhost / 127.0.0.1 / 局域网 IP 都能进；默认只绑回环时
+    // Windows 上常变成仅 [::1]，用 127.0.0.1 打不开，真机也访问不到。
+    host: '0.0.0.0',
     proxy: proxyConfig,
     fs: {
       allow: ['..'],
