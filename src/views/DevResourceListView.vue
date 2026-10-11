@@ -23,6 +23,14 @@ import {
   type PromoCard,
 } from '@/api/points'
 import { HttpError } from '@/api/http'
+import {
+  acceptResourceTransfer,
+  cancelResourceTransfer,
+  listMyResourceTransferInbox,
+  listMyResourceTransfers,
+  rejectResourceTransfer,
+  type ResourceTransferPayload,
+} from '@/api/resourceTransfers'
 import { useToast } from '@/composables/useToast'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
@@ -39,6 +47,15 @@ import {
   formatResourcePriceLabel,
   isPricedResource,
 } from '@/shared/resourceSale'
+import {
+  describeTransferError,
+  describeTransferReceiver,
+  isTransferCancelable,
+  transferStatusLabel,
+  transferStatusTone,
+} from '@/shared/resourceTransfer'
+
+import ResourceTransferDialog from '@/components/ResourceTransferDialog.vue'
 
 
 import {
@@ -184,6 +201,7 @@ const draftCount = computed(
 onMounted(async () => {
   auth.hydrate()
   void loadResourceRouteTree()
+  void loadTransfers()
   await loadResources()
 })
 
@@ -439,6 +457,11 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
     return
   }
 
+  if (payload.action === 'transfer') {
+    openTransferDialog(payload.resource)
+    return
+  }
+
   if (
     payload.action !== 'view' &&
     payload.action !== 'publish' &&
@@ -450,6 +473,121 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
   }
 
   handleResourceAction(payload.action, payload.resource)
+}
+
+/* ------------------------------------------------------------------ *
+ * R015 资源项目过户
+ *
+ * 开发者把名下资源项目过户给其他开发者 / 团队，需接收方同意后才换主。
+ * 本页提供：资源表格里的「过户」入口与发起弹窗、顶部「待我同意 / 我发起的」两张列表
+ * （同意 / 拒绝 / 撤销）。所有权变更与全部校验都在后端，这里只消费接口、透出后端中文提示。
+ * ------------------------------------------------------------------ */
+const transferDialogVisible = ref(false)
+const transferTarget = ref<McResourcePayload | null>(null)
+const transferInbox = ref<ResourceTransferPayload[]>([])
+const myTransfers = ref<ResourceTransferPayload[]>([])
+const transfersLoading = ref(false)
+/** 正在处理（同意 / 拒绝 / 撤销）的申请 id，用于给对应按钮显示 loading。 */
+const respondingTransferId = ref<number | null>(null)
+const transferTab = ref<'inbox' | 'mine'>('inbox')
+
+const transferInboxCount = computed(() => transferInbox.value.length)
+
+/** 打开「发起过户」弹窗；表单本身在 `ResourceTransferDialog` 里，这里只传目标资源。 */
+function openTransferDialog(resource: McResourcePayload) {
+  transferTarget.value = resource
+  transferDialogVisible.value = true
+}
+
+/** 弹窗发起成功后切到「我发起的」，让用户立刻看到刚发出去的那条。 */
+async function handleTransferSubmitted() {
+  transferTab.value = 'mine'
+  await loadTransfers()
+}
+
+/** 拉取「待我同意」与「我发起的」两份列表。 */
+async function loadTransfers() {
+  if (!auth.token) {
+    return
+  }
+
+  transfersLoading.value = true
+  try {
+    const [inbox, mine] = await Promise.all([
+      listMyResourceTransferInbox(auth.token),
+      listMyResourceTransfers(auth.token),
+    ])
+    transferInbox.value = inbox
+    myTransfers.value = mine
+  } catch (error) {
+    const { message } = describeTransferError(error, '加载过户列表失败')
+    showToast(message, 'warning')
+  } finally {
+    transfersLoading.value = false
+  }
+}
+
+/** 接收方同意 / 拒绝。同意后资源换主，两份列表与资源表格都要刷新。 */
+async function respondTransfer(transfer: ResourceTransferPayload, accepted: boolean) {
+  if (!auth.token) {
+    showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+
+  const resourceName = transfer.resource_name || `资源 #${transfer.resource_id}`
+  if (accepted) {
+    const confirmed = window.confirm(
+      `同意接收资源「${resourceName}」吗？同意后该资源归你所有，原所有者将不再拥有它。`,
+    )
+    if (!confirmed) {
+      return
+    }
+  }
+
+  respondingTransferId.value = transfer.transfer_id
+  try {
+    if (accepted) {
+      await acceptResourceTransfer(auth.token, transfer.transfer_id)
+    } else {
+      await rejectResourceTransfer(auth.token, transfer.transfer_id)
+    }
+    showToast(accepted ? '已同意过户，资源已转入你的资源项目' : '已拒绝该过户申请', 'success')
+    await Promise.all([loadTransfers(), loadResources()])
+  } catch (error) {
+    const { message, needRefresh } = describeTransferError(
+      error,
+      accepted ? '同意过户失败' : '拒绝过户失败',
+    )
+    showToast(message, 'error')
+    if (needRefresh) {
+      await Promise.all([loadTransfers(), loadResources()])
+    }
+  } finally {
+    respondingTransferId.value = null
+  }
+}
+
+/** 发起方撤销待处理的申请。 */
+async function cancelTransferApply(transfer: ResourceTransferPayload) {
+  if (!auth.token) {
+    showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+
+  respondingTransferId.value = transfer.transfer_id
+  try {
+    await cancelResourceTransfer(auth.token, transfer.transfer_id)
+    showToast('过户申请已撤销，资源归属保持不变', 'success')
+    await loadTransfers()
+  } catch (error) {
+    const { message, needRefresh } = describeTransferError(error, '撤销过户失败')
+    showToast(message, 'error')
+    if (needRefresh) {
+      await loadTransfers()
+    }
+  } finally {
+    respondingTransferId.value = null
+  }
 }
 
 async function submitVersion() {
@@ -599,6 +737,101 @@ async function setResourcePrivate(resource: McResourcePayload) {
       </div>
     </WorkbenchBarSlot>
 
+    <TCard class="dev-surface-card dev-transfer-card">
+      <div class="dev-card-head">
+        <div class="dev-card-head__title-block">
+          <h3 class="dev-section-title">资源过户</h3>
+          <p class="dev-card-head__hint">
+            接收方同意后才完成所有权转移；过户不改写已成交订单的卖家。
+          </p>
+        </div>
+        <div class="dev-card-head__actions">
+          <TButton variant="outline" :loading="transfersLoading" @click="loadTransfers">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+            <span>刷新</span>
+          </TButton>
+        </div>
+      </div>
+
+      <div class="dev-transfer-tabs" role="tablist" aria-label="资源过户列表切换">
+        <button type="button" role="tab" class="dev-transfer-tab" :class="{ 'is-active': transferTab === 'inbox' }"
+          :aria-selected="transferTab === 'inbox'" @click="transferTab = 'inbox'">
+          待我同意
+          <span v-if="transferInboxCount" class="dev-transfer-tab__badge">{{ transferInboxCount }}</span>
+        </button>
+        <button type="button" role="tab" class="dev-transfer-tab" :class="{ 'is-active': transferTab === 'mine' }"
+          :aria-selected="transferTab === 'mine'" @click="transferTab = 'mine'">
+          我发起的
+        </button>
+      </div>
+
+      <!-- 待我同意：接收方为本人，或本人是接收团队的 owner / admin -->
+      <ul v-if="transferTab === 'inbox'" class="dev-transfer-list">
+        <li v-for="item in transferInbox" :key="item.transfer_id" class="dev-transfer-item">
+          <div class="dev-transfer-item__main">
+            <div class="dev-transfer-item__head">
+              <span class="dev-transfer-item__name">
+                {{ item.resource_name || `资源 #${item.resource_id}` }}
+              </span>
+              <TTag variant="outline" :tone="transferStatusTone(item.status)">
+                {{ transferStatusLabel(item.status) }}
+              </TTag>
+            </div>
+            <p class="dev-transfer-item__meta">
+              来自 {{ item.from_team_name ? `团队 ${item.from_team_name}` : item.from_user }}
+              · 发起于 {{ item.initiated_at }}
+            </p>
+            <p v-if="item.message" class="dev-transfer-item__message">“{{ item.message }}”</p>
+          </div>
+          <div class="dev-transfer-item__actions">
+            <TButton variant="solid" tone="accent" :disabled="respondingTransferId === item.transfer_id"
+              @click="respondTransfer(item, true)">
+              同意
+            </TButton>
+            <TButton variant="outline" :disabled="respondingTransferId === item.transfer_id"
+              @click="respondTransfer(item, false)">
+              拒绝
+            </TButton>
+          </div>
+        </li>
+        <li v-if="!transferInbox.length" class="dev-transfer-empty">
+          {{ transfersLoading ? '过户列表加载中' : '暂无待你同意的过户申请' }}
+        </li>
+      </ul>
+
+      <!-- 我发起的：显示状态与时间，只有 pending 才给撤销 -->
+      <ul v-else class="dev-transfer-list">
+        <li v-for="item in myTransfers" :key="item.transfer_id" class="dev-transfer-item">
+          <div class="dev-transfer-item__main">
+            <div class="dev-transfer-item__head">
+              <span class="dev-transfer-item__name">
+                {{ item.resource_name || `资源 #${item.resource_id}` }}
+              </span>
+              <TTag variant="outline" :tone="transferStatusTone(item.status)">
+                {{ transferStatusLabel(item.status) }}
+              </TTag>
+            </div>
+            <p class="dev-transfer-item__meta">
+              转给 {{ describeTransferReceiver(item) }} · 发起于 {{ item.initiated_at }}
+              <template v-if="item.responded_at"> · 处理于 {{ item.responded_at }}</template>
+            </p>
+            <p v-if="item.message" class="dev-transfer-item__message">“{{ item.message }}”</p>
+          </div>
+          <div v-if="isTransferCancelable(item.status)" class="dev-transfer-item__actions">
+            <TButton variant="outline" :disabled="respondingTransferId === item.transfer_id"
+              @click="cancelTransferApply(item)">
+              撤销
+            </TButton>
+          </div>
+        </li>
+        <li v-if="!myTransfers.length" class="dev-transfer-empty">
+          {{ transfersLoading ? '过户列表加载中' : '你还没有发起过资源过户' }}
+        </li>
+      </ul>
+    </TCard>
+
     <TCard class="dev-surface-card">
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
@@ -733,6 +966,9 @@ async function setResourcePrivate(resource: McResourcePayload) {
                   <TDropdownItem :command="{ action: 'sold-orders', resource: scope.row }">
                     售出订单
                   </TDropdownItem>
+                  <TDropdownItem :command="{ action: 'transfer', resource: scope.row }">
+                    过户
+                  </TDropdownItem>
                   <TDropdownItem :command="{ action: 'delete', resource: scope.row }"
                     :disabled="!canDeleteResource(scope.row) || deletingResourceId === scope.row.id">
                     {{ deletingResourceId === scope.row.id ? '删除中...' : '删除' }}
@@ -824,6 +1060,9 @@ async function setResourcePrivate(resource: McResourcePayload) {
         </TButton>
       </template>
     </TDialog>
+
+    <ResourceTransferDialog v-model:open="transferDialogVisible" :resource="transferTarget"
+      @submitted="handleTransferSubmitted" />
   </div>
 </template>
 
@@ -855,5 +1094,133 @@ async function setResourcePrivate(resource: McResourcePayload) {
   font-size: 13px;
   color: #64748b;
   line-height: 1.5;
+}
+
+/* ---------- R015 资源过户：待我同意 / 我发起的列表与发起表单 ---------- */
+
+.dev-card-head__hint {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--dev-muted);
+  line-height: 1.5;
+}
+
+.dev-transfer-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0 12px;
+  border-bottom: 1px solid var(--dev-line);
+}
+
+.dev-transfer-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px 10px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--dev-muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dev-transfer-tab.is-active {
+  border-bottom-color: var(--dev-blue);
+  color: var(--dev-blue);
+}
+
+.dev-transfer-tab__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--dev-gold);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dev-transfer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dev-transfer-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-inner);
+  background: var(--dev-surface-strong);
+}
+
+.dev-transfer-item__main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dev-transfer-item__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dev-transfer-item__name {
+  color: var(--dev-ink);
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.dev-transfer-item__meta {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--dev-muted);
+  line-height: 1.5;
+}
+
+.dev-transfer-item__message {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--dev-ink-soft);
+  line-height: 1.6;
+}
+
+.dev-transfer-item__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.dev-transfer-empty {
+  padding: 20px 0;
+  color: var(--dev-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* 窄屏下把操作按钮换到资源名下方，免得长资源名把按钮挤成竖排 */
+@media (max-width: 640px) {
+  .dev-transfer-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .dev-transfer-item__actions {
+    justify-content: flex-end;
+  }
 }
 </style>
