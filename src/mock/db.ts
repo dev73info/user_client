@@ -581,6 +581,11 @@ function buildResource(
     origin_url: null,
     origin_org: null,
     origin_note: null,
+    price_fen: 0,
+    price_points: 0,
+    copyright_declared: false,
+    copyright_declared_at: null,
+    purchased_by_me: false,
     created_at: iso(-40, 9, 0),
     updated_at: iso(-updatedDaysAgo, 15, 20),
   }
@@ -605,15 +610,20 @@ export const mcResources: McResourcePayload[] = [
     4,
     'REQ-20260828-0042',
   ),
-  buildResource(
-    9003,
-    '自研工具',
-    '小程序订单提醒机器人',
-    '订单状态变更推送到企业微信，支持免打扰时段。',
-    'published',
-    6,
-    'REQ-20260814-0029',
-  ),
+  (() => {
+    const paid = buildResource(
+      9003,
+      '自研工具',
+      '小程序订单提醒机器人',
+      '订单状态变更推送到企业微信，支持免打扰时段。',
+      'published',
+      6,
+    )
+    paid.price_fen = 990
+    paid.copyright_declared = true
+    paid.copyright_declared_at = iso(-6, 12, 0)
+    return paid
+  })(),
   buildResource(
     9004,
     '自研工具',
@@ -984,6 +994,11 @@ export function createResourceRecord(payload: {
     origin_url: null,
     origin_org: null,
     origin_note: null,
+    price_fen: 0,
+    price_points: 0,
+    copyright_declared: false,
+    copyright_declared_at: null,
+    purchased_by_me: false,
     created_at: iso(0, 10, 0),
     updated_at: iso(0, 10, 0),
   }

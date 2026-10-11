@@ -60,6 +60,9 @@ function demoResource(id: number, title: string): McResourcePayload {
     origin_url: null,
     origin_org: null,
     origin_note: null,
+    price_fen: 0,
+    price_points: 0,
+    copyright_declared: false,
     created_at: daysAgo(30, 9, 0),
     updated_at: daysAgo(2, 15, 20),
   }

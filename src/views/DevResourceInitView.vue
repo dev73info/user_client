@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   createMcResource,
@@ -21,9 +22,12 @@ import { listMyTeams, type TeamResponse } from '@/api/team'
 import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
 
 
+import { parsePointsPriceInput, parseYuanPriceInput } from '@/shared/resourceSale'
+
 import {
   TButton,
   TCard,
+  TCheckbox,
   TForm,
   TFormItem,
   TIcon,
@@ -58,7 +62,36 @@ const form = reactive({
   originUrl: '',
   originOrg: '',
   originNote: '',
+  priceYuan: '0',
+  pricePoints: '0',
+  copyrightDeclared: false,
 })
+
+const parsedPriceFen = computed(() => parseYuanPriceInput(form.priceYuan))
+const parsedPricePoints = computed(() => parsePointsPriceInput(form.pricePoints))
+const hasCashPrice = computed(
+  () => parsedPriceFen.value.ok && parsedPriceFen.value.fen > 0,
+)
+const hasPointsPrice = computed(
+  () => parsedPricePoints.value.ok && parsedPricePoints.value.points > 0,
+)
+const cashPriceDisabled = computed(() => hasPointsPrice.value)
+const pointsPriceDisabled = computed(() => hasCashPrice.value)
+const showCopyrightField = computed(
+  () => hasCashPrice.value || hasPointsPrice.value || form.copyrightDeclared,
+)
+
+function onCashPriceInput() {
+  if (hasCashPrice.value) {
+    form.pricePoints = '0'
+  }
+}
+
+function onPointsPriceInput() {
+  if (hasPointsPrice.value) {
+    form.priceYuan = '0'
+  }
+}
 
 const rootTabs = computed<McTagCatalogRoot[]>(() => processedTree.value.roots)
 
@@ -275,6 +308,9 @@ function resetForm() {
   form.originUrl = ''
   form.originOrg = ''
   form.originNote = ''
+  form.priceYuan = '0'
+  form.pricePoints = '0'
+  form.copyrightDeclared = false
   selectedIconFile.value = null
 
   for (const key of Object.keys(selectedTagIdsByGroup)) {
@@ -295,6 +331,29 @@ async function submitResource(mode: 'private' | 'public') {
 
   if (form.originType === 'repost' && !form.originUrl.trim()) {
     showToast('转载资源必须填写原始出处链接', 'warning')
+    return
+  }
+
+  const priceParsed = parseYuanPriceInput(form.priceYuan)
+  if (!priceParsed.ok) {
+    showToast(priceParsed.message, 'warning')
+    return
+  }
+  const pointsParsed = parsePointsPriceInput(form.pricePoints)
+  if (!pointsParsed.ok) {
+    showToast(pointsParsed.message, 'warning')
+    return
+  }
+  if (priceParsed.fen > 0 && pointsParsed.points > 0) {
+    showToast('现金售价与积分售价不能同时设置', 'warning')
+    return
+  }
+  if (
+    (priceParsed.fen > 0 || pointsParsed.points > 0) &&
+    !form.copyrightDeclared &&
+    mode === 'public'
+  ) {
+    showToast('付费资源公开申请前必须勾选版权声明', 'warning')
     return
   }
 
@@ -320,6 +379,9 @@ async function submitResource(mode: 'private' | 'public') {
       origin_url: form.originUrl.trim() || null,
       origin_org: form.originOrg.trim() || null,
       origin_note: form.originNote.trim() || null,
+      price_fen: priceParsed.fen,
+      price_points: pointsParsed.points,
+      copyright_declared: form.copyrightDeclared,
     })
 
     if (selectedIconFile.value) {
@@ -344,6 +406,9 @@ async function submitResource(mode: 'private' | 'public') {
         origin_url: form.originUrl.trim() || null,
         origin_org: form.originOrg.trim() || null,
         origin_note: form.originNote.trim() || null,
+        price_fen: priceParsed.fen,
+        price_points: pointsParsed.points,
+        copyright_declared: form.copyrightDeclared,
       })
     }
 
@@ -366,29 +431,31 @@ async function submitResource(mode: 'private' | 'public') {
     <!-- 顶部读数条：与其余菜单页同一条形态（读数在左、页面级操作在右）。
          这一页原来直接从表单卡片开始，没有读数条；「刷新标签」也藏在标签卡片的卡片头里，
          同一个动作在别的页都在顶条右侧，这里挪上来后全模块只剩一个位置。 -->
-    <div class="dev-meta-strip">
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">根节点</span>
-        <span class="dev-meta-strip__value">{{ currentRootLabel }}</span>
+    <WorkbenchBarSlot>
+      <div class="dev-meta-strip">
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">根节点</span>
+          <span class="dev-meta-strip__value">{{ currentRootLabel }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">二级节点</span>
+          <span class="dev-meta-strip__value">{{ currentEntryLabel }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">已选标签</span>
+          <span class="dev-meta-strip__value">{{ selectedTagCount }}</span>
+        </div>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <TButton icon-only aria-label="刷新标签" :loading="isLoadingTags" @click="loadTagTree">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+        </div>
       </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">二级节点</span>
-        <span class="dev-meta-strip__value">{{ currentEntryLabel }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">已选标签</span>
-        <span class="dev-meta-strip__value">{{ selectedTagCount }}</span>
-      </div>
-      <div class="dev-meta-strip__item dev-meta-strip__action">
-        <TButton icon-only aria-label="刷新标签" :loading="isLoadingTags" @click="loadTagTree">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </div>
+    </WorkbenchBarSlot>
 
     <div class="dev-upload-layout">
       <TCard class="dev-surface-card dev-upload-combined-card">
@@ -443,6 +510,36 @@ async function submitResource(mode: 'private' | 'public') {
                   <TOption label="原创" value="original" />
                   <TOption label="转载" value="repost" />
                 </TSelect>
+              </TFormItem>
+
+              <TFormItem label="现金售价（元）">
+                <TInput
+                  v-model="form.priceYuan"
+                  :disabled="cashPriceDisabled"
+                  placeholder="0 表示免费"
+                  inputmode="decimal"
+                  title="与积分售价互斥"
+                  @input="onCashPriceInput"
+                />
+                <p v-if="cashPriceDisabled" class="dev-field-hint">已填积分售价，现金售价已禁用。</p>
+              </TFormItem>
+
+              <TFormItem label="积分售价">
+                <TInput
+                  v-model="form.pricePoints"
+                  :disabled="pointsPriceDisabled"
+                  placeholder="0 表示不走积分购"
+                  inputmode="numeric"
+                  title="与现金售价互斥"
+                  @input="onPointsPriceInput"
+                />
+                <p v-if="pointsPriceDisabled" class="dev-field-hint">已填现金售价，积分售价已禁用。</p>
+              </TFormItem>
+
+              <TFormItem v-if="showCopyrightField" label="版权声明">
+                <TCheckbox v-model="form.copyrightDeclared">
+                  我确认拥有该资源版权，或已获得合法授权可售卖
+                </TCheckbox>
               </TFormItem>
 
               <template v-if="form.originType === 'repost'">
@@ -589,3 +686,12 @@ async function submitResource(mode: 'private' | 'public') {
     </div>
   </div>
 </template>
+
+<style scoped>
+.dev-field-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary, #64748b);
+}
+</style>

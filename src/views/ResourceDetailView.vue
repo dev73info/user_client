@@ -544,8 +544,7 @@ function closePurchasePanel() {
   clearChannelSwitchTimer()
   purchasePanelOpen.value = false
   purchaseError.value = ''
-  // 保留 pending 订单与二维码，下次打开同渠道可复用，少落垃圾单
-  stopPurchasePoll()
+  // 保留 pending 订单与二维码；pending 时不停轮询——本机靠查单落 paid 后要能自动刷新详情
 }
 
 function selectPurchaseChannel(channel: ResourcePayChannelUi) {
@@ -605,26 +604,30 @@ async function maybeRenderPurchaseQr(order: ResourcePurchaseOrder) {
   }
 }
 
+async function pollPurchaseOnce(orderNo: string) {
+  if (!auth.token?.trim()) {
+    return
+  }
+  try {
+    const latest = await getMyResourcePurchase(auth.token, orderNo)
+    purchaseOrder.value = latest
+    if (latest.status === 'paid') {
+      await handlePurchasePaid(latest)
+    } else if (latest.status === 'failed' || latest.status === 'closed') {
+      stopPurchasePoll()
+      showToast('支付未完成，请重新发起购买', 'warning')
+    }
+  } catch {
+    /* 轮询失败不打断扫码流程 */
+  }
+}
+
 function startPurchasePoll(orderNo: string) {
   stopPurchasePoll()
+  // 立刻查一次：后端会对 pending 主动问渠道，不必干等首个 interval
+  void pollPurchaseOnce(orderNo)
   purchasePollTimer = setInterval(() => {
-    void (async () => {
-      if (!auth.token?.trim()) {
-        return
-      }
-      try {
-        const latest = await getMyResourcePurchase(auth.token, orderNo)
-        purchaseOrder.value = latest
-        if (latest.status === 'paid') {
-          await handlePurchasePaid(latest)
-        } else if (latest.status === 'failed' || latest.status === 'closed') {
-          stopPurchasePoll()
-          showToast('支付未完成，请重新发起购买', 'warning')
-        }
-      } catch {
-        /* 轮询失败不打断扫码流程 */
-      }
-    })()
+    void pollPurchaseOnce(orderNo)
   }, 4000)
 }
 
@@ -1434,10 +1437,8 @@ watch(
           </p>
         </div>
 
-        <div class="actions" :class="{ 'actions--single': !isPointsListing }">
-          <button class="ghost" type="button" @click="closePurchasePanel">取消</button>
+        <div v-if="isPointsListing" class="actions">
           <button
-            v-if="isPointsListing"
             class="ghost primary"
             type="button"
             :disabled="purchaseSubmitting"
@@ -1740,14 +1741,6 @@ watch(
 .resource-purchase-modal .actions {
   margin-top: 2px;
   justify-content: flex-end;
-}
-
-.resource-purchase-modal .actions--single {
-  justify-content: stretch;
-}
-
-.resource-purchase-modal .actions--single .ghost {
-  width: 100%;
 }
 
 .resource-purchase-modal__qr {

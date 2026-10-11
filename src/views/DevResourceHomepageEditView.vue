@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import MarkdownIt from 'markdown-it'
 import { useRoute, useRouter } from 'vue-router'
 import { apiUrl, HttpError } from '@/api/http'
@@ -20,15 +21,24 @@ import {
 } from '@/api/resourceTags'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
-import { listMyTeams, type TeamResponse } from '@/api/team'
+import { listMyTeams, getTeamDetail, type TeamResponse } from '@/api/team'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
+import ResourceTransferDialog from '@/components/ResourceTransferDialog.vue'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 import {
+  canSwitchToPointsPrice,
+  fenToYuanText,
+  parsePointsPriceInput,
+  parseYuanPriceInput,
+} from '@/shared/resourceSale'
+
+import {
   TButton,
   TCard,
+  TCheckbox,
   TForm,
   TFormItem,
   TIcon,
@@ -39,6 +49,7 @@ import {
   Back,
   Check,
   Refresh,
+  Switch,
   View,
 } from 'ui_73info'
 
@@ -80,6 +91,11 @@ const form = reactive({
   originUrl: '',
   originOrg: '',
   originNote: '',
+  /** 售价（元，输入框）；提交时转分；与积分售价互斥 */
+  priceYuan: '0',
+  /** 积分售价；与现金售价互斥 */
+  pricePoints: '0',
+  copyrightDeclared: false,
 })
 
 const teamOptions = computed(() =>
@@ -151,6 +167,73 @@ const resourceAuthorLabel = computed(() => form.author.trim() || resource.value?
 const userClientPreviewUrl = computed(() =>
   resource.value ? userClientResourceUrl(resource.value) : '',
 )
+const boundToRequirement = computed(() => Boolean(resource.value?.requirement_id))
+
+/* ---------- R015 资源过户：本页只在「我确实有权过户该资源」时露出入口 ---------- */
+const transferDialogVisible = ref(false)
+/** 当前用户在「资源所属团队」里的角色（团队资源时才有值）。 */
+const resourceTeamRole = ref<string | null>(null)
+
+// 团队资源的可操作性看团队成员角色，个人资源看 creator。团队资源只在加载后取一次该团队的成员；
+// 403 的最终判定仍在后端，这里只是不把入口亮给明显无权的第三人。
+const canTransferResource = computed(() => {
+  const current = resource.value
+  if (!current || !auth.username) {
+    return false
+  }
+
+  if (current.ownership_type !== 'team') {
+    return current.creator === auth.username
+  }
+
+  return resourceTeamRole.value === 'owner' || resourceTeamRole.value === 'admin'
+})
+
+watch(resource, async (current) => {
+  resourceTeamRole.value = null
+  if (!current || current.ownership_type !== 'team' || !current.team_id || !auth.token) {
+    return
+  }
+
+  try {
+    const detail = await getTeamDetail(auth.token, current.team_id)
+    resourceTeamRole.value =
+      detail.members.find((member) => member.username === auth.username)?.role ?? null
+  } catch {
+    // 取不到团队详情就不放行入口，由后端在真正发起时兜底判定。
+    resourceTeamRole.value = null
+  }
+})
+const parsedPriceFen = computed(() => parseYuanPriceInput(form.priceYuan))
+const parsedPricePoints = computed(() => parsePointsPriceInput(form.pricePoints))
+const isPaidPricing = computed(
+  () =>
+    (parsedPriceFen.value.ok && parsedPriceFen.value.fen > 0) ||
+    (parsedPricePoints.value.ok && parsedPricePoints.value.points > 0),
+)
+// 积分价可直接改现金价：输入现金价时清空积分价
+const cashPriceDisabled = computed(() => boundToRequirement.value)
+const pointsLockedBySavedCash = computed(
+  () => !canSwitchToPointsPrice(resource.value?.price_fen, resource.value?.cash_price_locked),
+)
+const pointsPriceDisabled = computed(
+  () =>
+    boundToRequirement.value ||
+    pointsLockedBySavedCash.value ||
+    (parsedPriceFen.value.ok && parsedPriceFen.value.fen > 0),
+)
+
+function onCashPriceInput() {
+  if (parsedPriceFen.value.ok && parsedPriceFen.value.fen > 0) {
+    form.pricePoints = '0'
+  }
+}
+
+function onPointsPriceInput() {
+  if (parsedPricePoints.value.ok && parsedPricePoints.value.points > 0) {
+    form.priceYuan = '0'
+  }
+}
 
 function buildResourceSummary(entryLabel: string, platformLabel: string, tagCount: number): string {
   return `${entryLabel} · ${platformLabel}资源，已选择 ${tagCount} 个标签。`
@@ -334,6 +417,9 @@ async function loadResource() {
     form.originUrl = payload.origin_url || ''
     form.originOrg = payload.origin_org || ''
     form.originNote = payload.origin_note || ''
+    form.priceYuan = fenToYuanText(payload.price_fen ?? 0)
+    form.pricePoints = String(Math.max(0, Math.trunc(Number(payload.price_points ?? 0))))
+    form.copyrightDeclared = Boolean(payload.copyright_declared)
     coverPreview.value = payload.cover_url ? apiUrl(payload.cover_url) : ''
     syncEditorContent(payload.release_note || '')
   } catch (error) {
@@ -374,6 +460,37 @@ async function saveHomepage() {
     return
   }
 
+  const priceParsed = parseYuanPriceInput(form.priceYuan)
+  if (!priceParsed.ok) {
+    showToast(priceParsed.message, 'warning')
+    return
+  }
+  const pointsParsed = parsePointsPriceInput(form.pricePoints)
+  if (!pointsParsed.ok) {
+    showToast(pointsParsed.message, 'warning')
+    return
+  }
+  if (priceParsed.fen > 0 && pointsParsed.points > 0) {
+    showToast('现金售价与积分售价不能同时大于 0', 'warning')
+    return
+  }
+  if (pointsParsed.points > 0 && pointsLockedBySavedCash.value) {
+    showToast('设过现金售价的资源不可改为积分售价', 'warning')
+    return
+  }
+  if (boundToRequirement.value && (priceParsed.fen > 0 || pointsParsed.points > 0)) {
+    showToast('已绑定定制交付的资源不能设为付费售卖', 'warning')
+    return
+  }
+  if (
+    (priceParsed.fen > 0 || pointsParsed.points > 0) &&
+    !form.copyrightDeclared &&
+    (resource.value.visibility === 'review' || resource.value.visibility === 'published')
+  ) {
+    showToast('付费资源须勾选版权声明（拥有或已获合法授权）', 'warning')
+    return
+  }
+
   saving.value = true
   try {
     // 后端把 JSON null 视为「未传」，清空封面必须传空串（空串会被规整为 NULL）
@@ -406,6 +523,9 @@ async function saveHomepage() {
       origin_url: form.originUrl.trim() || null,
       origin_org: form.originOrg.trim() || null,
       origin_note: form.originNote.trim() || null,
+      price_fen: priceParsed.fen,
+      price_points: pointsParsed.points,
+      copyright_declared: form.copyrightDeclared,
     })
 
     resource.value = updated
@@ -418,6 +538,9 @@ async function saveHomepage() {
     form.originUrl = updated.origin_url || ''
     form.originOrg = updated.origin_org || ''
     form.originNote = updated.origin_note || ''
+    form.priceYuan = fenToYuanText(updated.price_fen ?? 0)
+    form.pricePoints = String(Math.max(0, Math.trunc(Number(updated.price_points ?? 0))))
+    form.copyrightDeclared = Boolean(updated.copyright_declared)
     selectedCoverFile.value = null
     coverPreview.value = updated.cover_url ? apiUrl(updated.cover_url) : ''
     syncEditorContent(updated.release_note || '')
@@ -496,56 +619,66 @@ onMounted(async () => {
     <!-- 顶部读数条：与其余菜单页同一条形态（读数在左、页面级操作在右，刷新标签固定在 __action 槽）。
          这一页原来自己写了一条蓝调渐变横幅（封面缩略图 + 大标题 + 一行胶囊），与其它菜单页的读数条
          两套外观；标题与封面在下方「预览摘要」卡片里已有，这里不重复，只留可读的口径与页面级操作。 -->
-    <div class="dev-meta-strip">
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">可见性</span>
-        <span class="dev-meta-strip__value">{{ resourceVisibilityLabel }}</span>
+    <WorkbenchBarSlot>
+      <div class="dev-meta-strip">
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">可见性</span>
+          <span class="dev-meta-strip__value">{{ resourceVisibilityLabel }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">平台</span>
+          <span class="dev-meta-strip__value">{{ resourcePlatformLabel }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">已选标签</span>
+          <span class="dev-meta-strip__value">{{ previewTagCount }}</span>
+        </div>
+        <div class="dev-meta-strip__divider" />
+        <div class="dev-meta-strip__item">
+          <span class="dev-meta-strip__label">作者</span>
+          <span class="dev-meta-strip__value">{{ resourceAuthorLabel }}</span>
+        </div>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <TButton variant="outline" @click="goBack"
+            ><template #prefix
+              ><TIcon><Back /></TIcon></template
+            >返回列表</TButton
+          >
+          <TButton
+            variant="outline"
+            v-if="resource"
+            as="a"
+            :href="userClientPreviewUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            ><template #prefix
+              ><TIcon><View /></TIcon></template
+            >打开用户端</TButton
+          >
+          <TButton
+            variant="outline"
+            v-if="canTransferResource"
+            @click="transferDialogVisible = true"
+            ><template #prefix
+              ><TIcon><Switch /></TIcon></template
+            >过户</TButton
+          >
+          <TButton variant="solid" tone="accent" :loading="saving" @click="saveHomepage"
+            ><template #prefix
+              ><TIcon><Check /></TIcon
+            ></template>
+            保存主页
+          </TButton>
+          <TButton icon-only aria-label="刷新标签" :loading="isLoadingTags" @click="loadTagTree">
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+        </div>
       </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">平台</span>
-        <span class="dev-meta-strip__value">{{ resourcePlatformLabel }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">已选标签</span>
-        <span class="dev-meta-strip__value">{{ previewTagCount }}</span>
-      </div>
-      <div class="dev-meta-strip__divider" />
-      <div class="dev-meta-strip__item">
-        <span class="dev-meta-strip__label">作者</span>
-        <span class="dev-meta-strip__value">{{ resourceAuthorLabel }}</span>
-      </div>
-      <div class="dev-meta-strip__item dev-meta-strip__action">
-        <TButton variant="outline" @click="goBack"
-          ><template #prefix
-            ><TIcon><Back /></TIcon></template
-          >返回列表</TButton
-        >
-        <TButton
-          variant="outline"
-          v-if="resource"
-          as="a"
-          :href="userClientPreviewUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          ><template #prefix
-            ><TIcon><View /></TIcon></template
-          >打开用户端</TButton
-        >
-        <TButton variant="solid" tone="accent" :loading="saving" @click="saveHomepage"
-          ><template #prefix
-            ><TIcon><Check /></TIcon
-          ></template>
-          保存主页
-        </TButton>
-        <TButton icon-only aria-label="刷新标签" :loading="isLoadingTags" @click="loadTagTree">
-          <TIcon>
-            <Refresh />
-          </TIcon>
-        </TButton>
-      </div>
-    </div>
+    </WorkbenchBarSlot>
 
     <TLoading tag="section" class="dev-resource-homepage-editor__layout" :loading="loading">
       <div class="dev-resource-homepage-editor__forms">
@@ -558,8 +691,8 @@ onMounted(async () => {
             </header>
 
             <TForm label-position="top" class="dev-upload-form">
-              <div class="dev-upload-grid dev-upload-grid--three">
-                <TFormItem label="资源标题" required>
+              <div class="dev-basic-info-grid">
+                <TFormItem label="资源标题" required class="dev-basic-info-grid__title">
                   <TInput
                     show-count
                     v-model="form.title"
@@ -568,21 +701,46 @@ onMounted(async () => {
                   />
                 </TFormItem>
 
-                <TFormItem label="归属类型" required>
+                <TFormItem label="归属类型" required class="dev-basic-info-grid__ownership">
                   <TSelect v-model="form.ownershipType">
                     <TOption label="个人项目" value="individual" />
                     <TOption label="团队项目" value="team" :disabled="!hasJoinedTeam" />
                   </TSelect>
                 </TFormItem>
 
-                <TFormItem label="类型">
-                  <TSelect v-model="form.originType" style="width: 100%">
+                <TFormItem label="类型" class="dev-basic-info-grid__origin">
+                  <TSelect v-model="form.originType">
                     <TOption label="原创" value="original" />
                     <TOption label="转载" value="repost" />
                   </TSelect>
                 </TFormItem>
 
-                <TFormItem label="图标文件">
+                <TFormItem label="售价（元）" class="dev-basic-info-grid__price">
+                  <TInput
+                    v-model="form.priceYuan"
+                    :disabled="cashPriceDisabled"
+                    placeholder="0 = 免费"
+                    inputmode="decimal"
+                    title="与积分售价互斥；大于 0 为现金一口价"
+                    @input="onCashPriceInput"
+                  />
+                </TFormItem>
+
+                <TFormItem label="积分售价" class="dev-basic-info-grid__points">
+                  <TInput
+                    v-model="form.pricePoints"
+                    :disabled="pointsPriceDisabled"
+                    placeholder="0 = 不用积分购"
+                    inputmode="numeric"
+                    title="与现金售价互斥；大于 0 时买家只能用积分购买"
+                    @input="onPointsPriceInput"
+                  />
+                  <p v-if="pointsLockedBySavedCash && !boundToRequirement" class="dev-field-hint">
+                    设过现金售价，不可改为积分售价。
+                  </p>
+                </TFormItem>
+
+                <TFormItem label="图标文件" class="dev-basic-info-grid__icon">
                   <ResourceIconPicker
                     :model-value="coverPreview"
                     @update:model-value="handleCoverPreviewChange"
@@ -590,16 +748,12 @@ onMounted(async () => {
                   />
                 </TFormItem>
 
-                <TFormItem
-                  label="资源简介"
-                  required
-                  class="dev-resource-homepage-editor__form-span"
-                >
+                <TFormItem label="资源简介" required class="dev-basic-info-grid__desc">
                   <TInput
                     show-count
                     v-model="form.description"
                     type="textarea"
-                    :rows="4"
+                    :rows="5"
                     :maxlength="500"
                     placeholder="用一段简洁说明告诉用户这是什么资源、适合谁、解决什么问题"
                     @input="autoGeneratedDescription = false"
@@ -607,10 +761,21 @@ onMounted(async () => {
                 </TFormItem>
 
                 <TFormItem
+                  v-if="isPaidPricing || form.copyrightDeclared"
+                  label="版权声明"
+                  class="dev-basic-info-grid__copyright"
+                >
+                  <TCheckbox v-model="form.copyrightDeclared">
+                    我确认拥有该资源版权，或已获得合法授权可售卖
+                  </TCheckbox>
+                  <p class="dev-field-hint">付费资源提交公开审核前必须勾选。</p>
+                </TFormItem>
+
+                <TFormItem
                   v-show="form.ownershipType === 'team'"
                   label="所属团队"
                   required
-                  class="dev-resource-homepage-editor__form-span"
+                  class="dev-basic-info-grid__span"
                 >
                   <div class="dev-team-select-native">
                     <TSelect
@@ -635,31 +800,28 @@ onMounted(async () => {
                 </TFormItem>
 
                 <template v-if="form.originType === 'repost'">
-                  <TFormItem label="原作者">
+                  <TFormItem label="原作者" class="dev-basic-info-grid__repost-author">
                     <TInput
                       v-model="form.originAuthor"
                       :maxlength="80"
                       placeholder="原始资源的作者"
                     />
                   </TFormItem>
-                  <TFormItem label="原始出处链接" required>
+                  <TFormItem label="原始出处链接" required class="dev-basic-info-grid__repost-url">
                     <TInput
                       v-model="form.originUrl"
                       :maxlength="500"
                       placeholder="原始出处 URL，例如原贴/来源页"
                     />
                   </TFormItem>
-                  <TFormItem label="来源站点">
+                  <TFormItem label="来源站点" class="dev-basic-info-grid__repost-org">
                     <TInput
                       v-model="form.originOrg"
                       :maxlength="80"
                       placeholder="例如：苦力怕论坛、CurseForge"
                     />
                   </TFormItem>
-                  <TFormItem
-                    label="转载说明 / 授权"
-                    class="dev-resource-homepage-editor__form-span"
-                  >
+                  <TFormItem label="转载说明 / 授权" class="dev-basic-info-grid__span">
                     <TInput
                       v-model="form.originNote"
                       :maxlength="500"
@@ -814,6 +976,8 @@ onMounted(async () => {
         </TCard>
       </aside>
     </TLoading>
+
+    <ResourceTransferDialog v-model:open="transferDialogVisible" :resource="resource" />
   </div>
 </template>
 
@@ -834,15 +998,105 @@ onMounted(async () => {
   gap: 20px;
 }
 
-/* 基础信息用发布资源页的 dev-upload-grid--three（三段 + 80px 图标列），
-   长文本表单项跨满整行，避免被压进单列 */
-.dev-resource-homepage-editor__form-span {
-  grid-column: 1 / -1;
+/*
+  基础信息 12 列分区（侧栏预览时主栏约 500px，一行塞 4 个会截断）：
+  1) 标题通栏
+  2) 归属 | 类型 | 售价
+  3) 图标 + 简介并排（吃掉原先图标单独占行留下的空白）
+*/
+.dev-basic-info-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 12px 14px;
+  align-items: start;
+}
+
+.dev-basic-info-grid__title,
+.dev-basic-info-grid__copyright,
+.dev-basic-info-grid__span,
+.dev-basic-info-grid__repost-org {
+  grid-column: span 12;
+}
+
+.dev-basic-info-grid__ownership {
+  grid-column: span 3;
+}
+
+.dev-basic-info-grid__origin {
+  grid-column: span 3;
+}
+
+.dev-basic-info-grid__price {
+  grid-column: span 3;
+}
+
+.dev-basic-info-grid__points {
+  grid-column: span 3;
+}
+
+.dev-basic-info-grid__icon {
+  grid-column: span 3;
+}
+
+.dev-basic-info-grid__desc {
+  grid-column: span 9;
+}
+
+.dev-basic-info-grid__repost-author {
+  grid-column: span 5;
+}
+
+.dev-basic-info-grid__repost-url {
+  grid-column: span 7;
+}
+
+.dev-basic-info-grid :deep(.t73-select),
+.dev-basic-info-grid :deep(.t73-input),
+.dev-basic-info-grid :deep(.t73-textarea) {
+  width: 100%;
+}
+
+.dev-basic-info-grid__desc :deep(textarea) {
+  min-height: 112px;
+  resize: vertical;
+}
+
+.dev-basic-info-grid__icon :deep(.dev-icon-upload--square),
+.dev-basic-info-grid__icon :deep(.resource-icon-picker),
+.dev-basic-info-grid__icon :deep(.resource-icon-picker__trigger) {
+  width: 96px;
+  max-width: 100%;
+}
+
+.dev-field-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary, #64748b);
 }
 
 @media (max-width: 900px) {
   .dev-resource-homepage-editor__layout {
     grid-template-columns: 1fr;
+  }
+
+  .dev-basic-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dev-basic-info-grid__title,
+  .dev-basic-info-grid__ownership,
+  .dev-basic-info-grid__origin,
+  .dev-basic-info-grid__price,
+  .dev-basic-info-grid__points,
+  .dev-basic-info-grid__icon,
+  .dev-basic-info-grid__desc,
+  .dev-basic-info-grid__copyright,
+  .dev-basic-info-grid__span,
+  .dev-basic-info-grid__repost-author,
+  .dev-basic-info-grid__repost-url,
+  .dev-basic-info-grid__repost-org {
+    grid-column: 1;
   }
 }
 </style>
