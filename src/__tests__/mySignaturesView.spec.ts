@@ -11,11 +11,11 @@ import { CONTRACT_STATUS } from '@/shared/contracts'
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(), realname: vi.fn(), detail: vi.fn(), developerAgreement: vi.fn(), sync: vi.fn(),
-  initiate: vi.fn(), preview: vi.fn(),
+  initiate: vi.fn(), preview: vi.fn(), requirementContract: vi.fn(),
 }))
 vi.mock('@/api/contracts', () => ({
   listMyContracts: mocks.list, fetchMyContract: mocks.detail,
-  fetchDeveloperAgreement: mocks.developerAgreement, fetchMyRequirementContract: vi.fn(),
+  fetchDeveloperAgreement: mocks.developerAgreement, fetchMyRequirementContract: mocks.requirementContract,
   syncAsignSignStatus: mocks.sync, initiateAsignSign: mocks.initiate,
   fetchAsignContractPreviewUrl: mocks.preview,
 }))
@@ -44,18 +44,24 @@ beforeEach(() => {
   mocks.detail.mockResolvedValue({ ...base, content: '合同正文内容', content_sha256: 'abc', signing_logs: [] })
 })
 
-async function render(component: typeof MySignaturesView | typeof UserWorkbenchView | typeof ContractSignView, detail = false) {
+async function render(
+  component: typeof MySignaturesView | typeof UserWorkbenchView | typeof ContractSignView,
+  detail = false,
+  initialPath?: string,
+) {
   const names = ['workbench', 'workbench-requirements', 'workbench-account',
     'workbench-invoices', 'workbench-points', 'workbench-perks', 'workbench-coupons',
-    'workbench-badges', 'workbench-notifications', 'workbench-favorites', 'workbench-invite', 'workbench-teams',
+    'workbench-badges', 'workbench-notifications', 'workbench-favorites', 'workbench-resource-purchases', 'workbench-invite', 'workbench-teams',
     'workbench-team-resources', 'workbench-tickets', 'dev-resource-list', 'dev-requirement-hall',
     'dev-my-requirements', 'dev-wallet']
   const router = createRouter({ history: createMemoryHistory(), routes: [
     ...names.map((name) => ({ name, path: `/${name}`, component: { template: '<div />' } })),
     { name: 'workbench-signatures', path: '/workbench/signatures', component: MySignaturesView },
     { name: 'workbench-signature-detail', path: '/workbench/signatures/:contractId', component: ContractSignView },
+    { name: 'contract-sign', path: '/contract-sign', component: ContractSignView },
   ] })
-  await router.push(detail ? '/workbench/signatures/1' : '/workbench/signatures')
+  const path = initialPath ?? (detail ? '/workbench/signatures/1' : '/workbench/signatures')
+  await router.push(path)
   const wrapper = mount(component, {
     global: { plugins: [router], stubs: { RouterView: true } },
   })
@@ -64,21 +70,27 @@ async function render(component: typeof MySignaturesView | typeof UserWorkbenchV
 }
 
 describe('my signatures list', () => {
-  it('loads current user contracts and links to an exact contract ID', async () => {
-    const { wrapper } = await render(MySignaturesView)
+  it('loads current user contracts and opens the exact contract detail', async () => {
+    const { wrapper, router } = await render(MySignaturesView)
     expect(mocks.list).toHaveBeenCalledWith('test-token')
     expect(wrapper.findAll('.wb-item')).toHaveLength(2)
-    expect(wrapper.find('.wb-item__title').attributes('href')).toBe('/workbench/signatures/1')
-    expect(wrapper.find('.wb-item__side').text()).toContain('去签署')
+    expect(wrapper.find('.requirement-title strong').text()).toBe('网站服务合同')
+    expect(wrapper.find('.requirement-actions').text()).toContain('去签署')
+    await wrapper.find('.wb-item').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('workbench-signature-detail')
+    expect(router.currentRoute.value.params.contractId).toBe('1')
     wrapper.unmount()
   })
   it('filters by search and status and can clear empty filters', async () => {
     const { wrapper } = await render(MySignaturesView)
-    // 胶囊组筛的是签名态（不是合同状态码）：下标 0 全部、1 待我签署、2 等待他方、3 已完成。
-    await wrapper.findAll('.wb-chip-group button')[3]!.trigger('click')
+    // 下拉筛的是签名态（不是合同状态码）：工具栏第一个 TSelect 是状态，第二个是每页条数。
+    const statusSelect = wrapper.findAllComponents({ name: 'TSelect' })[0]!
+    await statusSelect.setValue('signed')
+    await flushPromises()
     expect(wrapper.findAll('.wb-item')).toHaveLength(1)
     expect(wrapper.find('.wb-item').text()).toContain('已完成合同')
-    await wrapper.find('input').setValue('missing')
+    await wrapper.find('.wb-toolbar__search input').setValue('missing')
     expect(wrapper.text()).toContain('没有符合条件')
     await wrapper.find('.wb-empty__actions button').trigger('click')
     expect(wrapper.findAll('.wb-item')).toHaveLength(2)
@@ -95,7 +107,7 @@ describe('my signatures list', () => {
     const { wrapper } = await render(MySignaturesView)
     // 它们不在任何一个签名态胶囊里，只能在「全部」下看到。
     expect(wrapper.findAll('.wb-item')).toHaveLength(3)
-    const badges = wrapper.findAll('.wb-badge').map((badge) => badge.text())
+    const badges = wrapper.findAll('.requirement-summary .wb-badge').map((badge) => badge.text())
     expect(badges).toEqual(['过期', '拒签', '撤销'])
     wrapper.unmount()
   })
@@ -202,5 +214,37 @@ describe('signature detail', () => {
     // 不再出现「等待开发者完成签署」——那是顺序门还在时给甲方的文案。
     expect(wrapper.text()).not.toContain('等待开发者完成签署')
     wrapper.unmount()
+  })
+  it('leaves the signing page after Asign return once the requirement contract is signed', async () => {
+    // 爱签 redirectUrl 固定回 /contract-sign；若签完仍停在原地，用户会感觉「签署后又跳回签署页」。
+    // 只有「刚去爱签签过」才离开——用 session 标记模拟回跳。
+    sessionStorage.setItem('73info_requirement_sign_pending_return', '1')
+    sessionStorage.setItem('73info_requirement_sign_from', 'user')
+    mocks.requirementContract.mockResolvedValue({
+      ...base,
+      id: 9,
+      requirement_id: 'REQ-009',
+      status: CONTRACT_STATUS.signed,
+      content: '正文',
+      content_sha256: 'abc',
+      signing_logs: [],
+    })
+    const { router } = await render(
+      ContractSignView,
+      false,
+      '/contract-sign?requirement_id=REQ-009&from=user',
+    )
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('workbench-requirements')
+    expect(sessionStorage.getItem('73info_requirement_sign_pending_return')).toBeNull()
+  })
+  it('keeps an already-signed contract detail open when the user opened it on purpose', async () => {
+    sessionStorage.removeItem('73info_requirement_sign_pending_return')
+    mocks.detail.mockResolvedValue({
+      ...base, status: CONTRACT_STATUS.signed, content: '正文', content_sha256: 'abc', signing_logs: [],
+    })
+    const { router } = await render(ContractSignView, true)
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('workbench-signature-detail')
   })
 })

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRouter } from 'vue-router'
 import { listMyContracts, type MyContractSummary } from '@/api/contracts'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
@@ -35,11 +36,13 @@ const keyword = ref('')
 const selectedState = ref<'all' | SignatureState>('all')
 let requestId = 0
 
-/* 状态筛选用胶囊组（统一层 .wb-chip）：选项少、要能一眼看出当前选中项，选中项还要报出条数。
+/* 状态筛选走下拉（统一层 .wb-toolbar__field + TSelect），与需求列表同一套工具栏：
    筛的是**签名态**（我方要不要签），不是合同状态码：整数状态里没有对应语义，
    过期 / 拒签 / 撤销 这类合同只在「全部」里出现，列表徽标按合同状态显示。
-   作废是终态，走中性档 wb-chip--muted，不跟其余状态抢强调色。 */
-const states: { value: 'all' | SignatureState; label: string }[] = [
+   条数只在顶部读数条里报，选项文案不加括号数字。 */
+type SignatureFilterKey = 'all' | SignatureState
+
+const states: { value: SignatureFilterKey; label: string }[] = [
   { value: 'all', label: '全部' },
   { value: 'pending', label: '待我签署' },
   { value: 'waiting', label: '等待他方' },
@@ -50,11 +53,6 @@ const states: { value: 'all' | SignatureState; label: string }[] = [
 function countOf(state: SignatureState) {
   return contracts.value.filter((item) => getSignatureState(item, auth.username) === state).length
 }
-
-const summaries = computed(() => states.map((state) => ({
-  ...state,
-  count: state.value === 'all' ? contracts.value.length : countOf(state.value),
-})))
 
 /* 读数在加载中与失败时不报数：contracts 在重新加载时会被清空，
    直接显示 0 会被读成「一份合同都没有」。 */
@@ -167,32 +165,34 @@ function openDetail(item: MyContractSummary) {
 <template>
   <main class="page-shell custom-page-shell profile-page signatures" :aria-busy="loading">
     <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
-    <div class="wb-strip" aria-label="签署概览">
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">合同总数</span>
-        <span class="wb-strip__value">{{ stripValue(contracts.length) }}</span>
+    <WorkbenchBarSlot>
+      <div class="wb-strip" aria-label="签署概览">
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">合同总数</span>
+          <span class="wb-strip__value">{{ stripValue(contracts.length) }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">待我签署</span>
+          <span class="wb-strip__value">{{ stripValue(countOf('pending')) }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">等待他方</span>
+          <span class="wb-strip__value">{{ stripValue(countOf('waiting')) }}</span>
+        </div>
+        <div class="wb-strip__divider" />
+        <div class="wb-strip__item">
+          <span class="wb-strip__label">已完成</span>
+          <span class="wb-strip__value">{{ stripValue(countOf('signed')) }}</span>
+        </div>
+        <div class="wb-strip__item wb-strip__action">
+          <TButton icon-only :loading="loading" aria-label="刷新签署记录" @click="loadContracts">
+            <TIcon><Refresh /></TIcon>
+          </TButton>
+        </div>
       </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">待我签署</span>
-        <span class="wb-strip__value">{{ stripValue(countOf('pending')) }}</span>
-      </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">等待他方</span>
-        <span class="wb-strip__value">{{ stripValue(countOf('waiting')) }}</span>
-      </div>
-      <div class="wb-strip__divider" />
-      <div class="wb-strip__item">
-        <span class="wb-strip__label">已完成</span>
-        <span class="wb-strip__value">{{ stripValue(countOf('signed')) }}</span>
-      </div>
-      <div class="wb-strip__item wb-strip__action">
-        <TButton icon-only :loading="loading" aria-label="刷新签署记录" @click="loadContracts">
-          <TIcon><Refresh /></TIcon>
-        </TButton>
-      </div>
-    </div>
+    </WorkbenchBarSlot>
 
     <section class="wallet-section">
       <div class="wb-card-head">
@@ -202,20 +202,20 @@ function openDetail(item: MyContractSummary) {
       </div>
 
       <div class="wb-toolbar">
-        <div class="wb-chip-group" role="group" aria-label="签署状态">
-          <button v-for="state in summaries" :key="state.value" type="button" class="wb-chip wb-chip--button"
-            :class="{ 'is-active': selectedState === state.value, 'wb-chip--muted': state.value === 'void' }"
-            :aria-pressed="selectedState === state.value" @click="selectedState = state.value">
-            {{ state.label }}<span class="wb-chip__count">{{ loading || error ? '—' : state.count }}</span>
-          </button>
-        </div>
+        <TSelect
+          v-model="selectedState"
+          class="wb-toolbar__field"
+          aria-label="签署状态"
+        >
+          <TOption v-for="state in states" :key="state.value" :value="state.value" :label="state.label" />
+        </TSelect>
         <TInput v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索合同名称、编号或签约方"
           aria-label="搜索合同">
           <template #prefix><TIcon><Search /></TIcon></template>
         </TInput>
         <div class="wb-toolbar__actions">
           <span v-if="hasActiveFilters" class="wb-toolbar__hint">筛选出 {{ filteredTotal }} / {{ contracts.length }} 份</span>
-          <TButton variant="outline" v-if="hasActiveFilters" @click="resetFilters">
+          <TButton variant="outline" @click="resetFilters">
             <TIcon><RefreshLeft /></TIcon><span>重置</span>
           </TButton>
         </div>
@@ -242,25 +242,51 @@ function openDetail(item: MyContractSummary) {
         <template v-else>需求进入签约环节后，这里会出现待你签署的合同。</template>
       </div>
       <template v-else>
-        <ul class="wb-list" aria-label="我的合同列表">
-          <li v-for="item in pagedContracts" :key="item.id" class="wb-item">
-            <div class="wb-item__main">
-              <RouterLink class="wb-item__title signatures__title" :to="detailLocation(item)">{{ item.title }}</RouterLink>
-              <span class="wb-item__meta">{{ item.contract_no || '暂无合同编号' }} · {{ item.created_at }} 创建</span>
-              <span class="wb-item__meta">
-                甲方 · {{ item.party_a_name || item.party_a_username || '未指定' }}
-                　乙方 · {{ item.party_b_name || item.party_b_username || '未指定' }}
-                · 我的身份：{{ roleLabel(item) }}
-              </span>
-              <!-- R012：区分平台生成 / 上传附件 / 页面拟定三种来源（非平台来源带附件审核态）。 -->
-              <span class="wb-item__meta wb-item__meta--source">来源：{{ sourceChip(item) }}</span>
+        <!-- 行式与需求协作同一口径：上半信息行（标题/编号 + 右侧状态与时间），下半操作条。 -->
+        <ul class="wb-list signature-list" aria-label="我的合同列表">
+          <li
+            v-for="item in pagedContracts"
+            :key="item.id"
+            class="requirement-row wb-item wb-item--clickable"
+            :aria-label="`打开合同「${item.title}」`"
+            tabindex="0"
+            @click="openDetail(item)"
+            @keydown.enter.prevent="openDetail(item)"
+            @keydown.space.prevent="openDetail(item)"
+          >
+            <div class="requirement-card-body">
+              <div class="requirement-main wb-item__main">
+                <div class="requirement-title wb-item__title">
+                  <strong>{{ item.title }}</strong>
+                  <span>{{ item.contract_no || '暂无合同编号' }}</span>
+                </div>
+                <div class="requirement-details">
+                  <span class="wb-item__meta">甲方 · {{ item.party_a_name || item.party_a_username || '未指定' }}</span>
+                  <span class="wb-item__meta">乙方 · {{ item.party_b_name || item.party_b_username || '未指定' }}</span>
+                  <span class="wb-item__meta">我的身份：{{ roleLabel(item) }}</span>
+                  <!-- R012：区分平台生成 / 上传附件 / 页面拟定三种来源（非平台来源带附件审核态）。 -->
+                  <span class="wb-item__meta wb-item__meta--source">来源：{{ sourceChip(item) }}</span>
+                </div>
+              </div>
+              <aside class="requirement-summary wb-item__side" aria-label="合同摘要">
+                <span class="wb-badge" :class="badgeClass(item)">{{ badgeLabel(item) }}</span>
+                <time>
+                  <small>创建时间</small>
+                  <span>{{ item.created_at }}</span>
+                </time>
+              </aside>
             </div>
-            <div class="wb-item__side">
-              <span class="wb-badge" :class="badgeClass(item)">{{ badgeLabel(item) }}</span>
-              <TButton :class="stateOf(item) === 'pending' ? 'wb-toolbar__primary' : 'wb-toolbar__ghost'"
-                @click="openDetail(item)">
-                {{ stateOf(item) === 'pending' ? '去签署' : '查看详情' }}
-              </TButton>
+            <div class="requirement-actions">
+              <div class="requirement-actions__list" @click.stop @keydown.stop>
+                <button
+                  class="ghost small"
+                  :class="stateOf(item) === 'pending' ? 'action-primary' : 'action-emphasis'"
+                  type="button"
+                  @click="openDetail(item)"
+                >
+                  {{ stateOf(item) === 'pending' ? '去签署' : '查看详情' }}
+                </button>
+              </div>
             </div>
           </li>
         </ul>
@@ -279,12 +305,13 @@ function openDetail(item: MyContractSummary) {
 </template>
 
 <style scoped>
-/* 版式全部走统一层（.wb-strip / .wb-card-head / .wb-toolbar / .wb-list / .wb-pager），
-   本页只保留标题链接的悬停色，不再自带一套青色板与自绘控件。 */
-.signatures__title:hover {
-  color: var(--profile-accent);
-}
-
-@media (max-width: 640px) {
+/* 版式走统一层 + profile.css 的需求行口径（.requirement-row / __card-body / __summary / __actions），
+   本页不再自带一套卡片皮肤。 */
+.signature-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 </style>

@@ -25,6 +25,14 @@ const requirementId = String(route.query.requirement_id ?? '')
 const isWorkbenchSignature = computed(() => route.name === 'workbench-signature-detail')
 const isDeveloperAgreement = computed(() => route.query.agreement === 'developer' || contract.value?.template_name === 'developer_agreement')
 const DEVELOPER_AGREEMENT_REDIRECT_KEY = '73info_developer_agreement_redirect'
+/** 需求合同：记住从哪进来的（`from=user|dev`），爱签整页回跳后 query 会丢。 */
+const REQUIREMENT_SIGN_FROM_KEY = '73info_requirement_sign_from'
+/**
+ * 用户点了「去爱签签署」之后置位：回跳并同步到「已签约」时自动离开签署页，
+ * 避免爱签 redirectUrl 又落回同一页（签署后又跳转到原地）。
+ * 主动打开已签合同详情时不置位，不会被误踢走。
+ */
+const REQUIREMENT_SIGN_PENDING_RETURN_KEY = '73info_requirement_sign_pending_return'
 
 function normalizeRedirectTarget(value: unknown): string {
     const raw = typeof value === 'string' ? value.trim() : ''
@@ -34,46 +42,95 @@ function normalizeRedirectTarget(value: unknown): string {
     return raw
 }
 
+function readSessionValue(key: string): string {
+    if (typeof window === 'undefined') {
+        return ''
+    }
+    try {
+        return window.sessionStorage.getItem(key)?.trim() ?? ''
+    } catch {
+        return ''
+    }
+}
+
+function writeSessionValue(key: string, value: string) {
+    if (typeof window === 'undefined') {
+        return
+    }
+    try {
+        window.sessionStorage.setItem(key, value)
+    } catch {
+        // sessionStorage 不可用时仍可依赖当前路由参数。
+    }
+}
+
+function clearSessionValue(key: string) {
+    if (typeof window === 'undefined') {
+        return
+    }
+    try {
+        window.sessionStorage.removeItem(key)
+    } catch {
+        // sessionStorage 不可用时忽略清理。
+    }
+}
+
 const redirectTarget = computed(() => {
     const queryTarget = normalizeRedirectTarget(route.query.redirect_to)
     if (queryTarget) {
         return queryTarget
     }
 
-    if (typeof window === 'undefined') {
-        return ''
-    }
-
-    try {
-        return normalizeRedirectTarget(window.sessionStorage.getItem(DEVELOPER_AGREEMENT_REDIRECT_KEY))
-    } catch {
-        return ''
-    }
+    return normalizeRedirectTarget(readSessionValue(DEVELOPER_AGREEMENT_REDIRECT_KEY))
 })
 
 function rememberRedirectTarget() {
     const target = normalizeRedirectTarget(route.query.redirect_to)
-    if (!target || typeof window === 'undefined') {
+    if (!target) {
         return
     }
-
-    try {
-        window.sessionStorage.setItem(DEVELOPER_AGREEMENT_REDIRECT_KEY, target)
-    } catch {
-        // sessionStorage 不可用时仍可依赖当前路由参数完成回跳。
-    }
+    writeSessionValue(DEVELOPER_AGREEMENT_REDIRECT_KEY, target)
 }
 
 function clearRememberedRedirectTarget() {
-    if (typeof window === 'undefined') {
+    clearSessionValue(DEVELOPER_AGREEMENT_REDIRECT_KEY)
+}
+
+function rememberRequirementSignContext() {
+    if (isWorkbenchSignature.value || isDeveloperAgreement.value) {
         return
     }
-
-    try {
-        window.sessionStorage.removeItem(DEVELOPER_AGREEMENT_REDIRECT_KEY)
-    } catch {
-        // sessionStorage 不可用时忽略清理。
+    const from = typeof route.query.from === 'string' ? route.query.from.trim() : ''
+    if (from === 'user' || from === 'dev') {
+        writeSessionValue(REQUIREMENT_SIGN_FROM_KEY, from)
     }
+}
+
+function markRequirementSignPendingReturn() {
+    writeSessionValue(REQUIREMENT_SIGN_PENDING_RETURN_KEY, '1')
+}
+
+function clearRequirementSignPendingReturn() {
+    clearSessionValue(REQUIREMENT_SIGN_PENDING_RETURN_KEY)
+}
+
+function requirementSignReturnTarget(): string | { name: string } {
+    const remembered = normalizeRedirectTarget(route.query.redirect_to) || redirectTarget.value
+    if (remembered) {
+        return remembered
+    }
+    const from = (typeof route.query.from === 'string' ? route.query.from.trim() : '')
+        || readSessionValue(REQUIREMENT_SIGN_FROM_KEY)
+    if (from === 'dev') {
+        return { name: 'dev-my-requirements' }
+    }
+    if (from === 'user') {
+        return { name: 'workbench-requirements' }
+    }
+    if (isWorkbenchSignature.value) {
+        return { name: 'workbench-signatures' }
+    }
+    return { name: 'workbench-requirements' }
 }
 
 const loading = ref(true)
@@ -117,7 +174,7 @@ async function pollStatusOnce() {
             stopStatusPolling()
         }
         if (updated.status === CONTRACT_STATUS.signed) {
-            continueAfterDeveloperAgreement()
+            continueAfterSignCompleted()
         }
     } catch {
         // 单次同步失败不中断轮询，继续重试。
@@ -323,16 +380,35 @@ async function loadContract() {
     }
 }
 
-function continueAfterDeveloperAgreement() {
-    if (isWorkbenchSignature.value || !isDeveloperAgreement.value || contract.value?.status !== CONTRACT_STATUS.signed) {
+/** 签署完成（本地已是「已签约 2」）后的去向：入驻协议与需求合同分流。 */
+function continueAfterSignCompleted() {
+    if (contract.value?.status !== CONTRACT_STATUS.signed) {
+        return
+    }
+
+    if (isDeveloperAgreement.value) {
+        if (isWorkbenchSignature.value) {
+            return
+        }
+        stopStatusPolling()
+        // 开发者协议签署完成后，默认回到收益钱包页（用户来源页优先，丢失时回钱包）。
+        const target = redirectTarget.value || { name: 'dev-wallet' }
+        clearRememberedRedirectTarget()
+        void router.replace(target)
+        return
+    }
+
+    // 需求合同：只有「刚从爱签签署流程回来」才自动离开。
+    // 主动打开已签合同详情（我的合同 / 查看合同回退）时不要踢走。
+    if (readSessionValue(REQUIREMENT_SIGN_PENDING_RETURN_KEY) !== '1') {
         return
     }
 
     stopStatusPolling()
-    // 开发者协议签署完成后，默认回到收益钱包页（用户来源页优先，丢失时回钱包）。
-    const target = redirectTarget.value || { name: 'dev-wallet' }
+    clearRequirementSignPendingReturn()
+    clearSessionValue(REQUIREMENT_SIGN_FROM_KEY)
     clearRememberedRedirectTarget()
-    void router.replace(target)
+    void router.replace(requirementSignReturnTarget())
 }
 
 async function handleSign() {
@@ -350,6 +426,12 @@ async function handleSign() {
     error.value = ''
     try {
         const result = await initiateAsignSign(auth.token, contract.value.id, noticeSigner.value)
+        // 无论跳爱签还是短信通知后轮询，签完都要离开「签署页原地」；进爱签前先打标，
+        // 整页回跳后 sessionStorage 还在，同步到已签约即可继续走。
+        if (!isDeveloperAgreement.value) {
+            markRequirementSignPendingReturn()
+            rememberRequirementSignContext()
+        }
         if (result.sign_url && !noticeSigner.value) {
             // 未勾选短信通知时，跳转到爱签签署页面
             window.location.href = result.sign_url
@@ -362,6 +444,10 @@ async function handleSign() {
             successMsg.value = '已发起签署，请稍后刷新查看签署状态'
         }
         await loadContract()
+        if (contract.value?.status === CONTRACT_STATUS.signed) {
+            continueAfterSignCompleted()
+            return
+        }
         startStatusPolling()
     } catch (err) {
         error.value = err instanceof Error ? err.message : '发起签署失败，请稍后重试'
@@ -433,12 +519,15 @@ onMounted(async () => {
         router.replace('/')
         return
     }
-    if (!isWorkbenchSignature.value) rememberRedirectTarget()
+    if (!isWorkbenchSignature.value) {
+        rememberRedirectTarget()
+        rememberRequirementSignContext()
+    }
     if (auth.token) {
         await auth.initializeSession().catch(() => undefined)
     }
     await loadContract()
-    continueAfterDeveloperAgreement()
+    continueAfterSignCompleted()
 })
 
 onUnmounted(() => {
