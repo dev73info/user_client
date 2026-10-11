@@ -5,7 +5,7 @@
  * （`backend_73info/src/db/schema_postgres/commercial_compliance.sql`）。
  *
  * 四个前端各自持有一份同样的表：它们是四个独立仓库，没有共享包，跨仓引用要新建构建产物，
- * 代价大于收益。防漂移不靠人肉同步，靠 `flow-test/consistency_check.py` 的键集一致性断言——
+ * 代价大于收益。防漂移不靠人肉同步，靠 `测试指南/脚本/consistency_check.py` 的键集一致性断言——
  * 任何一端漏了状态，自检直接报红。
  */
 
@@ -17,6 +17,7 @@ export type BreachCaseStatus =
   | 'support_reviewing'
   | 'withdrawn'
   | 'processing'
+  | 'awaiting_payer_settlement'
   | 'manual_required'
   | 'succeeded'
   | 'rejected'
@@ -29,6 +30,8 @@ export const BREACH_STATUS_LABELS: Record<BreachCaseStatus, string> = {
   support_reviewing: '客服人工判定中',
   withdrawn: '申请人已撤回',
   processing: '资金处理中',
+  // 中间态：赔付腿的收款方（需求付款方）缺结算账户，等付款方补齐后平台自动续做。
+  awaiting_payer_settlement: '等待需求方补收款账户',
   manual_required: '资金执行待处理',
   succeeded: '已结案',
   rejected: '已驳回',

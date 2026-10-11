@@ -316,6 +316,23 @@ const canWithdrawBreach = computed(
     activeBreachCase.value.reportedBy === auth.username,
 )
 
+/**
+ * 中间态：赔付要打给需求方，但需求方的渠道会员没有结算账户，钱落不下来。
+ *
+ * 这时案件不会转人工，而是停在 `awaiting_payer_settlement` 等需求方补收款账户——补齐后平台
+ * 会自动按原认定续做赔付与退款。所以这里必须把「下一步在谁手上」说清楚：需求方看到的是
+ * 一个去绑卡的入口，开发者看到的是「等对方补账户」，两边都不该干等。
+ */
+const breachAwaitingPayerSettlement = computed(
+  () => activeBreachCase.value?.status === 'awaiting_payer_settlement',
+)
+
+/** 去账号中心补收款银行卡（结算账户）：中间态的续做靠它，绑完平台自动按原认定赔付。 */
+function goBindSettlementAccount(): void {
+  breachVisible.value = false
+  void router.push({ name: 'workbench-account', query: { settle: '1' } })
+}
+
 const payStage = computed<'deposit' | 'final'>(() =>
   status.value === 'pending_final' ? 'final' : 'deposit',
 )
@@ -976,6 +993,26 @@ defineExpose({
           <textarea v-model="breachDecisionNote" rows="3" maxlength="1000"
             placeholder="说明不接受该判定的理由，便于客服人工复核"></textarea>
         </label>
+      </template>
+      <!-- 中间态：赔付要打给需求方，但需求方还没有收款结算账户，钱落不下来。案件不转人工，
+           等需求方补账户后平台自动按原认定续做——所以这里给需求方一个绑卡入口。 -->
+      <template v-else-if="breachAwaitingPayerSettlement">
+        <p class="conversation-actions__tip">
+          赔付要打进需求方的渠道收款账户，但该账户还没就绪（未开通或未绑定收款银行卡），
+          这笔钱暂时落不下来。案件已停在「等待需求方补收款账户」，<strong>不转人工</strong>。
+        </p>
+        <p v-if="isDeveloper" class="conversation-actions__tip">
+          等待需求方完成收款银行卡绑定后，平台会自动续做赔付与退款，无需再申请平台介入。
+        </p>
+        <template v-else>
+          <p class="conversation-actions__tip">
+            请先在账号中心完成收款银行卡绑定；绑定成功后平台会自动按现有认定续做赔付与退款，
+            钱会直接进入你的渠道账户，可在账号中心提现。
+          </p>
+          <TButton variant="solid" tone="accent" @click="goBindSettlementAccount">
+            去完成收款银行卡
+          </TButton>
+        </template>
       </template>
       <p v-else-if="activeBreachCase.status === 'submitted' || activeBreachCase.status === 'ai_reviewing'"
         class="conversation-actions__tip">
