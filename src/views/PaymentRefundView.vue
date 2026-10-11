@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { paymentRefundDocument } from '@/shared/legalContent'
 
 const router = useRouter()
+const refundDoc = paymentRefundDocument
 
 function goBack() {
     if (window.history.state?.back) {
@@ -18,50 +20,27 @@ function goBack() {
         <section class="panel">
             <header class="panel-head">
                 <div>
-                    <h2>支付与退款说明</h2>
+                    <h2>{{ refundDoc.heading }}</h2>
                 </div>
                 <button class="top-back" type="button" @click="goBack">返回</button>
             </header>
 
             <article class="content-block">
-                <p><strong>生效日期：</strong>2026年5月13日</p>
-
-                <h3>1. 当前支付服务状态</h3>
-                <p>平台同时提供“无电签约定”和“电签担保”两种需求模式。生产环境已开放电签担保；无电签约定需求中，平台不收取、保管或结算项目款项。</p>
-                <p>电签担保的定金、尾款、分账、交付验收和违约处理，以页面公示、订单确认页、双方签署合同和本说明为准；测试环境或配置未就绪时，相关入口不会开放。</p>
-
-                <h3>2. 无电签约定需求</h3>
-                <p>需求方与开发者可自行协商项目费用、付款节点、发票、税费、退款和售后安排。相关款项不属于平台支付订单，平台不对双方自行约定或线下发生的付款、退款、收款账户、履约结果承担担保责任。</p>
-                <p>平台可提供需求记录、沟通记录、合同签署、资源交付、状态流转和工单沟通能力，帮助双方留存证据并协助沟通。</p>
-
-                <h3>3. 平台支付渠道</h3>
-                <p>当平台页面明确展示可支付的订单、服务费、保证金、充值或其他费用时，支付可通过平台指定的支付宝、微信支付等第三方渠道完成。支付渠道可能根据业务开通情况调整。</p>
-                <p>平台不会要求您以“平台担保”“资金托管”“保证金”“内部通道”等名义向私人账户、非平台公示账户或非订单页面展示的收款方式转账。</p>
-
-                <h3>4. 电签担保订单规则</h3>
-                <p>电签担保需求单按页面展示的定金、尾款、合同签署、交付验收和违约处理规则推进。支付前，平台会展示金额、用途、支付阶段、可退条件及必要确认项。</p>
-                <ul>
-                    <li>定金或阶段款是否可退，以订单状态、合同约定、双方确认情况和页面公示规则为准。</li>
-                    <li>尾款或结算款涉及已交付、已验收、已发布或已使用成果的，退款需结合实际履约情况判断。</li>
-                    <li>平台服务费、保证金、优惠券、活动减免等项目，如适用，会按对应页面规则单独说明。</li>
-                </ul>
-
-                <h3>5. 异常支付处理</h3>
-                <p>若您已通过平台订单页面完成扣款，但平台订单未更新、重复扣款、金额异常或未生成有效订单，请保留支付凭证、订单号、支付渠道流水号和扣款时间，并通过工单中心提交处理。</p>
-                <p>如您未通过平台订单页面支付，而是向个人账户、非公示账户或第三方链接转账，平台将尽力协助记录和沟通，但无法承诺追回款项或承担退款责任。</p>
-
-                <h3>6. 退款申请流程</h3>
-                <p>涉及平台支付订单的退款申请，请通过平台工单中心提交，说明订单号、退款原因、合同或沟通依据、交付状态和相关证明。平台审核后，将按原支付渠道或页面公示方式处理。</p>
-                <p>
-                    可前往
-                    <RouterLink to="/tickets">工单中心</RouterLink>
-                    提交退款申请并跟进处理进度。
-                </p>
-                <p>退款到账时间以支付机构、银行或相关服务方实际处理结果为准。优惠券、折扣、手续费或已发生的第三方费用，按对应规则处理。</p>
-
-                <h3>7. 争议与风险提示</h3>
-                <p>请在付款前核对需求单类型、合同内容、收款主体、付款用途和退款条件。无电签约定需求不等同于平台托管或交易担保，双方应自行评估信用、验收和付款风险。</p>
-                <p>若对方以平台名义要求私下付款、承诺平台托管、冒充客服或要求绕过平台记录，请立即停止付款并通过工单中心反馈。</p>
+                <!-- 正文出自 src/shared/legalContent.json：SPA 与构建期静态快照共用同一份文案 -->
+                <template v-for="(block, index) in refundDoc.blocks" :key="index">
+                    <h3 v-if="block.type === 'heading'">{{ block.text }}</h3>
+                    <p v-else-if="block.type === 'effective'">
+                        <strong>{{ block.label }}：</strong>{{ block.text }}
+                    </p>
+                    <ul v-else-if="block.type === 'list'">
+                        <li v-for="(item, itemIndex) in block.items" :key="itemIndex">{{ item }}</li>
+                    </ul>
+                    <p v-else-if="block.type === 'paragraph'">{{ block.text }}</p>
+                    <p v-else-if="block.type === 'paragraph-link'">
+                        {{ block.before
+                        }}<RouterLink :to="block.to">{{ block.linkText }}</RouterLink>{{ block.after }}
+                    </p>
+                </template>
             </article>
         </section>
     </main>

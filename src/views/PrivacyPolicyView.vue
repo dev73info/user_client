@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { privacyDocument } from '@/shared/legalContent'
 
 const router = useRouter()
+const policy = privacyDocument
 
 function goBack() {
     if (window.history.state?.back) {
@@ -18,50 +20,27 @@ function goBack() {
         <section class="panel">
             <header class="panel-head">
                 <div>
-                    <h2>隐私政策</h2>
+                    <h2>{{ policy.heading }}</h2>
                 </div>
                 <button class="top-back" type="button" @click="goBack">返回</button>
             </header>
 
             <article class="content-block">
-                <p><strong>生效日期：</strong>2026年5月13日</p>
-
-                <h3>1. 适用范围</h3>
-                <p>本政策适用于您访问、注册、登录、发布需求、承接需求、签署合同、提交工单、使用支付或其他 73Info 平台服务时涉及的个人信息处理活动。</p>
-
-                <h3>2. 我们收集的信息</h3>
-                <p>账号信息：用户名、邮箱、密码加密凭据、第三方登录标识、角色权限、登录状态及安全校验记录。</p>
-                <p>实名与签署信息：真实姓名、证件类型、证件号码、企业名称、统一社会信用代码、营业执照号、经办人信息、审核记录、手写签名、合同内容指纹、签署时间和签署日志。</p>
-                <p>业务信息：需求内容、预算、验收标准、资源资料、版本交付、评论评价、站内消息、工单、沟通记录、订单号、支付渠道、支付金额、支付状态、退款状态及优惠券使用记录。</p>
-                <p>设备与日志信息：IP 地址、浏览器类型、访问时间、页面路径、错误日志、本地存储、必要的风控和安全审计记录。</p>
-
-                <h3>3. 信息使用目的</h3>
-                <p>我们会将信息用于账号注册登录、身份核验、需求发布与匹配、项目协作、合同签署、支付状态确认、退款和工单处理、消息通知、客户支持、安全风控、服务优化、合规审计及法律法规要求的其他用途。</p>
-                <p>对于无电签约定需求，平台使用相关信息主要用于协作记录、合同留痕和争议沟通，不用于替代双方自行约定的资金结算或交易担保。</p>
-
-                <h3>4. 信息共享与委托处理</h3>
-                <p>我们不会出售您的个人信息。为完成服务，可能在必要范围内向以下主体共享或委托处理信息：支付机构、邮箱服务商、第三方登录服务商、云服务/存储/安全服务商、客服与工单工具、依法有权要求提供信息的行政机关、司法机关或监管机构。</p>
-                <p>我们会要求相关服务提供方仅为约定目的处理信息，并采取合理安全措施。除法律法规另有规定或取得您的授权外，不会将您的个人敏感信息用于与服务无关的目的。</p>
-
-                <h3>5. 信息存储与保存期限</h3>
-                <p>我们会在实现处理目的所需的最短期限内保存您的信息；涉及合同、支付、实名认证、争议处理、安全审计或法律法规要求留存的信息，将按相应期限保存。</p>
-                <p>当信息超出保存期限或处理目的不再必要时，我们将依法删除、匿名化或采取其他合理处理措施。</p>
-
-                <h3>6. 您的权利</h3>
-                <p>您可以依法查询、更正、补充、删除您的个人信息，撤回授权同意，注销账号，或要求解释个人信息处理规则。为保障账号和合同证据安全，部分请求可能需要完成身份验证后处理。</p>
-                <p>对于依法必须保存的合同、交易、实名认证、安全审计或争议记录，我们可能无法立即删除，但会限制在必要范围内继续处理。</p>
-
-                <h3>7. 本地存储</h3>
-                <p>平台使用浏览器 localStorage 保存登录状态和必要偏好，不使用 Cookie 维持登录状态。清除或禁用 localStorage 后，您需要重新登录，部分偏好可能无法保留。</p>
-
-                <h3>8. 信息安全</h3>
-                <p>我们会采取访问控制、传输加密、权限管理、日志审计、敏感信息脱敏展示等合理措施保护信息安全。互联网环境并非绝对安全，如发现账号或信息异常，请及时联系平台。</p>
-
-                <h3>9. 未成年人保护</h3>
-                <p>平台服务主要面向具备完全民事行为能力的主体。未成年人应在监护人同意和指导下使用平台，不建议未成年人独立发布需求、承接项目或完成支付行为。</p>
-
-                <h3>10. 联系与政策更新</h3>
-                <p>如您对本政策或个人信息处理有疑问，可通过平台公示的联系邮箱或工单中心联系我们。本政策可能根据法律法规或业务变化更新，更新后将在页面展示生效日期。</p>
+                <!-- 正文出自 src/shared/legalContent.json：SPA 与构建期静态快照共用同一份文案 -->
+                <template v-for="(block, index) in policy.blocks" :key="index">
+                    <h3 v-if="block.type === 'heading'">{{ block.text }}</h3>
+                    <p v-else-if="block.type === 'effective'">
+                        <strong>{{ block.label }}：</strong>{{ block.text }}
+                    </p>
+                    <ul v-else-if="block.type === 'list'">
+                        <li v-for="(item, itemIndex) in block.items" :key="itemIndex">{{ item }}</li>
+                    </ul>
+                    <p v-else-if="block.type === 'paragraph'">{{ block.text }}</p>
+                    <p v-else-if="block.type === 'paragraph-link'">
+                        {{ block.before
+                        }}<RouterLink :to="block.to">{{ block.linkText }}</RouterLink>{{ block.after }}
+                    </p>
+                </template>
             </article>
         </section>
     </main>

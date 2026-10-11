@@ -2,6 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { setSeoMeta, resetSeoMeta } from '@/utils/seo'
+import { aboutContent } from '@/shared/legalContent'
 
 const router = useRouter()
 const pageRef = ref<HTMLElement | null>(null)
@@ -14,30 +15,8 @@ function goRequirementHall() {
   void router.push({ name: 'requirement-hall' })
 }
 
-const highlights = [
-  { title: '放作品', desc: '整理好介绍和下载，公开可浏览，能被真正需要的人找到。' },
-  { title: '发需求', desc: '写清楚要做什么、预算多少、验收标准是什么，等人来接。' },
-  { title: '有留痕', desc: '沟通、签署、进度都留在平台上，合作过程有据可查。' },
-]
-
-const facts = [
-  { big: '内测中', small: '基础服务免费' },
-  { big: '留痕', small: '每一步有记录' },
-  { big: '审核', small: '需求人工过一遍' },
-  { big: '透明', small: '规则先公示再上线' },
-]
-
-const forCreators = [
-  { title: '作品有地方放', desc: '不用只躺在聊天记录里，整理好放上来，别人能看、能收藏、能顺着找到你。' },
-  { title: '接单在明面上走', desc: '谁做了什么、做到哪一步、改了什么，平台上都看得见，省得来回拉扯。' },
-  { title: '交付记录攒下来', desc: '按时交付、好好验收，这些都会留下，慢慢就变成你的信誉。' },
-]
-
-const forClients = [
-  { title: '需求写清楚就发', desc: '不用挨个找人问能不能做，把事、预算、验收标准写明白，平台审核后进大厅。' },
-  { title: '进度看得见', desc: '接单、开发、交付、验收，每一步状态都在，不会干等着不知道进展。' },
-  { title: '有事有据可查', desc: '沟通记录、签署记录、交付记录都在，真有问题也不至于空口无凭。' },
-]
+// 文案出自 src/shared/legalContent.json：SPA 与构建期静态快照（generate-seo-pages.mjs）共用同一份文案。
+const { highlights, facts, forCreators, forClients, story, join } = aboutContent
 
 /* ---- 滚动渐入（监听实际滚动容器，即 TScrollbar 的 wrap） ---- */
 let revealEls: Element[] = []
@@ -132,7 +111,11 @@ onBeforeUnmount(() => {
     <section class="about-hero">
       <div class="about-hero__glow" aria-hidden="true"></div>
       <div class="about-hero__inner">
-        <h1 class="about-hero__title">资源与需求<br />协作平台</h1>
+        <h1 class="about-hero__title">
+          <template v-for="(line, index) in aboutContent.heroLines" :key="line">
+            <br v-if="index > 0" />{{ line }}
+          </template>
+        </h1>
         <div class="about-hero__actions">
           <button type="button" class="about-hero__btn about-hero__btn--primary" @click="goRequirementHall">
             去需求大厅
@@ -141,21 +124,21 @@ onBeforeUnmount(() => {
             浏览资源
           </button>
         </div>
-        <p class="about-hero__hint">目前内测中 · 基础服务免费</p>
+        <p class="about-hero__hint">{{ aboutContent.hint }}</p>
       </div>
     </section>
 
     <!-- ===== 2. 平台是什么 ===== -->
     <section class="about-section">
       <div class="about-section__head" data-reveal>
-        <h2>这个平台能做什么</h2>
+        <h2>{{ highlights.heading }}</h2>
       </div>
       <div class="about-highlights">
-        <div v-for="(item, idx) in highlights" :key="item.title" class="about-highlight" :data-reveal="`h${idx}`">
+        <div v-for="(item, idx) in highlights.items" :key="item.title" class="about-highlight" :data-reveal="`h${idx}`">
           <span class="about-highlight__bar" aria-hidden="true"></span>
           <div class="about-highlight__text">
             <h3>{{ item.title }}</h3>
-            <p>{{ item.desc }}</p>
+            <p>{{ item.text }}</p>
           </div>
         </div>
       </div>
@@ -163,7 +146,7 @@ onBeforeUnmount(() => {
 
     <!-- ===== 3. 数据 ===== -->
     <section class="about-facts">
-      <div v-for="(fact, idx) in facts" :key="fact.big" class="about-fact" :data-reveal="`f${idx}`">
+      <div v-for="(fact, idx) in facts.items" :key="fact.big" class="about-fact" :data-reveal="`f${idx}`">
         <strong class="about-fact__big">{{ fact.big }}</strong>
         <span class="about-fact__small">{{ fact.small }}</span>
       </div>
@@ -172,20 +155,20 @@ onBeforeUnmount(() => {
     <!-- ===== 4. 给创作者 / 给需求方 ===== -->
     <section class="about-split">
       <div class="about-split__col" data-reveal>
-        <h2>如果你是做资源的</h2>
+        <h2>{{ forCreators.heading }}</h2>
         <ul class="about-point-list">
-          <li v-for="item in forCreators" :key="item.title">
+          <li v-for="item in forCreators.items" :key="item.title">
             <h3>{{ item.title }}</h3>
-            <p>{{ item.desc }}</p>
+            <p>{{ item.text }}</p>
           </li>
         </ul>
       </div>
       <div class="about-split__col" data-reveal>
-        <h2>如果你有需求要找人做</h2>
+        <h2>{{ forClients.heading }}</h2>
         <ul class="about-point-list">
-          <li v-for="item in forClients" :key="item.title">
+          <li v-for="item in forClients.items" :key="item.title">
             <h3>{{ item.title }}</h3>
-            <p>{{ item.desc }}</p>
+            <p>{{ item.text }}</p>
           </li>
         </ul>
       </div>
@@ -194,21 +177,11 @@ onBeforeUnmount(() => {
     <!-- ===== 5. 关于我们 ===== -->
     <section class="about-section about-section--story">
       <div class="about-section__head" data-reveal>
-        <h2>关于这个平台</h2>
+        <h2>{{ story.heading }}</h2>
       </div>
       <div class="about-story" data-reveal>
-        <p>
-          柒叁信息，域名 73info.cn。最早是把自己做的一些 的东西、小工具放出来，
-          后来发现很多人有类似的需求：做出来的东西没地方放，想找人做点事又不知道找谁。
-          干脆把这两件事放在一个平台上。
-        </p>
-        <p>
-          现在还在内测，功能在一点点加。方向很明确：
-          作品有地方展示，需求能找到人做，合作过程有记录。
-        </p>
-        <p class="about-story__note">
-          生产环境已开放按合同和订单规则运行的电签担保服务；测试环境及配置未就绪时，相关支付入口会关闭。
-        </p>
+        <p v-for="(paragraph, index) in story.paragraphs" :key="index">{{ paragraph }}</p>
+        <p class="about-story__note">{{ story.note }}</p>
       </div>
     </section>
 
@@ -216,11 +189,8 @@ onBeforeUnmount(() => {
     <section class="about-join">
       <div class="about-join__shine" aria-hidden="true"></div>
       <div class="about-join__inner">
-        <h2>这个平台，是靠人用起来的</h2>
-        <p>
-          有作品，欢迎来发；有需求，欢迎来提；觉得哪里不对，也欢迎直接说。
-          邮件和工单都行，看到了都会回。
-        </p>
+        <h2>{{ join.heading }}</h2>
+        <p>{{ join.text }}</p>
         <div class="about-join__actions">
           <a class="about-join__btn" href="mailto:fanbo@73info.cn">fanbo@73info.cn</a>
           <router-link class="about-join__btn about-join__btn--ghost" to="/tickets">工单中心</router-link>
