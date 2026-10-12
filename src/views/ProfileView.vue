@@ -114,7 +114,6 @@ const finalPaymentConfirmVisible = ref(false)
 const finalPaymentConfirmTarget = ref<RequirementItem | null>(null)
 const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
-const conversationLoading = ref(false)
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
 const depositRatioPercent = ref(20)
 const { showToast } = useToast()
@@ -138,8 +137,6 @@ type ProfileAvatarCropDragStart = {
   offsetTop: number
 }
 
-const amountCoupons = computed(() => coupons.value.filter((item) => item.discount_type === 'amount'))
-const discountCoupons = computed(() => coupons.value.filter((item) => item.discount_type === 'percent'))
 const conversationCards = computed(() => myRequirements.value.filter((item) => {
   if (!hasBoundResource(item)) {
     return false
@@ -349,7 +346,6 @@ async function loadRequirementConversations() {
     return
   }
 
-  conversationLoading.value = true
   try {
     const conversations = await listRequirementConversations(auth.token)
     requirementConversationMap.value = Object.fromEntries(
@@ -358,8 +354,6 @@ async function loadRequirementConversations() {
   } catch (error) {
     requirementConversationMap.value = {}
     showToast(error instanceof Error ? error.message : '加载沟通会话失败', 'error')
-  } finally {
-    conversationLoading.value = false
   }
 }
 
@@ -1422,55 +1416,35 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <section class="overview-stat-grid" aria-label="工作台关键数据">
-      <RouterLink class="overview-stat-card" :to="{ name: 'workbench-requirements' }">
-        <span>需求总数</span>
-        <strong>{{ requirementStats.total }}</strong>
-        <small>{{ requirementStats.active }} 个推进中</small>
-      </RouterLink>
-      <RouterLink class="overview-stat-card" :to="{ name: 'workbench-requirements' }">
-        <span>待处理</span>
-        <strong>{{ actionableRequirements.length }}</strong>
-        <small>{{ requirementStats.payment }} 个待支付</small>
-      </RouterLink>
-      <RouterLink class="overview-stat-card" :to="{ name: 'workbench-messages' }">
-        <span>沟通会话</span>
-        <strong>{{ availableConversationCount }}</strong>
-        <small>{{ conversationLoading ? '同步中' : '可进入消息中心' }}</small>
-      </RouterLink>
-      <RouterLink class="overview-stat-card" :to="{ name: 'workbench-account' }">
-        <span>可用券</span>
-        <strong>{{ usableCouponCount }}</strong>
-        <small>满减 {{ amountCoupons.length }} / 折扣 {{ discountCoupons.length }}</small>
-      </RouterLink>
-    </section>
-
-    <!-- 移动端把四格读数压成一行塞进工作台顶栏，页面里的四格卡片随之隐藏 -->
-    <WorkbenchBarSlot mobile-only>
-      <nav class="overview-bar-stats" aria-label="工作台关键数据">
-        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-requirements' }">
+    <!-- 顶部读数条：沿用「我的需求」等菜单页的 .wb-strip 形状（四格读数 + 页面级刷新）；
+         ≤900px 时整条被 WorkbenchBarSlot 搬进工作台顶栏，不再另做一套移动端读数 -->
+    <WorkbenchBarSlot>
+      <nav class="wb-strip overview-strip" aria-label="工作台关键数据">
+        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-requirements' }" title="全部需求">
           <span class="wb-strip__label">需求</span>
           <span class="wb-strip__value">{{ requirementStats.total }}</span>
         </RouterLink>
         <div class="wb-strip__divider" />
-        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-requirements' }">
+        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-requirements' }" title="待处理的需求">
           <span class="wb-strip__label">待处理</span>
           <span class="wb-strip__value">{{ actionableRequirements.length }}</span>
         </RouterLink>
         <div class="wb-strip__divider" />
-        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-messages' }">
+        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-messages' }" title="沟通会话">
           <span class="wb-strip__label">会话</span>
           <span class="wb-strip__value">{{ availableConversationCount }}</span>
         </RouterLink>
         <div class="wb-strip__divider" />
-        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-account' }">
+        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-account' }" title="可用优惠券">
           <span class="wb-strip__label">可用券</span>
           <span class="wb-strip__value">{{ usableCouponCount }}</span>
         </RouterLink>
-        <TButton icon-only :loading="loading || requirementLoading" aria-label="刷新" title="刷新"
-          @click="refreshProfileData">
-          <TIcon><Refresh /></TIcon>
-        </TButton>
+        <div class="wb-strip__item wb-strip__action">
+          <TButton icon-only :loading="loading || requirementLoading" aria-label="刷新" title="刷新"
+            @click="refreshProfileData">
+            <TIcon><Refresh /></TIcon>
+          </TButton>
+        </div>
       </nav>
     </WorkbenchBarSlot>
 
@@ -1687,8 +1661,7 @@ onBeforeUnmount(() => {
 
 .overview-hero,
 .overview-focus-panel,
-.overview-panel,
-.overview-stat-card {
+.overview-panel {
   border: 1px solid rgba(224, 232, 255, 0.96);
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 14px 34px rgba(76, 103, 172, 0.08);
@@ -2045,31 +2018,17 @@ onBeforeUnmount(() => {
   color: #1d4ed8;
 }
 
-.overview-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.overview-stat-card {
-  display: grid;
-  gap: 5px;
-  min-width: 0;
-  padding: 14px 16px;
-  border-radius: 14px;
+/* 顶部读数条复用菜单页的 .wb-strip（形状见 portal-workbench.css），
+   只是读数项带跳转：去掉链接默认下划线，hover 时用主色提示可点 */
+.overview-strip a.wb-strip__item {
   color: inherit;
   text-decoration: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.overview-stat-card:hover {
-  border-color: rgba(125, 155, 225, 0.92);
-  box-shadow: 0 16px 34px rgba(76, 103, 172, 0.12);
-  transform: translateY(-1px);
+.overview-strip a.wb-strip__item:hover .wb-strip__value {
+  color: #1d4ed8;
 }
 
-.overview-stat-card span,
-.overview-stat-card small,
 .overview-requirement-list span,
 .overview-requirement-list time,
 .overview-empty-state span,
@@ -2077,14 +2036,6 @@ onBeforeUnmount(() => {
   color: #64748b;
   font-size: 12px;
   line-height: 1.45;
-}
-
-.overview-stat-card strong {
-  overflow: hidden;
-  color: #0f172a;
-  font-size: 28px;
-  line-height: 1;
-  text-overflow: ellipsis;
 }
 
 .overview-focus-panel,
@@ -2344,25 +2295,6 @@ onBeforeUnmount(() => {
   line-height: 1.5;
 }
 
-/* 读数沿用菜单页顶部读数条（.wb-strip__item / __label / __value / __divider）的版式，
-   只是不带外框：外框由工作台顶栏提供 */
-.overview-bar-stats {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  min-width: 0;
-}
-
-.overview-bar-stats .wb-strip__item {
-  gap: 4px;
-  color: inherit;
-  text-decoration: none;
-}
-
-.overview-bar-stats .t73-button {
-  flex: 0 0 auto;
-}
 /* 头像卡下方的 App 式快捷入口：只在移动端出现（见 760px 断点） */
 .overview-hero__quick {
   display: none;
@@ -2396,22 +2328,6 @@ onBeforeUnmount(() => {
   background: #ffffff;
   color: #2563eb;
   box-shadow: 0 4px 10px rgba(76, 103, 172, 0.08);
-}
-
-/* 断点与工作台顶栏出现的断点一致：顶栏显示时读数在顶栏里，四格卡片收起 */
-@media (max-width: 900px) {
-  .overview-stat-grid {
-    display: none;
-  }
-}
-
-/* 四格读数默认一行四个（见 .overview-stat-grid 的 repeat(4, …)）；
-   只有 1024px 以下才回落成两列——1180px 这类更宽的桌面（含 1090px 的小笔记本宽度）
-   不再被判成窄屏，避免正常桌面下出现 2×2。 */
-@media (max-width: 1024px) {
-  .overview-stat-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 1180px) {
@@ -2543,19 +2459,6 @@ onBeforeUnmount(() => {
   /* 移动端：主页走「点用户名」，操作区整排收起 */
   .overview-hero__actions {
     display: none;
-  }
-
-  .overview-stat-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .overview-stat-card {
-    padding: 12px 14px;
-  }
-
-  .overview-stat-card strong {
-    font-size: 22px;
   }
 
   .overview-focus-panel,
