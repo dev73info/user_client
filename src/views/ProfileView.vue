@@ -1338,6 +1338,38 @@ onBeforeUnmount(() => {
 
 <template>
   <main id="overview" class="page-shell custom-page-shell profile-page">
+    <!-- 顶部读数条：沿用「我的需求」等菜单页的 .wb-strip 形状（四格读数 + 页面级刷新），
+         放在头像卡上方作为页面第一条读数带；≤900px 时整条被 WorkbenchBarSlot 搬进工作台顶栏 -->
+    <WorkbenchBarSlot>
+      <nav class="wb-strip overview-strip" aria-label="工作台关键数据">
+        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-requirements' }" title="全部需求">
+          <span class="wb-strip__label">需求</span>
+          <span class="wb-strip__value">{{ requirementStats.total }}</span>
+        </RouterLink>
+        <div class="wb-strip__divider" />
+        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-requirements' }" title="待处理的需求">
+          <span class="wb-strip__label">待处理</span>
+          <span class="wb-strip__value">{{ actionableRequirements.length }}</span>
+        </RouterLink>
+        <div class="wb-strip__divider" />
+        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-messages' }" title="沟通会话">
+          <span class="wb-strip__label">会话</span>
+          <span class="wb-strip__value">{{ availableConversationCount }}</span>
+        </RouterLink>
+        <div class="wb-strip__divider" />
+        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-account' }" title="可用优惠券">
+          <span class="wb-strip__label">可用券</span>
+          <span class="wb-strip__value">{{ usableCouponCount }}</span>
+        </RouterLink>
+        <div class="wb-strip__item wb-strip__action">
+          <TButton icon-only :loading="loading || requirementLoading" aria-label="刷新" title="刷新"
+            @click="refreshProfileData">
+            <TIcon><Refresh /></TIcon>
+          </TButton>
+        </div>
+      </nav>
+    </WorkbenchBarSlot>
+
     <section class="overview-hero">
       <div class="overview-hero__head">
         <div class="overview-hero__identity">
@@ -1415,38 +1447,6 @@ onBeforeUnmount(() => {
         </RouterLink>
       </nav>
     </section>
-
-    <!-- 顶部读数条：沿用「我的需求」等菜单页的 .wb-strip 形状（四格读数 + 页面级刷新）；
-         ≤900px 时整条被 WorkbenchBarSlot 搬进工作台顶栏，不再另做一套移动端读数 -->
-    <WorkbenchBarSlot>
-      <nav class="wb-strip overview-strip" aria-label="工作台关键数据">
-        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-requirements' }" title="全部需求">
-          <span class="wb-strip__label">需求</span>
-          <span class="wb-strip__value">{{ requirementStats.total }}</span>
-        </RouterLink>
-        <div class="wb-strip__divider" />
-        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-requirements' }" title="待处理的需求">
-          <span class="wb-strip__label">待处理</span>
-          <span class="wb-strip__value">{{ actionableRequirements.length }}</span>
-        </RouterLink>
-        <div class="wb-strip__divider" />
-        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-messages' }" title="沟通会话">
-          <span class="wb-strip__label">会话</span>
-          <span class="wb-strip__value">{{ availableConversationCount }}</span>
-        </RouterLink>
-        <div class="wb-strip__divider" />
-        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-account' }" title="可用优惠券">
-          <span class="wb-strip__label">可用券</span>
-          <span class="wb-strip__value">{{ usableCouponCount }}</span>
-        </RouterLink>
-        <div class="wb-strip__item wb-strip__action">
-          <TButton icon-only :loading="loading || requirementLoading" aria-label="刷新" title="刷新"
-            @click="refreshProfileData">
-            <TIcon><Refresh /></TIcon>
-          </TButton>
-        </div>
-      </nav>
-    </WorkbenchBarSlot>
 
     <section class="overview-focus-panel">
       <div class="overview-section-head">
