@@ -31,16 +31,15 @@ import {
 } from '@/utils/requirementRichText'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 import {
+  TButton,
   TIcon,
   TPagination,
-  TLoading,
-  TRadioButton,
-  TRadioGroup,
+  TSelect,
   Close,
   Connection,
   Plus,
   Refresh,
-  type SelectValue,
+  type SelectModelValue,
 } from 'ui_73info'
 
 const router = useRouter()
@@ -66,6 +65,29 @@ const keyword = ref('')
  */
 type GuaranteeFilter = 'all' | RequirementPaymentMode
 const guaranteeFilter = ref<GuaranteeFilter>('all')
+
+/**
+ * 大厅是否已经成功拉过一次数据。
+ * 用来把「首次进页面」和「后续刷新」分开：前者没有内容可留，出骨架屏；
+ * 后者保留当前列表做就地刷新，不做整块清空重画。
+ */
+const hallLoadedOnce = ref(false)
+
+/** 首次加载：还没有任何内容可展示，出骨架屏占位。 */
+const showHallSkeleton = computed(() => loading.value && !hallLoadedOnce.value)
+
+/** 就地刷新：已有内容，保留列表并整体压暗，等新数据回来再替换。 */
+const hallRefreshing = computed(() => loading.value && hallLoadedOnce.value)
+
+/**
+ * 担保方式下拉的选项：`全部` + 两档担保方式。
+ * 分档文案走 `paymentModeLabel`，与卡片上的标签同一口径，不另写一套。
+ */
+const guaranteeOptions = computed(() => [
+  { label: '全部', value: 'all' as GuaranteeFilter },
+  { label: paymentModeLabel('platform_guarantee'), value: 'platform_guarantee' as GuaranteeFilter },
+  { label: paymentModeLabel('self_managed'), value: 'self_managed' as GuaranteeFilter },
+])
 const publishVisible = ref(false)
 const publishTitle = ref('')
 const publishDescription = ref('')
@@ -241,7 +263,7 @@ function activeGuaranteeMode(): RequirementPaymentMode | undefined {
  * 切换担保方式筛选：这是服务端筛选，换值等于换结果集，
  * 所以回到第一页重新拉取，避免停留在上一个结果集的页码上。
  */
-function onGuaranteeFilterChange(value: SelectValue) {
+function onGuaranteeFilterChange(value: SelectModelValue) {
   const next: GuaranteeFilter =
     value === 'platform_guarantee' || value === 'self_managed' ? value : 'all'
   if (guaranteeFilter.value === next) {
@@ -535,6 +557,9 @@ async function loadHallData(page = hallPage.value) {
 
   loading.value = false
   overviewLoading.value = false
+  // 无论这轮成功还是失败，都算「拉过一次」：失败时列表已被清空并给出空态，
+  // 下一次刷新该保留空态做就地刷新，不再回退成骨架屏。
+  hallLoadedOnce.value = true
   openRouteRequirementDetail()
 }
 </script>
@@ -542,79 +567,66 @@ async function loadHallData(page = hallPage.value) {
 <template>
   <main class="portal-page portal-page--nav">
     <section class="portal-page__content">
-      <TLoading tag="section" class="portal-page__panel" :loading="loading">
-        <div class="portal-page__section-header">
-          <div>
-            <h2>发现并接取合作机会</h2>
+      <!-- 面板不再整块遮罩：首次加载由骨架屏顶上，后续刷新只压暗结果区就地替换。
+           `aria-busy` 保留原有的无障碍语义。 -->
+      <section
+        class="portal-page__panel"
+        :class="{ 'requirement-hall__panel--refreshing': hallRefreshing }"
+        :aria-busy="loading ? 'true' : undefined"
+      >
+        <div class="requirement-hall__toolbar">
+          <TSelect
+            class="requirement-hall__guarantee-select"
+            :model-value="guaranteeFilter"
+            :options="guaranteeOptions"
+            aria-label="按担保方式筛选需求"
+            @update:model-value="onGuaranteeFilterChange"
+          />
+
+          <div class="requirement-hall__search">
+            <input
+              v-model="keyword"
+              type="search"
+              placeholder="搜索标题、编号"
+              title="可按需求标题、编号、说明、担保方式与状态搜索"
+            />
+            <button
+              v-if="keyword.trim()"
+              class="requirement-hall__search-clear"
+              type="button"
+              aria-label="清空搜索"
+              @click="resetKeyword"
+            >
+              <TIcon>
+                <Close />
+              </TIcon>
+            </button>
           </div>
+
           <div class="portal-page__header-actions requirement-hall__header-actions">
-            <span v-if="overviewLoading" class="portal-page__loading-chip">同步中</span>
             <button class="requirement-hall__publish-btn" type="button" @click="openPublishModal">
               <TIcon>
                 <Plus />
               </TIcon>
               <span>发布需求</span>
             </button>
-            <button
-              class="requirement-hall__refresh-btn"
-              type="button"
-              :disabled="loading || overviewLoading"
+            <TButton
+              icon-only
+              :loading="loading || overviewLoading"
+              aria-label="刷新"
+              title="刷新"
               @click="loadHallData()"
             >
               <TIcon>
                 <Refresh />
               </TIcon>
-              <span>刷新</span>
-            </button>
+            </TButton>
           </div>
         </div>
 
-        <div class="requirement-hall__filters">
-          <div class="requirement-hall__search-row">
-            <div class="requirement-hall__search">
-              <input v-model="keyword" type="search" placeholder="搜索需求标题、编号、交付方式..." />
-              <button
-                v-if="keyword.trim()"
-                class="requirement-hall__search-clear"
-                type="button"
-                aria-label="清空搜索"
-                @click="resetKeyword"
-              >
-                <TIcon>
-                  <Close />
-                </TIcon>
-              </button>
-            </div>
-            <button
-              class="portal-page__secondary"
-              type="button"
-              :disabled="!keyword.trim()"
-              @click="resetKeyword"
-            >
-              清空
-            </button>
-          </div>
-
-          <div class="requirement-hall__guarantee-row">
-            <span class="requirement-hall__guarantee-label">担保方式</span>
-            <TRadioGroup
-              class="requirement-hall__guarantee-group"
-              :model-value="guaranteeFilter"
-              aria-label="按担保方式筛选需求"
-              @update:model-value="onGuaranteeFilterChange"
-            >
-              <TRadioButton value="all">全部</TRadioButton>
-              <TRadioButton value="platform_guarantee">{{
-                paymentModeLabel('platform_guarantee')
-              }}</TRadioButton>
-              <TRadioButton value="self_managed">{{
-                paymentModeLabel('self_managed')
-              }}</TRadioButton>
-            </TRadioGroup>
-          </div>
-        </div>
-
-        <div v-if="loading" class="portal-page__card-grid requirement-hall__grid">
+        <!-- 骨架屏只在「第一次进页面、还没有任何内容」时出场。
+             之后刷新（含切页、切筛选）都保留当前列表，避免整个容器被清空重画。 -->
+        <div v-if="showHallSkeleton" class="portal-page__card-grid requirement-hall__grid">
           <article
             v-for="item in 4"
             :key="item"
@@ -681,14 +693,14 @@ async function loadHallData(page = hallPage.value) {
         </div>
 
         <TPagination
-          v-if="!loading && filteredRequirements.length"
+          v-if="filteredRequirements.length"
           class="requirement-hall__pager"
           :current-page="hallPage"
           :page-size="HALL_PAGE_SIZE"
           :total="hallTotal"
           @current-change="loadHallData"
         />
-      </TLoading>
+      </section>
 
       <aside class="portal-page__aside">
         <section class="portal-page__aside-card requirement-hall__overview-card">
@@ -866,13 +878,14 @@ async function loadHallData(page = hallPage.value) {
 
 <style scoped>
 .requirement-hall__header-actions {
-  align-self: flex-start;
+  flex: 0 0 auto;
+  align-self: center;
   gap: 8px;
-  padding-top: 2px;
 }
 
-.requirement-hall__publish-btn,
-.requirement-hall__refresh-btn {
+/* 发布需求：主按钮。刷新按钮改用库里的 TButton（icon-only，见模板），
+   不再走这里的一套自定义底色 / 描边。 */
+.requirement-hall__publish-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -905,60 +918,55 @@ async function loadHallData(page = hallPage.value) {
   transform: translateY(-1px);
 }
 
-/* 刷新全站只留图标与文字，不出底色与描边（口径见 styles/user.css） */
-.requirement-hall__refresh-btn {
-  padding: 0 12px;
-  border-color: transparent;
-  background: transparent;
-  color: #2563eb;
+/* 刷新按钮的样式由库里的 TButton（icon-only，outline / neutral / md）承担，
+   与工作台概览条上的「刷新」同一个实现，这里不再自定义。 */
+
+/* 就地刷新：不动布局、不清空容器，只把结果区整体压暗一点，新数据回来自然复原。
+   过渡写在常态上，所以「压暗」与「复原」两个方向都是渐变的，不会闪一下。
+   分页器是子组件，根节点有没有本文件的 scope id 取决于它是否透传 attrs，所以用 :deep() 兜住。 */
+.requirement-hall__grid,
+.portal-page__empty,
+.portal-page__panel :deep(.requirement-hall__pager) {
+  transition: opacity 180ms ease;
 }
 
-.requirement-hall__refresh-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.58;
+.requirement-hall__panel--refreshing .requirement-hall__grid,
+.requirement-hall__panel--refreshing .portal-page__empty,
+.requirement-hall__panel--refreshing :deep(.requirement-hall__pager) {
+  opacity: 0.55;
+  /* 压暗期间不接受点击，免得点到马上要被替换掉的旧卡片 */
+  pointer-events: none;
 }
 
-.requirement-hall__filters {
+/* 工具栏始终留在原位、保持可用：刷新期间还能改关键词、切担保方式。 */
+
+/* 工具栏：担保方式下拉 + 关键词搜索 + 操作按钮压在同一行里。
+   窄屏在文末媒体查询里改回换行。 */
+.requirement-hall__toolbar {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 14px;
 }
 
-/* 第一行：关键词搜索 + 清空，沿用原来的「输入框占满、按钮靠右」排布 */
-.requirement-hall__search-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-}
-
-/* 第二行：担保方式分段控件（全部 / 电签担保 / 无电签约定） */
-.requirement-hall__guarantee-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.requirement-hall__guarantee-label {
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.requirement-hall__guarantee-group {
-  flex: 0 1 auto;
+/* 担保方式下拉：定宽，避免切换选项时整行跟着跳宽。
+   TSelect 关了 attrs 透传（`inheritAttrs: false`），根节点拿不到本文件的 scope id，
+   所以只能从工具栏用 :deep() 选它——直接写 .requirement-hall__guarantee-select 是选不到的。 */
+.requirement-hall__toolbar :deep(.requirement-hall__guarantee-select) {
+  flex: 0 0 auto;
+  width: 132px;
 }
 
 .requirement-hall__search {
   position: relative;
   display: flex;
+  flex: 1 1 200px;
+  min-width: 0;
   align-items: center;
 }
 
-.requirement-hall__filters input {
+.requirement-hall__toolbar input {
   width: 100%;
   min-height: 42px;
   border: 1px solid rgba(198, 210, 236, 0.86);
@@ -973,8 +981,8 @@ async function loadHallData(page = hallPage.value) {
     background-color 180ms ease;
 }
 
-.requirement-hall__filters input::-webkit-search-cancel-button,
-.requirement-hall__filters input::-webkit-search-decoration {
+.requirement-hall__toolbar input::-webkit-search-cancel-button,
+.requirement-hall__toolbar input::-webkit-search-decoration {
   display: none;
   -webkit-appearance: none;
 }
@@ -1002,7 +1010,7 @@ async function loadHallData(page = hallPage.value) {
   color: #475569;
 }
 
-.requirement-hall__filters input:focus {
+.requirement-hall__toolbar input:focus {
   border-color: rgba(37, 99, 235, 0.58);
   background: #fff;
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
@@ -1549,6 +1557,18 @@ async function loadHallData(page = hallPage.value) {
 }
 
 @media (max-width: 640px) {
+  /* 窄屏：工具栏由一行拆成多行，控件各自占满 */
+  .requirement-hall__toolbar {
+    flex-wrap: wrap;
+  }
+
+  .requirement-hall__toolbar :deep(.requirement-hall__guarantee-select),
+  .requirement-hall__search,
+  .portal-page--nav .requirement-hall__header-actions {
+    flex: 1 1 100%;
+    width: auto;
+  }
+
   .portal-page--nav .requirement-hall__header-actions {
     justify-content: flex-start;
     flex-wrap: wrap;
@@ -1556,10 +1576,6 @@ async function loadHallData(page = hallPage.value) {
 
   .requirement-hall__publish-btn {
     width: 100%;
-  }
-
-  .requirement-hall__search-row {
-    grid-template-columns: 1fr;
   }
 
   .requirement-hall-detail__actions {
