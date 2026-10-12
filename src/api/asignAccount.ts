@@ -78,3 +78,41 @@ export async function modifyUserName(token: string, payload: ModifyUserNamePaylo
   )
 }
 
+/** 当前主体在爱签的企业印章。 */
+export type MySealItem = {
+  sealNo?: string
+  sealName?: string
+  /** 爱签侧生成的印章预览图地址。 */
+  sealUrl?: string
+  isDefault: boolean
+}
+
+/** 企业印章查询结果。 */
+export type MySealsData = {
+  /** 当前主体在爱签的企业账号（企业为统一社会信用代码）。 */
+  account: string
+  defaultSealNo?: string
+  seals: MySealItem[]
+  /** 列表为空时的说明（尚未建主体 / 尚未制章）。 */
+  message?: string
+}
+
+/** 查询当前主体在爱签的企业印章（只读，不创建也不修改印章）。 */
+export async function getMySeals(token: string) {
+  return requestJson<AsignAccountResponse<MySealsData>>(
+    '/realname/asign-account/seals',
+    { method: 'GET', headers: authHeaders(token) },
+    '查询企业印章失败',
+  )
+}
+
+/**
+ * 生成爱签「在线制作印章」链接。
+ *
+ * 只生成链接，不动印章：用户在爱签页面完成制章后才真正产生印章。
+ * 不传 `sealNo` 时为新增印章，不会覆盖企业现有印章。
+ */
+export async function createSealMakeOnline(token: string, payload: { sealNo?: string } = {}) {
+  return post<string>(token, '/realname/asign-account/seal-make-online', payload, '生成制章链接失败')
+}
+

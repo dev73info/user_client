@@ -1563,8 +1563,8 @@ async function toggleCommentLike(comment: CommunityComment) {
   align-items: flex-start;
   justify-content: flex-end;
   gap: 12px;
-  margin-bottom: 12px;
-  padding: 0 0 14px;
+  margin-bottom: 10px;
+  padding: 0 0 12px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.86);
 }
 
@@ -1766,11 +1766,11 @@ async function toggleCommentLike(comment: CommunityComment) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   min-height: 36px;
-  padding: 0 14px;
+  padding: 0 12px;
   border: 1px solid transparent;
-  border-radius: 9px;
+  border-radius: 10px;
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -1816,34 +1816,41 @@ async function toggleCommentLike(comment: CommunityComment) {
   }
 }
 
+/* 搜索行收成一个整体控件：外框由 search-bar 承担，输入区去掉自身描边，
+   搜索按钮退成框内的浅色小控件，不再比输入框抢眼 */
 .community-search-bar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.community-search-field {
   display: flex;
-  min-width: 0;
   min-height: 38px;
   align-items: center;
-  gap: 8px;
-  padding: 0 10px;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 0 4px 0 10px;
   border: 1px solid rgba(191, 219, 254, 0.96);
   border-radius: 10px;
   background: rgba(248, 250, 252, 0.92);
-  color: #64748b;
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
     box-shadow 160ms ease;
 }
 
-.community-search-field:focus-within {
+.community-search-bar:focus-within {
   border-color: rgba(37, 99, 235, 0.44);
   background: #fff;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.community-search-field {
+  display: flex;
+  min-width: 0;
+  min-height: 36px;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #64748b;
 }
 
 .community-search-field input {
@@ -1897,19 +1904,18 @@ async function toggleCommentLike(comment: CommunityComment) {
 }
 
 .community-search-submit {
-  gap: 6px;
-  min-height: 38px;
-  padding: 0 14px;
-  border-color: rgba(37, 99, 235, 0.78);
-  border-radius: 10px;
-  background: #2563eb;
-  color: #fff;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.14);
+  flex: 0 0 auto;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 12px;
+  border-color: transparent;
+  border-radius: 8px;
+  background: rgba(219, 234, 254, 0.72);
+  color: #2563eb;
 }
 
 .community-search-submit:hover:not(:disabled) {
-  background: #1d4ed8;
-  transform: translateY(-1px);
+  background: rgba(191, 219, 254, 0.96);
 }
 
 .community-search-submit:disabled,
@@ -1919,16 +1925,24 @@ async function toggleCommentLike(comment: CommunityComment) {
   transform: none;
 }
 
+/* 窄列里标签只占一行：改为横向滚动而不是换行成两行，
+   滚动条走项目既有口径 scrollbar-width: thin（见 styles/dev-resource.css 的 chips--scroll） */
 .community-tag-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
   margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.78);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .community-tag {
+  flex: 0 0 auto;
   min-height: 28px;
   padding: 4px 10px;
   border: 1px solid rgba(219, 234, 254, 0.92);
@@ -2594,6 +2608,14 @@ async function toggleCommentLike(comment: CommunityComment) {
   min-height: 72px;
 }
 
+/* 根因：共用类 .community-empty 的 min-height: 112px 是为右侧详情面板的占位撑高度用的，
+   帖子流左栏里只放一行「暂无帖子」，固定高度就成了那块空洞。
+   这里只给左栏做收口，不动共用规则与右侧详情面板。 */
+.community-stream .community-empty {
+  min-height: 0;
+  padding: 14px 16px;
+}
+
 .community-empty strong {
   color: #0f172a;
 }
@@ -2650,12 +2672,15 @@ async function toggleCommentLike(comment: CommunityComment) {
     flex: 1 1 132px;
   }
 
+  /* 搜索行已收成「输入框 + 按钮」一体的胶囊，窄屏不再上下堆叠；
+     只把整体高度提到设计规范第六节的 44px 触摸目标档 */
   .community-search-bar {
-    grid-template-columns: 1fr;
+    min-height: 44px;
+    padding: 0 5px 0 12px;
   }
 
-  .community-search-submit {
-    width: 100%;
+  .community-search-field {
+    min-height: 42px;
   }
 
   .community-pagination {

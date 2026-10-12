@@ -50,10 +50,13 @@ import {
   type UserRealnameVerification,
 } from '@/api/realname'
 import {
+  createSealMakeOnline,
+  getMySeals,
   modifyCompanyInfo,
   modifyMobileByCode,
   modifyUserName,
   sendVerifyCode,
+  type MySealsData,
 } from '@/api/asignAccount'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -86,6 +89,7 @@ import {
   TTag,
   ArrowRight,
   Bell,
+  CollectionTag,
   Connection,
   CreditCard,
   Iphone,
@@ -1216,6 +1220,16 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
             icon: User,
           },
     )
+    // 印章是企业主体在爱签侧的用章对象（个人主体没有企业印章），
+    // 所以只在企业 / 个体工商户主体下出现，放在语义最近的「修改企业信息」之后。
+    if (assignEnterprise.value) {
+      identity.push({
+        key: 'seal',
+        title: '印章管理',
+        desc: '查看企业电子印章，可在线制作新印章',
+        icon: CollectionTag,
+      })
+    }
     identity.push({
       key: 'changeSubject',
       title: '变更认证类型',
@@ -1393,6 +1407,9 @@ function openAccountEntry(key: string) {
       asignDialogKind.value = key
       asignDialogVisible.value = true
       return
+    case 'seal':
+      openSealDialog()
+      return
     case 'email':
       emailDialogVisible.value = true
       return
@@ -1449,6 +1466,71 @@ const asignDialogTitle = computed(
 /// 修改手机号：只保留短信验证码方式（运营商三要素那条路 2026-10-04 已删）。
 function openMobileDialog() {
   asignDialogKind.value = 'mobile'
+  asignDialogVisible.value = true
+}
+
+// ── 企业印章管理 ────────────────────────────────────────────
+/**
+ * 印章列表**按需加载**：点开弹窗才查爱签，不在账号页加载时预取。
+ * 账号页每次进来都会打一串接口，再多一次爱签查询只为渲染一句「已生成 / 待生成」不值当；
+ * 状态胶囊因此也不做，入口行与「修改法人」等同组行一致，只有图标 + 主标题 + 副说明。
+ */
+const sealDialogVisible = ref(false)
+const sealLoading = ref(false)
+const sealError = ref('')
+const sealData = ref<MySealsData | null>(null)
+const sealMakeLoading = ref(false)
+
+function openSealDialog() {
+  sealDialogVisible.value = true
+  sealData.value = null
+  sealError.value = ''
+  void loadMySeals()
+}
+
+async function loadMySeals() {
+  if (!requireToken()) return
+  sealLoading.value = true
+  sealError.value = ''
+  try {
+    const res = await getMySeals(auth.token)
+    if (res.success) {
+      sealData.value = res.data ?? null
+    } else {
+      sealError.value = '暂时查不到企业印章，请稍后重试'
+    }
+  } catch (err) {
+    sealError.value = err instanceof Error ? err.message : '查询企业印章失败'
+  } finally {
+    sealLoading.value = false
+  }
+}
+
+/// 在线制作新印章：后端只生成爱签制章链接，真正制章由用户在爱签页面完成。
+/// 不传 sealNo，新增印章不会覆盖企业现有印章；制章完成后回本页刷新即可看到。
+async function handleSealMakeOnline() {
+  if (!requireToken()) return
+  sealMakeLoading.value = true
+  try {
+    const res = await createSealMakeOnline(auth.token, {})
+    const url = res.data?.trim()
+    if (res.success && url) {
+      window.open(url, '_blank', 'noopener,noreferrer')
+      showToast('已打开爱签制章页面，完成后回本页刷新查看', 'success')
+    } else {
+      showToast('暂时拿不到制章链接，请稍后重试', 'warning')
+    }
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : '生成制章链接失败', 'error')
+  } finally {
+    sealMakeLoading.value = false
+  }
+}
+
+/// 从印章管理切到「修改企业信息」（改名会自动重新生成印章），两个入口语义相邻。
+function openCompanyFromSeal() {
+  sealDialogVisible.value = false
+  asignDialogKind.value = 'company'
   asignDialogVisible.value = true
 }
 
@@ -3266,6 +3348,86 @@ onBeforeUnmount(() => {
             >
           </template>
         </TDialog>
+
+        <!-- 印章管理：企业电子印章由爱签生成，用于合同盖章；只读展示 + 在线制章链接 -->
+        <TDialog
+          v-model:open="sealDialogVisible"
+          title="印章管理"
+          class="seal-dialog"
+          width="520px"
+        >
+          <TLoading tag="div" :loading="sealLoading" class="seal-dialog__body">
+            <TAlert
+              v-if="sealError"
+              class="seal-dialog__alert"
+              tone="warning"
+              :closable="false"
+              show-icon
+              :title="sealError"
+            >
+              <TButton
+                variant="outline"
+                size="sm"
+                class="seal-dialog__retry"
+                @click="loadMySeals"
+                >重新查询</TButton
+              >
+            </TAlert>
+
+            <template v-else>
+              <p class="asign-hint">
+                企业电子印章由爱签生成，用于合同盖章。变更企业名称后会重新生成印章。
+              </p>
+
+              <div v-if="sealData && sealData.seals.length" class="seal-list">
+                <div
+                  v-for="seal in sealData.seals"
+                  :key="seal.sealNo || seal.sealName"
+                  class="seal-item"
+                >
+                  <img
+                    v-if="seal.sealUrl"
+                    class="seal-item__preview"
+                    :src="seal.sealUrl"
+                    alt="企业印章预览"
+                  />
+                  <span v-else class="seal-item__preview seal-item__preview--empty">
+                    <TIcon><CollectionTag /></TIcon>
+                  </span>
+                  <div class="seal-item__copy">
+                    <span class="seal-item__name">{{ seal.sealName || '未命名印章' }}</span>
+                    <small class="seal-item__no">印章编号：{{ seal.sealNo || '—' }}</small>
+                  </div>
+                  <TTag
+                    v-if="seal.isDefault"
+                    tone="success"
+                    size="sm"
+                    class="seal-item__tag"
+                    >默认印章</TTag
+                  >
+                </div>
+              </div>
+
+              <p v-else class="seal-empty">
+                {{ sealData?.message || '尚未创建企业印章，可在线制作一枚。' }}
+              </p>
+
+              <div class="asign-row seal-dialog__actions">
+                <TButton
+                  variant="solid"
+                  tone="accent"
+                  :loading="sealMakeLoading"
+                  @click="handleSealMakeOnline"
+                  >在线制作新印章</TButton
+                >
+                <TButton variant="outline" @click="openCompanyFromSeal">修改企业信息</TButton>
+              </div>
+              <p class="asign-hint seal-dialog__foot">
+                「在线制作新印章」会在爱签页面新增一枚印章，不会覆盖现有印章；若要更新企业名称并自动换章，请用「修改企业信息」。
+              </p>
+            </template>
+          </TLoading>
+        </TDialog>
       </div>
     </section>
 
@@ -4473,6 +4635,96 @@ onBeforeUnmount(() => {
   font-size: 12px;
   line-height: 1.6;
   margin: 0 0 12px;
+}
+
+/* ── 印章管理弹窗 ──────────────────────────────────────────── */
+.seal-dialog__body {
+  display: grid;
+  gap: 12px;
+}
+
+.seal-dialog__alert {
+  margin: 0;
+}
+
+.seal-dialog__retry {
+  margin-top: 10px;
+}
+
+.seal-list {
+  display: grid;
+  gap: 10px;
+}
+
+/* 印章条目：左侧预览图 + 名称 / 编号 + 默认标记，观感与账号入口行同一套圆角与底色 */
+.seal-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.seal-item__preview {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.seal-item__preview--empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 24px;
+}
+
+.seal-item__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.seal-item__name {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.seal-item__no {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.seal-item__tag {
+  flex: 0 0 auto;
+}
+
+.seal-empty {
+  margin: 0;
+  padding: 14px 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.seal-dialog__actions {
+  margin-top: 4px;
+}
+
+.seal-dialog__foot {
+  margin: 0;
 }
 
 .settle-dialog {
