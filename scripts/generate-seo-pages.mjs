@@ -41,14 +41,9 @@ const postDetailConcurrency = positiveInteger(process.env.SEO_POST_DETAIL_CONCUR
 
 const navigationLinks = [
   {
-    href: '/free-resources',
-    title: '免费资源',
-    description: '浏览网站开发、小工具等公开资源。',
-  },
-  {
-    href: '/paid-resources',
-    title: '付费资源',
-    description: '浏览现金定价的付费资源与购买入口。',
+    href: '/resources',
+    title: '资源项目',
+    description: '浏览公开资源：免费资源与现金定价的付费资源在同一页内切换。',
   },
   {
     href: '/requirement-hall',
@@ -96,6 +91,24 @@ const pages = [
     lead: '面向网站开发和小工具场景提供资源发现、需求发布、开发者协作、沟通记录、工单跟进与合规说明服务。',
   },
   {
+    // 「资源项目」：顶栏与首页 SEO 导航指向的一级入口，免费 / 付费在同一页内切换
+    // （`/free-resources`、`/paid-resources` 已在前端路由里重定向到它并带上 `?sale=`）。
+    // 它必须有自己的静态入口页：`dist/resources/` 这个目录里装的是详情页
+    // （`resources/<slug>/index.html`），少一份 `resources/index.html` 时线上
+    // `try_files $uri $uri/ /spa-fallback.html` 命中目录却取不到目录索引，直接返回 403
+    // 且不回落 SPA 壳（见 任务/缺陷/BUG-016）。
+    path: '/resources',
+    kind: 'resources',
+    sale: 'all',
+    title: '资源项目 - 73Info 柒叁信息',
+    description:
+      '在 73Info 资源项目里浏览公开资源：免费资源与现金定价的付费资源在同一页内切换，查看资源介绍、分类标签、作者信息与下载 / 购买入口。',
+    heading: '资源项目',
+    lead: '浏览公开资源：免费资源与现金定价的付费资源在同一页内切换，查看资源介绍、分类标签、作者信息与下载 / 购买入口。',
+  },
+  {
+    // 旧地址：前端路由会重定向到 `/resources?sale=free`，这里保留静态入口页，
+    // 让老链接、详情页面包屑与外链仍有一条返回 200 的落地页（内容只列免费资源）。
     path: '/free-resources',
     kind: 'resources',
     sale: 'free',
@@ -458,20 +471,31 @@ function renderEntrySections(page, dataset, doc) {
   }
 
   if (page.kind === 'resources') {
-    const listed = listingResources(dataset, page.sale)
-    const items = listed.slice(0, listLimit).map(resourceListItem)
-    const title = page.sale === 'paid' ? '付费资源列表' : '免费资源列表'
-    const emptyHint =
-      page.sale === 'paid'
-        ? '当前还没有现金定价的付费资源，开发者上架后会出现在这里。'
-        : '当前还没有已发布的免费资源，新资源通过审核后会出现在这里。'
+    // `/resources` 一页里同时给免费与付费两个区块（前端用 `?sale=` 切换），
+    // 免费厅 / 付费厅各自只有一个区块——`listingResources` 的取数口径与前端一致。
+    const sales = page.sale === 'all' ? ['free', 'paid'] : [page.sale]
+    let total = 0
+    const sections = sales.map((sale) => {
+      const listed = listingResources(dataset, sale)
+      total += listed.length
+      const items = listed.slice(0, listLimit).map(resourceListItem)
+      const title = sale === 'paid' ? '付费资源列表' : '免费资源列表'
+      const emptyHint =
+        sale === 'paid'
+          ? '当前还没有现金定价的付费资源，开发者上架后会出现在这里。'
+          : '当前还没有已发布的免费资源，新资源通过审核后会出现在这里。'
 
-    return items.length > 0
-      ? renderItemListSection(title, `共 ${listed.length} 份已发布资源，按最近更新排序。`, items)
-      : [
-          renderItemListSection(title, emptyHint, []),
-          ...fallbackSections(dataset, 'resources'),
-        ].join('\n')
+      return items.length > 0
+        ? renderItemListSection(title, `共 ${listed.length} 份已发布资源，按最近更新排序。`, items)
+        : renderItemListSection(title, emptyHint, [])
+    })
+
+    // 一个公开资源也没有：补上其它公开列表，入口页仍有实质文字与可爬的内链。
+    if (total === 0) {
+      sections.push(...fallbackSections(dataset, 'resources'))
+    }
+
+    return sections.join('\n')
   }
 
   if (page.kind === 'requirements') {
@@ -741,10 +765,15 @@ function entryItemLists(page, dataset) {
   }
 
   if (page.kind === 'resources') {
-    push(
-      page.sale === 'paid' ? '付费资源列表' : '免费资源列表',
-      listingResources(dataset, page.sale).slice(0, listLimit).map(resourceListItem),
-    )
+    // `/resources` 页的 JSON-LD 也按两个厅各列一份 ItemList，与页面正文区块一致。
+    const sales = page.sale === 'all' ? ['free', 'paid'] : [page.sale]
+
+    for (const sale of sales) {
+      push(
+        sale === 'paid' ? '付费资源列表' : '免费资源列表',
+        listingResources(dataset, sale).slice(0, listLimit).map(resourceListItem),
+      )
+    }
   }
 
   if (page.kind === 'posts') {
@@ -914,7 +943,7 @@ function renderPostDetailPage(post, dataset) {
     links: [
       { href: '/community', title: '社区交流', description: '查看平台公告、经验分享和用户讨论。' },
       { href: '/requirement-hall', title: '需求大厅', description: '发布需求、查看合作机会、对接开发者。' },
-      { href: '/free-resources', title: '免费资源', description: '浏览网站开发与小工具等公开资源。' },
+      { href: '/resources', title: '资源项目', description: '浏览公开的免费资源与付费资源。' },
       { href: '/', title: '返回首页', description: '回到 73Info 柒叁信息首页。' },
     ],
     jsonLd: {
@@ -991,8 +1020,7 @@ function renderProfileDetailPage(profile, dataset) {
       },
     ],
     links: [
-      { href: '/free-resources', title: '免费资源', description: '浏览网站开发与小工具等公开资源。' },
-      { href: '/paid-resources', title: '付费资源', description: '浏览现金定价的付费资源。' },
+      { href: '/resources', title: '资源项目', description: '浏览公开的免费资源与付费资源。' },
       { href: '/requirement-hall', title: '需求大厅', description: '发布需求、查看合作机会、对接开发者。' },
       { href: '/community', title: '社区交流', description: '查看平台公告、经验分享和用户讨论。' },
       { href: '/', title: '返回首页', description: '回到 73Info 柒叁信息首页。' },

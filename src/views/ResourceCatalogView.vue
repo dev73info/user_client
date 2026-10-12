@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
+import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
 
 import { ArrowDown, TDropdown, TDropdownItem, TDropdownMenu, TIcon } from 'ui_73info'
 
@@ -296,9 +296,6 @@ function updateViewport() {
   <main class="portal-page catalog-layout-page">
     <!-- 顶栏两行（专区行 / 子类行）合并成一行：面包屑 + 分区标题 -->
     <nav v-if="!isMobile" class="catalog-breadcrumb" aria-label="资源分区面包屑">
-      <RouterLink class="catalog-breadcrumb__link" :to="{ name: 'resources' }">资源项目</RouterLink>
-      <span class="catalog-breadcrumb__sep" aria-hidden="true">/</span>
-
       <TDropdown trigger="click" placement="bottom-start" @command="handleRootCommand">
         <button class="catalog-breadcrumb__trigger" type="button" aria-label="切换专区">
           <span>{{ currentRootName || '选择专区' }}</span>

@@ -49,6 +49,9 @@ function buildStaticEntries({ resources, posts, requirements, profiles }) {
 
   return [
     { path: '/', lastmod: overall, changefreq: 'daily', priority: '1.0' },
+    // 「资源项目」是顶栏与首页导航指向的一级入口（免费 / 付费在同一页内切换），
+    // 原先漏在 sitemap 之外，一级入口没有可爬路径（见 任务/缺陷/BUG-016）。
+    { path: '/resources', lastmod: latestOf(resourceDates) || today, changefreq: 'daily', priority: '0.9' },
     { path: '/free-resources', lastmod: latestOf(freeResourceDates) || today, changefreq: 'daily', priority: '0.8' },
     // 付费厅与免费厅是两个入口页：原先只列了免费厅，付费资源在站内没有任何可爬入口。
     { path: '/paid-resources', lastmod: latestOf(paidResourceDates) || today, changefreq: 'daily', priority: '0.7' },
