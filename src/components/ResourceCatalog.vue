@@ -82,12 +82,10 @@ const props = defineProps<{
   /** 免费 / 付费分区：由页内分段切换写入（见 ResourceCatalogView），这里只做展示过滤 */
   listingMode?: ResourceListingSale | null
   /**
-   * 主从双栏（资源列表页桌面端）：卡片不再跳独立详情路由，而是把选中项交给父级，
-   * 由右栏就地渲染详情（见 ResourceCatalogView / ResourceDetailPanel）。
+   * 资源列表页（桌面端）：卡片不跳独立详情路由，而是把选中项交给父级，
+   * 由父级把整个列表换出、就地在同一块内容区渲染详情（见 ResourceCatalogView / ResourceDetailPanel）。
    */
   masterDetail?: boolean
-  /** 当前选中的资源编号：只用于列表项的高亮与「查看中」标记 */
-  selectedId?: number | null
 }>()
 
 /** 已选筛选汇总出来的一枚 chip：父页面据此渲染可逐个移除的筛选条 */
@@ -644,9 +642,7 @@ watch(activeFilterChips, (chips) => emit('filters-change', chips), { immediate: 
     </section>
 
     <section class="portal-resource-browser__grid">
-      <article v-for="card in pagedCards" :key="card.id" class="portal-resource-browser__card"
-        :class="{ 'portal-resource-browser__card--selected': masterDetail && card.id === selectedId }"
-        :aria-current="masterDetail && card.id === selectedId ? 'true' : undefined">
+      <article v-for="card in pagedCards" :key="card.id" class="portal-resource-browser__card">
         <div class="portal-resource-browser__card-main">
           <div v-if="card.coverUrl && !card.coverFailed" class="portal-resource-browser__cover portal-resource-browser__cover--image">
             <img :src="card.coverUrl" :alt="card.title" class="portal-resource-browser__cover-image" @error="onCoverError(card)" />
@@ -713,7 +709,7 @@ watch(activeFilterChips, (chips) => emit('filters-change', chips), { immediate: 
               <span>{{ card.likeCount }}</span>
             </button>
             <button class="portal-resource-browser__action" type="button" @click="openResource(card)">
-              {{ masterDetail && card.id === selectedId ? '查看中' : '查看详情' }}
+              查看详情
             </button>
           </div>
         </div>
@@ -1011,30 +1007,6 @@ watch(activeFilterChips, (chips) => emit('filters-change', chips), { immediate: 
 /* 悬停只变描边色：不做位移、不加投影 */
 .portal-resource-browser__card:hover {
   border-color: rgba(31, 74, 209, 0.4);
-}
-
-/* 主从双栏下的当前选中项：加粗描边 + 浅色底 + 左侧强调条（不用阴影、不做位移）。
-   选中即「右栏正在展示这一条」，要与 hover 区分得开，所以在描边之外还有底色与强调条。 */
-.portal-resource-browser__card--selected {
-  position: relative;
-  border-color: var(--accent);
-  background: rgba(239, 246, 255, 0.72);
-}
-
-.portal-resource-browser__card--selected::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 14px;
-  bottom: 14px;
-  width: 3px;
-  border-radius: 0 999px 999px 0;
-  background: var(--accent);
-}
-
-.portal-resource-browser__card--selected .portal-resource-browser__action {
-  background: var(--accent);
-  color: #fff;
 }
 
 .portal-resource-browser__card-main {

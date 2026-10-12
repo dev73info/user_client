@@ -2686,46 +2686,25 @@ a.resource-detail-page__repost-origin:hover {
 }
 
 /* ============================================================
-   主从双栏形态（资源列表页右栏内嵌，见 ResourceCatalogView）
-   宽度 / 高度都跟随右栏，封面与历史版本不再与摘要并排，改成单列纵向；
-   外层栏位自己 sticky，这里负责栏内滚动；层级仍靠描边不用阴影。
+   列表页内嵌形态（资源列表页内容区，见 ResourceCatalogView）
+   宽度跟随内容区：详情在整宽的单一内容区里跟页面一起滚
+   （不再是「外层 sticky + 栏内自滚」），所以这里不设 max-height / overflow；
+   层级仍靠描边不用阴影。
+   栏内栅格分两档：宽容器（>980px）直接用详情页形态的两栏 lead
+   （封面在左、历史版本在右，标题也用详情页档）；≤980px 才压成单列紧凑档。
    ============================================================ */
 .resource-detail-page--panel {
   width: 100%;
   min-width: 0;
-  /* `.portal-page` 自带上下外边距，内嵌到右栏时要去掉，否则与左栏顶部对不齐 */
+  /* `.portal-page` 自带上下外边距，内嵌到列表页内容区时要去掉，否则与工具条左右对不齐 */
   margin: 0;
   gap: 16px;
-  max-height: calc(100vh - 108px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  padding: 0 4px 4px 0;
 }
 
 .resource-detail-page--panel .resource-detail-page__panel {
   padding: 18px;
   border-radius: 16px;
   box-shadow: none;
-}
-
-.resource-detail-page--panel .resource-detail-page__lead {
-  grid-template-columns: 1fr;
-  gap: 16px;
-}
-
-.resource-detail-page--panel .resource-detail-page__left-stack,
-.resource-detail-page--panel .resource-detail-page__versions-side-card {
-  grid-column: auto;
-  grid-row: auto;
-}
-
-.resource-detail-page--panel .resource-detail-page__cover-card {
-  aspect-ratio: 2.6;
-}
-
-.resource-detail-page--panel .resource-detail-page__title {
-  font-size: 24px;
 }
 
 .resource-detail-page--panel .resource-detail-page__summary-card,
@@ -2738,9 +2717,31 @@ a.resource-detail-page__repost-origin:hover {
   margin-top: 16px;
 }
 
-/* 右栏里版本列表不再撑到视口高（整个面板已经是一个滚动容器） */
+/* 内嵌形态里版本列表不跟着页面无限拉长：超过一定高度由它自己滚 */
 .resource-detail-page--panel .resource-detail-page__version-list {
   max-height: 420px;
+}
+
+/* 窄档（与组件自带的 980 断点同一档）：lead 压成单列、封面收窄、标题降一档 */
+@media (max-width: 980px) {
+  .resource-detail-page--panel .resource-detail-page__lead {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__left-stack,
+  .resource-detail-page--panel .resource-detail-page__versions-side-card {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__cover-card {
+    aspect-ratio: 2.6;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__title {
+    font-size: 24px;
+  }
 }
 
 /* 取数失败时面板就地的兜底（详情页形态失败会退回首页，不走这一块） */

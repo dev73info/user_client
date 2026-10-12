@@ -52,10 +52,6 @@ const activeListingMode = computed<ResourceListingSale>(
   () => pendingListingMode.value ?? resolveResourceListingSale(route.query.sale),
 )
 
-const activeListingLabel = computed(() =>
-  activeListingMode.value === 'paid' ? '付费资源' : '免费资源',
-)
-
 async function switchListingMode(mode: ResourceListingSale) {
   if (mode === activeListingMode.value && pendingListingMode.value === null) {
     return
@@ -144,7 +140,7 @@ function selectResource(id: number) {
   void router.replace({ query: { ...route.query, resource: String(id) } })
 }
 
-/** 右栏「收起详情」：清掉选中并把它从 URL 上摘掉 */
+/** 右栏「收起详情」/ 工具条「返回」：清掉选中并把它从 URL 上摘掉（其余 query 一律保留） */
 function clearSelectedResource() {
   selectedResourceId.value = null
   if ('resource' in route.query) {
@@ -154,32 +150,6 @@ function clearSelectedResource() {
 
 watch(() => route.query.resource, syncSelectionFromQuery, { immediate: true })
 watch(isMobile, syncSelectionFromQuery)
-
-/**
- * 未选中任何资源时右栏的占位文案。
- * 「整个分区没有资源」与「有资源但没选中」是两种状态：
- * 前者要说明为什么空、下一步去哪儿（出口在左侧空态里，见 ResourceCatalog），后者只是引导点一条。
- */
-const detailHint = computed(() => {
-  if (pageState.value.totalItems > 0) {
-    return {
-      title: '从左侧选择一条资源查看详情',
-      text: '点左侧资源的「查看详情」，详情会在这块区域就地展开，不会离开当前列表；地址栏也会带上当前选中的资源，可以直接复制分享。',
-    }
-  }
-
-  if (activeFilterChips.value.length > 0) {
-    return {
-      title: '当前筛选下没有可展示的资源',
-      text: '左侧空态里可以一键清除全部筛选；也可以换个免费 / 付费分区看看。',
-    }
-  }
-
-  return {
-    title: `还没有${activeListingLabel.value}`,
-    text: '左侧空态里可以直接换个分区，或者自己发布一条需求。',
-  }
-})
 
 // 工具条上的三块状态都由 ResourceCatalog 上报（数据在它那里，切换分区 / 排序仍是本地过滤）
 const listingCounts = ref<{ free: number; paid: number }>({ free: 0, paid: 0 })
@@ -191,6 +161,16 @@ const pageState = ref<CatalogPageState>({
   hasNext: false,
   totalItems: 0,
 })
+
+/**
+ * 列表是否至少上报过一次。
+ *
+ * 工具条上的计数、统计与分页都来自列表本地数据，而详情态下**整个列表不渲染**
+ * （见模板里的主从单栏）。冷启动直接带 `?resource=<id>` 打开时列表没跑过，
+ * 这里若照旧渲染，工具条会显示一个假的「共 0 个」；所以上报过之前一律不显示这些数字。
+ * 从列表点进详情的情形不受影响：上一次上报的值仍在，返回时也不会闪一下 0。
+ */
+const listingReported = ref(false)
 
 /** 多页时才出现的页码胶囊：页数多时用「…」收口，只留首尾与当前附近 */
 const pageNumbers = computed<Array<number | '…'>>(() => {
@@ -231,10 +211,12 @@ function handleSortCommand(command: unknown) {
 
 function handlePageStateChange(state: CatalogPageState) {
   pageState.value = state
+  listingReported.value = true
 }
 
 function handleListingCounts(counts: { free: number; paid: number }) {
   listingCounts.value = counts
+  listingReported.value = true
 }
 
 function handleFiltersChange(chips: CatalogFilterChip[]) {
@@ -406,8 +388,8 @@ function updateViewport() {
             </template>
           </TDropdown>
 
-          <ResourceModeSwitch :model-value="activeListingMode" :counts="listingCounts"
-            @update:model-value="switchListingMode" />
+          <ResourceModeSwitch :model-value="activeListingMode"
+            :counts="listingReported ? listingCounts : null" @update:model-value="switchListingMode" />
         </div>
 
         <nav class="catalog-subtabs" aria-label="子分区切换">
@@ -450,13 +432,15 @@ function updateViewport() {
             </template>
           </TDropdown>
 
-          <span class="catalog-count">
+          <!-- 统计与分页来自列表的本地数据；详情态下列表不渲染、冷启动深链时更没跑过，
+               所以在列表首次上报之前不显示（否则会出现假的「共 0 个」） -->
+          <span v-if="listingReported" class="catalog-count">
             共 {{ pageState.totalItems }} 个
             <template v-if="pageState.total > 1"> · 第 {{ pageState.current }}/{{ pageState.total }} 页</template>
           </span>
 
           <!-- 分页只在多页时出现（单页整条隐藏） -->
-          <nav v-if="pageState.total > 1" class="catalog-pager" aria-label="结果分页">
+          <nav v-if="listingReported && pageState.total > 1" class="catalog-pager" aria-label="结果分页">
             <button class="catalog-pager__btn" type="button" :disabled="!pageState.hasPrev" @click="goPrevPage">
               上一页
             </button>
@@ -472,6 +456,14 @@ function updateViewport() {
               下一页
             </button>
           </nav>
+
+          <!-- 打开详情才出现：清掉 `?resource=` 让列表回来，其余 query（专区 / 分区 / 排序 / 筛选）
+               原样保留，用户回到点进详情前的位置 -->
+          <button v-if="selectedResourceId !== null" class="catalog-back-btn" type="button"
+            aria-label="返回资源列表" @click="clearSelectedResource">
+            <span aria-hidden="true">←</span>
+            <span>返回</span>
+          </button>
         </div>
       </div>
     </section>
@@ -483,26 +475,24 @@ function updateViewport() {
         :listing-mode="activeListingMode" @switch-listing-mode="switchListingMode"
         @listing-counts="handleListingCounts" />
 
-      <!-- 桌面端主从双栏：左栏是资源列表（筛选 / 排序 / 分区 / 计数 / chip 都在它上方照旧），
-           右栏就地渲染选中资源的详情；选中只改 URL 的 query，不整页跳转、不卸载重挂 -->
+      <!-- 桌面端是「单栏两块、同一时刻只渲染一块」：未选中时资源列表独占内容区整宽，
+           选中一条资源时整个列表收起、详情独占内容区整宽（不再左右并排，也不留空栏）。
+           选中只改 URL 的 query（`?resource=<id>`），不整页跳转、不切路由。
+           KeepAlive：列表收起时用 `v-if` 让整块从文档里移除（选择器查不到，也不再跑取数与布局），
+           但组件实例被缓存住，返回时排序 / 已选筛选 / 当前页码原样恢复，不用重新取数。 -->
       <div v-else class="catalog-master">
-        <div class="catalog-master__list">
-          <ResourceCatalog ref="catalogRef" master-detail :selected-id="selectedResourceId"
-            :platform="currentPlatform" :rootSlug="currentRootSlug" :entrySlug="currentEntrySlug"
+        <KeepAlive>
+          <ResourceCatalog v-if="selectedResourceId === null" ref="catalogRef" class="catalog-master__list"
+            master-detail :platform="currentPlatform" :rootSlug="currentRootSlug" :entrySlug="currentEntrySlug"
             :groupName="currentTab?.groupName || currentEntryLabel" :listing-mode="activeListingMode"
             @page-state-change="handlePageStateChange" @listing-counts="handleListingCounts"
             @filters-change="handleFiltersChange" @switch-listing-mode="switchListingMode"
             @select-resource="selectResource" />
-        </div>
+        </KeepAlive>
 
-        <aside class="catalog-master__detail" aria-label="资源详情">
-          <ResourceDetailPanel v-if="selectedResourceId !== null" :key="selectedResourceId"
-            :resource-id="selectedResourceId" variant="panel" @close="clearSelectedResource" />
-          <!-- 没选中任何资源：分区为空与「有资源但没选中」是两种状态，分别给文案 -->
-          <div v-else class="catalog-detail-hint">
-            <strong>{{ detailHint.title }}</strong>
-            <span>{{ detailHint.text }}</span>
-          </div>
+        <aside v-if="selectedResourceId !== null" class="catalog-master__detail" aria-label="资源详情">
+          <ResourceDetailPanel :key="selectedResourceId" :resource-id="selectedResourceId" variant="panel"
+            @close="clearSelectedResource" />
         </aside>
       </div>
     </section>

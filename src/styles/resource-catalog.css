@@ -144,6 +144,9 @@
 
 .catalog-layout-page {
   width: min(1280px, calc(100% - 24px));
+  /* 面包屑整条移除后工具条成了内容区第一块：顶距按本页的区块间距档位（14px）收窄，
+     不再沿用 `.portal-page` 的 24px（那一档是给「首块 + 面包屑」两层留的） */
+  margin-top: 14px;
   margin-left: auto;
   margin-right: auto;
   display: grid;
@@ -335,7 +338,8 @@
   margin-left: auto;
 }
 
-.catalog-sort-trigger {
+.catalog-sort-trigger,
+.catalog-back-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -354,7 +358,8 @@
     color 160ms ease;
 }
 
-.catalog-sort-trigger:hover {
+.catalog-sort-trigger:hover,
+.catalog-back-btn:hover {
   border-color: rgba(31, 74, 209, 0.4);
   color: var(--accent);
 }
@@ -429,16 +434,16 @@
 }
 
 /* ============================================================
-   主从双栏（桌面端 >900px）：左栏资源列表 + 右栏就地详情
-   - 左栏仍是原来的 ResourceCatalog（筛选栏 + 卡片），只是压成单列并收窄筛选栏；
-   - 右栏渲染选中资源的详情，未选中时是占位；
-   - 选中只改 URL 的 `?resource=`，路由与组件实例都不变，不整页跳转 / 不卸载重挂。
+   资源列表页的内容区（桌面端 >900px）：单栏「整块切换」
+   - 未选中资源：资源列表独占整宽（筛选栏 + 卡片栅格仍是它自己的默认两栏）；
+   - 选中一条资源：整个列表不渲染，详情独占整宽（同一时刻只有一块，不留空栏、不出横向滚动）；
+   - 选中只改 URL 的 `?resource=`，路由与页面组件都不变，不整页跳转 / 不切路由。
    ============================================================ */
 
 .catalog-master {
   display: grid;
-  /* 详情内容比列表密，所以右栏给略宽的份额 */
-  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  /* 只有一栏：两块内容互斥渲染，谁在就谁占满整宽 */
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 16px;
   min-width: 0;
@@ -447,49 +452,6 @@
 .catalog-master__list,
 .catalog-master__detail {
   min-width: 0;
-}
-
-/* 右栏钉在视口内、由栏内自己滚：详情可能很长，直接 pin 到顶会滚不动 */
-.catalog-master__detail {
-  position: sticky;
-  top: 86px;
-}
-
-/* 未选中任何资源时的右栏占位：与列表卡片同一套描边 / 底色语言，不用阴影 */
-.catalog-detail-hint {
-  display: grid;
-  justify-items: center;
-  gap: 8px;
-  padding: 56px 24px;
-  border: 1px solid var(--card-border);
-  border-radius: 12px;
-  background: var(--bg-soft);
-  text-align: center;
-  color: #64748b;
-}
-
-.catalog-detail-hint strong {
-  color: #0f172a;
-  font-size: 16px;
-}
-
-.catalog-detail-hint span {
-  max-width: 420px;
-  font-size: 13px;
-  line-height: 1.7;
-}
-
-/* 左栏的卡片栅格在主从双栏下压成单列（栏宽只够一张卡，硬撑多列会挤成窄条）。
-   下面两条都要盖过组件内 scoped 的默认栅格，所以用「.catalog-master + 两级」压过它的特异度。 */
-.catalog-master .catalog-master__list .portal-resource-browser__grid {
-  grid-template-columns: 1fr;
-}
-
-/* 筛选栏收窄给卡片留宽度；≤980px 仍交回组件自己的「筛选栏置顶」规则 */
-@media (min-width: 981px) {
-  .catalog-master .catalog-master__list .portal-resource-browser {
-    grid-template-columns: minmax(150px, 176px) minmax(0, 1fr);
-  }
 }
 
 @media (max-width: 900px) {
