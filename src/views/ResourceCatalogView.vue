@@ -365,7 +365,7 @@ function updateViewport() {
          供屏幕阅读器与搜索引擎定位当前分区；分区名在右侧分区间页签里仍然可见 -->
     <h1 v-if="!isMobile" class="catalog-visually-hidden">{{ currentEntryLabel }}</h1>
 
-    <!-- 工具条：第一行「专区下拉 + 分区 segmented（唯一一处）+ 子类下划线 Tab」，
+    <!-- 工具条：第一行「专区下拉 + 子类下划线 Tab …… 分区 segmented（唯一一处）」，
          第二行「已选筛选 chip + 排序下拉 + 统计 / 翻页」 -->
     <section v-if="!isMobile" class="catalog-toolbar">
       <div class="catalog-toolbar__row">
@@ -387,17 +387,17 @@ function updateViewport() {
             </template>
           </TDropdown>
 
-          <ResourceModeSwitch :model-value="activeListingMode"
-            :counts="listingReported ? listingCounts : null" @update:model-value="switchListingMode" />
+          <nav class="catalog-subtabs" aria-label="子分区切换">
+            <button v-for="tab in platformTabs" :key="tab.slug" class="catalog-subtab"
+              :class="{ 'catalog-subtab--active': tab.slug === currentEntrySlug }" type="button"
+              @click="openPlatform(tab.slug)">
+              {{ tab.groupName }}
+            </button>
+          </nav>
         </div>
 
-        <nav class="catalog-subtabs" aria-label="子分区切换">
-          <button v-for="tab in platformTabs" :key="tab.slug" class="catalog-subtab"
-            :class="{ 'catalog-subtab--active': tab.slug === currentEntrySlug }" type="button"
-            @click="openPlatform(tab.slug)">
-            {{ tab.groupName }}
-          </button>
-        </nav>
+        <ResourceModeSwitch :model-value="activeListingMode"
+          :counts="listingReported ? listingCounts : null" @update:model-value="switchListingMode" />
       </div>
 
       <div class="catalog-toolbar__row">

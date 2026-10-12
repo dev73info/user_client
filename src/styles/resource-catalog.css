@@ -217,8 +217,8 @@
   border-top: 1px solid rgba(226, 232, 240, 0.9);
 }
 
-/* 工具条第一行左段：专区下拉 + 免费/付费 segmented 紧挨在一起，
-   右侧的子类页签靠 space-between 推到行尾 */
+/* 工具条第一行左段：专区下拉 + 子类页签紧挨在一起，
+   右侧的免费/付费 segmented 靠 space-between 推到行尾 */
 .catalog-toolbar__lead {
   display: inline-flex;
   align-items: center;
