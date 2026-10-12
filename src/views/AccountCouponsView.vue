@@ -3176,17 +3176,6 @@ onBeforeUnmount(() => {
           </div>
         </TDialog>
 
-        <TCard class="realname-card realname-guide-card">
-          <h3>认证说明</h3>
-          <ul class="realname-guide-card__list">
-            <li>认证信息仅用于资质核验，请务必真实有效。</li>
-            <li>大陆居民身份证支持即时人脸核验。</li>
-            <li>企业认证需平台人工审核，请耐心等待。</li>
-            <li>审核通过后可用于合同签署。</li>
-            <li>已通过的主体如需更换，可在「认证管理」里点「变更认证类型」重新认证。</li>
-          </ul>
-        </TCard>
-
         <TDialog
           v-model:open="faceidDialogVisible"
           :title="enterpriseSelected ? '企业认证' : '人脸核身认证'"
@@ -4273,63 +4262,12 @@ onBeforeUnmount(() => {
   gap: 10px;
 }
 
-/* 外壳保留与左侧工作台菜单对齐的最小高度（菜单高 100vh - 顶栏占位 - 22px），
-   但只有外壳自己兜住这段高度，卡片一律按内容高度排 */
+/* 账户实名外壳按内容高度排：末张「认证说明」卡片已移除，右列无需再撑满、
+   也不再与左侧工作台菜单对齐底边，避免卡片下方留出成片空白 */
 .realname-page-shell {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-height: calc(100vh - var(--portal-header-footprint, 98px) - 22px);
-}
-
-/* 「认证说明」卡片按内容高度排（标题 + 5 条说明 + 上下内边距），不参与外壳剩余高度的分配，
-   否则卡片会被撑到几百像素，文字排完后下面空一大截 */
-.realname-guide-card {
-  flex: 0 0 auto;
-}
-
-/* 窄屏菜单不再与内容并排，没有底边可对齐，卡片回到内容高度 */
-@media (max-width: 900px) {
-  .realname-page-shell {
-    min-height: 0;
-  }
-
-  .realname-guide-card {
-    flex: 0 0 auto;
-  }
-}
-
-.realname-guide-card h3 {
-  margin: 0 0 10px;
-  font-size: 16px;
-  color: #0f172a;
-}
-
-.realname-guide-card__list {
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 10px;
-  list-style: none;
-}
-
-.realname-guide-card__list li {
-  position: relative;
-  padding-left: 18px;
-  color: #475569;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.realname-guide-card__list li::before {
-  content: '';
-  position: absolute;
-  top: 7px;
-  left: 0;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
 }
 
 .realname-metrics {
