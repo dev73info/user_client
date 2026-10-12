@@ -101,6 +101,9 @@ function onKeydown(event: KeyboardEvent) {
    胶囊轨道 + 一枚滑块。滑块用门户强调色 `--accent`（设计方案「令牌与档位」把强调蓝
    限定在三处：当前分区滑块 / 主按钮 / 选中下划线；本轮口径是**不用渐变、不用阴影**），
    只有 180ms 的位移过渡，不加多余装饰。
+   轨道底色由强调色按 8% 混进 `--bg-mid`：`--bg-mid` 本身是 #f5f8fa，铺在白卡面上
+   几乎与卡面同色，控件只剩一圈描边、滑块看着像悬空；混一点强调色之后轨道有了明确的
+   「凹槽」读法，与选中块同一色系。描边同比例混一点强调色，免得灰边与淡蓝底打架。
    每段带计数（本地算，切分区仍是零请求）；计数为 0 时置灰但仍可点，方便查看空态。 */
 .resource-mode-switch {
   position: relative;
@@ -109,8 +112,8 @@ function onKeydown(event: KeyboardEvent) {
   align-items: center;
   padding: 4px;
   border-radius: 999px;
-  border: 1px solid var(--card-border);
-  background: var(--bg-mid);
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--card-border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-mid));
 }
 
 .resource-mode-switch__thumb {
