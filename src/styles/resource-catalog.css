@@ -150,38 +150,25 @@
   gap: 14px;
 }
 
-/* --- 面包屑：资源项目 / 根分区（下拉切换）/ 当前子分区标题 --- */
-.catalog-breadcrumb {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-height: 28px;
+/* --- 视觉隐藏：面包屑移除后本页唯一的 h1，仅保留在 DOM 里供无障碍与 SEO --- */
+.catalog-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.catalog-breadcrumb__link {
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 700;
-  text-decoration: none;
-  transition: color 160ms ease;
-}
-
-.catalog-breadcrumb__link:hover {
-  color: var(--accent);
-}
-
-.catalog-breadcrumb__sep {
-  color: #cbd5e1;
-  font-size: 13px;
-}
-
-.catalog-breadcrumb__trigger {
+/* --- 专区下拉（原面包屑触发器，移出面包屑后独立命名）--- */
+.catalog-zone-trigger {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  margin: -4px -2px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -189,26 +176,19 @@
   font: inherit;
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
   transition: background 160ms ease;
 }
 
-.catalog-breadcrumb__trigger:hover {
+.catalog-zone-trigger:hover {
   background: rgba(31, 74, 209, 0.08);
 }
 
-.catalog-breadcrumb__chevron {
+.catalog-zone-trigger__chevron {
   width: 12px;
   height: 12px;
   font-size: 12px;
-}
-
-.catalog-breadcrumb__title {
-  margin: 0;
-  color: var(--text-main);
-  font-size: 16px;
-  font-weight: 800;
-  line-height: 1.2;
 }
 
 /* --- 工具条：两行，白面 + 1px 描边，不用阴影 --- */
@@ -232,6 +212,16 @@
 .catalog-toolbar__row + .catalog-toolbar__row {
   padding-top: 10px;
   border-top: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+/* 工具条第一行左段：专区下拉 + 免费/付费 segmented 紧挨在一起，
+   右侧的子类页签靠 space-between 推到行尾 */
+.catalog-toolbar__lead {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
 }
 
 /* 子类切换：文本 Tab + 2px 下划线（不再是同形胶囊） */

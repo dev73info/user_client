@@ -380,35 +380,35 @@ function updateViewport() {
 
 <template>
   <main class="portal-page catalog-layout-page">
-    <!-- 顶栏两行（专区行 / 子类行）合并成一行：面包屑 + 分区标题 -->
-    <nav v-if="!isMobile" class="catalog-breadcrumb" aria-label="资源分区面包屑">
-      <TDropdown trigger="click" placement="bottom-start" @command="handleRootCommand">
-        <button class="catalog-breadcrumb__trigger" type="button" aria-label="切换专区">
-          <span>{{ currentRootName || '选择专区' }}</span>
-          <TIcon class="catalog-breadcrumb__chevron">
-            <ArrowDown />
-          </TIcon>
-        </button>
-        <template #dropdown>
-          <TDropdownMenu>
-            <TDropdownItem v-for="root in rootTabs" :key="root.slug" :command="root.slug"
-              :active="root.slug === currentRootSlug">
-              {{ root.label }}
-            </TDropdownItem>
-          </TDropdownMenu>
-        </template>
-      </TDropdown>
+    <!-- 面包屑整条移除后，本页在桌面端只剩这一个 h1：视觉隐藏、保留在 DOM 里，
+         供屏幕阅读器与搜索引擎定位当前分区；分区名在右侧分区间页签里仍然可见 -->
+    <h1 v-if="!isMobile" class="catalog-visually-hidden">{{ currentEntryLabel }}</h1>
 
-      <span class="catalog-breadcrumb__sep" aria-hidden="true">/</span>
-      <h1 class="catalog-breadcrumb__title">{{ currentEntryLabel }}</h1>
-    </nav>
-
-    <!-- 工具条：第一行「分区 segmented（唯一一处）+ 子类下划线 Tab」，
+    <!-- 工具条：第一行「专区下拉 + 分区 segmented（唯一一处）+ 子类下划线 Tab」，
          第二行「已选筛选 chip + 排序下拉 + 统计 / 翻页」 -->
     <section v-if="!isMobile" class="catalog-toolbar">
       <div class="catalog-toolbar__row">
-        <ResourceModeSwitch :model-value="activeListingMode" :counts="listingCounts"
-          @update:model-value="switchListingMode" />
+        <div class="catalog-toolbar__lead">
+          <TDropdown trigger="click" placement="bottom-start" @command="handleRootCommand">
+            <button class="catalog-zone-trigger" type="button" aria-label="切换专区">
+              <span>{{ currentRootName || '选择专区' }}</span>
+              <TIcon class="catalog-zone-trigger__chevron">
+                <ArrowDown />
+              </TIcon>
+            </button>
+            <template #dropdown>
+              <TDropdownMenu>
+                <TDropdownItem v-for="root in rootTabs" :key="root.slug" :command="root.slug"
+                  :active="root.slug === currentRootSlug">
+                  {{ root.label }}
+                </TDropdownItem>
+              </TDropdownMenu>
+            </template>
+          </TDropdown>
+
+          <ResourceModeSwitch :model-value="activeListingMode" :counts="listingCounts"
+            @update:model-value="switchListingMode" />
+        </div>
 
         <nav class="catalog-subtabs" aria-label="子分区切换">
           <button v-for="tab in platformTabs" :key="tab.slug" class="catalog-subtab"
