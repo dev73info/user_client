@@ -140,7 +140,7 @@ function selectResource(id: number) {
   void router.replace({ query: { ...route.query, resource: String(id) } })
 }
 
-/** 右栏「收起详情」/ 工具条「返回」：清掉选中并把它从 URL 上摘掉（其余 query 一律保留） */
+/** 退出详情（工具条「返回」与窄屏面板内的返回控件都走这里）：清掉选中并把它从 URL 上摘掉（其余 query 一律保留） */
 function clearSelectedResource() {
   selectedResourceId.value = null
   if ('resource' in route.query) {
@@ -470,7 +470,7 @@ function updateViewport() {
     <section class="catalog-layout-page__browser">
       <!-- 移动端（≤900px）：与桌面端同一套入口与同一套「页内详情」——
            未选中时列表独占内容区，选中一条资源时列表整块收起、详情铺满；
-           「收起详情」由面板自身提供（工具条只在桌面端渲染）。
+           工具条只在桌面端渲染，移动端的退出口由面板内的窄屏返回控件（`close` 事件）提供。
            KeepAlive 同桌面端：收起期间列表实例被缓存，返回时筛选 / 页码原样恢复。 -->
       <template v-if="isMobile">
         <KeepAlive>

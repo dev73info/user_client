@@ -74,10 +74,12 @@ const props = defineProps<{
 
 /**
  * `close`：由列表页清掉当前选中（`ResourceCatalogView` 的桌面 / 移动两个实例都还挂着 `@close`）。
- * 面板内原来的详情收起按钮已按需求删除，这里仍保留事件声明：本组件是「div + Teleport」的多根结构，
- * 父级监听一旦没有对应声明就会退化成无法继承的额外属性，触发 Vue 的 dev 警告。
+ * 面板内原来的「收起详情」按钮已按需求删除，出口改由窄屏的返回控件提供
+ * （见模板里的 `resource-detail-page__panel-back`）：它与桌面工具条的「返回」走同一个事件、
+ * 同一条父级清理逻辑，不新增事件契约。（本组件是「div + Teleport」的多根结构，
+ * 父级监听若没有对应声明就会退化成无法继承的额外属性、触发 Vue 的 dev 警告，所以声明必须保留。）
  */
-defineEmits<{
+const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
@@ -1069,6 +1071,18 @@ watch(
 <template>
   <div class="portal-page resource-detail-page resource-detail-page--panel">
     <TLoading tag="section" class="resource-detail-page__panel" :loading="loading">
+      <!-- 窄屏（≤900px）详情面板里的唯一退出口：桌面工具条的「返回」只在 ≥900px 渲染，
+           面板内原来的「收起详情」已删除，移动端因此需要一个可见的返回控件。
+           桌面端（>900px）由下面的媒体查询隐藏，保证不出现第二个返回入口。 -->
+      <button
+        class="resource-detail-page__panel-back"
+        type="button"
+        aria-label="返回资源列表"
+        @click="emit('close')"
+      >
+        <span aria-hidden="true">←</span>
+        <span>返回</span>
+      </button>
       <template v-if="resource">
         <section class="resource-detail-page__lead">
           <div class="resource-detail-page__left-stack">
@@ -2666,6 +2680,53 @@ a.resource-detail-page__repost-origin:hover {
 
   .resource-detail-page--panel .resource-detail-page__title {
     font-size: 24px;
+  }
+}
+
+/* ============================================================
+   窄屏（≤900px）详情面板里的返回控件
+   ── 桌面工具条「返回」（`.catalog-back-btn`）只在 ≥900px 渲染，面板内原来的「收起详情」
+      按钮已按需求删除；移动端靠这一枚控件退出详情。行为与桌面「返回」等价：只触发
+      `close`，由父级 `ResourceCatalogView.clearSelectedResource` 摘掉 `?resource=`、保留其余 query。
+   ── 观感沿用本页「返回」/ 排序触发器的既有令牌（描边卡 + 13px/700 字 + 8px 圆角），
+      不新造配色；触摸目标抬到 44px，与面板内主按钮 / 点赞键同一档。
+   ── 默认隐藏，仅窄屏显示：桌面端保持原状，面板内不多出第二个返回入口。
+   ============================================================ */
+.resource-detail-page__panel-back {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-bottom: 14px;
+  padding: 0 14px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  color: #334155;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    background-color 160ms ease;
+}
+
+.resource-detail-page__panel-back:hover {
+  border-color: rgba(31, 74, 209, 0.4);
+  color: var(--accent);
+  background: #fff;
+}
+
+.resource-detail-page__panel-back:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.45);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .resource-detail-page__panel-back {
+    display: inline-flex;
   }
 }
 
