@@ -6,8 +6,8 @@ import ShareStats from '@/components/ShareStats.vue'
 <template>
     <main class="invite-leaderboard-view">
         <header class="invite-leaderboard-view__toolbar">
-            <RouterLink class="invite-leaderboard-view__back" :to="{ name: 'workbench-invite' }">
-                返回我的邀请
+            <RouterLink class="invite-leaderboard-view__back" :to="{ name: 'workbench-badges' }">
+                返回勋章与邀请
             </RouterLink>
         </header>
         <section class="invite-leaderboard-view__card invite-leaderboard-view__card--leaderboard">

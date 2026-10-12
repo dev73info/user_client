@@ -1669,15 +1669,17 @@ watch(
   white-space: nowrap;
 }
 
+/* 金额块：上下两行、两行都水平居中（原为左右两端对齐） */
 .resource-purchase-modal__amount {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   padding: 14px 16px;
   border-radius: 16px;
   border: 1px solid rgba(253, 186, 116, 0.55);
   background: linear-gradient(135deg, rgba(255, 247, 237, 0.98), rgba(255, 237, 213, 0.72));
+  text-align: center;
 }
 
 .resource-purchase-modal__amount span {

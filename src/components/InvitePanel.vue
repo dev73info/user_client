@@ -144,7 +144,7 @@ onMounted(() => {
     void loadInvite()
 })
 
-/* 页面顶部的读数条由 InviteView 渲染，刷新按钮也挂在它上面，所以这里把重载方法暴露出去，
+/* 页面顶部的读数条由「勋章与邀请」页（BadgeCenterView）渲染，刷新按钮也挂在它上面，所以这里把重载方法暴露出去，
    页面点刷新时与本组件自带的首次加载走同一条路径。 */
 defineExpose({ reload: loadInvite })
 </script>
@@ -161,7 +161,7 @@ defineExpose({ reload: loadInvite })
             </div>
         </div>
 
-        <div class="invite-panel__code">
+        <div class="wb-panel invite-panel__code">
             <span class="invite-panel__code-label">邀请码</span>
             <span class="invite-panel__code-value">{{ inviteCode?.code || '--------' }}</span>
             <TButton icon-only class="wb-toolbar__icon-btn invite-panel__code-copy" :disabled="!inviteCode"
@@ -233,15 +233,14 @@ defineExpose({ reload: loadInvite })
    「邀请方式 分享」，首屏被这两行占掉约 150px。现在合成一条 58px 的横条：标签与邀请码在左，
    复制与分享这一对动作贴在右端；复制只留一处（原来卡头是文字按钮、条内是图标按钮，
    同一个动作两个入口），卡头只留「查看排行榜」。 */
+/* 邀请码横条：外壳（内边距 / 圆角 / 描边 / 底色）走统一层的 .wb-panel，
+   这里只留「标签 + 大字邀请码 + 右端两个动作」这一行的排布。
+   原先自带 10px 14px 内边距与半透明白底，与券包分组、权益面板是同一层级却各写一格。 */
 .invite-panel__code {
     display: flex;
     align-items: center;
     gap: 12px;
     margin-bottom: 16px;
-    padding: 10px 14px;
-    border: 1px solid var(--wb-line);
-    border-radius: var(--wb-radius-item);
-    background: rgba(255, 255, 255, 0.58);
 }
 
 .invite-panel__code-label {

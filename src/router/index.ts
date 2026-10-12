@@ -104,9 +104,10 @@ const router = createRouter({
       component: () => import('@/views/PaymentView.vue'),
     },
     {
+      // 「我的邀请」已并入「勋章与邀请」页（`/workbench/badges`）：别名同样落到合并页。
       path: '/invite',
       name: 'invite',
-      redirect: { name: 'workbench-invite' },
+      redirect: { name: 'workbench-badges' },
     },
     {
       path: '/invite/leaderboard',
@@ -280,13 +281,11 @@ const router = createRouter({
         },
         { path: 'team-resources', redirect: { name: 'workbench-team-resources' } },
         {
+          // 「我的邀请」已与「我的徽章墙」合并成一页（见下方 badges 路由），本路径保留为跳转：
+          // 老书签、站内旧链接与首页「立即邀请」入口都还指着它，不能 404。
           path: 'invite',
           name: 'workbench-invite',
-          component: () => import('@/views/InviteView.vue'),
-          meta: {
-            title: '我的邀请',
-            description: '邀请码、邀请记录与排行榜',
-          },
+          redirect: { name: 'workbench-badges' },
         },
         {
           path: 'invite/leaderboard',
@@ -298,13 +297,14 @@ const router = createRouter({
           },
         },
         {
-          // 徽章墙从「我的邀请」页底搬出来独立成页：邀请记录与徽章是两件事，读数条口径也不同。
+          // 「勋章与邀请」：徽章墙原是从「我的邀请」页底搬出来单独成页的，
+          // 现在两件事合成同一页（徽章墙一块 + 邀请一块），菜单也只留这一条入口。
           path: 'badges',
           name: 'workbench-badges',
           component: () => import('@/views/BadgeCenterView.vue'),
           meta: {
-            title: '我的徽章墙',
-            description: '查看与佩戴获得的徽章',
+            title: '勋章与邀请',
+            description: '查看与佩戴徽章、邀请好友并查看邀请记录',
           },
         },
         {

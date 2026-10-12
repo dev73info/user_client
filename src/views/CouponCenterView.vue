@@ -125,7 +125,7 @@ onMounted(() => {
       </div>
     </WorkbenchBarSlot>
 
-    <section class="wallet-section coupons-section">
+    <section class="wallet-section">
       <div class="wb-card-head">
         <div class="wb-card-head__title-block">
           <h3 class="wb-card-head__title">优惠券</h3>
@@ -137,9 +137,9 @@ onMounted(() => {
         <span class="wb-empty__title">暂无优惠券</span>
       </p>
       <div v-else class="coupon-groups">
-        <div class="coupon-group">
-          <div class="coupon-group__head">
-            <strong>满减优惠券</strong>
+        <div class="wb-panel coupon-group">
+          <div class="wb-panel__head">
+            <strong class="wb-subhead">满减优惠券</strong>
             <span class="wb-badge">{{ amountCoupons.length }}</span>
           </div>
           <p v-if="amountCoupons.length === 0" class="wb-empty" role="status">暂无满减优惠券</p>
@@ -161,9 +161,9 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="coupon-group">
-          <div class="coupon-group__head">
-            <strong>折扣优惠券</strong>
+        <div class="wb-panel coupon-group">
+          <div class="wb-panel__head">
+            <strong class="wb-subhead">折扣优惠券</strong>
             <span class="wb-badge">{{ discountCoupons.length }}</span>
           </div>
           <p v-if="discountCoupons.length === 0" class="wb-empty" role="status">暂无折扣优惠券</p>
@@ -190,36 +190,16 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* 版式走统一层（.wb-strip / .wb-card-head / .wb-empty / .wb-badge），
+/* 版式走统一层（.wb-strip / .wb-card-head / .wb-empty / .wb-badge / .wb-panel / .wb-subhead），
    本页只留「券卡网格」这一块统一层没有提供的布局：
    券卡是「点一下就复制券码」的整块可点区，不是列表行，所以保留网格；
-   描边、圆角、悬停与状态标签都取统一层那一套。 */
-
-.coupons-page {
-  align-content: start;
-}
+   描边、圆角、悬停与状态标签都取统一层那一套。
+   分组块（.coupon-group）与组名走统一层的 .wb-panel / .wb-subhead：
+   它原先自带一份 12px 内边距 + 12px 圆角 + 13px 组名，与权益页的面板一格之差，两页各写一份。 */
 
 .coupon-groups {
   display: grid;
   gap: 12px;
-}
-
-.coupon-group {
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid var(--wb-line);
-  border-radius: var(--wb-radius-item);
-  background: var(--profile-card-bg);
-}
-
-.coupon-group__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-  color: var(--profile-text-main);
-  font-size: 13px;
 }
 
 .coupon-items {

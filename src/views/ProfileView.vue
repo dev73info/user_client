@@ -1364,7 +1364,6 @@ onBeforeUnmount(() => {
             <p>{{ timeGreeting }}</p>
           </div>
         </div>
-        <RouterLink class="overview-home-link" :to="{ name: 'home' }">返回首页</RouterLink>
       </div>
 
       <div class="overview-hero__body">
@@ -1379,12 +1378,6 @@ onBeforeUnmount(() => {
             @click="router.push({ name: 'dev-profile', params: { username: auth.username } })">
             我的主页
           </button>
-          <button class="ghost small" type="button" @click="router.push({ name: 'workbench-messages' })">消息中心</button>
-          <button class="ghost small" type="button" :disabled="loading || requirementLoading"
-            @click="refreshProfileData">
-            {{ loading || requirementLoading ? '刷新中...' : '刷新' }}
-          </button>
-
         </div>
 
       </div>
@@ -2043,31 +2036,12 @@ onBeforeUnmount(() => {
   justify-content: flex-end;
 }
 
-.overview-home-link {
-  flex: 0 0 auto;
-  align-self: start;
-  padding: 9px 14px;
-  border: 1px solid rgba(209, 220, 243, 0.95);
-  border-radius: 10px;
-  background: #ffffff;
-  color: #0f172a;
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 800;
-}
-
 .overview-hero__name-link {
   color: inherit;
   text-decoration: none;
 }
 
 .overview-hero__name-link:hover {
-  color: #1d4ed8;
-}
-
-.overview-home-link:hover {
-  border-color: rgba(125, 155, 225, 0.9);
-  background: #f8fbff;
   color: #1d4ed8;
 }
 
@@ -2431,11 +2405,16 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 1180px) {
+/* 四格读数默认一行四个（见 .overview-stat-grid 的 repeat(4, …)）；
+   只有 1024px 以下才回落成两列——1180px 这类更宽的桌面（含 1090px 的小笔记本宽度）
+   不再被判成窄屏，避免正常桌面下出现 2×2。 */
+@media (max-width: 1024px) {
   .overview-stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
+@media (max-width: 1180px) {
   .overview-dashboard-grid {
     grid-template-columns: 1fr;
   }
@@ -2481,9 +2460,8 @@ onBeforeUnmount(() => {
     font-weight: 600;
   }
 
-  /* 头像行保留「返回首页」靠右，避免整行拉满后动作区被拆散 */
+  /* 头像行只剩头像 + 用户名，单列排布即可 */
   .overview-hero__head {
-    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 10px;
   }
@@ -2543,11 +2521,6 @@ onBeforeUnmount(() => {
     flex: 0 0 auto;
   }
 
-  /* 移动端底部导航已有「首页」，这里不再重复给入口 */
-  .overview-home-link {
-    display: none;
-  }
-
   /* 移动端最近沟通走底部导航「消息」与顶栏「会话」读数，总览里不再铺一块 */
   .overview-panel--messages {
     display: none;
@@ -2567,7 +2540,7 @@ onBeforeUnmount(() => {
     background: #f6f9ff;
   }
 
-  /* 移动端：主页走点用户名、消息走底部导航，三颗操作整排收起 */
+  /* 移动端：主页走「点用户名」，操作区整排收起 */
   .overview-hero__actions {
     display: none;
   }

@@ -187,7 +187,7 @@ onMounted(() => {
       </div>
     </WorkbenchBarSlot>
 
-    <section class="wallet-section perks-section">
+    <section class="wallet-section">
       <div class="wb-card-head">
         <div class="wb-card-head__title-block">
           <h3 class="wb-card-head__title">我的权益</h3>
@@ -223,10 +223,10 @@ onMounted(() => {
         </li>
       </ul>
 
-      <div v-if="hasUsernameAppearance" class="appearance-panel">
+      <div v-if="hasUsernameAppearance" class="wb-panel appearance-panel">
         <div class="appearance-panel__head">
-          <strong>用户名颜色设置</strong>
-          <small>渐变与特定颜色为两个独立权益，二者只能使用一种。</small>
+          <strong class="wb-subhead">用户名颜色设置</strong>
+          <small class="wb-note">渐变与特定颜色为两个独立权益，二者只能使用一种。</small>
         </div>
         <TRadioGroup :model-value="appearanceMode" @update:model-value="onAppearanceModeChange">
           <TRadio value="gradient" :disabled="!gradientPerk">渐变</TRadio>
@@ -250,37 +250,20 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* 版式走统一层（.wb-strip / .wb-card-head / .wb-list / .wb-empty / .wb-badge），
-   本页只留「用户名颜色设置」这一块面板，它与我的权益列表是两种粒度，不并进统一层的行式列表。 */
-
-.perks-page {
-  align-content: start;
-}
+/* 版式走统一层（.wb-strip / .wb-card-head / .wb-list / .wb-empty / .wb-badge / .wb-panel / .wb-subhead），
+   本页只留「用户名颜色设置」这一块面板的栅格，它与我的权益列表是两种粒度，不并进统一层的行式列表。
+   面板外壳（内边距 / 圆角 / 描边 / 底色）与面板名、说明都取统一层，
+   原先这里自带一份 14px 16px 内边距与 14px 面板名，与优惠券页的分组块各写一格。 */
 
 .appearance-panel {
   display: grid;
   gap: 10px;
   margin-top: 12px;
-  padding: 14px 16px;
-  border: 1px solid var(--wb-line);
-  border-radius: var(--wb-radius-item);
-  background: var(--profile-card-bg);
 }
 
 .appearance-panel__head {
   display: grid;
   gap: 4px;
-}
-
-.appearance-panel__head strong {
-  color: var(--profile-text-main);
-  font-size: 14px;
-}
-
-.appearance-panel__head small {
-  color: var(--profile-text-sub);
-  font-size: 12px;
-  line-height: 1.6;
 }
 
 .appearance-color-row {

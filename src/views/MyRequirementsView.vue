@@ -2469,13 +2469,12 @@ watch(
           @click="openPublishModal">
           发布
         </TButton>
-        <div class="wb-toolbar__actions">
-          <span v-if="hasActiveFilters" class="wb-toolbar__hint">
+        <!-- 工具栏不放「重置」：清空筛选的入口保留在下面空态的「清除筛选」。
+             操作槽只在收窄了结果时给条数说明，写法与「我的发票」工具栏一致——无筛选时整槽不渲染，不留空容器。 -->
+        <div v-if="hasActiveFilters" class="wb-toolbar__actions">
+          <span class="wb-toolbar__hint">
             筛选出 {{ filteredTotal }} / {{ myRequirements.length }} 条
           </span>
-          <TButton variant="outline" @click="resetFilters">
-            <TIcon><RefreshLeft /></TIcon><span>重置</span>
-          </TButton>
         </div>
       </div>
 

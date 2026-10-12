@@ -4111,8 +4111,8 @@ onBeforeUnmount(() => {
   gap: 10px;
 }
 
-/* 外壳与左侧工作台菜单同高（菜单高 100vh - 顶栏占位 - 22px），最后一张「认证说明」吃掉剩余高度，
-   两列底边落在同一条水平线上；只放外壳最小高度、不撑卡片的话，卡片下面会空出一截 */
+/* 外壳保留与左侧工作台菜单对齐的最小高度（菜单高 100vh - 顶栏占位 - 22px），
+   但只有外壳自己兜住这段高度，卡片一律按内容高度排 */
 .realname-page-shell {
   display: flex;
   flex-direction: column;
@@ -4120,8 +4120,10 @@ onBeforeUnmount(() => {
   min-height: calc(100vh - var(--portal-header-footprint, 98px) - 22px);
 }
 
+/* 「认证说明」卡片按内容高度排（标题 + 5 条说明 + 上下内边距），不参与外壳剩余高度的分配，
+   否则卡片会被撑到几百像素，文字排完后下面空一大截 */
 .realname-guide-card {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
 }
 
 /* 窄屏菜单不再与内容并排，没有底边可对齐，卡片回到内容高度 */

@@ -119,7 +119,7 @@ async function loadBadges() {
     }
 }
 
-/* 页面顶部的读数条由 InviteView 渲染，刷新按钮挂在它上面，这里把重载方法暴露出去。 */
+/* 页面顶部的读数条由「勋章与邀请」页（BadgeCenterView）渲染，刷新按钮挂在它上面，这里把重载方法暴露出去。 */
 defineExpose({ reload: loadBadges })
 
 watch(
@@ -151,7 +151,7 @@ onMounted(() => {
 
         <div class="badge-wall__groups">
             <section v-for="group in groups" :key="group.key" class="badge-wall__group">
-                <h3>{{ group.title }}</h3>
+                <h3 class="wb-subhead">{{ group.title }}</h3>
                 <div class="badge-wall__grid">
                     <article v-for="badge in group.badges" :key="badge.code" class="badge-wall__badge"
                         :class="{
@@ -180,25 +180,20 @@ onMounted(() => {
                 </div>
             </section>
         </div>
-        <p v-if="isOwn && !loading" class="badge-wall__hint">点击已获得的徽章可佩戴或取消佩戴（支持多个）。</p>
+        <p v-if="isOwn && !loading" class="wb-note badge-wall__hint">点击已获得的徽章可佩戴或取消佩戴（支持多个）。</p>
     </section>
 </template>
 
 <style scoped>
-/* 版式走工作台统一层（.wb-card-head / .wb-badge，尺寸与强调色取 --wb-* 令牌），
+/* 版式走工作台统一层（.wb-card-head / .wb-badge / .wb-subhead / .wb-note，尺寸与强调色取 --wb-* 令牌），
    本组件只保留徽章格子的排布。原来这里自带一套 10px 字、6px/4px 圆角与 #2563eb / #94a3b8 的色板，
    卡头 24px 标题、徽章格 6px 圆角，与相邻卡片的 18px 标题、12px 圆角不是同一档，
-   同一页里两块内容像是拼起来的。 */
+   同一页里两块内容像是拼起来的。
+   组名原先写在组件里（12px 灰），与券包分组的 13px 墨是两个观感，现改用统一层的 .wb-subhead；
+   底部提示改用 .wb-note（与卡头说明同一档 12px 说明色）。 */
 .badge-wall {
     display: grid;
     gap: 14px;
-}
-
-.badge-wall__group h3 {
-    margin: 0;
-    color: var(--profile-text-sub, #64748b);
-    font-size: 12px;
-    font-weight: 700;
 }
 
 .badge-wall__groups,
@@ -249,11 +244,14 @@ onMounted(() => {
     box-shadow: 0 0 0 1px var(--wb-accent-soft) inset;
 }
 
+/* 徽章格只有 88px 宽，装不下统一层 .wb-badge 的 28px 高 / 0 12px 内边距，
+   所以这里保留紧凑形态（标签与角标档 11px），只把中性底色换成统一层的 --wb-tag-bg：
+   颜色与 .wb-badge 同源，尺寸按格子收一档。 */
 .badge-wall__equip-state {
     margin-top: 2px;
     padding: 2px 6px;
     border-radius: 999px;
-    background: rgba(148, 163, 184, 0.12);
+    background: var(--wb-tag-bg, rgba(148, 163, 184, 0.12));
     color: var(--profile-text-sub, #64748b);
     font-size: 11px;
     font-weight: 700;
@@ -264,13 +262,6 @@ onMounted(() => {
 .badge-wall__equip-state.is-on {
     background: var(--wb-accent-soft);
     color: var(--wb-accent);
-}
-
-.badge-wall__hint {
-    margin: 0;
-    color: var(--profile-text-sub, #64748b);
-    font-size: 12px;
-    line-height: 1.5;
 }
 
 .badge-wall__icon {

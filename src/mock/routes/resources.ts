@@ -18,7 +18,7 @@ import {
 } from '../db'
 import { currentMockProfile } from '../identity'
 import { defineRouteTable, type MockRoute } from '../router'
-import { jsonResponse, noContentResponse, textResponse } from '../response'
+import { jsonResponse, noContentResponse, readInt, readString, textResponse } from '../response'
 
 const mockPurchases: ResourcePurchaseOrder[] = []
 let nextPurchaseSeq = 1
@@ -383,10 +383,27 @@ const routes: MockRoute[] = [
   {
     method: 'GET',
     path: '/dev/resources/purchases/mine',
-    note: '我的资源购买订单',
-    handler: () => {
+    note: '我的资源购买订单（支持 status / keyword 筛选与 limit+offset 分页，总数走 X-Total-Count）',
+    handler: (request) => {
       const buyer = mockBuyer()
-      return jsonResponse(mockPurchases.filter((item) => item.buyer === buyer))
+      const status = readString(request.query, 'status')
+      const keyword = readString(request.query, 'keyword').toLowerCase()
+      let rows = mockPurchases.filter((item) => item.buyer === buyer)
+      if (status) {
+        rows = rows.filter((item) => item.status === status)
+      }
+      if (keyword) {
+        rows = rows.filter(
+          (item) =>
+            item.order_no.toLowerCase().includes(keyword) ||
+            (item.resource_title ?? '').toLowerCase().includes(keyword),
+        )
+      }
+      const limit = Math.min(Math.max(readInt(request.query, 'limit', 50), 1), 100)
+      const offset = Math.max(readInt(request.query, 'offset', 0), 0)
+      return jsonResponse(rows.slice(offset, offset + limit), 200, {
+        'X-Total-Count': String(rows.length),
+      })
     },
   },
   {

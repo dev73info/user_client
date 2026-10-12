@@ -218,8 +218,11 @@ onMounted(() => {
   line-clamp: 2;
 }
 
+/* 列表标题的悬停色取工作台主色令牌（--wb-accent，与统一层 .wb-item--clickable 同源），
+   不用个人中心的 --profile-accent（#4f8cff）——那一支比工作台自己的侧边栏还亮一档，
+   统一层已经把工作台按钮的颜色从它收回令牌了。 */
 .favorites__title:hover {
-  color: var(--profile-accent);
+  color: var(--wb-accent);
 }
 
 .favorites__metrics {

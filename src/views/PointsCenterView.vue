@@ -298,7 +298,7 @@ onMounted(async () => {
 
       <!-- 打赏表单不再常驻占一屏：入口在「积分记录」卡头右侧，表单收进弹窗（见文件末尾）。
            这一页因此只留读数条与记录卡片两块。 -->
-      <section class="wallet-section points-section points-section--records">
+      <section class="wallet-section">
         <div class="wb-card-head">
           <div class="wb-card-head__title-block">
             <h3 class="wb-card-head__title">积分记录</h3>
@@ -455,11 +455,8 @@ onMounted(async () => {
 <style scoped>
 /* 版式走统一层（.wb-strip / .wb-card-head / .wb-toolbar / .wb-chip / .wb-list / .wb-pager / .wb-empty / .wb-badge），
    本页只留「打赏弹窗里的表单」与「记录区两段筛选」这两块统一层没有提供的布局。
-   原「我的背包」页把积分、权益、券包、评论警告四件事铺在一屏，拆页后各页只留自己那几块。 */
-
-.points-page {
-  align-content: start;
-}
+   原「我的背包」页把积分、权益、券包、评论警告四件事铺在一屏，拆页后各页只留自己那几块。
+   页面根节点的纵向节奏与行内对齐由工作台外壳给（.user-workbench__content 的 .page-shell）。 */
 
 /* 表单搬进 520px 宽的弹窗后，两列栅格按弹窗内的可用宽度写：
    第一行接收方占满，第二行金额与附言各半。 */
@@ -510,7 +507,7 @@ onMounted(async () => {
 
   /* 卡头在窄屏改纵向，统一层的 __actions 给的是 space-between；
      这里只有一个入口按钮，会因此贴到左边，与「入口靠右」的定位不符 */
-  .points-section--records .wb-card-head__actions {
+  .points-page .wb-card-head__actions {
     justify-content: flex-end;
   }
 

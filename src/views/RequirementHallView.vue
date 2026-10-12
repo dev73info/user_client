@@ -30,7 +30,18 @@ import {
   validateRequirementRichText,
 } from '@/utils/requirementRichText'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
-import { TIcon, TPagination, TLoading, Close, Connection, Plus, Refresh } from 'ui_73info'
+import {
+  TIcon,
+  TPagination,
+  TLoading,
+  TRadioButton,
+  TRadioGroup,
+  Close,
+  Connection,
+  Plus,
+  Refresh,
+  type SelectValue,
+} from 'ui_73info'
 
 const router = useRouter()
 const route = useRoute()
@@ -46,6 +57,15 @@ const hallPage = ref(1)
 const hallTotal = ref(0)
 const overview = ref<RequirementOverviewResp | null>(null)
 const keyword = ref('')
+/**
+ * 需求大厅「担保方式」筛选。
+ *
+ * `all` = 不筛；其余两个取值直接透传给后端 `payment_mode` 参数：
+ * `platform_guarantee`（电签担保）/ `self_managed`（无电签约定）。
+ * 语义以后端 `requirement.payment_mode` 为准，前端不做本地假筛。
+ */
+type GuaranteeFilter = 'all' | RequirementPaymentMode
+const guaranteeFilter = ref<GuaranteeFilter>('all')
 const publishVisible = ref(false)
 const publishTitle = ref('')
 const publishDescription = ref('')
@@ -111,6 +131,20 @@ const hallStats = computed(() => [
     value: `${(overview.value?.positive_rate ?? 0).toFixed(1)}%`,
   },
 ])
+
+/** 空态文案跟着当前生效的筛选走：关键词优先，其次担保方式，最后才是「大厅本来就没单」。 */
+const hallEmptyTitle = computed(() => {
+  if (keyword.value.trim()) {
+    return '没有匹配的需求'
+  }
+  if (guaranteeFilter.value === 'platform_guarantee') {
+    return `当前没有${paymentModeLabel('platform_guarantee')}的需求`
+  }
+  if (guaranteeFilter.value === 'self_managed') {
+    return `当前没有${paymentModeLabel('self_managed')}的需求`
+  }
+  return '当前没有可展示的需求'
+})
 
 const recentDeals = computed(() => overview.value?.recent_deals.slice(0, 3) ?? [])
 
@@ -195,6 +229,37 @@ function resetKeyword() {
     const nextQuery = { ...route.query }
     delete nextQuery.keyword
     void router.replace({ query: nextQuery })
+  }
+}
+
+/** 当前生效的担保方式；`all` 时返回 `undefined`，即请求里不带 `payment_mode`。 */
+function activeGuaranteeMode(): RequirementPaymentMode | undefined {
+  return guaranteeFilter.value === 'all' ? undefined : guaranteeFilter.value
+}
+
+/**
+ * 切换担保方式筛选：这是服务端筛选，换值等于换结果集，
+ * 所以回到第一页重新拉取，避免停留在上一个结果集的页码上。
+ */
+function onGuaranteeFilterChange(value: SelectValue) {
+  const next: GuaranteeFilter =
+    value === 'platform_guarantee' || value === 'self_managed' ? value : 'all'
+  if (guaranteeFilter.value === next) {
+    return
+  }
+  guaranteeFilter.value = next
+  void loadHallData(1)
+}
+
+/** 空态里的「清空筛选」：关键词是本地过滤、担保方式是服务端筛选，分别复位。 */
+function resetHallFilters() {
+  const hadKeyword = Boolean(keyword.value.trim())
+  if (hadKeyword) {
+    resetKeyword()
+  }
+  if (guaranteeFilter.value !== 'all') {
+    guaranteeFilter.value = 'all'
+    void loadHallData(1)
   }
 }
 
@@ -447,7 +512,7 @@ async function loadHallData(page = hallPage.value) {
   loading.value = true
   overviewLoading.value = true
   const [requirementsResult, overviewResult] = await Promise.allSettled([
-    listPublicRequirementSpotlights(page, HALL_PAGE_SIZE),
+    listPublicRequirementSpotlights(page, HALL_PAGE_SIZE, activeGuaranteeMode()),
     getPublicRequirementOverview(),
   ])
 
@@ -505,28 +570,48 @@ async function loadHallData(page = hallPage.value) {
         </div>
 
         <div class="requirement-hall__filters">
-          <div class="requirement-hall__search">
-            <input v-model="keyword" type="search" placeholder="搜索需求标题、编号、交付方式..." />
+          <div class="requirement-hall__search-row">
+            <div class="requirement-hall__search">
+              <input v-model="keyword" type="search" placeholder="搜索需求标题、编号、交付方式..." />
+              <button
+                v-if="keyword.trim()"
+                class="requirement-hall__search-clear"
+                type="button"
+                aria-label="清空搜索"
+                @click="resetKeyword"
+              >
+                <TIcon>
+                  <Close />
+                </TIcon>
+              </button>
+            </div>
             <button
-              v-if="keyword.trim()"
-              class="requirement-hall__search-clear"
+              class="portal-page__secondary"
               type="button"
-              aria-label="清空搜索"
+              :disabled="!keyword.trim()"
               @click="resetKeyword"
             >
-              <TIcon>
-                <Close />
-              </TIcon>
+              清空
             </button>
           </div>
-          <button
-            class="portal-page__secondary"
-            type="button"
-            :disabled="!keyword.trim()"
-            @click="resetKeyword"
-          >
-            清空
-          </button>
+
+          <div class="requirement-hall__guarantee-row">
+            <span class="requirement-hall__guarantee-label">担保方式</span>
+            <TRadioGroup
+              class="requirement-hall__guarantee-group"
+              :model-value="guaranteeFilter"
+              aria-label="按担保方式筛选需求"
+              @update:model-value="onGuaranteeFilterChange"
+            >
+              <TRadioButton value="all">全部</TRadioButton>
+              <TRadioButton value="platform_guarantee">{{
+                paymentModeLabel('platform_guarantee')
+              }}</TRadioButton>
+              <TRadioButton value="self_managed">{{
+                paymentModeLabel('self_managed')
+              }}</TRadioButton>
+            </TRadioGroup>
+          </div>
         </div>
 
         <div v-if="loading" class="portal-page__card-grid requirement-hall__grid">
@@ -584,12 +669,12 @@ async function loadHallData(page = hallPage.value) {
         </div>
 
         <div v-else class="portal-page__empty portal-page__empty--stacked">
-          <strong>{{ keyword.trim() ? '没有匹配的需求' : '当前没有可展示的需求' }}</strong>
+          <strong>{{ hallEmptyTitle }}</strong>
           <button
-            v-if="keyword.trim()"
+            v-if="keyword.trim() || guaranteeFilter !== 'all'"
             class="portal-page__secondary"
             type="button"
-            @click="resetKeyword"
+            @click="resetHallFilters"
           >
             清空筛选
           </button>
@@ -834,10 +919,37 @@ async function loadHallData(page = hallPage.value) {
 }
 
 .requirement-hall__filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+/* 第一行：关键词搜索 + 清空，沿用原来的「输入框占满、按钮靠右」排布 */
+.requirement-hall__search-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
-  margin-bottom: 14px;
+  align-items: center;
+}
+
+/* 第二行：担保方式分段控件（全部 / 电签担保 / 无电签约定） */
+.requirement-hall__guarantee-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.requirement-hall__guarantee-label {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.requirement-hall__guarantee-group {
+  flex: 0 1 auto;
 }
 
 .requirement-hall__search {
@@ -1446,7 +1558,7 @@ async function loadHallData(page = hallPage.value) {
     width: 100%;
   }
 
-  .requirement-hall__filters {
+  .requirement-hall__search-row {
     grid-template-columns: 1fr;
   }
 

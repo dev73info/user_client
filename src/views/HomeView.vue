@@ -2614,7 +2614,7 @@ async function submitPublishRequirement() {
                   </p>
                   <RouterLink
                     class="portal-beta-invite__cta"
-                    :to="{ name: 'workbench-invite' }"
+                    :to="{ name: 'workbench-badges' }"
                   >
                     立即邀请
                   </RouterLink>

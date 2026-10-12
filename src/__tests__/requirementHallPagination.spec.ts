@@ -1,5 +1,5 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import RequirementHallView from '@/views/RequirementHallView.vue'
 
@@ -72,6 +72,16 @@ function mountHall() {
           emits: ['current-change'],
           template: `<button class="pager-next" @click="$emit('current-change', 2)" />`,
         },
+        // 「担保方式」筛选是 TRadioGroup：真组件看不到，用一个能发 change 的桩驱动它。
+        TRadioGroup: {
+          name: 'TRadioGroup',
+          props: ['modelValue'],
+          emits: ['update:model-value'],
+          template: `<button
+            class="filter-platform-guarantee"
+            @click="$emit('update:model-value', 'platform_guarantee')"
+          />`,
+        },
       },
     },
   })
@@ -92,7 +102,8 @@ describe('requirement hall pagination', () => {
     const wrapper = mountHall()
     await flushPromises()
 
-    expect(mocks.spotlights).toHaveBeenCalledWith(1, PAGE_SIZE)
+    // 第三参是 payment_mode：未筛担保方式时为 undefined，公开接口据此不带该参数。
+    expect(mocks.spotlights).toHaveBeenCalledWith(1, PAGE_SIZE, undefined)
 
     const state = setupState(wrapper)
     expect(state.hallTotal).toBe(25)
@@ -110,12 +121,77 @@ describe('requirement hall pagination', () => {
     await wrapper.find('.pager-next').trigger('click')
     await flushPromises()
 
-    expect(mocks.spotlights).toHaveBeenLastCalledWith(2, PAGE_SIZE)
+    expect(mocks.spotlights).toHaveBeenLastCalledWith(2, PAGE_SIZE, undefined)
 
     const state = setupState(wrapper)
     expect(state.hallPage).toBe(2)
     expect((state.requirements as { requirement_id: string }[])[0]?.requirement_id).toBe('req-page-2')
 
     wrapper.unmount()
+  })
+
+  it('切换担保方式筛选时回到第一页，并带上 payment_mode 重新请求', async () => {
+    const wrapper = mountHall()
+    await flushPromises()
+
+    // 先翻到第二页，确认切筛选会把页码收回第一页。
+    mocks.spotlights.mockResolvedValue(spotlightPage(2, 25))
+    await wrapper.find('.pager-next').trigger('click')
+    await flushPromises()
+    expect(mocks.spotlights).toHaveBeenLastCalledWith(2, PAGE_SIZE, undefined)
+
+    mocks.spotlights.mockResolvedValue(spotlightPage(1, 8))
+    await wrapper.find('.filter-platform-guarantee').trigger('click')
+    await flushPromises()
+
+    expect(mocks.spotlights).toHaveBeenLastCalledWith(1, PAGE_SIZE, 'platform_guarantee')
+
+    const state = setupState(wrapper)
+    expect(state.hallPage).toBe(1)
+    expect(state.hallTotal).toBe(8)
+
+    wrapper.unmount()
+  })
+})
+
+// 上面用 mock 替换了 listPublicRequirementSpotlights，这里走真实实现，
+// 守住「不筛时不带 payment_mode、筛电签担保时带 payment_mode=platform_guarantee」这条口径。
+describe('公开精选列表的请求参数（真实实现）', () => {
+  const fetchMock = vi.fn()
+
+  beforeEach(() => {
+    fetchMock.mockReset()
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ total: 0, page: 1, page_size: PAGE_SIZE, items: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  async function spotlightRequestUrl(paymentMode?: 'platform_guarantee' | 'self_managed') {
+    const { listPublicRequirementSpotlights } = await vi.importActual<
+      typeof import('@/api/requirements')
+    >('@/api/requirements')
+    await listPublicRequirementSpotlights(1, PAGE_SIZE, paymentMode)
+    const calls = fetchMock.mock.calls
+    return String(calls[calls.length - 1]?.[0])
+  }
+
+  it('不筛担保方式时请求里不带 payment_mode', async () => {
+    const url = await spotlightRequestUrl()
+    expect(url).toContain('page=1')
+    expect(url).toContain(`page_size=${PAGE_SIZE}`)
+    expect(url).not.toContain('payment_mode')
+  })
+
+  it('筛选电签担保时请求里带 payment_mode=platform_guarantee', async () => {
+    const url = await spotlightRequestUrl('platform_guarantee')
+    expect(url).toContain('payment_mode=platform_guarantee')
   })
 })

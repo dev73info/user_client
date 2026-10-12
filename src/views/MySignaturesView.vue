@@ -221,11 +221,8 @@ function openDetail(item: MyContractSummary) {
           aria-label="搜索合同">
           <template #prefix><TIcon><Search /></TIcon></template>
         </TInput>
-        <div class="wb-toolbar__actions">
-          <span v-if="hasActiveFilters" class="wb-toolbar__hint">筛选出 {{ filteredTotal }} / {{ contracts.length }} 份</span>
-          <TButton variant="outline" @click="resetFilters">
-            <TIcon><RefreshLeft /></TIcon><span>重置</span>
-          </TButton>
+        <div v-if="hasActiveFilters" class="wb-toolbar__actions">
+          <span class="wb-toolbar__hint">筛选出 {{ filteredTotal }} / {{ contracts.length }} 份</span>
         </div>
       </div>
 

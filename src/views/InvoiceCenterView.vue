@@ -86,7 +86,7 @@ const keyword = ref('')
 const statusFilter = ref<'all' | InvoiceRecord['status']>('all')
 
 /**
- * 状态筛选用下拉，与资源列表等菜单页同一套工具栏结构，窄屏能与搜索、重置并成一行。
+ * 状态筛选用下拉，与资源列表等菜单页同一套工具栏结构，窄屏能与搜索并成一行。
  *
  * 筛选与读数都按**显示状态**分档（`invoiceDisplayStatus`），不是照读接口给的状态列。
  * 「审核中 / 需补充材料」只属于平台服务费票的审核流：开发者收入票由乙方上传即视为已开具，
@@ -401,7 +401,8 @@ async function saveDocument(invoice: InvoiceRecord) {
         </div>
       </div>
 
-      <!-- 工具栏常驻：没有记录时也给出状态、搜索与重置，与其余菜单页同一套结构 -->
+      <!-- 工具栏常驻：没有记录时也给出状态与搜索，与其余菜单页同一套结构。
+           本页工具栏不放「重置」——清空筛选的入口留在下方空态的「清除筛选」里。 -->
       <div class="wb-toolbar">
         <TSelect v-model="statusFilter" class="wb-toolbar__field" placeholder="发票状态" aria-label="按状态筛选">
           <TOption v-for="option in STATUS_FILTERS" :key="option.key"
@@ -411,13 +412,10 @@ async function saveDocument(invoice: InvoiceRecord) {
           placeholder="搜索发票号、需求编号或发票标题" aria-label="搜索发票">
           <template #prefix><TIcon><Search /></TIcon></template>
         </TInput>
-        <div class="wb-toolbar__actions">
-          <span v-if="hasActiveFilters" class="wb-toolbar__hint">
+        <div v-if="hasActiveFilters" class="wb-toolbar__actions">
+          <span class="wb-toolbar__hint">
             筛选出 {{ filteredTotal }} / {{ groups.length }} 条
           </span>
-          <TButton variant="outline" :disabled="!hasActiveFilters" @click="resetFilters">
-            <TIcon><RefreshLeft /></TIcon><span>重置</span>
-          </TButton>
         </div>
       </div>
 

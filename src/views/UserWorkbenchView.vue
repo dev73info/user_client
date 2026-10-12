@@ -27,7 +27,6 @@ import {
   Files,
   Grid,
   Menu as MenuIcon,
-  Money,
   Service,
   Suitcase,
   Switch as SwitchIcon,
@@ -100,7 +99,7 @@ const notificationsItem: WorkbenchMenuItem = {
 // 开发者工作台菜单：侧边栏切到开发者模式时展示（此前是底部「开发者工作台」折叠组的内容）。
 // 版式与用户菜单的一级条目一致（图标 + 加粗标题），切换模式时侧边栏只有文字在变。
 // 一级条目不再分小标题，按开发者每天的动线从上往下排：总览 → 资源 → 接单（交付与到账也在这一页）；
-// 与钱有关的两条（收益钱包、我的发票）收进下面的「财务中心」折叠组，
+// 与钱有关的三条（收益钱包、我的发票、打赏设置）收进下面的「财务中心」折叠组，
 // 团队服务那一段也不顶小标题，靠折叠组的分组头自己报名字。
 const devWorkbenchItems: DevWorkbenchItem[] = [
   {
@@ -121,13 +120,6 @@ const devWorkbenchItems: DevWorkbenchItem[] = [
     ],
     icon: Files,
   },
-  {
-    // R010 打赏：主页打赏入口的开关、档位、感谢语与公开记录，以及「收到打赏」列表。
-    label: '打赏设置',
-    name: 'dev-tip-settings',
-    description: '设定打赏档位与查看收到打赏',
-    icon: Money,
-  },
   { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求', icon: Compass },
   {
     // 「交付记录」已并进这一页：交付物与到账长在需求单卡片上，菜单不再单列一条。
@@ -138,8 +130,9 @@ const devWorkbenchItems: DevWorkbenchItem[] = [
   },
 ]
 
-// 财务中心：只跟钱有关的两条收成一组的折叠组。收益钱包原先是开发者菜单的一级条目，
+// 财务中心：只跟钱有关的三条收成一组的折叠组。收益钱包原先是开发者菜单的一级条目，
 // 发票页原挂在用户模式的「账户服务」下——同一件钱的事被分在了两处，这里合并成一组。
+// 打赏设置原也是开发者菜单的一级条目（带图标），按要求移进来作为子项、不再渲染图标。
 // 开发者模式下渲染，用户模式看不到；用户模式的账户服务里仍保留「我的发票」那一条。
 const financeMenuGroup: WorkbenchMenuGroup = {
   key: 'finance',
@@ -148,6 +141,8 @@ const financeMenuGroup: WorkbenchMenuGroup = {
   items: [
     { label: '收益钱包', name: 'dev-wallet', description: '查看余额与保证金信息' },
     { label: '我的发票', name: 'dev-invoices', description: '查看与上传开发者发票' },
+    // R010 打赏：主页打赏入口的开关、档位、感谢语与公开记录，以及「收到打赏」列表。
+    { label: '打赏设置', name: 'dev-tip-settings', description: '设定打赏档位与查看收到打赏' },
   ],
 }
 
@@ -191,12 +186,6 @@ const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
         name: 'workbench-resource-purchases',
         description: '已购数字资源，退款由卖家或平台发起',
       },
-      {
-        label: '我的邀请',
-        name: 'workbench-invite',
-        description: '邀请好友得徽章，查看排行榜',
-        activeNames: ['workbench-invite-leaderboard'],
-      },
     ],
   },
   {
@@ -211,9 +200,13 @@ const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
       { label: '权益中心', name: 'workbench-perks', description: '管理已解锁的权益与用户名颜色' },
       { label: '优惠券中心', name: 'workbench-coupons', description: '查看券包并复制券码' },
       {
-        label: '我的徽章墙',
+        // 「我的邀请」并进了这一页（原账户服务下的那一条已撤）：徽章墙与邀请共用一个入口，
+        // 名称要覆盖两边，只写「我的徽章墙」会让邀请记录在菜单上找不到；
+        // 邀请排行榜仍是单独一页，停在那页时高亮这一条（与原「我的邀请」的口径一致）。
+        label: '勋章与邀请',
         name: 'workbench-badges',
-        description: '查看与佩戴获得的徽章',
+        description: '查看与佩戴徽章、邀请好友与邀请记录',
+        activeNames: ['workbench-invite-leaderboard'],
       },
     ],
   },

@@ -1,4 +1,4 @@
-import { authHeaders, requestJson } from '@/api/http'
+import { HttpError, apiUrl, authHeaders, readErrorMessage, requestJson } from '@/api/http'
 import { toResourcePayChannel, type ResourcePayChannelUi } from '@/shared/resourceSale'
 
 export type ResourcePurchaseOrder = {
@@ -53,8 +53,16 @@ export type CreateResourcePurchasePayload =
 export type ListMyResourcePurchasesQuery = {
   resource_id?: number
   status?: string
+  /** 关键词：后端按订单号 / 资源标题模糊匹配 */
+  keyword?: string
   limit?: number
   offset?: number
+}
+
+/** 「我的已购资源」服务端分页结果：`total` 取自响应头 `X-Total-Count`。 */
+export type MyResourcePurchasesPage = {
+  items: ResourcePurchaseOrder[]
+  total: number
 }
 
 /** POST /api/resources/resources/{id}/purchase */
@@ -82,10 +90,7 @@ export async function createResourcePurchase(
 }
 
 /** GET /api/resources/purchases/mine */
-export async function listMyResourcePurchases(
-  token: string,
-  query: ListMyResourcePurchasesQuery = {},
-): Promise<ResourcePurchaseOrder[]> {
+export function buildMyResourcePurchasesQuery(query: ListMyResourcePurchasesQuery): string {
   const params = new URLSearchParams()
   if (query.resource_id != null) {
     params.set('resource_id', String(query.resource_id))
@@ -93,18 +98,71 @@ export async function listMyResourcePurchases(
   if (query.status?.trim()) {
     params.set('status', query.status.trim())
   }
+  if (query.keyword?.trim()) {
+    params.set('keyword', query.keyword.trim())
+  }
   if (query.limit != null) {
     params.set('limit', String(query.limit))
   }
   if (query.offset != null) {
     params.set('offset', String(query.offset))
   }
-  const qs = params.toString()
+  return params.toString()
+}
+
+/** GET /api/resources/purchases/mine（裸数组：小程序等消费方仍按数组解析） */
+export async function listMyResourcePurchases(
+  token: string,
+  query: ListMyResourcePurchasesQuery = {},
+): Promise<ResourcePurchaseOrder[]> {
+  const qs = buildMyResourcePurchasesQuery(query)
   return requestJson<ResourcePurchaseOrder[]>(
     `/dev/resources/purchases/mine${qs ? `?${qs}` : ''}`,
     { method: 'GET', headers: authHeaders(token) },
     '加载已购资源失败',
   )
+}
+
+/**
+ * GET /api/resources/purchases/mine 的带总数版本。
+ *
+ * 后端保持裸数组响应（兼容小程序），筛选后的总数放在 `X-Total-Count` 响应头里，
+ * 这里直接把头读出来给分页器用，避免前端拿全量数据「假分页」。
+ */
+export async function listMyResourcePurchasesPage(
+  token: string,
+  query: ListMyResourcePurchasesQuery = {},
+): Promise<MyResourcePurchasesPage> {
+  const qs = buildMyResourcePurchasesQuery(query)
+  const response = await fetch(
+    apiUrl(`/dev/resources/purchases/mine${qs ? `?${qs}` : ''}`),
+    {
+      method: 'GET',
+      headers: authHeaders(token),
+      credentials: 'omit',
+    },
+  )
+
+  if (!response.ok) {
+    throw new HttpError(response.status, await readErrorMessage(response, '加载已购资源失败'))
+  }
+
+  const rawItems = (await response.json()) as ResourcePurchaseOrder[]
+  const items = Array.isArray(rawItems) ? rawItems : []
+  const rawTotal = Number(response.headers.get('X-Total-Count') ?? '')
+  return {
+    items,
+    total: Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : items.length,
+  }
+}
+
+/** 只取筛选后的总数（`limit=1`，用于页头读数条的分状态统计）。 */
+export async function countMyResourcePurchases(
+  token: string,
+  query: ListMyResourcePurchasesQuery = {},
+): Promise<number> {
+  const page = await listMyResourcePurchasesPage(token, { ...query, limit: 1, offset: 0 })
+  return page.total
 }
 
 /** GET /api/resources/purchases/{order_no} */

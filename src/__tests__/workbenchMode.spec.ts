@@ -119,10 +119,11 @@ describe('workbench mode switch', () => {
       .filter((group) => group.find('.user-workbench__menu-group-head').exists())
     const accountGroup = groups.find((group) => group.find('.user-workbench__menu-group-head').text().includes('账户服务'))!
     const inventoryGroup = groups.find((group) => group.find('.user-workbench__menu-group-head').text().includes('我的背包'))!
+    // 「我的邀请」已并入「勋章与邀请」（原「我的徽章墙」那条），不再单列。
     expect(accountGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()))
-      .toEqual(['账户详情', '我的合同', '我的发票', '我的收藏', '我的已购', '我的邀请'])
+      .toEqual(['账户详情', '我的合同', '我的发票', '我的收藏', '我的已购'])
     expect(inventoryGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()))
-      .toEqual(['积分中心', '权益中心', '优惠券中心', '我的徽章墙'])
+      .toEqual(['积分中心', '权益中心', '优惠券中心', '勋章与邀请'])
     expect(inventoryGroup.findAll('.user-workbench__submenu-link')[0]?.attributes('href'))
       .toBe('/workbench/workbench-points')
     expect(inventoryGroup.findAll('.user-workbench__submenu-link')[3]?.attributes('href'))
@@ -143,19 +144,24 @@ describe('workbench mode switch', () => {
     const devLinks = wrapper.findAll('.user-workbench__menu > .user-workbench__menu-link--root')
     expect(devLinks[0]?.find('.user-workbench__menu-icon').exists()).toBe(true)
     expect(devLinks.map((link) => link.text()))
-      .toEqual(['工作台总览', '资源项目', '打赏设置', '需求大厅', '我的接单'])
+      .toEqual(['工作台总览', '资源项目', '需求大厅', '我的接单'])
     // 财务中心与团队服务是折叠组（分组头自带组名），消息中心夹在分组之间
     expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text()))
       .toEqual(['财务中心', '团队服务', '消息中心'])
-    // 与钱有关的两条收进财务中心：收益钱包原是一级条目，「我的发票」原挂在用户模式的账户服务下
+    // 与钱有关的三条收进财务中心：收益钱包原是一级条目，「我的发票」原挂在用户模式的账户服务下，
+    // 「打赏设置」原是一级条目，现在也移进来当子项（子项不渲染图标）。
     const finance = wrapper.findAll('.user-workbench__menu-group')
       .find((group) => group.find('.user-workbench__menu-group-head').text().includes('财务中心'))!
     expect(finance.findAll('.user-workbench__submenu-link').map((link) => link.text()))
-      .toEqual(['收益钱包', '我的发票'])
+      .toEqual(['收益钱包', '我的发票', '打赏设置'])
     expect(finance.findAll('.user-workbench__submenu-link')[0]?.attributes('href'))
       .toBe('/workbench/developer/wallet/overview')
     expect(finance.findAll('.user-workbench__submenu-link')[1]?.attributes('href'))
       .toBe('/workbench/developer/invoices')
+    // 打赏设置移入财务中心后不再是一级条目：一级菜单里没有它，子菜单里有它
+    expect(devLinks.some((link) => link.text().includes('打赏设置'))).toBe(false)
+    expect(finance.findAll('.user-workbench__submenu-link')[2]?.attributes('href'))
+      .toBe('/workbench/developer/tips')
     // 财务中心在开发者模式下才出现，用户模式的账户服务里仍保留一条「我的发票」
     expect(text).not.toContain('账户服务')
     // 「财务中心」只出现一次：折叠组的分组头自己写着组名，上方不再顶小标题

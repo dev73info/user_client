@@ -19,6 +19,9 @@
    | 工具栏 | .wb-toolbar | .dev-toolbar | 控件 36px 高 / 10px 圆角、间距 10px、下边距 16px |
    | 列表项 | .wb-item | .dev-stack-item | 12px 圆角 / 16px 18px 内边距 / 描边 --line / 无阴影 |
    | 空态 | .wb-empty | .dev-empty-state | 12px 圆角 / 24px 内边距 / 虚线 --line |
+   | 内嵌块 | .wb-panel | —（开发者侧暂无对应构件） | 12px 内边距 / 12px 圆角 / 描边 --line |
+   | 组名 | .wb-subhead | —（同上） | 13px / 700 / 卡片标题色 |
+   | 提示文案 | .wb-note | —（同上） | 12px / 1.6 / 说明色 |
    | 胶囊 | .wb-chip | .dev-chip | 28px 高 / 0 12px 内边距 / 999px |
    | 分页 | .wb-pager | .dev-pager | 控件 36px、页码 10px 圆角 |
    | 主色 | --wb-accent | --dev-blue | #1f4ad1 |
@@ -45,6 +48,8 @@
   --wb-accent-soft: rgba(31, 74, 209, 0.08);
   --wb-accent-line: rgba(31, 74, 209, 0.32);
   --wb-line: rgba(203, 213, 225, 0.66);
+  /* 中性标签底（.wb-badge 与卡片内的小角标共用；原来两处各写一遍同一个 rgba） */
+  --wb-tag-bg: rgba(148, 163, 184, 0.12);
   --wb-ink-soft: #475569;
   --wb-shadow: 0 20px 44px rgba(71, 85, 105, 0.1);
 }
@@ -529,6 +534,49 @@
   margin-top: 14px;
 }
 
+/* === 内嵌块 ===
+   卡片（.wallet-section）里再分一层的小块：券包的分组、权益的「用户名颜色设置」面板、
+   邀请码横条。原来是各写一份——12px 内边距、14px 16px、10px 14px 三种，底色也分了
+   「卡片底色」与「半透明白」，四个页面因此看着像四套。这里收成一档，与 .wb-item / .wb-empty
+   同族（12px 内边距 + 12px 圆角 + --wb-line 描边）。 */
+.wb-panel {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--wb-line);
+  border-radius: var(--wb-radius-item);
+  background: var(--profile-card-bg, rgba(255, 255, 255, 0.96));
+}
+
+/* 内嵌块的头一行：组名/面板名在左、计数或动作在右 */
+.wb-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* === 组名 ===
+   一张卡片里再分组时的组名：徽章墙的「成就徽章 / 特殊徽章」、券包的「满减 / 折扣优惠券」、
+   权益面板的「用户名颜色设置」。同一层级原来一处 12px 灰、一处 13px 墨、一处 14px 墨，
+   换个页面就换一种观感；这里按「正文主力 13px + 卡片标题色」定一档（副标题才是 12px 灰）。 */
+.wb-subhead {
+  margin: 0;
+  color: var(--profile-text-main, #0f172a);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* === 底部提示文案 ===
+   卡片收尾那一行说明（徽章墙的「点击已获得的徽章可佩戴或取消佩戴」）。
+   与 .wb-card-head__desc 同档（次要说明 12px），不参与正文节奏。 */
+.wb-note {
+  margin: 0;
+  color: var(--profile-text-sub, #64748b);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 /* === 状态徽标 ===
    「浅底 + 深字」，底色与文字都取 profile.css 里那一组状态令牌，
    新写状态标签沿用这个思路，不要用饱和色做背景。
@@ -540,7 +588,7 @@
   min-height: 28px;
   padding: 0 12px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.12);
+  background: var(--wb-tag-bg, rgba(148, 163, 184, 0.12));
   color: var(--profile-text-sub, #64748b);
   font-size: 12px;
   font-weight: 700;

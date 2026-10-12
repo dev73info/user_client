@@ -7,10 +7,14 @@
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' } as const
 
-export function jsonResponse(data: unknown, status = 200): Response {
+export function jsonResponse(
+  data: unknown,
+  status = 200,
+  extraHeaders: Record<string, string> = {},
+): Response {
   return new Response(JSON.stringify(data ?? null), {
     status,
-    headers: JSON_HEADERS,
+    headers: { ...JSON_HEADERS, ...extraHeaders },
   })
 }
 

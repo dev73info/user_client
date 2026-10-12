@@ -226,11 +226,15 @@ export async function getPublicRequirementOverview(): Promise<RequirementOvervie
 export async function listPublicRequirementSpotlights(
   page = 1,
   pageSize = 20,
+  paymentMode?: RequirementPaymentMode,
 ): Promise<PublicRequirementSpotlightPage> {
   const params = new URLSearchParams({
     page: String(page),
     page_size: String(pageSize),
   })
+  if (paymentMode) {
+    params.set('payment_mode', paymentMode)
+  }
   return requestJson<PublicRequirementSpotlightPage>(
     `/public/requirements/public-spotlight?${params.toString()}`,
     {},
