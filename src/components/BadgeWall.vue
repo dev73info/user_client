@@ -89,6 +89,8 @@ async function toggleEquip(badge: BadgeDefinition) {
     try {
         const result = await setMyEquippedBadges(auth.token!, codes)
         earnedBadges.value = result.badges
+        // 佩戴变化只影响「已佩戴」，但也得再上报一次读数，否则页面顶部读数条要等整页刷新才动。
+        emit('stats', acquiredCount.value, allBadges.value.length, equippedCount.value)
         showToast(willEquip ? `已佩戴「${badge.name}」` : `已取消佩戴「${badge.name}」`, 'success')
     } catch (error) {
         showToast(error instanceof Error ? error.message : '更新佩戴徽章失败', 'error')
