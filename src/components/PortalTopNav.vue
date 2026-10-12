@@ -731,33 +731,19 @@ function finishSearchComposition(event: CompositionEvent) {
 </template>
 
 <style scoped>
-/* 顶栏是通栏平底的一条，不做浮动卡片：不圆角、不投影、不模糊、不铺底，
-   背景透明、直接透出页面底色，只用一条底边细线跟正文分界。
-   内容仍收在站点内容列里：窄屏用固定留白，宽屏把超出 1280px 的部分平摊到两侧对齐正文。 */
+/* 顶栏全站统一为「浮动圆角卡片」：顶部内缩 10px、左右收在内容列宽度内（min(1280px, 100% - 24px)）并居中，
+   白底半透明 + 细描边 + 投影 + 背景模糊。这是所有页面形态的基线样式，首页不再单独写一份。
+   滚动时顶栏是一层带底色的浮层，正文从卡片底下穿过去，不会与顶栏文字视觉打架。
+   移动端（≤900px）由 styles/unified-top-card.css 的 !important 规则压成白色通栏，不走这套卡片。 */
 .portal-header {
   --portal-nav-motion: cubic-bezier(0.22, 1, 0.36, 1);
-  --portal-gutter: max(12px, calc((100% - 1280px) / 2));
   position: sticky;
-  top: 0;
+  top: 10px;
   z-index: 40;
   display: grid;
   grid-template-columns: auto minmax(max-content, 1fr) auto;
   align-items: center;
   gap: 20px;
-  margin: 0 0 14px;
-  width: 100%;
-  padding: 12px var(--portal-gutter);
-  border: 0;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-/* 首页顶栏仍用「浮动圆角卡片」（其余页面是上面那条通栏平底的透明顶栏）：
-   内缩 10px、居中收在内容列宽度内，白底 + 细边 + 投影 + 背景模糊。 */
-.portal-header.app-top-nav--home {
-  top: 10px;
   width: min(1280px, calc(100% - 24px));
   margin: 10px auto 14px;
   padding: 12px 16px;
@@ -1553,15 +1539,9 @@ function finishSearchComposition(event: CompositionEvent) {
 
 @media (max-width: 1180px) {
   .portal-header {
-    --portal-gutter: max(14px, calc((100% - 1280px) / 2));
     grid-template-columns: auto max-content minmax(0, 1fr);
     grid-template-areas: "brand nav tools";
     gap: 10px 12px;
-    padding: 10px var(--portal-gutter);
-  }
-
-  /* 首页那张浮动卡片的内缩口径与通栏顶栏不同，沿用旧的 10 / 14 */
-  .portal-header.app-top-nav--home {
     padding: 10px 14px;
   }
 
@@ -1653,9 +1633,8 @@ function finishSearchComposition(event: CompositionEvent) {
 @media (max-width: 780px) {
   .portal-header {
     top: 0;
-    --portal-gutter: 16px;
     margin: 0 0 12px;
-    padding: 12px var(--portal-gutter);
+    padding: 12px 16px;
   }
 
   .portal-search {
@@ -1700,9 +1679,8 @@ function finishSearchComposition(event: CompositionEvent) {
     top: 0;
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
-    --portal-gutter: 12px;
     margin: 0 0 12px;
-    padding: 12px var(--portal-gutter);
+    padding: 12px;
     height: auto;
     min-height: 66px;
   }
@@ -1745,9 +1723,8 @@ function finishSearchComposition(event: CompositionEvent) {
 @media (max-width: 1180px) {
   .portal-header--dev {
     gap: 8px;
-    --portal-gutter: 10px;
     margin: 0 0 8px;
-    padding: 8px var(--portal-gutter);
+    padding: 8px 10px;
   }
 
   .portal-header--dev .portal-brand {
