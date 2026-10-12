@@ -245,7 +245,7 @@ onBeforeUnmount(() => {
           <h3 class="wb-card-head__title">我的已购资源</h3>
         </div>
         <div class="wb-card-head__actions">
-          <TButton variant="outline" @click="router.push({ name: 'free-resources' })">
+          <TButton variant="outline" @click="router.push({ name: 'resources' })">
             浏览资源
           </TButton>
         </div>

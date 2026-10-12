@@ -9,8 +9,8 @@ import {
     type PublicMcResourceItem,
 } from '@/api/resources'
 import {
-    getResourceDetailSlug,
     getTagFilterSections,
+    getTagRouteSlug,
     type McTagFilterSection,
 } from '@/api/resourceTags'
 import { useTagTreeStore } from '@/stores/tagTree'
@@ -25,6 +25,7 @@ import {
   isPricedResource,
   type ResourceListingSale,
 } from '@/shared/resourceSale'
+import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import ResourceModeSwitch from '@/components/ResourceModeSwitch.vue'
 
 import {
@@ -352,15 +353,16 @@ function loadMore() {
 }
 
 function openResource(card: MobileCard) {
-    void router.push({
-        name: 'resource-detail',
-        params: {
+    // 与桌面端同一套入口：落到资源列表页的页内详情态（`?resource=<id>`），
+    // 独立详情路由已废弃。这里用 push 让移动端手势返回能回到列表。
+    void router.push(
+        resourceDetailLocation({
+            resourceId: card.id,
             rootSlug: props.rootSlug,
-            entrySlug: props.entrySlug,
-            resourceSlug: getResourceDetailSlug(card.id, card.ownerName),
-        },
-        query: listingQuery(),
-    })
+            entrySlug: props.entrySlug || getTagRouteSlug(props.groupName),
+            sale: resourceListingSaleOf(card.priceFen, card.pricePoints),
+        }),
+    )
 }
 
 function formatUpdatedAt(value: string): string {

@@ -6,6 +6,7 @@ import { apiUrl, requestJson } from '@/api/http'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { useToast } from '@/composables/useToast'
+import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import { TLoading } from 'ui_73info'
 
 interface TeamPublicProfile {
@@ -82,10 +83,14 @@ function openResource(resource: PublicMcResourceItem) {
     return
   }
 
-  void router.push({
-    name: 'resource-detail',
-    params: { rootSlug, entrySlug, resourceSlug },
-  })
+  void router.push(
+    resourceDetailLocation({
+      resourceId: resource.id,
+      rootSlug,
+      entrySlug,
+      sale: resourceListingSaleOf(resource.price_fen, resource.price_points),
+    }),
+  )
 }
 </script>
 

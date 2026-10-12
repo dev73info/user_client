@@ -22,7 +22,7 @@ import {
   listPublicMcResourceVersions,
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
-import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
+import { getResourceDetailSlug } from '@/api/resourceTags'
 import { getMyRealnameVerification } from '@/api/realname'
 import { getInvoiceSummary } from '@/api/invoices'
 import { listMyAfterSalesCases } from '@/api/afterSales'
@@ -1014,29 +1014,15 @@ function toggleResourceVisibilityLabel(item: RequirementItem) {
 }
 
 /**
- * 需求行上的「主页」需要拼资源详情路由，标签口径沿用原「我的定制」页：
- * 主标签 / 次标签取 group_path 的前两级（次标签缺失时回退平台），别名优先于原名。
+ * 需求行上的「主页」要的资源深链 slug（`<作者>--<id>`）。
+ * 需求行里没有关联资源的售卖类型与分类段，推不出页内详情需要的
+ * `?sale=` / `:rootSlug` / `:entrySlug`，所以统一走 `/resources/:resourceSlug`
+ * 这条轻量重定向（见 ResourceDetailRedirectView），由它拉了资源再落到页内详情态。
  */
-function boundResourceRouteSlugs(item: RequirementItem) {
-  const tagSelections = item.bound_resource_tag_selections ?? []
-  const rootName = tagSelections.find((entry) => entry.group_path.length > 0)?.group_path[0] ?? ''
-  const entryName =
-    tagSelections.find((entry) => entry.group_path.length > 1)?.group_path[1] ??
-    (item.bound_resource_platform || '')
-  const rootAlias =
-    tagSelections.find((entry) => (entry.group_path_aliases?.length ?? 0) > 0)
-      ?.group_path_aliases?.[0] ?? ''
-  const entryAlias =
-    tagSelections.find((entry) => (entry.group_path_aliases?.length ?? 0) > 1)
-      ?.group_path_aliases?.[1] ?? ''
+function boundResourceSlug(item: RequirementItem): string {
   const ownerName =
     item.creator?.trim() || auth.username || item.bound_resource_author?.trim() || item.title
-
-  return {
-    rootSlug: rootAlias || getTagRouteSlug(rootName),
-    entrySlug: entryAlias || getTagRouteSlug(entryName),
-    resourceSlug: getResourceDetailSlug(item.bound_resource_id as number, ownerName),
-  }
+  return getResourceDetailSlug(item.bound_resource_id as number, ownerName)
 }
 
 function openBoundResourceHomepage(item: RequirementItem) {
@@ -1044,17 +1030,10 @@ function openBoundResourceHomepage(item: RequirementItem) {
     return
   }
 
-  const { rootSlug, entrySlug, resourceSlug } = boundResourceRouteSlugs(item)
-
-  // 关联资源没有标签选择（历史数据未回填）时，分类段会拼成空字符串，
-  // 直接 push 进带分类的详情路由会抛 `Missing required param "rootSlug"`。
-  // 这种情况退回只需要资源 slug 的直达路由 `/resources/:resourceSlug`，主页照样能打开。
-  if (!rootSlug || !entrySlug) {
-    void router.push({ name: 'resource-detail-direct', params: { resourceSlug } })
-    return
-  }
-
-  void router.push({ name: 'resource-detail', params: { rootSlug, entrySlug, resourceSlug } })
+  void router.push({
+    name: 'resource-detail-direct',
+    params: { resourceSlug: boundResourceSlug(item) },
+  })
 }
 
 /** 下载绑定资源的最新已发布版本；版本列表在 loadResourceVersions 里已加载，不再单独发请求。 */

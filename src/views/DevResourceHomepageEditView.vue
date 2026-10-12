@@ -26,7 +26,7 @@ import RichTextEditor from '@/components/RichTextEditor.vue'
 import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
 import ResourceTransferDialog from '@/components/ResourceTransferDialog.vue'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
-import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
+import { getTagRouteSlug } from '@/api/resourceTags'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 import {
   canSwitchToPointsPrice,
@@ -34,6 +34,7 @@ import {
   parsePointsPriceInput,
   parseYuanPriceInput,
 } from '@/shared/resourceSale'
+import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 
 import {
   TButton,
@@ -587,15 +588,15 @@ function firstTagPathSegment(index: number): string {
 function userClientResourceUrl(target: McResourcePayload): string {
   const rootSlug = getTagRouteSlug(firstTagPathSegment(0) || 'resources')
   const entrySlug = getTagRouteSlug(firstTagPathSegment(1) || target.platform || 'detail')
-  const ownerName = target.creator.trim() || target.author.trim() || target.title
-  const routeLocation = router.resolve({
-    name: 'resource-detail',
-    params: {
+  // 独立详情页已废弃：站内分享地址统一指到列表页的页内详情态（`?resource=`）
+  const routeLocation = router.resolve(
+    resourceDetailLocation({
+      resourceId: target.id,
       rootSlug,
       entrySlug,
-      resourceSlug: getResourceDetailSlug(target.id, ownerName),
-    },
-  })
+      sale: resourceListingSaleOf(target.price_fen, target.price_points),
+    }),
+  )
 
   const configuredBase = (import.meta.env.VITE_USER_CLIENT_BASE_URL as string | undefined)?.trim()
   const baseUrl = configuredBase ? configuredBase.replace(/\/$/, '') + '/' : window.location.href

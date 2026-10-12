@@ -104,10 +104,10 @@ const catalogRef = ref<InstanceType<typeof ResourceCatalog> | null>(null)
 const isMobile = ref(false)
 
 /**
- * 当前选中的资源（桌面端主从双栏的右栏内容）。
+ * 当前选中的资源（列表页的页内详情：桌面端与移动端都走它）。
  *
  * 选中态落在 URL 上（`?resource=<id>`），刷新 / 复制分享可还原；它只是**同一路由内的 query 变化**，
- * 页面组件不会卸载重挂。移动端不参与（仍是「列表 → 跳独立详情路由」），所以恒为 null。
+ * 页面组件不会卸载重挂。选中后列表整块收起、详情独占内容区（见模板）。
  */
 const selectedResourceId = ref<number | null>(null)
 
@@ -128,7 +128,7 @@ function withoutSelection(query: LocationQueryRaw = {}): LocationQueryRaw {
 }
 
 function syncSelectionFromQuery() {
-  selectedResourceId.value = isMobile.value ? null : parseSelectedResourceId(route.query.resource)
+  selectedResourceId.value = parseSelectedResourceId(route.query.resource)
 }
 
 /** 列表里点了「查看详情」：就地选中并写回 URL，不跳独立详情路由 */
@@ -149,7 +149,6 @@ function clearSelectedResource() {
 }
 
 watch(() => route.query.resource, syncSelectionFromQuery, { immediate: true })
-watch(isMobile, syncSelectionFromQuery)
 
 // 工具条上的三块状态都由 ResourceCatalog 上报（数据在它那里，切换分区 / 排序仍是本地过滤）
 const listingCounts = ref<{ free: number; paid: number }>({ free: 0, paid: 0 })
@@ -469,11 +468,23 @@ function updateViewport() {
     </section>
 
     <section class="catalog-layout-page__browser">
-      <!-- 移动端（≤900px）保持原有行为：列表页点卡片跳独立详情路由，不做双栏 -->
-      <MobileResourceList v-if="isMobile" :platform="currentPlatform" :rootSlug="currentRootSlug"
-        :entrySlug="currentEntrySlug" :groupName="currentTab?.groupName || currentEntryLabel"
-        :listing-mode="activeListingMode" @switch-listing-mode="switchListingMode"
-        @listing-counts="handleListingCounts" />
+      <!-- 移动端（≤900px）：与桌面端同一套入口与同一套「页内详情」——
+           未选中时列表独占内容区，选中一条资源时列表整块收起、详情铺满；
+           「收起详情」由面板自身提供（工具条只在桌面端渲染）。
+           KeepAlive 同桌面端：收起期间列表实例被缓存，返回时筛选 / 页码原样恢复。 -->
+      <template v-if="isMobile">
+        <KeepAlive>
+          <MobileResourceList v-if="selectedResourceId === null" :platform="currentPlatform"
+            :rootSlug="currentRootSlug" :entrySlug="currentEntrySlug"
+            :groupName="currentTab?.groupName || currentEntryLabel" :listing-mode="activeListingMode"
+            @switch-listing-mode="switchListingMode" @listing-counts="handleListingCounts" />
+        </KeepAlive>
+
+        <aside v-if="selectedResourceId !== null" class="catalog-master__detail" aria-label="资源详情">
+          <ResourceDetailPanel :key="selectedResourceId" :resource-id="selectedResourceId"
+            @close="clearSelectedResource" />
+        </aside>
+      </template>
 
       <!-- 桌面端是「单栏两块、同一时刻只渲染一块」：未选中时资源列表独占内容区整宽，
            选中一条资源时整个列表收起、详情独占内容区整宽（不再左右并排，也不留空栏）。
@@ -491,7 +502,7 @@ function updateViewport() {
         </KeepAlive>
 
         <aside v-if="selectedResourceId !== null" class="catalog-master__detail" aria-label="资源详情">
-          <ResourceDetailPanel :key="selectedResourceId" :resource-id="selectedResourceId" variant="panel"
+          <ResourceDetailPanel :key="selectedResourceId" :resource-id="selectedResourceId"
             @close="clearSelectedResource" />
         </aside>
       </div>

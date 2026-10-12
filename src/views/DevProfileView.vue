@@ -17,6 +17,7 @@ import {
 } from '@/api/settings'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import BadgeDisplay from '@/components/BadgeDisplay.vue'
 import DevTipDialog from '@/components/DevTipDialog.vue'
 import {
@@ -342,10 +343,14 @@ function openResource(resource: PublicMcResourceItem) {
     return
   }
 
-  void router.push({
-    name: 'resource-detail',
-    params: { rootSlug, entrySlug, resourceSlug },
-  })
+  void router.push(
+    resourceDetailLocation({
+      resourceId: resource.id,
+      rootSlug,
+      entrySlug,
+      sale: resourceListingSaleOf(resource.price_fen, resource.price_points),
+    }),
+  )
 }
 
 function setBackground(mode: 'static' | 'dynamic') {

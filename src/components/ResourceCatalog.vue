@@ -12,7 +12,6 @@ import {
   type PublicMcResourceItem,
 } from '@/api/resources'
 import {
-  getResourceDetailSlug,
   getTagFilterSections,
   getTagRouteSlug,
   normalizeTagName,
@@ -22,6 +21,7 @@ import { useMultiSelectTags } from '@/composables/useMultiSelectTags'
 import { useTagTreeStore } from '@/stores/tagTree'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import {
   DEFAULT_RESOURCE_LISTING_SALE,
   formatResourcePriceLabel,
@@ -370,10 +370,6 @@ function setSort(sort: string) {
   }
 }
 
-function listingQuery() {
-  return { sale: activeListingMode.value }
-}
-
 defineExpose({
   setSort,
   nextPage,
@@ -424,15 +420,15 @@ function openResource(card: McCardItem) {
     return
   }
 
-  router.push({
-    name: 'resource-detail',
-    params: {
+  // 本组件当独立列表页用时：同样落到页内详情态（独立详情页已废弃）
+  void router.push(
+    resourceDetailLocation({
+      resourceId: card.id,
       rootSlug: props.rootSlug,
       entrySlug: props.entrySlug || getTagRouteSlug(props.groupName),
-      resourceSlug: getResourceDetailSlug(card.id, card.ownerName),
-    },
-    query: listingQuery(),
-  })
+      sale: resourceListingSaleOf(card.priceFen, card.pricePoints),
+    }),
+  )
 }
 
 function openLikeLogin() {

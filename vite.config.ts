@@ -131,8 +131,7 @@ export default defineConfig({
 
             if (
               normalizedId.includes('ResourceCatalogView') ||
-              normalizedId.includes('ResourceDetailView') ||
-              normalizedId.includes('FreeResourcesView')
+              normalizedId.includes('ResourcesView')
             ) {
               return 'user-resources'
             }

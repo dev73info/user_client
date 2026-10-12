@@ -15,6 +15,7 @@ import { useToast } from '@/composables/useToast'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { useResourceVersionDraft } from '@/composables/useResourceVersionDraft'
+import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import {
   canDeleteResource,
   resourceCoverUrl,
@@ -214,10 +215,14 @@ function openResourceHomepage(resource: McResourcePayload) {
     return
   }
 
-  void router.push({
-    name: 'resource-detail',
-    params: { rootSlug, entrySlug, resourceSlug },
-  })
+  void router.push(
+    resourceDetailLocation({
+      resourceId: resource.id,
+      rootSlug,
+      entrySlug,
+      sale: resourceListingSaleOf(resource.price_fen, resource.price_points),
+    }),
+  )
 }
 
 function openPublishVersionDialog(resource: McResourcePayload) {

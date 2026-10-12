@@ -5,7 +5,6 @@ import { useRouter } from 'vue-router'
 import { apiUrl } from '@/api/http'
 import {
   getProcessedTagTree,
-  getResourceDetailSlug,
   type McProcessedTagTree,
 } from '@/api/resourceTags'
 import {
@@ -47,6 +46,7 @@ import {
   formatResourcePriceLabel,
   isPricedResource,
 } from '@/shared/resourceSale'
+import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import {
   describeTransferError,
   describeTransferReceiver,
@@ -347,14 +347,14 @@ async function openResourceHomepage(resource: McResourcePayload) {
     return
   }
 
-  await router.push({
-    name: 'resource-detail',
-    params: {
+  await router.push(
+    resourceDetailLocation({
+      resourceId: resource.id,
       rootSlug: routeParams.rootSlug,
       entrySlug: routeParams.entrySlug,
-      resourceSlug: getResourceDetailSlug(resource.id, resource.creator || resource.author),
-    },
-  })
+      sale: resourceListingSaleOf(resource.price_fen, resource.price_points),
+    }),
+  )
 }
 
 function openPublishVersionDialog(resource: McResourcePayload) {

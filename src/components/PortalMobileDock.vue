@@ -11,12 +11,8 @@ const auth = useAuthStore();
 const routeName = computed(() => String(route.name ?? ""));
 
 function isResourceActive() {
-    const sale = Array.isArray(route.query.sale) ? route.query.sale[0] : route.query.sale
-    // 底栏「免费资源」只在免费厅高亮；付费厅走顶栏入口
-    if (routeName.value === "paid-resources" || sale === "paid") {
-        return false
-    }
-    return ["free-resources", "resource-catalog", "resource-detail"].includes(
+    // 「资源项目」覆盖免费 / 付费两个分区，不再按 sale 区分高亮
+    return ["resources", "resource-catalog", "resource-detail", "resource-detail-direct"].includes(
         routeName.value
     );
 }
@@ -56,8 +52,8 @@ async function goHome() {
     await scrollPortalTop();
 }
 
-function goFreeResources() {
-    void router.push({ name: "free-resources" });
+function goResources() {
+    void router.push({ name: "resources" });
 }
 
 function goProtectedTarget(target: { name: string; hash?: string }) {
@@ -109,9 +105,9 @@ function goWorkbench() {
             <small>首页</small>
         </button>
         <button type="button" class="portal-mobile-dock__item" :class="{ active: isResourceActive() }"
-            @click="goFreeResources">
+            @click="goResources">
             <span>◫</span>
-            <small>免费资源</small>
+            <small>资源</small>
         </button>
         <button type="button" class="portal-mobile-dock__item portal-mobile-dock__item--primary" @click="openPublish">
             <span>＋</span>

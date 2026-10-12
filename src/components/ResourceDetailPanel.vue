@@ -41,18 +41,12 @@ import {
 } from '@/shared/resourceSale'
 import { isWechatBrowser } from '@/shared/auth/browser'
 import { getMyPoints } from '@/api/points'
-import {
-  getResourceDetailSlug,
-  getTagRouteSlug,
-  normalizeTagName,
-} from '@/api/resourceTags'
 import { useAuthStore } from '@/stores/auth'
 import { useDownloadStore } from '@/stores/download'
 import { useToast } from '@/composables/useToast'
 import { useResourceDownload } from '@/composables/useResourceDownload'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
-import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 import QRCode from 'qrcode'
 import { TLoading } from 'ui_73info'
@@ -67,33 +61,25 @@ type CommentGate = {
 const COMMENT_MAX_LENGTH = 300
 
 /**
- * 资源详情面板：一份取数逻辑、两种形态。
+ * 资源详情面板：资源列表页（ResourceCatalogView）里就地渲染的详情内容。
  *
- * - `variant = 'page'`：独立详情路由页（`/resources/<作者>--<id>`、`/:root/:entry/:slug`），
- *   整个页面就是这块内容，并由它写 SEO；
- * - `variant = 'panel'`：资源列表页右栏就地面板（主从双栏，见 ResourceCatalogView），
- *   宽度 / 高度跟随栏位、不写 SEO、「继续浏览」换成「收起详情」。
- *
- * 抽成组件的目的是让列表页与独立详情页共用同一份请求与交互，不复制第二套口径。
+ * 独立详情路由页（`/resources/<作者>--<id>`、`/:root/:entry/:slug`）已废弃，
+ * 那两个地址改为轻量重定向到本面板的页内形态（见 ResourceDetailRedirectView）；
+ * 所以这里不再有 page 形态：宽度跟随列表页内容区、不写 SEO；面板内不再渲染收起入口。
  */
-const props = withDefaults(
-  defineProps<{
-    /** 要展示的资源编号（列表页传选中项，详情页从路由段解析） */
-    resourceId: number
-    /** page = 独立详情页；panel = 列表页右栏面板 */
-    variant?: 'page' | 'panel'
-  }>(),
-  { variant: 'page' },
-)
-
-const emit = defineEmits<{
-  /** 面板形态下点「收起详情」：由列表页清掉当前选中 */
-  (e: 'close'): void
+const props = defineProps<{
+  /** 要展示的资源编号（列表页传选中项） */
+  resourceId: number
 }>()
 
-const isPanel = computed(() => props.variant === 'panel')
-/** 独立详情页用 `<main>`（页面唯一主内容区）；面板嵌在列表页的 `<main>` 里，只能是 `<div>` */
-const rootTag = computed(() => (isPanel.value ? 'div' : 'main'))
+/**
+ * `close`：由列表页清掉当前选中（`ResourceCatalogView` 的桌面 / 移动两个实例都还挂着 `@close`）。
+ * 面板内原来的详情收起按钮已按需求删除，这里仍保留事件声明：本组件是「div + Teleport」的多根结构，
+ * 父级监听一旦没有对应声明就会退化成无法继承的额外属性，触发 Vue 的 dev 警告。
+ */
+defineEmits<{
+  (e: 'close'): void
+}>()
 
 const route = useRoute()
 const router = useRouter()
@@ -220,31 +206,6 @@ const repostOriginLabel = computed(() => {
     parts.push(`原作者 ${current.origin_author}`)
   }
   return parts.join(' · ')
-})
-const currentRootSlug = computed(() => {
-  const raw = route.params.rootSlug
-  return typeof raw === 'string' ? raw.trim() : ''
-})
-const currentEntrySlug = computed(() => {
-  const raw = route.params.entrySlug
-  return typeof raw === 'string' ? raw.trim() : ''
-})
-const resourceRootName = computed(() => {
-  const rootName = resource.value?.tag_selections.find((item) => item.group_path.length > 0)
-    ?.group_path[0]
-  return normalizeTagName(rootName || '')
-})
-const resourceRootAlias = computed(() => {
-  return (
-    resource.value?.tag_selections.find((item) => (item.group_path_aliases?.length ?? 0) > 0)
-      ?.group_path_aliases?.[0] ?? ''
-  )
-})
-const resourceEntryAlias = computed(() => {
-  return (
-    resource.value?.tag_selections.find((item) => (item.group_path_aliases?.length ?? 0) > 1)
-      ?.group_path_aliases?.[1] ?? ''
-  )
 })
 const infoCards = computed(() => {
   if (!resource.value) {
@@ -446,27 +407,6 @@ function formatHomepageContent(value: string): string {
     : sanitizeRichHtml(markdownRenderer.render(trimmed))
 
   return wrapRichTables(highlightRichCodeBlocks(rendered))
-}
-
-function backToPlatform() {
-  const fallbackRootSlug = resourceRootAlias.value || getTagRouteSlug(resourceRootName.value)
-  const fallbackEntrySlug =
-    resourceEntryAlias.value || getTagRouteSlug(resource.value?.platform ?? '')
-  const rootSlug = currentRootSlug.value || fallbackRootSlug
-  const entrySlug = currentEntrySlug.value || fallbackEntrySlug
-
-  // 资源没有分类标签时（例如从需求行菜单的「资源主页」直达过来），
-  // 分类段会是空字符串，push 带分类参数的路由会抛 `Missing required param "rootSlug"`，
-  // 这种情况退回免费资源列表，那里本来就不需要分类参数。
-  if (!rootSlug || !entrySlug) {
-    void router.push({ name: 'resources', query: { sale: 'free' } })
-    return
-  }
-
-  void router.push({
-    name: 'resource-catalog',
-    params: { rootSlug, entrySlug },
-  })
 }
 
 function getCurrentResourceId(): number | null {
@@ -1071,13 +1011,8 @@ async function submitResourceComment() {
 async function loadResource() {
   const resourceId = getCurrentResourceId()
   if (!resourceId) {
-    // 面板形态下不接管导航：由列表页决定选中是否合法（URL 里的 `?resource=` 可能是脏数据）
-    if (isPanel.value) {
-      loadError.value = '没有拿到有效的资源编号。'
-      return
-    }
-    showToast('资源编号无效', 'warning')
-    router.replace({ name: 'home' })
+    // 不接管导航：由列表页决定选中是否合法（URL 里的 `?resource=` 可能是脏数据）
+    loadError.value = '没有拿到有效的资源编号。'
     return
   }
 
@@ -1095,16 +1030,10 @@ async function loadResource() {
     versions.value = resourceVersions
     void loadComments(resourceId)
   } catch (error) {
-    const message = error instanceof Error ? error.message : '加载资源主页失败'
-    if (isPanel.value) {
-      // 右栏就地报错，不把整个列表页带回首页
-      resource.value = null
-      versions.value = []
-      loadError.value = message
-    } else {
-      showToast(message, 'warning')
-      router.replace({ name: 'home' })
-    }
+    // 就地报错，不把整个列表页带回首页
+    resource.value = null
+    versions.value = []
+    loadError.value = error instanceof Error ? error.message : '加载资源主页失败'
   } finally {
     loading.value = false
   }
@@ -1117,10 +1046,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopPurchasePoll()
-  // SEO 只有独立详情页在管；面板嵌在列表页里，退出时清掉会把列表页的 SEO 一起抹掉
-  if (!isPanel.value) {
-    resetSeoMeta()
-  }
 })
 
 watch(
@@ -1139,27 +1064,10 @@ watch(
     }
   },
 )
-
-watch(
-  resource,
-  (current) => {
-    if (!current || isPanel.value) {
-      // 面板嵌在资源列表页里，SEO 归列表页，选中资源不改页面的标题与描述
-      return
-    }
-
-    setSeoMeta({
-      title: `${current.title} - 73Info 资源`,
-      description: current.description || current.release_note || '73Info 平台公开资源详情。',
-      path: `/resources/${getResourceDetailSlug(current.id, current.creator || current.author)}`,
-    })
-  },
-)
 </script>
 
 <template>
-  <component :is="rootTag" class="portal-page resource-detail-page"
-    :class="{ 'resource-detail-page--panel': isPanel }">
+  <div class="portal-page resource-detail-page resource-detail-page--panel">
     <TLoading tag="section" class="resource-detail-page__panel" :loading="loading">
       <template v-if="resource">
         <section class="resource-detail-page__lead">
@@ -1244,17 +1152,18 @@ watch(
                 </div>
                 <button class="resource-detail-page__like-btn" type="button"
                   :class="{ 'resource-detail-page__like-btn--active': resource.liked_by_me }" :disabled="likeSubmitting"
-                  :aria-pressed="resource.liked_by_me" @click="toggleResourceLike">
-                  <span aria-hidden="true">{{ resource.liked_by_me ? '♥' : '♡' }}</span>
-                  <span>{{ resource.liked_by_me ? '已点赞' : '点赞' }}</span>
-                  <strong>{{ resource.like_count ?? 0 }}</strong>
+                  :aria-pressed="resource.liked_by_me" :aria-label="resource.liked_by_me ? '已点赞' : '点赞'"
+                  :title="resource.liked_by_me ? '取消点赞' : '点赞'" @click="toggleResourceLike">
+                  <svg class="resource-detail-page__like-icon" viewBox="0 0 24 24"
+                    :fill="resource.liked_by_me ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path
+                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+                    </path>
+                  </svg>
                 </button>
                 <ShareCardGenerator v-if="auth.isAuthed" share-type="resource" :target-id="String(resource.id)" />
               </div>
-              <button class="resource-detail-page__secondary-btn" type="button"
-                @click="isPanel ? emit('close') : backToPlatform()">
-                {{ isPanel ? '收起详情' : '继续浏览' }}
-              </button>
             </div>
 
             </div>
@@ -1383,7 +1292,7 @@ watch(
         <span>{{ loadError }}</span>
       </div>
     </TLoading>
-  </component>
+  </div>
 
   <Teleport to="body">
     <div
@@ -2058,8 +1967,6 @@ a.resource-detail-page__repost-origin:hover {
 }
 
 .resource-detail-page__primary-btn,
-.resource-detail-page__like-btn,
-.resource-detail-page__secondary-btn,
 .resource-detail-page__version-download {
   border: 0;
   border-radius: 12px;
@@ -2073,8 +1980,6 @@ a.resource-detail-page__repost-origin:hover {
 }
 
 .resource-detail-page__primary-btn:hover,
-.resource-detail-page__like-btn:hover,
-.resource-detail-page__secondary-btn:hover,
 .resource-detail-page__version-download:hover {
   transform: translateY(-1px);
 }
@@ -2132,7 +2037,6 @@ a.resource-detail-page__repost-origin:hover {
   font-variant-numeric: tabular-nums;
 }
 
-.resource-detail-page__secondary-btn,
 .resource-detail-page__version-download {
   color: #1d4ed8;
   background: rgba(239, 246, 255, 0.9);
@@ -2146,26 +2050,49 @@ a.resource-detail-page__repost-origin:hover {
   font-size: 13px;
 }
 
+/* 点赞：纯图标按钮（去胶囊底、去文字），未点赞是中性描边心，点赞后实心红心。
+   红色取资源卡片点赞的既有值（ResourceCatalog `.portal-resource-browser__like--active`），
+   悬停底色取首页点赞控件的既有值（home.css `.portal-spotlight-card__likes:hover`）。 */
 .resource-detail-page__like-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
   color: #64748b;
-  background: rgba(248, 250, 252, 0.96);
-  font-weight: 800;
-  border: 1px solid rgba(219, 229, 247, 0.82);
+  cursor: pointer;
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    transform 180ms ease;
 }
 
-.resource-detail-page__like-btn strong {
-  color: inherit;
-  font-size: 13px;
+.resource-detail-page__like-icon {
+  width: 20px;
+  height: 20px;
+  transition: transform 180ms ease;
+}
+
+.resource-detail-page__like-btn:hover:not(:disabled) {
+  color: #dc2626;
+  background: rgba(244, 63, 94, 0.08);
+}
+
+.resource-detail-page__like-btn:hover:not(:disabled) .resource-detail-page__like-icon {
+  transform: scale(1.08);
 }
 
 .resource-detail-page__like-btn--active {
   color: #dc2626;
-  background: rgba(254, 226, 226, 0.94);
-  border-color: rgba(248, 113, 113, 0.38);
+}
+
+.resource-detail-page__like-btn:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.45);
+  outline-offset: 2px;
 }
 
 .resource-detail-page__like-btn:disabled {
@@ -2657,10 +2584,8 @@ a.resource-detail-page__repost-origin:hover {
   }
 
   .resource-detail-page__primary-btn,
-  .resource-detail-page__like-btn,
   .resource-detail-page__primary-actions :deep(.share-card-generator),
-  .resource-detail-page__primary-actions :deep(.share-card-generator__start),
-  .resource-detail-page__secondary-btn {
+  .resource-detail-page__primary-actions :deep(.share-card-generator__start) {
     width: 100%;
   }
 

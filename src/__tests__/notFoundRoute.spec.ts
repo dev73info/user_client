@@ -22,9 +22,35 @@ describe('router 兜底路由（BUG-009）', () => {
 
   it('具体路由没有被兜底路由抢走', () => {
     expect(router.resolve('/').name).toBe('home')
-    expect(router.resolve('/free-resources').name).toBe('free-resources')
+    expect(router.resolve('/resources').name).toBe('resources')
     expect(router.resolve('/resources/dev-flow-03562487--55').name).toBe('resource-detail-direct')
     expect(router.resolve('/minecraft').name).toBe('resource-catalog')
+  })
+
+  it('旧的「免费资源 / 付费资源」地址是兼容入口，重定向到资源项目并带上对应分区', () => {
+    // 两个导航项合并成「资源项目」后，旧地址要带上对应分区跳过去，不能 404 / 白屏。
+    // 这里直接取路由记录里的 redirect 求解，不在 jsdom 里真的挂载资源页（它会拉标签树与 wasm）。
+    function redirectTarget(name: string, query: Record<string, string>) {
+      const record = router.getRoutes().find((item) => item.name === name)
+      expect(typeof record?.redirect).toBe('function')
+
+      const resolveRedirect = record?.redirect as (to: {
+        query: Record<string, string>
+        hash: string
+      }) => unknown
+      return resolveRedirect({ query, hash: '' })
+    }
+
+    expect(redirectTarget('free-resources', { keyword: 'vue' })).toEqual({
+      name: 'resources',
+      query: { keyword: 'vue', sale: 'free' },
+      hash: '',
+    })
+    expect(redirectTarget('paid-resources', {})).toEqual({
+      name: 'resources',
+      query: { sale: 'paid' },
+      hash: '',
+    })
   })
 
   it('一至三段的未知路径仍由目录 / 详情路由接走，兜底路由只接四段及以上', () => {

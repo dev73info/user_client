@@ -26,6 +26,7 @@ import {
   calculateFinalPaymentAmount,
 } from '@/shared/requirementPayment'
 import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
+import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import { validateRequirementRichText } from '@/utils/requirementRichText'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import { HttpError, apiUrl } from '@/api/http'
@@ -50,7 +51,7 @@ import {
 } from '@/api/requirements'
 import { getDepositRatio } from '@/api/settings'
 import { listCommunityPosts, type CommunityPost } from '@/api/community'
-import { getResourceDetailSlug, normalizeTagName } from '@/api/resourceTags'
+import { normalizeTagName } from '@/api/resourceTags'
 import { useTagTreeStore } from '@/stores/tagTree'
 import {
   invalidateResourceListCache,
@@ -387,18 +388,16 @@ const portalNotices = computed<PortalNotice[]>(() => {
       date: formatTimeLabel(publicResources.value[0].updated_at),
       tag: normalizeTagName(publicResources.value[0].platform),
       to: resourceRoute
-        ? {
-          name: 'resource-detail',
-          params: {
-            rootSlug: resourceRoute.rootSlug,
-            entrySlug: resourceRoute.entrySlug,
-            resourceSlug: getResourceDetailSlug(
-              publicResources.value[0].id,
-              publicResources.value[0].creator || publicResources.value[0].author,
-            ),
-          },
-        }
-        : { name: 'free-resources' },
+        ? resourceDetailLocation({
+          resourceId: publicResources.value[0].id,
+          rootSlug: resourceRoute.rootSlug,
+          entrySlug: resourceRoute.entrySlug,
+          sale: resourceListingSaleOf(
+            publicResources.value[0].price_fen,
+            publicResources.value[0].price_points,
+          ),
+        })
+        : { name: 'resources', query: { sale: 'free' } },
     })
   }
 
@@ -497,7 +496,7 @@ function openResourceInit() {
 
 function openQuickPanel(panel: QuickPanel) {
   if (panel.tone === 'gift') {
-    void router.push({ name: 'free-resources' })
+    void router.push({ name: 'resources', query: { sale: 'free' } })
     return
   }
 
@@ -547,14 +546,14 @@ function openSpotlight(card: SpotlightCard) {
       return
     }
 
-    void router.push({
-      name: 'resource-detail',
-      params: {
+    void router.push(
+      resourceDetailLocation({
+        resourceId: target.id,
         rootSlug: routeParams.rootSlug,
         entrySlug: routeParams.entrySlug,
-        resourceSlug: getResourceDetailSlug(target.id, target.creator || target.author),
-      },
-    })
+        sale: resourceListingSaleOf(target.price_fen, target.price_points),
+      }),
+    )
     return
   }
 
@@ -2177,7 +2176,8 @@ async function submitPublishRequirement() {
               </span>
               <span class="portal-entry__label">{{ devActionLabel }}</span>
             </button>
-            <button type="button" class="portal-entry portal-entry--free" @click="router.push({ name: 'free-resources' })">
+            <button type="button" class="portal-entry portal-entry--free"
+              @click="router.push({ name: 'resources', query: { sale: 'free' } })">
               <span class="portal-entry__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="8" width="18" height="4" rx="1" />
@@ -2356,7 +2356,7 @@ async function submitPublishRequirement() {
               <button
                 class="portal-link-btn"
                 type="button"
-                @click="router.push({ name: 'free-resources' })"
+                @click="router.push({ name: 'resources', query: { sale: 'free' } })"
               >
                 更多免费资源
               </button>

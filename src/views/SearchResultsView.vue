@@ -15,7 +15,6 @@ import {
     type RequirementStatus,
 } from '@/api/requirements'
 import {
-    getResourceDetailSlug,
     normalizeTagName,
     type McProcessedTagTree,
 } from '@/api/resourceTags'
@@ -23,6 +22,7 @@ import { useTagTreeStore } from '@/stores/tagTree'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
+import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import {
     formatCnDateTime as formatTimeLabel,
     formatCny as formatMoney,
@@ -335,20 +335,20 @@ function openResource(resource: PublicMcResourceItem) {
     const routeParams = resolveResourceRoute(resource)
     if (!routeParams) {
         void router.push({
-            name: 'free-resources',
-            query: keyword.value ? { keyword: keyword.value } : {},
+            name: 'resources',
+            query: keyword.value ? { sale: 'free', keyword: keyword.value } : { sale: 'free' },
         })
         return
     }
 
-    void router.push({
-        name: 'resource-detail',
-        params: {
+    void router.push(
+        resourceDetailLocation({
+            resourceId: resource.id,
             rootSlug: routeParams.rootSlug,
             entrySlug: routeParams.entrySlug,
-            resourceSlug: getResourceDetailSlug(resource.id, resource.creator || resource.author),
-        },
-    })
+            sale: resourceListingSaleOf(resource.price_fen, resource.price_points),
+        }),
+    )
 }
 
 function openRequirement(requirement: PublicRequirementSpotlightItem) {
