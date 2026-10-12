@@ -81,6 +81,13 @@ const props = defineProps<{
   groupName: string
   /** 免费 / 付费分区：由页内分段切换写入（见 ResourceCatalogView），这里只做展示过滤 */
   listingMode?: ResourceListingSale | null
+  /**
+   * 主从双栏（资源列表页桌面端）：卡片不再跳独立详情路由，而是把选中项交给父级，
+   * 由右栏就地渲染详情（见 ResourceCatalogView / ResourceDetailPanel）。
+   */
+  masterDetail?: boolean
+  /** 当前选中的资源编号：只用于列表项的高亮与「查看中」标记 */
+  selectedId?: number | null
 }>()
 
 /** 已选筛选汇总出来的一枚 chip：父页面据此渲染可逐个移除的筛选条 */
@@ -99,6 +106,8 @@ const emit = defineEmits<{
   (e: 'filters-change', chips: ActiveFilterChip[]): void
   /** 空态里「切换分区」出口，交给父页面写回路由 `?sale=` */
   (e: 'switch-listing-mode', value: ResourceListingSale): void
+  /** 主从双栏下选中某条资源：父页面据此更新右栏与地址栏（`?resource=<id>`） */
+  (e: 'select-resource', id: number): void
 }>()
 
 const sortOptions = ['最新', '点赞', '标题']
@@ -410,6 +419,13 @@ function formatUpdatedAt(value: string): string[] {
 }
 
 function openResource(card: McCardItem) {
+  // 主从双栏（资源列表页桌面端）：不跳独立详情路由，交给父级在右栏就地展开
+  // （选中态写进 URL 的 `?resource=` 由父级统一负责）。
+  if (props.masterDetail) {
+    emit('select-resource', card.id)
+    return
+  }
+
   router.push({
     name: 'resource-detail',
     params: {
@@ -540,10 +556,11 @@ watch(
 watch(
   () => route.query,
   (next, prev) => {
-    // `?sale=` 是免费 / 付费页内切换写的，跟标签筛选无关：
-    // 只改分区时不要重新套用 query 里的筛选，否则已选标签会被清掉。
+    // `?sale=` 是免费 / 付费页内切换写的，`?resource=` 是主从双栏选中项写的，
+    // 两者都与标签筛选无关：只改它们时不要重新套用 query 里的筛选，否则已选标签会被清掉。
     const changedKeys = new Set([...Object.keys(next ?? {}), ...Object.keys(prev ?? {})])
     changedKeys.delete('sale')
+    changedKeys.delete('resource')
     if (changedKeys.size === 0) {
       return
     }
@@ -627,7 +644,9 @@ watch(activeFilterChips, (chips) => emit('filters-change', chips), { immediate: 
     </section>
 
     <section class="portal-resource-browser__grid">
-      <article v-for="card in pagedCards" :key="card.id" class="portal-resource-browser__card">
+      <article v-for="card in pagedCards" :key="card.id" class="portal-resource-browser__card"
+        :class="{ 'portal-resource-browser__card--selected': masterDetail && card.id === selectedId }"
+        :aria-current="masterDetail && card.id === selectedId ? 'true' : undefined">
         <div class="portal-resource-browser__card-main">
           <div v-if="card.coverUrl && !card.coverFailed" class="portal-resource-browser__cover portal-resource-browser__cover--image">
             <img :src="card.coverUrl" :alt="card.title" class="portal-resource-browser__cover-image" @error="onCoverError(card)" />
@@ -694,7 +713,7 @@ watch(activeFilterChips, (chips) => emit('filters-change', chips), { immediate: 
               <span>{{ card.likeCount }}</span>
             </button>
             <button class="portal-resource-browser__action" type="button" @click="openResource(card)">
-              查看详情
+              {{ masterDetail && card.id === selectedId ? '查看中' : '查看详情' }}
             </button>
           </div>
         </div>
@@ -992,6 +1011,30 @@ watch(activeFilterChips, (chips) => emit('filters-change', chips), { immediate: 
 /* 悬停只变描边色：不做位移、不加投影 */
 .portal-resource-browser__card:hover {
   border-color: rgba(31, 74, 209, 0.4);
+}
+
+/* 主从双栏下的当前选中项：加粗描边 + 浅色底 + 左侧强调条（不用阴影、不做位移）。
+   选中即「右栏正在展示这一条」，要与 hover 区分得开，所以在描边之外还有底色与强调条。 */
+.portal-resource-browser__card--selected {
+  position: relative;
+  border-color: var(--accent);
+  background: rgba(239, 246, 255, 0.72);
+}
+
+.portal-resource-browser__card--selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: var(--accent);
+}
+
+.portal-resource-browser__card--selected .portal-resource-browser__action {
+  background: var(--accent);
+  color: #fff;
 }
 
 .portal-resource-browser__card-main {

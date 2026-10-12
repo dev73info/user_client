@@ -5,6 +5,7 @@ import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
 import { ArrowDown, TDropdown, TDropdownItem, TDropdownMenu, TIcon } from 'ui_73info'
 
 import ResourceCatalog from '@/components/ResourceCatalog.vue'
+import ResourceDetailPanel from '@/components/ResourceDetailPanel.vue'
 import MobileResourceList from '@/components/MobileResourceList.vue'
 import ResourceModeSwitch from '@/components/ResourceModeSwitch.vue'
 import {
@@ -51,6 +52,10 @@ const activeListingMode = computed<ResourceListingSale>(
   () => pendingListingMode.value ?? resolveResourceListingSale(route.query.sale),
 )
 
+const activeListingLabel = computed(() =>
+  activeListingMode.value === 'paid' ? '付费资源' : '免费资源',
+)
+
 async function switchListingMode(mode: ResourceListingSale) {
   if (mode === activeListingMode.value && pendingListingMode.value === null) {
     return
@@ -58,8 +63,12 @@ async function switchListingMode(mode: ResourceListingSale) {
 
   const seq = ++listingSwitchSeq
   pendingListingMode.value = mode
+  // 换分区等于换一批数据，右栏的选中项随之作废。
+  // 这里只清本地状态不单独导航：下面这次 replace 会用 withoutSelection 把 `?resource=` 一并摘掉，
+  // 连续两次 replace 只会白跑一次历史记录。
+  selectedResourceId.value = null
   try {
-    await router.replace({ query: { ...route.query, sale: mode } })
+    await router.replace({ query: { ...withoutSelection(route.query), sale: mode } })
   } catch {
     // 导航被更新的一次切换打断（或重复导航）时忽略，按序号决定谁收尾
   } finally {
@@ -97,6 +106,80 @@ const sortOptions = ['最新', '点赞', '标题'] as const
 const selectedSort = ref<(typeof sortOptions)[number]>('最新')
 const catalogRef = ref<InstanceType<typeof ResourceCatalog> | null>(null)
 const isMobile = ref(false)
+
+/**
+ * 当前选中的资源（桌面端主从双栏的右栏内容）。
+ *
+ * 选中态落在 URL 上（`?resource=<id>`），刷新 / 复制分享可还原；它只是**同一路由内的 query 变化**，
+ * 页面组件不会卸载重挂。移动端不参与（仍是「列表 → 跳独立详情路由」），所以恒为 null。
+ */
+const selectedResourceId = ref<number | null>(null)
+
+function parseSelectedResourceId(value: unknown): number | null {
+  const raw = Array.isArray(value) ? value[0] : value
+  const id = Number.parseInt(String(raw ?? ''), 10)
+  return Number.isInteger(id) && id > 0 ? id : null
+}
+
+/**
+ * 选中项只在当前列表里成立：换专区 / 子分区 / 免费付费分区时把它从 query 中摘掉
+ * （否则会出现「地址上选中的是付费资源、左边却在看免费分区」这种对不上的状态）。
+ */
+function withoutSelection(query: LocationQueryRaw = {}): LocationQueryRaw {
+  const next = { ...query }
+  delete next.resource
+  return next
+}
+
+function syncSelectionFromQuery() {
+  selectedResourceId.value = isMobile.value ? null : parseSelectedResourceId(route.query.resource)
+}
+
+/** 列表里点了「查看详情」：就地选中并写回 URL，不跳独立详情路由 */
+function selectResource(id: number) {
+  if (selectedResourceId.value === id) {
+    return
+  }
+  selectedResourceId.value = id
+  void router.replace({ query: { ...route.query, resource: String(id) } })
+}
+
+/** 右栏「收起详情」：清掉选中并把它从 URL 上摘掉 */
+function clearSelectedResource() {
+  selectedResourceId.value = null
+  if ('resource' in route.query) {
+    void router.replace({ query: withoutSelection(route.query) })
+  }
+}
+
+watch(() => route.query.resource, syncSelectionFromQuery, { immediate: true })
+watch(isMobile, syncSelectionFromQuery)
+
+/**
+ * 未选中任何资源时右栏的占位文案。
+ * 「整个分区没有资源」与「有资源但没选中」是两种状态：
+ * 前者要说明为什么空、下一步去哪儿（出口在左侧空态里，见 ResourceCatalog），后者只是引导点一条。
+ */
+const detailHint = computed(() => {
+  if (pageState.value.totalItems > 0) {
+    return {
+      title: '从左侧选择一条资源查看详情',
+      text: '点左侧资源的「查看详情」，详情会在这块区域就地展开，不会离开当前列表；地址栏也会带上当前选中的资源，可以直接复制分享。',
+    }
+  }
+
+  if (activeFilterChips.value.length > 0) {
+    return {
+      title: '当前筛选下没有可展示的资源',
+      text: '左侧空态里可以一键清除全部筛选；也可以换个免费 / 付费分区看看。',
+    }
+  }
+
+  return {
+    title: `还没有${activeListingLabel.value}`,
+    text: '左侧空态里可以直接换个分区，或者自己发布一条需求。',
+  }
+})
 
 // 工具条上的三块状态都由 ResourceCatalog 上报（数据在它那里，切换分区 / 排序仍是本地过滤）
 const listingCounts = ref<{ free: number; paid: number }>({ free: 0, paid: 0 })
@@ -183,10 +266,12 @@ function openPlatform(entrySlug: string) {
     return
   }
 
+  // 换子分区即换一批资源：右栏的选中项作废（只清本地状态，URL 交给下面这次 push 一并改写）
+  selectedResourceId.value = null
   router.push({
     name: 'resource-catalog',
     params: { rootSlug: currentRootSlug.value, entrySlug },
-    query: withListingQuery({ ...route.query }),
+    query: withListingQuery(withoutSelection(route.query)),
   })
 }
 
@@ -195,10 +280,11 @@ function openRoot(rootSlug: string, firstEntrySlug: string | null) {
     return
   }
 
+  selectedResourceId.value = null
   router.push({
     name: 'resource-catalog',
     params: firstEntrySlug ? { rootSlug, entrySlug: firstEntrySlug } : { rootSlug },
-    query: withListingQuery({ ...route.query }),
+    query: withListingQuery(withoutSelection(route.query)),
   })
 }
 
@@ -391,15 +477,34 @@ function updateViewport() {
     </section>
 
     <section class="catalog-layout-page__browser">
+      <!-- 移动端（≤900px）保持原有行为：列表页点卡片跳独立详情路由，不做双栏 -->
       <MobileResourceList v-if="isMobile" :platform="currentPlatform" :rootSlug="currentRootSlug"
         :entrySlug="currentEntrySlug" :groupName="currentTab?.groupName || currentEntryLabel"
         :listing-mode="activeListingMode" @switch-listing-mode="switchListingMode"
         @listing-counts="handleListingCounts" />
-      <ResourceCatalog v-else ref="catalogRef" :platform="currentPlatform" :rootSlug="currentRootSlug"
-        :entrySlug="currentEntrySlug" :groupName="currentTab?.groupName || currentEntryLabel"
-        :listing-mode="activeListingMode" @page-state-change="handlePageStateChange"
-        @listing-counts="handleListingCounts" @filters-change="handleFiltersChange"
-        @switch-listing-mode="switchListingMode" />
+
+      <!-- 桌面端主从双栏：左栏是资源列表（筛选 / 排序 / 分区 / 计数 / chip 都在它上方照旧），
+           右栏就地渲染选中资源的详情；选中只改 URL 的 query，不整页跳转、不卸载重挂 -->
+      <div v-else class="catalog-master">
+        <div class="catalog-master__list">
+          <ResourceCatalog ref="catalogRef" master-detail :selected-id="selectedResourceId"
+            :platform="currentPlatform" :rootSlug="currentRootSlug" :entrySlug="currentEntrySlug"
+            :groupName="currentTab?.groupName || currentEntryLabel" :listing-mode="activeListingMode"
+            @page-state-change="handlePageStateChange" @listing-counts="handleListingCounts"
+            @filters-change="handleFiltersChange" @switch-listing-mode="switchListingMode"
+            @select-resource="selectResource" />
+        </div>
+
+        <aside class="catalog-master__detail" aria-label="资源详情">
+          <ResourceDetailPanel v-if="selectedResourceId !== null" :key="selectedResourceId"
+            :resource-id="selectedResourceId" variant="panel" @close="clearSelectedResource" />
+          <!-- 没选中任何资源：分区为空与「有资源但没选中」是两种状态，分别给文案 -->
+          <div v-else class="catalog-detail-hint">
+            <strong>{{ detailHint.title }}</strong>
+            <span>{{ detailHint.text }}</span>
+          </div>
+        </aside>
+      </div>
     </section>
   </main>
 </template>

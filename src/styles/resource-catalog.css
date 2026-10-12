@@ -438,6 +438,70 @@
   min-width: 0;
 }
 
+/* ============================================================
+   主从双栏（桌面端 >900px）：左栏资源列表 + 右栏就地详情
+   - 左栏仍是原来的 ResourceCatalog（筛选栏 + 卡片），只是压成单列并收窄筛选栏；
+   - 右栏渲染选中资源的详情，未选中时是占位；
+   - 选中只改 URL 的 `?resource=`，路由与组件实例都不变，不整页跳转 / 不卸载重挂。
+   ============================================================ */
+
+.catalog-master {
+  display: grid;
+  /* 详情内容比列表密，所以右栏给略宽的份额 */
+  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  align-items: start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.catalog-master__list,
+.catalog-master__detail {
+  min-width: 0;
+}
+
+/* 右栏钉在视口内、由栏内自己滚：详情可能很长，直接 pin 到顶会滚不动 */
+.catalog-master__detail {
+  position: sticky;
+  top: 86px;
+}
+
+/* 未选中任何资源时的右栏占位：与列表卡片同一套描边 / 底色语言，不用阴影 */
+.catalog-detail-hint {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 56px 24px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--bg-soft);
+  text-align: center;
+  color: #64748b;
+}
+
+.catalog-detail-hint strong {
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.catalog-detail-hint span {
+  max-width: 420px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* 左栏的卡片栅格在主从双栏下压成单列（栏宽只够一张卡，硬撑多列会挤成窄条）。
+   下面两条都要盖过组件内 scoped 的默认栅格，所以用「.catalog-master + 两级」压过它的特异度。 */
+.catalog-master .catalog-master__list .portal-resource-browser__grid {
+  grid-template-columns: 1fr;
+}
+
+/* 筛选栏收窄给卡片留宽度；≤980px 仍交回组件自己的「筛选栏置顶」规则 */
+@media (min-width: 981px) {
+  .catalog-master .catalog-master__list .portal-resource-browser {
+    grid-template-columns: minmax(150px, 176px) minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 900px) {
   /* 移动端走 MobileResourceList，页面的面包屑与工具条都不渲染；
      这里只把外层容器还原成通栏，避免桌面栅格留下内边距与横向滚动 */
