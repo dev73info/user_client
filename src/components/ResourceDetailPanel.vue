@@ -191,6 +191,8 @@ const resourceSummaryText = computed(() => {
 const visibilityLabel = computed(() =>
   resource.value?.visibility === 'published' ? '公开' : '待正式发布',
 )
+/** 点赞按钮上的赞数：接口可能不带该字段，缺省按 0 显示（与资源卡片同一口径）。 */
+const likeCountLabel = computed(() => resource.value?.like_count ?? 0)
 const isRepost = computed(() => resource.value?.origin_type === 'repost')
 const originTypeLabel = computed(() =>
   resource.value?.origin_type === 'repost' ? '转载' : '原创',
@@ -1166,7 +1168,8 @@ watch(
                 </div>
                 <button class="resource-detail-page__like-btn" type="button"
                   :class="{ 'resource-detail-page__like-btn--active': resource.liked_by_me }" :disabled="likeSubmitting"
-                  :aria-pressed="resource.liked_by_me" :aria-label="resource.liked_by_me ? '已点赞' : '点赞'"
+                  :aria-pressed="resource.liked_by_me"
+                  :aria-label="`${resource.liked_by_me ? '已点赞' : '点赞'}，当前 ${likeCountLabel} 人赞`"
                   :title="resource.liked_by_me ? '取消点赞' : '点赞'" @click="toggleResourceLike">
                   <svg class="resource-detail-page__like-icon" viewBox="0 0 24 24"
                     :fill="resource.liked_by_me ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2"
@@ -1175,6 +1178,7 @@ watch(
                       d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
                     </path>
                   </svg>
+                  <span class="resource-detail-page__like-count" aria-hidden="true">{{ likeCountLabel }}</span>
                 </button>
                 <ShareCardGenerator v-if="auth.isAuthed" share-type="resource" :target-id="String(resource.id)" />
               </div>
@@ -2064,16 +2068,20 @@ a.resource-detail-page__repost-origin:hover {
   font-size: 13px;
 }
 
-/* 点赞：纯图标按钮（去胶囊底、去文字），未点赞是中性描边心，点赞后实心红心。
+/* 点赞：心形图标 + 赞数（与资源卡片上的点赞同一读法：数字跟在图标后面）。
+   未点赞是中性描边心，点赞后实心红心。
    红色取资源卡片点赞的既有值（ResourceCatalog `.portal-resource-browser__like--active`），
-   悬停底色取首页点赞控件的既有值（home.css `.portal-spotlight-card__likes:hover`）。 */
+   悬停底色取首页点赞控件的既有值（home.css `.portal-spotlight-card__likes:hover`）。
+   原来只管一个图标，所以是 44px 正方形；现在带数字，改成 44px 高、左右 12px 的胶囊，
+   宽度跟着数字走，单个图标时也不会比原来窄。 */
 .resource-detail-page__like-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
+  gap: 6px;
+  min-width: 44px;
   height: 44px;
-  padding: 0;
+  padding: 0 12px;
   border: 0;
   border-radius: 12px;
   background: transparent;
@@ -2083,6 +2091,13 @@ a.resource-detail-page__repost-origin:hover {
     color 180ms ease,
     background-color 180ms ease,
     transform 180ms ease;
+}
+
+.resource-detail-page__like-count {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .resource-detail-page__like-icon {
