@@ -35,6 +35,8 @@ export type UserRealnameVerification = {
   company_address?: string | null
   business_scope?: string | null
   business_license_expires_on?: string | null
+  /** 法人证件有效期起始日，`YYYYMMDD`。 */
+  legal_cert_begin_on?: string | null
   legal_cert_expires_on?: string | null
   guardian_consent?: boolean | null
   guardian_consent_file?: string | null
@@ -67,6 +69,8 @@ export type SubmitRealnameVerificationPayload = {
   business_scope?: string | null
   /** 营业执照有效期截止日，`YYYYMMDD`，长期填 20991231。 */
   business_license_expires_on?: string | null
+  /** 法人证件有效期起始日，`YYYYMMDD`。 */
+  legal_cert_begin_on?: string | null
   /** 法人证件有效期截止日，`YYYYMMDD`，长期填 20991231。 */
   legal_cert_expires_on?: string | null
   guardian_consent?: boolean | null
@@ -215,6 +219,8 @@ export type StartCompanyIdentifyPayload = {
   business_scope: string
   /** 营业执照有效期截止日，`YYYYMMDD`，长期填 20991231。 */
   business_license_expires_on: string
+  /** 法人证件有效期起始日，`YYYYMMDD`（与截止日同口径）。 */
+  legal_cert_begin_on: string
   /** 法人证件有效期截止日，`YYYYMMDD`，长期填 20991231。 */
   legal_cert_expires_on: string
 }
@@ -334,6 +340,61 @@ export async function uploadBusinessLicenseFile(
   )
 }
 
+export type LegalCertFrontUploadResponse = {
+  front_file: string
+}
+
+/**
+ * 上传法人身份证**人像面**照片（企业开户进件三张证照之一）。
+ *
+ * 与营业执照不同，此接口**上传即落库**（后端写进 `realname_legal_cert.front_file`），
+ * 进件时由另一个链路读取，所以返回值**不需要**再塞进提交实名的 payload。
+ */
+export async function uploadLegalCertFrontFile(
+  token: string,
+  file: File,
+): Promise<LegalCertFrontUploadResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return requestJson<LegalCertFrontUploadResponse>(
+    '/realname/legal-cert-front-file',
+    {
+      method: 'POST',
+      headers: {
+        ...authHeader(token),
+      },
+      body: formData,
+    },
+    '上传法人身份证人像面失败',
+  )
+}
+
+export type LegalCertBackUploadResponse = {
+  back_file: string
+}
+
+/** 上传法人身份证**国徽面**照片（同 `uploadLegalCertFrontFile`，上传即落库）。 */
+export async function uploadLegalCertBackFile(
+  token: string,
+  file: File,
+): Promise<LegalCertBackUploadResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return requestJson<LegalCertBackUploadResponse>(
+    '/realname/legal-cert-back-file',
+    {
+      method: 'POST',
+      headers: {
+        ...authHeader(token),
+      },
+      body: formData,
+    },
+    '上传法人身份证国徽面失败',
+  )
+}
+
 /** 营业执照 OCR 识别结果：只包含可回填表单的白名单字段。 */
 export type BusinessLicenseOcrResult = {
   company_name: string | null
@@ -364,4 +425,56 @@ export async function ocrBusinessLicense(
     },
     '营业执照识别失败',
   )
+}
+
+/** 法人身份证的哪一面：`front` = 人像面，`back` = 国徽面（与两个上传端点一一对应）。 */
+export type LegalCertOcrSide = 'front' | 'back'
+
+/**
+ * 法人证件有效期 OCR 结果：只回有效期起止（`YYYYMMDD`），识别不到的项为 `null`。
+ *
+ * 与营业执照 OCR 同口径的白名单：身份证号、姓名等敏感字段后端一律不外露。
+ */
+export type LegalCertOcrResult = {
+  cert_begin_on: string | null
+  cert_expires_on: string | null
+}
+
+/** 后端返回体的原始形状：两种命名都收（见 `recognizeLegalCertPeriod` 的注释）。 */
+type RawLegalCertOcrResult = {
+  cert_begin_on?: string | null
+  cert_expires_on?: string | null
+  certBeginOn?: string | null
+  certExpiresOn?: string | null
+}
+
+/**
+ * 让后端 OCR 识别**已上传**的法人身份证，取出证件有效期起止，用于辅助填写「法人证件有效期」。
+ *
+ * 后端按 `side` 从 `realname_legal_cert` 取对应的那张已上传照片（本地压图后）送爱签识别，
+ * 所以必须先上传照片再调；对应面还没上传时后端回 400（中文提示「请先上传…」）。
+ *
+ * 失败（图片不清晰、渠道异常、未上传）会抛错，调用方应**静默降级**：保留手填、不阻断提交。
+ *
+ * 字段名两种写法都收：任务书里写的是 `certBeginOn` / `certExpiresOn`，后端定稿的契约
+ * （R025 任务-02）是 `cert_begin_on` / `cert_expires_on`——与本模块营业执照 OCR 的命名一致。
+ * **以后端为准**，这里再做一层兼容读取，免得两种命名之间来回改。
+ */
+export async function recognizeLegalCertPeriod(
+  token: string,
+  side: LegalCertOcrSide = 'front',
+): Promise<LegalCertOcrResult> {
+  const raw = await requestJson<RawLegalCertOcrResult>(
+    '/realname/legal-cert-ocr',
+    {
+      method: 'POST',
+      headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ side }),
+    },
+    '法人证件有效期识别失败',
+  )
+  return {
+    cert_begin_on: raw.cert_begin_on ?? raw.certBeginOn ?? null,
+    cert_expires_on: raw.cert_expires_on ?? raw.certExpiresOn ?? null,
+  }
 }

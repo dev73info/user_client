@@ -99,8 +99,22 @@ const settleUnderReview = computed(() => {
   return status === 'under_review' || status === 'pending'
 })
 
+/**
+ * 渠道已明确拒绝开通收款账户（企业开户审核未通过 / 审核通过但开户失败）。
+ *
+ * 后端把渠道 `audit_state` 翻成了 `onboarding_status = failed` 与一句中文原因
+ * （`providerError`）。这一格的价值在于：实名认证是「已通过」的，但收款账户并没有开通，
+ * 只说实名那一句会让用户以为钱能收了。
+ */
+const settleRejected = computed(() => adapayMember.value?.onboardingStatus === 'failed')
+
 const heroDesc = computed(() => {
   if (current.value?.status === 'approved') {
+    if (settleRejected.value) {
+      return isEnterpriseSubject.value
+        ? '已完成实名认证，信息核验通过，可正常使用合同签署等权益。企业收款账户未通过渠道开户审核，暂时无法收取合同款——请到「认证管理」→「结算账户」查看原因并重新提交企业认证。'
+        : '已完成实名认证，信息核验通过，可正常使用合同签署等权益。收款账户开通被渠道拒绝，暂时无法收取合同款——请到「认证管理」→「结算账户」查看原因后重新提交。'
+    }
     return settleUnderReview.value
       ? isEnterpriseSubject.value
         ? '已完成实名认证，信息核验通过，可正常使用合同签署等权益。企业收款账户正在渠道审核中，审核通过后即可绑定对公账户。'
@@ -143,7 +157,10 @@ onMounted(async () => {
       <p class="realname-hero__desc">{{ heroDesc }}</p>
       <div class="realname-hero__tag">
         <TTag :tone="statusType">实名认证：{{ statusText }}</TTag>
-        <TTag v-if="settleUnderReview" tone="warning">
+        <TTag v-if="settleRejected" tone="danger">
+          {{ isEnterpriseSubject ? '企业收款账户' : '收款账户' }}：渠道审核未通过
+        </TTag>
+        <TTag v-else-if="settleUnderReview" tone="warning">
           {{ isEnterpriseSubject ? '企业收款账户' : '收款账户' }}：渠道审核中
         </TTag>
       </div>

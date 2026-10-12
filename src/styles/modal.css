@@ -301,9 +301,29 @@
   margin-bottom: 12px;
 }
 
-.auth-forgot-row {
-  text-align: right;
+/* 人机验证与「忘记密码？」同行：控件在左、链接在右，垂直居中。
+   链接沿用原先的靠右落点（原 `.auth-forgot-row { text-align: right }`）。 */
+.auth-turnstile-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 12px;
+}
+
+/* Cloudflare Turnstile「normal」挂件实宽 300×65（未传 size，走默认）；
+   按它的实宽预留，既不拉伸也不压扁，窄屏再靠 max-width 收口。 */
+.auth-turnstile-row__widget {
+  flex: 0 0 300px;
+  max-width: 100%;
+}
+
+.auth-turnstile-row__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
 }
 
 .auth-link {
@@ -578,7 +598,7 @@
   padding: 9px 11px;
 }
 
-.auth-modal--inapp-oauth .auth-forgot-row {
+.auth-modal--inapp-oauth .auth-turnstile-row {
   margin: 2px 0 8px;
 }
 
@@ -590,14 +610,6 @@
 .auth-modal--inapp-oauth .auth-modal-actions {
   margin-top: 12px;
   gap: 8px;
-}
-
-.auth-forgot-row--split {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  text-align: left;
 }
 
 .auth-inapp-login__btn {
@@ -791,6 +803,12 @@
 
   .auth-login-methods .auth-qq-login {
     margin-inline: auto;
+  }
+
+  /* 窄屏（约 375px）：控件 300px 与链接放不进一行时自动换行，链接仍靠右；
+     控件不被压扁，宽度由 max-width: 100% 收口 */
+  .auth-turnstile-row {
+    gap: 8px;
   }
 }
 

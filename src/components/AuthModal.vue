@@ -352,17 +352,6 @@ function emitInAppOauth() {
               </button>
             </div>
           </label>
-          <div class="auth-forgot-row" :class="{ 'auth-forgot-row--split': preferInAppOauth }">
-            <button class="auth-link" type="button" @click="changeMode('reset')">忘记密码？</button>
-            <button
-              v-if="preferInAppOauth"
-              class="auth-link"
-              type="button"
-              @click="changeMode('register')"
-            >
-              注册
-            </button>
-          </div>
         </template>
 
         <template v-if="authMode !== 'login'">
@@ -390,6 +379,30 @@ function emitInAppOauth() {
               @input="updatePassword" />
           </label>
         </template>
+
+        <!-- 人机验证与「忘记密码？」同一行：控件在左、链接在右、垂直居中；
+             注册 / 重置态没有该链接，仅保留左侧控件，行位置与登录态一致 -->
+        <div class="auth-turnstile-row">
+          <TurnstileWidget
+            v-if="turnstileEnabled"
+            ref="turnstileRef"
+            :key="`${turnstileAction}-${turnstileNonce}`"
+            :action="turnstileAction"
+            class="auth-turnstile-row__widget"
+            @update:token="emit('update:turnstileToken', $event)"
+          />
+          <div v-if="authMode === 'login'" class="auth-turnstile-row__actions">
+            <button class="auth-link" type="button" @click="changeMode('reset')">忘记密码？</button>
+            <button
+              v-if="preferInAppOauth"
+              class="auth-link"
+              type="button"
+              @click="changeMode('register')"
+            >
+              注册
+            </button>
+          </div>
+        </div>
 
         <!-- 账号面板协议：端内用紧凑一行；普通浏览器保留完整文案卡片 -->
         <template v-if="(authMode === 'register' || authMode === 'login') && showAccountPanel && !showInAppOauthPanel">
@@ -421,14 +434,6 @@ function emitInAppOauth() {
             </label>
           </div>
         </template>
-
-        <TurnstileWidget
-          v-if="turnstileEnabled"
-          ref="turnstileRef"
-          :key="`${turnstileAction}-${turnstileNonce}`"
-          :action="turnstileAction"
-          @update:token="emit('update:turnstileToken', $event)"
-        />
       </div>
 
       <div

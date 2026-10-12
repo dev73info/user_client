@@ -37,12 +37,16 @@ import {
   resumeAsignIdentify,
   resumeCompanyAsignIdentify,
   ocrBusinessLicense,
+  recognizeLegalCertPeriod,
   startAsignIdentify,
   startCompanyAsignIdentify,
   submitMyRealnameVerification,
   uploadBusinessLicenseFile,
   uploadGuardianConsentFile,
+  uploadLegalCertBackFile,
+  uploadLegalCertFrontFile,
   withdrawMyRealnameVerification,
+  type LegalCertOcrSide,
   type RealnameAuthType,
   type StartAsignIdentifyPayload,
   type StartCompanyIdentifyPayload,
@@ -153,6 +157,13 @@ const businessLicenseUploading = ref(false)
 /** 营业执照 OCR 进行中（辅助填写，不挡提交）。 */
 const businessLicenseOcrLoading = ref(false)
 const businessLicenseFileInput = ref<HTMLInputElement | null>(null)
+/** 法人身份证人像面 / 国徽面：企业开户进件三张证照里的另外两张（上传即落库）。 */
+const legalCertFrontUploading = ref(false)
+const legalCertBackUploading = ref(false)
+const legalCertFrontFileInput = ref<HTMLInputElement | null>(null)
+const legalCertBackFileInput = ref<HTMLInputElement | null>(null)
+/** 法人证件有效期 OCR 进行中（辅助填写，不挡提交）。 */
+const legalCertOcrLoading = ref(false)
 const current = ref<UserRealnameVerification | null>(null)
 const adapayMember = ref<{
   onboardingStatus: string
@@ -198,14 +209,26 @@ const form = reactive({
   guardianConsent: false,
   guardianConsentFile: '',
   businessLicenseFile: '',
+  // 企业开户进件的另外两张证照（法人身份证正反面）：上传即落库，不参与实名提交 payload。
+  legalCertFrontFile: '',
+  legalCertBackFile: '',
   // 企业进件资料：支付渠道创建企业会员（对公收款账户）时逐项必填，企业 / 个体工商户主体要收齐。
   companyProvCode: '',
   companyAreaCode: '',
   companyAddress: '',
   businessScope: '',
   businessLicenseExpiresOn: '',
+  legalCertBeginOn: '',
   legalCertExpiresOn: '',
 })
+
+/**
+ * 法人证件有效期两项有没有被**用户自己动过**（手选 / 清除 / 点「长期有效」）。
+ *
+ * OCR 回填只往「空且没被动过」的项里写：OCR 会错，用户改过的值不能被它盖掉。
+ * 用显式标记而不是「字段是否为空」——用户填了又清空也属于动过，不该被自动填回去。
+ */
+const legalCertPeriodEdited = reactive({ begin: false, expires: false })
 
 /** 营业执照长期有效时渠道要的固定截止日（`YYYYMMDD`），与后端同一口径。 */
 const LONG_TERM_DATE = '20991231'
@@ -319,9 +342,14 @@ const enterpriseRequiredMissing = computed(
       !form.operatorIdCardNo.trim() ||
       !form.mobile.trim() ||
       !form.businessLicenseFile.trim() ||
+      // 法人身份证正反面（开户进件三张证照里的另外两张）：缺任一张渠道都建不了企业会员
+      !form.legalCertFrontFile.trim() ||
+      !form.legalCertBackFile.trim() ||
       // 企业进件资料里有四项不在表单里（见 businessLicenseDerivedMissing）：
       // 缺任一项渠道都会拒绝创建企业会员，之后连对公收款账户都开不了
       businessLicenseDerivedMissing.value.length > 0 ||
+      // 法人证件有效期起止两项：OCR 会自动填，填不上就得用户补，缺任一项渠道必拒
+      !form.legalCertBeginOn.trim() ||
       !form.legalCertExpiresOn.trim()),
 )
 
@@ -481,6 +509,8 @@ function resetRealnameSubjectFields() {
   form.unifiedSocialCreditCode = ''
   form.businessLicenseNo = ''
   form.businessLicenseFile = ''
+  form.legalCertFrontFile = ''
+  form.legalCertBackFile = ''
   form.operatorName = ''
   form.operatorIdCardNo = ''
   form.guardianConsent = false
@@ -490,7 +520,11 @@ function resetRealnameSubjectFields() {
   form.companyAddress = ''
   form.businessScope = ''
   form.businessLicenseExpiresOn = ''
+  form.legalCertBeginOn = ''
   form.legalCertExpiresOn = ''
+  // 空表单：两项都还没被用户动过，OCR 可以回填
+  legalCertPeriodEdited.begin = false
+  legalCertPeriodEdited.expires = false
 }
 
 /// 进入「变更认证类型」：解锁表单并用空表单让用户填新主体，提交后由后端快照原主体，
@@ -532,7 +566,12 @@ function patchForm(record: UserRealnameVerification) {
   form.companyAddress = record.company_address ?? ''
   form.businessScope = record.business_scope ?? ''
   form.businessLicenseExpiresOn = record.business_license_expires_on ?? ''
+  form.legalCertBeginOn = record.legal_cert_begin_on ?? ''
   form.legalCertExpiresOn = record.legal_cert_expires_on ?? ''
+  // 回显的是服务端已存的值，不算用户改动；但两个非空项也不该被 OCR 覆盖，
+  // 回填判定里「字段非空」这一条会挡住，所以这里只需把「用户改动」标记清干净。
+  legalCertPeriodEdited.begin = false
+  legalCertPeriodEdited.expires = false
 }
 
 async function tryRestoreBusinessPage(record?: UserRealnameVerification | null) {
@@ -558,6 +597,9 @@ function validate() {
     if (!form.operatorIdCardNo.trim()) return '请填写经办人身份证号'
     if (!isValidMobile(form.mobile)) return '请填写正确的手机号'
     if (!form.businessLicenseFile.trim()) return '请上传营业执照'
+    // 法人身份证正反面：企业开户进件三张证照里的另外两张，缺哪张提示哪张。
+    if (!form.legalCertFrontFile.trim()) return '请上传法人身份证人像面照片'
+    if (!form.legalCertBackFile.trim()) return '请上传法人身份证国徽面照片'
     // 企业进件资料里的四项（所在省市 / 注册地址 / 经营范围 / 执照有效期）不在表单里，
     // 只能由营业执照识别带出：缺了就说明照片没识别全，出路是重传，而不是「去填一下」。
     const derivedMissing = businessLicenseDerivedMissing.value
@@ -569,7 +611,8 @@ function validate() {
     if (form.businessScope.trim().length > MAX_BUSINESS_SCOPE_LEN) {
       return `营业执照识别出的经营范围超过 ${MAX_BUSINESS_SCOPE_LEN} 字（渠道限制），请重新上传营业执照`
     }
-    if (!/^\d{8}$/.test(form.legalCertExpiresOn.trim())) return '请选择法人证件有效期'
+    if (!/^\d{8}$/.test(form.legalCertBeginOn.trim())) return '请选择法人证件有效期起始日'
+    if (!/^\d{8}$/.test(form.legalCertExpiresOn.trim())) return '请选择法人证件有效期截止日'
     return ''
   }
 
@@ -614,6 +657,7 @@ function buildPayload(): SubmitRealnameVerificationPayload {
     payload.company_address = form.companyAddress.trim()
     payload.business_scope = form.businessScope.trim()
     payload.business_license_expires_on = form.businessLicenseExpiresOn.trim()
+    payload.legal_cert_begin_on = form.legalCertBeginOn.trim()
     payload.legal_cert_expires_on = form.legalCertExpiresOn.trim()
   }
   // 只有 14~18 周岁的未成年人才需要监护人同意；成年人无需传
@@ -793,6 +837,197 @@ async function handleBusinessLicenseFileChange(event: Event) {
   }
 }
 
+/** 法人身份证证件照只收图片（渠道 `pictureUpload` 不认 PDF），单张 10MB 以内，与后端同一口径。 */
+const MAX_LEGAL_CERT_FILE_SIZE = 10 * 1024 * 1024
+const ALLOWED_LEGAL_CERT_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp']
+
+function isAllowedLegalCertFile(file: File): boolean {
+  const ext = consentFileExtension(file.name)
+  if (ext && ALLOWED_LEGAL_CERT_EXTENSIONS.includes(ext)) {
+    return true
+  }
+  const mime = (file.type || '').toLowerCase()
+  return (
+    mime === 'image/png' ||
+    mime === 'image/jpeg' ||
+    mime === 'image/jpg' ||
+    mime === 'image/webp'
+  )
+}
+
+function openLegalCertFrontPicker() {
+  legalCertFrontFileInput.value?.click()
+}
+
+function openLegalCertBackPicker() {
+  legalCertBackFileInput.value?.click()
+}
+
+/**
+ * 上传法人身份证**人像面**（企业开户进件三张证照之一）。
+ *
+ * 与营业执照不同：后端上传即落库（`realname_legal_cert.front_file`），
+ * 所以只记文件名供界面回显，**不**往提交实名的 payload 里塞。
+ */
+async function handleLegalCertFrontFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  if (!isAllowedLegalCertFile(file)) {
+    showToast('法人身份证人像面仅支持 PNG、JPG、WEBP 图片', 'warning')
+    return
+  }
+  if (file.size > MAX_LEGAL_CERT_FILE_SIZE) {
+    showToast('法人身份证人像面文件不能超过 10MB', 'warning')
+    return
+  }
+  auth.hydrate()
+  if (!auth.token.trim()) {
+    showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+  legalCertFrontUploading.value = true
+  try {
+    const result = await uploadLegalCertFrontFile(auth.token, file)
+    form.legalCertFrontFile = result.front_file
+    showToast('法人身份证人像面已上传', 'success')
+    // 上传成功后顺手识别证件有效期并回填；识别失败静默降级，不挡提交。
+    void autoFillLegalCertPeriod()
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '上传法人身份证人像面失败', 'error')
+  } finally {
+    legalCertFrontUploading.value = false
+  }
+}
+
+/** 上传法人身份证**国徽面**（与上面同一套处理，落库到 `realname_legal_cert.back_file`）。 */
+async function handleLegalCertBackFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  if (!isAllowedLegalCertFile(file)) {
+    showToast('法人身份证国徽面仅支持 PNG、JPG、WEBP 图片', 'warning')
+    return
+  }
+  if (file.size > MAX_LEGAL_CERT_FILE_SIZE) {
+    showToast('法人身份证国徽面文件不能超过 10MB', 'warning')
+    return
+  }
+  auth.hydrate()
+  if (!auth.token.trim()) {
+    showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+  legalCertBackUploading.value = true
+  try {
+    const result = await uploadLegalCertBackFile(auth.token, file)
+    form.legalCertBackFile = result.back_file
+    showToast('法人身份证国徽面已上传', 'success')
+    // 同上：有效期一般印在国徽面，上传这一面后立刻识别一次。
+    void autoFillLegalCertPeriod()
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '上传法人身份证国徽面失败', 'error')
+  } finally {
+    legalCertBackUploading.value = false
+  }
+}
+
+/** 用户动了起始日（手选 / 清除）：记下来，OCR 就不再回填它。 */
+function markLegalCertBeginEdited() {
+  legalCertPeriodEdited.begin = true
+}
+
+/** 用户动了截止日（手选 / 清除）：同上。 */
+function markLegalCertExpiresEdited() {
+  legalCertPeriodEdited.expires = true
+}
+
+/**
+ * 「长期有效」捷径：把截止日设成渠道约定的长期日期。
+ *
+ * 这算用户自己做的选择，同步打上「改动过」标记，与手选一个日期同等对待——
+ * 之后的 OCR 回填一律不碰它（长期证件确实存在，不能因为识别出一个日期就改回来）。
+ * 起始日仍要用户填（或由 OCR 填）：长期证件同样有发证日。
+ */
+function applyLongTermLegalCert() {
+  form.legalCertExpiresOn = LONG_TERM_DATE
+  legalCertPeriodEdited.expires = true
+}
+
+/**
+ * 静默 OCR 回填「法人证件有效期」起止两项。
+ *
+ * 触发点：两张证件照**上传成功后**，以及**表单打开时本地已存有证件照**（关掉弹窗再打开可重试）。
+ * 规矩：
+ * - 只往「空且用户没动过」的项里写（`legalCertPeriodEdited` + 空值双重判定），用户填过的一律保留；
+ * - 两面各调一次（人像面一般认不出有效期、国徽面才有），任一面出错都吞掉，不弹错、不阻断提交；
+ * - 只有**两项都没拿到**时才给一条「请手工填写」的轻提示，拿到至少一项就不打扰。
+ */
+async function autoFillLegalCertPeriod(options: { silent?: boolean } = {}) {
+  // 只读态（审核中 / 已通过且未进变更）：输入与上传都锁着，填了也没法用，不白跑一趟
+  if (realnameLocked.value) return
+  auth.hydrate()
+  if (!auth.token.trim()) return
+  // 只对已经上传过的那几面调识别（后端按 side 取已落库的照片，没传就会回 400）
+  const sides: LegalCertOcrSide[] = []
+  if (form.legalCertFrontFile.trim()) sides.push('front')
+  if (form.legalCertBackFile.trim()) sides.push('back')
+  if (!sides.length) return
+  // 两项都已有值（或用户动过），没有可回填的余地，不必麻烦后端
+  if (legalCertPeriodSettled()) return
+
+  legalCertOcrLoading.value = true
+  try {
+    const results = await Promise.all(
+      sides.map((side) => recognizeLegalCertPeriod(auth.token, side).catch(() => null)),
+    )
+    let filled = 0
+    for (const result of results) {
+      if (!result) continue
+      filled += applyLegalCertPeriod(result.cert_begin_on, result.cert_expires_on)
+    }
+    if (filled === 0 && !options.silent) {
+      showToast('未能自动识别法人证件有效期，请手工填写', 'warning')
+    }
+  } finally {
+    legalCertOcrLoading.value = false
+  }
+}
+
+/** 两项都已经有值、或用户明确动过（含「长期有效」）时为真。 */
+function legalCertPeriodSettled(): boolean {
+  const beginSet = legalCertPeriodEdited.begin || !!form.legalCertBeginOn.trim()
+  const expiresSet = legalCertPeriodEdited.expires || !!form.legalCertExpiresOn.trim()
+  return beginSet && expiresSet
+}
+
+/**
+ * 把一次识别结果写进空项，返回实际写了几项。
+ *
+ * 只接受 `YYYYMMDD`（8 位数字，与后端同一口径）；OCR 给的其它形态一律丢弃，
+ * 宁可不填也不能把非法值塞进表单——提交时校验只认这 8 位。
+ */
+function applyLegalCertPeriod(beginOn: string | null, expiresOn: string | null): number {
+  let filled = 0
+  const begin = (beginOn ?? '').trim()
+  const expires = (expiresOn ?? '').trim()
+  if (/^\d{8}$/.test(begin) && !legalCertPeriodEdited.begin && !form.legalCertBeginOn.trim()) {
+    form.legalCertBeginOn = begin
+    filled += 1
+  }
+  if (
+    /^\d{8}$/.test(expires) &&
+    !legalCertPeriodEdited.expires &&
+    !form.legalCertExpiresOn.trim()
+  ) {
+    form.legalCertExpiresOn = expires
+    filled += 1
+  }
+  return filled
+}
+
 async function handleConsentFileChange(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -918,6 +1153,7 @@ async function startEnterpriseAsign() {
       company_address: form.companyAddress.trim(),
       business_scope: form.businessScope.trim(),
       business_license_expires_on: form.businessLicenseExpiresOn.trim(),
+      legal_cert_begin_on: form.legalCertBeginOn.trim(),
       legal_cert_expires_on: form.legalCertExpiresOn.trim(),
     }
     const result = await startCompanyAsignIdentify(auth.token, payload)
@@ -1080,7 +1316,11 @@ watch(faceidAuthUrl, (url) => {
 watch(realnameDialogVisible, (visible) => {
   if (!visible) {
     realnameChangeMode.value = false
+    return
   }
+  // 表单打开、本地已存有证件照时补一次识别（上传那次的识别可能失败过，重开弹窗即重试）。
+  // 静默：不再重复弹「未能识别」——这条提示在上传后已经给过一次了。
+  void autoFillLegalCertPeriod({ silent: true })
 })
 
 async function handleWithdraw() {
@@ -1244,7 +1484,9 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
       title: '结算账户',
       desc: settleStage.value === 'reviewing'
         ? settleUnderReviewText.value
-        : settleSubjectMismatch.value
+        : settleStage.value === 'failed'
+          ? `渠道已拒绝开通收款账户，点进去看原因并按提示整改`
+          : settleSubjectMismatch.value
           ? settleMaterialMissing.value
             ? `实名资料缺${settleMaterialMissingText.value}，补齐后才能重新绑定收款账户`
             : '实名主体已变更，原银行卡需按新主体重新绑定'
@@ -1270,7 +1512,14 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
       status:
         settleStage.value === 'reviewing'
           ? { text: '收款账户：渠道审核中', tone: 'warning' }
-          : settleSubjectMismatch.value
+          : settleStage.value === 'failed'
+            ? {
+                text: settleCorporateLocked.value
+                  ? '收款账户：渠道审核未通过'
+                  : '收款账户：开通被拒',
+                tone: 'danger',
+              }
+            : settleSubjectMismatch.value
             ? { text: '收款账户：待重绑', tone: 'warning' }
             : settleStage.value === 'bound'
               ? { text: '结算账户：已设置', tone: 'success' }
@@ -1567,11 +1816,15 @@ const settleBound = computed(() => Boolean(adapayMember.value?.settleAccountId))
  * 渠道还没办完（实名通过后会自动入驻），后者是用户少做了一步。以前两者都显示「未设置」，
  * 用户不知道自己该等还是该动手。
  */
-const settleStage = computed<'none' | 'reviewing' | 'ready' | 'bound'>(() => {
+const settleStage = computed<'none' | 'reviewing' | 'failed' | 'ready' | 'bound'>(() => {
   if (settleBound.value) return 'bound'
   const status = adapayMember.value?.onboardingStatus
   if (status === 'pending' || status === 'under_review') return 'reviewing'
   if (status === 'active') return 'ready'
+  // 渠道已经给了否定结论（企业开户审核未通过、或审核通过但开户失败）：本地记成 `failed`。
+  // 必须单独成一态——并进下面的 `none` 会显示成「待认证」，用户以为等着就行，
+  // 而实际要回去核对资料重新认证。
+  if (status === 'failed') return 'failed'
   return 'none'
 })
 
@@ -1650,6 +1903,28 @@ const settleUnderReviewText = computed(() =>
     ? '企业收款账户正在渠道审核中，审核通过后即可绑定对公账户'
     : '收款账户正在渠道审核中，审核通过后即可绑定银行卡',
 )
+
+/**
+ * 渠道已明确拒绝开通收款账户（企业开户审核未通过，或审核通过但开户失败）。
+ *
+ * `onboarding_status = failed` 是唯一表示「渠道给了否定结论」的取值；具体是哪种拒绝、
+ * 原因是什么，都在 `providerError` 里（后端把渠道 `audit_state` 翻成中文再落库）。
+ */
+const settleRejected = computed(() => adapayMember.value?.onboardingStatus === 'failed')
+
+/**
+ * 「渠道拒绝」之后用户该做什么。
+ *
+ * 按能自己走的顺序给两条路：先回去核对资料并重新提交认证（这是唯一自助的修复路径）；
+ * 资料确实无误还是不过，就只能让人工介入——结论在渠道手里，平台改不了，
+ * 但要让用户知道还可以提交工单，而不是卡在一句「未通过」上。
+ */
+const settleRejectedGuide = computed(() => {
+  const action = settleCorporateLocked.value
+    ? '请在「认证管理」→「变更认证类型」核对企业名称、统一社会信用代码、法人信息与对公账户户名，确认无误后重新提交企业认证，通过后再回来绑定对公账户'
+    : '请核对实名信息与银行卡户名是否一致，确认无误后重新提交'
+  return `${action}；若资料核对无误仍未通过，可提交工单由客服协助核对渠道结论。`
+})
 
 const settleProviderError = computed(() => {
   const member = adapayMember.value
@@ -2602,8 +2877,12 @@ onMounted(async () => {
     delete nextQuery.settle
     void router.replace({ query: nextQuery })
   }
-  // 回跳后问一次结果：流水号由后端从库里取，前端不再持有任何渠道凭证。
-  await checkWechatFaceidResult({ silent: true })
+  // 只有「处理中」才需要问结果：流水号由后端从库里取，前端不再持有任何渠道凭证。
+  // 已通过 / 已驳回时不必再打这个接口——它是一次「回查」，每次打开账户页都往渠道跑一趟
+  // 没有意义（该端点在历史版本里会连带重放「实名通过」的副作用，把企业开户一遍遍送审）。
+  if (!current.value || current.value.status === 'pending') {
+    await checkWechatFaceidResult({ silent: true })
+  }
   // 刷新后尝试恢复丢失的爱签二维码（若仍未完成人脸核身）
   await restoreFaceidChallengeIfNeeded()
 })
@@ -2752,6 +3031,58 @@ onBeforeUnmount(() => {
                   {{ businessLicenseDerivedNote }}
                 </p>
               </TFormItem>
+              <!-- 企业开户进件要求三张证照：营业执照 + 法人身份证人像面 + 国徽面。
+                   后两张与营业执照同一套上传控件，上传即落库，不进提交实名 payload。 -->
+              <TFormItem label="法人身份证人像面" required>
+                <div class="realname-consent-upload">
+                  <input
+                    ref="legalCertFrontFileInput"
+                    class="realname-consent-upload__native"
+                    type="file"
+                    accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                    @change="handleLegalCertFrontFileChange"
+                  />
+                  <TButton
+                    variant="outline"
+                    :loading="legalCertFrontUploading"
+                    :disabled="realnameLocked"
+                    @click="openLegalCertFrontPicker"
+                  >
+                    选择文件上传
+                  </TButton>
+                  <span v-if="form.legalCertFrontFile" class="realname-consent-upload__name">
+                    已上传：{{ form.legalCertFrontFile.split('/').pop() || '法人身份证人像面' }}
+                  </span>
+                  <span v-else class="realname-consent-upload__hint">
+                    请上传法人身份证人像面照片（图片，10MB 以内）
+                  </span>
+                </div>
+              </TFormItem>
+              <TFormItem label="法人身份证国徽面" required>
+                <div class="realname-consent-upload">
+                  <input
+                    ref="legalCertBackFileInput"
+                    class="realname-consent-upload__native"
+                    type="file"
+                    accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                    @change="handleLegalCertBackFileChange"
+                  />
+                  <TButton
+                    variant="outline"
+                    :loading="legalCertBackUploading"
+                    :disabled="realnameLocked"
+                    @click="openLegalCertBackPicker"
+                  >
+                    选择文件上传
+                  </TButton>
+                  <span v-if="form.legalCertBackFile" class="realname-consent-upload__name">
+                    已上传：{{ form.legalCertBackFile.split('/').pop() || '法人身份证国徽面' }}
+                  </span>
+                  <span v-else class="realname-consent-upload__hint">
+                    请上传法人身份证国徽面照片（图片，10MB 以内）
+                  </span>
+                </div>
+              </TFormItem>
               <TFormItem label="经办人姓名" required>
                 <TInput
                   v-model="form.operatorName"
@@ -2783,25 +3114,40 @@ onBeforeUnmount(() => {
               <!-- 企业进件资料里的「所在省市 / 注册地址 / 经营范围 / 营业执照有效期」不再让用户手填：
                    这四项都能从营业执照照片识别（省市编码由识别出的注册地址映射成渠道编码），
                    所以这里只留上传入口，识别结果与缺失项由上传区下方那行提示给出。 -->
+              <!-- 法人证件有效期：起止两项。起始日以前是缺的（渠道标 Y 却一直是空串），
+                   现在在上传法人身份证后人像面 / 国徽面 OCR 自动回填；手填或改过的一律保留。 -->
               <TFormItem label="法人证件有效期" required>
                 <div class="realname-date-row">
+                  <TDatePicker
+                    v-model="form.legalCertBeginOn"
+                    type="date"
+                    value-format="YYYYMMDD"
+                    format="YYYY-MM-DD"
+                    placeholder="证件有效期起始日"
+                    :disabled="realnameLocked"
+                    @change="markLegalCertBeginEdited"
+                  />
                   <TDatePicker
                     v-model="form.legalCertExpiresOn"
                     type="date"
                     value-format="YYYYMMDD"
                     format="YYYY-MM-DD"
-                    placeholder="选择证件有效期截止日"
+                    placeholder="证件有效期截止日"
                     :disabled="realnameLocked"
+                    @change="markLegalCertExpiresEdited"
                   />
                   <TButton
                     variant="text"
                     tone="accent"
                     :disabled="realnameLocked"
-                    @click="form.legalCertExpiresOn = LONG_TERM_DATE"
+                    @click="applyLongTermLegalCert"
                   >
                     长期有效
                   </TButton>
                 </div>
+                <p v-if="legalCertOcrLoading" class="realname-consent-upload__derived">
+                  正在按法人身份证识别证件有效期，自动填写起止日期…
+                </p>
               </TFormItem>
               <TFormItem>
                 <TAlert
@@ -2988,15 +3334,31 @@ onBeforeUnmount(() => {
           width="520px"
         >
           <TLoading tag="div" :loading="settleLoading" class="settle-dialog">
-            <!-- 渠道原话：会员停在「待认证 / 未通过」时，这是唯一能对上号的线索 -->
+            <!-- 渠道原话：会员停在「待认证 / 未通过」时，这是唯一能对上号的线索。
+                 渠道已明确拒绝（企业开户审核未通过、开户失败）时升级成 danger，
+                 并把「下一步做什么」写出来——只说原因，用户照样不知道从哪下手。 -->
             <TAlert
               v-if="settleProviderError"
               class="settle-dialog__alert"
-              tone="warning"
+              :tone="settleRejected ? 'danger' : 'warning'"
               :closable="false"
               show-icon
               :title="settleProviderError"
-            />
+            >
+              <template v-if="settleRejected">
+                <p class="settle-dialog__alert-text">{{ settleRejectedGuide }}</p>
+                <TButton
+                  v-if="settleCorporateLocked"
+                  variant="solid"
+                  tone="accent"
+                  class="settle-dialog__alert-action"
+                  size="sm"
+                  @click="goFixSettleMaterial"
+                >
+                  去「变更认证类型」核对企业资料
+                </TButton>
+              </template>
+            </TAlert>
 
             <!-- 实名主体变更后旧卡不能再收款：先把原因说清楚，再给「按新主体重新绑定」的动作 -->
             <TAlert
@@ -4351,6 +4713,12 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   width: 100%;
+}
+
+/* 两个日期选择器并排：让它们能收缩到比内容窄，否则 TDatePicker 的 100% 宽会把行顶出去
+   （与 .realname-region-row 同理）。 */
+.realname-date-row > * {
+  min-width: 0;
 }
 
 .realname-form__actions {

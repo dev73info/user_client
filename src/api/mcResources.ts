@@ -93,6 +93,13 @@ export type McResourcePayload = {
   /** 有效置顶（后端 query-time） */
   is_pinned?: boolean
   pinned_until?: string | null
+  /**
+   * R014：资源所属需求是否已进入「超期锁定 / 已清除」阶段。
+   * 为真时锁定期内只能下载历史版本文件，不能编辑主页 / 发新版 / 删除（后端 409 闸门）。
+   */
+  requirement_archive_locked?: boolean
+  /** R014：资源所属需求的内容是否已被「到期清除」。 */
+  requirement_archive_cleared?: boolean
 }
 
 export type CreateMcResourceVersionRequest = {
