@@ -69,14 +69,22 @@ const router = createRouter({
       component: () => import('@/views/HomeView.vue'),
     },
     {
+      // 「资源项目」：原来是「免费资源」「付费资源」两个导航项，现在合并成一项，
+      // 免费 / 付费在同一页内用分段控件切换（写 `?sale=`，见 ResourceCatalogView）。
+      path: '/resources',
+      name: 'resources',
+      component: () => import('@/views/ResourcesView.vue'),
+    },
+    {
+      // 旧地址兼容：带上对应分区重定向到「资源项目」，不做成 404 / 白屏。
       path: '/free-resources',
       name: 'free-resources',
-      component: () => import('@/views/FreeResourcesView.vue'),
+      redirect: (to) => ({ name: 'resources', query: { ...to.query, sale: 'free' }, hash: to.hash }),
     },
     {
       path: '/paid-resources',
       name: 'paid-resources',
-      component: () => import('@/views/PaidResourcesView.vue'),
+      redirect: (to) => ({ name: 'resources', query: { ...to.query, sale: 'paid' }, hash: to.hash }),
     },
     {
       path: '/requirement-hall',

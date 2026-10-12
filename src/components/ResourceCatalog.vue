@@ -23,6 +23,7 @@ import { useTagTreeStore } from '@/stores/tagTree'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
+  DEFAULT_RESOURCE_LISTING_SALE,
   formatResourcePriceLabel,
   isCashPaidListingResource,
   isFreeListingResource,
@@ -30,8 +31,6 @@ import {
   isPricedResource,
   type ResourceListingSale,
 } from '@/shared/resourceSale'
-
-type PriceFilter = 'all' | 'free' | 'paid'
 
 type McCardItem = {
   id: number
@@ -80,12 +79,26 @@ const props = defineProps<{
   rootSlug: string
   entrySlug: string
   groupName: string
-  /** 门户入口锁定：免费厅 / 现金付费厅；空则显示厅内「全部/免费/付费」chips */
+  /** 免费 / 付费分区：由页内分段切换写入（见 ResourceCatalogView），这里只做展示过滤 */
   listingMode?: ResourceListingSale | null
 }>()
 
+/** 已选筛选汇总出来的一枚 chip：父页面据此渲染可逐个移除的筛选条 */
+type ActiveFilterChip = {
+  key: string
+  sectionId: number
+  label: string
+  tag: string
+}
+
 const emit = defineEmits<{
   (e: 'page-state-change', state: CatalogPageState): void
+  /** 两个分区的资源计数（本地算，不额外请求），供工具条上的分段控件带计数 */
+  (e: 'listing-counts', counts: { free: number; paid: number }): void
+  /** 已选筛选的汇总，供父页面渲染 chip 条 */
+  (e: 'filters-change', chips: ActiveFilterChip[]): void
+  /** 空态里「切换分区」出口，交给父页面写回路由 `?sale=` */
+  (e: 'switch-listing-mode', value: ResourceListingSale): void
 }>()
 
 const sortOptions = ['最新', '点赞', '标题']
@@ -101,9 +114,9 @@ const pageSize = 12
 const currentPage = ref(1)
 
 const selectedSort = ref('最新')
-const priceFilter = ref<PriceFilter>('all')
-const lockedListingMode = computed(() => props.listingMode ?? null)
-const showPriceFilterChips = computed(() => !lockedListingMode.value)
+const activeListingMode = computed<ResourceListingSale>(
+  () => props.listingMode ?? DEFAULT_RESOURCE_LISTING_SALE,
+)
 
 const { onTagPointerDown, onTagPointerEnter, onTagPointerUp, onTagPointerCancel, onTagClick } =
   useMultiSelectTags()
@@ -203,26 +216,84 @@ function toggleFilter(list: string[], item: string) {
   }
 }
 
+/**
+ * 免费 / 付费两个分区的计数：只遍历本地已加载的 cards，不发请求。
+ * 与 `filteredCards` 用同一对判定函数，保证「计数」与「点进去看到的条数」一致。
+ */
+const listingCounts = computed(() => {
+  let free = 0
+  let paid = 0
+  for (const card of cards.value) {
+    if (isCashPaidListingResource(card.priceFen, card.pricePoints)) {
+      paid += 1
+    } else if (isFreeListingResource(card.priceFen, card.pricePoints)) {
+      free += 1
+    }
+  }
+  return { free, paid }
+})
+
+/** 已选筛选的汇总（扁平化），工具条按它渲染可移除 chip */
+const activeFilterChips = computed<ActiveFilterChip[]>(() =>
+  filterSections.value.flatMap((section) =>
+    section.selected.map((tag) => ({
+      key: `${section.id}:${tag}`,
+      sectionId: section.id,
+      label: section.label,
+      tag,
+    })),
+  ),
+)
+
+const hasActiveFilters = computed(() => activeFilterChips.value.length > 0)
+
+const activeListingLabel = computed(() => (activeListingMode.value === 'paid' ? '付费资源' : '免费资源'))
+
+/** 空态「换分区」出口的目标：就是另一侧 */
+const otherListingMode = computed<ResourceListingSale>(() =>
+  activeListingMode.value === 'free' ? 'paid' : 'free',
+)
+
+const otherListingLabel = computed(() => (otherListingMode.value === 'paid' ? '付费资源' : '免费资源'))
+
+/** 移除一枚筛选并回到第一页 */
+function removeFilter(sectionId: number, tag: string) {
+  const section = filterSections.value.find((item) => item.id === sectionId)
+  if (!section) {
+    return
+  }
+
+  section.selected = section.selected.filter((item) => item !== tag)
+  goToPage(1)
+}
+
+/** 清空某一组筛选 */
+function clearSection(section: FilterSectionView) {
+  section.selected = []
+  goToPage(1)
+}
+
+/** 清空全部筛选（空态主按钮 / 工具条「清除全部」共用） */
+function clearFilters() {
+  filterSections.value.forEach((section) => {
+    section.selected = []
+  })
+  goToPage(1)
+}
+
+/** 空态出口：去首页发布需求（沿用门户既有 `?modal=publish` 口径） */
+function goPublishRequirement() {
+  void router.push({ name: 'home', query: { modal: 'publish' } })
+}
+
 const filteredCards = computed(() => {
   const filtered = cards.value.filter((card) => {
-    const mode = lockedListingMode.value
-    if (mode === 'free') {
+    if (activeListingMode.value === 'free') {
       if (!isFreeListingResource(card.priceFen, card.pricePoints)) {
         return false
       }
-    } else if (mode === 'paid') {
-      if (!isCashPaidListingResource(card.priceFen, card.pricePoints)) {
-        return false
-      }
-    } else if (priceFilter.value === 'free') {
-      if (!isFreeListingResource(card.priceFen, card.pricePoints)) {
-        return false
-      }
-    } else if (priceFilter.value === 'paid') {
-      // chips「付费」与门户付费厅同口径：仅现金，不含积分
-      if (!isCashPaidListingResource(card.priceFen, card.pricePoints)) {
-        return false
-      }
+    } else if (!isCashPaidListingResource(card.priceFen, card.pricePoints)) {
+      return false
     }
 
     for (const section of filterSections.value) {
@@ -292,33 +363,17 @@ function setSort(sort: string) {
   }
 }
 
-function resetFilters() {
-  filterSections.value.forEach((section) => {
-    section.selected = []
-  })
-  selectedSort.value = '最新'
-  if (!lockedListingMode.value) {
-    priceFilter.value = 'all'
-  }
-  goToPage(1)
-}
-
 function listingQuery() {
-  const mode = lockedListingMode.value
-  return mode ? { sale: mode } : {}
-}
-
-function setPriceFilter(next: PriceFilter) {
-  priceFilter.value = next
-  goToPage(1)
+  return { sale: activeListingMode.value }
 }
 
 defineExpose({
   setSort,
-  resetFilters,
   nextPage,
   prevPage,
   goToPage,
+  removeFilter,
+  clearFilters,
 })
 
 /** 全角字符（中日韩文字与全角符号）：按 1 个字号宽度估算 */
@@ -484,10 +539,23 @@ watch(
 
 watch(
   () => route.query,
-  () => {
+  (next, prev) => {
+    // `?sale=` 是免费 / 付费页内切换写的，跟标签筛选无关：
+    // 只改分区时不要重新套用 query 里的筛选，否则已选标签会被清掉。
+    const changedKeys = new Set([...Object.keys(next ?? {}), ...Object.keys(prev ?? {})])
+    changedKeys.delete('sale')
+    if (changedKeys.size === 0) {
+      return
+    }
+
     applyFiltersFromQuery()
   },
 )
+
+watch(activeListingMode, () => {
+  // 换分区等于换一批数据，回到第一页
+  goToPage(1)
+})
 
 watch(
   () => auth.token,
@@ -513,47 +581,37 @@ watch(
     emitPageState()
   },
 )
+
+// 计数与已选筛选汇总上报给父页面（工具条上的分段计数与 chip 条）：
+// 数据全在本地，切换分区只重算这两个 computed，不发请求。
+watch(listingCounts, (counts) => emit('listing-counts', counts), { immediate: true })
+
+watch(activeFilterChips, (chips) => emit('filters-change', chips), { immediate: true })
 </script>
 
 <template>
   <section class="portal-resource-browser">
     <section class="portal-resource-browser__filters">
-      <div
-        v-if="showPriceFilterChips"
-        class="portal-resource-browser__price-filter"
-        role="group"
-        aria-label="按售价筛选"
-      >
-        <button
-          type="button"
-          class="portal-resource-browser__price-chip"
-          :class="{ active: priceFilter === 'all' }"
-          @click="setPriceFilter('all')"
-        >全部</button>
-        <button
-          type="button"
-          class="portal-resource-browser__price-chip"
-          :class="{ active: priceFilter === 'free' }"
-          @click="setPriceFilter('free')"
-        >免费</button>
-        <button
-          type="button"
-          class="portal-resource-browser__price-chip"
-          :class="{ active: priceFilter === 'paid' }"
-          @click="setPriceFilter('paid')"
-        >付费</button>
-      </div>
       <nav class="portal-resource-browser__menu" aria-label="标签筛选菜单">
         <section v-for="section in filterSections" :key="section.id" class="portal-resource-browser__menu-group" :class="{
           'portal-resource-browser__menu-group--open': isSectionExpanded(section.id),
           'portal-resource-browser__menu-group--active': section.selected.length > 0,
         }">
-          <button class="portal-resource-browser__menu-trigger" type="button" @click="toggleSection(section.id)"
-            :aria-expanded="isSectionExpanded(section.id)" :class="{
-            'portal-resource-browser__menu-trigger--active': section.selected.length > 0,
-          }">
-            <span class="portal-resource-browser__menu-title">{{ section.label }}</span>
-          </button>
+          <div class="portal-resource-browser__menu-head">
+            <button class="portal-resource-browser__menu-trigger" type="button" @click="toggleSection(section.id)"
+              :aria-expanded="isSectionExpanded(section.id)" :class="{
+              'portal-resource-browser__menu-trigger--active': section.selected.length > 0,
+            }">
+              <span class="portal-resource-browser__menu-title">{{ section.label }}</span>
+              <span v-if="section.selected.length > 0" class="portal-resource-browser__menu-badge">
+                {{ section.selected.length }}
+              </span>
+            </button>
+            <button v-if="section.selected.length > 0" class="portal-resource-browser__menu-clear" type="button"
+              :aria-label="`清空「${section.label}」筛选`" @click="clearSection(section)">
+              清空
+            </button>
+          </div>
 
           <div v-show="isSectionExpanded(section.id)" class="portal-resource-browser__submenu">
             <button v-for="tag in section.tags" :key="tag" class="portal-resource-browser__submenu-link" :class="{
@@ -643,7 +701,26 @@ watch(
       </article>
 
       <div v-if="filteredCards.length === 0" class="portal-resource-browser__empty">
-        <strong>当前筛选下还没有公开资源</strong>
+        <strong>{{ hasActiveFilters ? '当前筛选下还没有公开资源' : `还没有${activeListingLabel}` }}</strong>
+        <span>
+          {{ hasActiveFilters
+            ? '可以逐个去掉左侧的筛选，或换个分区看看。'
+            : `${activeListingLabel}这一分区暂时还没有公开内容，可以换个分区，或自己发布一条需求。` }}
+        </span>
+        <div class="portal-resource-browser__empty-actions">
+          <button v-if="hasActiveFilters" class="portal-resource-browser__empty-btn portal-resource-browser__empty-btn--primary"
+            type="button" @click="clearFilters">
+            清除全部筛选
+          </button>
+          <button class="portal-resource-browser__empty-btn" type="button"
+            @click="emit('switch-listing-mode', otherListingMode)">
+            看看{{ otherListingLabel }}
+          </button>
+          <button class="portal-resource-browser__empty-btn portal-resource-browser__empty-btn--ghost" type="button"
+            @click="goPublishRequirement">
+            发布需求
+          </button>
+        </div>
       </div>
     </section>
   </section>
@@ -652,77 +729,46 @@ watch(
 <style scoped>
 .portal-resource-browser {
   display: grid;
-  grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
   align-items: start;
   gap: 16px;
 }
 
+/* 层级靠描边与底色，不用投影（本轮重设计口径：卡片去阴影改描边） */
 .portal-resource-browser__filters,
 .portal-resource-browser__card,
 .portal-resource-browser__empty {
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  background: rgba(255, 255, 255, 0.84);
-  backdrop-filter: blur(18px);
-}
-
-/* 左栏是导航/筛选面板，用与上方二级导航同一档轻投影；
-   重投影留给右侧的内容卡，避免面板比内容卡还"浮" */
-.portal-resource-browser__filters {
-  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.04);
-}
-
-.portal-resource-browser__card,
-.portal-resource-browser__empty {
-  box-shadow: 0 18px 42px rgba(76, 103, 172, 0.12);
+  border: 1px solid var(--card-border);
+  background: var(--bg-soft);
 }
 
 .portal-resource-browser__filters {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
-  border-radius: 18px;
+  padding: 14px;
+  border-radius: 12px;
   position: sticky;
   top: 86px;
 }
 
-.portal-resource-browser__price-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.portal-resource-browser__price-chip {
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(198, 210, 236, 0.9);
-  background: #fff;
-  color: #475569;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.portal-resource-browser__price-chip.active {
-  border-color: #2563eb;
-  color: #1d4ed8;
-  background: rgba(239, 246, 255, 0.95);
-}
-
+/* 售价与「原创 / 转载」一律降为小号中性 chip（重设计口径：卡片内标签不与标题抢重量） */
 .portal-resource-browser__price-badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  min-height: 20px;
+  padding: 1px 8px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
-  color: #166534;
-  background: rgba(220, 252, 231, 0.95);
+  font-variant-numeric: tabular-nums;
+  color: #475569;
+  background: rgba(241, 245, 249, 0.96);
 }
 
 .portal-resource-browser__price-badge.is-paid {
-  color: #9a3412;
-  background: rgba(255, 237, 213, 0.96);
+  color: #334155;
+  background: rgba(226, 232, 240, 0.96);
 }
 
 .portal-resource-browser__menu {
@@ -735,29 +781,73 @@ watch(
   gap: 6px;
 }
 
+.portal-resource-browser__menu-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.portal-resource-browser__menu-badge {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 单组「全清」：只在有选中时出现，避免占掉组标题的位置 */
+.portal-resource-browser__menu-clear {
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.portal-resource-browser__menu-clear:hover {
+  background: rgba(31, 74, 209, 0.08);
+  color: var(--accent);
+}
+
 .portal-resource-browser__menu-trigger {
   position: sticky;
   top: 86px;
   z-index: 2;
-  width: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  flex: 1;
+  min-width: 0;
+  display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 38px;
+  gap: 8px;
+  min-height: 36px;
   padding: 8px 10px;
-  border-radius: 12px;
-  border: 0;
+  border-radius: 10px;
+  /* 常驻 1px 透明描边：选中 / 悬停只换描边色，不用阴影也不用内描边环 */
+  border: 1px solid transparent;
   background: transparent;
   color: #334155;
   cursor: pointer;
   text-align: left;
-  backdrop-filter: blur(8px);
   transition:
     background 180ms ease,
+    border-color 180ms ease,
     color 180ms ease,
-    transform 180ms ease,
-    box-shadow 180ms ease;
+    transform 180ms ease;
 }
 
 /* 折叠指示箭头：折叠朝下、展开朝上。
@@ -805,7 +895,7 @@ watch(
 .portal-resource-browser__menu-group--open>.portal-resource-browser__menu-trigger {
   background: rgba(239, 246, 255, 0.96);
   color: #1d4ed8;
-  box-shadow: inset 0 0 0 1px rgba(191, 219, 254, 0.52);
+  border-color: rgba(191, 219, 254, 0.52);
 }
 
 .portal-resource-browser__menu-trigger:hover {
@@ -819,7 +909,12 @@ watch(
 }
 
 .portal-resource-browser__menu-title {
-  font-size: 14px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
   font-weight: 800;
   color: #334155;
 }
@@ -861,46 +956,14 @@ watch(
   color: #1d4ed8;
 }
 
-.portal-resource-browser__row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.portal-resource-browser__row--between {
-  justify-content: space-between;
-}
-
-.portal-resource-browser__group {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  width: 100%;
-}
-
-.portal-resource-browser__group--wrap {
-  width: 100%;
-}
-
-.portal-resource-browser__group--top {
-  align-items: flex-start;
-}
-
-.portal-resource-browser__label,
+/* 已无引用的旧规则（原来的 `__row` / `__group` / `__label` / `__tag` / `__reset`
+   与「↻ 重置筛选」一起下线）已删除：重置入口改由工具条上的已选筛选 chip 承担。 */
 .portal-resource-browser__author-pill,
 .portal-resource-browser__updated,
 .portal-resource-browser__meta {
   color: #64748b;
 }
 
-.portal-resource-browser__label {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.portal-resource-browser__tag,
-.portal-resource-browser__reset,
 .portal-resource-browser__action,
 .portal-resource-browser__like {
   border: 0;
@@ -908,70 +971,27 @@ watch(
   cursor: pointer;
 }
 
-.portal-resource-browser__tag {
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(239, 246, 255, 0.9);
-  color: #1d4ed8;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.portal-resource-browser__tag--active {
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
-  color: #fff;
-  box-shadow: 0 12px 22px rgba(37, 99, 235, 0.2);
-}
-
-.portal-resource-browser__tag-cloud {
-  display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.portal-resource-browser__reset {
-  padding: 10px 16px;
-  border-radius: 12px;
-  background: rgba(248, 250, 252, 0.92);
-  color: #475569;
-  font-weight: 700;
-}
-
 .portal-resource-browser__grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* 结果区：2–3 列自适应；窄屏在 980px 处回落单列 */
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   align-items: stretch;
-  gap: 18px;
+  gap: 14px;
 }
 
 .portal-resource-browser__card {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  padding: 18px;
-  border-radius: 22px;
-
-  @media (max-width: 1200px) {
-    .portal-resource-browser {
-      grid-template-columns: 1fr;
-    }
-
-    .portal-resource-browser__filters {
-      position: static;
-      max-height: none;
-    }
-  }
-
-  transition: transform 0.2s ease,
-  box-shadow 0.2s ease;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 12px;
+  transition: border-color 180ms ease;
 }
 
+/* 悬停只变描边色：不做位移、不加投影 */
 .portal-resource-browser__card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 24px 40px rgba(76, 103, 172, 0.16);
+  border-color: rgba(31, 74, 209, 0.4);
 }
 
 .portal-resource-browser__card-main {
@@ -1065,8 +1085,8 @@ watch(
 
 .portal-resource-browser__title-row h3 {
   min-width: 0;
-  font-size: 19px;
-  line-height: 1.25;
+  font-size: 15px;
+  line-height: 1.3;
 }
 
 /* 长标题：缩小字号，压到最多两行，超出省略 */
@@ -1078,8 +1098,8 @@ watch(
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
-  font-size: 16px;
-  line-height: 1.3;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .portal-resource-browser__title-row .portal-resource-browser__updated {
@@ -1212,20 +1232,22 @@ watch(
   white-space: nowrap;
 }
 
-/* 「原创/转载」标签用靛蓝，与资源详情页一致 */
+/* 「原创/转载」也走中性 chip，不再用靛蓝 / 琥珀两套色（与售价 chip 同一档） */
 .portal-resource-browser__meta {
   display: inline-flex;
-  padding: 5px 10px;
+  align-items: center;
+  min-height: 20px;
+  padding: 1px 8px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.14);
-  color: #4f46e5;
+  background: rgba(241, 245, 249, 0.96);
+  color: #475569;
   font-size: 12px;
   font-weight: 700;
 }
 
 .portal-resource-browser__meta.is-repost {
-  background: rgba(245, 158, 11, 0.14);
-  color: #b45309;
+  background: rgba(241, 245, 249, 0.96);
+  color: #475569;
 }
 
 .portal-resource-browser__action {
@@ -1264,8 +1286,8 @@ watch(
   justify-items: center;
   gap: 8px;
   grid-column: 1 / -1;
-  padding: 28px;
-  border-radius: 22px;
+  padding: 56px 24px;
+  border-radius: 12px;
   text-align: center;
   color: #64748b;
 }
@@ -1278,13 +1300,69 @@ watch(
 .portal-resource-browser__empty span {
   max-width: 520px;
   font-size: 13px;
+  line-height: 1.7;
+}
+
+/* 空态的三条出口：主按钮（清筛选）+ 次按钮（换分区）+ 幽灵按钮（发布需求） */
+.portal-resource-browser__empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.portal-resource-browser__empty-btn {
+  height: 34px;
+  padding: 0 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  color: #334155;
+  font: inherit;
+  font-size: 13px;
   font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    background 160ms ease;
+}
+
+.portal-resource-browser__empty-btn:hover {
+  border-color: rgba(31, 74, 209, 0.4);
+  color: var(--accent);
+}
+
+.portal-resource-browser__empty-btn--primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+}
+
+.portal-resource-browser__empty-btn--primary:hover {
+  color: #fff;
+}
+
+.portal-resource-browser__empty-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+@media (max-width: 980px) {
+  .portal-resource-browser {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-resource-browser__filters {
+    position: static;
+    max-height: none;
+  }
 }
 
 @media (max-width: 900px) {
 
-  .portal-resource-browser__row,
-  .portal-resource-browser__row--between,
   .portal-resource-browser__headline,
   .portal-resource-browser__footer {
     flex-direction: column;

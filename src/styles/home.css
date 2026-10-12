@@ -2883,22 +2883,8 @@
     font-size: 11px;
   }
 
-  .portal-workflow-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
   .portal-beta-grid {
     grid-template-columns: 1fr;
-  }
-
-  .portal-step-card {
-    min-height: unset;
-  }
-
-  .portal-step-card__arrow {
-    display: none;
   }
 
   .portal-hero__copy h1 {
@@ -2926,7 +2912,6 @@
   }
 
   .portal-hero__main,
-  .portal-section--workflow,
   .portal-card--notice,
   .portal-card--stats {
     padding: 18px;
@@ -3280,56 +3265,10 @@
   }
 }
 
-/* 移动端定制流程：五步压成一行——图标在上、步骤名在下，摘要收起（点开各步骤会跳到对应入口），
-   原来竖排五张横卡占 420px，现在一行约 90px */
+/* 移动端移除「定制流程」区块（需求方口径）：整块不展示，桌面端保持原样。
+   原先移动端是「五步压成一行」的图标排，现在这一段在 ≤900px 直接收起。 */
 @media (max-width: 900px) {
   .portal-section--workflow {
-    gap: 6px;
-    padding: 14px 8px 10px;
-  }
-
-  .portal-section--workflow .portal-section__header {
-    padding: 0 6px;
-  }
-
-  .portal-workflow-grid {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 2px;
-  }
-
-  .portal-step-card {
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    min-height: 0;
-    padding: 6px 2px;
-    text-align: center;
-  }
-
-  .portal-step-card__icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    font-size: 18px;
-    box-shadow: none;
-  }
-
-  .portal-step-card__body {
-    align-items: center;
-    max-width: 100%;
-  }
-
-  .portal-step-card__body strong {
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  .portal-step-card__body span:not(.portal-step-card__no) {
-    display: none;
-  }
-
-  .portal-step-card__no {
     display: none;
   }
 }
@@ -3376,11 +3315,5 @@
 
   .portal-hero__copy h1 {
     font-size: 26px;
-  }
-
-  .portal-workflow-grid {
-    display: grid;
-    flex-direction: row;
-    gap: 2px;
   }
 }

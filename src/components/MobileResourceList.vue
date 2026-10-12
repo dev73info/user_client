@@ -17,6 +17,7 @@ import { useTagTreeStore } from '@/stores/tagTree'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
+  DEFAULT_RESOURCE_LISTING_SALE,
   formatResourcePriceLabel,
   isCashPaidListingResource,
   isFreeListingResource,
@@ -24,6 +25,7 @@ import {
   isPricedResource,
   type ResourceListingSale,
 } from '@/shared/resourceSale'
+import ResourceModeSwitch from '@/components/ResourceModeSwitch.vue'
 
 import {
   TDropdown,
@@ -77,7 +79,13 @@ const props = defineProps<{
     rootSlug: string
     entrySlug: string
     groupName: string
+    /** 免费 / 付费分区：由页内分段切换写入（见 ResourceCatalogView），这里只做展示过滤 */
     listingMode?: ResourceListingSale | null
+}>()
+
+const emit = defineEmits<{
+    (e: 'switch-listing-mode', value: ResourceListingSale): void
+    (e: 'listing-counts', counts: { free: number; paid: number }): void
 }>()
 
 const { showToast } = useToast()
@@ -101,6 +109,33 @@ const entryDropdownOpen = ref(false)
 const cards = ref<MobileCard[]>([])
 const filterSections = ref<SectionView[]>([])
 const expandedSectionIds = ref<number[]>([])
+
+/** 免费 / 付费计数：只数本地已加载的 cards，切分区仍是零请求 */
+const listingCounts = computed(() => {
+    let free = 0
+    let paid = 0
+    for (const card of cards.value) {
+        if (isCashPaidListingResource(card.priceFen, card.pricePoints)) {
+            paid += 1
+        } else if (isFreeListingResource(card.priceFen, card.pricePoints)) {
+            free += 1
+        }
+    }
+    return { free, paid }
+})
+
+const hasActiveFilters = computed(() =>
+    filterSections.value.some((section) => section.selected.length > 0),
+)
+
+const activeListingLabel = computed(() => (props.listingMode === 'paid' ? '付费资源' : '免费资源'))
+
+/** 空态「换分区」出口的目标：就是另一侧 */
+const otherListingMode = computed<ResourceListingSale>(() =>
+    props.listingMode === 'paid' ? 'free' : 'paid',
+)
+
+const otherListingLabel = computed(() => (otherListingMode.value === 'paid' ? '付费资源' : '免费资源'))
 
 const filteredItems = computed(() => {
     const query = keyword.value.trim().toLowerCase()
@@ -307,6 +342,11 @@ function applyFilters() {
     closeMenu()
 }
 
+/** 空态出口：去首页发布需求（沿用门户既有 `?modal=publish` 口径） */
+function goPublishRequirement() {
+    void router.push({ name: 'home', query: { modal: 'publish' } })
+}
+
 function loadMore() {
     visibleCount.value += pageSize
 }
@@ -396,6 +436,9 @@ watch(
         }
     },
 )
+
+// 计数上报给父页面（移动端分段控件显示每段数量）
+watch(listingCounts, (counts) => emit('listing-counts', counts), { immediate: true })
 </script>
 
 <template>
@@ -522,6 +565,15 @@ watch(
             </div>
         </header>
 
+        <!-- 免费 / 付费分区切换：与桌面工具栏同一枚分段控件，移动端整行铺开便于点按 -->
+        <div class="mobile-mode-row">
+            <ResourceModeSwitch
+                :model-value="props.listingMode ?? DEFAULT_RESOURCE_LISTING_SALE"
+                :counts="listingCounts"
+                @update:model-value="(mode) => emit('switch-listing-mode', mode)"
+            />
+        </div>
+
         <section class="mobile-card-list">
             <article v-for="item in visibleItems" :key="item.id" class="mobile-card" @click="openResource(item)">
                 <div class="card-thumb">
@@ -549,7 +601,26 @@ watch(
             </article>
 
             <div v-if="filteredItems.length === 0" class="mobile-empty">
-                <strong>当前筛选下暂无资源</strong>
+                <strong>{{ hasActiveFilters ? '当前筛选下暂无资源' : `还没有${activeListingLabel}` }}</strong>
+                <span>
+                    {{ hasActiveFilters
+                        ? '可以去掉筛选条件，或换个分区看看。'
+                        : `${activeListingLabel}这一分区暂时还没有公开内容，可以换个分区，或自己发布一条需求。` }}
+                </span>
+                <div class="mobile-empty-actions">
+                    <button v-if="hasActiveFilters" type="button"
+                        class="mobile-empty-btn mobile-empty-btn--primary" @click="resetFilters">
+                        清除全部筛选
+                    </button>
+                    <button type="button" class="mobile-empty-btn"
+                        @click="emit('switch-listing-mode', otherListingMode)">
+                        看看{{ otherListingLabel }}
+                    </button>
+                    <button type="button" class="mobile-empty-btn mobile-empty-btn--ghost"
+                        @click="goPublishRequirement">
+                        发布需求
+                    </button>
+                </div>
             </div>
             <button v-else-if="visibleItems.length < filteredItems.length" class="load-more" type="button"
                 @click="loadMore">
@@ -583,6 +654,16 @@ watch(
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.94);
     box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
+}
+
+.mobile-mode-row {
+    display: flex;
+    width: calc(100% - 16px);
+    margin: 0 8px 12px;
+}
+
+.mobile-mode-row :deep(.resource-mode-switch) {
+    width: 100%;
 }
 
 .mobile-resource-menu-btn,
@@ -1256,6 +1337,39 @@ watch(
 .mobile-empty span {
     font-size: 13px;
     line-height: 1.6;
+}
+
+/* 空态的三条出口（与桌面同一套：清筛选 / 换分区 / 发布需求） */
+.mobile-empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.mobile-empty-btn {
+    min-height: 44px;
+    padding: 0 16px;
+    border: 1px solid #dbe2ef;
+    border-radius: 10px;
+    background: #fff;
+    color: #334155;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.mobile-empty-btn--primary {
+    border-color: transparent;
+    background: linear-gradient(135deg, #2563eb, #4f8cff);
+    color: #fff;
+}
+
+.mobile-empty-btn--ghost {
+    border-color: transparent;
+    background: transparent;
+    color: #64748b;
 }
 </style>
 

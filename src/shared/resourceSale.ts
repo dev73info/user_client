@@ -150,12 +150,32 @@ export function isPointsListingResource(
 /** 门户资源目录的售价分区：写在路由 `?sale=` 上，在分类跳转间保持。 */
 export type ResourceListingSale = 'free' | 'paid'
 
+/**
+ * 门户资源目录默认展示的分区。
+ * 「免费资源 / 付费资源」两个导航项合并成「资源项目」后，页内切换默认落在免费。
+ */
+export const DEFAULT_RESOURCE_LISTING_SALE: ResourceListingSale = 'free'
+
+/** 页内分段切换（segmented control）的两项：值 + 文案，桌面与移动端共用同一份。 */
+export const RESOURCE_LISTING_SALE_OPTIONS: ReadonlyArray<{
+  value: ResourceListingSale
+  label: string
+}> = [
+  { value: 'free', label: '免费资源' },
+  { value: 'paid', label: '付费资源' },
+]
+
 export function parseResourceListingSale(raw: unknown): ResourceListingSale | null {
   const value = Array.isArray(raw) ? raw[0] : raw
   if (value === 'free' || value === 'paid') {
     return value
   }
   return null
+}
+
+/** 由路由 `?sale=` 解析当前分区；缺失或非法一律回落到 {@link DEFAULT_RESOURCE_LISTING_SALE}。 */
+export function resolveResourceListingSale(raw: unknown): ResourceListingSale {
+  return parseResourceListingSale(raw) ?? DEFAULT_RESOURCE_LISTING_SALE
 }
 
 /**

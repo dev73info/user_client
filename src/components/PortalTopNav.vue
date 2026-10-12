@@ -80,8 +80,7 @@ const searchScopeOptions: Array<{ value: SearchScope; label: string }> = [
 ]
 const searchableRouteScope: Partial<Record<string, SearchScope>> = {
   search: 'auto',
-  'free-resources': 'resources',
-  'paid-resources': 'resources',
+  resources: 'resources',
   'resource-catalog': 'resources',
   'resource-detail-direct': 'resources',
   'requirement-hall': 'requirements',
@@ -101,24 +100,16 @@ const headerLinks = computed<HeaderLink[]>(() => {
   const currentName = String(route.name ?? '')
   const allowActive = !authModalVisible.value
 
-  const sale = Array.isArray(route.query.sale) ? route.query.sale[0] : route.query.sale
   const onResourceCatalog = currentName === 'resource-catalog' || currentName === 'resource-detail'
-  const onFreeResources =
-    currentName === 'free-resources' || (onResourceCatalog && sale !== 'paid')
-  const onPaidResources =
-    currentName === 'paid-resources' || (onResourceCatalog && sale === 'paid')
+  // 「资源项目」把原「免费资源」「付费资源」两项并成一项：两个分区都算在这一项下
+  const onResources = currentName === 'resources' || onResourceCatalog
 
   const links: HeaderLink[] = [
     { label: '首页', to: { name: 'home' }, active: allowActive && currentName === 'home' },
     {
-      label: '免费资源',
-      to: { name: 'free-resources' },
-      active: allowActive && onFreeResources,
-    },
-    {
-      label: '付费资源',
-      to: { name: 'paid-resources' },
-      active: allowActive && onPaidResources,
+      label: '资源项目',
+      to: { name: 'resources' },
+      active: allowActive && onResources,
     },
     {
       label: '需求大厅',
@@ -133,17 +124,22 @@ const headerLinks = computed<HeaderLink[]>(() => {
   ]
 
   if (auth.isAuthed) {
-    // 基础序：首页 / 免费 / 付费 / 需求大厅 / 社区 → 在「社区」前插入工作台与积分商城
-    links.splice(4, 0, {
-      label: '工作台',
-      to: { name: 'workbench' },
-      active: allowActive && route.path.startsWith('/workbench'),
-    })
-    links.splice(5, 0, {
-      label: '积分商城',
-      to: { name: 'points-mall' },
-      active: allowActive && (currentName === 'points-mall' || route.path.startsWith('/points-mall')),
-    })
+    // 基础序：首页 / 资源项目 / 需求大厅 / 社区 → 在「社区」前插入工作台与积分商城
+    const communityIndex = links.findIndex((link) => link.label === '社区')
+    links.splice(
+      communityIndex,
+      0,
+      {
+        label: '工作台',
+        to: { name: 'workbench' },
+        active: allowActive && route.path.startsWith('/workbench'),
+      },
+      {
+        label: '积分商城',
+        to: { name: 'points-mall' },
+        active: allowActive && (currentName === 'points-mall' || route.path.startsWith('/points-mall')),
+      },
+    )
   }
 
   return links
@@ -576,7 +572,7 @@ function clearSearch() {
   }
 
   if (
-    ['free-resources', 'paid-resources', 'requirement-hall', 'community'].includes(currentName) &&
+    ['resources', 'requirement-hall', 'community'].includes(currentName) &&
     route.query.keyword
   ) {
     const nextQuery = { ...route.query }
@@ -735,20 +731,38 @@ function finishSearchComposition(event: CompositionEvent) {
 </template>
 
 <style scoped>
+/* 顶栏是通栏平底的一条，不做浮动卡片：不圆角、不投影、不模糊、不铺底，
+   背景透明、直接透出页面底色，只用一条底边细线跟正文分界。
+   内容仍收在站点内容列里：窄屏用固定留白，宽屏把超出 1280px 的部分平摊到两侧对齐正文。 */
 .portal-header {
   --portal-nav-motion: cubic-bezier(0.22, 1, 0.36, 1);
+  --portal-gutter: max(12px, calc((100% - 1280px) / 2));
   position: sticky;
-  top: 10px;
+  top: 0;
   z-index: 40;
   display: grid;
   grid-template-columns: auto minmax(max-content, 1fr) auto;
   align-items: center;
   gap: 20px;
-  margin: 10px auto 14px;
+  margin: 0 0 14px;
+  width: 100%;
+  padding: 12px var(--portal-gutter);
+  border: 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* 首页顶栏仍用「浮动圆角卡片」（其余页面是上面那条通栏平底的透明顶栏）：
+   内缩 10px、居中收在内容列宽度内，白底 + 细边 + 投影 + 背景模糊。 */
+.portal-header.app-top-nav--home {
+  top: 10px;
   width: min(1280px, calc(100% - 24px));
+  margin: 10px auto 14px;
   padding: 12px 16px;
-  border-radius: 18px;
   border: 1px solid rgba(224, 232, 255, 0.96);
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 12px 30px rgba(76, 103, 172, 0.08);
   backdrop-filter: blur(12px);
@@ -821,10 +835,14 @@ function finishSearchComposition(event: CompositionEvent) {
     transform 160ms ease;
 }
 
-.portal-nav__link:hover,
+.portal-nav__link:hover {
+  color: #1d4ed8;
+}
+
+/* 悬停与选中都只靠字色区分，不再出现浅蓝胶囊底 */
 .portal-nav__link.active {
   color: #1d4ed8;
-  background: rgba(56, 107, 255, 0.08);
+  background: transparent;
 }
 
 .portal-header__tools {
@@ -1535,9 +1553,15 @@ function finishSearchComposition(event: CompositionEvent) {
 
 @media (max-width: 1180px) {
   .portal-header {
+    --portal-gutter: max(14px, calc((100% - 1280px) / 2));
     grid-template-columns: auto max-content minmax(0, 1fr);
     grid-template-areas: "brand nav tools";
     gap: 10px 12px;
+    padding: 10px var(--portal-gutter);
+  }
+
+  /* 首页那张浮动卡片的内缩口径与通栏顶栏不同，沿用旧的 10 / 14 */
+  .portal-header.app-top-nav--home {
     padding: 10px 14px;
   }
 
@@ -1629,10 +1653,9 @@ function finishSearchComposition(event: CompositionEvent) {
 @media (max-width: 780px) {
   .portal-header {
     top: 0;
-    width: calc(100% - 16px);
-    margin: 8px auto 12px;
-    border-radius: 16px;
-    padding: 12px 16px;
+    --portal-gutter: 16px;
+    margin: 0 0 12px;
+    padding: 12px var(--portal-gutter);
   }
 
   .portal-search {
@@ -1677,15 +1700,11 @@ function finishSearchComposition(event: CompositionEvent) {
     top: 0;
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
-    width: calc(100% - 16px);
-    margin: 8px 8px 12px;
+    --portal-gutter: 12px;
+    margin: 0 0 12px;
+    padding: 12px var(--portal-gutter);
     height: auto;
     min-height: 66px;
-    padding: 12px;
-    border: 1px solid rgba(224, 232, 255, 0.96);
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.94);
-    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
   }
 
   .portal-header.app-top-nav--home .portal-brand,
@@ -1726,10 +1745,9 @@ function finishSearchComposition(event: CompositionEvent) {
 @media (max-width: 1180px) {
   .portal-header--dev {
     gap: 8px;
-    width: calc(100% - 16px);
-    margin: 6px auto 8px;
-    padding: 8px 10px;
-    border-radius: 16px;
+    --portal-gutter: 10px;
+    margin: 0 0 8px;
+    padding: 8px var(--portal-gutter);
   }
 
   .portal-header--dev .portal-brand {

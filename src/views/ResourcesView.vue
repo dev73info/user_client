@@ -6,10 +6,10 @@ import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 
 onMounted(() => {
   setSeoMeta({
-    title: '付费资源 - 73Info 柒叁信息',
+    title: '资源项目 - 73Info 柒叁信息',
     description:
-      '在 73Info 付费资源区浏览现金标价的公开数字化资源，查看介绍、分类标签、作者信息与购买下载入口。不含积分售价资源。',
-    path: '/paid-resources',
+      '在 73Info 资源项目里浏览公开资源：免费资源与现金定价的付费资源在同一页内切换，查看介绍、分类标签、作者信息与下载 / 购买入口。',
+    path: '/resources',
   })
 })
 
@@ -19,5 +19,5 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <ResourceCatalogView listing-mode="paid" />
+  <ResourceCatalogView />
 </template>
