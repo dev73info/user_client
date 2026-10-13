@@ -595,10 +595,18 @@ watch(listingCounts, (counts) => emit('listing-counts', counts), { immediate: tr
                         :class="{ 'is-repost': item.originType === 'repost' }">{{ item.originType === 'repost' ? '转载' : '原创' }}</span></h3>
                     <p class="card-desc">{{ item.desc }}</p>
                     <div class="card-stats">
-                        <span>♥ {{ item.likeCount }}</span>
-                        <span>标签 {{ item.tagsText ? item.tagsText.split(' ').length : 0 }}</span>
+                        <span class="card-stat">
+                            <span class="card-stat__heart" aria-hidden="true">♥</span>
+                            <span class="card-stat__num">{{ item.likeCount }}</span>
+                        </span>
+                        <span class="card-stat">标签 <span class="card-stat__num">{{
+                            item.tagsText ? item.tagsText.split(' ').length : 0 }}</span></span>
                     </div>
-                    <div class="card-meta">by {{ item.author }} | {{ formatUpdatedAt(item.updatedAt) }}</div>
+                    <div class="card-meta">
+                        <span class="card-meta__author">by {{ item.author }}</span>
+                        <span class="card-meta__dot" aria-hidden="true">·</span>
+                        <span class="card-meta__date">{{ formatUpdatedAt(item.updatedAt) }}</span>
+                    </div>
                 </div>
             </article>
 
@@ -1290,23 +1298,60 @@ watch(listingCounts, (counts) => emit('listing-counts', counts), { immediate: tr
     overflow: hidden;
 }
 
+/* 卡片底部两行次要信息：统计（点赞 / 标签数）在上，出处（作者 / 更新时间）在下。
+   两行同字号、同一套灰阶，读起来是一条信息带，而不是两段孤立的文字。
+   点赞只把心形染成点赞红，计数与「标签 N」同色——这里是从属于卡片的只读统计，
+   不是「已点赞」状态，整段染红会读成告警，也和同行的另一个统计项不成对。 */
 .card-stats {
     display: flex;
-    gap: 12px;
-    margin-bottom: 4px;
-    color: #334155;
-    font-size: 13px;
-    font-weight: 500;
-}
-
-.card-stats span:first-child {
-    color: #e11d48;
-}
-
-.card-meta {
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 3px;
     color: #64748b;
     font-size: 12px;
     font-weight: 500;
+}
+
+.card-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* 两个统计项之间补一个小圆点：原本只靠间距分隔，两项看着像各说各的 */
+.card-stat + .card-stat::before {
+    content: '·';
+    margin-right: 8px;
+    color: #cbd5e1;
+}
+
+.card-stat__heart {
+    color: #e11d48;
+    line-height: 1;
+}
+
+.card-stat__num {
+    color: #475569;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.card-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.card-meta__dot {
+    color: #cbd5e1;
+}
+
+/* 作者比更新日期重要一档：同字号下用色深区分，不靠字重加粗整行 */
+.card-meta__author {
+    color: #64748b;
 }
 
 .load-more {
