@@ -98,7 +98,7 @@ const currentTab = computed(() => {
 })
 const currentPlatform = computed(() => currentTab.value?.platform ?? '')
 const currentEntryLabel = computed(() => currentTab.value?.groupName ?? '当前分区')
-const sortOptions = ['最新', '点赞', '标题'] as const
+const sortOptions = ['最新', '点赞'] as const
 const selectedSort = ref<(typeof sortOptions)[number]>('最新')
 const catalogRef = ref<InstanceType<typeof ResourceCatalog> | null>(null)
 const isMobile = ref(false)

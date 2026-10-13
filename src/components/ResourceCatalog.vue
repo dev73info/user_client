@@ -108,7 +108,7 @@ const emit = defineEmits<{
   (e: 'select-resource', id: number): void
 }>()
 
-const sortOptions = ['最新', '点赞', '标题']
+const sortOptions = ['最新', '点赞']
 const { showToast } = useToast()
 const route = useRoute()
 const router = useRouter()
@@ -318,9 +318,6 @@ const filteredCards = computed(() => {
     return true
   })
 
-  if (selectedSort.value === '标题') {
-    return filtered.slice().sort((a, b) => a.title.localeCompare(b.title, 'zh-CN'))
-  }
   if (selectedSort.value === '点赞') {
     return filtered
       .slice()
