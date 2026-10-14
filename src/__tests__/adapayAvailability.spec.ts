@@ -37,7 +37,7 @@ async function freshModule(): Promise<AvailabilityModule> {
 }
 
 function availability(escrowAllowed: boolean) {
-  return { enabled: true, paymentReady: true, escrowBetaOnly: true, escrowAllowed }
+  return { paymentReady: true, escrowBetaOnly: true, escrowAllowed }
 }
 
 describe('电签担保可用性的缓存', () => {

@@ -595,7 +595,7 @@ const routes: MockRoute[] = [
     path: '/adapay/availability',
     note: '电签担保可用性：mock 一律可用，发布需求时能选到担保模式',
     handler: () =>
-      jsonResponse({ enabled: true, paymentReady: true, escrowBetaOnly: false, escrowAllowed: true }),
+      jsonResponse({ paymentReady: true, escrowBetaOnly: false, escrowAllowed: true }),
   },
   {
     method: 'GET',

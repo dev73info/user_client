@@ -469,7 +469,6 @@ export async function changeMyAdapaySettlementAccount(
 }
 
 export type AdapayAvailability = {
-  enabled: boolean
   paymentReady: boolean
   /** 是否开启「仅测试角色可用电签担保」灰度 */
   escrowBetaOnly?: boolean
