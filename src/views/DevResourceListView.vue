@@ -36,11 +36,14 @@ import { useAuthStore } from '@/stores/auth'
 import { useResourceVersionDraft } from '@/composables/useResourceVersionDraft'
 import {
   canDeleteResource,
+  isResourceArchiveLocked,
   resourceCoverUrl,
   resourcePlatformLabel,
   resourceTagSummary,
   resourceVisibilityLabel,
   resourceVisibilityTagType,
+  RESOURCE_ARCHIVE_LOCKED_MESSAGE,
+  RESOURCE_ARCHIVE_LOCKED_TITLE,
 } from '@/shared/resourcePresentation'
 import {
   formatResourcePriceLabel,
@@ -59,6 +62,7 @@ import ResourceTransferDialog from '@/components/ResourceTransferDialog.vue'
 
 
 import {
+  TAlert,
   TButton,
   TCard,
   TDialog,
@@ -198,6 +202,11 @@ const draftCount = computed(
   () => resources.value.filter((item) => item.visibility === 'draft').length,
 )
 
+/** R014：列表里已进入超期锁定 / 已清除的资源数；> 0 时表格上方给一条锁定说明。 */
+const archiveLockedCount = computed(
+  () => resources.value.filter((item) => isResourceArchiveLocked(item)).length,
+)
+
 onMounted(async () => {
   auth.hydrate()
   void loadResourceRouteTree()
@@ -217,6 +226,10 @@ async function loadResourceRouteTree() {
 async function openPromoDialog(resource: McResourcePayload) {
   if (!auth.token) {
     showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+  if (isResourceArchiveLocked(resource)) {
+    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
     return
   }
   if (resource.visibility !== 'published') {
@@ -358,12 +371,22 @@ async function openResourceHomepage(resource: McResourcePayload) {
 }
 
 function openPublishVersionDialog(resource: McResourcePayload) {
+  if (isResourceArchiveLocked(resource)) {
+    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    return
+  }
+
   selectedResource.value = resource
   resetVersionDraft()
   publishDialogVisible.value = true
 }
 
 function openEditHomepagePage(resource: McResourcePayload) {
+  if (isResourceArchiveLocked(resource)) {
+    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    return
+  }
+
   router.push({ name: 'dev-resource-homepage-edit', params: { resourceId: resource.id } })
 }
 
@@ -381,6 +404,11 @@ function openVersionsPage(resource: McResourcePayload) {
 async function removeResource(resource: McResourcePayload) {
   if (!auth.token) {
     showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+
+  if (isResourceArchiveLocked(resource)) {
+    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
     return
   }
 
@@ -596,6 +624,11 @@ async function submitVersion() {
     return
   }
 
+  if (isResourceArchiveLocked(selectedResource.value)) {
+    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    return
+  }
+
   if (!versionForm.version.trim()) {
     showToast('请填写版本号', 'warning')
     return
@@ -627,6 +660,11 @@ async function submitVersion() {
 async function requestPublicReview(resource: McResourcePayload) {
   if (!auth.token) {
     showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+
+  if (isResourceArchiveLocked(resource)) {
+    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
     return
   }
 
@@ -679,6 +717,11 @@ async function requestPublicReview(resource: McResourcePayload) {
 async function setResourcePrivate(resource: McResourcePayload) {
   if (!auth.token) {
     showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+
+  if (isResourceArchiveLocked(resource)) {
+    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
     return
   }
 
@@ -848,6 +891,16 @@ async function setResourcePrivate(resource: McResourcePayload) {
         </div>
       </div>
 
+      <TAlert
+        v-if="archiveLockedCount > 0"
+        tone="warning"
+        variant="soft"
+        class="dev-archive-locked-notice"
+        data-testid="resource-archive-locked-notice"
+        :title="RESOURCE_ARCHIVE_LOCKED_TITLE"
+        :description="RESOURCE_ARCHIVE_LOCKED_MESSAGE"
+      />
+
       <div class="dev-toolbar">
         <TSelect v-model="filters.visibility" clearable placeholder="资源状态"
           class="dev-toolbar__field" aria-label="按资源状态筛选">
@@ -923,9 +976,19 @@ async function setResourcePrivate(resource: McResourcePayload) {
         </TTableColumn>
         <TTableColumn label="状态" min-width="110">
           <template #default="scope">
-            <TTag variant="outline" :tone="resourceVisibilityTagType(scope.row.visibility)">
-              {{ resourceVisibilityLabel(scope.row.visibility) }}
-            </TTag>
+            <div class="dev-resource-table__status-tags">
+              <TTag variant="outline" :tone="resourceVisibilityTagType(scope.row.visibility)">
+                {{ resourceVisibilityLabel(scope.row.visibility) }}
+              </TTag>
+              <TTag
+                v-if="isResourceArchiveLocked(scope.row)"
+                variant="soft"
+                tone="warning"
+                data-testid="resource-archive-locked-tag"
+              >
+                已锁定
+              </TTag>
+            </div>
             <div v-if="formatExposureStatus(scope.row)" class="dev-resource-table__exposure">
               {{ formatExposureStatus(scope.row) }}
             </div>
@@ -944,25 +1007,37 @@ async function setResourcePrivate(resource: McResourcePayload) {
               </TButton>
               <template #dropdown>
                 <TDropdownMenu>
-                  <TDropdownItem :command="{ action: 'publish', resource: scope.row }">发布版本</TDropdownItem>
+                  <TDropdownItem
+                    :disabled="isResourceArchiveLocked(scope.row)"
+                    :command="{ action: 'publish', resource: scope.row }"
+                  >
+                    发布版本
+                  </TDropdownItem>
                   <TDropdownItem v-if="scope.row.visibility === 'draft'" :disabled="Boolean(scope.row.requirement_id) ||
+                    isResourceArchiveLocked(scope.row) ||
                     requestingReviewResourceId === scope.row.id
                     " :command="{ action: 'request-review', resource: scope.row }">
                     {{ requestingReviewResourceId === scope.row.id ? '提交中...' : '申请公开' }}
                   </TDropdownItem>
                   <TDropdownItem v-if="scope.row.visibility === 'published'"
-                    :disabled="settingPrivateResourceId === scope.row.id"
+                    :disabled="isResourceArchiveLocked(scope.row) || settingPrivateResourceId === scope.row.id"
                     :command="{ action: 'set-private', resource: scope.row }">
                     {{ settingPrivateResourceId === scope.row.id ? '设置中...' : '设为私有' }}
                   </TDropdownItem>
                   <TDropdownItem
                     v-if="scope.row.visibility === 'published'"
+                    :disabled="isResourceArchiveLocked(scope.row)"
                     :command="{ action: 'use-promo', resource: scope.row }"
                   >
                     使用道具
                   </TDropdownItem>
                   <TDropdownItem :command="{ action: 'versions', resource: scope.row }">版本管理</TDropdownItem>
-                  <TDropdownItem :command="{ action: 'edit', resource: scope.row }">编辑主页</TDropdownItem>
+                  <TDropdownItem
+                    :disabled="isResourceArchiveLocked(scope.row)"
+                    :command="{ action: 'edit', resource: scope.row }"
+                  >
+                    编辑主页
+                  </TDropdownItem>
                   <TDropdownItem :command="{ action: 'sold-orders', resource: scope.row }">
                     售出订单
                   </TDropdownItem>
@@ -970,7 +1045,7 @@ async function setResourcePrivate(resource: McResourcePayload) {
                     过户
                   </TDropdownItem>
                   <TDropdownItem :command="{ action: 'delete', resource: scope.row }"
-                    :disabled="!canDeleteResource(scope.row) || deletingResourceId === scope.row.id">
+                    :disabled="isResourceArchiveLocked(scope.row) || !canDeleteResource(scope.row) || deletingResourceId === scope.row.id">
                     {{ deletingResourceId === scope.row.id ? '删除中...' : '删除' }}
                   </TDropdownItem>
                 </TDropdownMenu>
@@ -1209,6 +1284,19 @@ async function setResourcePrivate(resource: McResourcePayload) {
   color: var(--dev-muted);
   font-size: 13px;
   text-align: center;
+}
+
+/* R014：锁定资源的整体说明横幅，放在资源列表表格上方；观感取自 TAlert 的 warning 态。 */
+.dev-archive-locked-notice {
+  margin: 0 0 16px;
+}
+
+/* 状态列里「可见性」与「已锁定」两个标签并排时要留缝 */
+.dev-resource-table__status-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
 }
 
 /* 窄屏下把操作按钮换到资源名下方，免得长资源名把按钮挤成竖排 */

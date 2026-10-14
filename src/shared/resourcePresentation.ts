@@ -54,3 +54,6 @@ export function isResourceArchiveLocked(resource: ResourcePresentationInput): bo
 /** 锁定期内写操作被拒的统一中文提示（与后端 409 的口径一致）。 */
 export const RESOURCE_ARCHIVE_LOCKED_MESSAGE =
   '该资源所属需求合同有效期已届满，已进入资料保留期：锁定期内只能下载历史版本文件，不能编辑主页 / 发新版 / 删除'
+
+/** 锁定资源横幅标题（与 {@link RESOURCE_ARCHIVE_LOCKED_MESSAGE} 配套，各资源页共用同一口径）。 */
+export const RESOURCE_ARCHIVE_LOCKED_TITLE = '资源已锁定'

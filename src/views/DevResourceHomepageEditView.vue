@@ -35,8 +35,14 @@ import {
   parseYuanPriceInput,
 } from '@/shared/resourceSale'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
+import {
+  isResourceArchiveLocked,
+  RESOURCE_ARCHIVE_LOCKED_MESSAGE,
+  RESOURCE_ARCHIVE_LOCKED_TITLE,
+} from '@/shared/resourcePresentation'
 
 import {
+  TAlert,
   TButton,
   TCard,
   TCheckbox,
@@ -169,6 +175,11 @@ const userClientPreviewUrl = computed(() =>
   resource.value ? userClientResourceUrl(resource.value) : '',
 )
 const boundToRequirement = computed(() => Boolean(resource.value?.requirement_id))
+
+/* ---------- R014 到期锁定：所属需求合同有效期届满后，本页只读（后端 409 仍兜底） ---------- */
+const archiveLocked = computed(() =>
+  resource.value ? isResourceArchiveLocked(resource.value) : false,
+)
 
 /* ---------- R015 资源过户：本页只在「我确实有权过户该资源」时露出入口 ---------- */
 const transferDialogVisible = ref(false)
@@ -441,6 +452,12 @@ async function saveHomepage() {
     return
   }
 
+  // 锁定态只是前置拦截；后端 PATCH 主页接口仍会以 409 + 中文提示兜底。
+  if (isResourceArchiveLocked(resource.value)) {
+    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    return
+  }
+
   if (!form.title.trim() || !form.description.trim()) {
     showToast('请先填写资源标题和资源简介', 'warning')
     return
@@ -666,7 +683,12 @@ onMounted(async () => {
               ><TIcon><Switch /></TIcon></template
             >过户</TButton
           >
-          <TButton variant="solid" tone="accent" :loading="saving" @click="saveHomepage"
+          <TButton
+            variant="solid"
+            tone="accent"
+            :loading="saving"
+            :disabled="archiveLocked"
+            @click="saveHomepage"
             ><template #prefix
               ><TIcon><Check /></TIcon
             ></template>
@@ -680,6 +702,16 @@ onMounted(async () => {
         </div>
       </div>
     </WorkbenchBarSlot>
+
+    <TAlert
+      v-if="archiveLocked"
+      tone="warning"
+      variant="soft"
+      class="dev-archive-locked-notice"
+      data-testid="resource-archive-locked-notice"
+      :title="RESOURCE_ARCHIVE_LOCKED_TITLE"
+      :description="RESOURCE_ARCHIVE_LOCKED_MESSAGE"
+    />
 
     <TLoading tag="section" class="dev-resource-homepage-editor__layout" :loading="loading">
       <div class="dev-resource-homepage-editor__forms">
@@ -1099,5 +1131,10 @@ onMounted(async () => {
   .dev-basic-info-grid__repost-org {
     grid-column: 1;
   }
+}
+
+/* R014：锁定资源的说明横幅，放在工作台操作条下方（观感取自 TAlert 的 warning 态）。 */
+.dev-archive-locked-notice {
+  margin: 0 0 16px;
 }
 </style>

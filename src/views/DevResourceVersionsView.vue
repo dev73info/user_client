@@ -21,6 +21,12 @@ import { buildUnifiedAuthUrl } from '@/config/runtime'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 import {
+  isResourceArchiveLocked,
+  RESOURCE_ARCHIVE_LOCKED_MESSAGE,
+  RESOURCE_ARCHIVE_LOCKED_TITLE,
+} from '@/shared/resourcePresentation'
+import {
+  TAlert,
   TButton,
   TCard,
   TDialog,
@@ -81,6 +87,12 @@ const editVersionForm = reactive({
 })
 
 const deleteVersionTarget = ref<McResourceVersionPayload | null>(null)
+
+/* R014：所属需求进入到期锁定 / 已清除后，本页只读——只能下载历史版本，不能发版 / 编辑 / 删除
+   （后端版本接口仍以 409 + 中文提示兜底）。 */
+const archiveLocked = computed(() =>
+  resource.value ? isResourceArchiveLocked(resource.value) : false,
+)
 
 /** 关键字搜索：版本号、备注正文或文件名任一命中即可，与资源列表的口径一致。 */
 const filters = reactive({
@@ -212,6 +224,11 @@ function resetCreateForm() {
 }
 
 function openCreateVersionDialog() {
+  if (resource.value && isResourceArchiveLocked(resource.value)) {
+    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    return
+  }
+
   resetCreateForm()
   createVersionDialogVisible.value = true
 }
@@ -228,6 +245,11 @@ function onEditVersionChange(value: SelectModelValue) {
 async function submitVersion() {
   if (!auth.token || !resource.value) {
     showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+
+  if (isResourceArchiveLocked(resource.value)) {
+    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
     return
   }
 
@@ -306,6 +328,11 @@ function formatCreatedAt(value: string): string {
 }
 
 function openEditVersionDialog(version: McResourceVersionPayload) {
+  if (resource.value && isResourceArchiveLocked(resource.value)) {
+    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    return
+  }
+
   editingVersion.value = version
   editVersionForm.version = version.version
   editVersionForm.note = version.note || ''
@@ -323,6 +350,11 @@ function openEditVersionDialog(version: McResourceVersionPayload) {
 async function submitVersionEdit() {
   if (!auth.token || !resource.value || !editingVersion.value) {
     showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+
+  if (isResourceArchiveLocked(resource.value)) {
+    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
     return
   }
 
@@ -358,6 +390,11 @@ function openDeleteVersionDialog(version: McResourceVersionPayload) {
     return
   }
 
+  if (isResourceArchiveLocked(resource.value)) {
+    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    return
+  }
+
   if (version.delete_request_status === 'pending') {
     showToast('该版本删除审核已提交，等待用户处理', 'warning')
     return
@@ -379,6 +416,11 @@ function closeDeleteVersionDialog() {
 async function removeVersion() {
   if (!auth.token || !resource.value || !deleteVersionTarget.value) {
     showToast('登录状态已失效，请重新登录', 'error')
+    return
+  }
+
+  if (isResourceArchiveLocked(resource.value)) {
+    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
     return
   }
 
@@ -437,6 +479,16 @@ async function removeVersion() {
       </TLoading>
     </WorkbenchBarSlot>
 
+    <TAlert
+      v-if="archiveLocked"
+      tone="warning"
+      variant="soft"
+      class="dev-archive-locked-notice"
+      data-testid="resource-archive-locked-notice"
+      :title="RESOURCE_ARCHIVE_LOCKED_TITLE"
+      :description="RESOURCE_ARCHIVE_LOCKED_MESSAGE"
+    />
+
     <TLoading tag="section" class="dev-resource-versions__layout" :loading="loading">
       <TCard class="dev-surface-card">
         <div class="dev-card-head">
@@ -444,7 +496,7 @@ async function removeVersion() {
             <h3 class="dev-section-title">版本列表</h3>
           </div>
           <div class="dev-card-head__actions">
-            <TButton variant="solid" tone="accent" @click="openCreateVersionDialog"
+            <TButton variant="solid" tone="accent" :disabled="archiveLocked" @click="openCreateVersionDialog"
               ><template #prefix
                 ><TIcon><Plus /></TIcon></template
               >发布版本</TButton
@@ -526,10 +578,10 @@ async function removeVersion() {
                 <template #dropdown>
                   <TDropdownMenu>
                     <TDropdownItem command="download">下载</TDropdownItem>
-                    <TDropdownItem command="edit">编辑</TDropdownItem>
+                    <TDropdownItem command="edit" :disabled="archiveLocked">编辑</TDropdownItem>
                     <TDropdownItem
                       command="delete"
-                      :disabled="scope.row.delete_request_status === 'pending'"
+                      :disabled="archiveLocked || scope.row.delete_request_status === 'pending'"
                     >
                       {{ scope.row.delete_request_status === 'pending' ? '删除审核中' : '删除' }}
                     </TDropdownItem>
@@ -735,5 +787,10 @@ async function removeVersion() {
 
 .dev-version-note p + p {
   margin-top: 4px;
+}
+
+/* R014：锁定资源的说明横幅，放在工作台操作条与版本列表之间（观感取自 TAlert 的 warning 态）。 */
+.dev-archive-locked-notice {
+  margin: 0 0 16px;
 }
 </style>
