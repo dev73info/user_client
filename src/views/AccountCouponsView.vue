@@ -1645,7 +1645,7 @@ function openAccountEntry(key: string) {
       void openSettleDialog()
       return
     case 'closeSettle':
-      closeSettleDialogVisible.value = true
+      openCloseSettleDialog()
       return
     case 'mobile':
       openMobileDialog()
@@ -1790,6 +1790,13 @@ const settleLoading = ref(false)
 /** 注销结算账户确认弹窗 */
 const closeSettleDialogVisible = ref(false)
 const closeSettleLoading = ref(false)
+/**
+ * 注销结算账户的确认词。
+ *
+ * 与「注销账号」同一道防误触：必须原样键入「注销结算账户」才允许提交。
+ * 注销是破坏性动作（注销后合同款与分账都进不来），只按一个按钮就执行太容易误点。
+ */
+const closeSettleConfirmation = ref('')
 /**
  * 当前已绑卡的**脱敏**明细（后端从渠道会员对象现取）。
  *
@@ -2053,6 +2060,15 @@ async function saveSettleAccount() {
   }
 }
 
+/** 确认词键入正确、也没有正在提交时才允许点「确认注销」 */
+const closeSettleReady = computed(() => closeSettleConfirmation.value.trim() === '注销结算账户')
+
+/** 打开注销弹窗：每次都清空确认词，避免上一次的输入残留（与注销账号同口径） */
+function openCloseSettleDialog() {
+  closeSettleConfirmation.value = ''
+  closeSettleDialogVisible.value = true
+}
+
 /**
  * 注销结算账户：先让渠道删掉，成功才清本地绑定。
  *
@@ -2061,11 +2077,16 @@ async function saveSettleAccount() {
  */
 async function handleCloseSettleAccount() {
   if (!requireToken()) return
+  if (!closeSettleReady.value) {
+    showToast('请输入“注销结算账户”确认操作', 'warning')
+    return
+  }
   closeSettleLoading.value = true
   try {
     adapayMember.value = await closeMyAdapaySettlementAccount(auth.token)
     showToast('结算账户已注销', 'success')
     closeSettleDialogVisible.value = false
+    closeSettleConfirmation.value = ''
     settleSnapshot.value = null
   } catch (err) {
     showToast(err instanceof Error ? err.message : '注销结算账户失败', 'error')
@@ -3514,27 +3535,41 @@ onBeforeUnmount(() => {
         <TDialog
           v-model:open="closeSettleDialogVisible"
           title="注销结算账户"
-          class="account-dialog"
-          width="420px"
+          class="account-dialog account-close-dialog"
+          width="480px"
         >
-          <p class="asign-hint">
-            注销后本账号将无法接收合同款与分账，要恢复收款必须重新绑定银行卡（重新走一次渠道核验）。
-            如果还有未结算的合同款或未到账的分账，请先等款项结清再注销——否则渠道可能拒绝，或钱卡在托管里。
-          </p>
-          <div class="asign-row">
-            <TButton
-              variant="outline"
+          <div class="dialog-form account-close-form">
+            <TAlert
+              tone="warning"
+              :closable="false"
+              show-icon
+              title="注销后本账号将无法接收合同款与分账"
+              description="要恢复收款必须重新绑定银行卡（重新走一次渠道核验）。如果还有未结算的合同款或未到账的分账，请先等款项结清再注销——否则渠道可能拒绝，或钱卡在托管里。"
+            />
+            <label class="account-close-confirm-label" for="close-settle-confirmation">
+              请输入“注销结算账户”确认
+            </label>
+            <TInput
+              id="close-settle-confirmation"
+              v-model="closeSettleConfirmation"
+              placeholder="注销结算账户"
               :disabled="closeSettleLoading"
-              @click="closeSettleDialogVisible = false"
-              >取消</TButton
-            >
-            <TButton
-              variant="solid"
-              tone="danger"
-              :loading="closeSettleLoading"
-              @click="handleCloseSettleAccount"
-              >确认注销</TButton
-            >
+              autocomplete="off"
+            />
+            <div class="account-close-actions">
+              <TButton :disabled="closeSettleLoading" @click="closeSettleDialogVisible = false">
+                取消
+              </TButton>
+              <TButton
+                variant="solid"
+                tone="danger"
+                :loading="closeSettleLoading"
+                :disabled="!closeSettleReady"
+                @click="handleCloseSettleAccount"
+              >
+                确认注销
+              </TButton>
+            </div>
           </div>
         </TDialog>
 
