@@ -84,9 +84,9 @@ const pages = [
   {
     path: '/',
     kind: 'home',
-    title: '73Info 柒叁信息 - 资源与需求协作平台',
+    title: '73Info 柒叁信息 - 网站开发与小工具资源发现、需求协作平台',
     description:
-      '73Info 柒叁信息面向网站开发和小工具场景提供免费资源浏览、需求发布、开发者协作、沟通记录、工单跟进与合规说明服务。',
+      '73Info 柒叁信息是内测中的资源与需求协作平台，面向网站开发和小工具场景，提供公开资源浏览、需求发布、开发者对接、沟通记录、工单跟进与合规说明；平台担保、资金托管、代收代付和自动分账等涉及许可的交易功能暂未开放。',
     heading: '73Info 柒叁信息 - 资源与需求协作平台',
     lead: '面向网站开发和小工具场景提供资源发现、需求发布、开发者协作、沟通记录、工单跟进与合规说明服务。',
   },
@@ -100,9 +100,9 @@ const pages = [
     path: '/resources',
     kind: 'resources',
     sale: 'all',
-    title: '资源项目 - 73Info 柒叁信息',
+    title: '资源项目 - 免费与付费的网站开发、小工具资源列表 - 73Info 柒叁信息',
     description:
-      '在 73Info 资源项目里浏览公开资源：免费资源与现金定价的付费资源在同一页内切换，查看资源介绍、分类标签、作者信息与下载 / 购买入口。',
+      '在 73Info 资源项目里浏览公开资源：免费资源与现金定价的付费资源在同一页内切换，可以查看资源介绍、分类标签、版本、作者信息与下载或购买入口，并按分类标签继续筛选更多同类资源。',
     heading: '资源项目',
     lead: '浏览公开资源：免费资源与现金定价的付费资源在同一页内切换，查看资源介绍、分类标签、作者信息与下载 / 购买入口。',
   },
@@ -112,9 +112,9 @@ const pages = [
     path: '/free-resources',
     kind: 'resources',
     sale: 'free',
-    title: '免费资源 - 73Info 柒叁信息',
+    title: '免费资源 - 网站开发与小工具免费资源下载入口 - 73Info 柒叁信息',
     description:
-      '在 73Info 免费资源区浏览网站开发和小工具等公开资源，查看资源介绍、分类标签、作者信息与下载入口。',
+      '73Info 免费资源区收录网站开发、小工具等公开资源，可以查看资源介绍、分类标签、更新时间与作者信息，并直接从下载入口获取；同一入口也能切换到付费资源与需求大厅，方便按预算和用途选择获取方式。',
     heading: '免费资源',
     lead: '浏览网站开发、小工具等公开资源，按分类标签找到资源介绍、作者信息和下载入口。',
   },
@@ -122,26 +122,26 @@ const pages = [
     path: '/paid-resources',
     kind: 'resources',
     sale: 'paid',
-    title: '付费资源 - 73Info 柒叁信息',
+    title: '付费资源 - 现金定价的网站开发与小工具资源 - 73Info 柒叁信息',
     description:
-      '浏览 73Info 上现金定价的付费资源，查看资源介绍、价格、版本、作者信息与购买入口。',
+      '浏览 73Info 上现金定价的付费资源，可以查看资源介绍、价格与版本、分类标签、作者信息以及购买入口；也可以切换到免费资源区，或按标签继续筛选同类付费资源，购买前可在资源页查看作者与更新记录。',
     heading: '付费资源',
     lead: '浏览现金定价的付费资源，查看资源介绍、价格、作者信息与购买入口。',
   },
   {
     path: '/requirement-hall',
     kind: 'requirements',
-    title: '需求大厅 - 73Info 柒叁信息',
+    title: '需求大厅 - 公开需求列表与开发者对接入口 - 73Info 柒叁信息',
     description:
-      '73Info 需求大厅展示公开合作机会，支持发布需求、查看预算与交付方式、对接开发者并沉淀沟通记录。',
+      '73Info 需求大厅汇总平台上的公开合作机会，可以查看需求描述、预算范围、交付方式与发布时间，支持注册后发布自己的需求、对接合适的开发者，并把沟通与交付过程沉淀成可随时回看的记录，方便双方核对口径。',
     heading: '需求大厅',
     lead: '查看公开合作机会，发布需求，了解预算、交付方式和沟通记录，对接适合的开发者。',
   },
   {
     path: '/community',
     kind: 'posts',
-    title: '社区交流 - 73Info 柒叁信息',
-    description: '73Info 社区用于发布平台公告、经验分享、资源反馈和用户讨论，帮助需求方与开发者建立公开沟通。',
+    title: '社区交流 - 平台公告、经验分享与用户讨论 - 73Info 柒叁信息',
+    description: '73Info 社区用于发布平台公告、经验分享、资源反馈和用户讨论，帮助需求方与开发者建立公开沟通；帖子按时间与标签组织，可以按分类浏览历史内容，也可以在帖子下继续讨论，或把有价值的内容分享给协作方。',
     heading: '社区交流',
     lead: '查看平台公告、经验分享、资源反馈和用户讨论，了解 73Info 的最新动态。',
   },
@@ -149,9 +149,9 @@ const pages = [
     path: '/about',
     kind: 'doc',
     docKey: 'about',
-    title: '关于我们 - 73Info 柒叁信息',
+    title: '关于我们 - 平台定位、内测状态与合规说明 - 73Info 柒叁信息',
     description:
-      '了解 73Info 柒叁信息的平台定位、内测状态、资源与需求协作模式、合规说明、备案信息和联系方式。',
+      '了解 73Info 柒叁信息的平台定位与内测状态、资源与需求协作模式、合规说明与备案信息，以及联系方式和平台当前已开放与暂未开放的功能范围；页面同时说明资源版权、内容审核与用户责任的边界。',
     heading: '关于我们',
     lead: '了解 73Info 柒叁信息的平台定位、内测状态、资源与需求协作模式、合规说明和联系方式。',
   },
@@ -159,8 +159,8 @@ const pages = [
     path: '/terms',
     kind: 'doc',
     docKey: 'terms',
-    title: '用户协议 - 73Info 柒叁信息',
-    description: '查看 73Info 柒叁信息用户协议，了解账号使用、内容发布、资源浏览、需求协作和平台服务规则。',
+    title: '用户协议 - 账号使用、内容发布与平台服务规则 - 73Info 柒叁信息',
+    description: '查看 73Info 柒叁信息用户协议，了解账号注册与使用、内容发布规范、资源浏览与需求协作规则、平台服务范围，以及违规内容的处理方式；注册或使用平台即表示同意协议中的约定，协议更新后会在本页说明生效时间。',
     heading: '用户协议',
     lead: '查看账号使用、内容发布、资源浏览、需求协作和平台服务规则。',
   },
@@ -168,8 +168,8 @@ const pages = [
     path: '/privacy',
     kind: 'doc',
     docKey: 'privacy',
-    title: '隐私政策 - 73Info 柒叁信息',
-    description: '查看 73Info 柒叁信息隐私政策，了解个人信息处理、数据使用、存储保护和用户权利说明。',
+    title: '隐私政策 - 个人信息处理与数据安全说明 - 73Info 柒叁信息',
+    description: '查看 73Info 柒叁信息隐私政策，了解个人信息的收集范围与使用目的、数据存储与安全保护措施、Cookie 使用说明，以及查询、更正与删除个人信息的途径；涉及实名认证与支付的信息按对应渠道的要求单独处理。',
     heading: '隐私政策',
     lead: '了解个人信息处理、数据使用、存储保护和用户权利说明。',
   },
@@ -177,8 +177,8 @@ const pages = [
     path: '/payment-refund',
     kind: 'doc',
     docKey: 'payment-refund',
-    title: '支付与退款说明 - 73Info 柒叁信息',
-    description: '查看 73Info 柒叁信息支付与退款说明，了解需求协作中的支付阶段、退款条件和处理流程。',
+    title: '支付与退款说明 - 支付阶段、退款条件与处理流程 - 73Info 柒叁信息',
+    description: '查看 73Info 柒叁信息支付与退款说明，了解需求协作各阶段的支付方式与时间点、退款条件与处理流程，以及当前暂未开放的资金托管与自动分账功能；发生争议时可按说明中的渠道提交工单。',
     heading: '支付与退款说明',
     lead: '了解需求协作中的支付阶段、退款条件和处理流程。',
   },
@@ -674,6 +674,20 @@ function listingResources(dataset, sale) {
     : dataset.resources.filter(isFreeListingResource)
 }
 
+// 列表项的描述来自内容本身，而资源简介、帖子摘要经常只有十几个字：Bing / Google 都会对
+// 过短的描述给出「太短」提示，所以内容不足时补一句平台口径，保证每条快照的描述都够长。
+const listItemDescriptionMinLength = 60
+
+function describeListItem(source, limit, tail) {
+  const text = truncateText(stripHtml(source), limit)
+
+  if (!text) {
+    return tail
+  }
+
+  return text.length >= listItemDescriptionMinLength ? text : `${text} ${tail}`
+}
+
 function resourceListItem(resource) {
   const title = cleanText(resource.title) || '资源详情'
   const meta = [cleanText(resource.creator || resource.author), cleanText(resource.platform)]
@@ -684,7 +698,11 @@ function resourceListItem(resource) {
     href: `/resources/${resourceDetailSlug(resource)}`,
     title,
     meta,
-    description: truncateText(stripHtml(resource.description), 90),
+    description: describeListItem(
+      resource.description,
+      150,
+      '在 73Info 柒叁信息查看该资源的分类标签、作者信息与下载或购买入口。',
+    ),
   }
 }
 
@@ -703,7 +721,11 @@ function requirementListItem(requirement) {
   return {
     title: cleanText(requirement.title) || '公开需求',
     meta,
-    description: truncateText(stripHtml(requirement.description), 120),
+    description: describeListItem(
+      requirement.description,
+      150,
+      '在 73Info 需求大厅查看该需求的预算、交付方式与沟通记录，并对接合适的开发者。',
+    ),
   }
 }
 
@@ -717,7 +739,11 @@ function postListItem(post) {
     href: `/community/posts/${Number(post.id)}`,
     title: cleanText(post.title) || '社区帖子',
     meta,
-    description: truncateText(stripHtml(post.content_html), 90),
+    description: describeListItem(
+      post.content_html,
+      150,
+      '在 73Info 社区查看该帖子的完整内容与相关讨论。',
+    ),
   }
 }
 
@@ -1072,14 +1098,9 @@ function renderDetailHtml(template, page) {
   const url = canonicalPageUrl(page.path)
   const extraHead = [`<style>${DETAIL_FALLBACK_STYLE}</style>`]
 
-  if (page.image) {
-    extraHead.push(`<meta property="og:image" content="${escapeAttribute(page.image)}" />`)
-    extraHead.push(`<meta name="twitter:image" content="${escapeAttribute(page.image)}" />`)
-  }
-
   extraHead.push(`<script type="application/ld+json">${serializeJsonLd(page.jsonLd)}</script>`)
 
-  return template
+  let html = template
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(page.title)}</title>`)
     .replace(/(<meta\s+name="description"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.description)}$2`)
     .replace(/(<meta\s+property="og:type"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.ogType || 'website')}$2`)
@@ -1094,6 +1115,22 @@ function renderDetailHtml(template, page) {
       `<!-- SEO_FALLBACK_START -->\n${renderDetailFallback(page)}\n      <!-- SEO_FALLBACK_END -->`,
     )
     .replace('</head>', `    ${extraHead.join('\n    ')}\n  </head>`)
+
+  // 详情页自带图片（资源封面 / 作者头像）时用它覆盖模板里的默认分享卡：
+  // 模板里只有一条 og:image，这里是改写取值而不是再插一条，否则会出现两条 og:image。
+  // 封面尺寸未知，同时去掉模板里针对默认卡（1200x630）的宽高声明，避免与实际图片不符。
+  if (page.image) {
+    html = html
+      .replace(/(<meta\s+property="og:image"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.image)}$2`)
+      .replace(/(<meta\s+name="twitter:image"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.image)}$2`)
+      .replace(
+        /(<meta\s+property="og:image:alt"\s+content=")[^"]*("\s*\/?>)/,
+        `$1${escapeAttribute(page.heading || page.title)}$2`,
+      )
+      .replace(/[ \t]*<meta\s+property="og:image:(?:width|height)"[^>]*>\n?/g, '')
+  }
+
+  return html
 }
 
 function renderDetailFallback(page) {
