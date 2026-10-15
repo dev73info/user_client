@@ -3,6 +3,9 @@ import { authHeader, requestJson } from '@/api/http'
 export type McResourceVisibility = 'draft' | 'review' | 'published'
 export type McResourcePlatform = string
 
+/** 资源类别：normal = 大厅公开展示（默认）；special = 不在公开面展示，只能由指定来源下单 */
+export type McResourceKind = 'normal' | 'special'
+
 export type CreateMcResourceTagSelection = {
   group_id: number
   tag_ids: number[]
@@ -44,6 +47,8 @@ export type CreateMcResourceRequest = {
   price_points?: number | null
   /** 版权声明勾选 */
   copyright_declared?: boolean | null
+  /** 资源类别：normal = 大厅公开展示（默认）；special = 不公开展示，只能由指定来源下单 */
+  resource_kind?: McResourceKind | null
 }
 
 export type McResourcePayload = {
@@ -79,6 +84,12 @@ export type McResourcePayload = {
   /** 是否已勾选版权声明 */
   copyright_declared: boolean
   copyright_declared_at?: string | null
+  /**
+   * 资源类别：normal = 大厅公开展示；special = 不在公开面展示，只能由指定来源下单。
+   * 契约上是必回字段，这里写成可选是为了兼容旧 mock 数据与旧后端；判定一律走
+   * `shared/resourceSpecial.ts` 的 `isSpecialResourceKind()`（缺省按 normal 处理）。
+   */
+  resource_kind?: McResourceKind
   /** 曾设过现金售价：设过即不可再改积分售价（改回免费后也一样） */
   cash_price_locked?: boolean
   /** 当前登录买家是否已有有效已购订单（列表通常为 false） */
@@ -150,6 +161,8 @@ export type UpdateMcResourceHomepageRequest = {
   price_points?: number | null
   /** 版权声明勾选；付费提交审核时必须为 true */
   copyright_declared?: boolean | null
+  /** 资源类别：normal = 大厅公开展示（默认）；special = 不公开展示，只能由指定来源下单 */
+  resource_kind?: McResourceKind | null
 }
 
 export async function createMcResource(
@@ -377,5 +390,74 @@ export async function applyResourcePromoCard(
       body: JSON.stringify({ card_id: cardId }),
     },
     '使用道具卡失败',
+  )
+}
+
+/**
+ * R028 特殊资源的渠道配置（`GET` 响应；`PUT` 响应同构）。
+ * 「不在大厅展示」由后端固定为 `true`，前端只读展示，不给开关。
+ */
+export type ResourceSpecialChannelPayload = {
+  resource_id: number
+  resource_kind: McResourceKind
+  repeat_purchasable: boolean
+  callback_url: string | null
+  /** 掩码，例如 sk***ab；明文任何响应都不回 */
+  callback_secret_masked: string | null
+  callback_secret_set: boolean
+  /** 仅记录并透传，平台不做判定 */
+  allow_strangers: boolean
+  hidden_from_catalog: boolean
+  allowed_origins: string[]
+  updated_at: string | null
+  updated_by: string | null
+  /** 仅「后端首次生成密钥」的那一次 PUT 响应里有值，之后永远拿不到 */
+  callback_secret_plain?: string | null
+}
+
+export type UpdateResourceSpecialChannelRequest = {
+  resource_kind?: McResourceKind
+  repeat_purchasable?: boolean
+  callback_url?: string | null
+  /** 省略或空串 = 不改；非空 = 覆盖 */
+  callback_secret?: string | null
+  allow_strangers?: boolean
+  allowed_origins?: string[]
+}
+
+/** 读取某个资源的特殊渠道配置；资源没配过渠道时后端回默认值（不 404）。 */
+export async function getResourceSpecialChannel(
+  token: string,
+  resourceId: number,
+): Promise<ResourceSpecialChannelPayload> {
+  return requestJson<ResourceSpecialChannelPayload>(
+    `/dev/resources/resources/${resourceId}/special-channel`,
+    {
+      method: 'GET',
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '加载特殊资源渠道配置失败',
+  )
+}
+
+/** 写入某个资源的特殊渠道配置；字段缺省 = 不改这一项。 */
+export async function updateResourceSpecialChannel(
+  token: string,
+  resourceId: number,
+  payload: UpdateResourceSpecialChannelRequest,
+): Promise<ResourceSpecialChannelPayload> {
+  return requestJson<ResourceSpecialChannelPayload>(
+    `/dev/resources/resources/${resourceId}/special-channel`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify(payload),
+    },
+    '保存特殊资源渠道配置失败',
   )
 }

@@ -49,6 +49,7 @@ import {
   formatResourcePriceLabel,
   isPricedResource,
 } from '@/shared/resourceSale'
+import { isSpecialResourceKind } from '@/shared/resourceSpecial'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import {
   describeTransferError,
@@ -979,6 +980,15 @@ async function setResourcePrivate(resource: McResourcePayload) {
             <div class="dev-resource-table__status-tags">
               <TTag variant="outline" :tone="resourceVisibilityTagType(scope.row.visibility)">
                 {{ resourceVisibilityLabel(scope.row.visibility) }}
+              </TTag>
+              <!-- R028：特殊资源不进大厅，列表里必须一眼看得出来 -->
+              <TTag
+                v-if="isSpecialResourceKind(scope.row.resource_kind)"
+                variant="soft"
+                tone="warning"
+                data-testid="resource-special-tag"
+              >
+                特殊资源 · 不在大厅展示
               </TTag>
               <TTag
                 v-if="isResourceArchiveLocked(scope.row)"
