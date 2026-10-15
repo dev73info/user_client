@@ -753,7 +753,7 @@ async function submitResource(mode: 'private' | 'public') {
               </TFormItem>
 
               <!-- R029 推广分成比例：0～50（%），0 = 关闭；拖动条 + 百分比展示，随资源一次保存（promo_share_bps） -->
-              <TFormItem label="推广分成比例">
+              <TFormItem label="推广分成比例" class="dev-form-item--wide">
                 <div class="dev-promo-share">
                   <input
                     v-model.number="form.promoSharePercent"
@@ -796,7 +796,7 @@ async function submitResource(mode: 'private' | 'public') {
                 </TFormItem>
               </template>
 
-              <TFormItem label="图标文件">
+              <TFormItem label="图标文件" class="dev-form-item--wide">
                 <ResourceIconPicker v-model="form.coverUrl" v-model:file="selectedIconFile" />
               </TFormItem>
 

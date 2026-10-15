@@ -96,11 +96,12 @@
 
 /* 表单栅格是「3 个 1fr + 末尾 80px」四档，最后那 80px 是给图标方形按钮的。
    原来靠字段个数凑位：图标恰好在第 4 个位置才落进去，加一个字段就会串位——
-   「资源类别」「现金售价」都曾被挤进这 80px，内容显示不全。所以这里改成纯 3 档，
-   图标回落到普通格子（里面的方形按钮本身宽 80px，不受影响）；
-   长内容字段另加 --wide / --full 修饰，短字段仍各占 1 档。 */
+   「资源类别」「现金售价」都曾被挤进这 80px，内容显示不全。
+   现在表单单独用「4 等档」：短字段占 1 档（约 180px，放得下「原创」「个人项目」），
+   长字段占 2 档（约 380px，够显示「特殊资源（不公开展示，指定来源下单）」，
+   该文案实测 234px + 内边距 + 箭头约 284px），图标回落到 1 档。 */
 .dev-page--publish .dev-upload-grid--form {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .dev-page--publish .dev-upload-form .dev-form-item--wide {
