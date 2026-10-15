@@ -36,7 +36,9 @@ import {
   canSwitchToPointsPrice,
   fenToYuanText,
   parsePointsPriceInput,
+  parsePromoSharePercentInput,
   parseYuanPriceInput,
+  promoShareBpsToPercentText,
 } from '@/shared/resourceSale'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import {
@@ -120,6 +122,8 @@ const form = reactive({
   priceYuan: '0',
   /** 积分售价；与现金售价互斥 */
   pricePoints: '0',
+  /** R029 售卖推广分成比例：百分比文本（0～50，留空 = 关闭） */
+  promoSharePercent: '',
   copyrightDeclared: false,
   /** R028 资源类别：normal = 大厅公开展示；special = 不公开展示，只能指定来源下单 */
   resourceKind: 'normal' as McResourceKind,
@@ -245,6 +249,11 @@ watch(resource, async (current) => {
 })
 const parsedPriceFen = computed(() => parseYuanPriceInput(form.priceYuan))
 const parsedPricePoints = computed(() => parsePointsPriceInput(form.pricePoints))
+/** R029：推广分成比例（万分比）；校验失败时 `ok` 为假，字段上展示同一句文案 */
+const parsedPromoShare = computed(() => parsePromoSharePercentInput(form.promoSharePercent))
+const promoShareError = computed(() =>
+  parsedPromoShare.value.ok ? '' : parsedPromoShare.value.message,
+)
 const isPaidPricing = computed(
   () =>
     (parsedPriceFen.value.ok && parsedPriceFen.value.fen > 0) ||
@@ -622,6 +631,8 @@ async function loadResource() {
     form.originNote = payload.origin_note || ''
     form.priceYuan = fenToYuanText(payload.price_fen ?? 0)
     form.pricePoints = String(Math.max(0, Math.trunc(Number(payload.price_points ?? 0))))
+    // R029：比例以万分比存，回显换算回百分比文本（1000 → '10'；0 → ''）
+    form.promoSharePercent = promoShareBpsToPercentText(payload.promo_share_bps)
     form.copyrightDeclared = Boolean(payload.copyright_declared)
     form.resourceKind = isSpecialResourceKind(payload.resource_kind) ? 'special' : 'normal'
     coverPreview.value = payload.cover_url ? apiUrl(payload.cover_url) : ''
@@ -689,6 +700,12 @@ async function saveHomepage() {
     showToast('现金售价与积分售价不能同时大于 0', 'warning')
     return
   }
+  // R029：推广分成比例先在前端拦一道（0～50，留空 = 关闭）；清空保存 = 把比例改回 0
+  const promoParsed = parsedPromoShare.value
+  if (!promoParsed.ok) {
+    showToast(promoParsed.message, 'warning')
+    return
+  }
   if (pointsParsed.points > 0 && pointsLockedBySavedCash.value) {
     showToast('设过现金售价的资源不可改为积分售价', 'warning')
     return
@@ -754,6 +771,8 @@ async function saveHomepage() {
       price_points: pointsParsed.points,
       copyright_declared: form.copyrightDeclared,
       resource_kind: form.resourceKind,
+      // R029：比例整体提交，0 也显式下发——清空回 0 这种操作不能靠省略字段变成静默失效
+      promo_share_bps: promoParsed.bps,
     })
 
     resource.value = updated
@@ -768,6 +787,7 @@ async function saveHomepage() {
     form.originNote = updated.origin_note || ''
     form.priceYuan = fenToYuanText(updated.price_fen ?? 0)
     form.pricePoints = String(Math.max(0, Math.trunc(Number(updated.price_points ?? 0))))
+    form.promoSharePercent = promoShareBpsToPercentText(updated.promo_share_bps)
     form.copyrightDeclared = Boolean(updated.copyright_declared)
     selectedCoverFile.value = null
     coverPreview.value = updated.cover_url ? apiUrl(updated.cover_url) : ''
@@ -1007,6 +1027,24 @@ onMounted(async () => {
                   />
                   <p v-if="pointsLockedBySavedCash && !boundToRequirement" class="dev-field-hint">
                     设过现金售价，不可改为积分售价。
+                  </p>
+                </TFormItem>
+
+                <!-- R029 推广分成比例：0～50（%），留空 = 关闭；随「保存主页」一次提交（promo_share_bps） -->
+                <TFormItem label="推广分成比例" class="dev-basic-info-grid__promo">
+                  <TInput
+                    v-model="form.promoSharePercent"
+                    placeholder="0～50，留空 = 关闭"
+                    inputmode="decimal"
+                    title="百分比，最高 50%"
+                  />
+                  <p class="dev-field-hint">
+                    按百分比填写（0～50，留空 = 关闭）。这笔钱<strong>从你的净收里出</strong>，平台抽成不变；
+                    只在买家带着推广码下单、且推广者已实名并有渠道结算账户时才真正分账。
+                    积分购不参与推广分成（比例可以存，但对积分单无效）。
+                  </p>
+                  <p v-if="promoShareError" class="dev-field-hint dev-field-hint--error">
+                    {{ promoShareError }}
                   </p>
                 </TFormItem>
 
@@ -1440,10 +1478,16 @@ onMounted(async () => {
 
 .dev-basic-info-grid__title,
 .dev-basic-info-grid__kind,
+.dev-basic-info-grid__promo,
 .dev-basic-info-grid__copyright,
 .dev-basic-info-grid__span,
 .dev-basic-info-grid__repost-org {
   grid-column: span 12;
+}
+
+/* 比例只是个百分比，通栏的行里把输入框收窄，别拉成一整条 */
+.dev-basic-info-grid__promo :deep(.t73-input) {
+  max-width: 240px;
 }
 
 .dev-basic-info-grid__ownership {
@@ -1503,6 +1547,12 @@ onMounted(async () => {
   color: var(--text-secondary, #64748b);
 }
 
+/* 校验失败时的字段提示（与「创建资源」页同构）：R028 的回调地址 / 允许来源与
+   R029 的推广分成比例都用它标红，此前只有类名、没有样式。 */
+.dev-field-hint--error {
+  color: var(--73-danger, #b42318);
+}
+
 @media (max-width: 900px) {
   .dev-resource-homepage-editor__layout {
     grid-template-columns: 1fr;
@@ -1514,6 +1564,7 @@ onMounted(async () => {
 
   .dev-basic-info-grid__title,
   .dev-basic-info-grid__kind,
+  .dev-basic-info-grid__promo,
   .dev-basic-info-grid__ownership,
   .dev-basic-info-grid__origin,
   .dev-basic-info-grid__price,

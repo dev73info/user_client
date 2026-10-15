@@ -32,11 +32,13 @@ import {
   getWechatPaymentAuthorizeUrl,
 } from '@/api/auth'
 import {
+  fenToYuanText,
   formatResourcePriceLabel,
   isPointsResource,
   isPricedResource,
   isPurchaseRequiredError,
   needsPurchase as resourceNeedsPurchase,
+  normalizePromoCode,
   type ResourcePayChannelUi,
 } from '@/shared/resourceSale'
 import { isWechatBrowser } from '@/shared/auth/browser'
@@ -240,6 +242,29 @@ const resourceCoverUrl = computed(() =>
 const latestVersion = computed(() => versions.value[0] ?? null)
 const pageContentHtml = computed(() => formatHomepageContent(resource.value?.release_note || ''))
 const isPublishedResource = computed(() => resource.value?.visibility === 'published')
+
+/**
+ * R029：本次链接带来的推广码（`?promo=`，由分享短链落地时写入）。
+ *
+ * 列表页保证它只在「当前详情就是分享链接指向的那条资源」时留在地址栏上
+ * （换一条资源 / 关闭详情都会被摘掉），所以这里可以直接按资源用。
+ * 格式不合格的码在落地时就被拒掉了，这里再校验一次兜底。
+ */
+const activePromoCode = computed(() => normalizePromoCode(route.query.promo))
+
+/**
+ * 购买面板上的推广轻提示：比例 > 0、本次确实带了推广码、且是现金单时才提示。
+ *
+ * 比例是 0 的资源后端根本不归因，提示会误导；积分单不参与推广分成（后端忽略 `promo_code`），
+ * 拿「从净收里支付分成」去提示积分单同样是错的。
+ */
+const showPromoHint = computed(
+  () =>
+    !isPointsListing.value &&
+    Number(resource.value?.promo_share_bps ?? 0) > 0 &&
+    Boolean(activePromoCode.value),
+)
+
 const isOwner = computed(() => {
   const creator = resource.value?.creator?.trim() ?? ''
   const username = auth.username?.trim() ?? ''
@@ -556,7 +581,13 @@ async function handlePurchasePaid(order: ResourcePurchaseOrder) {
   purchaseOrder.value = order
   purchaseQrDataUrl.value = ''
   purchaseError.value = ''
-  showToast('购买成功，可以下载了', 'success')
+  // 买家侧只报金额，不报推广者是谁（推广者信息只给卖家与管理端）
+  showToast(
+    order.promoter_fee_fen > 0
+      ? `购买成功，可以下载了（本单含推广分成 ¥${fenToYuanText(order.promoter_fee_fen)}）`
+      : '购买成功，可以下载了',
+    'success',
+  )
   await refreshResourceDetail()
   purchasePanelOpen.value = false
 }
@@ -691,6 +722,8 @@ async function runSubmitPurchase() {
     const order = await createResourcePurchase(auth.token, resource.value.id, {
       pay_channel: purchaseChannel.value,
       client_platform: getAdapayClientPlatform(),
+      // R029：只有现金单带推广码（积分单不带，后端对积分单也忽略该字段）
+      ...(activePromoCode.value ? { promo_code: activePromoCode.value } : {}),
     })
     if (purchaseChannel.value !== requestedChannel) {
       return
@@ -1359,6 +1392,11 @@ watch(
           <li>尚未产生成功下载前可申请退款；下载成功后不支持自助退款。</li>
         </ul>
 
+        <!-- R029 推广归因轻提示：只说明「这单是推广者带来的」，不打断下单，也不透露推广者是谁 -->
+        <p v-if="showPromoHint" class="resource-purchase-modal__promo-hint" role="note">
+          本单由推广者带来，卖家将从净收中支付约定分成。
+        </p>
+
         <div
           v-if="!isPointsListing"
           class="payment-options"
@@ -1700,6 +1738,18 @@ watch(
 
 .resource-purchase-modal__notes li + li {
   margin-top: 4px;
+}
+
+/* R029 推广轻提示：与说明块同构，换成中性的说明色，不加边框强调（不阻断下单） */
+.resource-purchase-modal__promo-hint {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px dashed rgba(148, 163, 184, 0.7);
+  background: rgba(248, 250, 252, 0.9);
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 /* 失败原因：与上方说明块同构，换成告警色，长文案允许换行 */

@@ -120,10 +120,15 @@ function parseSelectedResourceId(value: unknown): number | null {
 /**
  * 选中项只在当前列表里成立：换专区 / 子分区 / 免费付费分区时把它从 query 中摘掉
  * （否则会出现「地址上选中的是付费资源、左边却在看免费分区」这种对不上的状态）。
+ *
+ * R029：推广码 `?promo=` 只在「当前详情就是分享链接指向的那条资源」时有效，所以关闭详情、
+ * 换分区 / 换分类时与 `resource` 一起摘掉——不然从 A 的推广链接进来再切到别的资源下单，
+ * 会把别的资源的订单记成 A 带来的（错误归因）。
  */
 function withoutSelection(query: LocationQueryRaw = {}): LocationQueryRaw {
   const next = { ...query }
   delete next.resource
+  delete next.promo
   return next
 }
 
@@ -137,7 +142,11 @@ function selectResource(id: number) {
     return
   }
   selectedResourceId.value = id
-  void router.replace({ query: { ...route.query, resource: String(id) } })
+  // R029：换一条资源就等于放弃这次推广归因——推广码只对分享链接指向的那条资源有效，
+  // 跟着选中项一起写下去会让 B 的订单带上 A 的码（错误归因）。
+  const query: LocationQueryRaw = { ...route.query, resource: String(id) }
+  delete query.promo
+  void router.replace({ query })
 }
 
 /** 退出详情（工具条「返回」与窄屏面板内的返回控件都走这里）：清掉选中并把它从 URL 上摘掉（其余 query 一律保留） */

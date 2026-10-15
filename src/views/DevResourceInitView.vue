@@ -27,7 +27,7 @@ import { listMyTeams, type TeamResponse } from '@/api/team'
 import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
 
 
-import { parsePointsPriceInput, parseYuanPriceInput } from '@/shared/resourceSale'
+import { parsePointsPriceInput, parsePromoSharePercentInput, parseYuanPriceInput } from '@/shared/resourceSale'
 import { API_BASE_URL } from '@/shared/api/url'
 import {
   SPECIAL_CALLBACK_SIGNATURE_RULE,
@@ -82,6 +82,8 @@ const form = reactive({
   originNote: '',
   priceYuan: '0',
   pricePoints: '0',
+  /** R029 售卖推广分成比例：百分比文本（0～50，留空 = 关闭） */
+  promoSharePercent: '',
   copyrightDeclared: false,
   /** R028 资源类别：normal = 大厅公开展示；special = 不公开展示，只能指定来源下单 */
   resourceKind: 'normal' as McResourceKind,
@@ -96,6 +98,11 @@ const form = reactive({
 
 const parsedPriceFen = computed(() => parseYuanPriceInput(form.priceYuan))
 const parsedPricePoints = computed(() => parsePointsPriceInput(form.pricePoints))
+/** R029：推广分成比例（万分比）；校验失败时 `ok` 为假，字段上展示同一句文案 */
+const parsedPromoShare = computed(() => parsePromoSharePercentInput(form.promoSharePercent))
+const promoShareError = computed(() =>
+  parsedPromoShare.value.ok ? '' : parsedPromoShare.value.message,
+)
 const hasCashPrice = computed(
   () => parsedPriceFen.value.ok && parsedPriceFen.value.fen > 0,
 )
@@ -424,6 +431,7 @@ function resetForm() {
   form.originNote = ''
   form.priceYuan = '0'
   form.pricePoints = '0'
+  form.promoSharePercent = ''
   form.copyrightDeclared = false
   form.resourceKind = 'normal'
   form.specialCallbackUrl = ''
@@ -502,6 +510,12 @@ async function submitResource(mode: 'private' | 'public') {
     showToast('现金售价与积分售价不能同时设置', 'warning')
     return
   }
+  // R029：推广分成比例先在前端拦一道（0～50，留空 = 关闭），别指望后端 400 兜底
+  const promoParsed = parsedPromoShare.value
+  if (!promoParsed.ok) {
+    showToast(promoParsed.message, 'warning')
+    return
+  }
   if (
     (priceParsed.fen > 0 || pointsParsed.points > 0) &&
     !form.copyrightDeclared &&
@@ -542,6 +556,8 @@ async function submitResource(mode: 'private' | 'public') {
         price_points: pointsParsed.points,
         copyright_declared: form.copyrightDeclared,
         resource_kind: form.resourceKind,
+        // R029：推广分成比例随资源一次保存；0 = 关闭，显式下发，不靠省略字段表达「不改」
+        promo_share_bps: promoParsed.bps,
       })
       createdResourceId.value = resource.id
     } else {
@@ -597,6 +613,7 @@ async function submitResource(mode: 'private' | 'public') {
         price_points: pointsParsed.points,
         copyright_declared: form.copyrightDeclared,
         resource_kind: form.resourceKind,
+        promo_share_bps: promoParsed.bps,
       })
     }
 
@@ -736,6 +753,24 @@ async function submitResource(mode: 'private' | 'public') {
                   @input="onPointsPriceInput"
                 />
                 <p v-if="pointsPriceDisabled" class="dev-field-hint">已填现金售价，积分售价已禁用。</p>
+              </TFormItem>
+
+              <!-- R029 推广分成比例：0～50（%），留空 = 关闭；随资源一次保存（promo_share_bps） -->
+              <TFormItem label="推广分成比例">
+                <TInput
+                  v-model="form.promoSharePercent"
+                  placeholder="0～50，留空 = 关闭"
+                  inputmode="decimal"
+                  title="百分比，最高 50%"
+                />
+                <p class="dev-field-hint">
+                  按百分比填写（0～50，留空 = 关闭）。这笔钱<strong>从你的净收里出</strong>，平台抽成不变；
+                  只在买家带着推广码下单、且推广者已实名并有渠道结算账户时才真正分账。
+                  积分购不参与推广分成（比例可以存，但对积分单无效）。
+                </p>
+                <p v-if="promoShareError" class="dev-field-hint dev-field-hint--error">
+                  {{ promoShareError }}
+                </p>
               </TFormItem>
 
               <TFormItem v-if="showCopyrightField" label="版权声明">

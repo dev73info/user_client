@@ -77,6 +77,8 @@ export type PublicMcResourceItem = {
    * 资源类别：`special` 不会出现在公开列表里（公开面本来就收不到，加上只是为了类型完整）。
    */
   resource_kind?: McResourceKind | null
+  /** 售卖推广分成比例（万分比）；0 = 未开启；公开面用于购买面板的轻提示 */
+  promo_share_bps?: number
   /** 当前登录买家是否已有有效已购订单 */
   purchased_by_me: boolean
 }

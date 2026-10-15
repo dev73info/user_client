@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { getMyRealnameVerification } from '@/api/realname'
 import { HttpError } from '@/api/http'
 import { devRoutes, devWorkbenchRoutes, installDevRouteGuard } from '@/router/dev'
+import { normalizePromoCode } from '@/shared/resourceSale'
 import { isResourceWechatMiddlePage, isWechatPaymentHandoff } from '@/utils/wechatPayment'
 
 const SPA_FALLBACK_REDIRECT_PARAM = '__spa_redirect'
@@ -39,6 +40,7 @@ function buildPublicShareRedirectPath(
   shareType: string,
   targetId: string,
   redirectTo: string,
+  promoCode: string | null = null,
 ): string {
   if (redirectTo) {
     return redirectTo
@@ -49,7 +51,10 @@ function buildPublicShareRedirectPath(
   }
 
   if (['resource', 'portfolio'].includes(shareType) && /^\d+$/.test(targetId)) {
-    return `/resources/resource--${targetId}`
+    // R029：分享短链的路径参数就是推广者的邀请码。短链落到资源详情时把它作为 `?promo=` 带下去，
+    // 与后端 302 的落地形态一致（`.../resources/resource--<id>?promo=<码>`），两条路都要能归因。
+    const promoQuery = promoCode ? `?promo=${encodeURIComponent(promoCode)}` : ''
+    return `/resources/resource--${targetId}${promoQuery}`
   }
 
   if (shareType === 'community_post' && /^\d+$/.test(targetId)) {
@@ -160,9 +165,10 @@ const router = createRouter({
         const redirectTo = typeof to.query.redirect_to === 'string' ? to.query.redirect_to.trim() : ''
 
         if (['requirement', 'portfolio', 'resource', 'community_post'].includes(shareType)) {
-          return buildPublicShareRedirectPath(shareType, targetId, redirectTo)
+          return buildPublicShareRedirectPath(shareType, targetId, redirectTo, normalizePromoCode(code))
         }
 
+        // 注册分支：不带推广码（推广分成只在下单时归因，与注册落地无关）
         const query: Record<string, string> = /^[A-Za-z0-9]{1,32}$/.test(code)
           ? { modal: 'auth', mode: 'register', invite_code: code }
           : {}

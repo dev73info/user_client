@@ -33,6 +33,9 @@ import {
   isPointsPurchaseOrder,
   parseYuanPriceInput,
   refundInitiatorLabel,
+  promoterSplitStatusLabel,
+  promoRejectReasonLabel,
+  promoShareBpsLabel,
   resourcePurchaseStatusLabel,
 } from '@/shared/resourceSale'
 
@@ -168,6 +171,36 @@ function refundTraceText(order: ResourcePurchaseOrder): string {
   }
   if (order.refund_reason) {
     parts.push(`原因：${order.refund_reason}`)
+  }
+  return parts.join(' · ')
+}
+
+/**
+ * R029：这一单有没有推广痕迹。
+ *
+ * 「有推广」不只是成功归因（`promoter` 非空）——带过码但没归因成功（未实名 / 无结算账户 /
+ * 就是买卖双方本人）的订单也要露出来，卖家才能看到「这单本来能带来推广」以及原因。
+ */
+function hasPromoTrace(order: ResourcePurchaseOrder): boolean {
+  return Boolean(
+    order.promoter ||
+      order.promo_code ||
+      order.promo_reject_reason ||
+      Number(order.promoter_fee_fen ?? 0) > 0,
+  )
+}
+
+/** 推广列的 hover 说明：分账状态 + 未归因原因（都没内容时返回空串，不产生空 title 气泡）。 */
+function promoTraceTitle(order: ResourcePurchaseOrder): string {
+  const parts: string[] = []
+  if (order.promoter_split_status) {
+    parts.push(`推广分账：${promoterSplitStatusLabel(order.promoter_split_status)}`)
+  }
+  if (order.promo_code) {
+    parts.push(`推广码：${order.promo_code}`)
+  }
+  if (order.promo_reject_reason) {
+    parts.push(`未归因原因：${promoRejectReasonLabel(order.promo_reject_reason)}`)
   }
   return parts.join(' · ')
 }
@@ -459,6 +492,28 @@ watch(resourceIdFilter, (next, prev) => {
             </span>
           </template>
         </TTableColumn>
+        <!-- R029 推广：卖家是自己掏这笔钱的人，这里刻意给他看推广者用户名（便于对账）。
+             没推广痕迹的订单只留一个「—」，不新增空块。 -->
+        <TTableColumn label="推广" min-width="168">
+          <template #default="scope">
+            <div v-if="hasPromoTrace(scope.row)" class="sold-purchases__promo"
+              :title="promoTraceTitle(scope.row)">
+              <span class="sold-purchases__promo-name">
+                {{ scope.row.promoter || '未归因' }}
+              </span>
+              <span class="sold-purchases__meta">
+                {{ promoShareBpsLabel(scope.row.promo_share_bps) }}
+                <template v-if="scope.row.promoter_fee_fen > 0">
+                  · 分成 ¥{{ fenToYuanText(scope.row.promoter_fee_fen) }}
+                </template>
+                <template v-if="scope.row.promo_reject_reason">
+                  · {{ promoRejectReasonLabel(scope.row.promo_reject_reason) }}
+                </template>
+              </span>
+            </div>
+            <span v-else class="sold-purchases__meta">—</span>
+          </template>
+        </TTableColumn>
         <TTableColumn label="支付时间" min-width="160">
           <template #default="scope">
             <span>{{ scope.row.paid_at || '—' }}</span>
@@ -602,6 +657,24 @@ watch(resourceIdFilter, (next, prev) => {
 .sold-purchases__buyer,
 .sold-purchases__amount {
   font-variant-numeric: tabular-nums;
+}
+
+/* R029 推广列：用户名一行、比例 / 分成 / 未归因原因一行，窄栏里也不撑破 */
+.sold-purchases__promo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.sold-purchases__promo-name {
+  font-weight: 700;
+  color: var(--dev-ink, #0f172a);
+  word-break: break-all;
+}
+
+.sold-purchases__promo .sold-purchases__meta {
+  margin-top: 2px;
 }
 
 .sold-purchases__amount-cell {

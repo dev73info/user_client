@@ -21,6 +21,7 @@ import { DEFAULT_LIST_PAGE_SIZE, LIST_PAGE_SIZES } from '@/composables/useClient
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
+  fenToYuanText,
   formatPurchaseAmountLabel,
   resourcePurchaseStatusLabel,
 } from '@/shared/resourceSale'
@@ -315,6 +316,10 @@ onBeforeUnmount(() => {
                 <template v-if="order.first_downloaded_at"> · 已下载</template>
                 <template v-else-if="order.status === 'paid'"> · 未下载</template>
                 <template v-if="order.entitlement_revoked"> · 下载权已被退款收回</template>
+              </span>
+              <!-- R029 推广分成：只在真有分成时补一行金额；买家侧不显示推广者是谁、也不显示未归因原因 -->
+              <span v-if="order.promoter_fee_fen > 0" class="wb-item__meta">
+                含推广分成 ¥{{ fenToYuanText(order.promoter_fee_fen) }}
               </span>
               <span v-if="order.status === 'paid'" class="wb-item__meta">
                 退款由卖家或平台发起，如需退款请联系卖家或客服。

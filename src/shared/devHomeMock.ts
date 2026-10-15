@@ -65,6 +65,7 @@ function demoResource(id: number, title: string): McResourcePayload {
     copyright_declared: false,
     created_at: daysAgo(30, 9, 0),
     updated_at: daysAgo(2, 15, 20),
+    promo_share_bps: 0,
   }
 }
 

@@ -109,6 +109,8 @@ const routes: MockRoute[] = [
         price_fen?: number
         price_points?: number
         copyright_declared?: boolean
+        /** R029：推广分成比例（万分比） */
+        promo_share_bps?: number
       }
 
       const created = createResourceRecord({
@@ -120,6 +122,7 @@ const routes: MockRoute[] = [
         source_url: body.source_url ?? '',
         requirement_id: body.requirement_id ?? null,
         visibility: body.visibility ?? 'review',
+        promo_share_bps: body.promo_share_bps ?? 0,
       })
       created.price_fen = body.price_fen ?? 0
       created.price_points = body.price_points ?? 0
@@ -250,9 +253,10 @@ const routes: MockRoute[] = [
       if (!resource) {
         return textResponse('资源不存在', 404)
       }
-      const payChannel = String(
-        (request.body as { pay_channel?: string } | null)?.pay_channel ?? 'alipay',
-      )
+      const requestBody = (request.body ?? {}) as { pay_channel?: string; promo_code?: string }
+      const payChannel = String(requestBody.pay_channel ?? 'alipay')
+      // R029：mock 只把推广码原样留痕，不做归因（归因与分账是后端的事，mock 不假装算得出来）
+      const promoCode = typeof requestBody.promo_code === 'string' ? requestBody.promo_code : null
       const pricePoints = resource.price_points ?? 0
       const priceFen = resource.price_fen ?? 0
       if (payChannel === 'points') {
@@ -306,6 +310,13 @@ const routes: MockRoute[] = [
         refund_initiator: null,
         refund_operator: null,
         last_refund_at: null,
+        // R029：推广分成只在后端归因（mock 不模拟），这里只留痕下单带来的推广码
+        promoter: null,
+        promo_code: isPoints ? null : promoCode,
+        promo_share_bps: isPoints ? 0 : Number(resource.promo_share_bps ?? 0),
+        promoter_fee_fen: 0,
+        promoter_split_status: 'none',
+        promo_reject_reason: null,
       }
       mockPurchases.unshift(order)
       return jsonResponse(order)

@@ -588,6 +588,7 @@ function buildResource(
     purchased_by_me: false,
     created_at: iso(-40, 9, 0),
     updated_at: iso(-updatedDaysAgo, 15, 20),
+    promo_share_bps: 0,
   }
 }
 
@@ -969,6 +970,8 @@ export function createResourceRecord(payload: {
   source_url: string
   requirement_id: string | null
   visibility: McResourcePayload['visibility']
+  /** R029：推广分成比例（万分比），不传按 0 */
+  promo_share_bps?: number
 }): McResourcePayload {
   nextResourceId += 1
 
@@ -1001,6 +1004,7 @@ export function createResourceRecord(payload: {
     purchased_by_me: false,
     created_at: iso(0, 10, 0),
     updated_at: iso(0, 10, 0),
+    promo_share_bps: Number(payload.promo_share_bps ?? 0),
   }
 
   mcResources.unshift(resource)

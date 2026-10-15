@@ -49,6 +49,8 @@ export type CreateMcResourceRequest = {
   copyright_declared?: boolean | null
   /** 资源类别：normal = 大厅公开展示（默认）；special = 不公开展示，只能由指定来源下单 */
   resource_kind?: McResourceKind | null
+  /** 资源售卖推广分成比例（万分比）：0 = 关闭，1..5000 = 0.01%..50% */
+  promo_share_bps?: number | null
 }
 
 export type McResourcePayload = {
@@ -90,6 +92,8 @@ export type McResourcePayload = {
    * `shared/resourceSpecial.ts` 的 `isSpecialResourceKind()`（缺省按 normal 处理）。
    */
   resource_kind?: McResourceKind
+  /** 售卖推广分成比例（万分比）；0 = 未开启 */
+  promo_share_bps: number
   /** 曾设过现金售价：设过即不可再改积分售价（改回免费后也一样） */
   cash_price_locked?: boolean
   /** 当前登录买家是否已有有效已购订单（列表通常为 false） */
@@ -163,6 +167,8 @@ export type UpdateMcResourceHomepageRequest = {
   copyright_declared?: boolean | null
   /** 资源类别：normal = 大厅公开展示（默认）；special = 不公开展示，只能由指定来源下单 */
   resource_kind?: McResourceKind | null
+  /** 资源售卖推广分成比例（万分比）：0 = 关闭，1..5000 = 0.01%..50% */
+  promo_share_bps?: number | null
 }
 
 export async function createMcResource(

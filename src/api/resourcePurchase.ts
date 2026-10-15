@@ -39,12 +39,26 @@ export type ResourcePurchaseOrder = {
   refund_initiator: string | null
   refund_operator: string | null
   last_refund_at: string | null
+  /** 推广者用户名（未归因 = null） */
+  promoter: string | null
+  /** 下单时带来的推广码（原样留痕） */
+  promo_code: string | null
+  /** 下单时资源的推广分成比例快照（万分比） */
+  promo_share_bps: number
+  /** 本单实际切给推广者的金额（分） */
+  promoter_fee_fen: number
+  /** 推广者那份的分账状态：none / pending / succeeded / failed */
+  promoter_split_status: string
+  /** 未归因 / 不合格的原因；未开启推广或正常归因为 null */
+  promo_reject_reason: string | null
 }
 
 export type CreateResourcePurchasePayload =
   | {
       pay_channel: ResourcePayChannelUi
       client_platform?: 'pc' | 'mobile'
+      /** 推广码（可选）：带则后端按邀请码归因；不合格不阻断下单 */
+      promo_code?: string | null
     }
   | {
       pay_channel: 'points'
@@ -77,6 +91,9 @@ export async function createResourcePurchase(
       : {
           pay_channel: toResourcePayChannel(payload.pay_channel),
           client_platform: payload.client_platform ?? 'pc',
+          // 现金单才带推广码（积分单后端忽略该字段，前端也别带，免得看不懂）；
+          // 没有推广码时整个字段不下发，请求体里就不出现它。
+          ...(payload.promo_code ? { promo_code: payload.promo_code } : {}),
         }
   return requestJson<ResourcePurchaseOrder>(
     `/dev/resources/resources/${resourceId}/purchase`,

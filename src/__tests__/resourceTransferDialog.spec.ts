@@ -59,6 +59,8 @@ function resourceFixture(): McResourcePayload {
     price_fen: 0,
     price_points: 0,
     copyright_declared: false,
+    // R029：推广分成比例（万分比），0 = 未开启（普通资源默认关闭）
+    promo_share_bps: 0,
     created_at: '2026-10-11 09:00:00',
     updated_at: '2026-10-11 09:00:00',
   }

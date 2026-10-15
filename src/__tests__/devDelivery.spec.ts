@@ -56,6 +56,8 @@ function resource(
     price_fen: 0,
     price_points: 0,
     copyright_declared: false,
+    // R029：推广分成比例（万分比），0 = 未开启
+    promo_share_bps: 0,
     created_at: '2026-09-01 10:00:00',
     updated_at: '2026-09-10 10:00:00',
     ...part,

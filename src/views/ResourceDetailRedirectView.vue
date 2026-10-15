@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getPublicMcResource } from '@/api/resources'
 import { getTagRouteSlug, parseResourceIdFromSlug } from '@/api/resourceTags'
 import { resourceListingSaleOf } from '@/shared/resourceNavigation'
+import { normalizePromoCode } from '@/shared/resourceSale'
 import { useAuthStore } from '@/stores/auth'
 
 /**
@@ -18,6 +19,9 @@ import { useAuthStore } from '@/stores/auth'
  *
  * 这条路由只做一件事——解析出资源编号 → 拉一次资源拿到售卖类型与分类 → replace 到页内详情态。
  * 解析不到 / 资源不可见时退回「资源项目」列表（带分区），同样不 404、不白屏。
+ *
+ * R029：推广分享链接会带上 `?promo=<推广码>`，这一跳必须把它一起带到列表页的页内详情态，
+ * 否则下单请求带不上 `promo_code`、后端永远归因不到（短链落在前端域名时走 router 的 `/r/:code` 兜底）。
  */
 const route = useRoute()
 const router = useRouter()
@@ -44,6 +48,9 @@ function paramSlug(value: unknown): string {
 }
 
 async function redirectToCatalog() {
+  // R029：分享短链把推广码写在 `?promo=` 上（后端 302 / 前端 `/r/:code` 兜底两条路都带）。
+  // 先按 `normalizePromoCode` 校验格式再往下带，别把任意字符串写回地址栏。
+  const promoCode = normalizePromoCode(route.query.promo)
   const resourceId = parseResourceId(route.params.resourceSlug)
   if (!resourceId) {
     void router.replace({ name: 'resources', query: { sale: 'free' } })
@@ -80,7 +87,12 @@ async function redirectToCatalog() {
     void router.replace({
       name: 'resource-catalog',
       params: { rootSlug, entrySlug },
-      query: { sale, resource: String(resourceId) },
+      query: {
+        sale,
+        resource: String(resourceId),
+        // 推广码只在「详情就是分享链接指向的那条资源」时随行；格式不合格的码不进地址栏
+        ...(promoCode ? { promo: promoCode } : {}),
+      },
     })
   } catch {
     void router.replace({ name: 'resources', query: { sale: 'free' } })
