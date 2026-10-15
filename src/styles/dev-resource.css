@@ -955,3 +955,35 @@
 
 @media (max-width: 480px) {
 }
+
+/* R029 推广分成比例：拖动条 + 百分比展示（0 = 关闭）。
+   用原生 range 是为了不把这一处的交互抬成跨仓组件；配色走 dev 令牌，
+   进度与滑块交给 accent-color，避免自绘轨道与 thumb 各浏览器不一致。 */
+.dev-promo-share {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--dev-control-height);
+}
+
+.dev-promo-share__range {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  accent-color: var(--dev-blue);
+  cursor: pointer;
+}
+
+.dev-promo-share__value {
+  flex: 0 0 auto;
+  min-width: 48px;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--dev-ink);
+}
+
+.dev-promo-share__value.is-off {
+  font-weight: 500;
+  color: var(--dev-muted);
+}

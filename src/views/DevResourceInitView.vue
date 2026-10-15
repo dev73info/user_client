@@ -82,8 +82,8 @@ const form = reactive({
   originNote: '',
   priceYuan: '0',
   pricePoints: '0',
-  /** R029 售卖推广分成比例：百分比文本（0～50，留空 = 关闭） */
-  promoSharePercent: '',
+  /** R029 售卖推广分成比例：百分比数值（0～50，拖动条，0 = 关闭） */
+  promoSharePercent: 0,
   copyrightDeclared: false,
   /** R028 资源类别：normal = 大厅公开展示；special = 不公开展示，只能指定来源下单 */
   resourceKind: 'normal' as McResourceKind,
@@ -102,6 +102,13 @@ const parsedPricePoints = computed(() => parsePointsPriceInput(form.pricePoints)
 const parsedPromoShare = computed(() => parsePromoSharePercentInput(form.promoSharePercent))
 const promoShareError = computed(() =>
   parsedPromoShare.value.ok ? '' : parsedPromoShare.value.message,
+)
+/** R029：拖动条展示口径（与提交口径同源：0 = 关闭） */
+const promoSharePercentValue = computed(() =>
+  parsedPromoShare.value.ok ? parsedPromoShare.value.bps / 100 : 0,
+)
+const promoShareDisplay = computed(() =>
+  promoSharePercentValue.value > 0 ? `${promoSharePercentValue.value}%` : '关闭',
 )
 const hasCashPrice = computed(
   () => parsedPriceFen.value.ok && parsedPriceFen.value.fen > 0,
@@ -421,7 +428,7 @@ function resetForm() {
   form.originNote = ''
   form.priceYuan = '0'
   form.pricePoints = '0'
-  form.promoSharePercent = ''
+  form.promoSharePercent = 0
   form.copyrightDeclared = false
   form.resourceKind = 'normal'
   form.specialCallbackUrl = ''
@@ -745,16 +752,26 @@ async function submitResource(mode: 'private' | 'public') {
                 <p v-if="pointsPriceDisabled" class="dev-field-hint">已填现金售价，积分售价已禁用。</p>
               </TFormItem>
 
-              <!-- R029 推广分成比例：0～50（%），留空 = 关闭；随资源一次保存（promo_share_bps） -->
+              <!-- R029 推广分成比例：0～50（%），0 = 关闭；拖动条 + 百分比展示，随资源一次保存（promo_share_bps） -->
               <TFormItem label="推广分成比例">
-                <TInput
-                  v-model="form.promoSharePercent"
-                  placeholder="0～50，留空 = 关闭"
-                  inputmode="decimal"
-                  title="百分比，最高 50%"
-                />
+                <div class="dev-promo-share">
+                  <input
+                    v-model.number="form.promoSharePercent"
+                    class="dev-promo-share__range"
+                    type="range"
+                    min="0"
+                    max="50"
+                    step="1"
+                    :title="promoShareDisplay"
+                    aria-label="推广分成比例（百分比，0 表示关闭）"
+                  />
+                  <span
+                    class="dev-promo-share__value"
+                    :class="{ 'is-off': promoSharePercentValue <= 0 }"
+                  >{{ promoShareDisplay }}</span>
+                </div>
                 <p class="dev-field-hint">
-                  按百分比填写（0～50，留空 = 关闭）。这笔钱<strong>从你的净收里出</strong>，平台抽成不变；
+                  拖动设置比例（0～50，<strong>拖到 0 = 关闭</strong>）。这笔钱<strong>从你的净收里出</strong>，平台抽成不变；
                   只在买家带着推广码下单、且推广者已实名并有渠道结算账户时才真正分账。
                   积分购不参与推广分成（比例可以存，但对积分单无效）。
                 </p>
