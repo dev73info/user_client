@@ -676,8 +676,8 @@ async function submitResource(mode: 'private' | 'public') {
           </header>
 
           <TForm label-position="top" class="dev-upload-form">
-            <div class="dev-upload-grid dev-upload-grid--three">
-              <TFormItem label="资源标题" required>
+            <div class="dev-upload-grid dev-upload-grid--three dev-upload-grid--form">
+              <TFormItem label="资源标题" required class="dev-form-item--wide">
                 <TInput show-count v-model="form.title"  :maxlength="200"
                   placeholder="例如：Better Combat Reloaded" />
               </TFormItem>
@@ -721,7 +721,7 @@ async function submitResource(mode: 'private' | 'public') {
                 </TSelect>
               </TFormItem>
 
-              <TFormItem label="资源类别" required>
+              <TFormItem label="资源类别" required class="dev-form-item--wide">
                 <TSelect v-model="form.resourceKind" style="width: 100%">
                   <TOption label="普通资源（大厅公开展示）" value="normal" />
                   <TOption label="特殊资源（不公开展示，指定来源下单）" value="special" />
@@ -775,7 +775,7 @@ async function submitResource(mode: 'private' | 'public') {
                 </p>
               </TFormItem>
 
-              <TFormItem v-if="showCopyrightField" label="版权声明">
+              <TFormItem v-if="showCopyrightField" label="版权声明" class="dev-form-item--full">
                 <TCheckbox v-model="form.copyrightDeclared">
                   我确认拥有该资源版权，或已获得合法授权可售卖
                 </TCheckbox>
@@ -785,13 +785,13 @@ async function submitResource(mode: 'private' | 'public') {
                 <TFormItem label="原作者">
                   <TInput v-model="form.originAuthor"  :maxlength="80" placeholder="原始资源的作者" />
                 </TFormItem>
-                <TFormItem label="原始出处链接" required>
+                <TFormItem label="原始出处链接" required class="dev-form-item--wide">
                   <TInput v-model="form.originUrl"  :maxlength="500" placeholder="原始出处 URL，例如原贴/来源页" />
                 </TFormItem>
                 <TFormItem label="来源站点">
                   <TInput v-model="form.originOrg"  :maxlength="80" placeholder="例如：苦力怕论坛、CurseForge" />
                 </TFormItem>
-                <TFormItem label="转载说明 / 授权">
+                <TFormItem label="转载说明 / 授权" class="dev-form-item--wide">
                   <TInput v-model="form.originNote"  :maxlength="500" placeholder="授权情况、转载说明等（可选）" />
                 </TFormItem>
               </template>
