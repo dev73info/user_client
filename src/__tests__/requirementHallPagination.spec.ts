@@ -61,9 +61,8 @@ function mountHall() {
   return shallowMount(RequirementHallView, {
     global: {
       config: { warnHandler: () => {} },
-      // 分页器外面套着 TLoading（原来是 v-loading 指令）：TLoading 也是浅渲染的桩，
-      // 不打开默认插槽就渲染不进 TPagination，`.pager-next` 会找不到。
-      renderStubDefaultSlot: true,
+      // 担保方式下拉与分页器都是规范组件，浅渲染下用下面的桩替换（桩不认识真实类名，
+      // 所以「切筛选」「翻页」都由桩自己发事件驱动）。
       stubs: {
         TIcon: { template: '<span><slot /></span>' },
         TPagination: {
@@ -72,13 +71,15 @@ function mountHall() {
           emits: ['current-change'],
           template: `<button class="pager-next" @click="$emit('current-change', 2)" />`,
         },
-        // 「担保方式」筛选是 TRadioGroup：真组件看不到，用一个能发 change 的桩驱动它。
-        TRadioGroup: {
-          name: 'TRadioGroup',
-          props: ['modelValue'],
+        // 「担保方式」筛选是自研 TSelect 下拉（`guaranteeFilter` + `guaranteeOptions`，
+        // 换值走 `@update:model-value` → `onGuaranteeFilterChange`）：真组件看不到，
+        // 用一个能发 `update:model-value` 的桩驱动它。
+        TSelect: {
+          name: 'TSelect',
+          props: ['modelValue', 'options'],
           emits: ['update:model-value'],
           template: `<button
-            class="filter-platform-guarantee"
+            class="requirement-hall__guarantee-select"
             @click="$emit('update:model-value', 'platform_guarantee')"
           />`,
         },
@@ -141,7 +142,7 @@ describe('requirement hall pagination', () => {
     expect(mocks.spotlights).toHaveBeenLastCalledWith(2, PAGE_SIZE, undefined)
 
     mocks.spotlights.mockResolvedValue(spotlightPage(1, 8))
-    await wrapper.find('.filter-platform-guarantee').trigger('click')
+    await wrapper.find('.requirement-hall__guarantee-select').trigger('click')
     await flushPromises()
 
     expect(mocks.spotlights).toHaveBeenLastCalledWith(1, PAGE_SIZE, 'platform_guarantee')
