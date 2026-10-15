@@ -232,16 +232,6 @@ const currentPlatformLabel = computed(() => currentPlatform.value || '当前分�
 const platformTagGroups = computed<McPublishTagGroup[]>(() => currentEntry.value?.publish_groups ?? [])
 const selectedTagCount = computed(() => Object.values(selectedTagIdsByGroup).reduce((sum, ids) => sum + ids.length, 0))
 
-const selectedGroupsSummary = computed(() =>
-  platformTagGroups.value
-    .map((group) => ({
-      label: group.label,
-      names: group.items
-        .filter((item) => (selectedTagIdsByGroup[group.group_id] ?? []).includes(item.id))
-        .map((item) => item.name),
-    }))
-    .filter((group) => group.names.length > 0),
-)
 const teamOptions = computed(() =>
   myTeams.value.map((team) => ({
     value: String(team.team_id),
@@ -1018,38 +1008,6 @@ async function submitResource(mode: 'private' | 'public') {
         </footer>
       </TCard>
 
-      <aside class="dev-upload-side">
-        <TCard class="dev-surface-card dev-surface-card--sticky">
-
-          <article class="dev-preview-card dev-list--spaced">
-            <div class="dev-preview-card__cover">
-              <img
-                v-if="form.coverUrl"
-                :src="form.coverUrl"
-                alt="资源图标"
-                class="dev-preview-card__cover-img"
-              />
-              <span v-else class="dev-preview-card__cover-text">{{ (form.title || '资源').slice(0, 1).toUpperCase() }}</span>
-              <span class="dev-preview-card__badge">{{ currentRootLabel }}</span>
-              <div class="dev-preview-card__screen dev-preview-card__screen--primary"></div>
-              <div class="dev-preview-card__screen dev-preview-card__screen--secondary"></div>
-              <div class="dev-preview-card__screen dev-preview-card__screen--tertiary"></div>
-            </div>
-            <div class="dev-preview-card__body">
-              <h3>{{ form.title || '资源标题预览' }}</h3>
-              <p v-if="resourceSummary">{{ resourceSummary }}</p>
-              <div class="dev-preview-card__meta-row">
-                <strong>{{ currentEntryLabel }}</strong>
-                <span class="dev-preview-card__status">{{ selectedGroupsSummary.length }} 组 / {{ selectedTagCount }} 项</span>
-              </div>
-              <div class="dev-preview-card__footer">
-                <span>by {{ form.author || auth.username || '开发者' }}</span>
-                <span class="dev-preview-card__time">根节点 · {{ currentRootLabel }}</span>
-              </div>
-            </div>
-          </article>
-        </TCard>
-      </aside>
     </div>
 
     <!-- 后端首次生成的回调密钥：明文只回这一次，弹窗最醒目地提示一次 -->
