@@ -38,6 +38,4 @@ __screenshots__/
 # Vite
 *.timestamp-*-*.mjs
 
-test-results/
-playwright-report/
 src/__cursor_hook_probe.ts

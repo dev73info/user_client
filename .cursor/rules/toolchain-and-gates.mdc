@@ -10,15 +10,15 @@ alwaysApply: true
 
 ## 一、所有 `pnpm` 脚本在 POSIX shell 里跑
 
-`package.json` 里的 `dev` / `build` / `build-only` / `type-check` / `generate:sitemap` 都以 `env -u NODE_USE_ENV_PROXY ...` 开头，
-这是 POSIX shell 的写法。**本机默认 shell 就是 WSL `Ubuntu-22.04` 的 bash**，`cd` 进仓库直接跑即可，不需要再包一层：
+`package.json` 里的 `dev` / `build` / `build-only` / `type-check` / `generate:sitemap` 都是普通的 `vite` /
+`vue-tsc --build` 之类的命令。**本机默认 shell 就是 WSL `Ubuntu-22.04` 的 bash**，`cd` 进仓库直接跑即可，不需要再包一层：
 
 ```bash
 cd /home/banch/yl73info/user-client && pnpm type-check
 ```
 
 - 工作区根在 `/home/banch/yl73info`（WSL ext4 上）；Windows 侧的旧副本 `E:\yl73info` 已废弃，不要再把路径写回去。
-- `pnpm lint`、`pnpm format`、`pnpm test:unit` 没有 `env -u` 前缀，同样在这个 bash 里直接跑。
+- `pnpm lint`、`pnpm format`、`pnpm test:unit` 同样在这个 bash 里直接跑。
 
 ## 二、命令表
 
@@ -86,5 +86,5 @@ VITE_DEV_AUTO_LOGIN_USERNAME=dev_flow_03562487 VITE_DEV_AUTO_LOGIN_PASSWORD=Test
 ## 七、不要手改生成物
 
 - `components.d.ts`：`unplugin-vue-components` 生成，**但入库**，改完组件后它出现 diff 属正常，**不要手工编辑**。
-- `dist/`、`node_modules/`、`test-results/`、`playwright-report/`：产物与缓存，不要提交。<!-- driftlint-ignore -->
+- `dist/`、`node_modules/`：产物与缓存，不要提交。
 - `auto-imports.d.ts` 已随 `unplugin-auto-import` 删除，不再生成——看到旧文档提到它，是过时信息。
