@@ -815,9 +815,6 @@ async function submitResource(mode: 'private' | 'public') {
           <header class="dev-card-head">
             <section class="dev-card-head__title-block">
               <h3 class="dev-section-title">特殊资源接入配置</h3>
-              <p class="dev-field-hint">
-                特殊资源不进大厅、首页精选与公开搜索：只能由你自有站点的服务端，从下面登记的来源地址调开放接口下单，支付成功后平台回调你填的地址。
-              </p>
             </section>
           </header>
 
@@ -839,11 +836,10 @@ async function submitResource(mode: 'private' | 'public') {
                   placeholder="https://shop.example.com/73info/callback"
                 />
                 <p
-                  class="dev-field-hint"
-                  :class="{ 'dev-field-hint--error': specialCallbackInvalid }"
+                  v-if="specialCallbackInvalid"
+                  class="dev-field-hint dev-field-hint--error"
                 >
-                  支付成功后平台 POST 这个地址（带 HMAC-SHA256 签名）。本地开发可填
-                  http://127.0.0.1:端口/…；留空时暂不可被下单。
+                  当前不合法：请填 http(s) 绝对地址。
                 </p>
               </TFormItem>
 
@@ -856,9 +852,7 @@ async function submitResource(mode: 'private' | 'public') {
                   placeholder="留空 = 不改"
                 />
                 <p class="dev-field-hint">
-                  留空 = 不改。首次留空保存时平台自动生成一枚密钥，明文只回显一次；当前：{{
-                    savedSecretMaskedLabel
-                  }}。
+                  当前：{{ savedSecretMaskedLabel }}
                 </p>
               </TFormItem>
 
@@ -871,12 +865,10 @@ async function submitResource(mode: 'private' | 'public') {
                   placeholder="https://shop.example.com&#10;*.example.com&#10;203.0.113.9"
                 />
                 <p
-                  class="dev-field-hint"
-                  :class="{ 'dev-field-hint--error': Boolean(invalidSpecialOrigin) }"
+                  v-if="invalidSpecialOrigin"
+                  class="dev-field-hint dev-field-hint--error"
                 >
-                  一行一个，支持完整源（可带端口）、通配域名（*.example.com）与纯 IP（v4 / v6）。
-                  只有命中列表的来源能下单；留空时谁都不能下单。
-                  <template v-if="invalidSpecialOrigin">当前不合法：{{ invalidSpecialOrigin }}</template>
+                  当前不合法：{{ invalidSpecialOrigin }}
                 </p>
               </TFormItem>
 
@@ -885,9 +877,6 @@ async function submitResource(mode: 'private' | 'public') {
                   <TSwitch v-model="form.specialRepeatPurchasable" aria-label="允许重复购买" />
                   <span>允许重复购买</span>
                 </label>
-                <p class="dev-field-hint">
-                  关闭时，同一买家引用（buyer_ref）第二次下单会被拒。
-                </p>
               </div>
 
               <div class="dev-special-switch-row dev-special-span">
@@ -895,16 +884,10 @@ async function submitResource(mode: 'private' | 'public') {
                   <TSwitch v-model="form.specialAllowStrangers" aria-label="允许陌生用户购买" />
                   <span>允许陌生用户购买</span>
                 </label>
-                <p class="dev-field-hint">
-                  仅记录并随下单透传给你的站点，<strong>平台不做判定</strong>——买家是不是陌生用户，由你自己的站点在下单前判断。
-                </p>
               </div>
 
               <TFormItem label="是否公开展示" class="dev-special-span">
                 <TTag variant="soft" tone="neutral">不在大厅展示</TTag>
-                <p class="dev-field-hint">
-                  特殊资源固定不公开展示（大厅、首页精选、搜索与公开详情地址都不露出），平台不给开关。
-                </p>
               </TFormItem>
             </div>
           </TForm>
