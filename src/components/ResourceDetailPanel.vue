@@ -32,6 +32,7 @@ import {
   getWechatPaymentAuthorizeUrl,
 } from '@/api/auth'
 import {
+  canReuseCashQrForChannel,
   fenToYuanText,
   formatResourcePriceLabel,
   isPointsResource,
@@ -132,6 +133,12 @@ let purchasePollTimer: ReturnType<typeof setInterval> | null = null
 let channelSwitchTimer: ReturnType<typeof setTimeout> | null = null
 /** 下单串行队列：同一时刻只跑一笔，避免并发抢改同一条 pending */
 let purchaseSubmitChain: Promise<void> = Promise.resolve()
+/**
+ * 支付面世代号：每次作废（切渠道 / 重新拉单）递增。
+ * 下单响应、轮询响应、二维码渲染都必须持有当前世代号，过期的一律丢弃，
+ * 不得把旧渠道单重新挂回可付款面（R031）。
+ */
+let purchaseSurfaceGeneration = 0
 
 const tagNames = computed(
   () => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [],
@@ -469,26 +476,27 @@ function clearChannelSwitchTimer() {
   }
 }
 
+/**
+ * 作废当前支付面：清掉对旧渠道单的引用与二维码，并递增世代号。
+ * 切渠道 / 重新拉单时调用——此后旧单的迟到下单 / 轮询 / 渲染响应世代号对不上，不会复活旧的可付款面。
+ */
+function invalidatePurchaseSurface() {
+  stopPurchasePoll()
+  purchaseSurfaceGeneration += 1
+  purchaseOrder.value = null
+  purchaseQrDataUrl.value = ''
+}
+
 /** 当前资源是否已有可复用的待支付码（同渠道），避免弹窗反复开关再插新单 */
 function hasReusableCashQr(channel: ResourcePayChannelUi): boolean {
   const order = purchaseOrder.value
   if (!order || !resource.value) {
     return false
   }
-  if (order.resource_id !== resource.value.id || order.status !== 'pending') {
+  if (order.resource_id !== resource.value.id) {
     return false
   }
-  if (!purchaseQrDataUrl.value.trim()) {
-    return false
-  }
-  const orderChannel = (order.pay_channel ?? '').trim().toLowerCase()
-  if (channel === 'alipay') {
-    return orderChannel === 'alipay'
-  }
-  if (channel === 'wechat') {
-    return orderChannel === 'wx_pub' || orderChannel === 'wechat'
-  }
-  return orderChannel === channel
+  return canReuseCashQrForChannel(order, channel, Boolean(purchaseQrDataUrl.value.trim()))
 }
 
 async function openPurchasePanel() {
@@ -534,7 +542,8 @@ async function openPurchasePanel() {
     }
     return
   }
-  purchaseQrDataUrl.value = ''
+  // 两个渠道都无码可复用：作废旧引用后再拉新单，不复用 / 不展示旧渠道单
+  invalidatePurchaseSurface()
   void submitPurchase()
 }
 
@@ -549,16 +558,15 @@ function selectPurchaseChannel(channel: ResourcePayChannelUi) {
   if (purchaseChannel.value === channel && (purchaseQrDataUrl.value || purchaseSubmitting.value)) {
     return
   }
+  const channelChanged = purchaseChannel.value !== channel
   purchaseChannel.value = channel
   purchaseError.value = ''
-  stopPurchasePoll()
-  if (hasReusableCashQr(channel)) {
-    if (purchaseOrder.value?.order_no) {
-      startPurchasePoll(purchaseOrder.value.order_no)
-    }
-    return
+  // 切渠道：旧渠道的可付款面（旧码 / 旧单号 / 旧链接）立即作废，不等新单结果
+  if (channelChanged) {
+    invalidatePurchaseSurface()
+  } else {
+    stopPurchasePoll()
   }
-  purchaseQrDataUrl.value = ''
   clearChannelSwitchTimer()
   // 防抖：连点支付宝/微信只按最后一次真正下单
   channelSwitchTimer = setTimeout(() => {
@@ -592,28 +600,40 @@ async function handlePurchasePaid(order: ResourcePurchaseOrder) {
   purchasePanelOpen.value = false
 }
 
-async function maybeRenderPurchaseQr(order: ResourcePurchaseOrder) {
+async function maybeRenderPurchaseQr(order: ResourcePurchaseOrder, generation: number) {
   const content = order.pay_url?.trim()
   if (!content) {
-    purchaseQrDataUrl.value = ''
+    if (generation === purchaseSurfaceGeneration) {
+      purchaseQrDataUrl.value = ''
+    }
     return
   }
+  let dataUrl = ''
   try {
-    purchaseQrDataUrl.value = await QRCode.toDataURL(content, {
+    dataUrl = await QRCode.toDataURL(content, {
       width: 220,
       margin: 1,
     })
   } catch {
-    purchaseQrDataUrl.value = ''
+    dataUrl = ''
   }
+  // 渲染是异步的：期间若已切渠道（世代号变了），旧渠道的码不得落到支付面上
+  if (generation !== purchaseSurfaceGeneration) {
+    return
+  }
+  purchaseQrDataUrl.value = dataUrl
 }
 
-async function pollPurchaseOnce(orderNo: string) {
+async function pollPurchaseOnce(orderNo: string, generation: number) {
   if (!auth.token?.trim()) {
     return
   }
   try {
     const latest = await getMyResourcePurchase(auth.token, orderNo)
+    // 迟到的轮询响应：该单已不是当前支付面（切过渠道）→ 丢弃，不复活旧单
+    if (generation !== purchaseSurfaceGeneration) {
+      return
+    }
     purchaseOrder.value = latest
     if (latest.status === 'paid') {
       await handlePurchasePaid(latest)
@@ -626,12 +646,12 @@ async function pollPurchaseOnce(orderNo: string) {
   }
 }
 
-function startPurchasePoll(orderNo: string) {
+function startPurchasePoll(orderNo: string, generation = purchaseSurfaceGeneration) {
   stopPurchasePoll()
   // 立刻查一次：后端会对 pending 主动问渠道，不必干等首个 interval
-  void pollPurchaseOnce(orderNo)
+  void pollPurchaseOnce(orderNo, generation)
   purchasePollTimer = setInterval(() => {
-    void pollPurchaseOnce(orderNo)
+    void pollPurchaseOnce(orderNo, generation)
   }, 4000)
 }
 
@@ -688,7 +708,9 @@ async function runSubmitPurchase() {
     }
     return
   }
-  const requestedChannel = purchaseChannel.value
+  // 世代号：本轮下单期间若用户切了渠道（`invalidatePurchaseSurface` 会递增），
+  // 之后每个落点都比对一次，过期就整轮丢弃——旧渠道的迟到响应不得挂回可付款面
+  const requestedGeneration = purchaseSurfaceGeneration
   purchaseSubmitting.value = true
   purchaseError.value = ''
   try {
@@ -705,7 +727,7 @@ async function runSubmitPurchase() {
       return
     }
     // 排队间隙用户又切了渠道：以当前选择为准，避免为过期渠道再落单
-    if (purchaseChannel.value !== requestedChannel) {
+    if (requestedGeneration !== purchaseSurfaceGeneration) {
       return
     }
     // 微信内：先静默授权拿 openid，再走 wx_pub JSAPI；
@@ -716,7 +738,7 @@ async function runSubmitPurchase() {
         return
       }
     }
-    if (purchaseChannel.value !== requestedChannel) {
+    if (requestedGeneration !== purchaseSurfaceGeneration) {
       return
     }
     const order = await createResourcePurchase(auth.token, resource.value.id, {
@@ -725,7 +747,7 @@ async function runSubmitPurchase() {
       // R029：只有现金单带推广码（积分单不带，后端对积分单也忽略该字段）
       ...(activePromoCode.value ? { promo_code: activePromoCode.value } : {}),
     })
-    if (purchaseChannel.value !== requestedChannel) {
+    if (requestedGeneration !== purchaseSurfaceGeneration) {
       return
     }
     purchaseOrder.value = order
@@ -733,16 +755,16 @@ async function runSubmitPurchase() {
       await handlePurchasePaid(order)
       return
     }
-    await maybeRenderPurchaseQr(order)
-    if (purchaseChannel.value !== requestedChannel) {
+    await maybeRenderPurchaseQr(order, requestedGeneration)
+    if (requestedGeneration !== purchaseSurfaceGeneration) {
       return
     }
     if (!order.pay_url?.trim()) {
       showToast('订单已创建，支付完成后即可下载', 'info')
     }
-    startPurchasePoll(order.order_no)
+    startPurchasePoll(order.order_no, requestedGeneration)
   } catch (error) {
-    if (purchaseChannel.value !== requestedChannel) {
+    if (requestedGeneration !== purchaseSurfaceGeneration) {
       return
     }
     const message = error instanceof Error ? error.message : '创建购买订单失败'

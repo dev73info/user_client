@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   canBuyerDownload,
   canDownloadResource,
+  canReuseCashQrForChannel,
   canSelfRefundPurchase,
   canSellerRefundPurchase,
   canSwitchToPointsPrice,
@@ -168,6 +169,25 @@ describe('resourceSale', () => {
     expect(toResourcePayChannel('alipay')).toBe('alipay')
     expect(resourcePurchaseStatusLabel('paid')).toBe('已购买')
     expect(resourcePurchaseStatusLabel('pending')).toBe('待支付')
+  })
+
+  it('canReuseCashQrForChannel: 同渠道 pending 有码才复用', () => {
+    const alipay = { status: 'pending', pay_channel: 'alipay' }
+    const wechat = { status: 'pending', pay_channel: 'wx_pub' }
+    // 同渠道 + pending + 有码 → 可复用
+    expect(canReuseCashQrForChannel(alipay, 'alipay', true)).toBe(true)
+    expect(canReuseCashQrForChannel(wechat, 'wechat', true)).toBe(true)
+    expect(canReuseCashQrForChannel({ status: 'pending', pay_channel: 'wechat' }, 'wechat', true)).toBe(true)
+    // 换渠道 → 不可复用
+    expect(canReuseCashQrForChannel(alipay, 'wechat', true)).toBe(false)
+    expect(canReuseCashQrForChannel(wechat, 'alipay', true)).toBe(false)
+    // status !== 'pending' → 不可复用
+    expect(canReuseCashQrForChannel({ status: 'closed', pay_channel: 'alipay' }, 'alipay', true)).toBe(false)
+    expect(canReuseCashQrForChannel({ status: 'paid', pay_channel: 'alipay' }, 'alipay', true)).toBe(false)
+    // 无码 / 无单 → 不可复用
+    expect(canReuseCashQrForChannel(alipay, 'alipay', false)).toBe(false)
+    expect(canReuseCashQrForChannel(null, 'alipay', true)).toBe(false)
+    expect(canReuseCashQrForChannel(undefined, 'wechat', true)).toBe(false)
   })
 
   it('parsePromoSharePercentInput: 空 / 数字 / 百分比文本 → 万分比', () => {
