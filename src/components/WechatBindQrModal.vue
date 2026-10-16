@@ -3,6 +3,7 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import QRCode from 'qrcode'
 
 import { getWechatBindQrStatus } from '@/api/auth'
+import { qrPollDelayMs } from '@/utils/qrPollBackoff'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -18,19 +19,26 @@ const emit = defineEmits<{
 const qrDataUrl = ref('')
 const qrError = ref('')
 const polling = ref(false)
-let pollTimer: ReturnType<typeof setInterval> | null = null
+let pollTimer: ReturnType<typeof setTimeout> | null = null
 let generation = 0
 
 function stopPolling() {
   if (pollTimer) {
-    clearInterval(pollTimer)
+    clearTimeout(pollTimer)
     pollTimer = null
   }
 }
 
-async function checkBind() {
-  if (!props.visible || !props.state || polling.value) {
-    return
+/**
+ * 查询一次绑定状态，返回是否应该继续轮询。
+ * 完成后返回 false；上一轮还在请求中时返回 true，交给下一次排期继续。
+ */
+async function checkBind(): Promise<boolean> {
+  if (!props.visible || !props.state) {
+    return false
+  }
+  if (polling.value) {
+    return true
   }
   polling.value = true
   try {
@@ -41,12 +49,30 @@ async function checkBind() {
         success: result.success,
         error: result.error ?? undefined,
       })
+      return false
     }
   } catch {
     // 轮询失败保留二维码，继续下一轮。
   } finally {
     polling.value = false
   }
+  return props.visible
+}
+
+/** 按「先密后疏」的节奏排下一次轮询；attempt 为已完成的轮询次数。 */
+function schedulePoll(attempt: number) {
+  pollTimer = setTimeout(() => {
+    pollTimer = null
+    void pollOnce(attempt)
+  }, qrPollDelayMs(attempt))
+}
+
+async function pollOnce(attempt: number) {
+  const keepPolling = await checkBind()
+  if (!keepPolling || !props.visible) {
+    return
+  }
+  schedulePoll(attempt + 1)
 }
 
 async function prepare() {
@@ -76,14 +102,12 @@ async function prepare() {
     return
   }
 
-  await checkBind()
-  if (currentGeneration !== generation || !props.visible) {
+  const keepPolling = await checkBind()
+  if (currentGeneration !== generation || !props.visible || !keepPolling) {
     return
   }
 
-  pollTimer = setInterval(() => {
-    void checkBind()
-  }, 2000)
+  schedulePoll(1)
 }
 
 function close() {
@@ -111,8 +135,12 @@ onBeforeUnmount(() => {
     <div v-if="visible" class="auth-modal-wrap wechat-authorization-modal-wrap" @click.self="close">
       <section class="auth-modal wechat-authorization-modal" aria-label="微信扫码绑定">
         <header class="wechat-authorization-modal__head">
-          <div>
+          <span class="wechat-authorization-modal__brand" aria-hidden="true">
+            <img src="/icons/wechat.svg" alt="" />
+          </span>
+          <div class="wechat-authorization-modal__titles">
             <h3>绑定 73Info 微信</h3>
+            <p class="wechat-authorization-modal__subtitle">扫码确认授权</p>
           </div>
           <button class="wechat-authorization-modal__close" type="button" aria-label="关闭微信扫码绑定"
             @click="close">
@@ -121,7 +149,15 @@ onBeforeUnmount(() => {
         </header>
 
         <p class="wechat-authorization-modal__intro">
-          请用手机微信扫描二维码，在微信中确认授权后即可完成绑定。
+          <svg class="wechat-authorization-modal__intro-icon" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            aria-hidden="true" focusable="false">
+            <path d="M4 8V5.6A1.6 1.6 0 0 1 5.6 4H8M16 4h2.4A1.6 1.6 0 0 1 20 5.6V8M20 16v2.4a1.6 1.6 0 0 1-1.6 1.6H16M8 20H5.6A1.6 1.6 0 0 1 4 18.4V16" />
+            <path d="M4 12h16" />
+          </svg>
+          <span class="wechat-authorization-modal__intro-text">
+            请用手机微信扫描二维码，在微信中确认授权后即可完成绑定。
+          </span>
         </p>
 
         <div class="wechat-authorization-modal__qr" aria-live="polite">
@@ -130,7 +166,15 @@ onBeforeUnmount(() => {
         </div>
 
         <p class="wechat-authorization-modal__hint">
-          扫码后请保持本页面打开，授权成功后会自动完成绑定。
+          <svg class="wechat-authorization-modal__hint-icon" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 11v5M12 8h.01" />
+          </svg>
+          <span class="wechat-authorization-modal__hint-text">
+            扫码后请保持本页面打开，授权成功后会自动完成绑定。
+          </span>
         </p>
 
         <div class="auth-modal-actions">
@@ -140,60 +184,3 @@ onBeforeUnmount(() => {
     </div>
   </Teleport>
 </template>
-
-<style scoped>
-.wechat-authorization-modal-wrap {
-  z-index: 1600;
-}
-
-.wechat-authorization-modal {
-  width: min(420px, calc(100vw - 32px));
-  text-align: center;
-}
-
-.wechat-authorization-modal__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  text-align: left;
-}
-
-.wechat-authorization-modal__head h3 {
-  margin: 0;
-}
-
-.wechat-authorization-modal__close {
-  border: 0;
-  background: transparent;
-  color: #64748b;
-  cursor: pointer;
-  font-size: 24px;
-  line-height: 1;
-  padding: 0 2px;
-}
-
-.wechat-authorization-modal__intro,
-.wechat-authorization-modal__hint {
-  color: #64748b;
-  line-height: 1.7;
-}
-
-.wechat-authorization-modal__qr {
-  align-items: center;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  display: flex;
-  justify-content: center;
-  margin: 20px auto 14px;
-  min-height: 280px;
-  padding: 12px;
-  width: 280px;
-}
-
-.wechat-authorization-modal__qr img {
-  width: 256px;
-  height: 256px;
-}
-</style>

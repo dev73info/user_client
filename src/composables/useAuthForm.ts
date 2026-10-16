@@ -13,6 +13,7 @@ import {
   getWechatLoginQrUrl,
 } from '@/api/auth'
 import { isQqBrowser, isWechatBrowser } from '@/shared/auth/browser'
+import { qrPollDelayMs } from '@/utils/qrPollBackoff'
 
 type AuthMode = 'login' | 'register' | 'reset'
 
@@ -138,6 +139,24 @@ export function useAuthForm(mode: Ref<AuthMode>) {
   // PC 端扫码登录：展示二维码并轮询登录 token。
   const wechatQrLogin = reactive({ visible: false, url: '', state: '', pollSecret: '' })
 
+  /** 扫码登录的回调落点：与 GitHub / Gitee 一致，固定回首页。 */
+  function wechatQrRedirectTarget(): string {
+    const homeHref = router.resolve({ name: 'home' }).href
+    return `${window.location.origin}${homeHref}`
+  }
+
+  /** 申领一张新的扫码登录二维码（首次打开与「重新扫码」共用）。 */
+  async function openWechatQrLogin() {
+    const qr = await getWechatLoginQrUrl(wechatQrRedirectTarget())
+    if (!qr.url.trim() || !qr.state.trim() || !qr.poll_secret?.trim()) {
+      throw new Error('微信扫码登录地址为空')
+    }
+    wechatQrLogin.url = qr.url
+    wechatQrLogin.state = qr.state
+    wechatQrLogin.pollSecret = qr.poll_secret
+    wechatQrLogin.visible = true
+  }
+
   async function loginWithWechat() {
     if (wechatLoginLoading.value || auth.loading) {
       return
@@ -148,8 +167,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     }
 
     wechatLoginLoading.value = true
-    const homeHref = router.resolve({ name: 'home' }).href
-    const redirectTarget = `${window.location.origin}${homeHref}`
+    const redirectTarget = wechatQrRedirectTarget()
 
     // 微信内（移动端）：点击跳转服务号网页授权；PC 端：展示二维码扫码登录。
     if (isWechatBrowser()) {
@@ -161,18 +179,24 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     }
 
     try {
-      const qr = await getWechatLoginQrUrl(redirectTarget)
-      if (!qr.url.trim() || !qr.state.trim() || !qr.poll_secret?.trim()) {
-        throw new Error('微信扫码登录地址为空')
-      }
-      wechatQrLogin.url = qr.url
-      wechatQrLogin.state = qr.state
-      wechatQrLogin.pollSecret = qr.poll_secret
-      wechatQrLogin.visible = true
+      await openWechatQrLogin()
     } catch (err) {
       showToast(err instanceof Error ? err.message : '微信扫码登录失败', 'error')
     } finally {
       wechatLoginLoading.value = false
+    }
+  }
+
+  /**
+   * 弹窗里点「重新扫码」：手机端取消了本次登录、或二维码已失效时重新申领一张。
+   * 失败就把弹窗关掉并提示——留在原地只会让人对着一个申领不出来的空框。
+   */
+  async function refreshWechatQrLogin() {
+    try {
+      await openWechatQrLogin()
+    } catch (err) {
+      closeWechatQrLogin()
+      showToast(err instanceof Error ? err.message : '微信扫码登录失败', 'error')
     }
   }
 
@@ -209,7 +233,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     qqAuthorizationWindow = null
   }
 
-  async function checkQqLogin(state: string, generation: number) {
+  async function checkQqLogin(state: string, generation: number, attempt = 0) {
     if (generation !== qqLoginGeneration) return
     try {
       const result = await getQqLoginQrStatus(state)
@@ -231,7 +255,10 @@ export function useAuthForm(mode: Ref<AuthMode>) {
       stopQqLogin()
       return
     }
-    qqPollTimer = setTimeout(() => void checkQqLogin(state, generation), 2000)
+    qqPollTimer = setTimeout(
+      () => void checkQqLogin(state, generation, attempt + 1),
+      qrPollDelayMs(attempt + 1),
+    )
   }
 
   onBeforeUnmount(stopQqLogin)
@@ -484,6 +511,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     changeAuthMode,
     wechatQrLogin,
     closeWechatQrLogin,
+    refreshWechatQrLogin,
     handleWechatQrToken,
     loginWithQq,
   }

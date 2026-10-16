@@ -151,8 +151,23 @@ export type WechatLoginQrUrlResp = {
   poll_secret: string
 }
 
+/** PC 端扫码登录：二维码当前所处阶段，由手机端扫码 / 确认 / 取消驱动。 */
+export type WechatLoginQrPollStatus =
+  /** 二维码已生成，尚未被扫描。 */
+  | 'pending'
+  /** 已扫码，等待手机端点击「确认登录」。 */
+  | 'scanned'
+  /** 手机端点了「取消登录」，需要重新生成二维码。 */
+  | 'cancelled'
+  /** 二维码已过期或状态已失效，需要重新生成二维码。 */
+  | 'expired'
+  /** 已确认登录，token 即本次登录凭证。 */
+  | 'confirmed'
+
 export type WechatLoginQrStatusResp = {
   token?: string | null
+  /** 旧后端不带该字段，缺失时按 pending 处理。 */
+  status?: WechatLoginQrPollStatus
 }
 
 export type WechatBindQrUrlResp = {

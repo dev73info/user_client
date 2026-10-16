@@ -210,7 +210,7 @@ const routes: MockRoute[] = [
     method: 'GET',
     path: '/auth/wechat/login/qr/status',
     note: '微信扫码状态：mock 不自动登录，保持未扫码',
-    handler: () => jsonResponse({ token: null }),
+    handler: () => jsonResponse({ token: null, status: 'pending' }),
   },
   {
     method: 'GET',

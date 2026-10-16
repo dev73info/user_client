@@ -282,6 +282,7 @@ const {
   loginWithWechat,
   wechatQrLogin,
   closeWechatQrLogin,
+  refreshWechatQrLogin,
   handleWechatQrToken,
   loginWithQq,
   sendAuthCode: sendAuthCodeAction,
@@ -2919,6 +2920,7 @@ async function submitPublishRequirement() {
       :state="wechatQrLogin.state"
       :poll-secret="wechatQrLogin.pollSecret"
       @close="closeWechatQrLogin"
+      @refresh="refreshWechatQrLogin"
       @logged-in="handleWechatQrToken"
     />
 

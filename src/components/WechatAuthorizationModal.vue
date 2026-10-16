@@ -109,8 +109,12 @@ onBeforeUnmount(() => {
     <div v-if="visible" class="auth-modal-wrap wechat-authorization-modal-wrap" @click.self="close">
       <section class="auth-modal wechat-authorization-modal" aria-label="微信授权">
         <header class="wechat-authorization-modal__head">
-          <div>
+          <span class="wechat-authorization-modal__brand" aria-hidden="true">
+            <img src="/icons/wechat.svg" alt="" />
+          </span>
+          <div class="wechat-authorization-modal__titles">
             <h3>微信授权</h3>
+            <p class="wechat-authorization-modal__subtitle">公众号授权</p>
           </div>
           <button class="wechat-authorization-modal__close" type="button" aria-label="关闭微信授权"
             @click="close">
@@ -119,7 +123,15 @@ onBeforeUnmount(() => {
         </header>
 
         <p class="wechat-authorization-modal__intro">
-          请用手机微信扫描二维码，完成公众号授权。授权成功后，本页面会自动更新。
+          <svg class="wechat-authorization-modal__intro-icon" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            aria-hidden="true" focusable="false">
+            <path d="M4 8V5.6A1.6 1.6 0 0 1 5.6 4H8M16 4h2.4A1.6 1.6 0 0 1 20 5.6V8M20 16v2.4a1.6 1.6 0 0 1-1.6 1.6H16M8 20H5.6A1.6 1.6 0 0 1 4 18.4V16" />
+            <path d="M4 12h16" />
+          </svg>
+          <span class="wechat-authorization-modal__intro-text">
+            请用手机微信扫描二维码，完成公众号授权。授权成功后，本页面会自动更新。
+          </span>
         </p>
 
         <div class="wechat-authorization-modal__qr" aria-live="polite">
@@ -128,7 +140,15 @@ onBeforeUnmount(() => {
         </div>
 
         <p class="wechat-authorization-modal__hint">
-          扫码后请在微信中确认授权，无需在手机上完成支付。
+          <svg class="wechat-authorization-modal__hint-icon" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 11v5M12 8h.01" />
+          </svg>
+          <span class="wechat-authorization-modal__hint-text">
+            扫码后请在微信中确认授权，无需在手机上完成支付。
+          </span>
         </p>
 
         <div class="auth-modal-actions">
@@ -138,71 +158,3 @@ onBeforeUnmount(() => {
     </div>
   </Teleport>
 </template>
-
-<style scoped>
-.wechat-authorization-modal-wrap {
-  z-index: 1600;
-}
-
-.wechat-authorization-modal {
-  width: min(420px, calc(100vw - 32px));
-  text-align: center;
-}
-
-.wechat-authorization-modal__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  text-align: left;
-}
-
-.wechat-authorization-modal__head h3 {
-  margin: 0;
-}
-
-.wechat-authorization-modal__close {
-  border: 0;
-  background: transparent;
-  color: #64748b;
-  cursor: pointer;
-  font-size: 24px;
-  line-height: 1;
-  padding: 0 2px;
-}
-
-.wechat-authorization-modal__intro,
-.wechat-authorization-modal__hint {
-  color: #64748b;
-  line-height: 1.7;
-}
-
-.wechat-authorization-modal__qr {
-  align-items: center;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  display: flex;
-  justify-content: center;
-  margin: 20px auto 14px;
-  min-height: 280px;
-  padding: 12px;
-  width: 280px;
-}
-
-.wechat-authorization-modal__qr img {
-  display: block;
-  height: 280px;
-  width: 280px;
-}
-
-.wechat-authorization-modal__qr span {
-  color: #64748b;
-  font-size: 14px;
-}
-
-.wechat-authorization-modal__hint {
-  font-size: 13px;
-  margin-bottom: 0;
-}
-</style>
