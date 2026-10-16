@@ -1,9 +1,7 @@
-# Windows 侧开发（win32）与 WSL 侧构建（linux）共用同一份 node_modules，
-# 这里让 pnpm 把两个平台的原生包都装上（rolldown / lightningcss / oxlint）。
+# 只在 WSL（linux）/ x64 上构建：不再装 win32 侧的原生包（rolldown / lightningcss / oxlint）。
 # pnpm 10 起 package.json 里的 pnpm 字段不再被读取，设置只能写在这里。
 supportedArchitectures:
   os:
-    - win32
     - linux
   cpu:
     - x64
