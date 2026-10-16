@@ -14,7 +14,7 @@ alwaysApply: false
 所以：
 
 - **不要** `import { ElButton } from 'element-plus'`，**不要**写 `<el-button>`，**不要**引 `@element-plus/icons-vue`。
-- **不要** `import 'element-plus/dist/index.css'`，也**不要**引 `ui_73info/alias.css`（旧变量名桥接层，本项目全程没引过，理由见 `ui_73info/doc/架构.md` 第七节）。
+- **不要** `import 'element-plus/dist/index.css'`，也**不要**引 `ui_73info/alias.css`（旧变量名桥接层，本项目全程没引过，理由见 `ui_73info/doc/架构.md` 第七节）。<!-- driftlint-ignore -->
 - 在旧文件里看到「替代 ElMessageBox.prompt」这类注释是**迁移留下的说明**，不是可以照抄的用法。
 
 命中的典型错误写法与改法：

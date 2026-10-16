@@ -17,13 +17,13 @@ alwaysApply: false
 | `src/views/` | 页面组件，PascalCase 且以 `View` 结尾 | `PointsCenterView.vue`、`DevWalletView.vue` |
 | `src/components/` | 可复用组件，PascalCase，**不带** `View` 后缀 | `InvitePanel.vue`、`PublishModal.vue` |
 | `src/components/<域>/` | 只服务单一页面的子组件可以收进子目录 | `src/components/home/HomeHeroSection.vue` |
-| `src/composables/` | `useXxx.ts`，导出同名函数 | `useToast.ts` → `useToast()` |
+| `src/composables/` | `useXxx.ts`，导出同名函数 | `useToast.ts` → `useToast()` |<!-- driftlint-ignore -->
 | `src/stores/` | 文件名 camelCase，内部 `defineStore('名字', ...)` | `tagTree.ts`、`teamStore.ts` |
 | `src/api/` | **一个业务域一个文件**，camelCase；导出动词开头的函数 | `afterSales.ts` → `listAfterSales()` |
 | `src/shared/` | 跨页面纯逻辑，按业务域命名，不做副作用 | `requirementStatus.ts`、`invoiceAction.ts` |
 | `src/utils/` | 无业务状态的纯函数与安全工具 | `sanitizeHtml.ts`、`seo.ts` |
 
-- **页面组件只在 `views/`，可复用件只在 `components/`**，不要互相放。
+- **页面组件只在 `src/views/`，可复用件只在 `src/components/`**，不要互相放。
 - 需要给页面算派生数据、做展示映射时，优先放 `src/shared/<域>.ts` 写成纯函数并**加单测**（`src/__tests__/` 里有大量先例），
   不要塞进组件里当局部函数——同一份口径往往有两个工作台要用。
 
@@ -89,7 +89,7 @@ import { TButton, TIcon, Search } from 'ui_73info'       // ④ 组件库（空�
 | 跨页面共享、需要持久化或异步请求的登录态 / 字典 | Pinia store（`defineStore` 用 **setup 写法**，不用 options 写法） |
 | 页面内的临时状态、表单草稿 | 组件内 `ref` |
 | 两个以上页面要用的纯计算（状态文案、金额换算、动作可用性） | `src/shared/<域>.ts` 纯函数 + 单测 |
-| 有生命周期的行为（分页、上传、SSE、草稿） | `src/composables/useXxx.ts` |
+| 有生命周期的行为（分页、上传、SSE、草稿） | `src/composables/useXxx.ts` |<!-- driftlint-ignore -->
 
 `src/composables/useToast.ts` 的状态是**模块级单例**（`toastVisible` 等定义在函数外），所以在哪个组件里调 `useToast()` 拿到的都是同一个提示条。
 

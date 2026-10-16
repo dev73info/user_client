@@ -55,8 +55,8 @@ VITE_DEV_AUTO_LOGIN_USERNAME=dev_flow_03562487 VITE_DEV_AUTO_LOGIN_PASSWORD=Test
 
 ## 四、依赖顺序有个前置
 
-`tags-wasm` 是 `link:../tags-wasm/pkg`，而 `pkg/` 被忽略、不进仓库。**新克隆的仓库必须先构建 `tags-wasm` 产出 `pkg/`，再 `pnpm install`**，
-否则这个依赖解析不到。另外 `tags-wasm` 通过 `vite-plugin-wasm` 加载，**改完它的 Rust 源码必须重建 `pkg/`**，否则前端仍跑旧的 WASM。
+`tags-wasm` 是 `link:../tags-wasm/pkg`，而 `tags-wasm/pkg/` 被忽略、不进仓库。**新克隆的仓库必须先构建 `tags-wasm` 产出 `tags-wasm/pkg/`，再 `pnpm install`**，
+否则这个依赖解析不到。另外 `tags-wasm` 通过 `vite-plugin-wasm` 加载，**改完它的 Rust 源码必须重建 `tags-wasm/pkg/`**，否则前端仍跑旧的 WASM。
 `ui_73info` 同样是 link 依赖（源码），改它不用重建，宿主 HMR 直接生效——见规则 `ui-73info-components`。
 
 ## 五、环境变量与 mock
@@ -87,5 +87,5 @@ VITE_DEV_AUTO_LOGIN_USERNAME=dev_flow_03562487 VITE_DEV_AUTO_LOGIN_PASSWORD=Test
 ## 七、不要手改生成物
 
 - `components.d.ts`：`unplugin-vue-components` 生成，**但入库**，改完组件后它出现 diff 属正常，**不要手工编辑**。
-- `dist/`、`node_modules/`、`test-results/`、`playwright-report/`：产物与缓存，不要提交。
+- `dist/`、`node_modules/`、`test-results/`、`playwright-report/`：产物与缓存，不要提交。<!-- driftlint-ignore -->
 - `auto-imports.d.ts` 已随 `unplugin-auto-import` 删除，不再生成——看到旧文档提到它，是过时信息。
