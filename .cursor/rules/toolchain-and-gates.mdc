@@ -6,20 +6,19 @@ alwaysApply: true
 # 工具链与质量门禁（user-client）
 
 本文只管**这个前端仓库自己的命令**。跨工程的端口表、后端重启、提交粒度、临时文件与收工清理，见工作区根目录
-`E:\yl73info\.cursor\rules\` 下的 `dev-servers.mdc`、`sync-and-commit.mdc`、`temp-tools.mdc`——**那几份仍然有效，不要在这里重抄一遍**。
+`/home/banch/yl73info/.cursor/rules/` 下的 `dev-servers.mdc`、`sync-and-commit.mdc`、`temp-tools.mdc`——**那几份仍然有效，不要在这里重抄一遍**。
 
-## 一、所有 `pnpm` 脚本必须走 POSIX shell
+## 一、所有 `pnpm` 脚本在 POSIX shell 里跑
 
 `package.json` 里的 `dev` / `build` / `build-only` / `type-check` / `generate:sitemap` 都以 `env -u NODE_USE_ENV_PROXY ...` 开头，
-`env` 在 PowerShell 与 cmd 里不存在，**直接用 PowerShell 跑会失败**。要用 **Git Bash 并写全路径**：
+这是 POSIX shell 的写法。**本机默认 shell 就是 WSL `Ubuntu-22.04` 的 bash**，`cd` 进仓库直接跑即可，不需要再包一层：
 
-```powershell
-& "C:\Program Files\Git\bin\bash.exe" -lc 'cd /e/yl73info/user-client && pnpm type-check'
+```bash
+cd /home/banch/yl73info/user-client && pnpm type-check
 ```
 
-- **不要用 PATH 上的 `bash`**：那是 WSL 的 `/bin/bash`，里面没有 `node`，会死在 `exec: node: not found`（exit 127）。
-- 别混路径口径：Git Bash 看仓库是 `/e/yl73info`，WSL 看是 `/mnt/e/yl73info`。
-- 例外：`pnpm lint`、`pnpm format`、`pnpm test:unit`、`pnpm test:e2e` 这几个脚本**没有** `env -u` 前缀，在 PowerShell 里能直接跑。
+- 工作区根在 `/home/banch/yl73info`（WSL ext4 上）；Windows 侧的旧副本 `E:\yl73info` 已废弃，不要再把路径写回去。
+- `pnpm lint`、`pnpm format`、`pnpm test:unit`、`pnpm test:e2e` 没有 `env -u` 前缀，同样在这个 bash 里直接跑。
 
 ## 二、命令表
 
@@ -50,8 +49,8 @@ VITE_DEV_AUTO_LOGIN_USERNAME=dev_flow_03562487 VITE_DEV_AUTO_LOGIN_PASSWORD=Test
   `vite "--" "--port" "5175"`），端口靠自增才凑对，不可靠。
 - **端口 ↔ 身份是硬绑定，不许串**：5173 = 需求方（`client_flow_03562487`）；**5175 = 开发者端，登录必须用开发者账号**（`dev_flow_03562487`，口令 `Test@123456`）。在 5175 上手动登录、自动登录、浏览器走查、mock 切身份，都不得改用需求方账号。
 - 5173 与 5175 是**不同 origin**，localStorage 各存各的令牌，所以同一个浏览器里两个身份可以同时在线、互不顶号，不需要无痕窗口。
-- **服务一律留在 Cursor 自己的终端里托管**（Shell 工具 + `block_until_ms: 0`），不要用 `Start-Process` / `cmd /c start` /
-  `wt.exe` / `nohup` / `&` 之类撒手跑——脱离 Cursor 的进程看不到日志、停不掉，会话结束还占着端口。做法与理由见根规则 `dev-servers.mdc` 第一节。
+- **服务一律留在 Cursor 自己的终端里托管**（Shell 工具 + `block_until_ms: 0`），不要用 `nohup` / `&` / `disown` /
+  `setsid` / `screen` / `tmux` 之类撒手跑——脱离 Cursor 的进程看不到日志、停不掉，会话结束还占着端口。做法与理由见根规则 `dev-servers.mdc` 第一节。
 - 账号与口令见根规则 `dev-accounts.mdc`（本机开发库统一口令 `Test@123456`）；`.env.local` **不入库**。
 
 ## 四、依赖顺序有个前置

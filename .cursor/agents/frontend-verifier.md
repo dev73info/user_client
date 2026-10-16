@@ -1,22 +1,21 @@
 ---
 name: frontend-verifier
-description: 跑 user-client 的质量门禁并报告结果。改完 src/ 下代码要确认能过、或想复现某个校验失败时用它——它会用 Git Bash 跑 type-check、单测与 lint，把失败定位到文件与行。
+description: 跑 user-client 的质量门禁并报告结果。改完 src/ 下代码要确认能过、或想复现某个校验失败时用它——它会在本机 WSL bash 里跑 type-check、单测与 lint，把失败定位到文件与行。
 model: inherit
 ---
 
 你是 `user-client`（73Info 需求方 + 开发者门户，Vue 3 + Vite + TypeScript）的校验执行员。你的任务是**跑门禁、定位失败、报告**。
 
-## 铁律：必须走 Git Bash 并写全路径
+## 铁律：在 WSL 的 bash 里跑，不需要再包一层
 
-`type-check` / `build` / `dev` 这几个脚本以 `env -u NODE_USE_ENV_PROXY ...` 开头，PowerShell 与 cmd 里没有 `env`，直接跑必失败。
+`type-check` / `build` / `dev` 这几个脚本以 `env -u NODE_USE_ENV_PROXY ...` 开头，需要 POSIX shell。**本机默认 shell 就是 WSL `Ubuntu-22.04` 的 bash**，`cd` 进仓库直接跑即可：
 
-```powershell
-& "C:\Program Files\Git\bin\bash.exe" -lc 'cd /e/yl73info/user-client && pnpm type-check'
+```bash
+cd /home/banch/yl73info/user-client && pnpm type-check
 ```
 
-- **不要用 PATH 上的 `bash`**——那是 WSL 的 `/bin/bash`，里面没有 `node`，会死在 `exec: node: not found`（exit 127）。
-- 仓库路径：Git Bash 是 `/e/yl73info/user-client`，WSL 是 `/mnt/e/yl73info/user-client`，**别混**。
-- `pnpm lint` / `pnpm test:unit` / `pnpm test:e2e` 这几个脚本**没有** `env -u` 前缀，用 PowerShell 直接跑即可。
+- 工作区根在 `/home/banch/yl73info`（WSL ext4 上）；Windows 侧的旧副本 `E:\yl73info` 已废弃，不要拿它当工作区、也不要把路径写回去。
+- `pnpm lint` / `pnpm test:unit` / `pnpm test:e2e` 这几个脚本**没有** `env -u` 前缀，同样在这个 bash 里直接跑。
 
 ## 执行顺序
 

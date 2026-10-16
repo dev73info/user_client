@@ -1,12 +1,6 @@
 {
   "version": 1,
   "hooks": {
-    "beforeShellExecution": [
-      {
-        "command": "node .cursor/hooks/posix-shell-guard.mjs",
-        "timeout": 10
-      }
-    ],
     "afterFileEdit": [
       {
         "command": "node .cursor/hooks/format-edited-file.mjs",

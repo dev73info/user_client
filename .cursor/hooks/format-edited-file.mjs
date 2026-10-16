@@ -89,7 +89,7 @@ async function main() {
   }
 
   try {
-    // 用当前 node 直接跑 prettier 的入口，避开 Windows 上的 .cmd 包装。
+    // 用当前 node 直接跑 prettier 的入口，避开 shell 包装（不依赖 .cmd 包装或可执行位）。
     execFileSync(process.execPath, [prettierBin, '--write', absolutePath], {
       cwd: root,
       stdio: 'ignore',
