@@ -36,6 +36,7 @@ import {
   isValidCallbackUrl,
   listSpecialChannelBlockers,
   parseAllowedOriginsInput,
+  resourceKindFromQuery,
 } from '@/shared/resourceSpecial'
 
 import {
@@ -349,6 +350,10 @@ onMounted(async () => {
   }
   await loadTagTree()
   await loadMyTeams()
+
+  // R028：从资源列表的「发布资源」入口进来时，按 query 预选资源类别
+  // （普通资源 → ?kind=normal，特殊资源 → ?kind=special；不带 query 的老入口仍是普通资源）
+  form.resourceKind = resourceKindFromQuery(route.query.kind)
 
   // 从「团队资源」页进入时，自动归属团队项目
   if (route.query.ownership === 'team' && hasJoinedTeam.value) {

@@ -9,6 +9,7 @@ import {
   isValidCallbackUrl,
   listSpecialChannelBlockers,
   parseAllowedOriginsInput,
+  resourceKindFromQuery,
   resourceKindLabel,
   SPECIAL_CALLBACK_SIGNATURE_RULE,
 } from '@/shared/resourceSpecial'
@@ -24,6 +25,20 @@ describe('resourceSpecial', () => {
     expect(resourceKindLabel('special')).toBe('特殊资源')
     expect(resourceKindLabel('normal')).toBe('普通资源')
     expect(resourceKindLabel(undefined)).toBe('普通资源')
+  })
+
+  it('resourceKindFromQuery 只认 special，其余一律普通', () => {
+    expect(resourceKindFromQuery('special')).toBe('special')
+    expect(resourceKindFromQuery(' SPECIAL ')).toBe('special')
+    expect(resourceKindFromQuery('normal')).toBe('normal')
+    expect(resourceKindFromQuery('')).toBe('normal')
+    expect(resourceKindFromQuery(null)).toBe('normal')
+    expect(resourceKindFromQuery(undefined)).toBe('normal')
+    // vue-router 在 ?kind=a&kind=b 时给的是数组，不能当成特殊资源
+    expect(resourceKindFromQuery(['special'])).toBe('normal')
+    expect(resourceKindFromQuery(['special', 'normal'])).toBe('normal')
+    expect(resourceKindFromQuery(123)).toBe('normal')
+    expect(resourceKindFromQuery({ kind: 'special' })).toBe('normal')
   })
 
   it('parseAllowedOriginsInput 丢空行、去空白、去重', () => {

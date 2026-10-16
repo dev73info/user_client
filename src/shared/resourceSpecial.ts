@@ -31,6 +31,14 @@ export function resourceKindLabel(kind: string | null | undefined): string {
 }
 
 /**
+ * 路由 query 里的资源类别：只有 `special` 算特殊（去首尾空白、忽略大小写），
+ * 其余——空值、数组（`?kind=a&kind=b`）、数字、不认识的值——一律按普通资源处理。
+ */
+export function resourceKindFromQuery(value: unknown): McResourceKindLike {
+  return isSpecialResourceKind(typeof value === 'string' ? value : null) ? 'special' : 'normal'
+}
+
+/**
  * 「允许来源」多行文本 → 数组：按行切、去首尾空白、丢空行、按不区分大小写去重。
  * 保留首次出现的写法（域名大小写不敏感，展示时按开发者填的原样回显）。
  */

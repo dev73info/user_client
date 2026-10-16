@@ -49,7 +49,7 @@ import {
   formatResourcePriceLabel,
   isPricedResource,
 } from '@/shared/resourceSale'
-import { isSpecialResourceKind } from '@/shared/resourceSpecial'
+import { isSpecialResourceKind, resourceKindFromQuery } from '@/shared/resourceSpecial'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import {
   describeTransferError,
@@ -463,6 +463,11 @@ function handleResourceAction(
   }
 
   openEditHomepagePage(resource)
+}
+
+/** R028：从「发布资源」入口进创建页——普通资源 / 特殊资源两条，创建页按 query.kind 预选类别。 */
+function goCreateResource(kind: unknown) {
+  void router.push({ name: 'dev-plugins', query: { kind: resourceKindFromQuery(kind) } })
 }
 
 function handleResourceCommand(payload: { action: string; resource: McResourcePayload }) {
@@ -882,13 +887,22 @@ async function setResourcePrivate(resource: McResourcePayload) {
           <h3 class="dev-section-title">资源列表</h3>
         </div>
         <div class="dev-card-head__actions">
-          <RouterLink class="dev-btn dev-btn--primary"
-            :to="{ path: '/workbench/developer/resources/plugins-init' }">
-            <TIcon>
-              <Plus />
-            </TIcon>
-            <span>发布资源</span>
-          </RouterLink>
+          <!-- R028：发布入口分两条——普通资源（大厅公开展示）与特殊资源（不公开展示，指定来源下单）。
+               触发元素沿用原来的主按钮外观，菜单项只写类别名，含义由创建页的「资源类别」下拉说明。 -->
+          <TDropdown trigger="click" @command="(cmd: unknown) => goCreateResource(cmd)">
+            <button type="button" class="dev-btn dev-btn--primary">
+              <TIcon>
+                <Plus />
+              </TIcon>
+              <span>发布资源</span>
+            </button>
+            <template #dropdown>
+              <TDropdownMenu>
+                <TDropdownItem :command="'normal'">普通资源</TDropdownItem>
+                <TDropdownItem :command="'special'">特殊资源</TDropdownItem>
+              </TDropdownMenu>
+            </template>
+          </TDropdown>
         </div>
       </div>
 
