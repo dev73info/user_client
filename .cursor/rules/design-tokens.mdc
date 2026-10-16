@@ -36,10 +36,10 @@ alwaysApply: false
 `src/main.ts` 的导入顺序**就是**覆盖顺序，越靠后越优先：
 
 ```ts
-import 'ui_73info/styles.css'          // 1. 组件库令牌与底座
-import './styles/user.css'             // 2. 门户侧
-import './styles/unified-top-card.css' // 3. 统一顶部卡片
-import './styles/dev.css'              // 4. 开发者侧
+import 'ui_73info/styles.css'          // 1. 组件库令牌与底座 —— 导出映射到 ui_73info/src/styles/index.css（driftlint-ignore：包导出别名，不是文件系统路径）
+import './styles/user.css'             // 2. 门户侧 —— 实际文件 src/styles/user.css（driftlint-ignore：相对 src/main.ts 的导入写法）
+import './styles/unified-top-card.css' // 3. 统一顶部卡片 —— 实际文件 src/styles/unified-top-card.css（driftlint-ignore：同上）
+import './styles/dev.css'              // 4. 开发者侧 —— 实际文件 src/styles/dev.css（driftlint-ignore：同上）
 ```
 
 `home.css`（首页专用）与 `toast.css` 是按需注入的，分别在 `HomeView.vue`、`AppToast.vue` 挂载时才加载。
