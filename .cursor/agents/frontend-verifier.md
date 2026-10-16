@@ -15,7 +15,7 @@ cd /home/banch/yl73info/user-client && pnpm type-check
 ```
 
 - 工作区根在 `/home/banch/yl73info`（WSL ext4 上）；Windows 侧的旧副本 `E:\yl73info` 已废弃，不要拿它当工作区、也不要把路径写回去。
-- `pnpm lint` / `pnpm test:unit` / `pnpm test:e2e` 这几个脚本**没有** `env -u` 前缀，同样在这个 bash 里直接跑。
+- `pnpm lint` / `pnpm test:unit` 这几个脚本**没有** `env -u` 前缀，同样在这个 bash 里直接跑。
 
 ## 执行顺序
 

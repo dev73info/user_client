@@ -18,7 +18,7 @@ cd /home/banch/yl73info/user-client && pnpm type-check
 ```
 
 - 工作区根在 `/home/banch/yl73info`（WSL ext4 上）；Windows 侧的旧副本 `E:\yl73info` 已废弃，不要再把路径写回去。
-- `pnpm lint`、`pnpm format`、`pnpm test:unit`、`pnpm test:e2e` 没有 `env -u` 前缀，同样在这个 bash 里直接跑。
+- `pnpm lint`、`pnpm format`、`pnpm test:unit` 没有 `env -u` 前缀，同样在这个 bash 里直接跑。
 
 ## 二、命令表
 
@@ -27,7 +27,6 @@ cd /home/banch/yl73info/user-client && pnpm type-check
 | `pnpm dev` | 起 dev server（默认 5173，被占用会自动递增） |
 | `pnpm type-check` | `vue-tsc --build`，**改 `src/**` 后的硬门禁** |
 | `pnpm test:unit` | vitest，用例在 `src/__tests__/` |
-| `pnpm test:e2e` | playwright，用例在 `e2e/` |
 | `pnpm lint` | `lint:oxlint` + `lint:eslint`，两者都带 `--fix` |
 | `pnpm format` | prettier 写 `src/` |
 | `pnpm build` | 生产构建，串起 `generate:sitemap` → `type-check` → `build-only` |
