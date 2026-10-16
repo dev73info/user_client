@@ -681,13 +681,22 @@ async function submitResource(mode: 'private' | 'public') {
           </header>
 
           <TForm label-position="top" class="dev-upload-form">
+            <!-- 这一组的字段顺序按需求方定的口径：图标文件 → 资源标题 → 归属 → 版权（类型 + 版权声明
+                 同占一格）→ 资源类别 → 售价（元）→ 售价（积分）→ 推广分成；
+                 转载来源那组字段随「类型 = 转载」在末尾展开，不插在上面八项中间。 -->
             <div class="dev-upload-grid dev-upload-grid--three dev-upload-grid--form">
+              <TFormItem label="图标文件">
+                <ResourceIconPicker v-model="form.coverUrl" v-model:file="selectedIconFile" />
+              </TFormItem>
+
+              <!-- 资源标题跨 2 档：占位文案「例如：Better Combat Reloaded」实测 212.4px，1 档（约 200px）放不下。
+                   控件撑满这两档，不再单独收窄——收窄会在格子右半边留一块空白，看着像没对齐。 -->
               <TFormItem label="资源标题" required class="dev-form-item--wide">
                 <TInput show-count v-model="form.title"  :maxlength="200"
                   placeholder="例如：Better Combat Reloaded" />
               </TFormItem>
 
-              <TFormItem label="归属类型" required>
+              <TFormItem label="归属" required>
                 <TSelect v-model="form.ownershipType">
                   <TOption label="个人项目" value="individual" />
                   <TOption
@@ -719,12 +728,23 @@ async function submitResource(mode: 'private' | 'public') {
                 </div>
               </TFormItem>
 
-              <TFormItem label="类型">
-                <TSelect v-model="form.originType" style="width: 100%">
-                  <TOption label="原创" value="original" />
-                  <TOption label="转载" value="repost" />
-                </TSelect>
-              </TFormItem>
+              <!-- 「类型」（原创 / 转载）说的是版权性质，与版权声明同属「版权」这一项：
+                   两者共用一个跨 2 档的格子、组内两等分（见 dev-resource.css），
+                   版权声明不出现时「类型」也只占左半边，后面的字段不会跟着跳位。 -->
+              <div class="dev-form-item--wide dev-copyright-group">
+                <TFormItem label="类型">
+                  <TSelect v-model="form.originType" style="width: 100%">
+                    <TOption label="原创" value="original" />
+                    <TOption label="转载" value="repost" />
+                  </TSelect>
+                </TFormItem>
+
+                <TFormItem v-if="showCopyrightField" label="版权">
+                  <TCheckbox v-model="form.copyrightDeclared">
+                    我确认拥有该资源版权，或已获得合法授权可售卖
+                  </TCheckbox>
+                </TFormItem>
+              </div>
 
               <TFormItem label="资源类别" required class="dev-form-item--wide">
                 <TSelect v-model="form.resourceKind" style="width: 100%">
@@ -733,32 +753,32 @@ async function submitResource(mode: 'private' | 'public') {
                 </TSelect>
               </TFormItem>
 
-              <TFormItem label="现金售价（元）">
+              <TFormItem label="售价（元）">
                 <TInput
                   v-model="form.priceYuan"
                   :disabled="cashPriceDisabled"
                   placeholder="0 表示免费"
                   inputmode="decimal"
-                  title="与积分售价互斥"
+                  title="与售价（积分）互斥"
                   @input="onCashPriceInput"
                 />
-                <p v-if="cashPriceDisabled" class="dev-field-hint">已填积分售价，现金售价已禁用。</p>
+                <p v-if="cashPriceDisabled" class="dev-field-hint">已填售价（积分），售价（元）已禁用。</p>
               </TFormItem>
 
-              <TFormItem label="积分售价">
+              <TFormItem label="售价（积分）">
                 <TInput
                   v-model="form.pricePoints"
                   :disabled="pointsPriceDisabled"
                   placeholder="0 表示不走积分购"
                   inputmode="numeric"
-                  title="与现金售价互斥"
+                  title="与售价（元）互斥"
                   @input="onPointsPriceInput"
                 />
-                <p v-if="pointsPriceDisabled" class="dev-field-hint">已填现金售价，积分售价已禁用。</p>
+                <p v-if="pointsPriceDisabled" class="dev-field-hint">已填售价（元），售价（积分）已禁用。</p>
               </TFormItem>
 
-              <!-- R029 推广分成比例：0～50（%），0 = 关闭；拖动条 + 百分比展示，随资源一次保存（promo_share_bps） -->
-              <TFormItem label="推广分成比例" class="dev-form-item--wide">
+              <!-- R029 推广分成：0～50（%），0 = 关闭；拖动条 + 百分比展示，随资源一次保存（promo_share_bps） -->
+              <TFormItem label="推广分成" class="dev-form-item--wide">
                 <div class="dev-promo-share">
                   <input
                     v-model.number="form.promoSharePercent"
@@ -768,7 +788,7 @@ async function submitResource(mode: 'private' | 'public') {
                     max="50"
                     step="1"
                     :title="promoShareDisplay"
-                    aria-label="推广分成比例（百分比，0 表示关闭）"
+                    aria-label="推广分成（百分比，0 表示关闭）"
                   />
                   <span
                     class="dev-promo-share__value"
@@ -778,12 +798,6 @@ async function submitResource(mode: 'private' | 'public') {
                 <p v-if="promoShareError" class="dev-field-hint dev-field-hint--error">
                   {{ promoShareError }}
                 </p>
-              </TFormItem>
-
-              <TFormItem v-if="showCopyrightField" label="版权声明" class="dev-form-item--full">
-                <TCheckbox v-model="form.copyrightDeclared">
-                  我确认拥有该资源版权，或已获得合法授权可售卖
-                </TCheckbox>
               </TFormItem>
 
               <template v-if="form.originType === 'repost'">
@@ -800,10 +814,6 @@ async function submitResource(mode: 'private' | 'public') {
                   <TInput v-model="form.originNote"  :maxlength="500" placeholder="授权情况、转载说明等（可选）" />
                 </TFormItem>
               </template>
-
-              <TFormItem label="图标文件" class="dev-form-item--wide">
-                <ResourceIconPicker v-model="form.coverUrl" v-model:file="selectedIconFile" />
-              </TFormItem>
 
             </div>
           </TForm>
