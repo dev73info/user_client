@@ -68,6 +68,9 @@
 
 .dev-page--publish .dev-upload-block {
   display: grid;
+  /* minmax(0, 1fr)：隐式列不按 max-content 撑开。否则块里的宽内容（接入示例的长 curl 行）
+     会把整块顶出卡片右边界，右侧被卡片裁掉。 */
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 
