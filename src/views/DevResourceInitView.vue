@@ -26,8 +26,11 @@ import { useAuthStore } from '@/stores/auth'
 import { listMyTeams, type TeamResponse } from '@/api/team'
 import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
 
-
-import { parsePointsPriceInput, parsePromoSharePercentInput, parseYuanPriceInput } from '@/shared/resourceSale'
+import {
+  parsePointsPriceInput,
+  parsePromoSharePercentInput,
+  parseYuanPriceInput,
+} from '@/shared/resourceSale'
 import { API_BASE_URL } from '@/shared/api/url'
 import {
   SPECIAL_CALLBACK_SIGNATURE_RULE,
@@ -118,9 +121,7 @@ const promoSharePercentValue = computed(() =>
 const promoShareDisplay = computed(() =>
   promoSharePercentValue.value > 0 ? `${promoSharePercentValue.value}%` : '关闭',
 )
-const hasCashPrice = computed(
-  () => parsedPriceFen.value.ok && parsedPriceFen.value.fen > 0,
-)
+const hasCashPrice = computed(() => parsedPriceFen.value.ok && parsedPriceFen.value.fen > 0)
 const hasPointsPrice = computed(
   () => parsedPricePoints.value.ok && parsedPricePoints.value.points > 0,
 )
@@ -231,21 +232,28 @@ async function copySpecialSample() {
 
 const rootTabs = computed<McTagCatalogRoot[]>(() => processedTree.value.roots)
 
-const currentRoot = computed<McTagCatalogRoot | null>(() =>
-  rootTabs.value.find((r) => r.key === currentRootKey.value) ?? rootTabs.value[0] ?? null,
+const currentRoot = computed<McTagCatalogRoot | null>(
+  () => rootTabs.value.find((r) => r.key === currentRootKey.value) ?? rootTabs.value[0] ?? null,
 )
 
 const entryTabs = computed<McTagCatalogEntry[]>(() => currentRoot.value?.entries ?? [])
 
-const currentEntry = computed<McTagCatalogEntry | null>(() =>
-  entryTabs.value.find((entry) => entry.key === currentEntryKey.value) ?? entryTabs.value[0] ?? null,
+const currentEntry = computed<McTagCatalogEntry | null>(
+  () =>
+    entryTabs.value.find((entry) => entry.key === currentEntryKey.value) ??
+    entryTabs.value[0] ??
+    null,
 )
 const currentPlatform = computed(() => currentEntry.value?.platform ?? '')
 const currentRootLabel = computed(() => currentRoot.value?.label || '根节点')
 const currentEntryLabel = computed(() => currentEntry.value?.group_name ?? '当前分区')
 const currentPlatformLabel = computed(() => currentPlatform.value || '当前分区')
-const platformTagGroups = computed<McPublishTagGroup[]>(() => currentEntry.value?.publish_groups ?? [])
-const selectedTagCount = computed(() => Object.values(selectedTagIdsByGroup).reduce((sum, ids) => sum + ids.length, 0))
+const platformTagGroups = computed<McPublishTagGroup[]>(
+  () => currentEntry.value?.publish_groups ?? [],
+)
+const selectedTagCount = computed(() =>
+  Object.values(selectedTagIdsByGroup).reduce((sum, ids) => sum + ids.length, 0),
+)
 
 const teamOptions = computed(() =>
   myTeams.value.map((team) => ({
@@ -324,31 +332,37 @@ watch(
   },
 )
 
-watch(platformTagGroups, (groups) => {
-  const validGroupIds = new Set(groups.map((group) => group.group_id))
+watch(
+  platformTagGroups,
+  (groups) => {
+    const validGroupIds = new Set(groups.map((group) => group.group_id))
 
-  for (const key of Object.keys(selectedTagIdsByGroup)) {
-    const groupId = Number(key)
-    if (!validGroupIds.has(groupId)) {
-      delete selectedTagIdsByGroup[groupId]
-      continue
+    for (const key of Object.keys(selectedTagIdsByGroup)) {
+      const groupId = Number(key)
+      if (!validGroupIds.has(groupId)) {
+        delete selectedTagIdsByGroup[groupId]
+        continue
+      }
+
+      const group = groups.find((item) => item.group_id === groupId)
+      if (!group) {
+        continue
+      }
+
+      const validTagIds = new Set(group.items.map((item) => item.id))
+      selectedTagIdsByGroup[groupId] = (selectedTagIdsByGroup[groupId] ?? []).filter((tagId) =>
+        validTagIds.has(tagId),
+      )
     }
 
-    const group = groups.find((item) => item.group_id === groupId)
-    if (!group) {
-      continue
+    for (const group of groups) {
+      if (!selectedTagIdsByGroup[group.group_id]) {
+        selectedTagIdsByGroup[group.group_id] = []
+      }
     }
-
-    const validTagIds = new Set(group.items.map((item) => item.id))
-    selectedTagIdsByGroup[groupId] = (selectedTagIdsByGroup[groupId] ?? []).filter((tagId) => validTagIds.has(tagId))
-  }
-
-  for (const group of groups) {
-    if (!selectedTagIdsByGroup[group.group_id]) {
-      selectedTagIdsByGroup[group.group_id] = []
-    }
-  }
-}, { immediate: true })
+  },
+  { immediate: true },
+)
 
 onMounted(async () => {
   auth.hydrate()
@@ -522,6 +536,18 @@ async function submitResource(mode: 'private' | 'public') {
     showToast('现金售价与积分售价不能同时设置', 'warning')
     return
   }
+  // R028：特殊资源只走现金价（积分购是平台内入口，指定地址售卖没有它）
+  if (isSpecialKind.value) {
+    if (pointsParsed.points > 0) {
+      showToast('特殊资源只能设置现金售价，不能设置积分售价', 'warning')
+      return
+    }
+    // 开放接口下单要求现金售价大于 0：公开申请前先填上，否则审过也卖不出去
+    if (mode === 'public' && priceParsed.fen <= 0) {
+      showToast('特殊资源提交公开申请前必须填写现金售价（元）', 'warning')
+      return
+    }
+  }
   // R029：推广分成比例先在前端拦一道（0～50，留空 = 关闭），别指望后端 400 兜底
   const promoParsed = parsedPromoShare.value
   if (!promoParsed.ok) {
@@ -565,7 +591,7 @@ async function submitResource(mode: 'private' | 'public') {
         origin_org: form.originOrg.trim() || null,
         origin_note: form.originNote.trim() || null,
         price_fen: priceParsed.fen,
-        price_points: pointsParsed.points,
+        price_points: isSpecialKind.value ? 0 : pointsParsed.points,
         copyright_declared: form.copyrightDeclared,
         resource_kind: resourceKind.value,
         // R029：推广分成比例随资源一次保存；0 = 关闭，显式下发，不靠省略字段表达「不改」
@@ -580,7 +606,12 @@ async function submitResource(mode: 'private' | 'public') {
       try {
         resource = await uploadMcResourceCover(auth.token, resource.id, selectedIconFile.value)
       } catch (error) {
-        showToast(error instanceof Error ? `资源已初始化，但图标上传失败：${error.message}` : '资源已初始化，但图标上传失败', 'warning')
+        showToast(
+          error instanceof Error
+            ? `资源已初始化，但图标上传失败：${error.message}`
+            : '资源已初始化，但图标上传失败',
+          'warning',
+        )
       }
     }
 
@@ -622,16 +653,19 @@ async function submitResource(mode: 'private' | 'public') {
         origin_org: form.originOrg.trim() || null,
         origin_note: form.originNote.trim() || null,
         price_fen: priceParsed.fen,
-        price_points: pointsParsed.points,
+        price_points: isSpecialKind.value ? 0 : pointsParsed.points,
         copyright_declared: form.copyrightDeclared,
         resource_kind: resourceKind.value,
         promo_share_bps: promoParsed.bps,
       })
     }
 
-    showToast(mode === 'public'
-      ? `公开申请已提交，项目编号 #${resource.id}`
-      : `资源已初始化为私有项目，编号 #${resource.id}`, 'success')
+    showToast(
+      mode === 'public'
+        ? `公开申请已提交，项目编号 #${resource.id}`
+        : `资源已初始化为私有项目，编号 #${resource.id}`,
+      'success',
+    )
 
     if (revealedSecretPlain.value) {
       // 明文只显示这一次：留住表单等开发者确认已保存，再回列表
@@ -703,17 +737,18 @@ async function submitResource(mode: 'private' | 'public') {
               <!-- 资源标题跨 2 档：占位文案「例如：Better Combat Reloaded」实测 212.4px，1 档（约 200px）放不下。
                    控件撑满这两档，不再单独收窄——收窄会在格子右半边留一块空白，看着像没对齐。 -->
               <TFormItem label="资源标题" required class="dev-form-item--wide">
-                <TInput show-count v-model="form.title"  :maxlength="200"
-                  placeholder="例如：Better Combat Reloaded" />
+                <TInput
+                  show-count
+                  v-model="form.title"
+                  :maxlength="200"
+                  placeholder="例如：Better Combat Reloaded"
+                />
               </TFormItem>
 
               <TFormItem label="归属" required>
                 <TSelect v-model="form.ownershipType">
                   <TOption label="个人项目" value="individual" />
-                  <TOption
-                    label="团队项目"
-                    value="team"
-                    :disabled="!hasJoinedTeam" />
+                  <TOption label="团队项目" value="team" :disabled="!hasJoinedTeam" />
                 </TSelect>
               </TFormItem>
 
@@ -722,12 +757,14 @@ async function submitResource(mode: 'private' | 'public') {
                   <TSelect
                     v-model="form.teamId"
                     placeholder="请选择团队"
-                    class="dev-team-select-native__control">
+                    class="dev-team-select-native__control"
+                  >
                     <TOption
                       v-for="team in teamOptions"
                       :key="team.value"
                       :label="team.label"
-                      :value="team.value" />
+                      :value="team.value"
+                    />
                     <template #empty>
                       <div class="dev-team-select-empty">
                         <p v-if="myTeams.length === 0">您还没有加入任何团队</p>
@@ -735,7 +772,6 @@ async function submitResource(mode: 'private' | 'public') {
                       </div>
                     </template>
                   </TSelect>
-
                 </div>
               </TFormItem>
 
@@ -757,19 +793,21 @@ async function submitResource(mode: 'private' | 'public') {
                 </TFormItem>
               </div>
 
-              <TFormItem label="售价（元）">
+              <TFormItem label="售价（元）" :class="{ 'dev-form-item--wide': isSpecialKind }">
                 <TInput
                   v-model="form.priceYuan"
                   :disabled="cashPriceDisabled"
                   placeholder="0 表示免费"
                   inputmode="decimal"
-                  title="与售价（积分）互斥"
+                  :title="isSpecialKind ? undefined : '与售价（积分）互斥'"
                   @input="onCashPriceInput"
                 />
-                <p v-if="cashPriceDisabled" class="dev-field-hint">已填售价（积分），售价（元）已禁用。</p>
+                <p v-if="cashPriceDisabled" class="dev-field-hint">
+                  已填售价（积分），售价（元）已禁用。
+                </p>
               </TFormItem>
 
-              <TFormItem label="售价（积分）">
+              <TFormItem v-if="!isSpecialKind" label="售价（积分）">
                 <TInput
                   v-model="form.pricePoints"
                   :disabled="pointsPriceDisabled"
@@ -778,7 +816,9 @@ async function submitResource(mode: 'private' | 'public') {
                   title="与售价（元）互斥"
                   @input="onPointsPriceInput"
                 />
-                <p v-if="pointsPriceDisabled" class="dev-field-hint">已填售价（元），售价（积分）已禁用。</p>
+                <p v-if="pointsPriceDisabled" class="dev-field-hint">
+                  已填售价（元），售价（积分）已禁用。
+                </p>
               </TFormItem>
 
               <!-- R029 推广分成：0～50（%），0 = 关闭；拖动条 + 百分比展示，随资源一次保存（promo_share_bps） -->
@@ -797,7 +837,8 @@ async function submitResource(mode: 'private' | 'public') {
                   <span
                     class="dev-promo-share__value"
                     :class="{ 'is-off': promoSharePercentValue <= 0 }"
-                  >{{ promoShareDisplay }}</span>
+                    >{{ promoShareDisplay }}</span
+                  >
                 </div>
                 <p v-if="promoShareError" class="dev-field-hint dev-field-hint--error">
                   {{ promoShareError }}
@@ -806,19 +847,34 @@ async function submitResource(mode: 'private' | 'public') {
 
               <template v-if="form.originType === 'repost'">
                 <TFormItem label="原作者">
-                  <TInput v-model="form.originAuthor"  :maxlength="80" placeholder="原始资源的作者" />
+                  <TInput
+                    v-model="form.originAuthor"
+                    :maxlength="80"
+                    placeholder="原始资源的作者"
+                  />
                 </TFormItem>
                 <TFormItem label="原始出处链接" required class="dev-form-item--wide">
-                  <TInput v-model="form.originUrl"  :maxlength="500" placeholder="原始出处 URL，例如原贴/来源页" />
+                  <TInput
+                    v-model="form.originUrl"
+                    :maxlength="500"
+                    placeholder="原始出处 URL，例如原贴/来源页"
+                  />
                 </TFormItem>
                 <TFormItem label="来源站点">
-                  <TInput v-model="form.originOrg"  :maxlength="80" placeholder="例如：苦力怕论坛、CurseForge" />
+                  <TInput
+                    v-model="form.originOrg"
+                    :maxlength="80"
+                    placeholder="例如：苦力怕论坛、CurseForge"
+                  />
                 </TFormItem>
                 <TFormItem label="转载说明 / 授权" class="dev-form-item--wide">
-                  <TInput v-model="form.originNote"  :maxlength="500" placeholder="授权情况、转载说明等（可选）" />
+                  <TInput
+                    v-model="form.originNote"
+                    :maxlength="500"
+                    placeholder="授权情况、转载说明等（可选）"
+                  />
                 </TFormItem>
               </template>
-
             </div>
           </TForm>
         </section>
@@ -849,10 +905,7 @@ async function submitResource(mode: 'private' | 'public') {
                   :maxlength="500"
                   placeholder="https://shop.example.com/73info/callback"
                 />
-                <p
-                  v-if="specialCallbackInvalid"
-                  class="dev-field-hint dev-field-hint--error"
-                >
+                <p v-if="specialCallbackInvalid" class="dev-field-hint dev-field-hint--error">
                   当前不合法：请填 http(s) 绝对地址。
                 </p>
               </TFormItem>
@@ -865,9 +918,7 @@ async function submitResource(mode: 'private' | 'public') {
                   autocomplete="new-password"
                   placeholder="留空 = 不改"
                 />
-                <p class="dev-field-hint">
-                  当前：{{ savedSecretMaskedLabel }}
-                </p>
+                <p class="dev-field-hint">当前：{{ savedSecretMaskedLabel }}</p>
               </TFormItem>
 
               <TFormItem label="允许的来源地址" class="dev-special-span">
@@ -878,10 +929,7 @@ async function submitResource(mode: 'private' | 'public') {
                   :maxlength="2000"
                   placeholder="https://shop.example.com&#10;*.example.com&#10;203.0.113.9"
                 />
-                <p
-                  v-if="invalidSpecialOrigin"
-                  class="dev-field-hint dev-field-hint--error"
-                >
+                <p v-if="invalidSpecialOrigin" class="dev-field-hint dev-field-hint--error">
                   当前不合法：{{ invalidSpecialOrigin }}
                 </p>
               </TFormItem>
@@ -929,9 +977,7 @@ async function submitResource(mode: 'private' | 'public') {
                 自算签名，与请求头 <code>X-73Info-Signature</code> 比对（时间戳在
                 <code>X-73Info-Timestamp</code>）。
               </li>
-              <li>
-                返回里的 <code>pay_url</code> 交给买家付款；买家付完，平台回调上面填的地址。
-              </li>
+              <li>返回里的 <code>pay_url</code> 交给买家付款；买家付完，平台回调上面填的地址。</li>
             </ul>
           </div>
         </section>
@@ -950,9 +996,14 @@ async function submitResource(mode: 'private' | 'public') {
                 <span class="dev-root-switch__meta">当前：{{ currentRootLabel }}</span>
               </div>
               <div class="dev-root-switch__chips">
-                <button v-for="root in rootTabs" :key="root.key" class="dev-catalog-chip"
-                  :class="{ active: root.key === currentRootKey }" type="button"
-                  @click="openRoot(root.key, root.first_entry_key)">
+                <button
+                  v-for="root in rootTabs"
+                  :key="root.key"
+                  class="dev-catalog-chip"
+                  :class="{ active: root.key === currentRootKey }"
+                  type="button"
+                  @click="openRoot(root.key, root.first_entry_key)"
+                >
                   {{ root.label }}
                 </button>
               </div>
@@ -965,24 +1016,39 @@ async function submitResource(mode: 'private' | 'public') {
                   <span class="dev-catalog-nav__meta">当前：{{ currentEntryLabel }}</span>
                 </div>
                 <div class="dev-catalog-nav__chips dev-catalog-nav__chips--scroll">
-                  <button v-for="entry in entryTabs" :key="entry.key" class="dev-catalog-chip dev-catalog-chip--secondary"
-                    :class="{ active: entry.key === currentEntryKey }" type="button" @click="openEntry(entry.key)">
+                  <button
+                    v-for="entry in entryTabs"
+                    :key="entry.key"
+                    class="dev-catalog-chip dev-catalog-chip--secondary"
+                    :class="{ active: entry.key === currentEntryKey }"
+                    type="button"
+                    @click="openEntry(entry.key)"
+                  >
                     {{ entry.group_name }}
                   </button>
                 </div>
               </div>
             </section>
 
-            <div v-if="entryTabs.length > 0 && platformTagGroups.length > 0"
-              class="dev-tag-group-panel dev-upload-grid dev-upload-grid--tag-groups">
-              <section v-for="group in platformTagGroups" :key="group.key" class="dev-tag-group-row">
+            <div
+              v-if="entryTabs.length > 0 && platformTagGroups.length > 0"
+              class="dev-tag-group-panel dev-upload-grid dev-upload-grid--tag-groups"
+            >
+              <section
+                v-for="group in platformTagGroups"
+                :key="group.key"
+                class="dev-tag-group-row"
+              >
                 <header class="dev-tag-group-row__head">
                   <section class="dev-tag-group-row__copy">
                     <h4 class="dev-tag-group-row__title">{{ group.group_name }}</h4>
                     <p class="dev-tag-group-row__path" :title="group.label">{{ group.label }}</p>
                   </section>
-                  <span class="dev-tag-group-row__count">{{ (selectedTagIdsByGroup[group.group_id] ??
-                    []).length }}/{{ group.items.length }}</span>
+                  <span class="dev-tag-group-row__count"
+                    >{{ (selectedTagIdsByGroup[group.group_id] ?? []).length }}/{{
+                      group.items.length
+                    }}</span
+                  >
                 </header>
 
                 <div class="dev-tag-group-row__field">
@@ -992,36 +1058,64 @@ async function submitResource(mode: 'private' | 'public') {
                     filterable
                     placeholder="选择一个或多个标签"
                   >
-                    <TOption v-for="item in group.items" :key="item.id" :label="item.name" :value="item.id" />
+                    <TOption
+                      v-for="item in group.items"
+                      :key="item.id"
+                      :label="item.name"
+                      :value="item.id"
+                    />
                   </TSelect>
                 </div>
               </section>
             </div>
 
-            <p v-else-if="entryTabs.length > 0" class="dev-empty-state">当前二级节点尚未配置完整标签组，请先在管理端补齐标签树。</p>
-            <p v-else class="dev-empty-state">当前根节点尚未配置二级节点，请先在管理端补齐标签树。</p>
+            <p v-else-if="entryTabs.length > 0" class="dev-empty-state">
+              当前二级节点尚未配置完整标签组，请先在管理端补齐标签树。
+            </p>
+            <p v-else class="dev-empty-state">
+              当前根节点尚未配置二级节点，请先在管理端补齐标签树。
+            </p>
           </div>
         </section>
 
-        <footer class="dev-upload-actions dev-upload-actions--split" :class="{ 'is-ready': canSubmit }">
+        <footer
+          class="dev-upload-actions dev-upload-actions--split"
+          :class="{ 'is-ready': canSubmit }"
+        >
           <section class="dev-submit-summary">
-            <span class="dev-submit-summary__status">{{ canSubmit ? '准备就绪' : submitBlockReason }}</span>
-            <span class="dev-submit-summary__meta">{{ currentEntryLabel }} · {{ selectedTagCount }}
-              个标签</span>
+            <span class="dev-submit-summary__status">{{
+              canSubmit ? '准备就绪' : submitBlockReason
+            }}</span>
+            <span class="dev-submit-summary__meta"
+              >{{ currentEntryLabel }} · {{ selectedTagCount }} 个标签</span
+            >
           </section>
           <div class="dev-upload-actions__buttons">
-            <TButton variant="solid" tone="accent" :disabled="!canSubmit" :loading="submitting"
-              @click="submitResource('private')"><template #prefix><TIcon><MagicStick /></TIcon></template>
+            <TButton
+              variant="solid"
+              tone="accent"
+              :disabled="!canSubmit"
+              :loading="submitting"
+              @click="submitResource('private')"
+              ><template #prefix
+                ><TIcon><MagicStick /></TIcon
+              ></template>
               创建私有项目
             </TButton>
-            <TButton variant="solid" tone="success" :disabled="!canSubmit" :loading="submitting"
-              @click="submitResource('public')"><template #prefix><TIcon><MagicStick /></TIcon></template>
+            <TButton
+              variant="solid"
+              tone="success"
+              :disabled="!canSubmit"
+              :loading="submitting"
+              @click="submitResource('public')"
+              ><template #prefix
+                ><TIcon><MagicStick /></TIcon
+              ></template>
               发布公开项目
             </TButton>
           </div>
         </footer>
       </TCard>
-
     </div>
 
     <!-- 后端首次生成的回调密钥：明文只回这一次，弹窗最醒目地提示一次 -->
