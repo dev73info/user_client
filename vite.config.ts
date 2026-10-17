@@ -148,6 +148,10 @@ export default defineConfig({
     // 绑 0.0.0.0：localhost / 127.0.0.1 / 局域网 IP 都能进；默认只绑回环时
     // Windows 上常变成仅 [::1]，用 127.0.0.1 打不开，真机也访问不到。
     host: '0.0.0.0',
+    port: 5173,
+    // 端口被占时直接报错退出，不要静默自增到别的端口。
+    // 静默漂移会让人对着文档里的地址拿到另一个页面（实测踩过：admin_client 从 5174 漂到 5175 又漂到 5177）。
+    strictPort: true,
     proxy: proxyConfig,
     fs: {
       allow: ['..'],
