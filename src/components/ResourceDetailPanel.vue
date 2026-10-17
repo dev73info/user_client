@@ -27,10 +27,7 @@ import {
   type ResourcePurchaseOrder,
 } from '@/api/resourcePurchase'
 import { getAdapayClientPlatform } from '@/api/adapay'
-import {
-  getWechatPaymentAuthorizationStatus,
-  getWechatPaymentAuthorizeUrl,
-} from '@/api/auth'
+import { getWechatPaymentAuthorizationStatus, getWechatPaymentAuthorizeUrl } from '@/api/auth'
 import {
   canReuseCashQrForChannel,
   fenToYuanText,
@@ -203,9 +200,7 @@ const visibilityLabel = computed(() =>
 /** 点赞按钮上的赞数：接口可能不带该字段，缺省按 0 显示（与资源卡片同一口径）。 */
 const likeCountLabel = computed(() => resource.value?.like_count ?? 0)
 const isRepost = computed(() => resource.value?.origin_type === 'repost')
-const originTypeLabel = computed(() =>
-  resource.value?.origin_type === 'repost' ? '转载' : '原创',
-)
+const originTypeLabel = computed(() => (resource.value?.origin_type === 'repost' ? '转载' : '原创'))
 const repostOriginLabel = computed(() => {
   const current = resource.value
   if (!current || current.origin_type !== 'repost') {
@@ -346,7 +341,12 @@ const codeHighlighter = createLowlight(common)
 
 type HastNode =
   | { type: 'text'; value: string }
-  | { type: 'element'; tagName: string; properties?: { className?: string[] }; children: HastNode[] }
+  | {
+      type: 'element'
+      tagName: string
+      properties?: { className?: string[] }
+      children: HastNode[]
+    }
   | { type: 'root'; children: HastNode[] }
 
 function escapeHtmlText(value: string): string {
@@ -690,9 +690,7 @@ async function ensureWechatPayAuthorized(token: string): Promise<boolean> {
 }
 
 function submitPurchase() {
-  purchaseSubmitChain = purchaseSubmitChain
-    .catch(() => undefined)
-    .then(() => runSubmitPurchase())
+  purchaseSubmitChain = purchaseSubmitChain.catch(() => undefined).then(() => runSubmitPurchase())
   return purchaseSubmitChain
 }
 
@@ -1048,10 +1046,7 @@ async function submitResourceComment() {
   commentSubmitting.value = true
   try {
     const saved = await createPublicMcResourceComment(auth.token, resourceId, { comment })
-    comments.value = [
-      saved,
-      ...comments.value.filter((item) => item.id !== saved.id),
-    ]
+    comments.value = [saved, ...comments.value.filter((item) => item.id !== saved.id)]
     commentText.value = ''
     showToast('评论已发布', 'success')
     void loadComments(resourceId)
@@ -1092,7 +1087,13 @@ async function loadResource() {
     // 就地报错，不把整个列表页带回首页
     resource.value = null
     versions.value = []
-    loadError.value = error instanceof Error ? error.message : '加载资源主页失败'
+    // 404 同时覆盖「资源不存在」与「私有 / 待审资源无权查看」，按后端原文显示「not found」对访客没意义
+    loadError.value =
+      error instanceof HttpError && error.status === 404
+        ? '资源不存在或无权访问'
+        : error instanceof Error
+          ? error.message
+          : '加载资源主页失败'
   } finally {
     loading.value = false
   }
@@ -1144,8 +1145,12 @@ watch(
         <section class="resource-detail-page__lead">
           <div class="resource-detail-page__left-stack">
             <div class="resource-detail-page__cover-card">
-              <img v-if="resource.cover_url" :src="resourceCoverUrl" :alt="resource.title"
-                class="resource-detail-page__cover-image" />
+              <img
+                v-if="resource.cover_url"
+                :src="resourceCoverUrl"
+                :alt="resource.title"
+                class="resource-detail-page__cover-image"
+              />
               <div v-else class="resource-detail-page__cover-placeholder">📁</div>
             </div>
 
@@ -1158,9 +1163,13 @@ watch(
                     :class="{
                       'is-paid': isPricedResource(resource.price_fen, resource.price_points),
                     }"
-                  >{{ priceLabel }}</span>
-                  <span class="resource-detail-page__repost-badge"
-                    :class="{ 'is-repost': isRepost }">{{ originTypeLabel }}</span>
+                    >{{ priceLabel }}</span
+                  >
+                  <span
+                    class="resource-detail-page__repost-badge"
+                    :class="{ 'is-repost': isRepost }"
+                    >{{ originTypeLabel }}</span
+                  >
                 </div>
                 <span class="resource-detail-page__headline-right">
                   <router-link
@@ -1168,106 +1177,212 @@ watch(
                     :to="{ name: 'dev-profile', params: { username: resource.author } }"
                     class="resource-detail-page__author-pill resource-detail-page__author-pill--link"
                   >
-                    <span class="resource-detail-page__author-pill-label">{{ authorPillParts.prefix }}</span><span v-if="authorPillParts.name" :class="{ 'username-gradient': resource.author_username_gradient && !resource.author_username_color }" :style="resource.author_username_color ? { color: resource.author_username_color } : {}">{{ authorPillParts.name }}</span>
+                    <span class="resource-detail-page__author-pill-label">{{
+                      authorPillParts.prefix
+                    }}</span
+                    ><span
+                      v-if="authorPillParts.name"
+                      :class="{
+                        'username-gradient':
+                          resource.author_username_gradient && !resource.author_username_color,
+                      }"
+                      :style="
+                        resource.author_username_color
+                          ? { color: resource.author_username_color }
+                          : {}
+                      "
+                      >{{ authorPillParts.name }}</span
+                    >
                   </router-link>
                   <span v-else class="resource-detail-page__author-pill">
-                    <span class="resource-detail-page__author-pill-label">{{ authorPillParts.prefix }}</span><span v-if="authorPillParts.name" :class="{ 'username-gradient': resource.author_username_gradient && !resource.author_username_color }" :style="resource.author_username_color ? { color: resource.author_username_color } : {}">{{ authorPillParts.name }}</span>
+                    <span class="resource-detail-page__author-pill-label">{{
+                      authorPillParts.prefix
+                    }}</span
+                    ><span
+                      v-if="authorPillParts.name"
+                      :class="{
+                        'username-gradient':
+                          resource.author_username_gradient && !resource.author_username_color,
+                      }"
+                      :style="
+                        resource.author_username_color
+                          ? { color: resource.author_username_color }
+                          : {}
+                      "
+                      >{{ authorPillParts.name }}</span
+                    >
                   </span>
-                  <p v-if="showCreatorMeta" class="resource-detail-page__meta resource-detail-page__meta--aside">
-                    <span class="resource-detail-page__meta-label--green">开发者：</span><router-link
+                  <p
+                    v-if="showCreatorMeta"
+                    class="resource-detail-page__meta resource-detail-page__meta--aside"
+                  >
+                    <span class="resource-detail-page__meta-label--green">开发者：</span
+                    ><router-link
                       v-if="resource.creator"
                       :to="{ name: 'dev-profile', params: { username: resource.creator } }"
-                      :class="{ 'username-gradient': resource.creator_username_gradient && !resource.creator_username_color }"
-                      :style="resource.creator_username_color ? { color: resource.creator_username_color } : {}"
-                    >{{ resource.creator }}</router-link>
-                    <span v-else :class="{ 'username-gradient': resource.creator_username_gradient && !resource.creator_username_color }" :style="resource.creator_username_color ? { color: resource.creator_username_color } : {}">{{ resource.creator }}</span>
+                      :class="{
+                        'username-gradient':
+                          resource.creator_username_gradient && !resource.creator_username_color,
+                      }"
+                      :style="
+                        resource.creator_username_color
+                          ? { color: resource.creator_username_color }
+                          : {}
+                      "
+                      >{{ resource.creator }}</router-link
+                    >
+                    <span
+                      v-else
+                      :class="{
+                        'username-gradient':
+                          resource.creator_username_gradient && !resource.creator_username_color,
+                      }"
+                      :style="
+                        resource.creator_username_color
+                          ? { color: resource.creator_username_color }
+                          : {}
+                      "
+                      >{{ resource.creator }}</span
+                    >
                   </p>
                 </span>
               </div>
-            <div class="resource-detail-page__identity-block">
-              <h1 class="resource-detail-page__title">{{ resource.title }}</h1>
-              <div v-if="isRepost" class="resource-detail-page__repost-meta">
-                <a v-if="resource.origin_url" :href="resource.origin_url" target="_blank"
-                  rel="nofollow noopener" class="resource-detail-page__repost-origin">
-                  {{ repostOriginLabel || '查看原始出处' }}
-                </a>
-                <span v-else class="resource-detail-page__repost-origin">{{ repostOriginLabel }}</span>
-              </div>
-              <p class="resource-detail-page__summary">
-                {{ resourceSummaryText || '当前资源暂无简介。' }}
-              </p>
-            </div>
-
-            <div v-if="tagNames.length > 0" class="resource-detail-page__tags">
-              <span v-for="item in tagNames" :key="item" class="resource-detail-page__tag">{{
-                item
-              }}</span>
-            </div>
-
-            <div class="resource-detail-page__cta-row">
-              <div class="resource-detail-page__primary-actions">
-                <button class="resource-detail-page__primary-btn" type="button"
-                  :disabled="downloadStore.state.active || purchaseSubmitting" @click="handlePrimaryCta">
-                  {{ primaryCtaLabel }}
-                </button>
-                <div v-if="downloadStore.state.active" class="resource-detail-page__download-progress"
-                  role="progressbar" :aria-valuenow="downloadStore.state.percent" aria-valuemin="0"
-                  aria-valuemax="100">
-                  <div class="resource-detail-page__download-progress__track">
-                    <div class="resource-detail-page__download-progress__bar"
-                      :style="{ width: `${downloadStore.state.percent}%` }"></div>
-                  </div>
-                  <span class="resource-detail-page__download-progress__label">
-                    {{ downloadStore.state.percent }}%
-                  </span>
+              <div class="resource-detail-page__identity-block">
+                <h1 class="resource-detail-page__title">{{ resource.title }}</h1>
+                <div v-if="isRepost" class="resource-detail-page__repost-meta">
+                  <a
+                    v-if="resource.origin_url"
+                    :href="resource.origin_url"
+                    target="_blank"
+                    rel="nofollow noopener"
+                    class="resource-detail-page__repost-origin"
+                  >
+                    {{ repostOriginLabel || '查看原始出处' }}
+                  </a>
+                  <span v-else class="resource-detail-page__repost-origin">{{
+                    repostOriginLabel
+                  }}</span>
                 </div>
-                <button class="resource-detail-page__like-btn" type="button"
-                  :class="{ 'resource-detail-page__like-btn--active': resource.liked_by_me }" :disabled="likeSubmitting"
-                  :aria-pressed="resource.liked_by_me"
-                  :aria-label="`${resource.liked_by_me ? '已点赞' : '点赞'}，当前 ${likeCountLabel} 人赞`"
-                  :title="resource.liked_by_me ? '取消点赞' : '点赞'" @click="toggleResourceLike">
-                  <svg class="resource-detail-page__like-icon" viewBox="0 0 24 24"
-                    :fill="resource.liked_by_me ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path
-                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
-                    </path>
-                  </svg>
-                  <span class="resource-detail-page__like-count" aria-hidden="true">{{ likeCountLabel }}</span>
-                </button>
-                <ShareCardGenerator v-if="auth.isAuthed" share-type="resource" :target-id="String(resource.id)" />
+                <p class="resource-detail-page__summary">
+                  {{ resourceSummaryText || '当前资源暂无简介。' }}
+                </p>
               </div>
-            </div>
 
+              <div v-if="tagNames.length > 0" class="resource-detail-page__tags">
+                <span v-for="item in tagNames" :key="item" class="resource-detail-page__tag">{{
+                  item
+                }}</span>
+              </div>
+
+              <div class="resource-detail-page__cta-row">
+                <div class="resource-detail-page__primary-actions">
+                  <button
+                    class="resource-detail-page__primary-btn"
+                    type="button"
+                    :disabled="downloadStore.state.active || purchaseSubmitting"
+                    @click="handlePrimaryCta"
+                  >
+                    {{ primaryCtaLabel }}
+                  </button>
+                  <div
+                    v-if="downloadStore.state.active"
+                    class="resource-detail-page__download-progress"
+                    role="progressbar"
+                    :aria-valuenow="downloadStore.state.percent"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                  >
+                    <div class="resource-detail-page__download-progress__track">
+                      <div
+                        class="resource-detail-page__download-progress__bar"
+                        :style="{ width: `${downloadStore.state.percent}%` }"
+                      ></div>
+                    </div>
+                    <span class="resource-detail-page__download-progress__label">
+                      {{ downloadStore.state.percent }}%
+                    </span>
+                  </div>
+                  <button
+                    class="resource-detail-page__like-btn"
+                    type="button"
+                    :class="{ 'resource-detail-page__like-btn--active': resource.liked_by_me }"
+                    :disabled="likeSubmitting"
+                    :aria-pressed="resource.liked_by_me"
+                    :aria-label="`${resource.liked_by_me ? '已点赞' : '点赞'}，当前 ${likeCountLabel} 人赞`"
+                    :title="resource.liked_by_me ? '取消点赞' : '点赞'"
+                    @click="toggleResourceLike"
+                  >
+                    <svg
+                      class="resource-detail-page__like-icon"
+                      viewBox="0 0 24 24"
+                      :fill="resource.liked_by_me ? 'currentColor' : 'none'"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                      ></path>
+                    </svg>
+                    <span class="resource-detail-page__like-count" aria-hidden="true">{{
+                      likeCountLabel
+                    }}</span>
+                  </button>
+                  <ShareCardGenerator
+                    v-if="auth.isAuthed"
+                    share-type="resource"
+                    :target-id="String(resource.id)"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          <article class="resource-detail-page__content-card resource-detail-page__versions-side-card">
+          <article
+            class="resource-detail-page__content-card resource-detail-page__versions-side-card"
+          >
             <header class="resource-detail-page__section-head">
               <h2>历史版本</h2>
               <span>Versions</span>
             </header>
             <div v-if="versions.length" class="resource-detail-page__version-list">
-              <article v-for="version in versions" :key="version.id" class="resource-detail-page__version-card">
+              <article
+                v-for="version in versions"
+                :key="version.id"
+                class="resource-detail-page__version-card"
+              >
                 <div class="resource-detail-page__version-headline">
                   <div class="resource-detail-page__version-meta">
                     <strong>{{ version.version }}</strong>
                     <span>{{ formatVersionTime(version.created_at) }}</span>
                   </div>
                 </div>
-                <button v-if="version.note" class="resource-detail-page__version-note-toggle" type="button"
-                  @click="toggleVersionNote(version.id)">
+                <button
+                  v-if="version.note"
+                  class="resource-detail-page__version-note-toggle"
+                  type="button"
+                  @click="toggleVersionNote(version.id)"
+                >
                   {{ isVersionNoteExpanded(version.id) ? '收起' : '展开' }}
                 </button>
                 <div class="resource-detail-page__version-note-wrap">
-                  <p v-if="version.note" class="resource-detail-page__version-note"
+                  <p
+                    v-if="version.note"
+                    class="resource-detail-page__version-note"
                     :class="{ 'is-collapsed': !isVersionNoteExpanded(version.id) }"
-                    v-html="formatHomepageContent(version.note)"></p>
+                    v-html="formatHomepageContent(version.note)"
+                  ></p>
                   <p v-else class="resource-detail-page__paragraph">当前版本暂无补充说明。</p>
                 </div>
                 <div class="resource-detail-page__version-actions">
-                  <button class="resource-detail-page__version-download" type="button"
-                    :disabled="downloadStore.state.active" @click="downloadVersion(version)">
+                  <button
+                    class="resource-detail-page__version-download"
+                    type="button"
+                    :disabled="downloadStore.state.active"
+                    @click="downloadVersion(version)"
+                  >
                     {{
                       needsPurchase
                         ? '购买后下载'
@@ -1299,9 +1414,12 @@ watch(
               <h2>页面内容</h2>
               <span>Content</span>
             </header>
-            <div v-if="pageContentHtml" ref="pageContentRef"
+            <div
+              v-if="pageContentHtml"
+              ref="pageContentRef"
               class="resource-detail-page__content-flow resource-detail-page__rich-text rich-text-body"
-              v-html="pageContentHtml" />
+              v-html="pageContentHtml"
+            />
             <p v-else class="resource-detail-page__paragraph">
               当前还没有额外补充说明。后续更新、兼容性说明或使用建议会展示在这里。
             </p>
@@ -1319,41 +1437,82 @@ watch(
                   <strong>{{ commentGate.title }}</strong>
                   <p>{{ commentGate.description }}</p>
                 </div>
-                <button v-if="commentGate.actionLabel" class="resource-detail-page__comment-action" type="button"
-                  @click="handleCommentGateAction">
+                <button
+                  v-if="commentGate.actionLabel"
+                  class="resource-detail-page__comment-action"
+                  type="button"
+                  @click="handleCommentGateAction"
+                >
                   {{ commentGate.actionLabel }}
                 </button>
               </div>
-              <form v-else class="resource-detail-page__comment-form" @submit.prevent="submitResourceComment">
-                <textarea v-model="commentText" class="resource-detail-page__comment-input" rows="4" maxlength="300"
-                  placeholder="写下你对这个资源的使用体验、兼容性补充或改进建议"></textarea>
+              <form
+                v-else
+                class="resource-detail-page__comment-form"
+                @submit.prevent="submitResourceComment"
+              >
+                <textarea
+                  v-model="commentText"
+                  class="resource-detail-page__comment-input"
+                  rows="4"
+                  maxlength="300"
+                  placeholder="写下你对这个资源的使用体验、兼容性补充或改进建议"
+                ></textarea>
                 <div class="resource-detail-page__comment-toolbar">
-                  <span class="resource-detail-page__comment-count"
-                    :class="{ danger: commentTextLength > COMMENT_MAX_LENGTH }">
+                  <span
+                    class="resource-detail-page__comment-count"
+                    :class="{ danger: commentTextLength > COMMENT_MAX_LENGTH }"
+                  >
                     {{ commentTextLength }} / {{ COMMENT_MAX_LENGTH }}
                   </span>
-                  <button class="resource-detail-page__comment-submit" type="submit" :disabled="!canSubmitComment">
+                  <button
+                    class="resource-detail-page__comment-submit"
+                    type="submit"
+                    :disabled="!canSubmitComment"
+                  >
                     {{ commentSubmitting ? '发布中...' : '发布评论' }}
                   </button>
                 </div>
               </form>
             </section>
 
-            <TLoading tag="div" class="resource-detail-page__comment-list" :loading="commentsLoading">
-              <article v-for="comment in comments" :key="comment.id" class="resource-detail-page__comment-item"
-                :class="{ mine: auth.username && comment.commenter === auth.username }">
+            <TLoading
+              tag="div"
+              class="resource-detail-page__comment-list"
+              :loading="commentsLoading"
+            >
+              <article
+                v-for="comment in comments"
+                :key="comment.id"
+                class="resource-detail-page__comment-item"
+                :class="{ mine: auth.username && comment.commenter === auth.username }"
+              >
                 <div class="resource-detail-page__comment-avatar">
                   {{ getCommenterInitial(comment.commenter) }}
                 </div>
                 <div class="resource-detail-page__comment-body">
                   <div class="resource-detail-page__comment-meta">
-                    <strong :class="{ 'username-gradient': comment.commenter_username_gradient && !comment.commenter_username_color }" :style="comment.commenter_username_color ? { color: comment.commenter_username_color } : {}">{{ comment.commenter }}</strong>
+                    <strong
+                      :class="{
+                        'username-gradient':
+                          comment.commenter_username_gradient && !comment.commenter_username_color,
+                      }"
+                      :style="
+                        comment.commenter_username_color
+                          ? { color: comment.commenter_username_color }
+                          : {}
+                      "
+                      >{{ comment.commenter }}</strong
+                    >
                     <span>{{ formatVersionTime(comment.updated_at) }}</span>
                   </div>
                   <p>{{ comment.comment_text }}</p>
                 </div>
               </article>
-              <p v-if="!commentsLoading && comments.length === 0" class="resource-detail-page__paragraph">
+              <p
+                v-if="!commentsLoading && comments.length === 0"
+                class="resource-detail-page__paragraph"
+              >
                 暂时还没有评论。
               </p>
             </TLoading>
@@ -1410,7 +1569,9 @@ watch(
 
         <ul class="resource-purchase-modal__notes">
           <li>本商品为数字化资源（虚拟商品），支付成功后获得下载权。</li>
-          <li v-if="isPointsListing">确认后立即扣积分并解锁下载；平台抽成后净额计入卖家积分账户。</li>
+          <li v-if="isPointsListing">
+            确认后立即扣积分并解锁下载；平台抽成后净额计入卖家积分账户。
+          </li>
           <li>尚未产生成功下载前可申请退款；下载成功后不支持自助退款。</li>
         </ul>
 
@@ -1458,7 +1619,9 @@ watch(
         </p>
 
         <div
-          v-if="!isPointsListing && (purchaseQrDataUrl || purchaseSubmitting || purchaseOrder?.order_no)"
+          v-if="
+            !isPointsListing && (purchaseQrDataUrl || purchaseSubmitting || purchaseOrder?.order_no)
+          "
           class="resource-purchase-modal__qr"
         >
           <img
