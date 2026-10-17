@@ -465,9 +465,11 @@ function handleResourceAction(
   openEditHomepagePage(resource)
 }
 
-/** R028：从「发布资源」入口进创建页——普通资源 / 特殊资源两条，创建页按 query.kind 预选类别。 */
+/** R028：发布入口分两条，各进各的创建页——普通资源 `dev-plugins`、特殊资源 `dev-plugins-special`。 */
 function goCreateResource(kind: unknown) {
-  void router.push({ name: 'dev-plugins', query: { kind: resourceKindFromQuery(kind) } })
+  void router.push({
+    name: resourceKindFromQuery(kind) === 'special' ? 'dev-plugins-special' : 'dev-plugins',
+  })
 }
 
 function handleResourceCommand(payload: { action: string; resource: McResourcePayload }) {
@@ -887,8 +889,8 @@ async function setResourcePrivate(resource: McResourcePayload) {
           <h3 class="dev-section-title">资源列表</h3>
         </div>
         <div class="dev-card-head__actions">
-          <!-- R028：发布入口分两条——普通资源（大厅公开展示）与特殊资源（不公开展示，指定来源下单）。
-               触发元素沿用原来的主按钮外观，菜单项只写类别名，含义由创建页的「资源类别」下拉说明。 -->
+          <!-- R028：发布入口分两条——普通资源（大厅公开展示）与特殊资源（不公开展示，指定来源下单），
+               各自进自己的创建页；类别由入口决定，创建页表单里不再有「资源类别」。 -->
           <TDropdown trigger="click" @command="(cmd: unknown) => goCreateResource(cmd)">
             <button type="button" class="dev-btn dev-btn--primary">
               <TIcon>

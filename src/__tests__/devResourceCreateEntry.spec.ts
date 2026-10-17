@@ -2,8 +2,8 @@ import { flushPromises, shallowMount, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * R028：开发者工作台「发布资源」入口分两条（普通资源 / 特殊资源），
- * 创建页按入口的 query.kind 预选资源类别。
+ * R028：开发者工作台「发布资源」入口分两条（普通资源 / 特殊资源），各进自己的创建路由
+ * （`dev-plugins` / `dev-plugins-special`）；创建页的类别由路由 props 传入，表单里没有这个选项。
  *
  * 两个页面都走 shallowMount + setupState 调函数的写法（与 devResourceTransferList.spec.ts 一致）：
  * ui_73info 的下拉面板会 Teleport 到 body，真挂载去点菜单反而更脆。
@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
   push: vi.fn(),
+  replace: vi.fn(),
   route: { params: {}, query: {} } as { params: Record<string, string>; query: Record<string, unknown> },
   listResources: vi.fn(),
   inbox: vi.fn(),
@@ -20,7 +21,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ push: mocks.push, resolve: () => ({ href: '/' }) }),
+  useRouter: () => ({ push: mocks.push, replace: mocks.replace, resolve: () => ({ href: '/' }) }),
   useRoute: () => mocks.route,
 }))
 vi.mock('@/stores/auth', () => ({
@@ -88,8 +89,9 @@ function mountList(): VueWrapper {
   })
 }
 
-function mountCreate(): VueWrapper {
+function mountCreate(props: { kind?: 'normal' | 'special' } = {}): VueWrapper {
   return shallowMount(DevResourceInitView, {
+    props,
     global: {
       config: { warnHandler: () => {} },
       stubs: {
@@ -124,27 +126,27 @@ describe('DevResourceListView：发布资源入口分两条', () => {
     wrapper.unmount()
   })
 
-  it('goCreateResource 按类别跳创建页，并在 query 里带上 kind', async () => {
+  it('goCreateResource 按类别跳到各自的创建页', async () => {
     const wrapper = mountList()
     await flushPromises()
     const view = state<{ goCreateResource: (kind: unknown) => void }>(wrapper)
 
     view.goCreateResource('normal')
-    expect(mocks.push).toHaveBeenLastCalledWith({ name: 'dev-plugins', query: { kind: 'normal' } })
+    expect(mocks.push).toHaveBeenLastCalledWith({ name: 'dev-plugins' })
 
     view.goCreateResource('special')
-    expect(mocks.push).toHaveBeenLastCalledWith({ name: 'dev-plugins', query: { kind: 'special' } })
+    expect(mocks.push).toHaveBeenLastCalledWith({ name: 'dev-plugins-special' })
 
     // 命令值意外时不能把「看着像特殊」的值带出去
     view.goCreateResource('SPECIAL（不公开展示）')
-    expect(mocks.push).toHaveBeenLastCalledWith({ name: 'dev-plugins', query: { kind: 'normal' } })
+    expect(mocks.push).toHaveBeenLastCalledWith({ name: 'dev-plugins' })
     wrapper.unmount()
   })
 })
 
-type CreateState = { form: { resourceKind: string }; isSpecialKind: boolean }
+type CreateState = { isSpecialKind: boolean }
 
-describe('DevResourceInitView：按入口预选资源类别', () => {
+describe('DevResourceInitView：类别由路由 props 传入', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.route = { params: {}, query: {} }
@@ -152,37 +154,34 @@ describe('DevResourceInitView：按入口预选资源类别', () => {
     mocks.listMyTeams.mockResolvedValue([])
   })
 
-  it('?kind=special 预选特殊资源，接入配置区随之展开', async () => {
-    mocks.route = { params: {}, query: { kind: 'special' } }
-    const wrapper = mountCreate()
+  it('kind=special（特殊资源创建页）展开「特殊资源接入配置」', async () => {
+    const wrapper = mountCreate({ kind: 'special' })
     await flushPromises()
 
-    const view = state<CreateState>(wrapper)
-    expect(view.form.resourceKind).toBe('special')
-    // 「特殊资源接入配置」那一段就是 v-if="isSpecialKind"
-    expect(view.isSpecialKind).toBe(true)
+    // 那一段就是 v-if="isSpecialKind"
+    expect(state<CreateState>(wrapper).isSpecialKind).toBe(true)
     wrapper.unmount()
   })
 
-  it('kind 的大小写与首尾空白不敏感', async () => {
-    mocks.route = { params: {}, query: { kind: ' SPECIAL ' } }
-    const wrapper = mountCreate()
-    await flushPromises()
-
-    expect(state<CreateState>(wrapper).form.resourceKind).toBe('special')
-    wrapper.unmount()
-  })
-
-  it('不带 kind（老入口）、kind=normal 与不认识的值都是普通资源，不展开配置区', async () => {
-    for (const query of [{}, { kind: 'normal' }, { kind: 'other' }]) {
-      mocks.route = { params: {}, query }
-      const wrapper = mountCreate()
+  it('kind=normal 与不带 props（普通资源创建页）都不展开配置区', async () => {
+    for (const props of [{}, { kind: 'normal' }] as const) {
+      const wrapper = mountCreate(props)
       await flushPromises()
 
-      const view = state<CreateState>(wrapper)
-      expect(view.form.resourceKind).toBe('normal')
-      expect(view.isSpecialKind).toBe(false)
+      expect(state<CreateState>(wrapper).isSpecialKind).toBe(false)
       wrapper.unmount()
     }
+  })
+
+  it('老链接上的 ?kind=special 改道到特殊资源创建页，其余 query 原样带过去', async () => {
+    mocks.route = { params: {}, query: { kind: 'special', ownership: 'team' } }
+    const wrapper = mountCreate()
+    await flushPromises()
+
+    expect(mocks.replace).toHaveBeenLastCalledWith({
+      name: 'dev-plugins-special',
+      query: { ownership: 'team' },
+    })
+    wrapper.unmount()
   })
 })
