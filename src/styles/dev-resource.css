@@ -64,7 +64,7 @@
 
 .dev-page--publish .dev-upload-block {
   display: grid;
-  /* minmax(0, 1fr)：隐式列不按 max-content 撑开。否则块里的宽内容（接入示例的长 curl 行）
+  /* minmax(0, 1fr)：隐式列不按 max-content 撑开。否则块里的宽内容（接入提示词的长行）
      会把整块顶出卡片右边界，右侧被卡片裁掉。 */
   grid-template-columns: minmax(0, 1fr);
   gap: 14px;
@@ -116,6 +116,9 @@
    - 购买限制：两个开关加文案约 302px，取 320px 且不伸缩——补满整行会变成左边两个开关、
      右边一大片空白；
    - 原始出处链接 / 转载说明：占位文案 188.7px / 182px → 控件 214.4px / 207.4px，取 320px 起；
+   - 接口资源的「允许的来源地址」：多行清单，走长文本框档（可伸缩），起高给 5 行——
+     通栏会让它变成一条 900px 宽、2 行高的浅条（TInput 的 autosize 默认只给 2 行）；
+     同行的「购买限制」与「是否公开展示」按内容取宽，正好把这一行排满，不留半行空白；
    - 推广分成：拖动条取 280px 起。
 
    ≤900px 走 dev-responsive.css 的单列回落，那里控件照旧满宽。 */
@@ -150,7 +153,9 @@
   flex: 0 1 310px;
 }
 
-/* 长文本框：可伸缩，行尾余量落在输入框里 */
+/* 长文本框：可伸缩，行尾余量落在输入框里。
+   单行输入框（回调地址、回调密钥）与多行清单（允许的来源地址）共用这一档，
+   多行的那一个另外在模板上给 5 行起高（TInput 的 autosize 默认只给 2 行）。 */
 .dev-page--publish .dev-upload-form .dev-form-item--wide {
   flex: 1 1 320px;
 }
@@ -163,11 +168,6 @@
 /* 开关组（购买限制）：按内容取宽，不伸缩 */
 .dev-page--publish .dev-upload-form .dev-form-item--switch {
   flex: 0 1 320px;
-}
-
-/* 通栏字段：独占一行、撑满整行（接口资源接入配置里的「允许的来源地址」） */
-.dev-page--publish .dev-upload-form .dev-form-item--full {
-  flex: 0 0 100%;
 }
 
 /* 售价（元）+ 售价（积分）：两项互斥、成对出现，绑成一个整体，换行时不会被拆到两行去；

@@ -27,14 +27,15 @@ import { listMyTeams, type TeamResponse } from '@/api/team'
 import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
 
 import {
+  caretAfterStripLeadingZeros,
   parsePointsPriceInput,
   parsePromoSharePercentInput,
   parseYuanPriceInput,
+  stripLeadingZeros,
 } from '@/shared/resourceSale'
 import { API_BASE_URL } from '@/shared/api/url'
 import {
-  API_CALLBACK_SIGNATURE_RULE,
-  buildApiPurchaseCurl,
+  buildApiIntegrationPrompt,
   findInvalidAllowedOrigin,
   isValidCallbackUrl,
   listApiChannelBlockers,
@@ -105,6 +106,9 @@ const form = reactive({
   apiAllowStrangers: true,
 })
 
+/** 售价（元）输入框实例：实时归一前导 0 时要拿到它的底层 input 来改写值并复位光标 */
+const cashPriceInputRef = ref<InstanceType<typeof TInput> | null>(null)
+
 const parsedPriceFen = computed(() => parseYuanPriceInput(form.priceYuan))
 const parsedPricePoints = computed(() => parsePointsPriceInput(form.pricePoints))
 /** R029：推广分成比例（万分比）；校验失败时 `ok` 为假，字段上展示同一句文案 */
@@ -129,7 +133,37 @@ const showCopyrightField = computed(
   () => hasCashPrice.value || hasPointsPrice.value || form.copyrightDeclared,
 )
 
+/**
+ * 售价（元）实时归一：去掉整数部分的前导 0（`00100` → `100`）。
+ *
+ * 为什么要自己改 DOM：`TInput` 的 `:value` 只在模型真的变了才回写输入框，而 `00` → `0`
+ * 这类归一不会改变模型，输入框就会停在被归一前的文本上。所以这里拿底层 input 直接改写，
+ * 并把光标按被删掉的位数左移，避免打字时光标跳到开头。
+ * 底层 input 来自 `TInput` 的 `defineExpose`（实例代理会把那个 ref 解包成元素）。
+ */
+function normalizeCashPriceInput() {
+  const raw = form.priceYuan
+  const normalized = stripLeadingZeros(raw)
+  if (normalized === raw) {
+    return
+  }
+
+  const el = cashPriceInputRef.value?.inputRef ?? null
+  const caret = el?.selectionStart ?? null
+  form.priceYuan = normalized
+  if (!el) {
+    return
+  }
+
+  el.value = normalized
+  if (caret !== null) {
+    const next = caretAfterStripLeadingZeros(raw, caret)
+    el.setSelectionRange(next, next)
+  }
+}
+
 function onCashPriceInput() {
+  normalizeCashPriceInput()
   if (hasCashPrice.value) {
     form.pricePoints = '0'
   }
@@ -144,6 +178,13 @@ function onPointsPriceInput() {
 /* ---------- R028 接口资源：渠道配置与一次性密钥 ---------- */
 
 const isApiKind = computed(() => resourceKind.value === 'api')
+/**
+ * 接口资源一律按「原创」归类（不选标签归类、不属于任何根节点 / 二级节点），
+ * 表单里不再给「原创 / 转载」这个选择；普通资源仍按开发者选的值提交。
+ */
+const effectiveOriginType = computed<'original' | 'repost'>(() =>
+  isApiKind.value ? 'original' : form.originType,
+)
 const apiOrigins = computed(() => parseAllowedOriginsInput(form.apiAllowedOrigins))
 const apiCallbackInvalid = computed(
   () => Boolean(form.apiCallbackUrl.trim()) && !isValidCallbackUrl(form.apiCallbackUrl),
@@ -180,10 +221,10 @@ const savedSecretMaskedLabel = computed(() => {
   return saved.callback_secret_masked || '已配置'
 })
 
-const apiSampleCurl = computed(() =>
-  buildApiPurchaseCurl(createdResourceId.value, {
+/** 接入提示词：开发者复制给 AI 编码代理，由代理照指导文档完成服务端接入。 */
+const apiIntegrationPrompt = computed(() =>
+  buildApiIntegrationPrompt(createdResourceId.value, {
     apiBase: API_BASE_URL || (typeof window === 'undefined' ? '' : window.location.origin),
-    origin: apiOrigins.value[0] ?? '',
   }),
 )
 
@@ -218,13 +259,13 @@ async function confirmSecretSaved() {
   await router.push({ name: 'dev-resource-list' })
 }
 
-/** 复制接入示例（curl 片段）。 */
-async function copyApiSample() {
+/** 复制接入提示词（交给 AI 编码代理）。 */
+async function copyApiPrompt() {
   try {
-    await navigator.clipboard.writeText(apiSampleCurl.value)
-    showToast('接入示例已复制', 'success')
+    await navigator.clipboard.writeText(apiIntegrationPrompt.value)
+    showToast('接入提示词已复制', 'success')
   } catch {
-    showToast('复制失败，请手动选中示例代码后再复制', 'warning')
+    showToast('复制失败，请手动选中提示词后再复制', 'warning')
   }
 }
 
@@ -266,6 +307,11 @@ const resourceSummary = computed(() => {
     return ''
   }
 
+  // 接口资源不选标签归类、不属于任何根节点 / 二级节点，简介里只交代「接口资源 · 原创」
+  if (isApiKind.value) {
+    return '接口资源，原创。'
+  }
+
   const scopeLabel = `${currentEntryLabel.value} · ${currentPlatformLabel.value}`
   return `${scopeLabel}资源，已选择 ${selectedTagCount.value} 个标签。`
 })
@@ -280,6 +326,11 @@ const normalizedResourceKey = computed(() => {
 })
 const derivedFileName = computed(() => `${normalizedResourceKey.value}.package`)
 const derivedSourceUrl = computed(() => {
+  // 接口资源没有根节点 / 二级节点，来源地址用资源类别占位
+  if (isApiKind.value) {
+    return `pending://resource/api/${normalizedResourceKey.value}`
+  }
+
   const platformKey = currentPlatform.value
   const entryKey = currentEntryKey.value || 'catalog'
   return `pending://resource/${platformKey}/${entryKey}/${normalizedResourceKey.value}`
@@ -297,12 +348,15 @@ const submitBlockReason = computed(() => {
     return '请选择所属团队'
   }
 
-  if (platformTagGroups.value.length === 0) {
-    return '当前二级节点尚未配置完整标签组'
-  }
+  // 接口资源不选标签归类，标签相关的必填项对它不成立
+  if (!isApiKind.value) {
+    if (platformTagGroups.value.length === 0) {
+      return '当前二级节点尚未配置完整标签组'
+    }
 
-  if (selectedTagCount.value === 0) {
-    return '请至少选择一个标签'
+    if (selectedTagCount.value === 0) {
+      return '请至少选择一个标签'
+    }
   }
 
   return ''
@@ -435,6 +489,11 @@ function openEntry(entryKey: string) {
 }
 
 function buildTagSelections(): CreateMcResourceTagSelection[] {
+  // 接口资源不选标签归类、不属于任何根节点 / 二级节点：一个标签都不提交
+  if (isApiKind.value) {
+    return []
+  }
+
   return platformTagGroups.value
     .map((group) => ({
       group_id: group.group_id,
@@ -507,11 +566,11 @@ async function submitResource(mode: 'private' | 'public') {
   }
 
   if (!canSubmit.value) {
-    showToast('请先补全必填字段和标签选择', 'warning')
+    showToast('请先补全必填字段', 'warning')
     return
   }
 
-  if (form.originType === 'repost' && !form.originUrl.trim()) {
+  if (effectiveOriginType.value === 'repost' && !form.originUrl.trim()) {
     showToast('转载资源必须填写原始出处链接', 'warning')
     return
   }
@@ -570,7 +629,8 @@ async function submitResource(mode: 'private' | 'public') {
     // 上一轮资源已建好、只是后续步骤失败时，这里不再重复建资源。
     if (createdResourceId.value === null) {
       resource = await createMcResource(auth.token, {
-        platform: currentPlatform.value,
+        // 接口资源不属于任何根节点 / 二级节点，没有平台可填；用资源类别占位（后端平台字段必填）
+        platform: isApiKind.value ? '接口资源' : currentPlatform.value,
         title: form.title.trim(),
         author: form.author.trim(),
         description: resourceSummary.value,
@@ -583,7 +643,7 @@ async function submitResource(mode: 'private' | 'public') {
         release_note: null,
         ownership_type: form.ownershipType,
         team_id: form.ownershipType === 'team' && form.teamId ? Number(form.teamId) : null,
-        origin_type: form.originType,
+        origin_type: effectiveOriginType.value,
         origin_author: form.originAuthor.trim() || null,
         origin_url: form.originUrl.trim() || null,
         origin_org: form.originOrg.trim() || null,
@@ -645,7 +705,7 @@ async function submitResource(mode: 'private' | 'public') {
         docs_url: resource.docs_url,
         visibility: 'review',
         release_note: resource.release_note,
-        origin_type: form.originType,
+        origin_type: effectiveOriginType.value,
         origin_author: form.originAuthor.trim() || null,
         origin_url: form.originUrl.trim() || null,
         origin_org: form.originOrg.trim() || null,
@@ -689,27 +749,41 @@ async function submitResource(mode: 'private' | 'public') {
          同一个动作在别的页都在顶条右侧，这里挪上来后全模块只剩一个位置。 -->
     <WorkbenchBarSlot>
       <div class="dev-meta-strip">
-        <div class="dev-meta-strip__item">
-          <span class="dev-meta-strip__label">根节点</span>
-          <span class="dev-meta-strip__value">{{ currentRootLabel }}</span>
-        </div>
-        <div class="dev-meta-strip__divider" />
-        <div class="dev-meta-strip__item">
-          <span class="dev-meta-strip__label">二级节点</span>
-          <span class="dev-meta-strip__value">{{ currentEntryLabel }}</span>
-        </div>
-        <div class="dev-meta-strip__divider" />
-        <div class="dev-meta-strip__item">
-          <span class="dev-meta-strip__label">已选标签</span>
-          <span class="dev-meta-strip__value">{{ selectedTagCount }}</span>
-        </div>
-        <div class="dev-meta-strip__item dev-meta-strip__action">
-          <TButton icon-only aria-label="刷新标签" :loading="isLoadingTags" @click="loadTagTree">
-            <TIcon>
-              <Refresh />
-            </TIcon>
-          </TButton>
-        </div>
+        <!-- 接口资源不选标签归类、不属于任何根节点 / 二级节点，读数条只交代类别与「原创」 -->
+        <template v-if="isApiKind">
+          <div class="dev-meta-strip__item">
+            <span class="dev-meta-strip__label">资源类别</span>
+            <span class="dev-meta-strip__value">接口资源</span>
+          </div>
+          <div class="dev-meta-strip__divider" />
+          <div class="dev-meta-strip__item">
+            <span class="dev-meta-strip__label">类型</span>
+            <span class="dev-meta-strip__value">原创</span>
+          </div>
+        </template>
+        <template v-else>
+          <div class="dev-meta-strip__item">
+            <span class="dev-meta-strip__label">根节点</span>
+            <span class="dev-meta-strip__value">{{ currentRootLabel }}</span>
+          </div>
+          <div class="dev-meta-strip__divider" />
+          <div class="dev-meta-strip__item">
+            <span class="dev-meta-strip__label">二级节点</span>
+            <span class="dev-meta-strip__value">{{ currentEntryLabel }}</span>
+          </div>
+          <div class="dev-meta-strip__divider" />
+          <div class="dev-meta-strip__item">
+            <span class="dev-meta-strip__label">已选标签</span>
+            <span class="dev-meta-strip__value">{{ selectedTagCount }}</span>
+          </div>
+          <div class="dev-meta-strip__item dev-meta-strip__action">
+            <TButton icon-only aria-label="刷新标签" :loading="isLoadingTags" @click="loadTagTree">
+              <TIcon>
+                <Refresh />
+              </TIcon>
+            </TButton>
+          </div>
+        </template>
       </div>
     </WorkbenchBarSlot>
 
@@ -785,7 +859,8 @@ async function submitResource(mode: 'private' | 'public') {
                    两者各自按内容取宽：类型是下拉（短档），版权声明那句勾选文案要 310px 才不折行。
                    版权声明只在填了价格或已勾选时出现（见 showCopyrightField），
                    它不出现时后面的字段自然前移——不再为「整行落位稳定」预留半格空档。 -->
-              <TFormItem label="类型" class="dev-form-item--short">
+              <!-- 接口资源一律「原创」（见 effectiveOriginType），不给这个选择 -->
+              <TFormItem v-if="!isApiKind" label="类型" class="dev-form-item--short">
                 <TSelect v-model="form.originType" style="width: 100%">
                   <TOption label="原创" value="original" />
                   <TOption label="转载" value="repost" />
@@ -803,6 +878,7 @@ async function submitResource(mode: 'private' | 'public') {
               <div class="dev-price-group">
                 <TFormItem label="售价（元）">
                   <TInput
+                    ref="cashPriceInputRef"
                     v-model="form.priceYuan"
                     :disabled="cashPriceDisabled"
                     placeholder="0 表示免费"
@@ -854,7 +930,7 @@ async function submitResource(mode: 'private' | 'public') {
                 </p>
               </TFormItem>
 
-              <template v-if="form.originType === 'repost'">
+              <template v-if="effectiveOriginType === 'repost'">
                 <TFormItem label="原作者">
                   <TInput
                     v-model="form.originAuthor"
@@ -930,19 +1006,6 @@ async function submitResource(mode: 'private' | 'public') {
                 <p class="dev-field-hint">当前：{{ savedSecretMaskedLabel }}</p>
               </TFormItem>
 
-              <TFormItem label="允许的来源地址" class="dev-form-item--full">
-                <TInput
-                  v-model="form.apiAllowedOrigins"
-                  type="textarea"
-                  :rows="5"
-                  :maxlength="2000"
-                  placeholder="https://shop.example.com&#10;*.example.com&#10;203.0.113.9"
-                />
-                <p v-if="invalidApiOrigin" class="dev-field-hint dev-field-hint--error">
-                  当前不合法：{{ invalidApiOrigin }}
-                </p>
-              </TFormItem>
-
               <TFormItem label="购买限制" class="dev-form-item--switch">
                 <div class="dev-api-switch-row">
                   <label class="dev-api-switch">
@@ -959,6 +1022,21 @@ async function submitResource(mode: 'private' | 'public') {
               <TFormItem label="是否公开展示" class="dev-form-item--short">
                 <TTag variant="soft" tone="neutral">不在大厅展示</TTag>
               </TFormItem>
+
+              <!-- 顺序是有意的：可伸缩的多行清单放最后，行尾余量落在它身上，
+                   最后一行不会被撑成半空；购买限制与是否公开展示按内容取宽、并排成一行。 -->
+              <TFormItem label="允许的来源地址" class="dev-form-item--wide">
+                <TInput
+                  v-model="form.apiAllowedOrigins"
+                  type="textarea"
+                  :autosize="{ minRows: 5, maxRows: 12 }"
+                  :maxlength="2000"
+                  placeholder="https://shop.example.com&#10;*.example.com&#10;203.0.113.9"
+                />
+                <p v-if="invalidApiOrigin" class="dev-field-hint dev-field-hint--error">
+                  当前不合法：{{ invalidApiOrigin }}
+                </p>
+              </TFormItem>
             </div>
           </TForm>
 
@@ -970,27 +1048,15 @@ async function submitResource(mode: 'private' | 'public') {
 
           <div class="dev-api-sample">
             <div class="dev-api-sample__head">
-              <h4 class="dev-api-sample__title">接入示例（在你自有站点的服务端调用）</h4>
-              <TButton variant="outline" @click="copyApiSample">复制示例</TButton>
+              <h4 class="dev-api-sample__title">接入提示词（复制给 AI 编码代理）</h4>
+              <TButton variant="outline" @click="copyApiPrompt">复制提示词</TButton>
             </div>
-            <pre class="dev-api-sample__code">{{ apiSampleCurl }}</pre>
-            <ul class="dev-api-sample__notes">
-              <li>
-                接口密钥走 <code>X-Api-Key</code> 头（形如 <code>sk-73info-…</code>），在平台生成；
-                本轮平台侧还没有密钥管理页面，需要时由平台方提供。
-              </li>
-              <li>
-                回调验签：用你填的回调密钥，按
-                <code>{{ API_CALLBACK_SIGNATURE_RULE }}</code>
-                自算签名，与请求头 <code>X-73Info-Signature</code> 比对（时间戳在
-                <code>X-73Info-Timestamp</code>）。
-              </li>
-              <li>返回里的 <code>pay_url</code> 交给买家付款；买家付完，平台回调上面填的地址。</li>
-            </ul>
+            <pre class="dev-api-sample__code">{{ apiIntegrationPrompt }}</pre>
           </div>
         </section>
 
-        <section class="dev-upload-block dev-upload-block--split">
+        <!-- 接口资源不选标签归类（不属于任何根节点 / 二级节点），整块不出现 -->
+        <section v-if="!isApiKind" class="dev-upload-block dev-upload-block--split">
           <header class="dev-card-head">
             <section class="dev-card-head__title-block">
               <h3 class="dev-section-title">标签归类</h3>
@@ -1094,9 +1160,9 @@ async function submitResource(mode: 'private' | 'public') {
             <span class="dev-submit-summary__status">{{
               canSubmit ? '准备就绪' : submitBlockReason
             }}</span>
-            <span class="dev-submit-summary__meta"
-              >{{ currentEntryLabel }} · {{ selectedTagCount }} 个标签</span
-            >
+            <span class="dev-submit-summary__meta">{{
+              isApiKind ? '接口资源 · 原创' : `${currentEntryLabel} · ${selectedTagCount} 个标签`
+            }}</span>
           </section>
           <div class="dev-upload-actions__buttons">
             <TButton
@@ -1160,7 +1226,7 @@ async function submitResource(mode: 'private' | 'public') {
   color: var(--73-danger, #b42318);
 }
 
-/* R028 接口资源配置区：两列字段，整行项跨两列 */
+/* R028 接口资源配置区：字段按内容宽排布，见 dev-resource.css 的 .dev-upload-grid--form */
 .dev-api-notice {
   margin: 0 0 4px;
 }
@@ -1180,12 +1246,14 @@ async function submitResource(mode: 'private' | 'public') {
   color: var(--text-primary, #1f2937);
 }
 
+/* 一次性密钥与接入提示词两块面板：与上一块的间距同 .dev-upload-block 的 14px 行距合起来是 18px，
+   与表单行距、提示条间距同一档（原来写 16px，合起来 30px，比其余间距都宽一截）。 */
 .dev-api-secret {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-  margin: 16px 0 0;
+  margin: 4px 0 0;
   padding: 14px 16px;
   border: 1px solid var(--73-warning, #d97706);
   border-radius: 10px;
@@ -1214,7 +1282,7 @@ async function submitResource(mode: 'private' | 'public') {
 }
 
 .dev-api-sample {
-  margin: 16px 0 0;
+  margin: 4px 0 0;
   padding: 14px 16px;
   border: 1px solid var(--dev-line, #e2e8f0);
   border-radius: 10px;
@@ -1246,26 +1314,9 @@ async function submitResource(mode: 'private' | 'public') {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
   line-height: 1.6;
-  /* 长 curl 行折行显示（复制出来的文本不受影响），不靠横向滚动把内容藏起来 */
+  /* 提示词的长行折行显示（复制出来的文本不受影响），不靠横向滚动把内容藏起来 */
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-
-.dev-api-sample__notes {
-  margin: 12px 0 0;
-  padding-left: 18px;
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--text-secondary, #64748b);
-}
-
-.dev-api-sample__notes code {
-  padding: 1px 4px;
-  border-radius: 4px;
-  background: #e2e8f0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
-  color: #334155;
 }
 
 .dev-secret-dialog__hint {

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import {
   API_CALLBACK_SIGNATURE_RULE,
-  buildApiPurchaseCurl,
+  API_INTEGRATION_GUIDE_PATH,
+  API_OPEN_PURCHASE_PATH,
+  buildApiIntegrationPrompt,
   findInvalidAllowedOrigin,
   formatAllowedOriginsText,
   isApiResourceKind,
@@ -163,18 +165,18 @@ describe('resourceApi', () => {
     ).toEqual(['未配置回调地址，暂不可被下单', '未配置允许来源，暂不可被下单'])
   })
 
-  it('buildApiPurchaseCurl 带上资源编号、接口密钥头与来源', () => {
-    const sample = buildApiPurchaseCurl(88, {
-      apiBase: 'https://api.73info.cn/',
-      origin: 'https://shop.example.com',
-    })
+  it('buildApiIntegrationPrompt 带上指导文档、接口密钥与接入地址', () => {
+    const prompt = buildApiIntegrationPrompt(88, { apiBase: 'https://api.73info.cn/' })
 
-    expect(sample).toContain('POST "https://api.73info.cn/api/resource/open/api-purchase"')
-    expect(sample).toContain('X-Api-Key: sk-73info-')
-    expect(sample).toContain('"resource_id": 88')
-    expect(sample).toContain('"origin": "https://shop.example.com"')
+    expect(prompt).toContain(`https://api.73info.cn${API_INTEGRATION_GUIDE_PATH}`)
+    expect(prompt).toContain('X-Api-Key')
+    expect(prompt).toContain('sk-73info-')
+    expect(prompt).toContain(`POST https://api.73info.cn${API_OPEN_PURCHASE_PATH}`)
+    expect(prompt).toContain('resource_id = 88')
+    // 不再组装 curl：旧示例里的调用体字段不应再出现在提示词里
+    expect(prompt).not.toContain('curl')
     // 资源编号未知时用占位符，不要让开发者抄到一条假编号
-    expect(buildApiPurchaseCurl(null, { apiBase: 'https://api.73info.cn' })).toContain(
+    expect(buildApiIntegrationPrompt(null, { apiBase: 'https://api.73info.cn' })).toContain(
       '{你的资源编号}',
     )
     expect(API_CALLBACK_SIGNATURE_RULE).toBe('HMAC-SHA256(secret, "{timestamp}.{raw_body}")')
