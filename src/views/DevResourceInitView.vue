@@ -62,6 +62,15 @@ const router = useRouter()
 const route = useRoute()
 const { showToast } = useToast()
 
+/**
+ * R028：资源类别由入口决定——两条创建路由各自把 `kind` 传进来（`dev-plugins` = 普通资源、
+ * `dev-plugins-special` = 特殊资源），表单里不再有「资源类别」这个可选项。
+ */
+const props = withDefaults(defineProps<{ kind?: McResourceKind }>(), { kind: 'normal' })
+const resourceKind = computed<McResourceKind>(() =>
+  props.kind === 'special' ? 'special' : 'normal',
+)
+
 const processedTree = ref<McProcessedTagTree>({ roots: [] })
 const currentRootKey = ref('')
 const currentEntryKey = ref('')
@@ -86,9 +95,7 @@ const form = reactive({
   /** R029 售卖推广分成比例：百分比数值（0～50，拖动条，0 = 关闭） */
   promoSharePercent: 0,
   copyrightDeclared: false,
-  /** R028 资源类别：normal = 大厅公开展示；special = 不公开展示，只能指定来源下单 */
-  resourceKind: 'normal' as McResourceKind,
-  /** R028 特殊资源渠道配置（选「特殊资源」后才展开） */
+  /** R028 特殊资源渠道配置（进的是特殊资源创建页才展开） */
   specialCallbackUrl: '',
   specialCallbackSecret: '',
   /** 允许来源：多行文本，一行一个 */
@@ -135,9 +142,9 @@ function onPointsPriceInput() {
   }
 }
 
-/* ---------- R028 特殊资源：类别、渠道配置与一次性密钥 ---------- */
+/* ---------- R028 特殊资源：渠道配置与一次性密钥 ---------- */
 
-const isSpecialKind = computed(() => form.resourceKind === 'special')
+const isSpecialKind = computed(() => resourceKind.value === 'special')
 const specialOrigins = computed(() => parseAllowedOriginsInput(form.specialAllowedOrigins))
 const specialCallbackInvalid = computed(
   () => Boolean(form.specialCallbackUrl.trim()) && !isValidCallbackUrl(form.specialCallbackUrl),
@@ -351,9 +358,13 @@ onMounted(async () => {
   await loadTagTree()
   await loadMyTeams()
 
-  // R028：从资源列表的「发布资源」入口进来时，按 query 预选资源类别
-  // （普通资源 → ?kind=normal，特殊资源 → ?kind=special；不带 query 的老入口仍是普通资源）
-  form.resourceKind = resourceKindFromQuery(route.query.kind)
+  // R028：入口已拆成两条创建路由，老链接上的 `?kind=special` 直接改道到特殊资源创建页
+  if (props.kind !== 'special' && resourceKindFromQuery(route.query.kind) === 'special') {
+    const query = { ...route.query }
+    delete query.kind
+    await router.replace({ name: 'dev-plugins-special', query })
+    return
+  }
 
   // 从「团队资源」页进入时，自动归属团队项目
   if (route.query.ownership === 'team' && hasJoinedTeam.value) {
@@ -435,7 +446,6 @@ function resetForm() {
   form.pricePoints = '0'
   form.promoSharePercent = 0
   form.copyrightDeclared = false
-  form.resourceKind = 'normal'
   form.specialCallbackUrl = ''
   form.specialCallbackSecret = ''
   form.specialAllowedOrigins = ''
@@ -557,7 +567,7 @@ async function submitResource(mode: 'private' | 'public') {
         price_fen: priceParsed.fen,
         price_points: pointsParsed.points,
         copyright_declared: form.copyrightDeclared,
-        resource_kind: form.resourceKind,
+        resource_kind: resourceKind.value,
         // R029：推广分成比例随资源一次保存；0 = 关闭，显式下发，不靠省略字段表达「不改」
         promo_share_bps: promoParsed.bps,
       })
@@ -614,7 +624,7 @@ async function submitResource(mode: 'private' | 'public') {
         price_fen: priceParsed.fen,
         price_points: pointsParsed.points,
         copyright_declared: form.copyrightDeclared,
-        resource_kind: form.resourceKind,
+        resource_kind: resourceKind.value,
         promo_share_bps: promoParsed.bps,
       })
     }
@@ -682,8 +692,9 @@ async function submitResource(mode: 'private' | 'public') {
 
           <TForm label-position="top" class="dev-upload-form">
             <!-- 这一组的字段顺序按需求方定的口径：图标文件 → 资源标题 → 归属 → 版权（类型 + 版权声明
-                 同占一格）→ 资源类别 → 售价（元）→ 售价（积分）→ 推广分成；
-                 转载来源那组字段随「类型 = 转载」在末尾展开，不插在上面八项中间。 -->
+                 同占一格）→ 售价（元）→ 售价（积分）→ 推广分成；
+                 转载来源那组字段随「类型 = 转载」在末尾展开，不插在上面七项中间。
+                 资源类别不在表单里：它是入口决定的（普通资源 / 特殊资源各一条创建路由）。 -->
             <div class="dev-upload-grid dev-upload-grid--three dev-upload-grid--form">
               <TFormItem label="图标文件">
                 <ResourceIconPicker v-model="form.coverUrl" v-model:file="selectedIconFile" />
@@ -746,13 +757,6 @@ async function submitResource(mode: 'private' | 'public') {
                 </TFormItem>
               </div>
 
-              <TFormItem label="资源类别" required class="dev-form-item--wide">
-                <TSelect v-model="form.resourceKind" style="width: 100%">
-                  <TOption label="普通资源（大厅公开展示）" value="normal" />
-                  <TOption label="特殊资源（不公开展示，指定来源下单）" value="special" />
-                </TSelect>
-              </TFormItem>
-
               <TFormItem label="售价（元）">
                 <TInput
                   v-model="form.priceYuan"
@@ -778,7 +782,7 @@ async function submitResource(mode: 'private' | 'public') {
               </TFormItem>
 
               <!-- R029 推广分成：0～50（%），0 = 关闭；拖动条 + 百分比展示，随资源一次保存（promo_share_bps） -->
-              <TFormItem label="推广分成" class="dev-form-item--wide">
+              <TFormItem label="推广分成" class="dev-form-item--full">
                 <div class="dev-promo-share">
                   <input
                     v-model.number="form.promoSharePercent"
@@ -819,8 +823,8 @@ async function submitResource(mode: 'private' | 'public') {
           </TForm>
         </section>
 
-        <!-- R028 特殊资源：选「特殊资源」才展开。字段与后端契约一一对应（资源类别随资源一次保存，
-             渠道配置在资源建好之后 PUT）。 -->
+        <!-- R028 特殊资源：只有特殊资源创建页（dev-plugins-special）才有这一段。
+             字段与后端契约一一对应（资源类别随资源一次保存，渠道配置在资源建好之后 PUT）。 -->
         <section v-if="isSpecialKind" class="dev-upload-block dev-upload-block--split">
           <header class="dev-card-head">
             <section class="dev-card-head__title-block">
