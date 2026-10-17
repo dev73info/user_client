@@ -10,7 +10,6 @@
    - .dev-filter-panel / .dev-publish-specs / .dev-publish-spec（未接线的空壳）。
    卡片一律 .dev-surface-card，卡片头 .dev-card-head，列表项 .dev-stack-item，见 dev-base.css。 */
 
-
 .dev-upload-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -105,7 +104,8 @@
    - 归属占 1 档；
    - 类型 + 版权同处一个跨 2 档的组，组内分行见下面的 `.dev-copyright-group`；
    - 售价（元）、售价（积分）各占 1 档：四档等宽，两者天然等宽（占位文案最长 101.14px +
-     内边距与描边 25.3px = 126.4px，1 档放得下）；
+     内边距与描边 25.3px = 126.4px，1 档放得下）；特殊资源不渲染「售价（积分）」（R028 只走现金价），
+     售价（元）改占 2 档，那一行照旧铺满；
    - 推广分成占满 4 档：拖动条要够长。原先它占 2 档、右边两档留给「资源类别」，
      而资源类别已改成由入口决定（普通资源 / 特殊资源各一条创建路由、表单里不再有这一项），
      那一行只剩推广分成——仍占 2 档会让整行右侧空两格，拉满 4 档正好补齐；
@@ -174,7 +174,10 @@
   background: rgba(248, 251, 255, 0.72);
   color: var(--dev-muted);
   cursor: pointer;
-  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .dev-page--publish .dev-icon-upload--square:hover {
@@ -892,7 +895,9 @@
   background: rgba(248, 251, 255, 0.72);
   color: var(--dev-muted);
   cursor: pointer;
-  transition: border-color 0.18s ease, background 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease;
 }
 
 .dev-icon-dialog__preview:hover {
