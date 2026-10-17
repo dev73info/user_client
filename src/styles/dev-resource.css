@@ -35,9 +35,13 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* 标签组：按内容宽排布，多个组一行并排、排不下才换行。
+   行宽由内容决定（标题 + 计数 + 下拉框），不撑满整块可用宽度——
+   否则一行里只有一个窄标题加一个空下拉框，右侧大片留白。 */
 .dev-upload-grid--tag-groups {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 12px;
 }
 
@@ -384,6 +388,9 @@
   align-content: start;
   align-items: stretch;
   row-gap: 8px;
+  /* 缩到内容宽：标题与计数贴在一起，下拉框按内容宽；不占满整行 */
+  width: max-content;
+  max-width: 100%;
   padding: 12px;
   border: 1px solid rgba(31, 74, 209, 0.1);
   border-radius: 12px;
