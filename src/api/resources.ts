@@ -74,7 +74,7 @@ export type PublicMcResourceItem = {
   copyright_declared: boolean
   copyright_declared_at?: string | null
   /**
-   * 资源类别：`special` 不会出现在公开列表里（公开面本来就收不到，加上只是为了类型完整）。
+   * 资源类别：`api` 不会出现在公开列表里（公开面本来就收不到，加上只是为了类型完整）。
    */
   resource_kind?: McResourceKind | null
   /** 售卖推广分成比例（万分比）；0 = 未开启；公开面用于购买面板的轻提示 */
@@ -268,7 +268,9 @@ export async function unlikePublicMcResource(
 
 function isDownloadPlaceholder(fileName: string): boolean {
   const normalized = fileName.trim().toLowerCase()
-  return normalized === 'download' || normalized === 'download.73' || normalized.endsWith('.package')
+  return (
+    normalized === 'download' || normalized === 'download.73' || normalized.endsWith('.package')
+  )
 }
 
 export function resolveResourceDownloadFileName(
@@ -300,10 +302,7 @@ function getResponseFileName(response: Response, fallbackFileName: string): stri
  * 提取真实文件名：去掉 `{uuid}-` 前缀，还原上传时的原始文件名。
  * 若 URL 不符合该格式则返回 fallback。
  */
-export function extractResourceFileNameFromUrl(
-  path: string,
-  fallbackFileName: string,
-): string {
+export function extractResourceFileNameFromUrl(path: string, fallbackFileName: string): string {
   try {
     const raw = path.split('?')[0] ?? ''
     const segments = raw.split('/').filter(Boolean)
@@ -313,7 +312,9 @@ export function extractResourceFileNameFromUrl(
     }
 
     // 匹配 `{uuid}-{original_name}` 形式：uuid 通常为 36 位（含连字符）
-    const uuidMatch = last.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-(.+)$/i)
+    const uuidMatch = last.match(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-(.+)$/i,
+    )
     if (uuidMatch?.[1]) {
       return resolveResourceDownloadFileName(decodeURIComponent(uuidMatch[1]), fallbackFileName)
     }
@@ -372,7 +373,6 @@ export async function downloadPublicMcResourceFile(
   const chunks: BlobPart[] = []
   let loaded = 0
 
-
   while (true) {
     const { done, value } = await reader.read()
     if (done) {
@@ -387,7 +387,9 @@ export async function downloadPublicMcResourceFile(
     })
   }
 
-  const blob = new Blob(chunks, { type: response.headers.get('content-type') ?? 'application/octet-stream' })
+  const blob = new Blob(chunks, {
+    type: response.headers.get('content-type') ?? 'application/octet-stream',
+  })
   onProgress?.({ loaded, total, percent: 100 })
   return {
     blob,

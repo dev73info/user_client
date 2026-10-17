@@ -103,7 +103,7 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
     redirect: { name: 'dev-plugins' },
   },
   {
-    // 普通资源与特殊资源各一条创建页（R028）：类别由入口决定，表单里不再有「资源类别」。
+    // 普通资源与接口资源各一条创建页（R028）：类别由入口决定，表单里不再有「资源类别」。
     path: 'developer/resources/plugins-init',
     name: 'dev-plugins',
     component: () => import('@/views/DevResourceInitView.vue'),
@@ -117,13 +117,13 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
     },
   },
   {
-    path: 'developer/resources/plugins-init-special',
-    name: 'dev-plugins-special',
+    path: 'developer/resources/plugins-init-api',
+    name: 'dev-plugins-api',
     component: () => import('@/views/DevResourceInitView.vue'),
-    props: { kind: 'special' },
+    props: { kind: 'api' },
     meta: {
-      title: '创建特殊资源',
-      description: '创建不在大厅展示、只能由指定来源下单的特殊资源。',
+      title: '创建接口资源',
+      description: '创建不在大厅展示、只能由指定来源下单的接口资源。',
       devArea: true,
       requiresDevAccess: true,
       requiresRealname: true,

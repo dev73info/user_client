@@ -49,7 +49,7 @@ import {
   formatResourcePriceLabel,
   isPricedResource,
 } from '@/shared/resourceSale'
-import { isSpecialResourceKind, resourceKindFromQuery } from '@/shared/resourceSpecial'
+import { isApiResourceKind, resourceKindFromQuery } from '@/shared/resourceApi'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import {
   describeTransferError,
@@ -465,10 +465,10 @@ function handleResourceAction(
   openEditHomepagePage(resource)
 }
 
-/** R028：发布入口分两条，各进各的创建页——普通资源 `dev-plugins`、特殊资源 `dev-plugins-special`。 */
+/** R028：发布入口分两条，各进各的创建页——普通资源 `dev-plugins`、接口资源 `dev-plugins-api`。 */
 function goCreateResource(kind: unknown) {
   void router.push({
-    name: resourceKindFromQuery(kind) === 'special' ? 'dev-plugins-special' : 'dev-plugins',
+    name: resourceKindFromQuery(kind) === 'api' ? 'dev-plugins-api' : 'dev-plugins',
   })
 }
 
@@ -889,7 +889,7 @@ async function setResourcePrivate(resource: McResourcePayload) {
           <h3 class="dev-section-title">资源列表</h3>
         </div>
         <div class="dev-card-head__actions">
-          <!-- R028：发布入口分两条——普通资源（大厅公开展示）与特殊资源（不公开展示，指定来源下单），
+          <!-- R028：发布入口分两条——普通资源（大厅公开展示）与接口资源（不公开展示，指定来源下单），
                各自进自己的创建页；类别由入口决定，创建页表单里不再有「资源类别」。 -->
           <TDropdown trigger="click" @command="(cmd: unknown) => goCreateResource(cmd)">
             <button type="button" class="dev-btn dev-btn--primary">
@@ -901,7 +901,7 @@ async function setResourcePrivate(resource: McResourcePayload) {
             <template #dropdown>
               <TDropdownMenu>
                 <TDropdownItem :command="'normal'">普通资源</TDropdownItem>
-                <TDropdownItem :command="'special'">特殊资源</TDropdownItem>
+                <TDropdownItem :command="'api'">接口资源</TDropdownItem>
               </TDropdownMenu>
             </template>
           </TDropdown>
@@ -997,14 +997,14 @@ async function setResourcePrivate(resource: McResourcePayload) {
               <TTag variant="outline" :tone="resourceVisibilityTagType(scope.row.visibility)">
                 {{ resourceVisibilityLabel(scope.row.visibility) }}
               </TTag>
-              <!-- R028：特殊资源不进大厅，列表里必须一眼看得出来 -->
+              <!-- R028：接口资源不进大厅，列表里必须一眼看得出来 -->
               <TTag
-                v-if="isSpecialResourceKind(scope.row.resource_kind)"
+                v-if="isApiResourceKind(scope.row.resource_kind)"
                 variant="soft"
                 tone="warning"
-                data-testid="resource-special-tag"
+                data-testid="resource-api-tag"
               >
-                特殊资源 · 不在大厅展示
+                接口资源 · 不在大厅展示
               </TTag>
               <TTag
                 v-if="isResourceArchiveLocked(scope.row)"
