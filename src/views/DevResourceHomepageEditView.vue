@@ -79,6 +79,7 @@ import {
   Refresh,
   Switch,
   View,
+  type SelectModelValue,
 } from 'ui_73info'
 
 type RichTextEditorInstance = InstanceType<typeof RichTextEditor>
@@ -610,15 +611,23 @@ async function loadTagTree() {
   }
 }
 
-function openEntry(entryKey: string) {
-  if (entryKey === currentEntryKey.value) return
-  currentEntryKey.value = entryKey
+/**
+ * 根节点下拉改选：二级节点随之落到新根节点的首个二级节点，
+ * 避免留下上一棵树里的失效 key（那会让二级节点停在兜底项上，看起来像没跟着切）。
+ */
+function selectRoot(value: SelectModelValue) {
+  const rootKey = typeof value === 'string' ? value : ''
+  const root = rootTabs.value.find((item) => item.key === rootKey)
+  if (!root) return
+  currentRootKey.value = root.key
+  currentEntryKey.value = root.first_entry_key ?? ''
 }
 
-function openRoot(rootKey: string, firstEntryKey: string | null) {
-  if (rootKey === currentRootKey.value) return
-  currentRootKey.value = rootKey
-  currentEntryKey.value = firstEntryKey ?? ''
+/** 二级节点下拉改选：选项由当前根节点决定，这里再确认一次值还在候选里。 */
+function selectEntry(value: SelectModelValue) {
+  const entryKey = typeof value === 'string' ? value : ''
+  if (!entryTabs.value.some((entry) => entry.key === entryKey)) return
+  currentEntryKey.value = entryKey
 }
 
 function buildTagSelections(): CreateMcResourceTagSelection[] {
@@ -1349,45 +1358,48 @@ onMounted(async () => {
             </header>
 
             <div v-if="entryTabs.length > 0" class="dev-catalog-section">
-              <section class="dev-root-switch dev-root-switch--catalog" aria-label="根节点选择">
-                <div class="dev-root-switch__head">
-                  <span class="dev-root-switch__label">根节点</span>
-                  <span class="dev-root-switch__meta">当前：{{ currentRootLabel }}</span>
-                </div>
-                <div class="dev-root-switch__chips">
-                  <button
-                    v-for="root in rootTabs"
-                    :key="root.key"
-                    class="dev-catalog-chip"
-                    :class="{ active: root.key === currentRootKey }"
-                    type="button"
-                    @click="openRoot(root.key, root.first_entry_key)"
-                  >
-                    {{ root.label }}
-                  </button>
-                </div>
-              </section>
-
-              <section class="dev-catalog-nav" aria-label="资源目录导航">
-                <div class="dev-catalog-nav__row">
-                  <div class="dev-catalog-nav__head">
-                    <span class="dev-catalog-nav__label">二级节点</span>
-                    <span class="dev-catalog-nav__meta">当前：{{ currentEntryLabel }}</span>
+              <div class="dev-upload-grid dev-upload-grid--two">
+                <section class="dev-catalog-select">
+                  <div class="dev-catalog-select__head">
+                    <span class="dev-catalog-select__label">根节点</span>
+                    <span class="dev-catalog-select__meta">当前：{{ currentRootLabel }}</span>
                   </div>
-                  <div class="dev-catalog-nav__chips dev-catalog-nav__chips--scroll">
-                    <button
+                  <TSelect
+                    aria-label="根节点"
+                    :model-value="currentRootKey"
+                    :loading="isLoadingTags"
+                    placeholder="选择根节点"
+                    @change="selectRoot"
+                  >
+                    <TOption
+                      v-for="root in rootTabs"
+                      :key="root.key"
+                      :label="root.label"
+                      :value="root.key"
+                    />
+                  </TSelect>
+                </section>
+
+                <section class="dev-catalog-select">
+                  <div class="dev-catalog-select__head">
+                    <span class="dev-catalog-select__label">二级节点</span>
+                    <span class="dev-catalog-select__meta">当前：{{ currentEntryLabel }}</span>
+                  </div>
+                  <TSelect
+                    aria-label="二级节点"
+                    :model-value="currentEntryKey"
+                    placeholder="选择二级节点"
+                    @change="selectEntry"
+                  >
+                    <TOption
                       v-for="entry in entryTabs"
                       :key="entry.key"
-                      class="dev-catalog-chip dev-catalog-chip--secondary"
-                      :class="{ active: entry.key === currentEntryKey }"
-                      type="button"
-                      @click="openEntry(entry.key)"
-                    >
-                      {{ entry.group_name }}
-                    </button>
-                  </div>
-                </div>
-              </section>
+                      :label="entry.group_name"
+                      :value="entry.key"
+                    />
+                  </TSelect>
+                </section>
+              </div>
 
               <div
                 v-if="platformTagGroups.length > 0"

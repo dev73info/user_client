@@ -342,26 +342,22 @@
   background: rgba(255, 255, 255, 0.9);
 }
 
-.dev-page--publish .dev-catalog-nav {
+/* 根节点 / 二级节点各一个下拉：宽度与列数交给 .dev-upload-grid--two，
+   下拉本体（高度、圆角、描边、字号）走库的 `--73-*`，这里只排标签与状态回显。 */
+.dev-page--publish .dev-catalog-select {
   display: grid;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
 }
 
-.dev-page--publish .dev-catalog-nav__row {
-  display: grid;
-  gap: 10px;
-}
-
-.dev-page--publish .dev-catalog-nav__head,
-.dev-page--publish .dev-root-switch__head {
+.dev-page--publish .dev-catalog-select__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
 
-.dev-page--publish .dev-catalog-nav__label,
-.dev-page--publish .dev-root-switch__label {
+.dev-page--publish .dev-catalog-select__label {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -369,25 +365,9 @@
   color: var(--dev-blue);
 }
 
-.dev-page--publish .dev-catalog-nav__meta,
-.dev-page--publish .dev-root-switch__meta {
+.dev-page--publish .dev-catalog-select__meta {
   font-size: 12px;
   color: var(--dev-muted);
-}
-
-.dev-page--publish .dev-catalog-nav__chips,
-.dev-page--publish .dev-root-switch__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.dev-page--publish .dev-catalog-nav__chips--scroll {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  scrollbar-width: thin;
 }
 
 .dev-page--publish .dev-team-select-native {
@@ -576,41 +556,6 @@
   font-size: 10px;
 }
 
-.dev-page--publish .dev-catalog-chip {
-  appearance: none;
-  border: 1px solid rgba(31, 74, 209, 0.12);
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--dev-ink-soft);
-  border-radius: 999px;
-  padding: 8px 14px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    transform 180ms ease,
-    border-color 180ms ease,
-    background 180ms ease,
-    color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.dev-page--publish .dev-catalog-chip:hover {
-  transform: translateY(-1px);
-  border-color: rgba(31, 74, 209, 0.24);
-  color: var(--dev-ink);
-}
-
-.dev-page--publish .dev-catalog-chip.active {
-  border-color: rgba(31, 74, 209, 0.4);
-  background: rgba(31, 74, 209, 0.08);
-  color: var(--dev-blue);
-}
-
-.dev-page--publish .dev-catalog-chip--secondary {
-  font-weight: 600;
-}
-
 .dev-page--publish .dev-meta-list {
   gap: 8px;
 }
@@ -623,26 +568,6 @@
 .dev-side-toolbar {
   display: grid;
   gap: 12px;
-}
-
-.dev-page--publish .dev-root-switch {
-  display: grid;
-  gap: 12px;
-  width: 100%;
-  padding: 16px;
-  border-radius: 20px;
-  border: 1px solid rgba(31, 74, 209, 0.12);
-  background: linear-gradient(135deg, rgba(244, 247, 255, 0.92), rgba(255, 255, 255, 0.86));
-  box-shadow: 0 12px 28px rgba(31, 74, 209, 0.08);
-}
-
-.dev-page--publish .dev-root-switch--catalog {
-  padding: 0 0 14px;
-  border: 0;
-  border-bottom: 1px solid var(--dev-line);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 .dev-surface-card--sticky {

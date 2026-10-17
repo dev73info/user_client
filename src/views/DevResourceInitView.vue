@@ -59,6 +59,7 @@ import {
   TTag,
   MagicStick,
   Refresh,
+  type SelectModelValue,
 } from 'ui_73info'
 
 const auth = useAuthStore()
@@ -471,17 +472,26 @@ async function loadTagTree() {
   }
 }
 
-function openRoot(rootKey: string, firstEntryKey: string | null) {
-  if (rootKey === currentRootKey.value) {
+/**
+ * 根节点下拉改选：二级节点随之落到新根节点的首个二级节点。
+ * 不这么做时，`currentEntryKey` 会留着上一棵树里的 key，`currentEntry` 落到兜底值，
+ * 界面像是「切换了根节点但二级节点没动」。
+ */
+function selectRoot(value: SelectModelValue) {
+  const rootKey = typeof value === 'string' ? value : ''
+  const root = rootTabs.value.find((item) => item.key === rootKey)
+  if (!root) {
     return
   }
 
-  currentRootKey.value = rootKey
-  currentEntryKey.value = firstEntryKey ?? ''
+  currentRootKey.value = root.key
+  currentEntryKey.value = root.first_entry_key ?? ''
 }
 
-function openEntry(entryKey: string) {
-  if (entryKey === currentEntryKey.value) {
+/** 二级节点下拉改选：选项由当前根节点决定，这里再确认一次值还在候选里。 */
+function selectEntry(value: SelectModelValue) {
+  const entryKey = typeof value === 'string' ? value : ''
+  if (!entryTabs.value.some((entry) => entry.key === entryKey)) {
     return
   }
 
@@ -1064,45 +1074,48 @@ async function submitResource(mode: 'private' | 'public') {
           </header>
 
           <div class="dev-catalog-section">
-            <section class="dev-root-switch dev-root-switch--catalog" aria-label="根节点选择">
-              <div class="dev-root-switch__head">
-                <span class="dev-root-switch__label">根节点</span>
-                <span class="dev-root-switch__meta">当前：{{ currentRootLabel }}</span>
-              </div>
-              <div class="dev-root-switch__chips">
-                <button
-                  v-for="root in rootTabs"
-                  :key="root.key"
-                  class="dev-catalog-chip"
-                  :class="{ active: root.key === currentRootKey }"
-                  type="button"
-                  @click="openRoot(root.key, root.first_entry_key)"
-                >
-                  {{ root.label }}
-                </button>
-              </div>
-            </section>
-
-            <section v-if="entryTabs.length > 0" class="dev-catalog-nav" aria-label="资源目录导航">
-              <div class="dev-catalog-nav__row">
-                <div class="dev-catalog-nav__head">
-                  <span class="dev-catalog-nav__label">二级节点</span>
-                  <span class="dev-catalog-nav__meta">当前：{{ currentEntryLabel }}</span>
+            <div class="dev-upload-grid dev-upload-grid--two">
+              <section class="dev-catalog-select">
+                <div class="dev-catalog-select__head">
+                  <span class="dev-catalog-select__label">根节点</span>
+                  <span class="dev-catalog-select__meta">当前：{{ currentRootLabel }}</span>
                 </div>
-                <div class="dev-catalog-nav__chips dev-catalog-nav__chips--scroll">
-                  <button
+                <TSelect
+                  aria-label="根节点"
+                  :model-value="currentRootKey"
+                  :loading="isLoadingTags"
+                  placeholder="选择根节点"
+                  @change="selectRoot"
+                >
+                  <TOption
+                    v-for="root in rootTabs"
+                    :key="root.key"
+                    :label="root.label"
+                    :value="root.key"
+                  />
+                </TSelect>
+              </section>
+
+              <section v-if="entryTabs.length > 0" class="dev-catalog-select">
+                <div class="dev-catalog-select__head">
+                  <span class="dev-catalog-select__label">二级节点</span>
+                  <span class="dev-catalog-select__meta">当前：{{ currentEntryLabel }}</span>
+                </div>
+                <TSelect
+                  aria-label="二级节点"
+                  :model-value="currentEntryKey"
+                  placeholder="选择二级节点"
+                  @change="selectEntry"
+                >
+                  <TOption
                     v-for="entry in entryTabs"
                     :key="entry.key"
-                    class="dev-catalog-chip dev-catalog-chip--secondary"
-                    :class="{ active: entry.key === currentEntryKey }"
-                    type="button"
-                    @click="openEntry(entry.key)"
-                  >
-                    {{ entry.group_name }}
-                  </button>
-                </div>
-              </div>
-            </section>
+                    :label="entry.group_name"
+                    :value="entry.key"
+                  />
+                </TSelect>
+              </section>
+            </div>
 
             <div
               v-if="entryTabs.length > 0 && platformTagGroups.length > 0"
