@@ -1,9 +1,13 @@
 @media (max-width: 900px) {
   .dev-upload-layout,
   .dev-upload-grid--two,
-  .dev-upload-grid--three,
-  .dev-upload-grid--tag-groups {
+  .dev-upload-grid--three {
     grid-template-columns: 1fr;
+  }
+
+  /* 窄屏回落：标签组不再按内容宽并排，改为每组占满一行（控件满宽、触摸目标够大） */
+  .dev-page--publish .dev-tag-group-row {
+    width: 100%;
   }
 
   /* 统一顶部信息条：窄屏改两列网格，标签与数值不再被挤到一行里断开 */
