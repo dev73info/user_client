@@ -1,12 +1,12 @@
 /**
- * R028 特殊资源：资源类别判定、回调地址与「允许来源」的解析 / 校验、渠道配置完整度的纯函数。
+ * R028 接口资源：资源类别判定、回调地址与「允许来源」的解析 / 校验、渠道配置完整度的纯函数。
  *
  * 这里只放可单独测试的纯逻辑，不做请求、不碰 DOM——表单页与列表页共用同一份口径，
  * 免得「页面上能填」与「后端能收」两套规则各写一遍。
  */
 
-/** 资源类别：`normal` = 大厅公开展示（默认）；`special` = 不在公开面展示，只能由指定来源下单。 */
-export type McResourceKindLike = 'normal' | 'special'
+/** 资源类别：`normal` = 大厅公开展示（默认）；`api` = 不在公开面展示，只能由指定来源下单。 */
+export type McResourceKindLike = 'normal' | 'api'
 
 /** 允许来源的单条长度上限（后端同口径，见任务-01 3.5 第 3 条）。 */
 export const ALLOWED_ORIGIN_MAX_LENGTH = 253
@@ -15,27 +15,27 @@ export const ALLOWED_ORIGIN_MAX_LENGTH = 253
 export const CALLBACK_URL_MAX_LENGTH = 500
 
 /** 渠道配置的读 / 写响应里与本页有关的字段（两个接口同构）。 */
-export type ResourceSpecialChannelLike = {
+export type ResourceApiChannelLike = {
   callback_url?: string | null
   allowed_origins?: string[] | null
 }
 
 /** 单条来源的三种合法形态：完整源、通配域名、纯 IP。 */
-export function isSpecialResourceKind(kind: string | null | undefined): boolean {
-  return (kind ?? '').trim().toLowerCase() === 'special'
+export function isApiResourceKind(kind: string | null | undefined): boolean {
+  return (kind ?? '').trim().toLowerCase() === 'api'
 }
 
 /** 资源类别的中文名（列表标记与表单选项共用）。 */
 export function resourceKindLabel(kind: string | null | undefined): string {
-  return isSpecialResourceKind(kind) ? '特殊资源' : '普通资源'
+  return isApiResourceKind(kind) ? '接口资源' : '普通资源'
 }
 
 /**
- * 路由 query 里的资源类别：只有 `special` 算特殊（去首尾空白、忽略大小写），
+ * 路由 query 里的资源类别：只有 `api` 算接口资源（去首尾空白、忽略大小写），
  * 其余——空值、数组（`?kind=a&kind=b`）、数字、不认识的值——一律按普通资源处理。
  */
 export function resourceKindFromQuery(value: unknown): McResourceKindLike {
-  return isSpecialResourceKind(typeof value === 'string' ? value : null) ? 'special' : 'normal'
+  return isApiResourceKind(typeof value === 'string' ? value : null) ? 'api' : 'normal'
 }
 
 /**
@@ -243,11 +243,11 @@ export function isValidCallbackUrl(raw: string | null | undefined): boolean {
 }
 
 /**
- * 特殊资源「暂不可被下单」的原因（空数组 = 可以下单）。
+ * 接口资源「暂不可被下单」的原因（空数组 = 可以下单）。
  * 保存不做要求（草稿允许半成品），但页面要把这些原因显出来，
  * 免得开发者以为「存上了就能卖」。
  */
-export function listSpecialChannelBlockers(input: ResourceSpecialChannelLike): string[] {
+export function listApiChannelBlockers(input: ResourceApiChannelLike): string[] {
   const blockers: string[] = []
 
   if (!(input.callback_url ?? '').trim()) {
@@ -263,7 +263,7 @@ export function listSpecialChannelBlockers(input: ResourceSpecialChannelLike): s
 }
 
 /** 回调验签口径，页面提示与开发者文档必须一字不差。 */
-export const SPECIAL_CALLBACK_SIGNATURE_RULE = 'HMAC-SHA256(secret, "{timestamp}.{raw_body}")'
+export const API_CALLBACK_SIGNATURE_RULE = 'HMAC-SHA256(secret, "{timestamp}.{raw_body}")'
 
 /**
  * 接入示例（`curl`）：开发者复制到自己站点的**服务端**执行。
@@ -271,16 +271,17 @@ export const SPECIAL_CALLBACK_SIGNATURE_RULE = 'HMAC-SHA256(secret, "{timestamp}
  * 开放下单接口走接口密钥（`X-Api-Key`），`origin` 是本次调用来源，
  * 命中该资源的允许来源才会建单。
  */
-export function buildSpecialPurchaseCurl(
+export function buildApiPurchaseCurl(
   resourceId: number | null | undefined,
   options: { apiBase?: string; origin?: string } = {},
 ): string {
   const apiBase = (options.apiBase ?? '').trim().replace(/\/$/, '') || 'https://api.73info.cn'
   const origin = (options.origin ?? '').trim() || 'https://shop.example.com'
-  const id = Number.isInteger(resourceId) && Number(resourceId) > 0 ? String(resourceId) : '{你的资源编号}'
+  const id =
+    Number.isInteger(resourceId) && Number(resourceId) > 0 ? String(resourceId) : '{你的资源编号}'
 
   return [
-    `curl -X POST "${apiBase}/api/resource/open/special-purchase" \\`,
+    `curl -X POST "${apiBase}/api/resource/open/api-purchase" \\`,
     '  -H "Content-Type: application/json" \\',
     '  -H "X-Api-Key: sk-73info-你的接口密钥" \\',
     `  -d '{"resource_id": ${id}, "origin": "${origin}", "buyer_ref": "shop-order-0001", "pay_channel": "alipay", "client_platform": "pc"}'`,

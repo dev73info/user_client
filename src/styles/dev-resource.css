@@ -31,10 +31,6 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.dev-upload-grid--three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 /* 标签组：按内容宽排布，多个组一行并排、排不下才换行。
    行宽由内容决定（标题 + 计数 + 下拉框），不撑满整块可用宽度——
    否则一行里只有一个窄标题加一个空下拉框，右侧大片留白。 */
@@ -89,9 +85,6 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
 }
 
-.dev-page--publish .dev-upload-grid--three {
-  grid-template-columns: repeat(3, minmax(0, 1fr)) 80px;
-}
 .dev-page--publish .dev-upload-grid > *,
 .dev-page--publish .dev-tag-group-panel > *,
 .dev-page--publish .dev-tag-group-row,
@@ -100,56 +93,96 @@
   min-width: 0;
 }
 
-/* 表单栅格：四档等宽（`repeat(4, minmax(0, 1fr))`），**铺满卡片可用宽度，不留 max-width**。
-   每一格里的控件都撑满自己那一格（控件宽 = 档宽，跨两档的 = 2 档 + 间距），于是同一列左边界
-   对齐、整块右边界齐平，任何一行都不会出现「一小控件 + 一大片空白」的塌陷。
+/* 表单排布：**每项宽度由自己的内容决定**（flex 基准宽度就是实测的内容宽），
+   行内依次排满、放不下才换行（flex-wrap）。不再等分四档——等分时每格一样宽，于是
+   「80px 的图标按钮占着 228px 的格子」「售价输入框被拉成 473px」
+   「类型 / 版权只渲染出一个字段时右半边整块空着」，字段之间的留白比字段本身还宽。
 
-   字段落位是内容的函数，不是随手排的：
-   - 图标文件占 1 档：里面是 80px 的方形图标按钮（控件本身是方的，这一格必然有点留白）；
-   - 资源标题占 2 档：占位文案「例如：Better Combat Reloaded」实测 187.1px + 内边距与描边 25.3px
-     = 212.4px，1 档放不下；
-   - 归属占 1 档；
-   - 类型 + 版权同处一个跨 2 档的组，组内分行见下面的 `.dev-copyright-group`；
-   - 售价（元）、售价（积分）各占 1 档：四档等宽，两者天然等宽（占位文案最长 101.14px +
-     内边距与描边 25.3px = 126.4px，1 档放得下）；特殊资源不渲染「售价（积分）」（R028 只走现金价），
-     售价（元）改占 2 档，那一行照旧铺满；
-   - 推广分成占满 4 档：拖动条要够长。原先它占 2 档、右边两档留给「资源类别」，
-     而资源类别已改成由入口决定（普通资源 / 特殊资源各一条创建路由、表单里不再有这一项），
-     那一行只剩推广分成——仍占 2 档会让整行右侧空两格，拉满 4 档正好补齐；
-     转载来源那组字段紧随其后另起一行（原作者 1 档 + 原始出处链接 2 档 + 来源站点 1 档）。
+   行尾余量只交给**内容本身就是流动的**那两档（长文本框、推广分成拖动条）：它们宽一点更好用，
+   也不会像等分档那样把旁边的短控件一起拉宽。开关、标签这类内容固定的字段不伸缩。
 
-   ≤900px 走 dev-responsive.css 的单列回落（`--wide` / `--full` 取消跨列），那里控件照旧满宽。 */
+   行距列距都取 gap 这一个来源：表单项自带 18px 下边距（ui_73info 的 .t73-form-item），
+   与 gap 叠起来会让行距变成列距的两倍（列 18px、行 36px）——一行里的字段看着挤，
+   上下两行又隔得远，疏密不一致。
+
+   每一档的基准宽度都是实测出来的（13px 字体下的正文宽 + 控件内边距与描边约 25px）：
+   - 图标文件：控件是 80px 的图标按钮，格子就取 80px；
+   - 资源标题：占位文案「例如：Better Combat Reloaded」实测 187.1px → 控件 212.4px，取 320px 起；
+   - 归属 / 类型 / 售价（元）/ 售价（积分）/ 原作者：下拉与短输入框，最长的一条占位文案
+     「0 表示不走积分购」101.1px → 控件 126.4px，取 150px 就够；
+   - 所属团队 / 来源站点：最长占位文案「例如：苦力怕论坛、CurseForge」185.2px → 控件 210.4px，取 210px；
+   - 版权：勾选文案「我确认拥有该资源版权，或已获得合法授权可售卖」286px + 勾选框 16px + 间距 8px
+     = 310px，取 310px 正好一行放下，不折行；
+   - 购买限制：两个开关加文案约 302px，取 320px 且不伸缩——补满整行会变成左边两个开关、
+     右边一大片空白；
+   - 原始出处链接 / 转载说明：占位文案 188.7px / 182px → 控件 214.4px / 207.4px，取 320px 起；
+   - 推广分成：拖动条取 280px 起。
+
+   ≤900px 走 dev-responsive.css 的单列回落，那里控件照旧满宽。 */
 .dev-page--publish .dev-upload-grid--form {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.dev-page--publish .dev-upload-form .dev-form-item--wide {
-  grid-column: span 2;
-}
-
-.dev-page--publish .dev-upload-form .dev-form-item--full {
-  grid-column: 1 / -1;
-}
-
-/* 「类型 + 版权」同处一个跨 2 档的格子，组内两等分：类型一份、版权一份。
-   两等分是为了「整行落位不随内容变化」——类型与版权并存时占满这 2 档，
-   版权声明不出现时（免费资源）类型仍然只占左半边，后面的字段不会因为
-   多出一个字段而整列右移。类型那边的选项只有「原创」「转载」，占满半格
-   与上面「归属」、下面「售价（元）」等宽，看着就是同一列。
-
-   注：版权那句「我确认拥有该资源版权，或已获得合法授权可售卖」在半格（约 227px）里会折成两行，
-   这是为了让整块栅格稳定付出的代价——比「一填价格整列就跳位」划算。 */
-.dev-page--publish .dev-upload-form .dev-copyright-group {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 18px;
 }
 
-@media (max-width: 900px) {
-  .dev-page--publish .dev-upload-form .dev-form-item--wide,
-  .dev-page--publish .dev-upload-form .dev-form-item--full {
-    grid-column: auto;
-  }
+/* 行距只由 gap 给：表单项自带的下边距会和 gap 叠成两倍行距 */
+.dev-page--publish .dev-upload-grid--form .t73-form-item {
+  margin-bottom: 0;
+}
+
+/* 图标格：贴着 80px 的图标按钮，不预留空档 */
+.dev-page--publish .dev-upload-form .dev-form-item--icon {
+  flex: 0 0 80px;
+}
+
+/* 下拉与短输入框：放下最长的一条选项 / 占位文案即可 */
+.dev-page--publish .dev-upload-form .dev-form-item--short {
+  flex: 0 1 150px;
+}
+
+.dev-page--publish .dev-upload-form .dev-form-item--mid {
+  flex: 0 1 210px;
+}
+
+/* 版权声明：310px 正好一行放下 */
+.dev-page--publish .dev-upload-form .dev-form-item--copyright {
+  flex: 0 1 310px;
+}
+
+/* 长文本框：可伸缩，行尾余量落在输入框里 */
+.dev-page--publish .dev-upload-form .dev-form-item--wide {
+  flex: 1 1 320px;
+}
+
+/* 推广分成：拖动条要够长，也让它跟着补满行尾 */
+.dev-page--publish .dev-upload-form .dev-form-item--promo {
+  flex: 1 1 280px;
+}
+
+/* 开关组（购买限制）：按内容取宽，不伸缩 */
+.dev-page--publish .dev-upload-form .dev-form-item--switch {
+  flex: 0 1 320px;
+}
+
+/* 通栏字段：独占一行、撑满整行（接口资源接入配置里的「允许的来源地址」） */
+.dev-page--publish .dev-upload-form .dev-form-item--full {
+  flex: 0 0 100%;
+}
+
+/* 售价（元）+ 售价（积分）：两项互斥、成对出现，绑成一个整体，换行时不会被拆到两行去；
+   接口资源只走现金价（R028），组里只有「售价（元）」一项，整组随之收窄到一格。
+   组内两项也要写 min-width: 0：输入框有内在最小宽度（约 200px），不写这一条
+   150px 的基准宽度压不下去，售价格子会比同档的「归属 / 类型」宽出一截。 */
+.dev-page--publish .dev-upload-form .dev-price-group {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.dev-page--publish .dev-upload-form .dev-price-group > * {
+  flex: 0 1 150px;
+  min-width: 0;
 }
 
 /* 图标上传块走内嵌块那一档圆角（原来是 14px，不在 24/12/10 这三个令牌里） */

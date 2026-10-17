@@ -2,8 +2,8 @@ import { flushPromises, shallowMount, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * R028：开发者工作台「发布资源」入口分两条（普通资源 / 特殊资源），各进自己的创建路由
- * （`dev-plugins` / `dev-plugins-special`）；创建页的类别由路由 props 传入，表单里没有这个选项。
+ * R028：开发者工作台「发布资源」入口分两条（普通资源 / 接口资源），各进自己的创建路由
+ * （`dev-plugins` / `dev-plugins-api`）；创建页的类别由路由 props 传入，表单里没有这个选项。
  *
  * 两个页面都走 shallowMount + setupState 调函数的写法（与 devResourceTransferList.spec.ts 一致）：
  * ui_73info 的下拉面板会 Teleport 到 body，真挂载去点菜单反而更脆。
@@ -12,7 +12,10 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
   push: vi.fn(),
   replace: vi.fn(),
-  route: { params: {}, query: {} } as { params: Record<string, string>; query: Record<string, unknown> },
+  route: { params: {}, query: {} } as {
+    params: Record<string, string>
+    query: Record<string, unknown>
+  },
   listResources: vi.fn(),
   inbox: vi.fn(),
   mine: vi.fn(),
@@ -39,8 +42,8 @@ vi.mock('@/api/mcResources', () => ({
   createMcResource: vi.fn(),
   getMcResource: vi.fn(),
   updateMcResourceHomepage: vi.fn(),
-  updateResourceSpecialChannel: vi.fn(),
-  getResourceSpecialChannel: vi.fn(),
+  updateResourceApiChannel: vi.fn(),
+  getResourceApiChannel: vi.fn(),
   uploadMcResourceCover: vi.fn(),
   createMcResourceVersion: vi.fn(),
   deleteMcResource: vi.fn(),
@@ -89,7 +92,7 @@ function mountList(): VueWrapper {
   })
 }
 
-function mountCreate(props: { kind?: 'normal' | 'special' } = {}): VueWrapper {
+function mountCreate(props: { kind?: 'normal' | 'api' } = {}): VueWrapper {
   return shallowMount(DevResourceInitView, {
     props,
     global: {
@@ -117,12 +120,12 @@ describe('DevResourceListView：发布资源入口分两条', () => {
     mocks.mine.mockResolvedValue([])
   })
 
-  it('菜单里就是普通资源与特殊资源两项', async () => {
+  it('菜单里就是普通资源与接口资源两项', async () => {
     const wrapper = mountList()
     await flushPromises()
 
     const items = wrapper.findAll('.entry-item')
-    expect(items.map((item) => item.text())).toEqual(['普通资源', '特殊资源'])
+    expect(items.map((item) => item.text())).toEqual(['普通资源', '接口资源'])
     wrapper.unmount()
   })
 
@@ -134,17 +137,17 @@ describe('DevResourceListView：发布资源入口分两条', () => {
     view.goCreateResource('normal')
     expect(mocks.push).toHaveBeenLastCalledWith({ name: 'dev-plugins' })
 
-    view.goCreateResource('special')
-    expect(mocks.push).toHaveBeenLastCalledWith({ name: 'dev-plugins-special' })
+    view.goCreateResource('api')
+    expect(mocks.push).toHaveBeenLastCalledWith({ name: 'dev-plugins-api' })
 
-    // 命令值意外时不能把「看着像特殊」的值带出去
-    view.goCreateResource('SPECIAL（不公开展示）')
+    // 命令值意外时不能把「看着像接口资源」的值带出去
+    view.goCreateResource('API（不公开展示）')
     expect(mocks.push).toHaveBeenLastCalledWith({ name: 'dev-plugins' })
     wrapper.unmount()
   })
 })
 
-type CreateState = { isSpecialKind: boolean }
+type CreateState = { isApiKind: boolean }
 
 describe('DevResourceInitView：类别由路由 props 传入', () => {
   beforeEach(() => {
@@ -154,12 +157,12 @@ describe('DevResourceInitView：类别由路由 props 传入', () => {
     mocks.listMyTeams.mockResolvedValue([])
   })
 
-  it('kind=special（特殊资源创建页）展开「特殊资源接入配置」', async () => {
-    const wrapper = mountCreate({ kind: 'special' })
+  it('kind=api（接口资源创建页）展开「接口资源接入配置」', async () => {
+    const wrapper = mountCreate({ kind: 'api' })
     await flushPromises()
 
-    // 那一段就是 v-if="isSpecialKind"
-    expect(state<CreateState>(wrapper).isSpecialKind).toBe(true)
+    // 那一段就是 v-if="isApiKind"
+    expect(state<CreateState>(wrapper).isApiKind).toBe(true)
     wrapper.unmount()
   })
 
@@ -168,18 +171,18 @@ describe('DevResourceInitView：类别由路由 props 传入', () => {
       const wrapper = mountCreate(props)
       await flushPromises()
 
-      expect(state<CreateState>(wrapper).isSpecialKind).toBe(false)
+      expect(state<CreateState>(wrapper).isApiKind).toBe(false)
       wrapper.unmount()
     }
   })
 
-  it('老链接上的 ?kind=special 改道到特殊资源创建页，其余 query 原样带过去', async () => {
-    mocks.route = { params: {}, query: { kind: 'special', ownership: 'team' } }
+  it('老链接上的 ?kind=api 改道到接口资源创建页，其余 query 原样带过去', async () => {
+    mocks.route = { params: {}, query: { kind: 'api', ownership: 'team' } }
     const wrapper = mountCreate()
     await flushPromises()
 
     expect(mocks.replace).toHaveBeenLastCalledWith({
-      name: 'dev-plugins-special',
+      name: 'dev-plugins-api',
       query: { ownership: 'team' },
     })
     wrapper.unmount()

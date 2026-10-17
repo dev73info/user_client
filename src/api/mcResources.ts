@@ -3,8 +3,8 @@ import { authHeader, requestJson } from '@/api/http'
 export type McResourceVisibility = 'draft' | 'review' | 'published'
 export type McResourcePlatform = string
 
-/** 资源类别：normal = 大厅公开展示（默认）；special = 不在公开面展示，只能由指定来源下单 */
-export type McResourceKind = 'normal' | 'special'
+/** 资源类别：normal = 大厅公开展示（默认）；api = 不在公开面展示，只能由指定来源下单 */
+export type McResourceKind = 'normal' | 'api'
 
 export type CreateMcResourceTagSelection = {
   group_id: number
@@ -47,7 +47,7 @@ export type CreateMcResourceRequest = {
   price_points?: number | null
   /** 版权声明勾选 */
   copyright_declared?: boolean | null
-  /** 资源类别：normal = 大厅公开展示（默认）；special = 不公开展示，只能由指定来源下单 */
+  /** 资源类别：normal = 大厅公开展示（默认）；api = 不公开展示，只能由指定来源下单 */
   resource_kind?: McResourceKind | null
   /** 资源售卖推广分成比例（万分比）：0 = 关闭，1..5000 = 0.01%..50% */
   promo_share_bps?: number | null
@@ -87,9 +87,9 @@ export type McResourcePayload = {
   copyright_declared: boolean
   copyright_declared_at?: string | null
   /**
-   * 资源类别：normal = 大厅公开展示；special = 不在公开面展示，只能由指定来源下单。
+   * 资源类别：normal = 大厅公开展示；api = 不在公开面展示，只能由指定来源下单。
    * 契约上是必回字段，这里写成可选是为了兼容旧 mock 数据与旧后端；判定一律走
-   * `shared/resourceSpecial.ts` 的 `isSpecialResourceKind()`（缺省按 normal 处理）。
+   * `shared/resourceApi.ts` 的 `isApiResourceKind()`（缺省按 normal 处理）。
    */
   resource_kind?: McResourceKind
   /** 售卖推广分成比例（万分比）；0 = 未开启 */
@@ -165,7 +165,7 @@ export type UpdateMcResourceHomepageRequest = {
   price_points?: number | null
   /** 版权声明勾选；付费提交审核时必须为 true */
   copyright_declared?: boolean | null
-  /** 资源类别：normal = 大厅公开展示（默认）；special = 不公开展示，只能由指定来源下单 */
+  /** 资源类别：normal = 大厅公开展示（默认）；api = 不公开展示，只能由指定来源下单 */
   resource_kind?: McResourceKind | null
   /** 资源售卖推广分成比例（万分比）：0 = 关闭，1..5000 = 0.01%..50% */
   promo_share_bps?: number | null
@@ -400,10 +400,10 @@ export async function applyResourcePromoCard(
 }
 
 /**
- * R028 特殊资源的渠道配置（`GET` 响应；`PUT` 响应同构）。
+ * R028 接口资源的渠道配置（`GET` 响应；`PUT` 响应同构）。
  * 「不在大厅展示」由后端固定为 `true`，前端只读展示，不给开关。
  */
-export type ResourceSpecialChannelPayload = {
+export type ResourceApiChannelPayload = {
   resource_id: number
   resource_kind: McResourceKind
   repeat_purchasable: boolean
@@ -421,7 +421,7 @@ export type ResourceSpecialChannelPayload = {
   callback_secret_plain?: string | null
 }
 
-export type UpdateResourceSpecialChannelRequest = {
+export type UpdateResourceApiChannelRequest = {
   resource_kind?: McResourceKind
   repeat_purchasable?: boolean
   callback_url?: string | null
@@ -431,31 +431,31 @@ export type UpdateResourceSpecialChannelRequest = {
   allowed_origins?: string[]
 }
 
-/** 读取某个资源的特殊渠道配置；资源没配过渠道时后端回默认值（不 404）。 */
-export async function getResourceSpecialChannel(
+/** 读取某个资源的接口渠道配置；资源没配过渠道时后端回默认值（不 404）。 */
+export async function getResourceApiChannel(
   token: string,
   resourceId: number,
-): Promise<ResourceSpecialChannelPayload> {
-  return requestJson<ResourceSpecialChannelPayload>(
-    `/dev/resources/resources/${resourceId}/special-channel`,
+): Promise<ResourceApiChannelPayload> {
+  return requestJson<ResourceApiChannelPayload>(
+    `/dev/resources/resources/${resourceId}/api-channel`,
     {
       method: 'GET',
       headers: {
         ...authHeader(token),
       },
     },
-    '加载特殊资源渠道配置失败',
+    '加载接口资源渠道配置失败',
   )
 }
 
-/** 写入某个资源的特殊渠道配置；字段缺省 = 不改这一项。 */
-export async function updateResourceSpecialChannel(
+/** 写入某个资源的接口渠道配置；字段缺省 = 不改这一项。 */
+export async function updateResourceApiChannel(
   token: string,
   resourceId: number,
-  payload: UpdateResourceSpecialChannelRequest,
-): Promise<ResourceSpecialChannelPayload> {
-  return requestJson<ResourceSpecialChannelPayload>(
-    `/dev/resources/resources/${resourceId}/special-channel`,
+  payload: UpdateResourceApiChannelRequest,
+): Promise<ResourceApiChannelPayload> {
+  return requestJson<ResourceApiChannelPayload>(
+    `/dev/resources/resources/${resourceId}/api-channel`,
     {
       method: 'PUT',
       headers: {
@@ -464,6 +464,6 @@ export async function updateResourceSpecialChannel(
       },
       body: JSON.stringify(payload),
     },
-    '保存特殊资源渠道配置失败',
+    '保存接口资源渠道配置失败',
   )
 }

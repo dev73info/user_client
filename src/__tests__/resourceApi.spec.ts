@@ -1,44 +1,44 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  buildSpecialPurchaseCurl,
+  API_CALLBACK_SIGNATURE_RULE,
+  buildApiPurchaseCurl,
   findInvalidAllowedOrigin,
   formatAllowedOriginsText,
-  isSpecialResourceKind,
+  isApiResourceKind,
   isValidAllowedOrigin,
   isValidCallbackUrl,
-  listSpecialChannelBlockers,
+  listApiChannelBlockers,
   parseAllowedOriginsInput,
   resourceKindFromQuery,
   resourceKindLabel,
-  SPECIAL_CALLBACK_SIGNATURE_RULE,
-} from '@/shared/resourceSpecial'
+} from '@/shared/resourceApi'
 
-describe('resourceSpecial', () => {
-  it('isSpecialResourceKind / resourceKindLabel 按 normal 与 special 分档', () => {
-    expect(isSpecialResourceKind('special')).toBe(true)
-    expect(isSpecialResourceKind(' special ')).toBe(true)
-    expect(isSpecialResourceKind('normal')).toBe(false)
-    expect(isSpecialResourceKind(null)).toBe(false)
-    expect(isSpecialResourceKind(undefined)).toBe(false)
-    expect(isSpecialResourceKind('')).toBe(false)
-    expect(resourceKindLabel('special')).toBe('特殊资源')
+describe('resourceApi', () => {
+  it('isApiResourceKind / resourceKindLabel 按 normal 与 api 分档', () => {
+    expect(isApiResourceKind('api')).toBe(true)
+    expect(isApiResourceKind(' API ')).toBe(true)
+    expect(isApiResourceKind('normal')).toBe(false)
+    expect(isApiResourceKind(null)).toBe(false)
+    expect(isApiResourceKind(undefined)).toBe(false)
+    expect(isApiResourceKind('')).toBe(false)
+    expect(resourceKindLabel('api')).toBe('接口资源')
     expect(resourceKindLabel('normal')).toBe('普通资源')
     expect(resourceKindLabel(undefined)).toBe('普通资源')
   })
 
-  it('resourceKindFromQuery 只认 special，其余一律普通', () => {
-    expect(resourceKindFromQuery('special')).toBe('special')
-    expect(resourceKindFromQuery(' SPECIAL ')).toBe('special')
+  it('resourceKindFromQuery 只认 api，其余一律普通', () => {
+    expect(resourceKindFromQuery('api')).toBe('api')
+    expect(resourceKindFromQuery(' API ')).toBe('api')
     expect(resourceKindFromQuery('normal')).toBe('normal')
     expect(resourceKindFromQuery('')).toBe('normal')
     expect(resourceKindFromQuery(null)).toBe('normal')
     expect(resourceKindFromQuery(undefined)).toBe('normal')
-    // vue-router 在 ?kind=a&kind=b 时给的是数组，不能当成特殊资源
-    expect(resourceKindFromQuery(['special'])).toBe('normal')
-    expect(resourceKindFromQuery(['special', 'normal'])).toBe('normal')
+    // vue-router 在 ?kind=a&kind=b 时给的是数组，不能当成接口资源
+    expect(resourceKindFromQuery(['api'])).toBe('normal')
+    expect(resourceKindFromQuery(['api', 'normal'])).toBe('normal')
     expect(resourceKindFromQuery(123)).toBe('normal')
-    expect(resourceKindFromQuery({ kind: 'special' })).toBe('normal')
+    expect(resourceKindFromQuery({ kind: 'api' })).toBe('normal')
   })
 
   it('parseAllowedOriginsInput 丢空行、去空白、去重', () => {
@@ -141,42 +141,42 @@ describe('resourceSpecial', () => {
     expect(isValidCallbackUrl(`https://shop.example.com/${'a'.repeat(500)}`)).toBe(false)
   })
 
-  it('listSpecialChannelBlockers 指出暂不可被下单的原因', () => {
-    expect(listSpecialChannelBlockers({})).toEqual([
+  it('listApiChannelBlockers 指出暂不可被下单的原因', () => {
+    expect(listApiChannelBlockers({})).toEqual([
       '未配置回调地址，暂不可被下单',
       '未配置允许来源，暂不可被下单',
     ])
     expect(
-      listSpecialChannelBlockers({
+      listApiChannelBlockers({
         callback_url: 'https://shop.example.com/cb',
         allowed_origins: ['https://shop.example.com'],
       }),
     ).toEqual([])
     expect(
-      listSpecialChannelBlockers({ callback_url: 'https://shop.example.com/cb', allowed_origins: [] }),
+      listApiChannelBlockers({ callback_url: 'https://shop.example.com/cb', allowed_origins: [] }),
     ).toEqual(['未配置允许来源，暂不可被下单'])
     expect(
-      listSpecialChannelBlockers({
+      listApiChannelBlockers({
         callback_url: '   ',
         allowed_origins: ['   '],
       }),
     ).toEqual(['未配置回调地址，暂不可被下单', '未配置允许来源，暂不可被下单'])
   })
 
-  it('buildSpecialPurchaseCurl 带上资源编号、接口密钥头与来源', () => {
-    const sample = buildSpecialPurchaseCurl(88, {
+  it('buildApiPurchaseCurl 带上资源编号、接口密钥头与来源', () => {
+    const sample = buildApiPurchaseCurl(88, {
       apiBase: 'https://api.73info.cn/',
       origin: 'https://shop.example.com',
     })
 
-    expect(sample).toContain('POST "https://api.73info.cn/api/resource/open/special-purchase"')
+    expect(sample).toContain('POST "https://api.73info.cn/api/resource/open/api-purchase"')
     expect(sample).toContain('X-Api-Key: sk-73info-')
     expect(sample).toContain('"resource_id": 88')
     expect(sample).toContain('"origin": "https://shop.example.com"')
     // 资源编号未知时用占位符，不要让开发者抄到一条假编号
-    expect(buildSpecialPurchaseCurl(null, { apiBase: 'https://api.73info.cn' })).toContain(
+    expect(buildApiPurchaseCurl(null, { apiBase: 'https://api.73info.cn' })).toContain(
       '{你的资源编号}',
     )
-    expect(SPECIAL_CALLBACK_SIGNATURE_RULE).toBe('HMAC-SHA256(secret, "{timestamp}.{raw_body}")')
+    expect(API_CALLBACK_SIGNATURE_RULE).toBe('HMAC-SHA256(secret, "{timestamp}.{raw_body}")')
   })
 })

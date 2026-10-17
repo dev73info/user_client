@@ -1,7 +1,6 @@
 @media (max-width: 900px) {
   .dev-upload-layout,
-  .dev-upload-grid--two,
-  .dev-upload-grid--three {
+  .dev-upload-grid--two {
     grid-template-columns: 1fr;
   }
 
@@ -75,9 +74,20 @@
     align-items: stretch;
   }
 
-  .dev-page--publish .dev-upload-form .dev-upload-grid--three {
-    grid-template-columns: 1fr;
-    gap: 10px 14px;
+  /* 创建资源 / 编辑资源主页的表单：窄屏回落成单列，每个字段满宽
+     （宽档不再并排，成对的「售价（元）/ 售价（积分）」也摊开成一列）。
+     行距跟着宽屏的 gap 走（表单项自带的下边距在宽屏那边已归零，
+     这里只留 gap，10px 会显得挤）。 */
+  .dev-page--publish .dev-upload-form .dev-upload-grid--form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .dev-page--publish .dev-upload-form .dev-price-group {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
   }
 
   .dev-page--publish .dev-upload-block--split > .dev-card-head {
@@ -120,7 +130,6 @@
     overflow: visible;
     padding-right: 0;
   }
-
 }
 
 @media (max-width: 720px) {
@@ -135,7 +144,6 @@
 }
 
 @media (max-width: 720px) {
-
   /* 面板形态的卡片（`.dev-surface-card`，含挂了这个类的 TCard）在窄屏收到 20px，
      与桌面档 24px 同源，理由见 dev-base.css 里那条的注释。 */
   .dev-surface-card:not(.el-card) {
@@ -154,7 +162,6 @@
 
 /* Tighten common page layouts on narrow screens */
 @media (max-width: 640px) {
-
   /* 面板形态的卡片同上：再收到 16px */
   .dev-surface-card:not(.el-card) {
     padding: 16px;
@@ -197,14 +204,20 @@
 
   /* 只有「搜索 + 一个筛选」的工具栏合成一行：搜索吃剩余宽度，筛选收窄。
      两个以上筛选或胶囊组摆不下，仍走上面的两行。 */
-  .dev-toolbar:has(> .dev-toolbar__search):not(:has(> .dev-toolbar__field ~ .dev-toolbar__field)):not(:has(> .dev-chip-group)) .dev-toolbar__search {
+  .dev-toolbar:has(> .dev-toolbar__search):not(
+      :has(> .dev-toolbar__field ~ .dev-toolbar__field)
+    ):not(:has(> .dev-chip-group))
+    .dev-toolbar__search {
     flex: 1 1 120px;
     max-width: none;
     order: 0;
   }
 
   /* 一行时筛选在搜索左边 */
-  .dev-toolbar:has(> .dev-toolbar__search):not(:has(> .dev-toolbar__field ~ .dev-toolbar__field)):not(:has(> .dev-chip-group)) .dev-toolbar__field {
+  .dev-toolbar:has(> .dev-toolbar__search):not(
+      :has(> .dev-toolbar__field ~ .dev-toolbar__field)
+    ):not(:has(> .dev-chip-group))
+    .dev-toolbar__field {
     flex: 0 1 112px;
     order: -1;
   }
@@ -319,7 +332,6 @@
   }
 }
 
-
 /* === 移动端 App 化列表（与需求大厅同一套） ===
    列表卡（含工具栏或表格的 .dev-surface-card）在触屏档去掉外框，内容直接铺在页面底色上：
    只有标题的卡头隐藏；单筛选工具栏并成一条白色搜索栏、多筛选的控件各自成白色胶囊；「重置」不放；
@@ -333,7 +345,8 @@
     box-shadow: none;
   }
 
-  .dev-surface-card:has(.dev-toolbar, .dev-table) .dev-card-head:not(:has(.dev-card-head__actions > *)) {
+  .dev-surface-card:has(.dev-toolbar, .dev-table)
+    .dev-card-head:not(:has(.dev-card-head__actions > *)) {
     display: none;
   }
 
@@ -359,7 +372,10 @@
   }
 
   /* 搜索 + 至多一个筛选、且没有别的按钮：并成一条搜索栏 */
-  .dev-surface-card .dev-toolbar:has(> .dev-toolbar__search):not(:has(> .dev-toolbar__field ~ .dev-toolbar__field)):not(:has(> .dev-chip-group)):not(:has(.dev-toolbar__actions .t73-button--solid)) {
+  .dev-surface-card
+    .dev-toolbar:has(> .dev-toolbar__search):not(
+      :has(> .dev-toolbar__field ~ .dev-toolbar__field)
+    ):not(:has(> .dev-chip-group)):not(:has(.dev-toolbar__actions .t73-button--solid)) {
     flex-wrap: nowrap;
     gap: 0;
     padding: 3px;
@@ -368,23 +384,39 @@
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
   }
 
-  .dev-surface-card .dev-toolbar:has(> .dev-toolbar__search):not(:has(> .dev-toolbar__field ~ .dev-toolbar__field)):not(:has(> .dev-chip-group)):not(:has(.dev-toolbar__actions .t73-button--solid)) > :is(.dev-toolbar__search, .dev-toolbar__field) {
+  .dev-surface-card
+    .dev-toolbar:has(> .dev-toolbar__search):not(
+      :has(> .dev-toolbar__field ~ .dev-toolbar__field)
+    ):not(:has(> .dev-chip-group)):not(:has(.dev-toolbar__actions .t73-button--solid))
+    > :is(.dev-toolbar__search, .dev-toolbar__field) {
     background: transparent;
     box-shadow: none !important;
   }
 
-  .dev-surface-card .dev-toolbar:has(> .dev-toolbar__search):not(:has(> .dev-toolbar__field ~ .dev-toolbar__field)):not(:has(> .dev-chip-group)):not(:has(.dev-toolbar__actions .t73-button--solid)) > .dev-toolbar__field {
+  .dev-surface-card
+    .dev-toolbar:has(> .dev-toolbar__search):not(
+      :has(> .dev-toolbar__field ~ .dev-toolbar__field)
+    ):not(:has(> .dev-chip-group)):not(:has(.dev-toolbar__actions .t73-button--solid))
+    > .dev-toolbar__field {
     flex: 0 0 auto;
     width: auto;
     padding-right: 6px;
   }
 
-  .dev-surface-card .dev-toolbar:has(> .dev-toolbar__field):has(> .dev-toolbar__search):not(:has(> .dev-toolbar__field ~ .dev-toolbar__field)):not(:has(> .dev-chip-group)):not(:has(.dev-toolbar__actions .t73-button--solid)) > .dev-toolbar__search {
+  .dev-surface-card
+    .dev-toolbar:has(> .dev-toolbar__field):has(> .dev-toolbar__search):not(
+      :has(> .dev-toolbar__field ~ .dev-toolbar__field)
+    ):not(:has(> .dev-chip-group)):not(:has(.dev-toolbar__actions .t73-button--solid))
+    > .dev-toolbar__search {
     position: relative;
     flex: 1 1 0;
   }
 
-  .dev-surface-card .dev-toolbar:has(> .dev-toolbar__field):has(> .dev-toolbar__search):not(:has(> .dev-toolbar__field ~ .dev-toolbar__field)):not(:has(> .dev-chip-group)):not(:has(.dev-toolbar__actions .t73-button--solid)) > .dev-toolbar__search::before {
+  .dev-surface-card
+    .dev-toolbar:has(> .dev-toolbar__field):has(> .dev-toolbar__search):not(
+      :has(> .dev-toolbar__field ~ .dev-toolbar__field)
+    ):not(:has(> .dev-chip-group)):not(:has(.dev-toolbar__actions .t73-button--solid))
+    > .dev-toolbar__search::before {
     position: absolute;
     top: 9px;
     bottom: 9px;

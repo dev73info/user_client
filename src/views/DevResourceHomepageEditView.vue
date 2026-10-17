@@ -6,14 +6,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { apiUrl, HttpError } from '@/api/http'
 import {
   getMcResource,
-  getResourceSpecialChannel,
+  getResourceApiChannel,
   type CreateMcResourceTagSelection,
   type McResourceKind,
   type McResourcePayload,
-  type ResourceSpecialChannelPayload,
+  type ResourceApiChannelPayload,
   uploadMcResourceCover,
   updateMcResourceHomepage,
-  updateResourceSpecialChannel,
+  updateResourceApiChannel,
 } from '@/api/mcResources'
 import {
   getProcessedTagTree,
@@ -48,15 +48,15 @@ import {
 } from '@/shared/resourcePresentation'
 import { API_BASE_URL } from '@/shared/api/url'
 import {
-  SPECIAL_CALLBACK_SIGNATURE_RULE,
-  buildSpecialPurchaseCurl,
+  API_CALLBACK_SIGNATURE_RULE,
+  buildApiPurchaseCurl,
   findInvalidAllowedOrigin,
   formatAllowedOriginsText,
-  isSpecialResourceKind,
+  isApiResourceKind,
   isValidCallbackUrl,
-  listSpecialChannelBlockers,
+  listApiChannelBlockers,
   parseAllowedOriginsInput,
-} from '@/shared/resourceSpecial'
+} from '@/shared/resourceApi'
 
 import {
   TAlert,
@@ -125,15 +125,15 @@ const form = reactive({
   /** R029 售卖推广分成比例：百分比文本（0～50，留空 = 关闭） */
   promoSharePercent: '',
   copyrightDeclared: false,
-  /** R028 资源类别：normal = 大厅公开展示；special = 不公开展示，只能指定来源下单 */
+  /** R028 资源类别：normal = 大厅公开展示；api = 不公开展示，只能指定来源下单 */
   resourceKind: 'normal' as McResourceKind,
-  /** R028 特殊资源渠道配置（选「特殊资源」后才展开） */
-  specialCallbackUrl: '',
-  specialCallbackSecret: '',
+  /** R028 接口资源渠道配置（选「接口资源」后才展开） */
+  apiCallbackUrl: '',
+  apiCallbackSecret: '',
   /** 允许来源：多行文本，一行一个 */
-  specialAllowedOrigins: '',
-  specialRepeatPurchasable: false,
-  specialAllowStrangers: true,
+  apiAllowedOrigins: '',
+  apiRepeatPurchasable: false,
+  apiAllowStrangers: true,
 })
 
 const teamOptions = computed(() =>
@@ -288,25 +288,25 @@ function onPointsPriceInput() {
   }
 }
 
-/* ---------- R028 特殊资源：类别、渠道配置与一次性密钥 ---------- */
+/* ---------- R028 接口资源：类别、渠道配置与一次性密钥 ---------- */
 
-const isSpecialKind = computed(() => form.resourceKind === 'special')
-const specialOrigins = computed(() => parseAllowedOriginsInput(form.specialAllowedOrigins))
-const specialCallbackInvalid = computed(
-  () => Boolean(form.specialCallbackUrl.trim()) && !isValidCallbackUrl(form.specialCallbackUrl),
+const isApiKind = computed(() => form.resourceKind === 'api')
+const apiOrigins = computed(() => parseAllowedOriginsInput(form.apiAllowedOrigins))
+const apiCallbackInvalid = computed(
+  () => Boolean(form.apiCallbackUrl.trim()) && !isValidCallbackUrl(form.apiCallbackUrl),
 )
-const invalidSpecialOrigin = computed(() => findInvalidAllowedOrigin(specialOrigins.value))
+const invalidApiOrigin = computed(() => findInvalidAllowedOrigin(apiOrigins.value))
 
 /** 渠道配置还不完整时，页面要显式说明「暂不可被下单」（保存仍允许，草稿态）。 */
-const specialChannelBlockers = computed(() =>
-  listSpecialChannelBlockers({
-    callback_url: form.specialCallbackUrl,
-    allowed_origins: specialOrigins.value,
+const apiChannelBlockers = computed(() =>
+  listApiChannelBlockers({
+    callback_url: form.apiCallbackUrl,
+    allowed_origins: apiOrigins.value,
   }),
 )
 
 /** 已保存的渠道配置：回显密钥掩码与更新时间。 */
-const savedSpecialChannel = ref<ResourceSpecialChannelPayload | null>(null)
+const savedApiChannel = ref<ResourceApiChannelPayload | null>(null)
 /** 后端首次生成的回调密钥明文：只回显一次，弹窗与页内各展示一份。 */
 const revealedSecretPlain = ref('')
 const secretPlainDialogVisible = ref(false)
@@ -321,24 +321,24 @@ const savedSecretMaskedLabel = computed(() => {
   if (revealedSecretPlain.value) {
     return '本次已生成'
   }
-  const saved = savedSpecialChannel.value
+  const saved = savedApiChannel.value
   if (!saved?.callback_secret_set) {
     return '未生成'
   }
   return saved.callback_secret_masked || '已配置'
 })
 
-const specialSampleCurl = computed(() =>
-  buildSpecialPurchaseCurl(resource.value?.id, {
+const apiSampleCurl = computed(() =>
+  buildApiPurchaseCurl(resource.value?.id, {
     apiBase: API_BASE_URL || (typeof window === 'undefined' ? '' : window.location.origin),
-    origin: specialOrigins.value[0] ?? '',
+    origin: apiOrigins.value[0] ?? '',
   }),
 )
 
 /** 把服务端返回的渠道配置落到本地（掩码、明文一次性回显）。 */
-function applySavedSpecialChannel(saved: ResourceSpecialChannelPayload) {
-  savedSpecialChannel.value = saved
-  form.specialCallbackSecret = ''
+function applySavedApiChannel(saved: ResourceApiChannelPayload) {
+  savedApiChannel.value = saved
+  form.apiCallbackSecret = ''
   if (saved.callback_secret_plain) {
     revealedSecretPlain.value = saved.callback_secret_plain
     secretPlainDialogVisible.value = true
@@ -346,27 +346,27 @@ function applySavedSpecialChannel(saved: ResourceSpecialChannelPayload) {
 }
 
 /** 服务端读取的已有配置 → 表单回显（密钥只回掩码，输入框留空）。 */
-function applyLoadedSpecialChannel(loaded: ResourceSpecialChannelPayload) {
-  savedSpecialChannel.value = loaded
-  form.specialCallbackUrl = loaded.callback_url ?? ''
-  form.specialAllowedOrigins = formatAllowedOriginsText(loaded.allowed_origins)
-  form.specialRepeatPurchasable = Boolean(loaded.repeat_purchasable)
-  form.specialAllowStrangers = Boolean(loaded.allow_strangers)
-  form.specialCallbackSecret = ''
+function applyLoadedApiChannel(loaded: ResourceApiChannelPayload) {
+  savedApiChannel.value = loaded
+  form.apiCallbackUrl = loaded.callback_url ?? ''
+  form.apiAllowedOrigins = formatAllowedOriginsText(loaded.allowed_origins)
+  form.apiRepeatPurchasable = Boolean(loaded.repeat_purchasable)
+  form.apiAllowStrangers = Boolean(loaded.allow_strangers)
+  form.apiCallbackSecret = ''
 }
 
-async function loadSpecialChannel(resourceId: number) {
+async function loadApiChannel(resourceId: number) {
   if (!auth.token) {
     return
   }
 
   try {
-    applyLoadedSpecialChannel(await getResourceSpecialChannel(auth.token, resourceId))
+    applyLoadedApiChannel(await getResourceApiChannel(auth.token, resourceId))
   } catch (error) {
     showToast(
       error instanceof Error
-        ? `加载特殊资源渠道配置失败：${error.message}`
-        : '加载特殊资源渠道配置失败',
+        ? `加载接口资源渠道配置失败：${error.message}`
+        : '加载接口资源渠道配置失败',
       'warning',
     )
   }
@@ -387,22 +387,22 @@ async function copyRevealedSecret() {
 }
 
 /** 复制接入示例（curl 片段）。 */
-async function copySpecialSample() {
+async function copyApiSample() {
   try {
-    await navigator.clipboard.writeText(specialSampleCurl.value)
+    await navigator.clipboard.writeText(apiSampleCurl.value)
     showToast('接入示例已复制', 'success')
   } catch {
     showToast('复制失败，请手动选中示例代码后再复制', 'warning')
   }
 }
 
-/** R028：特殊资源配置的本地校验（保存是草稿过程，只挡明显填错的地址）。 */
-function validateSpecialChannel(): boolean {
-  if (!isSpecialKind.value) {
+/** R028：接口资源配置的本地校验（保存是草稿过程，只挡明显填错的地址）。 */
+function validateApiChannel(): boolean {
+  if (!isApiKind.value) {
     return true
   }
 
-  if (form.specialCallbackUrl.trim() && !isValidCallbackUrl(form.specialCallbackUrl)) {
+  if (form.apiCallbackUrl.trim() && !isValidCallbackUrl(form.apiCallbackUrl)) {
     showToast(
       '回调地址须为 http(s) 开头的绝对地址，例如 https://shop.example.com/73info/callback',
       'warning',
@@ -410,7 +410,7 @@ function validateSpecialChannel(): boolean {
     return false
   }
 
-  const invalid = findInvalidAllowedOrigin(specialOrigins.value)
+  const invalid = findInvalidAllowedOrigin(apiOrigins.value)
   if (invalid) {
     showToast(
       `允许来源「${invalid}」格式不正确：只支持完整源（https://shop.example.com）、通配域名（*.example.com）或纯 IP`,
@@ -423,21 +423,21 @@ function validateSpecialChannel(): boolean {
 }
 
 /** 只重发渠道配置这一半（资源主页上一轮已经保存）。返回是否成功。 */
-async function saveSpecialChannelOnly(resourceId: number): Promise<boolean> {
+async function saveApiChannelOnly(resourceId: number): Promise<boolean> {
   if (!auth.token) {
     return false
   }
 
   try {
-    applySavedSpecialChannel(
-      await updateResourceSpecialChannel(auth.token, resourceId, {
-        resource_kind: 'special',
-        repeat_purchasable: form.specialRepeatPurchasable,
-        callback_url: form.specialCallbackUrl.trim() || null,
+    applySavedApiChannel(
+      await updateResourceApiChannel(auth.token, resourceId, {
+        resource_kind: 'api',
+        repeat_purchasable: form.apiRepeatPurchasable,
+        callback_url: form.apiCallbackUrl.trim() || null,
         // 留空 = 不改；首次留空时后端自动生成，明文只在这次响应里回显
-        callback_secret: form.specialCallbackSecret.trim() || null,
-        allow_strangers: form.specialAllowStrangers,
-        allowed_origins: specialOrigins.value,
+        callback_secret: form.apiCallbackSecret.trim() || null,
+        allow_strangers: form.apiAllowStrangers,
+        allowed_origins: apiOrigins.value,
       }),
     )
     channelRetryOnly.value = false
@@ -445,9 +445,9 @@ async function saveSpecialChannelOnly(resourceId: number): Promise<boolean> {
     return true
   } catch (error) {
     channelRetryOnly.value = true
-    channelSaveError.value = error instanceof Error ? error.message : '保存特殊资源渠道配置失败'
+    channelSaveError.value = error instanceof Error ? error.message : '保存接口资源渠道配置失败'
     showToast(
-      `资源主页已保存，但特殊资源渠道配置未保存成功：${channelSaveError.value}。请修正后重试，重试只会重发渠道配置。`,
+      `资源主页已保存，但接口资源渠道配置未保存成功：${channelSaveError.value}。请修正后重试，重试只会重发渠道配置。`,
       'error',
     )
     return false
@@ -642,13 +642,13 @@ async function loadResource() {
     // R029：比例以万分比存，回显换算回百分比文本（1000 → '10'；0 → ''）
     form.promoSharePercent = promoShareBpsToPercentText(payload.promo_share_bps)
     form.copyrightDeclared = Boolean(payload.copyright_declared)
-    form.resourceKind = isSpecialResourceKind(payload.resource_kind) ? 'special' : 'normal'
+    form.resourceKind = isApiResourceKind(payload.resource_kind) ? 'api' : 'normal'
     coverPreview.value = payload.cover_url ? apiUrl(payload.cover_url) : ''
     syncEditorContent(payload.release_note || '')
 
-    // 特殊资源才去读渠道配置（回调地址 / 掩码 / 允许来源）；普通资源不打扰后端
-    if (form.resourceKind === 'special') {
-      await loadSpecialChannel(payload.id)
+    // 接口资源才去读渠道配置（回调地址 / 掩码 / 允许来源）；普通资源不打扰后端
+    if (form.resourceKind === 'api') {
+      await loadApiChannel(payload.id)
     }
   } catch (error) {
     // 404 同时覆盖「资源不存在」与「私有/待审资源无权查看」，按后端原文弹「not found」对用户没意义
@@ -711,18 +711,18 @@ async function saveHomepage() {
     showToast('现金售价与积分售价不能同时大于 0', 'warning')
     return
   }
-  // R028：特殊资源只走现金价（积分购是平台内入口，指定地址售卖没有它）
-  if (isSpecialKind.value) {
+  // R028：接口资源只走现金价（积分购是平台内入口，指定地址售卖没有它）
+  if (isApiKind.value) {
     if (pointsParsed.points > 0) {
-      showToast('特殊资源只能设置现金售价，不能设置积分售价', 'warning')
+      showToast('接口资源只能设置现金售价，不能设置积分售价', 'warning')
       return
     }
-    // 已上架（审核中 / 公开展示）的特殊资源必须留现金售价，否则开放接口卖不出去
+    // 已上架（审核中 / 公开展示）的接口资源必须留现金售价，否则开放接口卖不出去
     if (
       priceParsed.fen <= 0 &&
       (resource.value.visibility === 'review' || resource.value.visibility === 'published')
     ) {
-      showToast('特殊资源必须填写现金售价（元）', 'warning')
+      showToast('接口资源必须填写现金售价（元）', 'warning')
       return
     }
   }
@@ -749,16 +749,16 @@ async function saveHomepage() {
     return
   }
 
-  if (!validateSpecialChannel()) {
+  if (!validateApiChannel()) {
     return
   }
 
   saving.value = true
   try {
     // 资源主页上一轮已保存、只有渠道配置没成功：这一次只重发渠道配置这一半
-    if (channelRetryOnly.value && isSpecialKind.value && resource.value) {
-      if (await saveSpecialChannelOnly(resource.value.id)) {
-        showToast('特殊资源渠道配置已保存', 'success')
+    if (channelRetryOnly.value && isApiKind.value && resource.value) {
+      if (await saveApiChannelOnly(resource.value.id)) {
+        showToast('接口资源渠道配置已保存', 'success')
       }
       return
     }
@@ -794,7 +794,7 @@ async function saveHomepage() {
       origin_org: form.originOrg.trim() || null,
       origin_note: form.originNote.trim() || null,
       price_fen: priceParsed.fen,
-      price_points: isSpecialKind.value ? 0 : pointsParsed.points,
+      price_points: isApiKind.value ? 0 : pointsParsed.points,
       copyright_declared: form.copyrightDeclared,
       resource_kind: form.resourceKind,
       // R029：比例整体提交，0 也显式下发——清空回 0 这种操作不能靠省略字段变成静默失效
@@ -820,7 +820,7 @@ async function saveHomepage() {
     syncEditorContent(updated.release_note || '')
 
     // R028：资源本身存好了，再 PUT 渠道配置；失败要明确报错并留在表单上（重试只重发这一半）
-    if (isSpecialKind.value && !(await saveSpecialChannelOnly(updated.id))) {
+    if (isApiKind.value && !(await saveApiChannelOnly(updated.id))) {
       return
     }
 
@@ -913,7 +913,7 @@ onMounted(async () => {
         <div class="dev-meta-strip__item">
           <span class="dev-meta-strip__label">类别</span>
           <span class="dev-meta-strip__value">
-            {{ isSpecialKind ? '特殊资源 · 不在大厅展示' : '普通资源' }}
+            {{ isApiKind ? '接口资源 · 不在大厅展示' : '普通资源' }}
           </span>
         </div>
         <div class="dev-meta-strip__divider" />
@@ -1010,10 +1010,10 @@ onMounted(async () => {
                 <TFormItem label="资源类别" required class="dev-basic-info-grid__kind">
                   <TSelect v-model="form.resourceKind">
                     <TOption label="普通资源（大厅公开展示）" value="normal" />
-                    <TOption label="特殊资源（不公开展示，指定来源下单）" value="special" />
+                    <TOption label="接口资源（不公开展示，指定来源下单）" value="api" />
                   </TSelect>
                   <p class="dev-field-hint">
-                    改成「特殊资源」后，下面的接入配置随「保存主页」一起生效；它不再进大厅、首页精选与公开搜索。
+                    改成「接口资源」后，下面的接入配置随「保存主页」一起生效；它不再进大厅、首页精选与公开搜索。
                   </p>
                 </TFormItem>
 
@@ -1034,23 +1034,19 @@ onMounted(async () => {
                 <TFormItem
                   label="售价（元）"
                   class="dev-basic-info-grid__price"
-                  :class="{ 'dev-basic-info-grid__price--wide': isSpecialKind }"
+                  :class="{ 'dev-basic-info-grid__price--wide': isApiKind }"
                 >
                   <TInput
                     v-model="form.priceYuan"
                     :disabled="cashPriceDisabled"
                     placeholder="0 = 免费"
                     inputmode="decimal"
-                    :title="isSpecialKind ? undefined : '与积分售价互斥；大于 0 为现金一口价'"
+                    :title="isApiKind ? undefined : '与积分售价互斥；大于 0 为现金一口价'"
                     @input="onCashPriceInput"
                   />
                 </TFormItem>
 
-                <TFormItem
-                  v-if="!isSpecialKind"
-                  label="积分售价"
-                  class="dev-basic-info-grid__points"
-                >
+                <TFormItem v-if="!isApiKind" label="积分售价" class="dev-basic-info-grid__points">
                   <TInput
                     v-model="form.pricePoints"
                     :disabled="pointsPriceDisabled"
@@ -1176,10 +1172,10 @@ onMounted(async () => {
             </TForm>
           </section>
 
-          <section v-if="isSpecialKind" class="dev-upload-block dev-upload-block--split">
+          <section v-if="isApiKind" class="dev-upload-block dev-upload-block--split">
             <header class="dev-card-head">
               <section class="dev-card-head__title-block">
-                <h3 class="dev-section-title">特殊资源接入配置</h3>
+                <h3 class="dev-section-title">接口资源接入配置</h3>
               </section>
             </header>
 
@@ -1187,37 +1183,37 @@ onMounted(async () => {
               v-if="channelRetryOnly"
               tone="danger"
               variant="soft"
-              class="dev-special-retry-notice"
-              data-testid="special-channel-retry-notice"
-              title="资源主页已保存，特殊渠道配置还没成功"
+              class="dev-api-retry-notice"
+              data-testid="api-channel-retry-notice"
+              title="资源主页已保存，接口资源渠道配置还没成功"
               :description="`原因：${channelSaveError}。修正后点「保存主页」只会重发渠道配置这一半；主页字段若也要改，渠道补上后再点一次即可。`"
             />
 
             <TAlert
-              v-else-if="specialChannelBlockers.length"
+              v-else-if="apiChannelBlockers.length"
               tone="warning"
               variant="soft"
-              class="dev-special-notice"
+              class="dev-api-notice"
               title="配置还没配齐，暂不可被下单"
-              :description="`${specialChannelBlockers.join('；')}。可以先保存，配齐后再保存一次。`"
+              :description="`${apiChannelBlockers.join('；')}。可以先保存，配齐后再保存一次。`"
             />
 
             <TForm label-position="top" class="dev-upload-form">
-              <div class="dev-upload-grid dev-upload-grid--two">
-                <TFormItem label="回调地址">
+              <div class="dev-upload-grid dev-upload-grid--form">
+                <TFormItem label="回调地址" class="dev-form-item--wide">
                   <TInput
-                    v-model="form.specialCallbackUrl"
+                    v-model="form.apiCallbackUrl"
                     :maxlength="500"
                     placeholder="https://shop.example.com/73info/callback"
                   />
-                  <p v-if="specialCallbackInvalid" class="dev-field-hint dev-field-hint--error">
+                  <p v-if="apiCallbackInvalid" class="dev-field-hint dev-field-hint--error">
                     当前不合法：请填 http(s) 绝对地址。
                   </p>
                 </TFormItem>
 
-                <TFormItem label="回调密钥">
+                <TFormItem label="回调密钥" class="dev-form-item--wide">
                   <TInput
-                    v-model="form.specialCallbackSecret"
+                    v-model="form.apiCallbackSecret"
                     type="password"
                     :maxlength="128"
                     autocomplete="new-password"
@@ -1226,52 +1222,51 @@ onMounted(async () => {
                   <p class="dev-field-hint">当前：{{ savedSecretMaskedLabel }}</p>
                 </TFormItem>
 
-                <TFormItem label="允许的来源地址" class="dev-special-span">
+                <TFormItem label="允许的来源地址" class="dev-form-item--full">
                   <TInput
-                    v-model="form.specialAllowedOrigins"
+                    v-model="form.apiAllowedOrigins"
                     type="textarea"
                     :rows="5"
                     :maxlength="2000"
                     placeholder="https://shop.example.com&#10;*.example.com&#10;203.0.113.9"
                   />
-                  <p v-if="invalidSpecialOrigin" class="dev-field-hint dev-field-hint--error">
-                    当前不合法：{{ invalidSpecialOrigin }}
+                  <p v-if="invalidApiOrigin" class="dev-field-hint dev-field-hint--error">
+                    当前不合法：{{ invalidApiOrigin }}
                   </p>
                 </TFormItem>
 
-                <div class="dev-special-switch-row dev-special-span">
-                  <label class="dev-special-switch">
-                    <TSwitch v-model="form.specialRepeatPurchasable" aria-label="允许重复购买" />
-                    <span>允许重复购买</span>
-                  </label>
-                </div>
+                <TFormItem label="购买限制" class="dev-form-item--switch">
+                  <div class="dev-api-switch-row">
+                    <label class="dev-api-switch">
+                      <TSwitch v-model="form.apiRepeatPurchasable" aria-label="允许重复购买" />
+                      <span>允许重复购买</span>
+                    </label>
+                    <label class="dev-api-switch">
+                      <TSwitch v-model="form.apiAllowStrangers" aria-label="允许陌生用户购买" />
+                      <span>允许陌生用户购买</span>
+                    </label>
+                  </div>
+                </TFormItem>
 
-                <div class="dev-special-switch-row dev-special-span">
-                  <label class="dev-special-switch">
-                    <TSwitch v-model="form.specialAllowStrangers" aria-label="允许陌生用户购买" />
-                    <span>允许陌生用户购买</span>
-                  </label>
-                </div>
-
-                <TFormItem label="是否公开展示" class="dev-special-span">
+                <TFormItem label="是否公开展示" class="dev-form-item--short">
                   <TTag variant="soft" tone="neutral">不在大厅展示</TTag>
                 </TFormItem>
               </div>
             </TForm>
 
-            <div v-if="revealedSecretPlain" class="dev-special-secret">
-              <p class="dev-special-secret__title">回调密钥（只显示这一次，请立即复制保存）</p>
-              <code class="dev-special-secret__value">{{ revealedSecretPlain }}</code>
+            <div v-if="revealedSecretPlain" class="dev-api-secret">
+              <p class="dev-api-secret__title">回调密钥（只显示这一次，请立即复制保存）</p>
+              <code class="dev-api-secret__value">{{ revealedSecretPlain }}</code>
               <TButton variant="outline" @click="copyRevealedSecret">复制密钥</TButton>
             </div>
 
-            <div class="dev-special-sample">
-              <div class="dev-special-sample__head">
-                <h4 class="dev-special-sample__title">接入示例（在你自有站点的服务端调用）</h4>
-                <TButton variant="outline" @click="copySpecialSample">复制示例</TButton>
+            <div class="dev-api-sample">
+              <div class="dev-api-sample__head">
+                <h4 class="dev-api-sample__title">接入示例（在你自有站点的服务端调用）</h4>
+                <TButton variant="outline" @click="copyApiSample">复制示例</TButton>
               </div>
-              <pre class="dev-special-sample__code">{{ specialSampleCurl }}</pre>
-              <ul class="dev-special-sample__notes">
+              <pre class="dev-api-sample__code">{{ apiSampleCurl }}</pre>
+              <ul class="dev-api-sample__notes">
                 <li>
                   接口密钥走 <code>X-Api-Key</code> 头（形如
                   <code>sk-73info-…</code>），在平台生成；
@@ -1279,7 +1274,7 @@ onMounted(async () => {
                 </li>
                 <li>
                   回调验签：用你填的回调密钥，按
-                  <code>{{ SPECIAL_CALLBACK_SIGNATURE_RULE }}</code>
+                  <code>{{ API_CALLBACK_SIGNATURE_RULE }}</code>
                   自算签名，与请求头 <code>X-73Info-Signature</code> 比对（时间戳在
                   <code>X-73Info-Timestamp</code>）。
                 </li>
@@ -1444,7 +1439,7 @@ onMounted(async () => {
       title="回调密钥已生成（只显示这一次）"
     >
       <p class="dev-secret-dialog__hint">
-        这是平台为这个特殊资源生成的回调密钥。<strong>关闭后平台不再显示明文</strong>，
+        这是平台为这个接口资源生成的回调密钥。<strong>关闭后平台不再显示明文</strong>，
         请立即复制并保存到你自有站点的服务端，用于校验回调签名。
       </p>
       <code class="dev-secret-dialog__value">{{ revealedSecretPlain }}</code>
@@ -1514,7 +1509,7 @@ onMounted(async () => {
   grid-column: span 3;
 }
 
-/* 特殊资源不渲染「积分售价」：售价（元）补到 6 档，这一行仍然铺满 12 档 */
+/* 接口资源不渲染「积分售价」：售价（元）补到 6 档，这一行仍然铺满 12 档 */
 .dev-basic-info-grid__price--wide {
   grid-column: span 6;
 }
@@ -1602,27 +1597,23 @@ onMounted(async () => {
   margin: 0 0 16px;
 }
 
-/* R028 特殊资源配置区 */
+/* R028 接口资源配置区 */
 .dev-basic-info-grid__kind :deep(.t73-select) {
   max-width: 460px;
 }
 
-.dev-special-notice,
-.dev-special-retry-notice {
+.dev-api-notice,
+.dev-api-retry-notice {
   margin: 0 0 4px;
 }
 
-.dev-special-span,
-.dev-special-switch-row {
-  grid-column: 1 / -1;
+.dev-api-switch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
 }
 
-.dev-special-switch-row {
-  display: grid;
-  gap: 2px;
-}
-
-.dev-special-switch {
+.dev-api-switch {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1631,7 +1622,7 @@ onMounted(async () => {
   color: var(--text-primary, #1f2937);
 }
 
-.dev-special-secret {
+.dev-api-secret {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1643,7 +1634,7 @@ onMounted(async () => {
   background: #fff8ea;
 }
 
-.dev-special-secret__title {
+.dev-api-secret__title {
   flex: 1 1 100%;
   margin: 0;
   font-size: 13px;
@@ -1651,7 +1642,7 @@ onMounted(async () => {
   color: #92400e;
 }
 
-.dev-special-secret__value {
+.dev-api-secret__value {
   flex: 1 1 auto;
   min-width: 0;
   padding: 8px 10px;
@@ -1664,7 +1655,7 @@ onMounted(async () => {
   user-select: all;
 }
 
-.dev-special-sample {
+.dev-api-sample {
   margin: 16px 0 0;
   padding: 14px 16px;
   border: 1px solid var(--dev-line, #e2e8f0);
@@ -1672,7 +1663,7 @@ onMounted(async () => {
   background: var(--dev-surface-strong, #f8fafc);
 }
 
-.dev-special-sample__head {
+.dev-api-sample__head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1680,14 +1671,14 @@ onMounted(async () => {
   gap: 12px;
 }
 
-.dev-special-sample__title {
+.dev-api-sample__title {
   margin: 0;
   font-size: 13px;
   font-weight: 700;
   color: var(--dev-ink, #1f2937);
 }
 
-.dev-special-sample__code {
+.dev-api-sample__code {
   margin: 12px 0 0;
   padding: 12px 14px;
   overflow-x: auto;
@@ -1702,7 +1693,7 @@ onMounted(async () => {
   overflow-wrap: anywhere;
 }
 
-.dev-special-sample__notes {
+.dev-api-sample__notes {
   margin: 12px 0 0;
   padding-left: 18px;
   font-size: 12px;
@@ -1710,7 +1701,7 @@ onMounted(async () => {
   color: var(--text-secondary, #64748b);
 }
 
-.dev-special-sample__notes code {
+.dev-api-sample__notes code {
   padding: 1px 4px;
   border-radius: 4px;
   background: #e2e8f0;
@@ -1736,12 +1727,5 @@ onMounted(async () => {
   font-size: 13px;
   word-break: break-all;
   user-select: all;
-}
-
-/* 窄屏下配置区收成一列，与基础信息区的手机口径一致 */
-@media (max-width: 720px) {
-  .dev-upload-grid--two {
-    grid-template-columns: 1fr;
-  }
 }
 </style>
