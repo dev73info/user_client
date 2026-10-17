@@ -6,7 +6,7 @@ alwaysApply: true
 # 工具链与质量门禁（user-client）
 
 本文只管**这个前端仓库自己的命令**。跨工程的端口表、后端重启、提交粒度、临时文件与收工清理，见工作区根目录
-`/home/banch/yl73info/.cursor/rules/` 下的 `dev-servers.mdc`、`sync-and-commit.mdc`、`temp-tools.mdc`——**那几份仍然有效，不要在这里重抄一遍**。
+`/home/banch/dev73info/.cursor/rules/` 下的 `dev-servers.mdc`、`sync-and-commit.mdc`、`temp-tools.mdc`——**那几份仍然有效，不要在这里重抄一遍**。
 
 ## 一、所有 `pnpm` 脚本在 POSIX shell 里跑
 
@@ -14,10 +14,10 @@ alwaysApply: true
 `vue-tsc --build` 之类的命令。**本机默认 shell 就是 WSL `Ubuntu-22.04` 的 bash**，`cd` 进仓库直接跑即可，不需要再包一层：
 
 ```bash
-cd /home/banch/yl73info/user-client && pnpm type-check
+cd /home/banch/dev73info/user-client && pnpm type-check
 ```
 
-- 工作区根在 `/home/banch/yl73info`（WSL ext4 上）；Windows 侧的旧副本 `E:\yl73info` 已废弃，不要再把路径写回去。
+- 工作区根在 `/home/banch/dev73info`（WSL ext4 上）；Windows 侧的旧副本 `E:\yl73info` 已废弃，不要再把路径写回去。
 - `pnpm lint`、`pnpm format`、`pnpm test:unit` 同样在这个 bash 里直接跑。
 
 ## 二、命令表

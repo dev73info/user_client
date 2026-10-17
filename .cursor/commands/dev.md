@@ -14,7 +14,7 @@ description: 在 Cursor 终端里起 user-client 的 dev server（需求方 5173
 默认起**需求方**这一个实例：
 
 ```bash
-cd /home/banch/yl73info/user-client && pnpm dev
+cd /home/banch/dev73info/user-client && pnpm dev
 ```
 
 如果用户这次提到了开发者、开发者侧、两侧视角、或要对比两侧，就**再起第二个实例**（5175），用进程环境变量覆盖自动登录账号：

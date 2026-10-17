@@ -11,10 +11,10 @@ model: inherit
 `type-check` / `build` / `dev` 这几个脚本就是 `vue-tsc --build` / `vite` 之类的命令。**本机默认 shell 就是 WSL `Ubuntu-22.04` 的 bash**，`cd` 进仓库直接跑即可：
 
 ```bash
-cd /home/banch/yl73info/user-client && pnpm type-check
+cd /home/banch/dev73info/user-client && pnpm type-check
 ```
 
-- 工作区根在 `/home/banch/yl73info`（WSL ext4 上）；Windows 侧的旧副本 `E:\yl73info` 已废弃，不要拿它当工作区、也不要把路径写回去。
+- 工作区根在 `/home/banch/dev73info`（WSL ext4 上）；Windows 侧的旧副本 `E:\yl73info` 已废弃，不要拿它当工作区、也不要把路径写回去。
 - `pnpm lint` / `pnpm test:unit` 同样在这个 bash 里直接跑。
 
 ## 执行顺序

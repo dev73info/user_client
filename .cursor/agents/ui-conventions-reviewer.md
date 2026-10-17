@@ -11,9 +11,9 @@ readonly: true
 
 先读这三份，它们是判据来源，不要凭印象：
 
-- `/home/banch/yl73info/user-client/.cursor/rules/design-tokens.mdc`（令牌、档位、断点、移动端要求）
-- `/home/banch/yl73info/user-client/.cursor/rules/ui-73info-components.mdc`（组件库口径）
-- `/home/banch/yl73info/user-client/doc/设计规范.md`（完整版，含全部令牌取值与文件职责）
+- `/home/banch/dev73info/user-client/.cursor/rules/design-tokens.mdc`（令牌、档位、断点、移动端要求）
+- `/home/banch/dev73info/user-client/.cursor/rules/ui-73info-components.mdc`（组件库口径）
+- `/home/banch/dev73info/user-client/doc/设计规范.md`（完整版，含全部令牌取值与文件职责）
 
 ## 审查范围
 
