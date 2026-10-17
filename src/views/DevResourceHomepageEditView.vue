@@ -1697,7 +1697,9 @@ onMounted(async () => {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
   line-height: 1.6;
-  white-space: pre;
+  /* 长 curl 行折行显示（复制出来的文本不受影响），不靠横向滚动把内容藏起来 */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .dev-special-sample__notes {
