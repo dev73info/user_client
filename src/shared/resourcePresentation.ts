@@ -1,3 +1,5 @@
+import { isApiResourceKind } from '@/shared/resourceApi'
+
 export type ResourcePresentationInput = {
   platform: string
   visibility: 'draft' | 'review' | 'published'
@@ -6,6 +8,8 @@ export type ResourcePresentationInput = {
   tag_selections: Array<{ tag_names: string[] }>
   /** R014：资源所属需求已进入超期锁定 / 已清除（锁定期内只能下载历史版本，不能编辑 / 发版 / 删除）。 */
   requirement_archive_locked?: boolean | null
+  /** 资源类别：normal / api；缺省按 normal 处理（判定见 shared/resourceApi.ts 的 isApiResourceKind）。 */
+  resource_kind?: string | null
 }
 
 export function resourcePlatformLabel(value: string): string {
@@ -28,6 +32,19 @@ export function resourceVisibilityTagType(
 
 export function resourceTagSummary(resource: ResourcePresentationInput): string {
   return resource.tag_selections.flatMap((group) => group.tag_names).join(' / ')
+}
+
+/**
+ * 资源列表「标签」列的展示值。
+ * 接口资源不选标签归类、不属于任何根节点 / 二级节点，一律按「原创」展示；
+ * 普通资源仍按标签名拼接，一个标签都没选时回落为「未附带标签」。
+ */
+export function resourceTagColumnLabel(resource: ResourcePresentationInput): string {
+  if (isApiResourceKind(resource.resource_kind)) {
+    return '原创'
+  }
+
+  return resourceTagSummary(resource) || '未附带标签'
 }
 
 export function resourceCoverUrl(

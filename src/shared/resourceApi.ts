@@ -265,25 +265,39 @@ export function listApiChannelBlockers(input: ResourceApiChannelLike): string[] 
 /** 回调验签口径，页面提示与开发者文档必须一字不差。 */
 export const API_CALLBACK_SIGNATURE_RULE = 'HMAC-SHA256(secret, "{timestamp}.{raw_body}")'
 
+/** 开放下单接口路径（提示词里的「接入地址」）。 */
+export const API_OPEN_PURCHASE_PATH = '/api/resource/open/api-purchase'
+
+/** 接入指导文档路径：后端公开读，返回 markdown。 */
+export const API_INTEGRATION_GUIDE_PATH = '/api/resource/open/integration-guide'
+
 /**
- * 接入示例（`curl`）：开发者复制到自己站点的**服务端**执行。
- *
- * 开放下单接口走接口密钥（`X-Api-Key`），`origin` 是本次调用来源，
- * 命中该资源的允许来源才会建单。
+ * 接口密钥的展示形态。密钥由平台生成、当前没有自助管理页面，
+ * 所以提示词里只给形态与请求头，不编一个假密钥。
  */
-export function buildApiPurchaseCurl(
+export const API_KEY_PLACEHOLDER = 'sk-73info-你的接口密钥'
+
+/**
+ * 接入提示词：开发者复制给 AI 编码代理，由代理照指导文档在自己站点的**服务端**完成接入。
+ *
+ * 提示词只组装三件事——接口密钥、接入地址、指导文档地址；资源编号未知时用占位符，
+ * 不要让开发者抄到一条假编号。
+ */
+export function buildApiIntegrationPrompt(
   resourceId: number | null | undefined,
-  options: { apiBase?: string; origin?: string } = {},
+  options: { apiBase?: string } = {},
 ): string {
   const apiBase = (options.apiBase ?? '').trim().replace(/\/$/, '') || 'https://api.73info.cn'
-  const origin = (options.origin ?? '').trim() || 'https://shop.example.com'
   const id =
     Number.isInteger(resourceId) && Number(resourceId) > 0 ? String(resourceId) : '{你的资源编号}'
 
   return [
-    `curl -X POST "${apiBase}/api/resource/open/api-purchase" \\`,
-    '  -H "Content-Type: application/json" \\',
-    '  -H "X-Api-Key: sk-73info-你的接口密钥" \\',
-    `  -d '{"resource_id": ${id}, "origin": "${origin}", "buyer_ref": "shop-order-0001", "pay_channel": "alipay", "client_platform": "pc"}'`,
+    '你是我的服务端开发助手。请先读接入指导文档，再按它在我自有站点的服务端完成接口资源接入。',
+    '',
+    `- 指导文档：${apiBase}${API_INTEGRATION_GUIDE_PATH}`,
+    `- 接口密钥（请求头 X-Api-Key）：${API_KEY_PLACEHOLDER}`,
+    `- 接入地址：POST ${apiBase}${API_OPEN_PURCHASE_PATH}（resource_id = ${id}）`,
+    '',
+    '密钥只放在服务端，不要写进浏览器、小程序等客户端代码；下单成功后把返回的 pay_url 交给买家付款，付款结果由平台回调我配置的回调地址。',
   ].join('\n')
 }

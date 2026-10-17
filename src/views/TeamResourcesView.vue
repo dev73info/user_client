@@ -21,6 +21,7 @@ import {
   isResourceArchiveLocked,
   resourceCoverUrl,
   resourcePlatformLabel,
+  resourceTagColumnLabel,
   resourceTagSummary,
   resourceVisibilityLabel,
   resourceVisibilityTagType,
@@ -211,14 +212,13 @@ function openResourceHomepage(resource: McResourcePayload) {
   const tagSelections = resource.tag_selections ?? []
   const rootName = tagSelections.find((s) => s.group_path.length > 0)?.group_path[0] ?? ''
   const entryName =
-    tagSelections.find((s) => s.group_path.length > 1)?.group_path[1] ??
-    (resource.platform || '')
+    tagSelections.find((s) => s.group_path.length > 1)?.group_path[1] ?? (resource.platform || '')
   const rootAlias =
-    tagSelections.find((s) => (s.group_path_aliases?.length ?? 0) > 0)
-      ?.group_path_aliases?.[0] ?? ''
+    tagSelections.find((s) => (s.group_path_aliases?.length ?? 0) > 0)?.group_path_aliases?.[0] ??
+    ''
   const entryAlias =
-    tagSelections.find((s) => (s.group_path_aliases?.length ?? 0) > 1)
-      ?.group_path_aliases?.[1] ?? ''
+    tagSelections.find((s) => (s.group_path_aliases?.length ?? 0) > 1)?.group_path_aliases?.[1] ??
+    ''
   const rootSlug = rootAlias || getTagRouteSlug(rootName)
   const entrySlug = entryAlias || getTagRouteSlug(entryName)
   const resourceSlug = getResourceDetailSlug(resource.id, resource.creator || resource.author)
@@ -531,9 +531,7 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
         </TTableColumn>
         <TTableColumn label="标签" min-width="120">
           <template #default="scope">
-            <span class="dev-resource-table__tags">{{
-              resourceTagSummary(scope.row) || '未附带标签'
-            }}</span>
+            <span class="dev-resource-table__tags">{{ resourceTagColumnLabel(scope.row) }}</span>
           </template>
         </TTableColumn>
         <TTableColumn label="状态" min-width="110">

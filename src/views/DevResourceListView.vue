@@ -3,10 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRouter } from 'vue-router'
 import { apiUrl } from '@/api/http'
-import {
-  getProcessedTagTree,
-  type McProcessedTagTree,
-} from '@/api/resourceTags'
+import { getProcessedTagTree, type McProcessedTagTree } from '@/api/resourceTags'
 import {
   applyResourcePromoCard,
   createMcResourceVersion,
@@ -39,16 +36,14 @@ import {
   isResourceArchiveLocked,
   resourceCoverUrl,
   resourcePlatformLabel,
+  resourceTagColumnLabel,
   resourceTagSummary,
   resourceVisibilityLabel,
   resourceVisibilityTagType,
   RESOURCE_ARCHIVE_LOCKED_MESSAGE,
   RESOURCE_ARCHIVE_LOCKED_TITLE,
 } from '@/shared/resourcePresentation'
-import {
-  formatResourcePriceLabel,
-  isPricedResource,
-} from '@/shared/resourceSale'
+import { formatResourcePriceLabel, isPricedResource } from '@/shared/resourceSale'
 import { isApiResourceKind, resourceKindFromQuery } from '@/shared/resourceApi'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import {
@@ -60,7 +55,6 @@ import {
 } from '@/shared/resourceTransfer'
 
 import ResourceTransferDialog from '@/components/ResourceTransferDialog.vue'
-
 
 import {
   TAlert,
@@ -111,11 +105,7 @@ const highLikeThreshold = ref(5)
 function formatExposureStatus(resource: McResourcePayload): string {
   const parts: string[] = []
   if (resource.is_featured) {
-    parts.push(
-      resource.featured_until
-        ? `精选至 ${resource.featured_until}`
-        : '精选（永久）',
-    )
+    parts.push(resource.featured_until ? `精选至 ${resource.featured_until}` : '精选（永久）')
   }
   if (resource.is_pinned && resource.pinned_until) {
     parts.push(`置顶至 ${resource.pinned_until}`)
@@ -270,10 +260,7 @@ async function confirmApplyPromoCard() {
   }
   const card = unusedPromoCards.value.find((item) => item.id === selectedPromoCardId.value)
   if (card && isFeaturedCardDisabled(card, promoTarget.value)) {
-    showToast(
-      `点赞数不足 ${highLikeThreshold.value}，无法使用精选卡`,
-      'warning',
-    )
+    showToast(`点赞数不足 ${highLikeThreshold.value}，无法使用精选卡`, 'warning')
     return
   }
   applyingPromo.value = true
@@ -686,10 +673,7 @@ async function requestPublicReview(resource: McResourcePayload) {
     return
   }
 
-  if (
-    isPricedResource(resource.price_fen, resource.price_points) &&
-    !resource.copyright_declared
-  ) {
+  if (isPricedResource(resource.price_fen, resource.price_points) && !resource.copyright_declared) {
     showToast('付费资源须先在「编辑主页」勾选版权声明，再申请公开', 'warning')
     router.push({
       name: 'dev-resource-homepage-edit',
@@ -807,13 +791,27 @@ async function setResourcePrivate(resource: McResourcePayload) {
       </div>
 
       <div class="dev-transfer-tabs" role="tablist" aria-label="资源过户列表切换">
-        <button type="button" role="tab" class="dev-transfer-tab" :class="{ 'is-active': transferTab === 'inbox' }"
-          :aria-selected="transferTab === 'inbox'" @click="transferTab = 'inbox'">
+        <button
+          type="button"
+          role="tab"
+          class="dev-transfer-tab"
+          :class="{ 'is-active': transferTab === 'inbox' }"
+          :aria-selected="transferTab === 'inbox'"
+          @click="transferTab = 'inbox'"
+        >
           待我同意
-          <span v-if="transferInboxCount" class="dev-transfer-tab__badge">{{ transferInboxCount }}</span>
+          <span v-if="transferInboxCount" class="dev-transfer-tab__badge">{{
+            transferInboxCount
+          }}</span>
         </button>
-        <button type="button" role="tab" class="dev-transfer-tab" :class="{ 'is-active': transferTab === 'mine' }"
-          :aria-selected="transferTab === 'mine'" @click="transferTab = 'mine'">
+        <button
+          type="button"
+          role="tab"
+          class="dev-transfer-tab"
+          :class="{ 'is-active': transferTab === 'mine' }"
+          :aria-selected="transferTab === 'mine'"
+          @click="transferTab = 'mine'"
+        >
           我发起的
         </button>
       </div>
@@ -831,18 +829,25 @@ async function setResourcePrivate(resource: McResourcePayload) {
               </TTag>
             </div>
             <p class="dev-transfer-item__meta">
-              来自 {{ item.from_team_name ? `团队 ${item.from_team_name}` : item.from_user }}
-              · 发起于 {{ item.initiated_at }}
+              来自 {{ item.from_team_name ? `团队 ${item.from_team_name}` : item.from_user }} ·
+              发起于 {{ item.initiated_at }}
             </p>
             <p v-if="item.message" class="dev-transfer-item__message">“{{ item.message }}”</p>
           </div>
           <div class="dev-transfer-item__actions">
-            <TButton variant="solid" tone="accent" :disabled="respondingTransferId === item.transfer_id"
-              @click="respondTransfer(item, true)">
+            <TButton
+              variant="solid"
+              tone="accent"
+              :disabled="respondingTransferId === item.transfer_id"
+              @click="respondTransfer(item, true)"
+            >
               同意
             </TButton>
-            <TButton variant="outline" :disabled="respondingTransferId === item.transfer_id"
-              @click="respondTransfer(item, false)">
+            <TButton
+              variant="outline"
+              :disabled="respondingTransferId === item.transfer_id"
+              @click="respondTransfer(item, false)"
+            >
               拒绝
             </TButton>
           </div>
@@ -871,8 +876,11 @@ async function setResourcePrivate(resource: McResourcePayload) {
             <p v-if="item.message" class="dev-transfer-item__message">“{{ item.message }}”</p>
           </div>
           <div v-if="isTransferCancelable(item.status)" class="dev-transfer-item__actions">
-            <TButton variant="outline" :disabled="respondingTransferId === item.transfer_id"
-              @click="cancelTransferApply(item)">
+            <TButton
+              variant="outline"
+              :disabled="respondingTransferId === item.transfer_id"
+              @click="cancelTransferApply(item)"
+            >
               撤销
             </TButton>
           </div>
@@ -919,15 +927,24 @@ async function setResourcePrivate(resource: McResourcePayload) {
       />
 
       <div class="dev-toolbar">
-        <TSelect v-model="filters.visibility" clearable placeholder="资源状态"
-          class="dev-toolbar__field" aria-label="按资源状态筛选">
+        <TSelect
+          v-model="filters.visibility"
+          clearable
+          placeholder="资源状态"
+          class="dev-toolbar__field"
+          aria-label="按资源状态筛选"
+        >
           <TOption label="已公开" value="published" />
           <TOption label="审核中" value="review" />
           <TOption label="私有" value="draft" />
         </TSelect>
 
-        <TInput v-model="filters.keyword" clearable placeholder="搜索资源标题、作者或标签"
-          class="dev-toolbar__search">
+        <TInput
+          v-model="filters.keyword"
+          clearable
+          placeholder="搜索资源标题、作者或标签"
+          class="dev-toolbar__search"
+        >
           <template #prefix>
             <TIcon>
               <Search />
@@ -955,10 +972,18 @@ async function setResourcePrivate(resource: McResourcePayload) {
         <TTableColumn label="资源" min-width="160">
           <template #default="scope">
             <div class="dev-resource-table__title-cell">
-              <img v-if="scope.row.cover_url" :src="resourceCoverUrl(scope.row, apiUrl)" alt="资源图标"
-                class="dev-resource-table__icon" />
+              <img
+                v-if="scope.row.cover_url"
+                :src="resourceCoverUrl(scope.row, apiUrl)"
+                alt="资源图标"
+                class="dev-resource-table__icon"
+              />
               <div>
-                <button class="dev-resource-table__title-link" type="button" @click="openResourceHomepage(scope.row)">
+                <button
+                  class="dev-resource-table__title-link"
+                  type="button"
+                  @click="openResourceHomepage(scope.row)"
+                >
                   {{ scope.row.title }}
                 </button>
                 <div class="dev-resource-table__meta">
@@ -970,9 +995,7 @@ async function setResourcePrivate(resource: McResourcePayload) {
         </TTableColumn>
         <TTableColumn label="标签" min-width="120">
           <template #default="scope">
-            <span class="dev-resource-table__tags">{{
-              resourceTagSummary(scope.row) || '未附带标签'
-              }}</span>
+            <span class="dev-resource-table__tags">{{ resourceTagColumnLabel(scope.row) }}</span>
           </template>
         </TTableColumn>
         <TTableColumn label="售价" min-width="90">
@@ -980,14 +1003,10 @@ async function setResourcePrivate(resource: McResourcePayload) {
             <TTag
               variant="outline"
               :tone="
-                isPricedResource(scope.row.price_fen, scope.row.price_points)
-                  ? 'accent'
-                  : 'neutral'
+                isPricedResource(scope.row.price_fen, scope.row.price_points) ? 'accent' : 'neutral'
               "
             >
-              {{
-                formatResourcePriceLabel(scope.row.price_fen ?? 0, scope.row.price_points ?? 0)
-              }}
+              {{ formatResourcePriceLabel(scope.row.price_fen ?? 0, scope.row.price_points ?? 0) }}
             </TTag>
           </template>
         </TTableColumn>
@@ -1023,8 +1042,13 @@ async function setResourcePrivate(resource: McResourcePayload) {
         <TTableColumn prop="created_at" label="创建时间" min-width="150" />
         <TTableColumn label="操作" min-width="120" fixed="right">
           <template #default="scope">
-            <TDropdown trigger="click"
-              @command="(cmd) => handleResourceCommand(cmd as { action: string; resource: McResourcePayload })">
+            <TDropdown
+              trigger="click"
+              @command="
+                (cmd) =>
+                  handleResourceCommand(cmd as { action: string; resource: McResourcePayload })
+              "
+            >
               <TButton variant="outline" tone="accent">
                 <span>更多</span>
                 <TIcon class="dev-action-caret">
@@ -1039,15 +1063,25 @@ async function setResourcePrivate(resource: McResourcePayload) {
                   >
                     发布版本
                   </TDropdownItem>
-                  <TDropdownItem v-if="scope.row.visibility === 'draft'" :disabled="Boolean(scope.row.requirement_id) ||
-                    isResourceArchiveLocked(scope.row) ||
-                    requestingReviewResourceId === scope.row.id
-                    " :command="{ action: 'request-review', resource: scope.row }">
+                  <TDropdownItem
+                    v-if="scope.row.visibility === 'draft'"
+                    :disabled="
+                      Boolean(scope.row.requirement_id) ||
+                      isResourceArchiveLocked(scope.row) ||
+                      requestingReviewResourceId === scope.row.id
+                    "
+                    :command="{ action: 'request-review', resource: scope.row }"
+                  >
                     {{ requestingReviewResourceId === scope.row.id ? '提交中...' : '申请公开' }}
                   </TDropdownItem>
-                  <TDropdownItem v-if="scope.row.visibility === 'published'"
-                    :disabled="isResourceArchiveLocked(scope.row) || settingPrivateResourceId === scope.row.id"
-                    :command="{ action: 'set-private', resource: scope.row }">
+                  <TDropdownItem
+                    v-if="scope.row.visibility === 'published'"
+                    :disabled="
+                      isResourceArchiveLocked(scope.row) ||
+                      settingPrivateResourceId === scope.row.id
+                    "
+                    :command="{ action: 'set-private', resource: scope.row }"
+                  >
                     {{ settingPrivateResourceId === scope.row.id ? '设置中...' : '设为私有' }}
                   </TDropdownItem>
                   <TDropdownItem
@@ -1057,7 +1091,9 @@ async function setResourcePrivate(resource: McResourcePayload) {
                   >
                     使用道具
                   </TDropdownItem>
-                  <TDropdownItem :command="{ action: 'versions', resource: scope.row }">版本管理</TDropdownItem>
+                  <TDropdownItem :command="{ action: 'versions', resource: scope.row }"
+                    >版本管理</TDropdownItem
+                  >
                   <TDropdownItem
                     :disabled="isResourceArchiveLocked(scope.row)"
                     :command="{ action: 'edit', resource: scope.row }"
@@ -1070,8 +1106,14 @@ async function setResourcePrivate(resource: McResourcePayload) {
                   <TDropdownItem :command="{ action: 'transfer', resource: scope.row }">
                     过户
                   </TDropdownItem>
-                  <TDropdownItem :command="{ action: 'delete', resource: scope.row }"
-                    :disabled="isResourceArchiveLocked(scope.row) || !canDeleteResource(scope.row) || deletingResourceId === scope.row.id">
+                  <TDropdownItem
+                    :command="{ action: 'delete', resource: scope.row }"
+                    :disabled="
+                      isResourceArchiveLocked(scope.row) ||
+                      !canDeleteResource(scope.row) ||
+                      deletingResourceId === scope.row.id
+                    "
+                  >
                     {{ deletingResourceId === scope.row.id ? '删除中...' : '删除' }}
                   </TDropdownItem>
                 </TDropdownMenu>
@@ -1084,38 +1126,69 @@ async function setResourcePrivate(resource: McResourcePayload) {
       <div class="dev-pager">
         <div class="dev-pager__count">
           <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
-            <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+            <TOption
+              v-for="size in LIST_PAGE_SIZES"
+              :key="size"
+              :label="`${size} 条/页`"
+              :value="size"
+            />
           </TSelect>
         </div>
-        <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal" :pager-count="5" background aria-label="资源列表分页" />
+        <TPagination
+          v-model:current-page="page"
+          :page-size="pageSize"
+          :total="filteredTotal"
+          :pager-count="5"
+          background
+          aria-label="资源列表分页"
+        />
       </div>
     </TCard>
 
-    <TDialog v-model:open="publishDialogVisible" width="520px" class="dev-dialog"
-      :title="selectedResource ? `发布版本 · ${selectedResource.title}` : '发布版本'">
+    <TDialog
+      v-model:open="publishDialogVisible"
+      width="520px"
+      class="dev-dialog"
+      :title="selectedResource ? `发布版本 · ${selectedResource.title}` : '发布版本'"
+    >
       <TForm label-position="top" class="dev-version-form">
         <TFormItem label="版本号" required>
-          <TInput v-model="versionForm.version"  :maxlength="80" placeholder="例如：1.20.1-2.0.0" />
+          <TInput v-model="versionForm.version" :maxlength="80" placeholder="例如：1.20.1-2.0.0" />
         </TFormItem>
         <TFormItem label="资源文件" required>
           <div class="dev-version-file-picker">
-            <input ref="versionFileInput" type="file" class="dev-version-file-picker__input"
-              @change="handleVersionFileChange" />
+            <input
+              ref="versionFileInput"
+              type="file"
+              class="dev-version-file-picker__input"
+              @change="handleVersionFileChange"
+            />
             <TButton @click="triggerVersionFileSelect">选择文件</TButton>
             <span class="dev-version-file-picker__name">{{
               selectedVersionFileName || '未选择文件'
-              }}</span>
+            }}</span>
           </div>
         </TFormItem>
         <TFormItem label="备注">
-          <TInput show-count v-model="versionForm.note" type="textarea" :rows="4"  :maxlength="1000"
-            placeholder="记录本次新版本说明、兼容性变化或补充信息" />
+          <TInput
+            show-count
+            v-model="versionForm.note"
+            type="textarea"
+            :rows="4"
+            :maxlength="1000"
+            placeholder="记录本次新版本说明、兼容性变化或补充信息"
+          />
         </TFormItem>
       </TForm>
 
       <template #footer>
         <TButton @click="publishDialogVisible = false">取消</TButton>
-        <TButton variant="solid" tone="accent" :loading="publishingResourceId === selectedResource?.id" @click="submitVersion">
+        <TButton
+          variant="solid"
+          tone="accent"
+          :loading="publishingResourceId === selectedResource?.id"
+          @click="submitVersion"
+        >
           发布版本
         </TButton>
       </template>
@@ -1132,16 +1205,18 @@ async function setResourcePrivate(resource: McResourcePayload) {
       </p>
       <TForm v-if="unusedPromoCards.length" label-position="top">
         <TFormItem label="选择道具卡" required>
-          <TSelect v-model="selectedPromoCardId" placeholder="请选择未使用的道具卡" style="width: 100%">
+          <TSelect
+            v-model="selectedPromoCardId"
+            placeholder="请选择未使用的道具卡"
+            style="width: 100%"
+          >
             <TOption
               v-for="card in unusedPromoCards"
               :key="card.id"
               :value="card.id"
               :disabled="isFeaturedCardDisabled(card, promoTarget)"
               :label="`${promoCardLabel(card.card_code)} · ${card.duration_days} 天${
-                isFeaturedCardDisabled(card, promoTarget)
-                  ? `（点赞不足 ${highLikeThreshold}）`
-                  : ''
+                isFeaturedCardDisabled(card, promoTarget) ? `（点赞不足 ${highLikeThreshold}）` : ''
               }`"
             />
           </TSelect>
@@ -1162,8 +1237,11 @@ async function setResourcePrivate(resource: McResourcePayload) {
       </template>
     </TDialog>
 
-    <ResourceTransferDialog v-model:open="transferDialogVisible" :resource="transferTarget"
-      @submitted="handleTransferSubmitted" />
+    <ResourceTransferDialog
+      v-model:open="transferDialogVisible"
+      :resource="transferTarget"
+      @submitted="handleTransferSubmitted"
+    />
   </div>
 </template>
 

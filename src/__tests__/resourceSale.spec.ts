@@ -7,6 +7,7 @@ import {
   canSelfRefundPurchase,
   canSellerRefundPurchase,
   canSwitchToPointsPrice,
+  caretAfterStripLeadingZeros,
   fenToYuanText,
   formatPurchaseAmountLabel,
   formatResourcePriceLabel,
@@ -31,6 +32,7 @@ import {
   PROMO_SHARE_MAX_BPS,
   refundInitiatorLabel,
   resourcePurchaseStatusLabel,
+  stripLeadingZeros,
   toResourcePayChannel,
   yuanToFen,
 } from '@/shared/resourceSale'
@@ -50,6 +52,40 @@ describe('resourceSale', () => {
     expect(parseYuanPriceInput('1.5')).toEqual({ ok: true, fen: 150 })
     expect(parseYuanPriceInput('1.234').ok).toBe(false)
     expect(parseYuanPriceInput('-1').ok).toBe(false)
+  })
+
+  it('stripLeadingZeros drops only the integer part leading zeros', () => {
+    expect(stripLeadingZeros('00100')).toBe('100')
+    expect(stripLeadingZeros('0')).toBe('0')
+    expect(stripLeadingZeros('00')).toBe('0')
+    expect(stripLeadingZeros('000')).toBe('0')
+    expect(stripLeadingZeros('0.5')).toBe('0.5')
+    expect(stripLeadingZeros('001.50')).toBe('1.50')
+    expect(stripLeadingZeros('')).toBe('')
+    // 输入过程中的半成品（小数点后还没敲完）原样保留，不能被归一改坏
+    expect(stripLeadingZeros('0.')).toBe('0.')
+    expect(stripLeadingZeros('1.')).toBe('1.')
+    expect(stripLeadingZeros('010')).toBe('10')
+    // 已经规范的值不变，避免无谓地改写 DOM
+    expect(stripLeadingZeros('100')).toBe('100')
+    expect(stripLeadingZeros('1.50')).toBe('1.50')
+  })
+
+  it('caretAfterStripLeadingZeros keeps the caret where the user expects', () => {
+    // 00100 → 100：末尾光标左移 2 位
+    expect(caretAfterStripLeadingZeros('00100', 5)).toBe(3)
+    // 光标还在被删掉的 0 里面 → 落到开头
+    expect(caretAfterStripLeadingZeros('00100', 2)).toBe(0)
+    expect(caretAfterStripLeadingZeros('00100', 1)).toBe(0)
+    expect(caretAfterStripLeadingZeros('00100', 0)).toBe(0)
+    // 没删任何字符时光标不动
+    expect(caretAfterStripLeadingZeros('100', 3)).toBe(3)
+    expect(caretAfterStripLeadingZeros('0', 1)).toBe(1)
+    // 00 → 0：只删一个 0
+    expect(caretAfterStripLeadingZeros('00', 2)).toBe(1)
+    // 越界 / 负数按边界收敛
+    expect(caretAfterStripLeadingZeros('00100', 99)).toBe(3)
+    expect(caretAfterStripLeadingZeros('00100', -3)).toBe(0)
   })
 
   it('canSwitchToPointsPrice blocks cash → points only', () => {
@@ -116,9 +152,9 @@ describe('resourceSale', () => {
   it('download gate branches for cash and points', () => {
     expect(canDownloadResource({ price_fen: 0 })).toBe(true)
     expect(canDownloadResource({ price_fen: 100, purchased_by_me: true })).toBe(true)
-    expect(canDownloadResource({ price_fen: 100, purchased_by_me: false, creator: 'dev' }, 'dev')).toBe(
-      true,
-    )
+    expect(
+      canDownloadResource({ price_fen: 100, purchased_by_me: false, creator: 'dev' }, 'dev'),
+    ).toBe(true)
     expect(
       canDownloadResource({ price_fen: 100, purchased_by_me: false, creator: 'dev' }, 'buyer'),
     ).toBe(false)
@@ -146,7 +182,12 @@ describe('resourceSale', () => {
   })
 
   it('seller refund gate covers cash paid orders with remaining balance', () => {
-    const base = { status: 'paid', amount_points: 0, within_refund_window: true, refundable_amount_fen: 1000 }
+    const base = {
+      status: 'paid',
+      amount_points: 0,
+      within_refund_window: true,
+      refundable_amount_fen: 1000,
+    }
     expect(canSellerRefundPurchase(base)).toBe(true)
     // 已下载也能退：卖家通道不受买家自助退的「已下载」限制
     expect(canSellerRefundPurchase({ ...base, first_downloaded_at: '2026-10-08' })).toBe(true)
@@ -177,13 +218,19 @@ describe('resourceSale', () => {
     // 同渠道 + pending + 有码 → 可复用
     expect(canReuseCashQrForChannel(alipay, 'alipay', true)).toBe(true)
     expect(canReuseCashQrForChannel(wechat, 'wechat', true)).toBe(true)
-    expect(canReuseCashQrForChannel({ status: 'pending', pay_channel: 'wechat' }, 'wechat', true)).toBe(true)
+    expect(
+      canReuseCashQrForChannel({ status: 'pending', pay_channel: 'wechat' }, 'wechat', true),
+    ).toBe(true)
     // 换渠道 → 不可复用
     expect(canReuseCashQrForChannel(alipay, 'wechat', true)).toBe(false)
     expect(canReuseCashQrForChannel(wechat, 'alipay', true)).toBe(false)
     // status !== 'pending' → 不可复用
-    expect(canReuseCashQrForChannel({ status: 'closed', pay_channel: 'alipay' }, 'alipay', true)).toBe(false)
-    expect(canReuseCashQrForChannel({ status: 'paid', pay_channel: 'alipay' }, 'alipay', true)).toBe(false)
+    expect(
+      canReuseCashQrForChannel({ status: 'closed', pay_channel: 'alipay' }, 'alipay', true),
+    ).toBe(false)
+    expect(
+      canReuseCashQrForChannel({ status: 'paid', pay_channel: 'alipay' }, 'alipay', true),
+    ).toBe(false)
     // 无码 / 无单 → 不可复用
     expect(canReuseCashQrForChannel(alipay, 'alipay', false)).toBe(false)
     expect(canReuseCashQrForChannel(null, 'alipay', true)).toBe(false)

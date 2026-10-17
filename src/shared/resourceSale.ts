@@ -48,6 +48,28 @@ export function parseYuanPriceInput(raw: string | number | null | undefined): Pa
   return { ok: true, fen: Math.round(n * 100) }
 }
 
+/**
+ * 表单「售价（元）」输入时的实时归一：只去掉整数部分的前导 0（`00100` → `100`）。
+ *
+ * 边界：单个 `0` 保持 `0`（不把输入框清空）、`0.5` 不会变成 `.5`（小数点前留一位数字）、
+ * 小数部分原样保留（`001.50` → `1.50`，不四舍五入、不补位）、空串原样返回。
+ * 只删前导 0，不做 trim / 取整 / 截断，也不加千分位。
+ */
+export function stripLeadingZeros(text: string): string {
+  return text.replace(/^0+(?=\d)/, '')
+}
+
+/**
+ * {@link stripLeadingZeros} 改写文本后光标该落在哪一位：被删掉的前导 0 在光标左侧时，光标左移同样多。
+ *
+ * 归一后的文本比原文短几位就是删掉了几个 0；`caret` 越界时按文本边界收敛。
+ */
+export function caretAfterStripLeadingZeros(text: string, caret: number): number {
+  const removed = text.length - stripLeadingZeros(text).length
+  const bounded = Math.min(Math.max(caret, 0), text.length)
+  return Math.max(0, bounded - removed)
+}
+
 export type ParsePointsPriceOk = { ok: true; points: number }
 export type ParsePointsPriceErr = { ok: false; message: string }
 export type ParsePointsPriceResult = ParsePointsPriceOk | ParsePointsPriceErr
