@@ -45,7 +45,7 @@ function buildProfile() {
     wechat_bound: false,
   }
 
-  return { ...base, ...(profileOverrides[profile.id] ?? {}) }
+  return { ...base, ...profileOverrides[profile.id] }
 }
 
 /** 实名认证：两个身份都已通过，避免被 requiresRealname 的路由弹去认证页。 */
