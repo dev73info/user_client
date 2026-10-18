@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useToast } from '@/composables/useToast'
 
 
-import { TButton, TDialog, TIcon, Plus } from 'ui_73info'
+import { TButton, TDialog, TIcon, Plus, TMessage } from 'ui_73info'
 
 /**
  * 资源图标选择器：正方形触发区 + 裁剪弹窗（拖动调整位置、滚轮缩放，应用后裁成 1200×742 的 PNG）。
@@ -13,8 +12,6 @@ import { TButton, TDialog, TIcon, Plus } from 'ui_73info'
  */
 const preview = defineModel<string>({ default: '' })
 const file = defineModel<File | null>('file', { default: null })
-
-const { showToast } = useToast()
 
 const inputRef = ref<HTMLInputElement | null>(null)
 const dialogVisible = ref(false)
@@ -156,13 +153,13 @@ async function handleFileChange(event: Event) {
   }
 
   if (!picked.type.startsWith('image/')) {
-    showToast('图标文件仅支持图片格式', 'warning')
+    TMessage.warning('图标文件仅支持图片格式')
     removeIcon()
     return
   }
 
   if (picked.size > 2 * 1024 * 1024) {
-    showToast('图标文件请控制在 2MB 以内', 'warning')
+    TMessage.warning('图标文件请控制在 2MB 以内')
     removeIcon()
     return
   }
@@ -177,7 +174,7 @@ async function handleFileChange(event: Event) {
     preview.value = dataUrl
   } catch (error) {
     const message = error instanceof Error ? error.message : '读取图标文件失败'
-    showToast(message, 'error')
+    TMessage.error(message)
     removeIcon()
   }
 }
@@ -228,7 +225,7 @@ async function confirmCrop() {
     preview.value = dataUrl
     dialogVisible.value = false
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '未能生成裁剪结果，请重试', 'warning')
+    TMessage.warning(error instanceof Error ? error.message : '未能生成裁剪结果，请重试')
   }
 }
 </script>

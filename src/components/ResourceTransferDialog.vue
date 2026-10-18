@@ -14,7 +14,6 @@ import { computed, reactive, ref, watch } from 'vue'
 import type { McResourcePayload } from '@/api/mcResources'
 import { createResourceTransfer } from '@/api/resourceTransfers'
 import { getTeamDetail, listMyTeams, type TeamDetailResponse } from '@/api/team'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { describeTransferError, validateTransferReceiver } from '@/shared/resourceTransfer'
 import {
@@ -24,6 +23,7 @@ import {
   TForm,
   TFormItem,
   TInput,
+  TMessage,
   TOption,
   TRadio,
   TRadioGroup,
@@ -44,7 +44,6 @@ const emit = defineEmits<{
 }>()
 
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 const form = reactive({
   receiverType: 'user' as 'user' | 'team',
@@ -106,7 +105,7 @@ async function loadManageableTeams() {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载我的团队失败'
-    showToast(message, 'warning')
+    TMessage.warning(message)
   } finally {
     teamsLoading.value = false
   }
@@ -114,11 +113,11 @@ async function loadManageableTeams() {
 
 async function submit() {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
   if (!props.resource) {
-    showToast('资源信息缺失，请刷新后重试', 'warning')
+    TMessage.warning('资源信息缺失，请刷新后重试')
     return
   }
 
@@ -128,7 +127,7 @@ async function submit() {
     toTeamId: form.toTeamId,
   })
   if (invalidReason) {
-    showToast(invalidReason, 'warning')
+    TMessage.warning(invalidReason)
     return
   }
 
@@ -140,12 +139,12 @@ async function submit() {
       message: form.message.trim() || null,
     })
     emit('update:open', false)
-    showToast('过户申请已发出，等待对方同意', 'success')
+    TMessage.success('过户申请已发出，等待对方同意')
     emit('submitted')
   } catch (error) {
     // 后端已为每种拒绝给了中文说明（如「该资源正被需求绑定，暂不能过户」），原样透出。
     const { message, needRefresh } = describeTransferError(error, '发起过户失败')
-    showToast(message, 'error')
+    TMessage.error(message)
     if (needRefresh) {
       emit('submitted')
     }

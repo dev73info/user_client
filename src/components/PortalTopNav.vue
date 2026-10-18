@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { TIcon, ArrowDown, Bell, Close, Search, UserFilled } from 'ui_73info'
+import { TIcon, ArrowDown, Bell, Close, Search, TMessage, UserFilled } from 'ui_73info'
 
 import { useAuthStore } from '@/stores/auth'
 import { buildDevPortalUrl } from '@/config/runtime'
-import { useToast } from '@/composables/useToast'
 import { apiUrl } from '@/api/http'
 import { getProfile, updateProfileSubscriptions } from '@/api/settings'
 import { PROFILE_AVATAR_UPDATED_EVENT } from '@/shared/profileEvents'
@@ -23,7 +22,6 @@ type HeaderLink = {
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const { showToast } = useToast()
 const menuOpen = ref(false)
 const searchQuery = ref('')
 const searchScope = ref<SearchScope>('auto')
@@ -275,7 +273,7 @@ async function loadProfileState() {
     })
     applyUserAvatar(profile.avatar_url)
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载个人资料失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '加载个人资料失败')
   } finally {
     subscriptionLoading.value = false
   }
@@ -358,12 +356,12 @@ async function toggleAllSubscriptions() {
   try {
     const updated = await updateProfileSubscriptions(auth.token, nextState)
     syncSubscriptionState(updated)
-    showToast(nextEnabled ? '已开启全部消息订阅' : '已关闭全部消息订阅', 'success')
+    TMessage.success(nextEnabled ? '已开启全部消息订阅' : '已关闭全部消息订阅')
   } catch (err) {
     officialActivitySubscriptionEnabled.value =
       lastSyncedSubscriptions.value.subscribe_official_activity
     devHallSubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_dev_hall_deposit_paid
-    showToast(err instanceof Error ? err.message : '保存消息订阅失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '保存消息订阅失败')
   } finally {
     subscriptionSaving.value = false
   }
@@ -400,17 +398,16 @@ async function toggleSubscription(type: 'official_activity' | 'dev_hall_deposit_
         : { subscribe_dev_hall_deposit_paid: nextEnabled },
     )
     syncSubscriptionState(updated)
-    showToast(
+    TMessage.success(
       nextEnabled
         ? `已开启${isOfficialActivity ? '官方活动通知' : '开发者接单提醒'}`
         : `已关闭${isOfficialActivity ? '官方活动通知' : '开发者接单提醒'}`,
-      'success',
     )
   } catch (err) {
     officialActivitySubscriptionEnabled.value =
       lastSyncedSubscriptions.value.subscribe_official_activity
     devHallSubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_dev_hall_deposit_paid
-    showToast(err instanceof Error ? err.message : '保存消息订阅失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '保存消息订阅失败')
   } finally {
     subscriptionSaving.value = false
   }
@@ -512,7 +509,7 @@ function pushScopedSearch(keyword: string) {
 function submitSearch() {
   const normalized = searchQuery.value.trim()
   if (!normalized) {
-    showToast('请输入搜索关键词', 'info')
+    TMessage.info('请输入搜索关键词')
     return
   }
 

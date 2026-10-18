@@ -18,7 +18,6 @@ import {
 } from '@/api/resourcePurchase'
 import { getResourceDetailSlug } from '@/api/resourceTags'
 import { DEFAULT_LIST_PAGE_SIZE, LIST_PAGE_SIZES } from '@/composables/useClientPagination'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
   fenToYuanText,
@@ -33,6 +32,7 @@ import {
   TButton,
   TIcon,
   TInput,
+  TMessage,
   TOption,
   TPagination,
   TSelect,
@@ -40,7 +40,6 @@ import {
 
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 /** 状态筛选项：取值与文案一律沿用既有状态口径（`resourcePurchaseStatusLabel`），不自创状态名。 */
 const STATUS_FILTERS: { value: string; label: string }[] = [
@@ -101,7 +100,7 @@ async function loadOrders() {
     if (seq !== loadSeq) {
       return
     }
-    showToast(error instanceof Error ? error.message : '加载已购资源失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载已购资源失败')
   } finally {
     if (seq === loadSeq) {
       loading.value = false
@@ -125,7 +124,7 @@ async function loadStats() {
     ])
     stats.value = { all, paid, refunding, refunded }
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载已购资源统计失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载已购资源统计失败')
   } finally {
     statsLoading.value = false
   }

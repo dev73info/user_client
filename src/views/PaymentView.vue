@@ -2,9 +2,8 @@
 import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import QRCode from 'qrcode'
-import { CircleCheck, Clock } from 'ui_73info'
+import { CircleCheck, Clock, TMessage } from 'ui_73info'
 
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { isWechatPaymentHandoff, parseWechatPayInfo, type WechatJsapiPaymentInfo } from '@/utils/wechatPayment'
 import {
@@ -37,7 +36,6 @@ import {
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 const paymentId = computed(() => String(route.query.payment_id ?? ''))
 const requirementId = computed(() => String(route.query.requirement_id ?? ''))
@@ -942,7 +940,7 @@ async function checkSilentWechatAuth() {
     return
   }
   resetSilentWechatAuth()
-  showToast('微信授权成功，正在继续支付', 'success')
+  TMessage.success('微信授权成功，正在继续支付')
   await auth.fetchProfile(true).catch(() => undefined)
   if (isIntentMode.value && !wechatPayInfo.value && !creatingIntentOrder.value) {
     wechatAuthChecked.value = true
@@ -1080,7 +1078,7 @@ function launchWechatPayment() {
       const message = result.err_msg?.toLowerCase() ?? ''
       if (message.includes(':ok')) {
         wechatSubmitted.value = true
-        showToast('微信支付请求已提交，请等待支付结果', 'success')
+        TMessage.success('微信支付请求已提交，请等待支付结果')
         if (auth.token && !isPaymentHandoff.value) {
           void confirmPayment()
         }

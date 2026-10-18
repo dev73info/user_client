@@ -9,11 +9,11 @@ import { getMyRealnameVerification } from '@/api/realname'
 import { isActiveRequirement } from '@/shared/requirementStatus'
 import { WORKBENCH_BAR_SLOT_ID, workbenchBarSlotCount } from '@/shared/workbenchBarSlot'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from '@/composables/useToast'
 
 
 import {
   TIcon,
+  TMessage,
   TMessageBox,
   TScrollbar,
   ArrowDown,
@@ -59,7 +59,6 @@ type DevWorkbenchItem = WorkbenchMenuItem & { icon: Component }
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 const conversations = ref<RequirementConversation[]>([])
 const conversationLoading = ref(false)
@@ -641,7 +640,7 @@ async function loadConversations(silent = false) {
   } catch (error) {
     conversations.value = []
     if (!silent) {
-      showToast(error instanceof Error ? error.message : '加载会话菜单失败', 'error')
+      TMessage.error(error instanceof Error ? error.message : '加载会话菜单失败')
     }
   } finally {
     conversationLoading.value = false

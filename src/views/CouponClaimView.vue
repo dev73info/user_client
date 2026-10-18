@@ -5,15 +5,14 @@ import { useRoute, useRouter } from 'vue-router'
 import AuthModal from '@/components/AuthModal.vue'
 import { claimActivityCampaign, type ActivityCampaignClaimResp } from '@/api/settings'
 import { useAuthForm } from '@/composables/useAuthForm'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { TMessage } from 'ui_73info'
 
 type AuthMode = 'login' | 'register' | 'reset'
 
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const { showToast } = useToast()
 const authMode = ref<AuthMode>('login')
 const authVisible = ref(false)
 const claiming = ref(false)
@@ -76,7 +75,7 @@ async function runClaim() {
   } catch (err) {
     const message = err instanceof Error ? err.message : '领取活动福利失败'
     claimError.value = message
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     claiming.value = false
   }

@@ -22,14 +22,12 @@ import {
   type CreateDevWithdrawalRequest,
   type DevWithdrawalSetting,
 } from '@/api/devWallet'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
 
-import { TButton, TDialog, TForm, TFormItem, TInput, TInputNumber } from 'ui_73info'
+import { TButton, TDialog, TForm, TFormItem, TInput, TInputNumber, TMessage } from 'ui_73info'
 const auth = useAuthStore()
 const router = useRouter()
-const { showToast } = useToast()
 
 const emit = defineEmits<{ submitted: [] }>()
 
@@ -74,7 +72,7 @@ const payoutAccountLabel = computed(() =>
  */
 async function open(): Promise<void> {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
@@ -86,17 +84,17 @@ async function open(): Promise<void> {
   setting.value = preference
 
   if (!overview) {
-    showToast('加载可提现余额失败，请稍后重试', 'error')
+    TMessage.error('加载可提现余额失败，请稍后重试')
     return
   }
   withdrawable.value = overview.withdrawable_balance_cny ?? 0
 
   if (withdrawable.value < MIN_AMOUNT_CNY) {
-    showToast('当前可提现余额不足，暂时无法发起提现', 'warning')
+    TMessage.warning('当前可提现余额不足，暂时无法发起提现')
     return
   }
   if (!payoutChannelUsable.value) {
-    showToast(payoutChannelMessage.value || '出款通道暂未就绪，暂时无法发起提现', 'warning')
+    TMessage.warning(payoutChannelMessage.value || '出款通道暂未就绪，暂时无法发起提现')
     return
   }
 
@@ -123,7 +121,7 @@ async function submit(): Promise<void> {
     return
   }
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
@@ -137,7 +135,7 @@ async function submit(): Promise<void> {
 
   const validationMessage = validateDevWithdrawalRequest(payload, withdrawable.value)
   if (validationMessage) {
-    showToast(validationMessage, 'warning')
+    TMessage.warning(validationMessage)
     return
   }
 
@@ -146,17 +144,17 @@ async function submit(): Promise<void> {
     const record = await createDevWithdrawalRequest(auth.token, payload)
     // 出款提交后由 Adapay 处理：可能已出款、也可能仍在处理中（T+1 到账）或失败待补发
     if (record.status === 'paid') {
-      showToast('提现已提交，平台已完成出款', 'success')
+      TMessage.success('提现已提交，平台已完成出款')
     } else if (record.status === 'payout_failed') {
-      showToast(record.payout_failure_message || '出款未完成，平台会安排补发', 'warning')
+      TMessage.warning(record.payout_failure_message || '出款未完成，平台会安排补发')
     } else {
-      showToast('提现已提交，Adapay 出款一般 T+1 到账', 'success')
+      TMessage.success('提现已提交，Adapay 出款一般 T+1 到账')
     }
     visible.value = false
     resetForm()
     emit('submitted')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交提现申请失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '提交提现申请失败')
   } finally {
     submitting.value = false
   }

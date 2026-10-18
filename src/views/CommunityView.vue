@@ -28,7 +28,6 @@ import { getMyRealnameVerification } from '@/api/realname'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { sanitizeRichHtml, sanitizeRichHtmlForEditing } from '@/utils/sanitizeHtml'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
@@ -44,6 +43,7 @@ import {
   TIcon,
   TInput,
   TInputNumber,
+  TMessage,
   TOption,
   TSelect,
   ArrowLeft,
@@ -61,7 +61,9 @@ import {
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
+function notify(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+  TMessage[type](message)
+}
 const POSTS_PER_PAGE = 8
 const initialSearchKeyword =
   typeof route.query.keyword === 'string' ? route.query.keyword.trim() : ''
@@ -201,7 +203,7 @@ const composerActionsShellStyle = computed<Record<string, string> | undefined>((
 
 useCodeBlockCopy({
   rootRef: selectedPostContentRef,
-  notify: showToast,
+  notify,
 })
 
 function resetFloatingComposerActions() {
@@ -483,7 +485,7 @@ async function loadCommunityData() {
     tags.value = nextTags
     applyPostPage(postPage.page, postPage.posts, postPage.hasNext, selectedPostId)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载社区内容失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载社区内容失败')
   } finally {
     loading.value = false
   }
@@ -495,7 +497,7 @@ async function loadPostsPage(pageNumber = currentPage.value, preferredPostId?: n
     const postPage = await fetchPostPage(pageNumber)
     applyPostPage(postPage.page, postPage.posts, postPage.hasNext, preferredPostId)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载社区帖子失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载社区帖子失败')
   } finally {
     loading.value = false
   }
@@ -587,7 +589,7 @@ async function loadStandalonePost(postId: number) {
   } catch (error) {
     if (requestId === selectedPostRequestId) {
       selectedPostLoading.value = false
-      showToast(error instanceof Error ? error.message : '加载帖子详情失败', 'error')
+      TMessage.error(error instanceof Error ? error.message : '加载帖子详情失败')
     }
   }
 }
@@ -603,7 +605,7 @@ async function loadSelectedPostDetail(postId: number, requestId: number) {
     selectedPost.value = detail
   } catch (error) {
     if (requestId === selectedPostRequestId) {
-      showToast(error instanceof Error ? error.message : '加载帖子详情失败', 'error')
+      TMessage.error(error instanceof Error ? error.message : '加载帖子详情失败')
     }
   } finally {
     if (requestId === selectedPostRequestId) {
@@ -621,7 +623,7 @@ async function loadComments(postId: number, requestId = selectedPostRequestId) {
     }
   } catch (error) {
     if (requestId === selectedPostRequestId) {
-      showToast(error instanceof Error ? error.message : '加载评论失败', 'error')
+      TMessage.error(error instanceof Error ? error.message : '加载评论失败')
     }
   } finally {
     if (requestId === selectedPostRequestId) {
@@ -635,7 +637,7 @@ function ensureAuthed(): boolean {
   if (auth.isAuthed) {
     return true
   }
-  showToast('请先登录后再操作社区内容', 'warning')
+  TMessage.warning('请先登录后再操作社区内容')
   void router.push({ name: 'home', query: { modal: 'auth', redirect_to: '/community' } })
   return false
 }
@@ -643,7 +645,7 @@ function ensureAuthed(): boolean {
 async function ensurePostRealnameApproved(): Promise<boolean> {
   auth.hydrate()
   if (!auth.isAuthed) {
-    showToast('发布帖子前请先登录', 'warning')
+    TMessage.warning('发布帖子前请先登录')
     void router.push({ name: 'home', query: { modal: 'auth', redirect_to: '/community' } })
     return false
   }
@@ -655,21 +657,21 @@ async function ensurePostRealnameApproved(): Promise<boolean> {
     }
 
     if (record.status === 'pending') {
-      showToast('实名认证审核中，通过后可发布帖子', 'warning')
+      TMessage.warning('实名认证审核中，通过后可发布帖子')
       return false
     }
 
-    showToast('实名认证未通过，请重新提交后再发布帖子', 'warning')
+    TMessage.warning('实名认证未通过，请重新提交后再发布帖子')
     void router.push({ name: 'workbench-realname', query: { redirect_to: route.fullPath || '/community' } })
     return false
   } catch (error) {
     if (error instanceof HttpError && error.status === 404) {
-      showToast('发布帖子前请先完成实名认证', 'warning')
+      TMessage.warning('发布帖子前请先完成实名认证')
       void router.push({ name: 'workbench-realname', query: { redirect_to: route.fullPath || '/community' } })
       return false
     }
 
-    showToast(error instanceof Error ? error.message : '实名认证状态校验失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '实名认证状态校验失败')
     return false
   }
 }
@@ -716,7 +718,7 @@ async function openEditComposer(post: CommunityPost) {
     postForm.origin_note = detail.origin_note ?? ''
     composerVisible.value = true
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载帖子详情失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载帖子详情失败')
   }
 }
 
@@ -739,7 +741,7 @@ async function submitPost() {
   }
 
   if (postForm.origin_type === 'repost' && !postForm.origin_url.trim()) {
-    showToast('转载帖子必须填写原始出处链接', 'warning')
+    TMessage.warning('转载帖子必须填写原始出处链接')
     return
   }
 
@@ -772,9 +774,9 @@ async function submitPost() {
     await loadCommunityData()
     selectPost(saved)
     closeComposer()
-    showToast(isEditing ? '帖子已更新，等待审核' : '帖子已提交审核', 'success')
+    TMessage.success(isEditing ? '帖子已更新，等待审核' : '帖子已提交审核')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '保存帖子失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '保存帖子失败')
   } finally {
     savingPost.value = false
   }
@@ -816,11 +818,11 @@ async function handleBoost(kind: PostBoostKind) {
       section_until: updated.section_until,
       hot_until: updated.hot_until,
     })
-    showToast(`已购买「${option.label}」推广`, 'success')
+    TMessage.success(`已购买「${option.label}」推广`)
     // 刷新列表以反映排序与推广标识。
     void loadCommunityData()
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '购买推广失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '购买推广失败')
   } finally {
     boostingKind.value = null
   }
@@ -875,9 +877,9 @@ async function acceptBountyAnswerHandler(comment: CommunityComment) {
       bounty_status: updated.bounty_status,
       bounty_accepted_comment_id: updated.bounty_accepted_comment_id,
     })
-    showToast(`已采纳 ${comment.commenter} 的回答，悬赏积分已发放`, 'success')
+    TMessage.success(`已采纳 ${comment.commenter} 的回答，悬赏积分已发放`)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '采纳回答失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '采纳回答失败')
   }
 }
 
@@ -891,9 +893,9 @@ async function cancelBountyHandler() {
       bounty_status: updated.bounty_status,
       bounty_accepted_comment_id: updated.bounty_accepted_comment_id,
     })
-    showToast('已取消悬赏，积分已退回', 'success')
+    TMessage.success('已取消悬赏，积分已退回')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '取消悬赏失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '取消悬赏失败')
   }
 }
 
@@ -903,7 +905,7 @@ async function toggleLike(post: CommunityPost) {
   }
 
   if (post.status !== 'published') {
-    showToast('帖子公开后才能点赞', 'warning')
+    TMessage.warning('帖子公开后才能点赞')
     return
   }
 
@@ -920,7 +922,7 @@ async function toggleLike(post: CommunityPost) {
       updateSelectedPost({ liked_by_me: state.liked_by_me, like_count: state.like_count })
     }
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '点赞失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '点赞失败')
   }
 }
 
@@ -929,7 +931,7 @@ async function toggleFavorite(post: CommunityPost) {
     return
   }
   if (post.status !== 'published' || favoriteLoading.value) {
-    showToast('帖子公开后才能收藏', 'warning')
+    TMessage.warning('帖子公开后才能收藏')
     return
   }
 
@@ -943,7 +945,7 @@ async function toggleFavorite(post: CommunityPost) {
       item.id === post.id ? { ...item, favorited_by_me: state.favorited_by_me } : item,
     )
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '收藏帖子失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '收藏帖子失败')
   } finally {
     favoriteLoading.value = false
   }
@@ -955,7 +957,7 @@ async function submitComment() {
   }
 
   if (selectedPost.value.status !== 'published') {
-    showToast('帖子公开后才能评论', 'warning')
+    TMessage.warning('帖子公开后才能评论')
     return
   }
 
@@ -971,9 +973,9 @@ async function submitComment() {
     updateSelectedPost({ comment_count: (selectedPost.value.comment_count ?? 0) + 1 })
     commentDraft.value = ''
     replyingTo.value = null
-    showToast('评论已发布', 'success')
+    TMessage.success('评论已发布')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '发表评论失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '发表评论失败')
   } finally {
     sendingComment.value = false
   }
@@ -1103,7 +1105,7 @@ async function toggleCommentLike(comment: CommunityComment) {
         : item,
     )
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '点赞评论失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '点赞评论失败')
   } finally {
     commentLikeLoading.value = null
   }
@@ -1270,7 +1272,7 @@ async function toggleCommentLike(comment: CommunityComment) {
             </template>
           </TForm>
 
-          <RichTextEditor v-model="postForm.content_html" :floating-toolbar-top="86" @notify="showToast" />
+          <RichTextEditor v-model="postForm.content_html" :floating-toolbar-top="86" @notify="notify" />
 
           <div ref="composerActionsShellRef" class="community-composer__actions-shell"
             :style="composerActionsShellStyle">

@@ -15,7 +15,6 @@ import {
   uploadProfileBackground,
   uploadProfileBackgroundDynamic,
 } from '@/api/settings'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import BadgeDisplay from '@/components/BadgeDisplay.vue'
@@ -25,11 +24,10 @@ import {
   tipReceivedPointsText,
   tipperDisplayLabel,
 } from '@/shared/devTip'
-import { TButton, TDialog, TLoading } from 'ui_73info'
+import { TButton, TDialog, TLoading, TMessage } from 'ui_73info'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 const username = computed(() => String(route.params.username || '').trim())
 const loading = ref(false)
@@ -86,7 +84,7 @@ function openTipDialog() {
     return
   }
   if (!auth.isAuthed || !auth.token.trim()) {
-    showToast('请先登录后再打赏', 'info')
+    TMessage.info('请先登录后再打赏')
     void router.push({
       name: 'home',
       query: { modal: 'auth', mode: 'login', redirect_to: route.fullPath },
@@ -321,7 +319,7 @@ async function loadData() {
       )
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载开发者信息失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '加载开发者信息失败')
   } finally {
     loading.value = false
   }
@@ -359,7 +357,7 @@ function setBackground(mode: 'static' | 'dynamic') {
     ? canCustomizeDynamicBackground.value
     : canCustomizeBackground.value
   if (!canCustomize) {
-    showToast(`请先在积分商城兑换“主页${mode === 'dynamic' ? '动态' : '静态'}背景自定义”权益`, 'warning')
+    TMessage.warning(`请先在积分商城兑换“主页${mode === 'dynamic' ? '动态' : '静态'}背景自定义”权益`)
     void router.push({ name: 'points-mall' })
     return
   }
@@ -388,9 +386,9 @@ async function saveProfile() {
     await updateProfile(auth.token, auth.username, profileDescriptionDraft.value)
     profileDialogVisible.value = false
     await loadData()
-    showToast('个人简介已更新', 'success')
+    TMessage.success('个人简介已更新')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '更新个人简介失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '更新个人简介失败')
   } finally {
     profileSaving.value = false
   }
@@ -416,17 +414,16 @@ function onBackgroundFileChange(event: Event) {
   const isDynamic = backgroundMode.value === 'dynamic'
   const allowedTypes = isDynamic ? dynamicBackgroundAllowedTypes : staticBackgroundAllowedTypes
   if (!allowedTypes.includes(file.type)) {
-    showToast(
+    TMessage.warning(
       isDynamic
         ? '动态背景仅支持 MP4、WebM 视频，或 GIF、WEBP 动图'
         : '背景图仅支持 PNG、JPG、WEBP 或 GIF 图片',
-      'warning',
     )
     return
   }
   const maxSize = isDynamic ? dynamicBackgroundMaxSize : backgroundMaxSize
   if (file.size > maxSize) {
-    showToast(isDynamic ? '动态背景视频不能超过 50MB' : '背景图片不能超过 5MB', 'warning')
+    TMessage.warning(isDynamic ? '动态背景视频不能超过 50MB' : '背景图片不能超过 5MB')
     return
   }
 
@@ -458,11 +455,11 @@ async function submitBackgroundUpload() {
     } else {
       await updateProfileBackgroundStatic(auth.token, currentBackgroundUrl.value, focusJson)
     }
-    showToast('主页背景已更新', 'success')
+    TMessage.success('主页背景已更新')
     backgroundDialogVisible.value = false
     await loadData()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : `设置${backgroundMode.value === 'dynamic' ? '动态' : '静态'}背景失败`, 'error')
+    TMessage.error(err instanceof Error ? err.message : `设置${backgroundMode.value === 'dynamic' ? '动态' : '静态'}背景失败`)
   } finally {
     backgroundUploading.value = false
   }
@@ -479,9 +476,9 @@ async function removeBackground() {
     backgroundDialogVisible.value = false
     resetBackgroundDialog()
     await loadData()
-    showToast('主页背景已移除', 'success')
+    TMessage.success('主页背景已移除')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '移除主页背景失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '移除主页背景失败')
   } finally {
     backgroundRemoving.value = false
   }

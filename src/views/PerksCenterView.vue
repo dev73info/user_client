@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import {
   TButton,
   TIcon,
+  TMessage,
   TOption,
   TRadio,
   TRadioGroup,
@@ -17,7 +18,6 @@ import {
 
 import { getMyPoints, setPerkEquipped, type UserPerk } from '@/api/points'
 import { HttpError } from '@/api/http'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
 /* 「我的背包 → 权益中心」：已解锁权益的佩戴开关 + 用户名颜色设置。
@@ -26,7 +26,6 @@ import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 const perks = ref<UserPerk[]>([])
 const loading = ref(false)
@@ -125,15 +124,15 @@ async function saveAppearance() {
       await setPerkEquipped(auth.token, 'username_gradient', true)
     } else {
       if (!selectedColor.value) {
-        showToast('请选择颜色', 'warning')
+        TMessage.warning('请选择颜色')
         return
       }
       await setPerkEquipped(auth.token, selectedColor.value, true)
     }
-    showToast('用户名颜色设置已更新', 'success')
+    TMessage.success('用户名颜色设置已更新')
     await loadPerks()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '设置用户名颜色失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '设置用户名颜色失败')
   } finally {
     appearanceSaving.value = false
   }
@@ -147,9 +146,9 @@ async function togglePerk(code: string, value: boolean | string | number) {
     const idx = perks.value.findIndex((p) => p.perk_code === code)
     if (idx >= 0) perks.value.splice(idx, 1, res)
     else perks.value.push(res)
-    showToast(equipped ? `已佩戴「${perkTitle(code)}」` : `已卸下「${perkTitle(code)}」`, 'success')
+    TMessage.success(equipped ? `已佩戴「${perkTitle(code)}」` : `已卸下「${perkTitle(code)}」`)
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '更新权益佩戴状态失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '更新权益佩戴状态失败')
   } finally {
     perkSaving.value = ''
   }

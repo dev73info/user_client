@@ -16,6 +16,7 @@ import {
   Promotion,
   Refresh,
   Switch,
+  TMessage,
   View,
   Wallet,
   WarningFilled,
@@ -39,7 +40,6 @@ import {
 import { listMcResources, type McResourcePayload } from '@/api/mcResources'
 import { listMyRequirements, type RequirementItem } from '@/api/devRequirements'
 import { useDevDashboardSocket } from '@/composables/useDevDashboardSocket'
-import { useToast } from '@/composables/useToast'
 import {
   DEMO_DEV_HOME_DAILY_INCOME,
   DEMO_DEV_HOME_DEPOSIT,
@@ -104,7 +104,6 @@ type DevHomeIncomeBucket = {
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const { showToast } = useToast()
 
 const loading = ref(false)
 const overview = ref<DevWalletOverview | null>(null)
@@ -634,7 +633,7 @@ async function reloadWallet() {
 async function loadPage() {
   auth.hydrate()
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
@@ -661,7 +660,7 @@ async function loadPage() {
     requirements.value = myRequirements
     resources.value = resourceList
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载工作台总览失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载工作台总览失败')
   } finally {
     loading.value = false
   }
@@ -709,7 +708,7 @@ async function toggleFullscreen() {
       await (root.requestFullscreen ? root.requestFullscreen() : root.webkitRequestFullscreen?.())
     }
   } catch {
-    showToast('当前浏览器不允许进入全屏', 'error')
+    TMessage.error('当前浏览器不允许进入全屏')
   }
 }
 

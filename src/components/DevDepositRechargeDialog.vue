@@ -19,15 +19,13 @@ import {
 } from '@/api/adapay'
 import { getDevAccessStatus } from '@/api/auth'
 import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
 
-import { TAlert, TButton, TDialog, TForm, TFormItem, TInputNumber, TRadioButton, TRadioGroup } from 'ui_73info'
+import { TAlert, TButton, TDialog, TForm, TFormItem, TInputNumber, TMessage, TRadioButton, TRadioGroup } from 'ui_73info'
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
-const { showToast } = useToast()
 
 const visible = ref(false)
 const amount = ref(100)
@@ -60,7 +58,7 @@ async function open(): Promise<void> {
  */
 async function ensureSettlementAccount(): Promise<boolean> {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return false
   }
   try {
@@ -70,11 +68,10 @@ async function ensureSettlementAccount(): Promise<boolean> {
     }
     const underReview =
       member.onboardingStatus === 'under_review' || member.onboardingStatus === 'pending'
-    showToast(
+    TMessage.warning(
       underReview
         ? '收款账户正在渠道审核中，审核通过后即可缴纳保证金'
         : '请先绑定收款银行卡（结算账户）后再缴纳保证金',
-      'warning',
     )
     void router.push({ name: 'workbench-account' })
     return false
@@ -94,13 +91,13 @@ function goSignDeveloperAgreement(): void {
 /** 未签《开发者入驻协议》时后端会拒绝充值，所以先在客户端拦一次并给出签约出口 */
 async function ensureDeveloperAgreement(): Promise<boolean> {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return false
   }
   try {
     const status = await getDevAccessStatus(auth.token)
     if (!status.developer_agreement_signed) {
-      showToast('请先签署《开发者入驻协议》后再缴纳保证金', 'warning')
+      TMessage.warning('请先签署《开发者入驻协议》后再缴纳保证金')
       goSignDeveloperAgreement()
       return false
     }
@@ -113,14 +110,14 @@ async function ensureDeveloperAgreement(): Promise<boolean> {
 /** 微信渠道由支付页唤起，支付宝渠道先下单再带支付参数跳支付页 */
 async function startRecharge(): Promise<void> {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
   if (!(await ensureDeveloperAgreement())) {
     return
   }
   if (!Number.isFinite(amount.value) || amount.value <= 0) {
-    showToast('请输入有效的充值金额', 'warning')
+    TMessage.warning('请输入有效的充值金额')
     return
   }
   submitting.value = true
@@ -163,7 +160,7 @@ async function startRecharge(): Promise<void> {
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : '创建保证金充值订单失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     submitting.value = false
   }

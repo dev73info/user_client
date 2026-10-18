@@ -13,7 +13,6 @@ import {
 } from '@/api/points'
 import { HttpError } from '@/api/http'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
 
@@ -23,6 +22,7 @@ import {
   TIcon,
   TInput,
   TInputNumber,
+  TMessage,
   TOption,
   TPagination,
   TSelect,
@@ -39,7 +39,6 @@ import {
 
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 const logs = ref<UserPointsLog[]>([])
 const loading = ref(false)
@@ -213,7 +212,7 @@ async function loadTransfers() {
   try {
     transfers.value = await listMyTransfers(auth.token)
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载打赏记录失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '加载打赏记录失败')
   } finally {
     transferLoading.value = false
   }
@@ -224,11 +223,11 @@ async function submitTransfer() {
   const to = transferTo.value.trim()
   const amount = transferAmount.value
   if (!to) {
-    showToast('请输入接收方用户名', 'warning')
+    TMessage.warning('请输入接收方用户名')
     return
   }
   if (!amount || amount <= 0) {
-    showToast('请输入打赏金额', 'warning')
+    TMessage.warning('请输入打赏金额')
     return
   }
   transferSaving.value = true
@@ -238,14 +237,14 @@ async function submitTransfer() {
       amount,
       note: transferNote.value.trim() || undefined,
     })
-    showToast('打赏成功', 'success')
+    TMessage.success('打赏成功')
     transferDialogVisible.value = false
     resetTransferForm()
     // 打完赏最想看到的是刚发生的那条，直接切到打赏记录那一段
     activeRecordTab.value = 'transfers'
     await Promise.all([loadPoints(), loadTransfers()])
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '打赏失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '打赏失败')
   } finally {
     transferSaving.value = false
   }

@@ -24,7 +24,6 @@ import {
 } from '@/api/resourcePurchase'
 import { getResourceDetailSlug } from '@/api/resourceTags'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
   canSellerRefundPurchase,
@@ -48,6 +47,7 @@ import {
   TIcon,
   TInput,
   TInputNumber,
+  TMessage,
   TOption,
   TPagination,
   Refresh,
@@ -61,7 +61,6 @@ import {
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 /** 一次取回本页全部售出订单（后端单页上限 100 条），再按资源与筛选在前端收窄。 */
 const SELLER_ORDER_FETCH_LIMIT = 100
@@ -151,7 +150,7 @@ async function loadOrders() {
   try {
     orders.value = await listSellerResourcePurchases(auth.token, { limit: SELLER_ORDER_FETCH_LIMIT })
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载售出订单失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载售出订单失败')
   } finally {
     isLoading.value = false
   }
@@ -344,14 +343,13 @@ async function submitRefund() {
     refundDialogVisible.value = false
     refundTarget.value = null
     refundStep.value = 'form'
-    showToast(
+    TMessage.success(
       isFullRefund ? '已全额退款，买家下载权已收回' : '已完成部分退款，买家下载权已收回',
-      'success',
     )
   } catch (error) {
     refundError.value = error instanceof Error ? error.message : '发起退款失败'
     refundStep.value = 'form'
-    showToast(refundError.value, 'error')
+    TMessage.error(refundError.value)
   } finally {
     submittingRefund.value = false
   }

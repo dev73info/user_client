@@ -14,7 +14,23 @@ vi.mock('@/stores/auth', () => ({ useAuthStore: () => mocks.auth }))
 vi.mock('vue-router', () => ({ useRouter: () => ({
   resolve: () => ({ href: '/' }), replace: vi.fn().mockResolvedValue(undefined),
 }) }))
-vi.mock('@/composables/useToast', () => ({ useToast: () => ({ showToast: mocks.showToast }) }))
+vi.mock('ui_73info', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ui_73info')>()
+  const toast =
+    (type: 'success' | 'error' | 'warning' | 'info') =>
+    (message: string): void =>
+      mocks.showToast(message, type)
+  return {
+    ...actual,
+    TMessage: {
+      ...actual.TMessage,
+      success: toast('success'),
+      error: toast('error'),
+      warning: toast('warning'),
+      info: toast('info'),
+    },
+  }
+})
 
 describe('WeChat browser-only polling credential', () => {
   let form: ReturnType<typeof useAuthForm>

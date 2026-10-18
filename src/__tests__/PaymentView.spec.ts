@@ -12,7 +12,19 @@ const mocks = vi.hoisted(() => ({
 const route = reactive({ query: {} as Record<string, string> })
 const auth = reactive({ token: '', isAuthed: false, hydrate: vi.fn() })
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
-vi.mock('@/composables/useToast', () => ({ useToast: () => ({ showToast: vi.fn() }) }))
+vi.mock('ui_73info', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ui_73info')>()
+  return {
+    ...actual,
+    TMessage: {
+      ...actual.TMessage,
+      success: vi.fn(),
+      error: vi.fn(),
+      warning: vi.fn(),
+      info: vi.fn(),
+    },
+  }
+})
 vi.mock('vue-router', () => ({
   useRoute: () => route,
   useRouter: () => ({

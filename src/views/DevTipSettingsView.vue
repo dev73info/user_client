@@ -22,7 +22,6 @@ import {
   type TipSettings,
 } from '@/api/tips'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import {
@@ -47,6 +46,7 @@ import {
   TFormItem,
   TIcon,
   TInput,
+  TMessage,
   TOption,
   TPagination,
   Plus,
@@ -61,7 +61,6 @@ import {
 
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 /** 一次取回本页全部收到打赏（后端单页上限 100 条），前端分页。 */
 const RECEIVED_FETCH_LIMIT = 100
@@ -139,7 +138,7 @@ async function loadSettings() {
     noticeText.value = resp.notice ?? ''
     settingsLoaded.value = true
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载打赏设置失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载打赏设置失败')
   } finally {
     loading.value = false
   }
@@ -154,7 +153,7 @@ async function loadReceived() {
   try {
     received.value = await listReceivedTips(auth.token, { limit: RECEIVED_FETCH_LIMIT })
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载收到打赏失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载收到打赏失败')
   } finally {
     receivedLoading.value = false
   }
@@ -243,12 +242,12 @@ async function save() {
   }
   auth.hydrate()
   if (!auth.token.trim()) {
-    showToast('请先登录', 'warning')
+    TMessage.warning('请先登录')
     return
   }
   const error = validateForm()
   if (error) {
-    showToast(error, 'error')
+    TMessage.error(error)
     return
   }
   saving.value = true
@@ -258,9 +257,9 @@ async function save() {
     settlementReady.value = resp.settlement_ready !== false
     platformFeeBps.value = resp.platform_fee_bps ?? 0
     noticeText.value = resp.notice ?? ''
-    showToast('打赏设置已保存', 'success')
+    TMessage.success('打赏设置已保存')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '保存打赏设置失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '保存打赏设置失败')
   } finally {
     saving.value = false
   }
