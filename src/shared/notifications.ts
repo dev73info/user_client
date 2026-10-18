@@ -1,21 +1,29 @@
 import type { CommentWarning, CommunityPost } from '@/api/community'
 import type { ConversationHistoryDisclosure } from '@/api/conversations'
 import type { AfterSalesCase } from '@/api/afterSales'
+import type { ResourceTransferPayload } from '@/api/resourceTransfers'
 import { afterSalesExpectationLabel, afterSalesStatusLabel } from '@/shared/afterSalesStatus'
+import {
+  describeTransferReceiver,
+  isTransferCancelable,
+  transferStatusLabel,
+} from '@/shared/resourceTransfer'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 
 /**
  * 「系统通知」页的聚合层。
  *
- * 这一页把四类通知合成同一种卡片：评论警告（社区/资源评论被管理员警告）、
- * 历史沟通公开申请（前任开发者负责期间的沟通记录要不要公开）、解除合作案件（我给出去或收到的那条
- * 解除合作现在走到哪一步）、平台公告（官方活动与广播）。四者的后端接口、字段、可做的动作都不一样，
+ * 这一页把五类通知合成同一种卡片：评论警告（社区/资源评论被管理员警告）、
+ * 历史沟通公开申请（前任开发者负责期间的沟通记录要不要公开）、资源过户（别人把资源转给我 /
+ * 我发起的申请走到哪一步）、解除合作案件（我给出去或收到的那条解除合作现在走到哪一步）、
+ * 平台公告（官方活动与广播）。五者的后端接口、字段、可做的动作都不一样，
  * 页面上却要是同一种卡片，所以差异全部收在这里，页面只负责渲染与调用动作：
  *
  * | 来源 | 接口 | 卡片可做的动作 |
  * | --- | --- | --- |
  * | 评论警告 | `/community/comment-warnings` | 无（只读，说明原因） |
  * | 历史沟通公开申请 | `/conversation/history-disclosures` | 同意公开 / 拒绝（两票制，轮到自己才能投） |
+ * | 资源过户 | `/resources/transfers/inbox`、`/mine` | 待我同意：同意接收 / 拒绝；我发起的待处理：撤销 |
  * | 解除合作案件 | `/dispute/cases` | 无（只读，发起与表态都在需求列表的解除合作弹窗里做） |
  * | 平台公告 | `/community/posts?tag=公告` | 无（点卡片进社区帖） |
  *
@@ -25,6 +33,7 @@ import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 export type NotificationKind =
   | 'comment-warning'
   | 'history-disclosure'
+  | 'resource-transfer'
   | 'after-sales'
   | 'announcement'
 
@@ -32,6 +41,7 @@ export type NotificationKind =
 export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
   'comment-warning': '评论警告',
   'history-disclosure': '公开申请',
+  'resource-transfer': '资源过户',
   'after-sales': '解除合作案件',
   announcement: '平台公告',
 }
@@ -62,6 +72,12 @@ export type NotificationCard = {
   canVote: boolean
   /** 公开申请：两票状态的一句话说明，投票按钮上方展示 */
   voteHint?: string
+  /** 资源过户：申请 id，卡片上的动作要用 */
+  transferId?: number
+  /** 资源过户：资源名，确认弹窗里复用 */
+  transferResourceName?: string
+  /** 资源过户：待我同意（同意/拒绝）或我发起的待处理（撤销） */
+  transferAction?: 'respond' | 'cancel'
 }
 
 export type NotificationSources = {
@@ -69,6 +85,10 @@ export type NotificationSources = {
   disclosures?: ConversationHistoryDisclosure[]
   afterSales?: AfterSalesCase[]
   announcements?: CommunityPost[]
+  /** 待我同意的过户（只有开发者工作台会传） */
+  transferInbox?: ResourceTransferPayload[]
+  /** 我发起的过户（只有开发者工作台会传） */
+  myTransfers?: ResourceTransferPayload[]
   /** 当前登录用户名：判定公开申请里我是哪一方、是否轮到我投票 */
   username: string
 }
@@ -83,6 +103,8 @@ export function buildNotificationCards(sources: NotificationSources): Notificati
   const cards = [
     ...(sources.warnings ?? []).map(buildCommentWarningCard),
     ...(sources.disclosures ?? []).map((item) => buildHistoryDisclosureCard(item, sources.username)),
+    ...(sources.transferInbox ?? []).map(buildIncomingTransferCard),
+    ...(sources.myTransfers ?? []).map(buildOutgoingTransferCard),
     ...(sources.afterSales ?? []).map(buildAfterSalesCard),
     ...(sources.announcements ?? []).map(buildAnnouncementCard),
   ]
@@ -188,6 +210,68 @@ function historyDisclosureVoteHint(
 }
 
 /**
+ * 资源过户卡片。
+ *
+ * 两类方向共用一种卡片，但动作不同：收件箱里的申请只可能是 `pending`，给同意 / 拒绝；
+ * 「我发起的」里只有还在 pending 的才给撤销，已同意 / 已拒绝 / 已撤销都只留状态说明。
+ * 所有权变更与全部校验都在后端，这里只把申请映射成通知，动作按钮由页面调接口。
+ */
+function buildIncomingTransferCard(transfer: ResourceTransferPayload): NotificationCard {
+  const resourceName = transfer.resource_name || `资源 #${transfer.resource_id}`
+  const sender = transfer.from_team_name
+    ? `团队 ${transfer.from_team_name}`
+    : `开发者 ${transfer.from_user}`
+  const body = [`来自 ${sender} · 发起于 ${transfer.initiated_at}`]
+  if (transfer.message) {
+    body.push(`留言：${transfer.message}`)
+  }
+  body.push('同意后资源归你所有，原所有者将不再拥有它。')
+
+  return {
+    key: `resource-transfer-inbox-${transfer.transfer_id}`,
+    kind: 'resource-transfer',
+    kindLabel: NOTIFICATION_KIND_LABELS['resource-transfer'],
+    title: `接收资源「${resourceName}」`,
+    body,
+    meta: `${transfer.initiated_at} 发起`,
+    createdAt: transfer.initiated_at,
+    sortTime: parseNoticeTime(transfer.initiated_at),
+    canVote: false,
+    transferId: transfer.transfer_id,
+    transferResourceName: resourceName,
+    transferAction: 'respond',
+  }
+}
+
+function buildOutgoingTransferCard(transfer: ResourceTransferPayload): NotificationCard {
+  const resourceName = transfer.resource_name || `资源 #${transfer.resource_id}`
+  const body = [
+    `转给 ${describeTransferReceiver(transfer)} · 当前状态：${transferStatusLabel(transfer.status)}`,
+  ]
+  if (transfer.responded_at) {
+    body.push(`对方处理于 ${transfer.responded_at}`)
+  }
+  if (transfer.message) {
+    body.push(`留言：${transfer.message}`)
+  }
+
+  return {
+    key: `resource-transfer-mine-${transfer.transfer_id}`,
+    kind: 'resource-transfer',
+    kindLabel: NOTIFICATION_KIND_LABELS['resource-transfer'],
+    title: `转出资源「${resourceName}」`,
+    body,
+    meta: `${transfer.initiated_at} 发起`,
+    createdAt: transfer.initiated_at,
+    sortTime: parseNoticeTime(transfer.initiated_at),
+    canVote: false,
+    transferId: transfer.transfer_id,
+    transferResourceName: resourceName,
+    transferAction: isTransferCancelable(transfer.status) ? 'cancel' : undefined,
+  }
+}
+
+/**
  * 解除合作案件卡片：只读。
  *
  * 为什么要进通知页：案件状态的每一次变化都只落在需求会话里的一张卡片上，而结单之后双方本来就
@@ -248,14 +332,20 @@ export function countByKind(cards: NotificationCard[]): Record<NotificationKind,
   return {
     'comment-warning': cards.filter((card) => card.kind === 'comment-warning').length,
     'history-disclosure': cards.filter((card) => card.kind === 'history-disclosure').length,
+    'resource-transfer': cards.filter((card) => card.kind === 'resource-transfer').length,
     'after-sales': cards.filter((card) => card.kind === 'after-sales').length,
     announcement: cards.filter((card) => card.kind === 'announcement').length,
   }
 }
 
-/** 还在等我投票的公开申请数：读数条与「待我确认」那一格用。 */
+/** 还在等我投票的公开申请数。 */
 export function pendingVoteCount(cards: NotificationCard[]): number {
   return cards.filter((card) => card.kind === 'history-disclosure' && card.canVote).length
+}
+
+/** 还在等我动手的通知数：公开申请的一票 + 待我同意的过户，读数条「待我处理」用。 */
+export function pendingActionCount(cards: NotificationCard[]): number {
+  return cards.filter((card) => card.canVote || card.transferAction === 'respond').length
 }
 
 /**
