@@ -378,6 +378,25 @@ function openEditHomepagePage(resource: McResourcePayload) {
   router.push({ name: 'dev-resource-homepage-edit', params: { resourceId: resource.id } })
 }
 
+/** 整行点击进入编辑；行内按钮、链接、下拉自己处理点击，不触发行跳转。 */
+function handleRowClick(event: MouseEvent) {
+  const target = event.target as HTMLElement | null
+  if (!target || target.closest('button, a, input, select, textarea, label, [role="button"]')) {
+    return
+  }
+
+  const rowEl = target.closest('tr.t73-table__row')
+  if (!rowEl?.parentElement) {
+    return
+  }
+
+  const index = Array.from(rowEl.parentElement.children).indexOf(rowEl)
+  const row = paged.value[index]
+  if (row) {
+    openEditHomepagePage(row)
+  }
+}
+
 function openSoldPurchases(resource: McResourcePayload) {
   void router.push({
     name: 'dev-resource-sold-purchases',
@@ -965,7 +984,13 @@ async function setResourcePrivate(resource: McResourcePayload) {
         </div>
       </div>
 
-      <TTable :loading="isLoading" :data="paged" stripe class="dev-table dev-resource-table">
+      <TTable
+        :loading="isLoading"
+        :data="paged"
+        stripe
+        class="dev-table dev-resource-table"
+        @click="handleRowClick"
+      >
         <template #empty>
           <p class="dev-empty-state">{{ emptyText }}</p>
         </template>
@@ -1246,6 +1271,11 @@ async function setResourcePrivate(resource: McResourcePayload) {
 </template>
 
 <style scoped>
+/* 整行可点：给出行可点击的视觉提示 */
+.dev-resource-table :deep(.t73-table__row) {
+  cursor: pointer;
+}
+
 .dev-resource-table__title-link {
   padding: 0;
   border: none;
