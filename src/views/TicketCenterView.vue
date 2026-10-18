@@ -34,6 +34,7 @@ import {
   Refresh,
   RefreshLeft,
   Search,
+  Tickets,
 } from 'ui_73info'
 
 const auth = useAuthStore()
@@ -427,7 +428,7 @@ onMounted(async () => {
       </section>
     </WorkbenchBarSlot>
 
-    <section class="ticket-main-grid">
+    <section class="ticket-main-grid" :class="{ 'ticket-main-grid--empty': tickets.length === 0 }">
       <aside :class="isDevWorkbench ? 'dev-surface-card ticket-list-panel' : 'wallet-section ticket-list-panel'">
         <!-- 卡片头：两侧都是统一层的卡头（标题 + 说明 + 右侧动作），
              开发者侧 .dev-card-head / 用户工作台侧 .wb-card-head。 -->
@@ -463,7 +464,7 @@ onMounted(async () => {
              所以挂 --stacked：固定折成两行——第一行「两个筛选 + 右侧重置」，第二行搜索占满。
              段序与宽栏一致，控件规格也还是统一层那一套（dev-base.css / portal-workbench.css），
              原来靠裸 flex-wrap 兜底会折成三行、高 128px，与其它页 36px 的单行工具栏差得远。 -->
-        <div v-if="isDevWorkbench" class="dev-toolbar dev-toolbar--stacked">
+        <div v-if="isDevWorkbench && tickets.length > 0" class="dev-toolbar dev-toolbar--stacked">
           <TSelect v-model="statusFilter" class="dev-toolbar__field" aria-label="按状态筛选">
             <TOption v-for="option in statusOptions" :key="option.value" :label="option.label"
               :value="option.value" />
@@ -490,7 +491,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div v-else class="wb-toolbar wb-toolbar--stacked">
+        <div v-else-if="tickets.length > 0" class="wb-toolbar wb-toolbar--stacked">
           <TSelect v-model="statusFilter" class="wb-toolbar__field" aria-label="按状态筛选">
             <TOption v-for="option in statusOptions" :key="option.value" :label="option.label"
               :value="option.value" />
@@ -517,10 +518,42 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div v-if="!loading && visibleTickets.length === 0"
-          :class="isDevWorkbench ? 'ticket-empty-state dev-empty-state' : 'wb-empty'">
-          <p v-if="hasActiveFilter">当前筛选下没有工单，换个条件或点「重置」再看看。</p>
-          <p v-else>提交第一张工单后，这里会显示处理状态和最近回复。</p>
+        <p v-if="loading && tickets.length === 0" :class="isDevWorkbench ? 'dev-empty-state' : 'wb-empty'"
+          role="status">正在加载工单…</p>
+
+        <!-- 空态：没有工单时整块换成引导（图标 + 标题 + 说明 + 主行动入口），
+             筛选无结果时给「清除筛选」的出口。两种空态都落在统一层的虚线框里。 -->
+        <div v-else-if="visibleTickets.length === 0"
+          :class="isDevWorkbench ? 'dev-empty-state ticket-empty-state' : 'wb-empty ticket-empty-state'">
+          <template v-if="tickets.length > 0 && hasActiveFilter">
+            <span class="ticket-empty-state__title">没有符合筛选条件的工单</span>
+            <p class="ticket-empty-state__desc">换个状态或关键词，也可以清除筛选后重试。</p>
+            <div class="ticket-empty-state__actions">
+              <TButton variant="outline" @click="resetFilters">
+                <TIcon>
+                  <RefreshLeft />
+                </TIcon>
+                <span>清除筛选</span>
+              </TButton>
+            </div>
+          </template>
+          <template v-else>
+            <span class="ticket-empty-state__icon" aria-hidden="true">
+              <TIcon>
+                <Tickets />
+              </TIcon>
+            </span>
+            <span class="ticket-empty-state__title">还没有提交过工单</span>
+            <p class="ticket-empty-state__desc">遇到问题或有疑问？提交一张工单，我们会尽快跟进处理。</p>
+            <div class="ticket-empty-state__actions">
+              <TButton variant="solid" tone="accent" @click="openCompose">
+                <TIcon>
+                  <Plus />
+                </TIcon>
+                <span>提交第一张工单</span>
+              </TButton>
+            </div>
+          </template>
         </div>
 
         <!-- 列表行：开发者侧复用统一层的 .dev-stack-item（内嵌块：冷白底 + --dev-line 描边 + 12px 圆角），
@@ -559,7 +592,7 @@ onMounted(async () => {
         </button>
 
         <!-- 表尾分页器：与资源项目、需求大厅、团队资源同一枚，两侧都挂在各自的统一层上。 -->
-        <div v-if="isDevWorkbench" class="dev-pager">
+        <div v-if="isDevWorkbench && tickets.length > 0" class="dev-pager">
           <div class="dev-pager__count">
             <TSelect v-model="pageSize" aria-label="每页条数" class="dev-pager__size">
               <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
@@ -569,7 +602,7 @@ onMounted(async () => {
             :pager-count="5" background aria-label="工单列表分页" />
         </div>
 
-        <div v-else class="wb-pager">
+        <div v-else-if="tickets.length > 0" class="wb-pager">
           <div class="wb-pager__count">
             <TSelect v-model="pageSize" aria-label="每页条数" class="wb-pager__size">
               <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
@@ -580,7 +613,8 @@ onMounted(async () => {
         </div>
       </aside>
 
-      <section :class="[isDevWorkbench ? 'dev-surface-card ticket-detail-panel' : 'wallet-section ticket-detail-panel',
+      <!-- 没有任何工单时右侧详情没有可展示的内容，整块隐藏，列表空态占满主栏 -->
+      <section v-if="tickets.length > 0" :class="[isDevWorkbench ? 'dev-surface-card ticket-detail-panel' : 'wallet-section ticket-detail-panel',
         { 'is-idle': !(selectedTicket && currentDetail) }]">
         <div v-if="selectedTicket && currentDetail" class="ticket-detail-shell">
           <header class="ticket-detail-header">
@@ -645,7 +679,7 @@ onMounted(async () => {
         <!-- 右侧未选中时的空态也走统一层：原来是自己一套居中文案，
              与其它页的虚线空态框不是一个形态。 -->
         <div v-else :class="isDevWorkbench ? 'dev-empty-state' : 'wb-empty'">
-          <p>左侧会展示你的全部工单。选中后可以查看消息记录并继续回复。</p>
+          <p>在列表中选择一张工单，这里会显示消息记录，并可以继续回复。</p>
         </div>
       </section>
     </section>
@@ -736,10 +770,66 @@ onMounted(async () => {
   gap: 22px;
 }
 
+/* 没有工单时详情栏不渲染，列表空态占满整行（否则右半栏只剩一块空白） */
+.ticket-main-grid--empty {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* === 空态 ===
+   统一层的 .wb-empty / .dev-empty-state 只给虚线框与居中，
+   这里补「图标 + 标题 + 说明 + 动作」的排版。图标底色用主色浅底，
+   --wb-accent 与开发者侧 --dev-blue 同值，两种模式共用一套即可。 */
+.ticket-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  max-width: 440px;
+  margin-inline: auto;
+}
+
+.ticket-empty-state__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: var(--wb-accent-soft);
+  color: var(--wb-accent);
+  font-size: 20px;
+}
+
+.ticket-empty-state__title {
+  color: var(--profile-text-main, #0f172a);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ticket-empty-state__desc {
+  margin: 0;
+  color: var(--profile-text-sub, #64748b);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.ticket-empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* 面板内的隐式列必须钉成 minmax(0, 1fr)：列表、工具栏、分页器的 min-content
+   都比 360px 的窄栏宽，默认的 min-width: auto 会把内层网格撑到 390px 上下，
+   于是工具栏右侧的「重置」被卡片边缘裁掉。 */
 .ticket-list-panel {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   align-content: start;
+  min-width: 0;
 }
 
 /* 行本身的外观（12px 圆角、16px 18px 内边距、--dev-line 描边、冷白底）由统一层的
@@ -751,8 +841,15 @@ onMounted(async () => {
   font: inherit;
   cursor: pointer;
   display: grid;
+  /* 行内也是同一种问题：工单号不折行，min-content 会把行撑得比卡片还宽，
+     状态标签因此被 overflow: hidden 裁掉。钉死 minmax(0, 1fr) 让单号自己省略。 */
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   overflow: hidden;
+}
+
+.ticket-list-item__body {
+  min-width: 0;
 }
 
 /* 已关闭/已解决：自动收缩，减少高度并淡显示 */
@@ -876,6 +973,8 @@ onMounted(async () => {
   overflow: auto;
   min-height: 0;
   align-content: start;
+  /* 气泡按内容宽度收缩（短消息不再被拉成整条），自己靠右、客服靠左 */
+  justify-items: start;
 }
 
 /* 消息气泡：这一页独有的主从详情布局，保留「自己靠右、客服靠左」的做法，
@@ -888,17 +987,18 @@ onMounted(async () => {
   border: 1px solid var(--dev-line);
   display: grid;
   gap: 10px;
+  width: fit-content;
   max-width: min(92%, 760px);
 }
 
 .ticket-message.is-self {
-  margin-left: auto;
+  justify-self: end;
   border-color: var(--wb-accent-line);
   background: var(--wb-accent-soft);
 }
 
 .ticket-message.is-official {
-  margin-right: auto;
+  justify-self: start;
 }
 
 .ticket-message__meta {

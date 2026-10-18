@@ -61,7 +61,6 @@ type MessageThread = {
   sortTime: number
 }
 
-type RealtimeStatus = 'idle' | 'connecting' | 'connected' | 'error'
 
 const router = useRouter()
 const route = useRoute()
@@ -80,8 +79,6 @@ const activeFilter = ref<MessageFilter>('all')
 const searchKeyword = ref('')
 const activeRequirementId = ref('')
 const activeTitle = ref('')
-const realtimeStatus = ref<RealtimeStatus>('idle')
-const realtimeError = ref('')
 const historyDisclosures = ref<ConversationHistoryDisclosure[]>([])
 const historyVotingId = ref<number | null>(null)
 let stopRealtimeEvents: (() => void) | null = null
@@ -159,18 +156,6 @@ watch([activeFilter, searchKeyword], resetPage)
 const recentConversationCount = computed(() =>
   activeConversations.value.filter((item) => isRecent(item.last_message_at ?? item.updated_at)).length,
 )
-const realtimeStatusLabel = computed(() => {
-  if (realtimeStatus.value === 'connected') {
-    return '实时同步中'
-  }
-  if (realtimeStatus.value === 'error') {
-    return '实时重连中'
-  }
-  if (realtimeStatus.value === 'connecting') {
-    return '实时连接中'
-  }
-  return '实时待连接'
-})
 /**
  * 待我确认的历史沟通公开申请。
  *
@@ -371,17 +356,6 @@ function toneChipClass(tone: ThreadTone) {
   return ''
 }
 
-/** 实时同步状态胶囊：已连接或连接中=青，重连中=金，未连接=中性灰 */
-const realtimeChipClass = computed(() => {
-  if (realtimeStatus.value === 'connected' || realtimeStatus.value === 'connecting') {
-    return 'dev-chip--cyan'
-  }
-  if (realtimeStatus.value === 'error') {
-    return 'dev-chip--warm'
-  }
-  return 'dev-chip--muted'
-})
-
 /** 用户工作台侧的行内状态徽标（.wb-badge）：与上面的 dev-chip 档位一一对应，浅底 + 深字 */
 function toneBadgeClass(tone: ThreadTone) {
   if (tone === 'attention') {
@@ -474,30 +448,13 @@ function connectRealtime() {
   }
 
   if (!auth.token.trim()) {
-    realtimeStatus.value = 'idle'
-    realtimeError.value = ''
     return
   }
 
-  realtimeStatus.value = 'connecting'
-  realtimeError.value = ''
   stopRealtimeEvents = subscribeRequirementConversationEvents(auth.token, {
     onUpdate: (payload) => {
       applyConversationDetail(payload)
       openThreadFromRoute()
-    },
-    onOpen: () => {
-      realtimeStatus.value = 'connected'
-      realtimeError.value = ''
-    },
-    onClose: () => {
-      if (auth.token.trim()) {
-        realtimeStatus.value = 'connecting'
-      }
-    },
-    onError: (error) => {
-      realtimeStatus.value = 'error'
-      realtimeError.value = error.message
     },
   })
 }
@@ -507,8 +464,6 @@ function disconnectRealtime() {
     stopRealtimeEvents()
     stopRealtimeEvents = null
   }
-  realtimeStatus.value = 'idle'
-  realtimeError.value = ''
 }
 
 async function loadHistoryDisclosures() {
@@ -697,9 +652,6 @@ watch(
           <div class="dev-card-head__title-block">
             <h3 class="dev-section-title">会话列表</h3>
           </div>
-          <div class="dev-card-head__actions">
-            <span class="dev-chip" :class="realtimeChipClass" :title="realtimeError">{{ realtimeStatusLabel }}</span>
-          </div>
         </div>
 
         <div class="dev-toolbar">
@@ -720,12 +672,6 @@ watch(
             <span v-if="hasActiveThreadFilters" class="dev-toolbar__hint">
               筛选出 {{ filteredThreads.length }} / {{ allThreads.length }} 条
             </span>
-            <TButton variant="outline" @click="resetThreadFilters">
-              <TIcon>
-                <RefreshLeft />
-              </TIcon>
-              <span>重置</span>
-            </TButton>
           </div>
         </div>
 
