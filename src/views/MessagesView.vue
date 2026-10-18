@@ -19,7 +19,6 @@ import {
   type RequirementStatus,
 } from '@/api/requirements'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
-import { useToast } from '@/composables/useToast'
 import { CONVERSATION_READ_EVENT } from '@/shared/conversationEvents'
 import { useAuthStore } from '@/stores/auth'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
@@ -29,6 +28,7 @@ import {
   TButton,
   TIcon,
   TInput,
+  TMessage,
   TOption,
   TPagination,
   TSelect,
@@ -66,7 +66,6 @@ type RealtimeStatus = 'idle' | 'connecting' | 'connected' | 'error'
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 // 本页被三个入口共用：用户工作台、开发者工作台、独立 /messages。
 // 开发者工作台模式下骨架与其余菜单页完全一致——顶部读数条带页面级刷新、卡片头只留标题与
@@ -537,10 +536,10 @@ async function respondHistoryDisclosure(
   historyVotingId.value = item.id
   try {
     await respondConversationHistoryDisclosure(auth.token, item.id, decision)
-    showToast(decision === 'approved' ? '已同意公开这段历史沟通' : '已拒绝公开这段历史沟通', 'success')
+    TMessage.success(decision === 'approved' ? '已同意公开这段历史沟通' : '已拒绝公开这段历史沟通')
     await loadHistoryDisclosures()
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交表决失败', 'warning')
+    TMessage.warning(error instanceof Error ? error.message : '提交表决失败')
   } finally {
     historyVotingId.value = null
   }
@@ -569,10 +568,10 @@ async function loadMessages(showSuccess = false) {
     conversations.value = nextConversations
     openThreadFromRoute()
     if (showSuccess) {
-      showToast('消息已刷新', 'success')
+      TMessage.success('消息已刷新')
     }
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载消息失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载消息失败')
   } finally {
     loading.value = false
   }

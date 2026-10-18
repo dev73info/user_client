@@ -24,7 +24,6 @@ import {
   type DevOrderDepositWithdrawalSummary,
 } from '@/api/devOrderDeposit'
 import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
   TButton,
@@ -36,6 +35,7 @@ import {
   TInput,
   TInputNumber,
   TLoading,
+  TMessage,
   TSwitch,
   TTag,
   Refresh,
@@ -46,7 +46,6 @@ import {
 
 const auth = useAuthStore()
 const router = useRouter()
-const { showToast } = useToast()
 
 const loading = ref(false)
 
@@ -207,7 +206,7 @@ async function reloadWallet() {
 
 async function loadWallet() {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
@@ -224,7 +223,7 @@ async function loadWallet() {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载钱包失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     loading.value = false
   }
@@ -257,7 +256,7 @@ async function loadDeposit(options: LoadDepositOptions = {}) {
     creditInfo.value = credit
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载保证金数据失败'
-    if (!silent) showToast(message, 'error')
+    if (!silent) TMessage.error(message)
   } finally {
     depositFetching = false
     if (!background) {
@@ -281,16 +280,15 @@ async function toggleAutoWithdraw(next: boolean): Promise<void> {
   autoWithdrawSaving.value = true
   try {
     withdrawalSetting.value = await updateDevWithdrawalSetting(auth.token, next)
-    showToast(
+    TMessage.success(
       next
         ? '已开启自动提现，平台财务将在每个工作日批量出款'
         : '已关闭自动提现，之后需要自己手动发起提现',
-      'success',
     )
   } catch (error) {
     const message =
       error instanceof Error ? error.message : next ? '开启自动提现失败' : '关闭自动提现失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     autoWithdrawSaving.value = false
   }
@@ -313,7 +311,7 @@ function openRechargeDialog() {
 
 function openDepositWithdrawDialog() {
   if (!canWithdrawDeposit.value) {
-    showToast('当前可提现保证金不足，暂时无法发起提现', 'warning')
+    TMessage.warning('当前可提现保证金不足，暂时无法发起提现')
     return
   }
 
@@ -338,7 +336,7 @@ async function submitDepositWithdrawal() {
   if (submittingDepositWithdrawal.value) return
   depositWithdrawalError.value = ''
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
@@ -358,7 +356,7 @@ async function submitDepositWithdrawal() {
     'developer_order_deposit',
   )
   if (validationMessage) {
-    showToast(validationMessage, 'warning')
+    TMessage.warning(validationMessage)
     return
   }
 
@@ -366,13 +364,13 @@ async function submitDepositWithdrawal() {
   try {
     const record = await createDevOrderDepositWithdrawalRequest(auth.token, payload)
     if (record.status === 'paid') {
-      showToast('保证金已退回', 'success')
+      TMessage.success('保证金已退回')
     } else if (record.status === 'payout_failed') {
-      showToast(record.payout_failure_message || '自动退回未完成，申请已保留待人工处理', 'warning')
+      TMessage.warning(record.payout_failure_message || '自动退回未完成，申请已保留待人工处理')
     } else if (record.status === 'pending_review') {
-      showToast('自动退回暂未开启，申请已转人工审核', 'warning')
+      TMessage.warning('自动退回暂未开启，申请已转人工审核')
     } else {
-      showToast('保证金退回处理中，请留意原支付账户', 'success')
+      TMessage.success('保证金退回处理中，请留意原支付账户')
     }
     depositWithdrawDialogVisible.value = false
     resetDepositWithdrawForm()
@@ -381,7 +379,7 @@ async function submitDepositWithdrawal() {
   } catch (error) {
     const message = error instanceof Error ? error.message : '提交保证金提现申请失败'
     depositWithdrawalError.value = message
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     submittingDepositWithdrawal.value = false
   }

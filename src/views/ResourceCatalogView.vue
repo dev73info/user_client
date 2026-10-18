@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
 
-import { ArrowDown, TDropdown, TDropdownItem, TDropdownMenu, TIcon } from 'ui_73info'
+import { ArrowDown, TDropdown, TDropdownItem, TDropdownMenu, TIcon, TMessage } from 'ui_73info'
 
 import ResourceCatalog from '@/components/ResourceCatalog.vue'
 import ResourceDetailPanel from '@/components/ResourceDetailPanel.vue'
@@ -15,7 +15,6 @@ import {
   type McProcessedTagTree,
 } from '@/api/resourceTags'
 import { useTagTreeStore } from '@/stores/tagTree'
-import { useToast } from '@/composables/useToast'
 import {
   resolveResourceListingSale,
   type ResourceListingSale,
@@ -39,7 +38,6 @@ type CatalogPageState = {
 
 const router = useRouter()
 const route = useRoute()
-const { showToast } = useToast()
 const tagTreeStore = useTagTreeStore()
 
 // 免费 / 付费的页内切换是「本地状态 + 路由 `?sale=`」：
@@ -350,7 +348,7 @@ async function loadPlatformTabs() {
       })
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载资源目录失败', 'warning')
+    TMessage.warning(err instanceof Error ? err.message : '加载资源目录失败')
   }
 }
 

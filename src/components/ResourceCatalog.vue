@@ -19,7 +19,6 @@ import {
 } from '@/api/resourceTags'
 import { useMultiSelectTags } from '@/composables/useMultiSelectTags'
 import { useTagTreeStore } from '@/stores/tagTree'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import {
@@ -31,6 +30,7 @@ import {
   isPricedResource,
   type ResourceListingSale,
 } from '@/shared/resourceSale'
+import { TMessage } from 'ui_73info'
 
 type McCardItem = {
   id: number
@@ -109,7 +109,6 @@ const emit = defineEmits<{
 }>()
 
 const sortOptions = ['最新', '点赞']
-const { showToast } = useToast()
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
@@ -429,7 +428,7 @@ function openResource(card: McCardItem) {
 }
 
 function openLikeLogin() {
-  showToast('请先登录后再点赞', 'info')
+  TMessage.info('请先登录后再点赞')
   void router.push({
     name: 'home',
     query: {
@@ -458,13 +457,13 @@ async function toggleCardLike(card: McCardItem) {
     card.likedByMe = state.liked_by_me
     card.likeCount = state.like_count
     invalidateResourceListCache()
-    showToast(state.liked_by_me ? '已点赞' : '已取消点赞', 'success')
+    TMessage.success(state.liked_by_me ? '已点赞' : '已取消点赞')
   } catch (error) {
     if (error instanceof HttpError && error.status === 401) {
       auth.logout()
       openLikeLogin()
     } else {
-      showToast(error instanceof Error ? error.message : '点赞操作失败', 'error')
+      TMessage.error(error instanceof Error ? error.message : '点赞操作失败')
     }
   } finally {
     card.likeSubmitting = false
@@ -485,7 +484,7 @@ async function loadTagTree() {
     )
     applyFiltersFromQuery()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载标签失败', 'warning')
+    TMessage.warning(err instanceof Error ? err.message : '加载标签失败')
   }
 }
 

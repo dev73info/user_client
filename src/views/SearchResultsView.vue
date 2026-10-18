@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { TIcon, Close, Connection } from 'ui_73info'
+import { TIcon, Close, Connection, TMessage } from 'ui_73info'
 
 import { listCommunityPosts, type CommunityPost, type CommunityPostStatus } from '@/api/community'
 import { apiUrl } from '@/api/http'
@@ -20,7 +20,6 @@ import {
 } from '@/api/resourceTags'
 import { useTagTreeStore } from '@/stores/tagTree'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from '@/composables/useToast'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import {
@@ -39,7 +38,6 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const tagTreeStore = useTagTreeStore()
-const { showToast } = useToast()
 
 const loading = ref(false)
 const resources = ref<PublicMcResourceItem[]>([])
@@ -218,7 +216,7 @@ async function loadSearchData() {
     } catch (error) {
         const message = error instanceof Error ? error.message : '加载搜索结果失败'
         loadError.value = message
-        showToast(message, 'error')
+        TMessage.error(message)
     } finally {
         loading.value = false
     }

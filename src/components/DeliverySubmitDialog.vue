@@ -6,7 +6,6 @@ import {
   listMcResourceVersions,
   type McResourceVersionPayload,
 } from '@/api/mcResources'
-import { useToast } from '@/composables/useToast'
 
 
 import {
@@ -18,6 +17,7 @@ import {
   TInput,
   Close,
   Document,
+  TMessage,
   UploadFilled,
 } from 'ui_73info'
 
@@ -38,7 +38,6 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
-const { showToast } = useToast()
 
 const version = ref('')
 const note = ref('')
@@ -70,7 +69,7 @@ async function loadVersions() {
   try {
     versions.value = await listMcResourceVersions(props.token, resourceId)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载资源版本失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载资源版本失败')
   } finally {
     versionsLoading.value = false
   }
@@ -141,18 +140,18 @@ function requestClose() {
 async function submit() {
   const resourceId = props.boundResourceId
   if (!props.token || resourceId == null) {
-    showToast('当前需求还没有关联资源项目', 'warning')
+    TMessage.warning('当前需求还没有关联资源项目')
     return
   }
 
   const trimmedVersion = version.value.trim()
   if (!trimmedVersion) {
-    showToast('请填写版本号', 'warning')
+    TMessage.warning('请填写版本号')
     return
   }
 
   if (!artifact.value) {
-    showToast('请选择交付文件', 'warning')
+    TMessage.warning('请选择交付文件')
     return
   }
 
@@ -163,11 +162,11 @@ async function submit() {
       file: artifact.value,
       note: note.value.trim() || null,
     })
-    showToast(`交付版本 ${created.version} 已提交，等待客户验收`, 'success')
+    TMessage.success(`交付版本 ${created.version} 已提交，等待客户验收`)
     visible.value = false
     emit('submitted')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交交付版本失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '提交交付版本失败')
   } finally {
     submitting.value = false
   }

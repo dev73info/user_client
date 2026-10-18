@@ -46,7 +46,6 @@ import {
 import DeliverySubmitDialog from '@/components/DeliverySubmitDialog.vue'
 import { getDepositRatio } from '@/api/settings'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from '@/composables/useToast'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
 import {
   calculateFinalDepositAmount,
@@ -56,7 +55,7 @@ import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
 import { breachStatusLabel } from '@/shared/breachStatus'
 
 
-import { TButton, TDialog } from 'ui_73info'
+import { TButton, TDialog, TMessage } from 'ui_73info'
 type ViewerRole = 'customer' | 'developer'
 
 /** 会话中当前用户在需求上的身份：甲方（需求方）/ 乙方（开发者）。 */
@@ -114,7 +113,6 @@ const SETTLED_BREACH_STATUSES = ['rejected', 'succeeded']
 
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 const requirement = ref<ActionRequirement | null>(null)
 const signing = ref<ContractSigningStatus | null>(null)
@@ -541,11 +539,11 @@ async function createContract() {
   try {
     await createRequirementContract(props.token, item.requirement_id)
     // R012：合同页多了「自定义合同附件」。不提示这句，双方会直接签平台模板，事后要改就得作废重签。
-    showToast('合同已发起；如需补充条款，可在合同页准备自定义附件，平台放行后即可签署', 'success')
+    TMessage.success('合同已发起；如需补充条款，可在合同页准备自定义附件，平台放行后即可签署')
     await loadActions()
     emit('changed')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '发起合同失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '发起合同失败')
   } finally {
     actingKey.value = ''
   }
@@ -600,11 +598,11 @@ async function submitPayment() {
   }
 
   if (payStage.value === 'deposit' && !depositPolicyAccepted.value) {
-    showToast('请先确认“定金服务费与退款规则”后再支付定金', 'warning')
+    TMessage.warning('请先确认“定金服务费与退款规则”后再支付定金')
     return
   }
   if (item.payment_mode !== 'platform_guarantee') {
-    showToast('无担保订单不通过平台收款，请由双方按约定自行结算', 'warning')
+    TMessage.warning('无担保订单不通过平台收款，请由双方按约定自行结算')
     return
   }
 
@@ -621,7 +619,7 @@ async function submitPayment() {
       clientPlatform,
     )
     payVisible.value = false
-    showToast(`${stageLabel}支付订单已生成，正在跳转支付页`, 'success')
+    TMessage.success(`${stageLabel}支付订单已生成，正在跳转支付页`)
     await router.push({
       name: 'payment',
       query: buildAdapayPaymentQuery({
@@ -654,7 +652,7 @@ async function submitPayment() {
     }
     if (isUnionPaymentAuthorizationRequired(error)) {
       if (clientPlatform !== 'mobile') {
-        showToast('云闪付授权仅适用于移动端，请重新选择支付方式', 'warning')
+        TMessage.warning('云闪付授权仅适用于移动端，请重新选择支付方式')
         return
       }
       try {
@@ -665,14 +663,13 @@ async function submitPayment() {
         window.location.assign(authorization.url)
         return
       } catch (authorizationError) {
-        showToast(
+        TMessage.error(
           authorizationError instanceof Error ? authorizationError.message : '发起云闪付授权失败',
-          'error',
         )
         return
       }
     }
-    showToast(error instanceof Error ? error.message : '支付失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '支付失败')
   } finally {
     payLoading.value = false
   }
@@ -716,15 +713,15 @@ async function requestFinalPayment() {
     // 先用返回值推进本地状态，避免依赖列表刷新的时序再去判断支付阶段。
     requirement.value = { ...item, status: updated.status }
     if (item.payment_mode === 'self_managed') {
-      showToast('需求已确认完成', 'success')
+      TMessage.success('需求已确认完成')
     } else {
-      showToast('请支付尾款', 'success')
+      TMessage.success('请支付尾款')
       openPayDialog()
     }
     emit('changed')
     void loadActions()
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '结束开发失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '结束开发失败')
   } finally {
     actingKey.value = ''
   }
@@ -738,11 +735,11 @@ async function cureFinalPayment() {
   actingKey.value = 'final-pay-cure'
   try {
     await requestRequirementFinalPayCure(props.token, item.requirement_id)
-    showToast('已催告客户支付尾款', 'success')
+    TMessage.success('已催告客户支付尾款')
     emit('changed')
     void loadActions()
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '催告付款失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '催告付款失败')
   } finally {
     actingKey.value = ''
   }
@@ -750,7 +747,7 @@ async function cureFinalPayment() {
 
 function openDeliveryDialog() {
   if (!hasBoundResource.value) {
-    showToast('当前需求还没有关联资源项目', 'warning')
+    TMessage.warning('当前需求还没有关联资源项目')
     return
   }
 
@@ -791,18 +788,18 @@ async function submitBreachReport() {
 
   const reason = breachReason.value.trim()
   if (!reason) {
-    showToast('请填写解除合作的事实与依据', 'warning')
+    TMessage.warning('请填写解除合作的事实与依据')
     return
   }
 
   breachSubmitting.value = true
   try {
     breachCase.value = await reportAdapayTermination(props.token, item.requirement_id, reason)
-    showToast('解除合作申请已提交，等待对方回应', 'success')
+    TMessage.success('解除合作申请已提交，等待对方回应')
     breachVisible.value = false
     emit('changed')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交解除合作申请失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '提交解除合作申请失败')
   } finally {
     breachSubmitting.value = false
   }
@@ -824,10 +821,10 @@ async function submitBreachDecision(decision: AdapayBreachDecisionValue) {
     )
     breachRejectPanel.value = false
     breachDecisionNote.value = ''
-    showToast(decision === 'accepted' ? '已接受 AI 判定' : '已提交不接受，案件转客服人工判定', 'success')
+    TMessage.success(decision === 'accepted' ? '已接受 AI 判定' : '已提交不接受，案件转客服人工判定')
     emit('changed')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交解除合作案件表态失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '提交解除合作案件表态失败')
   } finally {
     breachActing.value = false
   }
@@ -842,10 +839,10 @@ async function submitPlatformReview() {
   breachActing.value = true
   try {
     breachCase.value = await requestAdapayPlatformReview(props.token, current.id)
-    showToast('已申请平台介入，等待平台判定', 'success')
+    TMessage.success('已申请平台介入，等待平台判定')
     emit('changed')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '申请平台介入失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '申请平台介入失败')
   } finally {
     breachActing.value = false
   }
@@ -860,10 +857,10 @@ async function submitBreachWithdraw() {
   breachActing.value = true
   try {
     breachCase.value = await withdrawAdapayBreach(props.token, current.id)
-    showToast('已撤回解除合作申请，如仍有争议可重新发起', 'success')
+    TMessage.success('已撤回解除合作申请，如仍有争议可重新发起')
     emit('changed')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '撤回解除合作申请失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '撤回解除合作申请失败')
   } finally {
     breachActing.value = false
   }

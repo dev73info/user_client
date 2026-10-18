@@ -23,7 +23,6 @@ import {
   type McTagCatalogRoot,
   type McProcessedTagTree,
 } from '@/api/resourceTags'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { listMyTeams, getTeamDetail, type TeamResponse } from '@/api/team'
 import RichTextEditor from '@/components/RichTextEditor.vue'
@@ -70,6 +69,7 @@ import {
   TIcon,
   TInput,
   TLoading,
+  TMessage,
   TOption,
   TSelect,
   TSwitch,
@@ -86,7 +86,9 @@ type RichTextEditorInstance = InstanceType<typeof RichTextEditor>
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const { showToast } = useToast()
+function notify(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+  TMessage[type](message)
+}
 
 const loading = ref(false)
 const saving = ref(false)
@@ -435,11 +437,10 @@ async function loadApiChannel(resourceId: number, generation = resourceLoadGener
     applyLoadedApiChannel(loaded)
   } catch (error) {
     if (generation !== resourceLoadGeneration) return
-    showToast(
+    TMessage.warning(
       error instanceof Error
         ? `加载接口资源渠道配置失败：${error.message}`
         : '加载接口资源渠道配置失败',
-      'warning',
     )
   }
 }
@@ -452,9 +453,9 @@ async function copyRevealedSecret() {
 
   try {
     await navigator.clipboard.writeText(revealedSecretPlain.value)
-    showToast('回调密钥已复制，请妥善保存', 'success')
+    TMessage.success('回调密钥已复制，请妥善保存')
   } catch {
-    showToast('复制失败，请手动选中密钥后再复制', 'warning')
+    TMessage.warning('复制失败，请手动选中密钥后再复制')
   }
 }
 
@@ -462,9 +463,9 @@ async function copyRevealedSecret() {
 async function copyApiPrompt() {
   try {
     await navigator.clipboard.writeText(apiIntegrationPrompt.value)
-    showToast('接入提示词已复制', 'success')
+    TMessage.success('接入提示词已复制')
   } catch {
-    showToast('复制失败，请手动选中提示词后再复制', 'warning')
+    TMessage.warning('复制失败，请手动选中提示词后再复制')
   }
 }
 
@@ -475,18 +476,16 @@ function validateApiChannel(): boolean {
   }
 
   if (form.apiCallbackUrl.trim() && !isValidCallbackUrl(form.apiCallbackUrl)) {
-    showToast(
+    TMessage.warning(
       '回调地址须为 http(s) 开头的绝对地址，例如 https://shop.example.com/73info/callback',
-      'warning',
     )
     return false
   }
 
   const invalid = findInvalidAllowedOrigin(apiOrigins.value)
   if (invalid) {
-    showToast(
+    TMessage.warning(
       `允许来源「${invalid}」格式不正确：只支持完整源（https://shop.example.com）、通配域名（*.example.com）或纯 IP`,
-      'warning',
     )
     return false
   }
@@ -517,9 +516,8 @@ async function saveApiChannelOnly(resourceId: number): Promise<boolean> {
   } catch (error) {
     channelRetryOnly.value = true
     channelSaveError.value = error instanceof Error ? error.message : '保存接口资源渠道配置失败'
-    showToast(
+    TMessage.error(
       `资源主页已保存，但接口资源渠道配置未保存成功：${channelSaveError.value}。请修正后重试，重试只会重发渠道配置。`,
-      'error',
     )
     return false
   }
@@ -641,7 +639,7 @@ async function loadTagTree() {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载标签失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     isLoadingTags.value = false
   }
@@ -797,13 +795,13 @@ async function loadResource(): Promise<boolean> {
   const generation = ++resourceLoadGeneration
   const resourceId = Number(route.params.resourceId)
   if (!Number.isInteger(resourceId) || resourceId <= 0) {
-    showToast('资源编号无效', 'warning')
+    TMessage.warning('资源编号无效')
     router.replace({ name: 'dev-resource-list' })
     return false
   }
 
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     router.replace(buildUnifiedAuthUrl('login', route.fullPath))
     return false
   }
@@ -853,7 +851,7 @@ async function loadResource(): Promise<boolean> {
         : error instanceof Error
           ? error.message
           : '加载资源详情失败'
-    showToast(message, 'error')
+    TMessage.error(message)
     router.replace({ name: 'dev-resource-list' })
     return false
   } finally {
@@ -863,23 +861,23 @@ async function loadResource(): Promise<boolean> {
 
 async function saveHomepage() {
   if (!auth.token || !resource.value) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
   // 锁定态只是前置拦截；后端 PATCH 主页接口仍会以 409 + 中文提示兜底。
   if (isResourceArchiveLocked(resource.value)) {
-    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    TMessage.warning(RESOURCE_ARCHIVE_LOCKED_MESSAGE)
     return
   }
 
   if (needsApiAgreement.value) {
-    showToast('请先签署《接口使用协议》后再编辑接口资源', 'warning')
+    TMessage.warning('请先签署《接口使用协议》后再编辑接口资源')
     return
   }
 
   if (!form.title.trim() || !form.description.trim()) {
-    showToast('请先填写资源标题和资源简介', 'warning')
+    TMessage.warning('请先填写资源标题和资源简介')
     return
   }
 
@@ -891,38 +889,38 @@ async function saveHomepage() {
     !keepSavedTags.value &&
     (platformTagGroups.value.length === 0 || selectedTagCount.value === 0)
   ) {
-    showToast('请至少选择一个标签', 'warning')
+    TMessage.warning('请至少选择一个标签')
     return
   }
 
   if (form.ownershipType === 'team' && !form.teamId) {
-    showToast('请选择所属团队', 'warning')
+    TMessage.warning('请选择所属团队')
     return
   }
 
   if (effectiveOriginType.value === 'repost' && !form.originUrl.trim()) {
-    showToast('转载资源必须填写原始出处链接', 'warning')
+    TMessage.warning('转载资源必须填写原始出处链接')
     return
   }
 
   const priceParsed = parseYuanPriceInput(form.priceYuan)
   if (!priceParsed.ok) {
-    showToast(priceParsed.message, 'warning')
+    TMessage.warning(priceParsed.message)
     return
   }
   const pointsParsed = parsePointsPriceInput(form.pricePoints)
   if (!pointsParsed.ok) {
-    showToast(pointsParsed.message, 'warning')
+    TMessage.warning(pointsParsed.message)
     return
   }
   if (priceParsed.fen > 0 && pointsParsed.points > 0) {
-    showToast('现金售价与积分售价不能同时大于 0', 'warning')
+    TMessage.warning('现金售价与积分售价不能同时大于 0')
     return
   }
   // R028：接口资源只走现金价（积分购是平台内入口，指定地址售卖没有它）
   if (isApiKind.value) {
     if (pointsParsed.points > 0) {
-      showToast('接口资源只能设置现金售价，不能设置积分售价', 'warning')
+      TMessage.warning('接口资源只能设置现金售价，不能设置积分售价')
       return
     }
     // 已上架（审核中 / 公开展示）的接口资源必须留现金售价，否则开放接口卖不出去
@@ -930,22 +928,22 @@ async function saveHomepage() {
       priceParsed.fen <= 0 &&
       (resource.value.visibility === 'review' || resource.value.visibility === 'published')
     ) {
-      showToast('接口资源必须填写现金售价（元）', 'warning')
+      TMessage.warning('接口资源必须填写现金售价（元）')
       return
     }
   }
   // R029：推广分成比例先在前端拦一道（0～50，留空 = 关闭）；清空保存 = 把比例改回 0
   const promoParsed = parsedPromoShare.value
   if (!promoParsed.ok) {
-    showToast(promoParsed.message, 'warning')
+    TMessage.warning(promoParsed.message)
     return
   }
   if (pointsParsed.points > 0 && pointsLockedBySavedCash.value) {
-    showToast('设过现金售价的资源不可改为积分售价', 'warning')
+    TMessage.warning('设过现金售价的资源不可改为积分售价')
     return
   }
   if (boundToRequirement.value && (priceParsed.fen > 0 || pointsParsed.points > 0)) {
-    showToast('已绑定定制交付的资源不能设为付费售卖', 'warning')
+    TMessage.warning('已绑定定制交付的资源不能设为付费售卖')
     return
   }
   if (
@@ -953,7 +951,7 @@ async function saveHomepage() {
     !form.copyrightDeclared &&
     (resource.value.visibility === 'review' || resource.value.visibility === 'published')
   ) {
-    showToast('付费资源须勾选版权声明（拥有或已获合法授权）', 'warning')
+    TMessage.warning('付费资源须勾选版权声明（拥有或已获合法授权）')
     return
   }
 
@@ -966,7 +964,7 @@ async function saveHomepage() {
     // 资源主页上一轮已保存、只有渠道配置没成功：这一次只重发渠道配置这一半
     if (channelRetryOnly.value && isApiKind.value && resource.value) {
       if (await saveApiChannelOnly(resource.value.id)) {
-        showToast('接口资源渠道配置已保存', 'success')
+        TMessage.success('接口资源渠道配置已保存')
       }
       return
     }
@@ -1031,19 +1029,18 @@ async function saveHomepage() {
       return
     }
 
-    showToast(
+    TMessage.success(
       updated.visibility === 'review'
         ? '资源主页已保存，已提交重新审核，审核期间前台暂不展示'
         : '资源主页已更新',
-      'success',
     )
 
     if (revealedSecretPlain.value) {
-      showToast('回调密钥已生成，且只显示这一次，请立即复制保存', 'warning')
+      TMessage.warning('回调密钥已生成，且只显示这一次，请立即复制保存')
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : '更新资源主页失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     saving.value = false
   }
@@ -1598,7 +1595,7 @@ watch(
               :model-value="richEditorContent"
               min-height="clamp(320px, 42vh, 480px)"
               @update:model-value="handleRichEditorUpdate"
-              @notify="showToast"
+              @notify="notify"
             />
           </section>
         </TCard>

@@ -4,7 +4,7 @@ import '@/styles/home.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
-import { TIcon, ArrowRight, Files, Finished, Money, User } from 'ui_73info'
+import { TIcon, ArrowRight, Files, Finished, Money, TMessage, User } from 'ui_73info'
 
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -18,7 +18,6 @@ import PublishModal from '@/components/PublishModal.vue'
 import DepositModal from '@/components/DepositModal.vue'
 import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
 import { buildDevPortalUrl } from '@/config/runtime'
-import { useToast } from '@/composables/useToast'
 import { useAuthForm } from '@/composables/useAuthForm'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 import {
@@ -316,7 +315,9 @@ const discountCouponCode = ref('')
 const depositPolicyAccepted = ref(false)
 const couponLoading = ref(false)
 const contractSigningStatus = ref<ContractSigningStatus | null>(null)
-const { showToast } = useToast()
+function notify(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+  TMessage[type](message)
+}
 
 // 首页侧栏：签到卡片（未签到显示签到，已签到显示邀请有礼）
 const homeCheckinStatus = ref<CheckinStatus | null>(null)
@@ -348,9 +349,9 @@ async function handleHomeCheckin() {
       streak_count: res.streak_count,
       today_potential: res.total_awarded,
     }
-    showToast(`签到成功，获得 ${res.total_awarded} 积分`, 'success')
+    TMessage.success(`签到成功，获得 ${res.total_awarded} 积分`)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '签到失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '签到失败')
   } finally {
     checkinHomeSaving.value = false
   }
@@ -517,7 +518,7 @@ function openWorkflowStep(step: WorkflowStep) {
   }
 
   if (!auth.isAuthed) {
-    showToast('登录后可查看需求进度', 'info')
+    TMessage.info('登录后可查看需求进度')
     openAuth('login')
     return
   }
@@ -537,13 +538,13 @@ function openSpotlight(card: SpotlightCard) {
   if (card.kind === 'resource' && card.resourceId != null) {
     const target = publicResources.value.find((item) => item.id === card.resourceId)
     if (!target) {
-      showToast('资源详情正在加载中', 'info')
+      TMessage.info('资源详情正在加载中')
       return
     }
 
     const routeParams = resolveResourceRoute(target)
     if (!routeParams) {
-      showToast('资源目录暂未配置完整标签路由', 'warning')
+      TMessage.warning('资源目录暂未配置完整标签路由')
       return
     }
 
@@ -564,7 +565,7 @@ function openSpotlight(card: SpotlightCard) {
     return
   }
 
-  showToast('请进入需求大厅查看需求', 'info')
+  TMessage.info('请进入需求大厅查看需求')
 }
 
 const platformStats = computed<PlatformStat[]>(() => {
@@ -1060,7 +1061,7 @@ watch(
 const spotlightLikeSubmittingIds = ref<Set<number>>(new Set())
 
 function openSpotlightLikeLogin() {
-  showToast('请先登录后再点赞', 'info')
+  TMessage.info('请先登录后再点赞')
   openAuth('login')
 }
 
@@ -1094,13 +1095,13 @@ async function toggleSpotlightLike(card: SpotlightCard, event: Event) {
         : item,
     )
     invalidateResourceListCache()
-    showToast(state.liked_by_me ? '已点赞' : '已取消点赞', 'success')
+    TMessage.success(state.liked_by_me ? '已点赞' : '已取消点赞')
   } catch (error) {
     if (error instanceof HttpError && error.status === 401) {
       auth.logout()
       openSpotlightLikeLogin()
     } else {
-      showToast(error instanceof Error ? error.message : '点赞操作失败', 'error')
+      TMessage.error(error instanceof Error ? error.message : '点赞操作失败')
     }
   } finally {
     const done = new Set(spotlightLikeSubmittingIds.value)
@@ -1127,10 +1128,10 @@ onMounted(() => {
 
   if (oauthToken) {
     auth.setToken(oauthToken)
-    showToast('登录成功', 'success')
+    TMessage.success('登录成功')
     void router.replace({ query: {} })
   } else if (oauthError) {
-    showToast(`登录失败: ${oauthError}`, 'error')
+    TMessage.error(`登录失败: ${oauthError}`)
     const nextQuery = { ...route.query }
     delete nextQuery.oauth_token
     delete nextQuery.oauth_error
@@ -1142,15 +1143,15 @@ onMounted(() => {
   const unionOauthResult = routeQueryValue('union_oauth')
   const unionOauthError = routeQueryValue('union_oauth_error')
   if (wechatOauthResult === 'success') {
-    showToast('微信授权成功，请再次点击支付', 'success')
+    TMessage.success('微信授权成功，请再次点击支付')
   } else if (wechatOauthError) {
-    showToast(`微信授权失败：${wechatOauthError}`, 'error')
+    TMessage.error(`微信授权失败：${wechatOauthError}`)
   }
   if (unionOauthResult === 'success') {
     depositChannel.value = 'union'
-    showToast('云闪付授权成功，请再次点击支付', 'success')
+    TMessage.success('云闪付授权成功，请再次点击支付')
   } else if (unionOauthError) {
-    showToast(`云闪付授权失败：${unionOauthError}`, 'error')
+    TMessage.error(`云闪付授权失败：${unionOauthError}`)
   }
   if (wechatOauthResult || wechatOauthError || unionOauthResult || unionOauthError) {
     const nextQuery = { ...route.query }
@@ -1258,7 +1259,7 @@ function openDepositCard(item: PendingRequirementView) {
     return
   }
   if (!isAdapayRequirement(item)) {
-    showToast('无担保订单不通过平台收款，请由双方按约定自行结算', 'warning')
+    TMessage.warning('无担保订单不通过平台收款，请由双方按约定自行结算')
     return
   }
 
@@ -1453,7 +1454,7 @@ async function loadAvailableCoupons() {
     availableCoupons.value = coupons
   } catch (err) {
     if (isMounted) {
-      showToast(err instanceof Error ? err.message : '加载优惠券失败', 'error')
+      TMessage.error(err instanceof Error ? err.message : '加载优惠券失败')
     }
   } finally {
     if (isMounted) {
@@ -1489,7 +1490,7 @@ async function loadPendingRequirements(silent = false) {
       }))
   } catch (err) {
     if (isMounted && !silent) {
-      showToast(err instanceof Error ? err.message : '加载需求失败', 'error')
+      TMessage.error(err instanceof Error ? err.message : '加载需求失败')
     }
   }
 }
@@ -1670,9 +1671,9 @@ async function loadPublicPortalData(silent = false) {
     (result) => result.status === 'rejected',
   )
   if (failedResults.length > 0 && failedResults.length < 2 && !silent) {
-    showToast('部分首页公开数据加载失败，已显示可用数据', 'warning')
+    TMessage.warning('部分首页公开数据加载失败，已显示可用数据')
   } else if (failedResults.length === 2 && !silent) {
-    showToast('加载首页公开数据失败', 'warning')
+    TMessage.warning('加载首页公开数据失败')
   }
 
   void loadDeveloperBadges()
@@ -1712,7 +1713,7 @@ async function submitDepositPayment() {
   }
 
   if (depositRequirement.value.status === 'pending_deposit' && !depositPolicyAccepted.value) {
-    showToast('请先确认“定金服务费与退款规则”后再支付定金', 'warning')
+    TMessage.warning('请先确认“定金服务费与退款规则”后再支付定金')
     return
   }
 
@@ -1720,7 +1721,7 @@ async function submitDepositPayment() {
   const channel = depositChannel.value
   const clientPlatform = getAdapayClientPlatform()
   if (!isAdapayRequirement(depositRequirement.value)) {
-    showToast('无担保订单不通过平台收款，请由双方按约定自行结算', 'warning')
+    TMessage.warning('无担保订单不通过平台收款，请由双方按约定自行结算')
     return
   }
 
@@ -1749,7 +1750,7 @@ async function submitDepositPayment() {
         expires_at: '',
         adapay: true,
       }
-      showToast(`${currentStage}支付订单已生成，正在跳转支付页`, 'success')
+      TMessage.success(`${currentStage}支付订单已生成，正在跳转支付页`)
       router.push({
         name: 'payment',
         query: buildAdapayPaymentQuery({
@@ -1767,10 +1768,10 @@ async function submitDepositPayment() {
     if (depositPayment.value.adapay) {
       const adapayPayment = await getAdapayPayment(auth.token, depositPayment.value.payment_id)
       if (adapayPayment.status !== 'paid' && adapayPayment.status !== 'confirmed') {
-        showToast('支付尚未完成，请先完成 Adapay 支付', 'warning')
+        TMessage.warning('支付尚未完成，请先完成 Adapay 支付')
         return
       }
-      showToast(`${currentStage}支付确认成功`, 'success')
+      TMessage.success(`${currentStage}支付确认成功`)
       depositPayment.value = null
       void router.replace({ name: 'home' })
       await loadPendingRequirements()
@@ -1804,7 +1805,7 @@ async function submitDepositPayment() {
       return
     } else if (isUnionPaymentAuthorizationRequired(err)) {
       if (clientPlatform !== 'mobile') {
-        showToast('云闪付授权仅适用于移动端，请重新选择支付方式', 'warning')
+        TMessage.warning('云闪付授权仅适用于移动端，请重新选择支付方式')
         return
       }
       try {
@@ -1815,9 +1816,8 @@ async function submitDepositPayment() {
         window.location.assign(authorization.url)
         return
       } catch (authorizationError) {
-        showToast(
+        TMessage.error(
           authorizationError instanceof Error ? authorizationError.message : '发起云闪付授权失败',
-          'error',
         )
         return
       }
@@ -1828,12 +1828,11 @@ async function submitDepositPayment() {
       message.includes('requirement contract must be signed by developer before paying deposit') ||
       message.includes('contract must be created before paying deposit')
     ) {
-      showToast(
+      TMessage.warning(
         '当前需求需先由开发者（乙方）签署，再由您（甲方）签署协议后，才能支付定金',
-        'warning',
       )
     } else {
-      showToast(message, 'error')
+      TMessage.error(message)
     }
   } finally {
     depositLoading.value = false
@@ -1847,7 +1846,7 @@ function closeWechatAuthorization() {
 
 function handleWechatAuthorized() {
   closeWechatAuthorization()
-  showToast('微信授权成功，请再次点击支付', 'success')
+  TMessage.success('微信授权成功，请再次点击支付')
 }
 
 function openAuth(mode: AuthMode, redirectTo = authRedirectTarget.value) {
@@ -1913,7 +1912,7 @@ async function ensurePublishRealnameApproved() {
 
   auth.hydrate()
   if (!auth.isAuthed) {
-    showToast('发布需求前请先登录', 'info')
+    TMessage.info('发布需求前请先登录')
     openAuth('login', publishRedirectTarget)
     return false
   }
@@ -1925,16 +1924,16 @@ async function ensurePublishRealnameApproved() {
     }
 
     if (record.status === 'pending') {
-      showToast('实名认证审核中，通过后可发布需求', 'warning')
+      TMessage.warning('实名认证审核中，通过后可发布需求')
       return false
     }
 
-    showToast('实名认证未通过，请重新提交后再发布需求', 'warning')
+    TMessage.warning('实名认证未通过，请重新提交后再发布需求')
     void router.push({ name: 'workbench-realname', query: { redirect_to: publishRedirectTarget } })
     return false
   } catch (err) {
     if (err instanceof HttpError && err.status === 404) {
-      showToast('发布需求前请先完成实名认证', 'warning')
+      TMessage.warning('发布需求前请先完成实名认证')
       void router.push({
         name: 'workbench-realname',
         query: { redirect_to: publishRedirectTarget },
@@ -1942,7 +1941,7 @@ async function ensurePublishRealnameApproved() {
       return false
     }
 
-    showToast(err instanceof Error ? err.message : '实名认证状态校验失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '实名认证状态校验失败')
     return false
   }
 }
@@ -1994,7 +1993,7 @@ async function refreshHomeData() {
     }
 
     if (isMounted) {
-      showToast('已刷新最新数据', 'success')
+      TMessage.success('已刷新最新数据')
     }
   } finally {
     if (isMounted) {
@@ -2037,29 +2036,29 @@ async function submitPublishRequirement() {
   const budgetRaw = String(publishBudget.value ?? '').trim()
 
   if (normalizedTitle.length < 4) {
-    showToast('需求标题至少 4 个字符', 'error')
+    TMessage.error('需求标题至少 4 个字符')
     return
   }
 
   if (descriptionValidation.error) {
-    showToast(descriptionValidation.error, 'error')
+    TMessage.error(descriptionValidation.error)
     return
   }
 
   if (!budgetRaw) {
-    showToast('预算不能为空', 'error')
+    TMessage.error('预算不能为空')
     return
   }
 
   const budget = Number(budgetRaw)
 
   if (Number.isNaN(budget) || budget < 0) {
-    showToast('预算必须是大于等于0的数字', 'error')
+    TMessage.error('预算必须是大于等于0的数字')
     return
   }
 
   if (acceptanceValidation.error) {
-    showToast(acceptanceValidation.error, 'error')
+    TMessage.error(acceptanceValidation.error)
     return
   }
 
@@ -2097,12 +2096,12 @@ async function submitPublishRequirement() {
     } else {
       publishModalRef.value?.clearDraft()
     }
-    showToast(wasResubmit ? '需求已重新提交，等待审核' : '需求已发布', 'success')
+    TMessage.success(wasResubmit ? '需求已重新提交，等待审核' : '需求已发布')
     void router.replace({ name: 'home' })
     await loadPendingRequirements()
   } catch (err) {
     if (isMounted) {
-      showToast(err instanceof Error ? err.message : '发布失败', 'error')
+      TMessage.error(err instanceof Error ? err.message : '发布失败')
     }
   } finally {
     if (isMounted) {
@@ -2938,7 +2937,7 @@ async function submitPublishRequirement() {
       :publishLoading="publishLoading"
       :draft-scope="activeResubmitRequirementId ? `edit-${activeResubmitRequirementId}` : (auth.isAuthed ? auth.username : 'default')"
       @close="closePublishModal"
-      @notify="showToast"
+      @notify="notify"
       @submit="submitPublishRequirement"
     />
 

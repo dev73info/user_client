@@ -10,7 +10,23 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ token: 'test-token', hydrate: vi.fn() }) }))
-vi.mock('@/composables/useToast', () => ({ useToast: () => ({ showToast: mocks.toast }) }))
+vi.mock('ui_73info', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ui_73info')>()
+  const toast =
+    (type: 'success' | 'error' | 'warning' | 'info') =>
+    (message: string): void =>
+      mocks.toast(message, type)
+  return {
+    ...actual,
+    TMessage: {
+      ...actual.TMessage,
+      success: toast('success'),
+      error: toast('error'),
+      warning: toast('warning'),
+      info: toast('info'),
+    },
+  }
+})
 vi.mock('@/api/invite', async (importOriginal) => ({
   ...await importOriginal<typeof import('@/api/invite')>(),
   getMyInviteCode: mocks.code,

@@ -4,13 +4,13 @@ import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 import { getMyInviteCode, getMyInviteStats, type InviteCodeResponse, type InviteStatsResponse } from '@/api/invite'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from '@/composables/useToast'
 
 
 import {
   TButton,
   TIcon,
   TInput,
+  TMessage,
   TOption,
   TPagination,
   TSelect,
@@ -24,7 +24,6 @@ import {
 const emit = defineEmits<{ (event: 'stats', invited: number): void }>()
 
 const auth = useAuthStore()
-const { showToast } = useToast()
 const inviteCode = ref<InviteCodeResponse | null>(null)
 const stats = ref<InviteStatsResponse | null>(null)
 const loading = ref(false)
@@ -123,7 +122,7 @@ async function loadInvite() {
         inviteCode.value = codePayload
         stats.value = statsPayload
     } catch (error) {
-        showToast(error instanceof Error ? error.message : '加载邀请信息失败', 'error')
+        TMessage.error(error instanceof Error ? error.message : '加载邀请信息失败')
     } finally {
         loading.value = false
         // 放在 finally：接口失败也要把读数条上的占位符收掉，否则页面永远停在「—」
@@ -134,9 +133,9 @@ async function loadInvite() {
 async function copyText(value: string, label: string) {
     try {
         await navigator.clipboard.writeText(value)
-        showToast(`${label}已复制`, 'success')
+        TMessage.success(`${label}已复制`)
     } catch {
-        showToast(`${label}复制失败`, 'error')
+        TMessage.error(`${label}复制失败`)
     }
 }
 

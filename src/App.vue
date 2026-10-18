@@ -4,20 +4,17 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 import { useDownloadStore } from '@/stores/download'
-import AppToast from '@/components/AppToast.vue'
 import PortalTopNav from '@/components/PortalTopNav.vue'
 import PortalMobileDock from '@/components/PortalMobileDock.vue'
 import SupportChatWidget from '@/components/SupportChatWidget.vue'
 import MockIdentitySwitcher from '@/mock/MockIdentitySwitcher.vue'
-import { TScrollbar } from 'ui_73info'
-import { useToast } from '@/composables/useToast'
+import { TMessage, TScrollbar } from 'ui_73info'
 import { AUTH_UNAUTHORIZED_EVENT, type AuthUnauthorizedEventDetail } from '@/shared/api/authEvents'
 const auth = useAuthStore()
 const downloadStore = useDownloadStore()
 const route = useRoute()
 const router = useRouter()
 const currentYear = new Date().getFullYear()
-const { toastVisible, toastMessage, toastType, showToast, hideToast } = useToast()
 const showSiteFooter = computed(() => !route.matched.some((record) => record.meta.hideSiteFooter === true))
 const devAutoLoginCredentials = import.meta.env.DEV
   ? {
@@ -105,7 +102,7 @@ function handleUnauthorizedSession(event: Event) {
   }
 
   auth.logout()
-  showToast(detail?.message || '未登录或登录已过期，请重新登录', 'warning')
+  TMessage.warning(detail?.message || '未登录或登录已过期，请重新登录')
 
   void router.replace({ name: 'home', query: nextQuery }).finally(() => {
     window.setTimeout(() => {
@@ -184,7 +181,6 @@ onBeforeUnmount(() => {
       </TScrollbar>
       <PortalMobileDock />
     </div>
-    <AppToast :visible="toastVisible" :message="toastMessage" :type="toastType" @close="hideToast" />
 
     <!-- 在线客服浮窗：仅登录用户可见 -->
     <SupportChatWidget v-if="auth.isAuthed" />

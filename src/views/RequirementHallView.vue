@@ -16,7 +16,6 @@ import {
   type RequirementPaymentMode,
   type RequirementStatus,
 } from '@/api/requirements'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 import {
@@ -33,6 +32,7 @@ import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 import {
   TButton,
   TIcon,
+  TMessage,
   TPagination,
   TSelect,
   Close,
@@ -45,7 +45,9 @@ import {
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
-const { showToast } = useToast()
+function notify(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+  TMessage[type](message)
+}
 
 const loading = ref(false)
 const overviewLoading = ref(false)
@@ -313,7 +315,7 @@ async function ensurePublishRealnameApproved() {
   const redirectTarget = publishRedirectTarget()
   auth.hydrate()
   if (!auth.isAuthed) {
-    showToast('发布需求前请先登录', 'info')
+    TMessage.info('发布需求前请先登录')
     openAuthLogin()
     return false
   }
@@ -325,11 +327,11 @@ async function ensurePublishRealnameApproved() {
     }
 
     if (record.status === 'pending') {
-      showToast('实名认证审核中，通过后可发布需求', 'warning')
+      TMessage.warning('实名认证审核中，通过后可发布需求')
       return false
     }
 
-    showToast('实名认证未通过，请重新提交后再发布需求', 'warning')
+    TMessage.warning('实名认证未通过，请重新提交后再发布需求')
     void router.push({
       name: 'workbench-realname',
       query: { redirect_to: redirectTarget },
@@ -337,7 +339,7 @@ async function ensurePublishRealnameApproved() {
     return false
   } catch (err) {
     if (err instanceof HttpError && err.status === 404) {
-      showToast('发布需求前请先完成实名认证', 'warning')
+      TMessage.warning('发布需求前请先完成实名认证')
       void router.push({
         name: 'workbench-realname',
         query: { redirect_to: redirectTarget },
@@ -345,7 +347,7 @@ async function ensurePublishRealnameApproved() {
       return false
     }
 
-    showToast(err instanceof Error ? err.message : '实名认证状态校验失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '实名认证状态校验失败')
     return false
   }
 }
@@ -481,29 +483,29 @@ async function submitPublishRequirement() {
   const budgetRaw = String(publishBudget.value ?? '').trim()
 
   if (normalizedTitle.length < 4) {
-    showToast('需求标题至少 4 个字符', 'error')
+    TMessage.error('需求标题至少 4 个字符')
     return
   }
 
   if (descriptionValidation.error) {
-    showToast(descriptionValidation.error, 'error')
+    TMessage.error(descriptionValidation.error)
     return
   }
 
   if (!budgetRaw) {
-    showToast('预算不能为空', 'error')
+    TMessage.error('预算不能为空')
     return
   }
 
   const budget = Number(budgetRaw)
 
   if (!Number.isFinite(budget) || budget < 0) {
-    showToast('预算必须是大于等于0的数字', 'error')
+    TMessage.error('预算必须是大于等于0的数字')
     return
   }
 
   if (acceptanceValidation.error) {
-    showToast(acceptanceValidation.error, 'error')
+    TMessage.error(acceptanceValidation.error)
     return
   }
 
@@ -517,14 +519,14 @@ async function submitPublishRequirement() {
       payment_mode: publishPaymentMode.value,
     })
 
-    showToast('需求已发布，等待审核', 'success')
+    TMessage.success('需求已发布，等待审核')
     publishVisible.value = false
     resetPublishForm()
     clearPublishModalQuery()
     publishModalRef.value?.clearDraft()
     await loadHallData()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发布失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '发布失败')
   } finally {
     publishLoading.value = false
   }
@@ -545,14 +547,14 @@ async function loadHallData(page = hallPage.value) {
   } else {
     requirements.value = []
     hallTotal.value = 0
-    showToast('加载需求大厅失败', 'warning')
+    TMessage.warning('加载需求大厅失败')
   }
 
   if (overviewResult.status === 'fulfilled') {
     overview.value = overviewResult.value
   } else {
     overview.value = null
-    showToast('加载大厅概览失败', 'warning')
+    TMessage.warning('加载大厅概览失败')
   }
 
   loading.value = false
@@ -784,7 +786,7 @@ async function loadHallData(page = hallPage.value) {
     :publishLoading="publishLoading"
     :draft-scope="auth.isAuthed ? auth.username : 'default'"
     @close="closePublishModal"
-    @notify="showToast"
+    @notify="notify"
     @submit="submitPublishRequirement"
   />
 

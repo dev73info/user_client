@@ -31,11 +31,10 @@ import {
   type DevWithdrawalSummary,
 } from '@/api/devWallet'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
 
-import { TOption, TPagination, TSelect, TTable, TTableColumn, TTag } from 'ui_73info'
+import { TMessage, TOption, TPagination, TSelect, TTable, TTableColumn, TTag } from 'ui_73info'
 
 /** 四类资金动作：类型标签 + 金额着色 + 那一行的说明怎么拼。 */
 type FundRecordKind = 'deposit_recharge' | 'deposit_withdrawal' | 'income' | 'income_reversal' | 'income_withdrawal'
@@ -64,7 +63,6 @@ const KIND_LABELS: Record<FundRecordKind, string> = {
 
 const auth = useAuthStore()
 const props = defineProps<{ income: DevWalletIncomeItem[]; keyword?: string }>()
-const { showToast } = useToast()
 
 const loading = ref(false)
 const withdrawalSummary = ref<DevWithdrawalSummary | null>(null)
@@ -262,7 +260,7 @@ function statusTagType(
 /** 三类出款/充值台账一次拉齐：任何一路失败都提示出来，但其余几路照旧展示。 */
 async function loadRecords() {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
@@ -287,7 +285,7 @@ async function loadRecords() {
     })()),
   ])
   if (failures.length > 0) {
-    showToast(failures.join('；'), 'error')
+    TMessage.error(failures.join('；'))
   }
   loading.value = false
 }

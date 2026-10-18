@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { TButton } from 'ui_73info'
+import { TButton, TMessage } from 'ui_73info'
 
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { getMyRealnameVerification } from '@/api/realname'
 import { HttpError } from '@/api/http'
@@ -11,7 +10,6 @@ import { DEV_PORTAL_URL, buildUnifiedAuthUrl } from '@/config/runtime'
 
 const auth = useAuthStore()
 const router = useRouter()
-const { showToast } = useToast()
 
 const realnameApproved = ref(false)
 const realnameChecked = ref(false)
@@ -74,15 +72,15 @@ async function retryAccessCheck() {
     const hasAccess = await auth.ensureDevAccess()
 
     if (hasAccess) {
-      showToast('开发者权限已开通，正在进入工作台', 'success')
+      TMessage.success('开发者权限已开通，正在进入工作台')
       await router.replace({ name: 'dev-plugins' })
       return
     }
 
-    showToast(auth.devAccessError || '当前账号仍未开通开发者权限', 'warning')
+    TMessage.warning(auth.devAccessError || '当前账号仍未开通开发者权限')
   } catch (error) {
     auth.logout()
-    showToast(error instanceof Error ? error.message : '权限校验失败，请重新登录', 'error')
+    TMessage.error(error instanceof Error ? error.message : '权限校验失败，请重新登录')
     await router.replace(buildUnifiedAuthUrl('login', DEV_PORTAL_URL))
   } finally {
     retrying.value = false

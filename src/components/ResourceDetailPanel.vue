@@ -43,13 +43,12 @@ import { isWechatBrowser } from '@/shared/auth/browser'
 import { getMyPoints } from '@/api/points'
 import { useAuthStore } from '@/stores/auth'
 import { useDownloadStore } from '@/stores/download'
-import { useToast } from '@/composables/useToast'
 import { useResourceDownload } from '@/composables/useResourceDownload'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 import QRCode from 'qrcode'
-import { TLoading } from 'ui_73info'
+import { TLoading, TMessage } from 'ui_73info'
 
 type CommentGate = {
   title: string
@@ -88,7 +87,9 @@ const router = useRouter()
 const auth = useAuthStore()
 const downloadStore = useDownloadStore()
 const { triggerDownload } = useResourceDownload()
-const { showToast } = useToast()
+function notify(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+  TMessage[type](message)
+}
 
 const loading = ref(false)
 /** 面板形态下取数失败时的兜底文案（详情页形态失败会退回首页，不用这个） */
@@ -142,7 +143,7 @@ const tagNames = computed(
 )
 useCodeBlockCopy({
   rootRef: pageContentRef,
-  notify: showToast,
+  notify,
 })
 const authorPillParts = computed(() => {
   const current = resource.value
@@ -501,7 +502,7 @@ function hasReusableCashQr(channel: ResourcePayChannelUi): boolean {
 
 async function openPurchasePanel() {
   if (!auth.isAuthed) {
-    showToast('请先登录后再购买', 'info')
+    TMessage.info('请先登录后再购买')
     void router.push({
       name: 'home',
       query: {
@@ -590,11 +591,10 @@ async function handlePurchasePaid(order: ResourcePurchaseOrder) {
   purchaseQrDataUrl.value = ''
   purchaseError.value = ''
   // 买家侧只报金额，不报推广者是谁（推广者信息只给卖家与管理端）
-  showToast(
+  TMessage.success(
     order.promoter_fee_fen > 0
       ? `购买成功，可以下载了（本单含推广分成 ¥${fenToYuanText(order.promoter_fee_fen)}）`
       : '购买成功，可以下载了',
-    'success',
   )
   await refreshResourceDetail()
   purchasePanelOpen.value = false
@@ -639,7 +639,7 @@ async function pollPurchaseOnce(orderNo: string, generation: number) {
       await handlePurchasePaid(latest)
     } else if (latest.status === 'failed' || latest.status === 'closed') {
       stopPurchasePoll()
-      showToast('支付未完成，请重新发起购买', 'warning')
+      TMessage.warning('支付未完成，请重新发起购买')
     }
   } catch {
     /* 轮询失败不打断扫码流程 */
@@ -675,16 +675,16 @@ async function ensureWechatPayAuthorized(token: string): Promise<boolean> {
     const { url } = await getWechatPaymentAuthorizeUrl(token, window.location.href)
     if (!url.trim()) {
       purchaseError.value = '微信授权地址为空，请改用支付宝或稍后重试'
-      showToast(purchaseError.value, 'error')
+      TMessage.error(purchaseError.value)
       return false
     }
-    showToast('首次微信支付需先完成微信授权，正在跳转…', 'info')
+    TMessage.info('首次微信支付需先完成微信授权，正在跳转…')
     window.location.assign(url)
     return false
   } catch (error) {
     const message = error instanceof Error ? error.message : '检查微信授权失败'
     purchaseError.value = message
-    showToast(message, 'error')
+    TMessage.error(message)
     return false
   }
 }
@@ -721,7 +721,7 @@ async function runSubmitPurchase() {
         await handlePurchasePaid(order)
         return
       }
-      showToast('积分购买未完成，请稍后重试', 'warning')
+      TMessage.warning('积分购买未完成，请稍后重试')
       return
     }
     // 排队间隙用户又切了渠道：以当前选择为准，避免为过期渠道再落单
@@ -758,7 +758,7 @@ async function runSubmitPurchase() {
       return
     }
     if (!order.pay_url?.trim()) {
-      showToast('订单已创建，支付完成后即可下载', 'info')
+      TMessage.info('订单已创建，支付完成后即可下载')
     }
     startPurchasePoll(order.order_no, requestedGeneration)
   } catch (error) {
@@ -767,14 +767,14 @@ async function runSubmitPurchase() {
     }
     const message = error instanceof Error ? error.message : '创建购买订单失败'
     if (message.includes('已购买')) {
-      showToast(message, 'success')
+      TMessage.success(message)
       await refreshResourceDetail()
       purchasePanelOpen.value = false
       return
     }
     // 后端拒绝的具体原因（例如 409 的响应体）原样留在弹窗里，别让用户只看到一个转瞬即逝的 toast
     purchaseError.value = message
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     purchaseSubmitting.value = false
   }
@@ -791,22 +791,22 @@ function handlePrimaryCta() {
 async function handleDownloadError(error: unknown) {
   const message = error instanceof Error ? error.message : '下载资源失败'
   if (error instanceof HttpError && error.status === 403 && isPurchaseRequiredError(message)) {
-    showToast('请先购买该资源后再下载', 'warning')
+    TMessage.warning('请先购买该资源后再下载')
     void openPurchasePanel()
     return
   }
-  showToast(message, 'warning')
+  TMessage.warning(message)
 }
 
 async function openResourceFile() {
   if (!latestVersion.value?.resource) {
-    showToast('当前还没有可下载的历史版本', 'info')
+    TMessage.info('当前还没有可下载的历史版本')
     return
   }
 
   const resourceId = resource.value?.id
   if (resourceId == null) {
-    showToast('资源编号无效', 'warning')
+    TMessage.warning('资源编号无效')
     return
   }
   if (needsPurchase.value) {
@@ -840,7 +840,7 @@ async function openResourceFile() {
 async function downloadVersion(version: PublicMcResourceVersionItem) {
   const resourceId = resource.value?.id
   if (resourceId == null) {
-    showToast('资源编号无效', 'warning')
+    TMessage.warning('资源编号无效')
     return
   }
   if (needsPurchase.value) {
@@ -891,14 +891,14 @@ async function loadComments(resourceId: number) {
     comments.value = await listPublicMcResourceComments(resourceId, token)
   } catch (error) {
     comments.value = []
-    showToast(error instanceof Error ? error.message : '加载资源评论失败', 'warning')
+    TMessage.warning(error instanceof Error ? error.message : '加载资源评论失败')
   } finally {
     commentsLoading.value = false
   }
 }
 
 function openCommentLogin() {
-  showToast('请先登录后再发表评论', 'info')
+  TMessage.info('请先登录后再发表评论')
   void router.push({
     name: 'home',
     query: {
@@ -910,7 +910,7 @@ function openCommentLogin() {
 }
 
 function openLikeLogin() {
-  showToast('请先登录后再点赞', 'info')
+  TMessage.info('请先登录后再点赞')
   void router.push({
     name: 'home',
     query: {
@@ -926,7 +926,7 @@ function requireDownloadLogin(): boolean {
   if (auth.isAuthed && auth.token.trim()) {
     return true
   }
-  showToast('请先登录后再下载资源', 'info')
+  TMessage.info('请先登录后再下载资源')
   void router.push({
     name: 'home',
     query: {
@@ -956,12 +956,12 @@ async function toggleResourceLike() {
 
   const current = resource.value
   if (!current) {
-    showToast('资源编号无效', 'warning')
+    TMessage.warning('资源编号无效')
     return
   }
 
   if (!isPublishedResource.value) {
-    showToast('资源公开发布后才可点赞', 'warning')
+    TMessage.warning('资源公开发布后才可点赞')
     return
   }
 
@@ -981,13 +981,13 @@ async function toggleResourceLike() {
       like_count: state.like_count,
     }
     invalidateResourceListCache()
-    showToast(state.liked_by_me ? '已点赞' : '已取消点赞', 'success')
+    TMessage.success(state.liked_by_me ? '已点赞' : '已取消点赞')
   } catch (error) {
     if (error instanceof HttpError && error.status === 401) {
       auth.logout()
       openLikeLogin()
     } else {
-      showToast(error instanceof Error ? error.message : '点赞操作失败', 'error')
+      TMessage.error(error instanceof Error ? error.message : '点赞操作失败')
     }
   } finally {
     likeSubmitting.value = false
@@ -1018,12 +1018,12 @@ async function submitResourceComment() {
 
   const resourceId = resource.value?.id ?? getCurrentResourceId()
   if (!resourceId) {
-    showToast('资源编号无效', 'warning')
+    TMessage.warning('资源编号无效')
     return
   }
 
   if (!isPublishedResource.value) {
-    showToast('资源公开发布后才可评论', 'warning')
+    TMessage.warning('资源公开发布后才可评论')
     return
   }
 
@@ -1035,11 +1035,11 @@ async function submitResourceComment() {
   const comment = commentText.value.trim()
   const commentLength = Array.from(comment).length
   if (!comment) {
-    showToast('请输入评论内容', 'warning')
+    TMessage.warning('请输入评论内容')
     return
   }
   if (commentLength > COMMENT_MAX_LENGTH) {
-    showToast(`评论不能超过 ${COMMENT_MAX_LENGTH} 字`, 'warning')
+    TMessage.warning(`评论不能超过 ${COMMENT_MAX_LENGTH} 字`)
     return
   }
 
@@ -1048,14 +1048,14 @@ async function submitResourceComment() {
     const saved = await createPublicMcResourceComment(auth.token, resourceId, { comment })
     comments.value = [saved, ...comments.value.filter((item) => item.id !== saved.id)]
     commentText.value = ''
-    showToast('评论已发布', 'success')
+    TMessage.success('评论已发布')
     void loadComments(resourceId)
   } catch (error) {
     if (error instanceof HttpError && error.status === 403) {
-      showToast('请先完成实名认证后再发表评论', 'warning')
+      TMessage.warning('请先完成实名认证后再发表评论')
       openRealnamePage()
     } else {
-      showToast(error instanceof Error ? error.message : '评论提交失败', 'error')
+      TMessage.error(error instanceof Error ? error.message : '评论提交失败')
     }
   } finally {
     commentSubmitting.value = false

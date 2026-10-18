@@ -20,13 +20,13 @@ import {
   type InvoiceGroup,
 } from '@/shared/invoiceGroups'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from '@/composables/useToast'
 
 
 import {
   TButton,
   TIcon,
   TInput,
+  TMessage,
   TOption,
   TPagination,
   TSelect,
@@ -37,7 +37,6 @@ import {
 } from 'ui_73info'
 
 const auth = useAuthStore()
-const { showToast } = useToast()
 const route = useRoute()
 
 /**
@@ -242,7 +241,7 @@ async function loadData() {
   try {
     allInvoices.value = await listMyInvoices(auth.token)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载发票数据失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载发票数据失败')
   } finally {
     loading.value = false
   }
@@ -281,12 +280,11 @@ async function uploadDocument(invoice: InvoiceRecord) {
     const updated = await uploadInvoiceDocument(auth.token, invoice.id, file)
     allInvoices.value = allInvoices.value.map((item) => (item.id === updated.id ? updated : item))
     delete selectedFileByInvoice[invoice.id]
-    showToast(
+    TMessage.success(
       replacing ? '发票文件已替换，客户下载到的就是这一份' : '发票文件已上传，客户可下载了',
-      'success',
     )
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '上传发票文件失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '上传发票文件失败')
   } finally {
     uploadingInvoiceId.value = null
   }
@@ -319,7 +317,7 @@ async function openDocument(invoice: InvoiceRecord) {
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
   } catch (error) {
     popup?.close()
-    showToast(error instanceof Error ? error.message : '查看发票文件失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '查看发票文件失败')
   }
 }
 
@@ -355,7 +353,7 @@ async function saveDocument(invoice: InvoiceRecord) {
     link.remove()
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '下载发票文件失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '下载发票文件失败')
   } finally {
     downloadingInvoiceId.value = null
   }

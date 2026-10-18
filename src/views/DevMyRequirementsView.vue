@@ -62,7 +62,6 @@ import {
   type InvoiceRecord,
 } from '@/api/invoices'
 import { canUploadInvoiceDocument } from '@/shared/invoiceAction'
-import { useToast } from '@/composables/useToast'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
@@ -78,6 +77,7 @@ import {
   TIcon,
   TInput,
   TLoading,
+  TMessage,
   TOption,
   TPagination,
   TSelect,
@@ -95,7 +95,6 @@ import {
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const { showToast } = useToast()
 
 const loading = ref(false)
 const rows = ref<RequirementItem[]>([])
@@ -404,7 +403,7 @@ async function loadAfterSalesPending() {
 
 async function loadMyRequirements() {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
@@ -428,11 +427,11 @@ async function loadMyRequirements() {
 
     const supplementaryError = resourceResult.error ?? walletResult.error
     if (supplementaryError) {
-      showToast(`${supplementaryError}，交付与到账暂不完整`, 'warning')
+      TMessage.warning(`${supplementaryError}，交付与到账暂不完整`)
     }
     // 发票是补充数据：失败不打断需求列表，只提示一声（与资源 / 钱包同一口径）。
     if (invoiceResult.error) {
-      showToast(`${invoiceResult.error}，上传发票入口暂不可用`, 'warning')
+      TMessage.warning(`${invoiceResult.error}，上传发票入口暂不可用`)
     }
 
     // 无担保模式（self_managed）不需要合同，无需查询合同签署状态
@@ -454,7 +453,7 @@ async function loadMyRequirements() {
     signingStatusMap.value = map
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载已关联需求失败'
-    showToast(message, 'error')
+    TMessage.error(message)
     rows.value = []
   } finally {
     loading.value = false
@@ -736,12 +735,11 @@ async function uploadInvoiceDoc(invoice: InvoiceRecord, file: File) {
       ...developerInvoiceByRequirement.value,
       [updated.requirementId]: updated,
     }
-    showToast(
+    TMessage.success(
       replacing ? '发票文件已替换，客户下载到的就是这一份' : '发票文件已上传，客户可下载了',
-      'success',
     )
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '上传发票文件失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '上传发票文件失败')
   } finally {
     uploadingInvoiceId.value = null
   }
@@ -904,7 +902,7 @@ function canSubmitDeliveryVersion(item: RequirementItem) {
 
 function openDeliveryDialog(item: RequirementItem) {
   if (item.bound_resource_id == null) {
-    showToast('当前需求还没有关联资源项目', 'warning')
+    TMessage.warning('当前需求还没有关联资源项目')
     return
   }
 
@@ -936,7 +934,7 @@ function canOpenAfterSales(item: RequirementItem) {
 
 function openAfterSalesModal(item: RequirementItem) {
   if (!canOpenAfterSales(item)) {
-    showToast('只有已结单的需求有解除合作入口', 'warning')
+    TMessage.warning('只有已结单的需求有解除合作入口')
     return
   }
   afterSalesTarget.value = item
@@ -1003,7 +1001,7 @@ async function openBreachReport(item: RequirementItem) {
   try {
     breachCase.value = await getAdapayBreachCase(auth.token, item.requirement_id)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载解除合作案件失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载解除合作案件失败')
   } finally {
     breachCaseLoading.value = false
   }
@@ -1036,9 +1034,9 @@ async function submitPlatformReview() {
   platformReviewLoading.value = true
   try {
     breachCase.value = await requestAdapayPlatformReview(auth.token, breachCase.value.id)
-    showToast('已申请平台介入，案件转客服人工判定', 'success')
+    TMessage.success('已申请平台介入，案件转客服人工判定')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '申请平台介入失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '申请平台介入失败')
   } finally {
     platformReviewLoading.value = false
   }
@@ -1065,9 +1063,9 @@ async function submitBreachWithdraw() {
   try {
     breachCase.value = await withdrawAdapayBreach(auth.token, current.id)
     breachWithdrawConfirm.value = false
-    showToast('解除合作申请已撤回，如仍有争议可重新发起', 'success')
+    TMessage.success('解除合作申请已撤回，如仍有争议可重新发起')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '撤回解除合作申请失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '撤回解除合作申请失败')
   } finally {
     breachWithdrawLoading.value = false
   }
@@ -1177,9 +1175,9 @@ async function submitBreachDecision(decision: AdapayBreachDecisionValue) {
       : decision === 'accepted'
         ? '已接受 AI 判定，等待对方表态'
         : '已提交不接受，案件转客服人工判定'
-    showToast(toast, 'success')
+    TMessage.success(toast)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交解除合作案件表态失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '提交解除合作案件表态失败')
   } finally {
     breachDecisionLoading.value = false
   }
@@ -1189,16 +1187,16 @@ async function submitBreachReport() {
   const item = breachRequirement.value
   const reason = breachReason.value.trim()
   if (!item || !reason) {
-    showToast('请填写解除合作的事实和相关依据', 'warning')
+    TMessage.warning('请填写解除合作的事实和相关依据')
     return
   }
   breachLoading.value = true
   try {
     breachCase.value = await reportAdapayTermination(auth.token, item.requirement_id, reason)
     breachNewRound.value = false
-    showToast('解除合作申请已提交，请先与对方协商', 'success')
+    TMessage.success('解除合作申请已提交，请先与对方协商')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交解除合作申请失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '提交解除合作申请失败')
   } finally {
     breachLoading.value = false
   }
@@ -1255,19 +1253,19 @@ function canCreateRequirementContract(item: RequirementItem) {
 
 async function createRequirementContractAction(item: RequirementItem) {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
   contractCreatingId.value = item.requirement_id
   try {
     await createRequirementContract(auth.token, item.requirement_id)
     // R012：发起后引导到合同页的「自定义合同附件」区；附件经平台审核放行后才能发起签署。
-    showToast('合同已发起；如需补充条款，可在合同页准备自定义附件，平台放行后即可签署', 'success')
+    TMessage.success('合同已发起；如需补充条款，可在合同页准备自定义附件，平台放行后即可签署')
     const status = await fetchDevContractSigningStatus(auth.token, item.requirement_id)
     signingStatusMap.value = { ...signingStatusMap.value, [item.requirement_id]: status }
     openContractSign(item)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '发起合同失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '发起合同失败')
   } finally {
     contractCreatingId.value = ''
   }
@@ -1287,7 +1285,7 @@ async function loadRequirementConversations() {
     )
   } catch (error) {
     requirementConversationMap.value = {}
-    showToast(error instanceof Error ? error.message : '加载沟通会话失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载沟通会话失败')
   } finally {
     conversationLoading.value = false
   }

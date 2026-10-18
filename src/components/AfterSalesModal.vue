@@ -25,9 +25,9 @@ import {
   type AfterSalesDecision,
   type AfterSalesRespondAction,
 } from '@/api/afterSales'
-import { useToast } from '@/composables/useToast'
 import { afterSalesExpectationLabel } from '@/shared/afterSalesStatus'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
+import { TMessage } from 'ui_73info'
 
 const props = defineProps<{
   visible: boolean
@@ -48,8 +48,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ close: [] }>()
-
-const { showToast } = useToast()
 
 /** 终态案件不再有可执行动作，只作为历史记录展示。 */
 const CLOSED_STATUSES = ['succeeded', 'rejected', 'withdrawn']
@@ -424,7 +422,7 @@ async function refresh() {
     windowOpen.value = result.windowOpen
     windowClosesAt.value = result.windowClosesAt
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载解除合作案件失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '加载解除合作案件失败')
   } finally {
     casesLoading.value = false
   }
@@ -435,14 +433,13 @@ async function submit() {
     return
   }
   if (!description.value.trim()) {
-    showToast('请先描述遇到的问题', 'warning')
+    TMessage.warning('请先描述遇到的问题')
     return
   }
   // 主张金额不许超过需求预算（后端也会以 400 拒收）：在提交前就拦住，别让用户填完才吃一个错误提示。
   if (expectsMoney.value && budgetFen.value > 0 && claimAmountFen.value > budgetFen.value) {
-    showToast(
+    TMessage.warning(
       `主张金额不能超过需求预算 ${(budgetFen.value / 100).toFixed(2)} 元`,
-      'warning',
     )
     return
   }
@@ -458,12 +455,12 @@ async function submit() {
       // 没勾「要一笔钱回来」时不带金额：后端拒收「没要钱却填了额度」的诉求。
       expectsMoney.value ? claimAmountFen.value : 0,
     )
-    showToast('解除合作申请已提交，对方会在会话里收到通知', 'success')
+    TMessage.success('解除合作申请已提交，对方会在会话里收到通知')
     description.value = ''
     claimAmount.value = ''
     await refresh()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发起解除合作申请失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '发起解除合作申请失败')
   } finally {
     submitting.value = false
   }
@@ -476,10 +473,10 @@ async function respond(item: AfterSalesCase, action: AfterSalesRespondAction) {
   respondingId.value = item.id
   try {
     const updated = await respondAfterSalesCase(props.token, item.id, action)
-    showToast(respondToast(action, updated), 'success')
+    TMessage.success(respondToast(action, updated))
     await refresh()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '提交解除合作案件表态失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '提交解除合作案件表态失败')
   } finally {
     respondingId.value = null
   }
@@ -508,10 +505,10 @@ async function withdraw(item: AfterSalesCase) {
   withdrawingId.value = item.id
   try {
     await withdrawAfterSalesCase(props.token, item.id)
-    showToast('解除合作申请已撤回', 'success')
+    TMessage.success('解除合作申请已撤回')
     await refresh()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '撤回解除合作申请失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '撤回解除合作申请失败')
   } finally {
     withdrawingId.value = null
   }

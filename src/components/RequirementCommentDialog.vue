@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue'
 
 import { commentRequirement } from '@/api/requirements'
-import { useToast } from '@/composables/useToast'
+import { TMessage } from 'ui_73info'
 
 const props = defineProps<{
   visible: boolean
@@ -17,8 +17,6 @@ const emit = defineEmits<{
   close: []
   submitted: []
 }>()
-
-const { showToast } = useToast()
 
 const commentRating = ref(5)
 const commentText = ref('')
@@ -66,17 +64,17 @@ function requestClose() {
 
 async function submitRequirementComment() {
   if (!props.token || !props.requirementId) {
-    showToast('请先登录后再发表评价', 'error')
+    TMessage.error('请先登录后再发表评价')
     return
   }
 
   if (commentRating.value < 1 || commentRating.value > 5) {
-    showToast('请为已完成需求打分，范围 1 到 5 分', 'error')
+    TMessage.error('请为已完成需求打分，范围 1 到 5 分')
     return
   }
 
   if (commentText.value.trim().length > 200) {
-    showToast('评论字数不能超过 200 字', 'error')
+    TMessage.error('评论字数不能超过 200 字')
     return
   }
 
@@ -86,11 +84,11 @@ async function submitRequirementComment() {
       rating: commentRating.value,
       comment: commentText.value.trim(),
     })
-    showToast('评价提交成功', 'success')
+    TMessage.success('评价提交成功')
     emit('submitted')
     emit('close')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '评价提交失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '评价提交失败')
   } finally {
     commentLoading.value = false
   }

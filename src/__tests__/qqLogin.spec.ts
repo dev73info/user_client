@@ -13,7 +13,23 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => mocks.auth }))
 vi.mock('vue-router', () => ({ useRouter: () => mocks.router }))
-vi.mock('@/composables/useToast', () => ({ useToast: () => ({ showToast: mocks.showToast }) }))
+vi.mock('ui_73info', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ui_73info')>()
+  const toast =
+    (type: 'success' | 'error' | 'warning' | 'info') =>
+    (message: string): void =>
+      mocks.showToast(message, type)
+  return {
+    ...actual,
+    TMessage: {
+      ...actual.TMessage,
+      success: toast('success'),
+      error: toast('error'),
+      warning: toast('warning'),
+      info: toast('info'),
+    },
+  }
+})
 vi.mock('@/api/auth', () => ({
   getOauthStatus: vi.fn().mockResolvedValue({ qq: true }),
   getQqLoginQrUrl: mocks.getUrl,

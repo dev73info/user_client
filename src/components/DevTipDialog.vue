@@ -12,7 +12,7 @@
  */
 import { computed, ref, watch } from 'vue'
 import QRCode from 'qrcode'
-import { TButton, TCheckbox, TDialog, TInput } from 'ui_73info'
+import { TButton, TCheckbox, TDialog, TInput, TMessage } from 'ui_73info'
 
 import {
   createTip,
@@ -21,7 +21,6 @@ import {
   type TipOrder,
 } from '@/api/tips'
 import type { PublicTipBlock } from '@/api/publicProfile'
-import { useToast } from '@/composables/useToast'
 import { isWechatBrowser } from '@/shared/auth/browser'
 import {
   defaultTipChannel,
@@ -47,8 +46,6 @@ const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
   (e: 'success', order: TipOrder): void
 }>()
-
-const { showToast } = useToast()
 
 /** 后端未给 notice 时的兜底合规文案（与 `TIP_NATURE_NOTICE` 同口径）。 */
 const FALLBACK_NOTICE =
@@ -199,7 +196,7 @@ function pollOnce(orderNo: string) {
       order.value = latest
       if (latest.status === 'paid') {
         stopPoll()
-        showToast('打赏成功，感谢支持', 'success')
+        TMessage.success('打赏成功，感谢支持')
         emit('success', latest)
         emit('update:open', false)
       } else if (latest.status === 'failed' || latest.status === 'closed') {
@@ -272,7 +269,7 @@ async function submit() {
     const created = await createTip(props.token, built)
     order.value = created
     if (created.pay_method === 'points' || created.status === 'paid') {
-      showToast('打赏成功，感谢支持', 'success')
+      TMessage.success('打赏成功，感谢支持')
       emit('success', created)
       emit('update:open', false)
       return

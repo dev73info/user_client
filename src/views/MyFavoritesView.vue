@@ -4,7 +4,6 @@ import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRouter } from 'vue-router'
 import { listFavoriteCommunityPosts, type CommunityPost } from '@/api/community'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 
@@ -13,6 +12,7 @@ import {
   TButton,
   TIcon,
   TInput,
+  TMessage,
   TOption,
   TPagination,
   TSelect,
@@ -26,7 +26,6 @@ import {
 
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
 const posts = ref<CommunityPost[]>([])
 const loading = ref(false)
 const keyword = ref('')
@@ -84,7 +83,7 @@ async function loadFavorites() {
   try {
     posts.value = await listFavoriteCommunityPosts(auth.token)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载我的收藏失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载我的收藏失败')
   } finally {
     loading.value = false
   }

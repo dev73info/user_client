@@ -5,10 +5,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { HttpError } from '@/api/http'
 import { getPublicMcResource } from '@/api/resources'
 import { getTagRouteSlug, parseResourceIdFromSlug } from '@/api/resourceTags'
-import { useToast } from '@/composables/useToast'
 import { resourceListingSaleOf } from '@/shared/resourceNavigation'
 import { normalizePromoCode, type ResourceListingSale } from '@/shared/resourceSale'
 import { useAuthStore } from '@/stores/auth'
+import { TMessage } from 'ui_73info'
 
 /**
  * 旧「独立资源详情页」地址的轻量重定向。
@@ -29,7 +29,6 @@ import { useAuthStore } from '@/stores/auth'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 /**
  * 打不开目标资源时的统一落点：仍回「资源项目」列表（不 404、不白屏）。
@@ -37,7 +36,7 @@ const { showToast } = useToast()
  */
 function fallbackToResourceList(sale: ResourceListingSale, message?: string) {
   if (message) {
-    showToast(message, 'error')
+    TMessage.error(message)
   }
   void router.replace({ name: 'resources', query: { sale } })
 }
