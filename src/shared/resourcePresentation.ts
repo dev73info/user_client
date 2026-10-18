@@ -36,12 +36,12 @@ export function resourceTagSummary(resource: ResourcePresentationInput): string 
 
 /**
  * 资源列表「标签」列的展示值。
- * 接口资源不选标签归类、不属于任何根节点 / 二级节点，一律按「原创」展示；
+ * 接口资源不选标签归类、不属于任何根节点 / 二级节点，一律按「接口」展示；
  * 普通资源仍按标签名拼接，一个标签都没选时回落为「未附带标签」。
  */
 export function resourceTagColumnLabel(resource: ResourcePresentationInput): string {
   if (isApiResourceKind(resource.resource_kind)) {
-    return '原创'
+    return '接口'
   }
 
   return resourceTagSummary(resource) || '未附带标签'

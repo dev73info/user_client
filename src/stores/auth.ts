@@ -48,6 +48,7 @@ export const useAuthStore = defineStore('auth', () => {
   const profileRequest = ref<Promise<AuthProfile> | null>(null)
   const devAccessError = ref('')
   const developerAgreementSigned = ref(false)
+  const apiUsageAgreementSigned = ref(false)
 
   const isAuthed = computed(() => token.value.length > 0)
   const isDev = computed(() => role.value === 'dev' || role.value === 'super_admin')
@@ -180,6 +181,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function ensureDevAccess(): Promise<boolean> {
     devAccessError.value = ''
     developerAgreementSigned.value = false
+    apiUsageAgreementSigned.value = false
     if (!token.value) {
       return false
     }
@@ -197,6 +199,7 @@ export const useAuthStore = defineStore('auth', () => {
       const status = await getDevAccessStatus(token.value).catch(() => null)
       if (status) {
         developerAgreementSigned.value = status.developer_agreement_signed
+        apiUsageAgreementSigned.value = status.api_usage_agreement_signed
         if (status.is_dev || status.is_super_admin) {
           return true
         }
@@ -338,6 +341,7 @@ export const useAuthStore = defineStore('auth', () => {
     hydrated.value = true
     devAccessError.value = ''
     developerAgreementSigned.value = false
+    apiUsageAgreementSigned.value = false
     resetAuthState()
     clearPersistedAuthProfile()
     localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
@@ -360,6 +364,7 @@ export const useAuthStore = defineStore('auth', () => {
     isDev,
     devAccessError,
     developerAgreementSigned,
+    apiUsageAgreementSigned,
     authHeaders,
     hydrate,
     fetchProfile,

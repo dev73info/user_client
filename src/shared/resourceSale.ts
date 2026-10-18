@@ -70,6 +70,63 @@ export function caretAfterStripLeadingZeros(text: string, caret: number): number
   return Math.max(0, bounded - removed)
 }
 
+/**
+ * 售价（元）输入实时归一：只保留数字与第一个小数点，小数最多两位，
+ * 并去掉整数部分的前导 0（`00100` → `100`、`1.234` → `1.23`）。
+ *
+ * `caret` 传输入框当前光标位置；返回归一后的文本与光标该落的位置
+ * （被丢弃的字符在光标左侧时，光标随之左移）。
+ */
+export function normalizeYuanPriceText(
+  text: string,
+  caret: number | null = null,
+): { text: string; caret: number | null } {
+  const caretLimit = caret === null ? null : Math.max(0, Math.min(caret, text.length))
+  let filtered = ''
+  let filteredCaret: number | null = caretLimit === null ? null : 0
+  let dotSeen = false
+  let decimals = 0
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text.charAt(index)
+    let keep = false
+    if (char >= '0' && char <= '9') {
+      if (!dotSeen) {
+        keep = true
+      } else if (decimals < 2) {
+        keep = true
+        decimals += 1
+      }
+    } else if (char === '.' && !dotSeen) {
+      keep = true
+      dotSeen = true
+    }
+
+    if (!keep) {
+      continue
+    }
+    filtered += char
+    if (caretLimit !== null && index < caretLimit) {
+      filteredCaret = filtered.length
+    }
+  }
+
+  // 以小数点开头时补 0（`.5` → `0.5`），光标一并右移
+  if (filtered.startsWith('.')) {
+    filtered = `0${filtered}`
+    if (filteredCaret !== null) {
+      filteredCaret += 1
+    }
+  }
+
+  const normalized = stripLeadingZeros(filtered)
+  if (filteredCaret !== null) {
+    filteredCaret = caretAfterStripLeadingZeros(filtered, filteredCaret)
+  }
+
+  return { text: normalized, caret: filteredCaret }
+}
+
 export type ParsePointsPriceOk = { ok: true; points: number }
 export type ParsePointsPriceErr = { ok: false; message: string }
 export type ParsePointsPriceResult = ParsePointsPriceOk | ParsePointsPriceErr
