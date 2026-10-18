@@ -485,9 +485,16 @@ a {
   flex: 1 1 100px;
 }
 
+/* 搜索基宽 150px（不是 100%）：与右侧「重置」共用第二行并吃掉剩余宽度，
+   100% 会独占一行、把重置挤到第三行。 */
 .dev-toolbar--stacked .dev-toolbar__search {
-  flex: 1 1 100%;
+  flex: 1 1 150px;
   max-width: none;
+}
+
+/* 条数由表尾分页器报一次，窄栏里再放「筛选出 N 条」会把工具栏挤成三行 */
+.dev-toolbar--stacked .dev-toolbar__hint {
+  display: none;
 }
 
 .dev-filter-label {

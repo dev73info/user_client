@@ -45,7 +45,6 @@ import {
   TTable,
   TTableColumn,
   Refresh,
-  RefreshLeft,
   Search,
   Tickets,
   WarningFilled,
@@ -403,19 +402,6 @@ watch(
 
 onBeforeUnmount(cancelPendingKeywordSearch)
 
-async function resetFilters() {
-  // 先撤掉待发的防抖请求，并让 watcher 认为清空后的关键字已经生效，
-  // 否则「重置」会发两次（本次立即 + 300ms 后那次）。
-  cancelPendingKeywordSearch()
-  filters.keyword = ''
-  appliedKeyword = ''
-  filters.sortBy = 'updated_at'
-  filters.sortOrder = 'desc'
-  page.value = 1
-  pageSize.value = 10
-  await loadRequirements()
-}
-
 function handlePageSizeChange() {
   page.value = 1
   void loadRequirements()
@@ -738,16 +724,6 @@ function resetInitForm() {
           </template>
         </TInput>
 
-        <!-- 筛选与其余菜单页同构：只有「重置」，输入／切换即时生效，没有「查询」按钮。
-             条数只在表尾分页器里报一次，工具栏不再重复一行「共 N 条」。 -->
-        <div class="dev-toolbar__actions">
-          <TButton variant="outline" @click="resetFilters">
-            <TIcon>
-              <RefreshLeft />
-            </TIcon>
-            <span>重置</span>
-          </TButton>
-        </div>
       </div>
 
       <!-- 列宽可拖：表头右边缘的拖拽手柄由 TTableColumn 的 `resizable` 打开，与边框无关

@@ -219,23 +219,23 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* 左列表 + 右详情这类窄栏（工单中心）：一行摆不下「筛选 + 搜索 + 重置」时，
-   让搜索独占一行，控件不缩成畸形的窄条 */
-.wb-toolbar--stacked {
-  flex-direction: column;
-  align-items: stretch;
+/* 左列表 + 右详情这类窄栏（工单中心）：一行摆不下「筛选 150 + 筛选 150 + 搜索 + 重置」。
+   与开发者侧 .dev-toolbar--stacked 用同一套 flex 规则——第一行两个筛选 + 右侧重置，
+   第二行搜索独占。不要改成纵向排列：那会把每个控件单独撑成一行，工具栏高到 170px。 */
+.wb-toolbar--stacked .wb-toolbar__field {
+  flex: 1 1 100px;
 }
 
-.wb-toolbar--stacked .wb-toolbar__field,
+/* 搜索的基宽写成 150px 而不是 100%：100% 会把「重置」挤到第三行，
+   150px 让它与重置共用第二行、再吃掉剩余宽度。 */
 .wb-toolbar--stacked .wb-toolbar__search {
-  flex: 1 1 auto;
+  flex: 1 1 150px;
   max-width: none;
-  width: 100%;
 }
 
-.wb-toolbar--stacked .wb-toolbar__actions {
-  margin-left: 0;
-  justify-content: flex-end;
+/* 条数由表尾分页器报一次，窄栏里再放「筛选出 N 条」会把工具栏挤成三行 */
+.wb-toolbar--stacked .wb-toolbar__hint {
+  display: none;
 }
 
 /* === 原生按钮 / 链接按钮 ===
@@ -624,7 +624,8 @@
   }
 
   /* 读数条在窄屏改成两列栅格：读数仍成对出现，刷新固定在右上角 */
-  .wb-toolbar__search {
+  .wb-toolbar__search,
+  .wb-toolbar--stacked .wb-toolbar__search {
     flex: 1 1 100%;
     max-width: none;
   }
@@ -745,10 +746,15 @@
     order: -1;
   }
 
-  /* 窄栏形态在移动端已是整屏宽，不必再竖排，同样收成两行 */
+  /* 窄栏形态在移动端已是整屏宽，与普通工具栏同口径：搜索第一行，筛选与操作第二行
+     （搜索恢复 100% 基宽，否则 150px 的基宽会和筛选并到同一行）。 */
   .wb-toolbar--stacked {
     flex-direction: row;
     align-items: center;
+  }
+
+  .wb-toolbar--stacked .wb-toolbar__search {
+    flex: 1 1 100%;
   }
 
   .wb-toolbar .wb-toolbar__field,

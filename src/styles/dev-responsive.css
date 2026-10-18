@@ -30,7 +30,8 @@
     align-items: stretch;
   }
 
-  .dev-toolbar__search {
+  .dev-toolbar__search,
+  .dev-toolbar--stacked .dev-toolbar__search {
     flex: 1 1 100%;
     max-width: none;
     order: -1;
