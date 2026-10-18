@@ -46,6 +46,7 @@ import {
   isResourceArchiveLocked,
   RESOURCE_ARCHIVE_LOCKED_MESSAGE,
   RESOURCE_ARCHIVE_LOCKED_TITLE,
+  resourceVisibilityLabel as visibilityLabel,
 } from '@/shared/resourcePresentation'
 import { API_BASE_URL } from '@/shared/api/url'
 import {
@@ -210,17 +211,9 @@ const selectedTagCount = computed(() =>
 const keepSavedTags = computed(
   () => !tagPathResolved.value && (resource.value?.tag_selections?.length ?? 0) > 0,
 )
-const resourceVisibilityLabel = computed(() => {
-  if (resource.value?.visibility === 'published') {
-    return '公开展示中'
-  }
-
-  if (resource.value?.visibility === 'review') {
-    return '审核中'
-  }
-
-  return '私有'
-})
+const resourceVisibilityLabel = computed(() =>
+  resource.value ? visibilityLabel(resource.value.visibility) : '私有',
+)
 
 const resourcePlatformLabel = computed(() => {
   // 接口资源不属于任何根节点 / 二级节点，标签树里没有它的平台；用资源类别占位
@@ -389,7 +382,7 @@ const revealedSecretPlain = ref('')
 const secretPlainDialogVisible = ref(false)
 /**
  * 资源主页已保存、只有渠道配置失败时的重试口径：
- * 置真后再点「保存主页」只重发渠道配置这一半，不重复 PATCH 主页。
+ * 置真后再点「保存」只重发渠道配置这一半，不重复 PATCH 主页。
  */
 const channelRetryOnly = ref(false)
 const channelSaveError = ref('')
@@ -511,7 +504,8 @@ async function saveApiChannelOnly(resourceId: number): Promise<boolean> {
     applySavedApiChannel(
       await updateResourceApiChannel(auth.token, resourceId, {
         repeat_purchasable: form.apiRepeatPurchasable,
-        callback_url: form.apiCallbackUrl.trim() || null,
+        // 后端以「显式空串」表示清空，null / 缺省表示不改
+        callback_url: form.apiCallbackUrl.trim(),
         // 留空 = 不改；首次留空时后端自动生成，明文只在这次响应里回显
         callback_secret: form.apiCallbackSecret.trim() || null,
         allowed_origins: apiOrigins.value,
@@ -1133,47 +1127,25 @@ watch(
          两套外观；标题与封面在下方「预览摘要」卡片里已有，这里不重复，只留可读的口径与页面级操作。 -->
     <WorkbenchBarSlot>
       <div class="dev-meta-strip">
-        <div class="dev-meta-strip__item">
-          <span class="dev-meta-strip__label">可见性</span>
-          <span class="dev-meta-strip__value">{{ resourceVisibilityLabel }}</span>
-        </div>
-        <div class="dev-meta-strip__divider" />
+        <!-- 接口资源固定不进大厅，可见性没有可操作的信息，读数条不展示 -->
+        <template v-if="!isApiKind">
+          <div class="dev-meta-strip__item">
+            <span class="dev-meta-strip__label">可见性</span>
+            <span class="dev-meta-strip__value">{{ resourceVisibilityLabel }}</span>
+          </div>
+          <div class="dev-meta-strip__divider" />
+        </template>
         <div class="dev-meta-strip__item">
           <span class="dev-meta-strip__label">类别</span>
           <span class="dev-meta-strip__value">
-            {{ isApiKind ? '接口资源 · 不在大厅展示' : '普通资源' }}
+            {{ isApiKind ? '接口资源' : '资源项目' }}
           </span>
-        </div>
-        <!-- 接口资源不选标签归类、不属于任何根节点 / 二级节点，读数条只交代类别与「原创」 -->
-        <template v-if="isApiKind">
-          <div class="dev-meta-strip__divider" />
-          <div class="dev-meta-strip__item">
-            <span class="dev-meta-strip__label">类型</span>
-            <span class="dev-meta-strip__value">原创</span>
-          </div>
-        </template>
-        <template v-else>
-          <div class="dev-meta-strip__divider" />
-          <div class="dev-meta-strip__item">
-            <span class="dev-meta-strip__label">平台</span>
-            <span class="dev-meta-strip__value">{{ resourcePlatformLabel }}</span>
-          </div>
-          <div class="dev-meta-strip__divider" />
-          <div class="dev-meta-strip__item">
-            <span class="dev-meta-strip__label">已选标签</span>
-            <span class="dev-meta-strip__value">{{ previewTagCount }}</span>
-          </div>
-        </template>
-        <div class="dev-meta-strip__divider" />
-        <div class="dev-meta-strip__item">
-          <span class="dev-meta-strip__label">作者</span>
-          <span class="dev-meta-strip__value">{{ resourceAuthorLabel }}</span>
         </div>
         <div class="dev-meta-strip__item dev-meta-strip__action">
           <TButton variant="outline" @click="goBack"
             ><template #prefix
               ><TIcon><Back /></TIcon></template
-            >返回列表</TButton
+            >返回</TButton
           >
           <TButton
             variant="outline"
@@ -1184,7 +1156,7 @@ watch(
             rel="noopener noreferrer"
             ><template #prefix
               ><TIcon><View /></TIcon></template
-            >打开用户端</TButton
+            >预览</TButton
           >
           <TButton
             variant="outline"
@@ -1203,7 +1175,7 @@ watch(
             ><template #prefix
               ><TIcon><Check /></TIcon
             ></template>
-            保存主页
+            保存
           </TButton>
           <TButton icon-only aria-label="刷新标签" :loading="isLoadingTags" @click="loadTagTree">
             <TIcon>
@@ -1310,7 +1282,7 @@ watch(
                   </p>
                 </TFormItem>
 
-                <!-- R029 推广分成比例：0～50（%），0 = 关闭；随「保存主页」一次提交（promo_share_bps） -->
+                <!-- R029 推广分成比例：0～50（%），0 = 关闭；随「保存」一次提交（promo_share_bps） -->
                 <TFormItem
                   label="推广分成比例"
                   class="dev-basic-info-grid__promo"
@@ -1443,7 +1415,7 @@ watch(
               class="dev-api-retry-notice"
               data-testid="api-channel-retry-notice"
               title="资源主页已保存，接口资源渠道配置还没成功"
-              :description="`原因：${channelSaveError}。修正后点「保存主页」只会重发渠道配置这一半；主页字段若也要改，渠道补上后再点一次即可。`"
+              :description="`原因：${channelSaveError}。修正后点「保存」只会重发渠道配置这一半；主页字段若也要改，渠道补上后再点一次即可。`"
             />
 
             <TAlert
