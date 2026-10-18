@@ -13,8 +13,8 @@ import {
   type AdapayAcceptanceRecord,
   type AdapayAcceptanceResult,
 } from '@/api/adapay'
-import { useToast } from '@/composables/useToast'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
+import { TMessage } from 'ui_73info'
 
 const props = defineProps<{
   visible: boolean
@@ -28,8 +28,6 @@ const emit = defineEmits<{
   /** 已提交一条验收留档（通过 / 不通过都会触发），调用方据此刷新需求状态。 */
   submitted: [result: AdapayAcceptanceResult]
 }>()
-
-const { showToast } = useToast()
 
 const result = ref<AdapayAcceptanceResult>('passed')
 const note = ref('')
@@ -61,7 +59,7 @@ async function loadRecords() {
     records.value = await listAdapayAcceptances(props.token, props.requirementId)
   } catch (error) {
     // 历史留档只是辅助信息，取不到不挡本次验收。
-    showToast(error instanceof Error ? error.message : '加载验收记录失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载验收记录失败')
   } finally {
     recordsLoading.value = false
   }
@@ -79,7 +77,7 @@ async function submit() {
   }
   // 不通过必须写明原因（后端同样要求），否则开发者不知道该整改什么。
   if (result.value === 'rejected' && !note.value.trim()) {
-    showToast('验收不通过时请写明需要整改的问题', 'warning')
+    TMessage.warning('验收不通过时请写明需要整改的问题')
     return
   }
 
@@ -87,14 +85,13 @@ async function submit() {
   try {
     await acceptAdapayDelivery(props.token, props.requirementId, result.value, note.value.trim())
     const rejected = result.value === 'rejected'
-    showToast(
+    TMessage.success(
       rejected ? '已记下验收结论，开发者会收到整改通知' : '验收已通过，请继续支付尾款',
-      'success',
     )
     emit('submitted', result.value)
     emit('close')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交验收结果失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '提交验收结果失败')
   } finally {
     submitting.value = false
   }

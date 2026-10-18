@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { TIcon, DataAnalysis, Refresh } from 'ui_73info'
+import { TIcon, DataAnalysis, Refresh, TMessage } from 'ui_73info'
 
 import { getShareStats, type ShareRecord } from '@/api/invite'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from '@/composables/useToast'
 
 const auth = useAuthStore()
-const { showToast } = useToast()
 const records = ref<ShareRecord[]>([])
 const totalVisits = ref(0)
 const totalRegistrations = ref(0)
@@ -67,7 +65,7 @@ async function loadStats() {
         totalVisits.value = payload.total_visits
         totalRegistrations.value = payload.total_registrations
     } catch (error) {
-        showToast(error instanceof Error ? error.message : '加载分享数据失败', 'error')
+        TMessage.error(error instanceof Error ? error.message : '加载分享数据失败')
     } finally {
         loading.value = false
     }

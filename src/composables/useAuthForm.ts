@@ -2,7 +2,6 @@ import type { Ref } from 'vue'
 import { onBeforeUnmount, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from '@/composables/useToast'
 import { apiUrl } from '@/api/http'
 import {
   getGiteeAuthorizeUrl,
@@ -14,13 +13,13 @@ import {
 } from '@/api/auth'
 import { isQqBrowser, isWechatBrowser } from '@/shared/auth/browser'
 import { qrPollDelayMs } from '@/utils/qrPollBackoff'
+import { TMessage } from 'ui_73info'
 
 type AuthMode = 'login' | 'register' | 'reset'
 
 export function useAuthForm(mode: Ref<AuthMode>) {
   const auth = useAuthStore()
   const router = useRouter()
-  const { showToast } = useToast()
 
   const authUsername = ref('')
   const authPassword = ref('')
@@ -87,7 +86,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
       return
     }
     if (!acceptTerms.value) {
-      showToast('请先同意用户协议、隐私政策和支付与退款说明', 'error')
+      TMessage.error('请先同意用户协议、隐私政策和支付与退款说明')
       return
     }
 
@@ -103,7 +102,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
       }
       window.location.href = resp.url
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'GitHub 登录失败', 'error')
+      TMessage.error(err instanceof Error ? err.message : 'GitHub 登录失败')
       githubLoading.value = false
     }
   }
@@ -113,7 +112,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
       return
     }
     if (!acceptTerms.value) {
-      showToast('请先同意用户协议、隐私政策和支付与退款说明', 'error')
+      TMessage.error('请先同意用户协议、隐私政策和支付与退款说明')
       return
     }
 
@@ -129,7 +128,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
       }
       window.location.href = resp.url
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Gitee 登录失败', 'error')
+      TMessage.error(err instanceof Error ? err.message : 'Gitee 登录失败')
       giteeLoading.value = false
     }
   }
@@ -162,7 +161,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
       return
     }
     if (!acceptTerms.value) {
-      showToast('请先同意用户协议、隐私政策和支付与退款说明', 'error')
+      TMessage.error('请先同意用户协议、隐私政策和支付与退款说明')
       return
     }
 
@@ -181,7 +180,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     try {
       await openWechatQrLogin()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : '微信扫码登录失败', 'error')
+      TMessage.error(err instanceof Error ? err.message : '微信扫码登录失败')
     } finally {
       wechatLoginLoading.value = false
     }
@@ -196,7 +195,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
       await openWechatQrLogin()
     } catch (err) {
       closeWechatQrLogin()
-      showToast(err instanceof Error ? err.message : '微信扫码登录失败', 'error')
+      TMessage.error(err instanceof Error ? err.message : '微信扫码登录失败')
     }
   }
 
@@ -212,7 +211,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
   async function handleWechatQrToken(token: string) {
     closeWechatQrLogin()
     auth.setToken(token)
-    showToast('登录成功', 'success')
+    TMessage.success('登录成功')
     await auth.fetchProfile(true).catch(() => undefined)
     const homeHref = router.resolve({ name: 'home' }).href
     await router.replace(homeHref)
@@ -241,7 +240,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
       if (result.token) {
         stopQqLogin()
         auth.setToken(result.token)
-        showToast('登录成功', 'success')
+        TMessage.success('登录成功')
         await auth.fetchProfile(true).catch(() => undefined)
         const homeHref = router.resolve({ name: 'home' }).href
         await router.replace(homeHref)
@@ -268,7 +267,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
       return
     }
     if (!acceptTerms.value) {
-      showToast('请先同意用户协议、隐私政策和支付与退款说明', 'error')
+      TMessage.error('请先同意用户协议、隐私政策和支付与退款说明')
       return
     }
 
@@ -307,7 +306,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     } catch (err) {
       if (generation !== qqLoginGeneration) return
       stopQqLogin()
-      showToast(err instanceof Error ? err.message : 'QQ登录失败', 'error')
+      TMessage.error(err instanceof Error ? err.message : 'QQ登录失败')
     } finally {
       qqLoginLoading.value = false
     }
@@ -324,7 +323,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
         const username = authUsername.value.trim()
         const password = authPassword.value
         if (!username || !password) {
-          showToast('请先输入用户名和密码', 'error')
+          TMessage.error('请先输入用户名和密码')
           return
         }
         const result = await auth.login(
@@ -334,13 +333,13 @@ export function useAuthForm(mode: Ref<AuthMode>) {
           authTurnstileToken.value || undefined,
         )
         if (!result.requiresTwoFactor) {
-          showToast('登录成功', 'success')
+          TMessage.success('登录成功')
           return
         }
       } else {
         const email = authEmail.value.trim()
         if (!email) {
-          showToast('请输入邮箱地址', 'error')
+          TMessage.error('请输入邮箱地址')
           return
         }
         if (mode.value === 'register') {
@@ -349,7 +348,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
           await auth.sendResetPasswordEmailCode(email, authTurnstileToken.value || undefined)
         }
       }
-      showToast('验证码已发送，请查收邮箱', 'success')
+      TMessage.success('验证码已发送，请查收邮箱')
       sendCodeCountdown.value = 60
       sendCodeTimer = setInterval(() => {
         if (sendCodeCountdown.value <= 1) {
@@ -363,7 +362,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
         sendCodeCountdown.value -= 1
       }, 1000)
     } catch (err) {
-      showToast(err instanceof Error ? err.message : '发送验证码失败', 'error')
+      TMessage.error(err instanceof Error ? err.message : '发送验证码失败')
     } finally {
       sendCodeLoading.value = false
     }
@@ -373,22 +372,22 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     try {
       if (mode.value === 'login') {
         if (!acceptTerms.value) {
-          showToast('请先同意用户协议、隐私政策和支付与退款说明', 'error')
+          TMessage.error('请先同意用户协议、隐私政策和支付与退款说明')
           return false
         }
         const username = authUsername.value.trim()
         const password = authPassword.value
         const twoFactorCode = authEmailCode.value.trim()
         if (!username) {
-          showToast('请输入用户名或邮箱', 'error')
+          TMessage.error('请输入用户名或邮箱')
           return false
         }
         if (!password) {
-          showToast('请输入密码', 'error')
+          TMessage.error('请输入密码')
           return false
         }
         if (loginRequiresTwoFactor.value && twoFactorCode.length !== 6) {
-          showToast('请输入 6 位邮箱验证码', 'error')
+          TMessage.error('请输入 6 位邮箱验证码')
           return false
         }
         const result = await auth.login(
@@ -400,34 +399,34 @@ export function useAuthForm(mode: Ref<AuthMode>) {
         if (result.requiresTwoFactor) {
           loginRequiresTwoFactor.value = true
           authEmailCode.value = ''
-          showToast('验证码已发送，请查收邮箱', 'success')
+          TMessage.success('验证码已发送，请查收邮箱')
           return false
         }
         loginRequiresTwoFactor.value = false
-        showToast('登录成功', 'success')
+        TMessage.success('登录成功')
         return true
       }
       if (mode.value === 'register') {
         if (!acceptTerms.value) {
-          showToast('请先同意用户协议、隐私政策和支付与退款说明', 'error')
+          TMessage.error('请先同意用户协议、隐私政策和支付与退款说明')
           return false
         }
         const username = authUsername.value.trim()
         const password = authPassword.value
         if (!username) {
-          showToast('请输入用户名', 'error')
+          TMessage.error('请输入用户名')
           return false
         }
         if (!authEmail.value.trim()) {
-          showToast('邮箱不能为空', 'error')
+          TMessage.error('邮箱不能为空')
           return false
         }
         if (authEmailCode.value.trim().length !== 6) {
-          showToast('请输入 6 位邮箱验证码', 'error')
+          TMessage.error('请输入 6 位邮箱验证码')
           return false
         }
         if (!password) {
-          showToast('请输入密码', 'error')
+          TMessage.error('请输入密码')
           return false
         }
         await auth.registerWithEmail(
@@ -440,20 +439,20 @@ export function useAuthForm(mode: Ref<AuthMode>) {
           authShareTargetId.value.trim() || undefined,
           authTurnstileToken.value || undefined,
         )
-        showToast('注册成功', 'success')
+        TMessage.success('注册成功')
         return true
       }
       if (mode.value === 'reset') {
         if (!authEmail.value.trim()) {
-          showToast('邮箱不能为空', 'error')
+          TMessage.error('邮箱不能为空')
           return false
         }
         if (authEmailCode.value.trim().length !== 6) {
-          showToast('请输入 6 位邮箱验证码', 'error')
+          TMessage.error('请输入 6 位邮箱验证码')
           return false
         }
         if (!authPassword.value) {
-          showToast('请输入新密码', 'error')
+          TMessage.error('请输入新密码')
           return false
         }
         await auth.resetPasswordWithEmail(
@@ -462,12 +461,12 @@ export function useAuthForm(mode: Ref<AuthMode>) {
           authEmailCode.value.trim(),
           authTurnstileToken.value || undefined,
         )
-        showToast('密码已重置，已自动登录', 'success')
+        TMessage.success('密码已重置，已自动登录')
         return true
       }
       return false
     } catch (err) {
-      showToast(err instanceof Error ? err.message : '操作失败', 'error')
+      TMessage.error(err instanceof Error ? err.message : '操作失败')
       return false
     }
   }

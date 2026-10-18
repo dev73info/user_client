@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
 import QRCode from 'qrcode'
-import { TIcon, Close, Document, Link, Picture, Refresh, Share } from 'ui_73info'
+import { TIcon, Close, Document, Link, Picture, Refresh, Share, TMessage } from 'ui_73info'
 
 import { generateShareCard, type GenerateShareCardPayload, type ShareCardData } from '@/api/invite'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from '@/composables/useToast'
 
 const props = withDefaults(
     defineProps<{
@@ -21,7 +20,6 @@ const props = withDefaults(
 )
 
 const auth = useAuthStore()
-const { showToast } = useToast()
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const cardData = ref<ShareCardData | null>(null)
 const loading = ref(false)
@@ -148,7 +146,7 @@ async function renderCard() {
 async function loadCard() {
     auth.hydrate()
     if (!auth.token) {
-        showToast('请先登录后生成分享卡', 'warning')
+        TMessage.warning('请先登录后生成分享卡')
         return
     }
     loading.value = true
@@ -162,7 +160,7 @@ async function loadCard() {
         await nextTick()
         await renderCard()
     } catch (error) {
-        showToast(error instanceof Error ? error.message : '生成分享卡失败', 'error')
+        TMessage.error(error instanceof Error ? error.message : '生成分享卡失败')
     } finally {
         loading.value = false
     }
@@ -195,24 +193,24 @@ async function copyImage() {
         }
         const blob = await canvasBlob()
         await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
-        showToast('分享卡已复制', 'success')
+        TMessage.success('分享卡已复制')
     } catch (error) {
-        showToast(error instanceof Error ? error.message : '复制分享卡失败', 'error')
+        TMessage.error(error instanceof Error ? error.message : '复制分享卡失败')
     }
 }
 
 async function copyLink() {
     const data = cardData.value
     if (!data) {
-        showToast('分享链接还未生成', 'warning')
+        TMessage.warning('分享链接还未生成')
         return
     }
 
     try {
         await navigator.clipboard.writeText(data.qr_url)
-        showToast('分享链接已复制', 'success')
+        TMessage.success('分享链接已复制')
     } catch (error) {
-        showToast(error instanceof Error ? error.message : '复制分享链接失败', 'error')
+        TMessage.error(error instanceof Error ? error.message : '复制分享链接失败')
     }
 }
 
@@ -226,7 +224,7 @@ async function downloadImage() {
         link.click()
         URL.revokeObjectURL(url)
     } catch (error) {
-        showToast(error instanceof Error ? error.message : '下载分享卡失败', 'error')
+        TMessage.error(error instanceof Error ? error.message : '下载分享卡失败')
     }
 }
 

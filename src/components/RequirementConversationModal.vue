@@ -14,6 +14,7 @@ import {
   Picture,
   Position,
   Refresh,
+  TMessage,
 } from 'ui_73info'
 
 import * as userConversationApi from '@/api/conversations'
@@ -41,7 +42,6 @@ import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 import { listPublicMcResourceVersions } from '@/api/resources'
 import RequirementConversationActions from '@/components/RequirementConversationActions.vue'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
-import { useToast } from '@/composables/useToast'
 import {
   conversationCardMeta,
   conversationCardSide,
@@ -178,7 +178,6 @@ const conversationApi = computed<ConversationApi>(() =>
   props.apiMode === 'dev' ? devConversationApi : userConversationApi,
 )
 const router = useRouter()
-const { showToast } = useToast()
 const conversation = computed(() => detail.value?.conversation ?? null)
 const messages = computed(() => detail.value?.messages ?? [])
 const conversationClosed = computed(
@@ -408,10 +407,10 @@ function runPaymentCardAction() {
   }
   const status = conversation.value?.requirement_status
   if (status === 'in_development') {
-    showToast('验收已打回开发中，请重新验收通过后再支付尾款', 'warning')
+    TMessage.warning('验收已打回开发中，请重新验收通过后再支付尾款')
     return
   }
-  showToast('当前还不能支付，请确认合同已签署且需求处于待缴定金或待付尾款', 'warning')
+  TMessage.warning('当前还不能支付，请确认合同已签署且需求处于待缴定金或待付尾款')
 }
 
 async function runCardAction(card: ConversationCardMeta, message?: RequirementConversationMessage) {
@@ -451,14 +450,14 @@ async function downloadDeliveryArtifact(versionRef: string) {
       (row) => row.requirement_id === props.requirementId,
     )?.bound_resource_id
     if (boundResourceId == null) {
-      showToast('该需求还没有绑定的交付资源，暂时没有可下载的产物', 'warning')
+      TMessage.warning('该需求还没有绑定的交付资源，暂时没有可下载的产物')
       return
     }
 
     const versions = await listPublicMcResourceVersions(boundResourceId, props.token)
     const target = versions.find((item) => item.version === versionRef) ?? versions[0]
     if (!target) {
-      showToast('开发者还没有提交交付版本', 'warning')
+      TMessage.warning('开发者还没有提交交付版本')
       return
     }
 
@@ -467,7 +466,7 @@ async function downloadDeliveryArtifact(versionRef: string) {
     await actionsRef.value?.loadActions?.()
     actionsRef.value?.applyPublishedVersionCount?.(versions.length)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '下载交付产物失败', 'warning')
+    TMessage.warning(error instanceof Error ? error.message : '下载交付产物失败')
   } finally {
     downloadLoading.value = false
   }
@@ -611,9 +610,9 @@ async function requestHistoryDisclosure() {
       props.requirementId,
     )
     emit('updated', detail.value)
-    showToast('已提交申请，等待前任开发者与客户确认', 'success')
+    TMessage.success('已提交申请，等待前任开发者与客户确认')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '申请查看历史沟通失败', 'warning')
+    TMessage.warning(error instanceof Error ? error.message : '申请查看历史沟通失败')
   } finally {
     historyRequesting.value = false
   }
@@ -627,11 +626,11 @@ async function respondHistoryDisclosure(item: ConversationHistoryDisclosureBrief
   historyVotingId.value = item.id
   try {
     await conversationApi.value.respondConversationHistoryDisclosure(props.token, item.id, decision)
-    showToast(decision === 'approved' ? '已同意公开这段历史沟通' : '已拒绝公开这段历史沟通', 'success')
+    TMessage.success(decision === 'approved' ? '已同意公开这段历史沟通' : '已拒绝公开这段历史沟通')
     // 两票齐后那段消息会出现在时间线里，重新拉一次详情即可看到
     await loadConversation()
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交表决失败', 'warning')
+    TMessage.warning(error instanceof Error ? error.message : '提交表决失败')
   } finally {
     historyVotingId.value = null
   }
@@ -679,7 +678,7 @@ function stopRealtime() {
 async function submitMessage() {
   if (sending.value || loading.value || composerLocked.value) {
     if (requirementArchived.value) {
-      showToast('合同有效期已届满，会话在资料保留期内只读：不能发消息或传附件，历史内容仍可查看与下载', 'warning')
+      TMessage.warning('合同有效期已届满，会话在资料保留期内只读：不能发消息或传附件，历史内容仍可查看与下载')
     }
     return
   }

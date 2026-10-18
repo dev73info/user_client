@@ -18,7 +18,6 @@ import {
   type TeamResponse,
 } from '@/api/team'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from '@/composables/useToast'
 import { apiUrl } from '@/api/http'
 
 
@@ -30,6 +29,7 @@ import {
   TFormItem,
   TIcon,
   TInput,
+  TMessage,
   TOption,
   TSelect,
   Plus,
@@ -41,7 +41,6 @@ import {
 
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 const teams = ref<TeamResponse[]>([])
 const loading = ref(false)
@@ -108,12 +107,12 @@ async function loadTeams() {
   try {
     const token = auth.token?.trim() ? auth.token : null
     if (!token) {
-      showToast('请先登录', 'warning')
+      TMessage.warning('请先登录')
       return
     }
     teams.value = await listMyTeams(token)
   } catch (e) {
-    showToast(e instanceof Error ? e.message : '加载团队失败', 'warning')
+    TMessage.warning(e instanceof Error ? e.message : '加载团队失败')
   } finally {
     loading.value = false
   }
@@ -122,7 +121,7 @@ async function loadTeams() {
 async function handleCreate() {
   const name = createName.value.trim()
   if (!name) {
-    showToast('请输入团队名称', 'warning')
+    TMessage.warning('请输入团队名称')
     return
   }
   const token = auth.token?.trim()
@@ -137,10 +136,10 @@ async function handleCreate() {
     createName.value = ''
     createDesc.value = ''
     teams.value.unshift(team)
-    showToast('团队创建成功')
+    TMessage.info('团队创建成功')
     router.push({ name: 'workbench-team-detail', params: { teamId: team.team_id } })
   } catch (e) {
-    showToast(e instanceof Error ? e.message : '创建失败', 'warning')
+    TMessage.warning(e instanceof Error ? e.message : '创建失败')
   } finally {
     creating.value = false
   }
@@ -154,9 +153,9 @@ async function handleDelete(team: TeamResponse) {
   try {
     await deleteTeam(token, team.team_id)
     teams.value = teams.value.filter((t) => t.team_id !== team.team_id)
-    showToast('团队已解散')
+    TMessage.info('团队已解散')
   } catch (e) {
-    showToast(e instanceof Error ? e.message : '解散失败', 'warning')
+    TMessage.warning(e instanceof Error ? e.message : '解散失败')
   } finally {
     deletingId.value = null
   }
@@ -170,9 +169,9 @@ async function handleLeave(team: TeamResponse) {
   try {
     await leaveTeam(token, team.team_id)
     teams.value = teams.value.filter((t) => t.team_id !== team.team_id)
-    showToast('已退出团队')
+    TMessage.info('已退出团队')
   } catch (e) {
-    showToast(e instanceof Error ? e.message : '退出失败', 'warning')
+    TMessage.warning(e instanceof Error ? e.message : '退出失败')
   } finally {
     deletingId.value = null
   }
@@ -218,10 +217,10 @@ async function handleAcceptInvitation(inv: TeamInvitationResponse) {
   try {
     await acceptInvitation(token, inv.id)
     invitations.value = invitations.value.filter((i) => i.id !== inv.id)
-    showToast(`已加入「${inv.team_name}」`)
+    TMessage.info(`已加入「${inv.team_name}」`)
     await loadTeams()
   } catch (e) {
-    showToast(e instanceof Error ? e.message : '接受邀请失败', 'warning')
+    TMessage.warning(e instanceof Error ? e.message : '接受邀请失败')
   } finally {
     processingInvitationId.value = null
   }
@@ -235,9 +234,9 @@ async function handleRejectInvitation(inv: TeamInvitationResponse) {
   try {
     await rejectInvitation(token, inv.id)
     invitations.value = invitations.value.filter((i) => i.id !== inv.id)
-    showToast('已拒绝邀请')
+    TMessage.info('已拒绝邀请')
   } catch (e) {
-    showToast(e instanceof Error ? e.message : '拒绝邀请失败', 'warning')
+    TMessage.warning(e instanceof Error ? e.message : '拒绝邀请失败')
   } finally {
     processingInvitationId.value = null
   }

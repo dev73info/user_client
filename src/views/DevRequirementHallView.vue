@@ -22,7 +22,6 @@ import {
 import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
   requirementRichTextPreview,
@@ -39,6 +38,7 @@ import {
   TFormItem,
   TIcon,
   TInput,
+  TMessage,
   TOption,
   TPagination,
   TSelect,
@@ -54,7 +54,6 @@ import {
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const { showToast } = useToast()
 
 const loading = ref(false)
 const depositLoading = ref(false)
@@ -311,7 +310,7 @@ function syncKeywordFromRoute() {
 
 async function loadRequirements() {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
@@ -328,7 +327,7 @@ async function loadRequirements() {
     total.value = payload.total
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载资源关联列表失败'
-    showToast(message, 'error')
+    TMessage.error(message)
     rows.value = []
     total.value = 0
   } finally {
@@ -355,7 +354,7 @@ async function loadDepositStatus() {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载接单保证金状态失败'
-    showToast(message, 'error')
+    TMessage.error(message)
     depositStatus.value = null
   } finally {
     depositLoading.value = false
@@ -435,17 +434,17 @@ function openBindDialog(requirement: RequirementItem) {
 
 async function submitBinding() {
   if (!auth.token || !selectedRequirement.value) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
   if (!reviewConfirmed.value) {
-    showToast('请先完整阅读需求信息，并确认已审阅后再继续', 'warning')
+    TMessage.warning('请先完整阅读需求信息，并确认已审阅后再继续')
     return
   }
 
   if (!finalConfirmed.value) {
-    showToast('请完成二次确认后再关联需求', 'warning')
+    TMessage.warning('请完成二次确认后再关联需求')
     return
   }
 
@@ -456,17 +455,17 @@ async function submitBinding() {
 
     if (bindingMode.value === 'existing') {
       if (!resourceId) {
-        showToast('请选择要绑定的开发项目', 'warning')
+        TMessage.warning('请选择要绑定的开发项目')
         return
       }
 
       if (!selectedResource.value) {
-        showToast('所选开发项目不可用，请重新选择', 'warning')
+        TMessage.warning('所选开发项目不可用，请重新选择')
         return
       }
     } else {
       if (!canCreateResource.value) {
-        showToast(createBlockReason.value || '请先补全资源初始化信息', 'warning')
+        TMessage.warning(createBlockReason.value || '请先补全资源初始化信息')
         return
       }
 
@@ -491,11 +490,10 @@ async function submitBinding() {
 
     await bindRequirementProject(auth.token, selectedRequirement.value.requirement_id, resourceId!)
     bindDialogVisible.value = false
-    showToast(
+    TMessage.success(
       createdResourceTitle
         ? `已初始化资源“${createdResourceTitle}”，并完成需求关联`
         : '需求已关联到开发项目，并进入开发中',
-      'success',
     )
     await loadRequirements()
     resources.value = []
@@ -503,7 +501,7 @@ async function submitBinding() {
     resetInitForm()
   } catch (error) {
     const message = error instanceof Error ? error.message : '关联需求失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     binding.value = false
   }
@@ -594,7 +592,7 @@ async function loadTagTree() {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载标签失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     initTagsLoading.value = false
   }

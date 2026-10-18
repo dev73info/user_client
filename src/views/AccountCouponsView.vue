@@ -62,7 +62,6 @@ import {
   sendVerifyCode,
   type MySealsData,
 } from '@/api/asignAccount'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import RealnameHero from '@/components/RealnameHero.vue'
 import WechatBindQrModal from '@/components/WechatBindQrModal.vue'
@@ -86,6 +85,7 @@ import {
   TIcon,
   TInput,
   TLoading,
+  TMessage,
   TOption,
   TRadio,
   TRadioGroup,
@@ -113,7 +113,6 @@ import {
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const { showToast } = useToast()
 
 const profileLoading = ref(false)
 const newUsername = ref('')
@@ -791,15 +790,17 @@ async function autoFillFromBusinessLicense(businessLicenseFile: string) {
       truncated ? `经营范围超过 ${MAX_BUSINESS_SCOPE_LEN} 字，已按渠道上限截断` : '',
     ].filter(Boolean)
     if (filled > 0) {
-      showToast(
-        `已按营业执照自动填入企业信息${notes.length ? `（${notes.join('；')}）` : ''}`,
-        truncated ? 'warning' : 'success',
-      )
+      const message = `已按营业执照自动填入企业信息${notes.length ? `（${notes.join('；')}）` : ''}`
+      if (truncated) {
+        TMessage.warning(message)
+      } else {
+        TMessage.success(message)
+      }
     } else {
-      showToast('营业执照未识别出可用信息，请重新上传更清晰的照片', 'warning')
+      TMessage.warning('营业执照未识别出可用信息，请重新上传更清晰的照片')
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '营业执照识别失败，请重新上传更清晰的照片', 'warning')
+    TMessage.warning(err instanceof Error ? err.message : '营业执照识别失败，请重新上传更清晰的照片')
   } finally {
     businessLicenseOcrLoading.value = false
   }
@@ -811,27 +812,27 @@ async function handleBusinessLicenseFileChange(event: Event) {
   input.value = ''
   if (!file) return
   if (!isAllowedConsentFile(file)) {
-    showToast('营业执照仅支持 PNG、JPG、WEBP 图片或 PDF 文件', 'warning')
+    TMessage.warning('营业执照仅支持 PNG、JPG、WEBP 图片或 PDF 文件')
     return
   }
   if (file.size > 10 * 1024 * 1024) {
-    showToast('营业执照文件不能超过 10MB', 'warning')
+    TMessage.warning('营业执照文件不能超过 10MB')
     return
   }
   auth.hydrate()
   if (!auth.token.trim()) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
   businessLicenseUploading.value = true
   try {
     const result = await uploadBusinessLicenseFile(auth.token, file)
     form.businessLicenseFile = result.business_license_file
-    showToast('营业执照已上传', 'success')
+    TMessage.success('营业执照已上传')
     // 上传成功后顺手让后端 OCR 识别一次，把企业信息回填；失败不影响上传结果。
     await autoFillFromBusinessLicense(result.business_license_file)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '上传营业执照失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '上传营业执照失败')
   } finally {
     businessLicenseUploading.value = false
   }
@@ -875,27 +876,27 @@ async function handleLegalCertFrontFileChange(event: Event) {
   input.value = ''
   if (!file) return
   if (!isAllowedLegalCertFile(file)) {
-    showToast('法人身份证人像面仅支持 PNG、JPG、WEBP 图片', 'warning')
+    TMessage.warning('法人身份证人像面仅支持 PNG、JPG、WEBP 图片')
     return
   }
   if (file.size > MAX_LEGAL_CERT_FILE_SIZE) {
-    showToast('法人身份证人像面文件不能超过 10MB', 'warning')
+    TMessage.warning('法人身份证人像面文件不能超过 10MB')
     return
   }
   auth.hydrate()
   if (!auth.token.trim()) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
   legalCertFrontUploading.value = true
   try {
     const result = await uploadLegalCertFrontFile(auth.token, file)
     form.legalCertFrontFile = result.front_file
-    showToast('法人身份证人像面已上传', 'success')
+    TMessage.success('法人身份证人像面已上传')
     // 上传成功后顺手识别证件有效期并回填；识别失败静默降级，不挡提交。
     void autoFillLegalCertPeriod()
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '上传法人身份证人像面失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '上传法人身份证人像面失败')
   } finally {
     legalCertFrontUploading.value = false
   }
@@ -908,27 +909,27 @@ async function handleLegalCertBackFileChange(event: Event) {
   input.value = ''
   if (!file) return
   if (!isAllowedLegalCertFile(file)) {
-    showToast('法人身份证国徽面仅支持 PNG、JPG、WEBP 图片', 'warning')
+    TMessage.warning('法人身份证国徽面仅支持 PNG、JPG、WEBP 图片')
     return
   }
   if (file.size > MAX_LEGAL_CERT_FILE_SIZE) {
-    showToast('法人身份证国徽面文件不能超过 10MB', 'warning')
+    TMessage.warning('法人身份证国徽面文件不能超过 10MB')
     return
   }
   auth.hydrate()
   if (!auth.token.trim()) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
   legalCertBackUploading.value = true
   try {
     const result = await uploadLegalCertBackFile(auth.token, file)
     form.legalCertBackFile = result.back_file
-    showToast('法人身份证国徽面已上传', 'success')
+    TMessage.success('法人身份证国徽面已上传')
     // 同上：有效期一般印在国徽面，上传这一面后立刻识别一次。
     void autoFillLegalCertPeriod()
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '上传法人身份证国徽面失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '上传法人身份证国徽面失败')
   } finally {
     legalCertBackUploading.value = false
   }
@@ -989,7 +990,7 @@ async function autoFillLegalCertPeriod(options: { silent?: boolean } = {}) {
       filled += applyLegalCertPeriod(result.cert_begin_on, result.cert_expires_on)
     }
     if (filled === 0 && !options.silent) {
-      showToast('未能自动识别法人证件有效期，请手工填写', 'warning')
+      TMessage.warning('未能自动识别法人证件有效期，请手工填写')
     }
   } finally {
     legalCertOcrLoading.value = false
@@ -1037,17 +1038,17 @@ async function handleConsentFileChange(event: Event) {
   }
 
   if (!isAllowedConsentFile(file)) {
-    showToast('同意书仅支持 PNG、JPG、WEBP 图片或 PDF 文件', 'warning')
+    TMessage.warning('同意书仅支持 PNG、JPG、WEBP 图片或 PDF 文件')
     return
   }
   if (file.size > MAX_CONSENT_FILE_SIZE) {
-    showToast('同意书文件不能超过 5MB', 'warning')
+    TMessage.warning('同意书文件不能超过 5MB')
     return
   }
 
   auth.hydrate()
   if (!auth.token.trim()) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
@@ -1055,9 +1056,9 @@ async function handleConsentFileChange(event: Event) {
   try {
     const result = await uploadGuardianConsentFile(auth.token, file)
     form.guardianConsentFile = result.guardian_consent_file
-    showToast('监护人同意书已上传', 'success')
+    TMessage.success('监护人同意书已上传')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '上传监护人同意书失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '上传监护人同意书失败')
   } finally {
     consentUploading.value = false
   }
@@ -1066,23 +1067,23 @@ async function handleConsentFileChange(event: Event) {
 async function startWechatFaceid() {
   auth.hydrate()
   if (!auth.token.trim()) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
   if (realnameApproved.value && !realnameChanging.value) {
-    showToast('实名认证已通过，无需重复核身', 'success')
+    TMessage.success('实名认证已通过，无需重复核身')
     return
   }
 
   if (realnameLocked.value && !realnameRejected.value) {
-    showToast('实名认证正在处理中，请稍后查询结果', 'warning')
+    TMessage.warning('实名认证正在处理中，请稍后查询结果')
     return
   }
 
   const msg = validate()
   if (msg) {
-    showToast(msg, 'warning')
+    TMessage.warning(msg)
     return
   }
 
@@ -1104,7 +1105,7 @@ async function startWechatFaceid() {
       current.value = record
       reviewerAvatarLoadFailed.value = false
       patchForm(record)
-      showToast('个人实名认证已提交，等待管理员审核', 'success')
+      TMessage.success('个人实名认证已提交，等待管理员审核')
       return
     }
     faceidAuthUrl.value = result.auth_url
@@ -1113,9 +1114,9 @@ async function startWechatFaceid() {
     const record = await getMyRealnameVerification(auth.token)
     current.value = record
     patchForm(record)
-    showToast('爱签实名认证已发起', 'success')
+    TMessage.success('爱签实名认证已发起')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发起爱签实名认证失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '发起爱签实名认证失败')
   } finally {
     faceidStarting.value = false
   }
@@ -1124,18 +1125,18 @@ async function startWechatFaceid() {
 async function startEnterpriseAsign() {
   auth.hydrate()
   if (!auth.token.trim()) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
   if (realnameLocked.value && !realnameRejected.value) {
-    showToast('实名认证正在处理中，请稍后查询结果', 'warning')
+    TMessage.warning('实名认证正在处理中，请稍后查询结果')
     return
   }
 
   const msg = validate()
   if (msg) {
-    showToast(msg, 'warning')
+    TMessage.warning(msg)
     return
   }
 
@@ -1163,9 +1164,9 @@ async function startEnterpriseAsign() {
     current.value = record
     reviewerAvatarLoadFailed.value = false
     patchForm(record)
-    showToast('企业实名认证已发起，请完成认证', 'success')
+    TMessage.success('企业实名认证已发起，请完成认证')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发起爱签企业实名认证失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '发起爱签企业实名认证失败')
   } finally {
     faceidStarting.value = false
   }
@@ -1180,7 +1181,7 @@ async function checkWechatFaceidResult(options: FaceidCheckOptions = {}) {
   if (!auth.token.trim()) {
     stopFaceidAutoPolling()
     if (!options.silent) {
-      showToast('登录状态已失效，请重新登录', 'error')
+      TMessage.error('登录状态已失效，请重新登录')
     }
     return
   }
@@ -1205,25 +1206,25 @@ async function checkWechatFaceidResult(options: FaceidCheckOptions = {}) {
       // 静默轮询（进页面、回跳、后台定时）每次都弹会变成噪音：只在状态真的发生转变、
       // 且不是静默调用时提示。
       if (previousStatus === 'pending' && !options.silent) {
-        showToast('爱签实名认证已通过', 'success')
+        TMessage.success('爱签实名认证已通过')
       }
       await tryRestoreBusinessPage(updated)
     } else if (updated.status === 'rejected') {
       clearFaceidChallenge()
       if (previousStatus === 'pending') {
-        showToast(updated.review_note || '爱签实名认证未通过', 'error')
+        TMessage.error(updated.review_note || '爱签实名认证未通过')
       }
     } else if (!options.silent) {
       // 认证结果仍为处理中（pending）：如实提示，避免误导为「已更新」
       if (faceidAuthUrl.value) {
-        showToast('认证仍在处理中，请先完成人脸核身后再查询', 'warning')
+        TMessage.warning('认证仍在处理中，请先完成人脸核身后再查询')
       } else {
-        showToast('实名认证正在处理中，请稍后查询结果', 'warning')
+        TMessage.warning('实名认证正在处理中，请稍后查询结果')
       }
     }
   } catch (err) {
     if (!options.silent) {
-      showToast(err instanceof Error ? err.message : '查询爱签实名认证结果失败', 'error')
+      TMessage.error(err instanceof Error ? err.message : '查询爱签实名认证结果失败')
     }
   } finally {
     faceidCheckInFlight = false
@@ -1236,7 +1237,7 @@ async function checkWechatFaceidResult(options: FaceidCheckOptions = {}) {
 async function resumeFaceid() {
   auth.hydrate()
   if (!auth.token.trim()) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
@@ -1245,14 +1246,14 @@ async function resumeFaceid() {
     const result = await resumeAsignIdentify(auth.token)
     if (result.manual_review || !result.auth_url) {
       // 非大陆证件走人工审核，无需二维码
-      showToast('个人实名认证已提交，等待管理员审核', 'success')
+      TMessage.success('个人实名认证已提交，等待管理员审核')
       return
     }
     faceidAuthUrl.value = result.auth_url
     await renderFaceidQrCode(result.auth_url)
-    showToast('认证二维码已恢复，请继续完成人脸核身', 'success')
+    TMessage.success('认证二维码已恢复，请继续完成人脸核身')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '恢复实名认证二维码失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '恢复实名认证二维码失败')
   } finally {
     faceidRestoring.value = false
   }
@@ -1283,7 +1284,7 @@ async function restoreFaceidChallengeIfNeeded() {
 async function resumeEnterpriseFaceid() {
   auth.hydrate()
   if (!auth.token.trim()) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
@@ -1292,9 +1293,9 @@ async function resumeEnterpriseFaceid() {
     const result = await resumeCompanyAsignIdentify(auth.token)
     faceidAuthUrl.value = result.auth_url
     await renderFaceidQrCode(result.auth_url)
-    showToast('企业认证二维码已恢复，请继续完成认证', 'success')
+    TMessage.success('企业认证二维码已恢复，请继续完成认证')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '恢复企业认证二维码失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '恢复企业认证二维码失败')
   } finally {
     faceidRestoring.value = false
   }
@@ -1326,7 +1327,7 @@ watch(realnameDialogVisible, (visible) => {
 async function handleWithdraw() {
   auth.hydrate()
   if (!auth.token.trim()) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
@@ -1342,7 +1343,7 @@ async function handleWithdraw() {
       patchForm(record)
       faceidDialogVisible.value = false
       realnameDialogVisible.value = true
-      showToast('已取消主体变更，账号还原为变更前的实名主体', 'success')
+      TMessage.success('已取消主体变更，账号还原为变更前的实名主体')
       return
     }
     current.value = null
@@ -1352,9 +1353,9 @@ async function handleWithdraw() {
     resetRealnameSubjectFields()
     faceidDialogVisible.value = false
     realnameDialogVisible.value = true
-    showToast('已撤回实名认证，可重新提交', 'success')
+    TMessage.success('已撤回实名认证，可重新提交')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '撤回实名认证失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '撤回实名认证失败')
   } finally {
     withdrawing.value = false
   }
@@ -1639,7 +1640,7 @@ function openAccountEntry(key: string) {
       return
     case 'settle':
       if (settleUnderReview.value) {
-        showToast(settleUnderReviewText.value, 'warning')
+        TMessage.warning(settleUnderReviewText.value)
         return
       }
       void openSettleDialog()
@@ -1692,7 +1693,7 @@ async function continueFaceid() {
     await restoreFaceidChallengeIfNeeded()
   }
   if (!faceidAuthUrl.value) {
-    showToast('暂时拿不到人脸核身链接，可撤回本次认证后重新提交', 'warning')
+    TMessage.warning('暂时拿不到人脸核身链接，可撤回本次认证后重新提交')
     return
   }
   faceidDialogVisible.value = true
@@ -1765,12 +1766,12 @@ async function handleSealMakeOnline() {
     const url = res.data?.trim()
     if (res.success && url) {
       window.open(url, '_blank', 'noopener,noreferrer')
-      showToast('已打开爱签制章页面，完成后回本页刷新查看', 'success')
+      TMessage.success('已打开爱签制章页面，完成后回本页刷新查看')
     } else {
-      showToast('暂时拿不到制章链接，请稍后重试', 'warning')
+      TMessage.warning('暂时拿不到制章链接，请稍后重试')
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '生成制章链接失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '生成制章链接失败')
   } finally {
     sealMakeLoading.value = false
   }
@@ -2031,7 +2032,7 @@ async function saveSettleAccount() {
   try {
     payload = prepareSettlementAccount(settleForm)
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '请检查银行卡信息', 'warning')
+    TMessage.warning(err instanceof Error ? err.message : '请检查银行卡信息')
     return
   }
   // 提交前定一次语义：更换会先解绑旧卡，失败时界面要按真实状态回落
@@ -2042,14 +2043,13 @@ async function saveSettleAccount() {
       ? await changeMyAdapaySettlementAccount(auth.token, payload)
       : await createMyAdapaySettlementAccount(auth.token, payload)
     adapayMember.value = member
-    showToast(changing ? '收款银行卡已更换' : '结算账户已设置', 'success')
+    TMessage.success(changing ? '收款银行卡已更换' : '结算账户已设置')
     settleDialogVisible.value = false
     resetSettleForm()
     settleSnapshot.value = null
   } catch (err) {
-    showToast(
+    TMessage.error(
       err instanceof Error ? err.message : changing ? '更换收款银行卡失败' : '设置结算账户失败',
-      'error',
     )
     // 更换是「先解绑再重建」，失败可能停在已解绑的中间态，刷新后按真实状态展示
     if (changing) {
@@ -2078,18 +2078,18 @@ function openCloseSettleDialog() {
 async function handleCloseSettleAccount() {
   if (!requireToken()) return
   if (!closeSettleReady.value) {
-    showToast('请输入“注销结算账户”确认操作', 'warning')
+    TMessage.warning('请输入“注销结算账户”确认操作')
     return
   }
   closeSettleLoading.value = true
   try {
     adapayMember.value = await closeMyAdapaySettlementAccount(auth.token)
-    showToast('结算账户已注销', 'success')
+    TMessage.success('结算账户已注销')
     closeSettleDialogVisible.value = false
     closeSettleConfirmation.value = ''
     settleSnapshot.value = null
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '注销结算账户失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '注销结算账户失败')
     // 失败可能停在「渠道已删、本地未更新」之外的任何状态，刷新一次按真实状态展示
     await refreshAdapayMember()
   } finally {
@@ -2114,7 +2114,7 @@ const asignLoading = reactive({
 function requireToken(): boolean {
   auth.hydrate()
   if (!auth.token.trim()) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return false
   }
   return true
@@ -2123,7 +2123,7 @@ function requireToken(): boolean {
 async function handleSendVerifyCode() {
   if (!requireToken()) return
   if (!asign.mobileByCode.mobile.trim()) {
-    showToast('请先填写新手机号', 'warning')
+    TMessage.warning('请先填写新手机号')
     return
   }
   asignLoading.sendCode = true
@@ -2131,10 +2131,10 @@ async function handleSendVerifyCode() {
     const res = await sendVerifyCode(auth.token, { mobile: asign.mobileByCode.mobile.trim() })
     if (res.success) {
       asign.mobileByCode.ctoken = res.data?.codeToken ?? ''
-      showToast('验证码已发送，请查收短信', 'success')
+      TMessage.success('验证码已发送，请查收短信')
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发送验证码失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '发送验证码失败')
   } finally {
     asignLoading.sendCode = false
   }
@@ -2147,7 +2147,7 @@ async function handleModifyMobileByCode() {
     !asign.mobileByCode.code.trim() ||
     !asign.mobileByCode.ctoken.trim()
   ) {
-    showToast('请填写手机号与验证码（需先发送验证码）', 'warning')
+    TMessage.warning('请填写手机号与验证码（需先发送验证码）')
     return
   }
   asignLoading.mobileByCode = true
@@ -2158,13 +2158,13 @@ async function handleModifyMobileByCode() {
       ctoken: asign.mobileByCode.ctoken.trim(),
     })
     if (res.success) {
-      showToast('手机号已修改', 'success')
+      TMessage.success('手机号已修改')
       asign.mobileByCode.mobile = ''
       asign.mobileByCode.code = ''
       asign.mobileByCode.ctoken = ''
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '修改手机号失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '修改手机号失败')
   } finally {
     asignLoading.mobileByCode = false
   }
@@ -2175,7 +2175,7 @@ async function handleModifyMobileByCode() {
 async function handleModifyLegalPerson() {
   if (!requireToken()) return
   if (!asign.legalPerson.name.trim() || !asign.legalPerson.idCard.trim()) {
-    showToast('请填写法人姓名与身份证号', 'warning')
+    TMessage.warning('请填写法人姓名与身份证号')
     return
   }
   asignLoading.legalPerson = true
@@ -2186,10 +2186,10 @@ async function handleModifyLegalPerson() {
       idCardType: 1,
     })
     if (res.success) {
-      showToast('法人信息已修改', 'success')
+      TMessage.success('法人信息已修改')
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '修改法人失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '修改法人失败')
   } finally {
     asignLoading.legalPerson = false
   }
@@ -2198,7 +2198,7 @@ async function handleModifyLegalPerson() {
 async function handleModifyCompanyInfo() {
   if (!requireToken()) return
   if (!asign.company.companyName.trim() && !asign.company.legalName.trim()) {
-    showToast('请填写企业名称或法人信息', 'warning')
+    TMessage.warning('请填写企业名称或法人信息')
     return
   }
   asignLoading.company = true
@@ -2210,10 +2210,10 @@ async function handleModifyCompanyInfo() {
       idCardType: 1,
     })
     if (res.success) {
-      showToast(res.data ? '企业信息已修改，新印章已生成' : '企业信息已修改', 'success')
+      TMessage.success(res.data ? '企业信息已修改，新印章已生成' : '企业信息已修改')
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '修改企业信息失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '修改企业信息失败')
   } finally {
     asignLoading.company = false
   }
@@ -2222,11 +2222,11 @@ async function handleModifyCompanyInfo() {
 async function handleModifyUserName() {
   if (!requireToken()) return
   if (!asign.personal.personalName.trim()) {
-    showToast('请填写姓名', 'warning')
+    TMessage.warning('请填写姓名')
     return
   }
   if (!asign.personal.mobile.trim()) {
-    showToast('请填写本人手机号（用于运营商三要素核验）', 'warning')
+    TMessage.warning('请填写本人手机号（用于运营商三要素核验）')
     return
   }
   asignLoading.personal = true
@@ -2238,12 +2238,12 @@ async function handleModifyUserName() {
       mobile: asign.personal.mobile.trim(),
     })
     if (res.success) {
-      showToast('姓名已修改', 'success')
+      TMessage.success('姓名已修改')
       asign.personal.personalName = ''
       asign.personal.mobile = ''
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '修改姓名失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '修改姓名失败')
   } finally {
     asignLoading.personal = false
   }
@@ -2252,7 +2252,7 @@ async function handleModifyUserName() {
 async function submitRealname() {
   auth.hydrate()
   if (!auth.token.trim()) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
@@ -2268,13 +2268,13 @@ async function submitRealname() {
   }
 
   if (realnameLocked.value) {
-    showToast('实名认证审核中或已通过时不能修改', 'warning')
+    TMessage.warning('实名认证审核中或已通过时不能修改')
     return
   }
 
   const msg = validate()
   if (msg) {
-    showToast(msg, 'warning')
+    TMessage.warning(msg)
     return
   }
 
@@ -2284,13 +2284,12 @@ async function submitRealname() {
     current.value = updated
     reviewerAvatarLoadFailed.value = false
     patchForm(updated)
-    showToast(
+    TMessage.success(
       updated.status === 'approved' ? '实名认证信息已更新' : '实名认证信息已提交，请等待审核',
-      'success',
     )
     await tryRestoreBusinessPage(updated)
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '提交实名认证失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '提交实名认证失败')
   } finally {
     submitting.value = false
   }
@@ -2313,7 +2312,7 @@ async function loadCurrentRealname() {
       return
     }
 
-    showToast(err instanceof Error ? err.message : '加载实名认证状态失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '加载实名认证状态失败')
   }
 }
 
@@ -2341,11 +2340,11 @@ function openAccountCloseDialog() {
 
 async function handleCloseAccount() {
   if (!auth.isAuthed) {
-    showToast('请先登录后注销账号', 'error')
+    TMessage.error('请先登录后注销账号')
     return
   }
   if (!accountCloseReady.value) {
-    showToast('请输入“注销账号”确认操作', 'warning')
+    TMessage.warning('请输入“注销账号”确认操作')
     return
   }
 
@@ -2354,10 +2353,10 @@ async function handleCloseAccount() {
     await closeAccount(auth.token)
     accountCloseDialogVisible.value = false
     auth.logout()
-    showToast('账号已注销，第三方绑定已释放', 'success')
+    TMessage.success('账号已注销，第三方绑定已释放')
     await router.replace({ name: 'home' })
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '注销账号失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '注销账号失败')
   } finally {
     accountClosing.value = false
   }
@@ -2377,7 +2376,7 @@ async function loadBoundProviders() {
 
 async function handleProviderBinding(provider: 'github' | 'gitee' | 'qq') {
   if (!auth.isAuthed) {
-    showToast('请先登录后再绑定', 'error')
+    TMessage.error('请先登录后再绑定')
     return
   }
   if (providerBindingLoading.value) {
@@ -2388,11 +2387,10 @@ async function handleProviderBinding(provider: 'github' | 'gitee' | 'qq') {
     try {
       await unbindProvider(auth.token, provider)
       boundProviders.value = boundProviders.value.filter((item) => item !== provider)
-      showToast(`${providerLabel(provider)} 已解除绑定`, 'success')
+      TMessage.success(`${providerLabel(provider)} 已解除绑定`)
     } catch (err) {
-      showToast(
+      TMessage.error(
         err instanceof Error ? err.message : `解除 ${providerLabel(provider)} 绑定失败`,
-        'error',
       )
     } finally {
       providerBindingLoading.value = false
@@ -2408,9 +2406,8 @@ async function handleProviderBinding(provider: 'github' | 'gitee' | 'qq') {
     }
     window.location.assign(url)
   } catch (err) {
-    showToast(
+    TMessage.error(
       err instanceof Error ? err.message : `发起 ${providerLabel(provider)} 绑定失败`,
-      'error',
     )
     providerBindingLoading.value = false
   }
@@ -2459,7 +2456,7 @@ async function loadProfile() {
       newEmail.value = profile.email ?? ''
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载个人资料失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '加载个人资料失败')
   } finally {
     profileLoading.value = false
   }
@@ -2467,17 +2464,17 @@ async function loadProfile() {
 
 async function updateUsername() {
   if (!auth.isAuthed) {
-    showToast('请先登录后修改用户名', 'error')
+    TMessage.error('请先登录后修改用户名')
     return
   }
 
   const trimmed = newUsername.value.trim()
   if (trimmed.length === 0) {
-    showToast('请输入一个新的用户名', 'error')
+    TMessage.error('请输入一个新的用户名')
     return
   }
   if (trimmed === auth.username) {
-    showToast('用户名未发生变化', 'info')
+    TMessage.info('用户名未发生变化')
     return
   }
 
@@ -2486,9 +2483,9 @@ async function updateUsername() {
     const payload = await updateProfile(auth.token, trimmed)
     auth.setToken(payload.token)
     newUsername.value = auth.username
-    showToast('用户名已更新', 'success')
+    TMessage.success('用户名已更新')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '修改用户名失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '修改用户名失败')
   } finally {
     usernameLoading.value = false
   }
@@ -2509,7 +2506,7 @@ function handleAvatarError() {
 
 async function handleAvatarChange(event: Event) {
   if (!auth.isAuthed) {
-    showToast('请先登录后上传头像', 'error')
+    TMessage.error('请先登录后上传头像')
     return
   }
 
@@ -2520,13 +2517,13 @@ async function handleAvatarChange(event: Event) {
   }
 
   if (!file.type.startsWith('image/')) {
-    showToast('头像仅支持图片格式', 'warning')
+    TMessage.warning('头像仅支持图片格式')
     if (input) input.value = ''
     return
   }
 
   if (file.size > 2 * 1024 * 1024) {
-    showToast('头像图片请控制在 2MB 以内', 'warning')
+    TMessage.warning('头像图片请控制在 2MB 以内')
     if (input) input.value = ''
     return
   }
@@ -2542,9 +2539,9 @@ async function handleAvatarChange(event: Event) {
     }
     avatarUrl.value = nextAvatarUrl
     dispatchProfileAvatarUpdated()
-    showToast('头像已更新', 'success')
+    TMessage.success('头像已更新')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '上传头像失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '上传头像失败')
   } finally {
     avatarUploading.value = false
     if (input) input.value = ''
@@ -2553,26 +2550,26 @@ async function handleAvatarChange(event: Event) {
 
 async function sendEmailVerificationCode() {
   if (!auth.isAuthed) {
-    showToast('请先登录后修改邮箱', 'error')
+    TMessage.error('请先登录后修改邮箱')
     return
   }
 
   const trimmed = newEmail.value.trim()
   if (!trimmed) {
-    showToast('请输入新的邮箱地址', 'error')
+    TMessage.error('请输入新的邮箱地址')
     return
   }
   if (trimmed === profileEmail.value) {
-    showToast('新邮箱不能与当前邮箱相同', 'warning')
+    TMessage.warning('新邮箱不能与当前邮箱相同')
     return
   }
 
   emailCodeSending.value = true
   try {
     await sendProfileEmailChangeCode(auth.token, trimmed)
-    showToast('验证码已发送到新邮箱，请查收', 'success')
+    TMessage.success('验证码已发送到新邮箱，请查收')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发送邮箱验证码失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '发送邮箱验证码失败')
   } finally {
     emailCodeSending.value = false
   }
@@ -2580,18 +2577,18 @@ async function sendEmailVerificationCode() {
 
 async function submitEmailChange() {
   if (!auth.isAuthed) {
-    showToast('请先登录后修改邮箱', 'error')
+    TMessage.error('请先登录后修改邮箱')
     return
   }
 
   const trimmedEmail = newEmail.value.trim()
   const trimmedCode = emailCode.value.trim()
   if (!trimmedEmail) {
-    showToast('请输入新的邮箱地址', 'error')
+    TMessage.error('请输入新的邮箱地址')
     return
   }
   if (trimmedCode.length !== 6) {
-    showToast('请输入 6 位邮箱验证码', 'error')
+    TMessage.error('请输入 6 位邮箱验证码')
     return
   }
 
@@ -2601,9 +2598,9 @@ async function submitEmailChange() {
     profileEmail.value = profile.email ?? ''
     newEmail.value = profile.email ?? ''
     emailCode.value = ''
-    showToast('邮箱已更新', 'success')
+    TMessage.success('邮箱已更新')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '修改邮箱失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '修改邮箱失败')
   } finally {
     emailLoading.value = false
   }
@@ -2611,20 +2608,20 @@ async function submitEmailChange() {
 
 async function sendPasswordVerificationCode() {
   if (!auth.isAuthed) {
-    showToast('请先登录后修改密码', 'error')
+    TMessage.error('请先登录后修改密码')
     return
   }
   if (!profileEmail.value) {
-    showToast('请先绑定邮箱后再修改密码', 'error')
+    TMessage.error('请先绑定邮箱后再修改密码')
     return
   }
 
   passwordCodeSending.value = true
   try {
     await sendProfilePasswordCode(auth.token)
-    showToast('验证码已发送到当前绑定邮箱，请查收', 'success')
+    TMessage.success('验证码已发送到当前绑定邮箱，请查收')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发送密码验证码失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '发送密码验证码失败')
   } finally {
     passwordCodeSending.value = false
   }
@@ -2632,7 +2629,7 @@ async function sendPasswordVerificationCode() {
 
 async function submitPasswordChange() {
   if (!auth.isAuthed) {
-    showToast('请先登录后修改密码', 'error')
+    TMessage.error('请先登录后修改密码')
     return
   }
 
@@ -2641,15 +2638,15 @@ async function submitPasswordChange() {
   const trimmedCode = passwordCode.value.trim()
 
   if (trimmedPassword.length < 6) {
-    showToast('新密码至少 6 位', 'error')
+    TMessage.error('新密码至少 6 位')
     return
   }
   if (trimmedPassword !== trimmedConfirm) {
-    showToast('两次输入的新密码不一致', 'error')
+    TMessage.error('两次输入的新密码不一致')
     return
   }
   if (trimmedCode.length !== 6) {
-    showToast('请输入 6 位邮箱验证码', 'error')
+    TMessage.error('请输入 6 位邮箱验证码')
     return
   }
 
@@ -2659,9 +2656,9 @@ async function submitPasswordChange() {
     newPassword.value = ''
     confirmPassword.value = ''
     passwordCode.value = ''
-    showToast('密码已更新，请使用新密码登录', 'success')
+    TMessage.success('密码已更新，请使用新密码登录')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '修改密码失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '修改密码失败')
   } finally {
     passwordLoading.value = false
   }
@@ -2669,24 +2666,24 @@ async function submitPasswordChange() {
 
 async function sendTwoFactorVerificationCode() {
   if (!auth.isAuthed) {
-    showToast('请先登录后修改两步验证', 'error')
+    TMessage.error('请先登录后修改两步验证')
     return
   }
   if (!profileEmail.value) {
-    showToast('请先绑定邮箱后再修改两步验证', 'error')
+    TMessage.error('请先绑定邮箱后再修改两步验证')
     return
   }
   if (!twoFactorChanged.value) {
-    showToast('两步验证设置未发生变化', 'info')
+    TMessage.info('两步验证设置未发生变化')
     return
   }
 
   twoFactorCodeSending.value = true
   try {
     await sendProfileTwoFactorCode(auth.token)
-    showToast('验证码已发送到当前绑定邮箱，请查收', 'success')
+    TMessage.success('验证码已发送到当前绑定邮箱，请查收')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发送两步验证验证码失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '发送两步验证验证码失败')
   } finally {
     twoFactorCodeSending.value = false
   }
@@ -2705,21 +2702,21 @@ async function handleTwoFactorTargetChange(event: Event) {
 
 async function submitTwoFactorChange() {
   if (!auth.isAuthed) {
-    showToast('请先登录后修改两步验证', 'error')
+    TMessage.error('请先登录后修改两步验证')
     return
   }
   if (!profileEmail.value) {
-    showToast('请先绑定邮箱后再修改两步验证', 'error')
+    TMessage.error('请先绑定邮箱后再修改两步验证')
     return
   }
   if (!twoFactorChanged.value) {
-    showToast('两步验证设置未发生变化', 'info')
+    TMessage.info('两步验证设置未发生变化')
     return
   }
 
   const trimmedCode = twoFactorCode.value.trim()
   if (trimmedCode.length !== 6) {
-    showToast('请输入 6 位邮箱验证码', 'error')
+    TMessage.error('请输入 6 位邮箱验证码')
     return
   }
 
@@ -2734,9 +2731,9 @@ async function submitTwoFactorChange() {
     twoFactorTargetEnabled.value = profile.two_factor_enabled
     twoFactorCode.value = ''
     await auth.fetchProfile(true).catch(() => undefined)
-    showToast(twoFactorEnabled.value ? '两步验证已开启' : '两步验证已关闭', 'success')
+    TMessage.success(twoFactorEnabled.value ? '两步验证已开启' : '两步验证已关闭')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '更新两步验证失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '更新两步验证失败')
   } finally {
     twoFactorLoading.value = false
   }
@@ -2751,7 +2748,7 @@ function isWechatBrowser() {
 
 async function openWechatBinding() {
   if (!auth.isAuthed) {
-    showToast('请先登录后再绑定微信', 'error')
+    TMessage.error('请先登录后再绑定微信')
     return
   }
   if (wechatBindingLoading.value) {
@@ -2777,7 +2774,7 @@ async function openWechatBinding() {
     wechatBindQr.state = qr.state
     wechatBindQr.visible = true
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发起微信绑定失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '发起微信绑定失败')
   } finally {
     wechatBindingLoading.value = false
   }
@@ -2785,7 +2782,7 @@ async function openWechatBinding() {
 
 async function unbindWechat() {
   if (!auth.isAuthed) {
-    showToast('请先登录后再解除微信绑定', 'error')
+    TMessage.error('请先登录后再解除微信绑定')
     return
   }
   if (wechatBindingLoading.value) {
@@ -2796,10 +2793,10 @@ async function unbindWechat() {
   try {
     await unbindProvider(auth.token, 'wechat')
     wechatBound.value = false
-    showToast('微信已解除绑定', 'success')
+    TMessage.success('微信已解除绑定')
     await auth.fetchProfile(true).catch(() => undefined)
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '解除微信绑定失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '解除微信绑定失败')
   } finally {
     wechatBindingLoading.value = false
   }
@@ -2823,10 +2820,10 @@ async function handleWechatBound(result: { success: boolean; error?: string }) {
   closeWechatBindQr()
   if (result.success) {
     wechatBound.value = true
-    showToast('微信绑定成功', 'success')
+    TMessage.success('微信绑定成功')
     await auth.fetchProfile(true).catch(() => undefined)
   } else {
-    showToast(`微信绑定失败：${result.error ?? '未完成'}`, 'error')
+    TMessage.error(`微信绑定失败：${result.error ?? '未完成'}`)
   }
 }
 
@@ -2835,9 +2832,9 @@ function consumeWechatBindResult() {
   const error =
     typeof route.query.wechat_bind_error === 'string' ? route.query.wechat_bind_error.trim() : ''
   if (result === 'success') {
-    showToast('微信绑定成功', 'success')
+    TMessage.success('微信绑定成功')
   } else if (error) {
-    showToast(`微信绑定失败：${error}`, 'error')
+    TMessage.error(`微信绑定失败：${error}`)
   }
   if (result || error) {
     const nextQuery = { ...route.query }
@@ -2857,10 +2854,10 @@ function consumeProviderBindResult() {
   const result = typeof route.query.bind === 'string' ? route.query.bind.trim() : ''
   const error = typeof route.query.bind_error === 'string' ? route.query.bind_error.trim() : ''
   if (result === 'success') {
-    showToast('第三方账号绑定成功', 'success')
+    TMessage.success('第三方账号绑定成功')
     void loadBoundProviders()
   } else if (error) {
-    showToast(`第三方账号绑定失败：${error}`, 'error')
+    TMessage.error(`第三方账号绑定失败：${error}`)
   }
   if (result || error) {
     const nextQuery = { ...route.query }

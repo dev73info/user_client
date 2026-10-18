@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 // 顶部读数条的刷新按钮与卡片头的图标都要显式 import：
 // 模板里直接写 <Refresh /> / <Plus /> 而没 import 时，Vue 会把它们当未知元素渲染成空的
 // <refresh> / <plus>，按钮还在、图标空白，与其余菜单页的按钮不是一个样子。
-import { TButton, TForm, TFormItem, TIcon, TInput, TLoading, EditPen, Plus, Refresh } from 'ui_73info'
+import { TButton, TForm, TFormItem, TIcon, TInput, TLoading, EditPen, Plus, Refresh, TMessage } from 'ui_73info'
 
 import {
   getTeamDetail,
@@ -21,13 +21,11 @@ import {
   type TeamMemberResponse,
 } from '@/api/team'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from '@/composables/useToast'
 import { apiUrl } from '@/api/http'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 const team = ref<TeamDetailResponse | null>(null)
 const loading = ref(false)
@@ -83,7 +81,7 @@ async function loadTeam() {
   try {
     team.value = await getTeamDetail(token, teamId.value)
   } catch (e) {
-    showToast(e instanceof Error ? e.message : '加载团队失败', 'warning')
+    TMessage.warning(e instanceof Error ? e.message : '加载团队失败')
     router.push({ name: 'workbench-teams' })
   } finally {
     loading.value = false
@@ -93,7 +91,7 @@ async function loadTeam() {
 async function handleInvite() {
   const username = inviteUsername.value.trim()
   if (!username) {
-    showToast('请输入用户名', 'warning')
+    TMessage.warning('请输入用户名')
     return
   }
   const token = auth.token?.trim()
@@ -103,9 +101,9 @@ async function handleInvite() {
     await inviteMember(token, teamId.value, { username })
     inviteUsername.value = ''
     showInviteInput.value = false
-    showToast('邀请已发送')
+    TMessage.info('邀请已发送')
   } catch (e) {
-    showToast(e instanceof Error ? e.message : '邀请失败', 'warning')
+    TMessage.warning(e instanceof Error ? e.message : '邀请失败')
   } finally {
     inviting.value = false
   }
@@ -121,9 +119,9 @@ async function handleRemove(member: TeamMemberResponse) {
     if (team.value) {
       team.value.members = team.value.members.filter((m) => m.username !== member.username)
     }
-    showToast('成员已移除')
+    TMessage.info('成员已移除')
   } catch (e) {
-    showToast(e instanceof Error ? e.message : '移除失败', 'warning')
+    TMessage.warning(e instanceof Error ? e.message : '移除失败')
   } finally {
     removingUsername.value = null
   }
@@ -139,9 +137,9 @@ async function handleRoleToggle(member: TeamMemberResponse) {
       const m = team.value.members.find((m) => m.username === member.username)
       if (m) m.role = newRole
     }
-    showToast('角色已更新')
+    TMessage.info('角色已更新')
   } catch (e) {
-    showToast(e instanceof Error ? e.message : '更新失败', 'warning')
+    TMessage.warning(e instanceof Error ? e.message : '更新失败')
   }
 }
 
@@ -160,9 +158,9 @@ async function handleTransferOwner(member: TeamMemberResponse) {
         return m
       })
     }
-    showToast('所有权已转移')
+    TMessage.info('所有权已转移')
   } catch (e) {
-    showToast(e instanceof Error ? e.message : '转移失败', 'warning')
+    TMessage.warning(e instanceof Error ? e.message : '转移失败')
   }
 }
 
@@ -172,10 +170,10 @@ async function handleLeave() {
   if (!token) return
   try {
     await leaveTeam(token, teamId.value)
-    showToast('已退出团队')
+    TMessage.info('已退出团队')
     router.push({ name: 'workbench-teams' })
   } catch (e) {
-    showToast(e instanceof Error ? e.message : '退出失败', 'warning')
+    TMessage.warning(e instanceof Error ? e.message : '退出失败')
   }
 }
 
@@ -185,10 +183,10 @@ async function handleDelete() {
   if (!token) return
   try {
     await deleteTeam(token, teamId.value)
-    showToast('团队已解散')
+    TMessage.info('团队已解散')
     router.push({ name: 'workbench-teams' })
   } catch (e) {
-    showToast(e instanceof Error ? e.message : '解散失败', 'warning')
+    TMessage.warning(e instanceof Error ? e.message : '解散失败')
   }
 }
 
@@ -201,7 +199,7 @@ function startEdit() {
 
 async function saveEdit() {
   if (!editForm.name.trim()) {
-    showToast('团队名称不能为空', 'warning')
+    TMessage.warning('团队名称不能为空')
     return
   }
   const token = auth.token?.trim()
@@ -217,9 +215,9 @@ async function saveEdit() {
       team.value.description = updated.description
     }
     editingName.value = false
-    showToast('团队信息已更新')
+    TMessage.info('团队信息已更新')
   } catch (e) {
-    showToast(e instanceof Error ? e.message : '更新失败', 'warning')
+    TMessage.warning(e instanceof Error ? e.message : '更新失败')
   } finally {
     saving.value = false
   }
@@ -246,9 +244,9 @@ async function handleAvatarFileChange(event: Event) {
     if (team.value) {
       team.value.avatar_url = updated.avatar_url
     }
-    showToast('头像已更新')
+    TMessage.info('头像已更新')
   } catch (e) {
-    showToast(e instanceof Error ? e.message : '上传头像失败', 'warning')
+    TMessage.warning(e instanceof Error ? e.message : '上传头像失败')
   } finally {
     avatarUploading.value = false
     input.value = ''

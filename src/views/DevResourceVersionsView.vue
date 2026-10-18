@@ -14,7 +14,6 @@ import {
   type McResourceVersionPayload,
   updateMcResourceVersion,
 } from '@/api/mcResources'
-import { useToast } from '@/composables/useToast'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
@@ -38,6 +37,7 @@ import {
   TIcon,
   TInput,
   TLoading,
+  TMessage,
   TOption,
   TPagination,
   TSelect,
@@ -54,7 +54,6 @@ import {
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const { showToast } = useToast()
 
 const loading = ref(false)
 const versionsLoading = ref(false)
@@ -142,13 +141,13 @@ onMounted(async () => {
 async function loadPage() {
   const resourceId = Number(route.params.resourceId)
   if (!Number.isInteger(resourceId) || resourceId <= 0) {
-    showToast('资源编号无效', 'warning')
+    TMessage.warning('资源编号无效')
     router.replace({ name: 'dev-resource-list' })
     return
   }
 
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     router.replace(buildUnifiedAuthUrl('login', route.fullPath))
     return
   }
@@ -167,7 +166,7 @@ async function loadPage() {
     const message = error instanceof HttpError && error.status === 404
       ? '资源不存在或无权访问'
       : error instanceof Error ? error.message : '加载版本管理失败'
-    showToast(message, 'error')
+    TMessage.error(message)
     router.replace({ name: 'dev-resource-list' })
   } finally {
     loading.value = false
@@ -184,7 +183,7 @@ async function reloadVersions() {
     versionRows.value = await listMcResourceVersions(auth.token, resource.value.id)
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载版本列表失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     versionsLoading.value = false
   }
@@ -225,7 +224,7 @@ function resetCreateForm() {
 
 function openCreateVersionDialog() {
   if (resource.value && isResourceArchiveLocked(resource.value)) {
-    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    TMessage.warning(RESOURCE_ARCHIVE_LOCKED_MESSAGE)
     return
   }
 
@@ -244,22 +243,22 @@ function onEditVersionChange(value: SelectModelValue) {
 
 async function submitVersion() {
   if (!auth.token || !resource.value) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
   if (isResourceArchiveLocked(resource.value)) {
-    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    TMessage.warning(RESOURCE_ARCHIVE_LOCKED_MESSAGE)
     return
   }
 
   if (!createForm.version.trim()) {
-    showToast('请填写版本号', 'warning')
+    TMessage.warning('请填写版本号')
     return
   }
 
   if (!selectedVersionFile.value) {
-    showToast('请选择资源文件', 'warning')
+    TMessage.warning('请选择资源文件')
     return
   }
 
@@ -273,10 +272,10 @@ async function submitVersion() {
     resetCreateForm()
     createVersionDialogVisible.value = false
     await loadPage()
-    showToast('新版本已发布', 'success')
+    TMessage.success('新版本已发布')
   } catch (error) {
     const message = error instanceof Error ? error.message : '发布新版本失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     publishing.value = false
   }
@@ -329,7 +328,7 @@ function formatCreatedAt(value: string): string {
 
 function openEditVersionDialog(version: McResourceVersionPayload) {
   if (resource.value && isResourceArchiveLocked(resource.value)) {
-    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    TMessage.warning(RESOURCE_ARCHIVE_LOCKED_MESSAGE)
     return
   }
 
@@ -349,17 +348,17 @@ function openEditVersionDialog(version: McResourceVersionPayload) {
 
 async function submitVersionEdit() {
   if (!auth.token || !resource.value || !editingVersion.value) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
   if (isResourceArchiveLocked(resource.value)) {
-    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    TMessage.warning(RESOURCE_ARCHIVE_LOCKED_MESSAGE)
     return
   }
 
   if (!editVersionForm.version.trim()) {
-    showToast('请填写版本号', 'warning')
+    TMessage.warning('请填写版本号')
     return
   }
 
@@ -375,10 +374,10 @@ async function submitVersionEdit() {
     editingVersion.value = null
     editVersionDialogVisible.value = false
     await loadPage()
-    showToast('版本信息已更新', 'success')
+    TMessage.success('版本信息已更新')
   } catch (error) {
     const message = error instanceof Error ? error.message : '更新版本失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     savingVersionId.value = null
   }
@@ -386,17 +385,17 @@ async function submitVersionEdit() {
 
 function openDeleteVersionDialog(version: McResourceVersionPayload) {
   if (!auth.token || !resource.value) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
   if (isResourceArchiveLocked(resource.value)) {
-    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    TMessage.warning(RESOURCE_ARCHIVE_LOCKED_MESSAGE)
     return
   }
 
   if (version.delete_request_status === 'pending') {
-    showToast('该版本删除审核已提交，等待用户处理', 'warning')
+    TMessage.warning('该版本删除审核已提交，等待用户处理')
     return
   }
 
@@ -415,12 +414,12 @@ function closeDeleteVersionDialog() {
 
 async function removeVersion() {
   if (!auth.token || !resource.value || !deleteVersionTarget.value) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
   if (isResourceArchiveLocked(resource.value)) {
-    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    TMessage.warning(RESOURCE_ARCHIVE_LOCKED_MESSAGE)
     return
   }
 
@@ -431,20 +430,20 @@ async function removeVersion() {
     await deleteMcResourceVersion(auth.token, resource.value.id, version.id)
     await loadPage()
     if (resource.value.requirement_id) {
-      showToast('版本删除申请已提交，等待用户审核', 'success')
+      TMessage.success('版本删除申请已提交，等待用户审核')
     } else {
       versionRows.value = versionRows.value.filter((item) => item.id !== version.id)
       if (editingVersion.value?.id === version.id) {
         editingVersion.value = null
         editVersionDialogVisible.value = false
       }
-      showToast('版本已删除', 'success')
+      TMessage.success('版本已删除')
     }
     deleteVersionDialogVisible.value = false
     deleteVersionTarget.value = null
   } catch (error) {
     const message = error instanceof Error ? error.message : resource.value.requirement_id ? '提交版本删除审核失败' : '删除版本失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     deletingVersionId.value = null
   }

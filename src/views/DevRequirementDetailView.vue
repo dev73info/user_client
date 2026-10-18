@@ -21,7 +21,6 @@ import {
   type RequirementPaymentMode,
   type RequirementStatus,
 } from '@/api/devRequirements'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { developmentCycleLabel, isRequirementArchived, requirementArchiveBanner } from '@/shared/requirementArchive'
@@ -35,6 +34,7 @@ import {
   TIcon,
   TInput,
   TLoading,
+  TMessage,
   TOption,
   TSelect,
   Back,
@@ -45,7 +45,6 @@ import {
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 const loading = ref(false)
 const resourcesLoading = ref(false)
@@ -362,13 +361,13 @@ function syncDefaultAuthor() {
 
 async function loadPage() {
     if (!auth.token) {
-        showToast('登录状态已失效，请重新登录', 'error')
+        TMessage.error('登录状态已失效，请重新登录')
         return
     }
 
     if (!requirementId.value) {
         requirement.value = null
-        showToast('需求编号无效', 'error')
+        TMessage.error('需求编号无效')
         return
     }
 
@@ -380,7 +379,7 @@ async function loadPage() {
         await ensureInitialBindingMode()
     } catch (error) {
         requirement.value = null
-        showToast(error instanceof Error ? error.message : '加载需求详情失败', 'error')
+        TMessage.error(error instanceof Error ? error.message : '加载需求详情失败')
     } finally {
         loading.value = false
     }
@@ -502,7 +501,7 @@ async function loadTagTree() {
         }
     } catch (error) {
         const message = error instanceof Error ? error.message : '加载标签失败'
-        showToast(message, 'error')
+        TMessage.error(message)
     } finally {
         initTagsLoading.value = false
     }
@@ -570,22 +569,22 @@ function resetInitForm() {
 async function submitBinding() {
     const currentRequirement = requirement.value
     if (!auth.token || !currentRequirement) {
-        showToast('登录状态已失效，请重新登录', 'error')
+        TMessage.error('登录状态已失效，请重新登录')
         return
     }
 
     if (bindingBlockReason.value) {
-        showToast(bindingBlockReason.value, 'warning')
+        TMessage.warning(bindingBlockReason.value)
         return
     }
 
     if (!reviewConfirmed.value) {
-        showToast('请先完整阅读需求信息，并确认已审阅后再继续', 'warning')
+        TMessage.warning('请先完整阅读需求信息，并确认已审阅后再继续')
         return
     }
 
     if (!finalConfirmed.value) {
-        showToast('请完成二次确认后再关联需求', 'warning')
+        TMessage.warning('请完成二次确认后再关联需求')
         return
     }
 
@@ -596,22 +595,22 @@ async function submitBinding() {
 
         if (bindingMode.value === 'existing') {
             if (!resourceId) {
-                showToast('请选择要绑定的开发项目', 'warning')
+                TMessage.warning('请选择要绑定的开发项目')
                 return
             }
 
             if (!selectedResource.value) {
-                showToast('所选开发项目不可用，请重新选择', 'warning')
+                TMessage.warning('所选开发项目不可用，请重新选择')
                 return
             }
         } else {
             if (!canCreateResource.value) {
-                showToast(createBlockReason.value || '请先补全资源初始化信息', 'warning')
+                TMessage.warning(createBlockReason.value || '请先补全资源初始化信息')
                 return
             }
 
             if (initForm.originType === 'repost' && !initForm.originUrl.trim()) {
-                showToast('转载资源必须填写原始出处链接', 'warning')
+                TMessage.warning('转载资源必须填写原始出处链接')
                 return
             }
 
@@ -639,16 +638,15 @@ async function submitBinding() {
         }
 
         await bindRequirementProject(auth.token, currentRequirement.requirement_id, resourceId!)
-        showToast(
+        TMessage.success(
             createdResourceTitle
                 ? `已初始化资源“${createdResourceTitle}”，并完成需求关联`
                 : '需求已关联到开发项目，并进入开发中',
-            'success',
         )
         void router.push({ name: 'dev-my-requirements' })
     } catch (error) {
         const message = error instanceof Error ? error.message : '关联需求失败'
-        showToast(message, 'error')
+        TMessage.error(message)
     } finally {
         binding.value = false
     }

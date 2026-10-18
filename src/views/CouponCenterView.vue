@@ -2,10 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRouter } from 'vue-router'
-import { TButton, TIcon, Refresh } from 'ui_73info'
+import { TButton, TIcon, Refresh, TMessage } from 'ui_73info'
 
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
 /* 「我的背包 → 优惠券中心」：券包按满减 / 折扣分两组，点券卡复制券码。
@@ -20,7 +19,6 @@ import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 const coupons = ref<CouponItem[]>([])
 const loading = ref(false)
@@ -59,15 +57,15 @@ function formatDiscount(item: CouponItem) {
 async function copyCouponCode(code: string) {
   const value = code.trim()
   if (!value) {
-    showToast('券码为空，无法复制', 'error')
+    TMessage.error('券码为空，无法复制')
     return
   }
 
   try {
     await navigator.clipboard.writeText(value)
-    showToast('券码已复制', 'success')
+    TMessage.success('券码已复制')
   } catch {
-    showToast('复制失败，请手动复制', 'error')
+    TMessage.error('复制失败，请手动复制')
   }
 }
 
@@ -82,7 +80,7 @@ async function loadCoupons() {
   try {
     coupons.value = await listAvailableCoupons(auth.token)
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载券包失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '加载券包失败')
   } finally {
     loading.value = false
   }

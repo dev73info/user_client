@@ -21,7 +21,6 @@ import {
   type McTagCatalogRoot,
   type McProcessedTagTree,
 } from '@/api/resourceTags'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { listMyTeams, type TeamResponse } from '@/api/team'
 import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
@@ -52,6 +51,7 @@ import {
   TFormItem,
   TIcon,
   TInput,
+  TMessage,
   TOption,
   TSelect,
   TSwitch,
@@ -64,7 +64,6 @@ import {
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
-const { showToast } = useToast()
 
 /**
  * R028：资源类别由入口决定——两条创建路由各自把 `kind` 传进来（`dev-plugins` = 普通资源、
@@ -249,16 +248,16 @@ async function copyRevealedSecret() {
 
   try {
     await navigator.clipboard.writeText(revealedSecretPlain.value)
-    showToast('回调密钥已复制，请妥善保存', 'success')
+    TMessage.success('回调密钥已复制，请妥善保存')
   } catch {
-    showToast('复制失败，请手动选中密钥后再复制', 'warning')
+    TMessage.warning('复制失败，请手动选中密钥后再复制')
   }
 }
 
 /** 开发者在弹窗里确认已保存密钥后，收尾并回资源列表。 */
 async function confirmSecretSaved() {
   secretPlainDialogVisible.value = false
-  showToast('回调密钥不会再显示，如需更换请在配置里重新填写并保存', 'info')
+  TMessage.info('回调密钥不会再显示，如需更换请在配置里重新填写并保存')
   resetForm()
   await router.push({ name: 'dev-resource-list' })
 }
@@ -267,9 +266,9 @@ async function confirmSecretSaved() {
 async function copyApiPrompt() {
   try {
     await navigator.clipboard.writeText(apiIntegrationPrompt.value)
-    showToast('接入提示词已复制', 'success')
+    TMessage.success('接入提示词已复制')
   } catch {
-    showToast('复制失败，请手动选中提示词后再复制', 'warning')
+    TMessage.warning('复制失败，请手动选中提示词后再复制')
   }
 }
 
@@ -473,7 +472,7 @@ async function loadTagTree() {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载标签失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     isLoadingTags.value = false
   }
@@ -556,18 +555,16 @@ function validateApiChannel(): boolean {
   }
 
   if (form.apiCallbackUrl.trim() && !isValidCallbackUrl(form.apiCallbackUrl)) {
-    showToast(
+    TMessage.warning(
       '回调地址须为 http(s) 开头的绝对地址，例如 https://shop.example.com/73info/callback',
-      'warning',
     )
     return false
   }
 
   const invalid = findInvalidAllowedOrigin(apiOrigins.value)
   if (invalid) {
-    showToast(
+    TMessage.warning(
       `允许来源「${invalid}」格式不正确：只支持完整源（https://shop.example.com）、通配域名（*.example.com）或纯 IP`,
-      'warning',
     )
     return false
   }
@@ -577,17 +574,17 @@ function validateApiChannel(): boolean {
 
 async function submitResource(mode: 'private' | 'public') {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
   if (!canSubmit.value) {
-    showToast('请先补全必填字段', 'warning')
+    TMessage.warning('请先补全必填字段')
     return
   }
 
   if (effectiveOriginType.value === 'repost' && !form.originUrl.trim()) {
-    showToast('转载资源必须填写原始出处链接', 'warning')
+    TMessage.warning('转载资源必须填写原始出处链接')
     return
   }
 
@@ -597,27 +594,27 @@ async function submitResource(mode: 'private' | 'public') {
 
   const priceParsed = parseYuanPriceInput(form.priceYuan)
   if (!priceParsed.ok) {
-    showToast(priceParsed.message, 'warning')
+    TMessage.warning(priceParsed.message)
     return
   }
   const pointsParsed = parsePointsPriceInput(form.pricePoints)
   if (!pointsParsed.ok) {
-    showToast(pointsParsed.message, 'warning')
+    TMessage.warning(pointsParsed.message)
     return
   }
   if (priceParsed.fen > 0 && pointsParsed.points > 0) {
-    showToast('现金售价与积分售价不能同时设置', 'warning')
+    TMessage.warning('现金售价与积分售价不能同时设置')
     return
   }
   // R028：接口资源只走现金价（积分购是平台内入口，指定地址售卖没有它）
   if (isApiKind.value && pointsParsed.points > 0) {
-    showToast('接口资源只能设置现金售价，不能设置积分售价', 'warning')
+    TMessage.warning('接口资源只能设置现金售价，不能设置积分售价')
     return
   }
   // R029：推广分成比例先在前端拦一道（0～50，留空 = 关闭），别指望后端 400 兜底
   const promoParsed = parsedPromoShare.value
   if (!promoParsed.ok) {
-    showToast(promoParsed.message, 'warning')
+    TMessage.warning(promoParsed.message)
     return
   }
   if (
@@ -625,7 +622,7 @@ async function submitResource(mode: 'private' | 'public') {
     !form.copyrightDeclared &&
     mode === 'public'
   ) {
-    showToast('付费资源公开申请前必须勾选版权声明', 'warning')
+    TMessage.warning('付费资源公开申请前必须勾选版权声明')
     return
   }
 
@@ -673,11 +670,10 @@ async function submitResource(mode: 'private' | 'public') {
       try {
         resource = await uploadMcResourceCover(auth.token, resource.id, selectedIconFile.value)
       } catch (error) {
-        showToast(
+        TMessage.warning(
           error instanceof Error
             ? `资源已初始化，但图标上传失败：${error.message}`
             : '资源已初始化，但图标上传失败',
-          'warning',
         )
       }
     }
@@ -696,9 +692,8 @@ async function submitResource(mode: 'private' | 'public') {
       } catch (error) {
         // 资源已存、渠道没存：明确报错并留在表单上，重试只重发渠道配置
         const message = error instanceof Error ? error.message : '保存接口资源渠道配置失败'
-        showToast(
+        TMessage.error(
           `资源已保存（编号 #${resource.id}），但接口资源渠道配置未保存成功：${message}。请修正后重试，重试只会重发渠道配置。`,
-          'error',
         )
         return
       }
@@ -726,18 +721,17 @@ async function submitResource(mode: 'private' | 'public') {
       })
     }
 
-    showToast(
+    TMessage.success(
       mode === 'public'
         ? `公开申请已提交，项目编号 #${resource.id}`
         : isApiKind.value
           ? `接口已创建，编号 #${resource.id}`
           : `资源已初始化为私有项目，编号 #${resource.id}`,
-      'success',
     )
 
     if (revealedSecretPlain.value) {
       // 明文只显示这一次：留住表单等开发者确认已保存，再回列表
-      showToast('回调密钥已生成，且只显示这一次，请立即复制保存', 'warning')
+      TMessage.warning('回调密钥已生成，且只显示这一次，请立即复制保存')
       return
     }
 
@@ -745,7 +739,7 @@ async function submitResource(mode: 'private' | 'public') {
     await router.push({ name: 'dev-resource-list' })
   } catch (error) {
     const message = error instanceof Error ? error.message : '发布资源失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     submitting.value = false
   }

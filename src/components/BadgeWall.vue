@@ -9,7 +9,7 @@ import {
   type BadgeDefinition,
   type UserBadge,
 } from '@/api/invite'
-import { useToast } from '@/composables/useToast'
+import { TMessage } from 'ui_73info'
 
 const props = withDefaults(
     defineProps<{
@@ -23,7 +23,6 @@ const props = withDefaults(
 )
 
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 /* 读数条上的「已获得 / 已佩戴徽章」由本组件上报，页面那边不重复打接口（与 InvitePanel 的 stats 同理）。
    刷新走页面读数条上的按钮，这里不自带刷新按钮。 */
@@ -91,9 +90,9 @@ async function toggleEquip(badge: BadgeDefinition) {
         earnedBadges.value = result.badges
         // 佩戴变化只影响「已佩戴」，但也得再上报一次读数，否则页面顶部读数条要等整页刷新才动。
         emit('stats', acquiredCount.value, allBadges.value.length, equippedCount.value)
-        showToast(willEquip ? `已佩戴「${badge.name}」` : `已取消佩戴「${badge.name}」`, 'success')
+        TMessage.success(willEquip ? `已佩戴「${badge.name}」` : `已取消佩戴「${badge.name}」`)
     } catch (error) {
-        showToast(error instanceof Error ? error.message : '更新佩戴徽章失败', 'error')
+        TMessage.error(error instanceof Error ? error.message : '更新佩戴徽章失败')
     } finally {
         saving.value = false
     }
@@ -113,7 +112,7 @@ async function loadBadges() {
         allBadges.value = definitions
         earnedBadges.value = userBadges.badges
     } catch (error) {
-        showToast(error instanceof Error ? error.message : '加载徽章失败', 'error')
+        TMessage.error(error instanceof Error ? error.message : '加载徽章失败')
     } finally {
         loading.value = false
         // 放在 finally：接口失败也要把读数条上的占位符收掉，否则页面永远停在「—」

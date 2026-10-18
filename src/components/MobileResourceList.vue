@@ -14,7 +14,6 @@ import {
     type McTagFilterSection,
 } from '@/api/resourceTags'
 import { useTagTreeStore } from '@/stores/tagTree'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import {
   DEFAULT_RESOURCE_LISTING_SALE,
@@ -41,6 +40,7 @@ import {
   Menu as MenuIcon,
   Monitor,
   Search,
+  TMessage,
 } from 'ui_73info'
 
 type MobileCard = {
@@ -88,8 +88,6 @@ const emit = defineEmits<{
     (e: 'switch-listing-mode', value: ResourceListingSale): void
     (e: 'listing-counts', counts: { free: number; paid: number }): void
 }>()
-
-const { showToast } = useToast()
 const auth = useAuthStore()
 const tagTreeStore = useTagTreeStore()
 const route = useRoute()
@@ -413,7 +411,7 @@ async function loadData() {
         syncExpandedSections()
         visibleCount.value = pageSize
     } catch (error) {
-        showToast(error instanceof Error ? error.message : '加载资源失败', 'warning')
+        TMessage.warning(error instanceof Error ? error.message : '加载资源失败')
     }
 }
 

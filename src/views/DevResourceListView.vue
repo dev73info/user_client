@@ -27,7 +27,6 @@ import {
   rejectResourceTransfer,
   type ResourceTransferPayload,
 } from '@/api/resourceTransfers'
-import { useToast } from '@/composables/useToast'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { useResourceVersionDraft } from '@/composables/useResourceVersionDraft'
@@ -68,6 +67,7 @@ import {
   TFormItem,
   TIcon,
   TInput,
+  TMessage,
   TOption,
   TPagination,
   TSelect,
@@ -83,7 +83,6 @@ import {
 
 const auth = useAuthStore()
 const router = useRouter()
-const { showToast } = useToast()
 
 const isLoading = ref(false)
 const publishingResourceId = ref<number | null>(null)
@@ -210,21 +209,21 @@ async function loadResourceRouteTree() {
     processedTagTree.value = await getProcessedTagTree()
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载资源目录失败'
-    showToast(message, 'warning')
+    TMessage.warning(message)
   }
 }
 
 async function openPromoDialog(resource: McResourcePayload) {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
   if (isResourceArchiveLocked(resource)) {
-    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    TMessage.warning(RESOURCE_ARCHIVE_LOCKED_MESSAGE)
     return
   }
   if (resource.visibility !== 'published') {
-    showToast('只能对已发布的资源使用道具卡', 'warning')
+    TMessage.warning('只能对已发布的资源使用道具卡')
     return
   }
   promoTarget.value = resource
@@ -249,18 +248,18 @@ async function openPromoDialog(resource: McResourcePayload) {
         : error instanceof Error
           ? error.message
           : '加载道具卡失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   }
 }
 
 async function confirmApplyPromoCard() {
   if (!auth.token || !promoTarget.value || !selectedPromoCardId.value) {
-    showToast('请选择一张道具卡', 'warning')
+    TMessage.warning('请选择一张道具卡')
     return
   }
   const card = unusedPromoCards.value.find((item) => item.id === selectedPromoCardId.value)
   if (card && isFeaturedCardDisabled(card, promoTarget.value)) {
-    showToast(`点赞数不足 ${highLikeThreshold.value}，无法使用精选卡`, 'warning')
+    TMessage.warning(`点赞数不足 ${highLikeThreshold.value}，无法使用精选卡`)
     return
   }
   applyingPromo.value = true
@@ -275,7 +274,7 @@ async function confirmApplyPromoCard() {
       resources.value[index] = { ...resources.value[index], ...updated }
     }
     promoDialogVisible.value = false
-    showToast('道具卡已使用', 'success')
+    TMessage.success('道具卡已使用')
   } catch (error) {
     const message =
       error instanceof HttpError
@@ -283,7 +282,7 @@ async function confirmApplyPromoCard() {
         : error instanceof Error
           ? error.message
           : '使用道具卡失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     applyingPromo.value = false
   }
@@ -291,7 +290,7 @@ async function confirmApplyPromoCard() {
 
 async function loadResources() {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
@@ -301,7 +300,7 @@ async function loadResources() {
     resources.value = all.filter((item) => item.ownership_type !== 'team')
   } catch (error) {
     const message = error instanceof Error ? error.message : '加载资源列表失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     isLoading.value = false
   }
@@ -344,7 +343,7 @@ async function openResourceHomepage(resource: McResourcePayload) {
 
   const routeParams = resolveResourceRoute(resource)
   if (!routeParams) {
-    showToast('资源目录暂未配置完整标签路由', 'warning')
+    TMessage.warning('资源目录暂未配置完整标签路由')
     return
   }
 
@@ -360,7 +359,7 @@ async function openResourceHomepage(resource: McResourcePayload) {
 
 function openPublishVersionDialog(resource: McResourcePayload) {
   if (isResourceArchiveLocked(resource)) {
-    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    TMessage.warning(RESOURCE_ARCHIVE_LOCKED_MESSAGE)
     return
   }
 
@@ -371,7 +370,7 @@ function openPublishVersionDialog(resource: McResourcePayload) {
 
 function openEditHomepagePage(resource: McResourcePayload) {
   if (isResourceArchiveLocked(resource)) {
-    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    TMessage.warning(RESOURCE_ARCHIVE_LOCKED_MESSAGE)
     return
   }
 
@@ -410,17 +409,17 @@ function openVersionsPage(resource: McResourcePayload) {
 
 async function removeResource(resource: McResourcePayload) {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
   if (isResourceArchiveLocked(resource)) {
-    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    TMessage.warning(RESOURCE_ARCHIVE_LOCKED_MESSAGE)
     return
   }
 
   if (!canDeleteResource(resource)) {
-    showToast('已关联需求的资源不能删除', 'warning')
+    TMessage.warning('已关联需求的资源不能删除')
     return
   }
 
@@ -435,10 +434,10 @@ async function removeResource(resource: McResourcePayload) {
   try {
     await deleteMcResource(auth.token, resource.id)
     resources.value = resources.value.filter((item) => item.id !== resource.id)
-    showToast('资源已删除', 'success')
+    TMessage.success('资源已删除')
   } catch (error) {
     const message = error instanceof Error ? error.message : '删除资源失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     deletingResourceId.value = null
   }
@@ -563,7 +562,7 @@ async function loadTransfers() {
     myTransfers.value = mine
   } catch (error) {
     const { message } = describeTransferError(error, '加载过户列表失败')
-    showToast(message, 'warning')
+    TMessage.warning(message)
   } finally {
     transfersLoading.value = false
   }
@@ -572,7 +571,7 @@ async function loadTransfers() {
 /** 接收方同意 / 拒绝。同意后资源换主，两份列表与资源表格都要刷新。 */
 async function respondTransfer(transfer: ResourceTransferPayload, accepted: boolean) {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
@@ -593,14 +592,14 @@ async function respondTransfer(transfer: ResourceTransferPayload, accepted: bool
     } else {
       await rejectResourceTransfer(auth.token, transfer.transfer_id)
     }
-    showToast(accepted ? '已同意过户，资源已转入你的资源项目' : '已拒绝该过户申请', 'success')
+    TMessage.success(accepted ? '已同意过户，资源已转入你的资源项目' : '已拒绝该过户申请')
     await Promise.all([loadTransfers(), loadResources()])
   } catch (error) {
     const { message, needRefresh } = describeTransferError(
       error,
       accepted ? '同意过户失败' : '拒绝过户失败',
     )
-    showToast(message, 'error')
+    TMessage.error(message)
     if (needRefresh) {
       await Promise.all([loadTransfers(), loadResources()])
     }
@@ -612,18 +611,18 @@ async function respondTransfer(transfer: ResourceTransferPayload, accepted: bool
 /** 发起方撤销待处理的申请。 */
 async function cancelTransferApply(transfer: ResourceTransferPayload) {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
   respondingTransferId.value = transfer.transfer_id
   try {
     await cancelResourceTransfer(auth.token, transfer.transfer_id)
-    showToast('过户申请已撤销，资源归属保持不变', 'success')
+    TMessage.success('过户申请已撤销，资源归属保持不变')
     await loadTransfers()
   } catch (error) {
     const { message, needRefresh } = describeTransferError(error, '撤销过户失败')
-    showToast(message, 'error')
+    TMessage.error(message)
     if (needRefresh) {
       await loadTransfers()
     }
@@ -634,22 +633,22 @@ async function cancelTransferApply(transfer: ResourceTransferPayload) {
 
 async function submitVersion() {
   if (!auth.token || !selectedResource.value) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
   if (isResourceArchiveLocked(selectedResource.value)) {
-    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    TMessage.warning(RESOURCE_ARCHIVE_LOCKED_MESSAGE)
     return
   }
 
   if (!versionForm.version.trim()) {
-    showToast('请填写版本号', 'warning')
+    TMessage.warning('请填写版本号')
     return
   }
 
   if (!selectedVersionFile.value) {
-    showToast('请选择资源文件', 'warning')
+    TMessage.warning('请选择资源文件')
     return
   }
 
@@ -662,10 +661,10 @@ async function submitVersion() {
     })
     publishDialogVisible.value = false
     clearFileSelection()
-    showToast('新版本已发布', 'success')
+    TMessage.success('新版本已发布')
   } catch (error) {
     const message = error instanceof Error ? error.message : '发布新版本失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     publishingResourceId.value = null
   }
@@ -673,27 +672,27 @@ async function submitVersion() {
 
 async function requestPublicReview(resource: McResourcePayload) {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
   if (isResourceArchiveLocked(resource)) {
-    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    TMessage.warning(RESOURCE_ARCHIVE_LOCKED_MESSAGE)
     return
   }
 
   if (resource.requirement_id) {
-    showToast('已关联需求的资源不能申请公开审核', 'warning')
+    TMessage.warning('已关联需求的资源不能申请公开审核')
     return
   }
 
   if (isPricedResource(resource.price_fen, resource.price_points) && resource.requirement_id) {
-    showToast('绑定定制交付的资源不可付费售卖', 'warning')
+    TMessage.warning('绑定定制交付的资源不可付费售卖')
     return
   }
 
   if (isPricedResource(resource.price_fen, resource.price_points) && !resource.copyright_declared) {
-    showToast('付费资源须先在「编辑主页」勾选版权声明，再申请公开', 'warning')
+    TMessage.warning('付费资源须先在「编辑主页」勾选版权声明，再申请公开')
     router.push({
       name: 'dev-resource-homepage-edit',
       params: { resourceId: String(resource.id) },
@@ -715,11 +714,11 @@ async function requestPublicReview(resource: McResourcePayload) {
       price_points: resource.price_points ?? 0,
       copyright_declared: resource.copyright_declared ?? false,
     })
-    showToast('公开申请已提交，等待管理员审核', 'success')
+    TMessage.success('公开申请已提交，等待管理员审核')
     await loadResources()
   } catch (error) {
     const message = error instanceof Error ? error.message : '提交公开审核失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     requestingReviewResourceId.value = null
   }
@@ -727,12 +726,12 @@ async function requestPublicReview(resource: McResourcePayload) {
 
 async function setResourcePrivate(resource: McResourcePayload) {
   if (!auth.token) {
-    showToast('登录状态已失效，请重新登录', 'error')
+    TMessage.error('登录状态已失效，请重新登录')
     return
   }
 
   if (isResourceArchiveLocked(resource)) {
-    showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    TMessage.warning(RESOURCE_ARCHIVE_LOCKED_MESSAGE)
     return
   }
 
@@ -747,11 +746,11 @@ async function setResourcePrivate(resource: McResourcePayload) {
       visibility: 'draft',
       release_note: resource.release_note,
     })
-    showToast('资源已设为私有', 'success')
+    TMessage.success('资源已设为私有')
     await loadResources()
   } catch (error) {
     const message = error instanceof Error ? error.message : '设为私有失败'
-    showToast(message, 'error')
+    TMessage.error(message)
   } finally {
     settingPrivateResourceId.value = null
   }

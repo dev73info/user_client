@@ -16,9 +16,23 @@ vi.mock('vue-router', () => ({
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({ token: null, hydrate: vi.fn() }),
 }))
-vi.mock('@/composables/useToast', () => ({
-  useToast: () => ({ showToast: mocks.showToast }),
-}))
+vi.mock('ui_73info', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ui_73info')>()
+  const toast =
+    (type: 'success' | 'error' | 'warning' | 'info') =>
+    (message: string): void =>
+      mocks.showToast(message, type)
+  return {
+    ...actual,
+    TMessage: {
+      ...actual.TMessage,
+      success: toast('success'),
+      error: toast('error'),
+      warning: toast('warning'),
+      info: toast('info'),
+    },
+  }
+})
 vi.mock('@/api/resources', () => ({
   getPublicMcResource: mocks.getResource,
 }))

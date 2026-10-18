@@ -3,7 +3,19 @@ import { expect, it, vi } from 'vitest'
 import FundRecords from '@/views/DevFundRecordsView.vue'
 
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ token: 'test', hydrate: vi.fn() }) }))
-vi.mock('@/composables/useToast', () => ({ useToast: () => ({ showToast: vi.fn() }) }))
+vi.mock('ui_73info', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ui_73info')>()
+  return {
+    ...actual,
+    TMessage: {
+      ...actual.TMessage,
+      success: vi.fn(),
+      error: vi.fn(),
+      warning: vi.fn(),
+      info: vi.fn(),
+    },
+  }
+})
 vi.mock('@/api/devWallet', () => ({
   getDevWithdrawalSummary: vi.fn().mockResolvedValue({
     withdrawals: Array.from({ length: 10 }, (_, index) => ({

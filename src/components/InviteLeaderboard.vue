@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { TButton, TIcon, Refresh } from 'ui_73info'
+import { TButton, TIcon, Refresh, TMessage } from 'ui_73info'
 
 import { getBadges, getInviteLeaderboard, type BadgeDefinition, type InviteLeaderboardEntry } from '@/api/invite'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from '@/composables/useToast'
 
 const auth = useAuthStore()
-const { showToast } = useToast()
 const period = ref<'weekly' | 'alltime'>('weekly')
 const entries = ref<InviteLeaderboardEntry[]>([])
 const myRank = ref<{ rank: number; count: number } | null>(null)
@@ -37,7 +35,7 @@ async function loadLeaderboard(nextPeriod = period.value) {
         entries.value = leaderboard.leaderboard
         myRank.value = leaderboard.my_rank ?? null
     } catch (error) {
-        showToast(error instanceof Error ? error.message : '加载排行榜失败', 'error')
+        TMessage.error(error instanceof Error ? error.message : '加载排行榜失败')
     } finally {
         loading.value = false
     }

@@ -5,9 +5,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { apiUrl, requestJson } from '@/api/http'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
-import { useToast } from '@/composables/useToast'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
-import { TLoading } from 'ui_73info'
+import { TLoading, TMessage } from 'ui_73info'
 
 interface TeamPublicProfile {
   team_id: number
@@ -21,7 +20,6 @@ interface TeamPublicProfile {
 
 const route = useRoute()
 const router = useRouter()
-const { showToast } = useToast()
 
 const teamId = computed(() => Number(route.params.teamId))
 const loading = ref(false)
@@ -57,7 +55,7 @@ onMounted(async () => {
     team.value = profile
     allResources.value = resources
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载团队信息失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '加载团队信息失败')
   } finally {
     loading.value = false
   }

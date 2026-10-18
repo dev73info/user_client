@@ -15,7 +15,6 @@ import {
   type TicketPriority,
   type TicketStatus,
 } from '@/api/tickets'
-import { useToast } from '@/composables/useToast'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 
@@ -27,6 +26,7 @@ import {
   TFormItem,
   TIcon,
   TInput,
+  TMessage,
   TOption,
   TPagination,
   TSelect,
@@ -51,7 +51,6 @@ const newPriority = ref<TicketPriority>('normal')
 const newContent = ref('')
 const replyContent = ref('')
 const composeOpen = ref(false)
-const { showToast } = useToast()
 
 const priorityOptions: Array<{ value: TicketPriority; label: string }> = [
   { value: 'low', label: '低优先级' },
@@ -256,7 +255,7 @@ async function loadDetail(ticketId: string) {
     currentDetail.value = await getTicketDetail(auth.token, ticketId)
     selectedTicketId.value = ticketId
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载工单详情失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '加载工单详情失败')
   } finally {
     detailLoading.value = false
   }
@@ -283,7 +282,7 @@ async function loadTicketsAndKeepSelection(preferredTicketId?: string) {
       currentDetail.value = null
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载工单失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '加载工单失败')
   } finally {
     loading.value = false
   }
@@ -291,7 +290,7 @@ async function loadTicketsAndKeepSelection(preferredTicketId?: string) {
 
 async function submitCreate() {
   if (!auth.token) {
-    showToast('请先登录', 'error')
+    TMessage.error('请先登录')
     return
   }
 
@@ -299,12 +298,12 @@ async function submitCreate() {
   const trimmedContent = newContent.value.trim()
 
   if (trimmedSubject.length < 2) {
-    showToast('工单标题至少需要 2 个字符', 'warning')
+    TMessage.warning('工单标题至少需要 2 个字符')
     return
   }
 
   if (trimmedContent.length < 5) {
-    showToast('问题描述至少需要 5 个字符', 'warning')
+    TMessage.warning('问题描述至少需要 5 个字符')
     return
   }
 
@@ -320,10 +319,10 @@ async function submitCreate() {
     const created = await createTicket(auth.token, payload)
     resetCreateForm()
     composeOpen.value = false
-    showToast('工单已创建', 'success')
+    TMessage.success('工单已创建')
     await loadTicketsAndKeepSelection(created.ticket_id)
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '创建工单失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '创建工单失败')
   } finally {
     creating.value = false
   }
@@ -340,10 +339,10 @@ async function submitReply() {
       content: replyContent.value.trim(),
     })
     replyContent.value = ''
-    showToast('回复已发送', 'success')
+    TMessage.success('回复已发送')
     await loadTicketsAndKeepSelection(selectedTicketId.value)
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '回复工单失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '回复工单失败')
   } finally {
     replying.value = false
   }
@@ -357,10 +356,10 @@ async function submitClose() {
   closing.value = true
   try {
     await closeTicket(auth.token, selectedTicketId.value)
-    showToast('工单已关闭', 'success')
+    TMessage.success('工单已关闭')
     await loadTicketsAndKeepSelection(selectedTicketId.value)
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '关闭工单失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '关闭工单失败')
   } finally {
     closing.value = false
   }

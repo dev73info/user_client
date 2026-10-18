@@ -33,9 +33,23 @@ vi.mock('@/stores/auth', () => ({
     hydrate: vi.fn(),
   }),
 }))
-vi.mock('@/composables/useToast', () => ({
-  useToast: () => ({ showToast: mocks.toast }),
-}))
+vi.mock('ui_73info', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ui_73info')>()
+  const toast =
+    (type: 'success' | 'error' | 'warning' | 'info') =>
+    (message: string): void =>
+      mocks.toast(message, type)
+  return {
+    ...actual,
+    TMessage: {
+      ...actual.TMessage,
+      success: toast('success'),
+      error: toast('error'),
+      warning: toast('warning'),
+      info: toast('info'),
+    },
+  }
+})
 vi.mock('@/api/mcResources', () => ({
   getMcResource: mocks.getResource,
   getResourceApiChannel: vi.fn(),

@@ -9,8 +9,8 @@ import {
   type InvoiceKind,
   type InvoiceRecord,
 } from '@/api/invoices'
-import { useToast } from '@/composables/useToast'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
+import { TMessage } from 'ui_73info'
 
 /** 开票主体：平台服务费票由平台开给需求方，开发者收入票由乙方开给需求方。 */
 type InvoiceSide = 'platform' | 'developer'
@@ -40,8 +40,6 @@ const emit = defineEmits<{
   'update:visible': [value: boolean]
   submitted: []
 }>()
-
-const { showToast } = useToast()
 
 // 申请合并成一次动作、抬头只剩一份，草稿也跟着只剩一份。
 const DRAFT_KEY = 'invoice_apply_draft_v1'
@@ -307,7 +305,7 @@ function restoreDraft() {
 
 function saveDraft() {
   localStorage.setItem(DRAFT_KEY, JSON.stringify(form))
-  showToast('草稿已保存', 'success')
+  TMessage.success('草稿已保存')
 }
 
 /** 拉取本需求的合并开票汇总：金额由后端按已成功分账的结算单算出，买方主体也随它一起回来。 */
@@ -322,7 +320,7 @@ async function ensureSummary() {
     applyPrefill()
   } catch (error) {
     summary.value = null
-    showToast(error instanceof Error ? error.message : '加载可开票金额失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载可开票金额失败')
   } finally {
     summaryLoading.value = false
   }
@@ -367,21 +365,21 @@ function createdToast(sides: InvoiceSide[]) {
 
 async function submit() {
   if (!form.invoiceTitle.trim()) {
-    showToast('请填写发票抬头', 'warning')
+    TMessage.warning('请填写发票抬头')
     return
   }
   if (amountFen.value <= 0) {
-    showToast('本需求暂无可开票的已结算金额', 'warning')
+    TMessage.warning('本需求暂无可开票的已结算金额')
     return
   }
   if (isTaxNumberRequired.value && !form.taxNumber.trim()) {
-    showToast(`${buyerPrefix.value}实名主体为企业或个体工商户，请填写税号`, 'warning')
+    TMessage.warning(`${buyerPrefix.value}实名主体为企业或个体工商户，请填写税号`)
     return
   }
   // 专票的资料要求比后端那份「缺项报错」更早生效：这里缺哪几项就直接说哪几项。
   const missingSpecial = missingSpecialFields()
   if (missingSpecial.length > 0) {
-    showToast(`增值税专用发票需要填写：${missingSpecial.join('、')}`, 'warning')
+    TMessage.warning(`增值税专用发票需要填写：${missingSpecial.join('、')}`)
     return
   }
   const notice = invoiceTitleNotice(form.invoiceTitle)
@@ -410,9 +408,14 @@ async function submit() {
     localStorage.removeItem(DRAFT_KEY)
     emit('update:visible', false)
     emit('submitted')
-    showToast(notice || createdToast(createdSides(applied)), notice ? 'warning' : 'success')
+    const message = notice || createdToast(createdSides(applied))
+    if (notice) {
+      TMessage.warning(message)
+    } else {
+      TMessage.success(message)
+    }
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交开票申请失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '提交开票申请失败')
   } finally {
     submitting.value = false
   }

@@ -10,7 +10,6 @@ import {
   type ConversationHistoryDisclosure,
 } from '@/api/conversations'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
-import { useToast } from '@/composables/useToast'
 import {
   NOTIFICATION_KIND_LABELS,
   buildNotificationCards,
@@ -27,6 +26,7 @@ import {
   TButton,
   TIcon,
   TInput,
+  TMessage,
   TOption,
   TPagination,
   TSelect,
@@ -46,7 +46,6 @@ import {
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const { showToast } = useToast()
 
 const isDevWorkbench = computed(() => route.matched.some((record) => Boolean(record.meta.devArea)))
 
@@ -154,18 +153,16 @@ async function loadNotifications(showSuccess = false) {
   if (disclosuresResult.status === 'fulfilled') {
     disclosures.value = disclosuresResult.value
   } else {
-    showToast(
+    TMessage.error(
       disclosuresResult.reason instanceof Error ? disclosuresResult.reason.message : '加载公开申请失败',
-      'error',
     )
   }
 
   if (afterSalesResult.status === 'fulfilled') {
     afterSales.value = afterSalesResult.value
   } else {
-    showToast(
+    TMessage.error(
       afterSalesResult.reason instanceof Error ? afterSalesResult.reason.message : '加载解除合作案件失败',
-      'error',
     )
   }
 
@@ -173,15 +170,14 @@ async function loadNotifications(showSuccess = false) {
     // 只认已发布的公告：待审核/被驳回的帖子不该出现在用户的通知里。
     announcements.value = announcementsResult.value.filter((post) => post.status === 'published')
   } else {
-    showToast(
+    TMessage.error(
       announcementsResult.reason instanceof Error ? announcementsResult.reason.message : '加载平台公告失败',
-      'error',
     )
   }
 
   loading.value = false
   if (showSuccess) {
-    showToast('系统通知已刷新', 'success')
+    TMessage.success('系统通知已刷新')
   }
 }
 
@@ -191,7 +187,7 @@ async function loadDisclosures() {
   try {
     disclosures.value = await listConversationHistoryDisclosures(auth.token)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载公开申请失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载公开申请失败')
   }
 }
 
@@ -203,10 +199,10 @@ async function vote(card: NotificationCard, decision: 'approved' | 'rejected') {
   votingId.value = card.disclosureId
   try {
     await respondConversationHistoryDisclosure(auth.token, card.disclosureId, decision)
-    showToast(decision === 'approved' ? '已同意公开这段历史沟通' : '已拒绝公开这段历史沟通', 'success')
+    TMessage.success(decision === 'approved' ? '已同意公开这段历史沟通' : '已拒绝公开这段历史沟通')
     await loadDisclosures()
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交表决失败', 'warning')
+    TMessage.warning(error instanceof Error ? error.message : '提交表决失败')
   } finally {
     votingId.value = null
   }

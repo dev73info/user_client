@@ -71,7 +71,6 @@ import {
 import { getDepositRatio } from '@/api/settings'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useResourceDownload } from '@/composables/useResourceDownload'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
@@ -107,6 +106,7 @@ import {
   TDropdownMenu,
   TIcon,
   TInput,
+  TMessage,
   TOption,
   TPagination,
   TSelect,
@@ -119,7 +119,9 @@ import {
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
-const { showToast } = useToast()
+function notify(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+  TMessage[type](message)
+}
 const { triggerDownload } = useResourceDownload()
 
 const requirementLoading = ref(false)
@@ -608,7 +610,7 @@ async function openBreachReport(item: RequirementItem) {
   try {
     breachCase.value = await getAdapayBreachCase(auth.token, item.requirement_id)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '加载解除合作案件失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载解除合作案件失败')
   } finally {
     breachCaseLoading.value = false
   }
@@ -647,9 +649,9 @@ async function submitPlatformReview() {
   platformReviewLoading.value = true
   try {
     breachCase.value = await requestAdapayPlatformReview(auth.token, breachCase.value.id)
-    showToast('已申请平台介入，等待平台判定', 'success')
+    TMessage.success('已申请平台介入，等待平台判定')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '申请平台介入失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '申请平台介入失败')
   } finally {
     platformReviewLoading.value = false
   }
@@ -676,9 +678,9 @@ async function submitBreachWithdraw() {
   try {
     breachCase.value = await withdrawAdapayBreach(auth.token, current.id)
     breachWithdrawConfirm.value = false
-    showToast('解除合作申请已撤回，如仍有争议可重新发起', 'success')
+    TMessage.success('解除合作申请已撤回，如仍有争议可重新发起')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '撤回解除合作申请失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '撤回解除合作申请失败')
   } finally {
     breachWithdrawLoading.value = false
   }
@@ -749,9 +751,9 @@ async function submitBreachDecision(decision: AdapayBreachDecisionValue) {
       : decision === 'accepted'
         ? '已接受 AI 判定，等待对方表态'
         : '已提交不接受，案件转客服人工判定'
-    showToast(toast, 'success')
+    TMessage.success(toast)
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交解除合作案件表态失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '提交解除合作案件表态失败')
   } finally {
     breachDecisionLoading.value = false
   }
@@ -761,16 +763,16 @@ async function submitBreachReport() {
   const item = breachRequirement.value
   const reason = breachReason.value.trim()
   if (!item || !reason) {
-    showToast('请填写解除合作的事实和相关依据', 'warning')
+    TMessage.warning('请填写解除合作的事实和相关依据')
     return
   }
   breachLoading.value = true
   try {
     breachCase.value = await reportAdapayTermination(auth.token, item.requirement_id, reason)
     breachNewRound.value = false
-    showToast('解除合作申请已提交，请先与对方协商', 'success')
+    TMessage.success('解除合作申请已提交，请先与对方协商')
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '提交解除合作申请失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '提交解除合作申请失败')
   } finally {
     breachLoading.value = false
   }
@@ -900,18 +902,18 @@ function canCreateRequirementContract(item: RequirementItem) {
 
 async function createRequirementContractAction(item: RequirementItem) {
   if (!auth.isAuthed || !auth.token) {
-    showToast('请先登录后再继续操作', 'error')
+    TMessage.error('请先登录后再继续操作')
     return
   }
   contractCreatingId.value = item.requirement_id
   try {
     await createRequirementContract(auth.token, item.requirement_id)
     // R012：发起后引导到合同页的「自定义合同附件」区；附件经平台审核放行后才能发起签署。
-    showToast('合同已发起；如需补充条款，可在合同页准备自定义附件，平台放行后即可签署', 'success')
+    TMessage.success('合同已发起；如需补充条款，可在合同页准备自定义附件，平台放行后即可签署')
     await loadContractSigningStatuses(myRequirements.value)
     openContractSign(item)
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发起合同失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '发起合同失败')
   } finally {
     contractCreatingId.value = ''
   }
@@ -942,7 +944,7 @@ async function loadRequirementConversations() {
     )
   } catch (error) {
     requirementConversationMap.value = {}
-    showToast(error instanceof Error ? error.message : '加载沟通会话失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载沟通会话失败')
   } finally {
     conversationLoading.value = false
   }
@@ -1044,7 +1046,7 @@ function openDownloadPicker(item: RequirementItem) {
   }
 
   if (!deliveryVersionsFor(item).length) {
-    showToast('开发者还没有发布可下载的版本', 'info')
+    TMessage.info('开发者还没有发布可下载的版本')
     return
   }
 
@@ -1072,7 +1074,7 @@ async function downloadRequirementVersion(
       extractResourceFileNameFromUrl(version.resource, `resource-${resourceId}-${version.version}`),
     )
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '下载资源失败', 'warning')
+    TMessage.warning(err instanceof Error ? err.message : '下载资源失败')
   } finally {
     resourceDownloadingId.value = null
   }
@@ -1127,22 +1129,22 @@ function updatePayChannel(channel: AdapayBusinessPayChannel) {
 /** 无担保模式的「确认完成」入口：担保模式的验收与尾款走 accept / pay，不再经过这里。 */
 async function requestFinalPayment(item: RequirementItem) {
   if (!auth.isAuthed) {
-    showToast('请先登录后再继续操作', 'error')
+    TMessage.error('请先登录后再继续操作')
     return
   }
 
   if (!hasBoundResource(item)) {
-    showToast('当前需求尚未关联资源项目', 'warning')
+    TMessage.warning('当前需求尚未关联资源项目')
     return
   }
 
   if (item.status !== 'in_development') {
-    showToast('只有开发中的需求单才能确认完成', 'warning')
+    TMessage.warning('只有开发中的需求单才能确认完成')
     return
   }
 
   if (publishedVersionCount(item) <= 0) {
-    showToast('开发者至少发布一个资源版本后，才能确认完成', 'warning')
+    TMessage.warning('开发者至少发布一个资源版本后，才能确认完成')
     return
   }
 
@@ -1180,12 +1182,12 @@ async function submitCancelRequirement() {
   cancelLoading.value = true
   try {
     await cancelRequirementApi(auth.token, item.requirement_id)
-    showToast('需求已取消', 'success')
+    TMessage.success('需求已取消')
     cancelConfirmVisible.value = false
     cancelConfirmTarget.value = null
     await loadMyRequirements()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '取消需求失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '取消需求失败')
   } finally {
     cancelLoading.value = false
   }
@@ -1232,24 +1234,24 @@ async function submitClaimResource() {
   claimLoading.value = true
   try {
     await claimRequirementResourceApi(auth.token, item.requirement_id)
-    showToast('已转为我的资源，可到开发者工作台「资源列表」管理', 'success')
+    TMessage.success('已转为我的资源，可到开发者工作台「资源列表」管理')
     claimStep.value = 'done'
     await loadMyRequirements()
     try {
       await auth.fetchProfile(true)
     } catch {
-      showToast('资源已转换，但刷新账号角色失败；若切换工作台不可用，请重新登录', 'warning')
+      TMessage.warning('资源已转换，但刷新账号角色失败；若切换工作台不可用，请重新登录')
     }
   } catch (err) {
     const failure = describeClaimResourceError(err)
     if (failure.alreadyClaimed) {
       // 后端说已经转过：按已转换展示即可，不算失败。
-      showToast(failure.message, 'info')
+      TMessage.info(failure.message)
       claimConfirmVisible.value = false
       claimConfirmTarget.value = null
       await loadMyRequirements()
     } else {
-      showToast(failure.message, 'error')
+      TMessage.error(failure.message)
     }
   } finally {
     claimLoading.value = false
@@ -1280,10 +1282,10 @@ async function confirmFinalPaymentRequest() {
   try {
     await requestRequirementFinalPaymentApi(auth.token, item.requirement_id)
     await loadMyRequirements()
-    showToast('需求已确认完成', 'success')
+    TMessage.success('需求已确认完成')
     closeFinalPaymentConfirm()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '结束开发失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '结束开发失败')
   }
 }
 
@@ -1309,11 +1311,11 @@ function canOpenAcceptance(item: RequirementItem) {
 
 async function openAcceptanceModal(item: RequirementItem) {
   if (!auth.isAuthed || !auth.token) {
-    showToast('请先登录后再继续操作', 'error')
+    TMessage.error('请先登录后再继续操作')
     return
   }
   if (!canOpenAcceptance(item)) {
-    showToast('当前需求还不能验收，请确认双方已签合同且开发者已提交交付版本', 'warning')
+    TMessage.warning('当前需求还不能验收，请确认双方已签合同且开发者已提交交付版本')
     return
   }
 
@@ -1359,11 +1361,11 @@ function canOpenAfterSales(item: RequirementItem) {
 /** 解除合作入口：结单后打开 `AfterSalesModal`（本页是需求方视角，可发起），案件列表与表态都在弹窗内。 */
 function openAfterSalesModal(item: RequirementItem) {
   if (!auth.isAuthed || !auth.token) {
-    showToast('请先登录后再继续操作', 'error')
+    TMessage.error('请先登录后再继续操作')
     return
   }
   if (!canOpenAfterSales(item)) {
-    showToast('只有已结单的需求可以发起解除合作', 'warning')
+    TMessage.warning('只有已结单的需求可以发起解除合作')
     return
   }
 
@@ -1445,7 +1447,7 @@ async function ensurePublishRealnameApproved() {
   const redirectTarget = publishRedirectTarget()
   auth.hydrate()
   if (!auth.isAuthed) {
-    showToast('发布需求前请先登录', 'info')
+    TMessage.info('发布需求前请先登录')
     openAuthLogin()
     return false
   }
@@ -1457,11 +1459,11 @@ async function ensurePublishRealnameApproved() {
     }
 
     if (record.status === 'pending') {
-      showToast('实名认证审核中，通过后可发布需求', 'warning')
+      TMessage.warning('实名认证审核中，通过后可发布需求')
       return false
     }
 
-    showToast('实名认证未通过，请重新提交后再发布需求', 'warning')
+    TMessage.warning('实名认证未通过，请重新提交后再发布需求')
     void router.push({
       name: 'workbench-realname',
       query: { redirect_to: redirectTarget },
@@ -1469,7 +1471,7 @@ async function ensurePublishRealnameApproved() {
     return false
   } catch (err) {
     if (err instanceof HttpError && err.status === 404) {
-      showToast('发布需求前请先完成实名认证', 'warning')
+      TMessage.warning('发布需求前请先完成实名认证')
       void router.push({
         name: 'workbench-realname',
         query: { redirect_to: redirectTarget },
@@ -1477,7 +1479,7 @@ async function ensurePublishRealnameApproved() {
       return false
     }
 
-    showToast(err instanceof Error ? err.message : '实名认证状态校验失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '实名认证状态校验失败')
     return false
   }
 }
@@ -1549,11 +1551,10 @@ async function toggleRequirementResourceVisibility(item: RequirementItem) {
   }
 
   if (!canToggleRequirementResourceVisibility(item)) {
-    showToast(
+    TMessage.warning(
       isSelfManagedRequirement(item)
         ? '需求完成后才能设置资源为公开或私有'
         : '需求必须在已付尾款后，才能设置资源为公开或私有',
-      'warning',
     )
     return
   }
@@ -1562,13 +1563,12 @@ async function toggleRequirementResourceVisibility(item: RequirementItem) {
   resourceVisibilityLoadingId.value = item.requirement_id
   try {
     await updateRequirementResourceVisibilityApi(auth.token, item.requirement_id, { visibility })
-    showToast(
+    TMessage.success(
       visibility === 'public' ? '关联资源已提交公开审核' : '关联资源已设为私有',
-      'success',
     )
     await loadMyRequirements()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '更新资源可见性失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '更新资源可见性失败')
   } finally {
     resourceVisibilityLoadingId.value = null
   }
@@ -1576,7 +1576,7 @@ async function toggleRequirementResourceVisibility(item: RequirementItem) {
 
 async function toggleRequirementSubscription(item: RequirementItem) {
   if (!auth.isAuthed) {
-    showToast('请先登录后再设置需求订阅', 'error')
+    TMessage.error('请先登录后再设置需求订阅')
     return
   }
 
@@ -1588,9 +1588,9 @@ async function toggleRequirementSubscription(item: RequirementItem) {
       subscribe_status_change: nextValue,
     })
     item.subscribe_status_change = nextValue
-    showToast(nextValue ? '已订阅该需求的状态变化' : '已取消该需求的状态变化订阅', 'success')
+    TMessage.success(nextValue ? '已订阅该需求的状态变化' : '已取消该需求的状态变化订阅')
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '更新需求订阅失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '更新需求订阅失败')
   } finally {
     requirementSubscriptionLoadingId.value = null
   }
@@ -1608,7 +1608,7 @@ async function submitVersionDeleteReview(
   const note = pendingVersionRejectNote(request).trim()
 
   if (action === 'reject' && note.length > 500) {
-    showToast('拒绝原因不能超过 500 字', 'error')
+    TMessage.error('拒绝原因不能超过 500 字')
     return
   }
 
@@ -1619,7 +1619,7 @@ async function submitVersionDeleteReview(
       action,
       note: note || undefined,
     })
-    showToast(action === 'approve' ? '已同意删除版本' : '已拒绝删除版本', 'success')
+    TMessage.success(action === 'approve' ? '已同意删除版本' : '已拒绝删除版本')
     versionDeleteRejectTargetId.value = null
     if (action === 'reject') {
       const nextNotes = { ...versionDeleteRejectNotes.value }
@@ -1628,7 +1628,7 @@ async function submitVersionDeleteReview(
     }
     await loadMyRequirements()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '审核版本删除失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '审核版本删除失败')
   } finally {
     resourceVersionDeleteReviewLoadingId.value = null
   }
@@ -1636,7 +1636,7 @@ async function submitVersionDeleteReview(
 
 async function submitRequirementResubmit() {
   if (!auth.isAuthed || !editRequirement.value) {
-    showToast('请先登录后再重新提交需求', 'error')
+    TMessage.error('请先登录后再重新提交需求')
     return
   }
 
@@ -1650,36 +1650,36 @@ async function submitRequirementResubmit() {
   const budgetRaw = String(editBudget.value ?? '').trim()
 
   if (normalizedTitle.length < 4) {
-    showToast('需求标题至少 4 个字符', 'error')
+    TMessage.error('需求标题至少 4 个字符')
     return
   }
 
   if (descriptionValidation.error) {
-    showToast(descriptionValidation.error, 'error')
+    TMessage.error(descriptionValidation.error)
     return
   }
 
   if (!budgetRaw) {
-    showToast('预算不能为空', 'error')
+    TMessage.error('预算不能为空')
     return
   }
 
   const budget = Number(budgetRaw)
 
   if (Number.isNaN(budget) || budget < 0) {
-    showToast('预算必须是大于等于0的数字', 'error')
+    TMessage.error('预算必须是大于等于0的数字')
     return
   }
 
   if (acceptanceValidation.error) {
-    showToast(acceptanceValidation.error, 'error')
+    TMessage.error(acceptanceValidation.error)
     return
   }
 
   // R014：担保需求必填「开发周期（天）」，且必须是正整数；配置下限由后端校验并回中文提示。
   const cycleError = validateDevelopmentCycleInput(editDevelopmentCycleDays.value, editPaymentMode.value)
   if (cycleError) {
-    showToast(cycleError, 'error')
+    TMessage.error(cycleError)
     return
   }
 
@@ -1694,12 +1694,12 @@ async function submitRequirementResubmit() {
       development_cycle_days: normalizeDevelopmentCycle(editDevelopmentCycleDays.value, editPaymentMode.value),
     })
 
-    showToast('需求已重新提交，等待审核', 'success')
+    TMessage.success('需求已重新提交，等待审核')
     editModalRef.value?.clearDraft(`edit-${editRequirement.value.requirement_id}`)
     forceCloseEditModal()
     await loadMyRequirements()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '重新提交失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '重新提交失败')
   } finally {
     editLoading.value = false
   }
@@ -1721,36 +1721,36 @@ async function submitRequirementPublish() {
   const budgetRaw = String(publishBudget.value ?? '').trim()
 
   if (normalizedTitle.length < 4) {
-    showToast('需求标题至少 4 个字符', 'error')
+    TMessage.error('需求标题至少 4 个字符')
     return
   }
 
   if (descriptionValidation.error) {
-    showToast(descriptionValidation.error, 'error')
+    TMessage.error(descriptionValidation.error)
     return
   }
 
   if (!budgetRaw) {
-    showToast('预算不能为空', 'error')
+    TMessage.error('预算不能为空')
     return
   }
 
   const budget = Number(budgetRaw)
 
   if (!Number.isFinite(budget) || budget < 0) {
-    showToast('预算必须是大于等于0的数字', 'error')
+    TMessage.error('预算必须是大于等于0的数字')
     return
   }
 
   if (acceptanceValidation.error) {
-    showToast(acceptanceValidation.error, 'error')
+    TMessage.error(acceptanceValidation.error)
     return
   }
 
   // R014：担保需求必填「开发周期（天）」，且必须是正整数；配置下限由后端校验并回中文提示。
   const cycleError = validateDevelopmentCycleInput(publishDevelopmentCycleDays.value, publishPaymentMode.value)
   if (cycleError) {
-    showToast(cycleError, 'error')
+    TMessage.error(cycleError)
     return
   }
 
@@ -1765,13 +1765,13 @@ async function submitRequirementPublish() {
       development_cycle_days: normalizeDevelopmentCycle(publishDevelopmentCycleDays.value, publishPaymentMode.value),
     })
 
-    showToast('需求已发布，等待审核', 'success')
+    TMessage.success('需求已发布，等待审核')
     forceClosePublishModal()
     clearPublishModalQuery()
     publishModalRef.value?.clearDraft()
     await loadMyRequirements()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发布失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '发布失败')
   } finally {
     publishLoading.value = false
   }
@@ -1863,7 +1863,7 @@ async function loadMyRequirements() {
       closeVersionDeleteReviewCard()
     }
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载需求单失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '加载需求单失败')
   } finally {
     requirementLoading.value = false
   }
@@ -1967,7 +1967,7 @@ async function submitRequirementPayment() {
   const channel = payChannel.value
   const clientPlatform = getAdapayClientPlatform()
   if (!isAdapayRequirement(requirement)) {
-    showToast('无担保订单不通过平台收款，请由双方按约定自行结算', 'warning')
+    TMessage.warning('无担保订单不通过平台收款，请由双方按约定自行结算')
     return
   }
 
@@ -1991,7 +1991,7 @@ async function submitRequirementPayment() {
         expires_at: '',
         adapay: true,
       }
-      showToast(`${payStageLabel.value}支付订单已生成，正在跳转支付页`, 'success')
+      TMessage.success(`${payStageLabel.value}支付订单已生成，正在跳转支付页`)
       router.push({
         name: 'payment',
         query: buildAdapayPaymentQuery({
@@ -2011,14 +2011,14 @@ async function submitRequirementPayment() {
       if (adapayPayment.status !== 'paid' && adapayPayment.status !== 'confirmed') {
         if (adapayPayment.status === 'failed') {
           currentPayment.value = null
-          showToast('上次支付订单已失效，重新发起支付', 'warning')
+          TMessage.warning('上次支付订单已失效，重新发起支付')
           void submitRequirementPayment()
           return
         }
-        showToast('支付尚未完成，请先完成 Adapay 支付', 'warning')
+        TMessage.warning('支付尚未完成，请先完成 Adapay 支付')
         return
       }
-      showToast(`${payStageLabel.value}支付确认成功`, 'success')
+      TMessage.success(`${payStageLabel.value}支付确认成功`)
       currentPayment.value = null
       payVisible.value = false
       await loadMyRequirements()
@@ -2047,7 +2047,7 @@ async function submitRequirementPayment() {
     }
     if (isUnionPaymentAuthorizationRequired(err)) {
       if (clientPlatform !== 'mobile') {
-        showToast('云闪付授权仅适用于移动端，请重新选择支付方式', 'warning')
+        TMessage.warning('云闪付授权仅适用于移动端，请重新选择支付方式')
         return
       }
       try {
@@ -2058,15 +2058,14 @@ async function submitRequirementPayment() {
         window.location.assign(authorization.url)
         return
       } catch (authorizationError) {
-        showToast(
+        TMessage.error(
           authorizationError instanceof Error ? authorizationError.message : '发起云闪付授权失败',
-          'error',
         )
         return
       }
     }
 
-    showToast(err instanceof Error ? err.message : '支付失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '支付失败')
   } finally {
     payLoading.value = false
   }
@@ -2079,7 +2078,7 @@ function closeWechatAuthorization() {
 
 function handleWechatAuthorized() {
   closeWechatAuthorization()
-  showToast('微信授权成功，请再次点击支付', 'success')
+  TMessage.success('微信授权成功，请再次点击支付')
 }
 
 /**
@@ -2361,15 +2360,15 @@ onMounted(async () => {
   const unionOauthError =
     typeof route.query.union_oauth_error === 'string' ? route.query.union_oauth_error : ''
   if (oauthResult === 'success') {
-    showToast('微信授权成功，请再次点击支付', 'success')
+    TMessage.success('微信授权成功，请再次点击支付')
   } else if (oauthError) {
-    showToast(`微信授权失败：${oauthError}`, 'error')
+    TMessage.error(`微信授权失败：${oauthError}`)
   }
   if (unionOauthResult === 'success') {
     payChannel.value = 'union'
-    showToast('云闪付授权成功，请再次点击支付', 'success')
+    TMessage.success('云闪付授权成功，请再次点击支付')
   } else if (unionOauthError) {
-    showToast(`云闪付授权失败：${unionOauthError}`, 'error')
+    TMessage.error(`云闪付授权失败：${unionOauthError}`)
   }
   if (oauthResult || oauthError || unionOauthResult || unionOauthError) {
     const nextQuery = { ...route.query }
@@ -2742,7 +2741,7 @@ watch(
       v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
       v-model:publishDevelopmentCycleDays="publishDevelopmentCycleDays"
       :publishLoading="publishLoading"
-      :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="showToast"
+      :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="notify"
       @submit="submitRequirementPublish" />
 
     <PublishModal ref="editModalRef" :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核"
@@ -2752,7 +2751,7 @@ watch(
       v-model:publishDevelopmentCycleDays="editDevelopmentCycleDays"
       :publishLoading="editLoading"
       :draft-scope="editRequirement ? `edit-${editRequirement.requirement_id}` : ''" @close="closeEditModal"
-      @notify="showToast" @submit="submitRequirementResubmit" />
+      @notify="notify" @submit="submitRequirementResubmit" />
 
     <RequirementConversationModal :visible="conversationVisible" :token="auth.token" :current-username="auth.username"
       :requirement-id="conversationRequirement?.requirement_id ?? ''" :title="conversationRequirement?.title"

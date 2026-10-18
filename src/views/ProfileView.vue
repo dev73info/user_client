@@ -13,6 +13,7 @@ import {
   Refresh,
   Suitcase,
   Tickets,
+  TMessage,
   Wallet,
 } from 'ui_73info'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -30,7 +31,6 @@ import {
 import { HttpError, apiUrl } from '@/api/http'
 import { getMyRealnameVerification } from '@/api/realname'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
-import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 import {
@@ -116,7 +116,9 @@ const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
 const depositRatioPercent = ref(20)
-const { showToast } = useToast()
+function notify(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+  TMessage[type](message)
+}
 const failedProfileAvatarUrls = ref<Set<string>>(new Set())
 
 const avatarCropDefaultFrameSize = 320
@@ -353,7 +355,7 @@ async function loadRequirementConversations() {
     )
   } catch (error) {
     requirementConversationMap.value = {}
-    showToast(error instanceof Error ? error.message : '加载沟通会话失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '加载沟通会话失败')
   }
 }
 
@@ -395,14 +397,14 @@ async function confirmFinalPaymentRequest() {
     const updated = await requestRequirementFinalPaymentApi(auth.token, item.requirement_id)
     await loadMyRequirements()
     if (isSelfManagedRequirement(item)) {
-      showToast('需求已确认完成', 'success')
+      TMessage.success('需求已确认完成')
     } else {
-      showToast('请支付尾款', 'success')
+      TMessage.success('请支付尾款')
       openPayModal(updated)
     }
     closeFinalPaymentConfirm()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '结束开发失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '结束开发失败')
   }
 }
 
@@ -421,7 +423,7 @@ async function ensurePublishRealnameApproved() {
   const redirectTarget = publishRedirectTarget()
   auth.hydrate()
   if (!auth.isAuthed) {
-    showToast('发布需求前请先登录', 'info')
+    TMessage.info('发布需求前请先登录')
     void router.push({
       name: 'home',
       query: { modal: 'auth', mode: 'login', redirect_to: redirectTarget },
@@ -436,11 +438,11 @@ async function ensurePublishRealnameApproved() {
     }
 
     if (record.status === 'pending') {
-      showToast('实名认证审核中，通过后可发布需求', 'warning')
+      TMessage.warning('实名认证审核中，通过后可发布需求')
       return false
     }
 
-    showToast('实名认证未通过，请重新提交后再发布需求', 'warning')
+    TMessage.warning('实名认证未通过，请重新提交后再发布需求')
     void router.push({
       name: 'workbench-realname',
       query: { redirect_to: redirectTarget },
@@ -448,7 +450,7 @@ async function ensurePublishRealnameApproved() {
     return false
   } catch (error) {
     if (error instanceof HttpError && error.status === 404) {
-      showToast('发布需求前请先完成实名认证', 'warning')
+      TMessage.warning('发布需求前请先完成实名认证')
       void router.push({
         name: 'workbench-realname',
         query: { redirect_to: redirectTarget },
@@ -456,7 +458,7 @@ async function ensurePublishRealnameApproved() {
       return false
     }
 
-    showToast(error instanceof Error ? error.message : '实名认证状态校验失败', 'error')
+    TMessage.error(error instanceof Error ? error.message : '实名认证状态校验失败')
     return false
   }
 }
@@ -469,7 +471,7 @@ async function refreshProfileData() {
     loadDepositRatio(),
     loadProfile(),
   ])
-  showToast('资料已刷新', 'success')
+  TMessage.success('资料已刷新')
 }
 
 /** 需求详情浮层已去掉：需求正文在需求详情里看（会话标题栏的「需求详情」抽屉、开发者需求详情页），
@@ -488,7 +490,7 @@ function openProfileAvatarPicker() {
 
 function handleProfileAvatarChange(event: Event) {
   if (!auth.isAuthed) {
-    showToast('请先登录后上传头像', 'error')
+    TMessage.error('请先登录后上传头像')
     return
   }
 
@@ -499,13 +501,13 @@ function handleProfileAvatarChange(event: Event) {
   }
 
   if (!file.type.startsWith('image/')) {
-    showToast('头像仅支持图片格式', 'warning')
+    TMessage.warning('头像仅支持图片格式')
     if (input) input.value = ''
     return
   }
 
   if (file.size > avatarCropMaxSourceSize) {
-    showToast('原图请控制在 8MB 以内', 'warning')
+    TMessage.warning('原图请控制在 8MB 以内')
     if (input) input.value = ''
     return
   }
@@ -560,7 +562,7 @@ function closeProfileAvatarCrop() {
 function handleProfileAvatarCropImageLoad(event: Event) {
   const image = event.target as HTMLImageElement | null
   if (!image?.naturalWidth || !image.naturalHeight) {
-    showToast('无法读取头像图片', 'error')
+    TMessage.error('无法读取头像图片')
     resetProfileAvatarCrop()
     return
   }
@@ -805,7 +807,7 @@ async function createCroppedProfileAvatarFile() {
 
 async function submitProfileAvatarCrop() {
   if (!auth.isAuthed) {
-    showToast('请先登录后上传头像', 'error')
+    TMessage.error('请先登录后上传头像')
     return
   }
 
@@ -817,7 +819,7 @@ async function submitProfileAvatarCrop() {
   try {
     const file = await createCroppedProfileAvatarFile()
     if (file.size > avatarCropMaxUploadSize) {
-      showToast('裁剪后图片仍超过 2MB，请缩小图片后重试', 'warning')
+      TMessage.warning('裁剪后图片仍超过 2MB，请缩小图片后重试')
       return
     }
 
@@ -831,10 +833,10 @@ async function submitProfileAvatarCrop() {
     profileAvatarUrl.value = nextAvatarUrl
     profileAvatarCacheKey.value = Date.now()
     dispatchProfileAvatarUpdated()
-    showToast('头像已更新', 'success')
+    TMessage.success('头像已更新')
     resetProfileAvatarCrop()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '上传头像失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '上传头像失败')
   } finally {
     profileAvatarUploading.value = false
   }
@@ -852,7 +854,7 @@ async function loadProfile() {
     profileEmail.value = profile.email ?? ''
     subscriptionOfficialActivity.value = Boolean(profile.subscribe_official_activity)
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载个人资料失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '加载个人资料失败')
   }
 }
 
@@ -902,7 +904,7 @@ function closePublishModal() {
 
 async function submitRequirementResubmit() {
   if (!auth.isAuthed || !editRequirement.value) {
-    showToast('请先登录后再重新提交需求', 'error')
+    TMessage.error('请先登录后再重新提交需求')
     return
   }
 
@@ -916,29 +918,29 @@ async function submitRequirementResubmit() {
   const budgetRaw = String(editBudget.value ?? '').trim()
 
   if (normalizedTitle.length < 4) {
-    showToast('需求标题至少 4 个字符', 'error')
+    TMessage.error('需求标题至少 4 个字符')
     return
   }
 
   if (descriptionValidation.error) {
-    showToast(descriptionValidation.error, 'error')
+    TMessage.error(descriptionValidation.error)
     return
   }
 
   if (!budgetRaw) {
-    showToast('预算不能为空', 'error')
+    TMessage.error('预算不能为空')
     return
   }
 
   const budget = Number(budgetRaw)
 
   if (Number.isNaN(budget) || budget < 0) {
-    showToast('预算必须是大于等于0的数字', 'error')
+    TMessage.error('预算必须是大于等于0的数字')
     return
   }
 
   if (acceptanceValidation.error) {
-    showToast(acceptanceValidation.error, 'error')
+    TMessage.error(acceptanceValidation.error)
     return
   }
 
@@ -952,12 +954,12 @@ async function submitRequirementResubmit() {
       payment_mode: editPaymentMode.value,
     })
 
-    showToast('需求已重新提交，等待审核', 'success')
+    TMessage.success('需求已重新提交，等待审核')
     editModalRef.value?.clearDraft(`edit-${editRequirement.value.requirement_id}`)
     forceCloseEditModal()
     await loadMyRequirements()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '重新提交失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '重新提交失败')
   } finally {
     editLoading.value = false
   }
@@ -979,29 +981,29 @@ async function submitRequirementPublish() {
   const budgetRaw = String(publishBudget.value ?? '').trim()
 
   if (normalizedTitle.length < 4) {
-    showToast('需求标题至少 4 个字符', 'error')
+    TMessage.error('需求标题至少 4 个字符')
     return
   }
 
   if (descriptionValidation.error) {
-    showToast(descriptionValidation.error, 'error')
+    TMessage.error(descriptionValidation.error)
     return
   }
 
   if (!budgetRaw) {
-    showToast('预算不能为空', 'error')
+    TMessage.error('预算不能为空')
     return
   }
 
   const budget = Number(budgetRaw)
 
   if (Number.isNaN(budget) || budget < 0) {
-    showToast('预算必须是大于等于0的数字', 'error')
+    TMessage.error('预算必须是大于等于0的数字')
     return
   }
 
   if (acceptanceValidation.error) {
-    showToast(acceptanceValidation.error, 'error')
+    TMessage.error(acceptanceValidation.error)
     return
   }
 
@@ -1015,13 +1017,13 @@ async function submitRequirementPublish() {
       payment_mode: publishPaymentMode.value,
     })
 
-    showToast('需求已发布', 'success')
+    TMessage.success('需求已发布')
     forceClosePublishModal()
     clearPublishModalQuery()
     publishModalRef.value?.clearDraft()
     await loadMyRequirements()
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '发布失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '发布失败')
   } finally {
     publishLoading.value = false
   }
@@ -1094,7 +1096,7 @@ async function loadCoupons() {
   try {
     coupons.value = await listAvailableCoupons(auth.token)
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载券包失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '加载券包失败')
   } finally {
     loading.value = false
   }
@@ -1154,7 +1156,7 @@ async function loadMyRequirements() {
     }
     contractSigningStatusMap.value = statusMap
   } catch (err) {
-    showToast(err instanceof Error ? err.message : '加载需求单失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '加载需求单失败')
   } finally {
     requirementLoading.value = false
   }
@@ -1169,7 +1171,7 @@ async function submitRequirementPayment() {
   const channel = payChannel.value
   const clientPlatform = getAdapayClientPlatform()
   if (!isAdapayRequirement(requirement)) {
-    showToast('无担保订单不通过平台收款，请由双方按约定自行结算', 'warning')
+    TMessage.warning('无担保订单不通过平台收款，请由双方按约定自行结算')
     return
   }
 
@@ -1193,7 +1195,7 @@ async function submitRequirementPayment() {
         expires_at: '',
         adapay: true,
       }
-      showToast(`${payStageLabel.value}支付订单已生成，正在跳转支付页`, 'success')
+      TMessage.success(`${payStageLabel.value}支付订单已生成，正在跳转支付页`)
       router.push({
         name: 'payment',
         query: buildAdapayPaymentQuery({
@@ -1211,10 +1213,10 @@ async function submitRequirementPayment() {
     if (currentPayment.value.adapay) {
       const adapayPayment = await getAdapayPayment(auth.token, currentPayment.value.payment_id)
       if (adapayPayment.status !== 'paid' && adapayPayment.status !== 'confirmed') {
-        showToast('支付尚未完成，请先完成 Adapay 支付', 'warning')
+        TMessage.warning('支付尚未完成，请先完成 Adapay 支付')
         return
       }
-      showToast(`${payStageLabel.value}支付确认成功`, 'success')
+      TMessage.success(`${payStageLabel.value}支付确认成功`)
       currentPayment.value = null
       payVisible.value = false
       await loadMyRequirements()
@@ -1243,7 +1245,7 @@ async function submitRequirementPayment() {
     }
     if (isUnionPaymentAuthorizationRequired(err)) {
       if (clientPlatform !== 'mobile') {
-        showToast('云闪付授权仅适用于移动端，请重新选择支付方式', 'warning')
+        TMessage.warning('云闪付授权仅适用于移动端，请重新选择支付方式')
         return
       }
       try {
@@ -1254,15 +1256,14 @@ async function submitRequirementPayment() {
         window.location.assign(authorization.url)
         return
       } catch (authorizationError) {
-        showToast(
+        TMessage.error(
           authorizationError instanceof Error ? authorizationError.message : '发起云闪付授权失败',
-          'error',
         )
         return
       }
     }
 
-    showToast(err instanceof Error ? err.message : '支付失败', 'error')
+    TMessage.error(err instanceof Error ? err.message : '支付失败')
   } finally {
     payLoading.value = false
   }
@@ -1275,7 +1276,7 @@ function closeWechatAuthorization() {
 
 function handleWechatAuthorized() {
   closeWechatAuthorization()
-  showToast('微信授权成功，请再次点击支付', 'success')
+  TMessage.success('微信授权成功，请再次点击支付')
 }
 
 
@@ -1297,15 +1298,15 @@ onMounted(async () => {
   const unionOauthError =
     typeof route.query.union_oauth_error === 'string' ? route.query.union_oauth_error : ''
   if (oauthResult === 'success') {
-    showToast('微信授权成功，请再次点击支付', 'success')
+    TMessage.success('微信授权成功，请再次点击支付')
   } else if (oauthError) {
-    showToast(`微信授权失败：${oauthError}`, 'error')
+    TMessage.error(`微信授权失败：${oauthError}`)
   }
   if (unionOauthResult === 'success') {
     payChannel.value = 'union'
-    showToast('云闪付授权成功，请再次点击支付', 'success')
+    TMessage.success('云闪付授权成功，请再次点击支付')
   } else if (unionOauthError) {
-    showToast(`云闪付授权失败：${unionOauthError}`, 'error')
+    TMessage.error(`云闪付授权失败：${unionOauthError}`)
   }
   if (oauthResult || oauthError || unionOauthResult || unionOauthError) {
     const nextQuery = { ...route.query }
@@ -1523,7 +1524,7 @@ onBeforeUnmount(() => {
       v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
       v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
       :publishLoading="publishLoading"
-      :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="showToast"
+      :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="notify"
       @submit="submitRequirementPublish" />
 
     <PublishModal ref="editModalRef" :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核"
@@ -1532,7 +1533,7 @@ onBeforeUnmount(() => {
       v-model:publishPaymentMode="editPaymentMode"
       :publishLoading="editLoading"
       :draft-scope="editRequirement ? `edit-${editRequirement.requirement_id}` : ''" @close="closeEditModal"
-      @notify="showToast" @submit="submitRequirementResubmit" />
+      @notify="notify" @submit="submitRequirementResubmit" />
 
     <RequirementConversationModal :visible="conversationVisible" :token="auth.token" :current-username="auth.username"
       :requirement-id="conversationRequirement?.requirement_id ?? ''" :title="conversationRequirement?.title"
