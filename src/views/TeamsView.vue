@@ -34,7 +34,6 @@ import {
   TSelect,
   Plus,
   Refresh,
-  RefreshLeft,
   Search,
   UserFilled,
 } from 'ui_73info'
@@ -92,11 +91,6 @@ const filteredTeams = computed(() => {
     return [team.name, team.description].some((value) => (value ?? '').toLowerCase().includes(keyword))
   })
 })
-
-function resetFilters() {
-  filters.keyword = ''
-  filters.scope = ''
-}
 
 async function reloadAll() {
   await Promise.all([loadTeams(), loadInvitations()])
@@ -343,12 +337,6 @@ onMounted(() => {
           <span v-if="hasActiveFilters" class="dev-toolbar__hint">
             筛选出 {{ filteredTeams.length }} / {{ teams.length }} 个
           </span>
-          <TButton variant="outline" @click="resetFilters">
-            <TIcon>
-              <RefreshLeft />
-            </TIcon>
-            <span>重置</span>
-          </TButton>
         </div>
       </div>
 

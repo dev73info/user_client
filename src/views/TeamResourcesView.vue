@@ -50,7 +50,6 @@ import {
   ArrowDown,
   Plus,
   Refresh,
-  RefreshLeft,
   Search,
 } from 'ui_73info'
 
@@ -126,11 +125,6 @@ const draftCount = computed(
 const archiveLockedCount = computed(
   () => resources.value.filter((item) => isResourceArchiveLocked(item)).length,
 )
-
-function resetFilters() {
-  filters.keyword = ''
-  filters.visibility = ''
-}
 
 /* 分页与其余菜单页同构（需求大厅、收益钱包、资源项目、我的接单都带表尾分页器）。
    本页数据源一次取回全部，所以这里是客户端切片，不走服务端页码。
@@ -491,12 +485,6 @@ function handleResourceCommand(payload: { action: string; resource: McResourcePa
           <span v-if="hasActiveFilters" class="dev-toolbar__hint">
             筛选出 {{ filteredResources.length }} / {{ resources.length }} 个
           </span>
-          <TButton variant="outline" @click="resetFilters">
-            <TIcon>
-              <RefreshLeft />
-            </TIcon>
-            <span>重置</span>
-          </TButton>
         </div>
       </div>
 

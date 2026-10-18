@@ -318,12 +318,6 @@ function openDepositWithdrawDialog() {
   depositWithdrawDialogVisible.value = true
 }
 
-/* 工具栏的「重置」：清掉关键字即可（四类记录共用这一个筛选）。
-   与其它列表页一致，常驻可用、不置灰。 */
-function resetRecordFilters() {
-  recordKeyword.value = ''
-}
-
 function resetDepositWithdrawForm() {
   depositWithdrawForm.amount_cny = 0
   depositWithdrawForm.channel = 'adapay'
@@ -594,15 +588,6 @@ async function submitDepositWithdrawal() {
             </TIcon>
           </template>
         </TInput>
-
-        <div class="dev-toolbar__actions">
-          <TButton variant="outline" @click="resetRecordFilters">
-            <TIcon>
-              <Refresh />
-            </TIcon>
-            <span>重置</span>
-          </TButton>
-        </div>
       </div>
 
       <!-- 资金明细：保证金充值 / 保证金提现 / 收入 / 收入提现四类合成一段（子组件里按时间倒序拼） -->

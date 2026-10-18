@@ -86,7 +86,6 @@ import {
   ArrowUp,
   ChatDotRound,
   Refresh,
-  RefreshLeft,
   Search,
   UploadFilled,
   View,
@@ -311,15 +310,10 @@ const filteredRows = computed(() => {
   })
 })
 
-function resetFilters() {
-  filters.keyword = ''
-  filters.status = ''
-}
-
 /**
  * 总览页的进行中项目与最近交付带 `requirement_id` 跳进来（见 DevHomeView 的 openMyOrder）：
  * 这一页的需求单一次全取回、筛选在前端做，所以把编号灌进搜索框就是「定位到这一单」，
- * 顺带在搜索框里留下「列表为什么只剩一条」的说明；清空搜索框或点重置即可回全量。
+ * 顺带在搜索框里留下「列表为什么只剩一条」的说明；清空搜索框即可回全量。
  *
  * `routeSeededKeyword` 记住上一次由跳转灌进来的编号：路由参数被去掉时（例如点侧边栏回这一页）
  * 只回收它，用户在搜索框里自己敲的词不动。
@@ -1367,12 +1361,6 @@ async function loadRequirementConversations() {
           <span v-if="hasActiveFilters" class="dev-toolbar__hint">
             筛选出 {{ filteredRows.length }} / {{ mergedRows.length }} 条
           </span>
-          <TButton variant="outline" @click="resetFilters">
-            <TIcon>
-              <RefreshLeft />
-            </TIcon>
-            <span>重置</span>
-          </TButton>
         </div>
       </div>
 
