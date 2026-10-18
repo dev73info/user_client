@@ -27,11 +27,10 @@ import { listMyTeams, type TeamResponse } from '@/api/team'
 import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
 
 import {
-  caretAfterStripLeadingZeros,
+  normalizeYuanPriceText,
   parsePointsPriceInput,
   parsePromoSharePercentInput,
   parseYuanPriceInput,
-  stripLeadingZeros,
 } from '@/shared/resourceSale'
 import { API_BASE_URL } from '@/shared/api/url'
 import {
@@ -56,7 +55,7 @@ import {
   TOption,
   TSelect,
   TSwitch,
-  TTag,
+  Back,
   MagicStick,
   Refresh,
   type SelectModelValue,
@@ -104,7 +103,6 @@ const form = reactive({
   /** 允许来源：多行文本，一行一个 */
   apiAllowedOrigins: '',
   apiRepeatPurchasable: false,
-  apiAllowStrangers: true,
 })
 
 /** 售价（元）输入框实例：实时归一前导 0 时要拿到它的底层 input 来改写值并复位光标 */
@@ -135,32 +133,28 @@ const showCopyrightField = computed(
 )
 
 /**
- * 售价（元）实时归一：去掉整数部分的前导 0（`00100` → `100`）。
+ * 售价（元）实时归一：只留数字与第一个小数点、小数最多两位，并去掉整数前导 0。
  *
  * 为什么要自己改 DOM：`TInput` 的 `:value` 只在模型真的变了才回写输入框，而 `00` → `0`
  * 这类归一不会改变模型，输入框就会停在被归一前的文本上。所以这里拿底层 input 直接改写，
- * 并把光标按被删掉的位数左移，避免打字时光标跳到开头。
+ * 并把光标按被丢弃的字符数左移，避免打字时光标跳到开头。
  * 底层 input 来自 `TInput` 的 `defineExpose`（实例代理会把那个 ref 解包成元素）。
  */
 function normalizeCashPriceInput() {
   const raw = form.priceYuan
-  const normalized = stripLeadingZeros(raw)
-  if (normalized === raw) {
-    return
-  }
-
   const el = cashPriceInputRef.value?.inputRef ?? null
-  const caret = el?.selectionStart ?? null
-  form.priceYuan = normalized
-  if (!el) {
+  const { text, caret } = normalizeYuanPriceText(raw, el?.selectionStart ?? null)
+  if (text === raw) {
     return
   }
 
-  el.value = normalized
-  if (caret !== null) {
-    const next = caretAfterStripLeadingZeros(raw, caret)
-    el.setSelectionRange(next, next)
+  form.priceYuan = text
+  if (!el || caret === null) {
+    return
   }
+
+  el.value = text
+  el.setSelectionRange(caret, caret)
 }
 
 function onCashPriceInput() {
@@ -179,6 +173,15 @@ function onPointsPriceInput() {
 /* ---------- R028 接口资源：渠道配置与一次性密钥 ---------- */
 
 const isApiKind = computed(() => resourceKind.value === 'api')
+/** 创建接口资源前必须先签署《接口使用协议》；状态由路由守卫里的 ensureDevAccess 刷新。 */
+const needsApiAgreement = computed(() => isApiKind.value && !auth.apiUsageAgreementSigned)
+
+function goSignApiAgreement() {
+  void router.push({
+    name: 'contract-sign',
+    query: { agreement: 'api', redirect_to: route.fullPath },
+  })
+}
 /**
  * 接口资源一律按「原创」归类（不选标签归类、不属于任何根节点 / 二级节点），
  * 表单里不再给「原创 / 转载」这个选择；普通资源仍按开发者选的值提交。
@@ -337,6 +340,10 @@ const derivedSourceUrl = computed(() => {
   return `pending://resource/${platformKey}/${entryKey}/${normalizedResourceKey.value}`
 })
 const submitBlockReason = computed(() => {
+  if (needsApiAgreement.value) {
+    return '请先签署《接口使用协议》'
+  }
+
   if (!form.title.trim()) {
     return '请填写资源标题'
   }
@@ -531,7 +538,6 @@ function resetForm() {
   form.apiCallbackSecret = ''
   form.apiAllowedOrigins = ''
   form.apiRepeatPurchasable = false
-  form.apiAllowStrangers = true
   selectedIconFile.value = null
   createdResourceId.value = null
   savedApiChannel.value = null
@@ -604,16 +610,9 @@ async function submitResource(mode: 'private' | 'public') {
     return
   }
   // R028：接口资源只走现金价（积分购是平台内入口，指定地址售卖没有它）
-  if (isApiKind.value) {
-    if (pointsParsed.points > 0) {
-      showToast('接口资源只能设置现金售价，不能设置积分售价', 'warning')
-      return
-    }
-    // 开放接口下单要求现金售价大于 0：公开申请前先填上，否则审过也卖不出去
-    if (mode === 'public' && priceParsed.fen <= 0) {
-      showToast('接口资源提交公开申请前必须填写现金售价（元）', 'warning')
-      return
-    }
+  if (isApiKind.value && pointsParsed.points > 0) {
+    showToast('接口资源只能设置现金售价，不能设置积分售价', 'warning')
+    return
   }
   // R029：推广分成比例先在前端拦一道（0～50，留空 = 关闭），别指望后端 400 兜底
   const promoParsed = parsedPromoShare.value
@@ -691,7 +690,6 @@ async function submitResource(mode: 'private' | 'public') {
           callback_url: form.apiCallbackUrl.trim() || null,
           // 留空 = 不改；首次留空时后端自动生成，明文只在这次响应里回显
           callback_secret: form.apiCallbackSecret.trim() || null,
-          allow_strangers: form.apiAllowStrangers,
           allowed_origins: apiOrigins.value,
         })
         applySavedApiChannel(saved)
@@ -731,7 +729,9 @@ async function submitResource(mode: 'private' | 'public') {
     showToast(
       mode === 'public'
         ? `公开申请已提交，项目编号 #${resource.id}`
-        : `资源已初始化为私有项目，编号 #${resource.id}`,
+        : isApiKind.value
+          ? `接口已创建，编号 #${resource.id}`
+          : `资源已初始化为私有项目，编号 #${resource.id}`,
       'success',
     )
 
@@ -749,6 +749,14 @@ async function submitResource(mode: 'private' | 'public') {
   } finally {
     submitting.value = false
   }
+}
+
+function goBack() {
+  if (window.history.state?.back) {
+    router.back()
+    return
+  }
+  router.push({ name: 'dev-resource-list' })
 }
 </script>
 
@@ -786,16 +794,40 @@ async function submitResource(mode: 'private' | 'public') {
             <span class="dev-meta-strip__label">已选标签</span>
             <span class="dev-meta-strip__value">{{ selectedTagCount }}</span>
           </div>
-          <div class="dev-meta-strip__item dev-meta-strip__action">
-            <TButton icon-only aria-label="刷新标签" :loading="isLoadingTags" @click="loadTagTree">
-              <TIcon>
-                <Refresh />
-              </TIcon>
-            </TButton>
-          </div>
         </template>
+        <div class="dev-meta-strip__item dev-meta-strip__action">
+          <TButton
+            v-if="!isApiKind"
+            icon-only
+            aria-label="刷新标签"
+            :loading="isLoadingTags"
+            @click="loadTagTree"
+          >
+            <TIcon>
+              <Refresh />
+            </TIcon>
+          </TButton>
+          <TButton variant="outline" @click="goBack">
+            <template #prefix>
+              <TIcon><Back /></TIcon>
+            </template>
+            返回列表
+          </TButton>
+        </div>
       </div>
     </WorkbenchBarSlot>
+
+    <section v-if="needsApiAgreement" class="dev-api-agreement-notice">
+      <TAlert
+        tone="warning"
+        variant="soft"
+        title="请先签署《接口使用协议》"
+        description="使用接口资源前须完成电子签署。未签署时无法创建接口资源，存量接口资源也会暂停渠道配置与开放下单。"
+      />
+      <TButton variant="solid" tone="accent" @click="goSignApiAgreement">
+        去签署接口使用协议
+      </TButton>
+    </section>
 
     <div class="dev-upload-layout">
       <TCard class="dev-surface-card dev-upload-combined-card">
@@ -1022,19 +1054,11 @@ async function submitResource(mode: 'private' | 'public') {
                     <TSwitch v-model="form.apiRepeatPurchasable" aria-label="允许重复购买" />
                     <span>允许重复购买</span>
                   </label>
-                  <label class="dev-api-switch">
-                    <TSwitch v-model="form.apiAllowStrangers" aria-label="允许陌生用户购买" />
-                    <span>允许陌生用户购买</span>
-                  </label>
                 </div>
               </TFormItem>
 
-              <TFormItem label="是否公开展示" class="dev-form-item--short">
-                <TTag variant="soft" tone="neutral">不在大厅展示</TTag>
-              </TFormItem>
-
               <!-- 顺序是有意的：可伸缩的多行清单放最后，行尾余量落在它身上，
-                   最后一行不会被撑成半空；购买限制与是否公开展示按内容取宽、并排成一行。 -->
+                   最后一行不会被撑成半空；购买限制按内容取宽，和它并排成一行。 -->
               <TFormItem label="允许的来源地址" class="dev-form-item--wide">
                 <TInput
                   v-model="form.apiAllowedOrigins"
@@ -1187,9 +1211,10 @@ async function submitResource(mode: 'private' | 'public') {
               ><template #prefix
                 ><TIcon><MagicStick /></TIcon
               ></template>
-              创建私有项目
+              {{ isApiKind ? '创建接口' : '创建私有项目' }}
             </TButton>
             <TButton
+              v-if="!isApiKind"
               variant="solid"
               tone="success"
               :disabled="!canSubmit"
@@ -1242,6 +1267,19 @@ async function submitResource(mode: 'private' | 'public') {
 /* R028 接口资源配置区：字段按内容宽排布，见 dev-resource.css 的 .dev-upload-grid--form */
 .dev-api-notice {
   margin: 0 0 4px;
+}
+
+.dev-api-agreement-notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dev-api-agreement-notice > :first-child {
+  flex: 1 1 420px;
+  margin: 0;
 }
 
 .dev-api-switch-row {

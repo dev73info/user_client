@@ -100,6 +100,7 @@ const routes: MockRoute[] = [
         realname_approved: true,
         is_adult: true,
         developer_agreement_signed: isDev,
+        api_usage_agreement_signed: isDev,
       })
     },
   },

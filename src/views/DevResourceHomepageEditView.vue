@@ -34,13 +34,12 @@ import { getTagRouteSlug } from '@/api/resourceTags'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 import {
   canSwitchToPointsPrice,
-  caretAfterStripLeadingZeros,
   fenToYuanText,
+  normalizeYuanPriceText,
   parsePointsPriceInput,
   parsePromoSharePercentInput,
   parseYuanPriceInput,
   promoShareBpsToPercentText,
-  stripLeadingZeros,
 } from '@/shared/resourceSale'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import {
@@ -73,7 +72,6 @@ import {
   TOption,
   TSelect,
   TSwitch,
-  TTag,
   Back,
   Check,
   Refresh,
@@ -92,6 +90,8 @@ const { showToast } = useToast()
 const loading = ref(false)
 const saving = ref(false)
 const resource = ref<McResourcePayload | null>(null)
+/** 资源加载代际：同一路由内切换资源时，旧请求的响应不能覆盖新资源。 */
+let resourceLoadGeneration = 0
 const selectedCoverFile = ref<File | null>(null)
 // 图标预览：本地裁剪结果，或已保存封面的完整地址
 const coverPreview = ref('')
@@ -134,8 +134,8 @@ const form = reactive({
   priceYuan: '0',
   /** 积分售价；与现金售价互斥 */
   pricePoints: '0',
-  /** R029 售卖推广分成比例：百分比文本（0～50，留空 = 关闭） */
-  promoSharePercent: '',
+  /** R029 售卖推广分成比例：百分比数值（0～50，0 = 关闭） */
+  promoSharePercent: 0,
   copyrightDeclared: false,
   /** R028 资源类别：normal = 大厅公开展示；api = 不公开展示，只能指定来源下单 */
   resourceKind: 'normal' as McResourceKind,
@@ -145,7 +145,6 @@ const form = reactive({
   /** 允许来源：多行文本，一行一个 */
   apiAllowedOrigins: '',
   apiRepeatPurchasable: false,
-  apiAllowStrangers: true,
 })
 
 const teamOptions = computed(() =>
@@ -288,6 +287,13 @@ const parsedPromoShare = computed(() => parsePromoSharePercentInput(form.promoSh
 const promoShareError = computed(() =>
   parsedPromoShare.value.ok ? '' : parsedPromoShare.value.message,
 )
+/** R029：拖动条展示口径（与提交口径同源：0 = 关闭） */
+const promoSharePercentValue = computed(() =>
+  parsedPromoShare.value.ok ? parsedPromoShare.value.bps / 100 : 0,
+)
+const promoShareDisplay = computed(() =>
+  promoSharePercentValue.value > 0 ? `${promoSharePercentValue.value}%` : '关闭',
+)
 const isPaidPricing = computed(
   () =>
     (parsedPriceFen.value.ok && parsedPriceFen.value.fen > 0) ||
@@ -306,32 +312,28 @@ const pointsPriceDisabled = computed(
 )
 
 /**
- * 售价（元）实时归一：去掉整数部分的前导 0（`00100` → `100`）。
+ * 售价（元）实时归一：只留数字与第一个小数点、小数最多两位，并去掉整数前导 0。
  *
  * 为什么要自己改 DOM：`TInput` 的 `:value` 只在模型真的变了才回写输入框，而 `00` → `0`
  * 这类归一不会改变模型，输入框就会停在被归一前的文本上。所以这里拿底层 input 直接改写，
- * 并把光标按被删掉的位数左移，避免打字时光标跳到开头。
+ * 并把光标按被丢弃的字符数左移，避免打字时光标跳到开头。
  * 底层 input 来自 `TInput` 的 `defineExpose`（实例代理会把那个 ref 解包成元素）。
  */
 function normalizeCashPriceInput() {
   const raw = form.priceYuan
-  const normalized = stripLeadingZeros(raw)
-  if (normalized === raw) {
-    return
-  }
-
   const el = cashPriceInputRef.value?.inputRef ?? null
-  const caret = el?.selectionStart ?? null
-  form.priceYuan = normalized
-  if (!el) {
+  const { text, caret } = normalizeYuanPriceText(raw, el?.selectionStart ?? null)
+  if (text === raw) {
     return
   }
 
-  el.value = normalized
-  if (caret !== null) {
-    const next = caretAfterStripLeadingZeros(raw, caret)
-    el.setSelectionRange(next, next)
+  form.priceYuan = text
+  if (!el || caret === null) {
+    return
   }
+
+  el.value = text
+  el.setSelectionRange(caret, caret)
 }
 
 function onCashPriceInput() {
@@ -350,6 +352,15 @@ function onPointsPriceInput() {
 /* ---------- R028 接口资源：类别、渠道配置与一次性密钥 ---------- */
 
 const isApiKind = computed(() => form.resourceKind === 'api')
+/** 存量接口资源：开发者补签《接口使用协议》前，保存主页 / 渠道配置都会被后端拒绝。 */
+const needsApiAgreement = computed(() => isApiKind.value && !auth.apiUsageAgreementSigned)
+
+function goSignApiAgreement() {
+  void router.push({
+    name: 'contract-sign',
+    query: { agreement: 'api', redirect_to: route.fullPath },
+  })
+}
 /**
  * 接口资源一律按「原创」归类（不选标签归类、不属于任何根节点 / 二级节点），
  * 表单里不再给「原创 / 转载」这个选择；普通资源仍按开发者选的值提交。
@@ -417,18 +428,20 @@ function applyLoadedApiChannel(loaded: ResourceApiChannelPayload) {
   form.apiCallbackUrl = loaded.callback_url ?? ''
   form.apiAllowedOrigins = formatAllowedOriginsText(loaded.allowed_origins)
   form.apiRepeatPurchasable = Boolean(loaded.repeat_purchasable)
-  form.apiAllowStrangers = Boolean(loaded.allow_strangers)
   form.apiCallbackSecret = ''
 }
 
-async function loadApiChannel(resourceId: number) {
+async function loadApiChannel(resourceId: number, generation = resourceLoadGeneration) {
   if (!auth.token) {
     return
   }
 
   try {
-    applyLoadedApiChannel(await getResourceApiChannel(auth.token, resourceId))
+    const loaded = await getResourceApiChannel(auth.token, resourceId)
+    if (generation !== resourceLoadGeneration) return
+    applyLoadedApiChannel(loaded)
   } catch (error) {
+    if (generation !== resourceLoadGeneration) return
     showToast(
       error instanceof Error
         ? `加载接口资源渠道配置失败：${error.message}`
@@ -497,12 +510,10 @@ async function saveApiChannelOnly(resourceId: number): Promise<boolean> {
   try {
     applySavedApiChannel(
       await updateResourceApiChannel(auth.token, resourceId, {
-        resource_kind: 'api',
         repeat_purchasable: form.apiRepeatPurchasable,
         callback_url: form.apiCallbackUrl.trim() || null,
         // 留空 = 不改；首次留空时后端自动生成，明文只在这次响应里回显
         callback_secret: form.apiCallbackSecret.trim() || null,
-        allow_strangers: form.apiAllowStrangers,
         allowed_origins: apiOrigins.value,
       }),
     )
@@ -768,23 +779,46 @@ function applyResourceTagSelections() {
   }
 }
 
-async function loadResource() {
+/** 切换到另一个资源前，清掉只属于上一个资源的本地状态（封面文件、渠道配置、标签勾选等）。 */
+function resetResourceScopedState() {
+  resource.value = null
+  tagPathResolved.value = false
+  selectedCoverFile.value = null
+  coverPreview.value = ''
+  savedApiChannel.value = null
+  revealedSecretPlain.value = ''
+  secretPlainDialogVisible.value = false
+  channelRetryOnly.value = false
+  channelSaveError.value = ''
+  form.apiCallbackUrl = ''
+  form.apiCallbackSecret = ''
+  form.apiAllowedOrigins = ''
+  form.apiRepeatPurchasable = false
+  for (const key of Object.keys(selectedTagIdsByGroup)) {
+    delete selectedTagIdsByGroup[Number(key)]
+  }
+}
+
+async function loadResource(): Promise<boolean> {
+  const generation = ++resourceLoadGeneration
   const resourceId = Number(route.params.resourceId)
   if (!Number.isInteger(resourceId) || resourceId <= 0) {
     showToast('资源编号无效', 'warning')
     router.replace({ name: 'dev-resource-list' })
-    return
+    return false
   }
 
   if (!auth.token) {
     showToast('登录状态已失效，请重新登录', 'error')
     router.replace(buildUnifiedAuthUrl('login', route.fullPath))
-    return
+    return false
   }
 
   loading.value = true
   try {
     const payload = await getMcResource(auth.token, resourceId)
+    // 快速切换资源时，旧请求的响应直接丢弃
+    if (generation !== resourceLoadGeneration) return false
     resource.value = payload
     form.title = payload.title
     form.author = payload.author
@@ -803,8 +837,8 @@ async function loadResource() {
     form.originNote = payload.origin_note || ''
     form.priceYuan = fenToYuanText(payload.price_fen ?? 0)
     form.pricePoints = String(Math.max(0, Math.trunc(Number(payload.price_points ?? 0))))
-    // R029：比例以万分比存，回显换算回百分比文本（1000 → '10'；0 → ''）
-    form.promoSharePercent = promoShareBpsToPercentText(payload.promo_share_bps)
+    // R029：比例以万分比存，回显换算回百分比数值（1000 → 10；0 → 0）
+    form.promoSharePercent = Number(promoShareBpsToPercentText(payload.promo_share_bps) || 0)
     form.copyrightDeclared = Boolean(payload.copyright_declared)
     form.resourceKind = isApiResourceKind(payload.resource_kind) ? 'api' : 'normal'
     coverPreview.value = payload.cover_url ? apiUrl(payload.cover_url) : ''
@@ -812,9 +846,12 @@ async function loadResource() {
 
     // 接口资源才去读渠道配置（回调地址 / 掩码 / 允许来源）；普通资源不打扰后端
     if (form.resourceKind === 'api') {
-      await loadApiChannel(payload.id)
+      await loadApiChannel(payload.id, generation)
     }
+    return generation === resourceLoadGeneration
   } catch (error) {
+    // 旧请求的失败不该弹给已经切到新资源的页面
+    if (generation !== resourceLoadGeneration) return false
     // 404 同时覆盖「资源不存在」与「私有/待审资源无权查看」，按后端原文弹「not found」对用户没意义
     const message =
       error instanceof HttpError && error.status === 404
@@ -824,8 +861,9 @@ async function loadResource() {
           : '加载资源详情失败'
     showToast(message, 'error')
     router.replace({ name: 'dev-resource-list' })
+    return false
   } finally {
-    loading.value = false
+    if (generation === resourceLoadGeneration) loading.value = false
   }
 }
 
@@ -838,6 +876,11 @@ async function saveHomepage() {
   // 锁定态只是前置拦截；后端 PATCH 主页接口仍会以 409 + 中文提示兜底。
   if (isResourceArchiveLocked(resource.value)) {
     showToast(RESOURCE_ARCHIVE_LOCKED_MESSAGE, 'warning')
+    return
+  }
+
+  if (needsApiAgreement.value) {
+    showToast('请先签署《接口使用协议》后再编辑接口资源', 'warning')
     return
   }
 
@@ -967,7 +1010,6 @@ async function saveHomepage() {
       price_fen: priceParsed.fen,
       price_points: isApiKind.value ? 0 : pointsParsed.points,
       copyright_declared: form.copyrightDeclared,
-      resource_kind: form.resourceKind,
       // R029：比例整体提交，0 也显式下发——清空回 0 这种操作不能靠省略字段变成静默失效
       promo_share_bps: promoParsed.bps,
     })
@@ -984,7 +1026,7 @@ async function saveHomepage() {
     form.originNote = updated.origin_note || ''
     form.priceYuan = fenToYuanText(updated.price_fen ?? 0)
     form.pricePoints = String(Math.max(0, Math.trunc(Number(updated.price_points ?? 0))))
-    form.promoSharePercent = promoShareBpsToPercentText(updated.promo_share_bps)
+    form.promoSharePercent = Number(promoShareBpsToPercentText(updated.promo_share_bps) || 0)
     form.copyrightDeclared = Boolean(updated.copyright_declared)
     selectedCoverFile.value = null
     coverPreview.value = updated.cover_url ? apiUrl(updated.cover_url) : ''
@@ -1069,6 +1111,19 @@ onMounted(async () => {
   applyResourceTagSelections()
   syncAutoGeneratedDescription()
 })
+
+// 同一路由内只改资源 ID 时组件不会重新挂载：手动复位只属于上一个资源的状态并重载
+watch(
+  () => route.params.resourceId,
+  async (next, previous) => {
+    if (next === undefined || next === previous) return
+    resetResourceScopedState()
+    if (!(await loadResource())) return
+    await loadTagTree()
+    applyResourceTagSelections()
+    syncAutoGeneratedDescription()
+  },
+)
 </script>
 
 <template>
@@ -1143,7 +1198,7 @@ onMounted(async () => {
             variant="solid"
             tone="accent"
             :loading="saving"
-            :disabled="archiveLocked"
+            :disabled="archiveLocked || needsApiAgreement"
             @click="saveHomepage"
             ><template #prefix
               ><TIcon><Check /></TIcon
@@ -1169,6 +1224,18 @@ onMounted(async () => {
       :description="RESOURCE_ARCHIVE_LOCKED_MESSAGE"
     />
 
+    <section v-if="needsApiAgreement" class="dev-api-agreement-notice">
+      <TAlert
+        tone="warning"
+        variant="soft"
+        title="请先签署《接口使用协议》"
+        description="该接口资源需要补签协议后才能继续编辑或配置；补签前开放下单也会暂停。"
+      />
+      <TButton variant="solid" tone="accent" @click="goSignApiAgreement">
+        去签署接口使用协议
+      </TButton>
+    </section>
+
     <TLoading tag="section" class="dev-resource-homepage-editor__layout" :loading="loading">
       <div class="dev-resource-homepage-editor__forms">
         <TCard class="dev-surface-card dev-upload-combined-card">
@@ -1181,6 +1248,14 @@ onMounted(async () => {
 
             <TForm label-position="top" class="dev-upload-form">
               <div class="dev-basic-info-grid">
+                <TFormItem label="图标文件" class="dev-basic-info-grid__icon">
+                  <ResourceIconPicker
+                    :model-value="coverPreview"
+                    @update:model-value="handleCoverPreviewChange"
+                    v-model:file="selectedCoverFile"
+                  />
+                </TFormItem>
+
                 <TFormItem label="资源标题" required class="dev-basic-info-grid__title">
                   <TInput
                     show-count
@@ -1188,16 +1263,6 @@ onMounted(async () => {
                     :maxlength="120"
                     placeholder="输入资源标题"
                   />
-                </TFormItem>
-
-                <TFormItem label="资源类别" required class="dev-basic-info-grid__kind">
-                  <TSelect v-model="form.resourceKind">
-                    <TOption label="普通资源（大厅公开展示）" value="normal" />
-                    <TOption label="接口资源（不公开展示，指定来源下单）" value="api" />
-                  </TSelect>
-                  <p class="dev-field-hint">
-                    改成「接口资源」后，下面的接入配置随「保存主页」一起生效；它不再进大厅、首页精选与公开搜索。
-                  </p>
                 </TFormItem>
 
                 <TFormItem label="归属类型" required class="dev-basic-info-grid__ownership">
@@ -1245,16 +1310,31 @@ onMounted(async () => {
                   </p>
                 </TFormItem>
 
-                <!-- R029 推广分成比例：0～50（%），留空 = 关闭；随「保存主页」一次提交（promo_share_bps） -->
-                <TFormItem label="推广分成比例" class="dev-basic-info-grid__promo">
-                  <TInput
-                    v-model="form.promoSharePercent"
-                    placeholder="0～50，留空 = 关闭"
-                    inputmode="decimal"
-                    title="百分比，最高 50%"
-                  />
+                <!-- R029 推广分成比例：0～50（%），0 = 关闭；随「保存主页」一次提交（promo_share_bps） -->
+                <TFormItem
+                  label="推广分成比例"
+                  class="dev-basic-info-grid__promo"
+                  :class="{ 'dev-basic-info-grid__promo--inline': isApiKind }"
+                >
+                  <div class="dev-promo-share">
+                    <input
+                      v-model.number="form.promoSharePercent"
+                      class="dev-promo-share__range"
+                      type="range"
+                      min="0"
+                      max="50"
+                      step="1"
+                      :title="promoShareDisplay"
+                      aria-label="推广分成比例（百分比，0 表示关闭）"
+                    />
+                    <span
+                      class="dev-promo-share__value"
+                      :class="{ 'is-off': promoSharePercentValue <= 0 }"
+                      >{{ promoShareDisplay }}</span
+                    >
+                  </div>
                   <p class="dev-field-hint">
-                    按百分比填写（0～50，留空 =
+                    拖动选择比例（0～50，0 =
                     关闭）。这笔钱<strong>从你的净收里出</strong>，平台抽成不变；
                     只在买家带着推广码下单、且推广者已实名并有渠道结算账户时才真正分账。
                     积分购不参与推广分成（比例可以存，但对积分单无效）。
@@ -1262,14 +1342,6 @@ onMounted(async () => {
                   <p v-if="promoShareError" class="dev-field-hint dev-field-hint--error">
                     {{ promoShareError }}
                   </p>
-                </TFormItem>
-
-                <TFormItem label="图标文件" class="dev-basic-info-grid__icon">
-                  <ResourceIconPicker
-                    :model-value="coverPreview"
-                    @update:model-value="handleCoverPreviewChange"
-                    v-model:file="selectedCoverFile"
-                  />
                 </TFormItem>
 
                 <TFormItem label="资源简介" required class="dev-basic-info-grid__desc">
@@ -1413,19 +1485,11 @@ onMounted(async () => {
                       <TSwitch v-model="form.apiRepeatPurchasable" aria-label="允许重复购买" />
                       <span>允许重复购买</span>
                     </label>
-                    <label class="dev-api-switch">
-                      <TSwitch v-model="form.apiAllowStrangers" aria-label="允许陌生用户购买" />
-                      <span>允许陌生用户购买</span>
-                    </label>
                   </div>
                 </TFormItem>
 
-                <TFormItem label="是否公开展示" class="dev-form-item--short">
-                  <TTag variant="soft" tone="neutral">不在大厅展示</TTag>
-                </TFormItem>
-
                 <!-- 顺序是有意的：可伸缩的多行清单放最后，行尾余量落在它身上，
-                     最后一行不会被撑成半空；购买限制与是否公开展示按内容取宽、并排成一行。 -->
+                     最后一行不会被撑成半空；购买限制按内容取宽，和它并排成一行。 -->
                 <TFormItem label="允许的来源地址" class="dev-form-item--wide">
                   <TInput
                     v-model="form.apiAllowedOrigins"
@@ -1653,9 +1717,9 @@ onMounted(async () => {
 
 /*
   基础信息 12 列分区（侧栏预览时主栏约 500px，一行塞 4 个会截断）：
-  1) 标题通栏
+  1) 图标 | 标题
   2) 归属 | 类型 | 售价
-  3) 图标 + 简介并排（吃掉原先图标单独占行留下的空白）
+  3) 简介通栏
 */
 .dev-basic-info-grid {
   display: grid;
@@ -1664,8 +1728,6 @@ onMounted(async () => {
   align-items: start;
 }
 
-.dev-basic-info-grid__title,
-.dev-basic-info-grid__kind,
 .dev-basic-info-grid__promo,
 .dev-basic-info-grid__copyright,
 .dev-basic-info-grid__span,
@@ -1673,9 +1735,9 @@ onMounted(async () => {
   grid-column: span 12;
 }
 
-/* 比例只是个百分比，通栏的行里把输入框收窄，别拉成一整条 */
-.dev-basic-info-grid__promo :deep(.t73-input) {
-  max-width: 240px;
+/* 接口资源的售价行右侧还有半行空位，推广分成并排放在售价右边 */
+.dev-basic-info-grid__promo--inline {
+  grid-column: span 6;
 }
 
 .dev-basic-info-grid__ownership {
@@ -1690,9 +1752,9 @@ onMounted(async () => {
   grid-column: span 3;
 }
 
-/* 接口资源不渲染「积分售价」：售价（元）补到 6 档，这一行仍然铺满 12 档 */
+/* 接口资源不渲染「类型」「积分售价」：售价（元）与归属类型同宽，不拉宽填充空位 */
 .dev-basic-info-grid__price--wide {
-  grid-column: span 6;
+  grid-column: span 3;
 }
 
 .dev-basic-info-grid__points {
@@ -1703,8 +1765,12 @@ onMounted(async () => {
   grid-column: span 3;
 }
 
-.dev-basic-info-grid__desc {
+.dev-basic-info-grid__title {
   grid-column: span 9;
+}
+
+.dev-basic-info-grid__desc {
+  grid-column: span 12;
 }
 
 .dev-basic-info-grid__repost-author {
@@ -1756,7 +1822,6 @@ onMounted(async () => {
   }
 
   .dev-basic-info-grid__title,
-  .dev-basic-info-grid__kind,
   .dev-basic-info-grid__promo,
   .dev-basic-info-grid__ownership,
   .dev-basic-info-grid__origin,
@@ -1778,11 +1843,20 @@ onMounted(async () => {
   margin: 0 0 16px;
 }
 
-/* R028 接口资源配置区 */
-.dev-basic-info-grid__kind :deep(.t73-select) {
-  max-width: 460px;
+.dev-api-agreement-notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 16px;
 }
 
+.dev-api-agreement-notice > :first-child {
+  flex: 1 1 420px;
+  margin: 0;
+}
+
+/* R028 接口资源配置区 */
 .dev-api-notice,
 .dev-api-retry-notice {
   margin: 0 0 4px;

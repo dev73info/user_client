@@ -47,7 +47,7 @@ export type CreateMcResourceRequest = {
   price_points?: number | null
   /** 版权声明勾选 */
   copyright_declared?: boolean | null
-  /** 资源类别：normal = 大厅公开展示（默认）；api = 不公开展示，只能由指定来源下单 */
+  /** 资源类别在创建时确定，创建后不可更改；传与当前值不同的值后端会拒绝 */
   resource_kind?: McResourceKind | null
   /** 资源售卖推广分成比例（万分比）：0 = 关闭，1..5000 = 0.01%..50% */
   promo_share_bps?: number | null
@@ -411,8 +411,6 @@ export type ResourceApiChannelPayload = {
   /** 掩码，例如 sk***ab；明文任何响应都不回 */
   callback_secret_masked: string | null
   callback_secret_set: boolean
-  /** 仅记录并透传，平台不做判定 */
-  allow_strangers: boolean
   hidden_from_catalog: boolean
   allowed_origins: string[]
   updated_at: string | null
@@ -422,12 +420,12 @@ export type ResourceApiChannelPayload = {
 }
 
 export type UpdateResourceApiChannelRequest = {
+  /** 资源类别在创建时确定，创建后不可更改；传与当前值不同的值后端会拒绝 */
   resource_kind?: McResourceKind
   repeat_purchasable?: boolean
   callback_url?: string | null
   /** 省略或空串 = 不改；非空 = 覆盖 */
   callback_secret?: string | null
-  allow_strangers?: boolean
   allowed_origins?: string[]
 }
 
