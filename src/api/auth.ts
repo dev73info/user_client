@@ -303,6 +303,7 @@ export type DevAccessStatus = {
   realname_approved: boolean
   is_adult: boolean
   developer_agreement_signed: boolean
+  api_usage_agreement_signed: boolean
 }
 
 /**

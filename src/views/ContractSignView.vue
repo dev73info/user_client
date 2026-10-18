@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { TIcon, ArrowLeft, Refresh } from 'ui_73info'
 import { useRoute, useRouter } from 'vue-router'
 import {
+    fetchApiUsageAgreement,
     fetchAsignContractPreviewUrl,
     fetchDeveloperAgreement,
     fetchMyContract,
@@ -14,7 +15,6 @@ import {
 } from '@/api/contracts'
 import { ATTACHMENT_REVIEW_STATUS, CONTRACT_STATUS, contractEffectiveUntilLabel, contractStatusLabel } from '@/shared/contracts'
 import ContractAttachmentPanel from '@/components/ContractAttachmentPanel.vue'
-import { contractWaitingMessage } from '@/utils/contractSignatures'
 import { fetchRequirementDetail, type RequirementItem } from '@/api/requirements'
 import {
     ARCHIVED_WRITE_BLOCKED_MESSAGE,
@@ -31,7 +31,17 @@ const auth = useAuthStore()
 const requirementId = String(route.query.requirement_id ?? '')
 const isWorkbenchSignature = computed(() => route.name === 'workbench-signature-detail')
 const isDeveloperAgreement = computed(() => route.query.agreement === 'developer' || contract.value?.template_name === 'developer_agreement')
+const isApiUsageAgreement = computed(() => route.query.agreement === 'api' || contract.value?.template_name === 'api_usage_agreement')
+/** 平台与用户之间的内置协议：平台为甲方、用户为乙方，没有需求编号，也没有自定义附件。 */
+const isPlatformAgreement = computed(() => isDeveloperAgreement.value || isApiUsageAgreement.value)
 const DEVELOPER_AGREEMENT_REDIRECT_KEY = '73info_developer_agreement_redirect'
+const API_USAGE_AGREEMENT_REDIRECT_KEY = '73info_api_usage_agreement_redirect'
+
+function agreementRedirectKey(): string {
+    return isApiUsageAgreement.value
+        ? API_USAGE_AGREEMENT_REDIRECT_KEY
+        : DEVELOPER_AGREEMENT_REDIRECT_KEY
+}
 /** 需求合同：记住从哪进来的（`from=user|dev`），爱签整页回跳后 query 会丢。 */
 const REQUIREMENT_SIGN_FROM_KEY = '73info_requirement_sign_from'
 /**
@@ -88,7 +98,7 @@ const redirectTarget = computed(() => {
         return queryTarget
     }
 
-    return normalizeRedirectTarget(readSessionValue(DEVELOPER_AGREEMENT_REDIRECT_KEY))
+    return normalizeRedirectTarget(readSessionValue(agreementRedirectKey()))
 })
 
 function rememberRedirectTarget() {
@@ -96,15 +106,16 @@ function rememberRedirectTarget() {
     if (!target) {
         return
     }
-    writeSessionValue(DEVELOPER_AGREEMENT_REDIRECT_KEY, target)
+    writeSessionValue(agreementRedirectKey(), target)
 }
 
 function clearRememberedRedirectTarget() {
     clearSessionValue(DEVELOPER_AGREEMENT_REDIRECT_KEY)
+    clearSessionValue(API_USAGE_AGREEMENT_REDIRECT_KEY)
 }
 
 function rememberRequirementSignContext() {
-    if (isWorkbenchSignature.value || isDeveloperAgreement.value) {
+    if (isWorkbenchSignature.value || isPlatformAgreement.value) {
         return
     }
     const from = typeof route.query.from === 'string' ? route.query.from.trim() : ''
@@ -230,11 +241,6 @@ const canSignContract = computed(() => {
 // 从需求列表 / 需求会话的「查看合同」进来时，页面同样要能看清是谁在什么时候签的。
 // 只有在本人还需要签署时才收起这些区块，保持签署流程页只聚焦签署动作。
 const showSignatureFacts = computed(() => isWorkbenchSignature.value || !canSignContract.value)
-// 「在等谁签」与「在等渠道同步」的文案判定收在 utils 里，便于单测覆盖（含两人都已签、
-// 本地仍停在「签约中」的同步窗口）。
-const waitingMessage = computed(() =>
-    contract.value ? contractWaitingMessage(contract.value, auth.username) : '',
-)
 const currentSigner = computed(() => (currentParty.value ? partyDisplay(currentParty.value) : null))
 const signerIdentityReady = computed(() => {
     const signer = currentSigner.value
@@ -271,9 +277,9 @@ const attachmentGateMessage = computed(() => {
 const attachmentRequirementId = computed(
     () => contract.value?.requirement_id?.trim() || requirementId,
 )
-/** 自定义附件只存在于需求合同上：开发者入驻协议不展示该面板。 */
+/** 自定义附件只存在于需求合同上：平台内置协议不展示该面板。 */
 const showAttachmentPanel = computed(
-    () => !isDeveloperAgreement.value && Boolean(attachmentRequirementId.value),
+    () => !isPlatformAgreement.value && Boolean(attachmentRequirementId.value),
 )
 const currentPartyAsAttachmentParty = computed<ContractAttachmentParty | null>(
     () => currentParty.value,
@@ -326,8 +332,8 @@ function displayText(value: string | null | undefined, fallback: string): string
 function partyDisplay(party: ContractParty): PartyDisplay | null {
     const item = contract.value
     if (!item) return null
-    // 开发者入驻协议：甲方为平台（官方），乙方为开发者。
-    const partyARole = isDeveloperAgreement.value ? '平台' : '需求方'
+    // 平台内置协议：甲方为平台（官方），乙方为开发者。
+    const partyARole = isPlatformAgreement.value ? '平台' : '需求方'
 
     if (party === 'party_a') {
         return {
@@ -380,6 +386,8 @@ async function loadContract() {
     try {
         if (isWorkbenchSignature.value) {
             contract.value = await fetchMyContract(auth.token, Number(route.params.contractId))
+        } else if (isApiUsageAgreement.value) {
+            contract.value = await fetchApiUsageAgreement(auth.token)
         } else if (isDeveloperAgreement.value) {
             contract.value = await fetchDeveloperAgreement(auth.token)
         } else {
@@ -406,7 +414,7 @@ async function loadContract() {
         }
         // R014：读一次需求详情拿「超期锁定 / 已清除」标记（读取即触发后端收口）。失败不阻断合同展示。
         const rid = contract.value?.requirement_id?.trim() || requirementId
-        if (!isDeveloperAgreement.value && rid) {
+        if (!isPlatformAgreement.value && rid) {
             try {
                 requirementArchive.value = await fetchRequirementDetail(auth.token, rid)
             } catch {
@@ -429,13 +437,14 @@ function continueAfterSignCompleted() {
         return
     }
 
-    if (isDeveloperAgreement.value) {
+    if (isPlatformAgreement.value) {
         if (isWorkbenchSignature.value) {
             return
         }
         stopStatusPolling()
-        // 开发者协议签署完成后，默认回到收益钱包页（用户来源页优先，丢失时回钱包）。
-        const target = redirectTarget.value || { name: 'dev-wallet' }
+        // 平台协议签署完成后回到来源页；来源丢失时，入驻协议回收益钱包，接口协议回接口资源创建页。
+        const target = redirectTarget.value
+            || (isApiUsageAgreement.value ? { name: 'dev-plugins-api' } : { name: 'dev-wallet' })
         clearRememberedRedirectTarget()
         void router.replace(target)
         return
@@ -476,7 +485,7 @@ async function handleSign() {
         const result = await initiateAsignSign(auth.token, contract.value.id, noticeSigner.value)
         // 无论跳爱签还是短信通知后轮询，签完都要离开「签署页原地」；进爱签前先打标，
         // 整页回跳后 sessionStorage 还在，同步到已签约即可继续走。
-        if (!isDeveloperAgreement.value) {
+        if (!isPlatformAgreement.value) {
             markRequirementSignPendingReturn()
             rememberRequirementSignContext()
         }
@@ -535,7 +544,7 @@ function goBack() {
         router.push({ name: 'workbench-signatures' })
         return
     }
-    if (isDeveloperAgreement.value) {
+    if (isPlatformAgreement.value) {
         router.push({ name: 'workbench' })
         return
     }
@@ -563,7 +572,7 @@ function goBecomeDeveloper() {
 
 onMounted(async () => {
     auth.hydrate()
-    if (!isWorkbenchSignature.value && !isDeveloperAgreement.value && !requirementId) {
+    if (!isWorkbenchSignature.value && !isPlatformAgreement.value && !requirementId) {
         router.replace('/')
         return
     }
@@ -589,7 +598,7 @@ onUnmounted(() => {
             <!-- 工作台外壳不再铺页面标题栏，签署页自己出示标题与返回（两种入口同一套页头） -->
             <header class="panel-head">
                 <div class="panel-head__title">
-                    <h2>{{ isDeveloperAgreement ? '开发者入驻协议' : '需求服务合同' }}</h2>
+                    <h2>{{ isApiUsageAgreement ? '接口使用协议' : isDeveloperAgreement ? '开发者入驻协议' : '需求服务合同' }}</h2>
                     <p v-if="canSignContract" class="lead">请核对实名认证身份后完成签署。</p>
                 </div>
                 <button type="button" class="btn-secondary panel-head__back" @click="goBack">
@@ -616,9 +625,9 @@ onUnmounted(() => {
                                 }}</span></p>
                         <p><strong>合同指纹：</strong><span class="hash-text">{{ contract.content_sha256 }}</span></p>
                         <!-- R014：担保合同的有效期截止（＝后签方签署时间 + 开发周期）；未签署完成给中文说明，不显示空值。 -->
-                        <p v-if="!isDeveloperAgreement"><strong>有效期截止：</strong><span
+                        <p v-if="!isPlatformAgreement"><strong>有效期截止：</strong><span
                                 data-testid="contract-effective-until">{{ effectiveUntilLabel }}</span></p>
-                        <p v-if="!isDeveloperAgreement && developmentCycleText"><strong>开发周期：</strong><span
+                        <p v-if="!isPlatformAgreement && developmentCycleText"><strong>开发周期：</strong><span
                                 data-testid="contract-development-cycle">{{ developmentCycleText }}</span></p>
                         <!-- CT-2：平台作废不联动爱签（爱签 OpenAPI 没有作废/撤回接口），
                              用户可能在渠道侧仍看到这份合同，必须在页面上讲清楚边界。 -->
@@ -711,7 +720,7 @@ onUnmounted(() => {
 
                 </section>
 
-                <div v-if="canSignContract || waitingMessage || showBecomeDeveloper" class="contract-actions">
+                <div v-if="canSignContract || showBecomeDeveloper" class="contract-actions">
                     <label v-if="canSignContract" class="notice-toggle">
                         <input v-model="noticeSigner" type="checkbox" />
                         <span>短信通知签署</span>
@@ -722,7 +731,6 @@ onUnmounted(() => {
                     <span v-if="requirementArchived" class="badge-pending" data-testid="contract-archive-locked-note">
                         {{ archiveSignBlockedMessage }}
                     </span>
-                    <span v-else-if="waitingMessage" class="badge-pending">{{ waitingMessage }}</span>
                     <button
                         v-if="showBecomeDeveloper"
                         class="btn-primary"

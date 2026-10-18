@@ -224,6 +224,16 @@ export async function fetchDeveloperAgreement(
   )
 }
 
+export async function fetchApiUsageAgreement(
+  token: string,
+): Promise<ContractDetail> {
+  return requestJson<ContractDetail>(
+    '/contracts/api-usage-agreement',
+    { headers: authHeader(token) },
+    '获取接口使用协议失败',
+  )
+}
+
 /**
  * 由需求方或已接单开发者主动发起《需求开发合同》。
  * 接单不再自动建合同，双方任一当事人均可发起（幂等）。

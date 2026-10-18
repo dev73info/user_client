@@ -21,6 +21,7 @@ import {
   isPurchaseRequiredError,
   needsPurchase,
   normalizePromoCode,
+  normalizeYuanPriceText,
   parsePointsPriceInput,
   parsePromoSharePercentInput,
   parseResourceListingSale,
@@ -86,6 +87,23 @@ describe('resourceSale', () => {
     // 越界 / 负数按边界收敛
     expect(caretAfterStripLeadingZeros('00100', 99)).toBe(3)
     expect(caretAfterStripLeadingZeros('00100', -3)).toBe(0)
+  })
+
+  it('normalizeYuanPriceText keeps at most two decimal places', () => {
+    // 末尾光标（caret = 文本长度）
+    expect(normalizeYuanPriceText('0.0001', 6)).toEqual({ text: '0.00', caret: 4 })
+    expect(normalizeYuanPriceText('1.234', 5)).toEqual({ text: '1.23', caret: 4 })
+    expect(normalizeYuanPriceText('1.2', 3)).toEqual({ text: '1.2', caret: 3 })
+    expect(normalizeYuanPriceText('00100', 5)).toEqual({ text: '100', caret: 3 })
+    expect(normalizeYuanPriceText('.5', 2)).toEqual({ text: '0.5', caret: 3 })
+    expect(normalizeYuanPriceText('1.2.3', 5)).toEqual({ text: '1.23', caret: 4 })
+    // 非法字符（如粘贴进来的货币符号）直接丢弃
+    expect(normalizeYuanPriceText('¥ 12.30', 7)).toEqual({ text: '12.30', caret: 5 })
+    // 输入过程中的半成品保持原样，不把小数点吞掉
+    expect(normalizeYuanPriceText('0.', 2)).toEqual({ text: '0.', caret: 2 })
+    expect(normalizeYuanPriceText('', 0)).toEqual({ text: '', caret: 0 })
+    // 不传光标时 caret 为 null（只做文本归一）
+    expect(normalizeYuanPriceText('1.234')).toEqual({ text: '1.23', caret: null })
   })
 
   it('canSwitchToPointsPrice blocks cash → points only', () => {
