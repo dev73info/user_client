@@ -8,7 +8,7 @@ export type ResourcePurchaseOrder = {
   buyer_account?: string | null
   /** 开发者侧外部用户 ID（R034 接口资源订单才有；普通单为 null） */
   buyer_external_id?: string | null
-  /** 订单来源：normal / api（R034 之前的历史单可能没有该字段） */
+  /** 订单来源：platform / api（R034 之前的历史单可能没有该字段） */
   source_kind?: string | null
   resource_id: number
   resource_title: string | null
