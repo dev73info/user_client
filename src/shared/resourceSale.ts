@@ -413,6 +413,17 @@ export function resourcePurchaseStatusLabel(status: string): string {
   }
 }
 
+/** 接口资源订单（R034）：`source_kind === 'api'`，或已记录平台买家 `buyer_account`。 */
+export function isApiResourcePurchaseOrder(order: {
+  source_kind?: string | null
+  buyer_account?: string | null
+}): boolean {
+  return (
+    (order.source_kind ?? '').trim().toLowerCase() === 'api' ||
+    Boolean(order.buyer_account?.trim())
+  )
+}
+
 /* ---------------------------------------------------------------------------
  * R029 售卖推广分成：比例解析 / 回显、推广码归一化、未归因原因与分账状态文案。
  * 与后端契约同口径（万分比，0 = 关闭，上限 5000 = 50%），见任务-01 §3。

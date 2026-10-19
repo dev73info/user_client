@@ -117,6 +117,16 @@ const router = createRouter({
       component: () => import('@/views/PaymentView.vue'),
     },
     {
+      // R034 接口资源收银台：开发者站点带一次性票据跳进来，换票后即为登录态。
+      path: '/checkout',
+      name: 'api-resource-checkout',
+      component: () => import('@/views/ApiResourceCheckoutView.vue'),
+      meta: {
+        title: '收银台',
+        hideSiteFooter: true,
+      },
+    },
+    {
       // 「我的邀请」已并入「勋章与邀请」页（`/workbench/badges`）：别名同样落到合并页。
       path: '/invite',
       name: 'invite',
@@ -522,6 +532,9 @@ router.beforeEach(async (to, from, next) => {
     })
   }
 
+  const hasCheckoutTicket =
+    typeof to.query.ticket === 'string' && to.query.ticket.trim().length > 0
+
   const authRequired =
     to.path.startsWith('/workbench') ||
     to.path.startsWith('/invite') ||
@@ -531,6 +544,8 @@ router.beforeEach(async (to, from, next) => {
     (to.name === 'payment' &&
       !isWechatPaymentHandoff(to.query) &&
       !isResourceWechatMiddlePage(to.query)) ||
+    // R034 收银台：带一次性票据时无需登录（票据换 JWT）；不带票据按普通页面要求登录
+    (to.name === 'api-resource-checkout' && !hasCheckoutTicket) ||
     to.name === 'tickets' ||
     to.name === 'contract-sign' ||
     to.name === 'realname'

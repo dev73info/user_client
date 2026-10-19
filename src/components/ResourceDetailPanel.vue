@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
 import { common, createLowlight } from 'lowlight'
 import { useRoute, useRouter } from 'vue-router'
@@ -23,7 +23,6 @@ import {
 } from '@/api/resources'
 import {
   createResourcePurchase,
-  getMyResourcePurchase,
   type ResourcePurchaseOrder,
 } from '@/api/resourcePurchase'
 import { getAdapayClientPlatform } from '@/api/adapay'
@@ -44,10 +43,10 @@ import { getMyPoints } from '@/api/points'
 import { useAuthStore } from '@/stores/auth'
 import { useDownloadStore } from '@/stores/download'
 import { useResourceDownload } from '@/composables/useResourceDownload'
+import { useResourcePayment } from '@/composables/useResourcePayment'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
-import QRCode from 'qrcode'
 import { TLoading, TMessage } from 'ui_73info'
 
 type CommentGate = {
@@ -117,8 +116,6 @@ const pageContentRef = ref<HTMLElement | null>(null)
 const purchasePanelOpen = ref(false)
 const purchaseSubmitting = ref(false)
 const purchaseChannel = ref<ResourcePayChannelUi>('alipay')
-const purchaseOrder = ref<ResourcePurchaseOrder | null>(null)
-const purchaseQrDataUrl = ref('')
 /**
  * 购买失败原因：原样透传后端返回的文案（后端 409/500 的响应体会被 requestJson 读成
  * HttpError.message）。toast 只停留 2.6 秒，失败后用户常常看不到原因就重复下单，
@@ -126,17 +123,30 @@ const purchaseQrDataUrl = ref('')
  */
 const purchaseError = ref('')
 const buyerPointsBalance = ref<number | null>(null)
-let purchasePollTimer: ReturnType<typeof setInterval> | null = null
 /** 切换支付渠道防抖，避免连点支付宝/微信刷出一堆订单 */
 let channelSwitchTimer: ReturnType<typeof setTimeout> | null = null
 /** 下单串行队列：同一时刻只跑一笔，避免并发抢改同一条 pending */
 let purchaseSubmitChain: Promise<void> = Promise.resolve()
+
 /**
- * 支付面世代号：每次作废（切渠道 / 重新拉单）递增。
- * 下单响应、轮询响应、二维码渲染都必须持有当前世代号，过期的一律丢弃，
- * 不得把旧渠道单重新挂回可付款面（R031）。
+ * 支付面（订单 / 二维码 / 世代号）与轮询统一由 `useResourcePayment` 管理。
+ * 支付面世代号：每次作废（切渠道 / 重新拉单）递增；下单响应、轮询响应、二维码渲染
+ * 都必须持有当前世代号，过期的一律丢弃，不得把旧渠道单重新挂回可付款面（R031）。
  */
-let purchaseSurfaceGeneration = 0
+const {
+  order: purchaseOrder,
+  qrDataUrl: purchaseQrDataUrl,
+  generation: purchaseSurfaceGeneration,
+  stopPoll: stopPurchasePoll,
+  invalidateSurface: invalidatePurchaseSurface,
+  renderQr: maybeRenderPurchaseQr,
+  startPoll: startPurchasePoll,
+  pollOnce: pollPurchaseOnce,
+} = useResourcePayment({
+  getToken: () => auth.token,
+  onPaid: (order) => handlePurchasePaid(order),
+  notifyClosed: () => TMessage.warning('支付未完成，请重新发起购买'),
+})
 
 const tagNames = computed(
   () => resource.value?.tag_selections.flatMap((item) => item.tag_names) ?? [],
@@ -463,29 +473,11 @@ function formatUpdatedDate(value: string): string {
   })
 }
 
-function stopPurchasePoll() {
-  if (purchasePollTimer !== null) {
-    clearInterval(purchasePollTimer)
-    purchasePollTimer = null
-  }
-}
-
 function clearChannelSwitchTimer() {
   if (channelSwitchTimer !== null) {
     clearTimeout(channelSwitchTimer)
     channelSwitchTimer = null
   }
-}
-
-/**
- * 作废当前支付面：清掉对旧渠道单的引用与二维码，并递增世代号。
- * 切渠道 / 重新拉单时调用——此后旧单的迟到下单 / 轮询 / 渲染响应世代号对不上，不会复活旧的可付款面。
- */
-function invalidatePurchaseSurface() {
-  stopPurchasePoll()
-  purchaseSurfaceGeneration += 1
-  purchaseOrder.value = null
-  purchaseQrDataUrl.value = ''
 }
 
 /** 当前资源是否已有可复用的待支付码（同渠道），避免弹窗反复开关再插新单 */
@@ -600,61 +592,6 @@ async function handlePurchasePaid(order: ResourcePurchaseOrder) {
   purchasePanelOpen.value = false
 }
 
-async function maybeRenderPurchaseQr(order: ResourcePurchaseOrder, generation: number) {
-  const content = order.pay_url?.trim()
-  if (!content) {
-    if (generation === purchaseSurfaceGeneration) {
-      purchaseQrDataUrl.value = ''
-    }
-    return
-  }
-  let dataUrl = ''
-  try {
-    dataUrl = await QRCode.toDataURL(content, {
-      width: 220,
-      margin: 1,
-    })
-  } catch {
-    dataUrl = ''
-  }
-  // 渲染是异步的：期间若已切渠道（世代号变了），旧渠道的码不得落到支付面上
-  if (generation !== purchaseSurfaceGeneration) {
-    return
-  }
-  purchaseQrDataUrl.value = dataUrl
-}
-
-async function pollPurchaseOnce(orderNo: string, generation: number) {
-  if (!auth.token?.trim()) {
-    return
-  }
-  try {
-    const latest = await getMyResourcePurchase(auth.token, orderNo)
-    // 迟到的轮询响应：该单已不是当前支付面（切过渠道）→ 丢弃，不复活旧单
-    if (generation !== purchaseSurfaceGeneration) {
-      return
-    }
-    purchaseOrder.value = latest
-    if (latest.status === 'paid') {
-      await handlePurchasePaid(latest)
-    } else if (latest.status === 'failed' || latest.status === 'closed') {
-      stopPurchasePoll()
-      TMessage.warning('支付未完成，请重新发起购买')
-    }
-  } catch {
-    /* 轮询失败不打断扫码流程 */
-  }
-}
-
-function startPurchasePoll(orderNo: string, generation = purchaseSurfaceGeneration) {
-  stopPurchasePoll()
-  // 立刻查一次：后端会对 pending 主动问渠道，不必干等首个 interval
-  void pollPurchaseOnce(orderNo, generation)
-  purchasePollTimer = setInterval(() => {
-    void pollPurchaseOnce(orderNo, generation)
-  }, 4000)
-}
-
 /**
  * 仅微信内置浏览器需要先做静默授权拿 openid；
  * PC / 普通浏览器：后端回本站中间页 URL 画码，手机扫码后在中间页 OAuth + JSAPI。
@@ -708,7 +645,7 @@ async function runSubmitPurchase() {
   }
   // 世代号：本轮下单期间若用户切了渠道（`invalidatePurchaseSurface` 会递增），
   // 之后每个落点都比对一次，过期就整轮丢弃——旧渠道的迟到响应不得挂回可付款面
-  const requestedGeneration = purchaseSurfaceGeneration
+  const requestedGeneration = purchaseSurfaceGeneration.value
   purchaseSubmitting.value = true
   purchaseError.value = ''
   try {
@@ -725,7 +662,7 @@ async function runSubmitPurchase() {
       return
     }
     // 排队间隙用户又切了渠道：以当前选择为准，避免为过期渠道再落单
-    if (requestedGeneration !== purchaseSurfaceGeneration) {
+    if (requestedGeneration !== purchaseSurfaceGeneration.value) {
       return
     }
     // 微信内：先静默授权拿 openid，再走 wx_pub JSAPI；
@@ -736,7 +673,7 @@ async function runSubmitPurchase() {
         return
       }
     }
-    if (requestedGeneration !== purchaseSurfaceGeneration) {
+    if (requestedGeneration !== purchaseSurfaceGeneration.value) {
       return
     }
     const order = await createResourcePurchase(auth.token, resource.value.id, {
@@ -745,7 +682,7 @@ async function runSubmitPurchase() {
       // R029：只有现金单带推广码（积分单不带，后端对积分单也忽略该字段）
       ...(activePromoCode.value ? { promo_code: activePromoCode.value } : {}),
     })
-    if (requestedGeneration !== purchaseSurfaceGeneration) {
+    if (requestedGeneration !== purchaseSurfaceGeneration.value) {
       return
     }
     purchaseOrder.value = order
@@ -754,7 +691,7 @@ async function runSubmitPurchase() {
       return
     }
     await maybeRenderPurchaseQr(order, requestedGeneration)
-    if (requestedGeneration !== purchaseSurfaceGeneration) {
+    if (requestedGeneration !== purchaseSurfaceGeneration.value) {
       return
     }
     if (!order.pay_url?.trim()) {
@@ -762,7 +699,7 @@ async function runSubmitPurchase() {
     }
     startPurchasePoll(order.order_no, requestedGeneration)
   } catch (error) {
-    if (requestedGeneration !== purchaseSurfaceGeneration) {
+    if (requestedGeneration !== purchaseSurfaceGeneration.value) {
       return
     }
     const message = error instanceof Error ? error.message : '创建购买订单失败'
@@ -1102,10 +1039,6 @@ async function loadResource() {
 onMounted(() => {
   auth.hydrate()
   void loadResource()
-})
-
-onBeforeUnmount(() => {
-  stopPurchasePoll()
 })
 
 watch(
