@@ -22,6 +22,7 @@ import { useAuthStore } from '@/stores/auth'
 import {
   fenToYuanText,
   formatPurchaseAmountLabel,
+  isApiResourcePurchaseOrder,
   resourcePurchaseStatusLabel,
 } from '@/shared/resourceSale'
 
@@ -303,9 +304,12 @@ onBeforeUnmount(() => {
         <ul class="wb-list" aria-label="已购资源订单">
           <li v-for="order in orders" :key="order.order_no" class="wb-item">
             <div class="wb-item__main">
-              <button type="button" class="wb-item__title purchases__title" @click="openResource(order)">
-                {{ order.resource_title || `资源 #${order.resource_id}` }}
-              </button>
+              <div class="wb-item__title-row">
+                <button type="button" class="wb-item__title purchases__title" @click="openResource(order)">
+                  {{ order.resource_title || `资源 #${order.resource_id}` }}
+                </button>
+                <span v-if="isApiResourcePurchaseOrder(order)" class="purchases__tag">接口资源</span>
+              </div>
               <span class="wb-item__meta">
                 订单 {{ order.order_no }} · {{ resourcePurchaseStatusLabel(order.status) }} ·
                 {{ formatPurchaseAmountLabel(order) }}
@@ -319,9 +323,6 @@ onBeforeUnmount(() => {
               <!-- R029 推广分成：只在真有分成时补一行金额；买家侧不显示推广者是谁、也不显示未归因原因 -->
               <span v-if="order.promoter_fee_fen > 0" class="wb-item__meta">
                 含推广分成 ¥{{ fenToYuanText(order.promoter_fee_fen) }}
-              </span>
-              <span v-if="order.status === 'paid'" class="wb-item__meta">
-                退款由卖家或平台发起，如需退款请联系卖家或客服。
               </span>
             </div>
             <div class="wb-item__actions">
@@ -360,6 +361,26 @@ onBeforeUnmount(() => {
   font-weight: 700;
   text-align: left;
   cursor: pointer;
+}
+
+.wb-item__title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* R034 接口资源订单标签：与普通已购订单共用同一列表，只补一个来源标记。 */
+.purchases__tag {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.85);
+  background: rgba(239, 246, 255, 0.92);
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 .wb-item__actions {
