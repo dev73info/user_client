@@ -62,9 +62,15 @@ export default defineConfig({
     cssCodeSplit: false,
     rollupOptions: {
       output: {
-        entryFileNames: 'assets/[name].js',
-        chunkFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/[name].[ext]',
+        // 文件名带内容 hash：改版后旧 chunk 与新 chunk 的 URL 互不冲突，
+        // 已打开的旧页面继续按旧文件名取到旧文件，切换瞬间不会混版本。
+        // 这也是 /assets/ 能安全长缓存（immutable）的前提。
+        //
+        // 注意：spa-fallback.html 与各条 SEO 快照都是构建期从 dist/index.html
+        // 派生的（scripts/generate-seo-pages.mjs），会跟着拿到新文件名，不用单独改。
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks(id) {
           const normalizedId = id.replace(/\\/g, '/')
 
