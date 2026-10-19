@@ -4,6 +4,12 @@ import { toResourcePayChannel, type ResourcePayChannelUi } from '@/shared/resour
 export type ResourcePurchaseOrder = {
   order_no: string
   buyer: string
+  /** 真实买家的平台用户名（R034 接口资源订单才有；普通单为 null） */
+  buyer_account?: string | null
+  /** 开发者侧外部用户 ID（R034 接口资源订单才有；普通单为 null） */
+  buyer_external_id?: string | null
+  /** 订单来源：platform / api（R034 之前的历史单可能没有该字段） */
+  source_kind?: string | null
   resource_id: number
   resource_title: string | null
   seller: string
@@ -191,6 +197,33 @@ export async function getMyResourcePurchase(
     `/dev/resources/purchases/${encodeURIComponent(orderNo)}`,
     { method: 'GET', headers: authHeaders(token) },
     '加载购买订单失败',
+  )
+}
+
+/** R034 一次性收银台票据换来的登录会话（POST /api/resource/open/checkout/exchange）。 */
+export type CheckoutTicketExchangeResult = {
+  token: string
+  username: string
+  order_no: string
+}
+
+/**
+ * POST /api/resource/open/checkout/exchange
+ *
+ * 票据本身就是凭据，不带 `Authorization`。票据单次使用、10 分钟有效，
+ * 失败由后端给出 400 / 404 / 409 / 410 与中文文案，这里原样透传。
+ */
+export async function exchangeCheckoutTicket(
+  ticket: string,
+): Promise<CheckoutTicketExchangeResult> {
+  return requestJson<CheckoutTicketExchangeResult>(
+    '/resource/open/checkout/exchange',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticket }),
+    },
+    '收银台登录失败',
   )
 }
 

@@ -353,6 +353,27 @@ export const useAuthStore = defineStore('auth', () => {
     void initializeSession(true).catch(() => undefined)
   }
 
+  /**
+   * R034：接口资源收银台用一次性票据换到的会话落到本地。
+   *
+   * 复用登录链路的 `applyAuthPayload` / `persist`（令牌、持久化、刷新调度都在里面），
+   * 不另写一份 localStorage 逻辑。换票响应只带用户名、不带角色，随后用
+   * `initializeSession(true)` 向服务端补齐角色；补齐失败不影响已经落盘的令牌。
+   */
+  async function applyExternalSession(payload: { token: string; username?: string }): Promise<void> {
+    const nextToken = payload.token.trim()
+    if (!nextToken) {
+      throw new Error('登录凭证为空')
+    }
+
+    applyAuthPayload({ token: nextToken, username: payload.username })
+    try {
+      await initializeSession(true)
+    } catch {
+      // 角色信息留待后续鉴权请求补齐，收银台首屏不因此中断。
+    }
+  }
+
   return {
     token,
     username,
@@ -377,6 +398,7 @@ export const useAuthStore = defineStore('auth', () => {
     resetPasswordWithEmail,
     registerWithEmail,
     setToken,
+    applyExternalSession,
     logout,
   }
 })
