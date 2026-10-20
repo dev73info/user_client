@@ -12,11 +12,12 @@ export type PublicTipMessage = {
 /**
  * 公开主页嵌套 `tip` 块（后端的 `PublicTipBlock`）。
  *
- * 开发者未开启打赏时后端只回 `{ enabled: false }`（不泄漏档位与金额），
+ * 开发者两条通道都关闭时后端只回 `{ enabled: false }`（不泄漏档位与金额），
  * 因此除 `enabled` / `public_records` 外的字段都可缺省。
  * `public_records=true` 时才带 `received_cash_fen` / `received_points` / `recent_messages`。
  */
 export type PublicTipBlock = {
+  /** 打赏是否可用（只读派生：现金 / 积分两条通道任一开启即为 true） */
   enabled: boolean
   /** 平台服务费比例（万分比），打赏前展示给打赏者 */
   platform_fee_bps?: number

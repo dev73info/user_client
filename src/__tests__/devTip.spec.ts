@@ -20,7 +20,6 @@ import {
 } from '@/shared/devTip'
 
 const baseConfig = {
-  enabled: true,
   cash_enabled: true,
   points_enabled: true,
   cash_tiers_fen: [500, 1000, 2000],
@@ -34,9 +33,8 @@ const baseConfig = {
 }
 
 describe('devTip', () => {
-  it('通道可用性：总开关关闭则两条都不可用', () => {
+  it('通道可用性：两条通道各自看自己的开关', () => {
     expect(tipChannelAvailability(null)).toEqual({ cash: false, points: false })
-    expect(tipChannelAvailability({ enabled: false })).toEqual({ cash: false, points: false })
     expect(tipChannelAvailability(baseConfig)).toEqual({ cash: true, points: true })
     expect(tipChannelAvailability({ ...baseConfig, cash_enabled: false })).toEqual({
       cash: false,
@@ -44,6 +42,11 @@ describe('devTip', () => {
     })
     expect(tipChannelAvailability({ ...baseConfig, points_enabled: false })).toEqual({
       cash: true,
+      points: false,
+    })
+    // 两条通道都关 = 不接受打赏
+    expect(tipChannelAvailability({ ...baseConfig, cash_enabled: false, points_enabled: false })).toEqual({
+      cash: false,
       points: false,
     })
     expect(defaultTipChannel({ cash: false, points: true })).toBe('points')

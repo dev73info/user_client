@@ -26,9 +26,11 @@ export type TipPayMethod = 'cash' | 'points'
  *
  * 金额单位：现金档位与上下限为**分**，积分档位与上下限为**积分**。
  * 档位最多 6 个；现金每档 1..=99_999_900 分，积分每档 1..=1_000_000。
+ *
+ * **没有总开关**：打赏是否可用由两条通道开关推导（任一开启即可用），
+ * 后端在 `TipSettingsResponse.enabled` 里回这个只读派生值。
  */
 export type TipSettings = {
-  enabled: boolean
   cash_enabled: boolean
   points_enabled: boolean
   /** 固定现金档位（分），最多 6 个 */
@@ -49,6 +51,8 @@ export type TipSettings = {
 
 /** `GET/PUT /tips/settings` 响应：设置本体 + 只读状态位 + 合规说明。 */
 export type TipSettingsResponse = TipSettings & {
+  /** 打赏是否可用（只读派生：现金 / 积分两条通道任一开启即为 true） */
+  enabled: boolean
   /** 开发者是否已绑定可用的 Adapay 结算账户（现金打赏前置条件） */
   settlement_ready: boolean
   /** 当前平台服务费比例（万分比），下单时快照进订单 */

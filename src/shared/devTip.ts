@@ -20,6 +20,7 @@ export const TIP_MAX_POINTS = 1_000_000
 
 /** 打赏设置的展示用结构（公开档案里的 `tip` 块与设置页响应都满足它）。 */
 export type TipConfigLike = {
+  /** 只读派生状态：两条通道任一开启即为 true（与后端 `is_enabled` 同口径） */
   enabled?: boolean | null
   cash_enabled?: boolean | null
   points_enabled?: boolean | null
@@ -39,10 +40,13 @@ export type TipChannelAvailability = {
 }
 
 /**
- * 通道可用性：总开关关闭时两条都不可用；否则看各自开关（缺省视为开启，与建表默认一致）。
+ * 通道可用性：两条通道各自看自己的开关（缺省视为开启，与建表默认一致）。
+ *
+ * 打赏整体是否可用由后端派生的 `enabled` 表达；这里只管「哪条通道能用」，
+ * 所以不再有总开关参与判定——总开关已移除（见 `TipConfigLike.enabled`）。
  */
 export function tipChannelAvailability(tip?: TipConfigLike | null): TipChannelAvailability {
-  if (!tip || !tip.enabled) {
+  if (!tip) {
     return { cash: false, points: false }
   }
   return {

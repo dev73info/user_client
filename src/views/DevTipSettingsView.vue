@@ -3,10 +3,13 @@
  * R010 开发者工作台「打赏设置」页。
  *
  * 两块内容：
- * 1. 打赏设置：总开关、现金 / 积分通道开关、现金档位（1–6 档，元）、积分档位（1–6 档）、
+ * 1. 打赏设置：现金 / 积分通道开关、现金档位（1–6 档，元）、积分档位（1–6 档）、
  *    是否允许自填与各自的上下限、打赏页感谢语（≤100 字）、是否公开打赏记录；
  *    保存前做与后端同口径的本地校验（见 `@/shared/devTip`）。
  * 2. 收到打赏：本人收到的打赏只读列表（含未公开的），现金 / 积分、金额、状态、留言、匿名、时间。
+ *
+ * **没有总开关**：两条通道开关任一开启即为「打赏可用」，两条都关就是不接受打赏。
+ * （原先还有一个独立的总开关，已按需求移除。）
  *
  * 现金打赏要求开发者已绑定可用的 Adapay 结算账户；`settlement_ready=false` 时页面顶部提示
  * 「先绑结算账户」并给出入口。
@@ -73,7 +76,6 @@ const platformFeeBps = ref(0)
 const noticeText = ref('')
 
 const form = reactive({
-  enabled: false,
   cashEnabled: true,
   pointsEnabled: true,
   cashTiers: [] as string[],
@@ -93,6 +95,13 @@ const receivedLoading = ref(false)
 
 const { page, pageSize, total: receivedTotal, paged, resetPage } = useClientPagination(received)
 
+/**
+ * 打赏是否可用：两条通道任一开启即为可用（与后端 `is_enabled` 同口径）。
+ *
+ * 原来的独立总开关已移除，这里直接由通道开关派生。
+ */
+const tipEnabled = computed(() => form.cashEnabled || form.pointsEnabled)
+
 const feePercentText = computed(() =>
   platformFeeBps.value > 0 ? `${(platformFeeBps.value / 100).toFixed(2).replace(/\.?0+$/, '')}%` : '—',
 )
@@ -109,7 +118,6 @@ const receivedPointsTotal = computed(() =>
 )
 
 function fillForm(settings: TipSettings) {
-  form.enabled = settings.enabled
   form.cashEnabled = settings.cash_enabled
   form.pointsEnabled = settings.points_enabled
   form.cashTiers = (settings.cash_tiers_fen ?? []).map((fen) => fenToYuanText(fen))
@@ -191,9 +199,7 @@ function validateForm(): string | null {
   if (Array.from(form.thanksMessage).length > TIP_THANKS_MAX_LENGTH) {
     return `感谢语不能超过 ${TIP_THANKS_MAX_LENGTH} 字`
   }
-  if (form.enabled && !form.cashEnabled && !form.pointsEnabled) {
-    return '至少需要开启一种打赏方式'
-  }
+  // 两条通道都关闭 = 不接受打赏，这是合法状态（没有总开关，不再有矛盾组合）。
   const cashTiers = validateTipCashTiers(form.cashTiers.map((item) => item.trim() || '0'))
   if (!cashTiers.ok) {
     return cashTiers.message
@@ -220,7 +226,6 @@ function buildPayload(): TipSettings {
   const pointsRange = validateTipCustomPointsRange(form.customPointsMin, form.customPointsMax)
   // 上面已校验通过，这里用非空断言取回换算结果
   return {
-    enabled: form.enabled,
     cash_enabled: form.cashEnabled,
     points_enabled: form.pointsEnabled,
     cash_tiers_fen: cashTiers.ok ? cashTiers.tiers : [],
@@ -290,7 +295,7 @@ onMounted(() => {
       <div class="dev-meta-strip">
         <div class="dev-meta-strip__item">
           <span class="dev-meta-strip__label">打赏状态</span>
-          <span class="dev-meta-strip__value">{{ form.enabled ? '已开启' : '未开启' }}</span>
+          <span class="dev-meta-strip__value">{{ tipEnabled ? '已开启' : '未开启' }}</span>
         </div>
         <div class="dev-meta-strip__divider" />
         <div class="dev-meta-strip__item">
@@ -318,19 +323,20 @@ onMounted(() => {
     </WorkbenchBarSlot>
 
     <!-- 未绑结算账户：现金打赏不可用，给出明确入口 -->
-    <div v-if="settingsLoaded && !settlementReady" class="tip-settings__alert">
-      <TAlert
-        tone="warning"
-        show-icon
-        title="尚未绑定可用的结算账户"
-        description="现金打赏需要先绑定 Adapay 结算账户才能向你结算；未绑定时他人无法用现金打赏。积分打赏不受影响。"
-      />
-      <div class="tip-settings__alert-actions">
+    <TAlert
+      v-if="settingsLoaded && !settlementReady"
+      tone="warning"
+      show-icon
+      title="尚未绑定可用的结算账户"
+      description="现金打赏需要先绑定 Adapay 结算账户才能向你结算；未绑定时他人无法用现金打赏。积分打赏不受影响。"
+      class="tip-settings__alert"
+    >
+      <template #actions>
         <TButton variant="outline" tone="accent" @click="goBindSettlementAccount">
           去绑定结算账户
         </TButton>
-      </div>
-    </div>
+      </template>
+    </TAlert>
 
     <TCard class="dev-surface-card">
       <div class="dev-card-head">
@@ -340,29 +346,20 @@ onMounted(() => {
       </div>
 
       <TForm label-position="top" class="tip-settings__form">
-        <h4 class="tip-settings__section-title">开关</h4>
+        <h4 class="tip-settings__section-title">打赏通道</h4>
 
-        <TFormItem label="开启打赏">
-          <TSwitch v-model="form.enabled" aria-label="开启打赏" />
+        <TFormItem label="现金打赏">
+          <TSwitch v-model="form.cashEnabled" aria-label="开启现金打赏" />
         </TFormItem>
 
-        <TFormItem label="打赏通道">
-          <div class="tip-settings__switches">
-            <label class="tip-settings__switch-line">
-              <TSwitch v-model="form.cashEnabled" aria-label="开启现金打赏" />
-              <span>现金打赏</span>
-            </label>
-            <label class="tip-settings__switch-line">
-              <TSwitch v-model="form.pointsEnabled" aria-label="开启积分打赏" />
-              <span>积分打赏</span>
-            </label>
-          </div>
+        <TFormItem label="积分打赏">
+          <TSwitch v-model="form.pointsEnabled" aria-label="开启积分打赏" />
         </TFormItem>
 
         <h4 class="tip-settings__section-title">档位</h4>
 
         <TFormItem label="现金档位（元）">
-          <div class="tip-settings__tier-grid">
+          <div class="tip-settings__tier-list">
             <div
               v-for="(_, index) in form.cashTiers"
               :key="`cash-tier-${index}`"
@@ -391,7 +388,7 @@ onMounted(() => {
         </TFormItem>
 
         <TFormItem label="积分档位">
-          <div class="tip-settings__tier-grid">
+          <div class="tip-settings__tier-list">
             <div
               v-for="(_, index) in form.pointsTiers"
               :key="`points-tier-${index}`"
@@ -573,44 +570,45 @@ onMounted(() => {
   line-height: 1.6;
 }
 
+/* 结算账户提示条：TAlert 自带 actions 槽位，按钮排在文案右侧、竖向居中。
+   这里只给它一个外边距，形状与配色都走组件自己的语义（tone=warning）。 */
 .tip-settings__alert {
-  display: grid;
-  gap: 8px;
+  margin-bottom: 0;
 }
 
-.tip-settings__alert-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.tip-settings__switches {
+/* 档位：输入框按内容取宽（金额就那么几位，拉满整行反而空），
+   删除键贴在框右侧，「添加档位」按钮独立成行，不占档位的位置。 */
+.tip-settings__tier-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 24px;
-}
-
-.tip-settings__switch-line {
-  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  color: var(--dev-ink-soft);
-  font-size: 13px;
-}
-
-.tip-settings__tier-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 8px;
 }
 
 .tip-settings__tier-cell {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0;
+  flex: 0 0 auto;
+}
+
+/* 金额就那么几位，输入框按内容取宽即可（120px），不占满整行 */
+.tip-settings__tier-cell :deep(.t73-input) {
+  width: 120px;
+}
+
+/* 删除键紧贴输入框右沿：图标按钮本身有 8px 内边距，这里收掉，
+   让「框 + ×」看起来是一组，而不是两个各自独立的控件。 */
+.tip-settings__tier-cell :deep(.t73-button--icon-only) {
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  margin-left: -4px;
 }
 
 .tip-settings__tier-add {
-  justify-self: start;
+  flex: 0 0 auto;
+  margin-left: 8px;
 }
 
 .tip-settings__range {
