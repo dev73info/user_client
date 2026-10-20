@@ -142,6 +142,19 @@ export const devWorkbenchRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    // R039：开放接口的密钥自助管理。开发者只能看到自己创建的密钥。
+    path: 'developer/api-keys',
+    name: 'dev-api-keys',
+    component: () => import('@/views/DevApiKeysView.vue'),
+    meta: {
+      title: '资源管理 / API 密钥',
+      description: '管理开放接口使用的接口密钥。',
+      devArea: true,
+      requiresDevAccess: true,
+      requiresRealname: true,
+    },
+  },
+  {
     // 卖家侧「售出订单」：与买家侧「我的已购资源」（workbench-resource-purchases）是一件事的两面，
     // 故意取两个不会互相混淆的名字——那边是买进来的，这边是卖出去的。
     path: 'developer/resources/sold',

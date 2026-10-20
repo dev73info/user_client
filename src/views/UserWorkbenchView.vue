@@ -26,6 +26,7 @@ import {
   DataAnalysis,
   Files,
   Grid,
+  Key,
   Menu as MenuIcon,
   Service,
   Suitcase,
@@ -118,6 +119,13 @@ const devWorkbenchItems: DevWorkbenchItem[] = [
       'dev-resource-sold-purchases',
     ],
     icon: Files,
+  },
+  {
+    // R039：接口资源开放接口的鉴权密钥。开发者只能看到自己创建的密钥。
+    label: 'API 密钥',
+    name: 'dev-api-keys',
+    description: '管理开放接口使用的接口密钥',
+    icon: Key,
   },
   { label: '需求大厅', name: 'dev-requirement-hall', description: '浏览并关联可接需求', icon: Compass },
   {
