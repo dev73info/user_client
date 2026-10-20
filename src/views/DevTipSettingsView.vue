@@ -336,14 +336,14 @@ onMounted(() => {
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
           <h3 class="dev-section-title">打赏设置</h3>
-          <p class="tip-settings__hint">由你设定档位，他人只能从这些档位中选择或按你允许的区间自填。</p>
         </div>
       </div>
 
       <TForm label-position="top" class="tip-settings__form">
+        <h4 class="tip-settings__section-title">开关</h4>
+
         <TFormItem label="开启打赏">
           <TSwitch v-model="form.enabled" aria-label="开启打赏" />
-          <span class="tip-settings__hint">关闭后他人主页不再出现打赏入口，新打赏也会被拒绝。</span>
         </TFormItem>
 
         <TFormItem label="打赏通道">
@@ -357,40 +357,50 @@ onMounted(() => {
               <span>积分打赏</span>
             </label>
           </div>
-          <span class="tip-settings__hint">开启打赏时至少保留一种；现金打赏需要已绑定结算账户。</span>
         </TFormItem>
 
+        <h4 class="tip-settings__section-title">档位</h4>
+
         <TFormItem label="现金档位（元）">
-          <div v-if="form.cashTiers.length" class="tip-settings__tier-list">
-            <div v-for="(_, index) in form.cashTiers" :key="`cash-tier-${index}`" class="tip-settings__tier-row">
-              <TInput v-model="form.cashTiers[index]" placeholder="如 5.00" class="tip-settings__tier-input" />
+          <div class="tip-settings__tier-grid">
+            <div
+              v-for="(_, index) in form.cashTiers"
+              :key="`cash-tier-${index}`"
+              class="tip-settings__tier-cell"
+            >
+              <TInput v-model="form.cashTiers[index]" placeholder="如 5.00" aria-label="现金档位金额" />
               <TButton icon-only variant="text" tone="danger" aria-label="删除该现金档位" @click="removeCashTier(index)">
                 <TIcon>
                   <Close />
                 </TIcon>
               </TButton>
             </div>
+            <TButton
+              variant="outline"
+              class="tip-settings__tier-add"
+              :disabled="form.cashTiers.length >= TIP_MAX_TIERS"
+              @click="addCashTier"
+            >
+              <TIcon>
+                <Plus />
+              </TIcon>
+              添加现金档位
+            </TButton>
           </div>
-          <TButton
-            variant="outline"
-            :disabled="form.cashTiers.length >= TIP_MAX_TIERS"
-            @click="addCashTier"
-          >
-            <TIcon>
-              <Plus />
-            </TIcon>
-            添加现金档位
-          </TButton>
-          <span class="tip-settings__hint">最多 {{ TIP_MAX_TIERS }} 档，每档不超过 ¥999999.00。</span>
+          <p class="tip-settings__limit">最多 {{ TIP_MAX_TIERS }} 档，每档不超过 ¥999999.00。</p>
         </TFormItem>
 
         <TFormItem label="积分档位">
-          <div v-if="form.pointsTiers.length" class="tip-settings__tier-list">
-            <div v-for="(_, index) in form.pointsTiers" :key="`points-tier-${index}`" class="tip-settings__tier-row">
+          <div class="tip-settings__tier-grid">
+            <div
+              v-for="(_, index) in form.pointsTiers"
+              :key="`points-tier-${index}`"
+              class="tip-settings__tier-cell"
+            >
               <TInput
                 :model-value="String(form.pointsTiers[index] ?? '')"
                 placeholder="如 50"
-                class="tip-settings__tier-input"
+                aria-label="积分档位数值"
                 @update:model-value="onPointsTierInput(index, $event)"
               />
               <TButton icon-only variant="text" tone="danger" aria-label="删除该积分档位" @click="removePointsTier(index)">
@@ -399,49 +409,66 @@ onMounted(() => {
                 </TIcon>
               </TButton>
             </div>
+            <TButton
+              variant="outline"
+              class="tip-settings__tier-add"
+              :disabled="form.pointsTiers.length >= TIP_MAX_TIERS"
+              @click="addPointsTier"
+            >
+              <TIcon>
+                <Plus />
+              </TIcon>
+              添加积分档位
+            </TButton>
           </div>
-          <TButton
-            variant="outline"
-            :disabled="form.pointsTiers.length >= TIP_MAX_TIERS"
-            @click="addPointsTier"
-          >
-            <TIcon>
-              <Plus />
-            </TIcon>
-            添加积分档位
-          </TButton>
-          <span class="tip-settings__hint">最多 {{ TIP_MAX_TIERS }} 档，每档为正整数。</span>
+          <p class="tip-settings__limit">最多 {{ TIP_MAX_TIERS }} 档，每档为正整数。</p>
         </TFormItem>
 
-        <TFormItem label="允许现金自填">
-          <TSwitch v-model="form.allowCustomCash" aria-label="允许现金自填" />
-          <div v-if="form.allowCustomCash" class="tip-settings__range">
-            <TInput v-model="form.customCashMin" class="tip-settings__range-input" placeholder="下限（元）" />
-            <span class="tip-settings__range-sep">~</span>
-            <TInput v-model="form.customCashMax" class="tip-settings__range-input" placeholder="上限（元）" />
+        <TFormItem label="现金自填">
+          <div class="tip-settings__range">
+            <TSwitch v-model="form.allowCustomCash" aria-label="允许现金自填" />
+            <template v-if="form.allowCustomCash">
+              <TInput
+                v-model="form.customCashMin"
+                class="tip-settings__range-input"
+                placeholder="下限（元）"
+                aria-label="现金自填下限"
+              />
+              <span class="tip-settings__range-sep">~</span>
+              <TInput
+                v-model="form.customCashMax"
+                class="tip-settings__range-input"
+                placeholder="上限（元）"
+                aria-label="现金自填上限"
+              />
+            </template>
           </div>
-          <span class="tip-settings__hint">自填金额须落在该区间内（含端点）。</span>
         </TFormItem>
 
-        <TFormItem label="允许积分自填">
-          <TSwitch v-model="form.allowCustomPoints" aria-label="允许积分自填" />
-          <div v-if="form.allowCustomPoints" class="tip-settings__range">
-            <TInput
-              :model-value="String(form.customPointsMin ?? '')"
-              class="tip-settings__range-input"
-              placeholder="下限"
-              @update:model-value="form.customPointsMin = Number($event.trim() || 0)"
-            />
-            <span class="tip-settings__range-sep">~</span>
-            <TInput
-              :model-value="String(form.customPointsMax ?? '')"
-              class="tip-settings__range-input"
-              placeholder="上限"
-              @update:model-value="form.customPointsMax = Number($event.trim() || 0)"
-            />
+        <TFormItem label="积分自填">
+          <div class="tip-settings__range">
+            <TSwitch v-model="form.allowCustomPoints" aria-label="允许积分自填" />
+            <template v-if="form.allowCustomPoints">
+              <TInput
+                :model-value="String(form.customPointsMin ?? '')"
+                class="tip-settings__range-input"
+                placeholder="下限"
+                aria-label="积分自填下限"
+                @update:model-value="form.customPointsMin = Number($event.trim() || 0)"
+              />
+              <span class="tip-settings__range-sep">~</span>
+              <TInput
+                :model-value="String(form.customPointsMax ?? '')"
+                class="tip-settings__range-input"
+                placeholder="上限"
+                aria-label="积分自填上限"
+                @update:model-value="form.customPointsMax = Number($event.trim() || 0)"
+              />
+            </template>
           </div>
-          <span class="tip-settings__hint">自填积分须落在该区间内（含端点）。</span>
         </TFormItem>
+
+        <h4 class="tip-settings__section-title">展示</h4>
 
         <TFormItem label="打赏页感谢语">
           <TInput
@@ -451,16 +478,13 @@ onMounted(() => {
             :maxlength="TIP_THANKS_MAX_LENGTH"
             placeholder="在打赏弹窗里展示给支持者，例如：感谢你支持我的作品"
           />
-          <span class="tip-settings__hint">
+          <p class="tip-settings__limit">
             {{ Array.from(form.thanksMessage).length }} / {{ TIP_THANKS_MAX_LENGTH }} 字
-          </span>
+          </p>
         </TFormItem>
 
         <TFormItem label="公开打赏记录">
           <TSwitch v-model="form.publicRecords" aria-label="公开打赏记录" />
-          <span class="tip-settings__hint">
-            开启后，你的主页会显示累计收到打赏与最近的留言（匿名打赏显示为「匿名」）；关闭后他人看不到任何金额与留言。
-          </span>
         </TFormItem>
 
         <p v-if="noticeText" class="tip-settings__notice">{{ noticeText }}</p>
@@ -475,7 +499,6 @@ onMounted(() => {
       <div class="dev-card-head">
         <div class="dev-card-head__title-block">
           <h3 class="dev-section-title">收到打赏</h3>
-          <p class="tip-settings__hint">含未公开的记录；这里始终能看到全部打赏。</p>
         </div>
       </div>
 
@@ -530,17 +553,29 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.tip-settings__hint {
-  display: block;
-  margin-top: 6px;
-  color: var(--dev-ink-muted, #64748b);
+.tip-settings__section-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dev-ink);
+}
+
+.tip-settings__section-title:not(:first-child) {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--dev-line);
+}
+
+.tip-settings__limit {
+  margin: 8px 0 0;
+  color: var(--dev-muted);
   font-size: 12px;
   line-height: 1.6;
 }
 
 .tip-settings__alert {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .tip-settings__alert-actions {
@@ -558,31 +593,31 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #334155;
+  color: var(--dev-ink-soft);
   font-size: 13px;
 }
 
-.tip-settings__tier-list {
+.tip-settings__tier-grid {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 8px;
-  margin-bottom: 10px;
 }
 
-.tip-settings__tier-row {
+.tip-settings__tier-cell {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.tip-settings__tier-input {
-  max-width: 220px;
+.tip-settings__tier-add {
+  justify-self: start;
 }
 
 .tip-settings__range {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-top: 8px;
 }
 
 .tip-settings__range-input {
@@ -590,24 +625,24 @@ onMounted(() => {
 }
 
 .tip-settings__range-sep {
-  color: #94a3b8;
+  color: var(--dev-muted);
 }
 
 .tip-settings__notice {
-  margin: 4px 0 0;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(191, 219, 254, 0.85);
-  background: rgba(248, 250, 252, 0.9);
-  color: #64748b;
+  margin: 24px 0 0;
+  padding: 12px;
+  border-radius: var(--dev-radius-inner);
+  border: 1px solid var(--dev-line);
+  background: var(--dev-bg);
+  color: var(--dev-muted);
   font-size: 12px;
-  line-height: 1.7;
+  line-height: 1.6;
 }
 
 .tip-settings__actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 8px;
+  margin-top: 24px;
 }
 
 .tip-settings__amount {
