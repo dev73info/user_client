@@ -1126,7 +1126,8 @@ watch(
   <div class="dev-page dev-page--resource-homepage-editor dev-page--publish">
     <!-- 顶部读数条：与其余菜单页同一条形态（读数在左、页面级操作在右，刷新标签固定在 __action 槽）。
          这一页原来自己写了一条蓝调渐变横幅（封面缩略图 + 大标题 + 一行胶囊），与其它菜单页的读数条
-         两套外观；标题与封面在下方「预览摘要」卡片里已有，这里不重复，只留可读的口径与页面级操作。 -->
+         两套外观；标题与封面在下方「预览摘要」卡片里已有，这里不重复，只留可读的口径与页面级操作。
+         接口资源没有对外主页，预览摘要整块不出现，那一侧的「预览」入口一并不放。 -->
     <WorkbenchBarSlot>
       <div class="dev-meta-strip">
         <!-- 接口资源固定不进大厅，可见性没有可操作的信息，读数条不展示 -->
@@ -1149,9 +1150,10 @@ watch(
               ><TIcon><Back /></TIcon></template
             >返回</TButton
           >
+          <!-- 预览打开的是用户端资源主页；接口资源不进大厅、不对外公开，没有可预览的页面 -->
           <TButton
             variant="outline"
-            v-if="resource"
+            v-if="resource && !isApiKind"
             as="a"
             :href="userClientPreviewUrl"
             target="_blank"
@@ -1210,7 +1212,12 @@ watch(
       </TButton>
     </section>
 
-    <TLoading tag="section" class="dev-resource-homepage-editor__layout" :loading="loading">
+    <TLoading
+      tag="section"
+      class="dev-resource-homepage-editor__layout"
+      :class="{ 'dev-resource-homepage-editor__layout--single': isApiKind }"
+      :loading="loading"
+    >
       <div class="dev-resource-homepage-editor__forms">
         <TCard class="dev-surface-card dev-upload-combined-card">
           <section class="dev-upload-block">
@@ -1604,7 +1611,9 @@ watch(
         </TCard>
       </div>
 
-      <aside class="dev-upload-side">
+      <!-- 预览摘要画的是大厅资源卡的外观；接口资源不进大厅、首页精选与公开搜索，
+           没有这张卡的落地页，侧栏整块不出现（主栏随之占满一行）。 -->
+      <aside v-if="!isApiKind" class="dev-upload-side">
         <TCard class="dev-surface-card dev-surface-card--sticky">
           <h3 class="dev-section-title">预览摘要</h3>
           <article class="dev-preview-card dev-list--spaced">
@@ -1627,18 +1636,12 @@ watch(
               <h3>{{ heroTitle }}</h3>
               <p v-if="form.description.trim()">{{ form.description }}</p>
               <div class="dev-preview-card__meta-row">
-                <strong>{{
-                  isApiKind ? '接口资源' : selectedTagPathSegment(1) || resourcePlatformLabel
-                }}</strong>
-                <span class="dev-preview-card__status">{{
-                  isApiKind ? '原创' : `${previewTagCount} 个标签`
-                }}</span>
+                <strong>{{ selectedTagPathSegment(1) || resourcePlatformLabel }}</strong>
+                <span class="dev-preview-card__status">{{ previewTagCount }} 个标签</span>
               </div>
               <div class="dev-preview-card__footer">
                 <span>by {{ resourceAuthorLabel }}</span>
-                <span class="dev-preview-card__time">{{
-                  isApiKind ? '接口资源 · 原创' : `根节点 · ${resourcePlatformLabel}`
-                }}</span>
+                <span class="dev-preview-card__time">根节点 · {{ resourcePlatformLabel }}</span>
               </div>
             </div>
           </article>
@@ -1680,6 +1683,11 @@ watch(
   grid-template-columns: minmax(0, 1fr) minmax(300px, 0.5fr);
   gap: 24px;
   align-items: start;
+}
+
+/* 接口资源没有预览摘要侧栏，单栏铺满，别把右半边空着 */
+.dev-resource-homepage-editor__layout--single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .dev-resource-homepage-editor__forms {
