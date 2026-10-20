@@ -417,6 +417,11 @@ function applySavedApiChannel(saved: ResourceApiChannelPayload) {
   }
 }
 
+/** 切换「允许重复购买」后的状态反馈：控件旁的重复文案已撤掉，改由 TMessage 回话。 */
+function onRepeatPurchasableChange(next: boolean) {
+  notify(next ? '已允许重复购买' : '已关闭重复购买')
+}
+
 /** 服务端读取的已有配置 → 表单回显（密钥只回掩码，输入框留空）。 */
 function applyLoadedApiChannel(loaded: ResourceApiChannelPayload) {
   savedApiChannel.value = loaded
@@ -1302,12 +1307,6 @@ watch(
                       >{{ promoShareDisplay }}</span
                     >
                   </div>
-                  <p class="dev-field-hint">
-                    拖动选择比例（0～50，0 =
-                    关闭）。这笔钱<strong>从你的净收里出</strong>，平台抽成不变；
-                    只在买家带着推广码下单、且推广者已实名并有渠道结算账户时才真正分账。
-                    积分购不参与推广分成（比例可以存，但对积分单无效）。
-                  </p>
                   <p v-if="promoShareError" class="dev-field-hint dev-field-hint--error">
                     {{ promoShareError }}
                   </p>
@@ -1451,8 +1450,11 @@ watch(
                 <TFormItem label="购买限制" class="dev-form-item--switch">
                   <div class="dev-api-switch-row">
                     <label class="dev-api-switch">
-                      <TSwitch v-model="form.apiRepeatPurchasable" aria-label="允许重复购买" />
-                      <span>允许重复购买</span>
+                      <TSwitch
+                        v-model="form.apiRepeatPurchasable"
+                        aria-label="允许重复购买"
+                        @change="onRepeatPurchasableChange"
+                      />
                     </label>
                   </div>
                 </TFormItem>
