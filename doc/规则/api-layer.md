@@ -1,9 +1,3 @@
----
-description: user-client 的接口层口径：前端路径到后端真实路径的重写、httpClient 用法、鉴权与 401、dev 代理前缀、mock 覆盖面
-globs: src/api/**/*.ts, src/shared/api/**/*.ts, src/shared/auth/**/*.ts, src/stores/auth.ts, vite.config.ts
-alwaysApply: false
----
-
 # 接口层与鉴权口径（user-client）
 
 ## 一、前端路径 ≠ 后端路径

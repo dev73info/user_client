@@ -3,7 +3,7 @@ name: verify
 description: 跑 user-client 的质量门禁（type-check + 单测 + lint）并报告失败位置
 ---
 
-按 `.cursor/rules/toolchain-and-gates.mdc` 的第六节跑质量门禁，然后把结果汇总给用户。
+按 `doc/规则/toolchain-and-gates.md` 的第六节跑质量门禁，然后把结果汇总给用户。
 
 步骤：
 

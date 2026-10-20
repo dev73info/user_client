@@ -1,9 +1,3 @@
----
-description: user-client 的视觉口径：门户与开发者两套令牌、圆角字号档位、四个响应式断点、移动端硬要求、富文本净化
-globs: src/**/*.vue, src/styles/**/*.css
-alwaysApply: false
----
-
 # 视觉与样式口径（user-client）
 
 完整版在 `doc/设计规范.md`，**改样式时改代码、顺手改那份文档**。本文只收最容易踩错、必须每次记住的几条。

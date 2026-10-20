@@ -40,7 +40,7 @@
 | 改到 `src/**` | `pnpm type-check` | `vue-tsc --build`，提交前必跑 |
 | 单测 | `pnpm test:unit` | Vitest |
 | 完整构建 | `pnpm build` | `generate:sitemap` + `type-check` + `vite build` + SEO 页面生成 |
-| 本地启动 | `pnpm dev` | 5173；开发者第二实例 5175 的做法见根仓规则 `dev-servers` |
+| 本地启动 | `pnpm dev` | 5173；开发者第二实例 5175 的做法见根仓 `docs/规则/dev-servers.md` |
 
 ## 五、本仓事实与红线
 
@@ -48,9 +48,19 @@
   SDK 侧必须先 `wasm-pack build`）；接口一律走后端 HTTP。
 - UI 现状：Element Plus 为主，正在按耦合度分批迁向 `ui_73info`；**写哪端就按哪端的组件库写**，
   不要串 `support_client` 的 Naive UI。
-- 界面文案遵守根仓规则 `ui-copy`：错误、状态、必要警示之外的说明性文字不写进页面。
+- 界面文案遵守根仓 `docs/规则/ui-copy.md`：错误、状态、必要警示之外的说明性文字不写进页面。
 - 账号、口令与自动登录配置只在本机 `.env.local`，永不入库、不进对话。
 - **公开仓，`master` 有服务端保护**：要求 PR 且至少 1 个批准、`enforce_admins`（管理员也绕不过）、
   线性历史（只能 squash / rebase）、禁强推、禁删除。你不能批准自己的 PR，直推与强推都会失败。
-- 第二实例 5175 的启动方式与「端口 ↔ 身份」绑定见本仓 `.cursor/rules/toolchain-and-gates.mdc` 第三节。
+- 第二实例 5175 的启动方式与「端口 ↔ 身份」绑定见本仓 `doc/规则/toolchain-and-gates.md` 第三节。
 - 测试身份只从 `../docs/测试指南/测试数据` 取，不要自己编。
+
+## 六、本仓详细规则
+
+- `doc/规则/api-layer.md`：接口层、路径重写、鉴权与 mock。
+- `doc/规则/design-tokens.md`：两套视觉体系、档位、断点与移动端要求。
+- `doc/规则/toolchain-and-gates.md`：命令、双实例与质量门禁。
+- `doc/规则/ui-73info-components.md`：组件库口径与 link 源码联动。
+- `doc/规则/vue-typescript-patterns.md`：Vue / TypeScript 编码规范。
+
+这五份是 2026-10-20 从 `.cursor/rules/` 迁出的正文，按需阅读；与根仓 `AGENTS.md` / 根仓 `docs/规则/` 冲突时，以根仓为准。
