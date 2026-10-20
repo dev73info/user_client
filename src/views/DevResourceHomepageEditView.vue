@@ -1339,7 +1339,6 @@ watch(
                   <TCheckbox v-model="form.copyrightDeclared">
                     我确认拥有该资源版权，或已获得合法授权可售卖
                   </TCheckbox>
-                  <p class="dev-field-hint">付费资源提交公开审核前必须勾选。</p>
                 </TFormItem>
 
                 <TFormItem
