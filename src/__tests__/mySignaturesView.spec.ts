@@ -50,6 +50,7 @@ async function render(
   initialPath?: string,
 ) {
   const names = ['workbench', 'workbench-requirements', 'workbench-account',
+    'workbench-authorized-apps',
     'workbench-invoices', 'workbench-points', 'workbench-perks', 'workbench-coupons',
     'workbench-badges', 'workbench-notifications', 'workbench-favorites', 'workbench-resource-purchases', 'workbench-invite', 'workbench-teams',
     'workbench-team-resources', 'workbench-tickets', 'dev-resource-list', 'dev-requirement-hall',

@@ -177,6 +177,11 @@ const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
     icon: Box,
     items: [
       { label: '账户详情', name: 'workbench-account', description: '管理账户' },
+      {
+        label: '已授权应用',
+        name: 'workbench-authorized-apps',
+        description: '管理接口资源站点的授权',
+      },
       ...(realnameApproved.value ? [{ label: '我的合同', name: 'workbench-signatures', description: '查看合同与签署进度', activeNames: ['workbench-signature-detail'] }] : []),
         { label: '我的发票', name: 'workbench-invoices', description: '获取发票、查看与下载' },
       { label: '我的收藏', name: 'workbench-favorites', description: '查看收藏的社区帖子' },
