@@ -8,6 +8,7 @@ import {
   findInvalidAllowedOrigin,
   formatAllowedOriginsText,
   isApiResourceKind,
+  isResourceRowActionAvailable,
   isValidAllowedOrigin,
   isValidCallbackUrl,
   listApiChannelBlockers,
@@ -27,6 +28,23 @@ describe('resourceApi', () => {
     expect(resourceKindLabel('api')).toBe('接口资源')
     expect(resourceKindLabel('normal')).toBe('普通资源')
     expect(resourceKindLabel(undefined)).toBe('普通资源')
+  })
+
+  it('isResourceRowActionAvailable：接口资源藏掉版本 / 道具卡 / 过户，其余动作照常', () => {
+    // 接口资源没有可下载文件、不进公开面、渠道配置不随归属走
+    for (const action of ['publish', 'versions', 'use-promo', 'transfer'] as const) {
+      expect(isResourceRowActionAvailable(action, 'api')).toBe(false)
+    }
+    // 仍成立的四项：审核、上下架、订单、删除
+    for (const action of ['request-review', 'set-private', 'sold-orders', 'delete'] as const) {
+      expect(isResourceRowActionAvailable(action, 'api')).toBe(true)
+    }
+    // 普通资源（含缺省 / 脏值）一项都不藏
+    for (const kind of ['normal', null, undefined, ''] as const) {
+      for (const action of ['publish', 'versions', 'use-promo', 'transfer'] as const) {
+        expect(isResourceRowActionAvailable(action, kind)).toBe(true)
+      }
+    }
   })
 
   it('resourceKindFromQuery 只认 api，其余一律普通', () => {

@@ -34,7 +34,11 @@ import {
   RESOURCE_ARCHIVE_LOCKED_TITLE,
 } from '@/shared/resourcePresentation'
 import { formatResourcePriceLabel, isPricedResource } from '@/shared/resourceSale'
-import { isApiResourceKind, resourceKindFromQuery } from '@/shared/resourceApi'
+import {
+  isApiResourceKind,
+  isResourceRowActionAvailable,
+  resourceKindFromQuery,
+} from '@/shared/resourceApi'
 
 import ResourceTransferDialog from '@/components/ResourceTransferDialog.vue'
 
@@ -768,7 +772,11 @@ async function setResourcePrivate(resource: McResourcePayload) {
               </TButton>
               <template #dropdown>
                 <TDropdownMenu>
+                  <!-- 接口资源没有可下载文件、不进任何公开面、渠道配置也不随过户走，
+                       所以「发布版本 / 版本管理 / 使用道具 / 过户」对它不出现（判据见
+                       shared/resourceApi.ts 的 isResourceRowActionAvailable）。 -->
                   <TDropdownItem
+                    v-if="isResourceRowActionAvailable('publish', scope.row.resource_kind)"
                     :disabled="isResourceArchiveLocked(scope.row)"
                     :command="{ action: 'publish', resource: scope.row }"
                   >
@@ -796,19 +804,27 @@ async function setResourcePrivate(resource: McResourcePayload) {
                     {{ settingPrivateResourceId === scope.row.id ? '设置中...' : '设为私有' }}
                   </TDropdownItem>
                   <TDropdownItem
-                    v-if="scope.row.visibility === 'published'"
+                    v-if="
+                      scope.row.visibility === 'published' &&
+                      isResourceRowActionAvailable('use-promo', scope.row.resource_kind)
+                    "
                     :disabled="isResourceArchiveLocked(scope.row)"
                     :command="{ action: 'use-promo', resource: scope.row }"
                   >
                     使用道具
                   </TDropdownItem>
-                  <TDropdownItem :command="{ action: 'versions', resource: scope.row }"
+                  <TDropdownItem
+                    v-if="isResourceRowActionAvailable('versions', scope.row.resource_kind)"
+                    :command="{ action: 'versions', resource: scope.row }"
                     >版本管理</TDropdownItem
                   >
                   <TDropdownItem :command="{ action: 'sold-orders', resource: scope.row }">
                     售出订单
                   </TDropdownItem>
-                  <TDropdownItem :command="{ action: 'transfer', resource: scope.row }">
+                  <TDropdownItem
+                    v-if="isResourceRowActionAvailable('transfer', scope.row.resource_kind)"
+                    :command="{ action: 'transfer', resource: scope.row }"
+                  >
                     过户
                   </TDropdownItem>
                   <TDropdownItem
