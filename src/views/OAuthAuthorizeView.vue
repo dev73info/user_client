@@ -44,29 +44,9 @@ const params = computed<OAuthAuthorizeParams>(() => ({
   scope: readQueryString(route.query.scope),
   code_challenge: readQueryString(route.query.code_challenge),
   code_challenge_method: readQueryString(route.query.code_challenge_method),
-  external_user_id: readQueryString(route.query.external_user_id),
 }))
 
-const canApprove = computed(() => {
-  if (!meta.value) {
-    return false
-  }
-  return !meta.value.binding.link_conflict
-})
-
-const bindingHint = computed(() => {
-  const binding = meta.value?.binding
-  if (!binding || !meta.value?.external_user_id) {
-    return '同意后，平台会记录本次登录，但不会在开发者站点之外同步任何资料。'
-  }
-  if (binding.linked_to_current_user) {
-    return '该开发者用户已关联到当前账号，同意后将直接继续。'
-  }
-  if (binding.link_conflict) {
-    return '该开发者用户已关联其他平台账号，无法继续授权。请回到开发者站点更换账号或联系开发者。'
-  }
-  return '同意后，开发者站点将能通过平台确认你的账号，并与它的用户 ID 建立关联。'
-})
+const canApprove = computed(() => Boolean(meta.value))
 
 function goLogin() {
   void router.replace({
@@ -179,22 +159,15 @@ onMounted(() => {
             <dt>当前账号</dt>
             <dd>{{ meta.user.username }}</dd>
           </div>
-          <div v-if="meta.external_user_id" class="oauth-summary__row">
-            <dt>开发者用户 ID</dt>
-            <dd>{{ meta.external_user_id }}</dd>
-          </div>
           <div class="oauth-summary__row">
             <dt>授权范围</dt>
             <dd>{{ meta.scope }}</dd>
           </div>
         </dl>
 
-        <p class="oauth-card__hint" :class="{ 'oauth-card__hint--warn': meta.binding.link_conflict }">
-          {{ bindingHint }}
-        </p>
-
-        <p v-if="meta.binding.link_conflict" class="oauth-card__status" role="alert">
-          该开发者用户已关联其他平台账号，无法继续授权。
+        <p class="oauth-card__hint">
+          同意后，开发者站点可通过平台确认你的账号，并与它自己的用户 ID 建立关联；
+          平台不会向开发者同步手机号、邮箱或密码。
         </p>
 
         <div class="oauth-actions">

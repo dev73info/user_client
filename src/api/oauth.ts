@@ -9,14 +9,6 @@ export type OAuthAuthorizeParams = {
   scope?: string
   code_challenge?: string
   code_challenge_method?: string
-  external_user_id?: string
-}
-
-export type OAuthAuthorizeBinding = {
-  linked: boolean
-  linked_to_current_user: boolean
-  link_conflict: boolean
-  platform_user_id: string | null
 }
 
 export type OAuthAuthorizeMeta = {
@@ -26,12 +18,10 @@ export type OAuthAuthorizeMeta = {
   redirect_uri: string
   scope: string
   state: string | null
-  external_user_id: string | null
   user: {
     username: string
     avatar_url: string | null
   }
-  binding: OAuthAuthorizeBinding
 }
 
 export type OAuthAuthorizeConsent = {
