@@ -119,10 +119,22 @@ if [[ -n "$probe_asset" ]]; then
     grep -qF "$probe_asset" /tmp/deploy-index.html ||
         rollback "首页没有引用新版本的 $probe_asset，线上可能还是旧版本"
 
-    asset_code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$PUBLIC_URL$probe_asset") ||
-        rollback "资源 $probe_asset 请求失败"
+    # 只看状态码是不够的：nginx 的 SPA 兜底会把任何未命中的路径返回一份首页副本
+    # （200 + text/html），"资源不存在" 和 "资源正常" 在状态码上完全没法区分。
+    # 2026-10-20 的故障演练里，产物引用了一个根本不存在的 /assets/*.js，
+    # 这一句把它判成了 200，部署照常"成功"——最该拦住的坏产物一个都没拦住。
+    asset_meta=$(curl -sS -o /tmp/deploy-asset -w '%{http_code} %{content_type}' --max-time 20 \
+        "$PUBLIC_URL$probe_asset") || rollback "资源 $probe_asset 请求失败"
+    asset_code=${asset_meta%% *}
+    asset_type=${asset_meta#* }
     [[ "$asset_code" == 200 ]] || rollback "资源 $probe_asset 返回 $asset_code"
-    printf '资源 %s -> 200\n' "$probe_asset"
+    [[ "$asset_type" == *javascript* || "$asset_type" == *css* ]] ||
+        rollback "资源 $probe_asset 的 content-type 是 ${asset_type:-空}（疑似软 404：nginx 兜底返回了首页副本）"
+    index_sum=$(sha256sum /tmp/deploy-index.html | cut -d' ' -f1)
+    asset_sum=$(sha256sum /tmp/deploy-asset | cut -d' ' -f1)
+    [[ "$index_sum" != "$asset_sum" ]] ||
+        rollback "资源 $probe_asset 的内容与首页完全相同（软 404）"
+    printf '资源 %s -> 200 (%s)\n' "$probe_asset" "$asset_type"
 fi
 
 # 连打几次，确认不是偶发命中
