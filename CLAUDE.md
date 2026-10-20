@@ -64,3 +64,7 @@
 - `doc/规则/vue-typescript-patterns.md`：Vue / TypeScript 编码规范。
 
 这五份是 2026-10-20 从 `.cursor/rules/` 迁出的正文，按需阅读；与根仓 `AGENTS.md` / 根仓 `docs/规则/` 冲突时，以根仓为准。
+
+## 跨仓需求
+
+涉及多个子工程时，用根仓 `scripts/xrepo.sh` 编排（清单在根仓 `docs/任务/<需求号>-*/xrepo/`，用法见根仓 `skills/xrepo/SKILL.md`）；本仓内仍按上述规则。
