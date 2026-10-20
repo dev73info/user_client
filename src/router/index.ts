@@ -127,6 +127,16 @@ const router = createRouter({
       },
     },
     {
+      // R039 OAuth 2.0 授权页：开发者站点把买家带过来，登录 / 注册并同意后回跳。
+      path: '/oauth/authorize',
+      name: 'oauth-authorize',
+      component: () => import('@/views/OAuthAuthorizeView.vue'),
+      meta: {
+        title: '授权登录',
+        hideSiteFooter: true,
+      },
+    },
+    {
       // 「我的邀请」已并入「勋章与邀请」页（`/workbench/badges`）：别名同样落到合并页。
       path: '/invite',
       name: 'invite',
