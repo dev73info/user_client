@@ -1586,7 +1586,8 @@ watch(
             </div>
           </section>
 
-          <section class="dev-upload-block dev-upload-block--split">
+          <!-- 接口资源没有公开主页（不进大厅、首页精选与搜索），页面内容整块不出现 -->
+          <section v-if="!isApiKind" class="dev-upload-block dev-upload-block--split">
             <header class="dev-card-head">
               <section class="dev-card-head__title-block">
                 <h3 class="dev-section-title">页面内容</h3>
