@@ -62,7 +62,7 @@ function buildQuery(params: OAuthAuthorizeParams): string {
   return query.toString()
 }
 
-/** 授权页元信息：读取客户端名称、当前账号与关联状态。 */
+/** 授权页元信息：读取客户端名称与当前账号。 */
 export async function getOAuthAuthorizeMeta(
   token: string,
   params: OAuthAuthorizeParams,
@@ -78,7 +78,7 @@ export async function getOAuthAuthorizeMeta(
   }
 }
 
-/** 用户同意授权：建立外部用户关联并拿到回跳地址。 */
+/** 用户同意授权：拿到带一次性 `code` 的回跳地址（关联在换令牌时建立）。 */
 export async function consentOAuthAuthorize(
   token: string,
   params: OAuthAuthorizeParams,
