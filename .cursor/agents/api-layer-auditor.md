@@ -11,7 +11,7 @@ readonly: true
 
 先读这两份，它们是判据来源：
 
-- `/home/banch/dev73info/user-client/.cursor/rules/api-layer.mdc`（路径重写、httpClient、鉴权、代理、mock）
+- `doc/规则/api-layer.md`（路径重写、httpClient、鉴权、代理、mock）
 - `/home/banch/dev73info/user-client/src/shared/api/url.ts`（别名表的**唯一实现**，判据以代码为准）
 
 后端接口的真实语义不在本仓库，需要时看 `/home/banch/dev73info/backend_73info/doc/README.md`，**不要从前端类型反推业务含义**。

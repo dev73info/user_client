@@ -1,9 +1,3 @@
----
-description: user-client 的组件库口径：Element Plus 已全量移除、ui_73info 具名导入、图标来源、主题属性、link 源码的三处联动
-globs: src/**/*.vue, src/main.ts, vite.config.ts, components.d.ts
-alwaysApply: false
----
-
 # 组件库口径：只用 `ui_73info`，不要再引入 Element Plus
 
 ## 一、Element Plus 已经整端移除

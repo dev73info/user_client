@@ -1,23 +1,18 @@
----
-description: user-client 怎么跑命令、起 dev server、过质量门禁——必须走 POSIX shell、5173/5175 双实例、type-check 是硬门禁
-alwaysApply: true
----
-
 # 工具链与质量门禁（user-client）
 
-本文只管**这个前端仓库自己的命令**。跨工程的端口表、后端重启、提交粒度、临时文件与收工清理，见工作区根目录
-`/home/banch/dev73info/.cursor/rules/` 下的 `dev-servers.mdc`、`sync-and-commit.mdc`、`temp-tools.mdc`——**那几份仍然有效，不要在这里重抄一遍**。
+本文只管**这个前端仓库自己的命令**。跨工程的端口表、后端重启、提交粒度、临时文件与收工清理，见根仓
+`docs/规则/` 下的 `dev-servers.md`、`sync-and-commit.md`、`temp-tools.md`——不要在这里重抄一遍。
 
 ## 一、所有 `pnpm` 脚本在 POSIX shell 里跑
 
 `package.json` 里的 `dev` / `build` / `build-only` / `type-check` / `generate:sitemap` 都是普通的 `vite` /
-`vue-tsc --build` 之类的命令。**本机默认 shell 就是 WSL `Ubuntu-22.04` 的 bash**，`cd` 进仓库直接跑即可，不需要再包一层：
+`vue-tsc --build` 之类的命令。**WSL bash 与 Windows Git Bash 都能直接跑**，`cd` 进仓库即可，不需要再包一层（下面以 WSL 路径为例）：
 
 ```bash
 cd /home/banch/dev73info/user-client && pnpm type-check
 ```
 
-- 工作区根在 `/home/banch/dev73info`（WSL ext4 上）；Windows 侧的旧副本 `E:\yl73info` 已废弃，不要再把路径写回去。
+- 工作区根在 Windows `E:\dev73info` / WSL `/home/banch/dev73info`；旧副本 `E:\yl73info` 已废弃，不要再把路径写回去。
 - `pnpm lint`、`pnpm format`、`pnpm test:unit` 同样在这个 bash 里直接跑。
 
 ## 二、命令表
@@ -48,15 +43,15 @@ VITE_DEV_AUTO_LOGIN_USERNAME=dev_flow_03562487 VITE_DEV_AUTO_LOGIN_PASSWORD=Test
   `vite "--" "--port" "5175"`），端口靠自增才凑对，不可靠。
 - **端口 ↔ 身份是硬绑定，不许串**：5173 = 需求方（`client_flow_03562487`）；**5175 = 开发者端，登录必须用开发者账号**（`dev_flow_03562487`，口令 `Test@123456`）。在 5175 上手动登录、自动登录、浏览器走查、mock 切身份，都不得改用需求方账号。
 - 5173 与 5175 是**不同 origin**，localStorage 各存各的令牌，所以同一个浏览器里两个身份可以同时在线、互不顶号，不需要无痕窗口。
-- **服务一律留在 Cursor 自己的终端里托管**（Shell 工具 + `block_until_ms: 0`），不要用 `nohup` / `&` / `disown` /
-  `setsid` / `screen` / `tmux` 之类撒手跑——脱离 Cursor 的进程看不到日志、停不掉，会话结束还占着端口。做法与理由见根规则 `dev-servers.mdc` 第一节。
-- 账号与口令见根规则 `dev-accounts.mdc`（本机开发库统一口令 `Test@123456`）；`.env.local` **不入库**。
+- **服务一律留在当前会话的终端里前台运行**，不要用 `nohup` / `&` / `disown` /
+  `setsid` / `screen` / `tmux` 之类撒手跑——脱离会话的进程看不到日志、停不掉，会话结束还占着端口。做法与理由见根仓 `docs/规则/dev-servers.md` 第一节。
+- 账号与口令见根仓 `docs/规则/dev-accounts.md`（本机开发库统一口令 `Test@123456`）；`.env.local` **不入库**。
 
 ## 四、依赖顺序有个前置
 
 `tags-wasm` 是 `link:../tags-wasm/pkg`，而 `tags-wasm/pkg/` 被忽略、不进仓库。**新克隆的仓库必须先构建 `tags-wasm` 产出 `tags-wasm/pkg/`，再 `pnpm install`**，
 否则这个依赖解析不到。另外 `tags-wasm` 通过 `vite-plugin-wasm` 加载，**改完它的 Rust 源码必须重建 `tags-wasm/pkg/`**，否则前端仍跑旧的 WASM。
-`ui_73info` 同样是 link 依赖（源码），改它不用重建，宿主 HMR 直接生效——见规则 `ui-73info-components`。
+`ui_73info` 同样是 link 依赖（源码），改它不用重建，宿主 HMR 直接生效——见 `doc/规则/ui-73info-components.md`。
 
 ## 五、环境变量与 mock
 

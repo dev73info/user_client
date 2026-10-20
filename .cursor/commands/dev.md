@@ -3,7 +3,7 @@ name: dev
 description: 在 Cursor 终端里起 user-client 的 dev server（需求方 5173 / 开发者 5175）
 ---
 
-按 `.cursor/rules/toolchain-and-gates.mdc` 第三节起 dev server。
+按 `doc/规则/toolchain-and-gates.md` 第三节起 dev server。
 
 规则：
 

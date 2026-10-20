@@ -13,7 +13,7 @@
 
 - 跨项目约定（仓库布局、端口、各端命令表、发布顺序）→ [AGENTS.md](../../AGENTS.md)
 - 后端接口的真实语义、状态机、字段含义 → [backend_73info/doc/README.md](../../backend_73info/doc/README.md)
-- Vue / TypeScript 编码规范（目录命名、SFC 元素顺序、禁 `any`）→ [AGENTS.md](../../AGENTS.md) 第 6 节「通用约定」的编码规范条目（那份规范原本收在机器本地的 `.cursor/rules/vue-typescript-patterns.mdc`，本机没有该文件）
+- Vue / TypeScript 编码规范（目录命名、SFC 元素顺序、禁 `any`）→ [doc/规则/vue-typescript-patterns.md](规则/vue-typescript-patterns.md)（与 [AGENTS.md](../../AGENTS.md) 第 6 节「通用约定」并列）
 
 ## 文档清单
 

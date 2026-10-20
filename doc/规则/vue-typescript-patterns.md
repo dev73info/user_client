@@ -1,13 +1,7 @@
----
-description: user-client 的 Vue 3 + TypeScript 编码规范：目录与命名、导入顺序、SFC 元素顺序、类型纪律、提示与注释口径
-globs: src/**/*.vue, src/**/*.ts, src/**/*.mts
-alwaysApply: false
----
-
 # Vue / TypeScript 编码规范（user-client）
 
-`doc/README.md` 与 `doc/设计规范.md` 都把「Vue / TypeScript 编码规范（目录命名、SFC 元素顺序、禁 `any`）」指向一份
-`vue-typescript-patterns.mdc`，并注明「本机没有该文件」。本文按现有代码的实际口径把它补回来。**它与 `doc/` 下的三份文档并列，
+`doc/README.md` 与 `doc/设计规范.md` 都把「Vue / TypeScript 编码规范（目录命名、SFC 元素顺序、禁 `any`）」指向本文件
+`doc/规则/vue-typescript-patterns.md`。本文按现有代码的实际口径整理。**它与 `doc/` 下的三份文档并列，
 不是它们的替代**：目录职责与路由见 `doc/架构.md`，视觉口径见 `doc/设计规范.md`，命令与代理见 `doc/开发指南.md`。
 
 ## 一、目录与命名
@@ -42,7 +36,7 @@ import { TButton, TIcon, Search } from 'ui_73info'       // ④ 组件库（空�
 ```
 
 `ui_73info` 必须**具名按需导入**，不要 `app.use(Ui73info)` 全局注册——显式导入让「这一页用了哪些组件」在文件顶部一眼可见。
-图标同样从 `ui_73info` 引，理由与清单见规则 `ui-73info-components`。
+图标同样从 `ui_73info` 引，理由与清单见 `doc/规则/ui-73info-components.md`。
 
 ## 三、SFC 结构与元素顺序
 
@@ -67,7 +61,7 @@ import { TButton, TIcon, Search } from 'ui_73info'       // ④ 组件库（空�
 
 - 样式**默认写 `scoped`，用原生 CSS，不加 `lang="scss"`**（全站没有 sass 依赖）。
 - 需要 `<style>`（非 scoped）时必须写明理由，现有先例只有 `App.vue`、`MobileResourceList.vue`、`DevProfileView.vue` 少数几处。
-- 大部分页面样式落在 `src/styles/*.css` 的全局样式表里，**`<style scoped>` 只装页面独有的部分**；令牌与档位见规则 `design-tokens`。
+- 大部分页面样式落在 `src/styles/*.css` 的全局样式表里，**`<style scoped>` 只装页面独有的部分**；令牌与档位见 `doc/规则/design-tokens.md`。
 
 ## 四、类型纪律
 
@@ -106,4 +100,4 @@ import { TButton, TIcon, Search } from 'ui_73info'       // ④ 组件库（空�
 以 `.prettierrc.json` 与 `.editorconfig` 为准，手写代码直接按这个风格写，不要等 `pnpm format` 兜底：
 
 - 行尾不加分号，字符串用单引号，打印宽度 100，缩进 2 空格，LF 换行，文件末尾留一个换行。
-- 校验入口见规则 `toolchain-and-gates`。
+- 校验入口见 `doc/规则/toolchain-and-gates.md`。
