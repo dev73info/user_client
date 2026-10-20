@@ -17,8 +17,8 @@
 ## 二、提交
 
 - `git add <具体文件>`，禁止 `git add -A` / `git add .`；提交前 `git diff --cached --check`。
-- Conventional Commits 前缀 + 中文简述（本仓历史提交带 `[R034]` 这类需求号前缀，跟既有风格走），
-  一个提交一件事（重构与功能分开、格式化与逻辑分开）。
+- Conventional Commits 前缀 + 中文简述，跟既有提交风格走；一个提交一件事
+  （重构与功能分开、格式化与逻辑分开）。
 - 提交信息里**不写任何工具或 agent 署名**（无 `Co-Authored-By` / `Signed-off-by` / `Generated with`）。
 - 绝不提交：`.env.local`、`dist/`、`logs/`、`node_modules/`、`*.tsbuildinfo`。
 - `components.d.ts` 是自动生成且已被跟踪的文件：不要手工改，也不要把它的 diff 单独夹带进无关提交；
@@ -50,4 +50,7 @@
   不要串 `support_client` 的 Naive UI。
 - 界面文案遵守根仓规则 `ui-copy`：错误、状态、必要警示之外的说明性文字不写进页面。
 - 账号、口令与自动登录配置只在本机 `.env.local`，永不入库、不进对话。
+- **公开仓，`master` 有服务端保护**：要求 PR 且至少 1 个批准、`enforce_admins`（管理员也绕不过）、
+  线性历史（只能 squash / rebase）、禁强推、禁删除。你不能批准自己的 PR，直推与强推都会失败。
+- 第二实例 5175 的启动方式与「端口 ↔ 身份」绑定见本仓 `.cursor/rules/toolchain-and-gates.mdc` 第三节。
 - 测试身份只从 `../docs/测试指南/测试数据` 取，不要自己编。
