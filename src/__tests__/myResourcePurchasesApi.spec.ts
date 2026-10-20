@@ -27,6 +27,7 @@ vi.mock('ui_73info', () => ({
   Search: { template: '<span />' },
   TIcon: { template: '<span><slot /></span>' },
   TButton: { template: '<button><slot /></button>' },
+  TDialog: { props: ['open'], template: '<div v-if="open"><slot /></div>' },
   TInput: { template: '<input />' },
   TSelect: { template: '<div><slot /></div>' },
   TOption: { template: '<span />' },

@@ -304,6 +304,16 @@ const router = createRouter({
             description: '查看已购数字化资源（退款由卖家或平台发起）',
           },
         },
+        {
+          // R042：接口资源订单的使用权转移申请（待我确认 / 我发起的）。
+          path: 'resource-purchases/transfers',
+          name: 'workbench-purchase-transfers',
+          component: () => import('@/views/PurchaseTransfersView.vue'),
+          meta: {
+            title: '使用权转移',
+            description: '处理接口资源订单的转移申请',
+          },
+        },
         // 团队服务已并入开发者工作台（路由见 router/dev.ts 的 devWorkbenchRoutes），旧路径保留重定向
         { path: 'teams', redirect: { name: 'workbench-teams' } },
         {

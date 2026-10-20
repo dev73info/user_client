@@ -16,6 +16,7 @@ import {
   listMyResourcePurchasesPage,
   type ResourcePurchaseOrder,
 } from '@/api/resourcePurchase'
+import { initiatePurchaseTransfer } from '@/api/resourcePurchaseTransfers'
 import { getResourceDetailSlug } from '@/api/resourceTags'
 import { DEFAULT_LIST_PAGE_SIZE, LIST_PAGE_SIZES } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
@@ -31,6 +32,7 @@ import {
   RefreshLeft,
   Search,
   TButton,
+  TDialog,
   TIcon,
   TInput,
   TMessage,
@@ -133,6 +135,50 @@ async function loadStats() {
 
 function reload() {
   void Promise.all([loadOrders(), loadStats()])
+}
+
+/* R042 使用权转移：只有接口资源且已支付的订单可以发起。 */
+const transferOpen = ref(false)
+const transferOrder = ref<ResourcePurchaseOrder | null>(null)
+const transferUsername = ref('')
+const transferMessage = ref('')
+const transferSaving = ref(false)
+
+function canTransfer(order: ResourcePurchaseOrder): boolean {
+  return isApiResourcePurchaseOrder(order) && order.status === 'paid'
+}
+
+function openTransfer(order: ResourcePurchaseOrder) {
+  transferOrder.value = order
+  transferUsername.value = ''
+  transferMessage.value = ''
+  transferOpen.value = true
+}
+
+async function submitTransfer() {
+  const order = transferOrder.value
+  if (!order || transferSaving.value) {
+    return
+  }
+  const toUsername = transferUsername.value.trim()
+  if (!toUsername) {
+    TMessage.warning('请填写接收方用户名')
+    return
+  }
+  transferSaving.value = true
+  try {
+    await initiatePurchaseTransfer(auth.token, order.order_no, {
+      to_username: toUsername,
+      message: transferMessage.value.trim() || undefined,
+    })
+    transferOpen.value = false
+    TMessage.success('转移申请已发送，等待对方确认')
+    router.push({ name: 'workbench-purchase-transfers' })
+  } catch (error) {
+    TMessage.error(error instanceof Error ? error.message : '发起使用权转移失败')
+  } finally {
+    transferSaving.value = false
+  }
 }
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
@@ -327,6 +373,13 @@ onBeforeUnmount(() => {
             </div>
             <div class="wb-item__actions">
               <TButton variant="outline" @click="openResource(order)">查看资源</TButton>
+              <TButton
+                v-if="canTransfer(order)"
+                variant="outline"
+                @click="openTransfer(order)"
+              >
+                转移使用权
+              </TButton>
             </div>
           </li>
         </ul>
@@ -348,6 +401,31 @@ onBeforeUnmount(() => {
         </div>
       </template>
     </section>
+
+    <TDialog v-model:open="transferOpen" title="转移使用权" width="480px">
+      <div class="purchases-transfer">
+        <p class="purchases-transfer__lead">
+          {{ transferOrder?.resource_title || `资源 #${transferOrder?.resource_id ?? ''}` }}
+        </p>
+        <label class="purchases-transfer__field">
+          <span>接收方用户名</span>
+          <TInput v-model="transferUsername" placeholder="对方平台用户名" />
+        </label>
+        <label class="purchases-transfer__field">
+          <span>留言（可选）</span>
+          <TInput v-model="transferMessage" placeholder="给对方说明转移原因" />
+        </label>
+        <p class="purchases-transfer__hint">
+          对方确认后，这笔订单会记到对方账号下；历史支付与回调不受影响。
+        </p>
+        <div class="purchases-transfer__actions">
+          <TButton variant="outline" :disabled="transferSaving" @click="transferOpen = false">
+            取消
+          </TButton>
+          <TButton :loading="transferSaving" @click="submitTransfer">发送申请</TButton>
+        </div>
+      </div>
+    </TDialog>
   </main>
 </template>
 
@@ -394,5 +472,37 @@ onBeforeUnmount(() => {
    flex-basis 会被 width 顶掉，细节见 portal-workbench.css 里 .wb-toolbar__field 的注释。 */
 .wb-toolbar__field--purchases-status {
   flex: 0 0 140px;
+}
+
+.purchases-transfer {
+  display: grid;
+  gap: 14px;
+}
+
+.purchases-transfer__lead {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.purchases-transfer__field {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.purchases-transfer__hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+.purchases-transfer__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 </style>

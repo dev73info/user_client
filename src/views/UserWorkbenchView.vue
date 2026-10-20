@@ -185,6 +185,11 @@ const menuGroups = computed<WorkbenchMenuGroup[]>(() => [
         name: 'workbench-resource-purchases',
         description: '已购数字资源，退款由卖家或平台发起',
       },
+      {
+        label: '使用权转移',
+        name: 'workbench-purchase-transfers',
+        description: '处理接口资源订单的转移申请',
+      },
     ],
   },
   {
