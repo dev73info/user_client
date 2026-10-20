@@ -1302,12 +1302,6 @@ watch(
                       >{{ promoShareDisplay }}</span
                     >
                   </div>
-                  <p class="dev-field-hint">
-                    拖动选择比例（0～50，0 =
-                    关闭）。这笔钱<strong>从你的净收里出</strong>，平台抽成不变；
-                    只在买家带着推广码下单、且推广者已实名并有渠道结算账户时才真正分账。
-                    积分购不参与推广分成（比例可以存，但对积分单无效）。
-                  </p>
                   <p v-if="promoShareError" class="dev-field-hint dev-field-hint--error">
                     {{ promoShareError }}
                   </p>
