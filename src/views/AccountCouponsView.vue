@@ -355,7 +355,8 @@ const enterpriseCities = computed(() => getSettlementCities(form.companyProvCode
  */
 const businessLicenseDerivedSummary = computed(() => {
   const prov = settlementProvinces.find((item) => item.value === form.companyProvCode)?.title ?? ''
-  const area = enterpriseCities.value.find((item) => item.value === form.companyAreaCode)?.title ?? ''
+  const area =
+    enterpriseCities.value.find((item) => item.value === form.companyAreaCode)?.title ?? ''
   const expires =
     form.businessLicenseExpiresOn === LONG_TERM_DATE
       ? '营业执照长期有效'
@@ -394,7 +395,8 @@ const businessLicenseDerivedNote = computed(() => {
 function matchRegionFromAddress(address: string): { prov?: string; area?: string } {
   const text = address.replace(/\s/g, '')
   if (!text) return {}
-  const stripSuffix = (title: string) => title.replace(/(省|市|自治区|壮族自治区|回族自治区|维吾尔自治区)$/, '')
+  const stripSuffix = (title: string) =>
+    title.replace(/(省|市|自治区|壮族自治区|回族自治区|维吾尔自治区)$/, '')
   const pickLongest = <T extends { title: string }>(items: T[]) =>
     [...items]
       .filter((item) => text.includes(item.title) || text.includes(stripSuffix(item.title)))
@@ -769,7 +771,10 @@ async function autoFillFromBusinessLicense(businessLicenseFile: string) {
       truncated = true
       return value.slice(0, max)
     }
-    apply(ocr.company_address, (next) => (form.companyAddress = clip(next, MAX_COMPANY_ADDRESS_LEN)))
+    apply(
+      ocr.company_address,
+      (next) => (form.companyAddress = clip(next, MAX_COMPANY_ADDRESS_LEN)),
+    )
     apply(ocr.business_scope, (next) => (form.businessScope = clip(next, MAX_BUSINESS_SCOPE_LEN)))
     apply(ocr.business_license_expires_on, (next) => (form.businessLicenseExpiresOn = next))
     // 地址拿到了就把「企业所在省市」按渠道省市表认领填好（认不出则留给用户选）
@@ -793,7 +798,9 @@ async function autoFillFromBusinessLicense(businessLicenseFile: string) {
       TMessage.warning('营业执照未识别出可用信息，请重新上传更清晰的照片')
     }
   } catch (err) {
-    TMessage.warning(err instanceof Error ? err.message : '营业执照识别失败，请重新上传更清晰的照片')
+    TMessage.warning(
+      err instanceof Error ? err.message : '营业执照识别失败，请重新上传更清晰的照片',
+    )
   } finally {
     businessLicenseOcrLoading.value = false
   }
@@ -842,10 +849,7 @@ function isAllowedLegalCertFile(file: File): boolean {
   }
   const mime = (file.type || '').toLowerCase()
   return (
-    mime === 'image/png' ||
-    mime === 'image/jpeg' ||
-    mime === 'image/jpg' ||
-    mime === 'image/webp'
+    mime === 'image/png' || mime === 'image/jpeg' || mime === 'image/jpg' || mime === 'image/webp'
   )
 }
 
@@ -1476,23 +1480,24 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
     {
       key: 'settle',
       title: '结算账户',
-      desc: settleStage.value === 'reviewing'
-        ? settleUnderReviewText.value
-        : settleStage.value === 'failed'
-          ? `渠道已拒绝开通收款账户，点进去看原因并按提示整改`
-          : settleSubjectMismatch.value
-          ? settleMaterialMissing.value
-            ? `实名资料缺${settleMaterialMissingText.value}，补齐后才能重新绑定收款账户`
-            : '实名主体已变更，原银行卡需按新主体重新绑定'
-          : settleStage.value === 'bound'
-            ? '收款银行卡已绑定，可查看或更换'
-            : settleStage.value === 'ready'
-              ? `认证已完成，绑定${settleAccountWord.value}后即可收取合同款`
-              : realnameApproved.value
-                ? settleProviderError.value
-                  ? '收款账户开通失败，点进去看渠道给的原因并补齐资料'
-                  : '正在自动开通收款账户，稍后刷新查看'
-                : '完成实名认证后会自动开通收款账户',
+      desc:
+        settleStage.value === 'reviewing'
+          ? settleUnderReviewText.value
+          : settleStage.value === 'failed'
+            ? `渠道已拒绝开通收款账户，点进去看原因并按提示整改`
+            : settleSubjectMismatch.value
+              ? settleMaterialMissing.value
+                ? `实名资料缺${settleMaterialMissingText.value}，补齐后才能重新绑定收款账户`
+                : '实名主体已变更，原银行卡需按新主体重新绑定'
+              : settleStage.value === 'bound'
+                ? '收款银行卡已绑定，可查看或更换'
+                : settleStage.value === 'ready'
+                  ? `认证已完成，绑定${settleAccountWord.value}后即可收取合同款`
+                  : realnameApproved.value
+                    ? settleProviderError.value
+                      ? '收款账户开通失败，点进去看渠道给的原因并补齐资料'
+                      : '正在自动开通收款账户，稍后刷新查看'
+                    : '完成实名认证后会自动开通收款账户',
       icon: CreditCard,
       // 渠道会员还在审核时**不放开入口**：这时候点进去也绑不上，
       // 只会撞渠道的 member_not_exists，徒增一次失败与一次限流。
@@ -1514,12 +1519,12 @@ const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
                 tone: 'danger',
               }
             : settleSubjectMismatch.value
-            ? { text: '收款账户：待重绑', tone: 'warning' }
-            : settleStage.value === 'bound'
-              ? { text: '结算账户：已设置', tone: 'success' }
-              : settleStage.value === 'ready'
-                ? { text: '收款账户：待绑卡', tone: 'warning' }
-                : { text: '收款账户：待认证', tone: 'info' },
+              ? { text: '收款账户：待重绑', tone: 'warning' }
+              : settleStage.value === 'bound'
+                ? { text: '结算账户：已设置', tone: 'success' }
+                : settleStage.value === 'ready'
+                  ? { text: '收款账户：待绑卡', tone: 'warning' }
+                  : { text: '收款账户：待认证', tone: 'info' },
     },
   ]
   // 注销只在已绑卡时有意义；属破坏性动作，用 danger 标记。
@@ -2399,9 +2404,7 @@ async function handleProviderBinding(provider: 'github' | 'gitee' | 'qq') {
     }
     window.location.assign(url)
   } catch (err) {
-    TMessage.error(
-      err instanceof Error ? err.message : `发起 ${providerLabel(provider)} 绑定失败`,
-    )
+    TMessage.error(err instanceof Error ? err.message : `发起 ${providerLabel(provider)} 绑定失败`)
     providerBindingLoading.value = false
   }
 }
@@ -3234,7 +3237,7 @@ onBeforeUnmount(() => {
                 :key="entry.key"
                 class="entry-row"
                 :class="{ 'entry-row--danger': entry.danger, 'entry-row--locked': entry.locked }"
-            :aria-disabled="entry.locked ? 'true' : undefined"
+                :aria-disabled="entry.locked ? 'true' : undefined"
                 :loading="Boolean(entry.loading)"
                 @click="openAccountEntry(entry.key)"
               >
@@ -3368,7 +3371,11 @@ onBeforeUnmount(() => {
               @submit="saveSettleAccount"
             >
               <TFormItem label="银行卡号" required>
-                <TInput v-model="settleForm.card_id" inputmode="numeric" :placeholder="settleCardPlaceholder" />
+                <TInput
+                  v-model="settleForm.card_id"
+                  inputmode="numeric"
+                  :placeholder="settleCardPlaceholder"
+                />
               </TFormItem>
               <TFormItem label="开户银行" required>
                 <TSelect
@@ -3405,7 +3412,9 @@ onBeforeUnmount(() => {
                     filterable
                     clearable
                     :disabled="!settleForm.prov_code"
-                    :placeholder="settleForm.prov_code ? '选择开户银行所在城市' : '请先选择开户省份'"
+                    :placeholder="
+                      settleForm.prov_code ? '选择开户银行所在城市' : '请先选择开户省份'
+                    "
                     style="width: 100%"
                   >
                     <TOption
@@ -3511,8 +3520,12 @@ onBeforeUnmount(() => {
                 alt="爱签实名认证二维码"
               />
               <ol class="realname-faceid-panel__steps">
-                <li><span>用手机 <strong>微信 / 支付宝</strong> 扫描上方二维码</span></li>
-                <li><span>在手机端按提示完成 <strong>人脸核身</strong></span></li>
+                <li>
+                  <span>用手机 <strong>微信 / 支付宝</strong> 扫描上方二维码</span>
+                </li>
+                <li>
+                  <span>在手机端按提示完成 <strong>人脸核身</strong></span>
+                </li>
                 <li><span>认证通过后状态自动更新为「已通过」</span></li>
               </ol>
             </template>
@@ -3581,7 +3594,6 @@ onBeforeUnmount(() => {
               >
             </div>
           </template>
-
 
           <template v-else-if="asignDialogKind === 'legalPerson'">
             <p class="asign-hint">变更法人需重新核验：请填写新法人的姓名与身份证号。</p>
@@ -3662,11 +3674,7 @@ onBeforeUnmount(() => {
               show-icon
               :title="sealError"
             >
-              <TButton
-                variant="outline"
-                size="sm"
-                class="seal-dialog__retry"
-                @click="loadMySeals"
+              <TButton variant="outline" size="sm" class="seal-dialog__retry" @click="loadMySeals"
                 >重新查询</TButton
               >
             </TAlert>
@@ -3695,11 +3703,7 @@ onBeforeUnmount(() => {
                     <span class="seal-item__name">{{ seal.sealName || '未命名印章' }}</span>
                     <small class="seal-item__no">印章编号：{{ seal.sealNo || '—' }}</small>
                   </div>
-                  <TTag
-                    v-if="seal.isDefault"
-                    tone="success"
-                    size="sm"
-                    class="seal-item__tag"
+                  <TTag v-if="seal.isDefault" tone="success" size="sm" class="seal-item__tag"
                     >默认印章</TTag
                   >
                 </div>
