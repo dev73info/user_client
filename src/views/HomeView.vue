@@ -2,7 +2,6 @@
 import '@/styles/home.css'
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import type { RouteLocationRaw } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
 import { TIcon, ArrowRight, Files, Finished, Money, TMessage, User } from 'ui_73info'
 
@@ -16,10 +15,26 @@ import AuthModal from '@/components/AuthModal.vue'
 import WechatLoginQrModal from '@/components/WechatLoginQrModal.vue'
 import PublishModal from '@/components/PublishModal.vue'
 import DepositModal from '@/components/DepositModal.vue'
-import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
 import { buildDevPortalUrl } from '@/config/runtime'
 import { useAuthForm } from '@/composables/useAuthForm'
-import { requirementStatusLabel } from '@/shared/requirementStatus'
+import {
+  buildResourceCardSummary,
+  buildResourceCoverAlt,
+  compareSpotlightResources,
+  resolveSpotlightCover,
+  spotlightAuthorLabel,
+  spotlightCategoryBadge,
+  spotlightMarkFor,
+  spotlightTagChips,
+} from '@/shared/home/resourceCardDisplay'
+import {
+  buildPortalNotices,
+  formatMoney,
+  formatTimeLabel,
+  progressPercent,
+  statusToLabel,
+  type PortalNotice,
+} from '@/shared/home/portalDisplay'
 import {
   calculateFinalDepositAmount,
   calculateFinalPaymentAmount,
@@ -50,7 +65,6 @@ import {
 } from '@/api/requirements'
 import { getDepositRatio } from '@/api/settings'
 import { listCommunityPosts, type CommunityPost } from '@/api/community'
-import { normalizeTagName } from '@/api/resourceTags'
 import { useTagTreeStore } from '@/stores/tagTree'
 import {
   invalidateResourceListCache,
@@ -77,7 +91,6 @@ type PlatformStat = {
   label: string
   value: string
   icon: typeof User
-  disabledReason?: string
   /** 冷启动里程碑进度：当前值 / 目标值 */
   progress?: { current: number; target: number }
   /** 附加说明文字 */
@@ -108,12 +121,6 @@ type PaymentState = {
 }
 
 type AuthMode = 'login' | 'register' | 'reset'
-type PortalNotice = {
-  title: string
-  date: string
-  tag?: string
-  to?: RouteLocationRaw
-}
 
 type WorkflowStep = {
   step: string
@@ -142,8 +149,6 @@ type SpotlightCard = {
   badge: string
   /** 封面右上：仅精选；空字符串表示不展示 */
   mark: string
-  markTone: '' | 'featured'
-  metaSecondary: string
   authorLabel?: string
   metaTime?: string
   viewCount: number
@@ -185,7 +190,6 @@ type TeamRank = {
 const MILESTONE_TARGETS = {
   developers: 1000,
   resources: 50,
-  orders: 100,
 } as const
 
 const failedDeveloperAvatarUrls = ref<Set<string>>(new Set())
@@ -199,20 +203,13 @@ const metrics = ref<Metric[]>([
 ])
 const AUTO_REFRESH_INTERVAL_MS = 300_000
 
+/** 公告侧栏只展示标题与成交时间，其余成交字段无读取点，随详情弹窗一并删除。 */
 type LatestDealView = {
-  paymentId: string
-  requirementId: string
   title: string
-  amount: string
   at: string
-  rating?: number | null
-  comment?: string | null
-  commentedAt?: string | null
 }
 
 const latestDeals = ref<LatestDealView[]>([])
-const selectedDeal = ref<LatestDealView | null>(null)
-const dealDetailVisible = ref(false)
 const publicDeveloperCount = ref(0)
 const pendingRequirements = ref<PendingRequirementView[]>([])
 const publicRequirementSpotlights = ref<PublicRequirementSpotlightItem[]>([])
@@ -299,14 +296,11 @@ const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
 const activeResubmitRequirementId = ref<string | null>(null)
 const publishLoading = ref(false)
 const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
-const homeRefreshLoading = ref(false)
 const depositRequirement = computed<PendingRequirementView | null>(() => {
   const id = String(route.query.requirement_id || '')
   return pendingRequirements.value.find((item) => item.id === id) ?? null
 })
 const depositPayment = ref<PaymentState | null>(null)
-const wechatAuthorizationVisible = ref(false)
-const wechatAuthorizationUrl = ref('')
 const depositLoading = ref(false)
 const depositRatioPercent = ref(20)
 const availableCoupons = ref<CouponItem[]>([])
@@ -364,55 +358,14 @@ const devActionLabel = computed(() =>
 )
 
 const portalNotices = computed<PortalNotice[]>(() => {
-  const notices: PortalNotice[] = []
-
-  for (const post of announcementPosts.value.slice(0, 3)) {
-    notices.push({
-      title: post.title,
-      date: formatTimeLabel(post.published_at),
-      tag: '公告',
-      to: { name: 'community-post', params: { postId: String(post.id) } },
-    })
-  }
-
-  if (latestDeals.value[0]) {
-    notices.push({
-      title: `最新成交：${latestDeals.value[0].title}`,
-      date: latestDeals.value[0].at,
-      tag: 'HOT',
-    })
-  }
-
-  if (publicResources.value[0]) {
-    const resourceRoute = resolveResourceRoute(publicResources.value[0])
-    notices.push({
-      title: `公开资源：${publicResources.value[0].title}`,
-      date: formatTimeLabel(publicResources.value[0].updated_at),
-      tag: normalizeTagName(publicResources.value[0].platform),
-      to: resourceRoute
-        ? resourceDetailLocation({
-          resourceId: publicResources.value[0].id,
-          rootSlug: resourceRoute.rootSlug,
-          entrySlug: resourceRoute.entrySlug,
-          sale: resourceListingSaleOf(
-            publicResources.value[0].price_fen,
-            publicResources.value[0].price_points,
-          ),
-        })
-        : { name: 'resources', query: { sale: 'free' } },
-    })
-  }
-
-  if (publicRequirementSpotlights.value[0]) {
-    notices.push({
-      title: `需求：${publicRequirementSpotlights.value[0].title}`,
-      date: formatTimeLabel(publicRequirementSpotlights.value[0].updated_at),
-      tag: statusToLabel(publicRequirementSpotlights.value[0].status, publicRequirementSpotlights.value[0].payment_mode),
-      to: { name: 'requirement-hall' },
-    })
-  }
-
-  return notices.slice(0, 4)
+  const resource = publicResources.value[0]
+  return buildPortalNotices({
+    posts: announcementPosts.value,
+    latestDeal: latestDeals.value[0],
+    resource,
+    resourceRoute: resource ? resolveResourceRoute(resource) : null,
+    spotlight: publicRequirementSpotlights.value[0],
+  })
 })
 
 const quickPanels = computed<QuickPanel[]>(() => [
@@ -569,7 +522,7 @@ function openSpotlight(card: SpotlightCard) {
 }
 
 const platformStats = computed<PlatformStat[]>(() => {
-  const [completed, , turnover] = metrics.value
+  const [completed] = metrics.value
   const resourceCount = publicResources.value.length
   const developerCount = publicDeveloperCount.value
 
@@ -600,12 +553,6 @@ const platformStats = computed<PlatformStat[]>(() => {
     },
   ]
 })
-
-function progressPercent(progress: { current: number; target: number }) {
-  if (!progress.target) return '0%'
-  const ratio = Math.min(100, Math.round((progress.current / progress.target) * 100))
-  return `${ratio}%`
-}
 
 const developerRanks = computed<DeveloperRank[]>(() => {
   const failedAvatarUrls = failedDeveloperAvatarUrls.value
@@ -745,47 +692,7 @@ function handleSpotlightCoverError(url: string | undefined) {
 }
 
 function spotlightCoverSrc(card: { coverUrl?: string }) {
-  return card.coverUrl && !failedSpotlightCoverUrls.value.has(card.coverUrl) ? card.coverUrl : ''
-}
-
-/** 首页精选区排序：有效精选 → 有效置顶 → 点赞 → 更新时间 → id。 */
-function compareSpotlightResources(left: PublicMcResourceItem, right: PublicMcResourceItem) {
-  const featuredDelta = Number(!!right.is_featured) - Number(!!left.is_featured)
-  if (featuredDelta !== 0) {
-    return featuredDelta
-  }
-
-  const pinnedDelta = Number(!!right.is_pinned) - Number(!!left.is_pinned)
-  if (pinnedDelta !== 0) {
-    return pinnedDelta
-  }
-
-  const likeDelta = (right.like_count ?? 0) - (left.like_count ?? 0)
-  if (likeDelta !== 0) {
-    return likeDelta
-  }
-
-  const leftUpdatedAt = Date.parse(left.updated_at)
-  const rightUpdatedAt = Date.parse(right.updated_at)
-  const updatedDelta =
-    (Number.isNaN(rightUpdatedAt) ? 0 : rightUpdatedAt) -
-    (Number.isNaN(leftUpdatedAt) ? 0 : leftUpdatedAt)
-  if (updatedDelta !== 0) {
-    return updatedDelta
-  }
-
-  return right.id - left.id
-}
-
-function spotlightMarkFor(item: PublicMcResourceItem): {
-  mark: string
-  markTone: SpotlightCard['markTone']
-} {
-  // 仅有效精选出「精选」角标；置顶与纯高赞无角标。
-  if (item.is_featured) {
-    return { mark: '精选', markTone: 'featured' }
-  }
-  return { mark: '', markTone: '' }
+  return resolveSpotlightCover(card.coverUrl, failedSpotlightCoverUrls.value)
 }
 
 const spotlightCards = computed<SpotlightCard[]>(() => {
@@ -799,16 +706,14 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
   const candidates = (hybrid.length > 0 ? hybrid : published).sort(compareSpotlightResources)
 
   return candidates.map((item, index) => {
-    const { mark, markTone } = spotlightMarkFor(item)
     return {
       kind: 'resource' as const,
       title: item.title,
       summary: buildResourceCardSummary(item),
       tags: spotlightTagChips(item),
       badge: spotlightCategoryBadge(item),
-      mark,
-      markTone,
-      authorLabel: item.author || item.creator || '匿名作者',
+      mark: spotlightMarkFor(item),
+      authorLabel: spotlightAuthorLabel(item),
       metaTime: formatTimeLabel(item.updated_at),
       viewCount: item.view_count ?? 0,
       downloadCount: item.download_count ?? 0,
@@ -816,7 +721,6 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
       likedByMe: !!item.liked_by_me,
       gradient: !!item.author_username_gradient,
       userColor: item.author_username_color || '',
-      metaSecondary: `${item.author || item.creator || '匿名作者'} · ${formatTimeLabel(item.updated_at)}`,
       accent: ['nebula', 'sunset', 'forest', 'frost'][index % 4] ?? 'nebula',
       coverUrl: item.cover_url ? apiUrl(item.cover_url) : '',
       coverAlt: buildResourceCoverAlt(item),
@@ -1173,7 +1077,7 @@ onMounted(() => {
     if (document.visibilityState !== 'visible') {
       return
     }
-    if (homeRefreshLoading.value || publishLoading.value || depositLoading.value || auth.loading) {
+    if (publishLoading.value || depositLoading.value || auth.loading) {
       return
     }
     void runBackgroundAutoRefresh()
@@ -1214,33 +1118,6 @@ async function runBackgroundAutoRefresh() {
   } finally {
     autoRefreshInFlight = false
   }
-}
-
-/** 状态文案走全站统一口径；`deposit_paid` 一码两义，拿到支付模式就传进去（见 `requirementStatusLabel`）。 */
-function statusToLabel(status: RequirementStatus, paymentMode?: RequirementPaymentMode): string {
-  return requirementStatusLabel(status, paymentMode)
-}
-
-function formatMoney(budget?: number | null) {
-  if (budget == null) {
-    return '待议价'
-  }
-
-  return `¥${budget}`
-}
-
-function formatTimeLabel(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) {
-    return '刚刚更新'
-  }
-
-  return date.toLocaleString('zh-CN', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 function openDepositCard(item: PendingRequirementView) {
@@ -1318,11 +1195,6 @@ function selectCoupon(code: string, type: 'amount' | 'percent') {
 function closeDepositCard() {
   depositPolicyAccepted.value = false
   router.replace({ name: 'home' })
-}
-
-function closeDealDetail() {
-  dealDetailVisible.value = false
-  selectedDeal.value = null
 }
 
 function finalDepositAmount(item: PendingRequirementView) {
@@ -1518,83 +1390,12 @@ async function loadRequirementOverview() {
     ]
 
     latestDeals.value = (payload.recent_deals ?? []).map((item) => ({
-      paymentId: item.payment_id,
-      requirementId: item.requirement_id,
       title: item.title,
-      amount: `¥${item.amount_cny.toFixed(2)}`,
       at: formatTimeLabel(item.paid_at),
-      rating: item.comment_rating ?? null,
-      comment: item.comment_text ?? null,
-      commentedAt: item.commented_at ? formatTimeLabel(item.commented_at) : null,
     }))
   } catch {
     // Keep current values if overview API fails.
   }
-}
-
-function summarizeResourceTags(resource: PublicMcResourceItem): string {
-  const tags = Array.from(
-    new Set(
-      resource.tag_selections.flatMap((item) =>
-        item.tag_names.map((tag) => normalizeTagName(tag)).filter(Boolean),
-      ),
-    ),
-  )
-  return tags.slice(0, 2).join(' / ')
-}
-
-/** 封面左上角标：优先标签路径二级品类（如 Java 版），否则回落平台名。 */
-function spotlightCategoryBadge(resource: PublicMcResourceItem): string {
-  const platform = normalizeTagName(resource.platform)
-  for (const selection of resource.tag_selections) {
-    const path = (selection.group_path ?? [])
-      .map((part) => normalizeTagName(part))
-      .filter(Boolean)
-    if (path.length >= 2 && path[1]) {
-      return path[1]
-    }
-  }
-  return platform || '平台资源'
-}
-
-/**
- * 卡片 meta：与资源详情页的标签行一致，按分组顺序展示标签名胶囊（如 客户端 / 26.2.X / Forge）。
- * 单卡最多取 3 个，超出部分不展示，避免窄卡片被标签撑高。
- */
-function spotlightTagChips(resource: PublicMcResourceItem, limit = 3): string[] {
-  const names = resource.tag_selections.flatMap((selection) =>
-    selection.tag_names.map((tag) => normalizeTagName(tag)).filter(Boolean),
-  )
-  return Array.from(new Set(names)).slice(0, limit)
-}
-
-function normalizeInlineText(value?: string | null): string {
-  return value?.replace(/\s+/g, ' ').trim() ?? ''
-}
-
-function uniqueTextParts(parts: Array<string | null | undefined>): string[] {
-  return Array.from(new Set(parts.map((part) => normalizeInlineText(part)).filter(Boolean)))
-}
-
-function buildResourceCardSummary(resource: PublicMcResourceItem): string {
-  const description = normalizeInlineText(resource.description)
-  const title = normalizeInlineText(resource.title) || '73Info 免费资源'
-
-  return description || `${title}，可在 73Info 免费资源区查看详情与下载。`
-}
-
-function buildResourceCoverAlt(resource: PublicMcResourceItem): string {
-  const title = normalizeInlineText(resource.title) || '73Info 免费资源'
-  const context = uniqueTextParts([
-    normalizeTagName(resource.platform),
-    summarizeResourceTags(resource),
-  ])
-
-  if (context.length === 0) {
-    return `${title} 的资源封面图`
-  }
-
-  return `${title} 的资源封面图，分类为 ${context.join('、')}`
 }
 
 function resolveResourceRoute(
@@ -1839,16 +1640,6 @@ async function submitDepositPayment() {
   }
 }
 
-function closeWechatAuthorization() {
-  wechatAuthorizationVisible.value = false
-  wechatAuthorizationUrl.value = ''
-}
-
-function handleWechatAuthorized() {
-  closeWechatAuthorization()
-  TMessage.success('微信授权成功，请再次点击支付')
-}
-
 function openAuth(mode: AuthMode, redirectTo = authRedirectTarget.value) {
   const inviteCodeToKeep = authInviteCode.value.trim() || routeInviteCode.value
   const shareTypeToKeep = authShareType.value.trim() || routeShareType.value
@@ -1968,38 +1759,6 @@ function openPrimaryPublishAction() {
   }
 
   void openPublishModal()
-}
-
-async function refreshHomeData() {
-  if (homeRefreshLoading.value) {
-    return
-  }
-
-  homeRefreshLoading.value = true
-  try {
-    if (auth.isAuthed) {
-      await Promise.all([
-        loadDepositRatio(),
-        loadPendingRequirements(),
-        loadRequirementOverview(),
-        loadPublicPortalData(),
-      ])
-    } else {
-      await Promise.all([
-        loadPendingRequirements(),
-        loadRequirementOverview(),
-        loadPublicPortalData(),
-      ])
-    }
-
-    if (isMounted) {
-      TMessage.success('已刷新最新数据')
-    }
-  } finally {
-    if (isMounted) {
-      homeRefreshLoading.value = false
-    }
-  }
 }
 
 function closePublishModal() {
@@ -2671,7 +2430,6 @@ async function submitPublishRequirement() {
           <section
             id="portal-developers"
             class="portal-card portal-card--stats"
-            :class="{ 'is-refreshing': homeRefreshLoading }"
           >
             <div class="portal-card__header portal-card__header--stats">
               <div class="portal-card__title portal-card__title--stats">
@@ -2689,12 +2447,8 @@ async function submitPublishRequirement() {
                 v-for="(stat, index) in platformStats"
                 :key="stat.label"
                 class="portal-stat-item"
-                :class="[
-                  `portal-stat-item--tone-${index % 4}`,
-                  { 'is-disabled': stat.disabledReason },
-                ]"
+                :class="`portal-stat-item--tone-${index % 4}`"
                 :style="{ '--stat-index': String(index) }"
-                :aria-disabled="stat.disabledReason ? 'true' : undefined"
               >
                 <span class="portal-stat-item__icon" aria-hidden="true">
                   <component :is="stat.icon" />
@@ -2712,14 +2466,6 @@ async function submitPublishRequirement() {
                       :style="{ width: progressPercent(stat.progress) }"
                     ></span>
                   </div>
-                </div>
-                <div
-                  v-if="stat.disabledReason"
-                  class="portal-stat-item__disabled"
-                  aria-live="polite"
-                >
-                  <strong>筹备中</strong>
-                  <span>{{ stat.disabledReason }}</span>
                 </div>
               </article>
             </div>
@@ -2848,38 +2594,6 @@ async function submitPublishRequirement() {
       </div>
     </div>
 
-    <div
-      v-if="dealDetailVisible && selectedDeal"
-      class="auth-modal-wrap"
-      @click.self="closeDealDetail"
-    >
-      <section class="auth-modal" aria-label="最近成交详情">
-        <h3>{{ selectedDeal.title }}</h3>
-        <p class="auth-switch">需求号：{{ selectedDeal.requirementId }}</p>
-        <p class="auth-switch">成交金额：{{ selectedDeal.amount }}</p>
-        <p class="auth-switch">成交时间：{{ selectedDeal.at }}</p>
-        <p class="auth-switch">
-          评分：{{
-            selectedDeal.rating != null
-              ? `${selectedDeal.rating.toFixed(1)} / 5`
-              : "暂无评分"
-          }}
-        </p>
-        <p class="auth-switch">
-          评论时间：{{ selectedDeal.commentedAt || "暂无评论时间" }}
-        </p>
-        <label class="auth-label">
-          <span>评论内容</span>
-          <textarea :value="selectedDeal.comment || '暂无评论内容'" rows="4" readonly />
-        </label>
-        <div class="auth-modal-actions">
-          <button class="auth-btn solid" type="button" @click="closeDealDetail">
-            关闭
-          </button>
-        </div>
-      </section>
-    </div>
-
     <AuthModal
       :visible="authVisible"
       :authMode="routeAuthMode"
@@ -2967,14 +2681,6 @@ async function submitPublishRequirement() {
       @update:depositChannel="updateDepositChannel"
       @selectCoupon="selectCoupon"
       @loadAvailableCoupons="loadAvailableCoupons"
-    />
-
-    <WechatAuthorizationModal
-      :visible="wechatAuthorizationVisible"
-      :authorization-url="wechatAuthorizationUrl"
-      :token="auth.token"
-      @close="closeWechatAuthorization"
-      @authorized="handleWechatAuthorized"
     />
   </main>
 </template>

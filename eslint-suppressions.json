@@ -47,11 +47,6 @@
       "count": 2
     }
   },
-  "src/views/HomeView.vue": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    }
-  },
   "src/views/ProfileView.vue": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
