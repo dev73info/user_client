@@ -1,0 +1,1247 @@
+{
+  "repo": ".",
+  "entries": [
+    {
+      "rule": "line-budget",
+      "file": "src/api/adapay.ts",
+      "detail": "491 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/api/auth.ts",
+      "detail": "345 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/api/community.ts",
+      "detail": "352 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/api/contracts.ts",
+      "detail": "495 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/api/mcResources.ts",
+      "detail": "468 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/api/points.ts",
+      "detail": "314 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/api/realname.ts",
+      "detail": "481 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/api/requirements.ts",
+      "detail": "458 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/api/resourcePurchase.ts",
+      "detail": "365 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/api/resources.ts",
+      "detail": "414 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/api/settings.ts",
+      "detail": "325 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/App.vue",
+      "detail": "439 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/AfterSalesModal.vue",
+      "detail": "988 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/AuthModal.vue",
+      "detail": "496 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/ContractAttachmentPanel.vue",
+      "detail": "853 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/DeliverySubmitDialog.vue",
+      "detail": "406 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/DevTipDialog.vue",
+      "detail": "635 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/InvoiceApplyDialog.vue",
+      "detail": "831 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/MobileResourceList.vue",
+      "detail": "1432 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/PortalTopNav.vue",
+      "detail": "1787 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/PublishModal.vue",
+      "detail": "1054 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/RequirementAgentPanel.vue",
+      "detail": "932 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/RequirementConversationActions.vue",
+      "detail": "1248 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/RequirementConversationModal.vue",
+      "detail": "3740 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/ResourceCatalog.vue",
+      "detail": "1392 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/ResourceDetailPanel.vue",
+      "detail": "2933 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/RichTextEditor.vue",
+      "detail": "1617 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/ShareCardGenerator.vue",
+      "detail": "494 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/SupportChatWidget.vue",
+      "detail": "647 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/WechatLoginQrModal.vue",
+      "detail": "440 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/composables/useAuthForm.ts",
+      "detail": "518 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/composables/useCodeBlockCopy.ts",
+      "detail": "365 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/mock/db.ts",
+      "detail": "1082 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/mock/index.ts",
+      "detail": "442 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/mock/routes/common.ts",
+      "detail": "654 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/mock/routes/contracts.ts",
+      "detail": "432 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/mock/routes/conversations.ts",
+      "detail": "360 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/mock/routes/payments.ts",
+      "detail": "381 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/mock/routes/requirements.ts",
+      "detail": "441 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/mock/routes/resources.ts",
+      "detail": "495 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/router/dev.ts",
+      "detail": "524 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/router/index.ts",
+      "detail": "617 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/shared/api/sse.ts",
+      "detail": "454 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/shared/conversationCards.ts",
+      "detail": "562 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/shared/devHomeMock.ts",
+      "detail": "344 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/shared/notifications.ts",
+      "detail": "376 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/shared/resourceApi.ts",
+      "detail": "341 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/shared/resourceSale.ts",
+      "detail": "591 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/stores/auth.ts",
+      "detail": "405 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/styles/dev-base.css",
+      "detail": "762 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/styles/dev-resource.css",
+      "detail": "1023 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/styles/dev-responsive.css",
+      "detail": "515 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/styles/dev-wallet.css",
+      "detail": "426 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/styles/home.css",
+      "detail": "3320 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/styles/modal.css",
+      "detail": "1754 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/styles/portal-pages.css",
+      "detail": "558 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/styles/portal-workbench.css",
+      "detail": "947 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/styles/profile.css",
+      "detail": "740 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/styles/resource-catalog.css",
+      "detail": "776 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/styles/shell.css",
+      "detail": "509 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/AboutView.vue",
+      "detail": "659 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/AccountCouponsView.vue",
+      "detail": "5124 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/ApiResourceCheckoutView.vue",
+      "detail": "432 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/CommunityView.vue",
+      "detail": "2702 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/ContractSignView.vue",
+      "detail": "1277 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/CouponClaimView.vue",
+      "detail": "303 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/DevFundRecordsView.vue",
+      "detail": "359 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/DevHomeView.vue",
+      "detail": "2780 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/DevMyRequirementsView.vue",
+      "detail": "2781 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/DevProfileView.vue",
+      "detail": "1613 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/DevRequirementDetailView.vue",
+      "detail": "1279 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/DevRequirementHallView.vue",
+      "detail": "1323 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/DevResourceHomepageEditView.vue",
+      "detail": "1951 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/DevResourceInitView.vue",
+      "detail": "1394 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/DevResourceListView.vue",
+      "detail": "1017 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/DevResourceVersionsView.vue",
+      "detail": "796 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/DevSoldResourcePurchasesView.vue",
+      "detail": "749 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/DevTipSettingsView.vue",
+      "detail": "653 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/DevWalletView.vue",
+      "detail": "680 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/HomeView.vue",
+      "detail": "2981 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/InvoiceCenterView.vue",
+      "detail": "615 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/MallView.vue",
+      "detail": "318 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/MessagesView.vue",
+      "detail": "1121 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/MyRequirementsView.vue",
+      "detail": "3930 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/MyResourcePurchasesView.vue",
+      "detail": "516 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/MySignaturesView.vue",
+      "detail": "329 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/NotificationCenterView.vue",
+      "detail": "800 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/PaymentView.vue",
+      "detail": "1562 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/PointsCenterView.vue",
+      "detail": "519 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/ProfileView.vue",
+      "detail": "2732 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/RequirementHallView.vue",
+      "detail": "1632 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/ResourceCatalogView.vue",
+      "detail": "519 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/SearchResultsView.vue",
+      "detail": "1016 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/TeamDetailView.vue",
+      "detail": "645 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/TeamProfileView.vue",
+      "detail": "388 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/TeamResourcesView.vue",
+      "detail": "719 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/TeamsView.vue",
+      "detail": "482 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/TicketCenterView.vue",
+      "detail": "1115 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/views/UserWorkbenchView.vue",
+      "detail": "1955 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/__tests__/afterSalesWindow.spec.ts",
+      "detail": "485 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/__tests__/devHomeView.spec.ts",
+      "detail": "428 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/__tests__/devResourceHomepageTagEcho.spec.ts",
+      "detail": "364 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/__tests__/invoiceApplyDialog.spec.ts",
+      "detail": "656 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/__tests__/notifications.spec.ts",
+      "detail": "372 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/__tests__/resourceSale.spec.ts",
+      "detail": "345 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/__tests__/workbenchMode.spec.ts",
+      "detail": "341 行 > 300（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/App.vue",
+      "detail": "1 处非标准断点（780px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/App.vue",
+      "detail": "15 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/AcceptanceDialog.vue",
+      "detail": "21 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/AfterSalesModal.vue",
+      "detail": "29 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/BadgeDisplay.vue",
+      "detail": "3 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/BadgeWall.vue",
+      "detail": "7 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/components/ContractAttachmentPanel.vue",
+      "detail": "1 处非标准断点（600px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/ContractAttachmentPanel.vue",
+      "detail": "61 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/DeliverySubmitDialog.vue",
+      "detail": "23 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/DevTipDialog.vue",
+      "detail": "33 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/components/home/HomeHeroSection.vue",
+      "detail": "1 处非标准断点（820px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/home/HomeHeroSection.vue",
+      "detail": "9 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/InvitePanel.vue",
+      "detail": "2 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/InvoiceApplyDialog.vue",
+      "detail": "40 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/MobileResourceList.vue",
+      "detail": "114 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/PaymentModeChip.vue",
+      "detail": "4 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/components/PortalMobileDock.vue",
+      "detail": "1 处非标准断点（360px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/PortalMobileDock.vue",
+      "detail": "10 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/components/PortalTopNav.vue",
+      "detail": "2 处非标准断点（960px、780px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/PortalTopNav.vue",
+      "detail": "102 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/PublishModal.vue",
+      "detail": "66 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/components/RealnameHero.vue",
+      "detail": "2 处非标准断点（860px、720px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/RealnameHero.vue",
+      "detail": "2 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/RequirementAgentPanel.vue",
+      "detail": "68 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/RequirementConversationActions.vue",
+      "detail": "33 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/components/RequirementConversationModal.vue",
+      "detail": "3 处非标准断点（820px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/RequirementConversationModal.vue",
+      "detail": "265 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/components/RequirementProgressGuide.vue",
+      "detail": "1 处非标准断点（720px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/RequirementProgressGuide.vue",
+      "detail": "5 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/components/ResourceCatalog.vue",
+      "detail": "1 处非标准断点（980px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/ResourceCatalog.vue",
+      "detail": "43 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/components/ResourceDetailPanel.vue",
+      "detail": "2 处非标准断点（980px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/ResourceDetailPanel.vue",
+      "detail": "147 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/ResourceModeSwitch.vue",
+      "detail": "5 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/RichTextEditor.vue",
+      "detail": "50 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/ShareCardGenerator.vue",
+      "detail": "45 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/SupportChatWidget.vue",
+      "detail": "26 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/TurnstileWidget.vue",
+      "detail": "1 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/WechatLoginQrModal.vue",
+      "detail": "9 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/mock/MockIdentitySwitcher.vue",
+      "detail": "26 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/styles/dev-requirement.css",
+      "detail": "1 处非标准断点（720px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/styles/dev-resource.css",
+      "detail": "1 处非标准断点（480px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/styles/dev-responsive.css",
+      "detail": "2 处非标准断点（720px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/styles/dev-wallet.css",
+      "detail": "1 处非标准断点（720px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/styles/home.css",
+      "detail": "3 处非标准断点（1200px、560px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/styles/portal-pages.css",
+      "detail": "1 处非标准断点（1100px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/styles/profile.css",
+      "detail": "4 处非标准断点（820px、520px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/styles/resource-catalog.css",
+      "detail": "1 处非标准断点（780px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/styles/shell.css",
+      "detail": "2 处非标准断点（780px、820px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/styles/unified-top-card.css",
+      "detail": "1 处非标准断点（420px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/views/AboutView.vue",
+      "detail": "1 处非标准断点（820px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/AboutView.vue",
+      "detail": "58 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/views/AccountCouponsView.vue",
+      "detail": "4 处非标准断点（1100px、720px、780px、460px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/AccountCouponsView.vue",
+      "detail": "65 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/ApiResourceCheckoutView.vue",
+      "detail": "22 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/BadgesView.vue",
+      "detail": "3 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/views/CommunityView.vue",
+      "detail": "3 处非标准断点（921px、920px、760px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/CommunityView.vue",
+      "detail": "156 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/views/ContractSignView.vue",
+      "detail": "1 处非标准断点（600px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/ContractSignView.vue",
+      "detail": "90 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/CouponClaimView.vue",
+      "detail": "13 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/DeveloperAgreementView.vue",
+      "detail": "7 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/views/DevHomeView.vue",
+      "detail": "3 处非标准断点（980px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/DevHomeView.vue",
+      "detail": "1 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/views/DevMyRequirementsView.vue",
+      "detail": "1 处非标准断点（720px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/DevMyRequirementsView.vue",
+      "detail": "3 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/DevProfileView.vue",
+      "detail": "113 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/views/DevRequirementDetailView.vue",
+      "detail": "1 处非标准断点（720px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/DevRequirementDetailView.vue",
+      "detail": "6 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/DevRequirementHallView.vue",
+      "detail": "7 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/DevResourceHomepageEditView.vue",
+      "detail": "14 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/DevResourceInitView.vue",
+      "detail": "14 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/DevResourceListView.vue",
+      "detail": "3 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/DevSoldResourcePurchasesView.vue",
+      "detail": "4 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/HomeView.vue",
+      "detail": "12 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/views/InviteLeaderboardView.vue",
+      "detail": "1 处非标准断点（980px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/InviteLeaderboardView.vue",
+      "detail": "9 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/InvoiceCenterView.vue",
+      "detail": "4 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/MallView.vue",
+      "detail": "17 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/MessagesView.vue",
+      "detail": "4 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/views/MyRequirementsView.vue",
+      "detail": "1 处非标准断点（980px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/MyRequirementsView.vue",
+      "detail": "90 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/MyResourcePurchasesView.vue",
+      "detail": "6 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/views/NotFoundView.vue",
+      "detail": "1 处非标准断点（820px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/NotFoundView.vue",
+      "detail": "20 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/NotificationCenterView.vue",
+      "detail": "20 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/OAuthAuthorizeView.vue",
+      "detail": "15 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/PaymentView.vue",
+      "detail": "3 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/views/ProfileView.vue",
+      "detail": "2 处非标准断点（760px、380px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/ProfileView.vue",
+      "detail": "140 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/RequirementHallView.vue",
+      "detail": "82 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/views/SearchResultsView.vue",
+      "detail": "1 处非标准断点（860px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/SearchResultsView.vue",
+      "detail": "45 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/views/TeamDetailView.vue",
+      "detail": "1 处非标准断点（780px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/TeamProfileView.vue",
+      "detail": "26 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/TeamResourcesView.vue",
+      "detail": "1 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/views/TicketCenterView.vue",
+      "detail": "2 处非标准断点（1080px、720px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/TicketCenterView.vue",
+      "detail": "2 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/UserBadgesView.vue",
+      "detail": "3 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/views/UserWorkbenchView.vue",
+      "detail": "1 处非标准断点（200px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/views/UserWorkbenchView.vue",
+      "detail": "64 处裸色值",
+      "since": "2026-10-21"
+    }
+  ]
+}

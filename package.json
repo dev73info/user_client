@@ -11,11 +11,15 @@
     "build": "run-s generate:sitemap type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "test:unit": "vitest",
+    "test:ci": "vitest run --exclude '**/.claude/**'",
     "build-only": "vite build && node scripts/generate-seo-pages.mjs",
     "type-check": "vue-tsc --build",
     "lint": "run-s lint:*",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
+    "lint:check": "eslint . --max-warnings=0",
+    "check:frontend": "node scripts/check-frontend.mjs .",
+    "gate": "run-s type-check lint:check test:ci check:frontend",
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
