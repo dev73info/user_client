@@ -258,6 +258,16 @@ const router = createRouter({
           },
         },
         {
+          // R041：买家查看并撤销对接口资源站点的 OAuth 授权。
+          path: 'account/authorized-apps',
+          name: 'workbench-authorized-apps',
+          component: () => import('@/views/AuthorizedAppsView.vue'),
+          meta: {
+            title: '已授权应用',
+            description: '查看并撤销对开发者站点的授权',
+          },
+        },
+        {
           // 「我的背包」下的四页：积分中心（余额、打赏、明细）、权益中心、优惠券中心、我的徽章墙。
           // 路径 workbench/points 沿用原「我的背包」那一条，老书签仍然落到积分中心。
           path: 'points',
