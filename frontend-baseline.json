@@ -388,7 +388,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/AccountCouponsView.vue",
-      "detail": "1699 行 > 300（视图）",
+      "detail": "930 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
