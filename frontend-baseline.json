@@ -364,7 +364,7 @@
     {
       "rule": "line-budget",
       "file": "src/styles/profile.css",
-      "detail": "887 行 > 300（模块）",
+      "detail": "972 行 > 300（模块）",
       "since": "2026-10-21"
     },
     {
@@ -388,13 +388,13 @@
     {
       "rule": "line-budget",
       "file": "src/views/AccountCouponsView.vue",
-      "detail": "4109 行 > 300（视图）",
+      "detail": "3222 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
       "rule": "api-deps",
       "file": "src/views/AccountCouponsView.vue",
-      "detail": "依赖 6 个 api 模块（adapay、http、auth、settings、realname、asignAccount）> 3",
+      "detail": "依赖 5 个 api 模块（http、auth、settings、realname、asignAccount）> 3",
       "since": "2026-10-21"
     },
     {
@@ -532,7 +532,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/HomeView.vue",
-      "detail": "2235 行 > 300（视图）",
+      "detail": "2270 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -592,7 +592,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/ProfileView.vue",
-      "detail": "2732 行 > 300（视图）",
+      "detail": "2709 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -693,38 +693,14 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/account/AsignDialog.vue",
-      "detail": "1 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/account/CloseAccountDialog.vue",
-      "detail": "1 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/account/CloseSettleDialog.vue",
-      "detail": "1 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/components/account/PasswordDialog.vue",
-      "detail": "1 处非标准断点（720px）",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "raw-color",
       "file": "src/components/account/SealDialog.vue",
-      "detail": "11 处裸色值",
+      "detail": "10 处裸色值",
       "since": "2026-10-21"
     },
     {
       "rule": "breakpoint",
-      "file": "src/components/account/TwoFactorDialog.vue",
-      "detail": "1 处非标准断点（720px）",
+      "file": "src/components/account/SettlementDialog.vue",
+      "detail": "1 处非标准断点（460px）",
       "since": "2026-10-21"
     },
     {
@@ -993,6 +969,12 @@
     },
     {
       "rule": "raw-color",
+      "file": "src/composables/useFaceidChallenge.ts",
+      "detail": "2 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
       "file": "src/mock/identity.ts",
       "detail": "2 处裸色值",
       "since": "2026-10-21"
@@ -1108,13 +1090,13 @@
     {
       "rule": "breakpoint",
       "file": "src/styles/profile.css",
-      "detail": "4 处非标准断点（820px、520px）",
+      "detail": "5 处非标准断点（820px、520px、720px）",
       "since": "2026-10-21"
     },
     {
       "rule": "raw-color",
       "file": "src/styles/profile.css",
-      "detail": "73 处裸色值",
+      "detail": "74 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -1196,15 +1178,9 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/views/AccountCouponsView.vue",
-      "detail": "2 处非标准断点（780px、460px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/views/AccountCouponsView.vue",
-      "detail": "9 处裸色值",
+      "detail": "5 处裸色值",
       "since": "2026-10-21"
     },
     {
