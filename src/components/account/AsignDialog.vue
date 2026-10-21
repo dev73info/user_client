@@ -12,8 +12,9 @@
  * - `loading`：各按钮的加载位由父级持有（请求在视图）；
  * - `mobileMasked`：「请输入本人手机号（当前 138****0000）」那句提示用的脱敏手机号。
  *
- * 样式：`.asign-row` / `.asign-hint` 与「印章管理」各带一份（同一组选择器，
- * 收口时再合成一处）；弹窗节点搬进组件后父级 scoped 不再命中，不搬就整块塌版。
+ * 样式：`.asign-row` / `.asign-hint` 是**全局**样式（`src/styles/profile.css` 的
+ * 「账号弹窗的共用样式」一节）——它同时被「印章管理」用，两个弹窗各带一份副本只会让同一个
+ * 规格有两处正本，所以 R047 收口时收回了全局样式表。
  */
 import { computed } from 'vue'
 
@@ -230,23 +231,3 @@ const personalMobile = computed({
     </template>
   </TDialog>
 </template>
-
-<style scoped>
-.asign-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.asign-row:last-child {
-  margin-bottom: 0;
-}
-
-.asign-hint {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.6;
-  margin: 0 0 12px;
-}
-</style>

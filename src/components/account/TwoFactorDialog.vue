@@ -16,8 +16,10 @@
  * - `method`（邮箱 / 手机号页签）是纯 UI 态，留在组件内部。
  *
  * 样式：`.dialog-form` 与整组 `.account-2fa-*` / `.account-security-*` / `.account-switch-*`
- * 原来都在视图的 scoped 块里，弹窗节点搬进来后父级 scoped 不再命中（整块塌版），随组件搬走；
- * 720px 那一档断点照原样跟着走，不新增档位。
+ * 原来都在视图的 scoped 块里，弹窗节点搬进来后父级 scoped 不再命中（整块塌版），随组件搬走。
+ * 其中「两栏卡片 / 开关行 / 操作行」的列宽与 720px 窄屏档是**全局**样式
+ * （`src/styles/profile.css` 的「账号弹窗的共用样式」一节）：那档断点与「修改密码」弹窗
+ * 共用一份，且 scoped 的 `[data-v-x]` 特异性更高、会压住全局媒体查询，所以基声明也放在全局。
  */
 import { computed, ref } from 'vue'
 
@@ -162,7 +164,6 @@ function onToggle(event: Event): void {
 
 .account-security-toggle-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
   padding: 14px;
@@ -240,7 +241,6 @@ function onToggle(event: Event): void {
 
 .account-security-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: center;
 }
@@ -268,8 +268,6 @@ function onToggle(event: Event): void {
 
 .account-2fa-methods {
   display: grid;
-  /* 同上：允许两列收缩，窄弹窗里不让卡片把容器顶宽 */
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -336,25 +334,5 @@ function onToggle(event: Event): void {
   background: #f8fafc;
   color: #94a3b8;
   box-shadow: none;
-}
-
-@media (max-width: 720px) {
-  .account-security-actions,
-  .account-security-toggle-row {
-    grid-template-columns: 1fr;
-  }
-
-  .account-2fa-methods {
-    grid-template-columns: 1fr;
-  }
-
-  .account-switch-control {
-    justify-self: start;
-  }
-
-  .account-security-actions .ghost.small {
-    width: 100%;
-    justify-self: stretch;
-  }
 }
 </style>

@@ -9,8 +9,9 @@
  * 「点开才查一次」的时序（`openSealDialog()` 先清空再查）留在视图，组件只负责画。
  * 印章数据用本地结构类型描述，不从 `@/api/asignAccount` 引类型（组件不直接依赖 api 层）。
  *
- * 样式：`.asign-row` / `.asign-hint` 与本文件 `.seal-*` 整组原来都在视图的 scoped 块里，
- * 弹窗节点搬进来后父级 scoped 不再命中（整块塌版），随组件搬走。
+ * 样式：`.asign-row` / `.asign-hint` 是**全局**样式（`src/styles/profile.css` 的
+ * 「账号弹窗的共用样式」一节），与「爱签账户管理」共用同一份；本文件只留 `.seal-*`。
+ * 弹窗节点搬进组件后父级 scoped 不再命中，所以当初是连着样式一起搬的。
  */
 import { TAlert, TButton, TDialog, TIcon, TLoading, TTag, CollectionTag } from 'ui_73info'
 
@@ -121,24 +122,6 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-.asign-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.asign-row:last-child {
-  margin-bottom: 0;
-}
-
-.asign-hint {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.6;
-  margin: 0 0 12px;
-}
-
 .seal-dialog__body {
   display: grid;
   gap: 12px;

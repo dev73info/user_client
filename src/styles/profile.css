@@ -884,3 +884,88 @@
   border-color: rgba(125, 155, 225, 0.92);
   box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
 }
+
+/* === 账号弹窗的共用样式（R047 收口） ===
+   下面这几条原来在 src/components/account/ 的几个弹窗里各带一份副本：`TDialog` 默认
+   teleport 到 body，父级的 scoped 规则不再命中弹窗节点，所以第 1 步拆弹窗时只能连着样式
+   一起复制。同一个视觉规格留两份、改一次要改两处，因此收回全局。
+
+   收在这里要注意两点：
+   1. 不能挂 `.profile-page` 上的 `--profile-*` 变量——teleport 出去后不在 `.profile-page`
+      子树里，取不到；颜色一律用 `:root` 上登记的 `--73-*` 令牌。
+   2. scoped 样式编译后自带 `[data-v-x]` 属性选择器，特异性比这里的类选择器高一级。所以
+      窄屏档要覆盖的那几条**基声明**必须一并搬过来（见本节末尾），否则全局媒体查询会被
+      组件里的 scoped 基规则压住、静默失效。 */
+
+/* 爱签账户管理 / 印章管理两个弹窗的行：一行控件横排，行间 10px。 */
+.asign-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.asign-row:last-child {
+  margin-bottom: 0;
+}
+
+/* 说明行：颜色取 `--73-ink-muted`，与原先的字面量 #64748b 同值（两套主题一致），
+   换令牌不改观感，只是把它从裸色值里摘出来。 */
+.asign-hint {
+  margin: 0 0 12px;
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* 危险操作弹窗的确认词说明（注销账号 / 注销结算账户共用）。
+   这里保留字面量 #475569：最接近的 `--73-ink-soft` 在 portal 主题下是 #52627a，并非同值，
+   换令牌会改动颜色，先原样搬过来。 */
+.account-close-confirm-label {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 密码弹窗两行、两步验证弹窗开关行与两栏卡片：这几行的列宽在 720px 档要改成竖排。
+   基声明放在这里，窄屏档才能压过组件里剩下的 scoped 规则（原因见本节开头第 2 条）。 */
+.account-password-row--send {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.account-password-row--confirm {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+
+.account-security-toggle-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.account-security-actions {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.account-2fa-methods {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+/* 720px 是历史档位（不在 640/900/1180 三档里），先收成一处、不再各弹窗各一份；
+   下一轮把两个弹窗的基声明整体换到 640 档时，这条跟着删。 */
+@media (max-width: 720px) {
+  .account-password-row--send,
+  .account-password-row--confirm,
+  .account-security-actions,
+  .account-security-toggle-row,
+  .account-2fa-methods {
+    grid-template-columns: 1fr;
+  }
+
+  .account-switch-control {
+    justify-self: start;
+  }
+
+  .account-security-actions .ghost.small {
+    width: 100%;
+    justify-self: stretch;
+  }
+}

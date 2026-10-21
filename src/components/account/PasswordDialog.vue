@@ -15,9 +15,11 @@
  * - `emailBound`：没绑邮箱时改了密码也收不到验证码，两个「发送 / 保存」都得拦在外面
  *   （判断仍在视图，这里只接收结果）。
  *
- * 样式：`.dialog-form` 与两行 `.account-password-row--send / --confirm` 的列宽覆盖原来
- * 写在视图的 scoped 块里，弹窗节点搬进来后父级 scoped 不再命中（整块塌版），随组件搬走；
- * 720px 那一档断点照原样跟着走，不新增档位。
+ * 样式：`.dialog-form` 原来写在视图的 scoped 块里，弹窗节点搬进来后父级 scoped 不再命中
+ * （整块塌版），随组件搬走；两个 `.account-password-row--*` 的列宽与 720px 窄屏档是
+ * **全局**样式（`src/styles/profile.css` 的「账号弹窗的共用样式」一节）——那档断点与
+ * 「两步验证」弹窗共用一份，且 scoped 的 `[data-v-x]` 特异性更高、会压住全局媒体查询，
+ * 所以基声明也放在全局那边。
  */
 import { computed } from 'vue'
 
@@ -130,21 +132,5 @@ const code = computed({
 .dialog-form {
   display: grid;
   gap: 12px;
-}
-
-/* 两行的列宽：第一行「输入 + 发送验证码」，第二行「密码 + 验证码 + 保存」 */
-.account-password-row--send {
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.account-password-row--confirm {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-}
-
-@media (max-width: 720px) {
-  .account-password-row--send,
-  .account-password-row--confirm {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

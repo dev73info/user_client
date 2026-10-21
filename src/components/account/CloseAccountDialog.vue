@@ -12,9 +12,10 @@
  * - `ready`：确认词是否已输对（父级算好传下来，同一个判断不给两个文件各写一遍）；
  * - `saving`：注销请求进行中。
  *
- * 样式：`.dialog-form` / `.account-close-form` / `.account-close-confirm-label` /
- * `.account-close-actions` 原来都在视图的 scoped 块里，弹窗节点搬进来后父级 scoped
- * 不再命中（弹窗整体塌版），所以四条一起搬进本组件。
+ * 样式：`.dialog-form` / `.account-close-form` / `.account-close-actions` 原来都在视图的
+ * scoped 块里，弹窗节点搬进来后父级 scoped 不再命中（弹窗整体塌版），所以三条一起搬进本
+ * 组件；`.account-close-confirm-label` 与「注销结算账户」共用，已收回全局
+ * `src/styles/profile.css`（「账号弹窗的共用样式」一节）。
  */
 import { computed } from 'vue'
 
@@ -97,12 +98,6 @@ const value = computed({
 
 .account-close-form {
   gap: 16px;
-}
-
-.account-close-confirm-label {
-  color: #475569;
-  font-size: 13px;
-  font-weight: 700;
 }
 
 .account-close-actions {
