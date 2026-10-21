@@ -896,7 +896,8 @@ async function toggleFavorite(post: CommunityPost) {
   min-width: 0;
 }
 
-@media (max-width: 1180px) and (min-width: 921px) {
+/* R047 断点收敛：原档位 921px → 901px（与下面 920px → 900px 互补，必须成对改） */
+@media (max-width: 1180px) and (min-width: 901px) {
   .community-stream,
   .community-detail {
     top: 136px;
@@ -1585,7 +1586,8 @@ async function toggleFavorite(post: CommunityPost) {
   color: #0f172a;
 }
 
-@media (max-width: 920px) {
+/* R047 断点收敛：原档位 920px → 900px */
+@media (max-width: 900px) {
   .community-scroll-top {
     right: 14px;
     bottom: calc(102px + env(safe-area-inset-bottom));
@@ -1600,12 +1602,13 @@ async function toggleFavorite(post: CommunityPost) {
   .community-detail {
     position: static;
   }
-  /* `.community-form` 的单列塌版跟着 CommunityComposerPanel.vue 走了（那边保留原断点 920px） */
+  /* `.community-form` 的单列塌版跟着 CommunityComposerPanel.vue 走了（那边的断点 R047 收到 900px） */
 }
 
-@media (max-width: 760px) {
+/* R047 断点收敛：原档位 760px → 640px */
+@media (max-width: 640px) {
 
-  /* `.community-panel__head`（编辑器头）随组件搬走，那档在组件里保留原断点 760px */
+  /* `.community-panel__head`（编辑器头）随组件搬走，那档在组件里 R047 收到 640px */
   .community-hero,
   .community-detail__header,
   .community-detail__title-row,

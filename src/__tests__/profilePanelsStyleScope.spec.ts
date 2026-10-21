@@ -27,15 +27,15 @@ describe('个人中心总览：样式的 scoped 归属（编译产物验证）',
     expect(viewSource).not.toContain('overview-strip')
   })
 
-  it('进度条 :deep(.req-progress*) 整段随需求进度面板走（桌面那条 + @760 那条都在）', () => {
+  it('进度条 :deep(.req-progress*) 整段随需求进度面板走（桌面那条 + @640 那条都在）', () => {
     const css = scopedCss('RequirementProgressPanel.vue')
     // 桌面那条：抽组件时最容易漏的一条
     expect(css).toMatch(
       /\.overview-requirement-progress\[data-v-test\] \.req-progress \{\s*padding: 16px 18px 14px;/,
     )
-    // @760 那条：整块盖掉进度条的长相
+    // @640 那条：整块盖掉进度条的长相（R047 断点收敛：原档位 760px → 640px）
     expect(css).toMatch(
-      /@media \(max-width: 760px\)[\s\S]*\.overview-requirement-progress\[data-v-test\] \.req-progress \{\s*padding: 12px 6px 10px;/,
+      /@media \(max-width: 640px\)[\s\S]*\.overview-requirement-progress\[data-v-test\] \.req-progress \{\s*padding: 12px 6px 10px;/,
     )
     // 六个步骤子元素的选择器也都要编译成后代形式
     for (const part of [

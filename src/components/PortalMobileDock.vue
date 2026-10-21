@@ -239,7 +239,8 @@ function goWorkbench() {
     }
 }
 
-@media (max-width: 360px) {
+/* R047 断点收敛：原档位 360px → 640px */
+@media (max-width: 640px) {
     .portal-mobile-dock {
         gap: 2px;
         padding: 4px;

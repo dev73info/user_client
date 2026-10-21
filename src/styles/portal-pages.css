@@ -459,7 +459,8 @@
   }
 }
 
-@media (max-width: 1100px) {
+/* R047 断点收敛：原档位 1100px → 1180px */
+@media (max-width: 1180px) {
   .portal-page__hero,
   .portal-page__content,
   .portal-page__stats,

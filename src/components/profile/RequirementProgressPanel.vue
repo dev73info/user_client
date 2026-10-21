@@ -6,7 +6,7 @@ import type { RequirementProgressRow } from '@/composables/useRequirementOvervie
  * 总览里的「需求进度」面板：最近 5 条需求的标题 / 状态 / 金额 / 时间，外加一条流程进度条；展示串
  * 由 `useRequirementOverview` 算好传进来，点一行只回传该行，不发路由、不弹提示。
  *
- * ⚠️ 整段 `:deep(.req-progress*)`（桌面一条 + `@760` 一条）必须留在**这里**：`:deep()` 只在
+ * ⚠️ 整段 `:deep(.req-progress*)`（桌面一条 + `@640` 一条）必须留在**这里**：`:deep()` 只在
  * 「持有子组件的那一层」编译成后代选择器，搬回视图或全局都匹配不上，进度条会静默失去长相。
  */
 defineProps<{ rows: RequirementProgressRow[] }>()
@@ -154,7 +154,8 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
   color: #1d4ed8;
 }
 
-@media (max-width: 760px) {
+/* R047 断点收敛：原档位 760px → 640px */
+@media (max-width: 640px) {
   .overview-section-head {
     flex-wrap: wrap;
     align-items: center;
@@ -261,7 +262,7 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
     background: #f6f9ff;
   }
 
-  /* 组件在 720px 以下会改成竖排五行，总览里保持横排：只留圆点和步骤名，说明文字收起 */
+  /* 组件在 640px 以下会改成竖排五行，总览里保持横排：只留圆点和步骤名，说明文字收起 */
   .overview-requirement-progress :deep(.req-progress__steps) {
     flex-direction: row;
     align-items: flex-start;

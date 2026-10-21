@@ -231,13 +231,15 @@ function forwardNotify(message: string, type?: 'success' | 'warning' | 'error') 
 /* 窄屏：表单塌成单列，标题行与取消按钮改成上下排。
    断点保持改造前的 920 / 760——本轮只搬结构，不动视觉；标准档 1180/900/640
    的收敛要整体走查，单独一轮做。 */
-@media (max-width: 920px) {
+/* R047 断点收敛：原档位 920px → 900px（与 CommunityView 里 901/900 那一对同档） */
+@media (max-width: 900px) {
   .community-form {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 760px) {
+/* R047 断点收敛：原档位 760px → 640px */
+@media (max-width: 640px) {
   .community-panel__head {
     flex-direction: column;
     align-items: flex-start;

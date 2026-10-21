@@ -221,7 +221,8 @@
   color: var(--dev-gold);
 }
 
-@media (max-width: 720px) {
+/* R047 断点收敛：原档位 720px → 640px */
+@media (max-width: 640px) {
   .wallet-hero {
     grid-template-columns: 1fr;
     gap: 10px;

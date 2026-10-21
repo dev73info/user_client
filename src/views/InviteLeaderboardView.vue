@@ -74,7 +74,8 @@ import ShareStats from '@/components/ShareStats.vue'
     min-height: 100%;
 }
 
-@media (max-width: 980px) {
+/* R047 断点收敛：原档位 980px → 900px */
+@media (max-width: 900px) {
     .invite-leaderboard-view {
         grid-template-columns: 1fr;
     }

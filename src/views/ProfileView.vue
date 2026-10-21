@@ -468,7 +468,7 @@ onMounted(async () => {
   gap: 12px;
 }
 
-/* 头像卡下方的 App 式快捷入口：只在移动端出现（见 760px 断点） */
+/* 头像卡下方的 App 式快捷入口：只在移动端出现（见 640px 断点） */
 .overview-hero__quick {
   display: none;
 }
@@ -513,7 +513,8 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 760px) {
+/* R047 断点收敛：原档位 760px → 640px */
+@media (max-width: 640px) {
   .profile-page.page-shell {
     gap: 12px;
     padding: 0 0 24px;

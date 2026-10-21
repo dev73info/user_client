@@ -1236,7 +1236,8 @@ async function submitBinding() {
   }
 }
 
-@media (max-width: 720px) {
+/* R047 断点收敛：原档位 720px → 640px */
+@media (max-width: 640px) {
   .dev-requirement-detail__actions {
     align-items: stretch;
     flex-direction: column;

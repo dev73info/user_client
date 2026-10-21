@@ -1074,7 +1074,8 @@ onMounted(async () => {
   text-align: left;
 }
 
-@media (max-width: 1080px) {
+/* R047 断点收敛：原档位 1080px → 1180px */
+@media (max-width: 1180px) {
 
   .compose-grid,
   .ticket-main-grid {
@@ -1082,7 +1083,8 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 720px) {
+/* R047 断点收敛：原档位 720px → 640px（与紧随其后的 640px 块合并为一处） */
+@media (max-width: 640px) {
 
   .ticket-list-item__meta,
   .ticket-detail-header,
@@ -1103,10 +1105,8 @@ onMounted(async () => {
   .ticket-message__identity {
     flex-wrap: wrap;
   }
-}
 
 /* 单栏时「左侧会展示…」这张占位卡指向的左侧并不存在 */
-@media (max-width: 640px) {
   .ticket-detail-panel.is-idle {
     display: none;
   }

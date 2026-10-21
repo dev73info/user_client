@@ -289,7 +289,8 @@ function isStepCurrent(step: Step): boolean {
   background: var(--dev-cyan);
 }
 
-@media (max-width: 720px) {
+/* R047 断点收敛：原档位 720px → 640px */
+@media (max-width: 640px) {
   .req-progress__steps {
     flex-direction: column;
     align-items: stretch;

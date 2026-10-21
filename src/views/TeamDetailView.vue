@@ -105,7 +105,8 @@ const {
    `TeamMemberListCard` 走了（`min-height: 44px` 那组就是），780 这一档留在页面上：
    780 不是标准化允许的档位（640 / 900 / 1180），而检查脚本按「文件」记存量违规——
    把它搬进新组件会被算成一条新增违规。等这一档收进标准档位时整条搬进组件即可。 */
-@media (max-width: 780px) {
+/* R047 断点收敛：原档位 780px → 640px */
+@media (max-width: 640px) {
   .dev-team-detail :deep(.dev-team-detail__member-actions) {
     flex-wrap: wrap;
   }

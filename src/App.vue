@@ -394,7 +394,8 @@ html::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.42);
 }
 
-@media (max-width: 780px) {
+/* R047 断点收敛：原档位 780px → 640px */
+@media (max-width: 640px) {
   html::-webkit-scrollbar {
     width: 0;
     height: 0;

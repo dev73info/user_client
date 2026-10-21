@@ -133,7 +133,10 @@
   }
 }
 
-@media (max-width: 720px) {
+/* R047 断点收敛：原档位 720px → 640px。
+   本文件原本相邻两块都写 720px（内容互不重叠），收档后按 R047 要求合并为一处，
+   免得同一档出现两个块、后来的人只改其中一块。 */
+@media (max-width: 640px) {
   .dev-stack-item {
     flex-direction: column;
   }
@@ -142,9 +145,7 @@
     min-width: 0;
     text-align: left;
   }
-}
 
-@media (max-width: 720px) {
   /* 面板形态的卡片（`.dev-surface-card`，含挂了这个类的 TCard）在窄屏收到 20px，
      与桌面档 24px 同源，理由见 dev-base.css 里那条的注释。 */
   .dev-surface-card:not(.el-card) {
@@ -159,10 +160,9 @@
   .dev-page--publish .dev-upload-actions__buttons {
     justify-content: flex-end;
   }
-}
 
-/* Tighten common page layouts on narrow screens */
-@media (max-width: 640px) {
+  /* Tighten common page layouts on narrow screens */
+
   /* 面板形态的卡片同上：再收到 16px */
   .dev-surface-card:not(.el-card) {
     padding: 16px;

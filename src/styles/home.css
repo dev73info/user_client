@@ -2322,7 +2322,8 @@
   flex-shrink: 0;
 }
 
-@media (max-width: 1200px) {
+/* R047 断点收敛：原档位 1200px → 1180px */
+@media (max-width: 1180px) {
   .portal-layout,
   .portal-hero__main,
   .portal-spotlight-grid {
@@ -2505,7 +2506,8 @@
   }
 }
 
-@media (max-width: 560px) {
+/* R047 断点收敛：原档位 560px → 640px。本文件末尾还有一块 640px（原 560px）；两块之间隔着多段 900px 块，合并会把同档规则的先后反转，故保留两处并各自标注。 */
+@media (max-width: 640px) {
   .portal-shell {
     width: calc(100% - 12px);
   }
@@ -2911,7 +2913,8 @@
   }
 }
 
-@media (max-width: 560px) {
+/* R047 断点收敛：原档位 560px → 640px（与上面那块同为 640px 档，中间隔着 900px 块，未合并） */
+@media (max-width: 640px) {
   .portal-hero__main {
     height: 168px;
   }

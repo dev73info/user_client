@@ -752,7 +752,8 @@
 }
 
 /* --- 响应式 --- */
-@media (max-width: 780px) {
+/* R047 断点收敛：原档位 780px → 640px */
+@media (max-width: 640px) {
   .header {
     flex-direction: column;
     gap: 20px;

@@ -980,7 +980,7 @@ watch(activeFilterChips, (chips) => emit('filters-change', chips), { immediate: 
 
 .portal-resource-browser__grid {
   display: grid;
-  /* 结果区：2–3 列自适应；窄屏在 980px 处回落单列 */
+  /* 结果区：2–3 列自适应；窄屏在 900px 处回落单列 */
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   align-items: stretch;
   gap: 14px;
@@ -1357,7 +1357,8 @@ watch(activeFilterChips, (chips) => emit('filters-change', chips), { immediate: 
   background: transparent;
 }
 
-@media (max-width: 980px) {
+/* R047 断点收敛：原档位 980px → 900px（与紧随其后的 900px 块合并为一处） */
+@media (max-width: 900px) {
   .portal-resource-browser {
     grid-template-columns: 1fr;
   }
@@ -1366,9 +1367,7 @@ watch(activeFilterChips, (chips) => emit('filters-change', chips), { immediate: 
     position: static;
     max-height: none;
   }
-}
 
-@media (max-width: 900px) {
 
   .portal-resource-browser__headline,
   .portal-resource-browser__footer {

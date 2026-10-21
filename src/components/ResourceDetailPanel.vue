@@ -2726,7 +2726,8 @@ a.resource-detail-page__repost-origin:hover {
   font-size: 12px;
 }
 
-@media (max-width: 980px) {
+/* R047 断点收敛：原档位 980px → 900px（与紧随其后的 900px 块合并为一处） */
+@media (max-width: 900px) {
   .resource-detail-page__lead {
     grid-template-columns: 1fr;
   }
@@ -2736,9 +2737,7 @@ a.resource-detail-page__repost-origin:hover {
     grid-column: auto;
     grid-row: auto;
   }
-}
 
-@media (max-width: 900px) {
   .resource-detail-page {
     width: calc(100% - 16px);
   }
@@ -2844,8 +2843,9 @@ a.resource-detail-page__repost-origin:hover {
   max-height: 420px;
 }
 
-/* 窄档（与组件自带的 980 断点同一档）：lead 压成单列、封面收窄、标题降一档 */
-@media (max-width: 980px) {
+/* 窄档（与组件自带的 900 断点同一档）：lead 压成单列、封面收窄、标题降一档 */
+/* R047 断点收敛：原档位 980px → 900px（与下面「面板返回控件」那块 900px 同档，中间隔着基声明，未合并） */
+@media (max-width: 900px) {
   .resource-detail-page--panel .resource-detail-page__lead {
     grid-template-columns: 1fr;
     gap: 16px;

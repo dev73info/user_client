@@ -1307,7 +1307,7 @@ function formatCount(value: number): string {
   }
 }
 
-/* 漏斗的静态排布搬进了 DevFunnel.vue（scoped 样式跟着组件走）；这里只留 980 / 640 两档的窄屏覆盖，
+/* 漏斗的静态排布搬进了 DevFunnel.vue（scoped 样式跟着组件走）；这里只留 900 / 640 两档的窄屏覆盖，
    见文件末尾的媒体块——`:deep()` 只能在「持有子组件的那一层」编译成后代选择器。 */
 
 /* 资金卡里「近 N 天到账」与「本月累计到账」同一行，标签左、累计右 */
@@ -2110,8 +2110,9 @@ function formatCount(value: number): string {
   flex: 0 0 auto;
 }
 
-/* 980：双栏并一栏；交付卡片三列降两列 */
-@media (max-width: 980px) {
+/* 900：双栏并一栏；交付卡片三列降两列 */
+/* R047 断点收敛：原档位 980px → 900px */
+@media (max-width: 900px) {
   .dev-home__layout {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -2125,9 +2126,10 @@ function formatCount(value: number): string {
   }
 }
 
-/* 平板档（641–980）：拿平板看实时数据时最先看到资金，所以资金卡提到列表之前，
+/* 平板档（641–900）：拿平板看实时数据时最先看到资金，所以资金卡提到列表之前，
    卡内「收入走势 | 余额与保证金」左右并排，一屏看全，不用往下翻 */
-@media (min-width: 641px) and (max-width: 980px) {
+/* R047 断点收敛：原档位 641–980px → 641–900px（区间查询，与纯 max-width 的 900px 块不是重复块） */
+@media (min-width: 641px) and (max-width: 900px) {
   .dev-home__aside {
     order: -1;
   }
@@ -2201,7 +2203,8 @@ function formatCount(value: number): string {
 
 /* 看板竖屏档（平板竖屏 820×1180）：资金卡占满一行（卡内仍是「走势 | 余额」左右并排），
    下面两栏：列表 | 动态与资源 */
-@media (max-width: 980px) {
+/* R047 断点收敛：原档位 980px → 900px（本文件另一处 900px 块在 640px 块之前，中间隔着规则，未合并） */
+@media (max-width: 900px) {
   .dev-home.dev-home--fullscreen {
     padding: 16px 20px;
   }

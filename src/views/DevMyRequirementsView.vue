@@ -2194,7 +2194,8 @@ strong.dev-delivery-cell__amount {
   margin: 0;
 }
 
-@media (max-width: 720px) {
+/* R047 断点收敛：原档位 720px → 640px */
+@media (max-width: 640px) {
   .dev-requirement-card__head {
     flex-direction: column;
   }

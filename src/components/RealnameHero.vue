@@ -260,7 +260,8 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 720px) {
+/* R047 断点收敛：原档位 720px → 640px（上面的 860px 档本轮保留，见报告） */
+@media (max-width: 640px) {
   .realname-hero__metrics {
     grid-template-columns: 1fr;
   }

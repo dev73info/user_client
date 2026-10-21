@@ -839,7 +839,8 @@ async function downloadTemplate() {
   color: #b91c1c;
 }
 
-@media (max-width: 600px) {
+/* R047 断点收敛：原档位 600px → 640px */
+@media (max-width: 640px) {
   .attachment-card__facts > div {
     grid-template-columns: 1fr;
     gap: 2px;

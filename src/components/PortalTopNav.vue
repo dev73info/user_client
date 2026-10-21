@@ -1597,7 +1597,8 @@ function finishSearchComposition(event: CompositionEvent) {
 }
 
 /* 再窄就放不下单行，退回「品牌+导航 / 工具栏」两行 */
-@media (max-width: 960px) {
+/* R047 断点收敛：原档位 960px → 900px */
+@media (max-width: 900px) {
   .portal-header {
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
@@ -1627,7 +1628,8 @@ function finishSearchComposition(event: CompositionEvent) {
   }
 }
 
-@media (max-width: 780px) {
+/* R047 断点收敛：原档位 780px → 640px */
+@media (max-width: 640px) {
   .portal-header {
     top: 0;
     margin: 0 0 12px;

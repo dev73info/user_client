@@ -504,9 +504,7 @@
   .requirement-toggle[aria-pressed='true'] .requirement-toggle__track::after {
     transform: translateX(14px);
   }
-}
 
-@media (max-width: 520px) {
   /* 最窄档：状态、预算、更新时间改成竖排，否则三者在 320px 上会被挤成一字一行。 */
   .profile-page .requirement-summary {
     flex-direction: column;
@@ -927,7 +925,7 @@
   font-weight: 700;
 }
 
-/* 密码弹窗两行、两步验证弹窗开关行与两栏卡片：这几行的列宽在 720px 档要改成竖排。
+/* 密码弹窗两行、两步验证弹窗开关行与两栏卡片：这几行的列宽在 640px 档要改成竖排。
    基声明放在这里，窄屏档才能压过组件里剩下的 scoped 规则（原因见本节开头第 2 条）。 */
 .account-password-row--send {
   grid-template-columns: minmax(0, 1fr) auto;
@@ -949,9 +947,10 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
-/* 720px 是历史档位（不在 640/900/1180 三档里），先收成一处、不再各弹窗各一份；
-   下一轮把两个弹窗的基声明整体换到 640 档时，这条跟着删。 */
-@media (max-width: 720px) {
+/* R047 断点收敛：这条原档位 720px → 640px（本文件上方已有三块 640px）。
+   没并进那三块的原因：它前面紧挨着上面 `.account-2fa-methods` 等基声明，并到前面去会让基声明
+   反过来盖掉这里的窄屏值，所以留在原位置。等密码弹窗 / 两步验证弹窗的基声明整体收到 640 档，这条可删。 */
+@media (max-width: 640px) {
   .account-password-row--send,
   .account-password-row--confirm,
   .account-security-actions,

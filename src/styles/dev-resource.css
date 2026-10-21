@@ -986,7 +986,8 @@
   cursor: pointer;
 }
 
-@media (max-width: 480px) {
+/* R047 断点收敛：原档位 480px → 640px */
+@media (max-width: 640px) {
 }
 
 /* R029 推广分成比例：拖动条 + 百分比展示（0 = 关闭）。

@@ -780,7 +780,8 @@ onUnmounted(() => {
 .signature-history ol { list-style: none; padding: 0; margin: 0; }
 .signature-history li { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 16px; padding: 12px 0; border-bottom: 1px solid #eef1f4; font-size: 13px; }
 .signature-history time { color: #667085; }
-@media (max-width: 600px) {
+/* R047 断点收敛：原档位 600px → 640px（文件末尾另有一块 640px，中间隔着基声明，未合并） */
+@media (max-width: 640px) {
     .page-shell.page-shell--workbench { padding: 16px 12px 28px; }
     .signature-history li { grid-template-columns: 1fr; gap: 6px; }
 }

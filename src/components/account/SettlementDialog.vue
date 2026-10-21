@@ -15,7 +15,7 @@
  * - 「缺资料去补」与「取消」都是父级的动作（关本弹窗、开实名表单、清表单），这里只 emit。
  *
  * 样式：`.settle-*` 整组原来在视图的 scoped 块里，弹窗节点搬进来后父级 scoped 不再命中
- * （整块塌版），随组件搬走；460px 那一档断点照原样跟着走，不新增档位。
+ * （整块塌版），随组件搬走；那一档窄屏断点在 R047 里由 460px 收到 640px，不新增档位。
  */
 import { computed } from 'vue'
 
@@ -357,7 +357,8 @@ const rejectedGuide = computed(() => {
   min-width: 0;
 }
 
-@media (max-width: 460px) {
+/* R047 断点收敛：原档位 460px → 640px */
+@media (max-width: 640px) {
   .settle-form__pair {
     grid-template-columns: minmax(0, 1fr);
   }
