@@ -52,11 +52,6 @@
       "count": 2
     }
   },
-  "src/views/MyRequirementsView.vue": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/views/ProfileView.vue": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
