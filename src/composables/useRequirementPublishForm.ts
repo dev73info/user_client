@@ -1,9 +1,11 @@
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, toRef, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { TMessage } from 'ui_73info'
 
-import type { RequirementItem, RequirementPaymentMode } from '@/api/requirements'
+import type { RequirementItem } from '@/api/requirements'
 import PublishModal from '@/components/PublishModal.vue'
+import { useRequirementPublishModalBindings } from '@/composables/useRequirementPublishModalBindings'
 import {
   validateRequirementPublishForm,
   type RequirementPublishFormValues,
@@ -13,15 +15,15 @@ import {
 /**
  * 「发布需求」与「重新编辑需求」两个 `PublishModal` 实例的一份共用逻辑。
  *
- * **一个实例一个工厂**：视图里调两次（`publish` / `edit`），状态各自独立。
- * 绝不做成单例——编辑「A 需求」时写进表单的草稿会串到另一个实例，甚至串到新建发布里
- * （两个实例的 `draft-scope` 不同，正是为了让 `PublishModal` 的 localStorage 草稿互不覆盖）。
+ * **一个实例一个工厂**：视图里调两次（`publish` / `edit`），状态各自独立，绝不做成单例——
+ * 那样编辑「A 需求」的草稿会串到新建发布里（两个实例的 `draft-scope` 不同，
+ * 正是为了让 `PublishModal` 的 localStorage 草稿互不覆盖）。
  *
- * 分工：
- * - 跳转一律留在视图：实名门禁（`workbench-realname` / `home?modal=auth`）是注入的
- *   `ensureApproved`，`?modal=publish` 的 query 清理是注入的 `onClosed` / `onSubmitted`；
- * - 后端调用是注入的 `submit`（两个实例的接口与入参不同：建单 vs 按需求 ID 重提）；
- * - 这里只管表单状态、校验、loading 与 toast。
+ * R047：三个入口（我的需求 / 需求大厅 / 个人中心）原先各写一份几乎逐字同构的状态机，
+ * 现在都收到这里，另两处是薄包装（`useRequirementHallPublish` / `useProfilePublishRequirement`）。
+ * **差异做成显式选项**，不做「顺手统一」——尤其 `includeDevelopmentCycle`：
+ * 大厅与个人中心的 `PublishModal` 没有接开发周期字段，载荷里也不带 `development_cycle_days`，
+ * 那份口径必须原样留着。跳转、后端调用都注入进来，这里只管表单状态、校验、loading 与 toast。
  */
 
 export type RequirementPublishFormMode = 'publish' | 'edit'
@@ -35,6 +37,13 @@ type UseRequirementPublishFormOptions = {
    */
   draftScope: (requirement: RequirementItem | null) => string
   /**
+   * 表单里有没有「开发周期（天）」这一项，默认 `true`。
+   *
+   * 我的需求 / 重新编辑：有（R014 担保需求必填），载荷带 `development_cycle_days`。
+   * 需求大厅 / 个人中心：模板里没绑这个字段，历史上既不校验也不提交，传 `false` 逐字节保留。
+   */
+  includeDevelopmentCycle?: boolean
+  /**
    * 开弹窗与提交前各跑一次的门禁（发布＝实名认证；含跳转，所以由视图注入）。
    * 编辑重提不需要，省略即可。
    */
@@ -43,7 +52,7 @@ type UseRequirementPublishFormOptions = {
   isAuthed?: () => boolean
   /** 校验通过后的后端调用；抛错即视为失败，由这里兜 toast。 */
   submit: (payload: RequirementPublishPayload, requirement: RequirementItem | null) => Promise<void>
-  /** 成功提示（两个实例文案不同：发布 vs 重新提交）。 */
+  /** 成功提示（三个入口文案不同：发布 vs 重新提交）。 */
   successMessage: string
   /** 失败兜底文案（后端没给 message 时用）。 */
   failureMessage: string
@@ -51,6 +60,14 @@ type UseRequirementPublishFormOptions = {
   onSubmitted?: () => void | Promise<void>
   /** 用户手动关闭弹窗后的收尾：发布要把 `?modal=publish` 从 query 里摘掉。 */
   onClosed?: () => void
+  /**
+   * 是否自己盯 `?modal=publish` 这条 query 来开窗（大厅 / 个人中心为 `true`）。
+   *
+   * 我的需求不开：那一页的 `?modal=publish` 由视图显式调 `openFromRoute()`，
+   * 因为「读参数」与「摘参数」在那一页分属两处（见 `useRequirementPageActions`）。
+   * 需要 `useRoute`，所以默认关——没挂路由的单测也能直接调这个工厂。
+   */
+  syncModalQuery?: boolean
 }
 
 function emptyForm(): RequirementPublishFormValues {
@@ -72,6 +89,7 @@ export function useRequirementPublishForm(options: UseRequirementPublishFormOpti
   /** 编辑实例的目标需求；发布实例恒为 null。 */
   const requirement = ref<RequirementItem | null>(null)
   const form = reactive<RequirementPublishFormValues>(emptyForm())
+  const includeDevelopmentCycle = options.includeDevelopmentCycle ?? true
 
   const draftScope = computed(() => options.draftScope(requirement.value))
 
@@ -116,7 +134,7 @@ export function useRequirementPublishForm(options: UseRequirementPublishFormOpti
   /**
    * 打开弹窗。传 `target` 即编辑态（回填该需求）。
    *
-   * 顺序与原来两处入口一致：先跑门禁（`await`），通过后才复位 / 回填并显示——
+   * 顺序与原来各处入口一致：先跑门禁（`await`），通过后才复位 / 回填并显示——
    * 门禁没过时不会闪一下空弹窗；编辑实例没有门禁，回填与显示都是同步的。
    */
   async function open(target?: RequirementItem) {
@@ -141,13 +159,29 @@ export function useRequirementPublishForm(options: UseRequirementPublishFormOpti
   /**
    * `?modal=publish` 直接进页面时的打开路径：**不跑实名门禁**。
    *
-   * 与原 `syncPublishModalFromRoute` 一致——实名 / 登录的提示与跳转留给用户在弹窗里点提交时再走，
-   * 免得刚进页面就被踢去实名页。
+   * 与原 `syncPublishModalFromRoute` / 大厅与个人中心那两条 watch 一致——实名 / 登录的提示与
+   * 跳转留给用户在弹窗里点提交时再走，免得刚进页面就被踢去实名页。
    */
   function openFromRoute() {
     requirement.value = null
     reset()
     visible.value = true
+  }
+
+  if (options.syncModalQuery) {
+    // 读参数在这里，摘参数在 `onClosed` / `onSubmitted`（由视图注入）——同一件事的两端。
+    // `immediate: true` 保证「带参数挂载」当场重放一次：`PublishModal` 被 `v-if`
+    // 卸过再挂不会补这一段。只开窗、**不跑实名门禁**（门禁留给提交前那一次）。
+    const route = useRoute()
+    watch(
+      () => route.query.modal,
+      (value) => {
+        if (value === 'publish' && !visible.value) {
+          openFromRoute()
+        }
+      },
+      { immediate: true },
+    )
   }
 
   /** 用户关闭：请求在跑时忽略（否则弹窗关了请求还在飞，回来又把列表刷一遍）。 */
@@ -161,7 +195,15 @@ export function useRequirementPublishForm(options: UseRequirementPublishFormOpti
   }
 
   /**
-   * 提交。两个实例走同一条链：
+   * 弹窗内部的提示转发：`PublishModal` 不直接引 toast，统一把消息抛给页面。
+   * 三个入口共用这一份（大厅把它直接当 `@notify` 用）。
+   */
+  function notify(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+    TMessage[type](message)
+  }
+
+  /**
+   * 提交。三个入口走同一条链：
    * 登录守卫（编辑）→ 实名门禁（发布，开弹窗时跑过一次，这里是复检）→ 纯校验 → 请求 → 清草稿 → 收尾。
    */
   async function submit() {
@@ -177,7 +219,7 @@ export function useRequirementPublishForm(options: UseRequirementPublishFormOpti
       }
     }
 
-    const check = validateRequirementPublishForm({ ...form })
+    const check = validateRequirementPublishForm({ ...form }, { includeDevelopmentCycle })
 
     if (!check.ok) {
       TMessage.error(check.error)
@@ -210,49 +252,23 @@ export function useRequirementPublishForm(options: UseRequirementPublishFormOpti
 
   /**
    * 模板挂点：`<PublishModal v-bind="modalBindings" />` 一行铺完。
-   *
-   * 六个字段的 `v-model` 在这里展开成 `字段 + onUpdate:字段`（与模板里写 `v-model:publishXxx` 等价），
-   * 编辑实例的三处文案（标题 / 按钮 / loading）按 `mode` 给，发布实例沿用组件默认值。
-   * `notify` 组件只 emit，toast 由这里发（与其余域同一分工）。
+   * 装配细节（含 `includeDevelopmentCycle = false` 时不铺开发周期那一对键）在
+   * `useRequirementPublishModalBindings` 里 —— 这里只为把返回值收在一个名字下。
    */
-  const modalBindings = computed(() => ({
-    visible: visible.value,
-    draftScope: draftScope.value,
-    publishLoading: loading.value,
-    publishTitle: form.title,
-    publishDescription: form.description,
-    publishBudget: form.budget,
-    publishAcceptance: form.acceptance,
-    publishPaymentMode: form.paymentMode,
-    publishDevelopmentCycleDays: form.developmentCycleDays,
-    ...(options.mode === 'edit'
-      ? { modalTitle: '重新编辑需求', submitText: '重新提交审核', loadingText: '提交中...' }
-      : {}),
-    'onUpdate:publishTitle': (value: string) => {
-      form.title = value
-    },
-    'onUpdate:publishDescription': (value: string) => {
-      form.description = value
-    },
-    'onUpdate:publishBudget': (value: string | number) => {
-      form.budget = value
-    },
-    'onUpdate:publishAcceptance': (value: string) => {
-      form.acceptance = value
-    },
-    'onUpdate:publishPaymentMode': (value: RequirementPaymentMode) => {
-      form.paymentMode = value
-    },
-    'onUpdate:publishDevelopmentCycleDays': (value: string | number) => {
-      form.developmentCycleDays = value
-    },
-    onNotify: (message: string, type?: 'success' | 'warning' | 'error') =>
-      TMessage[type ?? 'info'](message),
+  const modalBindings = useRequirementPublishModalBindings({
+    visible: () => visible.value,
+    draftScope: () => draftScope.value,
+    loading: () => loading.value,
+    form,
+    includeDevelopmentCycle,
+    isEdit: options.mode === 'edit',
+    onNotify: notify,
     onClose: close,
     onSubmit: submit,
-  }))
+  })
 
   return {
+    // ---- 内部命名：我的需求用这几个（两个实例各调一次）----
     form,
     visible,
     loading,
@@ -263,6 +279,20 @@ export function useRequirementPublishForm(options: UseRequirementPublishFormOpti
     close,
     forceClose,
     submit,
+    notify,
+    /** 一份 `v-bind` 铺完的挂点（我的需求 / 个人中心用它）。 */
     modalBindings,
+    // ---- `publishXxx` 别名：沿用这组命名的视图（需求大厅）不必改模板 ----
+    publishVisible: visible,
+    publishLoading: loading,
+    publishModalRef: modalRef,
+    publishTitle: toRef(form, 'title'),
+    publishDescription: toRef(form, 'description'),
+    publishBudget: toRef(form, 'budget'),
+    publishAcceptance: toRef(form, 'acceptance'),
+    publishPaymentMode: toRef(form, 'paymentMode'),
+    ...(includeDevelopmentCycle
+      ? { publishDevelopmentCycleDays: toRef(form, 'developmentCycleDays') }
+      : {}),
   }
 }

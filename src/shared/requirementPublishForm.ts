@@ -33,12 +33,28 @@ export type RequirementPublishPayload = {
   budget: number
   acceptance_criteria: string
   payment_mode: RequirementPaymentMode
-  development_cycle_days: number | undefined
+  /**
+   * 只在 `includeDevelopmentCycle` 时出现（见 `validateRequirementPublishForm`）。
+   * 需求大厅 / 个人中心的表单本来就没有这个字段，载荷里也**没有这个键**——
+   * 不是「传 undefined」，是真的不带，用 `toStrictEqual` 能看出区别。
+   */
+  development_cycle_days?: number
 }
 
 export type RequirementPublishFormCheck =
   | { ok: true; payload: RequirementPublishPayload }
   | { ok: false; error: string }
+
+export type RequirementPublishValidateOptions = {
+  /**
+   * 表单里是否有「开发周期（天）」这一项：默认 `true`（我的需求 / 重新编辑）。
+   *
+   * 需求大厅与个人中心的 `PublishModal` 没有接这个字段（模板里没绑
+   * `publishDevelopmentCycleDays`），历史上也既不校验它、载荷里也不带它。
+   * 传 `false` 保持那份口径：跳过周期校验、载荷里不出现 `development_cycle_days`。
+   */
+  includeDevelopmentCycle?: boolean
+}
 
 /**
  * 校验表单并归一化成提交载荷。
@@ -48,10 +64,15 @@ export type RequirementPublishFormCheck =
  *
  * 预算用 `Number.isFinite` 判：`<input type="number">` 里拿不到 `Infinity` / `1e999` 这类值，
  * 所以与编辑态原来的 `Number.isNaN` 是等价的，这里统一成一个口径。
+ *
+ * `options.includeDevelopmentCycle = false`（大厅 / 个人中心）时，周期那一步**整步跳过**：
+ * 那两个表单没有这个字段，历史上也就没有这条报错。前面五步的顺序与文案一个字都不变。
  */
 export function validateRequirementPublishForm(
   values: RequirementPublishFormValues,
+  options: RequirementPublishValidateOptions = {},
 ): RequirementPublishFormCheck {
+  const includeDevelopmentCycle = options.includeDevelopmentCycle ?? true
   const title = values.title.trim()
   const description = validateRequirementRichText(values.description, '需求描述', {
     minTextLength: 10,
@@ -84,7 +105,10 @@ export function validateRequirementPublishForm(
   }
 
   // R014：担保需求必填「开发周期（天）」，且必须是正整数；配置下限由后端校验并回中文提示。
-  const cycleError = validateDevelopmentCycleInput(values.developmentCycleDays, values.paymentMode)
+  // 表单里没有这一项（大厅 / 个人中心）就整步跳过：既不报错，载荷里也不带这个键。
+  const cycleError = includeDevelopmentCycle
+    ? validateDevelopmentCycleInput(values.developmentCycleDays, values.paymentMode)
+    : ''
 
   if (cycleError) {
     return { ok: false, error: cycleError }
@@ -98,10 +122,14 @@ export function validateRequirementPublishForm(
       budget,
       acceptance_criteria: acceptance.value,
       payment_mode: values.paymentMode,
-      development_cycle_days: normalizeDevelopmentCycle(
-        values.developmentCycleDays,
-        values.paymentMode,
-      ),
+      ...(includeDevelopmentCycle
+        ? {
+            development_cycle_days: normalizeDevelopmentCycle(
+              values.developmentCycleDays,
+              values.paymentMode,
+            ),
+          }
+        : {}),
     },
   }
 }
