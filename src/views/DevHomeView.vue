@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch, type Component } from 'vue'
+import { computed, nextTick, onMounted, ref, shallowRef, type Component } from 'vue'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -24,6 +24,8 @@ import {
 
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
 import DevWithdrawalDialog from '@/components/DevWithdrawalDialog.vue'
+import DevFunnel from '@/components/dev/DevFunnel.vue'
+import DevIncomeTrendChart from '@/components/dev/DevIncomeTrendChart.vue'
 import {
   devDashboardWsUrl,
   getDevDashboard,
@@ -40,6 +42,8 @@ import {
 import { listMcResources, type McResourcePayload } from '@/api/mcResources'
 import { listMyRequirements, type RequirementItem } from '@/api/devRequirements'
 import { useDevDashboardSocket } from '@/composables/useDevDashboardSocket'
+import { useFullscreen } from '@/composables/useFullscreen'
+import { CHART_BUCKETS, type DevHomeIncomeBucket } from '@/composables/useIncomeChart'
 import {
   DEMO_DEV_HOME_DAILY_INCOME,
   DEMO_DEV_HOME_DEPOSIT,
@@ -94,11 +98,6 @@ type DevHomeDeliveryRow = {
   delivered: boolean
   updatedAt: string
   amount: number | null
-}
-
-type DevHomeIncomeBucket = {
-  label: string
-  value: number
 }
 
 const auth = useAuthStore()
@@ -376,15 +375,7 @@ const changeRateText = computed(() => {
   return `${sign}${changeRate.value.toFixed(1)}%`
 })
 
-/** 曲线口径：近 7 天（含今天）的到账金额，最早一天在左。 */
-const CHART_BUCKETS = 7
-const CHART_WIDTH = 320
-/** 与样式里 .dev-home__chart-svg 的高度保持一致，悬停竖线按它换算百分比 */
-const CHART_HEIGHT = 132
-const CHART_PAD_X = 10
-const CHART_PAD_TOP = 16
-const CHART_PAD_BOTTOM = 10
-
+/** 两位补零：日期键、时钟与横轴标签共用。 */
 function pad2(value: number): string {
   return String(value).padStart(2, '0')
 }
@@ -394,6 +385,7 @@ function dayKey(date: Date): string {
 }
 
 /**
+ * 曲线口径：近 7 天（含今天）的到账金额，最早一天在左（窗口长度取 `useIncomeChart` 的 CHART_BUCKETS）。
  * 后端没有时间序列接口：演示模式用自带序列，真实模式把最近到账记录按到账日归集。
  * 真实模式下接口最多只返回 100 笔，所以这条曲线是「最近到账的分布」，不是完整流水。
  */
@@ -440,120 +432,10 @@ const incomeBuckets = computed<DevHomeIncomeBucket[]>(() => {
   return buckets
 })
 
-const chartMax = computed(() => incomeBuckets.value.reduce((max, bucket) => Math.max(max, bucket.value), 0))
-const hasIncomeData = computed(() => chartMax.value > 0)
-
-/** 折线与面积共用同一串坐标：横向铺满、纵向按最大值等比缩放。 */
-const chartGeometry = computed(() => {
-  const buckets = incomeBuckets.value
-  const usableWidth = CHART_WIDTH - CHART_PAD_X * 2
-  const usableHeight = CHART_HEIGHT - CHART_PAD_TOP - CHART_PAD_BOTTOM
-  const step = buckets.length > 1 ? usableWidth / (buckets.length - 1) : 0
-  const baseline = CHART_HEIGHT - CHART_PAD_BOTTOM
-
-  const points = buckets.map((bucket, index) => {
-    const ratio = chartMax.value > 0 ? bucket.value / chartMax.value : 0
-
-    return {
-      ...bucket,
-      x: CHART_PAD_X + step * index,
-      y: baseline - ratio * usableHeight,
-    }
-  })
-
-  const line = points
-    .map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(1)},${point.y.toFixed(1)}`)
-    .join(' ')
-  const first = points[0]
-  const last = points[points.length - 1]
-  const area =
-    first && last
-      ? `${line} L${last.x.toFixed(1)},${baseline} L${first.x.toFixed(1)},${baseline} Z`
-      : ''
-
-  return { points, line, area, baseline }
-})
-
-/** 最高一天的读数标在它自己上方；贴边时把标签拉回画布内，避免溢出卡片。 */
-const peakIndex = computed(() =>
-  incomeBuckets.value.reduce((best, bucket, index) => (bucket.value > (incomeBuckets.value[best]?.value ?? 0) ? index : best), 0),
-)
-
-const peakLabel = computed(() => money(incomeBuckets.value[peakIndex.value]?.value))
-
-/** 悬停读数胶囊在两端翻边的阈值（百分比）：胶囊比「最高一天」那颗宽，居中会溢出去。 */
-const TIP_EDGE_PERCENT = 16
-
-/** 把第 index 天的横向位置换算成百分比；贴边时拉回画布内（「最高一天」那颗读数用）。 */
-function bucketLeftPercent(index: number): string {
-  const lastIndex = incomeBuckets.value.length - 1
-  if (lastIndex <= 0) {
-    return '50%'
-  }
-
-  const percent = (index / lastIndex) * 100
-  return `${Math.min(88, Math.max(12, percent)).toFixed(1)}%`
-}
-
-const peakLabelLeft = computed(() => bucketLeftPercent(peakIndex.value))
-
 /**
- * 鼠标悬停（或键盘聚焦）的那一天：曲线本身只是一条线，不悬停看不出每天各到账多少，
- * 所以每一天铺一条命中带，指上去就在它头顶报「日期 · 金额」，并把圆点放大、画一条竖线。
- * 没有命中带时只有最高一天那颗读数。
+ * 横轴标题里的天数：真机画近 7 天、全屏看板画快照自带的近 30 天，由数据条数决定。
+ * 画布尺寸、坐标换算、峰值与悬停状态都在 `useIncomeChart` / `DevIncomeTrendChart`，这里只决定取哪几天的数。
  */
-const hoveredBucketIndex = ref<number | null>(null)
-
-const hoveredBucket = computed(() => {
-  const index = hoveredBucketIndex.value
-  if (index == null) {
-    return null
-  }
-
-  const bucket = incomeBuckets.value[index]
-  const point = chartGeometry.value.points[index]
-  const lastIndex = chartGeometry.value.points.length - 1
-  if (!bucket || !point || lastIndex <= 0) {
-    return null
-  }
-
-  const percent = (point.x / CHART_WIDTH) * 100
-  // 头顶读数：始终以当天那个点为锚，贴到两端时把胶囊翻到点的内侧，免得被卡片裁掉
-  // （它比「最高一天」那颗蓝胶囊宽，居中摆在最左/最右会溢出去）。竖线不参与收边，
-  // 永远画在当天那个点上，两者不共用同一个横坐标。
-  const tipTransform =
-    percent <= TIP_EDGE_PERCENT
-      ? 'translateX(0)'
-      : percent >= 100 - TIP_EDGE_PERCENT
-        ? 'translateX(-100%)'
-        : 'translateX(-50%)'
-
-  return {
-    label: bucket.label,
-    value: bucket.value,
-    tipLeft: `${percent.toFixed(2)}%`,
-    tipTransform,
-    guideLeft: `${percent.toFixed(2)}%`,
-    // 竖线从该点画到基线：点与基线都在 CHART_HEIGHT 高的画布里，直接换算成百分比给高度
-    top: `${((point.y / CHART_HEIGHT) * 100).toFixed(1)}%`,
-    height: `${(((chartGeometry.value.baseline - point.y) / CHART_HEIGHT) * 100).toFixed(1)}%`,
-  }
-})
-
-/** 命中带的左右边界：以当天那个点为中心、各占与邻点间距的一半，最外侧两条各自收在画布边上。 */function bucketHitStyle(index: number): Record<string, string> {
-  const lastIndex = chartGeometry.value.points.length - 1
-  if (lastIndex <= 0) {
-    return { left: '0%', right: '0%' }
-  }
-
-  const center = (chartGeometry.value.points[index]!.x / CHART_WIDTH) * 100
-  const half = 100 / lastIndex / 2
-  return {
-    left: `${Math.max(0, center - half).toFixed(2)}%`,
-    right: `${Math.max(0, 100 - center - half).toFixed(2)}%`,
-  }
-}
-
 const chartDays = computed(() => incomeBuckets.value.length)
 
 const chartCaption = computed(() => {
@@ -562,28 +444,6 @@ const chartCaption = computed(() => {
   }
 
   return mockEnabled ? '演示数据：近 7 天完整序列' : '按最近到账记录绘制（最多取最近 100 笔）'
-})
-
-/** 30 天的日期挤不下：每 5 天标一个，从今天往回数，保证最右端永远是今天。 */
-const AXIS_LABEL_STEP = 5
-
-const sparseAxis = computed(() => incomeBuckets.value.length > CHART_BUCKETS)
-
-const axisLabels = computed(() => {
-  const points = chartGeometry.value.points
-  const lastIndex = points.length - 1
-
-  return points.flatMap((point, index) => {
-    if ((lastIndex - index) % AXIS_LABEL_STEP !== 0) {
-      return []
-    }
-    const percent = (point.x / CHART_WIDTH) * 100
-    return [{
-      label: point.label,
-      left: `${percent.toFixed(2)}%`,
-      transform: index === lastIndex ? 'translateX(-100%)' : index === 0 ? 'translateX(0)' : 'translateX(-50%)',
-    }]
-  })
 })
 
 onMounted(() => {
@@ -669,63 +529,25 @@ async function loadPage() {
 /**
  * 全屏看板：只把总览区（本页根节点）放进全屏，侧栏与门户顶栏不跟进来。
  * 平板档读数条平时被搬进工作台顶栏，全屏时让它留在原地（见 WorkbenchBarSlot 的 disabled），
- * 这样读数与退出按钮都在全屏里。iPadOS Safari 只认带 webkit 前缀的那套。
+ * 这样读数与退出按钮都在全屏里。
+ *
+ * 监听、收发与看板时钟在 `useFullscreen`；**进入全屏就连实时看板、退出就断开**这两件事是
+ * 本页的事，由它回调进来。原先这三件事在同一个 `watch(isFullscreen)` 里，顺序是「时钟起 → 进看板」，
+ * 拆开后仍是这个顺序。
  */
 const homeRef = ref<HTMLElement | null>(null)
-type WebkitFullscreenDocument = Document & {
-  webkitFullscreenElement?: Element | null
-  webkitExitFullscreen?: () => Promise<void> | void
-}
-type WebkitFullscreenElement = HTMLElement & {
-  webkitRequestFullscreen?: () => Promise<void> | void
-}
 
-const fullscreenSupported =
-  typeof document !== 'undefined' &&
-  Boolean(
-    document.documentElement.requestFullscreen ||
-      (document.documentElement as WebkitFullscreenElement).webkitRequestFullscreen,
-  )
-const isFullscreen = ref(false)
-
-function currentFullscreenElement(): Element | null {
-  const doc = document as WebkitFullscreenDocument
-  return doc.fullscreenElement ?? doc.webkitFullscreenElement ?? null
-}
-
-function syncFullscreenState() {
-  isFullscreen.value = currentFullscreenElement() != null
-}
-
-async function toggleFullscreen() {
-  const doc = document as WebkitFullscreenDocument
-  const root = homeRef.value as WebkitFullscreenElement | null
-  if (!root) return
-  try {
-    if (currentFullscreenElement()) {
-      await (doc.exitFullscreen ? doc.exitFullscreen() : doc.webkitExitFullscreen?.())
-    } else {
-      await (root.requestFullscreen ? root.requestFullscreen() : root.webkitRequestFullscreen?.())
-    }
-  } catch {
+const { isFullscreen, fullscreenSupported, toggleFullscreen, now } = useFullscreen({
+  target: homeRef,
+  onEnter: () => {
+    void enterLiveBoard()
+  },
+  onLeave: () => {
+    liveSocket.disconnect()
+  },
+  onDenied: () => {
     TMessage.error('当前浏览器不允许进入全屏')
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('fullscreenchange', syncFullscreenState)
-  document.addEventListener('webkitfullscreenchange', syncFullscreenState)
-  syncFullscreenState()
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('fullscreenchange', syncFullscreenState)
-  document.removeEventListener('webkitfullscreenchange', syncFullscreenState)
-  // 全屏是为这块看板开的，离开总览页就退出，免得别的菜单页也被困在全屏里
-  if (currentFullscreenElement()) {
-    const doc = document as WebkitFullscreenDocument
-    Promise.resolve(doc.exitFullscreen ? doc.exitFullscreen() : doc.webkitExitFullscreen?.()).catch(() => {})
-  }
+  },
 })
 
 /**
@@ -785,33 +607,7 @@ async function enterLiveBoard() {
   }
 }
 
-/** 看板上的时钟：每秒走一次，只在全屏时计时。 */
-const now = ref(Date.now())
-let clockTimer: ReturnType<typeof setInterval> | null = null
-
-function stopClock() {
-  if (clockTimer != null) {
-    clearInterval(clockTimer)
-    clockTimer = null
-  }
-}
-
-watch(isFullscreen, (on) => {
-  if (on) {
-    now.value = Date.now()
-    stopClock()
-    clockTimer = setInterval(() => {
-      now.value = Date.now()
-    }, 1000)
-    void enterLiveBoard()
-  } else {
-    stopClock()
-    liveSocket.disconnect()
-  }
-})
-
-onBeforeUnmount(stopClock)
-
+/** 看板时钟的 `now` 由 `useFullscreen` 每秒推进；时间文案留在这里，与上方读数条同一种写法。 */
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
 
 const clockTime = computed(() => {
@@ -1017,17 +813,9 @@ function formatCount(value: number): string {
       </div>
     </section>
 
-    <!-- 接单漏斗：只在全屏看板上出现。五个在途状态按流程从左到右，最后一格是本月完成 -->
-    <section v-if="funnelCells.length" class="dev-home__funnel" aria-label="接单漏斗">
-      <div v-for="cell in funnelCells" :key="cell.key" class="dev-home__funnel-cell"
-        :class="[`dev-home__funnel-cell--${cell.tone}`, { 'is-done': cell.done }]">
-        <span class="dev-home__funnel-label">{{ cell.label }}</span>
-        <strong class="dev-home__funnel-value">{{ cell.value }}<small>单</small></strong>
-        <span class="dev-home__funnel-bar" aria-hidden="true">
-          <span :style="{ width: `${Math.round(cell.share * 100)}%` }" />
-        </span>
-      </div>
-    </section>
+    <!-- 接单漏斗：只在全屏看板上出现。五个在途状态按流程从左到右，最后一格是本月完成
+         （档位与色调在下方 funnelCells 里算，组件只画） -->
+    <DevFunnel v-if="funnelCells.length" :cells="funnelCells" />
 
     <section class="dev-home__layout">
       <div class="dev-home__main">
@@ -1184,60 +972,9 @@ function formatCount(value: number): string {
             </p>
           </div>
 
-          <div class="dev-home__chart" :title="chartCaption">
-            <!-- 悬停时头顶换成那一天自己的读数（两颗都挂在同一个位置，同时出现会叠在一起） -->
-            <span v-if="hoveredBucket" class="dev-home__chart-tip"
-              :style="{ left: hoveredBucket.tipLeft, transform: hoveredBucket.tipTransform }">
-              {{ hoveredBucket.label }} · {{ money(hoveredBucket.value) }}
-            </span>
-            <span v-else-if="hasIncomeData" class="dev-home__chart-peak" :style="{ left: peakLabelLeft }">
-              {{ peakLabel }}
-            </span>
-
-            <span v-if="hoveredBucket" class="dev-home__chart-guide"
-              :style="{ left: hoveredBucket.guideLeft, top: hoveredBucket.top, height: hoveredBucket.height }" />
-
-            <svg class="dev-home__chart-svg" :viewBox="`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`"
-              preserveAspectRatio="none" role="img" :aria-label="`近 ${chartDays} 天到账金额，最高一天 ${peakLabel}`">
-              <defs>
-                <linearGradient id="devHomeIncomeFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop class="dev-home__chart-stop-a" offset="0%" />
-                  <stop class="dev-home__chart-stop-b" offset="100%" />
-                </linearGradient>
-              </defs>
-              <line class="dev-home__chart-axis" x1="0" :x2="CHART_WIDTH" :y1="chartGeometry.baseline"
-                :y2="chartGeometry.baseline" />
-              <template v-if="hasIncomeData">
-                <path class="dev-home__chart-area" :d="chartGeometry.area" fill="url(#devHomeIncomeFill)" />
-                <path class="dev-home__chart-line" :d="chartGeometry.line" vector-effect="non-scaling-stroke" />
-                <circle v-for="(point, index) in chartGeometry.points" :key="point.label" class="dev-home__chart-dot"
-                  :class="{ 'is-peak': index === peakIndex, 'is-active': index === hoveredBucketIndex }"
-                  :cx="point.x" :cy="point.y"
-                  :r="index === hoveredBucketIndex ? 4 : index === peakIndex ? 3.5 : 2"
-                  vector-effect="non-scaling-stroke" />
-              </template>
-            </svg>
-
-            <!-- 每天一条命中带：指到哪一天就在头顶报那一天的金额，键盘 Tab 也能逐天读 -->
-            <div v-if="hasIncomeData" class="dev-home__chart-hits">
-              <button v-for="(point, index) in chartGeometry.points" :key="point.label" type="button"
-                class="dev-home__chart-hit" :style="bucketHitStyle(index)"
-                :aria-label="`${point.label} 到账 ${money(point.value)}`" @mouseenter="hoveredBucketIndex = index"
-                @mouseleave="hoveredBucketIndex = null" @focus="hoveredBucketIndex = index"
-                @blur="hoveredBucketIndex = null" />
-            </div>
-
-            <div v-if="sparseAxis" class="dev-home__chart-axis-labels dev-home__chart-axis-labels--sparse"
-              aria-hidden="true">
-              <span v-for="item in axisLabels" :key="item.label"
-                :style="{ left: item.left, transform: item.transform }">{{ item.label }}</span>
-            </div>
-            <div v-else class="dev-home__chart-axis-labels" aria-hidden="true">
-              <span v-for="bucket in incomeBuckets" :key="bucket.label">{{ bucket.label }}</span>
-            </div>
-          </div>
-
-          <p v-if="!hasIncomeData" class="dev-home__chart-empty">近 {{ chartDays }} 天没有到账记录</p>
+          <!-- 走势图：坐标换算与悬停状态在 useIncomeChart，画在 DevIncomeTrendChart；
+               这里只给「取哪几天的数」与图上 title 的口径说明 -->
+          <DevIncomeTrendChart :buckets="incomeBuckets" :caption="chartCaption" />
           </div>
 
           <div class="dev-home__fund-balance">
@@ -1570,92 +1307,8 @@ function formatCount(value: number): string {
   }
 }
 
-/* 漏斗：六格一排，数字是主角；底部细条按在途五档里最多的一档等比，看得出单子堆在哪一步 */
-.dev-home__funnel {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(0, 1.1fr);
-  gap: 10px;
-}
-
-.dev-home__funnel-cell {
-  --funnel-tone: var(--dev-blue);
-  position: relative;
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  padding: 12px 14px 10px;
-  border: 1px solid var(--dev-line);
-  border-radius: var(--dev-radius-inner);
-  background: var(--dev-surface-strong);
-}
-
-/* 在途五格之间的流向箭头：一个旋转的小方角，落在格与格的缝里 */
-.dev-home__funnel-cell:not(.is-done):not(:nth-last-child(2))::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: -9px;
-  z-index: 1;
-  width: 8px;
-  height: 8px;
-  border-top: 2px solid var(--dev-line);
-  border-right: 2px solid var(--dev-line);
-  transform: translateY(-50%) rotate(45deg);
-}
-
-.dev-home__funnel-cell--gold {
-  --funnel-tone: var(--dev-gold);
-}
-
-.dev-home__funnel-cell--cyan {
-  --funnel-tone: var(--dev-cyan);
-}
-
-.dev-home__funnel-cell.is-done {
-  border-color: color-mix(in srgb, var(--dev-cyan) 30%, transparent);
-  background:
-    linear-gradient(150deg, color-mix(in srgb, var(--dev-cyan) 12%, transparent), transparent 70%),
-    var(--dev-surface-strong);
-}
-
-.dev-home__funnel-label {
-  overflow: hidden;
-  color: var(--dev-muted);
-  font-size: 12px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.dev-home__funnel-value {
-  color: var(--funnel-tone);
-  font-size: 30px;
-  font-weight: 800;
-  line-height: 1.05;
-  font-variant-numeric: tabular-nums;
-}
-
-.dev-home__funnel-value small {
-  margin-left: 3px;
-  color: var(--dev-muted);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.dev-home__funnel-bar {
-  display: block;
-  height: 4px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--dev-muted) 16%, transparent);
-  overflow: hidden;
-}
-
-.dev-home__funnel-bar span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--funnel-tone);
-  transition: width 0.4s ease;
-}
+/* 漏斗的静态排布搬进了 DevFunnel.vue（scoped 样式跟着组件走）；这里只留 980 / 640 两档的窄屏覆盖，
+   见文件末尾的媒体块——`:deep()` 只能在「持有子组件的那一层」编译成后代选择器。 */
 
 /* 资金卡里「近 N 天到账」与「本月累计到账」同一行，标签左、累计右 */
 .dev-home__trend-head {
@@ -1682,18 +1335,7 @@ function formatCount(value: number): string {
   font-variant-numeric: tabular-nums;
 }
 
-/* 30 天横轴：只标抽稀后的几天，标签按对应点的横坐标绝对定位 */
-.dev-home__chart-axis-labels--sparse {
-  position: relative;
-  display: block;
-  height: 14px;
-}
-
-.dev-home__chart-axis-labels--sparse span {
-  position: absolute;
-  top: 0;
-  white-space: nowrap;
-}
+/* 30 天横轴的抽稀标签（.dev-home__chart-axis-labels--sparse）跟着图表搬进了 DevIncomeTrendChart。 */
 
 /* 实时动态：图标 + 标题 / 时间 + 金额。新条目从顶部插入并闪一下底色 */
 .dev-home__feed {
@@ -2311,134 +1953,9 @@ function formatCount(value: number): string {
   color: var(--dev-gold);
 }
 
-.dev-home__chart {
-  position: relative;
-  margin-top: 10px;
-}
+/* 走势图的排版（框、svg、折线、圆点、悬停胶囊与命中带）整套搬进了 DevIncomeTrendChart.vue，
+   连同 scoped 样式一起走，这里不再留残留规则。 */
 
-.dev-home__chart-svg {
-  display: block;
-  width: 100%;
-  height: 132px;
-}
-
-.dev-home__chart-stop-a {
-  stop-color: var(--dev-blue);
-  stop-opacity: 0.32;
-}
-
-.dev-home__chart-stop-b {
-  stop-color: var(--dev-blue);
-  stop-opacity: 0;
-}
-
-.dev-home__chart-axis {
-  stroke: var(--dev-line);
-  stroke-width: 1;
-  stroke-dasharray: 4 4;
-}
-
-.dev-home__chart-line {
-  fill: none;
-  stroke: var(--dev-blue);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.dev-home__chart-dot {
-  fill: var(--dev-surface-strong);
-  stroke: var(--dev-blue);
-  stroke-width: 1.5;
-}
-
-.dev-home__chart-dot.is-peak {
-  fill: var(--dev-blue);
-}
-
-.dev-home__chart-dot.is-active {
-  fill: var(--dev-blue);
-  stroke-width: 2.5;
-}
-
-/* 悬停读数：深底白字的胶囊，与「最高一天」那颗蓝胶囊区分开——蓝的是这一周的峰值，
-   深色的是鼠标底下那一天的当日读数。横向位置与两端翻边由模板内联给（见 hoveredBucket）。 */
-.dev-home__chart-tip {
-  position: absolute;
-  top: 0;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: var(--dev-ink);
-  color: var(--dev-surface-strong);
-  font-size: 11px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-/* 从当天那个点到基线的竖线：指着哪一天，一眼能看出对应的是曲线上的哪个点 */
-.dev-home__chart-guide {
-  position: absolute;
-  width: 1px;
-  background: color-mix(in srgb, var(--dev-blue) 38%, transparent);
-  pointer-events: none;
-}
-
-/* 命中带：铺满整个图（含下面的日期），指到哪一格就报哪一天；它盖在 SVG 之上，
-   所以曲线上的圆点不各挂一次监听，焦点与悬停都集中在这七颗按钮上。 */
-.dev-home__chart-hits {
-  position: absolute;
-  inset: 0;
-}
-
-.dev-home__chart-hit {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
-.dev-home__chart-hit:focus-visible {
-  outline: 2px solid var(--dev-blue);
-  outline-offset: -2px;
-  border-radius: 6px;
-}
-
-.dev-home__chart-peak {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: var(--dev-blue);
-  color: var(--dev-surface-strong);
-  font-size: 11px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-.dev-home__chart-axis-labels {
-  display: flex;
-  justify-content: space-between;
-  gap: 4px;
-  margin-top: 6px;
-  color: var(--dev-muted);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-
-.dev-home__chart-empty {
-  margin: 8px 0 0;
-  color: var(--dev-muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
 
 /* 读数格：两列一行，图标 + 标签 + 数字。合并后只剩提现口径的两个读数 */
 .dev-home__facts {
@@ -2732,15 +2249,19 @@ function formatCount(value: number): string {
     margin-left: auto;
   }
 
-  .dev-home__funnel {
+  /* 漏斗的静态排布在 DevFunnel.vue，窄档覆盖只能留在这里：`:deep()` 只在「持有子组件的那一层」
+     编译成后代选择器，写进子组件自己的 scoped 里反而匹配不到。
+     多带一个 `.dev-home` 不为选中别的元素，只为压过子组件里同名的基样式——拆分后两份规则各在一个
+     文件里，权重相等时就只能靠注入顺序分胜负，那是不该依赖的东西。 */
+  .dev-home .dev-home__funnel {
     gap: 8px;
   }
 
-  .dev-home__funnel-cell {
+  .dev-home .dev-home__funnel :deep(.dev-home__funnel-cell) {
     padding: 10px 10px 8px;
   }
 
-  .dev-home__funnel-value {
+  .dev-home .dev-home__funnel :deep(.dev-home__funnel-value) {
     font-size: 26px;
   }
 }
@@ -2767,11 +2288,12 @@ function formatCount(value: number): string {
     overflow: visible;
   }
 
-  .dev-home__funnel {
+  .dev-home .dev-home__funnel {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .dev-home__funnel-cell::after {
+  /* 箭头只被「显隐」覆盖（子组件那条规则里没有 display），所以不必提权重 */
+  .dev-home__funnel :deep(.dev-home__funnel-cell::after) {
     display: none;
   }
 }
