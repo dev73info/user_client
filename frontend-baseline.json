@@ -388,13 +388,13 @@
     {
       "rule": "line-budget",
       "file": "src/views/AccountCouponsView.vue",
-      "detail": "3222 行 > 300（视图）",
+      "detail": "2590 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
       "rule": "api-deps",
       "file": "src/views/AccountCouponsView.vue",
-      "detail": "依赖 5 个 api 模块（http、auth、settings、realname、asignAccount）> 3",
+      "detail": "依赖 4 个 api 模块（auth、settings、realname、asignAccount）> 3",
       "since": "2026-10-21"
     },
     {
