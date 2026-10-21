@@ -169,3 +169,45 @@
     height: auto;
   }
 }
+
+/* === 支付结果区（已到账 / 微信已返回成功） === */
+
+.payment-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 36px 16px;
+  text-align: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.payment-result h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.5;
+}
+
+.payment-result p {
+  margin: 0;
+  max-width: 100%;
+  line-height: 1.7;
+}
+
+.payment-result__icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  color: #b7791f;
+}
+
+.payment-result__icon--success {
+  color: #16804a;
+}
+
+/* 自动返回倒计时：弱化处理，别和「支付成功」抢注意力 */
+.payment-result__countdown {
+  color: #64748b;
+  font-size: 13px;
+}
