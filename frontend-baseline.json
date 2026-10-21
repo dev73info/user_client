@@ -586,7 +586,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/ProfileView.vue",
-      "detail": "2219 行 > 300（视图）",
+      "detail": "1619 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -809,6 +809,12 @@
       "rule": "raw-color",
       "file": "src/components/PortalTopNav.vue",
       "detail": "102 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/profile/ProfileAvatarCropModal.vue",
+      "detail": "51 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -1378,7 +1384,7 @@
     {
       "rule": "raw-color",
       "file": "src/views/ProfileView.vue",
-      "detail": "121 处裸色值",
+      "detail": "70 处裸色值",
       "since": "2026-10-21"
     },
     {
