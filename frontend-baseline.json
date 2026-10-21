@@ -364,7 +364,7 @@
     {
       "rule": "line-budget",
       "file": "src/styles/profile.css",
-      "detail": "972 行 > 300（模块）",
+      "detail": "1041 行 > 300（模块）",
       "since": "2026-10-21"
     },
     {
@@ -586,13 +586,13 @@
     {
       "rule": "line-budget",
       "file": "src/views/ProfileView.vue",
-      "detail": "1619 行 > 300（视图）",
+      "detail": "958 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
       "rule": "api-deps",
       "file": "src/views/ProfileView.vue",
-      "detail": "依赖 7 个 api 模块（http、realname、contracts、coupons、conversations、requirements、settings）> 3",
+      "detail": "依赖 5 个 api 模块（http、realname、coupons、requirements、settings）> 3",
       "since": "2026-10-21"
     },
     {
@@ -813,8 +813,38 @@
     },
     {
       "rule": "raw-color",
+      "file": "src/components/profile/OverviewStrip.vue",
+      "detail": "1 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
       "file": "src/components/profile/ProfileAvatarCropModal.vue",
       "detail": "51 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/profile/QuickLinksPanel.vue",
+      "detail": "6 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/profile/RecentConversationsPanel.vue",
+      "detail": "7 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/components/profile/RequirementProgressPanel.vue",
+      "detail": "1 处非标准断点（760px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/profile/RequirementProgressPanel.vue",
+      "detail": "24 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -1102,7 +1132,7 @@
     {
       "rule": "raw-color",
       "file": "src/styles/profile.css",
-      "detail": "74 处裸色值",
+      "detail": "78 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -1378,13 +1408,13 @@
     {
       "rule": "breakpoint",
       "file": "src/views/ProfileView.vue",
-      "detail": "2 处非标准断点（760px、380px）",
+      "detail": "1 处非标准断点（760px）",
       "since": "2026-10-21"
     },
     {
       "rule": "raw-color",
       "file": "src/views/ProfileView.vue",
-      "detail": "70 处裸色值",
+      "detail": "28 处裸色值",
       "since": "2026-10-21"
     },
     {
