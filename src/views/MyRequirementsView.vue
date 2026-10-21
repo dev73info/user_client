@@ -32,7 +32,12 @@ import {
   type RequirementConversation,
   type RequirementConversationDetail,
 } from '@/api/conversations'
-import { createRequirementContract, fetchAsignRequirementPreviewUrl, fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
+import {
+  createRequirementContract,
+  fetchAsignRequirementPreviewUrl,
+  fetchContractSigningStatus,
+  type ContractSigningStatus,
+} from '@/api/contracts'
 import {
   createAdapayPayment,
   getAdapayBreachCase,
@@ -97,7 +102,6 @@ import {
   requirementRichTextPlainText,
   validateRequirementRichText,
 } from '@/utils/requirementRichText'
-
 
 import {
   TButton,
@@ -255,9 +259,7 @@ function breachVerdictSourceText(source?: AdapayBreachVerdictSource | null) {
 /** 双方表态状态只在 AI 判定后才有意义。 */
 function showBreachDecisions(item: AdapayBreachCase) {
   return (
-    item.status === 'ai_judged' ||
-    item.customerDecision != null ||
-    item.developerDecision != null
+    item.status === 'ai_judged' || item.customerDecision != null || item.developerDecision != null
   )
 }
 
@@ -273,9 +275,7 @@ function canRequestPlatformReview(item: AdapayBreachCase | null) {
 
 /** 协商阶段：案件在 `submitted` 且双方都还没就「解除合作」表态。 */
 function isTerminationNegotiating(item: AdapayBreachCase | null) {
-  return (
-    item?.status === 'submitted' && !item.mutualAgreedAt && !item.mutualRejectedAt
-  )
+  return item?.status === 'submitted' && !item.mutualAgreedAt && !item.mutualRejectedAt
 }
 
 /** 能不能对「解除合作」表态：当事人里不是发起人的那一位。 */
@@ -393,7 +393,8 @@ function stripValue(count: number) {
 const filteredRequirements = computed(() => {
   const search = keyword.value.trim().toLocaleLowerCase()
   return myRequirements.value.filter((item) => {
-    const matchesState = selectedState.value === 'all' || bucketOf(item.status) === selectedState.value
+    const matchesState =
+      selectedState.value === 'all' || bucketOf(item.status) === selectedState.value
     const matchesSearch =
       !search ||
       [item.title, item.requirement_id, item.creator].some((value) =>
@@ -474,7 +475,9 @@ function formatRequirementDisplayStatus(item: RequirementItem) {
     }
     return '待付定金'
   }
-  return isWaitingContractSign(item) ? '待签合同' : formatRequirementStatus(item.status, item.payment_mode)
+  return isWaitingContractSign(item)
+    ? '待签合同'
+    : formatRequirementStatus(item.status, item.payment_mode)
 }
 
 function isSelfManagedRequirement(item: RequirementItem) {
@@ -592,9 +595,17 @@ function canReportBreach(item: RequirementItem) {
   // 待接单（`pending_deposit`）里含「已签约未缴定金」：甲方拒缴定金同样是违约，可以申报，
   // 那种案件没有支付单、只作责任认定；尚未签合同时后端按「无生效合同」拒掉，入口不给——
   // 结案回滚把需求打回待接单、合同同时作废，也正落在这条上（BUG-038）。
-  return item.payment_mode !== 'self_managed' &&
-    ['pending_deposit', 'deposit_paid', 'in_development', 'pending_final', 'pending_settlement'].includes(item.status) &&
+  return (
+    item.payment_mode !== 'self_managed' &&
+    [
+      'pending_deposit',
+      'deposit_paid',
+      'in_development',
+      'pending_final',
+      'pending_settlement',
+    ].includes(item.status) &&
     (item.status !== 'pending_deposit' || isRequirementContractSigned(item))
+  )
 }
 
 async function openBreachReport(item: RequirementItem) {
@@ -812,10 +823,7 @@ function signingStatusForRequirement(item: RequirementItem) {
 
 function isRequirementContractSigned(item: RequirementItem) {
   const status = signingStatusForRequirement(item)
-  return Boolean(
-    status?.party_a_signed &&
-      status.party_b_signed,
-  )
+  return Boolean(status?.party_a_signed && status.party_b_signed)
 }
 
 function canOpenContractSign(item: RequirementItem) {
@@ -1070,7 +1078,12 @@ async function downloadRequirementVersion(
   try {
     await triggerDownload(
       (onProgress) =>
-        downloadPublicMcResourceVersionFile(resourceId, version.id, auth.token?.trim() || null, onProgress),
+        downloadPublicMcResourceVersionFile(
+          resourceId,
+          version.id,
+          auth.token?.trim() || null,
+          onProgress,
+        ),
       extractResourceFileNameFromUrl(version.resource, `resource-${resourceId}-${version.version}`),
     )
   } catch (err) {
@@ -1563,9 +1576,7 @@ async function toggleRequirementResourceVisibility(item: RequirementItem) {
   resourceVisibilityLoadingId.value = item.requirement_id
   try {
     await updateRequirementResourceVisibilityApi(auth.token, item.requirement_id, { visibility })
-    TMessage.success(
-      visibility === 'public' ? '关联资源已提交公开审核' : '关联资源已设为私有',
-    )
+    TMessage.success(visibility === 'public' ? '关联资源已提交公开审核' : '关联资源已设为私有')
     await loadMyRequirements()
   } catch (err) {
     TMessage.error(err instanceof Error ? err.message : '更新资源可见性失败')
@@ -1677,7 +1688,10 @@ async function submitRequirementResubmit() {
   }
 
   // R014：担保需求必填「开发周期（天）」，且必须是正整数；配置下限由后端校验并回中文提示。
-  const cycleError = validateDevelopmentCycleInput(editDevelopmentCycleDays.value, editPaymentMode.value)
+  const cycleError = validateDevelopmentCycleInput(
+    editDevelopmentCycleDays.value,
+    editPaymentMode.value,
+  )
   if (cycleError) {
     TMessage.error(cycleError)
     return
@@ -1691,7 +1705,10 @@ async function submitRequirementResubmit() {
       budget,
       acceptance_criteria: acceptanceValidation.value,
       payment_mode: editPaymentMode.value,
-      development_cycle_days: normalizeDevelopmentCycle(editDevelopmentCycleDays.value, editPaymentMode.value),
+      development_cycle_days: normalizeDevelopmentCycle(
+        editDevelopmentCycleDays.value,
+        editPaymentMode.value,
+      ),
     })
 
     TMessage.success('需求已重新提交，等待审核')
@@ -1748,7 +1765,10 @@ async function submitRequirementPublish() {
   }
 
   // R014：担保需求必填「开发周期（天）」，且必须是正整数；配置下限由后端校验并回中文提示。
-  const cycleError = validateDevelopmentCycleInput(publishDevelopmentCycleDays.value, publishPaymentMode.value)
+  const cycleError = validateDevelopmentCycleInput(
+    publishDevelopmentCycleDays.value,
+    publishPaymentMode.value,
+  )
   if (cycleError) {
     TMessage.error(cycleError)
     return
@@ -1762,7 +1782,10 @@ async function submitRequirementPublish() {
       budget,
       acceptance_criteria: acceptanceValidation.value,
       payment_mode: publishPaymentMode.value,
-      development_cycle_days: normalizeDevelopmentCycle(publishDevelopmentCycleDays.value, publishPaymentMode.value),
+      development_cycle_days: normalizeDevelopmentCycle(
+        publishDevelopmentCycleDays.value,
+        publishPaymentMode.value,
+      ),
     })
 
     TMessage.success('需求已发布，等待审核')
@@ -1799,7 +1822,9 @@ const payChannelLabel = computed(() => {
 })
 
 const finalPaymentConfirmTitle = computed(() => '确认交付完成')
-const finalPaymentConfirmTip = computed(() => '确认后，当前需求会直接进入已完成状态，后续可继续评价。')
+const finalPaymentConfirmTip = computed(
+  () => '确认后，当前需求会直接进入已完成状态，后续可继续评价。',
+)
 const finalPaymentConfirmButton = computed(() => '确认完成')
 
 const payAmount = computed(() => {
@@ -2185,7 +2210,10 @@ function moreRowActions(item: RequirementItem): RequirementRowAction[] {
     entries.push({ key: 'comment', label: '修改评价' })
   }
   // 开不出票时不留一个点了才报错的入口：置灰并把原因挂在 title 上（灰项不可点，原因只能靠悬浮）。
-  const invoiceState = invoiceEntryState(item.payment_mode, invoiceSummaryMap.value[item.requirement_id])
+  const invoiceState = invoiceEntryState(
+    item.payment_mode,
+    invoiceSummaryMap.value[item.requirement_id],
+  )
   entries.push(
     invoiceState.enabled
       ? { key: 'invoice', label: '获取发票' }
@@ -2356,7 +2384,8 @@ onMounted(async () => {
   const oauthResult = typeof route.query.wechat_oauth === 'string' ? route.query.wechat_oauth : ''
   const oauthError =
     typeof route.query.wechat_oauth_error === 'string' ? route.query.wechat_oauth_error : ''
-  const unionOauthResult = typeof route.query.union_oauth === 'string' ? route.query.union_oauth : ''
+  const unionOauthResult =
+    typeof route.query.union_oauth === 'string' ? route.query.union_oauth : ''
   const unionOauthError =
     typeof route.query.union_oauth_error === 'string' ? route.query.union_oauth_error : ''
   if (oauthResult === 'success') {
@@ -2414,8 +2443,13 @@ watch(
           <span class="wb-strip__value">{{ stripValue(requirementStats.completed) }}</span>
         </div>
         <div class="wb-strip__item wb-strip__action">
-          <TButton icon-only :loading="requirementLoading || conversationLoading"
-            :aria-label="refreshButtonLabel" :title="refreshButtonLabel" @click="refreshMyRequirements">
+          <TButton
+            icon-only
+            :loading="requirementLoading || conversationLoading"
+            :aria-label="refreshButtonLabel"
+            :title="refreshButtonLabel"
+            @click="refreshMyRequirements"
+          >
             <TIcon><Refresh /></TIcon>
           </TButton>
         </div>
@@ -2428,23 +2462,48 @@ watch(
           <h3 class="wb-card-head__title">需求列表</h3>
         </div>
         <div class="wb-card-head__actions">
-          <TButton variant="solid" tone="accent" class="my-requirements-publish--head" @click="openPublishModal">
+          <TButton
+            variant="solid"
+            tone="accent"
+            class="my-requirements-publish--head"
+            @click="openPublishModal"
+          >
             发布新需求
           </TButton>
         </div>
       </div>
 
       <div class="wb-toolbar">
-        <TSelect v-model="selectedState" class="wb-toolbar__field wb-toolbar__field--requirement-state"
-          aria-label="需求状态">
-          <TOption v-for="state in states" :key="state.value" :value="state.value" :label="state.label" />
+        <TSelect
+          v-model="selectedState"
+          class="wb-toolbar__field wb-toolbar__field--requirement-state"
+          aria-label="需求状态"
+        >
+          <TOption
+            v-for="state in states"
+            :key="state.value"
+            :value="state.value"
+            :label="state.label"
+          />
         </TSelect>
-        <TInput v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索需求标题、编号或发布人"
-          aria-label="搜索需求">
-          <template #prefix><TIcon><Search /></TIcon></template>
+        <TInput
+          v-model="keyword"
+          class="wb-toolbar__search"
+          clearable
+          placeholder="搜索需求标题、编号或发布人"
+          aria-label="搜索需求"
+        >
+          <template #prefix
+            ><TIcon><Search /></TIcon
+          ></template>
         </TInput>
-        <TButton variant="solid" tone="accent" class="my-requirements-publish--toolbar" aria-label="发布新需求"
-          @click="openPublishModal">
+        <TButton
+          variant="solid"
+          tone="accent"
+          class="my-requirements-publish--toolbar"
+          aria-label="发布新需求"
+          @click="openPublishModal"
+        >
           发布
         </TButton>
         <!-- 工具栏不放「重置」：清空筛选的入口保留在下面空态的「清除筛选」。
@@ -2456,7 +2515,9 @@ watch(
         </div>
       </div>
 
-      <p v-if="requirementLoading && myRequirements.length === 0" class="wb-empty" role="status">需求单加载中…</p>
+      <p v-if="requirementLoading && myRequirements.length === 0" class="wb-empty" role="status">
+        需求单加载中…
+      </p>
       <div v-else-if="!filteredRequirements.length" class="wb-empty" role="status">
         <span class="wb-empty__title">
           {{ myRequirements.length ? '没有符合条件的需求单' : '还没有提交过需求单' }}
@@ -2471,294 +2532,468 @@ watch(
         <template v-else>点击右上角「发布新需求」即可创建你的第一个需求。</template>
       </div>
       <template v-else>
-      <ul class="wb-list requirement-list">
-        <template v-for="item in pagedRequirements" :key="item.requirement_id">
-          <li class="requirement-row wb-item wb-item--clickable"
-            :class="{ expanded: isVersionDeleteReviewExpanded(item) }"
-            :aria-label="`打开「${item.title}」的沟通记录`" tabindex="0"
-            @click="openRequirementConversationPage(item)"
-            @keydown.enter.prevent="openRequirementConversationPage(item)"
-            @keydown.space.prevent="openRequirementConversationPage(item)">
-            <div class="requirement-card-body">
-              <div class="requirement-main wb-item__main">
-                <div class="requirement-title wb-item__title">
-                  <strong>{{ item.title }}</strong>
-                  <span>{{ item.requirement_id }}</span>
-                </div>
-                <!-- R014：合同有效期届满后的锁定 / 清除横幅。锁定态可下载、写操作置灰；清除态只剩审计台账。 -->
-                <div v-if="archiveBanner(item).title" class="requirement-archive-banner"
-                  :class="`requirement-archive-banner--${archiveBanner(item).state}`" role="status"
-                  data-testid="requirement-archive-banner">
-                  <strong>{{ archiveBanner(item).title }}</strong>
-                  <span v-if="lockRemainingText(item)" class="requirement-archive-banner__remaining">{{
-                    lockRemainingText(item) }}</span>
-                  <p>{{ archiveBanner(item).description }}</p>
-                </div>
-                <div class="requirement-details">
-                  <!-- 短事实走标签：发布方式用全站共用的 .pay-mode-chip（见 PaymentModeChip，与需求大厅卡片同一枚胶囊，
+        <ul class="wb-list requirement-list">
+          <template v-for="item in pagedRequirements" :key="item.requirement_id">
+            <li
+              class="requirement-row wb-item wb-item--clickable"
+              :class="{ expanded: isVersionDeleteReviewExpanded(item) }"
+              :aria-label="`打开「${item.title}」的沟通记录`"
+              tabindex="0"
+              @click="openRequirementConversationPage(item)"
+              @keydown.enter.prevent="openRequirementConversationPage(item)"
+              @keydown.space.prevent="openRequirementConversationPage(item)"
+            >
+              <div class="requirement-card-body">
+                <div class="requirement-main wb-item__main">
+                  <div class="requirement-title wb-item__title">
+                    <strong>{{ item.title }}</strong>
+                    <span>{{ item.requirement_id }}</span>
+                  </div>
+                  <!-- R014：合同有效期届满后的锁定 / 清除横幅。锁定态可下载、写操作置灰；清除态只剩审计台账。 -->
+                  <div
+                    v-if="archiveBanner(item).title"
+                    class="requirement-archive-banner"
+                    :class="`requirement-archive-banner--${archiveBanner(item).state}`"
+                    role="status"
+                    data-testid="requirement-archive-banner"
+                  >
+                    <strong>{{ archiveBanner(item).title }}</strong>
+                    <span
+                      v-if="lockRemainingText(item)"
+                      class="requirement-archive-banner__remaining"
+                      >{{ lockRemainingText(item) }}</span
+                    >
+                    <p>{{ archiveBanner(item).description }}</p>
+                  </div>
+                  <div class="requirement-details">
+                    <!-- 短事实走标签：发布方式用全站共用的 .pay-mode-chip（见 PaymentModeChip，与需求大厅卡片同一枚胶囊，
                        底色按发布方式分档），其余走统一层 .wb-badge（浅底 + 深字：绿 = 已公开、琥珀 = 有待审核项）；
                        散文式的说明仍用 .requirement-note 独占一行。 -->
-                  <PaymentModeChip :mode="item.payment_mode" />
-                  <span v-if="hasBoundResource(item)" class="wb-badge wb-badge--success">{{
-                    formatResourceVisibility(item)
+                    <PaymentModeChip :mode="item.payment_mode" />
+                    <span v-if="hasBoundResource(item)" class="wb-badge wb-badge--success">{{
+                      formatResourceVisibility(item)
                     }}</span>
-                  <span v-if="hasBoundResource(item)" class="wb-badge">交付 {{
-                    publishedVersionCount(item) }} 版{{ latestDeliveryVersionLabel(item) }}</span>
-                  <!-- R014：开发周期（天）——担保需求合同有效期依据；无担保 / 未填不渲染。 -->
-                  <span v-if="item.development_cycle_days != null" class="wb-badge"
-                    data-testid="requirement-development-cycle">开发周期 {{ item.development_cycle_days }} 天</span>
-                  <!-- 已转换的不再给按钮（点了必 409），改成一枚不可点的标记；时间挂在 title 上。 -->
-                  <span v-if="isResourceClaimed(item)" class="wb-badge wb-badge--success"
-                    :title="`转换时间：${formatRequirementTime(item.resource_claimed_at ?? '')}`"
-                    data-testid="requirement-claimed-badge">已转为我的资源</span>
-                  <small v-if="contractStatusHint(item)" class="requirement-note">{{
-                    contractStatusHint(item)
+                    <span v-if="hasBoundResource(item)" class="wb-badge"
+                      >交付 {{ publishedVersionCount(item) }} 版{{
+                        latestDeliveryVersionLabel(item)
+                      }}</span
+                    >
+                    <!-- R014：开发周期（天）——担保需求合同有效期依据；无担保 / 未填不渲染。 -->
+                    <span
+                      v-if="item.development_cycle_days != null"
+                      class="wb-badge"
+                      data-testid="requirement-development-cycle"
+                      >开发周期 {{ item.development_cycle_days }} 天</span
+                    >
+                    <!-- 已转换的不再给按钮（点了必 409），改成一枚不可点的标记；时间挂在 title 上。 -->
+                    <span
+                      v-if="isResourceClaimed(item)"
+                      class="wb-badge wb-badge--success"
+                      :title="`转换时间：${formatRequirementTime(item.resource_claimed_at ?? '')}`"
+                      data-testid="requirement-claimed-badge"
+                      >已转为我的资源</span
+                    >
+                    <small v-if="contractStatusHint(item)" class="requirement-note">{{
+                      contractStatusHint(item)
                     }}</small>
-                  <!-- R014：锁定期内的「转为我的资源」引导（复用 R006 转换入口，转换不可撤销）。 -->
-                  <small v-if="canClaimResourceWhileLocked(item)"
-                    class="requirement-note requirement-note--block" data-testid="requirement-claim-guidance">
-                    资料保留期内请尽快把交付的资源项目「转为我的资源」：转换后资源归你所有、不可撤销，
-                    保留期届满平台清除资料后，开发者侧不再控制该资源。
-                  </small>
-                  <span v-if="hasPendingResourceVersionDeleteReview(item)" class="wb-badge wb-badge--warning">
-                    待审核 · 开发者申请删除 {{ pendingResourceVersionDeleteRequests(item).length }} 个版本
+                    <!-- R014：锁定期内的「转为我的资源」引导（复用 R006 转换入口，转换不可撤销）。 -->
+                    <small
+                      v-if="canClaimResourceWhileLocked(item)"
+                      class="requirement-note requirement-note--block"
+                      data-testid="requirement-claim-guidance"
+                    >
+                      资料保留期内请尽快把交付的资源项目「转为我的资源」：转换后资源归你所有、不可撤销，
+                      保留期届满平台清除资料后，开发者侧不再控制该资源。
+                    </small>
+                    <span
+                      v-if="hasPendingResourceVersionDeleteReview(item)"
+                      class="wb-badge wb-badge--warning"
+                    >
+                      待审核 · 开发者申请删除
+                      {{ pendingResourceVersionDeleteRequests(item).length }} 个版本
+                    </span>
+                    <small
+                      v-else-if="
+                        hasBoundResource(item) &&
+                        item.resource_version_delete_request_status === 'rejected' &&
+                        item.resource_version_delete_review_note
+                      "
+                      class="requirement-note requirement-note--block"
+                      >{{ versionDeleteRejectNote(item) }}</small
+                    >
+                    <small
+                      v-if="item.status === 'rejected' && item.review_note"
+                      class="requirement-note requirement-note--block"
+                      >驳回原因：{{ item.review_note }}</small
+                    >
+                    <small
+                      v-if="settlementHint(item)"
+                      class="requirement-note requirement-note--block"
+                      >{{ settlementHint(item) }}</small
+                    >
+                    <small
+                      v-if="item.comment_rating != null"
+                      class="requirement-note requirement-note--block"
+                    >
+                      我的评价：{{ formatCommentSummary(item.comment_rating, item.comment_text) }}
+                    </small>
+                    <small
+                      v-if="item.developer_comment_rating != null"
+                      class="requirement-note requirement-note--block"
+                    >
+                      对方评价（开发者）：{{
+                        formatCommentSummary(
+                          item.developer_comment_rating,
+                          item.developer_comment_text,
+                        )
+                      }}
+                    </small>
+                  </div>
+                </div>
+                <aside class="requirement-summary wb-item__side" aria-label="需求摘要">
+                  <span class="wb-badge" :class="statusBadgeClass(item)">
+                    {{ formatRequirementDisplayStatus(item) }}
                   </span>
-                  <small v-else-if="
-                    hasBoundResource(item) &&
-                    item.resource_version_delete_request_status === 'rejected' &&
-                    item.resource_version_delete_review_note
-                  " class="requirement-note requirement-note--block">{{ versionDeleteRejectNote(item) }}</small>
-                  <small v-if="item.status === 'rejected' && item.review_note"
-                    class="requirement-note requirement-note--block">驳回原因：{{ item.review_note }}</small>
-                  <small v-if="settlementHint(item)"
-                    class="requirement-note requirement-note--block">{{ settlementHint(item) }}</small>
-                  <small
-                    v-if="item.comment_rating != null"
-                    class="requirement-note requirement-note--block"
-                  >
-                    我的评价：{{ formatCommentSummary(item.comment_rating, item.comment_text) }}
-                  </small>
-                  <small
-                    v-if="item.developer_comment_rating != null"
-                    class="requirement-note requirement-note--block"
-                  >
-                    对方评价（开发者）：{{
-                      formatCommentSummary(item.developer_comment_rating, item.developer_comment_text)
-                    }}
-                  </small>
-                </div>
+                  <div class="requirement-budget">
+                    <small>预算</small>
+                    <strong>{{ formatBudget(item.budget) }}</strong>
+                  </div>
+                  <time>
+                    <small>更新时间</small>
+                    <span>{{ formatRequirementTime(item.updated_at) }}</span>
+                  </time>
+                </aside>
               </div>
-              <aside class="requirement-summary wb-item__side" aria-label="需求摘要">
-                <span class="wb-badge" :class="statusBadgeClass(item)">
-                  {{ formatRequirementDisplayStatus(item) }}
-                </span>
-                <div class="requirement-budget">
-                  <small>预算</small>
-                  <strong>{{ formatBudget(item.budget) }}</strong>
-                </div>
-                <time>
-                  <small>更新时间</small>
-                  <span>{{ formatRequirementTime(item.updated_at) }}</span>
-                </time>
-              </aside>
-            </div>
-            <!-- 操作区分四层：开关芯片（订阅 / 公开）→ 行内常用动作 → 更多菜单 → 唯一主操作。
+              <!-- 操作区分四层：开关芯片（订阅 / 公开）→ 行内常用动作 → 更多菜单 → 唯一主操作。
                  订阅开关每行都有，所以这块不会为空。 -->
-            <div class="requirement-actions">
-              <div class="requirement-toggles">
-                <button class="requirement-toggle" type="button" :aria-pressed="item.subscribe_status_change"
-                  :disabled="requirementSubscriptionLoadingId === item.requirement_id"
-                  :title="item.subscribe_status_change ? '已订阅状态变化，点击取消' : '订阅状态变化后通知我'"
-                  @click.stop="toggleRequirementSubscription(item)">
-                  <span class="requirement-toggle__track" aria-hidden="true"></span>
-                  {{
-                    requirementSubscriptionLoadingId === item.requirement_id
-                      ? '提交中...'
-                      : requirementSubscriptionLabel(item)
-                  }}
-                </button>
-                <button v-if="canToggleRequirementResourceVisibility(item) && !isRequirementArchived(item)" class="requirement-toggle" type="button"
-                  :aria-pressed="currentResourceVisibility(item) === 'public'"
-                  :disabled="resourceVisibilityLoadingId === item.requirement_id"
-                  :title="currentResourceVisibility(item) === 'review' ? '点击撤回公开审核，资源恢复为私有' : '切换关联资源的公开 / 私有'"
-                  @click.stop="toggleRequirementResourceVisibility(item)">
-                  <span class="requirement-toggle__track" aria-hidden="true"></span>
-                  {{
-                    resourceVisibilityLoadingId === item.requirement_id
-                      ? '提交中...'
-                      : toggleResourceVisibilityLabel(item)
-                  }}
-                </button>
-              </div>
+              <div class="requirement-actions">
+                <div class="requirement-toggles">
+                  <button
+                    class="requirement-toggle"
+                    type="button"
+                    :aria-pressed="item.subscribe_status_change"
+                    :disabled="requirementSubscriptionLoadingId === item.requirement_id"
+                    :title="
+                      item.subscribe_status_change
+                        ? '已订阅状态变化，点击取消'
+                        : '订阅状态变化后通知我'
+                    "
+                    @click.stop="toggleRequirementSubscription(item)"
+                  >
+                    <span class="requirement-toggle__track" aria-hidden="true"></span>
+                    {{
+                      requirementSubscriptionLoadingId === item.requirement_id
+                        ? '提交中...'
+                        : requirementSubscriptionLabel(item)
+                    }}
+                  </button>
+                  <button
+                    v-if="
+                      canToggleRequirementResourceVisibility(item) && !isRequirementArchived(item)
+                    "
+                    class="requirement-toggle"
+                    type="button"
+                    :aria-pressed="currentResourceVisibility(item) === 'public'"
+                    :disabled="resourceVisibilityLoadingId === item.requirement_id"
+                    :title="
+                      currentResourceVisibility(item) === 'review'
+                        ? '点击撤回公开审核，资源恢复为私有'
+                        : '切换关联资源的公开 / 私有'
+                    "
+                    @click.stop="toggleRequirementResourceVisibility(item)"
+                  >
+                    <span class="requirement-toggle__track" aria-hidden="true"></span>
+                    {{
+                      resourceVisibilityLoadingId === item.requirement_id
+                        ? '提交中...'
+                        : toggleResourceVisibilityLabel(item)
+                    }}
+                  </button>
+                </div>
 
-              <!-- 行内控件各自处理自己的点击与回车，在容器这一层就拦住，别再冒泡到整行的「打开沟通页」。
+                <!-- 行内控件各自处理自己的点击与回车，在容器这一层就拦住，别再冒泡到整行的「打开沟通页」。
                    注意「更多」那个按钮上不能再挂 @click.stop：TDropdown 的触发监听挂在自己的外层
                    span 上（el-dropdown 当时是挂在触发元素自身），在按钮处截断冒泡等于菜单永远打不开。 -->
-              <div class="requirement-actions__list" @click.stop @keydown.stop>
-                <button v-if="hasBoundResource(item) && !isRequirementCleared(item)" class="ghost small action-emphasis" type="button"
-                  :disabled="resourceDownloadingId === item.bound_resource_id"
-                  @click.stop="runRowAction(item, 'download')">
-                  {{ resourceDownloadingId === item.bound_resource_id ? '准备中...' : '下载' }}
-                </button>
-                <button v-if="hasBoundResource(item)" class="ghost small action-quiet" type="button"
-                  @click.stop="runRowAction(item, 'conversation')">
-                  会话
-                </button>
-                <!-- 已结单且有交付资源、尚未转换时才出现；转换后由上方的「已转为我的资源」标记接替。 -->
-                <button v-if="canClaimResource(item)" class="ghost small action-emphasis" type="button"
-                  title="把开发者交付的资源转为我自己的资源项目（不可撤销）"
-                  @click.stop="runRowAction(item, 'claim-resource')">
-                  转为我的资源
-                </button>
-                <!-- 版本删除审核没有别的入口（整行点击归会话），所以这里给它一个按钮，
-                     与下方展开的审核卡片成对出现。 -->
-                <button v-if="hasPendingResourceVersionDeleteReview(item) && !isRequirementArchived(item)"
-                  class="ghost small action-emphasis"
-                  type="button" :aria-expanded="isVersionDeleteReviewExpanded(item)"
-                  @click.stop="toggleVersionDeleteReviewCard(item)">
-                  {{ isVersionDeleteReviewExpanded(item) ? '收起审核' : '审核资源' }}
-                </button>
-                <button v-if="canOpenAfterSales(item) && !isRequirementArchived(item)" class="ghost small action-emphasis"
-                  :class="{ 'has-todo-badge': afterSalesBadgeFor(item.requirement_id) }" type="button"
-                  @click.stop="runRowAction(item, 'after-sales')">
-                  解除合作
-                  <span v-if="afterSalesBadgeFor(item.requirement_id)" class="todo-badge"
-                    :title="`有 ${afterSalesPendingCount(item.requirement_id)} 条解除合作待你处理`">{{
-                      afterSalesBadgeFor(item.requirement_id) }}</span>
-                </button>
-
-                <TDropdown v-if="moreRowActions(item).length && !isRequirementArchived(item)" trigger="click"
-                  @command="(key) => runMoreRowAction(item, String(key))">
-                  <button class="ghost small requirement-actions__more" type="button" aria-haspopup="menu"
-                    title="更多操作">
-                    更多
-                    <TIcon>
-                      <ArrowDown />
-                    </TIcon>
+                <div class="requirement-actions__list" @click.stop @keydown.stop>
+                  <button
+                    v-if="hasBoundResource(item) && !isRequirementCleared(item)"
+                    class="ghost small action-emphasis"
+                    type="button"
+                    :disabled="resourceDownloadingId === item.bound_resource_id"
+                    @click.stop="runRowAction(item, 'download')"
+                  >
+                    {{ resourceDownloadingId === item.bound_resource_id ? '准备中...' : '下载' }}
                   </button>
-                  <template #dropdown>
-                    <TDropdownMenu>
-                      <TDropdownItem v-for="entry in moreRowActions(item)" :key="entry.key" :command="entry.key"
-                        :disabled="entry.disabled" :title="entry.title"
-                        :class="{ 'is-danger': entry.danger }">
-                        {{ entry.label }}
-                      </TDropdownItem>
-                    </TDropdownMenu>
-                  </template>
-                </TDropdown>
+                  <button
+                    v-if="hasBoundResource(item)"
+                    class="ghost small action-quiet"
+                    type="button"
+                    @click.stop="runRowAction(item, 'conversation')"
+                  >
+                    会话
+                  </button>
+                  <!-- 已结单且有交付资源、尚未转换时才出现；转换后由上方的「已转为我的资源」标记接替。 -->
+                  <button
+                    v-if="canClaimResource(item)"
+                    class="ghost small action-emphasis"
+                    type="button"
+                    title="把开发者交付的资源转为我自己的资源项目（不可撤销）"
+                    @click.stop="runRowAction(item, 'claim-resource')"
+                  >
+                    转为我的资源
+                  </button>
+                  <!-- 版本删除审核没有别的入口（整行点击归会话），所以这里给它一个按钮，
+                     与下方展开的审核卡片成对出现。 -->
+                  <button
+                    v-if="
+                      hasPendingResourceVersionDeleteReview(item) && !isRequirementArchived(item)
+                    "
+                    class="ghost small action-emphasis"
+                    type="button"
+                    :aria-expanded="isVersionDeleteReviewExpanded(item)"
+                    @click.stop="toggleVersionDeleteReviewCard(item)"
+                  >
+                    {{ isVersionDeleteReviewExpanded(item) ? '收起审核' : '审核资源' }}
+                  </button>
+                  <button
+                    v-if="canOpenAfterSales(item) && !isRequirementArchived(item)"
+                    class="ghost small action-emphasis"
+                    :class="{ 'has-todo-badge': afterSalesBadgeFor(item.requirement_id) }"
+                    type="button"
+                    @click.stop="runRowAction(item, 'after-sales')"
+                  >
+                    解除合作
+                    <span
+                      v-if="afterSalesBadgeFor(item.requirement_id)"
+                      class="todo-badge"
+                      :title="`有 ${afterSalesPendingCount(item.requirement_id)} 条解除合作待你处理`"
+                      >{{ afterSalesBadgeFor(item.requirement_id) }}</span
+                    >
+                  </button>
 
-                <button v-if="primaryRowAction(item) && !isRequirementArchived(item)" class="ghost small action-primary" type="button"
-                  :disabled="primaryRowAction(item)?.disabled"
-                  @click.stop="runRowAction(item, primaryRowAction(item)!.key)">
-                  {{ primaryRowAction(item)!.label }}
-                </button>
-              </div>
-            </div>
-          </li>
+                  <TDropdown
+                    v-if="moreRowActions(item).length && !isRequirementArchived(item)"
+                    trigger="click"
+                    @command="(key) => runMoreRowAction(item, String(key))"
+                  >
+                    <button
+                      class="ghost small requirement-actions__more"
+                      type="button"
+                      aria-haspopup="menu"
+                      title="更多操作"
+                    >
+                      更多
+                      <TIcon>
+                        <ArrowDown />
+                      </TIcon>
+                    </button>
+                    <template #dropdown>
+                      <TDropdownMenu>
+                        <TDropdownItem
+                          v-for="entry in moreRowActions(item)"
+                          :key="entry.key"
+                          :command="entry.key"
+                          :disabled="entry.disabled"
+                          :title="entry.title"
+                          :class="{ 'is-danger': entry.danger }"
+                        >
+                          {{ entry.label }}
+                        </TDropdownItem>
+                      </TDropdownMenu>
+                    </template>
+                  </TDropdown>
 
-          <li v-if="isVersionDeleteReviewExpanded(item) && pendingResourceVersionDeleteRequests(item).length && !isRequirementArchived(item)"
-            class="requirement-review-card-row">
-            <section class="requirement-review-card" @click.stop>
-              <div class="requirement-review-card__header">
-                <div>
-                  <h4>版本删除审核</h4>
+                  <button
+                    v-if="primaryRowAction(item) && !isRequirementArchived(item)"
+                    class="ghost small action-primary"
+                    type="button"
+                    :disabled="primaryRowAction(item)?.disabled"
+                    @click.stop="runRowAction(item, primaryRowAction(item)!.key)"
+                  >
+                    {{ primaryRowAction(item)!.label }}
+                  </button>
                 </div>
-                <button class="ghost small" type="button" @click.stop="closeVersionDeleteReviewCard">
-                  收起
-                </button>
               </div>
-              <div class="requirement-review-card-list">
-                <article v-for="request in pendingResourceVersionDeleteRequests(item)" :key="request.version_id"
-                  class="requirement-review-item">
-                  <div class="requirement-review-item__main">
-                    <div>
-                      <strong>{{ pendingResourceVersionTitle(request) }}</strong>
-                      <p>申请时间：{{ formatPendingVersionRequestedAt(request) }}</p>
-                    </div>
-                    <div class="requirement-review-item__actions">
-                      <button class="ghost small" type="button"
-                        :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id"
-                        @click.stop="submitVersionDeleteReview(item, request, 'approve')">
-                        {{
-                          resourceVersionDeleteReviewLoadingId === item.requirement_id
-                            ? '处理中...'
-                            : '同意删除'
-                        }}
-                      </button>
-                      <button class="ghost small" type="button" :class="{ active: isRejectingVersion(request) }"
-                        :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id"
-                        @click.stop="openRejectVersion(request)">
-                        拒绝删除
-                      </button>
-                    </div>
-                  </div>
-                  <p class="requirement-review-card__hint danger">
-                    同意后该版本文件会被永久删除，且无法恢复。
-                  </p>
-                  <div v-if="isRejectingVersion(request)" class="requirement-review-item__reject-panel">
-                    <label class="requirement-review-card__field requirement-review-card__field--stacked">
-                      <span>拒绝原因</span>
-                      <textarea v-model="versionDeleteRejectNotes[request.version_id]" class="comment-input" rows="4"
-                        maxlength="500" placeholder="可选：说明拒绝删除该版本的原因"></textarea>
-                      <small class="requirement-note">已输入 {{ pendingVersionRejectNote(request).length }} / 500 字</small>
-                    </label>
-                    <div class="requirement-review-card__actions">
-                      <button class="ghost small" type="button" @click.stop="cancelRejectVersion">
-                        取消
-                      </button>
-                      <button class="ghost small" type="button"
-                        :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id"
-                        @click.stop="submitVersionDeleteReview(item, request, 'reject')">
-                        {{
-                          resourceVersionDeleteReviewLoadingId === item.requirement_id
-                            ? '处理中...'
-                            : '确认拒绝删除'
-                        }}
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              </div>
-            </section>
-          </li>
-        </template>
-      </ul>
+            </li>
 
-      <div class="wb-pager">
-        <div class="wb-pager__count">
-          <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页需求单数">
-            <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
-          </TSelect>
+            <li
+              v-if="
+                isVersionDeleteReviewExpanded(item) &&
+                pendingResourceVersionDeleteRequests(item).length &&
+                !isRequirementArchived(item)
+              "
+              class="requirement-review-card-row"
+            >
+              <section class="requirement-review-card" @click.stop>
+                <div class="requirement-review-card__header">
+                  <div>
+                    <h4>版本删除审核</h4>
+                  </div>
+                  <button
+                    class="ghost small"
+                    type="button"
+                    @click.stop="closeVersionDeleteReviewCard"
+                  >
+                    收起
+                  </button>
+                </div>
+                <div class="requirement-review-card-list">
+                  <article
+                    v-for="request in pendingResourceVersionDeleteRequests(item)"
+                    :key="request.version_id"
+                    class="requirement-review-item"
+                  >
+                    <div class="requirement-review-item__main">
+                      <div>
+                        <strong>{{ pendingResourceVersionTitle(request) }}</strong>
+                        <p>申请时间：{{ formatPendingVersionRequestedAt(request) }}</p>
+                      </div>
+                      <div class="requirement-review-item__actions">
+                        <button
+                          class="ghost small"
+                          type="button"
+                          :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id"
+                          @click.stop="submitVersionDeleteReview(item, request, 'approve')"
+                        >
+                          {{
+                            resourceVersionDeleteReviewLoadingId === item.requirement_id
+                              ? '处理中...'
+                              : '同意删除'
+                          }}
+                        </button>
+                        <button
+                          class="ghost small"
+                          type="button"
+                          :class="{ active: isRejectingVersion(request) }"
+                          :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id"
+                          @click.stop="openRejectVersion(request)"
+                        >
+                          拒绝删除
+                        </button>
+                      </div>
+                    </div>
+                    <p class="requirement-review-card__hint danger">
+                      同意后该版本文件会被永久删除，且无法恢复。
+                    </p>
+                    <div
+                      v-if="isRejectingVersion(request)"
+                      class="requirement-review-item__reject-panel"
+                    >
+                      <label
+                        class="requirement-review-card__field requirement-review-card__field--stacked"
+                      >
+                        <span>拒绝原因</span>
+                        <textarea
+                          v-model="versionDeleteRejectNotes[request.version_id]"
+                          class="comment-input"
+                          rows="4"
+                          maxlength="500"
+                          placeholder="可选：说明拒绝删除该版本的原因"
+                        ></textarea>
+                        <small class="requirement-note"
+                          >已输入 {{ pendingVersionRejectNote(request).length }} / 500 字</small
+                        >
+                      </label>
+                      <div class="requirement-review-card__actions">
+                        <button class="ghost small" type="button" @click.stop="cancelRejectVersion">
+                          取消
+                        </button>
+                        <button
+                          class="ghost small"
+                          type="button"
+                          :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id"
+                          @click.stop="submitVersionDeleteReview(item, request, 'reject')"
+                        >
+                          {{
+                            resourceVersionDeleteReviewLoadingId === item.requirement_id
+                              ? '处理中...'
+                              : '确认拒绝删除'
+                          }}
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </section>
+            </li>
+          </template>
+        </ul>
+
+        <div class="wb-pager">
+          <div class="wb-pager__count">
+            <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页需求单数">
+              <TOption
+                v-for="size in LIST_PAGE_SIZES"
+                :key="size"
+                :label="`${size} 条/页`"
+                :value="size"
+              />
+            </TSelect>
+          </div>
+          <TPagination
+            v-model:current-page="page"
+            :page-size="pageSize"
+            :total="filteredTotal"
+            :pager-count="5"
+            background
+            aria-label="需求单分页"
+          />
         </div>
-        <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-          :pager-count="5" background aria-label="需求单分页" />
-      </div>
       </template>
     </section>
 
-    <PublishModal ref="publishModalRef" :visible="publishVisible" v-model:publishTitle="publishTitle"
-      v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
-      v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
+    <PublishModal
+      ref="publishModalRef"
+      :visible="publishVisible"
+      v-model:publishTitle="publishTitle"
+      v-model:publishDescription="publishDescription"
+      v-model:publishBudget="publishBudget"
+      v-model:publishAcceptance="publishAcceptance"
+      v-model:publishPaymentMode="publishPaymentMode"
       v-model:publishDevelopmentCycleDays="publishDevelopmentCycleDays"
       :publishLoading="publishLoading"
-      :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="notify"
-      @submit="submitRequirementPublish" />
+      :draft-scope="auth.isAuthed ? auth.username : 'default'"
+      @close="closePublishModal"
+      @notify="notify"
+      @submit="submitRequirementPublish"
+    />
 
-    <PublishModal ref="editModalRef" :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核"
-      loadingText="提交中..." v-model:publishTitle="editTitle" v-model:publishDescription="editDescription"
-      v-model:publishBudget="editBudget" v-model:publishAcceptance="editAcceptance"
+    <PublishModal
+      ref="editModalRef"
+      :visible="editVisible"
+      modalTitle="重新编辑需求"
+      submitText="重新提交审核"
+      loadingText="提交中..."
+      v-model:publishTitle="editTitle"
+      v-model:publishDescription="editDescription"
+      v-model:publishBudget="editBudget"
+      v-model:publishAcceptance="editAcceptance"
       v-model:publishPaymentMode="editPaymentMode"
       v-model:publishDevelopmentCycleDays="editDevelopmentCycleDays"
       :publishLoading="editLoading"
-      :draft-scope="editRequirement ? `edit-${editRequirement.requirement_id}` : ''" @close="closeEditModal"
-      @notify="notify" @submit="submitRequirementResubmit" />
+      :draft-scope="editRequirement ? `edit-${editRequirement.requirement_id}` : ''"
+      @close="closeEditModal"
+      @notify="notify"
+      @submit="submitRequirementResubmit"
+    />
 
-    <RequirementConversationModal :visible="conversationVisible" :token="auth.token" :current-username="auth.username"
-      :requirement-id="conversationRequirement?.requirement_id ?? ''" :title="conversationRequirement?.title"
-      @updated="applyConversationDetail" @close="closeConversation" />
+    <RequirementConversationModal
+      :visible="conversationVisible"
+      :token="auth.token"
+      :current-username="auth.username"
+      :requirement-id="conversationRequirement?.requirement_id ?? ''"
+      :title="conversationRequirement?.title"
+      @updated="applyConversationDetail"
+      @close="closeConversation"
+    />
 
-    <InvoiceApplyDialog v-model:visible="invoiceDialogVisible" :token="auth.token"
-      :requirement-id="invoiceRequirement?.requirement_id ?? ''" role="customer" @submitted="loadMyRequirements" />
+    <InvoiceApplyDialog
+      v-model:visible="invoiceDialogVisible"
+      :token="auth.token"
+      :requirement-id="invoiceRequirement?.requirement_id ?? ''"
+      role="customer"
+      @submitted="loadMyRequirements"
+    />
 
     <!-- 支付弹窗：原来内嵌在需求详情浮层里，浮层去掉后单独成一个弹窗，
          外壳沿用这页其他确认弹窗的 .pay-modal（尾款确认、取消确认同一套）。 -->
@@ -2771,18 +3006,34 @@ watch(
           <strong>本次应付：</strong>{{ formatBudget(payAmount) }}
           <span v-if="!isFinalPayment"> · 定金占比 {{ depositRatioPercent.toFixed(2) }}%</span>
         </p>
-        <p class="tip">{{ currentPayment ? '订单已创建，点下列按钮查询支付结果' : '选择支付方式，付款后回来确认' }}</p>
+        <p class="tip">
+          {{
+            currentPayment ? '订单已创建，点下列按钮查询支付结果' : '选择支付方式，付款后回来确认'
+          }}
+        </p>
 
         <div class="payment-options" role="radiogroup" aria-label="支付方式选择">
-          <button type="button" class="payment-option"
-            :class="{ active: payChannel === 'alipay', 'payment-option--alipay': payChannel === 'alipay' }"
-            @click="updatePayChannel('alipay')">
+          <button
+            type="button"
+            class="payment-option"
+            :class="{
+              active: payChannel === 'alipay',
+              'payment-option--alipay': payChannel === 'alipay',
+            }"
+            @click="updatePayChannel('alipay')"
+          >
             <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
             支付宝
           </button>
-          <button type="button" class="payment-option"
-            :class="{ active: payChannel === 'wechat', 'payment-option--wechat': payChannel === 'wechat' }"
-            @click="updatePayChannel('wechat')">
+          <button
+            type="button"
+            class="payment-option"
+            :class="{
+              active: payChannel === 'wechat',
+              'payment-option--wechat': payChannel === 'wechat',
+            }"
+            @click="updatePayChannel('wechat')"
+          >
             <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="微信" />
             微信
           </button>
@@ -2790,8 +3041,15 @@ watch(
 
         <div class="actions">
           <button class="ghost" type="button" @click="closePayModal">取消</button>
-          <button class="ghost primary" type="button" :disabled="payLoading" @click="submitRequirementPayment">
-            {{ payLoading ? '处理中...' : currentPayment ? '查询支付结果' : `支付${payStageLabel}` }}
+          <button
+            class="ghost primary"
+            type="button"
+            :disabled="payLoading"
+            @click="submitRequirementPayment"
+          >
+            {{
+              payLoading ? '处理中...' : currentPayment ? '查询支付结果' : `支付${payStageLabel}`
+            }}
           </button>
         </div>
       </section>
@@ -2802,17 +3060,29 @@ watch(
         <h3>选择要下载的版本</h3>
         <p class="pay-line"><strong>需求标题：</strong>{{ downloadPickerRequirement.title }}</p>
         <ul class="download-picker">
-          <li v-for="version in deliveryVersionsFor(downloadPickerRequirement)" :key="version.id"
-            class="download-picker__item">
+          <li
+            v-for="version in deliveryVersionsFor(downloadPickerRequirement)"
+            :key="version.id"
+            class="download-picker__item"
+          >
             <div class="download-picker__meta">
               <strong>{{ version.version }}</strong>
               <small>{{ version.created_at }}</small>
-              <p v-if="deliveryVersionNoteText(version.note)">{{ deliveryVersionNoteText(version.note) }}</p>
+              <p v-if="deliveryVersionNoteText(version.note)">
+                {{ deliveryVersionNoteText(version.note) }}
+              </p>
             </div>
-            <button class="ghost small" type="button"
+            <button
+              class="ghost small"
+              type="button"
               :disabled="resourceDownloadingId === downloadPickerRequirement.bound_resource_id"
-              @click="downloadRequirementVersion(downloadPickerRequirement, version)">
-              {{ resourceDownloadingId === downloadPickerRequirement.bound_resource_id ? '准备中...' : '下载' }}
+              @click="downloadRequirementVersion(downloadPickerRequirement, version)"
+            >
+              {{
+                resourceDownloadingId === downloadPickerRequirement.bound_resource_id
+                  ? '准备中...'
+                  : '下载'
+              }}
             </button>
           </li>
         </ul>
@@ -2822,8 +3092,11 @@ watch(
       </section>
     </div>
 
-    <div v-if="finalPaymentConfirmVisible && finalPaymentConfirmTarget" class="modal-wrap"
-      @click.self="closeFinalPaymentConfirm">
+    <div
+      v-if="finalPaymentConfirmVisible && finalPaymentConfirmTarget"
+      class="modal-wrap"
+      @click.self="closeFinalPaymentConfirm"
+    >
       <section class="pay-modal" aria-label="尾款确认弹窗">
         <h3>{{ finalPaymentConfirmTitle }}</h3>
         <p class="pay-line"><strong>需求标题：</strong>{{ finalPaymentConfirmTarget.title }}</p>
@@ -2841,29 +3114,38 @@ watch(
       </section>
     </div>
 
-    <div v-if="cancelConfirmVisible && cancelConfirmTarget" class="modal-wrap"
-      @click.self="closeCancelConfirm">
+    <div
+      v-if="cancelConfirmVisible && cancelConfirmTarget"
+      class="modal-wrap"
+      @click.self="closeCancelConfirm"
+    >
       <section class="pay-modal" aria-label="取消需求弹窗">
         <h3>取消需求单</h3>
         <p class="pay-line"><strong>需求标题：</strong>{{ cancelConfirmTarget.title }}</p>
-        <p class="pay-line">
-          <strong>需求编号：</strong>{{ cancelConfirmTarget.requirement_id }}
-        </p>
+        <p class="pay-line"><strong>需求编号：</strong>{{ cancelConfirmTarget.requirement_id }}</p>
         <p class="tip">{{ cancelConfirmHint(cancelConfirmTarget) }}</p>
 
         <div class="actions">
           <button class="ghost" type="button" :disabled="cancelLoading" @click="closeCancelConfirm">
             返回
           </button>
-          <button class="ghost danger" type="button" :disabled="cancelLoading"
-            @click="submitCancelRequirement">
+          <button
+            class="ghost danger"
+            type="button"
+            :disabled="cancelLoading"
+            @click="submitCancelRequirement"
+          >
             {{ cancelLoading ? '取消中...' : '确认取消' }}
           </button>
         </div>
       </section>
     </div>
 
-    <div v-if="claimConfirmVisible && claimConfirmTarget" class="modal-wrap" @click.self="closeClaimConfirm">
+    <div
+      v-if="claimConfirmVisible && claimConfirmTarget"
+      class="modal-wrap"
+      @click.self="closeClaimConfirm"
+    >
       <section class="pay-modal" aria-label="转为我的资源弹窗">
         <template v-if="claimStep === 'confirm'">
           <h3>转为我的资源</h3>
@@ -2873,7 +3155,9 @@ watch(
             <strong>交付资源：</strong>{{ claimConfirmTarget.bound_resource_title }}
           </p>
           <ul class="claim-notes" aria-label="转换须知">
-            <li>这一步<strong>不可撤销</strong>：资源归你所有，开发者那边不再把它当作自己的资源。</li>
+            <li>
+              这一步<strong>不可撤销</strong>：资源归你所有，开发者那边不再把它当作自己的资源。
+            </li>
             <li>转换后这笔需求的会话将关闭，双方都不能再发言，但都仍能查看全部历史。</li>
             <li>若你还没有开发者身份，会自动开通，以便在开发者工作台管理该资源。</li>
           </ul>
@@ -2882,7 +3166,12 @@ watch(
             <button class="ghost" type="button" :disabled="claimLoading" @click="closeClaimConfirm">
               返回
             </button>
-            <button class="ghost primary" type="button" :disabled="claimLoading" @click="submitClaimResource">
+            <button
+              class="ghost primary"
+              type="button"
+              :disabled="claimLoading"
+              @click="submitClaimResource"
+            >
               {{ claimLoading ? '转换中...' : '确认转换' }}
             </button>
           </div>
@@ -2890,17 +3179,25 @@ watch(
         <template v-else>
           <h3>已转为我的资源</h3>
           <p class="pay-line"><strong>需求标题：</strong>{{ claimConfirmTarget.title }}</p>
-          <p class="tip">资源已归入你的名下，会话已关闭（仅供查看）。可以到开发者工作台的「资源列表」继续管理它。</p>
+          <p class="tip">
+            资源已归入你的名下，会话已关闭（仅供查看）。可以到开发者工作台的「资源列表」继续管理它。
+          </p>
 
           <div class="actions">
             <button class="ghost" type="button" @click="closeClaimConfirm">留在这里</button>
-            <button class="ghost primary" type="button" @click="goToDevResourceList">去开发者工作台查看</button>
+            <button class="ghost primary" type="button" @click="goToDevResourceList">
+              去开发者工作台查看
+            </button>
           </div>
         </template>
       </section>
     </div>
 
-    <div v-if="breachVisible && breachRequirement" class="modal-wrap" @click.self="closeBreachReport">
+    <div
+      v-if="breachVisible && breachRequirement"
+      class="modal-wrap"
+      @click.self="closeBreachReport"
+    >
       <section class="pay-modal breach-modal" aria-label="解除合作弹窗">
         <h3>{{ breachDialogTitle() }}</h3>
         <p class="pay-line"><strong>需求标题：</strong>{{ breachRequirement.title }}</p>
@@ -2908,7 +3205,9 @@ watch(
         <p v-if="breachCaseLoading" class="pay-line">正在加载解除合作案件…</p>
         <template v-else-if="breachCase && !breachNewRound">
           <p class="pay-line"><strong>案件编号：</strong>{{ breachCase.caseNo }}</p>
-          <p class="pay-line"><strong>当前状态：</strong>{{ breachStatusLabel(breachCase.status) }}</p>
+          <p class="pay-line">
+            <strong>当前状态：</strong>{{ breachStatusLabel(breachCase.status) }}
+          </p>
           <p v-if="breachCase.status === 'withdrawn'" class="pay-line">
             <strong>申请人：</strong>{{ breachWithdrawnByMe ? '我方' : '对方' }}
           </p>
@@ -2921,7 +3220,12 @@ watch(
           <p class="pay-line"><strong>申请理由：</strong>{{ breachCase.reason }}</p>
           <template v-if="breachCase.aiJudgedAt || breachCase.aiReasoning">
             <p class="pay-line">
-              <strong>AI 判定：</strong>{{ breachCase.aiLiableParty ? breachLiablePartyLabel(breachCase.aiLiableParty) : '无法判定，已转客服人工判定' }}
+              <strong>AI 判定：</strong
+              >{{
+                breachCase.aiLiableParty
+                  ? breachLiablePartyLabel(breachCase.aiLiableParty)
+                  : '无法判定，已转客服人工判定'
+              }}
             </p>
             <p v-if="breachCase.aiJudgedAt" class="pay-line">
               <strong>判定时间：</strong>{{ formatCnDateTime(breachCase.aiJudgedAt) }}
@@ -2934,16 +3238,28 @@ watch(
             <strong>表态截止：</strong>{{ formatCnDateTime(breachCase.decisionDeadlineAt) }}
           </p>
           <template v-if="showBreachDecisions(breachCase)">
-            <p class="pay-line"><strong>我方表态：</strong>{{ breachDecisionText(breachCase.customerDecision) }}</p>
-            <p class="pay-line"><strong>对方表态：</strong>{{ breachDecisionText(breachCase.developerDecision) }}</p>
+            <p class="pay-line">
+              <strong>我方表态：</strong>{{ breachDecisionText(breachCase.customerDecision) }}
+            </p>
+            <p class="pay-line">
+              <strong>对方表态：</strong>{{ breachDecisionText(breachCase.developerDecision) }}
+            </p>
           </template>
           <p class="pay-line">
-            <strong>资金处理：</strong>定金 ¥{{ breachCase.depositAmountCny }} · 已退尾款 ¥{{ breachCase.refundAmountCny }} · 赔付 ¥{{ breachCase.compensationAmountCny }}<template v-if="breachCase.extraCompensationFen > 0"> · 额外赔偿 ¥{{ breachCase.extraCompensationCny }}</template>
+            <strong>资金处理：</strong>定金 ¥{{ breachCase.depositAmountCny }} · 已退尾款 ¥{{
+              breachCase.refundAmountCny
+            }}
+            · 赔付 ¥{{ breachCase.compensationAmountCny
+            }}<template v-if="breachCase.extraCompensationFen > 0">
+              · 额外赔偿 ¥{{ breachCase.extraCompensationCny }}</template
+            >
           </p>
           <p v-if="breachCase.verdictSource" class="pay-line">
             <strong>判定来源：</strong>{{ breachVerdictSourceText(breachCase.verdictSource) }}
           </p>
-          <p v-if="breachCase.resolutionNote" class="pay-line"><strong>处理说明：</strong>{{ breachCase.resolutionNote }}</p>
+          <p v-if="breachCase.resolutionNote" class="pay-line">
+            <strong>处理说明：</strong>{{ breachCase.resolutionNote }}
+          </p>
 
           <!-- 中间态：赔付要打给需求方（本人），但收款结算账户还没就绪，钱落不下来。
                案件不转人工，等绑卡完成后平台自动按现有认定续做——所以这里给一个绑卡入口。 -->
@@ -2968,42 +3284,74 @@ watch(
             </p>
             <label v-if="canRespondTermination(breachCase)" class="pay-line breach-modal__field">
               <strong>同意或不同意的说明</strong>
-              <textarea v-model="breachDecisionNote" rows="3" maxlength="1000"
-                placeholder="可选：说明你同意或不同意的立场，双方与客服都会看到"></textarea>
+              <textarea
+                v-model="breachDecisionNote"
+                rows="3"
+                maxlength="1000"
+                placeholder="可选：说明你同意或不同意的立场，双方与客服都会看到"
+              ></textarea>
             </label>
             <p v-else class="tip">已提交申请，等待对方回应。</p>
           </template>
           <p v-else-if="breachCase.mutualAgreedAt" class="pay-line">
-            <strong>协商结果：</strong>双方协商一致（无责退出），{{ formatCnDateTime(breachCase.mutualAgreedAt) }}
+            <strong>协商结果：</strong>双方协商一致（无责退出），{{
+              formatCnDateTime(breachCase.mutualAgreedAt)
+            }}
           </p>
           <p v-else-if="breachCase.mutualRejectedAt" class="pay-line">
-            <strong>协商结果：</strong>对方不同意解除合作（{{ formatCnDateTime(breachCase.mutualRejectedAt) }}），任一方可申请平台介入
+            <strong>协商结果：</strong>对方不同意解除合作（{{
+              formatCnDateTime(breachCase.mutualRejectedAt)
+            }}），任一方可申请平台介入
           </p>
 
           <div v-if="canDecideBreachCase(breachCase)" class="breach-modal__decision">
-            <p class="pay-line"><strong>是否接受：</strong>双方都接受 AI 判定后平台才会执行退款／赔付；任一方不接受或逾期未全部表态，案件转客服人工判定。</p>
+            <p class="pay-line">
+              <strong>是否接受：</strong>双方都接受 AI
+              判定后平台才会执行退款／赔付；任一方不接受或逾期未全部表态，案件转客服人工判定。
+            </p>
             <label v-if="breachRejectPanel" class="pay-line breach-modal__field">
               <strong>不接受的原因</strong>
-              <textarea v-model="breachDecisionNote" rows="3" maxlength="1000"
-                placeholder="可选：说明不接受该判定的理由，便于客服人工复核"></textarea>
+              <textarea
+                v-model="breachDecisionNote"
+                rows="3"
+                maxlength="1000"
+                placeholder="可选：说明不接受该判定的理由，便于客服人工复核"
+              ></textarea>
             </label>
             <div class="actions">
               <template v-if="breachRejectPanel">
-                <button class="ghost" type="button" :disabled="breachDecisionLoading" @click="cancelBreachRejectPanel">
+                <button
+                  class="ghost"
+                  type="button"
+                  :disabled="breachDecisionLoading"
+                  @click="cancelBreachRejectPanel"
+                >
                   取消
                 </button>
-                <button class="ghost danger" type="button" :disabled="breachDecisionLoading"
-                  @click="submitBreachDecision('rejected')">
+                <button
+                  class="ghost danger"
+                  type="button"
+                  :disabled="breachDecisionLoading"
+                  @click="submitBreachDecision('rejected')"
+                >
                   {{ breachDecisionLoading ? '提交中...' : '确认不接受' }}
                 </button>
               </template>
               <template v-else>
-                <button class="ghost danger-plain" type="button" :disabled="breachDecisionLoading"
-                  @click="openBreachRejectPanel">
+                <button
+                  class="ghost danger-plain"
+                  type="button"
+                  :disabled="breachDecisionLoading"
+                  @click="openBreachRejectPanel"
+                >
                   不接受
                 </button>
-                <button class="ghost primary" type="button" :disabled="breachDecisionLoading"
-                  @click="submitBreachDecision('accepted')">
+                <button
+                  class="ghost primary"
+                  type="button"
+                  :disabled="breachDecisionLoading"
+                  @click="submitBreachDecision('accepted')"
+                >
                   {{ breachDecisionLoading ? '提交中...' : '接受判定' }}
                 </button>
               </template>
@@ -3023,71 +3371,138 @@ watch(
           </p>
 
           <div v-if="breachWithdrawConfirm" class="breach-modal__decision">
-            <p class="pay-line"><strong>确认撤回：</strong>撤回后本次申请结束，如仍有争议可在同一需求上重新发起；撤回不会触发任何退款或赔付。</p>
+            <p class="pay-line">
+              <strong>确认撤回：</strong
+              >撤回后本次申请结束，如仍有争议可在同一需求上重新发起；撤回不会触发任何退款或赔付。
+            </p>
             <div class="actions">
-              <button class="ghost" type="button" :disabled="breachWithdrawLoading"
-                @click="cancelBreachWithdrawConfirm">再想想</button>
-              <button class="ghost danger" type="button" :disabled="breachWithdrawLoading"
-                @click="submitBreachWithdraw">
+              <button
+                class="ghost"
+                type="button"
+                :disabled="breachWithdrawLoading"
+                @click="cancelBreachWithdrawConfirm"
+              >
+                再想想
+              </button>
+              <button
+                class="ghost danger"
+                type="button"
+                :disabled="breachWithdrawLoading"
+                @click="submitBreachWithdraw"
+              >
                 {{ breachWithdrawLoading ? '撤回中...' : '确认撤回申请' }}
               </button>
             </div>
           </div>
 
           <div class="actions">
-            <button class="ghost" type="button"
+            <button
+              class="ghost"
+              type="button"
               :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-              @click="closeBreachReport">关闭</button>
-            <button v-if="canWithdrawBreachCase(breachCase) && !breachWithdrawConfirm" class="ghost danger-plain"
-              type="button" :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-              @click="openBreachWithdrawConfirm">
+              @click="closeBreachReport"
+            >
+              关闭
+            </button>
+            <button
+              v-if="canWithdrawBreachCase(breachCase) && !breachWithdrawConfirm"
+              class="ghost danger-plain"
+              type="button"
+              :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
+              @click="openBreachWithdrawConfirm"
+            >
               撤回申请
             </button>
-            <button v-if="breachCase.status === 'withdrawn'" class="ghost primary" type="button"
+            <button
+              v-if="breachCase.status === 'withdrawn'"
+              class="ghost primary"
+              type="button"
               :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-              @click="reopenBreachReport">
+              @click="reopenBreachReport"
+            >
               {{ breachWithdrawnByMe ? '重新发起' : '提交解除合作申请' }}
             </button>
-            <button v-else-if="(breachCase.status === 'rejected' || breachCase.status === 'succeeded') && breachCanStartNewRound"
-              class="ghost primary" type="button"
+            <button
+              v-else-if="
+                (breachCase.status === 'rejected' || breachCase.status === 'succeeded') &&
+                breachCanStartNewRound
+              "
+              class="ghost primary"
+              type="button"
               :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-              @click="reopenBreachReport">
+              @click="reopenBreachReport"
+            >
               发起新的解除合作
             </button>
-            <button v-if="canRequestPlatformReview(breachCase)" class="ghost primary" type="button"
+            <button
+              v-if="canRequestPlatformReview(breachCase)"
+              class="ghost primary"
+              type="button"
               :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-              @click="submitPlatformReview">
+              @click="submitPlatformReview"
+            >
               {{ platformReviewLoading ? '提交中...' : '申请平台介入' }}
             </button>
             <template v-if="canRespondTermination(breachCase)">
-              <button class="ghost danger-plain" type="button"
+              <button
+                class="ghost danger-plain"
+                type="button"
                 :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-                @click="submitBreachDecision('rejected')">
+                @click="submitBreachDecision('rejected')"
+              >
                 {{ breachDecisionLoading ? '提交中...' : '不同意' }}
               </button>
-              <button class="ghost primary" type="button"
+              <button
+                class="ghost primary"
+                type="button"
                 :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-                @click="submitBreachDecision('accepted')">
+                @click="submitBreachDecision('accepted')"
+              >
                 {{ breachDecisionLoading ? '提交中...' : '同意解除' }}
               </button>
             </template>
           </div>
           <!-- 上一轮结案会把合同作废、需求退回大厅：这时没有生效合同可依，按钮不给，
                但必须把「为什么不能再发起、要做什么」写清楚，不能让人对着一个结论干瞪眼（BUG-038）。 -->
-          <p v-if="(breachCase.status === 'succeeded' || breachCase.status === 'rejected') && !breachCanStartNewRound"
-            class="tip">{{ breachRoundHint() }}</p>
+          <p
+            v-if="
+              (breachCase.status === 'succeeded' || breachCase.status === 'rejected') &&
+              !breachCanStartNewRound
+            "
+            class="tip"
+          >
+            {{ breachRoundHint() }}
+          </p>
         </template>
         <template v-else>
           <p v-if="breachNewRound" class="tip">{{ breachRoundHint() }}</p>
           <label class="pay-line breach-modal__field">
             <strong>事实与依据</strong>
-            <textarea v-model="breachReason" rows="6" maxlength="2000"
-              placeholder="请填写时间、已交付内容、沟通记录和希望平台核查的事实"></textarea>
+            <textarea
+              v-model="breachReason"
+              rows="6"
+              maxlength="2000"
+              placeholder="请填写时间、已交付内容、沟通记录和希望平台核查的事实"
+            ></textarea>
           </label>
-          <p class="tip">提交后案件进入「协商中」：双方先在案件内协商定金与尾款的退还额度，谈成即直接退款结案；协商不成再由任一方申请平台介入，由审核智能体依据双方会话与材料判定责任方。</p>
+          <p class="tip">
+            提交后案件进入「协商中」：双方先在案件内协商定金与尾款的退还额度，谈成即直接退款结案；协商不成再由任一方申请平台介入，由审核智能体依据双方会话与材料判定责任方。
+          </p>
           <div class="actions">
-            <button class="ghost" type="button" :disabled="breachLoading" @click="closeBreachReport">取消</button>
-            <button class="ghost primary" type="button" :disabled="breachLoading" @click="submitBreachReport">
+            <button
+              class="ghost"
+              type="button"
+              :disabled="breachLoading"
+              @click="closeBreachReport"
+            >
+              取消
+            </button>
+            <button
+              class="ghost primary"
+              type="button"
+              :disabled="breachLoading"
+              @click="submitBreachReport"
+            >
               {{ breachLoading ? '提交中...' : breachSubmitLabel() }}
             </button>
           </div>
@@ -3095,10 +3510,14 @@ watch(
       </section>
     </div>
 
-    <AcceptanceDialog :visible="acceptanceVisible" :token="auth.token"
+    <AcceptanceDialog
+      :visible="acceptanceVisible"
+      :token="auth.token"
       :requirement-id="acceptanceTarget?.requirement_id ?? ''"
-      :requirement-title="acceptanceTarget?.title ?? ''" @close="closeAcceptanceModal"
-      @submitted="handleAcceptanceSubmitted" />
+      :requirement-title="acceptanceTarget?.title ?? ''"
+      @close="closeAcceptanceModal"
+      @submitted="handleAcceptanceSubmitted"
+    />
 
     <AfterSalesModal
       :visible="afterSalesVisible"
@@ -3137,66 +3556,12 @@ watch(
   gap: 16px;
 }
 
-.wallet-header {
-  align-items: flex-start;
-}
-
-.my-requirements-summary.wallet-section {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.my-requirements-summary__grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.my-requirements-summary__grid article {
-  display: grid;
-  gap: 8px;
-  padding: 16px;
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.06);
-}
-
-.my-requirements-summary__grid strong {
-  color: #0f172a;
-  font-size: 28px;
-  line-height: 1;
-}
-
-.my-requirements-summary__grid span {
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 700;
-}
-
 .my-requirements-header__actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
   flex: 0 0 auto;
-}
-
-.my-requirements-refresh.small {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-}
-
-@keyframes my-requirements-spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 /* 档位名只有三个字，状态下拉收窄；宽度必须写成 flex 基宽而不是 width——TSelect 自带 width: 100%，
@@ -3251,407 +3616,6 @@ watch(
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.my-requirement-detail-wrap {
-  position: fixed;
-  inset: 0;
-  z-index: 1300;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-  background: rgba(15, 23, 42, 0.28);
-  backdrop-filter: blur(5px);
-}
-
-.my-requirement-detail {
-  width: min(860px, 100%);
-  max-height: min(760px, calc(100dvh - 32px));
-  overflow-y: auto;
-  border: 1px solid rgba(203, 213, 225, 0.82);
-  border-radius: 18px;
-  background: #fff;
-  box-shadow: 0 28px 72px rgba(15, 23, 42, 0.22);
-}
-
-.my-requirement-detail__head {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 20px 22px 16px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.84);
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(12px);
-}
-
-.my-requirement-detail__head h3 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 22px;
-  line-height: 1.3;
-}
-
-.my-requirement-detail__head p {
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.my-requirement-detail__chip {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  min-height: 26px;
-  padding: 0 10px;
-  border: 1px solid rgba(191, 219, 254, 0.94);
-  border-radius: 999px;
-  background: rgba(239, 246, 255, 0.92);
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.my-requirement-detail__close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  border: 1px solid rgba(203, 213, 225, 0.86);
-  border-radius: 10px;
-  background: #fff;
-  color: #334155;
-  cursor: pointer;
-}
-
-.my-requirement-detail__meta {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 8px 10px;
-  padding: 14px 22px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.76);
-}
-
-.my-requirement-detail__meta span {
-  display: inline-flex;
-  align-items: center;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: rgba(241, 245, 249, 0.92);
-  color: #475569;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.my-requirement-detail__meta span.my-requirement-detail__meta--developer {
-  background: rgba(236, 253, 245, 0.92);
-  border: 1px solid rgba(167, 243, 208, 0.96);
-  color: #047857;
-}
-
-.my-requirement-detail__review-panel {
-  display: grid;
-  gap: 12px;
-  margin: 16px 22px;
-  padding: 16px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.92));
-}
-
-.my-requirement-detail__review-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 160px) minmax(0, 1fr);
-  gap: 12px;
-  align-items: stretch;
-}
-
-.my-requirement-detail__review-item {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-
-.my-requirement-detail__review-grid .my-requirement-detail__review-item {
-  grid-template-rows: auto 1fr;
-}
-
-.my-requirement-detail__review-label {
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 1.35;
-}
-
-.my-requirement-detail__review-value {
-  min-width: 0;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #0f172a;
-  font-weight: 700;
-  line-height: 1.7;
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
-}
-
-.my-requirement-detail__review-grid .my-requirement-detail__review-value {
-  height: 100%;
-}
-
-.my-requirement-detail__review-grid div.my-requirement-detail__review-value {
-  display: flex;
-  align-items: center;
-}
-
-.my-requirement-detail__review-value--multiline {
-  white-space: pre-wrap;
-}
-
-.my-requirement-detail__version-list {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.my-requirement-detail__version-list li {
-  display: grid;
-  gap: 4px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
-}
-
-.my-requirement-detail__version-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.my-requirement-detail__version-head strong {
-  color: #0f172a;
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.my-requirement-detail__version-head time {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.my-requirement-detail__version-note {
-  margin: 0;
-  color: #475569;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.my-requirement-detail__version-link {
-  width: fit-content;
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.my-requirement-detail__version-link:hover {
-  color: #1d4ed8;
-}
-
-.my-requirement-detail__rich {
-  color: #334155;
-  font-weight: 500;
-  line-height: 1.75;
-  overflow-wrap: anywhere;
-}
-
-.my-requirement-detail__rich :deep(*:not(a)) {
-  color: inherit;
-}
-
-.my-requirement-detail__rich :deep(strong),
-.my-requirement-detail__rich :deep(b) {
-  color: #1e293b;
-  font-weight: 700;
-}
-
-.my-requirement-detail__rich :deep(p),
-.my-requirement-detail__rich :deep(ul),
-.my-requirement-detail__rich :deep(ol),
-.my-requirement-detail__rich :deep(blockquote) {
-  margin: 0 0 12px;
-}
-
-.my-requirement-detail__rich :deep(ul),
-.my-requirement-detail__rich :deep(ol) {
-  padding-left: 22px;
-}
-
-.my-requirement-detail__rich :deep(a) {
-  color: #2563eb;
-  font-weight: 600;
-}
-
-.my-requirement-detail__rich :deep(pre) {
-  overflow-x: auto;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: #0f172a;
-  color: #e2e8f0;
-}
-
-.my-requirement-detail__rich :deep(.rich-editor-media) {
-  display: block;
-  max-width: 100%;
-  height: auto;
-  margin: 12px 0;
-  border-radius: 14px;
-}
-
-.my-requirement-detail__rich :deep(.rich-editor-attachment) {
-  display: inline-flex;
-  max-width: 100%;
-  margin: 8px 0;
-  padding: 8px 12px;
-  border: 1px solid rgba(191, 219, 254, 0.96);
-  border-radius: 10px;
-  background: rgba(239, 246, 255, 0.9);
-  color: #1d4ed8;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.my-requirement-detail__actions {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 12px;
-  padding: 0 22px 22px;
-  background: rgba(248, 250, 252, 0.62);
-}
-
-.my-requirement-detail__payment-panel {
-  display: grid;
-  gap: 14px;
-  margin: 16px 22px 0;
-  padding: 16px;
-  border: 1px solid rgba(147, 197, 253, 0.82);
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(239, 246, 255, 0.9), rgba(248, 250, 252, 0.94));
-}
-
-.my-requirement-detail__payment-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.my-requirement-detail__payment-head > div {
-  display: grid;
-  gap: 4px;
-}
-
-.my-requirement-detail__payment-label {
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-.my-requirement-detail__payment-head strong {
-  color: #1d4ed8;
-  font-size: 20px;
-  line-height: 1.3;
-}
-
-.my-requirement-detail__payment-status {
-  flex: 0 0 auto;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: rgba(219, 234, 254, 0.92);
-  color: #1d4ed8;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.my-requirement-detail__payment-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  color: #475569;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.my-requirement-detail__payment-channel {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-}
-
-.my-requirement-detail__payment-channel > strong {
-  color: #334155;
-  font-size: 13px;
-}
-
-.my-requirement-detail__primary {
-  min-height: 38px;
-  padding: 0 18px;
-  border: 1px solid #2563eb;
-  border-radius: 8px;
-  background: #2563eb;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.my-requirement-detail__primary:hover:not(:disabled) {
-  border-color: #1d4ed8;
-  background: #1d4ed8;
-}
-
-.my-requirement-detail__primary:disabled {
-  cursor: not-allowed;
-  opacity: 0.58;
-}
-
-.my-requirement-detail__secondary {
-  min-height: 38px;
-  padding: 0 16px;
-  border: 1px solid rgba(191, 219, 254, 0.96);
-  border-radius: 8px;
-  background: rgba(239, 246, 255, 0.82);
-  color: #2563eb;
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.my-requirement-detail__secondary:hover {
-  border-color: rgba(37, 99, 235, 0.34);
-  background: rgba(219, 234, 254, 0.92);
 }
 
 .pay-modal .breach-modal__field {
@@ -3717,7 +3681,6 @@ watch(
   .my-requirements-page .wb-card-head:has(.my-requirements-publish--head) {
     display: none;
   }
-
   /* 操作槽只剩刷新，钉在顶栏右侧，四组读数才排得进一行 */
   /* 四组读数均分四格，文字在上、数字在下 */
   #workbench-mobile-bar-extra .my-requirements-strip {
@@ -3727,7 +3690,6 @@ watch(
     gap: 0;
     padding-right: 32px;
   }
-
   #workbench-mobile-bar-extra .my-requirements-strip .wb-strip__item:not(.wb-strip__action) {
     flex-direction: column;
     align-items: center;
@@ -3735,28 +3697,24 @@ watch(
     gap: 2px;
     min-width: 0;
   }
-
   #workbench-mobile-bar-extra .my-requirements-strip .wb-strip__label {
     color: #94a3b8;
     font-size: 11px;
     font-weight: 500;
     line-height: 1.2;
   }
-
   #workbench-mobile-bar-extra .my-requirements-strip .wb-strip__value {
     color: #0f172a;
     font-size: 15px;
     font-weight: 700;
     line-height: 1.2;
   }
-
   #workbench-mobile-bar-extra .my-requirements-strip .wb-strip__action {
     position: absolute;
     top: 50%;
     right: 0;
     transform: translateY(-50%);
   }
-
   /* 搜索栏右端的小号胶囊：浅蓝底蓝字，融进白色搜索栏，不压过搜索框本身 */
   .my-requirements-publish--toolbar,
   .my-requirements-publish--toolbar:hover,
@@ -3775,113 +3733,23 @@ watch(
     font-size: 13px;
     font-weight: 700;
   }
-
   .my-requirements-publish--toolbar:active {
     background: #dbe7ff !important;
   }
 }
 
-@media (max-width: 980px) {
-  .my-requirements-summary__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 640px) {
-  .wallet-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .my-requirements-header__actions {
     justify-content: stretch;
   }
-
   .my-requirements-header__actions .ghost.small {
     flex: 1 1 0;
   }
-
-  .my-requirements-header__actions .ghost.small.my-requirements-refresh {
-    flex: 0 0 auto;
-    width: 44px;
-    height: 44px;
-  }
-
-  /* 触屏档：四张统计卡改成一条统计条，四列并排用竖线分隔。
-     单列堆叠时四张卡各占 89px，吃掉大半屏首屏空间；这里压到约 64px 一行。 */
-  .my-requirements-summary__grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0;
-    padding: 12px 4px;
-    border: 1px solid rgba(224, 232, 255, 0.96);
-    border-radius: 12px;
-    background: #ffffff;
-    box-shadow: 0 10px 24px rgba(76, 103, 172, 0.06);
-  }
-
-  .my-requirements-summary__grid article {
-    align-content: end;
-    gap: 2px;
-    padding: 0 6px;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    text-align: center;
-  }
-
-  .my-requirements-summary__grid article + article {
-    border-left: 1px solid rgba(224, 232, 255, 0.96);
-  }
-
-  .my-requirements-summary__grid span {
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1.35;
-  }
-
-  .my-requirements-summary__grid strong {
-    font-size: 22px;
-  }
-
-  .my-requirement-detail__actions {
-    padding: 0 16px 18px;
-  }
-
-  .my-requirement-detail__payment-panel {
-    margin: 14px 16px 0;
-    padding: 14px;
-  }
-
-  .my-requirement-detail__payment-channel {
-    grid-template-columns: 1fr;
-    align-items: stretch;
-  }
-
-  .my-requirement-detail__secondary {
-    width: 100%;
-  }
-
-  .my-requirement-detail__primary {
-    width: 100%;
-  }
-
   .pay-modal .breach-modal__decision .actions .ghost {
     min-height: 44px;
   }
-
   .pay-modal .breach-modal__decision .actions {
     flex-direction: column;
-  }
-
-  .my-requirement-detail__review-panel {
-    margin: 14px 16px;
-    padding: 14px;
-    border-radius: 16px;
-  }
-
-  .my-requirement-detail__review-grid {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -3925,5 +3793,4 @@ watch(
   font-size: 12.5px;
   line-height: 1.7;
 }
-
 </style>

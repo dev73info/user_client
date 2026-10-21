@@ -490,7 +490,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/MyRequirementsView.vue",
-      "detail": "3930 行 > 300（视图）",
+      "detail": "3797 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -1226,15 +1226,9 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/views/MyRequirementsView.vue",
-      "detail": "1 处非标准断点（980px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/views/MyRequirementsView.vue",
-      "detail": "90 处裸色值",
+      "detail": "21 处裸色值",
       "since": "2026-10-21"
     },
     {
