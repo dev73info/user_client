@@ -30,7 +30,7 @@ const USER_ROUTE_NAMES = ['workbench', 'workbench-requirements', 'workbench-acco
   'workbench-coupons', 'workbench-badges', 'workbench-favorites', 'workbench-resource-purchases',
   'workbench-invite', 'workbench-tickets', 'workbench-messages', 'workbench-notifications']
 const DEV_ROUTE_NAMES = ['dev-home', 'dev-resource-list', 'dev-resource-sold-purchases', 'dev-tip-settings',
-  'dev-requirement-hall', 'dev-my-requirements', 'dev-wallet',
+  'dev-api-keys', 'dev-requirement-hall', 'dev-my-requirements', 'dev-wallet',
   'workbench-teams', 'workbench-team-detail', 'workbench-team-resources', 'dev-messages',
   'dev-tickets', 'dev-invoices', 'dev-notifications']
 
@@ -41,6 +41,7 @@ const DEV_ROUTE_PATHS: Record<string, string> = {
   'dev-invoices': '/workbench/developer/invoices',
   'dev-resource-list': '/workbench/developer/resources/list',
   'dev-resource-sold-purchases': '/workbench/developer/resources/sold',
+  'dev-api-keys': '/workbench/developer/api-keys',
   'dev-tip-settings': '/workbench/developer/tips',
 }
 
@@ -144,7 +145,7 @@ describe('workbench mode switch', () => {
     const devLinks = wrapper.findAll('.user-workbench__menu > .user-workbench__menu-link--root')
     expect(devLinks[0]?.find('.user-workbench__menu-icon').exists()).toBe(true)
     expect(devLinks.map((link) => link.text()))
-      .toEqual(['工作台总览', '资源项目', '需求大厅', '我的接单'])
+      .toEqual(['工作台总览', '资源项目', 'API 密钥', '需求大厅', '我的接单'])
     // 财务中心与团队服务是折叠组（分组头自带组名），消息中心夹在分组之间
     expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text()))
       .toEqual(['财务中心', '团队服务', '消息中心'])
