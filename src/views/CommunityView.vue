@@ -1600,12 +1600,12 @@ async function toggleFavorite(post: CommunityPost) {
   .community-detail {
     position: static;
   }
-  /* `.community-form` 的单列塌版跟着 CommunityComposerPanel.vue 走了（那边用标准档 900px） */
+  /* `.community-form` 的单列塌版跟着 CommunityComposerPanel.vue 走了（那边保留原断点 920px） */
 }
 
 @media (max-width: 760px) {
 
-  /* `.community-panel__head`（编辑器头）随组件搬走，那档在组件里收成标准档 640px */
+  /* `.community-panel__head`（编辑器头）随组件搬走，那档在组件里保留原断点 760px */
   .community-hero,
   .community-detail__header,
   .community-detail__title-row,

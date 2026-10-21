@@ -25,9 +25,12 @@ import type {
  * ## 样式
  *
  * 整块 `.community-comments*` / `.community-comment-item*` 从视图的 scoped 块搬来（拆成两个文件：
- * 树这层管列表与输入框，单条评论那层管 `.community-comment-item*`）。搬过来的同时改用
- * `var(--73-*)` 令牌：同义替换、色相不变，但个别档位不是逐字节相同
- * （例如强调蓝 `#2563eb` → `--73-accent` = `#1f4ad1`），视觉验收按这个口径比对。
+ * 树这层管列表与输入框，单条评论那层管 `.community-comment-item*`）。
+ *
+ * 样式一律**逐字节照搬**，颜色只在「令牌解析值与原字面量完全相同」时才换成 `var(--73-*)`：
+ * 中性描边 `#64748b` / `#94a3b8` 与 `999px` / `12px` 两档圆角在两套主题下同值，换令牌是纯收益；
+ * 强调蓝（`#2563eb` / `#1d4ed8` vs `--73-accent` = `#1f4ad1`）、浅蓝底、琥珀警示三件套这些
+ * 数值不等的档位全部保留字面量——换成令牌就是改视觉，要单独走查。断点同理保持 920 / 760。
  */
 defineProps<{
   /** 已经算好的显示行，按树的顺序铺开。 */
@@ -162,7 +165,7 @@ const draft = defineModel<string>('draft', { required: true })
 /* 评论区标题原来吃的是视图里 `.community-panel h3` 那条（margin 0 + 深墨色） */
 .community-comments__head h3 {
   margin: 0;
-  color: var(--73-ink);
+  color: #0f172a;
 }
 
 /* 同步指示的小胶囊：淡蓝底 + 蓝描边 + 蓝字 */
@@ -172,22 +175,22 @@ const draft = defineModel<string>('draft', { required: true })
   align-items: center;
   gap: 7px;
   padding: 0 10px;
-  border: 1px solid var(--73-accent-line);
+  border: 1px solid rgba(191, 219, 254, 0.86);
   border-radius: var(--73-radius-pill);
-  background: var(--73-accent-soft);
-  color: var(--73-accent);
+  background: rgba(239, 246, 255, 0.92);
+  color: #2563eb;
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
-  box-shadow: var(--73-shadow-card);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
 }
 
 .community-comments__spinner {
   width: 11px;
   height: 11px;
   flex-shrink: 0;
-  border: 2px solid var(--73-accent-line);
-  border-top-color: var(--73-accent);
+  border: 2px solid rgba(37, 99, 235, 0.18);
+  border-top-color: #2563eb;
   border-radius: var(--73-radius-pill);
   animation: community-comments-spin 720ms linear infinite;
 }
@@ -202,16 +205,17 @@ const draft = defineModel<string>('draft', { required: true })
 .community-status-note {
   margin-bottom: 18px;
   padding: 12px 14px;
-  border: 1px solid var(--73-warning-line);
+  border: 1px solid rgba(245, 158, 11, 0.22);
   border-radius: var(--73-radius-inner);
-  background: var(--73-warning-soft);
-  color: var(--73-warning-text);
+  background: rgba(255, 251, 235, 0.82);
+  color: #92400e;
   font-size: 13px;
   font-weight: 700;
 }
 
-/* 「暂无评论」：原来借用视图 scoped 的 `.community-empty--compact`，父级作用域命不中组件内部，
-   这里自带一份等价样式（72px 最小高 + 浅底圆角块）。 */
+/* 「暂无评论」：原来借用视图 scoped 的 `.community-empty`（+ `--compact` 把 112px 压到 72px），
+   父级作用域命不中组件内部，这里自带一份等价样式（72px 最小高 + 浅底圆角块），
+   连 `.community-empty` 那条共享选择器给的文字色与行高一起带上。 */
 .community-comments__empty {
   display: flex;
   min-height: 72px;
@@ -221,7 +225,9 @@ const draft = defineModel<string>('draft', { required: true })
   gap: 8px;
   padding: 18px;
   border-radius: var(--73-radius-inner);
-  background: var(--73-bg-soft);
+  background: rgba(248, 250, 252, 0.92);
+  color: #64748b;
+  line-height: 1.7;
 }
 
 .community-comment-box {
@@ -246,7 +252,7 @@ const draft = defineModel<string>('draft', { required: true })
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--73-accent);
+  color: #2563eb;
   font: inherit;
   font-size: 12px;
   font-weight: 700;
@@ -255,7 +261,7 @@ const draft = defineModel<string>('draft', { required: true })
 
 .community-replies-toggle:hover,
 .community-replies-toggle:focus-visible {
-  color: var(--73-accent);
+  color: #1d4ed8;
   text-decoration: underline;
 }
 </style>

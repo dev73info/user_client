@@ -169,7 +169,7 @@ function forwardNotify(message: string, type?: 'success' | 'warning' | 'error') 
 /* 原来吃的是视图里 `.community-panel h3` 那条（margin 0 + 深墨色） */
 .community-composer h3 {
   margin: 0;
-  color: var(--73-ink);
+  color: #0f172a;
 }
 
 .community-form {
@@ -221,22 +221,23 @@ function forwardNotify(message: string, type?: 'success' | 'warning' | 'error') 
   z-index: 46;
   margin: 0;
   padding: 10px 12px;
-  border: 1px solid var(--73-accent-line);
-  border-radius: var(--73-radius-inner);
-  background: var(--73-bg-soft);
-  box-shadow: var(--73-shadow-panel);
-  backdrop-filter: blur(var(--73-glass-blur));
+  border: 1px solid rgba(191, 219, 254, 0.92);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.94);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.14);
+  backdrop-filter: blur(14px);
 }
 
-/* 窄屏：表单塌成单列，标题行与取消按钮改成上下排（原来这档在视图里是 760px，
-   新文件只允许 640/900/1180 三档，取手机档 640）。 */
-@media (max-width: 900px) {
+/* 窄屏：表单塌成单列，标题行与取消按钮改成上下排。
+   断点保持改造前的 920 / 760——本轮只搬结构，不动视觉；标准档 1180/900/640
+   的收敛要整体走查，单独一轮做。 */
+@media (max-width: 920px) {
   .community-form {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .community-panel__head {
     flex-direction: column;
     align-items: flex-start;
