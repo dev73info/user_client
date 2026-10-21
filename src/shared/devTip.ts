@@ -44,9 +44,13 @@ export type TipChannelAvailability = {
  *
  * 打赏整体是否可用由后端派生的 `enabled` 表达；这里只管「哪条通道能用」，
  * 所以不再有总开关参与判定——总开关已移除（见 `TipConfigLike.enabled`）。
+ *
+ * 但 `enabled === false` 仍然要拦：后端的 `PublicTipBlock::disabled()`
+ * （给「不该出现打赏入口」的档案用）会把通道字段留成 `null` 且 `enabled=false`，
+ * 只按「`!== false` 就算开启」读会把这种块判成两条通道可用。
  */
 export function tipChannelAvailability(tip?: TipConfigLike | null): TipChannelAvailability {
-  if (!tip) {
+  if (!tip || tip.enabled === false) {
     return { cash: false, points: false }
   }
   return {

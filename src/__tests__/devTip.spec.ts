@@ -49,6 +49,11 @@ describe('devTip', () => {
       cash: false,
       points: false,
     })
+    // 后端 `PublicTipBlock::disabled()` 的形态：通道字段留空 + enabled=false，
+    // 只按「!== false 就算开启」读会误判成两条通道可用。
+    expect(
+      tipChannelAvailability({ enabled: false, cash_enabled: null, points_enabled: null }),
+    ).toEqual({ cash: false, points: false })
     expect(defaultTipChannel({ cash: false, points: true })).toBe('points')
     expect(defaultTipChannel({ cash: true, points: false })).toBe('cash')
   })

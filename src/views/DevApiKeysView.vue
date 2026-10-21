@@ -16,6 +16,7 @@ import {
   type CreatedApiKey,
 } from '@/api/apiKeys'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
+import { writeTextToClipboard } from '@/shared/clipboard'
 import { useAuthStore } from '@/stores/auth'
 import {
   Document,
@@ -141,7 +142,7 @@ async function copySecret() {
     return
   }
   try {
-    await navigator.clipboard.writeText(createdKey.value.full_key)
+    await writeTextToClipboard(createdKey.value.full_key)
     TMessage.success('接口密钥已复制，请妥善保存')
   } catch {
     TMessage.warning('复制失败，请手动选中密钥后再复制')
@@ -153,6 +154,9 @@ async function copySecret() {
  *
  * 列表只存前缀（安全），明文要现取——所以这一步是一次网络请求，
  * 期间按钮走 loading，避免重复点击打多次接口。
+ *
+ * 复制失败时把明文落到弹窗里：明文已经取回来了，若因剪贴板不可用就整个丢掉，
+ * 用户除前缀外再也拿不到这把密钥，只能反复重试。
  */
 async function copyKeyFromList(key: ApiKeyRecord) {
   if (!auth.token) {
@@ -163,12 +167,20 @@ async function copyKeyFromList(key: ApiKeyRecord) {
     return
   }
   copyingId.value = key.id
+  let fullKey: string | null = null
   try {
-    const fullKey = await revealApiKey(auth.token, key.id)
-    await navigator.clipboard.writeText(fullKey)
+    fullKey = await revealApiKey(auth.token, key.id)
+    await writeTextToClipboard(fullKey)
     TMessage.success('接口密钥已复制到剪贴板')
   } catch (error) {
-    TMessage.error(errorText(error, '复制接口密钥失败'))
+    if (fullKey) {
+      // 取回成功、只是复制没成：给个可手动复制的弹窗，别把明文丢了。
+      createdKey.value = { ...key, full_key: fullKey }
+      secretOpen.value = true
+      TMessage.warning('自动复制失败，请在弹出的窗口里手动复制')
+    } else {
+      TMessage.error(errorText(error, '复制接口密钥失败'))
+    }
   } finally {
     copyingId.value = null
   }
