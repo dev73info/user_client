@@ -400,7 +400,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/CommunityView.vue",
-      "detail": "2702 行 > 300（视图）",
+      "detail": "2564 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -1204,7 +1204,7 @@
     {
       "rule": "raw-color",
       "file": "src/views/CommunityView.vue",
-      "detail": "156 处裸色值",
+      "detail": "147 处裸色值",
       "since": "2026-10-21"
     },
     {
