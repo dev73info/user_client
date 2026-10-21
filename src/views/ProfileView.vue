@@ -22,28 +22,11 @@ import PublishModal from '@/components/PublishModal.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
-import {
-  getUnionPaymentAuthorizeUrl,
-  isUnionPaymentAuthorizationRequired,
-  isWechatPaymentAuthorizationRequired,
-} from '@/api/auth'
 import { HttpError, apiUrl } from '@/api/http'
 import { getMyRealnameVerification } from '@/api/realname'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import { useAuthStore } from '@/stores/auth'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
-import {
-  calculateFinalDepositAmount,
-  calculateFinalPaymentAmount,
-} from '@/shared/requirementPayment'
-import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
-import {
-  createAdapayPayment,
-  getAdapayPayment,
-  getAdapayClientPlatform,
-  type AdapayBusinessPayChannel,
-  type AdapayPaymentResponse,
-} from '@/api/adapay'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import {
   listRequirementConversations,
@@ -53,17 +36,11 @@ import {
 import {
   createRequirement as createRequirementApi,
   listRequirements,
-  requestRequirementFinalPayment as requestRequirementFinalPaymentApi,
-  resubmitRequirement as resubmitRequirementApi,
   type RequirementItem,
   type RequirementPaymentMode,
   type RequirementStatus,
 } from '@/api/requirements'
-import {
-  getDepositRatio,
-  getProfile,
-  uploadProfileAvatar,
-} from '@/api/settings'
+import { getProfile, uploadProfileAvatar } from '@/api/settings'
 import { validateRequirementRichText } from '@/utils/requirementRichText'
 import { dispatchProfileAvatarUpdated } from '@/shared/profileEvents'
 
@@ -75,24 +52,7 @@ const coupons = ref<CouponItem[]>([])
 const requirementLoading = ref(false)
 const myRequirements = ref<RequirementItem[]>([])
 const contractSigningStatusMap = ref<Record<string, ContractSigningStatus | null>>({})
-const payVisible = ref(false)
-const payRequirement = ref<RequirementItem | null>(null)
-const payChannel = ref<AdapayBusinessPayChannel>('alipay')
-const payLoading = ref(false)
-type PaymentState = {
-  payment_id: string
-  requirement_id: string
-  channel: string
-  amount_cny: number
-  status: string
-  alipay_order_string?: string
-  expires_at: string
-  adapay?: boolean
-}
-const currentPayment = ref<PaymentState | null>(null)
-const editVisible = ref(false)
 const publishVisible = ref(false)
-const editRequirement = ref<RequirementItem | null>(null)
 const publishTitle = ref('')
 const publishDescription = ref('')
 const publishBudget = ref<string | number>('')
@@ -100,19 +60,9 @@ const publishAcceptance = ref('')
 const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
 const publishLoading = ref(false)
 const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
-const editModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
-const editTitle = ref('')
-const editDescription = ref('')
-const editBudget = ref<string | number>('')
-const editAcceptance = ref('')
-const editPaymentMode = ref<RequirementPaymentMode>('self_managed')
-const editLoading = ref(false)
-const finalPaymentConfirmVisible = ref(false)
-const finalPaymentConfirmTarget = ref<RequirementItem | null>(null)
 const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
 const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
-const depositRatioPercent = ref(20)
 function notify(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
   TMessage[type](message)
 }
@@ -216,10 +166,6 @@ function formatRequirementStatus(status: RequirementStatus, paymentMode?: Requir
 
 function isSelfManagedRequirement(item: RequirementItem) {
   return item.payment_mode === 'self_managed'
-}
-
-function isAdapayRequirement(item: RequirementItem) {
-  return item.payment_mode === 'platform_guarantee'
 }
 
 function paymentModeLabel(item: RequirementItem) {
@@ -360,51 +306,6 @@ function hasPendingResourceVersionDeleteReview(item: RequirementItem) {
   return hasBoundResource(item) && (item.pending_resource_version_delete_requests?.length ?? 0) > 0
 }
 
-function openPayModal(item: RequirementItem) {
-  if (!canPay(item.status, item)) {
-    return
-  }
-  payRequirement.value = item
-  payChannel.value = 'alipay'
-  currentPayment.value = null
-  payVisible.value = true
-}
-
-function updatePayChannel(channel: AdapayBusinessPayChannel) {
-  if (payChannel.value === channel) {
-    return
-  }
-  payChannel.value = channel
-  currentPayment.value = null
-}
-
-function closeFinalPaymentConfirm() {
-  finalPaymentConfirmVisible.value = false
-  finalPaymentConfirmTarget.value = null
-}
-
-async function confirmFinalPaymentRequest() {
-  if (!finalPaymentConfirmTarget.value) {
-    return
-  }
-
-  const item = finalPaymentConfirmTarget.value
-
-  try {
-    const updated = await requestRequirementFinalPaymentApi(auth.token, item.requirement_id)
-    await loadMyRequirements()
-    if (isSelfManagedRequirement(item)) {
-      TMessage.success('需求已确认完成')
-    } else {
-      TMessage.success('请支付尾款')
-      openPayModal(updated)
-    }
-    closeFinalPaymentConfirm()
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '结束开发失败')
-  }
-}
-
 function canComment(status: RequirementStatus) {
   return status === 'completed'
 }
@@ -465,7 +366,6 @@ async function refreshProfileData() {
     loadCoupons(),
     loadMyRequirements(),
     loadRequirementConversations(),
-    loadDepositRatio(),
     loadProfile(),
   ])
   TMessage.success('资料已刷新')
@@ -855,16 +755,6 @@ async function loadProfile() {
   }
 }
 
-function closePayModal() {
-  payVisible.value = false
-}
-
-function forceCloseEditModal() {
-  editVisible.value = false
-  editRequirement.value = null
-  editPaymentMode.value = 'self_managed'
-}
-
 function forceClosePublishModal() {
   publishVisible.value = false
   publishTitle.value = ''
@@ -884,82 +774,12 @@ function clearPublishModalQuery() {
   void router.replace({ query: nextQuery })
 }
 
-function closeEditModal() {
-  if (editLoading.value) {
-    return
-  }
-  forceCloseEditModal()
-}
-
 function closePublishModal() {
   if (publishLoading.value) {
     return
   }
   forceClosePublishModal()
   clearPublishModalQuery()
-}
-
-async function submitRequirementResubmit() {
-  if (!auth.isAuthed || !editRequirement.value) {
-    TMessage.error('请先登录后再重新提交需求')
-    return
-  }
-
-  const normalizedTitle = editTitle.value.trim()
-  const descriptionValidation = validateRequirementRichText(editDescription.value, '需求描述', {
-    minTextLength: 10,
-  })
-  const acceptanceValidation = validateRequirementRichText(editAcceptance.value, '验收标准', {
-    required: true,
-  })
-  const budgetRaw = String(editBudget.value ?? '').trim()
-
-  if (normalizedTitle.length < 4) {
-    TMessage.error('需求标题至少 4 个字符')
-    return
-  }
-
-  if (descriptionValidation.error) {
-    TMessage.error(descriptionValidation.error)
-    return
-  }
-
-  if (!budgetRaw) {
-    TMessage.error('预算不能为空')
-    return
-  }
-
-  const budget = Number(budgetRaw)
-
-  if (Number.isNaN(budget) || budget < 0) {
-    TMessage.error('预算必须是大于等于0的数字')
-    return
-  }
-
-  if (acceptanceValidation.error) {
-    TMessage.error(acceptanceValidation.error)
-    return
-  }
-
-  editLoading.value = true
-  try {
-    await resubmitRequirementApi(auth.token, editRequirement.value.requirement_id, {
-      title: normalizedTitle,
-      description: descriptionValidation.value,
-      budget,
-      acceptance_criteria: acceptanceValidation.value,
-      payment_mode: editPaymentMode.value,
-    })
-
-    TMessage.success('需求已重新提交，等待审核')
-    editModalRef.value?.clearDraft(`edit-${editRequirement.value.requirement_id}`)
-    forceCloseEditModal()
-    await loadMyRequirements()
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '重新提交失败')
-  } finally {
-    editLoading.value = false
-  }
 }
 
 async function submitRequirementPublish() {
@@ -1026,33 +846,6 @@ async function submitRequirementPublish() {
   }
 }
 
-function finalDepositAmount(item: RequirementItem) {
-  return calculateFinalDepositAmount(item, depositRatioPercent.value)
-}
-
-function finalPaymentAmount(item: RequirementItem) {
-  return calculateFinalPaymentAmount(item, depositRatioPercent.value)
-}
-
-const isFinalPayment = computed(() => payRequirement.value?.status === 'pending_final')
-const payStageLabel = computed(() => (isFinalPayment.value ? '尾款' : '定金'))
-
-const finalPaymentConfirmTitle = computed(() =>
-  finalPaymentConfirmTarget.value && isSelfManagedRequirement(finalPaymentConfirmTarget.value)
-    ? '确认交付完成'
-    : '确认进入尾款支付',
-)
-const finalPaymentConfirmTip = computed(() =>
-  finalPaymentConfirmTarget.value && isSelfManagedRequirement(finalPaymentConfirmTarget.value)
-    ? '确认后，当前需求会直接进入已完成状态，后续可继续评价。'
-    : '确认后会将当前需求推进到待付尾款，并立即进入支付流程。',
-)
-const finalPaymentConfirmButton = computed(() =>
-  finalPaymentConfirmTarget.value && isSelfManagedRequirement(finalPaymentConfirmTarget.value)
-    ? '确认完成'
-    : '确认进入尾款支付',
-)
-
 const profileAvatarUrl = ref('')
 const profileAvatarCacheKey = ref(0)
 const profileAvatarInput = ref<HTMLInputElement | null>(null)
@@ -1073,16 +866,6 @@ const profileAvatarCropDragging = ref(false)
 const profileEmail = ref('')
 const subscriptionOfficialActivity = ref(false)
 
-const payAmount = computed(() => {
-  if (!payRequirement.value) {
-    return 0.01
-  }
-  if (payRequirement.value.status === 'pending_final') {
-    return finalPaymentAmount(payRequirement.value)
-  }
-  return finalDepositAmount(payRequirement.value)
-})
-
 async function loadCoupons() {
   auth.hydrate()
   if (!auth.isAuthed) {
@@ -1096,27 +879,6 @@ async function loadCoupons() {
     TMessage.error(err instanceof Error ? err.message : '加载券包失败')
   } finally {
     loading.value = false
-  }
-}
-
-async function loadDepositRatio() {
-  auth.hydrate()
-  if (!auth.isAuthed) {
-    return
-  }
-
-  try {
-    const payload = await getDepositRatio(auth.token)
-
-    if (!payload) {
-      return
-    }
-
-    if (Number.isFinite(payload.deposit_ratio_percent)) {
-      depositRatioPercent.value = payload.deposit_ratio_percent
-    }
-  } catch {
-    // Keep default deposit ratio when settings API is unavailable.
   }
 }
 
@@ -1159,113 +921,6 @@ async function loadMyRequirements() {
   }
 }
 
-async function submitRequirementPayment() {
-  if (!payRequirement.value) {
-    return
-  }
-
-  const requirement = payRequirement.value
-  const channel = payChannel.value
-  const clientPlatform = getAdapayClientPlatform()
-  if (!isAdapayRequirement(requirement)) {
-    TMessage.warning('无担保订单不通过平台收款，请由双方按约定自行结算')
-    return
-  }
-
-  payLoading.value = true
-  try {
-    if (!currentPayment.value) {
-      const adapayPayment: AdapayPaymentResponse = await createAdapayPayment(
-        auth.token,
-        requirement.requirement_id,
-        requirement.status === 'pending_final' ? 'final' : 'deposit',
-        channel,
-        clientPlatform,
-      )
-      currentPayment.value = {
-        payment_id: adapayPayment.paymentId,
-        requirement_id: adapayPayment.requirementId,
-        channel,
-        amount_cny: Number(adapayPayment.amountCny),
-        status: adapayPayment.status,
-        alipay_order_string: adapayPayment.payUrl ?? '',
-        expires_at: '',
-        adapay: true,
-      }
-      TMessage.success(`${payStageLabel.value}支付订单已生成，正在跳转支付页`)
-      router.push({
-        name: 'payment',
-        query: buildAdapayPaymentQuery({
-          paymentId: currentPayment.value.payment_id,
-          requirementId: adapayPayment.requirementId,
-          channel,
-          clientPlatform,
-          amountCny: adapayPayment.amountCny,
-          qrContent: adapayPayment.payUrl,
-        }),
-      })
-      return
-    }
-
-    if (currentPayment.value.adapay) {
-      const adapayPayment = await getAdapayPayment(auth.token, currentPayment.value.payment_id)
-      if (adapayPayment.status !== 'paid' && adapayPayment.status !== 'confirmed') {
-        TMessage.warning('支付尚未完成，请先完成 Adapay 支付')
-        return
-      }
-      TMessage.success(`${payStageLabel.value}支付确认成功`)
-      currentPayment.value = null
-      payVisible.value = false
-      await loadMyRequirements()
-      return
-    }
-
-    throw new Error('支付订单状态无效，请重新发起 Adapay 支付')
-  } catch (err) {
-    if (isWechatPaymentAuthorizationRequired(err)) {
-      // 尚未绑定 open_id：直接跳转到支付页（意图模式），由支付页在微信内自动静默授权并下单。
-      if (!payRequirement.value) {
-        return
-      }
-      router.push({
-        name: 'payment',
-        query: buildAdapayPaymentQuery({
-          requirementId: payRequirement.value.requirement_id,
-          milestone: isFinalPayment.value ? 'final' : 'deposit',
-          channel: 'wechat',
-          clientPlatform,
-          amountCny: payAmount.value,
-          intent: true,
-        }),
-      })
-      return
-    }
-    if (isUnionPaymentAuthorizationRequired(err)) {
-      if (clientPlatform !== 'mobile') {
-        TMessage.warning('云闪付授权仅适用于移动端，请重新选择支付方式')
-        return
-      }
-      try {
-        const authorization = await getUnionPaymentAuthorizeUrl(auth.token, window.location.href)
-        if (!authorization.url.trim()) {
-          throw new Error('云闪付授权地址为空')
-        }
-        window.location.assign(authorization.url)
-        return
-      } catch (authorizationError) {
-        TMessage.error(
-          authorizationError instanceof Error ? authorizationError.message : '发起云闪付授权失败',
-        )
-        return
-      }
-    }
-
-    TMessage.error(err instanceof Error ? err.message : '支付失败')
-  } finally {
-    payLoading.value = false
-  }
-}
-
 onMounted(async () => {
   window.addEventListener('resize', handleProfileAvatarCropResize)
   auth.hydrate()
@@ -1273,7 +928,6 @@ onMounted(async () => {
     loadCoupons(),
     loadMyRequirements(),
     loadRequirementConversations(),
-    loadDepositRatio(),
     loadProfile(),
   ])
 
@@ -1289,7 +943,6 @@ onMounted(async () => {
     TMessage.error(`微信授权失败：${oauthError}`)
   }
   if (unionOauthResult === 'success') {
-    payChannel.value = 'union'
     TMessage.success('云闪付授权成功，请再次点击支付')
   } else if (unionOauthError) {
     TMessage.error(`云闪付授权失败：${unionOauthError}`)
@@ -1513,14 +1166,6 @@ onBeforeUnmount(() => {
       :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="notify"
       @submit="submitRequirementPublish" />
 
-    <PublishModal ref="editModalRef" :visible="editVisible" modalTitle="重新编辑需求" submitText="重新提交审核"
-      loadingText="提交中..." v-model:publishTitle="editTitle" v-model:publishDescription="editDescription"
-      v-model:publishBudget="editBudget" v-model:publishAcceptance="editAcceptance"
-      v-model:publishPaymentMode="editPaymentMode"
-      :publishLoading="editLoading"
-      :draft-scope="editRequirement ? `edit-${editRequirement.requirement_id}` : ''" @close="closeEditModal"
-      @notify="notify" @submit="submitRequirementResubmit" />
-
     <RequirementConversationModal :visible="conversationVisible" :token="auth.token" :current-username="auth.username"
       :requirement-id="conversationRequirement?.requirement_id ?? ''" :title="conversationRequirement?.title"
       @updated="applyConversationDetail" @close="closeConversation" />
@@ -1578,52 +1223,6 @@ onBeforeUnmount(() => {
         </section>
       </div>
     </Teleport>
-
-    <div v-if="payVisible && payRequirement" class="modal-wrap" @click.self="closePayModal">
-      <section class="pay-modal" aria-label="需求支付弹窗">
-        <h3>支付{{ payStageLabel }}</h3>
-        <p class="pay-line"><strong>需求标题：</strong>{{ payRequirement.title }}</p>
-        <p class="pay-line"><strong>需求编号：</strong>{{ payRequirement.requirement_id }}</p>
-        <p class="pay-line"><strong>预算：</strong>{{ formatBudget(payRequirement.budget) }}</p>
-        <p v-if="!isFinalPayment" class="pay-line"><strong>定金占比：</strong>{{ depositRatioPercent.toFixed(2) }}%</p>
-        <p class="pay-amount">实付款：<strong>¥{{ payAmount.toFixed(2) }}</strong></p>
-
-        <div class="pay-channel-row">
-          <strong>支付方式：</strong>
-          <div class="payment-options" role="radiogroup" aria-label="支付方式选择">
-            <button type="button" class="payment-option"
-              :class="{ active: payChannel === 'alipay', 'payment-option--alipay': payChannel === 'alipay' }"
-              @click="updatePayChannel('alipay')">
-              <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
-              支付宝
-            </button>
-          </div>
-        </div>
-
-        <div class="actions">
-          <button class="ghost" type="button" @click="closePayModal">取消</button>
-          <button class="ghost primary" type="button" :disabled="payLoading" @click="submitRequirementPayment">
-            {{ payLoading ? '处理中...' : currentPayment ? '查询支付结果' : `支付${payStageLabel}` }}
-          </button>
-        </div>
-      </section>
-    </div>
-
-    <div v-if="finalPaymentConfirmVisible && finalPaymentConfirmTarget" class="modal-wrap"
-      @click.self="closeFinalPaymentConfirm">
-      <section class="pay-modal" aria-label="尾款确认弹窗">
-        <h3>{{ finalPaymentConfirmTitle }}</h3>
-        <p class="pay-line"><strong>需求标题：</strong>{{ finalPaymentConfirmTarget.title }}</p>
-        <p class="pay-line"><strong>需求编号：</strong>{{ finalPaymentConfirmTarget.requirement_id }}</p>
-        <p class="tip">{{ finalPaymentConfirmTip }}</p>
-
-        <div class="actions">
-          <button class="ghost" type="button" @click="closeFinalPaymentConfirm">取消</button>
-          <button class="ghost primary" type="button" @click="confirmFinalPaymentRequest">{{ finalPaymentConfirmButton
-          }}</button>
-        </div>
-      </section>
-    </div>
   </main>
 </template>
 
@@ -2009,8 +1608,7 @@ onBeforeUnmount(() => {
 
 .overview-requirement-list span,
 .overview-requirement-list time,
-.overview-empty-state span,
-.overview-service-card span {
+.overview-empty-state span {
   color: #64748b;
   font-size: 12px;
   line-height: 1.45;
@@ -2052,23 +1650,6 @@ onBeforeUnmount(() => {
   color: #1d4ed8;
 }
 
-.overview-service-card {
-  width: 100%;
-  border: 1px solid rgba(209, 220, 243, 0.95);
-  background: #ffffff;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.overview-service-card:hover {
-  border-color: rgba(125, 155, 225, 0.92);
-  background: #f8fbff;
-  box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
-}
-
-.overview-service-card strong,
 .overview-requirement-list strong,
 .overview-empty-state strong {
   color: #0f172a;
@@ -2083,7 +1664,6 @@ onBeforeUnmount(() => {
 }
 
 .overview-side-stack,
-.overview-service-list,
 .overview-dev-links {
   display: grid;
   gap: 12px;
@@ -2178,13 +1758,6 @@ onBeforeUnmount(() => {
   color: #1d4ed8;
 }
 
-.overview-service-card {
-  display: grid;
-  gap: 5px;
-  padding: 14px;
-  border-radius: 16px;
-}
-
 .overview-dev-links {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -2217,22 +1790,6 @@ onBeforeUnmount(() => {
   border: 1px dashed rgba(204, 214, 237, 0.98);
   border-radius: 16px;
   background: rgba(248, 251, 255, 0.82);
-}
-
-.pending-review-pill {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 6px;
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: rgba(255, 214, 102, 0.22);
-  color: #8a5a00;
-  font-weight: 700;
-}
-
-.pending-review-count {
-  margin-left: 8px;
-  color: #7b8798;
 }
 
 .conversation-card-list {
@@ -2657,52 +2214,5 @@ onBeforeUnmount(() => {
   .overview-dev-links {
     grid-template-columns: 1fr;
   }
-}
-
-.realname-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  border: 1px solid;
-  transition: all 0.2s ease;
-}
-
-.realname-badge.clickable {
-  cursor: pointer;
-}
-
-.realname-badge--approved {
-  background: rgba(226, 248, 236, 0.96);
-  border-color: rgba(138, 208, 167, 0.95);
-  color: #137a4b;
-}
-
-.realname-badge--pending {
-  background: rgba(255, 245, 205, 0.96);
-  border-color: rgba(248, 207, 92, 0.92);
-  color: #8a5a00;
-}
-
-.realname-badge--rejected {
-  background: rgba(255, 234, 234, 0.98);
-  border-color: rgba(239, 154, 154, 0.95);
-  color: #b42318;
-}
-
-.realname-badge--rejected:hover {
-  background: rgba(255, 226, 226, 1);
-  border-color: rgba(224, 102, 102, 0.95);
-}
-
-.badge-icon {
-  display: inline-block;
-}
-
-.badge-text {
-  display: inline-block;
 }
 </style>
