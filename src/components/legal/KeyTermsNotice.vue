@@ -1,19 +1,4 @@
 <script setup lang="ts">
-/**
- * 重要条款提示（R043 任务-03）。
- *
- * 为什么要有这个组件：《民法典》第 496 条要求格式条款提供方对免责、责任限制等条款
- * 履行提示说明义务，未履行则该条款不成为合同内容。现在协议页只有一个
- * 「我已阅读并同意」的勾选框，责任限制、免责、费用、争议解决、协议变更这些重点
- * 条款没有任何单独提示。
- *
- * 摘要文案只做"人话翻译"：不新增平台义务、不扩大或缩小责任范围。
- * 摘要与协议正文不一致时**以正文为准**。
- *
- * ⚠️ 改这份提示的文案（摘要、条目、顺序）时，必须同步升
- * `src/components/legal/legalNotice.ts` 里的 `LEGAL_NOTICE_VERSION`——
- * 留痕里的 `notice_version` 要证明"用户看到的是哪一版提示"。
- */
 import { computed, onMounted, ref, watch } from 'vue'
 import { fetchAgreementContent, type AgreementContent } from '@/api/auth'
 import { LEGAL_NOTICE_VERSION } from './legalNotice'
@@ -54,7 +39,7 @@ const KEY_TERM_ITEMS: KeyTermItem[] = [
   {
     label: '争议解决',
     summary: '争议先协商；协商不成的，按协议约定的管辖法院起诉。',
-    keyword: '争议',
+    keyword: '争议解决',
   },
   {
     label: '协议变更',
@@ -71,11 +56,20 @@ const props = withDefaults(
     headings?: { id: string; title: string }[]
     /** 没有正文可跳时的兜底链接（例如登录弹窗里跳到 /terms） */
     fallbackHref?: string
+    /**
+     * 协议版本号。**页面已经取到协议正文时直接传进来**，
+     * 组件就不再发一次请求（同一个协议没必要取两遍）。
+     */
+    version?: string
+    /** 协议生效日期，同上：给了就不重复取。 */
+    effectiveAt?: string
   }>(),
   {
     code: 'user_service_agreement',
     headings: () => [],
     fallbackHref: '',
+    version: '',
+    effectiveAt: '',
   },
 )
 
@@ -83,9 +77,9 @@ const emit = defineEmits<{
   (e: 'loaded', payload: { version: string; effective_at: string }): void
 }>()
 
-const agreement = ref<AgreementContent | null>(null)
-const version = ref('')
-const effectiveAt = ref('')
+/** 页面给了版本 / 生效日期就用页面的，没给才自己去取。 */
+const version = ref(props.version)
+const effectiveAt = ref(props.effectiveAt)
 
 /** 每个条目的跳转地址：能定位到正文章节就跳章节，否则走兜底链接。 */
 const items = computed(() =>
@@ -101,19 +95,31 @@ const items = computed(() =>
 async function loadAgreement() {
   try {
     const content = await fetchAgreementContent(props.code)
-    agreement.value = content
     version.value = content.version
     effectiveAt.value = content.effective_at
     emit('loaded', { version: content.version, effective_at: content.effective_at })
   } catch {
-    agreement.value = null
-    version.value = ''
-    effectiveAt.value = ''
+    version.value = props.version
+    effectiveAt.value = props.effectiveAt
   }
 }
 
-onMounted(loadAgreement)
-watch(() => props.code, loadAgreement)
+onMounted(() => {
+  // 页面已经给出版本 / 生效日期就不必再取一遍正文。
+  if (!props.version && !props.effectiveAt) {
+    void loadAgreement()
+  }
+})
+
+watch(
+  () => [props.version, props.effectiveAt] as const,
+  ([nextVersion, nextEffectiveAt]) => {
+    if (nextVersion || nextEffectiveAt) {
+      version.value = nextVersion
+      effectiveAt.value = nextEffectiveAt
+    }
+  },
+)
 
 defineExpose({ version, effectiveAt, noticeVersion: LEGAL_NOTICE_VERSION })
 </script>

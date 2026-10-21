@@ -93,7 +93,13 @@ onMounted(loadAgreement)
                 <template v-if="agreement">
                     <p><strong>生效日期：</strong>{{ formatEffectiveDate(agreement.effective_at) }}</p>
 
-                    <KeyTermsNotice code="user_service_agreement" :headings="headings" />
+                    <!-- 提示组件直接用本页已取到的版本 / 生效日期，不再重复取一遍正文。 -->
+                    <KeyTermsNotice
+                        code="user_service_agreement"
+                        :headings="headings"
+                        :version="agreement.version"
+                        :effective-at="agreement.effective_at"
+                    />
 
                     <template v-for="(block, index) in blocks" :key="index">
                         <h3 v-if="block.type === 'heading'" :id="block.id">{{ block.text }}</h3>
