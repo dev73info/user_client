@@ -388,7 +388,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/AccountCouponsView.vue",
-      "detail": "4785 行 > 300（视图）",
+      "detail": "4109 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -689,6 +689,48 @@
       "rule": "raw-color",
       "file": "src/components/AcceptanceDialog.vue",
       "detail": "21 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/account/AsignDialog.vue",
+      "detail": "1 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/account/CloseAccountDialog.vue",
+      "detail": "1 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/account/CloseSettleDialog.vue",
+      "detail": "1 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/components/account/PasswordDialog.vue",
+      "detail": "1 处非标准断点（720px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/account/SealDialog.vue",
+      "detail": "11 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/components/account/TwoFactorDialog.vue",
+      "detail": "1 处非标准断点（720px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/account/TwoFactorDialog.vue",
+      "detail": "26 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -1156,13 +1198,13 @@
     {
       "rule": "breakpoint",
       "file": "src/views/AccountCouponsView.vue",
-      "detail": "3 处非标准断点（720px、780px、460px）",
+      "detail": "2 处非标准断点（780px、460px）",
       "since": "2026-10-21"
     },
     {
       "rule": "raw-color",
       "file": "src/views/AccountCouponsView.vue",
-      "detail": "47 处裸色值",
+      "detail": "9 处裸色值",
       "since": "2026-10-21"
     },
     {
