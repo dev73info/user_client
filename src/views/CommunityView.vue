@@ -1,36 +1,30 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { HttpError, apiUrl } from '@/api/http'
 import {
-  createCommunityComment,
-  createCommunityPost,
   favoriteCommunityPost,
   getCommunityPost,
-  likeCommunityComment,
   likeCommunityPost,
-  listCommunityComments,
   listCommunityPosts,
   listCommunityTags,
-  unlikeCommunityComment,
   unlikeCommunityPost,
   unfavoriteCommunityPost,
-  updateCommunityPost,
-  type CommunityComment,
   type CommunityPost,
   type CommunityTag,
   type PostBoostKind,
 } from '@/api/community'
-import { getMyRealnameVerification } from '@/api/realname'
-import RichTextEditor from '@/components/RichTextEditor.vue'
 import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 import CommunityBountyBar from '@/components/community/CommunityBountyBar.vue'
+import CommunityCommentTree from '@/components/community/CommunityCommentTree.vue'
+import CommunityComposerPanel from '@/components/community/CommunityComposerPanel.vue'
 import CommunityScrollTopButton from '@/components/community/CommunityScrollTopButton.vue'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
 import { useCommunityBounty } from '@/composables/useCommunityBounty'
 import { useCommunityBoost } from '@/composables/useCommunityBoost'
+import { useCommunityComments } from '@/composables/useCommunityComments'
+import { useCommunityComposer } from '@/composables/useCommunityComposer'
 import { useAuthStore } from '@/stores/auth'
-import { sanitizeRichHtml, sanitizeRichHtmlForEditing } from '@/utils/sanitizeHtml'
+import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 
 
@@ -39,14 +33,8 @@ import {
   TDropdown,
   TDropdownItem,
   TDropdownMenu,
-  TForm,
-  TFormItem,
   TIcon,
-  TInput,
-  TInputNumber,
   TMessage,
-  TOption,
-  TSelect,
   ArrowLeft,
   ArrowRight,
   ChatDotRound,
@@ -72,7 +60,6 @@ const initialSearchKeyword =
 const posts = ref<CommunityPost[]>([])
 const tags = ref<CommunityTag[]>([])
 const selectedPost = ref<CommunityPost | null>(null)
-const comments = ref<CommunityComment[]>([])
 const selectedTag = ref('')
 const searchDraft = ref(initialSearchKeyword)
 const searchKeyword = ref(initialSearchKeyword)
@@ -80,70 +67,15 @@ const currentPage = ref(1)
 const hasNextPage = ref(false)
 const loading = ref(false)
 const selectedPostLoading = ref(false)
-const commentsLoading = ref(false)
-const savingPost = ref(false)
-const sendingComment = ref(false)
-const replyingTo = ref<CommunityComment | null>(null)
-const commentLikeLoading = ref<number | null>(null)
 const favoriteLoading = ref(false)
-const composerVisible = ref(false)
-const editingPost = ref<CommunityPost | null>(null)
-const commentDraft = ref('')
-const composerPanelRef = ref<HTMLElement | null>(null)
-const composerActionsShellRef = ref<HTMLElement | null>(null)
-const composerActionsRef = ref<HTMLElement | null>(null)
 const selectedPostContentRef = ref<HTMLElement | null>(null)
-const composerActionsFloating = ref(false)
-const composerActionsPlaceholderHeight = ref(0)
-const composerActionsFloatingStyle = ref<Record<string, string>>({})
 const showScrollTop = ref(false)
-const expandedReplyIds = ref(new Set<number>())
-let composerActionsResizeObserver: ResizeObserver | null = null
+// 换帖竞态计数器：评论与详情两路请求共用（评论域只读它，见 useCommunityComments 的 isCurrentRequest）
 let selectedPostRequestId = 0
-
-const postForm = reactive({
-  title: '',
-  tag_names: [] as string[],
-  content_html: '',
-  origin_type: 'original' as 'original' | 'repost',
-  origin_author: '',
-  origin_url: '',
-  origin_org: '',
-  origin_note: '',
-  bounty_points: 0,
-})
 
 const currentPostContent = computed(() =>
   selectedPost.value?.content_html ? sanitizeRichHtml(selectedPost.value.content_html) : '',
 )
-
-const orderedComments = computed(() => {
-  const childrenByParent = new Map<number | null, CommunityComment[]>()
-  for (const comment of comments.value) {
-    const parentId = comment.parent_comment_id ?? null
-    const children = childrenByParent.get(parentId) ?? []
-    children.push(comment)
-    childrenByParent.set(parentId, children)
-  }
-
-  const ordered: CommunityComment[] = []
-  const appendComments = (parentId: number | null) => {
-    for (const comment of childrenByParent.get(parentId) ?? []) {
-      ordered.push(comment)
-      appendComments(comment.id)
-    }
-  }
-  appendComments(null)
-  return ordered
-})
-
-const commentFloors = computed(() => {
-  const floors = new Map<number, number>()
-  orderedComments.value.forEach((comment, index) => {
-    floors.set(comment.id, index + 1)
-  })
-  return floors
-})
 
 const tagOptions = computed(() => tags.value.map((tag) => tag.name))
 const searchActive = computed(() => searchKeyword.value.length > 0)
@@ -165,74 +97,12 @@ const selectedPostPublished = computed(() => selectedPost.value?.status === 'pub
 const selectedPostShareTargetId = computed(() =>
   selectedPost.value && selectedPostPublished.value ? String(selectedPost.value.id) : '',
 )
-const composerActionsShellStyle = computed<Record<string, string> | undefined>(() => {
-  if (!composerActionsFloating.value || composerActionsPlaceholderHeight.value <= 0) {
-    return undefined
-  }
 
-  return {
-    height: `${composerActionsPlaceholderHeight.value}px`,
-  }
-})
-
+// v-html 里的代码块复制按钮靠这条 ref 约定定位内容容器，抽组件时不能跟着走（容器还在本页）
 useCodeBlockCopy({
   rootRef: selectedPostContentRef,
   notify,
 })
-
-function resetFloatingComposerActions() {
-  composerActionsFloating.value = false
-  composerActionsPlaceholderHeight.value = 0
-  composerActionsFloatingStyle.value = {}
-}
-
-function updateFloatingComposerActions() {
-  const panel = composerPanelRef.value
-  const shell = composerActionsShellRef.value
-  const actions = composerActionsRef.value
-  if (!composerVisible.value || !panel || !shell || !actions) {
-    resetFloatingComposerActions()
-    return
-  }
-
-  const panelRect = panel.getBoundingClientRect()
-  const shellRect = shell.getBoundingClientRect()
-  const actionsHeight = actions.offsetHeight
-  const viewportGap = 12
-  const bottom = 16
-  const viewportHeight = window.innerHeight || document.documentElement.clientHeight
-  const floatingTop = viewportHeight - bottom - actionsHeight
-  const floats = panelRect.top < floatingTop
-  const coversBottom =
-    panelRect.bottom > viewportHeight - bottom + actionsHeight + viewportGap
-
-  // 滞回（hysteresis）：进入/退出漂浮采用不同的判定阈值，避免在临界处反复切换导致闪烁。
-  let canFloat
-  if (composerActionsFloating.value) {
-    canFloat = floats && panelRect.bottom > viewportHeight - bottom + actionsHeight + 4
-  } else {
-    canFloat = floats && coversBottom
-  }
-
-  composerActionsPlaceholderHeight.value = actionsHeight
-  composerActionsFloating.value = canFloat
-
-  if (!canFloat) {
-    composerActionsFloatingStyle.value = {}
-    return
-  }
-
-  const left = Math.max(viewportGap, Math.round(shellRect.left))
-  const width = Math.max(
-    180,
-    Math.min(Math.round(shellRect.width), window.innerWidth - left - viewportGap),
-  )
-  composerActionsFloatingStyle.value = {
-    bottom: `${bottom}px`,
-    left: `${left}px`,
-    width: `${width}px`,
-  }
-}
 
 // 回顶按钮本身已抽成 components/community/CommunityScrollTopButton.vue，只剩「出不出」的判定
 // 与滚动动作留在这里：`.app-scrollbar .t73-scrollbar__wrap` 是 App 外壳的硬编码 DOM，
@@ -250,34 +120,6 @@ function scrollToTop() {
   }
 
   window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-function observeComposerActions() {
-  composerActionsResizeObserver?.disconnect()
-  composerActionsResizeObserver = null
-
-  // 仅观察内容面板，不观察 shell/操作按钮（它们会随漂浮状态改变，形成反馈循环导致闪烁）。
-  if (typeof ResizeObserver !== 'undefined' && composerVisible.value) {
-    composerActionsResizeObserver = new ResizeObserver(updateFloatingComposerActions)
-    if (composerPanelRef.value) {
-      composerActionsResizeObserver.observe(composerPanelRef.value)
-    }
-  }
-
-  updateFloatingComposerActions()
-}
-
-function avatarInitial(name?: string | null): string {
-  return Array.from(name?.trim() || '用')[0] ?? '用'
-}
-
-function commentAvatarSrc(comment: CommunityComment): string {
-  const avatarUrl = comment.commenter_avatar_url?.trim()
-  return avatarUrl ? apiUrl(avatarUrl) : ''
-}
-
-function handleCommentAvatarError(comment: CommunityComment) {
-  comment.commenter_avatar_url = null
 }
 
 function postStatusText(status: CommunityPost['status']): string {
@@ -339,22 +181,15 @@ function routePostId(): number | null {
 onMounted(() => {
   auth.hydrate()
   void loadCommunityData()
-  window.addEventListener('scroll', updateFloatingComposerActions, true)
+  // 浮动提交条的 scroll/resize 监听与 ResizeObserver 已随 useComposerFloatingActions 搬走
+  // （在那边 onMounted 注册、onScopeDispose 释放），这里只剩回顶按钮的可见性。
   window.addEventListener('scroll', updateScrollTopVisibility, true)
-  window.addEventListener('resize', updateFloatingComposerActions)
   updateScrollTopVisibility()
 })
 
 onBeforeUnmount(() => {
-  composerActionsResizeObserver?.disconnect()
-  window.removeEventListener('scroll', updateFloatingComposerActions, true)
   window.removeEventListener('scroll', updateScrollTopVisibility, true)
-  window.removeEventListener('resize', updateFloatingComposerActions)
   resetSeoMeta()
-})
-
-watch(composerVisible, () => {
-  void nextTick(observeComposerActions)
 })
 
 watch(
@@ -519,10 +354,9 @@ function goToNextPage() {
 function selectPost(post: CommunityPost | null) {
   const requestId = ++selectedPostRequestId
   selectedPost.value = post
-  commentDraft.value = ''
-  replyingTo.value = null
+  // 换帖清场（草稿 / 回复目标 / 列表）与取数都在评论域里，这里只按顺序调用
+  resetComments()
   if (post) {
-    comments.value = []
     if (post.content_html) {
       selectedPostLoading.value = false
     } else {
@@ -531,8 +365,6 @@ function selectPost(post: CommunityPost | null) {
     void loadComments(post.id, requestId)
   } else {
     selectedPostLoading.value = false
-    commentsLoading.value = false
-    comments.value = []
   }
 }
 
@@ -550,9 +382,7 @@ async function loadStandalonePost(postId: number) {
   const requestId = ++selectedPostRequestId
   selectedPost.value = null
   selectedPostLoading.value = true
-  commentsLoading.value = false
-  comments.value = []
-  commentDraft.value = ''
+  resetComments()
 
   try {
     const detail = await getCommunityPost(postId, auth.token)
@@ -591,24 +421,6 @@ async function loadSelectedPostDetail(postId: number, requestId: number) {
   }
 }
 
-async function loadComments(postId: number, requestId = selectedPostRequestId) {
-  commentsLoading.value = true
-  try {
-    const nextComments = await listCommunityComments(postId, auth.token)
-    if (requestId === selectedPostRequestId) {
-      comments.value = nextComments
-    }
-  } catch (error) {
-    if (requestId === selectedPostRequestId) {
-      TMessage.error(error instanceof Error ? error.message : '加载评论失败')
-    }
-  } finally {
-    if (requestId === selectedPostRequestId) {
-      commentsLoading.value = false
-    }
-  }
-}
-
 function ensureAuthed(): boolean {
   auth.hydrate()
   if (auth.isAuthed) {
@@ -617,146 +429,6 @@ function ensureAuthed(): boolean {
   TMessage.warning('请先登录后再操作社区内容')
   void router.push({ name: 'home', query: { modal: 'auth', redirect_to: '/community' } })
   return false
-}
-
-async function ensurePostRealnameApproved(): Promise<boolean> {
-  auth.hydrate()
-  if (!auth.isAuthed) {
-    TMessage.warning('发布帖子前请先登录')
-    void router.push({ name: 'home', query: { modal: 'auth', redirect_to: '/community' } })
-    return false
-  }
-
-  try {
-    const record = await getMyRealnameVerification(auth.token)
-    if (record.status === 'approved') {
-      return true
-    }
-
-    if (record.status === 'pending') {
-      TMessage.warning('实名认证审核中，通过后可发布帖子')
-      return false
-    }
-
-    TMessage.warning('实名认证未通过，请重新提交后再发布帖子')
-    void router.push({ name: 'workbench-realname', query: { redirect_to: route.fullPath || '/community' } })
-    return false
-  } catch (error) {
-    if (error instanceof HttpError && error.status === 404) {
-      TMessage.warning('发布帖子前请先完成实名认证')
-      void router.push({ name: 'workbench-realname', query: { redirect_to: route.fullPath || '/community' } })
-      return false
-    }
-
-    TMessage.error(error instanceof Error ? error.message : '实名认证状态校验失败')
-    return false
-  }
-}
-
-function resetComposer() {
-  editingPost.value = null
-  postForm.title = ''
-  postForm.tag_names = selectedTag.value ? [selectedTag.value] : []
-  postForm.content_html = ''
-  postForm.origin_type = 'original'
-  postForm.origin_author = ''
-  postForm.origin_url = ''
-  postForm.origin_org = ''
-  postForm.origin_note = ''
-  postForm.bounty_points = 0
-}
-
-async function openCreateComposer() {
-  if (!ensureAuthed()) {
-    return
-  }
-  const approved = await ensurePostRealnameApproved()
-  if (!approved) {
-    return
-  }
-  resetComposer()
-  composerVisible.value = true
-}
-
-async function openEditComposer(post: CommunityPost) {
-  if (!ensureAuthed()) {
-    return
-  }
-  try {
-    const detail = post.content_html ? post : await getCommunityPost(post.id, auth.token)
-    editingPost.value = detail
-    postForm.title = detail.title
-    postForm.tag_names = detail.tags.map((tag) => tag.name)
-    postForm.content_html = sanitizeRichHtmlForEditing(detail.content_html)
-    postForm.origin_type = detail.origin_type
-    postForm.origin_author = detail.origin_author ?? ''
-    postForm.origin_url = detail.origin_url ?? ''
-    postForm.origin_org = detail.origin_org ?? ''
-    postForm.origin_note = detail.origin_note ?? ''
-    composerVisible.value = true
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '加载帖子详情失败')
-  }
-}
-
-function closeComposer() {
-  composerVisible.value = false
-  resetComposer()
-}
-
-async function submitPost() {
-  if (!ensureAuthed() || savingPost.value) {
-    return
-  }
-
-  const isEditing = Boolean(editingPost.value)
-  if (!isEditing) {
-    const approved = await ensurePostRealnameApproved()
-    if (!approved) {
-      return
-    }
-  }
-
-  if (postForm.origin_type === 'repost' && !postForm.origin_url.trim()) {
-    TMessage.warning('转载帖子必须填写原始出处链接')
-    return
-  }
-
-  savingPost.value = true
-  try {
-    const editingId = editingPost.value?.id
-    const baseline = {
-      title: postForm.title.trim(),
-      tag_names: postForm.tag_names.map((tag) => tag.trim()).filter(Boolean),
-      content_html: sanitizeRichHtml(postForm.content_html),
-      origin_type: postForm.origin_type,
-      origin_author: postForm.origin_author.trim() || null,
-      origin_url: postForm.origin_url.trim() || null,
-      origin_org: postForm.origin_org.trim() || null,
-      origin_note: postForm.origin_note.trim() || null,
-    }
-    // 悬赏积分仅在发帖时提交（编辑不改变悬赏）。
-    const payload = isEditing
-      ? baseline
-      : { ...baseline, bounty_points: Math.max(0, Math.trunc(postForm.bounty_points || 0)) }
-    const saved =
-      isEditing && editingId
-        ? await updateCommunityPost(auth.token, editingId, payload)
-        : await createCommunityPost(auth.token, payload)
-
-    if (!isEditing) {
-      currentPage.value = 1
-    }
-
-    await loadCommunityData()
-    selectPost(saved)
-    closeComposer()
-    TMessage.success(isEditing ? '帖子已更新，等待审核' : '帖子已提交审核')
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '保存帖子失败')
-  } finally {
-    savingPost.value = false
-  }
 }
 
 function updateSelectedPost(patch: Partial<CommunityPost>) {
@@ -791,10 +463,63 @@ const {
 const {
   selectedPostBountyLabel,
   canManageBounty,
-  isAcceptedComment,
   acceptBountyAnswerHandler,
   cancelBountyHandler,
 } = useCommunityBounty({ selectedPost, updateSelectedPost, ensureAuthed })
+
+// ---------- 评论与发帖（两域本轮抽到 composable） ----------
+//
+// 两域同样只收「详情区正在看的帖子」与那几个回写口子，都不持有 `selectedPost`：
+// 评论域还给 `CommunityCommentTree.vue` 铺行，发帖域给 `CommunityComposerPanel.vue` 铺表单，
+// 组件本身一个 api / TMessage / router 都不碰。
+const {
+  commentsLoading,
+  commentDraft,
+  replyingTo,
+  sendingComment,
+  commentLikeLoading,
+  rows: commentRows,
+  loadComments,
+  resetComments,
+  submitComment,
+  replyToComment,
+  cancelReply,
+  toggleReplies,
+  toggleCommentLike,
+  handleCommentAvatarError,
+} = useCommunityComments({
+  selectedPost,
+  updateSelectedPost,
+  ensureAuthed,
+  // 竞态判定仍用视图的计数器，评论域只读它（不自己另立一套）
+  isCurrentRequest: (requestId) => requestId === selectedPostRequestId,
+})
+
+const {
+  composerVisible,
+  editingPost,
+  savingPost,
+  postForm,
+  composerActionsShellStyle,
+  composerActionsFloating,
+  composerActionsFloatingStyle,
+  setComposerRef,
+  openCreateComposer,
+  openEditComposer,
+  closeComposer,
+  submitPost,
+} = useCommunityComposer({
+  selectedTag,
+  ensureAuthed,
+  // 保存成功后的收尾：新帖回第 1 页、重取列表、选中刚保存的那篇（顺序与改造前一致）
+  onSaved: async (saved, isEditing) => {
+    if (!isEditing) {
+      currentPage.value = 1
+    }
+    await loadCommunityData()
+    selectPost(saved)
+  },
+})
 
 async function toggleLike(post: CommunityPost) {
   if (!ensureAuthed()) {
@@ -848,165 +573,6 @@ async function toggleFavorite(post: CommunityPost) {
   }
 }
 
-async function submitComment() {
-  if (!selectedPost.value || !ensureAuthed() || sendingComment.value) {
-    return
-  }
-
-  if (selectedPost.value.status !== 'published') {
-    TMessage.warning('帖子公开后才能评论')
-    return
-  }
-
-  sendingComment.value = true
-  try {
-    const created = await createCommunityComment(
-      auth.token,
-      selectedPost.value.id,
-      commentDraft.value,
-      replyingTo.value?.id,
-    )
-    comments.value = [...comments.value, created]
-    updateSelectedPost({ comment_count: (selectedPost.value.comment_count ?? 0) + 1 })
-    commentDraft.value = ''
-    replyingTo.value = null
-    TMessage.success('评论已发布')
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '发表评论失败')
-  } finally {
-    sendingComment.value = false
-  }
-}
-
-function replyToComment(comment: CommunityComment) {
-  if (!ensureAuthed()) {
-    return
-  }
-  replyingTo.value = comment
-}
-
-function parentCommenter(comment: CommunityComment): string {
-  if (comment.parent_commenter?.trim()) {
-    return comment.parent_commenter.trim()
-  }
-  if (!comment.parent_comment_id) {
-    return ''
-  }
-  return comments.value.find((item) => item.id === comment.parent_comment_id)?.commenter ?? ''
-}
-
-function parentCommentText(comment: CommunityComment): string {
-  if (!comment.parent_comment_id) {
-    return ''
-  }
-  return comments.value.find((item) => item.id === comment.parent_comment_id)?.comment_text?.trim() ?? ''
-}
-
-function truncateCommentText(text: string, maxLength = 56): string {
-  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
-}
-
-function commentDepth(comment: CommunityComment): number {
-  let depth = 0
-  let parentId = comment.parent_comment_id ?? null
-  const visited = new Set<number>()
-  while (parentId && !visited.has(parentId)) {
-    visited.add(parentId)
-    depth += 1
-    parentId = comments.value.find((item) => item.id === parentId)?.parent_comment_id ?? null
-  }
-  return depth
-}
-
-function threadRootId(comment: CommunityComment): number {
-  let rootId = comment.id
-  let parentId = comment.parent_comment_id ?? null
-  const visited = new Set<number>()
-  while (parentId && !visited.has(parentId)) {
-    visited.add(parentId)
-    rootId = parentId
-    parentId = comments.value.find((item) => item.id === parentId)?.parent_comment_id ?? null
-  }
-  return rootId
-}
-
-function threadReplies(rootId: number): CommunityComment[] {
-  return orderedComments.value.filter(
-    (comment) => comment.id !== rootId && threadRootId(comment) === rootId,
-  )
-}
-
-function replyIndex(comment: CommunityComment): number {
-  if (!comment.parent_comment_id) {
-    return -1
-  }
-  return threadReplies(threadRootId(comment)).findIndex((item) => item.id === comment.id)
-}
-
-function isReplyCollapsed(comment: CommunityComment): boolean {
-  const rootId = threadRootId(comment)
-  if (!comment.parent_comment_id || expandedReplyIds.value.has(rootId)) {
-    return false
-  }
-  return replyIndex(comment) >= 3
-}
-
-function shouldShowReplyToggle(comment: CommunityComment): boolean {
-  const rootId = threadRootId(comment)
-  return Boolean(
-    comment.parent_comment_id &&
-      replyIndex(comment) === 3 &&
-      threadReplies(rootId).length > 3 &&
-      !expandedReplyIds.value.has(rootId),
-  )
-}
-
-function shouldShowCollapseToggle(comment: CommunityComment): boolean {
-  const rootId = threadRootId(comment)
-  const replies = threadReplies(rootId)
-  return Boolean(
-    comment.parent_comment_id &&
-      expandedReplyIds.value.has(rootId) &&
-      replies.length > 3 &&
-      replyIndex(comment) === replies.length - 1,
-  )
-}
-
-function hiddenReplyCount(rootId: number): number {
-  return Math.max(0, threadReplies(rootId).length - 3)
-}
-
-function toggleReplies(rootId: number) {
-  const nextExpandedReplyIds = new Set(expandedReplyIds.value)
-  if (nextExpandedReplyIds.has(rootId)) {
-    nextExpandedReplyIds.delete(rootId)
-  } else {
-    nextExpandedReplyIds.add(rootId)
-  }
-  expandedReplyIds.value = nextExpandedReplyIds
-}
-
-async function toggleCommentLike(comment: CommunityComment) {
-  if (!ensureAuthed() || commentLikeLoading.value === comment.id) {
-    return
-  }
-
-  commentLikeLoading.value = comment.id
-  try {
-    const state = comment.liked_by_me
-      ? await unlikeCommunityComment(auth.token, comment.id)
-      : await likeCommunityComment(auth.token, comment.id)
-    comments.value = comments.value.map((item) =>
-      item.id === comment.id
-        ? { ...item, liked_by_me: state.liked_by_me, like_count: state.like_count }
-        : item,
-    )
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '点赞评论失败')
-  } finally {
-    commentLikeLoading.value = null
-  }
-}
 </script>
 
 <template>
@@ -1117,71 +683,28 @@ async function toggleCommentLike(comment: CommunityComment) {
       </section>
 
       <aside class="community-detail">
-        <section v-if="composerVisible" ref="composerPanelRef" class="community-panel community-composer">
-          <div class="community-panel__head">
-            <div>
-              <h3>{{ editingPost ? '更新社区内容' : '写一篇新帖子' }}</h3>
-            </div>
-            <TButton variant="outline" class="community-panel-action" @click="closeComposer">
-              <span>取消</span>
-            </TButton>
-          </div>
-
-          <TForm label-position="top" class="community-form">
-            <TFormItem label="标题" class="community-form-item--full">
-              <TInput show-count v-model="postForm.title"  :maxlength="80" placeholder="写一个清楚的标题" />
-            </TFormItem>
-            <TFormItem label="标签">
-              <TSelect v-model="postForm.tag_names" multiple filterable
-                placeholder="选择或输入标签">
-                <TOption v-for="tag in tagOptions" :key="tag" :label="tag" :value="tag" />
-              </TSelect>
-            </TFormItem>
-            <TFormItem label="类型">
-              <TSelect v-model="postForm.origin_type" style="width: 160px">
-                <TOption label="原创" value="original" />
-                <TOption label="转载" value="repost" />
-              </TSelect>
-            </TFormItem>
-            <TFormItem v-if="!editingPost" label="悬赏积分" class="community-form-item--full">
-              <div class="community-bounty-field">
-                <TInputNumber v-model="postForm.bounty_points" :min="0" :max="10000" :step="10"
-                  :precision="0" />
-                <span class="community-bounty-field__unit">积分</span>
-              </div>
-              <div class="community-form__hint">
-                设置悬赏后，被采纳的回答可获得对应积分；发布时扣除，未采纳可取消退回。
-              </div>
-            </TFormItem>
-            <template v-if="postForm.origin_type === 'repost'">
-              <TFormItem label="原作者">
-                <TInput v-model="postForm.origin_author"  :maxlength="80" placeholder="原始内容的作者" />
-              </TFormItem>
-              <TFormItem label="原始出处链接" required>
-                <TInput v-model="postForm.origin_url"  :maxlength="500" placeholder="转载内容的原始出处 URL" />
-              </TFormItem>
-              <TFormItem label="来源站点">
-                <TInput v-model="postForm.origin_org"  :maxlength="80" placeholder="例如：苦力怕论坛、CurseForge" />
-              </TFormItem>
-              <TFormItem label="转载说明 / 授权">
-                <TInput v-model="postForm.origin_note"  :maxlength="500" placeholder="授权情况、转载说明等（可选）" />
-              </TFormItem>
-            </template>
-          </TForm>
-
-          <RichTextEditor v-model="postForm.content_html" :floating-toolbar-top="86" @notify="notify" />
-
-          <div ref="composerActionsShellRef" class="community-composer__actions-shell"
-            :style="composerActionsShellStyle">
-            <div ref="composerActionsRef" class="community-composer__actions"
-              :class="{ 'is-floating': composerActionsFloating }" :style="composerActionsFloatingStyle">
-              <TButton variant="solid" tone="accent" class="community-submit-button community-composer__actions"
-                :loading="savingPost" @click="submitPost">
-                {{ editingPost ? '保存修改' : '发布帖子' }}
-              </TButton>
-            </div>
-          </div>
-        </section>
+        <CommunityComposerPanel
+          v-if="composerVisible"
+          v-model:title="postForm.title"
+          v-model:tag-names="postForm.tag_names"
+          v-model:content-html="postForm.content_html"
+          v-model:origin-type="postForm.origin_type"
+          v-model:origin-author="postForm.origin_author"
+          v-model:origin-url="postForm.origin_url"
+          v-model:origin-org="postForm.origin_org"
+          v-model:origin-note="postForm.origin_note"
+          v-model:bounty-points="postForm.bounty_points"
+          :editing="Boolean(editingPost)"
+          :saving="savingPost"
+          :tag-options="tagOptions"
+          :floating="composerActionsFloating"
+          :shell-style="composerActionsShellStyle"
+          :floating-style="composerActionsFloatingStyle"
+          :set-ref="setComposerRef"
+          @close="closeComposer"
+          @submit="submitPost"
+          @notify="notify"
+        />
 
         <section v-else-if="selectedPost" class="community-panel community-post-detail">
           <div class="community-detail__header">
@@ -1282,98 +805,26 @@ async function toggleCommentLike(comment: CommunityComment) {
             </span>
           </div>
 
-          <section class="community-comments">
-            <div class="community-comments__head">
-              <h3>评论</h3>
-              <span v-if="commentsLoading" class="community-comments__loading" role="status" aria-live="polite">
-                <span class="community-comments__spinner" aria-hidden="true"></span>
-                评论同步中
-              </span>
-            </div>
-
-            <div v-if="!selectedPostPublished" class="community-status-note">
-              帖子公开后可点赞和评论。
-            </div>
-            <div v-else-if="!replyingTo" class="community-comment-box">
-              <TInput show-count v-model="commentDraft" type="textarea" :rows="3"  :maxlength="800"
-                placeholder="说点具体的想法或补充" />
-              <TButton variant="solid" tone="accent" class="community-submit-button community-comment-submit"
-                :loading="sendingComment" @click="submitComment">
-                发表评论
-              </TButton>
-            </div>
-
-            <div v-if="!commentsLoading && comments.length === 0" class="community-empty community-empty--compact">
-              暂无评论
-            </div>
-            <ul v-else class="community-comment-list">
-              <template v-for="comment in orderedComments" :key="comment.id">
-                <button v-if="shouldShowReplyToggle(comment)" class="community-replies-toggle" type="button"
-                  @click="toggleReplies(threadRootId(comment))">
-                  展开 {{ hiddenReplyCount(threadRootId(comment)) }} 条回复
-                </button>
-                <li v-if="!isReplyCollapsed(comment)" class="community-comment-item"
-                  :class="{ 'is-reply': comment.parent_comment_id, 'is-accepted': isAcceptedComment(comment) }"
-                  :style="{ '--comment-depth': String(commentDepth(comment)) }">
-                <div class="community-comment-item__avatar">
-                  <img v-if="commentAvatarSrc(comment)" :src="commentAvatarSrc(comment)"
-                    :alt="`${comment.commenter} 的头像`" @error="handleCommentAvatarError(comment)" />
-                  <span v-else>{{ avatarInitial(comment.commenter) }}</span>
-                </div>
-                <div class="community-comment-item__body">
-                  <strong
-                    :class="{ 'username-gradient': comment.commenter_username_gradient && !comment.commenter_username_color }"
-                    :style="comment.commenter_username_color ? { color: comment.commenter_username_color } : {}"
-                  >{{ comment.commenter }}</strong>
-                  <span v-if="isAcceptedComment(comment)" class="community-comment-item__accepted">已采纳</span>
-                  <span class="community-comment-item__floor">#{{ commentFloors.get(comment.id) }}</span>
-                  <div v-if="parentCommenter(comment) || parentCommentText(comment)"
-                    class="community-comment-item__reply-context">
-                    <span v-if="parentCommenter(comment)" class="community-comment-item__reply-to">
-                      回复 @{{ parentCommenter(comment) }}
-                    </span>
-                    <span v-if="parentCommentText(comment)" class="community-comment-item__reply-quote"
-                      :title="parentCommentText(comment)">
-                      {{ truncateCommentText(parentCommentText(comment)) }}
-                    </span>
-                  </div>
-                  <p>{{ comment.comment_text }}</p>
-                  <div class="community-comment-item__actions">
-                    <button v-if="canManageBounty && comment.commenter !== selectedPost?.author && !isAcceptedComment(comment)"
-                      type="button" class="community-comment-item__accept"
-                      @click="acceptBountyAnswerHandler(comment)">
-                      采纳
-                    </button>
-                    <button type="button" @click="replyToComment(comment)">回复</button>
-                    <button type="button" :class="{ 'is-liked': comment.liked_by_me }"
-                      :disabled="commentLikeLoading === comment.id" @click="toggleCommentLike(comment)">
-                      {{ comment.liked_by_me ? '已赞' : '赞' }}
-                      <span>{{ comment.like_count || 0 }}</span>
-                    </button>
-                    <time>{{ comment.created_at }}</time>
-                  </div>
-                  <div v-if="replyingTo?.id === comment.id" class="community-inline-reply-box">
-                    <div class="community-comment-replying">
-                      回复 {{ comment.commenter }}
-                      <button class="community-reply-cancel" type="button" @click="replyingTo = null">
-                        取消回复
-                      </button>
-                    </div>
-                    <TInput show-count v-model="commentDraft" type="textarea" :rows="3"  :maxlength="800" :placeholder="`回复 ${comment.commenter}：`" />
-                    <TButton variant="solid" tone="accent" class="community-submit-button community-comment-submit"
-                      :loading="sendingComment" @click="submitComment">
-                      发表评论
-                    </TButton>
-                  </div>
-                </div>
-                </li>
-                <button v-if="shouldShowCollapseToggle(comment)" class="community-replies-toggle" type="button"
-                  @click="toggleReplies(threadRootId(comment))">
-                  收起
-                </button>
-              </template>
-            </ul>
-          </section>
+          <!-- 评论整块（标题行 + 同步指示 + 输入框 + 评论树）在 components/community/CommunityCommentTree.vue -->
+          <CommunityCommentTree
+            v-model:draft="commentDraft"
+            :rows="commentRows"
+            :loading="commentsLoading"
+            :published="selectedPostPublished"
+            :replying-to-id="replyingTo?.id ?? null"
+            :sending="sendingComment"
+            :like-loading-id="commentLikeLoading"
+            :can-manage-bounty="canManageBounty"
+            :author-name="selectedPost.author"
+            :accepted-comment-id="selectedPost.bounty_accepted_comment_id ?? null"
+            @submit="submitComment"
+            @reply="replyToComment"
+            @cancel-reply="cancelReply"
+            @like="toggleCommentLike"
+            @accept="acceptBountyAnswerHandler"
+            @toggle-threads="toggleReplies"
+            @avatar-error="handleCommentAvatarError"
+          />
         </section>
 
         <section v-else class="community-panel community-empty">
@@ -1464,7 +915,6 @@ async function toggleCommentLike(comment: CommunityComment) {
 
 .community-hero h2,
 .community-panel h2,
-.community-panel h3,
 .community-post-card h3 {
   margin: 0;
   color: #0f172a;
@@ -1535,44 +985,6 @@ async function toggleCommentLike(comment: CommunityComment) {
 .community-boost-button {
   margin-left: 8px;
 }
-.community-bounty-field {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-}
-.community-bounty-field__unit {
-  font-size: 13px;
-  color: #64748b;
-}
-.community-form__hint {
-  width: 100%;
-  margin-top: 6px;
-  font-size: 12px;
-  color: #94a3b8;
-  line-height: 1.6;
-}
-.community-comment-item.is-accepted {
-  /* 采纳标记的琥珀色：与下面「已采纳」角标（#b45309 / #fef3c7）同一支色相 */
-  border-color: #e6a23c !important;
-  background: #fdf6ec;
-}
-.community-comment-item__accepted {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 6px;
-  padding: 0 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #b45309;
-  background: #fef3c7;
-}
-.community-comment-item__actions .community-comment-item__accept {
-  color: #b45309;
-  border-color: #fcd34d;
-}
-
 .community-detail__header .community-detail__meta {
   display: flex;
   align-items: baseline;
@@ -1602,18 +1014,14 @@ async function toggleCommentLike(comment: CommunityComment) {
 .community-post-card p,
 .community-post-card__meta,
 .community-actions,
-.community-empty,
-.community-comment-item time {
+.community-empty {
   color: #64748b;
   line-height: 1.7;
 }
 
 .community-hero__actions,
-.community-panel__head,
 .community-detail__header,
-.community-comments__head,
-.community-actions,
-.community-composer__actions {
+.community-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2025,7 +1433,6 @@ async function toggleCommentLike(comment: CommunityComment) {
   line-height: 1.35;
 }
 
-.community-panel__head,
 .community-detail__header {
   margin-bottom: 14px;
 }
@@ -2038,38 +1445,6 @@ async function toggleCommentLike(comment: CommunityComment) {
   margin: 12px 0 8px;
   font-size: clamp(22px, 2vw, 28px);
   line-height: 1.2;
-}
-
-.community-form {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 14px;
-}
-
-.community-form-item--full {
-  grid-column: 1 / -1;
-}
-
-.community-composer__actions-shell {
-  position: relative;
-  z-index: 7;
-  margin-top: 14px;
-}
-
-.community-composer__actions {
-  justify-content: flex-end;
-}
-
-.community-composer__actions.is-floating {
-  position: fixed;
-  z-index: 46;
-  margin: 0;
-  padding: 10px 12px;
-  border: 1px solid rgba(191, 219, 254, 0.92);
-  border-radius: 14px;
-  background: rgba(248, 250, 252, 0.94);
-  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.14);
-  backdrop-filter: blur(14px);
 }
 
 .community-rich-text {
@@ -2186,276 +1561,6 @@ async function toggleCommentLike(comment: CommunityComment) {
   font-weight: 800;
 }
 
-.community-comments {
-  padding-top: 16px;
-}
-
-.community-comments__head {
-  margin-bottom: 12px;
-}
-
-.community-comments__loading {
-  display: inline-flex;
-  min-height: 28px;
-  align-items: center;
-  gap: 7px;
-  padding: 0 10px;
-  border: 1px solid rgba(191, 219, 254, 0.86);
-  border-radius: 999px;
-  background: rgba(239, 246, 255, 0.92);
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
-}
-
-.community-comments__spinner {
-  width: 11px;
-  height: 11px;
-  flex-shrink: 0;
-  border: 2px solid rgba(37, 99, 235, 0.18);
-  border-top-color: #2563eb;
-  border-radius: 999px;
-  animation: community-comments-spin 720ms linear infinite;
-}
-
-@keyframes community-comments-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.community-status-note {
-  margin-bottom: 18px;
-  padding: 12px 14px;
-  border: 1px solid rgba(245, 158, 11, 0.22);
-  border-radius: 12px;
-  background: rgba(255, 251, 235, 0.82);
-  color: #92400e;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.community-comment-box {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-
-.community-comment-replying {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
-  border-left: 3px solid #2563eb;
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.community-comment-replying button,
-.community-comment-item__actions button {
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: #64748b;
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.community-comment-replying button:hover,
-.community-comment-item__actions button:hover,
-.community-comment-item__actions button.is-liked {
-  color: #2563eb;
-}
-
-.community-inline-reply-box {
-  display: grid;
-  gap: 10px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(226, 232, 240, 0.9);
-}
-
-.community-inline-reply-box .community-comment-replying {
-  padding: 0;
-  border-left: 0;
-  background: transparent;
-}
-
-.community-reply-cancel {
-  min-height: 28px;
-  padding: 0 10px !important;
-  border: 1px solid rgba(148, 163, 184, 0.5) !important;
-  border-radius: 7px;
-  background: #fff !important;
-  color: #475569 !important;
-  font-size: 12px !important;
-  font-weight: 700;
-}
-
-.community-reply-cancel:hover {
-  border-color: rgba(37, 99, 235, 0.5) !important;
-  background: #eff6ff !important;
-  color: #2563eb !important;
-}
-
-.community-inline-reply-box .community-comment-submit {
-  justify-self: end;
-}
-
-.community-comment-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.community-comment-item {
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
-}
-
-.community-comment-item__avatar {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(219, 234, 254, 0.92);
-  color: #1d4ed8;
-  font-weight: 900;
-}
-
-.community-comment-item__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.community-comment-item__body {
-  min-width: 0;
-  padding: 12px 14px;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 12px;
-  background: rgba(248, 250, 252, 0.72);
-}
-
-.community-comment-item__floor {
-  margin-left: 6px;
-  color: #94a3b8;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.community-comment-item.is-reply {
-  margin-left: 28px;
-}
-
-.community-replies-toggle {
-  display: block;
-  margin: -4px 0 -2px 50px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #2563eb;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.community-replies-toggle:hover,
-.community-replies-toggle:focus-visible {
-  color: #1d4ed8;
-  text-decoration: underline;
-}
-
-.community-comment-item__reply-to {
-  flex-shrink: 0;
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.community-comment-item__reply-context {
-  display: flex;
-  min-width: 0;
-  align-items: baseline;
-  gap: 8px;
-  margin-top: 3px;
-  line-height: 1.5;
-}
-
-.community-comment-item__reply-quote {
-  min-width: 0;
-  overflow: hidden;
-  color: #94a3b8;
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.community-comment-item strong {
-  color: #0f172a;
-}
-
-.community-comment-item p {
-  margin: 6px 0;
-  color: #334155;
-  line-height: 1.65;
-  overflow-wrap: anywhere;
-}
-
-.community-comment-item time {
-  display: block;
-  margin-left: auto;
-  color: #94a3b8;
-  font-size: 11px;
-  text-align: right;
-}
-
-.community-comment-item__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.community-comment-item__actions button {
-  min-height: 26px;
-  padding: 0 9px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.86);
-}
-
-.community-comment-item__actions button span {
-  margin-left: 3px;
-  color: #94a3b8;
-  font-size: 11px;
-}
-
-.community-comment-item__actions button:hover,
-.community-comment-item__actions button.is-liked {
-  border-color: rgba(147, 197, 253, 0.9);
-  background: #eff6ff;
-}
-
-.community-comment-item__actions button:disabled {
-  cursor: wait;
-  opacity: 0.6;
-}
-
 .community-empty {
   display: flex;
   min-height: 112px;
@@ -2466,10 +1571,6 @@ async function toggleCommentLike(comment: CommunityComment) {
   padding: 18px;
   border-radius: 12px;
   background: rgba(248, 250, 252, 0.92);
-}
-
-.community-empty--compact {
-  min-height: 72px;
 }
 
 /* 根因：共用类 .community-empty 的 min-height: 112px 是为右侧详情面板的占位撑高度用的，
@@ -2499,18 +1600,15 @@ async function toggleCommentLike(comment: CommunityComment) {
   .community-detail {
     position: static;
   }
-
-  .community-form {
-    grid-template-columns: 1fr;
-  }
+  /* `.community-form` 的单列塌版跟着 CommunityComposerPanel.vue 走了（那边用标准档 900px） */
 }
 
 @media (max-width: 760px) {
 
+  /* `.community-panel__head`（编辑器头）随组件搬走，那档在组件里收成标准档 640px */
   .community-hero,
   .community-detail__header,
   .community-detail__title-row,
-  .community-panel__head,
   .community-post-card__meta {
     flex-direction: column;
     align-items: flex-start;

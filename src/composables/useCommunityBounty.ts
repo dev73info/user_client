@@ -33,6 +33,10 @@ type UseCommunityBountyOptions = {
  * 2. 判定「当前登录人是不是作者、悬赏还在进行中」——取消与采纳是**同一个判定**，
  *    原来写成两个逐字相同的 computed，这里收成一个 `canManageBounty`，两处出口共用；
  * 3. 采纳回答与取消悬赏两个请求，成功后只把变化的那两个字段回写给 `updateSelectedPost`。
+ *
+ * 「这条评论是不是被采纳的那条」不在这里：R047 第 2 步把评论树搬进组件后，那一层只认帖子上的
+ * `bounty_accepted_comment_id`（详情区把 id 传下去），原来那个 `isAcceptedComment` 因此成了没人用的
+ * 导出，随这次搬迁删掉。
  */
 export function useCommunityBounty(options: UseCommunityBountyOptions) {
   const auth = useAuthStore()
@@ -60,16 +64,6 @@ export function useCommunityBounty(options: UseCommunityBountyOptions) {
       post.author === auth.username,
     )
   })
-
-  /** 这条评论是不是被采纳的那条（评论行据此加「已采纳」角标与高亮边）。 */
-  function isAcceptedComment(comment: CommunityComment): boolean {
-    const post = options.selectedPost.value
-    return Boolean(
-      post &&
-      post.bounty_accepted_comment_id != null &&
-      post.bounty_accepted_comment_id === comment.id,
-    )
-  }
 
   async function acceptBountyAnswerHandler(comment: CommunityComment) {
     if (!options.ensureAuthed() || !options.selectedPost.value) {
@@ -110,7 +104,6 @@ export function useCommunityBounty(options: UseCommunityBountyOptions) {
   return {
     selectedPostBountyLabel,
     canManageBounty,
-    isAcceptedComment,
     acceptBountyAnswerHandler,
     cancelBountyHandler,
   }
