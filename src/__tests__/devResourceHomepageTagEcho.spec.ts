@@ -219,6 +219,13 @@ function mountEdit(payload: McResourcePayload): VueWrapper {
       stubs: {
         RouterLink: { template: '<a><slot /></a>' },
         WorkbenchBarSlot: { name: 'WorkbenchBarSlot', template: '<div><slot /></div>' },
+        // 页面内容区块 `defineExpose({ setContent })` 供加载链路回写发布说明；默认桩没有这个方法，
+        // 加载会抛「setContent is not a function」而停在回填之后。补上它，回填与归类回显才走完整条链。
+        ResourcePageContentSection: {
+          name: 'ResourcePageContentSection',
+          template: '<div />',
+          methods: { setContent: () => {} },
+        },
         TLoading: { name: 'TLoading', template: '<div><slot /></div>' },
         TCard: { name: 'TCard', template: '<div><slot /></div>' },
       },
@@ -231,13 +238,16 @@ type EditState = {
   currentEntryKey: string
   currentRootLabel: string
   currentEntryLabel: string
-  tagPathResolved: boolean
-  keepSavedTags: boolean
-  selectedTagCount: number
   selectedTagIdsByGroup: Record<number, number[]>
   buildTagSelections: () => CreateMcResourceTagSelection[]
   saveHomepage: () => Promise<void>
   selectRoot: (value: string) => void
+  /** 归类定位与勾选计数在 useResourceTagCatalog 里，视图只透传这个对象。 */
+  tagCatalog: {
+    tagPathResolved: { value: boolean }
+    keepSavedTags: { value: boolean }
+    selectedTagCount: { value: number }
+  }
 }
 
 function state<T>(wrapper: VueWrapper): T {
@@ -262,10 +272,10 @@ describe('DevResourceHomepageEditView：根节点 / 二级节点按资源实际�
     expect(view.currentRootLabel).toBe('美术')
     expect(view.currentEntryKey).toBe('group-15')
     expect(view.currentEntryLabel).toBe('手绘')
-    expect(view.tagPathResolved).toBe(true)
-    expect(view.keepSavedTags).toBe(false)
+    expect(view.tagCatalog.tagPathResolved.value).toBe(true)
+    expect(view.tagCatalog.keepSavedTags.value).toBe(false)
     // 标签组按资源实际勾选回显，不是空
-    expect(view.selectedTagCount).toBe(2)
+    expect(view.tagCatalog.selectedTagCount.value).toBe(2)
     expect(view.selectedTagIdsByGroup[28]).toEqual([210])
     expect(view.buildTagSelections()).toEqual([
       { group_id: 28, tag_ids: [210] },
@@ -280,7 +290,7 @@ describe('DevResourceHomepageEditView：根节点 / 二级节点按资源实际�
     const view = state<EditState>(wrapper)
 
     expect(view.currentEntryKey).toBe('group-15')
-    expect(view.selectedTagCount).toBe(2)
+    expect(view.tagCatalog.selectedTagCount.value).toBe(2)
     wrapper.unmount()
   })
 
@@ -305,9 +315,9 @@ describe('DevResourceHomepageEditView：根节点 / 二级节点按资源实际�
     expect(view.currentEntryLabel).toBe('Java 版')
     expect(view.currentRootKey).toBe('minecraft')
     expect(view.currentEntryKey).toBe('java')
-    expect(view.tagPathResolved).toBe(false)
-    expect(view.keepSavedTags).toBe(true)
-    expect(view.selectedTagCount).toBe(0)
+    expect(view.tagCatalog.tagPathResolved.value).toBe(false)
+    expect(view.tagCatalog.keepSavedTags.value).toBe(true)
+    expect(view.tagCatalog.selectedTagCount.value).toBe(0)
 
     // 什么都不改直接保存：归类原样带回，没被回落项顶掉
     await view.saveHomepage()
@@ -357,7 +367,7 @@ describe('DevResourceHomepageEditView：根节点 / 二级节点按资源实际�
     expect(view.currentRootKey).toBe('minecraft')
     expect(view.currentEntryKey).toBe('java')
     // 开发者手选的归类就是本次提交的归类
-    expect(view.tagPathResolved).toBe(true)
+    expect(view.tagCatalog.tagPathResolved.value).toBe(true)
     wrapper.unmount()
   })
 })

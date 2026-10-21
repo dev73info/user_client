@@ -162,6 +162,22 @@ function mountEdit(payload: McResourcePayload): VueWrapper {
         TButton: { name: 'TButton', template: '<button><slot name="prefix" /><slot /></button>' },
         TLoading: { name: 'TLoading', template: '<div><slot /></div>' },
         TCard: { name: 'TCard', template: '<div><slot /></div>' },
+        // 页面区块已拆成子组件（components/dev/Resource*Section.vue）：shallowMount 默认会把它们
+        // 也桩成空壳，那样「接口资源不该出现标签归类整块」就成了永远成立的假绿。
+        // 这里让这些区块按真身渲染（它们内部的 ui_73info 组件仍是桩），文字断言才打得到实处。
+        ResourceHomepageEditBar: false,
+        ResourceBasicInfoSection: false,
+        ResourceApiChannelSection: false,
+        ResourceTagCatalogSection: false,
+        ResourcePageContentSection: false,
+        ResourceHomepagePreviewAside: false,
+        // 「页面内容」区块按真身渲染后，它内部的 RichTextEditor 仍是桩；加载链路要调
+        // `setContent` 回写发布说明，默认桩没有这个方法会抛错、把加载打断在半路。
+        RichTextEditor: {
+          name: 'RichTextEditor',
+          template: '<div />',
+          methods: { setContent: () => {} },
+        },
       },
     },
   })
