@@ -108,3 +108,21 @@ export function isAwaitingViewerAction(row: AfterSalesActionSubject): boolean {
 export function afterSalesBadgeText(count: number): string {
   return count > 99 ? '99+' : String(count)
 }
+
+/**
+ * 在等我动作的案件按需求计数（纯函数，单测见 `__tests__/afterSalesPendingBadge.spec.ts`）。
+ *
+ * 一次 `GET /api/dispute/cases` 就能拿到我参与的全部案件（含 `viewerRole`），
+ * 不必逐条需求发请求；哪些算待办由上面的 `isAwaitingViewerAction` 定死。
+ */
+export function countAwaitingCasesByRequirement(
+  cases: ReadonlyArray<AfterSalesActionSubject & { requirementId: string }>,
+): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const item of cases) {
+    if (isAwaitingViewerAction(item)) {
+      counts[item.requirementId] = (counts[item.requirementId] ?? 0) + 1
+    }
+  }
+  return counts
+}

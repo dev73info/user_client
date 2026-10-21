@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRoute, useRouter } from 'vue-router'
 import PublishModal from '@/components/PublishModal.vue'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
@@ -9,6 +8,9 @@ import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
 import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import RequirementCommentDialog from '@/components/RequirementCommentDialog.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
+import RequirementPager from '@/components/requirements/RequirementPager.vue'
+import RequirementStrip from '@/components/requirements/RequirementStrip.vue'
+import RequirementToolbar from '@/components/requirements/RequirementToolbar.vue'
 import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
 import {
   getUnionPaymentAuthorizeUrl,
@@ -19,25 +21,11 @@ import { HttpError } from '@/api/http'
 import {
   downloadPublicMcResourceVersionFile,
   extractResourceFileNameFromUrl,
-  listPublicMcResourceVersions,
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
 import { getResourceDetailSlug } from '@/api/resourceTags'
 import { getMyRealnameVerification } from '@/api/realname'
-import { getInvoiceSummary } from '@/api/invoices'
-import { listMyAfterSalesCases } from '@/api/afterSales'
-import { afterSalesBadgeText, isAwaitingViewerAction } from '@/shared/afterSalesStatus'
-import {
-  listRequirementConversations,
-  type RequirementConversation,
-  type RequirementConversationDetail,
-} from '@/api/conversations'
-import {
-  createRequirementContract,
-  fetchAsignRequirementPreviewUrl,
-  fetchContractSigningStatus,
-  type ContractSigningStatus,
-} from '@/api/contracts'
+import { createRequirementContract, fetchAsignRequirementPreviewUrl } from '@/api/contracts'
 import {
   createAdapayPayment,
   getAdapayBreachCase,
@@ -56,12 +44,11 @@ import {
   type AdapayPaymentResponse,
 } from '@/api/adapay'
 import { breachStatusLabel } from '@/shared/breachStatus'
-import { invoiceEntryState, type InvoiceSummaryMap } from '@/shared/invoiceAvailability'
+import { invoiceEntryState } from '@/shared/invoiceAvailability'
 import {
   cancelRequirement as cancelRequirementApi,
   claimRequirementResource as claimRequirementResourceApi,
   createRequirement as createRequirementApi,
-  listRequirements,
   requestRequirementFinalPayment as requestRequirementFinalPaymentApi,
   resubmitRequirement as resubmitRequirementApi,
   reviewRequirementResourceDelete as reviewRequirementResourceDeleteApi,
@@ -73,11 +60,17 @@ import {
   type RequirementResourceVisibility,
   type RequirementStatus,
 } from '@/api/requirements'
-import { getDepositRatio } from '@/api/settings'
-import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
+import { useClientPagination } from '@/composables/useClientPagination'
+import { useMyRequirementsData } from '@/composables/useMyRequirementsData'
 import { useResourceDownload } from '@/composables/useResourceDownload'
 import { useAuthStore } from '@/stores/auth'
-import { requirementStatusLabel } from '@/shared/requirementStatus'
+import {
+  REQUIREMENT_FILTER_OPTIONS,
+  requirementBucketOf,
+  requirementStatusLabel,
+  summarizeRequirementBuckets,
+  type RequirementFilterKey,
+} from '@/shared/requirementStatus'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
 import {
   canClaimRequirementResource,
@@ -103,22 +96,7 @@ import {
   validateRequirementRichText,
 } from '@/utils/requirementRichText'
 
-import {
-  TButton,
-  TDropdown,
-  TDropdownItem,
-  TDropdownMenu,
-  TIcon,
-  TInput,
-  TMessage,
-  TOption,
-  TPagination,
-  TSelect,
-  ArrowDown,
-  Refresh,
-  RefreshLeft,
-  Search,
-} from 'ui_73info'
+import { TDropdown, TDropdownItem, TDropdownMenu, TIcon, TMessage, ArrowDown } from 'ui_73info'
 
 const router = useRouter()
 const route = useRoute()
@@ -128,8 +106,27 @@ function notify(message: string, type: 'info' | 'success' | 'warning' | 'error' 
 }
 const { triggerDownload } = useResourceDownload()
 
-const requirementLoading = ref(false)
-const myRequirements = ref<RequirementItem[]>([])
+/**
+ * 数据源统一由 `useMyRequirementsData` 持有：列表 / 会话 / 押金比例 / 四张按条 map 都在那边加载，
+ * 这边只拿只读 getter 与唯一的写入口 `reload()`。
+ *
+ * 列表刷新后的收尾（收起已失效的「版本删除审核」展开卡）通过 `onRequirementsLoaded` 注入：
+ * 展开态与它的 loading 守卫都在本视图，留在本视图才不会随搬家丢掉。
+ */
+const {
+  myRequirements,
+  requirementLoading,
+  conversationLoading,
+  depositRatioPercent,
+  reload,
+  loadAfterSalesPending,
+  applyConversationDetail,
+  signingStatusForRequirement,
+  versionsForRequirement,
+  invoiceSummaryForRequirement,
+  afterSalesPendingCount,
+  afterSalesBadgeFor,
+} = useMyRequirementsData({ onRequirementsLoaded: pruneStaleVersionDeleteReviewCard })
 const payVisible = ref(false)
 const payRequirement = ref<RequirementItem | null>(null)
 const payChannel = ref<AdapayBusinessPayChannel>('alipay')
@@ -185,25 +182,13 @@ const afterSalesVisible = ref(false)
 const afterSalesTarget = ref<RequirementItem | null>(null)
 const conversationVisible = ref(false)
 const conversationRequirement = ref<RequirementItem | null>(null)
-const conversationLoading = ref(false)
 /** 获取发票：入口在每条需求的操作栏，弹窗内一次申请开出本需求能开的全部发票。 */
 const invoiceDialogVisible = ref(false)
 const invoiceRequirement = ref<RequirementItem | null>(null)
-/**
- * 每条需求的可开票汇总，只用来决定「更多」里的「获取发票」灰不灰。
- *
- * 拿不到（还没回来 / 那次请求失败）时不写值，`invoiceEntryState` 会当作可点：开不出票的原因
- * 由弹窗里的汇总说明，入口不该因为一次预取失败就显得像丢了。
- */
-const invoiceSummaryMap = ref<InvoiceSummaryMap>({})
-const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
 const expandedVersionDeleteReviewRequirementId = ref<string | null>(null)
 const versionDeleteRejectTargetId = ref<number | null>(null)
 const versionDeleteRejectNotes = ref<Record<number, string>>({})
-const depositRatioPercent = ref(20)
-const contractSigningStatusMap = ref<Record<string, ContractSigningStatus | null>>({})
 const contractCreatingId = ref('')
-const resourceVersionsMap = ref<Record<string, PublicMcResourceVersionItem[]>>({})
 const cancelConfirmVisible = ref(false)
 const cancelConfirmTarget = ref<RequirementItem | null>(null)
 const cancelLoading = ref(false)
@@ -336,65 +321,18 @@ function syncPublishModalFromRoute(value: unknown) {
   }
 }
 
-/** 需求状态在这一页归到三个档位，每个状态都有归属，不留「其它」：
-    - 审核中：待审核、已驳回（驳回后改了可再提审）
-    - 开发中：待签署 / 待付定金、定金已付待开发、开发中、待付尾款（「待签署」没有独立状态，落在待付定金里）
-    - 已完成：尾款已付待分账、已完成（含可评价）、已取消（终态）
-    顶部读数条与状态筛选共用这一个定义：两边各写一遍的话，同一批需求会算出两个数字。 */
-type RequirementBucket = 'pending' | 'active' | 'completed'
-
-function bucketOf(status: RequirementStatus): RequirementBucket {
-  switch (status) {
-    case 'pending_review':
-    case 'rejected':
-      return 'pending'
-    case 'pending_deposit':
-    case 'deposit_paid':
-    case 'in_development':
-    case 'pending_final':
-      return 'active'
-    case 'pending_settlement':
-    case 'completed':
-    case 'cancelled':
-      return 'completed'
-  }
-}
-
-function countBucket(bucket: RequirementBucket) {
-  return myRequirements.value.filter((item) => bucketOf(item.status) === bucket).length
-}
-
-const requirementStats = computed(() => ({
-  total: myRequirements.value.length,
-  active: countBucket('active'),
-  pending: countBucket('pending'),
-  completed: countBucket('completed'),
-}))
-
-/* 状态筛选走下拉（统一层 .wb-toolbar__field + el-select）：档位与顶部读数条同口径，
-   条数直接写进选项文案里。几档合计在上面读数条已经报过一遍，所以收起时只显示当前口径也不丢信息。 */
-type RequirementFilterKey = 'all' | RequirementBucket
-
-const states: { value: RequirementFilterKey; label: string }[] = [
-  { value: 'all', label: '全部' },
-  { value: 'pending', label: '审核中' },
-  { value: 'active', label: '开发中' },
-  { value: 'completed', label: '已完成' },
-]
+/* 三档口径与筛选选项都在 `shared/requirementStatus.ts`：顶部读数条与状态筛选共用一份，
+   各写一遍的话同一批需求会算出两个数字。 */
+const requirementStats = computed(() => summarizeRequirementBuckets(myRequirements.value))
 
 const keyword = ref('')
 const selectedState = ref<RequirementFilterKey>('all')
-
-/* 读数在加载中不报数：重新加载会先清空列表，直接显示 0 会被读成「一条需求都没有」。 */
-function stripValue(count: number) {
-  return requirementLoading.value ? '—' : String(count)
-}
 
 const filteredRequirements = computed(() => {
   const search = keyword.value.trim().toLocaleLowerCase()
   return myRequirements.value.filter((item) => {
     const matchesState =
-      selectedState.value === 'all' || bucketOf(item.status) === selectedState.value
+      selectedState.value === 'all' || requirementBucketOf(item.status) === selectedState.value
     const matchesSearch =
       !search ||
       [item.title, item.requirement_id, item.creator].some((value) =>
@@ -425,10 +363,11 @@ function resetFilters() {
   selectedState.value = 'all'
 }
 
-/** 刷新按钮只有一个图标，加载态与说明都靠 aria-label / title 承载。 */
-const refreshButtonLabel = computed(() =>
-  requirementLoading.value || conversationLoading.value ? '刷新中...' : '刷新',
-)
+/** 读数条上的刷新：列表或会话在跑就不重复发，避免连点叠出两批请求。 */
+async function handleRefresh() {
+  if (requirementLoading.value || conversationLoading.value) return
+  await reload()
+}
 
 /** 状态徽标的语义档：与统一层 .wb-badge 的四档（成功 / 警示 / 危险 / 主色）一一对应。
     此前全表只有一支琥珀胶囊，已完成与已驳回看起来是一回事，扫列表时看不出轻重。 */
@@ -521,12 +460,13 @@ function canPay(status: RequirementStatus, item?: RequirementItem) {
 
 // 交付版本 = 绑定资源项目的资源版本，直接复用资源项目版本接口（见方案 B）。
 function publishedVersionCount(item: RequirementItem) {
-  const versions = resourceVersionsMap.value[item.requirement_id]
+  // 没查到过（未绑定资源 / 那次请求失败）才回退需求单上的版本计数；查到空列表就是 0 版。
+  const versions = versionsForRequirement(item)
   return versions ? versions.length : (item.bound_resource_version_count ?? 0)
 }
 
 function deliveryVersionsFor(item: RequirementItem) {
-  return resourceVersionsMap.value[item.requirement_id] ?? []
+  return versionsForRequirement(item) ?? []
 }
 
 /** 交付版本摘要。只报版本数与最新版本号：到货时间在需求详情里看，卡片上再挂一串时间只是噪音。 */
@@ -817,10 +757,6 @@ function openInvoiceDialog(item: RequirementItem) {
   invoiceDialogVisible.value = true
 }
 
-function signingStatusForRequirement(item: RequirementItem) {
-  return contractSigningStatusMap.value[item.requirement_id] ?? null
-}
-
 function isRequirementContractSigned(item: RequirementItem) {
   const status = signingStatusForRequirement(item)
   return Boolean(status?.party_a_signed && status.party_b_signed)
@@ -918,7 +854,7 @@ async function createRequirementContractAction(item: RequirementItem) {
     await createRequirementContract(auth.token, item.requirement_id)
     // R012：发起后引导到合同页的「自定义合同附件」区；附件经平台审核放行后才能发起签署。
     TMessage.success('合同已发起；如需补充条款，可在合同页准备自定义附件，平台放行后即可签署')
-    await loadContractSigningStatuses(myRequirements.value)
+    await reload()
     openContractSign(item)
   } catch (err) {
     TMessage.error(err instanceof Error ? err.message : '发起合同失败')
@@ -929,33 +865,6 @@ async function createRequirementContractAction(item: RequirementItem) {
 
 function closeConversation() {
   conversationVisible.value = false
-}
-
-function applyConversationDetail(payload: RequirementConversationDetail) {
-  requirementConversationMap.value = {
-    ...requirementConversationMap.value,
-    [payload.conversation.requirement_id]: payload.conversation,
-  }
-}
-
-async function loadRequirementConversations() {
-  if (!auth.token.trim()) {
-    requirementConversationMap.value = {}
-    return
-  }
-
-  conversationLoading.value = true
-  try {
-    const conversations = await listRequirementConversations(auth.token)
-    requirementConversationMap.value = Object.fromEntries(
-      conversations.map((item) => [item.requirement_id, item]),
-    )
-  } catch (error) {
-    requirementConversationMap.value = {}
-    TMessage.error(error instanceof Error ? error.message : '加载沟通会话失败')
-  } finally {
-    conversationLoading.value = false
-  }
 }
 
 function currentResourceVisibility(item: RequirementItem): RequirementItem['resource_visibility'] {
@@ -1198,7 +1107,7 @@ async function submitCancelRequirement() {
     TMessage.success('需求已取消')
     cancelConfirmVisible.value = false
     cancelConfirmTarget.value = null
-    await loadMyRequirements()
+    await reload()
   } catch (err) {
     TMessage.error(err instanceof Error ? err.message : '取消需求失败')
   } finally {
@@ -1249,7 +1158,7 @@ async function submitClaimResource() {
     await claimRequirementResourceApi(auth.token, item.requirement_id)
     TMessage.success('已转为我的资源，可到开发者工作台「资源列表」管理')
     claimStep.value = 'done'
-    await loadMyRequirements()
+    await reload()
     try {
       await auth.fetchProfile(true)
     } catch {
@@ -1262,7 +1171,7 @@ async function submitClaimResource() {
       TMessage.info(failure.message)
       claimConfirmVisible.value = false
       claimConfirmTarget.value = null
-      await loadMyRequirements()
+      await reload()
     } else {
       TMessage.error(failure.message)
     }
@@ -1294,7 +1203,7 @@ async function confirmFinalPaymentRequest() {
 
   try {
     await requestRequirementFinalPaymentApi(auth.token, item.requirement_id)
-    await loadMyRequirements()
+    await reload()
     TMessage.success('需求已确认完成')
     closeFinalPaymentConfirm()
   } catch (err) {
@@ -1355,7 +1264,7 @@ async function handleAcceptanceSubmitted(result: AdapayAcceptanceResult) {
     return
   }
 
-  await loadMyRequirements()
+  await reload()
   if (result === 'rejected') {
     return
   }
@@ -1409,7 +1318,7 @@ function closeCommentModal() {
 }
 
 async function handleCommentSubmitted() {
-  await loadMyRequirements()
+  await reload()
 }
 
 function formatCommentSummary(rating: number, text?: string | null) {
@@ -1577,7 +1486,7 @@ async function toggleRequirementResourceVisibility(item: RequirementItem) {
   try {
     await updateRequirementResourceVisibilityApi(auth.token, item.requirement_id, { visibility })
     TMessage.success(visibility === 'public' ? '关联资源已提交公开审核' : '关联资源已设为私有')
-    await loadMyRequirements()
+    await reload()
   } catch (err) {
     TMessage.error(err instanceof Error ? err.message : '更新资源可见性失败')
   } finally {
@@ -1637,7 +1546,7 @@ async function submitVersionDeleteReview(
       delete nextNotes[request.version_id]
       versionDeleteRejectNotes.value = nextNotes
     }
-    await loadMyRequirements()
+    await reload()
   } catch (err) {
     TMessage.error(err instanceof Error ? err.message : '审核版本删除失败')
   } finally {
@@ -1714,7 +1623,7 @@ async function submitRequirementResubmit() {
     TMessage.success('需求已重新提交，等待审核')
     editModalRef.value?.clearDraft(`edit-${editRequirement.value.requirement_id}`)
     forceCloseEditModal()
-    await loadMyRequirements()
+    await reload()
   } catch (err) {
     TMessage.error(err instanceof Error ? err.message : '重新提交失败')
   } finally {
@@ -1792,7 +1701,7 @@ async function submitRequirementPublish() {
     forceClosePublishModal()
     clearPublishModalQuery()
     publishModalRef.value?.clearDraft()
-    await loadMyRequirements()
+    await reload()
   } catch (err) {
     TMessage.error(err instanceof Error ? err.message : '发布失败')
   } finally {
@@ -1836,152 +1745,6 @@ const payAmount = computed(() => {
   }
   return finalDepositAmount(payRequirement.value)
 })
-
-async function loadDepositRatio() {
-  auth.hydrate()
-  if (!auth.isAuthed) {
-    return
-  }
-
-  try {
-    const payload = await getDepositRatio(auth.token)
-
-    if (!payload) {
-      return
-    }
-
-    if (Number.isFinite(payload.deposit_ratio_percent)) {
-      depositRatioPercent.value = payload.deposit_ratio_percent
-    }
-  } catch {
-    // Keep the default deposit ratio when settings API is unavailable.
-  }
-}
-
-async function loadMyRequirements() {
-  auth.hydrate()
-  if (!auth.isAuthed) {
-    myRequirements.value = []
-    return
-  }
-
-  requirementLoading.value = true
-  try {
-    const rows = await listRequirements(auth.token)
-    // 不截断：列表页要能点进任何一条需求（此前 `slice(0, 20)` 让第 21 条起从列表消失，
-    // 连解除合作弹窗都进不去）。下方的合同签署状态与资源版本查询是按条发起的，
-    // ponytail: 请求数随需求数线性增长（N 条 ≈ 2N 个请求），需求很多时页面会变慢；
-    // 上限的真正解法是服务端分页 + 批量状态接口，等 `/requirement/mine` 支持分页再做。
-    myRequirements.value = rows
-    // 不 await：菜单灰不灰不影响列表先画出来，汇总回来再补上禁用态。
-    void loadInvoiceSummaries(myRequirements.value)
-    await loadContractSigningStatuses(myRequirements.value)
-    await loadResourceVersions(myRequirements.value)
-    if (
-      expandedVersionDeleteReviewRequirementId.value &&
-      !myRequirements.value.some(
-        (item) =>
-          item.requirement_id === expandedVersionDeleteReviewRequirementId.value &&
-          hasPendingResourceVersionDeleteReview(item),
-      )
-    ) {
-      closeVersionDeleteReviewCard()
-    }
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '加载需求单失败')
-  } finally {
-    requirementLoading.value = false
-  }
-}
-
-async function loadResourceVersions(items: RequirementItem[]) {
-  auth.hydrate()
-  if (!auth.token) {
-    resourceVersionsMap.value = {}
-    return
-  }
-
-  const boundItems = items.filter((item) => item.bound_resource_id != null)
-  const entries = await Promise.allSettled(
-    boundItems.map(async (item) => ({
-      requirementId: item.requirement_id,
-      versions: await listPublicMcResourceVersions(item.bound_resource_id as number, auth.token),
-    })),
-  )
-  const map: Record<string, PublicMcResourceVersionItem[]> = {}
-  for (const entry of entries) {
-    if (entry.status === 'fulfilled') {
-      map[entry.value.requirementId] = entry.value.versions
-    }
-  }
-  resourceVersionsMap.value = map
-}
-
-async function refreshMyRequirements() {
-  if (requirementLoading.value || conversationLoading.value) {
-    return
-  }
-
-  await Promise.all([loadMyRequirements(), loadRequirementConversations(), loadDepositRatio()])
-}
-
-async function loadContractSigningStatuses(items: RequirementItem[]) {
-  if (!auth.token || items.length === 0) {
-    contractSigningStatusMap.value = {}
-    return
-  }
-
-  // 无担保模式（self_managed）不需要合同，无需查询合同签署状态
-  const guaranteedItems = items.filter((item) => item.payment_mode !== 'self_managed')
-
-  const entries = await Promise.allSettled(
-    guaranteedItems.map((item) =>
-      fetchContractSigningStatus(auth.token, item.requirement_id).then((status) => ({
-        requirementId: item.requirement_id,
-        status,
-      })),
-    ),
-  )
-  const map: Record<string, ContractSigningStatus | null> = {}
-  for (const entry of entries) {
-    if (entry.status === 'fulfilled') {
-      map[entry.value.requirementId] = entry.value.status
-    }
-  }
-  contractSigningStatusMap.value = map
-}
-
-/**
- * 拉取「获取发票」的可点性依据：只查担保模式，无担保模式压根没有资金流（由 `invoiceEntryState`
- * 直接判死，不必发请求）。
- *
- * ponytail: 与上面的合同签署状态一样是按条请求，菜单灰不灰要等它回来才知道；上限的真正解法同样
- * 是服务端分页 + 批量汇总接口，等 `/invoices/summary` 支持一次问多条再做。
- */
-async function loadInvoiceSummaries(items: RequirementItem[]) {
-  if (!auth.token || items.length === 0) {
-    invoiceSummaryMap.value = {}
-    return
-  }
-
-  const guaranteedItems = items.filter((item) => item.payment_mode !== 'self_managed')
-
-  const entries = await Promise.allSettled(
-    guaranteedItems.map((item) =>
-      getInvoiceSummary(auth.token, item.requirement_id).then((summary) => ({
-        requirementId: item.requirement_id,
-        summary,
-      })),
-    ),
-  )
-  const map: InvoiceSummaryMap = {}
-  for (const entry of entries) {
-    if (entry.status === 'fulfilled') {
-      map[entry.value.requirementId] = entry.value.summary
-    }
-  }
-  invoiceSummaryMap.value = map
-}
 
 async function submitRequirementPayment() {
   if (!payRequirement.value) {
@@ -2046,7 +1809,7 @@ async function submitRequirementPayment() {
       TMessage.success(`${payStageLabel.value}支付确认成功`)
       currentPayment.value = null
       payVisible.value = false
-      await loadMyRequirements()
+      await reload()
       return
     }
 
@@ -2210,10 +1973,7 @@ function moreRowActions(item: RequirementItem): RequirementRowAction[] {
     entries.push({ key: 'comment', label: '修改评价' })
   }
   // 开不出票时不留一个点了才报错的入口：置灰并把原因挂在 title 上（灰项不可点，原因只能靠悬浮）。
-  const invoiceState = invoiceEntryState(
-    item.payment_mode,
-    invoiceSummaryMap.value[item.requirement_id],
-  )
+  const invoiceState = invoiceEntryState(item.payment_mode, invoiceSummaryForRequirement(item))
   entries.push(
     invoiceState.enabled
       ? { key: 'invoice', label: '获取发票' }
@@ -2338,46 +2098,22 @@ function closeVersionDeleteReviewCard() {
 }
 
 /**
- * 解除合作待办：按需求统计「在等我动作」的案件数，给行内「解除合作」入口挂角标。
- *
- * 一次 `GET /api/dispute/cases` 就能拿到我参与的全部案件（含 `viewerRole`），不用逐条需求发请求。
- * 待办口径见 `shared/afterSalesStatus.ts` 的 `isAwaitingViewerAction`。
+ * 列表刷新后的收尾：展开着的「版本删除审核」卡若已失效（需求没了 / 审核项没了），顺手收起。
+ * 由 composable 的 `onRequirementsLoaded` 注入调用——这条副作用原本就挂在 `loadMyRequirements` 末尾。
  */
-const afterSalesPending = ref<Record<string, number>>({})
-
-function afterSalesPendingCount(requirementId: string) {
-  return afterSalesPending.value[requirementId] ?? 0
-}
-
-/** 角标读数；没有待办时返回空串，模板里据此决定是否渲染角标。 */
-function afterSalesBadgeFor(requirementId: string) {
-  const count = afterSalesPendingCount(requirementId)
-  return count > 0 ? afterSalesBadgeText(count) : ''
-}
-
-async function loadAfterSalesPending() {
-  if (!auth.token) {
-    afterSalesPending.value = {}
-    return
-  }
-  try {
-    const list = await listMyAfterSalesCases(auth.token)
-    const counts: Record<string, number> = {}
-    for (const item of list.items) {
-      if (isAwaitingViewerAction(item)) {
-        counts[item.requirementId] = (counts[item.requirementId] ?? 0) + 1
-      }
-    }
-    afterSalesPending.value = counts
-  } catch {
-    // 拉不到就当没有待办：不弹错、不阻塞列表，角标本身不该成为页面的故障点。
-    afterSalesPending.value = {}
-  }
+function pruneStaleVersionDeleteReviewCard() {
+  const expandedId = expandedVersionDeleteReviewRequirementId.value
+  if (!expandedId) return
+  const stillPending = myRequirements.value.some(
+    (item) => item.requirement_id === expandedId && hasPendingResourceVersionDeleteReview(item),
+  )
+  if (!stillPending) closeVersionDeleteReviewCard()
 }
 
 onMounted(async () => {
   auth.hydrate()
-  await Promise.all([loadMyRequirements(), loadRequirementConversations(), loadDepositRatio()])
+  // 顺序不能换：列表串行链 / 会话 / 押金比例并发 → 售后角标故意不 await → OAuth 回跳 toast → 清 query。
+  await reload()
   // 角标是锦上添花，不 await：列表先画出来，待办数回来再补上。
   void loadAfterSalesPending()
 
@@ -2420,118 +2156,26 @@ watch(
 
 <template>
   <main class="page-shell custom-page-shell profile-page my-requirements-page">
-    <!-- 顶部读数条：四格读数在最左，页面级刷新固定在右上角，与其余菜单页同一套形状 -->
-    <WorkbenchBarSlot>
-      <div class="wb-strip my-requirements-strip" aria-label="需求概览">
-        <div class="wb-strip__item" title="全部需求">
-          <span class="wb-strip__label">全部</span>
-          <span class="wb-strip__value">{{ stripValue(requirementStats.total) }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item" title="审核中：待审核、已驳回">
-          <span class="wb-strip__label">审核</span>
-          <span class="wb-strip__value">{{ stripValue(requirementStats.pending) }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item" title="开发中：待签署、待付定金、开发中、待付尾款">
-          <span class="wb-strip__label">开发</span>
-          <span class="wb-strip__value">{{ stripValue(requirementStats.active) }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item" title="已完成：可评价、已完成、已取消">
-          <span class="wb-strip__label">完成</span>
-          <span class="wb-strip__value">{{ stripValue(requirementStats.completed) }}</span>
-        </div>
-        <div class="wb-strip__item wb-strip__action">
-          <TButton
-            icon-only
-            :loading="requirementLoading || conversationLoading"
-            :aria-label="refreshButtonLabel"
-            :title="refreshButtonLabel"
-            @click="refreshMyRequirements"
-          >
-            <TIcon><Refresh /></TIcon>
-          </TButton>
-        </div>
-      </div>
-    </WorkbenchBarSlot>
+    <RequirementStrip
+      :stats="requirementStats"
+      :loading="requirementLoading || conversationLoading"
+      @refresh="handleRefresh"
+    />
 
     <section class="wallet-section">
-      <div class="wb-card-head">
-        <div class="wb-card-head__title-block">
-          <h3 class="wb-card-head__title">需求列表</h3>
-        </div>
-        <div class="wb-card-head__actions">
-          <TButton
-            variant="solid"
-            tone="accent"
-            class="my-requirements-publish--head"
-            @click="openPublishModal"
-          >
-            发布新需求
-          </TButton>
-        </div>
-      </div>
+      <RequirementToolbar
+        v-model:keyword="keyword"
+        v-model:selected-state="selectedState"
+        :options="REQUIREMENT_FILTER_OPTIONS"
+        :loading="requirementLoading"
+        :total-count="myRequirements.length"
+        :filtered-count="filteredRequirements.length"
+        :has-active-filters="hasActiveFilters"
+        @publish="openPublishModal"
+        @reset-filters="resetFilters"
+      />
 
-      <div class="wb-toolbar">
-        <TSelect
-          v-model="selectedState"
-          class="wb-toolbar__field wb-toolbar__field--requirement-state"
-          aria-label="需求状态"
-        >
-          <TOption
-            v-for="state in states"
-            :key="state.value"
-            :value="state.value"
-            :label="state.label"
-          />
-        </TSelect>
-        <TInput
-          v-model="keyword"
-          class="wb-toolbar__search"
-          clearable
-          placeholder="搜索需求标题、编号或发布人"
-          aria-label="搜索需求"
-        >
-          <template #prefix
-            ><TIcon><Search /></TIcon
-          ></template>
-        </TInput>
-        <TButton
-          variant="solid"
-          tone="accent"
-          class="my-requirements-publish--toolbar"
-          aria-label="发布新需求"
-          @click="openPublishModal"
-        >
-          发布
-        </TButton>
-        <!-- 工具栏不放「重置」：清空筛选的入口保留在下面空态的「清除筛选」。
-             操作槽只在收窄了结果时给条数说明，写法与「我的发票」工具栏一致——无筛选时整槽不渲染，不留空容器。 -->
-        <div v-if="hasActiveFilters" class="wb-toolbar__actions">
-          <span class="wb-toolbar__hint">
-            筛选出 {{ filteredTotal }} / {{ myRequirements.length }} 条
-          </span>
-        </div>
-      </div>
-
-      <p v-if="requirementLoading && myRequirements.length === 0" class="wb-empty" role="status">
-        需求单加载中…
-      </p>
-      <div v-else-if="!filteredRequirements.length" class="wb-empty" role="status">
-        <span class="wb-empty__title">
-          {{ myRequirements.length ? '没有符合条件的需求单' : '还没有提交过需求单' }}
-        </span>
-        <template v-if="myRequirements.length">
-          <div class="wb-empty__actions">
-            <TButton variant="outline" @click="resetFilters">
-              <TIcon><RefreshLeft /></TIcon><span>清除筛选</span>
-            </TButton>
-          </div>
-        </template>
-        <template v-else>点击右上角「发布新需求」即可创建你的第一个需求。</template>
-      </div>
-      <template v-else>
+      <template v-if="filteredRequirements.length">
         <ul class="wb-list requirement-list">
           <template v-for="item in pagedRequirements" :key="item.requirement_id">
             <li
@@ -2919,26 +2563,7 @@ watch(
           </template>
         </ul>
 
-        <div class="wb-pager">
-          <div class="wb-pager__count">
-            <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页需求单数">
-              <TOption
-                v-for="size in LIST_PAGE_SIZES"
-                :key="size"
-                :label="`${size} 条/页`"
-                :value="size"
-              />
-            </TSelect>
-          </div>
-          <TPagination
-            v-model:current-page="page"
-            :page-size="pageSize"
-            :total="filteredTotal"
-            :pager-count="5"
-            background
-            aria-label="需求单分页"
-          />
-        </div>
+        <RequirementPager v-model:page="page" v-model:page-size="pageSize" :total="filteredTotal" />
       </template>
     </section>
 
@@ -2992,7 +2617,7 @@ watch(
       :token="auth.token"
       :requirement-id="invoiceRequirement?.requirement_id ?? ''"
       role="customer"
-      @submitted="loadMyRequirements"
+      @submitted="reload"
     />
 
     <!-- 支付弹窗：原来内嵌在需求详情浮层里，浮层去掉后单独成一个弹窗，
@@ -3564,12 +3189,6 @@ watch(
   flex: 0 0 auto;
 }
 
-/* 档位名只有三个字，状态下拉收窄；宽度必须写成 flex 基宽而不是 width——TSelect 自带 width: 100%，
-   flex-basis 会被 width 顶掉，细节见 portal-workbench.css 里 .wb-toolbar__field 的注释。 */
-.wb-toolbar__field--requirement-state {
-  flex: 0 1 140px;
-}
-
 /* 版本选择弹窗：一行一个版本，右侧下载按钮；版本说明用弱字色 */
 .download-picker {
   display: grid;
@@ -3666,76 +3285,6 @@ watch(
 
 .pay-modal .claim-notes strong {
   color: #b45309;
-}
-
-/* 「发布新需求」放在「需求列表」卡头右端；手机档卡头整块收起，按钮改放搜索栏右端 */
-.my-requirements-page .wb-card-head:has(.my-requirements-publish--head) {
-  align-items: center;
-}
-
-.my-requirements-publish--toolbar {
-  display: none;
-}
-
-@media (max-width: 640px) {
-  .my-requirements-page .wb-card-head:has(.my-requirements-publish--head) {
-    display: none;
-  }
-  /* 操作槽只剩刷新，钉在顶栏右侧，四组读数才排得进一行 */
-  /* 四组读数均分四格，文字在上、数字在下 */
-  #workbench-mobile-bar-extra .my-requirements-strip {
-    position: relative;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0;
-    padding-right: 32px;
-  }
-  #workbench-mobile-bar-extra .my-requirements-strip .wb-strip__item:not(.wb-strip__action) {
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    min-width: 0;
-  }
-  #workbench-mobile-bar-extra .my-requirements-strip .wb-strip__label {
-    color: #94a3b8;
-    font-size: 11px;
-    font-weight: 500;
-    line-height: 1.2;
-  }
-  #workbench-mobile-bar-extra .my-requirements-strip .wb-strip__value {
-    color: #0f172a;
-    font-size: 15px;
-    font-weight: 700;
-    line-height: 1.2;
-  }
-  #workbench-mobile-bar-extra .my-requirements-strip .wb-strip__action {
-    position: absolute;
-    top: 50%;
-    right: 0;
-    transform: translateY(-50%);
-  }
-  /* 搜索栏右端的小号胶囊：浅蓝底蓝字，融进白色搜索栏，不压过搜索框本身 */
-  .my-requirements-publish--toolbar,
-  .my-requirements-publish--toolbar:hover,
-  .my-requirements-publish--toolbar:focus-visible {
-    display: inline-flex;
-    flex: 0 0 auto;
-    height: 32px;
-    min-height: 32px;
-    margin-left: 4px;
-    padding: 0 16px;
-    border: 0 !important;
-    border-radius: 999px;
-    background: #eaf1ff !important;
-    box-shadow: none !important;
-    color: #1d4ed8 !important;
-    font-size: 13px;
-    font-weight: 700;
-  }
-  .my-requirements-publish--toolbar:active {
-    background: #dbe7ff !important;
-  }
 }
 
 @media (max-width: 640px) {
