@@ -80,6 +80,10 @@ function mountHall() {
       // 担保方式下拉与分页器都是规范组件，浅渲染下用下面的桩替换（桩不认识真实类名，
       // 所以「切筛选」「翻页」都由桩自己发事件驱动）。
       stubs: {
+        // 工具栏已拆成子组件（`components/requirement/RequirementHallToolbar.vue`）：
+        // 浅渲染会把它整个换成桩、「担保方式」下拉就找不到了，所以这一处强制渲染真组件，
+        // 它内部的 TSelect 仍由下面那个桩接管。
+        RequirementHallToolbar: false,
         TIcon: { template: '<span><slot /></span>' },
         TPagination: {
           name: 'TPagination',
@@ -142,7 +146,9 @@ describe('requirement hall pagination', () => {
 
     const state = setupState(wrapper)
     expect(state.hallPage).toBe(2)
-    expect((state.requirements as { requirement_id: string }[])[0]?.requirement_id).toBe('req-page-2')
+    expect((state.requirements as { requirement_id: string }[])[0]?.requirement_id).toBe(
+      'req-page-2',
+    )
 
     wrapper.unmount()
   })
@@ -192,9 +198,8 @@ describe('公开精选列表的请求参数（真实实现）', () => {
   })
 
   async function spotlightRequestUrl(paymentMode?: 'platform_guarantee' | 'self_managed') {
-    const { listPublicRequirementSpotlights } = await vi.importActual<
-      typeof import('@/api/requirements')
-    >('@/api/requirements')
+    const { listPublicRequirementSpotlights } =
+      await vi.importActual<typeof import('@/api/requirements')>('@/api/requirements')
     await listPublicRequirementSpotlights(1, PAGE_SIZE, paymentMode)
     const calls = fetchMock.mock.calls
     return String(calls[calls.length - 1]?.[0])
