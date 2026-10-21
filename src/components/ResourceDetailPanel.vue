@@ -28,16 +28,18 @@ import {
 import { getAdapayClientPlatform } from '@/api/adapay'
 import { getWechatPaymentAuthorizationStatus, getWechatPaymentAuthorizeUrl } from '@/api/auth'
 import {
+  API_RESOURCE_PURCHASE_HINT,
+  canPurchaseOnPlatform,
   canReuseCashQrForChannel,
   fenToYuanText,
   formatResourcePriceLabel,
   isPointsResource,
   isPricedResource,
   isPurchaseRequiredError,
-  needsPurchase as resourceNeedsPurchase,
   normalizePromoCode,
   type ResourcePayChannelUi,
 } from '@/shared/resourceSale'
+import { isApiResourceKind } from '@/shared/resourceApi'
 import { isWechatBrowser } from '@/shared/auth/browser'
 import { getMyPoints } from '@/api/points'
 import { useAuthStore } from '@/stores/auth'
@@ -287,15 +289,23 @@ const priceLabel = computed(() =>
   formatResourcePriceLabel(resource.value?.price_fen ?? 0, resource.value?.price_points ?? 0),
 )
 const isPointsListing = computed(() => isPointsResource(resource.value?.price_points))
+/**
+ * BUG-020：接口资源只在开发者自有站点的服务端下单，平台内没有购买入口。
+ *
+ * 接口资源的价格是「开放接口下单的售价」，不是平台内商品标价——
+ * 所以这里不给它开平台内购买入口（后端会以 409 拒掉），只留一条到开发者站点的引导。
+ */
+const isApiResource = computed(() => isApiResourceKind(resource.value?.resource_kind))
 const needsPurchase = computed(() => {
   if (!resource.value) {
     return false
   }
-  return resourceNeedsPurchase({
+  return canPurchaseOnPlatform({
     priceFen: resource.value.price_fen,
     pricePoints: resource.value.price_points,
     purchasedByMe: Boolean(resource.value.purchased_by_me),
     isOwner: isOwner.value,
+    resourceKind: resource.value.resource_kind,
   })
 })
 const primaryCtaLabel = computed(() => {
@@ -493,6 +503,12 @@ function hasReusableCashQr(channel: ResourcePayChannelUi): boolean {
 }
 
 async function openPurchasePanel() {
+  // BUG-020：接口资源没有平台内购买入口——下单只能走开发者站点的开放接口。
+  // 这里再挡一道，避免别的入口（下载 403 引导等）把用户送进一个必然失败的支付弹窗。
+  if (isApiResource.value) {
+    TMessage.info(API_RESOURCE_PURCHASE_HINT)
+    return
+  }
   if (!auth.isAuthed) {
     TMessage.info('请先登录后再购买')
     void router.push({
@@ -1210,6 +1226,7 @@ watch(
               <div class="resource-detail-page__cta-row">
                 <div class="resource-detail-page__primary-actions">
                   <button
+                    v-if="!isApiResource"
                     class="resource-detail-page__primary-btn"
                     type="button"
                     :disabled="downloadStore.state.active || purchaseSubmitting"
@@ -1217,6 +1234,10 @@ watch(
                   >
                     {{ primaryCtaLabel }}
                   </button>
+                  <!-- BUG-020：接口资源没有平台内购买入口，只给到开发者站点下单的引导 -->
+                  <p v-else class="resource-detail-page__api-hint">
+                    {{ API_RESOURCE_PURCHASE_HINT }}
+                  </p>
                   <div
                     v-if="downloadStore.state.active"
                     class="resource-detail-page__download-progress"
@@ -2181,6 +2202,20 @@ a.resource-detail-page__repost-origin:hover {
 .resource-detail-page__primary-btn:disabled {
   cursor: wait;
   opacity: 0.78;
+}
+
+/* BUG-020：接口资源的引导文案。接口资源没有平台内购买入口（后端会以 409 拒掉），
+   这里只说明「到开发者站点下单」，不做成按钮，避免用户点进一个必然失败的支付流程。 */
+.resource-detail-page__api-hint {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.96);
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.6;
 }
 
 .resource-detail-page__download-progress {
