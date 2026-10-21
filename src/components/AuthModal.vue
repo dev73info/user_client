@@ -249,6 +249,11 @@ async function recordLoginAcceptance() {
   const confirmedAt = readLegalNoticeConfirmedAt()
   if (!confirmedAt) return
   if (!auth.token || !auth.isAuthed) return
+  // ⚠️ 已知缺口：第三方快捷登录（GitHub / 微信 / QQ / Gitee）与端内一键登录是**整页跳转**，
+  // 弹窗在跳转前就消失了，回来时用户已登录但这里没有再触发一次。
+  // 这条路径的提示确认时间仍留在本次会话里（sessionStorage 跨跳转保留），
+  // 用户之后打开协议页或签署页时会带上提示信息补记；真正的修法要在 OAuth 回跳处补一刀
+  // （router / HomeView），不在本次任务允许改动的文件范围内。
   try {
     await recordAgreementAcceptance(
       auth.token,

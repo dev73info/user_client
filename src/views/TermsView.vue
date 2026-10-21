@@ -56,6 +56,8 @@ async function loadAgreement() {
         // 已登录用户阅读协议时记录一次留痕（source=terms），非阻断。
         // 这次留痕带上"已阅读重要条款提示"的时间与提示版本（R043 任务-02/03）：
         // 留痕要能证明"用户被提示过重要条款"，光有同意时间不够。
+        // 协议页顶部就展示重要条款提示，所以这里的 notice_confirmed_at 记的是
+        // **看到提示的时刻**（勾选确认的时刻由登录弹窗与签署页另行记录）。
         if (agreement.value && auth.isAuthed) {
             recordAgreementAcceptance(
                 auth.token,
