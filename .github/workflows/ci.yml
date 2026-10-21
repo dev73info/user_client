@@ -1,5 +1,16 @@
 name: ci
 
+# 门禁要跑 type-check 与单测，而本仓的 ui_73info / tags-wasm 是 link: 的兄弟依赖
+# （package.json 里写的 `link:../ui_73info`、`link:../tags-wasm/pkg`）。
+# 只 checkout 本仓时 node_modules 里是断链，type-check 会一口气报几十条
+# `TS2307: Cannot find module 'ui_73info'`——所以三个仓要检出成兄弟目录，
+# 布局与本地 /home/banch/dev73info 一致，也和 deploy.yml 那套完全一样：
+#
+#   $GITHUB_WORKSPACE/user-client   本仓
+#   $GITHUB_WORKSPACE/ui_73info     发的是源码，被 link 进宿主
+#   $GITHUB_WORKSPACE/tags-wasm     仓库里不含 pkg/（构建物），要现场 wasm-pack build
+#
+# 三个仓都是公开仓，用默认的 GITHUB_TOKEN 检出即可，不引 PAT——fork 来的 PR 也能跑。
 on:
   pull_request:
     branches: [dev, master]
@@ -14,10 +25,40 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: user-client
     steps:
-      - uses: actions/checkout@v4
+      - name: 取本仓
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          path: user-client
+
+      - name: 取 ui_73info
+        uses: actions/checkout@v4
+        with:
+          repository: dev73info/ui_73info
+          path: ui_73info
+
+      - name: 取 tags-wasm
+        uses: actions/checkout@v4
+        with:
+          repository: dev73info/tags-wasm
+          path: tags-wasm
+
+      # tags-wasm/pkg 是 wasm-pack 的产物、不在仓库里；不建出来，「tags-wasm」这个裸说明符解析不到。
+      - name: 装 Rust wasm 目标
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: 装 wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+
+      - name: 构建 tags-wasm
+        working-directory: tags-wasm
+        run: wasm-pack build --target web
 
       - uses: pnpm/action-setup@v4
         with:
@@ -27,8 +68,18 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+          # 两个仓各装各的，缓存键要把两份 lockfile 都算上
+          cache-dependency-path: |
+            user-client/pnpm-lock.yaml
+            ui_73info/pnpm-lock.yaml
 
-      - name: Install
+      # ui_73info 发的是源码、被 link 进宿主，但它自己的 vue 是 devDependency，
+      # 不装的话宿主 type-check / 单测从 ui_73info 的真实路径解析不到 vue。
+      - name: 装 ui_73info 依赖
+        working-directory: ui_73info
+        run: pnpm install --frozen-lockfile
+
+      - name: 装依赖
         run: pnpm install --frozen-lockfile
 
       - name: Type check
@@ -43,7 +94,7 @@ jobs:
       - name: 结构检查（行数 / API 依赖 / 裸色值 / 断点，存量走基线）
         run: pnpm check:frontend
 
-      # 格式化只要求「本次改动涉及的文件」，存量 179 个未格式化文件不在这里一次性重排。
+      # 格式化只要求「本次改动涉及的文件」，存量未格式化文件不在这里一次性重排。
       - name: Format（仅改动文件）
         run: |
           BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
