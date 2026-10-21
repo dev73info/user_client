@@ -10,7 +10,7 @@
  */
 import { computed, ref } from 'vue'
 
-import { mockEnabled, mockSupported } from './env'
+import { mockEnabled, mockSwitcherEnabled } from './env'
 import { MOCK_IDENTITIES, MOCK_IDENTITY_PROFILES, currentMockIdentity } from './identity'
 import { disableMock, switchMockIdentity } from './index'
 import { clearUncoveredEndpoints, uncoveredEndpoints } from './uncovered'
@@ -18,7 +18,7 @@ import { clearUncoveredEndpoints, uncoveredEndpoints } from './uncovered'
 const expanded = ref(false)
 const showUncovered = ref(false)
 
-const available = computed(() => mockEnabled())
+const available = computed(() => mockEnabled() && mockSwitcherEnabled())
 const identity = computed(() => currentMockIdentity())
 const profile = computed(() => MOCK_IDENTITY_PROFILES[identity.value])
 const uncovered = computed(() => uncoveredEndpoints.value)

@@ -27,11 +27,6 @@
       "count": 2
     }
   },
-  "src/mock/MockIdentitySwitcher.vue": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/types/markdown-it.d.ts": {
     "@typescript-eslint/no-require-imports": {
       "count": 1

@@ -13,6 +13,8 @@ interface ImportMetaEnv {
   readonly VITE_MOCK?: string
   /** 假响应延迟毫秒数，默认 120，用 ?mockDelay=0 可当场关掉 */
   readonly VITE_MOCK_DELAY?: string
+  /** 值为 'false' 时隐藏左上角 mock 身份切换悬浮窗（mock 仍生效），用于截图对照与演示 */
+  readonly VITE_MOCK_SWITCHER?: string
 }
 
 interface ImportMeta {
