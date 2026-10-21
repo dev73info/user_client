@@ -400,7 +400,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/CommunityView.vue",
-      "detail": "2564 行 > 300（视图）",
+      "detail": "1662 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -719,6 +719,30 @@
       "rule": "raw-color",
       "file": "src/components/BadgeWall.vue",
       "detail": "7 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/community/CommunityCommentItem.vue",
+      "detail": "28 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/community/CommunityCommentTree.vue",
+      "detail": "14 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "breakpoint",
+      "file": "src/components/community/CommunityComposerPanel.vue",
+      "detail": "2 处非标准断点（920px、760px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/community/CommunityComposerPanel.vue",
+      "detail": "4 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -1234,7 +1258,7 @@
     {
       "rule": "raw-color",
       "file": "src/views/CommunityView.vue",
-      "detail": "147 处裸色值",
+      "detail": "98 处裸色值",
       "since": "2026-10-21"
     },
     {
