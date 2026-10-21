@@ -567,18 +567,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/PaymentView.vue",
-      "detail": "1562 行 > 300（视图）",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "api-deps",
-      "file": "src/views/PaymentView.vue",
-      "detail": "依赖 5 个 api 模块（adapay、payments、auth、resourcePurchase、tips）> 3",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/ProfileView.vue",
       "detail": "666 行 > 300（视图）",
       "since": "2026-10-21"
@@ -1042,7 +1030,7 @@
     {
       "rule": "raw-color",
       "file": "src/styles/payment.css",
-      "detail": "12 处裸色值",
+      "detail": "15 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -1253,12 +1241,6 @@
       "rule": "raw-color",
       "file": "src/views/OAuthAuthorizeView.vue",
       "detail": "15 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/views/PaymentView.vue",
-      "detail": "3 处裸色值",
       "since": "2026-10-21"
     },
     {
