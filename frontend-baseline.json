@@ -364,7 +364,7 @@
     {
       "rule": "line-budget",
       "file": "src/styles/profile.css",
-      "detail": "865 行 > 300（模块）",
+      "detail": "887 行 > 300（模块）",
       "since": "2026-10-21"
     },
     {
@@ -556,7 +556,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/MyRequirementsView.vue",
-      "detail": "1626 行 > 300（视图）",
+      "detail": "1384 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -1084,7 +1084,7 @@
     {
       "rule": "raw-color",
       "file": "src/styles/profile.css",
-      "detail": "70 处裸色值",
+      "detail": "73 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -1325,12 +1325,6 @@
       "rule": "raw-color",
       "file": "src/views/MessagesView.vue",
       "detail": "4 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/views/MyRequirementsView.vue",
-      "detail": "3 处裸色值",
       "since": "2026-10-21"
     },
     {
