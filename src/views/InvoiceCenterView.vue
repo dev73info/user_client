@@ -100,10 +100,14 @@ const selectedIds = computed(() =>
           placeholder="搜索发票号、需求编号或发票标题"
           aria-label="搜索发票"
         >
-          <template #prefix><TIcon><Search /></TIcon></template>
+          <template #prefix
+            ><TIcon><Search /></TIcon
+          ></template>
         </TInput>
         <div v-if="hasActiveFilters" class="wb-toolbar__actions">
-          <span class="wb-toolbar__hint"> 筛选出 {{ filteredTotal }} / {{ groups.length }} 条 </span>
+          <span class="wb-toolbar__hint">
+            筛选出 {{ filteredTotal }} / {{ groups.length }} 条
+          </span>
         </div>
       </div>
 

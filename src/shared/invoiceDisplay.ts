@@ -10,7 +10,10 @@ import { invoiceGroupTotalFen } from '@/shared/invoiceGroups'
  */
 
 /** 状态筛选档（顺序即下拉顺序）：按**显示状态**分档，不是照读接口状态列。 */
-export const INVOICE_STATUS_FILTERS: Array<{ key: 'all' | InvoiceRecord['status']; label: string }> = [
+export const INVOICE_STATUS_FILTERS: Array<{
+  key: 'all' | InvoiceRecord['status']
+  label: string
+}> = [
   { key: 'all', label: '全部' },
   { key: 'requested', label: '待处理' },
   { key: 'under_review', label: '审核中' },

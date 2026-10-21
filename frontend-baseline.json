@@ -525,12 +525,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/PointsCenterView.vue",
-      "detail": "519 行 > 300（视图）",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/ProfileView.vue",
       "detail": "2732 行 > 300（视图）",
       "since": "2026-10-21"

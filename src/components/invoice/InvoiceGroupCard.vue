@@ -135,8 +135,7 @@ function onUploadClick(invoice: InvoiceRecord): void {
             {{ invoice.buyerBankName }} · {{ invoice.buyerBankAccount }}
           </span>
           <span v-if="invoice.documentKind === 'red' && invoice.reversalOfId" class="wb-item__meta">
-            冲销原票 #{{
-              invoice.reversalOfId
+            冲销原票 #{{ invoice.reversalOfId
             }}{{ invoice.reversalReason ? ` · ${invoice.reversalReason}` : '' }}
           </span>
           <span v-else-if="invoice.status === 'reversed'" class="wb-item__meta">
@@ -149,7 +148,9 @@ function onUploadClick(invoice: InvoiceRecord): void {
             v-else-if="invoice.reversalRequired && invoice.reversalSuggestionFen > 0"
             class="wb-item__meta"
           >
-            本需求可开票净额已变为 ¥{{ (invoice.currentInvoiceableFen / 100).toFixed(2) }}，财务端会先红冲原票
+            本需求可开票净额已变为 ¥{{
+              (invoice.currentInvoiceableFen / 100).toFixed(2)
+            }}，财务端会先红冲原票
           </span>
           <span v-if="reviewNote(invoice)" class="wb-item__meta"
             >审核说明：{{ reviewNote(invoice) }}</span
@@ -157,11 +158,9 @@ function onUploadClick(invoice: InvoiceRecord): void {
         </div>
 
         <div class="wb-item__side">
-          <span
-            class="wb-badge"
-            :class="invoiceStatusBadgeClass(invoiceDisplayStatus(invoice))"
-            >{{ invoiceStatusLabel(invoiceDisplayStatus(invoice)) }}</span
-          >
+          <span class="wb-badge" :class="invoiceStatusBadgeClass(invoiceDisplayStatus(invoice))">{{
+            invoiceStatusLabel(invoiceDisplayStatus(invoice))
+          }}</span>
           <TButton
             v-if="invoice.documentUrl"
             variant="outline"

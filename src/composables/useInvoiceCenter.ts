@@ -228,9 +228,7 @@ export function useInvoiceCenter() {
   function openReapply(group: InvoiceCard) {
     applyRequirementId.value = group.requirementId
     // 弹窗按「我在这笔需求里是哪一方」发起：后端也是按操作者是买方还是乙方来判。
-    applyRole.value = group.invoices.some(
-      (invoice) => invoice.customerUsername === auth.username,
-    )
+    applyRole.value = group.invoices.some((invoice) => invoice.customerUsername === auth.username)
       ? 'customer'
       : 'developer'
     applyVisible.value = true
