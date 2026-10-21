@@ -399,9 +399,20 @@ onBeforeUnmount(() => {
 /* ===== 3. 数据 ===== */
 .about-facts {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* R047：原为固定 4 列 + 820px 塌单列。断点收敛到 640/900/1180 后，641–899 这段落在基础态，
+     实测 4 列会挤成 139px/格。这里改成「基础态 2 列（平板）→ ≤640 单列 → ≥900 回到 4 列」，
+     只用标准档位。试过 auto-fit minmax(220/250px)：容器上限 980px 时 4 列要 ≤234px、
+     820 视口要 2 列又需 ≥243px，两个条件互斥，无解，所以用显式档位。 */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   margin: 18px 0;
+}
+
+@media (min-width: 900px) {
+  /* R047：桌面档恢复正常 4 列（900 是本项目标准档位之一）。 */
+  .about-facts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .about-fact {
@@ -624,7 +635,7 @@ onBeforeUnmount(() => {
   }
 
   .about-facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .about-split {

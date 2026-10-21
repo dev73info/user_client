@@ -185,7 +185,9 @@ onMounted(async () => {
 <style scoped>
 .realname-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+  /* R047：右列原为硬最小 300px，断点收到 640 后 641px 视口下左列只剩 252px。
+     改成 220px 下限 —— 桌面视觉不变（0.85fr 仍占主导），窄屏时两侧都能呼吸。 */
+  grid-template-columns: minmax(0, 1.15fr) minmax(220px, 0.85fr);
   gap: 24px;
   padding: 20px 24px;
   border-radius: 26px;
