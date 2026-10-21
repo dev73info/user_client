@@ -17,8 +17,7 @@ import {
   TMessage,
 } from 'ui_73info'
 
-import * as userConversationApi from '@/api/conversations'
-import * as devConversationApi from '@/api/conversations'
+import * as conversationApi from '@/api/conversations'
 import type {
   ConversationConsent,
   ConversationHistoryDisclosureBrief,
@@ -38,6 +37,21 @@ import {
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { isRequirementArchived } from '@/shared/requirementArchive'
 import { dispatchConversationRead } from '@/shared/conversationEvents'
+import {
+  avatarText,
+  formatDateLabel,
+  formatFullDateTime,
+  formatMessageClock,
+  isMine,
+  localDateKey,
+} from '@/shared/conversationTime'
+import {
+  MAX_ATTACHMENT_BYTES,
+  defaultAttachmentName,
+  formatBytes,
+  isImageAttachment,
+  mimeTypeFromName,
+} from '@/shared/attachmentFile'
 import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 import { listPublicMcResourceVersions } from '@/api/resources'
 import RequirementConversationActions from '@/components/RequirementConversationActions.vue'
@@ -145,16 +159,6 @@ type ConversationTimelineItem = {
   createdAt?: string
 }
 
-type ConversationApi = {
-  getRequirementConversationByRequirement: typeof userConversationApi.getRequirementConversationByRequirement
-  sendRequirementConversationMessage: typeof userConversationApi.sendRequirementConversationMessage
-  requestRequirementHistoryDisclosure: typeof userConversationApi.requestRequirementHistoryDisclosure
-  respondConversationHistoryDisclosure: typeof userConversationApi.respondConversationHistoryDisclosure
-  markRequirementConversationRead: typeof userConversationApi.markRequirementConversationRead
-  subscribeRequirementConversationEvents: typeof userConversationApi.subscribeRequirementConversationEvents
-}
-
-const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024
 const emojiOptions = [
   '😀',
   '😄',
@@ -174,9 +178,6 @@ const emojiOptions = [
   '👀',
 ]
 
-const conversationApi = computed<ConversationApi>(() =>
-  props.apiMode === 'dev' ? devConversationApi : userConversationApi,
-)
 const router = useRouter()
 const conversation = computed(() => detail.value?.conversation ?? null)
 const messages = computed(() => detail.value?.messages ?? [])
@@ -306,7 +307,7 @@ const timelineItems = computed<ConversationTimelineItem[]>(() => {
       previousDateKey = dateKey
     }
 
-    const mine = isMine(message)
+    const mine = isMine(message, props.currentUsername)
     // 平台写入的状态变化卡片：靠哪一侧由后端记下的发起方决定——这一步是我做的靠我这边、
     // 对方做的靠对方那边，纯平台通知（结单、客服裁决、超时兜底）居中。
     // 未知事件码退化成普通消息，避免丢信息。
@@ -346,7 +347,7 @@ const timelineItems = computed<ConversationTimelineItem[]>(() => {
 })
 
 watch(
-  () => [props.visible, props.token, props.requirementId, props.apiMode] as const,
+  () => [props.visible, props.token, props.requirementId] as const,
   ([visible]) => {
     stopRealtime()
     // 换了需求就重新开始报到已读：上一个会话报过的消息 id 与本会话无关
@@ -480,7 +481,7 @@ async function loadConversation() {
   loading.value = true
   errorMessage.value = ''
   try {
-    detail.value = await conversationApi.value.getRequirementConversationByRequirement(
+    detail.value = await conversationApi.getRequirementConversationByRequirement(
       props.token,
       props.requirementId,
     )
@@ -520,7 +521,7 @@ async function reportConversationRead() {
   }
 
   try {
-    await conversationApi.value.markRequirementConversationRead(props.token, item.conversation_id)
+    await conversationApi.markRequirementConversationRead(props.token, item.conversation_id)
     lastReportedReadId.value = newest.id
     // 角标挂在工作台外壳、会话列表挂在这一页上，两者都不在父子链上，只能广播
     dispatchConversationRead({
@@ -543,7 +544,7 @@ async function syncAfterRealtimeReconnect() {
   }
 
   try {
-    const next = await conversationApi.value.getRequirementConversationByRequirement(
+    const next = await conversationApi.getRequirementConversationByRequirement(
       props.token,
       props.requirementId,
     )
@@ -605,7 +606,7 @@ async function requestHistoryDisclosure() {
 
   historyRequesting.value = true
   try {
-    detail.value = await conversationApi.value.requestRequirementHistoryDisclosure(
+    detail.value = await conversationApi.requestRequirementHistoryDisclosure(
       props.token,
       props.requirementId,
     )
@@ -625,7 +626,7 @@ async function respondHistoryDisclosure(item: ConversationHistoryDisclosureBrief
 
   historyVotingId.value = item.id
   try {
-    await conversationApi.value.respondConversationHistoryDisclosure(props.token, item.id, decision)
+    await conversationApi.respondConversationHistoryDisclosure(props.token, item.id, decision)
     TMessage.success(decision === 'approved' ? '已同意公开这段历史沟通' : '已拒绝公开这段历史沟通')
     // 两票齐后那段消息会出现在时间线里，重新拉一次详情即可看到
     await loadConversation()
@@ -644,7 +645,7 @@ function startRealtime() {
 
   realtimeStatus.value = 'connecting'
   realtimeError.value = ''
-  stopRealtimeEvents = conversationApi.value.subscribeRequirementConversationEvents(props.token, {
+  stopRealtimeEvents = conversationApi.subscribeRequirementConversationEvents(props.token, {
     onUpdate: applyRealtimeDetail,
     onOpen: () => {
       realtimeStatus.value = 'connected'
@@ -694,7 +695,7 @@ async function submitMessage() {
   errorMessage.value = ''
   attachmentError.value = ''
   try {
-    detail.value = await conversationApi.value.sendRequirementConversationMessage(
+    detail.value = await conversationApi.sendRequirementConversationMessage(
       props.token,
       activeConversation.conversation_id,
       content,
@@ -836,144 +837,12 @@ function applyAttachmentFile(file: File) {
   attachmentError.value = ''
 }
 
-function mimeTypeFromName(name: string) {
-  const lowerName = name.toLowerCase()
-  if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
-    return 'image/jpeg'
-  }
-  if (lowerName.endsWith('.webp')) {
-    return 'image/webp'
-  }
-  if (lowerName.endsWith('.gif')) {
-    return 'image/gif'
-  }
-  if (lowerName.endsWith('.png')) {
-    return 'image/png'
-  }
-  return ''
-}
-
-function defaultAttachmentName(mimeType: string) {
-  if (mimeType === 'image/jpeg') {
-    return 'screenshot.jpg'
-  }
-  if (mimeType === 'image/webp') {
-    return 'screenshot.webp'
-  }
-  if (mimeType === 'image/gif') {
-    return 'screenshot.gif'
-  }
-  return 'screenshot.png'
-}
-
 function messageAttachmentUrl(message: RequirementConversationMessage) {
   return message.attachment_url ? apiUrl(message.attachment_url) : ''
 }
 
 function messageAttachmentLabel(message: RequirementConversationMessage) {
   return message.attachment_name || '截图附件'
-}
-
-function isImageAttachment(message: RequirementConversationMessage) {
-  const mimeType = message.attachment_mime ?? ''
-  if (mimeType.startsWith('image/')) {
-    return true
-  }
-  return /\.(png|jpe?g|webp|gif)$/i.test(message.attachment_url ?? '')
-}
-
-function formatBytes(value?: number | null) {
-  if (!value || value <= 0) {
-    return '0 B'
-  }
-
-  const units = ['B', 'KB', 'MB', 'GB']
-  let size = value
-  let unitIndex = 0
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024
-    unitIndex += 1
-  }
-
-  const precision = unitIndex === 0 || size >= 10 ? 0 : 1
-  return `${size.toFixed(precision)} ${units[unitIndex]}`
-}
-
-function isMine(message: RequirementConversationMessage) {
-  return Boolean(props.currentUsername && message.sender === props.currentUsername)
-}
-
-function avatarText(value?: string | null) {
-  const trimmed = value?.trim() ?? ''
-  return trimmed ? trimmed.slice(0, 1).toUpperCase() : '?'
-}
-
-function parseDate(value?: string | null) {
-  if (!value) {
-    return null
-  }
-  const normalizedValue = value.includes('T') ? value : value.replace(' ', 'T')
-  const date = new Date(normalizedValue)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-function localDateKey(value?: string | null) {
-  const date = parseDate(value)
-  if (!date) {
-    return ''
-  }
-  const month = `${date.getMonth() + 1}`.padStart(2, '0')
-  const day = `${date.getDate()}`.padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
-}
-
-function formatDateLabel(value?: string | null) {
-  const date = parseDate(value)
-  if (!date) {
-    return '最近消息'
-  }
-
-  const today = new Date()
-  const yesterday = new Date(today)
-  yesterday.setDate(today.getDate() - 1)
-  const key = localDateKey(value)
-
-  if (key === localDateKey(today.toISOString())) {
-    return '今天'
-  }
-  if (key === localDateKey(yesterday.toISOString())) {
-    return '昨天'
-  }
-
-  const options: Intl.DateTimeFormatOptions =
-    date.getFullYear() === today.getFullYear()
-      ? { month: 'long', day: 'numeric' }
-      : { year: 'numeric', month: 'long', day: 'numeric' }
-  return date.toLocaleDateString('zh-CN', options)
-}
-
-function formatMessageClock(value?: string | null) {
-  const date = parseDate(value)
-  if (!date) {
-    return ''
-  }
-  return date.toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function formatFullDateTime(value?: string | null) {
-  const date = parseDate(value)
-  if (!date) {
-    return '刚刚更新'
-  }
-  return date.toLocaleString('zh-CN', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 function closeModal() {
@@ -1471,39 +1340,8 @@ function handleBackdropClick() {
   background: transparent;
 }
 
-.conversation-modal {
-  width: min(720px, 100%);
-  max-height: min(760px, calc(100dvh - 36px));
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 18px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  background: #ffffff;
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
-}
-
-.conversation-modal-wrap--inline .conversation-modal {
-  width: 100%;
-  height: min(860px, calc(100dvh - 109px));
-  min-height: min(440px, calc(100dvh - 109px));
-  max-height: calc(100dvh - 109px);
-  border-radius: 16px;
-  box-shadow: 0 8px 20px rgba(76, 103, 172, 0.06);
-}
-
 .conversation-modal__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 18px 20px 14px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.9);
-}
-
-.conversation-modal-wrap--inline .conversation-modal__header {
-  align-items: center;
-  padding: 14px 16px 12px;
 }
 
 .conversation-modal__header h3 {
@@ -1579,38 +1417,13 @@ function handleBackdropClick() {
   gap: 8px;
 }
 
-.conversation-modal__close,
 .conversation-modal__composer button {
   border: 1px solid rgba(203, 213, 225, 0.95);
   border-radius: 10px;
-  background: #ffffff;
-  color: #0f172a;
   cursor: pointer;
 }
 
-.conversation-modal__close {
-  flex: 0 0 auto;
-  padding: 7px 12px;
-}
-
-.conversation-modal__messages {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 18px 20px;
-  background: #f8fafc;
-}
-
-.conversation-modal-wrap--inline .conversation-modal__messages {
-  min-height: 0;
-  padding: 14px 16px;
-}
-
 .conversation-modal__empty {
-  display: grid;
-  place-items: center;
-  min-height: 180px;
   color: #64748b;
 }
 
@@ -1626,24 +1439,6 @@ function handleBackdropClick() {
   color: #b42318;
   padding: 7px 12px;
   cursor: pointer;
-}
-
-.conversation-message {
-  width: min(78%, 520px);
-  margin-bottom: 14px;
-}
-
-.conversation-message--mine {
-  margin-left: auto;
-}
-
-.conversation-message__meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 5px;
-  color: #64748b;
-  font-size: 12px;
 }
 
 .conversation-message p {
@@ -1664,15 +1459,6 @@ function handleBackdropClick() {
   background: #eaf2ff;
 }
 
-.conversation-modal__composer {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
-  padding: 14px 16px;
-  border-top: 1px solid rgba(226, 232, 240, 0.9);
-  background: #ffffff;
-}
-
 .conversation-modal__closed-tip {
   grid-column: 1 / -1;
   margin: 0;
@@ -1682,18 +1468,6 @@ function handleBackdropClick() {
 
 .conversation-modal-wrap--inline .conversation-modal__composer {
   padding: 12px 14px;
-}
-
-.conversation-modal__send-box {
-  align-self: end;
-  display: grid;
-  gap: 8px;
-  justify-items: end;
-}
-
-.conversation-modal__send-box span {
-  color: #64748b;
-  font-size: 12px;
 }
 
 .conversation-modal__composer textarea {
@@ -1740,24 +1514,6 @@ function handleBackdropClick() {
     border-radius: 14px;
   }
 
-  .conversation-modal-wrap--inline .conversation-modal {
-    height: calc(100dvh - 118px);
-    min-height: min(440px, calc(100dvh - 118px));
-    max-height: calc(100dvh - 118px);
-  }
-
-  .conversation-message {
-    width: 100%;
-  }
-
-  .conversation-modal__composer {
-    grid-template-columns: 1fr;
-  }
-
-  .conversation-modal__header {
-    flex-direction: column;
-  }
-
   .conversation-modal__header-actions {
     width: 100%;
   }
@@ -1766,38 +1522,9 @@ function handleBackdropClick() {
     flex: 1;
   }
 
-  .conversation-modal__send-box {
-    width: 100%;
-    justify-items: stretch;
-  }
-
   .conversation-modal__composer button {
     width: 100%;
   }
-}
-
-.conversation-modal {
-  width: min(760px, 100%);
-  border-color: rgba(213, 226, 244, 0.98);
-  background: #f7fbff;
-}
-
-.conversation-modal-wrap--inline .conversation-modal {
-  height: min(860px, calc(100dvh - 109px));
-  min-height: min(440px, calc(100dvh - 109px));
-  max-height: calc(100dvh - 109px);
-  box-shadow: 0 10px 28px rgba(76, 103, 172, 0.08);
-}
-
-.conversation-modal__header {
-  flex: 0 0 auto;
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-bottom-color: rgba(213, 226, 244, 0.92);
-  background: rgba(255, 255, 255, 0.94);
 }
 
 .conversation-modal-wrap--inline .conversation-modal__header {
@@ -1832,29 +1559,10 @@ function handleBackdropClick() {
   white-space: nowrap;
 }
 
-.conversation-modal__avatar,
-.conversation-message__avatar {
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #4f8cff, #5ec8a8);
-  color: #ffffff;
-  font-weight: 900;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.16);
-}
-
 .conversation-modal__avatar {
   width: 42px;
   height: 42px;
   font-size: 17px;
-}
-
-.conversation-message__avatar {
-  width: 30px;
-  height: 30px;
-  margin-bottom: 2px;
-  font-size: 12px;
 }
 
 /* 「实时同步中 · 最近 …」那一行的胶囊底已去掉：副信息走身份块的字号与灰色（见
@@ -1892,26 +1600,9 @@ function handleBackdropClick() {
   opacity: 0.55;
 }
 
-.conversation-modal__messages {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 18px 18px 20px;
-  background: linear-gradient(135deg,
-      rgba(225, 241, 255, 0.78),
-      rgba(248, 252, 255, 0.9) 44%,
-      rgba(235, 250, 244, 0.78));
-  scrollbar-color: rgba(79, 140, 255, 0.58) transparent;
-  scrollbar-width: thin;
-}
-
 .conversation-modal-wrap--inline .conversation-modal__messages {
   padding: 18px 18px 20px;
-}
-
-.conversation-modal__messages::-webkit-scrollbar {
-  width: 8px;
+  min-height: 0;
 }
 
 .conversation-modal__messages::-webkit-scrollbar-button {
@@ -1934,6 +1625,8 @@ function handleBackdropClick() {
   gap: 10px;
   min-height: 220px;
   text-align: center;
+  display: grid;
+  place-items: center;
 }
 
 .conversation-modal__empty .t73-icon {
@@ -1941,57 +1634,9 @@ function handleBackdropClick() {
   font-size: 30px;
 }
 
-.conversation-date-pill {
-  width: max-content;
-  max-width: 100%;
-  margin: 4px auto 14px;
-  padding: 4px 10px;
-  border: 1px solid rgba(203, 213, 225, 0.74);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 800;
-  box-shadow: 0 8px 18px rgba(76, 103, 172, 0.06);
-}
-
-.conversation-message {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  width: 100%;
-  margin: 0 0 10px;
-}
-
 .conversation-message--mine {
   justify-content: flex-end;
-}
-
-.conversation-message__bubble {
-  position: relative;
-  max-width: min(70%, 620px);
-  min-width: 58px;
-  padding: 8px 10px 6px;
-  border: 1px solid rgba(221, 231, 246, 0.92);
-  border-radius: 16px 16px 16px 5px;
-  background: rgba(255, 255, 255, 0.96);
-  color: #0f172a;
-  box-shadow: 0 8px 18px rgba(76, 103, 172, 0.08);
-}
-
-.conversation-message--mine .conversation-message__bubble {
-  border-color: rgba(96, 165, 250, 0.28);
-  border-radius: 16px 16px 5px 16px;
-  background: #ddecff;
-  box-shadow: 0 8px 18px rgba(59, 130, 246, 0.08);
-}
-
-.conversation-message__sender {
-  margin-bottom: 4px;
-  color: #2563eb;
-  font-size: 11px;
-  font-weight: 900;
-  line-height: 1.35;
+  margin-left: auto;
 }
 
 .conversation-message__bubble p {
@@ -2011,39 +1656,6 @@ function handleBackdropClick() {
   border: 0;
   border-radius: 0;
   background: transparent;
-}
-
-.conversation-message__bubble time {
-  display: block;
-  margin-top: 2px;
-  color: #64748b;
-  font-size: 10px;
-  line-height: 1.2;
-  text-align: right;
-}
-
-.conversation-modal__composer {
-  flex: 0 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 10px;
-  padding: 10px 12px 12px;
-  border-top-color: rgba(213, 226, 244, 0.92);
-  background: rgba(255, 255, 255, 0.96);
-}
-
-.conversation-modal__input-shell {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 10px;
-  padding: 8px 10px 8px 12px;
-  border: 1px solid rgba(203, 213, 225, 0.95);
-  border-radius: 18px;
-  background: #ffffff;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 .conversation-modal__input-shell textarea {
@@ -2098,11 +1710,6 @@ function handleBackdropClick() {
     max-height: calc(100dvh - 118px);
   }
 
-  .conversation-modal__header {
-    grid-template-columns: auto auto minmax(0, 1fr) auto;
-    padding: 8px 10px;
-  }
-
   .conversation-modal__avatar {
     width: 38px;
     height: 38px;
@@ -2122,21 +1729,6 @@ function handleBackdropClick() {
     content: none;
   }
 
-  .conversation-modal__messages,
-  .conversation-modal-wrap--inline .conversation-modal__messages {
-    padding: 14px 10px 16px;
-  }
-
-  .conversation-message__bubble {
-    max-width: calc(100% - 42px);
-  }
-
-  .conversation-modal__composer {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px;
-    padding: 9px 10px 10px;
-  }
-
   .conversation-modal__input-shell {
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;
@@ -2153,41 +1745,23 @@ function handleBackdropClick() {
   }
 }
 
-.conversation-modal__header {
-  min-height: 68px;
-}
-
-.conversation-modal__messages {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
 .conversation-date-pill,
 .conversation-message {
   max-width: 880px;
 }
 
-.conversation-message {
-  margin-right: auto;
-  margin-left: auto;
-}
-
-.conversation-message__bubble {
-  max-width: min(68%, 560px);
-}
-
-.conversation-message--mine .conversation-message__bubble {
-  background: #dcecff;
-}
-
-.conversation-modal__composer {
-  margin-top: 0;
-  align-items: center;
-}
-
 .conversation-modal__input-shell {
   min-height: 52px;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 8px 10px 8px 12px;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 .conversation-modal-wrap--inline .conversation-modal__input-shell textarea {
@@ -2196,178 +1770,29 @@ function handleBackdropClick() {
 
 /* R047 断点收敛：原 820px → 640px（用户决定统一到 640） */
 @media (max-width: 640px) {
-  .conversation-message__bubble {
-    max-width: min(76%, 560px);
-  }
-
   .conversation-modal__header {
     min-height: 62px;
+    flex-direction: column;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    padding: 8px 10px;
   }
-
-  .conversation-message {
-    max-width: 100%;
-  }
-
-  .conversation-message__bubble {
-    max-width: calc(100% - 42px);
-  }
-}
-
-.conversation-modal__messages {
-  background-color: #d8efcf;
-  background-image:
-    radial-gradient(circle at 16px 18px, rgba(73, 132, 85, 0.12) 0 1px, transparent 2px),
-    radial-gradient(circle at 78px 42px, rgba(73, 132, 85, 0.1) 0 1px, transparent 2px),
-    linear-gradient(135deg, rgba(201, 229, 195, 0.9), rgba(224, 242, 216, 0.88));
-  background-size:
-    92px 72px,
-    120px 96px,
-    auto;
-  padding: 12px 14px 16px;
-}
-
-.conversation-date-pill {
-  margin-bottom: 10px;
-  padding: 3px 10px;
-  border: 0;
-  background: rgba(255, 255, 255, 0.72);
-  color: #5d765c;
-  box-shadow: 0 4px 10px rgba(87, 125, 93, 0.12);
 }
 
 .conversation-message {
-  max-width: 100%;
-  min-height: 0;
-  align-items: flex-end;
-  gap: 6px;
   margin: 0 0 4px;
 }
 
 .conversation-message__avatar-slot {
-  width: 28px;
-  display: inline-flex;
   flex: 0 0 28px;
-  justify-content: center;
-}
-
-.conversation-message__avatar {
-  width: 24px;
-  height: 24px;
-  margin-bottom: 1px;
-  background: linear-gradient(135deg, #f1a33c, #f9c25c);
-  font-size: 11px;
-  box-shadow: 0 4px 10px rgba(136, 88, 27, 0.16);
 }
 
 .conversation-message__bubble {
-  display: grid;
-  grid-template-columns: minmax(0, auto) auto;
-  align-items: end;
   column-gap: 10px;
   row-gap: 2px;
-  width: fit-content;
-  max-width: min(68%, 620px);
-  min-width: 0;
-  padding: 5px 8px 4px;
-  border: 0;
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 1px 1px rgba(54, 86, 58, 0.16);
-}
-
-.conversation-message--mine .conversation-message__bubble {
-  background: #d9fdd3;
-  box-shadow: 0 1px 1px rgba(54, 86, 58, 0.14);
-}
-
-.conversation-message__bubble p,
-.conversation-message--mine .conversation-message__bubble p {
-  grid-column: 1;
-  min-width: 0;
-  color: #111827;
-  font-size: 13px;
-  line-height: 1.38;
 }
 
 .conversation-message__bubble time {
-  grid-column: 2;
   margin: 0;
-  color: #688168;
-  font-size: 10px;
-  line-height: 1.15;
-  white-space: nowrap;
-}
-
-.conversation-message__sender {
-  display: none;
-}
-
-/* R047 断点收敛：原 820px → 640px（用户决定统一到 640） */
-@media (max-width: 640px) {
-  .conversation-message__bubble {
-    max-width: min(78%, 620px);
-  }
-
-  .conversation-modal__messages,
-  .conversation-modal-wrap--inline .conversation-modal__messages {
-    padding: 10px 8px 14px;
-  }
-
-  .conversation-message__bubble {
-    max-width: calc(100% - 40px);
-  }
-}
-
-.conversation-modal__composer {
-  grid-template-columns: minmax(0, 1fr) 48px;
-  align-items: end;
-  gap: 10px;
-  padding: 8px 12px;
-  border-top: 1px solid rgba(167, 190, 166, 0.36);
-  background: #f7f8f4;
-}
-
-.conversation-modal__composer-main {
-  position: relative;
-  min-width: 0;
-  display: grid;
-  gap: 6px;
-}
-
-.conversation-modal__tools {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding-left: 2px;
-}
-
-.conversation-modal__composer .conversation-modal__tool-btn,
-.conversation-modal__composer .conversation-modal__emoji-btn,
-.conversation-modal__composer .conversation-modal__attachment-remove {
-  display: inline-grid;
-  place-items: center;
-  min-width: 0;
-  padding: 0;
-  border: 1px solid rgba(185, 204, 190, 0.72);
-  background: rgba(255, 255, 255, 0.92);
-  color: #3f5f49;
-  box-shadow: none;
-}
-
-.conversation-modal__composer .conversation-modal__tool-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
-  font-size: 17px;
-}
-
-.conversation-modal__composer .conversation-modal__tool-btn:hover:not(:disabled),
-.conversation-modal__composer .conversation-modal__tool-btn.is-active {
-  border-color: rgba(45, 118, 236, 0.34);
-  background: #eef6ff;
-  color: #1d4ed8;
-  transform: translateY(-1px);
 }
 
 .conversation-modal__composer .conversation-modal__tool-btn:disabled {
@@ -2379,31 +1804,12 @@ function handleBackdropClick() {
   display: none;
 }
 
-.conversation-modal__emoji-panel {
-  display: grid;
-  grid-template-columns: repeat(8, 32px);
-  gap: 6px;
-  width: max-content;
-  max-width: 100%;
-  padding: 8px;
-  border: 1px solid rgba(185, 204, 190, 0.72);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 10px 24px rgba(54, 86, 58, 0.12);
-}
-
 .conversation-modal__composer .conversation-modal__emoji-btn {
   width: 32px;
   height: 32px;
   border-radius: 10px;
   font-size: 18px;
   line-height: 1;
-}
-
-.conversation-modal__composer .conversation-modal__emoji-btn:hover {
-  border-color: rgba(45, 118, 236, 0.26);
-  background: #f1f7ff;
-  transform: translateY(-1px);
 }
 
 .conversation-emoji-enter-active,
@@ -2419,25 +1825,9 @@ function handleBackdropClick() {
   transform: translateY(4px);
 }
 
-.conversation-modal__attachment-preview {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  width: min(420px, 100%);
-  padding: 8px;
-  border: 1px solid rgba(185, 204, 190, 0.72);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 6px 16px rgba(54, 86, 58, 0.08);
-}
-
 .conversation-modal__attachment-preview img {
   width: 48px;
-  height: 48px;
-  border-radius: 10px;
   object-fit: cover;
-  background: #eef3eb;
 }
 
 .conversation-modal__attachment-preview div {
@@ -2485,30 +1875,6 @@ function handleBackdropClick() {
   line-height: 1.35;
 }
 
-.conversation-message__attachment {
-  grid-column: 1 / -1;
-  display: grid;
-  gap: 5px;
-  width: min(260px, 64vw);
-  max-width: 100%;
-}
-
-.conversation-message__attachment-link {
-  display: block;
-  overflow: hidden;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.5);
-  color: inherit;
-}
-
-.conversation-message__attachment-link img {
-  display: block;
-  width: 100%;
-  max-height: 220px;
-  object-fit: contain;
-  background: rgba(15, 23, 42, 0.04);
-}
-
 .conversation-message__attachment-file {
   display: grid;
   place-items: center;
@@ -2543,42 +1909,6 @@ function handleBackdropClick() {
 .conversation-message__attachment+p {
   grid-column: 1 / -1;
   margin-top: 2px;
-}
-
-.conversation-modal__composer .conversation-modal__input-shell {
-  position: relative;
-  display: flex;
-  min-height: 48px;
-  height: 48px;
-  align-items: center;
-  padding: 0 12px 0 18px;
-  border-color: rgba(148, 163, 184, 0.5);
-  border-radius: 999px;
-  box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.92);
-}
-
-.conversation-modal__composer .conversation-modal__input-shell:focus-within {
-  border-color: rgba(47, 125, 246, 0.62);
-  box-shadow:
-    0 0 0 3px rgba(47, 125, 246, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.92);
-}
-
-.conversation-modal__composer .conversation-modal__input-shell textarea {
-  appearance: none;
-  -webkit-appearance: none;
-  height: 24px;
-  min-height: 24px;
-  max-height: 72px;
-  padding: 0;
-  resize: none;
-  color: #111827;
-  font-size: 15px;
-  line-height: 24px;
-  overflow: hidden;
-  scrollbar-width: none;
 }
 
 .conversation-modal__composer .conversation-modal__input-shell textarea::-webkit-scrollbar {
@@ -2618,39 +1948,6 @@ function handleBackdropClick() {
   color: #8a95a5;
 }
 
-.conversation-modal__composer .conversation-modal__input-shell span {
-  position: absolute;
-  top: 50%;
-  right: 16px;
-  z-index: 2;
-  transform: translateY(-50%);
-  padding-left: 8px;
-  background: #ffffff;
-  color: #8fa0b4;
-  font-size: 12px;
-  line-height: 1;
-  pointer-events: none;
-}
-
-.conversation-modal__composer .conversation-modal__send-btn {
-  align-self: center;
-  width: 48px;
-  min-width: 48px;
-  height: 48px;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: #2d76ec;
-  color: #ffffff;
-  font-size: 22px;
-  box-shadow: 0 8px 18px rgba(45, 118, 236, 0.24);
-}
-
-.conversation-modal__composer .conversation-modal__send-btn:hover:not(:disabled) {
-  background: #2567d8;
-  box-shadow: 0 10px 22px rgba(45, 118, 236, 0.28);
-}
-
 .conversation-modal__composer .conversation-modal__send-btn:disabled {
   background: #d5dce6;
   color: #ffffff;
@@ -2658,33 +1955,12 @@ function handleBackdropClick() {
 }
 
 @media (max-width: 640px) {
-  .conversation-modal__composer {
-    grid-template-columns: minmax(0, 1fr) 44px;
-    padding: 8px 10px;
-  }
-
   .conversation-modal__tools {
     gap: 5px;
   }
 
-  .conversation-modal__composer .conversation-modal__tool-btn {
-    width: 32px;
-    height: 32px;
-  }
-
-  .conversation-modal__emoji-panel {
-    grid-template-columns: repeat(6, 32px);
-  }
-
   .conversation-modal__attachment-preview {
     width: 100%;
-  }
-
-  .conversation-modal__composer .conversation-modal__input-shell {
-    min-height: 44px;
-    height: 44px;
-    padding-right: 10px;
-    padding-left: 14px;
   }
 
   .conversation-modal__composer .conversation-modal__input-shell textarea {
@@ -2704,82 +1980,71 @@ function handleBackdropClick() {
   .conversation-modal__composer .conversation-modal__input-shell span {
     font-size: 11px;
   }
-
-  .conversation-modal__composer .conversation-modal__send-btn {
-    width: 44px;
-    min-width: 44px;
-    height: 44px;
-  }
 }
 
 .conversation-modal {
   border-color: rgba(216, 228, 244, 0.98);
   background: #f8fbff;
+  max-height: min(760px, calc(100dvh - 36px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+  width: min(760px, 100%);
 }
 
 .conversation-modal-wrap--inline .conversation-modal {
   box-shadow: 0 16px 38px rgba(71, 102, 148, 0.1);
+  width: 100%;
+  border-radius: 16px;
+  height: min(860px, calc(100dvh - 109px));
+  min-height: min(440px, calc(100dvh - 109px));
+  max-height: calc(100dvh - 109px);
 }
 
 .conversation-modal__header {
   border-bottom-color: rgba(216, 228, 244, 0.95);
   background: rgba(255, 255, 255, 0.96);
+  justify-content: space-between;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  min-height: 68px;
 }
 
 .conversation-modal__avatar,
 .conversation-message__avatar {
   background: linear-gradient(135deg, #4f8cff, #5ec8a8);
   box-shadow: 0 8px 18px rgba(79, 140, 255, 0.18);
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  color: #ffffff;
+  font-weight: 900;
 }
 
 /* 副信息的配色见 .conversation-modal__identity-meta：一行灰字 + 彩色小圆点，不再铺胶囊底 */
 
-.conversation-modal__messages {
-  background-color: #f3f7fc;
-  background-image:
-    radial-gradient(circle at 18px 18px, rgba(79, 140, 255, 0.08) 0 1px, transparent 2px),
-    radial-gradient(circle at 88px 52px, rgba(94, 200, 168, 0.07) 0 1px, transparent 2px),
-    linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(237, 245, 252, 0.96));
-  background-size:
-    96px 76px,
-    128px 104px,
-    auto;
-  padding: 16px 18px 18px;
-  scrollbar-color: rgba(79, 140, 255, 0.42) transparent;
-}
-
-.conversation-date-pill {
-  margin: 2px auto 12px;
-  padding: 4px 11px;
-  border: 1px solid rgba(209, 222, 239, 0.86);
-  background: rgba(255, 255, 255, 0.9);
-  color: #64748b;
-  box-shadow: 0 8px 18px rgba(71, 102, 148, 0.08);
-}
-
-.conversation-message {
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
 .conversation-message__avatar-slot {
   width: 30px;
   flex-basis: 30px;
+  display: inline-flex;
+  justify-content: center;
 }
 
 .conversation-message__avatar {
   width: 26px;
   height: 26px;
   font-size: 11px;
-}
-
-.conversation-message__bubble {
-  max-width: min(72%, 620px);
-  padding: 8px 10px 6px;
-  border: 1px solid rgba(218, 229, 244, 0.92);
-  border-radius: 15px 15px 15px 6px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 8px 20px rgba(71, 102, 148, 0.08);
+  margin-bottom: 1px;
+  background: linear-gradient(135deg, #f1a33c, #f9c25c);
+  box-shadow: 0 4px 10px rgba(136, 88, 27, 0.16);
 }
 
 .conversation-message--mine .conversation-message__bubble {
@@ -2789,30 +2054,14 @@ function handleBackdropClick() {
   box-shadow: 0 8px 20px rgba(45, 118, 236, 0.1);
 }
 
-.conversation-message__bubble p,
-.conversation-message--mine .conversation-message__bubble p {
-  color: #182335;
-  font-size: 14px;
-  line-height: 1.48;
-}
-
-.conversation-message__bubble time {
-  color: #7d8da3;
-}
-
-.conversation-modal__composer {
-  align-items: end;
-  border-top-color: rgba(216, 228, 244, 0.95);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 -10px 24px rgba(71, 102, 148, 0.06);
-}
-
 .conversation-modal__composer-main {
   gap: 8px;
+  position: relative;
+  min-width: 0;
+  display: grid;
 }
 
 .conversation-modal__tools {
-  gap: 7px;
   padding-left: 4px;
 }
 
@@ -2822,12 +2071,20 @@ function handleBackdropClick() {
   border-color: rgba(207, 220, 238, 0.96);
   background: #ffffff;
   color: #52657f;
+  display: inline-grid;
+  place-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid rgba(185, 204, 190, 0.72);
+  box-shadow: none;
 }
 
 .conversation-modal__composer .conversation-modal__tool-btn {
   width: 36px;
   height: 36px;
   box-shadow: 0 8px 18px rgba(71, 102, 148, 0.08);
+  border-radius: 999px;
+  font-size: 17px;
 }
 
 .conversation-modal__composer .conversation-modal__tool-btn:hover:not(:disabled),
@@ -2836,6 +2093,7 @@ function handleBackdropClick() {
   background: #eef6ff;
   color: #2563eb;
   box-shadow: 0 10px 20px rgba(79, 140, 255, 0.14);
+  transform: translateY(-1px);
 }
 
 .conversation-modal__emoji-panel {
@@ -2846,21 +2104,40 @@ function handleBackdropClick() {
   border-color: rgba(207, 220, 238, 0.96);
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 18px 38px rgba(71, 102, 148, 0.18);
+  display: grid;
+  grid-template-columns: repeat(8, 32px);
+  gap: 6px;
+  width: max-content;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px solid rgba(185, 204, 190, 0.72);
+  border-radius: 14px;
 }
 
 .conversation-modal__composer .conversation-modal__emoji-btn:hover {
   border-color: rgba(79, 140, 255, 0.34);
   background: #eef6ff;
+  transform: translateY(-1px);
 }
 
 .conversation-modal__attachment-preview {
   border-color: rgba(207, 220, 238, 0.96);
   background: #ffffff;
   box-shadow: 0 12px 24px rgba(71, 102, 148, 0.1);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: min(420px, 100%);
+  padding: 8px;
+  border: 1px solid rgba(185, 204, 190, 0.72);
+  border-radius: 14px;
 }
 
 .conversation-modal__attachment-preview img {
   background: #f1f6fb;
+  height: 48px;
+  border-radius: 10px;
 }
 
 .conversation-modal__attachment-preview span,
@@ -2872,10 +2149,18 @@ function handleBackdropClick() {
 .conversation-message__attachment-link {
   border: 1px solid rgba(216, 228, 244, 0.88);
   background: #f8fbff;
+  display: block;
+  overflow: hidden;
+  border-radius: 8px;
+  color: inherit;
 }
 
 .conversation-message__attachment-link img {
   background: #f8fbff;
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
 }
 
 .conversation-modal__composer .conversation-modal__input-shell {
@@ -2886,6 +2171,11 @@ function handleBackdropClick() {
   box-shadow:
     0 8px 22px rgba(71, 102, 148, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.96);
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 12px 0 18px;
+  border-radius: 999px;
 }
 
 .conversation-modal__composer .conversation-modal__input-shell:focus-within {
@@ -2897,15 +2187,45 @@ function handleBackdropClick() {
 
 .conversation-modal__composer .conversation-modal__input-shell textarea {
   color: #182335;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 24px;
+  min-height: 24px;
+  max-height: 72px;
+  padding: 0;
+  resize: none;
+  font-size: 15px;
+  line-height: 24px;
+  overflow: hidden;
+  scrollbar-width: none;
 }
 
 .conversation-modal__composer .conversation-modal__input-shell span {
   color: #9aa8ba;
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  z-index: 2;
+  transform: translateY(-50%);
+  padding-left: 8px;
+  background: #ffffff;
+  font-size: 12px;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .conversation-modal__composer .conversation-modal__send-btn {
   background: #2d76ec;
   box-shadow: 0 12px 24px rgba(45, 118, 236, 0.24);
+  align-self: center;
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 22px;
 }
 
 .conversation-modal__composer .conversation-modal__send-btn:hover:not(:disabled) {
@@ -2915,37 +2235,45 @@ function handleBackdropClick() {
 
 /* R047 断点收敛：原 820px → 640px（用户决定统一到 640） */
 @media (max-width: 640px) {
-  .conversation-message__bubble {
-    max-width: min(78%, 620px);
-  }
-
   .conversation-modal__messages,
   .conversation-modal-wrap--inline .conversation-modal__messages {
     padding: 12px 10px 14px;
   }
 
-  .conversation-message__bubble {
-    max-width: calc(100% - 42px);
-  }
-
-  .conversation-modal__composer .conversation-modal__tool-btn {
-    width: 34px;
-    height: 34px;
-  }
-
   .conversation-modal__emoji-panel {
     left: 0;
     max-width: calc(100vw - 36px);
+    grid-template-columns: repeat(6, 32px);
   }
 }
 
 .conversation-message {
   flex: 0 0 auto;
   margin-bottom: 10px;
+  display: flex;
+  width: 100%;
+  margin-right: auto;
+  margin-left: auto;
+  max-width: 100%;
+  min-height: 0;
+  align-items: flex-end;
+  gap: 8px;
 }
 
 .conversation-date-pill {
   flex: 0 0 auto;
+  width: max-content;
+  max-width: 100%;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  margin: 2px auto 12px;
+  padding: 4px 11px;
+  border: 1px solid rgba(209, 222, 239, 0.86);
+  background: rgba(255, 255, 255, 0.9);
+  color: #64748b;
+  box-shadow: 0 8px 18px rgba(71, 102, 148, 0.08);
 }
 
 .conversation-message:last-child {
@@ -2959,6 +2287,15 @@ function handleBackdropClick() {
   gap: 4px;
   min-width: 104px;
   padding: 10px 12px 7px;
+  position: relative;
+  color: #0f172a;
+  grid-template-columns: minmax(0, auto) auto;
+  width: fit-content;
+  max-width: min(72%, 620px);
+  border: 1px solid rgba(218, 229, 244, 0.92);
+  border-radius: 15px 15px 15px 6px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 20px rgba(71, 102, 148, 0.08);
 }
 
 .conversation-message__bubble p,
@@ -2966,6 +2303,9 @@ function handleBackdropClick() {
   width: 100%;
   font-size: 15px;
   line-height: 1.5;
+  grid-column: 1;
+  min-width: 0;
+  color: #182335;
 }
 
 .conversation-message__bubble time {
@@ -2973,10 +2313,19 @@ function handleBackdropClick() {
   margin-top: 0;
   font-size: 11px;
   line-height: 1;
+  display: block;
+  text-align: right;
+  grid-column: 2;
+  white-space: nowrap;
+  color: #7d8da3;
 }
 
 .conversation-message__attachment {
   width: min(280px, 64vw);
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 5px;
+  max-width: 100%;
 }
 
 /* 状态变化卡片：靠哪一侧看这一步是谁做的（会话里的气泡也是这套左右口径）——
@@ -3111,11 +2460,14 @@ function handleBackdropClick() {
 @media (max-width: 640px) {
   .conversation-message {
     margin-bottom: 8px;
+    width: 100%;
+    max-width: 100%;
   }
 
   .conversation-message__bubble {
     min-width: 98px;
     padding: 9px 11px 7px;
+    max-width: calc(100% - 42px);
   }
 
   .conversation-message__bubble p,
@@ -3525,10 +2877,6 @@ function handleBackdropClick() {
   cursor: pointer;
 }
 
-#workbench-mobile-bar-extra .conversation-modal__identity {
-  cursor: pointer;
-}
-
 #workbench-mobile-bar-extra .conversation-modal__identity:focus-visible {
   border-radius: 6px;
   outline: 2px solid #2563eb;
@@ -3551,6 +2899,7 @@ function handleBackdropClick() {
   min-width: 0;
   gap: 1px;
   contain: inline-size;
+  cursor: pointer;
 }
 
 #workbench-mobile-bar-extra .conversation-modal__identity h3 {
@@ -3583,13 +2932,16 @@ function handleBackdropClick() {
    发送键已挪进输入行，底栏不再需要给它留第二列。 */
 .conversation-modal__composer {
   grid-template-columns: minmax(0, 1fr);
-}
-
-.conversation-modal__input-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
+  flex: 0 0 auto;
+  display: grid;
+  margin-top: 0;
+  gap: 10px;
+  padding: 8px 12px;
+  border-top: 1px solid rgba(167, 190, 166, 0.36);
+  align-items: end;
+  border-top-color: rgba(216, 228, 244, 0.95);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 -10px 24px rgba(71, 102, 148, 0.06);
 }
 
 .conversation-modal__input-row .conversation-modal__input-shell {
@@ -3606,6 +2958,9 @@ function handleBackdropClick() {
    与 align-items:center 居中；多行时胶囊圆角会变成「药丸」，改用固定圆角 */
 .conversation-modal__input-row {
   align-items: flex-end;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
 }
 
 .conversation-modal__composer .conversation-modal__input-row .conversation-modal__input-shell {
@@ -3633,6 +2988,10 @@ function handleBackdropClick() {
   padding: 20px 14px 8px;
   background: linear-gradient(180deg, rgba(237, 245, 252, 0) 0, rgba(237, 245, 252, 0.92) 20px, #edf5fc 100%);
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
 }
 
 .conversation-modal__tools > * {
@@ -3645,6 +3004,28 @@ function handleBackdropClick() {
   -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 24px);
   mask-image: linear-gradient(180deg, transparent 0, #000 24px);
   scrollbar-width: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: linear-gradient(135deg,
+      rgba(225, 241, 255, 0.78),
+      rgba(248, 252, 255, 0.9) 44%,
+      rgba(235, 250, 244, 0.78));
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background-color: #f3f7fc;
+  background-image:
+    radial-gradient(circle at 18px 18px, rgba(79, 140, 255, 0.08) 0 1px, transparent 2px),
+    radial-gradient(circle at 88px 52px, rgba(94, 200, 168, 0.07) 0 1px, transparent 2px),
+    linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(237, 245, 252, 0.96));
+  background-size:
+    96px 76px,
+    128px 104px,
+    auto;
+  padding: 16px 18px 18px;
+  scrollbar-color: rgba(79, 140, 255, 0.42) transparent;
 }
 
 .conversation-modal__messages::-webkit-scrollbar {
@@ -3686,6 +3067,8 @@ function handleBackdropClick() {
 @media (max-width: 640px) {
   .conversation-modal__composer {
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) 44px;
   }
 
   .conversation-modal__composer .conversation-modal__tool-btn {
@@ -3703,6 +3086,7 @@ function handleBackdropClick() {
     min-height: 40px;
     height: 40px;
     padding-right: 14px;
+    padding-left: 14px;
   }
 
   /* 发送键与表情、附件同为 34px；输入框单行高 40px，三颗按钮底边各抬 3px，
