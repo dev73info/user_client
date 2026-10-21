@@ -118,7 +118,6 @@
   .profile-update-row button.ghost.small {
     width: 100%;
   }
-
 }
 
 @media (max-width: 640px) {
@@ -691,6 +690,47 @@
   margin: 0;
   font-size: 12.5px;
   line-height: 1.7;
+}
+
+/* 解除合作弹窗（`RequirementBreachModal.vue`）里那两块自己排版的内容：协商/判定表态与二次确认。
+   原先写在 MyRequirementsView 的 scoped 块里，弹窗拆成组件后 scoped 属性对不上会静默失效，
+   落回本文件——`.pay-modal` 本来就是全局样式，选择器一字不改、视觉不变。 */
+.pay-modal .breach-modal__field {
+  display: grid;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.pay-modal .breach-modal__field > strong {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pay-modal .breach-modal__decision {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(191, 219, 254, 0.9);
+  border-radius: 14px;
+  background: rgba(239, 246, 255, 0.72);
+}
+
+.pay-modal .breach-modal__decision .pay-line {
+  margin-bottom: 0;
+}
+
+.pay-modal .breach-modal__decision .actions {
+  margin-top: 12px;
+}
+
+@media (max-width: 640px) {
+  .pay-modal .breach-modal__decision .actions .ghost {
+    min-height: 44px;
+  }
+  .pay-modal .breach-modal__decision .actions {
+    flex-direction: column;
+  }
 }
 
 /* --- 优惠券列表（个人中心） --- */
