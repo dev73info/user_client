@@ -24,3 +24,16 @@ export type AccountEntry = {
 }
 
 export type AccountEntryGroup = { title: string; entries: AccountEntry[] }
+
+/// 渠道 id → 用户看得懂的名字。入口行的标题、绑定 / 解绑的提示文案都读这一份，
+/// 免得「入口叫 GitHub、提示里叫 github」这种两处各写一张表的老毛病。
+export function providerLabel(provider: string): string {
+  const labels: Record<string, string> = {
+    github: 'GitHub',
+    gitee: 'Gitee',
+    qq: 'QQ',
+    wechat: '微信',
+    alipay: '支付宝',
+  }
+  return labels[provider] ?? provider
+}

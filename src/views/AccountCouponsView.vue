@@ -1,33 +1,22 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+/**
+ * 账号与安全页（文件名沿用历史的 `AccountCouponsView`，优惠券业务早已迁走）：一屏 hero、
+ * 两张入口卡与十几个弹窗的**编排层**。
+ *
+ * 收到这里只剩接线：各业务域的 composable 实例化与互相注入、七步 `onMounted`、三条跨域 watch、
+ * 模板挂点。入口行怎么拼在 `shared/accountEntryRows.ts`、点击分发在 `useAccountEntryGroups`、
+ * 三个登录凭证弹窗在 `useAccountSecuritySettings`、两步验证在 `useAccountTwoFactorSettings`、
+ * 第三方绑定在 `useAccountProviderBinding`，实名四件套与结算各有自己的域。
+ *
+ * 两条耦合点**必须留在这里**：
+ * - `watch(realnameDialogVisible)`：关弹窗即丢弃变更草稿（草稿的生命周期归视图）；
+ * - `watch(faceidAuthUrl)`：二维码出现 / 消失要连带开关实名弹窗（两个弹窗互斥）。
+ */
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  closeAccount,
-  getBoundProviders,
-  getProviderBindUrl,
-  getWechatBindAuthorizeUrl,
-  getWechatBindQrUrl,
-  unbindProvider,
-} from '@/api/auth'
-import {
-  getProfile,
-  sendProfileEmailChangeCode,
-  sendProfilePasswordCode,
-  sendProfileTwoFactorCode,
-  updateProfile,
-  updateProfileEmail,
-  updateProfilePassword,
-  updateProfileTwoFactor,
-} from '@/api/settings'
-import {
-  createSealMakeOnline,
-  getMySeals,
-  modifyCompanyInfo,
-  modifyMobileByCode,
-  modifyUserName,
-  sendVerifyCode,
-  type MySealsData,
-} from '@/api/asignAccount'
+
+import { closeAccount } from '@/api/auth'
+import { createSealMakeOnline, getMySeals, type MySealsData } from '@/api/asignAccount'
 import { useAuthStore } from '@/stores/auth'
 import RealnameHero from '@/components/RealnameHero.vue'
 import WechatBindQrModal from '@/components/WechatBindQrModal.vue'
@@ -43,6 +32,11 @@ import SealDialog from '@/components/account/SealDialog.vue'
 import SettlementDialog from '@/components/account/SettlementDialog.vue'
 import TwoFactorDialog from '@/components/account/TwoFactorDialog.vue'
 import UsernameDialog from '@/components/account/UsernameDialog.vue'
+import { useAccountEntryGroups } from '@/composables/useAccountEntryGroups'
+import { useAccountProviderBinding } from '@/composables/useAccountProviderBinding'
+import { useAccountSecuritySettings } from '@/composables/useAccountSecuritySettings'
+import { useAccountTwoFactorSettings } from '@/composables/useAccountTwoFactorSettings'
+import { useAsignAccount } from '@/composables/useAsignAccount'
 import { useFaceidChallenge } from '@/composables/useFaceidChallenge'
 import { useLegalCertPeriod } from '@/composables/useLegalCertPeriod'
 import { useRealnameFormDraft } from '@/composables/useRealnameFormDraft'
@@ -50,55 +44,11 @@ import { useRealnameIdentity } from '@/composables/useRealnameIdentity'
 import { useRealnameMaterials } from '@/composables/useRealnameMaterials'
 import { useRealnameSubmit } from '@/composables/useRealnameSubmit'
 import { useSettlementAccount, type AdapayMemberStatus } from '@/composables/useSettlementAccount'
-import type { AccountEntry, AccountEntryGroup } from '@/shared/accountEntries'
-import {
-  TCard,
-  TMessage,
-  Bell,
-  CollectionTag,
-  Connection,
-  CreditCard,
-  Iphone,
-  Lock,
-  Message,
-  OfficeBuilding,
-  Postcard,
-  Promotion,
-  RefreshLeft,
-  SwitchButton,
-  User,
-  Warning,
-} from 'ui_73info'
+import { TCard, TMessage } from 'ui_73info'
 
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-
-const profileLoading = ref(false)
-const newUsername = ref('')
-const usernameLoading = ref(false)
-const profileEmail = ref('')
-const newEmail = ref('')
-const emailCode = ref('')
-const emailCodeSending = ref(false)
-const emailLoading = ref(false)
-const newPassword = ref('')
-const confirmPassword = ref('')
-const passwordCode = ref('')
-const passwordCodeSending = ref(false)
-const passwordLoading = ref(false)
-const twoFactorEnabled = ref(false)
-const twoFactorTargetEnabled = ref(false)
-const twoFactorCode = ref('')
-const twoFactorCodeSending = ref(false)
-const twoFactorLoading = ref(false)
-const wechatBindingLoading = ref(false)
-const wechatBound = ref(false)
-const boundProviders = ref<string[]>([])
-const providerBindingLoading = ref(false)
-const accountCloseDialogVisible = ref(false)
-const accountCloseConfirmation = ref('')
-const accountClosing = ref(false)
 
 const realnameDialogVisible = ref(false)
 const adapayMember = ref<AdapayMemberStatus | null>(null)
@@ -330,300 +280,6 @@ watch(realnameDialogVisible, (visible) => {
   void autoFillLegalCertPeriod({ silent: true })
 })
 
-// ── 账户入口：两张卡片共用同一套「分组 + 行」结构 ────────────────
-
-/// 「认证管理」卡片：实名认证（按认证类型给不同入口） / 收款与结算 两组。
-/// 认证类型对应的入口集合见下方 `identity` 的注释。
-const realnameEntryGroups = computed<AccountEntryGroup[]>(() => {
-  const identity: AccountEntry[] = [
-    {
-      key: 'realname',
-      title: realnameEntryCopy.value.title,
-      desc: realnameEntryCopy.value.desc,
-      icon: Postcard,
-      status: { text: `实名认证：${statusText.value}`, tone: statusTone.value },
-    },
-  ]
-  if (realnamePending.value) {
-    identity.push({
-      key: 'faceid',
-      title: '继续人脸核身',
-      desc: '扫码完成人脸核验，也可在这里查询核验结果',
-      icon: Promotion,
-      loading: faceidRestoring.value,
-    })
-  }
-  if (realnameCanWithdraw.value) {
-    identity.push({
-      key: 'withdraw',
-      title: realnameChangeBacked.value ? '取消变更，还原原主体' : '撤回认证',
-      desc: '撤回后可重新填写主体信息',
-      icon: RefreshLeft,
-      danger: true,
-      loading: withdrawing.value,
-    })
-  }
-  // 已通过认证后的可维护入口：按认证类型给不同集合（2026-10-04 起把原「电子签约账户」
-  // 那组并进来，避免同一件事分散在两个分组里）
-  //   个人：修改手机号、修改个人信息、变更认证类型
-  //   企业 / 个体工商户：修改法人、修改手机号、修改企业信息、变更认证类型
-  if (realnameApproved.value) {
-    if (assignEnterprise.value) {
-      identity.push({
-        key: 'legalPerson',
-        title: '修改法人',
-        desc: '变更企业法人姓名与身份证号，需重新核验',
-        icon: User,
-      })
-    }
-    identity.push({
-      key: 'mobile',
-      title: '修改手机号（验证码方式）',
-      desc: '接收签署短信的手机号，用短信验证码改绑',
-      icon: Iphone,
-    })
-    identity.push(
-      assignEnterprise.value
-        ? {
-            key: 'company',
-            title: '修改企业信息',
-            desc: '变更企业名称会自动重新生成印章',
-            icon: OfficeBuilding,
-          }
-        : {
-            key: 'personal',
-            title: '修改姓名',
-            desc: '修正爱签签署侧登记的姓名，需过一次三要素核验',
-            icon: User,
-          },
-    )
-    // 印章是企业主体在爱签侧的用章对象（个人主体没有企业印章），
-    // 所以只在企业 / 个体工商户主体下出现，放在语义最近的「修改企业信息」之后。
-    if (assignEnterprise.value) {
-      identity.push({
-        key: 'seal',
-        title: '印章管理',
-        desc: '查看企业电子印章，可在线制作新印章',
-        icon: CollectionTag,
-      })
-    }
-    identity.push({
-      key: 'changeSubject',
-      title: '变更认证类型',
-      desc: '个人 / 企业 / 个体工商户之间切换，需重新认证',
-      icon: SwitchButton,
-    })
-  }
-
-  const settle: AccountEntry[] = [
-    {
-      key: 'settle',
-      title: '结算账户',
-      desc:
-        settleStage.value === 'reviewing'
-          ? settleUnderReviewText.value
-          : settleStage.value === 'failed'
-            ? `渠道已拒绝开通收款账户，点进去看原因并按提示整改`
-            : settleSubjectMismatch.value
-              ? settleMaterialMissing.value
-                ? `实名资料缺${settleMaterialMissingText.value}，补齐后才能重新绑定收款账户`
-                : '实名主体已变更，原银行卡需按新主体重新绑定'
-              : settleStage.value === 'bound'
-                ? '收款银行卡已绑定，可查看或更换'
-                : settleStage.value === 'ready'
-                  ? `认证已完成，绑定${settleAccountWord.value}后即可收取合同款`
-                  : realnameApproved.value
-                    ? settleProviderError.value
-                      ? '收款账户开通失败，点进去看渠道给的原因并补齐资料'
-                      : '正在自动开通收款账户，稍后刷新查看'
-                    : '完成实名认证后会自动开通收款账户',
-      icon: CreditCard,
-      // 渠道会员还在审核时**不放开入口**：这时候点进去也绑不上，
-      // 只会撞渠道的 member_not_exists，徒增一次失败与一次限流。
-      locked: settleUnderReview.value,
-      // 标签按 settleStage 的四态如实写：已绑卡才是「已设置」，会员还在渠道那边写审核中，
-      // 会员好了但没绑卡写「待绑卡」（差的是用户那一步），连会员都还没建写「待认证」。
-      // 不这么分的话，「未设置」会把「系统还没办完」和「用户还没绑卡」混成一句，
-      // 用户不知道自己该等还是该动手。
-      // （历史口径：更早是「收款认证：已认证」，读的是渠道会员状态，未绑卡也显示绿色，
-      //   会把人误导成「已能收款」，2026-10-04 改回绑卡口径。）
-      status:
-        settleStage.value === 'reviewing'
-          ? { text: '收款账户：渠道审核中', tone: 'warning' }
-          : settleStage.value === 'failed'
-            ? {
-                text: settleCorporateLocked.value
-                  ? '收款账户：渠道审核未通过'
-                  : '收款账户：开通被拒',
-                tone: 'danger',
-              }
-            : settleSubjectMismatch.value
-              ? { text: '收款账户：待重绑', tone: 'warning' }
-              : settleStage.value === 'bound'
-                ? { text: '结算账户：已设置', tone: 'success' }
-                : settleStage.value === 'ready'
-                  ? { text: '收款账户：待绑卡', tone: 'warning' }
-                  : { text: '收款账户：待认证', tone: 'info' },
-    },
-  ]
-  // 注销只在已绑卡时有意义；属破坏性动作，用 danger 标记。
-  if (settleBound.value) {
-    settle.push({
-      key: 'closeSettle',
-      title: '注销结算账户',
-      desc: '解绑收款银行卡，注销后合同款无法入账',
-      icon: Warning,
-      danger: true,
-    })
-  }
-
-  return [
-    { title: '实名认证', entries: identity },
-    { title: '收款与结算', entries: settle },
-  ]
-})
-
-/// 「账号与安全」卡片：登录凭证 / 第三方账号 / 危险操作三组入口。
-const accountEntryGroups = computed<AccountEntryGroup[]>(() => {
-  const providerEntry = (provider: 'github' | 'gitee' | 'qq'): AccountEntry => {
-    const bound = isProviderBound(provider)
-    return {
-      key: `bind:${provider}`,
-      title: providerLabel(provider),
-      desc: bound ? '已绑定，点击可解除绑定' : '绑定后可扫码快捷登录',
-      icon: Connection,
-      status: { text: bound ? '已绑定' : '未绑定', tone: bound ? 'success' : 'info' },
-      loading: providerBindingLoading.value,
-    }
-  }
-
-  return [
-    {
-      title: '登录凭证',
-      entries: [
-        {
-          key: 'email',
-          title: '修改邮箱',
-          desc: profileEmail.value ? `当前邮箱：${profileEmail.value}` : '用于接收验证码与通知',
-          icon: Message,
-        },
-        { key: 'password', title: '修改密码', desc: '修改后其它设备需重新登录', icon: Lock },
-        {
-          key: 'username',
-          title: '修改用户名',
-          desc: '用户名同时是登录名，修改后请用新用户名登录',
-          icon: User,
-        },
-        {
-          key: 'twoFactor',
-          title: '两步验证',
-          desc: '登录时额外校验一次邮箱验证码',
-          icon: Bell,
-          status: {
-            text: twoFactorEnabled.value ? '已开启' : '未开启',
-            tone: twoFactorEnabled.value ? 'success' : 'info',
-          },
-        },
-      ],
-    },
-    {
-      title: '第三方账号',
-      entries: [
-        {
-          key: 'bind:wechat',
-          title: '微信',
-          desc: wechatBound.value ? '已绑定，点击可解除绑定' : '绑定后可扫码快捷登录',
-          icon: Connection,
-          status: {
-            text: wechatBound.value ? '已绑定' : '未绑定',
-            tone: wechatBound.value ? 'success' : 'info',
-          },
-          loading: wechatBindingLoading.value,
-        },
-        providerEntry('github'),
-        providerEntry('gitee'),
-        providerEntry('qq'),
-      ],
-    },
-    {
-      title: '危险操作',
-      entries: [
-        {
-          key: 'close',
-          title: '注销账号',
-          desc: '注销后账号与数据不可恢复',
-          icon: Warning,
-          danger: true,
-        },
-      ],
-    },
-  ]
-})
-
-/// 统一入口分发：模板只渲染，动作都在这里对号入座。
-function openAccountEntry(key: string) {
-  switch (key) {
-    case 'realname':
-      realnameDialogVisible.value = true
-      return
-    case 'faceid':
-      void continueFaceid()
-      return
-    case 'withdraw':
-      void handleWithdraw()
-      return
-    case 'changeSubject':
-      startRealnameChange()
-      return
-    case 'settle':
-      if (settleUnderReview.value) {
-        TMessage.warning(settleUnderReviewText.value)
-        return
-      }
-      void openSettleDialog()
-      return
-    case 'closeSettle':
-      openCloseSettleDialog()
-      return
-    case 'mobile':
-      openMobileDialog()
-      return
-    case 'legalPerson':
-    case 'company':
-    case 'personal':
-      asignDialogKind.value = key
-      asignDialogVisible.value = true
-      return
-    case 'seal':
-      openSealDialog()
-      return
-    case 'email':
-      emailDialogVisible.value = true
-      return
-    case 'password':
-      passwordDialogVisible.value = true
-      return
-    case 'username':
-      usernameDialogVisible.value = true
-      return
-    case 'twoFactor':
-      twoFactorDialogVisible.value = true
-      return
-    case 'close':
-      openAccountCloseDialog()
-      return
-  }
-
-  if (key.startsWith('bind:')) {
-    const provider = key.slice('bind:'.length)
-    if (provider === 'wechat') {
-      void handleWechatBinding()
-    } else if (provider === 'github' || provider === 'gitee' || provider === 'qq') {
-      void handleProviderBinding(provider)
-    }
-  }
-}
-
 /// 审核中继续人脸核身：先找回刷新后丢失的爱签核身链接，再打开核身弹窗。
 async function continueFaceid() {
   if (!faceidAuthUrl.value) {
@@ -636,15 +292,24 @@ async function continueFaceid() {
   faceidDialogVisible.value = true
 }
 
-// ── 爱签账户管理（为电子签署准备） ──────────────────────────────
-const asignDialogVisible = ref(false)
-const asignDialogKind = ref('')
-
-/// 修改手机号：只保留短信验证码方式（运营商三要素那条路 2026-10-04 已删）。
-function openMobileDialog() {
-  asignDialogKind.value = 'mobile'
-  asignDialogVisible.value = true
-}
+// ── 爱签账户维护域（修改手机号 / 法人 / 企业信息 / 姓名） ──────────────
+/**
+ * 四份草稿、五个加载位与五条动作都在 `useAsignAccount`，这里只接线：入口行的
+ * `mobile` / `legalPerson` / `company` / `personal` 与印章弹窗的「修改企业信息」共用一个开关。
+ */
+const {
+  asign,
+  asignLoading,
+  asignDialogVisible,
+  asignDialogKind,
+  openAsignDialog,
+  openMobileDialog,
+  handleSendVerifyCode,
+  handleModifyMobileByCode,
+  handleModifyLegalPerson,
+  handleModifyCompanyInfo,
+  handleModifyUserName,
+} = useAsignAccount()
 
 // ── 企业印章管理 ────────────────────────────────────────────
 /**
@@ -707,8 +372,7 @@ async function handleSealMakeOnline() {
 /// 从印章管理切到「修改企业信息」（改名会自动重新生成印章），两个入口语义相邻。
 function openCompanyFromSeal() {
   sealDialogVisible.value = false
-  asignDialogKind.value = 'company'
-  asignDialogVisible.value = true
+  openAsignDialog('company')
 }
 
 // ── Adapay 结算账户（状态与动作都在 composable 里，这里只接线） ──────────
@@ -760,20 +424,7 @@ function goFixSettleMaterial() {
   startRealnameChange()
 }
 
-const asign = reactive({
-  mobileByCode: { mobile: '', code: '', ctoken: '' },
-  legalPerson: { name: '', idCard: '' },
-  company: { companyName: '', legalName: '', legalIdCard: '' },
-  personal: { personalName: '', mobile: '' },
-})
-const asignLoading = reactive({
-  sendCode: false,
-  mobileByCode: false,
-  legalPerson: false,
-  company: false,
-  personal: false,
-})
-
+/** 登录态守卫：印章管理的两条动作要用（与 `useAsignAccount` 里那份同一段提示）。 */
 function requireToken(): boolean {
   auth.hydrate()
   if (!auth.token.trim()) {
@@ -783,150 +434,12 @@ function requireToken(): boolean {
   return true
 }
 
-async function handleSendVerifyCode() {
-  if (!requireToken()) return
-  if (!asign.mobileByCode.mobile.trim()) {
-    TMessage.warning('请先填写新手机号')
-    return
-  }
-  asignLoading.sendCode = true
-  try {
-    const res = await sendVerifyCode(auth.token, { mobile: asign.mobileByCode.mobile.trim() })
-    if (res.success) {
-      asign.mobileByCode.ctoken = res.data?.codeToken ?? ''
-      TMessage.success('验证码已发送，请查收短信')
-    }
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '发送验证码失败')
-  } finally {
-    asignLoading.sendCode = false
-  }
-}
+// ── 注销账号（可见性 / 确认词归视图：破坏性动作，与结算账户的注销不是一个域） ──
+const accountCloseDialogVisible = ref(false)
+const accountCloseConfirmation = ref('')
+const accountClosing = ref(false)
 
-async function handleModifyMobileByCode() {
-  if (!requireToken()) return
-  if (
-    !asign.mobileByCode.mobile.trim() ||
-    !asign.mobileByCode.code.trim() ||
-    !asign.mobileByCode.ctoken.trim()
-  ) {
-    TMessage.warning('请填写手机号与验证码（需先发送验证码）')
-    return
-  }
-  asignLoading.mobileByCode = true
-  try {
-    const res = await modifyMobileByCode(auth.token, {
-      mobile: asign.mobileByCode.mobile.trim(),
-      code: asign.mobileByCode.code.trim(),
-      ctoken: asign.mobileByCode.ctoken.trim(),
-    })
-    if (res.success) {
-      TMessage.success('手机号已修改')
-      asign.mobileByCode.mobile = ''
-      asign.mobileByCode.code = ''
-      asign.mobileByCode.ctoken = ''
-    }
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '修改手机号失败')
-  } finally {
-    asignLoading.mobileByCode = false
-  }
-}
-
-/// 修改法人：爱签侧与「修改企业信息」同接口（`/user/modifyCompanyInfo`），
-/// 只是这时法人三要素必须齐全（姓名 + 身份证号 + 证件类型 1=身份证）。
-async function handleModifyLegalPerson() {
-  if (!requireToken()) return
-  if (!asign.legalPerson.name.trim() || !asign.legalPerson.idCard.trim()) {
-    TMessage.warning('请填写法人姓名与身份证号')
-    return
-  }
-  asignLoading.legalPerson = true
-  try {
-    const res = await modifyCompanyInfo(auth.token, {
-      name: asign.legalPerson.name.trim(),
-      idCard: asign.legalPerson.idCard.trim(),
-      idCardType: 1,
-    })
-    if (res.success) {
-      TMessage.success('法人信息已修改')
-    }
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '修改法人失败')
-  } finally {
-    asignLoading.legalPerson = false
-  }
-}
-
-async function handleModifyCompanyInfo() {
-  if (!requireToken()) return
-  if (!asign.company.companyName.trim() && !asign.company.legalName.trim()) {
-    TMessage.warning('请填写企业名称或法人信息')
-    return
-  }
-  asignLoading.company = true
-  try {
-    const res = await modifyCompanyInfo(auth.token, {
-      companyName: asign.company.companyName.trim() || undefined,
-      name: asign.company.legalName.trim() || undefined,
-      idCard: asign.company.legalIdCard.trim() || undefined,
-      idCardType: 1,
-    })
-    if (res.success) {
-      TMessage.success(res.data ? '企业信息已修改，新印章已生成' : '企业信息已修改')
-    }
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '修改企业信息失败')
-  } finally {
-    asignLoading.company = false
-  }
-}
-
-async function handleModifyUserName() {
-  if (!requireToken()) return
-  if (!asign.personal.personalName.trim()) {
-    TMessage.warning('请填写姓名')
-    return
-  }
-  if (!asign.personal.mobile.trim()) {
-    TMessage.warning('请填写本人手机号（用于运营商三要素核验）')
-    return
-  }
-  asignLoading.personal = true
-  try {
-    // 核验方式固定三要素；手机号用用户本次输入的（不再让他选四要素）
-    const res = await modifyUserName(auth.token, {
-      name: asign.personal.personalName.trim(),
-      identifyType: 2,
-      mobile: asign.personal.mobile.trim(),
-    })
-    if (res.success) {
-      TMessage.success('姓名已修改')
-      asign.personal.personalName = ''
-      asign.personal.mobile = ''
-    }
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '修改姓名失败')
-  } finally {
-    asignLoading.personal = false
-  }
-}
-
-function providerLabel(provider: string): string {
-  const labels: Record<string, string> = {
-    github: 'GitHub',
-    gitee: 'Gitee',
-    qq: 'QQ',
-    wechat: '微信',
-    alipay: '支付宝',
-  }
-  return labels[provider] ?? provider
-}
-
-function isProviderBound(provider: string): boolean {
-  return boundProviders.value.includes(provider)
-}
-
+/** 确认词必须原样键入「注销账号」，「确认注销」才点得动。 */
 const accountCloseReady = computed(() => accountCloseConfirmation.value.trim() === '注销账号')
 
 function openAccountCloseDialog() {
@@ -958,429 +471,147 @@ async function handleCloseAccount() {
   }
 }
 
-async function loadBoundProviders() {
-  if (!auth.isAuthed) {
-    return
-  }
-  try {
-    const result = await getBoundProviders(auth.token)
-    boundProviders.value = result.providers ?? []
-  } catch {
-    boundProviders.value = []
-  }
-}
+// ── 第三方绑定域（微信 / GitHub / Gitee / QQ） ─────────────────────
+/**
+ * 已绑渠道、微信二维码与四条动作都在 `useAccountProviderBinding` 里；它自己要读回跳 query，
+ * 所以 `route` / `router` 也一起搬过去了。`wechatBound` 的初值走下面安全设置域的 `loadProfile`。
+ */
+const {
+  wechatBound,
+  boundProviders,
+  wechatBindingLoading,
+  providerBindingLoading,
+  wechatBindQr,
+  loadBoundProviders,
+  handleProviderBinding,
+  toggleWechatBinding,
+  closeWechatBindQr,
+  handleWechatBound,
+  consumeWechatBindResult,
+  consumeProviderBindResult,
+} = useAccountProviderBinding()
 
-async function handleProviderBinding(provider: 'github' | 'gitee' | 'qq') {
-  if (!auth.isAuthed) {
-    TMessage.error('请先登录后再绑定')
-    return
-  }
-  if (providerBindingLoading.value) {
-    return
-  }
-  if (isProviderBound(provider)) {
-    providerBindingLoading.value = true
-    try {
-      await unbindProvider(auth.token, provider)
-      boundProviders.value = boundProviders.value.filter((item) => item !== provider)
-      TMessage.success(`${providerLabel(provider)} 已解除绑定`)
-    } catch (err) {
-      TMessage.error(
-        err instanceof Error ? err.message : `解除 ${providerLabel(provider)} 绑定失败`,
-      )
-    } finally {
-      providerBindingLoading.value = false
-    }
-    return
-  }
+// ── 安全设置域（三个登录凭证弹窗 + profile 初值） ─────────────────────
+/**
+ * `profileEmail` 的正本放视图：安全设置域**写**它（loadProfile / 改邮箱），两步验证域**读**它
+ * （`email-bound` 与弹窗文案），两个域都不该各存一份。
+ */
+const profileEmail = ref('')
+const {
+  twoFactorEnabled,
+  twoFactorTargetEnabled,
+  twoFactorCode,
+  twoFactorCodeSending,
+  twoFactorLoading,
+  twoFactorDialogVisible,
+  accountEmailLabel,
+  twoFactorChanged,
+  applyTwoFactor,
+  sendTwoFactorVerificationCode,
+  handleTwoFactorTargetChange,
+  submitTwoFactorChange,
+} = useAccountTwoFactorSettings({ profileEmail })
 
-  providerBindingLoading.value = true
-  try {
-    const { url } = await getProviderBindUrl(auth.token, provider, window.location.href)
-    if (!url.trim()) {
-      throw new Error('绑定地址为空')
-    }
-    window.location.assign(url)
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : `发起 ${providerLabel(provider)} 绑定失败`)
-    providerBindingLoading.value = false
-  }
-}
+const {
+  newUsername,
+  usernameLoading,
+  newEmail,
+  emailCode,
+  emailCodeSending,
+  emailLoading,
+  newPassword,
+  confirmPassword,
+  passwordCode,
+  passwordCodeSending,
+  passwordLoading,
+  emailDialogVisible,
+  passwordDialogVisible,
+  usernameDialogVisible,
+  loadProfile,
+  updateUsername,
+  sendEmailVerificationCode,
+  submitEmailChange,
+  sendPasswordVerificationCode,
+  submitPasswordChange,
+} = useAccountSecuritySettings({
+  profileEmail,
+  // loadProfile 读到的两个「别人家的」状态，交给各自的域
+  applyWechatBound: (bound) => {
+    wechatBound.value = bound
+  },
+  applyTwoFactor,
+})
 
-// 设置弹窗可见性
-const emailDialogVisible = ref(false)
-const passwordDialogVisible = ref(false)
-const usernameDialogVisible = ref(false)
-const twoFactorDialogVisible = ref(false)
-
-const accountEmailLabel = computed(() => profileEmail.value || '未绑定邮箱')
-const twoFactorChanged = computed(() => twoFactorTargetEnabled.value !== twoFactorEnabled.value)
-
-async function loadProfile() {
-  auth.hydrate()
-  if (!auth.isAuthed) {
-    return
-  }
-
-  profileLoading.value = true
-  try {
-    const profile = await getProfile(auth.token)
-    newUsername.value = profile.username
-    profileEmail.value = profile.email ?? ''
-    twoFactorEnabled.value = profile.two_factor_enabled
-    twoFactorTargetEnabled.value = profile.two_factor_enabled
-    wechatBound.value = profile.wechat_bound ?? false
-    if (!newEmail.value) {
-      newEmail.value = profile.email ?? ''
-    }
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '加载个人资料失败')
-  } finally {
-    profileLoading.value = false
-  }
-}
-
-async function updateUsername() {
-  if (!auth.isAuthed) {
-    TMessage.error('请先登录后修改用户名')
-    return
-  }
-
-  const trimmed = newUsername.value.trim()
-  if (trimmed.length === 0) {
-    TMessage.error('请输入一个新的用户名')
-    return
-  }
-  if (trimmed === auth.username) {
-    TMessage.info('用户名未发生变化')
-    return
-  }
-
-  usernameLoading.value = true
-  try {
-    const payload = await updateProfile(auth.token, trimmed)
-    auth.setToken(payload.token)
-    newUsername.value = auth.username
-    TMessage.success('用户名已更新')
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '修改用户名失败')
-  } finally {
-    usernameLoading.value = false
-  }
-}
-
-async function sendEmailVerificationCode() {
-  if (!auth.isAuthed) {
-    TMessage.error('请先登录后修改邮箱')
-    return
-  }
-
-  const trimmed = newEmail.value.trim()
-  if (!trimmed) {
-    TMessage.error('请输入新的邮箱地址')
-    return
-  }
-  if (trimmed === profileEmail.value) {
-    TMessage.warning('新邮箱不能与当前邮箱相同')
-    return
-  }
-
-  emailCodeSending.value = true
-  try {
-    await sendProfileEmailChangeCode(auth.token, trimmed)
-    TMessage.success('验证码已发送到新邮箱，请查收')
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '发送邮箱验证码失败')
-  } finally {
-    emailCodeSending.value = false
-  }
-}
-
-async function submitEmailChange() {
-  if (!auth.isAuthed) {
-    TMessage.error('请先登录后修改邮箱')
-    return
-  }
-
-  const trimmedEmail = newEmail.value.trim()
-  const trimmedCode = emailCode.value.trim()
-  if (!trimmedEmail) {
-    TMessage.error('请输入新的邮箱地址')
-    return
-  }
-  if (trimmedCode.length !== 6) {
-    TMessage.error('请输入 6 位邮箱验证码')
-    return
-  }
-
-  emailLoading.value = true
-  try {
-    const profile = await updateProfileEmail(auth.token, trimmedEmail, trimmedCode)
-    profileEmail.value = profile.email ?? ''
-    newEmail.value = profile.email ?? ''
-    emailCode.value = ''
-    TMessage.success('邮箱已更新')
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '修改邮箱失败')
-  } finally {
-    emailLoading.value = false
-  }
-}
-
-async function sendPasswordVerificationCode() {
-  if (!auth.isAuthed) {
-    TMessage.error('请先登录后修改密码')
-    return
-  }
-  if (!profileEmail.value) {
-    TMessage.error('请先绑定邮箱后再修改密码')
-    return
-  }
-
-  passwordCodeSending.value = true
-  try {
-    await sendProfilePasswordCode(auth.token)
-    TMessage.success('验证码已发送到当前绑定邮箱，请查收')
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '发送密码验证码失败')
-  } finally {
-    passwordCodeSending.value = false
-  }
-}
-
-async function submitPasswordChange() {
-  if (!auth.isAuthed) {
-    TMessage.error('请先登录后修改密码')
-    return
-  }
-
-  const trimmedPassword = newPassword.value.trim()
-  const trimmedConfirm = confirmPassword.value.trim()
-  const trimmedCode = passwordCode.value.trim()
-
-  if (trimmedPassword.length < 6) {
-    TMessage.error('新密码至少 6 位')
-    return
-  }
-  if (trimmedPassword !== trimmedConfirm) {
-    TMessage.error('两次输入的新密码不一致')
-    return
-  }
-  if (trimmedCode.length !== 6) {
-    TMessage.error('请输入 6 位邮箱验证码')
-    return
-  }
-
-  passwordLoading.value = true
-  try {
-    await updateProfilePassword(auth.token, trimmedPassword, trimmedCode)
-    newPassword.value = ''
-    confirmPassword.value = ''
-    passwordCode.value = ''
-    TMessage.success('密码已更新，请使用新密码登录')
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '修改密码失败')
-  } finally {
-    passwordLoading.value = false
-  }
-}
-
-async function sendTwoFactorVerificationCode() {
-  if (!auth.isAuthed) {
-    TMessage.error('请先登录后修改两步验证')
-    return
-  }
-  if (!profileEmail.value) {
-    TMessage.error('请先绑定邮箱后再修改两步验证')
-    return
-  }
-  if (!twoFactorChanged.value) {
-    TMessage.info('两步验证设置未发生变化')
-    return
-  }
-
-  twoFactorCodeSending.value = true
-  try {
-    await sendProfileTwoFactorCode(auth.token)
-    TMessage.success('验证码已发送到当前绑定邮箱，请查收')
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '发送两步验证验证码失败')
-  } finally {
-    twoFactorCodeSending.value = false
-  }
-}
-
-/// 拨动「邮箱验证码保护」开关：`enabled` 是新勾选状态（由弹窗从 change 事件里取出来回传）。
-/// 第一次打开时顺手发一次验证码，并把上一次填的验证码清掉。
-async function handleTwoFactorTargetChange(enabled: boolean) {
-  twoFactorTargetEnabled.value = enabled
-  twoFactorCode.value = ''
-
-  if (enabled && !twoFactorEnabled.value && !twoFactorCodeSending.value) {
-    await sendTwoFactorVerificationCode()
-  }
-}
-
-async function submitTwoFactorChange() {
-  if (!auth.isAuthed) {
-    TMessage.error('请先登录后修改两步验证')
-    return
-  }
-  if (!profileEmail.value) {
-    TMessage.error('请先绑定邮箱后再修改两步验证')
-    return
-  }
-  if (!twoFactorChanged.value) {
-    TMessage.info('两步验证设置未发生变化')
-    return
-  }
-
-  const trimmedCode = twoFactorCode.value.trim()
-  if (trimmedCode.length !== 6) {
-    TMessage.error('请输入 6 位邮箱验证码')
-    return
-  }
-
-  twoFactorLoading.value = true
-  try {
-    const profile = await updateProfileTwoFactor(
-      auth.token,
-      twoFactorTargetEnabled.value,
-      trimmedCode,
-    )
-    twoFactorEnabled.value = profile.two_factor_enabled
-    twoFactorTargetEnabled.value = profile.two_factor_enabled
-    twoFactorCode.value = ''
-    await auth.fetchProfile(true).catch(() => undefined)
-    TMessage.success(twoFactorEnabled.value ? '两步验证已开启' : '两步验证已关闭')
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '更新两步验证失败')
-  } finally {
-    twoFactorLoading.value = false
-  }
-}
-
-// PC 端扫码绑定：展示二维码并轮询绑定结果。
-const wechatBindQr = reactive({ visible: false, url: '', state: '' })
-
-function isWechatBrowser() {
-  return /MicroMessenger/i.test(navigator.userAgent)
-}
-
-async function openWechatBinding() {
-  if (!auth.isAuthed) {
-    TMessage.error('请先登录后再绑定微信')
-    return
-  }
-  if (wechatBindingLoading.value) {
-    return
-  }
-  wechatBindingLoading.value = true
-  try {
-    // 微信内（移动端）：跳转服务号网页授权；PC 端：展示二维码扫码绑定。
-    if (isWechatBrowser()) {
-      const { url } = await getWechatBindAuthorizeUrl(auth.token, window.location.href)
-      if (!url.trim()) {
-        throw new Error('微信授权地址为空')
-      }
-      window.location.assign(url)
-      return
-    }
-
-    const qr = await getWechatBindQrUrl(auth.token, window.location.href)
-    if (!qr.url.trim() || !qr.state.trim()) {
-      throw new Error('微信绑定二维码地址为空')
-    }
-    wechatBindQr.url = qr.url
-    wechatBindQr.state = qr.state
-    wechatBindQr.visible = true
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '发起微信绑定失败')
-  } finally {
-    wechatBindingLoading.value = false
-  }
-}
-
-async function unbindWechat() {
-  if (!auth.isAuthed) {
-    TMessage.error('请先登录后再解除微信绑定')
-    return
-  }
-  if (wechatBindingLoading.value) {
-    return
-  }
-
-  wechatBindingLoading.value = true
-  try {
-    await unbindProvider(auth.token, 'wechat')
-    wechatBound.value = false
-    TMessage.success('微信已解除绑定')
-    await auth.fetchProfile(true).catch(() => undefined)
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '解除微信绑定失败')
-  } finally {
-    wechatBindingLoading.value = false
-  }
-}
-
-async function handleWechatBinding() {
-  if (wechatBound.value) {
-    await unbindWechat()
-    return
-  }
-  await openWechatBinding()
-}
-
-function closeWechatBindQr() {
-  wechatBindQr.visible = false
-  wechatBindQr.url = ''
-  wechatBindQr.state = ''
-}
-
-async function handleWechatBound(result: { success: boolean; error?: string }) {
-  closeWechatBindQr()
-  if (result.success) {
-    wechatBound.value = true
-    TMessage.success('微信绑定成功')
-    await auth.fetchProfile(true).catch(() => undefined)
-  } else {
-    TMessage.error(`微信绑定失败：${result.error ?? '未完成'}`)
-  }
-}
-
-function consumeWechatBindResult() {
-  const result = typeof route.query.wechat_bind === 'string' ? route.query.wechat_bind.trim() : ''
-  const error =
-    typeof route.query.wechat_bind_error === 'string' ? route.query.wechat_bind_error.trim() : ''
-  if (result === 'success') {
-    TMessage.success('微信绑定成功')
-  } else if (error) {
-    TMessage.error(`微信绑定失败：${error}`)
-  }
-  if (result || error) {
-    const nextQuery = { ...route.query }
-    delete nextQuery.wechat_bind
-    delete nextQuery.wechat_bind_error
-    void router.replace({ query: nextQuery })
-  }
-}
-
-function consumeProviderBindResult() {
-  const result = typeof route.query.bind === 'string' ? route.query.bind.trim() : ''
-  const error = typeof route.query.bind_error === 'string' ? route.query.bind_error.trim() : ''
-  if (result === 'success') {
-    TMessage.success('第三方账号绑定成功')
-    void loadBoundProviders()
-  } else if (error) {
-    TMessage.error(`第三方账号绑定失败：${error}`)
-  }
-  if (result || error) {
-    const nextQuery = { ...route.query }
-    delete nextQuery.bind
-    delete nextQuery.bind_error
-    void router.replace({ query: nextQuery })
-  }
-}
+// ── 账户入口域：两张卡的「行」与点击分发 ─────────────────────────────
+/**
+ * 入口行要读实名 / 核身 / 结算 / 安全设置四个域，所以这里一次注入完；动作表只传回调，
+ * 弹窗可见性仍由视图（和各弹窗的域）持有。
+ * `openAccountEntry` 仍从 `setupState()` 上取得到——三个 spec 的 `openEntry()` 靠它点入口。
+ */
+const { realnameEntryGroups, accountEntryGroups, openAccountEntry } = useAccountEntryGroups({
+  identity: {
+    copy: realnameEntryCopy,
+    statusText,
+    statusTone,
+    pending: realnamePending,
+    approved: realnameApproved,
+    canWithdraw: realnameCanWithdraw,
+    changeBacked: realnameChangeBacked,
+    enterprise: assignEnterprise,
+  },
+  faceid: {
+    restoring: faceidRestoring,
+    withdrawing,
+  },
+  settle: {
+    stage: settleStage,
+    underReview: settleUnderReview,
+    underReviewText: settleUnderReviewText,
+    subjectMismatch: settleSubjectMismatch,
+    materialMissing: settleMaterialMissing,
+    materialMissingText: settleMaterialMissingText,
+    accountWord: settleAccountWord,
+    providerError: settleProviderError,
+    corporateLocked: settleCorporateLocked,
+    bound: settleBound,
+  },
+  security: {
+    profileEmail,
+    twoFactorEnabled,
+    wechatBound,
+    wechatBindingLoading,
+    providerBindingLoading,
+    boundProviders,
+  },
+  actions: {
+    openRealnameDialog: () => {
+      realnameDialogVisible.value = true
+    },
+    continueFaceid,
+    withdrawRealname: handleWithdraw,
+    startRealnameChange,
+    openSettleDialog,
+    openCloseSettleDialog,
+    openMobileDialog,
+    openAsignDialog,
+    openSealDialog,
+    openEmailDialog: () => {
+      emailDialogVisible.value = true
+    },
+    openPasswordDialog: () => {
+      passwordDialogVisible.value = true
+    },
+    openUsernameDialog: () => {
+      usernameDialogVisible.value = true
+    },
+    openTwoFactorDialog: () => {
+      twoFactorDialogVisible.value = true
+    },
+    openAccountCloseDialog,
+    toggleWechatBinding,
+    toggleProviderBinding: handleProviderBinding,
+  },
+})
 
 onMounted(async () => {
   auth.hydrate()
