@@ -483,12 +483,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/InvoiceCenterView.vue",
-      "detail": "615 行 > 300（视图）",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/MallView.vue",
       "detail": "318 行 > 300（视图）",
       "since": "2026-10-21"
@@ -1097,12 +1091,6 @@
       "rule": "raw-color",
       "file": "src/views/InviteLeaderboardView.vue",
       "detail": "9 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/views/InvoiceCenterView.vue",
-      "detail": "4 处裸色值",
       "since": "2026-10-21"
     },
     {
