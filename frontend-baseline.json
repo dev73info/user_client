@@ -525,12 +525,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/RequirementHallView.vue",
-      "detail": "1632 行 > 300（视图）",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/ResourceCatalogView.vue",
       "detail": "519 行 > 300（视图）",
       "since": "2026-10-21"
@@ -749,6 +743,36 @@
       "rule": "raw-color",
       "file": "src/components/RealnameHero.vue",
       "detail": "2 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/requirement/RequirementHallAside.vue",
+      "detail": "25 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/requirement/RequirementHallCard.vue",
+      "detail": "6 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/requirement/RequirementHallDetailDialog.vue",
+      "detail": "29 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/requirement/RequirementHallRichText.vue",
+      "detail": "8 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/requirement/RequirementHallToolbar.vue",
+      "detail": "14 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -1145,12 +1169,6 @@
       "rule": "raw-color",
       "file": "src/views/ProfileView.vue",
       "detail": "140 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/views/RequirementHallView.vue",
-      "detail": "82 处裸色值",
       "since": "2026-10-21"
     },
     {

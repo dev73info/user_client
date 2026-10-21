@@ -40,7 +40,8 @@ const MAX_API_DEPS = 3
 /** 允许的响应式断点（2026-10-21 收敛）：手机 / 平板 / 宽屏，其它档位一律进基线后逐步清掉 */
 const BREAKPOINTS = [640, 900, 1180]
 const BREAKPOINT_TOLERANCE = 1
-const API_DEP_PATTERN = /(?:from|import)\s+['"](?:@\/api|\.\.?\/api|\.\.\/\.\.\/api)\/([A-Za-z0-9_-]+)/
+const API_DEP_PATTERN =
+  /(?:from|import)\s+['"](?:@\/api|\.\.?\/api|\.\.\/\.\.\/api)\/([A-Za-z0-9_-]+)/
 const COLOR_PATTERNS = [/#[0-9a-fA-F]{3,8}\b/, /\brgba?\s*\(/, /\bhsla?\s*\(/]
 const TOKEN_ALLOWLIST = new Set(['styles/tokens.css', 'styles/alias.css'])
 const FOREIGN_PACKAGES = ['@73info/portal', '@73info/admin', '@73info/support', '@73info/finance']
@@ -187,8 +188,25 @@ for (const violation of violations) {
   aggregated.push(violation)
 }
 for (const entry of seen.values()) {
-  const label = entry.rule === 'raw-color' ? '裸色值' : `非标准断点（${[...entry.values].join('、')}）`
+  const label =
+    entry.rule === 'raw-color' ? '裸色值' : `非标准断点（${[...entry.values].join('、')}）`
   aggregated.push({ ...entry, detail: `${entry.count} 处${label}` })
+}
+
+/** 按规则汇总「实际债」：raw-color / breakpoint 的 detail 是「N 处」，其余一条算一处。
+ *  文件一拆，条目数会因为按文件聚合而变多，但裸色值/断点的处数不该变——看这个数判断有没有真加债。 */
+const ruleTotals = (entries) => {
+  const counts = new Map()
+  for (const entry of entries) {
+    const matched = /(\d+)\s*处/.exec(entry.detail ?? '')
+    const amount = matched ? Number(matched[1]) : 1
+    counts.set(entry.rule, (counts.get(entry.rule) ?? 0) + amount)
+  }
+  return [...counts]
+    .map(([rule, amount]) =>
+      rule === 'raw-color' || rule === 'breakpoint' ? `${rule} ${amount} 处` : `${rule} ${amount}`,
+    )
+    .join('、')
 }
 
 const keyOf = (v) => `${v.rule}|${v.file}`
@@ -207,6 +225,7 @@ if (writeBaseline) {
   }))
   writeFileSync(BASELINE_PATH, `${JSON.stringify({ repo: repoArg, entries }, null, 2)}\n`)
   console.log(`已写入基线：${BASELINE_PATH}（${entries.length} 条存量违规）`)
+  console.log(`  实际债：${ruleTotals(entries)}`)
   process.exit(0)
 }
 
@@ -229,3 +248,4 @@ if (fresh.length > 0) {
 
 const total = baselineKeys.size
 console.log(`✓ ${repoArg} 标准化检查通过（存量违规 ${total} 条，本次新增 0 条）`)
+console.log(`  实际债：${ruleTotals(baseline.entries ?? [])}`)
