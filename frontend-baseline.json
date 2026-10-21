@@ -370,7 +370,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/AccountCouponsView.vue",
-      "detail": "5124 行 > 300（视图）",
+      "detail": "4785 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -1072,13 +1072,13 @@
     {
       "rule": "breakpoint",
       "file": "src/views/AccountCouponsView.vue",
-      "detail": "4 处非标准断点（1100px、720px、780px、460px）",
+      "detail": "3 处非标准断点（720px、780px、460px）",
       "since": "2026-10-21"
     },
     {
       "rule": "raw-color",
       "file": "src/views/AccountCouponsView.vue",
-      "detail": "65 处裸色值",
+      "detail": "47 处裸色值",
       "since": "2026-10-21"
     },
     {

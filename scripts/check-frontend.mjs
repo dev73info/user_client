@@ -249,4 +249,5 @@ if (fresh.length > 0) {
 
 const total = baselineKeys.size
 console.log(`✓ ${repoArg} 标准化检查通过（存量违规 ${total} 条，本次新增 0 条）`)
-console.log(`  实际债：${ruleTotals(baseline.entries ?? [])}`)
+console.log(`  实际债（基线）：${ruleTotals(baseline.entries ?? [])}`)
+console.log(`  实际债（本次扫描）：${ruleTotals([...current.values()])}`)
