@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  MILESTONE_TARGETS,
+  buildMilestoneStats,
   buildPortalNotices,
   formatMoney,
   formatTimeLabel,
@@ -167,5 +169,68 @@ describe('buildPortalNotices', () => {
     expect(notices[0]?.tag).toBe('公告')
     expect(notices[0]?.date).toBe('3/5 09:01')
     expect(notices[0]?.to).toEqual({ name: 'community-post', params: { postId: '1' } })
+  })
+})
+
+describe('buildMilestoneStats', () => {
+  it('固定四张卡，顺序即展示顺序（索引决定 --stat-index 与色板）', () => {
+    const stats = buildMilestoneStats({ developerCount: 0, resourceCount: 0 })
+
+    expect(stats.map((stat) => [stat.label, stat.icon])).toEqual([
+      ['内测开发者', 'developers'],
+      ['公开资源', 'resources'],
+      ['完成记录', 'orders'],
+      ['担保交易', 'escrow'],
+    ])
+  })
+
+  it('前两张按里程碑目标拼「当前/目标」并带进度', () => {
+    const [developers, resources] = buildMilestoneStats({
+      developerCount: 128,
+      resourceCount: 7,
+    })
+
+    expect(developers?.value).toBe(`128/${MILESTONE_TARGETS.developers} 位`)
+    expect(developers?.progress).toEqual({
+      current: 128,
+      target: MILESTONE_TARGETS.developers,
+    })
+    expect(resources?.value).toBe(`7/${MILESTONE_TARGETS.resources} 条`)
+    expect(progressPercent(resources!.progress!)).toBe('14%')
+  })
+
+  it('零单时补「首单在路上」，有成交则不补', () => {
+    const zero = buildMilestoneStats({
+      developerCount: 1,
+      resourceCount: 1,
+      completedLabel: '0 单',
+    })
+    const done = buildMilestoneStats({
+      developerCount: 1,
+      resourceCount: 1,
+      completedLabel: '12 单',
+    })
+
+    expect(zero[2]?.note).toBe('首单在路上')
+    expect(done[2]?.value).toBe('12 单')
+    expect(done[2]?.note).toBeUndefined()
+  })
+
+  it('overview 还没回来时第三张显示「0 单」但不加提示（与原内联实现一致）', () => {
+    const stats = buildMilestoneStats({ developerCount: 0, resourceCount: 0 })
+
+    expect(stats[2]?.value).toBe('0 单')
+    expect(stats[2]?.note).toBeUndefined()
+  })
+
+  it('第四张是担保交易占位，没有进度条', () => {
+    const stats = buildMilestoneStats({ developerCount: 3, resourceCount: 2 })
+
+    expect(stats[3]).toEqual({
+      label: '担保交易',
+      value: '开发中',
+      icon: 'escrow',
+      note: '正在开发测试中',
+    })
   })
 })

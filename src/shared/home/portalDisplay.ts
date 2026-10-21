@@ -143,3 +143,68 @@ export function progressPercent(progress: { current: number; target: number }): 
   const ratio = Math.min(100, Math.round((progress.current / progress.target) * 100))
   return `${ratio}%`
 }
+
+/** 冷启动里程碑目标：内测期先写死，后续接配置时只改这里。 */
+export const MILESTONE_TARGETS = {
+  developers: 1000,
+  resources: 50,
+} as const
+
+/** 统计卡的图标：纯函数层只给 key，由组件映射到 `ui_73info` 的图标组件（纯函数不拖组件引用）. */
+export type MilestoneStatIcon = 'developers' | 'resources' | 'orders' | 'escrow'
+
+export type PortalMilestoneStat = {
+  label: string
+  value: string
+  icon: MilestoneStatIcon
+  /** 冷启动里程碑进度：当前值 / 目标值 */
+  progress?: { current: number; target: number }
+  /** 附加说明文字 */
+  note?: string
+}
+
+export type MilestoneStatSources = {
+  /** 内测开发者总数（`/requirements/public-overview` 的 `developer_count`） */
+  developerCount: number
+  /** 公开资源条数（与「公开资源」公告、榜单同源，都来自 `publicResources`） */
+  resourceCount: number
+  /** 首页指标第一条的文案；overview 还没回来时是 undefined */
+  completedLabel?: string
+}
+
+/**
+ * 侧栏「内测里程碑」四张统计卡：前两张带冷启动进度条，第三张在零单时补「首单在路上」，
+ * 第四张是担保交易的占位（`开发中`）。
+ *
+ * 顺序即展示顺序（视图与 CSS 的 `--stat-index` / `--tone-N` 都按索引取值），不要重排。
+ */
+export function buildMilestoneStats(sources: MilestoneStatSources): PortalMilestoneStat[] {
+  const { developerCount, resourceCount, completedLabel } = sources
+
+  return [
+    {
+      label: '内测开发者',
+      value: `${developerCount}/${MILESTONE_TARGETS.developers} 位`,
+      icon: 'developers',
+      progress: { current: developerCount, target: MILESTONE_TARGETS.developers },
+    },
+    {
+      label: '公开资源',
+      value: `${resourceCount}/${MILESTONE_TARGETS.resources} 条`,
+      icon: 'resources',
+      progress: { current: resourceCount, target: MILESTONE_TARGETS.resources },
+    },
+    {
+      label: '完成记录',
+      value: completedLabel ?? '0 单',
+      icon: 'orders',
+      note: completedLabel === '0 单' ? '首单在路上' : undefined,
+    },
+    {
+      label: '担保交易',
+      value: '开发中',
+      icon: 'escrow',
+      note: '正在开发测试中',
+    },
+  ]
+}

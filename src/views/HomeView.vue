@@ -3,7 +3,7 @@ import '@/styles/home.css'
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { TIcon, ArrowRight, Files, Finished, Money, TMessage, User } from 'ui_73info'
+import { TIcon, ArrowRight, TMessage } from 'ui_73info'
 
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -15,8 +15,15 @@ import AuthModal from '@/components/AuthModal.vue'
 import WechatLoginQrModal from '@/components/WechatLoginQrModal.vue'
 import PublishModal from '@/components/PublishModal.vue'
 import DepositModal from '@/components/DepositModal.vue'
+import DeveloperRankCard from '@/components/home/DeveloperRankCard.vue'
+import PortalBetaCard from '@/components/home/PortalBetaCard.vue'
+import PortalMilestoneCard from '@/components/home/PortalMilestoneCard.vue'
+import PortalNoticeCard from '@/components/home/PortalNoticeCard.vue'
+import TeamRankCard from '@/components/home/TeamRankCard.vue'
 import { buildDevPortalUrl } from '@/config/runtime'
 import { useAuthForm } from '@/composables/useAuthForm'
+import { useHomeCheckin } from '@/composables/useHomeCheckin'
+import { usePortalRanks } from '@/composables/usePortalRanks'
 import {
   buildResourceCardSummary,
   buildResourceCoverAlt,
@@ -28,11 +35,12 @@ import {
   spotlightTagChips,
 } from '@/shared/home/resourceCardDisplay'
 import {
+  buildMilestoneStats,
   buildPortalNotices,
   formatMoney,
   formatTimeLabel,
-  progressPercent,
   statusToLabel,
+  type PortalMilestoneStat,
   type PortalNotice,
 } from '@/shared/home/portalDisplay'
 import {
@@ -73,23 +81,12 @@ import {
   unlikePublicMcResource,
   type PublicMcResourceItem,
 } from '@/api/resources'
-import { doCheckin, getCheckinStatus, getResourcePromoMeta, type CheckinStatus } from '@/api/points'
-import { getUserBadges, type UserBadge } from '@/api/invite'
+import { getResourcePromoMeta } from '@/api/points'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 
 type Metric = {
   label: string
   value: string
-}
-
-type PlatformStat = {
-  label: string
-  value: string
-  icon: typeof User
-  /** 冷启动里程碑进度：当前值 / 目标值 */
-  progress?: { current: number; target: number }
-  /** 附加说明文字 */
-  note?: string
 }
 
 type PendingRequirementView = {
@@ -164,31 +161,6 @@ type SpotlightCard = {
 /** 首页高赞阈值：由管理端积分规则 `resource_high_like_threshold` 配置，缺省 5。 */
 const highLikeThreshold = ref(5)
 
-type DeveloperRank = {
-  name: string
-  username: string
-  avatarUrl: string
-  creditScore: number | null
-  deals: string
-  gradient?: boolean
-  userColor?: string
-}
-
-type TeamRank = {
-  teamId: number
-  teamName: string
-  avatarUrl: string
-  resourceCount: number
-}
-
-/** 冷启动里程碑目标（当前为内测期写死，后续可改为配置） */
-const MILESTONE_TARGETS = {
-  developers: 1000,
-  resources: 50,
-} as const
-
-const failedDeveloperAvatarUrls = ref<Set<string>>(new Set())
-const failedTeamAvatarUrls = ref<Set<string>>(new Set())
 const failedSpotlightCoverUrls = ref<Set<string>>(new Set())
 
 const metrics = ref<Metric[]>([
@@ -211,14 +183,32 @@ const publicRequirementSpotlights = ref<PublicRequirementSpotlightItem[]>([])
 const tagTreeStore = useTagTreeStore()
 const processedTagTree = computed(() => tagTreeStore.tree ?? ({ roots: [] } as { roots: never[] }))
 const publicResources = ref<PublicMcResourceItem[]>([])
-const developerBadges = ref<Record<string, UserBadge[]>>({})
 const auth = useAuthStore()
 const announcementPosts = ref<CommunityPost[]>([])
 const router = useRouter()
 const route = useRoute()
 
+/** 侧栏两张榜单：资源由本视图统一请求后传进去，composable 只做聚合，不再发资源请求。 */
+const { developerRanks, teamRanks, totalContribResources, developerBadges } =
+  usePortalRanks(publicResources)
+/** 侧栏「内测中」卡片里的每日签到（写操作 + 两个 api 都留在这支 composable 里）。 */
+const {
+  status: homeCheckinStatus,
+  saving: checkinHomeSaving,
+  load: loadHomeCheckin,
+  checkin: handleHomeCheckin,
+} = useHomeCheckin()
+
 function openBetaGroup() {
   window.open(qqBetaGroupUrl, '_blank', 'noopener,noreferrer')
+}
+
+function openDeveloperProfile(username: string) {
+  void router.push({ name: 'dev-profile', params: { username } })
+}
+
+function openTeamProfile(teamId: number) {
+  void router.push({ name: 'team-profile', params: { teamId } })
 }
 
 function hashQueryValue(key: string) {
@@ -308,43 +298,6 @@ function notify(message: string, type: 'info' | 'success' | 'warning' | 'error' 
   TMessage[type](message)
 }
 
-// 首页侧栏：签到卡片（未签到显示签到，已签到显示邀请有礼）
-const homeCheckinStatus = ref<CheckinStatus | null>(null)
-const checkinHomeSaving = ref(false)
-
-async function loadHomeCheckin() {
-  if (!auth.isAuthed || !auth.token) {
-    homeCheckinStatus.value = null
-    return
-  }
-  try {
-    homeCheckinStatus.value = await getCheckinStatus(auth.token)
-  } catch {
-    // 静默失败，签到卡不展示
-    homeCheckinStatus.value = null
-  }
-}
-
-async function handleHomeCheckin() {
-  if (!auth.token || checkinHomeSaving.value) {
-    return
-  }
-  checkinHomeSaving.value = true
-  try {
-    const res = await doCheckin(auth.token)
-    homeCheckinStatus.value = {
-      username: res.username,
-      today_checked_in: true,
-      streak_count: res.streak_count,
-      today_potential: res.total_awarded,
-    }
-    TMessage.success(`签到成功，获得 ${res.total_awarded} 积分`)
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '签到失败')
-  } finally {
-    checkinHomeSaving.value = false
-  }
-}
 const heroSignals = ['免费资源共享', '需求记录留痕', '工单沟通协作']
 const qqBetaGroupUrl = 'https://qm.qq.com/q/AXb3VBPurC'
 const isDeveloperAccount = computed(() => auth.role === 'dev' || auth.role === 'super_admin')
@@ -514,177 +467,13 @@ function openSpotlight(card: SpotlightCard) {
   TMessage.info('请进入需求大厅查看需求')
 }
 
-const platformStats = computed<PlatformStat[]>(() => {
-  const [completed] = metrics.value
-  const resourceCount = publicResources.value.length
-  const developerCount = publicDeveloperCount.value
-
-  return [
-    {
-      label: '内测开发者',
-      value: `${developerCount}/${MILESTONE_TARGETS.developers} 位`,
-      icon: User,
-      progress: { current: developerCount, target: MILESTONE_TARGETS.developers },
-    },
-    {
-      label: '公开资源',
-      value: `${resourceCount}/${MILESTONE_TARGETS.resources} 条`,
-      icon: Files,
-      progress: { current: resourceCount, target: MILESTONE_TARGETS.resources },
-    },
-    {
-      label: '完成记录',
-      value: completed?.value ?? '0 单',
-      icon: Finished,
-      note: completed?.value === '0 单' ? '首单在路上' : undefined,
-    },
-    {
-      label: '担保交易',
-      value: '开发中',
-      icon: Money,
-      note: '正在开发测试中',
-    },
-  ]
-})
-
-const developerRanks = computed<DeveloperRank[]>(() => {
-  const failedAvatarUrls = failedDeveloperAvatarUrls.value
-  const groupedResources = new Map<
-    string,
-    {
-      name: string
-      username: string
-      avatarUrl: string
-      creditScore: number | null
-      deals: number
-      latestAt: number
-      gradient: boolean
-      userColor?: string
-    }
-  >()
-
-  for (const resource of publicResources.value) {
-    const name = resource.creator.trim() || resource.author.trim() || '匿名开发者'
-    const username = resource.creator.trim() || ''
-    const current = groupedResources.get(username)
-    const latestAt = Date.parse(resource.updated_at)
-    const avatarUrl = resource.creator_avatar_url ? apiUrl(resource.creator_avatar_url) : ''
-    const creditScore =
-      typeof resource.creator_credit_score === 'number' ? resource.creator_credit_score : null
-    const gradient = !!resource.creator_username_gradient
-    const userColor = resource.creator_username_color || ''
-
-    if (current) {
-      current.deals += 1
-      current.latestAt = Math.max(
-        current.latestAt,
-        Number.isNaN(latestAt) ? current.latestAt : latestAt,
-      )
-      if (!current.avatarUrl && avatarUrl) {
-        current.avatarUrl = avatarUrl
-      }
-      if (current.creditScore == null && creditScore != null) {
-        current.creditScore = creditScore
-      }
-      if (!current.gradient) {
-        current.gradient = gradient
-      }
-      if (!current.userColor) {
-        current.userColor = userColor
-      }
-      continue
-    }
-
-    groupedResources.set(username, {
-      name,
-      username,
-      avatarUrl,
-      creditScore,
-      deals: 1,
-      latestAt: Number.isNaN(latestAt) ? 0 : latestAt,
-      gradient,
-      userColor,
-    })
-  }
-
-  if (groupedResources.size === 0) return []
-
-  return [...groupedResources.values()]
-    .sort(
-      (left, right) =>
-        right.deals - left.deals ||
-        right.latestAt - left.latestAt ||
-        left.username.localeCompare(right.username, 'zh-CN'),
-    )
-    .slice(0, 4)
-    .map((item) => ({
-      name: item.name,
-      username: item.username,
-      avatarUrl: failedAvatarUrls.has(item.avatarUrl) ? '' : item.avatarUrl,
-      creditScore: item.creditScore,
-      deals: `${item.deals} 个资源`,
-      gradient: item.gradient,
-      userColor: item.userColor,
-    }))
-})
-
-const totalContribResources = computed<number>(() =>
-  developerRanks.value.reduce((sum, developer) => {
-    const match = developer.deals.match(/\d+/)
-    return sum + (match ? Number(match[0]) : 0)
-  }, 0),
+const platformStats = computed<PortalMilestoneStat[]>(() =>
+  buildMilestoneStats({
+    developerCount: publicDeveloperCount.value,
+    resourceCount: publicResources.value.length,
+    completedLabel: metrics.value[0]?.value,
+  }),
 )
-
-function handleDeveloperAvatarError(developer: DeveloperRank) {
-  if (!developer.avatarUrl) return
-
-  const next = new Set(failedDeveloperAvatarUrls.value)
-  next.add(developer.avatarUrl)
-  failedDeveloperAvatarUrls.value = next
-}
-
-function handleTeamAvatarError(team: TeamRank) {
-  if (!team.avatarUrl) return
-
-  const next = new Set(failedTeamAvatarUrls.value)
-  next.add(team.avatarUrl)
-  failedTeamAvatarUrls.value = next
-}
-
-const teamRanks = computed<TeamRank[]>(() => {
-  const failedAvatarUrls = failedTeamAvatarUrls.value
-  const grouped = new Map<number, { teamName: string; avatarUrl: string; resourceCount: number }>()
-
-  for (const resource of publicResources.value) {
-    if (!resource.team_id || !resource.team_name) continue
-    const avatarUrl = resource.team_avatar_url ? apiUrl(resource.team_avatar_url) : ''
-    const existing = grouped.get(resource.team_id)
-    if (existing) {
-      existing.resourceCount += 1
-      if (!existing.avatarUrl && avatarUrl) {
-        existing.avatarUrl = avatarUrl
-      }
-    } else {
-      grouped.set(resource.team_id, {
-        teamName: resource.team_name,
-        avatarUrl,
-        resourceCount: 1,
-      })
-    }
-  }
-
-  if (grouped.size === 0) return []
-
-  return [...grouped.entries()]
-    .sort(([, a], [, b]) => b.resourceCount - a.resourceCount)
-    .slice(0, 4)
-    .map(([teamId, info]) => ({
-      teamId,
-      teamName: info.teamName,
-      avatarUrl: failedAvatarUrls.has(info.avatarUrl) ? '' : info.avatarUrl,
-      resourceCount: info.resourceCount,
-    }))
-})
 
 function handleSpotlightCoverError(url: string | undefined) {
   if (!url) return
@@ -1478,36 +1267,7 @@ async function loadPublicPortalData(silent = false) {
   } else if (failedResults.length === 2 && !silent) {
     TMessage.warning('加载首页公开数据失败')
   }
-
-  void loadDeveloperBadges()
-}
-
-async function loadDeveloperBadges() {
-  const usernames = [
-    ...new Set(
-      developerRanks.value.map((dev) => dev.username).filter((username) => username.length > 0),
-    ),
-  ]
-  if (usernames.length === 0) {
-    developerBadges.value = {}
-    return
-  }
-
-  const entries = await Promise.all(
-    usernames.map(async (username): Promise<[string, UserBadge[]]> => {
-      try {
-        const response = await getUserBadges(username)
-        return [username, response.badges.filter((badge) => badge.equipped)]
-      } catch {
-        return [username, []]
-      }
-    }),
-  )
-  developerBadges.value = Object.fromEntries(entries)
-}
-
-function devBadges(username: string): UserBadge[] {
-  return developerBadges.value[username] ?? []
+  // 榜单成员的徽章不在这里取：`usePortalRanks` 按入榜用户名指纹自己触发，资源没变就不重复请求。
 }
 
 async function submitDepositPayment() {
@@ -2376,251 +2136,37 @@ async function submitPublishRequirement() {
         </div>
 
         <aside class="portal-sidebar">
-          <section class="portal-card portal-section--beta">
-            <div class="portal-beta-notice">
-              <span class="portal-beta-notice__badge">内测中</span>
+          <PortalBetaCard
+            :is-authed="auth.isAuthed"
+            :checkin="homeCheckinStatus"
+            :checkin-saving="checkinHomeSaving"
+            @checkin="handleHomeCheckin"
+            @open-group="openBetaGroup"
+          />
 
-              <div v-if="auth.isAuthed" class="portal-beta-invite">
-                <template v-if="homeCheckinStatus && !homeCheckinStatus.today_checked_in">
-                  <span class="portal-beta-invite__title">📅 每日签到</span>
-                  <p class="portal-beta-invite__text">
-                    今日签到可得
-                    <strong>{{ homeCheckinStatus.today_potential }}</strong>
-                    积分，连续签到
-                    <strong>{{ homeCheckinStatus.streak_count }}</strong>
-                    天。
-                  </p>
-                  <button
-                    class="portal-checkin-card__cta"
-                    type="button"
-                    :disabled="checkinHomeSaving"
-                    @click="handleHomeCheckin"
-                  >
-                    {{ checkinHomeSaving ? '签到中…' : '立即签到' }}
-                  </button>
-                </template>
-                <template v-else>
-                  <span class="portal-beta-invite__title">🎁 邀请有礼</span>
-                  <p class="portal-beta-invite__text">
-                    每邀请一位好友注册，即可解锁专属徽章和排行榜荣誉
-                  </p>
-                  <RouterLink class="portal-beta-invite__cta" :to="{ name: 'workbench-badges' }">
-                    立即邀请
-                  </RouterLink>
-                </template>
-              </div>
+          <PortalNoticeCard
+            :notices="portalNotices"
+            @open-notice="openPortalNotice"
+            @more="router.push({ name: 'community' })"
+          />
 
-              <button class="portal-beta-notice__btn" type="button" @click="openBetaGroup">
-                加入QQ群
-              </button>
-            </div>
-          </section>
+          <PortalMilestoneCard
+            :stats="platformStats"
+            :is-developer-account="isDeveloperAccount"
+            @open-resource-init="openResourceInit"
+          />
 
-          <section class="portal-card portal-card--notice">
-            <div class="portal-card__header portal-card__header--notice">
-              <div class="portal-card__title portal-card__title--notice">
-                <span class="portal-notice-head__icon" aria-hidden="true">◔</span>
-                <h2>平台公告</h2>
-              </div>
-              <button
-                class="portal-link-btn portal-link-btn--notice"
-                type="button"
-                @click="router.push({ name: 'community' })"
-              >
-                更多
-                <span aria-hidden="true">›</span>
-              </button>
-            </div>
-            <ul class="portal-notice-list">
-              <li
-                v-for="(notice, index) in portalNotices"
-                :key="`${notice.title}-${notice.date}`"
-                class="portal-notice-item"
-                :class="{ 'portal-notice-item--clickable': notice.to }"
-                :role="notice.to ? 'button' : undefined"
-                :tabindex="notice.to ? 0 : undefined"
-                :style="{ '--notice-index': String(index) }"
-                @click="openPortalNotice(notice)"
-                @keydown.enter="openPortalNotice(notice)"
-                @keydown.space.prevent="openPortalNotice(notice)"
-              >
-                <div class="portal-notice-item__main">
-                  <strong>{{ notice.title }}</strong>
-                  <span v-if="notice.tag" class="portal-tag">{{ notice.tag }}</span>
-                </div>
-                <time>{{ notice.date }}</time>
-              </li>
-            </ul>
-          </section>
-
-          <section id="portal-developers" class="portal-card portal-card--stats">
-            <div class="portal-card__header portal-card__header--stats">
-              <div class="portal-card__title portal-card__title--stats">
-                <span class="portal-stats-head__icon" aria-hidden="true">◉</span>
-                <h2>内测里程碑</h2>
-              </div>
-            </div>
-            <div class="portal-milestone__intro">
-              <button class="portal-milestone__cta" type="button" @click="openResourceInit">
-                {{ isDeveloperAccount ? '发布资源 →' : '立即入驻 →' }}
-              </button>
-            </div>
-            <div class="portal-stats-grid">
-              <article
-                v-for="(stat, index) in platformStats"
-                :key="stat.label"
-                class="portal-stat-item"
-                :class="`portal-stat-item--tone-${index % 4}`"
-                :style="{ '--stat-index': String(index) }"
-              >
-                <span class="portal-stat-item__icon" aria-hidden="true">
-                  <component :is="stat.icon" />
-                </span>
-                <div class="portal-stat-item__copy">
-                  <div class="portal-stat-item__label">
-                    <span>{{ stat.label }}</span>
-                    <span v-if="stat.progress" class="portal-stat-item__target">目标</span>
-                  </div>
-                  <strong>{{ stat.value }}</strong>
-                  <span v-if="stat.note" class="portal-stat-item__note">{{ stat.note }}</span>
-                  <div v-if="stat.progress" class="portal-stat-item__progress">
-                    <span
-                      class="portal-stat-item__progress-bar"
-                      :style="{ width: progressPercent(stat.progress) }"
-                    ></span>
-                  </div>
-                </div>
-              </article>
-            </div>
-          </section>
-
-          <section class="portal-card portal-card--rank portal-contrib">
-            <div class="portal-card__header portal-contrib__header">
-              <div class="portal-card__title portal-card__title--rank">
-                <span class="portal-card-title-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false">
-                    <circle cx="12" cy="8" r="6" />
-                    <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
-                  </svg>
-                </span>
-                <h2>开发者贡献榜</h2>
-              </div>
-            </div>
-            <ol v-if="developerRanks.length > 0" class="portal-contrib-list">
-              <li
-                v-for="(developer, index) in developerRanks"
-                :key="developer.username"
-                class="portal-contrib-item"
-                :class="`portal-contrib-item--rank-${index + 1}`"
-                :style="{ '--rank-index': String(index) }"
-                @click="
-                  router.push({
-                    name: 'dev-profile',
-                    params: { username: developer.username },
-                  })
-                "
-              >
-                <span class="portal-contrib-item__rank">{{ index + 1 }}</span>
-                <span class="portal-contrib-item__avatar">
-                  <img
-                    v-if="developer.avatarUrl"
-                    :src="developer.avatarUrl"
-                    :alt="`${developer.name} 的头像`"
-                    @error="handleDeveloperAvatarError(developer)"
-                  />
-                  <span v-else>{{ developer.name.slice(0, 1) }}</span>
-                </span>
-                <div class="portal-contrib-item__meta">
-                  <strong
-                    :class="{ 'username-gradient': developer.gradient && !developer.userColor }"
-                    :style="developer.userColor ? { color: developer.userColor } : {}"
-                    >{{ developer.name }}</strong
-                  >
-                  <div
-                    class="portal-contrib-item__badges"
-                    v-if="devBadges(developer.username).length > 0"
-                  >
-                    <span
-                      v-for="badge in devBadges(developer.username).slice(0, 3)"
-                      :key="badge.code"
-                      class="portal-contrib-item__badge"
-                      :title="`${badge.name}：${badge.description}`"
-                    >
-                      <img
-                        v-if="badge.icon.startsWith('badges/')"
-                        :src="`/uploads/${badge.icon}`"
-                        class="portal-contrib-item__badge-img"
-                        alt=""
-                      />
-                      <template v-else>{{ badge.icon }}</template>
-                    </span>
-                    <span
-                      v-if="devBadges(developer.username).length > 3"
-                      class="portal-contrib-item__badge-more"
-                    >
-                      +{{ devBadges(developer.username).length - 3 }}
-                    </span>
-                  </div>
-                </div>
-                <div class="portal-contrib-item__side">
-                  <strong class="portal-contrib-item__count">{{ developer.deals }}</strong>
-                </div>
-              </li>
-            </ol>
-            <div v-else class="portal-empty-state portal-empty-state--compact">
-              <strong>暂无公开开发者</strong>
-            </div>
-            <div v-if="developerRanks.length > 0" class="portal-contrib-footer">
-              本周
-              <strong>{{ totalContribResources }}</strong>
-              个资源 ·
-              <strong>{{ developerRanks.length }}</strong>
-              位开发者
-            </div>
-          </section>
-          <section v-if="teamRanks.length > 0" class="portal-card portal-card--team">
-            <div class="portal-card__header">
-              <div class="portal-card__title portal-card__title--team">
-                <span
-                  class="portal-card-title-icon portal-card-title-icon--team"
-                  aria-hidden="true"
-                >
-                  <svg viewBox="0 0 24 24" focusable="false">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                </span>
-                <h2>活跃团队</h2>
-              </div>
-            </div>
-            <ul class="portal-rank-list">
-              <li
-                v-for="(team, index) in teamRanks"
-                :key="team.teamId"
-                class="portal-rank-item"
-                :style="{ '--rank-index': String(index) }"
-                @click="router.push({ name: 'team-profile', params: { teamId: team.teamId } })"
-              >
-                <div class="portal-rank-item__avatar">
-                  <img
-                    v-if="team.avatarUrl"
-                    :src="team.avatarUrl"
-                    :alt="`${team.teamName} 的头像`"
-                    @error="handleTeamAvatarError(team)"
-                  />
-                  <span v-else>{{ team.teamName.slice(0, 1) }}</span>
-                </div>
-                <div class="portal-rank-item__meta">
-                  <strong>{{ team.teamName }}</strong>
-                </div>
-                <div class="portal-rank-item__score">
-                  <strong>{{ team.resourceCount }} 个资源</strong>
-                </div>
-              </li>
-            </ul>
-          </section>
+          <DeveloperRankCard
+            :ranks="developerRanks"
+            :badges="developerBadges"
+            :total-resources="totalContribResources"
+            @open-developer="openDeveloperProfile"
+          />
+          <TeamRankCard
+            v-if="teamRanks.length > 0"
+            :ranks="teamRanks"
+            @open-team="openTeamProfile"
+          />
         </aside>
       </div>
     </div>
