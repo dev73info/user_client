@@ -388,13 +388,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/AccountCouponsView.vue",
-      "detail": "2590 行 > 300（视图）",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "api-deps",
-      "file": "src/views/AccountCouponsView.vue",
-      "detail": "依赖 4 个 api 模块（auth、settings、realname、asignAccount）> 3",
+      "detail": "1699 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -689,6 +683,12 @@
       "rule": "raw-color",
       "file": "src/components/AcceptanceDialog.vue",
       "detail": "21 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/account/RealnameMaterialUpload.vue",
+      "detail": "4 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -1180,7 +1180,7 @@
     {
       "rule": "raw-color",
       "file": "src/views/AccountCouponsView.vue",
-      "detail": "5 处裸色值",
+      "detail": "1 处裸色值",
       "since": "2026-10-21"
     },
     {
