@@ -26,7 +26,7 @@ vi.mock('ui_73info', async (importOriginal) => {
 // 消息中心与工单中心两端共用同一套页面，但各自一条路由：开发者端走 dev-messages / dev-tickets，
 // 点进去不会切回用户工作台，页面也据此走开发者体系的外观。系统通知与两者同一办法。
 const USER_ROUTE_NAMES = ['workbench', 'workbench-requirements', 'workbench-account',
-  'workbench-authorized-apps',
+  'workbench-authorized-apps', 'workbench-purchase-transfers',
   'workbench-signatures', 'workbench-invoices', 'workbench-points', 'workbench-perks',
   'workbench-coupons', 'workbench-badges', 'workbench-favorites', 'workbench-resource-purchases',
   'workbench-invite', 'workbench-tickets', 'workbench-messages', 'workbench-notifications']
@@ -122,7 +122,15 @@ describe('workbench mode switch', () => {
     const inventoryGroup = groups.find((group) => group.find('.user-workbench__menu-group-head').text().includes('我的背包'))!
     // 「我的邀请」已并入「勋章与邀请」（原「我的徽章墙」那条），不再单列。
     expect(accountGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()))
-      .toEqual(['账户详情', '已授权应用', '我的合同', '我的发票', '我的收藏', '我的已购'])
+      .toEqual([
+        '账户详情',
+        '已授权应用',
+        '我的合同',
+        '我的发票',
+        '我的收藏',
+        '我的已购',
+        '使用权转移',
+      ])
     expect(inventoryGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()))
       .toEqual(['积分中心', '权益中心', '优惠券中心', '勋章与邀请'])
     expect(inventoryGroup.findAll('.user-workbench__submenu-link')[0]?.attributes('href'))
