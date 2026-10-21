@@ -148,7 +148,7 @@
     {
       "rule": "line-budget",
       "file": "src/components/RequirementConversationModal.vue",
-      "detail": "3740 行 > 400（模块）",
+      "detail": "3735 行 > 400（模块）",
       "since": "2026-10-21"
     },
     {
@@ -364,7 +364,7 @@
     {
       "rule": "line-budget",
       "file": "src/styles/profile.css",
-      "detail": "1040 行 > 300（模块）",
+      "detail": "1041 行 > 300（模块）",
       "since": "2026-10-21"
     },
     {
@@ -376,13 +376,13 @@
     {
       "rule": "line-budget",
       "file": "src/styles/shell.css",
-      "detail": "510 行 > 300（模块）",
+      "detail": "513 行 > 300（模块）",
       "since": "2026-10-21"
     },
     {
       "rule": "line-budget",
       "file": "src/views/AboutView.vue",
-      "detail": "659 行 > 300（视图）",
+      "detail": "660 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -592,7 +592,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/SearchResultsView.vue",
-      "detail": "1016 行 > 300（视图）",
+      "detail": "1017 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -746,12 +746,6 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/components/home/HomeHeroSection.vue",
-      "detail": "1 处非标准断点（820px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/components/home/HomeHeroSection.vue",
       "detail": "9 处裸色值",
@@ -830,12 +824,6 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/components/RealnameHero.vue",
-      "detail": "1 处非标准断点（860px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/components/RealnameHero.vue",
       "detail": "2 处裸色值",
@@ -881,12 +869,6 @@
       "rule": "raw-color",
       "file": "src/components/RequirementConversationActions.vue",
       "detail": "33 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/components/RequirementConversationModal.vue",
-      "detail": "3 处非标准断点（820px）",
       "since": "2026-10-21"
     },
     {
@@ -1046,12 +1028,6 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/styles/profile.css",
-      "detail": "3 处非标准断点（820px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/styles/profile.css",
       "detail": "78 处裸色值",
@@ -1082,12 +1058,6 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/styles/shell.css",
-      "detail": "1 处非标准断点（820px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/styles/shell.css",
       "detail": "45 处裸色值",
@@ -1109,12 +1079,6 @@
       "rule": "raw-color",
       "file": "src/styles/workbench-shell.css",
       "detail": "37 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/views/AboutView.vue",
-      "detail": "1 处非标准断点（820px）",
       "since": "2026-10-21"
     },
     {
@@ -1250,12 +1214,6 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/views/NotFoundView.vue",
-      "detail": "1 处非标准断点（820px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/views/NotFoundView.vue",
       "detail": "20 处裸色值",
@@ -1283,12 +1241,6 @@
       "rule": "raw-color",
       "file": "src/views/ProfileView.vue",
       "detail": "28 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/views/SearchResultsView.vue",
-      "detail": "1 处非标准断点（860px）",
       "since": "2026-10-21"
     },
     {
