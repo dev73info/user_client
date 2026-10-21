@@ -45,7 +45,11 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
       <span class="mock-switch__dot" aria-hidden="true"></span>
       <span class="mock-switch__fab-text">MOCK</span>
       <span class="mock-switch__fab-identity">{{ profile.label }}</span>
-      <span v-if="uncovered.length" class="mock-switch__badge" :title="`${uncovered.length} 个接口未实现`">
+      <span
+        v-if="uncovered.length"
+        class="mock-switch__badge"
+        :title="`${uncovered.length} 个接口未实现`"
+      >
         {{ uncovered.length }}
       </span>
     </button>
@@ -53,7 +57,12 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
     <section v-if="expanded" class="mock-switch__panel" aria-label="mock 身份切换">
       <header class="mock-switch__head">
         <strong>mock 身份</strong>
-        <button class="mock-switch__close" type="button" aria-label="收起" @click="expanded = false">
+        <button
+          class="mock-switch__close"
+          type="button"
+          aria-label="收起"
+          @click="expanded = false"
+        >
           ×
         </button>
       </header>
@@ -98,7 +107,11 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
           >
             清空清单
           </button>
-          <button class="mock-switch__link mock-switch__link--danger" type="button" @click="disableMock()">
+          <button
+            class="mock-switch__link mock-switch__link--danger"
+            type="button"
+            @click="disableMock()"
+          >
             关闭 mock
           </button>
         </div>

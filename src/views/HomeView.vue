@@ -73,12 +73,7 @@ import {
   unlikePublicMcResource,
   type PublicMcResourceItem,
 } from '@/api/resources'
-import {
-  doCheckin,
-  getCheckinStatus,
-  getResourcePromoMeta,
-  type CheckinStatus,
-} from '@/api/points'
+import { doCheckin, getCheckinStatus, getResourcePromoMeta, type CheckinStatus } from '@/api/points'
 import { getUserBadges, type UserBadge } from '@/api/invite'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 
@@ -353,9 +348,7 @@ async function handleHomeCheckin() {
 const heroSignals = ['免费资源共享', '需求记录留痕', '工单沟通协作']
 const qqBetaGroupUrl = 'https://qm.qq.com/q/AXb3VBPurC'
 const isDeveloperAccount = computed(() => auth.role === 'dev' || auth.role === 'super_admin')
-const devActionLabel = computed(() =>
-  isDeveloperAccount.value ? '我要接单' : '成为开发者',
-)
+const devActionLabel = computed(() => (isDeveloperAccount.value ? '我要接单' : '成为开发者'))
 
 const portalNotices = computed<PortalNotice[]>(() => {
   const resource = publicResources.value[0]
@@ -558,7 +551,16 @@ const developerRanks = computed<DeveloperRank[]>(() => {
   const failedAvatarUrls = failedDeveloperAvatarUrls.value
   const groupedResources = new Map<
     string,
-    { name: string; username: string; avatarUrl: string; creditScore: number | null; deals: number; latestAt: number; gradient: boolean; userColor?: string }
+    {
+      name: string
+      username: string
+      avatarUrl: string
+      creditScore: number | null
+      deals: number
+      latestAt: number
+      gradient: boolean
+      userColor?: string
+    }
   >()
 
   for (const resource of publicResources.value) {
@@ -699,8 +701,7 @@ const spotlightCards = computed<SpotlightCard[]>(() => {
   const published = [...publicResources.value]
   const threshold = highLikeThreshold.value
   const hybrid = published.filter(
-    (item) =>
-      item.is_featured || item.is_pinned || (item.like_count ?? 0) >= threshold,
+    (item) => item.is_featured || item.is_pinned || (item.like_count ?? 0) >= threshold,
   )
   // 候选为空时回退到全部已发布，按同一套排序，避免首页区块空白。
   const candidates = (hybrid.length > 0 ? hybrid : published).sort(compareSpotlightResources)
@@ -1167,8 +1168,7 @@ function updateDepositChannel(channel: AdapayBusinessPayChannel) {
 
 function canOpenPayment(item: PendingRequirementView) {
   return (
-    item.status === 'rejected' ||
-    (isAdapayRequirement(item) && item.status === 'pending_final')
+    item.status === 'rejected' || (isAdapayRequirement(item) && item.status === 'pending_final')
   )
 }
 
@@ -1463,7 +1463,9 @@ async function loadPublicPortalData(silent = false) {
   }
 
   if (announcementsResult.status === 'fulfilled') {
-    announcementPosts.value = announcementsResult.value.filter((post) => post.status === 'published')
+    announcementPosts.value = announcementsResult.value.filter(
+      (post) => post.status === 'published',
+    )
   } else {
     announcementPosts.value = []
   }
@@ -1530,9 +1532,10 @@ async function submitDepositPayment() {
   try {
     if (!depositPayment.value) {
       // 定金可带券（P6 / BUG-025）：金额券与折扣券互斥，取了哪张就传哪张；尾款不接券。
-      const couponCode = currentStage === '定金'
-        ? (amountCouponCode.value || discountCouponCode.value || undefined)
-        : undefined
+      const couponCode =
+        currentStage === '定金'
+          ? amountCouponCode.value || discountCouponCode.value || undefined
+          : undefined
       const adapayPayment: AdapayPaymentResponse = await createAdapayPayment(
         auth.token,
         depositRequirement.value.id,
@@ -1629,9 +1632,7 @@ async function submitDepositPayment() {
       message.includes('requirement contract must be signed by developer before paying deposit') ||
       message.includes('contract must be created before paying deposit')
     ) {
-      TMessage.warning(
-        '当前需求需先由开发者（乙方）签署，再由您（甲方）签署协议后，才能支付定金',
-      )
+      TMessage.warning('当前需求需先由开发者（乙方）签署，再由您（甲方）签署协议后，才能支付定金')
     } else {
       TMessage.error(message)
     }
@@ -1647,7 +1648,11 @@ function openAuth(mode: AuthMode, redirectTo = authRedirectTarget.value) {
   resetAuthForm()
   const nextQuery: Record<string, string> = { modal: 'auth', mode }
   const normalizedRedirectTo = redirectTo.trim()
-  if (normalizedRedirectTo && normalizedRedirectTo.startsWith('/') && !normalizedRedirectTo.startsWith('//')) {
+  if (
+    normalizedRedirectTo &&
+    normalizedRedirectTo.startsWith('/') &&
+    !normalizedRedirectTo.startsWith('//')
+  ) {
     nextQuery.redirect_to = normalizedRedirectTo
   }
   if (inviteCodeToKeep) {
@@ -1884,12 +1889,9 @@ async function submitPublishRequirement() {
                 </h1>
 
                 <div v-if="heroSignals.length" class="portal-signal-list">
-                  <span
-                    v-for="signal in heroSignals"
-                    :key="signal"
-                    class="portal-signal"
-                    >{{ signal }}</span
-                  >
+                  <span v-for="signal in heroSignals" :key="signal" class="portal-signal">{{
+                    signal
+                  }}</span>
                 </div>
 
                 <div class="portal-hero__actions">
@@ -1900,11 +1902,7 @@ async function submitPublishRequirement() {
                   >
                     {{ isDeveloperAccount ? '发布资源' : '发布需求' }}
                   </button>
-                  <button
-                    class="portal-secondary-action"
-                    type="button"
-                    @click="openDevWorkbench"
-                  >
+                  <button class="portal-secondary-action" type="button" @click="openDevWorkbench">
                     {{ devActionLabel }}
                   </button>
                 </div>
@@ -1915,7 +1913,11 @@ async function submitPublishRequirement() {
           <!-- 移动端入口宫格：替代主视觉里的两颗按钮与下方两张大卡片，一个图标配一行字、上下排；
                主视觉在移动端只留作横幅（后期改轮播图） -->
           <nav class="portal-entry-grid" aria-label="快捷入口">
-            <button type="button" class="portal-entry portal-entry--publish" @click="openPrimaryPublishAction">
+            <button
+              type="button"
+              class="portal-entry portal-entry--publish"
+              @click="openPrimaryPublishAction"
+            >
               <span class="portal-entry__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none">
                   <path d="M12 16V4" />
@@ -1923,7 +1925,9 @@ async function submitPublishRequirement() {
                   <path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" />
                 </svg>
               </span>
-              <span class="portal-entry__label">{{ isDeveloperAccount ? '发布资源' : '发布需求' }}</span>
+              <span class="portal-entry__label">{{
+                isDeveloperAccount ? '发布资源' : '发布需求'
+              }}</span>
             </button>
             <button type="button" class="portal-entry portal-entry--take" @click="openDevWorkbench">
               <span class="portal-entry__icon" aria-hidden="true">
@@ -1935,8 +1939,11 @@ async function submitPublishRequirement() {
               </span>
               <span class="portal-entry__label">{{ devActionLabel }}</span>
             </button>
-            <button type="button" class="portal-entry portal-entry--free"
-              @click="router.push({ name: 'resources', query: { sale: 'free' } })">
+            <button
+              type="button"
+              class="portal-entry portal-entry--free"
+              @click="router.push({ name: 'resources', query: { sale: 'free' } })"
+            >
               <span class="portal-entry__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="8" width="18" height="4" rx="1" />
@@ -1947,7 +1954,11 @@ async function submitPublishRequirement() {
               </span>
               <span class="portal-entry__label">免费资源</span>
             </button>
-            <button type="button" class="portal-entry portal-entry--community" @click="router.push({ name: 'community' })">
+            <button
+              type="button"
+              class="portal-entry portal-entry--community"
+              @click="router.push({ name: 'community' })"
+            >
               <span class="portal-entry__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none">
                   <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />
@@ -1986,13 +1997,7 @@ async function submitPublishRequirement() {
                       <stop offset="0%" stop-color="#ffd75f" />
                       <stop offset="100%" stop-color="#ff9f1c" />
                     </linearGradient>
-                    <filter
-                      id="quickIconShadow"
-                      x="-30%"
-                      y="-20%"
-                      width="160%"
-                      height="160%"
-                    >
+                    <filter id="quickIconShadow" x="-30%" y="-20%" width="160%" height="160%">
                       <feDropShadow
                         dx="0"
                         dy="9"
@@ -2008,10 +2013,7 @@ async function submitPublishRequirement() {
                       d="M17 38h62v39a7 7 0 0 1-7 7H24a7 7 0 0 1-7-7V38Z"
                     />
                     <path fill="#d9274a" d="M17 38h62v16H17z" opacity="0.45" />
-                    <path
-                      fill="url(#quickGiftYellow)"
-                      d="M43 38h10v46H43zM12 28h72v16H12z"
-                    />
+                    <path fill="url(#quickGiftYellow)" d="M43 38h10v46H43zM12 28h72v16H12z" />
                     <path
                       fill="url(#quickGiftRed)"
                       d="M24 14c10-5 20 8 24 17-12 2-27 1-30-6-2-4 1-8 6-11Zm48 0c-10-5-20 8-24 17 12 2 27 1 30-6 2-4-1-8-6-11Z"
@@ -2019,24 +2021,13 @@ async function submitPublishRequirement() {
                     <path fill="url(#quickGiftYellow)" d="M42 20h12l-6 18-6-18Z" />
                   </g>
                 </svg>
-                <svg
-                  v-else
-                  class="portal-quick-card__svg"
-                  viewBox="0 0 96 96"
-                  focusable="false"
-                >
+                <svg v-else class="portal-quick-card__svg" viewBox="0 0 96 96" focusable="false">
                   <defs>
                     <linearGradient id="quickCaseOrange" x1="0" x2="1" y1="0" y2="1">
                       <stop offset="0%" stop-color="#ffb15c" />
                       <stop offset="100%" stop-color="#f97316" />
                     </linearGradient>
-                    <filter
-                      id="quickCaseShadow"
-                      x="-30%"
-                      y="-20%"
-                      width="160%"
-                      height="160%"
-                    >
+                    <filter id="quickCaseShadow" x="-30%" y="-20%" width="160%" height="160%">
                       <feDropShadow
                         dx="0"
                         dy="9"
@@ -2088,11 +2079,11 @@ async function submitPublishRequirement() {
                   type="button"
                   @click="openWorkflowStep(step)"
                 >
-                  <span class="portal-step-card__icon" aria-hidden="true">{{
-                    step.icon
-                  }}</span>
+                  <span class="portal-step-card__icon" aria-hidden="true">{{ step.icon }}</span>
                   <span class="portal-step-card__body">
-                    <strong><i class="portal-step-card__no">{{ step.step }}. </i>{{ step.title }}</strong>
+                    <strong
+                      ><i class="portal-step-card__no">{{ step.step }}. </i>{{ step.title }}</strong
+                    >
                     <span>{{ step.summary }}</span>
                   </span>
                 </button>
@@ -2122,146 +2113,166 @@ async function submitPublishRequirement() {
             </div>
             <template v-if="spotlightCards.length > 0">
               <div class="portal-spotlight-grid">
-              <article
-                v-for="card in pagedSpotlightCards"
-                :key="card.resourceId ?? card.title"
-                class="portal-spotlight-card"
-                :class="`portal-spotlight-card--${card.accent}`"
-                role="button"
-                tabindex="0"
-                @click="openSpotlight(card)"
-                @keydown.enter="openSpotlight(card)"
-                @keydown.space.prevent="openSpotlight(card)"
-              >
-                <div class="portal-spotlight-card__cover">
-                  <img
-                    v-if="spotlightCoverSrc(card)"
-                    class="portal-spotlight-card__cover-img"
-                    :src="card.coverUrl"
-                    :alt="card.coverAlt || `${card.title} 的资源封面图`"
-                    @error="handleSpotlightCoverError(card.coverUrl)"
-                  />
-                  <span v-else class="portal-spotlight-card__cover-text">{{
-                    card.title.slice(0, 1).toUpperCase()
-                  }}</span>
-                  <span v-if="card.badge" class="portal-spotlight-card__badge">{{
-                    card.badge
-                  }}</span>
-                  <span
-                    v-if="card.mark"
-                    class="portal-spotlight-card__mark portal-spotlight-card__mark--featured"
-                  >
-                    <span class="portal-spotlight-card__mark-dot" aria-hidden="true"></span>
-                    {{ card.mark }}
-                  </span>
-                  <div
-                    class="portal-spotlight-card__screen portal-spotlight-card__screen--primary"
-                  ></div>
-                  <div
-                    class="portal-spotlight-card__screen portal-spotlight-card__screen--secondary"
-                  ></div>
-                  <div
-                    class="portal-spotlight-card__screen portal-spotlight-card__screen--tertiary"
-                  ></div>
-                </div>
-                <div class="portal-spotlight-card__body">
-                  <h3>{{ card.title }}</h3>
-                  <p v-if="card.summary">{{ card.summary }}</p>
-                  <div v-if="card.tags.length" class="portal-spotlight-card__meta-row">
-                    <strong v-for="tag in card.tags" :key="tag">{{ tag }}</strong>
+                <article
+                  v-for="card in pagedSpotlightCards"
+                  :key="card.resourceId ?? card.title"
+                  class="portal-spotlight-card"
+                  :class="`portal-spotlight-card--${card.accent}`"
+                  role="button"
+                  tabindex="0"
+                  @click="openSpotlight(card)"
+                  @keydown.enter="openSpotlight(card)"
+                  @keydown.space.prevent="openSpotlight(card)"
+                >
+                  <div class="portal-spotlight-card__cover">
+                    <img
+                      v-if="spotlightCoverSrc(card)"
+                      class="portal-spotlight-card__cover-img"
+                      :src="card.coverUrl"
+                      :alt="card.coverAlt || `${card.title} 的资源封面图`"
+                      @error="handleSpotlightCoverError(card.coverUrl)"
+                    />
+                    <span v-else class="portal-spotlight-card__cover-text">{{
+                      card.title.slice(0, 1).toUpperCase()
+                    }}</span>
+                    <span v-if="card.badge" class="portal-spotlight-card__badge">{{
+                      card.badge
+                    }}</span>
+                    <span
+                      v-if="card.mark"
+                      class="portal-spotlight-card__mark portal-spotlight-card__mark--featured"
+                    >
+                      <span class="portal-spotlight-card__mark-dot" aria-hidden="true"></span>
+                      {{ card.mark }}
+                    </span>
+                    <div
+                      class="portal-spotlight-card__screen portal-spotlight-card__screen--primary"
+                    ></div>
+                    <div
+                      class="portal-spotlight-card__screen portal-spotlight-card__screen--secondary"
+                    ></div>
+                    <div
+                      class="portal-spotlight-card__screen portal-spotlight-card__screen--tertiary"
+                    ></div>
                   </div>
-                  <div class="portal-spotlight-card__footer">
-                    <div class="portal-spotlight-card__footer-main">
-                      <span class="portal-spotlight-card__stats">
-                        <span class="portal-spotlight-card__stat" title="浏览量">
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                            <circle cx="12" cy="12" r="3"></circle>
-                          </svg>
-                          {{ card.viewCount }}
-                        </span>
-                        <span class="portal-spotlight-card__stat" title="下载量">
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                          </svg>
-                          {{ card.downloadCount }}
-                        </span>
-                      </span>
-                      <span
-                        v-if="card.authorLabel"
-                        class="portal-spotlight-card__author"
-                        :class="{
-                          'is-marquee': isSpotlightAuthorMarquee(card.resourceId),
-                          'username-gradient': card.gradient && !card.userColor,
-                        }"
-                        :style="card.userColor ? { color: card.userColor } : undefined"
-                        :title="card.authorLabel"
-                        :ref="(el) => bindSpotlightAuthorMarquee(el, card.resourceId)"
-                      >
-                        <span class="portal-spotlight-card__author-text">{{ card.authorLabel }}</span>
-                      </span>
+                  <div class="portal-spotlight-card__body">
+                    <h3>{{ card.title }}</h3>
+                    <p v-if="card.summary">{{ card.summary }}</p>
+                    <div v-if="card.tags.length" class="portal-spotlight-card__meta-row">
+                      <strong v-for="tag in card.tags" :key="tag">{{ tag }}</strong>
                     </div>
-                    <div class="portal-spotlight-card__footer-bottom">
-                      <div class="portal-spotlight-card__footer-leading">
+                    <div class="portal-spotlight-card__footer">
+                      <div class="portal-spotlight-card__footer-main">
+                        <span class="portal-spotlight-card__stats">
+                          <span class="portal-spotlight-card__stat" title="浏览量">
+                            <svg
+                              viewBox="0 0 24 24"
+                              width="14"
+                              height="14"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              aria-hidden="true"
+                            >
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                              <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            {{ card.viewCount }}
+                          </span>
+                          <span class="portal-spotlight-card__stat" title="下载量">
+                            <svg
+                              viewBox="0 0 24 24"
+                              width="14"
+                              height="14"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              aria-hidden="true"
+                            >
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="7 10 12 15 17 10"></polyline>
+                              <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            {{ card.downloadCount }}
+                          </span>
+                        </span>
                         <span
-                          v-if="card.originLabel"
-                          class="portal-spotlight-card__origin"
-                          :class="{ 'is-repost': card.originRepost }"
-                          >{{ card.originLabel }}</span
-                        >
-                        <button
-                          type="button"
-                          class="portal-spotlight-card__likes"
+                          v-if="card.authorLabel"
+                          class="portal-spotlight-card__author"
                           :class="{
-                            'is-liked': card.likedByMe,
-                            'is-busy':
-                              card.resourceId != null &&
-                              spotlightLikeSubmittingIds.has(card.resourceId),
+                            'is-marquee': isSpotlightAuthorMarquee(card.resourceId),
+                            'username-gradient': card.gradient && !card.userColor,
                           }"
-                          :title="card.likedByMe ? '取消点赞' : '点赞'"
-                          :aria-pressed="card.likedByMe"
-                          :aria-label="
-                            card.likedByMe
-                              ? `已点赞 ${card.likeCount}，点击取消`
-                              : `点赞，当前 ${card.likeCount}`
-                          "
-                          :disabled="
-                            card.resourceId != null &&
-                            spotlightLikeSubmittingIds.has(card.resourceId)
-                          "
-                          @click="toggleSpotlightLike(card, $event)"
-                          @keydown.enter.stop
-                          @keydown.space.stop
+                          :style="card.userColor ? { color: card.userColor } : undefined"
+                          :title="card.authorLabel"
+                          :ref="(el) => bindSpotlightAuthorMarquee(el, card.resourceId)"
                         >
-                          <svg
-                            viewBox="0 0 24 24"
-                            width="13"
-                            height="13"
-                            :fill="card.likedByMe ? 'currentColor' : 'none'"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            aria-hidden="true"
-                          >
-                            <path
-                              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                            ></path>
-                          </svg>
-                          {{ card.likeCount }}
-                        </button>
+                          <span class="portal-spotlight-card__author-text">{{
+                            card.authorLabel
+                          }}</span>
+                        </span>
                       </div>
-                      <span v-if="card.metaTime" class="portal-spotlight-card__time">{{
-                        card.metaTime
-                      }}</span>
+                      <div class="portal-spotlight-card__footer-bottom">
+                        <div class="portal-spotlight-card__footer-leading">
+                          <span
+                            v-if="card.originLabel"
+                            class="portal-spotlight-card__origin"
+                            :class="{ 'is-repost': card.originRepost }"
+                            >{{ card.originLabel }}</span
+                          >
+                          <button
+                            type="button"
+                            class="portal-spotlight-card__likes"
+                            :class="{
+                              'is-liked': card.likedByMe,
+                              'is-busy':
+                                card.resourceId != null &&
+                                spotlightLikeSubmittingIds.has(card.resourceId),
+                            }"
+                            :title="card.likedByMe ? '取消点赞' : '点赞'"
+                            :aria-pressed="card.likedByMe"
+                            :aria-label="
+                              card.likedByMe
+                                ? `已点赞 ${card.likeCount}，点击取消`
+                                : `点赞，当前 ${card.likeCount}`
+                            "
+                            :disabled="
+                              card.resourceId != null &&
+                              spotlightLikeSubmittingIds.has(card.resourceId)
+                            "
+                            @click="toggleSpotlightLike(card, $event)"
+                            @keydown.enter.stop
+                            @keydown.space.stop
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              width="13"
+                              height="13"
+                              :fill="card.likedByMe ? 'currentColor' : 'none'"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              aria-hidden="true"
+                            >
+                              <path
+                                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                              ></path>
+                            </svg>
+                            {{ card.likeCount }}
+                          </button>
+                        </div>
+                        <span v-if="card.metaTime" class="portal-spotlight-card__time">{{
+                          card.metaTime
+                        }}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </article>
+                </article>
               </div>
 
               <nav
@@ -2275,8 +2286,17 @@ async function submitPublishRequirement() {
                   :disabled="spotlightPage <= 1"
                   @click="goSpotlightPage(spotlightPage - 1)"
                 >
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="14"
+                    height="14"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
                     <polyline points="15 18 9 12 15 6"></polyline>
                   </svg>
                   上一页
@@ -2316,7 +2336,11 @@ async function submitPublishRequirement() {
                         @keydown.enter.prevent="submitSpotlightJump"
                       />
                       <span class="portal-pagination__jump-label">页</span>
-                      <button class="portal-pagination__jump-submit" type="button" @click="submitSpotlightJump">
+                      <button
+                        class="portal-pagination__jump-submit"
+                        type="button"
+                        @click="submitSpotlightJump"
+                      >
                         跳转
                       </button>
                     </div>
@@ -2329,8 +2353,17 @@ async function submitPublishRequirement() {
                   @click="goSpotlightPage(spotlightPage + 1)"
                 >
                   下一页
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="14"
+                    height="14"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
                     <polyline points="9 18 15 12 9 6"></polyline>
                   </svg>
                 </button>
@@ -2371,20 +2404,13 @@ async function submitPublishRequirement() {
                   <p class="portal-beta-invite__text">
                     每邀请一位好友注册，即可解锁专属徽章和排行榜荣誉
                   </p>
-                  <RouterLink
-                    class="portal-beta-invite__cta"
-                    :to="{ name: 'workbench-badges' }"
-                  >
+                  <RouterLink class="portal-beta-invite__cta" :to="{ name: 'workbench-badges' }">
                     立即邀请
                   </RouterLink>
                 </template>
               </div>
 
-              <button
-                class="portal-beta-notice__btn"
-                type="button"
-                @click="openBetaGroup"
-              >
+              <button class="portal-beta-notice__btn" type="button" @click="openBetaGroup">
                 加入QQ群
               </button>
             </div>
@@ -2427,10 +2453,7 @@ async function submitPublishRequirement() {
             </ul>
           </section>
 
-          <section
-            id="portal-developers"
-            class="portal-card portal-card--stats"
-          >
+          <section id="portal-developers" class="portal-card portal-card--stats">
             <div class="portal-card__header portal-card__header--stats">
               <div class="portal-card__title portal-card__title--stats">
                 <span class="portal-stats-head__icon" aria-hidden="true">◉</span>
@@ -2511,8 +2534,12 @@ async function submitPublishRequirement() {
                   <strong
                     :class="{ 'username-gradient': developer.gradient && !developer.userColor }"
                     :style="developer.userColor ? { color: developer.userColor } : {}"
-                  >{{ developer.name }}</strong>
-                  <div class="portal-contrib-item__badges" v-if="devBadges(developer.username).length > 0">
+                    >{{ developer.name }}</strong
+                  >
+                  <div
+                    class="portal-contrib-item__badges"
+                    v-if="devBadges(developer.username).length > 0"
+                  >
                     <span
                       v-for="badge in devBadges(developer.username).slice(0, 3)"
                       :key="badge.code"
@@ -2527,7 +2554,10 @@ async function submitPublishRequirement() {
                       />
                       <template v-else>{{ badge.icon }}</template>
                     </span>
-                    <span v-if="devBadges(developer.username).length > 3" class="portal-contrib-item__badge-more">
+                    <span
+                      v-if="devBadges(developer.username).length > 3"
+                      class="portal-contrib-item__badge-more"
+                    >
                       +{{ devBadges(developer.username).length - 3 }}
                     </span>
                   </div>
@@ -2551,7 +2581,10 @@ async function submitPublishRequirement() {
           <section v-if="teamRanks.length > 0" class="portal-card portal-card--team">
             <div class="portal-card__header">
               <div class="portal-card__title portal-card__title--team">
-                <span class="portal-card-title-icon portal-card-title-icon--team" aria-hidden="true">
+                <span
+                  class="portal-card-title-icon portal-card-title-icon--team"
+                  aria-hidden="true"
+                >
                   <svg viewBox="0 0 24 24" focusable="false">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                     <circle cx="9" cy="7" r="4" />
@@ -2568,9 +2601,7 @@ async function submitPublishRequirement() {
                 :key="team.teamId"
                 class="portal-rank-item"
                 :style="{ '--rank-index': String(index) }"
-                @click="
-                  router.push({ name: 'team-profile', params: { teamId: team.teamId } })
-                "
+                @click="router.push({ name: 'team-profile', params: { teamId: team.teamId } })"
               >
                 <div class="portal-rank-item__avatar">
                   <img
@@ -2649,7 +2680,13 @@ async function submitPublishRequirement() {
       :submitText="publishModalSubmitText"
       :loadingText="publishModalLoadingText"
       :publishLoading="publishLoading"
-      :draft-scope="activeResubmitRequirementId ? `edit-${activeResubmitRequirementId}` : (auth.isAuthed ? auth.username : 'default')"
+      :draft-scope="
+        activeResubmitRequirementId
+          ? `edit-${activeResubmitRequirementId}`
+          : auth.isAuthed
+            ? auth.username
+            : 'default'
+      "
       @close="closePublishModal"
       @notify="notify"
       @submit="submitPublishRequirement"
