@@ -543,12 +543,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/TeamsView.vue",
-      "detail": "482 行 > 300（视图）",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/TicketCenterView.vue",
       "detail": "1115 行 > 300（视图）",
       "since": "2026-10-21"
