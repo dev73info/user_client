@@ -32,11 +32,6 @@
       "count": 1
     }
   },
-  "src/views/AccountCouponsView.vue": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 8
-    }
-  },
   "src/views/DevMyRequirementsView.vue": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1

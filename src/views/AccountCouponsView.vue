@@ -11,7 +11,7 @@ import {
   getMySettlementAccountSnapshot,
   type MySettlementAccountSnapshot,
 } from '@/api/adapay'
-import { HttpError, apiUrl } from '@/api/http'
+import { HttpError } from '@/api/http'
 import {
   closeAccount,
   getBoundProviders,
@@ -29,7 +29,6 @@ import {
   updateProfileEmail,
   updateProfilePassword,
   updateProfileTwoFactor,
-  uploadProfileAvatar,
 } from '@/api/settings'
 import {
   completeAsignIdentify,
@@ -66,7 +65,6 @@ import { useAuthStore } from '@/stores/auth'
 import RealnameHero from '@/components/RealnameHero.vue'
 import WechatBindQrModal from '@/components/WechatBindQrModal.vue'
 import { missingEnterpriseOnboardingLabels } from '@/shared/realnameMaterials'
-import { dispatchProfileAvatarUpdated } from '@/shared/profileEvents'
 import {
   getSettlementCities,
   prepareSettlementAccount,
@@ -117,10 +115,6 @@ const router = useRouter()
 const profileLoading = ref(false)
 const newUsername = ref('')
 const usernameLoading = ref(false)
-const avatarUrl = ref('')
-const failedAvatarUrls = ref<Set<string>>(new Set())
-const avatarFileInput = ref<HTMLInputElement | null>(null)
-const avatarUploading = ref(false)
 const profileEmail = ref('')
 const newEmail = ref('')
 const emailCode = ref('')
@@ -270,7 +264,6 @@ const statusTone = computed<'info' | 'warning' | 'success' | 'danger'>(() => {
   return 'danger'
 })
 
-const realnameSubmitted = computed(() => Boolean(current.value))
 const identityCardSelected = computed(() => form.authType === 'IDENTITY_CARD')
 const enterpriseSelected = computed(() => form.authType === 'ENTERPRISE')
 const soleProprietorSelected = computed(() => form.authType === 'SOLE_PROPRIETOR')
@@ -2421,21 +2414,6 @@ const twoFactorDialogVisible = ref(false)
 
 const accountEmailLabel = computed(() => profileEmail.value || '未绑定邮箱')
 const twoFactorChanged = computed(() => twoFactorTargetEnabled.value !== twoFactorEnabled.value)
-const twoFactorStatusText = computed(() => {
-  if (twoFactorChanged.value) {
-    return '待保存'
-  }
-  return twoFactorEnabled.value ? '已开启' : '已关闭'
-})
-const avatarSrc = computed(() => {
-  const currentAvatarUrl = avatarUrl.value.trim()
-  return currentAvatarUrl && !failedAvatarUrls.value.has(currentAvatarUrl)
-    ? apiUrl(currentAvatarUrl)
-    : ''
-})
-const avatarInitial = computed(
-  () => Array.from(auth.username || newUsername.value || '用')[0] ?? '用',
-)
 
 async function loadProfile() {
   auth.hydrate()
@@ -2447,7 +2425,6 @@ async function loadProfile() {
   try {
     const profile = await getProfile(auth.token)
     newUsername.value = profile.username
-    avatarUrl.value = profile.avatar_url ?? ''
     profileEmail.value = profile.email ?? ''
     twoFactorEnabled.value = profile.two_factor_enabled
     twoFactorTargetEnabled.value = profile.two_factor_enabled
@@ -2488,63 +2465,6 @@ async function updateUsername() {
     TMessage.error(err instanceof Error ? err.message : '修改用户名失败')
   } finally {
     usernameLoading.value = false
-  }
-}
-
-function openAvatarPicker() {
-  avatarFileInput.value?.click()
-}
-
-function handleAvatarError() {
-  const currentAvatarUrl = avatarUrl.value.trim()
-  if (!currentAvatarUrl) return
-
-  const next = new Set(failedAvatarUrls.value)
-  next.add(currentAvatarUrl)
-  failedAvatarUrls.value = next
-}
-
-async function handleAvatarChange(event: Event) {
-  if (!auth.isAuthed) {
-    TMessage.error('请先登录后上传头像')
-    return
-  }
-
-  const input = event.target as HTMLInputElement | null
-  const file = input?.files?.[0]
-  if (!file) {
-    return
-  }
-
-  if (!file.type.startsWith('image/')) {
-    TMessage.warning('头像仅支持图片格式')
-    if (input) input.value = ''
-    return
-  }
-
-  if (file.size > 2 * 1024 * 1024) {
-    TMessage.warning('头像图片请控制在 2MB 以内')
-    if (input) input.value = ''
-    return
-  }
-
-  avatarUploading.value = true
-  try {
-    const profile = await uploadProfileAvatar(auth.token, file)
-    const nextAvatarUrl = profile.avatar_url ?? ''
-    if (nextAvatarUrl) {
-      const nextFailedUrls = new Set(failedAvatarUrls.value)
-      nextFailedUrls.delete(nextAvatarUrl)
-      failedAvatarUrls.value = nextFailedUrls
-    }
-    avatarUrl.value = nextAvatarUrl
-    dispatchProfileAvatarUpdated()
-    TMessage.success('头像已更新')
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '上传头像失败')
-  } finally {
-    avatarUploading.value = false
-    if (input) input.value = ''
   }
 }
 
@@ -2842,12 +2762,6 @@ function consumeWechatBindResult() {
     delete nextQuery.wechat_bind_error
     void router.replace({ query: nextQuery })
   }
-}
-
-function scrollToRealname() {
-  document
-    .getElementById('account-realname')
-    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function consumeProviderBindResult() {
@@ -4081,154 +3995,12 @@ onBeforeUnmount(() => {
   margin-top: 4px;
 }
 
-.account-coupons-summary__head {
-  align-items: flex-start;
-}
-
-.account-coupons-summary__grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.account-coupons-summary__grid article,
-.account-settings-card {
-  padding: 18px;
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 12px 26px rgba(76, 103, 172, 0.08);
-}
-
-.account-coupons-summary__grid article {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-
-.account-coupons-summary__grid strong {
-  overflow: hidden;
-  color: #0f172a;
-  font-size: 24px;
-  line-height: 1.15;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.account-coupons-summary__grid span {
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.account-settings-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.account-settings-card h4 {
-  margin: 0 0 14px;
-  color: #0f172a;
-  font-size: 16px;
-}
-
-.account-settings-card .profile-update-row:last-child {
-  margin-bottom: 0;
-}
-
-/* 输入框圆角与工作台其他面板保持一致 */
-.account-settings-card .profile-update-row input {
-  border-radius: 16px;
-}
-
-.account-avatar-card {
-  display: grid;
-  align-content: start;
-}
-
-.account-avatar-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-}
-
-.account-avatar-button {
-  display: inline-grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 76px;
-  height: 76px;
-  overflow: hidden;
-  border: 1px solid rgba(183, 201, 238, 0.95);
-  border-radius: 50%;
-  background: linear-gradient(135deg, #eef5ff, #ffffff);
-  color: #1d4ed8;
-  cursor: pointer;
-  font-size: 28px;
-  font-weight: 900;
-}
-
-.account-avatar-button:disabled {
-  cursor: wait;
-  opacity: 0.78;
-}
-
-.account-avatar-button img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.account-avatar-copy {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-
-.account-avatar-copy strong {
-  overflow: hidden;
-  color: #0f172a;
-  font-size: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.account-avatar-copy .ghost.small {
-  justify-self: start;
-}
-
-.account-avatar-input {
-  display: none;
-}
-
-.account-password-card {
-  display: grid;
-  gap: 12px;
-}
-
-.account-password-card .account-password-row {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 0;
-}
-
 .account-password-row--send {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .account-password-row--confirm {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-}
-
-.account-password-card .ghost.small {
-  min-width: 110px;
-  justify-self: end;
-}
-
-.account-avatar-card {
-  grid-column: 1 / -1;
 }
 
 /* ── 账户入口：分组 + 行（「认证管理」「账号与安全」两张卡共用） ── */
@@ -4376,37 +4148,6 @@ onBeforeUnmount(() => {
   color: var(--profile-text-soft);
   font-size: 16px;
   transition: transform 0.2s ease;
-}
-
-.account-security-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.account-security-head h4 {
-  margin-bottom: 6px;
-}
-
-.account-security-status {
-  flex: 0 0 auto;
-  min-width: 62px;
-  padding: 5px 10px;
-  border: 1px solid rgba(134, 239, 172, 0.92);
-  border-radius: 999px;
-  background: rgba(240, 253, 244, 0.96);
-  color: #166534;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1.2;
-  text-align: center;
-}
-
-.account-security-status.pending {
-  border-color: rgba(253, 230, 138, 0.95);
-  background: rgba(255, 251, 235, 0.98);
-  color: #92400e;
 }
 
 .account-security-toggle-row {
@@ -4587,28 +4328,7 @@ onBeforeUnmount(() => {
   box-shadow: none;
 }
 
-@media (max-width: 1100px) {
-  .account-coupons-summary__grid,
-  .account-settings-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 720px) {
-  .wallet-header,
-  .account-coupons-summary__grid,
-  .account-settings-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .wallet-header {
-    align-items: stretch;
-  }
-
-  .account-coupons-summary__grid strong {
-    white-space: normal;
-  }
-
   .account-password-row--send,
   .account-password-row--confirm,
   .account-security-actions,
@@ -4620,15 +4340,10 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr;
   }
 
-  .account-security-head {
-    align-items: flex-start;
-  }
-
   .account-switch-control {
     justify-self: start;
   }
 
-  .account-password-card .ghost.small,
   .account-security-actions .ghost.small {
     width: 100%;
     justify-self: stretch;
@@ -4664,44 +4379,6 @@ onBeforeUnmount(() => {
   gap: 16px;
 }
 
-.realname-metrics {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-.realname-reviewer {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-}
-
-.realname-reviewer__avatar {
-  display: inline-grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 50%;
-  background: rgba(219, 234, 254, 0.94);
-  color: #1d4ed8;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.realname-reviewer__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.realname-reviewer__avatar > span {
-  color: inherit;
-  font-size: inherit;
-}
-
 .realname-form__head {
   display: flex;
   justify-content: space-between;
@@ -4717,26 +4394,7 @@ onBeforeUnmount(() => {
   color: #0f172a;
 }
 
-.realname-form-layout {
-  display: grid;
-  gap: 20px;
-}
-
 .realname-form {
-  min-width: 0;
-}
-
-/* 企业进件资料：省市两个下拉并排一行，日期与「长期有效」并排一行 */
-.realname-region-row {
-  display: grid;
-  /* 与 .settle-form__pair 同理：列与子项都必须允许收缩到比内容窄，
-     否则 TSelect 的最小宽度会把整张表单顶得比弹窗还宽、右侧被裁 */
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
-  width: 100%;
-}
-
-.realname-region-row > * {
   min-width: 0;
 }
 
@@ -4747,8 +4405,7 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
-/* 两个日期选择器并排：让它们能收缩到比内容窄，否则 TDatePicker 的 100% 宽会把行顶出去
-   （与 .realname-region-row 同理）。 */
+/* 两个日期选择器并排：让它们能收缩到比内容窄，否则 TDatePicker 的 100% 宽会把行顶出去。 */
 .realname-date-row > * {
   min-width: 0;
 }
