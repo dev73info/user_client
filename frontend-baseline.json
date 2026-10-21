@@ -537,12 +537,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/MessagesView.vue",
-      "detail": "1121 行 > 300（视图）",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/MyResourcePurchasesView.vue",
       "detail": "516 行 > 300（视图）",
       "since": "2026-10-21"
@@ -1023,6 +1017,12 @@
     },
     {
       "rule": "raw-color",
+      "file": "src/styles/messages.css",
+      "detail": "4 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
       "file": "src/styles/modal.css",
       "detail": "244 处裸色值",
       "since": "2026-10-21"
@@ -1211,12 +1211,6 @@
       "rule": "raw-color",
       "file": "src/views/MallView.vue",
       "detail": "17 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/views/MessagesView.vue",
-      "detail": "4 处裸色值",
       "since": "2026-10-21"
     },
     {
