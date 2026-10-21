@@ -586,13 +586,13 @@
     {
       "rule": "line-budget",
       "file": "src/views/ProfileView.vue",
-      "detail": "2709 行 > 300（视图）",
+      "detail": "2219 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
       "rule": "api-deps",
       "file": "src/views/ProfileView.vue",
-      "detail": "依赖 9 个 api 模块（auth、http、realname、contracts、adapay、coupons、conversations、requirements、settings）> 3",
+      "detail": "依赖 7 个 api 模块（http、realname、contracts、coupons、conversations、requirements、settings）> 3",
       "since": "2026-10-21"
     },
     {
@@ -1378,7 +1378,7 @@
     {
       "rule": "raw-color",
       "file": "src/views/ProfileView.vue",
-      "detail": "140 处裸色值",
+      "detail": "121 处裸色值",
       "since": "2026-10-21"
     },
     {
