@@ -21,9 +21,9 @@ import {
  *
  * R047：三个入口（我的需求 / 需求大厅 / 个人中心）原先各写一份几乎逐字同构的状态机，
  * 现在都收到这里，另两处是薄包装（`useRequirementHallPublish` / `useProfilePublishRequirement`）。
- * **差异做成显式选项**，不做「顺手统一」——尤其 `includeDevelopmentCycle`：
- * 大厅与个人中心的 `PublishModal` 没有接开发周期字段，载荷里也不带 `development_cycle_days`，
- * 那份口径必须原样留着。跳转、后端调用都注入进来，这里只管表单状态、校验、loading 与 toast。
+ * **差异做成显式选项**，不做「顺手统一」。`includeDevelopmentCycle` 三个入口今天都是 `true`
+ * （大厅 / 个人中心曾传 `false`，那让担保需求必然 400，见 `useRequirementHallPublish`）。
+ * 跳转、后端调用都注入进来，这里只管表单状态、校验、loading 与 toast。
  */
 
 export type RequirementPublishFormMode = 'publish' | 'edit'
@@ -39,8 +39,8 @@ type UseRequirementPublishFormOptions = {
   /**
    * 表单里有没有「开发周期（天）」这一项，默认 `true`。
    *
-   * 我的需求 / 重新编辑：有（R014 担保需求必填），载荷带 `development_cycle_days`。
-   * 需求大厅 / 个人中心：模板里没绑这个字段，历史上既不校验也不提交，传 `false` 逐字节保留。
+   * 三个入口（我的需求 / 需求大厅 / 个人中心）的 `PublishModal` 都有这个字段（担保模式才显示），
+   * 也都是 `true`。留成选项只为「模板里确实没有这一项」的将来实例：传 `false` 即跳过校验、载荷不带该键。
    */
   includeDevelopmentCycle?: boolean
   /**
@@ -252,8 +252,8 @@ export function useRequirementPublishForm(options: UseRequirementPublishFormOpti
 
   /**
    * 模板挂点：`<PublishModal v-bind="modalBindings" />` 一行铺完。
-   * 装配细节（含 `includeDevelopmentCycle = false` 时不铺开发周期那一对键）在
-   * `useRequirementPublishModalBindings` 里 —— 这里只为把返回值收在一个名字下。
+   * 装配细节（含开发周期那一对键铺不铺）在 `useRequirementPublishModalBindings` 里 ——
+   * 这里只为把返回值收在一个名字下。
    */
   const modalBindings = useRequirementPublishModalBindings({
     visible: () => visible.value,
@@ -291,8 +291,8 @@ export function useRequirementPublishForm(options: UseRequirementPublishFormOpti
     publishBudget: toRef(form, 'budget'),
     publishAcceptance: toRef(form, 'acceptance'),
     publishPaymentMode: toRef(form, 'paymentMode'),
-    ...(includeDevelopmentCycle
-      ? { publishDevelopmentCycleDays: toRef(form, 'developmentCycleDays') }
-      : {}),
+    // 别名一律给全（不按 `includeDevelopmentCycle` 收窄）：那一项只决定校验 / 载荷 / 挂点上带不带它，
+    // 别名少给一个只会让调用方拿到 `Ref | undefined`，顺手写出的 `undefined.value` 正是本 bug 的形状。
+    publishDevelopmentCycleDays: toRef(form, 'developmentCycleDays'),
   }
 }

@@ -15,8 +15,12 @@ type UseProfilePublishRequirementOptions = {
 /**
  * 个人中心总览的「发布需求」域 —— R047 起是 `useRequirementPublishForm` 的**薄包装**：只剩本域自己的
  * 三件事（门禁两个去向由视图注入、摘 `?modal=publish`、发布后重取列表），共用 `usePublishModalRoute`。
- * **`includeDevelopmentCycle: false` 是刻意的**：个人中心表单没有开发周期字段，载荷里也不带
- * `development_cycle_days`（与拆分前逐字节一致；缺口待产品确认）。对外名字不变。
+ *
+ * **`includeDevelopmentCycle: true`**：个人中心的 `PublishModal` 与大厅是同一个组件，担保模式下同样有
+ * 「开发周期（天）」输入框，后端对 `platform_guarantee` 必填正数。早先这里传 `false`，用户填的值随
+ * emit 无人接而丢掉、载荷里也不带 `development_cycle_days` —— 选「电签担保」发布必然 400。
+ * 现在走 `publishModalBindings`（`v-bind` 一次铺完），那一对 `publishDevelopmentCycleDays` 键也随之铺上。
+ * 自管模式（`self_managed`）仍不要求周期，值归 `undefined`。
  */
 export function useProfilePublishRequirement(options: UseProfilePublishRequirementOptions) {
   const auth = useAuthStore()
@@ -30,7 +34,7 @@ export function useProfilePublishRequirement(options: UseProfilePublishRequireme
     mode: 'publish',
     /** 草稿按用户隔离：多账号共用浏览器时，`PublishModal` 的 localStorage 草稿不互相覆盖。 */
     draftScope: () => (auth.isAuthed ? auth.username : 'default'),
-    includeDevelopmentCycle: false,
+    includeDevelopmentCycle: true,
     ensureApproved,
     submit: async (payload) => {
       await createRequirementApi(auth.token, payload)

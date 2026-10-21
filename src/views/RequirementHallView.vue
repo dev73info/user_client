@@ -67,6 +67,8 @@ const {
   publishBudget,
   publishAcceptance,
   publishPaymentMode,
+  // 担保模式才显示的「开发周期（天）」：与付款模式同一路 v-model，缺了它用户填的周期会被丢掉。
+  publishDevelopmentCycleDays,
   openPublishModal,
   closePublishModal,
   submitPublishRequirement,
@@ -161,6 +163,7 @@ const {
     v-model:publishBudget="publishBudget"
     v-model:publishAcceptance="publishAcceptance"
     v-model:publishPaymentMode="publishPaymentMode"
+    v-model:publishDevelopmentCycleDays="publishDevelopmentCycleDays"
     :publishLoading="publishLoading"
     :draft-scope="auth.isAuthed ? auth.username : 'default'"
     @close="closePublishModal"

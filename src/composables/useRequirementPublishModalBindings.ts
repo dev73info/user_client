@@ -27,8 +27,8 @@ type UseRequirementPublishModalBindingsOptions = {
  * 单独一层是因为状态机那支已经贴着 300 行上限，而这里只是**形状转换**：
  * 一次都没改判定，也不发请求。沿用 `useRequirementBreachModalBindings` 的同一条分工。
  *
- * `includeDevelopmentCycle = false`（需求大厅 / 个人中心）时**不铺**开发周期那一对键：
- * 那两个弹窗今天就没有这两个绑定，铺上去会让 props / emit 集合变宽 —— 等于顺手改了行为。
+ * `includeDevelopmentCycle = false` 时**不铺**开发周期那一对键（`false` 只该用在「模板里确实没有这项」）。
+ * 大厅 / 个人中心今天都是 `true`：不铺就等于把用户填的周期原地丢掉，担保需求会被后端判 400。
  */
 export function useRequirementPublishModalBindings(
   options: UseRequirementPublishModalBindingsOptions,

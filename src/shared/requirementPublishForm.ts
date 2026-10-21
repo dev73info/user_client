@@ -35,8 +35,8 @@ export type RequirementPublishPayload = {
   payment_mode: RequirementPaymentMode
   /**
    * 只在 `includeDevelopmentCycle` 时出现（见 `validateRequirementPublishForm`）。
-   * 需求大厅 / 个人中心的表单本来就没有这个字段，载荷里也**没有这个键**——
-   * 不是「传 undefined」，是真的不带，用 `toStrictEqual` 能看出区别。
+   * 三个入口今天都是 `true`：担保模式给正整数；自管模式归一化成 `undefined`——
+   * 键在、值不带（`JSON.stringify` 把键丢掉），后端因此收到「未填」而不是 `null`。
    */
   development_cycle_days?: number
 }
@@ -47,11 +47,10 @@ export type RequirementPublishFormCheck =
 
 export type RequirementPublishValidateOptions = {
   /**
-   * 表单里是否有「开发周期（天）」这一项：默认 `true`（我的需求 / 重新编辑）。
+   * 表单里是否有「开发周期（天）」这一项：默认 `true`（三个入口今天都是 `true`）。
    *
-   * 需求大厅与个人中心的 `PublishModal` 没有接这个字段（模板里没绑
-   * `publishDevelopmentCycleDays`），历史上也既不校验它、载荷里也不带它。
-   * 传 `false` 保持那份口径：跳过周期校验、载荷里不出现 `development_cycle_days`。
+   * 传 `false` 即「模板里确实没有这一项」：跳过周期校验、载荷里不带 `development_cycle_days`。
+   * 注意大厅 / 个人中心早先误传 `false`，担保模式填了也丢 —— 后端对 `platform_guarantee` 必填正数。
    */
   includeDevelopmentCycle?: boolean
 }
@@ -105,7 +104,7 @@ export function validateRequirementPublishForm(
   }
 
   // R014：担保需求必填「开发周期（天）」，且必须是正整数；配置下限由后端校验并回中文提示。
-  // 表单里没有这一项（大厅 / 个人中心）就整步跳过：既不报错，载荷里也不带这个键。
+  // 表单里没有这一项（`includeDevelopmentCycle: false`）才整步跳过：既不报错，载荷里也不带这个键。
   const cycleError = includeDevelopmentCycle
     ? validateDevelopmentCycleInput(values.developmentCycleDays, values.paymentMode)
     : ''
