@@ -136,6 +136,17 @@ for (const file of walk(SRC)) {
     }
   }
 
+  // 裸色值：`.vue` 与 `.css` 都查（`styles/tokens.css` / `styles/alias.css` 是令牌正本，除外）。
+  // 早先这一步被 `if (!file.endsWith('.vue')) continue` 挡在后面，裸色值挪进 `.css` 就查不到了。
+  if (!TOKEN_ALLOWLIST.has(rel)) {
+    stripComments(raw).forEach((line, index) => {
+      if (line.includes('var(--73-')) return
+      if (COLOR_PATTERNS.some((pattern) => pattern.test(line))) {
+        violations.push({ rule: 'raw-color', file: rel, detail: `第 ${index + 1} 行裸色值` })
+      }
+    })
+  }
+
   if (!file.endsWith('.vue')) continue
 
   const deps = new Set()
@@ -151,16 +162,6 @@ for (const file of walk(SRC)) {
       rule: 'api-deps',
       file: rel,
       detail: `依赖 ${deps.size} 个 api 模块（${[...deps].join('、')}）> ${MAX_API_DEPS}`,
-    })
-  }
-
-  const cssRel = rel.replace(/\.vue$/, '.css')
-  if (!TOKEN_ALLOWLIST.has(cssRel)) {
-    stripComments(raw).forEach((line, index) => {
-      if (line.includes('var(--73-')) return
-      if (COLOR_PATTERNS.some((pattern) => pattern.test(line))) {
-        violations.push({ rule: 'raw-color', file: rel, detail: `第 ${index + 1} 行裸色值` })
-      }
     })
   }
 }

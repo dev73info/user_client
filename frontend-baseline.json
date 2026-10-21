@@ -561,12 +561,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/UserWorkbenchView.vue",
-      "detail": "1955 行 > 300（视图）",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/__tests__/afterSalesWindow.spec.ts",
       "detail": "485 行 > 300（模块）",
       "since": "2026-10-21"
@@ -873,8 +867,26 @@
     },
     {
       "rule": "raw-color",
+      "file": "src/mock/identity.ts",
+      "detail": "2 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
       "file": "src/mock/MockIdentitySwitcher.vue",
       "detail": "26 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/mock/response.ts",
+      "detail": "3 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/dev-base.css",
+      "detail": "53 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -884,9 +896,21 @@
       "since": "2026-10-21"
     },
     {
+      "rule": "raw-color",
+      "file": "src/styles/dev-requirement.css",
+      "detail": "17 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
       "rule": "breakpoint",
       "file": "src/styles/dev-resource.css",
       "detail": "1 处非标准断点（480px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/dev-resource.css",
+      "detail": "52 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -896,9 +920,21 @@
       "since": "2026-10-21"
     },
     {
+      "rule": "raw-color",
+      "file": "src/styles/dev-responsive.css",
+      "detail": "9 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
       "rule": "breakpoint",
       "file": "src/styles/dev-wallet.css",
       "detail": "1 处非标准断点（720px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/dev-wallet.css",
+      "detail": "7 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -908,9 +944,39 @@
       "since": "2026-10-21"
     },
     {
+      "rule": "raw-color",
+      "file": "src/styles/home.css",
+      "detail": "329 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/modal.css",
+      "detail": "244 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/payment.css",
+      "detail": "12 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
       "rule": "breakpoint",
       "file": "src/styles/portal-pages.css",
       "detail": "1 处非标准断点（1100px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/portal-pages.css",
+      "detail": "38 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/portal-workbench.css",
+      "detail": "61 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -920,9 +986,39 @@
       "since": "2026-10-21"
     },
     {
+      "rule": "raw-color",
+      "file": "src/styles/profile.css",
+      "detail": "57 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
       "rule": "breakpoint",
       "file": "src/styles/resource-catalog.css",
       "detail": "1 处非标准断点（780px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/resource-catalog.css",
+      "detail": "56 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/resource-core.css",
+      "detail": "23 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/rich-code-copy.css",
+      "detail": "17 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/rich-text-code.css",
+      "detail": "38 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -932,9 +1028,33 @@
       "since": "2026-10-21"
     },
     {
+      "rule": "raw-color",
+      "file": "src/styles/shell.css",
+      "detail": "45 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
       "rule": "breakpoint",
       "file": "src/styles/unified-top-card.css",
       "detail": "1 处非标准断点（420px）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/unified-top-card.css",
+      "detail": "13 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/user.css",
+      "detail": "3 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/workbench-shell.css",
+      "detail": "37 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -1217,18 +1337,6 @@
       "rule": "raw-color",
       "file": "src/views/UserBadgesView.vue",
       "detail": "3 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/views/UserWorkbenchView.vue",
-      "detail": "1 处非标准断点（200px）",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/views/UserWorkbenchView.vue",
-      "detail": "64 处裸色值",
       "since": "2026-10-21"
     }
   ]
