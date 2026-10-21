@@ -35,7 +35,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  updateChannel: [channel: AdapayBusinessPayChannel]
+  /** 与模板的 `@update:channel` / `v-model:channel` 同键——拆出组件时曾误写成 `updateChannel`，
+   *  监听不到导致「点微信仍按支付宝下单」，见 `requirementPayModal.spec.ts` 的回归用例。 */
+  'update:channel': [channel: AdapayBusinessPayChannel]
   submit: []
 }>()
 
@@ -71,7 +73,7 @@ const amountText = computed(() =>
             active: props.channel === 'alipay',
             'payment-option--alipay': props.channel === 'alipay',
           }"
-          @click="emit('updateChannel', 'alipay')"
+          @click="emit('update:channel', 'alipay')"
         >
           <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
           支付宝
@@ -83,7 +85,7 @@ const amountText = computed(() =>
             active: props.channel === 'wechat',
             'payment-option--wechat': props.channel === 'wechat',
           }"
-          @click="emit('updateChannel', 'wechat')"
+          @click="emit('update:channel', 'wechat')"
         >
           <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="微信" />
           微信

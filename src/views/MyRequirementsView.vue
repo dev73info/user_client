@@ -142,7 +142,8 @@ const {
     <InvoiceApplyDialog v-bind="invoiceDialog" />
 
     <!-- 支付弹窗：金额、通道与订单状态来自 `useRequirementPayFlow`；`submit` 后的跳转在动作域执行。
-         监听键与拆分前逐字一致（`@update:channel`），这一轮只收结构、不改行为。 -->
+         `@update:channel` 与组件 `defineEmits` 的键必须一致——拆出组件时这里曾对不上，
+         表现是点「微信」不切通道、下单永远按支付宝走（`requirementPayModal.spec.ts` 钉住）。 -->
     <RequirementPayModal
       v-bind="payModal"
       @update:channel="updatePayChannel"
