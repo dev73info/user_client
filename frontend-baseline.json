@@ -340,7 +340,7 @@
     {
       "rule": "line-budget",
       "file": "src/styles/home.css",
-      "detail": "3320 行 > 300（模块）",
+      "detail": "2923 行 > 300（模块）",
       "since": "2026-10-21"
     },
     {
@@ -532,13 +532,13 @@
     {
       "rule": "line-budget",
       "file": "src/views/HomeView.vue",
-      "detail": "2981 行 > 300（视图）",
+      "detail": "2687 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
       "rule": "api-deps",
       "file": "src/views/HomeView.vue",
-      "detail": "依赖 13 个 api 模块（auth、coupons、http、contracts、realname、adapay、requirements、settings、community、resourceTags、resources、points、invite）> 3",
+      "detail": "依赖 12 个 api 模块（auth、coupons、http、contracts、realname、adapay、requirements、settings、community、resources、points、invite）> 3",
       "since": "2026-10-21"
     },
     {
@@ -1030,7 +1030,7 @@
     {
       "rule": "raw-color",
       "file": "src/styles/home.css",
-      "detail": "329 处裸色值",
+      "detail": "276 处裸色值",
       "since": "2026-10-21"
     },
     {
