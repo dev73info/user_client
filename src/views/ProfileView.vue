@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import {
-  TButton,
   TIcon,
   Box,
   Compass,
   Document,
   EditPen,
   Files,
-  Refresh,
   Suitcase,
   Tickets,
   TMessage,
@@ -15,30 +13,28 @@ import {
 } from 'ui_73info'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import OverviewStrip from '@/components/profile/OverviewStrip.vue'
 import ProfileAvatarCropModal from '@/components/profile/ProfileAvatarCropModal.vue'
+import QuickLinksPanel from '@/components/profile/QuickLinksPanel.vue'
+import RecentConversationsPanel from '@/components/profile/RecentConversationsPanel.vue'
+import RequirementProgressPanel from '@/components/profile/RequirementProgressPanel.vue'
 import PublishModal from '@/components/PublishModal.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
-import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { HttpError, apiUrl } from '@/api/http'
 import { getMyRealnameVerification } from '@/api/realname'
-import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import { useAvatarCrop } from '@/composables/useAvatarCrop'
 import { useAvatarCropModalBindings } from '@/composables/useAvatarCropModalBindings'
+import {
+  useRequirementConversations,
+  type RequirementConversationCard,
+} from '@/composables/useRequirementConversations'
+import { useRequirementOverview } from '@/composables/useRequirementOverview'
 import { useAuthStore } from '@/stores/auth'
-import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import {
-  listRequirementConversations,
-  type RequirementConversation,
-  type RequirementConversationDetail,
-} from '@/api/conversations'
-import {
   createRequirement as createRequirementApi,
-  listRequirements,
-  type RequirementItem,
   type RequirementPaymentMode,
-  type RequirementStatus,
 } from '@/api/requirements'
 import { getProfile } from '@/api/settings'
 import { validateRequirementRichText } from '@/utils/requirementRichText'
@@ -46,11 +42,29 @@ import { validateRequirementRichText } from '@/utils/requirementRichText'
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+
+/**
+ * 需求状态域与会话域各建一份，会话域接的正是需求域那**一个** `myRequirements`：
+ * 读数条、需求进度面板、会话卡的派生都从这份列表出，别再取一遍。
+ */
+const requirementOverview = useRequirementOverview()
+const {
+  myRequirements,
+  requirementLoading,
+  requirementStats,
+  actionableRequirements,
+  recentRequirements,
+  loadMyRequirements,
+} = requirementOverview
+const {
+  availableConversationCount,
+  recentConversationCards,
+  loadRequirementConversations,
+  applyConversationDetail,
+} = useRequirementConversations({ requirements: myRequirements })
+
 const loading = ref(false)
 const coupons = ref<CouponItem[]>([])
-const requirementLoading = ref(false)
-const myRequirements = ref<RequirementItem[]>([])
-const contractSigningStatusMap = ref<Record<string, ContractSigningStatus | null>>({})
 const publishVisible = ref(false)
 const publishTitle = ref('')
 const publishDescription = ref('')
@@ -60,8 +74,8 @@ const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
 const publishLoading = ref(false)
 const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
 const conversationVisible = ref(false)
-const conversationRequirement = ref<RequirementItem | null>(null)
-const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
+/** 会话弹窗要的那一条：卡片上已有需求号与标题，够弹窗起头用，不必再握一份完整需求。 */
+const conversationRequirement = ref<RequirementConversationCard | null>(null)
 function notify(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
   TMessage[type](message)
 }
@@ -70,14 +84,6 @@ const failedProfileAvatarUrls = ref<Set<string>>(new Set())
 /** 原图上限：超过就不进裁剪（先缩图，否则 blob 与 canvas 都会跟着重）。 */
 const avatarCropMaxSourceSize = 8 * 1024 * 1024
 
-const conversationCards = computed(() => myRequirements.value.filter((item) => {
-  if (!hasBoundResource(item)) {
-    return false
-  }
-
-  return requirementConversationMap.value[item.requirement_id]?.status !== 'closed'
-}))
-const availableConversationCount = computed(() => conversationCards.value.length)
 const usableCouponCount = computed(() => coupons.value.filter((item) => item.status !== 'used').length)
 const accountEmailLabel = computed(() => profileEmail.value || '未绑定邮箱')
 const profileAvatarSrc = computed(() => {
@@ -104,177 +110,14 @@ const timeGreeting = computed(() => {
   return '夜深了，早点休息'
 })
 const subscriptionLabel = computed(() => (subscriptionOfficialActivity.value ? '已订阅' : '未订阅'))
-const requirementStats = computed(() => ({
-  total: myRequirements.value.length,
-  pending: myRequirements.value.filter((item) => item.status === 'pending_review' || item.status === 'pending_deposit').length,
-  active: myRequirements.value.filter((item) => item.status === 'deposit_paid' || item.status === 'in_development' || item.status === 'pending_final' || item.status === 'pending_settlement').length,
-  payment: myRequirements.value.filter((item) => canPay(item.status, item)).length,
-  completed: myRequirements.value.filter((item) => item.status === 'completed').length,
-}))
-const sortedRequirements = computed(() =>
-  [...myRequirements.value].sort((left, right) => requirementTimeValue(right.updated_at) - requirementTimeValue(left.updated_at)),
-)
-const actionableRequirements = computed(() =>
-  sortedRequirements.value
-    .filter((item) => hasPendingResourceVersionDeleteReview(item) || canRequestFinalPayment(item) || canPay(item.status, item) || canResubmit(item.status) || canComment(item.status))
-    .slice(0, 4),
-)
-const recentRequirements = computed(() => sortedRequirements.value.slice(0, 5))
-const recentConversationCards = computed(() =>
-  [...conversationCards.value]
-    .sort((left, right) => conversationTimeValue(right) - conversationTimeValue(left))
-    .slice(0, 3),
-)
 
-/** 状态文案走全站统一口径；`deposit_paid` 一码两义，拿到支付模式就传进去（见 `requirementStatusLabel`）。 */
-function formatRequirementStatus(status: RequirementStatus, paymentMode?: RequirementPaymentMode) {
-  return requirementStatusLabel(status, paymentMode)
-}
-
-function isSelfManagedRequirement(item: RequirementItem) {
-  return item.payment_mode === 'self_managed'
-}
-
-function paymentModeLabel(item: RequirementItem) {
-  return isSelfManagedRequirement(item) ? '无电签约定' : '电签担保'
-}
-
-function formatRequirementDisplayStatus(item: RequirementItem) {
-  if (isSelfManagedRequirement(item) || item.status !== 'pending_deposit') {
-    return formatRequirementStatus(item.status, item.payment_mode)
-  }
-  if (item.bound_resource_id == null) {
-    return '待开发者接单'
-  }
-
-  const status = contractSigningStatusMap.value[item.requirement_id]
-  return status?.has_contract && status.party_a_signed && status.party_b_signed
-    ? '待付定金'
-    : '待签合同'
-}
-
-function isRequirementContractSigned(item: RequirementItem) {
-  const status = contractSigningStatusMap.value[item.requirement_id]
-  return Boolean(status?.has_contract && status.party_a_signed && status.party_b_signed)
-}
-
-function formatRequirementTime(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return '刚刚更新'
-  }
-  return date.toLocaleString('zh-CN', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function requirementTimeValue(value?: string | null) {
-  if (!value) {
-    return 0
-  }
-  const time = new Date(value).getTime()
-  return Number.isNaN(time) ? 0 : time
-}
-
-function conversationTimeValue(item: RequirementItem) {
-  const conversation = conversationForRequirement(item)
-  return requirementTimeValue(conversation?.last_message_at ?? item.updated_at)
-}
-
-function formatBudget(value?: number | null) {
-  if (value == null) {
-    return '待议价'
-  }
-  return `¥${value.toFixed(2)}`
-}
-
-function canPay(status: RequirementStatus, item?: RequirementItem) {
-  if (item && isSelfManagedRequirement(item)) {
-    return false
-  }
-  if (item && !isRequirementContractSigned(item)) {
-    return false
-  }
-
-  return status === 'pending_deposit' || status === 'pending_final'
-}
-
-function publishedVersionCount(item: RequirementItem) {
-  return item.bound_resource_version_count ?? 0
-}
-
-function canRequestFinalPayment(item: RequirementItem) {
-  return hasBoundResource(item) && item.status === 'in_development' && publishedVersionCount(item) > 0
-}
-
-function canResubmit(status: RequirementStatus) {
-  // 与后端一致：被驳回的需求改完可以再提；过审后撤回（已取消）的需求同样保留着，也能改完重新提交审核。
-  return status === 'rejected' || status === 'cancelled'
-}
-
-function hasBoundResource(item: RequirementItem) {
-  return item.bound_resource_id != null
-}
-
-function openConversation(item: RequirementItem) {
-  conversationRequirement.value = item
+function openConversation(card: RequirementConversationCard) {
+  conversationRequirement.value = card
   conversationVisible.value = true
 }
 
 function closeConversation() {
   conversationVisible.value = false
-}
-
-function applyConversationDetail(payload: RequirementConversationDetail) {
-  requirementConversationMap.value = {
-    ...requirementConversationMap.value,
-    [payload.conversation.requirement_id]: payload.conversation,
-  }
-}
-
-function conversationForRequirement(item: RequirementItem) {
-  return requirementConversationMap.value[item.requirement_id] ?? null
-}
-
-function conversationLastMessageText(item: RequirementItem) {
-  const conversation = conversationForRequirement(item)
-  if (!conversation) {
-    return '打开会话后开始沟通'
-  }
-
-  if (!conversation.last_message_at) {
-    return '会话已创建，暂无消息'
-  }
-
-  return `最近沟通：${formatRequirementTime(conversation.last_message_at)}`
-}
-
-async function loadRequirementConversations() {
-  if (!auth.token.trim()) {
-    requirementConversationMap.value = {}
-    return
-  }
-
-  try {
-    const conversations = await listRequirementConversations(auth.token)
-    requirementConversationMap.value = Object.fromEntries(
-      conversations.map((item) => [item.requirement_id, item]),
-    )
-  } catch (error) {
-    requirementConversationMap.value = {}
-    TMessage.error(error instanceof Error ? error.message : '加载沟通会话失败')
-  }
-}
-
-function hasPendingResourceVersionDeleteReview(item: RequirementItem) {
-  return hasBoundResource(item) && (item.pending_resource_version_delete_requests?.length ?? 0) > 0
-}
-
-function canComment(status: RequirementStatus) {
-  return status === 'completed'
 }
 
 function publishRedirectTarget() {
@@ -328,6 +171,7 @@ async function ensurePublishRealnameApproved() {
   }
 }
 
+/** 读数条那颗刷新：需求列表、会话、券包、资料四路并发，回来统一提示一次。 */
 async function refreshProfileData() {
   await Promise.all([
     loadCoupons(),
@@ -340,7 +184,7 @@ async function refreshProfileData() {
 
 /** 需求详情浮层已去掉：需求正文在需求详情里看（会话标题栏的「需求详情」抽屉、开发者需求详情页），
     这里只跳到「我的需求」列表。 */
-function handleRequirementAction(item: RequirementItem) {
+function handleRequirementSelect() {
   void router.push({ name: 'workbench-requirements' })
 }
 
@@ -542,45 +386,13 @@ async function loadCoupons() {
   }
 }
 
-async function loadMyRequirements() {
-  auth.hydrate()
-  if (!auth.isAuthed) {
-    myRequirements.value = []
-    return
-  }
-
-  requirementLoading.value = true
-  try {
-    const rows = await listRequirements(auth.token)
-    // 不截断：这一页的「待办」「可操作需求」与统计都由这份列表算出来，
-    // 此前 `slice(0, 20)` 会让需求多的账号漏掉第 21 条起的全部待办。
-    // 展示侧仍有各自的 slice（最近需求 5 条等），取数与展示不再混为一谈。
-    // ponytail: 下方合同签署状态按条发起，请求数随需求数线性增长；
-    // 上限的真正解法是服务端分页 + 批量状态接口。
-    myRequirements.value = rows
-    const guaranteedRows = myRequirements.value.filter((item) => !isSelfManagedRequirement(item))
-    const entries = await Promise.allSettled(
-      guaranteedRows.map((item) =>
-        fetchContractSigningStatus(auth.token, item.requirement_id).then((status) => ({
-          requirementId: item.requirement_id,
-          status,
-        })),
-      ),
-    )
-    const statusMap: Record<string, ContractSigningStatus | null> = {}
-    for (const entry of entries) {
-      if (entry.status === 'fulfilled') {
-        statusMap[entry.value.requirementId] = entry.value.status
-      }
-    }
-    contractSigningStatusMap.value = statusMap
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '加载需求单失败')
-  } finally {
-    requirementLoading.value = false
-  }
-}
-
+/**
+ * 首屏串行链：四路并发取数 → 再消费 OAuth 回跳参数并清掉。
+ *
+ * 这条链**必须留在视图**：五路请求（券包、需求列表、需求里的按条合同状态、会话、资料）
+ * 各自的 `load*` 都在，拆进各组件内部就变成每块各自 `onMounted` 发请求，
+ * 请求次数从一次变多次，且刷新按钮再也管不到它们。
+ */
 onMounted(async () => {
   auth.hydrate()
   await Promise.all([
@@ -616,6 +428,13 @@ onMounted(async () => {
   }
 })
 
+/**
+ * `?modal=publish` 开弹窗：带这个参数回到总览即弹窗（移动端宫格的「我有需求」就这么进）。
+ *
+ * 也留在视图：`immediate: true` 只在视图挂载时重放一次，弹窗本身若被 `v-if` 卸载过，
+ * 再挂载时不会再补一次。关闭时清掉参数的那条链（`closePublishModal → clearPublishModalQuery`）
+ * 同理，挪进组件就会与地址栏脱节。
+ */
 watch(
   () => route.query.modal,
   (value) => {
@@ -630,7 +449,6 @@ watch(
 onBeforeUnmount(() => {
   profileAvatarCacheKey.value = Date.now()
 })
-
 </script>
 
 <template>
@@ -638,33 +456,9 @@ onBeforeUnmount(() => {
     <!-- 顶部读数条：沿用「我的需求」等菜单页的 .wb-strip 形状（四格读数 + 页面级刷新），
          放在头像卡上方作为页面第一条读数带；≤900px 时整条被 WorkbenchBarSlot 搬进工作台顶栏 -->
     <WorkbenchBarSlot>
-      <nav class="wb-strip overview-strip" aria-label="工作台关键数据">
-        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-requirements' }" title="全部需求">
-          <span class="wb-strip__label">需求</span>
-          <span class="wb-strip__value">{{ requirementStats.total }}</span>
-        </RouterLink>
-        <div class="wb-strip__divider" />
-        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-requirements' }" title="待处理的需求">
-          <span class="wb-strip__label">待处理</span>
-          <span class="wb-strip__value">{{ actionableRequirements.length }}</span>
-        </RouterLink>
-        <div class="wb-strip__divider" />
-        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-messages' }" title="沟通会话">
-          <span class="wb-strip__label">会话</span>
-          <span class="wb-strip__value">{{ availableConversationCount }}</span>
-        </RouterLink>
-        <div class="wb-strip__divider" />
-        <RouterLink class="wb-strip__item" :to="{ name: 'workbench-account' }" title="可用优惠券">
-          <span class="wb-strip__label">可用券</span>
-          <span class="wb-strip__value">{{ usableCouponCount }}</span>
-        </RouterLink>
-        <div class="wb-strip__item wb-strip__action">
-          <TButton icon-only :loading="loading || requirementLoading" aria-label="刷新" title="刷新"
-            @click="refreshProfileData">
-            <TIcon><Refresh /></TIcon>
-          </TButton>
-        </div>
-      </nav>
+      <OverviewStrip :requirement-total="requirementStats.total" :actionable-count="actionableRequirements.length"
+        :conversation-count="availableConversationCount" :coupon-count="usableCouponCount"
+        :refreshing="loading || requirementLoading" @refresh="refreshProfileData" />
     </WorkbenchBarSlot>
 
     <section class="overview-hero">
@@ -745,74 +539,13 @@ onBeforeUnmount(() => {
       </nav>
     </section>
 
-    <section class="overview-focus-panel">
-      <div class="overview-section-head">
-        <div>
-          <h2>需求进度</h2>
-        </div>
-        <RouterLink class="overview-link" :to="{ name: 'workbench-requirements' }">查看需求单</RouterLink>
-      </div>
-      <div v-if="recentRequirements.length === 0" class="overview-empty-state">
-        <strong>暂无需求单</strong>
-      </div>
-      <ul v-else class="overview-requirement-list">
-        <li v-for="item in recentRequirements" :key="item.requirement_id" class="clickable" role="button" tabindex="0"
-          :aria-label="`查看需求：${item.title}`" @click="handleRequirementAction(item)"
-          @keydown.enter.prevent="handleRequirementAction(item)" @keydown.space.prevent="handleRequirementAction(item)">
-          <div class="overview-requirement-meta">
-            <strong>{{ item.title }}</strong>
-            <span>{{ item.requirement_id }} · {{ paymentModeLabel(item) }}</span>
-          </div>
-          <span class="overview-status" :class="`overview-status--${item.status}`">{{
-            formatRequirementDisplayStatus(item) }}</span>
-          <small>{{ formatBudget(item.budget) }}</small>
-          <time>{{ formatRequirementTime(item.updated_at) }}</time>
-          <div class="overview-requirement-progress" @click.stop>
-            <RequirementProgressGuide :requirement="item" :payment-mode="item.payment_mode"
-              :contract-status="contractSigningStatusMap[item.requirement_id]" />
-          </div>
-        </li>
-      </ul>
-    </section>
+    <RequirementProgressPanel :rows="recentRequirements" @select="handleRequirementSelect" />
 
     <div class="overview-dashboard-grid">
-      <section class="overview-panel overview-panel--main overview-panel--messages">
-        <div class="overview-section-head">
-          <div>
-            <h2>最近沟通</h2>
-          </div>
-          <div class="overview-inline-actions">
-            <RouterLink class="overview-link" :to="{ name: 'workbench-messages' }">消息中心</RouterLink>
-          </div>
-        </div>
-        <div v-if="recentConversationCards.length === 0" class="overview-empty-state">
-          <strong>暂无可用会话</strong>
-        </div>
-        <div v-else class="conversation-card-list">
-          <button v-for="item in recentConversationCards" :key="item.requirement_id" type="button"
-            class="conversation-card" @click="openConversation(item)">
-            <span class="conversation-card__title">{{ item.title }}</span>
-            <span class="conversation-card__id">{{ item.requirement_id }}</span>
-            <span class="conversation-card__meta">{{ conversationLastMessageText(item) }}</span>
-          </button>
-        </div>
-      </section>
+      <RecentConversationsPanel :cards="recentConversationCards" @open="openConversation" />
 
       <aside class="overview-side-stack">
-
-        <section class="overview-panel">
-          <div class="overview-section-head overview-section-head--compact">
-            <div>
-              <h2>快捷入口</h2>
-            </div>
-          </div>
-          <div class="overview-dev-links">
-            <RouterLink :to="{ name: 'dev-plugins' }">资源初始化</RouterLink>
-            <RouterLink :to="{ name: 'dev-requirement-hall' }">需求大厅</RouterLink>
-            <RouterLink :to="{ name: 'dev-wallet' }">收益钱包</RouterLink>
-            <RouterLink :to="{ name: 'dev-my-requirements' }">我的接单</RouterLink>
-          </div>
-        </section>
+        <QuickLinksPanel />
       </aside>
     </div>
 
@@ -824,7 +557,7 @@ onBeforeUnmount(() => {
       @submit="submitRequirementPublish" />
 
     <RequirementConversationModal :visible="conversationVisible" :token="auth.token" :current-username="auth.username"
-      :requirement-id="conversationRequirement?.requirement_id ?? ''" :title="conversationRequirement?.title"
+      :requirement-id="conversationRequirement?.requirementId ?? ''" :title="conversationRequirement?.title"
       @updated="applyConversationDetail" @close="closeConversation" />
 
     <!-- 头像裁剪弹窗：模板、样式（含 Teleport 出去后的 205 行细节样式与 @640 单列布局）全在组件里，
@@ -843,6 +576,8 @@ onBeforeUnmount(() => {
   padding: 32px 20px 56px;
 }
 
+/* 页面级卡片语言：三块面板由三个组件渲染，但「边框 / 底色 / 阴影」是同一套，
+   统一在页面这一层定义——子组件的根元素会带上父组件的 data-v，一条规则管三块。 */
 .overview-hero,
 .overview-focus-panel,
 .overview-panel {
@@ -938,8 +673,7 @@ onBeforeUnmount(() => {
   align-items: end;
 }
 
-.overview-hero__head h1,
-.overview-section-head h2 {
+.overview-hero__head h1 {
   margin: 0;
   color: #0f172a;
 }
@@ -972,8 +706,7 @@ onBeforeUnmount(() => {
 }
 
 .overview-hero__chips,
-.overview-hero__actions,
-.overview-inline-actions {
+.overview-hero__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -1009,65 +742,11 @@ onBeforeUnmount(() => {
   color: #1d4ed8;
 }
 
-/* 顶部读数条复用菜单页的 .wb-strip（形状见 portal-workbench.css），
-   只是读数项带跳转：去掉链接默认下划线，hover 时用主色提示可点 */
-.overview-strip a.wb-strip__item {
-  color: inherit;
-  text-decoration: none;
-}
-
-.overview-strip a.wb-strip__item:hover .wb-strip__value {
-  color: #1d4ed8;
-}
-
-.overview-requirement-list span,
-.overview-requirement-list time,
-.overview-empty-state span {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
+/* 面板内边距与圆角（三块面板共用；内里的骨架样式见 styles/profile.css 的「面板通用骨架」一节） */
 .overview-focus-panel,
 .overview-panel {
   padding: 20px;
   border-radius: 18px;
-}
-
-.overview-section-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.overview-section-head h2 {
-  margin-top: 5px;
-  font-size: 19px;
-  line-height: 1.25;
-}
-
-.overview-section-head--compact {
-  margin-bottom: 12px;
-}
-
-.overview-link {
-  flex: 0 0 auto;
-  color: #2563eb;
-  font-size: 13px;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.overview-link:hover {
-  color: #1d4ed8;
-}
-
-.overview-requirement-list strong,
-.overview-empty-state strong {
-  color: #0f172a;
-  font-weight: 800;
 }
 
 .overview-dashboard-grid {
@@ -1077,171 +756,9 @@ onBeforeUnmount(() => {
   align-items: start;
 }
 
-.overview-side-stack,
-.overview-dev-links {
+.overview-side-stack {
   display: grid;
   gap: 12px;
-}
-
-.overview-requirement-list {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.overview-requirement-list li {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
-  gap: 12px;
-  align-items: center;
-  min-height: 64px;
-  padding: 16px 18px;
-  border: 1px solid rgba(191, 219, 254, 0.78);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.86);
-}
-
-.overview-requirement-list .overview-requirement-meta {
-  min-width: 0;
-}
-
-.overview-requirement-list .overview-requirement-progress {
-  grid-column: 1 / -1;
-  margin-top: 6px;
-}
-
-.overview-requirement-progress :deep(.req-progress) {
-  padding: 16px 18px 14px;
-  border-color: rgba(191, 219, 254, 0.76);
-  border-radius: 12px;
-  background: rgba(248, 251, 255, 0.78);
-}
-
-.overview-requirement-list li.clickable {
-  cursor: pointer;
-  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.overview-requirement-list li.clickable:hover {
-  border-color: rgba(125, 155, 225, 0.92);
-  background: rgba(248, 251, 255, 0.98);
-  box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
-}
-
-.overview-requirement-list div {
-  min-width: 0;
-}
-
-.overview-requirement-list strong,
-.overview-requirement-list span {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.overview-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 28px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: rgba(245, 158, 11, 0.14);
-  color: #92400e;
-  font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.overview-status--completed {
-  background: rgba(34, 197, 94, 0.12);
-  color: #166534;
-}
-
-.overview-status--rejected {
-  background: rgba(239, 68, 68, 0.12);
-  color: #b42318;
-}
-
-.overview-status--deposit_paid,
-.overview-status--in_development {
-  background: rgba(79, 140, 255, 0.12);
-  color: #1d4ed8;
-}
-
-.overview-dev-links {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.overview-dev-links a {
-  min-height: 42px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px;
-  border: 1px solid rgba(209, 220, 243, 0.95);
-  border-radius: 14px;
-  background: #ffffff;
-  color: #0f172a;
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.overview-dev-links a:hover {
-  border-color: rgba(125, 155, 225, 0.92);
-  background: #f8fbff;
-  color: #1d4ed8;
-}
-
-.overview-empty-state {
-  display: grid;
-  gap: 6px;
-  padding: 18px;
-  border: 1px dashed rgba(204, 214, 237, 0.98);
-  border-radius: 16px;
-  background: rgba(248, 251, 255, 0.82);
-}
-
-.conversation-card-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-}
-
-.conversation-card {
-  display: grid;
-  gap: 6px;
-  min-height: 112px;
-  padding: 14px 16px;
-  border: 1px solid rgba(209, 220, 243, 0.95);
-  border-radius: 16px;
-  background: #ffffff;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
-}
-
-.conversation-card:hover {
-  border-color: rgba(75, 120, 225, 0.5);
-  box-shadow: 0 14px 28px rgba(76, 103, 172, 0.12);
-}
-
-.conversation-card__title {
-  color: #0f172a;
-  font-weight: 800;
-  line-height: 1.4;
-}
-
-.conversation-card__id,
-.conversation-card__meta {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.5;
 }
 
 /* 头像卡下方的 App 式快捷入口：只在移动端出现（见 760px 断点） */
@@ -1287,7 +804,6 @@ onBeforeUnmount(() => {
   .overview-side-stack {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
 }
 
 @media (max-width: 760px) {
@@ -1351,10 +867,6 @@ onBeforeUnmount(() => {
     margin-top: 4px;
     color: #64748b;
     font-size: 13px;
-  }
-
-  .overview-section-head h2 {
-    font-size: 17px;
   }
 
   /* 邮箱与订阅状态压成一行：邮箱过长时省略，订阅状态不缩 */
@@ -1432,40 +944,6 @@ onBeforeUnmount(() => {
     box-shadow: none;
   }
 
-  /* 区块标题：左侧蓝色短竖条 + 15px 标题；右侧链接降为次级文字加箭头 */
-  .overview-focus-panel .overview-section-head {
-    align-items: center;
-    margin-bottom: 12px;
-  }
-
-  .overview-focus-panel .overview-section-head h2 {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 0;
-    font-size: 15px;
-    font-weight: 800;
-  }
-
-  .overview-focus-panel .overview-section-head h2::before {
-    content: '';
-    width: 3px;
-    height: 14px;
-    border-radius: 2px;
-    background: #2563eb;
-  }
-
-  .overview-focus-panel .overview-link {
-    color: #64748b;
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  .overview-focus-panel .overview-link::after {
-    content: '›';
-    margin-left: 4px;
-  }
-
   .overview-focus-panel::before {
     content: '';
     position: absolute;
@@ -1474,145 +952,6 @@ onBeforeUnmount(() => {
     left: 16px;
     height: 1px;
     background: rgba(224, 232, 255, 0.96);
-  }
-
-  .overview-section-head,
-  .overview-inline-actions {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .overview-inline-actions .ghost.small,
-  .overview-link {
-    width: auto;
-    text-align: center;
-  }
-
-  .overview-side-stack {
-    grid-template-columns: 1fr;
-  }
-
-  /* 需求卡：标题与编号一块，状态 / 时间 / 金额压成一行（金额靠右加粗），进度条横排收紧 */
-  .overview-requirement-list li {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas:
-      'meta meta meta'
-      'status time budget'
-      'progress progress progress';
-    gap: 10px 8px;
-    align-items: center;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-  }
-
-  /* 需求卡不再套一层描边卡片，多条之间只用分隔线 */
-  .overview-requirement-list li + li {
-    padding-top: 14px;
-    border-top: 1px solid rgba(224, 232, 255, 0.96);
-  }
-
-  .overview-requirement-list li.clickable:hover {
-    border-color: rgba(224, 232, 255, 0.96);
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .overview-requirement-list .overview-requirement-meta {
-    grid-area: meta;
-    display: grid;
-    gap: 4px;
-  }
-
-  .overview-requirement-list .overview-requirement-meta strong {
-    display: -webkit-box;
-    font-size: 15px;
-    line-height: 1.4;
-    white-space: normal;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-
-  .overview-requirement-list .overview-status {
-    grid-area: status;
-    min-height: 24px;
-    padding: 3px 10px;
-    font-size: 12px;
-  }
-
-  .overview-requirement-list time {
-    grid-area: time;
-    color: #94a3b8;
-    font-size: 12px;
-  }
-
-  .overview-requirement-list small {
-    grid-area: budget;
-    color: #0f172a;
-    font-size: 16px;
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .overview-requirement-list .overview-requirement-progress {
-    grid-area: progress;
-    margin-top: 0;
-  }
-
-  .overview-requirement-progress :deep(.req-progress) {
-    padding: 12px 6px 10px;
-    border: 0;
-    border-radius: 12px;
-    background: #f6f9ff;
-  }
-
-  /* 组件在 720px 以下会改成竖排五行，总览里保持横排：只留圆点和步骤名，说明文字收起 */
-  .overview-requirement-progress :deep(.req-progress__steps) {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 0;
-  }
-
-  .overview-requirement-progress :deep(.req-progress__step) {
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    text-align: center;
-  }
-
-  .overview-requirement-progress :deep(.req-progress__dot) {
-    width: 22px;
-    height: 22px;
-    font-size: 11px;
-  }
-
-  .overview-requirement-progress :deep(.req-progress__step-title) {
-    font-size: 11px;
-    white-space: nowrap;
-  }
-
-  .overview-requirement-progress :deep(.req-progress__step-desc) {
-    display: none;
-  }
-
-  .overview-requirement-progress :deep(.req-progress__connector) {
-    display: block;
-    top: 11px;
-    left: calc(50% + 14px);
-    right: calc(-50% + 14px);
-  }
-
-  .overview-dev-links {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-}
-
-@media (max-width: 380px) {
-  .overview-dev-links {
-    grid-template-columns: 1fr;
   }
 }
 </style>
