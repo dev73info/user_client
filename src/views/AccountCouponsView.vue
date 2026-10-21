@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import type { Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { HttpError } from '@/api/http'
 import {
   closeAccount,
   getBoundProviders,
@@ -33,11 +31,8 @@ import {
   uploadLegalCertBackFile,
   uploadLegalCertFrontFile,
   type LegalCertOcrSide,
-  type RealnameAuthType,
   type StartAsignIdentifyPayload,
   type StartCompanyIdentifyPayload,
-  type SubmitRealnameVerificationPayload,
-  type UserRealnameVerification,
 } from '@/api/realname'
 import {
   createSealMakeOnline,
@@ -51,6 +46,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import RealnameHero from '@/components/RealnameHero.vue'
 import WechatBindQrModal from '@/components/WechatBindQrModal.vue'
+import AccountEntryGrid from '@/components/account/AccountEntryGrid.vue'
 import AsignDialog from '@/components/account/AsignDialog.vue'
 import CloseAccountDialog from '@/components/account/CloseAccountDialog.vue'
 import CloseSettleDialog from '@/components/account/CloseSettleDialog.vue'
@@ -61,9 +57,17 @@ import SealDialog from '@/components/account/SealDialog.vue'
 import SettlementDialog from '@/components/account/SettlementDialog.vue'
 import TwoFactorDialog from '@/components/account/TwoFactorDialog.vue'
 import UsernameDialog from '@/components/account/UsernameDialog.vue'
-import { getSettlementCities, settlementProvinces } from '@/utils/settlementAccount'
+import { settlementProvinces } from '@/utils/settlementAccount'
 import { useFaceidChallenge } from '@/composables/useFaceidChallenge'
+import { useRealnameFormDraft } from '@/composables/useRealnameFormDraft'
+import { useRealnameIdentity } from '@/composables/useRealnameIdentity'
 import { useSettlementAccount, type AdapayMemberStatus } from '@/composables/useSettlementAccount'
+import {
+  LONG_TERM_DATE,
+  MAX_BUSINESS_SCOPE_LEN,
+  MAX_COMPANY_ADDRESS_LEN,
+} from '@/shared/realnameForm'
+import type { AccountEntry, AccountEntryGroup } from '@/shared/accountEntries'
 import {
   TAlert,
   TButton,
@@ -80,8 +84,6 @@ import {
   TRadio,
   TRadioGroup,
   TSelect,
-  TTag,
-  ArrowRight,
   Bell,
   CollectionTag,
   Connection,
@@ -143,13 +145,9 @@ const legalCertFrontFileInput = ref<HTMLInputElement | null>(null)
 const legalCertBackFileInput = ref<HTMLInputElement | null>(null)
 /** 法人证件有效期 OCR 进行中（辅助填写，不挡提交）。 */
 const legalCertOcrLoading = ref(false)
-const current = ref<UserRealnameVerification | null>(null)
 const adapayMember = ref<AdapayMemberStatus | null>(null)
-const reviewerAvatarLoadFailed = ref(false)
 /** 核身弹窗的可见性归视图：`faceidAuthUrl` 一变要连带关掉实名弹窗（见下方那条 watch）。 */
 const faceidDialogVisible = ref(false)
-// 已通过认证后，只有进入「变更主体」模式才解锁表单，用新主体重新认证一遍。
-const realnameChangeMode = ref(false)
 
 const isMobile = ref(false)
 let mobileMatch: MediaQueryList | null = null
@@ -157,203 +155,110 @@ function syncMobileViewport() {
   isMobile.value = Boolean(mobileMatch?.matches)
 }
 
-const form = reactive({
-  authType: 'IDENTITY_CARD' as RealnameAuthType,
-  idCardType: 1,
-  realName: '',
-  idCardNo: '',
-  mobile: '',
-  companyName: '',
-  unifiedSocialCreditCode: '',
-  businessLicenseNo: '',
-  operatorName: '',
-  operatorIdCardNo: '',
-  guardianConsent: false,
-  guardianConsentFile: '',
-  businessLicenseFile: '',
-  // 企业开户进件的另外两张证照（法人身份证正反面）：上传即落库，不参与实名提交 payload。
-  legalCertFrontFile: '',
-  legalCertBackFile: '',
-  // 企业进件资料：支付渠道创建企业会员（对公收款账户）时逐项必填，企业 / 个体工商户主体要收齐。
-  companyProvCode: '',
-  companyAreaCode: '',
-  companyAddress: '',
-  businessScope: '',
-  businessLicenseExpiresOn: '',
-  legalCertBeginOn: '',
-  legalCertExpiresOn: '',
-})
-
+// ── 实名认证：身份域与表单草稿域 ─────────────────────────────────
 /**
- * 法人证件有效期两项有没有被**用户自己动过**（手选 / 清除 / 点「长期有效」）。
- *
- * OCR 回填只往「空且没被动过」的项里写：OCR 会错，用户改过的值不能被它盖掉。
- * 用显式标记而不是「字段是否为空」——用户填了又清空也属于动过，不该被自动填回去。
+ * 两个域的分工见各自文件头，这里只做接线：
+ * - `form` 是**一整块**草稿（22 个字段 + 法人证件有效期「动过没」的标记），不按字段拆；
+ * - `current` 由 `useRealnameIdentity` 持有，下面注入给核身与结算两个域，全页只此一份——
+ *   各请求一次的话 hero / 入口卡 / 结算会各看各的；
+ * - 「变更主体」要同时动身份的状态、草稿的字段与两个弹窗的可见性，所以留在这里当接线函数。
  */
-const legalCertPeriodEdited = reactive({ begin: false, expires: false })
+const {
+  form,
+  legalCertPeriodEdited,
+  identityCardSelected,
+  enterpriseSelected,
+  soleProprietorSelected,
+  businessSelected,
+  isUnder14,
+  isMinor14To18,
+  isAdult,
+  identityCardRequiredMissing,
+  businessLicenseDerivedMissing,
+  enterpriseRequiredMissing,
+  minorGuardianRequiredMissing,
+  businessLicenseDerivedNote,
+  resetSubjectFields,
+  prefill: prefillForm,
+  applyOperatorPrefill,
+  validate,
+  buildPayload,
+} = useRealnameFormDraft()
 
-/** 营业执照长期有效时渠道要的固定截止日（`YYYYMMDD`），与后端同一口径。 */
-const LONG_TERM_DATE = '20991231'
+const {
+  current,
+  redirectTarget,
+  statusText,
+  statusTone,
+  realnameApproved,
+  realnameRejected,
+  realnamePending,
+  realnameChanging,
+  realnameLocked,
+  realnameChangeBacked,
+  realnameCanWithdraw,
+  assignEnterprise,
+  realnameEntryCopy,
+  applyRealnameRecord,
+  clearCurrent,
+  tryRestoreBusinessPage,
+  loadCurrentRealname,
+  startChangeMode,
+  exitChangeMode,
+} = useRealnameIdentity({ prefillForm })
 
-/**
- * 渠道（Adapay 企业开户）对进件资料的长度上限：`business_scope` 200 字符、`address` 256 字符。
- *
- * 营业执照上的经营范围动辄两三百字，OCR 直接回填必然超限，所以回填时按这里截断并把
- * 「已截断」如实告诉用户，让他自己确认要不要精简。
- */
-const MAX_BUSINESS_SCOPE_LEN = 200
-const MAX_COMPANY_ADDRESS_LEN = 200
-
-const redirectTarget = computed(() => {
-  const raw = typeof route.query.redirect_to === 'string' ? route.query.redirect_to.trim() : ''
-  if (!raw || raw === '/realname') {
-    return ''
-  }
-
-  if (!raw.startsWith('/') || raw.startsWith('//')) {
-    return ''
-  }
-
-  return raw
-})
-
-const statusText = computed(() => {
-  const status = current.value?.status
-  if (!status) return '未提交'
-  if (status === 'approved') return '已通过'
-  if (status === 'pending') return '审核中'
-  return '已驳回'
-})
-
-const statusTone = computed<'info' | 'warning' | 'success' | 'danger'>(() => {
-  const status = current.value?.status
-  if (!status) return 'info'
-  if (status === 'approved') return 'success'
-  if (status === 'pending') return 'warning'
-  return 'danger'
-})
-
-const identityCardSelected = computed(() => form.authType === 'IDENTITY_CARD')
-const enterpriseSelected = computed(() => form.authType === 'ENTERPRISE')
-const soleProprietorSelected = computed(() => form.authType === 'SOLE_PROPRIETOR')
-const businessSelected = computed(() => enterpriseSelected.value || soleProprietorSelected.value)
-const realnameApproved = computed(() => current.value?.status === 'approved')
-// 当前认证主体是否为「企业」（用于爱签账户管理按身份区分功能）
-const assignEnterprise = computed(
-  () => current.value?.auth_type === 'ENTERPRISE' || current.value?.auth_type === 'SOLE_PROPRIETOR',
-)
-const realnameRejected = computed(() => current.value?.status === 'rejected')
-// 已通过且已点「变更主体」：表单解锁，填的是新主体。
-const realnameChanging = computed(() => realnameApproved.value && realnameChangeMode.value)
-const realnameLocked = computed(
+/// 提交按钮为什么是灰的：只读态、各主体的必填、年龄禁区，少一条都会让用户点了没反应。
+const submitDisabled = computed(
   () =>
-    current.value?.status === 'pending' || (realnameApproved.value && !realnameChangeMode.value),
+    realnameLocked.value ||
+    identityCardRequiredMissing.value ||
+    enterpriseRequiredMissing.value ||
+    isUnder14.value ||
+    minorGuardianRequiredMissing.value,
 )
-const realnamePending = computed(() => current.value?.status === 'pending')
-// 本行带着上一份主体的快照：撤回在这个状态下是「取消主体变更、还原原主体」，
-// 而不是把账号退回「未提交」。
-const realnameChangeBacked = computed(() => Boolean(current.value?.changing_subject))
-// 有东西可撤：认证/审核中，或主体变更被驳回后仍可撤回还原成原主体。
-const realnameCanWithdraw = computed(
-  () => realnamePending.value || (realnameRejected.value && realnameChangeBacked.value),
+
+const idCardPlaceholder = computed(() => {
+  const masked = current.value?.id_card_no_masked
+  return masked ? `${masked}` : '请输入证件号'
+})
+
+const submitButtonText = computed(() => {
+  if (realnameChanging.value) return '提交变更，重新认证'
+  if (realnameApproved.value) return '已通过认证'
+  if (realnameLocked.value && identityCardSelected.value) return '认证处理中'
+  if (identityCardSelected.value) return current.value ? '重新发起实名认证' : '实名认证'
+  if (!current.value || realnameRejected.value) return current.value ? '重新提交认证' : '提交认证'
+  return '已提交，不能修改'
+})
+
+/// 切到企业 / 个体户时带上本人经办人信息（只在字段为空时补）。
+/// 这条 watch 读实名记录、写表单草稿，跨了两个域，所以留在视图而不是让任一边持有另一边的实例。
+watch(
+  () => form.authType,
+  (next, previous) => {
+    if (next !== previous) applyOperatorPrefill(current.value)
+  },
 )
-// 当前生效主体的一句话描述，用于「变更认证类型」提示用户换掉的是哪一份资料。
-const currentSubjectLabel = computed(() => {
-  const record = current.value
-  if (!record) return ''
-  if (record.auth_type === 'ENTERPRISE') return `企业 ${record.company_name ?? ''}`.trim()
-  if (record.auth_type === 'SOLE_PROPRIETOR') {
-    return `个体工商户 ${record.company_name ?? ''}`.trim()
+
+/// 进入「变更认证类型」：解锁表单并用空表单让用户填新主体，提交后由后端快照原主体，
+/// 认证通过前可撤回（撤回即取消变更、还原原来那份主体）。
+function startRealnameChange() {
+  startChangeMode()
+  resetSubjectFields()
+  applyOperatorPrefill(current.value)
+  faceidDialogVisible.value = false
+  realnameDialogVisible.value = true
+}
+
+/// 放弃「变更认证类型」草稿：什么都没提交，直接回到只读状态。
+function cancelRealnameChange() {
+  exitChangeMode()
+  if (current.value) {
+    prefillForm(current.value)
   }
-  if (record.auth_type === 'IDENTITY_CARD') {
-    const idNo = record.id_card_no_masked ?? ''
-    return `个人 ${record.real_name ?? ''}${idNo ? `（${idNo}）` : ''}`.trim()
-  }
-  return `个人 ${record.real_name ?? ''}`.trim()
-})
-const identityCardRequiredMissing = computed(
-  () =>
-    identityCardSelected.value &&
-    (!form.realName.trim() || !form.idCardNo.trim() || !form.mobile.trim()),
-)
-/**
- * 企业进件资料里**只由营业执照识别带出、不在表单里展示**的四项。
- *
- * 渠道创建企业会员时这四项逐项必填，但都能从营业执照照片识别（省市编码由识别出的注册地址
- * 经 `matchRegionFromAddress` 映射成渠道编码），所以不再让用户手填。识别不出时用户唯一的
- * 出路是重传一张更清晰的照片，因此校验失败必须指向「重新上传营业执照」，不能指回一个界面上
- * 根本没有的输入框。
- */
-const businessLicenseDerivedMissing = computed(() => {
-  if (!businessSelected.value) return []
-  const missing: string[] = []
-  if (!form.companyProvCode.trim() || !form.companyAreaCode.trim()) missing.push('企业所在省市')
-  if (!form.companyAddress.trim()) missing.push('企业注册地址')
-  if (!form.businessScope.trim()) missing.push('经营范围')
-  if (!form.businessLicenseExpiresOn.trim()) missing.push('营业执照有效期')
-  return missing
-})
+  realnameDialogVisible.value = false
+}
 
-const enterpriseRequiredMissing = computed(
-  () =>
-    businessSelected.value &&
-    (!form.companyName.trim() ||
-      !form.unifiedSocialCreditCode.trim() ||
-      !form.operatorName.trim() ||
-      !form.operatorIdCardNo.trim() ||
-      !form.mobile.trim() ||
-      !form.businessLicenseFile.trim() ||
-      // 法人身份证正反面（开户进件三张证照里的另外两张）：缺任一张渠道都建不了企业会员
-      !form.legalCertFrontFile.trim() ||
-      !form.legalCertBackFile.trim() ||
-      // 企业进件资料里有四项不在表单里（见 businessLicenseDerivedMissing）：
-      // 缺任一项渠道都会拒绝创建企业会员，之后连对公收款账户都开不了
-      businessLicenseDerivedMissing.value.length > 0 ||
-      // 法人证件有效期起止两项：OCR 会自动填，填不上就得用户补，缺任一项渠道必拒
-      !form.legalCertBeginOn.trim() ||
-      !form.legalCertExpiresOn.trim()),
-)
-
-/** 企业所在省下面的城市选项；省份未选时为空。 */
-const enterpriseCities = computed(() => getSettlementCities(form.companyProvCode))
-
-/**
- * 上面四项的**识别结果摘要**，替代已移除的输入框供用户核对。
- *
- * 不逐字列经营范围——那是几百字的正文，摘出来只会把表单淹没，所以只报字数。
- */
-const businessLicenseDerivedSummary = computed(() => {
-  const prov = settlementProvinces.find((item) => item.value === form.companyProvCode)?.title ?? ''
-  const area =
-    enterpriseCities.value.find((item) => item.value === form.companyAreaCode)?.title ?? ''
-  const expires =
-    form.businessLicenseExpiresOn === LONG_TERM_DATE
-      ? '营业执照长期有效'
-      : `执照有效期至 ${form.businessLicenseExpiresOn}`
-  return [
-    `${prov}${area}`,
-    form.businessScope ? `经营范围 ${form.businessScope.length} 字` : '',
-    form.businessLicenseExpiresOn ? expires : '',
-  ]
-    .filter(Boolean)
-    .join(' · ')
-})
-
-/**
- * 上传区下方那一行的文字：识别结果 + 缺失项（有缺就附上出路）。
- *
- * 这四项已不在表单里，所以这一行同时承担两件事：交代「自动填好了什么」（用户要核对），
- * 以及说明「提交按钮为什么是灰的」（缺项时）。
- */
-const businessLicenseDerivedNote = computed(() => {
-  const summary = businessLicenseDerivedSummary.value
-  const missing = businessLicenseDerivedMissing.value
-  if (!missing.length) {
-    return summary ? `已从营业执照识别：${summary}` : ''
-  }
-  const tail = `未能识别出${missing.join('、')}，请重新上传更清晰的照片`
-  return summary ? `已从营业执照识别：${summary}；${tail}` : tail
-})
 /**
  * 从营业执照地址里认领渠道省市编码。
  *
@@ -374,276 +279,6 @@ function matchRegionFromAddress(address: string): { prov?: string; area?: string
   if (!province) return {}
   const city = pickLongest(province.cities ?? [])
   return { prov: province.value, area: city?.value }
-}
-
-/**
- * 用**本人的实名资料**回填「经办人」三项。
- *
- * 企业认证的经办人就是发起认证的本人，平台已经存过他的姓名 / 证件号 / 手机号，
- * 没必要让人再输一遍。只填空字段，不覆盖用户已经填过的内容。
- */
-function applyOwnRealnamePrefill(): void {
-  const record = current.value
-  if (!record) return
-  if (!form.operatorName.trim() && record.real_name) form.operatorName = record.real_name
-  if (!form.operatorIdCardNo.trim() && record.id_card_no) form.operatorIdCardNo = record.id_card_no
-  if (!form.mobile.trim() && record.mobile) form.mobile = record.mobile
-}
-
-/// 切到企业 / 个体户时带上本人经办人信息（只在字段为空时补）。
-watch(
-  () => form.authType,
-  (next, previous) => {
-    if (next !== previous) applyOwnRealnamePrefill()
-  },
-)
-
-const minorGuardianRequiredMissing = computed(
-  () => isMinor14To18.value && (!form.guardianConsent || !form.guardianConsentFile.trim()),
-)
-const submitDisabled = computed(
-  () =>
-    realnameLocked.value ||
-    identityCardRequiredMissing.value ||
-    enterpriseRequiredMissing.value ||
-    isUnder14.value ||
-    minorGuardianRequiredMissing.value,
-)
-
-function idCardAge(idCardNo: string): number | null {
-  const text = idCardNo.trim().toUpperCase()
-  if (text.length !== 18) {
-    return null
-  }
-  const birthday = text.slice(6, 14)
-  if (!/^\d{8}$/.test(birthday)) {
-    return null
-  }
-  const year = Number(birthday.slice(0, 4))
-  const month = Number(birthday.slice(4, 6))
-  const day = Number(birthday.slice(6, 8))
-  const birth = new Date(year, month - 1, day)
-  if (birth.getFullYear() !== year || birth.getMonth() !== month - 1 || birth.getDate() !== day) {
-    return null
-  }
-  const now = new Date()
-  let age = now.getFullYear() - year
-  const monthDiff = now.getMonth() - (month - 1)
-  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < day)) {
-    age -= 1
-  }
-  return age
-}
-
-// 仅在选中个人且证件号为 18 位（大陆身份证）时计算年龄
-const idCardAgeValue = computed(() =>
-  identityCardSelected.value ? idCardAge(form.idCardNo) : null,
-)
-// 未满 14 周岁：禁止实名
-const isUnder14 = computed(() => idCardAgeValue.value !== null && idCardAgeValue.value < 14)
-// 14~18 周岁：需要监护人同意
-const isMinor14To18 = computed(
-  () => idCardAgeValue.value !== null && idCardAgeValue.value >= 14 && idCardAgeValue.value < 18,
-)
-// 已满 18 周岁：无需监护人同意
-const isAdult = computed(() => idCardAgeValue.value !== null && idCardAgeValue.value >= 18)
-
-const idCardPlaceholder = computed(() => {
-  const masked = current.value?.id_card_no_masked
-  return masked ? `${masked}` : '请输入证件号'
-})
-
-const submitButtonText = computed(() => {
-  if (realnameChanging.value) return '提交变更，重新认证'
-  if (realnameApproved.value) return '已通过认证'
-  if (realnameLocked.value && identityCardSelected.value) return '认证处理中'
-  if (identityCardSelected.value) return current.value ? '重新发起实名认证' : '实名认证'
-  if (!current.value || realnameRejected.value) return current.value ? '重新提交认证' : '提交认证'
-  return '已提交，不能修改'
-})
-
-/// 清空实名主体字段，回到「可以填新主体」的空表单（证件类型 radio 不动）。
-function resetRealnameSubjectFields() {
-  form.idCardType = 1
-  form.realName = ''
-  form.idCardNo = ''
-  form.mobile = ''
-  form.companyName = ''
-  form.unifiedSocialCreditCode = ''
-  form.businessLicenseNo = ''
-  form.businessLicenseFile = ''
-  form.legalCertFrontFile = ''
-  form.legalCertBackFile = ''
-  form.operatorName = ''
-  form.operatorIdCardNo = ''
-  form.guardianConsent = false
-  form.guardianConsentFile = ''
-  form.companyProvCode = ''
-  form.companyAreaCode = ''
-  form.companyAddress = ''
-  form.businessScope = ''
-  form.businessLicenseExpiresOn = ''
-  form.legalCertBeginOn = ''
-  form.legalCertExpiresOn = ''
-  // 空表单：两项都还没被用户动过，OCR 可以回填
-  legalCertPeriodEdited.begin = false
-  legalCertPeriodEdited.expires = false
-}
-
-/// 进入「变更认证类型」：解锁表单并用空表单让用户填新主体，提交后由后端快照原主体，
-/// 认证通过前可撤回（撤回即取消变更、还原原来那份主体）。
-function startRealnameChange() {
-  realnameChangeMode.value = true
-  resetRealnameSubjectFields()
-  applyOwnRealnamePrefill()
-  faceidDialogVisible.value = false
-  realnameDialogVisible.value = true
-}
-
-/// 放弃「变更认证类型」草稿：什么都没提交，直接回到只读状态。
-function cancelRealnameChange() {
-  realnameChangeMode.value = false
-  if (current.value) {
-    patchForm(current.value)
-  }
-  realnameDialogVisible.value = false
-}
-
-function patchForm(record: UserRealnameVerification) {
-  // 服务端数据一落地，表单就不再是「变更主体」草稿态（变更已提交或已取消）。
-  realnameChangeMode.value = false
-  form.authType = record.auth_type
-  form.realName = record.real_name ?? ''
-  form.idCardNo = ''
-  form.mobile = ''
-  form.companyName = record.company_name ?? ''
-  form.unifiedSocialCreditCode = record.unified_social_credit_code ?? ''
-  form.businessLicenseNo = record.business_license_no ?? ''
-  form.businessLicenseFile = record.business_license_file ?? ''
-  form.operatorName = record.operator_name ?? ''
-  form.operatorIdCardNo = ''
-  form.guardianConsent = record.guardian_consent ?? false
-  form.guardianConsentFile = record.guardian_consent_file ?? ''
-  form.companyProvCode = record.company_prov_code ?? ''
-  form.companyAreaCode = record.company_area_code ?? ''
-  form.companyAddress = record.company_address ?? ''
-  form.businessScope = record.business_scope ?? ''
-  form.businessLicenseExpiresOn = record.business_license_expires_on ?? ''
-  form.legalCertBeginOn = record.legal_cert_begin_on ?? ''
-  form.legalCertExpiresOn = record.legal_cert_expires_on ?? ''
-  // 回显的是服务端已存的值，不算用户改动；但两个非空项也不该被 OCR 覆盖，
-  // 回填判定里「字段非空」这一条会挡住，所以这里只需把「用户改动」标记清干净。
-  legalCertPeriodEdited.begin = false
-  legalCertPeriodEdited.expires = false
-}
-
-/**
- * 实名记录落地：状态、头像加载失败标记、表单回填三件事一起做。
- *
- * 人脸核身域里的查询 / 撤回也会走这里（以回调注入 composable），所以三件事必须同进同退——
- * 少做一件就会出现「状态已通过、表单还是旧主体」这类错位。
- */
-function applyRealnameRecord(record: UserRealnameVerification) {
-  current.value = record
-  reviewerAvatarLoadFailed.value = false
-  patchForm(record)
-}
-
-async function tryRestoreBusinessPage(record?: UserRealnameVerification | null) {
-  const target = redirectTarget.value
-  if (!target) {
-    return
-  }
-
-  const status = record?.status ?? current.value?.status
-  // 只有已通过才自动返回，审核中需要停留提示用户
-  if (status !== 'approved') {
-    return
-  }
-
-  await router.replace(target)
-}
-
-function validate() {
-  if (businessSelected.value) {
-    if (!form.companyName.trim()) return '请填写企业名称'
-    if (!form.unifiedSocialCreditCode.trim()) return '请填写统一社会信用代码'
-    if (!form.operatorName.trim()) return '请填写经办人姓名'
-    if (!form.operatorIdCardNo.trim()) return '请填写经办人身份证号'
-    if (!isValidMobile(form.mobile)) return '请填写正确的手机号'
-    if (!form.businessLicenseFile.trim()) return '请上传营业执照'
-    // 法人身份证正反面：企业开户进件三张证照里的另外两张，缺哪张提示哪张。
-    if (!form.legalCertFrontFile.trim()) return '请上传法人身份证人像面照片'
-    if (!form.legalCertBackFile.trim()) return '请上传法人身份证国徽面照片'
-    // 企业进件资料里的四项（所在省市 / 注册地址 / 经营范围 / 执照有效期）不在表单里，
-    // 只能由营业执照识别带出：缺了就说明照片没识别全，出路是重传，而不是「去填一下」。
-    const derivedMissing = businessLicenseDerivedMissing.value
-    if (derivedMissing.length) {
-      return `未能从营业执照识别出${derivedMissing.join('、')}，请重新上传更清晰的照片`
-    }
-    // 识别出的经营范围会按渠道上限截断（见 autoFillFromBusinessLicense）；历史记录可能超限，
-    // 重传一次营业执照会被重新截断，所以这里的出路同样是重传。
-    if (form.businessScope.trim().length > MAX_BUSINESS_SCOPE_LEN) {
-      return `营业执照识别出的经营范围超过 ${MAX_BUSINESS_SCOPE_LEN} 字（渠道限制），请重新上传营业执照`
-    }
-    if (!/^\d{8}$/.test(form.legalCertBeginOn.trim())) return '请选择法人证件有效期起始日'
-    if (!/^\d{8}$/.test(form.legalCertExpiresOn.trim())) return '请选择法人证件有效期截止日'
-    return ''
-  }
-
-  if (!form.realName.trim() || !form.idCardNo.trim()) {
-    return '请填写姓名和证件号'
-  }
-  if (!form.mobile.trim()) return '请填写手机号'
-  if (!isValidMobile(form.mobile)) return '请填写正确的手机号'
-  if (isUnder14.value) return '未满 14 周岁的未成年人不能进行实名认证'
-  if (isMinor14To18.value && !form.guardianConsent) return '请确认已取得监护人同意'
-  if (isMinor14To18.value && !form.guardianConsentFile.trim()) return '请上传监护人同意书'
-
-  return ''
-}
-
-function isValidMobile(value: string): boolean {
-  const text = value.trim()
-  return /^1\d{10}$/.test(text)
-}
-
-function buildPayload(): SubmitRealnameVerificationPayload {
-  const payload: SubmitRealnameVerificationPayload = {
-    auth_type: form.authType,
-  }
-
-  if (form.realName.trim()) payload.real_name = form.realName.trim()
-  if (form.idCardNo.trim()) payload.id_card_no = form.idCardNo.trim()
-  if (form.mobile.trim()) payload.mobile = form.mobile.trim()
-  if (form.companyName.trim()) payload.company_name = form.companyName.trim()
-  if (form.unifiedSocialCreditCode.trim()) {
-    payload.unified_social_credit_code = form.unifiedSocialCreditCode.trim()
-  }
-  if (form.businessLicenseNo.trim()) payload.business_license_no = form.businessLicenseNo.trim()
-  if (form.businessLicenseFile.trim())
-    payload.business_license_file = form.businessLicenseFile.trim()
-  if (form.operatorName.trim()) payload.operator_name = form.operatorName.trim()
-  if (form.operatorIdCardNo.trim()) payload.operator_id_card_no = form.operatorIdCardNo.trim()
-  // 企业进件资料只在企业 / 个体工商户主体下传；换成个人时后端会把它们清空
-  if (businessSelected.value) {
-    payload.company_prov_code = form.companyProvCode.trim()
-    payload.company_area_code = form.companyAreaCode.trim()
-    payload.company_address = form.companyAddress.trim()
-    payload.business_scope = form.businessScope.trim()
-    payload.business_license_expires_on = form.businessLicenseExpiresOn.trim()
-    payload.legal_cert_begin_on = form.legalCertBeginOn.trim()
-    payload.legal_cert_expires_on = form.legalCertExpiresOn.trim()
-  }
-  // 只有 14~18 周岁的未成年人才需要监护人同意；成年人无需传
-  if (isMinor14To18.value) {
-    payload.guardian_consent = form.guardianConsent
-    if (form.guardianConsentFile.trim()) {
-      payload.guardian_consent_file = form.guardianConsentFile.trim()
-    }
-  }
-
-  return payload
 }
 
 const MAX_CONSENT_FILE_SIZE = 5 * 1024 * 1024
@@ -1119,11 +754,10 @@ const {
   realname: current,
   applyRecord: (record) => applyRealnameRecord(record),
   clearRecord: () => {
-    current.value = null
-    reviewerAvatarLoadFailed.value = false
+    clearCurrent()
     // 重置表单回到「未提交」的可编辑状态
     form.authType = 'IDENTITY_CARD'
-    resetRealnameSubjectFields()
+    resetSubjectFields()
   },
   formAuthType: () => form.authType,
   restoreBusinessPage: (record) => tryRestoreBusinessPage(record),
@@ -1152,7 +786,7 @@ watch(faceidAuthUrl, (url) => {
 // 关掉「提交认证信息」弹窗即放弃变更草稿：没提交过的变更，下次打开不该还是解锁态。
 watch(realnameDialogVisible, (visible) => {
   if (!visible) {
-    realnameChangeMode.value = false
+    exitChangeMode()
     return
   }
   // 表单打开、本地已存有证件照时补一次识别（上传那次的识别可能失败过，重开弹窗即重试）。
@@ -1161,39 +795,6 @@ watch(realnameDialogVisible, (visible) => {
 })
 
 // ── 账户入口：两张卡片共用同一套「分组 + 行」结构 ────────────────
-/// 标签语气。`ui_73info` 的 `TTag` 收的是语义 `tone`，与 Element 的 `type` 同词；
-/// 这里的取值正好都在 `Tone` 里，所以字段名跟着改成 `tone`，模板写 `:tone`。
-type AccountEntryStatus = { text: string; tone: 'success' | 'warning' | 'danger' | 'info' }
-type AccountEntry = {
-  key: string
-  title: string
-  desc: string
-  icon: Component
-  status?: AccountEntryStatus
-  danger?: boolean
-  loading?: boolean
-  /** 审核期间不放开入口：点了只给原因，不打开登记弹窗（视觉上也是禁用态）。 */
-  locked?: boolean
-}
-type AccountEntryGroup = { title: string; entries: AccountEntry[] }
-
-/// 实名认证入口的文案：按当前状态说清点进去能做什么，别让「审核中」还写着「开始认证」。
-const realnameEntryCopy = computed(() => {
-  const status = current.value?.status
-  if (status === 'pending') {
-    return { title: '查看认证进度', desc: '认证审核中，可查看进度或撤回本次申请' }
-  }
-  if (status === 'rejected') {
-    return {
-      title: '重新提交认证',
-      desc: current.value?.review_note || '上次认证未通过，请核对信息后重新提交',
-    }
-  }
-  if (status === 'approved') {
-    return { title: '查看认证信息', desc: `当前主体：${currentSubjectLabel.value}` }
-  }
-  return { title: '开始认证', desc: '提交真实身份信息，通过后可签署合同' }
-})
 
 /// 「认证管理」卡片：实名认证（按认证类型给不同入口） / 收款与结算 两组。
 /// 认证类型对应的入口集合见下方 `identity` 的注释。
@@ -1819,25 +1420,6 @@ async function submitRealname() {
   }
 }
 
-async function loadCurrentRealname() {
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    return
-  }
-
-  try {
-    const record = await getMyRealnameVerification(auth.token)
-    applyRealnameRecord(record)
-    await tryRestoreBusinessPage(record)
-  } catch (err) {
-    if (err instanceof HttpError && err.status === 404) {
-      return
-    }
-
-    TMessage.error(err instanceof Error ? err.message : '加载实名认证状态失败')
-  }
-}
-
 function providerLabel(provider: string): string {
   const labels: Record<string, string> = {
     github: 'GitHub',
@@ -2360,37 +1942,7 @@ onBeforeUnmount(() => {
       <div class="realname-form__head">
         <h3>账号与安全</h3>
       </div>
-      <div v-for="group in accountEntryGroups" :key="group.title" class="entry-group">
-        <p class="entry-group__title">{{ group.title }}</p>
-        <div class="entry-grid">
-          <TButton
-            v-for="entry in group.entries"
-            :key="entry.key"
-            class="entry-row"
-            :class="{ 'entry-row--danger': entry.danger, 'entry-row--locked': entry.locked }"
-            :aria-disabled="entry.locked ? 'true' : undefined"
-            :loading="Boolean(entry.loading)"
-            @click="openAccountEntry(entry.key)"
-          >
-            <span class="entry-row__icon">
-              <TIcon><component :is="entry.icon" /></TIcon>
-            </span>
-            <span class="entry-row__copy">
-              <span class="entry-row__title">{{ entry.title }}</span>
-              <small class="entry-row__desc">{{ entry.desc }}</small>
-              <TTag
-                v-if="entry.status"
-                :tone="entry.status.tone"
-                size="sm"
-                class="entry-row__status"
-              >
-                {{ entry.status.text }}
-              </TTag>
-            </span>
-            <TIcon class="entry-row__arrow"><ArrowRight /></TIcon>
-          </TButton>
-        </div>
-      </div>
+      <AccountEntryGrid :groups="accountEntryGroups" @open="openAccountEntry" />
     </section>
 
     <section id="account-realname" class="account-realname-section">
@@ -2750,37 +2302,7 @@ onBeforeUnmount(() => {
           <div class="realname-form__head">
             <h3>认证管理</h3>
           </div>
-          <div v-for="group in realnameEntryGroups" :key="group.title" class="entry-group">
-            <p class="entry-group__title">{{ group.title }}</p>
-            <div class="entry-grid">
-              <TButton
-                v-for="entry in group.entries"
-                :key="entry.key"
-                class="entry-row"
-                :class="{ 'entry-row--danger': entry.danger, 'entry-row--locked': entry.locked }"
-                :aria-disabled="entry.locked ? 'true' : undefined"
-                :loading="Boolean(entry.loading)"
-                @click="openAccountEntry(entry.key)"
-              >
-                <span class="entry-row__icon">
-                  <TIcon><component :is="entry.icon" /></TIcon>
-                </span>
-                <span class="entry-row__copy">
-                  <span class="entry-row__title">{{ entry.title }}</span>
-                  <small class="entry-row__desc">{{ entry.desc }}</small>
-                  <TTag
-                    v-if="entry.status"
-                    :tone="entry.status.tone"
-                    size="sm"
-                    class="entry-row__status"
-                  >
-                    {{ entry.status.text }}
-                  </TTag>
-                </span>
-                <TIcon class="entry-row__arrow"><ArrowRight /></TIcon>
-              </TButton>
-            </div>
-          </div>
+          <AccountEntryGrid :groups="realnameEntryGroups" @open="openAccountEntry" />
         </TCard>
 
         <!-- 收款银行卡：渠道原话 / 主体变更与缺资料提示 + 银行卡表单，模板与样式都在组件里 -->
@@ -2964,152 +2486,6 @@ onBeforeUnmount(() => {
   margin-top: 4px;
 }
 
-/* ── 账户入口：分组 + 行（「认证管理」「账号与安全」两张卡共用） ── */
-
-/* TButton 的基础样式是固定 36px 高 + 左右 16px 内边距；这里的行内是 40px 图标底衬 + 两行文案，
-   36px 会让图标上下顶出边框（实测内容高 37px > 内容框 34px）。账户入口行必须放开高度：
-   高度自适应 + 上下 8px，内容 40px 时整行 58px，图标与描边之间留出呼吸位。 */
-/* 审核期间不放开的入口：看着就是不能点，但点了会告诉你为什么（不是死链接）。 */
-.entry-row--locked {
-  opacity: 0.62;
-  cursor: not-allowed;
-}
-
-.entry-row {
-  height: auto;
-  min-height: 56px;
-  padding-top: 8px;
-  padding-bottom: 8px;
-  /* TButton 默认 justify-content: center，会把「图标 + 文案 + 箭头」整块居中
-     （实测左边空出 56px）；入口行要从左往右排。 */
-  justify-content: flex-start;
-  text-align: left;
-}
-
-/* TButton 把 slot 包在 .t73-button__label 里，而它是 flex: 0 1 auto——只包住内容宽，
-   于是整块被按钮居中。这里让它撑满整行、并从头排，文案区（flex: 1）再吃掉剩余宽度，
-   箭头就落到最右。min-width: 0 是长文案能收省略号的前提。 */
-.entry-row :deep(.t73-button__label) {
-  flex: 1 1 auto;
-  justify-content: flex-start;
-  min-width: 0;
-}
-
-/* 双保险：即使文案区没吃满，箭头也贴右 */
-.entry-row__arrow {
-  margin-left: auto;
-}
-
-.entry-group {
-  display: grid;
-  gap: 10px;
-}
-
-.realname-form__head + .entry-group {
-  margin-top: 12px;
-}
-
-.entry-group + .entry-group {
-  margin-top: 18px;
-}
-
-.entry-group__title {
-  margin: 0;
-  color: var(--profile-text-sub);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-.entry-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.entry-row__icon {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  /* 40px 底衬配 20px 图标：底衬要跟两行文案（14px 标题 + 12px 描述 ≈ 40px）站得住，
-     36px/18px 时图标看着缩在角落、整行发空 */
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  /* 图标与文案之间的横向间距，标题与副标题共用同一列、因此两者到图标的距离一致。
-     用 margin 而不是父层 gap：TButton 会给标签、图标、箭头各包一层 span，
-     gap 会同时给箭头也加一份，白白吃掉文案宽度。值与右侧 .entry-row__status 的 margin-right 对齐，一行左右两处留白同宽 */
-  margin-right: 12px;
-  background: var(--profile-accent-soft);
-  color: var(--profile-accent);
-  font-size: 20px;
-}
-
-/* 文案区：标题与描述占左列，状态标签独占右列；标签列只在有标签时才有宽度，
-   没有标签的行（列宽 0）不因此少掉一个像素。
-   两行必须显式写出来：没有显式行时 grid-row 的 -1 会退化到第一行，
-   跨行失效、标签又贴回标题线上 */
-.entry-row__copy {
-  display: grid;
-  flex: 1 1 auto;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto auto;
-  align-items: center;
-  row-gap: 2px;
-  min-width: 0;
-}
-
-.entry-row__title {
-  grid-column: 1;
-  grid-row: 1;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--profile-text-main);
-  font-size: 14px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.entry-row__desc {
-  grid-column: 1;
-  grid-row: 2;
-  /* 描述是单行副标题：长文本（企业主体名等）必须自己收口，
-     否则会溢出到右列状态标签下面（实测 245px 的格子放 279px 文案）。 */
-  min-width: 0;
-  overflow: hidden;
-  color: var(--profile-text-sub);
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 1.5;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 状态标签：跨标题与描述两行、在整块文案里垂直居中，于是它和图标、箭头共用一条中线；
-   胶囊内部的文案再显式居中一次（水平 + 垂直），不依赖 TTag 自身的对齐实现。
-   左边与文案留 12px、右边与箭头留 12px——既不贴标题、也不顶到箭头上，且与
-   .entry-row__icon 的 margin-right 同宽。这两份间距写在标签自己的 margin 上，
-   没有标签的行（标签列宽 0）不会被它吃掉宽度 */
-.entry-row__status {
-  grid-column: 2;
-  grid-row: 1 / -1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 12px;
-  margin-right: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.entry-row__arrow {
-  flex: 0 0 auto;
-  color: var(--profile-text-soft);
-  font-size: 16px;
-  transition: transform 0.2s ease;
-}
 /* 弹窗样式：八个弹窗已全部搬进 `components/account/`，各自带一份 scoped 样式
    （父级 scoped 对子组件节点不命中，搬出去就必须跟着走）。这里只剩页面本身的样式。 */
 
@@ -3209,13 +2585,5 @@ onBeforeUnmount(() => {
 .realname-consent-template:hover {
   color: #b45309;
   opacity: 1;
-}
-
-/* 账户入口行在窄屏改单列：900 是标准档，也与工作台外壳（`.user-workbench` 在 ≤900px
-   收成单列）同一处拐点，不再自留 780 这一档。 */
-@media (max-width: 900px) {
-  .entry-grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

@@ -110,6 +110,20 @@ beforeEach(() => {
 })
 
 describe('账号与安全页：改用户名 / 改邮箱 / 两个注销弹窗的父子接线', () => {
+  it('点入口行真的能打开对应的弹窗（入口行组件的 emit 与视图监听逐字对上）', async () => {
+    // 别的用例直接调 `openAccountEntry`，绕过了模板；这条从点按钮开始，
+    // 组件 emit 名或模板里的 `@open` 写错一个字，这里就红。
+    const wrapper = await renderView(AccountCouponsView)
+    const row = wrapper.findAll('.entry-row').find((node) => node.text().includes('修改用户名'))
+    expect(row).toBeTruthy()
+
+    await row!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('input[placeholder="请输入新的用户名"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
   it('改用户名：输入回写父级草稿，点保存把新值提交上去', async () => {
     const wrapper = await renderView(AccountCouponsView)
     await openEntry(wrapper, 'username')
