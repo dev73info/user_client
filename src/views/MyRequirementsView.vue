@@ -5,12 +5,13 @@ import PublishModal from '@/components/PublishModal.vue'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import AcceptanceDialog from '@/components/AcceptanceDialog.vue'
 import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
-import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import RequirementCommentDialog from '@/components/RequirementCommentDialog.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementPager from '@/components/requirements/RequirementPager.vue'
+import RequirementRow from '@/components/requirements/RequirementRow.vue'
 import RequirementStrip from '@/components/requirements/RequirementStrip.vue'
 import RequirementToolbar from '@/components/requirements/RequirementToolbar.vue'
+import RequirementVersionReviewCard from '@/components/requirements/RequirementVersionReviewCard.vue'
 import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
 import {
   getUnionPaymentAuthorizeUrl,
@@ -44,7 +45,6 @@ import {
   type AdapayPaymentResponse,
 } from '@/api/adapay'
 import { breachStatusLabel } from '@/shared/breachStatus'
-import { invoiceEntryState } from '@/shared/invoiceAvailability'
 import {
   cancelRequirement as cancelRequirementApi,
   claimRequirementResource as claimRequirementResourceApi,
@@ -57,8 +57,6 @@ import {
   type RequirementItem,
   type RequirementPaymentMode,
   type RequirementPendingResourceVersionDeleteRequest,
-  type RequirementResourceVisibility,
-  type RequirementStatus,
 } from '@/api/requirements'
 import { useClientPagination } from '@/composables/useClientPagination'
 import { useMyRequirementsData } from '@/composables/useMyRequirementsData'
@@ -67,25 +65,40 @@ import { useAuthStore } from '@/stores/auth'
 import {
   REQUIREMENT_FILTER_OPTIONS,
   requirementBucketOf,
-  requirementStatusLabel,
   summarizeRequirementBuckets,
   type RequirementFilterKey,
 } from '@/shared/requirementStatus'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
+import { describeClaimResourceError } from '@/shared/requirementResourceClaim'
 import {
-  canClaimRequirementResource,
-  describeClaimResourceError,
-  isRequirementResourceClaimed,
-} from '@/shared/requirementResourceClaim'
-import {
-  canClaimResourceWhileLocked,
   isRequirementArchived,
-  isRequirementCleared,
   normalizeDevelopmentCycle,
-  requirementArchiveBanner,
-  requirementLockRemainingDays,
   validateDevelopmentCycleInput,
 } from '@/shared/requirementArchive'
+import { type RequirementRowActionKey } from '@/shared/requirementRowActions'
+import {
+  canCancel,
+  canClaimResource,
+  canComment,
+  canOpenAcceptance,
+  canOpenAfterSales,
+  canPay,
+  canReportBreach,
+  canResubmit,
+  canToggleRequirementResourceVisibility,
+  cancelConfirmHint,
+  formatBudget,
+  hasBoundResource,
+  hasPendingResourceVersionDeleteReview,
+  isAdapayRequirement,
+  isRequirementContractSigned,
+  isSelfManagedRequirement,
+  nextResourceVisibility,
+  pendingResourceVersionDeleteRequests,
+  pendingVersionRejectNote,
+  publishedVersionCount,
+  type RequirementRowFacts,
+} from '@/shared/requirementRowRules'
 import {
   calculateFinalDepositAmount,
   calculateFinalPaymentAmount,
@@ -96,7 +109,7 @@ import {
   validateRequirementRichText,
 } from '@/utils/requirementRichText'
 
-import { TDropdown, TDropdownItem, TDropdownMenu, TIcon, TMessage, ArrowDown } from 'ui_73info'
+import { TMessage } from 'ui_73info'
 
 const router = useRouter()
 const route = useRoute()
@@ -290,7 +303,9 @@ const breachWithdrawnByMe = computed(
  */
 const breachCanStartNewRound = computed(() => {
   const item = breachRequirement.value
-  return item != null && !isSelfManagedRequirement(item) && isRequirementContractSigned(item)
+  return (
+    item != null && !isSelfManagedRequirement(item) && isRequirementContractSigned(rowFacts(item))
+  )
 })
 
 /**
@@ -369,187 +384,16 @@ async function handleRefresh() {
   await reload()
 }
 
-/** 状态徽标的语义档：与统一层 .wb-badge 的四档（成功 / 警示 / 危险 / 主色）一一对应。
-    此前全表只有一支琥珀胶囊，已完成与已驳回看起来是一回事，扫列表时看不出轻重。 */
-function statusBadgeClass(item: RequirementItem) {
-  if (isWaitingContractSign(item)) return 'wb-badge--warning'
-  if (item.status === 'completed') return 'wb-badge--success'
-  if (item.status === 'rejected' || item.status === 'cancelled') return 'wb-badge--danger'
-  if (
-    item.status === 'deposit_paid' ||
-    item.status === 'in_development' ||
-    item.status === 'pending_final' ||
-    item.status === 'pending_settlement'
-  ) {
-    return 'wb-badge--accent'
-  }
-  return 'wb-badge--warning'
-}
-
-/** 状态文案走全站统一口径；`deposit_paid` 一码两义，拿到支付模式就传进去（见 `requirementStatusLabel`）。 */
-function formatRequirementStatus(status: RequirementStatus, paymentMode?: RequirementPaymentMode) {
-  return requirementStatusLabel(status, paymentMode)
-}
-
-function isWaitingContractSign(item: RequirementItem) {
-  // 无担保模式（self_managed）不需要合同签署
-  if (isSelfManagedRequirement(item)) {
-    return false
-  }
-  const status = signingStatusForRequirement(item)
-  return Boolean(
-    (item.status === 'pending_deposit' || item.status === 'deposit_paid') &&
-    status?.has_contract &&
-    (!status.party_a_signed || !status.party_b_signed),
-  )
-}
-
-function formatRequirementDisplayStatus(item: RequirementItem) {
-  if (!isSelfManagedRequirement(item) && item.status === 'pending_deposit') {
-    if (!hasBoundResource(item)) {
-      return '待开发者接单'
-    }
-    if (!isRequirementContractSigned(item)) {
-      return '待签合同'
-    }
-    return '待付定金'
-  }
-  return isWaitingContractSign(item)
-    ? '待签合同'
-    : formatRequirementStatus(item.status, item.payment_mode)
-}
-
-function isSelfManagedRequirement(item: RequirementItem) {
-  return item.payment_mode === 'self_managed'
-}
-
-function isAdapayRequirement(item: RequirementItem) {
-  return item.payment_mode === 'platform_guarantee'
-}
-
-function formatRequirementTime(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return '刚刚更新'
-  }
-  return date.toLocaleString('zh-CN', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function formatBudget(value?: number | null) {
-  if (value == null) {
-    return '待议价'
-  }
-  return `¥${value.toFixed(2)}`
-}
-
-function canPay(status: RequirementStatus, item?: RequirementItem) {
-  if (item && isSelfManagedRequirement(item)) {
-    return false
-  }
-  if (item && !isRequirementContractSigned(item)) {
-    return false
-  }
-
-  return status === 'pending_deposit' || status === 'pending_final'
-}
-
-// 交付版本 = 绑定资源项目的资源版本，直接复用资源项目版本接口（见方案 B）。
-function publishedVersionCount(item: RequirementItem) {
-  // 没查到过（未绑定资源 / 那次请求失败）才回退需求单上的版本计数；查到空列表就是 0 版。
-  const versions = versionsForRequirement(item)
-  return versions ? versions.length : (item.bound_resource_version_count ?? 0)
-}
-
 function deliveryVersionsFor(item: RequirementItem) {
   return versionsForRequirement(item) ?? []
-}
-
-/** 交付版本摘要。只报版本数与最新版本号：到货时间在需求详情里看，卡片上再挂一串时间只是噪音。 */
-function latestDeliveryVersionLabel(item: RequirementItem) {
-  const latest = deliveryVersionsFor(item)[0]
-  return latest ? `（最新 ${latest.version}）` : ''
 }
 
 function deliveryVersionNoteText(note?: string | null) {
   return requirementRichTextPlainText(note ?? '')
 }
 
-function canRequestFinalPayment(item: RequirementItem) {
-  // 无担保模式（self_managed）完成无需合同已签；仅担保模式需要双方已签合同
-  const contractSigned = isSelfManagedRequirement(item) || isRequirementContractSigned(item)
-  return (
-    hasBoundResource(item) &&
-    item.status === 'in_development' &&
-    publishedVersionCount(item) > 0 &&
-    contractSigned
-  )
-}
-
-function requirementFinalActionLabel(item: RequirementItem) {
-  return isSelfManagedRequirement(item) ? '确认完成' : '支付尾款'
-}
-
-function canResubmit(status: RequirementStatus) {
-  // 与后端一致：被驳回的需求改完可以再提；过审后撤回（已取消）的需求同样保留着，也能改完重新提交审核。
-  return status === 'rejected' || status === 'cancelled'
-}
-
-function canCancel(item: RequirementItem) {
-  // 与后端一致（P10）：担保模式停在「已缴定金」时，取消会把托管定金全额原路退还并顺带解绑，
-  // 所以这一档不再要求「没有被接单」；其余档位仍是「未接单 + 处于可取消状态」。
-  // 自管模式过审即「待开发者接单」（deposit_paid），同样允许撤回。
-  if (item.status === 'deposit_paid') {
-    return true
-  }
-  return (
-    !hasBoundResource(item) &&
-    (item.status === 'pending_review' ||
-      item.status === 'rejected' ||
-      item.status === 'pending_deposit')
-  )
-}
-
-/** 取消确认文案：取消一律保留为「已取消」终态（P9 之后不再物理删除），可以改完重新提交审核。 */
-function cancelConfirmHint(item: RequirementItem) {
-  if (item.status === 'deposit_paid' && !isSelfManagedRequirement(item)) {
-    return '取消后该需求单保留为「已取消」，托管定金将全额原路退还；开发者已占用的资源会随之释放。'
-  }
-  return '取消后该需求单保留为「已取消」，可以重新编辑后再提交审核。'
-}
-
-/** 待分账提示：尾款缴清到渠道分账之间有等待期。结单后的保证金说明已去掉。 */
-function settlementHint(item: RequirementItem): string {
-  if (item.status === 'pending_settlement') {
-    return '尾款已缴，渠道分账中（通常 7 天），完成后结单并开放解除合作。'
-  }
-  return ''
-}
-
-function canReportBreach(item: RequirementItem) {
-  // 待分账（尾款已缴、分账在排队）也允许解除合作：等待期内的违约由后端取消排队中的分账。
-  // 待接单（`pending_deposit`）里含「已签约未缴定金」：甲方拒缴定金同样是违约，可以申报，
-  // 那种案件没有支付单、只作责任认定；尚未签合同时后端按「无生效合同」拒掉，入口不给——
-  // 结案回滚把需求打回待接单、合同同时作废，也正落在这条上（BUG-038）。
-  return (
-    item.payment_mode !== 'self_managed' &&
-    [
-      'pending_deposit',
-      'deposit_paid',
-      'in_development',
-      'pending_final',
-      'pending_settlement',
-    ].includes(item.status) &&
-    (item.status !== 'pending_deposit' || isRequirementContractSigned(item))
-  )
-}
-
 async function openBreachReport(item: RequirementItem) {
-  if (!canReportBreach(item)) {
+  if (!canReportBreach(item, rowFacts(item))) {
     return
   }
   breachRequirement.value = item
@@ -729,22 +573,18 @@ async function submitBreachReport() {
   }
 }
 
-function hasBoundResource(item: RequirementItem) {
-  return item.bound_resource_id != null
-}
-
 /**
- * R014：归档（锁定 / 清除）横幅。未归档时 `title` 为空串，模板据此不渲染横幅。
- * 判定与文案都在 `shared/requirementArchive.ts`，页面只调用。
+ * 一行用到的按条外部事实：合同签署状态、绑定资源的版本列表、可开票汇总。
+ *
+ * 三张按条 map 只有数据源持有，纯函数层不许再去查一遍（见 `requirementRowRules` 的说明），
+ * 所以视图在这里取一次、原样传进行组件与各处守卫，全页只有这一个出口。
  */
-function archiveBanner(item: RequirementItem) {
-  return requirementArchiveBanner(item)
-}
-
-/** R014：锁定剩余天数文案（未锁定返回空串）。 */
-function lockRemainingText(item: RequirementItem) {
-  const days = requirementLockRemainingDays(item)
-  return days == null ? '' : `约剩 ${days} 天`
+function rowFacts(item: RequirementItem): RequirementRowFacts {
+  return {
+    contract: signingStatusForRequirement(item),
+    versions: versionsForRequirement(item),
+    invoiceSummary: invoiceSummaryForRequirement(item),
+  }
 }
 
 function openConversation(item: RequirementItem) {
@@ -755,49 +595,6 @@ function openConversation(item: RequirementItem) {
 function openInvoiceDialog(item: RequirementItem) {
   invoiceRequirement.value = item
   invoiceDialogVisible.value = true
-}
-
-function isRequirementContractSigned(item: RequirementItem) {
-  const status = signingStatusForRequirement(item)
-  return Boolean(status?.party_a_signed && status.party_b_signed)
-}
-
-function canOpenContractSign(item: RequirementItem) {
-  // 无担保模式（self_managed）不提供合同签署入口
-  if (isSelfManagedRequirement(item)) {
-    return false
-  }
-  return Boolean(signingStatusForRequirement(item)?.has_contract)
-}
-
-// 我方已签时该入口只是「查看合同」，未签时是「签署合同」，前者按查看类弱化显示。
-function isContractButtonViewOnly(item: RequirementItem) {
-  return Boolean(signingStatusForRequirement(item)?.party_a_signed)
-}
-
-function contractStatusHint(item: RequirementItem) {
-  // 无担保模式（self_managed）不需要合同，不显示合同状态提示
-  if (isSelfManagedRequirement(item)) {
-    return ''
-  }
-  const status = signingStatusForRequirement(item)
-  if (!status?.has_contract) return ''
-
-  // 「可支付定金」只在还停在待付定金这一步时才成立。合同双方签完后是既成事实，
-  // 需求还在开发中 / 待付尾款 / 已完成时再挂着「合同已签署」只是噪音，直接不显示。
-  const awaitingDeposit = item.status === 'pending_deposit'
-  if (status.party_a_signed && status.party_b_signed) {
-    return awaitingDeposit ? '合同已签署，可支付定金' : ''
-  }
-  if (status.party_a_signed) {
-    return awaitingDeposit ? '等待开发者签署合同，双方签完后可支付定金' : '等待开发者签署合同'
-  }
-  if (status.party_b_signed) {
-    return awaitingDeposit ? '待您签署合同，签完后可支付定金' : '待您签署合同'
-  }
-  // R012：合同页多了「自定义合同附件」。不提示这句，双方会直接签平台模板，事后要改就得作废重签。
-  // 附件只是条款补充，资金与期限仍按需求单与平台规则执行。
-  return '双方均可进入合同页签署；如需补充条款，可先上传或拟定自定义附件，经平台审核放行后再签'
 }
 
 function openContractSign(item: RequirementItem) {
@@ -828,22 +625,6 @@ async function viewContractPreview(item: RequirementItem) {
   openContractSign(item)
 }
 
-/**
- * 担保模式下，开发者接单后合同不再自动生成，需由需求方或开发者主动发起。
- */
-function canCreateRequirementContract(item: RequirementItem) {
-  if (isSelfManagedRequirement(item)) {
-    return false
-  }
-  if (!hasBoundResource(item)) {
-    return false
-  }
-  if (item.status !== 'pending_deposit' && item.status !== 'deposit_paid') {
-    return false
-  }
-  return !signingStatusForRequirement(item)?.has_contract
-}
-
 async function createRequirementContractAction(item: RequirementItem) {
   if (!auth.isAuthed || !auth.token) {
     TMessage.error('请先登录后再继续操作')
@@ -865,71 +646,6 @@ async function createRequirementContractAction(item: RequirementItem) {
 
 function closeConversation() {
   conversationVisible.value = false
-}
-
-function currentResourceVisibility(item: RequirementItem): RequirementItem['resource_visibility'] {
-  return item.resource_visibility ?? null
-}
-
-function canToggleRequirementResourceVisibility(item: RequirementItem) {
-  return hasBoundResource(item) && item.status === 'completed'
-}
-
-function hasPendingResourceVersionDeleteReview(item: RequirementItem) {
-  return hasBoundResource(item) && pendingResourceVersionDeleteRequests(item).length > 0
-}
-
-function pendingResourceVersionDeleteRequests(item: RequirementItem) {
-  return item.pending_resource_version_delete_requests ?? []
-}
-
-function pendingResourceVersionLabel(item?: RequirementPendingResourceVersionDeleteRequest | null) {
-  return item?.version?.trim() || '未命名版本'
-}
-
-function pendingResourceVersionTitle(item?: RequirementPendingResourceVersionDeleteRequest | null) {
-  return `版本号 ${pendingResourceVersionLabel(item)}`
-}
-
-/**
- * 拒绝过版本删除时回显理由。
- *
- * 待审核状态改由行内那枚「待审核」胶囊 + 右侧按钮表达，不再用一整行散文说「点哪里可以审核」，
- * 所以这里只负责拒绝理由（散文文案独占一行，见 .requirement-note--block）。
- */
-function versionDeleteRejectNote(item: RequirementItem) {
-  return item.resource_version_delete_review_note
-    ? `你上次拒绝删除版本：${item.resource_version_delete_review_note}`
-    : ''
-}
-
-function formatResourceVisibility(item: RequirementItem) {
-  const visibility = currentResourceVisibility(item)
-  if (visibility === 'public') {
-    return '公开'
-  }
-
-  return visibility === 'review' ? '审核中' : '私有'
-}
-
-function requirementSubscriptionLabel(item: RequirementItem) {
-  return item.subscribe_status_change ? '取消订阅' : '订阅'
-}
-
-/**
- * 只有当前是私有才提交公开审核，其余（已公开、审核中）都切回私有：
- * 审核中点一下即撤回，避免公开申请卡在审核队列里没有出口。
- */
-function nextResourceVisibility(item: RequirementItem): RequirementResourceVisibility {
-  return currentResourceVisibility(item) === 'private' ? 'public' : 'private'
-}
-
-function toggleResourceVisibilityLabel(item: RequirementItem) {
-  if (currentResourceVisibility(item) === 'review') {
-    return '审核中'
-  }
-
-  return nextResourceVisibility(item) === 'public' ? '公开' : '私有'
 }
 
 /**
@@ -1002,16 +718,17 @@ async function downloadRequirementVersion(
   }
 }
 
-function isRejectingVersion(request: RequirementPendingResourceVersionDeleteRequest) {
-  return versionDeleteRejectTargetId.value === request.version_id
-}
-
 function openRejectVersion(request: RequirementPendingResourceVersionDeleteRequest) {
   versionDeleteRejectTargetId.value = request.version_id
   versionDeleteRejectNotes.value = {
     ...versionDeleteRejectNotes.value,
     [request.version_id]: versionDeleteRejectNotes.value[request.version_id] ?? '',
   }
+}
+
+/** 拒绝原因草稿的写入口：卡片只 emit，record 由视图重建，保持单向数据流。 */
+function updateVersionDeleteRejectNote(versionId: number, value: string) {
+  versionDeleteRejectNotes.value = { ...versionDeleteRejectNotes.value, [versionId]: value }
 }
 
 function cancelRejectVersion() {
@@ -1022,16 +739,8 @@ function cancelRejectVersion() {
   versionDeleteRejectTargetId.value = null
 }
 
-function pendingVersionRejectNote(request: RequirementPendingResourceVersionDeleteRequest) {
-  return versionDeleteRejectNotes.value[request.version_id] ?? ''
-}
-
-function formatPendingVersionRequestedAt(item: RequirementPendingResourceVersionDeleteRequest) {
-  return item.requested_at?.trim() || '时间未知'
-}
-
 function openPayModal(item: RequirementItem) {
-  if (!canPay(item.status, item)) {
+  if (!canPay(item, rowFacts(item))) {
     return
   }
   payRequirement.value = item
@@ -1065,7 +774,7 @@ async function requestFinalPayment(item: RequirementItem) {
     return
   }
 
-  if (publishedVersionCount(item) <= 0) {
+  if (publishedVersionCount(item, rowFacts(item)) <= 0) {
     TMessage.warning('开发者至少发布一个资源版本后，才能确认完成')
     return
   }
@@ -1113,15 +822,6 @@ async function submitCancelRequirement() {
   } finally {
     cancelLoading.value = false
   }
-}
-
-/** 入口显示条件与后端前置一致：已结单 + 有交付资源 + 未转换（判定在 shared/requirementResourceClaim.ts）。 */
-function canClaimResource(item: RequirementItem) {
-  return canClaimRequirementResource(item)
-}
-
-function isResourceClaimed(item: RequirementItem) {
-  return isRequirementResourceClaimed(item)
 }
 
 function openClaimConfirm(item: RequirementItem) {
@@ -1211,32 +911,12 @@ async function confirmFinalPaymentRequest() {
   }
 }
 
-/**
- * 担保模式的验收入口：开发中与待付尾款都能提交。
- *
- * 验收可重复提交——不通过会留档并通知开发者整改：「开发中」留在原状态；
- * 「待付尾款」会退回「开发中」并挡住宿尾款（后端 `accept_delivery` 的 rolling_back 分支），
- * 开发者整改后重新验收通过才谈尾款。
- */
-function canOpenAcceptance(item: RequirementItem) {
-  if (isSelfManagedRequirement(item) || !isRequirementContractSigned(item)) {
-    return false
-  }
-  if (!hasBoundResource(item)) {
-    return false
-  }
-  if (item.status !== 'in_development' && item.status !== 'pending_final') {
-    return false
-  }
-  return publishedVersionCount(item) > 0
-}
-
 async function openAcceptanceModal(item: RequirementItem) {
   if (!auth.isAuthed || !auth.token) {
     TMessage.error('请先登录后再继续操作')
     return
   }
-  if (!canOpenAcceptance(item)) {
+  if (!canOpenAcceptance(item, rowFacts(item))) {
     TMessage.warning('当前需求还不能验收，请确认双方已签合同且开发者已提交交付版本')
     return
   }
@@ -1275,11 +955,6 @@ async function handleAcceptanceSubmitted(result: AdapayAcceptanceResult) {
   }
 }
 
-/** 解除合作入口：只有担保模式的需求有解除合作（结单后仍需冻结接单保证金、且尾款能原路退回）。 */
-function canOpenAfterSales(item: RequirementItem) {
-  return item.status === 'completed' && !isSelfManagedRequirement(item)
-}
-
 /** 解除合作入口：结单后打开 `AfterSalesModal`（本页是需求方视角，可发起），案件列表与表态都在弹窗内。 */
 function openAfterSalesModal(item: RequirementItem) {
   if (!auth.isAuthed || !auth.token) {
@@ -1300,10 +975,6 @@ function closeAfterSalesModal() {
   afterSalesTarget.value = null
 }
 
-function canComment(status: RequirementStatus) {
-  return status === 'completed'
-}
-
 function openCommentModal(item: RequirementItem) {
   if (!canComment(item.status)) {
     return
@@ -1319,16 +990,6 @@ function closeCommentModal() {
 
 async function handleCommentSubmitted() {
   await reload()
-}
-
-function formatCommentSummary(rating: number, text?: string | null) {
-  const score = `${rating.toFixed(1)} 分`
-  const body = text?.trim() ?? ''
-  // 纯数字文案多半是脏数据（评分/信用分误写入），不当作评语展示
-  if (!body || /^\d+(\.\d+)?$/.test(body) || body.length < 2) {
-    return score
-  }
-  return `${score} · ${body}`
 }
 
 function openRequirementEditModal(item: RequirementItem) {
@@ -1525,7 +1186,7 @@ async function submitVersionDeleteReview(
     return
   }
 
-  const note = pendingVersionRejectNote(request).trim()
+  const note = pendingVersionRejectNote(versionDeleteRejectNotes.value, request).trim()
 
   if (action === 'reject' && note.length > 500) {
     TMessage.error('拒绝原因不能超过 500 字')
@@ -1869,128 +1530,6 @@ function handleWechatAuthorized() {
   TMessage.success('微信授权成功，请再次点击支付')
 }
 
-/**
- * 需求行操作区分四层展示：开关芯片（订阅 / 公开）、行内常用动作（下载 / 沟通 / 解除合作）、
- * 唯一主操作、以及低频动作的「更多」菜单。
- *
- * 下面这些函数只做展示分组，能不能做仍然由既有的 canXxx / hasXxx 守卫函数决定，
- * 展示层不重复实现业务判定，避免两处规则漂移。
- */
-type RequirementRowActionKey =
-  | 'contract-create'
-  | 'contract-sign'
-  | 'contract-view'
-  | 'resubmit'
-  | 'pay'
-  | 'acceptance'
-  | 'finish'
-  | 'comment'
-  | 'download'
-  | 'conversation'
-  | 'after-sales'
-  | 'homepage'
-  | 'invoice'
-  | 'breach'
-  | 'cancel'
-  | 'claim-resource'
-
-type RequirementRowAction = {
-  key: RequirementRowActionKey
-  label: string
-  danger?: boolean
-  disabled?: boolean
-  title?: string
-}
-
-/** 合同入口全行只有一个：无合同→发起，我方未签→签署，已签→只看（进「更多」）。 */
-function rowContractAction(item: RequirementItem): 'create' | 'sign' | 'view' | null {
-  if (canCreateRequirementContract(item)) {
-    return 'create'
-  }
-  if (!canOpenContractSign(item)) {
-    return null
-  }
-  return isContractButtonViewOnly(item) ? 'view' : 'sign'
-}
-
-/**
- * 唯一主操作（实心按钮），取「当前该做的那一步」。
- * 返回 null 表示这一行没有待办（例如已结单且已评价），此时不画实心按钮。
- */
-function primaryRowAction(item: RequirementItem): RequirementRowAction | null {
-  const contractAction = rowContractAction(item)
-  if (contractAction === 'create') {
-    const creating = contractCreatingId.value === item.requirement_id
-    return {
-      key: 'contract-create',
-      label: creating ? '发起中...' : '发起合同',
-      disabled: creating,
-    }
-  }
-  if (contractAction === 'sign') {
-    return { key: 'contract-sign', label: '签署合同' }
-  }
-
-  if (canResubmit(item.status)) {
-    return { key: 'resubmit', label: '编辑' }
-  }
-
-  // 「取消需求」与「支付 / 验收 / 评价」在原来的 v-if 链里就是互斥的，这里保持同样的优先级。
-  if (!canCancel(item)) {
-    if (canPay(item.status, item)) {
-      return { key: 'pay', label: item.status === 'pending_final' ? '支付尾款' : '支付定金' }
-    }
-    if (canOpenAcceptance(item)) {
-      return { key: 'acceptance', label: '验收' }
-    }
-    if (canRequestFinalPayment(item)) {
-      return { key: 'finish', label: requirementFinalActionLabel(item) }
-    }
-    if (canComment(item.status) && item.comment_rating == null) {
-      return { key: 'comment', label: '去评价' }
-    }
-  }
-
-  return null
-}
-
-/**
- * 「更多」菜单项，同时用于决定是否渲染「更多」触发器（空数组时不渲染）。
- *
- * 已评价的行不再把评价做成主操作，但后端是 upsert（`comment_requirement_by_user`），
- * 仍可以改，所以菜单里保留「修改评价」，不能让这个入口消失。
- */
-function moreRowActions(item: RequirementItem): RequirementRowAction[] {
-  const entries: RequirementRowAction[] = []
-
-  if (rowContractAction(item) === 'view') {
-    entries.push({ key: 'contract-view', label: '查看合同' })
-  }
-  if (hasBoundResource(item)) {
-    entries.push({ key: 'homepage', label: '资源主页' })
-  }
-  if (canComment(item.status) && item.comment_rating != null && !canCancel(item)) {
-    entries.push({ key: 'comment', label: '修改评价' })
-  }
-  // 开不出票时不留一个点了才报错的入口：置灰并把原因挂在 title 上（灰项不可点，原因只能靠悬浮）。
-  const invoiceState = invoiceEntryState(item.payment_mode, invoiceSummaryForRequirement(item))
-  entries.push(
-    invoiceState.enabled
-      ? { key: 'invoice', label: '获取发票' }
-      : { key: 'invoice', label: '获取发票', disabled: true, title: invoiceState.reason },
-  )
-  // 「解除合作」是唯一的退出入口（2026-10-06 起两套旧出口合并）：进去先协商，
-  // 对方同意即无责退出、不同意才申请平台介入。
-  if (canReportBreach(item)) {
-    entries.push({ key: 'breach', label: '解除合作', danger: true })
-  }
-  if (canCancel(item)) {
-    entries.push({ key: 'cancel', label: '取消需求', danger: true })
-  }
-
-  return entries
-}
-
 /** 行内动作与菜单项统一从这里分发到既有 handler，不新增业务逻辑。 */
 function runRowAction(item: RequirementItem, key: RequirementRowActionKey) {
   switch (key) {
@@ -2045,14 +1584,6 @@ function runRowAction(item: RequirementItem, key: RequirementRowActionKey) {
     default:
       return
   }
-}
-
-/**
- * 「更多」菜单的 `command` 回传的是字符串，在脚本里收口成联合类型再分发，
- * 避免在模板表达式里写类型断言。
- */
-function runMoreRowAction(item: RequirementItem, key: string) {
-  runRowAction(item, key as RequirementRowActionKey)
 }
 
 /**
@@ -2178,388 +1709,40 @@ watch(
       <template v-if="filteredRequirements.length">
         <ul class="wb-list requirement-list">
           <template v-for="item in pagedRequirements" :key="item.requirement_id">
-            <li
-              class="requirement-row wb-item wb-item--clickable"
-              :class="{ expanded: isVersionDeleteReviewExpanded(item) }"
-              :aria-label="`打开「${item.title}」的沟通记录`"
-              tabindex="0"
-              @click="openRequirementConversationPage(item)"
-              @keydown.enter.prevent="openRequirementConversationPage(item)"
-              @keydown.space.prevent="openRequirementConversationPage(item)"
-            >
-              <div class="requirement-card-body">
-                <div class="requirement-main wb-item__main">
-                  <div class="requirement-title wb-item__title">
-                    <strong>{{ item.title }}</strong>
-                    <span>{{ item.requirement_id }}</span>
-                  </div>
-                  <!-- R014：合同有效期届满后的锁定 / 清除横幅。锁定态可下载、写操作置灰；清除态只剩审计台账。 -->
-                  <div
-                    v-if="archiveBanner(item).title"
-                    class="requirement-archive-banner"
-                    :class="`requirement-archive-banner--${archiveBanner(item).state}`"
-                    role="status"
-                    data-testid="requirement-archive-banner"
-                  >
-                    <strong>{{ archiveBanner(item).title }}</strong>
-                    <span
-                      v-if="lockRemainingText(item)"
-                      class="requirement-archive-banner__remaining"
-                      >{{ lockRemainingText(item) }}</span
-                    >
-                    <p>{{ archiveBanner(item).description }}</p>
-                  </div>
-                  <div class="requirement-details">
-                    <!-- 短事实走标签：发布方式用全站共用的 .pay-mode-chip（见 PaymentModeChip，与需求大厅卡片同一枚胶囊，
-                       底色按发布方式分档），其余走统一层 .wb-badge（浅底 + 深字：绿 = 已公开、琥珀 = 有待审核项）；
-                       散文式的说明仍用 .requirement-note 独占一行。 -->
-                    <PaymentModeChip :mode="item.payment_mode" />
-                    <span v-if="hasBoundResource(item)" class="wb-badge wb-badge--success">{{
-                      formatResourceVisibility(item)
-                    }}</span>
-                    <span v-if="hasBoundResource(item)" class="wb-badge"
-                      >交付 {{ publishedVersionCount(item) }} 版{{
-                        latestDeliveryVersionLabel(item)
-                      }}</span
-                    >
-                    <!-- R014：开发周期（天）——担保需求合同有效期依据；无担保 / 未填不渲染。 -->
-                    <span
-                      v-if="item.development_cycle_days != null"
-                      class="wb-badge"
-                      data-testid="requirement-development-cycle"
-                      >开发周期 {{ item.development_cycle_days }} 天</span
-                    >
-                    <!-- 已转换的不再给按钮（点了必 409），改成一枚不可点的标记；时间挂在 title 上。 -->
-                    <span
-                      v-if="isResourceClaimed(item)"
-                      class="wb-badge wb-badge--success"
-                      :title="`转换时间：${formatRequirementTime(item.resource_claimed_at ?? '')}`"
-                      data-testid="requirement-claimed-badge"
-                      >已转为我的资源</span
-                    >
-                    <small v-if="contractStatusHint(item)" class="requirement-note">{{
-                      contractStatusHint(item)
-                    }}</small>
-                    <!-- R014：锁定期内的「转为我的资源」引导（复用 R006 转换入口，转换不可撤销）。 -->
-                    <small
-                      v-if="canClaimResourceWhileLocked(item)"
-                      class="requirement-note requirement-note--block"
-                      data-testid="requirement-claim-guidance"
-                    >
-                      资料保留期内请尽快把交付的资源项目「转为我的资源」：转换后资源归你所有、不可撤销，
-                      保留期届满平台清除资料后，开发者侧不再控制该资源。
-                    </small>
-                    <span
-                      v-if="hasPendingResourceVersionDeleteReview(item)"
-                      class="wb-badge wb-badge--warning"
-                    >
-                      待审核 · 开发者申请删除
-                      {{ pendingResourceVersionDeleteRequests(item).length }} 个版本
-                    </span>
-                    <small
-                      v-else-if="
-                        hasBoundResource(item) &&
-                        item.resource_version_delete_request_status === 'rejected' &&
-                        item.resource_version_delete_review_note
-                      "
-                      class="requirement-note requirement-note--block"
-                      >{{ versionDeleteRejectNote(item) }}</small
-                    >
-                    <small
-                      v-if="item.status === 'rejected' && item.review_note"
-                      class="requirement-note requirement-note--block"
-                      >驳回原因：{{ item.review_note }}</small
-                    >
-                    <small
-                      v-if="settlementHint(item)"
-                      class="requirement-note requirement-note--block"
-                      >{{ settlementHint(item) }}</small
-                    >
-                    <small
-                      v-if="item.comment_rating != null"
-                      class="requirement-note requirement-note--block"
-                    >
-                      我的评价：{{ formatCommentSummary(item.comment_rating, item.comment_text) }}
-                    </small>
-                    <small
-                      v-if="item.developer_comment_rating != null"
-                      class="requirement-note requirement-note--block"
-                    >
-                      对方评价（开发者）：{{
-                        formatCommentSummary(
-                          item.developer_comment_rating,
-                          item.developer_comment_text,
-                        )
-                      }}
-                    </small>
-                  </div>
-                </div>
-                <aside class="requirement-summary wb-item__side" aria-label="需求摘要">
-                  <span class="wb-badge" :class="statusBadgeClass(item)">
-                    {{ formatRequirementDisplayStatus(item) }}
-                  </span>
-                  <div class="requirement-budget">
-                    <small>预算</small>
-                    <strong>{{ formatBudget(item.budget) }}</strong>
-                  </div>
-                  <time>
-                    <small>更新时间</small>
-                    <span>{{ formatRequirementTime(item.updated_at) }}</span>
-                  </time>
-                </aside>
-              </div>
-              <!-- 操作区分四层：开关芯片（订阅 / 公开）→ 行内常用动作 → 更多菜单 → 唯一主操作。
-                 订阅开关每行都有，所以这块不会为空。 -->
-              <div class="requirement-actions">
-                <div class="requirement-toggles">
-                  <button
-                    class="requirement-toggle"
-                    type="button"
-                    :aria-pressed="item.subscribe_status_change"
-                    :disabled="requirementSubscriptionLoadingId === item.requirement_id"
-                    :title="
-                      item.subscribe_status_change
-                        ? '已订阅状态变化，点击取消'
-                        : '订阅状态变化后通知我'
-                    "
-                    @click.stop="toggleRequirementSubscription(item)"
-                  >
-                    <span class="requirement-toggle__track" aria-hidden="true"></span>
-                    {{
-                      requirementSubscriptionLoadingId === item.requirement_id
-                        ? '提交中...'
-                        : requirementSubscriptionLabel(item)
-                    }}
-                  </button>
-                  <button
-                    v-if="
-                      canToggleRequirementResourceVisibility(item) && !isRequirementArchived(item)
-                    "
-                    class="requirement-toggle"
-                    type="button"
-                    :aria-pressed="currentResourceVisibility(item) === 'public'"
-                    :disabled="resourceVisibilityLoadingId === item.requirement_id"
-                    :title="
-                      currentResourceVisibility(item) === 'review'
-                        ? '点击撤回公开审核，资源恢复为私有'
-                        : '切换关联资源的公开 / 私有'
-                    "
-                    @click.stop="toggleRequirementResourceVisibility(item)"
-                  >
-                    <span class="requirement-toggle__track" aria-hidden="true"></span>
-                    {{
-                      resourceVisibilityLoadingId === item.requirement_id
-                        ? '提交中...'
-                        : toggleResourceVisibilityLabel(item)
-                    }}
-                  </button>
-                </div>
+            <RequirementRow
+              :item="item"
+              :facts="rowFacts(item)"
+              :version-review-expanded="isVersionDeleteReviewExpanded(item)"
+              :contract-creating="contractCreatingId === item.requirement_id"
+              :subscription-loading="requirementSubscriptionLoadingId === item.requirement_id"
+              :resource-visibility-loading="resourceVisibilityLoadingId === item.requirement_id"
+              :resource-downloading-id="resourceDownloadingId"
+              :after-sales-badge="afterSalesBadgeFor(item.requirement_id)"
+              :after-sales-pending-count="afterSalesPendingCount(item.requirement_id)"
+              @open="openRequirementConversationPage(item)"
+              @action="(key) => runRowAction(item, key)"
+              @toggle-subscription="toggleRequirementSubscription(item)"
+              @toggle-visibility="toggleRequirementResourceVisibility(item)"
+              @toggle-version-review="toggleVersionDeleteReviewCard(item)"
+            />
 
-                <!-- 行内控件各自处理自己的点击与回车，在容器这一层就拦住，别再冒泡到整行的「打开沟通页」。
-                   注意「更多」那个按钮上不能再挂 @click.stop：TDropdown 的触发监听挂在自己的外层
-                   span 上（el-dropdown 当时是挂在触发元素自身），在按钮处截断冒泡等于菜单永远打不开。 -->
-                <div class="requirement-actions__list" @click.stop @keydown.stop>
-                  <button
-                    v-if="hasBoundResource(item) && !isRequirementCleared(item)"
-                    class="ghost small action-emphasis"
-                    type="button"
-                    :disabled="resourceDownloadingId === item.bound_resource_id"
-                    @click.stop="runRowAction(item, 'download')"
-                  >
-                    {{ resourceDownloadingId === item.bound_resource_id ? '准备中...' : '下载' }}
-                  </button>
-                  <button
-                    v-if="hasBoundResource(item)"
-                    class="ghost small action-quiet"
-                    type="button"
-                    @click.stop="runRowAction(item, 'conversation')"
-                  >
-                    会话
-                  </button>
-                  <!-- 已结单且有交付资源、尚未转换时才出现；转换后由上方的「已转为我的资源」标记接替。 -->
-                  <button
-                    v-if="canClaimResource(item)"
-                    class="ghost small action-emphasis"
-                    type="button"
-                    title="把开发者交付的资源转为我自己的资源项目（不可撤销）"
-                    @click.stop="runRowAction(item, 'claim-resource')"
-                  >
-                    转为我的资源
-                  </button>
-                  <!-- 版本删除审核没有别的入口（整行点击归会话），所以这里给它一个按钮，
-                     与下方展开的审核卡片成对出现。 -->
-                  <button
-                    v-if="
-                      hasPendingResourceVersionDeleteReview(item) && !isRequirementArchived(item)
-                    "
-                    class="ghost small action-emphasis"
-                    type="button"
-                    :aria-expanded="isVersionDeleteReviewExpanded(item)"
-                    @click.stop="toggleVersionDeleteReviewCard(item)"
-                  >
-                    {{ isVersionDeleteReviewExpanded(item) ? '收起审核' : '审核资源' }}
-                  </button>
-                  <button
-                    v-if="canOpenAfterSales(item) && !isRequirementArchived(item)"
-                    class="ghost small action-emphasis"
-                    :class="{ 'has-todo-badge': afterSalesBadgeFor(item.requirement_id) }"
-                    type="button"
-                    @click.stop="runRowAction(item, 'after-sales')"
-                  >
-                    解除合作
-                    <span
-                      v-if="afterSalesBadgeFor(item.requirement_id)"
-                      class="todo-badge"
-                      :title="`有 ${afterSalesPendingCount(item.requirement_id)} 条解除合作待你处理`"
-                      >{{ afterSalesBadgeFor(item.requirement_id) }}</span
-                    >
-                  </button>
-
-                  <TDropdown
-                    v-if="moreRowActions(item).length && !isRequirementArchived(item)"
-                    trigger="click"
-                    @command="(key) => runMoreRowAction(item, String(key))"
-                  >
-                    <button
-                      class="ghost small requirement-actions__more"
-                      type="button"
-                      aria-haspopup="menu"
-                      title="更多操作"
-                    >
-                      更多
-                      <TIcon>
-                        <ArrowDown />
-                      </TIcon>
-                    </button>
-                    <template #dropdown>
-                      <TDropdownMenu>
-                        <TDropdownItem
-                          v-for="entry in moreRowActions(item)"
-                          :key="entry.key"
-                          :command="entry.key"
-                          :disabled="entry.disabled"
-                          :title="entry.title"
-                          :class="{ 'is-danger': entry.danger }"
-                        >
-                          {{ entry.label }}
-                        </TDropdownItem>
-                      </TDropdownMenu>
-                    </template>
-                  </TDropdown>
-
-                  <button
-                    v-if="primaryRowAction(item) && !isRequirementArchived(item)"
-                    class="ghost small action-primary"
-                    type="button"
-                    :disabled="primaryRowAction(item)?.disabled"
-                    @click.stop="runRowAction(item, primaryRowAction(item)!.key)"
-                  >
-                    {{ primaryRowAction(item)!.label }}
-                  </button>
-                </div>
-              </div>
-            </li>
-
-            <li
+            <RequirementVersionReviewCard
               v-if="
                 isVersionDeleteReviewExpanded(item) &&
                 pendingResourceVersionDeleteRequests(item).length &&
                 !isRequirementArchived(item)
               "
-              class="requirement-review-card-row"
-            >
-              <section class="requirement-review-card" @click.stop>
-                <div class="requirement-review-card__header">
-                  <div>
-                    <h4>版本删除审核</h4>
-                  </div>
-                  <button
-                    class="ghost small"
-                    type="button"
-                    @click.stop="closeVersionDeleteReviewCard"
-                  >
-                    收起
-                  </button>
-                </div>
-                <div class="requirement-review-card-list">
-                  <article
-                    v-for="request in pendingResourceVersionDeleteRequests(item)"
-                    :key="request.version_id"
-                    class="requirement-review-item"
-                  >
-                    <div class="requirement-review-item__main">
-                      <div>
-                        <strong>{{ pendingResourceVersionTitle(request) }}</strong>
-                        <p>申请时间：{{ formatPendingVersionRequestedAt(request) }}</p>
-                      </div>
-                      <div class="requirement-review-item__actions">
-                        <button
-                          class="ghost small"
-                          type="button"
-                          :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id"
-                          @click.stop="submitVersionDeleteReview(item, request, 'approve')"
-                        >
-                          {{
-                            resourceVersionDeleteReviewLoadingId === item.requirement_id
-                              ? '处理中...'
-                              : '同意删除'
-                          }}
-                        </button>
-                        <button
-                          class="ghost small"
-                          type="button"
-                          :class="{ active: isRejectingVersion(request) }"
-                          :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id"
-                          @click.stop="openRejectVersion(request)"
-                        >
-                          拒绝删除
-                        </button>
-                      </div>
-                    </div>
-                    <p class="requirement-review-card__hint danger">
-                      同意后该版本文件会被永久删除，且无法恢复。
-                    </p>
-                    <div
-                      v-if="isRejectingVersion(request)"
-                      class="requirement-review-item__reject-panel"
-                    >
-                      <label
-                        class="requirement-review-card__field requirement-review-card__field--stacked"
-                      >
-                        <span>拒绝原因</span>
-                        <textarea
-                          v-model="versionDeleteRejectNotes[request.version_id]"
-                          class="comment-input"
-                          rows="4"
-                          maxlength="500"
-                          placeholder="可选：说明拒绝删除该版本的原因"
-                        ></textarea>
-                        <small class="requirement-note"
-                          >已输入 {{ pendingVersionRejectNote(request).length }} / 500 字</small
-                        >
-                      </label>
-                      <div class="requirement-review-card__actions">
-                        <button class="ghost small" type="button" @click.stop="cancelRejectVersion">
-                          取消
-                        </button>
-                        <button
-                          class="ghost small"
-                          type="button"
-                          :disabled="resourceVersionDeleteReviewLoadingId === item.requirement_id"
-                          @click.stop="submitVersionDeleteReview(item, request, 'reject')"
-                        >
-                          {{
-                            resourceVersionDeleteReviewLoadingId === item.requirement_id
-                              ? '处理中...'
-                              : '确认拒绝删除'
-                          }}
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                </div>
-              </section>
-            </li>
+              :item="item"
+              :review-loading="resourceVersionDeleteReviewLoadingId === item.requirement_id"
+              :reject-target-id="versionDeleteRejectTargetId"
+              :reject-notes="versionDeleteRejectNotes"
+              @close="closeVersionDeleteReviewCard"
+              @approve="submitVersionDeleteReview(item, $event, 'approve')"
+              @reject="submitVersionDeleteReview(item, $event, 'reject')"
+              @open-reject="openRejectVersion"
+              @cancel-reject="cancelRejectVersion"
+              @update-note="updateVersionDeleteRejectNote"
+            />
           </template>
         </ul>
 
@@ -3300,46 +2483,5 @@ watch(
   .pay-modal .breach-modal__decision .actions {
     flex-direction: column;
   }
-}
-
-/* R014：合同有效期届满后的锁定 / 清除横幅。锁定是「限时保留资料」，用琥珀提醒；
-   清除是终态，用中性灰，表示只剩审计台账。 */
-.requirement-archive-banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px;
-  margin: 10px 0 4px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #fde68a;
-  background: #fffbeb;
-  color: #92400e;
-}
-
-.requirement-archive-banner--cleared {
-  border-color: #cbd5e1;
-  background: #f8fafc;
-  color: #475569;
-}
-
-.requirement-archive-banner strong {
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.requirement-archive-banner__remaining {
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: rgba(146, 64, 14, 0.1);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.requirement-archive-banner p {
-  flex: 1 1 100%;
-  margin: 0;
-  font-size: 12.5px;
-  line-height: 1.7;
 }
 </style>

@@ -650,6 +650,49 @@
   }
 }
 
+/* R014：合同有效期届满后的锁定 / 清除横幅（.requirement-row 里的那一块）。
+   锁定是「限时保留资料」，用琥珀提醒；清除是终态，用中性灰，表示只剩审计台账。
+   原先写在 MyRequirementsView 的 scoped 块里，行拆成 RequirementRow.vue 后落回本文件——
+   需求行的全部视觉规则本来都在这里。 */
+.requirement-archive-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 10px 0 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.requirement-archive-banner--cleared {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.requirement-archive-banner strong {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.requirement-archive-banner__remaining {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(146, 64, 14, 0.1);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.requirement-archive-banner p {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
 /* --- 优惠券列表（个人中心） --- */
 .coupon-items {
   display: grid;
