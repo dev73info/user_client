@@ -64,9 +64,13 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import RealnameHero from '@/components/RealnameHero.vue'
 import WechatBindQrModal from '@/components/WechatBindQrModal.vue'
+import AsignDialog from '@/components/account/AsignDialog.vue'
 import CloseAccountDialog from '@/components/account/CloseAccountDialog.vue'
 import CloseSettleDialog from '@/components/account/CloseSettleDialog.vue'
 import EmailDialog from '@/components/account/EmailDialog.vue'
+import PasswordDialog from '@/components/account/PasswordDialog.vue'
+import SealDialog from '@/components/account/SealDialog.vue'
+import TwoFactorDialog from '@/components/account/TwoFactorDialog.vue'
 import UsernameDialog from '@/components/account/UsernameDialog.vue'
 import { missingEnterpriseOnboardingLabels } from '@/shared/realnameMaterials'
 import {
@@ -134,7 +138,6 @@ const twoFactorTargetEnabled = ref(false)
 const twoFactorCode = ref('')
 const twoFactorCodeSending = ref(false)
 const twoFactorLoading = ref(false)
-const twoFactorMethod = ref<'email' | 'mobile'>('email')
 const wechatBindingLoading = ref(false)
 const wechatBound = ref(false)
 const boundProviders = ref<string[]>([])
@@ -1705,16 +1708,6 @@ async function continueFaceid() {
 const asignDialogVisible = ref(false)
 const asignDialogKind = ref('')
 
-const ASIGN_DIALOG_TITLES: Record<string, string> = {
-  mobile: '修改手机号',
-  legalPerson: '修改法人',
-  company: '企业信息',
-  personal: '修改姓名',
-}
-const asignDialogTitle = computed(
-  () => ASIGN_DIALOG_TITLES[asignDialogKind.value] ?? '爱签账户管理',
-)
-
 /// 修改手机号：只保留短信验证码方式（运营商三要素那条路 2026-10-04 已删）。
 function openMobileDialog() {
   asignDialogKind.value = 'mobile'
@@ -2616,13 +2609,13 @@ async function sendTwoFactorVerificationCode() {
   }
 }
 
-async function handleTwoFactorTargetChange(event: Event) {
-  const input = event.target as HTMLInputElement | null
-  const nextEnabled = input?.checked ?? twoFactorTargetEnabled.value
-  twoFactorTargetEnabled.value = nextEnabled
+/// 拨动「邮箱验证码保护」开关：`enabled` 是新勾选状态（由弹窗从 change 事件里取出来回传）。
+/// 第一次打开时顺手发一次验证码，并把上一次填的验证码清掉。
+async function handleTwoFactorTargetChange(enabled: boolean) {
+  twoFactorTargetEnabled.value = enabled
   twoFactorCode.value = ''
 
-  if (nextEnabled && !twoFactorEnabled.value && !twoFactorCodeSending.value) {
+  if (enabled && !twoFactorEnabled.value && !twoFactorCodeSending.value) {
     await sendTwoFactorVerificationCode()
   }
 }
@@ -3538,169 +3531,47 @@ onBeforeUnmount(() => {
           </p>
         </TDialog>
 
-        <TDialog
-          v-model:open="asignDialogVisible"
-          :title="asignDialogTitle"
-          class="asign-dialog"
-          width="520px"
-        >
-          <template v-if="asignDialogKind === 'mobile'">
-            <p class="asign-hint">换绑后，合同签署短信会发到新手机号。</p>
-            <div class="asign-row">
-              <TInput v-model="asign.mobileByCode.mobile" placeholder="新手机号" />
-              <TButton
-                variant="outline"
-                :loading="asignLoading.sendCode"
-                @click="handleSendVerifyCode"
-                >发送验证码</TButton
-              >
-            </div>
-            <div class="asign-row">
-              <TInput v-model="asign.mobileByCode.code" placeholder="短信验证码" />
-              <TButton
-                variant="solid"
-                tone="accent"
-                :loading="asignLoading.mobileByCode"
-                @click="handleModifyMobileByCode"
-                >确认修改</TButton
-              >
-            </div>
-          </template>
-
-          <template v-else-if="asignDialogKind === 'legalPerson'">
-            <p class="asign-hint">变更法人需重新核验：请填写新法人的姓名与身份证号。</p>
-            <div class="asign-row">
-              <TInput v-model="asign.legalPerson.name" placeholder="法人姓名" />
-            </div>
-            <div class="asign-row">
-              <TInput v-model="asign.legalPerson.idCard" placeholder="法人身份证号" />
-            </div>
-            <TButton
-              variant="solid"
-              tone="accent"
-              :loading="asignLoading.legalPerson"
-              @click="handleModifyLegalPerson"
-              >确认修改</TButton
-            >
-          </template>
-
-          <template v-else-if="asignDialogKind === 'company'">
-            <p class="asign-hint">修改企业名称将自动生成新印章，法人信息请配合身份证号填写。</p>
-            <div class="asign-row">
-              <TInput v-model="asign.company.companyName" placeholder="新企业名称（可选）" />
-            </div>
-            <div class="asign-row">
-              <TInput v-model="asign.company.legalName" placeholder="法人姓名（可选）" />
-            </div>
-            <div class="asign-row">
-              <TInput v-model="asign.company.legalIdCard" placeholder="法人身份证号（可选）" />
-            </div>
-            <TButton
-              variant="solid"
-              tone="accent"
-              :loading="asignLoading.company"
-              @click="handleModifyCompanyInfo"
-              >确认修改</TButton
-            >
-          </template>
-
-          <template v-else-if="asignDialogKind === 'personal'">
-            <div class="asign-row">
-              <TInput v-model="asign.personal.personalName" placeholder="新姓名" />
-            </div>
-            <div class="asign-row">
-              <TInput
-                v-model="asign.personal.mobile"
-                inputmode="numeric"
-                :maxlength="11"
-                :placeholder="
-                  current?.mobile_masked
-                    ? `请输入本人手机号（当前 ${current.mobile_masked}）`
-                    : '请输入本人手机号'
-                "
-              />
-            </div>
-            <TButton
-              variant="solid"
-              tone="accent"
-              :loading="asignLoading.personal"
-              @click="handleModifyUserName"
-              >确认修改</TButton
-            >
-          </template>
-        </TDialog>
+        <AsignDialog
+          v-model:visible="asignDialogVisible"
+          :kind="asignDialogKind"
+          :mobile="asign.mobileByCode.mobile"
+          :code="asign.mobileByCode.code"
+          :legal-person-name="asign.legalPerson.name"
+          :legal-person-id-card="asign.legalPerson.idCard"
+          :company-name="asign.company.companyName"
+          :company-legal-name="asign.company.legalName"
+          :company-legal-id-card="asign.company.legalIdCard"
+          :personal-name="asign.personal.personalName"
+          :personal-mobile="asign.personal.mobile"
+          :loading="asignLoading"
+          :mobile-masked="current?.mobile_masked ?? ''"
+          @update:mobile="asign.mobileByCode.mobile = $event"
+          @update:code="asign.mobileByCode.code = $event"
+          @update:legal-person-name="asign.legalPerson.name = $event"
+          @update:legal-person-id-card="asign.legalPerson.idCard = $event"
+          @update:company-name="asign.company.companyName = $event"
+          @update:company-legal-name="asign.company.legalName = $event"
+          @update:company-legal-id-card="asign.company.legalIdCard = $event"
+          @update:personal-name="asign.personal.personalName = $event"
+          @update:personal-mobile="asign.personal.mobile = $event"
+          @send-code="handleSendVerifyCode"
+          @modify-mobile="handleModifyMobileByCode"
+          @modify-legal-person="handleModifyLegalPerson"
+          @modify-company="handleModifyCompanyInfo"
+          @modify-user-name="handleModifyUserName"
+        />
 
         <!-- 印章管理：企业电子印章由爱签生成，用于合同盖章；只读展示 + 在线制章链接 -->
-        <TDialog
-          v-model:open="sealDialogVisible"
-          title="印章管理"
-          class="seal-dialog"
-          width="520px"
-        >
-          <TLoading tag="div" :loading="sealLoading" class="seal-dialog__body">
-            <TAlert
-              v-if="sealError"
-              class="seal-dialog__alert"
-              tone="warning"
-              :closable="false"
-              show-icon
-              :title="sealError"
-            >
-              <TButton variant="outline" size="sm" class="seal-dialog__retry" @click="loadMySeals"
-                >重新查询</TButton
-              >
-            </TAlert>
-
-            <template v-else>
-              <p class="asign-hint">
-                企业电子印章由爱签生成，用于合同盖章。变更企业名称后会重新生成印章。
-              </p>
-
-              <div v-if="sealData && sealData.seals.length" class="seal-list">
-                <div
-                  v-for="seal in sealData.seals"
-                  :key="seal.sealNo || seal.sealName"
-                  class="seal-item"
-                >
-                  <img
-                    v-if="seal.sealUrl"
-                    class="seal-item__preview"
-                    :src="seal.sealUrl"
-                    alt="企业印章预览"
-                  />
-                  <span v-else class="seal-item__preview seal-item__preview--empty">
-                    <TIcon><CollectionTag /></TIcon>
-                  </span>
-                  <div class="seal-item__copy">
-                    <span class="seal-item__name">{{ seal.sealName || '未命名印章' }}</span>
-                    <small class="seal-item__no">印章编号：{{ seal.sealNo || '—' }}</small>
-                  </div>
-                  <TTag v-if="seal.isDefault" tone="success" size="sm" class="seal-item__tag"
-                    >默认印章</TTag
-                  >
-                </div>
-              </div>
-
-              <p v-else class="seal-empty">
-                {{ sealData?.message || '尚未创建企业印章，可在线制作一枚。' }}
-              </p>
-
-              <div class="asign-row seal-dialog__actions">
-                <TButton
-                  variant="solid"
-                  tone="accent"
-                  :loading="sealMakeLoading"
-                  @click="handleSealMakeOnline"
-                  >在线制作新印章</TButton
-                >
-                <TButton variant="outline" @click="openCompanyFromSeal">修改企业信息</TButton>
-              </div>
-              <p class="asign-hint seal-dialog__foot">
-                「在线制作新印章」会在爱签页面新增一枚印章，不会覆盖现有印章；若要更新企业名称并自动换章，请用「修改企业信息」。
-              </p>
-            </template>
-          </TLoading>
-        </TDialog>
+        <SealDialog
+          v-model:visible="sealDialogVisible"
+          :loading="sealLoading"
+          :error="sealError"
+          :data="sealData"
+          :making="sealMakeLoading"
+          @reload="loadMySeals"
+          @make-online="handleSealMakeOnline"
+          @open-company="openCompanyFromSeal"
+        />
       </div>
     </section>
 
@@ -3716,56 +3587,20 @@ onBeforeUnmount(() => {
       @submit="submitEmailChange"
     />
 
-    <TDialog
-      v-model:open="passwordDialogVisible"
-      title="修改密码"
-      class="account-dialog"
-      width="480px"
-    >
-      <div class="dialog-form">
-        <div class="profile-update-row account-password-row account-password-row--send">
-          <input
-            v-model="newPassword"
-            type="password"
-            placeholder="请输入新的密码，至少 6 位"
-            :disabled="passwordLoading || passwordCodeSending"
-          />
-          <button
-            class="ghost small"
-            type="button"
-            :disabled="passwordLoading || passwordCodeSending || !profileEmail"
-            @click="sendPasswordVerificationCode"
-          >
-            {{ passwordCodeSending ? '发送中...' : '发送验证码' }}
-          </button>
-        </div>
-        <div
-          class="profile-update-row profile-update-row--triple account-password-row account-password-row--confirm"
-        >
-          <input
-            v-model="confirmPassword"
-            type="password"
-            placeholder="请再次输入新密码"
-            :disabled="passwordLoading"
-          />
-          <input
-            v-model="passwordCode"
-            type="text"
-            maxlength="6"
-            placeholder="输入6位验证码"
-            :disabled="passwordLoading"
-          />
-          <button
-            class="ghost small"
-            type="button"
-            :disabled="passwordLoading || !profileEmail"
-            @click="submitPasswordChange"
-          >
-            {{ passwordLoading ? '保存中...' : '保存密码' }}
-          </button>
-        </div>
-      </div>
-    </TDialog>
+    <PasswordDialog
+      v-model:visible="passwordDialogVisible"
+      :initial-password="newPassword"
+      :initial-confirm="confirmPassword"
+      :initial-code="passwordCode"
+      :saving="passwordLoading"
+      :code-sending="passwordCodeSending"
+      :email-bound="Boolean(profileEmail)"
+      @update:password="newPassword = $event"
+      @update:confirm="confirmPassword = $event"
+      @update:code="passwordCode = $event"
+      @send-code="sendPasswordVerificationCode"
+      @submit="submitPasswordChange"
+    />
 
     <UsernameDialog
       v-model:visible="usernameDialogVisible"
@@ -3775,87 +3610,20 @@ onBeforeUnmount(() => {
       @submit="updateUsername"
     />
 
-    <TDialog
-      v-model:open="twoFactorDialogVisible"
-      title="两步验证"
-      class="account-dialog"
-      width="480px"
-    >
-      <div class="dialog-form">
-        <div class="account-2fa-methods">
-          <button
-            class="account-2fa-method"
-            :class="{ active: twoFactorMethod === 'email' }"
-            type="button"
-            @click="twoFactorMethod = 'email'"
-          >
-            <span class="account-2fa-method__name">邮箱验证码</span>
-            <small class="account-2fa-method__desc">通过绑定邮箱接收验证码</small>
-          </button>
-          <button
-            class="account-2fa-method"
-            :class="{ active: twoFactorMethod === 'mobile' }"
-            type="button"
-            disabled
-          >
-            <span class="account-2fa-method__name">手机号验证码</span>
-            <small class="account-2fa-method__desc">通过绑定手机号接收验证码</small>
-            <TTag size="sm" tone="info" class="account-2fa-method__tag">暂不支持</TTag>
-          </button>
-        </div>
-
-        <template v-if="twoFactorMethod === 'email'">
-          <label class="account-security-toggle-row">
-            <span class="account-security-toggle-copy">
-              <strong>邮箱验证码保护</strong>
-              <small class="requirement-note">当前邮箱：{{ accountEmailLabel }}</small>
-            </span>
-            <span class="account-switch-control" :class="{ active: twoFactorTargetEnabled }">
-              <input
-                v-model="twoFactorTargetEnabled"
-                type="checkbox"
-                :disabled="twoFactorLoading || twoFactorCodeSending || !profileEmail"
-                @change="handleTwoFactorTargetChange"
-              />
-              <span class="account-switch-track" aria-hidden="true">
-                <span class="account-switch-thumb"></span>
-              </span>
-            </span>
-          </label>
-          <div class="account-security-actions">
-            <input
-              v-model="twoFactorCode"
-              type="text"
-              maxlength="6"
-              placeholder="输入 6 位验证码"
-              :disabled="twoFactorLoading || !profileEmail || !twoFactorChanged"
-            />
-            <button
-              class="ghost small"
-              type="button"
-              :disabled="
-                twoFactorCodeSending || twoFactorLoading || !profileEmail || !twoFactorChanged
-              "
-              @click="sendTwoFactorVerificationCode"
-            >
-              {{ twoFactorCodeSending ? '发送中...' : '发送验证码' }}
-            </button>
-            <button
-              class="ghost small"
-              type="button"
-              :disabled="twoFactorLoading || !profileEmail || !twoFactorChanged"
-              @click="submitTwoFactorChange"
-            >
-              {{ twoFactorLoading ? '保存中...' : '保存设置' }}
-            </button>
-          </div>
-        </template>
-
-        <div v-else class="account-2fa-unsupported">
-          <TTag tone="info">手机号两步验证暂不支持，请使用邮箱验证码</TTag>
-        </div>
-      </div>
-    </TDialog>
+    <TwoFactorDialog
+      v-model:visible="twoFactorDialogVisible"
+      :target-enabled="twoFactorTargetEnabled"
+      :code="twoFactorCode"
+      :saving="twoFactorLoading"
+      :code-sending="twoFactorCodeSending"
+      :changed="twoFactorChanged"
+      :email-bound="Boolean(profileEmail)"
+      :email-label="accountEmailLabel"
+      @update:code="twoFactorCode = $event"
+      @toggle="handleTwoFactorTargetChange"
+      @send-code="sendTwoFactorVerificationCode"
+      @submit="submitTwoFactorChange"
+    />
 
     <CloseAccountDialog
       v-model:visible="accountCloseDialogVisible"
@@ -3888,14 +3656,6 @@ onBeforeUnmount(() => {
 
 .account-realname-section {
   margin-top: 4px;
-}
-
-.account-password-row--send {
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.account-password-row--confirm {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
 }
 
 /* ── 账户入口：分组 + 行（「认证管理」「账号与安全」两张卡共用） ── */
@@ -4044,216 +3804,8 @@ onBeforeUnmount(() => {
   font-size: 16px;
   transition: transform 0.2s ease;
 }
-
-.account-security-toggle-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 16px;
-  padding: 14px;
-  border: 1px solid rgba(224, 232, 255, 0.92);
-  border-radius: 14px;
-  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
-}
-
-.account-security-toggle-copy {
-  display: grid;
-  gap: 5px;
-  min-width: 0;
-}
-
-.account-security-toggle-copy strong {
-  color: #0f172a;
-  font-weight: 800;
-}
-
-.account-switch-control {
-  position: relative;
-  display: inline-grid;
-  width: 46px;
-  height: 26px;
-}
-
-.account-switch-control input {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  cursor: pointer;
-  opacity: 0;
-}
-
-.account-switch-control input:disabled {
-  cursor: not-allowed;
-}
-
-.account-switch-track {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 100%;
-  border: 1px solid rgba(203, 213, 225, 0.98);
-  border-radius: 999px;
-  background: #e2e8f0;
-  transition:
-    background 0.18s ease,
-    border-color 0.18s ease;
-}
-
-.account-switch-thumb {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.2);
-  transition: transform 0.18s ease;
-}
-
-.account-switch-control.active .account-switch-track {
-  border-color: rgba(37, 99, 235, 0.92);
-  background: #2563eb;
-}
-
-.account-switch-control.active .account-switch-thumb {
-  transform: translateX(20px);
-}
-
-.account-security-actions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 10px;
-  align-items: center;
-}
-
-.account-security-actions input {
-  width: 100%;
-  min-width: 0;
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  border-radius: 16px;
-  padding: 12px 14px;
-  background: #ffffff;
-  color: #0f172a;
-  outline: none;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
-}
-
-.account-security-actions input:disabled {
-  background: #f8fafc;
-  color: #94a3b8;
-}
-
-.account-security-actions input::placeholder {
-  color: #94a3b8;
-}
-
-.account-2fa-methods {
-  display: grid;
-  /* 同上：允许两列收缩，窄弹窗里不让卡片把容器顶宽 */
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.account-2fa-methods > * {
-  min-width: 0;
-}
-
-.account-2fa-method {
-  position: relative;
-  display: grid;
-  gap: 4px;
-  padding: 14px 16px;
-  border: 1px solid rgba(224, 232, 255, 0.92);
-  border-radius: 14px;
-  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
-  color: #0f172a;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    background 0.18s ease;
-}
-
-.account-2fa-method.active {
-  border-color: rgba(37, 99, 235, 0.92);
-  box-shadow: 0 10px 26px rgba(76, 103, 172, 0.14);
-  background: linear-gradient(180deg, #eef4ff 0%, #ffffff 100%);
-}
-
-.account-2fa-method:disabled {
-  cursor: not-allowed;
-  opacity: 0.66;
-}
-
-.account-2fa-method__name {
-  font-weight: 800;
-  font-size: 14px;
-}
-
-.account-2fa-method__desc {
-  color: #64748b;
-  font-size: 12px;
-}
-
-.account-2fa-method__tag {
-  justify-self: start;
-  margin-top: 2px;
-}
-
-.account-2fa-unsupported {
-  display: flex;
-  justify-content: center;
-  padding: 22px 0;
-}
-
-.account-security-actions .ghost.small {
-  min-width: 104px;
-}
-
-.account-security-actions .ghost.small:disabled {
-  border-color: rgba(226, 232, 240, 0.96);
-  background: #f8fafc;
-  color: #94a3b8;
-  box-shadow: none;
-}
-
-@media (max-width: 720px) {
-  .account-password-row--send,
-  .account-password-row--confirm,
-  .account-security-actions,
-  .account-security-toggle-row {
-    grid-template-columns: 1fr;
-  }
-
-  .account-2fa-methods {
-    grid-template-columns: 1fr;
-  }
-
-  .account-switch-control {
-    justify-self: start;
-  }
-
-  .account-security-actions .ghost.small {
-    width: 100%;
-    justify-self: stretch;
-  }
-}
-
-/* 仍然服务本文件里未拆的弹窗（改密码 / 两步验证）；已经搬进
-   `components/account/` 的弹窗各自带一份，最后统一收口。 */
-.dialog-form {
-  display: grid;
-  gap: 12px;
-}
-
-/* `.account-close-form` / `.account-close-confirm-label` / `.account-close-actions`
-   已随「注销账号」「注销结算账户」两个弹窗搬进子组件，这里不再保留。 */
+/* 弹窗样式：八个弹窗已全部搬进 `components/account/`，各自带一份 scoped 样式
+   （父级 scoped 对子组件节点不命中，搬出去就必须跟着走）。这里只剩页面本身的样式。 */
 
 /* 账户实名外壳按内容高度排：末张「认证说明」卡片已移除，右列无需再撑满、
    也不再与左侧工作台菜单对齐底边，避免卡片下方留出成片空白 */
@@ -4496,114 +4048,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
-}
-
-.asign-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.asign-row:last-child {
-  margin-bottom: 0;
-}
-
-.asign-hint {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.6;
-  margin: 0 0 12px;
-}
-
-/* ── 印章管理弹窗 ──────────────────────────────────────────── */
-.seal-dialog__body {
-  display: grid;
-  gap: 12px;
-}
-
-.seal-dialog__alert {
-  margin: 0;
-}
-
-.seal-dialog__retry {
-  margin-top: 10px;
-}
-
-.seal-list {
-  display: grid;
-  gap: 10px;
-}
-
-/* 印章条目：左侧预览图 + 名称 / 编号 + 默认标记，观感与账号入口行同一套圆角与底色 */
-.seal-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  background: #f8fafc;
-}
-
-.seal-item__preview {
-  width: 56px;
-  height: 56px;
-  flex: 0 0 auto;
-  object-fit: contain;
-  border-radius: 10px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-}
-
-.seal-item__preview--empty {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-  font-size: 24px;
-}
-
-.seal-item__copy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.seal-item__name {
-  color: #0f172a;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.seal-item__no {
-  color: #64748b;
-  font-size: 12px;
-}
-
-.seal-item__tag {
-  flex: 0 0 auto;
-}
-
-.seal-empty {
-  margin: 0;
-  padding: 14px 12px;
-  border: 1px dashed #cbd5e1;
-  border-radius: 12px;
-  background: #f8fafc;
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.seal-dialog__actions {
-  margin-top: 4px;
-}
-
-.seal-dialog__foot {
-  margin: 0;
 }
 
 .settle-dialog {

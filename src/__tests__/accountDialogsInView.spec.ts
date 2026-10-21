@@ -1,11 +1,14 @@
-import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { flushPromises } from '@vue/test-utils'
 import { nextTick, reactive } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { buttonByText, openEntry, renderView, stubMatchMedia } from '@/__tests__/accountViewHelpers'
+
 /**
- * 账号与安全页四个弹窗**在视图里**的接线：父级持有可见性、草稿与加载态，
- * 子组件只回传。这里端到端点一遍，专门盯「事件键名对不上会静默失效」这类问题——
- * `v-model:visible` 走 `update:visible`、草稿走 `update:value` / `update:email` / `update:code`，
+ * 账号与安全页「改用户名 / 改邮箱 / 注销账号 / 注销结算账户」四个弹窗**在视图里**的接线。
+ *
+ * 端到端点一遍，专门盯「事件键名对不上会静默失效」这类问题：`v-model:visible` 走
+ * `update:visible`、草稿走 `update:value` / `update:email` / `update:code` 这些带冒号的键，
  * 任何一个写成驼峰都会让弹窗「看着能点、其实什么都没发生」。
  */
 const mocks = vi.hoisted(() => ({
@@ -34,12 +37,10 @@ const auth = reactive({
 const route = reactive({ query: {} as Record<string, string> })
 
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
-
 vi.mock('vue-router', () => ({
   useRoute: () => route,
   useRouter: () => ({ replace: mocks.replace, push: mocks.replace }),
 }))
-
 vi.mock('qrcode', () => ({ default: { toDataURL: vi.fn() } }))
 
 vi.mock('ui_73info', async (importOriginal) => {
@@ -61,6 +62,7 @@ vi.mock('@/api/settings', () => ({
   updateProfile: mocks.updateProfile,
   sendProfileEmailChangeCode: mocks.sendProfileEmailChangeCode,
   updateProfileEmail: mocks.updateProfileEmail,
+  // 本文件用不到，但模块是整体 mock 的，视图 import 的名字都得在
   sendProfilePasswordCode: vi.fn(),
   updateProfilePassword: vi.fn(),
   sendProfileTwoFactorCode: vi.fn(),
@@ -90,53 +92,9 @@ vi.mock('@/api/realname', async (importOriginal) => ({
 
 import AccountCouponsView from '@/views/AccountCouponsView.vue'
 
-type ViewSetup = {
-  openAccountEntry: (key: string) => void
-}
-
-function setupState(wrapper: VueWrapper): ViewSetup {
-  return (wrapper.vm.$ as unknown as { setupState: ViewSetup }).setupState
-}
-
-function buttonByText(wrapper: VueWrapper, text: string) {
-  const found = wrapper.findAll('button').find((button) => button.text().includes(text))
-  if (!found) {
-    throw new Error(`弹窗里找不到按钮：${text}`)
-  }
-  return found
-}
-
-async function renderView(): Promise<VueWrapper> {
-  const wrapper = mount(AccountCouponsView, {
-    // TDialog 默认 teleport 到 body；就地渲染，按选择器定位弹窗内容
-    global: {
-      stubs: { Teleport: true, RealnameHero: true, WechatBindQrModal: true },
-      config: { warnHandler: () => {} },
-    },
-  })
-  await flushPromises()
-  return wrapper
-}
-
-/** 打开某个「账号与安全」入口（与点入口行同一个分发函数）。 */
-async function openEntry(wrapper: VueWrapper, key: string) {
-  setupState(wrapper).openAccountEntry(key)
-  await nextTick()
-}
-
 beforeEach(() => {
   vi.clearAllMocks()
-  // jsdom 没有 matchMedia，视图在 onMounted 里用它判移动端
-  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  }))
+  stubMatchMedia()
   mocks.getProfile.mockResolvedValue({
     username: 'alice',
     email: 'old@example.com',
@@ -151,9 +109,9 @@ beforeEach(() => {
   mocks.closeSettle.mockResolvedValue({})
 })
 
-describe('账号与安全页：四个弹窗的父子接线', () => {
+describe('账号与安全页：改用户名 / 改邮箱 / 两个注销弹窗的父子接线', () => {
   it('改用户名：输入回写父级草稿，点保存把新值提交上去', async () => {
-    const wrapper = await renderView()
+    const wrapper = await renderView(AccountCouponsView)
     await openEntry(wrapper, 'username')
 
     const input = wrapper.find('input[placeholder="请输入新的用户名"]')
@@ -170,7 +128,7 @@ describe('账号与安全页：四个弹窗的父子接线', () => {
   })
 
   it('改邮箱：发码用新邮箱，保存带新邮箱 + 验证码', async () => {
-    const wrapper = await renderView()
+    const wrapper = await renderView(AccountCouponsView)
     await openEntry(wrapper, 'email')
 
     await wrapper.find('input[type="email"]').setValue('new@example.com')
@@ -186,7 +144,7 @@ describe('账号与安全页：四个弹窗的父子接线', () => {
   })
 
   it('注销账号：确认词没输对时点不动「确认注销」，输对后注销并退出登录', async () => {
-    const wrapper = await renderView()
+    const wrapper = await renderView(AccountCouponsView)
     await openEntry(wrapper, 'close')
 
     const confirm = buttonByText(wrapper, '确认注销')
@@ -205,7 +163,7 @@ describe('账号与安全页：四个弹窗的父子接线', () => {
   })
 
   it('注销结算账户：确认词走父级校验，输对后调注销接口', async () => {
-    const wrapper = await renderView()
+    const wrapper = await renderView(AccountCouponsView)
     await openEntry(wrapper, 'closeSettle')
 
     await wrapper.find('#close-settle-confirmation').setValue('注销结算账户')
@@ -217,7 +175,7 @@ describe('账号与安全页：四个弹窗的父子接线', () => {
   })
 
   it('点弹窗右上角关闭按钮，父级可见性跟着回写（update:visible 生效）', async () => {
-    const wrapper = await renderView()
+    const wrapper = await renderView(AccountCouponsView)
     await openEntry(wrapper, 'username')
     expect(wrapper.find('input[placeholder="请输入新的用户名"]').exists()).toBe(true)
 

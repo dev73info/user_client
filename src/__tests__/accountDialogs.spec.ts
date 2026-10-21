@@ -8,11 +8,11 @@ import EmailDialog from '@/components/account/EmailDialog.vue'
 import UsernameDialog from '@/components/account/UsernameDialog.vue'
 
 /**
- * 账号与安全页四个弹窗组件（从 `AccountCouponsView` 拆出来）的父子接口。
+ * 账号与安全页「改用户名 / 改邮箱 / 注销账号 / 注销结算账户」四个弹窗的父子接口。
  *
  * 重点不是长什么样，而是**事件键名与次数**：`v-model:visible` 走的是带冒号的
  * `update:visible`，写成 `updateVisible` 会静默不触发；父级提交时读的是自己那份草稿，
- * 所以 `update:value` / `update:email` / `update:code` 必须一次输入刚好发一次。
+ * 所以每个 `update:xxx` 都必须一次输入刚好发一次。
  */
 function mountDialog(component: Component, props: Record<string, unknown>): VueWrapper {
   return mount(component, {
