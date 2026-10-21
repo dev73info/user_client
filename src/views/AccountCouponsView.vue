@@ -64,6 +64,10 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import RealnameHero from '@/components/RealnameHero.vue'
 import WechatBindQrModal from '@/components/WechatBindQrModal.vue'
+import CloseAccountDialog from '@/components/account/CloseAccountDialog.vue'
+import CloseSettleDialog from '@/components/account/CloseSettleDialog.vue'
+import EmailDialog from '@/components/account/EmailDialog.vue'
+import UsernameDialog from '@/components/account/UsernameDialog.vue'
 import { missingEnterpriseOnboardingLabels } from '@/shared/realnameMaterials'
 import {
   getSettlementCities,
@@ -3452,46 +3456,14 @@ onBeforeUnmount(() => {
           </TLoading>
         </TDialog>
 
-        <TDialog
-          v-model:open="closeSettleDialogVisible"
-          title="注销结算账户"
-          class="account-dialog account-close-dialog"
-          width="480px"
-        >
-          <div class="dialog-form account-close-form">
-            <TAlert
-              tone="warning"
-              :closable="false"
-              show-icon
-              title="注销后本账号将无法接收合同款与分账"
-              description="要恢复收款必须重新绑定银行卡（重新走一次渠道核验）。如果还有未结算的合同款或未到账的分账，请先等款项结清再注销——否则渠道可能拒绝，或钱卡在托管里。"
-            />
-            <label class="account-close-confirm-label" for="close-settle-confirmation">
-              请输入“注销结算账户”确认
-            </label>
-            <TInput
-              id="close-settle-confirmation"
-              v-model="closeSettleConfirmation"
-              placeholder="注销结算账户"
-              :disabled="closeSettleLoading"
-              autocomplete="off"
-            />
-            <div class="account-close-actions">
-              <TButton :disabled="closeSettleLoading" @click="closeSettleDialogVisible = false">
-                取消
-              </TButton>
-              <TButton
-                variant="solid"
-                tone="danger"
-                :loading="closeSettleLoading"
-                :disabled="!closeSettleReady"
-                @click="handleCloseSettleAccount"
-              >
-                确认注销
-              </TButton>
-            </div>
-          </div>
-        </TDialog>
+        <CloseSettleDialog
+          v-model:visible="closeSettleDialogVisible"
+          :confirmation="closeSettleConfirmation"
+          :ready="closeSettleReady"
+          :saving="closeSettleLoading"
+          @update:value="closeSettleConfirmation = $event"
+          @submit="handleCloseSettleAccount"
+        />
 
         <TDialog
           v-model:open="faceidDialogVisible"
@@ -3732,48 +3704,17 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <TDialog
-      v-model:open="emailDialogVisible"
-      title="修改邮箱"
-      class="account-dialog"
-      width="480px"
-    >
-      <div class="dialog-form">
-        <div class="profile-update-row">
-          <input
-            v-model="newEmail"
-            type="email"
-            placeholder="请输入新的邮箱地址"
-            :disabled="emailLoading || emailCodeSending"
-          />
-          <button
-            class="ghost small"
-            type="button"
-            :disabled="emailLoading || emailCodeSending"
-            @click="sendEmailVerificationCode"
-          >
-            {{ emailCodeSending ? '发送中...' : '发送验证码' }}
-          </button>
-        </div>
-        <div class="profile-update-row">
-          <input
-            v-model="emailCode"
-            type="text"
-            maxlength="6"
-            placeholder="输入6位验证码"
-            :disabled="emailLoading"
-          />
-          <button
-            class="ghost small"
-            type="button"
-            :disabled="emailLoading"
-            @click="submitEmailChange"
-          >
-            {{ emailLoading ? '保存中...' : '保存邮箱' }}
-          </button>
-        </div>
-      </div>
-    </TDialog>
+    <EmailDialog
+      v-model:visible="emailDialogVisible"
+      :initial-email="newEmail"
+      :initial-code="emailCode"
+      :saving="emailLoading"
+      :code-sending="emailCodeSending"
+      @update:email="newEmail = $event"
+      @update:code="emailCode = $event"
+      @send-code="sendEmailVerificationCode"
+      @submit="submitEmailChange"
+    />
 
     <TDialog
       v-model:open="passwordDialogVisible"
@@ -3826,31 +3767,13 @@ onBeforeUnmount(() => {
       </div>
     </TDialog>
 
-    <TDialog
-      v-model:open="usernameDialogVisible"
-      title="修改用户名"
-      class="account-dialog"
-      width="480px"
-    >
-      <div class="dialog-form">
-        <div class="profile-update-row">
-          <input
-            v-model="newUsername"
-            type="text"
-            placeholder="请输入新的用户名"
-            :disabled="usernameLoading"
-          />
-          <button
-            class="ghost small"
-            type="button"
-            :disabled="usernameLoading"
-            @click="updateUsername"
-          >
-            {{ usernameLoading ? '保存中...' : '保存用户名' }}
-          </button>
-        </div>
-      </div>
-    </TDialog>
+    <UsernameDialog
+      v-model:visible="usernameDialogVisible"
+      :initial="newUsername"
+      :saving="usernameLoading"
+      @update:value="newUsername = $event"
+      @submit="updateUsername"
+    />
 
     <TDialog
       v-model:open="twoFactorDialogVisible"
@@ -3934,46 +3857,14 @@ onBeforeUnmount(() => {
       </div>
     </TDialog>
 
-    <TDialog
-      v-model:open="accountCloseDialogVisible"
-      title="注销账号"
-      class="account-dialog account-close-dialog"
-      width="480px"
-    >
-      <div class="dialog-form account-close-form">
-        <TAlert
-          tone="warning"
-          :closable="false"
-          show-icon
-          title="注销后将无法登录当前账号"
-          description="历史合同、支付和业务记录会保留；微信、GitHub、Gitee、QQ 等第三方绑定会被释放，可重新绑定到其他账号。"
-        />
-        <label class="account-close-confirm-label" for="account-close-confirmation">
-          请输入“注销账号”确认
-        </label>
-        <TInput
-          id="account-close-confirmation"
-          v-model="accountCloseConfirmation"
-          placeholder="注销账号"
-          :disabled="accountClosing"
-          autocomplete="off"
-        />
-        <div class="account-close-actions">
-          <TButton :disabled="accountClosing" @click="accountCloseDialogVisible = false">
-            取消
-          </TButton>
-          <TButton
-            variant="solid"
-            tone="danger"
-            :loading="accountClosing"
-            :disabled="!accountCloseReady"
-            @click="handleCloseAccount"
-          >
-            确认注销
-          </TButton>
-        </div>
-      </div>
-    </TDialog>
+    <CloseAccountDialog
+      v-model:visible="accountCloseDialogVisible"
+      :confirmation="accountCloseConfirmation"
+      :ready="accountCloseReady"
+      :saving="accountClosing"
+      @update:value="accountCloseConfirmation = $event"
+      @submit="handleCloseAccount"
+    />
 
     <WechatBindQrModal
       :visible="wechatBindQr.visible"
@@ -4354,26 +4245,15 @@ onBeforeUnmount(() => {
   }
 }
 
+/* 仍然服务本文件里未拆的弹窗（改密码 / 两步验证）；已经搬进
+   `components/account/` 的弹窗各自带一份，最后统一收口。 */
 .dialog-form {
   display: grid;
   gap: 12px;
 }
 
-.account-close-form {
-  gap: 16px;
-}
-
-.account-close-confirm-label {
-  color: #475569;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.account-close-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
+/* `.account-close-form` / `.account-close-confirm-label` / `.account-close-actions`
+   已随「注销账号」「注销结算账户」两个弹窗搬进子组件，这里不再保留。 */
 
 /* 账户实名外壳按内容高度排：末张「认证说明」卡片已移除，右列无需再撑满、
    也不再与左侧工作台菜单对齐底边，避免卡片下方留出成片空白 */
