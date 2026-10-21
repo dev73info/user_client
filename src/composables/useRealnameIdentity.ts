@@ -37,12 +37,6 @@ export function useRealnameIdentity(options: RealnameIdentityOptions) {
   const router = useRouter()
 
   const current = ref<UserRealnameVerification | null>(null)
-  /**
-   * 审核人头像加载失败标记：以前 hero 那边用，现在 hero 只收记录本身，这个标记已经是
-   * 「只写不读」的存留状态。本轮纯重构不动行为，先跟着「记录落地三件事」一起搬过来，
-   * 留给死代码那一刀确认后再删。
-   */
-  const reviewerAvatarLoadFailed = ref(false)
   // 已通过认证后，只有进入「变更主体」模式才解锁表单，用新主体重新认证一遍。
   const realnameChangeMode = ref(false)
 
@@ -93,23 +87,21 @@ export function useRealnameIdentity(options: RealnameIdentityOptions) {
   const realnameEntryCopy = computed(() => buildEntryCopy(current.value))
 
   /**
-   * 实名记录落地：状态、头像加载失败标记、表单回填三件事一起做。
+   * 实名记录落地：状态、表单回填一起做。
    *
-   * 人脸核身域里的查询 / 撤回也会走这里（以回调注入 composable），所以三件事必须同进同退——
+   * 人脸核身域里的查询 / 撤回也会走这里（以回调注入 composable），所以两件事必须同进同退——
    * 少做一件就会出现「状态已通过、表单还是旧主体」这类错位。服务端数据一落地，
    * 表单就不再是「变更主体」草稿态（变更已提交或已取消），所以这里顺手关掉那个模式。
    */
   function applyRealnameRecord(record: UserRealnameVerification) {
     current.value = record
-    reviewerAvatarLoadFailed.value = false
     realnameChangeMode.value = false
     options.prefillForm(record)
   }
 
-  /** 撤回后回到「未提交」：记录清空、头像标记复位（表单复位由视图接线，见其内注释）。 */
+  /** 撤回后回到「未提交」：记录清空（表单复位由视图接线，见其内注释）。 */
   function clearCurrent() {
     current.value = null
-    reviewerAvatarLoadFailed.value = false
   }
 
   /**

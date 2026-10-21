@@ -20,21 +20,6 @@ import {
   updateProfileTwoFactor,
 } from '@/api/settings'
 import {
-  getMyRealnameVerification,
-  ocrBusinessLicense,
-  recognizeLegalCertPeriod,
-  startAsignIdentify,
-  startCompanyAsignIdentify,
-  submitMyRealnameVerification,
-  uploadBusinessLicenseFile,
-  uploadGuardianConsentFile,
-  uploadLegalCertBackFile,
-  uploadLegalCertFrontFile,
-  type LegalCertOcrSide,
-  type StartAsignIdentifyPayload,
-  type StartCompanyIdentifyPayload,
-} from '@/api/realname'
-import {
   createSealMakeOnline,
   getMySeals,
   modifyCompanyInfo,
@@ -53,37 +38,22 @@ import CloseSettleDialog from '@/components/account/CloseSettleDialog.vue'
 import EmailDialog from '@/components/account/EmailDialog.vue'
 import FaceidDialog from '@/components/account/FaceidDialog.vue'
 import PasswordDialog from '@/components/account/PasswordDialog.vue'
+import RealnameDialog from '@/components/account/RealnameDialog.vue'
 import SealDialog from '@/components/account/SealDialog.vue'
 import SettlementDialog from '@/components/account/SettlementDialog.vue'
 import TwoFactorDialog from '@/components/account/TwoFactorDialog.vue'
 import UsernameDialog from '@/components/account/UsernameDialog.vue'
-import { settlementProvinces } from '@/utils/settlementAccount'
 import { useFaceidChallenge } from '@/composables/useFaceidChallenge'
+import { useLegalCertPeriod } from '@/composables/useLegalCertPeriod'
 import { useRealnameFormDraft } from '@/composables/useRealnameFormDraft'
 import { useRealnameIdentity } from '@/composables/useRealnameIdentity'
+import { useRealnameMaterials } from '@/composables/useRealnameMaterials'
+import { useRealnameSubmit } from '@/composables/useRealnameSubmit'
 import { useSettlementAccount, type AdapayMemberStatus } from '@/composables/useSettlementAccount'
-import {
-  LONG_TERM_DATE,
-  MAX_BUSINESS_SCOPE_LEN,
-  MAX_COMPANY_ADDRESS_LEN,
-} from '@/shared/realnameForm'
 import type { AccountEntry, AccountEntryGroup } from '@/shared/accountEntries'
 import {
-  TAlert,
-  TButton,
   TCard,
-  TCheckbox,
-  TDatePicker,
-  TDialog,
-  TForm,
-  TFormItem,
-  TIcon,
-  TInput,
   TMessage,
-  TOption,
-  TRadio,
-  TRadioGroup,
-  TSelect,
   Bell,
   CollectionTag,
   Connection,
@@ -130,21 +100,7 @@ const accountCloseDialogVisible = ref(false)
 const accountCloseConfirmation = ref('')
 const accountClosing = ref(false)
 
-const submitting = ref(false)
 const realnameDialogVisible = ref(false)
-const consentUploading = ref(false)
-const consentFileInput = ref<HTMLInputElement | null>(null)
-const businessLicenseUploading = ref(false)
-/** 营业执照 OCR 进行中（辅助填写，不挡提交）。 */
-const businessLicenseOcrLoading = ref(false)
-const businessLicenseFileInput = ref<HTMLInputElement | null>(null)
-/** 法人身份证人像面 / 国徽面：企业开户进件三张证照里的另外两张（上传即落库）。 */
-const legalCertFrontUploading = ref(false)
-const legalCertBackUploading = ref(false)
-const legalCertFrontFileInput = ref<HTMLInputElement | null>(null)
-const legalCertBackFileInput = ref<HTMLInputElement | null>(null)
-/** 法人证件有效期 OCR 进行中（辅助填写，不挡提交）。 */
-const legalCertOcrLoading = ref(false)
 const adapayMember = ref<AdapayMemberStatus | null>(null)
 /** 核身弹窗的可见性归视图：`faceidAuthUrl` 一变要连带关掉实名弹窗（见下方那条 watch）。 */
 const faceidDialogVisible = ref(false)
@@ -207,6 +163,36 @@ const {
   exitChangeMode,
 } = useRealnameIdentity({ prefillForm })
 
+// ── 实名材料域与法人证件有效期域 ────────────────────────────────
+/**
+ * 两个域共用一个 `form`（草稿正本在 `useRealnameFormDraft`）：
+ * - 材料域管三张证照 + 同意书的上传与营业执照 OCR，四个上传行只把选好的 `File` 交过来；
+ * - 有效期域管起止两项的「用户动过」标记、长期有效捷径与证件照 OCR 回填。
+ *
+ * 注入顺序就是**异步链的时序**：证件照上传成功 → 材料域写 `form.legalCertFrontFile` /
+ * `legalCertBackFile` → 再调 `autoFillLegalCertPeriod()`（它按 side 取已落库的照片）。
+ * 标记 `legalCertPeriodEdited` 由草稿域持有（换主体 / 记录落地都要连它一起清），这里只传同一份。
+ */
+const {
+  legalCertOcrLoading,
+  markLegalCertBeginEdited,
+  markLegalCertExpiresEdited,
+  applyLongTermLegalCert,
+  autoFillLegalCertPeriod,
+} = useLegalCertPeriod({ form, edited: legalCertPeriodEdited, locked: realnameLocked })
+
+const {
+  consentUploading,
+  businessLicenseUploading,
+  businessLicenseOcrLoading,
+  legalCertFrontUploading,
+  legalCertBackUploading,
+  handleBusinessLicenseFile,
+  handleLegalCertFrontFile,
+  handleLegalCertBackFile,
+  handleConsentFile,
+} = useRealnameMaterials({ form, autoFillLegalCertPeriod })
+
 /// 提交按钮为什么是灰的：只读态、各主体的必填、年龄禁区，少一条都会让用户点了没反应。
 const submitDisabled = computed(
   () =>
@@ -259,484 +245,11 @@ function cancelRealnameChange() {
   realnameDialogVisible.value = false
 }
 
-/**
- * 从营业执照地址里认领渠道省市编码。
- *
- * 渠道省市表的名称是「云南省」「昭通市」这种全称，营业执照地址（"云南省昭通市彝良县…"）
- * 通常包含它们；省份名去掉「省/市/自治区」后缀再比一次，兼容「广西壮族自治区」这类写法。
- * 认不出就返回空，交给用户自己选。
- */
-function matchRegionFromAddress(address: string): { prov?: string; area?: string } {
-  const text = address.replace(/\s/g, '')
-  if (!text) return {}
-  const stripSuffix = (title: string) =>
-    title.replace(/(省|市|自治区|壮族自治区|回族自治区|维吾尔自治区)$/, '')
-  const pickLongest = <T extends { title: string }>(items: T[]) =>
-    [...items]
-      .filter((item) => text.includes(item.title) || text.includes(stripSuffix(item.title)))
-      .sort((a, b) => b.title.length - a.title.length)[0]
-  const province = pickLongest(settlementProvinces)
-  if (!province) return {}
-  const city = pickLongest(province.cities ?? [])
-  return { prov: province.value, area: city?.value }
-}
-
-const MAX_CONSENT_FILE_SIZE = 5 * 1024 * 1024
-const ALLOWED_CONSENT_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'pdf']
-
-function consentFileExtension(name: string): string {
-  const dot = name.lastIndexOf('.')
-  if (dot < 0) {
-    return ''
-  }
-  return name.slice(dot + 1).toLowerCase()
-}
-
-function isAllowedConsentFile(file: File): boolean {
-  const ext = consentFileExtension(file.name)
-  if (ext && ALLOWED_CONSENT_EXTENSIONS.includes(ext)) {
-    return true
-  }
-  const mime = (file.type || '').toLowerCase()
-  return (
-    mime === 'image/png' ||
-    mime === 'image/jpeg' ||
-    mime === 'image/jpg' ||
-    mime === 'image/webp' ||
-    mime === 'application/pdf'
-  )
-}
-
-function openConsentPicker() {
-  consentFileInput.value?.click()
-}
-
-function openBusinessLicensePicker() {
-  businessLicenseFileInput.value?.click()
-}
-
-/**
- * 用营业执照 OCR 结果回填企业信息（**辅助填写**，失败只提示、不阻断）。
- *
- * 只回填它能确定的几项：企业名称、统一社会信用代码、注册地址、
- * 经营范围、营业执照有效期；法人姓名表单里没有这个输入项，不回填。
- * 其中注册地址、经营范围、执照有效期（以及由注册地址映射出的企业所在省市）**不再在表单里展示**，
- * 所以识别不出来时用户没法手填，只能重传；成功时靠表单下方的识别结果摘要供用户核对。
- */
-async function autoFillFromBusinessLicense(businessLicenseFile: string) {
-  if (!businessLicenseFile.trim()) return
-  businessLicenseOcrLoading.value = true
-  try {
-    const ocr = await ocrBusinessLicense(auth.token, businessLicenseFile)
-    let filled = 0
-    const apply = (value: string | null, assign: (next: string) => void) => {
-      if (value && value.trim()) {
-        assign(value.trim())
-        filled += 1
-      }
-    }
-    apply(ocr.company_name, (next) => (form.companyName = next))
-    apply(ocr.unified_social_credit_code, (next) => (form.unifiedSocialCreditCode = next))
-    let truncated = false
-    const clip = (value: string, max: number) => {
-      if (value.length <= max) return value
-      truncated = true
-      return value.slice(0, max)
-    }
-    apply(
-      ocr.company_address,
-      (next) => (form.companyAddress = clip(next, MAX_COMPANY_ADDRESS_LEN)),
-    )
-    apply(ocr.business_scope, (next) => (form.businessScope = clip(next, MAX_BUSINESS_SCOPE_LEN)))
-    apply(ocr.business_license_expires_on, (next) => (form.businessLicenseExpiresOn = next))
-    // 地址拿到了就把「企业所在省市」按渠道省市表认领填好（认不出则留给用户选）
-    const region = matchRegionFromAddress(form.companyAddress)
-    if (region.prov) {
-      form.companyProvCode = region.prov
-      form.companyAreaCode = region.area ?? ''
-    }
-    // 「未认出所在省市」不在这里提醒：表单下方那条识别结果摘要会一直挂着它，提交也会被拦。
-    const notes = [
-      truncated ? `经营范围超过 ${MAX_BUSINESS_SCOPE_LEN} 字，已按渠道上限截断` : '',
-    ].filter(Boolean)
-    if (filled > 0) {
-      const message = `已按营业执照自动填入企业信息${notes.length ? `（${notes.join('；')}）` : ''}`
-      if (truncated) {
-        TMessage.warning(message)
-      } else {
-        TMessage.success(message)
-      }
-    } else {
-      TMessage.warning('营业执照未识别出可用信息，请重新上传更清晰的照片')
-    }
-  } catch (err) {
-    TMessage.warning(
-      err instanceof Error ? err.message : '营业执照识别失败，请重新上传更清晰的照片',
-    )
-  } finally {
-    businessLicenseOcrLoading.value = false
-  }
-}
-
-async function handleBusinessLicenseFileChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file) return
-  if (!isAllowedConsentFile(file)) {
-    TMessage.warning('营业执照仅支持 PNG、JPG、WEBP 图片或 PDF 文件')
-    return
-  }
-  if (file.size > 10 * 1024 * 1024) {
-    TMessage.warning('营业执照文件不能超过 10MB')
-    return
-  }
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    TMessage.error('登录状态已失效，请重新登录')
-    return
-  }
-  businessLicenseUploading.value = true
-  try {
-    const result = await uploadBusinessLicenseFile(auth.token, file)
-    form.businessLicenseFile = result.business_license_file
-    TMessage.success('营业执照已上传')
-    // 上传成功后顺手让后端 OCR 识别一次，把企业信息回填；失败不影响上传结果。
-    await autoFillFromBusinessLicense(result.business_license_file)
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '上传营业执照失败')
-  } finally {
-    businessLicenseUploading.value = false
-  }
-}
-
-/** 法人身份证证件照只收图片（渠道 `pictureUpload` 不认 PDF），单张 10MB 以内，与后端同一口径。 */
-const MAX_LEGAL_CERT_FILE_SIZE = 10 * 1024 * 1024
-const ALLOWED_LEGAL_CERT_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp']
-
-function isAllowedLegalCertFile(file: File): boolean {
-  const ext = consentFileExtension(file.name)
-  if (ext && ALLOWED_LEGAL_CERT_EXTENSIONS.includes(ext)) {
-    return true
-  }
-  const mime = (file.type || '').toLowerCase()
-  return (
-    mime === 'image/png' || mime === 'image/jpeg' || mime === 'image/jpg' || mime === 'image/webp'
-  )
-}
-
-function openLegalCertFrontPicker() {
-  legalCertFrontFileInput.value?.click()
-}
-
-function openLegalCertBackPicker() {
-  legalCertBackFileInput.value?.click()
-}
-
-/**
- * 上传法人身份证**人像面**（企业开户进件三张证照之一）。
- *
- * 与营业执照不同：后端上传即落库（`realname_legal_cert.front_file`），
- * 所以只记文件名供界面回显，**不**往提交实名的 payload 里塞。
- */
-async function handleLegalCertFrontFileChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file) return
-  if (!isAllowedLegalCertFile(file)) {
-    TMessage.warning('法人身份证人像面仅支持 PNG、JPG、WEBP 图片')
-    return
-  }
-  if (file.size > MAX_LEGAL_CERT_FILE_SIZE) {
-    TMessage.warning('法人身份证人像面文件不能超过 10MB')
-    return
-  }
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    TMessage.error('登录状态已失效，请重新登录')
-    return
-  }
-  legalCertFrontUploading.value = true
-  try {
-    const result = await uploadLegalCertFrontFile(auth.token, file)
-    form.legalCertFrontFile = result.front_file
-    TMessage.success('法人身份证人像面已上传')
-    // 上传成功后顺手识别证件有效期并回填；识别失败静默降级，不挡提交。
-    void autoFillLegalCertPeriod()
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '上传法人身份证人像面失败')
-  } finally {
-    legalCertFrontUploading.value = false
-  }
-}
-
-/** 上传法人身份证**国徽面**（与上面同一套处理，落库到 `realname_legal_cert.back_file`）。 */
-async function handleLegalCertBackFileChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file) return
-  if (!isAllowedLegalCertFile(file)) {
-    TMessage.warning('法人身份证国徽面仅支持 PNG、JPG、WEBP 图片')
-    return
-  }
-  if (file.size > MAX_LEGAL_CERT_FILE_SIZE) {
-    TMessage.warning('法人身份证国徽面文件不能超过 10MB')
-    return
-  }
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    TMessage.error('登录状态已失效，请重新登录')
-    return
-  }
-  legalCertBackUploading.value = true
-  try {
-    const result = await uploadLegalCertBackFile(auth.token, file)
-    form.legalCertBackFile = result.back_file
-    TMessage.success('法人身份证国徽面已上传')
-    // 同上：有效期一般印在国徽面，上传这一面后立刻识别一次。
-    void autoFillLegalCertPeriod()
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '上传法人身份证国徽面失败')
-  } finally {
-    legalCertBackUploading.value = false
-  }
-}
-
-/** 用户动了起始日（手选 / 清除）：记下来，OCR 就不再回填它。 */
-function markLegalCertBeginEdited() {
-  legalCertPeriodEdited.begin = true
-}
-
-/** 用户动了截止日（手选 / 清除）：同上。 */
-function markLegalCertExpiresEdited() {
-  legalCertPeriodEdited.expires = true
-}
-
-/**
- * 「长期有效」捷径：把截止日设成渠道约定的长期日期。
- *
- * 这算用户自己做的选择，同步打上「改动过」标记，与手选一个日期同等对待——
- * 之后的 OCR 回填一律不碰它（长期证件确实存在，不能因为识别出一个日期就改回来）。
- * 起始日仍要用户填（或由 OCR 填）：长期证件同样有发证日。
- */
-function applyLongTermLegalCert() {
-  form.legalCertExpiresOn = LONG_TERM_DATE
-  legalCertPeriodEdited.expires = true
-}
-
-/**
- * 静默 OCR 回填「法人证件有效期」起止两项。
- *
- * 触发点：两张证件照**上传成功后**，以及**表单打开时本地已存有证件照**（关掉弹窗再打开可重试）。
- * 规矩：
- * - 只往「空且用户没动过」的项里写（`legalCertPeriodEdited` + 空值双重判定），用户填过的一律保留；
- * - 两面各调一次（人像面一般认不出有效期、国徽面才有），任一面出错都吞掉，不弹错、不阻断提交；
- * - 只有**两项都没拿到**时才给一条「请手工填写」的轻提示，拿到至少一项就不打扰。
- */
-async function autoFillLegalCertPeriod(options: { silent?: boolean } = {}) {
-  // 只读态（审核中 / 已通过且未进变更）：输入与上传都锁着，填了也没法用，不白跑一趟
-  if (realnameLocked.value) return
-  auth.hydrate()
-  if (!auth.token.trim()) return
-  // 只对已经上传过的那几面调识别（后端按 side 取已落库的照片，没传就会回 400）
-  const sides: LegalCertOcrSide[] = []
-  if (form.legalCertFrontFile.trim()) sides.push('front')
-  if (form.legalCertBackFile.trim()) sides.push('back')
-  if (!sides.length) return
-  // 两项都已有值（或用户动过），没有可回填的余地，不必麻烦后端
-  if (legalCertPeriodSettled()) return
-
-  legalCertOcrLoading.value = true
-  try {
-    const results = await Promise.all(
-      sides.map((side) => recognizeLegalCertPeriod(auth.token, side).catch(() => null)),
-    )
-    let filled = 0
-    for (const result of results) {
-      if (!result) continue
-      filled += applyLegalCertPeriod(result.cert_begin_on, result.cert_expires_on)
-    }
-    if (filled === 0 && !options.silent) {
-      TMessage.warning('未能自动识别法人证件有效期，请手工填写')
-    }
-  } finally {
-    legalCertOcrLoading.value = false
-  }
-}
-
-/** 两项都已经有值、或用户明确动过（含「长期有效」）时为真。 */
-function legalCertPeriodSettled(): boolean {
-  const beginSet = legalCertPeriodEdited.begin || !!form.legalCertBeginOn.trim()
-  const expiresSet = legalCertPeriodEdited.expires || !!form.legalCertExpiresOn.trim()
-  return beginSet && expiresSet
-}
-
-/**
- * 把一次识别结果写进空项，返回实际写了几项。
- *
- * 只接受 `YYYYMMDD`（8 位数字，与后端同一口径）；OCR 给的其它形态一律丢弃，
- * 宁可不填也不能把非法值塞进表单——提交时校验只认这 8 位。
- */
-function applyLegalCertPeriod(beginOn: string | null, expiresOn: string | null): number {
-  let filled = 0
-  const begin = (beginOn ?? '').trim()
-  const expires = (expiresOn ?? '').trim()
-  if (/^\d{8}$/.test(begin) && !legalCertPeriodEdited.begin && !form.legalCertBeginOn.trim()) {
-    form.legalCertBeginOn = begin
-    filled += 1
-  }
-  if (
-    /^\d{8}$/.test(expires) &&
-    !legalCertPeriodEdited.expires &&
-    !form.legalCertExpiresOn.trim()
-  ) {
-    form.legalCertExpiresOn = expires
-    filled += 1
-  }
-  return filled
-}
-
-async function handleConsentFileChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file) {
-    return
-  }
-
-  if (!isAllowedConsentFile(file)) {
-    TMessage.warning('同意书仅支持 PNG、JPG、WEBP 图片或 PDF 文件')
-    return
-  }
-  if (file.size > MAX_CONSENT_FILE_SIZE) {
-    TMessage.warning('同意书文件不能超过 5MB')
-    return
-  }
-
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    TMessage.error('登录状态已失效，请重新登录')
-    return
-  }
-
-  consentUploading.value = true
-  try {
-    const result = await uploadGuardianConsentFile(auth.token, file)
-    form.guardianConsentFile = result.guardian_consent_file
-    TMessage.success('监护人同意书已上传')
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '上传监护人同意书失败')
-  } finally {
-    consentUploading.value = false
-  }
-}
-
-async function startWechatFaceid() {
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    TMessage.error('登录状态已失效，请重新登录')
-    return
-  }
-
-  if (realnameApproved.value && !realnameChanging.value) {
-    TMessage.success('实名认证已通过，无需重复核身')
-    return
-  }
-
-  if (realnameLocked.value && !realnameRejected.value) {
-    TMessage.warning('实名认证正在处理中，请稍后查询结果')
-    return
-  }
-
-  const msg = validate()
-  if (msg) {
-    TMessage.warning(msg)
-    return
-  }
-
-  faceidStarting.value = true
-  try {
-    const payload: StartAsignIdentifyPayload = {
-      real_name: form.realName.trim(),
-      id_card_no: form.idCardNo.trim(),
-      mobile: form.mobile.trim() || null,
-    }
-    if (isMinor14To18.value) {
-      payload.guardian_consent = form.guardianConsent
-      payload.guardian_consent_file = form.guardianConsentFile.trim()
-    }
-    const result = await startAsignIdentify(auth.token, payload)
-    if (result.manual_review || !result.auth_url) {
-      // 非大陆身份证个人证件：爱签不提供实名认证服务，后端已转入人工审核。
-      applyRealnameRecord(await getMyRealnameVerification(auth.token))
-      TMessage.success('个人实名认证已提交，等待管理员审核')
-      return
-    }
-    // 核身链接交给 composable：出二维码、开始轮询都在那边
-    await beginChallenge(result.auth_url)
-    // 重新加载当前实名状态（后端已创建 pending 记录）
-    applyRealnameRecord(await getMyRealnameVerification(auth.token))
-    TMessage.success('爱签实名认证已发起')
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '发起爱签实名认证失败')
-  } finally {
-    faceidStarting.value = false
-  }
-}
-
-async function startEnterpriseAsign() {
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    TMessage.error('登录状态已失效，请重新登录')
-    return
-  }
-
-  if (realnameLocked.value && !realnameRejected.value) {
-    TMessage.warning('实名认证正在处理中，请稍后查询结果')
-    return
-  }
-
-  const msg = validate()
-  if (msg) {
-    TMessage.warning(msg)
-    return
-  }
-
-  faceidStarting.value = true
-  try {
-    const payload: StartCompanyIdentifyPayload = {
-      company_name: form.companyName.trim(),
-      unified_social_credit_code: form.unifiedSocialCreditCode.trim(),
-      operator_name: form.operatorName.trim(),
-      operator_id_card_no: form.operatorIdCardNo.trim(),
-      mobile: form.mobile.trim(),
-      business_license_file: form.businessLicenseFile.trim(),
-      company_prov_code: form.companyProvCode.trim(),
-      company_area_code: form.companyAreaCode.trim(),
-      company_address: form.companyAddress.trim(),
-      business_scope: form.businessScope.trim(),
-      business_license_expires_on: form.businessLicenseExpiresOn.trim(),
-      legal_cert_begin_on: form.legalCertBeginOn.trim(),
-      legal_cert_expires_on: form.legalCertExpiresOn.trim(),
-    }
-    const result = await startCompanyAsignIdentify(auth.token, payload)
-    await beginChallenge(result.auth_url)
-    applyRealnameRecord(await getMyRealnameVerification(auth.token))
-    TMessage.success('企业实名认证已发起，请完成认证')
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '发起爱签企业实名认证失败')
-  } finally {
-    faceidStarting.value = false
-  }
-}
-
 // ── 人脸核身（challenge）域 ──────────────────────────────────
 /**
  * 启停、轮询、查询、恢复、撤回都在 `useFaceidChallenge` 里（定时器绑 `onScopeDispose`）。
- * 这里只注入三样视图才有的东西：实名记录、记录落地（含表单回填）与两个弹窗的可见性。
- * 实名表单的发起仍在上面：它读的是本页的表单与校验。
+ * 这里只注入视图才有的东西：实名记录、记录落地（含表单回填）与两个弹窗的可见性。
+ * 「发起认证」在下面的 `useRealnameSubmit`：它要读表单、校验与载荷，是提交实名那条线。
  */
 const {
   faceidAuthUrl,
@@ -765,6 +278,29 @@ const {
     faceidDialogVisible.value = false
     realnameDialogVisible.value = true
   },
+})
+
+// ── 提交实名认证域 ──────────────────────────────────────────
+/**
+ * 三个提交口（个人核身 / 企业认证 / 个体工商户直接提交）与共用的加载位都在 `useRealnameSubmit`。
+ * 之所以单独成域：视图里只要还剩一次 `@/api/realname` 调用，`api-deps` 那 4 个模块就降不到 3。
+ * 分流顺序（个人 → 企业 → 直接提交）在那边逐字保留，视图只把草稿、身份与核身三块注入进去。
+ */
+const { submitting, submitRealname } = useRealnameSubmit({
+  form,
+  validate,
+  buildPayload,
+  identityCardSelected,
+  enterpriseSelected,
+  isMinor14To18,
+  approved: realnameApproved,
+  rejected: realnameRejected,
+  locked: realnameLocked,
+  changing: realnameChanging,
+  applyRecord: (record) => applyRealnameRecord(record),
+  beginChallenge,
+  restoreBusinessPage: (record) => tryRestoreBusinessPage(record),
+  faceidStarting,
 })
 
 /**
@@ -1376,50 +912,6 @@ async function handleModifyUserName() {
   }
 }
 
-async function submitRealname() {
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    TMessage.error('登录状态已失效，请重新登录')
-    return
-  }
-
-  // 个人走爱签人脸核身（后端自动分流大陆/港澳台）；企业走爱签企业实名认证。
-  if (identityCardSelected.value) {
-    await startWechatFaceid()
-    return
-  }
-
-  if (enterpriseSelected.value) {
-    await startEnterpriseAsign()
-    return
-  }
-
-  if (realnameLocked.value) {
-    TMessage.warning('实名认证审核中或已通过时不能修改')
-    return
-  }
-
-  const msg = validate()
-  if (msg) {
-    TMessage.warning(msg)
-    return
-  }
-
-  submitting.value = true
-  try {
-    const updated = await submitMyRealnameVerification(auth.token, buildPayload())
-    applyRealnameRecord(updated)
-    TMessage.success(
-      updated.status === 'approved' ? '实名认证信息已更新' : '实名认证信息已提交，请等待审核',
-    )
-    await tryRestoreBusinessPage(updated)
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '提交实名认证失败')
-  } finally {
-    submitting.value = false
-  }
-}
-
 function providerLabel(provider: string): string {
   const labels: Record<string, string> = {
     github: 'GitHub',
@@ -1947,356 +1439,47 @@ onBeforeUnmount(() => {
 
     <section id="account-realname" class="account-realname-section">
       <div class="realname-page-shell">
-        <TDialog
+        <!-- 实名表单弹窗：模板与样式都在组件里，这里只做接线（可见性、草稿、各加载位、七个动作） -->
+        <RealnameDialog
           v-model:open="realnameDialogVisible"
-          title="提交认证信息"
-          class="realname-dialog"
-          width="620px"
-        >
-          <TAlert
-            v-if="realnamePending && realnameChangeBacked"
-            tone="info"
-            :closable="false"
-            show-icon
-            title="主体变更认证中"
-          >
-            认证通过前账号实名状态为「认证中」，可点下方「取消变更，还原原主体」回到变更前的实名主体。
-          </TAlert>
-
-          <TForm label-position="top" class="realname-form">
-            <TFormItem label="证件类型">
-              <TRadioGroup v-model="form.authType" :disabled="realnameLocked">
-                <TRadio value="IDENTITY_CARD">个人</TRadio>
-                <TRadio value="ENTERPRISE">企业认证</TRadio>
-                <TRadio value="SOLE_PROPRIETOR">个体工商户</TRadio>
-              </TRadioGroup>
-            </TFormItem>
-
-            <template v-if="businessSelected">
-              <TFormItem :label="soleProprietorSelected ? '个体工商户名称' : '企业名称'" required>
-                <TInput
-                  v-model="form.companyName"
-                  :maxlength="120"
-                  placeholder="请输入企业名称"
-                  :disabled="realnameLocked"
-                />
-              </TFormItem>
-              <TFormItem label="统一社会信用代码" required>
-                <TInput
-                  v-model="form.unifiedSocialCreditCode"
-                  :maxlength="64"
-                  placeholder="请输入统一社会信用代码"
-                  :disabled="realnameLocked"
-                />
-              </TFormItem>
-              <TFormItem label="营业执照号">
-                <TInput
-                  v-model="form.businessLicenseNo"
-                  :maxlength="64"
-                  placeholder="请输入营业执照号（可选）"
-                  :disabled="realnameLocked"
-                />
-              </TFormItem>
-              <TFormItem label="营业执照文件" required>
-                <div class="realname-consent-upload">
-                  <input
-                    ref="businessLicenseFileInput"
-                    class="realname-consent-upload__native"
-                    type="file"
-                    accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf"
-                    @change="handleBusinessLicenseFileChange"
-                  />
-                  <TButton
-                    variant="outline"
-                    :loading="businessLicenseUploading"
-                    :disabled="realnameLocked"
-                    @click="openBusinessLicensePicker"
-                  >
-                    选择文件上传
-                  </TButton>
-                  <span v-if="businessLicenseOcrLoading" class="realname-consent-upload__hint">
-                    正在识别营业执照，自动填写企业信息…
-                  </span>
-                  <span v-else-if="form.businessLicenseFile" class="realname-consent-upload__name">
-                    已上传：{{ form.businessLicenseFile.split('/').pop() || '营业执照' }}
-                  </span>
-                  <span v-else class="realname-consent-upload__hint">
-                    请上传营业执照扫描件或照片（图片或 PDF，10MB 以内）
-                  </span>
-                </div>
-                <!-- 企业进件资料里有四项不在表单里，只能来自营业执照识别：把识别结果（或缺失项）
-                     挂在照片下面，既交代「自动填好了什么」，也是提交按钮被置灰时的原因。 -->
-                <p
-                  v-if="
-                    businessSelected &&
-                    form.businessLicenseFile &&
-                    !businessLicenseOcrLoading &&
-                    businessLicenseDerivedNote
-                  "
-                  class="realname-consent-upload__derived"
-                  :class="{ 'is-missing': businessLicenseDerivedMissing.length > 0 }"
-                >
-                  {{ businessLicenseDerivedNote }}
-                </p>
-              </TFormItem>
-              <!-- 企业开户进件要求三张证照：营业执照 + 法人身份证人像面 + 国徽面。
-                   后两张与营业执照同一套上传控件，上传即落库，不进提交实名 payload。 -->
-              <TFormItem label="法人身份证人像面" required>
-                <div class="realname-consent-upload">
-                  <input
-                    ref="legalCertFrontFileInput"
-                    class="realname-consent-upload__native"
-                    type="file"
-                    accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
-                    @change="handleLegalCertFrontFileChange"
-                  />
-                  <TButton
-                    variant="outline"
-                    :loading="legalCertFrontUploading"
-                    :disabled="realnameLocked"
-                    @click="openLegalCertFrontPicker"
-                  >
-                    选择文件上传
-                  </TButton>
-                  <span v-if="form.legalCertFrontFile" class="realname-consent-upload__name">
-                    已上传：{{ form.legalCertFrontFile.split('/').pop() || '法人身份证人像面' }}
-                  </span>
-                  <span v-else class="realname-consent-upload__hint">
-                    请上传法人身份证人像面照片（图片，10MB 以内）
-                  </span>
-                </div>
-              </TFormItem>
-              <TFormItem label="法人身份证国徽面" required>
-                <div class="realname-consent-upload">
-                  <input
-                    ref="legalCertBackFileInput"
-                    class="realname-consent-upload__native"
-                    type="file"
-                    accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
-                    @change="handleLegalCertBackFileChange"
-                  />
-                  <TButton
-                    variant="outline"
-                    :loading="legalCertBackUploading"
-                    :disabled="realnameLocked"
-                    @click="openLegalCertBackPicker"
-                  >
-                    选择文件上传
-                  </TButton>
-                  <span v-if="form.legalCertBackFile" class="realname-consent-upload__name">
-                    已上传：{{ form.legalCertBackFile.split('/').pop() || '法人身份证国徽面' }}
-                  </span>
-                  <span v-else class="realname-consent-upload__hint">
-                    请上传法人身份证国徽面照片（图片，10MB 以内）
-                  </span>
-                </div>
-              </TFormItem>
-              <TFormItem label="经办人姓名" required>
-                <TInput
-                  v-model="form.operatorName"
-                  :maxlength="120"
-                  placeholder="请输入经办人姓名"
-                  :disabled="realnameLocked"
-                />
-              </TFormItem>
-              <TFormItem label="经办人身份证号" required>
-                <TInput
-                  v-model="form.operatorIdCardNo"
-                  :maxlength="64"
-                  placeholder="请输入经办人身份证号"
-                  :disabled="realnameLocked"
-                />
-              </TFormItem>
-              <TFormItem label="手机号" required>
-                <TInput
-                  v-model="form.mobile"
-                  :maxlength="11"
-                  :placeholder="
-                    current?.mobile_masked
-                      ? `请输入经办人手机号（当前 ${current.mobile_masked}）`
-                      : '请输入经办人手机号（用于电子签署）'
-                  "
-                  :disabled="realnameLocked"
-                />
-              </TFormItem>
-              <!-- 企业进件资料里的「所在省市 / 注册地址 / 经营范围 / 营业执照有效期」不再让用户手填：
-                   这四项都能从营业执照照片识别（省市编码由识别出的注册地址映射成渠道编码），
-                   所以这里只留上传入口，识别结果与缺失项由上传区下方那行提示给出。 -->
-              <!-- 法人证件有效期：起止两项。起始日以前是缺的（渠道标 Y 却一直是空串），
-                   现在在上传法人身份证后人像面 / 国徽面 OCR 自动回填；手填或改过的一律保留。 -->
-              <TFormItem label="法人证件有效期" required>
-                <div class="realname-date-row">
-                  <TDatePicker
-                    v-model="form.legalCertBeginOn"
-                    type="date"
-                    value-format="YYYYMMDD"
-                    format="YYYY-MM-DD"
-                    placeholder="证件有效期起始日"
-                    :disabled="realnameLocked"
-                    @change="markLegalCertBeginEdited"
-                  />
-                  <TDatePicker
-                    v-model="form.legalCertExpiresOn"
-                    type="date"
-                    value-format="YYYYMMDD"
-                    format="YYYY-MM-DD"
-                    placeholder="证件有效期截止日"
-                    :disabled="realnameLocked"
-                    @change="markLegalCertExpiresEdited"
-                  />
-                  <TButton
-                    variant="text"
-                    tone="accent"
-                    :disabled="realnameLocked"
-                    @click="applyLongTermLegalCert"
-                  >
-                    长期有效
-                  </TButton>
-                </div>
-                <p v-if="legalCertOcrLoading" class="realname-consent-upload__derived">
-                  正在按法人身份证识别证件有效期，自动填写起止日期…
-                </p>
-              </TFormItem>
-              <TFormItem>
-                <TAlert
-                  tone="info"
-                  :closable="false"
-                  show-icon
-                  title="企业认证信息提交后将由平台审核，审核通过后可用于合同签署。"
-                />
-              </TFormItem>
-            </template>
-
-            <template v-else>
-              <TFormItem label="证件类型">
-                <TSelect v-model="form.idCardType" :disabled="realnameLocked" style="width: 100%">
-                  <TOption label="居民身份证" :value="1" />
-                  <TOption label="台湾居民来往大陆通行证" :value="2" disabled />
-                  <TOption label="港澳居民来往内地通行证" :value="3" disabled />
-                </TSelect>
-              </TFormItem>
-              <TFormItem label="姓名" required>
-                <TInput
-                  v-model="form.realName"
-                  :maxlength="120"
-                  placeholder="请输入真实姓名"
-                  :disabled="realnameLocked"
-                />
-              </TFormItem>
-              <TFormItem label="证件号" required>
-                <TInput
-                  v-model="form.idCardNo"
-                  :maxlength="64"
-                  :placeholder="idCardPlaceholder"
-                  :disabled="realnameLocked"
-                />
-              </TFormItem>
-              <TFormItem label="手机号" required>
-                <TInput
-                  v-model="form.mobile"
-                  :maxlength="11"
-                  :placeholder="
-                    current?.mobile_masked
-                      ? `请输入本人手机号（当前 ${current.mobile_masked}）`
-                      : '请输入本人手机号（用于电子签署）'
-                  "
-                  :disabled="realnameLocked"
-                />
-              </TFormItem>
-            </template>
-
-            <TFormItem v-if="isUnder14">
-              <TAlert
-                tone="danger"
-                :closable="false"
-                show-icon
-                title="未满 14 周岁的未成年人不能进行实名认证"
-              />
-            </TFormItem>
-
-            <TFormItem v-if="isMinor14To18">
-              <TCheckbox v-model="form.guardianConsent" :disabled="realnameLocked">
-                我已取得监护人同意
-              </TCheckbox>
-            </TFormItem>
-
-            <TFormItem v-if="isMinor14To18 && form.guardianConsent" label="监护人同意书" required>
-              <div class="realname-consent-upload">
-                <input
-                  ref="consentFileInput"
-                  class="realname-consent-upload__native"
-                  type="file"
-                  accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf"
-                  @change="handleConsentFileChange"
-                />
-                <TButton
-                  variant="outline"
-                  :loading="consentUploading"
-                  :disabled="realnameLocked"
-                  @click="openConsentPicker"
-                >
-                  选择文件上传
-                </TButton>
-                <span v-if="form.guardianConsentFile" class="realname-consent-upload__name">
-                  已上传：{{ form.guardianConsentFile.split('/').pop() || '同意书' }}
-                </span>
-                <span v-else class="realname-consent-upload__hint">
-                  请上传监护人签署的同意书（图片或 PDF，5MB 以内）
-                </span>
-                <a
-                  class="realname-consent-template"
-                  href="/guardian-consent-template.html"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  下载监护人同意书模板
-                </a>
-              </div>
-            </TFormItem>
-
-            <TFormItem v-if="isAdult">
-              <TAlert
-                tone="info"
-                :closable="false"
-                show-icon
-                title="您已年满 18 周岁，无需上传监护人同意书"
-              />
-            </TFormItem>
-
-            <div class="realname-form__actions">
-              <TButton
-                variant="outline"
-                tone="danger"
-                v-if="realnameCanWithdraw"
-                :loading="withdrawing"
-                @click="handleWithdraw"
-              >
-                {{ realnameChangeBacked ? '取消变更，还原原主体' : '撤回认证' }}
-              </TButton>
-              <TButton
-                variant="outline"
-                v-if="realnameChanging"
-                :disabled="submitting || faceidStarting"
-                @click="cancelRealnameChange"
-              >
-                放弃变更
-              </TButton>
-              <TButton
-                variant="solid"
-                tone="accent"
-                class="realname-submit-btn"
-                :loading="submitting || faceidStarting"
-                :disabled="submitDisabled"
-                @click="submitRealname"
-              >
-                <TIcon v-if="identityCardSelected">
-                  <Promotion />
-                </TIcon>
-                {{ submitButtonText }}
-              </TButton>
-            </div>
-          </TForm>
-        </TDialog>
+          :form="form"
+          :locked="realnameLocked"
+          :changing="realnameChanging"
+          :change-in-review="realnamePending && realnameChangeBacked"
+          :can-withdraw="realnameCanWithdraw"
+          :change-backed="realnameChangeBacked"
+          :withdrawing="withdrawing"
+          :submitting="submitting"
+          :faceid-starting="faceidStarting"
+          :submit-disabled="submitDisabled"
+          :submit-text="submitButtonText"
+          :id-card-placeholder="idCardPlaceholder"
+          :mobile-masked="current?.mobile_masked ?? ''"
+          :identity-card-selected="identityCardSelected"
+          :business-selected="businessSelected"
+          :sole-proprietor-selected="soleProprietorSelected"
+          :is-under14="isUnder14"
+          :is-minor14-to18="isMinor14To18"
+          :is-adult="isAdult"
+          :derived-note="businessLicenseDerivedNote"
+          :derived-missing="businessLicenseDerivedMissing.length > 0"
+          :business-license-uploading="businessLicenseUploading"
+          :license-ocr-loading="businessLicenseOcrLoading"
+          :legal-cert-front-uploading="legalCertFrontUploading"
+          :legal-cert-back-uploading="legalCertBackUploading"
+          :legal-cert-ocr-loading="legalCertOcrLoading"
+          :consent-uploading="consentUploading"
+          @submit="submitRealname"
+          @cancel-change="cancelRealnameChange"
+          @withdraw="handleWithdraw"
+          @business-license-picked="handleBusinessLicenseFile"
+          @legal-cert-front-picked="handleLegalCertFrontFile"
+          @legal-cert-back-picked="handleLegalCertBackFile"
+          @consent-picked="handleConsentFile"
+          @mark-begin-edited="markLegalCertBeginEdited"
+          @mark-expires-edited="markLegalCertExpiresEdited"
+          @long-term="applyLongTermLegalCert"
+        />
 
         <TCard class="realname-card asign-account-card">
           <div class="realname-form__head">
@@ -2486,8 +1669,9 @@ onBeforeUnmount(() => {
   margin-top: 4px;
 }
 
-/* 弹窗样式：八个弹窗已全部搬进 `components/account/`，各自带一份 scoped 样式
-   （父级 scoped 对子组件节点不命中，搬出去就必须跟着走）。这里只剩页面本身的样式。 */
+/* 弹窗样式：九个弹窗已全部搬进 `components/account/`，各自带一份 scoped 样式
+   （父级 scoped 对子组件节点不命中，搬出去就必须跟着走）。这里只剩页面本身的样式。
+   `.realname-form__head` 例外：它同时被页面上的「账号与安全」「认证管理」两张卡片用。 */
 
 /* 账户实名外壳按内容高度排：末张「认证说明」卡片已移除，右列无需再撑满、
    也不再与左侧工作台菜单对齐底边，避免卡片下方留出成片空白 */
@@ -2510,80 +1694,5 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: 18px;
   color: #0f172a;
-}
-
-.realname-form {
-  min-width: 0;
-}
-
-.realname-date-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-}
-
-/* 两个日期选择器并排：让它们能收缩到比内容窄，否则 TDatePicker 的 100% 宽会把行顶出去。 */
-.realname-date-row > * {
-  min-width: 0;
-}
-
-.realname-form__actions {
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.realname-consent-upload {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.realname-consent-upload__native {
-  display: none;
-}
-
-.realname-consent-upload__name {
-  color: #15803d;
-  font-size: 13px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.realname-consent-upload__hint {
-  color: #64748b;
-  font-size: 12px;
-}
-
-/* 营业执照识别结果那一行（识别出什么 / 缺了什么）：不在上传按钮那一行里，所以要自己带外边距。 */
-.realname-consent-upload__derived {
-  display: block;
-  margin: 6px 0 0;
-  color: var(--73-ink-muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-/* 有缺项时用警示色：这一行同时是「提交按钮为什么点不了」的原因。 */
-.realname-consent-upload__derived.is-missing {
-  color: var(--73-warning);
-}
-
-.realname-consent-template {
-  color: #d97706;
-  font-size: 13px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.realname-consent-template:hover {
-  color: #b45309;
-  opacity: 1;
 }
 </style>
