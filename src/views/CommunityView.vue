@@ -3,9 +3,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useRoute, useRouter } from 'vue-router'
 import { HttpError, apiUrl } from '@/api/http'
 import {
-  acceptBountyAnswer,
-  boostCommunityPost,
-  cancelPostBounty,
   createCommunityComment,
   createCommunityPost,
   favoriteCommunityPost,
@@ -27,7 +24,11 @@ import {
 import { getMyRealnameVerification } from '@/api/realname'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
+import CommunityBountyBar from '@/components/community/CommunityBountyBar.vue'
+import CommunityScrollTopButton from '@/components/community/CommunityScrollTopButton.vue'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
+import { useCommunityBounty } from '@/composables/useCommunityBounty'
+import { useCommunityBoost } from '@/composables/useCommunityBoost'
 import { useAuthStore } from '@/stores/auth'
 import { sanitizeRichHtml, sanitizeRichHtmlForEditing } from '@/utils/sanitizeHtml'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
@@ -88,7 +89,6 @@ const favoriteLoading = ref(false)
 const composerVisible = ref(false)
 const editingPost = ref<CommunityPost | null>(null)
 const commentDraft = ref('')
-const boostingKind = ref<PostBoostKind | null>(null)
 const composerPanelRef = ref<HTMLElement | null>(null)
 const composerActionsShellRef = ref<HTMLElement | null>(null)
 const composerActionsRef = ref<HTMLElement | null>(null)
@@ -100,14 +100,6 @@ const showScrollTop = ref(false)
 const expandedReplyIds = ref(new Set<number>())
 let composerActionsResizeObserver: ResizeObserver | null = null
 let selectedPostRequestId = 0
-
-const BOOST_OPTIONS: { kind: PostBoostKind; label: string; cost: number; desc: string }[] = [
-  { kind: 'bump', label: '上浮', cost: 50, desc: '帖子排到列表顶部持续 24 小时' },
-  { kind: 'highlight', label: '高亮', cost: 100, desc: '帖子高亮标识持续 72 小时' },
-  { kind: 'homepage', label: '首页推荐', cost: 200, desc: '首页推荐位持续 24 小时' },
-  { kind: 'section', label: '板块推荐', cost: 120, desc: '板块推荐位持续 48 小时' },
-  { kind: 'hot', label: '热门展示', cost: 150, desc: '进入热门榜单展示 48 小时' },
-]
 
 const postForm = reactive({
   title: '',
@@ -170,24 +162,6 @@ const canEditSelectedPost = computed(() =>
   Boolean(auth.isAuthed && selectedPost.value && selectedPost.value.author === auth.username),
 )
 const selectedPostPublished = computed(() => selectedPost.value?.status === 'published')
-const canBoostSelectedPost = computed(() =>
-  Boolean(
-    auth.isAuthed &&
-      selectedPost.value &&
-      selectedPost.value.status === 'published' &&
-      selectedPost.value.author === auth.username,
-  ),
-)
-const activeBoostLabels = computed<string[]>(() => {
-  const post = selectedPost.value
-  if (!post) return []
-  const labels: string[] = []
-  if (post.highlight_until && new Date(post.highlight_until) > new Date()) labels.push('高亮')
-  if (post.homepage_until && new Date(post.homepage_until) > new Date()) labels.push('首页推荐')
-  if (post.section_until && new Date(post.section_until) > new Date()) labels.push('板块推荐')
-  if (post.hot_until && new Date(post.hot_until) > new Date()) labels.push('热门展示')
-  return labels
-})
 const selectedPostShareTargetId = computed(() =>
   selectedPost.value && selectedPostPublished.value ? String(selectedPost.value.id) : '',
 )
@@ -260,6 +234,9 @@ function updateFloatingComposerActions() {
   }
 }
 
+// 回顶按钮本身已抽成 components/community/CommunityScrollTopButton.vue，只剩「出不出」的判定
+// 与滚动动作留在这里：`.app-scrollbar .t73-scrollbar__wrap` 是 App 外壳的硬编码 DOM，
+// 原样保留（换外壳时要一起改的两处就在这里与 scrollToTop）。
 function updateScrollTopVisibility() {
   const scrollWrap = document.querySelector<HTMLElement>('.app-scrollbar .t73-scrollbar__wrap')
   showScrollTop.value = Boolean(scrollWrap && scrollWrap.scrollTop > 240)
@@ -791,113 +768,33 @@ function updateSelectedPost(patch: Partial<CommunityPost>) {
   selectedPost.value = { ...selectedPost.value, ...patch }
 }
 
-// ---------- 帖子推广（积分消费） ----------
-
-async function handleBoost(kind: PostBoostKind) {
-  if (!ensureAuthed() || !selectedPost.value || boostingKind.value) {
-    return
-  }
-  const option = BOOST_OPTIONS.find((item) => item.kind === kind)
-  if (!option) {
-    return
-  }
-  const confirmed = window.confirm(
-    `确认花费 ${option.cost} 积分购买「${option.label}」推广？${option.desc}。`,
-  )
-  if (!confirmed) {
-    return
-  }
-
-  boostingKind.value = kind
-  try {
-    const updated = await boostCommunityPost(auth.token, selectedPost.value.id, kind)
-    updateSelectedPost({
-      bumped_at: updated.bumped_at,
-      highlight_until: updated.highlight_until,
-      homepage_until: updated.homepage_until,
-      section_until: updated.section_until,
-      hot_until: updated.hot_until,
-    })
-    TMessage.success(`已购买「${option.label}」推广`)
-    // 刷新列表以反映排序与推广标识。
+// ---------- 推广与悬赏（两域已抽到 composable） ----------
+//
+// 两域只收「详情区正在看的帖子」这一个引用和「回写帖子」这一个口子，都不持有它们：
+// `selectedPost` 是详情区 6+ 块共用的根状态，`updateSelectedPost` 是点赞 / 收藏 / 悬赏 / 推广
+// 共用的那一个回写点（同时改 `posts` 列表与 `selectedPost`），仍归视图所有。
+const {
+  BOOST_OPTIONS,
+  boostingKind,
+  canBoostSelectedPost,
+  activeBoostLabels,
+  handleBoost,
+} = useCommunityBoost({
+  selectedPost,
+  updateSelectedPost,
+  ensureAuthed,
+  refreshList: () => {
     void loadCommunityData()
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '购买推广失败')
-  } finally {
-    boostingKind.value = null
-  }
-}
-
-// ---------- 悬赏 ----------
-
-const selectedPostBountyLabel = computed(() => {
-  const post = selectedPost.value
-  if (!post || post.bounty_points <= 0) return ''
-  if (post.bounty_status === 'closed') return '悬赏已采纳'
-  if (post.bounty_status === 'cancelled') return '悬赏已取消'
-  return `悬赏 ${post.bounty_points} 积分`
+  },
 })
 
-const canCancelBounty = computed(() => {
-  const post = selectedPost.value
-  return Boolean(
-    auth.isAuthed &&
-      post &&
-      post.bounty_status === 'active' &&
-      post.bounty_points > 0 &&
-      post.author === auth.username,
-  )
-})
-
-const canAcceptBounty = computed(() => {
-  const post = selectedPost.value
-  return Boolean(
-    auth.isAuthed &&
-      post &&
-      post.bounty_status === 'active' &&
-      post.bounty_points > 0 &&
-      post.author === auth.username,
-  )
-})
-
-function isAcceptedComment(comment: CommunityComment): boolean {
-  const post = selectedPost.value
-  return Boolean(
-    post && post.bounty_accepted_comment_id != null && post.bounty_accepted_comment_id === comment.id,
-  )
-}
-
-async function acceptBountyAnswerHandler(comment: CommunityComment) {
-  if (!ensureAuthed() || !selectedPost.value) {
-    return
-  }
-  try {
-    const updated = await acceptBountyAnswer(auth.token, selectedPost.value.id, comment.id)
-    updateSelectedPost({
-      bounty_status: updated.bounty_status,
-      bounty_accepted_comment_id: updated.bounty_accepted_comment_id,
-    })
-    TMessage.success(`已采纳 ${comment.commenter} 的回答，悬赏积分已发放`)
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '采纳回答失败')
-  }
-}
-
-async function cancelBountyHandler() {
-  if (!ensureAuthed() || !selectedPost.value) {
-    return
-  }
-  try {
-    const updated = await cancelPostBounty(auth.token, selectedPost.value.id)
-    updateSelectedPost({
-      bounty_status: updated.bounty_status,
-      bounty_accepted_comment_id: updated.bounty_accepted_comment_id,
-    })
-    TMessage.success('已取消悬赏，积分已退回')
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '取消悬赏失败')
-  }
-}
+const {
+  selectedPostBountyLabel,
+  canManageBounty,
+  isAcceptedComment,
+  acceptBountyAnswerHandler,
+  cancelBountyHandler,
+} = useCommunityBounty({ selectedPost, updateSelectedPost, ensureAuthed })
 
 async function toggleLike(post: CommunityPost) {
   if (!ensureAuthed()) {
@@ -1297,10 +1194,6 @@ async function toggleCommentLike(comment: CommunityComment) {
                   <h2>
                     {{ selectedPost.title }}
                     <span v-if="selectedPost.is_featured" class="community-featured-badge">精华</span>
-                    <span v-if="selectedPost.bounty_points > 0" class="community-bounty-badge"
-                      :class="`is-${selectedPost.bounty_status}`">
-                      {{ selectedPostBountyLabel }}
-                    </span>
                     <span v-if="activeBoostLabels.length" class="community-boost-badge">{{ activeBoostLabels.join(' · ') }}</span>
                   </h2>
                 </div>
@@ -1330,6 +1223,14 @@ async function toggleCommentLike(comment: CommunityComment) {
             </div>
           </div>
 
+          <!-- 悬赏条：徽标 + 作者的取消入口，整块在 components/community/CommunityBountyBar.vue -->
+          <CommunityBountyBar
+            :label="selectedPostBountyLabel"
+            :status="selectedPost.bounty_status"
+            :can-cancel="canManageBounty"
+            @cancel="cancelBountyHandler"
+          />
+
           <div v-if="selectedPostLoading" class="community-detail-loading" role="status">
             正文加载中...
           </div>
@@ -1355,10 +1256,6 @@ async function toggleCommentLike(comment: CommunityComment) {
               :disabled="!selectedPostPublished || favoriteLoading" @click="toggleFavorite(selectedPost)">
               <TIcon><Star /></TIcon>
               <span>{{ selectedPost.favorited_by_me ? '已收藏' : '收藏' }}</span>
-            </TButton>
-            <TButton variant="outline" tone="warning" v-if="canCancelBounty" class="community-bounty-cancel-button"
-              @click="cancelBountyHandler">
-              取消悬赏
             </TButton>
             <TDropdown v-if="canBoostSelectedPost" trigger="click"
               @command="(cmd) => handleBoost(cmd as PostBoostKind)">
@@ -1442,7 +1339,7 @@ async function toggleCommentLike(comment: CommunityComment) {
                   </div>
                   <p>{{ comment.comment_text }}</p>
                   <div class="community-comment-item__actions">
-                    <button v-if="canAcceptBounty && comment.commenter !== selectedPost?.author && !isAcceptedComment(comment)"
+                    <button v-if="canManageBounty && comment.commenter !== selectedPost?.author && !isAcceptedComment(comment)"
                       type="button" class="community-comment-item__accept"
                       @click="acceptBountyAnswerHandler(comment)">
                       采纳
@@ -1485,12 +1382,7 @@ async function toggleCommentLike(comment: CommunityComment) {
       </aside>
     </section>
 
-    <button v-if="showScrollTop" class="community-scroll-top" type="button" aria-label="回到顶部"
-      title="回到顶部" @click="scrollToTop">
-      <TIcon>
-        <Top />
-      </TIcon>
-    </button>
+    <CommunityScrollTopButton :visible="showScrollTop" @scroll="scrollToTop" />
   </main>
 </template>
 
@@ -1600,18 +1492,6 @@ async function toggleCommentLike(comment: CommunityComment) {
   min-width: 0;
 }
 
-.community-bounty-badge {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 8px;
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.6;
-  vertical-align: middle;
-  white-space: nowrap;
-}
 .community-featured-badge {
   display: inline-flex;
   align-items: center;
@@ -1653,24 +1533,6 @@ async function toggleCommentLike(comment: CommunityComment) {
   font-size: 11px;
 }
 .community-boost-button {
-  margin-left: 8px;
-}
-.community-bounty-badge.is-active {
-  color: #b45309;
-  background: #fef3c7;
-  border: 1px solid #fcd34d;
-}
-.community-bounty-badge.is-closed {
-  color: #1d4ed8;
-  background: #dbeafe;
-  border: 1px solid #93c5fd;
-}
-.community-bounty-badge.is-cancelled {
-  color: #64748b;
-  background: #e2e8f0;
-  border: 1px solid #cbd5e1;
-}
-.community-bounty-cancel-button {
   margin-left: 8px;
 }
 .community-bounty-field {
