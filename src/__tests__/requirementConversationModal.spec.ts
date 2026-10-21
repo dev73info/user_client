@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
+import { detail, nowIso, requirementRow, withHistory } from './fixtures/conversationDetail'
 
 /**
  * 需求会话弹窗的挂载烟测。
@@ -55,45 +56,6 @@ vi.mock('ui_73info', async (importOriginal) => {
     TMessage: { ...actual.TMessage, success: vi.fn(), warning: vi.fn(), error: vi.fn() },
   }
 })
-
-const nowIso = new Date().toISOString()
-
-const detail = {
-  conversation: {
-    id: 7,
-    conversation_id: 'conv-1',
-    requirement_id: 'REQ-1',
-    requirement_title: '做个落地页',
-    customer: 'alice',
-    developer: 'bob',
-    status: 'open' as const,
-    requirement_status: 'in_development',
-    unread_count: 0,
-    last_message_at: nowIso,
-    created_at: nowIso,
-    updated_at: nowIso,
-    history_segments: [],
-    history_disclosures: [],
-  },
-  messages: [
-    {
-      id: 11,
-      conversation_id: 'conv-1',
-      sender: 'bob',
-      sender_role: 'developer' as const,
-      content: '首版已经发你了',
-      created_at: nowIso,
-    },
-    {
-      id: 12,
-      conversation_id: 'conv-1',
-      sender: 'alice',
-      sender_role: 'customer' as const,
-      content: '收到，我看下',
-      created_at: nowIso,
-    },
-  ],
-}
 
 const mountModal = (props: Record<string, unknown> = {}) =>
   mount(RequirementConversationModal, {
@@ -200,6 +162,76 @@ describe('需求会话弹窗', () => {
     // 空会话仍然要能发第一条消息
     expect(wrapper.find('.conversation-modal__input-shell textarea').exists()).toBe(true)
 
+    wrapper.unmount()
+  })
+
+  it('点「详情」拉一次需求列表，抽屉渲染八项字段与两段富文本', async () => {
+    mocks.listRequirements.mockResolvedValue([requirementRow])
+    const wrapper = mountModal()
+    await flushPromises()
+    await wrapper.find('.conversation-modal__header-actions button').trigger('click')
+    await flushPromises()
+    expect(mocks.listRequirements).toHaveBeenCalledWith('tok')
+
+    // 抽屉整棵 Teleport 到 body，只能从 document 上查
+    const drawer = document.body.querySelector('.conversation-drawer')
+    const labels = [...(drawer?.querySelectorAll('.conversation-drawer__meta dt') ?? [])].map((n) =>
+      n.textContent?.trim(),
+    )
+    expect(labels.join(',')).toBe('编号,发布方式,状态,预算,创建,更新,需求方,开发者')
+    expect(drawer?.textContent).toContain('开发中')
+    expect(drawer?.textContent).toContain('5,000')
+
+    // 两段富文本走 sanitize + v-html：标签要真的变成元素，被拍平成一行纯文本就是丢排版
+    const rich = [...(drawer?.querySelectorAll('.conversation-drawer__rich') ?? [])]
+    expect(rich).toHaveLength(2)
+    expect(rich[0]?.querySelector('strong')?.textContent).toBe('能看')
+    expect(rich[0]?.querySelectorAll('li')).toHaveLength(1)
+    expect(rich[1]?.textContent).toContain('Lighthouse 90 分')
+    wrapper.unmount()
+
+    // apiMode 是抽屉里 listMyRequirements / listRequirements 的唯一分叉，抽组件后不能丢
+    const devRow = structuredClone(requirementRow)
+    delete (devRow as { developer?: string }).developer
+    mocks.listRequirements.mockClear()
+    mocks.listMyRequirements.mockResolvedValue([devRow])
+    const devWrapper = mountModal({ apiMode: 'dev' })
+    await flushPromises()
+    await devWrapper.find('.conversation-modal__header-actions button').trigger('click')
+    await flushPromises()
+    expect(mocks.listMyRequirements).toHaveBeenCalledWith('tok')
+    expect(mocks.listRequirements).not.toHaveBeenCalled()
+    // 开发者侧那份 RequirementItem 没有 developer 字段，退回当前登录名
+    const developerCell = document.body.querySelector(
+      '.conversation-drawer__meta div:last-child dd',
+    )
+    expect(developerCell?.textContent?.trim()).toBe('alice')
+    devWrapper.unmount()
+  })
+
+  it('有未公开历史区段时渲染提示条，申请与表决各触发一次接口', async () => {
+    mocks.getDetail.mockResolvedValue(structuredClone(withHistory))
+    mocks.requestHistory.mockResolvedValue(structuredClone(withHistory))
+    mocks.respondHistory.mockResolvedValue({})
+    const wrapper = mountModal()
+    await flushPromises()
+    expect(wrapper.find('.conversation-history-notice').exists()).toBe(true)
+    expect(wrapper.find('.conversation-history-notice__segments').text()).toContain('carol')
+
+    await wrapper.find('.conversation-history-notice__action').trigger('click')
+    await flushPromises()
+    expect(mocks.requestHistory).toHaveBeenCalledTimes(1)
+    expect(mocks.requestHistory).toHaveBeenCalledWith('tok', 'REQ-1')
+
+    const vote = wrapper.find('.conversation-history-vote')
+    expect(vote.exists()).toBe(true)
+    const approve = vote.find('.conversation-history-vote__actions button')
+    // 没有表决在飞：按钮要可点（有表决时两颗一起禁用，见 :voting 绑定）
+    expect(approve.attributes('disabled')).toBeUndefined()
+    await approve.trigger('click')
+    await flushPromises()
+    expect(mocks.respondHistory).toHaveBeenCalledTimes(1)
+    expect(mocks.respondHistory).toHaveBeenCalledWith('tok', 31, 'approved')
     wrapper.unmount()
   })
 })

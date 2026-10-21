@@ -19,22 +19,12 @@ import {
 
 import * as conversationApi from '@/api/conversations'
 import type {
-  ConversationConsent,
-  ConversationHistoryDisclosureBrief,
-  ConversationHistorySegment,
   RequirementConversationDetail,
   RequirementConversationMessage,
 } from '@/api/conversations'
 import { fetchAsignRequirementPreviewUrl } from '@/api/contracts'
 import { apiUrl } from '@/api/http'
-import { fetchRequirementDetail, listRequirements, type RequirementPaymentMode } from '@/api/requirements'
-import { listMyRequirements } from '@/api/devRequirements'
-import {
-  formatCnDateTime,
-  formatCny,
-  requirementPaymentModeLabel,
-} from '@/shared/requirementDisplay'
-import { requirementStatusLabel } from '@/shared/requirementStatus'
+import { fetchRequirementDetail, listRequirements } from '@/api/requirements'
 import { isRequirementArchived } from '@/shared/requirementArchive'
 import { dispatchConversationRead } from '@/shared/conversationEvents'
 import {
@@ -52,10 +42,14 @@ import {
   isImageAttachment,
   mimeTypeFromName,
 } from '@/shared/attachmentFile'
-import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 import { listPublicMcResourceVersions } from '@/api/resources'
 import RequirementConversationActions from '@/components/RequirementConversationActions.vue'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
+import RequirementDetailDrawer from '@/components/conversation/RequirementDetailDrawer.vue'
+import HistoryDisclosureNotice from '@/components/conversation/HistoryDisclosureNotice.vue'
+import ConversationHistoryVote from '@/components/conversation/ConversationHistoryVote.vue'
+import { useRequirementDetailDrawer } from '@/composables/useRequirementDetailDrawer'
+import { useHistoryDisclosure } from '@/composables/useHistoryDisclosure'
 import {
   conversationCardMeta,
   conversationCardSide,
@@ -130,8 +124,6 @@ function onActionCapabilities(caps: {
 }
 const realtimeStatus = ref<RealtimeStatus>('idle')
 const realtimeError = ref('')
-const historyRequesting = ref(false)
-const historyVotingId = ref<number | null>(null)
 let stopRealtimeEvents: (() => void) | null = null
 /** 已成功上报过已读的最大消息 id：同一个位置不重复请求（见 reportConversationRead）。 */
 const lastReportedReadId = ref(0)
@@ -181,9 +173,7 @@ const emojiOptions = [
 const router = useRouter()
 const conversation = computed(() => detail.value?.conversation ?? null)
 const messages = computed(() => detail.value?.messages ?? [])
-const conversationClosed = computed(
-  () => conversation.value?.status === 'closed',
-)
+const conversationClosed = computed(() => conversation.value?.status === 'closed')
 /**
  * R014：需求是否已进入「合同有效期届满的锁定 / 已清除」阶段。
  *
@@ -203,24 +193,42 @@ const canSend = computed(
 const isInline = computed(() => props.displayMode === 'inline')
 const closeActionLabel = computed(() => (isInline.value ? '返回列表' : '关闭'))
 /**
- * 接手前的历史沟通区段：只有现任开发者视角下才有值（客户不受隐藏限制、后端返回空数组）。
- * 已公开的那几段消息会直接回到时间线里，因此只提示仍未公开的部分。
+ * 接手前的历史沟通（未公开区段、待我表决的申请、申请/表决接口）全在 useHistoryDisclosure 里。
+ * 组件只摆位置、往外 emit；详情仍以本文件的 `detail` 为唯一真源，composable 拿到新详情
+ * 就交给 applyDetail 整体替换（顺手 emit updated），不另存一份。
  */
-const hiddenHistorySegments = computed(() =>
-  (conversation.value?.history_segments ?? []).filter((segment) => segment.status !== 'approved'),
-)
-const canRequestHistory = computed(() =>
-  (conversation.value?.history_segments ?? []).some((segment) => segment.status === 'hidden'),
-)
-const hiddenHistoryDevelopers = computed(() =>
-  [...new Set(hiddenHistorySegments.value.map((segment) => segment.previous_developer))].join('、'),
-)
-/** 待我确认的公开申请：我是这段的前任开发者或客户，且自己那一票还没投。 */
-const pendingHistoryVotes = computed(() =>
-  (conversation.value?.history_disclosures ?? []).filter(
-    (item) => item.status === 'pending' && myHistoryConsent(item) === 'pending',
-  ),
-)
+const {
+  hiddenSegments: hiddenHistorySegments,
+  canRequest: canRequestHistory,
+  pendingVotes: pendingHistoryVotes,
+  historyRequesting,
+  historyVotingId,
+  isPreviousDeveloperMessage,
+  requestHistoryDisclosure,
+  respondHistoryDisclosure,
+} = useHistoryDisclosure(() => ({
+  token: props.token,
+  requirementId: props.requirementId,
+  currentUsername: props.currentUsername,
+  conversation: conversation.value,
+  applyDetail: (next) => {
+    detail.value = next
+    emit('updated', next)
+  },
+  reload: loadConversation,
+}))
+/**
+ * 需求详情抽屉的开/关与取数（`apiMode === 'dev'` 走开发者侧列表）在 useRequirementDetailDrawer 里，
+ * 这里只留一个 open 给会话头的「详情」按钮做高亮与 aria-expanded。
+ */
+const {
+  drawerOpen: detailDrawerOpen,
+  drawerLoading: detailDrawerLoading,
+  drawerRequirement: detailDrawerRequirement,
+  toggle: toggleDetailDrawer,
+  close: closeDetailDrawer,
+} = useRequirementDetailDrawer(() => props)
+
 /** 当前登录用户在这条会话里的角色：需求方（甲方）或开发者（乙方）。 */
 const viewerRole = computed<'customer' | 'developer' | null>(() => {
   const item = conversation.value
@@ -568,75 +576,6 @@ function applyRealtimeDetail(payload: RequirementConversationDetail) {
   void scrollToBottom()
 }
 
-/** 我是这条申请里的哪一票：前任开发者票、客户票，都不是则不投（现任发起人不投票）。 */
-function myHistoryConsent(item: ConversationHistoryDisclosureBrief): ConversationConsent | null {
-  if (props.currentUsername === item.previous_developer) {
-    return item.developer_consent
-  }
-  if (props.currentUsername === conversation.value?.customer) {
-    return item.customer_consent
-  }
-  return null
-}
-
-function historySegmentStateLabel(status: ConversationHistorySegment['status']) {
-  if (status === 'pending') {
-    return '等待双方确认'
-  }
-  if (status === 'rejected') {
-    return '申请已被拒绝'
-  }
-  return '未公开'
-}
-
-/** 被公开的历史区段里，非现任开发者发的开发者消息：署名标注，避免误认成当前负责人。 */
-function isPreviousDeveloperMessage(message: RequirementConversationMessage) {
-  const item = conversation.value
-  if (!item || message.sender_role !== 'developer') {
-    return false
-  }
-  return message.sender !== item.developer
-}
-
-/** 现任开发者申请公开接手前的历史沟通（一次性覆盖所有还没申请的区段）。 */
-async function requestHistoryDisclosure() {
-  if (!props.token || !props.requirementId || historyRequesting.value) {
-    return
-  }
-
-  historyRequesting.value = true
-  try {
-    detail.value = await conversationApi.requestRequirementHistoryDisclosure(
-      props.token,
-      props.requirementId,
-    )
-    emit('updated', detail.value)
-    TMessage.success('已提交申请，等待前任开发者与客户确认')
-  } catch (error) {
-    TMessage.warning(error instanceof Error ? error.message : '申请查看历史沟通失败')
-  } finally {
-    historyRequesting.value = false
-  }
-}
-
-async function respondHistoryDisclosure(item: ConversationHistoryDisclosureBrief, decision: 'approved' | 'rejected') {
-  if (!props.token || historyVotingId.value !== null) {
-    return
-  }
-
-  historyVotingId.value = item.id
-  try {
-    await conversationApi.respondConversationHistoryDisclosure(props.token, item.id, decision)
-    TMessage.success(decision === 'approved' ? '已同意公开这段历史沟通' : '已拒绝公开这段历史沟通')
-    // 两票齐后那段消息会出现在时间线里，重新拉一次详情即可看到
-    await loadConversation()
-  } catch (error) {
-    TMessage.warning(error instanceof Error ? error.message : '提交表决失败')
-  } finally {
-    historyVotingId.value = null
-  }
-}
-
 function startRealtime() {
   if (!props.token || !props.requirementId) {
     realtimeStatus.value = 'idle'
@@ -679,7 +618,9 @@ function stopRealtime() {
 async function submitMessage() {
   if (sending.value || loading.value || composerLocked.value) {
     if (requirementArchived.value) {
-      TMessage.warning('合同有效期已届满，会话在资料保留期内只读：不能发消息或传附件，历史内容仍可查看与下载')
+      TMessage.warning(
+        '合同有效期已届满，会话在资料保留期内只读：不能发消息或传附件，历史内容仍可查看与下载',
+      )
     }
     return
   }
@@ -853,133 +794,6 @@ function closeModal() {
   emit('close')
 }
 
-/* ---------------------------------------------------------------- 需求详情抽屉 */
-
-/**
- * 抽屉只读这几个字段。
- *
- * 用户端（api/requirements）与开发者侧（api/devRequirements）各有一份 `RequirementItem`，
- * 字段与必填性略有差异；这里收敛成本地形状，免得把两边类型搅成一个 union 再往下传。
- */
-type DrawerRequirement = {
-  requirement_id: string
-  title: string
-  /** 只用来消歧 `deposit_paid` 的文案（一码两义），取值与两侧 `RequirementItem` 一致。 */
-  payment_mode: RequirementPaymentMode
-  status: string
-  budget?: number | null
-  created_time?: string
-  updated_at: string
-  creator?: string
-  developer?: string | null
-  description?: string | null
-  acceptance_criteria?: string | null
-}
-
-const detailDrawerOpen = ref(false)
-const detailDrawerLoading = ref(false)
-const detailDrawerRequirement = ref<DrawerRequirement | null>(null)
-
-function closeDetailDrawer() {
-  detailDrawerOpen.value = false
-}
-
-// 换了需求就收起抽屉，否则会停在上一笔单据的速览上（内嵌形态里切会话不会重建组件）。
-watch(
-  () => props.requirementId,
-  () => {
-    detailDrawerOpen.value = false
-  },
-)
-
-/**
- * 需求详情抽屉：从右侧划出、覆盖在会话之上，不打断会话上下文。
- *
- * 数据按需自取，做法与 downloadDeliveryArtifact 一致（拉一次「我的需求」列表再按编号取那一条）：
- * 这样四个调用方都不必额外传 prop，也不依赖会话接口多返回字段；开发者侧对应 /dev/requirements/mine。
- */
-async function toggleDetailDrawer() {
-  if (detailDrawerOpen.value) {
-    closeDetailDrawer()
-    return
-  }
-
-  detailDrawerOpen.value = true
-
-  const requirementId = props.requirementId.trim()
-  if (!requirementId || !props.token || detailDrawerLoading.value) {
-    return
-  }
-  // 已经取过同一条就直接用缓存；换了需求则重新取。
-  if (detailDrawerRequirement.value?.requirement_id === requirementId) {
-    return
-  }
-
-  detailDrawerLoading.value = true
-  try {
-    const rows =
-      props.apiMode === 'dev'
-        ? await listMyRequirements(props.token)
-        : await listRequirements(props.token)
-    const found = rows.find((row) => row.requirement_id === requirementId)
-    detailDrawerRequirement.value = found
-      ? {
-        requirement_id: found.requirement_id,
-        title: found.title,
-        payment_mode: found.payment_mode,
-        status: found.status,
-        budget: found.budget ?? null,
-        created_time: found.created_time,
-        updated_at: found.updated_at,
-        creator: found.creator,
-        // 开发者侧那份 RequirementItem 没有 developer 字段（那侧自己就是开发者），退回当前登录名
-        developer:
-          'developer' in found
-            ? (found.developer ?? null)
-            : (props.currentUsername?.trim() || null),
-        description: found.description ?? null,
-        acceptance_criteria: found.acceptance_criteria ?? null,
-      }
-      : null
-  } catch {
-    detailDrawerRequirement.value = null
-  } finally {
-    detailDrawerLoading.value = false
-  }
-}
-
-const detailDrawerFields = computed(() => {
-  const item = detailDrawerRequirement.value
-  if (!item) {
-    return []
-  }
-
-  return [
-    { label: '编号', value: item.requirement_id },
-    { label: '发布方式', value: requirementPaymentModeLabel(item.payment_mode) },
-    { label: '状态', value: requirementStatusLabel(item.status, item.payment_mode) },
-    { label: '预算', value: formatCny(item.budget) },
-    { label: '创建', value: item.created_time ? formatCnDateTime(item.created_time) : '时间未知' },
-    { label: '更新', value: formatCnDateTime(item.updated_at) },
-    { label: '需求方', value: item.creator ?? '—' },
-    { label: '开发者', value: item.developer ?? '待接单' },
-  ]
-})
-
-/* 需求描述与验收标准是富文本，按站内既有口径走 sanitize + v-html（后端还有一道 ammonia），
-   不要退化成纯文本——那样段落与列表会被拍平成一行。 */
-const detailDrawerDescription = computed(
-  () =>
-    sanitizeRequirementRichText(detailDrawerRequirement.value?.description ?? '') ||
-    '当前需求暂未补充详细描述。',
-)
-
-const detailDrawerAcceptance = computed(
-  () =>
-    sanitizeRequirementRichText(detailDrawerRequirement.value?.acceptance_criteria ?? '') ||
-    '当前需求暂未补充验收标准。',
-)
-
 function handleBackdropClick() {
   if (!isInline.value) {
     closeModal()
@@ -989,85 +803,112 @@ function handleBackdropClick() {
 
 <template>
   <Teleport to="body" :disabled="isInline">
-    <div v-if="visible" class="conversation-modal-wrap" :class="{ 'conversation-modal-wrap--inline': isInline }"
-      @click.self="handleBackdropClick">
+    <div
+      v-if="visible"
+      class="conversation-modal-wrap"
+      :class="{ 'conversation-modal-wrap--inline': isInline }"
+      @click.self="handleBackdropClick"
+    >
       <section class="conversation-modal" aria-label="需求沟通会话">
         <!-- 内嵌形态在移动端把会话头搬进工作台顶栏（返回 · 标题 · 对方与状态 · 详情 · 刷新），
              省掉顶栏与会话头叠两行；桌面端与弹窗形态原地渲染 -->
         <WorkbenchBarSlot :disabled="!isInline">
-        <header class="conversation-modal__header">
-          <button class="conversation-modal__icon-btn conversation-modal__back" type="button"
-            :aria-label="closeActionLabel" :title="closeActionLabel" @click="closeModal">
-            <TIcon>
-              <ArrowLeft />
-            </TIcon>
-          </button>
+          <header class="conversation-modal__header">
+            <button
+              class="conversation-modal__icon-btn conversation-modal__back"
+              type="button"
+              :aria-label="closeActionLabel"
+              :title="closeActionLabel"
+              @click="closeModal"
+            >
+              <TIcon>
+                <ArrowLeft />
+              </TIcon>
+            </button>
 
-          <div class="conversation-modal__avatar" aria-hidden="true" @click="toggleDetailDrawer">{{ peerInitial }}</div>
+            <div class="conversation-modal__avatar" aria-hidden="true" @click="toggleDetailDrawer">
+              {{ peerInitial }}
+            </div>
 
-          <!-- 点头像或标题区打开需求详情（移动端顶栏里不放详情按钮，只靠这里进入） -->
-          <div class="conversation-modal__identity" role="button" tabindex="0" :aria-expanded="detailDrawerOpen"
-            title="查看需求详情" @click="toggleDetailDrawer" @keydown.enter.prevent="toggleDetailDrawer"
-            @keydown.space.prevent="toggleDetailDrawer">
-            <h3>{{ conversationTitle }}</h3>
-            <!-- 副信息一行：对方 · 实时状态 · 最近动静。原来「实时同步中」「最近 9/29 15:30」
+            <!-- 点头像或标题区打开需求详情（移动端顶栏里不放详情按钮，只靠这里进入） -->
+            <div
+              class="conversation-modal__identity"
+              role="button"
+              tabindex="0"
+              :aria-expanded="detailDrawerOpen"
+              title="查看需求详情"
+              @click="toggleDetailDrawer"
+              @keydown.enter.prevent="toggleDetailDrawer"
+              @keydown.space.prevent="toggleDetailDrawer"
+            >
+              <h3>{{ conversationTitle }}</h3>
+              <!-- 副信息一行：对方 · 实时状态 · 最近动静。原来「实时同步中」「最近 9/29 15:30」
                  各占一枚同色胶囊，挨在一起看着像两个并列的标签；现在合成一行浅灰正文，
                  实时状态交给前面的小圆点，头部从三行收到两行。 -->
-            <p class="conversation-modal__identity-meta">
-              <span class="conversation-modal__peer">{{ conversation ? participantLabel : requirementId }}</span>
-              <span class="conversation-modal__live" :class="`conversation-modal__live--${realtimeStatus}`"
-                :title="realtimeError">
-                {{ realtimeStatusLabel }}
-              </span>
-              <span class="conversation-modal__recent">{{ lastMessageLabel }}</span>
-            </p>
-          </div>
+              <p class="conversation-modal__identity-meta">
+                <span class="conversation-modal__peer">{{
+                  conversation ? participantLabel : requirementId
+                }}</span>
+                <span
+                  class="conversation-modal__live"
+                  :class="`conversation-modal__live--${realtimeStatus}`"
+                  :title="realtimeError"
+                >
+                  {{ realtimeStatusLabel }}
+                </span>
+                <span class="conversation-modal__recent">{{ lastMessageLabel }}</span>
+              </p>
+            </div>
 
-          <div class="conversation-modal__header-actions">
-            <button class="conversation-modal__icon-btn" type="button" :class="{ 'is-active': detailDrawerOpen }"
-              :aria-expanded="detailDrawerOpen" aria-label="需求详情" title="需求详情" @click="toggleDetailDrawer">
-              <TIcon>
-                <Document />
-              </TIcon>
-            </button>
-            <button class="conversation-modal__icon-btn" type="button" :disabled="loading" aria-label="刷新会话"
-              title="刷新会话" @click="loadConversation">
-              <TIcon :spin="loading">
-                <Refresh />
-              </TIcon>
-            </button>
-          </div>
-        </header>
+            <div class="conversation-modal__header-actions">
+              <button
+                class="conversation-modal__icon-btn"
+                type="button"
+                :class="{ 'is-active': detailDrawerOpen }"
+                :aria-expanded="detailDrawerOpen"
+                aria-label="需求详情"
+                title="需求详情"
+                @click="toggleDetailDrawer"
+              >
+                <TIcon>
+                  <Document />
+                </TIcon>
+              </button>
+              <button
+                class="conversation-modal__icon-btn"
+                type="button"
+                :disabled="loading"
+                aria-label="刷新会话"
+                title="刷新会话"
+                @click="loadConversation"
+              >
+                <TIcon :spin="loading">
+                  <Refresh />
+                </TIcon>
+              </button>
+            </div>
+          </header>
         </WorkbenchBarSlot>
 
         <div ref="messageListRef" class="conversation-modal__messages">
-          <div v-if="hiddenHistorySegments.length" class="conversation-history-notice">
-            <strong>此前的沟通记录未公开</strong>
-            <p>
-              接手前由 {{ hiddenHistoryDevelopers }} 负责的那段沟通默认不展示，需要前任开发者与客户都确认后才会公开。
-            </p>
-            <ul class="conversation-history-notice__segments">
-              <li v-for="segment in hiddenHistorySegments" :key="`${segment.previous_developer}-${segment.segment_start}`">
-                <span>前任开发者 {{ segment.previous_developer }}</span>
-                <small>{{ segment.segment_start }} ~ {{ segment.segment_end }}</small>
-                <em>{{ historySegmentStateLabel(segment.status) }}</em>
-              </li>
-            </ul>
-            <button v-if="canRequestHistory" class="conversation-history-notice__action" type="button"
-              :disabled="historyRequesting" @click="requestHistoryDisclosure">
-              {{ historyRequesting ? '提交中...' : '申请查看历史沟通' }}
-            </button>
-            <p v-else class="conversation-history-notice__tip">
-              已提交申请，等待前任开发者与客户确认；如有申请被拒绝，那段沟通不会公开。
-            </p>
-          </div>
+          <!-- 接手前历史沟通未公开的提示条：文案与区段列表在 HistoryDisclosureNotice 里，
+               申请接口由 useHistoryDisclosure 调，这里只把区段与状态传下去 -->
+          <HistoryDisclosureNotice
+            :segments="hiddenHistorySegments"
+            :can-request="canRequestHistory"
+            :requesting="historyRequesting"
+            @request="requestHistoryDisclosure"
+          />
           <div v-if="loading" class="conversation-modal__empty">
             <TIcon>
               <ChatDotRound />
             </TIcon>
             <span>会话加载中...</span>
           </div>
-          <div v-else-if="errorMessage" class="conversation-modal__empty conversation-modal__empty--error">
+          <div
+            v-else-if="errorMessage"
+            class="conversation-modal__empty conversation-modal__empty--error"
+          >
             <span>{{ errorMessage }}</span>
             <button type="button" @click="loadConversation">重试</button>
           </div>
@@ -1075,13 +916,20 @@ function handleBackdropClick() {
             <TIcon>
               <ChatDotRound />
             </TIcon>
-            <span>{{ hiddenHistorySegments.length ? '此前的沟通记录未公开，暂时没有可查看的消息' : '暂无消息' }}</span>
+            <span>{{
+              hiddenHistorySegments.length
+                ? '此前的沟通记录未公开，暂时没有可查看的消息'
+                : '暂无消息'
+            }}</span>
           </div>
           <template v-else>
             <template v-for="row in timelineItems" :key="row.key">
               <div v-if="row.kind === 'date'" class="conversation-date-pill">{{ row.label }}</div>
-              <article v-else-if="row.kind === 'card' && row.card" class="conversation-card"
-                :class="`conversation-card--${row.cardSide ?? 'system'}`">
+              <article
+                v-else-if="row.kind === 'card' && row.card"
+                class="conversation-card"
+                :class="`conversation-card--${row.cardSide ?? 'system'}`"
+              >
                 <div class="conversation-card__head">
                   <TIcon class="conversation-card__icon">
                     <Bell />
@@ -1098,52 +946,88 @@ function handleBackdropClick() {
                          不再叠加 `actionCaps.canPay`——工具条加载合同签署状态偶发慢半拍时，
                          会把「验收已通过」上该有的「支付尾款」整颗藏掉。弹窗与真正能否付
                          仍归工具条管。 -->
-                    <TButton v-if="row.card.paymentAction"
-                      class="conversation-card__action" variant="solid" tone="accent" size="sm"
-                      @click="runPaymentCardAction()">
+                    <TButton
+                      v-if="row.card.paymentAction"
+                      class="conversation-card__action"
+                      variant="solid"
+                      tone="accent"
+                      size="sm"
+                      @click="runPaymentCardAction()"
+                    >
                       {{ row.card.actionLabel }}
                     </TButton>
-                    <TButton v-else-if="row.card.actionLabel && !row.card.deliveryAction && !row.card.paymentAction"
-                      class="conversation-card__action" variant="solid" tone="accent" size="sm"
+                    <TButton
+                      v-else-if="
+                        row.card.actionLabel && !row.card.deliveryAction && !row.card.paymentAction
+                      "
+                      class="conversation-card__action"
+                      variant="solid"
+                      tone="accent"
+                      size="sm"
                       :loading="downloadLoading && row.card.downloadDelivery"
-                      @click="runCardAction(row.card, row.message)">
+                      @click="runCardAction(row.card, row.message)"
+                    >
                       {{ row.card.actionLabel }}
                     </TButton>
                     <!-- 「去交付」不跳需求列表：交付弹窗就挂在同一条会话底部的工具条上，
                          按下去原地打开它。能不能交付仍由工具条裁定（没绑资源项目、阶段不对都不给），
                          条件不够时这张卡片就不摆按钮，不给出点了没反应的入口。 -->
-                    <TButton v-else-if="row.card.deliveryAction && actionCaps.canDeliver"
-                      class="conversation-card__action" variant="solid" tone="accent" size="sm"
-                      @click="actionsRef?.openDeliveryDialog()">
+                    <TButton
+                      v-else-if="row.card.deliveryAction && actionCaps.canDeliver"
+                      class="conversation-card__action"
+                      variant="solid"
+                      tone="accent"
+                      size="sm"
+                      @click="actionsRef?.openDeliveryDialog()"
+                    >
                       {{ row.card.actionLabel }}
                     </TButton>
                     <!-- 验收按钮摆在「下载交付产物」之后：这张卡片说的就是「请验收后支付尾款」，
                          顺手就能做。能不能验收仍由工具条裁定（自管模式、合同未签、没有交付版本
                          都不给），弹窗也归它管，避免两处各写一套条件。 -->
-                    <TButton v-if="row.card.acceptanceAction && actionCaps.canAcceptDelivery"
-                      class="conversation-card__action" variant="solid" tone="accent" size="sm"
-                      @click="actionsRef?.openAcceptanceDialog()">
+                    <TButton
+                      v-if="row.card.acceptanceAction && actionCaps.canAcceptDelivery"
+                      class="conversation-card__action"
+                      variant="solid"
+                      tone="accent"
+                      size="sm"
+                      @click="actionsRef?.openAcceptanceDialog()"
+                    >
                       验收
                     </TButton>
                   </div>
                 </div>
               </article>
-              <article v-else-if="row.message" class="conversation-message"
-                :class="{ 'conversation-message--mine': row.mine }">
+              <article
+                v-else-if="row.message"
+                class="conversation-message"
+                :class="{ 'conversation-message--mine': row.mine }"
+              >
                 <div v-if="!row.mine" class="conversation-message__avatar-slot" aria-hidden="true">
                   <div v-if="row.showAvatar" class="conversation-message__avatar">
                     {{ avatarText(row.message.sender) }}
                   </div>
                 </div>
                 <div class="conversation-message__bubble">
-                  <span v-if="isPreviousDeveloperMessage(row.message)" class="conversation-message__history-tag">
+                  <span
+                    v-if="isPreviousDeveloperMessage(row.message)"
+                    class="conversation-message__history-tag"
+                  >
                     前任开发者 {{ row.message.sender }}
                   </span>
                   <div v-if="row.message.attachment_url" class="conversation-message__attachment">
-                    <a class="conversation-message__attachment-link" :href="messageAttachmentUrl(row.message)"
-                      target="_blank" rel="noopener noreferrer" :title="messageAttachmentLabel(row.message)">
-                      <img v-if="isImageAttachment(row.message)" :src="messageAttachmentUrl(row.message)"
-                        :alt="messageAttachmentLabel(row.message)" />
+                    <a
+                      class="conversation-message__attachment-link"
+                      :href="messageAttachmentUrl(row.message)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      :title="messageAttachmentLabel(row.message)"
+                    >
+                      <img
+                        v-if="isImageAttachment(row.message)"
+                        :src="messageAttachmentUrl(row.message)"
+                        :alt="messageAttachmentLabel(row.message)"
+                      />
                       <span v-else class="conversation-message__attachment-file">
                         <TIcon>
                           <Picture />
@@ -1167,29 +1051,26 @@ function handleBackdropClick() {
           </template>
         </div>
 
-        <div v-for="item in pendingHistoryVotes" :key="`history-vote-${item.id}`" class="conversation-history-vote">
-          <p>
-            现任开发者 {{ item.current_developer }} 申请查看前任开发者 {{ item.previous_developer }} 负责期间的沟通记录。
-            你和对方都同意后，这段记录才会向现任开发者公开；任何一方拒绝则维持隐藏。
-          </p>
-          <div class="conversation-history-vote__actions">
-            <button type="button" :disabled="historyVotingId !== null"
-              @click="respondHistoryDisclosure(item, 'approved')">
-              同意公开
-            </button>
-            <button type="button" :disabled="historyVotingId !== null"
-              @click="respondHistoryDisclosure(item, 'rejected')">
-              拒绝
-            </button>
-          </div>
-        </div>
+        <!-- 待我确认的历史沟通公开申请：一条申请一条确认条，表决接口由 useHistoryDisclosure 调 -->
+        <ConversationHistoryVote
+          v-for="item in pendingHistoryVotes"
+          :key="`history-vote-${item.id}`"
+          :item="item"
+          :voting="historyVotingId !== null"
+          @vote="(decision) => respondHistoryDisclosure(item, decision)"
+        />
 
         <!-- 业务入口（查看合同、解除合作、付款、交付……）放在输入底栏之外、紧贴其上方；
              表情与附件是写消息的工具，跟输入框、发送键排在同一行 -->
         <div v-if="viewerRole" class="conversation-modal__tools">
-          <RequirementConversationActions ref="actionsRef" :token="token"
-            :requirement-id="requirementId" :role="viewerRole" @changed="loadConversation"
-            @capabilities="onActionCapabilities" />
+          <RequirementConversationActions
+            ref="actionsRef"
+            :token="token"
+            :requirement-id="requirementId"
+            :role="viewerRole"
+            @changed="loadConversation"
+            @capabilities="onActionCapabilities"
+          />
         </div>
 
         <footer class="conversation-modal__composer">
@@ -1198,11 +1079,16 @@ function handleBackdropClick() {
             会话已关闭：这笔需求已结束，历史消息仅供查看，双方都不能再发言。
           </p>
           <div class="conversation-modal__composer-main">
-
             <Transition name="conversation-emoji">
               <div v-if="emojiPanelOpen" class="conversation-modal__emoji-panel">
-                <button v-for="emoji in emojiOptions" :key="emoji" class="conversation-modal__emoji-btn" type="button"
-                  :aria-label="`插入表情 ${emoji}`" @click="insertEmoji(emoji)">
+                <button
+                  v-for="emoji in emojiOptions"
+                  :key="emoji"
+                  class="conversation-modal__emoji-btn"
+                  type="button"
+                  :aria-label="`插入表情 ${emoji}`"
+                  @click="insertEmoji(emoji)"
+                >
                   {{ emoji }}
                 </button>
               </div>
@@ -1214,8 +1100,13 @@ function handleBackdropClick() {
                 <strong>{{ attachmentDraft.name }}</strong>
                 <span>{{ attachmentDraft.sizeLabel }}</span>
               </div>
-              <button class="conversation-modal__attachment-remove" type="button" aria-label="移除附件" title="移除附件"
-                @click="clearAttachmentDraft">
+              <button
+                class="conversation-modal__attachment-remove"
+                type="button"
+                aria-label="移除附件"
+                title="移除附件"
+                @click="clearAttachmentDraft"
+              >
                 <TIcon>
                   <Close />
                 </TIcon>
@@ -1227,36 +1118,79 @@ function handleBackdropClick() {
             </p>
 
             <!-- R014：合同有效期届满进入锁定 / 已清除后，会话只读；历史消息与附件仍可查看与下载。 -->
-            <p v-if="requirementArchived" class="conversation-modal__readonly-hint" role="status"
-              data-testid="conversation-archive-readonly">
+            <p
+              v-if="requirementArchived"
+              class="conversation-modal__readonly-hint"
+              role="status"
+              data-testid="conversation-archive-readonly"
+            >
               合同有效期已届满，会话在资料保留期内只读：不能发消息或传附件，历史内容仍可查看与下载。
             </p>
             <div class="conversation-modal__input-row">
-              <button class="conversation-modal__tool-btn" :class="{ 'is-active': emojiPanelOpen }" type="button"
-                :disabled="sending || loading || composerLocked" aria-label="选择表情" title="选择表情"
-                @click="toggleEmojiPanel">
+              <button
+                class="conversation-modal__tool-btn"
+                :class="{ 'is-active': emojiPanelOpen }"
+                type="button"
+                :disabled="sending || loading || composerLocked"
+                aria-label="选择表情"
+                title="选择表情"
+                @click="toggleEmojiPanel"
+              >
                 <TIcon>
                   <MagicStick />
                 </TIcon>
               </button>
-              <button class="conversation-modal__tool-btn" type="button"
-                :disabled="sending || loading || composerLocked" aria-label="添加截图附件" title="添加截图附件"
-                @click="openAttachmentPicker">
+              <button
+                class="conversation-modal__tool-btn"
+                type="button"
+                :disabled="sending || loading || composerLocked"
+                aria-label="添加截图附件"
+                title="添加截图附件"
+                @click="openAttachmentPicker"
+              >
                 <TIcon>
                   <Paperclip />
                 </TIcon>
               </button>
-              <input ref="attachmentInputRef" class="conversation-modal__attachment-native" type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif" @change="handleAttachmentFileChange" />
+              <input
+                ref="attachmentInputRef"
+                class="conversation-modal__attachment-native"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                @change="handleAttachmentFileChange"
+              />
               <div class="conversation-modal__input-shell">
-                <textarea ref="draftInputRef" v-model="draft" maxlength="5000" placeholder="输入消息" spellcheck="false"
-                  autocomplete="new-password" autocorrect="off" autocapitalize="off" aria-autocomplete="none"
-                  data-ms-editor="false" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
-                  data-lt-active="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true"
-                  :disabled="composerLocked" @keydown="handleComposerKeydown" @paste="handleComposerPaste"></textarea>
+                <textarea
+                  ref="draftInputRef"
+                  v-model="draft"
+                  maxlength="5000"
+                  placeholder="输入消息"
+                  spellcheck="false"
+                  autocomplete="new-password"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  aria-autocomplete="none"
+                  data-ms-editor="false"
+                  data-gramm="false"
+                  data-gramm_editor="false"
+                  data-enable-grammarly="false"
+                  data-lt-active="false"
+                  data-form-type="other"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  :disabled="composerLocked"
+                  @keydown="handleComposerKeydown"
+                  @paste="handleComposerPaste"
+                ></textarea>
               </div>
-              <button class="conversation-modal__send-btn" type="button" :disabled="!canSend" aria-label="发送消息"
-                title="发送消息" @click="submitMessage">
+              <button
+                class="conversation-modal__send-btn"
+                type="button"
+                :disabled="!canSend"
+                aria-label="发送消息"
+                title="发送消息"
+                @click="submitMessage"
+              >
                 <TIcon>
                   <Position />
                 </TIcon>
@@ -1265,55 +1199,14 @@ function handleBackdropClick() {
           </div>
         </footer>
 
-        <!-- 需求详情抽屉：从右侧划出、盖在会话之上，不跳页也不打断会话上下文；
-             数据按需自取（见 toggleDetailDrawer）。
-
-             Teleport 到 body：内嵌形态（消息中心）下消息页自己在一个层叠上下文里，
-             留在原地的话抽屉的 z-index 再高也压不过站点的吸顶导航（40）与底部坞（60），
-             移动端会出现「抽屉顶栏和底栏被盖住」。与验收弹窗同一处理（见 AcceptanceDialog）。 -->
-        <Teleport to="body">
-          <Transition name="conversation-drawer">
-            <div v-if="detailDrawerOpen" class="conversation-drawer-layer">
-              <div class="conversation-drawer__backdrop" @click="closeDetailDrawer"></div>
-              <aside class="conversation-drawer" aria-label="需求详情">
-                <header class="conversation-drawer__head">
-                  <h4>需求详情</h4>
-                  <button class="conversation-modal__icon-btn" type="button" aria-label="收起需求详情" title="收起需求详情"
-                    @click="closeDetailDrawer">
-                    <TIcon>
-                      <Close />
-                    </TIcon>
-                  </button>
-                </header>
-
-                <div class="conversation-drawer__body">
-                  <p v-if="detailDrawerLoading" class="conversation-drawer__hint" role="status">需求详情加载中…</p>
-                  <p v-else-if="!detailDrawerRequirement" class="conversation-drawer__hint">未能加载这条需求的详情。</p>
-                  <template v-else>
-                    <h5 class="conversation-drawer__title">{{ detailDrawerRequirement.title }}</h5>
-
-                    <dl class="conversation-drawer__meta">
-                      <div v-for="field in detailDrawerFields" :key="field.label">
-                        <dt>{{ field.label }}</dt>
-                        <dd :title="field.value">{{ field.value }}</dd>
-                      </div>
-                    </dl>
-
-                    <section class="conversation-drawer__block">
-                      <h6>需求描述</h6>
-                      <article class="conversation-drawer__rich" v-html="detailDrawerDescription"></article>
-                    </section>
-
-                    <section class="conversation-drawer__block">
-                      <h6>验收标准</h6>
-                      <article class="conversation-drawer__rich" v-html="detailDrawerAcceptance"></article>
-                    </section>
-                  </template>
-                </div>
-              </aside>
-            </div>
-          </Transition>
-        </Teleport>
+        <!-- 需求详情抽屉：整块在 RequirementDetailDrawer 里（含 Teleport 到 body 的原因说明），
+             开/关与取数在 useRequirementDetailDrawer；这里只把 token 拉到的结果传下去 -->
+        <RequirementDetailDrawer
+          :open="detailDrawerOpen"
+          :loading="detailDrawerLoading"
+          :requirement="detailDrawerRequirement"
+          @close="closeDetailDrawer"
+        />
       </section>
     </div>
   </Teleport>
@@ -1906,7 +1799,7 @@ function handleBackdropClick() {
   font-size: 10px;
 }
 
-.conversation-message__attachment+p {
+.conversation-message__attachment + p {
   grid-column: 1 / -1;
   margin-top: 2px;
 }
@@ -2476,135 +2369,6 @@ function handleBackdropClick() {
   }
 }
 
-/* 历史沟通未公开提示：贴在消息列表顶部，说明接手前那段为何看不到 */
-.conversation-history-notice {
-  flex: 0 0 auto;
-  display: grid;
-  gap: 8px;
-  width: 100%;
-  max-width: 880px;
-  margin: 0 auto 14px;
-  padding: 12px 14px;
-  border: 1px dashed rgba(180, 143, 60, 0.42);
-  border-radius: 12px;
-  background: rgba(255, 252, 244, 0.94);
-}
-
-.conversation-history-notice strong {
-  color: #92400e;
-  font-size: 13px;
-}
-
-.conversation-history-notice p {
-  margin: 0;
-  color: #78594a;
-  font-size: 12.5px;
-  line-height: 1.6;
-}
-
-.conversation-history-notice__segments {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.conversation-history-notice__segments li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px;
-  color: #475569;
-  font-size: 12px;
-}
-
-.conversation-history-notice__segments small {
-  color: #94a3b8;
-  font-size: 11.5px;
-}
-
-.conversation-history-notice__segments em {
-  margin-left: auto;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(245, 158, 11, 0.16);
-  color: #92400e;
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 800;
-}
-
-.conversation-history-notice__action {
-  justify-self: start;
-  min-height: 40px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 10px;
-  background: #2d76ec;
-  color: #ffffff;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.conversation-history-notice__action:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.conversation-history-notice__tip {
-  color: #64748b;
-}
-
-/* 待我确认的公开申请：会话通道上方一条确认条 */
-.conversation-history-vote {
-  flex: 0 0 auto;
-  display: grid;
-  gap: 8px;
-  padding: 10px 14px;
-  border-top: 1px solid rgba(216, 228, 244, 0.95);
-  background: #fffaf0;
-}
-
-.conversation-history-vote p {
-  margin: 0;
-  color: #78594a;
-  font-size: 12.5px;
-  line-height: 1.6;
-}
-
-.conversation-history-vote__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.conversation-history-vote__actions button {
-  min-height: 40px;
-  padding: 0 16px;
-  border: 1px solid rgba(203, 213, 225, 0.95);
-  border-radius: 10px;
-  background: #ffffff;
-  color: #0f172a;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.conversation-history-vote__actions button:first-child {
-  border-color: #2d76ec;
-  background: #2d76ec;
-  color: #ffffff;
-}
-
-.conversation-history-vote__actions button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
 /* 被公开的历史消息：标出这是前任开发者发的 */
 .conversation-message__history-tag {
   align-self: flex-start;
@@ -2616,229 +2380,6 @@ function handleBackdropClick() {
   font-weight: 800;
   line-height: 1.5;
   white-space: nowrap;
-}
-
-@media (max-width: 640px) {
-  .conversation-history-notice {
-    width: 100%;
-    margin-bottom: 10px;
-    padding: 10px 12px;
-  }
-
-  /* 移动端触摸目标 ≥44px */
-  .conversation-history-notice__action,
-  .conversation-history-vote__actions button {
-    min-height: 44px;
-  }
-
-  .conversation-history-notice__segments em {
-    margin-left: 0;
-  }
-}
-/* 需求详情抽屉：从右侧划出、盖在会话之上。定位用 fixed——内嵌形态（消息中心）下
-   也要贴着视口右侧划出，不能依赖外层容器的定位；抽屉整棵 Teleport 到 body（见模板注释），
-   所以这里的层级是相对站点外壳算的：
-   压过会话弹窗（130）、个人中心浮层（120）、吸顶导航（40）与移动端底部坞（60），
-   但仍要留在验收弹窗（1400）这些从会话里点开的弹窗之下。 */
-.conversation-drawer-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-}
-
-.conversation-drawer__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.28);
-}
-
-.conversation-drawer {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  width: min(380px, 100%);
-  border-left: 1px solid rgba(213, 226, 244, 0.98);
-  background: #ffffff;
-  box-shadow: -12px 0 28px rgba(30, 58, 107, 0.12);
-}
-
-/* 划出：遮罩淡入 + 面板从右侧推入。过渡类落在 layer 上，面板靠后代选择器跟着动。 */
-.conversation-drawer-enter-active,
-.conversation-drawer-leave-active {
-  transition: opacity 200ms ease;
-}
-
-.conversation-drawer-enter-active .conversation-drawer,
-.conversation-drawer-leave-active .conversation-drawer {
-  transition: transform 220ms ease;
-}
-
-.conversation-drawer-enter-from,
-.conversation-drawer-leave-to {
-  opacity: 0;
-}
-
-.conversation-drawer-enter-from .conversation-drawer,
-.conversation-drawer-leave-to .conversation-drawer {
-  transform: translateX(100%);
-}
-
-.conversation-drawer__head {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 14px 14px 12px 18px;
-  border-bottom: 1px solid rgba(216, 228, 244, 0.95);
-}
-
-.conversation-drawer__head h4 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 15px;
-}
-
-.conversation-drawer__body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  display: grid;
-  align-content: start;
-  gap: 12px;
-  padding: 14px 18px 18px;
-}
-
-.conversation-drawer__title {
-  margin: 0;
-  color: #0f172a;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.conversation-drawer__hint {
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.conversation-drawer__meta {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 14px;
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #f8fafc;
-}
-
-.conversation-drawer__meta div {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-
-.conversation-drawer__meta dt {
-  color: #94a3b8;
-  font-size: 11px;
-  line-height: 1.4;
-}
-
-.conversation-drawer__meta dd {
-  margin: 0;
-  overflow: hidden;
-  color: #0f172a;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.conversation-drawer__block {
-  display: grid;
-  gap: 4px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(226, 232, 240, 0.9);
-}
-
-.conversation-drawer__block h6 {
-  margin: 0;
-  color: #475569;
-  font-size: 12px;
-}
-
-.conversation-drawer__rich {
-  color: #334155;
-  font-size: 13px;
-  line-height: 1.7;
-  overflow-wrap: anywhere;
-}
-
-.conversation-drawer__rich :deep(*:not(a)) {
-  color: inherit;
-}
-
-.conversation-drawer__rich :deep(strong),
-.conversation-drawer__rich :deep(b) {
-  color: #1e293b;
-  font-weight: 700;
-}
-
-.conversation-drawer__rich :deep(p),
-.conversation-drawer__rich :deep(ul),
-.conversation-drawer__rich :deep(ol),
-.conversation-drawer__rich :deep(blockquote) {
-  margin: 0 0 10px;
-}
-
-.conversation-drawer__rich :deep(ul),
-.conversation-drawer__rich :deep(ol) {
-  padding-left: 20px;
-}
-
-.conversation-drawer__rich :deep(a) {
-  color: #2563eb;
-  font-weight: 600;
-}
-
-.conversation-drawer__rich :deep(pre) {
-  overflow-x: auto;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: #0f172a;
-  color: #e2e8f0;
-}
-
-.conversation-drawer__rich :deep(.rich-editor-media) {
-  display: block;
-  max-width: 100%;
-  height: auto;
-  margin: 10px 0;
-  border-radius: 12px;
-}
-
-.conversation-drawer__rich :deep(.rich-editor-attachment) {
-  display: inline-flex;
-  max-width: 100%;
-  margin: 8px 0;
-  padding: 8px 12px;
-  border: 1px solid rgba(191, 219, 254, 0.96);
-  border-radius: 10px;
-  background: rgba(239, 246, 255, 0.9);
-  color: #1d4ed8;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-@media (max-width: 640px) {
-  .conversation-drawer {
-    width: 100%;
-  }
 }
 
 .conversation-modal__header-actions .conversation-modal__icon-btn.is-active {
@@ -2971,7 +2512,10 @@ function handleBackdropClick() {
 
 /* textarea 自身 overflow 不可见、内边距为 0 时，光标落在首字前会被左缘裁掉：
    左右各留 3px 给光标，外壳内边距同步减 3px，文字位置不变 */
-.conversation-modal__composer .conversation-modal__input-row .conversation-modal__input-shell textarea {
+.conversation-modal__composer
+  .conversation-modal__input-row
+  .conversation-modal__input-shell
+  textarea {
   max-height: none;
   padding-right: 3px;
   padding-left: 3px;
@@ -2986,7 +2530,12 @@ function handleBackdropClick() {
   flex: 0 0 auto;
   margin-top: -20px;
   padding: 20px 14px 8px;
-  background: linear-gradient(180deg, rgba(237, 245, 252, 0) 0, rgba(237, 245, 252, 0.92) 20px, #edf5fc 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(237, 245, 252, 0) 0,
+    rgba(237, 245, 252, 0.92) 20px,
+    #edf5fc 100%
+  );
   pointer-events: none;
   display: flex;
   align-items: center;
@@ -3008,10 +2557,12 @@ function handleBackdropClick() {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: linear-gradient(135deg,
-      rgba(225, 241, 255, 0.78),
-      rgba(248, 252, 255, 0.9) 44%,
-      rgba(235, 250, 244, 0.78));
+  background: linear-gradient(
+    135deg,
+    rgba(225, 241, 255, 0.78),
+    rgba(248, 252, 255, 0.9) 44%,
+    rgba(235, 250, 244, 0.78)
+  );
   display: flex;
   flex-direction: column;
   gap: 0;
