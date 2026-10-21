@@ -16,7 +16,6 @@ import AuthModal from '@/components/AuthModal.vue'
 import WechatLoginQrModal from '@/components/WechatLoginQrModal.vue'
 import PublishModal from '@/components/PublishModal.vue'
 import DepositModal from '@/components/DepositModal.vue'
-import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
 import { buildDevPortalUrl } from '@/config/runtime'
 import { useAuthForm } from '@/composables/useAuthForm'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
@@ -305,8 +304,6 @@ const depositRequirement = computed<PendingRequirementView | null>(() => {
   return pendingRequirements.value.find((item) => item.id === id) ?? null
 })
 const depositPayment = ref<PaymentState | null>(null)
-const wechatAuthorizationVisible = ref(false)
-const wechatAuthorizationUrl = ref('')
 const depositLoading = ref(false)
 const depositRatioPercent = ref(20)
 const availableCoupons = ref<CouponItem[]>([])
@@ -1839,16 +1836,6 @@ async function submitDepositPayment() {
   }
 }
 
-function closeWechatAuthorization() {
-  wechatAuthorizationVisible.value = false
-  wechatAuthorizationUrl.value = ''
-}
-
-function handleWechatAuthorized() {
-  closeWechatAuthorization()
-  TMessage.success('微信授权成功，请再次点击支付')
-}
-
 function openAuth(mode: AuthMode, redirectTo = authRedirectTarget.value) {
   const inviteCodeToKeep = authInviteCode.value.trim() || routeInviteCode.value
   const shareTypeToKeep = authShareType.value.trim() || routeShareType.value
@@ -2967,14 +2954,6 @@ async function submitPublishRequirement() {
       @update:depositChannel="updateDepositChannel"
       @selectCoupon="selectCoupon"
       @loadAvailableCoupons="loadAvailableCoupons"
-    />
-
-    <WechatAuthorizationModal
-      :visible="wechatAuthorizationVisible"
-      :authorization-url="wechatAuthorizationUrl"
-      :token="auth.token"
-      @close="closeWechatAuthorization"
-      @authorized="handleWechatAuthorized"
     />
   </main>
 </template>
