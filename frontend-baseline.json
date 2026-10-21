@@ -490,7 +490,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/MyRequirementsView.vue",
-      "detail": "3797 行 > 300（视图）",
+      "detail": "3346 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -791,6 +791,18 @@
       "rule": "raw-color",
       "file": "src/components/RequirementProgressGuide.vue",
       "detail": "5 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/requirements/RequirementStrip.vue",
+      "detail": "2 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/requirements/RequirementToolbar.vue",
+      "detail": "3 处裸色值",
       "since": "2026-10-21"
     },
     {
@@ -1222,7 +1234,7 @@
     {
       "rule": "raw-color",
       "file": "src/views/MyRequirementsView.vue",
-      "detail": "21 处裸色值",
+      "detail": "16 处裸色值",
       "since": "2026-10-21"
     },
     {
