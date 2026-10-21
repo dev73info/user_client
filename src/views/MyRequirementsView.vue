@@ -7,18 +7,14 @@ import AcceptanceDialog from '@/components/AcceptanceDialog.vue'
 import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
 import RequirementCommentDialog from '@/components/RequirementCommentDialog.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
+import RequirementDownloadPicker from '@/components/requirements/RequirementDownloadPicker.vue'
+import RequirementPayModal from '@/components/requirements/RequirementPayModal.vue'
 import RequirementPager from '@/components/requirements/RequirementPager.vue'
 import RequirementRow from '@/components/requirements/RequirementRow.vue'
 import RequirementStrip from '@/components/requirements/RequirementStrip.vue'
 import RequirementToolbar from '@/components/requirements/RequirementToolbar.vue'
 import RequirementVersionReviewCard from '@/components/requirements/RequirementVersionReviewCard.vue'
 import RequirementBreachModal from '@/components/requirements/RequirementBreachModal.vue'
-import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
-import {
-  getUnionPaymentAuthorizeUrl,
-  isUnionPaymentAuthorizationRequired,
-  isWechatPaymentAuthorizationRequired,
-} from '@/api/auth'
 import { HttpError } from '@/api/http'
 import {
   downloadPublicMcResourceVersionFile,
@@ -28,14 +24,7 @@ import {
 import { getResourceDetailSlug } from '@/api/resourceTags'
 import { getMyRealnameVerification } from '@/api/realname'
 import { createRequirementContract, fetchAsignRequirementPreviewUrl } from '@/api/contracts'
-import {
-  createAdapayPayment,
-  getAdapayPayment,
-  getAdapayClientPlatform,
-  type AdapayAcceptanceResult,
-  type AdapayBusinessPayChannel,
-  type AdapayPaymentResponse,
-} from '@/api/adapay'
+import { type AdapayAcceptanceResult } from '@/api/adapay'
 import {
   cancelRequirement as cancelRequirementApi,
   claimRequirementResource as claimRequirementResourceApi,
@@ -52,6 +41,7 @@ import {
 import { useClientPagination } from '@/composables/useClientPagination'
 import { useMyRequirementsData } from '@/composables/useMyRequirementsData'
 import { useRequirementBreach } from '@/composables/useRequirementBreach'
+import { useRequirementPayFlow } from '@/composables/useRequirementPayFlow'
 import { useResourceDownload } from '@/composables/useResourceDownload'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -77,10 +67,8 @@ import {
   canResubmit,
   canToggleRequirementResourceVisibility,
   cancelConfirmHint,
-  formatBudget,
   hasBoundResource,
   hasPendingResourceVersionDeleteReview,
-  isAdapayRequirement,
   isSelfManagedRequirement,
   nextResourceVisibility,
   pendingResourceVersionDeleteRequests,
@@ -88,15 +76,7 @@ import {
   publishedVersionCount,
   type RequirementRowFacts,
 } from '@/shared/requirementRowRules'
-import {
-  calculateFinalDepositAmount,
-  calculateFinalPaymentAmount,
-} from '@/shared/requirementPayment'
-import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
-import {
-  requirementRichTextPlainText,
-  validateRequirementRichText,
-} from '@/utils/requirementRichText'
+import { validateRequirementRichText } from '@/utils/requirementRichText'
 
 import { TMessage } from 'ui_73info'
 
@@ -129,23 +109,32 @@ const {
   afterSalesPendingCount,
   afterSalesBadgeFor,
 } = useMyRequirementsData({ onRequirementsLoaded: pruneStaleVersionDeleteReviewCard })
-const payVisible = ref(false)
-const payRequirement = ref<RequirementItem | null>(null)
-const payChannel = ref<AdapayBusinessPayChannel>('alipay')
-const payLoading = ref(false)
-type PaymentState = {
-  payment_id: string
-  requirement_id: string
-  channel: string
-  amount_cny: number
-  status: string
-  alipay_order_string?: string
-  expires_at: string
-  adapay?: boolean
-}
-const currentPayment = ref<PaymentState | null>(null)
-const wechatAuthorizationVisible = ref(false)
-const wechatAuthorizationUrl = ref('')
+/**
+ * 支付流程整体搬进 `useRequirementPayFlow`：开弹窗、切通道、金额、下单与查单。
+ *
+ * 两处注入：定金比例来自 `useMyRequirementsData`（settings 接口的唯一口径，这里不重算金额），
+ * 「能不能付」按 `canPay` + `rowFacts`（含合同签署事实）在视图判定后传进去。
+ * 它**不跳转**：建单后返回要去支付页的 query、云闪付授权返回授权地址，由下面几个视图函数执行导航。
+ */
+const {
+  payVisible,
+  payRequirement,
+  payChannel,
+  payLoading,
+  currentPayment,
+  isFinalPayment,
+  payStageLabel,
+  payAmount,
+  openPayModal,
+  closePayModal,
+  updatePayChannel,
+  submitPayment,
+} = useRequirementPayFlow({
+  token: () => auth.token,
+  depositRatioPercent: () => depositRatioPercent.value,
+  canPayRequirement: (item) => canPay(item, rowFacts(item)),
+  onPaid: reload,
+})
 const commentVisible = ref(false)
 const commentRequirement = ref<RequirementItem | null>(null)
 const publishVisible = ref(false)
@@ -296,12 +285,9 @@ async function handleRefresh() {
   await reload()
 }
 
+/** 版本列表与详情面板共用：选择器要挑版本，入口守卫要数条数。 */
 function deliveryVersionsFor(item: RequirementItem) {
   return versionsForRequirement(item) ?? []
-}
-
-function deliveryVersionNoteText(note?: string | null) {
-  return requirementRichTextPlainText(note ?? '')
 }
 
 /**
@@ -413,7 +399,6 @@ function openBoundResourceHomepage(item: RequirementItem) {
   })
 }
 
-/** 下载绑定资源的最新已发布版本；版本列表在 loadResourceVersions 里已加载，不再单独发请求。 */
 /** 行内「下载」：先弹版本选择（版本列表与详情面板共用 deliveryVersionsFor）。 */
 function openDownloadPicker(item: RequirementItem) {
   if (!hasBoundResource(item)) {
@@ -432,11 +417,13 @@ function closeDownloadPicker() {
   downloadPickerRequirement.value = null
 }
 
-async function downloadRequirementVersion(
-  item: RequirementItem,
-  version: PublicMcResourceVersionItem,
-) {
-  if (!hasBoundResource(item) || !auth.token) {
+/**
+ * 下载某一版：选择器只 emit 版本，需求一律取当前选中的那条（弹窗打开时必已存在）。
+ * 下载进度条与「准备中...」都靠 `resourceDownloadingId`，需求行那一列的置灰也读它，所以留在视图。
+ */
+async function downloadRequirementVersion(version: PublicMcResourceVersionItem) {
+  const item = downloadPickerRequirement.value
+  if (!item || !hasBoundResource(item) || !auth.token) {
     return
   }
 
@@ -479,24 +466,6 @@ function cancelRejectVersion() {
   }
 
   versionDeleteRejectTargetId.value = null
-}
-
-function openPayModal(item: RequirementItem) {
-  if (!canPay(item, rowFacts(item))) {
-    return
-  }
-  payRequirement.value = item
-  payChannel.value = 'alipay'
-  currentPayment.value = null
-  payVisible.value = true
-}
-
-function updatePayChannel(channel: AdapayBusinessPayChannel) {
-  if (payChannel.value === channel) {
-    return
-  }
-  payChannel.value = channel
-  currentPayment.value = null
 }
 
 /** 无担保模式的「确认完成」入口：担保模式的验收与尾款走 accept / pay，不再经过这里。 */
@@ -828,10 +797,6 @@ async function openPublishModal() {
   publishVisible.value = true
 }
 
-function closePayModal() {
-  payVisible.value = false
-}
-
 function forceClosePublishModal() {
   publishVisible.value = false
   resetPublishForm()
@@ -1112,164 +1077,30 @@ async function submitRequirementPublish() {
   }
 }
 
-function finalDepositAmount(item: RequirementItem) {
-  return calculateFinalDepositAmount(item, depositRatioPercent.value)
-}
-
-function finalPaymentAmount(item: RequirementItem) {
-  return calculateFinalPaymentAmount(item, depositRatioPercent.value)
-}
-
-const isFinalPayment = computed(() => payRequirement.value?.status === 'pending_final')
-const payStageLabel = computed(() => (isFinalPayment.value ? '尾款' : '定金'))
-const payChannelLabel = computed(() => {
-  switch (payChannel.value) {
-    case 'wechat':
-      return '微信'
-    case 'union':
-      return '云闪付'
-    default:
-      return '支付宝'
-  }
-})
-
 const finalPaymentConfirmTitle = computed(() => '确认交付完成')
 const finalPaymentConfirmTip = computed(
   () => '确认后，当前需求会直接进入已完成状态，后续可继续评价。',
 )
 const finalPaymentConfirmButton = computed(() => '确认完成')
 
-const payAmount = computed(() => {
-  if (!payRequirement.value) {
-    return 0.01
-  }
-  if (payRequirement.value.status === 'pending_final') {
-    return finalPaymentAmount(payRequirement.value)
-  }
-  return finalDepositAmount(payRequirement.value)
-})
-
+/**
+ * 支付按钮的收尾：**跳转留在视图**。
+ *
+ * `useRequirementPayFlow` 只返回「去哪儿」——建单成功后返回支付页的 query，
+ * 云闪付授权返回要 assign 的授权地址；`router.push` / `window.location.assign` 两种导航都在这里执行，
+ * composable 与弹窗组件都不碰路由（与解除合作域的「跳转留在视图」同一分工）。
+ */
 async function submitRequirementPayment() {
-  if (!payRequirement.value) {
+  const outcome = await submitPayment()
+
+  if (outcome.kind === 'redirect-page') {
+    void router.push({ name: 'payment', query: outcome.query })
     return
   }
 
-  const requirement = payRequirement.value
-  const channel = payChannel.value
-  const clientPlatform = getAdapayClientPlatform()
-  if (!isAdapayRequirement(requirement)) {
-    TMessage.warning('无担保订单不通过平台收款，请由双方按约定自行结算')
-    return
+  if (outcome.kind === 'external') {
+    window.location.assign(outcome.url)
   }
-
-  payLoading.value = true
-  try {
-    if (!currentPayment.value) {
-      const adapayPayment: AdapayPaymentResponse = await createAdapayPayment(
-        auth.token,
-        requirement.requirement_id,
-        requirement.status === 'pending_final' ? 'final' : 'deposit',
-        channel,
-        clientPlatform,
-      )
-      currentPayment.value = {
-        payment_id: adapayPayment.paymentId,
-        requirement_id: adapayPayment.requirementId,
-        channel,
-        amount_cny: Number(adapayPayment.amountCny),
-        status: adapayPayment.status,
-        alipay_order_string: adapayPayment.payUrl ?? '',
-        expires_at: '',
-        adapay: true,
-      }
-      TMessage.success(`${payStageLabel.value}支付订单已生成，正在跳转支付页`)
-      router.push({
-        name: 'payment',
-        query: buildAdapayPaymentQuery({
-          paymentId: currentPayment.value.payment_id,
-          requirementId: adapayPayment.requirementId,
-          channel,
-          clientPlatform,
-          amountCny: adapayPayment.amountCny,
-          qrContent: adapayPayment.payUrl,
-        }),
-      })
-      return
-    }
-
-    if (currentPayment.value.adapay) {
-      const adapayPayment = await getAdapayPayment(auth.token, currentPayment.value.payment_id)
-      if (adapayPayment.status !== 'paid' && adapayPayment.status !== 'confirmed') {
-        if (adapayPayment.status === 'failed') {
-          currentPayment.value = null
-          TMessage.warning('上次支付订单已失效，重新发起支付')
-          void submitRequirementPayment()
-          return
-        }
-        TMessage.warning('支付尚未完成，请先完成 Adapay 支付')
-        return
-      }
-      TMessage.success(`${payStageLabel.value}支付确认成功`)
-      currentPayment.value = null
-      payVisible.value = false
-      await reload()
-      return
-    }
-
-    throw new Error('支付订单状态无效，请重新发起 Adapay 支付')
-  } catch (err) {
-    if (isWechatPaymentAuthorizationRequired(err)) {
-      // 尚未绑定 open_id：直接跳转到支付页（意图模式），由支付页在微信内自动静默授权并下单。
-      if (!payRequirement.value) {
-        return
-      }
-      router.push({
-        name: 'payment',
-        query: buildAdapayPaymentQuery({
-          requirementId: payRequirement.value.requirement_id,
-          milestone: isFinalPayment.value ? 'final' : 'deposit',
-          channel: 'wechat',
-          clientPlatform,
-          amountCny: payAmount.value,
-          intent: true,
-        }),
-      })
-      return
-    }
-    if (isUnionPaymentAuthorizationRequired(err)) {
-      if (clientPlatform !== 'mobile') {
-        TMessage.warning('云闪付授权仅适用于移动端，请重新选择支付方式')
-        return
-      }
-      try {
-        const authorization = await getUnionPaymentAuthorizeUrl(auth.token, window.location.href)
-        if (!authorization.url.trim()) {
-          throw new Error('云闪付授权地址为空')
-        }
-        window.location.assign(authorization.url)
-        return
-      } catch (authorizationError) {
-        TMessage.error(
-          authorizationError instanceof Error ? authorizationError.message : '发起云闪付授权失败',
-        )
-        return
-      }
-    }
-
-    TMessage.error(err instanceof Error ? err.message : '支付失败')
-  } finally {
-    payLoading.value = false
-  }
-}
-
-function closeWechatAuthorization() {
-  wechatAuthorizationVisible.value = false
-  wechatAuthorizationUrl.value = ''
-}
-
-function handleWechatAuthorized() {
-  closeWechatAuthorization()
-  TMessage.success('微信授权成功，请再次点击支付')
 }
 
 /** 行内动作与菜单项统一从这里分发到既有 handler，不新增业务逻辑。 */
@@ -1546,101 +1377,30 @@ watch(
     />
 
     <!-- 支付弹窗：原来内嵌在需求详情浮层里，浮层去掉后单独成一个弹窗，
-         外壳沿用这页其他确认弹窗的 .pay-modal（尾款确认、取消确认同一套）。 -->
-    <div v-if="payVisible && payRequirement" class="modal-wrap" @click.self="closePayModal">
-      <section class="pay-modal" aria-label="需求支付">
-        <h3>支付{{ payStageLabel }}</h3>
-        <p class="pay-line"><strong>需求标题：</strong>{{ payRequirement.title }}</p>
-        <p class="pay-line"><strong>需求编号：</strong>{{ payRequirement.requirement_id }}</p>
-        <p class="pay-line">
-          <strong>本次应付：</strong>{{ formatBudget(payAmount) }}
-          <span v-if="!isFinalPayment"> · 定金占比 {{ depositRatioPercent.toFixed(2) }}%</span>
-        </p>
-        <p class="tip">
-          {{
-            currentPayment ? '订单已创建，点下列按钮查询支付结果' : '选择支付方式，付款后回来确认'
-          }}
-        </p>
+         外壳沿用这页其他确认弹窗的 .pay-modal（尾款确认、取消确认同一套）。
+         金额、通道与订单状态来自 `useRequirementPayFlow`；`submit` 后的跳转在本视图执行。 -->
+    <RequirementPayModal
+      :visible="payVisible"
+      :requirement="payRequirement"
+      :channel="payChannel"
+      :loading="payLoading"
+      :order="currentPayment"
+      :stage-label="payStageLabel"
+      :amount="payAmount"
+      :is-final-payment="isFinalPayment"
+      :deposit-ratio-percent="depositRatioPercent"
+      @close="closePayModal"
+      @update:channel="updatePayChannel"
+      @submit="submitRequirementPayment"
+    />
 
-        <div class="payment-options" role="radiogroup" aria-label="支付方式选择">
-          <button
-            type="button"
-            class="payment-option"
-            :class="{
-              active: payChannel === 'alipay',
-              'payment-option--alipay': payChannel === 'alipay',
-            }"
-            @click="updatePayChannel('alipay')"
-          >
-            <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
-            支付宝
-          </button>
-          <button
-            type="button"
-            class="payment-option"
-            :class="{
-              active: payChannel === 'wechat',
-              'payment-option--wechat': payChannel === 'wechat',
-            }"
-            @click="updatePayChannel('wechat')"
-          >
-            <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="微信" />
-            微信
-          </button>
-        </div>
-
-        <div class="actions">
-          <button class="ghost" type="button" @click="closePayModal">取消</button>
-          <button
-            class="ghost primary"
-            type="button"
-            :disabled="payLoading"
-            @click="submitRequirementPayment"
-          >
-            {{
-              payLoading ? '处理中...' : currentPayment ? '查询支付结果' : `支付${payStageLabel}`
-            }}
-          </button>
-        </div>
-      </section>
-    </div>
-
-    <div v-if="downloadPickerRequirement" class="modal-wrap" @click.self="closeDownloadPicker">
-      <section class="pay-modal" aria-label="选择下载版本">
-        <h3>选择要下载的版本</h3>
-        <p class="pay-line"><strong>需求标题：</strong>{{ downloadPickerRequirement.title }}</p>
-        <ul class="download-picker">
-          <li
-            v-for="version in deliveryVersionsFor(downloadPickerRequirement)"
-            :key="version.id"
-            class="download-picker__item"
-          >
-            <div class="download-picker__meta">
-              <strong>{{ version.version }}</strong>
-              <small>{{ version.created_at }}</small>
-              <p v-if="deliveryVersionNoteText(version.note)">
-                {{ deliveryVersionNoteText(version.note) }}
-              </p>
-            </div>
-            <button
-              class="ghost small"
-              type="button"
-              :disabled="resourceDownloadingId === downloadPickerRequirement.bound_resource_id"
-              @click="downloadRequirementVersion(downloadPickerRequirement, version)"
-            >
-              {{
-                resourceDownloadingId === downloadPickerRequirement.bound_resource_id
-                  ? '准备中...'
-                  : '下载'
-              }}
-            </button>
-          </li>
-        </ul>
-        <div class="actions">
-          <button class="ghost" type="button" @click="closeDownloadPicker">关闭</button>
-        </div>
-      </section>
-    </div>
+    <RequirementDownloadPicker
+      :requirement="downloadPickerRequirement"
+      :versions="downloadPickerRequirement ? deliveryVersionsFor(downloadPickerRequirement) : []"
+      :downloading="resourceDownloadingId === downloadPickerRequirement?.bound_resource_id"
+      @close="closeDownloadPicker"
+      @download="downloadRequirementVersion"
+    />
 
     <div
       v-if="finalPaymentConfirmVisible && finalPaymentConfirmTarget"
@@ -1806,14 +1566,6 @@ watch(
       @close="closeCommentModal"
       @submitted="handleCommentSubmitted"
     />
-
-    <WechatAuthorizationModal
-      :visible="wechatAuthorizationVisible"
-      :authorization-url="wechatAuthorizationUrl"
-      :token="auth.token"
-      @close="closeWechatAuthorization"
-      @authorized="handleWechatAuthorized"
-    />
   </main>
 </template>
 
@@ -1831,44 +1583,8 @@ watch(
 }
 
 /* 版本选择弹窗：一行一个版本，右侧下载按钮；版本说明用弱字色 */
-.download-picker {
-  display: grid;
-  gap: 10px;
-  max-height: 320px;
-  margin: 12px 0 0;
-  padding: 0;
-  overflow: auto;
-  list-style: none;
-}
-
-.download-picker__item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  border-radius: 10px;
-  background: #f8fbff;
-}
-
-.download-picker__meta {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.download-picker__meta strong {
-  font-size: 13px;
-}
-
-.download-picker__meta small,
-.download-picker__meta p {
-  margin: 0;
-  color: var(--profile-text-sub, #64748b);
-  font-size: 12px;
-  word-break: break-word;
-}
+/* `.download-picker*` 跟着 `RequirementDownloadPicker.vue` 搬去了 `styles/profile.css`
+   （组件没有 scoped 块，且这三条规则带裸色值，进组件会变成新的裸色值债）。 */
 
 .requirement-list {
   display: grid;

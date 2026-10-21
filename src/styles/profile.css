@@ -733,6 +733,48 @@
   }
 }
 
+/* 下载版本选择器（`RequirementDownloadPicker.vue`）：一行一个版本，右侧下载按钮；版本说明用弱字色。
+   原先写在 MyRequirementsView 的 scoped 块里，选择器一字未改搬到这里——组件化后 scoped 属性对不上，
+   `.pay-modal` 又是全局样式；这三条里的裸色值因此仍走基线，不变成组件里的新增色值。 */
+.download-picker {
+  display: grid;
+  gap: 10px;
+  max-height: 320px;
+  margin: 12px 0 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.download-picker__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(198, 210, 236, 0.72);
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.download-picker__meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.download-picker__meta strong {
+  font-size: 13px;
+}
+
+.download-picker__meta small,
+.download-picker__meta p {
+  margin: 0;
+  color: var(--profile-text-sub, #64748b);
+  font-size: 12px;
+  word-break: break-word;
+}
+
 /* --- 优惠券列表（个人中心） --- */
 .coupon-items {
   display: grid;
