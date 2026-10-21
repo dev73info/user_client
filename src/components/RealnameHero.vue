@@ -253,15 +253,15 @@ onMounted(async () => {
   font-size: 14px;
 }
 
-@media (max-width: 860px) {
+/* R047 断点收敛：原 860px → 640px（用户决定统一到 640）。
+   原先这里两块分别写着「860px 塌主栅格」和「720px 塌指标栅格」，本轮一起收到 640，
+   两块条件相同且相邻，按级联顺序合并成一块。 */
+@media (max-width: 640px) {
   .realname-hero {
     grid-template-columns: 1fr;
     padding: 22px;
   }
-}
 
-/* R047 断点收敛：原档位 720px → 640px（上面的 860px 档本轮保留，见报告） */
-@media (max-width: 640px) {
   .realname-hero__metrics {
     grid-template-columns: 1fr;
   }

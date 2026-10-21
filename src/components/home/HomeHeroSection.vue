@@ -175,7 +175,8 @@ const emit = defineEmits<{
   width: 100%;
 }
 
-@media (max-width: 820px) {
+/* R047 断点收敛：原 820px → 640px（用户决定统一到 640） */
+@media (max-width: 640px) {
   .hero-row {
     align-items: flex-start;
   }

@@ -105,7 +105,8 @@
   color: var(--profile-text-main);
 }
 
-@media (max-width: 820px) {
+/* R047 断点收敛：原 820px → 640px（用户决定统一到 640） */
+@media (max-width: 640px) {
   .wallet-overview {
     gap: 10px;
   }
@@ -118,9 +119,7 @@
   .profile-update-row button.ghost.small {
     width: 100%;
   }
-}
 
-@media (max-width: 640px) {
   .wallet-overview {
     grid-template-columns: 1fr;
   }
@@ -443,7 +442,8 @@
   filter: brightness(1.06);
 }
 
-@media (max-width: 820px) {
+/* R047 断点收敛：原 820px → 640px（用户决定统一到 640） */
+@media (max-width: 640px) {
   /* 窄屏：摘要折到正文下面，改成左对齐（贴右是桌面档的排法，窄屏贴右会顶出一块空白）。 */
   .requirement-card-body {
     grid-template-columns: 1fr;
@@ -454,11 +454,9 @@
     justify-content: flex-start;
     text-align: left;
   }
-}
 
-/* 触屏档：操作区竖排两段——开关芯片独占一行，动作行排在下面，主操作整宽置底（拇指可达）。
-   触摸目标不小于 44px（对齐项目既有约定）。 */
-@media (max-width: 640px) {
+  /* 触屏档：操作区竖排两段——开关芯片独占一行，动作行排在下面，主操作整宽置底（拇指可达）。
+     触摸目标不小于 44px（对齐项目既有约定）。 */
   .requirement-actions {
     flex-direction: column;
     align-items: stretch;
@@ -634,7 +632,10 @@
   margin-top: 16px;
 }
 
-@media (max-width: 820px) {
+/* R047 断点收敛：原 820px → 640px（用户决定统一到 640）。
+   本块与下面 640px 块之间隔着审核卡片、归档横幅等一整套规则，按级联顺序不能合并，
+   故保留两块。 */
+@media (max-width: 640px) {
   .requirement-review-card__header,
   .requirement-review-card__actions {
     flex-direction: column;

@@ -995,7 +995,8 @@ function communityStatusLabel(status: CommunityPostStatus): string {
     transform: translateY(-1px);
 }
 
-@media (max-width: 860px) {
+/* R047 断点收敛：原 860px → 640px（用户决定统一到 640） */
+@media (max-width: 640px) {
     .portal-search-page__grid {
         grid-template-columns: 1fr;
     }

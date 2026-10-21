@@ -487,8 +487,11 @@ h2 {
   }
 }
 
-/* --- 响应式：Hero 区域 --- */
-@media (max-width: 820px) {
+/* --- 响应式：Hero 区域 ---
+   R047 断点收敛：原 820px → 640px（用户决定统一到 640）。
+   本文件前面已有一个 640px 块（页脚与导航），与这里隔着 900px 块和一串基础规则，
+   合并会把规则提前到 900px 块之前、改了级联顺序，故保留两块。 */
+@media (max-width: 640px) {
   .hero-content,
   .hero-meta {
     align-items: flex-start;

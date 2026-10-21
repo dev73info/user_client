@@ -2194,13 +2194,12 @@ function handleBackdropClick() {
   min-height: 38px;
 }
 
-@media (max-width: 820px) {
+/* R047 断点收敛：原 820px → 640px（用户决定统一到 640） */
+@media (max-width: 640px) {
   .conversation-message__bubble {
     max-width: min(76%, 560px);
   }
-}
 
-@media (max-width: 640px) {
   .conversation-modal__header {
     min-height: 62px;
   }
@@ -2303,13 +2302,11 @@ function handleBackdropClick() {
   display: none;
 }
 
-@media (max-width: 820px) {
+/* R047 断点收敛：原 820px → 640px（用户决定统一到 640） */
+@media (max-width: 640px) {
   .conversation-message__bubble {
     max-width: min(78%, 620px);
   }
-}
-
-@media (max-width: 640px) {
 
   .conversation-modal__messages,
   .conversation-modal-wrap--inline .conversation-modal__messages {
@@ -2916,13 +2913,11 @@ function handleBackdropClick() {
   box-shadow: 0 14px 28px rgba(45, 118, 236, 0.28);
 }
 
-@media (max-width: 820px) {
+/* R047 断点收敛：原 820px → 640px（用户决定统一到 640） */
+@media (max-width: 640px) {
   .conversation-message__bubble {
     max-width: min(78%, 620px);
   }
-}
-
-@media (max-width: 640px) {
 
   .conversation-modal__messages,
   .conversation-modal-wrap--inline .conversation-modal__messages {

@@ -610,8 +610,9 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.18);
 }
 
-/* ===== 响应式 ===== */
-@media (max-width: 820px) {
+/* ===== 响应式 =====
+   R047 断点收敛：原 820px → 640px（用户决定统一到 640） */
+@media (max-width: 640px) {
   .about-page {
     width: calc(100% - 28px);
     padding: 16px 0 36px;
