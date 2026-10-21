@@ -19,10 +19,13 @@
     "lint:eslint": "eslint . --fix --cache",
     "lint:check": "eslint . --max-warnings=0",
     "check:frontend": "node scripts/check-frontend.mjs .",
-    "gate": "run-s type-check lint:check test:ci check:frontend",
+    "gate": "run-s type-check lint:check test:ci check:frontend contract:check build",
     "format": "prettier --write --experimental-cli src/",
     "format:check": "prettier --check \"src/**/*.{ts,vue}\"",
-    "format:changed": "git diff --name-only --diff-filter=ACMR origin/dev...HEAD -- \"src/**/*.ts\" \"src/**/*.vue\" | xargs prettier --check"
+    "format:changed": "git diff --name-only --diff-filter=ACMR origin/dev...HEAD -- \"src/**/*.ts\" \"src/**/*.vue\" | xargs prettier --check",
+    "contract:check": "node scripts/contract-check.mjs",
+    "contract:write": "node scripts/contract-check.mjs --write",
+    "gate:quick": "run-s type-check lint:check test:ci check:frontend contract:check"
   },
   "dependencies": {
     "@tiptap/extension-code-block-lowlight": "^3.22.5",
@@ -63,6 +66,7 @@
     "jiti": "^2.6.1",
     "jsdom": "^29.0.1",
     "npm-run-all2": "^8.0.4",
+    "openapi-typescript": "^7.13.0",
     "oxlint": "~1.57.0",
     "prettier": "3.8.1",
     "typescript": "~6.0.0",

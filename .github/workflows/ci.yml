@@ -94,6 +94,15 @@ jobs:
       - name: 结构检查（行数 / API 依赖 / 裸色值 / 断点，存量走基线）
         run: pnpm check:frontend
 
+      # 后端 utoipa 还没产出 openapi.json 时，这一步会打印「未就绪」并放行——
+      # 输出里明说「这不是通过」；spec 一旦落进仓里，它立刻开始拦手写类型与漂移。
+      - name: 契约漂移（请求/响应类型必须来自 openapi.json 生成物）
+        run: pnpm contract:check
+
+      # 构建也进门禁：type-check 过不代表能打包（SEO 页面生成、动态 import、wasm 资源都可能挂在这一步）。
+      - name: 构建
+        run: pnpm build
+
       # 格式化只要求「本次改动涉及的文件」，存量未格式化文件不在这里一次性重排。
       - name: Format（仅改动文件）
         run: |
