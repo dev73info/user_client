@@ -2,7 +2,7 @@ import { computed, reactive, ref } from 'vue'
 
 import { TMessage } from 'ui_73info'
 
-import type { RequirementItem } from '@/api/requirements'
+import type { RequirementItem, RequirementPaymentMode } from '@/api/requirements'
 import PublishModal from '@/components/PublishModal.vue'
 import {
   validateRequirementPublishForm,
@@ -208,6 +208,50 @@ export function useRequirementPublishForm(options: UseRequirementPublishFormOpti
     }
   }
 
+  /**
+   * 模板挂点：`<PublishModal v-bind="modalBindings" />` 一行铺完。
+   *
+   * 六个字段的 `v-model` 在这里展开成 `字段 + onUpdate:字段`（与模板里写 `v-model:publishXxx` 等价），
+   * 编辑实例的三处文案（标题 / 按钮 / loading）按 `mode` 给，发布实例沿用组件默认值。
+   * `notify` 组件只 emit，toast 由这里发（与其余域同一分工）。
+   */
+  const modalBindings = computed(() => ({
+    visible: visible.value,
+    draftScope: draftScope.value,
+    publishLoading: loading.value,
+    publishTitle: form.title,
+    publishDescription: form.description,
+    publishBudget: form.budget,
+    publishAcceptance: form.acceptance,
+    publishPaymentMode: form.paymentMode,
+    publishDevelopmentCycleDays: form.developmentCycleDays,
+    ...(options.mode === 'edit'
+      ? { modalTitle: '重新编辑需求', submitText: '重新提交审核', loadingText: '提交中...' }
+      : {}),
+    'onUpdate:publishTitle': (value: string) => {
+      form.title = value
+    },
+    'onUpdate:publishDescription': (value: string) => {
+      form.description = value
+    },
+    'onUpdate:publishBudget': (value: string | number) => {
+      form.budget = value
+    },
+    'onUpdate:publishAcceptance': (value: string) => {
+      form.acceptance = value
+    },
+    'onUpdate:publishPaymentMode': (value: RequirementPaymentMode) => {
+      form.paymentMode = value
+    },
+    'onUpdate:publishDevelopmentCycleDays': (value: string | number) => {
+      form.developmentCycleDays = value
+    },
+    onNotify: (message: string, type?: 'success' | 'warning' | 'error') =>
+      TMessage[type ?? 'info'](message),
+    onClose: close,
+    onSubmit: submit,
+  }))
+
   return {
     form,
     visible,
@@ -219,5 +263,6 @@ export function useRequirementPublishForm(options: UseRequirementPublishFormOpti
     close,
     forceClose,
     submit,
+    modalBindings,
   }
 }

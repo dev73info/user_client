@@ -8,6 +8,8 @@
  */
 import type { RouteLocationRaw } from 'vue-router'
 
+import { getResourceDetailSlug } from '@/api/resourceTags'
+import type { RequirementItem } from '@/api/requirements'
 import { isCashPaidListingResource, type ResourceListingSale } from '@/shared/resourceSale'
 
 /** 资源在门户目录里的售卖分区：现金定价 → 付费厅；免费与积分价 → 免费厅（与列表取数口径一致）。 */
@@ -30,4 +32,21 @@ export function resourceDetailLocation(input: {
     params: { rootSlug: input.rootSlug, entrySlug: input.entrySlug },
     query: { sale: input.sale, resource: String(input.resourceId) },
   }
+}
+
+/**
+ * 需求行绑定资源的深链 slug（`<作者>--<id>`），跳 `/resources/:resourceSlug` 用。
+ *
+ * 需求行里没有关联资源的售卖类型与分类段，推不出页内详情需要的 `?sale=` / `:rootSlug` / `:entrySlug`，
+ * 所以统一走这条轻量重定向（见 ResourceDetailRedirectView），由它拉了资源再落到页内详情态。
+ *
+ * 作者口径与拆分前逐字一致：需求发布人 → 当前登录用户 → 资源作者 → 需求标题。
+ */
+export function requirementBoundResourceSlug(
+  item: Pick<RequirementItem, 'creator' | 'title' | 'bound_resource_id' | 'bound_resource_author'>,
+  currentUsername?: string,
+): string {
+  const ownerName =
+    item.creator?.trim() || currentUsername || item.bound_resource_author?.trim() || item.title
+  return getResourceDetailSlug(item.bound_resource_id as number, ownerName)
 }

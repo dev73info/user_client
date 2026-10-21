@@ -230,6 +230,25 @@ export function useRequirementPayFlow(options: UseRequirementPayFlowOptions) {
     }
   }
 
+  /**
+   * 模板挂点：`<RequirementPayModal v-bind="modalBindings" />` 一行铺完金额 / 通道 / 订单态。
+   *
+   * `@submit` 不在这里：建单后的跳转要由视图执行（见 `RequirementPayOutcome`），
+   * 所以视图写成 `v-bind="modalBindings"` 再加自己的 `@submit`。
+   */
+  const modalBindings = computed(() => ({
+    visible: visible.value,
+    requirement: requirement.value,
+    channel: channel.value,
+    loading: loading.value,
+    order: order.value,
+    stageLabel: stageLabel.value,
+    amount: amount.value,
+    isFinalPayment: isFinalPayment.value,
+    depositRatioPercent: options.depositRatioPercent(),
+    onClose: close,
+  }))
+
   return {
     payVisible: visible,
     payRequirement: requirement,
@@ -243,5 +262,6 @@ export function useRequirementPayFlow(options: UseRequirementPayFlowOptions) {
     closePayModal: close,
     updatePayChannel: setChannel,
     submitPayment: submit,
+    modalBindings,
   }
 }
