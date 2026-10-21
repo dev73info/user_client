@@ -1,16 +1,7 @@
 <script setup lang="ts">
-import QRCode from 'qrcode'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type { Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  changeMyAdapaySettlementAccount,
-  closeMyAdapaySettlementAccount,
-  createMyAdapaySettlementAccount,
-  getMyAdapayMember,
-  getMySettlementAccountSnapshot,
-  type MySettlementAccountSnapshot,
-} from '@/api/adapay'
 import { HttpError } from '@/api/http'
 import {
   closeAccount,
@@ -31,10 +22,7 @@ import {
   updateProfileTwoFactor,
 } from '@/api/settings'
 import {
-  completeAsignIdentify,
   getMyRealnameVerification,
-  resumeAsignIdentify,
-  resumeCompanyAsignIdentify,
   ocrBusinessLicense,
   recognizeLegalCertPeriod,
   startAsignIdentify,
@@ -44,7 +32,6 @@ import {
   uploadGuardianConsentFile,
   uploadLegalCertBackFile,
   uploadLegalCertFrontFile,
-  withdrawMyRealnameVerification,
   type LegalCertOcrSide,
   type RealnameAuthType,
   type StartAsignIdentifyPayload,
@@ -68,17 +55,15 @@ import AsignDialog from '@/components/account/AsignDialog.vue'
 import CloseAccountDialog from '@/components/account/CloseAccountDialog.vue'
 import CloseSettleDialog from '@/components/account/CloseSettleDialog.vue'
 import EmailDialog from '@/components/account/EmailDialog.vue'
+import FaceidDialog from '@/components/account/FaceidDialog.vue'
 import PasswordDialog from '@/components/account/PasswordDialog.vue'
 import SealDialog from '@/components/account/SealDialog.vue'
+import SettlementDialog from '@/components/account/SettlementDialog.vue'
 import TwoFactorDialog from '@/components/account/TwoFactorDialog.vue'
 import UsernameDialog from '@/components/account/UsernameDialog.vue'
-import { missingEnterpriseOnboardingLabels } from '@/shared/realnameMaterials'
-import {
-  getSettlementCities,
-  prepareSettlementAccount,
-  settlementBanks,
-  settlementProvinces,
-} from '@/utils/settlementAccount'
+import { getSettlementCities, settlementProvinces } from '@/utils/settlementAccount'
+import { useFaceidChallenge } from '@/composables/useFaceidChallenge'
+import { useSettlementAccount, type AdapayMemberStatus } from '@/composables/useSettlementAccount'
 import {
   TAlert,
   TButton,
@@ -90,7 +75,6 @@ import {
   TFormItem,
   TIcon,
   TInput,
-  TLoading,
   TMessage,
   TOption,
   TRadio,
@@ -103,14 +87,12 @@ import {
   Connection,
   CreditCard,
   Iphone,
-  Link,
   Lock,
   Message,
   OfficeBuilding,
   Postcard,
   Promotion,
   RefreshLeft,
-  RefreshRight,
   SwitchButton,
   User,
   Warning,
@@ -148,9 +130,6 @@ const accountClosing = ref(false)
 
 const submitting = ref(false)
 const realnameDialogVisible = ref(false)
-const faceidStarting = ref(false)
-const faceidChecking = ref(false)
-const faceidRestoring = ref(false)
 const consentUploading = ref(false)
 const consentFileInput = ref<HTMLInputElement | null>(null)
 const businessLicenseUploading = ref(false)
@@ -165,34 +144,17 @@ const legalCertBackFileInput = ref<HTMLInputElement | null>(null)
 /** 法人证件有效期 OCR 进行中（辅助填写，不挡提交）。 */
 const legalCertOcrLoading = ref(false)
 const current = ref<UserRealnameVerification | null>(null)
-const adapayMember = ref<{
-  onboardingStatus: string
-  memberType?: string | null
-  settleAccountId?: string | null
-  /** 渠道最近一次拒绝的原话，用来告诉用户下一步该补什么。 */
-  providerError?: string | null
-} | null>(null)
+const adapayMember = ref<AdapayMemberStatus | null>(null)
 const reviewerAvatarLoadFailed = ref(false)
-const faceidAuthUrl = ref('')
-const faceidQrDataUrl = ref('')
+/** 核身弹窗的可见性归视图：`faceidAuthUrl` 一变要连带关掉实名弹窗（见下方那条 watch）。 */
 const faceidDialogVisible = ref(false)
-const withdrawing = ref(false)
 // 已通过认证后，只有进入「变更主体」模式才解锁表单，用新主体重新认证一遍。
 const realnameChangeMode = ref(false)
-const FACEID_POLL_INTERVAL_MS = 10_000
 
 const isMobile = ref(false)
 let mobileMatch: MediaQueryList | null = null
 function syncMobileViewport() {
   isMobile.value = Boolean(mobileMatch?.matches)
-}
-
-let faceidPollTimer: number | null = null
-let faceidCheckInFlight = false
-
-type FaceidCheckOptions = {
-  background?: boolean
-  silent?: boolean
 }
 
 const form = reactive({
@@ -575,6 +537,18 @@ function patchForm(record: UserRealnameVerification) {
   legalCertPeriodEdited.expires = false
 }
 
+/**
+ * 实名记录落地：状态、头像加载失败标记、表单回填三件事一起做。
+ *
+ * 人脸核身域里的查询 / 撤回也会走这里（以回调注入 composable），所以三件事必须同进同退——
+ * 少做一件就会出现「状态已通过、表单还是旧主体」这类错位。
+ */
+function applyRealnameRecord(record: UserRealnameVerification) {
+  current.value = record
+  reviewerAvatarLoadFailed.value = false
+  patchForm(record)
+}
+
 async function tryRestoreBusinessPage(record?: UserRealnameVerification | null) {
   const target = redirectTarget.value
   if (!target) {
@@ -670,50 +644,6 @@ function buildPayload(): SubmitRealnameVerificationPayload {
   }
 
   return payload
-}
-
-async function renderFaceidQrCode(url: string) {
-  faceidQrDataUrl.value = await QRCode.toDataURL(url, {
-    width: 220,
-    margin: 1,
-    color: {
-      dark: '#0f172a',
-      light: '#ffffff',
-    },
-  })
-}
-
-function stopFaceidAutoPolling() {
-  if (faceidPollTimer === null) {
-    return
-  }
-
-  window.clearInterval(faceidPollTimer)
-  faceidPollTimer = null
-}
-
-function startFaceidAutoPolling() {
-  stopFaceidAutoPolling()
-  if (!faceidAuthUrl.value || realnameApproved.value) {
-    return
-  }
-
-  faceidPollTimer = window.setInterval(() => {
-    void checkWechatFaceidResult({ background: true, silent: true })
-  }, FACEID_POLL_INTERVAL_MS)
-}
-
-function clearFaceidChallenge() {
-  stopFaceidAutoPolling()
-  faceidAuthUrl.value = ''
-  faceidQrDataUrl.value = ''
-}
-
-function openWechatFaceidPage() {
-  if (!faceidAuthUrl.value) {
-    return
-  }
-  window.open(faceidAuthUrl.value, '_blank', 'noopener,noreferrer')
 }
 
 const MAX_CONSENT_FILE_SIZE = 5 * 1024 * 1024
@@ -1105,19 +1035,14 @@ async function startWechatFaceid() {
     const result = await startAsignIdentify(auth.token, payload)
     if (result.manual_review || !result.auth_url) {
       // 非大陆身份证个人证件：爱签不提供实名认证服务，后端已转入人工审核。
-      const record = await getMyRealnameVerification(auth.token)
-      current.value = record
-      reviewerAvatarLoadFailed.value = false
-      patchForm(record)
+      applyRealnameRecord(await getMyRealnameVerification(auth.token))
       TMessage.success('个人实名认证已提交，等待管理员审核')
       return
     }
-    faceidAuthUrl.value = result.auth_url
-    await renderFaceidQrCode(result.auth_url)
+    // 核身链接交给 composable：出二维码、开始轮询都在那边
+    await beginChallenge(result.auth_url)
     // 重新加载当前实名状态（后端已创建 pending 记录）
-    const record = await getMyRealnameVerification(auth.token)
-    current.value = record
-    patchForm(record)
+    applyRealnameRecord(await getMyRealnameVerification(auth.token))
     TMessage.success('爱签实名认证已发起')
   } catch (err) {
     TMessage.error(err instanceof Error ? err.message : '发起爱签实名认证失败')
@@ -1162,12 +1087,8 @@ async function startEnterpriseAsign() {
       legal_cert_expires_on: form.legalCertExpiresOn.trim(),
     }
     const result = await startCompanyAsignIdentify(auth.token, payload)
-    faceidAuthUrl.value = result.auth_url
-    await renderFaceidQrCode(result.auth_url)
-    const record = await getMyRealnameVerification(auth.token)
-    current.value = record
-    reviewerAvatarLoadFailed.value = false
-    patchForm(record)
+    await beginChallenge(result.auth_url)
+    applyRealnameRecord(await getMyRealnameVerification(auth.token))
     TMessage.success('企业实名认证已发起，请完成认证')
   } catch (err) {
     TMessage.error(err instanceof Error ? err.message : '发起爱签企业实名认证失败')
@@ -1176,145 +1097,56 @@ async function startEnterpriseAsign() {
   }
 }
 
-async function checkWechatFaceidResult(options: FaceidCheckOptions = {}) {
-  if (faceidCheckInFlight) {
-    return
-  }
-
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    stopFaceidAutoPolling()
-    if (!options.silent) {
-      TMessage.error('登录状态已失效，请重新登录')
-    }
-    return
-  }
-
-  faceidCheckInFlight = true
-  if (!options.background) {
-    faceidChecking.value = true
-  }
-  // 记下调用前的状态：只有「本次真的从处理中变成已通过」才值得弹提示。
-  const previousStatus = current.value?.status ?? null
-  try {
-    const updated = await completeAsignIdentify(auth.token)
-    if (options.background && updated.status === 'rejected') {
-      return
-    }
-
-    current.value = updated
+// ── 人脸核身（challenge）域 ──────────────────────────────────
+/**
+ * 启停、轮询、查询、恢复、撤回都在 `useFaceidChallenge` 里（定时器绑 `onScopeDispose`）。
+ * 这里只注入三样视图才有的东西：实名记录、记录落地（含表单回填）与两个弹窗的可见性。
+ * 实名表单的发起仍在上面：它读的是本页的表单与校验。
+ */
+const {
+  faceidAuthUrl,
+  faceidQrDataUrl,
+  faceidStarting,
+  faceidChecking,
+  faceidRestoring,
+  withdrawing,
+  beginChallenge,
+  checkWechatFaceidResult,
+  openWechatFaceidPage,
+  restoreFaceidChallengeIfNeeded,
+  handleWithdraw,
+} = useFaceidChallenge({
+  realname: current,
+  applyRecord: (record) => applyRealnameRecord(record),
+  clearRecord: () => {
+    current.value = null
     reviewerAvatarLoadFailed.value = false
-    patchForm(updated)
-    if (updated.status === 'approved') {
-      clearFaceidChallenge()
-      // 静默轮询（进页面、回跳、后台定时）每次都弹会变成噪音：只在状态真的发生转变、
-      // 且不是静默调用时提示。
-      if (previousStatus === 'pending' && !options.silent) {
-        TMessage.success('爱签实名认证已通过')
-      }
-      await tryRestoreBusinessPage(updated)
-    } else if (updated.status === 'rejected') {
-      clearFaceidChallenge()
-      if (previousStatus === 'pending') {
-        TMessage.error(updated.review_note || '爱签实名认证未通过')
-      }
-    } else if (!options.silent) {
-      // 认证结果仍为处理中（pending）：如实提示，避免误导为「已更新」
-      if (faceidAuthUrl.value) {
-        TMessage.warning('认证仍在处理中，请先完成人脸核身后再查询')
-      } else {
-        TMessage.warning('实名认证正在处理中，请稍后查询结果')
-      }
-    }
-  } catch (err) {
-    if (!options.silent) {
-      TMessage.error(err instanceof Error ? err.message : '查询爱签实名认证结果失败')
-    }
-  } finally {
-    faceidCheckInFlight = false
-    if (!options.background) {
-      faceidChecking.value = false
-    }
-  }
-}
+    // 重置表单回到「未提交」的可编辑状态
+    form.authType = 'IDENTITY_CARD'
+    resetRealnameSubjectFields()
+  },
+  formAuthType: () => form.authType,
+  restoreBusinessPage: (record) => tryRestoreBusinessPage(record),
+  afterWithdraw: () => {
+    faceidDialogVisible.value = false
+    realnameDialogVisible.value = true
+  },
+})
 
-async function resumeFaceid() {
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    TMessage.error('登录状态已失效，请重新登录')
-    return
-  }
-
-  faceidRestoring.value = true
-  try {
-    const result = await resumeAsignIdentify(auth.token)
-    if (result.manual_review || !result.auth_url) {
-      // 非大陆证件走人工审核，无需二维码
-      TMessage.success('个人实名认证已提交，等待管理员审核')
-      return
-    }
-    faceidAuthUrl.value = result.auth_url
-    await renderFaceidQrCode(result.auth_url)
-    TMessage.success('认证二维码已恢复，请继续完成人脸核身')
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '恢复实名认证二维码失败')
-  } finally {
-    faceidRestoring.value = false
-  }
-}
-
-async function restoreFaceidChallengeIfNeeded() {
-  // 刷新页面后：爱签认证链接仅存于内存，会丢失。
-  if (current.value?.status !== 'pending') return
-  if (faceidAuthUrl.value) return
-
-  // 企业认证：续发企业认证二维码
-  if (enterpriseSelected.value) {
-    await resumeEnterpriseFaceid()
-    return
-  }
-
-  // 个人：仅大陆身份证（走爱签扫码人脸核身）
-  if (!identityCardSelected.value) return
-
-  // 流水号在后端，这里直接静默问一次结果；没有进行中的记录会静默失败，不影响续发。
-  await checkWechatFaceidResult({ silent: true })
-  // 查询后状态可能已更新（通过/驳回），此时无需再续发
-  if (current.value?.status !== 'pending' || faceidAuthUrl.value) return
-
-  await resumeFaceid()
-}
-
-async function resumeEnterpriseFaceid() {
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    TMessage.error('登录状态已失效，请重新登录')
-    return
-  }
-
-  faceidRestoring.value = true
-  try {
-    const result = await resumeCompanyAsignIdentify(auth.token)
-    faceidAuthUrl.value = result.auth_url
-    await renderFaceidQrCode(result.auth_url)
-    TMessage.success('企业认证二维码已恢复，请继续完成认证')
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '恢复企业认证二维码失败')
-  } finally {
-    faceidRestoring.value = false
-  }
-}
-
-// 人脸核身二维码出现时自动弹出核身弹窗，并收起「提交认证信息」弹窗，避免双弹窗叠放。
+/**
+ * 核身二维码出现时自动弹出核身弹窗，并收起「提交认证信息」弹窗，避免双弹窗叠放。
+ *
+ * 只做可见性——**两个弹窗互相关闭这件事必须留在视图**：`realnameDialogVisible` 是表单草稿的
+ * 生命周期开关（关掉就丢弃变更草稿），不能让 composable 或子组件去改它。
+ * 轮询由 composable 自己盯着 `faceidAuthUrl` 起停，与这里无关。
+ */
 watch(faceidAuthUrl, (url) => {
   if (url) {
     faceidDialogVisible.value = true
     realnameDialogVisible.value = false
-    // 生成人脸核身二维码后，自动开始轮询认证结果
-    startFaceidAutoPolling()
-  } else {
-    faceidDialogVisible.value = false
+    return
   }
+  faceidDialogVisible.value = false
 })
 
 // 关掉「提交认证信息」弹窗即放弃变更草稿：没提交过的变更，下次打开不该还是解锁态。
@@ -1327,43 +1159,6 @@ watch(realnameDialogVisible, (visible) => {
   // 静默：不再重复弹「未能识别」——这条提示在上传后已经给过一次了。
   void autoFillLegalCertPeriod({ silent: true })
 })
-
-async function handleWithdraw() {
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    TMessage.error('登录状态已失效，请重新登录')
-    return
-  }
-
-  withdrawing.value = true
-  try {
-    const result = await withdrawMyRealnameVerification(auth.token)
-    clearFaceidChallenge()
-    if (result.restored) {
-      // 取消主体变更：后端已把账号还原成变更前那份主体，这里只需刷新回「已通过」。
-      const record = await getMyRealnameVerification(auth.token)
-      current.value = record
-      reviewerAvatarLoadFailed.value = false
-      patchForm(record)
-      faceidDialogVisible.value = false
-      realnameDialogVisible.value = true
-      TMessage.success('已取消主体变更，账号还原为变更前的实名主体')
-      return
-    }
-    current.value = null
-    reviewerAvatarLoadFailed.value = false
-    // 重置表单回到「未提交」的可编辑状态
-    form.authType = 'IDENTITY_CARD'
-    resetRealnameSubjectFields()
-    faceidDialogVisible.value = false
-    realnameDialogVisible.value = true
-    TMessage.success('已撤回实名认证，可重新提交')
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '撤回实名认证失败')
-  } finally {
-    withdrawing.value = false
-  }
-}
 
 // ── 账户入口：两张卡片共用同一套「分组 + 行」结构 ────────────────
 /// 标签语气。`ui_73info` 的 `TTag` 收的是语义 `tone`，与 Element 的 `type` 同词；
@@ -1779,317 +1574,53 @@ function openCompanyFromSeal() {
   asignDialogVisible.value = true
 }
 
-// ── Adapay 结算账户 ──────────────────────────────────────────
-const settleDialogVisible = ref(false)
-const settleSaving = ref(false)
-const settleLoading = ref(false)
-/** 注销结算账户确认弹窗 */
-const closeSettleDialogVisible = ref(false)
-const closeSettleLoading = ref(false)
+// ── Adapay 结算账户（状态与动作都在 composable 里，这里只接线） ──────────
 /**
- * 注销结算账户的确认词。
- *
- * 与「注销账号」同一道防误触：必须原样键入「注销结算账户」才允许提交。
- * 注销是破坏性动作（注销后合同款与分账都进不来），只按一个按钮就执行太容易误点。
+ * `current`（实名记录）与 `adapayMember`（渠道会员）是跨 hero / 入口卡 / 结算 / onMounted
+ * 四块共用的状态，注入进 composable；`isEnterpriseSubject` 复用这里那份 `assignEnterprise`，
+ * 同一个判断不在两处各算一遍。
  */
-const closeSettleConfirmation = ref('')
-/**
- * 当前已绑卡的**脱敏**明细（后端从渠道会员对象现取）。
- *
- * 只用于两件事：回填开户行/省市区/账户类型，以及把「正在换哪张卡」显示清楚。
- * 卡号是渠道给的脱敏形态（`621483207******5`），**不能**回填进输入框——提交必须给完整卡号，
- * 而完整卡号后端也没有（渠道只回脱敏形态、平台不落库）。
- */
-const settleSnapshot = ref<MySettlementAccountSnapshot | null>(null)
-const settleForm = reactive({
-  card_id: '',
-  bank_code: '',
-  prov_code: '',
-  area_code: '',
-  bank_acct_type: '2',
+const {
+  settleDialogVisible,
+  settleSaving,
+  settleLoading,
+  settleForm,
+  settleBound,
+  settleStage,
+  settleCorporateLocked,
+  settleSubjectLabel,
+  settleAccountWord,
+  settleSubjectMismatch,
+  settleMaterialMissing,
+  settleMaterialMissingText,
+  settleUnderReview,
+  settleUnderReviewText,
+  settleRejected,
+  settleProviderError,
+  settleCities,
+  settleCardPlaceholder,
+  setSettleProvince,
+  refreshAdapayMember,
+  openSettleDialog,
+  closeSettleDialog,
+  saveSettleAccount,
+  closeSettleDialogVisible,
+  closeSettleConfirmation,
+  closeSettleReady,
+  closeSettleLoading,
+  openCloseSettleDialog,
+  handleCloseSettleAccount,
+} = useSettlementAccount({
+  realname: current,
+  adapayMember,
+  isEnterpriseSubject: () => assignEnterprise.value,
 })
 
-/** 是否已绑定结算账户（决定提交时走「绑定」还是「更换」接口） */
-const settleBound = computed(() => Boolean(adapayMember.value?.settleAccountId))
-
-/**
- * 收款账户在渠道侧的进度：`none` / `reviewing` / `ready` / `bound`。
- *
- * 这四态必须分开看：「会员还没开通」与「会员开通了但没绑卡」是两件不同的事——前者是系统与
- * 渠道还没办完（实名通过后会自动入驻），后者是用户少做了一步。以前两者都显示「未设置」，
- * 用户不知道自己该等还是该动手。
- */
-const settleStage = computed<'none' | 'reviewing' | 'failed' | 'ready' | 'bound'>(() => {
-  if (settleBound.value) return 'bound'
-  const status = adapayMember.value?.onboardingStatus
-  if (status === 'pending' || status === 'under_review') return 'reviewing'
-  if (status === 'active') return 'ready'
-  // 渠道已经给了否定结论（企业开户审核未通过、或审核通过但开户失败）：本地记成 `failed`。
-  // 必须单独成一态——并进下面的 `none` 会显示成「待认证」，用户以为等着就行，
-  // 而实际要回去核对资料重新认证。
-  if (status === 'failed') return 'failed'
-  return 'none'
-})
-
-/** 当前实名主体对应的收款账户主体：企业 / 个体工商户走对公账户，其余按个人身份证。 */
-const settleExpectedMemberType = computed(() =>
-  assignEnterprise.value ? 'enterprise' : 'personal',
-)
-
-/**
- * 已绑定的收款账户是否还挂在旧主体上。
- *
- * 实名主体变更（个人 ↔ 企业）后，渠道侧会员与结算账户不会自动跟着换：旧账户挂在旧主体名下，
- * 既改不了也重建不了。此时更换会按当前主体重新开通收款账户，界面必须先说清楚，
- * 否则用户提交后才在渠道侧碰壁。
- */
-const settleSubjectMismatch = computed(
-  () =>
-    Boolean(adapayMember.value?.memberType) &&
-    adapayMember.value?.memberType !== settleExpectedMemberType.value,
-)
-
-/** 企业主体的收款账户只能是对公账户，持证人固定取实名主体，因此不给用户改。 */
-const settleCorporateLocked = computed(() => assignEnterprise.value)
-
-/** 当前实名主体的中文口径，用于把「这张卡为什么不能继续用」讲清楚。 */
-const settleSubjectLabel = computed(() =>
-  settleCorporateLocked.value ? '企业 / 个体工商户' : '个人',
-)
-
-/** 该主体要绑的账户类型：企业 / 个体工商户是对公账户，其余是银行卡。 */
-const settleAccountWord = computed(() => (settleCorporateLocked.value ? '对公账户' : '银行卡'))
-
-/**
- * 企业主体按新主体重建收款账户前，渠道侧要求实名资料里的企业进件资料齐备。
- *
- * 渠道创建企业会员（对公收款账户）时逐项校验营业执照文件、企业所在省市、注册地址、
- * 经营范围、营业执照有效期、法人证件有效期，缺任一项整条对公收款通道都开不了。
- * 缺资料时重绑一定会被渠道拒绝，必须先回「变更认证类型」补资料，所以这里提前拦在界面层，
- * 别让用户白填一次表单。
- */
-const settleMaterialMissing = computed(() => {
-  if (!settleCorporateLocked.value) return false
-  return settleMaterialMissingLabels.value.length > 0
-})
-
-/** 企业进件资料缺了哪几项，用于把「缺什么」直接说给用户，而不是一句笼统的「资料不全」。 */
-const settleMaterialMissingLabels = computed(() => missingEnterpriseOnboardingLabels(current.value))
-
-/** 缺资料的清单文本，拼进提示语里。 */
-const settleMaterialMissingText = computed(() => settleMaterialMissingLabels.value.join('、'))
-
-/**
- * 渠道侧最近一次拒绝的原话。
- *
- * 只报状态（「未认证 / 未通过」）时，用户不知道该改什么；渠道原话（如
- * 「prov_code 不能为空」）是唯一能对上号的线索，所以在弹窗里原样给出来。
- * 已经开通且卡还在时不再提旧伤——那是一次翻篇的失败；换卡失败导致卡被解绑时
- * 状态仍停在 `active`，这时候原因必须留着，否则用户看到的是「已认证 + 未设置」而无从下手。
- */
-/**
- * 渠道会员是否还在审核中（企业会员开通要走渠道审核，这期间绑不了对公账户）。
- */
-const settleUnderReview = computed(() => {
-  const status = adapayMember.value?.onboardingStatus
-  return status === 'under_review' || status === 'pending'
-})
-
-/**
- * 「渠道审核中」那句提示：企业与个人绑的不是同一种账户（对公账户 vs 银行卡）。
- *
- * 企业会员改由本页「结算账户」这一步创建之后，两种主体都会落到同一句提示上，
- * 不能再共用一句写死「企业…对公账户」的话。
- */
-const settleUnderReviewText = computed(() =>
-  settleCorporateLocked.value
-    ? '企业收款账户正在渠道审核中，审核通过后即可绑定对公账户'
-    : '收款账户正在渠道审核中，审核通过后即可绑定银行卡',
-)
-
-/**
- * 渠道已明确拒绝开通收款账户（企业开户审核未通过，或审核通过但开户失败）。
- *
- * `onboarding_status = failed` 是唯一表示「渠道给了否定结论」的取值；具体是哪种拒绝、
- * 原因是什么，都在 `providerError` 里（后端把渠道 `audit_state` 翻成中文再落库）。
- */
-const settleRejected = computed(() => adapayMember.value?.onboardingStatus === 'failed')
-
-/**
- * 「渠道拒绝」之后用户该做什么。
- *
- * 按能自己走的顺序给两条路：先回去核对资料并重新提交认证（这是唯一自助的修复路径）；
- * 资料确实无误还是不过，就只能让人工介入——结论在渠道手里，平台改不了，
- * 但要让用户知道还可以提交工单，而不是卡在一句「未通过」上。
- */
-const settleRejectedGuide = computed(() => {
-  const action = settleCorporateLocked.value
-    ? '请在「认证管理」→「变更认证类型」核对企业名称、统一社会信用代码、法人信息与对公账户户名，确认无误后重新提交企业认证，通过后再回来绑定对公账户'
-    : '请核对实名信息与银行卡户名是否一致，确认无误后重新提交'
-  return `${action}；若资料核对无误仍未通过，可提交工单由客服协助核对渠道结论。`
-})
-
-const settleProviderError = computed(() => {
-  const member = adapayMember.value
-  const error = (member?.providerError ?? '').trim()
-  if (!error) return ''
-  return member?.onboardingStatus === 'active' && member.settleAccountId ? '' : error
-})
-
-/** 缺企业资料时不去重绑，直接关掉弹窗并打开实名表单让用户补企业进件资料。 */
+/** 缺企业资料时不去重绑：关掉结算弹窗、打开实名表单让用户补企业进件资料。 */
 function goFixSettleMaterial() {
   settleDialogVisible.value = false
   realnameDialogVisible.value = true
   startRealnameChange()
-}
-
-const settleCities = computed(() => getSettlementCities(settleForm.prov_code))
-
-function changeSettleProvince() {
-  settleForm.area_code = settleCities.value.length === 1 ? settleCities.value[0]!.value : ''
-}
-
-/** 清空银行卡表单，避免上次未提交的输入（尤其是更换时取消）残留到下一次打开 */
-function resetSettleForm() {
-  settleForm.card_id = ''
-  settleForm.bank_code = ''
-  settleForm.prov_code = ''
-  settleForm.area_code = ''
-  // 账户类型跟着实名主体走：企业主体只能绑对公账户，个人主体默认个人卡。
-  settleForm.bank_acct_type = settleCorporateLocked.value ? '1' : '2'
-}
-
-/** 重新拉取 Adapay 会员状态；失败时置空，让界面退化为「未绑定」而不是继续显示旧卡 */
-async function refreshAdapayMember() {
-  if (!auth.token) return
-  try {
-    adapayMember.value = await getMyAdapayMember(auth.token)
-  } catch {
-    adapayMember.value = null
-  }
-}
-
-/**
- * 拉取已绑卡的脱敏明细并回填表单。
- *
- * 只回填**能提交出去**的字段（开户行 / 省 / 市 / 账户类型）：这些码与前端字典同源，
- * 选中后就是渠道认的值。卡号例外——渠道只回脱敏形态，提交又必须给完整卡号，
- * 所以卡号留空让用户输入，脱敏卡号只作为「当前是哪张卡」的提示显示。
- */
-async function loadSettleSnapshot() {
-  settleSnapshot.value = null
-  if (!auth.token || !settleBound.value) return
-  try {
-    const snapshot = await getMySettlementAccountSnapshot(auth.token)
-    settleSnapshot.value = snapshot
-    if (snapshot.bankCode) settleForm.bank_code = snapshot.bankCode
-    if (snapshot.provCode) settleForm.prov_code = snapshot.provCode
-    if (snapshot.areaCode) settleForm.area_code = snapshot.areaCode
-    if (snapshot.bankAcctType === '1' || snapshot.bankAcctType === '2') {
-      settleForm.bank_acct_type = snapshot.bankAcctType
-    }
-  } catch {
-    // 拿不到明细不影响换卡：表单已按实名主体给了默认账户类型，用户自己填即可
-    settleSnapshot.value = null
-  }
-}
-
-/** 卡号输入框的提示：已绑卡时直接显示渠道给的脱敏卡号，让用户一眼看清当前是哪张卡 */
-const settleCardPlaceholder = computed(() => {
-  if (!settleBound.value) return '请输入收款银行卡号'
-  const masked = (settleSnapshot.value?.cardIdMasked ?? '').trim()
-  return masked ? `当前 ${masked}（更换请整卡重填）` : '请输入收款银行卡号（需整卡重填）'
-})
-
-/** 打开弹窗即进入表单：已绑卡时回填脱敏明细，未绑卡时按实名主体给默认值 */
-async function openSettleDialog() {
-  settleDialogVisible.value = true
-  resetSettleForm()
-  settleLoading.value = true
-  try {
-    await refreshAdapayMember()
-    await loadSettleSnapshot()
-  } finally {
-    settleLoading.value = false
-  }
-}
-
-/** 关掉弹窗（取消更换 / 未绑定时放弃填写），顺手清掉未提交的输入 */
-function closeSettleDialog() {
-  settleDialogVisible.value = false
-  resetSettleForm()
-  settleSnapshot.value = null
-}
-
-async function saveSettleAccount() {
-  if (!auth.token || settleSaving.value) return
-  let payload
-  try {
-    payload = prepareSettlementAccount(settleForm)
-  } catch (err) {
-    TMessage.warning(err instanceof Error ? err.message : '请检查银行卡信息')
-    return
-  }
-  // 提交前定一次语义：更换会先解绑旧卡，失败时界面要按真实状态回落
-  const changing = settleBound.value
-  settleSaving.value = true
-  try {
-    const member = changing
-      ? await changeMyAdapaySettlementAccount(auth.token, payload)
-      : await createMyAdapaySettlementAccount(auth.token, payload)
-    adapayMember.value = member
-    TMessage.success(changing ? '收款银行卡已更换' : '结算账户已设置')
-    settleDialogVisible.value = false
-    resetSettleForm()
-    settleSnapshot.value = null
-  } catch (err) {
-    TMessage.error(
-      err instanceof Error ? err.message : changing ? '更换收款银行卡失败' : '设置结算账户失败',
-    )
-    // 更换是「先解绑再重建」，失败可能停在已解绑的中间态，刷新后按真实状态展示
-    if (changing) {
-      await refreshAdapayMember()
-    }
-  } finally {
-    settleSaving.value = false
-  }
-}
-
-/** 确认词键入正确、也没有正在提交时才允许点「确认注销」 */
-const closeSettleReady = computed(() => closeSettleConfirmation.value.trim() === '注销结算账户')
-
-/** 打开注销弹窗：每次都清空确认词，避免上一次的输入残留（与注销账号同口径） */
-function openCloseSettleDialog() {
-  closeSettleConfirmation.value = ''
-  closeSettleDialogVisible.value = true
-}
-
-/**
- * 注销结算账户：先让渠道删掉，成功才清本地绑定。
- *
- * 注销后合同款与分账都进不来，要收款必须重新绑定；如果有在途分账/未结清款项，
- * 渠道会拒绝并回原话，这里把原话透给用户。
- */
-async function handleCloseSettleAccount() {
-  if (!requireToken()) return
-  if (!closeSettleReady.value) {
-    TMessage.warning('请输入“注销结算账户”确认操作')
-    return
-  }
-  closeSettleLoading.value = true
-  try {
-    adapayMember.value = await closeMyAdapaySettlementAccount(auth.token)
-    TMessage.success('结算账户已注销')
-    closeSettleDialogVisible.value = false
-    closeSettleConfirmation.value = ''
-    settleSnapshot.value = null
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '注销结算账户失败')
-    // 失败可能停在「渠道已删、本地未更新」之外的任何状态，刷新一次按真实状态展示
-    await refreshAdapayMember()
-  } finally {
-    closeSettleLoading.value = false
-  }
 }
 
 const asign = reactive({
@@ -2276,9 +1807,7 @@ async function submitRealname() {
   submitting.value = true
   try {
     const updated = await submitMyRealnameVerification(auth.token, buildPayload())
-    current.value = updated
-    reviewerAvatarLoadFailed.value = false
-    patchForm(updated)
+    applyRealnameRecord(updated)
     TMessage.success(
       updated.status === 'approved' ? '实名认证信息已更新' : '实名认证信息已提交，请等待审核',
     )
@@ -2298,9 +1827,7 @@ async function loadCurrentRealname() {
 
   try {
     const record = await getMyRealnameVerification(auth.token)
-    current.value = record
-    reviewerAvatarLoadFailed.value = false
-    patchForm(record)
+    applyRealnameRecord(record)
     await tryRestoreBusinessPage(record)
   } catch (err) {
     if (err instanceof HttpError && err.status === 404) {
@@ -2797,11 +2324,8 @@ onMounted(async () => {
   if (redirectTarget.value && !realnameApproved.value) {
     realnameDialogVisible.value = true
   }
-  try {
-    adapayMember.value = await getMyAdapayMember(auth.token)
-  } catch {
-    adapayMember.value = null
-  }
+  // 会员状态走 composable 里那份刷新（失败置空，界面退化为「未绑定」）
+  await refreshAdapayMember()
   // 钱包页的「去绑定收款银行卡」入口：带 settle=1 直接打开结算账户弹窗
   if (route.query.settle === '1') {
     void openSettleDialog()
@@ -2822,7 +2346,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   mobileMatch?.removeEventListener('change', syncMobileViewport)
   mobileMatch = null
-  stopFaceidAutoPolling()
+  // 人脸轮询的定时器由 `useFaceidChallenge` 绑在 onScopeDispose 上，这里不用管
 })
 </script>
 
@@ -3259,195 +2783,35 @@ onBeforeUnmount(() => {
           </div>
         </TCard>
 
-        <TDialog
-          v-model:open="settleDialogVisible"
-          title="收款银行卡"
-          class="realname-dialog"
-          width="520px"
-        >
-          <TLoading tag="div" :loading="settleLoading" class="settle-dialog">
-            <!-- 渠道原话：会员停在「待认证 / 未通过」时，这是唯一能对上号的线索。
-                 渠道已明确拒绝（企业开户审核未通过、开户失败）时升级成 danger，
-                 并把「下一步做什么」写出来——只说原因，用户照样不知道从哪下手。 -->
-            <TAlert
-              v-if="settleProviderError"
-              class="settle-dialog__alert"
-              :tone="settleRejected ? 'danger' : 'warning'"
-              :closable="false"
-              show-icon
-              :title="settleProviderError"
-            >
-              <template v-if="settleRejected">
-                <p class="settle-dialog__alert-text">{{ settleRejectedGuide }}</p>
-                <TButton
-                  v-if="settleCorporateLocked"
-                  variant="solid"
-                  tone="accent"
-                  class="settle-dialog__alert-action"
-                  size="sm"
-                  @click="goFixSettleMaterial"
-                >
-                  去「变更认证类型」核对企业资料
-                </TButton>
-              </template>
-            </TAlert>
-
-            <!-- 实名主体变更后旧卡不能再收款：先把原因说清楚，再给「按新主体重新绑定」的动作 -->
-            <TAlert
-              v-if="settleSubjectMismatch"
-              class="settle-dialog__alert"
-              tone="warning"
-              :closable="false"
-              show-icon
-              :title="
-                settleMaterialMissing
-                  ? `企业实名资料缺少${settleMaterialMissingText}，收款账户暂时无法按新主体重建`
-                  : '实名主体已变更，原银行卡需要按新主体重新绑定'
-              "
-            >
-              <p class="settle-dialog__alert-text">
-                合同款只会结算到与当前实名主体一致的收款账户，变更前绑定的卡渠道不会再用。
-                <template v-if="settleMaterialMissing">
-                  按新主体重建收款账户要读实名资料里的{{
-                    settleMaterialMissingText
-                  }}，当前企业实名没有；先补齐资料并重新提交企业认证，通过后再回来绑定{{
-                    settleCorporateLocked ? '对公账户' : '银行卡'
-                  }}。
-                </template>
-                <template v-else>
-                  请按「{{ settleSubjectLabel }}」重新绑定银行卡{{
-                    settleCorporateLocked ? '；企业主体需要对公账户' : ''
-                  }}。
-                </template>
-              </p>
-              <!-- 表单常驻：不再先给一屏只读态再点「更换」才进表单（2026-10-04 改）；
-                   已绑卡时把渠道返回的脱敏明细回填进来，用户只改要改的字段 -->
-              <TButton
-                variant="solid"
-                tone="accent"
-                v-if="settleMaterialMissing"
-                class="settle-dialog__alert-action"
-                size="sm"
-                @click="goFixSettleMaterial"
-              >
-                去「变更认证类型」补齐企业资料
-              </TButton>
-            </TAlert>
-
-            <!-- 企业会员现在只在「结算账户」这一步创建：首次开通时如果实名里的企业进件资料
-                 不齐，渠道一定会拒，而那时已经没有「上次入驻失败」的 provider_error 可看，
-                 所以这里也提前拦一次（此前只有「换主体」那条分支会拦）。 -->
-            <TAlert
-              v-if="settleMaterialMissing && !settleSubjectMismatch"
-              class="settle-dialog__alert"
-              tone="warning"
-              :closable="false"
-              show-icon
-              :title="`企业实名资料缺少${settleMaterialMissingText}，无法开通企业收款账户`"
-            >
-              <p class="settle-dialog__alert-text">
-                渠道创建企业会员时逐项校验营业执照文件、企业所在省市、注册地址、经营范围与有效期，
-                缺任一项都会被拒；先把资料补齐并重新提交企业认证，通过后再回来绑定对公账户。
-              </p>
-              <TButton
-                variant="solid"
-                tone="accent"
-                class="settle-dialog__alert-action"
-                size="sm"
-                @click="goFixSettleMaterial"
-              >
-                去「变更认证类型」补齐企业资料
-              </TButton>
-            </TAlert>
-
-            <TForm
-              label-position="left"
-              label-width="96px"
-              class="settle-form"
-              :disabled="settleSaving || settleLoading"
-              @submit="saveSettleAccount"
-            >
-              <TFormItem label="银行卡号" required>
-                <TInput
-                  v-model="settleForm.card_id"
-                  inputmode="numeric"
-                  :placeholder="settleCardPlaceholder"
-                />
-              </TFormItem>
-              <TFormItem label="开户银行" required>
-                <TSelect
-                  v-model="settleForm.bank_code"
-                  :options="settlementBanks"
-                  filterable
-                  clearable
-                  placeholder="搜索或选择银行名称"
-                  no-match-text="未找到该银行"
-                  style="width: 100%"
-                />
-              </TFormItem>
-              <div class="settle-form__pair">
-                <TFormItem label="开户省份" required>
-                  <TSelect
-                    v-model="settleForm.prov_code"
-                    filterable
-                    clearable
-                    placeholder="选择开户银行所在省份"
-                    style="width: 100%"
-                    @change="changeSettleProvince"
-                  >
-                    <TOption
-                      v-for="province in settlementProvinces"
-                      :key="province.value"
-                      :label="province.title"
-                      :value="province.value"
-                    />
-                  </TSelect>
-                </TFormItem>
-                <TFormItem label="开户城市" required>
-                  <TSelect
-                    v-model="settleForm.area_code"
-                    filterable
-                    clearable
-                    :disabled="!settleForm.prov_code"
-                    :placeholder="
-                      settleForm.prov_code ? '选择开户银行所在城市' : '请先选择开户省份'
-                    "
-                    style="width: 100%"
-                  >
-                    <TOption
-                      v-for="city in settleCities"
-                      :key="city.value"
-                      :label="city.title"
-                      :value="city.value"
-                    />
-                  </TSelect>
-                </TFormItem>
-              </div>
-              <TFormItem label="账户类型">
-                <TSelect v-model="settleForm.bank_acct_type" style="width: 100%">
-                  <TOption label="个人银行卡" value="2" />
-                  <TOption label="企业对公账户" value="1" />
-                </TSelect>
-              </TFormItem>
-              <TFormItem>
-                <div class="settle-form__actions">
-                  <TButton :disabled="settleSaving" @click="closeSettleDialog">取消</TButton>
-                  <TButton type="submit" variant="solid" tone="accent" :loading="settleSaving">
-                    {{
-                      settleSaving
-                        ? '保存中...'
-                        : settleBound
-                          ? '确认更换'
-                          : settleCorporateLocked
-                            ? '绑定对公账户'
-                            : '绑定银行卡'
-                    }}
-                  </TButton>
-                </div>
-              </TFormItem>
-            </TForm>
-          </TLoading>
-        </TDialog>
+        <!-- 收款银行卡：渠道原话 / 主体变更与缺资料提示 + 银行卡表单，模板与样式都在组件里 -->
+        <SettlementDialog
+          v-model:visible="settleDialogVisible"
+          :loading="settleLoading"
+          :saving="settleSaving"
+          :bound="settleBound"
+          :corporate-locked="settleCorporateLocked"
+          :subject-mismatch="settleSubjectMismatch"
+          :subject-label="settleSubjectLabel"
+          :material-missing="settleMaterialMissing"
+          :material-missing-text="settleMaterialMissingText"
+          :provider-error="settleProviderError"
+          :rejected="settleRejected"
+          :card-placeholder="settleCardPlaceholder"
+          :card-id="settleForm.card_id"
+          :bank-code="settleForm.bank_code"
+          :prov-code="settleForm.prov_code"
+          :area-code="settleForm.area_code"
+          :bank-acct-type="settleForm.bank_acct_type"
+          :cities="settleCities"
+          @update:card-id="settleForm.card_id = $event"
+          @update:bank-code="settleForm.bank_code = $event"
+          @update:prov-code="setSettleProvince"
+          @update:area-code="settleForm.area_code = $event"
+          @update:bank-acct-type="settleForm.bank_acct_type = $event"
+          @submit="saveSettleAccount"
+          @cancel="closeSettleDialog"
+          @fix-material="goFixSettleMaterial"
+        />
 
         <CloseSettleDialog
           v-model:visible="closeSettleDialogVisible"
@@ -3458,78 +2822,20 @@ onBeforeUnmount(() => {
           @submit="handleCloseSettleAccount"
         />
 
-        <TDialog
-          v-model:open="faceidDialogVisible"
-          :title="enterpriseSelected ? '企业认证' : '人脸核身认证'"
-          class="realname-faceid-dialog"
-          width="480px"
-        >
-          <div class="realname-faceid-panel__main">
-            <div class="realname-faceid-panel__copy">
-              <strong>{{
-                isMobile
-                  ? enterpriseSelected
-                    ? '请完成企业实名认证'
-                    : '请完成人脸核身认证'
-                  : enterpriseSelected
-                    ? '请使用手机扫码，完成企业实名认证'
-                    : '请使用手机扫码，完成人脸核身认证'
-              }}</strong>
-            </div>
-
-            <template v-if="!isMobile">
-              <img
-                v-if="faceidQrDataUrl"
-                class="realname-faceid-panel__qr"
-                :src="faceidQrDataUrl"
-                alt="爱签实名认证二维码"
-              />
-              <ol class="realname-faceid-panel__steps">
-                <li>
-                  <span>用手机 <strong>微信 / 支付宝</strong> 扫描上方二维码</span>
-                </li>
-                <li>
-                  <span>在手机端按提示完成 <strong>人脸核身</strong></span>
-                </li>
-                <li><span>认证通过后状态自动更新为「已通过」</span></li>
-              </ol>
-            </template>
-
-            <div v-else class="realname-faceid-panel__mobile-tip">
-              <p>请在手机上完成人脸核身认证。</p>
-              <p class="realname-faceid-panel__mobile-sub">
-                点击下方「打开认证页面」，将跳转到爱签认证页面完成核身。
-              </p>
-            </div>
-          </div>
-          <div class="realname-faceid-panel__actions">
-            <TButton variant="outline" tone="danger" :loading="withdrawing" @click="handleWithdraw">
-              {{ realnameChangeBacked ? '取消变更，还原原主体' : '撤回认证' }}
-            </TButton>
-            <TButton class="realname-plain-btn" @click="openWechatFaceidPage">
-              <TIcon>
-                <Link />
-              </TIcon>
-              {{ isMobile ? '打开认证页面完成核身' : '打开认证页面' }}
-            </TButton>
-            <TButton
-              variant="solid"
-              tone="accent"
-              class="realname-submit-btn"
-              :loading="faceidChecking"
-              @click="checkWechatFaceidResult()"
-            >
-              <TIcon>
-                <RefreshRight />
-              </TIcon>
-              查询结果
-            </TButton>
-          </div>
-          <p class="realname-faceid-panel__hint">
-            实名认证需本人完成，二维码有效期约 120
-            分钟。若已完成核身，可点击「查询结果」刷新认证状态。
-          </p>
-        </TDialog>
+        <!-- 人脸核身：二维码 / 三步指引 / 三个动作，模板与样式都在组件里；
+             可见性仍由本页持有（它还要连带关掉实名弹窗） -->
+        <FaceidDialog
+          v-model:visible="faceidDialogVisible"
+          :enterprise="enterpriseSelected"
+          :mobile="isMobile"
+          :qr-data-url="faceidQrDataUrl"
+          :checking="faceidChecking"
+          :withdrawing="withdrawing"
+          :change-backed="realnameChangeBacked"
+          @withdraw="handleWithdraw"
+          @open-page="openWechatFaceidPage"
+          @check="checkWechatFaceidResult()"
+        />
 
         <AsignDialog
           v-model:visible="asignDialogVisible"
@@ -3905,204 +3211,11 @@ onBeforeUnmount(() => {
   opacity: 1;
 }
 
-/* —— 人脸核身面板：整块走本端令牌。二维码是唯一例外——必须真白底 + 黑模块，
-   套主题色手机会扫不出来。 */
-.realname-faceid-panel__main {
-  display: grid;
-  gap: 14px;
-  justify-items: center;
-  text-align: center;
-}
-
-.realname-faceid-panel__copy {
-  display: grid;
-  gap: 6px;
-}
-
-.realname-faceid-panel__copy strong {
-  color: var(--73-ink);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.realname-faceid-panel__copy span {
-  color: var(--73-ink-muted);
-  font-size: 13px;
-}
-
-.realname-faceid-panel__qr {
-  width: 156px;
-  height: 156px;
-  padding: 10px;
-  border-radius: var(--73-radius-inner);
-  border: 1px solid var(--73-border);
-  background: #fff;
-  box-shadow: var(--73-shadow-card);
-}
-
-/* 三步指引：序号做成徽标（原来 list-style: decimal 会把「1.」挂在居中的正文外面），
-   整块再垫一层浅底，让「怎么扫」读成一块说明，而不是漂在弹窗里。 */
-.realname-faceid-panel__steps {
-  margin: 0;
-  padding: 12px 14px;
-  width: 100%;
-  display: grid;
-  gap: 8px;
-  list-style: none;
-  counter-reset: faceid-step;
-  text-align: left;
-  border-radius: var(--73-radius-inner);
-  border: 1px solid var(--73-border-soft);
-  background: var(--73-bg-soft);
-}
-
-/* 徽标 + 正文两列。正文**必须包在单个元素里**：li 是 grid 容器，裸文本与 <strong>
-   会各自变成一个 grid 项、被塞进 20px 那一列，「微信 / 支付宝」就一个字一行地竖排。 */
-.realname-faceid-panel__steps li {
-  display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
-  gap: 10px;
-  align-items: start;
-  color: var(--73-ink-soft);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.realname-faceid-panel__steps li > span {
-  display: block;
-}
-
-/* 徽标改强调色淡底 + 强调色文字：垫了浅底之后，白底描边圆点几乎看不见。 */
-.realname-faceid-panel__steps li::before {
-  counter-increment: faceid-step;
-  content: counter(faceid-step);
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  margin-top: 1px;
-  border-radius: var(--73-radius-pill);
-  background: var(--73-accent-soft);
-  color: var(--73-accent);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.realname-faceid-panel__steps strong {
-  color: var(--73-ink);
-  font-weight: 600;
-}
-
-.realname-faceid-panel__mobile-tip {
-  display: grid;
-  gap: 6px;
-  color: var(--73-ink-soft);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.realname-faceid-panel__mobile-sub {
-  color: var(--73-ink-muted);
-}
-
-/* 底部小字：与动作行之间拉一条细线，读成脚注而不是漂着的说明文字。 */
-.realname-faceid-panel__hint {
-  margin: 14px auto 0;
-  padding-top: 12px;
-  max-width: 34em;
-  border-top: 1px solid var(--73-border-soft);
-  color: var(--73-ink-muted);
-  font-size: 12px;
-  line-height: 1.7;
-  text-align: center;
-}
-
-/* 三个动作排一行：次要/危险在左、主操作「查询结果」在最右（中文弹窗惯例）。
-   按钮文字一律不拆行——「取消变更，还原原主体」被拦腰断成两行很难看，
-   宽度不够时宁可整颗按钮换到下一行。 */
-.realname-faceid-panel__actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.realname-faceid-panel__actions > * {
-  white-space: nowrap;
-}
-
-/* 触屏档：撑满并给足 44px 触摸目标（设计规范对 <640px 的硬要求） */
-@media (max-width: 640px) {
-  .realname-faceid-panel__actions > * {
-    flex: 1 1 100%;
-    min-height: 44px;
-  }
-}
-
-@media (max-width: 780px) {
+/* 账户入口行在窄屏改单列：900 是标准档，也与工作台外壳（`.user-workbench` 在 ≤900px
+   收成单列）同一处拐点，不再自留 780 这一档。 */
+@media (max-width: 900px) {
   .entry-grid {
     grid-template-columns: 1fr;
   }
-}
-
-@media (max-width: 640px) {
-}
-
-.settle-dialog {
-  display: grid;
-  gap: 16px;
-}
-
-/* 已绑定结算账户时的只读态：说明 + 更换入口 */
-/* 实名主体变更提示：间距交给弹窗自身的 gap，不再叠 margin */
-.settle-dialog__alert {
-  margin: 0;
-}
-
-.settle-dialog__alert-text {
-  margin: 4px 0 0;
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-/* 缺企业资料时的指路按钮：跟在说明文字后面，与正文留出呼吸 */
-.settle-dialog__alert-action {
-  margin-top: 10px;
-}
-
-/* 开户省份 + 开户城市并成一行；窄屏（弹窗变全宽）时再拆回上下两行。
-   两列都用 minmax(0, 1fr) 且子项 min-width: 0 —— grid 子项默认 min-width: auto，
-   下拉框的最小宽度会把整张表单顶得比弹窗还宽，右侧（含按钮）被裁掉。 */
-.settle-form__pair {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
-}
-
-.settle-form__pair > * {
-  min-width: 0;
-}
-
-/* TForm 本身是弹窗 body 的 flex 子项，同样要允许收缩到比内容窄 */
-.settle-form {
-  min-width: 0;
-}
-
-@media (max-width: 460px) {
-  .settle-form__pair {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-/* 表单底部动作条：取消 + 确认（主操作）靠右，两者留 12px 间距 */
-.settle-form__actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 </style>
