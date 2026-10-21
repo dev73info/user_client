@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   fetchUserServiceAgreement,
@@ -7,6 +7,9 @@ import {
   type UserServiceAgreement,
 } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import KeyTermsNotice from '@/components/legal/KeyTermsNotice.vue'
+import { LEGAL_NOTICE_VERSION } from '@/components/legal/legalNotice'
+import { legalSectionHeadings, parseLegalText } from '@/components/legal/legalText'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -15,15 +18,19 @@ const loading = ref(true)
 
 const staticTitle = '用户服务协议'
 
+/** 正文区块：统一按纯文本解析，章节标题带 id（重要条款提示要跳到这些位置）。 */
+const blocks = computed(() => parseLegalText(agreement.value?.content ?? ''))
+const headings = computed(() => legalSectionHeadings(blocks.value))
+
 function detectClientPlatform(): string {
-  if (typeof navigator === 'undefined') return 'web'
-  const ua = navigator.userAgent
-  if (/MicroMessenger/i.test(ua)) return 'wechat'
-  if (/windows/i.test(ua)) return 'web-windows'
-  if (/macintosh|Mac OS/i.test(ua)) return 'web-macos'
-  if (/android/i.test(ua)) return 'web-android'
-  if (/iphone|ipad|ipod/i.test(ua)) return 'web-ios'
-  return 'web'
+    if (typeof navigator === 'undefined') return 'web'
+    const ua = navigator.userAgent
+    if (/MicroMessenger/i.test(ua)) return 'wechat'
+    if (/windows/i.test(ua)) return 'web-windows'
+    if (/macintosh|Mac OS/i.test(ua)) return 'web-macos'
+    if (/android/i.test(ua)) return 'web-android'
+    if (/iphone|ipad|ipod/i.test(ua)) return 'web-ios'
+    return 'web'
 }
 
 function goBack() {
@@ -47,6 +54,8 @@ async function loadAgreement() {
     try {
         agreement.value = await fetchUserServiceAgreement()
         // 已登录用户阅读协议时记录一次留痕（source=terms），非阻断。
+        // 这次留痕带上"已阅读重要条款提示"的时间与提示版本（R043 任务-02/03）：
+        // 留痕要能证明"用户被提示过重要条款"，光有同意时间不够。
         if (agreement.value && auth.isAuthed) {
             recordAgreementAcceptance(
                 auth.token,
@@ -54,6 +63,8 @@ async function loadAgreement() {
                 agreement.value.version,
                 detectClientPlatform(),
                 'terms',
+                new Date().toISOString(),
+                LEGAL_NOTICE_VERSION,
             ).catch(() => undefined)
         }
     } catch {
@@ -64,18 +75,6 @@ async function loadAgreement() {
 }
 
 onMounted(loadAgreement)
-
-function splitLines(content: string): { text: string; isHeading: boolean }[] {
-    return content
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((line) => ({
-            text: line,
-            // 章节标题：如「一、」「二、」等中文序号后带顿号/圆点，区别于「1. 」正文条目。
-            isHeading: /^第?[一二三四五六七八九十百]+[、.．]/.test(line),
-        }))
-}
 </script>
 
 <template>
@@ -92,9 +91,14 @@ function splitLines(content: string): { text: string; isHeading: boolean }[] {
                 <template v-if="agreement">
                     <p><strong>生效日期：</strong>{{ formatEffectiveDate(agreement.effective_at) }}</p>
 
-                    <template v-for="(line, i) in splitLines(agreement.content)" :key="i">
-                        <h3 v-if="line.isHeading">{{ line.text }}</h3>
-                        <p v-else>{{ line.text }}</p>
+                    <KeyTermsNotice code="user_service_agreement" :headings="headings" />
+
+                    <template v-for="(block, index) in blocks" :key="index">
+                        <h3 v-if="block.type === 'heading'" :id="block.id">{{ block.text }}</h3>
+                        <ul v-else-if="block.type === 'list'">
+                            <li v-for="(item, itemIndex) in block.items" :key="itemIndex">{{ item }}</li>
+                        </ul>
+                        <p v-else>{{ block.text }}</p>
                     </template>
                 </template>
 

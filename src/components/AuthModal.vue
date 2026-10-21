@@ -3,6 +3,15 @@ import { computed, ref, watch, type PropType } from 'vue'
 import { isQqBrowser, isWechatBrowser } from '@/shared/auth/browser'
 import TurnstileWidget from '@/components/TurnstileWidget.vue'
 import { isTurnstileEnabled, type TurnstileSurfaceAction } from '@/shared/turnstile'
+import { detectClientPlatform, recordAgreementAcceptance } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
+import KeyTermsNotice from '@/components/legal/KeyTermsNotice.vue'
+import {
+  LEGAL_NOTICE_VERSION,
+  clearLegalNoticeConfirmedAt,
+  readLegalNoticeConfirmedAt,
+  rememberLegalNoticeConfirmedAt,
+} from '@/components/legal/legalNotice'
 
 type AuthMode = 'login' | 'register' | 'reset'
 type InAppOauthProvider = 'wechat' | 'qq'
@@ -195,8 +204,75 @@ function requiresAgreement(): boolean {
   return props.authMode === 'login' || props.authMode === 'register'
 }
 
+// ── 重要条款提示与二次确认（R043 任务-03）─────────────────────────────────
+// 《民法典》第 496 条要求格式条款提供方对免责、责任限制等条款履行提示说明义务。
+// 现在只有一个「我已阅读并同意」的勾选框，重点条款没有任何单独提示，
+// 所以这里加一个**独立**的"已阅读并理解重要条款提示"勾选框，两个都勾上才能提交。
+const auth = useAuthStore()
+/** 提示折叠状态：默认展开，用户折叠后记住（这是展示偏好，不是同意状态）。 */
+const noticeCollapsed = ref(false)
+/** "已阅读并理解重要条款提示"的勾选状态；每次打开弹窗都要重新勾。 */
+const noticeAccepted = ref(false)
+/** 提示组件读到的协议版本号（留痕用；读不到时后端会回落到模板当前版本）。 */
+const noticeVersion = ref('')
+
+/** 勾选状态不跨会话：打开弹窗即重置，避免"上次勾过就一直算同意"。 */
+watch(
+  () => props.visible,
+  (visible) => {
+    if (visible) {
+      noticeAccepted.value = false
+      return
+    }
+    // 弹窗关闭：登录成功的话补记一次协议同意留痕
+    // （留痕接口要登录态，只能登录成功后再补）。
+    void recordLoginAcceptance()
+  },
+)
+
+/** 记录"已阅读重要条款提示"的时间到本次会话。 */
+function updateNoticeAccepted(event: Event) {
+  noticeAccepted.value = (event.target as HTMLInputElement).checked
+  if (noticeAccepted.value) {
+    rememberLegalNoticeConfirmedAt(new Date().toISOString())
+    return
+  }
+  clearLegalNoticeConfirmedAt()
+}
+
+function onNoticeLoaded(payload: { version: string; effective_at: string }) {
+  noticeVersion.value = payload.version
+}
+
+/** 登录 / 注册成功后补记一次协议同意留痕（含提示确认时间与提示版本）。 */
+async function recordLoginAcceptance() {
+  const confirmedAt = readLegalNoticeConfirmedAt()
+  if (!confirmedAt) return
+  if (!auth.token || !auth.isAuthed) return
+  try {
+    await recordAgreementAcceptance(
+      auth.token,
+      'user_service_agreement',
+      noticeVersion.value,
+      detectClientPlatform(),
+      'auth',
+      confirmedAt,
+      LEGAL_NOTICE_VERSION,
+    )
+  } catch {
+    // 留痕失败不阻断登录流程：用户已经登录成功，留痕是补记。
+  } finally {
+    clearLegalNoticeConfirmedAt()
+  }
+}
+
+/** 两个勾选都满足才允许提交（协议同意 + 已读重要条款提示）。 */
+function agreementSatisfied(): boolean {
+  return !requiresAgreement() || (props.acceptTerms && noticeAccepted.value)
+}
+
 function canSubmitAuth(): boolean {
-  return !props.authLoading && (!requiresAgreement() || props.acceptTerms)
+  return !props.authLoading && agreementSatisfied()
 }
 
 function submitOnEnter() {
@@ -269,7 +345,7 @@ function emitInAppOauth() {
           class="auth-btn auth-login-method auth-inapp-login__btn"
           :class="inAppOauthProvider === 'wechat' ? 'auth-inapp-login__btn--wechat' : 'auth-qq-login'"
           type="button"
-          :disabled="(inAppOauthProvider === 'wechat' ? wechatLoginLoading : qqLoginLoading) || !acceptTerms"
+          :disabled="(inAppOauthProvider === 'wechat' ? wechatLoginLoading : qqLoginLoading) || !agreementSatisfied()"
           :aria-busy="inAppOauthProvider === 'wechat' ? wechatLoginLoading : qqLoginLoading"
           :aria-label="inAppOauthProvider === 'wechat' ? '使用微信一键登录' : '使用QQ一键登录'"
           @click="emitInAppOauth"
@@ -298,6 +374,19 @@ function emitInAppOauth() {
               与
               <router-link to="/payment-refund">支付说明</router-link>
             </span>
+          </label>
+        </div>
+
+        <KeyTermsNotice
+          code="user_service_agreement"
+          fallback-href="/terms"
+          @loaded="onNoticeLoaded"
+        />
+
+        <div class="auth-agreement-row auth-agreement-row--compact">
+          <label class="checkbox-label">
+            <input class="checkbox-input" type="checkbox" data-testid="legal-notice-check" :checked="noticeAccepted" @change="updateNoticeAccepted" />
+            <span class="auth-agreement-row__text">我已阅读并理解上述重要条款提示</span>
           </label>
         </div>
       </div>
@@ -433,6 +522,19 @@ function emitInAppOauth() {
               </template>
             </label>
           </div>
+
+          <KeyTermsNotice
+            code="user_service_agreement"
+            fallback-href="/terms"
+            @loaded="onNoticeLoaded"
+          />
+
+          <div class="auth-agreement-row">
+            <label class="checkbox-label">
+              <input class="checkbox-input" type="checkbox" data-testid="legal-notice-check" :checked="noticeAccepted" @change="updateNoticeAccepted" />
+              <span class="checkbox-text">我已阅读并理解上述重要条款提示</span>
+            </label>
+          </div>
         </template>
       </div>
 
@@ -444,25 +546,25 @@ function emitInAppOauth() {
         </div>
         <button v-if="showGithubLogin" class="auth-btn ghost auth-login-method"
           type="button"
-          :disabled="githubLoginLoading || !acceptTerms" @click="emit('loginWithGithub')">
+          :disabled="githubLoginLoading || !agreementSatisfied()" @click="emit('loginWithGithub')">
           <img class="auth-login-method__icon" src="/icons/github.svg" alt="" aria-hidden="true" />
           <span>{{ githubLoginLoading ? '跳转中...' : 'GitHub 快捷登录' }}</span>
         </button>
         <button v-if="showWechatLogin" class="auth-btn ghost auth-login-method"
           type="button"
-          :disabled="wechatLoginLoading || !acceptTerms" @click="emit('loginWithWechat')">
+          :disabled="wechatLoginLoading || !agreementSatisfied()" @click="emit('loginWithWechat')">
           <img class="auth-login-method__icon" src="/icons/wechat.svg" alt="" aria-hidden="true" />
           <span>{{ wechatLoginLoading ? '跳转中...' : '微信快捷登录' }}</span>
         </button>
         <button v-if="showQqLogin"
           class="auth-btn ghost auth-login-method auth-qq-login" type="button" :aria-busy="qqLoginLoading"
-          aria-label="使用QQ登录" :disabled="qqLoginLoading || !acceptTerms" @click="emit('loginWithQq')">
+          aria-label="使用QQ登录" :disabled="qqLoginLoading || !agreementSatisfied()" @click="emit('loginWithQq')">
           <img class="auth-login-method__icon" :src="qqLoginIconImage" alt="" aria-hidden="true" />
           <span>{{ qqLoginLoading ? '跳转中...' : 'QQ快捷登录' }}</span>
         </button>
         <button v-if="showGiteeLogin"
           class="auth-btn ghost auth-login-method auth-gitee-login" type="button" :aria-busy="giteeLoginLoading"
-          aria-label="使用Gitee登录" :disabled="giteeLoginLoading || !acceptTerms" @click="emit('loginWithGitee')">
+          aria-label="使用Gitee登录" :disabled="giteeLoginLoading || !agreementSatisfied()" @click="emit('loginWithGitee')">
           <img class="auth-login-method__icon" src="/icons/gitee.svg" alt="" aria-hidden="true" />
           <span>{{ giteeLoginLoading ? '跳转中...' : 'Gitee快捷登录' }}</span>
         </button>

@@ -15,6 +15,9 @@ import {
 } from '@/api/contracts'
 import { ATTACHMENT_REVIEW_STATUS, CONTRACT_STATUS, contractEffectiveUntilLabel, contractStatusLabel } from '@/shared/contracts'
 import ContractAttachmentPanel from '@/components/ContractAttachmentPanel.vue'
+import KeyTermsNotice from '@/components/legal/KeyTermsNotice.vue'
+import { LEGAL_NOTICE_VERSION, rememberLegalNoticeConfirmedAt } from '@/components/legal/legalNotice'
+import { detectClientPlatform, recordAgreementAcceptance } from '@/api/auth'
 import { fetchRequirementDetail, type RequirementItem } from '@/api/requirements'
 import {
     ARCHIVED_WRITE_BLOCKED_MESSAGE,
@@ -311,8 +314,32 @@ const effectiveUntilLabel = computed(() =>
 const developmentCycleText = computed(() => developmentCycleLabel(contract.value?.development_cycle_days))
 /** 签署可用性：合同可签 + 实名齐全 + 附件已放行（平台生成的合同不受附件闸门约束）+ 未进入到期归档。 */
 const canSubmitSign = computed(
-    () => canSignContract.value && signerIdentityReady.value && !signing.value && attachmentApproved.value && !requirementArchived.value,
+    () => canSignContract.value && signerIdentityReady.value && !signing.value && attachmentApproved.value && !requirementArchived.value && platformNoticeConfirmed.value,
 )
+
+// ── 平台协议的重要条款提示与二次确认（R043 任务-03）──────────────────────
+// 平台协议（开发者入驻协议 / 接口使用协议）里平台是当事人，所以要在发起签署前
+// 单独提示重要条款并要求确认。
+// **需求合同不加这套阻断**：那是甲乙双方之间的合同，平台不是当事人，
+// 平台不该在别人的合同签署流程里加平台自己的提示。
+/** 「已阅读并理解重要条款提示」的勾选状态。 */
+const noticeAccepted = ref(false)
+/** 提示组件读到的协议版本号（留痕用；读不到时后端回落到模板当前版本）。 */
+const noticeVersion = ref('')
+/** 平台协议对应的模版 code。 */
+const platformAgreementCode = computed(() =>
+    isApiUsageAgreement.value ? 'api_usage_agreement' : 'developer_agreement',
+)
+/** 平台协议必须勾选确认重要条款提示才能发起签署。 */
+const platformNoticeConfirmed = computed(() => !isPlatformAgreement.value || noticeAccepted.value)
+
+function onNoticeAcceptedChange(event: Event) {
+    noticeAccepted.value = (event.target as HTMLInputElement).checked
+}
+
+function onNoticeLoaded(payload: { version: string; effective_at: string }) {
+    noticeVersion.value = payload.version
+}
 /** 附件变更（上传/拟定/撤回）后把页面上的合同换成后端最新那份，避免停在旧审核态。 */
 function applyUpdatedContract(updated: ContractDetail) {
     contract.value = updated
@@ -478,6 +505,26 @@ async function handleSign() {
     if (!attachmentApproved.value) {
         error.value = attachmentGateMessage.value || '自定义合同附件待平台审核通过后才能发起签署'
         return
+    }
+    // 平台协议：必须先勾选确认重要条款提示才能发起签署（R043 任务-03）。
+    if (isPlatformAgreement.value && !noticeAccepted.value) {
+        error.value = '请先阅读并勾选确认重要条款提示，再发起签署'
+        return
+    }
+    // 平台协议：留痕一次"已阅读重要条款提示"（确认时间 + 提示版本）。
+    // 留痕失败不阻断签署：签署本身已经过爱签的实名校验，留痕是补记。
+    if (isPlatformAgreement.value) {
+        const confirmedAt = new Date().toISOString()
+        rememberLegalNoticeConfirmedAt(confirmedAt)
+        await recordAgreementAcceptance(
+            auth.token,
+            platformAgreementCode.value,
+            noticeVersion.value,
+            detectClientPlatform(),
+            'sign',
+            confirmedAt,
+            LEGAL_NOTICE_VERSION,
+        ).catch(() => undefined)
     }
     signing.value = true
     error.value = ''
@@ -720,6 +767,24 @@ onUnmounted(() => {
 
                 </section>
 
+                <!-- 平台协议：发起签署前展示重要条款提示并要求确认（R043 任务-03）。
+                     需求合同不展示：平台不是需求合同的当事人，不在别人的合同流程里加平台提示。 -->
+                <div v-if="isPlatformAgreement && canSignContract" class="contract-notice">
+                    <KeyTermsNotice
+                        :code="platformAgreementCode"
+                        @loaded="onNoticeLoaded"
+                    />
+                    <label class="notice-toggle">
+                        <input
+                            type="checkbox"
+                            :checked="noticeAccepted"
+                            data-testid="platform-agreement-notice-check"
+                            @change="onNoticeAcceptedChange"
+                        />
+                        <span>我已阅读并理解上述重要条款提示</span>
+                    </label>
+                </div>
+
                 <div v-if="canSignContract || showBecomeDeveloper" class="contract-actions">
                     <label v-if="canSignContract" class="notice-toggle">
                         <input v-model="noticeSigner" type="checkbox" />
@@ -727,8 +792,7 @@ onUnmounted(() => {
                     </label>
                     <button v-if="canSignContract" class="btn-primary" :disabled="!canSubmitSign" @click="handleSign">
                         {{ signing ? '签署中…' : '开始签署' }}
-                    </button>
-                    <span v-if="requirementArchived" class="badge-pending" data-testid="contract-archive-locked-note">
+                    </button>                    <span v-if="requirementArchived" class="badge-pending" data-testid="contract-archive-locked-note">
                         {{ archiveSignBlockedMessage }}
                     </span>
                     <button

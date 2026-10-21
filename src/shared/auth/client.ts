@@ -37,7 +37,13 @@ export type GiteeAuthUrlResp = {
 
 export type AuthPath = '/auth/login' | '/auth/register'
 
-function detectClientPlatform(): string {
+/**
+ * 客户端平台标识（协议同意留痕用）。
+ *
+ * 判定口径必须各处一致：留痕要能证明"用户在哪台设备上同意的"，
+ * 协议页、登录弹窗、签署页各写一套就会对不上，所以只留这一份。
+ */
+export function detectClientPlatform(): string {
   if (typeof navigator === 'undefined') return 'web'
   const ua = navigator.userAgent
   if (/MicroMessenger/i.test(ua)) return 'wechat'
@@ -231,6 +237,8 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
     agreementVersion: string,
     clientPlatform: string,
     source = '',
+    noticeConfirmedAt = '',
+    noticeVersion = '',
   ): Promise<AgreementAcceptancePayload> {
     try {
       return await deps.requestJson<AgreementAcceptancePayload>(
@@ -245,6 +253,10 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
             agreement_version: agreementVersion,
             client_platform: clientPlatform,
             source,
+            // 重要条款提示的确认时间与提示版本（R043 任务-02/03）。
+            // 正文指纹不在这里传：指纹必须由服务端按当时的正文现算，信前端传的值。
+            notice_confirmed_at: noticeConfirmedAt || null,
+            notice_version: noticeVersion,
           }),
         },
         '协议留痕失败',
