@@ -148,13 +148,13 @@
     {
       "rule": "line-budget",
       "file": "src/components/RequirementConversationModal.vue",
-      "detail": "3119 行 > 400（模块）",
+      "detail": "2670 行 > 400（模块）",
       "since": "2026-10-21"
     },
     {
       "rule": "api-deps",
       "file": "src/components/RequirementConversationModal.vue",
-      "detail": "依赖 6 个 api 模块（conversations、contracts、http、requirements、devRequirements、resources）> 3",
+      "detail": "依赖 5 个 api 模块（conversations、contracts、http、requirements、resources）> 3",
       "since": "2026-10-21"
     },
     {
@@ -711,6 +711,24 @@
     },
     {
       "rule": "raw-color",
+      "file": "src/components/conversation/ConversationHistoryVote.vue",
+      "detail": "9 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/HistoryDisclosureNotice.vue",
+      "detail": "11 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/requirement-detail-drawer.css",
+      "detail": "24 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
       "file": "src/components/DeliverySubmitDialog.vue",
       "detail": "23 处裸色值",
       "since": "2026-10-21"
@@ -850,7 +868,7 @@
     {
       "rule": "raw-color",
       "file": "src/components/RequirementConversationModal.vue",
-      "detail": "193 处裸色值",
+      "detail": "154 处裸色值",
       "since": "2026-10-21"
     },
     {
