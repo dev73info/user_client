@@ -555,18 +555,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/MyRequirementsView.vue",
-      "detail": "1384 行 > 300（视图）",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "api-deps",
-      "file": "src/views/MyRequirementsView.vue",
-      "detail": "依赖 7 个 api 模块（http、resources、resourceTags、realname、contracts、adapay、requirements）> 3",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/MyResourcePurchasesView.vue",
       "detail": "516 行 > 300（视图）",
       "since": "2026-10-21"
