@@ -586,13 +586,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/ProfileView.vue",
-      "detail": "958 行 > 300（视图）",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "api-deps",
-      "file": "src/views/ProfileView.vue",
-      "detail": "依赖 5 个 api 模块（http、realname、coupons、requirements、settings）> 3",
+      "detail": "665 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
