@@ -204,7 +204,10 @@ onBeforeUnmount(() => {
 <style scoped>
 /* ===== 基础 ===== */
 .about-page {
-  width: min(980px, calc(100% - 40px));
+  /* R047：内容区由 980 放宽到 1120。980 时数据墙 4 列每格只有 ≤234px，而「641–899 排 2 列」又要求
+     每格 ≥243px，两个条件互斥——光调 minmax 无解（试过 220/250 都有一头塌），只能先放开容器：
+     1120 下 4 列每格 ~269px，平板档 2 列每格 ~280px 起，栅格才有解。 */
+  width: min(1120px, calc(100% - 48px));
   margin: 0 auto;
   padding: 28px 0 56px;
   font-family: 'Space Grotesk', 'Noto Sans SC', sans-serif;
@@ -399,20 +402,9 @@ onBeforeUnmount(() => {
 /* ===== 3. 数据 ===== */
 .about-facts {
   display: grid;
-  /* R047：原为固定 4 列 + 820px 塌单列。断点收敛到 640/900/1180 后，641–899 这段落在基础态，
-     实测 4 列会挤成 139px/格。这里改成「基础态 2 列（平板）→ ≤640 单列 → ≥900 回到 4 列」，
-     只用标准档位。试过 auto-fit minmax(220/250px)：容器上限 980px 时 4 列要 ≤234px、
-     820 视口要 2 列又需 ≥243px，两个条件互斥，无解，所以用显式档位。 */
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* 列数不在这里定：全页列宽统一写在文末「统一栅格与响应式」一节。 */
   gap: 14px;
   margin: 18px 0;
-}
-
-@media (min-width: 900px) {
-  /* R047：桌面档恢复正常 4 列（900 是本项目标准档位之一）。 */
-  .about-facts {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
 }
 
 .about-fact {
@@ -448,7 +440,7 @@ onBeforeUnmount(() => {
 /* ===== 4. 左右两栏 ===== */
 .about-split {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* 列数同样见文末「统一栅格与响应式」：基础态单列，≥900 才并排。 */
   gap: 18px;
   margin: 18px 0;
 }
@@ -621,9 +613,26 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.18);
 }
 
-/* ===== 响应式 =====
-   R047 断点收敛：原 820px → 640px（用户决定统一到 640） */
+/* ===== 统一栅格与响应式 =====
+   R047：全页列宽只在这一节定义，各区块不再各自算一套 px 预算。档位只用 640 / 900 / 1180，
+   轨道统一 minmax(0, 1fr)（长内容不会把轨道撑破），列数随容器宽度单向递增、不来回翻：
+     数据墙：≤640 单列 · 641–1179 两列 · ≥1180 四列
+     双栏　：<900 单列　· ≥900 起并排两列 */
+.about-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.about-split {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 @media (max-width: 640px) {
+  /* 栅格：手机档全部单列 */
+  .about-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 补白：容器与卡片同步收窄（数值沿用原样） */
   .about-page {
     width: calc(100% - 28px);
     padding: 16px 0 36px;
@@ -634,14 +643,6 @@ onBeforeUnmount(() => {
     border-radius: 18px;
   }
 
-  .about-facts {
-    grid-template-columns: 1fr;
-  }
-
-  .about-split {
-    grid-template-columns: 1fr;
-  }
-
   .about-section {
     padding: 24px 20px;
     border-radius: 16px;
@@ -650,6 +651,20 @@ onBeforeUnmount(() => {
   .about-join {
     padding: 36px 22px;
     border-radius: 16px;
+  }
+}
+
+@media (min-width: 900px) {
+  /* 栅格：双栏够宽才并排，每栏 ≥417px（852 内容宽 - 18 间隙 的一半） */
+  .about-split {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1180px) {
+  /* 栅格：容器满 1120 后数据墙升四列，每格 ~269px；再窄就只有两列 */
+  .about-facts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
