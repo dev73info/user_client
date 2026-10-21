@@ -76,7 +76,16 @@ const detail = ref<RequirementConversationDetail | null>(null)
 const loading = ref(false)
 const sending = ref(false)
 const draft = ref('')
+/**
+ * 「整块错误态」只留给**载入会话失败**：模板里它是时间线的替代分支（`v-else-if="errorMessage"`），
+ * 一旦被写入，已经收到的消息会整条从界面上消失，只剩「空态 + 重试」。
+ *
+ * 发送失败曾经也往这里写，于是发一条消息失败一次，用户就看不到自己刚发的内容，
+ * 点「重试」还会重拉整个会话。发送失败的提示因此拆到下面的 `sendError`。
+ */
 const errorMessage = ref('')
+/** 发送失败的提示：只贴在作曲器上方，时间线保持原样，草稿也留着让用户重发。 */
+const sendError = ref('')
 const attachmentError = ref('')
 const downloadLoading = ref(false)
 const emojiPanelOpen = ref(false)
@@ -96,7 +105,14 @@ function resizeDraftInput() {
   el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden'
 }
 
-watch(draft, () => nextTick(resizeDraftInput))
+/* 用户一动手改草稿，上一次的发送失败提示就该退场（他已经在重试了）；
+   提示留在那儿不退，会让人以为新的一次也失败了。 */
+watch(draft, () => {
+  if (sendError.value) {
+    sendError.value = ''
+  }
+  void nextTick(resizeDraftInput)
+})
 const attachmentInputRef = ref<HTMLInputElement | null>(null)
 const attachmentDraft = ref<ConversationAttachmentDraft | null>(null)
 const messageListRef = ref<HTMLElement | null>(null)
@@ -633,7 +649,8 @@ async function submitMessage() {
   }
 
   sending.value = true
-  errorMessage.value = ''
+  // 只清上一次的发送失败提示；`errorMessage` 归载入失败管，这里不动它
+  sendError.value = ''
   attachmentError.value = ''
   try {
     detail.value = await conversationApi.sendRequirementConversationMessage(
@@ -652,7 +669,8 @@ async function submitMessage() {
     emojiPanelOpen.value = false
     await scrollToBottom()
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : '发送消息失败'
+    // 发送失败只提示、不动时间线：`detail` 保持原值（草稿已在成功分支之外，也不会被清）
+    sendError.value = error instanceof Error ? error.message : '发送消息失败'
   } finally {
     sending.value = false
   }
@@ -670,6 +688,7 @@ function handleComposerKeydown(event: KeyboardEvent) {
 function resetComposer() {
   draft.value = ''
   errorMessage.value = ''
+  sendError.value = ''
   attachmentError.value = ''
   emojiPanelOpen.value = false
   clearAttachmentDraft()
@@ -682,8 +701,11 @@ function clearAttachmentDraft() {
   attachmentDraft.value = null
 }
 
+/* 表情面板与附件选择器都要跟着作曲器一起关掉。守卫里的条件必须和 `submitMessage` 同口径：
+   只判 `conversationClosed` 而漏掉 `composerLocked`，合同到期归档的只读期里这两个按钮看起来
+   是可用的，点下去要到发送那一步才被拦，提示还晚了一拍。 */
 function toggleEmojiPanel() {
-  if (sending.value || loading.value || conversationClosed.value) {
+  if (sending.value || loading.value || composerLocked.value) {
     return
   }
   emojiPanelOpen.value = !emojiPanelOpen.value
@@ -708,7 +730,8 @@ function insertEmoji(emoji: string) {
 }
 
 function openAttachmentPicker() {
-  if (sending.value || loading.value || conversationClosed.value) {
+  // 同上：与 `submitMessage` 同口径，归档只读期不许打开文件选择
+  if (sending.value || loading.value || composerLocked.value) {
     return
   }
   attachmentInputRef.value?.click()
@@ -1115,6 +1138,16 @@ function handleBackdropClick() {
 
             <p v-if="attachmentError" class="conversation-modal__attachment-error">
               {{ attachmentError }}
+            </p>
+
+            <!-- 发送失败贴在这里，与附件错误同一位置、同一套样式（复用 __attachment-error 的视觉，
+                 不新造样式）；时间线不受影响，草稿也还在，用户改一改就能重发。 -->
+            <p
+              v-if="sendError"
+              class="conversation-modal__attachment-error conversation-modal__send-error"
+              role="alert"
+            >
+              {{ sendError }}
             </p>
 
             <!-- R014：合同有效期届满进入锁定 / 已清除后，会话只读；历史消息与附件仍可查看与下载。 -->

@@ -232,6 +232,5 @@ describe('需求会话弹窗', () => {
     await flushPromises()
     expect(mocks.respondHistory).toHaveBeenCalledTimes(1)
     expect(mocks.respondHistory).toHaveBeenCalledWith('tok', 31, 'approved')
-    wrapper.unmount()
   })
 })
