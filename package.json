@@ -20,7 +20,9 @@
     "lint:check": "eslint . --max-warnings=0",
     "check:frontend": "node scripts/check-frontend.mjs .",
     "gate": "run-s type-check lint:check test:ci check:frontend",
-    "format": "prettier --write --experimental-cli src/"
+    "format": "prettier --write --experimental-cli src/",
+    "format:check": "prettier --check \"src/**/*.{ts,vue}\"",
+    "format:changed": "git diff --name-only --diff-filter=ACMR origin/dev...HEAD -- \"src/**/*.ts\" \"src/**/*.vue\" | xargs prettier --check"
   },
   "dependencies": {
     "@tiptap/extension-code-block-lowlight": "^3.22.5",

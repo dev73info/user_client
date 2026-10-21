@@ -1,0 +1,55 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [dev, master]
+  push:
+    branches: [dev]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm type-check
+
+      - name: Lint（存量走 suppressions，只拦新增）
+        run: pnpm lint:check
+
+      - name: Unit tests
+        run: pnpm test:ci
+
+      - name: 结构检查（行数 / API 依赖 / 裸色值 / 断点，存量走基线）
+        run: pnpm check:frontend
+
+      # 格式化只要求「本次改动涉及的文件」，存量 179 个未格式化文件不在这里一次性重排。
+      - name: Format（仅改动文件）
+        run: |
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+          CHANGED=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- 'src/**/*.ts' 'src/**/*.vue' || true)
+          if [ -n "$CHANGED" ]; then
+            echo "$CHANGED" | xargs pnpm exec prettier --check
+          else
+            echo "没有改动的 .ts / .vue 文件"
+          fi
