@@ -22,7 +22,6 @@ import PublishModal from '@/components/PublishModal.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
-import WechatAuthorizationModal from '@/components/WechatAuthorizationModal.vue'
 import {
   getUnionPaymentAuthorizeUrl,
   isUnionPaymentAuthorizationRequired,
@@ -91,8 +90,6 @@ type PaymentState = {
   adapay?: boolean
 }
 const currentPayment = ref<PaymentState | null>(null)
-const wechatAuthorizationVisible = ref(false)
-const wechatAuthorizationUrl = ref('')
 const editVisible = ref(false)
 const publishVisible = ref(false)
 const editRequirement = ref<RequirementItem | null>(null)
@@ -1269,17 +1266,6 @@ async function submitRequirementPayment() {
   }
 }
 
-function closeWechatAuthorization() {
-  wechatAuthorizationVisible.value = false
-  wechatAuthorizationUrl.value = ''
-}
-
-function handleWechatAuthorized() {
-  closeWechatAuthorization()
-  TMessage.success('微信授权成功，请再次点击支付')
-}
-
-
 onMounted(async () => {
   window.addEventListener('resize', handleProfileAvatarCropResize)
   auth.hydrate()
@@ -1638,15 +1624,6 @@ onBeforeUnmount(() => {
         </div>
       </section>
     </div>
-
-    <WechatAuthorizationModal
-      :visible="wechatAuthorizationVisible"
-      :authorization-url="wechatAuthorizationUrl"
-      :token="auth.token"
-      @close="closeWechatAuthorization"
-      @authorized="handleWechatAuthorized"
-    />
-
   </main>
 </template>
 
