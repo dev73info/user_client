@@ -48,6 +48,10 @@ import {
   calculateFinalPaymentAmount,
 } from '@/shared/requirementPayment'
 import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
+import {
+  normalizeDevelopmentCycle,
+  validateDevelopmentCycleInput,
+} from '@/shared/requirementArchive'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import { validateRequirementRichText } from '@/utils/requirementRichText'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
@@ -278,6 +282,11 @@ const publishBudget = ref<string | number>('')
 const depositChannel = ref<AdapayBusinessPayChannel>('alipay')
 const publishAcceptance = ref('')
 const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
+// R014 的「开发周期（天）」：只有担保模式（`platform_guarantee`）才显示、才必填。
+// 这一路必须与付款模式一起接：`PublishModal` 里输入框照样渲染，但 `emit` 无人接时
+// 用户键入的值会原地丢掉 —— 后端对担保需求要求正数周期，发布必被 400 拒掉，
+// 重新提交走 `PATCH`（后端不跑 `validate_new`）则**不报错、周期静默丢失**。
+const publishDevelopmentCycleDays = ref<string | number>('')
 const activeResubmitRequirementId = ref<string | null>(null)
 const publishLoading = ref(false)
 const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
@@ -917,6 +926,9 @@ function openDepositCard(item: PendingRequirementView) {
     publishBudget.value = item.budget ?? ''
     publishAcceptance.value = item.acceptanceCriteria || ''
     publishPaymentMode.value = item.paymentMode
+    // 开发周期清空起手：`PendingRequirementView` 没有带 `development_cycle_days`（见任务报告里的迁移对照表），
+    // 这里不能把上一次发布的残留值带进「重新编辑」——担保模式下用户必须自己重填，宁可多填一次也不静默丢。
+    publishDevelopmentCycleDays.value = ''
     activeResubmitRequirementId.value = item.id
     router.push({ name: 'home', query: { modal: 'publish' } })
     return
@@ -1514,6 +1526,7 @@ async function openPublishModal() {
   publishBudget.value = ''
   publishAcceptance.value = ''
   publishPaymentMode.value = 'self_managed'
+  publishDevelopmentCycleDays.value = ''
   await router.push({ name: 'home', query: { modal: 'publish' } })
 }
 
@@ -1586,6 +1599,19 @@ async function submitPublishRequirement() {
     return
   }
 
+  // R014：担保需求必填「开发周期（天）」，且必须是正整数。位置排在最后一步（标题 → 描述 → 预算 → 验收标准
+  // → 周期），与工厂 `validateRequirementPublishForm` 的顺序、文案同源：判定直接调
+  // `validateDevelopmentCycleInput`，这里不重写规则。自管模式该步恒为空（不要求、也不展示）。
+  const developmentCycleError = validateDevelopmentCycleInput(
+    publishDevelopmentCycleDays.value,
+    publishPaymentMode.value,
+  )
+
+  if (developmentCycleError) {
+    TMessage.error(developmentCycleError)
+    return
+  }
+
   publishLoading.value = true
 
   try {
@@ -1595,6 +1621,12 @@ async function submitPublishRequirement() {
       budget,
       acceptance_criteria: acceptanceValidation.value,
       payment_mode: publishPaymentMode.value,
+      // 口径与工厂一致：自管模式归一化成 `undefined`（`JSON.stringify` 把键丢掉，后端收到「未填」），
+      // 担保模式给填写的正整数。少了这个键，担保需求的合同有效期算不出来。
+      development_cycle_days: normalizeDevelopmentCycle(
+        publishDevelopmentCycleDays.value,
+        publishPaymentMode.value,
+      ),
     }
 
     if (activeResubmitRequirementId.value) {
@@ -1615,6 +1647,7 @@ async function submitPublishRequirement() {
     publishBudget.value = ''
     publishAcceptance.value = ''
     publishPaymentMode.value = 'self_managed'
+    publishDevelopmentCycleDays.value = ''
     if (resubmitId) {
       publishModalRef.value?.clearDraft(`edit-${resubmitId}`)
     } else {
@@ -2222,6 +2255,7 @@ async function submitPublishRequirement() {
       v-model:publishBudget="publishBudget"
       v-model:publishAcceptance="publishAcceptance"
       v-model:publishPaymentMode="publishPaymentMode"
+      v-model:publishDevelopmentCycleDays="publishDevelopmentCycleDays"
       :modalTitle="publishModalTitle"
       :submitText="publishModalSubmitText"
       :loadingText="publishModalLoadingText"
