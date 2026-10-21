@@ -418,7 +418,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/DevHomeView.vue",
-      "detail": "2780 行 > 300（视图）",
+      "detail": "2302 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -430,13 +430,13 @@
     {
       "rule": "line-budget",
       "file": "src/views/DevMyRequirementsView.vue",
-      "detail": "2781 行 > 300（视图）",
+      "detail": "2212 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
       "rule": "api-deps",
       "file": "src/views/DevMyRequirementsView.vue",
-      "detail": "依赖 8 个 api 模块（adapay、afterSales、conversations、devRequirements、mcResources、devWallet、contracts、invoices）> 3",
+      "detail": "依赖 7 个 api 模块（afterSales、conversations、devRequirements、mcResources、devWallet、contracts、invoices）> 3",
       "since": "2026-10-21"
     },
     {
@@ -526,7 +526,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/HomeView.vue",
-      "detail": "2270 行 > 300（视图）",
+      "detail": "2304 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
