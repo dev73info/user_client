@@ -91,6 +91,23 @@ describe('解除合作：谁能做什么', () => {
     expect(canDecideBreachCase(null)).toBe(false)
   })
 
+  it('表态视角按调用侧切换：需求方看 customerDecision，开发者看 developerDecision', () => {
+    const judged = breachCase({ status: 'ai_judged' })
+    // 需求方已表态、开发者还没表态：两侧结论必须相反，否则一侧会替另一侧表态
+    const peerDecided = breachCase({ status: 'ai_judged', customerDecision: 'accepted' })
+    expect(canDecideBreachCase(peerDecided)).toBe(false)
+    expect(canDecideBreachCase(peerDecided, 'creator')).toBe(false)
+    expect(canDecideBreachCase(peerDecided, 'dev')).toBe(true)
+
+    const mineDecided = breachCase({ status: 'ai_judged', developerDecision: 'rejected' })
+    expect(canDecideBreachCase(mineDecided, 'dev')).toBe(false)
+    expect(canDecideBreachCase(mineDecided, 'creator')).toBe(true)
+    // 两边都没表态 / 还没出 AI 判定
+    expect(canDecideBreachCase(judged, 'dev')).toBe(true)
+    expect(canDecideBreachCase(breachCase({ status: 'support_reviewing' }), 'dev')).toBe(false)
+    expect(canDecideBreachCase(null, 'dev')).toBe(false)
+  })
+
   it('只有协商中（submitted）能申请平台介入', () => {
     expect(canRequestPlatformReview(breachCase({ status: 'submitted' }))).toBe(true)
     expect(canRequestPlatformReview(breachCase({ status: 'ai_reviewing' }))).toBe(false)

@@ -2,24 +2,14 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  getAdapayBreachCase,
-  reportAdapayTermination,
-  requestAdapayPlatformReview,
-  submitAdapayBreachDecision,
-  withdrawAdapayBreach,
-  type AdapayBreachCase,
-  type AdapayBreachDecisionValue,
-  type AdapayBreachVerdictParty,
-  type AdapayBreachVerdictSource,
-} from '@/api/adapay'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import DeliverySubmitDialog from '@/components/DeliverySubmitDialog.vue'
 import PaymentModeChip from '@/components/PaymentModeChip.vue'
+import RequirementBreachDialog from '@/components/dev/RequirementBreachDialog.vue'
 import RequirementCommentDialog from '@/components/RequirementCommentDialog.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
-import { breachStatusLabel } from '@/shared/breachStatus'
+import { useBreachCase } from '@/composables/useBreachCase'
 import { afterSalesBadgeText, isAwaitingViewerAction } from '@/shared/afterSalesStatus'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { developmentCycleLabel } from '@/shared/requirementArchive'
@@ -69,11 +59,7 @@ import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 import {
   TButton,
   TCard,
-  TDescriptions,
-  TDescriptionsItem,
   TDialog,
-  TForm,
-  TFormItem,
   TIcon,
   TInput,
   TLoading,
@@ -162,94 +148,52 @@ const activeReceiptRow = computed(
   () => mergedRows.value.find((row) => row.key === activeReceiptKey.value) ?? null,
 )
 
-const breachVisible = ref(false)
 /** 解除合作：结单后的唯一业务入口，案件列表与表态都在 `AfterSalesModal` 里。 */
 const afterSalesVisible = ref(false)
 const afterSalesTarget = ref<RequirementItem | null>(null)
 const deliveryDialogVisible = ref(false)
 const deliveryRequirement = ref<RequirementItem | null>(null)
-const breachRequirement = ref<RequirementItem | null>(null)
-const breachReason = ref('')
-const breachLoading = ref(false)
-const breachCase = ref<AdapayBreachCase | null>(null)
-const breachCaseLoading = ref(false)
-/** 已结束的案件走「新一轮申报」时置真：表单与上一轮说明同屏展示，提交会新建一条案件。 */
-const breachNewRound = ref(false)
-const platformReviewLoading = ref(false)
-const breachWithdrawLoading = ref(false)
-const breachWithdrawConfirm = ref(false)
-const breachDecisionLoading = ref(false)
-const breachRejectPanel = ref(false)
-const breachDecisionNote = ref('')
-
-/** 责任方文案。 */
-function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
-  if (party === 'customer') return '客户（需求方）违约'
-  if (party === 'mutual') return '双方协商一致（无责退出）'
-  return '开发者违约'
-}
-
-/** 表态文案：`null` 表示该方尚未表态。 */
-function breachDecisionText(decision?: AdapayBreachDecisionValue | null) {
-  if (!decision) {
-    return '未表态'
-  }
-  return decision === 'accepted' ? '已接受 AI 判定' : '不接受 AI 判定'
-}
 
 /**
- * 判定来源文案：`mutual` 是双方在案件内自行协商一致结案（没经过客服），
- * 不能和 `support` 一起显示成「客服人工判定」。
+ * 解除合作案件的编排层：案件加载、协商、AI 判定表态、撤回与重新申报。
+ *
+ * 签约状态**注入**进去（`contractOf` 读本页一次取回的 `signingStatusMap`），
+ * 弹窗与卡片因此共用同一份「有没有生效合同」的事实——在别处再查一次就是第二套口径。
  */
-function breachVerdictSourceText(source?: AdapayBreachVerdictSource | null) {
-  if (source === 'ai') {
-    return '双方接受 AI 判定'
-  }
-  if (source === 'mutual') {
-    return '双方协商一致'
-  }
-  return '客服人工判定'
-}
-
-/** 双方表态状态只在 AI 判定后才有意义。 */
-function showBreachDecisions(item: AdapayBreachCase) {
-  return (
-    item.status === 'ai_judged' ||
-    item.customerDecision != null ||
-    item.developerDecision != null
-  )
-}
-
-/** 本页是开发者视角：`developerDecision` 是我方表态，`customerDecision` 是对方表态。 */
-function canDecideBreachCase(item: AdapayBreachCase | null) {
-  return item?.status === 'ai_judged' && item.developerDecision == null
-}
-
-/** 只有协商中（`submitted`）才允许申请平台介入：AI 判定由这个动作触发，出结论后不再重复申请。 */
-function canRequestPlatformReview(item: AdapayBreachCase | null) {
-  return item?.status === 'submitted'
-}
-
-/** 协商阶段：案件在 `submitted` 且双方都还没就「解除合作」表态。 */
-function isTerminationNegotiating(item: AdapayBreachCase | null) {
-  return (
-    item?.status === 'submitted' && !item.mutualAgreedAt && !item.mutualRejectedAt
-  )
-}
-
-/** 能不能对「解除合作」表态：当事人里不是发起人的那一位。 */
-function canRespondTermination(item: AdapayBreachCase | null) {
-  return isTerminationNegotiating(item) && item?.reportedBy !== auth.username
-}
-
-/** 只有申请人本人能在 AI 判定与客服介入之前撤回自己的申请（后端同样按状态与申请人校验）。 */
-function canWithdrawBreachCase(item: AdapayBreachCase | null) {
-  return (
-    item != null &&
-    ['submitted', 'ai_reviewing'].includes(item.status) &&
-    item.reportedBy === auth.username
-  )
-}
+const {
+  breachVisible,
+  breachReason,
+  breachLoading,
+  breachCase,
+  breachCaseLoading,
+  breachNewRound,
+  platformReviewLoading,
+  breachWithdrawLoading,
+  breachWithdrawConfirm,
+  breachDecisionLoading,
+  breachRejectPanel,
+  breachDecisionNote,
+  breachWithdrawnByMe,
+  breachCanRespond,
+  breachCanWithdraw,
+  breachCanDecide,
+  breachCanStartNewRound,
+  openBreachReport: openBreachReportDialog,
+  closeBreachReport,
+  submitPlatformReview,
+  openBreachWithdrawConfirm,
+  cancelBreachWithdrawConfirm,
+  submitBreachWithdraw,
+  reopenBreachReport,
+  openBreachRejectPanel,
+  cancelBreachRejectPanel,
+  submitBreachDecision,
+  submitBreachReport,
+} = useBreachCase({
+  token: () => auth.token,
+  username: () => auth.username,
+  contractOf: (item) => signingStatusMap.value[item.requirement_id] ?? null,
+})
 
 const emptyText = computed(() => {
   if (loading.value) {
@@ -961,12 +905,6 @@ async function handleCommentSubmitted() {
   await loadMyRequirements()
 }
 
-function formatCommentSummary(rating: number, text?: string | null) {
-  const score = `${rating.toFixed(1)} 分`
-  const body = commentBodyText(text)
-  return body ? `${score} · ${body}` : score
-}
-
 /** 纯数字评语多半是脏数据（评分/信用分误写入），不当作正文展示。 */
 function commentBodyText(text?: string | null) {
   const body = text?.trim() ?? ''
@@ -982,218 +920,15 @@ function starFill(rating: number, index: number): 'full' | 'half' | 'empty' {
   return 'empty'
 }
 
-async function openBreachReport(item: RequirementItem) {
+/**
+ * 解除合作入口：能不能申报由本页判定（要读一次取回的 `signingStatusMap`），
+ * 打开之后的案件加载、协商、表态与撤回都在 `useBreachCase` 里。
+ */
+function openBreachReport(item: RequirementItem) {
   if (!canReportBreach(item)) {
     return
   }
-  breachRequirement.value = item
-  breachReason.value = ''
-  breachCase.value = null
-  breachNewRound.value = false
-  breachVisible.value = true
-  breachCaseLoading.value = true
-  try {
-    breachCase.value = await getAdapayBreachCase(auth.token, item.requirement_id)
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '加载解除合作案件失败')
-  } finally {
-    breachCaseLoading.value = false
-  }
-}
-
-function closeBreachReport() {
-  if (
-    breachLoading.value ||
-    platformReviewLoading.value ||
-    breachWithdrawLoading.value ||
-    breachDecisionLoading.value ||
-    breachCaseLoading.value
-  ) {
-    return
-  }
-  breachVisible.value = false
-  breachRequirement.value = null
-  breachReason.value = ''
-  breachCase.value = null
-  breachNewRound.value = false
-  breachRejectPanel.value = false
-  breachDecisionNote.value = ''
-  breachWithdrawConfirm.value = false
-}
-
-async function submitPlatformReview() {
-  if (!breachCase.value) {
-    return
-  }
-  platformReviewLoading.value = true
-  try {
-    breachCase.value = await requestAdapayPlatformReview(auth.token, breachCase.value.id)
-    TMessage.success('已申请平台介入，案件转客服人工判定')
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '申请平台介入失败')
-  } finally {
-    platformReviewLoading.value = false
-  }
-}
-
-/** 撤回是不可撤销动作（撤回后要重新申报），故先要求二次确认。 */
-function openBreachWithdrawConfirm() {
-  breachWithdrawConfirm.value = true
-}
-
-function cancelBreachWithdrawConfirm() {
-  if (breachWithdrawLoading.value) {
-    return
-  }
-  breachWithdrawConfirm.value = false
-}
-
-async function submitBreachWithdraw() {
-  const current = breachCase.value
-  if (!current) {
-    return
-  }
-  breachWithdrawLoading.value = true
-  try {
-    breachCase.value = await withdrawAdapayBreach(auth.token, current.id)
-    breachWithdrawConfirm.value = false
-    TMessage.success('解除合作申请已撤回，如仍有争议可重新发起')
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '撤回解除合作申请失败')
-  } finally {
-    breachWithdrawLoading.value = false
-  }
-}
-
-/**
- * 已结束的案件回到申报表单：结案 / 驳回会新建一条案件，撤回则沿用同一案件重新提交；
- * 两种情况都保留上一轮案件，供表单上方的说明引用。
- */
-function reopenBreachReport() {
-  breachNewRound.value = true
-  breachReason.value = ''
-  breachWithdrawConfirm.value = false
-}
-
-/** 上一轮撤回人是不是本人：只有本人撤回才叫「重新申报」，对方撤回时本人是首次申报。 */
-const breachWithdrawnByMe = computed(
-  () => breachCase.value?.status === 'withdrawn' && breachCase.value.reportedBy === auth.username,
-)
-
-/**
- * 无生效合同时不能再发起一轮（BUG-038）：结案（`succeeded`）会作废合同、把需求退回大厅，
- * 此时后端会按「无生效担保合同」直接拒收，界面上不该留一个点了才报错的按钮。
- * 判据用签约状态（后端已把作废合同排除在 `has_contract` 之外），与需求卡片的入口同一口径。
- */
-const breachCanStartNewRound = computed(() => {
-  const item = breachRequirement.value
-  if (item == null || item.payment_mode === 'self_managed') {
-    return false
-  }
-  return Boolean(signingStatusMap.value[item.requirement_id]?.has_contract)
-})
-
-/**
- * 撤回后再次申请沿用同一条案件（后端复用该行、案件编号不变），只有驳回 / 结案才会新建案件。
- * 标题与提交按钮都按这个口径措辞，避免出现「标题写新一轮、提示写沿用同一条」的自相矛盾。
- */
-function breachDialogTitle() {
-  if (!breachNewRound.value && breachCase.value) {
-    return '解除合作进展'
-  }
-  if (breachCase.value?.status === 'withdrawn') {
-    return breachWithdrawnByMe.value ? '重新发起解除合作' : '解除合作'
-  }
-  return breachNewRound.value ? '发起新的解除合作' : '解除合作'
-}
-
-function breachSubmitLabel() {
-  if (breachCase.value?.status === 'withdrawn') {
-    return breachWithdrawnByMe.value ? '重新发起' : '提交解除合作申请'
-  }
-  return breachNewRound.value ? '发起新一轮解除合作' : '提交解除合作申请'
-}
-
-/** 申请表单上方的「上一轮」说明：讲清楚结论不能翻案，以及本次提交是新建案件还是沿用同一条。 */
-function breachRoundHint() {
-  const item = breachCase.value
-  if (!item) {
-    return ''
-  }
-  if (item.status === 'withdrawn') {
-    return breachWithdrawnByMe.value
-      ? '上一轮由你撤回，本次提交沿用同一条案件（案件编号不变），申请人与理由以本次提交为准，双方继续跟踪这一条。'
-      : '上一轮由对方申请后撤回，本次提交沿用同一条案件（案件编号不变），按你本次提交的事实与依据重新判定。'
-  }
-  // 结案（`succeeded`）按「结案即自动解除」作废合同、把需求退回大厅：同一需求上已经没有可裁决
-  // 的合同，所以不是「再提一条新案件」而是「重新接单并签约」（BUG-038）。
-  if (item.status === 'succeeded') {
-    return '上一轮案件已结案，需求已退回大厅、原合同已作废；需重新接单并签约后才能再次发起解除合作。'
-  }
-  return '上一轮案件已驳回，结论不能翻案；本次提交会新建一条案件，只针对驳回之后新发生的事实。'
-}
-
-function openBreachRejectPanel() {
-  breachDecisionNote.value = ''
-  breachRejectPanel.value = true
-}
-
-function cancelBreachRejectPanel() {
-  if (breachDecisionLoading.value) {
-    return
-  }
-  breachRejectPanel.value = false
-  breachDecisionNote.value = ''
-}
-
-async function submitBreachDecision(decision: AdapayBreachDecisionValue) {
-  const current = breachCase.value
-  if (!current) {
-    return
-  }
-  const negotiating = isTerminationNegotiating(current)
-  breachDecisionLoading.value = true
-  try {
-    breachCase.value = await submitAdapayBreachDecision(
-      auth.token,
-      current.id,
-      decision,
-      breachDecisionNote.value.trim(),
-    )
-    breachRejectPanel.value = false
-    breachDecisionNote.value = ''
-    const toast = negotiating
-      ? decision === 'accepted'
-        ? '已同意解除合作，按协商一致处理'
-        : '已表示不同意，任一方可申请平台介入'
-      : decision === 'accepted'
-        ? '已接受 AI 判定，等待对方表态'
-        : '已提交不接受，案件转客服人工判定'
-    TMessage.success(toast)
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '提交解除合作案件表态失败')
-  } finally {
-    breachDecisionLoading.value = false
-  }
-}
-
-async function submitBreachReport() {
-  const item = breachRequirement.value
-  const reason = breachReason.value.trim()
-  if (!item || !reason) {
-    TMessage.warning('请填写解除合作的事实和相关依据')
-    return
-  }
-  breachLoading.value = true
-  try {
-    breachCase.value = await reportAdapayTermination(auth.token, item.requirement_id, reason)
-    breachNewRound.value = false
-    TMessage.success('解除合作申请已提交，请先与对方协商')
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '提交解除合作申请失败')
-  } finally {
-    breachLoading.value = false
-  }
+  void openBreachReportDialog(item)
 }
 
 function openContractSign(item: RequirementItem) {
@@ -1754,278 +1489,37 @@ async function loadRequirementConversations() {
       @submitted="handleDeliverySubmitted"
     />
 
-    <TDialog
-      v-model:open="breachVisible"
-      :title="breachDialogTitle()"
-      width="520px"
-      class="dev-dialog"
-      :mask-closable="false"
-      :escape-closable="false"
+    <!-- 解除合作案件弹窗：编排在 `useBreachCase`，组件只渲染、只 emit。
+         签约状态（`breachCanStartNewRound`）由本页注入，弹窗不再自己查一次。 -->
+    <RequirementBreachDialog
+      v-model:visible="breachVisible"
+      v-model:reason="breachReason"
+      v-model:decision-note="breachDecisionNote"
+      :breach-case="breachCase"
+      :case-loading="breachCaseLoading"
+      :new-round="breachNewRound"
+      :report-loading="breachLoading"
+      :platform-review-loading="platformReviewLoading"
+      :withdraw-loading="breachWithdrawLoading"
+      :withdraw-confirm="breachWithdrawConfirm"
+      :decision-loading="breachDecisionLoading"
+      :reject-panel="breachRejectPanel"
+      :withdrawn-by-me="breachWithdrawnByMe"
+      :can-start-new-round="breachCanStartNewRound"
+      :can-respond="breachCanRespond"
+      :can-withdraw="breachCanWithdraw"
+      :can-decide="breachCanDecide"
       @close="closeBreachReport"
-    >
-      <div class="delivery-dialog-body">
-        <p class="unbind-dialog-tip">
-          提交后案件进入「协商中」：双方先在案件内协商定金与尾款的退还额度，谈成即直接退款结案。
-          协商不成再由任一方申请平台介入，平台核对合同、支付、交付与沟通记录，由审核智能体判定责任方，客服人工复核。
-        </p>
-        <p v-if="breachCaseLoading" class="unbind-dialog-tip">正在加载解除合作案件…</p>
-        <template v-else-if="breachCase && !breachNewRound">
-          <TDescriptions :column="1" border size="sm">
-            <TDescriptionsItem label="案件编号">{{ breachCase.caseNo }}</TDescriptionsItem>
-            <TDescriptionsItem label="当前状态">
-              {{ breachStatusLabel(breachCase.status) }}
-            </TDescriptionsItem>
-            <TDescriptionsItem v-if="breachCase.status === 'withdrawn'" label="申请人">
-              {{ breachWithdrawnByMe ? '我方' : '对方' }}
-            </TDescriptionsItem>
-            <TDescriptionsItem
-              v-if="breachCase.status === 'withdrawn' && breachCase.resolvedAt"
-              label="撤回时间"
-            >
-              {{ formatCnDateTime(breachCase.resolvedAt) }}
-            </TDescriptionsItem>
-            <TDescriptionsItem v-if="breachCase.liableParty" label="责任认定">
-              {{ breachLiablePartyLabel(breachCase.liableParty) }}
-            </TDescriptionsItem>
-            <TDescriptionsItem label="申请理由">{{ breachCase.reason }}</TDescriptionsItem>
-            <TDescriptionsItem
-              v-if="breachCase.aiJudgedAt || breachCase.aiReasoning"
-              label="AI 判定"
-            >
-              {{
-                breachCase.aiLiableParty
-                  ? breachLiablePartyLabel(breachCase.aiLiableParty)
-                  : '无法判定，已转客服人工判定'
-              }}
-            </TDescriptionsItem>
-            <TDescriptionsItem v-if="breachCase.aiJudgedAt" label="判定时间">
-              {{ formatCnDateTime(breachCase.aiJudgedAt) }}
-            </TDescriptionsItem>
-            <TDescriptionsItem v-if="breachCase.aiReasoning" label="判定理由">
-              {{ breachCase.aiReasoning }}
-            </TDescriptionsItem>
-            <TDescriptionsItem v-if="breachCase.decisionDeadlineAt" label="表态截止">
-              {{ formatCnDateTime(breachCase.decisionDeadlineAt) }}
-            </TDescriptionsItem>
-            <TDescriptionsItem v-if="showBreachDecisions(breachCase)" label="我方表态">
-              {{ breachDecisionText(breachCase.developerDecision) }}
-            </TDescriptionsItem>
-            <TDescriptionsItem v-if="showBreachDecisions(breachCase)" label="对方表态">
-              {{ breachDecisionText(breachCase.customerDecision) }}
-            </TDescriptionsItem>
-            <TDescriptionsItem label="资金处理">
-              定金 ¥{{ breachCase.depositAmountCny }} · 已退尾款 ¥{{ breachCase.refundAmountCny }} ·
-              赔付 ¥{{ breachCase.compensationAmountCny
-              }}<template v-if="breachCase.extraCompensationFen > 0">
-                · 额外赔偿 ¥{{ breachCase.extraCompensationCny }}</template
-              >
-            </TDescriptionsItem>
-            <TDescriptionsItem v-if="breachCase.verdictSource" label="判定来源">
-              {{ breachVerdictSourceText(breachCase.verdictSource) }}
-            </TDescriptionsItem>
-            <TDescriptionsItem v-if="breachCase.resolutionNote" label="处理说明">
-              {{ breachCase.resolutionNote }}
-            </TDescriptionsItem>
-          </TDescriptions>
-          <!-- 上一轮结案会把合同作废、需求退回大厅：这时没有生效合同可依，按钮不给，
-               但必须把「为什么不能再发起、要做什么」写清楚（BUG-038）。 -->
-          <p
-            v-if="
-              (breachCase.status === 'succeeded' || breachCase.status === 'rejected') &&
-              !breachCanStartNewRound
-            "
-            class="unbind-dialog-tip"
-          >
-            {{ breachRoundHint() }}
-          </p>
-
-          <!-- 协商阶段：对方同意即无责退出，不同意才申请平台介入。 -->
-          <template v-if="isTerminationNegotiating(breachCase)">
-            <p class="unbind-dialog-tip">
-              先协商：对方同意即按协商一致处理——无责退出，定金全额原路退还需求方、无违约金、不产生赔付。
-              对方不同意或超时未回应，任一方可申请平台介入。
-            </p>
-            <TInput
-              v-if="canRespondTermination(breachCase)"
-              show-count
-              v-model="breachDecisionNote"
-              type="textarea"
-              :rows="3"
-              :maxlength="1000"
-              placeholder="可选：说明你同意或不同意的立场，双方与客服都会看到"
-            />
-            <p v-else class="unbind-dialog-tip">已提交申请，等待对方回应。</p>
-          </template>
-          <p v-else-if="breachCase.mutualAgreedAt" class="unbind-dialog-line">
-            协商结果：双方协商一致（无责退出），{{ formatCnDateTime(breachCase.mutualAgreedAt) }}
-          </p>
-          <p v-else-if="breachCase.mutualRejectedAt" class="unbind-dialog-line">
-            协商结果：对方不同意解除合作（{{ formatCnDateTime(breachCase.mutualRejectedAt) }}），任一方可申请平台介入
-          </p>
-
-          <div v-if="canDecideBreachCase(breachCase)" class="breach-decision">
-            <p class="unbind-dialog-line">
-              请选择是否接受 AI
-              判定：双方都接受后平台才会执行退款／赔付；任一方不接受或逾期未全部表态，案件转客服人工判定。
-            </p>
-            <TInput
-              show-count
-              v-if="breachRejectPanel"
-              v-model="breachDecisionNote"
-              type="textarea"
-              :rows="3"
-              :maxlength="1000"
-              placeholder="可选：说明不接受该判定的理由，便于客服人工复核"
-            />
-            <div class="breach-decision__actions">
-              <template v-if="breachRejectPanel">
-                <TButton :disabled="breachDecisionLoading" @click="cancelBreachRejectPanel"
-                  >取消</TButton
-                >
-                <TButton
-                  variant="solid"
-                  tone="danger"
-                  :loading="breachDecisionLoading"
-                  @click="submitBreachDecision('rejected')"
-                  >确认不接受</TButton
-                >
-              </template>
-              <template v-else>
-                <TButton
-                  variant="outline"
-                  tone="danger"
-                  :disabled="breachDecisionLoading"
-                  @click="openBreachRejectPanel"
-                  >不接受</TButton
-                >
-                <TButton
-                  variant="solid"
-                  tone="accent"
-                  :loading="breachDecisionLoading"
-                  @click="submitBreachDecision('accepted')"
-                  >接受判定</TButton
-                >
-              </template>
-            </div>
-          </div>
-          <p
-            v-else-if="
-              !isTerminationNegotiating(breachCase) &&
-              !breachCase.mutualAgreedAt &&
-              !breachCase.mutualRejectedAt &&
-              (breachCase.status === 'submitted' || breachCase.status === 'ai_reviewing')
-            "
-            class="unbind-dialog-tip"
-          >
-            平台按 AI 判定 + 客服人工审核认定责任方，判定完成后由双方各自选择是否接受。
-          </p>
-
-          <div v-if="breachWithdrawConfirm" class="breach-decision">
-            <p class="unbind-dialog-line">
-              确认撤回本次解除合作申请？撤回后本次申请结束，如仍有争议可在同一需求上重新发起；撤回不会触发任何退款或赔付。
-            </p>
-            <div class="breach-decision__actions">
-              <TButton :disabled="breachWithdrawLoading" @click="cancelBreachWithdrawConfirm"
-                >再想想</TButton
-              >
-              <TButton
-                variant="solid"
-                tone="danger"
-                :loading="breachWithdrawLoading"
-                @click="submitBreachWithdraw"
-                >确认撤回申请</TButton
-              >
-            </div>
-          </div>
-        </template>
-        <TForm v-else label-position="top">
-          <p v-if="breachNewRound" class="unbind-dialog-tip">{{ breachRoundHint() }}</p>
-          <TFormItem label="事实与依据" required>
-            <TInput
-              show-count
-              v-model="breachReason"
-              type="textarea"
-              :rows="6"
-              :maxlength="2000"
-              placeholder="请填写时间、已交付内容、沟通记录和希望平台核查的事实"
-            />
-          </TFormItem>
-        </TForm>
-      </div>
-      <template #footer>
-        <TButton
-          :disabled="
-            platformReviewLoading || breachLoading || breachDecisionLoading || breachWithdrawLoading
-          "
-          @click="closeBreachReport"
-        >
-          {{ breachCase && !breachNewRound ? '关闭' : '取消' }}
-        </TButton>
-        <TButton
-          variant="outline"
-          tone="danger"
-          v-if="canWithdrawBreachCase(breachCase) && !breachWithdrawConfirm"
-          :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-          @click="openBreachWithdrawConfirm"
-          >撤回申请</TButton
-        >
-        <TButton
-          variant="solid"
-          tone="accent"
-          v-else-if="breachCase?.status === 'withdrawn' && !breachNewRound"
-          :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-          @click="reopenBreachReport"
-          >{{ breachWithdrawnByMe ? '重新发起' : '提交解除合作申请' }}</TButton
-        >
-        <TButton
-          variant="solid"
-          tone="accent"
-          v-else-if="
-            (breachCase?.status === 'rejected' || breachCase?.status === 'succeeded') &&
-            !breachNewRound &&
-            breachCanStartNewRound
-          "
-          :disabled="platformReviewLoading || breachDecisionLoading || breachWithdrawLoading"
-          @click="reopenBreachReport"
-          >发起新的解除合作</TButton
-        >
-        <TButton
-          variant="outline"
-          tone="accent"
-          v-if="canRequestPlatformReview(breachCase)"
-          :loading="platformReviewLoading"
-          @click="submitPlatformReview"
-          >申请平台介入</TButton
-        >
-        <template v-if="canRespondTermination(breachCase)">
-          <TButton
-            variant="outline"
-            tone="danger"
-            :loading="breachDecisionLoading"
-            :disabled="platformReviewLoading || breachWithdrawLoading"
-            @click="submitBreachDecision('rejected')"
-            >不同意</TButton
-          >
-          <TButton
-            variant="solid"
-            tone="accent"
-            :loading="breachDecisionLoading"
-            :disabled="platformReviewLoading || breachWithdrawLoading"
-            @click="submitBreachDecision('accepted')"
-            >同意解除</TButton
-          >
-        </template>
-        <TButton
-          variant="solid"
-          tone="accent"
-          v-else-if="!breachCase || breachNewRound"
-          :loading="breachLoading"
-          @click="submitBreachReport"
-        >
-          {{ breachSubmitLabel() }}
-        </TButton>
-      </template>
-    </TDialog>
+      @submit-report="submitBreachReport"
+      @submit-platform-review="submitPlatformReview"
+      @open-withdraw-confirm="openBreachWithdrawConfirm"
+      @cancel-withdraw-confirm="cancelBreachWithdrawConfirm"
+      @submit-withdraw="submitBreachWithdraw"
+      @reopen="reopenBreachReport"
+      @open-reject-panel="openBreachRejectPanel"
+      @cancel-reject-panel="cancelBreachRejectPanel"
+      @submit-decision="submitBreachDecision"
+    />
 
     <AfterSalesModal
       :visible="afterSalesVisible"
@@ -2446,12 +1940,6 @@ strong.dev-delivery-cell__amount {
   gap: 6px;
 }
 
-.dev-requirement-card__comments {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .dev-rating-row {
   display: flex;
   flex-wrap: wrap;
@@ -2581,63 +2069,6 @@ strong.dev-delivery-cell__amount {
   color: var(--dev-gold);
   font-size: 12px;
   line-height: 1.5;
-}
-
-.unbind-dialog-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.unbind-dialog-tip {
-  margin: 0;
-  color: var(--dev-gold);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.unbind-dialog-line {
-  margin: 0;
-  color: var(--dev-ink);
-  font-size: 13px;
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-}
-
-.delivery-dialog-body {
-  display: grid;
-  gap: 10px;
-}
-
-.delivery-dialog-body .unbind-dialog-tip {
-  padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, var(--dev-gold) 28%, transparent);
-  border-radius: var(--dev-radius-control);
-  background: color-mix(in srgb, var(--dev-gold) 10%, transparent);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-/* 解除合作案件：双方表态（接受 / 不接受）区块 */
-.breach-decision {
-  display: grid;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--wb-accent-line);
-  border-radius: var(--dev-radius-control);
-  background: var(--wb-accent-soft);
-}
-
-.breach-decision .unbind-dialog-line {
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.breach-decision__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
 }
 
 /* === 回款详情弹窗（从「交付记录」页搬来） ===

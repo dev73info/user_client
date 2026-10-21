@@ -48,9 +48,21 @@ export function showBreachDecisions(item: AdapayBreachCase) {
   )
 }
 
-/** 本页是需求方（客户）视角：`customerDecision` 是我方表态，`developerDecision` 是对方表态。 */
-export function canDecideBreachCase(item: AdapayBreachCase | null) {
-  return item?.status === 'ai_judged' && item.customerDecision == null
+/**
+ * AI 判定后该不该出「接受 / 不接受」：本人还没表态才有得选。
+ *
+ * `view` 决定「本人」是哪一方：需求方（甲方）看 `customerDecision`，开发者（乙方）看
+ * `developerDecision`。默认取需求方——两个既有调用方（`MyRequirementsView` 与
+ * `useRequirementBreach`）都是那一侧，加参数时不必回头改。
+ *
+ * 这一层必须带视角：开发者页照抄需求方的判据，就会出现「对方表过态所以我不必表态」的按钮消失。
+ */
+export function canDecideBreachCase(
+  item: AdapayBreachCase | null,
+  view: 'creator' | 'dev' = 'creator',
+) {
+  const mine = view === 'dev' ? item?.developerDecision : item?.customerDecision
+  return item?.status === 'ai_judged' && mine == null
 }
 
 /** 只有协商中（`submitted`）才允许申请平台介入：AI 判定由这个动作触发，出结论后不再重复申请。 */
