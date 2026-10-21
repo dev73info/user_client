@@ -258,9 +258,26 @@ describe('个人中心总览：抽出四个只读面板后的接线', () => {
     wrapper.unmount()
   })
 
-  it('带 ?modal=publish 回到总览就弹发布窗口（watch 与 immediate 重放都留在视图）', async () => {
+  it('带 ?modal=publish 回到总览就弹发布窗口（watch 与 immediate 重放随发布域走）', async () => {
     const { wrapper } = await render({ modal: 'publish' })
     expect(wrapper.find('publish-modal-stub').attributes('visible')).toBe('true')
+    wrapper.unmount()
+  })
+
+  it('关掉发布窗口就摘掉 ?modal=publish，且字段的 v-model 键名逐字对得上', async () => {
+    // 读参数（watch 开窗，上一条）与摘参数是同一件事的两端：只测开窗会漏掉后半条，
+    // 用户关掉弹窗后刷新页面又会被弹一次。`onUpdate:` 少个冒号则 emit 回不去，
+    // 表单看着能填、提交却是空值——两条一起钉，其余 query 必须原样留着。
+    const { wrapper, router } = await render({ modal: 'publish', tab: 'active' })
+    const modal = wrapper.findComponent({ name: 'PublishModal' })
+    modal.vm.$emit('update:publishTitle', '我要一个站点')
+    await flushPromises()
+    expect(modal.attributes('publishtitle')).toBe('我要一个站点')
+    modal.vm.$emit('close')
+    await flushPromises()
+    expect(modal.attributes('visible')).toBe('false')
+    expect(router.currentRoute.value.query.modal).toBeUndefined()
+    expect(router.currentRoute.value.query.tab).toBe('active')
     wrapper.unmount()
   })
 

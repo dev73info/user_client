@@ -11,7 +11,7 @@ import {
   TMessage,
   Wallet,
 } from 'ui_73info'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import OverviewStrip from '@/components/profile/OverviewStrip.vue'
 import ProfileAvatarCropModal from '@/components/profile/ProfileAvatarCropModal.vue'
@@ -21,23 +21,14 @@ import RequirementProgressPanel from '@/components/profile/RequirementProgressPa
 import PublishModal from '@/components/PublishModal.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
-import { HttpError, apiUrl } from '@/api/http'
-import { getMyRealnameVerification } from '@/api/realname'
-import { useAvatarCrop } from '@/composables/useAvatarCrop'
-import { useAvatarCropModalBindings } from '@/composables/useAvatarCropModalBindings'
+import { useProfileCard } from '@/composables/useProfileCard'
+import { useProfilePublishRequirement } from '@/composables/useProfilePublishRequirement'
 import {
   useRequirementConversations,
   type RequirementConversationCard,
 } from '@/composables/useRequirementConversations'
 import { useRequirementOverview } from '@/composables/useRequirementOverview'
 import { useAuthStore } from '@/stores/auth'
-import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
-import {
-  createRequirement as createRequirementApi,
-  type RequirementPaymentMode,
-} from '@/api/requirements'
-import { getProfile } from '@/api/settings'
-import { validateRequirementRichText } from '@/utils/requirementRichText'
 
 const router = useRouter()
 const route = useRoute()
@@ -63,53 +54,53 @@ const {
   applyConversationDetail,
 } = useRequirementConversations({ requirements: myRequirements })
 
-const loading = ref(false)
-const coupons = ref<CouponItem[]>([])
-const publishVisible = ref(false)
-const publishTitle = ref('')
-const publishDescription = ref('')
-const publishBudget = ref<string | number>('')
-const publishAcceptance = ref('')
-const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
-const publishLoading = ref(false)
-const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
 const conversationVisible = ref(false)
 /** 会话弹窗要的那一条：卡片上已有需求号与标题，够弹窗起头用，不必再握一份完整需求。 */
 const conversationRequirement = ref<RequirementConversationCard | null>(null)
-function notify(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
-  TMessage[type](message)
-}
-const failedProfileAvatarUrls = ref<Set<string>>(new Set())
 
-/** 原图上限：超过就不进裁剪（先缩图，否则 blob 与 canvas 都会跟着重）。 */
-const avatarCropMaxSourceSize = 8 * 1024 * 1024
-
-const usableCouponCount = computed(() => coupons.value.filter((item) => item.status !== 'used').length)
-const accountEmailLabel = computed(() => profileEmail.value || '未绑定邮箱')
-const profileAvatarSrc = computed(() => {
-  const avatarUrl = profileAvatarUrl.value.trim()
-  if (!avatarUrl || failedProfileAvatarUrls.value.has(avatarUrl)) {
-    return ''
-  }
-
-  const src = apiUrl(avatarUrl)
-  if (!profileAvatarCacheKey.value) {
-    return src
-  }
-
-  return `${src}${src.includes('?') ? '&' : '?'}v=${profileAvatarCacheKey.value}`
+/**
+ * 发布需求域（弹窗可见性、表单态、实名门禁、建单与 `?modal=publish` 的读写）在
+ * `useProfilePublishRequirement`。这里只留两个跳转与一个刷新口子：
+ * 门禁判完「能不能发」，去哪儿由视图决定（登录页 / 实名页）。
+ */
+const { publishModalRef, publishModalBindings } = useProfilePublishRequirement({
+  reloadRequirements: loadMyRequirements,
+  onNeedLogin: (redirectTarget) => {
+    void router.push({
+      name: 'home',
+      query: { modal: 'auth', mode: 'login', redirect_to: redirectTarget },
+    })
+  },
+  onNeedRealname: (redirectTarget) => {
+    void router.push({ name: 'workbench-realname', query: { redirect_to: redirectTarget } })
+  },
 })
-const profileInitial = computed(() => Array.from(auth.username || '用')[0] ?? '用')
-const timeGreeting = computed(() => {
-  const hour = new Date().getHours()
-  if (hour < 6) return '夜深了，注意休息'
-  if (hour < 11) return '早上好，开启美好的一天'
-  if (hour < 14) return '中午好，记得按时吃饭'
-  if (hour < 18) return '下午好，继续加油'
-  if (hour < 23) return '晚上好，辛苦了'
-  return '夜深了，早点休息'
+
+/**
+ * 头像卡这一块（资料与券包的取数、顶部展示派生、选图入口、头像裁剪挂点）在 `useProfileCard`；
+ * 两路需求侧数据由视图注入 —— 读数条那颗刷新要一次把它们一起 await 完再提示。
+ */
+const {
+  loading,
+  usableCouponCount,
+  accountEmailLabel,
+  profileAvatarSrc,
+  profileInitial,
+  timeGreeting,
+  subscriptionLabel,
+  profileAvatarInput,
+  profileAvatarUploading,
+  avatarCropModal,
+  openProfileAvatarPicker,
+  handleProfileAvatarChange,
+  handleProfileAvatarError,
+  loadProfile,
+  loadCoupons,
+  refreshProfile: refreshProfileData,
+} = useProfileCard({
+  reloadRequirements: loadMyRequirements,
+  reloadConversations: loadRequirementConversations,
 })
-const subscriptionLabel = computed(() => (subscriptionOfficialActivity.value ? '已订阅' : '未订阅'))
 
 function openConversation(card: RequirementConversationCard) {
   conversationRequirement.value = card
@@ -120,278 +111,18 @@ function closeConversation() {
   conversationVisible.value = false
 }
 
-function publishRedirectTarget() {
-  return router.resolve({
-    name: 'workbench',
-    query: { ...route.query, modal: 'publish' },
-  }).fullPath
-}
-
-async function ensurePublishRealnameApproved() {
-  const redirectTarget = publishRedirectTarget()
-  auth.hydrate()
-  if (!auth.isAuthed) {
-    TMessage.info('发布需求前请先登录')
-    void router.push({
-      name: 'home',
-      query: { modal: 'auth', mode: 'login', redirect_to: redirectTarget },
-    })
-    return false
-  }
-
-  try {
-    const record = await getMyRealnameVerification(auth.token)
-    if (record.status === 'approved') {
-      return true
-    }
-
-    if (record.status === 'pending') {
-      TMessage.warning('实名认证审核中，通过后可发布需求')
-      return false
-    }
-
-    TMessage.warning('实名认证未通过，请重新提交后再发布需求')
-    void router.push({
-      name: 'workbench-realname',
-      query: { redirect_to: redirectTarget },
-    })
-    return false
-  } catch (error) {
-    if (error instanceof HttpError && error.status === 404) {
-      TMessage.warning('发布需求前请先完成实名认证')
-      void router.push({
-        name: 'workbench-realname',
-        query: { redirect_to: redirectTarget },
-      })
-      return false
-    }
-
-    TMessage.error(error instanceof Error ? error.message : '实名认证状态校验失败')
-    return false
-  }
-}
-
-/** 读数条那颗刷新：需求列表、会话、券包、资料四路并发，回来统一提示一次。 */
-async function refreshProfileData() {
-  await Promise.all([
-    loadCoupons(),
-    loadMyRequirements(),
-    loadRequirementConversations(),
-    loadProfile(),
-  ])
-  TMessage.success('资料已刷新')
-}
-
 /** 需求详情浮层已去掉：需求正文在需求详情里看（会话标题栏的「需求详情」抽屉、开发者需求详情页），
     这里只跳到「我的需求」列表。 */
 function handleRequirementSelect() {
   void router.push({ name: 'workbench-requirements' })
 }
 
-function openProfileAvatarPicker() {
-  if (profileAvatarUploading.value) {
-    return
-  }
-
-  profileAvatarInput.value?.click()
-}
-
-function handleProfileAvatarChange(event: Event) {
-  if (!auth.isAuthed) {
-    TMessage.error('请先登录后上传头像')
-    return
-  }
-
-  const input = event.target as HTMLInputElement | null
-  const file = input?.files?.[0]
-  if (!file) {
-    return
-  }
-
-  if (!file.type.startsWith('image/')) {
-    TMessage.warning('头像仅支持图片格式')
-    if (input) input.value = ''
-    return
-  }
-
-  if (file.size > avatarCropMaxSourceSize) {
-    TMessage.warning('原图请控制在 8MB 以内')
-    if (input) input.value = ''
-    return
-  }
-
-  openProfileAvatarCrop(file)
-  if (input) input.value = ''
-}
-
-function handleProfileAvatarError() {
-  const avatarUrl = profileAvatarUrl.value.trim()
-  if (!avatarUrl) return
-
-  const next = new Set(failedProfileAvatarUrls.value)
-  next.add(avatarUrl)
-  failedProfileAvatarUrls.value = next
-}
-
-async function loadProfile() {
-  auth.hydrate()
-  if (!auth.isAuthed) {
-    return
-  }
-
-  try {
-    const profile = await getProfile(auth.token)
-    profileAvatarUrl.value = profile.avatar_url ?? ''
-    profileEmail.value = profile.email ?? ''
-    subscriptionOfficialActivity.value = Boolean(profile.subscribe_official_activity)
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '加载个人资料失败')
-  }
-}
-
-function forceClosePublishModal() {
-  publishVisible.value = false
-  publishTitle.value = ''
-  publishDescription.value = ''
-  publishBudget.value = ''
-  publishAcceptance.value = ''
-  publishPaymentMode.value = 'self_managed'
-}
-
-function clearPublishModalQuery() {
-  if (route.query.modal !== 'publish') {
-    return
-  }
-
-  const nextQuery = { ...route.query }
-  delete nextQuery.modal
-  void router.replace({ query: nextQuery })
-}
-
-function closePublishModal() {
-  if (publishLoading.value) {
-    return
-  }
-  forceClosePublishModal()
-  clearPublishModalQuery()
-}
-
-async function submitRequirementPublish() {
-  const approved = await ensurePublishRealnameApproved()
-  if (!approved) {
-    return
-  }
-
-  const normalizedTitle = publishTitle.value.trim()
-  const descriptionValidation = validateRequirementRichText(publishDescription.value, '需求描述', {
-    minTextLength: 10,
-  })
-  const acceptanceValidation = validateRequirementRichText(publishAcceptance.value, '验收标准', {
-    required: true,
-  })
-  const budgetRaw = String(publishBudget.value ?? '').trim()
-
-  if (normalizedTitle.length < 4) {
-    TMessage.error('需求标题至少 4 个字符')
-    return
-  }
-
-  if (descriptionValidation.error) {
-    TMessage.error(descriptionValidation.error)
-    return
-  }
-
-  if (!budgetRaw) {
-    TMessage.error('预算不能为空')
-    return
-  }
-
-  const budget = Number(budgetRaw)
-
-  if (Number.isNaN(budget) || budget < 0) {
-    TMessage.error('预算必须是大于等于0的数字')
-    return
-  }
-
-  if (acceptanceValidation.error) {
-    TMessage.error(acceptanceValidation.error)
-    return
-  }
-
-  publishLoading.value = true
-  try {
-    await createRequirementApi(auth.token, {
-      title: normalizedTitle,
-      description: descriptionValidation.value,
-      budget,
-      acceptance_criteria: acceptanceValidation.value,
-      payment_mode: publishPaymentMode.value,
-    })
-
-    TMessage.success('需求已发布')
-    forceClosePublishModal()
-    clearPublishModalQuery()
-    publishModalRef.value?.clearDraft()
-    await loadMyRequirements()
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '发布失败')
-  } finally {
-    publishLoading.value = false
-  }
-}
-
-const profileAvatarUrl = ref('')
-const profileAvatarCacheKey = ref(0)
-const profileAvatarInput = ref<HTMLInputElement | null>(null)
-const profileEmail = ref('')
-
-/**
- * 头像裁剪整块（缩放 / 拖拽 / 边界钳制 / Canvas 出图 / 上传）在 `useAvatarCrop`，
- * 弹窗只渲染、只 emit，挂点由 `useAvatarCropModalBindings` 一行铺平。
- *
- * 视图这边只剩两件事：**选图入口**（`<input type=file>` 在这里）与**上传后回写头像地址**
- * （`onUploaded`）。预览 blob 的 revoke 也归 composable —— 早先挂在本页 `onBeforeUnmount` 上，
- * 拆走一层就会漏一处。
- */
-const avatarCrop = useAvatarCrop({ onUploaded: applyUploadedAvatar })
-const { uploading: profileAvatarUploading, open: openProfileAvatarCrop } = avatarCrop
-const { modalBindings: avatarCropModal } = useAvatarCropModalBindings(avatarCrop)
-
-/** 上传成功后回写头像：剔除失败集合里的旧地址，再换缓存键让页面顶部那颗头像重新拉图。 */
-function applyUploadedAvatar(avatarUrl: string) {
-  if (avatarUrl) {
-    const nextFailedUrls = new Set(failedProfileAvatarUrls.value)
-    nextFailedUrls.delete(avatarUrl)
-    failedProfileAvatarUrls.value = nextFailedUrls
-  }
-  profileAvatarUrl.value = avatarUrl
-  profileAvatarCacheKey.value = Date.now()
-}
-
-const subscriptionOfficialActivity = ref(false)
-
-async function loadCoupons() {
-  auth.hydrate()
-  if (!auth.isAuthed) {
-    return
-  }
-
-  loading.value = true
-  try {
-    coupons.value = await listAvailableCoupons(auth.token)
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '加载券包失败')
-  } finally {
-    loading.value = false
-  }
-}
-
 /**
  * 首屏串行链：四路并发取数 → 再消费 OAuth 回跳参数并清掉。
  *
  * 这条链**必须留在视图**：五路请求（券包、需求列表、需求里的按条合同状态、会话、资料）
- * 各自的 `load*` 都在，拆进各组件内部就变成每块各自 `onMounted` 发请求，
- * 请求次数从一次变多次，且刷新按钮再也管不到它们。
+ * 的 `load*` 虽由各自的域提供，但**挂载时只在这里统一 await 一次**；拆进各组件内部就变成
+ * 每块各自 `onMounted` 发请求，请求次数从一次变多次，且刷新按钮再也管不到它们。
  */
 onMounted(async () => {
   auth.hydrate()
@@ -426,28 +157,6 @@ onMounted(async () => {
     delete nextQuery.union_oauth_error
     void router.replace({ query: nextQuery })
   }
-})
-
-/**
- * `?modal=publish` 开弹窗：带这个参数回到总览即弹窗（移动端宫格的「我有需求」就这么进）。
- *
- * 也留在视图：`immediate: true` 只在视图挂载时重放一次，弹窗本身若被 `v-if` 卸载过，
- * 再挂载时不会再补一次。关闭时清掉参数的那条链（`closePublishModal → clearPublishModalQuery`）
- * 同理，挪进组件就会与地址栏脱节。
- */
-watch(
-  () => route.query.modal,
-  (value) => {
-    if (value === 'publish' && !publishVisible.value) {
-      forceClosePublishModal()
-      publishVisible.value = true
-    }
-  },
-  { immediate: true },
-)
-
-onBeforeUnmount(() => {
-  profileAvatarCacheKey.value = Date.now()
 })
 </script>
 
@@ -503,7 +212,8 @@ onBeforeUnmount(() => {
            第一行是需求方自己的事（发需求 → 看定制 → 签合同 → 开发票），
            第二行是开发者侧（找需求 → 接单 → 做资源 → 收钱），各按做事先后排。 -->
       <nav class="overview-hero__quick" aria-label="快捷入口">
-        <!-- 带 modal=publish 回到总览即弹出发布需求窗口（见 route.query.modal 的 watch），关闭时会清掉这个参数 -->
+        <!-- 带 modal=publish 回到总览即弹出发布需求窗口（watch 在 `useProfilePublishRequirement` 里），
+             关闭时会清掉这个参数 -->
         <RouterLink :to="{ name: 'workbench', query: { modal: 'publish' } }">
           <span class="overview-hero__quick-icon"><TIcon :size="22"><EditPen /></TIcon></span>
           <span>我有需求</span>
@@ -549,12 +259,9 @@ onBeforeUnmount(() => {
       </aside>
     </div>
 
-    <PublishModal ref="publishModalRef" :visible="publishVisible" v-model:publishTitle="publishTitle"
-      v-model:publishDescription="publishDescription" v-model:publishBudget="publishBudget"
-      v-model:publishAcceptance="publishAcceptance" v-model:publishPaymentMode="publishPaymentMode"
-      :publishLoading="publishLoading"
-      :draft-scope="auth.isAuthed ? auth.username : 'default'" @close="closePublishModal" @notify="notify"
-      @submit="submitRequirementPublish" />
+    <!-- 发布需求弹窗：props 与监听由 `useProfilePublishRequirement` 铺成一份 v-bind，
+         这里只有挂点。`?modal=publish` 的开窗与摘参也在那一个域里（读与写必须同处）。 -->
+    <PublishModal ref="publishModalRef" v-bind="publishModalBindings" />
 
     <RequirementConversationModal :visible="conversationVisible" :token="auth.token" :current-username="auth.username"
       :requirement-id="conversationRequirement?.requirementId ?? ''" :title="conversationRequirement?.title"
