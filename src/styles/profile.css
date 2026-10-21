@@ -775,6 +775,28 @@
   word-break: break-word;
 }
 
+/* 「转为我的资源」确认须知（`RequirementClaimModal.vue`）：与 `.pay-modal .tip` 同一浅蓝底，三条分行列出。
+   原先写在 MyRequirementsView 的 scoped 块里，弹窗拆成组件后 scoped 属性对不上会静默失效；
+   三条规则里的裸色值因此跟着进本文件（总数不变，只是换了记账对象）。 */
+.pay-modal .claim-notes {
+  margin: 14px 0 0;
+  padding: 10px 12px 10px 28px;
+  border-radius: 10px;
+  background: rgba(239, 246, 255, 0.9);
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.pay-modal .claim-notes li + li {
+  margin-top: 4px;
+}
+
+.pay-modal .claim-notes strong {
+  color: #b45309;
+}
+
 /* --- 优惠券列表（个人中心） --- */
 .coupon-items {
   display: grid;

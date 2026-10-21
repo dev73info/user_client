@@ -7,6 +7,8 @@ import AcceptanceDialog from '@/components/AcceptanceDialog.vue'
 import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
 import RequirementCommentDialog from '@/components/RequirementCommentDialog.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
+import RequirementClaimModal from '@/components/requirements/RequirementClaimModal.vue'
+import RequirementConfirmModals from '@/components/requirements/RequirementConfirmModals.vue'
 import RequirementDownloadPicker from '@/components/requirements/RequirementDownloadPicker.vue'
 import RequirementPayModal from '@/components/requirements/RequirementPayModal.vue'
 import RequirementPager from '@/components/requirements/RequirementPager.vue'
@@ -35,13 +37,13 @@ import {
   updateRequirementResourceVisibility as updateRequirementResourceVisibilityApi,
   updateRequirementSubscription as updateRequirementSubscriptionApi,
   type RequirementItem,
-  type RequirementPaymentMode,
   type RequirementPendingResourceVersionDeleteRequest,
 } from '@/api/requirements'
 import { useClientPagination } from '@/composables/useClientPagination'
 import { useMyRequirementsData } from '@/composables/useMyRequirementsData'
 import { useRequirementBreach } from '@/composables/useRequirementBreach'
 import { useRequirementPayFlow } from '@/composables/useRequirementPayFlow'
+import { useRequirementPublishForm } from '@/composables/useRequirementPublishForm'
 import { useResourceDownload } from '@/composables/useResourceDownload'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -51,11 +53,8 @@ import {
   type RequirementFilterKey,
 } from '@/shared/requirementStatus'
 import { describeClaimResourceError } from '@/shared/requirementResourceClaim'
-import {
-  isRequirementArchived,
-  normalizeDevelopmentCycle,
-  validateDevelopmentCycleInput,
-} from '@/shared/requirementArchive'
+import { isRequirementArchived } from '@/shared/requirementArchive'
+import type { RequirementPublishPayload } from '@/shared/requirementPublishForm'
 import { type RequirementRowActionKey } from '@/shared/requirementRowActions'
 import {
   canCancel,
@@ -66,7 +65,6 @@ import {
   canPay,
   canResubmit,
   canToggleRequirementResourceVisibility,
-  cancelConfirmHint,
   hasBoundResource,
   hasPendingResourceVersionDeleteReview,
   isSelfManagedRequirement,
@@ -76,7 +74,6 @@ import {
   publishedVersionCount,
   type RequirementRowFacts,
 } from '@/shared/requirementRowRules'
-import { validateRequirementRichText } from '@/utils/requirementRichText'
 
 import { TMessage } from 'ui_73info'
 
@@ -137,26 +134,74 @@ const {
 })
 const commentVisible = ref(false)
 const commentRequirement = ref<RequirementItem | null>(null)
-const publishVisible = ref(false)
-const publishTitle = ref('')
-const publishDescription = ref('')
-const publishBudget = ref<string | number>('')
-const publishAcceptance = ref('')
-const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
-/** R014：开发周期（天）——担保需求必填；字符串形态与输入框一致。 */
-const publishDevelopmentCycleDays = ref<string | number>('')
-const publishLoading = ref(false)
-const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
-const editModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
-const editVisible = ref(false)
-const editRequirement = ref<RequirementItem | null>(null)
-const editTitle = ref('')
-const editDescription = ref('')
-const editBudget = ref<string | number>('')
-const editAcceptance = ref('')
-const editPaymentMode = ref<RequirementPaymentMode>('self_managed')
-const editDevelopmentCycleDays = ref<string | number>('')
-const editLoading = ref(false)
+
+/**
+ * 发布 / 编辑两个 `PublishModal` 实例：**同一个工厂调两次**，状态各归各的。
+ *
+ * 做成单例就会串草稿：在「编辑 A 需求」里填的内容会出现在「新建发布」的表单里，
+ * 两个实例的 `draft-scope`（发布＝用户名、编辑＝`edit-<需求号>`）也就形同虚设。
+ * 校验与提交链在 `useRequirementPublishForm` 里只有一份，回调在这里注入。
+ */
+const submitRequirementCreate = async (payload: RequirementPublishPayload) => {
+  // 接口入参由 `shared/requirementPublishForm` 归一化好，这里只补 token 与接口地址。
+  await createRequirementApi(auth.token, payload)
+}
+
+const {
+  form: publishFields,
+  visible: publishVisible,
+  loading: publishLoading,
+  modalRef: publishModalRef,
+  draftScope: publishDraftScope,
+  open: openPublishModal,
+  openFromRoute: openPublishModalFromRoute,
+  close: closePublishModal,
+  submit: submitRequirementPublish,
+} = useRequirementPublishForm({
+  mode: 'publish',
+  // 草稿按用户名隔离：多账号共用浏览器时不互相覆盖。
+  draftScope: () => (auth.isAuthed ? auth.username : 'default'),
+  // 开弹窗时跑一次、提交前再复检一次（两处都得留：用户可能开着弹窗去别处提交实名）。
+  ensureApproved: ensurePublishRealnameApproved,
+  submit: submitRequirementCreate,
+  successMessage: '需求已发布，等待审核',
+  failureMessage: '发布失败',
+  onClosed: clearPublishModalQuery,
+  onSubmitted: async () => {
+    clearPublishModalQuery()
+    await reload()
+  },
+})
+
+const submitRequirementResubmitRequest = async (
+  payload: RequirementPublishPayload,
+  item: RequirementItem | null,
+) => {
+  if (!item) {
+    return
+  }
+  await resubmitRequirementApi(auth.token, item.requirement_id, payload)
+}
+
+const {
+  form: editFields,
+  visible: editVisible,
+  loading: editLoading,
+  modalRef: editModalRef,
+  draftScope: editDraftScope,
+  open: openRequirementEditForm,
+  close: closeEditModal,
+  submit: submitRequirementResubmit,
+} = useRequirementPublishForm({
+  mode: 'edit',
+  // 草稿按需求隔离：编辑同一条需求才恢复同一份草稿。
+  draftScope: (item) => (item ? `edit-${item.requirement_id}` : ''),
+  isAuthed: () => auth.isAuthed,
+  submit: submitRequirementResubmitRequest,
+  successMessage: '需求已重新提交，等待审核',
+  failureMessage: '重新提交失败',
+  onSubmitted: reload,
+})
 const requirementSubscriptionLoadingId = ref<string | null>(null)
 const resourceVisibilityLoadingId = ref<string | null>(null)
 const resourceDownloadingId = ref<number | null>(null)
@@ -165,6 +210,11 @@ const downloadPickerRequirement = ref<RequirementItem | null>(null)
 const resourceVersionDeleteReviewLoadingId = ref<string | null>(null)
 const finalPaymentConfirmVisible = ref(false)
 const finalPaymentConfirmTarget = ref<RequirementItem | null>(null)
+/**
+ * 「确认完成」请求在跑：挡重复提交，也挡住 `closeFinalPaymentConfirm`（原来这一处没有守卫，
+ * 与「取消需求」「转为我的资源」两个确认弹窗对齐，三个 close 的 loading 守卫一并保留）。
+ */
+const finalPaymentConfirmLoading = ref(false)
 /** 验收弹窗：担保模式的验收可重复提交，表单与历史留档都在共用组件 `AcceptanceDialog` 里。 */
 const acceptanceVisible = ref(false)
 const acceptanceTarget = ref<RequirementItem | null>(null)
@@ -230,10 +280,13 @@ const {
   contractOf: (item) => signingStatusForRequirement(item),
 })
 
+/**
+ * `?modal=publish` 直接进页面时自动开弹窗：不跑实名门禁（提示留给用户点提交时再走），
+ * 关闭后由 `closePublishModal` 的清 query 收尾——两个行为与拆分前一致。
+ */
 function syncPublishModalFromRoute(value: unknown) {
   if (value === 'publish' && !publishVisible.value) {
-    resetPublishForm()
-    publishVisible.value = true
+    openPublishModalFromRoute()
   }
 }
 
@@ -494,9 +547,17 @@ async function requestFinalPayment(item: RequirementItem) {
   finalPaymentConfirmVisible.value = true
 }
 
-function closeFinalPaymentConfirm() {
+/** 不看 loading 的直接收口：请求成功后用（那时守卫还没放开）。 */
+function forceCloseFinalPaymentConfirm() {
   finalPaymentConfirmVisible.value = false
   finalPaymentConfirmTarget.value = null
+}
+
+function closeFinalPaymentConfirm() {
+  if (finalPaymentConfirmLoading.value) {
+    return
+  }
+  forceCloseFinalPaymentConfirm()
 }
 
 function openCancelConfirm(item: RequirementItem) {
@@ -600,7 +661,7 @@ function goToDevResourceList() {
 }
 
 async function confirmFinalPaymentRequest() {
-  if (!finalPaymentConfirmTarget.value) {
+  if (!finalPaymentConfirmTarget.value || finalPaymentConfirmLoading.value) {
     return
   }
 
@@ -612,13 +673,16 @@ async function confirmFinalPaymentRequest() {
     return
   }
 
+  finalPaymentConfirmLoading.value = true
   try {
     await requestRequirementFinalPaymentApi(auth.token, item.requirement_id)
     await reload()
     TMessage.success('需求已确认完成')
-    closeFinalPaymentConfirm()
+    forceCloseFinalPaymentConfirm()
   } catch (err) {
     TMessage.error(err instanceof Error ? err.message : '结束开发失败')
+  } finally {
+    finalPaymentConfirmLoading.value = false
   }
 }
 
@@ -703,20 +767,13 @@ async function handleCommentSubmitted() {
   await reload()
 }
 
+/** 行内「重新编辑」入口：先过 `canResubmit`（状态不允许就直接不弹），回填与显示交给编辑实例。 */
 function openRequirementEditModal(item: RequirementItem) {
   if (!canResubmit(item.status)) {
     return
   }
 
-  editRequirement.value = item
-  editTitle.value = item.title
-  editDescription.value = item.description ?? ''
-  editBudget.value = item.budget ?? ''
-  editAcceptance.value = item.acceptance_criteria ?? ''
-  editPaymentMode.value = item.payment_mode
-  // R014：担保需求回填已填的开发周期；无担保需求后端给 null，输入框显示为空（该模式下也不展示）。
-  editDevelopmentCycleDays.value = item.development_cycle_days ?? ''
-  editVisible.value = true
+  void openRequirementEditForm(item)
 }
 
 function publishRedirectTarget() {
@@ -778,30 +835,7 @@ async function ensurePublishRealnameApproved() {
   }
 }
 
-function resetPublishForm() {
-  publishTitle.value = ''
-  publishDescription.value = ''
-  publishBudget.value = ''
-  publishAcceptance.value = ''
-  publishPaymentMode.value = 'self_managed'
-  publishDevelopmentCycleDays.value = ''
-}
-
-async function openPublishModal() {
-  const approved = await ensurePublishRealnameApproved()
-  if (!approved) {
-    return
-  }
-
-  resetPublishForm()
-  publishVisible.value = true
-}
-
-function forceClosePublishModal() {
-  publishVisible.value = false
-  resetPublishForm()
-}
-
+/** `?modal=publish` 的清 query：跳转留在视图，由发布实例的 `onClosed` / `onSubmitted` 回头调用。 */
 function clearPublishModalQuery() {
   if (route.query.modal !== 'publish') {
     return
@@ -810,29 +844,6 @@ function clearPublishModalQuery() {
   const nextQuery = { ...route.query }
   delete nextQuery.modal
   void router.replace({ query: nextQuery })
-}
-
-function forceCloseEditModal() {
-  editVisible.value = false
-  editRequirement.value = null
-  editPaymentMode.value = 'self_managed'
-  editDevelopmentCycleDays.value = ''
-}
-
-function closeEditModal() {
-  if (editLoading.value) {
-    return
-  }
-  forceCloseEditModal()
-}
-
-function closePublishModal() {
-  if (publishLoading.value) {
-    return
-  }
-
-  forceClosePublishModal()
-  clearPublishModalQuery()
 }
 
 async function toggleRequirementResourceVisibility(item: RequirementItem) {
@@ -921,167 +932,6 @@ async function submitVersionDeleteReview(
     resourceVersionDeleteReviewLoadingId.value = null
   }
 }
-
-async function submitRequirementResubmit() {
-  if (!auth.isAuthed || !editRequirement.value) {
-    TMessage.error('请先登录后再重新提交需求')
-    return
-  }
-
-  const normalizedTitle = editTitle.value.trim()
-  const descriptionValidation = validateRequirementRichText(editDescription.value, '需求描述', {
-    minTextLength: 10,
-  })
-  const acceptanceValidation = validateRequirementRichText(editAcceptance.value, '验收标准', {
-    required: true,
-  })
-  const budgetRaw = String(editBudget.value ?? '').trim()
-
-  if (normalizedTitle.length < 4) {
-    TMessage.error('需求标题至少 4 个字符')
-    return
-  }
-
-  if (descriptionValidation.error) {
-    TMessage.error(descriptionValidation.error)
-    return
-  }
-
-  if (!budgetRaw) {
-    TMessage.error('预算不能为空')
-    return
-  }
-
-  const budget = Number(budgetRaw)
-
-  if (Number.isNaN(budget) || budget < 0) {
-    TMessage.error('预算必须是大于等于0的数字')
-    return
-  }
-
-  if (acceptanceValidation.error) {
-    TMessage.error(acceptanceValidation.error)
-    return
-  }
-
-  // R014：担保需求必填「开发周期（天）」，且必须是正整数；配置下限由后端校验并回中文提示。
-  const cycleError = validateDevelopmentCycleInput(
-    editDevelopmentCycleDays.value,
-    editPaymentMode.value,
-  )
-  if (cycleError) {
-    TMessage.error(cycleError)
-    return
-  }
-
-  editLoading.value = true
-  try {
-    await resubmitRequirementApi(auth.token, editRequirement.value.requirement_id, {
-      title: normalizedTitle,
-      description: descriptionValidation.value,
-      budget,
-      acceptance_criteria: acceptanceValidation.value,
-      payment_mode: editPaymentMode.value,
-      development_cycle_days: normalizeDevelopmentCycle(
-        editDevelopmentCycleDays.value,
-        editPaymentMode.value,
-      ),
-    })
-
-    TMessage.success('需求已重新提交，等待审核')
-    editModalRef.value?.clearDraft(`edit-${editRequirement.value.requirement_id}`)
-    forceCloseEditModal()
-    await reload()
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '重新提交失败')
-  } finally {
-    editLoading.value = false
-  }
-}
-
-async function submitRequirementPublish() {
-  const approved = await ensurePublishRealnameApproved()
-  if (!approved) {
-    return
-  }
-
-  const normalizedTitle = publishTitle.value.trim()
-  const descriptionValidation = validateRequirementRichText(publishDescription.value, '需求描述', {
-    minTextLength: 10,
-  })
-  const acceptanceValidation = validateRequirementRichText(publishAcceptance.value, '验收标准', {
-    required: true,
-  })
-  const budgetRaw = String(publishBudget.value ?? '').trim()
-
-  if (normalizedTitle.length < 4) {
-    TMessage.error('需求标题至少 4 个字符')
-    return
-  }
-
-  if (descriptionValidation.error) {
-    TMessage.error(descriptionValidation.error)
-    return
-  }
-
-  if (!budgetRaw) {
-    TMessage.error('预算不能为空')
-    return
-  }
-
-  const budget = Number(budgetRaw)
-
-  if (!Number.isFinite(budget) || budget < 0) {
-    TMessage.error('预算必须是大于等于0的数字')
-    return
-  }
-
-  if (acceptanceValidation.error) {
-    TMessage.error(acceptanceValidation.error)
-    return
-  }
-
-  // R014：担保需求必填「开发周期（天）」，且必须是正整数；配置下限由后端校验并回中文提示。
-  const cycleError = validateDevelopmentCycleInput(
-    publishDevelopmentCycleDays.value,
-    publishPaymentMode.value,
-  )
-  if (cycleError) {
-    TMessage.error(cycleError)
-    return
-  }
-
-  publishLoading.value = true
-  try {
-    await createRequirementApi(auth.token, {
-      title: normalizedTitle,
-      description: descriptionValidation.value,
-      budget,
-      acceptance_criteria: acceptanceValidation.value,
-      payment_mode: publishPaymentMode.value,
-      development_cycle_days: normalizeDevelopmentCycle(
-        publishDevelopmentCycleDays.value,
-        publishPaymentMode.value,
-      ),
-    })
-
-    TMessage.success('需求已发布，等待审核')
-    forceClosePublishModal()
-    clearPublishModalQuery()
-    publishModalRef.value?.clearDraft()
-    await reload()
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '发布失败')
-  } finally {
-    publishLoading.value = false
-  }
-}
-
-const finalPaymentConfirmTitle = computed(() => '确认交付完成')
-const finalPaymentConfirmTip = computed(
-  () => '确认后，当前需求会直接进入已完成状态，后续可继续评价。',
-)
-const finalPaymentConfirmButton = computed(() => '确认完成')
 
 /**
  * 支付按钮的收尾：**跳转留在视图**。
@@ -1323,17 +1173,20 @@ watch(
       </template>
     </section>
 
+    <!-- 发布 / 编辑：同一个 `PublishModal` 组件、同一个 composable 工厂的两份实例。
+         字段名沿用组件自己的 `publish*`（新建态与编辑态共用一套表单契约），
+         `draft-scope` 各自由实例算：发布＝用户名、编辑＝`edit-<需求号>`。 -->
     <PublishModal
       ref="publishModalRef"
       :visible="publishVisible"
-      v-model:publishTitle="publishTitle"
-      v-model:publishDescription="publishDescription"
-      v-model:publishBudget="publishBudget"
-      v-model:publishAcceptance="publishAcceptance"
-      v-model:publishPaymentMode="publishPaymentMode"
-      v-model:publishDevelopmentCycleDays="publishDevelopmentCycleDays"
+      v-model:publishTitle="publishFields.title"
+      v-model:publishDescription="publishFields.description"
+      v-model:publishBudget="publishFields.budget"
+      v-model:publishAcceptance="publishFields.acceptance"
+      v-model:publishPaymentMode="publishFields.paymentMode"
+      v-model:publishDevelopmentCycleDays="publishFields.developmentCycleDays"
       :publishLoading="publishLoading"
-      :draft-scope="auth.isAuthed ? auth.username : 'default'"
+      :draft-scope="publishDraftScope"
       @close="closePublishModal"
       @notify="notify"
       @submit="submitRequirementPublish"
@@ -1345,14 +1198,14 @@ watch(
       modalTitle="重新编辑需求"
       submitText="重新提交审核"
       loadingText="提交中..."
-      v-model:publishTitle="editTitle"
-      v-model:publishDescription="editDescription"
-      v-model:publishBudget="editBudget"
-      v-model:publishAcceptance="editAcceptance"
-      v-model:publishPaymentMode="editPaymentMode"
-      v-model:publishDevelopmentCycleDays="editDevelopmentCycleDays"
+      v-model:publishTitle="editFields.title"
+      v-model:publishDescription="editFields.description"
+      v-model:publishBudget="editFields.budget"
+      v-model:publishAcceptance="editFields.acceptance"
+      v-model:publishPaymentMode="editFields.paymentMode"
+      v-model:publishDevelopmentCycleDays="editFields.developmentCycleDays"
       :publishLoading="editLoading"
-      :draft-scope="editRequirement ? `edit-${editRequirement.requirement_id}` : ''"
+      :draft-scope="editDraftScope"
       @close="closeEditModal"
       @notify="notify"
       @submit="submitRequirementResubmit"
@@ -1402,106 +1255,31 @@ watch(
       @download="downloadRequirementVersion"
     />
 
-    <div
-      v-if="finalPaymentConfirmVisible && finalPaymentConfirmTarget"
-      class="modal-wrap"
-      @click.self="closeFinalPaymentConfirm"
-    >
-      <section class="pay-modal" aria-label="尾款确认弹窗">
-        <h3>{{ finalPaymentConfirmTitle }}</h3>
-        <p class="pay-line"><strong>需求标题：</strong>{{ finalPaymentConfirmTarget.title }}</p>
-        <p class="pay-line">
-          <strong>需求编号：</strong>{{ finalPaymentConfirmTarget.requirement_id }}
-        </p>
-        <p class="tip">{{ finalPaymentConfirmTip }}</p>
+    <!-- 两个 `.pay-modal` 确认弹窗：「确认完成」（只服务无担保需求）与「取消需求单」。
+         入口守卫与请求都在视图，弹窗只 emit。 -->
+    <RequirementConfirmModals
+      :final-payment-visible="finalPaymentConfirmVisible"
+      :final-payment-target="finalPaymentConfirmTarget"
+      :final-payment-loading="finalPaymentConfirmLoading"
+      :cancel-visible="cancelConfirmVisible"
+      :cancel-target="cancelConfirmTarget"
+      :cancel-loading="cancelLoading"
+      @close-final-payment="closeFinalPaymentConfirm"
+      @confirm-final-payment="confirmFinalPaymentRequest"
+      @close-cancel="closeCancelConfirm"
+      @confirm-cancel="submitCancelRequirement"
+    />
 
-        <div class="actions">
-          <button class="ghost" type="button" @click="closeFinalPaymentConfirm">取消</button>
-          <button class="ghost primary" type="button" @click="confirmFinalPaymentRequest">
-            {{ finalPaymentConfirmButton }}
-          </button>
-        </div>
-      </section>
-    </div>
-
-    <div
-      v-if="cancelConfirmVisible && cancelConfirmTarget"
-      class="modal-wrap"
-      @click.self="closeCancelConfirm"
-    >
-      <section class="pay-modal" aria-label="取消需求弹窗">
-        <h3>取消需求单</h3>
-        <p class="pay-line"><strong>需求标题：</strong>{{ cancelConfirmTarget.title }}</p>
-        <p class="pay-line"><strong>需求编号：</strong>{{ cancelConfirmTarget.requirement_id }}</p>
-        <p class="tip">{{ cancelConfirmHint(cancelConfirmTarget) }}</p>
-
-        <div class="actions">
-          <button class="ghost" type="button" :disabled="cancelLoading" @click="closeCancelConfirm">
-            返回
-          </button>
-          <button
-            class="ghost danger"
-            type="button"
-            :disabled="cancelLoading"
-            @click="submitCancelRequirement"
-          >
-            {{ cancelLoading ? '取消中...' : '确认取消' }}
-          </button>
-        </div>
-      </section>
-    </div>
-
-    <div
-      v-if="claimConfirmVisible && claimConfirmTarget"
-      class="modal-wrap"
-      @click.self="closeClaimConfirm"
-    >
-      <section class="pay-modal" aria-label="转为我的资源弹窗">
-        <template v-if="claimStep === 'confirm'">
-          <h3>转为我的资源</h3>
-          <p class="pay-line"><strong>需求标题：</strong>{{ claimConfirmTarget.title }}</p>
-          <p class="pay-line"><strong>需求编号：</strong>{{ claimConfirmTarget.requirement_id }}</p>
-          <p v-if="claimConfirmTarget.bound_resource_title" class="pay-line">
-            <strong>交付资源：</strong>{{ claimConfirmTarget.bound_resource_title }}
-          </p>
-          <ul class="claim-notes" aria-label="转换须知">
-            <li>
-              这一步<strong>不可撤销</strong>：资源归你所有，开发者那边不再把它当作自己的资源。
-            </li>
-            <li>转换后这笔需求的会话将关闭，双方都不能再发言，但都仍能查看全部历史。</li>
-            <li>若你还没有开发者身份，会自动开通，以便在开发者工作台管理该资源。</li>
-          </ul>
-
-          <div class="actions">
-            <button class="ghost" type="button" :disabled="claimLoading" @click="closeClaimConfirm">
-              返回
-            </button>
-            <button
-              class="ghost primary"
-              type="button"
-              :disabled="claimLoading"
-              @click="submitClaimResource"
-            >
-              {{ claimLoading ? '转换中...' : '确认转换' }}
-            </button>
-          </div>
-        </template>
-        <template v-else>
-          <h3>已转为我的资源</h3>
-          <p class="pay-line"><strong>需求标题：</strong>{{ claimConfirmTarget.title }}</p>
-          <p class="tip">
-            资源已归入你的名下，会话已关闭（仅供查看）。可以到开发者工作台的「资源列表」继续管理它。
-          </p>
-
-          <div class="actions">
-            <button class="ghost" type="button" @click="closeClaimConfirm">留在这里</button>
-            <button class="ghost primary" type="button" @click="goToDevResourceList">
-              去开发者工作台查看
-            </button>
-          </div>
-        </template>
-      </section>
-    </div>
+    <!-- 「转为我的资源」：确认 → 已转换两个 step 都在组件里；跳转（开发者工作台）由组件 emit、视图执行。 -->
+    <RequirementClaimModal
+      :visible="claimConfirmVisible"
+      :requirement="claimConfirmTarget"
+      :step="claimStep"
+      :loading="claimLoading"
+      @close="closeClaimConfirm"
+      @confirm="submitClaimResource"
+      @go-dev-resource-list="goToDevResourceList"
+    />
 
     <!-- 解除合作：案件进展 / 协商表态 / 判定表态都在组件里，这里只接线状态与动作。
          跳转（绑定收款银行卡）由组件 emit、视图执行，组件不碰 router。 -->
@@ -1582,9 +1360,9 @@ watch(
   flex: 0 0 auto;
 }
 
-/* 版本选择弹窗：一行一个版本，右侧下载按钮；版本说明用弱字色 */
-/* `.download-picker*` 跟着 `RequirementDownloadPicker.vue` 搬去了 `styles/profile.css`
-   （组件没有 scoped 块，且这三条规则带裸色值，进组件会变成新的裸色值债）。 */
+/* 弹窗类样式都不在本块：`.download-picker*`（下载选择器）与 `.pay-modal .claim-notes*`
+   （「转为我的资源」须知）连同里面的裸色值一起搬去了 `styles/profile.css`——
+   那两个弹窗拆成组件后没有 scoped 块，留在视图 scoped 里会静默失配。 */
 
 .requirement-list {
   display: grid;
@@ -1592,26 +1370,6 @@ watch(
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-/* 「转为我的资源」确认须知：与 .pay-modal .tip 同一浅蓝底，三条分行列出 */
-.pay-modal .claim-notes {
-  margin: 14px 0 0;
-  padding: 10px 12px 10px 28px;
-  border-radius: 10px;
-  background: rgba(239, 246, 255, 0.9);
-  color: #475569;
-  font-size: 13px;
-  line-height: 1.6;
-  text-align: left;
-}
-
-.pay-modal .claim-notes li + li {
-  margin-top: 4px;
-}
-
-.pay-modal .claim-notes strong {
-  color: #b45309;
 }
 
 @media (max-width: 640px) {
