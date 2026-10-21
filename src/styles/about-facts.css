@@ -1,0 +1,55 @@
+/* 关于我们 / about-facts 区块样式（R047 从 AboutView 的 scoped 样式搬出，按区块拆分）。 */
+.about-facts {
+  display: grid;
+
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.about-fact {
+  padding: 26px 16px;
+  text-align: center;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f8fbff, #eef4ff);
+  border: 1px solid rgba(191, 219, 254, 0.8);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.about-fact:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.12);
+}
+
+.about-fact__big {
+  display: block;
+  font-size: 30px;
+  font-weight: 900;
+  color: #123a63;
+  letter-spacing: -0.01em;
+}
+
+.about-fact__small {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.about-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 640px) {
+  .about-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1180px) {
+  .about-facts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

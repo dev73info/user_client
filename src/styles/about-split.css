@@ -1,0 +1,70 @@
+/* 关于我们 / about-split 区块样式（R047 从 AboutView 的 scoped 样式搬出，按区块拆分）。 */
+.about-split {
+  display: grid;
+
+  gap: 18px;
+  margin: 18px 0;
+}
+
+.about-split__col {
+  padding: 30px 28px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(219, 229, 247, 0.9);
+  box-shadow: 0 12px 32px rgba(148, 163, 184, 0.08);
+}
+
+.about-split__col h2 {
+  margin: 0 0 18px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.about-point-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.about-point-list li {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease;
+}
+
+.about-point-list li:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+.about-point-list h3 {
+  margin: 0 0 5px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.about-point-list p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: #64748b;
+}
+
+.about-split {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 900px) {
+  .about-split {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

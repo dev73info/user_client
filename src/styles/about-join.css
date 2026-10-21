@@ -1,0 +1,88 @@
+/* 关于我们 / about-join 区块样式（R047 从 AboutView 的 scoped 样式搬出，按区块拆分）。 */
+.about-join {
+  position: relative;
+  overflow: hidden;
+  margin-top: 18px;
+  padding: 48px 40px;
+  text-align: center;
+  border-radius: 20px;
+  color: #f8fafc;
+  background: linear-gradient(135deg, #0b1f3a, #155e75);
+  box-shadow: 0 20px 52px rgba(15, 37, 71, 0.3);
+}
+
+.about-join__shine {
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  transform: skewX(-18deg);
+  animation: about-shine 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.about-join__inner {
+  position: relative;
+  z-index: 1;
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.about-join h2 {
+  margin: 0 0 14px;
+  font-size: 25px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.about-join p {
+  margin: 0 auto 26px;
+  max-width: 520px;
+  font-size: 15px;
+  line-height: 1.9;
+  color: rgba(226, 232, 240, 0.92);
+}
+
+.about-join__actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.about-join__btn {
+  padding: 12px 22px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  color: #0b1f3a;
+  background: #fbbf24;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.about-join__btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(251, 191, 36, 0.4);
+}
+
+.about-join__btn--ghost {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.about-join__btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+@media (max-width: 640px) {
+  .about-join {
+    padding: 36px 22px;
+    border-radius: 16px;
+  }
+}

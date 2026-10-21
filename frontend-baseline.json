@@ -381,12 +381,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/AboutView.vue",
-      "detail": "660 行 > 300（视图）",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/AccountCouponsView.vue",
       "detail": "930 行 > 300（视图）",
       "since": "2026-10-21"
@@ -969,6 +963,42 @@
     },
     {
       "rule": "raw-color",
+      "file": "src/styles/about-facts.css",
+      "detail": "5 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/about-hero.css",
+      "detail": "14 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/about-highlights.css",
+      "detail": "11 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/about-join.css",
+      "detail": "13 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/about-split.css",
+      "detail": "9 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/about-story.css",
+      "detail": "6 处裸色值",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "raw-color",
       "file": "src/styles/dev-base.css",
       "detail": "53 处裸色值",
       "since": "2026-10-21"
@@ -1079,12 +1109,6 @@
       "rule": "raw-color",
       "file": "src/styles/workbench-shell.css",
       "detail": "37 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/views/AboutView.vue",
-      "detail": "58 处裸色值",
       "since": "2026-10-21"
     },
     {

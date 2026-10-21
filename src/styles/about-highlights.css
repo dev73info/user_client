@@ -1,0 +1,76 @@
+/* 关于我们 / about-highlights 区块样式（R047 从 AboutView 的 scoped 样式搬出，按区块拆分）。 */
+.about-section {
+  margin: 18px 0;
+  padding: 34px 36px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(219, 229, 247, 0.9);
+  box-shadow: 0 12px 32px rgba(148, 163, 184, 0.08);
+}
+
+.about-section__head {
+  margin-bottom: 22px;
+}
+
+.about-section__head h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.about-highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.about-highlight {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: #f8fbff;
+  border: 1px solid rgba(219, 229, 247, 0.9);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.about-highlight:hover {
+  transform: translateX(4px);
+  border-color: rgba(37, 99, 235, 0.3);
+  box-shadow: 0 10px 26px rgba(37, 99, 235, 0.1);
+}
+
+.about-highlight__bar {
+  flex: 0 0 auto;
+  width: 4px;
+  height: 46px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2563eb, #60a5fa);
+}
+
+.about-highlight__text h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.about-highlight__text p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #64748b;
+}
+
+@media (max-width: 640px) {
+  .about-section {
+    padding: 24px 20px;
+    border-radius: 16px;
+  }
+}
