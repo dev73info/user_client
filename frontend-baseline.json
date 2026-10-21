@@ -148,7 +148,7 @@
     {
       "rule": "line-budget",
       "file": "src/components/RequirementConversationModal.vue",
-      "detail": "3735 行 > 400（模块）",
+      "detail": "3119 行 > 400（模块）",
       "since": "2026-10-21"
     },
     {
@@ -868,7 +868,7 @@
     {
       "rule": "raw-color",
       "file": "src/components/RequirementConversationModal.vue",
-      "detail": "265 处裸色值",
+      "detail": "193 处裸色值",
       "since": "2026-10-21"
     },
     {
