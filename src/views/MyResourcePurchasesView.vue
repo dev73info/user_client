@@ -144,6 +144,9 @@ const transferUsername = ref('')
 const transferMessage = ref('')
 const transferSaving = ref(false)
 
+/** 留言字数上限：与后端 `transfer.rs::normalized_message` 的 200 字一致。 */
+const TRANSFER_MESSAGE_MAX_LENGTH = 200
+
 function canTransfer(order: ResourcePurchaseOrder): boolean {
   return isApiResourcePurchaseOrder(order) && order.status === 'paid'
 }
@@ -413,7 +416,11 @@ onBeforeUnmount(() => {
         </label>
         <label class="purchases-transfer__field">
           <span>留言（可选）</span>
-          <TInput v-model="transferMessage" placeholder="给对方说明转移原因" />
+          <TInput
+            v-model="transferMessage"
+            placeholder="给对方说明转移原因"
+            :maxlength="TRANSFER_MESSAGE_MAX_LENGTH"
+          />
         </label>
         <p class="purchases-transfer__hint">
           对方确认后，这笔订单会记到对方账号下；历史支付与回调不受影响。

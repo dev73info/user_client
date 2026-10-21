@@ -184,7 +184,7 @@ onMounted(() => {
               订单 {{ item.order_no }} · {{ item.from_username }} → {{ item.to_username }}
             </span>
             <span class="wb-item__meta">
-              {{ STATUS_LABEL[item.status] }} · 发起于 {{ item.initiated_at }}
+              {{ STATUS_LABEL[item.status] ?? item.status }} · 发起于 {{ item.initiated_at }}
             </span>
             <span v-if="item.message" class="wb-item__meta">留言：{{ item.message }}</span>
           </div>
@@ -192,7 +192,7 @@ onMounted(() => {
             <template v-if="tab === 'incoming'">
               <TButton
                 :loading="busyId === item.transfer_id"
-                :disabled="Boolean(busyId) && busyId !== item.transfer_id"
+                :disabled="Boolean(busyId)"
                 @click="run(item, 'accept')"
               >
                 接受
