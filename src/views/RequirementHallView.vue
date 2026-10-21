@@ -348,7 +348,7 @@ async function ensurePublishRealnameApproved() {
       return false
     }
 
-    TMessage.error(err instanceof Error ? err.message : '实名认证状态校验失败')
+    TMessage.error(describeBackendError(err, '实名认证状态校验失败'))
     return false
   }
 }
