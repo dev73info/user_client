@@ -532,13 +532,13 @@
     {
       "rule": "line-budget",
       "file": "src/views/HomeView.vue",
-      "detail": "2687 行 > 300（视图）",
+      "detail": "2235 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
       "rule": "api-deps",
       "file": "src/views/HomeView.vue",
-      "detail": "依赖 12 个 api 模块（auth、coupons、http、contracts、realname、adapay、requirements、settings、community、resources、points、invite）> 3",
+      "detail": "依赖 11 个 api 模块（auth、coupons、http、contracts、realname、adapay、requirements、settings、community、resources、points）> 3",
       "since": "2026-10-21"
     },
     {
