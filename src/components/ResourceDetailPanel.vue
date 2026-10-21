@@ -39,6 +39,7 @@ import {
   type ResourcePayChannelUi,
 } from '@/shared/resourceSale'
 import { isWechatBrowser } from '@/shared/auth/browser'
+import { describeBackendError } from '@/shared/backendErrorText'
 import { getMyPoints } from '@/api/points'
 import { useAuthStore } from '@/stores/auth'
 import { useDownloadStore } from '@/stores/download'
@@ -619,7 +620,7 @@ async function ensureWechatPayAuthorized(token: string): Promise<boolean> {
     window.location.assign(url)
     return false
   } catch (error) {
-    const message = error instanceof Error ? error.message : '检查微信授权失败'
+    const message = describeBackendError(error, '检查微信授权失败')
     purchaseError.value = message
     TMessage.error(message)
     return false
@@ -702,7 +703,7 @@ async function runSubmitPurchase() {
     if (requestedGeneration !== purchaseSurfaceGeneration.value) {
       return
     }
-    const message = error instanceof Error ? error.message : '创建购买订单失败'
+    const message = describeBackendError(error, '创建购买订单失败')
     if (message.includes('已购买')) {
       TMessage.success(message)
       await refreshResourceDetail()
@@ -726,7 +727,7 @@ function handlePrimaryCta() {
 }
 
 async function handleDownloadError(error: unknown) {
-  const message = error instanceof Error ? error.message : '下载资源失败'
+  const message = describeBackendError(error, '下载资源失败')
   if (error instanceof HttpError && error.status === 403 && isPurchaseRequiredError(message)) {
     TMessage.warning('请先购买该资源后再下载')
     void openPurchasePanel()
@@ -828,7 +829,7 @@ async function loadComments(resourceId: number) {
     comments.value = await listPublicMcResourceComments(resourceId, token)
   } catch (error) {
     comments.value = []
-    TMessage.warning(error instanceof Error ? error.message : '加载资源评论失败')
+    TMessage.warning(describeBackendError(error, '加载资源评论失败'))
   } finally {
     commentsLoading.value = false
   }
@@ -924,7 +925,7 @@ async function toggleResourceLike() {
       auth.logout()
       openLikeLogin()
     } else {
-      TMessage.error(error instanceof Error ? error.message : '点赞操作失败')
+      TMessage.error(describeBackendError(error, '点赞操作失败'))
     }
   } finally {
     likeSubmitting.value = false
@@ -992,7 +993,7 @@ async function submitResourceComment() {
       TMessage.warning('请先完成实名认证后再发表评论')
       openRealnamePage()
     } else {
-      TMessage.error(error instanceof Error ? error.message : '评论提交失败')
+      TMessage.error(describeBackendError(error, '评论提交失败'))
     }
   } finally {
     commentSubmitting.value = false

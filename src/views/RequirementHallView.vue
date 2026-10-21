@@ -18,6 +18,7 @@ import {
 } from '@/api/requirements'
 import { useAuthStore } from '@/stores/auth'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
+import { describeBackendError } from '@/shared/backendErrorText'
 import {
   formatCnDateTime as formatTimeLabel,
   formatCny as formatMoney,
@@ -526,7 +527,7 @@ async function submitPublishRequirement() {
     publishModalRef.value?.clearDraft()
     await loadHallData()
   } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '发布失败')
+    TMessage.error(describeBackendError(err, '发布失败'))
   } finally {
     publishLoading.value = false
   }

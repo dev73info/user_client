@@ -22,6 +22,7 @@ import {
 import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
+import { describeBackendError } from '@/shared/backendErrorText'
 import { useAuthStore } from '@/stores/auth'
 import {
   requirementRichTextPreview,
@@ -325,7 +326,7 @@ async function loadRequirements() {
     rows.value = payload.items
     total.value = payload.total
   } catch (error) {
-    const message = error instanceof Error ? error.message : '加载资源关联列表失败'
+    const message = describeBackendError(error, '加载资源关联列表失败')
     TMessage.error(message)
     rows.value = []
     total.value = 0
@@ -352,7 +353,7 @@ async function loadDepositStatus() {
       developerAgreementSigned.value = accessStatus.developer_agreement_signed
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : '加载接单保证金状态失败'
+    const message = describeBackendError(error, '加载接单保证金状态失败')
     TMessage.error(message)
     depositStatus.value = null
   } finally {
@@ -486,7 +487,7 @@ async function submitBinding() {
     selectedRequirement.value = null
     resetInitForm()
   } catch (error) {
-    const message = error instanceof Error ? error.message : '关联需求失败'
+    const message = describeBackendError(error, '关联需求失败')
     TMessage.error(message)
   } finally {
     binding.value = false
@@ -577,7 +578,7 @@ async function loadTagTree() {
       currentEntryKey.value = firstRoot.first_entry_key ?? ''
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : '加载标签失败'
+    const message = describeBackendError(error, '加载标签失败')
     TMessage.error(message)
   } finally {
     initTagsLoading.value = false

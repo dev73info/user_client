@@ -3,6 +3,7 @@ import type {
   ResourceTransferPayload,
   ResourceTransferStatus,
 } from '@/api/resourceTransfers'
+import { readBackendErrorText } from '@/shared/backendErrorText'
 
 /** 发起过户表单里选中的接收方（用户名与团队二选一）。 */
 export type TransferReceiverInput = {
@@ -89,8 +90,8 @@ export function describeTransferReceiver(
  * 把过户接口的失败翻译成用户能读的文案。
  *
  * 后端已经为每种拒绝给了中文提示（例如「该资源正被需求绑定，暂不能过户」），
- * 所以 4xx 优先原样展示后端文案；只有 401/403 与空 body 才回落到固定文案，
- * 免得把 `forbidden` 这类英文串直接甩给用户。
+ * 所以 4xx 优先原样展示后端文案；只有 401/403 与「拿不到可读中文文案」时才回落到固定文案，
+ * 免得把 `forbidden` 这类英文串直接甩给用户（BUG-012 的统一口径见 `backendErrorText`）。
  */
 export function describeTransferError(
   error: unknown,
@@ -110,16 +111,13 @@ export function describeTransferError(
     if (error.status === 404 && (!body || body === 'not found' || body === 'Not Found')) {
       return { message: '过户申请不存在或已被删除', needRefresh: true }
     }
-    if (!body) {
-      return { message: fallback, needRefresh: false }
-    }
     // 409「已处理 / 已有待处理」说明列表已经过期，调用方刷新即可，不必再弹错误。
     const needRefresh = error.status === 409
-    return { message: body, needRefresh }
+    return { message: readBackendErrorText(body, fallback), needRefresh }
   }
 
   if (error instanceof Error && error.message.trim()) {
-    return { message: error.message, needRefresh: false }
+    return { message: readBackendErrorText(error.message, fallback), needRefresh: false }
   }
 
   return { message: fallback, needRefresh: false }
