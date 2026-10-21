@@ -70,7 +70,7 @@
     {
       "rule": "line-budget",
       "file": "src/App.vue",
-      "detail": "439 行 > 400（模块）",
+      "detail": "440 行 > 400（模块）",
       "since": "2026-10-21"
     },
     {
@@ -88,7 +88,7 @@
     {
       "rule": "line-budget",
       "file": "src/components/ContractAttachmentPanel.vue",
-      "detail": "853 行 > 400（模块）",
+      "detail": "854 行 > 400（模块）",
       "since": "2026-10-21"
     },
     {
@@ -118,7 +118,7 @@
     {
       "rule": "line-budget",
       "file": "src/components/PortalTopNav.vue",
-      "detail": "1787 行 > 400（模块）",
+      "detail": "1789 行 > 400（模块）",
       "since": "2026-10-21"
     },
     {
@@ -160,7 +160,7 @@
     {
       "rule": "line-budget",
       "file": "src/components/ResourceCatalog.vue",
-      "detail": "1392 行 > 400（模块）",
+      "detail": "1391 行 > 400（模块）",
       "since": "2026-10-21"
     },
     {
@@ -322,7 +322,7 @@
     {
       "rule": "line-budget",
       "file": "src/styles/dev-resource.css",
-      "detail": "1023 行 > 300（模块）",
+      "detail": "1024 行 > 300（模块）",
       "since": "2026-10-21"
     },
     {
@@ -334,13 +334,13 @@
     {
       "rule": "line-budget",
       "file": "src/styles/dev-wallet.css",
-      "detail": "426 行 > 300（模块）",
+      "detail": "427 行 > 300（模块）",
       "since": "2026-10-21"
     },
     {
       "rule": "line-budget",
       "file": "src/styles/home.css",
-      "detail": "2923 行 > 300（模块）",
+      "detail": "2926 行 > 300（模块）",
       "since": "2026-10-21"
     },
     {
@@ -352,7 +352,7 @@
     {
       "rule": "line-budget",
       "file": "src/styles/portal-pages.css",
-      "detail": "558 行 > 300（模块）",
+      "detail": "559 行 > 300（模块）",
       "since": "2026-10-21"
     },
     {
@@ -364,19 +364,19 @@
     {
       "rule": "line-budget",
       "file": "src/styles/profile.css",
-      "detail": "1041 行 > 300（模块）",
+      "detail": "1040 行 > 300（模块）",
       "since": "2026-10-21"
     },
     {
       "rule": "line-budget",
       "file": "src/styles/resource-catalog.css",
-      "detail": "776 行 > 300（模块）",
+      "detail": "777 行 > 300（模块）",
       "since": "2026-10-21"
     },
     {
       "rule": "line-budget",
       "file": "src/styles/shell.css",
-      "detail": "509 行 > 300（模块）",
+      "detail": "510 行 > 300（模块）",
       "since": "2026-10-21"
     },
     {
@@ -400,13 +400,13 @@
     {
       "rule": "line-budget",
       "file": "src/views/CommunityView.vue",
-      "detail": "1662 行 > 300（视图）",
+      "detail": "1665 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
       "rule": "line-budget",
       "file": "src/views/ContractSignView.vue",
-      "detail": "1277 行 > 300（视图）",
+      "detail": "1278 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -418,7 +418,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/DevHomeView.vue",
-      "detail": "2302 行 > 300（视图）",
+      "detail": "2305 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -430,7 +430,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/DevMyRequirementsView.vue",
-      "detail": "2212 行 > 300（视图）",
+      "detail": "2213 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -454,7 +454,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/DevRequirementDetailView.vue",
-      "detail": "1279 行 > 300（视图）",
+      "detail": "1280 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -586,7 +586,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/ProfileView.vue",
-      "detail": "665 行 > 300（视图）",
+      "detail": "666 行 > 300（视图）",
       "since": "2026-10-21"
     },
     {
@@ -662,12 +662,6 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/App.vue",
-      "detail": "1 处非标准断点（780px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/App.vue",
       "detail": "15 处裸色值",
@@ -689,12 +683,6 @@
       "rule": "raw-color",
       "file": "src/components/account/SealDialog.vue",
       "detail": "10 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/components/account/SettlementDialog.vue",
-      "detail": "1 处非标准断点（460px）",
       "since": "2026-10-21"
     },
     {
@@ -734,21 +722,9 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/components/community/CommunityComposerPanel.vue",
-      "detail": "2 处非标准断点（920px、760px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/components/community/CommunityComposerPanel.vue",
       "detail": "4 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/components/ContractAttachmentPanel.vue",
-      "detail": "1 处非标准断点（600px）",
       "since": "2026-10-21"
     },
     {
@@ -806,21 +782,9 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/components/PortalMobileDock.vue",
-      "detail": "1 处非标准断点（360px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/components/PortalMobileDock.vue",
       "detail": "10 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/components/PortalTopNav.vue",
-      "detail": "2 处非标准断点（960px、780px）",
       "since": "2026-10-21"
     },
     {
@@ -854,12 +818,6 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/components/profile/RequirementProgressPanel.vue",
-      "detail": "1 处非标准断点（760px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/components/profile/RequirementProgressPanel.vue",
       "detail": "24 处裸色值",
@@ -874,7 +832,7 @@
     {
       "rule": "breakpoint",
       "file": "src/components/RealnameHero.vue",
-      "detail": "2 处非标准断点（860px、720px）",
+      "detail": "1 处非标准断点（860px）",
       "since": "2026-10-21"
     },
     {
@@ -938,12 +896,6 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/components/RequirementProgressGuide.vue",
-      "detail": "1 处非标准断点（720px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/components/RequirementProgressGuide.vue",
       "detail": "5 处裸色值",
@@ -962,21 +914,9 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/components/ResourceCatalog.vue",
-      "detail": "1 处非标准断点（980px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/components/ResourceCatalog.vue",
       "detail": "43 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/components/ResourceDetailPanel.vue",
-      "detail": "2 处非标准断点（980px）",
       "since": "2026-10-21"
     },
     {
@@ -1052,21 +992,9 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/styles/dev-requirement.css",
-      "detail": "1 处非标准断点（720px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/styles/dev-requirement.css",
       "detail": "17 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/styles/dev-resource.css",
-      "detail": "1 处非标准断点（480px）",
       "since": "2026-10-21"
     },
     {
@@ -1076,33 +1004,15 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/styles/dev-responsive.css",
-      "detail": "2 处非标准断点（720px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/styles/dev-responsive.css",
       "detail": "9 处裸色值",
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/styles/dev-wallet.css",
-      "detail": "1 处非标准断点（720px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/styles/dev-wallet.css",
       "detail": "7 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/styles/home.css",
-      "detail": "3 处非标准断点（1200px、560px）",
       "since": "2026-10-21"
     },
     {
@@ -1124,12 +1034,6 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/styles/portal-pages.css",
-      "detail": "1 处非标准断点（1100px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/styles/portal-pages.css",
       "detail": "38 处裸色值",
@@ -1144,19 +1048,13 @@
     {
       "rule": "breakpoint",
       "file": "src/styles/profile.css",
-      "detail": "5 处非标准断点（820px、520px、720px）",
+      "detail": "3 处非标准断点（820px）",
       "since": "2026-10-21"
     },
     {
       "rule": "raw-color",
       "file": "src/styles/profile.css",
       "detail": "78 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/styles/resource-catalog.css",
-      "detail": "1 处非标准断点（780px）",
       "since": "2026-10-21"
     },
     {
@@ -1186,19 +1084,13 @@
     {
       "rule": "breakpoint",
       "file": "src/styles/shell.css",
-      "detail": "2 处非标准断点（780px、820px）",
+      "detail": "1 处非标准断点（820px）",
       "since": "2026-10-21"
     },
     {
       "rule": "raw-color",
       "file": "src/styles/shell.css",
       "detail": "45 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/styles/unified-top-card.css",
-      "detail": "1 处非标准断点（420px）",
       "since": "2026-10-21"
     },
     {
@@ -1250,21 +1142,9 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/views/CommunityView.vue",
-      "detail": "3 处非标准断点（921px、920px、760px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/views/CommunityView.vue",
       "detail": "98 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/views/ContractSignView.vue",
-      "detail": "1 处非标准断点（600px）",
       "since": "2026-10-21"
     },
     {
@@ -1286,21 +1166,9 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/views/DevHomeView.vue",
-      "detail": "3 处非标准断点（980px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/views/DevHomeView.vue",
       "detail": "1 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/views/DevMyRequirementsView.vue",
-      "detail": "1 处非标准断点（720px）",
       "since": "2026-10-21"
     },
     {
@@ -1313,12 +1181,6 @@
       "rule": "raw-color",
       "file": "src/views/DevProfileView.vue",
       "detail": "113 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/views/DevRequirementDetailView.vue",
-      "detail": "1 处非标准断点（720px）",
       "since": "2026-10-21"
     },
     {
@@ -1361,12 +1223,6 @@
       "rule": "raw-color",
       "file": "src/views/HomeView.vue",
       "detail": "12 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/views/InviteLeaderboardView.vue",
-      "detail": "1 处非标准断点（980px）",
       "since": "2026-10-21"
     },
     {
@@ -1424,12 +1280,6 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/views/ProfileView.vue",
-      "detail": "1 处非标准断点（760px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/views/ProfileView.vue",
       "detail": "28 处裸色值",
@@ -1448,12 +1298,6 @@
       "since": "2026-10-21"
     },
     {
-      "rule": "breakpoint",
-      "file": "src/views/TeamDetailView.vue",
-      "detail": "1 处非标准断点（780px）",
-      "since": "2026-10-21"
-    },
-    {
       "rule": "raw-color",
       "file": "src/views/TeamProfileView.vue",
       "detail": "26 处裸色值",
@@ -1463,12 +1307,6 @@
       "rule": "raw-color",
       "file": "src/views/TeamResourcesView.vue",
       "detail": "1 处裸色值",
-      "since": "2026-10-21"
-    },
-    {
-      "rule": "breakpoint",
-      "file": "src/views/TicketCenterView.vue",
-      "detail": "2 处非标准断点（1080px、720px）",
       "since": "2026-10-21"
     },
     {
