@@ -16,6 +16,8 @@ import 'ui_73info/styles.css'
 import './styles/user.css'
 import './styles/unified-top-card.css'
 import './styles/dev.css'
+// 工作台外壳的色板（`--uw-*`）：只被 `.user-workbench` 那一支外壳用，取值见文件头注释。
+import './styles/workbench-shell.css'
 
 // 维护模式：设置 VITE_MAINTENANCE_MODE=true 后，用户端重定向到维护页。
 if (

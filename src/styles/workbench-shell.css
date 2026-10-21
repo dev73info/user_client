@@ -1,0 +1,62 @@
+/* === 工作台外壳（.user-workbench）色板 ===
+   侧边栏、品牌行、移动端顶栏、抽屉遮罩的色值收在这里，取值**与拆分前逐字相同**
+   （原 `UserWorkbenchView.vue` 的 `<style scoped>` 里的裸色值），一处没调。
+   为什么另立一套而不是直接用 `--73-*`：外壳这一支蓝（#1d4ed8 / #2563eb / #4f8cff）
+   与组件库登记的 `--73-accent`（#1f4ad1）不是同一个色，`--73-danger` 在 dev 主题下还是
+   另一支红（#dc2626）——换成令牌就等于改了颜色，而这次拆分只做结构，不动视觉。
+   颜色逐步令牌化的账记在 `frontend-baseline.json` 的 raw-color 条目里（只减不增）。
+
+   命名前缀 `--uw-`（user-workbench）只给外壳用；挂在外壳根节点上、不进 `:root`，
+   避免与页面层的 `--wb-*` / `--dev-*` / `--profile-*` 混在一起。
+   与组件库取值完全一致的几档直接复用 `--73-*`（见下方注释），不另立变量。 */
+
+.user-workbench {
+  /* --- 文字 ---
+     #64748b / #94a3b8 / #ffffff 在 portal 与 dev 两套主题下取值相同，
+     直接用 --73-ink-muted / --73-ink-placeholder / --73-ink-inverse，不另立变量。 */
+  --uw-ink-strong: #0f172a;
+  --uw-ink: #334155;
+
+  /* --- 表面、描边与阴影 --- */
+  --uw-surface: rgba(255, 255, 255, 0.94);
+  --uw-surface-hover: rgba(248, 251, 255, 0.96);
+  --uw-surface-line: rgba(224, 232, 255, 0.96);
+  --uw-line: rgba(209, 220, 243, 0.95);
+  --uw-line-faint: rgba(226, 232, 240, 0.82);
+  --uw-surface-shadow: 0 14px 34px rgba(76, 103, 172, 0.08);
+  --uw-bar-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
+  --uw-backdrop: rgba(15, 23, 42, 0.36);
+
+  /* --- 强调蓝：外壳自有的三档（与 --wb-accent #1f4ad1 并列，不合并） --- */
+  --uw-blue-ink: #1d4ed8;
+  --uw-blue: #2563eb;
+  --uw-blue-bright: #4f8cff;
+  --uw-blue-wash-faint: rgba(239, 246, 255, 0.6);
+  --uw-blue-wash-soft: rgba(239, 246, 255, 0.86);
+  --uw-blue-wash: rgba(239, 246, 255, 0.94);
+  --uw-blue-wash-strong: rgba(239, 246, 255, 0.96);
+  --uw-blue-fill-soft: rgba(219, 234, 254, 0.82);
+  --uw-blue-fill: rgba(219, 234, 254, 0.9);
+  --uw-blue-fill-strong: rgba(219, 234, 254, 0.95);
+  --uw-blue-fill-hover: rgba(219, 234, 254, 0.96);
+  --uw-blue-icon-active: rgba(37, 99, 235, 0.14);
+  --uw-blue-line: rgba(191, 219, 254, 0.9);
+  --uw-blue-line-hover: rgba(147, 197, 253, 0.95);
+  --uw-blue-ring: rgba(191, 219, 254, 0.52);
+
+  /* --- 危险色：退出登录一条用（不能借 --73-danger，dev 主题下是另一支红） --- */
+  --uw-danger: #b42318;
+  --uw-danger-strong: #912018;
+  --uw-danger-wash: rgba(254, 226, 226, 0.9);
+  --uw-danger-wash-hover: rgba(254, 242, 242, 0.96);
+  --uw-danger-wash-strong: rgba(254, 202, 202, 0.95);
+  --uw-danger-ring: rgba(254, 202, 202, 0.72);
+
+  /* --- 角标与消息中心滚动条 --- */
+  --uw-badge: #ef4444;
+  --uw-badge-unread: #e5484d;
+  --uw-scroll-a: rgba(56, 189, 248, 0.7);
+  --uw-scroll-a-hover: rgba(125, 211, 252, 0.9);
+  --uw-scroll-b: rgba(149, 213, 178, 0.8);
+  --uw-scroll-b-hover: rgba(149, 213, 178, 1);
+}
