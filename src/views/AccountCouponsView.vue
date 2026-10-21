@@ -66,7 +66,15 @@ import { useAuthStore } from '@/stores/auth'
 import RealnameHero from '@/components/RealnameHero.vue'
 import WechatBindQrModal from '@/components/WechatBindQrModal.vue'
 import { missingEnterpriseOnboardingLabels } from '@/shared/realnameMaterials'
+import { shouldRecheckRealnameResult } from '@/shared/realnameRecheck'
 import { dispatchProfileAvatarUpdated } from '@/shared/profileEvents'
+import {
+  isSettleBound,
+  isSettleRejected,
+  isSettleUnderReview,
+  settleAccountStage,
+  settleProviderErrorText,
+} from '@/shared/settleAccountStage'
 import {
   getSettlementCities,
   prepareSettlementAccount,
@@ -1814,27 +1822,20 @@ const settleForm = reactive({
   bank_acct_type: '2',
 })
 
-/** 是否已绑定结算账户（决定提交时走「绑定」还是「更换」接口） */
-const settleBound = computed(() => Boolean(adapayMember.value?.settleAccountId))
+/** 是否已绑定结算账户（决定提交时走「绑定」还是「更换」接口）。口径见 `@/shared/settleAccountStage`。 */
+const settleBound = computed(() => isSettleBound(adapayMember.value?.settleAccountId))
 
 /**
- * 收款账户在渠道侧的进度：`none` / `reviewing` / `ready` / `bound`。
+ * 收款账户在渠道侧的进度：`none` / `reviewing` / `failed` / `ready` / `bound`。
  *
- * 这四态必须分开看：「会员还没开通」与「会员开通了但没绑卡」是两件不同的事——前者是系统与
+ * 这几态必须分开看：「会员还没开通」与「会员开通了但没绑卡」是两件不同的事——前者是系统与
  * 渠道还没办完（实名通过后会自动入驻），后者是用户少做了一步。以前两者都显示「未设置」，
- * 用户不知道自己该等还是该动手。
+ * 用户不知道自己该等还是该动手。渠道明确拒绝（`failed`）还要再单独分出来：那是「去整改」，
+ * 不是「等」。口径见 `@/shared/settleAccountStage`。
  */
-const settleStage = computed<'none' | 'reviewing' | 'failed' | 'ready' | 'bound'>(() => {
-  if (settleBound.value) return 'bound'
-  const status = adapayMember.value?.onboardingStatus
-  if (status === 'pending' || status === 'under_review') return 'reviewing'
-  if (status === 'active') return 'ready'
-  // 渠道已经给了否定结论（企业开户审核未通过、或审核通过但开户失败）：本地记成 `failed`。
-  // 必须单独成一态——并进下面的 `none` 会显示成「待认证」，用户以为等着就行，
-  // 而实际要回去核对资料重新认证。
-  if (status === 'failed') return 'failed'
-  return 'none'
-})
+const settleStage = computed(() =>
+  settleAccountStage(adapayMember.value?.onboardingStatus, adapayMember.value?.settleAccountId),
+)
 
 /** 当前实名主体对应的收款账户主体：企业 / 个体工商户走对公账户，其余按个人身份证。 */
 const settleExpectedMemberType = computed(() =>
@@ -1885,20 +1886,10 @@ const settleMaterialMissingLabels = computed(() => missingEnterpriseOnboardingLa
 const settleMaterialMissingText = computed(() => settleMaterialMissingLabels.value.join('、'))
 
 /**
- * 渠道侧最近一次拒绝的原话。
- *
- * 只报状态（「未认证 / 未通过」）时，用户不知道该改什么；渠道原话（如
- * 「prov_code 不能为空」）是唯一能对上号的线索，所以在弹窗里原样给出来。
- * 已经开通且卡还在时不再提旧伤——那是一次翻篇的失败；换卡失败导致卡被解绑时
- * 状态仍停在 `active`，这时候原因必须留着，否则用户看到的是「已认证 + 未设置」而无从下手。
- */
-/**
  * 渠道会员是否还在审核中（企业会员开通要走渠道审核，这期间绑不了对公账户）。
+ * 口径见 `@/shared/settleAccountStage`。
  */
-const settleUnderReview = computed(() => {
-  const status = adapayMember.value?.onboardingStatus
-  return status === 'under_review' || status === 'pending'
-})
+const settleUnderReview = computed(() => isSettleUnderReview(adapayMember.value?.onboardingStatus))
 
 /**
  * 「渠道审核中」那句提示：企业与个人绑的不是同一种账户（对公账户 vs 银行卡）。
@@ -1914,11 +1905,9 @@ const settleUnderReviewText = computed(() =>
 
 /**
  * 渠道已明确拒绝开通收款账户（企业开户审核未通过，或审核通过但开户失败）。
- *
- * `onboarding_status = failed` 是唯一表示「渠道给了否定结论」的取值；具体是哪种拒绝、
- * 原因是什么，都在 `providerError` 里（后端把渠道 `audit_state` 翻成中文再落库）。
+ * 口径见 `@/shared/settleAccountStage`。
  */
-const settleRejected = computed(() => adapayMember.value?.onboardingStatus === 'failed')
+const settleRejected = computed(() => isSettleRejected(adapayMember.value?.onboardingStatus))
 
 /**
  * 「渠道拒绝」之后用户该做什么。
@@ -1934,12 +1923,13 @@ const settleRejectedGuide = computed(() => {
   return `${action}；若资料核对无误仍未通过，可提交工单由客服协助核对渠道结论。`
 })
 
-const settleProviderError = computed(() => {
-  const member = adapayMember.value
-  const error = (member?.providerError ?? '').trim()
-  if (!error) return ''
-  return member?.onboardingStatus === 'active' && member.settleAccountId ? '' : error
-})
+const settleProviderError = computed(() =>
+  settleProviderErrorText(
+    adapayMember.value?.onboardingStatus,
+    adapayMember.value?.providerError,
+    adapayMember.value?.settleAccountId,
+  ),
+)
 
 /** 缺企业资料时不去重绑，直接关掉弹窗并打开实名表单让用户补企业进件资料。 */
 function goFixSettleMaterial() {
@@ -2898,7 +2888,7 @@ onMounted(async () => {
   // 只有「处理中」才需要问结果：流水号由后端从库里取，前端不再持有任何渠道凭证。
   // 已通过 / 已驳回时不必再打这个接口——它是一次「回查」，每次打开账户页都往渠道跑一趟
   // 没有意义（该端点在历史版本里会连带重放「实名通过」的副作用，把企业开户一遍遍送审）。
-  if (!current.value || current.value.status === 'pending') {
+  if (shouldRecheckRealnameResult(current.value?.status)) {
     await checkWechatFaceidResult({ silent: true })
   }
   // 刷新后尝试恢复丢失的爱签二维码（若仍未完成人脸核身）
