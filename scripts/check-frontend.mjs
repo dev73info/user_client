@@ -40,8 +40,8 @@ const MAX_API_DEPS = 3
 /** 允许的响应式断点（2026-10-21 收敛）：手机 / 平板 / 宽屏，其它档位一律进基线后逐步清掉 */
 const BREAKPOINTS = [640, 900, 1180]
 const BREAKPOINT_TOLERANCE = 1
-const API_DEP_PATTERN =
-  /(?:from|import)\s+['"](?:@\/api|\.\.?\/api|\.\.\/\.\.\/api)\/([A-Za-z0-9_-]+)/
+/** 说明符已被 importSpecifiers 剥成裸路径（`@/api/xxx`），这里不能再要求 `from` 前缀 */
+const API_DEP_PATTERN = /^(?:@\/api|\.\.?\/api|\.\.\/\.\.\/api)\/([A-Za-z0-9_-]+)/
 const COLOR_PATTERNS = [/#[0-9a-fA-F]{3,8}\b/, /\brgba?\s*\(/, /\bhsla?\s*\(/]
 const TOKEN_ALLOWLIST = new Set(['styles/tokens.css', 'styles/alias.css'])
 const FOREIGN_PACKAGES = ['@73info/portal', '@73info/admin', '@73info/support', '@73info/finance']

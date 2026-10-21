@@ -140,9 +140,21 @@
       "since": "2026-10-21"
     },
     {
+      "rule": "api-deps",
+      "file": "src/components/RequirementConversationActions.vue",
+      "detail": "依赖 6 个 api 模块（adapay、auth、contracts、devRequirements、requirements、settings）> 3",
+      "since": "2026-10-21"
+    },
+    {
       "rule": "line-budget",
       "file": "src/components/RequirementConversationModal.vue",
       "detail": "3740 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "api-deps",
+      "file": "src/components/RequirementConversationModal.vue",
+      "detail": "依赖 6 个 api 模块（conversations、contracts、http、requirements、devRequirements、resources）> 3",
       "since": "2026-10-21"
     },
     {
@@ -155,6 +167,12 @@
       "rule": "line-budget",
       "file": "src/components/ResourceDetailPanel.vue",
       "detail": "2933 行 > 400（模块）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "api-deps",
+      "file": "src/components/ResourceDetailPanel.vue",
+      "detail": "依赖 6 个 api 模块（http、resources、resourcePurchase、adapay、auth、points）> 3",
       "since": "2026-10-21"
     },
     {
@@ -374,6 +392,12 @@
       "since": "2026-10-21"
     },
     {
+      "rule": "api-deps",
+      "file": "src/views/AccountCouponsView.vue",
+      "detail": "依赖 6 个 api 模块（adapay、http、auth、settings、realname、asignAccount）> 3",
+      "since": "2026-10-21"
+    },
+    {
       "rule": "line-budget",
       "file": "src/views/ApiResourceCheckoutView.vue",
       "detail": "432 行 > 300（视图）",
@@ -404,9 +428,21 @@
       "since": "2026-10-21"
     },
     {
+      "rule": "api-deps",
+      "file": "src/views/DevHomeView.vue",
+      "detail": "依赖 5 个 api 模块（devDashboard、devOrderDeposit、devWallet、mcResources、devRequirements）> 3",
+      "since": "2026-10-21"
+    },
+    {
       "rule": "line-budget",
       "file": "src/views/DevMyRequirementsView.vue",
       "detail": "2781 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "api-deps",
+      "file": "src/views/DevMyRequirementsView.vue",
+      "detail": "依赖 8 个 api 模块（adapay、afterSales、conversations、devRequirements、mcResources、devWallet、contracts、invoices）> 3",
       "since": "2026-10-21"
     },
     {
@@ -416,9 +452,21 @@
       "since": "2026-10-21"
     },
     {
+      "rule": "api-deps",
+      "file": "src/views/DevProfileView.vue",
+      "detail": "依赖 7 个 api 模块（http、resources、invite、points、resourceTags、publicProfile、settings）> 3",
+      "since": "2026-10-21"
+    },
+    {
       "rule": "line-budget",
       "file": "src/views/DevRequirementDetailView.vue",
       "detail": "1279 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "api-deps",
+      "file": "src/views/DevRequirementDetailView.vue",
+      "detail": "依赖 6 个 api 模块（auth、resourceTags、devCredit、devOrderDeposit、mcResources、devRequirements）> 3",
       "since": "2026-10-21"
     },
     {
@@ -428,9 +476,21 @@
       "since": "2026-10-21"
     },
     {
+      "rule": "api-deps",
+      "file": "src/views/DevRequirementHallView.vue",
+      "detail": "依赖 6 个 api 模块（resourceTags、devOrderDeposit、devCredit、auth、mcResources、devRequirements）> 3",
+      "since": "2026-10-21"
+    },
+    {
       "rule": "line-budget",
       "file": "src/views/DevResourceHomepageEditView.vue",
       "detail": "1951 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "api-deps",
+      "file": "src/views/DevResourceHomepageEditView.vue",
+      "detail": "依赖 4 个 api 模块（http、mcResources、resourceTags、team）> 3",
       "since": "2026-10-21"
     },
     {
@@ -476,6 +536,12 @@
       "since": "2026-10-21"
     },
     {
+      "rule": "api-deps",
+      "file": "src/views/HomeView.vue",
+      "detail": "依赖 13 个 api 模块（auth、coupons、http、contracts、realname、adapay、requirements、settings、community、resourceTags、resources、points、invite）> 3",
+      "since": "2026-10-21"
+    },
+    {
       "rule": "line-budget",
       "file": "src/views/MallView.vue",
       "detail": "318 行 > 300（视图）",
@@ -491,6 +557,12 @@
       "rule": "line-budget",
       "file": "src/views/MyRequirementsView.vue",
       "detail": "1910 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "api-deps",
+      "file": "src/views/MyRequirementsView.vue",
+      "detail": "依赖 8 个 api 模块（auth、http、resources、resourceTags、realname、contracts、adapay、requirements）> 3",
       "since": "2026-10-21"
     },
     {
@@ -512,9 +584,21 @@
       "since": "2026-10-21"
     },
     {
+      "rule": "api-deps",
+      "file": "src/views/NotificationCenterView.vue",
+      "detail": "依赖 4 个 api 模块（community、afterSales、conversations、resourceTransfers）> 3",
+      "since": "2026-10-21"
+    },
+    {
       "rule": "line-budget",
       "file": "src/views/PaymentView.vue",
       "detail": "1562 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "api-deps",
+      "file": "src/views/PaymentView.vue",
+      "detail": "依赖 5 个 api 模块（adapay、payments、auth、resourcePurchase、tips）> 3",
       "since": "2026-10-21"
     },
     {
@@ -524,9 +608,21 @@
       "since": "2026-10-21"
     },
     {
+      "rule": "api-deps",
+      "file": "src/views/ProfileView.vue",
+      "detail": "依赖 9 个 api 模块（auth、http、realname、contracts、adapay、coupons、conversations、requirements、settings）> 3",
+      "since": "2026-10-21"
+    },
+    {
       "rule": "line-budget",
       "file": "src/views/SearchResultsView.vue",
       "detail": "1016 行 > 300（视图）",
+      "since": "2026-10-21"
+    },
+    {
+      "rule": "api-deps",
+      "file": "src/views/SearchResultsView.vue",
+      "detail": "依赖 5 个 api 模块（community、http、resources、requirements、resourceTags）> 3",
       "since": "2026-10-21"
     },
     {
