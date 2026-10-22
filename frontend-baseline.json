@@ -561,12 +561,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/TicketCenterView.vue",
-      "detail": "1115 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/__tests__/afterSalesWindow.spec.ts",
       "detail": "485 行 > 300（模块）",
       "since": "2026-10-22"
@@ -1271,12 +1265,6 @@
       "rule": "raw-color",
       "file": "src/views/TeamResourcesView.vue",
       "detail": "1 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/views/TicketCenterView.vue",
-      "detail": "2 处裸色值",
       "since": "2026-10-22"
     },
     {
