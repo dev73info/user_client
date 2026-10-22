@@ -1,601 +1,81 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { TIcon, ArrowDown, Bell, Close, Search, TMessage, UserFilled } from 'ui_73info'
+import { ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { Bell, TIcon } from 'ui_73info'
 
+import PortalNavLinks from '@/components/portal-nav/PortalNavLinks.vue'
+import PortalSearchBox from '@/components/portal-nav/PortalSearchBox.vue'
+import PortalUserMenu from '@/components/portal-nav/PortalUserMenu.vue'
+import { usePortalHeaderFootprint } from '@/composables/usePortalHeaderFootprint'
+import { usePortalMenuDismiss, usePortalSubscription } from '@/composables/usePortalSubscription'
+import { usePortalTopNavNav } from '@/composables/usePortalTopNavNav'
 import { useAuthStore } from '@/stores/auth'
-import { buildDevPortalUrl } from '@/config/runtime'
-import { apiUrl } from '@/api/http'
-import { getProfile, updateProfileSubscriptions } from '@/api/settings'
-import { PROFILE_AVATAR_UPDATED_EVENT } from '@/shared/profileEvents'
 
-type AuthMode = 'login' | 'register'
-type SearchScope = 'auto' | 'resources' | 'requirements' | 'community'
-
-type HeaderLink = {
-  label: string
-  to?: { name: string }
-  href?: string
-  active?: boolean
-}
-
+// 本组件只剩骨架：品牌、导航、工具栏里的订阅铃与登录按钮。
+// 搜索（含范围下拉）、用户胶囊菜单、订阅状态、导航与路由出口分别在
+// `composables/usePortalTopNavSearch.ts`、`components/portal-nav/` 与
+// `composables/usePortalSubscription.ts`、`usePortalTopNavNav.ts` 里。
+//
+// 两条跨文件契约别动：
+// 1. 根元素必须继续叫 `.portal-header` —— `composables/useCodeBlockCopy.ts` 靠它读几何位置；
+// 2. `--portal-header-footprint` 必须继续被写 —— 工作台侧栏拿它当 sticky 偏移。
 const auth = useAuthStore()
 const route = useRoute()
-const router = useRouter()
-const menuOpen = ref(false)
-const searchQuery = ref('')
-const searchScope = ref<SearchScope>('auto')
-const searchScopeMenuOpen = ref(false)
-const searchInputFocused = ref(false)
-const searchInputHovered = ref(false)
-const searchDraftFilled = ref(false)
-const officialActivitySubscriptionEnabled = ref(false)
-const devHallSubscriptionEnabled = ref(false)
-const subscriptionMenuOpen = ref(false)
-const subscriptionLoading = ref(false)
-const subscriptionSaving = ref(false)
-const lastSyncedSubscriptions = ref({
-  subscribe_official_activity: false,
-  subscribe_dev_hall_deposit_paid: false,
-})
-// 顶栏用户胶囊里的头像：后端 `GET /settings/profile` 的 `avatar_url`
-const userAvatarUrl = ref('')
-const userAvatarFailed = ref(false)
-const authModalVisible = computed(() => route.query.modal === 'auth')
-const searchHasInputValue = computed(
-  () => Boolean(searchQuery.value.trim()) || searchDraftFilled.value,
-)
-// 开发者工作台已并入统一工作台外壳（/workbench/developer/**），顶栏跟随整站样式，
-// 不再单开紧凑版式；只有遗留的独立 /dev 页面（如开发者入驻协议）保留 dev 版式。
-const isDeveloperArea = computed(() => route.path.startsWith('/dev'))
-const subscriptionBusy = computed(() => subscriptionLoading.value || subscriptionSaving.value)
-const hasActiveSubscription = computed(
-  () => officialActivitySubscriptionEnabled.value || devHallSubscriptionEnabled.value,
-)
-const allSubscriptionsEnabled = computed(
-  () => officialActivitySubscriptionEnabled.value && devHallSubscriptionEnabled.value,
-)
-const bellTitle = computed(() => {
-  if (subscriptionBusy.value) {
-    return '消息订阅同步中'
-  }
+const { headerRef } = usePortalHeaderFootprint()
+const { isDeveloperArea, headerLinks, openAuth, goWorkbench, openDevWorkbench, logout } =
+  usePortalTopNavNav()
+const {
+  bellTitle,
+  hasActiveSubscription,
+  subscriptionBusy,
+  subscriptionMenuOpen,
+  officialActivitySubscriptionEnabled,
+  devHallSubscriptionEnabled,
+  userAvatarSrc,
+  handleUserAvatarError,
+  closeMenu,
+  openSubscriptionMenu,
+  handleBellClick,
+  toggleSubscription,
+} = usePortalSubscription({ openAuth })
 
-  return allSubscriptionsEnabled.value ? '关闭全部消息订阅' : '开启全部消息订阅'
-})
-const userAvatarSrc = computed(() => {
-  const url = userAvatarUrl.value.trim()
-  if (!url || userAvatarFailed.value) {
-    return ''
-  }
+const userMenuOpen = ref(false)
 
-  return apiUrl(url)
-})
-const searchScopeOptions: Array<{ value: SearchScope; label: string }> = [
-  { value: 'auto', label: '全部' },
-  { value: 'resources', label: '资源' },
-  { value: 'requirements', label: '需求' },
-  { value: 'community', label: '社区' },
-]
-const searchableRouteScope: Partial<Record<string, SearchScope>> = {
-  search: 'auto',
-  resources: 'resources',
-  'resource-catalog': 'resources',
-  'resource-detail-direct': 'resources',
-  'requirement-hall': 'requirements',
-  community: 'community',
-  'community-post': 'community',
-}
-const searchPlaceholder = computed(() => {
-  if (searchScope.value === 'requirements') return '搜索需求标题、编号...'
-  if (searchScope.value === 'community') return '搜索社区帖子...'
-  return '搜索资源、帖子、开发者...'
-})
-const activeSearchScopeLabel = computed(
-  () => searchScopeOptions.find((option) => option.value === searchScope.value)?.label ?? '全部',
-)
+// 用户胶囊菜单的「点外部关闭」：与搜索范围、订阅菜单共用同一套逻辑，只是这里只关了
+// 自己那一块，也不监听 Esc（原本就没有）
+usePortalMenuDismiss({ rootSelector: '.portal-user', close: closeUserMenu, closeOnEscape: false })
 
-const headerLinks = computed<HeaderLink[]>(() => {
-  const currentName = String(route.name ?? '')
-  const allowActive = !authModalVisible.value
-
-  const onResourceCatalog = currentName === 'resource-catalog' || currentName === 'resource-detail'
-  // 「资源项目」把原「免费资源」「付费资源」两项并成一项：两个分区都算在这一项下
-  const onResources = currentName === 'resources' || onResourceCatalog
-
-  const links: HeaderLink[] = [
-    { label: '首页', to: { name: 'home' }, active: allowActive && currentName === 'home' },
-    {
-      label: '资源项目',
-      to: { name: 'resources' },
-      active: allowActive && onResources,
-    },
-    {
-      label: '需求大厅',
-      to: { name: 'requirement-hall' },
-      active: allowActive && (currentName === 'requirement-hall' || currentName === 'payment'),
-    },
-    {
-      label: '社区',
-      to: { name: 'community' },
-      active: allowActive && currentName === 'community',
-    },
-  ]
-
-  if (auth.isAuthed) {
-    // 基础序：首页 / 资源项目 / 需求大厅 / 社区 → 在「社区」前插入工作台与积分商城
-    const communityIndex = links.findIndex((link) => link.label === '社区')
-    links.splice(
-      communityIndex,
-      0,
-      {
-        label: '工作台',
-        to: { name: 'workbench' },
-        active: allowActive && route.path.startsWith('/workbench'),
-      },
-      {
-        label: '积分商城',
-        to: { name: 'points-mall' },
-        active: allowActive && (currentName === 'points-mall' || route.path.startsWith('/points-mall')),
-      },
-    )
-  }
-
-  return links
-})
-
+// 换路由时把还开着的下拉收起来（搜索范围菜单由搜索 composable 自己收）
 watch(
   () => route.fullPath,
   () => {
-    menuOpen.value = false
-    subscriptionMenuOpen.value = false
-    searchScopeMenuOpen.value = false
-    syncSearchFromRoute()
+    closeUserMenu()
+    closeMenu()
   },
-  { immediate: true },
 )
 
-watch(
-  () => [auth.isAuthed, auth.token] as const,
-  ([isAuthed, token]) => {
-    if (!isAuthed || !token.trim()) {
-      resetSubscriptionState()
-      resetUserAvatar()
-      return
-    }
-
-    void loadProfileState()
-  },
-  { immediate: true },
-)
-
-const headerRef = ref<HTMLElement | null>(null)
-let headerObserver: ResizeObserver | undefined
-
-// 顶栏自身是 sticky 的，高度随断点变化（单行 / 双行）。把它的实际占位高度（含上下外边距）
-// 挂到根元素上，供需要贴在顶栏下方的 sticky 元素取用：工作台侧边栏与内容页头都用它当
-// sticky 偏移，这样在长短页面之间切换时两者都停在同一位置，不会上下跳。
-function syncHeaderFootprint() {
-  const header = headerRef.value
-  if (!header) return
-  const styles = getComputedStyle(header)
-  const footprint = header.offsetHeight === 0
-    ? 0
-    : Math.round(header.offsetHeight + parseFloat(styles.marginTop) + parseFloat(styles.marginBottom))
-  document.documentElement.style.setProperty('--portal-header-footprint', `${footprint}px`)
+function closeUserMenu() {
+  userMenuOpen.value = false
 }
 
-onMounted(() => {
-  document.addEventListener('click', closeSubscriptionMenu)
-  document.addEventListener('click', closeSearchScopeMenu)
-  document.addEventListener('click', closeUserMenu)
-  document.addEventListener('keydown', handleSubscriptionMenuKeydown)
-  document.addEventListener('keydown', handleSearchScopeMenuKeydown)
-  window.addEventListener(PROFILE_AVATAR_UPDATED_EVENT, handleProfileAvatarUpdated)
-  syncHeaderFootprint()
-  if (typeof ResizeObserver !== 'undefined' && headerRef.value) {
-    headerObserver = new ResizeObserver(syncHeaderFootprint)
-    headerObserver.observe(headerRef.value)
-  }
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', closeSubscriptionMenu)
-  document.removeEventListener('click', closeSearchScopeMenu)
-  document.removeEventListener('click', closeUserMenu)
-  document.removeEventListener('keydown', handleSubscriptionMenuKeydown)
-  document.removeEventListener('keydown', handleSearchScopeMenuKeydown)
-  window.removeEventListener(PROFILE_AVATAR_UPDATED_EVENT, handleProfileAvatarUpdated)
-  headerObserver?.disconnect()
-  headerObserver = undefined
-})
-
-function resetSubscriptionState() {
-  officialActivitySubscriptionEnabled.value = false
-  devHallSubscriptionEnabled.value = false
-  subscriptionMenuOpen.value = false
-  lastSyncedSubscriptions.value = {
-    subscribe_official_activity: false,
-    subscribe_dev_hall_deposit_paid: false,
-  }
+function toggleUserMenu() {
+  userMenuOpen.value = !userMenuOpen.value
 }
 
-function syncSubscriptionState(subscriptions: {
-  subscribe_official_activity: boolean
-  subscribe_dev_hall_deposit_paid: boolean
-}) {
-  const officialEnabled = Boolean(subscriptions.subscribe_official_activity)
-  const devHallEnabled = Boolean(subscriptions.subscribe_dev_hall_deposit_paid)
-
-  officialActivitySubscriptionEnabled.value = officialEnabled
-  devHallSubscriptionEnabled.value = devHallEnabled
-  lastSyncedSubscriptions.value = {
-    subscribe_official_activity: officialEnabled,
-    subscribe_dev_hall_deposit_paid: devHallEnabled,
-  }
+// 菜单里点「工作台 / 退出登录」：先收起菜单，再把路由交给导航出口
+function goWorkbenchFromMenu() {
+  closeUserMenu()
+  goWorkbench()
 }
 
-function resetUserAvatar() {
-  userAvatarUrl.value = ''
-  userAvatarFailed.value = false
-}
-
-function applyUserAvatar(nextAvatarUrl: string | null | undefined) {
-  userAvatarUrl.value = (nextAvatarUrl ?? '').trim()
-  userAvatarFailed.value = false
-}
-
-// 头像图片加载失败（例如服务端文件被清理）时退回默认人物剪影，避免顶栏出现裂图
-function handleUserAvatarError() {
-  userAvatarFailed.value = true
-}
-
-// 别处（个人主页 / 账号页）换过头像就重新拉一次，让顶栏跟着更新
-function handleProfileAvatarUpdated() {
-  if (!auth.isAuthed || !auth.token.trim()) {
-    return
-  }
-
-  void loadProfileState()
-}
-
-async function loadProfileState() {
-  if (!auth.isAuthed || !auth.token.trim()) {
-    return
-  }
-
-  subscriptionLoading.value = true
-  try {
-    // `GET /settings/profile` 一次带回头像与两个订阅开关，不再单开订阅查询接口
-    const profile = await getProfile(auth.token)
-    syncSubscriptionState({
-      subscribe_official_activity: Boolean(profile.subscribe_official_activity),
-      subscribe_dev_hall_deposit_paid: Boolean(profile.subscribe_dev_hall_deposit_paid),
-    })
-    applyUserAvatar(profile.avatar_url)
-  } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '加载个人资料失败')
-  } finally {
-    subscriptionLoading.value = false
-  }
-}
-
-function closeSubscriptionMenu() {
-  subscriptionMenuOpen.value = false
-}
-
-function closeSearchScopeMenu() {
-  searchScopeMenuOpen.value = false
-}
-
-function closeUserMenu(event: MouseEvent) {
-  const target = event.target
-  if (target instanceof Element && target.closest('.portal-user')) {
-    return
-  }
-
-  menuOpen.value = false
-}
-
-function handleSubscriptionMenuKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') {
-    closeSubscriptionMenu()
-  }
-}
-
-function handleSearchScopeMenuKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') {
-    closeSearchScopeMenu()
-  }
-}
-
-function toggleSearchScopeMenu() {
-  searchScopeMenuOpen.value = !searchScopeMenuOpen.value
-}
-
-function selectSearchScope(scope: SearchScope) {
-  searchScope.value = scope
-  searchScopeMenuOpen.value = false
-}
-
-function openSubscriptionMenu() {
-  if (!auth.isAuthed || !auth.token.trim()) {
-    openAuth('login')
-    return
-  }
-
-  subscriptionMenuOpen.value = true
-
-  if (!subscriptionLoading.value) {
-    void loadProfileState()
-  }
-}
-
-function handleBellClick() {
-  void toggleAllSubscriptions()
-}
-
-async function toggleAllSubscriptions() {
-  if (!auth.isAuthed || !auth.token.trim()) {
-    openAuth('login')
-    return
-  }
-
-  if (subscriptionBusy.value) {
-    return
-  }
-
-  const nextEnabled = !allSubscriptionsEnabled.value
-  const nextState = {
-    subscribe_official_activity: nextEnabled,
-    subscribe_dev_hall_deposit_paid: nextEnabled,
-  }
-
-  officialActivitySubscriptionEnabled.value = nextEnabled
-  devHallSubscriptionEnabled.value = nextEnabled
-  subscriptionSaving.value = true
-  try {
-    const updated = await updateProfileSubscriptions(auth.token, nextState)
-    syncSubscriptionState(updated)
-    TMessage.success(nextEnabled ? '已开启全部消息订阅' : '已关闭全部消息订阅')
-  } catch (err) {
-    officialActivitySubscriptionEnabled.value =
-      lastSyncedSubscriptions.value.subscribe_official_activity
-    devHallSubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_dev_hall_deposit_paid
-    TMessage.error(err instanceof Error ? err.message : '保存消息订阅失败')
-  } finally {
-    subscriptionSaving.value = false
-  }
-}
-
-async function toggleSubscription(type: 'official_activity' | 'dev_hall_deposit_paid') {
-  const isOfficialActivity = type === 'official_activity'
-
-  if (!auth.isAuthed || !auth.token.trim()) {
-    openAuth('login')
-    return
-  }
-
-  if (subscriptionBusy.value) {
-    return
-  }
-
-  const nextEnabled = isOfficialActivity
-    ? !officialActivitySubscriptionEnabled.value
-    : !devHallSubscriptionEnabled.value
-
-  if (isOfficialActivity) {
-    officialActivitySubscriptionEnabled.value = nextEnabled
-  } else {
-    devHallSubscriptionEnabled.value = nextEnabled
-  }
-
-  subscriptionSaving.value = true
-  try {
-    const updated = await updateProfileSubscriptions(
-      auth.token,
-      isOfficialActivity
-        ? { subscribe_official_activity: nextEnabled }
-        : { subscribe_dev_hall_deposit_paid: nextEnabled },
-    )
-    syncSubscriptionState(updated)
-    TMessage.success(
-      nextEnabled
-        ? `已开启${isOfficialActivity ? '官方活动通知' : '开发者接单提醒'}`
-        : `已关闭${isOfficialActivity ? '官方活动通知' : '开发者接单提醒'}`,
-    )
-  } catch (err) {
-    officialActivitySubscriptionEnabled.value =
-      lastSyncedSubscriptions.value.subscribe_official_activity
-    devHallSubscriptionEnabled.value = lastSyncedSubscriptions.value.subscribe_dev_hall_deposit_paid
-    TMessage.error(err instanceof Error ? err.message : '保存消息订阅失败')
-  } finally {
-    subscriptionSaving.value = false
-  }
-}
-
-function openAuth(mode: AuthMode) {
-  const nextQuery: Record<string, string> = { modal: 'auth', mode }
-  const redirectTarget =
-    typeof route.query.redirect_to === 'string' ? route.query.redirect_to.trim() : ''
-
-  if (redirectTarget && redirectTarget.startsWith('/') && !redirectTarget.startsWith('//')) {
-    nextQuery.redirect_to = redirectTarget
-  }
-
-  void router.push({ name: 'home', query: nextQuery })
-}
-
-function goWorkbench() {
-  menuOpen.value = false
-  void router.push({ name: 'workbench' })
-}
-
-function openDevWorkbench() {
-  menuOpen.value = false
-  void router.push(buildDevPortalUrl(auth.token))
-}
-
-function logout() {
-  menuOpen.value = false
-  auth.logout()
-  void router.push({ name: 'home' })
-}
-
-function syncSearchFromRoute() {
-  const currentName = String(route.name ?? '')
-  const nextScope = searchableRouteScope[currentName]
-
-  if (!nextScope) {
-    searchScope.value = 'auto'
-    searchQuery.value = ''
-    searchDraftFilled.value = false
-    return
-  }
-
-  if (currentName === 'search') {
-    const routeScope = typeof route.query.scope === 'string' ? route.query.scope : ''
-    searchScope.value =
-      routeScope === 'resources' || routeScope === 'requirements' ? routeScope : 'auto'
-    searchQuery.value = typeof route.query.keyword === 'string' ? route.query.keyword.trim() : ''
-    searchDraftFilled.value = Boolean(searchQuery.value)
-    return
-  }
-
-  const routeKeyword =
-    currentName === 'resource-catalog'
-      ? typeof route.query.search === 'string'
-        ? route.query.search.trim()
-        : ''
-      : typeof route.query.keyword === 'string'
-        ? route.query.keyword.trim()
-        : ''
-
-  searchScope.value = nextScope
-  searchQuery.value = routeKeyword
-  searchDraftFilled.value = Boolean(routeKeyword)
-}
-
-function pushResourceSearch(keyword: string) {
-  void router.push({ name: 'search', query: { keyword, scope: 'resources' } })
-}
-
-function pushRequirementSearch(keyword: string) {
-  void router.push({ name: 'search', query: { keyword, scope: 'requirements' } })
-}
-
-function pushCommunitySearch(keyword: string) {
-  void router.push({ name: 'community', query: { keyword } })
-}
-
-function pushScopedSearch(keyword: string) {
-  if (searchScope.value === 'resources') {
-    pushResourceSearch(keyword)
-    return true
-  }
-
-  if (searchScope.value === 'requirements') {
-    pushRequirementSearch(keyword)
-    return true
-  }
-
-  if (searchScope.value === 'community') {
-    pushCommunitySearch(keyword)
-    return true
-  }
-
-  return false
-}
-
-function submitSearch() {
-  const normalized = searchQuery.value.trim()
-  if (!normalized) {
-    TMessage.info('请输入搜索关键词')
-    return
-  }
-
-  searchQuery.value = normalized
-  searchDraftFilled.value = true
-
-  if (pushScopedSearch(normalized)) {
-    return
-  }
-
-  const keyword = normalized.toLowerCase()
-
-  if (/(开发者|接单|发布资源|dev)/.test(keyword)) {
-    openDevWorkbench()
-    return
-  }
-
-  if (/(个人中心|用户工作台|工作台|账户|我的)/.test(keyword)) {
-    if (auth.isAuthed) {
-      void router.push({ name: 'workbench' })
-    } else {
-      openAuth('login')
-    }
-    return
-  }
-
-  if (/(需求|定制|项目|招募|外包|预算|验收)/.test(keyword)) {
-    pushRequirementSearch(normalized)
-    return
-  }
-
-  if (/(社区|动态|公告|帮助|帖子|评论|话题|讨论)/.test(keyword)) {
-    pushCommunitySearch(normalized)
-    return
-  }
-
-  void router.push({ name: 'search', query: { keyword: normalized } })
-}
-
-function clearSearch() {
-  searchQuery.value = ''
-  searchDraftFilled.value = false
-
-  const currentName = String(route.name ?? '')
-  if (currentName === 'search' && route.query.keyword) {
-    const nextQuery = { ...route.query }
-    delete nextQuery.keyword
-    void router.replace({ query: nextQuery })
-    return
-  }
-
-  if (currentName === 'resource-catalog' && route.query.search) {
-    const nextQuery = { ...route.query }
-    delete nextQuery.search
-    void router.replace({ query: nextQuery })
-    return
-  }
-
-  if (
-    ['resources', 'requirement-hall', 'community'].includes(currentName) &&
-    route.query.keyword
-  ) {
-    const nextQuery = { ...route.query }
-    delete nextQuery.keyword
-    void router.replace({ query: nextQuery })
-  }
-}
-
-function updateSearchDraftState(event: Event) {
-  const input = event.target as HTMLInputElement | null
-  searchDraftFilled.value = Boolean(input?.value.trim())
-}
-
-function startSearchComposition() {
-  searchDraftFilled.value = true
-}
-
-function finishSearchComposition(event: CompositionEvent) {
-  updateSearchDraftState(event)
+function logoutFromMenu() {
+  closeUserMenu()
+  logout()
 }
 </script>
 
 <template>
-  <header ref="headerRef" class="portal-header" :class="{
-    'portal-header--dev': isDeveloperArea,
-  }">
+  <header ref="headerRef" class="portal-header" :class="{ 'portal-header--dev': isDeveloperArea }">
     <RouterLink class="portal-brand" :to="{ name: 'home' }">
       <img class="portal-brand__mark" src="/icons/home-icon.svg" alt="73info 首页" />
       <div class="portal-brand__copy">
@@ -603,77 +83,50 @@ function finishSearchComposition(event: CompositionEvent) {
       </div>
     </RouterLink>
 
-    <nav class="portal-nav">
-      <template v-for="link in headerLinks" :key="link.label">
-        <RouterLink v-if="link.to" :to="link.to" active-class="" exact-active-class="" class="portal-nav__link"
-          :class="{ active: link.active }">
-          {{ link.label }}
-        </RouterLink>
-        <a v-else :href="link.href || '#'" class="portal-nav__link">{{ link.label }}</a>
-      </template>
-    </nav>
+    <PortalNavLinks :links="headerLinks" />
 
     <div class="portal-header__tools">
-      <RouterLink class="portal-search-menu" :to="{ name: 'community' }">
-        社区
-      </RouterLink>
-      <form class="portal-search" :class="{
-        'is-filled': searchHasInputValue,
-        'is-input-focused': searchInputFocused,
-        'is-input-hovered': searchInputHovered,
-      }" @submit.prevent="submitSearch">
-        <div class="portal-search-scope" @click.stop>
-          <button class="portal-search-scope__trigger" type="button" aria-haspopup="listbox"
-            :aria-expanded="searchScopeMenuOpen" @click="toggleSearchScopeMenu">
-            <span>{{ activeSearchScopeLabel }}</span>
-          </button>
-          <div v-if="searchScopeMenuOpen" class="portal-search-scope__menu" role="listbox" aria-label="搜索范围">
-            <button v-for="option in searchScopeOptions" :key="option.value" class="portal-search-scope__option"
-              :class="{ active: option.value === searchScope }" type="button" role="option"
-              :aria-selected="option.value === searchScope" @click="selectSearchScope(option.value)">
-              {{ option.label }}
-            </button>
-          </div>
-        </div>
-        <div class="portal-search-field" @mouseenter="searchInputHovered = true"
-          @mouseleave="searchInputHovered = false">
-          <TIcon>
-            <Search />
-          </TIcon>
-          <input v-model="searchQuery" type="search" inputmode="search" enterkeyhint="search" autocomplete="off"
-            spellcheck="false" aria-label="顶部搜索" :placeholder="searchPlaceholder" @input="updateSearchDraftState"
-            @compositionstart="startSearchComposition" @compositionupdate="updateSearchDraftState"
-            @compositionend="finishSearchComposition" @focus="searchInputFocused = true"
-            @blur="searchInputFocused = false" @keydown.esc="clearSearch" />
-          <button class="portal-search-clear" :class="{ 'is-visible': Boolean(searchQuery) }" type="button"
-            aria-label="清空搜索" :aria-hidden="!searchQuery" :disabled="!searchQuery" :tabindex="searchQuery ? 0 : -1"
-            @click="clearSearch">
-            <TIcon>
-              <Close />
-            </TIcon>
-          </button>
-        </div>
-      </form>
+      <RouterLink class="portal-search-menu" :to="{ name: 'community' }"> 社区 </RouterLink>
+      <PortalSearchBox :open-auth="openAuth" :open-dev-workbench="openDevWorkbench" />
       <div class="portal-subscription" @click.stop>
-        <button class="portal-icon-btn portal-icon-btn--subscription" :class="{
-          'is-active': hasActiveSubscription,
-          'is-loading': subscriptionBusy,
-          'is-menu-open': subscriptionMenuOpen,
-        }" type="button" :aria-label="bellTitle" :aria-pressed="hasActiveSubscription" :title="bellTitle"
-          @click="handleBellClick" @contextmenu.prevent="openSubscriptionMenu">
+        <button
+          class="portal-icon-btn portal-icon-btn--subscription"
+          :class="{
+            'is-active': hasActiveSubscription,
+            'is-loading': subscriptionBusy,
+            'is-menu-open': subscriptionMenuOpen,
+          }"
+          type="button"
+          :aria-label="bellTitle"
+          :aria-pressed="hasActiveSubscription"
+          :title="bellTitle"
+          @click="handleBellClick"
+          @contextmenu.prevent="openSubscriptionMenu"
+        >
           <TIcon>
             <Bell />
           </TIcon>
         </button>
 
-        <section v-if="subscriptionMenuOpen" class="portal-subscription-menu" role="menu" aria-label="消息订阅设置"
-          @contextmenu.prevent>
+        <section
+          v-if="subscriptionMenuOpen"
+          class="portal-subscription-menu"
+          role="menu"
+          aria-label="消息订阅设置"
+          @contextmenu.prevent
+        >
           <header class="portal-subscription-menu__head">
             <strong>消息订阅</strong>
           </header>
-          <button class="portal-subscription-item" :class="{ active: officialActivitySubscriptionEnabled }"
-            type="button" role="menuitemcheckbox" :aria-checked="officialActivitySubscriptionEnabled"
-            :disabled="subscriptionBusy" @click="toggleSubscription('official_activity')">
+          <button
+            class="portal-subscription-item"
+            :class="{ active: officialActivitySubscriptionEnabled }"
+            type="button"
+            role="menuitemcheckbox"
+            :aria-checked="officialActivitySubscriptionEnabled"
+            :disabled="subscriptionBusy"
+            @click="toggleSubscription('official_activity')"
+          >
             <span class="portal-subscription-item__copy">
               <strong>官方活动通知</strong>
               <small>平台公告、活动与福利提醒</small>
@@ -682,9 +135,15 @@ function finishSearchComposition(event: CompositionEvent) {
               officialActivitySubscriptionEnabled ? '开' : '关'
             }}</span>
           </button>
-          <button class="portal-subscription-item" :class="{ active: devHallSubscriptionEnabled }" type="button"
-            role="menuitemcheckbox" :aria-checked="devHallSubscriptionEnabled" :disabled="subscriptionBusy"
-            @click="toggleSubscription('dev_hall_deposit_paid')">
+          <button
+            class="portal-subscription-item"
+            :class="{ active: devHallSubscriptionEnabled }"
+            type="button"
+            role="menuitemcheckbox"
+            :aria-checked="devHallSubscriptionEnabled"
+            :disabled="subscriptionBusy"
+            @click="toggleSubscription('dev_hall_deposit_paid')"
+          >
             <span class="portal-subscription-item__copy">
               <strong>开发者接单提醒</strong>
               <small>需求托管付款后提醒开发者</small>
@@ -699,30 +158,16 @@ function finishSearchComposition(event: CompositionEvent) {
         <button class="portal-text-btn" type="button" @click="openAuth('login')">登录</button>
         <button class="portal-solid-btn" type="button" @click="openAuth('register')">注册</button>
       </template>
-      <template v-else>
-        <div class="portal-user">
-          <button class="portal-user__trigger" :class="{ 'is-open': menuOpen }" type="button" aria-haspopup="menu"
-            :aria-expanded="menuOpen" :title="auth.username || '已登录用户'" @click="menuOpen = !menuOpen">
-            <span class="portal-user__avatar" :class="{ 'portal-user__avatar--image': Boolean(userAvatarSrc) }">
-              <img v-if="userAvatarSrc" class="portal-user__avatar-image" :src="userAvatarSrc" alt=""
-                @error="handleUserAvatarError" />
-              <TIcon v-else>
-                <UserFilled />
-              </TIcon>
-            </span>
-            <span class="portal-user__name">{{ auth.username || '已登录用户' }}</span>
-            <TIcon class="portal-user__caret">
-              <ArrowDown />
-            </TIcon>
-          </button>
-          <Transition name="portal-user-menu">
-            <div v-show="menuOpen" class="portal-user__menu" :class="{ open: menuOpen }">
-              <button type="button" @click="goWorkbench">工作台</button>
-              <button type="button" class="danger" @click="logout">退出登录</button>
-            </div>
-          </Transition>
-        </div>
-      </template>
+      <PortalUserMenu
+        v-else
+        :open="userMenuOpen"
+        :username="auth.username"
+        :avatar-src="userAvatarSrc"
+        @toggle="toggleUserMenu"
+        @workbench="goWorkbenchFromMenu"
+        @logout="logoutFromMenu"
+        @avatar-error="handleUserAvatarError"
+      />
     </div>
   </header>
 </template>
@@ -733,6 +178,43 @@ function finishSearchComposition(event: CompositionEvent) {
    滚动时顶栏是一层带底色的浮层，正文从卡片底下穿过去，不会与顶栏文字视觉打架。
    移动端（≤900px）由 styles/unified-top-card.css 的 !important 规则压成白色通栏，不走这套卡片。 */
 .portal-header {
+  /* 顶栏自用色板：拆出去的三个子组件（导航 / 搜索 / 用户菜单）从这里继承 —— CSS 自定义
+     属性顺着 DOM 往下传，子组件的 scoped 样式直接 var() 取值，裸色值就只在本文件出现一次。
+     取值与原直接写在各选择器里的字面量**完全一致**，没有换成 --73-* 令牌：那套令牌跟这里
+     用的色值不是同一个数（例如 --73-accent 是 #1f4ad1，本页用的是 #2563eb），换过去就是改视觉。 */
+  --ptn-ink-strong: #0f172a;
+  --ptn-ink-body: #334155;
+  --ptn-ink-soft: #475569;
+  --ptn-ink-muted: #64748b;
+  --ptn-ink-placeholder: #94a3b8;
+  --ptn-accent-brand: #2563eb;
+  --ptn-accent-bright: #4f8cff;
+  --ptn-accent-ink: #1d4ed8;
+  --ptn-danger-ink: #dc2626;
+  --ptn-inverse: #fff;
+  --ptn-accent-gradient: linear-gradient(135deg, #2563eb, #4f8cff);
+  --ptn-line: rgba(203, 213, 225, 0.86);
+  --ptn-line-soft: rgba(203, 213, 225, 0.82);
+  --ptn-line-menu: rgba(203, 213, 225, 0.92);
+  --ptn-line-accent: rgba(191, 219, 254, 0.92);
+  --ptn-line-accent-soft: rgba(191, 219, 254, 0.9);
+  --ptn-line-hover: rgba(147, 197, 253, 0.96);
+  --ptn-line-hover-soft: rgba(147, 197, 253, 0.6);
+  --ptn-accent-wash: rgba(239, 246, 255, 0.96);
+  --ptn-accent-wash-faint: rgba(239, 246, 255, 0.95);
+  --ptn-accent-tint-soft: rgba(219, 234, 254, 0.86);
+  --ptn-accent-tint-strong: rgba(219, 234, 254, 0.98);
+  --ptn-surface: rgba(255, 255, 255, 0.98);
+  --ptn-surface-soft: rgba(255, 255, 255, 0.94);
+  --ptn-surface-sunken: rgba(248, 250, 252, 0.94);
+  --ptn-surface-highlight: rgba(255, 255, 255, 0.82);
+  --ptn-surface-muted: rgba(241, 245, 249, 0.96);
+  --ptn-surface-muted-strong: rgba(241, 245, 249, 0.98);
+  --ptn-neutral-wash: rgba(226, 232, 240, 0.66);
+  --ptn-accent-glow-18: rgba(37, 99, 235, 0.18);
+  --ptn-focus-halo: rgba(37, 99, 235, 0.16);
+  --ptn-shadow-soft: rgba(15, 23, 42, 0.08);
+  --ptn-shadow-strong: rgba(15, 23, 42, 0.12);
   --portal-nav-motion: cubic-bezier(0.22, 1, 0.36, 1);
   position: sticky;
   top: 10px;
@@ -746,7 +228,7 @@ function finishSearchComposition(event: CompositionEvent) {
   padding: 12px 16px;
   border: 1px solid rgba(224, 232, 255, 0.96);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--ptn-surface-soft);
   box-shadow: 0 12px 30px rgba(76, 103, 172, 0.08);
   backdrop-filter: blur(12px);
 }
@@ -777,55 +259,7 @@ function finishSearchComposition(event: CompositionEvent) {
   display: block;
   font-size: 16px;
   line-height: 1.1;
-  color: #0f172a;
-}
-
-.portal-brand__copy span {
-  display: block;
-  font-size: 11px;
-  line-height: 1.2;
-  letter-spacing: 0.04em;
-  color: #64748b;
-}
-
-.portal-nav {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: flex-start;
-  width: 100%;
-  min-width: 0;
-}
-
-.portal-nav__link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1 1 0;
-  min-width: max-content;
-  border: 0;
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 700;
-  text-align: center;
-  color: #334155;
-  text-decoration: none;
-  background: transparent;
-  transition:
-    background-color 140ms ease,
-    color 140ms ease,
-    transform 160ms ease;
-}
-
-.portal-nav__link:hover {
-  color: #1d4ed8;
-}
-
-/* 悬停与选中都只靠字色区分，不再出现浅蓝胶囊底 */
-.portal-nav__link.active {
-  color: #1d4ed8;
-  background: transparent;
+  color: var(--ptn-ink-strong);
 }
 
 .portal-header__tools {
@@ -848,9 +282,9 @@ function finishSearchComposition(event: CompositionEvent) {
   min-height: 42px;
   padding: 0 14px;
   border-radius: 14px;
-  border: 1px solid rgba(191, 219, 254, 0.92);
+  border: 1px solid var(--ptn-line-accent);
   background: rgba(239, 246, 255, 0.94);
-  color: #1d4ed8;
+  color: var(--ptn-accent-ink);
   font-size: 14px;
   font-weight: 800;
   line-height: 1;
@@ -868,7 +302,7 @@ function finishSearchComposition(event: CompositionEvent) {
 .portal-search-menu:focus-visible {
   border-color: rgba(37, 99, 235, 0.34);
   background: rgba(219, 234, 254, 0.96);
-  color: #1d4ed8;
+  color: var(--ptn-accent-ink);
   box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
   transform: translateY(-1px);
 }
@@ -879,288 +313,9 @@ function finishSearchComposition(event: CompositionEvent) {
   place-items: center;
 }
 
-.portal-search {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  flex: 0 1 auto;
-  gap: 9px;
-  width: clamp(220px, 22vw, 320px);
-  min-width: 0;
-  padding: 0 10px 0 12px;
-  min-height: 42px;
-  border-radius: 999px;
-  border: 1px solid rgba(203, 213, 225, 0.86);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
-  color: #64748b;
-  transition:
-    width 300ms var(--portal-nav-motion),
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    color 160ms ease,
-    transform 220ms var(--portal-nav-motion);
-}
-
-.portal-search-scope {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  flex: 0 0 auto;
-  min-width: 64px;
-  padding-right: 9px;
-  border-right: 1px solid rgba(203, 213, 225, 0.82);
-}
-
-.portal-search-scope__trigger {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 58px;
-  min-height: 32px;
-  gap: 7px;
-  padding: 0 17px 0 8px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: #2563eb;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    background-color 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
-}
-
-.portal-search-scope__trigger::after {
-  content: '';
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  width: 0;
-  height: 0;
-  border-right: 4px solid transparent;
-  border-left: 4px solid transparent;
-  border-top: 5px solid currentColor;
-  pointer-events: none;
-  opacity: 0.56;
-  transform: translateY(-25%);
-  transition: transform 160ms ease;
-}
-
-.portal-search-scope__trigger[aria-expanded='true'] {
-  background: rgba(219, 234, 254, 0.86);
-  color: #1d4ed8;
-}
-
-.portal-search-scope__trigger[aria-expanded='true']::after {
-  transform: translateY(-35%) rotate(180deg);
-}
-
-.portal-search-scope__trigger:hover,
-.portal-search-scope__trigger:focus-visible {
-  background: rgba(239, 246, 255, 0.96);
-  color: #1d4ed8;
-  outline: none;
-}
-
-.portal-search-scope__menu {
-  position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
-  z-index: 90;
-  display: grid;
-  width: 112px;
-  gap: 4px;
-  padding: 6px;
-  border: 1px solid rgba(191, 219, 254, 0.92);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 18px 38px rgba(37, 99, 235, 0.16), 0 4px 12px rgba(15, 23, 42, 0.08);
-  backdrop-filter: blur(14px);
-}
-
-.portal-search-scope__option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 34px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: #334155;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 750;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    background-color 140ms ease,
-    color 140ms ease,
-    transform 140ms ease;
-}
-
-.portal-search-scope__option::after {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: transparent;
-}
-
-.portal-search-scope__option:hover,
-.portal-search-scope__option:focus-visible {
-  background: rgba(239, 246, 255, 0.96);
-  color: #1d4ed8;
-  outline: none;
-}
-
-.portal-search-scope__option.active {
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
-  color: #fff;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
-}
-
-.portal-search-scope__option.active::after {
-  background: currentColor;
-}
-
-.portal-search:hover,
-.portal-search:focus-within {
-  border-color: rgba(147, 197, 253, 0.96);
-  background: #fff;
-}
-
-.portal-search.is-input-focused,
-.portal-search.is-input-hovered,
-.portal-search.is-filled {
-  border-color: rgba(147, 197, 253, 0.96);
-  background: #fff;
-}
-
-.portal-search.is-filled {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
-}
-
-.portal-search-field {
-  display: inline-flex;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
-  gap: 9px;
-  align-self: stretch;
-}
-
-.portal-search-field>.t73-icon {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  font-size: 18px;
-  color: var(--73-ink-muted);
-  transition: color 160ms ease;
-}
-
-.portal-search:hover .portal-search-field>.t73-icon,
-.portal-search:focus-within .portal-search-field>.t73-icon,
-.portal-search.is-input-focused .portal-search-field>.t73-icon,
-.portal-search.is-input-hovered .portal-search-field>.t73-icon,
-.portal-search.is-filled .portal-search-field>.t73-icon {
-  color: var(--73-accent);
-}
-
-.portal-search input {
-  flex: 1;
-  min-width: 0;
-  height: 40px;
-  padding-right: 30px;
-  border: 0;
-  outline: 0;
-  appearance: none;
-  background: transparent;
-  caret-color: #2563eb;
-  color: #0f172a;
-  font: inherit;
-  font-size: 14px;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-}
-
-.portal-search input::placeholder {
-  color: #94a3b8;
-  font-weight: 500;
-}
-
-.portal-search input::-webkit-search-cancel-button,
-.portal-search input::-webkit-search-decoration {
-  appearance: none;
-  display: none;
-}
-
-.portal-search-clear {
-  position: absolute;
-  top: 50%;
-  right: 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: #94a3b8;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
-  cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-50%);
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    color 160ms ease,
-    opacity 160ms ease,
-    transform 160ms ease;
-}
-
-.portal-search-clear.is-visible {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.portal-search-clear:disabled {
-  cursor: default;
-}
-
-.portal-search-clear:hover {
-  background: rgba(226, 232, 240, 0.66);
-  color: #475569;
-}
-
-.portal-search-clear:active {
-  transform: translateY(-50%) scale(0.96);
-}
-
-.portal-search-clear:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.16);
-  outline-offset: 2px;
-}
-
 .portal-icon-btn,
 .portal-text-btn,
-.portal-solid-btn,
-.portal-user__trigger {
+.portal-solid-btn {
   border: 0;
   font: inherit;
   cursor: pointer;
@@ -1172,8 +327,8 @@ function finishSearchComposition(event: CompositionEvent) {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  color: #334155;
-  background: rgba(255, 255, 255, 0.94);
+  color: var(--ptn-ink-body);
+  background: var(--ptn-surface-soft);
   border: 1px solid rgba(226, 232, 240, 0.96);
   transition: 160ms ease;
 }
@@ -1186,16 +341,16 @@ function finishSearchComposition(event: CompositionEvent) {
 }
 
 .portal-icon-btn--subscription:hover:not(:disabled) {
-  color: #1d4ed8;
+  color: var(--ptn-accent-ink);
   border-color: rgba(37, 99, 235, 0.28);
-  background: rgba(239, 246, 255, 0.96);
+  background: var(--ptn-accent-wash);
 }
 
 .portal-icon-btn--subscription.is-active,
 .portal-icon-btn--subscription.is-active:hover:not(:disabled) {
-  color: #fff;
+  color: var(--ptn-inverse);
   border-color: rgba(37, 99, 235, 0.5);
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  background: var(--ptn-accent-gradient);
   box-shadow: 0 10px 22px rgba(37, 99, 235, 0.26);
 }
 
@@ -1217,7 +372,7 @@ function finishSearchComposition(event: CompositionEvent) {
   width: 260px;
   padding: 10px;
   border-radius: 18px;
-  border: 1px solid rgba(203, 213, 225, 0.92);
+  border: 1px solid var(--ptn-line-menu);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
   backdrop-filter: blur(12px);
@@ -1228,7 +383,7 @@ function finishSearchComposition(event: CompositionEvent) {
   align-items: center;
   justify-content: space-between;
   padding: 4px 6px 6px;
-  color: #0f172a;
+  color: var(--ptn-ink-strong);
 }
 
 .portal-subscription-menu__head strong {
@@ -1246,7 +401,7 @@ function finishSearchComposition(event: CompositionEvent) {
   border: 1px solid rgba(226, 232, 240, 0.94);
   border-radius: 14px;
   background: rgba(248, 250, 252, 0.86);
-  color: #0f172a;
+  color: var(--ptn-ink-strong);
   cursor: pointer;
   text-align: left;
   font: inherit;
@@ -1260,7 +415,7 @@ function finishSearchComposition(event: CompositionEvent) {
 
 .portal-subscription-item.active {
   border-color: rgba(37, 99, 235, 0.3);
-  background: rgba(239, 246, 255, 0.96);
+  background: var(--ptn-accent-wash);
 }
 
 .portal-subscription-item:disabled {
@@ -1277,7 +432,7 @@ function finishSearchComposition(event: CompositionEvent) {
 .portal-subscription-item__copy strong {
   font-size: 13px;
   line-height: 1.2;
-  color: #0f172a;
+  color: var(--ptn-ink-strong);
 }
 
 .portal-subscription-item__copy small {
@@ -1286,7 +441,7 @@ function finishSearchComposition(event: CompositionEvent) {
   white-space: nowrap;
   font-size: 11px;
   line-height: 1.25;
-  color: #64748b;
+  color: var(--ptn-ink-muted);
 }
 
 .portal-subscription-item__state {
@@ -1298,14 +453,14 @@ function finishSearchComposition(event: CompositionEvent) {
   padding: 0 8px;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.16);
-  color: #64748b;
+  color: var(--ptn-ink-muted);
   font-size: 12px;
   font-weight: 800;
 }
 
 .portal-subscription-item.active .portal-subscription-item__state {
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
-  color: #fff;
+  background: var(--ptn-accent-gradient);
+  color: var(--ptn-inverse);
   box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
 }
 
@@ -1313,7 +468,7 @@ function finishSearchComposition(event: CompositionEvent) {
   padding: 9px 10px;
   border-radius: 10px;
   background: transparent;
-  color: #0f172a;
+  color: var(--ptn-ink-strong);
   font-weight: 700;
   font-size: 13px;
   line-height: 1.2;
@@ -1325,7 +480,7 @@ function finishSearchComposition(event: CompositionEvent) {
 }
 
 .portal-text-btn:hover {
-  color: #1d4ed8;
+  color: var(--ptn-accent-ink);
   background: rgba(239, 246, 255, 0.92);
   box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.34);
   transform: translateY(-1px);
@@ -1338,8 +493,8 @@ function finishSearchComposition(event: CompositionEvent) {
 .portal-solid-btn {
   padding: 9px 14px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
-  color: #fff;
+  background: var(--ptn-accent-gradient);
+  color: var(--ptn-inverse);
   font-weight: 700;
   font-size: 13px;
   box-shadow: 0 10px 20px rgba(37, 99, 235, 0.22);
@@ -1365,179 +520,14 @@ function finishSearchComposition(event: CompositionEvent) {
 
 .portal-text-btn:focus-visible,
 .portal-solid-btn:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.16);
+  outline: 3px solid var(--ptn-focus-halo);
   outline-offset: 2px;
-}
-
-.portal-user {
-  position: relative;
-}
-
-.portal-user__trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 38px;
-  max-width: 320px;
-  padding: 5px 12px 5px 5px;
-  border-radius: 999px;
-  background: rgba(239, 246, 255, 0.95);
-  color: #1d4ed8;
-  font-weight: 700;
-  font-size: 13px;
-  transition:
-    background-color 160ms ease,
-    box-shadow 160ms ease,
-    color 160ms ease;
-}
-
-/* 头像：优先用 `GET /settings/profile` 的 avatar_url；没有（或加载失败）时退回人物剪影 */
-.portal-user__avatar {
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #fff;
-  color: #2563eb;
-  box-shadow: inset 0 0 0 1px rgba(191, 219, 254, 0.9);
-}
-
-.portal-user__avatar--image {
-  overflow: hidden;
-  background: rgba(241, 245, 249, 0.96);
-}
-
-.portal-user__avatar-image {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.portal-user__avatar .t73-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-}
-
-.portal-user__name {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.portal-user__caret {
-  flex: 0 0 auto;
-  width: 14px;
-  height: 14px;
-  font-size: 14px;
-  opacity: 0.72;
-  transition: transform 200ms var(--portal-nav-motion);
-}
-
-.portal-user__trigger:hover,
-.portal-user__trigger.is-open {
-  background: rgba(219, 234, 254, 0.98);
-  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.6);
-}
-
-.portal-user__trigger:hover .portal-user__caret,
-.portal-user__trigger.is-open .portal-user__caret {
-  opacity: 1;
-}
-
-.portal-user__trigger.is-open .portal-user__caret {
-  transform: rotate(180deg);
-}
-
-.portal-user__trigger:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.16);
-  outline-offset: 2px;
-}
-
-.portal-user__menu {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: -16px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 140px;
-  padding: 10px;
-  border-radius: 18px;
-  border: 1px solid rgba(203, 213, 225, 0.92);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
-}
-
-.portal-user-menu-enter-active,
-.portal-user-menu-leave-active {
-  transition:
-    opacity 180ms ease,
-    transform 220ms var(--portal-nav-motion);
-  transform-origin: top right;
-}
-
-.portal-user-menu-enter-from,
-.portal-user-menu-leave-to {
-  opacity: 0;
-  transform: translateY(-8px) scale(0.96);
-}
-
-.portal-user-menu-enter-active .portal-user__menu button {
-  animation: portal-user-menu-item-in 220ms var(--portal-nav-motion) both;
-}
-
-.portal-user-menu-enter-active .portal-user__menu button:nth-child(2) {
-  animation-delay: 35ms;
-}
-
-@keyframes portal-user-menu-item-in {
-  from {
-    opacity: 0;
-    transform: translateX(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.portal-user__menu button {
-  border: 0;
-  background: transparent;
-  text-align: left;
-  padding: 10px 12px;
-  border-radius: 12px;
-  cursor: pointer;
-  color: #0f172a;
-}
-
-.portal-user__menu button:hover {
-  background: rgba(241, 245, 249, 0.98);
-}
-
-.portal-user__menu .danger {
-  color: #dc2626;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .portal-user-menu-enter-active,
-  .portal-user-menu-leave-active,
-  .portal-user-menu-enter-active .portal-user__menu button {
-    animation: none;
-    transition: none;
-  }
 }
 
 @media (max-width: 1180px) {
   .portal-header {
     grid-template-columns: auto max-content minmax(0, 1fr);
-    grid-template-areas: "brand nav tools";
+    grid-template-areas: 'brand nav tools';
     gap: 10px 12px;
     padding: 10px 14px;
   }
@@ -1546,14 +536,12 @@ function finishSearchComposition(event: CompositionEvent) {
     grid-area: brand;
   }
 
-  .portal-nav {
+  /* 导航是子组件的根元素，这里带 `.portal-header` 前缀把布局约束压在它自己的样式之上，
+     不依赖两个文件的注入顺序 */
+  .portal-header .portal-nav {
     grid-area: nav;
     gap: 6px;
     justify-content: space-between;
-  }
-
-  .portal-nav__link {
-    padding: 9px 8px;
   }
 
   .portal-header__tools {
@@ -1561,38 +549,6 @@ function finishSearchComposition(event: CompositionEvent) {
     justify-content: flex-end;
     width: 100%;
     min-width: 0;
-  }
-
-  /* 单行时由搜索框让出宽度，导航保持内容宽度不被压缩 */
-  .portal-search {
-    flex: 0 1 auto;
-    width: 100%;
-    max-width: 300px;
-    min-width: 0;
-  }
-
-  /* 中窄屏更挤：用户胶囊收一号，把宽度还给搜索框 */
-  .portal-user__trigger {
-    gap: 7px;
-    padding: 4px 11px 4px 4px;
-    font-size: 12px;
-  }
-
-  .portal-user__avatar {
-    width: 24px;
-    height: 24px;
-  }
-
-  .portal-user__avatar .t73-icon {
-    width: 14px;
-    height: 14px;
-    font-size: 14px;
-  }
-
-  .portal-user__caret {
-    width: 12px;
-    height: 12px;
-    font-size: 12px;
   }
 }
 
@@ -1602,8 +558,8 @@ function finishSearchComposition(event: CompositionEvent) {
   .portal-header {
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
-      "brand nav"
-      "tools tools";
+      'brand nav'
+      'tools tools';
     gap: 10px 14px;
   }
 
@@ -1613,18 +569,6 @@ function finishSearchComposition(event: CompositionEvent) {
 
   .portal-header__tools {
     width: 100%;
-  }
-
-  .portal-search {
-    width: min(clamp(300px, 52vw, 620px), calc(100% - 240px));
-    max-width: none;
-  }
-
-  /* 单行放不下时（两行版式、窄屏）才允许把用户名截断，桌面端保持完整 */
-  .portal-user__name {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 }
 
@@ -1636,54 +580,16 @@ function finishSearchComposition(event: CompositionEvent) {
     padding: 12px 16px;
   }
 
-  .portal-search {
-    flex: 1 1 100%;
-    width: 100%;
-  }
-
-  .portal-search-scope {
-    min-width: 58px;
-    padding-right: 8px;
-  }
-
-  .portal-search-scope__trigger {
-    min-width: 52px;
-    padding-left: 6px;
-    padding-right: 15px;
-    font-size: 12px;
-  }
-
-  .portal-search-scope__menu {
-    width: 104px;
-  }
-
-  .portal-search:hover,
-  .portal-search:focus-within,
-  .portal-search.is-input-focused,
-  .portal-search.is-input-hovered,
-  .portal-search.is-filled {
-    width: 100%;
-    transform: none;
-  }
-
-  .portal-header__tools,
-  .portal-nav {
+  .portal-header__tools {
     width: 100%;
     flex-wrap: wrap;
   }
 }
 
+/* 移动端首页：顶栏收成一行的搜索条，其余入口交给页面里的宫格。
+   这一档的卡片形态由 styles/unified-top-card.css 的 !important 规则压成白色通栏，
+   所以这里不再重复写 top / margin / padding ——写了也是被覆盖。 */
 @media (max-width: 900px) {
-  .portal-header.app-top-nav--home {
-    top: 0;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-    margin: 0 0 12px;
-    padding: 12px;
-    height: auto;
-    min-height: 66px;
-  }
-
   .portal-header.app-top-nav--home .portal-brand,
   .portal-header.app-top-nav--home .portal-nav,
   .portal-header.app-top-nav--home .portal-subscription,
@@ -1714,11 +620,12 @@ function finishSearchComposition(event: CompositionEvent) {
     background: rgba(248, 251, 255, 0.96);
   }
 
-  .portal-header.app-top-nav--home .portal-search-scope {
+  .portal-header.app-top-nav--home :deep(.portal-search-scope) {
     display: none;
   }
 }
 
+/* 遗留的独立 /dev 页面（开发者入驻协议等）用紧凑版式 */
 @media (max-width: 1180px) {
   .portal-header--dev {
     gap: 8px;
@@ -1748,10 +655,6 @@ function finishSearchComposition(event: CompositionEvent) {
     font-size: 14px;
   }
 
-  .portal-header--dev .portal-brand__copy span {
-    display: none;
-  }
-
   .portal-header--dev .portal-header__tools {
     width: 100%;
     min-width: 0;
@@ -1764,24 +667,26 @@ function finishSearchComposition(event: CompositionEvent) {
     height: 32px;
   }
 
-  .portal-header--dev .portal-user__trigger {
+  /* 用户胶囊是子组件，规则挂在带 `.portal-header` 前缀的选择器上（特异性压过子组件自己的
+     1180 档），保证「dev 版式更紧」这一档仍然生效 */
+  .portal-header.portal-header--dev :deep(.portal-user__trigger) {
     max-width: 190px;
     padding: 4px 10px 4px 4px;
     font-size: 12px;
   }
 
-  .portal-header--dev .portal-user__avatar {
+  .portal-header.portal-header--dev :deep(.portal-user__avatar) {
     width: 24px;
     height: 24px;
   }
 
-  .portal-header--dev .portal-user__name {
+  .portal-header.portal-header--dev :deep(.portal-user__name) {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .portal-header--dev .portal-user__caret {
+  .portal-header.portal-header--dev :deep(.portal-user__caret) {
     display: none;
   }
 }
