@@ -47,6 +47,7 @@ import {
   calculateFinalDepositAmount,
   calculateFinalPaymentAmount,
 } from '@/shared/requirementPayment'
+import { isRequirementContractNotSigned } from '@/shared/requirementPaymentError'
 import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
 import {
   normalizeDevelopmentCycle,
@@ -1397,13 +1398,9 @@ async function submitDepositPayment() {
         )
         return
       }
-    } else if (
-      message.includes(
-        'developer must sign first and user must sign after that before paying deposit',
-      ) ||
-      message.includes('requirement contract must be signed by developer before paying deposit') ||
-      message.includes('contract must be created before paying deposit')
-    ) {
+    } else if (isRequirementContractNotSigned(err)) {
+      // 按后端业务错误码分支（`REQUIREMENT_CONTRACT_NOT_SIGNED`），不拿文案做匹配：
+      // 文案会改、错误码不会。1.x 还在用纯文本错误体，走的是同一条判定里的过渡期兜底。
       TMessage.warning('当前需求需先由开发者（乙方）签署，再由您（甲方）签署协议后，才能支付定金')
     } else {
       TMessage.error(message)
