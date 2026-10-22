@@ -117,12 +117,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/ProfileView.vue",
-      "detail": "666 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/TeamResourcesView.vue",
       "detail": "719 行 > 300（视图）",
       "since": "2026-10-22"
@@ -1329,12 +1323,6 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/views/ProfileView.vue",
-      "detail": "28 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
       "file": "src/views/SearchResultsView.vue",
       "detail": "34 处裸色值",
       "since": "2026-10-22"
@@ -1385,6 +1373,24 @@
       "rule": "raw-color",
       "file": "src/components/payment/purchase-transfer-dialog.css",
       "detail": "3 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/profile/profile-page.css",
+      "detail": "16 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/profile/profile-page-responsive.css",
+      "detail": "7 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/profile/profile-quick-nav.css",
+      "detail": "5 处裸色值",
       "since": "2026-10-23"
     }
   ]

@@ -1,0 +1,150 @@
+@media (max-width: 1180px) {
+  .overview-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-side-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* R047 断点收敛：原档位 760px → 640px */
+@media (max-width: 640px) {
+  .profile-page.page-shell {
+    gap: 12px;
+    padding: 0 0 24px;
+  }
+
+  /* 移动端总览的卡片统一一套语言：白底卡 + 18px 圆角 + 16px 内边距，
+     卡内的次级块（标签、入口区、进度条）一律 #f6f9ff 浅蓝底、无描边，强调色统一用蓝 */
+  .overview-hero {
+    gap: 14px;
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .profile-avatar-button {
+    width: 60px;
+    height: 60px;
+    border: 3px solid #ffffff;
+    font-size: 24px;
+    box-shadow: 0 8px 18px rgba(76, 103, 172, 0.18);
+  }
+
+  .profile-avatar-button small {
+    padding: 3px 0;
+    font-size: 10px;
+  }
+
+  /* 用户名可点进个人主页：移动端补一个箭头提示 */
+  .overview-hero__name-link::after {
+    content: '›';
+    margin-left: 6px;
+    color: #94a3b8;
+    font-weight: 600;
+  }
+
+  /* 头像行只剩头像 + 用户名，单列排布即可 */
+  .overview-hero__head {
+    align-items: center;
+    gap: 10px;
+  }
+
+  .overview-hero__body {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .overview-hero__identity {
+    gap: 12px;
+  }
+
+  .overview-hero__head h1 {
+    margin-top: 0;
+    font-size: 19px;
+    font-weight: 800;
+  }
+
+  .overview-hero__head p {
+    margin-top: 4px;
+    color: #64748b;
+    font-size: 13px;
+  }
+
+  /* 邮箱与订阅状态压成一行：邮箱过长时省略，订阅状态不缩 */
+  .overview-hero__chips {
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-top: 0;
+  }
+
+  .overview-hero__chips span {
+    min-height: 26px;
+    max-width: 100%;
+    padding: 4px 10px;
+    overflow: hidden;
+    border-color: transparent;
+    background: #f6f9ff;
+    color: #475569;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .overview-hero__chips span:first-child {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .overview-hero__chips span:last-child {
+    flex: 0 0 auto;
+  }
+
+  /* 移动端最近沟通走底部导航「消息」与顶栏「会话」读数，总览里不再铺一块 */
+  .overview-panel--messages {
+    display: none;
+  }
+
+  /* 快捷入口改成头像卡里的四宫格图标，右侧面板整列收起 */
+  .overview-side-stack {
+    display: none;
+  }
+
+  /* 移动端：主页走「点用户名」，操作区整排收起 */
+  .overview-hero__actions {
+    display: none;
+  }
+
+  .overview-focus-panel,
+  .overview-panel {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  /* 头像卡与需求进度合成一张卡：上下两半去掉相接处的圆角与描边，中间只留一条内缩分隔线。
+     阴影一并去掉——后一个兄弟的阴影会画在前一个的底色上，接缝处会露出一道灰影。 */
+  .overview-hero {
+    border-bottom: 0;
+    border-radius: 18px 18px 0 0;
+    box-shadow: none;
+  }
+
+  .overview-focus-panel {
+    position: relative;
+    margin-top: -12px;
+    border-top: 0;
+    border-radius: 0 0 18px 18px;
+    box-shadow: none;
+  }
+
+  .overview-focus-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 16px;
+    left: 16px;
+    height: 1px;
+    background: rgba(224, 232, 255, 0.96);
+  }
+}
