@@ -6,6 +6,7 @@ import {
   buildSecurityGroups,
   buildSettleEntries,
 } from '@/shared/accountEntryRows'
+import type { SettleAccountStage } from '@/shared/settleAccountStage'
 import { TMessage } from 'ui_73info'
 
 /**
@@ -65,7 +66,7 @@ export type AccountEntryGroupsOptions = {
   }
   /** 结算域：四态进度、缺资料清单、渠道原话与注销入口的开关。 */
   settle: {
-    stage: Ref<'none' | 'reviewing' | 'failed' | 'ready' | 'bound'>
+    stage: Ref<SettleAccountStage>
     underReview: Ref<boolean>
     underReviewText: Ref<string>
     subjectMismatch: Ref<boolean>

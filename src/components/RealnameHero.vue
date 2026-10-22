@@ -5,6 +5,7 @@ import { TTag } from 'ui_73info'
 
 import { getMyAdapayMember } from '@/api/adapay'
 import { getMyRealnameVerification, type UserRealnameVerification } from '@/api/realname'
+import { isSettleRejected, isSettleUnderReview } from '@/shared/settleAccountStage'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -93,11 +94,10 @@ const settleAccountText = computed(() => {
  * 所以这一格如实写「审核中」——写成「未设置」会让用户以为要自己再点一次绑定，
  * 而实际是渠道还没放行。（企业会员自 2026-10-05 起改在「结算账户」那一步创建，
  * 所以这条提示更常出现在个人主体上。）
+ *
+ * 口径见 `@/shared/settleAccountStage`，与账户页那一份同源。
  */
-const settleUnderReview = computed(() => {
-  const status = adapayMember.value?.onboardingStatus
-  return status === 'under_review' || status === 'pending'
-})
+const settleUnderReview = computed(() => isSettleUnderReview(adapayMember.value?.onboardingStatus))
 
 /**
  * 渠道已明确拒绝开通收款账户（企业开户审核未通过 / 审核通过但开户失败）。
@@ -105,8 +105,9 @@ const settleUnderReview = computed(() => {
  * 后端把渠道 `audit_state` 翻成了 `onboarding_status = failed` 与一句中文原因
  * （`providerError`）。这一格的价值在于：实名认证是「已通过」的，但收款账户并没有开通，
  * 只说实名那一句会让用户以为钱能收了。
+ * 口径见 `@/shared/settleAccountStage`。
  */
-const settleRejected = computed(() => adapayMember.value?.onboardingStatus === 'failed')
+const settleRejected = computed(() => isSettleRejected(adapayMember.value?.onboardingStatus))
 
 const heroDesc = computed(() => {
   if (current.value?.status === 'approved') {

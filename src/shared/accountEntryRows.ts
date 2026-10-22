@@ -22,8 +22,7 @@ import {
 
 import { providerLabel } from './accountEntries'
 import type { AccountEntry, AccountEntryGroup, AccountEntryStatus } from './accountEntries'
-// 只借一个类型（`import type` 编译后不留引用，不构成「shared 依赖 composables」的运行环）。
-import type { SettleStage } from '@/composables/useSettlementAccount'
+import type { SettleAccountStage } from '@/shared/settleAccountStage'
 
 /** 实名认证这一组要看的状态：身份域（状态口径 / 文案 / 主体）与核身域（恢复中 / 撤回中）。 */
 export type IdentityRowsState = {
@@ -132,7 +131,7 @@ export function buildIdentityEntries(state: IdentityRowsState): AccountEntry[] {
 
 /** 「收款与结算」这一组要看的状态：结算域的四态进度与缺资料清单，另有 `approved` 来自实名域。 */
 export type SettleRowsState = {
-  stage: SettleStage
+  stage: SettleAccountStage
   underReview: boolean // 会员还在渠道审核：入口行禁用，点进去也绑不上
   underReviewText: string
   subjectMismatch: boolean // 已绑的卡还挂在旧主体上

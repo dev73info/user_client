@@ -28,6 +28,7 @@ import { useFaceidChallenge } from '@/composables/useFaceidChallenge'
 import { useRealnameFormDraft } from '@/composables/useRealnameFormDraft'
 import { useRealnameIdentity } from '@/composables/useRealnameIdentity'
 import type { AdapayMemberStatus } from '@/composables/useSettlementAccount'
+import { shouldRecheckRealnameResult } from '@/shared/realnameRecheck'
 import { TCard } from 'ui_73info'
 
 const auth = useAuthStore()
@@ -158,7 +159,8 @@ onMounted(async () => {
   // 只有「处理中」才需要问结果：流水号由后端从库里取，前端不再持有任何渠道凭证。
   // 已通过 / 已驳回时不必再打这个接口——它是一次「回查」，每次打开账户页都往渠道跑一趟
   // 没有意义（该端点在历史版本里会连带重放「实名通过」的副作用，把企业开户一遍遍送审）。
-  if (!identity.current.value || identity.current.value.status === 'pending') {
+  // 口径见 `@/shared/realnameRecheck`（BUG-014）。
+  if (shouldRecheckRealnameResult(identity.current.value?.status)) {
     await faceid.checkWechatFaceidResult({ silent: true })
   }
   // 刷新后尝试恢复丢失的爱签二维码（若仍未完成人脸核身）

@@ -11,6 +11,13 @@ import {
 } from '@/api/adapay'
 import type { UserRealnameVerification } from '@/api/realname'
 import { missingEnterpriseOnboardingLabels } from '@/shared/realnameMaterials'
+import {
+  isSettleBound,
+  isSettleRejected,
+  isSettleUnderReview,
+  settleAccountStage,
+  settleProviderErrorText,
+} from '@/shared/settleAccountStage'
 import { useAuthStore } from '@/stores/auth'
 import { getSettlementCities, prepareSettlementAccount } from '@/utils/settlementAccount'
 import { TMessage } from 'ui_73info'
@@ -28,9 +35,6 @@ export type SettlementAccountOptions = {
   /** 当前实名主体是不是企业 / 个体工商户：决定绑对公账户还是个人银行卡。 */
   isEnterpriseSubject: () => boolean
 }
-
-/** 收款账户在渠道侧的进度：会员没开通 / 审核中 / 可绑卡 / 已绑卡，外加渠道给了否定结论。 */
-export type SettleStage = 'none' | 'reviewing' | 'failed' | 'ready' | 'bound'
 
 /**
  * 会员状态的类型直接复用 `@/api/adapay` 那一份，不在这里重写一份投影：视图只需要这个类型，
@@ -59,18 +63,13 @@ export function useSettlementAccount(options: SettlementAccountOptions) {
     bank_acct_type: '2',
   })
 
-  /** 是否已绑定结算账户（决定提交时走「绑定」还是「更换」接口） */
-  const settleBound = computed(() => Boolean(adapayMember.value?.settleAccountId))
+  /** 是否已绑定结算账户（决定提交时走「绑定」还是「更换」接口）。口径见 `@/shared/settleAccountStage`。 */
+  const settleBound = computed(() => isSettleBound(adapayMember.value?.settleAccountId))
 
-  /** 四态分开看：「会员没开通」与「开通了没绑卡」是两件事；`failed` 也不能并进 `none`。 */
-  const settleStage = computed<SettleStage>(() => {
-    if (settleBound.value) return 'bound'
-    const status = adapayMember.value?.onboardingStatus
-    if (status === 'pending' || status === 'under_review') return 'reviewing'
-    if (status === 'active') return 'ready'
-    if (status === 'failed') return 'failed'
-    return 'none'
-  })
+  /** 四态分开看：`failed` 是「去整改」不是「等」。口径见 `@/shared/settleAccountStage`。 */
+  const settleStage = computed(() =>
+    settleAccountStage(adapayMember.value?.onboardingStatus, adapayMember.value?.settleAccountId),
+  )
 
   /** 已绑的卡是否还挂在旧主体上：主体变更后渠道侧账户不会自动跟着换，必须先说清原因。 */
   const settleSubjectMismatch = computed(() => {
@@ -98,11 +97,10 @@ export function useSettlementAccount(options: SettlementAccountOptions) {
     missingEnterpriseOnboardingLabels(realname.value).join('、'),
   )
 
-  /** 渠道会员是否还在审核中（企业会员开通要走渠道审核，这期间绑不了对公账户）。 */
-  const settleUnderReview = computed(() => {
-    const status = adapayMember.value?.onboardingStatus
-    return status === 'under_review' || status === 'pending'
-  })
+  /** 渠道会员是否还在审核中：审核期间绑不了对公账户。口径见 `@/shared/settleAccountStage`。 */
+  const settleUnderReview = computed(() =>
+    isSettleUnderReview(adapayMember.value?.onboardingStatus),
+  )
 
   /** 「审核中」那句提示：企业与个人绑的不是同一种账户，不能共用一句写死对公账户的话。 */
   const settleUnderReviewText = computed(() =>
@@ -112,15 +110,16 @@ export function useSettlementAccount(options: SettlementAccountOptions) {
   )
 
   /** `onboarding_status = failed` 是唯一表示「渠道给了否定结论」的取值。 */
-  const settleRejected = computed(() => adapayMember.value?.onboardingStatus === 'failed')
+  const settleRejected = computed(() => isSettleRejected(adapayMember.value?.onboardingStatus))
 
   /** 渠道侧最近一次拒绝的原话；已开通且卡还在时不提旧伤，换卡失败解绑时必留。 */
-  const settleProviderError = computed(() => {
-    const member = adapayMember.value
-    const error = (member?.providerError ?? '').trim()
-    if (!error) return ''
-    return member?.onboardingStatus === 'active' && member.settleAccountId ? '' : error
-  })
+  const settleProviderError = computed(() =>
+    settleProviderErrorText(
+      adapayMember.value?.onboardingStatus,
+      adapayMember.value?.providerError,
+      adapayMember.value?.settleAccountId,
+    ),
+  )
 
   const settleCities = computed(() => getSettlementCities(settleForm.prov_code))
 
