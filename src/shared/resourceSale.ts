@@ -1,5 +1,7 @@
 /** 资源付费售卖：价格展示、下载闸与退款分支的纯函数。 */
 
+import { isApiResourceKind } from '@/shared/resourceApi'
+
 export type ResourceSaleLike = {
   price_fen?: number | null
   price_points?: number | null
@@ -333,6 +335,38 @@ export function needsPurchase(input: {
     return false
   }
   return !canBuyerDownload(input)
+}
+
+/**
+ * 接口资源在平台内没有购买入口时的统一引导文案（BUG-020）。
+ *
+ * 与后端 409 的口径一致：接口资源只能由开发者站点的服务端通过开放接口下单。
+ */
+export const API_RESOURCE_PURCHASE_HINT = '接口资源不在平台内售卖，请到开发者站点下单'
+
+/**
+ * 平台内购买入口（现金购 / 积分购）是否对这个资源开放。
+ *
+ * BUG-020：接口资源只由开发者自有站点的服务端通过开放接口下单，平台内的两条入口对它一律无效——
+ * 后端会以 409 拒掉。详情页因此不给接口资源开平台内购买入口，只给「到开发者站点下单」的引导，
+ * 免得用户点进去只拿到一句后端报错。
+ */
+export function canPurchaseOnPlatform(input: {
+  priceFen?: number | null
+  pricePoints?: number | null
+  purchasedByMe?: boolean | null
+  isOwner?: boolean | null
+  resourceKind?: string | null
+}): boolean {
+  if (isApiResourceKind(input.resourceKind)) {
+    return false
+  }
+  return needsPurchase({
+    priceFen: input.priceFen,
+    pricePoints: input.pricePoints,
+    purchasedByMe: input.purchasedByMe,
+    isOwner: input.isOwner,
+  })
 }
 
 /** 下载 403 是否应引导购买。 */
