@@ -21,12 +21,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/components/PortalTopNav.vue",
-      "detail": "694 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/components/ShareCardGenerator.vue",
       "detail": "494 行 > 400（模块）",
       "since": "2026-10-22"
@@ -591,8 +585,14 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/PortalTopNav.vue",
-      "detail": "60 处裸色值",
+      "file": "src/components/portal-top-nav-bar.css",
+      "detail": "53 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/portal-top-nav-actions.css",
+      "detail": "7 处裸色值",
       "since": "2026-10-22"
     },
     {
