@@ -51,12 +51,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/mock/db.ts",
-      "detail": "1082 行 > 300（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/mock/index.ts",
       "detail": "442 行 > 300（模块）",
       "since": "2026-10-22"
