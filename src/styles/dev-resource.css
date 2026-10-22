@@ -509,6 +509,19 @@
   min-width: 0;
 }
 
+/* 读数与小号「签署协议」同一行：读数可缩（省略号照旧），按钮不缩 */
+.dev-page--publish .dev-submit-summary__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dev-page--publish .dev-submit-summary__row .dev-submit-summary__status {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 .dev-page--publish .dev-submit-summary__status {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1177,17 +1190,10 @@
   margin: 0 0 16px;
 }
 
+/* 协议未签提示：签署按钮在 TAlert 的 #actions 里，随提示框一起排（窄屏整块换行），
+   这里只管与下一个区块的间距——旧写法里并排 flex 与 420px 基线不再需要 */
 .dev-api-agreement-notice {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
   margin: 0 0 16px;
-}
-
-.dev-api-agreement-notice > :first-child {
-  flex: 1 1 420px;
-  margin: 0;
 }
 
 /* R028 接口资源配置区 */

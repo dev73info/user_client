@@ -6,6 +6,9 @@ import { TButton, TIcon, MagicStick } from 'ui_73info'
  *
  * 接口资源只有一条「创建接口」（没有公开申请：接口资源不进大厅、没有公开主页），
  * 普通资源可选私有项目或公开申请。读数与按钮的禁用都由父级的 `canSubmit` 一把控制。
+ *
+ * 协议未签（`needsApiAgreement`）时读数旁多一个小号「签署协议」：提示在页面顶部，
+ * 但改完表单才想起没签的人会滚到这儿，不必再滚回去找那个按钮。
  */
 defineProps<{
   canSubmit: boolean
@@ -14,19 +17,33 @@ defineProps<{
   submitting: boolean
   entryLabel: string
   selectedTagCount: number
+  /** 接口资源未签《接口使用协议》：提交条上补一个小号签署入口 */
+  needsApiAgreement?: boolean
 }>()
 
 const emit = defineEmits<{
   submit: [mode: 'private' | 'public']
+  signAgreement: []
 }>()
 </script>
 
 <template>
   <footer class="dev-upload-actions dev-upload-actions--split" :class="{ 'is-ready': canSubmit }">
     <section class="dev-submit-summary">
-      <span class="dev-submit-summary__status">{{
-        canSubmit ? '准备就绪' : submitBlockReason
-      }}</span>
+      <div class="dev-submit-summary__row">
+        <span class="dev-submit-summary__status">{{
+          canSubmit ? '准备就绪' : submitBlockReason
+        }}</span>
+        <TButton
+          v-if="needsApiAgreement"
+          variant="outline"
+          tone="accent"
+          size="sm"
+          @click="emit('signAgreement')"
+        >
+          签署协议
+        </TButton>
+      </div>
       <span class="dev-submit-summary__meta">{{
         isApiKind ? '接口资源 · 原创' : `${entryLabel} · ${selectedTagCount} 个标签`
       }}</span>

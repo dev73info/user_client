@@ -115,16 +115,20 @@ const {
       @back="goBack"
     />
 
-    <section v-if="needsApiAgreement" class="dev-api-agreement-notice">
-      <TAlert
-        tone="warning"
-        variant="soft"
-        title="请先签署《接口使用协议》"
-      />
-      <TButton variant="solid" tone="accent" @click="goSignApiAgreement">
-        去签署接口使用协议
-      </TButton>
-    </section>
+    <!-- 协议未签：签署按钮进 TAlert 的 #actions，排在提示框内右侧（窄屏整块换行） -->
+    <TAlert
+      v-if="needsApiAgreement"
+      tone="warning"
+      variant="soft"
+      class="dev-api-agreement-notice"
+      title="请先签署《接口使用协议》"
+    >
+      <template #actions>
+        <TButton variant="solid" tone="accent" @click="goSignApiAgreement">
+          去签署接口使用协议
+        </TButton>
+      </template>
+    </TAlert>
 
     <div class="dev-upload-layout">
       <TCard class="dev-surface-card dev-upload-combined-card">
@@ -206,7 +210,9 @@ const {
           :submitting="submitting"
           :entry-label="currentEntryLabel"
           :selected-tag-count="selectedTagCount"
+          :needs-api-agreement="needsApiAgreement"
           @submit="submitResource"
+          @sign-agreement="goSignApiAgreement"
         />
       </TCard>
     </div>

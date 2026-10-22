@@ -147,17 +147,21 @@ const {
       :description="RESOURCE_ARCHIVE_LOCKED_MESSAGE"
     />
 
-    <section v-if="channel.needsApiAgreement.value" class="dev-api-agreement-notice">
-      <TAlert
-        tone="warning"
-        variant="soft"
-        title="请先签署《接口使用协议》"
-        description="该接口资源需要补签协议后才能继续编辑或配置；补签前开放下单也会暂停。"
-      />
-      <TButton variant="solid" tone="accent" @click="channel.goSignApiAgreement">
-        去签署接口使用协议
-      </TButton>
-    </section>
+    <!-- 协议未签：签署按钮进 TAlert 的 #actions，排在提示框内右侧（窄屏整块换行） -->
+    <TAlert
+      v-if="channel.needsApiAgreement.value"
+      tone="warning"
+      variant="soft"
+      class="dev-api-agreement-notice"
+      title="请先签署《接口使用协议》"
+      description="该接口资源需要补签协议后才能继续编辑或配置；补签前开放下单也会暂停。"
+    >
+      <template #actions>
+        <TButton variant="solid" tone="accent" @click="channel.goSignApiAgreement">
+          去签署接口使用协议
+        </TButton>
+      </template>
+    </TAlert>
 
     <TLoading
       tag="section"
