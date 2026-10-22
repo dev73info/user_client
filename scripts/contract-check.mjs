@@ -126,7 +126,9 @@ function generate(target) {
     console.error(`  原始报错：${error.message}`)
     if (PNPM.fromEnv) {
       console.error('  PNPM_JS_ENTRY 指定的入口能跑起来，但它不是 pnpm 的入口——')
-      console.error('  指向 pnpm 自己的 JS 入口文件（形如 ...\\node_modules\\pnpm\\bin\\pnpm.cjs）。')
+      console.error(
+        '  指向 pnpm 自己的 JS 入口文件（形如 ...\\node_modules\\pnpm\\bin\\pnpm.cjs）。',
+      )
     }
     process.exit(1)
   }
@@ -137,7 +139,9 @@ function generate(target) {
     console.error(`  期望路径：${target}`)
     if (PNPM.fromEnv) {
       console.error('  PNPM_JS_ENTRY 指定的入口能跑，但它不是 pnpm——')
-      console.error('  指向 pnpm 自己的 JS 入口文件（形如 ...\\node_modules\\pnpm\\bin\\pnpm.cjs）。')
+      console.error(
+        '  指向 pnpm 自己的 JS 入口文件（形如 ...\\node_modules\\pnpm\\bin\\pnpm.cjs）。',
+      )
     }
     process.exit(1)
   }
@@ -160,7 +164,9 @@ try {
     // 入口文件存在，但用它跑 pnpm 失败——多半指错了文件。
     console.error('✗ PNPM_JS_ENTRY 指定的入口跑不起来。')
     console.error('  它指向的文件存在，但用 node 跑它没法执行 pnpm 的命令。')
-    console.error('  确认它指向的是 pnpm 自己的 JS 入口文件（形如 ...\\node_modules\\pnpm\\bin\\pnpm.cjs）。')
+    console.error(
+      '  确认它指向的是 pnpm 自己的 JS 入口文件（形如 ...\\node_modules\\pnpm\\bin\\pnpm.cjs）。',
+    )
     process.exit(1)
   } else {
     openapiTypescriptReady = false
