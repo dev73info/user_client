@@ -28,9 +28,7 @@ const allResources = ref<PublicMcResourceItem[]>([])
 const failedAvatarUrl = ref(false)
 
 const teamResources = computed(() =>
-  allResources.value.filter(
-    (r) => r.ownership_type === 'team' && r.team_id === teamId.value,
-  ),
+  allResources.value.filter((r) => r.ownership_type === 'team' && r.team_id === teamId.value),
 )
 
 const stats = computed(() => ({
@@ -68,9 +66,12 @@ function onAvatarError() {
 function openResource(resource: PublicMcResourceItem) {
   const selections = resource.tag_selections ?? []
   const rootName = selections.find((s) => s.group_path.length > 0)?.group_path[0] ?? ''
-  const entryName = selections.find((s) => s.group_path.length > 1)?.group_path[1] ?? (resource.platform || '')
-  const rootAlias = selections.find((s) => (s.group_path_aliases?.length ?? 0) > 0)?.group_path_aliases?.[0] ?? ''
-  const entryAlias = selections.find((s) => (s.group_path_aliases?.length ?? 0) > 1)?.group_path_aliases?.[1] ?? ''
+  const entryName =
+    selections.find((s) => s.group_path.length > 1)?.group_path[1] ?? (resource.platform || '')
+  const rootAlias =
+    selections.find((s) => (s.group_path_aliases?.length ?? 0) > 0)?.group_path_aliases?.[0] ?? ''
+  const entryAlias =
+    selections.find((s) => (s.group_path_aliases?.length ?? 0) > 1)?.group_path_aliases?.[1] ?? ''
   const rootSlug = rootAlias || getTagRouteSlug(rootName)
   const entrySlug = entryAlias || getTagRouteSlug(entryName)
   const resourceSlug = getResourceDetailSlug(resource.id, resource.creator || resource.author)
