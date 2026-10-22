@@ -102,7 +102,9 @@ export type NotificationSources = {
 export function buildNotificationCards(sources: NotificationSources): NotificationCard[] {
   const cards = [
     ...(sources.warnings ?? []).map(buildCommentWarningCard),
-    ...(sources.disclosures ?? []).map((item) => buildHistoryDisclosureCard(item, sources.username)),
+    ...(sources.disclosures ?? []).map((item) =>
+      buildHistoryDisclosureCard(item, sources.username),
+    ),
     ...(sources.transferInbox ?? []).map(buildIncomingTransferCard),
     ...(sources.myTransfers ?? []).map(buildOutgoingTransferCard),
     ...(sources.afterSales ?? []).map(buildAfterSalesCard),
@@ -130,7 +132,10 @@ function buildCommentWarningCard(warning: CommentWarning): NotificationCard {
     kindLabel: NOTIFICATION_KIND_LABELS['comment-warning'],
     title: warning.comment_type === 'resource' ? '资源评论被平台警告' : '社区评论被平台警告',
     // 原评论与原因分两行：原因往往是长句，与快照挤在一行会把快照截掉，而快照是用户唯一能对照的内容。
-    body: [`原评论：${warning.comment_snapshot || '（内容已不可见）'}`, `警告原因：${warning.reason}`],
+    body: [
+      `原评论：${warning.comment_snapshot || '（内容已不可见）'}`,
+      `警告原因：${warning.reason}`,
+    ],
     meta: `${warning.created_at} · 操作人 ${warning.operator}`,
     createdAt: warning.created_at,
     sortTime: parseNoticeTime(warning.created_at),
@@ -283,9 +288,7 @@ function buildOutgoingTransferCard(transfer: ResourceTransferPayload): Notificat
 function buildAfterSalesCard(row: AfterSalesCase): NotificationCard {
   const expectation = afterSalesExpectationLabel(row)
   const claim =
-    row.claimAmountFen > 0
-      ? `${expectation}（主张金额 ${row.claimAmountCny} 元）`
-      : expectation
+    row.claimAmountFen > 0 ? `${expectation}（主张金额 ${row.claimAmountCny} 元）` : expectation
   return {
     key: `after-sales-${row.id}`,
     kind: 'after-sales',
@@ -320,7 +323,10 @@ function buildAnnouncementCard(post: CommunityPost): NotificationCard {
 
 /** 公告正文摘要：富文本先净化再剥标签，与我的收藏的预览同一做法（sanitizeHtml 已在前端过一次）。 */
 export function announcementPreview(contentHtml: string, limit = 140): string {
-  const text = sanitizeRichHtml(contentHtml).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+  const text = sanitizeRichHtml(contentHtml)
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
   if (!text) {
     return '点击查看公告全文。'
   }
