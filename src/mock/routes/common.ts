@@ -153,7 +153,10 @@ const routes: MockRoute[] = [
 
       profileOverrides[profile.id] = store
 
-      return jsonResponse({ username: (store.username as string | undefined) ?? profile.username, token: '' })
+      return jsonResponse({
+        username: (store.username as string | undefined) ?? profile.username,
+        token: '',
+      })
     },
   },
   {
@@ -190,7 +193,8 @@ const routes: MockRoute[] = [
       profileOverrides[profile.id] = store
 
       return jsonResponse({
-        subscribe_official_activity: (store.subscribe_official_activity as boolean | undefined) ?? true,
+        subscribe_official_activity:
+          (store.subscribe_official_activity as boolean | undefined) ?? true,
         subscribe_dev_hall_deposit_paid:
           (store.subscribe_dev_hall_deposit_paid as boolean | undefined) ?? profile.id === 'dev',
       })
@@ -528,8 +532,7 @@ const routes: MockRoute[] = [
     method: 'GET',
     path: '/support/channels/public',
     note: '客服渠道开关（首页在线客服浮窗据此显示）',
-    handler: () =>
-      jsonResponse([{ channel_key: 'online', label: '在线客服', enabled: true }]),
+    handler: () => jsonResponse([{ channel_key: 'online', label: '在线客服', enabled: true }]),
   },
   {
     method: 'GET',
@@ -541,8 +544,7 @@ const routes: MockRoute[] = [
     method: 'GET',
     path: '/support/conversations/:id',
     note: '会话详情',
-    handler: (_request, params) =>
-      textResponse(`mock 没有会话 ${params.id ?? ''}`, 404),
+    handler: (_request, params) => textResponse(`mock 没有会话 ${params.id ?? ''}`, 404),
   },
   {
     method: 'POST',
@@ -594,8 +596,7 @@ const routes: MockRoute[] = [
     method: 'GET',
     path: '/adapay/availability',
     note: '电签担保可用性：mock 一律可用，发布需求时能选到担保模式',
-    handler: () =>
-      jsonResponse({ paymentReady: true, escrowBetaOnly: false, escrowAllowed: true }),
+    handler: () => jsonResponse({ paymentReady: true, escrowBetaOnly: false, escrowAllowed: true }),
   },
   {
     method: 'GET',
