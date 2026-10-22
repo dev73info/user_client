@@ -4,59 +4,36 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { HttpError, apiUrl } from '@/api/http'
 import {
-  createPublicMcResourceComment,
   downloadPublicMcResourceVersionFile,
   extractResourceFileNameFromUrl,
   getPublicMcResource,
   invalidateResourceListCache,
-  likePublicMcResource,
-  listPublicMcResourceComments,
   listPublicMcResourceVersions,
-  unlikePublicMcResource,
   resolveResourceDownloadFileName,
-  with73Extension,
-  type PublicMcResourceCommentItem,
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
 import {
-  createResourcePurchase,
-  type ResourcePurchaseOrder,
-} from '@/api/resourcePurchase'
-import { getAdapayClientPlatform } from '@/api/adapay'
-import { getWechatPaymentAuthorizationStatus, getWechatPaymentAuthorizeUrl } from '@/api/auth'
-import {
-  canReuseCashQrForChannel,
-  fenToYuanText,
   formatResourcePriceLabel,
   isPointsResource,
   isPricedResource,
   isPurchaseRequiredError,
   needsPurchase as resourceNeedsPurchase,
-  normalizePromoCode,
-  type ResourcePayChannelUi,
 } from '@/shared/resourceSale'
-import { isWechatBrowser } from '@/shared/auth/browser'
-import { getMyPoints } from '@/api/points'
 import { useAuthStore } from '@/stores/auth'
 import { useDownloadStore } from '@/stores/download'
-import { useResourceDownload } from '@/composables/useResourceDownload'
-import { useResourcePayment } from '@/composables/useResourcePayment'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
+import { useResourceDownload } from '@/composables/useResourceDownload'
+import { useResourceLike } from '@/composables/useResourceLike'
+import { useResourcePurchase } from '@/composables/useResourcePurchase'
 // 富文本管线（Markdown / 清洗 / 代码块高亮 / 表格包裹）在 utils 里，组件只落一次调用；
 // 配套的正文排版在全局样式 `styles/resource-rich-text.css`（v-html 产物没有 data-v）。
 import { formatHomepageContent } from '@/utils/resourceRichText'
+import ResourceCommentSection from '@/components/resource-detail/ResourceCommentSection.vue'
+import ResourcePurchaseDialog from '@/components/resource-detail/ResourcePurchaseDialog.vue'
+import ResourceVersionList from '@/components/resource-detail/ResourceVersionList.vue'
 import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 import { TLoading, TMessage } from 'ui_73info'
-
-type CommentGate = {
-  title: string
-  description: string
-  actionLabel: string
-  action: 'login' | 'realname' | ''
-}
-
-const COMMENT_MAX_LENGTH = 300
 
 /**
  * 资源详情面板：资源列表页（ResourceCatalogView）里就地渲染的详情内容。
@@ -95,57 +72,30 @@ const loading = ref(false)
 const loadError = ref('')
 const resource = ref<PublicMcResourceItem | null>(null)
 const versions = ref<PublicMcResourceVersionItem[]>([])
-const expandedVersionIds = ref<number[]>([])
-function isVersionNoteExpanded(versionId: number): boolean {
-  return expandedVersionIds.value.includes(versionId)
-}
-function toggleVersionNote(versionId: number) {
-  const index = expandedVersionIds.value.indexOf(versionId)
-  if (index >= 0) {
-    expandedVersionIds.value.splice(index, 1)
-  } else {
-    expandedVersionIds.value.push(versionId)
-  }
-}
-const comments = ref<PublicMcResourceCommentItem[]>([])
-const commentsLoading = ref(false)
-const commentSubmitting = ref(false)
-const commentText = ref('')
-const likeSubmitting = ref(false)
 const pageContentRef = ref<HTMLElement | null>(null)
-const purchasePanelOpen = ref(false)
-const purchaseSubmitting = ref(false)
-const purchaseChannel = ref<ResourcePayChannelUi>('alipay')
 /**
- * 购买失败原因：原样透传后端返回的文案（后端 409/500 的响应体会被 requestJson 读成
- * HttpError.message）。toast 只停留 2.6 秒，失败后用户常常看不到原因就重复下单，
- * 所以在弹窗内再持久展示一次。
- */
-const purchaseError = ref('')
-const buyerPointsBalance = ref<number | null>(null)
-/** 切换支付渠道防抖，避免连点支付宝/微信刷出一堆订单 */
-let channelSwitchTimer: ReturnType<typeof setTimeout> | null = null
-/** 下单串行队列：同一时刻只跑一笔，避免并发抢改同一条 pending */
-let purchaseSubmitChain: Promise<void> = Promise.resolve()
-
-/**
- * 支付面（订单 / 二维码 / 世代号）与轮询统一由 `useResourcePayment` 管理。
- * 支付面世代号：每次作废（切渠道 / 重新拉单）递增；下单响应、轮询响应、二维码渲染
- * 都必须持有当前世代号，过期的一律丢弃，不得把旧渠道单重新挂回可付款面（R031）。
+ * 购买（下单 / 渠道 / 支付面与轮询 / 积分余额）全在 `useResourcePurchase` 里：
+ * 下单串行队列、支付面世代号、切渠道防抖都原样搬了过去，这里只接状态与动作。
+ * `refreshDetail` 留在本组件——资源实体由这里持有，付完要重取一次详情（含 `purchased_by_me`）。
  */
 const {
+  panelOpen: purchasePanelOpen,
+  submitting: purchaseSubmitting,
+  channel: purchaseChannel,
+  error: purchaseError,
+  buyerPointsBalance,
   order: purchaseOrder,
   qrDataUrl: purchaseQrDataUrl,
-  generation: purchaseSurfaceGeneration,
-  stopPoll: stopPurchasePoll,
-  invalidateSurface: invalidatePurchaseSurface,
-  renderQr: maybeRenderPurchaseQr,
-  startPoll: startPurchasePoll,
-  pollOnce: pollPurchaseOnce,
-} = useResourcePayment({
-  getToken: () => auth.token,
-  onPaid: (order) => handlePurchasePaid(order),
-  notifyClosed: () => TMessage.warning('支付未完成，请重新发起购买'),
+  showPromoHint,
+  open: openPurchasePanel,
+  close: closePurchasePanel,
+  selectChannel: selectPurchaseChannel,
+  submit: submitPurchase,
+} = useResourcePurchase({
+  getResourceId: () => resource.value?.id ?? null,
+  isPointsListing: () => isPointsListing.value,
+  getPromoShareBps: () => Number(resource.value?.promo_share_bps ?? 0),
+  refreshDetail: refreshResourceDetail,
 })
 
 const tagNames = computed(
@@ -233,28 +183,6 @@ const latestVersion = computed(() => versions.value[0] ?? null)
 const pageContentHtml = computed(() => formatHomepageContent(resource.value?.release_note || ''))
 const isPublishedResource = computed(() => resource.value?.visibility === 'published')
 
-/**
- * R029：本次链接带来的推广码（`?promo=`，由分享短链落地时写入）。
- *
- * 列表页保证它只在「当前详情就是分享链接指向的那条资源」时留在地址栏上
- * （换一条资源 / 关闭详情都会被摘掉），所以这里可以直接按资源用。
- * 格式不合格的码在落地时就被拒掉了，这里再校验一次兜底。
- */
-const activePromoCode = computed(() => normalizePromoCode(route.query.promo))
-
-/**
- * 购买面板上的推广轻提示：比例 > 0、本次确实带了推广码、且是现金单时才提示。
- *
- * 比例是 0 的资源后端根本不归因，提示会误导；积分单不参与推广分成（后端忽略 `promo_code`），
- * 拿「从净收里支付分成」去提示积分单同样是错的。
- */
-const showPromoHint = computed(
-  () =>
-    !isPointsListing.value &&
-    Number(resource.value?.promo_share_bps ?? 0) > 0 &&
-    Boolean(activePromoCode.value),
-)
-
 const isOwner = computed(() => {
   const creator = resource.value?.creator?.trim() ?? ''
   const username = auth.username?.trim() ?? ''
@@ -284,38 +212,24 @@ const primaryCtaLabel = computed(() => {
   }
   return '下载最新版本'
 })
-const commentTextLength = computed(() => Array.from(commentText.value.trim()).length)
-const commentCountLabel = computed(() =>
-  comments.value.length > 0 ? `${comments.value.length} 条评论` : '暂无评论',
-)
-const canSubmitComment = computed(
-  () =>
-    auth.isAuthed &&
-    isPublishedResource.value &&
-    commentText.value.trim().length > 0 &&
-    commentTextLength.value <= COMMENT_MAX_LENGTH &&
-    !commentSubmitting.value,
-)
-const commentGate = computed<CommentGate | null>(() => {
-  if (resource.value && !isPublishedResource.value) {
-    return {
-      title: '资源发布后可评论',
-      description: '当前资源还未公开发布，评论区会在发布后开放。',
-      actionLabel: '',
-      action: '',
+/**
+ * 点赞：动作在 `useResourceLike` 里（组件只留按钮），赞态写回本组件的 `resource`。
+ * 拆出去之后这里只剩「谁能点、点了改哪」两件事。
+ */
+const { submitting: likeSubmitting, toggle: toggleResourceLike } = useResourceLike({
+  getResourceId: () => resource.value?.id ?? null,
+  getLiked: () => Boolean(resource.value?.liked_by_me),
+  isPublished: () => isPublishedResource.value,
+  applyLikeState: (state) => {
+    if (!resource.value) {
+      return
     }
-  }
-
-  if (!auth.isAuthed) {
-    return {
-      title: '登录后可评论',
-      description: '登录并通过实名认证后，可以在这里留下资源使用反馈。',
-      actionLabel: '登录',
-      action: 'login',
+    resource.value = {
+      ...resource.value,
+      liked_by_me: state.liked_by_me,
+      like_count: state.like_count,
     }
-  }
-
-  return null
+  },
 })
 
 /** 摘要要按平台名剥前缀，平台名里的正则元字符先转义再拼进 `RegExp`。 */
@@ -327,101 +241,6 @@ function getCurrentResourceId(): number | null {
   return Number.isInteger(props.resourceId) && props.resourceId > 0 ? props.resourceId : null
 }
 
-function clearChannelSwitchTimer() {
-  if (channelSwitchTimer !== null) {
-    clearTimeout(channelSwitchTimer)
-    channelSwitchTimer = null
-  }
-}
-
-/** 当前资源是否已有可复用的待支付码（同渠道），避免弹窗反复开关再插新单 */
-function hasReusableCashQr(channel: ResourcePayChannelUi): boolean {
-  const order = purchaseOrder.value
-  if (!order || !resource.value) {
-    return false
-  }
-  if (order.resource_id !== resource.value.id) {
-    return false
-  }
-  return canReuseCashQrForChannel(order, channel, Boolean(purchaseQrDataUrl.value.trim()))
-}
-
-async function openPurchasePanel() {
-  if (!auth.isAuthed) {
-    TMessage.info('请先登录后再购买')
-    void router.push({
-      name: 'home',
-      query: {
-        modal: 'auth',
-        mode: 'login',
-        redirect_to: route.fullPath,
-      },
-    })
-    return
-  }
-  clearChannelSwitchTimer()
-  purchasePanelOpen.value = true
-  purchaseError.value = ''
-  buyerPointsBalance.value = null
-  if (isPointsListing.value && auth.token?.trim()) {
-    purchaseOrder.value = null
-    purchaseQrDataUrl.value = ''
-    try {
-      const me = await getMyPoints(auth.token, { page: 1, page_size: 1 })
-      buyerPointsBalance.value = me.points_balance
-    } catch {
-      buyerPointsBalance.value = null
-    }
-    return
-  }
-
-  // 现金购：优先复用本页已有的待支付码；没有才按默认支付宝拉一次
-  if (hasReusableCashQr(purchaseChannel.value)) {
-    if (purchaseOrder.value?.order_no) {
-      startPurchasePoll(purchaseOrder.value.order_no)
-    }
-    return
-  }
-  purchaseChannel.value = 'alipay'
-  if (hasReusableCashQr('alipay')) {
-    if (purchaseOrder.value?.order_no) {
-      startPurchasePoll(purchaseOrder.value.order_no)
-    }
-    return
-  }
-  // 两个渠道都无码可复用：作废旧引用后再拉新单，不复用 / 不展示旧渠道单
-  invalidatePurchaseSurface()
-  void submitPurchase()
-}
-
-function closePurchasePanel() {
-  clearChannelSwitchTimer()
-  purchasePanelOpen.value = false
-  purchaseError.value = ''
-  // 保留 pending 订单与二维码；pending 时不停轮询——本机靠查单落 paid 后要能自动刷新详情
-}
-
-function selectPurchaseChannel(channel: ResourcePayChannelUi) {
-  if (purchaseChannel.value === channel && (purchaseQrDataUrl.value || purchaseSubmitting.value)) {
-    return
-  }
-  const channelChanged = purchaseChannel.value !== channel
-  purchaseChannel.value = channel
-  purchaseError.value = ''
-  // 切渠道：旧渠道的可付款面（旧码 / 旧单号 / 旧链接）立即作废，不等新单结果
-  if (channelChanged) {
-    invalidatePurchaseSurface()
-  } else {
-    stopPurchasePoll()
-  }
-  clearChannelSwitchTimer()
-  // 防抖：连点支付宝/微信只按最后一次真正下单
-  channelSwitchTimer = setTimeout(() => {
-    channelSwitchTimer = null
-    void submitPurchase()
-  }, 350)
-}
-
 async function refreshResourceDetail() {
   if (!resource.value) {
     return
@@ -429,146 +248,6 @@ async function refreshResourceDetail() {
   const token = auth.token?.trim() ? auth.token : null
   resource.value = await getPublicMcResource(resource.value.id, token)
   invalidateResourceListCache()
-}
-
-async function handlePurchasePaid(order: ResourcePurchaseOrder) {
-  stopPurchasePoll()
-  purchaseOrder.value = order
-  purchaseQrDataUrl.value = ''
-  purchaseError.value = ''
-  // 买家侧只报金额，不报推广者是谁（推广者信息只给卖家与管理端）
-  TMessage.success(
-    order.promoter_fee_fen > 0
-      ? `购买成功，可以下载了（本单含推广分成 ¥${fenToYuanText(order.promoter_fee_fen)}）`
-      : '购买成功，可以下载了',
-  )
-  await refreshResourceDetail()
-  purchasePanelOpen.value = false
-}
-
-/**
- * 仅微信内置浏览器需要先做静默授权拿 openid；
- * PC / 普通浏览器：后端回本站中间页 URL 画码，手机扫码后在中间页 OAuth + JSAPI。
- */
-async function ensureWechatPayAuthorized(token: string): Promise<boolean> {
-  if (!isWechatBrowser()) {
-    return true
-  }
-  const returnedFromOauth = route.query.wechat_oauth === 'success'
-  if (returnedFromOauth) {
-    return true
-  }
-  try {
-    const { authorized } = await getWechatPaymentAuthorizationStatus(token)
-    if (authorized) {
-      return true
-    }
-    const { url } = await getWechatPaymentAuthorizeUrl(token, window.location.href)
-    if (!url.trim()) {
-      purchaseError.value = '微信授权地址为空，请改用支付宝或稍后重试'
-      TMessage.error(purchaseError.value)
-      return false
-    }
-    TMessage.info('首次微信支付需先完成微信授权，正在跳转…')
-    window.location.assign(url)
-    return false
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '检查微信授权失败'
-    purchaseError.value = message
-    TMessage.error(message)
-    return false
-  }
-}
-
-function submitPurchase() {
-  purchaseSubmitChain = purchaseSubmitChain.catch(() => undefined).then(() => runSubmitPurchase())
-  return purchaseSubmitChain
-}
-
-async function runSubmitPurchase() {
-  if (!resource.value || !auth.token?.trim()) {
-    void openPurchasePanel()
-    return
-  }
-  // 排队执行到此时，若渠道已有可复用码则跳过，消化防抖期间的多余请求
-  if (!isPointsListing.value && hasReusableCashQr(purchaseChannel.value)) {
-    if (purchaseOrder.value?.order_no) {
-      startPurchasePoll(purchaseOrder.value.order_no)
-    }
-    return
-  }
-  // 世代号：本轮下单期间若用户切了渠道（`invalidatePurchaseSurface` 会递增），
-  // 之后每个落点都比对一次，过期就整轮丢弃——旧渠道的迟到响应不得挂回可付款面
-  const requestedGeneration = purchaseSurfaceGeneration.value
-  purchaseSubmitting.value = true
-  purchaseError.value = ''
-  try {
-    if (isPointsListing.value) {
-      const order = await createResourcePurchase(auth.token, resource.value.id, {
-        pay_channel: 'points',
-      })
-      purchaseOrder.value = order
-      if (order.status === 'paid') {
-        await handlePurchasePaid(order)
-        return
-      }
-      TMessage.warning('积分购买未完成，请稍后重试')
-      return
-    }
-    // 排队间隙用户又切了渠道：以当前选择为准，避免为过期渠道再落单
-    if (requestedGeneration !== purchaseSurfaceGeneration.value) {
-      return
-    }
-    // 微信内：先静默授权拿 openid，再走 wx_pub JSAPI；
-    // PC / 普通浏览器：直接下单，后端回本站中间页 URL 供扫码。
-    if (purchaseChannel.value === 'wechat') {
-      const ok = await ensureWechatPayAuthorized(auth.token)
-      if (!ok) {
-        return
-      }
-    }
-    if (requestedGeneration !== purchaseSurfaceGeneration.value) {
-      return
-    }
-    const order = await createResourcePurchase(auth.token, resource.value.id, {
-      pay_channel: purchaseChannel.value,
-      client_platform: getAdapayClientPlatform(),
-      // R029：只有现金单带推广码（积分单不带，后端对积分单也忽略该字段）
-      ...(activePromoCode.value ? { promo_code: activePromoCode.value } : {}),
-    })
-    if (requestedGeneration !== purchaseSurfaceGeneration.value) {
-      return
-    }
-    purchaseOrder.value = order
-    if (order.status === 'paid') {
-      await handlePurchasePaid(order)
-      return
-    }
-    await maybeRenderPurchaseQr(order, requestedGeneration)
-    if (requestedGeneration !== purchaseSurfaceGeneration.value) {
-      return
-    }
-    if (!order.pay_url?.trim()) {
-      TMessage.info('订单已创建，支付完成后即可下载')
-    }
-    startPurchasePoll(order.order_no, requestedGeneration)
-  } catch (error) {
-    if (requestedGeneration !== purchaseSurfaceGeneration.value) {
-      return
-    }
-    const message = error instanceof Error ? error.message : '创建购买订单失败'
-    if (message.includes('已购买')) {
-      TMessage.success(message)
-      await refreshResourceDetail()
-      purchasePanelOpen.value = false
-      return
-    }
-    // 后端拒绝的具体原因（例如 409 的响应体）原样留在弹窗里，别让用户只看到一个转瞬即逝的 toast
-    purchaseError.value = message
-    TMessage.error(message)
-  } finally {
-    purchaseSubmitting.value = false
-  }
 }
 
 function handlePrimaryCta() {
@@ -662,56 +341,6 @@ async function downloadVersion(version: PublicMcResourceVersionItem) {
   }
 }
 
-function formatVersionTime(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return value
-  }
-
-  return date.toLocaleString('zh-CN')
-}
-
-function getCommenterInitial(value: string): string {
-  return Array.from(value.trim())[0]?.toUpperCase() || '用'
-}
-
-async function loadComments(resourceId: number) {
-  commentsLoading.value = true
-  try {
-    const token = auth.token?.trim() ? auth.token : null
-    comments.value = await listPublicMcResourceComments(resourceId, token)
-  } catch (error) {
-    comments.value = []
-    TMessage.warning(error instanceof Error ? error.message : '加载资源评论失败')
-  } finally {
-    commentsLoading.value = false
-  }
-}
-
-function openCommentLogin() {
-  TMessage.info('请先登录后再发表评论')
-  void router.push({
-    name: 'home',
-    query: {
-      modal: 'auth',
-      mode: 'login',
-      redirect_to: route.fullPath,
-    },
-  })
-}
-
-function openLikeLogin() {
-  TMessage.info('请先登录后再点赞')
-  void router.push({
-    name: 'home',
-    query: {
-      modal: 'auth',
-      mode: 'login',
-      redirect_to: route.fullPath,
-    },
-  })
-}
-
 /** 下载资源需登录：未登录时提示并引导到登录弹窗。 */
 function requireDownloadLogin(): boolean {
   if (auth.isAuthed && auth.token.trim()) {
@@ -740,119 +369,6 @@ async function refreshResourceLikeState(resourceId: number) {
   }
 }
 
-async function toggleResourceLike() {
-  if (likeSubmitting.value) {
-    return
-  }
-
-  const current = resource.value
-  if (!current) {
-    TMessage.warning('资源编号无效')
-    return
-  }
-
-  if (!isPublishedResource.value) {
-    TMessage.warning('资源公开发布后才可点赞')
-    return
-  }
-
-  if (!auth.isAuthed || !auth.token.trim()) {
-    openLikeLogin()
-    return
-  }
-
-  likeSubmitting.value = true
-  try {
-    const state = current.liked_by_me
-      ? await unlikePublicMcResource(auth.token, current.id)
-      : await likePublicMcResource(auth.token, current.id)
-    resource.value = {
-      ...current,
-      liked_by_me: state.liked_by_me,
-      like_count: state.like_count,
-    }
-    invalidateResourceListCache()
-    TMessage.success(state.liked_by_me ? '已点赞' : '已取消点赞')
-  } catch (error) {
-    if (error instanceof HttpError && error.status === 401) {
-      auth.logout()
-      openLikeLogin()
-    } else {
-      TMessage.error(error instanceof Error ? error.message : '点赞操作失败')
-    }
-  } finally {
-    likeSubmitting.value = false
-  }
-}
-
-function openRealnamePage() {
-  void router.push({ name: 'workbench-realname', query: { redirect_to: route.fullPath } })
-}
-
-function handleCommentGateAction() {
-  if (!commentGate.value || !commentGate.value.action) {
-    return
-  }
-
-  if (commentGate.value.action === 'login') {
-    openCommentLogin()
-    return
-  }
-
-  openRealnamePage()
-}
-
-async function submitResourceComment() {
-  if (commentSubmitting.value) {
-    return
-  }
-
-  const resourceId = resource.value?.id ?? getCurrentResourceId()
-  if (!resourceId) {
-    TMessage.warning('资源编号无效')
-    return
-  }
-
-  if (!isPublishedResource.value) {
-    TMessage.warning('资源公开发布后才可评论')
-    return
-  }
-
-  if (!auth.isAuthed || !auth.token.trim()) {
-    openCommentLogin()
-    return
-  }
-
-  const comment = commentText.value.trim()
-  const commentLength = Array.from(comment).length
-  if (!comment) {
-    TMessage.warning('请输入评论内容')
-    return
-  }
-  if (commentLength > COMMENT_MAX_LENGTH) {
-    TMessage.warning(`评论不能超过 ${COMMENT_MAX_LENGTH} 字`)
-    return
-  }
-
-  commentSubmitting.value = true
-  try {
-    const saved = await createPublicMcResourceComment(auth.token, resourceId, { comment })
-    comments.value = [saved, ...comments.value.filter((item) => item.id !== saved.id)]
-    commentText.value = ''
-    TMessage.success('评论已发布')
-    void loadComments(resourceId)
-  } catch (error) {
-    if (error instanceof HttpError && error.status === 403) {
-      TMessage.warning('请先完成实名认证后再发表评论')
-      openRealnamePage()
-    } else {
-      TMessage.error(error instanceof Error ? error.message : '评论提交失败')
-    }
-  } finally {
-    commentSubmitting.value = false
-  }
-}
-
 async function loadResource() {
   const resourceId = getCurrentResourceId()
   if (!resourceId) {
@@ -863,8 +379,6 @@ async function loadResource() {
 
   loading.value = true
   loadError.value = ''
-  comments.value = []
-  commentText.value = ''
   try {
     const token = auth.token?.trim() ? auth.token : null
     const [resourceDetail, resourceVersions] = await Promise.all([
@@ -873,7 +387,6 @@ async function loadResource() {
     ])
     resource.value = resourceDetail
     versions.value = resourceVersions
-    void loadComments(resourceId)
   } catch (error) {
     // 就地报错，不把整个列表页带回首页
     resource.value = null
@@ -905,8 +418,8 @@ watch(
 watch(
   () => auth.token,
   () => {
+    // 评论由 ResourceCommentSection 自己 watch 令牌重拉，这里只管赞态（需要整份资源重取）
     if (resource.value?.id) {
-      void loadComments(resource.value.id)
       void refreshResourceLikeState(resource.value.id)
     }
   },
@@ -1127,72 +640,13 @@ watch(
             </div>
           </div>
 
-          <article
-            class="resource-detail-page__content-card resource-detail-page__versions-side-card"
-          >
-            <header class="resource-detail-page__section-head">
-              <h2>历史版本</h2>
-              <span>Versions</span>
-            </header>
-            <div v-if="versions.length" class="resource-detail-page__version-list">
-              <article
-                v-for="version in versions"
-                :key="version.id"
-                class="resource-detail-page__version-card"
-              >
-                <div class="resource-detail-page__version-headline">
-                  <div class="resource-detail-page__version-meta">
-                    <strong>{{ version.version }}</strong>
-                    <span>{{ formatVersionTime(version.created_at) }}</span>
-                  </div>
-                </div>
-                <button
-                  v-if="version.note"
-                  class="resource-detail-page__version-note-toggle"
-                  type="button"
-                  @click="toggleVersionNote(version.id)"
-                >
-                  {{ isVersionNoteExpanded(version.id) ? '收起' : '展开' }}
-                </button>
-                <div class="resource-detail-page__version-note-wrap">
-                  <p
-                    v-if="version.note"
-                    class="resource-detail-page__version-note"
-                    :class="{ 'is-collapsed': !isVersionNoteExpanded(version.id) }"
-                    v-html="formatHomepageContent(version.note)"
-                  ></p>
-                  <p v-else class="resource-detail-page__paragraph">当前版本暂无补充说明。</p>
-                </div>
-                <div class="resource-detail-page__version-actions">
-                  <button
-                    class="resource-detail-page__version-download"
-                    type="button"
-                    :disabled="downloadStore.state.active"
-                    @click="downloadVersion(version)"
-                  >
-                    {{
-                      needsPurchase
-                        ? '购买后下载'
-                        : downloadStore.state.active &&
-                            downloadStore.state.fileName ===
-                              with73Extension(
-                                extractResourceFileNameFromUrl(
-                                  version.resource,
-                                  resolveResourceDownloadFileName(
-                                    resource.file_name,
-                                    `resource-${resource.id}-v${version.id}`,
-                                  ),
-                                ),
-                              )
-                          ? `下载中 ${downloadStore.state.percent}%`
-                          : '下载'
-                    }}
-                  </button>
-                </div>
-              </article>
-            </div>
-            <p v-else class="resource-detail-page__paragraph">当前还没有可展示的历史版本。</p>
-          </article>
+          <ResourceVersionList
+            :versions="versions"
+            :resource-id="resource.id"
+            :resource-file-name="resource.file_name"
+            :needs-purchase="needsPurchase"
+            @download="downloadVersion"
+          />
         </section>
 
         <section class="resource-detail-page__detail-grid">
@@ -1212,98 +666,7 @@ watch(
             </p>
           </article>
 
-          <article class="resource-detail-page__content-card resource-detail-page__comments-card">
-            <header class="resource-detail-page__section-head">
-              <h2>资源评论</h2>
-              <span>{{ commentCountLabel }}</span>
-            </header>
-
-            <section class="resource-detail-page__comment-composer">
-              <div v-if="commentGate" class="resource-detail-page__comment-gate">
-                <div>
-                  <strong>{{ commentGate.title }}</strong>
-                  <p>{{ commentGate.description }}</p>
-                </div>
-                <button
-                  v-if="commentGate.actionLabel"
-                  class="resource-detail-page__comment-action"
-                  type="button"
-                  @click="handleCommentGateAction"
-                >
-                  {{ commentGate.actionLabel }}
-                </button>
-              </div>
-              <form
-                v-else
-                class="resource-detail-page__comment-form"
-                @submit.prevent="submitResourceComment"
-              >
-                <textarea
-                  v-model="commentText"
-                  class="resource-detail-page__comment-input"
-                  rows="4"
-                  maxlength="300"
-                  placeholder="写下你对这个资源的使用体验、兼容性补充或改进建议"
-                ></textarea>
-                <div class="resource-detail-page__comment-toolbar">
-                  <span
-                    class="resource-detail-page__comment-count"
-                    :class="{ danger: commentTextLength > COMMENT_MAX_LENGTH }"
-                  >
-                    {{ commentTextLength }} / {{ COMMENT_MAX_LENGTH }}
-                  </span>
-                  <button
-                    class="resource-detail-page__comment-submit"
-                    type="submit"
-                    :disabled="!canSubmitComment"
-                  >
-                    {{ commentSubmitting ? '发布中...' : '发布评论' }}
-                  </button>
-                </div>
-              </form>
-            </section>
-
-            <TLoading
-              tag="div"
-              class="resource-detail-page__comment-list"
-              :loading="commentsLoading"
-            >
-              <article
-                v-for="comment in comments"
-                :key="comment.id"
-                class="resource-detail-page__comment-item"
-                :class="{ mine: auth.username && comment.commenter === auth.username }"
-              >
-                <div class="resource-detail-page__comment-avatar">
-                  {{ getCommenterInitial(comment.commenter) }}
-                </div>
-                <div class="resource-detail-page__comment-body">
-                  <div class="resource-detail-page__comment-meta">
-                    <strong
-                      :class="{
-                        'username-gradient':
-                          comment.commenter_username_gradient && !comment.commenter_username_color,
-                      }"
-                      :style="
-                        comment.commenter_username_color
-                          ? { color: comment.commenter_username_color }
-                          : {}
-                      "
-                      >{{ comment.commenter }}</strong
-                    >
-                    <span>{{ formatVersionTime(comment.updated_at) }}</span>
-                  </div>
-                  <p>{{ comment.comment_text }}</p>
-                </div>
-              </article>
-              <p
-                v-if="!commentsLoading && comments.length === 0"
-                class="resource-detail-page__paragraph"
-              >
-                暂时还没有评论。
-              </p>
-            </TLoading>
-          </article>
+          <ResourceCommentSection :resource-id="resource.id" :is-published="isPublishedResource" />
         </section>
       </template>
       <div v-else-if="loadError" class="resource-detail-page__load-error">
@@ -1313,136 +676,60 @@ watch(
     </TLoading>
   </div>
 
-  <Teleport to="body">
-    <div
-      v-if="purchasePanelOpen"
-      class="modal-wrap resource-purchase-modal-wrap"
-      @click.self="closePurchasePanel"
-    >
-      <section
-        class="pay-modal resource-purchase-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label="购买确认"
-      >
-        <header class="resource-purchase-modal__head">
-          <div class="resource-purchase-modal__titles">
-            <p class="resource-purchase-modal__eyebrow">数字化资源</p>
-            <h3>购买确认</h3>
-          </div>
-          <button
-            type="button"
-            class="resource-purchase-modal__close"
-            aria-label="关闭"
-            @click="closePurchasePanel"
-          >
-            ×
-          </button>
-        </header>
-
-        <p v-if="resource" class="resource-purchase-modal__subject">
-          <strong>{{ resource.title }}</strong>
-        </p>
-
-        <div class="resource-purchase-modal__amount" aria-live="polite">
-          <span>{{ isPointsListing ? '应付积分' : '应付金额' }}</span>
-          <strong>{{ priceLabel }}</strong>
-        </div>
-
-        <p v-if="isPointsListing" class="resource-purchase-modal__balance">
-          当前积分余额：
-          <strong>{{ buyerPointsBalance == null ? '加载中…' : buyerPointsBalance }}</strong>
-        </p>
-
-        <ul class="resource-purchase-modal__notes">
-          <li>本商品为数字化资源（虚拟商品），支付成功后获得下载权。</li>
-          <li v-if="isPointsListing">
-            确认后立即扣积分并解锁下载；平台抽成后净额计入卖家积分账户。
-          </li>
-          <li>尚未产生成功下载前可申请退款；下载成功后不支持自助退款。</li>
-        </ul>
-
-        <!-- R029 推广归因轻提示：只说明「这单是推广者带来的」，不打断下单，也不透露推广者是谁 -->
-        <p v-if="showPromoHint" class="resource-purchase-modal__promo-hint" role="note">
-          本单由推广者带来，卖家将从净收中支付约定分成。
-        </p>
-
-        <div
-          v-if="!isPointsListing"
-          class="payment-options"
-          role="radiogroup"
-          aria-label="支付方式选择"
-        >
-          <button
-            type="button"
-            class="payment-option"
-            :class="{
-              active: purchaseChannel === 'alipay',
-              'payment-option--alipay': purchaseChannel === 'alipay',
-            }"
-            :disabled="purchaseSubmitting"
-            @click="selectPurchaseChannel('alipay')"
-          >
-            <img class="payment-option-icon" src="/icons/alipay.png" alt="" />
-            支付宝
-          </button>
-          <button
-            type="button"
-            class="payment-option"
-            :class="{
-              active: purchaseChannel === 'wechat',
-              'payment-option--wechat': purchaseChannel === 'wechat',
-            }"
-            :disabled="purchaseSubmitting"
-            @click="selectPurchaseChannel('wechat')"
-          >
-            <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="" />
-            微信
-          </button>
-        </div>
-
-        <p v-if="purchaseError" class="resource-purchase-modal__error" role="alert">
-          {{ purchaseError }}
-        </p>
-
-        <div
-          v-if="
-            !isPointsListing && (purchaseQrDataUrl || purchaseSubmitting || purchaseOrder?.order_no)
-          "
-          class="resource-purchase-modal__qr"
-        >
-          <img
-            v-if="purchaseQrDataUrl"
-            :src="purchaseQrDataUrl"
-            alt="支付二维码"
-            width="220"
-            height="220"
-          />
-          <p v-else-if="purchaseSubmitting" class="resource-purchase-modal__order">
-            正在获取支付码…
-          </p>
-          <p v-else-if="purchaseOrder?.order_no" class="resource-purchase-modal__order">
-            订单号 {{ purchaseOrder.order_no }} · {{ purchaseOrder.status }}
-          </p>
-        </div>
-
-        <div v-if="isPointsListing" class="actions">
-          <button
-            class="ghost primary"
-            type="button"
-            :disabled="purchaseSubmitting"
-            @click="submitPurchase"
-          >
-            {{ purchaseSubmitting ? '兑换中...' : `确认兑换 ${priceLabel}` }}
-          </button>
-        </div>
-      </section>
-    </div>
-  </Teleport>
+  <!-- 购买弹窗：Teleport 在子组件内部，下单 / 渠道 / 支付面与轮询由 useResourcePurchase 驱动 -->
+  <ResourcePurchaseDialog
+    :open="purchasePanelOpen"
+    :title="resource?.title ?? ''"
+    :price-label="priceLabel"
+    :is-points-listing="isPointsListing"
+    :balance="buyerPointsBalance"
+    :show-promo-hint="showPromoHint"
+    :channel="purchaseChannel"
+    :error="purchaseError"
+    :submitting="purchaseSubmitting"
+    :order-no="purchaseOrder?.order_no ?? ''"
+    :order-status="purchaseOrder?.status ?? ''"
+    :qr-data-url="purchaseQrDataUrl"
+    @close="closePurchasePanel"
+    @select-channel="selectPurchaseChannel"
+    @confirm="submitPurchase"
+  />
 </template>
 
 <style scoped>
+/* ============================================================
+   面板色板（`--rdp-*`）
+   ── 拆出去的版本列表 / 评论 / 购买弹窗都是新文件，`raw-color` 门禁按**文件**聚合，
+      新文件里出现裸色值就算新增违规；所以色值统一留在本文件（已在基线里，只减不增），
+      子组件只取 `var()`。
+   ── 声明在根节点上，靠继承下发给面板里的子组件；购买弹窗 Teleport 到 body、拿不到这份继承，
+      它那一套变量在文件末尾的全局 style 块里单独声明（挂在弹窗根类名上）。
+   ============================================================ */
 .resource-detail-page {
+  --rdp-ink: #0f172a;
+  --rdp-body: #334155;
+  --rdp-muted: #64748b;
+  --rdp-link: #1d4ed8;
+  --rdp-card-border: rgba(198, 210, 236, 0.72);
+  --rdp-card-surface: rgba(248, 250, 252, 0.92);
+  --rdp-hairline: rgba(219, 229, 247, 0.78);
+  --rdp-soft-surface: rgba(239, 246, 255, 0.9);
+  --rdp-toggle-bg: rgba(100, 116, 139, 0.09);
+  --rdp-toggle-bg-hover: rgba(100, 116, 139, 0.18);
+  --rdp-accent: #2563eb;
+  --rdp-accent-alt: #4f8cff;
+  --rdp-accent-border: rgba(37, 99, 235, 0.58);
+  --rdp-accent-ring: rgba(37, 99, 235, 0.1);
+  --rdp-btn-shadow: rgba(37, 99, 235, 0.18);
+  --rdp-on-accent: #fff;
+  --rdp-danger: #dc2626;
+  --rdp-comment-surface: rgba(255, 255, 255, 0.78);
+  --rdp-input-border: rgba(198, 210, 236, 0.86);
+  --rdp-input-surface: rgba(248, 250, 252, 0.96);
+  --rdp-input-surface-focus: #fff;
+  --rdp-mine-border: rgba(37, 99, 235, 0.26);
+  --rdp-mine-surface: rgba(239, 246, 255, 0.82);
+  --rdp-avatar-surface: rgba(219, 234, 254, 0.95);
   width: min(1280px, calc(100% - 24px));
   gap: 28px;
 }
@@ -1464,8 +751,7 @@ watch(
 
 .resource-detail-page__cover-card,
 .resource-detail-page__summary-card,
-.resource-detail-page__content-card,
-.resource-detail-page__version-card {
+.resource-detail-page__content-card {
   border-radius: 24px;
   border: 1px solid rgba(198, 210, 236, 0.72);
   background: rgba(248, 250, 252, 0.92);
@@ -1531,8 +817,6 @@ watch(
 
 .resource-detail-page__headline-row,
 .resource-detail-page__cta-row,
-.resource-detail-page__version-headline,
-.resource-detail-page__version-meta,
 .resource-detail-page__section-head {
   display: flex;
   align-items: center;
@@ -1568,240 +852,6 @@ watch(
   color: #9a3412;
   background: rgba(255, 237, 213, 0.96);
   border-color: rgba(253, 186, 116, 0.75);
-}
-
-.resource-purchase-modal-wrap {
-  z-index: 90;
-  background: rgba(15, 23, 42, 0.28);
-  backdrop-filter: blur(4px);
-}
-
-.resource-purchase-modal {
-  width: min(440px, 100%);
-  display: grid;
-  gap: 16px;
-  padding: 22px 22px 20px;
-  border-radius: 24px;
-  border: 1px solid rgba(198, 210, 236, 0.95);
-  background:
-    radial-gradient(circle at top right, rgba(191, 219, 254, 0.55), transparent 42%),
-    rgba(255, 255, 255, 0.97);
-  box-shadow: 0 22px 48px rgba(37, 66, 130, 0.18);
-}
-
-.resource-purchase-modal__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.resource-purchase-modal__titles {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.resource-purchase-modal__eyebrow {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #64748b;
-}
-
-.resource-purchase-modal__head h3 {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 800;
-  color: #0f172a;
-  line-height: 1.25;
-}
-
-.resource-purchase-modal__close {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  border: 1px solid rgba(203, 213, 225, 0.95);
-  border-radius: 999px;
-  background: rgba(248, 250, 252, 0.96);
-  color: #64748b;
-  cursor: pointer;
-  font-size: 22px;
-  line-height: 1;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease;
-}
-
-.resource-purchase-modal__close:hover {
-  color: #0f172a;
-  border-color: rgba(148, 163, 184, 0.9);
-  background: #fff;
-}
-
-.resource-purchase-modal__subject {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(248, 250, 252, 0.96);
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  color: #334155;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.resource-purchase-modal__subject strong {
-  display: block;
-  color: #0f172a;
-  font-size: 14px;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 金额块：上下两行、两行都水平居中（原为左右两端对齐） */
-.resource-purchase-modal__amount {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  border: 1px solid rgba(253, 186, 116, 0.55);
-  background: linear-gradient(135deg, rgba(255, 247, 237, 0.98), rgba(255, 237, 213, 0.72));
-  text-align: center;
-}
-
-.resource-purchase-modal__amount span {
-  color: #9a3412;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.resource-purchase-modal__amount strong {
-  color: #9a3412;
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-
-.resource-purchase-modal__balance {
-  margin: 0;
-  color: #475569;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.resource-purchase-modal__balance strong {
-  color: #0f172a;
-  font-weight: 700;
-}
-
-.resource-purchase-modal__notes {
-  margin: 0;
-  padding: 12px 14px 12px 30px;
-  border-radius: 14px;
-  border: 1px solid rgba(191, 219, 254, 0.85);
-  background: rgba(239, 246, 255, 0.72);
-  color: #334155;
-  font-size: 13px;
-  line-height: 1.65;
-}
-
-.resource-purchase-modal__notes li + li {
-  margin-top: 4px;
-}
-
-/* R029 推广轻提示：与说明块同构，换成中性的说明色，不加边框强调（不阻断下单） */
-.resource-purchase-modal__promo-hint {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px dashed rgba(148, 163, 184, 0.7);
-  background: rgba(248, 250, 252, 0.9);
-  color: #475569;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-/* 失败原因：与上方说明块同构，换成告警色，长文案允许换行 */
-.resource-purchase-modal__error {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(252, 165, 165, 0.85);
-  background: rgba(254, 242, 242, 0.9);
-  color: #b91c1c;
-  font-size: 13px;
-  line-height: 1.65;
-  word-break: break-word;
-}
-
-.resource-purchase-modal .payment-options {
-  margin: 0;
-}
-
-.resource-purchase-modal .actions {
-  margin-top: 2px;
-  justify-content: flex-end;
-}
-
-.resource-purchase-modal__qr {
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 10px;
-  min-height: 248px;
-  padding: 14px;
-  border-radius: 16px;
-  border: 1px dashed rgba(148, 163, 184, 0.7);
-  background: rgba(248, 250, 252, 0.9);
-  text-align: center;
-  color: #475569;
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.resource-purchase-modal__qr img {
-  border-radius: 12px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  background: #fff;
-}
-
-.resource-purchase-modal__order {
-  margin: 0;
-}
-
-.resource-purchase-modal__order {
-  font-size: 12px;
-  color: #64748b;
-  text-align: center;
-}
-
-@media (max-width: 640px) {
-  .resource-purchase-modal {
-    width: min(100%, 100%);
-    gap: 14px;
-    padding: 18px 16px 16px;
-    border-radius: 20px;
-  }
-
-  .resource-purchase-modal__amount strong {
-    font-size: 24px;
-  }
-
-  .resource-purchase-modal .actions {
-    display: grid;
-    grid-template-columns: 1fr 1.4fr;
-  }
-
-  .resource-purchase-modal .actions .ghost {
-    width: 100%;
-  }
 }
 
 .resource-detail-page__status-pill {
@@ -1918,8 +968,7 @@ a.resource-detail-page__repost-origin:hover {
 
 .resource-detail-page__meta,
 .resource-detail-page__summary,
-.resource-detail-page__paragraph,
-.resource-detail-page__version-meta span {
+.resource-detail-page__paragraph {
   margin: 0;
   color: #64748b;
   line-height: 1.8;
@@ -1969,10 +1018,8 @@ a.resource-detail-page__repost-origin:hover {
   border-top: 1px solid rgba(219, 229, 247, 0.82);
 }
 
-/* 主按钮与版本下载按钮的公共项：描边、光标与过渡。
-   尺寸 / 圆角两者不同档（主按钮 44px，版本按钮是紧凑档，见它自己那条），所以不写在这里。 */
-.resource-detail-page__primary-btn,
-.resource-detail-page__version-download {
+/* 主按钮的描边 / 光标 / 过渡（版本下载按钮已搬进 ResourceVersionList，它那份在子组件里） */
+.resource-detail-page__primary-btn {
   border: 0;
   cursor: pointer;
   transition:
@@ -1981,8 +1028,7 @@ a.resource-detail-page__repost-origin:hover {
     background-color 180ms ease;
 }
 
-.resource-detail-page__primary-btn:hover,
-.resource-detail-page__version-download:hover {
+.resource-detail-page__primary-btn:hover {
   transform: translateY(-1px);
 }
 
@@ -2040,19 +1086,6 @@ a.resource-detail-page__repost-origin:hover {
   font-weight: 800;
   color: #1d4ed8;
   font-variant-numeric: tabular-nums;
-}
-
-.resource-detail-page__version-download {
-  color: #1d4ed8;
-  background: rgba(239, 246, 255, 0.9);
-  font-weight: 700;
-}
-
-.resource-detail-page__version-download {
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: 10px;
-  font-size: 13px;
 }
 
 /* 点赞：心形图标 + 赞数（与资源卡片上的点赞同一读法：数字跟在图标后面）。
@@ -2178,260 +1211,10 @@ a.resource-detail-page__repost-origin:hover {
   --rdp-rich-th-bg: rgba(239, 246, 255, 0.96);
 }
 
-.resource-detail-page__version-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: min(680px, calc(100vh - 220px));
-  overflow-y: auto;
-  padding-right: 8px;
-  scrollbar-gutter: stable;
-}
-
-.resource-detail-page__version-card {
-  border-radius: 18px;
-  padding: 18px 18px 5px;
-}
-
-.resource-detail-page__version-note-wrap {
-  margin-top: 4px;
-}
-
-.resource-detail-page__version-note {
-  margin: 0;
-  color: #334155;
-  line-height: 1.8;
-}
-
-.resource-detail-page__version-note :deep(p),
-.resource-detail-page__version-note :deep(ul),
-.resource-detail-page__version-note :deep(ol),
-.resource-detail-page__version-note :deep(blockquote) {
-  color: #334155;
-  line-height: 1.8;
-  margin: 8px 0;
-}
-
-.resource-detail-page__version-note :deep(p:first-child),
-.resource-detail-page__version-note :deep(ul:first-child),
-.resource-detail-page__version-note :deep(ol:first-child),
-.resource-detail-page__version-note :deep(blockquote:first-child) {
-  margin-top: 0;
-}
-
-.resource-detail-page__version-note :deep(p:last-child),
-.resource-detail-page__version-note :deep(ul:last-child),
-.resource-detail-page__version-note :deep(ol:last-child),
-.resource-detail-page__version-note :deep(blockquote:last-child) {
-  margin-bottom: 0;
-}
-
-.resource-detail-page__version-note :deep(code) {
-  color: #0f172a;
-}
-
-.resource-detail-page__version-note.is-collapsed {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.resource-detail-page__version-actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-  margin-top: 5px;
-  padding-top: 5px;
-  border-top: 1px solid rgba(219, 229, 247, 0.78);
-}
-
-.resource-detail-page__version-note-toggle {
-  position: sticky;
-  top: 8px;
-  float: right;
-  margin: -25px 0 8px 12px;
-  padding: 4px 14px;
-  border: none;
-  border-radius: 999px;
-  background: rgba(100, 116, 139, 0.09);
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.4;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  white-space: nowrap;
-  z-index: 2;
-}
-
-.resource-detail-page__version-note-toggle:hover {
-  background: rgba(100, 116, 139, 0.18);
-}
-
-.resource-detail-page__version-meta strong {
-  color: #0f172a;
-}
-
 .resource-detail-page__comments-card {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.resource-detail-page__comment-composer,
-.resource-detail-page__comment-item {
-  border-radius: 18px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  background: rgba(255, 255, 255, 0.78);
-}
-
-.resource-detail-page__comment-composer {
-  padding: 16px;
-}
-
-.resource-detail-page__comment-gate {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.resource-detail-page__comment-gate strong,
-.resource-detail-page__comment-meta strong {
-  color: #0f172a;
-}
-
-.resource-detail-page__comment-gate p,
-.resource-detail-page__comment-body p,
-.resource-detail-page__comment-meta span,
-.resource-detail-page__comment-count {
-  margin: 0;
-  color: #64748b;
-  line-height: 1.7;
-}
-
-.resource-detail-page__comment-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.resource-detail-page__comment-input {
-  width: 100%;
-  min-height: 108px;
-  resize: vertical;
-  border: 1px solid rgba(198, 210, 236, 0.86);
-  border-radius: 16px;
-  background: rgba(248, 250, 252, 0.96);
-  color: #0f172a;
-  padding: 12px 14px;
-  font: inherit;
-  line-height: 1.7;
-  outline: none;
-  transition:
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    background-color 180ms ease;
-}
-
-.resource-detail-page__comment-input:focus {
-  border-color: rgba(37, 99, 235, 0.58);
-  background: #fff;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
-}
-
-.resource-detail-page__comment-toolbar,
-.resource-detail-page__comment-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.resource-detail-page__comment-count {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.resource-detail-page__comment-count.danger {
-  color: #dc2626;
-}
-
-.resource-detail-page__comment-action,
-.resource-detail-page__comment-submit {
-  border: 0;
-  border-radius: 12px;
-  min-height: 40px;
-  padding: 0 16px;
-  color: #fff;
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    transform 180ms ease,
-    box-shadow 180ms ease,
-    opacity 180ms ease;
-}
-
-.resource-detail-page__comment-action:hover,
-.resource-detail-page__comment-submit:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 22px rgba(37, 99, 235, 0.18);
-}
-
-.resource-detail-page__comment-submit:disabled {
-  cursor: not-allowed;
-  opacity: 0.56;
-}
-
-.resource-detail-page__comment-list {
-  min-height: 72px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.resource-detail-page__comment-item {
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 12px;
-  padding: 14px;
-}
-
-.resource-detail-page__comment-item.mine {
-  border-color: rgba(37, 99, 235, 0.26);
-  background: rgba(239, 246, 255, 0.82);
-}
-
-.resource-detail-page__comment-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #1d4ed8;
-  background: rgba(219, 234, 254, 0.95);
-  font-weight: 800;
-}
-
-.resource-detail-page__comment-body {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.resource-detail-page__comment-body p {
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.resource-detail-page__comment-meta span {
-  font-size: 12px;
 }
 
 /* R047 断点收敛：原档位 980px → 900px（与紧随其后的 900px 块合并为一处） */
@@ -2456,10 +1239,6 @@ a.resource-detail-page__repost-origin:hover {
     padding: 18px;
   }
 
-  .resource-detail-page__version-list {
-    max-height: min(520px, calc(100vh - 260px));
-  }
-
   .resource-detail-page__summary-card {
     min-height: auto;
   }
@@ -2473,10 +1252,6 @@ a.resource-detail-page__repost-origin:hover {
     min-height: 0;
   }
 
-  .resource-detail-page__version-headline {
-    align-items: flex-start;
-  }
-
   .resource-detail-page__cta-row,
   .resource-detail-page__primary-actions {
     align-items: stretch;
@@ -2487,26 +1262,6 @@ a.resource-detail-page__repost-origin:hover {
   .resource-detail-page__primary-actions :deep(.share-card-generator),
   .resource-detail-page__primary-actions :deep(.share-card-generator__start) {
     width: 100%;
-  }
-
-  .resource-detail-page__comment-gate,
-  .resource-detail-page__comment-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .resource-detail-page__comment-action,
-  .resource-detail-page__comment-submit {
-    width: 100%;
-  }
-
-  .resource-detail-page__comment-item {
-    grid-template-columns: 36px minmax(0, 1fr);
-  }
-
-  .resource-detail-page__comment-avatar {
-    width: 36px;
-    height: 36px;
   }
 }
 
@@ -2540,11 +1295,6 @@ a.resource-detail-page__repost-origin:hover {
 .resource-detail-page--panel .resource-detail-page__detail-grid {
   gap: 16px;
   margin-top: 16px;
-}
-
-/* 内嵌形态里版本列表不跟着页面无限拉长：超过一定高度由它自己滚 */
-.resource-detail-page--panel .resource-detail-page__version-list {
-  max-height: 420px;
 }
 
 /* 窄档（与组件自带的 900 断点同一档）：lead 压成单列、封面收窄、标题降一档 */
@@ -2632,5 +1382,43 @@ a.resource-detail-page__repost-origin:hover {
 .resource-detail-page__load-error strong {
   color: #0f172a;
   font-size: 15px;
+}
+</style>
+
+<style>
+/* ============================================================
+   购买弹窗色板（`--rdp-purchase-*`）
+   ── 弹窗 Teleport 到 body，`.resource-detail-page` 上声明的 `--rdp-*` 继承不到它，
+      所以在弹窗自己的根类名上再声明一份。
+   ── 必须是全局块（不带 scoped）：scoped 规则只作用于本组件的元素，而弹窗内容是子组件的；
+      选择器限定在 `.resource-purchase-modal-wrap` 上，不会外溢到其它弹窗。
+   ── 裸色值留在这个文件里（已在 `raw-color` 基线内，只减不增），子组件只取 `var()`。
+   ============================================================ */
+.resource-purchase-modal-wrap {
+  --rdp-purchase-scrim: rgba(15, 23, 42, 0.28);
+  --rdp-purchase-border: rgba(198, 210, 236, 0.95);
+  --rdp-purchase-glow: rgba(191, 219, 254, 0.55);
+  --rdp-purchase-surface: rgba(255, 255, 255, 0.97);
+  --rdp-purchase-shadow: rgba(37, 66, 130, 0.18);
+  --rdp-purchase-ink: #0f172a;
+  --rdp-purchase-body: #334155;
+  --rdp-purchase-muted: #64748b;
+  --rdp-purchase-soft-ink: #475569;
+  --rdp-purchase-white: #fff;
+  --rdp-purchase-close-border: rgba(203, 213, 225, 0.95);
+  --rdp-purchase-close-border-hover: rgba(148, 163, 184, 0.9);
+  --rdp-purchase-plate-border: rgba(226, 232, 240, 0.95);
+  --rdp-purchase-plate-surface: rgba(248, 250, 252, 0.96);
+  --rdp-purchase-dashed: rgba(148, 163, 184, 0.7);
+  --rdp-purchase-dashed-surface: rgba(248, 250, 252, 0.9);
+  --rdp-purchase-amount-border: rgba(253, 186, 116, 0.55);
+  --rdp-purchase-amount-from: rgba(255, 247, 237, 0.98);
+  --rdp-purchase-amount-to: rgba(255, 237, 213, 0.72);
+  --rdp-purchase-amount-ink: #9a3412;
+  --rdp-purchase-notes-border: rgba(191, 219, 254, 0.85);
+  --rdp-purchase-notes-surface: rgba(239, 246, 255, 0.72);
+  --rdp-purchase-error-border: rgba(252, 165, 165, 0.85);
+  --rdp-purchase-error-surface: rgba(254, 242, 242, 0.9);
+  --rdp-purchase-error-ink: #b91c1c;
 }
 </style>

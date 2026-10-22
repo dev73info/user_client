@@ -14,11 +14,6 @@
       "count": 1
     }
   },
-  "src/components/ResourceDetailPanel.vue": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/components/RichTextEditor.vue": {
     "@typescript-eslint/no-explicit-any": {
       "count": 2
