@@ -111,12 +111,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/DevTipSettingsView.vue",
-      "detail": "653 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/TeamResourcesView.vue",
       "detail": "719 行 > 300（视图）",
       "since": "2026-10-22"

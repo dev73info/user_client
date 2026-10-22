@@ -1,0 +1,100 @@
+.tip-settings__section-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dev-ink);
+}
+
+.tip-settings__section-title:not(:first-child) {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--dev-line);
+}
+
+.tip-settings__limit {
+  margin: 8px 0 0;
+  color: var(--dev-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.tip-settings__switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.tip-settings__switch-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dev-ink-soft);
+  font-size: 13px;
+}
+
+/* 档位：输入框按内容取宽（金额就那么几位，拉满整行反而空），
+   删除键贴在框右侧，「添加档位」按钮独立成行，不占档位的位置。 */
+.tip-settings__tier-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tip-settings__tier-cell {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 0 0 auto;
+}
+
+/* 金额就那么几位，输入框按内容取宽即可（120px），不占满整行 */
+.tip-settings__tier-cell :deep(.t73-input) {
+  width: 120px;
+}
+
+/* 删除键紧贴输入框右沿：图标按钮本身有 8px 内边距，这里收掉，
+   让「框 + ×」看起来是一组，而不是两个各自独立的控件。 */
+.tip-settings__tier-cell :deep(.t73-button--icon-only) {
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  margin-left: -4px;
+}
+
+.tip-settings__tier-add {
+  flex: 0 0 auto;
+  margin-left: 8px;
+}
+
+.tip-settings__range {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tip-settings__range-input {
+  max-width: 160px;
+}
+
+.tip-settings__range-sep {
+  color: var(--dev-muted);
+}
+
+.tip-settings__notice {
+  margin: 24px 0 0;
+  padding: 12px;
+  border-radius: var(--dev-radius-inner);
+  border: 1px solid var(--dev-line);
+  background: var(--dev-bg);
+  color: var(--dev-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.tip-settings__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
