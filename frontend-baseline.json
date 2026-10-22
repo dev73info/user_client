@@ -207,12 +207,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/styles/profile.css",
-      "detail": "1041 行 > 300（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/styles/resource-catalog.css",
       "detail": "777 行 > 300（模块）",
       "since": "2026-10-22"
@@ -1179,9 +1173,45 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/styles/profile.css",
-      "detail": "78 处裸色值",
-      "since": "2026-10-22"
+      "file": "src/styles/profile/01-profile-shell-wallet.css",
+      "detail": "19 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/profile/02-requirement-row.css",
+      "detail": "5 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/profile/03-requirement-actions.css",
+      "detail": "19 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/profile/04-requirement-responsive-review.css",
+      "detail": "3 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/profile/05-requirement-banners-modals.css",
+      "detail": "16 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/profile/06-coupon-account-dialogs.css",
+      "detail": "12 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/profile/07-overview-skeleton.css",
+      "detail": "4 处裸色值",
+      "since": "2026-10-23"
     },
     {
       "rule": "raw-color",

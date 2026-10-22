@@ -1,0 +1,205 @@
+/* R047 断点收敛：原 820px → 640px（用户决定统一到 640） */
+@media (max-width: 640px) {
+  /* 窄屏：摘要折到正文下面，改成左对齐（贴右是桌面档的排法，窄屏贴右会顶出一块空白）。 */
+  .requirement-card-body {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .profile-page .requirement-summary {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  /* 触屏档：操作区竖排两段——开关芯片独占一行，动作行排在下面，主操作整宽置底（拇指可达）。
+     触摸目标不小于 44px（对齐项目既有约定）。 */
+  .requirement-actions {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px 0 0;
+  }
+
+  .requirement-toggles {
+    margin-right: 0;
+  }
+
+  .requirement-actions__list {
+    justify-content: flex-start;
+  }
+
+  .profile-page .requirement-actions button.ghost {
+    min-height: 44px;
+  }
+
+  /* 主操作单独占最后一行整宽：窄屏折行后它不会被挤在中间，也不与其它按钮抢位置 */
+  .profile-page .requirement-actions button.ghost.action-primary {
+    flex: 1 1 100%;
+    order: 99;
+  }
+
+  .requirement-toggle {
+    height: 44px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+
+  .requirement-toggle__track {
+    width: 32px;
+    height: 18px;
+  }
+
+  .requirement-toggle__track::after {
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+  }
+
+  .requirement-toggle[aria-pressed='true'] .requirement-toggle__track::after {
+    transform: translateX(14px);
+  }
+
+  /* 最窄档：状态、预算、更新时间改成竖排，否则三者在 320px 上会被挤成一字一行。 */
+  .profile-page .requirement-summary {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}
+
+.requirement-review-card-row {
+  list-style: none;
+}
+
+.requirement-review-card {
+  margin: -2px 0 10px;
+  padding: 18px;
+  border: 1px solid var(--profile-card-border);
+  border-radius: 16px;
+  background: #f8fbff;
+  color: var(--profile-text-main);
+}
+
+.requirement-review-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.requirement-review-card__header h4 {
+  margin: 0 0 6px;
+}
+
+.requirement-review-card__header p {
+  margin: 0;
+  color: var(--profile-text-sub);
+  font-size: 13px;
+}
+
+.requirement-review-card-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.requirement-review-item {
+  padding: 16px;
+  border: 1px solid var(--profile-card-border);
+  border-radius: 14px;
+  background: var(--profile-card-bg-strong);
+}
+
+.requirement-review-item__main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.requirement-review-item__main strong {
+  display: block;
+  color: var(--profile-text-main);
+  font-size: 15px;
+}
+
+.requirement-review-item__main p {
+  margin: 8px 0 0;
+  color: var(--profile-text-sub);
+  font-size: 13px;
+}
+
+.requirement-review-card__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.requirement-review-card__field--stacked {
+  margin-top: 12px;
+}
+
+.requirement-review-card__field span {
+  color: var(--profile-text-sub);
+  font-size: 12px;
+}
+
+.requirement-review-card__field select {
+  width: 100%;
+  border: 1px solid var(--profile-card-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--profile-card-bg-strong);
+  color: var(--profile-text-main);
+}
+
+.requirement-review-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.requirement-review-item__actions .ghost.active {
+  border-color: rgba(125, 155, 225, 0.92);
+  background: var(--profile-accent-soft);
+  color: #1d4ed8;
+}
+
+.requirement-review-item__reject-panel {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--profile-card-border);
+}
+
+.requirement-review-card__hint {
+  margin: 14px 0 0;
+  color: var(--profile-text-sub);
+  font-size: 13px;
+}
+
+.requirement-review-card__hint.danger {
+  color: var(--profile-danger-text);
+}
+
+.requirement-review-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* R047 断点收敛：原 820px → 640px（用户决定统一到 640）。
+   本块与下面 640px 块之间隔着审核卡片、归档横幅等一整套规则，按级联顺序不能合并，
+   故保留两块。 */
+@media (max-width: 640px) {
+  .requirement-review-card__header,
+  .requirement-review-card__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .requirement-review-item__main {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

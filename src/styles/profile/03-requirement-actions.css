@@ -1,0 +1,173 @@
+/* 操作条留在 .wb-item 自己的内边距里：只留一条极浅的分隔线，不再自带一圈内边距
+   （否则一行里会出现第二层留白，行高翻倍、看起来又变回卡片）。 */
+.requirement-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0 0;
+  border-top: 1px solid rgba(209, 220, 243, 0.72);
+}
+
+/* 操作区分左右两段：左边是开关芯片（状态设置），右边是动作，中间靠 margin-right: auto 撑开。 */
+.requirement-toggles {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-right: auto;
+}
+
+.requirement-actions__list {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 状态开关（订阅 / 公开）不是动作，用带轨道的灰底芯片表示，避免和动作按钮长得一样。 */
+.requirement-toggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--profile-text-sub);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.requirement-toggle:hover:not(:disabled) {
+  border-color: rgba(148, 163, 184, 0.95);
+  color: var(--profile-text-main);
+}
+
+.requirement-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.requirement-toggle:focus-visible {
+  outline: 2px solid rgba(79, 140, 255, 0.55);
+  outline-offset: 2px;
+}
+
+.requirement-toggle__track {
+  position: relative;
+  flex: none;
+  width: 26px;
+  height: 14px;
+  border-radius: 999px;
+  background: #cbd5e1;
+  transition: background-color 180ms ease;
+}
+
+.requirement-toggle__track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 180ms ease;
+}
+
+/* 开关态用 aria-pressed 表达：颜色之外还有轨道位置，不靠颜色单独承载状态。 */
+.requirement-toggle[aria-pressed='true'] {
+  border-color: rgba(79, 140, 255, 0.45);
+  background: var(--profile-accent-soft);
+  color: #1d4ed8;
+}
+
+.requirement-toggle[aria-pressed='true'] .requirement-toggle__track {
+  background: var(--profile-accent);
+}
+
+.requirement-toggle[aria-pressed='true'] .requirement-toggle__track::after {
+  transform: translateX(12px);
+}
+
+.requirement-actions__more {
+  gap: 6px;
+  color: var(--profile-text-sub);
+}
+
+/* 需求单操作区四层：开关芯片 → 行内常用动作 → 更多菜单 → 唯一主操作。
+   action-quiet     只做跳转的（会话），无边框无底色
+   action-emphasis  需要看见的次要动作（下载 / 解除合作），白底蓝字带描边
+   action-primary   当前该做的那一步（处理解除申请 / 签署合同 / 支付 / 验收 / 去评价），实心渐变
+   同一行最多一个 action-primary；其余低频与危险动作收进「更多」菜单。 */
+.profile-page .requirement-actions button.ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--profile-text-main);
+}
+
+.profile-page .requirement-actions button.ghost:focus-visible {
+  outline: 2px solid rgba(79, 140, 255, 0.55);
+  outline-offset: 2px;
+}
+
+.profile-page .requirement-actions button.ghost.action-quiet,
+.profile-page .requirement-actions button.ghost.action-quiet:hover:not(:disabled) {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.profile-page .requirement-actions button.ghost.action-quiet {
+  padding: 0 10px;
+  color: var(--profile-text-sub);
+}
+
+.profile-page .requirement-actions button.ghost.action-quiet:hover:not(:disabled) {
+  background: var(--profile-accent-soft);
+  color: #1d4ed8;
+}
+
+/* 需要被看见的次要动作（下载 / 解除合作）：白底蓝字带描边，和链接式的 action-quiet 拉开层次 */
+.profile-page .requirement-actions button.ghost.action-emphasis {
+  border-color: rgba(79, 140, 255, 0.32);
+  background: #ffffff;
+  color: #1d4ed8;
+}
+
+.profile-page .requirement-actions button.ghost.action-emphasis:hover:not(:disabled) {
+  border-color: rgba(79, 140, 255, 0.5);
+  background: var(--profile-accent-soft);
+  color: #1d4ed8;
+}
+
+.profile-page .requirement-actions button.ghost.action-primary {
+  border-color: transparent;
+  background: var(--primary-gradient);
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.26);
+}
+
+.profile-page .requirement-actions button.ghost.action-primary:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--primary-gradient);
+  box-shadow: 0 14px 26px rgba(37, 99, 235, 0.32);
+  filter: brightness(1.06);
+}

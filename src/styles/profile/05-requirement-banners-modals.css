@@ -1,0 +1,147 @@
+/* R014：合同有效期届满后的锁定 / 清除横幅（.requirement-row 里的那一块）。
+   锁定是「限时保留资料」，用琥珀提醒；清除是终态，用中性灰，表示只剩审计台账。
+   原先写在 MyRequirementsView 的 scoped 块里，行拆成 RequirementRow.vue 后落回本文件——
+   需求行的全部视觉规则本来都在这里。 */
+.requirement-archive-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 10px 0 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.requirement-archive-banner--cleared {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.requirement-archive-banner strong {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.requirement-archive-banner__remaining {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(146, 64, 14, 0.1);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.requirement-archive-banner p {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+/* 解除合作弹窗（`RequirementBreachModal.vue`）里那两块自己排版的内容：协商/判定表态与二次确认。
+   原先写在 MyRequirementsView 的 scoped 块里，弹窗拆成组件后 scoped 属性对不上会静默失效，
+   落回本文件——`.pay-modal` 本来就是全局样式，选择器一字不改、视觉不变。 */
+.pay-modal .breach-modal__field {
+  display: grid;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.pay-modal .breach-modal__field > strong {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pay-modal .breach-modal__decision {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(191, 219, 254, 0.9);
+  border-radius: 14px;
+  background: rgba(239, 246, 255, 0.72);
+}
+
+.pay-modal .breach-modal__decision .pay-line {
+  margin-bottom: 0;
+}
+
+.pay-modal .breach-modal__decision .actions {
+  margin-top: 12px;
+}
+
+@media (max-width: 640px) {
+  .pay-modal .breach-modal__decision .actions .ghost {
+    min-height: 44px;
+  }
+  .pay-modal .breach-modal__decision .actions {
+    flex-direction: column;
+  }
+}
+
+/* 下载版本选择器（`RequirementDownloadPicker.vue`）：一行一个版本，右侧下载按钮；版本说明用弱字色。
+   原先写在 MyRequirementsView 的 scoped 块里，选择器一字未改搬到这里——组件化后 scoped 属性对不上，
+   `.pay-modal` 又是全局样式；这三条里的裸色值因此仍走基线，不变成组件里的新增色值。 */
+.download-picker {
+  display: grid;
+  gap: 10px;
+  max-height: 320px;
+  margin: 12px 0 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.download-picker__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(198, 210, 236, 0.72);
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.download-picker__meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.download-picker__meta strong {
+  font-size: 13px;
+}
+
+.download-picker__meta small,
+.download-picker__meta p {
+  margin: 0;
+  color: var(--profile-text-sub, #64748b);
+  font-size: 12px;
+  word-break: break-word;
+}
+
+/* 「转为我的资源」确认须知（`RequirementClaimModal.vue`）：与 `.pay-modal .tip` 同一浅蓝底，三条分行列出。
+   原先写在 MyRequirementsView 的 scoped 块里，弹窗拆成组件后 scoped 属性对不上会静默失效；
+   三条规则里的裸色值因此跟着进本文件（总数不变，只是换了记账对象）。 */
+.pay-modal .claim-notes {
+  margin: 14px 0 0;
+  padding: 10px 12px 10px 28px;
+  border-radius: 10px;
+  background: rgba(239, 246, 255, 0.9);
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.pay-modal .claim-notes li + li {
+  margin-top: 4px;
+}
+
+.pay-modal .claim-notes strong {
+  color: #b45309;
+}
