@@ -16,7 +16,7 @@
   },
   "src/components/ResourceDetailPanel.vue": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 2
+      "count": 1
     }
   },
   "src/components/RichTextEditor.vue": {

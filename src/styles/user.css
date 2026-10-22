@@ -7,6 +7,9 @@
 @import './resource-catalog.css';
 @import './rich-code-copy.css';
 @import './rich-text-code.css';
+/* 资源详情页富文本正文的排版：`v-html` 产物没有 `data-v`，只能走全局后代选择器
+   （容器 `__rich-text` 仍在 ResourceDetailPanel.vue 的模板里，位置与 class 都没动）。 */
+@import './resource-rich-text.css';
 @import './portal-workbench.css';
 
 /* 待办角标：挂在「解除合作」这类需要本人动作的行内入口按钮右上角（客户侧我的需求 / 开发者侧我的接单共用）。

@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import MarkdownIt from 'markdown-it'
-import { common, createLowlight } from 'lowlight'
 import { useRoute, useRouter } from 'vue-router'
 
 import { HttpError, apiUrl } from '@/api/http'
@@ -45,7 +43,9 @@ import { useDownloadStore } from '@/stores/download'
 import { useResourceDownload } from '@/composables/useResourceDownload'
 import { useResourcePayment } from '@/composables/useResourcePayment'
 import { useCodeBlockCopy } from '@/composables/useCodeBlockCopy'
-import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
+// 富文本管线（Markdown / 清洗 / 代码块高亮 / 表格包裹）在 utils 里，组件只落一次调用；
+// 配套的正文排版在全局样式 `styles/resource-rich-text.css`（v-html 产物没有 data-v）。
+import { formatHomepageContent } from '@/utils/resourceRichText'
 import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 import { TLoading, TMessage } from 'ui_73info'
 
@@ -226,29 +226,6 @@ const repostOriginLabel = computed(() => {
   }
   return parts.join(' · ')
 })
-const infoCards = computed(() => {
-  if (!resource.value) {
-    return []
-  }
-
-  return [
-    {
-      label: '当前版本',
-      value: latestVersion.value?.version ?? '暂无',
-      tone: 'current-version',
-    },
-    {
-      label: '历史版本',
-      value: `${versions.value.length}`,
-      tone: 'versions',
-    },
-    {
-      label: '最近更新',
-      value: formatUpdatedDate(resource.value.updated_at),
-      tone: 'updated',
-    },
-  ]
-})
 const resourceCoverUrl = computed(() =>
   resource.value?.cover_url ? apiUrl(resource.value.cover_url) : '',
 )
@@ -341,136 +318,13 @@ const commentGate = computed<CommentGate | null>(() => {
   return null
 })
 
-const markdownRenderer = new MarkdownIt({
-  html: false,
-  linkify: true,
-  breaks: true,
-})
-markdownRenderer.enable(['table'])
-
-const codeHighlighter = createLowlight(common)
-
-type HastNode =
-  | { type: 'text'; value: string }
-  | {
-      type: 'element'
-      tagName: string
-      properties?: { className?: string[] }
-      children: HastNode[]
-    }
-  | { type: 'root'; children: HastNode[] }
-
-function escapeHtmlText(value: string): string {
-  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-function hastToHtml(node: HastNode): string {
-  if (node.type === 'text') {
-    return escapeHtmlText(node.value)
-  }
-  if (node.type === 'root') {
-    return node.children.map(hastToHtml).join('')
-  }
-  const classAttr = node.properties?.className?.length
-    ? ` class="${node.properties.className.join(' ')}"`
-    : ''
-  const children = node.children.map(hastToHtml).join('')
-  return `<${node.tagName}${classAttr}>${children}</${node.tagName}>`
-}
-
-// 让只读富文本中的代码块与编辑器保持一致：按语言重新高亮并补充 code-block 类。
-function highlightRichCodeBlocks(html: string): string {
-  if (!html) {
-    return html
-  }
-  const template = document.createElement('template')
-  template.innerHTML = html
-  template.content.querySelectorAll<HTMLElement>('pre > code').forEach((codeElement) => {
-    const preElement = codeElement.parentElement
-    if (!preElement) {
-      return
-    }
-    preElement.classList.add('code-block')
-    const codeText = codeElement.textContent ?? ''
-    if (!codeText.trim()) {
-      return
-    }
-    const languageClass = Array.from(codeElement.classList).find((item) =>
-      /^language-[a-z0-9_-]+$/i.test(item),
-    )
-    const language = languageClass ? languageClass.slice('language-'.length) : undefined
-    try {
-      const registered =
-        language && codeHighlighter.listLanguages().includes(language.toLowerCase())
-      const root = registered
-        ? codeHighlighter.highlight(language!.toLowerCase(), codeText)
-        : codeHighlighter.highlightAuto(codeText)
-      const children = (root as { children?: HastNode[] }).children ?? []
-      const detectedLanguage = registered
-        ? language!.toLowerCase()
-        : ((root as { data?: { language?: string } }).data?.language ?? undefined)
-      // 未识别出语言时（例如纯中文文本），保留原始内容，仅应用代码块外观，避免内容被清空
-      if (children.length === 0 || !detectedLanguage) {
-        return
-      }
-      codeElement.innerHTML = hastToHtml(root as HastNode)
-      codeElement.classList.add('hljs')
-      codeElement.classList.add(`language-${detectedLanguage}`)
-    } catch {
-      // 单个代码块高亮失败时保留原始内容
-    }
-  })
-  return template.innerHTML
-}
-
+/** 摘要要按平台名剥前缀，平台名里的正则元字符先转义再拼进 `RegExp`。 */
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-// 把富文本表格包进可横向滚动的容器，避免移动端列被压得很窄导致文字竖排。
-function wrapRichTables(html: string): string {
-  if (!html) {
-    return html
-  }
-  const template = document.createElement('template')
-  template.innerHTML = html
-  template.content.querySelectorAll('table').forEach((table) => {
-    const wrap = document.createElement('div')
-    wrap.className = 'rich-table-scroll'
-    table.parentNode?.insertBefore(wrap, table)
-    wrap.appendChild(table)
-  })
-  return template.innerHTML
-}
-
-function formatHomepageContent(value: string): string {
-  const trimmed = value.trim()
-  if (!trimmed) {
-    return ''
-  }
-
-  const rendered = /<\/?[a-z][\s\S]*>/i.test(trimmed)
-    ? sanitizeRichHtml(trimmed)
-    : sanitizeRichHtml(markdownRenderer.render(trimmed))
-
-  return wrapRichTables(highlightRichCodeBlocks(rendered))
-}
-
 function getCurrentResourceId(): number | null {
   return Number.isInteger(props.resourceId) && props.resourceId > 0 ? props.resourceId : null
-}
-
-function formatUpdatedDate(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return '未知日期'
-  }
-
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
 }
 
 function clearChannelSwitchTimer() {
@@ -1638,9 +1492,14 @@ watch(
     linear-gradient(160deg, rgba(219, 234, 254, 0.95), rgba(239, 246, 255, 0.92));
 }
 
+/* 封面图与占位块共用尺寸；`display` 只有图是块级——占位块要居中，见下一条（原来是同一条规则里
+   先写 `display: block` 再被 `display: flex` 覆盖，那条 block 对该选择器是死声明，拆开只留活的） */
+.resource-detail-page__cover-image {
+  display: block;
+}
+
 .resource-detail-page__cover-image,
 .resource-detail-page__cover-placeholder {
-  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1683,8 +1542,7 @@ watch(
 }
 
 .resource-detail-page__status-pill,
-.resource-detail-page__author-pill,
-.resource-detail-page__meta-chip {
+.resource-detail-page__author-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2061,12 +1919,7 @@ a.resource-detail-page__repost-origin:hover {
 .resource-detail-page__meta,
 .resource-detail-page__summary,
 .resource-detail-page__paragraph,
-.resource-detail-page__version-meta span,
-.resource-detail-page__rich-text :deep(p),
-.resource-detail-page__rich-text :deep(blockquote),
-.resource-detail-page__rich-text :deep(ul),
-.resource-detail-page__rich-text :deep(ol),
-.resource-detail-page__rich-text :deep(td) {
+.resource-detail-page__version-meta span {
   margin: 0;
   color: #64748b;
   line-height: 1.8;
@@ -2103,42 +1956,6 @@ a.resource-detail-page__repost-origin:hover {
   white-space: nowrap;
 }
 
-.resource-detail-page__meta-chip {
-  color: #1d4ed8;
-  background: rgba(219, 234, 254, 0.92);
-}
-
-.resource-detail-page__summary-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 2px;
-}
-
-.resource-detail-page__summary-stat {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(219, 229, 247, 0.78);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.86));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
-}
-
-.resource-detail-page__summary-stat strong {
-  color: #0f172a;
-  font-size: 24px;
-  line-height: 1.2;
-}
-
-.resource-detail-page__summary-stat span {
-  color: #475569;
-  font-size: 13px;
-  font-weight: 800;
-}
-
 .resource-detail-page__primary-actions {
   display: inline-flex;
   align-items: center;
@@ -2152,12 +1969,11 @@ a.resource-detail-page__repost-origin:hover {
   border-top: 1px solid rgba(219, 229, 247, 0.82);
 }
 
+/* 主按钮与版本下载按钮的公共项：描边、光标与过渡。
+   尺寸 / 圆角两者不同档（主按钮 44px，版本按钮是紧凑档，见它自己那条），所以不写在这里。 */
 .resource-detail-page__primary-btn,
 .resource-detail-page__version-download {
   border: 0;
-  border-radius: 12px;
-  min-height: 44px;
-  padding: 0 16px;
   cursor: pointer;
   transition:
     transform 180ms ease,
@@ -2172,6 +1988,9 @@ a.resource-detail-page__repost-origin:hover {
 
 .resource-detail-page__primary-btn {
   border: 0;
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 0 16px;
   color: #fff;
   background: linear-gradient(135deg, #2563eb, #4f8cff);
   font-weight: 700;
@@ -2340,134 +2159,23 @@ a.resource-detail-page__repost-origin:hover {
   gap: 16px;
 }
 
-/* 文本块级元素占满整行；行内媒体（如 badge 图片）可并排同行 */
-.resource-detail-page__rich-text :deep(p),
-.resource-detail-page__rich-text :deep(h2),
-.resource-detail-page__rich-text :deep(h3),
-.resource-detail-page__rich-text :deep(h4),
-.resource-detail-page__rich-text :deep(ul),
-.resource-detail-page__rich-text :deep(ol),
-.resource-detail-page__rich-text :deep(blockquote),
-.resource-detail-page__rich-text :deep(pre),
-.resource-detail-page__rich-text :deep(hr),
-.resource-detail-page__rich-text :deep(table) {
-  flex: 0 0 100%;
-}
-
-.resource-detail-page__rich-text :deep(h2) {
-  margin: 0 0 12px;
-  color: #0f172a;
-  font-size: 22px;
-  line-height: 1.35;
-}
-
-.resource-detail-page__rich-text :deep(h1) {
-  margin: 0 0 14px;
-  color: #0f172a;
-  font-size: 28px;
-  line-height: 1.2;
-}
-
-.resource-detail-page__rich-text :deep(h3) {
-  margin: 0 0 12px;
-  color: #0f172a;
-  font-size: 18px;
-  line-height: 1.4;
-}
-
-.resource-detail-page__rich-text :deep(blockquote) {
-  margin: 0 0 12px;
-  padding-left: 14px;
-  border-left: 3px solid rgba(96, 165, 250, 0.34);
-}
-
-.resource-detail-page__rich-text :deep(ul),
-.resource-detail-page__rich-text :deep(ol) {
-  margin: 0 0 12px;
-  padding-left: 22px;
-}
-
-.resource-detail-page__rich-text :deep(a) {
-  color: #2563eb;
-}
-
-.resource-detail-page__rich-text :deep(.rich-editor-media) {
-  display: block;
-  max-width: 100%;
-  margin: 12px 0;
-  border: 1px solid rgba(203, 213, 225, 0.86);
-  border-radius: 14px;
-  background: #f8fafc;
-}
-
-.resource-detail-page__rich-text :deep(.rich-editor-image) {
-  display: inline-block;
-  vertical-align: middle;
-  height: auto;
-}
-
-.resource-detail-page__rich-text :deep(img) {
-  display: inline-block;
-  vertical-align: middle;
-  max-width: 100%;
-  height: auto;
-}
-
-.resource-detail-page__rich-text :deep(.rich-editor-video) {
-  width: 100%;
-  min-height: 220px;
-}
-
-.resource-detail-page__rich-text :deep(.rich-editor-attachment) {
-  display: inline-flex;
-  align-items: center;
-  max-width: 100%;
-  margin: 10px 0;
-  padding: 9px 12px;
-  border: 1px solid rgba(191, 219, 254, 0.96);
-  border-radius: 10px;
-  background: rgba(239, 246, 255, 0.9);
-  color: #1d4ed8;
-  font-weight: 800;
-  text-decoration: none;
-  overflow-wrap: anywhere;
-}
-
-.resource-detail-page__rich-text :deep(hr) {
-  margin: 18px 0;
-  border: 0;
-  border-top: 1px solid rgba(226, 232, 240, 0.9);
-}
-
-.resource-detail-page__rich-text :deep(.rich-table-scroll) {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  margin: 0 0 14px;
-  max-width: 100%;
-}
-
-.resource-detail-page__rich-text :deep(table) {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0 0 14px;
-}
-
-.resource-detail-page__rich-text :deep(.rich-table-scroll > table) {
-  width: max-content;
-  min-width: 100%;
-  margin: 0;
-}
-
-.resource-detail-page__rich-text :deep(th),
-.resource-detail-page__rich-text :deep(td) {
-  padding: 10px 12px;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  text-align: left;
-}
-
-.resource-detail-page__rich-text :deep(th) {
-  color: #0f172a;
-  background: rgba(239, 246, 255, 0.96);
+/* 富文本正文的色板。
+   正文排版已搬到全局样式 `styles/resource-rich-text.css`（v-html 产物没有 `data-v`，`:deep`
+   在那边没有意义），那边只取这里的 `var()`；色值本身留在这个文件里，因为 `raw-color` 门禁
+   按文件聚合，新样式文件带裸色值会被算新增违规，而本文件的裸色值已在基线里（只减不增）。
+   挂在正文容器上（模板里 `v-html` 的那个 div），由继承传给渲染出来的后代。 */
+.resource-detail-page__rich-text {
+  --rdp-rich-muted: #64748b;
+  --rdp-rich-ink: #0f172a;
+  --rdp-rich-link: #2563eb;
+  --rdp-rich-quote-border: rgba(96, 165, 250, 0.34);
+  --rdp-rich-media-border: rgba(203, 213, 225, 0.86);
+  --rdp-rich-media-bg: #f8fafc;
+  --rdp-rich-attachment-border: rgba(191, 219, 254, 0.96);
+  --rdp-rich-attachment-bg: rgba(239, 246, 255, 0.9);
+  --rdp-rich-attachment-ink: #1d4ed8;
+  --rdp-rich-hairline: rgba(226, 232, 240, 0.9);
+  --rdp-rich-th-bg: rgba(239, 246, 255, 0.96);
 }
 
 .resource-detail-page__version-list {
@@ -2767,10 +2475,6 @@ a.resource-detail-page__repost-origin:hover {
 
   .resource-detail-page__version-headline {
     align-items: flex-start;
-  }
-
-  .resource-detail-page__summary-stats {
-    grid-template-columns: 1fr;
   }
 
   .resource-detail-page__cta-row,
