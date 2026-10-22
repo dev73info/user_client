@@ -1,0 +1,105 @@
+@media (prefers-reduced-motion: no-preference) {
+  .portal-page__resource-skeleton::after {
+    animation: portal-page-skeleton-shimmer 1.3s ease-in-out infinite;
+  }
+}
+
+@keyframes portal-page-skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* R047 断点收敛：原档位 1100px → 1180px */
+@media (max-width: 1180px) {
+  .portal-page__hero,
+  .portal-page__content,
+  .portal-page__stats,
+  .portal-page__card-grid,
+  .portal-page__resource-grid,
+  .portal-page__collection-grid,
+  .portal-page__signal-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .portal-page {
+    width: calc(100% - 24px);
+  }
+
+  .portal-page--nav {
+    width: calc(100% - 16px);
+    margin-top: 8px;
+    gap: 12px;
+  }
+
+  .portal-page--nav .portal-page__content {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .portal-page--nav .portal-page__panel,
+  .portal-page--nav .portal-page__aside-card {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .portal-page--nav .portal-page__section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .portal-page--nav .portal-page__header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .portal-page__hero,
+  .portal-page__content,
+  .portal-page__stats,
+  .portal-page__card-grid,
+  .portal-page__resource-grid,
+  .portal-page__collection-grid,
+  .portal-page__signal-list,
+  .portal-page__hero-actions {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .portal-page__hero {
+    padding: 22px;
+  }
+
+  .portal-page__hero-core {
+    width: 92px;
+    height: 118px;
+    font-size: 36px;
+  }
+
+  .portal-page__hero-float {
+    width: 48px;
+    height: 48px;
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 640px) {
+  .portal-page--nav .portal-page__card,
+  .portal-page--nav .portal-page__collection-card,
+  .portal-page--nav .portal-page__timeline-item {
+    padding: 16px;
+  }
+
+  .portal-page--nav .portal-page__card-topline,
+  .portal-page--nav .portal-page__card-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .portal-page--nav .portal-page__action {
+    width: 100%;
+    text-align: center;
+  }
+}
