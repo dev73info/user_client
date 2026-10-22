@@ -309,12 +309,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/CouponClaimView.vue",
-      "detail": "303 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/DevHomeView.vue",
       "detail": "955 行 > 300（视图）",
       "since": "2026-10-22"
@@ -964,8 +958,14 @@
     {
       "rule": "raw-color",
       "file": "src/views/CouponClaimView.vue",
-      "detail": "13 处裸色值",
+      "detail": "5 处裸色值",
       "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/coupon/CouponClaimOutcome.vue",
+      "detail": "8 处裸色值",
+      "since": "2026-10-23"
     },
     {
       "rule": "raw-color",
