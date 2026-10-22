@@ -1,6 +1,7 @@
 import { HttpError, authHeaders, requestJson, requestVoid } from '@/api/http'
 import {
   createAuthApiClient,
+  detectClientPlatform,
   type AgreementAcceptancePayload,
   type AuthPayload,
   type AuthRequestPayload,
@@ -16,7 +17,7 @@ export type {
   GiteeAuthUrlResp,
   GithubAuthUrlResp,
 }
-export { isTwoFactorRequiredPayload }
+export { detectClientPlatform, isTwoFactorRequiredPayload }
 
 export type WechatPaymentAuthorizeUrlResp = {
   url: string
@@ -283,6 +284,30 @@ export async function fetchUserServiceAgreement(): Promise<UserServiceAgreement>
     '/auth/user-service-agreement',
     { headers: {} },
     '加载用户服务协议失败',
+  )
+}
+
+/** 通用协议 / 附件内容（后端 `contract_template` 的一行）。 */
+export type AgreementContent = {
+  code: string
+  title: string
+  content: string
+  version: string
+  effective_at: string
+}
+
+/**
+ * 读取协议 / 配套附件的正文（公开，无需登录）。
+ *
+ * 白名单外的 code 后端返回 404（例如 `default_requirement` 不在白名单，
+ * 需求合同正文要走合同详情接口）。
+ */
+export async function fetchAgreementContent(code: string): Promise<AgreementContent> {
+  const query = new URLSearchParams({ code })
+  return requestJson<AgreementContent>(
+    `/auth/agreement-content?${query.toString()}`,
+    { headers: {} },
+    '加载协议内容失败',
   )
 }
 

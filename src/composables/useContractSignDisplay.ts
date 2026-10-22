@@ -36,6 +36,13 @@ type UseContractSignDisplayOptions = {
   requirementArchive: Ref<RequirementItem | null>
   /** 签署进行中：`canSubmitSign` 要据此置灰按钮。 */
   signing: Ref<boolean>
+  /**
+   * 「已阅读并理解重要条款提示」的勾选状态（R043 任务-03）。
+   *
+   * 平台协议要求签署前单独确认重要条款提示，所以勾选状态要参与 `canSubmitSign`；
+   * 需求合同不受约束（`isPlatformAgreement` 为假时直接放行）。
+   */
+  noticeAccepted: Ref<boolean>
   /** 已签署合同是否回退展示本地正文（爱签预览取不到时置位）。 */
   localDocumentFallback: Ref<boolean>
   /** 当前登录账号：决定本人是甲方还是乙方。 */
@@ -130,14 +137,24 @@ export function useContractSignDisplay(options: UseContractSignDisplayOptions) {
     developmentCycleLabel(contract.value?.development_cycle_days),
   )
 
-  /** 签署可用性：合同可签 + 实名齐全 + 附件已放行（平台生成的合同不受附件闸门约束）+ 未进入到期归档。 */
+  /**
+   * 平台协议必须勾选确认重要条款提示才能发起签署（R043 任务-03）。
+   *
+   * 需求合同恒放行：平台不是需求合同的当事人，不在别人的合同流程里加平台自己的提示。
+   */
+  const platformNoticeConfirmed = computed(
+    () => !options.isPlatformAgreement.value || options.noticeAccepted.value,
+  )
+
+  /** 签署可用性：合同可签 + 实名齐全 + 附件已放行（平台生成的合同不受附件闸门约束）+ 未进入到期归档 + 平台协议已确认重要条款提示。 */
   const canSubmitSign = computed(
     () =>
       canSignContract.value &&
       signerIdentityReady.value &&
       !signing.value &&
       attachmentApproved.value &&
-      !requirementArchived.value,
+      !requirementArchived.value &&
+      platformNoticeConfirmed.value,
   )
 
   // 开发者入驻协议签署完成后的引导按钮；工作台签署详情已有「返回我的合同」入口，不在此重复展示。
@@ -169,6 +186,7 @@ export function useContractSignDisplay(options: UseContractSignDisplayOptions) {
     effectiveUntilLabel,
     developmentCycleText,
     canSubmitSign,
+    platformNoticeConfirmed,
     showBecomeDeveloper,
   }
 }

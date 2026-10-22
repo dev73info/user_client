@@ -7,6 +7,7 @@ import {
   collectPublicProfiles,
   fetchCommunityPostDetail,
   fetchPublishedPosts,
+  fetchAgreementContent,
   fetchPublishedResources,
   fetchPublicRequirementSpotlights,
   fetchUserServiceAgreement,
@@ -327,10 +328,12 @@ async function writePageOutputs(pagePath, html, templatePath) {
 
 // ===== 入口页 =====
 
-// 法务与平台说明页的正文：privacy / payment-refund / about 读共享 JSON，
-// terms 与 SPA 一致走接口（协议正文由后端下发，前端也是现取的）。
+// 法务与平台说明页的正文：about 读共享 JSON；
+// terms / privacy / payment-refund 与 SPA 一致走接口（协议正文由后端下发，前端也是现取的）。
 // 接口取不到时只警告、不中断构建：这几页仍会带上 lead 与站内导航，但要在输出里显眼地提示出来，
 // 免得又发出一个「只有一句话」的静态页却没人发现。
+// privacy / payment-refund 取不到接口时回落到 JSON 兜底快照（R043 任务-03）：
+// 后端是唯一事实源，但构建机连不上后端时不该整页只剩一句话。
 async function loadDocuments() {
   const legal = JSON.parse(readFileSync(legalContentPath, 'utf8'))
   const documents = {
@@ -346,6 +349,20 @@ async function loadDocuments() {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     console.warn(`[seo] !! 用户服务协议正文取不到，/terms 静态页将只有一句话：${message}`)
+  }
+
+  // 配套附件：能走接口就走接口（与 SPA 同源），取不到回落 JSON 兜底快照。
+  for (const [docKey, code] of [
+    ['privacy', 'privacy_policy'],
+    ['payment-refund', 'payment_refund_notice'],
+  ]) {
+    try {
+      const content = await fetchAgreementContent(apiBaseUrl, code)
+      documents[docKey] = agreementDocument(content)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn(`[seo] !! ${code} 正文取不到，/${docKey} 静态页回落到 JSON 兜底快照：${message}`)
+    }
   }
 
   return documents
@@ -373,21 +390,50 @@ function agreementDocument(agreement) {
   return {
     heading: cleanText(agreement?.title) || '用户服务协议',
     effectiveAt: formatDateText(agreement?.effective_at),
+    version: cleanText(agreement?.version),
     blocks: splitAgreementLines(agreement?.content),
   }
 }
 
 function splitAgreementLines(content) {
-  return String(content ?? '')
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) =>
-      // 与 src/views/TermsView.vue 的 splitLines 一致：中文序号开头算章节标题。
-      /^第?[一二三四五六七八九十百]+[、.．]/.test(line)
-        ? { type: 'heading', text: line }
-        : { type: 'paragraph', text: line },
-    )
+  const blocks = []
+  let pendingList = []
+
+  const flushList = () => {
+    if (pendingList.length > 0) {
+      blocks.push({ type: 'list', items: pendingList })
+      pendingList = []
+    }
+  }
+
+  for (const raw of String(content ?? '').split(/\r?\n/)) {
+    const line = raw.trim()
+    if (!line) {
+      flushList()
+      continue
+    }
+    if (/^[-•·]\s+/.test(line)) {
+      pendingList.push(line.replace(/^[-•·]\s+/, ''))
+      continue
+    }
+    flushList()
+    blocks.push({ type: isAgreementHeading(line) ? 'heading' : 'paragraph', text: line })
+  }
+
+  flushList()
+  return blocks
+}
+
+// 与 src/components/legal/legalText.ts 的 isLegalHeading 同一套判定：
+// 「一、」「第一节」是章节标题；「1. 2.」只有在**不以句号结尾**时才是章节标题
+// （主协议正文里的「1. …。」是条目，配套附件的「1. 适用范围」才是标题）。
+function isAgreementHeading(line) {
+  const text = String(line ?? '').trim()
+  if (!text) return false
+  if (/^第[一二三四五六七八九十百零\d]+[章节条]/.test(text)) return true
+  if (/^[一二三四五六七八九十百]+[、.．]/.test(text)) return true
+  if (/^\d{1,2}[.．]\s*\S/.test(text)) return !/[。．]$/.test(text)
+  return false
 }
 
 // 「关于我们」的文案是结构化字段（卡片 / 数据 / 段落），这里压成一篇可读的文档交给渲染器。
@@ -639,8 +685,14 @@ function renderDocSection(doc) {
           <p class="seo-fallback__section-hint">生效日期：${escapeHtml(doc.effectiveAt)}</p>`
     : ''
 
+  // 版本号也写进静态页：协议改版后版本号是"用户同意的是哪一版"的唯一标识（R043 任务-01）。
+  const version = doc.version
+    ? `
+          <p class="seo-fallback__section-hint">协议版本：${escapeHtml(doc.version)}</p>`
+    : ''
+
   return `        <section class="seo-fallback__section">
-          <h2 class="seo-fallback__section-title">${escapeHtml(doc.heading)}</h2>${effective}
+          <h2 class="seo-fallback__section-title">${escapeHtml(doc.heading)}</h2>${version}${effective}
           <div class="seo-fallback__body">
 ${doc.blocks.map(renderDocBlock).join('\n')}
           </div>

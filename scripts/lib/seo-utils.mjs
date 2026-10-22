@@ -321,6 +321,12 @@ export async function fetchUserServiceAgreement(apiBaseUrl) {
   return fetchJson(apiBaseUrl, '/auth/user-service-agreement')
 }
 
+// 通用协议 / 附件正文（R043 任务-02/03）：《隐私政策》《支付与退款说明》等配套附件
+// 入库到后端 `contract_template` 之后，静态快照与 SPA 一样走接口读，避免"页面改了、快照没改"。
+export async function fetchAgreementContent(apiBaseUrl, code) {
+  return fetchJson(apiBaseUrl, `/auth/agreement-content?code=${encodeURIComponent(code)}`)
+}
+
 async function fetchJson(apiBaseUrl, path) {
   const url = new URL(`${apiBaseUrl}${path.startsWith('/') ? path : `/${path}`}`)
   const response = await fetch(url, {

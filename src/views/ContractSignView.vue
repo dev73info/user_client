@@ -3,6 +3,7 @@ import { TIcon, ArrowLeft, Refresh } from 'ui_73info'
 import ContractAttachmentPanel from '@/components/ContractAttachmentPanel.vue'
 import ContractArchiveBanner from '@/components/contract/ContractArchiveBanner.vue'
 import ContractMetaCard from '@/components/contract/ContractMetaCard.vue'
+import ContractNoticeConfirm from '@/components/contract/ContractNoticeConfirm.vue'
 import ContractSignPanel from '@/components/contract/ContractSignPanel.vue'
 import ContractSignatureFacts from '@/components/contract/ContractSignatureFacts.vue'
 import ContractSigningHistory from '@/components/contract/ContractSigningHistory.vue'
@@ -11,13 +12,12 @@ import { useContractSign } from '@/composables/useContractSign'
 /**
  * 合同签署页（R047 拆分后只剩装配）。
  *
- * - 取数、签署闸门、到期归档、爱签轮询：`composables/useContractSign`；
- * - 路由身份与回跳：`composables/useContractSignNavigation`；
- * - 纯展示口径：`shared/contractSign` / `shared/contractSignRedirect`；
- * - 区块：`components/contract/*`，只吃 props、只发 emit。
+ * 取数、签署闸门、到期归档、爱签轮询在 `composables/useContractSign`；路由身份与回跳在
+ * `useContractSignNavigation`；纯展示口径在 `shared/contractSign`；区块在 `components/contract/*`
+ * （只吃 props、只发 emit）。
  *
- * 整页跳转（去爱签签署 / 看爱签预览）必须留在这里：那是离开 SPA 的
- * `window.location` 级跳转，组件只 emit、composable 只交出 URL。
+ * 整页跳转（去爱签 / 看爱签预览）必须留在这里：那是离开 SPA 的 `window.location`
+ * 级跳转，组件只 emit、composable 只交出 URL。
  */
 function openPage(url: string) {
   window.location.href = url
@@ -31,6 +31,9 @@ const {
   error,
   successMsg,
   noticeSigner,
+  noticeAccepted,
+  platformAgreementCode,
+  onNoticeLoaded,
   requirementArchived,
   archiveBanner,
   archiveSignBlockedMessage,
@@ -59,6 +62,7 @@ const {
   isWorkbenchSignature,
   isDeveloperAgreement,
   isApiUsageAgreement,
+  isPlatformAgreement,
 } = useContractSign({ openPage })
 </script>
 
@@ -131,6 +135,14 @@ const {
           :content="contract.content"
           :has-custom-attachment="hasCustomAttachment"
           :show-local-document="showLocalDocument"
+        />
+
+        <!-- 平台协议签署前的重要条款提示与二次确认（R043 任务-03）；需求合同不展示。 -->
+        <ContractNoticeConfirm
+          v-model:accepted="noticeAccepted"
+          :show="isPlatformAgreement && canSignContract"
+          :code="platformAgreementCode"
+          @loaded="onNoticeLoaded"
         />
 
         <ContractSignPanel
