@@ -1,5 +1,6 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import DevWalletIncomeCard from '@/components/dev/DevWalletIncomeCard.vue'
 import DevWalletView from '@/views/DevWalletView.vue'
 
 const mocks = vi.hoisted(() => ({
@@ -13,7 +14,9 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({ push: vi.fn() }),
   useRoute: () => ({ fullPath: '/workbench/developer/wallet/overview' }),
 }))
-vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ token: 'test-token', hydrate: vi.fn() }) }))
+vi.mock('@/stores/auth', () => ({
+  useAuthStore: () => ({ token: 'test-token', hydrate: vi.fn() }),
+}))
 vi.mock('ui_73info', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ui_73info')>()
   const toast =
@@ -32,39 +35,53 @@ vi.mock('ui_73info', async (importOriginal) => {
   }
 })
 vi.mock('@/api/devOrderDeposit', async (importOriginal) => ({
-  ...await importOriginal<typeof import('@/api/devOrderDeposit')>(),
+  ...(await importOriginal<typeof import('@/api/devOrderDeposit')>()),
   getDevOrderDepositStatus: mocks.status,
   getDevOrderDepositWithdrawalSummary: mocks.summary,
 }))
 vi.mock('@/api/devWallet', async (importOriginal) => ({
-  ...await importOriginal<typeof import('@/api/devWallet')>(),
+  ...(await importOriginal<typeof import('@/api/devWallet')>()),
   getDevWalletOverview: vi.fn().mockResolvedValue({ recent_income: [] }),
   updateDevWithdrawalSetting: mocks.setting,
 }))
 vi.mock('@/api/devCredit', () => ({ getDevCreditSelf: vi.fn().mockResolvedValue(null) }))
 
 function mountWallet() {
-  return shallowMount(DevWalletView, { global: {
-    config: { warnHandler: () => {} },
-    // 开关在 TCard 里：桩默认不渲染默认插槽，不打开就找不到页面里的元素
-    renderStubDefaultSlot: true,
-    stubs: {
-      TTable: { name: 'TTable', props: ['data'], template: '<div />' },
-      TPagination: { name: 'TPagination', props: ['currentPage', 'pageSize', 'total'], template: '<div />' },
-      TSelect: { name: 'TSelect', props: ['modelValue'], template: '<div />' },
-      // 开关按真实用法点击触发，缺了 @update:model-value 绑定时点不动，这条用例就红
-      TSwitch: {
-        name: 'TSwitch',
-        props: ['modelValue', 'loading', 'disabled'],
-        emits: ['update:modelValue'],
-        template: `<button class="auto-withdraw-switch" @click="$emit('update:modelValue', !modelValue)" />`,
+  return shallowMount(DevWalletView, {
+    global: {
+      config: { warnHandler: () => {} },
+      // 开关在 TCard 里：桩默认不渲染默认插槽，不打开就找不到页面里的元素
+      renderStubDefaultSlot: true,
+      stubs: {
+        TTable: { name: 'TTable', props: ['data'], template: '<div />' },
+        TPagination: {
+          name: 'TPagination',
+          props: ['currentPage', 'pageSize', 'total'],
+          template: '<div />',
+        },
+        TSelect: { name: 'TSelect', props: ['modelValue'], template: '<div />' },
+        // 自动提现开关在「接单收入」卡里（R047 拆分后成了子组件），这一张卡按真实组件渲染，
+        // 否则桩里的开关根本不存在，两条关于开关的用例就点不到东西
+        DevWalletIncomeCard: false,
+        // 开关按真实用法点击触发，缺了 @update:model-value 绑定时点不动，这条用例就红
+        TSwitch: {
+          name: 'TSwitch',
+          props: ['modelValue', 'loading', 'disabled'],
+          emits: ['update:modelValue'],
+          template: `<button class="auto-withdraw-switch" @click="$emit('update:modelValue', !modelValue)" />`,
+        },
       },
     },
-  } })
+  })
 }
 
 function walletState(wrapper: ReturnType<typeof mountWallet>): Record<string, unknown> {
   return (wrapper.vm.$ as unknown as { setupState: Record<string, unknown> }).setupState
+}
+
+/** 「接单收入」卡上渲染出来的自动提现开关值（R047 拆分后卡是子组件，状态经 props 下去） */
+function autoWithdrawSwitchValue(wrapper: ReturnType<typeof mountWallet>): boolean {
+  return wrapper.getComponent(DevWalletIncomeCard).props('autoWithdrawEnabled') as boolean
 }
 
 describe('wallet deposit status refresh', () => {
@@ -170,7 +187,11 @@ describe('wallet deposit status refresh', () => {
 
   it('toggles auto-withdraw through the server instead of flipping the switch locally', async () => {
     let confirmSetting: (setting: unknown) => void = () => {}
-    mocks.setting.mockReturnValue(new Promise((resolve) => { confirmSetting = resolve }))
+    mocks.setting.mockReturnValue(
+      new Promise((resolve) => {
+        confirmSetting = resolve
+      }),
+    )
     mocks.summary.mockResolvedValue({ withdrawals: [] })
     const wrapper = mountWallet()
     await flushPromises()
@@ -184,8 +205,8 @@ describe('wallet deposit status refresh', () => {
     confirmSetting({ auto_withdraw_enabled: true, payout_channel_ready: true })
     await flushPromises()
     expect(walletState(wrapper).autoWithdrawSaving).toBe(false)
-    expect((walletState(wrapper).withdrawalSetting as { auto_withdraw_enabled: boolean })
-      .auto_withdraw_enabled).toBe(true)
+    // 开关值只由服务端返回的 withdrawalSetting 推导，所以这里直接看卡片上渲染出来的那一格
+    expect(autoWithdrawSwitchValue(wrapper)).toBe(true)
     wrapper.unmount()
   })
 
@@ -200,8 +221,8 @@ describe('wallet deposit status refresh', () => {
 
     expect(mocks.toast).toHaveBeenCalledWith('出款通道未就绪', 'error')
     expect(walletState(wrapper).autoWithdrawSaving).toBe(false)
-    // 服务端拒绝时开关不翻转：状态只由 withdrawalSetting 推导
-    expect(walletState(wrapper).withdrawalSetting).toBeNull()
+    // 服务端拒绝时开关不翻转：开关值只由 withdrawalSetting 推导，请求失败就停在原位
+    expect(autoWithdrawSwitchValue(wrapper)).toBe(false)
     wrapper.unmount()
   })
 })

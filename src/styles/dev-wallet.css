@@ -90,22 +90,11 @@
   gap: 12px 24px;
 }
 
-.wallet-payout__paths .wallet-payout__desc {
-  flex-basis: 100%;
-}
-
 .wallet-payout__path {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.wallet-payout__meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
 }
 
 .wallet-payout__title {
@@ -115,12 +104,6 @@
   font-size: 14px;
   font-weight: 700;
   color: var(--dev-ink);
-}
-
-.wallet-payout__desc {
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--dev-muted);
 }
 
 .wallet-payout__switch {
@@ -204,23 +187,6 @@
   font-weight: 800;
 }
 
-/* 收入表格 */
-.dev-wallet-table__title {
-  font-weight: 700;
-  color: var(--dev-ink);
-}
-
-.dev-wallet-table__meta {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--dev-muted);
-}
-
-.dev-wallet-table__amount {
-  font-weight: 700;
-  color: var(--dev-gold);
-}
-
 /* R047 断点收敛：原档位 720px → 640px */
 @media (max-width: 640px) {
   .wallet-hero {
@@ -294,133 +260,6 @@
   }
 }
 
-/* 金额横幅 */
-.pay-amount-banner {
-  width: 100%;
-  padding: 10px 16px;
-  background: rgba(31, 74, 209, 0.08);
-  border-radius: 8px;
-  font-size: 14px;
-  color: var(--dev-muted);
-  text-align: center;
-}
-
-.pay-amount-banner__value {
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--dev-gold);
-  margin-left: 6px;
-}
-
-/* 倒计时 */
-.pay-countdown {
-  font-size: 13px;
-  color: var(--dev-muted);
-  margin: 6px 0 2px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-.pay-countdown--expired {
-  /* 开发者体系没有红色令牌，破坏性/危险语义统一用这一支红（同 .dev-btn--danger / .dev-chip--danger） */
-  color: #dc2626;
-  font-weight: 600;
-}
-
-.pay-countdown__polling {
-  font-size: 12px;
-  color: var(--dev-blue);
-  animation: fade-pulse 1.8s ease-in-out infinite;
-}
-
-@keyframes fade-pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.45;
-  }
-}
-
-/* 支付宝二维码 */
-.alipay-pay-qr {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-.alipay-pay-launch-status {
-  width: 100%;
-  min-height: 120px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 20px;
-  box-sizing: border-box;
-  border: 1px solid rgba(203, 213, 225, 0.42);
-  border-radius: 8px;
-  background: var(--dev-surface-strong);
-  color: var(--dev-ink);
-  font-size: 14px;
-}
-
-.alipay-pay-frame {
-  width: 300px;
-  height: 300px;
-  display: block;
-  border: none;
-  border-radius: 8px;
-  background: #fff;
-}
-
-.alipay-pay-launch-status--loading {
-  min-height: 36px;
-  padding: 4px 0;
-  border: 0;
-  background: transparent;
-  color: var(--dev-muted);
-  font-size: 13px;
-}
-
-.alipay-pay-qr__img {
-  width: 280px;
-  height: 280px;
-  display: block;
-  padding: 8px;
-  box-sizing: border-box;
-  background: #fff;
-  border-radius: 8px;
-}
-
-.alipay-pay-launch-status span {
-  font-size: 13px;
-  color: var(--dev-muted);
-}
-
-/* 微信二维码 */
-.wechat-pay-qr {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 0;
-}
-
-.wechat-pay-qr__img {
-  width: 240px;
-  height: 240px;
-  border-radius: 8px;
-}
-
-.wechat-pay-qr__hint {
-  font-size: 13px;
-  color: var(--dev-muted);
-  text-align: center;
-  line-height: 1.6;
-}
+/* 尾部原有一组 `.pay-amount-banner` / `.pay-countdown` / `.alipay-pay-*` / `.wechat-pay-qr*`
+   规则（含 @keyframes fade-pulse，约 130 行）：全仓已无任何模板使用，支付页改用
+   styles/payment.css 的那一套，这批是旧支付页的遗留，本文件因此从 426 行降到 265 行。 */
