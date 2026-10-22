@@ -1,0 +1,239 @@
+.portal-card {
+  position: relative;
+  overflow: hidden;
+  padding: 16px;
+  border-radius: 16px;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+  animation: portal-sidebar-card-in 360ms ease both;
+}
+
+.portal-card--notice {
+  padding: 18px 20px 18px;
+  animation-delay: 20ms;
+}
+
+.portal-card--stats {
+  padding: 18px 22px 20px;
+  animation-delay: 80ms;
+}
+
+.portal-card--rank {
+  animation-delay: 140ms;
+}
+
+.portal-card--team {
+  animation-delay: 180ms;
+}
+
+.portal-card--notice::before,
+.portal-card--stats::before,
+.portal-card--rank::before,
+.portal-card--team::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  pointer-events: none;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    rgba(37, 99, 235, 0),
+    rgba(37, 99, 235, 0.42),
+    rgba(37, 99, 235, 0)
+  );
+  opacity: 0;
+  transform: translateX(-36%);
+  transition:
+    opacity 180ms ease,
+    transform 260ms ease;
+}
+
+.portal-card--notice:hover,
+.portal-card--stats:hover,
+.portal-card--rank:hover,
+.portal-card--team:hover {
+  border-color: rgba(147, 197, 253, 0.92);
+  box-shadow: var(--portal-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.portal-card--notice:hover::before,
+.portal-card--stats:hover::before,
+.portal-card--rank:hover::before,
+.portal-card--team:hover::before {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.portal-card__header,
+.portal-section__header,
+.portal-spotlight-card__footer,
+.portal-quick-card,
+.portal-notice-item,
+.portal-rank-item,
+.portal-stat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.portal-card__header h2,
+.portal-section__header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.portal-card__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.portal-card__title--rank h2,
+.portal-card__title--team h2 {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.portal-card-title-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #dbeafe, #eff6ff);
+  color: #2563eb;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.14);
+}
+
+.portal-card-title-icon--team {
+  background: linear-gradient(135deg, #fef3c7, #fff7ed);
+  color: #d97706;
+  box-shadow: 0 8px 18px rgba(245, 158, 11, 0.14);
+}
+
+.portal-card-title-icon svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.portal-card__title--notice h2 {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.portal-card__header--notice {
+  margin-bottom: 8px;
+}
+
+.portal-card__header--stats {
+  margin-bottom: 4px;
+}
+
+.portal-card__title--stats h2 {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+/* 这条浅色条只承载右上角的动作入口，文案已按「副标题非必要不用」删掉，
+   因此改为右对齐（原来靠 space-between 把说明文字挤在左边）。 */
+.portal-milestone__intro {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(56, 189, 248, 0.06));
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.portal-milestone__cta {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #2563eb;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 120ms ease,
+    transform 120ms ease;
+}
+
+.portal-milestone__cta:hover {
+  color: #1d4ed8;
+  transform: translateX(1px);
+}
+
+.portal-link-btn,
+.portal-inline-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: transparent;
+  color: #2563eb;
+  font-weight: 700;
+  transition:
+    color 120ms ease,
+    transform 120ms ease;
+}
+
+.portal-link-btn:hover:not(:disabled),
+.portal-inline-action:hover {
+  color: #1d4ed8;
+  transform: translateX(1px);
+}
+
+.portal-link-btn:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+.portal-link-btn--notice {
+  gap: 4px;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.portal-link-btn--notice:hover {
+  color: #2563eb;
+}
+
+.portal-notice-head__icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.portal-stats-head__icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 800;
+}

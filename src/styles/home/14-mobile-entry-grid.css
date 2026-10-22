@@ -1,0 +1,104 @@
+/* ===== 移动端入口宫格 =====
+   桌面端主视觉里有两颗按钮、下方有两张大卡片，入口已经齐了，宫格只在 ≤900px 出现；
+   移动端反过来：主视觉只当横幅（后期换轮播图），两颗按钮与两张大卡片都收起，四个入口统一进宫格。 */
+.portal-entry-grid {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .portal-hero__actions,
+  .portal-quick-grid {
+    display: none;
+  }
+
+  .portal-hero__main {
+    height: 180px;
+  }
+
+  .portal-entry-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    padding: 14px 6px 12px;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.06);
+  }
+
+  .portal-entry {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 4px 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: #1e293b;
+    font: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .portal-entry:active {
+    background: #f1f5f9;
+  }
+
+  .portal-entry:focus-visible {
+    outline: 2px solid rgba(37, 99, 235, 0.5);
+    outline-offset: 2px;
+  }
+
+  .portal-entry__icon {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+  }
+
+  .portal-entry__icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .portal-entry__label {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 四个入口各一支色：发布=主蓝、接单=靛紫、免费资源=暖橙（沿用原礼物卡的色）、社区=青绿 */
+  .portal-entry--publish .portal-entry__icon {
+    background: #e8f0ff;
+    color: #2563eb;
+  }
+
+  .portal-entry--take .portal-entry__icon {
+    background: #efeafe;
+    color: #6d28d9;
+  }
+
+  .portal-entry--free .portal-entry__icon {
+    background: #fff1e6;
+    color: #ea580c;
+  }
+
+  .portal-entry--community .portal-entry__icon {
+    background: #e6f7f1;
+    color: #0f9f6e;
+  }
+}
+
+.portal-step-card__no {
+  font-style: normal;
+}

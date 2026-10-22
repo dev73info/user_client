@@ -207,12 +207,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/styles/home.css",
-      "detail": "2926 行 > 300（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/styles/modal.css",
       "detail": "1754 行 > 300（模块）",
       "since": "2026-10-22"
@@ -957,9 +951,93 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/styles/home.css",
-      "detail": "276 处裸色值",
-      "since": "2026-10-22"
+      "file": "src/styles/home/01-base-layout-hero.css",
+      "detail": "28 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/home/02-card-shell.css",
+      "detail": "22 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/home/03-sidebar-notice.css",
+      "detail": "22 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/home/04-stats-rank.css",
+      "detail": "28 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/home/05-contrib-board.css",
+      "detail": "29 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/home/06-keyframes-quick-entry.css",
+      "detail": "10 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/home/07-section-beta-checkin.css",
+      "detail": "25 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/home/08-step-cards.css",
+      "detail": "14 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/home/09-pagination.css",
+      "detail": "22 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/home/10-empty-spotlight-card.css",
+      "detail": "28 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/home/11-spotlight-mark-like.css",
+      "detail": "23 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/home/12-spotlight-footer.css",
+      "detail": "6 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/home/13-responsive-1180-900-640.css",
+      "detail": "3 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/home/14-mobile-entry-grid.css",
+      "detail": "13 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/home/15-mobile-sidebar-flow-banner.css",
+      "detail": "3 处裸色值",
+      "since": "2026-10-23"
     },
     {
       "rule": "raw-color",

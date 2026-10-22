@@ -1,0 +1,114 @@
+.portal-step-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 62px;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.portal-step-card::before {
+  content: none;
+}
+
+.portal-step-card:hover,
+.portal-step-card:focus-visible {
+  background: rgba(248, 250, 252, 0.9);
+  box-shadow: none;
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.portal-step-card--violet {
+  --workflow-accent: #7c3aed;
+  --workflow-bg: rgba(124, 58, 237, 0.12);
+}
+
+.portal-step-card--blue {
+  --workflow-accent: #2563eb;
+  --workflow-bg: rgba(37, 99, 235, 0.12);
+}
+
+.portal-step-card--green {
+  --workflow-accent: #10b981;
+  --workflow-bg: rgba(16, 185, 129, 0.12);
+}
+
+.portal-step-card--red {
+  --workflow-accent: #ef4444;
+  --workflow-bg: rgba(239, 68, 68, 0.12);
+}
+
+.portal-step-card__icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: linear-gradient(
+    135deg,
+    var(--workflow-accent),
+    color-mix(in srgb, var(--workflow-accent) 72%, #ffffff)
+  );
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--workflow-accent) 20%, transparent);
+}
+
+.portal-step-card__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.portal-step-card__body strong {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.portal-step-card__body span {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: pre-line;
+}
+
+.portal-step-card__arrow {
+  position: absolute;
+  top: 50%;
+  right: -15px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 20px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 28px;
+  line-height: 1;
+}
