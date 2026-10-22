@@ -19,6 +19,13 @@ defineProps<{
   groups: McPublishTagGroup[]
   selectedTagIdsByGroup: Record<number, number[]>
   isLoadingTags: boolean
+  /**
+   * 二级节点为空时是否仍显示根节点下拉与空态。编辑页整块隐藏（设计页没有归类可改）；
+   * 新建页要说明「当前根节点还没配二级节点」，所以传 true。
+   */
+  showRootWhenEmpty?: boolean
+  /** 二级节点为空时的那句提示（不传则整块不出现，编辑页保持原样）。 */
+  emptyTreeHint?: string
 }>()
 
 const emit = defineEmits<{
@@ -36,7 +43,7 @@ const emit = defineEmits<{
       </section>
     </header>
 
-    <div v-if="entries.length > 0" class="dev-catalog-section">
+    <div v-if="entries.length > 0 || showRootWhenEmpty" class="dev-catalog-section">
       <div class="dev-upload-grid dev-upload-grid--two">
         <section class="dev-catalog-select">
           <div class="dev-catalog-select__head">
@@ -54,7 +61,7 @@ const emit = defineEmits<{
           </TSelect>
         </section>
 
-        <section class="dev-catalog-select">
+        <section v-if="entries.length > 0" class="dev-catalog-select">
           <div class="dev-catalog-select__head">
             <span class="dev-catalog-select__label">二级节点</span>
             <span class="dev-catalog-select__meta">当前：{{ entryLabel }}</span>
@@ -76,7 +83,7 @@ const emit = defineEmits<{
       </div>
 
       <div
-        v-if="groups.length > 0"
+        v-if="entries.length > 0 && groups.length > 0"
         class="dev-tag-group-panel dev-upload-grid dev-upload-grid--tag-groups"
       >
         <section v-for="group in groups" :key="group.key" class="dev-tag-group-row">
@@ -109,7 +116,10 @@ const emit = defineEmits<{
           </div>
         </section>
       </div>
-      <p v-else class="dev-empty-state">当前二级节点尚未配置完整标签组，请先在管理端补齐标签树。</p>
+      <p v-else-if="entries.length > 0" class="dev-empty-state">
+        当前二级节点尚未配置完整标签组，请先在管理端补齐标签树。
+      </p>
+      <p v-else class="dev-empty-state">{{ emptyTreeHint }}</p>
     </div>
   </section>
 </template>

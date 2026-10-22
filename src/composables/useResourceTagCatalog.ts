@@ -19,7 +19,10 @@ import { resolveDisplayTagPath, resolveTagPath, tagPathSegment } from '@/shared/
  * 2. 定位不到时下拉会回落到标签树首项**只作展示**，保存必须原样带回资源原有归类
  *    （`tagPathResolved` 记着这件事，`keepSavedTags` 把它翻成保存口径）。
  */
-export function useResourceTagCatalog(resource: Ref<McResourcePayload | null>) {
+export function useResourceTagCatalog(
+  /** 已存资源（编辑页用来按资源自身归类定位）；新建页没有已存资源，不传参即可。 */
+  resource: Ref<McResourcePayload | null> = ref<McResourcePayload | null>(null),
+) {
   const processedTree = ref<McProcessedTagTree>({ roots: [] })
   const currentRootKey = ref('')
   const currentEntryKey = ref('')
@@ -49,6 +52,9 @@ export function useResourceTagCatalog(resource: Ref<McResourcePayload | null>) {
   )
   const currentEntryLabel = computed(() => currentEntry.value?.group_name ?? '当前分区')
   const currentRootLabel = computed(() => currentRoot.value?.label ?? '根节点')
+  /** 当前二级节点的平台标识与它的展示名（创建页拼简介 / 来源地址用）。 */
+  const currentPlatform = computed(() => currentEntry.value?.platform ?? '')
+  const currentPlatformLabel = computed(() => currentPlatform.value || '当前分区')
   const platformTagGroups = computed<McPublishTagGroup[]>(
     () => currentEntry.value?.publish_groups ?? [],
   )
@@ -259,6 +265,8 @@ export function useResourceTagCatalog(resource: Ref<McResourcePayload | null>) {
     currentEntry,
     currentRootLabel,
     currentEntryLabel,
+    currentPlatform,
+    currentPlatformLabel,
     entryTabs,
     rootTabs,
     platformTagGroups,

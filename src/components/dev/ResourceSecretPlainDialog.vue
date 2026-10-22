@@ -9,13 +9,22 @@ import { TButton, TDialog } from 'ui_73info'
  */
 defineProps<{
   secret: string
+  /** 确认按钮的文案：编辑页是「我已保存」，创建页保存后要回资源列表。 */
+  confirmLabel?: string
 }>()
 
 const open = defineModel<boolean>('open', { required: true })
 
 const emit = defineEmits<{
   copy: []
+  /** 点「我已保存」：消费方要在关闭弹窗之外做收尾（复位表单、回列表）。 */
+  confirm: []
 }>()
+
+function onConfirm() {
+  open.value = false
+  emit('confirm')
+}
 </script>
 
 <template>
@@ -32,7 +41,9 @@ const emit = defineEmits<{
     <code class="dev-secret-dialog__value">{{ secret }}</code>
     <template #footer>
       <TButton variant="outline" @click="emit('copy')">复制密钥</TButton>
-      <TButton variant="solid" tone="accent" @click="open = false">我已保存</TButton>
+      <TButton variant="solid" tone="accent" @click="onConfirm">{{
+        confirmLabel || '我已保存'
+      }}</TButton>
     </template>
   </TDialog>
 </template>

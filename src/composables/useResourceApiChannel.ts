@@ -20,6 +20,15 @@ import {
 import type { ResourceHomepageFormState } from '@/shared/resourceHomepageForm'
 
 /**
+ * 渠道区块只读写表单里的这四个字段：编辑页与新建页的表单形状不同（字段名相同），
+ * 这里按结构取子集，两页共用同一份渠道状态与校验。
+ */
+type ApiChannelFormFields = Pick<
+  ResourceHomepageFormState,
+  'apiCallbackUrl' | 'apiCallbackSecret' | 'apiAllowedOrigins' | 'apiRepeatPurchasable'
+>
+
+/**
  * R028 接口资源的渠道配置：回调地址、一次性密钥、允许来源、重复购买。
  *
  * 这块有两个不能弄丢的约定：
@@ -30,12 +39,16 @@ import type { ResourceHomepageFormState } from '@/shared/resourceHomepageForm'
  */
 export function useResourceApiChannel(options: {
   resource: Ref<McResourcePayload | null>
-  form: ResourceHomepageFormState
+  form: ApiChannelFormFields
   isApiKind: Ref<boolean>
   /** 资源加载代际：旧请求的渠道响应不能写到新资源上。 */
   loadGeneration: Ref<number>
+  /**
+   * 保存成功后是否清空密钥输入框。编辑页留空 = 不改，所以要清；新建页保留开发者这次的输入。
+   */
+  clearSecretOnApply?: boolean
 }) {
-  const { resource, form, isApiKind, loadGeneration } = options
+  const { resource, form, isApiKind, loadGeneration, clearSecretOnApply = true } = options
   const auth = useAuthStore()
   const route = useRoute()
   const router = useRouter()
@@ -97,7 +110,9 @@ export function useResourceApiChannel(options: {
   /** 把服务端返回的渠道配置落到本地（掩码、明文一次性回显）。 */
   function applySavedApiChannel(saved: ResourceApiChannelPayload) {
     savedApiChannel.value = saved
-    form.apiCallbackSecret = ''
+    if (clearSecretOnApply) {
+      form.apiCallbackSecret = ''
+    }
     if (saved.callback_secret_plain) {
       revealedSecretPlain.value = saved.callback_secret_plain
       secretPlainDialogVisible.value = true

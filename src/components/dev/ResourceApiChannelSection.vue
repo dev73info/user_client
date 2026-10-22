@@ -22,6 +22,8 @@ defineProps<{
   /** 后端首次生成的明文：只在这一屏出现。 */
   revealedSecretPlain: string
   integrationPrompt: string
+  /** 新建页的保存是「存草稿」，同一句提示里的用词与编辑页不同。 */
+  draftMode?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -60,7 +62,7 @@ const repeatPurchasable = defineModel<boolean>('repeatPurchasable', { required: 
       variant="soft"
       class="dev-api-notice"
       title="配置还没配齐，暂不可被下单"
-      :description="`${blockers.join('；')}。可以先保存，配齐后再保存一次。`"
+      :description="`${blockers.join('；')}。${draftMode ? '可以先存草稿' : '可以先保存'}，配齐后再保存一次。`"
     />
 
     <TForm label-position="top" class="dev-upload-form">
