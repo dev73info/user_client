@@ -27,12 +27,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/components/DeliverySubmitDialog.vue",
-      "detail": "406 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/components/DevTipDialog.vue",
       "detail": "635 行 > 400（模块）",
       "since": "2026-10-22"
@@ -544,8 +538,14 @@
     {
       "rule": "raw-color",
       "file": "src/components/DeliverySubmitDialog.vue",
-      "detail": "23 处裸色值",
+      "detail": "6 处裸色值",
       "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/delivery/DeliveryArtifactField.vue",
+      "detail": "17 处裸色值",
+      "since": "2026-10-23"
     },
     {
       "rule": "raw-color",
