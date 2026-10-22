@@ -1,34 +1,19 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, shallowRef, type Component } from 'vue'
-import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
+import { computed, nextTick, onMounted, ref, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  TButton,
-  TIcon,
-  TLoading,
-  ArrowDown,
-  Box,
-  Lock,
-  Money,
-  Promotion,
-  Refresh,
-  Switch,
-  TMessage,
-  View,
-  Wallet,
-  WarningFilled,
-} from 'ui_73info'
+import { TIcon, TMessage, WarningFilled } from 'ui_73info'
 
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
 import DevWithdrawalDialog from '@/components/DevWithdrawalDialog.vue'
 import DevDeliveryList from '@/components/dev/DevDeliveryList.vue'
 import DevFunnel from '@/components/dev/DevFunnel.vue'
 import DevFundPanel from '@/components/dev/DevFundPanel.vue'
+import DevHomeMetaStrip from '@/components/dev/DevHomeMetaStrip.vue'
+import DevLiveBoard from '@/components/dev/DevLiveBoard.vue'
 import DevProjectList from '@/components/dev/DevProjectList.vue'
 import {
   devDashboardWsUrl,
   getDevDashboard,
-  type DevDashboardFeedKind,
   type DevDashboardPipeline,
   type DevDashboardSnapshot,
 } from '@/api/devDashboard'
@@ -55,8 +40,11 @@ import {
 import { money } from '@/shared/devFundDisplay'
 import {
   STATUS_TONES,
+  buildFeedRows,
+  buildResourceCells,
   type DevHomeDeliveryRow,
   type DevHomeProjectRow,
+  type DevHomeStatCard,
   type DevHomeTone,
 } from '@/shared/devHomeDisplay'
 import {
@@ -71,12 +59,6 @@ const OVERVIEW_LIST_LIMIT = 5
 
 /** 最近交付排成三列卡片，正好铺满一行；多出来的条数交给「查看全部」去「我的接单」看。 */
 const DELIVERY_GRID_LIMIT = 3
-
-/** 顶部读数条的一格：口径数字，与其他菜单页的顶条同形（读左、刷新右）。 */
-type DevHomeStatCard = {
-  label: string
-  value: string
-}
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -152,13 +134,8 @@ const completedProjectCount = computed(
 )
 
 /** 在途五档：漏斗与读数条「进行中项目」共用，顺序即流程顺序。 */
-const PIPELINE_STAGES: ReadonlyArray<Exclude<keyof DevDashboardPipeline, 'completed_this_month'>> = [
-  'pending_deposit',
-  'deposit_paid',
-  'in_development',
-  'pending_final',
-  'pending_settlement',
-]
+const PIPELINE_STAGES: ReadonlyArray<Exclude<keyof DevDashboardPipeline, 'completed_this_month'>> =
+  ['pending_deposit', 'deposit_paid', 'in_development', 'pending_final', 'pending_settlement']
 
 /** 全屏且已拿到快照：看板上的读数改走快照，跟着推送实时变化；非全屏仍是进页那一次拉取。 */
 const liveBoard = computed(() => (isFullscreen.value ? dashboard.value : null))
@@ -289,15 +266,17 @@ const deliveryRows = computed<DevHomeDeliveryRow[]>(() => {
 
     const versionCount = item.bound_resource_version_count ?? 0
 
-    return [{
-      requirementId: item.requirement_id,
-      requirementTitle: item.title,
-      resourceTitle: resourceTitleMap.value.get(resourceId) ?? `资源 #${resourceId}`,
-      versionCount,
-      delivered: versionCount > 0,
-      updatedAt: item.updated_at,
-      amount: incomeByRequirement.value.get(item.requirement_id) ?? null,
-    }]
+    return [
+      {
+        requirementId: item.requirement_id,
+        requirementTitle: item.title,
+        resourceTitle: resourceTitleMap.value.get(resourceId) ?? `资源 #${resourceId}`,
+        versionCount,
+        delivered: versionCount > 0,
+        updatedAt: item.updated_at,
+        amount: incomeByRequirement.value.get(item.requirement_id) ?? null,
+      },
+    ]
   })
 })
 
@@ -307,7 +286,9 @@ const pendingWithdraw = computed(() => overview.value?.pending_withdraw_cny ?? 0
 const paidWithdraw = computed(() => overview.value?.paid_withdraw_cny ?? 0)
 
 /** 未缴保证金或可用余额不足时后端会关掉绑定开关，两种情况共用同一条提示。 */
-const depositInsufficient = computed(() => (deposit.value ? !deposit.value.can_bind_requirement : false))
+const depositInsufficient = computed(() =>
+  deposit.value ? !deposit.value.can_bind_requirement : false,
+)
 
 /** 保证金状态胶囊：拿到接口数据后才出现，避免加载中把「还没读到」显示成「可接单」。 */
 const depositStatusChip = computed(() => {
@@ -604,129 +585,47 @@ const funnelCells = computed(() => {
   ]
 })
 
-/** 动态流按 kind 配图标与颜色：到账金、交付青、状态蓝，提现 / 保证金走中性灰。 */
-const FEED_KINDS: Record<DevDashboardFeedKind, { icon: Component; tone: DevHomeTone }> = {
-  income: { icon: Money, tone: 'gold' },
-  delivery: { icon: Promotion, tone: 'cyan' },
-  status: { icon: Switch, tone: 'blue' },
-  withdrawal: { icon: Wallet, tone: 'muted' },
-  deposit: { icon: Lock, tone: 'muted' },
-}
+/**
+ * 动态流与资源概况的行：图标 / 色调 / 时间文案 / 键怎么拼在 `buildFeedRows`，
+ * 这里只把数据交给它，并给出「哪一天算今天」——那由看板时钟决定，跨零点时整列时间要跟着翻。
+ */
+const feedRows = computed(() =>
+  liveBoard.value ? buildFeedRows(liveBoard.value.feed, dayKey(new Date(now.value))) : [],
+)
 
-/** 动态流时间：今天只写时分，更早的带上月日。 */
-function feedTime(at: string): string {
-  const time = at.slice(11, 16)
-  return at.slice(0, 10) === dayKey(new Date(now.value)) ? time : `${at.slice(5, 10)} ${time}`
-}
-
-/** 条目没有 id：用内容拼键，同一秒的同类事件再加序号，保证新条目插入时旧条目不重绘。 */
-const feedRows = computed(() => {
-  const board = liveBoard.value
-  if (!board) {
-    return []
-  }
-
-  const seen = new Map<string, number>()
-  return board.feed.map((item) => {
-    const base = `${item.kind}|${item.at}|${item.title}|${item.requirement_id ?? ''}|${item.amount_cny ?? ''}`
-    const count = seen.get(base) ?? 0
-    seen.set(base, count + 1)
-    const kind = FEED_KINDS[item.kind] ?? FEED_KINDS.status
-    return {
-      key: `${base}#${count}`,
-      title: item.title,
-      requirementId: item.requirement_id,
-      amount: item.amount_cny,
-      time: feedTime(item.at),
-      fullTime: item.at,
-      icon: kind.icon,
-      tone: kind.tone,
-    }
-  })
-})
-
-const resourceCells = computed(() => {
-  const board = liveBoard.value
-  if (!board) {
-    return []
-  }
-
-  return [
-    { key: 'count', label: '资源数', value: board.resources.resource_count, icon: Box },
-    { key: 'downloads', label: '总下载', value: board.resources.total_downloads, icon: ArrowDown },
-    { key: 'views', label: '总浏览', value: board.resources.total_views, icon: View },
-  ]
-})
-
-/** 动态流里的冲回、扣减是负数：符号写在货币符号前面（-¥0.01），不写成 ¥-0.01。 */
-function signedMoney(value: number): string {
-  return value < 0 ? `-${money(-value)}` : money(value)
-}
-
-function formatCount(value: number): string {
-  return value.toLocaleString('zh-CN')
-}
+const resourceCells = computed(() =>
+  liveBoard.value ? buildResourceCells(liveBoard.value.resources) : [],
+)
 </script>
 
 <template>
-  <div ref="homeRef" class="dev-page dev-home"
-    :class="{ 'dev-home--loading': loading, 'dev-home--fullscreen': isFullscreen }">
+  <div
+    ref="homeRef"
+    class="dev-page dev-home"
+    :class="{ 'dev-home--loading': loading, 'dev-home--fullscreen': isFullscreen }"
+  >
     <p v-if="mockEnabled" class="dev-home__mock-hint" role="note">
-      演示数据：本页未读取后端接口，仅用于预览布局。去掉地址上的 <code>?mock=1</code>，
-      或清掉 <code>VITE_DEV_HOME_MOCK</code> 后重启 dev server，即恢复真实数据。
+      演示数据：本页未读取后端接口，仅用于预览布局。去掉地址上的 <code>?mock=1</code>， 或清掉
+      <code>VITE_DEV_HOME_MOCK</code> 后重启 dev server，即恢复真实数据。
     </p>
 
     <!-- 顶部读数条：与其余菜单页同一条形态（读数在左、刷新在右）。
          四格可点卡片已并入横条：读数对应的明细页在侧边栏和下方列表里都有入口，
-         不必在这一层再挂四条跳转。 -->
-    <WorkbenchBarSlot :disabled="isFullscreen">
-      <TLoading tag="div" class="dev-meta-strip" aria-label="接单与收入概览" :loading="loading">
-        <template v-if="isFullscreen">
-          <strong class="dev-home__screen-title">工作台总览</strong>
-          <!-- 看板挂在平板上常亮：时钟每秒走，状态灯与最后更新时间说明这块屏上的数字是不是活的 -->
-          <div class="dev-home__clock" aria-label="当前时间">
-            <span class="dev-home__clock-time">{{ clockTime }}</span>
-            <span class="dev-home__clock-date">{{ clockDate }}</span>
-          </div>
-          <div class="dev-home__live-state">
-            <span class="dev-home__lamp" :class="`dev-home__lamp--${connectionLamp.tone}`" role="status"
-              aria-live="polite">
-              <i class="dev-home__lamp-dot" aria-hidden="true" />
-              {{ connectionLamp.label }}
-            </span>
-            <span class="dev-home__updated" :title="dashboard?.generated_at ?? ''">更新于 {{ lastUpdatedText }}</span>
-          </div>
-          <div class="dev-meta-strip__divider dev-home__live-divider" />
-        </template>
-        <template v-for="(item, index) in statCards" :key="item.label">
-          <div v-if="index > 0" class="dev-meta-strip__divider" />
-          <div class="dev-meta-strip__item">
-            <span class="dev-meta-strip__label">{{ item.label }}</span>
-            <span class="dev-meta-strip__value">{{ item.value }}</span>
-          </div>
-        </template>
-        <div class="dev-meta-strip__item dev-meta-strip__action">
-          <TButton v-if="fullscreenSupported" icon-only :aria-label="isFullscreen ? '退出全屏' : '全屏查看'"
-            :title="isFullscreen ? '退出全屏' : '全屏查看'" @click="toggleFullscreen">
-            <TIcon>
-              <svg v-if="isFullscreen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
-              </svg>
-            </TIcon>
-          </TButton>
-          <TButton icon-only :loading="loading" aria-label="刷新概览" @click="loadPage">
-            <TIcon>
-              <Refresh />
-            </TIcon>
-          </TButton>
-        </div>
-      </TLoading>
-    </WorkbenchBarSlot>
+         不必在这一层再挂四条跳转。读数与时钟的口径留在本页，条子本身在 DevHomeMetaStrip。 -->
+    <DevHomeMetaStrip
+      :loading="loading"
+      :disabled="isFullscreen"
+      :is-fullscreen="isFullscreen"
+      :fullscreen-supported="fullscreenSupported"
+      :clock-time="clockTime"
+      :clock-date="clockDate"
+      :lamp="connectionLamp"
+      :updated-text="lastUpdatedText"
+      :updated-title="dashboard?.generated_at ?? ''"
+      :cards="statCards"
+      @toggle="toggleFullscreen"
+      @refresh="loadPage"
+    />
 
     <!-- 保证金警示条：摆在四格读数之后——先看当天读数，再看为什么还不能接单。
          形状与配色走统一层的 .dev-notice（金色 + 图标徽标 + 文案 + 右侧动作），
@@ -756,79 +655,53 @@ function formatCount(value: number): string {
       <div class="dev-home__main">
         <!-- 两张列表卡：行仍由本页算（哪几档算进行中、全屏时不受 5 条 / 3 张的限制），
              组件只画；点行与「查看全部」都回本页跳「我的接单」 -->
-        <DevProjectList v-model:active-tab="activeProjectTab" :rows="projectRows" :tabs="PROJECT_TABS"
-          :more-to="{ name: 'dev-my-requirements' }" @open="openMyOrder" />
+        <DevProjectList
+          v-model:active-tab="activeProjectTab"
+          :rows="projectRows"
+          :tabs="PROJECT_TABS"
+          :more-to="{ name: 'dev-my-requirements' }"
+          @open="openMyOrder"
+        />
 
-        <DevDeliveryList v-model:active-tab="activeDeliveryTab" :rows="deliveryRows" :tabs="DELIVERY_TABS"
-          :more-to="{ name: 'dev-my-requirements' }" @open="openMyOrder" />
+        <DevDeliveryList
+          v-model:active-tab="activeDeliveryTab"
+          :rows="deliveryRows"
+          :tabs="DELIVERY_TABS"
+          :more-to="{ name: 'dev-my-requirements' }"
+          @open="openMyOrder"
+        />
       </div>
 
       <aside class="dev-home__aside">
         <!-- 收入、提现、保证金合并成一张「资金概览」：同一笔钱全页只出现一次（口径在 DevFundPanel）。
              提现 / 充值仍由本页就地拉起弹窗，成功后才回刷钱包读数。 -->
-        <DevFundPanel :today-income="overview?.today_income_cny ?? null" :change-rate="changeRate"
-          :chart-days="chartDays" :chart-caption="chartCaption" :buckets="incomeBuckets"
-          :month-income="liveBoard?.month_income_cny ?? null" :withdrawable="withdrawable"
-          :pending-withdraw="pendingWithdraw" :paid-withdraw="paidWithdraw"
-          :available-deposit="deposit?.available_cny ?? null" :frozen-deposit="deposit?.frozen_cny ?? null"
-          :total-paid-deposit="deposit?.total_paid_cny ?? null" :deposit-chip="depositStatusChip"
-          @withdraw="withdrawDialog?.open()" @recharge="rechargeDialog?.open()" />
+        <DevFundPanel
+          :today-income="overview?.today_income_cny ?? null"
+          :change-rate="changeRate"
+          :chart-days="chartDays"
+          :chart-caption="chartCaption"
+          :buckets="incomeBuckets"
+          :month-income="liveBoard?.month_income_cny ?? null"
+          :withdrawable="withdrawable"
+          :pending-withdraw="pendingWithdraw"
+          :paid-withdraw="paidWithdraw"
+          :available-deposit="deposit?.available_cny ?? null"
+          :frozen-deposit="deposit?.frozen_cny ?? null"
+          :total-paid-deposit="deposit?.total_paid_cny ?? null"
+          :deposit-chip="depositStatusChip"
+          @withdraw="withdrawDialog?.open()"
+          @recharge="rechargeDialog?.open()"
+        />
       </aside>
 
-      <!-- 看板第三栏：实时动态流 + 资源项目概况，只在全屏且拿到快照后出现 -->
-      <div v-if="liveBoard" class="dev-home__live">
-        <section class="dev-surface-card dev-home__panel dev-home__feed-panel">
-          <div class="dev-card-head">
-            <div class="dev-card-head__title-block">
-              <h3 class="dev-section-title">实时动态</h3>
-            </div>
-          </div>
-
-          <TransitionGroup v-if="feedRows.length" tag="ul" class="dev-home__feed" name="dev-home-feed"
-            :css="feedAnimated" aria-live="polite">
-            <li v-for="row in feedRows" :key="row.key" class="dev-home__feed-item">
-              <span class="dev-home__feed-icon" :class="`dev-home__feed-icon--${row.tone}`" aria-hidden="true">
-                <TIcon>
-                  <component :is="row.icon" />
-                </TIcon>
-              </span>
-              <div class="dev-home__feed-copy">
-                <strong class="dev-home__feed-title">{{ row.title }}</strong>
-                <span class="dev-home__feed-meta">
-                  <time :datetime="row.fullTime" :title="row.fullTime">{{ row.time }}</time>
-                  <template v-if="row.requirementId"> · {{ row.requirementId }}</template>
-                </span>
-              </div>
-              <strong v-if="row.amount != null" class="dev-home__feed-amount"
-                :class="`dev-home__feed-amount--${row.tone}`">
-                {{ signedMoney(row.amount) }}
-              </strong>
-            </li>
-          </TransitionGroup>
-          <p v-else class="dev-empty-state dev-home__empty">
-            <strong>暂无动态</strong>
-          </p>
-        </section>
-
-        <section class="dev-surface-card dev-home__panel dev-home__resources-panel">
-          <div class="dev-card-head">
-            <div class="dev-card-head__title-block">
-              <h3 class="dev-section-title">资源项目</h3>
-            </div>
-          </div>
-          <dl class="dev-home__resources">
-            <div v-for="cell in resourceCells" :key="cell.key" class="dev-home__resource">
-              <dt>
-                <TIcon>
-                  <component :is="cell.icon" />
-                </TIcon>
-                {{ cell.label }}
-              </dt>
-              <dd>{{ formatCount(cell.value) }}</dd>
-            </div>
-          </dl>
-        </section>
-      </div>
+      <!-- 看板第三栏：实时动态流 + 资源项目概况，只在全屏且拿到快照后出现。
+           行（图标、色调、时间文案与键）在本页算，组件只画；首帧不播入场动画由 feedAnimated 把着 -->
+      <DevLiveBoard
+        v-if="liveBoard"
+        :feed="feedRows"
+        :animated="feedAnimated"
+        :resources="resourceCells"
+      />
     </section>
 
     <!-- 保证金充值弹窗：与收益钱包页共用同一组件 -->
@@ -845,12 +718,15 @@ function formatCount(value: number): string {
    注意：列表与资金卡的静态排布已经跟着 `DevProjectList` / `DevDeliveryList` / `DevFundPanel`
    搬进各自的 scoped 样式；**跨到子组件内部的覆盖只能写在这里**，并带上 `:deep()`——
    父层的 scoped 属性只落在子组件根节点上，打不进它的后代。 */
-/* 加载中压暗数据区，避免把「还没拿到数据」误读成真实的 0 */
-.dev-home--loading .dev-home__panel {
+/* 加载中压暗数据区，避免把「还没拿到数据」误读成真实的 0。
+   卡片分两种：`DevProjectList` / `DevDeliveryList` / `DevFundPanel` 的根节点（父层 scoped 属性
+   落得上去），以及 `DevLiveBoard` 内部的动态与资源卡（只有 `:deep()` 打得到）。一条 `:deep()`
+   同时覆盖两种，选中的元素与拆分前完全一致。 */
+.dev-home--loading :deep(.dev-home__panel) {
   opacity: 0.6;
 }
 
-.dev-home__panel {
+.dev-home :deep(.dev-home__panel) {
   transition: opacity 0.2s ease;
 }
 
@@ -895,19 +771,10 @@ function formatCount(value: number): string {
   overflow-y: auto;
 }
 
-.dev-home__live {
-  grid-area: live;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 16px;
-  min-width: 0;
-  min-height: 0;
-}
-
 /* 列表卡：卡片头 + 工具栏固定，列表本体在卡内滚动。
-   `.dev-home__panel` 与 `.dev-home__feed-panel` 都是子组件的根节点，父层的 scoped 属性会落上去。 */
-.dev-home--fullscreen .dev-home__main .dev-home__panel,
-.dev-home__live .dev-home__feed-panel {
+   `.dev-home__panel` 是子组件的根节点，父层的 scoped 属性会落上去。
+   动态卡的同一套（`display: flex` / `min-height: 0`）跟着 `DevLiveBoard` 搬走了。 */
+.dev-home--fullscreen .dev-home__main .dev-home__panel {
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -934,262 +801,37 @@ function formatCount(value: number): string {
   padding-bottom: 2px;
 }
 
-/* 读数条在看板里：读数改成「标签在上、数字在下」，数字放大一档，远处也看得清 */
-.dev-home--fullscreen .dev-meta-strip {
+/* 读数条在看板里：读数改成「标签在上、数字在下」，数字放大一档，远处也看得清。
+   条子本体在 `DevHomeMetaStrip` 里，这几条要 `:deep()` 才打得到；`:deep()` 不吃 scoped 属性，
+   所以权重与拆分前一样是「两个类 + 一个属性」，仍然压得过 dev-base.css 里的单类规则。 */
+.dev-home--fullscreen :deep(.dev-meta-strip) {
   gap: 14px 18px;
 }
 
-.dev-home--fullscreen .dev-meta-strip__item:not(.dev-meta-strip__action) {
+.dev-home--fullscreen :deep(.dev-meta-strip__item:not(.dev-meta-strip__action)) {
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
 }
 
-.dev-home--fullscreen .dev-meta-strip__value {
+.dev-home--fullscreen :deep(.dev-meta-strip__value) {
   font-size: 20px;
   font-weight: 800;
 }
 
-.dev-home__clock {
-  display: grid;
-  gap: 1px;
-}
-
-.dev-home__clock-time {
-  color: var(--dev-ink);
-  font-size: 24px;
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: 0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.dev-home__clock-date,
-.dev-home__updated {
-  color: var(--dev-muted);
-  font-size: 12px;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.dev-home__live-state {
-  display: grid;
-  gap: 3px;
-}
-
-.dev-home__lamp {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--dev-ink-soft);
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.dev-home__lamp-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--dev-muted);
-}
-
-.dev-home__lamp--ok {
-  color: var(--dev-cyan);
-}
-
-.dev-home__lamp--ok .dev-home__lamp-dot {
-  background: var(--dev-cyan);
-  box-shadow: 0 0 0 0 color-mix(in srgb, var(--dev-cyan) 45%, transparent);
-  animation: dev-home-lamp-pulse 2s ease-out infinite;
-}
-
-.dev-home__lamp--warn {
-  color: var(--dev-gold);
-}
-
-.dev-home__lamp--warn .dev-home__lamp-dot {
-  background: var(--dev-gold);
-  animation: dev-home-lamp-blink 1s ease-in-out infinite;
-}
-
-.dev-home__lamp--off {
-  color: var(--dev-muted);
-}
-
-@keyframes dev-home-lamp-pulse {
-  0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--dev-cyan) 45%, transparent);
-  }
-  70%,
-  100% {
-    box-shadow: 0 0 0 7px transparent;
-  }
-}
-
-@keyframes dev-home-lamp-blink {
-  50% {
-    opacity: 0.35;
-  }
-}
+/* 时钟与状态灯（`.dev-home__clock*` / `.dev-home__live-state` / `.dev-home__lamp*`）连同
+   两个 keyframes 一起搬进了 DevHomeMetaStrip.vue：它们只在那条读数条里出现，媒体覆盖也在那边。 */
 
 /* 漏斗的静态排布搬进了 DevFunnel.vue（scoped 样式跟着组件走）；这里只留 900 / 640 两档的窄屏覆盖，
    见文件末尾的媒体块——`:deep()` 只能在「持有子组件的那一层」编译成后代选择器。 */
 
-/* 实时动态：图标 + 标题 / 时间 + 金额。新条目从顶部插入并闪一下底色 */
-.dev-home__feed {
-  display: grid;
-  align-content: start;
-  list-style: none;
-}
+/* 动态流与资源概况的静态排布（行网格、图标徽标、入场动画与 keyframes）已搬进 DevLiveBoard.vue；
+   这里只留 `.dev-home__live :deep(.dev-home__feed)` 那条滚动覆盖（见上方合并规则与 640 档）——
+   它作用在子组件内部，`:deep()` 只能在持有子组件的那一层写。 */
 
-.dev-home__feed-item {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  margin: 0 -10px;
-  padding: 9px 10px;
-  border-bottom: 1px solid var(--dev-line);
-  border-radius: 10px;
-}
-
-.dev-home__feed-item:last-child {
-  border-bottom: 0;
-}
-
-.dev-home__feed-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  background: var(--wb-accent-soft);
-  color: var(--dev-blue);
-  font-size: 15px;
-}
-
-.dev-home__feed-icon--gold {
-  background: color-mix(in srgb, var(--dev-gold) 14%, transparent);
-  color: var(--dev-gold);
-}
-
-.dev-home__feed-icon--cyan {
-  background: color-mix(in srgb, var(--dev-cyan) 14%, transparent);
-  color: var(--dev-cyan);
-}
-
-.dev-home__feed-icon--muted {
-  background: color-mix(in srgb, var(--dev-muted) 14%, transparent);
-  color: var(--dev-ink-soft);
-}
-
-.dev-home__feed-copy {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-
-.dev-home__feed-title {
-  overflow: hidden;
-  color: var(--dev-ink);
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.dev-home__feed-meta {
-  overflow: hidden;
-  color: var(--dev-muted);
-  font-size: 11px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-variant-numeric: tabular-nums;
-}
-
-.dev-home__feed-amount {
-  color: var(--dev-ink-soft);
-  font-size: 14px;
-  font-weight: 800;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.dev-home__feed-amount--gold {
-  color: var(--dev-gold);
-}
-
-.dev-home-feed-enter-active {
-  animation: dev-home-feed-in 1.6s ease-out;
-}
-
-.dev-home-feed-move {
-  transition: transform 0.35s ease;
-}
-
-.dev-home-feed-leave-active {
-  display: none;
-}
-
-@keyframes dev-home-feed-in {
-  0% {
-    opacity: 0;
-    transform: translateY(-10px);
-    background: color-mix(in srgb, var(--dev-blue) 14%, transparent);
-  }
-  18% {
-    opacity: 1;
-    transform: translateY(0);
-    background: color-mix(in srgb, var(--dev-blue) 14%, transparent);
-  }
-  100% {
-    background: transparent;
-  }
-}
-
-/* 资源项目：三格读数一排 */
-.dev-home__resources {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin: 0;
-}
-
-.dev-home__resource {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  padding: 10px 12px;
-  border-radius: var(--dev-radius-inner);
-  background: var(--wb-accent-soft);
-}
-
-.dev-home__resource dt {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--dev-muted);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.dev-home__resource dd {
-  margin: 0;
-  color: var(--dev-ink);
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dev-home__lamp-dot,
-  .dev-home-feed-enter-active {
-    animation: none;
-  }
-}
+/* 状态灯呼吸 / 闪烁与动态流入场动画的「减弱动效」开关，各自跟着元素搬进了
+   DevHomeMetaStrip.vue / DevLiveBoard.vue 的 scoped 样式（scoped 会给 keyframes 改名，
+   两半分开就配不上）。 */
 
 /* 提现 / 充值两个动作在资金卡里（子组件），全屏时收起：弹窗挂在 body 上，全屏里看不见。 */
 .dev-home--fullscreen :deep(.dev-home__money-action),
@@ -1197,14 +839,6 @@ function formatCount(value: number): string {
 .dev-home--fullscreen .dev-notice__action,
 .dev-home--fullscreen .dev-home__mock-hint {
   display: none;
-}
-
-.dev-home__screen-title {
-  margin-right: 8px;
-  color: var(--dev-ink);
-  font-size: 16px;
-  font-weight: 800;
-  white-space: nowrap;
 }
 
 /* 演示数据提示条：它是本地预览用的说明，比保证金警示条更轻，用虚线中性框 */
@@ -1382,25 +1016,27 @@ function formatCount(value: number): string {
   }
 
   /* 统一层在这一档把读数条改成两列网格（菜单页里读数少、一格一行）；看板上读数多，
-     两列会把它撑到四五行高。看板里改回横排：首行标题 + 时钟 + 状态，次行四格读数 + 按钮 */
-  .dev-home--fullscreen .dev-meta-strip {
+     两列会把它撑到四五行高。看板里改回横排：首行标题 + 时钟 + 状态，次行四格读数 + 按钮。
+     条子本体在 DevHomeMetaStrip.vue 里，这几条一律 `:deep()`；`:deep()` 不吃 scoped 属性，
+     权重仍是「两个类 + 一个属性」，与拆分前一致，压得过 dev-responsive.css 里的单类规则。 */
+  .dev-home--fullscreen :deep(.dev-meta-strip) {
     display: flex;
     flex-wrap: wrap;
     gap: 10px 20px;
     padding: 12px 18px;
   }
 
-  .dev-home--fullscreen .dev-meta-strip__divider {
+  .dev-home--fullscreen :deep(.dev-meta-strip__divider) {
     display: block;
   }
 
-  .dev-home--fullscreen .dev-home__live-divider {
+  .dev-home--fullscreen :deep(.dev-home__live-divider) {
     flex: 0 0 100%;
     width: auto;
     height: 1px;
   }
 
-  .dev-home--fullscreen .dev-meta-strip__item.dev-meta-strip__action {
+  .dev-home--fullscreen :deep(.dev-meta-strip__item.dev-meta-strip__action) {
     margin-left: auto;
   }
 
