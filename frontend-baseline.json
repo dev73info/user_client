@@ -394,7 +394,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/DevHomeView.vue",
-      "detail": "2305 行 > 300（视图）",
+      "detail": "1456 行 > 300（视图）",
       "since": "2026-10-22"
     },
     {
@@ -1097,12 +1097,6 @@
       "rule": "raw-color",
       "file": "src/views/DeveloperAgreementView.vue",
       "detail": "7 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/views/DevHomeView.vue",
-      "detail": "1 处裸色值",
       "since": "2026-10-22"
     },
     {
