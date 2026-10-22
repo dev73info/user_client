@@ -1,0 +1,9 @@
+# 生成物与本机配置不参与格式化
+dist
+coverage
+node_modules
+pnpm-lock.yaml
+eslint-suppressions.json
+frontend-baseline.json
+src/api/generated
+deploy

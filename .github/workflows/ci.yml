@@ -11,6 +11,10 @@ name: ci
 #   $GITHUB_WORKSPACE/tags-wasm     仓库里不含 pkg/（构建物），要现场 wasm-pack build
 #
 # 三个仓都是公开仓，用默认的 GITHUB_TOKEN 检出即可，不引 PAT——fork 来的 PR 也能跑。
+#
+# 分支名要跟着本仓的实际远端点：origin 上只有 `develop` 与 `master`（没有 `dev`）。
+# 写成 `[dev, master]` 时，开向 `develop` 的 PR **一条都不会触发**——
+# 门禁看着齐全，实际全仓没有一道被跑过。改分支名先 `git ls-remote --heads origin` 核一遍。
 on:
   pull_request:
     branches: [develop, master]
@@ -99,17 +103,52 @@ jobs:
       - name: 契约漂移（请求/响应类型必须来自 openapi.json 生成物）
         run: pnpm contract:check
 
+      # 仓内的 spec 是后端产物的**副本**：后端改了契约而本仓没同步，上面那一步看不出来。
+      # 跳过与失败要分清：**只有 404 才跳过**（后端仓私有 + 本仓无跨仓凭证，该地址恒返回 404）。
+      # 其余取不到（网络故障、鉴权失效）一律 exit 1——否则一次网络抖动就被当成绿灯。
+      - name: 契约与后端一致
+        run: |
+          BACKEND_SPEC="https://raw.githubusercontent.com/dev73info/backend_73info/rewrite/standard-backend/openapi/openapi.json"
+          STATUS=$(curl -sS -o /tmp/backend-openapi.json -w '%{http_code}' "$BACKEND_SPEC" 2>/dev/null) || STATUS="000"
+          if [ "$STATUS" = "404" ]; then
+            echo "::warning::契约与后端一致这一步没有真的跑（后端仓私有且本仓无跨仓凭证，该地址恒返回 404）。"
+            echo "· 本步跳过（这不是通过）：无跨仓凭证访问私有后端仓，该地址恒返回 404。"
+            echo "  原因：后端仓是私有仓，无跨仓凭证时该地址返回 404（与后端有没有放产物无关）。"
+            echo "  要让它真的比对：给本仓配能读后端仓的令牌 secret，并改用 api.github.com 取文件。"
+            echo "  本地替代：比对备份分支上的后端产物与本仓副本（见 .claude/rules/前端标准化.md 第四节）。"
+          elif [ "$STATUS" != "200" ]; then
+            echo "✗ 取后端契约失败（HTTP $STATUS），这一步不能算通过。"
+            exit 1
+          else
+            # jq -S 归一化后比对：键序无关的 **JSON 内容**比较。
+            # 不用逐字节比：后端换一版 utoipa 改了键序也会让 CI 变红，而契约其实没变。
+            jq -S . /tmp/backend-openapi.json > /tmp/backend.sorted.json
+            jq -S . src/api/generated/openapi.json > /tmp/frontend.sorted.json
+            if ! diff -u /tmp/backend.sorted.json /tmp/frontend.sorted.json; then
+              echo "本仓的契约副本与后端集成线不一致。"
+              echo "后端产物：backend_73info 仓的 openapi/openapi.json"
+              echo "         （由 cargo run --bin backend-73Info -- openapi 生成，不要手改）"
+              echo "同步：把后端产物覆盖到 src/api/generated/openapi.json，再跑 pnpm contract:write。"
+              exit 1
+            fi
+            echo "✓ 本仓契约副本与后端 2.0 集成线一致"
+          fi
+
       # 构建也进门禁：type-check 过不代表能打包（SEO 页面生成、动态 import、wasm 资源都可能挂在这一步）。
       - name: 构建
         run: pnpm build
 
       # 格式化只要求「本次改动涉及的文件」，存量未格式化文件不在这里一次性重排。
+      # `src/**/*.ts` 里的 `**/` 要求至少一层子目录，顶层的 `src/main.ts` 匹配不到，
+      # 格式门禁对它是盲区；补上 `src/*.ts` 一并检查。
+      # 再补 CSS 与 scripts：审阅实测 prettier 在多文件模式下能抓出「规则被切在两半」的坏样式表
+      # （退出码 2 并点名那几个文件）——user-client 的样式大量在 `src/styles/*.css`，漏掉等于没这道门。
       - name: Format（仅改动文件）
         run: |
           BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
-          CHANGED=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- 'src/**/*.ts' 'src/**/*.vue' || true)
+          CHANGED=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- 'src/*.ts' 'src/**/*.ts' 'src/**/*.vue' 'src/*.css' 'src/**/*.css' 'scripts/*.mjs' 'scripts/**/*.mjs' 'styles/*.css' || true)
           if [ -n "$CHANGED" ]; then
             echo "$CHANGED" | xargs pnpm exec prettier --check
           else
-            echo "没有改动的 .ts / .vue 文件"
+            echo "没有改动的 .ts / .vue / .css / .mjs 文件"
           fi
