@@ -1,0 +1,272 @@
+/* --- 顶部导航栏 --- */
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-btn {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f8fafc;
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logo-btn:hover {
+  background: rgba(14, 165, 233, 0.25);
+  box-shadow: 0 0 20px var(--blue-glow);
+  transform: translateY(-1px);
+}
+
+.nav-links {
+  display: flex;
+  gap: 24px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.nav-links a,
+.nav-links a {
+  color: var(--text-sub);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover,
+.nav-links a.active,
+.nav-links a:hover,
+.nav-links a.active {
+  color: var(--text-main);
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.nav-links a.active,
+.nav-links a.active {
+  border-bottom: 2px solid var(--success);
+  padding-bottom: 4px;
+}
+
+.platform-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 16px;
+}
+
+/* --- 平台切换按钮 --- */
+.platform-button {
+  margin-left: 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 7px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--text-main);
+  border: 1px solid var(--card-border);
+  background: rgba(255, 255, 255, 0.05);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+
+.platform-button:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.platform-button:active {
+  transform: scale(0.97);
+}
+
+.platform-icon {
+  font-size: 15px;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
+}
+
+.platform-button.is-java {
+  border-color: rgba(255, 209, 102, 0.3);
+  background: rgba(255, 209, 102, 0.08);
+  box-shadow: 0 4px 15px rgba(255, 209, 102, 0.1);
+}
+
+.platform-button.is-java:hover {
+  border-color: var(--accent);
+  box-shadow: 0 6px 20px rgba(255, 209, 102, 0.25);
+  color: #fff;
+}
+
+.platform-button.is-bedrock {
+  border-color: rgba(149, 213, 178, 0.3);
+  background: rgba(149, 213, 178, 0.08);
+  box-shadow: 0 4px 15px rgba(149, 213, 178, 0.1);
+}
+
+.platform-button.is-bedrock:hover {
+  border-color: var(--success);
+  box-shadow: 0 6px 20px rgba(149, 213, 178, 0.25);
+  color: #fff;
+}
+
+/* ============================================================
+   资源列表页（门户「资源项目」）：面包屑 + 工具条 + 内容
+   口径（见 canvases/resource-catalog-redesign.canvas.tsx）：
+   - 顶栏两行合并成一行「面包屑 + 分区标题」；
+   - 全页只留一处免费/付费 segmented（在工具条第一行左端）；
+   - 排序收进右侧下拉；已选筛选汇总成可逐个移除的 chip；
+   - 分页只在多页时出现；
+   - 层级靠描边与底色，不用阴影。
+   ============================================================ */
+
+.catalog-layout-page {
+  width: min(1280px, calc(100% - 24px));
+  /* 面包屑整条移除后工具条成了内容区第一块：顶距按本页的区块间距档位（14px）收窄，
+     不再沿用 `.portal-page` 的 24px（那一档是给「首块 + 面包屑」两层留的） */
+  margin-top: 14px;
+  margin-left: auto;
+  margin-right: auto;
+  display: grid;
+  gap: 14px;
+}
+
+/* --- 视觉隐藏：面包屑移除后本页唯一的 h1，仅保留在 DOM 里供无障碍与 SEO --- */
+.catalog-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- 专区下拉（原面包屑触发器，移出面包屑后独立命名）--- */
+.catalog-zone-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.catalog-zone-trigger:hover {
+  background: rgba(31, 74, 209, 0.08);
+}
+
+.catalog-zone-trigger__chevron {
+  width: 12px;
+  height: 12px;
+  font-size: 12px;
+}
+
+/* --- 工具条：两行，白面 + 1px 描边，不用阴影 --- */
+.catalog-toolbar {
+  display: grid;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--bg-soft);
+}
+
+.catalog-toolbar__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.catalog-toolbar__row + .catalog-toolbar__row {
+  padding-top: 10px;
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+/* 工具条第一行左段：专区下拉 + 子类页签紧挨在一起，
+   右侧的免费/付费 segmented 靠 space-between 推到行尾 */
+.catalog-toolbar__lead {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* 子类切换：文本 Tab + 2px 下划线（不再是同形胶囊） */
+.catalog-subtabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.catalog-subtab {
+  position: relative;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #52627a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background 160ms ease;
+}
+
+.catalog-subtab:hover {
+  color: var(--accent);
+}
+
+.catalog-subtab--active {
+  color: var(--accent);
+}
+
+.catalog-subtab--active::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--accent);
+}

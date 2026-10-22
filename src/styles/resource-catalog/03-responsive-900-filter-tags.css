@@ -1,0 +1,142 @@
+@media (max-width: 900px) {
+  /* 移动端走 MobileResourceList，页面的面包屑与工具条都不渲染；
+     这里只把外层容器还原成通栏，避免桌面栅格留下内边距与横向滚动 */
+  .catalog-layout-page {
+    display: block;
+    gap: 0;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .catalog-layout-page__browser {
+    min-width: 0;
+  }
+}
+
+/* --- 筛选面板 --- */
+.filter-panel {
+  border-radius: 20px;
+  border: 1px solid var(--card-border);
+  background: rgba(6, 32, 50, 0.42);
+  backdrop-filter: blur(12px);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: reveal 0.6s ease-out;
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.flex-between {
+  justify-content: space-between;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-group.align-start {
+  align-items: flex-start;
+}
+
+.label {
+  color: var(--text-sub);
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 50px;
+}
+
+.label.mt-1 {
+  margin-top: 0.25rem;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+/* --- 标签选择器 --- */
+.tag {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: var(--text-sub);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.2s;
+  touch-action: none;
+  user-select: none;
+}
+
+.tag:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.tag.active {
+  background: rgba(149, 213, 178, 0.2);
+  border-color: var(--success);
+  color: var(--success);
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(149, 213, 178, 0.15);
+}
+
+.tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+}
+
+/* --- 搜索栏 --- */
+.search-bar {
+  position: relative;
+  min-width: 260px;
+}
+
+.search-bar input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-main);
+  padding: 10px 16px 10px 38px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.search-bar input:focus {
+  border-color: var(--success);
+  box-shadow: 0 0 0 3px rgba(149, 213, 178, 0.15);
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.6;
+}

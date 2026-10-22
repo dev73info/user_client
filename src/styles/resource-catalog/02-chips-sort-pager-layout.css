@@ -1,0 +1,182 @@
+/* --- 已选筛选 chip 条（可逐个移除 + 清除全部） --- */
+.catalog-chipbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.catalog-chipbar__hint {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.catalog-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid rgba(31, 74, 209, 0.28);
+  border-radius: 999px;
+  background: rgba(31, 74, 209, 0.06);
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.catalog-chip:hover {
+  background: rgba(31, 74, 209, 0.14);
+}
+
+.catalog-chip__close {
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.75;
+}
+
+.catalog-chip-clear {
+  height: 24px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.catalog-chip-clear:hover {
+  color: var(--accent);
+}
+
+/* --- 右端：排序下拉 + 统计 + 分页 --- */
+.catalog-toolbar__trailing {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.catalog-sort-trigger,
+.catalog-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  color: #334155;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.catalog-sort-trigger:hover,
+.catalog-back-btn:hover {
+  border-color: rgba(31, 74, 209, 0.4);
+  color: var(--accent);
+}
+
+.catalog-sort-trigger__chevron {
+  width: 12px;
+  height: 12px;
+  font-size: 12px;
+}
+
+.catalog-count {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.catalog-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.catalog-pager__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: var(--bg-soft);
+  color: #334155;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.catalog-pager__btn:hover:not(:disabled) {
+  border-color: rgba(31, 74, 209, 0.4);
+  color: var(--accent);
+}
+
+.catalog-pager__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.catalog-pager__btn--active {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+}
+
+.catalog-pager__ellipsis {
+  padding: 0 2px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.catalog-layout-page__browser {
+  min-width: 0;
+}
+
+/* ============================================================
+   资源列表页的内容区（桌面端 >900px）：单栏「整块切换」
+   - 未选中资源：资源列表独占整宽（筛选栏 + 卡片栅格仍是它自己的默认两栏）；
+   - 选中一条资源：整个列表不渲染，详情独占整宽（同一时刻只有一块，不留空栏、不出横向滚动）；
+   - 选中只改 URL 的 `?resource=`，路由与页面组件都不变，不整页跳转 / 不切路由。
+   ============================================================ */
+
+.catalog-master {
+  display: grid;
+  /* 只有一栏：两块内容互斥渲染，谁在就谁占满整宽 */
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.catalog-master__list,
+.catalog-master__detail {
+  min-width: 0;
+}

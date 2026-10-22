@@ -165,12 +165,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/styles/resource-catalog.css",
-      "detail": "777 行 > 300（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/styles/shell.css",
       "detail": "513 行 > 300（模块）",
       "since": "2026-10-22"
@@ -1227,8 +1221,26 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/styles/resource-catalog.css",
-      "detail": "56 处裸色值",
+      "file": "src/styles/resource-catalog/01-header-platform-toolbar.css",
+      "detail": "22 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/resource-catalog/02-chips-sort-pager-layout.css",
+      "detail": "12 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/resource-catalog/03-responsive-900-filter-tags.css",
+      "detail": "10 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/resource-catalog/04-cards-empty-mobile.css",
+      "detail": "12 处裸色值",
       "since": "2026-10-22"
     },
     {
