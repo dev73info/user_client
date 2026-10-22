@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import '@/styles/home.css'
 
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { TIcon, ArrowRight, TMessage } from 'ui_73info'
 
@@ -19,21 +19,14 @@ import DeveloperRankCard from '@/components/home/DeveloperRankCard.vue'
 import PortalBetaCard from '@/components/home/PortalBetaCard.vue'
 import PortalMilestoneCard from '@/components/home/PortalMilestoneCard.vue'
 import PortalNoticeCard from '@/components/home/PortalNoticeCard.vue'
+import SpotlightResourceSection from '@/components/home/SpotlightResourceSection.vue'
 import TeamRankCard from '@/components/home/TeamRankCard.vue'
 import { buildDevPortalUrl } from '@/config/runtime'
 import { useAuthForm } from '@/composables/useAuthForm'
 import { useHomeCheckin } from '@/composables/useHomeCheckin'
 import { usePortalRanks } from '@/composables/usePortalRanks'
-import {
-  buildResourceCardSummary,
-  buildResourceCoverAlt,
-  compareSpotlightResources,
-  resolveSpotlightCover,
-  spotlightAuthorLabel,
-  spotlightCategoryBadge,
-  spotlightMarkFor,
-  spotlightTagChips,
-} from '@/shared/home/resourceCardDisplay'
+import { usePublicResources } from '@/composables/usePublicResources'
+import type { SpotlightCard } from '@/composables/useSpotlightCards'
 import {
   buildMilestoneStats,
   buildPortalNotices,
@@ -55,7 +48,7 @@ import {
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import { validateRequirementRichText } from '@/utils/requirementRichText'
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
-import { HttpError, apiUrl } from '@/api/http'
+import { HttpError } from '@/api/http'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import { getMyRealnameVerification } from '@/api/realname'
 import {
@@ -77,13 +70,10 @@ import {
 } from '@/api/requirements'
 import { getDepositRatio } from '@/api/settings'
 import { listCommunityPosts, type CommunityPost } from '@/api/community'
-import { useTagTreeStore } from '@/stores/tagTree'
 import {
-  invalidateResourceListCache,
   likePublicMcResource,
   listAllPublicMcResources,
   unlikePublicMcResource,
-  type PublicMcResourceItem,
 } from '@/api/resources'
 import { getResourcePromoMeta } from '@/api/points'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
@@ -135,38 +125,6 @@ type QuickPanel = {
   tone: 'gift' | 'briefcase'
 }
 
-type SpotlightCard = {
-  kind: 'requirement' | 'resource'
-  title: string
-  summary: string
-  /** 卡片标签：与资源详情页同款胶囊，最多 3 个 */
-  tags: string[]
-  /** 封面左上：平台 / 品类 */
-  badge: string
-  /** 封面右上：仅精选；空字符串表示不展示 */
-  mark: string
-  authorLabel?: string
-  metaTime?: string
-  viewCount: number
-  downloadCount: number
-  likeCount: number
-  likedByMe: boolean
-  gradient?: boolean
-  userColor?: string
-  accent: string
-  coverUrl?: string
-  coverAlt?: string
-  requirementId?: string
-  resourceId?: number
-  originLabel?: string
-  originRepost?: boolean
-}
-
-/** 首页高赞阈值：由管理端积分规则 `resource_high_like_threshold` 配置，缺省 5。 */
-const highLikeThreshold = ref(5)
-
-const failedSpotlightCoverUrls = ref<Set<string>>(new Set())
-
 const metrics = ref<Metric[]>([
   { label: '累计完成', value: '0 单' },
   { label: '综合评价', value: '5.00 分' },
@@ -184,9 +142,19 @@ const latestDeals = ref<LatestDealView[]>([])
 const publicDeveloperCount = ref(0)
 const pendingRequirements = ref<PendingRequirementView[]>([])
 const publicRequirementSpotlights = ref<PublicRequirementSpotlightItem[]>([])
-const tagTreeStore = useTagTreeStore()
-const processedTagTree = computed(() => tagTreeStore.tree ?? ({ roots: [] } as { roots: never[] }))
-const publicResources = ref<PublicMcResourceItem[]>([])
+/**
+ * 公开资源这一份状态由 `usePublicResources` 独占：侧栏榜单、公告卡、里程碑统计、
+ * 精选资源区、点赞回写都读同一份，本视图不再自己建 ref（否则会出现两份数据源）。
+ */
+const {
+  publicResources,
+  highLikeThreshold,
+  resolveResourceRoute,
+  ensureTagTree,
+  applyResourceList,
+  applyHighLikeThreshold,
+  applyLikeState,
+} = usePublicResources()
 const auth = useAuthStore()
 const announcementPosts = ref<CommunityPost[]>([])
 const router = useRouter()
@@ -484,223 +452,6 @@ const platformStats = computed<PortalMilestoneStat[]>(() =>
   }),
 )
 
-function handleSpotlightCoverError(url: string | undefined) {
-  if (!url) return
-  const next = new Set(failedSpotlightCoverUrls.value)
-  next.add(url)
-  failedSpotlightCoverUrls.value = next
-}
-
-function spotlightCoverSrc(card: { coverUrl?: string }) {
-  return resolveSpotlightCover(card.coverUrl, failedSpotlightCoverUrls.value)
-}
-
-const spotlightCards = computed<SpotlightCard[]>(() => {
-  const published = [...publicResources.value]
-  const threshold = highLikeThreshold.value
-  const hybrid = published.filter(
-    (item) => item.is_featured || item.is_pinned || (item.like_count ?? 0) >= threshold,
-  )
-  // 候选为空时回退到全部已发布，按同一套排序，避免首页区块空白。
-  const candidates = (hybrid.length > 0 ? hybrid : published).sort(compareSpotlightResources)
-
-  return candidates.map((item, index) => {
-    return {
-      kind: 'resource' as const,
-      title: item.title,
-      summary: buildResourceCardSummary(item),
-      tags: spotlightTagChips(item),
-      badge: spotlightCategoryBadge(item),
-      mark: spotlightMarkFor(item),
-      authorLabel: spotlightAuthorLabel(item),
-      metaTime: formatTimeLabel(item.updated_at),
-      viewCount: item.view_count ?? 0,
-      downloadCount: item.download_count ?? 0,
-      likeCount: item.like_count ?? 0,
-      likedByMe: !!item.liked_by_me,
-      gradient: !!item.author_username_gradient,
-      userColor: item.author_username_color || '',
-      accent: ['nebula', 'sunset', 'forest', 'frost'][index % 4] ?? 'nebula',
-      coverUrl: item.cover_url ? apiUrl(item.cover_url) : '',
-      coverAlt: buildResourceCoverAlt(item),
-      resourceId: item.id,
-      originLabel: item.origin_type === 'repost' ? '转载' : '原创',
-      originRepost: item.origin_type === 'repost',
-    }
-  })
-})
-
-const SPOTLIGHT_PAGE_SIZE = 8
-const spotlightPage = ref(1)
-
-/** 作者名溢出时启用横向滚动的资源 id 集合 */
-const spotlightAuthorMarqueeIds = ref<Set<number>>(new Set())
-const spotlightAuthorObservers = new Map<number, ResizeObserver>()
-
-function isSpotlightAuthorMarquee(resourceId?: number): boolean {
-  return resourceId != null && spotlightAuthorMarqueeIds.value.has(resourceId)
-}
-
-function updateSpotlightAuthorMarquee(resourceId: number, el: HTMLElement) {
-  const track = el.querySelector('.portal-spotlight-card__author-text') as HTMLElement | null
-  if (!track) {
-    return
-  }
-  const overflowPx = track.scrollWidth - el.clientWidth
-  const overflow = overflowPx > 1
-  el.style.setProperty('--author-marquee-shift', overflow ? `${-overflowPx}px` : '0px')
-  const next = new Set(spotlightAuthorMarqueeIds.value)
-  if (overflow) {
-    next.add(resourceId)
-  } else {
-    next.delete(resourceId)
-  }
-  if (next.size !== spotlightAuthorMarqueeIds.value.size) {
-    spotlightAuthorMarqueeIds.value = next
-    return
-  }
-  for (const id of next) {
-    if (!spotlightAuthorMarqueeIds.value.has(id)) {
-      spotlightAuthorMarqueeIds.value = next
-      return
-    }
-  }
-}
-
-function bindSpotlightAuthorMarquee(el: unknown, resourceId?: number) {
-  if (resourceId == null) {
-    return
-  }
-  const prev = spotlightAuthorObservers.get(resourceId)
-  if (prev) {
-    prev.disconnect()
-    spotlightAuthorObservers.delete(resourceId)
-  }
-  if (!(el instanceof HTMLElement)) {
-    const next = new Set(spotlightAuthorMarqueeIds.value)
-    next.delete(resourceId)
-    spotlightAuthorMarqueeIds.value = next
-    return
-  }
-  const measure = () => updateSpotlightAuthorMarquee(resourceId, el)
-  measure()
-  const observer = new ResizeObserver(measure)
-  observer.observe(el)
-  spotlightAuthorObservers.set(resourceId, observer)
-}
-
-onBeforeUnmount(() => {
-  for (const observer of spotlightAuthorObservers.values()) {
-    observer.disconnect()
-  }
-  spotlightAuthorObservers.clear()
-})
-const spotlightPageCount = computed(() =>
-  Math.max(1, Math.ceil(spotlightCards.value.length / SPOTLIGHT_PAGE_SIZE)),
-)
-const pagedSpotlightCards = computed(() => {
-  const start = (spotlightPage.value - 1) * SPOTLIGHT_PAGE_SIZE
-  return spotlightCards.value.slice(start, start + SPOTLIGHT_PAGE_SIZE)
-})
-
-function goSpotlightPage(target: number) {
-  if (target < 1 || target > spotlightPageCount.value || target === spotlightPage.value) {
-    return
-  }
-  const gridElement = document.querySelector<HTMLElement>('.portal-spotlight-grid')
-  // 移动端是紧凑列表，不必锁 min-height；桌面端仍撑住高度避免翻页跳动。
-  const lockMinHeight =
-    typeof window === 'undefined' || window.matchMedia('(min-width: 901px)').matches
-  const previousHeight = gridElement?.offsetHeight ?? 0
-  if (lockMinHeight && gridElement && previousHeight > 0) {
-    gridElement.style.minHeight = `${previousHeight}px`
-  }
-  spotlightPage.value = target
-  void nextTick(() => {
-    if (!gridElement) {
-      return
-    }
-    if (!lockMinHeight) {
-      gridElement.style.minHeight = ''
-      return
-    }
-    const nextHeight = gridElement.offsetHeight
-    gridElement.style.minHeight = `${Math.max(previousHeight, nextHeight)}px`
-  })
-}
-
-watch(spotlightPageCount, (next) => {
-  if (spotlightPage.value > next) {
-    spotlightPage.value = next
-  }
-})
-
-type SpotlightPaginationItem = { key: string; label: string; page: number | null }
-
-const SPOTLIGHT_PAGE_WINDOW = 1
-
-const spotlightPaginationItems = computed<SpotlightPaginationItem[]>(() => {
-  const total = spotlightPageCount.value
-  const current = spotlightPage.value
-  const items: SpotlightPaginationItem[] = []
-  if (total <= 9) {
-    for (let page = 1; page <= total; page += 1) {
-      items.push({ key: `page-${page}`, label: String(page), page })
-    }
-    return items
-  }
-  items.push({ key: 'page-1', label: '1', page: 1 })
-  const start = Math.max(2, current - SPOTLIGHT_PAGE_WINDOW)
-  const end = Math.min(total - 1, current + SPOTLIGHT_PAGE_WINDOW)
-  if (start > 2) {
-    items.push({ key: 'ellipsis-left', label: '…', page: null })
-  }
-  for (let page = start; page <= end; page += 1) {
-    items.push({ key: `page-${page}`, label: String(page), page })
-  }
-  if (end < total - 1) {
-    items.push({ key: 'ellipsis-right', label: '…', page: null })
-  }
-  items.push({ key: `page-${total}`, label: String(total), page: total })
-  return items
-})
-
-const spotlightJumpOpen = ref(false)
-const spotlightJumpAnchor = ref<string | null>(null)
-const spotlightJumpValue = ref('')
-
-function toggleSpotlightJump(anchorKey: string) {
-  if (spotlightJumpOpen.value && spotlightJumpAnchor.value === anchorKey) {
-    spotlightJumpOpen.value = false
-    return
-  }
-  spotlightJumpAnchor.value = anchorKey
-  spotlightJumpValue.value = String(spotlightPage.value)
-  spotlightJumpOpen.value = true
-}
-
-function submitSpotlightJump() {
-  const parsed = Number.parseInt(spotlightJumpValue.value, 10)
-  if (Number.isFinite(parsed)) {
-    goSpotlightPage(Math.min(Math.max(parsed, 1), spotlightPageCount.value))
-  }
-  spotlightJumpOpen.value = false
-}
-
-function handleSpotlightJumpOutsideClick() {
-  if (spotlightJumpOpen.value) {
-    spotlightJumpOpen.value = false
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleSpotlightJumpOutsideClick)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleSpotlightJumpOutsideClick)
-})
-
 const authTitle = computed(() => {
   if (routeAuthMode.value === 'login') {
     return '登录账号'
@@ -761,6 +512,13 @@ watch(
   },
 )
 
+/**
+ * 精选卡片的点赞提交态。卡片在 `SpotlightResourceSection` 里，只负责回抛 `like`；
+ * 请求、登录门禁与 toast 留在这里（子组件不碰 token）。
+ *
+ * 冒泡已在子组件用 `@click.stop` 挡掉：那一下不能同时触发卡片的 `open`，
+ * 所以这里**不再**接 DOM 事件 —— 传进来的只有卡片本身。
+ */
 const spotlightLikeSubmittingIds = ref<Set<number>>(new Set())
 
 function openSpotlightLikeLogin() {
@@ -768,10 +526,7 @@ function openSpotlightLikeLogin() {
   openAuth('login')
 }
 
-async function toggleSpotlightLike(card: SpotlightCard, event: Event) {
-  event.stopPropagation()
-  event.preventDefault()
-
+async function toggleSpotlightLike(card: SpotlightCard) {
   const resourceId = card.resourceId
   if (resourceId == null) {
     return
@@ -792,12 +547,8 @@ async function toggleSpotlightLike(card: SpotlightCard, event: Event) {
     const state = card.likedByMe
       ? await unlikePublicMcResource(auth.token, resourceId)
       : await likePublicMcResource(auth.token, resourceId)
-    publicResources.value = publicResources.value.map((item) =>
-      item.id === resourceId
-        ? { ...item, liked_by_me: state.liked_by_me, like_count: state.like_count }
-        : item,
-    )
-    invalidateResourceListCache()
+    // 回写 + 失效列表缓存都在 `usePublicResources` 里，视图不自己拼那一份状态。
+    applyLikeState(resourceId, state)
     TMessage.success(state.liked_by_me ? '已点赞' : '已取消点赞')
   } catch (error) {
     if (error instanceof HttpError && error.status === 401) {
@@ -1199,31 +950,6 @@ async function loadRequirementOverview() {
   }
 }
 
-function resolveResourceRoute(
-  resource: PublicMcResourceItem,
-): { rootSlug: string; entrySlug: string } | null {
-  for (const root of processedTagTree.value.roots) {
-    const entry = root.entries.find((item) => item.platform === resource.platform)
-    if (entry) {
-      return {
-        rootSlug: root.key,
-        entrySlug: entry.key,
-      }
-    }
-  }
-
-  const fallbackRoot = processedTagTree.value.roots[0]
-  const fallbackEntry = fallbackRoot?.entries[0]
-  if (fallbackRoot && fallbackEntry) {
-    return {
-      rootSlug: fallbackRoot.key,
-      entrySlug: fallbackEntry.key,
-    }
-  }
-
-  return null
-}
-
 async function loadPublicPortalData(silent = false) {
   const resourceToken = auth.isAuthed && auth.token.trim() ? auth.token : null
   const [resourcesResult, requirementsResult, announcementsResult, promoMetaResult] =
@@ -1234,28 +960,18 @@ async function loadPublicPortalData(silent = false) {
       listCommunityPosts({ tag: '公告', limit: 5, offset: 0 }),
       getResourcePromoMeta(resourceToken ?? undefined),
     ])
-  void tagTreeStore.ensure()
+  void ensureTagTree()
 
   if (!isMounted) {
     return
   }
 
   if (promoMetaResult.status === 'fulfilled') {
-    const threshold = Number(promoMetaResult.value.high_like_threshold)
-    if (Number.isFinite(threshold) && threshold >= 1) {
-      highLikeThreshold.value = Math.floor(threshold)
-    }
+    applyHighLikeThreshold(promoMetaResult.value.high_like_threshold)
   }
 
-  if (resourcesResult.status === 'fulfilled') {
-    publicResources.value = resourcesResult.value
-      .filter(
-        (resource, index, array) => array.findIndex((item) => item.id === resource.id) === index,
-      )
-      .sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at))
-  } else {
-    publicResources.value = []
-  }
+  // 去到重 / 排序 / 清空都在 `usePublicResources` 里，视图只负责「哪一批请求成功了」。
+  applyResourceList(resourcesResult.status === 'fulfilled' ? resourcesResult.value : null)
 
   if (requirementsResult.status === 'fulfilled') {
     publicRequirementSpotlights.value = requirementsResult.value.items
@@ -1890,282 +1606,15 @@ async function submitPublishRequirement() {
             </div>
           </section>
 
-          <section class="portal-section">
-            <div class="portal-section__header">
-              <div class="portal-section-title">
-                <span class="portal-section-title__icon" aria-hidden="true">★</span>
-                <h2>免费精选资源</h2>
-              </div>
-              <button
-                class="portal-link-btn"
-                type="button"
-                @click="router.push({ name: 'resources', query: { sale: 'free' } })"
-              >
-                更多免费资源
-              </button>
-            </div>
-            <template v-if="spotlightCards.length > 0">
-              <div class="portal-spotlight-grid">
-                <article
-                  v-for="card in pagedSpotlightCards"
-                  :key="card.resourceId ?? card.title"
-                  class="portal-spotlight-card"
-                  :class="`portal-spotlight-card--${card.accent}`"
-                  role="button"
-                  tabindex="0"
-                  @click="openSpotlight(card)"
-                  @keydown.enter="openSpotlight(card)"
-                  @keydown.space.prevent="openSpotlight(card)"
-                >
-                  <div class="portal-spotlight-card__cover">
-                    <img
-                      v-if="spotlightCoverSrc(card)"
-                      class="portal-spotlight-card__cover-img"
-                      :src="card.coverUrl"
-                      :alt="card.coverAlt || `${card.title} 的资源封面图`"
-                      @error="handleSpotlightCoverError(card.coverUrl)"
-                    />
-                    <span v-else class="portal-spotlight-card__cover-text">{{
-                      card.title.slice(0, 1).toUpperCase()
-                    }}</span>
-                    <span v-if="card.badge" class="portal-spotlight-card__badge">{{
-                      card.badge
-                    }}</span>
-                    <span
-                      v-if="card.mark"
-                      class="portal-spotlight-card__mark portal-spotlight-card__mark--featured"
-                    >
-                      <span class="portal-spotlight-card__mark-dot" aria-hidden="true"></span>
-                      {{ card.mark }}
-                    </span>
-                    <div
-                      class="portal-spotlight-card__screen portal-spotlight-card__screen--primary"
-                    ></div>
-                    <div
-                      class="portal-spotlight-card__screen portal-spotlight-card__screen--secondary"
-                    ></div>
-                    <div
-                      class="portal-spotlight-card__screen portal-spotlight-card__screen--tertiary"
-                    ></div>
-                  </div>
-                  <div class="portal-spotlight-card__body">
-                    <h3>{{ card.title }}</h3>
-                    <p v-if="card.summary">{{ card.summary }}</p>
-                    <div v-if="card.tags.length" class="portal-spotlight-card__meta-row">
-                      <strong v-for="tag in card.tags" :key="tag">{{ tag }}</strong>
-                    </div>
-                    <div class="portal-spotlight-card__footer">
-                      <div class="portal-spotlight-card__footer-main">
-                        <span class="portal-spotlight-card__stats">
-                          <span class="portal-spotlight-card__stat" title="浏览量">
-                            <svg
-                              viewBox="0 0 24 24"
-                              width="14"
-                              height="14"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-width="2"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              aria-hidden="true"
-                            >
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                              <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                            {{ card.viewCount }}
-                          </span>
-                          <span class="portal-spotlight-card__stat" title="下载量">
-                            <svg
-                              viewBox="0 0 24 24"
-                              width="14"
-                              height="14"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-width="2"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              aria-hidden="true"
-                            >
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                              <polyline points="7 10 12 15 17 10"></polyline>
-                              <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
-                            {{ card.downloadCount }}
-                          </span>
-                        </span>
-                        <span
-                          v-if="card.authorLabel"
-                          class="portal-spotlight-card__author"
-                          :class="{
-                            'is-marquee': isSpotlightAuthorMarquee(card.resourceId),
-                            'username-gradient': card.gradient && !card.userColor,
-                          }"
-                          :style="card.userColor ? { color: card.userColor } : undefined"
-                          :title="card.authorLabel"
-                          :ref="(el) => bindSpotlightAuthorMarquee(el, card.resourceId)"
-                        >
-                          <span class="portal-spotlight-card__author-text">{{
-                            card.authorLabel
-                          }}</span>
-                        </span>
-                      </div>
-                      <div class="portal-spotlight-card__footer-bottom">
-                        <div class="portal-spotlight-card__footer-leading">
-                          <span
-                            v-if="card.originLabel"
-                            class="portal-spotlight-card__origin"
-                            :class="{ 'is-repost': card.originRepost }"
-                            >{{ card.originLabel }}</span
-                          >
-                          <button
-                            type="button"
-                            class="portal-spotlight-card__likes"
-                            :class="{
-                              'is-liked': card.likedByMe,
-                              'is-busy':
-                                card.resourceId != null &&
-                                spotlightLikeSubmittingIds.has(card.resourceId),
-                            }"
-                            :title="card.likedByMe ? '取消点赞' : '点赞'"
-                            :aria-pressed="card.likedByMe"
-                            :aria-label="
-                              card.likedByMe
-                                ? `已点赞 ${card.likeCount}，点击取消`
-                                : `点赞，当前 ${card.likeCount}`
-                            "
-                            :disabled="
-                              card.resourceId != null &&
-                              spotlightLikeSubmittingIds.has(card.resourceId)
-                            "
-                            @click="toggleSpotlightLike(card, $event)"
-                            @keydown.enter.stop
-                            @keydown.space.stop
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              width="13"
-                              height="13"
-                              :fill="card.likedByMe ? 'currentColor' : 'none'"
-                              stroke="currentColor"
-                              stroke-width="2"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              aria-hidden="true"
-                            >
-                              <path
-                                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                              ></path>
-                            </svg>
-                            {{ card.likeCount }}
-                          </button>
-                        </div>
-                        <span v-if="card.metaTime" class="portal-spotlight-card__time">{{
-                          card.metaTime
-                        }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              </div>
-
-              <nav
-                v-if="spotlightPageCount > 1"
-                class="portal-pagination"
-                aria-label="免费资源分页"
-              >
-                <button
-                  class="portal-pagination__nav"
-                  type="button"
-                  :disabled="spotlightPage <= 1"
-                  @click="goSpotlightPage(spotlightPage - 1)"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="14"
-                    height="14"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                  >
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                  </svg>
-                  上一页
-                </button>
-                <template v-for="item in spotlightPaginationItems" :key="item.key">
-                  <button
-                    v-if="item.page"
-                    class="portal-pagination__page"
-                    :class="{ 'is-active': item.page === spotlightPage }"
-                    type="button"
-                    @click="goSpotlightPage(item.page ?? spotlightPage)"
-                  >
-                    {{ item.label }}
-                  </button>
-                  <span v-else class="portal-pagination__jump-wrap">
-                    <button
-                      class="portal-pagination__ellipsis"
-                      type="button"
-                      aria-label="跳转到指定页"
-                      @click.stop="toggleSpotlightJump(item.key)"
-                    >
-                      {{ item.label }}
-                    </button>
-                    <div
-                      v-if="spotlightJumpOpen && spotlightJumpAnchor === item.key"
-                      class="portal-pagination__jump"
-                      @click.stop
-                    >
-                      <span class="portal-pagination__jump-label">转到第</span>
-                      <input
-                        v-model="spotlightJumpValue"
-                        class="portal-pagination__jump-input"
-                        type="number"
-                        :min="1"
-                        :max="spotlightPageCount"
-                        inputmode="numeric"
-                        @keydown.enter.prevent="submitSpotlightJump"
-                      />
-                      <span class="portal-pagination__jump-label">页</span>
-                      <button
-                        class="portal-pagination__jump-submit"
-                        type="button"
-                        @click="submitSpotlightJump"
-                      >
-                        跳转
-                      </button>
-                    </div>
-                  </span>
-                </template>
-                <button
-                  class="portal-pagination__nav"
-                  type="button"
-                  :disabled="spotlightPage >= spotlightPageCount"
-                  @click="goSpotlightPage(spotlightPage + 1)"
-                >
-                  下一页
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="14"
-                    height="14"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                  >
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                  </svg>
-                </button>
-              </nav>
-            </template>
-            <div v-else class="portal-empty-state">
-              <strong>暂无免费资源</strong>
-            </div>
-          </section>
+          <!-- 精选资源区（卡片映射 / 分页 / 跑马灯 / 点赞回抛）在 components/home/SpotlightResourceSection.vue -->
+          <SpotlightResourceSection
+            :resources="publicResources"
+            :high-like-threshold="highLikeThreshold"
+            :like-submitting-ids="spotlightLikeSubmittingIds"
+            @open="openSpotlight"
+            @like="toggleSpotlightLike"
+            @more="router.push({ name: 'resources', query: { sale: 'free' } })"
+          />
         </div>
 
         <aside class="portal-sidebar">
