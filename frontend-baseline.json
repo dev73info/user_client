@@ -148,7 +148,7 @@
     {
       "rule": "line-budget",
       "file": "src/components/RequirementConversationModal.vue",
-      "detail": "2670 行 > 400（模块）",
+      "detail": "2703 行 > 400（模块）",
       "since": "2026-10-22"
     },
     {
@@ -395,12 +395,6 @@
       "rule": "line-budget",
       "file": "src/views/CommunityView.vue",
       "detail": "1665 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
-      "file": "src/views/ContractSignView.vue",
-      "detail": "1278 行 > 300（视图）",
       "since": "2026-10-22"
     },
     {
@@ -689,6 +683,36 @@
       "rule": "raw-color",
       "file": "src/components/community/CommunityComposerPanel.vue",
       "detail": "4 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/contract/ContractArchiveBanner.vue",
+      "detail": "6 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/contract/ContractMetaCard.vue",
+      "detail": "26 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/contract/ContractSignatureFacts.vue",
+      "detail": "9 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/contract/ContractSigningHistory.vue",
+      "detail": "4 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/contract/ContractSignPanel.vue",
+      "detail": "25 处裸色值",
       "since": "2026-10-22"
     },
     {
@@ -1132,7 +1156,7 @@
     {
       "rule": "raw-color",
       "file": "src/views/ContractSignView.vue",
-      "detail": "90 处裸色值",
+      "detail": "19 处裸色值",
       "since": "2026-10-22"
     },
     {
