@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, shallowRef } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { TIcon, TMessage, WarningFilled } from 'ui_73info'
 
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
@@ -11,32 +11,11 @@ import DevFundPanel from '@/components/dev/DevFundPanel.vue'
 import DevHomeMetaStrip from '@/components/dev/DevHomeMetaStrip.vue'
 import DevLiveBoard from '@/components/dev/DevLiveBoard.vue'
 import DevProjectList from '@/components/dev/DevProjectList.vue'
-import {
-  devDashboardWsUrl,
-  getDevDashboard,
-  type DevDashboardPipeline,
-  type DevDashboardSnapshot,
-} from '@/api/devDashboard'
-import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@/api/devOrderDeposit'
-import {
-  getDevWalletOverview,
-  type DevWalletIncomeItem,
-  type DevWalletOverview,
-} from '@/api/devWallet'
-import { listMcResources, type McResourcePayload } from '@/api/mcResources'
-import { listMyRequirements, type RequirementItem } from '@/api/devRequirements'
-import { useDevDashboardSocket } from '@/composables/useDevDashboardSocket'
+import type { DevDashboardPipeline } from '@/api/devDashboard'
+import { useDevHomeDashboard } from '@/composables/useDevHomeDashboard'
 import { useFullscreen } from '@/composables/useFullscreen'
 import { CHART_BUCKETS, type DevHomeIncomeBucket } from '@/composables/useIncomeChart'
-import {
-  DEMO_DEV_HOME_DAILY_INCOME,
-  DEMO_DEV_HOME_DEPOSIT,
-  DEMO_DEV_HOME_REQUIREMENTS,
-  DEMO_DEV_HOME_RESOURCES,
-  DEMO_DEV_HOME_WALLET,
-  demoDevDashboard,
-  devHomeMockEnabled,
-} from '@/shared/devHomeMock'
+import { DEMO_DEV_HOME_DAILY_INCOME } from '@/shared/devHomeMock'
 import { money } from '@/shared/devFundDisplay'
 import {
   STATUS_TONES,
@@ -52,7 +31,6 @@ import {
   requirementProgressPercent,
   requirementStatusLabel,
 } from '@/shared/requirementStatus'
-import { useAuthStore } from '@/stores/auth'
 
 /** 总览页只做汇总：列表最多展示 5 条，完整明细留在「我的接单」页。 */
 const OVERVIEW_LIST_LIMIT = 5
@@ -60,21 +38,68 @@ const OVERVIEW_LIST_LIMIT = 5
 /** 最近交付排成三列卡片，正好铺满一行；多出来的条数交给「查看全部」去「我的接单」看。 */
 const DELIVERY_GRID_LIMIT = 3
 
-const auth = useAuthStore()
-const route = useRoute()
+/**
+ * 卸载标记：**只在视图这一份**，往下传的是只读 getter（`isMounted: () => isMounted`），
+ * composable 不许自持一份 —— 否则视图卸载后谁清谁不清就成了两套说法。
+ */
+let isMounted = true
+
+/** 数据层不引 `TMessage`：登录失效与四接口失败这两句文案留在视图，出错时交回去弹。 */
+const DASHBOARD_TEXTS = {
+  loginExpired: '登录状态已失效，请重新登录',
+  loadFailed: '加载工作台总览失败',
+}
+
+/** 动态流第一次铺满时不播入场动画，之后新插入的条目才高亮一次。 */
+const feedAnimated = ref(false)
+
+/** 快照落库后的收尾：首帧只把标记翻上去，入场动画从下一条开始（时序与拆分前一样，仍在 nextTick 里）。 */
+function onDashboardApplied() {
+  if (feedAnimated.value) {
+    return
+  }
+  void nextTick(() => {
+    feedAnimated.value = true
+  })
+}
+
+/**
+ * 数据层整块在 `useDevHomeDashboard`：四份汇总的取数与 5 分钟轮询、全屏看板的快照（连 / 断
+ * WebSocket、进全屏那一下的首帧拉取、`generated_at` 防旧帧覆盖）、快照回写钱包与保证金，
+ * 以及读数条上那几个口径。视图只把卸载标记与错误出口传下去，自己不持有这些事实。
+ */
+const {
+  loading,
+  overview,
+  deposit,
+  requirements,
+  resources,
+  dashboard,
+  mockEnabled,
+  activeProjectCount,
+  pendingDeliveryCount,
+  completedProjectCount,
+  withdrawable,
+  pendingWithdraw,
+  paidWithdraw,
+  depositInsufficient,
+  depositStatusChip,
+  changeRate,
+  connectionLamp,
+  lastUpdatedText,
+  loadPage,
+  reloadWallet,
+  startAutoRefresh,
+  enterLiveBoard,
+  disconnectLiveBoard,
+} = useDevHomeDashboard({
+  isMounted: () => isMounted,
+  texts: DASHBOARD_TEXTS,
+  onError: (message) => TMessage.error(message),
+  onDashboardApplied,
+})
+
 const router = useRouter()
-
-const loading = ref(false)
-const overview = ref<DevWalletOverview | null>(null)
-const deposit = ref<DevOrderDepositStatus | null>(null)
-const requirements = ref<RequirementItem[]>([])
-const resources = ref<McResourcePayload[]>([])
-
-/** 全屏看板的快照：只在全屏时经 WebSocket（或进全屏那一下的一次拉取）填充，退出全屏后保留最后一份。 */
-const dashboard = shallowRef<DevDashboardSnapshot | null>(null)
-
-/** 演示数据开关：开着时整页不读接口，只用于本地预览布局。 */
-const mockEnabled = devHomeMockEnabled(route.query.mock === '1')
 
 type ProjectTabKey = 'all' | 'active' | 'pending' | 'completed'
 
@@ -102,7 +127,8 @@ const rechargeDialog = ref<InstanceType<typeof DevDepositRechargeDialog> | null>
 /** 提现同样就地开窗：余额、通道状态与提交都在弹窗内完成，只有提交成功后才回刷本页读数 */
 const withdrawDialog = ref<InstanceType<typeof DevWithdrawalDialog> | null>(null)
 
-const recentIncome = computed<DevWalletIncomeItem[]>(() => overview.value?.recent_income ?? [])
+/** 近 7 天曲线的原料：到账回执（全屏看板改画快照自带的 30 天序列，见下方 incomeBuckets）。 */
+const recentIncome = computed(() => overview.value?.recent_income ?? [])
 
 const resourceTitleMap = computed(
   () => new Map(resources.value.map((item) => [item.id, item.title])),
@@ -117,21 +143,6 @@ const incomeByRequirement = computed(() => {
 
   return map
 })
-
-/** 进行中项目：所有未结单的接单，是「待交付」的上位口径。 */
-const activeProjectCount = computed(
-  () => requirements.value.filter((item) => isActiveRequirement(item.status)).length,
-)
-
-/** 待交付：已交出成果、等需求方验收付尾款（状态 `pending_final`）。 */
-const pendingDeliveryCount = computed(
-  () => requirements.value.filter((item) => item.status === 'pending_final').length,
-)
-
-/** 已完成项目：只算已结单（状态 `completed`），待分账仍在进行中那一档里。 */
-const completedProjectCount = computed(
-  () => requirements.value.filter((item) => item.status === 'completed').length,
-)
 
 /** 在途五档：漏斗与读数条「进行中项目」共用，顺序即流程顺序。 */
 const PIPELINE_STAGES: ReadonlyArray<Exclude<keyof DevDashboardPipeline, 'completed_this_month'>> =
@@ -280,29 +291,6 @@ const deliveryRows = computed<DevHomeDeliveryRow[]>(() => {
   })
 })
 
-/** 提现口径：可提现与待提现两笔金额，各报一次就够了（原先还有一条只换算成百分比的比例条，已删）。 */
-const withdrawable = computed(() => overview.value?.withdrawable_balance_cny ?? 0)
-const pendingWithdraw = computed(() => overview.value?.pending_withdraw_cny ?? 0)
-const paidWithdraw = computed(() => overview.value?.paid_withdraw_cny ?? 0)
-
-/** 未缴保证金或可用余额不足时后端会关掉绑定开关，两种情况共用同一条提示。 */
-const depositInsufficient = computed(() =>
-  deposit.value ? !deposit.value.can_bind_requirement : false,
-)
-
-/** 保证金状态胶囊：拿到接口数据后才出现，避免加载中把「还没读到」显示成「可接单」。 */
-const depositStatusChip = computed(() => {
-  if (!deposit.value) {
-    return null
-  }
-
-  return depositInsufficient.value
-    ? { label: '保证金不足', className: 'dev-chip--warm' }
-    : { label: '可接单', className: 'dev-chip--cyan' }
-})
-
-const changeRate = computed(() => overview.value?.today_income_change_rate ?? null)
-
 /** 两位补零：日期键、时钟与横轴标签共用。 */
 function pad2(value: number): string {
   return String(value).padStart(2, '0')
@@ -374,8 +362,15 @@ const chartCaption = computed(() => {
   return mockEnabled ? '演示数据：近 7 天完整序列' : '按最近到账记录绘制（最多取最近 100 笔）'
 })
 
+/** 进页一次取数，之后 5 分钟对一次（轮询与重入锁在数据层，页签在后台时不打接口）。 */
 onMounted(() => {
   void loadPage()
+  startAutoRefresh()
+})
+
+/** 卸载标记在这里落下：数据层只读它，慢响应回来时不再往回写。 */
+onBeforeUnmount(() => {
+  isMounted = false
 })
 
 /**
@@ -391,65 +386,13 @@ function openMyOrder(requirementId: string) {
 }
 
 /**
- * 提现成功后的回刷：只重取钱包读数（可提现 / 待提现 / 已提现与近 7 天曲线），
- * 不整页重拉——进行中项目、最近交付与保证金都不受这次提现影响。
- */
-async function reloadWallet() {
-  if (!auth.token || mockEnabled) {
-    return
-  }
-
-  try {
-    overview.value = await getDevWalletOverview(auth.token)
-  } catch {
-    // 读数没刷上不影响「提现已提交」这个结论，下次刷新会补上
-  }
-}
-
-async function loadPage() {
-  auth.hydrate()
-  if (!auth.token) {
-    TMessage.error('登录状态已失效，请重新登录')
-    return
-  }
-
-  // 演示数据只铺总览页的展示层，不参与任何写操作
-  if (mockEnabled) {
-    overview.value = DEMO_DEV_HOME_WALLET
-    deposit.value = DEMO_DEV_HOME_DEPOSIT
-    requirements.value = DEMO_DEV_HOME_REQUIREMENTS
-    resources.value = DEMO_DEV_HOME_RESOURCES
-    return
-  }
-
-  loading.value = true
-  try {
-    const [wallet, depositStatus, myRequirements, resourceList] = await Promise.all([
-      getDevWalletOverview(auth.token),
-      getDevOrderDepositStatus(auth.token),
-      listMyRequirements(auth.token),
-      listMcResources(auth.token),
-    ])
-
-    overview.value = wallet
-    deposit.value = depositStatus
-    requirements.value = myRequirements
-    resources.value = resourceList
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '加载工作台总览失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-/**
  * 全屏看板：只把总览区（本页根节点）放进全屏，侧栏与门户顶栏不跟进来。
  * 平板档读数条平时被搬进工作台顶栏，全屏时让它留在原地（见 WorkbenchBarSlot 的 disabled），
  * 这样读数与退出按钮都在全屏里。
  *
  * 监听、收发与看板时钟在 `useFullscreen`；**进入全屏就连实时看板、退出就断开**这两件事是
- * 本页的事，由它回调进来。原先这三件事在同一个 `watch(isFullscreen)` 里，顺序是「时钟起 → 进看板」，
- * 拆开后仍是这个顺序。
+ * 本页的事，由它回调进来（两个动作的实现搬进了数据层，回调顺序与拆分前一字未动）。原先这三件事
+ * 在同一个 `watch(isFullscreen)` 里，顺序是「时钟起 → 进看板」，拆开后仍是这个顺序。
  */
 const homeRef = ref<HTMLElement | null>(null)
 
@@ -459,69 +402,12 @@ const { isFullscreen, fullscreenSupported, toggleFullscreen, now } = useFullscre
     void enterLiveBoard()
   },
   onLeave: () => {
-    liveSocket.disconnect()
+    disconnectLiveBoard()
   },
   onDenied: () => {
     TMessage.error('当前浏览器不允许进入全屏')
   },
 })
-
-/**
- * 实时看板：只在全屏时连 WebSocket，退出全屏 / 离开本页即断开（组件卸载时组合式函数自己收尾）。
- * 演示模式不连，直接铺一份本地快照。
- */
-const liveSocket = useDevDashboardSocket({
-  url: () => (auth.token ? devDashboardWsUrl(auth.token) : null),
-  onSnapshot: applyDashboard,
-})
-
-/** 动态流第一次铺满时不播入场动画，之后新插入的条目才高亮一次。 */
-const feedAnimated = ref(false)
-
-/**
- * 同一份快照也回写钱包与保证金读数：资金卡沿用原来的绑定，数字跟着推送变；
- * 退出全屏后总览页看到的也是最新一份，而不是进页时那次拉取的旧值。
- */
-function applyDashboard(snapshot: DevDashboardSnapshot) {
-  const current = dashboard.value
-  // 进全屏那一下的 HTTP 拉取可能比 WebSocket 首帧晚到，旧快照不能盖掉新快照
-  if (current && snapshot.generated_at < current.generated_at) {
-    return
-  }
-
-  dashboard.value = snapshot
-  overview.value = { ...snapshot.wallet, recent_income: overview.value?.recent_income ?? [] }
-  deposit.value = {
-    username: auth.username ?? '',
-    role: 'dev',
-    paid_withdraw_cny: 0,
-    latest_order: null,
-    ...deposit.value,
-    ...snapshot.deposit,
-  }
-
-  if (!feedAnimated.value) {
-    void nextTick(() => {
-      feedAnimated.value = true
-    })
-  }
-}
-
-async function enterLiveBoard() {
-  if (mockEnabled) {
-    applyDashboard(demoDevDashboard())
-    return
-  }
-
-  liveSocket.connect()
-  if (!dashboard.value && auth.token) {
-    try {
-      applyDashboard(await getDevDashboard(auth.token))
-    } catch {
-      // 首帧由 WebSocket 推送兜底，拉取失败不打断看板
-    }
-  }
-}
 
 /** 看板时钟的 `now` 由 `useFullscreen` 每秒推进；时间文案留在这里，与上方读数条同一种写法。 */
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
@@ -534,27 +420,6 @@ const clockTime = computed(() => {
 const clockDate = computed(() => {
   const date = new Date(now.value)
   return `${date.getMonth() + 1}月${date.getDate()}日 周${WEEKDAYS[date.getDay()]}`
-})
-
-/** 最后更新取快照的生成时间（服务端东八区），只显示时分秒；心跳不算更新。 */
-const lastUpdatedText = computed(() => dashboard.value?.generated_at.slice(11, 19) || '—')
-
-/** 状态灯：已连接用青（本页体系里的「正常 / 完成」色），重连中用金，已断开用灰。 */
-const connectionLamp = computed<{ tone: 'ok' | 'warn' | 'off'; label: string }>(() => {
-  if (mockEnabled) {
-    return { tone: 'off', label: '演示数据' }
-  }
-
-  switch (liveSocket.status.value) {
-    case 'open':
-      return { tone: 'ok', label: '已连接' }
-    case 'connecting':
-      return { tone: 'warn', label: '连接中' }
-    case 'reconnecting':
-      return { tone: 'warn', label: '重连中' }
-    default:
-      return { tone: 'off', label: '已断开' }
-  }
 })
 
 /** 接单漏斗：五个在途状态 + 本月完成。`deposit_paid` 拿不到单条的支付模式，按统一口径两义并写。 */
