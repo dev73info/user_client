@@ -5,11 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { openEntry, stubMatchMedia } from '@/__tests__/accountViewHelpers'
 
 /**
- * 「提交认证信息」弹窗**在视图里**的接线（本轮把它拆成组件后逐键核对）。
- *
- * 组件级用例验「点了会 emit 什么」，这一层验**视图那一侧的监听有没有写对**：11 个 emit 键里任何
- * 一个改个名字，点下去都静默无反应（本页踩过 `updateChannel` vs `@update:channel`），所以每个
- * 动作都从「点真按钮」推到「调了哪个接口」，反向证明见本轮报告。
+ * 「提交认证信息」弹窗**在视图里**的接线：组件级用例验「点了会 emit 什么」，这一层验**视图与
+ * 宿主那一侧的监听有没有写对**——十一个 emit 键里任何一个改个名字，点下去都静默无反应
+ * （本页踩过 `updateChannel` vs `@update:channel`），所以每个动作都从「点真按钮」推到「调了哪个接口」。
  */
 const mocks = vi.hoisted(() => ({
   getProfile: vi.fn(),
@@ -91,12 +89,14 @@ const APPROVED_RECORD = {
 const PENDING_RECORD = { ...APPROVED_RECORD, status: 'pending' }
 const EXPECTED_LICENSE_FILE = '/uploads/realname-business-licenses/flow/license.jpg'
 
-/** 视图 `setupState` 里本轮要读的几项（草稿、「变更主体」模式与弹窗可见性都在视图这一层）。 */
+/** 域实例里的 ref 不解包（读状态用 `.value`）；弹窗可见性仍在顶层。 */
 type Setup = {
-  form: Record<string, unknown>
-  legalCertPeriodEdited: { begin: boolean; expires: boolean }
+  draft: {
+    form: Record<string, unknown>
+    legalCertPeriodEdited: Record<'begin' | 'expires', boolean>
+  }
+  identity: { realnameChanging: { value: boolean } }
   realnameDialogVisible: boolean
-  realnameChanging: boolean
 }
 const setupState = (wrapper: VueWrapper): Setup =>
   (wrapper.vm.$ as unknown as { setupState: Setup }).setupState
@@ -143,7 +143,7 @@ async function openEnterpriseDialog(): Promise<{ wrapper: VueWrapper; state: Set
   const wrapper = await renderAccountPage()
   await openRealnameDialog(wrapper)
   const state = setupState(wrapper)
-  state.form.authType = 'ENTERPRISE'
+  state.draft.form.authType = 'ENTERPRISE'
   await nextTick()
   return { wrapper, state }
 }
@@ -190,7 +190,7 @@ describe('实名弹窗：表单草稿双向绑定', () => {
     input.dispatchEvent(new Event('input'))
     await nextTick()
 
-    expect(setupState(wrapper).form.realName).toBe('李四')
+    expect(setupState(wrapper).draft.form.realName).toBe('李四')
     wrapper.unmount()
   })
 })
@@ -200,10 +200,10 @@ describe('实名弹窗：动作的 emit 键', () => {
     const wrapper = await renderAccountPage()
     await openRealnameDialog(wrapper)
     const state = setupState(wrapper)
-    state.form.authType = 'IDENTITY_CARD'
-    state.form.realName = '张三'
-    state.form.idCardNo = '110101199001011234'
-    state.form.mobile = '13800000000'
+    state.draft.form.authType = 'IDENTITY_CARD'
+    state.draft.form.realName = '张三'
+    state.draft.form.idCardNo = '110101199001011234'
+    state.draft.form.mobile = '13800000000'
     await nextTick()
 
     bodyButton('实名认证').click()
@@ -221,15 +221,15 @@ describe('实名弹窗：动作的 emit 键', () => {
 
     bodyButton('长期有效').click()
     await nextTick()
-    expect(state.form.legalCertExpiresOn).toBe('20991231')
-    expect(state.legalCertPeriodEdited.expires).toBe(true)
+    expect(state.draft.form.legalCertExpiresOn).toBe('20991231')
+    expect(state.draft.legalCertPeriodEdited.expires).toBe(true)
 
     // 起始日那个标记单独验：直接让子组件 emit，日期控件的内部实现不参与
     const dialog = wrapper.findComponent(RealnameDialog)
-    expect(state.legalCertPeriodEdited.begin).toBe(false)
+    expect(state.draft.legalCertPeriodEdited.begin).toBe(false)
     dialog.vm.$emit('mark-begin-edited')
     await nextTick()
-    expect(state.legalCertPeriodEdited.begin).toBe(true)
+    expect(state.draft.legalCertPeriodEdited.begin).toBe(true)
     wrapper.unmount()
   })
 
@@ -239,12 +239,12 @@ describe('实名弹窗：动作的 emit 键', () => {
     await openEntry(wrapper, 'changeSubject')
     await flushPromises()
     const state = setupState(wrapper)
-    expect(state.realnameChanging).toBe(true)
+    expect(state.identity.realnameChanging.value).toBe(true)
 
     bodyButton('放弃变更').click()
     await flushPromises()
 
-    expect(state.realnameChanging).toBe(false)
+    expect(state.identity.realnameChanging.value).toBe(false)
     expect(state.realnameDialogVisible).toBe(false)
     wrapper.unmount()
   })
@@ -271,8 +271,8 @@ describe('实名弹窗：材料上传链路', () => {
     await flushPromises()
 
     expect(mocks.uploadBusinessLicenseFile).toHaveBeenCalledWith('test-token', file)
-    expect(state.form.businessLicenseFile).toBe(EXPECTED_LICENSE_FILE)
-    expect(state.form.companyName).toBe('云南某某科技有限公司')
+    expect(state.draft.form.businessLicenseFile).toBe(EXPECTED_LICENSE_FILE)
+    expect(state.draft.form.companyName).toBe('云南某某科技有限公司')
     wrapper.unmount()
   })
 
@@ -291,9 +291,9 @@ describe('实名弹窗：材料上传链路', () => {
     await flushPromises()
 
     expect(mocks.uploadLegalCertFrontFile).toHaveBeenCalledWith('test-token', file)
-    expect(state.form.legalCertFrontFile).toBe('/uploads/realname-legal-certs/flow/front.jpg')
+    expect(state.draft.form.legalCertFrontFile).toBe('/uploads/realname-legal-certs/flow/front.jpg')
     expect(mocks.recognizeLegalCertPeriod).toHaveBeenCalledWith('test-token', 'front')
-    expect(state.form.legalCertBeginOn).toBe('20180101')
+    expect(state.draft.form.legalCertBeginOn).toBe('20180101')
     wrapper.unmount()
   })
 })
