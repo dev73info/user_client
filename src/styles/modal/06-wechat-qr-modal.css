@@ -1,0 +1,237 @@
+/* === 微信扫码类弹窗（授权 / 绑定 / 扫码登录）共用外壳 ===
+   这三个弹窗是同一套观感，过去每个组件各自抄了一份 scoped 样式，改一处另两处会走偏；
+   现在统一放这里（类名只被这三个弹窗使用），组件里只留自己特有的部分。
+   取值沿用门户口径：内嵌块圆角 12px、二维码外框 16px、正文 13px、次要 12px、胶囊按钮。
+   注意 `.auth-modal` 是 `display:flex` 纵向排布，子元素间距一律自己写 margin。 */
+.wechat-authorization-modal-wrap {
+  z-index: 1600;
+}
+
+.wechat-authorization-modal {
+  width: min(420px, calc(100vw - 32px));
+  text-align: center;
+}
+
+.wechat-authorization-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+}
+
+.wechat-authorization-modal__head h3 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+}
+
+/* 品牌位：扫码这件事在标题行就说清楚，别让弹窗上半部分只剩一行字 */
+.wechat-authorization-modal__brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: rgba(7, 193, 96, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(7, 193, 96, 0.2);
+}
+
+.wechat-authorization-modal__brand img {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+
+.wechat-authorization-modal__titles {
+  display: grid;
+  gap: 3px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.wechat-authorization-modal__subtitle {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* 关闭键做成 32px 圆形热区，别让「×」只是几个像素宽的字 */
+.wechat-authorization-modal__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  margin-right: -6px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease;
+}
+
+.wechat-authorization-modal__close:hover {
+  color: #334155;
+  background: rgba(241, 245, 249, 0.96);
+}
+
+.wechat-authorization-modal__close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 引导语：浅蓝提示条 + 扫码图标，左对齐——长句居中会一行只落几个字，读起来费劲 */
+.wechat-authorization-modal__intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(191, 219, 254, 0.7);
+  border-radius: 12px;
+  background: rgba(239, 246, 255, 0.72);
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.65;
+  text-align: left;
+}
+
+.wechat-authorization-modal__intro-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: #2563eb;
+}
+
+.wechat-authorization-modal__intro-text {
+  min-width: 0;
+}
+
+/* 兜底说明：灰底小字 + 图标，与引导语一蓝一灰拉开层次；
+   需要被看见的提醒（如「非本人操作请取消」）走 `__hint-warn` 单独占一行——
+   混在长句里换行会吊在半句中间，读起来像排版事故。 */
+.wechat-authorization-modal__hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(226, 232, 240, 0.96);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.96);
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.7;
+  text-align: left;
+}
+
+.wechat-authorization-modal__hint-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: #94a3b8;
+}
+
+.wechat-authorization-modal__hint-text {
+  min-width: 0;
+}
+
+.wechat-authorization-modal__hint-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+  color: #b45309;
+  font-weight: 700;
+}
+
+.wechat-authorization-modal__hint-warn svg {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+}
+
+/* 二维码外框：白卡 + 柔和投影；外框固定 280，图统一 256，四周留出扫码安静区 */
+.wechat-authorization-modal__qr {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 280px;
+  min-height: 280px;
+  margin: 16px auto 0;
+  padding: 12px;
+  border: 1px solid rgba(226, 232, 240, 0.96);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(71, 85, 105, 0.08);
+}
+
+/* 只画左上 / 右下两个角标，扫一眼就知道「对准这里扫」；
+   角标落在 12px 内边距上，不压二维码本身（图从 12px 处开始）。 */
+.wechat-authorization-modal__qr::before,
+.wechat-authorization-modal__qr::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 0 solid rgba(31, 74, 209, 0.32);
+  pointer-events: none;
+}
+
+.wechat-authorization-modal__qr::before {
+  top: 6px;
+  left: 6px;
+  border-top-width: 2px;
+  border-left-width: 2px;
+  border-top-left-radius: 8px;
+}
+
+.wechat-authorization-modal__qr::after {
+  right: 6px;
+  bottom: 6px;
+  border-right-width: 2px;
+  border-bottom-width: 2px;
+  border-bottom-right-radius: 8px;
+}
+
+.wechat-authorization-modal__qr img {
+  display: block;
+  width: 256px;
+  height: 256px;
+}
+
+.wechat-authorization-modal__qr > span {
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+@media (max-width: 640px) {
+  /* 窄屏：外框与二维码同步收窄，避免超出弹窗内边距 */
+  .wechat-authorization-modal__qr {
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .wechat-authorization-modal__qr img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+}

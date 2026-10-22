@@ -1,0 +1,111 @@
+/* === 弹窗、表单与支付选项 === */
+
+.auth-modal-wrap,
+.modal-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.16);
+}
+
+.auth-modal-wrap {
+  align-items: center;
+}
+
+.auth-modal,
+.pay-modal {
+  width: min(540px, 100%);
+  border-radius: 22px;
+  border: 1px solid rgba(228, 234, 246, 0.95);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 18px 44px rgba(90, 120, 180, 0.12);
+  padding: 22px;
+}
+
+.auth-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 36px);
+}
+
+.auth-modal-head {
+  flex: 0 0 auto;
+}
+
+.auth-modal-body {
+  flex: 0 1 auto;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.auth-modal h3,
+.pay-modal h3 {
+  margin: 0 0 12px;
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.pay-modal .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.pay-modal .pay-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 10px;
+  color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.pay-modal .pay-line strong {
+  flex: 0 0 auto;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.pay-modal .pay-line textarea {
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(198, 210, 236, 0.9);
+  background: rgba(248, 250, 252, 0.92);
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.pay-modal .pay-line textarea:focus {
+  border-color: rgba(37, 99, 235, 0.58);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.pay-modal .tip {
+  margin: 14px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(239, 246, 255, 0.9);
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: left;
+}

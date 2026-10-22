@@ -207,12 +207,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/styles/modal.css",
-      "detail": "1754 行 > 300（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/styles/portal-pages.css",
       "detail": "1407 行 > 300（模块）",
       "since": "2026-10-22"
@@ -1047,9 +1041,63 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/styles/modal.css",
-      "detail": "244 处裸色值",
-      "since": "2026-10-22"
+      "file": "src/styles/modal/01-auth-modal-shell.css",
+      "detail": "14 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/modal/02-comment-modal.css",
+      "detail": "12 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/modal/03-auth-form-controls.css",
+      "detail": "32 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/modal/04-inapp-oauth.css",
+      "detail": "39 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/modal/05-auth-responsive-640.css",
+      "detail": "2 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/modal/06-wechat-qr-modal.css",
+      "detail": "20 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/modal/07-deposit-policy.css",
+      "detail": "30 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/modal/08-signing-status-coupon-list.css",
+      "detail": "15 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/modal/09-payment-rating-comment.css",
+      "detail": "50 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/modal/10-deposit-card-modal-actions.css",
+      "detail": "30 处裸色值",
+      "since": "2026-10-23"
     },
     {
       "rule": "raw-color",

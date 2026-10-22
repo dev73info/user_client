@@ -1,0 +1,142 @@
+/* 合同签署进度条（浅色弹窗） */
+.contract-signing-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 14px 10px 10px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.css-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.css-step-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid;
+  position: relative;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+
+.css-step.done .css-step-dot {
+  background: #0f766e;
+  border-color: #0f766e;
+}
+
+.css-step.done .css-step-dot::after {
+  content: '';
+  display: block;
+  position: absolute;
+  left: 2px;
+  top: 0px;
+  width: 5px;
+  height: 8px;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(45deg);
+}
+
+.css-step.pending .css-step-dot {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.css-step-label {
+  font-size: 11px;
+  color: #64748b;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.css-step.done .css-step-label {
+  color: #115e59;
+  font-weight: 700;
+}
+
+.css-step-line {
+  flex: 1;
+  height: 2px;
+  background: #cbd5e1;
+  margin-top: -16px;
+  min-width: 12px;
+  position: relative;
+}
+
+.coupon-list {
+  margin-bottom: 12px;
+}
+
+.coupon-sections {
+  display: grid;
+  gap: 16px;
+}
+
+.coupon-section {
+  display: grid;
+  gap: 10px;
+}
+
+.coupon-section-header {
+  color: var(--text-sub);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.coupon-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+.coupon-items {
+  display: grid;
+  gap: 8px;
+}
+
+.coupon-item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  text-align: left;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.coupon-item.active,
+.coupon-item:hover {
+  border-color: rgba(149, 213, 178, 0.45);
+  background: rgba(149, 213, 178, 0.12);
+}
+
+.coupon-item strong {
+  font-size: 13px;
+}
+
+.coupon-item small {
+  color: var(--text-sub);
+  font-size: 12px;
+}
