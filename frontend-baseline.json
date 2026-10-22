@@ -15,12 +15,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/components/ContractAttachmentPanel.vue",
-      "detail": "854 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/components/DevTipDialog.vue",
       "detail": "635 行 > 400（模块）",
       "since": "2026-10-22"
@@ -399,8 +393,14 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/ContractAttachmentPanel.vue",
-      "detail": "61 处裸色值",
+      "file": "src/components/contract-attachment-forms.css",
+      "detail": "31 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/contract-attachment-panel.css",
+      "detail": "30 处裸色值",
       "since": "2026-10-22"
     },
     {
