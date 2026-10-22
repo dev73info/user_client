@@ -153,12 +153,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/styles/dev-responsive.css",
-      "detail": "515 行 > 300（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/styles/shell.css",
       "detail": "513 行 > 300（模块）",
       "since": "2026-10-22"
@@ -939,8 +933,14 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/styles/dev-responsive.css",
-      "detail": "9 处裸色值",
+      "file": "src/styles/dev-responsive/02-responsive-640.css",
+      "detail": "3 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/dev-responsive/03-mobile-app-list.css",
+      "detail": "6 处裸色值",
       "since": "2026-10-22"
     },
     {
