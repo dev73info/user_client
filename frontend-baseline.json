@@ -166,7 +166,7 @@
     {
       "rule": "line-budget",
       "file": "src/components/ResourceDetailPanel.vue",
-      "detail": "2933 行 > 400（模块）",
+      "detail": "2637 行 > 400（模块）",
       "since": "2026-10-22"
     },
     {
@@ -874,7 +874,7 @@
     {
       "rule": "raw-color",
       "file": "src/components/ResourceDetailPanel.vue",
-      "detail": "147 处裸色值",
+      "detail": "137 处裸色值",
       "since": "2026-10-22"
     },
     {
