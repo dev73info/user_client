@@ -49,7 +49,8 @@ function buildConversation(request: MockRequest, code: string): RequirementConve
     customer: requirement.creator ?? '',
     customer_avatar_url: null,
     developer: requirement.developer,
-    status: requirement.status === 'completed' || requirement.status === 'cancelled' ? 'closed' : 'open',
+    status:
+      requirement.status === 'completed' || requirement.status === 'cancelled' ? 'closed' : 'open',
     requirement_status: requirement.status,
     unread_count: unreadCountOf(request, code),
     last_message_at: messages[messages.length - 1]?.created_at ?? requirement.updated_at,
@@ -84,7 +85,8 @@ function currentUsername(request: MockRequest, code: string): string {
 function unreadCountOf(request: MockRequest, code: string): number {
   const lastRead = readStore.get(readKey(request, code)) ?? 0
   const mine = currentUsername(request, code)
-  return messagesOf(code).filter((message) => message.sender !== mine && message.id > lastRead).length
+  return messagesOf(code).filter((message) => message.sender !== mine && message.id > lastRead)
+    .length
 }
 
 /* ------------------------------------------------------------------ 消息存储 */
