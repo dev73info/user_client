@@ -994,7 +994,7 @@
     {
       "rule": "raw-color",
       "file": "src/styles/home/07-section-beta-checkin.css",
-      "detail": "25 处裸色值",
+      "detail": "27 处裸色值",
       "since": "2026-10-23"
     },
     {
@@ -1018,7 +1018,7 @@
     {
       "rule": "raw-color",
       "file": "src/styles/home/11-spotlight-mark-like.css",
-      "detail": "23 处裸色值",
+      "detail": "22 处裸色值",
       "since": "2026-10-23"
     },
     {
@@ -1042,7 +1042,7 @@
     {
       "rule": "raw-color",
       "file": "src/styles/home/15-mobile-sidebar-flow-banner.css",
-      "detail": "3 处裸色值",
+      "detail": "5 处裸色值",
       "since": "2026-10-23"
     },
     {

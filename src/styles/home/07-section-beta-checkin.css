@@ -105,7 +105,12 @@
   padding: 12px 14px;
   border: 1px dashed rgba(37, 99, 235, 0.28);
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(239, 246, 255, 0.7) 0%, rgba(240, 253, 244, 0.7) 50%, rgba(255, 247, 237, 0.7) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(239, 246, 255, 0.7) 0%,
+    rgba(240, 253, 244, 0.7) 50%,
+    rgba(255, 247, 237, 0.7) 100%
+  );
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -139,7 +144,9 @@
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .portal-beta-invite__cta:hover {
@@ -160,7 +167,10 @@
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s,
+    opacity 0.2s;
 }
 
 .portal-checkin-card__cta:hover:not(:disabled) {
