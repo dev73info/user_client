@@ -19,14 +19,24 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join, resolve, sep } from 'node:path'
 
-const REPO = resolve(import.meta.dirname, '..')
+const HERE = import.meta.dirname
+/**
+ * 仓根解析：本文件有两处落点，两处的仓根深度不同——
+ *   - 根仓 `scripts/frontend/contract-check.mjs` → 仓根是上两级；
+ *   - 子仓 `scripts/contract-check.mjs`（复制过去的副本）→ 仓根是上一级。
+ * 写死一层会让根仓那份去 `scripts/src/api/...` 找生成物，永远报「契约类型缺失」。
+ */
+const REPO = HERE.endsWith(`${sep}frontend`) ? resolve(HERE, '..', '..') : resolve(HERE, '..')
 /** Windows 上 pnpm 是 .cmd，直接给可执行名、不开 shell（开 shell 传参会触发 Node 弃用警告） */
 const PNPM = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 const write = process.argv.includes('--write')
 const outIndex = process.argv.indexOf('--out')
-const OUT = outIndex > -1 ? resolve(REPO, process.argv[outIndex + 1]) : join(REPO, 'src/api/generated/schema.d.ts')
+const OUT =
+  outIndex > -1
+    ? resolve(REPO, process.argv[outIndex + 1])
+    : join(REPO, 'src/api/generated/schema.d.ts')
 
 const SPEC_CANDIDATES = [
   'src/api/generated/openapi.json',
@@ -66,7 +76,9 @@ if (!openapiTypescriptReady) {
   process.exit(1)
 }
 
-const generated = generate(write ? OUT : join(mkdtempSync(join(tmpdir(), 'contract-')), 'schema.d.ts'))
+const generated = generate(
+  write ? OUT : join(mkdtempSync(join(tmpdir(), 'contract-')), 'schema.d.ts'),
+)
 
 if (write) {
   console.log(`✓ 已用 ${spec.replace(REPO, '.')} 生成契约类型：${OUT.replace(REPO, '.')}`)

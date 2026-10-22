@@ -43,7 +43,18 @@ const BREAKPOINT_TOLERANCE = 1
 /** 说明符已被 importSpecifiers 剥成裸路径（`@/api/xxx`），这里不能再要求 `from` 前缀 */
 const API_DEP_PATTERN = /^(?:@\/api|\.\.?\/api|\.\.\/\.\.\/api)\/([A-Za-z0-9_-]+)/
 const COLOR_PATTERNS = [/#[0-9a-fA-F]{3,8}\b/, /\brgba?\s*\(/, /\bhsla?\s*\(/]
-const TOKEN_ALLOWLIST = new Set(['styles/tokens.css', 'styles/alias.css'])
+/**
+ * 令牌正本豁免名单（相对仓根的路径后缀）。
+ *
+ * 注意：脚本只扫 `src/`，所以扫描出来的 `rel` 恒以 `src/` 开头。
+ * 早先这里写的是裸 `'styles/tokens.css'`，永远匹配不上 `src/styles/tokens.css`——
+ * 豁免形同虚设：将来谁把令牌文件放进 `src/styles/`，令牌定义里的色值会被当成裸色值误报。
+ * 现在按**路径后缀**匹配，`styles/tokens.css` 与 `src/styles/tokens.css` 两种落点都豁免。
+ */
+const TOKEN_ALLOWLIST = ['styles/tokens.css', 'styles/alias.css']
+function isTokenSource(rel) {
+  return TOKEN_ALLOWLIST.some((allowed) => rel === allowed || rel.endsWith(`/${allowed}`))
+}
 const FOREIGN_PACKAGES = ['@73info/portal', '@73info/admin', '@73info/support', '@73info/finance']
 
 function walk(dir, out = []) {
@@ -122,7 +133,7 @@ for (const file of walk(SRC)) {
   }
 
   // 断点：@media 里的宽度档只允许 640 / 900 / 1180
-  if (!TOKEN_ALLOWLIST.has(rel)) {
+  if (!isTokenSource(rel)) {
     for (const query of stripComments(raw)) {
       const media = /@media[^{]*/.exec(query)
       if (!media) continue
@@ -138,7 +149,7 @@ for (const file of walk(SRC)) {
 
   // 裸色值：`.vue` 与 `.css` 都查（`styles/tokens.css` / `styles/alias.css` 是令牌正本，除外）。
   // 早先这一步被 `if (!file.endsWith('.vue')) continue` 挡在后面，裸色值挪进 `.css` 就查不到了。
-  if (!TOKEN_ALLOWLIST.has(rel)) {
+  if (!isTokenSource(rel)) {
     stripComments(raw).forEach((line, index) => {
       if (line.includes('var(--73-')) return
       if (COLOR_PATTERNS.some((pattern) => pattern.test(line))) {
