@@ -13,6 +13,7 @@ import {
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
+import { describeBackendError } from '@/shared/backendErrorText'
 import {
   formatResourcePriceLabel,
   isPointsResource,
@@ -259,7 +260,7 @@ function handlePrimaryCta() {
 }
 
 async function handleDownloadError(error: unknown) {
-  const message = error instanceof Error ? error.message : '下载资源失败'
+  const message = describeBackendError(error, '下载资源失败')
   if (error instanceof HttpError && error.status === 403 && isPurchaseRequiredError(message)) {
     TMessage.warning('请先购买该资源后再下载')
     void openPurchasePanel()

@@ -102,6 +102,28 @@ describe('实名门禁', () => {
     expect(onNeedRealname).not.toHaveBeenCalled()
   })
 
+  /**
+   * BUG-012：校验失败时后端回的是英文裸串（`internal server error` / `Failed to fetch`），
+   * 以前 `err.message` 直传，用户看到的就是英文。统一口径后含中文的原样透出、纯英文回落中文兜底。
+   */
+  it('校验失败只回英文裸串时按统一口径回落中文兜底（BUG-012）', async () => {
+    mocks.getVerification.mockRejectedValue(new HttpError(500, 'internal server error'))
+    const first = setup()
+
+    await expect(first.gate.ensureApproved(REDIRECT_TARGET)).resolves.toBe(false)
+    expect(mocks.toast).toHaveBeenCalledWith('实名认证状态校验失败', 'error')
+    expect(first.onNeedRealname).not.toHaveBeenCalled()
+
+    // 网络异常这类非 HttpError 的英文 message 同一条口径
+    mocks.toast.mockReset()
+    mocks.getVerification.mockRejectedValue(new Error('Failed to fetch'))
+    const second = setup()
+
+    await expect(second.gate.ensureApproved(REDIRECT_TARGET)).resolves.toBe(false)
+    expect(mocks.toast).toHaveBeenCalledWith('实名认证状态校验失败', 'error')
+    expect(second.onNeedRealname).not.toHaveBeenCalled()
+  })
+
   it('未登录：先去登录，不发实名请求', async () => {
     const { gate, onNeedLogin } = setup(false)
 

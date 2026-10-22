@@ -1,5 +1,6 @@
 import { getMyRealnameVerification } from '@/api/realname'
 import { HttpError } from '@/api/http'
+import { describeBackendError } from '@/shared/backendErrorText'
 
 import { TMessage } from 'ui_73info'
 
@@ -53,7 +54,7 @@ export function useRealnameApprovalGate(options: UseRealnameApprovalGateOptions)
         return false
       }
 
-      TMessage.error(err instanceof Error ? err.message : '实名认证状态校验失败')
+      TMessage.error(describeBackendError(err, '实名认证状态校验失败'))
       return false
     }
   }

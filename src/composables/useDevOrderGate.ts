@@ -7,6 +7,7 @@ import { getDevAccessStatus } from '@/api/auth'
 import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
 import type { RequirementItem } from '@/api/devRequirements'
 import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@/api/devOrderDeposit'
+import { describeBackendError } from '@/shared/backendErrorText'
 import { requiresDepositGate, type RequirementBindGate } from '@/shared/devRequirementHall'
 import { useAuthStore } from '@/stores/auth'
 
@@ -61,7 +62,7 @@ export function useDevOrderGate() {
         developerAgreementSigned.value = accessStatus.developer_agreement_signed
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : '加载接单保证金状态失败'
+      const message = describeBackendError(error, '加载接单保证金状态失败')
       TMessage.error(message)
       depositStatus.value = null
     }

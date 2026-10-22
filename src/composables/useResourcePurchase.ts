@@ -7,6 +7,7 @@ import { getMyPoints } from '@/api/points'
 import { createResourcePurchase, type ResourcePurchaseOrder } from '@/api/resourcePurchase'
 import { useResourcePayment } from '@/composables/useResourcePayment'
 import { useWechatPayAuthorize } from '@/composables/useWechatPayAuthorize'
+import { describeBackendError } from '@/shared/backendErrorText'
 import {
   canReuseCashQrForChannel,
   fenToYuanText,
@@ -263,7 +264,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
       if (requestedGeneration !== surfaceGeneration.value) {
         return
       }
-      const message = submitError instanceof Error ? submitError.message : '创建购买订单失败'
+      const message = describeBackendError(submitError, '创建购买订单失败')
       if (message.includes('已购买')) {
         TMessage.success(message)
         await options.refreshDetail()

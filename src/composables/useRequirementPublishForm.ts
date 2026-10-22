@@ -6,6 +6,7 @@ import { TMessage } from 'ui_73info'
 import type { RequirementItem } from '@/api/requirements'
 import PublishModal from '@/components/PublishModal.vue'
 import { useRequirementPublishModalBindings } from '@/composables/useRequirementPublishModalBindings'
+import { describeBackendError } from '@/shared/backendErrorText'
 import {
   validateRequirementPublishForm,
   type RequirementPublishFormValues,
@@ -244,7 +245,7 @@ export function useRequirementPublishForm(options: UseRequirementPublishFormOpti
 
       await options.onSubmitted?.()
     } catch (err) {
-      TMessage.error(err instanceof Error ? err.message : options.failureMessage)
+      TMessage.error(describeBackendError(err, options.failureMessage))
     } finally {
       loading.value = false
     }

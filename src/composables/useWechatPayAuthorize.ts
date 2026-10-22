@@ -3,6 +3,7 @@ import { TMessage } from 'ui_73info'
 
 import { getWechatPaymentAuthorizationStatus, getWechatPaymentAuthorizeUrl } from '@/api/auth'
 import { isWechatBrowser } from '@/shared/auth/browser'
+import { describeBackendError } from '@/shared/backendErrorText'
 
 export type WechatAuthorizeResult = {
   ok: boolean
@@ -46,7 +47,7 @@ export function useWechatPayAuthorize() {
       window.location.assign(url)
       return { ok: false, message: '' }
     } catch (error) {
-      const message = error instanceof Error ? error.message : '检查微信授权失败'
+      const message = describeBackendError(error, '检查微信授权失败')
       TMessage.error(message)
       return { ok: false, message }
     }
