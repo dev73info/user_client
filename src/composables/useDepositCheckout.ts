@@ -21,6 +21,7 @@ import {
   calculateFinalDepositAmount,
   calculateFinalPaymentAmount,
 } from '@/shared/requirementPayment'
+import { isRequirementContractNotSigned } from '@/shared/requirementPaymentError'
 import { useAuthStore } from '@/stores/auth'
 
 /** 拉起 Adapay 后前端留着的这一单（真正的状态以后端查询为准）。 */
@@ -42,16 +43,6 @@ export type CheckoutRequirement = {
   budget?: number | null
   paymentMode: RequirementPaymentMode
 }
-
-/**
- * 后端「先签合同再付定金」的三种报错。文案是后端英文原话，**不能按中文提示匹配**：
- * 这一支只负责认出来并给用户一句人话，判定口径与拆分前一致。
- */
-const CONTRACT_SIGN_HINTS = [
-  'developer must sign first and user must sign after that before paying deposit',
-  'requirement contract must be signed by developer before paying deposit',
-  'contract must be created before paying deposit',
-]
 
 export type DepositCheckoutOptions = {
   depositRequirement: Ref<CheckoutRequirement | null>
@@ -206,7 +197,9 @@ export function useDepositCheckout(options: DepositCheckoutOptions) {
           )
           return
         }
-      } else if (CONTRACT_SIGN_HINTS.some((hint) => message.includes(hint))) {
+      } else if (isRequirementContractNotSigned(err)) {
+        // 按后端业务错误码分支（`REQUIREMENT_CONTRACT_NOT_SIGNED`），不拿文案做匹配：
+        // 文案会改、错误码不会。1.x 还在用纯文本错误体，走的是同一条判定里的过渡期兜底。
         TMessage.warning('当前需求需先由开发者（乙方）签署，再由您（甲方）签署协议后，才能支付定金')
       } else {
         TMessage.error(message)
