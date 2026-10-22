@@ -2,6 +2,9 @@
 @import './shell.css';
 @import './modal.css';
 @import './portal-pages.css';
+/* 搜索结果页的页壳与结果卡片：卡片 DOM 在 `components/search/*.vue`，三支共用一座基座，
+   样式留在全局层（色值走视图根的 `--sr-*`）。 */
+@import './portal-search.css';
 @import './profile.css';
 @import './payment.css';
 @import './resource-catalog.css';
