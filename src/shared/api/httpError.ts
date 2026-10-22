@@ -116,7 +116,9 @@ export async function readErrorShape(resp: Response, fallback: string): Promise<
 /**
  * 读错误响应体的文案。
  *
- * 与旧行为等价（返回响应体原文，空则用兜底文案），只是内部换成了结构化解析。
+ * 与旧行为的差别只有一处：**错误体是 JSON 但没有 `message` / `detail` / `error`** 时，
+ * 旧实现把 JSON 原文当文案，现在用兜底文案——不把 JSON 塞给用户看。
+ * 纯文本错误体仍然返回原文，空响应体仍然用兜底文案。
  */
 export async function readErrorMessage(resp: Response, fallback: string): Promise<string> {
   const shape = await readErrorShape(resp, fallback)

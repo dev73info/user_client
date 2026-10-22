@@ -63,7 +63,8 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 
-// 401 统一处理：请求层派发「未授权」事件，这里清登录态并回首页（首页承载登录弹窗）。
+// 401 统一处理：请求层派发「未授权」事件，这里清登录态并回首页
+// （与路由守卫既有做法一致：回首页后登录弹窗由用户点击触发）。
 installUnauthorizedHandler(pinia, router)
 
 app.mount('#app')
