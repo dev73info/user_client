@@ -352,7 +352,7 @@
     {
       "rule": "line-budget",
       "file": "src/styles/portal-pages.css",
-      "detail": "559 行 > 300（模块）",
+      "detail": "1407 行 > 300（模块）",
       "since": "2026-10-22"
     },
     {
@@ -389,12 +389,6 @@
       "rule": "line-budget",
       "file": "src/views/ApiResourceCheckoutView.vue",
       "detail": "432 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
-      "file": "src/views/CommunityView.vue",
-      "detail": "1665 行 > 300（视图）",
       "since": "2026-10-22"
     },
     {
@@ -1036,7 +1030,7 @@
     {
       "rule": "raw-color",
       "file": "src/styles/portal-pages.css",
-      "detail": "38 处裸色值",
+      "detail": "136 处裸色值",
       "since": "2026-10-22"
     },
     {
@@ -1115,12 +1109,6 @@
       "rule": "raw-color",
       "file": "src/views/BadgesView.vue",
       "detail": "3 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/views/CommunityView.vue",
-      "detail": "98 处裸色值",
       "since": "2026-10-22"
     },
     {
