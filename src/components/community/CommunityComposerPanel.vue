@@ -156,8 +156,8 @@ function forwardNotify(message: string, type?: 'success' | 'warning' | 'error') 
 </template>
 
 <style scoped>
-/* 面板根节点（.community-panel 的描边 / 圆角 / 内边距）由视图的 scoped 样式命中——
-   父级 scoped 只作用到子组件根节点，所以根上这层不必重写；**根里面的元素则全部要自带**。 */
+/* 面板根节点（.community-panel 的描边 / 圆角 / 内边距）由 `styles/portal-pages.css`
+   的「社区页」段命中（R047 第三轮起社区页的骨架规则都在全局层）；**根里面的元素则全部要自带**。 */
 .community-panel__head {
   display: flex;
   align-items: center;

@@ -149,7 +149,8 @@ const draft = defineModel<string>('draft', { required: true })
 
 <style scoped>
 /* 注：`.community-comments__head` 原来靠视图里一条共享选择器拿到「两端对齐 + 居中 + 12px 间距」，
-   那条选择器留在视图（还管着 hero / 详情头等），这里必须自带一份，否则搬过来就塌。 */
+   那条选择器现在在 `styles/portal-pages.css` 的「社区页」段（R047 第三轮搬到全局层），
+   仍管着 hero / 详情头等，这里必须自带一份，否则搬过来就塌。 */
 .community-comments {
   padding-top: 16px;
 }

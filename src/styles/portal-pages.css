@@ -556,3 +556,851 @@
 /* 发布方式标签（电签担保 / 无电签约定）已提到组件层：见 components/PaymentModeChip.vue。
    原来这份样式挂在门户通用层，只有门户两个页面用得到，开发者那侧另用 Element 的 el-tag，
    同一枚标签两端两种底色；现在两端共用组件，这里不再重复一份。 */
+
+/* ============================================================================
+   社区页（/community）
+   ----------------------------------------------------------------------------
+   原 `views/CommunityView.vue` 的 `<style scoped>` 整块，R047 第三轮把帖子列表与
+   详情区抽成 `components/community/CommunityPostList.vue` /
+   `CommunityPostDetail.vue` 之后搬到这里。为什么放全局层而不是各组件自己的 scoped 块：
+
+   1. `check-frontend` 的裸色值门禁——新组件里出现 `#rrggbb` / `rgba()` 就是新增违规；
+      而这份样式里的色值一个都不能换成 `--73-*` 令牌（门户蓝 `#2563eb` 与
+      `--73-accent` = `#1f4ad1` 不是同一个值，换过去就是改视觉，要单独走查）。
+      搬到全局层是「搬迁不增债」：裸色值总数一分不变，只是从 `.vue` 挪到 `.css`。
+   2. 左右两栏共用骨架（`.community-stream` / `.community-detail` / `.community-panel` /
+      `.community-empty`）：scoped 块各有作用域，拆栏后两边互不认识，
+      `@media (max-width: 900px)` 里那条 `position: static` 会命中不到对侧。
+   3. `.community-rich-text` 的正文排版必须跟着 `v-html` 容器走：原来是视图 scoped 里的
+      `.community-rich-text :deep(h1)`，容器搬进 `CommunityPostDetail.vue` 之后 `:deep`
+      已无意义，这里就是普通后代选择器（`.community-rich-text h1`）——语义不变，
+      容器换到哪一层都命中。
+
+   声明**逐字节照搬**，一个值都没改：唯一的结构性改动是那 18 行 `:deep(...)` 去掉括号、
+   改成后代选择器。顺序也与拆分前一致（左栏流 → 右栏详情 → 共用空态 → 900/640 两档断点）。
+   ============================================================================ */
+.community-board {
+  display: grid;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.community-scroll-top {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 20;
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(191, 219, 254, 0.96);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.96);
+  color: #2563eb;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.16);
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.community-scroll-top:hover,
+.community-scroll-top:focus-visible {
+  background: #eff6ff;
+  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.22);
+  transform: translateY(-2px);
+}
+
+.community-stream,
+.community-panel {
+  min-width: 0;
+  border: 1px solid rgba(198, 210, 236, 0.72);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 24px rgba(90, 120, 180, 0.08);
+}
+
+.community-stream,
+.community-panel {
+  padding: 14px;
+}
+
+.community-stream {
+  position: sticky;
+  top: 76px;
+}
+
+.community-detail {
+  position: sticky;
+  top: 76px;
+  min-width: 0;
+}
+
+/* R047 断点收敛：原档位 921px → 901px（与下面 920px → 900px 互补，必须成对改） */
+@media (max-width: 1180px) and (min-width: 901px) {
+  .community-stream,
+  .community-detail {
+    top: 136px;
+  }
+}
+
+.community-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.86);
+}
+
+.community-hero h2,
+.community-panel h2,
+.community-post-card h3 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.community-hero h2 {
+  margin-top: 4px;
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.community-detail__header .community-detail__main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.community-detail__title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.community-detail__title-row .community-detail__title {
+  min-width: 0;
+}
+
+.community-featured-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  vertical-align: middle;
+  white-space: nowrap;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+}
+.community-post-card__badges .community-featured-badge {
+  margin-left: 0;
+  padding: 1px 8px;
+  font-size: 11px;
+}
+.community-boost-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  vertical-align: middle;
+  white-space: nowrap;
+  color: #6d28d9;
+  background: #ede9fe;
+  border: 1px solid #c4b5fd;
+}
+.community-post-card__badges .community-boost-badge {
+  margin-left: 0;
+  padding: 1px 8px;
+  font-size: 11px;
+}
+.community-boost-button {
+  margin-left: 8px;
+}
+.community-detail__header .community-detail__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.community-detail__header .community-detail__author {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.community-detail__header .community-detail__author strong {
+  font-size: 15px;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.community-detail__header .community-detail__post-time {
+  white-space: nowrap;
+  margin: 0 0 0 auto;
+}
+
+.community-detail__header p,
+.community-post-card p,
+.community-post-card__meta,
+.community-actions,
+.community-empty {
+  color: #64748b;
+  line-height: 1.7;
+}
+
+.community-hero__actions,
+.community-detail__header,
+.community-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.community-hero__actions {
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.community-hero__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+/* 刷新全站只留图标与文字，不出底色与描边（口径见 styles/user.css） */
+.community-hero__button--ghost {
+  border-color: transparent;
+  background: transparent;
+  color: #2563eb;
+}
+
+.community-hero__button--primary {
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+}
+
+.community-hero__button--primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
+  transform: translateY(-1px);
+}
+
+.community-hero__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+@keyframes community-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 搜索行收成一个整体控件：外框由 search-bar 承担，输入区去掉自身描边，
+   搜索按钮退成框内的浅色小控件，不再比输入框抢眼 */
+.community-search-bar {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 0 4px 0 10px;
+  border: 1px solid rgba(191, 219, 254, 0.96);
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.92);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.community-search-bar:focus-within {
+  border-color: rgba(37, 99, 235, 0.44);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.community-search-field {
+  display: flex;
+  min-width: 0;
+  min-height: 36px;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #64748b;
+}
+
+.community-search-field input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+}
+
+.community-search-field input::placeholder {
+  color: #94a3b8;
+}
+
+.community-search-clear,
+.community-search-submit,
+.community-page-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.community-search-clear {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  background: rgba(219, 234, 254, 0.74);
+  color: #2563eb;
+}
+
+.community-search-clear:hover {
+  background: rgba(191, 219, 254, 0.96);
+}
+
+.community-search-submit {
+  flex: 0 0 auto;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 12px;
+  border-color: transparent;
+  border-radius: 8px;
+  background: rgba(219, 234, 254, 0.72);
+  color: #2563eb;
+}
+
+.community-search-submit:hover:not(:disabled) {
+  background: rgba(191, 219, 254, 0.96);
+}
+
+.community-search-submit:disabled,
+.community-page-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
+}
+
+/* 窄列里标签只占一行：改为横向滚动而不是换行成两行，
+   滚动条走项目既有口径 scrollbar-width: thin（见 styles/dev-resource.css 的 chips--scroll） */
+.community-tag-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.78);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.community-tag {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid rgba(219, 234, 254, 0.92);
+  border-radius: 999px;
+  background: rgba(239, 246, 255, 0.76);
+  color: #1d4ed8;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.community-tag.is-active {
+  background: #2563eb;
+  color: #fff;
+}
+
+.community-post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.community-post-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 10px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.community-post-card:hover,
+.community-post-card.is-active {
+  border-color: rgba(37, 99, 235, 0.48);
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.09);
+  transform: translateY(-1px);
+}
+
+.community-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(226, 232, 240, 0.78);
+}
+
+.community-page-button {
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-color: rgba(191, 219, 254, 0.96);
+  border-radius: 9px;
+  background: rgba(239, 246, 255, 0.82);
+  color: #2563eb;
+}
+
+.community-page-button:hover:not(:disabled) {
+  border-color: rgba(37, 99, 235, 0.34);
+  background: rgba(219, 234, 254, 0.92);
+}
+
+.community-page-status {
+  min-width: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.community-post-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.community-post-card__head h3 {
+  margin-bottom: 1px;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.community-post-card__head p {
+  line-height: 1.35;
+  font-size: 12px;
+}
+
+.community-post-card__head span {
+  flex-shrink: 0;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.community-post-card__badges {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.community-repost-badge {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 22px;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.community-repost-badge.is-repost {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+/* 卡片内标签覆盖 .community-post-card__head span 的蓝色，保持靛蓝 */
+.community-post-card__badges .community-repost-badge {
+  color: #4f46e5;
+}
+
+.community-post-card__badges .community-repost-badge.is-repost {
+  color: #b45309;
+}
+
+.community-detail__repost {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.community-detail__repost a {
+  color: #6366f1;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.community-detail__repost a:hover {
+  text-decoration: underline;
+}
+
+.community-status-badge {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 22px;
+  align-items: center;
+  padding: 0 9px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.9);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.community-status-badge.is-pending_review {
+  border-color: rgba(245, 158, 11, 0.28);
+  background: rgba(255, 251, 235, 0.95);
+  color: #b45309;
+}
+
+.community-status-badge.is-published {
+  border-color: rgba(34, 197, 94, 0.24);
+  background: rgba(240, 253, 244, 0.95);
+  color: #15803d;
+}
+
+.community-status-badge.is-rejected {
+  border-color: rgba(248, 113, 113, 0.28);
+  background: rgba(254, 242, 242, 0.95);
+  color: #b91c1c;
+}
+
+.community-post-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.community-post-card__tags span {
+  display: inline-flex;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(219, 234, 254, 0.9);
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.community-post-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.community-detail__header {
+  margin-bottom: 14px;
+}
+
+.community-detail__header {
+  align-items: flex-start;
+}
+
+.community-detail__header h2 {
+  margin: 12px 0 8px;
+  font-size: clamp(22px, 2vw, 28px);
+  line-height: 1.2;
+}
+
+.community-rich-text {
+  padding: 6px 0 18px;
+  color: #1e293b;
+  line-height: 1.75;
+}
+
+.community-detail-loading {
+  padding: 18px 0 28px;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.community-rich-text h1,
+.community-rich-text h2,
+.community-rich-text h3,
+.community-rich-text h4,
+.community-rich-text h5 {
+  margin: 18px 0 10px;
+  color: #0f172a;
+  line-height: 1.28;
+}
+
+.community-rich-text h1 {
+  font-size: 28px;
+}
+
+.community-rich-text h2 {
+  font-size: 24px;
+}
+
+.community-rich-text h3 {
+  font-size: 21px;
+}
+
+.community-rich-text h4 {
+  font-size: 18px;
+}
+
+.community-rich-text h5 {
+  font-size: 16px;
+}
+
+.community-rich-text p,
+.community-rich-text ul,
+.community-rich-text ol,
+.community-rich-text blockquote {
+  margin: 0 0 12px;
+  color: #334155;
+}
+
+.community-rich-text a {
+  color: #2563eb;
+}
+
+.community-rich-text img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  align-self: flex-start;
+}
+
+.community-rich-text pre {
+  overflow: auto;
+  padding: 14px;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.community-rich-text blockquote {
+  padding-left: 14px;
+  border-left: 3px solid #bfdbfe;
+  color: #475569;
+}
+
+.community-actions {
+  justify-content: flex-start;
+  padding: 12px;
+  border: 1px solid rgba(219, 234, 254, 0.86);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.community-like-button strong {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.community-like-button.is-liked strong {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.community-action-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.community-empty {
+  display: flex;
+  min-height: 112px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.92);
+}
+
+/* 根因：共用类 .community-empty 的 min-height: 112px 是为右侧详情面板的占位撑高度用的，
+   帖子流左栏里只放一行「暂无帖子」，固定高度就成了那块空洞。
+   这里只给左栏做收口，不动共用规则与右侧详情面板。 */
+.community-stream .community-empty {
+  min-height: 0;
+  padding: 14px 16px;
+}
+
+.community-empty strong {
+  color: #0f172a;
+}
+
+/* R047 断点收敛：原档位 920px → 900px */
+@media (max-width: 900px) {
+  .community-scroll-top {
+    right: 14px;
+    bottom: calc(102px + env(safe-area-inset-bottom));
+    z-index: 70;
+  }
+
+  .community-board {
+    grid-template-columns: 1fr;
+  }
+
+  .community-stream,
+  .community-detail {
+    position: static;
+  }
+  /* `.community-form` 的单列塌版跟着 CommunityComposerPanel.vue 走了（那边的断点 R047 收到 900px） */
+}
+
+/* R047 断点收敛：原档位 760px → 640px */
+@media (max-width: 640px) {
+  /* `.community-panel__head`（编辑器头）随组件搬走，那档在组件里 R047 收到 640px */
+  .community-hero,
+  .community-detail__header,
+  .community-detail__title-row,
+  .community-post-card__meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .community-post-card__head,
+  .community-post-card__meta {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .community-detail__header .community-detail__post-time {
+    white-space: normal;
+  }
+
+  .community-hero__actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .community-hero__button {
+    flex: 1 1 132px;
+  }
+
+  /* 搜索行已收成「输入框 + 按钮」一体的胶囊，窄屏不再上下堆叠；
+     只把整体高度提到设计规范第六节的 44px 触摸目标档 */
+  .community-search-bar {
+    min-height: 44px;
+    padding: 0 5px 0 12px;
+  }
+
+  .community-search-field {
+    min-height: 42px;
+  }
+
+  .community-pagination {
+    flex-wrap: wrap;
+  }
+
+  .community-page-status {
+    order: -1;
+    width: 100%;
+  }
+
+  .community-page-button {
+    flex: 1 1 126px;
+  }
+}
