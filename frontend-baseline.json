@@ -105,12 +105,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/DevSoldResourcePurchasesView.vue",
-      "detail": "749 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/__tests__/afterSalesWindow.spec.ts",
       "detail": "485 行 > 300（模块）",
       "since": "2026-10-22"
@@ -1263,12 +1257,6 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/views/DevSoldResourcePurchasesView.vue",
-      "detail": "4 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
       "file": "src/components/home/PortalQuickPanels.vue",
       "detail": "12 处裸色值",
       "since": "2026-10-22"
@@ -1379,6 +1367,24 @@
       "rule": "raw-color",
       "file": "src/components/dev/team-resources-table.css",
       "detail": "1 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/dev/sold-purchases-table.css",
+      "detail": "1 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/payment/sold-purchases-refund-dialog.css",
+      "detail": "1 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/payment/sold-purchases-shared.css",
+      "detail": "2 处裸色值",
       "since": "2026-10-23"
     }
   ]
