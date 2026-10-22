@@ -75,18 +75,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/components/RequirementConversationModal.vue",
-      "detail": "2703 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "api-deps",
-      "file": "src/components/RequirementConversationModal.vue",
-      "detail": "依赖 5 个 api 模块（conversations、contracts、http、requirements、resources）> 3",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/components/ResourceCatalog.vue",
       "detail": "1391 行 > 400（模块）",
       "since": "2026-10-22"
@@ -519,6 +507,54 @@
     },
     {
       "rule": "raw-color",
+      "file": "src/components/conversation/ConversationAttachmentPreview.vue",
+      "detail": "11 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/ConversationCardItem.vue",
+      "detail": "7 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/ConversationComposer.vue",
+      "detail": "15 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/ConversationComposerField.vue",
+      "detail": "20 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/ConversationComposerInput.vue",
+      "detail": "18 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/ConversationMessageItem.vue",
+      "detail": "22 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/ConversationMessageStream.vue",
+      "detail": "9 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/ConversationModalHeader.vue",
+      "detail": "17 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
       "file": "src/components/conversation/ConversationHistoryVote.vue",
       "detail": "9 处裸色值",
       "since": "2026-10-22"
@@ -528,6 +564,24 @@
       "file": "src/components/conversation/HistoryDisclosureNotice.vue",
       "detail": "11 处裸色值",
       "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/conversation-header-workbench-bar.css",
+      "detail": "1 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/conversation-modal-shell.css",
+      "detail": "20 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/conversation-shared.css",
+      "detail": "14 处裸色值",
+      "since": "2026-10-23"
     },
     {
       "rule": "raw-color",
@@ -677,12 +731,6 @@
       "rule": "raw-color",
       "file": "src/components/RequirementConversationActions.vue",
       "detail": "33 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/RequirementConversationModal.vue",
-      "detail": "154 处裸色值",
       "since": "2026-10-22"
     },
     {

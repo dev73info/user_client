@@ -1,0 +1,80 @@
+/* 会话弹窗里**跨组件**的几条声明：选择器原本写在同一条规则里，拆组件后仍留在同一份文件、
+   同一份顺序，既不重复写一遍声明，也不会因为两个组件各自覆写把最终颜色改成另一个值。
+
+   1) 头像的底色 / 圆角 / 字重：会话头一颗（.conversation-modal__avatar），消息气泡左边一颗
+      （.conversation-message__avatar，尺寸与橙色覆写就在下面，跟基础形态同文件保证顺序）。
+   2) 作曲器里所有按钮的底子（描边、圆角、指针、不收缩）：作曲器外壳里的「移除附件」、
+      输入行里的表情 / 附件 / 发送，分在三个组件里，底子只在这里写一遍；
+      每条后面的具体样式都比它更具体，谁先加载都不会被这两条盖掉。
+   3) 表情 / 附件 / 移除附件三颗圆钮的公共外观（原本就是一条三选择器的规则）。
+   4) 附件信息的灰字：作曲器里的附件预览与消息气泡里的附件元信息共用一个颜色，
+      而两边各自还有一层更早的取色要盖掉，所以这一条必须排在两个组件自己的样式之后。
+
+   因此用到它的组件都用 `<style scoped src>`，并放在最后一个 style 块。 */
+.conversation-modal__composer button {
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.conversation-modal__composer button {
+  align-self: end;
+  min-width: 84px;
+  height: 40px;
+  padding: 0 16px;
+  background: #1f6feb;
+  color: #ffffff;
+  border-color: #1f6feb;
+}
+
+.conversation-modal__composer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 640px) {
+  .conversation-modal__composer button {
+    width: 100%;
+  }
+}
+
+.conversation-modal__avatar,
+.conversation-message__avatar {
+  background: linear-gradient(135deg, #4f8cff, #5ec8a8);
+  box-shadow: 0 8px 18px rgba(79, 140, 255, 0.18);
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.conversation-message__avatar {
+  width: 26px;
+  height: 26px;
+  font-size: 11px;
+  margin-bottom: 1px;
+  background: linear-gradient(135deg, #f1a33c, #f9c25c);
+  box-shadow: 0 4px 10px rgba(136, 88, 27, 0.16);
+}
+
+.conversation-modal__composer .conversation-modal__tool-btn,
+.conversation-modal__composer .conversation-modal__emoji-btn,
+.conversation-modal__composer .conversation-modal__attachment-remove {
+  border-color: rgba(207, 220, 238, 0.96);
+  background: #ffffff;
+  color: #52657f;
+  display: inline-grid;
+  place-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid rgba(185, 204, 190, 0.72);
+  box-shadow: none;
+}
+
+.conversation-modal__attachment-preview span,
+.conversation-message__attachment-meta,
+.conversation-message__attachment-meta small {
+  color: #64748b;
+}
