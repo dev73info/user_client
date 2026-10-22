@@ -29,10 +29,7 @@ function nowIso(): string {
 
 function findPaidEntitlement(buyer: string, resourceId: number): ResourcePurchaseOrder | undefined {
   return mockPurchases.find(
-    (item) =>
-      item.buyer === buyer &&
-      item.resource_id === resourceId &&
-      item.status === 'paid',
+    (item) => item.buyer === buyer && item.resource_id === resourceId && item.status === 'paid',
   )
 }
 
@@ -54,8 +51,7 @@ function toPublicResource(resource: McResourcePayload, buyer?: string | null) {
     is_featured?: boolean
     like_count?: number
   }
-  const purchased =
-    Boolean(buyer) && Boolean(findPaidEntitlement(buyer!, resource.id))
+  const purchased = Boolean(buyer) && Boolean(findPaidEntitlement(buyer!, resource.id))
   return {
     ...resource,
     price_fen: resource.price_fen ?? 0,
@@ -372,7 +368,11 @@ const routes: MockRoute[] = [
       }
       const requested = (request.body as { amount_fen?: number } | null)?.amount_fen
       const amountFen = requested ?? order.refundable_amount_fen
-      if (!Number.isFinite(amountFen) || amountFen <= 0 || amountFen > order.refundable_amount_fen) {
+      if (
+        !Number.isFinite(amountFen) ||
+        amountFen <= 0 ||
+        amountFen > order.refundable_amount_fen
+      ) {
         return textResponse('退款金额必须大于 0 且不超过可退余额', 400)
       }
       const stamp = nowIso()
