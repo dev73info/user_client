@@ -166,13 +166,7 @@
     {
       "rule": "line-budget",
       "file": "src/components/ResourceDetailPanel.vue",
-      "detail": "2637 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "api-deps",
-      "file": "src/components/ResourceDetailPanel.vue",
-      "detail": "依赖 6 个 api 模块（http、resources、resourcePurchase、adapay、auth、points）> 3",
+      "detail": "1425 行 > 400（模块）",
       "since": "2026-10-22"
     },
     {
@@ -874,7 +868,7 @@
     {
       "rule": "raw-color",
       "file": "src/components/ResourceDetailPanel.vue",
-      "detail": "137 处裸色值",
+      "detail": "120 处裸色值",
       "since": "2026-10-22"
     },
     {
