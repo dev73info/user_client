@@ -75,12 +75,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/components/RichTextEditor.vue",
-      "detail": "1617 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/components/ShareCardGenerator.vue",
       "detail": "494 行 > 400（模块）",
       "since": "2026-10-22"
@@ -765,8 +759,14 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/RichTextEditor.vue",
-      "detail": "50 处裸色值",
+      "file": "src/components/rich-text/rich-text-editor.css",
+      "detail": "18 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/rich-text/rich-text-toolbar.css",
+      "detail": "32 处裸色值",
       "since": "2026-10-22"
     },
     {

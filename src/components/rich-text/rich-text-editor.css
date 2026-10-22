@@ -1,0 +1,171 @@
+/* 编辑器外壳自己的样式：根容器、工具栏占位壳（吸顶悬浮要包住工具栏）、正文容器，
+   以及 tiptap 正文里的排版（`:deep` 那一批）。
+   工具栏按钮与下拉的样式随工具栏组件搬到 `rich-text-toolbar.css`，顺序上两者选择器不重叠。 */
+.rich-text-editor {
+  --rich-text-editor-toolbar-top: 12px;
+  position: relative;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  color: #1e293b;
+}
+
+.rich-text-editor__toolbar-shell {
+  position: relative;
+  z-index: 8;
+}
+
+/* 按需显示的工具栏：淡入避免突然出现。
+   仅使用 opacity，不加 transform，否则会改变 .is-floating 固定定位的包含块。 */
+@keyframes rich-text-editor-toolbar-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.rich-text-editor--toolbar-on-focus .rich-text-editor__toolbar-shell {
+  animation: rich-text-editor-toolbar-in 160ms ease;
+}
+
+.rich-text-editor__body {
+  overflow: hidden;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface) {
+  min-height: var(--rich-text-editor-min-height);
+  max-height: var(--rich-text-editor-max-height, none);
+  overflow-y: auto;
+  padding: 16px;
+  color: #1e293b;
+  line-height: 1.75;
+  outline: none;
+}
+
+/* 自动高度：由内容撑开编辑器，仅在超过 max-height 时才在内部滚动。 */
+.rich-text-editor--auto-height :deep(.rich-text-editor__surface) {
+  height: auto;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface p),
+.rich-text-editor :deep(.rich-text-editor__surface ul),
+.rich-text-editor :deep(.rich-text-editor__surface ol),
+.rich-text-editor :deep(.rich-text-editor__surface blockquote) {
+  margin: 0 0 12px;
+  color: #334155;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface p:last-child),
+.rich-text-editor :deep(.rich-text-editor__surface ul:last-child),
+.rich-text-editor :deep(.rich-text-editor__surface ol:last-child) {
+  margin-bottom: 0;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface h1),
+.rich-text-editor :deep(.rich-text-editor__surface h2),
+.rich-text-editor :deep(.rich-text-editor__surface h3),
+.rich-text-editor :deep(.rich-text-editor__surface h4),
+.rich-text-editor :deep(.rich-text-editor__surface h5) {
+  margin: 18px 0 10px;
+  color: #0f172a;
+  line-height: 1.28;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface h1) {
+  font-size: 28px;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface h2) {
+  font-size: 24px;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface h3) {
+  font-size: 21px;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface h4) {
+  font-size: 18px;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface h5) {
+  font-size: 16px;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface a) {
+  color: #2563eb;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface blockquote) {
+  padding-left: 14px;
+  border-left: 3px solid #bfdbfe;
+  color: #475569;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface li) {
+  color: #334155;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface .rich-editor-media) {
+  display: block;
+  max-width: 100%;
+  margin: 12px 0;
+  border: 1px solid rgba(203, 213, 225, 0.86);
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface .rich-editor-image) {
+  display: inline-block;
+  vertical-align: middle;
+  height: auto;
+  margin: 12px 8px 12px 0;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface .rich-editor-video) {
+  width: 100%;
+  min-height: 220px;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface .rich-editor-attachment) {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin: 10px 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(191, 219, 254, 0.96);
+  border-radius: 10px;
+  background: rgba(239, 246, 255, 0.9);
+  color: #2563eb;
+  font-weight: 800;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface hr) {
+  margin: 18px 0;
+  border: 0;
+  border-top: 1px solid rgba(17, 24, 39, 0.1);
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface table) {
+  width: 100%;
+  margin: 0 0 14px;
+  border-collapse: collapse;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface th),
+.rich-text-editor :deep(.rich-text-editor__surface td) {
+  padding: 10px 12px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  text-align: left;
+}
+
+.rich-text-editor :deep(.rich-text-editor__surface th) {
+  background: rgba(17, 24, 39, 0.04);
+}
