@@ -1,0 +1,155 @@
+/* === 开发者页统一顶部卡片（顶部信息条）===
+   开发者端所有菜单页的「顶部卡片」都用它，规格与 .dev-surface-card 同一套
+   （同底、同描边、同圆角、同阴影），区别只是它是横向排布的指标栏，不是内容面板。
+   原来它是 10px 圆角 + var(--dev-border) 兜底的暖灰描边，摆在下方的卡片上方像另一个体系。
+
+   位置约定：每个菜单页的第一个元素就是这条横条，读数（__item）在左，页面级操作在右
+   （__action 槽）。刷新按钮固定在 __action 里，不要再挪进卡片工具栏——同一页有多张卡片时
+   说不清刷新该挂哪一张，各页也会各写一个位置。筛选相关的「重置」才留在 .dev-toolbar 里。
+
+   ------------------------------------------------------------------
+   一个菜单页从上到下的固定骨架（各页只填内容，不再各自发明结构）：
+
+     1. .dev-meta-strip        顶部读数条：读数 + 右侧一枚刷新图标按钮
+     2. .dev-surface-card      内容卡片（24px 圆角 / 24px 内边距 / 同底同描边）
+          .dev-card-head      卡片头：标题 18px + 说明 + 右侧动作（主按钮、链接）
+          .dev-toolbar        工具栏：左「筛选」+ 中「搜索」+ 右「重置」
+          <列表体>             .dev-table 表格 或 .dev-stack-list 卡片列表
+          .dev-pager          表尾：共 N 条 + 每页条数 + 翻页
+     3. .dev-notice / .dev-dialog 提示条与弹窗按需
+
+   工具栏内部的三段位置也是固定的，全端只有这一种排法：
+     · 筛选：下拉用 .dev-toolbar__field（150px），胶囊组用 .dev-chip-group；
+             胶囊组属于「筛选」，放工具栏里，不要放进卡片头（卡片头右侧只放动作）。
+     · 搜索：.dev-toolbar__search（≤340px），必须带 Search 图标前缀且 clearable。
+     · 动作：.dev-toolbar__actions 靠右，里面先 .dev-toolbar__hint（筛选出 N / M 条，
+             仅在确实收窄了结果时出现），再 .dev-toolbar__ghost 的重置按钮。
+             重置一律常驻可用（本页没有筛选条件可清时也不置灰），别页都不置灰。
+   ------------------------------------------------------------------ */
+.dev-meta-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 10px 20px;
+  background: var(--dev-surface);
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-card);
+  box-shadow: var(--dev-shadow);
+}
+
+.dev-meta-strip__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dev-meta-strip__item.dev-meta-strip__action {
+  margin-left: auto;
+}
+
+/* 操作槽里可能有两个按钮（页面级 CTA + 刷新），共用这一个槽位，靠 gap 分开；
+   各写一个 __action 会让两条 auto 外边距平分剩余空间，把按钮拉到两端。 */
+.dev-meta-strip__action {
+  gap: 10px;
+}
+
+.dev-meta-strip__item.dev-meta-strip__action:first-child {
+  margin-left: 0;
+}
+
+.dev-meta-strip__divider {
+  width: 1px;
+  height: 20px;
+  background: var(--dev-line);
+  flex: 0 0 1px;
+}
+
+.dev-meta-strip__label {
+  font-size: 12px;
+  color: var(--dev-muted);
+  white-space: nowrap;
+}
+
+.dev-meta-strip__value {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--dev-ink);
+  white-space: nowrap;
+}
+
+/* 读数后面跟的小标签（收益钱包的「今日入账」环比）：与读数同一行、贴着读数右侧。
+   原来定义在 dev-wallet.css，但它修饰的是这条共享横条，与 .dev-meta-strip 放一起。 */
+.dev-meta-strip__tag {
+  margin-left: 2px;
+}
+
+/* === 开发者页统一提示条 ===
+   顶部读数条下方那条「需要开发者先处理」的横幅（保证金不足、未签入驻协议、接单资格异常）。
+   原来总览页自己写一套金色渐变横幅（自带 16px 圆角 + 图标徽标 + 金色按钮），
+   需求大厅用 Element 的 el-alert + 一个 size="small" 的蓝色按钮，
+   同一件事两套形状、两种按钮尺寸与两种配色。现在统一为这一处：
+   金色（= --dev-gold，「金额与需要留意的提示」那一支）、图标徽标 + 文案 + 右侧动作。
+
+   结构：.dev-notice > __icon + __copy(strong/p) + __action */
+.dev-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border: 1px solid rgba(185, 129, 43, 0.28);
+  border-radius: var(--dev-radius-card);
+  background: linear-gradient(135deg, rgba(255, 252, 246, 0.98), rgba(255, 245, 230, 0.92));
+  box-shadow: var(--dev-shadow);
+}
+
+.dev-notice__icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--dev-radius-control);
+  background: rgba(185, 129, 43, 0.14);
+  color: var(--dev-gold);
+  font-size: 18px;
+}
+
+/* 无标题、只有一行说明的提示条（需求大厅的资格提示）：文案占满剩余宽度即可 */
+.dev-notice__copy {
+  display: grid;
+  flex: 1 1 240px;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dev-notice__copy strong {
+  color: var(--dev-ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.dev-notice__copy p {
+  margin: 0;
+  color: var(--dev-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dev-notice__action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+/* 卡片内「标题与内容块」之间的固定间距：原来叫 .dev-list--spaced（挂在已删除的 .dev-list 上），
+   现在只作单条工具类保留，预览卡等紧跟小标题的内容块用它。 */
+.dev-list--spaced {
+  margin-top: 18px;
+}

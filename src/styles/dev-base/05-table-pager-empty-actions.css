@@ -1,0 +1,170 @@
+/* === 开发者页统一表格皮肤 ===
+   表头底色、分隔线、行悬停、斑马纹、单元格内边距这些已收进组件库的 TTable
+   （ui_73info 的 `--73-table-*` 令牌，取值按本文件与 `.dev-table` 并存的登记值定：
+   表头是冷灰蓝、不是原来的暖奶油 rgba(255,248,238,.96)；斑马纹与行悬停都取主色的极淡底，
+   且一律是「合成后的不透明值」——固定列靠 `background: inherit` 从行上取底色，
+   半透明会让横向滚动过来的单元格从固定列底下透出来）。
+   列表页仍然给 TTable 挂 .dev-table，它是页面级覆盖的钩子，本节不再重复一份皮肤。 */
+
+/* 单元格里的主/次要文字：主信息 14px 加粗，次要信息 12px 弱字。
+   这两个值是全部菜单页表格的统一口径——资源列表、团队资源、我的接单、需求大厅、
+   钱包记录的行内文字都走它们，不要在各页另写一套字号（原来是 13/12、14/12、15/13 三种）。 */
+.dev-table__strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dev-ink);
+}
+
+.dev-table__sub {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dev-muted);
+}
+/* 行内操作按钮里的图标：与 .dev-btn 同档 15px */
+.dev-action--soft .t73-icon {
+  font-size: 15px;
+}
+
+.dev-action-caret {
+  margin-left: 2px;
+  font-size: 13px;
+  transition: transform 160ms ease;
+}
+
+/* === 开发者页统一表尾 ===
+   列表页脚：左边「共 N 条」与每页条数，右边分页器。钱包与提现记录两页原来各写一份，
+   其中一份还靠父页面的 :deep 才生效；统一到这里，字体、间距、每页条数宽度都只有一处。 */
+.dev-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--dev-muted);
+}
+
+.dev-pager__count {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dev-pager__size {
+  width: 116px;
+}
+
+/* 卡片/表格里的空态：字号显式写 13px，不靠继承。
+   工单中心的空态是卡片里的裸 div，不写就会落到根字号的 16px，
+   同一个「还没有记录」在两页两种大小。 */
+.dev-empty-state {
+  margin: 0;
+  padding: 24px;
+  font-size: 13px;
+  border-radius: var(--dev-radius-inner);
+  border: 1px dashed var(--dev-line);
+  background: rgba(255, 255, 255, 0.56);
+  text-align: center;
+  color: var(--dev-muted);
+}
+
+.dev-chip--warm {
+  background: rgba(185, 129, 43, 0.1);
+  border-color: rgba(185, 129, 43, 0.16);
+  color: var(--dev-gold);
+}
+
+.dev-chip--cyan {
+  background: rgba(42, 166, 164, 0.1);
+  border-color: rgba(42, 166, 164, 0.16);
+  color: var(--dev-cyan);
+}
+
+/* 中性档：终止态与「未选择 / 未关联」这类无强调语义的标签。总览页原先自带一个
+   .dev-home__chip--muted，别的页又各自写一遍，收进统一层只留这一处。 */
+.dev-chip--muted {
+  border-color: var(--dev-line);
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--dev-muted);
+}
+
+/* 破坏性状态（已驳回 / 已终止）：红只用于这一档，与 .dev-btn--danger 同一支红。 */
+.dev-chip--danger {
+  border-color: rgba(220, 38, 38, 0.2);
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+}
+
+/* === 卡片列表里的一行操作按钮 ===
+   表格行内的按钮规格在 .dev-table 里（32px），卡片行内是它的等价物：
+   「我的接单」的需求卡片、「我的团队」的邀请行都用这一组类名包按钮，
+   不再各自给 el-button 写 size="small"（24px）或引一个 dev-btn（36px），
+   同一页出现两种行内按钮高度。 */
+.dev-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+/* 尺寸（32px 档）由这里给；底色与描边交给 .dev-action--soft / .dev-action--soft-danger，
+   与表格行内按钮共用同一份配色，卡片行与表格行不会各是各的。 */
+.dev-list-actions .dev-btn,
+.dev-stack-item .dev-btn {
+  min-height: 32px;
+  height: 32px;
+  border-radius: var(--dev-radius-control);
+  font-weight: 700;
+}
+
+.dev-stack-list {
+  display: grid;
+  gap: 14px;
+  /* 列表容器复位。这个类落在 <ul> 上（消息中心、我的团队），也落在 <div> 上（我的接单），
+     <ul> 默认带 margin、40px 左内边距和圆点，会把卡片式列表整体右移 40px，
+     与上方的卡片头、工具栏对不齐——同一形态的列表在有的页齐、有的页偏。
+     我的团队、团队详情原来各自补过一份相同的 margin/padding/list-style，已并入这里。 */
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dev-stack-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: var(--dev-radius-inner);
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid var(--dev-line);
+}
+
+.dev-stack-item__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dev-ink);
+}
+
+/* 行内操作按钮的规格（32px 档）定义在上面 .dev-list-actions 那一处，
+   卡片式列表（.dev-stack-item）与需求卡片（.dev-list-actions）共用同一份，不在这里重复。 */
+
+.dev-stack-item__meta {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--dev-muted);
+}
+
+.dev-stack-item__side {
+  min-width: 108px;
+  text-align: right;
+}
+
+.dev-stack-item__label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dev-blue);
+}

@@ -1,0 +1,164 @@
+/* === 开发者页统一工具栏 ===
+   搜索结果/筛选/刷新这三种控件，全开发者端只认这一套类名：
+   .dev-toolbar 是容器（左侧搜索与筛选，右侧操作靠 margin-left: auto 推到行尾），
+   .dev-toolbar__search 是关键字输入、.dev-toolbar__field 是下拉筛选、
+   .dev-toolbar__actions 放刷新/重置/查询按钮。
+   控件本身走下面那段「同尺寸」改写：输入框、选择器、按钮一律 --dev-control-height 高、
+   --dev-radius-control 圆角、--dev-line 描边，各页不用再自己写 px。 */
+.dev-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.dev-toolbar__search {
+  flex: 1 1 240px;
+  min-width: 0;
+  max-width: 340px;
+}
+
+/* 下拉筛选的宽度必须写死成 flex 基宽，不能只写 min-width：
+   TSelect 自带 width: 100%，而 .dev-toolbar__field 是直接挂在 TSelect 根节点上的，
+   `flex: 0 0 auto` 会让 flex-basis 回落到 width，于是每个筛选各占一整行、
+   工具栏被撑成竖排。用 flex 简写给出确定基宽即可，宽度属性同时失效，两者不再打架。 */
+.dev-toolbar__field {
+  flex: 0 0 150px;
+  min-width: 0;
+}
+
+.dev-toolbar__field--small {
+  flex: 0 0 112px;
+}
+
+/* 「筛选」是胶囊组时（总览页两张列表、钱包记录页的记录切换）：组本身不伸缩，
+   窄到摆不下时整组换行，而不是把胶囊挤成两行。 */
+.dev-toolbar .dev-chip-group {
+  flex: 0 0 auto;
+}
+
+.dev-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* 计数、口径说明之类的弱文字，跟在工具栏或标题旁边 */
+.dev-toolbar__hint {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dev-muted);
+}
+
+/* 窄栏里的工具栏：工单中心是「左列表 + 右详情」的主从布局，左栏只有 300 多像素，
+   一行摆不下「筛选 150 + 筛选 150 + 搜索 340 + 重置」（原来靠换行兜底，收成三行、
+   高 128px，和其它页 36px 的单行工具栏完全两个样子）。加这个修饰类后固定两行：
+   第一行「筛选 + 右侧重置」，第二行搜索占满。段序与宽栏一致（还是筛选 → 搜索 → 动作），
+   用的类名也还是 .dev-toolbar__field / __search / __actions，没有第二套控件规格。 */
+.dev-toolbar--stacked .dev-toolbar__field {
+  flex: 1 1 100px;
+}
+
+/* 搜索基宽 150px（不是 100%）：与右侧「重置」共用第二行并吃掉剩余宽度，
+   100% 会独占一行、把重置挤到第三行。 */
+.dev-toolbar--stacked .dev-toolbar__search {
+  flex: 1 1 150px;
+  max-width: none;
+}
+
+/* 条数由表尾分页器报一次，窄栏里再放「筛选出 N 条」会把工具栏挤成三行 */
+.dev-toolbar--stacked .dev-toolbar__hint {
+  display: none;
+}
+
+.dev-filter-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dev-blue);
+}
+
+/* === 胶囊标签 / 胶囊筛选按钮 ===
+   .dev-chip 原来定义在 dev-resource.css（资源模块）里，但总览页、需求大厅、工单中心都在用，
+   属于「共享组件住在某个模块文件里」。它与下面三个变体一起收在这里，只留一处。
+   变体：--button（可点选，配 .is-active）、--warm（金）、--cyan（青）。
+
+   尺寸口径：所有胶囊一律 28px 高、12px 字号、999px 圆角。
+   原来基础档写的是 padding: 8px 12px（高度跟着父级行高走），于是同一枚胶囊在总览页 27px、
+   在消息中心（行高更大的卡片头里）35px，横向并排时会一高一低。改成定高后三种场合一致。
+
+   字重口径：一律 700。基础档原来写 600，于是同一枚状态胶囊「消息中心用 .dev-chip 是 600、
+   我的接单用 el-tag 是 700、总览页的筛选胶囊 .dev-chip--button 又是 700」，
+   同尺寸同配色的胶囊换个页面字就细一档。这里跟着多数档位统一到 700。 */
+.dev-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(31, 74, 209, 0.16);
+  background: rgba(31, 74, 209, 0.08);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--dev-blue);
+}
+
+/* 一组胶囊筛选（列表的状态切换）：总览页两处列表、钱包的记录切换都用它，
+   不要再各写一套 .dev-xxx__tab / el-tabs。 */
+.dev-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 筛选胶囊的三种态与门户侧 .wb-chip--button 逐一对应（未选中=主色浅底主色字、
+   悬停=描边加深、选中=实心主色白字）。
+   原来这里是「未选中中性灰、选中主色浅底」：同一组筛选胶囊在开发者模式是灰底、切到用户模式
+   变成浅蓝底、选中项还会从浅蓝块变成实心蓝块，等于同一控件换模式就换一套配色。
+   中性灰这一档仍然保留，但只给 .dev-chip--muted（终止态、未关联这类没有筛选语义的状态标签）。 */
+.dev-chip--button {
+  appearance: none;
+  min-height: 28px;
+  padding: 0 12px;
+  border-color: rgba(31, 74, 209, 0.16);
+  background: rgba(31, 74, 209, 0.08);
+  color: var(--dev-blue);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.dev-chip--button:hover {
+  border-color: rgba(31, 74, 209, 0.32);
+}
+
+.dev-chip--button.is-active {
+  background: var(--dev-blue);
+  border-color: var(--dev-blue);
+  color: #fff;
+}
+
+.dev-chip--button:focus-visible {
+  outline: 2px solid var(--dev-blue);
+  outline-offset: 2px;
+}
+
+/* 胶囊里的计数（筛选胶囊上那一枚数字）：与门户侧 .wb-chip__count 同一档——
+   等宽数字、略淡，跟着胶囊自身的前景色走，选中态变白字时也自动跟着变。
+   门户侧的 .wb-chip 自带 gap，开发者侧的 .dev-chip 没有（它还要兜住状态标签），
+   所以这里补一个左间距，不要反过来给 .dev-chip 加 gap——那会把「图标 + 文字」的胶囊也撑开。 */
+.dev-chip__count {
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  opacity: 0.8;
+}
