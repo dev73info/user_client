@@ -406,13 +406,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/DevMyRequirementsView.vue",
-      "detail": "787 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "api-deps",
-      "file": "src/views/DevMyRequirementsView.vue",
-      "detail": "依赖 6 个 api 模块（afterSales、devRequirements、mcResources、devWallet、contracts、invoices）> 3",
+      "detail": "473 行 > 300（视图）",
       "since": "2026-10-22"
     },
     {
