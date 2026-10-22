@@ -7,7 +7,6 @@ import {
   type McResourceVersionPayload,
 } from '@/api/mcResources'
 
-
 import {
   TButton,
   TDialog,
@@ -174,25 +173,47 @@ async function submit() {
 </script>
 
 <template>
-  <TDialog v-model:open="visible" title="提交交付版本" width="520px" :mask-closable="false"
-    :escape-closable="false">
+  <TDialog
+    v-model:open="visible"
+    title="提交交付版本"
+    width="520px"
+    :mask-closable="false"
+    :escape-closable="false"
+  >
     <div class="delivery-dialog-body">
       <p class="delivery-dialog__tip">交付物会保存为绑定资源项目的新版本，验收前至少提交一版。</p>
       <TForm label-position="top" class="delivery-dialog-form">
         <TFormItem label="版本号" required>
-          <TInput v-model="version"  :maxlength="80" placeholder="例如：1.0.0、首版功能交付" />
+          <TInput v-model="version" :maxlength="80" placeholder="例如：1.0.0、首版功能交付" />
         </TFormItem>
         <TFormItem label="交付说明">
-          <TInput show-count v-model="note" type="textarea" :rows="2"  :maxlength="1000"
-            placeholder="已完成的功能、使用方式和已知限制（会作为版本备注）" />
+          <TInput
+            show-count
+            v-model="note"
+            type="textarea"
+            :rows="2"
+            :maxlength="1000"
+            placeholder="已完成的功能、使用方式和已知限制（会作为版本备注）"
+          />
         </TFormItem>
         <TFormItem label="交付文件" required>
           <div class="delivery-artifact-field">
-            <input ref="artifactInput" class="delivery-artifact-field__native" type="file"
-              @change="handleArtifactChange" />
+            <input
+              ref="artifactInput"
+              class="delivery-artifact-field__native"
+              type="file"
+              @change="handleArtifactChange"
+            />
 
-            <div v-if="!artifact" class="delivery-artifact-field__dropzone" role="button" tabindex="0"
-              @click="chooseArtifact" @keydown.enter.prevent="chooseArtifact" @keydown.space.prevent="chooseArtifact">
+            <div
+              v-if="!artifact"
+              class="delivery-artifact-field__dropzone"
+              role="button"
+              tabindex="0"
+              @click="chooseArtifact"
+              @keydown.enter.prevent="chooseArtifact"
+              @keydown.space.prevent="chooseArtifact"
+            >
               <span class="delivery-artifact-field__icon" aria-hidden="true">
                 <TIcon>
                   <UploadFilled />
@@ -205,7 +226,10 @@ async function submit() {
             </div>
 
             <div v-else class="delivery-artifact-field__file">
-              <span class="delivery-artifact-field__icon delivery-artifact-field__icon--file" aria-hidden="true">
+              <span
+                class="delivery-artifact-field__icon delivery-artifact-field__icon--file"
+                aria-hidden="true"
+              >
                 <TIcon>
                   <Document />
                 </TIcon>
@@ -214,7 +238,12 @@ async function submit() {
                 <strong :title="artifact.name">{{ artifact.name }}</strong>
                 <small>{{ formatBytes(artifact.size) }} · 提交后可在资源项目版本页管理</small>
               </span>
-              <button type="button" class="delivery-artifact-field__remove" title="移除文件" @click="clearArtifact">
+              <button
+                type="button"
+                class="delivery-artifact-field__remove"
+                title="移除文件"
+                @click="clearArtifact"
+              >
                 <TIcon>
                   <Close />
                 </TIcon>
@@ -227,15 +256,21 @@ async function submit() {
       <div class="delivery-existing">
         <span class="delivery-existing__label">已有交付版本</span>
         <span class="delivery-existing__value">{{ existingVersionsLabel() }}</span>
-        <button v-if="boundResourceId != null" type="button" class="delivery-existing__link"
-          @click="openResourceVersionPage">
+        <button
+          v-if="boundResourceId != null"
+          type="button"
+          class="delivery-existing__link"
+          @click="openResourceVersionPage"
+        >
           去资源项目版本页
         </button>
       </div>
     </div>
     <template #footer>
       <TButton :disabled="submitting" @click="requestClose">取消</TButton>
-      <TButton variant="solid" tone="accent" :loading="submitting" @click="submit">提交交付版本</TButton>
+      <TButton variant="solid" tone="accent" :loading="submitting" @click="submit"
+        >提交交付版本</TButton
+      >
     </template>
   </TDialog>
 </template>
@@ -285,7 +320,10 @@ async function submit() {
   min-width: 0;
   padding: 11px 12px;
   border-radius: 12px;
-  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .delivery-artifact-field__dropzone {
@@ -363,7 +401,9 @@ async function submit() {
   color: #94a3b8;
   cursor: pointer;
   font-size: 14px;
-  transition: background-color 160ms ease, color 160ms ease;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
 }
 
 .delivery-artifact-field__remove:hover {
