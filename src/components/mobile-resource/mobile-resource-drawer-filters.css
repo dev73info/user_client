@@ -1,0 +1,119 @@
+/* 筛选抽屉里的两级节点选择、标签胶囊与底部按钮。随模板节点从 `MobileResourceList.vue` 搬来。 */
+
+.mobile-level-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mobile-level-item {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.mobile-level-item:has(.mobile-level-options) {
+  z-index: 1;
+}
+
+.mobile-level-trigger {
+  border: 1px solid #bfdbfe;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 10px;
+  border-radius: 12px;
+  color: #1d4ed8;
+  font: inherit;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.mobile-level-trigger strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-level-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px solid #e8eef5;
+  border-radius: 12px;
+  background: #fff;
+  z-index: 2;
+  box-shadow: 0 8px 24px rgba(76, 103, 172, 0.12);
+}
+
+.mobile-level-option {
+  border: 1px solid #e8eef5;
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px 12px;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mobile-level-option--active {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.mobile-chip {
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mobile-chip--active {
+  border-color: transparent;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #4f8cff);
+}
+
+.mobile-menu-foot {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.mobile-foot-btn {
+  border-radius: 12px;
+  padding: 12px 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mobile-foot-btn--ghost {
+  border: 1px solid #dbeafe;
+  background: #fff;
+  color: #334155;
+}
+
+.mobile-foot-btn--primary {
+  border: 0;
+  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  color: #fff;
+}

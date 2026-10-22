@@ -1,0 +1,178 @@
+/* 移动端资源卡片的样式：封面缩略、标题与价格 / 转载徽标、简介、统计与出处两行。
+   随模板节点从 `MobileResourceList.vue` 搬来，类名与声明未改。 */
+
+.mobile-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(203, 213, 225, 0.7);
+  background: #fff;
+  cursor: pointer;
+  transition:
+    box-shadow 200ms ease,
+    border-color 200ms ease,
+    transform 200ms ease;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.mobile-card:hover {
+  border-color: rgba(147, 197, 253, 0.6);
+  box-shadow: 0 4px 20px rgba(76, 103, 172, 0.1);
+}
+
+.mobile-card:active {
+  transform: scale(0.985);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition-duration: 80ms;
+}
+
+.card-thumb {
+  width: 74px;
+  height: 74px;
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #e2e8f0;
+  border: 1px solid rgba(203, 213, 225, 0.5);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-thumb-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-size: 26px;
+  background: linear-gradient(135deg, #eef2ff, #dbeafe);
+}
+
+.card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.3;
+  color: #0f172a;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-price-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(22, 163, 74, 0.12);
+  color: #166534;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+
+.card-price-badge.is-paid {
+  background: rgba(234, 88, 12, 0.14);
+  color: #9a3412;
+}
+
+.card-repost-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+
+.card-repost-badge.is-repost {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.card-desc {
+  margin: 6px 0;
+  font-size: 15px;
+  line-height: 1.4;
+  color: #475569;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 卡片底部两行次要信息：统计（点赞 / 标签数）在上，出处（作者 / 更新时间）在下。
+   两行同字号、同一套灰阶，读起来是一条信息带，而不是两段孤立的文字。
+   点赞只把心形染成点赞红，计数与「标签 N」同色——这里是从属于卡片的只读统计，
+   不是「已点赞」状态，整段染红会读成告警，也和同行的另一个统计项不成对。 */
+.card-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.card-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 两个统计项之间补一个小圆点：原本只靠间距分隔，两项看着像各说各的 */
+.card-stat + .card-stat::before {
+  content: '·';
+  margin-right: 8px;
+  color: #cbd5e1;
+}
+
+.card-stat__heart {
+  color: #e11d48;
+  line-height: 1;
+}
+
+.card-stat__num {
+  color: #475569;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.card-meta__dot {
+  color: #cbd5e1;
+}
+
+/* 作者比更新日期重要一档：同字号下用色深区分，不靠字重加粗整行 */
+.card-meta__author {
+  color: #64748b;
+}

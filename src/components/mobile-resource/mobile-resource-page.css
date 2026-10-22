@@ -1,0 +1,86 @@
+/* 移动端资源列表**这一层自己**的样式：页面外壳、遮罩与进入动画、卡片列表网格、加载更多。
+   顶栏 / 筛选抽屉 / 卡片 / 空态四块的样式随模板节点搬到各自文件。 */
+
+.mobile-resource-page {
+  width: 100%;
+  margin: 0 auto;
+  background: #f8fafc;
+  padding: 0 0 0px;
+}
+
+.mobile-resource-menu-backdrop {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mobile-resource-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(15, 23, 42, 0.36);
+  backdrop-filter: blur(2px);
+  animation: mobile-resource-backdrop-in 220ms ease;
+}
+
+@keyframes mobile-resource-backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.mobile-filter-bar {
+  position: sticky;
+  top: 68px;
+  z-index: 11;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.mobile-filter-bar button {
+  flex: 1 1 0;
+  min-width: 0;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: #eef2ff;
+  color: #1d4ed8;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mobile-filter-bar button.active {
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #4f8cff);
+}
+
+.mobile-card-list {
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.load-more {
+  border: 0;
+  border-radius: 10px;
+  padding: 11px 0;
+  background: #2563eb;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-resource-menu-backdrop {
+    animation: none;
+    transition: none;
+  }
+}

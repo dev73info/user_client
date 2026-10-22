@@ -39,12 +39,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/components/MobileResourceList.vue",
-      "detail": "1432 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/components/PortalTopNav.vue",
       "detail": "694 行 > 400（模块）",
       "since": "2026-10-22"
@@ -615,8 +609,44 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/MobileResourceList.vue",
-      "detail": "114 处裸色值",
+      "file": "src/components/mobile-resource/mobile-resource-card.css",
+      "detail": "27 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/mobile-resource/mobile-resource-drawer-filters.css",
+      "detail": "23 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/mobile-resource/mobile-resource-drawer.css",
+      "detail": "22 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/mobile-resource/mobile-resource-empty.css",
+      "detail": "10 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/mobile-resource/mobile-resource-header.css",
+      "detail": "19 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/mobile-resource/mobile-resource-page.css",
+      "detail": "10 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/mobile-resource/mobile-resource-sort-dropdown.css",
+      "detail": "3 处裸色值",
       "since": "2026-10-22"
     },
     {
