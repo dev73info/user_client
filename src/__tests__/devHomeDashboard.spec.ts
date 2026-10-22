@@ -5,14 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, type Ref } from 'vue'
 
 import type { DevDashboardSnapshot } from '@/api/devDashboard'
-import { AUTO_REFRESH_INTERVAL_MS, useDevHomeDashboard } from '@/composables/useDevHomeDashboard'
+import { useDevHomeDashboard } from '@/composables/useDevHomeDashboard'
 import { useAuthStore } from '@/stores/auth'
 
 /**
  * 总览页数据层的单测（R047 把取数编排从视图抽出来时补的）。
  *
  * 页面级用例在 `devHomeView.spec.ts`（12 条断言一行未改），但那 12 条走不到全屏看板那条路：
- * 快照经 WebSocket 进来后的回写、`generated_at` 防旧帧覆盖、5 分钟轮询的可见性与重入锁、
+ * 快照经 WebSocket 进来后的回写、`generated_at` 防旧帧覆盖、
  * 卸载后不再回写，都只在数据层里看得见。这里用小宿主组件拿住 composable 的返回值，钉住这四件。
  */
 
@@ -205,27 +205,6 @@ describe('总览页数据层', () => {
     // 同一时间戳（心跳后的重复推送）不算旧帧，照样落库
     socket.onSnapshot?.(snapshot('2026-10-22 21:00:00'))
     expect(appliedCount).toBe(2)
-  })
-
-  it('5 分钟轮询：页签在后台不刷、前一次没回来就跳过', async () => {
-    vi.useFakeTimers()
-    api.startAutoRefresh()
-
-    let visibility: DocumentVisibilityState = 'hidden'
-    vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility)
-
-    await vi.advanceTimersByTimeAsync(AUTO_REFRESH_INTERVAL_MS)
-    expect(mocks.wallet).not.toHaveBeenCalled()
-
-    visibility = 'visible'
-    await vi.advanceTimersByTimeAsync(AUTO_REFRESH_INTERVAL_MS)
-    expect(mocks.wallet).toHaveBeenCalledTimes(1)
-
-    // 重入锁：上一拍还没回来，下一拍照样不叠一次请求
-    mocks.wallet.mockImplementation(() => new Promise(() => {}))
-    await vi.advanceTimersByTimeAsync(AUTO_REFRESH_INTERVAL_MS)
-    await vi.advanceTimersByTimeAsync(AUTO_REFRESH_INTERVAL_MS)
-    expect(mocks.wallet).toHaveBeenCalledTimes(2)
   })
 
   it('卸载后不再写状态：慢响应回来与后来的快照都丢掉', async () => {

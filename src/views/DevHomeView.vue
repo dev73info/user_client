@@ -89,7 +89,6 @@ const {
   lastUpdatedText,
   loadPage,
   reloadWallet,
-  startAutoRefresh,
   enterLiveBoard,
   disconnectLiveBoard,
 } = useDevHomeDashboard({
@@ -362,10 +361,9 @@ const chartCaption = computed(() => {
   return mockEnabled ? '演示数据：近 7 天完整序列' : '按最近到账记录绘制（最多取最近 100 笔）'
 })
 
-/** 进页一次取数，之后 5 分钟对一次（轮询与重入锁在数据层，页签在后台时不打接口）。 */
+/** 进页一次取数（本页没有后台轮询：原实现就只有这一处，别在这里加定时器）。 */
 onMounted(() => {
   void loadPage()
-  startAutoRefresh()
 })
 
 /** 卸载标记在这里落下：数据层只读它，慢响应回来时不再往回写。 */

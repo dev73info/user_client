@@ -19,7 +19,6 @@ import { isActiveRequirement } from '@/shared/requirementStatus'
 import { useAuthStore } from '@/stores/auth'
 
 /** 后台对齐的节拍：总览上的数字不常变，5 分钟一次就够。 */
-export const AUTO_REFRESH_INTERVAL_MS = 300_000
 
 export type UseDevHomeDashboardOptions = {
   /** 卸载标记：**只有视图那一份**，这一层只读不持，卸载后不再写响应式状态。 */
@@ -157,42 +156,6 @@ export function useDevHomeDashboard(options: UseDevHomeDashboardOptions) {
     }
   }
 
-  let autoRefreshTimer: ReturnType<typeof setInterval> | null = null
-  let autoRefreshInFlight = false
-
-  /** 轮询每一拍：页签在后台时不打接口，上一拍还没回来就跳过（重入锁）。 */
-  function autoRefresh() {
-    if (autoRefreshInFlight || !options.isMounted()) {
-      return
-    }
-    if (document.visibilityState !== 'visible') {
-      return
-    }
-
-    autoRefreshInFlight = true
-    void loadPage(true).finally(() => {
-      autoRefreshInFlight = false
-    })
-  }
-
-  function startAutoRefresh() {
-    if (autoRefreshTimer != null) {
-      return
-    }
-    autoRefreshTimer = setInterval(autoRefresh, AUTO_REFRESH_INTERVAL_MS)
-  }
-
-  function stopAutoRefresh() {
-    if (autoRefreshTimer == null) {
-      return
-    }
-    clearInterval(autoRefreshTimer)
-    autoRefreshTimer = null
-  }
-
-  // 视图卸载时正点：定时器跟这个作用域一起收，不靠视图记得清
-  onScopeDispose(stopAutoRefresh)
-
   /** 实时看板：只在全屏时连 WebSocket，退出全屏 / 离开本页即断开（组件卸载时自己收尾）。 */
   const liveSocket = useDevDashboardSocket({
     url: () => (auth.token ? devDashboardWsUrl(auth.token) : null),
@@ -292,7 +255,6 @@ export function useDevHomeDashboard(options: UseDevHomeDashboardOptions) {
     lastUpdatedText,
     loadPage,
     reloadWallet,
-    startAutoRefresh,
     enterLiveBoard,
     disconnectLiveBoard,
   }

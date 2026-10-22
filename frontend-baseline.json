@@ -382,13 +382,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/DevHomeView.vue",
-      "detail": "1092 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "api-deps",
-      "file": "src/views/DevHomeView.vue",
-      "detail": "依赖 5 个 api 模块（devDashboard、devOrderDeposit、devWallet、mcResources、devRequirements）> 3",
+      "detail": "955 行 > 300（视图）",
       "since": "2026-10-22"
     },
     {
