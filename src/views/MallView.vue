@@ -16,7 +16,6 @@ import {
 import { HttpError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 
-
 import { TButton, TEmpty, TMessage, TTable, TTableColumn, TTag } from 'ui_73info'
 const router = useRouter()
 const auth = useAuthStore()
@@ -36,7 +35,8 @@ function permissionPerkCode(product: PointsProduct) {
   if (product.name.includes('动态背景')) return 'home_background_dynamic'
   if (product.name.includes('静态背景')) return 'home_background_static'
   if (product.name.includes('用户名渐变')) return 'username_gradient'
-  if (product.name.includes('特定颜色') || product.name.includes('用户名颜色')) return 'username_color'
+  if (product.name.includes('特定颜色') || product.name.includes('用户名颜色'))
+    return 'username_color'
   return null
 }
 
@@ -114,7 +114,11 @@ async function redeem(product: PointsProduct) {
     await loadAll()
   } catch (err) {
     const message = err instanceof HttpError ? err.message : ''
-    TMessage.error(message === 'you already own this perk' ? '你已永久拥有该权益，无需重复兑换' : message || '兑换失败')
+    TMessage.error(
+      message === 'you already own this perk'
+        ? '你已永久拥有该权益，无需重复兑换'
+        : message || '兑换失败',
+    )
   } finally {
     redeemingId.value = null
   }
@@ -158,11 +162,29 @@ onMounted(async () => {
               <span class="mall-card__cost">{{ product.points_cost }} 积分</span>
             </div>
             <h4>{{ product.name }}</h4>
-            <p class="mall-card__duration">有效期：{{ durationLabel(product.duration_days) }} · 库存：{{ product.stock }}</p>
-            <p v-if="consumableHint(product)" class="mall-card__hint">{{ consumableHint(product) }}</p>
-            <TButton variant="solid" tone="accent" :disabled="isOwned(product) || balance < product.points_cost || product.stock <= 0"
-              :loading="redeemingId === product.id" style="width: 100%" @click="redeem(product)">
-              {{ isOwned(product) ? '已拥有' : product.stock <= 0 ? '已售罄' : balance < product.points_cost ? '积分不足' : '立即兑换' }}
+            <p class="mall-card__duration">
+              有效期：{{ durationLabel(product.duration_days) }} · 库存：{{ product.stock }}
+            </p>
+            <p v-if="consumableHint(product)" class="mall-card__hint">
+              {{ consumableHint(product) }}
+            </p>
+            <TButton
+              variant="solid"
+              tone="accent"
+              :disabled="isOwned(product) || balance < product.points_cost || product.stock <= 0"
+              :loading="redeemingId === product.id"
+              style="width: 100%"
+              @click="redeem(product)"
+            >
+              {{
+                isOwned(product)
+                  ? '已拥有'
+                  : product.stock <= 0
+                    ? '已售罄'
+                    : balance < product.points_cost
+                      ? '积分不足'
+                      : '立即兑换'
+              }}
             </TButton>
           </div>
         </div>
@@ -183,7 +205,9 @@ onMounted(async () => {
         <TTableColumn prop="created_at" label="获得时间" width="180" />
         <TTableColumn label="操作" width="120" align="center">
           <template #default>
-            <TButton variant="outline" tone="accent" size="sm" @click="goUsePromoCards">去使用</TButton>
+            <TButton variant="outline" tone="accent" size="sm" @click="goUsePromoCards"
+              >去使用</TButton
+            >
           </template>
         </TTableColumn>
       </TTable>
@@ -197,7 +221,9 @@ onMounted(async () => {
         <TTableColumn prop="points_cost" label="积分" width="90" align="center" />
         <TTableColumn label="状态" width="100" align="center">
           <template #default="{ row }">
-            <TTag :tone="orderStatusTagType(row.status)" size="sm">{{ orderStatusLabel(row.status) }}</TTag>
+            <TTag :tone="orderStatusTagType(row.status)" size="sm">{{
+              orderStatusLabel(row.status)
+            }}</TTag>
           </template>
         </TTableColumn>
         <TTableColumn prop="handle_note" label="备注" min-width="140" show-overflow-tooltip />
@@ -276,7 +302,10 @@ onMounted(async () => {
   overflow: hidden;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 10px 24px rgba(76, 103, 172, 0.06);
-  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 .mall-card:hover {
   border-color: rgba(147, 197, 253, 0.96);
