@@ -417,24 +417,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/DevRequirementDetailView.vue",
-      "detail": "1280 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "api-deps",
-      "file": "src/views/DevRequirementDetailView.vue",
-      "detail": "依赖 6 个 api 模块（auth、resourceTags、devCredit、devOrderDeposit、mcResources、devRequirements）> 3",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
-      "file": "src/views/DevResourceInitView.vue",
-      "detail": "1394 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/DevResourceListView.vue",
       "detail": "1017 行 > 300（视图）",
       "since": "2026-10-22"
@@ -466,13 +448,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/HomeView.vue",
-      "detail": "1753 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "api-deps",
-      "file": "src/views/HomeView.vue",
-      "detail": "依赖 11 个 api 模块（auth、coupons、http、contracts、realname、adapay、requirements、settings、community、resources、points）> 3",
+      "detail": "1049 行 > 300（视图）",
       "since": "2026-10-22"
     },
     {
@@ -1145,12 +1121,6 @@
       "rule": "raw-color",
       "file": "src/views/DevRequirementDetailView.vue",
       "detail": "6 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/views/DevResourceInitView.vue",
-      "detail": "14 处裸色值",
       "since": "2026-10-22"
     },
     {
