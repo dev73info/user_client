@@ -29,9 +29,7 @@ import { parseMockToken } from '../token'
 
 /** 未接单、已过审核（待付定金）的需求才会出现在开发者需求大厅。 */
 function hallRequirements(): RequirementItem[] {
-  return requirements.filter(
-    (item) => !item.developer && item.status === 'pending_deposit',
-  )
+  return requirements.filter((item) => !item.developer && item.status === 'pending_deposit')
 }
 
 function clientRequirements(): RequirementItem[] {
@@ -264,7 +262,8 @@ const routes: MockRoute[] = [
 
       requirement.title = body.title?.trim() || requirement.title
       requirement.description = body.description?.trim() || requirement.description
-      requirement.acceptance_criteria = body.acceptance_criteria?.trim() || requirement.acceptance_criteria
+      requirement.acceptance_criteria =
+        body.acceptance_criteria?.trim() || requirement.acceptance_criteria
       requirement.budget = Number(body.budget) || requirement.budget
       requirement.status = 'pending_review'
       requirement.review_note = null
@@ -338,11 +337,14 @@ const routes: MockRoute[] = [
           mcResourceVersions.splice(index, 1)
         }
         if (requirement.bound_resource_id != null) {
-          requirement.bound_resource_version_count = versionsOf(requirement.bound_resource_id).length
+          requirement.bound_resource_version_count = versionsOf(
+            requirement.bound_resource_id,
+          ).length
         }
       } else {
         requirement.resource_version_delete_request_status = 'rejected'
-        requirement.resource_version_delete_review_note = body.note?.trim() || '演示数据：暂不删除该版本'
+        requirement.resource_version_delete_review_note =
+          body.note?.trim() || '演示数据：暂不删除该版本'
       }
 
       return jsonResponse(requirement)
