@@ -2,23 +2,20 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRoute, useRouter } from 'vue-router'
-import AfterSalesModal from '@/components/AfterSalesModal.vue'
 import DeliverySubmitDialog from '@/components/DeliverySubmitDialog.vue'
 import PaymentModeChip from '@/components/PaymentModeChip.vue'
+import DevRequirementActions from '@/components/dev/DevRequirementActions.vue'
+import DevRequirementRowDialogs from '@/components/dev/DevRequirementRowDialogs.vue'
 import RequirementBreachDialog from '@/components/dev/RequirementBreachDialog.vue'
-import RequirementCommentDialog from '@/components/RequirementCommentDialog.vue'
-import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
+import RequirementReceiptDialog from '@/components/dev/RequirementReceiptDialog.vue'
 import RequirementProgressGuide from '@/components/RequirementProgressGuide.vue'
 import { useBreachCase } from '@/composables/useBreachCase'
+import { useDevRequirementRowDialogs } from '@/composables/useDevRequirementRowDialogs'
+import { useInvoiceUpload } from '@/composables/useInvoiceUpload'
 import { afterSalesBadgeText, isAwaitingViewerAction } from '@/shared/afterSalesStatus'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { developmentCycleLabel } from '@/shared/requirementArchive'
 import { listMyAfterSalesCases } from '@/api/afterSales'
-import {
-  listRequirementConversations,
-  type RequirementConversation,
-  type RequirementConversationDetail,
-} from '@/api/conversations'
 import {
   listMyRequirements,
   type RequirementItem,
@@ -35,6 +32,7 @@ import {
   buildDevOrderRows,
   deliveryVersionLine,
   latestReceiptAt,
+  receiptMoney,
   receiptTotal,
   timeValue,
   type DevOrderRow,
@@ -46,12 +44,7 @@ import {
   type ContractSigningStatus,
 } from '@/api/contracts'
 import { CONTRACT_STATUS, contractStatusLabel } from '@/shared/contracts'
-import {
-  listMyInvoices,
-  uploadInvoiceDocument,
-  type InvoiceRecord,
-} from '@/api/invoices'
-import { canUploadInvoiceDocument } from '@/shared/invoiceAction'
+import { listMyInvoices, type InvoiceRecord } from '@/api/invoices'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
@@ -59,7 +52,6 @@ import { sanitizeRequirementRichText } from '@/utils/requirementRichText'
 import {
   TButton,
   TCard,
-  TDialog,
   TIcon,
   TInput,
   TLoading,
@@ -67,13 +59,10 @@ import {
   TOption,
   TPagination,
   TSelect,
-  TTag,
   ArrowDown,
   ArrowUp,
-  ChatDotRound,
   Refresh,
   Search,
-  UploadFilled,
   View,
 } from 'ui_73info'
 
@@ -92,23 +81,43 @@ const versionsByResource = ref<Map<number, McResourceVersionPayload[]>>(new Map(
 const income = ref<DevWalletIncomeItem[]>([])
 const signingStatusMap = ref<Record<string, ContractSigningStatus | null>>({})
 const contractCreatingId = ref('')
-const conversationVisible = ref(false)
-const conversationRequirement = ref<RequirementItem | null>(null)
-const conversationLoading = ref(false)
-const commentVisible = ref(false)
-const commentRequirement = ref<RequirementItem | null>(null)
-const requirementConversationMap = ref<Record<string, RequirementConversation>>({})
-/**
- * 我作为乙方的开发者收入票：按需求编号索引。
- *
- * 列表加载时一并 `listMyInvoices`，只留下 `invoiceRole === 'developer'` 且乙方是我的票。
- * 卡片 footer 的「上传发票」据此显示——与财务中心「我的发票」同一套判定
- * （`canUploadInvoiceDocument`）。
- */
-const developerInvoiceByRequirement = ref<Record<string, InvoiceRecord>>({})
-const uploadingInvoiceId = ref<number | null>(null)
-const hiddenInvoiceFileInput = ref<HTMLInputElement | null>(null)
-const pickingInvoiceId = ref<number | null>(null)
+
+/* 卡上的「上传发票」：票从哪来（列表加载时一并取回）、哪张能传、选完即传都在这个 composable 里。
+   登录身份注入进去，composable 不再去 store 里取第二遍。 */
+const {
+  hiddenInvoiceFileInput,
+  uploadingInvoiceId,
+  applyInvoices,
+  uploadableInvoicesFor,
+  pickInvoiceFile,
+  selectInvoiceFile,
+} = useInvoiceUpload({
+  token: () => auth.token,
+  username: () => auth.username,
+})
+
+/* 行上那三个按行打开的弹窗（解除合作售后 / 会话 / 评价）的编排收在 composable：
+   页面只判「能不能出这个入口」，打开之后的状态、会话摘要与请求都在里面，
+   模板上只剩 `DevRequirementRowDialogs` 一个挂点。 */
+const {
+  afterSalesVisible,
+  afterSalesTarget,
+  openAfterSales,
+  closeAfterSales,
+  conversationVisible,
+  conversationTarget,
+  conversationLoading,
+  openConversation,
+  closeConversation,
+  applyConversationDetail,
+  conversationStatusLabel,
+  loadConversations,
+  commentVisible,
+  commentTarget,
+  openComment,
+  closeComment,
+} = useDevRequirementRowDialogs({ token: () => auth.token })
+
 /* 需求说明（需求描述 + 验收标准）的折叠状态，三份都按 requirement_id 归键：
    `briefEls` 存这一段 DOM 用来量高度，`briefOverflowMap` 记该不该出「展开」，
    `expandedBriefs` 记用户展开过没有。 */
@@ -133,7 +142,7 @@ const mergedRows = computed<MyOrderRow[]>(() =>
   buildDevOrderRows(rows.value, resources.value, versionsByResource.value, income.value).map(
     (row) => ({
       ...row,
-      item: row.requirementId ? requirementById.value.get(row.requirementId) ?? null : null,
+      item: row.requirementId ? (requirementById.value.get(row.requirementId) ?? null) : null,
     }),
   ),
 )
@@ -148,9 +157,6 @@ const activeReceiptRow = computed(
   () => mergedRows.value.find((row) => row.key === activeReceiptKey.value) ?? null,
 )
 
-/** 解除合作：结单后的唯一业务入口，案件列表与表态都在 `AfterSalesModal` 里。 */
-const afterSalesVisible = ref(false)
-const afterSalesTarget = ref<RequirementItem | null>(null)
 const deliveryDialogVisible = ref(false)
 const deliveryRequirement = ref<RequirementItem | null>(null)
 
@@ -209,9 +215,7 @@ const filters = reactive({
   status: '',
 })
 
-const hasActiveFilters = computed(
-  () => Boolean(filters.keyword.trim()) || Boolean(filters.status),
-)
+const hasActiveFilters = computed(() => Boolean(filters.keyword.trim()) || Boolean(filters.status))
 
 // 「待签合同」是 signingStatusMap 推出来的中间态，不是 RequirementItem.status 的取值，
 // 单独给它一个 key，否则筛不到。
@@ -265,7 +269,8 @@ const filteredRows = computed(() => {
 let routeSeededKeyword = ''
 
 function applyRouteRequirementFilter() {
-  const requirementId = typeof route.query.requirement_id === 'string' ? route.query.requirement_id.trim() : ''
+  const requirementId =
+    typeof route.query.requirement_id === 'string' ? route.query.requirement_id.trim() : ''
 
   if (routeSeededKeyword && filters.keyword === routeSeededKeyword) {
     filters.keyword = requirementId
@@ -287,8 +292,12 @@ const { page, pageSize, total: filteredTotal, paged: pagedRows } = useClientPagi
 watch([() => filters.keyword, () => filters.status], () => {
   page.value = 1
 })
-const boundCount = computed(() => rows.value.filter((item) => item.bound_resource_id != null).length)
-const activeCount = computed(() => rows.value.filter((item) => item.status === 'in_development').length)
+const boundCount = computed(
+  () => rows.value.filter((item) => item.bound_resource_id != null).length,
+)
+const activeCount = computed(
+  () => rows.value.filter((item) => item.status === 'in_development').length,
+)
 /** 累计到账：所有行上到账合计的和，与「收益钱包」的入账口径同源，不另算一份。 */
 const incomeTotal = computed(() =>
   mergedRows.value.reduce((total, row) => total + receiptTotal(row.receipts), 0),
@@ -361,7 +370,7 @@ async function loadMyRequirements() {
     resources.value = resourceResult.value
     income.value = walletResult.value?.recent_income ?? []
     versionsByResource.value = await loadResourceVersions(token, resourceResult.value)
-    applyDeveloperInvoices(invoiceResult.value)
+    applyInvoices(invoiceResult.value)
 
     const supplementaryError = resourceResult.error ?? walletResult.error
     if (supplementaryError) {
@@ -377,10 +386,13 @@ async function loadMyRequirements() {
     const [statusEntries] = await Promise.all([
       Promise.allSettled(
         guaranteedRows.map((item) =>
-          fetchDevContractSigningStatus(token, item.requirement_id).then((s) => ({ id: item.requirement_id, s })),
+          fetchDevContractSigningStatus(token, item.requirement_id).then((s) => ({
+            id: item.requirement_id,
+            s,
+          })),
         ),
       ),
-      loadRequirementConversations(),
+      loadConversations(),
     ])
     const map: Record<string, ContractSigningStatus | null> = {}
     for (const entry of statusEntries) {
@@ -437,11 +449,6 @@ function formatMoney(value?: number | null): string {
   return `¥${value}`
 }
 
-/** 到账金额：与收益钱包同一口径（两位小数），行上是合计、弹窗里是逐笔。 */
-function receiptMoney(value: number): string {
-  return `¥${value.toFixed(2)}`
-}
-
 /**
  * 本页的状态文案表。
  *
@@ -449,7 +456,10 @@ function receiptMoney(value: number): string {
  * 完成」的过渡态，写「已付定金」；无电签约定（`self_managed`）没有合同也没有定金，审核通过即待
  * 开发者接单，写「待开发」。拿不到支付模式时两种含义都写出来——口径见 `shared/requirementStatus.ts`。
  */
-function statusLabel(status: RequirementItem['status'], paymentMode?: RequirementPaymentMode): string {
+function statusLabel(
+  status: RequirementItem['status'],
+  paymentMode?: RequirementPaymentMode,
+): string {
   switch (status) {
     case 'pending_review':
       return '待审核'
@@ -490,7 +500,10 @@ function displayStatusLabel(item: RequirementItem): string {
 }
 
 /** 需求正文类字段的富文本：净化后渲染；字段为空时给一句占位，免得卡片上只剩一个空白块。 */
-function requirementFieldHtml(value?: string | null, fallback = '当前需求暂未补充详细描述。'): string {
+function requirementFieldHtml(
+  value?: string | null,
+  fallback = '当前需求暂未补充详细描述。',
+): string {
   return sanitizeRequirementRichText(value ?? '') || fallback
 }
 
@@ -595,130 +608,34 @@ function openReceiptDialog(row: MyOrderRow) {
   receiptDialogVisible.value = true
 }
 
-/* 弹窗里的逐笔按到账时间正序排：托管模式下定金先分账、尾款后分账，
-   顺着时间读下来才是「第 1 笔 / 第 2 笔」应有的顺序（与列表里最近一笔在最上面相反）。 */
-const activeReceipts = computed(() =>
-  [...(activeReceiptRow.value?.receipts ?? [])].sort(
-    (left, right) => timeValue(left.paidAt) - timeValue(right.paidAt),
-  ),
-)
-
-const activeReceiptTotal = computed(() => receiptTotal(activeReceipts.value))
-
-const receiptDialogTitle = computed(() =>
-  activeReceiptRow.value?.requirementId
-    ? `回款详情 · ${activeReceiptRow.value.requirementId}`
-    : '回款详情',
-)
-
 /**
- * 把「我作为乙方」的开发者收入票按需求编号收进映射，供卡片操作栏取用。
- * 同一需求若有多张（历史 / 红冲后重开），后写覆盖前写——列表接口通常只回当前有效票。
+ * 回款详情弹窗的那一组事实：抬头、委托方、状态徽标、逐笔回执与合计都在这里算好，
+ * 弹窗只照着渲染。「待签合同」那一档要读本页一次取回的 `signingStatusMap`，
+ * 在弹窗里再判一次就是第二份口径。
  */
-function applyDeveloperInvoices(invoices: InvoiceRecord[]) {
-  const map: Record<string, InvoiceRecord> = {}
-  for (const invoice of invoices) {
-    if (invoice.invoiceRole === 'developer' && invoice.developerUsername === auth.username) {
-      map[invoice.requirementId] = invoice
-    }
-  }
-  developerInvoiceByRequirement.value = map
-}
-
-/** 该需求是否该显示「上传发票」：有开发者收入蓝票，且共享层判定可传。 */
-function uploadableInvoiceFor(item: RequirementItem): InvoiceRecord | null {
-  const invoice = developerInvoiceByRequirement.value[item.requirement_id]
-  if (!invoice) {
+const receiptDialogDetail = computed(() => {
+  const row = activeReceiptRow.value
+  if (!row) {
     return null
   }
-  return canUploadInvoiceDocument(invoice, auth.username, 'developer') ? invoice : null
-}
 
-/** 模板用：0 或 1 张可上传票，避免同一行反复调 `uploadableInvoiceFor`。 */
-function uploadableInvoicesFor(item: RequirementItem): InvoiceRecord[] {
-  const invoice = uploadableInvoiceFor(item)
-  return invoice ? [invoice] : []
-}
-
-function pickInvoiceFile(invoiceId: number) {
-  pickingInvoiceId.value = invoiceId
-  hiddenInvoiceFileInput.value?.click()
-}
-
-function selectInvoiceFile(event: Event) {
-  const input = event.target as HTMLInputElement
-  const invoiceId = pickingInvoiceId.value
-  const file = input.files?.[0]
-  // 清空 value，否则同一张发票连选两次同一个文件不会触发 change
-  input.value = ''
-  if (!file || invoiceId === null) {
-    return
-  }
-  const invoice = Object.values(developerInvoiceByRequirement.value).find(
-    (item) => item.id === invoiceId,
+  /* 逐笔按到账时间正序排：托管模式下定金先分账、尾款后分账，
+     顺着时间读下来才是「第 1 笔 / 第 2 笔」应有的顺序（与列表里最近一笔在最上面相反）。 */
+  const receipts = [...row.receipts].sort(
+    (left, right) => timeValue(left.paidAt) - timeValue(right.paidAt),
   )
-  if (!invoice) {
-    return
+
+  return {
+    dialogTitle: row.requirementId ? `回款详情 · ${row.requirementId}` : '回款详情',
+    title: rowTitle(row),
+    requirementId: row.requirementId ?? '',
+    customer: rowCustomer(row) || '—',
+    statusLabel: rowStatusLabel(row),
+    statusTone: rowStatusType(row),
+    receipts,
+    totalText: receiptMoney(receiptTotal(receipts)),
   }
-  // 列表卡按钮固定文案「上传发票」：选完文件立刻上传，不再二次确认。
-  void uploadInvoiceDoc(invoice, file)
-}
-
-async function uploadInvoiceDoc(invoice: InvoiceRecord, file: File) {
-  uploadingInvoiceId.value = invoice.id
-  try {
-    const replacing = Boolean(invoice.documentUrl)
-    const updated = await uploadInvoiceDocument(auth.token, invoice.id, file)
-    developerInvoiceByRequirement.value = {
-      ...developerInvoiceByRequirement.value,
-      [updated.requirementId]: updated,
-    }
-    TMessage.success(
-      replacing ? '发票文件已替换，客户下载到的就是这一份' : '发票文件已上传，客户可下载了',
-    )
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '上传发票文件失败')
-  } finally {
-    uploadingInvoiceId.value = null
-  }
-}
-
-/** 列表卡固定「上传发票」；上传中短暂换成「上传中…」。 */
-function invoiceUploadButtonLabel(invoice: InvoiceRecord) {
-  return uploadingInvoiceId.value === invoice.id ? '上传中…' : '上传发票'
-}
-
-function onInvoiceUploadClick(invoice: InvoiceRecord) {
-  pickInvoiceFile(invoice.id)
-}
-
-function openConversation(item: RequirementItem) {
-  conversationRequirement.value = item
-  conversationVisible.value = true
-}
-
-function closeConversation() {
-  conversationVisible.value = false
-}
-
-function applyConversationDetail(payload: RequirementConversationDetail) {
-  requirementConversationMap.value = {
-    ...requirementConversationMap.value,
-    [payload.conversation.requirement_id]: payload.conversation,
-  }
-}
-
-function conversationForRequirement(item: RequirementItem) {
-  return requirementConversationMap.value[item.requirement_id] ?? null
-}
-
-function conversationStatusLabel(item: RequirementItem) {
-  const conversation = conversationForRequirement(item)
-  if (!conversation) {
-    return '打开后创建会话'
-  }
-  return conversation.last_message_at ? `最近：${conversation.last_message_at}` : '暂无消息'
-}
+})
 
 function isBriefExpanded(item: RequirementItem) {
   return Boolean(expandedBriefs.value[item.requirement_id])
@@ -758,8 +675,9 @@ function setBriefRef(el: HTMLElement | null, item: RequirementItem) {
       return
     }
 
-    const overflows = Array.from(target.querySelectorAll<HTMLElement>(BRIEF_FIELD_BODY_SELECTOR))
-      .some((body) => body.scrollHeight > body.clientHeight + 2)
+    const overflows = Array.from(
+      target.querySelectorAll<HTMLElement>(BRIEF_FIELD_BODY_SELECTOR),
+    ).some((body) => body.scrollHeight > body.clientHeight + 2)
     if (overflows && !briefOverflowMap.value[item.requirement_id]) {
       briefOverflowMap.value = {
         ...briefOverflowMap.value,
@@ -832,10 +750,7 @@ function contractStatusTone(item: RequirementItem): 'signed' | 'progress' | 'dan
 
 // 方案 B：交付物就是绑定资源项目的资源版本，直接复用资源项目版本接口。
 function canSubmitDeliveryVersion(item: RequirementItem) {
-  return (
-    item.bound_resource_id != null &&
-    ['in_development', 'pending_final'].includes(item.status)
-  )
+  return item.bound_resource_id != null && ['in_development', 'pending_final'].includes(item.status)
 }
 
 function openDeliveryDialog(item: RequirementItem) {
@@ -854,18 +769,26 @@ async function handleDeliverySubmitted() {
 }
 
 function canReportBreach(item: RequirementItem) {
-  return item.payment_mode !== 'self_managed' &&
+  return (
+    item.payment_mode !== 'self_managed' &&
     // 待分账（尾款已缴、分账排队中）仍在等待期内，此时解除合作会把排队分账置为 cancelled，
     // 与后端一样留出这条出口。
     // 待接单（`pending_deposit`）含「已签约未缴定金」：甲方拒缴定金同样是违约，可以申报，
     // 那种案件没有支付单、只作责任认定；尚未签合同时后端按无生效合同拒掉——结案回滚把需求
     // 打回待接单、合同同时作废，也正落在这条上（BUG-038）。
-    ['pending_deposit', 'deposit_paid', 'in_development', 'pending_final', 'pending_settlement'].includes(item.status) &&
+    [
+      'pending_deposit',
+      'deposit_paid',
+      'in_development',
+      'pending_final',
+      'pending_settlement',
+    ].includes(item.status) &&
     (item.status !== 'pending_deposit' ||
       Boolean(signingStatusMap.value[item.requirement_id]?.has_contract))
+  )
 }
 
-/** 解除合作入口：结单后打开 `AfterSalesModal`。开发者是乙方，只查看案件与表态，不能发起。 */
+/** 解除合作入口：结单后的唯一业务入口，案件列表与表态都在售后弹窗里。开发者是乙方，只查看案件与表态，不能发起。 */
 function canOpenAfterSales(item: RequirementItem) {
   return item.status === 'completed' && item.payment_mode !== 'self_managed'
 }
@@ -875,13 +798,7 @@ function openAfterSalesModal(item: RequirementItem) {
     TMessage.warning('只有已结单的需求有解除合作入口')
     return
   }
-  afterSalesTarget.value = item
-  afterSalesVisible.value = true
-}
-
-function closeAfterSalesModal() {
-  afterSalesVisible.value = false
-  afterSalesTarget.value = null
+  openAfterSales(item)
 }
 
 function canComment(item: RequirementItem) {
@@ -892,13 +809,7 @@ function openCommentModal(item: RequirementItem) {
   if (!canComment(item)) {
     return
   }
-  commentRequirement.value = item
-  commentVisible.value = true
-}
-
-function closeCommentModal() {
-  commentVisible.value = false
-  commentRequirement.value = null
+  openComment(item)
 }
 
 async function handleCommentSubmitted() {
@@ -999,26 +910,6 @@ async function createRequirementContractAction(item: RequirementItem) {
     contractCreatingId.value = ''
   }
 }
-
-async function loadRequirementConversations() {
-  if (!auth.token) {
-    requirementConversationMap.value = {}
-    return
-  }
-
-  conversationLoading.value = true
-  try {
-    const conversations = await listRequirementConversations(auth.token)
-    requirementConversationMap.value = Object.fromEntries(
-      conversations.map((item) => [item.requirement_id, item]),
-    )
-  } catch (error) {
-    requirementConversationMap.value = {}
-    TMessage.error(error instanceof Error ? error.message : '加载沟通会话失败')
-  } finally {
-    conversationLoading.value = false
-  }
-}
 </script>
 
 <template>
@@ -1045,7 +936,12 @@ async function loadRequirementConversations() {
           <span class="dev-meta-strip__value">{{ receiptMoney(incomeTotal) }}</span>
         </div>
         <div class="dev-meta-strip__item dev-meta-strip__action">
-          <TButton icon-only :loading="loading" aria-label="刷新接单列表" @click="loadMyRequirements">
+          <TButton
+            icon-only
+            :loading="loading"
+            aria-label="刷新接单列表"
+            @click="loadMyRequirements"
+          >
             <TIcon>
               <Refresh />
             </TIcon>
@@ -1169,8 +1065,11 @@ async function loadRequirementConversations() {
               <strong>{{ formatMoney(row.item.budget) }}</strong>
             </span>
             <!-- R014：开发周期（天）——担保需求合同有效期的依据；无担保 / 未填不渲染。 -->
-            <span v-if="row.item && developmentCycleText(row.item)" class="dev-requirement-card__meta-item"
-              data-testid="dev-requirement-development-cycle">
+            <span
+              v-if="row.item && developmentCycleText(row.item)"
+              class="dev-requirement-card__meta-item"
+              data-testid="dev-requirement-development-cycle"
+            >
               <label>开发周期</label>
               <strong>{{ developmentCycleText(row.item) }}</strong>
             </span>
@@ -1236,16 +1135,22 @@ async function loadRequirementConversations() {
           >
             <div v-if="row.item.comment_rating != null" class="dev-rating-row">
               <span class="dev-rating-row__label">对方评价</span>
-              <span class="dev-rating-stars" :aria-label="`${row.item.comment_rating.toFixed(1)} 分`">
+              <span
+                class="dev-rating-stars"
+                :aria-label="`${row.item.comment_rating.toFixed(1)} 分`"
+              >
                 <span
                   v-for="n in 5"
                   :key="`peer-${n}`"
                   class="dev-rating-star"
                   :class="`is-${starFill(row.item.comment_rating, n)}`"
                   aria-hidden="true"
-                >★</span>
+                  >★</span
+                >
               </span>
-              <strong class="dev-rating-row__score">{{ row.item.comment_rating.toFixed(1) }}</strong>
+              <strong class="dev-rating-row__score">{{
+                row.item.comment_rating.toFixed(1)
+              }}</strong>
               <span v-if="commentBodyText(row.item.comment_text)" class="dev-rating-row__text">
                 {{ commentBodyText(row.item.comment_text) }}
               </span>
@@ -1262,7 +1167,8 @@ async function loadRequirementConversations() {
                   class="dev-rating-star"
                   :class="`is-${starFill(row.item.developer_comment_rating, n)}`"
                   aria-hidden="true"
-                >★</span>
+                  >★</span
+                >
               </span>
               <strong class="dev-rating-row__score">
                 {{ row.item.developer_comment_rating.toFixed(1) }}
@@ -1297,100 +1203,32 @@ async function loadRequirementConversations() {
                行内事件处理器拿不到 v-if 的类型收窄，所以这一段的处理函数参数带 `!`。 -->
           <footer v-if="row.item" class="dev-requirement-card__actions">
             <!-- 行内操作按钮走统一层的 .dev-list-actions（32px 高 / 10px 圆角），
-                 与资源列表、我的团队的行内按钮同一规格。
-                 这里原先是本页自写的 .dev-requirement-card__buttons + 逐个 size="small"
-                 （Element 的 24px 小号），同一张卡里按钮比顶部工具栏矮一档。 -->
-            <div class="dev-list-actions">
-              <!-- 行内按钮的上色走统一层的 .dev-action--soft / .dev-action--soft-danger：
-                   原来挂的是裸 `type="primary" plain` / `type="danger" plain`，
-                   Element 的 plain 变体给的是浅蓝底（#e8edfa）与粉底三件套，
-                   与表格行里的白底 + 主色描边不是一套，禁用态的「解除合作」更是一片粉。 -->
-              <TButton
-                variant="outline"
-                tone="accent"
-                v-if="canSubmitDeliveryVersion(row.item)"
-                title="交付物以绑定资源项目的新版本提交"
-                @click="openDeliveryDialog(row.item!)"
-              >
-                提交交付版本
-              </TButton>
-              <TButton
-                variant="outline"
-                tone="accent"
-                v-if="canOpenAfterSales(row.item)"
-                :class="{ 'has-todo-badge': afterSalesBadgeFor(row.item.requirement_id) }"
-                @click="openAfterSalesModal(row.item!)"
-              >
-                解除合作
-                <span
-                  v-if="afterSalesBadgeFor(row.item.requirement_id)"
-                  class="todo-badge"
-                  :title="`有 ${afterSalesPendingCount(row.item.requirement_id)} 条解除合作待你处理`"
-                  >{{ afterSalesBadgeFor(row.item.requirement_id) }}</span
-                >
-              </TButton>
-              <TButton
-                variant="outline"
-                tone="danger"
-                v-if="canReportBreach(row.item)"
-                @click="openBreachReport(row.item!)"
-              >
-                解除合作
-              </TButton>
-              <TButton
-                variant="solid"
-                tone="accent"
-                v-if="canCreateRequirementContract(row.item)"
-                :loading="contractCreatingId === row.item.requirement_id"
-                @click="createRequirementContractAction(row.item!)"
-              >
-                发起合同
-              </TButton>
-              <TButton
-                v-if="canOpenContractSign(row.item)"
-                @click="handleContractButtonClick(row.item!)"
-              >
-                {{ contractButtonLabel(row.item) }}
-              </TButton>
-              <!-- 客户已申请开发者收入票、且我是乙方可上传时显示；交互对齐 InvoiceCenterView。 -->
-              <TButton
-                v-for="invoice in uploadableInvoicesFor(row.item)"
-                :key="`invoice-upload-${invoice.id}`"
-                variant="outline"
-                tone="accent"
-                :loading="uploadingInvoiceId === invoice.id"
-                :disabled="uploadingInvoiceId !== null && uploadingInvoiceId !== invoice.id"
-                @click="onInvoiceUploadClick(invoice)"
-              >
-                <TIcon><UploadFilled /></TIcon>
-                <span>{{ invoiceUploadButtonLabel(invoice) }}</span>
-              </TButton>
-              <TButton
-                variant="outline"
-                tone="accent"
-                class="dev-action--soft dev-requirement-card__conversation"
-                @click="openConversation(row.item!)"
-              >
-                <TIcon><ChatDotRound /></TIcon>
-                <span>会话</span>
-              </TButton>
-              <TButton
-                v-if="canComment(row.item) && row.item.developer_comment_rating == null"
-                variant="solid"
-                tone="accent"
-                @click="openCommentModal(row.item!)"
-              >
-                去评价
-              </TButton>
-              <TButton
-                v-if="canComment(row.item) && row.item.developer_comment_rating != null"
-                variant="outline"
-                tone="accent"
-                @click="openCommentModal(row.item!)"
-              >
-                修改评价
-              </TButton>
-            </div>
+                 与资源列表、我的团队的行内按钮同一规格；这一排按钮本体在
+                 `DevRequirementActions`，能不能出哪个入口由本页判定后传 boolean 进去。
+                 行内事件处理器拿不到 v-if 的类型收窄，所以参数带 `!`。 -->
+            <DevRequirementActions
+              :can-submit-delivery="canSubmitDeliveryVersion(row.item)"
+              :can-open-after-sales="canOpenAfterSales(row.item)"
+              :after-sales-badge="afterSalesBadgeFor(row.item.requirement_id)"
+              :after-sales-pending-count="afterSalesPendingCount(row.item.requirement_id)"
+              :can-report-breach="canReportBreach(row.item)"
+              :can-create-contract="canCreateRequirementContract(row.item)"
+              :contract-creating="contractCreatingId === row.item.requirement_id"
+              :can-open-contract-sign="canOpenContractSign(row.item)"
+              :contract-label="contractButtonLabel(row.item)"
+              :uploadable-invoices="uploadableInvoicesFor(row.item.requirement_id)"
+              :uploading-invoice-id="uploadingInvoiceId"
+              :can-comment="canComment(row.item)"
+              :commented="row.item.developer_comment_rating != null"
+              @submit-delivery="openDeliveryDialog(row.item!)"
+              @open-after-sales="openAfterSalesModal(row.item!)"
+              @report-breach="openBreachReport(row.item!)"
+              @create-contract="createRequirementContractAction(row.item!)"
+              @contract-action="handleContractButtonClick(row.item!)"
+              @pick-invoice="pickInvoiceFile"
+              @open-conversation="openConversation(row.item!)"
+              @open-comment="openCommentModal(row.item!)"
+            />
           </footer>
         </article>
       </TLoading>
@@ -1419,68 +1257,8 @@ async function loadRequirementConversations() {
 
     <!-- 回款详情弹窗：卡上只放合计与笔数，逐笔到这里摊开。
          金额、时间、流水号都来自同一份钱包回执（与「收益钱包 → 收入记录」同一个接口），
-         不在这里另算，避免两处对不上。 -->
-    <TDialog
-      v-model:open="receiptDialogVisible"
-      :title="receiptDialogTitle"
-      width="560px"
-      class="dev-dialog"
-    >
-      <div v-if="activeReceiptRow" class="dev-receipt-detail">
-        <div class="dev-receipt-detail__head">
-          <div class="dev-receipt-detail__title">{{ rowTitle(activeReceiptRow) }}</div>
-          <div class="dev-receipt-detail__meta">
-            <span>{{ activeReceiptRow.requirementId }}</span>
-            <span>委托方 {{ rowCustomer(activeReceiptRow) || '—' }}</span>
-            <TTag variant="outline" :tone="rowStatusType(activeReceiptRow)">
-              {{ rowStatusLabel(activeReceiptRow) }}
-            </TTag>
-          </div>
-        </div>
-
-        <div class="dev-receipt-detail__total">
-          <span class="dev-receipt-detail__total-label">
-            累计到账 · 共 {{ activeReceipts.length }} 笔
-          </span>
-          <span class="dev-figure dev-figure--sm">{{ receiptMoney(activeReceiptTotal) }}</span>
-        </div>
-
-        <ul class="dev-receipt-detail__list">
-          <li
-            v-for="(receipt, index) in activeReceipts"
-            :key="receipt.paymentId"
-            class="dev-receipt-detail__item"
-          >
-            <div class="dev-receipt-detail__item-head">
-              <span class="dev-receipt-detail__item-index">第 {{ index + 1 }} 笔</span>
-              <span class="dev-receipt-detail__item-amount">{{
-                receiptMoney(receipt.amount)
-              }}</span>
-            </div>
-            <div class="dev-receipt-detail__facts">
-              <div class="dev-receipt-detail__fact">
-                <span class="dev-receipt-detail__fact-label">到账时间</span>
-                <span class="dev-receipt-detail__fact-value">{{
-                  formatCnDateTime(receipt.paidAt)
-                }}</span>
-              </div>
-              <div class="dev-receipt-detail__fact">
-                <span class="dev-receipt-detail__fact-label">支付流水号</span>
-                <span class="dev-receipt-detail__fact-value">{{ receipt.paymentId }}</span>
-              </div>
-            </div>
-          </li>
-        </ul>
-
-        <p class="dev-receipt-detail__note">
-          托管模式下定金与尾款各分账一次，同一需求会有两笔到账，金额按分账净额逐笔列出。
-        </p>
-      </div>
-
-      <template #footer>
-        <TButton variant="outline" @click="receiptDialogVisible = false">关闭</TButton>
-      </template>
-    </TDialog>
+         弹窗只照着渲染，不在这里另算，避免两处对不上。 -->
+    <RequirementReceiptDialog v-model:open="receiptDialogVisible" :detail="receiptDialogDetail" />
 
     <DeliverySubmitDialog
       v-model:visible="deliveryDialogVisible"
@@ -1521,37 +1299,22 @@ async function loadRequirementConversations() {
       @submit-decision="submitBreachDecision"
     />
 
-    <AfterSalesModal
-      :visible="afterSalesVisible"
+    <!-- 售后（解除合作）/ 会话 / 评价三个按行打开的弹窗收在一处挂点，
+         状态与请求在 `useDevRequirementRowDialogs`，组件只把状态铺成 props、把事件接回来。 -->
+    <DevRequirementRowDialogs
       :token="auth.token"
-      :current-username="auth.username"
-      :requirement-id="afterSalesTarget?.requirement_id ?? ''"
-      :requirement-title="afterSalesTarget?.title ?? ''"
-      :requirement-budget="afterSalesTarget?.budget ?? null"
-      :can-open-case="false"
-      @close="closeAfterSalesModal"
-    />
-
-    <RequirementConversationModal
-      :visible="conversationVisible"
-      api-mode="dev"
-      :token="auth.token"
-      :current-username="auth.username"
-      :requirement-id="conversationRequirement?.requirement_id ?? ''"
-      :title="conversationRequirement?.title"
-      @updated="applyConversationDetail"
-      @close="closeConversation"
-    />
-
-    <RequirementCommentDialog
-      :visible="commentVisible && !!commentRequirement"
-      :token="auth.token"
-      :requirement-id="commentRequirement?.requirement_id ?? ''"
-      :title="commentRequirement?.title ?? ''"
-      :initial-rating="commentRequirement?.developer_comment_rating ?? null"
-      :initial-text="commentRequirement?.developer_comment_text ?? null"
-      @close="closeCommentModal"
-      @submitted="handleCommentSubmitted"
+      :username="auth.username"
+      :after-sales-visible="afterSalesVisible"
+      :after-sales-target="afterSalesTarget"
+      :conversation-visible="conversationVisible"
+      :conversation-target="conversationTarget"
+      :comment-visible="commentVisible"
+      :comment-target="commentTarget"
+      @close-after-sales="closeAfterSales"
+      @close-conversation="closeConversation"
+      @conversation-updated="applyConversationDetail"
+      @close-comment="closeComment"
+      @comment-submitted="handleCommentSubmitted"
     />
 
     <!-- 隐藏 file input：行上「上传发票」共用一个，选完按 pickingInvoiceId 直接上传。 -->
@@ -1821,13 +1584,6 @@ async function loadRequirementConversations() {
   text-decoration: underline;
 }
 
-/* 会话按钮的圆角与字重都走统一层的 .dev-action--soft（10px 方角），
-   这里不再把它单独扭成胶囊——同一排的「签署合同 / 解除合作」都是方角，
-   只有这一颗是 999px 时整排按钮横竖不齐（见 dev-base.css 的行内软按钮一节）。 */
-.dev-requirement-card__conversation {
-  font-weight: 700;
-}
-
 /* 发票上传的原生 file input：外观走行内 TButton，本节点只负责选文件。 */
 .dev-requirement-card__invoice-file {
   display: none;
@@ -2069,120 +1825,6 @@ strong.dev-delivery-cell__amount {
   color: var(--dev-gold);
   font-size: 12px;
   line-height: 1.5;
-}
-
-/* === 回款详情弹窗（从「交付记录」页搬来） ===
-   弹窗由 TDialog teleport 到 body，配色令牌靠 .dev-dialog（见 dev-base.css），
-   排版是本页特有的。整块分三层：需求抬头 → 累计到账读数 → 逐笔清单。 */
-.dev-receipt-detail {
-  display: grid;
-  gap: 18px;
-}
-
-.dev-receipt-detail__title {
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.45;
-  color: var(--dev-ink);
-  overflow-wrap: anywhere;
-}
-
-.dev-receipt-detail__meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--dev-muted);
-}
-
-/* 累计到账：读数取统一层的 .dev-figure--sm（金色大数），
-   这里只把它和左侧说明排成一行、压一条分隔线与下面的清单分开。 */
-.dev-receipt-detail__total {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 0 16px;
-  border-bottom: 1px solid var(--dev-line);
-}
-
-.dev-receipt-detail__total-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--dev-ink-soft);
-}
-
-.dev-receipt-detail__list {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* 一笔到账一块：白底细描边的内嵌容器，圆角取 --dev-radius-inner（卡片内嵌块那一档） */
-.dev-receipt-detail__item {
-  display: grid;
-  gap: 10px;
-  padding: 14px 16px;
-  border: 1px solid var(--dev-line);
-  border-radius: var(--dev-radius-inner);
-  background: var(--dev-surface-strong);
-}
-
-.dev-receipt-detail__item-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.dev-receipt-detail__item-index {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--dev-muted);
-}
-
-/* 单笔金额同样用金色（与累计读数、钱包里的入账金额同一支） */
-.dev-receipt-detail__item-amount {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--dev-gold);
-  font-variant-numeric: tabular-nums;
-}
-
-/* 流水号是长串，窄屏必须能断行，否则会把弹窗顶宽 */
-.dev-receipt-detail__facts {
-  display: grid;
-  gap: 6px;
-}
-
-.dev-receipt-detail__fact {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  font-size: 13px;
-}
-
-.dev-receipt-detail__fact-label {
-  flex: 0 0 76px;
-  color: var(--dev-muted);
-}
-
-.dev-receipt-detail__fact-value {
-  min-width: 0;
-  color: var(--dev-ink-soft);
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-
-.dev-receipt-detail__note {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--dev-muted);
 }
 
 .dev-requirement-card__comments {

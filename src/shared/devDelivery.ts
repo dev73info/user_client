@@ -70,10 +70,9 @@ export function timeValue(value: string | null | undefined): number {
 }
 
 /** 版本摘要：最新版本按发布时间取，版本总数留在同一行上，不再一行一个版本。 */
-export function versionSummary(versions: McResourceVersionPayload[]): Pick<
-  DevDelivery,
-  'latestVersion' | 'latestVersionAt' | 'versionCount'
-> {
+export function versionSummary(
+  versions: McResourceVersionPayload[],
+): Pick<DevDelivery, 'latestVersion' | 'latestVersionAt' | 'versionCount'> {
   const sorted = [...versions].sort(
     (left, right) => timeValue(right.created_at) - timeValue(left.created_at),
   )
@@ -87,11 +86,14 @@ export function versionSummary(versions: McResourceVersionPayload[]): Pick<
 }
 
 /** 回执按需求归堆：逐笔都留着，行上取合计与笔数，弹窗里摊开。 */
-export function groupReceipts(income: DevWalletIncomeItem[]): Map<string, {
-  receipts: DevReceipt[]
-  title: string
-  customer: string
-}> {
+export function groupReceipts(income: DevWalletIncomeItem[]): Map<
+  string,
+  {
+    receipts: DevReceipt[]
+    title: string
+    customer: string
+  }
+> {
   const grouped = new Map<string, { receipts: DevReceipt[]; title: string; customer: string }>()
 
   for (const item of income) {
@@ -146,10 +148,11 @@ export function buildDevOrderRows(
   const rows: DevOrderRow[] = []
 
   for (const requirement of requirements) {
-    const resource = requirement.bound_resource_id != null
-      ? resourceById.get(requirement.bound_resource_id)
-      : undefined
-    const versions = resource ? versionsByResource.get(resource.id) ?? [] : []
+    const resource =
+      requirement.bound_resource_id != null
+        ? resourceById.get(requirement.bound_resource_id)
+        : undefined
+    const versions = resource ? (versionsByResource.get(resource.id) ?? []) : []
     const group = receiptsByRequirement.get(requirement.requirement_id)
 
     rows.push({
@@ -186,6 +189,14 @@ export function buildDevOrderRows(
 /** 到账合计：行上显示的就是它，逐笔明细在回款详情弹窗里。 */
 export function receiptTotal(receipts: DevReceipt[]): number {
   return receipts.reduce((total, item) => total + item.amount, 0)
+}
+
+/**
+ * 到账金额文案：与「收益钱包 → 收入记录」同一口径（两位小数、带 ¥）。
+ * 行上放合计、回款详情弹窗里放逐笔，两处都用它，免得一边两位小数一边取整。
+ */
+export function receiptMoney(value: number): string {
+  return `¥${value.toFixed(2)}`
 }
 
 /** 最近一笔到账时间：没有到账时返回 `null`。 */
