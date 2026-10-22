@@ -1,0 +1,102 @@
+.conversation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* 覆盖全局 button 默认样式，做成与工具按钮同色系的小胶囊 */
+.conversation-actions .conversation-actions__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(185, 204, 190, 0.72);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #3f5f49;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.conversation-actions .conversation-actions__chip:hover:not(:disabled) {
+  border-color: rgba(125, 165, 138, 0.9);
+  background: #ffffff;
+}
+
+.conversation-actions .conversation-actions__chip:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.conversation-actions .conversation-actions__chip--primary {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.conversation-actions .conversation-actions__chip--primary:hover:not(:disabled) {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+  color: #ffffff;
+}
+
+.conversation-actions .conversation-actions__chip--danger {
+  border-color: rgba(203, 120, 110, 0.7);
+  color: #b4402f;
+}
+
+.conversation-actions .conversation-actions__chip--danger:hover:not(:disabled) {
+  border-color: rgba(180, 64, 47, 0.9);
+  background: #fff7f6;
+}
+
+/* 值得留意的入口（结单后的「解除合作」）：浅蓝描边 + 淡蓝底，与这一排的白色小胶囊同重量，
+   不抢发送按钮那一块实心主色；配色取会话本身用的那支蓝，不另起一套色。 */
+.conversation-actions .conversation-actions__chip--accent {
+  border-color: rgba(37, 99, 235, 0.38);
+  background: rgba(37, 99, 235, 0.07);
+  color: #1d4ed8;
+}
+
+.conversation-actions .conversation-actions__chip--accent:hover:not(:disabled) {
+  border-color: rgba(37, 99, 235, 0.62);
+  background: rgba(37, 99, 235, 0.12);
+}
+
+/* 解除合作：橙色警示——比蓝色更引人注意，又不像红色那样暗示「点了就毁了」；
+   字色取 orange-700，在淡橙底上对比度 ≥4.5:1 */
+.conversation-actions .conversation-actions__chip--warning {
+  border-color: rgba(234, 88, 12, 0.42);
+  background: #fff4e6;
+  color: #c2410c;
+}
+
+.conversation-actions .conversation-actions__chip--warning:hover:not(:disabled) {
+  border-color: rgba(234, 88, 12, 0.7);
+  background: #ffe8cc;
+}
+
+.conversation-actions__hint {
+  margin: 0;
+  padding-left: 2px;
+  color: #7a8b80;
+  font-size: 12.5px;
+}
+
+@media (max-width: 640px) {
+  .conversation-actions .conversation-actions__chip {
+    min-height: 32px;
+    padding: 0 9px;
+    font-size: 12px;
+  }
+}

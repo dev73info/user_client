@@ -63,18 +63,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/components/RequirementConversationActions.vue",
-      "detail": "1248 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "api-deps",
-      "file": "src/components/RequirementConversationActions.vue",
-      "detail": "依赖 6 个 api 模块（adapay、auth、contracts、devRequirements、requirements、settings）> 3",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/components/ResourceCatalog.vue",
       "detail": "1391 行 > 400（模块）",
       "since": "2026-10-22"
@@ -585,6 +573,18 @@
     },
     {
       "rule": "raw-color",
+      "file": "src/components/conversation/conversation-actions.css",
+      "detail": "26 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/conversation-breach-dialog.css",
+      "detail": "7 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
       "file": "src/components/conversation/requirement-detail-drawer.css",
       "detail": "24 处裸色值",
       "since": "2026-10-22"
@@ -725,12 +725,6 @@
       "rule": "raw-color",
       "file": "src/components/RequirementAgentPanel.vue",
       "detail": "68 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/RequirementConversationActions.vue",
-      "detail": "33 处裸色值",
       "since": "2026-10-22"
     },
     {
