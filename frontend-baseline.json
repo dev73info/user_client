@@ -39,12 +39,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/components/RequirementAgentPanel.vue",
-      "detail": "932 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/components/ShareCardGenerator.vue",
       "detail": "494 行 > 400（模块）",
       "since": "2026-10-22"
@@ -681,8 +675,14 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/RequirementAgentPanel.vue",
-      "detail": "68 处裸色值",
+      "file": "src/components/requirement-agent-chat.css",
+      "detail": "23 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/requirement-agent-draft.css",
+      "detail": "45 处裸色值",
       "since": "2026-10-22"
     },
     {
