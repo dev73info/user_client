@@ -1,0 +1,26 @@
+.dev-version-link {
+  color: var(--dev-blue);
+  text-decoration: none;
+}
+
+.dev-version-link:hover {
+  text-decoration: underline;
+}
+
+.dev-version-note {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
+  color: var(--dev-ink);
+}
+
+.dev-version-note p {
+  margin: 0;
+}
+
+.dev-version-note p + p {
+  margin-top: 4px;
+}
