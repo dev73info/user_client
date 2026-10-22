@@ -53,9 +53,37 @@ export type DevOrderRow = {
   customer: string | null
 }
 
+/**
+ * 「我的接单」列表里的一行：交付与到账归并好之后，再把需求单本身贴回来。
+ *
+ * `item` 为空的两种行都不是需求单、也不出签署与操作栏：
+ * 有资源版本却没被任何需求单绑定的资源，以及到账归属的需求已解绑的那一笔。
+ * 卡片（`DevMyRequirementCard`）与页面的回款弹窗共用这一份行类型。
+ */
+export type DevMyOrderRow = DevOrderRow & { item: RequirementItem | null }
+
 /** 行标识：一份需求一行，不重复。 */
 export function devRowKey(requirementId: string): string {
   return `requirement:${requirementId}`
+}
+
+/** 行抬头：需求单行取需求标题，补充行取钱包回执里的标题。 */
+export function rowTitle(row: DevMyOrderRow): string {
+  return row.item?.title ?? row.title ?? '未关联需求'
+}
+
+/** 委托方：需求单行取需求方，补充行取钱包回执里的客户名。 */
+export function rowCustomer(row: DevMyOrderRow): string | null {
+  return row.item?.creator ?? row.customer
+}
+
+/** 最近更新：需求单行看需求的更新时间，补充行看最近一次到账或交付。 */
+export function rowUpdatedAt(row: DevMyOrderRow): string {
+  if (row.item) {
+    return row.item.updated_at
+  }
+
+  return latestReceiptAt(row.receipts) ?? row.delivery?.latestVersionAt ?? '—'
 }
 
 /* 时间串有 `YYYY-MM-DD HH:mm:ss` 与资源版本接口两种格式，解析不出来时按 0 处理：
