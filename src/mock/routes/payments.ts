@@ -132,9 +132,7 @@ const routes: MockRoute[] = [
         if (!requirement) {
           return false
         }
-        return request.identity === 'dev'
-          ? requirement.developer === DEV_USERNAME
-          : true
+        return request.identity === 'dev' ? requirement.developer === DEV_USERNAME : true
       })
 
       return jsonResponse(
@@ -229,10 +227,7 @@ const routes: MockRoute[] = [
     method: 'GET',
     path: '/dev/payments/developer-order-deposit/orders',
     note: '保证金充值记录（「资金明细」里的「保证金充值」那一段；演示数据只有最近一笔）',
-    handler: () =>
-      jsonResponse(
-        devOrderDeposit.latest_order ? [devOrderDeposit.latest_order] : [],
-      ),
+    handler: () => jsonResponse(devOrderDeposit.latest_order ? [devOrderDeposit.latest_order] : []),
   },
   {
     method: 'GET',
@@ -331,10 +326,7 @@ const routes: MockRoute[] = [
       }
 
       devWithdrawals.unshift(record)
-      devWallet.withdrawable_balance_cny = Math.max(
-        devWallet.withdrawable_balance_cny - amount,
-        0,
-      )
+      devWallet.withdrawable_balance_cny = Math.max(devWallet.withdrawable_balance_cny - amount, 0)
       devWallet.pending_withdraw_cny += amount
 
       return jsonResponse(record)
