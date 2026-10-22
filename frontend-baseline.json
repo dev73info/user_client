@@ -394,7 +394,7 @@
     {
       "rule": "line-budget",
       "file": "src/views/DevHomeView.vue",
-      "detail": "1456 行 > 300（视图）",
+      "detail": "1092 行 > 300（视图）",
       "since": "2026-10-22"
     },
     {
