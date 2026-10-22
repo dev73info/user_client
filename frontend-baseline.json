@@ -117,12 +117,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/MyResourcePurchasesView.vue",
-      "detail": "516 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/ProfileView.vue",
       "detail": "666 行 > 300（视图）",
       "since": "2026-10-22"
@@ -1312,7 +1306,7 @@
     {
       "rule": "raw-color",
       "file": "src/views/MyResourcePurchasesView.vue",
-      "detail": "6 处裸色值",
+      "detail": "3 处裸色值",
       "since": "2026-10-22"
     },
     {
@@ -1385,6 +1379,12 @@
       "rule": "raw-color",
       "file": "src/components/payment/api-checkout-page.css",
       "detail": "22 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/payment/purchase-transfer-dialog.css",
+      "detail": "3 处裸色值",
       "since": "2026-10-23"
     }
   ]

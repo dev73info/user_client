@@ -1,0 +1,31 @@
+.purchases-transfer {
+  display: grid;
+  gap: 14px;
+}
+
+.purchases-transfer__lead {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.purchases-transfer__field {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.purchases-transfer__hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+.purchases-transfer__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
