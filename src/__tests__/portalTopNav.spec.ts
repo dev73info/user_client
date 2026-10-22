@@ -31,7 +31,11 @@ class ResizeObserverStub {
     ResizeObserverStub.instances.push(this)
   }
 
-  observe() {}
+  observed: unknown[] = []
+
+  observe(target?: unknown) {
+    this.observed.push(target)
+  }
 
   unobserve() {}
 
@@ -200,6 +204,35 @@ describe('门户顶栏最小挂载烟测', () => {
     } as CSSStyleDeclaration)
 
     ResizeObserverStub.instances[0]?.trigger()
+
+    expect(document.documentElement.style.getPropertyValue('--portal-header-footprint')).toBe(
+      '90px',
+    )
+
+    wrapper.unmount()
+  })
+
+  it('顶栏被 display:none 隐藏后再显示，占位高度能补量回来（回归：曾停在 0px）', async () => {
+    const { wrapper } = await render()
+    const header = wrapper.find('header.portal-header').element as HTMLElement
+
+    // 非首页 ≤900px：顶栏 display:none，没有 box
+    Object.defineProperty(header, 'offsetHeight', { value: 0, configurable: true })
+    const observer = ResizeObserverStub.instances[0]!
+    observer.callback()
+    expect(document.documentElement.style.getPropertyValue('--portal-header-footprint')).toBe('0px')
+
+    // 关键：仅观察顶栏自己时，它重新出现不保证补发回调；
+    // 修法是同时观察 documentElement，所以这条断言盯的是「观察名单里有根元素」。
+    expect(observer.observed).toContain(document.documentElement)
+
+    // 视口拉宽回 >900px → 顶栏重新有 box → 根元素的回调把占位补回来
+    Object.defineProperty(header, 'offsetHeight', { value: 66, configurable: true })
+    vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+      marginTop: '10px',
+      marginBottom: '14px',
+    } as CSSStyleDeclaration)
+    observer.callback()
 
     expect(document.documentElement.style.getPropertyValue('--portal-header-footprint')).toBe(
       '90px',
