@@ -429,18 +429,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/DevProfileView.vue",
-      "detail": "1613 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "api-deps",
-      "file": "src/views/DevProfileView.vue",
-      "detail": "依赖 7 个 api 模块（http、resources、invite、points、resourceTags、publicProfile、settings）> 3",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/DevRequirementDetailView.vue",
       "detail": "1280 行 > 300（视图）",
       "since": "2026-10-22"
@@ -1186,7 +1174,7 @@
     {
       "rule": "raw-color",
       "file": "src/views/DevProfileView.vue",
-      "detail": "113 处裸色值",
+      "detail": "59 处裸色值",
       "since": "2026-10-22"
     },
     {
