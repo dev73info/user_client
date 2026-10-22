@@ -7,10 +7,7 @@ import {
   TIcon,
   TLoading,
   ArrowDown,
-  ArrowRight,
   Box,
-  CircleCheck,
-  Clock,
   Lock,
   Money,
   Promotion,
@@ -24,8 +21,10 @@ import {
 
 import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
 import DevWithdrawalDialog from '@/components/DevWithdrawalDialog.vue'
+import DevDeliveryList from '@/components/dev/DevDeliveryList.vue'
 import DevFunnel from '@/components/dev/DevFunnel.vue'
-import DevIncomeTrendChart from '@/components/dev/DevIncomeTrendChart.vue'
+import DevFundPanel from '@/components/dev/DevFundPanel.vue'
+import DevProjectList from '@/components/dev/DevProjectList.vue'
 import {
   devDashboardWsUrl,
   getDevDashboard,
@@ -53,16 +52,19 @@ import {
   demoDevDashboard,
   devHomeMockEnabled,
 } from '@/shared/devHomeMock'
-import { formatCnDateTime } from '@/shared/requirementDisplay'
+import { money } from '@/shared/devFundDisplay'
+import {
+  STATUS_TONES,
+  type DevHomeDeliveryRow,
+  type DevHomeProjectRow,
+  type DevHomeTone,
+} from '@/shared/devHomeDisplay'
 import {
   isActiveRequirement,
   requirementProgressPercent,
   requirementStatusLabel,
 } from '@/shared/requirementStatus'
 import { useAuthStore } from '@/stores/auth'
-
-/** 页面只用开发者体系的三个强调色，灰色留给终止态，不引入第五种颜色。 */
-type DevHomeTone = 'blue' | 'gold' | 'cyan' | 'muted'
 
 /** 总览页只做汇总：列表最多展示 5 条，完整明细留在「我的接单」页。 */
 const OVERVIEW_LIST_LIMIT = 5
@@ -74,30 +76,6 @@ const DELIVERY_GRID_LIMIT = 3
 type DevHomeStatCard = {
   label: string
   value: string
-}
-
-/** 进行中项目列表的一行：状态、预算与流程进度都来自同一条接单。 */
-type DevHomeProjectRow = {
-  requirementId: string
-  title: string
-  status: string
-  statusLabel: string
-  tone: DevHomeTone
-  createdAt: string
-  updatedAt: string
-  budget: number | null
-  progress: number
-}
-
-/** 交付行：一条接了资源的需求单 = 一次交付，金额取该单的到账尾款。 */
-type DevHomeDeliveryRow = {
-  requirementId: string
-  requirementTitle: string
-  resourceTitle: string
-  versionCount: number
-  delivered: boolean
-  updatedAt: string
-  amount: number | null
 }
 
 const auth = useAuthStore()
@@ -115,27 +93,6 @@ const dashboard = shallowRef<DevDashboardSnapshot | null>(null)
 
 /** 演示数据开关：开着时整页不读接口，只用于本地预览布局。 */
 const mockEnabled = devHomeMockEnabled(route.query.mock === '1')
-
-/** 需求状态 → 色调：进行中蓝、等待付款金、已完成青，终止态灰。 */
-const STATUS_TONES: Record<string, DevHomeTone> = {
-  pending_review: 'muted',
-  rejected: 'muted',
-  cancelled: 'muted',
-  pending_deposit: 'gold',
-  pending_final: 'gold',
-  pending_settlement: 'gold',
-  deposit_paid: 'blue',
-  in_development: 'blue',
-  completed: 'cyan',
-}
-
-/** 状态标签沿用统一口径：浅底 + 深字，四档底色全部取统一层的 .dev-chip 系列。 */
-const CHIP_TONES: Record<DevHomeTone, string> = {
-  blue: '',
-  gold: 'dev-chip--warm',
-  cyan: 'dev-chip--cyan',
-  muted: 'dev-chip--muted',
-}
 
 type ProjectTabKey = 'all' | 'active' | 'pending' | 'completed'
 
@@ -365,16 +322,6 @@ const depositStatusChip = computed(() => {
 
 const changeRate = computed(() => overview.value?.today_income_change_rate ?? null)
 
-/** 涨幅正负都只影响颜色与符号，文案口径固定为「较昨日」。 */
-const changeRateText = computed(() => {
-  if (changeRate.value == null || !Number.isFinite(changeRate.value)) {
-    return ''
-  }
-
-  const sign = changeRate.value > 0 ? '+' : ''
-  return `${sign}${changeRate.value.toFixed(1)}%`
-})
-
 /** 两位补零：日期键、时钟与横轴标签共用。 */
 function pad2(value: number): string {
   return String(value).padStart(2, '0')
@@ -449,18 +396,6 @@ const chartCaption = computed(() => {
 onMounted(() => {
   void loadPage()
 })
-
-function money(value?: number | null) {
-  if (value == null) {
-    return '¥0.00'
-  }
-
-  return `¥${value.toFixed(2)}`
-}
-
-function statusChipClass(status: string) {
-  return CHIP_TONES[STATUS_TONES[status] ?? 'blue']
-}
 
 /**
  * 总览页的进行中项目与最近交付都只做汇总，完整明细（需求单、交付版本、到账回执）在「我的接单」页。
@@ -819,239 +754,25 @@ function formatCount(value: number): string {
 
     <section class="dev-home__layout">
       <div class="dev-home__main">
-        <section class="dev-surface-card dev-home__panel">
-          <div class="dev-card-head">
-            <!-- 筛选胶囊跟在标题后面同一行：总览卡片要省纵向空间，单独一行工具栏只放四个胶囊太空 -->
-            <div class="dev-card-head__title-block dev-home__head-main">
-              <h3 class="dev-section-title">进行中项目</h3>
-              <div class="dev-chip-group dev-home__tabs" role="tablist" aria-label="进行中项目筛选">
-                <button v-for="tab in PROJECT_TABS" :key="tab.key" class="dev-chip dev-chip--button" type="button"
-                  role="tab" :aria-selected="activeProjectTab === tab.key"
-                  :class="{ 'is-active': activeProjectTab === tab.key }" @click="activeProjectTab = tab.key">
-                  {{ tab.label }}
-                </button>
-              </div>
-            </div>
-            <div class="dev-card-head__actions">
-              <RouterLink class="dev-home__more" :to="{ name: 'dev-my-requirements' }">
-                <span>查看全部</span>
-                <TIcon>
-                  <ArrowRight />
-                </TIcon>
-              </RouterLink>
-            </div>
-          </div>
+        <!-- 两张列表卡：行仍由本页算（哪几档算进行中、全屏时不受 5 条 / 3 张的限制），
+             组件只画；点行与「查看全部」都回本页跳「我的接单」 -->
+        <DevProjectList v-model:active-tab="activeProjectTab" :rows="projectRows" :tabs="PROJECT_TABS"
+          :more-to="{ name: 'dev-my-requirements' }" @open="openMyOrder" />
 
-          <ul v-if="projectRows.length" class="dev-home__projects">
-            <li v-for="row in projectRows" :key="row.requirementId" class="dev-home__project"
-              :class="`dev-home__project--${row.tone}`" role="button" tabindex="0"
-              :aria-label="`查看「${row.title}」的接单与交付`" @click="openMyOrder(row.requirementId)"
-              @keydown.enter.prevent="openMyOrder(row.requirementId)"
-              @keydown.space.prevent="openMyOrder(row.requirementId)">
-              <div class="dev-home__project-top">
-                <strong class="dev-home__project-title">{{ row.title }}</strong>
-                <span class="dev-chip dev-home__chip" :class="statusChipClass(row.status)">
-                  {{ row.statusLabel }}
-                </span>
-              </div>
-
-              <div class="dev-home__project-foot">
-                <p class="dev-home__project-meta">
-                  {{ row.requirementId }} · 预算
-                  <strong class="dev-home__project-amount">{{ money(row.budget) }}</strong>
-                  · 更新于 {{ formatCnDateTime(row.updatedAt) }}
-                </p>
-
-                <!-- 进度条表达的是「流程走到哪一步」（按接单状态推算），不是工作量完成度 -->
-                <div class="dev-home__progress" title="按接单状态推算的流程进度">
-                  <span class="dev-home__progress-track" role="progressbar" :aria-valuenow="row.progress"
-                    aria-valuemin="0" aria-valuemax="100" :aria-label="`${row.title} 流程进度`">
-                    <span class="dev-home__progress-fill" :class="`dev-home__progress-fill--${row.tone}`"
-                      :style="{ width: `${row.progress}%` }" />
-                  </span>
-                  <span class="dev-home__progress-text">{{ row.progress }}%</span>
-                </div>
-              </div>
-            </li>
-          </ul>
-          <p v-else class="dev-empty-state dev-home__empty">
-            <strong>当前筛选下没有项目</strong>
-          </p>
-        </section>
-
-        <section class="dev-surface-card dev-home__panel">
-          <div class="dev-card-head">
-            <div class="dev-card-head__title-block dev-home__head-main">
-              <h3 class="dev-section-title">最近交付</h3>
-              <div class="dev-chip-group dev-home__tabs" role="tablist" aria-label="最近交付筛选">
-                <button v-for="tab in DELIVERY_TABS" :key="tab.key" class="dev-chip dev-chip--button" type="button"
-                  role="tab" :aria-selected="activeDeliveryTab === tab.key"
-                  :class="{ 'is-active': activeDeliveryTab === tab.key }" @click="activeDeliveryTab = tab.key">
-                  {{ tab.label }}
-                </button>
-              </div>
-            </div>
-            <div class="dev-card-head__actions">
-              <RouterLink class="dev-home__more" :to="{ name: 'dev-my-requirements' }">
-                <span>查看全部</span>
-                <TIcon>
-                  <ArrowRight />
-                </TIcon>
-              </RouterLink>
-            </div>
-          </div>
-
-          <ul v-if="deliveryRows.length" class="dev-home__deliveries">
-            <li v-for="row in deliveryRows" :key="row.requirementId" class="dev-home__delivery" role="button" tabindex="0"
-              :aria-label="`查看「${row.resourceTitle}」的交付与到账`" @click="openMyOrder(row.requirementId)"
-              @keydown.enter.prevent="openMyOrder(row.requirementId)"
-              @keydown.space.prevent="openMyOrder(row.requirementId)">
-              <div class="dev-home__delivery-top">
-                <span class="dev-home__delivery-icon" aria-hidden="true">
-                  <TIcon>
-                    <Promotion />
-                  </TIcon>
-                </span>
-                <strong class="dev-home__delivery-title">{{ row.resourceTitle }}</strong>
-                <!-- 交付过的打勾：卡片只看一行，没有勾就得逐字读版本数才知道交付没交付 -->
-                <TIcon v-if="row.delivered" class="dev-home__delivery-check">
-                  <CircleCheck />
-                </TIcon>
-              </div>
-
-              <p class="dev-home__delivery-meta">
-                <span class="dev-home__delivery-id">{{ row.requirementId }}</span>
-                <span class="dev-home__delivery-versions">{{ row.versionCount }} 个版本</span>
-              </p>
-
-              <!-- 页脚贴卡片底边：同一排卡片标题行数不同，日期与金额也要落在同一条线上 -->
-              <div class="dev-home__delivery-foot">
-                <span class="dev-home__delivery-time">{{ row.updatedAt ? formatCnDateTime(row.updatedAt) : '—' }}</span>
-                <strong v-if="row.amount != null" class="dev-home__delivery-amount">
-                  {{ money(row.amount) }}
-                </strong>
-                <span v-else class="dev-home__delivery-amount dev-home__delivery-amount--pending">未到账</span>
-              </div>
-            </li>
-          </ul>
-          <p v-else class="dev-empty-state dev-home__empty">
-            <strong>当前筛选下没有交付记录</strong>
-          </p>
-        </section>
+        <DevDeliveryList v-model:active-tab="activeDeliveryTab" :rows="deliveryRows" :tabs="DELIVERY_TABS"
+          :more-to="{ name: 'dev-my-requirements' }" @open="openMyOrder" />
       </div>
 
       <aside class="dev-home__aside">
-        <!-- 收入、提现、保证金本来分装在两张卡里：「待提现」在一张里报金额、在另一张里报占比，
-             「可提现」又被大数与比例条各说一遍。合并成一张「资金概览」，同一笔钱全页只出现一次。 -->
-        <section class="dev-surface-card dev-home__panel dev-home__fund">
-          <div class="dev-card-head">
-            <div class="dev-card-head__title-block">
-              <h3 class="dev-section-title">资金概览</h3>
-            </div>
-          </div>
-
-          <!-- 收入走势与余额两组：桌面上下排，平板档左右并排（见样式 641–980 档） -->
-          <div class="dev-home__fund-trend">
-          <!-- 「今日收入」是这一栏唯一带「今天」口径的读数，环比就跟在它旁边 -->
-          <div class="dev-home__income-head">
-            <span class="dev-home__income-label">今日收入</span>
-            <strong class="dev-figure dev-figure--ink">{{ money(overview?.today_income_cny) }}</strong>
-            <span v-if="changeRateText" class="dev-home__trend"
-              :class="changeRate != null && changeRate < 0 ? 'dev-home__trend--down' : ''"
-              :title="'今日到账较昨日的环比'">
-              {{ changeRateText }} 较昨日
-            </span>
-          </div>
-
-          <div class="dev-home__trend-head">
-            <p class="dev-home__group-label">近 {{ chartDays }} 天到账</p>
-            <!-- 本月累计只在看板上出现：快照才有按自然月汇总的口径 -->
-            <p v-if="liveBoard" class="dev-home__month">
-              <span>本月累计到账</span>
-              <strong>{{ money(liveBoard.month_income_cny) }}</strong>
-            </p>
-          </div>
-
-          <!-- 走势图：坐标换算与悬停状态在 useIncomeChart，画在 DevIncomeTrendChart；
-               这里只给「取哪几天的数」与图上 title 的口径说明 -->
-          <DevIncomeTrendChart :buckets="incomeBuckets" :caption="chartCaption" />
-          </div>
-
-          <div class="dev-home__fund-balance">
-          <!-- 提现口径：大数只报可提现余额，另两笔金额各报一次（原先还得先读比例条再读图例） -->
-          <div class="dev-home__money">
-            <div class="dev-home__money-head">
-              <span class="dev-home__money-figure">
-                <span class="dev-home__money-label">可提现余额</span>
-                <strong class="dev-figure">{{ money(withdrawable) }}</strong>
-              </span>
-              <!-- 提现按钮就贴在余额右侧：这一段的主操作只有一个，不必再排一行页脚。
-                   点了就地拉起提现弹窗（与收益钱包页共用同一个），不再跳到钱包页。 -->
-              <button class="dev-btn dev-btn--primary dev-home__money-action" type="button"
-                @click="withdrawDialog?.open()">
-                <TIcon>
-                  <Wallet />
-                </TIcon>
-                <span>提现</span>
-              </button>
-            </div>
-
-            <!-- 两个读数并成一行：提现口径只有这两笔，收入口径的读数已经在上面（今日收入、曲线） -->
-            <dl class="dev-home__facts">
-              <div class="dev-home__fact">
-                <span class="dev-home__fact-icon dev-home__fact-icon--gold" aria-hidden="true">
-                  <TIcon>
-                    <Clock />
-                  </TIcon>
-                </span>
-                <div class="dev-home__fact-copy">
-                  <dt>待提现</dt>
-                  <dd>{{ money(pendingWithdraw) }}</dd>
-                </div>
-              </div>
-
-              <div class="dev-home__fact">
-                <span class="dev-home__fact-icon dev-home__fact-icon--cyan" aria-hidden="true">
-                  <TIcon>
-                    <CircleCheck />
-                  </TIcon>
-                </span>
-                <div class="dev-home__fact-copy">
-                  <dt>已提现</dt>
-                  <dd>{{ money(paidWithdraw) }}</dd>
-                </div>
-              </div>
-            </dl>
-          </div>
-
-          <!-- 保证金是这一栏唯一带操作、也是唯一会阻断接单的一段：
-               给它浅蓝内嵌底 + 状态胶囊，与上面纯读数的收入、提现两段分开。 -->
-          <div class="dev-home__deposit">
-            <div class="dev-home__deposit-head">
-              <span class="dev-home__money-label">可用保证金</span>
-              <span v-if="depositStatusChip" class="dev-chip dev-home__chip" :class="depositStatusChip.className">
-                {{ depositStatusChip.label }}
-              </span>
-            </div>
-
-            <div class="dev-home__deposit-figure">
-              <strong class="dev-figure dev-figure--sm dev-figure--ink">{{ money(deposit?.available_cny) }}</strong>
-              <button class="dev-btn dev-btn--ghost dev-home__deposit-action" type="button"
-                @click="rechargeDialog?.open()">
-                <TIcon>
-                  <Money />
-                </TIcon>
-                <span>立即充值</span>
-              </button>
-            </div>
-
-            <p class="dev-home__deposit-meta">
-              <span>冻结 {{ money(deposit?.frozen_cny) }}</span>
-              <span>累计充值 {{ money(deposit?.total_paid_cny) }}</span>
-            </p>
-          </div>
-          </div>
-        </section>
+        <!-- 收入、提现、保证金合并成一张「资金概览」：同一笔钱全页只出现一次（口径在 DevFundPanel）。
+             提现 / 充值仍由本页就地拉起弹窗，成功后才回刷钱包读数。 -->
+        <DevFundPanel :today-income="overview?.today_income_cny ?? null" :change-rate="changeRate"
+          :chart-days="chartDays" :chart-caption="chartCaption" :buckets="incomeBuckets"
+          :month-income="liveBoard?.month_income_cny ?? null" :withdrawable="withdrawable"
+          :pending-withdraw="pendingWithdraw" :paid-withdraw="paidWithdraw"
+          :available-deposit="deposit?.available_cny ?? null" :frozen-deposit="deposit?.frozen_cny ?? null"
+          :total-paid-deposit="deposit?.total_paid_cny ?? null" :deposit-chip="depositStatusChip"
+          @withdraw="withdrawDialog?.open()" @recharge="rechargeDialog?.open()" />
       </aside>
 
       <!-- 看板第三栏：实时动态流 + 资源项目概况，只在全屏且拿到快照后出现 -->
@@ -1120,7 +841,10 @@ function formatCount(value: number): string {
 
 <style scoped>
 /* 本页只用开发者体系令牌（--dev-*）：顶部读数条 → 左列表右资金卡。
-   口径与颜色沿用收益钱包那一套，见 doc/设计规范.md 第一节。 */
+   口径与颜色沿用收益钱包那一套，见 doc/设计规范.md 第一节。
+   注意：列表与资金卡的静态排布已经跟着 `DevProjectList` / `DevDeliveryList` / `DevFundPanel`
+   搬进各自的 scoped 样式；**跨到子组件内部的覆盖只能写在这里**，并带上 `:deep()`——
+   父层的 scoped 属性只落在子组件根节点上，打不进它的后代。 */
 /* 加载中压暗数据区，避免把「还没拿到数据」误读成真实的 0 */
 .dev-home--loading .dev-home__panel {
   opacity: 0.6;
@@ -1141,7 +865,7 @@ function formatCount(value: number): string {
   margin: 0;
   padding: 20px 24px;
   overflow-y: auto;
-  background: var(--dev-bg, #f1f4fb);
+  background: var(--dev-bg);
 }
 
 /* 看板三栏：列表 | 资金 | 动态与资源。整块吃掉读数条与漏斗之下的剩余高度，
@@ -1180,7 +904,8 @@ function formatCount(value: number): string {
   min-height: 0;
 }
 
-/* 列表卡：卡片头 + 工具栏固定，列表本体在卡内滚动 */
+/* 列表卡：卡片头 + 工具栏固定，列表本体在卡内滚动。
+   `.dev-home__panel` 与 `.dev-home__feed-panel` 都是子组件的根节点，父层的 scoped 属性会落上去。 */
 .dev-home--fullscreen .dev-home__main .dev-home__panel,
 .dev-home__live .dev-home__feed-panel {
   display: flex;
@@ -1189,10 +914,11 @@ function formatCount(value: number): string {
 }
 
 /* 项目行 hover 底色靠负外边距伸出去，滚动容器会把它算成横向溢出：
-   容器自己先向两侧借 10px 内边距，行就落回容器内 */
-.dev-home--fullscreen .dev-home__projects,
-.dev-home--fullscreen .dev-home__deliveries,
-.dev-home__feed {
+   容器自己先向两侧借 10px 内边距，行就落回容器内。
+   两个列表的本体在子组件里，`:deep()` 才打得到。 */
+.dev-home--fullscreen :deep(.dev-home__projects),
+.dev-home--fullscreen :deep(.dev-home__deliveries),
+.dev-home__live :deep(.dev-home__feed) {
   flex: 1 1 auto;
   min-height: 0;
   margin: 0 -10px;
@@ -1202,7 +928,7 @@ function formatCount(value: number): string {
   overscroll-behavior: contain;
 }
 
-.dev-home--fullscreen .dev-home__deliveries {
+.dev-home--fullscreen :deep(.dev-home__deliveries) {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: start;
   padding-bottom: 2px;
@@ -1309,33 +1035,6 @@ function formatCount(value: number): string {
 
 /* 漏斗的静态排布搬进了 DevFunnel.vue（scoped 样式跟着组件走）；这里只留 900 / 640 两档的窄屏覆盖，
    见文件末尾的媒体块——`:deep()` 只能在「持有子组件的那一层」编译成后代选择器。 */
-
-/* 资金卡里「近 N 天到账」与「本月累计到账」同一行，标签左、累计右 */
-.dev-home__trend-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-}
-
-.dev-home__month {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  margin: 14px 0 0;
-  color: var(--dev-muted);
-  font-size: 12px;
-}
-
-.dev-home__month strong {
-  color: var(--dev-gold);
-  font-size: 16px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-/* 30 天横轴的抽稀标签（.dev-home__chart-axis-labels--sparse）跟着图表搬进了 DevIncomeTrendChart。 */
 
 /* 实时动态：图标 + 标题 / 时间 + 金额。新条目从顶部插入并闪一下底色 */
 .dev-home__feed {
@@ -1492,8 +1191,9 @@ function formatCount(value: number): string {
   }
 }
 
-.dev-home--fullscreen .dev-home__money-action,
-.dev-home--fullscreen .dev-home__deposit-action,
+/* 提现 / 充值两个动作在资金卡里（子组件），全屏时收起：弹窗挂在 body 上，全屏里看不见。 */
+.dev-home--fullscreen :deep(.dev-home__money-action),
+.dev-home--fullscreen :deep(.dev-home__deposit-action),
 .dev-home--fullscreen .dev-notice__action,
 .dev-home--fullscreen .dev-home__mock-hint {
   display: none;
@@ -1528,12 +1228,11 @@ function formatCount(value: number): string {
   font-size: 12px;
 }
 
-/* 保证金不足的提示条已改用统一层的 .dev-notice（金色 + 图标徽标 + 文案 + 右侧动作），
+/* 保证金不足的提示条改用统一层的 .dev-notice（金色 + 图标徽标 + 文案 + 右侧动作），
    本页不再自带这一套。 */
 
-/* 四格统计卡：图标 + 口径数字 + 箭头，整卡可点 */
-/* 左栏是两条列表，右栏是两张资金卡；窄屏并成一栏 */
-/* 两栏等高、左栏最后一张卡吃掉剩余高度：总览是拿来「看」的，两栏底边不齐会在下方留出一块空洞 */
+/* 两栏：左栏是两条列表，右栏是资金卡；窄屏并成一栏。
+   两栏等高、左栏最后一张卡吃掉剩余高度：总览是拿来「看」的，两栏底边不齐会在下方留出一块空洞 */
 .dev-home__layout {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
@@ -1557,558 +1256,8 @@ function formatCount(value: number): string {
   align-content: stretch;
 }
 
-/* 资金卡：顶部一层很淡的主色渐变，把「看数」这一栏从左侧两张列表卡里拎出来 */
-.dev-home__panel.dev-home__fund {
-  background:
-    radial-gradient(120% 60% at 100% 0, color-mix(in srgb, var(--dev-blue) 10%, transparent), transparent 70%),
-    var(--dev-surface-strong);
-}
-
 /* 卡片内边距由统一层给（桌面 24px、≤720px 20px、≤640px 16px），见 dev-base.css
    与 dev-responsive.css 的 .dev-surface-card:not(.el-card)，本页不再单独写。 */
-
-/* 卡片内的小节标签：右栏把收入 / 提现 / 保证金并成一张卡后，用它给各段起头 */
-.dev-home__group-label {
-  margin: 14px 0 0;
-  color: var(--dev-muted);
-  font-size: 13px;
-}
-
-/* 列表内的筛选标签走统一层的 .dev-toolbar + .dev-chip-group / .dev-chip--button，
-   位置与其它菜单页一致（卡片头下方），卡片头右侧只留「查看全部」这个动作 */
-.dev-home__tabs {
-  margin: 0;
-}
-
-.dev-home__more {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  color: var(--dev-blue);
-  font-size: 13px;
-  font-weight: 700;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.dev-home__more .t73-icon {
-  transition: transform 0.2s ease;
-}
-
-.dev-home__more:hover .t73-icon {
-  transform: translateX(2px);
-}
-
-.dev-home__more:focus-visible {
-  outline: 2px solid var(--dev-blue);
-  outline-offset: 2px;
-  border-radius: 8px;
-}
-
-/* 项目行：图标 + 正文（编号 / 数字 / 进度条），行与行之间只用分隔线 */
-.dev-home__projects {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* 每条项目只占两行：标题 + 状态，以及「编号 · 预算 · 更新时间」+ 进度。
-   原来还有一列装饰性图标和一行独立数字——图标每行都相同、不承载信息，
-   数字另起一行则白占一行高度；合并后单条约 63px（原 119px），一屏能多放近一倍。
-   整行可点（跳到「我的接单」并定位这一单），所以左右各留出内边距给 hover 底色，
-   再用负外边距把文字拉回与卡片头对齐的位置。 */
-.dev-home__project {
-  display: grid;
-  gap: 5px;
-  margin: 0 -10px;
-  padding: 11px 10px;
-  border-bottom: 1px solid var(--dev-line);
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 140ms ease;
-}
-
-.dev-home__project:hover {
-  background: color-mix(in srgb, var(--dev-blue) 5%, transparent);
-}
-
-.dev-home__project:focus-visible,
-.dev-home__delivery:focus-visible {
-  outline: 2px solid var(--dev-blue);
-  outline-offset: 2px;
-}
-
-.dev-home__project:first-child {
-  padding-top: 6px;
-}
-
-.dev-home__project:last-child {
-  padding-bottom: 6px;
-  border-bottom: 0;
-}
-
-/* 最近交付是三列卡片而不是行列表：一张卡只讲一次交付，
-   行列表在这里信息密度过低（右侧大片留白），见设计规范第五节。
-   整卡可点（跳到「我的接单」并定位这一单），hover 与 focus 的反馈见下。 */
-.dev-home__deliveries {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.dev-home__delivery {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-  padding: 14px;
-  border: 1px solid var(--dev-line);
-  border-radius: 12px;
-  background:
-    linear-gradient(160deg, color-mix(in srgb, var(--dev-cyan) 7%, transparent), transparent 55%),
-    var(--dev-surface-strong);
-  cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.dev-home__delivery:hover {
-  border-color: color-mix(in srgb, var(--dev-cyan) 36%, transparent);
-  box-shadow: 0 12px 24px color-mix(in srgb, var(--dev-cyan) 10%, transparent);
-}
-
-/* 项目行不再带图标：每行的图标都相同、不承载信息，去掉后标题能与面板标题左对齐。
-   图标只留给交付卡，且比原尺寸矮一档——三列宽的卡片上 38px 会把标题挤掉两三个字。 */
-.dev-home__delivery-icon {
-  display: inline-grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--dev-cyan) 12%, transparent);
-  color: var(--dev-cyan);
-  font-size: 16px;
-}
-
-/* 第二行：左侧「编号 · 预算 · 更新时间」，右侧进度。
-   进度列给固定宽，用 auto 的话只按读数文字算宽、轨道会被挤成 0。 */
-.dev-home__project-foot {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 128px;
-  align-items: center;
-  gap: 4px 14px;
-  min-width: 0;
-}
-
-.dev-home__project-foot .dev-home__progress {
-  min-width: 0;
-}
-
-.dev-home__project-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.dev-home__delivery-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.dev-home__project-title,
-.dev-home__delivery-title {
-  min-width: 0;
-  color: var(--dev-ink);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-
-/* 行内标签比 .dev-chip 默认形态矮一档，避免把行撑高。
-   中性档（终止态、「未关联」这类无强调语义的标签）不再自带变体，
-   统一用统一层的 .dev-chip--muted，免得同一档颜色在总览页与其它页各有一份。 */
-.dev-home__chip {
-  flex: 0 0 auto;
-  padding: 4px 10px;
-}
-
-.dev-home__project-meta,
-.dev-home__delivery-meta {
-  margin: 0;
-  color: var(--dev-muted);
-  font-size: 12px;
-  line-height: 1.6;
-  font-variant-numeric: tabular-nums;
-}
-
-/* 预算读数跟在「预算」二字后面，不再单独占一行，所以只加深、加粗即可：
-   字号与 tabular-nums 都从 .dev-home__project-meta 继承。 */
-.dev-home__project-amount {
-  color: var(--dev-ink);
-  font-weight: 700;
-}
-
-/* 进度：轨道 + 按状态着色的填充，读数写在右侧 */
-.dev-home__progress {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-}
-
-.dev-home__progress-track {
-  display: block;
-  height: 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--dev-muted) 22%, transparent);
-  overflow: hidden;
-}
-
-.dev-home__progress-fill {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--dev-blue);
-  transition: width 0.3s ease;
-}
-
-.dev-home__progress-fill--gold {
-  background: var(--dev-gold);
-}
-
-.dev-home__progress-fill--cyan {
-  background: var(--dev-cyan);
-}
-
-.dev-home__progress-fill--muted {
-  background: color-mix(in srgb, var(--dev-muted) 70%, transparent);
-}
-
-.dev-home__progress-text {
-  color: var(--dev-muted);
-  font-size: 12px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.dev-home__delivery-check {
-  flex: 0 0 auto;
-  margin-left: auto;
-  color: var(--dev-cyan);
-  font-size: 16px;
-}
-
-/* 交付卡页脚：日期贴左，版本胶囊居中，金额靠右 —— 金额是这张卡最想让人看到的一格 */
-.dev-home__delivery-amount {
-  margin-left: auto;
-  color: var(--dev-gold);
-  font-size: 15px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.dev-home__delivery-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px dashed var(--dev-line);
-}
-
-.dev-home__delivery-amount--pending {
-  color: var(--dev-muted);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.dev-home__delivery-meta {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.dev-home__delivery-versions {
-  flex-shrink: 0;
-}
-
-.dev-home__delivery-id,
-.dev-home__delivery-time {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dev-home__delivery-versions {
-  color: var(--dev-cyan);
-  font-weight: 700;
-}
-
-.dev-home__panel > .dev-card-head:has(.dev-home__head-main) {
-  align-items: center;
-}
-
-/* 交付卡标题最多两行，三张卡的标题区等高，下面的编号与页脚才对得齐 */
-.dev-home__delivery-title {
-  display: -webkit-box;
-  min-height: calc(14px * 1.45 * 2);
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-}
-
-/* 卡头：标题与筛选胶囊同一行，窄了胶囊整组落到标题下面 */
-.dev-home__head-main {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-}
-
-/* 项目行左侧一道状态色条：一眼扫过去就分得清开发中 / 待付尾款 / 已完成，不必逐个读胶囊 */
-.dev-home__project {
-  position: relative;
-  padding-left: 16px;
-}
-
-.dev-home__project::before {
-  content: '';
-  position: absolute;
-  top: 12px;
-  bottom: 12px;
-  left: 4px;
-  width: 3px;
-  border-radius: 999px;
-  background: var(--dev-blue);
-}
-
-.dev-home__project:first-child::before {
-  top: 7px;
-}
-
-.dev-home__project:last-child::before {
-  bottom: 7px;
-}
-
-.dev-home__project--gold::before {
-  background: var(--dev-gold);
-}
-
-.dev-home__project--cyan::before {
-  background: var(--dev-cyan);
-}
-
-.dev-home__project--muted::before {
-  background: color-mix(in srgb, var(--dev-muted) 50%, transparent);
-}
-
-.dev-home__delivery-time {
-  color: var(--dev-muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* 收入：今日收入大数 + 环比 + 近 7 天折线（累计收入留给页面顶部的四格统计卡） */
-.dev-home__income-head {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.dev-home__income-label {
-  color: var(--dev-muted);
-  font-size: 13px;
-}
-
-.dev-home__trend {
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--dev-cyan) 12%, transparent);
-  color: var(--dev-cyan);
-  font-size: 12px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.dev-home__trend--down {
-  background: color-mix(in srgb, var(--dev-gold) 12%, transparent);
-  color: var(--dev-gold);
-}
-
-/* 走势图的排版（框、svg、折线、圆点、悬停胶囊与命中带）整套搬进了 DevIncomeTrendChart.vue，
-   连同 scoped 样式一起走，这里不再留残留规则。 */
-
-
-/* 读数格：两列一行，图标 + 标签 + 数字。合并后只剩提现口径的两个读数 */
-.dev-home__facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 14px;
-  margin: 14px 0 0;
-  padding-top: 14px;
-  border-top: 1px solid var(--dev-line);
-}
-
-.dev-home__fact {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.dev-home__fact-icon {
-  display: inline-grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: var(--wb-accent-soft);
-  color: var(--dev-blue);
-  font-size: 16px;
-}
-
-.dev-home__fact-icon--gold {
-  background: color-mix(in srgb, var(--dev-gold) 14%, transparent);
-  color: var(--dev-gold);
-}
-
-.dev-home__fact-icon--cyan {
-  background: color-mix(in srgb, var(--dev-cyan) 14%, transparent);
-  color: var(--dev-cyan);
-}
-
-.dev-home__fact-copy {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.dev-home__fact-copy dt {
-  color: var(--dev-muted);
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.dev-home__fact-copy dd {
-  margin: 0;
-  color: var(--dev-ink);
-  font-size: 15px;
-  font-weight: 800;
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-
-/* 提现：可提现大数（右侧贴提现按钮）+ 两个口径读数，再往下是保证金。
-   原先那条「可提现 / 待提现」比例条与图例只把这两个数换成百分比又说了一遍，已删。 */
-.dev-home__money {
-  display: grid;
-  gap: 12px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--dev-line);
-}
-
-.dev-home__money-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px 14px;
-}
-
-.dev-home__money-figure {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.dev-home__money-action {
-  flex: 0 0 auto;
-}
-
-.dev-home__money-label {
-  color: var(--dev-muted);
-  font-size: 13px;
-}
-
-/* 保证金：这一栏三段里唯一带操作、也是唯一会阻断接单的一段。
-   前两段（收入、提现）已经各有一条 hairline 起头，第三段再来一条只是「又一段」；
-   改用浅蓝内嵌块把它从卡片里拎出来，底色取自主色 --dev-blue。 */
-.dev-home__deposit {
-  display: grid;
-  gap: 10px;
-  margin-top: 16px;
-  padding: 14px;
-  border: 1px solid var(--wb-accent-line);
-  border-radius: var(--dev-radius-inner);
-  background: var(--wb-accent-soft);
-}
-
-/* 首行：标签在左、接单状态在右。状态才用胶囊；原先「冻结 / 累计充值」两笔读数也用胶囊装，
-   而 .dev-chip 是「浅底 + 深字」的状态形态，装金额会与真正的状态标签混作一谈。 */
-.dev-home__deposit-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-/* 次行：大数在左、充值按钮同排——与上面「可提现余额 + 提现」同一套排法。
-   读数与按钮各占一头，中间留白由 space-between 吃掉，窄到摆不下时按钮整块落到下一行。 */
-.dev-home__deposit-figure {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-/* 冻结与累计充值并成一行脚注：它们只在充值那一下才需要看，各占一枚胶囊会把这一段撑成三行 */
-.dev-home__deposit-meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 2px 6px;
-  margin: 0;
-  color: var(--dev-muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* 分隔点由样式给出，模板里少一个纯装饰节点；换行时它会跟着第二个读数一起落行 */
-.dev-home__deposit-meta span + span::before {
-  content: '·';
-  margin-right: 6px;
-  color: var(--dev-muted);
-}
-
-/* 按钮：本页原先自带一套 .dev-home__button（圆角 10px、42px 高、悬停压深底色，
-   并把 #173aaa / #96661f / #475569 写死）。现已并入统一层 .dev-btn / --primary /
-   --gold / --ghost，见 src/styles/dev-base.css，这里只留本页的排布钩子。 */
-.dev-home__money-action,
-.dev-home__deposit-action {
-  flex: 0 0 auto;
-}
 
 /* 900：双栏并一栏；交付卡片三列降两列 */
 /* R047 断点收敛：原档位 980px → 900px */
@@ -2117,7 +1266,9 @@ function formatCount(value: number): string {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .dev-home__deliveries {
+  /* 交付卡本体在 DevDeliveryList，`:deep()` 才打得到；多带一个 `.dev-home` 只为压过子组件里
+     同名的基样式——两份规则各在一个文件里，权重相等时只能靠注入顺序分胜负。 */
+  .dev-home :deep(.dev-home__deliveries) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -2134,6 +1285,7 @@ function formatCount(value: number): string {
     order: -1;
   }
 
+  /* `.dev-home__fund` 是 DevFundPanel 的根节点，父层的 scoped 属性落得上去，不必 `:deep()` */
   .dev-home__fund {
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
@@ -2141,16 +1293,16 @@ function formatCount(value: number): string {
     align-items: start;
   }
 
-  .dev-home__fund > .dev-card-head {
+  .dev-home__fund :deep(.dev-card-head) {
     grid-column: 1 / -1;
   }
 
-  .dev-home__fund-balance {
+  .dev-home__fund :deep(.dev-home__fund-balance) {
     padding-left: 24px;
     border-left: 1px solid var(--dev-line);
   }
 
-  .dev-home__fund-balance .dev-home__money {
+  .dev-home__fund :deep(.dev-home__fund-balance .dev-home__money) {
     margin-top: 0;
     padding-top: 0;
     border-top: 0;
@@ -2159,25 +1311,25 @@ function formatCount(value: number): string {
 
 @media (max-width: 640px) {
   /* 触屏档：列表行撑满一列，可点目标不小于 44px */
-  .dev-home__deliveries,
-  .dev-home__facts {
+  .dev-home :deep(.dev-home__deliveries),
+  .dev-home :deep(.dev-home__facts) {
     grid-template-columns: minmax(0, 1fr);
   }
 
   /* 筛选胶囊在触屏档的高度由统一层给（dev-responsive.css 的 36px，与门户侧 .wb-chip--button 同档），
      总览页原来在这里自己写 32px，于是同一组筛选胶囊在总览页 32px、在需求大厅 36px。 */
 
-  .dev-home__more {
+  .dev-home :deep(.dev-home__more) {
     min-height: 44px;
   }
 
   /* 项目行在触屏档：编号行独占整宽并允许折行，进度整块落到下一行，条与读数仍同行 */
-  .dev-home__project-foot {
+  .dev-home :deep(.dev-home__project-foot) {
     grid-template-columns: minmax(0, 1fr);
     gap: 6px;
   }
 
-  .dev-home__progress {
+  .dev-home :deep(.dev-home__progress) {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
   }
@@ -2186,13 +1338,13 @@ function formatCount(value: number): string {
      单压总览页会让同一笔钱在总览与收益钱包两页大小不一，切菜单时数字会跳。 */
 
   /* 内嵌块跟着卡片一起收窄，否则卡片 16px 内边距下这块只剩一层薄框 */
-  .dev-home__deposit {
+  .dev-home :deep(.dev-home__deposit) {
     padding: 12px;
   }
 
   /* 触屏档按钮撑满整行并抬到 44px：36px 的可点面积不达标，见设计规范第六节 */
-  .dev-home__money-action,
-  .dev-home__deposit-action,
+  .dev-home :deep(.dev-home__money-action),
+  .dev-home :deep(.dev-home__deposit-action),
   .dev-notice__action .dev-btn {
     flex: 1 1 100%;
     min-width: 0;
@@ -2225,7 +1377,7 @@ function formatCount(value: number): string {
     overflow: visible;
   }
 
-  .dev-home--fullscreen .dev-home__deliveries {
+  .dev-home--fullscreen :deep(.dev-home__deliveries) {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -2285,9 +1437,9 @@ function formatCount(value: number): string {
     grid-template-rows: none;
   }
 
-  .dev-home--fullscreen .dev-home__projects,
-  .dev-home--fullscreen .dev-home__deliveries,
-  .dev-home__feed {
+  .dev-home--fullscreen :deep(.dev-home__projects),
+  .dev-home--fullscreen :deep(.dev-home__deliveries),
+  .dev-home__live :deep(.dev-home__feed) {
     overflow: visible;
   }
 
@@ -2300,5 +1452,4 @@ function formatCount(value: number): string {
     display: none;
   }
 }
-
 </style>
