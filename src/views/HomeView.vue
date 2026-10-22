@@ -2,15 +2,10 @@
 import '@/styles/home.css'
 
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { TIcon, ArrowRight, TMessage } from 'ui_73info'
 
 import { useAuthStore } from '@/stores/auth'
-import {
-  getUnionPaymentAuthorizeUrl,
-  isUnionPaymentAuthorizationRequired,
-  isWechatPaymentAuthorizationRequired,
-} from '@/api/auth'
 import AuthModal from '@/components/AuthModal.vue'
 import WechatLoginQrModal from '@/components/WechatLoginQrModal.vue'
 import PublishModal from '@/components/PublishModal.vue'
@@ -23,90 +18,28 @@ import SpotlightResourceSection from '@/components/home/SpotlightResourceSection
 import TeamRankCard from '@/components/home/TeamRankCard.vue'
 import { buildDevPortalUrl } from '@/config/runtime'
 import { useAuthForm } from '@/composables/useAuthForm'
+import { useHomeAuthQuery } from '@/composables/useHomeAuthQuery'
 import { useHomeCheckin } from '@/composables/useHomeCheckin'
 import { usePortalRanks } from '@/composables/usePortalRanks'
 import { usePublicResources } from '@/composables/usePublicResources'
+import { useDepositPayment } from '@/composables/useDepositPayment'
+import {
+  useHomePortalLoaders,
+  type PendingRequirementView,
+} from '@/composables/useHomePortalLoaders'
+import { useRequirementPublish, type AuthMode } from '@/composables/useRequirementPublish'
 import type { SpotlightCard } from '@/composables/useSpotlightCards'
 import {
   buildMilestoneStats,
   buildPortalNotices,
   formatMoney,
-  formatTimeLabel,
-  statusToLabel,
   type PortalMilestoneStat,
   type PortalNotice,
 } from '@/shared/home/portalDisplay'
-import {
-  calculateFinalDepositAmount,
-  calculateFinalPaymentAmount,
-} from '@/shared/requirementPayment'
-import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
-import {
-  normalizeDevelopmentCycle,
-  validateDevelopmentCycleInput,
-} from '@/shared/requirementArchive'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
-import { validateRequirementRichText } from '@/utils/requirementRichText'
-import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
 import { HttpError } from '@/api/http'
-import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
-import { getMyRealnameVerification } from '@/api/realname'
-import {
-  createAdapayPayment,
-  getAdapayPayment,
-  getAdapayClientPlatform,
-  type AdapayBusinessPayChannel,
-  type AdapayPaymentResponse,
-} from '@/api/adapay'
-import {
-  createRequirement,
-  getPublicRequirementOverview,
-  listPublicRequirementSpotlights,
-  listRequirements,
-  resubmitRequirement,
-  type PublicRequirementSpotlightItem,
-  type RequirementPaymentMode,
-  type RequirementStatus,
-} from '@/api/requirements'
-import { getDepositRatio } from '@/api/settings'
-import { listCommunityPosts, type CommunityPost } from '@/api/community'
-import {
-  likePublicMcResource,
-  listAllPublicMcResources,
-  unlikePublicMcResource,
-} from '@/api/resources'
-import { getResourcePromoMeta } from '@/api/points'
+import { likePublicMcResource, unlikePublicMcResource } from '@/api/resources'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
-
-type Metric = {
-  label: string
-  value: string
-}
-
-type PendingRequirementView = {
-  id: string
-  title: string
-  status: RequirementStatus
-  statusLabel: string
-  updatedAtLabel: string
-  description?: string | null
-  acceptanceCriteria?: string | null
-  budget?: number | null
-  paymentMode: RequirementPaymentMode
-}
-
-type PaymentState = {
-  payment_id: string
-  requirement_id: string
-  channel: string
-  amount_cny: number
-  status: string
-  alipay_order_string?: string
-  expires_at: string
-  adapay?: boolean
-}
-
-type AuthMode = 'login' | 'register' | 'reset'
 
 type WorkflowStep = {
   step: string
@@ -125,23 +58,8 @@ type QuickPanel = {
   tone: 'gift' | 'briefcase'
 }
 
-const metrics = ref<Metric[]>([
-  { label: '累计完成', value: '0 单' },
-  { label: '综合评价', value: '5.00 分' },
-  { label: '累计成交额', value: '¥ 0.00' },
-])
 const AUTO_REFRESH_INTERVAL_MS = 300_000
 
-/** 公告侧栏只展示标题与成交时间，其余成交字段无读取点，随详情弹窗一并删除。 */
-type LatestDealView = {
-  title: string
-  at: string
-}
-
-const latestDeals = ref<LatestDealView[]>([])
-const publicDeveloperCount = ref(0)
-const pendingRequirements = ref<PendingRequirementView[]>([])
-const publicRequirementSpotlights = ref<PublicRequirementSpotlightItem[]>([])
 /**
  * 公开资源这一份状态由 `usePublicResources` 独占：侧栏榜单、公告卡、里程碑统计、
  * 精选资源区、点赞回写都读同一份，本视图不再自己建 ref（否则会出现两份数据源）。
@@ -156,9 +74,69 @@ const {
   applyLikeState,
 } = usePublicResources()
 const auth = useAuthStore()
-const announcementPosts = ref<CommunityPost[]>([])
 const router = useRouter()
-const route = useRoute()
+
+/**
+ * 卸载标记：**只在视图这一份**，往下传的是只读 getter（`isMounted: () => isMounted`），
+ * 各 composable 不许自持一份 —— 否则视图卸载后谁清谁不清就成了两套说法。
+ */
+let isMounted = true
+
+/**
+ * 首屏与轮询要拉的三批数据（待办需求 / 平台概览 / 公开资源·公告·精选需求）在
+ * `useHomePortalLoaders`。押金比例那一路属支付域，跟着支付卡片走。
+ */
+const {
+  metrics,
+  latestDeals,
+  publicDeveloperCount,
+  pendingRequirements,
+  publicRequirementSpotlights,
+  announcementPosts,
+  loadPendingRequirements,
+  loadRequirementOverview,
+  loadPublicPortalData,
+} = useHomePortalLoaders({
+  isMounted: () => isMounted,
+  ensureTagTree,
+  applyResourceList,
+  applyHighLikeThreshold,
+})
+
+/**
+ * 支付域（卡片状态 / 支付方式 / 押金比例 / 券 / 拉起 Adapay 与回跳确认）整块在 `useDepositPayment`，
+ * 券那一支再下沉到 `useDepositCoupons`（模块行数预算）。传进去的两样都还留在视图：待办需求列表与重拉函数。
+ */
+const {
+  depositChannel,
+  depositPayment,
+  depositLoading,
+  depositRatioPercent,
+  depositPolicyAccepted,
+  contractSigningStatus,
+  depositRequirement,
+  isFinalPayment,
+  paymentStageLabel,
+  availableCoupons,
+  amountCouponCode,
+  discountCouponCode,
+  couponLoading,
+  couponSummary,
+  couponFinalAmount,
+  canOpenPayment,
+  selectCoupon,
+  updateDepositChannel,
+  markUnionAuthorized,
+  openDepositPayment,
+  closeDepositCard,
+  loadDepositRatio,
+  loadAvailableCoupons,
+  submitDepositPayment,
+} = useDepositPayment({
+  isMounted: () => isMounted,
+  pendingRequirements,
+  loadPendingRequirements: () => loadPendingRequirements(),
+})
 
 /** 侧栏两张榜单：资源由本视图统一请求后传进去，composable 只做聚合，不再发资源请求。 */
 const { developerRanks, teamRanks, totalContribResources, developerBadges } =
@@ -183,22 +161,12 @@ function openTeamProfile(teamId: number) {
   void router.push({ name: 'team-profile', params: { teamId } })
 }
 
-function hashQueryValue(key: string) {
-  const hash = route.hash.trim()
-  if (!hash.startsWith('#/?')) {
-    return ''
-  }
-
-  return new URLSearchParams(hash.slice(3)).get(key)?.trim() ?? ''
-}
-
-function routeQueryValue(key: string) {
-  const value = route.query[key]
-  if (typeof value === 'string') {
-    return value.trim()
-  }
-  return hashQueryValue(key)
-}
+/** OAuth / 支付授权回跳参数的读取与清理在 `useHomeAuthQuery`，URL 取值口径也只有那一份。 */
+const { routeQueryValue, consumeAuthQuery } = useHomeAuthQuery({
+  onUnionAuthorized: () => {
+    markUnionAuthorized()
+  },
+})
 
 const routeModal = computed(() => routeQueryValue('modal'))
 const routeAuthMode = computed<AuthMode>(() => {
@@ -243,34 +211,32 @@ const {
 } = useAuthForm(routeAuthMode)
 let autoRefreshTimer: ReturnType<typeof setInterval> | null = null
 let autoRefreshInFlight = false
-let isMounted = true
-const publishTitle = ref('')
-const publishDescription = ref('')
-const publishBudget = ref<string | number>('')
-const depositChannel = ref<AdapayBusinessPayChannel>('alipay')
-const publishAcceptance = ref('')
-const publishPaymentMode = ref<RequirementPaymentMode>('self_managed')
-// R014 的「开发周期（天）」：只有担保模式（`platform_guarantee`）才显示、才必填。
-// 这一路必须与付款模式一起接：`PublishModal` 里输入框照样渲染，但 `emit` 无人接时
-// 用户键入的值会原地丢掉 —— 后端对担保需求要求正数周期，发布必被 400 拒掉，
-// 重新提交走 `PATCH`（后端不跑 `validate_new`）则**不报错、周期静默丢失**。
-const publishDevelopmentCycleDays = ref<string | number>('')
-const activeResubmitRequirementId = ref<string | null>(null)
-const publishLoading = ref(false)
-const publishModalRef = ref<InstanceType<typeof PublishModal> | null>(null)
-const depositRequirement = computed<PendingRequirementView | null>(() => {
-  const id = String(route.query.requirement_id || '')
-  return pendingRequirements.value.find((item) => item.id === id) ?? null
+/**
+ * 发布域（表单状态 / 实名门禁 / 校验 / `POST` 与 `PATCH` 提交）整块在 `useRequirementPublish`。
+ * 这里传进去的三样都还留在视图：卸载标记、登录弹窗入口、发布后重拉待办需求。
+ */
+const {
+  publishTitle,
+  publishDescription,
+  publishBudget,
+  publishAcceptance,
+  publishPaymentMode,
+  publishDevelopmentCycleDays,
+  activeResubmitRequirementId,
+  publishLoading,
+  publishModalRef,
+  publishModalTitle,
+  publishModalSubmitText,
+  publishModalLoadingText,
+  startResubmit,
+  openPublishModal,
+  closePublishModal,
+  submitPublishRequirement,
+} = useRequirementPublish({
+  isMounted: () => isMounted,
+  openAuth: (mode, redirectTo) => openAuth(mode, redirectTo),
+  loadPendingRequirements: () => loadPendingRequirements(),
 })
-const depositPayment = ref<PaymentState | null>(null)
-const depositLoading = ref(false)
-const depositRatioPercent = ref(20)
-const availableCoupons = ref<CouponItem[]>([])
-const amountCouponCode = ref('')
-const discountCouponCode = ref('')
-const depositPolicyAccepted = ref(false)
-const couponLoading = ref(false)
-const contractSigningStatus = ref<ContractSigningStatus | null>(null)
 function notify(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
   TMessage[type](message)
 }
@@ -575,46 +541,8 @@ onMounted(() => {
   auth.hydrate()
   void loadHomeCheckin()
 
-  const oauthToken =
-    typeof route.query.oauth_token === 'string' ? route.query.oauth_token.trim() : ''
-  const oauthError =
-    typeof route.query.oauth_error === 'string' ? route.query.oauth_error.trim() : ''
-
-  if (oauthToken) {
-    auth.setToken(oauthToken)
-    TMessage.success('登录成功')
-    void router.replace({ query: {} })
-  } else if (oauthError) {
-    TMessage.error(`登录失败: ${oauthError}`)
-    const nextQuery = { ...route.query }
-    delete nextQuery.oauth_token
-    delete nextQuery.oauth_error
-    void router.replace({ query: nextQuery })
-  }
-
-  const wechatOauthResult = routeQueryValue('wechat_oauth')
-  const wechatOauthError = routeQueryValue('wechat_oauth_error')
-  const unionOauthResult = routeQueryValue('union_oauth')
-  const unionOauthError = routeQueryValue('union_oauth_error')
-  if (wechatOauthResult === 'success') {
-    TMessage.success('微信授权成功，请再次点击支付')
-  } else if (wechatOauthError) {
-    TMessage.error(`微信授权失败：${wechatOauthError}`)
-  }
-  if (unionOauthResult === 'success') {
-    depositChannel.value = 'union'
-    TMessage.success('云闪付授权成功，请再次点击支付')
-  } else if (unionOauthError) {
-    TMessage.error(`云闪付授权失败：${unionOauthError}`)
-  }
-  if (wechatOauthResult || wechatOauthError || unionOauthResult || unionOauthError) {
-    const nextQuery = { ...route.query }
-    delete nextQuery.wechat_oauth
-    delete nextQuery.wechat_oauth_error
-    delete nextQuery.union_oauth
-    delete nextQuery.union_oauth_error
-    void router.replace({ query: nextQuery })
-  }
+  // 紧接登录态：先消费一次性的授权回跳参数（登录 / 微信 / 云闪付），并清掉地址栏上的那份。
+  consumeAuthQuery()
 
   void Promise.all([
     loadDepositRatio(),
@@ -670,463 +598,17 @@ async function runBackgroundAutoRefresh() {
   }
 }
 
+/**
+ * 列表行 / 精选卡片的统一入口。**必须留在视图 setup 顶层**：
+ * `publishDevCycleHomeChain.spec.ts` 直接 `setupState.openDepositCard(...)` 调它进「重新编辑」态。
+ * 只做分流：「驳回」交给发布域的 `startResubmit`，待付定金 / 尾款交给支付域的 `openDepositPayment`。
+ */
 function openDepositCard(item: PendingRequirementView) {
   if (item.status === 'rejected') {
-    publishTitle.value = item.title || ''
-    publishDescription.value = item.description || ''
-    publishBudget.value = item.budget ?? ''
-    publishAcceptance.value = item.acceptanceCriteria || ''
-    publishPaymentMode.value = item.paymentMode
-    // 开发周期清空起手：`PendingRequirementView` 没有带 `development_cycle_days`（见任务报告里的迁移对照表），
-    // 这里不能把上一次发布的残留值带进「重新编辑」——担保模式下用户必须自己重填，宁可多填一次也不静默丢。
-    publishDevelopmentCycleDays.value = ''
-    activeResubmitRequirementId.value = item.id
-    router.push({ name: 'home', query: { modal: 'publish' } })
+    startResubmit(item)
     return
   }
-
-  if (item.status !== 'pending_deposit' && item.status !== 'pending_final') {
-    return
-  }
-  if (!isAdapayRequirement(item)) {
-    TMessage.warning('无担保订单不通过平台收款，请由双方按约定自行结算')
-    return
-  }
-
-  depositPayment.value = null
-  depositChannel.value = 'alipay'
-  amountCouponCode.value = ''
-  discountCouponCode.value = ''
-  depositPolicyAccepted.value = false
-  contractSigningStatus.value = null
-  router.push({ name: 'home', query: { modal: 'deposit', requirement_id: item.id } })
-  void loadAvailableCoupons()
-  void fetchContractSigningStatus(auth.token, item.id)
-    .then((s) => {
-      contractSigningStatus.value = s
-    })
-    .catch(() => {
-      /* 忽略，不影响支付流程 */
-    })
-}
-
-function updateDepositChannel(channel: AdapayBusinessPayChannel) {
-  if (depositChannel.value === channel) {
-    return
-  }
-  depositChannel.value = channel
-  depositPayment.value = null
-}
-
-function canOpenPayment(item: PendingRequirementView) {
-  return (
-    item.status === 'rejected' || (isAdapayRequirement(item) && item.status === 'pending_final')
-  )
-}
-
-function selectCoupon(code: string, type: 'amount' | 'percent') {
-  if (type === 'amount') {
-    if (amountCouponCode.value === code) {
-      amountCouponCode.value = ''
-      return
-    }
-    amountCouponCode.value = code
-    discountCouponCode.value = ''
-    return
-  }
-
-  if (discountCouponCode.value === code) {
-    discountCouponCode.value = ''
-    return
-  }
-
-  discountCouponCode.value = code
-  amountCouponCode.value = ''
-}
-
-function closeDepositCard() {
-  depositPolicyAccepted.value = false
-  router.replace({ name: 'home' })
-}
-
-function finalDepositAmount(item: PendingRequirementView) {
-  return calculateFinalDepositAmount(item, depositRatioPercent.value)
-}
-
-function finalPaymentAmount(item: PendingRequirementView) {
-  return calculateFinalPaymentAmount(item, depositRatioPercent.value)
-}
-
-function isAdapayRequirement(item: PendingRequirementView) {
-  return item.paymentMode === 'platform_guarantee'
-}
-
-const isFinalPayment = computed(() => depositRequirement.value?.status === 'pending_final')
-
-const paymentStageLabel = computed(() => (isFinalPayment.value ? '尾款' : '定金'))
-
-const activeCouponCode = computed(() => {
-  if (isFinalPayment.value) {
-    return ''
-  }
-  return amountCouponCode.value.trim() || discountCouponCode.value.trim()
-})
-
-const selectedCoupon = computed(() => {
-  const code = activeCouponCode.value
-  if (!code) {
-    return undefined
-  }
-  return availableCoupons.value.find((item) => item.code === code)
-})
-
-const couponBaseAmount = computed(() => {
-  if (!depositRequirement.value) {
-    return 0
-  }
-  if (depositRequirement.value.status === 'pending_final') {
-    return finalPaymentAmount(depositRequirement.value)
-  }
-  return finalDepositAmount(depositRequirement.value)
-})
-
-const couponDiscount = computed(() =>
-  computeCouponDiscount(couponBaseAmount.value, selectedCoupon.value),
-)
-
-const couponFinalAmount = computed(() => {
-  if (depositRequirement.value && isAdapayRequirement(depositRequirement.value)) {
-    return couponBaseAmount.value
-  }
-  if (couponDiscount.value <= 0) {
-    return couponBaseAmount.value
-  }
-  return Number((couponBaseAmount.value - couponDiscount.value).toFixed(2))
-})
-
-const couponSummary = computed(() => {
-  if (isFinalPayment.value) {
-    return '尾款支付不支持使用优惠券或打折券。'
-  }
-  if (!activeCouponCode.value) {
-    return ''
-  }
-  if (!selectedCoupon.value) {
-    return '请选择下方可用优惠券。'
-  }
-  if (couponBaseAmount.value < selectedCoupon.value.min_amount_cny) {
-    return `该券需满 ¥${selectedCoupon.value.min_amount_cny.toFixed(2)} 可用`
-  }
-  if (couponDiscount.value <= 0) {
-    return '该优惠券暂无法抵扣更多金额。'
-  }
-  return `当前可抵扣 ¥${couponDiscount.value.toFixed(2)}, 实付 ¥${couponFinalAmount.value.toFixed(2)}`
-})
-
-async function loadDepositRatio() {
-  if (!auth.isAuthed) {
-    return
-  }
-
-  try {
-    const payload = await getDepositRatio(auth.token)
-    if (!payload || !isMounted) {
-      return
-    }
-
-    if (Number.isFinite(payload.deposit_ratio_percent)) {
-      depositRatioPercent.value = payload.deposit_ratio_percent
-    }
-  } catch {
-    // Keep default ratio when settings API is unavailable.
-  }
-}
-
-function computeCouponDiscount(amount: number, coupon?: CouponItem) {
-  if (!coupon) {
-    return 0
-  }
-
-  if (amount < coupon.min_amount_cny) {
-    return 0
-  }
-
-  const rawDiscount =
-    coupon.discount_type === 'amount'
-      ? coupon.discount_value
-      : (amount * coupon.discount_value) / 100
-
-  const cappedDiscount =
-    coupon.max_discount_cny != null ? Math.min(rawDiscount, coupon.max_discount_cny) : rawDiscount
-
-  const discount = Math.max(0, Math.min(cappedDiscount, amount - 0.01))
-  return Number(discount.toFixed(2))
-}
-
-async function loadAvailableCoupons() {
-  if (!auth.isAuthed) {
-    availableCoupons.value = []
-    return
-  }
-
-  couponLoading.value = true
-  try {
-    const coupons = await listAvailableCoupons(auth.token)
-    if (!isMounted) {
-      return
-    }
-    availableCoupons.value = coupons
-  } catch (err) {
-    if (isMounted) {
-      TMessage.error(err instanceof Error ? err.message : '加载优惠券失败')
-    }
-  } finally {
-    if (isMounted) {
-      couponLoading.value = false
-    }
-  }
-}
-
-async function loadPendingRequirements(silent = false) {
-  if (!auth.isAuthed) {
-    pendingRequirements.value = []
-    return
-  }
-
-  try {
-    const rows = await listRequirements(auth.token)
-    if (!isMounted) {
-      return
-    }
-    pendingRequirements.value = rows
-      .filter((item) => item.status !== 'completed')
-      .slice(0, 8)
-      .map((item) => ({
-        id: item.requirement_id,
-        title: item.title,
-        status: item.status,
-        statusLabel: statusToLabel(item.status, item.payment_mode),
-        updatedAtLabel: formatTimeLabel(item.updated_at),
-        description: item.description,
-        acceptanceCriteria: item.acceptance_criteria,
-        budget: item.budget,
-        paymentMode: item.payment_mode,
-      }))
-  } catch (err) {
-    if (isMounted && !silent) {
-      TMessage.error(err instanceof Error ? err.message : '加载需求失败')
-    }
-  }
-}
-
-async function loadRequirementOverview() {
-  try {
-    const payload = await getPublicRequirementOverview()
-    if (!isMounted) {
-      return
-    }
-    publicDeveloperCount.value = Number(payload.developer_count ?? 0)
-    metrics.value = [
-      {
-        label: '已完成需求数',
-        value: `${payload.total_orders ?? 0} 单`,
-      },
-      {
-        label: '好评率',
-        value: `${payload.positive_rate?.toFixed(1) ?? '0.0'}%`,
-      },
-      {
-        label: '已支付订单累计金额',
-        value: `¥ ${(payload.total_turnover_cny ?? 0).toFixed(2)}`,
-      },
-    ]
-
-    latestDeals.value = (payload.recent_deals ?? []).map((item) => ({
-      title: item.title,
-      at: formatTimeLabel(item.paid_at),
-    }))
-  } catch {
-    // Keep current values if overview API fails.
-  }
-}
-
-async function loadPublicPortalData(silent = false) {
-  const resourceToken = auth.isAuthed && auth.token.trim() ? auth.token : null
-  const [resourcesResult, requirementsResult, announcementsResult, promoMetaResult] =
-    await Promise.allSettled([
-      listAllPublicMcResources(resourceToken),
-      // 首页只用最新一条需求做公告，取 1 条即可。
-      listPublicRequirementSpotlights(1, 1),
-      listCommunityPosts({ tag: '公告', limit: 5, offset: 0 }),
-      getResourcePromoMeta(resourceToken ?? undefined),
-    ])
-  void ensureTagTree()
-
-  if (!isMounted) {
-    return
-  }
-
-  if (promoMetaResult.status === 'fulfilled') {
-    applyHighLikeThreshold(promoMetaResult.value.high_like_threshold)
-  }
-
-  // 去到重 / 排序 / 清空都在 `usePublicResources` 里，视图只负责「哪一批请求成功了」。
-  applyResourceList(resourcesResult.status === 'fulfilled' ? resourcesResult.value : null)
-
-  if (requirementsResult.status === 'fulfilled') {
-    publicRequirementSpotlights.value = requirementsResult.value.items
-  } else {
-    publicRequirementSpotlights.value = []
-  }
-
-  if (announcementsResult.status === 'fulfilled') {
-    announcementPosts.value = announcementsResult.value.filter(
-      (post) => post.status === 'published',
-    )
-  } else {
-    announcementPosts.value = []
-  }
-
-  const failedResults = [resourcesResult, requirementsResult].filter(
-    (result) => result.status === 'rejected',
-  )
-  if (failedResults.length > 0 && failedResults.length < 2 && !silent) {
-    TMessage.warning('部分首页公开数据加载失败，已显示可用数据')
-  } else if (failedResults.length === 2 && !silent) {
-    TMessage.warning('加载首页公开数据失败')
-  }
-  // 榜单成员的徽章不在这里取：`usePortalRanks` 按入榜用户名指纹自己触发，资源没变就不重复请求。
-}
-
-async function submitDepositPayment() {
-  if (!depositRequirement.value) {
-    return
-  }
-
-  if (depositRequirement.value.status === 'pending_deposit' && !depositPolicyAccepted.value) {
-    TMessage.warning('请先确认“定金服务费与退款规则”后再支付定金')
-    return
-  }
-
-  const currentStage = depositRequirement.value.status === 'pending_final' ? '尾款' : '定金'
-  const channel = depositChannel.value
-  const clientPlatform = getAdapayClientPlatform()
-  if (!isAdapayRequirement(depositRequirement.value)) {
-    TMessage.warning('无担保订单不通过平台收款，请由双方按约定自行结算')
-    return
-  }
-
-  depositLoading.value = true
-  try {
-    if (!depositPayment.value) {
-      // 定金可带券（P6 / BUG-025）：金额券与折扣券互斥，取了哪张就传哪张；尾款不接券。
-      const couponCode =
-        currentStage === '定金'
-          ? amountCouponCode.value || discountCouponCode.value || undefined
-          : undefined
-      const adapayPayment: AdapayPaymentResponse = await createAdapayPayment(
-        auth.token,
-        depositRequirement.value.id,
-        currentStage === '定金' ? 'deposit' : 'final',
-        channel,
-        clientPlatform,
-        couponCode,
-      )
-      depositPayment.value = {
-        payment_id: adapayPayment.paymentId,
-        requirement_id: adapayPayment.requirementId,
-        channel,
-        amount_cny: Number(adapayPayment.amountCny),
-        status: adapayPayment.status,
-        alipay_order_string: adapayPayment.payUrl ?? '',
-        expires_at: '',
-        adapay: true,
-      }
-      TMessage.success(`${currentStage}支付订单已生成，正在跳转支付页`)
-      router.push({
-        name: 'payment',
-        query: buildAdapayPaymentQuery({
-          paymentId: depositPayment.value.payment_id,
-          requirementId: adapayPayment.requirementId,
-          channel,
-          clientPlatform,
-          amountCny: adapayPayment.amountCny,
-          qrContent: adapayPayment.payUrl,
-        }),
-      })
-      return
-    }
-
-    if (depositPayment.value.adapay) {
-      const adapayPayment = await getAdapayPayment(auth.token, depositPayment.value.payment_id)
-      if (adapayPayment.status !== 'paid' && adapayPayment.status !== 'confirmed') {
-        TMessage.warning('支付尚未完成，请先完成 Adapay 支付')
-        return
-      }
-      TMessage.success(`${currentStage}支付确认成功`)
-      depositPayment.value = null
-      void router.replace({ name: 'home' })
-      await loadPendingRequirements()
-      return
-    }
-
-    throw new Error('支付订单状态无效，请重新发起 Adapay 支付')
-  } catch (err) {
-    const message = err instanceof Error ? err.message : '支付失败'
-    if (isWechatPaymentAuthorizationRequired(err)) {
-      // 尚未绑定 open_id：直接跳转到支付页（意图模式），由支付页在微信内自动静默授权并下单，
-      // 避免在 PC 侧先弹授权二维码、再点一次支付的额外步骤。
-      if (!depositRequirement.value) {
-        return
-      }
-      const expectedAmount =
-        currentStage === '定金'
-          ? finalDepositAmount(depositRequirement.value)
-          : finalPaymentAmount(depositRequirement.value)
-      router.push({
-        name: 'payment',
-        query: buildAdapayPaymentQuery({
-          requirementId: depositRequirement.value.id,
-          milestone: currentStage === '定金' ? 'deposit' : 'final',
-          channel: 'wechat',
-          clientPlatform,
-          amountCny: expectedAmount,
-          intent: true,
-        }),
-      })
-      return
-    } else if (isUnionPaymentAuthorizationRequired(err)) {
-      if (clientPlatform !== 'mobile') {
-        TMessage.warning('云闪付授权仅适用于移动端，请重新选择支付方式')
-        return
-      }
-      try {
-        const authorization = await getUnionPaymentAuthorizeUrl(auth.token, window.location.href)
-        if (!authorization.url.trim()) {
-          throw new Error('云闪付授权地址为空')
-        }
-        window.location.assign(authorization.url)
-        return
-      } catch (authorizationError) {
-        TMessage.error(
-          authorizationError instanceof Error ? authorizationError.message : '发起云闪付授权失败',
-        )
-        return
-      }
-    } else if (
-      message.includes(
-        'developer must sign first and user must sign after that before paying deposit',
-      ) ||
-      message.includes('requirement contract must be signed by developer before paying deposit') ||
-      message.includes('contract must be created before paying deposit')
-    ) {
-      TMessage.warning('当前需求需先由开发者（乙方）签署，再由您（甲方）签署协议后，才能支付定金')
-    } else {
-      TMessage.error(message)
-    }
-  } finally {
-    depositLoading.value = false
-  }
+  openDepositPayment(item)
 }
 
 function openAuth(mode: AuthMode, redirectTo = authRedirectTarget.value) {
@@ -1188,64 +670,6 @@ async function submitAuth() {
   }
 }
 
-async function ensurePublishRealnameApproved() {
-  const publishRedirectTarget = router.resolve({
-    name: 'home',
-    query: { modal: 'publish' },
-  }).fullPath
-
-  auth.hydrate()
-  if (!auth.isAuthed) {
-    TMessage.info('发布需求前请先登录')
-    openAuth('login', publishRedirectTarget)
-    return false
-  }
-
-  try {
-    const record = await getMyRealnameVerification(auth.token)
-    if (record.status === 'approved') {
-      return true
-    }
-
-    if (record.status === 'pending') {
-      TMessage.warning('实名认证审核中，通过后可发布需求')
-      return false
-    }
-
-    TMessage.warning('实名认证未通过，请重新提交后再发布需求')
-    void router.push({ name: 'workbench-realname', query: { redirect_to: publishRedirectTarget } })
-    return false
-  } catch (err) {
-    if (err instanceof HttpError && err.status === 404) {
-      TMessage.warning('发布需求前请先完成实名认证')
-      void router.push({
-        name: 'workbench-realname',
-        query: { redirect_to: publishRedirectTarget },
-      })
-      return false
-    }
-
-    TMessage.error(err instanceof Error ? err.message : '实名认证状态校验失败')
-    return false
-  }
-}
-
-async function openPublishModal() {
-  const approved = await ensurePublishRealnameApproved()
-  if (!approved) {
-    return
-  }
-
-  activeResubmitRequirementId.value = null
-  publishTitle.value = ''
-  publishDescription.value = ''
-  publishBudget.value = ''
-  publishAcceptance.value = ''
-  publishPaymentMode.value = 'self_managed'
-  publishDevelopmentCycleDays.value = ''
-  await router.push({ name: 'home', query: { modal: 'publish' } })
-}
-
 function openPrimaryPublishAction() {
   if (isDeveloperAccount.value) {
     void router.push({ name: 'dev-plugins' })
@@ -1253,134 +677,6 @@ function openPrimaryPublishAction() {
   }
 
   void openPublishModal()
-}
-
-function closePublishModal() {
-  activeResubmitRequirementId.value = null
-  router.replace({ name: 'home' })
-}
-
-const publishModalTitle = computed(() =>
-  activeResubmitRequirementId.value ? '重新编辑需求' : '发布需求',
-)
-
-const publishModalSubmitText = computed(() =>
-  activeResubmitRequirementId.value ? '重新提交审核' : '确认发布',
-)
-
-const publishModalLoadingText = computed(() =>
-  activeResubmitRequirementId.value ? '提交中...' : '发布中...',
-)
-
-async function submitPublishRequirement() {
-  const approved = await ensurePublishRealnameApproved()
-  if (!approved) {
-    return
-  }
-
-  const normalizedTitle = publishTitle.value.trim()
-  const descriptionValidation = validateRequirementRichText(publishDescription.value, '需求描述', {
-    minTextLength: 10,
-  })
-  const acceptanceValidation = validateRequirementRichText(publishAcceptance.value, '验收标准', {
-    required: true,
-  })
-
-  const budgetRaw = String(publishBudget.value ?? '').trim()
-
-  if (normalizedTitle.length < 4) {
-    TMessage.error('需求标题至少 4 个字符')
-    return
-  }
-
-  if (descriptionValidation.error) {
-    TMessage.error(descriptionValidation.error)
-    return
-  }
-
-  if (!budgetRaw) {
-    TMessage.error('预算不能为空')
-    return
-  }
-
-  const budget = Number(budgetRaw)
-
-  if (Number.isNaN(budget) || budget < 0) {
-    TMessage.error('预算必须是大于等于0的数字')
-    return
-  }
-
-  if (acceptanceValidation.error) {
-    TMessage.error(acceptanceValidation.error)
-    return
-  }
-
-  // R014：担保需求必填「开发周期（天）」，且必须是正整数。位置排在最后一步（标题 → 描述 → 预算 → 验收标准
-  // → 周期），与工厂 `validateRequirementPublishForm` 的顺序、文案同源：判定直接调
-  // `validateDevelopmentCycleInput`，这里不重写规则。自管模式该步恒为空（不要求、也不展示）。
-  const developmentCycleError = validateDevelopmentCycleInput(
-    publishDevelopmentCycleDays.value,
-    publishPaymentMode.value,
-  )
-
-  if (developmentCycleError) {
-    TMessage.error(developmentCycleError)
-    return
-  }
-
-  publishLoading.value = true
-
-  try {
-    const payload = {
-      title: normalizedTitle,
-      description: descriptionValidation.value,
-      budget,
-      acceptance_criteria: acceptanceValidation.value,
-      payment_mode: publishPaymentMode.value,
-      // 口径与工厂一致：自管模式归一化成 `undefined`（`JSON.stringify` 把键丢掉，后端收到「未填」），
-      // 担保模式给填写的正整数。少了这个键，担保需求的合同有效期算不出来。
-      development_cycle_days: normalizeDevelopmentCycle(
-        publishDevelopmentCycleDays.value,
-        publishPaymentMode.value,
-      ),
-    }
-
-    if (activeResubmitRequirementId.value) {
-      await resubmitRequirement(auth.token, activeResubmitRequirementId.value, payload)
-    } else {
-      await createRequirement(auth.token, payload)
-    }
-
-    if (!isMounted) {
-      return
-    }
-
-    const wasResubmit = Boolean(activeResubmitRequirementId.value)
-    const resubmitId = activeResubmitRequirementId.value
-    activeResubmitRequirementId.value = null
-    publishTitle.value = ''
-    publishDescription.value = ''
-    publishBudget.value = ''
-    publishAcceptance.value = ''
-    publishPaymentMode.value = 'self_managed'
-    publishDevelopmentCycleDays.value = ''
-    if (resubmitId) {
-      publishModalRef.value?.clearDraft(`edit-${resubmitId}`)
-    } else {
-      publishModalRef.value?.clearDraft()
-    }
-    TMessage.success(wasResubmit ? '需求已重新提交，等待审核' : '需求已发布')
-    void router.replace({ name: 'home' })
-    await loadPendingRequirements()
-  } catch (err) {
-    if (isMounted) {
-      TMessage.error(err instanceof Error ? err.message : '发布失败')
-    }
-  } finally {
-    if (isMounted) {
-      publishLoading.value = false
-    }
-  }
 }
 </script>
 
