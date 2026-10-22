@@ -65,7 +65,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * 读错误响应体，归一化成 `ApiErrorShape`。
  *
  * - 响应体是 JSON 且含 `code` / `message` / `field` → 按结构取；
- * - 是 JSON 但没有这些字段 → `message` 用响应体原文，`code` 兜底 `HTTP_<status>`；
+ * - 是 JSON 但没有这些字段 → 文案按 `message` → `detail` → `error` → 兜底文案 的顺序取，
+ *   **不把 JSON 原文塞给用户看**，`code` 兜底 `HTTP_<status>`；
  * - 不是 JSON（后端部分端点用纯文本返回中文原因）→ `message` 用原文，`code` 兜底 `HTTP_<status>`。
  */
 export async function readErrorShape(resp: Response, fallback: string): Promise<ApiErrorShape> {
@@ -92,10 +93,16 @@ export async function readErrorShape(resp: Response, fallback: string): Promise<
     if (isRecord(parsed)) {
       const rawCode = parsed.code
       const rawMessage = parsed.message
+      const rawDetail = parsed.detail
+      const rawError = parsed.error
       const rawField = parsed.field
       const code = typeof rawCode === 'string' && rawCode.trim() ? rawCode : `HTTP_${status}`
+      // 文案取不到就用兜底文案，不把 JSON 原文塞给用户看
       const message =
-        typeof rawMessage === 'string' && rawMessage.trim() ? rawMessage : text
+        (typeof rawMessage === 'string' && rawMessage.trim() && rawMessage) ||
+        (typeof rawDetail === 'string' && rawDetail.trim() && rawDetail) ||
+        (typeof rawError === 'string' && rawError.trim() && rawError) ||
+        fallback
       const field = typeof rawField === 'string' && rawField.trim() ? rawField : undefined
       return field ? { code, message, field } : { code, message }
     }

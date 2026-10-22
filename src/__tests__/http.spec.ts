@@ -57,11 +57,17 @@ describe('错误结构：readErrorShape', () => {
     expect(shape).toEqual({ code: 'INVALID_ARGUMENT', message: '金额不合法', field: 'amount' })
   })
 
-  it('JSON 错误体没有这些字段时用原文，code 兜底 HTTP_<status>', async () => {
+  it('JSON 错误体没有这些字段时按 detail 取文案，不把 JSON 原文塞给用户', async () => {
     const shape = await readErrorShape(response(500, JSON.stringify({ detail: 'boom' })), '兜底文案')
     expect(shape.code).toBe('HTTP_500')
-    expect(shape.message).toBe(JSON.stringify({ detail: 'boom' }))
+    expect(shape.message).toBe('boom')
     expect(shape.field).toBeUndefined()
+  })
+
+  it('JSON 错误体连 detail 都没有时用兜底文案', async () => {
+    const shape = await readErrorShape(response(500, JSON.stringify({ foo: 1 })), '兜底文案')
+    expect(shape.code).toBe('HTTP_500')
+    expect(shape.message).toBe('兜底文案')
   })
 
   it('纯文本错误体用原文，code 兜底 HTTP_<status>', async () => {
@@ -139,18 +145,21 @@ describe('请求层：requestBlob', () => {
 })
 
 describe('请求层：401 分流', () => {
-  it('公开接口（登录）的 401 不派发未授权事件', async () => {
-    const listener = vi.fn()
-    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, listener)
-    vi.stubGlobal('fetch', vi.fn(async () => response(401, '用户名或密码错误')))
+  it.each(['/auth/login', '/auth/register', '/auth/reset-password'])(
+    '公开接口 %s 的 401 不派发未授权事件',
+    async (path) => {
+      const listener = vi.fn()
+      window.addEventListener(AUTH_UNAUTHORIZED_EVENT, listener)
+      vi.stubGlobal('fetch', vi.fn(async () => response(401, '用户名或密码错误')))
 
-    await expect(requestJson('/auth/login', {}, '登录失败')).rejects.toMatchObject({
-      status: 401,
-      message: '用户名或密码错误',
-    })
-    expect(listener).not.toHaveBeenCalled()
-    window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, listener)
-  })
+      await expect(requestJson(path, {}, '登录失败')).rejects.toMatchObject({
+        status: 401,
+        message: '用户名或密码错误',
+      })
+      expect(listener).not.toHaveBeenCalled()
+      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, listener)
+    },
+  )
 
   it('受保护接口的 401 派发未授权事件并抛统一文案', async () => {
     const listener = vi.fn()
@@ -170,6 +179,14 @@ describe('请求层：401 分流', () => {
 describe('地址拼接：不会拼出 /api/api/...', () => {
   it('相对 base 下调用方已带 /api 前缀不重复拼', () => {
     expect(apiUrl('/api/auth/login')).toBe('/api/auth/login')
+  })
+
+  it('相对 base（VITE_API_BASE_URL=/api）下也不重复拼', async () => {
+    vi.resetModules()
+    vi.stubEnv('VITE_API_BASE_URL', '/api')
+    const { apiUrl: relativeApiUrl } = await import('@/api/http')
+    expect(relativeApiUrl('/api/auth/login')).toBe('/api/auth/login')
+    expect(relativeApiUrl('/auth/login')).toBe('/api/auth/login')
   })
 
   it('绝对 base（带 /api 路径段）下也不重复拼', async () => {
