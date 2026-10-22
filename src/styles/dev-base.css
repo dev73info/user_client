@@ -62,7 +62,8 @@ body {
   background:
     radial-gradient(circle at top left, rgba(31, 74, 209, 0.13), transparent 28%),
     radial-gradient(circle at 80% 20%, rgba(99, 132, 255, 0.1), transparent 24%),
-    radial-gradient(circle at bottom right, rgba(42, 166, 164, 0.08), transparent 22%), var(--dev-bg);
+    radial-gradient(circle at bottom right, rgba(42, 166, 164, 0.08), transparent 22%),
+    var(--dev-bg);
 }
 
 a {
@@ -74,7 +75,6 @@ a {
    落在这个根之外，所以开发者页的弹窗自己挂 .dev-dialog（见各页 TDialog 的 class）。 */
 .user-workbench--dev,
 .dev-dialog {
-
   /* 补上被 resource-core.css 的 `body { color: var(--text-main) }`（#172033）盖掉的墨色：
      那张表是「免费资源」门户页的遗留样式，全局加载后连开发者页面的正文底色一起改了，
      于是「令牌写 --dev-ink 的元素是 #0f172a、继承来的文字是 #172033」两种墨色并存。
@@ -764,5 +764,3 @@ a {
   text-transform: uppercase;
   color: var(--dev-blue);
 }
-
-
