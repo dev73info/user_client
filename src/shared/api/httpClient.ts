@@ -1,6 +1,10 @@
 import { apiUrl, backendFileUrl, normalizeBackendPath } from './url'
+import { HttpError, readErrorShape } from './httpError'
 
 export { apiUrl, backendFileUrl, normalizeBackendPath }
+export { HttpError } from './httpError'
+export type { ApiErrorShape } from './httpError'
+export { readErrorMessage, readErrorShape, toApiErrorShape } from './httpError'
 
 export type UnauthorizedHandler = (response: Response, path: string) => void
 
@@ -52,25 +56,6 @@ export function authHeaders(token: string, headers: HeadersInit = {}): Headers {
   return merged
 }
 
-export class HttpError extends Error {
-  status: number
-
-  constructor(status: number, message: string) {
-    super(message)
-    this.name = 'HttpError'
-    this.status = status
-  }
-}
-
-export async function readErrorMessage(resp: Response, fallback: string): Promise<string> {
-  try {
-    const text = await resp.text()
-    return text || fallback
-  } catch {
-    return fallback
-  }
-}
-
 function withoutCredentials(init: RequestInit): RequestInit {
   return {
     ...init,
@@ -85,6 +70,12 @@ export function createHttpClient(options: HttpClientOptions = {}) {
     }
   }
 
+  /** 失败时按统一错误结构抛：JSON 错误体按 `{code,message,field?}` 取，纯文本按原文 + `HTTP_<status>` 兜底。 */
+  async function throwHttpError(resp: Response, fallbackError: string): Promise<never> {
+    const shape = await readErrorShape(resp, fallbackError)
+    throw new HttpError(resp.status, shape.message, shape.code, shape.field)
+  }
+
   async function requestJson<T>(
     path: string,
     init: RequestInit,
@@ -94,7 +85,7 @@ export function createHttpClient(options: HttpClientOptions = {}) {
     handleUnauthorized(resp, path)
 
     if (!resp.ok) {
-      throw new HttpError(resp.status, await readErrorMessage(resp, fallbackError))
+      await throwHttpError(resp, fallbackError)
     }
 
     if (resp.status === 204 || resp.status === 205) {
@@ -113,7 +104,7 @@ export function createHttpClient(options: HttpClientOptions = {}) {
     handleUnauthorized(resp, path)
 
     if (!resp.ok) {
-      throw new HttpError(resp.status, await readErrorMessage(resp, fallbackError))
+      await throwHttpError(resp, fallbackError)
     }
 
     return resp.text()
@@ -128,13 +119,30 @@ export function createHttpClient(options: HttpClientOptions = {}) {
     handleUnauthorized(resp, path)
 
     if (!resp.ok) {
-      throw new HttpError(resp.status, await readErrorMessage(resp, fallbackError))
+      await throwHttpError(resp, fallbackError)
     }
+  }
+
+  /** 文件下载：附件、凭证图这类按二进制取。 */
+  async function requestBlob(
+    path: string,
+    init: RequestInit,
+    fallbackError = '请求失败',
+  ): Promise<Blob> {
+    const resp = await fetch(apiUrl(path), withoutCredentials(init))
+    handleUnauthorized(resp, path)
+
+    if (!resp.ok) {
+      await throwHttpError(resp, fallbackError)
+    }
+
+    return resp.blob()
   }
 
   return {
     requestJson,
     requestText,
     requestVoid,
+    requestBlob,
   }
 }
