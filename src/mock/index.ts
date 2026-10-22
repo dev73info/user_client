@@ -10,52 +10,22 @@
  * 否则全局加载进度条会把 mock 拦截器当成「原始 fetch」再包一层，导致计数错乱。
  */
 
-import { normalizeBackendPath } from '@/shared/api/url'
-import { clearPersistedAuthProfile } from '@/shared/auth/session'
-import { AUTH_TOKEN_STORAGE_KEY } from '@/shared/auth/storage'
-
+import { mockDelay, mockEnabled, mockRequestedInUrl, mockSupported } from './env'
+import { MOCK_IDENTITY_PROFILES, currentMockIdentity, currentMockProfile } from './identity'
+import { createDebugApi, type MockDebugApi } from './controls'
+import { prepareMockSession } from './session'
 import {
-  MOCK_IDENTITY_QUERY_KEY,
-  MOCK_QUERY_KEY,
-  forgetMockEnabled,
-  mockDelay,
-  mockEnabled,
-  mockRequestedInUrl,
-  mockSupported,
-} from './env'
-import {
-  MOCK_IDENTITIES,
-  MOCK_IDENTITY_PROFILES,
-  currentMockIdentity,
-  currentMockProfile,
-  setMockIdentity,
-  type MockIdentity,
-} from './identity'
+  describeRequest,
+  isApiPathname,
+  isMockableOrigin,
+  toMockRequest,
+  dispatch,
+} from './request'
 import { emptyFallbackResponse, placeholderImageResponse } from './response'
-import {
-  canonicalKey,
-  matchRoutes,
-  type MockHttpMethod,
-  type MockRequest,
-  type MockReply,
-} from './router'
-import { mockRouteTables } from './routes'
-import { createMockToken, parseMockToken } from './token'
-import { clearUncoveredEndpoints, recordUncovered, uncoveredEndpoints } from './uncovered'
+import { recordUncovered } from './uncovered'
 import { installMockWebSocket } from './websocket'
 
 const DEBUG_HANDLE = '__mock'
-
-export type MockDebugApi = {
-  readonly enabled: boolean
-  readonly identity: MockIdentity
-  readonly identities: readonly MockIdentity[]
-  readonly uncovered: readonly string[]
-  setIdentity(identity: MockIdentity): void
-  switchIdentity(identity?: MockIdentity): void
-  disable(): void
-  clearUncovered(): void
-}
 
 type MockableRuntime = typeof globalThis & {
   fetch: typeof fetch
@@ -65,207 +35,6 @@ type MockableRuntime = typeof globalThis & {
 
 function runtime(): MockableRuntime {
   return globalThis as MockableRuntime
-}
-
-/* ------------------------------------------------------------------ 会话准备 */
-
-/**
- * 给当前身份准备好登录态。
- *
- * 为什么需要这一步：mock 不校验账号密码，直接按身份发一个假令牌写进 localStorage，
- * 于是没有 `.env.local` 也能直接进两个工作台，也让需求方/开发者两侧可以同时在线。
- *
- * 判定很简单：localStorage 里已经是「当前身份的 mock 令牌」就什么都不做，
- * 其余情况（没有令牌、是真实后端的令牌、是另一个身份的令牌）一律换成当前身份的。
- * 之前这里还额外记了一个「已经发过令牌」的标记用来尊重手动登出，结果踩了坑：
- * 只要有一次页面在 mock 没生效的状态下加载过（自动登录失败会清掉令牌），
- * 之后即使 mock 生效也永远补不回登录态，页面就一直停在未登录。
- * 想测未登录状态：在面板里点「退出当前账号」后不要刷新页面即可。
- */
-function prepareMockSession(identity: MockIdentity): void {
-  if (typeof localStorage === 'undefined') {
-    return
-  }
-
-  const existing = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ?? ''
-  const subject = existing ? parseMockToken(existing) : null
-
-  if (subject?.identity === identity) {
-    return
-  }
-
-  localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, createMockToken(identity))
-  clearPersistedAuthProfile()
-}
-
-/* ------------------------------------------------------------------ 请求解析 */
-
-type DescribedRequest = {
-  url: URL
-  method: MockHttpMethod
-  headers: Headers
-  rawBody: string
-  body: unknown
-  isFormData: boolean
-}
-
-const MOCK_HTTP_METHODS: readonly MockHttpMethod[] = ['GET', 'POST', 'PATCH', 'PUT', 'DELETE']
-
-function toMockMethod(raw: string): MockHttpMethod {
-  const upper = raw.toUpperCase()
-  return MOCK_HTTP_METHODS.includes(upper as MockHttpMethod)
-    ? (upper as MockHttpMethod)
-    : 'GET'
-}
-
-function parseJsonBody(raw: string): unknown {
-  if (!raw.trim()) {
-    return null
-  }
-
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return raw
-  }
-}
-
-async function describeRequest(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-): Promise<DescribedRequest | null> {
-  let rawUrl = ''
-  let method = init?.method ?? ''
-  let headers = new Headers(init?.headers)
-
-  if (typeof input === 'string') {
-    rawUrl = input
-  } else if (input instanceof URL) {
-    rawUrl = input.toString()
-  } else if (typeof Request !== 'undefined' && input instanceof Request) {
-    rawUrl = input.url
-    if (!method) {
-      method = input.method
-    }
-    if (!init?.headers) {
-      headers = new Headers(input.headers)
-    }
-  } else {
-    return null
-  }
-
-  let url: URL
-  try {
-    url = new URL(rawUrl, typeof window === 'undefined' ? undefined : window.location.origin)
-  } catch {
-    return null
-  }
-
-  const body = init?.body
-  let rawBody = ''
-  let parsedBody: unknown = null
-  let isFormData = false
-
-  if (typeof body === 'string') {
-    rawBody = body
-    parsedBody = parseJsonBody(body)
-  } else if (typeof FormData !== 'undefined' && body instanceof FormData) {
-    isFormData = true
-    // 文件上传类接口（资源版本、头像、营业执照）走 multipart，handler 只需要其中的文本字段：
-    // 把它摊成普通对象，文件字段丢掉（mock 不存文件）。
-    const fields: Record<string, string> = {}
-    for (const [key, value] of body.entries()) {
-      if (typeof value === 'string') {
-        fields[key] = value
-      }
-    }
-    parsedBody = fields
-  } else if (typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams) {
-    rawBody = body.toString()
-    parsedBody = Object.fromEntries(body.entries())
-  }
-
-  return {
-    url,
-    method: toMockMethod(method || 'GET'),
-    headers,
-    rawBody,
-    body: parsedBody,
-    isFormData,
-  }
-}
-
-/** 只接管本站请求：外链、CDN、第三方地址一律放行给真实 fetch。 */
-function isMockableOrigin(url: URL): boolean {
-  if (typeof window === 'undefined') {
-    return false
-  }
-
-  if (url.origin === window.location.origin) {
-    return true
-  }
-
-  const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').trim()
-  if (!apiBase) {
-    return false
-  }
-
-  try {
-    return url.origin === new URL(apiBase, window.location.origin).origin
-  } catch {
-    return false
-  }
-}
-
-function readToken(headers: Headers): string {
-  const raw = headers.get('Authorization') ?? ''
-  return raw.replace(/^Bearer\s+/i, '').trim()
-}
-
-/**
- * 这个原始路径是不是后端接口。
- *
- * 前端所有接口都经 `/api` 前缀发出（见 `src/shared/api/url.ts`），
- * Vite 自己的内部路径（`/@vite/`、`/@fs/`、`/node_modules/`）与静态资源都不带这个前缀。
- */
-function isApiPathname(pathname: string): boolean {
-  return pathname === '/api' || pathname.startsWith('/api/')
-}
-
-/* ------------------------------------------------------------------ 分发 */
-
-async function dispatch(request: MockRequest): Promise<MockReply> {
-  for (const table of mockRouteTables) {
-    const matched = matchRoutes(table.routes, request)
-    if (!matched) {
-      continue
-    }
-
-    const reply = await matched.route.handler(request, matched.params)
-    if (reply) {
-      return reply
-    }
-  }
-
-  return null
-}
-
-function toMockRequest(described: DescribedRequest): MockRequest {
-  const path = normalizeBackendPath(described.url.pathname)
-
-  return {
-    method: described.method,
-    path,
-    key: canonicalKey(described.url.pathname),
-    query: described.url.searchParams,
-    url: described.url,
-    headers: described.headers,
-    token: readToken(described.headers),
-    identity: currentMockIdentity(),
-    body: described.body,
-    rawBody: described.rawBody,
-    isFormData: described.isFormData,
-  }
 }
 
 /* ------------------------------------------------------------------ 安装 */
@@ -349,93 +118,6 @@ export function isMockInstalled(): boolean {
   return Boolean(runtime().__mockFetchInstalled__)
 }
 
-/* ------------------------------------------------------------------ 给界面用的操作 */
-
-/**
- * 从地址上摘掉指定参数（保留 hash 与其他参数），再整页刷新。
- *
- * 地址参数在 `mockEnabled()` 里优先级最高，不摘掉的话「刷新回来又被参数开回去」，
- * 表现为按钮点了没用。切换身份要去掉 `?mockAs`，关闭 mock 要去掉 `?mock`。
- */
-function reloadWithoutSearchParams(names: readonly string[]): void {
-  const search = new URLSearchParams(window.location.search)
-  let touched = false
-
-  for (const name of names) {
-    if (search.has(name)) {
-      search.delete(name)
-      touched = true
-    }
-  }
-
-  if (touched) {
-    const query = search.toString()
-    window.history.replaceState(
-      {},
-      '',
-      `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`,
-    )
-  }
-
-  window.location.reload()
-}
-
-/** 换身份：写进 localStorage 后整页刷新（登录态、路由守卫、首屏请求都围绕角色展开，重载最干净）。 */
-export function switchMockIdentity(identity?: MockIdentity): void {
-  const next = identity ?? currentMockIdentity()
-  setMockIdentity(next)
-
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  // 地址上的 ?mockAs=dev 优先级高于 localStorage，不清掉的话点切换器会「切不动」
-  // （写完 localStorage 一刷新又被参数覆盖回去）。
-  reloadWithoutSearchParams([MOCK_IDENTITY_QUERY_KEY])
-}
-
-/** 关掉 mock，回到真实后端（需要真实后端在 8080 上跑着）。 */
-export function disableMock(): void {
-  forgetMockEnabled()
-
-  if (typeof localStorage !== 'undefined') {
-    localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
-    clearPersistedAuthProfile()
-  }
-
-  console.info('[mock] 已关闭，刷新后回到真实后端（需要 8080 上跑着后端，会自动重新登录）')
-
-  if (typeof window !== 'undefined') {
-    // 连同地址上的 ?mock=1 一起摘掉，否则刷新回来又被参数打开，看起来像「关不掉」。
-    reloadWithoutSearchParams([MOCK_QUERY_KEY])
-  }
-}
-
-function createDebugApi(): MockDebugApi {
-  return {
-    get enabled() {
-      return mockEnabled()
-    },
-    get identity() {
-      return currentMockIdentity()
-    },
-    get identities() {
-      return MOCK_IDENTITIES
-    },
-    get uncovered() {
-      return uncoveredEndpoints.value
-    },
-    setIdentity: setMockIdentity,
-    switchIdentity: switchMockIdentity,
-    disable: disableMock,
-    clearUncovered: clearUncoveredEndpoints,
-  }
-}
-
-/** 身份与用户名信息，供身份切换器展示。 */
-export function currentMockIdentityLabel(): string {
-  const profile = currentMockProfile()
-  return `${profile.label}（${profile.username}）`
-}
-
+export { currentMockIdentityLabel, disableMock, switchMockIdentity } from './controls'
+export type { MockDebugApi } from './controls'
 export { MOCK_IDENTITY_PROFILES }
