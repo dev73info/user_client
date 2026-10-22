@@ -141,12 +141,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/TeamProfileView.vue",
-      "detail": "388 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/TeamResourcesView.vue",
       "detail": "719 行 > 300（视图）",
       "since": "2026-10-22"
@@ -1372,7 +1366,7 @@
     {
       "rule": "raw-color",
       "file": "src/views/TeamProfileView.vue",
-      "detail": "26 处裸色值",
+      "detail": "16 处裸色值",
       "since": "2026-10-22"
     },
     {
@@ -1397,6 +1391,12 @@
       "rule": "raw-color",
       "file": "src/components/points/mall-shared.css",
       "detail": "1 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/team/team-public-resource-card.css",
+      "detail": "10 处裸色值",
       "since": "2026-10-23"
     }
   ]

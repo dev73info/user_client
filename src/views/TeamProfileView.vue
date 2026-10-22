@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 
 import { apiUrl, requestJson } from '@/api/http'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
-import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
-import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
+import TeamPublicResourceCard from '@/components/team/TeamPublicResourceCard.vue'
 import { TLoading, TMessage } from 'ui_73info'
 
 interface TeamPublicProfile {
@@ -19,7 +18,6 @@ interface TeamPublicProfile {
 }
 
 const route = useRoute()
-const router = useRouter()
 
 const teamId = computed(() => Number(route.params.teamId))
 const loading = ref(false)
@@ -61,35 +59,6 @@ onMounted(async () => {
 
 function onAvatarError() {
   failedAvatarUrl.value = true
-}
-
-function openResource(resource: PublicMcResourceItem) {
-  const selections = resource.tag_selections ?? []
-  const rootName = selections.find((s) => s.group_path.length > 0)?.group_path[0] ?? ''
-  const entryName =
-    selections.find((s) => s.group_path.length > 1)?.group_path[1] ?? (resource.platform || '')
-  const rootAlias =
-    selections.find((s) => (s.group_path_aliases?.length ?? 0) > 0)?.group_path_aliases?.[0] ?? ''
-  const entryAlias =
-    selections.find((s) => (s.group_path_aliases?.length ?? 0) > 1)?.group_path_aliases?.[1] ?? ''
-  const rootSlug = rootAlias || getTagRouteSlug(rootName)
-  const entrySlug = entryAlias || getTagRouteSlug(entryName)
-  const resourceSlug = getResourceDetailSlug(resource.id, resource.creator || resource.author)
-
-  // 资源没有分类标签时分类段是空字符串，push 带分类的路由会抛 `Missing required param "rootSlug"`。
-  if (!rootSlug || !entrySlug) {
-    void router.push({ name: 'resource-detail-direct', params: { resourceSlug } })
-    return
-  }
-
-  void router.push(
-    resourceDetailLocation({
-      resourceId: resource.id,
-      rootSlug,
-      entrySlug,
-      sale: resourceListingSaleOf(resource.price_fen, resource.price_points),
-    }),
-  )
 }
 </script>
 
@@ -142,32 +111,11 @@ function openResource(resource: PublicMcResourceItem) {
         <p>该团队暂未发布公开资源</p>
       </div>
       <div v-else class="team-profile__resource-grid">
-        <article
+        <TeamPublicResourceCard
           v-for="resource in teamResources"
           :key="resource.id"
-          class="team-profile__resource-card"
-          @click="openResource(resource)"
-        >
-          <div class="team-profile__resource-cover-wrap">
-            <img
-              v-if="resource.cover_url"
-              :src="apiUrl(resource.cover_url)"
-              :alt="resource.title"
-              class="team-profile__resource-cover"
-            />
-            <span v-else class="team-profile__resource-cover team-profile__resource-cover--text">
-              {{ resource.title.slice(0, 1).toUpperCase() }}
-            </span>
-          </div>
-          <div class="team-profile__resource-body">
-            <h3 class="team-profile__resource-title">{{ resource.title }}</h3>
-            <p class="team-profile__resource-desc">{{ resource.description || '暂无简介' }}</p>
-            <div class="team-profile__resource-meta">
-              <span>{{ resource.platform }}</span>
-              <span>{{ resource.like_count }} 赞</span>
-            </div>
-          </div>
-        </article>
+          :resource="resource"
+        />
       </div>
     </section>
   </TLoading>
@@ -291,84 +239,6 @@ function openResource(resource: PublicMcResourceItem) {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 14px;
-}
-
-.team-profile__resource-card {
-  border: 1px solid rgba(226, 232, 240, 0.96);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.94);
-  overflow: hidden;
-  cursor: pointer;
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
-}
-
-.team-profile__resource-card:hover {
-  border-color: rgba(99, 102, 241, 0.36);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-  transform: translateY(-2px);
-}
-
-.team-profile__resource-cover-wrap {
-  width: 100%;
-  height: 160px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-  overflow: hidden;
-}
-
-.team-profile__resource-cover {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.team-profile__resource-cover--text {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #f5f3ff, #ede9fe);
-  color: #a78bfa;
-  font-size: 36px;
-  font-weight: 700;
-  object-fit: unset;
-}
-
-.team-profile__resource-body {
-  padding: 14px 16px;
-  display: grid;
-  gap: 6px;
-}
-
-.team-profile__resource-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  color: #0f172a;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.team-profile__resource-desc {
-  margin: 0;
-  font-size: 13px;
-  color: #64748b;
-  line-height: 1.5;
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.team-profile__resource-meta {
-  display: flex;
-  gap: 12px;
-  font-size: 12px;
-  color: #94a3b8;
-  padding-top: 4px;
 }
 
 @media (max-width: 640px) {
