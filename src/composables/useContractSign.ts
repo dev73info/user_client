@@ -16,6 +16,7 @@ import { contractStatusTone } from '@/shared/contractSign'
 import { ARCHIVED_WRITE_BLOCKED_MESSAGE } from '@/shared/requirementArchive'
 import { useAuthStore } from '@/stores/auth'
 
+import { useContractNoticeConfirm } from './useContractNoticeConfirm'
 import { useContractSignDisplay } from './useContractSignDisplay'
 import { useContractSignNavigation } from './useContractSignNavigation'
 import { useContractSignPolling } from './useContractSignPolling'
@@ -24,13 +25,11 @@ import { useContractSignPolling } from './useContractSignPolling'
  * 合同签署页的取数与动作（R047 从 `ContractSignView` 迁出）。
  *
  * 页面有三种入口（工作台签署详情 / 需求合同 / 平台内置协议），数据来源各不相同，
- * 但签署闸门、附件放行、到期归档、爱签轮询是同一套。这里只做编排：
- * - 展示口径（能签吗、附件放没放行、归档怎么讲）在 `useContractSignDisplay`；
- * - 路由身份与回跳在 `useContractSignNavigation`；
- * - 状态轮询在 `useContractSignPolling`（定时器绑作用域）；
- * - 纯展示换算在 `shared/contractSign`；
- * - **整页跳转留在视图**：去爱签签署 / 看爱签预览都是 `window.location` 级跳转，
- *   由视图注入 `openPage`，composable 只把 URL 交出去。
+ * 但签署闸门、附件放行、到期归档、爱签轮询是同一套。这里只做编排：展示口径在
+ * `useContractSignDisplay`，路由身份在 `useContractSignNavigation`，轮询在
+ * `useContractSignPolling`，平台协议的重要条款确认在 `useContractNoticeConfirm`，
+ * 纯展示换算在 `shared/contractSign`。**整页跳转留在视图**：去爱签签署 / 看爱签预览
+ * 都是 `window.location` 级跳转，由视图注入 `openPage`，composable 只把 URL 交出去。
  */
 type UseContractSignOptions = {
   /** 整页跳转（`window.location.href = url`）：爱签签署页与合同预览页都走这里。 */
@@ -63,6 +62,8 @@ export function useContractSign(options: UseContractSignOptions) {
   // 借需求详情（`requireId`）读一次；读取即触发后端收口，返回的就是最新状态。
   const requirementArchive = ref<RequirementItem | null>(null)
 
+  const platformNotice = useContractNoticeConfirm(nav)
+
   const {
     currentParty,
     currentSigner,
@@ -90,6 +91,7 @@ export function useContractSign(options: UseContractSignOptions) {
     requirementArchive,
     signing,
     localDocumentFallback,
+    noticeAccepted: platformNotice.noticeAccepted,
     username: () => auth.username,
     requirementId: nav.requirementId,
     isWorkbenchSignature: nav.isWorkbenchSignature,
@@ -171,7 +173,8 @@ export function useContractSign(options: UseContractSignOptions) {
 
   async function handleSign() {
     if (!contract.value || signing.value) return
-    const blocked = signBlockedReason()
+    // R043 任务-03：平台协议要先确认重要条款提示（放行时顺手留痕一次）。
+    const blocked = signBlockedReason() || (await platformNotice.confirmBeforeSign())
     if (blocked) {
       error.value = blocked
       return
@@ -210,7 +213,6 @@ export function useContractSign(options: UseContractSignOptions) {
 
   /**
    * 「查看合同」：跳爱签的合同预览页（previewContract），与需求列表页同一口径。
-   *
    * 爱签侧还没有这份合同（例如平台自动生成的协议没走过爱签）时回退本地合同正文，
    * 否则页面上就没有任何地方能看到合同内容了。
    */
@@ -257,6 +259,9 @@ export function useContractSign(options: UseContractSignOptions) {
     noticeSigner,
     localDocumentFallback,
     requirementArchive,
+    noticeAccepted: platformNotice.noticeAccepted,
+    platformAgreementCode: platformNotice.platformAgreementCode,
+    onNoticeLoaded: platformNotice.onNoticeLoaded,
     currentParty,
     currentSigner,
     signerIdentityReady,

@@ -1,9 +1,12 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import AuthModal from '@/components/AuthModal.vue'
 
 async function mountAuthModal(overrides: Record<string, unknown> = {}) {
+  const pinia = createPinia()
+  setActivePinia(pinia)
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -26,9 +29,15 @@ async function mountAuthModal(overrides: Record<string, unknown> = {}) {
       ...overrides,
     },
     global: {
-      plugins: [router],
+      plugins: [router, pinia],
     },
   })
+}
+
+/** 勾选"我已阅读并理解上述重要条款提示"（R043 任务-03 的二次确认）。 */
+async function checkNoticeAccepted(wrapper: Awaited<ReturnType<typeof mountAuthModal>>) {
+  const checkbox = wrapper.find('[data-testid="legal-notice-check"]')
+  await checkbox.setValue(true)
 }
 
 describe('AuthModal 端内一键登录布局', () => {
@@ -101,9 +110,18 @@ describe('AuthModal 端内一键登录布局', () => {
     wrapper.unmount()
   })
 
+  it('微信内只勾协议、未确认重要条款提示时一键登录按钮仍禁用', async () => {
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('MicroMessenger/8.0.40')
+    const wrapper = await mountAuthModal({ acceptTerms: true })
+    const btn = wrapper.find('.auth-inapp-login__btn')
+    expect(btn.attributes('disabled')).toBeDefined()
+    wrapper.unmount()
+  })
+
   it('微信内勾选协议后可触发 loginWithWechat', async () => {
     vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('MicroMessenger/8.0.40')
     const wrapper = await mountAuthModal({ acceptTerms: true })
+    await checkNoticeAccepted(wrapper)
     await wrapper.find('.auth-inapp-login__btn').trigger('click')
     expect(wrapper.emitted('loginWithWechat')).toHaveLength(1)
     wrapper.unmount()
