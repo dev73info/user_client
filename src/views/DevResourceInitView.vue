@@ -120,7 +120,6 @@ const {
         tone="warning"
         variant="soft"
         title="请先签署《接口使用协议》"
-        description="使用接口资源前须完成电子签署。未签署时无法创建接口资源，存量接口资源也会暂停渠道配置与开放下单。"
       />
       <TButton variant="solid" tone="accent" @click="goSignApiAgreement">
         去签署接口使用协议

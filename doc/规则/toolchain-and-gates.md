@@ -14,6 +14,9 @@ cd /home/banch/dev73info/user-client && pnpm type-check
 
 - 工作区根在 Windows `E:\dev73info` / WSL `/home/banch/dev73info`；旧副本 `E:\yl73info` 已废弃，不要再把路径写回去。
 - `pnpm lint`、`pnpm format`、`pnpm test:unit` 同样在这个 bash 里直接跑。
+- **当前 shell 是 PowerShell 7 时不能照抄上面这条**：PowerShell 的 PATH 上没有 Git 的 `usr\bin`，裸写 `bash` 会解析到
+  `C:\Windows\System32\bash.exe`（WSL 的 bash，里面没有 node，跑 `pnpm` 报 `exec: node: not found`）。要显式写
+  `& 'C:\Program Files\Git\bin\bash.exe' -lc '...'`，见第三节「情形二」。
 
 ## 二、命令表
 
@@ -31,6 +34,10 @@ Node 版本有下限（`engines` 要求 `^20.19.0 || >=22.12.0`），包管理�
 
 ## 三、起 dev server
 
+先看自己在哪种 shell 里（`pwd`）：WSL 是 bash，Windows 侧可能是 PowerShell 7，也可能是 Git Bash。5175 那一行在 POSIX 与 PowerShell 里写法不同，下面分两种情形写。
+
+**情形一：WSL bash / Windows Git Bash（都是 POSIX，前缀赋值有效）**
+
 ```bash
 # 需求方：5173，吃 .env.local 里的自动登录
 pnpm dev
@@ -39,11 +46,29 @@ pnpm dev
 VITE_DEV_AUTO_LOGIN_USERNAME=dev_flow_03562487 VITE_DEV_AUTO_LOGIN_PASSWORD=Test@123456 pnpm dev --port 5175
 ```
 
+**情形二：Windows PowerShell 7（显式调 Git for Windows 的 `bash.exe`）**
+
+PowerShell 的 PATH 上没有 Git 的 `usr\bin`，裸写 `bash -lc "..."` 会解析到 `C:\Windows\System32\bash.exe`——那是 WSL 的
+bash，进去跑 `pnpm` 报 `/mnt/c/nodejs/pnpm: 15: exec: node: not found`（WSL 里没有这个 node）。PowerShell 也不支持
+`VAR=val cmd` 的前缀赋值（5.1 明确不支持，7 也不行；`$env:X = '...'` 只能当独立语句写，不能贴在命令前面）。所以显式给
+Git Bash 完整路径，赋值写在 `-lc` 的字符串里：
+
+```powershell
+# 需求方：5173，吃 .env.local 里的自动登录
+& 'C:\Program Files\Git\bin\bash.exe' -lc 'cd /e/dev73info/user-client && pnpm dev'
+
+# 开发者：5175，用进程环境变量覆盖自动登录账号
+& 'C:\Program Files\Git\bin\bash.exe' -lc 'cd /e/dev73info/user-client && VITE_DEV_AUTO_LOGIN_USERNAME=dev_flow_03562487 VITE_DEV_AUTO_LOGIN_PASSWORD=Test@123456 pnpm dev --port 5175'
+```
+
+实测（2026-10-20，PowerShell 7）：这样起出来的 vite argv 是 `vite "--port" "5175"`，端口不会靠自增去凑。
+
 - 端口用 **`--port` 直接传**，**不要写成 `pnpm dev -- --port 5175`**：pnpm 会把那个 `--` 原样转给 vite（实测命令行变成
-  `vite "--" "--port" "5175"`），端口靠自增才凑对，不可靠。
+  `vite "--" "--port" "5175"`），端口靠自增才凑对，不可靠。两种 shell 都照此；PowerShell 里要把 `--port 5175` 一起写进
+  `-lc` 的字符串，别留在 PowerShell 那一层。
 - **端口 ↔ 身份是硬绑定，不许串**：5173 = 需求方（`client_flow_03562487`）；**5175 = 开发者端，登录必须用开发者账号**（`dev_flow_03562487`，口令 `Test@123456`）。在 5175 上手动登录、自动登录、浏览器走查、mock 切身份，都不得改用需求方账号。
 - 5173 与 5175 是**不同 origin**，localStorage 各存各的令牌，所以同一个浏览器里两个身份可以同时在线、互不顶号，不需要无痕窗口。
-- **服务一律留在当前会话的终端里前台运行**，不要用 `nohup` / `&` / `disown` /
+- **服务一律留在当前会话的终端里前台运行**，不要用 `nohup` / `&`（bash 的后台符，别和上面 PowerShell 的调用运算符 `&` 混了）/ `disown` /
   `setsid` / `screen` / `tmux` 之类撒手跑——脱离会话的进程看不到日志、停不掉，会话结束还占着端口。做法与理由见根仓 `docs/规则/dev-servers.md` 第一节。
 - 账号与口令见根仓 `docs/规则/dev-accounts.md`（本机开发库统一口令 `Test@123456`）；`.env.local` **不入库**。
 
