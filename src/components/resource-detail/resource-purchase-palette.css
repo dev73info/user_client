@@ -1,0 +1,35 @@
+/* ============================================================
+   购买弹窗色板（`--rdp-purchase-*`）
+   ── 弹窗 Teleport 到 body，`.resource-detail-page` 上声明的 `--rdp-*` 继承不到它，
+      所以在弹窗自己的根类名上再声明一份。
+   ── 必须是全局块（不带 scoped）：scoped 规则只作用于本组件的元素，而弹窗内容是子组件的；
+      选择器限定在 `.resource-purchase-modal-wrap` 上，不会外溢到其它弹窗。
+   ── 裸色值留在这个文件里（已在 `raw-color` 基线内，只减不增），子组件只取 `var()`。
+   ============================================================ */
+.resource-purchase-modal-wrap {
+  --rdp-purchase-scrim: rgba(15, 23, 42, 0.28);
+  --rdp-purchase-border: rgba(198, 210, 236, 0.95);
+  --rdp-purchase-glow: rgba(191, 219, 254, 0.55);
+  --rdp-purchase-surface: rgba(255, 255, 255, 0.97);
+  --rdp-purchase-shadow: rgba(37, 66, 130, 0.18);
+  --rdp-purchase-ink: #0f172a;
+  --rdp-purchase-body: #334155;
+  --rdp-purchase-muted: #64748b;
+  --rdp-purchase-soft-ink: #475569;
+  --rdp-purchase-white: #fff;
+  --rdp-purchase-close-border: rgba(203, 213, 225, 0.95);
+  --rdp-purchase-close-border-hover: rgba(148, 163, 184, 0.9);
+  --rdp-purchase-plate-border: rgba(226, 232, 240, 0.95);
+  --rdp-purchase-plate-surface: rgba(248, 250, 252, 0.96);
+  --rdp-purchase-dashed: rgba(148, 163, 184, 0.7);
+  --rdp-purchase-dashed-surface: rgba(248, 250, 252, 0.9);
+  --rdp-purchase-amount-border: rgba(253, 186, 116, 0.55);
+  --rdp-purchase-amount-from: rgba(255, 247, 237, 0.98);
+  --rdp-purchase-amount-to: rgba(255, 237, 213, 0.72);
+  --rdp-purchase-amount-ink: #9a3412;
+  --rdp-purchase-notes-border: rgba(191, 219, 254, 0.85);
+  --rdp-purchase-notes-surface: rgba(239, 246, 255, 0.72);
+  --rdp-purchase-error-border: rgba(252, 165, 165, 0.85);
+  --rdp-purchase-error-surface: rgba(254, 242, 242, 0.9);
+  --rdp-purchase-error-ink: #b91c1c;
+}

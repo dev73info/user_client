@@ -1,0 +1,217 @@
+/* 资源详情摘要卡的样式：标题行（可见性 / 价格 / 转载标记）、作者与开发者、
+   资源名与转载出处、简介、标签。随模板节点从 `ResourceDetailPanel.vue` 搬来；
+   原来与 CTA 行、页面内容共用的几条「护栏」规则，拆开后各自留一份（声明相同，只是不同文件）。 */
+.resource-detail-page__summary-card {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border: 0;
+  border-radius: 0;
+  border-top: 1px solid rgba(198, 210, 236, 0.72);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.resource-detail-page__headline-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__status-pill,
+.resource-detail-page__author-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.resource-detail-page__price-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #166534;
+  background: rgba(220, 252, 231, 0.95);
+  border: 1px solid rgba(134, 239, 172, 0.7);
+}
+
+.resource-detail-page__price-pill.is-paid {
+  color: #9a3412;
+  background: rgba(255, 237, 213, 0.96);
+  border-color: rgba(253, 186, 116, 0.75);
+}
+
+.resource-detail-page__status-pill {
+  color: #15803d;
+  background: rgba(220, 252, 231, 0.92);
+}
+
+.resource-detail-page__author-pill {
+  color: #1d4ed8;
+  background: rgba(219, 234, 254, 0.92);
+}
+
+.resource-detail-page__author-pill--link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.resource-detail-page__author-pill--link:hover {
+  background: rgba(191, 219, 254, 0.95);
+}
+
+.resource-detail-page__headline-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__meta--aside {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  background: rgba(241, 245, 249, 0.92);
+}
+
+.resource-detail-page__meta-label--green {
+  color: #16a34a;
+}
+
+.resource-detail-page__meta--aside a {
+  color: #64748b;
+  text-decoration: none;
+  transition: color 0.18s ease;
+}
+
+.resource-detail-page__meta--aside a:hover {
+  color: #1d4ed8;
+}
+
+.resource-detail-page__identity-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.resource-detail-page__title {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(28px, 3.2vw, 42px);
+  line-height: 1.12;
+  font-weight: 900;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.resource-detail-page__repost-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__headline-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__repost-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+}
+
+.resource-detail-page__repost-badge.is-repost {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.resource-detail-page__repost-origin {
+  color: #6366f1;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+a.resource-detail-page__repost-origin:hover {
+  text-decoration: underline;
+}
+
+.resource-detail-page__meta,
+.resource-detail-page__summary {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.8;
+}
+
+.resource-detail-page__summary {
+  max-width: 62ch;
+  font-size: 15px;
+}
+
+/* 与首页精选卡 portal-spotlight-card__meta-row 同款标签 */
+.resource-detail-page__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.resource-detail-page__tag {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 22px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.96);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 内嵌列表页形态（`.--panel`）：标题降一档 */
+@media (max-width: 900px) {
+  .resource-detail-page--panel .resource-detail-page__title {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .resource-detail-page__summary-card {
+    min-height: auto;
+  }
+
+  .resource-detail-page__title {
+    font-size: 28px;
+  }
+}

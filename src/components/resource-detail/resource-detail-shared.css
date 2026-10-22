@@ -1,0 +1,14 @@
+/* 封面卡 / 摘要卡 / 页面内容卡三条卡片共用的基础形态（圆角 + 描边 + 底色）。
+   ── 为什么这条不带 scoped：拆成多个组件后，父组件的 scoped 规则与子组件自己的规则
+      特异性相同（各是「一个类 + 一个 data-v 属性」），谁生效只看样式表注入顺序；而子组件的
+      样式总是先于父组件注入，父级这条就会盖掉摘要卡与封面各自「去圆角、去描边、换底色」的覆写。
+      放进不带 scoped 的块后它只剩「一个类」的特异性，子组件自己的规则继续稳压它，
+      结果与拆分前（同一条规则在同一个 scoped 文件里、排在前）一致。
+   ── 三个类名只在本组件的这套文件里出现，不会外溢到别处。 */
+.resource-detail-page__cover-card,
+.resource-detail-page__summary-card,
+.resource-detail-page__content-card {
+  border-radius: 24px;
+  border: 1px solid rgba(198, 210, 236, 0.72);
+  background: rgba(248, 250, 252, 0.92);
+}

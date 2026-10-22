@@ -1,0 +1,45 @@
+/* 封面卡的样式：底纹渐变、封面图与占位块共用尺寸。随模板节点从 `ResourceDetailPanel.vue` 搬来；
+   与摘要卡 / 内容卡共用的那条圆角描边底色规则留在面板样式里（子组件根元素仍带父级作用域）。 */
+.resource-detail-page__cover-card {
+  aspect-ratio: 1.618;
+  min-height: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background:
+    radial-gradient(circle at top right, rgba(84, 124, 255, 0.18), transparent 30%),
+    linear-gradient(160deg, rgba(219, 234, 254, 0.95), rgba(239, 246, 255, 0.92));
+}
+
+/* 封面图与占位块共用尺寸；`display` 只有图是块级——占位块要居中，见下一条（原来是同一条规则里
+   先写 `display: block` 再被 `display: flex` 覆盖，那条 block 对该选择器是死声明，拆开只留活的） */
+.resource-detail-page__cover-image {
+  display: block;
+}
+
+.resource-detail-page__cover-image,
+.resource-detail-page__cover-placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.resource-detail-page__cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(72px, 10vw, 120px);
+}
+
+@media (max-width: 900px) {
+  .resource-detail-page--panel .resource-detail-page__cover-card {
+    aspect-ratio: 2.6;
+  }
+}
+
+@media (max-width: 640px) {
+  .resource-detail-page__cover-card {
+    aspect-ratio: 1.618;
+    min-height: 0;
+  }
+}

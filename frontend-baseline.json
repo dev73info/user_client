@@ -69,12 +69,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/components/ResourceDetailPanel.vue",
-      "detail": "1425 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/components/ShareCardGenerator.vue",
       "detail": "494 行 > 400（模块）",
       "since": "2026-10-22"
@@ -747,8 +741,44 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/ResourceDetailPanel.vue",
-      "detail": "120 处裸色值",
+      "file": "src/components/resource-detail/resource-detail-content.css",
+      "detail": "12 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/resource-detail/resource-detail-cover.css",
+      "detail": "2 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/resource-detail/resource-detail-cta.css",
+      "detail": "17 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/resource-detail/resource-detail-panel.css",
+      "detail": "35 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/resource-detail/resource-detail-shared.css",
+      "detail": "2 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/resource-detail/resource-detail-summary.css",
+      "detail": "27 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/resource-detail/resource-purchase-palette.css",
+      "detail": "25 处裸色值",
       "since": "2026-10-22"
     },
     {

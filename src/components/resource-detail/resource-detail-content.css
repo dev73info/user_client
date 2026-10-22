@@ -1,0 +1,62 @@
+/* 「页面内容」卡的样式：卡头、正文容器与富文本色板（`--rdp-rich-*` 由继承传给 v-html 出来的后代）。
+   随模板节点从 `ResourceDetailPanel.vue` 搬来。正文排版本体仍在全局 `styles/resource-rich-text.css`。 */
+.resource-detail-page__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__section-head span {
+  font-size: 12px;
+}
+
+.resource-detail-page__content-card {
+  padding: 22px;
+}
+
+.resource-detail-page__section-head {
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+
+.resource-detail-page__section-head h2 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.resource-detail-page__content-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* 富文本正文的色板。
+   正文排版已搬到全局样式 `styles/resource-rich-text.css`（v-html 产物没有 `data-v`，`:deep`
+   在那边没有意义），那边只取这里的 `var()`；色值本身留在这个文件里，因为 `raw-color` 门禁
+   按文件聚合，新样式文件带裸色值会被算新增违规，而本文件的裸色值已在基线里（只减不增）。
+   挂在正文容器上（模板里 `v-html` 的那个 div），由继承传给渲染出来的后代。 */
+.resource-detail-page__rich-text {
+  --rdp-rich-muted: #64748b;
+  --rdp-rich-ink: #0f172a;
+  --rdp-rich-link: #2563eb;
+  --rdp-rich-quote-border: rgba(96, 165, 250, 0.34);
+  --rdp-rich-media-border: rgba(203, 213, 225, 0.86);
+  --rdp-rich-media-bg: #f8fafc;
+  --rdp-rich-attachment-border: rgba(191, 219, 254, 0.96);
+  --rdp-rich-attachment-bg: rgba(239, 246, 255, 0.9);
+  --rdp-rich-attachment-ink: #1d4ed8;
+  --rdp-rich-hairline: rgba(226, 232, 240, 0.9);
+  --rdp-rich-th-bg: rgba(239, 246, 255, 0.96);
+}
+
+/* 空内容时的占位段落：原与摘要卡的 meta / summary 同一条规则，拆开后留在这里；
+
+   取色走面板色板里的 `--rdp-muted`（同值 `#64748b`），免得同一处声明在两个文件里各留一份色值。 */
+
+.resource-detail-page__paragraph {
+  margin: 0;
+  color: var(--rdp-muted);
+  line-height: 1.8;
+}
