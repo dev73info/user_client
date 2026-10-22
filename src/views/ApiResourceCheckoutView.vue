@@ -12,10 +12,7 @@ import {
 import WechatBindQrModal from '@/components/WechatBindQrModal.vue'
 import { useResourcePayment } from '@/composables/useResourcePayment'
 import { isWechatBrowser } from '@/shared/auth/browser'
-import {
-  formatPurchaseAmountLabel,
-  resourcePurchaseStatusLabel,
-} from '@/shared/resourceSale'
+import { formatPurchaseAmountLabel, resourcePurchaseStatusLabel } from '@/shared/resourceSale'
 import { useAuthStore } from '@/stores/auth'
 import { TButton, TMessage } from 'ui_73info'
 
@@ -59,8 +56,8 @@ const { qrDataUrl, renderQr, startPoll, stopPoll } = useResourcePayment({
 })
 
 const isPaid = computed(() => phase.value === 'paid')
-const orderTitle = computed(() =>
-  order.value?.resource_title?.trim() || `资源 #${order.value?.resource_id ?? ''}`,
+const orderTitle = computed(
+  () => order.value?.resource_title?.trim() || `资源 #${order.value?.resource_id ?? ''}`,
 )
 
 async function loadOrder(orderNo: string) {
