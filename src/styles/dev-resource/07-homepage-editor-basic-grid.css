@@ -1,0 +1,123 @@
+/* ── 资源主页编辑页（DevResourceHomepageEditView）──────────────────────────────
+   这一组原来写在该视图的 <style scoped> 里，2026-10-22 拆分视图时并进本文件：
+   视图只剩布局，样式再放在视图里会让「换成 8 个区块组件」的那一半无处落脚。
+   并进来也是零新增债的口径——本文件本来就有行数与裸色值的存量条目，视图那边的三条可以整条删掉。
+
+   共享性说明：dev-field-hint / dev-api-* / dev-secret-dialog* / dev-archive-locked-notice
+   这几族类同时被 DevResourceInitView、DevResourceListView、DevResourceVersionsView、
+   TeamResourcesView 以各自的 scoped 副本使用，声明与本文件逐条一致；它们保留自己的副本
+   （scoped 的属性选择器优先级更高），这里这份只管本页。
+   -------------------------------------------------------------------------- */
+
+.dev-page--resource-homepage-editor {
+  gap: 24px;
+}
+
+.dev-resource-homepage-editor__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.5fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* 接口资源没有预览摘要侧栏，单栏铺满，别把右半边空着 */
+.dev-resource-homepage-editor__layout--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.dev-resource-homepage-editor__forms {
+  display: grid;
+  gap: 20px;
+}
+
+/*
+  基础信息 12 列分区（侧栏预览时主栏约 500px，一行塞 4 个会截断）：
+  1) 图标 | 标题
+  2) 归属 | 类型 | 售价
+  3) 简介通栏
+*/
+.dev-basic-info-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 12px 14px;
+  align-items: start;
+}
+
+.dev-basic-info-grid__promo,
+.dev-basic-info-grid__copyright,
+.dev-basic-info-grid__span,
+.dev-basic-info-grid__repost-org {
+  grid-column: span 12;
+}
+
+/* 接口资源的售价行右侧还有半行空位，推广分成并排放在售价右边 */
+.dev-basic-info-grid__promo--inline {
+  grid-column: span 6;
+}
+
+.dev-basic-info-grid__ownership {
+  grid-column: span 3;
+}
+
+.dev-basic-info-grid__origin {
+  grid-column: span 3;
+}
+
+.dev-basic-info-grid__price {
+  grid-column: span 3;
+}
+
+.dev-basic-info-grid__points {
+  grid-column: span 3;
+}
+
+.dev-basic-info-grid__icon {
+  grid-column: span 3;
+}
+
+.dev-basic-info-grid__title {
+  grid-column: span 9;
+}
+
+.dev-basic-info-grid__desc {
+  grid-column: span 12;
+}
+
+.dev-basic-info-grid__repost-author {
+  grid-column: span 5;
+}
+
+.dev-basic-info-grid__repost-url {
+  grid-column: span 7;
+}
+
+.dev-basic-info-grid .t73-select,
+.dev-basic-info-grid .t73-input,
+.dev-basic-info-grid .t73-textarea {
+  width: 100%;
+}
+
+.dev-basic-info-grid__desc textarea {
+  min-height: 112px;
+  resize: vertical;
+}
+
+.dev-basic-info-grid__icon .dev-icon-upload--square,
+.dev-basic-info-grid__icon .resource-icon-picker,
+.dev-basic-info-grid__icon .resource-icon-picker__trigger {
+  width: 96px;
+  max-width: 100%;
+}
+
+.dev-field-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary, #64748b);
+}
+
+/* 校验失败时的字段提示（与「创建资源」页同构）：R028 的回调地址 / 允许来源与
+   R029 的推广分成比例都用它标红，此前只有类名、没有样式。 */
+.dev-field-hint--error {
+  color: var(--73-danger, #b42318);
+}

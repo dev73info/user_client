@@ -1,0 +1,217 @@
+.dev-resource-table__title-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.dev-resource-table__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--dev-line);
+}
+
+/* 单元格主/次文字的规格在 dev-base.css 的 .dev-table__strong / .dev-table__sub。
+   这里只留资源表格特有的「图标 + 标题 + 附带信息」排布。 */
+.dev-resource-table__meta,
+.dev-resource-table__tags {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dev-muted);
+}
+
+/* 标签列允许换行：标签列表长时完整展示，不用省略号截断 */
+.dev-resource-table__tags {
+  display: block;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.dev-version-file-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dev-version-file-picker__input {
+  display: none;
+}
+
+.dev-version-file-picker__name {
+  color: var(--dev-ink-soft);
+  word-break: break-all;
+}
+
+.dev-icon-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dev-icon-dialog__preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  aspect-ratio: var(--dev-resource-aspect-ratio);
+  border: 1px dashed rgba(31, 74, 209, 0.28);
+  border-radius: 14px;
+  background: rgba(248, 251, 255, 0.72);
+  color: var(--dev-muted);
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.dev-icon-dialog__preview:hover {
+  border-color: rgba(31, 74, 209, 0.55);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.dev-icon-dialog__image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 13px;
+}
+
+.dev-icon-dialog__plus {
+  font-size: 30px;
+}
+
+.dev-icon-dialog__meta {
+  text-align: center;
+}
+
+.dev-icon-dialog__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dev-ink);
+  word-break: break-all;
+}
+
+.dev-icon-dialog__hint {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--dev-muted);
+}
+
+.dev-icon-dialog__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(226, 232, 240, 0.82);
+}
+
+.dev-icon-dialog__actions-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.dev-icon-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.dev-icon-editor__crop {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--dev-resource-aspect-ratio);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px dashed rgba(148, 163, 184, 0.5);
+  border-radius: 14px;
+  background: #f8fafc;
+  cursor: grab;
+  touch-action: none;
+}
+
+.dev-icon-editor__crop:active {
+  cursor: grabbing;
+}
+
+.dev-icon-editor__media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  will-change: transform;
+}
+
+.dev-icon-editor__hint {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.55);
+  color: #fff;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.dev-icon-editor__reselect {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.45);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* R047 断点收敛：原档位 480px → 640px */
+@media (max-width: 640px) {
+}
+
+/* R029 推广分成比例：拖动条 + 百分比展示（0 = 关闭）。
+   用原生 range 是为了不把这一处的交互抬成跨仓组件；配色走 dev 令牌，
+   进度与滑块交给 accent-color，避免自绘轨道与 thumb 各浏览器不一致。 */
+.dev-promo-share {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--dev-control-height);
+}
+
+.dev-promo-share__range {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  accent-color: var(--dev-blue);
+  cursor: pointer;
+}
+
+.dev-promo-share__value {
+  flex: 0 0 auto;
+  min-width: 48px;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--dev-ink);
+}
+
+.dev-promo-share__value.is-off {
+  font-weight: 500;
+  color: var(--dev-muted);
+}

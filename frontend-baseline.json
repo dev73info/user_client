@@ -195,12 +195,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/styles/dev-resource.css",
-      "detail": "1305 行 > 300（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/styles/dev-responsive.css",
       "detail": "515 行 > 300（模块）",
       "since": "2026-10-22"
@@ -921,9 +915,45 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/styles/dev-resource.css",
-      "detail": "66 处裸色值",
-      "since": "2026-10-22"
+      "file": "src/styles/dev-resource/02-publish-form-grid.css",
+      "detail": "7 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/dev-resource/03-icon-upload-catalog.css",
+      "detail": "11 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/dev-resource/04-publish-actions-summary.css",
+      "detail": "6 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/dev-resource/05-preview-card.css",
+      "detail": "16 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/dev-resource/06-resource-table-icon-promo.css",
+      "detail": "12 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/dev-resource/07-homepage-editor-basic-grid.css",
+      "detail": "1 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/dev-resource/08-api-config-notices.css",
+      "detail": "13 处裸色值",
+      "since": "2026-10-23"
     },
     {
       "rule": "raw-color",

@@ -1,0 +1,149 @@
+@media (max-width: 900px) {
+  .dev-resource-homepage-editor__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .dev-basic-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dev-basic-info-grid__title,
+  .dev-basic-info-grid__promo,
+  .dev-basic-info-grid__ownership,
+  .dev-basic-info-grid__origin,
+  .dev-basic-info-grid__price,
+  .dev-basic-info-grid__points,
+  .dev-basic-info-grid__icon,
+  .dev-basic-info-grid__desc,
+  .dev-basic-info-grid__copyright,
+  .dev-basic-info-grid__span,
+  .dev-basic-info-grid__repost-author,
+  .dev-basic-info-grid__repost-url,
+  .dev-basic-info-grid__repost-org {
+    grid-column: 1;
+  }
+}
+
+/* R014：锁定资源的说明横幅，放在工作台操作条下方（观感取自 TAlert 的 warning 态）。 */
+.dev-archive-locked-notice {
+  margin: 0 0 16px;
+}
+
+/* 协议未签提示：签署按钮在 TAlert 的 #actions 里，随提示框一起排（窄屏整块换行），
+   这里只管与下一个区块的间距——旧写法里并排 flex 与 420px 基线不再需要 */
+.dev-api-agreement-notice {
+  margin: 0 0 16px;
+}
+
+/* R028 接口资源配置区 */
+.dev-api-notice,
+.dev-api-retry-notice {
+  margin: 0 0 4px;
+}
+
+.dev-api-switch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.dev-api-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary, #1f2937);
+}
+
+/* 一次性密钥与接入提示词两块面板：与上一块的间距同 .dev-upload-block 的 14px 行距合起来是 18px，
+   与表单行距、提示条间距同一档（原来写 16px，合起来 30px，比其余间距都宽一截）。 */
+.dev-api-secret {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--73-warning, #d97706);
+  border-radius: 10px;
+  background: #fff8ea;
+}
+
+.dev-api-secret__title {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.dev-api-secret__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px dashed #d97706;
+  border-radius: 8px;
+  background: #ffffff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  word-break: break-all;
+  user-select: all;
+}
+
+.dev-api-sample {
+  margin: 4px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--dev-line, #e2e8f0);
+  border-radius: 10px;
+  background: var(--dev-surface-strong, #f8fafc);
+}
+
+.dev-api-sample__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dev-api-sample__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dev-ink, #1f2937);
+}
+
+.dev-api-sample__code {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  /* 长行折行显示（复制出来的文本不受影响），不靠横向滚动把内容藏起来 */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.dev-secret-dialog__hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary, #64748b);
+}
+
+.dev-secret-dialog__value {
+  display: block;
+  padding: 12px 14px;
+  border: 1px dashed #d97706;
+  border-radius: 8px;
+  background: #fff8ea;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  word-break: break-all;
+  user-select: all;
+}
