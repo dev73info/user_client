@@ -9,12 +9,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/components/AfterSalesModal.vue",
-      "detail": "988 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/components/AuthModal.vue",
       "detail": "496 行 > 400（模块）",
       "since": "2026-10-22"
@@ -345,7 +339,7 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/AfterSalesModal.vue",
+      "file": "src/components/after-sales-modal.css",
       "detail": "29 处裸色值",
       "since": "2026-10-22"
     },
