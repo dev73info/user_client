@@ -393,12 +393,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/DevResourceListView.vue",
-      "detail": "1017 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/DevResourceVersionsView.vue",
       "detail": "796 行 > 300（视图）",
       "since": "2026-10-22"
@@ -441,32 +435,8 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/NotificationCenterView.vue",
-      "detail": "800 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "api-deps",
-      "file": "src/views/NotificationCenterView.vue",
-      "detail": "依赖 4 个 api 模块（community、afterSales、conversations、resourceTransfers）> 3",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/ProfileView.vue",
       "detail": "666 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
-      "file": "src/views/SearchResultsView.vue",
-      "detail": "1017 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "api-deps",
-      "file": "src/views/SearchResultsView.vue",
-      "detail": "依赖 5 个 api 模块（community、http、resources、requirements、resourceTags）> 3",
       "since": "2026-10-22"
     },
     {
@@ -1090,7 +1060,7 @@
     {
       "rule": "raw-color",
       "file": "src/views/DevResourceListView.vue",
-      "detail": "3 处裸色值",
+      "detail": "1 处裸色值",
       "since": "2026-10-22"
     },
     {
@@ -1132,7 +1102,7 @@
     {
       "rule": "raw-color",
       "file": "src/views/NotificationCenterView.vue",
-      "detail": "20 处裸色值",
+      "detail": "15 处裸色值",
       "since": "2026-10-22"
     },
     {
@@ -1150,7 +1120,7 @@
     {
       "rule": "raw-color",
       "file": "src/views/SearchResultsView.vue",
-      "detail": "45 处裸色值",
+      "detail": "34 处裸色值",
       "since": "2026-10-22"
     },
     {
