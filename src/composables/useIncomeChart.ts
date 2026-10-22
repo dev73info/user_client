@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { money } from '@/shared/devFundDisplay'
 
@@ -105,6 +105,20 @@ export function useIncomeChart(options: { buckets: ComputedRef<DevHomeIncomeBuck
    * 并把圆点放大、画一条竖线；没有命中带时只有最高一天那颗读数。
    */
   const hoveredBucketIndex = ref<number | null>(null)
+
+  /**
+   * 换窗口（近 7 天 ⇄ 看板的近 30 天）时清掉悬停态。
+   *
+   * 不清的话，悬停读数会继续按要求「第 index 天」渲染——而同一个下标在新窗口里已经是另一天，
+   * 竖线与胶囊还留在旧几何上（表现为切换后残留一条旧读数和一条旧竖线，直到鼠标再动一下才自愈）。
+   * 只认日期序列，不认长度：两个窗口长度不同是常态，但内容换了就必须重来。
+   */
+  watch(
+    () => incomeBuckets.value.map((bucket) => bucket.label).join('|'),
+    () => {
+      hoveredBucketIndex.value = null
+    },
+  )
 
   const hoveredBucket = computed(() => {
     const index = hoveredBucketIndex.value
