@@ -1,0 +1,194 @@
+/* --- 通用按钮 --- */
+.publish-btn {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #052238;
+  background: #ffd166;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.publish-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(255, 209, 102, 0.32);
+}
+
+.refresh-btn {
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease;
+}
+
+.refresh-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(180, 230, 255, 0.2);
+}
+
+.refresh-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+button.ghost,
+button.ghost.small {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 12px;
+  padding: 10px 15px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    opacity 180ms ease;
+}
+
+button.ghost:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(180, 230, 255, 0.18);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.36);
+}
+
+button.ghost:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+button.ghost.small {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.top-back {
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 12px;
+  padding: 10px 15px;
+  cursor: pointer;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text-main);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.top-back:hover {
+  border-color: rgba(42, 166, 164, 0.52);
+  background: rgba(42, 166, 164, 0.1);
+}
+
+/* --- 面板 --- */
+.panel {
+  margin-top: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--card-border);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 20px 48px rgba(55, 78, 105, 0.1);
+  backdrop-filter: blur(12px);
+  padding: 18px;
+  animation: reveal 640ms ease-out;
+}
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.panel-head > div {
+  min-width: 0;
+}
+
+.panel-head button.ghost,
+.panel-head .top-back {
+  white-space: nowrap;
+}
+
+/* R047 断点收敛：原档位 780px → 640px（同文件的 820px 档本轮保留，见报告） */
+@media (max-width: 640px) {
+  .panel-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .panel-head button.ghost,
+  .panel-head .top-back {
+    width: 100%;
+  }
+}
+
+.panel-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.panel-header span {
+  color: var(--text-sub);
+  font-size: 14px;
+}
+
+/* --- 工具类 --- */
+.lead {
+  margin: 0;
+  color: var(--text-sub);
+}
+
+.empty {
+  color: var(--text-sub);
+  padding: 18px;
+  border: 1px dashed rgba(148, 163, 184, 0.42);
+  border-radius: 16px;
+}
+
+.empty-placeholder {
+  margin: 0;
+  color: var(--text-sub);
+  font-size: 14px;
+}
+
+.card-title {
+  margin: 0;
+  width: 100%;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.tip,
+.qr-fallback {
+  margin: 12px 0 0;
+  color: var(--text-sub);
+  font-size: 13px;
+  text-align: center;
+}

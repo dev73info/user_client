@@ -1,0 +1,213 @@
+/* === 应用壳层与页面容器 === */
+
+#app,
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.app-content {
+  position: relative;
+  z-index: 2;
+}
+
+/* --- 页面容器 --- */
+.home {
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 32px 20px 56px;
+}
+
+.custom-page-shell {
+  gap: 28px;
+}
+
+/* --- Hero 区域 --- */
+.hero {
+  animation: reveal 520ms ease-out;
+}
+
+/* --- 用户菜单与认证按钮 --- */
+.user-pill {
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  color: #ddffef;
+  background: rgba(149, 213, 178, 0.2);
+  border: 1px solid rgba(149, 213, 178, 0.4);
+}
+
+.auth-btn {
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.auth-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.auth-btn:disabled {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.auth-btn.ghost {
+  border: 1px solid rgba(226, 232, 240, 0.96);
+  color: #334155;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.auth-btn.ghost:hover {
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+}
+
+.auth-btn.ghost:disabled {
+  color: #94a3b8;
+  background: rgba(248, 250, 252, 0.96);
+  border-color: rgba(226, 232, 240, 0.96);
+}
+
+.auth-btn.solid {
+  border: 0;
+  color: #fff;
+  background: var(--primary-gradient);
+}
+
+.auth-btn.solid:hover:not(:disabled) {
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.22);
+}
+
+.auth-btn.solid:disabled {
+  color: rgba(255, 255, 255, 0.9);
+  background: linear-gradient(135deg, #bfd3ff, #d7e5ff);
+}
+
+.user-menu-wrapper {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 10px;
+  margin-bottom: -10px;
+}
+
+.user-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  min-width: 130px;
+  max-width: 180px;
+  width: max-content;
+  padding: 8px 0;
+  border-radius: 18px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transform: translateY(-10px);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.user-menu::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  background: transparent;
+}
+
+.user-menu.open,
+.user-menu-wrapper:hover .user-menu,
+.user-menu-wrapper:focus-within .user-menu {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.user-menu-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.user-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.menu-divider {
+  height: 1px;
+  margin: 6px 0;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.user-menu-item.danger:hover {
+  background: rgba(255, 95, 95, 0.15);
+}
+
+/* --- 标题与描述 --- */
+h1 {
+  margin: 14px 0 8px;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.1;
+}
+
+.desc {
+  margin: 0;
+  max-width: 680px;
+  color: var(--text-sub);
+}
+
+/* --- Hero 布局 --- */
+.hero-content,
+.hero-meta {
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.hero-meta > .hero {
+  flex: 1 1 60%;
+  min-width: 280px;
+  max-width: 720px;
+}
+
+.hero-meta > .hero h1 {
+  margin-bottom: 12px;
+}
+
+.hero-copy {
+  flex: 1 1 60%;
+  min-width: 280px;
+  max-width: 720px;
+}
+
+.hero-copy h1 {
+  margin-bottom: 12px;
+}
