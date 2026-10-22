@@ -111,12 +111,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/TeamResourcesView.vue",
-      "detail": "719 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/__tests__/afterSalesWindow.spec.ts",
       "detail": "485 行 > 300（模块）",
       "since": "2026-10-22"
@@ -1329,12 +1323,6 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/views/TeamResourcesView.vue",
-      "detail": "1 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
       "file": "src/views/UserBadgesView.vue",
       "detail": "3 处裸色值",
       "since": "2026-10-22"
@@ -1385,6 +1373,12 @@
       "rule": "raw-color",
       "file": "src/components/profile/profile-quick-nav.css",
       "detail": "5 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/dev/team-resources-table.css",
+      "detail": "1 处裸色值",
       "since": "2026-10-23"
     }
   ]
