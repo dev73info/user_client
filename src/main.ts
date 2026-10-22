@@ -5,6 +5,7 @@ import App from './App.vue'
 import router from './router'
 import { installGlobalFetchLoadingTracker } from './composables/useGlobalLoadingScreen'
 import { installMockFetch } from './mock/index'
+import { installUnauthorizedHandler } from './shared/api/unauthorized'
 // ui_73info 的令牌与样式底座。放在页面样式**之前**：令牌要早于消费它的样式生效
 // （见 ui_73info 的 styles/index.css 顶部）。它只定义 `--73-*` 与 `.t73` 类名空间，
 // 不碰各端自己的 `--dev-*` / `--portal-*` / `--profile-*`。
@@ -58,7 +59,11 @@ installGlobalFetchLoadingTracker()
 
 const app = createApp(App)
 
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
 app.use(router)
+
+// 401 统一处理：请求层派发「未授权」事件，这里清登录态并回首页（首页承载登录弹窗）。
+installUnauthorizedHandler(pinia, router)
 
 app.mount('#app')
