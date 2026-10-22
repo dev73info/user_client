@@ -23,6 +23,13 @@
   --dev-cyan: #2aa6a4;
   --dev-gold: #b9812b;
   --dev-shadow: 0 20px 44px rgba(71, 85, 105, 0.1);
+  /* 窄屏卡片流的四档配色：浅投影、按下底色、主色的 8% 底、预算读数的红。
+     原先这几处是需求大厅视图 <style> 里的裸色值（拆视图时收进令牌层，取值一字未改）；
+     其中投影与 dev-responsive.css 的移动端卡片是同一档。 */
+  --dev-shadow-card-soft: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --dev-blue-tint: #f8faff;
+  --dev-blue-soft: rgba(31, 74, 209, 0.08);
+  --dev-amount: #e5484d;
   --dev-scrollbar-thumb: linear-gradient(180deg, rgba(31, 74, 209, 0.62), rgba(42, 166, 164, 0.72));
   --dev-scrollbar-thumb-hover: linear-gradient(
     180deg,
