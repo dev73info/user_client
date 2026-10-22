@@ -99,12 +99,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/views/DevMyRequirementsView.vue",
-      "detail": "473 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/views/DevResourceVersionsView.vue",
       "detail": "796 行 > 300（视图）",
       "since": "2026-10-22"
