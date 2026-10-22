@@ -33,12 +33,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/api/resources.ts",
-      "detail": "414 行 > 300（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/App.vue",
       "detail": "440 行 > 400（模块）",
       "since": "2026-10-22"
