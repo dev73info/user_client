@@ -1,0 +1,110 @@
+/* === 卡头 ===
+   面板（.wallet-section）里的第一行：左边标题 + 说明，右边动作。
+   结构同 .dev-card-head：.wb-card-head > .wb-card-head__title-block(> h3 + p) + .wb-card-head__actions */
+/* 卡头：下边距与间距都取开发者侧 .dev-card-head 的同一组值（18px / 16px）。
+   之前这里写的是 16px / 12px，与上面表格里登记的「下边距 18px」以及开发者侧实现都不一致，
+   同一页在两种模式间切换时卡头与下方内容的距离会差 2px、标题与右侧动作的距离差 4px。 */
+.wb-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.wb-card-head__title-block {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.wb-card-head__title {
+  margin: 0;
+  color: var(--profile-text-main, #0f172a);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.wb-card-head__desc {
+  margin: 0;
+  color: var(--profile-text-sub, #64748b);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.wb-card-head__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* === 工具栏 ===
+   面板里标题下方那一行：筛选（下拉或胶囊组）+ 搜索 + 重置（和条数说明）。
+   结构同 .dev-toolbar：筛选即时生效，所以没有「查询」按钮；条数只在分页器报一次。 */
+.wb-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.wb-toolbar__search {
+  flex: 1 1 240px;
+  min-width: 0;
+  max-width: 340px;
+}
+
+/* 下拉筛选的宽度要写成 flex 基宽，不能只写 min-width：TSelect 自带 width: 100%，
+   而 __field 直接挂在 TSelect 根节点上，`flex: 0 0 auto` 会让 flex-basis 回落到 width，
+   于是每个筛选各占一整行、工具栏被撑成竖排。 */
+.wb-toolbar__field {
+  flex: 0 0 150px;
+  min-width: 0;
+}
+
+.wb-toolbar__field--small {
+  flex: 0 0 112px;
+}
+
+/* 筛选是胶囊组时，组本身不抢占空间：宽度够就整组一行，摆不下就让组收缩并靠自己的 flex-wrap
+   折行。原来写的是 `flex: 0 0 auto`（即 flex-shrink: 0），组宽按 max-content 撑开、永远不折行，
+   于是窄屏上「我的合同」那一组 5 个胶囊宽到 415px，从 390px 的视口里横着溢出去。 */
+.wb-toolbar .wb-chip-group {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.wb-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* 计数、口径说明之类的弱文字 */
+.wb-toolbar__hint {
+  color: var(--profile-text-sub, #64748b);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 左列表 + 右详情这类窄栏（工单中心）：一行摆不下「筛选 150 + 筛选 150 + 搜索 + 重置」。
+   与开发者侧 .dev-toolbar--stacked 用同一套 flex 规则——第一行两个筛选 + 右侧重置，
+   第二行搜索独占。不要改成纵向排列：那会把每个控件单独撑成一行，工具栏高到 170px。 */
+.wb-toolbar--stacked .wb-toolbar__field {
+  flex: 1 1 100px;
+}
+
+/* 搜索的基宽写成 150px 而不是 100%：100% 会把「重置」挤到第三行，
+   150px 让它与重置共用第二行、再吃掉剩余宽度。 */
+.wb-toolbar--stacked .wb-toolbar__search {
+  flex: 1 1 150px;
+  max-width: none;
+}
+
+/* 条数由表尾分页器报一次，窄栏里再放「筛选出 N 条」会把工具栏挤成三行 */
+.wb-toolbar--stacked .wb-toolbar__hint {
+  display: none;
+}

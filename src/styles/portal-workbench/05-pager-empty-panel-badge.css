@@ -1,0 +1,136 @@
+/* === 分页 ===
+   列表页表尾：左边「共 N 条 + 每页条数」，右边页码。
+   结构同 .dev-pager：.wb-pager > .wb-pager__count(> span + 每页条数) + TPagination */
+.wb-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+  color: var(--profile-text-sub, #64748b);
+  font-size: 13px;
+}
+
+.wb-pager__count {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.wb-pager__size {
+  width: 116px;
+}
+
+/* === 空态 ===
+   没有数据、筛选后为空、加载失败都走这一处；
+   原来每页各写一个（.invoice-empty / .favorites-empty / .signatures__empty / 直接一段裸文字）。 */
+.wb-empty {
+  margin: 0;
+  padding: 24px;
+  border: 1px dashed var(--wb-line);
+  border-radius: var(--wb-radius-item);
+  background: rgba(255, 255, 255, 0.56);
+  color: var(--profile-text-sub, #64748b);
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.wb-empty__title {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--profile-text-main, #0f172a);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.wb-empty__actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* === 内嵌块 ===
+   卡片（.wallet-section）里再分一层的小块：券包的分组、权益的「用户名颜色设置」面板、
+   邀请码横条。原来是各写一份——12px 内边距、14px 16px、10px 14px 三种，底色也分了
+   「卡片底色」与「半透明白」，四个页面因此看着像四套。这里收成一档，与 .wb-item / .wb-empty
+   同族（12px 内边距 + 12px 圆角 + --wb-line 描边）。 */
+.wb-panel {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--wb-line);
+  border-radius: var(--wb-radius-item);
+  background: var(--profile-card-bg, rgba(255, 255, 255, 0.96));
+}
+
+/* 内嵌块的头一行：组名/面板名在左、计数或动作在右 */
+.wb-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* === 组名 ===
+   一张卡片里再分组时的组名：徽章墙的「成就徽章 / 特殊徽章」、券包的「满减 / 折扣优惠券」、
+   权益面板的「用户名颜色设置」。同一层级原来一处 12px 灰、一处 13px 墨、一处 14px 墨，
+   换个页面就换一种观感；这里按「正文主力 13px + 卡片标题色」定一档（副标题才是 12px 灰）。 */
+.wb-subhead {
+  margin: 0;
+  color: var(--profile-text-main, #0f172a);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* === 底部提示文案 ===
+   卡片收尾那一行说明（徽章墙的「点击已获得的徽章可佩戴或取消佩戴」）。
+   与 .wb-card-head__desc 同档（次要说明 12px），不参与正文节奏。 */
+.wb-note {
+  margin: 0;
+  color: var(--profile-text-sub, #64748b);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* === 状态徽标 ===
+   「浅底 + 深字」，底色与文字都取 profile.css 里那一组状态令牌，
+   新写状态标签沿用这个思路，不要用饱和色做背景。
+   高度与内边距和开发者侧的 .dev-chip 取齐（28px / 0 12px）：
+   两侧的状态标签是同一个东西，只是分了两套类名，尺寸必须一样。 */
+.wb-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--wb-tag-bg, rgba(148, 163, 184, 0.12));
+  color: var(--profile-text-sub, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.wb-badge--success {
+  background: var(--profile-success-soft, rgba(34, 197, 94, 0.12));
+  color: var(--profile-success-text, #166534);
+}
+
+.wb-badge--warning {
+  background: var(--profile-warning-soft, rgba(245, 158, 11, 0.14));
+  color: var(--profile-warning-text, #92400e);
+}
+
+.wb-badge--danger {
+  background: var(--profile-danger-soft, rgba(239, 68, 68, 0.12));
+  color: var(--profile-danger-text, #b42318);
+}
+
+.wb-badge--accent {
+  background: var(--wb-accent-soft);
+  color: var(--wb-accent);
+}

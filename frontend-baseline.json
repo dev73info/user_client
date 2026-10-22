@@ -201,12 +201,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/styles/portal-workbench.css",
-      "detail": "947 行 > 300（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/styles/resource-catalog.css",
       "detail": "777 行 > 300（模块）",
       "since": "2026-10-22"
@@ -1167,9 +1161,45 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/styles/portal-workbench.css",
-      "detail": "61 处裸色值",
-      "since": "2026-10-22"
+      "file": "src/styles/portal-workbench/01-tokens-strip.css",
+      "detail": "12 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/portal-workbench/02-card-head-toolbar.css",
+      "detail": "3 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/portal-workbench/03-buttons-avatar-chip.css",
+      "detail": "16 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/portal-workbench/04-list-item.css",
+      "detail": "6 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/portal-workbench/05-pager-empty-panel-badge.css",
+      "detail": "15 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/portal-workbench/06-responsive-900-640.css",
+      "detail": "3 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/styles/portal-workbench/07-mobile-app-list.css",
+      "detail": "6 处裸色值",
+      "since": "2026-10-23"
     },
     {
       "rule": "raw-color",

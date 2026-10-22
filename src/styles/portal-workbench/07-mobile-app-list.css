@@ -1,0 +1,130 @@
+/* === 移动端 App 化列表（与开发者侧 dev-responsive.css 末段、需求大厅同一套） ===
+   用户工作台里带工具栏的列表区（.wallet-section 等）在触屏档去掉外框，列表项各自成白卡；
+   只有标题的卡头隐藏；单筛选工具栏并成一条白色搜索栏、多筛选控件各自成白色胶囊；「重置」不放；
+   空态不套框；表尾不要「每页条数」，只有一页时整个不显示。 */
+@media (max-width: 640px) {
+  .profile-page :is(.wallet-section, section):has(.wb-toolbar) {
+    min-width: 0;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .profile-page
+    :is(.wallet-section, section):has(.wb-toolbar)
+    .wb-card-head:not(:has(.wb-card-head__actions > *)) {
+    display: none;
+  }
+
+  .profile-page :is(.wallet-section, section):has(.wb-toolbar) .wb-card-head {
+    margin-bottom: 10px;
+    padding: 0 4px;
+  }
+
+  .profile-page .wb-toolbar .wb-toolbar__search,
+  .profile-page .wb-toolbar .wb-toolbar__field {
+    border-color: transparent !important;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+
+  .profile-page .wb-toolbar__actions .t73-button:has(> .t73-button__label > .t73-icon + span),
+  .profile-page .wb-toolbar__actions .wb-toolbar__hint,
+  .dev-surface-card .wb-toolbar__actions .wb-toolbar__hint {
+    display: none;
+  }
+
+  .profile-page
+    .wb-toolbar:has(> .wb-toolbar__search):not(:has(> .wb-toolbar__field ~ .wb-toolbar__field)):not(
+      :has(> .wb-chip-group)
+    ):not(:has(.wb-toolbar__actions .t73-button--solid)) {
+    flex-wrap: nowrap;
+    gap: 0;
+    padding: 3px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+
+  .profile-page
+    .wb-toolbar:has(> .wb-toolbar__search):not(:has(> .wb-toolbar__field ~ .wb-toolbar__field)):not(
+      :has(> .wb-chip-group)
+    ):not(:has(.wb-toolbar__actions .t73-button--solid))
+    > :is(.wb-toolbar__search, .wb-toolbar__field) {
+    background: transparent;
+    box-shadow: none !important;
+  }
+
+  .profile-page
+    .wb-toolbar:has(> .wb-toolbar__search):not(:has(> .wb-toolbar__field ~ .wb-toolbar__field)):not(
+      :has(> .wb-chip-group)
+    ):not(:has(.wb-toolbar__actions .t73-button--solid))
+    > .wb-toolbar__field {
+    flex: 0 0 auto;
+    width: auto;
+    padding-right: 6px;
+  }
+
+  .profile-page
+    .wb-toolbar:has(> .wb-toolbar__field):has(> .wb-toolbar__search):not(
+      :has(> .wb-toolbar__field ~ .wb-toolbar__field)
+    ):not(:has(> .wb-chip-group)):not(:has(.wb-toolbar__actions .t73-button--solid))
+    > .wb-toolbar__search {
+    position: relative;
+    flex: 1 1 0;
+  }
+
+  .profile-page
+    .wb-toolbar:has(> .wb-toolbar__field):has(> .wb-toolbar__search):not(
+      :has(> .wb-toolbar__field ~ .wb-toolbar__field)
+    ):not(:has(> .wb-chip-group)):not(:has(.wb-toolbar__actions .t73-button--solid))
+    > .wb-toolbar__search::before {
+    position: absolute;
+    top: 9px;
+    bottom: 9px;
+    left: 0;
+    width: 1px;
+    background: var(--wb-line);
+    content: '';
+  }
+
+  /* 列表项：白卡、无描边 */
+  .profile-page :is(.wallet-section, section):has(.wb-toolbar) .wb-item {
+    border-color: transparent;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+
+  /* 长单号（售后编号之类）不折行会把白卡撑出屏幕 */
+  .profile-page .wb-item__main {
+    min-width: 0;
+  }
+
+  .profile-page .wb-item__title,
+  .profile-page .wb-item__meta {
+    overflow-wrap: anywhere;
+  }
+
+  .profile-page :is(.wallet-section, section):has(.wb-toolbar) .wb-empty {
+    padding: 40px 16px;
+    border: 0;
+    background: transparent;
+  }
+
+  .profile-page .wb-pager__count {
+    display: none;
+  }
+
+  .profile-page .wb-pager {
+    justify-content: center;
+    margin-top: 14px;
+  }
+
+  .profile-page .wb-pager:not(:has(.t73-pagination__pages > li:nth-child(4))) {
+    display: none;
+  }
+}
