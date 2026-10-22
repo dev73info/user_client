@@ -1,0 +1,74 @@
+/* 结果区空态的样式：说明文字与三条出口按钮。随模板节点从 `ResourceCatalog.vue` 搬来。 */
+
+.portal-resource-browser__empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  grid-column: 1 / -1;
+  padding: 56px 24px;
+  border-radius: 12px;
+  text-align: center;
+  color: #64748b;
+}
+
+.portal-resource-browser__empty strong {
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.portal-resource-browser__empty span {
+  max-width: 520px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.portal-resource-browser__empty {
+  line-height: 1.7;
+}
+
+/* 空态的三条出口：主按钮（清筛选）+ 次按钮（换分区）+ 幽灵按钮（发布需求） */
+.portal-resource-browser__empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.portal-resource-browser__empty-btn {
+  height: 34px;
+  padding: 0 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  color: #334155;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    background 160ms ease;
+}
+
+.portal-resource-browser__empty-btn:hover {
+  border-color: rgba(31, 74, 209, 0.4);
+  color: var(--accent);
+}
+
+.portal-resource-browser__empty-btn--primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+}
+
+.portal-resource-browser__empty-btn--primary:hover {
+  color: #fff;
+}
+
+.portal-resource-browser__empty-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+}

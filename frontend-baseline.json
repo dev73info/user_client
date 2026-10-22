@@ -57,12 +57,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/components/ResourceCatalog.vue",
-      "detail": "1391 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/components/ShareCardGenerator.vue",
       "detail": "494 行 > 400（模块）",
       "since": "2026-10-22"
@@ -765,8 +759,26 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/ResourceCatalog.vue",
-      "detail": "43 处裸色值",
+      "file": "src/components/resource-catalog/resource-catalog-card-meta.css",
+      "detail": "19 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/resource-catalog/resource-catalog-card.css",
+      "detail": "5 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/resource-catalog/resource-catalog-empty.css",
+      "detail": "6 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/resource-catalog/resource-catalog-filters.css",
+      "detail": "13 处裸色值",
       "since": "2026-10-22"
     },
     {

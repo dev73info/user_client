@@ -1,0 +1,165 @@
+/* 资源卡的骨架与标题区：卡壳、封面、正文列、标题行（长标题压两行）、更新时间。
+   随模板节点从 `ResourceCatalog.vue` 搬来；作者胶囊、标签、简介与操作按钮在下一个文件里。 */
+
+/* 已无引用的旧规则（原来的 `__row` / `__group` / `__label` / `__tag` / `__reset`
+   与「↻ 重置筛选」一起下线）已删除：重置入口改由工具条上的已选筛选 chip 承担。 */
+.portal-resource-browser__author-pill,
+.portal-resource-browser__updated,
+.portal-resource-browser__meta {
+  color: #64748b;
+}
+
+.portal-resource-browser__action,
+.portal-resource-browser__like {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.portal-resource-browser__card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 12px;
+  transition: border-color 180ms ease;
+}
+
+/* 悬停只变描边色：不做位移、不加投影 */
+.portal-resource-browser__card:hover {
+  border-color: rgba(31, 74, 209, 0.4);
+}
+
+.portal-resource-browser__card-main {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.portal-resource-browser__cover {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  font-size: 34px;
+  color: #fff;
+}
+
+.portal-resource-browser__cover--image {
+  overflow: hidden;
+  background: rgba(226, 232, 240, 0.72);
+}
+
+.portal-resource-browser__cover-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.portal-resource-browser__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.portal-resource-browser__headline {
+  align-items: flex-start;
+}
+
+.portal-resource-browser__footer {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  margin-top: auto;
+}
+
+.portal-resource-browser__actions {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.portal-resource-browser__headline h3 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.portal-resource-browser__headline-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.portal-resource-browser__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  /* 标题行固定预留两行高度：短标题单行居中，长标题最多两行，卡片高度不随标题长短跳动 */
+  min-height: 44px;
+}
+
+.portal-resource-browser__title-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.portal-resource-browser__title-row h3 {
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+/* 长标题：缩小字号，压到最多两行，超出省略 */
+.portal-resource-browser__title-row h3.is-long {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.portal-resource-browser__title-row .portal-resource-browser__updated {
+  flex-shrink: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.35;
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .portal-resource-browser__headline,
+  .portal-resource-browser__footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .portal-resource-browser__card {
+    flex-direction: column;
+  }
+
+  .portal-resource-browser__actions {
+    justify-content: space-between;
+  }
+}
