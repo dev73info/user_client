@@ -1,5 +1,6 @@
 import type { RequirementItem } from '@/api/requirements'
 import { HttpError } from '@/shared/api/httpClient'
+import { readBackendErrorText } from '@/shared/backendErrorText'
 
 /**
  * 「转为我的资源」的展示与错误口径。
@@ -43,7 +44,9 @@ const ALREADY_CLAIMED_HINT = '已转为需求方资源'
  * 把转换接口的失败翻译成可读文案。
  *
  * 后端错误体是 text/plain，409 的几种前置（未结单 / 已转换 / 无交付资源 / 团队资源 / 有未结案件）
- * 本身就是中文句子，原样展示即可；403 / 404 的英文 body 换成中文。其余状态码优先用后端文案，没有就兜底。
+ * 本身就是中文句子，原样展示即可；403 / 404 用更具体的固定文案。
+ * 其余状态码优先用后端文案——但只认能读的中文（BUG-012 的统一口径见 `backendErrorText`），
+ * 英文裸串不原样透出。
  */
 export function describeClaimResourceError(
   error: unknown,
@@ -59,14 +62,14 @@ export function describeClaimResourceError(
     }
     if (error.status === 409) {
       return {
-        message: body || '当前状态不允许转换',
+        message: readBackendErrorText(body, '当前状态不允许转换'),
         alreadyClaimed: body.includes(ALREADY_CLAIMED_HINT),
       }
     }
-    return { message: body || fallback, alreadyClaimed: false }
+    return { message: readBackendErrorText(body, fallback), alreadyClaimed: false }
   }
   if (error instanceof Error && error.message.trim()) {
-    return { message: error.message, alreadyClaimed: false }
+    return { message: readBackendErrorText(error.message, fallback), alreadyClaimed: false }
   }
   return { message: fallback, alreadyClaimed: false }
 }

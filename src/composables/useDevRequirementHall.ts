@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { TMessage } from 'ui_73info'
 
 import { listRequirementHall, type RequirementItem } from '@/api/devRequirements'
+import { describeBackendError } from '@/shared/backendErrorText'
 import {
   REQUIREMENT_HALL_SORT_OPTIONS,
   countRequirementPaymentModes,
@@ -67,7 +68,7 @@ export function useDevRequirementHall() {
       rows.value = payload.items
       total.value = payload.total
     } catch (error) {
-      const message = error instanceof Error ? error.message : '加载资源关联列表失败'
+      const message = describeBackendError(error, '加载资源关联列表失败')
       TMessage.error(message)
       rows.value = []
       total.value = 0

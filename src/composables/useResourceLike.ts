@@ -9,6 +9,7 @@ import {
   unlikePublicMcResource,
   type PublicMcResourceLikeState,
 } from '@/api/resources'
+import { describeBackendError } from '@/shared/backendErrorText'
 import { useAuthStore } from '@/stores/auth'
 
 export type UseResourceLikeOptions = {
@@ -85,7 +86,7 @@ export function useResourceLike(options: UseResourceLikeOptions) {
         auth.logout()
         openLogin()
       } else {
-        TMessage.error(error instanceof Error ? error.message : '点赞操作失败')
+        TMessage.error(describeBackendError(error, '点赞操作失败'))
       }
     } finally {
       submitting.value = false

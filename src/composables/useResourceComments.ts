@@ -8,6 +8,7 @@ import {
   listPublicMcResourceComments,
   type PublicMcResourceCommentItem,
 } from '@/api/resources'
+import { describeBackendError } from '@/shared/backendErrorText'
 import { useAuthStore } from '@/stores/auth'
 
 /** 评论区的登录 / 实名栅栏：`action` 为空表示只是一句说明，不给按钮 */
@@ -132,7 +133,7 @@ export function useResourceComments(options: UseResourceCommentsOptions) {
       comments.value = await listPublicMcResourceComments(resourceId, token)
     } catch (error) {
       comments.value = []
-      TMessage.warning(error instanceof Error ? error.message : '加载资源评论失败')
+      TMessage.warning(describeBackendError(error, '加载资源评论失败'))
     } finally {
       loading.value = false
     }
@@ -182,7 +183,7 @@ export function useResourceComments(options: UseResourceCommentsOptions) {
         TMessage.warning('请先完成实名认证后再发表评论')
         openRealnamePage()
       } else {
-        TMessage.error(error instanceof Error ? error.message : '评论提交失败')
+        TMessage.error(describeBackendError(error, '评论提交失败'))
       }
     } finally {
       submitting.value = false

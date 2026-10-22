@@ -355,11 +355,11 @@ const routes: MockRoute[] = [
     handler: (request, params) => {
       const requirement = findRequirement(params.id ?? '')
       if (!requirement) {
-        return errorResponse(404, 'requirement not found')
+        return errorResponse(404, '需求不存在')
       }
       const username = parseMockToken(request.token)?.username ?? ''
       if (username !== requirement.creator) {
-        return errorResponse(403, 'forbidden')
+        return errorResponse(403, '无权执行该操作')
       }
       if (requirement.status !== 'completed') {
         return errorResponse(409, '需求尚未结单，暂不能转为我的资源')

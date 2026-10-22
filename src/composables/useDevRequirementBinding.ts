@@ -4,6 +4,7 @@ import { TMessage } from 'ui_73info'
 import { bindRequirementProject, type RequirementItem } from '@/api/devRequirements'
 import { createMcResource, listMcResources, type McResourcePayload } from '@/api/mcResources'
 import { useDevResourceInitForm } from '@/composables/useDevResourceInitForm'
+import { describeBackendError } from '@/shared/backendErrorText'
 import {
   bindingBlockReason,
   bindableResourceLabel,
@@ -225,7 +226,7 @@ export function useDevRequirementBinding(options: {
       )
       void router.push({ name: 'dev-my-requirements' })
     } catch (error) {
-      const message = error instanceof Error ? error.message : '关联需求失败'
+      const message = describeBackendError(error, '关联需求失败')
       TMessage.error(message)
     } finally {
       binding.value = false
