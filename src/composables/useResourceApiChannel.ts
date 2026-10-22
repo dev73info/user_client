@@ -9,6 +9,7 @@ import {
 } from '@/api/mcResources'
 import { useAuthStore } from '@/stores/auth'
 import { API_BASE_URL } from '@/shared/api/url'
+import { writeTextToClipboard } from '@/shared/clipboard'
 import {
   buildApiIntegrationPrompt,
   findInvalidAllowedOrigin,
@@ -159,7 +160,7 @@ export function useResourceApiChannel(options: {
     }
 
     try {
-      await navigator.clipboard.writeText(revealedSecretPlain.value)
+      await writeTextToClipboard(revealedSecretPlain.value)
       TMessage.success('回调密钥已复制，请妥善保存')
     } catch {
       TMessage.warning('复制失败，请手动选中密钥后再复制')
@@ -169,7 +170,7 @@ export function useResourceApiChannel(options: {
   /** 复制接入提示词（交给 AI 编码代理）。 */
   async function copyApiPrompt() {
     try {
-      await navigator.clipboard.writeText(apiIntegrationPrompt.value)
+      await writeTextToClipboard(apiIntegrationPrompt.value)
       TMessage.success('接入提示词已复制')
     } catch {
       TMessage.warning('复制失败，请手动选中提示词后再复制')

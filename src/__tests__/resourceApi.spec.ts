@@ -191,6 +191,9 @@ describe('resourceApi', () => {
     expect(prompt).toContain('sk-73info-')
     expect(prompt).toContain(`POST https://api.73info.cn${API_OPEN_PURCHASE_PATH}`)
     expect(prompt).toContain('resource_id = 88')
+    // 下单返回的是 checkout_url：R036 起不再返回 pay_url，提示词不能把开发者带回旧接入
+    expect(prompt).toContain('checkout_url')
+    expect(prompt).not.toContain('pay_url')
     // 不再组装 curl：旧示例里的调用体字段不应再出现在提示词里
     expect(prompt).not.toContain('curl')
     // 资源编号未知时用占位符，不要让开发者抄到一条假编号
