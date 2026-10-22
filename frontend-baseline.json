@@ -21,12 +21,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/components/InvoiceApplyDialog.vue",
-      "detail": "831 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/components/PortalTopNav.vue",
       "detail": "694 行 > 400（模块）",
       "since": "2026-10-22"
@@ -531,8 +525,14 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/InvoiceApplyDialog.vue",
-      "detail": "40 处裸色值",
+      "file": "src/components/invoice-apply-form.css",
+      "detail": "25 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/invoice-apply-panel.css",
+      "detail": "15 处裸色值",
       "since": "2026-10-22"
     },
     {

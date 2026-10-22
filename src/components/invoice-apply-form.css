@@ -1,0 +1,166 @@
+.invoice-panel label {
+  display: grid;
+  gap: 6px;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 票种：两个卡片式单选项。专票只在买方是企业主体时出现，所以这里是「一张或两张卡片」。
+   选择器带 `.invoice-panel` 前缀：`display` 之类要压过上面通用的 `.invoice-panel label`。 */
+.invoice-panel .invoice-kind {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.invoice-panel .invoice-kind legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.invoice-panel .invoice-kind__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid #d0d5dd;
+  border-radius: 9px;
+  padding: 10px 12px;
+  font-weight: 400;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.invoice-panel .invoice-kind__option:hover {
+  border-color: #b7c0cd;
+}
+
+.invoice-panel .invoice-kind__option.is-active {
+  border-color: #247f7d;
+  background: #f4fbfa;
+}
+
+.invoice-panel .invoice-kind__option input {
+  width: auto;
+  min-height: 0;
+  margin: 3px 0 0;
+  accent-color: #247f7d;
+}
+
+.invoice-panel .invoice-kind__option span {
+  display: grid;
+  gap: 2px;
+}
+
+.invoice-panel .invoice-kind__option strong {
+  color: #172033;
+  font-size: 13px;
+}
+
+.invoice-panel .invoice-kind__option small {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.invoice-panel input {
+  width: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
+  border: 1px solid #d0d5dd;
+  border-radius: 7px;
+  padding: 8px 10px;
+  color: #172033;
+  background: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.invoice-panel input::placeholder {
+  color: #98a2b3;
+}
+
+.invoice-panel input:hover {
+  border-color: #b7c0cd;
+}
+
+.invoice-panel input:focus {
+  outline: none;
+  border-color: #247f7d;
+  box-shadow: 0 0 0 3px rgba(36, 127, 125, 0.14);
+}
+
+/* 弹窗遮罩与内容 */
+.invoice-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.invoice-modal {
+  position: relative;
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+}
+
+.invoice-modal__head {
+  padding-right: 28px;
+}
+
+.invoice-modal__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #667085;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.invoice-modal__close:hover {
+  background: #f2f4f7;
+  color: #172033;
+}
+
+.invoice-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.invoice-modal__draft {
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  padding: 9px 14px;
+  background: #fff;
+  color: #344054;
+  cursor: pointer;
+}
+
+.invoice-modal__draft:hover {
+  background: #f2f4f7;
+}
