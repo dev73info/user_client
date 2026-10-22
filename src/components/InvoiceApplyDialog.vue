@@ -45,13 +45,16 @@ const emit = defineEmits<{
 const DRAFT_KEY = 'invoice_apply_draft_v1'
 
 /** 两侧共用的抬头 / 税号 / 邮箱分别对应哪种票、由谁开具。 */
-const COPY: Record<'customer' | 'developer', {
-  title: string
-  issuer: string
-  hint: string
-  amountNote: string
-  submitText: string
-}> = {
+const COPY: Record<
+  'customer' | 'developer',
+  {
+    title: string
+    issuer: string
+    hint: string
+    amountNote: string
+    submitText: string
+  }
+> = {
   customer: {
     title: '获取发票',
     issuer: '平台票 + 开发者票',
@@ -104,7 +107,9 @@ const invoiceGateNotice = computed(() => {
   if (!item || item.invoiceAvailable !== false) {
     return ''
   }
-  const statusLabel = item.requirementStatus ? requirementStatusLabel(item.requirementStatus) : '状态未知'
+  const statusLabel = item.requirementStatus
+    ? requirementStatusLabel(item.requirementStatus)
+    : '状态未知'
   return `需求结单后才能申请开票（当前：${statusLabel}）——尾款分账在结单时才会走完，结单后这里会显示可开票金额。`
 })
 
@@ -126,7 +131,9 @@ const existingInvoices = computed<{ side: InvoiceSide; invoice: InvoiceRecord }[
 })
 
 /** 需要红冲的记录：票面与已实际发生的净额不一致（售后退款 / 赔付已成立）。 */
-const staleInvoices = computed(() => existingInvoices.value.filter((item) => item.invoice.reversalRequired))
+const staleInvoices = computed(() =>
+  existingInvoices.value.filter((item) => item.invoice.reversalRequired),
+)
 
 /**
  * 本次申请会开出哪几张票。判定与后端一致（见 `apply_invoices`）：某一侧已经开过、或没有可开
@@ -135,9 +142,9 @@ const staleInvoices = computed(() => existingInvoices.value.filter((item) => ite
 const openSides = computed<InvoiceSide[]>(() => {
   const sides: InvoiceSide[] = []
   if (
-    props.role === 'customer'
-    && !summary.value?.platformInvoice
-    && (summary.value?.platformFeeFen ?? 0) > 0
+    props.role === 'customer' &&
+    !summary.value?.platformInvoice &&
+    (summary.value?.platformFeeFen ?? 0) > 0
   ) {
     sides.push('platform')
   }
@@ -201,12 +208,13 @@ const ENTERPRISE_AUTH_TYPE = 'ENTERPRISE'
 const isSpecialAvailable = computed(() => buyer.value?.authType === ENTERPRISE_AUTH_TYPE)
 
 /** 本次申请是不是专票：非企业买方即使草稿里存着专票，也按普票提交。 */
-const isSpecialInvoice = computed(
-  () => form.invoiceKind === 'special' && isSpecialAvailable.value,
-)
+const isSpecialInvoice = computed(() => form.invoiceKind === 'special' && isSpecialAvailable.value)
 
 /** 专票需要购买方四项资料；名称与税号已在上面的抬头 / 税号里。 */
-const SPECIAL_FIELDS: { key: 'buyerAddress' | 'buyerPhone' | 'buyerBankName' | 'buyerBankAccount'; label: string }[] = [
+const SPECIAL_FIELDS: {
+  key: 'buyerAddress' | 'buyerPhone' | 'buyerBankName' | 'buyerBankAccount'
+  label: string
+}[] = [
   { key: 'buyerAddress', label: '注册地址' },
   { key: 'buyerPhone', label: '联系电话' },
   { key: 'buyerBankName', label: '开户银行' },
@@ -445,18 +453,27 @@ onUnmounted(() => {
 <template>
   <Teleport to="body">
     <div v-if="visible" class="invoice-modal-overlay" @click.self="close">
-      <article class="invoice-panel invoice-modal" role="dialog" aria-modal="true" :aria-label="copy.title">
+      <article
+        class="invoice-panel invoice-modal"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="copy.title"
+      >
         <div class="invoice-panel__head invoice-modal__head">
           <div>
             <h2>{{ copy.title }}</h2>
           </div>
           <strong>{{ copy.issuer }}</strong>
-          <button class="invoice-modal__close" type="button" aria-label="关闭" @click="close">×</button>
+          <button class="invoice-modal__close" type="button" aria-label="关闭" @click="close">
+            ×
+          </button>
         </div>
 
         <p class="invoice-panel__hint">{{ copy.hint }}</p>
-        <p v-if="prefillHint"
-          :class="prefillNeedsAttention ? 'invoice-panel__notice' : 'invoice-panel__prefill'">
+        <p
+          v-if="prefillHint"
+          :class="prefillNeedsAttention ? 'invoice-panel__notice' : 'invoice-panel__prefill'"
+        >
           {{ prefillHint }}
         </p>
 
@@ -467,14 +484,21 @@ onUnmounted(() => {
           </strong>
           <small class="invoice-amount__note">{{ copy.amountNote }}</small>
           <small v-if="summary" class="invoice-amount__note">
-            本需求已成功结算合计 ¥{{ summary.settledAmountCny }}（平台服务费 ¥{{ summary.platformFeeCny }} +
-            开发者收入 ¥{{ summary.developerGrossAmountCny }}）
+            本需求已成功结算合计 ¥{{ summary.settledAmountCny }}（平台服务费 ¥{{
+              summary.platformFeeCny
+            }}
+            + 开发者收入 ¥{{ summary.developerGrossAmountCny }}）
           </small>
           <small v-if="summary && openSides.length > 1" class="invoice-amount__note">
-            本次申请一次开出两张：平台服务费票 ¥{{ summary.platformFeeCny }} + 开发者收入票 ¥{{ summary.developerInvoiceCny }}
+            本次申请一次开出两张：平台服务费票 ¥{{ summary.platformFeeCny }} + 开发者收入票 ¥{{
+              summary.developerInvoiceCny
+            }}
           </small>
           <small v-if="summary && summary.developerPayoutFen > 0" class="invoice-amount__note">
-            其中开发者已退还 / 赔付客户 ¥{{ summary.developerPayoutCny }}，开发者票按净额 ¥{{ summary.developerInvoiceCny }} 开具；平台服务费未退，平台票不受影响。
+            其中开发者已退还 / 赔付客户 ¥{{ summary.developerPayoutCny }}，开发者票按净额 ¥{{
+              summary.developerInvoiceCny
+            }}
+            开具；平台服务费未退，平台票不受影响。
           </small>
         </div>
         <p v-if="summary && summary.pendingRefundFen > 0" class="invoice-panel__notice">
@@ -487,29 +511,58 @@ onUnmounted(() => {
           {{ invoiceGateNotice }}
         </p>
         <p v-for="item in existingInvoices" :key="item.invoice.id" class="invoice-panel__notice">
-          {{ invoiceSideLabel(item.side) }}已提交（{{ kindNoticePrefix(item.invoice.invoiceKind) }}{{ invoiceStatusLabel(item.invoice.status) }} · 票面 ¥{{ item.invoice.amountCny }}），到「我的发票」可查看进度与发票文件。
+          {{ invoiceSideLabel(item.side) }}已提交（{{ kindNoticePrefix(item.invoice.invoiceKind)
+          }}{{ invoiceStatusLabel(item.invoice.status) }} · 票面 ¥{{
+            item.invoice.amountCny
+          }}），到「我的发票」可查看进度与发票文件。
         </p>
-        <p v-for="item in staleInvoices" :key="`stale-${item.invoice.id}`" class="invoice-panel__notice">
-          原票开具后本需求实际发生的净额变了（售后退款 / 赔付已成立）：{{ invoiceSideLabel(item.side) }}
+        <p
+          v-for="item in staleInvoices"
+          :key="`stale-${item.invoice.id}`"
+          class="invoice-panel__notice"
+        >
+          原票开具后本需求实际发生的净额变了（售后退款 / 赔付已成立）：{{
+            invoiceSideLabel(item.side)
+          }}
           需要红冲后重开。财务端已列为「待红冲」，红冲完成后这里就能按最新净额重新申请，无需另行申请改写。
         </p>
         <!-- 未结单的原因上面那条已经写明，这条不再重复，只管「已分账但票都开过 / 还没分账」两种情况。 -->
-        <p v-if="!summaryLoading && summary && amountFen <= 0 && !invoiceGateNotice" class="invoice-panel__hint">
+        <p
+          v-if="!summaryLoading && summary && amountFen <= 0 && !invoiceGateNotice"
+          class="invoice-panel__hint"
+        >
           本需求暂无可开票金额：要么还没有成功分账的结算（未结案的退款诉求会先扣掉这部分），
           要么能开的票都已经提交过了。
         </p>
         <label>
           发票抬头
-          <input v-model="form.invoiceTitle" name="invoice_title" type="text" maxlength="200" placeholder="个人姓名、个体户或企业名称" />
+          <input
+            v-model="form.invoiceTitle"
+            name="invoice_title"
+            type="text"
+            maxlength="200"
+            placeholder="个人姓名、个体户或企业名称"
+          />
         </label>
         <label>
           税号
-          <input v-model="form.taxNumber" name="tax_number" type="text" maxlength="64"
-            :placeholder="isOrganizationBuyer ? '企业或个体工商户必填' : '个人开票可不填'" />
+          <input
+            v-model="form.taxNumber"
+            name="tax_number"
+            type="text"
+            maxlength="64"
+            :placeholder="isOrganizationBuyer ? '企业或个体工商户必填' : '个人开票可不填'"
+          />
         </label>
         <label>
           接收邮箱（可选）
-          <input v-model="form.recipientEmail" name="recipient_email" type="email" maxlength="254" placeholder="用于接收开票文件" />
+          <input
+            v-model="form.recipientEmail"
+            name="recipient_email"
+            type="email"
+            maxlength="254"
+            placeholder="用于接收开票文件"
+          />
         </label>
 
         <fieldset class="invoice-kind">
@@ -521,8 +574,11 @@ onUnmounted(() => {
               <small>默认票种，个人、个体工商户与企业都能开具</small>
             </span>
           </label>
-          <label v-if="isSpecialAvailable" class="invoice-kind__option"
-            :class="{ 'is-active': isSpecialInvoice }">
+          <label
+            v-if="isSpecialAvailable"
+            class="invoice-kind__option"
+            :class="{ 'is-active': isSpecialInvoice }"
+          >
             <input v-model="form.invoiceKind" type="radio" name="invoice-kind" value="special" />
             <span>
               <strong>增值税专用发票</strong>
@@ -540,26 +596,54 @@ onUnmounted(() => {
           </p>
           <label>
             注册地址
-            <input v-model="form.buyerAddress" name="buyer_address" type="text" maxlength="200" placeholder="照营业执照的住所填写" />
+            <input
+              v-model="form.buyerAddress"
+              name="buyer_address"
+              type="text"
+              maxlength="200"
+              placeholder="照营业执照的住所填写"
+            />
           </label>
           <label>
             联系电话
-            <input v-model="form.buyerPhone" name="buyer_phone" type="text" maxlength="32" placeholder="开户银行预留电话" />
+            <input
+              v-model="form.buyerPhone"
+              name="buyer_phone"
+              type="text"
+              maxlength="32"
+              placeholder="开户银行预留电话"
+            />
           </label>
           <label>
             开户银行
-            <input v-model="form.buyerBankName" name="buyer_bank_name" type="text" maxlength="120" placeholder="如：中国工商银行彝良县支行" />
+            <input
+              v-model="form.buyerBankName"
+              name="buyer_bank_name"
+              type="text"
+              maxlength="120"
+              placeholder="如：中国工商银行彝良县支行"
+            />
           </label>
           <label>
             银行账号
-            <input v-model="form.buyerBankAccount" name="buyer_bank_account" type="text" maxlength="64" placeholder="对公账户账号" />
+            <input
+              v-model="form.buyerBankAccount"
+              name="buyer_bank_account"
+              type="text"
+              maxlength="64"
+              placeholder="对公账户账号"
+            />
           </label>
         </template>
 
         <div class="invoice-modal__actions">
           <button class="invoice-modal__draft" type="button" @click="saveDraft">保存草稿</button>
-          <button class="invoice-panel__submit" type="button"
-            :disabled="submitting || amountFen <= 0" @click="submit">
+          <button
+            class="invoice-panel__submit"
+            type="button"
+            :disabled="submitting || amountFen <= 0"
+            @click="submit"
+          >
             {{ submitting ? '提交中...' : copy.submitText }}
           </button>
         </div>
@@ -700,7 +784,9 @@ onUnmounted(() => {
   padding: 10px 12px;
   font-weight: 400;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .invoice-panel .invoice-kind__option:hover {
@@ -747,7 +833,9 @@ onUnmounted(() => {
   background: #fff;
   font-family: inherit;
   font-size: 14px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .invoice-panel input::placeholder {
