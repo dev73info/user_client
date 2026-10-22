@@ -45,12 +45,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/components/PublishModal.vue",
-      "detail": "1054 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/components/RequirementAgentPanel.vue",
       "detail": "932 行 > 400（模块）",
       "since": "2026-10-22"
@@ -645,8 +639,14 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/PublishModal.vue",
-      "detail": "66 处裸色值",
+      "file": "src/components/publish-modal-form.css",
+      "detail": "34 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/publish-modal-confirm.css",
+      "detail": "33 处裸色值",
       "since": "2026-10-22"
     },
     {

@@ -1,0 +1,260 @@
+.publish-confirm-wrap {
+  z-index: 1260;
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(5px);
+}
+
+.publish-confirm {
+  width: min(430px, 100%);
+  padding: 20px 22px 18px;
+  border-radius: 18px;
+  border-color: rgba(203, 213, 225, 0.84);
+  background: #ffffff;
+  box-shadow: 0 28px 68px rgba(15, 23, 42, 0.2);
+}
+
+.publish-confirm h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.publish-confirm__meta {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.publish-confirm__text {
+  margin: 12px 0 0;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.7;
+}
+
+.publish-confirm__actions {
+  margin-top: 16px;
+}
+
+.publish-confirm__actions .auth-btn {
+  min-height: 40px;
+  border-radius: 10px;
+  padding: 0 18px;
+  font-weight: 800;
+}
+
+.publish-confirm__actions .auth-btn.solid {
+  background: #2563eb;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.2);
+}
+
+.publish-confirm__actions .auth-btn.solid:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.publish-rich-field :deep(.rich-text-editor__toolbar-shell) {
+  position: sticky;
+  top: 0;
+  z-index: 18;
+}
+
+.publish-modal__body input,
+.publish-modal__body textarea {
+  border-color: rgba(203, 213, 225, 0.82);
+  background: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.04);
+}
+
+.publish-modal__body input {
+  min-height: 42px;
+}
+
+.publish-modal__body textarea {
+  min-height: 104px;
+  max-height: 160px;
+  resize: vertical;
+}
+
+.publish-modal__body textarea[rows='3'] {
+  min-height: 86px;
+}
+
+.publish-modal__actions {
+  flex: 0 0 auto;
+  margin-top: 0;
+  padding: 14px 22px 18px;
+  border-top: 1px solid rgba(226, 232, 240, 0.78);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), #ffffff);
+}
+
+.publish-modal__actions .auth-btn {
+  min-height: 40px;
+  border-radius: 10px;
+  padding: 0 18px;
+  font-weight: 800;
+}
+
+.publish-modal__actions .auth-btn.ghost {
+  border-color: rgba(203, 213, 225, 0.96);
+  background: #ffffff;
+  color: #334155;
+}
+
+.publish-modal__actions .auth-btn.solid {
+  background: #2563eb;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.2);
+}
+
+.publish-modal__actions .auth-btn.solid:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.publish-modal__draft-hint {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 22px 14px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.publish-modal__draft-hint::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex: 0 0 auto;
+}
+
+.publish-mode-field {
+  display: grid;
+  gap: 9px;
+}
+
+/* R014：开发周期输入区与提示。提示是说明性小字，不抢输入的视觉权重。 */
+.publish-cycle-hint {
+  margin: -6px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.publish-mode-field > span {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* 两档只剩标题，做成一行分段选择：灰底槽 + 选中项白卡蓝字 */
+.publish-mode-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #f1f5f9;
+}
+
+.publish-mode-options--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.publish-mode-option {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #475569;
+  font-size: 14px;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.publish-mode-option strong {
+  font-weight: 700;
+}
+
+.publish-mode-option:hover:not(:disabled):not(.active) {
+  color: #1d4ed8;
+}
+
+.publish-mode-option.active {
+  background: #ffffff;
+  color: #1d4ed8;
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.1),
+    0 0 0 1px rgba(37, 99, 235, 0.18);
+}
+
+.publish-mode-option:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.publish-mode-option strong,
+.publish-mode-option small {
+  display: block;
+}
+
+.publish-mode-option small {
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .publish-modal-wrap {
+    align-items: center;
+    padding: 10px;
+    padding-top: max(10px, env(safe-area-inset-top));
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  .publish-confirm-wrap {
+    padding: 14px;
+    padding-top: max(14px, env(safe-area-inset-top));
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+
+  .publish-confirm {
+    width: 100%;
+    padding: 18px;
+  }
+
+  .publish-modal {
+    width: 100%;
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 16px;
+  }
+
+  .publish-modal__head {
+    flex-wrap: wrap;
+    padding: 16px 16px 12px;
+  }
+
+  .publish-modal__body {
+    gap: 12px;
+    padding: 14px 16px 16px;
+  }
+
+  .publish-modal__actions {
+    padding: 12px 16px 16px;
+  }
+
+  .publish-modal__actions .auth-btn {
+    min-height: 42px;
+  }
+}
