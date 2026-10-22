@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   API_CALLBACK_SIGNATURE_RULE,
   API_INTEGRATION_GUIDE_PATH,
+  API_OPEN_PURCHASE_ALIAS_PATH,
   API_OPEN_PURCHASE_PATH,
   buildApiIntegrationPrompt,
   findInvalidAllowedOrigin,
@@ -183,17 +184,35 @@ describe('resourceApi', () => {
     ).toEqual(['未配置回调地址，暂不可被下单', '未配置允许来源，暂不可被下单'])
   })
 
-  it('buildApiIntegrationPrompt 带上指导文档、接口密钥与接入地址', () => {
+  it('buildApiIntegrationPrompt 与 2.0 开放接口契约一致', () => {
     const prompt = buildApiIntegrationPrompt(88, { apiBase: 'https://api.73info.cn/' })
 
     expect(prompt).toContain(`https://api.73info.cn${API_INTEGRATION_GUIDE_PATH}`)
-    expect(prompt).toContain('X-Api-Key')
-    expect(prompt).toContain('sk-73info-')
+    // 2.0 只认 Authorization 头：Basic 客户端凭据 / Bearer 用户令牌，X-Api-Key 已取消
+    expect(prompt).toContain('Authorization')
+    expect(prompt).toContain('client_id:client_secret')
+    expect(prompt).toContain('不再使用 X-Api-Key')
+    expect(prompt).not.toContain('sk-73info-')
+    // 下单走正式路径，兼容别名只作备注
     expect(prompt).toContain(`POST https://api.73info.cn${API_OPEN_PURCHASE_PATH}`)
+    expect(API_OPEN_PURCHASE_PATH).toBe('/api/resource/open/purchases')
+    expect(prompt).toContain(API_OPEN_PURCHASE_ALIAS_PATH)
     expect(prompt).toContain('resource_id = 88')
-    // 下单返回的是 checkout_url：R036 起不再返回 pay_url，提示词不能把开发者带回旧接入
+    // 2.0 的另外三个端点
+    expect(prompt).toContain('/open/users/ensure')
+    expect(prompt).toContain('/open/orders/{order_no}')
+    expect(prompt).toContain('/open/checkout/exchange')
+    // 2.0 不再自动建号：未绑定返回 409
+    expect(prompt).toContain('409')
+    // 下单返回 checkout_url（票据 10 分钟一次性），不再有 pay_url
     expect(prompt).toContain('checkout_url')
+    expect(prompt).toContain('10 分钟')
     expect(prompt).not.toContain('pay_url')
+    // 回调：四个头 + 签名口径 + 不可当唯一入账依据
+    expect(prompt).toContain('X-73Info-Signature')
+    expect(prompt).toContain(API_CALLBACK_SIGNATURE_RULE)
+    expect(prompt).toContain('原始请求体重算')
+    expect(prompt).toContain('不影响收款与分账')
     // 不再组装 curl：旧示例里的调用体字段不应再出现在提示词里
     expect(prompt).not.toContain('curl')
     // 资源编号未知时用占位符，不要让开发者抄到一条假编号
