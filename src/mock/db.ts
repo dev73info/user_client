@@ -36,11 +36,7 @@ function pad(value: number): string {
 }
 
 function formatDate(date: Date, separator: string): string {
-  return [
-    date.getFullYear(),
-    pad(date.getMonth() + 1),
-    pad(date.getDate()),
-  ].join(separator)
+  return [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())].join(separator)
 }
 
 function shiftDate(days: number, hour: number, minute: number): Date {
@@ -288,16 +284,15 @@ function buildRequirement(seed: RequirementSeed): RequirementItem {
     developer: seed.developer,
     pending_resource_version_delete_requests: seed.pendingVersionDelete
       ? [
-        {
-          version_id: seed.pendingVersionDelete.versionId,
-          version: seed.pendingVersionDelete.version,
-          requested_at: datetime(-seed.pendingVersionDelete.daysAgo, 10, 30),
-        },
-      ]
+          {
+            version_id: seed.pendingVersionDelete.versionId,
+            version: seed.pendingVersionDelete.version,
+            requested_at: datetime(-seed.pendingVersionDelete.daysAgo, 10, 30),
+          },
+        ]
       : null,
     resource_version_delete_request_status: seed.pendingVersionDelete ? 'pending' : null,
-    settlement_available_at:
-      seed.status === 'pending_settlement' ? datetime(7, 12, 0) : null,
+    settlement_available_at: seed.status === 'pending_settlement' ? datetime(7, 12, 0) : null,
   }
 }
 
@@ -394,51 +389,51 @@ function buildContract(
       },
       ...(partyBSigned
         ? [
-          {
-            id: 2,
-            contract_id: 100 + seed.id,
-            contract_no: `HT-${seed.code.replace('REQ-', '')}-${seed.id}`,
-            contract_title: `需求开发合同 · ${seed.title}`,
-            action: 'sign',
-            // 两个「待某方签署」已合并为「签约中 1」：乙方先签，前后状态同码，
-            // 轮到谁签改由 party_a_signed_at / party_b_signed_at 推导。
-            from_status: CONTRACT_STATUS.signing,
-            to_status: CONTRACT_STATUS.signing,
-            operator: DEV_USERNAME,
-            signer_party: 'party_b',
-            signer_real_name: DEV_NICKNAME,
-            signer_id_card_no_masked: '1101**********5678',
-            signer_username: DEV_USERNAME,
-            signer_email: MOCK_IDENTITY_PROFILES.dev.email,
-            handwritten_signature: 'mock-handwriting',
-            signature_sha256: 'mock-signature-b',
-            note: null,
-            created_at: datetime(-seed.createdDaysAgo + 1, 11, 30),
-          },
-        ]
+            {
+              id: 2,
+              contract_id: 100 + seed.id,
+              contract_no: `HT-${seed.code.replace('REQ-', '')}-${seed.id}`,
+              contract_title: `需求开发合同 · ${seed.title}`,
+              action: 'sign',
+              // 两个「待某方签署」已合并为「签约中 1」：乙方先签，前后状态同码，
+              // 轮到谁签改由 party_a_signed_at / party_b_signed_at 推导。
+              from_status: CONTRACT_STATUS.signing,
+              to_status: CONTRACT_STATUS.signing,
+              operator: DEV_USERNAME,
+              signer_party: 'party_b',
+              signer_real_name: DEV_NICKNAME,
+              signer_id_card_no_masked: '1101**********5678',
+              signer_username: DEV_USERNAME,
+              signer_email: MOCK_IDENTITY_PROFILES.dev.email,
+              handwritten_signature: 'mock-handwriting',
+              signature_sha256: 'mock-signature-b',
+              note: null,
+              created_at: datetime(-seed.createdDaysAgo + 1, 11, 30),
+            },
+          ]
         : []),
       ...(partyASigned
         ? [
-          {
-            id: 3,
-            contract_id: 100 + seed.id,
-            contract_no: `HT-${seed.code.replace('REQ-', '')}-${seed.id}`,
-            contract_title: `需求开发合同 · ${seed.title}`,
-            action: 'sign',
-            from_status: CONTRACT_STATUS.signing,
-            to_status: CONTRACT_STATUS.signed,
-            operator: CLIENT_USERNAME,
-            signer_party: 'party_a',
-            signer_real_name: CLIENT_NICKNAME,
-            signer_id_card_no_masked: '3306**********1234',
-            signer_username: CLIENT_USERNAME,
-            signer_email: MOCK_IDENTITY_PROFILES.client.email,
-            handwritten_signature: 'mock-handwriting',
-            signature_sha256: 'mock-signature-a',
-            note: null,
-            created_at: datetime(-seed.createdDaysAgo + 1, 12, 0),
-          },
-        ]
+            {
+              id: 3,
+              contract_id: 100 + seed.id,
+              contract_no: `HT-${seed.code.replace('REQ-', '')}-${seed.id}`,
+              contract_title: `需求开发合同 · ${seed.title}`,
+              action: 'sign',
+              from_status: CONTRACT_STATUS.signing,
+              to_status: CONTRACT_STATUS.signed,
+              operator: CLIENT_USERNAME,
+              signer_party: 'party_a',
+              signer_real_name: CLIENT_NICKNAME,
+              signer_id_card_no_masked: '3306**********1234',
+              signer_username: CLIENT_USERNAME,
+              signer_email: MOCK_IDENTITY_PROFILES.client.email,
+              handwritten_signature: 'mock-handwriting',
+              signature_sha256: 'mock-signature-a',
+              note: null,
+              created_at: datetime(-seed.createdDaysAgo + 1, 12, 0),
+            },
+          ]
         : []),
     ],
   }
