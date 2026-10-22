@@ -96,9 +96,7 @@ const windowClosedTip = computed(() =>
 /**
  * 当前需求正在办理的解除合作案件（一个需求只有一条案件，收口前就挂在它上面）。
  */
-const currentCase = computed(() =>
-  cases.value.find((row) => !CLOSED_STATUSES.includes(row.status)),
-)
+const currentCase = computed(() => cases.value.find((row) => !CLOSED_STATUSES.includes(row.status)))
 
 /**
  * 已经拿到结论的收口案件（结案 / 驳回）：案件只有一条，所以它就是「上次解除合作」的结果。
@@ -179,8 +177,7 @@ const claimAmountField = computed(() => ({
 
 /** 有请求在途时不允许关窗，避免资金动作的结果无从收口。 */
 const busy = computed(
-  () =>
-    submitting.value || respondingId.value !== null || withdrawingId.value !== null,
+  () => submitting.value || respondingId.value !== null || withdrawingId.value !== null,
 )
 
 /** 诉求额度分：非法或非正数一律按 0（后端只把它当诉求参考，实际退款由平台裁决）。 */
@@ -222,8 +219,8 @@ const canRespond = computed(() => {
 })
 
 /** 发起人视角的收口动作：确认落实（`agreed`）与撤回申请。 */
-const isOpener = computed(
-  () => Boolean(currentCase.value && currentCase.value.openedBy === props.currentUsername),
+const isOpener = computed(() =>
+  Boolean(currentCase.value && currentCase.value.openedBy === props.currentUsername),
 )
 
 /** 发起人撤回：`agreed`（等确认落实）与 `rework_pending`（返工中）也放行，不想再追究就收口。 */
@@ -291,7 +288,8 @@ function statusText(status: AfterSalesCase['status']) {
 const STATUS_TIPS: Partial<Record<AfterSalesCase['status'], string>> = {
   support_reviewing: '已提交平台裁决，等待客服认定责任方与金额。',
   agreed: '双方已就诉求达成一致，落实后由发起人点「确认已落实」结案。',
-  rework_pending: '对方已接受返工要求（若同时谈了钱，钱已按认定执行完），返工完成后由发起人点「确认已落实」结案。',
+  rework_pending:
+    '对方已接受返工要求（若同时谈了钱，钱已按认定执行完），返工完成后由发起人点「确认已落实」结案。',
 }
 
 /**
@@ -438,9 +436,7 @@ async function submit() {
   }
   // 主张金额不许超过需求预算（后端也会以 400 拒收）：在提交前就拦住，别让用户填完才吃一个错误提示。
   if (expectsMoney.value && budgetFen.value > 0 && claimAmountFen.value > budgetFen.value) {
-    TMessage.warning(
-      `主张金额不能超过需求预算 ${(budgetFen.value / 100).toFixed(2)} 元`,
-    )
+    TMessage.warning(`主张金额不能超过需求预算 ${(budgetFen.value / 100).toFixed(2)} 元`)
     return
   }
 
@@ -482,7 +478,10 @@ async function respond(item: AfterSalesCase, action: AfterSalesRespondAction) {
   }
 }
 
-/** 表态结果提示：接受分「当场退款」与「等发起人收口」两种去处，别用同一句话糊过去。 */function respondToast(action: AfterSalesRespondAction, updated: AfterSalesCase) {
+/** 表态结果提示：接受分「当场退款」与「等发起人收口」两种去处，别用同一句话糊过去。 */ function respondToast(
+  action: AfterSalesRespondAction,
+  updated: AfterSalesCase,
+) {
   if (action === 'reject') {
     return '已提交，等待平台裁决'
   }
@@ -495,7 +494,9 @@ async function respond(item: AfterSalesCase, action: AfterSalesRespondAction) {
   if (updated.status === 'rework_pending') {
     return '已接受返工要求，等对方确认返工完成'
   }
-  return updated.status === 'agreed' ? '已接受对方诉求，等对方确认落实' : '已接受对方诉求，平台开始执行'
+  return updated.status === 'agreed'
+    ? '已接受对方诉求，等对方确认落实'
+    : '已接受对方诉求，平台开始执行'
 }
 
 async function withdraw(item: AfterSalesCase) {
@@ -553,16 +554,41 @@ watch(
 
       <template v-else-if="currentCase">
         <dl class="after-sales-modal__facts">
-          <div class="is-wide"><dt>案件编号</dt><dd>{{ currentCase.caseNo }}</dd></div>
-          <div><dt>当前状态</dt><dd>{{ statusText(currentCase.status) }}</dd></div>
-          <div><dt>发起人</dt><dd>{{ currentCase.openedBy }}</dd></div>
-          <div><dt>诉求</dt><dd>{{ expectationText(currentCase) }}</dd></div>
-          <div v-if="currentCase.expectsMoney"><dt>主张金额</dt><dd>{{ currentCase.claimAmountCny }} 元</dd></div>
-          <div class="is-wide"><dt>诉求说明</dt><dd>{{ currentCase.description }}</dd></div>
-          <div><dt>需求方表态</dt><dd>{{ decisionText(currentCase.customerDecision) }}</dd></div>
-          <div><dt>开发者表态</dt><dd>{{ decisionText(currentCase.developerDecision) }}</dd></div>
+          <div class="is-wide">
+            <dt>案件编号</dt>
+            <dd>{{ currentCase.caseNo }}</dd>
+          </div>
+          <div>
+            <dt>当前状态</dt>
+            <dd>{{ statusText(currentCase.status) }}</dd>
+          </div>
+          <div>
+            <dt>发起人</dt>
+            <dd>{{ currentCase.openedBy }}</dd>
+          </div>
+          <div>
+            <dt>诉求</dt>
+            <dd>{{ expectationText(currentCase) }}</dd>
+          </div>
+          <div v-if="currentCase.expectsMoney">
+            <dt>主张金额</dt>
+            <dd>{{ currentCase.claimAmountCny }} 元</dd>
+          </div>
+          <div class="is-wide">
+            <dt>诉求说明</dt>
+            <dd>{{ currentCase.description }}</dd>
+          </div>
+          <div>
+            <dt>需求方表态</dt>
+            <dd>{{ decisionText(currentCase.customerDecision) }}</dd>
+          </div>
+          <div>
+            <dt>开发者表态</dt>
+            <dd>{{ decisionText(currentCase.developerDecision) }}</dd>
+          </div>
           <div v-if="currentCase.requiresRework" class="is-wide">
-            <dt>返工认定</dt><dd>本次认定要求对方返工 / 补交付，等发起人验收</dd>
+            <dt>返工认定</dt>
+            <dd>本次认定要求对方返工 / 补交付，等发起人验收</dd>
           </div>
           <div v-if="currentCase.resolutionNote" class="is-wide">
             <dt>处理说明</dt>
@@ -592,7 +618,11 @@ watch(
           >
             <dt>诉求差额</dt>
             <dd>
-              诉求 {{ currentCase.claimAmountCny }} 元，受可退部分与赔付上限（冻结保证金与需求预算取小）限制，本次共执行
+              诉求
+              {{
+                currentCase.claimAmountCny
+              }}
+              元，受可退部分与赔付上限（冻结保证金与需求预算取小）限制，本次共执行
               {{ moneyFromFen(executedFundsFen(currentCase)) }} 元，差额
               <strong>{{ currentCase.shortfallCny }} 元</strong>
             </dd>
@@ -610,30 +640,51 @@ watch(
         </details>
 
         <div v-if="canRespond" class="actions">
-          <button class="ghost danger-plain" type="button" :disabled="respondingId === currentCase.id"
-            @click="respond(currentCase, 'reject')">
+          <button
+            class="ghost danger-plain"
+            type="button"
+            :disabled="respondingId === currentCase.id"
+            @click="respond(currentCase, 'reject')"
+          >
             不接受，转平台裁决
           </button>
-          <button class="ghost primary" type="button" :disabled="respondingId === currentCase.id"
-            @click="respond(currentCase, 'accept')">
+          <button
+            class="ghost primary"
+            type="button"
+            :disabled="respondingId === currentCase.id"
+            @click="respond(currentCase, 'accept')"
+          >
             {{ respondingId === currentCase.id ? '提交中...' : '接受诉求' }}
           </button>
         </div>
         <div v-else-if="canComplete" class="actions">
-          <button v-if="canReportUnfulfilled" class="ghost danger-plain" type="button"
-            :disabled="respondingId === currentCase.id" @click="respond(currentCase, 'unfulfilled')">
+          <button
+            v-if="canReportUnfulfilled"
+            class="ghost danger-plain"
+            type="button"
+            :disabled="respondingId === currentCase.id"
+            @click="respond(currentCase, 'unfulfilled')"
+          >
             {{ respondingId === currentCase.id ? '提交中...' : '未落实，申请平台介入' }}
           </button>
-          <button class="ghost primary" type="button" :disabled="respondingId === currentCase.id"
-            @click="respond(currentCase, 'complete')">
+          <button
+            class="ghost primary"
+            type="button"
+            :disabled="respondingId === currentCase.id"
+            @click="respond(currentCase, 'complete')"
+          >
             {{ respondingId === currentCase.id ? '提交中...' : '确认已落实' }}
           </button>
         </div>
 
         <!-- 发起人自己的收口动作：撤回申请。对方视角下这里不渲染任何按钮。 -->
         <div v-if="canWithdraw" class="actions">
-          <button class="ghost danger-plain" type="button"
-            :disabled="withdrawingId === currentCase.id" @click="withdraw(currentCase)">
+          <button
+            class="ghost danger-plain"
+            type="button"
+            :disabled="withdrawingId === currentCase.id"
+            @click="withdraw(currentCase)"
+          >
             {{ withdrawingId === currentCase.id ? '撤回中...' : '撤回申请' }}
           </button>
         </div>
@@ -649,15 +700,26 @@ watch(
             <dt>上次解除合作</dt>
             <dd>{{ statusText(lastConcludedCase.status) }}</dd>
           </div>
-          <div><dt>收口时间</dt><dd>{{ lastConcludedAt ? formatCnDateTime(lastConcludedAt) : '—' }}</dd></div>
-          <div><dt>诉求</dt><dd>{{ expectationText(lastConcludedCase) }}</dd></div>
+          <div>
+            <dt>收口时间</dt>
+            <dd>{{ lastConcludedAt ? formatCnDateTime(lastConcludedAt) : '—' }}</dd>
+          </div>
+          <div>
+            <dt>诉求</dt>
+            <dd>{{ expectationText(lastConcludedCase) }}</dd>
+          </div>
           <div v-if="lastConcludedCase.expectsMoney">
-            <dt>主张金额</dt><dd>{{ lastConcludedCase.claimAmountCny }} 元</dd>
+            <dt>主张金额</dt>
+            <dd>{{ lastConcludedCase.claimAmountCny }} 元</dd>
           </div>
           <div v-if="lastConcludedCase.requiresRework" class="is-wide">
-            <dt>返工认定</dt><dd>本次认定要求对方返工 / 补交付</dd>
+            <dt>返工认定</dt>
+            <dd>本次认定要求对方返工 / 补交付</dd>
           </div>
-          <div class="is-wide"><dt>诉求说明</dt><dd>{{ lastConcludedCase.description }}</dd></div>
+          <div class="is-wide">
+            <dt>诉求说明</dt>
+            <dd>{{ lastConcludedCase.description }}</dd>
+          </div>
           <div v-if="lastConcludedCase.resolutionNote" class="is-wide">
             <dt>处理说明</dt>
             <dd>{{ lastConcludedCase.resolutionNote }}</dd>
@@ -676,7 +738,11 @@ watch(
           >
             <dt>诉求差额</dt>
             <dd>
-              诉求 {{ lastConcludedCase.claimAmountCny }} 元，受可退部分与赔付上限（冻结保证金与需求预算取小）限制，本次共执行
+              诉求
+              {{
+                lastConcludedCase.claimAmountCny
+              }}
+              元，受可退部分与赔付上限（冻结保证金与需求预算取小）限制，本次共执行
               {{ moneyFromFen(executedFundsFen(lastConcludedCase)) }} 元，差额
               <strong>{{ lastConcludedCase.shortfallCny }} 元</strong>
             </dd>
@@ -690,7 +756,9 @@ watch(
               <input v-model="expectsMoney" type="checkbox" />
               <span>
                 <strong>要一笔钱回来</strong>
-                <small>退多少、从哪儿退由平台认定：先退你自己付过的部分，不够再由平台从对方保证金里赔</small>
+                <small
+                  >退多少、从哪儿退由平台认定：先退你自己付过的部分，不够再由平台从对方保证金里赔</small
+                >
               </span>
             </label>
             <label class="after-sales-modal__expectation">
@@ -707,14 +775,25 @@ watch(
 
           <label v-if="expectsMoney" class="pay-line after-sales-modal__field">
             <strong>{{ claimAmountField.label }}</strong>
-            <input v-model="claimAmount" type="number" min="0" step="0.01" inputmode="decimal"
-              :max="requirementBudget ?? undefined" :placeholder="claimAmountField.placeholder" />
+            <input
+              v-model="claimAmount"
+              type="number"
+              min="0"
+              step="0.01"
+              inputmode="decimal"
+              :max="requirementBudget ?? undefined"
+              :placeholder="claimAmountField.placeholder"
+            />
           </label>
 
           <label class="pay-line after-sales-modal__field">
             <strong>问题描述</strong>
-            <textarea v-model="description" rows="5" maxlength="2000"
-              placeholder="请写明时间、问题现象、与对方沟通的结果和你的诉求"></textarea>
+            <textarea
+              v-model="description"
+              rows="5"
+              maxlength="2000"
+              placeholder="请写明时间、问题现象、与对方沟通的结果和你的诉求"
+            ></textarea>
           </label>
         </template>
 
@@ -748,15 +827,21 @@ watch(
           <!-- P23：乙方没有自助立案入口，这里把「该走哪条路」写成可点的出口，别只留一句话。 -->
           <p class="tip">
             你是乙方：结单后平台<strong>不开放</strong>自助立案（资金出口只通向需求方）。如遇对方拖欠、或需要平台介入，
-            请到 <router-link to="/workbench/tickets">工单中心</router-link> 提交工单，由客服跟进处理。
+            请到
+            <router-link to="/workbench/tickets">工单中心</router-link> 提交工单，由客服跟进处理。
           </p>
         </template>
       </template>
 
       <div class="actions">
         <button class="ghost" type="button" :disabled="busy" @click="close">关闭</button>
-        <button v-if="canSubmitCase && !currentCase && !casesLoading" class="ghost primary" type="button"
-          :disabled="submitting" @click="submit">
+        <button
+          v-if="canSubmitCase && !currentCase && !casesLoading"
+          class="ghost primary"
+          type="button"
+          :disabled="submitting"
+          @click="submit"
+        >
           {{ submitting ? '提交中...' : '提交解除合作申请' }}
         </button>
       </div>
@@ -917,7 +1002,9 @@ watch(
   border-radius: 12px;
   padding: 10px 12px;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .pay-modal .after-sales-modal__expectation:hover {
