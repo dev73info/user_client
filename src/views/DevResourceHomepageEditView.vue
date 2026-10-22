@@ -24,6 +24,14 @@ import {
   type McProcessedTagTree,
 } from '@/api/resourceTags'
 import { useAuthStore } from '@/stores/auth'
+import {
+  deleteOAuthClient,
+  getOAuthClient,
+  rotateOAuthClientSecret,
+  upsertOAuthClient,
+  type OAuthClientPayload,
+  type OAuthClientSecretPayload,
+} from '@/api/oauth'
 import { listMyTeams, getTeamDetail, type TeamResponse } from '@/api/team'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
@@ -57,6 +65,11 @@ import {
   listApiChannelBlockers,
   parseAllowedOriginsInput,
 } from '@/shared/resourceApi'
+import {
+  formatRedirectUris,
+  parseRedirectUrisInput,
+  validateRedirectUris,
+} from '@/shared/oauthClient'
 
 import {
   TAlert,
@@ -70,6 +83,7 @@ import {
   TInput,
   TLoading,
   TMessage,
+  TMessageBox,
   TOption,
   TSelect,
   TSwitch,
@@ -474,6 +488,185 @@ async function copyApiPrompt() {
   }
 }
 
+/* ---------- R039：接口资源的 OAuth 授权客户端 ---------- */
+
+const oauthClient = ref<OAuthClientPayload | null>(null)
+const oauthClientLoading = ref(false)
+const oauthClientSaving = ref(false)
+const oauthClientRotating = ref(false)
+const oauthClientLoadError = ref('')
+const oauthRedirectUrisText = ref('')
+const revealedOAuthClientSecret = ref('')
+const oauthSecretDialogVisible = ref(false)
+
+const oauthRedirectUris = computed(() => parseRedirectUrisInput(oauthRedirectUrisText.value))
+const invalidOAuthRedirectUri = computed(() =>
+  oauthRedirectUris.value.length > 0 ? validateRedirectUris(oauthRedirectUris.value) : '',
+)
+
+function applyLoadedOAuthClient(loaded: OAuthClientPayload) {
+  oauthClient.value = loaded
+  oauthRedirectUrisText.value = formatRedirectUris(loaded.redirect_uris)
+}
+
+async function loadOAuthClient(resourceId: number, generation = resourceLoadGeneration) {
+  if (!auth.token) {
+    return
+  }
+  oauthClientLoading.value = true
+  oauthClientLoadError.value = ''
+  try {
+    const loaded = await getOAuthClient(auth.token, resourceId)
+    if (generation !== resourceLoadGeneration) return
+    applyLoadedOAuthClient(loaded)
+  } catch (error) {
+    if (generation !== resourceLoadGeneration) return
+    // 404 表示这个资源还没有 OAuth 客户端，按「待创建」展示，不弹错误。
+    if (error instanceof HttpError && error.status === 404) {
+      oauthClient.value = null
+      oauthRedirectUrisText.value = ''
+      return
+    }
+    oauthClientLoadError.value =
+      error instanceof Error ? error.message : '加载 OAuth 客户端失败'
+  } finally {
+    if (generation === resourceLoadGeneration) oauthClientLoading.value = false
+  }
+}
+
+function collectOAuthRedirectUris(): string[] | null {
+  const uris = oauthRedirectUris.value
+  const error = validateRedirectUris(uris)
+  if (error) {
+    TMessage.warning(error)
+    return null
+  }
+  return uris
+}
+
+async function refreshOAuthClient(): Promise<OAuthClientPayload | null> {
+  if (!auth.token || !resource.value) {
+    return null
+  }
+  const loaded = await getOAuthClient(auth.token, resource.value.id)
+  applyLoadedOAuthClient(loaded)
+  return loaded
+}
+
+async function submitOAuthClient() {
+  if (!auth.token || !resource.value) {
+    TMessage.error('登录状态已失效，请重新登录')
+    return
+  }
+  const redirectUris = collectOAuthRedirectUris()
+  if (!redirectUris) {
+    return
+  }
+
+  oauthClientSaving.value = true
+  oauthClientLoadError.value = ''
+  try {
+    const result = await upsertOAuthClient(auth.token, resource.value.id, redirectUris)
+    await refreshOAuthClient()
+    if ('client_secret' in result) {
+      revealedOAuthClientSecret.value = result.client_secret
+      oauthSecretDialogVisible.value = true
+      TMessage.success('OAuth 客户端已创建')
+    } else {
+      TMessage.success('授权回调地址已保存')
+    }
+  } catch (error) {
+    TMessage.error(error instanceof Error ? error.message : '保存 OAuth 客户端失败')
+  } finally {
+    oauthClientSaving.value = false
+  }
+}
+
+async function rotateOAuthSecret() {
+  if (!auth.token || !resource.value) {
+    return
+  }
+  const confirmed = await TMessageBox.confirm({
+    title: '轮换 OAuth 客户端密钥',
+    content: '旧密钥会立即失效，使用它的服务需要换成新密钥。确定继续吗？',
+    confirmText: '轮换',
+    cancelText: '取消',
+    tone: 'danger',
+  })
+  if (!confirmed) {
+    return
+  }
+
+  oauthClientRotating.value = true
+  try {
+    const rotated: OAuthClientSecretPayload = await rotateOAuthClientSecret(
+      auth.token,
+      resource.value.id,
+    )
+    await refreshOAuthClient()
+    revealedOAuthClientSecret.value = rotated.client_secret
+    oauthSecretDialogVisible.value = true
+    TMessage.success('OAuth 客户端密钥已轮换')
+  } catch (error) {
+    TMessage.error(error instanceof Error ? error.message : '轮换 OAuth 客户端密钥失败')
+  } finally {
+    oauthClientRotating.value = false
+  }
+}
+
+async function removeOAuthClient() {
+  if (!auth.token || !resource.value) {
+    return
+  }
+  const confirmed = await TMessageBox.confirm({
+    title: '删除 OAuth 客户端',
+    content: '删除后 client_id / client_secret 立即失效，已签发的授权码与访问令牌也会作废。',
+    confirmText: '删除',
+    cancelText: '取消',
+    tone: 'danger',
+  })
+  if (!confirmed) {
+    return
+  }
+
+  oauthClientSaving.value = true
+  try {
+    await deleteOAuthClient(auth.token, resource.value.id)
+    oauthClient.value = null
+    oauthRedirectUrisText.value = ''
+    revealedOAuthClientSecret.value = ''
+    TMessage.success('OAuth 客户端已删除')
+  } catch (error) {
+    TMessage.error(error instanceof Error ? error.message : '删除 OAuth 客户端失败')
+  } finally {
+    oauthClientSaving.value = false
+  }
+}
+
+async function copyOAuthClientId() {
+  if (!oauthClient.value) {
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(oauthClient.value.client_id)
+    TMessage.success('client_id 已复制')
+  } catch {
+    TMessage.warning('复制失败，请手动选中后再复制')
+  }
+}
+
+async function copyOAuthClientSecret() {
+  if (!revealedOAuthClientSecret.value) {
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(revealedOAuthClientSecret.value)
+    TMessage.success('client_secret 已复制，请妥善保存')
+  } catch {
+    TMessage.warning('复制失败，请手动选中密钥后再复制')
+  }
+}
+
 /** R028：接口资源配置的本地校验（保存是草稿过程，只挡明显填错的地址）。 */
 function validateApiChannel(): boolean {
   if (!isApiKind.value) {
@@ -787,6 +980,14 @@ function resetResourceScopedState() {
   secretPlainDialogVisible.value = false
   channelRetryOnly.value = false
   channelSaveError.value = ''
+  oauthClient.value = null
+  oauthClientLoading.value = false
+  oauthClientSaving.value = false
+  oauthClientRotating.value = false
+  oauthClientLoadError.value = ''
+  oauthRedirectUrisText.value = ''
+  revealedOAuthClientSecret.value = ''
+  oauthSecretDialogVisible.value = false
   form.apiCallbackUrl = ''
   form.apiCallbackSecret = ''
   form.apiAllowedOrigins = ''
@@ -844,6 +1045,7 @@ async function loadResource(): Promise<boolean> {
     // 接口资源才去读渠道配置（回调地址 / 掩码 / 允许来源）；普通资源不打扰后端
     if (form.resourceKind === 'api') {
       await loadApiChannel(payload.id, generation)
+      await loadOAuthClient(payload.id, generation)
     }
     return generation === resourceLoadGeneration
   } catch (error) {
@@ -1488,6 +1690,99 @@ watch(
               <TButton variant="outline" @click="copyRevealedSecret">复制密钥</TButton>
             </div>
 
+            <div class="dev-oauth-client">
+              <div class="dev-oauth-client__head">
+                <h4 class="dev-oauth-client__title">OAuth 授权客户端</h4>
+                <span v-if="oauthClient" class="dev-field-hint">
+                  client_id：<code>{{ oauthClient.client_id }}</code>
+                </span>
+              </div>
+
+              <TAlert
+                v-if="oauthClientLoadError"
+                tone="danger"
+                variant="soft"
+                title="OAuth 客户端加载失败"
+                :description="oauthClientLoadError"
+              />
+              <p v-else-if="oauthClientLoading" class="dev-field-hint">加载中…</p>
+              <template v-else>
+                <TForm label-position="top" class="dev-upload-form">
+                  <div class="dev-upload-grid dev-upload-grid--form">
+                    <TFormItem v-if="oauthClient" label="client_id" class="dev-form-item--wide">
+                      <div class="dev-oauth-client__inline">
+                        <TInput :model-value="oauthClient.client_id" readonly />
+                        <TButton variant="outline" @click="copyOAuthClientId">复制</TButton>
+                      </div>
+                    </TFormItem>
+
+                    <TFormItem label="授权回调地址" class="dev-form-item--wide">
+                      <TInput
+                        v-model="oauthRedirectUrisText"
+                        type="textarea"
+                        :autosize="{ minRows: 3, maxRows: 8 }"
+                        :maxlength="2000"
+                        placeholder="https://shop.example.com/oauth/73info/callback"
+                      />
+                      <p class="dev-field-hint">1–5 条，必须与授权请求里的 redirect_uri 完全一致。</p>
+                      <p v-if="invalidOAuthRedirectUri" class="dev-field-hint dev-field-hint--error">
+                        {{ invalidOAuthRedirectUri }}
+                      </p>
+                    </TFormItem>
+                  </div>
+                </TForm>
+
+                <p v-if="oauthClient" class="dev-field-hint">
+                  密钥前缀：{{ oauthClient.client_secret_prefix }}；更新于 {{ oauthClient.updated_at }}
+                </p>
+
+                <div class="dev-oauth-client__actions">
+                  <TButton
+                    v-if="!oauthClient"
+                    variant="solid"
+                    tone="accent"
+                    :loading="oauthClientSaving"
+                    @click="submitOAuthClient"
+                  >
+                    创建客户端
+                  </TButton>
+                  <template v-else>
+                    <TButton
+                      variant="solid"
+                      tone="accent"
+                      :loading="oauthClientSaving"
+                      @click="submitOAuthClient"
+                    >
+                      保存回调地址
+                    </TButton>
+                    <TButton
+                      variant="outline"
+                      :loading="oauthClientRotating"
+                      @click="rotateOAuthSecret"
+                    >
+                      轮换密钥
+                    </TButton>
+                    <TButton
+                      variant="text"
+                      tone="danger"
+                      :loading="oauthClientSaving"
+                      @click="removeOAuthClient"
+                    >
+                      删除客户端
+                    </TButton>
+                  </template>
+                </div>
+
+                <div v-if="revealedOAuthClientSecret" class="dev-api-secret">
+                  <p class="dev-api-secret__title">
+                    client_secret（只显示这一次，请立即复制保存）
+                  </p>
+                  <code class="dev-api-secret__value">{{ revealedOAuthClientSecret }}</code>
+                  <TButton variant="outline" @click="copyOAuthClientSecret">复制密钥</TButton>
+                </div>
+              </template>
+            </div>
+
             <div class="dev-api-sample">
               <div class="dev-api-sample__head">
                 <h4 class="dev-api-sample__title">接入提示词（复制给 AI 编码代理）</h4>
@@ -1665,6 +1960,25 @@ watch(
       <template #footer>
         <TButton variant="outline" @click="copyRevealedSecret">复制密钥</TButton>
         <TButton variant="solid" tone="accent" @click="secretPlainDialogVisible = false">
+          我已保存
+        </TButton>
+      </template>
+    </TDialog>
+
+    <TDialog
+      v-model:open="oauthSecretDialogVisible"
+      width="560px"
+      class="dev-dialog"
+      title="OAuth 客户端密钥（只显示这一次）"
+    >
+      <p class="dev-secret-dialog__hint">
+        这是该接口资源的 OAuth <strong>client_secret</strong>。关闭后平台不再显示明文，
+        请立即复制并保存到你自有站点的服务端，用于授权码换令牌。
+      </p>
+      <code class="dev-secret-dialog__value">{{ revealedOAuthClientSecret }}</code>
+      <template #footer>
+        <TButton variant="outline" @click="copyOAuthClientSecret">复制密钥</TButton>
+        <TButton variant="solid" tone="accent" @click="oauthSecretDialogVisible = false">
           我已保存
         </TButton>
       </template>
@@ -1889,6 +2203,49 @@ watch(
   font-size: 13px;
   word-break: break-all;
   user-select: all;
+}
+
+.dev-oauth-client {
+  margin: 4px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--dev-line, #e2e8f0);
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.dev-oauth-client__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.dev-oauth-client__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dev-ink, #1f2937);
+}
+
+.dev-oauth-client__inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dev-oauth-client__inline :deep(.t73-input) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dev-oauth-client__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .dev-api-sample {

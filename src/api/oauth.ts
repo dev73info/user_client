@@ -1,4 +1,4 @@
-import { HttpError, authHeaders, requestJson } from '@/api/http'
+import { HttpError, authHeaders, requestJson, requestVoid } from '@/api/http'
 
 /** 授权页需要的查询参数（GET /api/oauth/authorize 与 POST 共用）。 */
 export type OAuthAuthorizeParams = {
@@ -95,5 +95,99 @@ export async function consentOAuthAuthorize(
     )
   } catch (error) {
     throw normalizeOAuthError(error, '授权失败')
+  }
+}
+
+/* ---------- 接口资源的 OAuth 客户端（开发者工作台） ---------- */
+
+/** 查询客户端：不回明文密钥。 */
+export type OAuthClientPayload = {
+  resource_id: number
+  client_id: string
+  client_secret_prefix: string
+  redirect_uris: string[]
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+/** 首次创建 / 轮换密钥时的响应：明文密钥只回这一次。 */
+export type OAuthClientSecretPayload = {
+  resource_id: number
+  client_id: string
+  client_secret: string
+  redirect_uris: string[]
+  created_at: string
+}
+
+/** 读取某个接口资源的 OAuth 客户端；资源或客户端不存在时后端回 404。 */
+export async function getOAuthClient(
+  token: string,
+  resourceId: number,
+): Promise<OAuthClientPayload> {
+  try {
+    return await requestJson<OAuthClientPayload>(
+      `/oauth/clients/${resourceId}`,
+      { headers: authHeaders(token) },
+      '加载 OAuth 客户端失败',
+    )
+  } catch (error) {
+    throw normalizeOAuthError(error, '加载 OAuth 客户端失败')
+  }
+}
+
+/** 首次创建或更新允许的回调地址；创建时返回一次性明文密钥。 */
+export async function upsertOAuthClient(
+  token: string,
+  resourceId: number,
+  redirectUris: string[],
+): Promise<OAuthClientPayload | OAuthClientSecretPayload> {
+  try {
+    return await requestJson<OAuthClientPayload | OAuthClientSecretPayload>(
+      `/oauth/clients/${resourceId}`,
+      {
+        method: 'PUT',
+        headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ redirect_uris: redirectUris }),
+      },
+      '保存 OAuth 客户端失败',
+    )
+  } catch (error) {
+    throw normalizeOAuthError(error, '保存 OAuth 客户端失败')
+  }
+}
+
+/** 轮换客户端密钥：旧密钥立即失效，新密钥只回这一次。 */
+export async function rotateOAuthClientSecret(
+  token: string,
+  resourceId: number,
+): Promise<OAuthClientSecretPayload> {
+  try {
+    return await requestJson<OAuthClientSecretPayload>(
+      `/oauth/clients/${resourceId}/rotate`,
+      {
+        method: 'POST',
+        headers: authHeaders(token),
+      },
+      '轮换 OAuth 客户端密钥失败',
+    )
+  } catch (error) {
+    throw normalizeOAuthError(error, '轮换 OAuth 客户端密钥失败')
+  }
+}
+
+/** 删除客户端；它的授权码与访问令牌一并失效。 */
+export async function deleteOAuthClient(token: string, resourceId: number): Promise<void> {
+  try {
+    await requestVoid(
+      `/oauth/clients/${resourceId}`,
+      {
+        method: 'DELETE',
+        headers: authHeaders(token),
+      },
+      '删除 OAuth 客户端失败',
+    )
+  } catch (error) {
+    throw normalizeOAuthError(error, '删除 OAuth 客户端失败')
   }
 }

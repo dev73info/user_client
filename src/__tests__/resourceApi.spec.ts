@@ -4,6 +4,7 @@ import {
   API_CALLBACK_SIGNATURE_RULE,
   API_INTEGRATION_GUIDE_PATH,
   API_OPEN_PURCHASE_PATH,
+  API_USERS_ENSURE_PATH,
   buildApiIntegrationPrompt,
   findInvalidAllowedOrigin,
   formatAllowedOriginsText,
@@ -189,8 +190,13 @@ describe('resourceApi', () => {
     expect(prompt).toContain(`https://api.73info.cn${API_INTEGRATION_GUIDE_PATH}`)
     expect(prompt).toContain('X-Api-Key')
     expect(prompt).toContain('sk-73info-')
+    expect(prompt).toContain(`POST https://api.73info.cn${API_USERS_ENSURE_PATH}`)
     expect(prompt).toContain(`POST https://api.73info.cn${API_OPEN_PURCHASE_PATH}`)
     expect(prompt).toContain('resource_id = 88')
+    expect(prompt).toContain('buyer_external_id')
+    expect(prompt).toContain('checkout_url')
+    // R036 起不再返回 pay_url，提示词不能把开发者带回旧接入
+    expect(prompt).not.toContain('pay_url')
     // 不再组装 curl：旧示例里的调用体字段不应再出现在提示词里
     expect(prompt).not.toContain('curl')
     // 资源编号未知时用占位符，不要让开发者抄到一条假编号

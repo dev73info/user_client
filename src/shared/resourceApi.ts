@@ -304,21 +304,22 @@ export const API_CALLBACK_SIGNATURE_RULE = 'HMAC-SHA256(secret, "{timestamp}.{ra
 
 /** 开放下单接口路径（提示词里的「接入地址」）。 */
 export const API_OPEN_PURCHASE_PATH = '/api/resource/open/api-purchase'
-
+/** 用户关联查询路径：下单前用它确认买家已通过 OAuth 关联平台账号。 */
+export const API_USERS_ENSURE_PATH = '/api/resource/open/users/ensure'
 /** 接入指导文档路径：后端公开读，返回 markdown。 */
 export const API_INTEGRATION_GUIDE_PATH = '/api/resource/open/integration-guide'
 
 /**
- * 接口密钥的展示形态。密钥由平台生成、当前没有自助管理页面，
- * 所以提示词里只给形态与请求头，不编一个假密钥。
+ * 接口密钥的展示形态。密钥由开发者在工作台「API 密钥」页创建，
+ * 提示词里只给形态与请求头，不编一个假密钥。
  */
 export const API_KEY_PLACEHOLDER = 'sk-73info-你的接口密钥'
 
 /**
  * 接入提示词：开发者复制给 AI 编码代理，由代理照指导文档在自己站点的**服务端**完成接入。
  *
- * 提示词只组装三件事——接口密钥、接入地址、指导文档地址；资源编号未知时用占位符，
- * 不要让开发者抄到一条假编号。
+ * 提示词只组装接入必需的事实——指导文档、接口密钥、用户关联与下单地址、OAuth 客户端；
+ * 资源编号未知时用占位符，不要让开发者抄到一条假编号。
  */
 export function buildApiIntegrationPrompt(
   resourceId: number | null | undefined,
@@ -333,8 +334,10 @@ export function buildApiIntegrationPrompt(
     '',
     `- 指导文档：${apiBase}${API_INTEGRATION_GUIDE_PATH}`,
     `- 接口密钥（请求头 X-Api-Key）：${API_KEY_PLACEHOLDER}`,
-    `- 接入地址：POST ${apiBase}${API_OPEN_PURCHASE_PATH}（resource_id = ${id}）`,
+    `- 用户关联：POST ${apiBase}${API_USERS_ENSURE_PATH}（external_user_id + resource_id）`,
+    `- OAuth 授权：未关联时按指导文档 4.10 把买家浏览器引到平台授权页；client_id / client_secret 在本页「OAuth 授权客户端」创建后保存到服务端`,
+    `- 下单：POST ${apiBase}${API_OPEN_PURCHASE_PATH}（resource_id = ${id}，必须带 buyer_external_id）`,
     '',
-    '密钥只放在服务端，不要写进浏览器、小程序等客户端代码；下单成功后把返回的 pay_url 交给买家付款，付款结果由平台回调我配置的回调地址。',
+    '密钥与 client_secret 只放在服务端，不要写进浏览器、小程序等客户端代码；下单后把返回的 checkout_url 交给买家浏览器打开，付款结果由平台回调我配置的回调地址，请按 order_no 幂等处理。',
   ].join('\n')
 }
