@@ -14,6 +14,7 @@ import {
   type PromoCard,
 } from '@/api/points'
 import { HttpError } from '@/api/http'
+import MallProductCard from '@/components/points/MallProductCard.vue'
 import { useAuthStore } from '@/stores/auth'
 
 import { TButton, TEmpty, TMessage, TTable, TTableColumn, TTag } from 'ui_73info'
@@ -43,21 +44,6 @@ function permissionPerkCode(product: PointsProduct) {
 const isOwned = (product: PointsProduct) =>
   Boolean(permissionPerkCode(product) && ownedPerks.value.has(permissionPerkCode(product)!))
 
-function kindLabel(kind: string) {
-  if (kind === 'permission') return '权限'
-  if (kind === 'badge') return '徽章'
-  if (kind === 'consumable') return '消耗卡'
-  return '商品'
-}
-function durationLabel(days: number) {
-  return days == null || days < 0 ? '永久' : `${days} 天`
-}
-function consumableHint(product: PointsProduct) {
-  if (product.kind !== 'consumable') return ''
-  if (product.perk_code === 'resource_featured_card') return '资源精选卡 · 使用后进入首页精选'
-  if (product.perk_code === 'resource_pin_card') return '资源置顶卡 · 提升曝光，无精选角标'
-  return '兑换后放入背包，请到我的资源使用'
-}
 function orderStatusLabel(status: string) {
   if (status === 'pending') return '待处理'
   if (status === 'fulfilled') return '已完成'
@@ -155,39 +141,15 @@ onMounted(async () => {
     <div class="mall-products">
       <h3>可兑换</h3>
       <div v-if="products.length" class="mall-grid">
-        <div v-for="product in products" :key="product.id" class="mall-card">
-          <div class="mall-card__body">
-            <div class="mall-card__head">
-              <span class="mall-card__kind">{{ kindLabel(product.kind) }}</span>
-              <span class="mall-card__cost">{{ product.points_cost }} 积分</span>
-            </div>
-            <h4>{{ product.name }}</h4>
-            <p class="mall-card__duration">
-              有效期：{{ durationLabel(product.duration_days) }} · 库存：{{ product.stock }}
-            </p>
-            <p v-if="consumableHint(product)" class="mall-card__hint">
-              {{ consumableHint(product) }}
-            </p>
-            <TButton
-              variant="solid"
-              tone="accent"
-              :disabled="isOwned(product) || balance < product.points_cost || product.stock <= 0"
-              :loading="redeemingId === product.id"
-              style="width: 100%"
-              @click="redeem(product)"
-            >
-              {{
-                isOwned(product)
-                  ? '已拥有'
-                  : product.stock <= 0
-                    ? '已售罄'
-                    : balance < product.points_cost
-                      ? '积分不足'
-                      : '立即兑换'
-              }}
-            </TButton>
-          </div>
-        </div>
+        <MallProductCard
+          v-for="product in products"
+          :key="product.id"
+          :product="product"
+          :owned="isOwned(product)"
+          :insufficient-points="balance < product.points_cost"
+          :busy="redeemingId === product.id"
+          @redeem="redeem(product)"
+        />
       </div>
       <TEmpty v-else-if="!loading" description="商城暂无可兑换内容" />
     </div>
@@ -284,63 +246,10 @@ onMounted(async () => {
   font-size: 17px;
   margin: 0 0 14px;
 }
-.mall-card__hint,
-.mall-promo-tip {
-  margin: 0 0 12px;
-  font-size: 12px;
-  color: #64748b;
-  line-height: 1.5;
-}
 .mall-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 16px;
 }
-.mall-card {
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  border-radius: 12px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.06);
-  transition:
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    transform 180ms ease;
-}
-.mall-card:hover {
-  border-color: rgba(147, 197, 253, 0.96);
-  box-shadow: 0 14px 28px rgba(76, 103, 172, 0.12);
-  transform: translateY(-2px);
-}
-.mall-card__body {
-  padding: 14px;
-}
-.mall-card__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-.mall-card__kind {
-  font-size: 12px;
-  color: #164e63;
-  background: #cffafe;
-  padding: 2px 8px;
-  border-radius: 6px;
-}
-.mall-card__cost {
-  font-size: 14px;
-  font-weight: 700;
-  color: #1d4ed8;
-}
-.mall-card h4 {
-  margin: 0 0 6px;
-  font-size: 15px;
-  color: #0f172a;
-}
-.mall-card__duration {
-  margin: 0 0 8px;
-  color: #1e40af;
-  font-size: 12px;
-}
 </style>
+<style scoped src="../components/points/mall-shared.css"></style>

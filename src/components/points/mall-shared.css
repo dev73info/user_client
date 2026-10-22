@@ -1,0 +1,8 @@
+/* 商城卡片里的权益提示与道具卡说明同一口径（两个组件共用，见 MallView / MallProductCard） */
+.mall-card__hint,
+.mall-promo-tip {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+}
