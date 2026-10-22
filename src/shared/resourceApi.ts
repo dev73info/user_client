@@ -318,7 +318,8 @@ export const API_KEY_PLACEHOLDER = 'sk-73info-你的接口密钥'
  * 接入提示词：开发者复制给 AI 编码代理，由代理照指导文档在自己站点的**服务端**完成接入。
  *
  * 提示词只组装三件事——接口密钥、接入地址、指导文档地址；资源编号未知时用占位符，
- * 不要让开发者抄到一条假编号。
+ * 不要让开发者抄到一条假编号。下单返回的是 `checkout_url`（R036 起不再有 `pay_url`），
+ * 提示词必须跟上，否则代理会把开发者带回已经消失的字段。
  */
 export function buildApiIntegrationPrompt(
   resourceId: number | null | undefined,
@@ -335,6 +336,6 @@ export function buildApiIntegrationPrompt(
     `- 接口密钥（请求头 X-Api-Key）：${API_KEY_PLACEHOLDER}`,
     `- 接入地址：POST ${apiBase}${API_OPEN_PURCHASE_PATH}（resource_id = ${id}）`,
     '',
-    '密钥只放在服务端，不要写进浏览器、小程序等客户端代码；下单成功后把返回的 pay_url 交给买家付款，付款结果由平台回调我配置的回调地址。',
+    '密钥只放在服务端，不要写进浏览器、小程序等客户端代码；下单后把返回的 checkout_url 交给买家浏览器打开，付款结果由平台回调我配置的回调地址，请按 order_no 幂等处理。',
   ].join('\n')
 }

@@ -1,4 +1,5 @@
 import { nextTick, onBeforeUnmount, watch, type Ref } from 'vue'
+import { writeTextToClipboard } from '@/shared/clipboard'
 
 type NotifyType = 'success' | 'warning' | 'error'
 type Notify = (message: string, type?: NotifyType) => void
@@ -58,34 +59,6 @@ function findCodeBlock(target: EventTarget | null, root: HTMLElement): HTMLEleme
 
 function getCodeText(preElement: HTMLElement): string {
   return preElement.querySelector('code')?.textContent ?? ''
-}
-
-function writeTextWithFallback(value: string): boolean {
-  const textarea = document.createElement('textarea')
-  textarea.value = value
-  textarea.setAttribute('readonly', '')
-  textarea.style.position = 'fixed'
-  textarea.style.left = '-9999px'
-  textarea.style.top = '0'
-  document.body.append(textarea)
-  textarea.select()
-
-  try {
-    return document.execCommand('copy')
-  } finally {
-    textarea.remove()
-  }
-}
-
-async function writeTextToClipboard(value: string): Promise<void> {
-  if (navigator.clipboard?.writeText && window.isSecureContext) {
-    await navigator.clipboard.writeText(value)
-    return
-  }
-
-  if (!writeTextWithFallback(value)) {
-    throw new Error('copy failed')
-  }
 }
 
 export function useCodeBlockCopy({ rootRef, notify }: UseCodeBlockCopyOptions) {
