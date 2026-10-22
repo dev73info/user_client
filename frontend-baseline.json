@@ -316,7 +316,7 @@
     {
       "rule": "line-budget",
       "file": "src/styles/dev-base.css",
-      "detail": "762 行 > 300（模块）",
+      "detail": "769 行 > 300（模块）",
       "since": "2026-10-22"
     },
     {
@@ -437,18 +437,6 @@
       "rule": "api-deps",
       "file": "src/views/DevRequirementDetailView.vue",
       "detail": "依赖 6 个 api 模块（auth、resourceTags、devCredit、devOrderDeposit、mcResources、devRequirements）> 3",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
-      "file": "src/views/DevRequirementHallView.vue",
-      "detail": "1323 行 > 300（视图）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "api-deps",
-      "file": "src/views/DevRequirementHallView.vue",
-      "detail": "依赖 6 个 api 模块（resourceTags、devOrderDeposit、devCredit、auth、mcResources、devRequirements）> 3",
       "since": "2026-10-22"
     },
     {
@@ -994,7 +982,7 @@
     {
       "rule": "raw-color",
       "file": "src/styles/dev-base.css",
-      "detail": "53 处裸色值",
+      "detail": "57 处裸色值",
       "since": "2026-10-22"
     },
     {
@@ -1175,12 +1163,6 @@
       "rule": "raw-color",
       "file": "src/views/DevRequirementDetailView.vue",
       "detail": "6 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/views/DevRequirementHallView.vue",
-      "detail": "7 处裸色值",
       "since": "2026-10-22"
     },
     {
