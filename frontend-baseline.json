@@ -44,12 +44,6 @@
       "since": "2026-10-22"
     },
     {
-      "rule": "line-budget",
-      "file": "src/components/SupportChatWidget.vue",
-      "detail": "647 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
       "rule": "raw-color",
       "file": "src/components/app/app-download-card.css",
       "detail": "9 处裸色值",
@@ -657,8 +651,14 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/SupportChatWidget.vue",
-      "detail": "26 处裸色值",
+      "file": "src/components/support/support-chat-fab.css",
+      "detail": "4 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/support/support-chat-panel.css",
+      "detail": "22 处裸色值",
       "since": "2026-10-22"
     },
     {
