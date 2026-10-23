@@ -50,5 +50,7 @@ export { updateRequirementSubscription } from './subscription'
 export {
   listRequirementAcceptances,
   submitRequirementAcceptance,
-  type RequirementAcceptanceResponse,
+  type RequirementAcceptancePayload,
+  type RequirementAcceptanceRecord,
+  type RequirementAcceptanceResult,
 } from './acceptance'

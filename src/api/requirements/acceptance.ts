@@ -1,48 +1,49 @@
 import { authHeaders, requestJson } from '@/api/http'
+import type { components } from '@/api/generated/schema'
 
-import type { AdapayAcceptanceRecord, AdapayAcceptanceResult } from '@/api/adapay'
+type Schemas = components['schemas']
+
+/** 验收请求体（契约 `AcceptanceRequest`）。`result` 缺省按**通过**处理，打回时 `note` 必填。 */
+export type RequirementAcceptancePayload = Schemas['AcceptanceRequest']
 
 /**
- * 验收结论：`passed` 通过、`rejected` 打回。
+ * 一次验收（通过 / 打回）的回执（契约 `AcceptanceResultResponse`）。
  *
- * 打回时 `note` **必填**（后端空理由回 400），且会把需求退回「开发中」、起算整改期限、
- * 通知开发者整改。老接口 `request-final-payment`（无 body）等价于 `passed`，仍在用，
- * 但它没有"打回"这条路，新代码一律走本模块。
+ * `remediation_due_at` 只在**打回**时有值（东八区字符串），是通过时的 `null`。
+ * ⚠️ `GET /api/requirement/{id}` 的详情响应里还没有这个字段，所以刷新页面后展示不了倒计时。
  */
-export type RequirementAcceptanceResponse = {
-  /**
-   * 打回时的整改截止时间（东八区 `YYYY-MM-DD HH:MM:SS`）；通过时不带。
-   *
-   * ⚠️ 这个字段**只在打回成功的响应里**有：`GET /api/requirement/{id}` 的详情响应里
-   * 暂时还没有 `acceptance_due_at` / `remediation_due_at`（后端正在补，字段名不变），
-   * 所以刷新页面后还展示不了「还剩多久整改」。
-   *
-   * 契约里目前也查不到 `POST /api/requirement/{id}/acceptance`（实测该路由存在，401 而不是 404），
-   * 所以这个类型是手写的，等契约补上再改回生成物别名。
-   */
-  remediation_due_at?: string | null
-  /** 后端回的需求状态，打回后为 `in_development`。 */
-  status?: string
+export type RequirementAcceptanceResult = Schemas['AcceptanceResultResponse']
+
+/** 一条验收留档：字段与旧  同形， 收窄成两值。 */
+export type RequirementAcceptanceRecord = {
+  id: number
+  result: 'passed' | 'rejected'
+  submittedBy: string
+  note: string
+  resourceVersion?: string | null
+  createdAt: string
 }
 
 /**
  * 提交验收结论（`POST /api/requirement/{id}/acceptance`）。
  *
- * 路径写 `/requirements/...`，由 `shared/api/url.ts` 的别名表重写成 `/api/requirement/...`，
- * 与本目录其它模块同一口径。
+ * 与老接口 `request-final-payment`（无 body、只能通过）的区别：这条路**可通过也可打回**，
+ * 打回后需求退回 `in_development`、起算整改期限并通知开发者整改。
+ * 路径写 `/requirements/...`，由 `shared/api/url.ts` 的别名表重写成 `/api/requirement/...`。
  */
 export async function submitRequirementAcceptance(
   token: string,
   requirementId: string,
-  result: AdapayAcceptanceResult,
+  result: 'passed' | 'rejected',
   note = '',
-): Promise<RequirementAcceptanceResponse> {
-  return requestJson<RequirementAcceptanceResponse>(
+): Promise<RequirementAcceptanceResult> {
+  const payload: RequirementAcceptancePayload = { result, note: note.trim() }
+  return requestJson<RequirementAcceptanceResult>(
     `/requirements/${encodeURIComponent(requirementId)}/acceptance`,
     {
       method: 'POST',
       headers: authHeaders(token, { 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ result, note: note.trim() }),
+      body: JSON.stringify(payload),
     },
     '提交验收结果失败',
   )
@@ -52,8 +53,8 @@ export async function submitRequirementAcceptance(
 export async function listRequirementAcceptances(
   token: string,
   requirementId: string,
-): Promise<AdapayAcceptanceRecord[]> {
-  return requestJson<AdapayAcceptanceRecord[]>(
+): Promise<RequirementAcceptanceRecord[]> {
+  return requestJson<RequirementAcceptanceRecord[]>(
     `/requirements/${encodeURIComponent(requirementId)}/acceptances`,
     { headers: authHeaders(token) },
     '加载验收记录失败',
