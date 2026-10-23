@@ -80,7 +80,10 @@ export function useInvoiceApplyView(options: InvoiceApplyViewOptions) {
     ) {
       sides.push('platform')
     }
-    if (!options.summary.value?.developerInvoice && (options.summary.value?.developerInvoiceFen ?? 0) > 0) {
+    if (
+      !options.summary.value?.developerInvoice &&
+      (options.summary.value?.developerInvoiceFen ?? 0) > 0
+    ) {
       sides.push('developer')
     }
     return sides

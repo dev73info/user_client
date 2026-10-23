@@ -6,7 +6,10 @@ import {
   isFreeListingResource,
   type ResourceListingSale,
 } from '@/shared/resourceSale'
-import type { FilterSectionView, McCardItem } from '@/components/resource-catalog/resourceCatalogModel'
+import type {
+  FilterSectionView,
+  McCardItem,
+} from '@/components/resource-catalog/resourceCatalogModel'
 
 /** 已选筛选汇总出来的一枚 chip：父页面据此渲染可逐个移除的筛选条 */
 export type ActiveFilterChip = {

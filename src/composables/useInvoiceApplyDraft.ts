@@ -39,7 +39,11 @@ export function useInvoiceApplyDraft() {
         form.invoiceKind = 'special'
       }
       for (const field of specialFields) {
-        const key = field.key as 'buyerAddress' | 'buyerPhone' | 'buyerBankName' | 'buyerBankAccount'
+        const key = field.key as
+          | 'buyerAddress'
+          | 'buyerPhone'
+          | 'buyerBankName'
+          | 'buyerBankAccount'
         if (!form[key].trim()) {
           form[key] = draft[key] ?? ''
         }
