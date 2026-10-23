@@ -2,12 +2,6 @@
   "repo": ".",
   "entries": [
     {
-      "rule": "line-budget",
-      "file": "src/__tests__/invoiceApplyDialog.spec.ts",
-      "detail": "656 行 > 300（模块）",
-      "since": "2026-10-22"
-    },
-    {
       "rule": "raw-color",
       "file": "src/components/app/app-download-card.css",
       "detail": "9 处裸色值",
